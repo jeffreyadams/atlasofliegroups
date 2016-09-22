@@ -1,3 +1,5 @@
+set !minus_1 = -1 { using this constant avoids evaluating unary minus }
+
 set # (int n)= [int]: for i:n do i od       { [0,1,...,n-1] }
 set # (bool b) = int: if b then 1 else 0 fi { Iverson symbol }
 set # (ratvec v)= int: let (n,)=%v in #n    { length }
@@ -22,7 +24,7 @@ set all ([bool] p) = bool:
 set none ([bool] p) = bool:
   for x in p do if x then return false fi od; true
 set first ([bool] p) = int:
-  for x@i in p do if x then return i fi od; -1
+  for x@i in p do if x then return i fi od; minus_1
 set last ([bool] p) = int:
   let i=#p-1 in while >=i and not p[i] do i-:=1 od; i
 
@@ -31,9 +33,9 @@ set all (int limit,(int->bool) filter) = bool:
 set none (int limit,(int->bool) filter) = bool:
   for i:limit do if filter(i) then return false fi od; true
 set first (int limit,(int->bool) filter) = int:
-  for i:limit do if filter(i) then return i fi od; -1
+  for i:limit do if filter(i) then return i fi od; minus_1
 set last (int limit,(int->bool) filter) = int:
-  for i:limit ~do if filter(i) then return i fi od; -1
+  for i:limit ~do if filter(i) then return i fi od; minus_1
 
 { if evaluating conditions is expensive, one can procedure them with '@:'}
 set all ([(->bool)] p) = bool:
@@ -41,7 +43,7 @@ set all ([(->bool)] p) = bool:
 set none ([(->bool)] p) = bool:
   for x in p do if x() then return false fi od; true
 set first ([(->bool)] p) = int:
-  for x@i in p do if x() then return i fi od; -1
+  for x@i in p do if x() then return i fi od; minus_1
 set last ([(->bool)] p) = int: { this is somewhat more efficient than first }
   let i=#p-1 in while >=i and not p[i]() do i-:=1 od; i
 
@@ -50,7 +52,7 @@ set last ([(->bool)] p) = int: { this is somewhat more efficient than first }
 {				Integers				}
 
 set abs (int k)= int: if <k then -k else k fi
-set sign (int k)= int: if >k then 1 elif <k then -1 else 0 fi
+set sign (int k)= int: if >k then 1 elif <k then minus_1 else 0 fi
 
 set is_odd  (int n) = bool: !=n%2
 set is_even (int n) = bool:  =n%2
@@ -65,13 +67,13 @@ set max ([int] a) = int: let l=#a in assert(l.>,"Maximum of an empty list");
 
 set min_loc ([int] a) = int: { position of first occurrence of minimum, or -1 }
   let l=#a in
-  if =l then -1
+  if =l then minus_1
   else let p=0, m=a[0] in
     for i:l-1 from 1 do if a[i]<m then set (p,m):=(i,a[i]) fi od; p
   fi
 set max_loc ([int] a) = int: { position of first occurrence of maximum, or -1 }
   let l=#a in
-  if =l then -1
+  if =l then minus_1
   else let p=0, m=a[0] in
     for i:l-1 from 1 do if a[i]>m then set (p,m):=(i,a[i]) fi od; p
   fi
@@ -302,7 +304,7 @@ set none (mat M,(vec->bool) filter) = bool:
   let j=n_columns(M)-1 in while >=j and not filter(M[j]) do j-:=1 od; <j
 set first (mat M,(vec->bool) filter) = int:
   let j=0, n=n_columns(M)
-  in while j<n and filter(M[j]) do j+:=1 od; if j=n then -1 else j fi
+  in while j<n and filter(M[j]) do j+:=1 od; if j=n then minus_1 else j fi
 set last (mat M,(vec->bool) filter) = int:
   let j=n_columns(M)-1 in while >=j and filter(M[j]) do j-:=1 od; j
 
@@ -493,9 +495,9 @@ set is_poscoroot ((RootDatum,vec)(rd,):p) = bool:
   let cri=coroot_index(p) in >=cri and cri<nr_of_posroots(rd)
 
 set posroot_index ((RootDatum,vec)p) = int: { fold roots to positive }
-  let i=root_index(p) in if <i then -1-i else i fi
+  let i=root_index(p) in if <i then minus_1-i else i fi
 set poscoroot_index ((RootDatum,vec)p) = int: { fold coroots to positive }
-  let i=coroot_index(p) in if <i then -1-i else i fi
+  let i=coroot_index(p) in if <i then minus_1-i else i fi
 
 
 set rho (RootDatum rd) = ratvec:
@@ -1058,7 +1060,7 @@ set has_double_extended_Cayley (int n) =
 set print_extended_block (Param p, mat delta) = void:
   let (block,types,L0,L1) = extended_block(p,delta) then (l,r)=#types
   then w=width(#block-1)
-  , with_sign(int n) = string: if n<0 then "-"+(-1-n) else "+"+n fi
+  , with_sign(int n) = string: if n<0 then "-"+(minus_1-n) else "+"+n fi
   in
   for q@i in block
   do prints
@@ -1095,7 +1097,7 @@ set print_extended_block (Param p, mat delta) = void:
 {		    Polynomials in module parameters			}
 
 set null_module (ParamPol P) = ParamPol: 0*P
-set -(ParamPol P) = ParamPol: (-1)*P
+set -(ParamPol P) = ParamPol: minus_1*P
 
 set first_param (ParamPol P) = Param: let (,p)=first_term(P) in p
 set last_param (ParamPol P)  = Param: let (,p)=last_term(P) in p

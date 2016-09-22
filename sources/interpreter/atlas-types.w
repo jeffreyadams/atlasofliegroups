@@ -5438,7 +5438,9 @@ void print_W_cells_wrapper(expression_base::level l)
     wrap_tuple<0>();
 }
 
-@ outputting W_cells as [[int]] by jda
+@ Outputting |W_cells| as row of vectors; (this function was originally
+contributed by Jeff Adams).
+
 @< Local function def...@>=
 void W_cells_wrapper(expression_base::level l)
 { shared_Block b = get<Block_value>();
@@ -5449,20 +5451,16 @@ void W_cells_wrapper(expression_base::level l)
   wgraph::DecomposedWGraph dg(wg);
 @)
 
-own_row cells=std::make_shared<row_value>(0);
-cells->val.reserve(dg.cellCount());
-for (size_t i = 0; i < dg.cellCount(); ++i)
-    {
-      std::vector<BlockElt> mem=dg.cellMembers(i);
-      std::vector<int> row(mem.size());
-      for (size_t j=0; j<mem.size(); ++j)
-             {
-	     row[j]=mem[j];
-	     }
-             cells->val.emplace_back(std::make_shared<vector_value>(row));	     
-}
-push_value(cells);	     
-
+  own_row cells=std::make_shared<row_value>(0);
+  cells->val.reserve(dg.cellCount());
+  for (size_t i = 0; i < dg.cellCount(); ++i)
+  { const BlockEltList& mem=dg.cellMembers(i);
+      // list of members of strong component |i|
+    cells->val.emplace_back(std::make_shared<vector_value>@|
+         (std::vector<int>(mem.begin(),mem.end())));
+      // convert from unsigned to signed
+  }
+  push_value(cells);
 }
 
 

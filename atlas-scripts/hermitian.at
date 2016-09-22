@@ -29,11 +29,10 @@ set c_form_std (Param p) = ParamPol:
 ; let G=real_form(p) in full_deform(p)
 )
 
-{in the unequal rank case full_deform(p,delta) is an important construction,
-but it is not c_form_std, which is always just full_deform(p). I'm (jda) saving 
-this command with another name for now.
+{ in the unequal rank case full_deform(p,delta) is an important construction,
+  but it is not c_form_std, which is always just full_deform(p). I'm (jda)
+  saving this command with another name for now.
 }
-
 set c_form_std_hold (Param p) = ParamPol:
 ( if hermitian_debug then prints("computing c-form on standard module: ",p) fi
 ; let G=real_form(p) in
