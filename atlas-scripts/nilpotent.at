@@ -89,6 +89,19 @@ set nilpotent_orbits(LieType t)= [[int]]:
 set nilpotent_orbits(RootDatum rd) = [[int]]: nilpotent_orbits(Lie_type(rd))
 set nilpotent_orbits(RealForm G)   = [[int]]: nilpotent_orbits(root_datum(G))
 
+{test if partition is valid orbit in type ABCD}
+set is_valid(string type,[int] P)=bool:
+if type="A" then true
+elif type="B" or type="D" then
+ if  is_even(sum(P)) then false else
+ all(let m=partition_multiplicities(P) in for i:#m do is_odd(i) {don't care} or is_even(m[i]) od) fi
+elif type="C" then
+ if  is_odd(sum(P)) then false else
+ all(let m=partition_multiplicities(P) in for i:#m do is_even(i) {don't care} or is_even(m[i]) od) fi
+else false fi
+
+set is_valid(LieType t,[int] P)=bool:is_valid(["A","B","C","D"][get_type(t)],P)
+
 { nilpotent orbits of dual group (types A-D only) }
 set dual_nilpotent_orbits(RootDatum rd)=[[int]]: nilpotent_orbits(dual(rd))
 set dual_nilpotent_orbits(RealForm G)=[[int]]:

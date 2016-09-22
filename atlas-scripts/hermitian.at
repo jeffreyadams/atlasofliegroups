@@ -29,11 +29,10 @@ set c_form_std (Param p) = ParamPol:
 ; let G=real_form(p) in full_deform(p)
 )
 
-{ in the unequal rank case full_deform(p,delta) is an important construction,
-  but it is not c_form_std, which is always just full_deform(p). I'm (jda)
-  saving this command with another name for now.
+{ in the unequal rank case full_deform(p,delta) (deformation with twist by delta)
+ is needed for the computation of invariant forms
 }
-set c_form_std_hold (Param p) = ParamPol:
+set c_form_std_delta (Param p) = ParamPol:
 ( if hermitian_debug then prints("computing c-form on standard module: ",p) fi
 ; let G=real_form(p) in
   if is_equal_rank(G) then full_deform(p) { in this case built-in is faster }
@@ -67,11 +66,38 @@ set c_form_irreducible_long (Param p) = (ParamPol,[(Param,Split,ParamPol)]):
 ; (P,standards)
 )
 
+{this is the correct formula for the c-form in all cases}
 set c_form_irreducible (Param p)= ParamPol:
 ( let ori_nr_p = orientation_nr(p), P = null_module(real_form(p)) in
   for ev@q in KL_sum_at_s(p)
   do P +:= ev*orientation_nr_term(ori_nr_p,q)*full_deform(q) od
 ; P
+)
+
+{need to temporarily multiply ParamPol by 2, then divide by 2 at the end}
+set *(Split z,rat r)=Split:
+let (a,b)=%z in
+assert(is_integer(a*r) and is_integer(b*r),"Split*rational is not a Split");
+Split:(rat_as_int(a*r),rat_as_int(b*r))
+
+set *(ParamPol P,rat r)=ParamPol:
+let rv=null_module(real_form(first_param(P))) in
+for (a,p) in %P do rv+:=a*r*p od;rv
+
+{implements algorithm from Vogan in email 9/22/16
+ for each term delta-fixed term q add full_deform(q)
+ for each pair {q,delta(q)} add q*0
+ convenient to get 2*answer then divide by 2: [2*full(deform(q)) or (q*0 +delta(q)*0)]*(1/2)
+ it is not clear at the moment what the mathematical meaning of the expression is,
+ so I'm calling it c_form_irreducible_delta for now. It is what is needed to compute the
+ Hermitian form on an irreducible (multiply each term in this sum by 1 or s)
+}
+set c_form_irreducible_delta(Param p)= ParamPol:
+( let ori_nr_p = orientation_nr(p), P = null_module(real_form(p)), delta=distinguished_involution(real_form(p)) in
+  for ev@q in KL_sum_at_s(p)
+  do let new_term=if is_fixed(delta,q) then 2*full_deform(q,delta) else (1+s)*(q*0) fi in
+  P +:= ev*orientation_nr_term(ori_nr_p,q)*new_term od
+; P*(1/2)
 )
 
 set print_c_form_irreducible_long (Param p) = void:
@@ -132,7 +158,7 @@ set convert_cform_hermitian (ParamPol P)= ParamPol:
       for w@p in P do (s^(rat_as_int(mu(p)-a_mu))*w,p) od
   fi
 
-{ ParamPol giving the hermitian form on irreducible p }
+{ ParamPol giving the hermitian form on irreducible p in equal rank case }
 set hermitian_form_irreducible(Param p) = ParamPol:
 ( if hermitian_debug
   then prints("Computing Hermitian form on irreducible: ",p)
