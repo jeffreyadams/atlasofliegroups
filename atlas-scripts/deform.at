@@ -37,7 +37,7 @@ set deformation_terms (Param p) = ParamPol:
          $P'*acc=e_p$ with $P'$ a matrix of Split, columns from |KL_sum_at_s| }
     let remainder = null(nB-1)#1 { start with standard basis vector for |p| }
     , solution=null(nB)
-    , opposite_parity=1-length~[0]%2 { sopposite to that of |length(p)| }
+    , opposite_parity=1-length~[0]%2 { opposite to that of |length(p)| }
     , !one_minus_s = 1-s, !on_p = orientation_nr(p)
     in
     for q_ind : nB
