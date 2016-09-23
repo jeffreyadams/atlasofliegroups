@@ -127,6 +127,12 @@ class KL_table
 
 }; // |KL_table|
 
+void ext_KL_matrix (const StandardRepr p, const int_Matrix& delta,
+		    const Rep_context& rc, // the rest is output
+		    std::vector<StandardRepr>& block_list,
+		    int_Matrix& P_mat,
+		    int_Vector& lengths);
+
 } // |namespace ext_kl|
 
 } // |namespace atlas|

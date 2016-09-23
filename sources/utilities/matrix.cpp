@@ -624,31 +624,25 @@ template<typename C>
 
 
 
-/*!
-  Carries out the row operation consisting of adding c times row j
-  to row i.
-*/
+// The row operation consisting of adding |c| times row |k| to row |i|.
 template<typename C>
-void Matrix<C>::rowOperation(size_t i0, size_t i1, const C& c)
+void Matrix<C>::rowOperation(size_t i, size_t k, const C& c)
 {
-  assert(i0<base::numRows() and i1<base::numRows());
+  assert(i<base::numRows() and k<base::numRows());
   if (c!=C(0))
     for (size_t j=0; j<base::numColumns(); ++j)
-      (*this)(i0,j) += c*(*this)(i1,j);
+      (*this)(i,j) += c*(*this)(k,j);
 }
 
 
-/*!
-  Carries out the column operation consisting of adding c times column k
-  to column j.
-*/
+// The column operation consisting of adding |c| times column |k| to column |j|.
 template<typename C>
-void Matrix<C>::columnOperation(size_t j0, size_t j1, const C& c)
+void Matrix<C>::columnOperation(size_t j, size_t k, const C& c)
 {
-  assert(j0<base::numColumns() and j1<base::numColumns());
+  assert(j<base::numColumns() and k<base::numColumns());
   if (c!=C(0))
     for (size_t i=0; i<base::numRows(); ++i)
-      (*this)(i,j0) += c*(*this)(i,j1);
+      (*this)(i,j) += c*(*this)(i,k);
 }
 
 

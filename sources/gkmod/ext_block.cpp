@@ -179,10 +179,17 @@ unsigned int link_count(DescValue v)
 // find element |n| such that |z(n)>=zz|
 BlockElt ext_block::element(BlockElt zz) const
 {
-  BlockElt n=0;
-  while (n<size() and z(n)<zz)
-    ++n;
-  return n;
+  BlockElt min=0, max=size();
+  while (max>min) // invar: |(m==0 or z(m-1)<zz) and (max<size() or z(max)>=zz)|
+  {
+    BlockElt x=(min+max)/2;
+    if (z(x)<zz)
+      min=x+1;
+    else
+      max=x;
+  }
+  assert(min==max);
+  return min;
 }
 
 unsigned int ext_block::list_edges()

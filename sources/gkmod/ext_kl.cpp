@@ -834,5 +834,112 @@ bool KL_table::check_polys(BlockElt y) const
   return result;
 }
 
+void ext_KL_matrix (const StandardRepr p, const int_Matrix& delta,
+		    const Rep_context& rc, // the rest is output
+		    std::vector<StandardRepr>& block_list,
+		    int_Matrix& P_mat,
+		    int_Vector& lengths)
+{ BlockElt entry_element;
+  if (not ((delta-1)*p.gamma().numerator()).isZero())
+  {
+    std::cout << "Delta does not fix gamma=" << p.gamma() << "." << std::endl;
+    throw std::runtime_error("No valid extended bock");
+  }
+  param_block B(rc,p,entry_element);
+  ext_block::ext_block eblock
+    (rc.innerClass(), B, rc.realGroup().kgb(), delta);
+  if (not check(eblock,B,false)) // |check| actually modifies |eblock|
+    throw std::runtime_error("Failed check of extended block");
+
+  BlockElt size= // size of extended block we shall use; before compression
+    eblock.element(entry_element+1);
+
+  std::vector<ext_kl::Pol> pool;
+  KL_table twisted_KLV(eblock,pool);
+  twisted_KLV.fill_columns(size); // fill up to and including |p|
+
+  int_Vector pol_value (pool.size());
+  for (auto it=pool.begin(); it!=pool.end(); ++it)
+    if (it->isZero())
+      pol_value[it-pool.begin()]=0;
+    else
+    { int sum=(*it)[it->degree()];
+      for (auto d=it->degree(); d-->0; )
+	sum=(*it)[d]-sum;
+      pol_value[it-pool.begin()]=sum;
+    }
+
+  P_mat = int_Matrix(size);
+  for (BlockElt x=0; x<entry_element; ++x) // |entry_element==size-1|
+    for (BlockElt y=x+1; y<size; ++y)
+    { auto pair= twisted_KLV.KL_pol_index(x,y);
+      P_mat(x,y) = // |pol_value| at index of |it|, negated if |pair.second|
+	pair.second ? -pol_value[pair.first] : pol_value[pair.first];
+    }
+
+  RankFlags singular_orbits;
+  { auto singular = B.singular_simple_roots();
+    for (weyl::Generator s=0; s<eblock.rank(); ++s)
+      singular_orbits.set(s,singular[eblock.orbit(s).s0]);
+  }
+
+/*
+  singular blocks must be condensed by pushing down rows with singular
+  descents to those descents (with negative sign as is implicit in |P_mat|),
+  recursively, until reaching a "survivor" row without singular descents.
+  Then afterwards non surviving rows and columns (should be 0) are removed.
+*/
+  containers::simple_list<BlockElt> survivors;
+
+  for (BlockElt y=size; y-->0; ) // reverse loop is essential here
+  { auto it=singular_orbits.begin();
+    for (; it(); ++it)
+      if (is_descent(eblock.descent_type(*it,y)))
+	break;
+    if (it()) // a singular descent found, so not a survivor
+    { // we contribute row |y| to all its descents by |s| with sign |-1|
+      // then conceptually we clear row |y|, but don't bother: it gets ignored
+      auto s=*it; auto type=eblock.descent_type(s,y);
+      if (is_like_compact(type))
+	continue; // no descents, |y| represents zero; nothing to do for |y|
+
+      int c = eblock.orbit(s).length()%2==0 ? 1 : -1; // length change factor
+      if (is_complex(type) or is_like_type_2(type))
+	P_mat.rowOperation(eblock.some_scent(s,y),y,c);
+      else
+      { auto pair = eblock.Cayleys(s,y);
+	P_mat.rowOperation(pair.first,y,c);
+	P_mat.rowOperation(pair.second,y,c);
+      }
+    }
+    else // no singular descents, so a survivor
+      survivors.push_front(y);
+  }
+
+  BlockEltList compressed (survivors.wcbegin(), survivors.wcend());
+  if (compressed.size()<size) // there were non survivors, so compress |P_mat|
+  { size=compressed.size(); // henceforth this is our size
+    int_Matrix M (size,size);
+    for (BlockElt i=0; i<M.numRows(); ++i)
+    { auto comp_i = compressed[i];
+      for (BlockElt j=0; j<M.numColumns(); ++j)
+	M(i,j)=P_mat(comp_i,compressed[j]);
+    }
+    P_mat = std::move(M); // replace |P_mat| by its expunged version
+  }
+
+  block_list.clear(); block_list.reserve(size);
+  lengths = int_Vector(0); lengths.reserve(size);
+
+  const auto gamma = B.gamma();
+  for (auto z : compressed)
+  {
+    block_list.push_back(rc.sr_gamma(B.x(z),B.lambda_rho(z),gamma));
+    lengths.push_back(B.length(z));
+  }
+
+
+} // |ext_KL_matrix|
+
 } // |namespace kl|
 } // |namespace atlas|

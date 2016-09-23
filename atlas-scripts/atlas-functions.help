@@ -62,17 +62,21 @@ operator # : (ratvec->int) : number of components of rational vector
 operator # : (mat->int,int) : dimensions (rows*columns) of a matrix
 operator # : ([T]->int) : number of components of row (T is any type)
 
-operator # : (string,string->string): string concatenation
-operator # : (vec,vec->vec) : concatenation of vectors
 operator # : (vec,int->vec) : append element to a vector
 operator # : (int,vec->vec) : prepend element to a vector
-operator # : ([T],[T]->[T]) : concatenation of rows (T is any type)
 operator # : ([T],T->[T]) : append element to a row (T is any type)
 operator # : (T,[T]->[T]) : prepend element to a row (T is any type)
 
 operator #: (int,[vec]->mat): combine columns of given fixed height into matrix
 operator ^: (int,[vec]->mat): combine rows of given fixed length into matrix
 stack_rows: ([vec]->mat) : combine ragged rows into matrix, zero-extend shorts
+
+operator ## : (string,string->string): concatenation of two strings
+operator ## : ([string]->string): concatenation of row of strings
+operator ## : (vec,vec->vec) : concatenation of two vectors
+operator ## : ([vec]->vec) : concatenation of row of vectors
+operator ## : ([T],[T]->[T]) : concatenation of two rows (T is any type)
+operator ## : ([[T]]->[T]) : concatenation of row of rows (T is any type)
 
 error: (*,...->*) : print values and abort computation; report a runtime error
 
@@ -766,9 +770,9 @@ dual_KL: (Block->mat,[vec],vec): dual KL polynomials (Q_{x,y}) for block
   signs, the matrix should be the inverse of the P matrix. The length stops
   are provided as final value, as in raw_KL; these are for the _same_ block.
 
-raw_ext_KL: (Param,mat->mat,[vec],vec): extended Kazhdan-Lusztig data This
-  function takes input similar to extended_block, namely a parameter and the
-  matrix of a distinguished involution, which should commute with the
+raw_ext_KL: (Param,mat->mat,[vec],vec): extended Kazhdan-Lusztig data
+  This function takes input similar to extended_block, namely a parameter and
+  the matrix of a distinguished involution, which should commute with the
   distinguished involution defining the inner class, and produces raw output
   describing the extended Kazhdan-Lusztig polynomials associated to the block
   for the extended group, in a format similar to that used in raw_KL. So the
@@ -781,6 +785,23 @@ raw_ext_KL: (Param,mat->mat,[vec],vec): extended Kazhdan-Lusztig data This
   at position l the block element for which the length function (which is
   monotonically increasing along the block), takes a value at least l for the
   first time.
+
+extended_KL_block: (Param,mat->[Param],mat,vec): extended KL data for deform
+  This function computes twisted KLV polynomials for (part of) a block, in the
+  spirit of KL_block, but presents its data in a somewhat more "cooked" form.
+  The arguments (p,delta) are a parameter amd a distinguished involution as for
+  raw_ext_KL. The list of parameters returned are the delta-fixed parameters of
+  the block, which therefore give elements of the extended block, but those that
+  have a singular descent among the simple generators of the extended block are
+  removed from the list. The list is also truncated by removing any elements
+  that are beyond p from it, so if present p is the final element on the list.
+  The matrix of KL polynomials is condensed to a square matrix index by just the
+  listed elements, a mapping as described in KL_block having been applied.
+  Moreover, since the deformation algorithm can work with just the evaluations
+  of the P polynomials at q=-1, these evaluations are computed so that the
+  result can be returned as a plain matrix (the second component). The final
+  component is a vector whose components give the lengths of the parameters in
+  the block; these lengths are useful for deformation.
 
 print_gradings: (CartanClass,RealForm->): print gradings defined by real form
   This more or less gives the output of the 'gradings' command in the Atlas

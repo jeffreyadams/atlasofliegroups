@@ -437,6 +437,13 @@ template<typename T, typename Alloc>
   iterator begin() { return iterator(head); }
   weak_iterator wbegin() { return weak_iterator(head.get()); }
 
+  // instead of |end()| we provide the |at_end| condition
+  static bool at_end (iterator p) { return p.link_loc->get()==nullptr; }
+  static bool at_end (weak_iterator p) { return p.at_end(); }
+
+  // for weak pointers getting the end is efficient, so we supply a method
+  weak_iterator wend () { return weak_iterator(nullptr); }
+
   T& front () { return head->contents; }
   void pop_front ()
   { head.reset(head->next.release()); }
@@ -615,13 +622,17 @@ template<typename T, typename Alloc>
   const T& front () const { return head->contents; }
   const_iterator begin () const { return const_iterator(head); }
   const_iterator cbegin () const { return const_iterator(head); }
+  // instead of |end()| we provide the |at_end| condition
+  static bool at_end (const_iterator p) { return p.link_loc->get()==nullptr; }
+  static bool at_end (weak_const_iterator p) { return p.at_end(); }
+
+  // for weak pointers getting the end is efficient, so we supply methods
   weak_const_iterator wbegin () const
     { return weak_const_iterator(head.get()); }
   weak_const_iterator wcbegin () const
     { return weak_const_iterator(head.get()); }
-  // instead of |end()| we provide the |at_end| condition
-  static bool at_end (const_iterator p) { return p.link_loc->get()==nullptr; }
-  static bool at_end (weak_const_iterator p) { return p.at_end(); }
+  weak_const_iterator wend ()  const { return weak_const_iterator(nullptr); }
+  weak_const_iterator wcend () const { return weak_const_iterator(nullptr); }
 
 }; // |class simple_list<T,Alloc>|
 

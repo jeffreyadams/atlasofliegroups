@@ -273,7 +273,7 @@ template<typename C> class Matrix : public Matrix_base<C>
 
   // secondary manipulators
 
-  void rowOperation(size_t, size_t, const C&);
+  void rowOperation(size_t i, size_t k, const C& c); // |row(i) += c+row(k)|
   void columnOperation(size_t j, size_t k, const C& c); // |col(j) += c*col(k)|
 
   void rowMultiply(size_t i, C f);
