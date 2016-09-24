@@ -904,13 +904,13 @@ void ext_KL_matrix (const StandardRepr p, const int_Matrix& delta,
 	continue; // no descents, |y| represents zero; nothing to do for |y|
 
       int c = eblock.orbit(s).length()%2==0 ? 1 : -1; // length change factor
-      if (is_complex(type) or is_like_type_2(type))
-	P_mat.rowOperation(eblock.some_scent(s,y),y,c);
-      else
+      if (has_double_image(type)) // 1r1f, 2r11
       { auto pair = eblock.Cayleys(s,y);
 	P_mat.rowOperation(pair.first,y,c);
 	P_mat.rowOperation(pair.second,y,c);
       }
+      else
+	P_mat.rowOperation(eblock.some_scent(s,y),y,c);
     }
     else // no singular descents, so a survivor
       survivors.push_front(y);
@@ -940,8 +940,9 @@ void ext_KL_matrix (const StandardRepr p, const int_Matrix& delta,
   lengths = int_Vector(0); lengths.reserve(size);
 
   const auto gamma = B.gamma();
-  for (auto z : compressed)
+  for (auto ez : compressed)
   {
+    auto z = eblock.z(ez);
     block_list.push_back(rc.sr_gamma(B.x(z),B.lambda_rho(z),gamma));
     lengths.push_back(B.length(z));
   }
