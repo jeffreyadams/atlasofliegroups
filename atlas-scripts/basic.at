@@ -470,6 +470,13 @@ set ^ = { exponentiation of split integers }
     else error("Negative power "+n+" of split integer "+split_format(x))
     fi
 
+{.multiply split integer by a rational.}
+set *(Split z,rat r)=Split:
+let (a,b)=%z in 
+assert(is_integer(a*r) and is_integer(b*r),"Split*rational is not a Split");
+Split:(rat_as_int(a*r),rat_as_int(b*r))
+
+set *(rat r,Split z)=Split:z*r
 
 {				Root data 				}
 
@@ -1109,6 +1116,11 @@ set - (ParamPol a, (Split,Param) (c,p)) = ParamPol: a+(-c,p)
 
 { deform a whole ParamPol, by deforming all individual terms }
 set * (ParamPol P, rat f) = ParamPol: 0*P + for c@q in P do (c,q*f) od
+
+{ multiply a ParamPol by a rational by multiplying each coefficient}
+set * (rat f,ParamPol P)=ParamPol: 
+  let rv=null_module(P) in 
+   for s@p in P do rv+:=(f*s)*p od;rv
 
 { simulate coercion (KGBElt->RealForm) in some cases }
 set root_datum (ParamPol P) = RootDatum: real_form(P)
