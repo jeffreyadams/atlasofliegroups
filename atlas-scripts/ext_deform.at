@@ -71,9 +71,46 @@ set deform (Param p, mat delta) = ParamPol:
     in (1-s)*outer_sum
 )
 
+set rec_def (Param p,mat delta) = (Param,ParamPol):
+  if ed_verbose2 then prints("rec_def with:", p) fi;
+  if is_zero(p) or not is_final(p) or not is_fixed(delta,p)
+  then error("improper parameter")
+  fi;
+  let !empty=null_module(real_form(p))
+  then rec_fun recd (Split coef,Param p) = (Param,ParamPol):
+     { |coef| to be multiplied to deformation terms }
+    begin
+    if ed_verbose2 then prints("recd with:", p) fi;
+    if has_nu0(p) then (p,empty) { but deformed |p| has |coef| implicitly }
+    elif not is_standard(p) then prints(p,%p); error("halt")
+    else
+      let (x,lambda,gamma)=%p, rp=reducibility_points(p)
+      then inx=#rp, at_nu0=empty, acc=empty
+      in
+      while inx>0
+      do
+        let p_def=param(x,lambda,gamma*rp[inx-:=1]) in
+        let def=deform(p_def,delta) in
+	if ed_verbose2
+        then prints("adding deformation term: p=", p_def, new_line
+	           , "adding:", def)
+	fi;
+	acc+:=def
+      od
+    ; for k@q in acc
+      do
+        let c=coef*k then (q0,nu0_terms) = recd(c,q)
+	in at_nu0 +:= nu0_terms+(c,q0)
+      od
+    ; { return deformed p and accumulated deformation terms }
+      (param(x,lambda,null_wt(#gamma)), at_nu0)
+    fi
+    end
+  in recd(1,p)
+
 { alternative, use the new built-in |extended_KL_block| }
 set deformation_terms (Param p, mat delta) = ParamPol:
-( assert(is_fixed(delta,p),"parameter is not delta-fixed");
+  assert(is_fixed(delta,p),"parameter is not delta-fixed");
   let (B,P_mat,length) = extended_KL_block(p,delta) then nB=#B in
   if =nB or B~[0]!=p
   then null_module(p) { if |p| itself is not among survivors, return 0 }
@@ -100,42 +137,52 @@ set deformation_terms (Param p, mat delta) = ParamPol:
       { for the same reason we replaced |s| by |-1| in computations giving |c| }
     od
   fi
-)
 
-set rec_def (Param p,mat delta) = (Param,ParamPol):
-  if ed_verbose2 then prints("rec_def with:", p) fi;
-  if is_zero(p) or not is_final(p) or not is_fixed(delta,p) then error("improper parameter")
-  else
-    let empty=null_module(real_form(p))
-    then recd = (Split c,Param p ) (Param,ParamPol): (p,empty) { dummy }
-    in
-    ( recd := { now create a recursive function be reassigning to |recd| }
-      begin (Split coef,Param p): { coef to be multiplied to deformation terms }
-        if ed_verbose2 then prints("recd with:", p) fi;
-	if has_nu0(p) then (p,empty) { but deformed |p| has |coef| implicitly }
-	elif not is_standard(p) then prints(p,%p); error("halt")
-	else
-	  let (x,lambda,gamma)=%p, rp=reducibility_points(p)
-	  then inx=#rp, at_nu0=empty, acc=empty
-	  in while inx>0 do
-            let p_def=param(x,lambda,gamma*rp[inx-:=1]) in
-            let def=deform(p_def,delta) in
-	    if ed_verbose2 then prints("adding deformation term: p=", p_def, new_line, "adding:", def) fi;
-	     acc+:=def od
-	  ; for k@q in acc
-	    do
-	      let c=coef*k then (q0,nu0_terms) = recd(c,q)
-	      in at_nu0 +:= nu0_terms+(c,q0)
-	    od
-	  ; { return deformed p and accumulated deformation terms }
-	  (param(x,lambda,null_wt(#gamma)), at_nu0)
-	fi
-      end
-    ) { value in parentheses is recursive |recd|; apply it: }
-  (1,p)
-  fi
+set recursive_deform (Param p, mat delta) = ParamPol:
+  assert(not is_zero(p) and is_final(p) and is_fixed(delta,p)
+  	,"improper parameter");
+  let empty=null_module(real_form(p)) in
+  if ed_verbose { choose verbose or non-verbose version of the function }
+  then rec_fun full_def (Split sc,Param p) ParamPol:
+       { |sc| will simply scale the resulting ParamPol, |delta| is implicit }
+    begin
+      prints("full_def with: sc=", sc, ", p=", p);
+      assert(is_standard(p)
+	    ,"non standard parameter encountered in deformation");
+      let acc=empty, at_nu0=ParamPol: sc*(p*0) { fully deformed |p| } in
+      for factor in reducibility_points(p)
+      ~do
+	let p_def=p*factor { next deformation of |p| }
+	then def=deformation_terms(p_def,delta)
+	in
+	prints("adding deformation term: p=", p_def, new_line,"adding:", def)
+      ; acc+:=def
+      od
+    ; for k@q in acc { traverse the sum of the deformation terms spun off }
+      do { apply |full_def| recursively to all those terms }
+	at_nu0 +:= full_def(sc*k,q) { gather harvest from those deformations }
+      od
+    ; at_nu0
+    end
+  else rec_fun full_def (Split sc,Param p) ParamPol:
+       { |sc| will simply scale the resulting ParamPol, |delta| is implicit }
+    begin
+      assert(is_standard(p),"non standard parameter in deformation");
+      let acc=empty, at_nu0=ParamPol: sc*(p*0) { fully deformed |p| } in
+      for factor in reducibility_points(p)
+      ~ { direction of deformation is down, towards 0; this is not essential }
+      do acc+:=deformation_terms(p*factor,delta) od
+    ; for k@q in acc { traverse the sum of the deformation terms spun off }
+      do at_nu0 +:= full_def(sc*k,q) od
+    ; at_nu0
+    end
+  fi { apply that recursive function to the initial argument: } (1,p)
 
-set full_deform (Param p,mat delta) = ParamPol:let (a,P)=rec_def(p,delta) in a+P
+set full_deform = recursive_deform@(Param,mat)
+{ used to be: (Param p,mat delta) ParamPol: let (a,P)=rec_def(p,delta) in a+P }
 
 set c_form_std (Param p,mat delta) = ParamPol:
-let G=real_form(p) in if is_equal_rank(G) then full_deform(p) else full_deform(p,delta) fi
+  let G=real_form(p) in
+  if is_equal_rank(G) then full_deform(p) { buiit in }
+  else full_deform(p,delta) { defined above }
+  fi

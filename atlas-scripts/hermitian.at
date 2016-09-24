@@ -1,7 +1,7 @@
 <basic.at
 <representations.at { for spherical_principal_series }
 <kl.at
-<ext_deform.at
+<ext_deform.at { for full_deform@(Parma,mat), only used in |c_form_std_hold| }
 
 { a variable used in this file; set to true for more output from functions }
 set hermitian_debug = false
