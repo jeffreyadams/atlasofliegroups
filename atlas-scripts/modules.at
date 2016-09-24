@@ -137,11 +137,6 @@ set has_infinitesimal_character (ParamPol P) = bool:
     all (for @p in P do infinitesimal_character(p)=ic0 od )
   fi
 
-set infinitesimal_character(ParamPol P) = ratvec:
-  assert(has_infinitesimal_character(P),
-        "terms have different infinitesimal characters");
-  infinitesimal_character(first_param(P))
-
 set infinitesimal_character (ParamPol P, string type) = ratvec:
   infinitesimal_character(P)
 

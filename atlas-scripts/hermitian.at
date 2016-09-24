@@ -80,10 +80,6 @@ let (a,b)=%z in
 assert(is_integer(a*r) and is_integer(b*r),"Split*rational is not a Split");
 Split:(rat_as_int(a*r),rat_as_int(b*r))
 
-set *(ParamPol P,rat r)=ParamPol:
-let rv=null_module(real_form(first_param(P))) in
-for (a,p) in %P do rv+:=a*r*p od;rv
-
 {implements algorithm from Vogan in email 9/22/16
  for each term delta-fixed term q add full_deform(q)
  for each pair {q,delta(q)} add q*0

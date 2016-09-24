@@ -242,10 +242,6 @@ set max_tagged_entry([(int,[int])] v)=int:
 set keep_by_first_entry([(int,[int])] v,int k)=[(int,[int])]:
   let rv=[(int,[int])]:[] in
   for (c,w) in v do if w[0]=k then rv#:=(c,w) fi od;rv
-set keep_by_first_entry([(int,[int])] v,int k)=[(int,[int])]:
-  let rv=[(int,[int])]:[] in
-  for (c,w) in v do if w[0]=k then rv#:=(c,w) fi od;rv
-
 set keep_by_first_entry_and_truncate([(int,[int])] v,int k)=[(int,[int])]:
   let w=keep_by_first_entry(v,k) in
   let rv=[(int,[int])]:[] in for (c,u) in w do
@@ -315,9 +311,3 @@ for cell in cells do print_wrep_cpt(B,cell) od
 
 set print_wreps(Block B,[[int]] cells)=void:
 for i:#cells do  prints("Cell ",i);print_wrep(B,cells[i]);prints() od
-
-set wreps(Block B,[[int]] cells)=[([int],[int])]:for C in cells do wrep(B,C) od
-
-
-
-

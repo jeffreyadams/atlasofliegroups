@@ -23,8 +23,9 @@ set left_w (KGBElt x) = mat: { assumes inner_class(x) is complex }
 
 { extremal weight of LKT of parameter p of G complex
   formula: lambda_L+w*lambda_R
+  write mu_C to distinguish from mu in hermitian.at
 }
-set mu (Param p) = vec:
+set mu_C (Param p) = vec:
   let lambda=lambda(p), w=left_w(x(p)) in
   ratvec_as_vec(left(lambda)+w*right(lambda))
 
@@ -35,8 +36,8 @@ set nu_C (Param p) = ratvec:
   let nu=nu(p), w=left_w(x(p)) in { inverse(w)*left(nu)-right(nu) }
   left(nu)-w*right(nu)
 
-set gamma_L (Param p) = ratvec: (mu(p)+nu_C(p))/2
-set gamma_R (Param p) = ratvec: (mu(p)-nu_C(p))/2
+set gamma_L (Param p) = ratvec: (mu_C(p)+nu_C(p))/2
+set gamma_R (Param p) = ratvec: (mu_C(p)-nu_C(p))/2
 
 { define a parameter of G complex by (gamma_L,gamma_R)
   assumption: gamma_L+gamma_R in X^*

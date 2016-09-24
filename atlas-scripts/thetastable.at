@@ -166,66 +166,6 @@ set make_dominant(KGBElt x_in,ratvec lambda_in, ratvec lambda_q_in)=(KGBElt,ratv
 let (lambda_q,w)=make_dominant(real_form(x_in),lambda_q_in) in
 (cross(inverse(w),x_in),act(inverse(w),lambda_in),lambda_q_in)
 
-{first defined Aq as a ParamPol, in case it isn't irreducible}
-set Aq_param_pol(KGBElt x_in,ratvec lambda_in, ratvec lambda_q)=ParamPol:
-{let ()=prints("Aq_param_pol with:", x_in, " ", lambda_in, " ", lambda_q) in}
-let G=real_form(x_in) then
-{find w making lambda_q weakly dominant}
-(lambda_q_new,w)=make_dominant(G,lambda_q) then
-{()=prints("w=", w, "  lambda_q_new=", lambda_q_new) then}
-x_new=cross(inverse(w),x_in) then
-{()=prints("x_new=", x_new) then}
-{lambda_q_new=act(w,lambda_q) then}
-lambda_in_new=act(inverse(w),lambda_in) then
-P_new=parabolic(lambda_q_new,x_new) then
-L_new=Levi(P_new) then
-t_L_new=trivial(L_new) then
-()=prints("L=", L_new) then
-()=prints("rho_L=", rho(L_new)) then
-()=prints("rho_u=", rho_u(P_new)) in
-{pi_L=parameter(x(t_L_new),lambda_in_new-rho_u(parabolic(lambda_q_new,x_new))
- ,lambda_in_new-rho_u(parabolic(lambda_q_new,x_new))) in}
-{let ()=prints("lambda_q=", lambda_q) in
-let ()=prints("lambda_q_new=", lambda_q_new) in
-let ()=prints("x_in=", x_in) in
-let ()=prints("x_new=", x_new) in
-let ()=prints("rho_u_new:", rho_u(parabolic(lambda_q_new,x_new))) in
-let ()=prints("lambda(t_L_new)=", lambda(t_L_new)) in
-let ()=prints("lambda_in=", lambda_in) in
-let ()=prints("lambda_in_new=", lambda_in_new) in}
-let pi_L=parameter
-  (x(t_L_new)
-  ,lambda(t_L_new) + lambda_in_new - rho_u(parabolic(lambda_q_new,x_new))
-  ,nu(t_L_new)+lambda_in_new-rho_u(parabolic(lambda_q_new,x_new))
-  )
-in
-{let ()=prints("A:",lambda(t_L_new)+lambda_in_new
- -rho_u(parabolic(lambda_q_new,x_new))) in
-let ()=prints("B:", nu(t_L_new)+lambda_in_new
- -rho_u(parabolic(lambda_q_new,x_new))) in
-let ()=prints("lambda(t_L_new):", lambda(t_L_new)) in
-let ()=prints("nu(t_L_new):", nu(t_L_new)) in
-let ()=prints("pi_L= ", pi_L) in
-let ()=prints("properties:") in}
-assert(dimension(pi_L)=1,"pi_L is not one-dimensional") ;
-{prints("in Aq, p_L=", pi_L);}
-theta_induce_irreducible(pi_L,G)
-
-set Aq(KGBElt x_in,ratvec lambda_in, ratvec lambda_q)=Param:
-  let P=%Aq_param_pol(x_in,lambda_in,lambda_q) in
-  assert(#P=1,"Aq is not irreducible. Use Aq_param_pol(x,lambda) instead");
-  let (c,p)=P[0] in
-  assert(c=1,"Aq has multiplicity. Use Aq_param_pol(x,lambda) instead"); p
-
-{if not provided, assume lambda_q=lambda}
-set Aq(KGBElt x,ratvec lambda_in)=Param:Aq(x,lambda_in,lambda_in)
-
-{specify G, and not x, to use x=KGB(G,0)}
-
-set Aq(RealForm G,ratvec lambda_in, ratvec lambda_q)=Param:
-  Aq(KGB(G)[0],lambda_in,lambda_q)
-set Aq(RealForm G,ratvec lambda_in)=Param:Aq(G,lambda_in,lambda_in)
-
 { first defined Aq as a ParamPol, in case it isn't irreducible }
 set Aq_param_pol (KGBElt x_in,ratvec lambda_in, ratvec lambda_q) = ParamPol:
 { prints("Aq_param_pol with:", x_in, " ", lambda_in, " ", lambda_q); }
@@ -329,10 +269,6 @@ set is_fair(Param p_L,Parabolic P,RealForm G)=bool:
 let v=infinitesimal_character(p_L)+rho_u(P)-rho(Levi(P)) in
 all(for alpha_check in nilrad(P) do v*alpha_check>0 od)
 
-set is_weakly_fair(Param p_L,Parabolic P,RealForm G)=bool:
-let v=infinitesimal_character(p_L)+rho_u(P)-rho(Levi(P)) in
-all(for alpha_check in nilrad(P) do v*alpha_check>0 od)
-
 {weakly fair only defined if pi_L is finite dimensional}
 set is_weakly_fair(Param p_L,Parabolic P,RealForm G)=bool:
 let v=infinitesimal_character(p_L)+rho_u(P)-rho(Levi(P)) in
@@ -369,6 +305,7 @@ elif is_fair(p_L,P,G) then "Fair"
 elif is_weakly_fair(p_L,P,G) then "Weakly fair"  else
 "None" fi
 
+{goodness is defined below, return type void
 set goodness(KGBElt x,ratvec lambda_in,ratvec lambda_q)=
 let G=real_form(x) then
 P=parabolic(lambda_q,x) then
@@ -385,6 +322,7 @@ elif is_weakly_good(x,lambda_in,lambda_q) then "Weakly good"
 elif is_fair(x,lambda_in,lambda_q) then "Fair"
 elif is_weakly_fair(x,lambda_in,lambda_q) then "Weakly fair" else
 "None" fi
+}
 
 set Aq_packet(RealForm G,ComplexParabolic P)=[Param]:
 let parabolics=theta_stable_parabolics(G,P) then
@@ -418,6 +356,7 @@ set is_weakly_fair (Param p_L,RealForm G) = bool:
   in is_finite_dimensional(p_L) and dimension(p_L)=1 and
      is_dominant(G,infinitesimal_character(p_L)+rho_u-rho(L))
 
+{wrong defintion? is_good, is_weakly_good, is_fair, is_weakly fair require make_dominant, see above
 set is_good (KGBElt x,ratvec lambda_in,ratvec lambda_q) = bool:
   let L=Levi(lambda_q,x) in is_strictly_dominant(real_form(x),lambda_in+rho(L))
 
@@ -429,7 +368,7 @@ set is_fair (KGBElt x,ratvec lambda_in,ratvec lambda_q) = bool:
 
 set is_weakly_fair (KGBElt x,ratvec lambda_in,ratvec lambda_q) = bool:
   is_dominant(real_form(x),lambda_in)
-
+}
 set goodness (Param p_L,RealForm G) = void:
   let L=real_form(p_L) then rho_l=rho(L)
   then rho_u=rho(G)-rho_l, infchar_l=infinitesimal_character(p_L)

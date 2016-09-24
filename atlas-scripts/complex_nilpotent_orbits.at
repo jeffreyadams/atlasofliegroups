@@ -130,13 +130,6 @@ let all=all_H(rd) in
 let dims=for (v,)@i in all do let d=dim_nilpotent(rd,v) in prints(i, " ", v, ", ", v*simple_roots(rd), even_eigenspaces(rd,v), " ", odd_eigenspaces(rd,v),  " ", d);d od in
 sort(dims)
 
-set sort_by (((vec, rat)-> rat) f)=([(vec,rat)] v) [(vec,rat)]:
-  for index in inv_standardisation(for x in v do f(x) od) do v[index] od
-
-set sort_by_length =([(vec,rat)]->[(vec,rat)]):
-sort_by((vec v,rat c) rat: c)
-
-
 set sort_by (((ratvec, [vec])-> int) f)=([(ratvec,[vec])] v) [(ratvec,[vec])]:
   for index in inv_standardisation(for x in v do f(x) od) do v[index] od
 
