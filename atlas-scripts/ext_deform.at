@@ -43,8 +43,8 @@ set deform (Param p, mat delta) = ParamPol:
       if ed_verbose then prints("outer loop i=",i) fi;
       let l_i=length(p_i)
       , onr=(-1)^rat_as_int((orientation_nr(p)-orientation_nr(p_i))/2)
-      , inner_sum=0
-      in
+      , inner_sum=0 in
+      {let ()=prints("onr=", onr) in}
       for p_j@j_minus_i in B_f[i:index]
       do
         let j=j_minus_i+i, l_j=length(p_j) in

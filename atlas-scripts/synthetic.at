@@ -24,11 +24,6 @@ set posroot_cross (int i, Param p) = Param:
   then x1=cross(w,x0), grading_wt=gamma-lambda(p)+rho_r(x0)
   in parameter(x1, gamma - w*grading_wt + rho_r(x1), gamma)
 
-set posroot_cross (int i, Param p) = Param:
-  let (x0,,gamma) = %p then w=reflection(root_datum(x0),i)
-  then x1=cross(w,x0), grading_wt=gamma-lambda(p)+rho_r(x0)
-  in parameter(x1, gamma - w*grading_wt + rho_r(x1), gamma)
-
 { the following is what the now built-in function cross@(vec,Param) does }
 set posroot_cross (vec alpha, Param p) = Param:
   let (x0,lambda_rho,gamma) = %p then rd=root_datum(x0)

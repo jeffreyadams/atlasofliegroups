@@ -28,6 +28,7 @@ set branch_irr (ParamPol P,int bound) = ParamPol:
   let sum=0*P in for c@p in P do
  sum +:= c*branch_irr(p,bound) od; sum
 
+{print commands moved to print_K_types.at
 set print_branch_irr (ParamPol P,KGBElt x,int bound) = void:
   for (mult,q) in sort_by_height(branch_irr(P,bound))
   do prints(split_as_int(mult), "*", highest_weights(q,x)[0]) od
@@ -98,7 +99,7 @@ set print_branch_std_long (Param p,KGBElt x, int bound) = void:
   print_branch_std_long(ParamPol:p,x,bound)
 set print_branch_std_long (Param p, int bound) = void:
   print_branch_std_long(ParamPol:p,bound)
-
+}
 
 { multiplicity of K-type p_K in standard module p }
 set mult_std (Param p_K,Param p) = int:
@@ -112,6 +113,7 @@ set K_signature_irr (Param p,int bound) = (ParamPol,ParamPol):
   let form=hermitian_form_irreducible(p) in
   ( branch_std(integer_part(form),bound) , branch_std(s_part(form),bound) )
 
+{print commands moved to print_K_types.at
 set print_K_signature_irr (Param p,KGBElt x,int bound) = void:
 ( let form=hermitian_form_irreducible(p)
   then P=integer_part(form),Q=s_part(form)
@@ -126,7 +128,7 @@ set print_K_signature_irr (Param p,KGBElt x,int bound) = void:
 
 set print_K_signature_irr (Param p,int bound) = void:
   print_K_signature_irr(p,KGB(real_form(p),0),bound)
-
+}
 set signed_mult (Param p_K,Param p) = (int,int):
   let (P,Q)=K_signature_irr(p,height(p_K)) in
    ( split_as_int(branch_std(P,height(p_K))[p_K])

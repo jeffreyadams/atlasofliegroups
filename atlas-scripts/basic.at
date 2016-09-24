@@ -2,7 +2,6 @@ set !minus_1 = -1 { using this constant avoids evaluating unary minus }
 
 set # (int n)= [int]: for i:n do i od       { [0,1,...,n-1] }
 set # (bool b) = int: if b then 1 else 0 fi { Iverson symbol }
-set # (ratvec v)= int: let (n,)=%v in #n    { length }
 
 set ^ = !=@(bool,bool) { exclusive or }
 

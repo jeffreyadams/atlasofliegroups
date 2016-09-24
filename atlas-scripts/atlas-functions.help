@@ -726,7 +726,8 @@ height: (Param->int) W-invariant height measure standardrepn restricted to K
   and the positive coroots; it ignores the nu component of the parameter.
   This is the same function as used in branch to compare with the given limit.
 
-deform: (Param->ParamPol): compute deformation terms when nu decreases
+defor)
+): (Param->ParamPol): compute deformation terms when nu decreases
   The non-integral block for the parameter and its KL polynomials are
   computed, from which the deformation terms involing other members of the
   block are computed. They are returned as a formal sum of paramters with
