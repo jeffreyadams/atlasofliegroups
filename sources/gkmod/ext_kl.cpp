@@ -928,6 +928,14 @@ void ext_KL_matrix (const StandardRepr p, const int_Matrix& delta,
     P_mat = std::move(M); // replace |P_mat| by its expunged version
   }
 
+  // flip signs for odd length distance, since that is what deformation wants
+  for (BlockElt i=0; i<P_mat.numRows(); ++i)
+  { auto parity = B.length(compressed[i])%2;
+    for (BlockElt j=0; j<P_mat.numColumns(); ++j)
+      if (B.length(compressed[j])%2!=parity)
+	P_mat(i,j) *= -1;
+  }
+
   block_list.clear(); block_list.reserve(size);
   lengths = int_Vector(0); lengths.reserve(size);
 
