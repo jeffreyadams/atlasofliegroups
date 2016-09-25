@@ -144,7 +144,8 @@ class ext_block
 	    const WeightInvolution& delta);
   ext_block(const InnerClass& G,
 	    const param_block& block, const KGB& kgb,
-	    const WeightInvolution& delta);
+	    const WeightInvolution& delta,
+	    bool verbose=false);
 
 // manipulators
   void flip_edge(weyl::Generator s, BlockElt x, BlockElt y);
@@ -203,6 +204,7 @@ class ext_block
 
 private:
   void complete_construction(const BitMap& fixed_points);
+  bool check(const param_block& block, bool verbose=false);
 
 }; // |class ext_block|
 
@@ -313,8 +315,6 @@ inline int sign_between (const param& E, const param& F)
 // find out type of extended parameters, and push its neighbours onto |links|
 DescValue type (const param& E, const ext_gen& p,
 		containers::sl_list<param>& links);
-
-bool check(ext_block& eb, const param_block& block, bool verbose=false);
 
 // check braid relation at |x|; also mark all involved elements in |cluster|
 bool check_braid

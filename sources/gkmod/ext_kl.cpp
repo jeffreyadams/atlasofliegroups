@@ -1,7 +1,7 @@
 /*
   This is ext_kl.cpp
 
-  Copyright 2013, Marc van Leeuwen
+  Copyright 2013-2016, Marc van Leeuwen
   part of the Atlas of Lie Groups and Representations
 
   For license information see the LICENSE file
@@ -848,8 +848,6 @@ void ext_KL_matrix (const StandardRepr p, const int_Matrix& delta,
   param_block B(rc,p,entry_element);
   ext_block::ext_block eblock
     (rc.innerClass(), B, rc.realGroup().kgb(), delta);
-  if (not check(eblock,B,false)) // |check| actually modifies |eblock|
-    throw std::runtime_error("Failed check of extended block");
 
   BlockElt size= // size of extended block we shall use; before compression
     eblock.element(entry_element+1);

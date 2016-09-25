@@ -991,9 +991,8 @@ void repr_braid_f()
     return;
   }
   ext_block::ext_block eblock(commands::current_inner_class(),block,
-			      commands::currentRealGroup().kgb(),delta);
-  if (check(eblock,block,true))
-    test_braid(eblock);
+			      commands::currentRealGroup().kgb(),delta,true);
+  test_braid(eblock);
 }
 
 void fix_braid(ext_block::ext_block& eblock)

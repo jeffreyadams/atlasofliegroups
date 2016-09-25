@@ -4158,15 +4158,15 @@ void extended_block_wrapper(expression_base::level l)
 @)
   BlockElt start;
   param_block block(rc,p->val,start);
-  ext_block::ext_block eb(rc.innerClass(),block,rc.kgb(),M);
   if ( ((M-1)*block.gamma().numerator()).isZero()) // block globally stable
-    @< Compute edge flips in |eb| and then the return value components, and
-       call |push_value| for each of them @>
+    @< Construct the extended block, then the return value components,
+       calling |push_value| for each of them @>
   else // block not globally stable under |M|, return empty data
-  { push_value(std::make_shared<row_value>(0));
-    push_value(std::make_shared<matrix_value>(int_Matrix(0,eb.rank())));
-    push_value(std::make_shared<matrix_value>(int_Matrix(0,eb.rank())));
-    push_value(std::make_shared<matrix_value>(int_Matrix(0,eb.rank())));
+  { auto eb_rank = block.fold_orbits(M).size(); // size of folded diagram
+    push_value(std::make_shared<row_value>(0));
+    push_value(std::make_shared<matrix_value>(int_Matrix(0,eb_rank)));
+    push_value(std::make_shared<matrix_value>(int_Matrix(0,eb_rank)));
+    push_value(std::make_shared<matrix_value>(int_Matrix(0,eb_rank)));
   }
 @)
   if (l==expression_base::single_value)
@@ -4176,9 +4176,8 @@ void extended_block_wrapper(expression_base::level l)
 @ We somewhat laboriously convert internal information from the extended block
 into a list of parameters and three tables in the form of matrices.
 
-@< Compute edge flips in |eb|... @>=
-{ check(eb,block,false);
-    // set flips using extended parameter computations, do not report
+@< Construct the extended block... @>=
+{ ext_block::ext_block eb(rc.innerClass(),block,rc.kgb(),M);
   own_row params = std::make_shared<row_value>(eb.size());
   int_Matrix types(eb.size(),eb.rank());
 @/int_Matrix links0(eb.size(),eb.rank());
@@ -5219,9 +5218,6 @@ void raw_ext_KL_wrapper (expression_base::level l)
 @)
   BlockElt start;
   param_block block(rc,p->val,start);
-  ext_block::ext_block eb(rc.innerClass(),block,rc.kgb(),delta);
-  if (not check(eb,block,false)) // |check| actually modifies |eb|
-    throw runtime_error("Failed check of extended block");
   if (not((delta-1)*block.gamma().numerator()).isZero())
   { // block not globally stable, so return empty values;
     push_value(std::make_shared<matrix_value>(int_Matrix()));
@@ -5230,6 +5226,7 @@ void raw_ext_KL_wrapper (expression_base::level l)
   }
   else
   {
+    ext_block::ext_block eb(rc.innerClass(),block,rc.kgb(),delta);
     std::vector<Polynomial<int> > pool;
     ext_kl::KL_table klt(eb,pool); klt.fill_columns();
   @)
