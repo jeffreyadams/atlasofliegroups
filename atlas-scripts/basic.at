@@ -433,6 +433,7 @@ set solve (mat A, ratvec b) = [ratvec]:
 {			    Split integers				}
 
 set !s = Split:(0,1) { ! means it is a constant }
+set !one_minus_s = Split:(1,-1), !one_plus_s = Split:(1,1)  { near idempotents }
 
 set int_part (Split x) = int: let (r,)=%x in r
 set s_part (Split x) = int: let (,y)=%x in y

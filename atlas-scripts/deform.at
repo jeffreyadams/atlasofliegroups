@@ -37,8 +37,8 @@ set deformation_terms (Param p) = ParamPol:
          $P'*acc=e_p$ with $P'$ a matrix of Split, columns from |KL_sum_at_s| }
     let remainder = null(nB-1)#1 { start with standard basis vector for |p| }
     , solution=null(nB)
-    , opposite_parity=1-length~[0]%2 { opposite to that of |length(p)| }
-    , !one_minus_s = 1-s, !on_p = orientation_nr(p)
+    , !opposite_parity=1-length~[0]%2 { opposite to that of |length(p)| }
+    , !on_p = orientation_nr(p)
     in
     for q_ind : nB
     ~do let contrib=remainder[q_ind]*KL_mat[q_ind] in
@@ -50,7 +50,7 @@ set deformation_terms (Param p) = ParamPol:
   ; null_module(p)+
     for c@i in solution
     do { twist (1-s)*solution according to orientation numbers of its terms }
-      let x=B[i] then on_x=orientation_nr(x) then (q,r)=(on_p-on_x)\%2 in
+      let x=B[i] then (q,r)=(on_p-orientation_nr(x))\%2 in
       assert(=r,"odd orientation");
       (minus_1^q*c*one_minus_s,x) { we have |s^q*c*(1-s) = (-1)^q*c(1-s)| }
       { for the same reason we replaced |s| by |-1| in computations giving |c| }
