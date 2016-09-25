@@ -1,4 +1,4 @@
-<basic.at
+		<basic.at
 <extended.at
 <extended_misc.at { for |fixed_block| }
 <polynomial.at
@@ -118,7 +118,7 @@ set deformation_terms (Param p, mat delta) = ParamPol:
          $P'*acc=e_p$ with $P'$ a matrix of Split, columns from |KL_sum_at_s| }
     let remainder = null(nB-1)#1 { start with standard basis vector for |p| }
     , solution=null(nB)
-    , opposite_parity=1-length~[0]%2 { opposite to that of |length(p)| }
+    , !opposite_parity=1-length~[0]%2 { opposite to that of |length(p)| }
     , !on_p = orientation_nr(p)
     in
     for q_ind : nB
@@ -160,7 +160,7 @@ set recursive_deform (Param p, mat delta) = ParamPol:
       od
     ; for k@q in acc { traverse the sum of the deformation terms spun off }
       do { apply |full_def| recursively to all those terms }
-	at_nu0 +:= full_def(sc*k,q) { gather harvest from those deformations }
+        at_nu0 +:= full_def(sc*k,q) { gather harvest from those deformations }
       od
     ; at_nu0
     end
