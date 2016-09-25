@@ -4223,7 +4223,12 @@ KL polynomials and evaluates them at $-1$ (since this turns out to be
 sufficient for their use in the deformation algorithm), and then rewrites
 elements that have singular descents in terms of those that have not (the
 ``survivors''), reduces the matrix to be indexed by those elements only, and
-returns that plus a list of element lengths.
+finally negates entries at positions with odd length difference for the block
+elements corresponding to row and column. All this work is actually performed
+inside call to |ext_kl::ext_KL_matrix|.
+
+The function returns the extended block as list of parameters, the matrix just
+described, and a list of element lengths.
 
 @< Local function def...@>=
 void extended_KL_block_wrapper(expression_base::level l)
@@ -5215,6 +5220,8 @@ void raw_ext_KL_wrapper (expression_base::level l)
   BlockElt start;
   param_block block(rc,p->val,start);
   ext_block::ext_block eb(rc.innerClass(),block,rc.kgb(),delta);
+  if (not check(eb,block,false)) // |check| actually modifies |eb|
+    throw runtime_error("Failed check of extended block");
   if (not((delta-1)*block.gamma().numerator()).isZero())
   { // block not globally stable, so return empty values;
     push_value(std::make_shared<matrix_value>(int_Matrix()));
