@@ -778,6 +778,7 @@ template class Vector<Num>;           // numerators of rational vectors
 template class Matrix_base<int>;
 template class Matrix<int>;           // the main instance used
 template class Matrix_base<unsigned long>; // for |abelian::Endomorphism|
+template class Matrix<arithmetic::Split_integer>; // KL matrices eval'd at |s|
 template class PID_Matrix<int>;
 
 // template member instances

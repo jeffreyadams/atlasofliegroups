@@ -191,6 +191,18 @@ class ext_block
   // whether link for |s| from |x| to |y| has a sign flip attached
   int epsilon(weyl::Generator s, BlockElt x, BlockElt y) const;
 
+  // this works only for blocks generated from parameters, so supply |parent|
+  // mark the extended generators (orbits) singular for |parent.gamma()|
+  RankFlags singular_orbits(const param_block& parent) const;
+
+  weyl::Generator first_descent_among
+    (RankFlags singular_orbits, BlockElt y) const;
+
+  // reduce a matrix to elements without descents among singular generators
+  template<typename C> // matrix coefficient type (signed)
+  containers::simple_list<BlockElt> // returns list of elements selected
+    condense (matrix::Matrix<C>& M, const param_block& parent) const;
+
   // coefficient of neighbour |xx| of |x| in the action $(T_s+1)*a_x$
   Pol T_coef(weyl::Generator s, BlockElt xx, BlockElt x) const;
 

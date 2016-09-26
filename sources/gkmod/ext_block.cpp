@@ -1995,6 +1995,57 @@ bool ext_block::check(const param_block& block, bool verbose)
   return true; // report sucess if we get here
 } // |check|
 
+RankFlags ext_block::singular_orbits (const param_block& parent) const
+{ RankFlags result;
+  { auto singular = parent.singular_simple_roots();
+    for (weyl::Generator s=0; s<rank(); ++s)
+      result.set(s,singular[orbit(s).s0]);
+  }
+  return result;
+}
+
+weyl::Generator
+ext_block::first_descent_among(RankFlags singular_orbits, BlockElt y) const
+{ auto it=singular_orbits.begin();
+  for (; it(); ++it)
+    if (is_descent(descent_type(*it,y)))
+      return *it;
+
+  return rank();
+}
+
+// reduce a matrix to elements without descents among singular generators
+template<typename C> // matrix coefficient type (signed)
+containers::simple_list<BlockElt> // returns list of elements selected
+  ext_block::condense(matrix::Matrix<C>& M, const param_block& parent) const
+{
+  RankFlags sing_orbs = singular_orbits(parent);
+  containers::simple_list<BlockElt> result;
+
+  for (BlockElt y=M.numColumns(); y-->0; ) // reverse loop is essential here
+  { auto s = first_descent_among(sing_orbs,y);
+    if (s==rank())
+      result.push_front(y); // no singular descents, so a survivor
+    else // a singular descent found, so not a survivor
+    { // we contribute row |y| to all its descents by |s| with sign |-1|
+      // then conceptually we clear row |y|, but don't bother: it gets ignored
+      auto type=descent_type(s,y);
+      if (is_like_compact(type))
+	continue; // no descents, |y| represents zero; nothing to do for |y|
+
+      C c (orbit(s).length()%2==0 ? 1 : -1); // length change factor
+      if (has_double_image(type)) // 1r1f, 2r11
+      { auto pair = Cayleys(s,y);
+	M.rowOperation(pair.first,y,c);
+	M.rowOperation(pair.second,y,c);
+      }
+      else
+	M.rowOperation(some_scent(s,y),y,c);
+    }
+  }
+  return result;
+} // |ext_block::condense|
+
 // coefficient of neighbour |sx| of |x| in the action $(T_s+1)*a_x$
 Pol ext_block::T_coef(weyl::Generator s, BlockElt sx, BlockElt x) const
 {
@@ -2137,6 +2188,11 @@ bool check_braid
   }
   return success;
 } // |check_braid|
+
+template containers::simple_list<BlockElt> ext_block::condense
+  (matrix::Matrix<int>& M, const param_block& parent) const;
+template containers::simple_list<BlockElt> ext_block::condense
+  (matrix::Matrix<Split_integer>& M, const param_block& parent) const;
 
 } // |namespace ext_block|
 

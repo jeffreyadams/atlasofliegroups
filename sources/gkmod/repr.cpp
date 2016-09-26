@@ -946,20 +946,20 @@ std::ostream& Rep_context::print (std::ostream& str,const SR_poly& P) const
 
 
 void Rep_table::add_block(ext_block::ext_block& block,
-			  param_block& parent) // must be actual parent |block|
+			  param_block& parent) // its complete unextended block
 {
-  unsigned long old_size = hash.size();
-  BlockEltList survivors;
-  add_block(parent,survivors);
-
-  BlockEltList new_survivors;
+  const unsigned long old_size = hash.size();
+  { BlockEltList survivors;  // this exported value will not be used
+    add_block(parent,survivors); // but we must ensure parent block is known
+  }
+  BlockEltList new_survivors; new_survivors.reserve(block.size());
 
   // fill the |hash| table for new surviving parameters in this block
-  for (BlockEltList::const_iterator
-	   it=survivors.begin(); it!=survivors.end(); ++it)
-    if (hash.match(sr(parent,*it))>=old_size and
-	parent.Hermitian_dual(*it)==*it)
-      new_survivors.push_back(block.element(*it));
+  RankFlags singular_orbits = block.singular_orbits(parent);
+  for (BlockElt ez = 0; ez<block.size(); ++ez)
+    if (hash.match(sr(parent,block.z(ez)))>=old_size and
+	block.first_descent_among(singular_orbits,ez)==block.rank())
+      new_survivors.push_back(ez);
 
   // extend space in twisted tables
   twisted_KLV_list.resize(hash.size(),SR_poly(repr_less())); // init empty
@@ -970,45 +970,55 @@ void Rep_table::add_block(ext_block::ext_block& block,
   // start with computing KL polynomials for the entire block
   std::vector<ext_kl::Pol> pool;
   ext_kl::KL_table twisted_KLV(block,pool);
-  twisted_KLV.fill_columns();
+  twisted_KLV.fill_columns(); // block is complete, so fill everything
 
-  /* get $P(x,y)$ for |x<=y| with |y| among new |survivors|, and contribute
-   parameters from |block.survivors_below(x)| with coefficient $P(x,y)[q:=s]$
-   to the |SR_poly| at |KL_list[old_size+i], where |y=new_survivors[i]| */
-  BlockEltList::const_iterator y_start=new_survivors.begin();
+  // make a copy of |pool| in which polynomials have been evaluated as |s|
+  std::vector<Split_integer> pool_at_s; pool_at_s.reserve(pool.size());
+  for (unsigned i=0; i<pool.size(); ++i)
+    if (pool[i].isZero())
+      pool_at_s.push_back(Split_integer(0,0));
+    else
+    { const auto& P = pool[i];
+      auto d=P.degree();
+      Split_integer eval(P[d]);
+      while (d-->0)
+	eval = eval.times_s()+Split_integer(P[d]);
+      pool_at_s.push_back(eval);
+    }
 
-  for (BlockElt x=0; x<=new_survivors.back(); ++x) // elements of twisted block
-  {
-    BlockElt z = block.z(x); // number of the element for |parent|
-    BlockEltList xs=parent.survivors_below(z);
-    if (xs.empty())
-      continue; // no point doing work for |x|'s that don't contribute anywhere
+  // construct an upper triangular matrix $(P_{x,y}[q:=s])_{x,y}$ over block
+  matrix::Matrix<Split_integer> P_at_s(block.size()); // initialise: identity
+  for (BlockElt x=0; x<block.size(); ++x)
+    for (BlockElt y=x+1; y<block.size(); ++y)
+    { auto pair = twisted_KLV.KL_pol_index(x,y);
+      P_at_s(x,y) = // get value from |pool_at_s|, possibly negated
+	pair.second ? -pool_at_s[pair.first] : pool_at_s[pair.first];
+    }
 
-    const unsigned int parity = block.length(x)%2;
+  // condense |P_mat| to the extended block elements without singular descents
+  containers::simple_list<BlockElt> survivors = block.condense(P_at_s,parent);
 
-    if (*y_start<x)
-      ++y_start; // advance so |y| only runs over values with |x<=y|
-    assert(y_start!=new_survivors.end() and *y_start>=x);
-
-    for (BlockEltList::const_iterator it=y_start; it!=new_survivors.end(); ++it)
-    {
-      const BlockElt y = *it; // element of |new_survivors| and |x<=y|
-      const ext_kl::Pol& pol = twisted_KLV.P(x,y); // twisted KLV polynomial
-      Split_integer eval(0);
-      for (polynomials::Degree d=pol.size(); d-->0; )
-	eval = eval.times_s()+Split_integer(static_cast<int>(pol[d]));
-      if (eval!=Split_integer(0))
+  // finally transcribe columns from |P_at_s| into |twisted_KLV_list|
+  for (auto it=survivors.begin(); not survivors.at_end(it); ++it)
+  { assert(block.first_descent_among(singular_orbits,*it)==block.rank());
+    auto y = *it;
+    auto y_index = hash.find(sr(parent,block.z(y)));
+    assert (y_index!=hash.empty); // since we looked up everything above
+    if (y_index>=old_size)
+    { SR_poly& dest = twisted_KLV_list[y_index];
+      dest = SR_poly(sr(parent,block.z(y)),repr_less()); // coefficient 1
+      unsigned int parity = block.length(y)%2;
+      for (auto x_it=survivors.begin(); x_it!=it; ++x_it) // upper part
       {
-	unsigned long y_index = hash.find(sr(parent,block.z(y)));
-	assert (y_index!=hash.empty);
-	SR_poly& dest = twisted_KLV_list[y_index];
-	if (lengths[y_index]%2!=parity)
-	  eval.negate(); // incorporate sign for length difference
-	for (unsigned int i=0; i<xs.size(); ++i)
-	  dest.add_term(sr(parent,xs[i]),eval);
+	auto x = *x_it;
+	auto factor = P_at_s(x,y);
+	if (block.length(x)%2!=parity) // flip sign at odd length difference
+	  factor = -factor;
+	dest.add_term(sr(parent,block.z(*x_it)),factor);
       }
-    } // |for(it)|
-  } // |for(x)|
+      // since |dest| is a reference, the sum is stored at its destination
+    } // |if (y_index>=old_size)|
+  } // |for (it)|
 } // |Rep_table::add_block| (extended block)
 
 // compute and return sum of KL polynomials at $s$ for final parameter |z|
@@ -1019,7 +1029,7 @@ SR_poly Rep_table::twisted_KL_column_at_s(StandardRepr z)
     if (is_zero(z,witness) or not is_final(z,witness))
       throw std::runtime_error("Representation zero or not final");
   }
-  make_dominant(z); // so that |z| it will appear at the top of its own block
+  make_dominant(z);
   unsigned long hash_index=hash.find(z);
   if (hash_index==hash.empty) // previously unknown parameter
   {

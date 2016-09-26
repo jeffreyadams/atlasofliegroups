@@ -1,12 +1,6 @@
 /*
- free_abelian_def.h
+  This is free_abelian_def.h
 
- Made by Marc van Leeuwen
-
- Started on  Tue Sep  9 15:23:19 2008 Marc van Leeuwen
- Last update Tue Sep  9 15:23:19 2008 Marc van Leeuwen
-*/
-/*
   Copyright (C) 2008 Marc van Leeuwen
   part of the Atlas of Lie Groups and Representations
 

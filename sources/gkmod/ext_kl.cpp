@@ -875,44 +875,14 @@ void ext_KL_matrix (const StandardRepr p, const int_Matrix& delta,
 	pair.second ? -pol_value[pair.first] : pol_value[pair.first];
     }
 
-  RankFlags singular_orbits;
-  { auto singular = B.singular_simple_roots();
-    for (weyl::Generator s=0; s<eblock.rank(); ++s)
-      singular_orbits.set(s,singular[eblock.orbit(s).s0]);
-  }
-
 /*
   singular blocks must be condensed by pushing down rows with singular
   descents to those descents (with negative sign as is implicit in |P_mat|),
   recursively, until reaching a "survivor" row without singular descents.
   Then afterwards non surviving rows and columns (should be 0) are removed.
 */
-  containers::simple_list<BlockElt> survivors;
 
-  for (BlockElt y=size; y-->0; ) // reverse loop is essential here
-  { auto it=singular_orbits.begin();
-    for (; it(); ++it)
-      if (is_descent(eblock.descent_type(*it,y)))
-	break;
-    if (it()) // a singular descent found, so not a survivor
-    { // we contribute row |y| to all its descents by |s| with sign |-1|
-      // then conceptually we clear row |y|, but don't bother: it gets ignored
-      auto s=*it; auto type=eblock.descent_type(s,y);
-      if (is_like_compact(type))
-	continue; // no descents, |y| represents zero; nothing to do for |y|
-
-      int c = eblock.orbit(s).length()%2==0 ? 1 : -1; // length change factor
-      if (has_double_image(type)) // 1r1f, 2r11
-      { auto pair = eblock.Cayleys(s,y);
-	P_mat.rowOperation(pair.first,y,c);
-	P_mat.rowOperation(pair.second,y,c);
-      }
-      else
-	P_mat.rowOperation(eblock.some_scent(s,y),y,c);
-    }
-    else // no singular descents, so a survivor
-      survivors.push_front(y);
-  }
+  containers::simple_list<BlockElt> survivors = eblock.condense(P_mat,B);
 
   BlockEltList compressed (survivors.wcbegin(), survivors.wcend());
   if (compressed.size()<size) // there were non survivors, so compress |P_mat|
