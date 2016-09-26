@@ -354,15 +354,10 @@ void gextblock_f()
     return;
   }
   ext_block::ext_block eblock(current_inner_class(),block,
-			      currentRealGroup().kgb(),delta);
-  if (check(eblock,block,true))
-  {
-    std::cout << "Extended block structure checked successfully." << std::endl;
-    ioutils::OutputFile file;
-    eblock.print_to(file);
-  }
-  else
-    std::cout << "Extended block structure check failed." << std::endl;
+			      currentRealGroup().kgb(),delta,true);
+  std::cout << "Extended block structure checked successfully." << std::endl;
+  ioutils::OutputFile file;
+  eblock.print_to(file);
 }
 
 void extkl_f()
@@ -379,24 +374,19 @@ void extkl_f()
     return;
   }
   ext_block::ext_block eblock(current_inner_class(),block,
-			      currentRealGroup().kgb(),delta);
-  if (check(eblock,block,true))
-  {
-    std::vector<ext_kl::Pol> pool;
-    ext_kl::KL_table twisted_KLV(eblock,pool);
-    twisted_KLV.fill_columns();
+			      currentRealGroup().kgb(),delta,true);
+  std::vector<ext_kl::Pol> pool;
+  ext_kl::KL_table twisted_KLV(eblock,pool);
+  twisted_KLV.fill_columns();
 
-    ioutils::OutputFile f;
-    for (BlockElt y=0; y<eblock.size(); ++y)
-      for (BlockElt x=y+1; x-->0; )
-	if (not twisted_KLV.P(x,y).isZero())
-	{
-	  f << "P(" << eblock.z(x) << ',' << eblock.z(y) << ")=";
-	  f << twisted_KLV.P(x,y) << std::endl;
-	}
-  }
-  else
-    std::cout << "Extended block structure check failed." << std::endl;
+  ioutils::OutputFile f;
+  for (BlockElt y=0; y<eblock.size(); ++y)
+    for (BlockElt x=y+1; x-->0; )
+      if (not twisted_KLV.P(x,y).isZero())
+      {
+	f << "P(" << eblock.z(x) << ',' << eblock.z(y) << ")=";
+	f << twisted_KLV.P(x,y) << std::endl;
+      }
 }
 
 

@@ -433,6 +433,7 @@ set solve (mat A, ratvec b) = [ratvec]:
 {			    Split integers				}
 
 set !s = Split:(0,1) { ! means it is a constant }
+set !one_minus_s = Split:(1,-1), !one_plus_s = Split:(1,1)  { near idempotents }
 
 set int_part (Split x) = int: let (r,)=%x in r
 set s_part (Split x) = int: let (,y)=%x in y
@@ -445,6 +446,8 @@ set s_to_minus_1 (Split x) = int: -%x  { let (a,b)=%x in a-b }
 
 set split_as_int (Split x) = int:
   let (r,y)=%x in assert(=y,"split is not an integer"); r
+set \% (Split x, int n) = (Split,Split):
+  let (a,b)=%x then (qa,rq)=a\%n, (qb,rb)=b\%n in ((qa,qb),(rq,rb))
 
 { nicer display of Splits }
 set split_format (Split w) = string:
@@ -470,13 +473,6 @@ set ^ = { exponentiation of split integers }
     else error("Negative power "+n+" of split integer "+split_format(x))
     fi
 
-{.multiply split integer by a rational.}
-set *(Split z,rat r)=Split:
-let (a,b)=%z in 
-assert(is_integer(a*r) and is_integer(b*r),"Split*rational is not a Split");
-Split:(rat_as_int(a*r),rat_as_int(b*r))
-
-set *(rat r,Split z)=Split:z*r
 
 {				Root data 				}
 
@@ -1117,10 +1113,9 @@ set - (ParamPol a, (Split,Param) (c,p)) = ParamPol: a+(-c,p)
 { deform a whole ParamPol, by deforming all individual terms }
 set * (ParamPol P, rat f) = ParamPol: 0*P + for c@q in P do (c,q*f) od
 
-{ multiply a ParamPol by a rational by multiplying each coefficient}
-set * (rat f,ParamPol P)=ParamPol: 
-  let rv=null_module(P) in 
-   for s@p in P do rv+:=(f*s)*p od;rv
+{ inverse of scalar multiplication *@(int,ParamPol) }
+set divide_by (int n, ParamPol P) = ParamPol:
+  0*P+ for c@t in P do let (q,r)=c\%n in assert(=r,"Inexact division");(q,t) od
 
 { simulate coercion (KGBElt->RealForm) in some cases }
 set root_datum (ParamPol P) = RootDatum: real_form(P)

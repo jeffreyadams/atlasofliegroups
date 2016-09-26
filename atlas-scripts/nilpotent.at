@@ -91,8 +91,8 @@ set nilpotent_orbits(RealForm G)   = [[int]]: nilpotent_orbits(root_datum(G))
 
 {test if partition is valid orbit in type ABCD}
 set is_valid(string type,[int] P)=bool:
-if type="A" then true 
-elif type="B" or type="D" then 
+if type="A" then true
+elif type="B" or type="D" then
  if  is_even(sum(P)) then false else
  all(let m=partition_multiplicities(P) in for i:#m do is_odd(i) {don't care} or is_even(m[i]) od) fi
 elif type="C" then

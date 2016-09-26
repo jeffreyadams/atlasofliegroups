@@ -184,6 +184,12 @@ class Rep_context
 
 typedef Rep_context::poly SR_poly;
 
+/*
+  In addition to providing methods inherited from |Rep_context|, the class
+  |Rep_table| provides storage for data that was prevously computed for
+  various related |StandardRepr| values. By also providing the methods that do
+  these computations, the data storage and retieval is performed by this class.
+*/
 class Rep_table : public Rep_context
 {
   std::vector<StandardRepr> pool;
@@ -192,7 +198,7 @@ class Rep_table : public Rep_context
   std::vector<SR_poly> KL_list; // indexed by |hash| values for |StandardRepr|s
   std::vector<SR_poly> def_formula; // idem
 
-  std::vector<SR_poly> twisted_KLV_list; // indexed by |hash|s for twist-fixed
+  std::vector<SR_poly> twisted_KLV_list; // values at twist-fixed |hash|s only
   std::vector<SR_poly> twisted_def_formula; // idem
 
  public:
@@ -216,7 +222,7 @@ class Rep_table : public Rep_context
   // and |survivors| is non-|const| because the method computes and exports it
 
   void add_block(ext_block::ext_block& block, param_block& parent);
-  // here |block| is non-|const|; the method generates twisted KLv polyns in it
+  // here |block| is non-|const|; the method generates twisted KLV polys in it
 
 }; // |Rep_table|
 

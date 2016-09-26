@@ -1,9 +1,7 @@
-/*!
-\file
-  This is hashtable.h
-*/
 /*
-  Copyright (C) 2006 Marc van Leeuwen
+  This is hashtable.h
+
+  Copyright (C) 2006-2016 Marc van Leeuwen
   part of the Atlas of Lie Groups and Representations
 
   For license information see the LICENSE file

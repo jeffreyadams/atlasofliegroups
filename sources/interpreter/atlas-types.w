@@ -3956,7 +3956,7 @@ also construct a module parameter value for each element of |block|.
   const RatWeight& gamma=block.gamma();
   for (BlockElt z=0; z<block.size(); ++z)
   { StandardRepr block_elt_param =
-      p->rc().sr(block.x(z),block.lambda_rho(z),gamma);
+      p->rc().sr_gamma(block.x(z),block.lambda_rho(z),gamma);
     param_list->val[z] =
 	std::make_shared<module_parameter_value>(p->rf,block_elt_param);
   }
@@ -4158,15 +4158,15 @@ void extended_block_wrapper(expression_base::level l)
 @)
   BlockElt start;
   param_block block(rc,p->val,start);
-  ext_block::ext_block eb(rc.innerClass(),block,rc.kgb(),M);
   if ( ((M-1)*block.gamma().numerator()).isZero()) // block globally stable
-    @< Compute edge flips in |eb| and then the return value components, and
-       call |push_value| for each of them @>
+    @< Construct the extended block, then the return value components,
+       calling |push_value| for each of them @>
   else // block not globally stable under |M|, return empty data
-  { push_value(std::make_shared<row_value>(0));
-    push_value(std::make_shared<matrix_value>(int_Matrix(0,eb.rank())));
-    push_value(std::make_shared<matrix_value>(int_Matrix(0,eb.rank())));
-    push_value(std::make_shared<matrix_value>(int_Matrix(0,eb.rank())));
+  { auto eb_rank = block.fold_orbits(M).size(); // size of folded diagram
+    push_value(std::make_shared<row_value>(0));
+    push_value(std::make_shared<matrix_value>(int_Matrix(0,eb_rank)));
+    push_value(std::make_shared<matrix_value>(int_Matrix(0,eb_rank)));
+    push_value(std::make_shared<matrix_value>(int_Matrix(0,eb_rank)));
   }
 @)
   if (l==expression_base::single_value)
@@ -4176,9 +4176,8 @@ void extended_block_wrapper(expression_base::level l)
 @ We somewhat laboriously convert internal information from the extended block
 into a list of parameters and three tables in the form of matrices.
 
-@< Compute edge flips in |eb|... @>=
-{ check(eb,block,false);
-    // set flips using extended parameter computations, do not report
+@< Construct the extended block... @>=
+{ ext_block::ext_block eb(rc.innerClass(),block,rc.kgb(),M);
   own_row params = std::make_shared<row_value>(eb.size());
   int_Matrix types(eb.size(),eb.rank());
 @/int_Matrix links0(eb.size(),eb.rank());
@@ -4187,7 +4186,7 @@ into a list of parameters and three tables in the form of matrices.
   for (BlockElt n=0; n<eb.size(); ++n)
   { auto z = eb.z(n); // number of ordinary parameter in |block|
     StandardRepr block_elt_param =
-      rc.sr(block.x(z),block.lambda_rho(z),block.gamma());
+      rc.sr_gamma(block.x(z),block.lambda_rho(z),block.gamma());
     params->val[n] =
       std::make_shared<module_parameter_value>(p->rf,block_elt_param);
     for (weyl::Generator s=0; s<eb.rank(); ++s)
@@ -4216,6 +4215,48 @@ into a list of parameters and three tables in the form of matrices.
   push_value(std::make_shared<matrix_value> (std::move(types)));
   push_value(std::make_shared<matrix_value>(std::move(links0)));
   push_value(std::make_shared<matrix_value>(std::move(links1)));
+}
+
+@ The following function generates an extended block, computes their extended
+KL polynomials and evaluates them at $-1$ (since this turns out to be
+sufficient for their use in the deformation algorithm), and then rewrites
+elements that have singular descents in terms of those that have not (the
+``survivors''), reduces the matrix to be indexed by those elements only, and
+finally negates entries at positions with odd length difference for the block
+elements corresponding to row and column. All this work is actually performed
+inside call to |ext_kl::ext_KL_matrix|.
+
+The function returns the extended block as list of parameters, the matrix just
+described, and a list of element lengths.
+
+@< Local function def...@>=
+void extended_KL_block_wrapper(expression_base::level l)
+{ auto delta = get_own<matrix_value>(); // own because of |check_involution|
+  auto p = get<module_parameter_value>();
+  test_standard(*p,"Cannot generate extended block");
+  const auto& rc = p->rc();
+  const RootDatum& rd = rc.rootDatum(); WeylWord ww;
+  check_involution(delta->val,rd,ww); // this makes |delta| distinguished
+  { auto& xi = rc.innerClass().distinguished();
+    if (delta->val*xi!=xi*delta->val)
+      throw runtime_error("Non commuting distinguished involution");
+  }
+  if (l==expression_base::no_value) return;
+@)
+  std::vector<StandardRepr> block;
+  own_matrix P_mat = std::make_shared<matrix_value>(int_Matrix());
+  own_vector lengths = std::make_shared<vector_value>(int_Vector());
+  ext_kl::ext_KL_matrix
+	(p->val,delta->val,p->rc(),block,P_mat->val,lengths->val);
+@)
+  own_row param_list = std::make_shared<row_value>(block.size());
+  for (BlockElt z=0; z<block.size(); ++z)
+    param_list->val[z]=std::make_shared<module_parameter_value>(p->rf,block[z]);
+  push_value(std::move(param_list));
+  push_value(std::move(P_mat));
+  push_value(std::move(lengths));
+  if (l==expression_base::single_value)
+    wrap_tuple<3>();
 }
 
 @ Finally we install everything related to module parameters.
@@ -4251,6 +4292,8 @@ install_function(partial_KL_block_wrapper,@|"partial_KL_block"
                 ,"(Param->[Param],mat,[vec],vec,vec,mat)");
 install_function(extended_block_wrapper,@|"extended_block"
                 ,"(Param,mat->[Param],mat,mat,mat)");
+install_function(extended_KL_block_wrapper,@|"extended_KL_block"
+                ,"(Param,mat->[Param],mat,vec)");
 
 @*1 Polynomials formed from parameters.
 %
@@ -5175,7 +5218,6 @@ void raw_ext_KL_wrapper (expression_base::level l)
 @)
   BlockElt start;
   param_block block(rc,p->val,start);
-  ext_block::ext_block eb(rc.innerClass(),block,rc.kgb(),delta);
   if (not((delta-1)*block.gamma().numerator()).isZero())
   { // block not globally stable, so return empty values;
     push_value(std::make_shared<matrix_value>(int_Matrix()));
@@ -5184,6 +5226,7 @@ void raw_ext_KL_wrapper (expression_base::level l)
   }
   else
   {
+    ext_block::ext_block eb(rc.innerClass(),block,rc.kgb(),delta);
     std::vector<Polynomial<int> > pool;
     ext_kl::KL_table klt(eb,pool); klt.fill_columns();
   @)

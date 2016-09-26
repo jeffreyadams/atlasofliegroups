@@ -1,8 +1,6 @@
-/*!
-\file
-  This is free_abelian.h
-*/
 /*
+  This is free_abelian.h
+
   Copyright (C) 2008 Marc van Leeuwen
   part of the Atlas of Lie Groups and Representations
 

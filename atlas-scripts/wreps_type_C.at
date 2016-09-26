@@ -311,9 +311,3 @@ for cell in cells do print_wrep_cpt(B,cell) od
 
 set print_wreps(Block B,[[int]] cells)=void:
 for i:#cells do  prints("Cell ",i);print_wrep(B,cells[i]);prints() od
-
-
-
-
-
-

@@ -1,7 +1,7 @@
 /*
   This is ext_kl.cpp
 
-  Copyright 2013, Marc van Leeuwen
+  Copyright 2013-2016, Marc van Leeuwen
   part of the Atlas of Lie Groups and Representations
 
   For license information see the LICENSE file
@@ -833,6 +833,90 @@ bool KL_table::check_polys(BlockElt y) const
     }
   return result;
 }
+
+void ext_KL_matrix (const StandardRepr p, const int_Matrix& delta,
+		    const Rep_context& rc, // the rest is output
+		    std::vector<StandardRepr>& block_list,
+		    int_Matrix& P_mat,
+		    int_Vector& lengths)
+{ BlockElt entry_element;
+  if (not ((delta-1)*p.gamma().numerator()).isZero())
+  {
+    std::cout << "Delta does not fix gamma=" << p.gamma() << "." << std::endl;
+    throw std::runtime_error("No valid extended bock");
+  }
+  param_block B(rc,p,entry_element);
+  ext_block::ext_block eblock
+    (rc.innerClass(), B, rc.realGroup().kgb(), delta);
+
+  BlockElt size= // size of extended block we shall use; before compression
+    eblock.element(entry_element+1);
+
+  std::vector<ext_kl::Pol> pool;
+  KL_table twisted_KLV(eblock,pool);
+  twisted_KLV.fill_columns(size); // fill up to and including |p|
+
+  int_Vector pol_value (pool.size());
+  for (auto it=pool.begin(); it!=pool.end(); ++it)
+    if (it->isZero())
+      pol_value[it-pool.begin()]=0;
+    else
+    { int sum=(*it)[it->degree()];
+      for (auto d=it->degree(); d-->0; )
+	sum=(*it)[d]-sum;
+      pol_value[it-pool.begin()]=sum;
+    }
+
+  P_mat = int_Matrix(size);
+  for (BlockElt x=0; x<entry_element; ++x) // |entry_element==size-1|
+    for (BlockElt y=x+1; y<size; ++y)
+    { auto pair= twisted_KLV.KL_pol_index(x,y);
+      P_mat(x,y) = // |pol_value| at index of |it|, negated if |pair.second|
+	pair.second ? -pol_value[pair.first] : pol_value[pair.first];
+    }
+
+/*
+  singular blocks must be condensed by pushing down rows with singular
+  descents to those descents (with negative sign as is implicit in |P_mat|),
+  recursively, until reaching a "survivor" row without singular descents.
+  Then afterwards non surviving rows and columns (should be 0) are removed.
+*/
+
+  containers::simple_list<BlockElt> survivors = eblock.condense(P_mat,B);
+
+  BlockEltList compressed (survivors.wcbegin(), survivors.wcend());
+  if (compressed.size()<size) // there were non survivors, so compress |P_mat|
+  { size=compressed.size(); // henceforth this is our size
+    int_Matrix M (size,size);
+    for (BlockElt i=0; i<M.numRows(); ++i)
+    { auto comp_i = compressed[i];
+      for (BlockElt j=0; j<M.numColumns(); ++j)
+	M(i,j)=P_mat(comp_i,compressed[j]);
+    }
+    P_mat = std::move(M); // replace |P_mat| by its expunged version
+  }
+
+  // flip signs for odd length distance, since that is what deformation wants
+  for (BlockElt i=0; i<P_mat.numRows(); ++i)
+  { auto parity = B.length(compressed[i])%2;
+    for (BlockElt j=0; j<P_mat.numColumns(); ++j)
+      if (B.length(compressed[j])%2!=parity)
+	P_mat(i,j) *= -1;
+  }
+
+  block_list.clear(); block_list.reserve(size);
+  lengths = int_Vector(0); lengths.reserve(size);
+
+  const auto gamma = B.gamma();
+  for (auto ez : compressed)
+  {
+    auto z = eblock.z(ez);
+    block_list.push_back(rc.sr_gamma(B.x(z),B.lambda_rho(z),gamma));
+    lengths.push_back(B.length(z));
+  }
+
+
+} // |ext_KL_matrix|
 
 } // |namespace kl|
 } // |namespace atlas|

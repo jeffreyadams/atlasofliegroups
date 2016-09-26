@@ -1,10 +1,10 @@
 operators +, -, * : (int,int->int): usual integer arithmetic operations
 operator - : (int->int): integral unary minus
 operator ^ : (int,int->int): integer exponentiation (whenever result integral)
-operators \, % : (int,int->int): integer (Euclidian) division and remainder
-operator \% :(int,int->int,int): Euclidian division with remainder
+operators \, % : (int,int->int): integer (Euclidean) division and remainder
+operator \% :(int,int->int,int): Euclidean division with remainder
 operators +, -, *, / : (rat,rat->rat): usual rational arithmetic operations
-operators +, -, *, / : (rat,int->rat): more efficient in applicable bcases
+operators +, -, *, / : (rat,int->rat): more efficient in applicable cases
 operator % : (rat,int->rat): remainder after removing greatest integer multiple
 operator % : (rat,rat->rat): remainder after removing greatest integer multiple
 operator - : (rat->rat): rational unary minus
@@ -62,17 +62,21 @@ operator # : (ratvec->int) : number of components of rational vector
 operator # : (mat->int,int) : dimensions (rows*columns) of a matrix
 operator # : ([T]->int) : number of components of row (T is any type)
 
-operator # : (string,string->string): string concatenation
-operator # : (vec,vec->vec) : concatenation of vectors
 operator # : (vec,int->vec) : append element to a vector
 operator # : (int,vec->vec) : prepend element to a vector
-operator # : ([T],[T]->[T]) : concatenation of rows (T is any type)
 operator # : ([T],T->[T]) : append element to a row (T is any type)
 operator # : (T,[T]->[T]) : prepend element to a row (T is any type)
 
 operator #: (int,[vec]->mat): combine columns of given fixed height into matrix
 operator ^: (int,[vec]->mat): combine rows of given fixed length into matrix
 stack_rows: ([vec]->mat) : combine ragged rows into matrix, zero-extend shorts
+
+operator ## : (string,string->string): concatenation of two strings
+operator ## : ([string]->string): concatenation of row of strings
+operator ## : (vec,vec->vec) : concatenation of two vectors
+operator ## : ([vec]->vec) : concatenation of row of vectors
+operator ## : ([T],[T]->[T]) : concatenation of two rows (T is any type)
+operator ## : ([[T]]->[T]) : concatenation of row of rows (T is any type)
 
 error: (*,...->*) : print values and abort computation; report a runtime error
 
@@ -130,7 +134,7 @@ Smith: (mat->mat,vec): Smith(M)= ( Smith_basis(M), inv_fact(M) ) (almost).
   The first component is an invertible matrix, whose columns, multiplied by
   the corresponding entries of the second component, span that sublattice.
   inv_fact(M) is the list of the invariant factors of M, which are like the
-  second component of adpted_basis(M), but with additional requirement that
+  second component of adapted_basis(M), but with additional requirement that
   each entry divides the next; this may involve using a different basis.
   Smith_basis(M) is that basis corresponding to inv_fact(M), an invertible
   (over Z) square matrix equal in height to M, whose columns, each multiplied
@@ -158,7 +162,7 @@ subspace_normal: (mat->mat,mat,mat,[int]) normalized modulo-2 basis
   combination of generators that produced this basis vector, the next
   component has n-d binary vectors of size n, each giving basis of the linear
   dependency relations among the generators, and the final component is an
-  increasing sequence of nonnegative d integers less than r giving the pivot
+  increasing sequence of non-negative d integers less than r giving the pivot
   positions, the first nonzero positions in each of the basis vectors.
 
 Lie_type: (string->LieType): interpret string as Lie type.
@@ -266,7 +270,7 @@ quotient_basis: (LieType,[ratvec]->mat): sublattice given by kernel generators.
 
 simply_connected: (LieType->RootDatum): simply connected datum for given type.
   This gives the root datum for the "simply connected" group of the given
-  type (the direct product of a simply conneted G' with a central torus):
+  type (the direct product of a simply connected G' with a central torus):
     set simply_connected_datum(LieType type) = root_datum(type,id_mat(rank))
 
 adjoint: (LieType->RootDatum): adjoint root datum for given type.
@@ -355,7 +359,7 @@ inner_class: (Lie_type,[ratvec],string->InnerClass): inner class as in Atlas
 
 operator = : (InnerClass,InnerClass->bool): identity of inner classes
   This holds only when both arguments refer to the same inner class creation,
-  in other words it will recognise ic=inner_class(real_form(ic,0)) as true,
+  in other words it will recognize ic=inner_class(real_form(ic,0)) as true,
   but any freshly built inner class tests unequal to anything preexisting
 distinguished_involution: (InnerClass->mat): involution of the inner class.
   Extract the distinguished involution of X^* that defines the inner class
@@ -372,7 +376,7 @@ block_sizes: (InnerClass->mat): matrix giving the block sizes.
 
 form_names: (InnerClass->[string]): list of names of real forms.
   These are the same names used in atlas, describing real Lie algebras
-dual_form_names: (InnerClass->[string]): ist of names of dual real forms.
+dual_form_names: (InnerClass->[string]): list of names of dual real forms.
   These are the names for the real forms of the dual InnerClass value
 
 occurrence_matrix: (InnerClass->mat): real form-Cartan class incidence matrix
@@ -422,7 +426,7 @@ base_grading_vector: (RealForm->ratvec): Offset implicit in torus_bits values
   of the simple roots at the distinguished involution of the inner class, by
   the parity of the (integer) pairing of c with the simple root. Here "odd"
   corresponds to grading 0, due to the mentioned rho_check: so c differs by
-  rho_check from some "inifinitesimal cocharacter" g chosen for the real form.
+  rho_check from some "infinitesimal cocharacter" g chosen for the real form.
   A standard choice for c is determined by the base grading for the  weak real
   form, whence the name of this function. However for real forms synthesized
   by the function real_form@(InnerClass,mat,ratvec), the arguments of that
@@ -479,7 +483,7 @@ square_classes: (CartanClass->[[int]]): partition real forms by square class
   inner class. All real forms whose representative strong involutions may
   square to the same value in the center are grouped together in a sublist
   (the number of sublists is a power of 2). Each number occurs only in a
-  single sublist, but may be repeated, which indicates that there are mulitple
+  single sublist, but may be repeated, which indicates that there are multiple
   orbits of strong involutions (strong real forms) for the same real form.
   The value returned represents a part of the print_strong_real output.
 fiber_partition: (CartanClass,RealForm->[int]): identifying part of fiber group
@@ -526,7 +530,7 @@ initial_torus_bits: (RealForm->vec) Torus bits for initial KGB element
   be removed once the same computation will actually replace the implemented
   choice for the torus bits with which the KGB construction starts off.
 
-KGB: (RealFrom,int->KGBElt): select a KGB element x among those of a real form
+KGB: (RealForm,int->KGBElt): select a KGB element x among those of a real form
   The call KGB(i,rf) selects the element in line i of the print_KGB(rf)
   output.
 %: (KGBElt->RealForm,int): real form and number; inverse of KGB@(RealForm,int)
@@ -556,7 +560,7 @@ torus_factor: (KGBElt->ratvec): coweight for KGB element, twice that in print_X
   on X_*, so in particular modulo (2\Z)^n. For an imaginary root \alpha
   the scalar product < v + \check\rho_i , \alpha > determines whether \alpha
   is compact (if even) or noncompact (if odd). Together with the inner class
-  and the invlution, this value completely characterises the KGB element (and
+  and the involution, this value completely characterizes the KGB element (and
   its real form), and it can be reconstructed using the KGB_elt function below.
 torus_bits: (KGBElt->vec): torus part of KGB element as vector of 0,1 values
   A vector of size the rank that distinguishes between different KGB elements
@@ -576,7 +580,7 @@ KGB_elt: (RealForm,mat,ratvec): KGB element defined by rational coweight
 
 operator = : (KGBElt,KGBElt): equality of elements of a same KGB set
 
-block: (RealForm,RealForm->Block): construct tradiational atlas block
+block: (RealForm,RealForm->Block): construct traditional atlas block
 %: (Block->RealForm,RealForm): decompose block, inverse of 'block'
 #: (Block->int): number of elements of block
 element: (Block,int->KGBElt,KGBElt): KGB and dual KGB values for block element
@@ -626,7 +630,7 @@ Cayley: (int,Param->Param): Cayley transform for (Weyl generator,parameter)
   Find out possible second value by applying cross action to the result
 inv_Cayley: (int,Param->Param): inverse Cayley transform
   If (and only if) the inverse transform is undefined it returns the same
-  parameter. Find out possible second value of invere transform by applying
+  parameter. Find out possible second value of inverse transform by applying
   cross action to the result, which either produces it or else fixes result
 cross: (vec,Param->Param): cross action for (root,parameter)
 Cayley: (vec,Param->Param): Cayley transform for (root,parameter)
@@ -634,10 +638,10 @@ Cayley: (vec,Param->Param): Cayley transform for (root,parameter)
   root in coordinates, and combining the Cayley/inverse Cayley into one
   function (whichever is defined is applied, or else the parameter returned).
   The implementation is quite independent however, so comparison is useful.
-twist: (Param->Param): twist the parameter by the distinguihed involution
+twist: (Param->Param): twist the parameter by the distinguished involution
 orientation_nr: (Param->int): the orientation number
 reducibility_points: (Param->[rat]): the 0<t<=1 with I(x,lambda,t\nu) reducible
-print_block: (Param->): print (nonintegral) block generated from parameter
+print_block: (Param->): print (non-integral) block generated from parameter
 block: (Param->[Param],int): return block as list of parameters, and index
   The second component is the index into the first of the original parameter.
 partial_block: (Param->[Param]): return partial block as list of parameters
@@ -661,7 +665,7 @@ KL_block: (Param->[Param],int,mat,[vec],vec,vec,mat): block, raw_KL, and more
   given KL matrix (computed at regular infinitesimal character) to one at the
   actual block by selecting only the columns whose index is among the
   survivors, and multiplying the resulting matrix on the left by the
-  contibution-coefficient matrix (the final component this function returns).
+  contribution-coefficient matrix (the final component this function returns).
 partial_KL_block: (Param->[Param],mat,[vec],vec,vec,mat): partial KL_block
   This function relates to KL_block as partial_block relates to block. The
   first component of the result is the Bruhat interval as in partial_block,
@@ -669,7 +673,7 @@ partial_KL_block: (Param->[Param],mat,[vec],vec,vec,mat): partial KL_block
   superfluous second component of KL_block is omitted), but with the two vec
   components filtered so as to be indexed by the Bruhat interval indices only.
 extended_block: (Param,mat->[Param],mat,mat,mat) extended block with graph data
-  The arguents are a parameter p and an external distinguished involution delta
+  The arguments are a parameter p and an external distinguished involution delta
   (which should commute with the inner class distinguished involution). The
   block of p is constructed as in block@Param, and the (possibly empty) list of
   its parameters fixed by the action of delta returned as first component. The
@@ -726,11 +730,10 @@ height: (Param->int) W-invariant height measure standardrepn restricted to K
   and the positive coroots; it ignores the nu component of the parameter.
   This is the same function as used in branch to compare with the given limit.
 
-defor)
-): (Param->ParamPol): compute deformation terms when nu decreases
+deform: (Param->ParamPol): compute deformation terms when nu decreases
   The non-integral block for the parameter and its KL polynomials are
-  computed, from which the deformation terms involing other members of the
-  block are computed. They are returned as a formal sum of paramters with
+  computed, from which the deformation terms involving other members of the
+  block are computed. They are returned as a formal sum of parameters with
   split integer coefficients, which are in fact integer multiples of (1-s).
 
 full_deform: (Param->ParamPol): perform deformation all the way to nu=0
@@ -742,7 +745,7 @@ KL_sum_at_s: (Param->ParamPol): signed sum of KL polynomials at s, fixed y
   element of the parameter, and the sum is over other block elements x.
 twisted_KL_sum_at_s: (Param->ParamPol): KL_sum_at_s, twisted KLV polynomials
   This does the same sum as KL_sum_at_s, but using twisted KLV polynomials
-  (the twist is for the distunguished involution) instead of ordinary KLV
+  (the twist is for the distinguished involution) instead of ordinary KLV
   polynomials. The actual value depends on sign choices for Hecke module
   generators associated to the terms, so individual terms in the result are
   mathematically well defined only up to a possible factor -1. Also WARNING:
@@ -767,15 +770,15 @@ dual_KL: (Block->mat,[vec],vec): dual KL polynomials (Q_{x,y}) for block
   signs, the matrix should be the inverse of the P matrix. The length stops
   are provided as final value, as in raw_KL; these are for the _same_ block.
 
-raw_ext_KL: (Param,mat->mat,[vec],vec): extended Kazhdan-Lusztig data This
-  function takes input similar to extended_block, namely a parameter and the
-  matrix of a distinguished involution, which should commute with the
+raw_ext_KL: (Param,mat->mat,[vec],vec): extended Kazhdan-Lusztig data
+  This function takes input similar to extended_block, namely a parameter and
+  the matrix of a distinguished involution, which should commute with the
   distinguished involution defining the inner class, and produces raw output
   describing the extended Kazhdan-Lusztig polynomials associated to the block
   for the extended group, in a format similar to that used in raw_KL. So the
   matrix is indexed by block elements and its entries describe polynomials by an
   identification number, used as index into a list of polynomials that is the
-  second component returned. In constrast to raw_KL, negative entries may occur
+  second component returned. In contrast to raw_KL, negative entries may occur
   in the matrix, which means that the polynomial found at its absolute value
   should by multiplied by -1 (the polynomial at index 0 is always the zero
   polynomial, so there is no need to negate it). The third component specifies
@@ -783,10 +786,29 @@ raw_ext_KL: (Param,mat->mat,[vec],vec): extended Kazhdan-Lusztig data This
   monotonically increasing along the block), takes a value at least l for the
   first time.
 
+extended_KL_block: (Param,mat->[Param],mat,vec): extended KL data for deform
+  This function computes twisted KLV polynomials for (part of) a block, in the
+  spirit of KL_block, but presents its data in a somewhat more "cooked" form.
+  The arguments (p,delta) are a parameter and a distinguished involution as for
+  raw_ext_KL. The list of parameters returned are the delta-fixed parameters of
+  the block, which therefore give elements of the extended block, but those that
+  have a singular descent among the simple generators of the extended block are
+  removed from the list. The list is also truncated by removing any elements
+  that are beyond p from it, so if present p is the final element on the list.
+  The matrix of KL polynomials is condensed to a square matrix index by just the
+  listed elements, a mapping as described in KL_block having been applied.
+  Moreover, since the deformation algorithm can work with just the evaluations
+  of the P polynomials at q=-1, these evaluations are computed (so that the
+  result can be returned as a plain matrix, the second component) and the
+  resulting number is negated for those entries for which the length difference
+  for the block elements for its row and column is odd. The final component is a
+  vector whose entries are the lengths of the parameters in the block. The form
+  of the result is meant to be directly usable in the deformation algorithm.
+
 print_gradings: (CartanClass,RealForm->): print gradings defined by real form
   This more or less gives the output of the 'gradings' command in the Atlas
   software, for the selected real form. The type of the imaginary root system
-  is printed, with the numbers of the roots that span this root subsytem as
+  is printed, with the numbers of the roots that span this root subsystem as
   simple roots, in the Bourbaki ordering for its type. Then for each element
   in the list produced by fiber_part for the same arguments, the grading of
   the imaginary root system is given as a sequence of bits 0 (compact) or 1

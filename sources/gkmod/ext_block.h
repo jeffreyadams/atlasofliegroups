@@ -144,7 +144,8 @@ class ext_block
 	    const WeightInvolution& delta);
   ext_block(const InnerClass& G,
 	    const param_block& block, const KGB& kgb,
-	    const WeightInvolution& delta);
+	    const WeightInvolution& delta,
+	    bool verbose=false);
 
 // manipulators
   void flip_edge(weyl::Generator s, BlockElt x, BlockElt y);
@@ -169,6 +170,7 @@ class ext_block
   BlockElt z(BlockElt n) const { assert(n<size()); return info[n].z; }
 
   // Look up element by its index in |parent| (if that did define an element)
+  // more precisely returns smallest |x| with |z(x)<=z|, or |size()| if none
   BlockElt element(BlockElt z) const; // partial inverse of method |z|
 
   const DescValue descent_type(weyl::Generator s, BlockElt n) const
@@ -189,6 +191,18 @@ class ext_block
   // whether link for |s| from |x| to |y| has a sign flip attached
   int epsilon(weyl::Generator s, BlockElt x, BlockElt y) const;
 
+  // this works only for blocks generated from parameters, so supply |parent|
+  // mark the extended generators (orbits) singular for |parent.gamma()|
+  RankFlags singular_orbits(const param_block& parent) const;
+
+  weyl::Generator first_descent_among
+    (RankFlags singular_orbits, BlockElt y) const;
+
+  // reduce a matrix to elements without descents among singular generators
+  template<typename C> // matrix coefficient type (signed)
+  containers::simple_list<BlockElt> // returns list of elements selected
+    condense (matrix::Matrix<C>& M, const param_block& parent) const;
+
   // coefficient of neighbour |xx| of |x| in the action $(T_s+1)*a_x$
   Pol T_coef(weyl::Generator s, BlockElt xx, BlockElt x) const;
 
@@ -202,6 +216,7 @@ class ext_block
 
 private:
   void complete_construction(const BitMap& fixed_points);
+  bool check(const param_block& block, bool verbose=false);
 
 }; // |class ext_block|
 
@@ -312,8 +327,6 @@ inline int sign_between (const param& E, const param& F)
 // find out type of extended parameters, and push its neighbours onto |links|
 DescValue type (const param& E, const ext_gen& p,
 		containers::sl_list<param>& links);
-
-bool check(ext_block& eb, const param_block& block, bool verbose=false);
 
 // check braid relation at |x|; also mark all involved elements in |cluster|
 bool check_braid

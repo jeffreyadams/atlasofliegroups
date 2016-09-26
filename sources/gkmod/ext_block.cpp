@@ -179,10 +179,17 @@ unsigned int link_count(DescValue v)
 // find element |n| such that |z(n)>=zz|
 BlockElt ext_block::element(BlockElt zz) const
 {
-  BlockElt n=0;
-  while (n<size() and z(n)<zz)
-    ++n;
-  return n;
+  BlockElt min=0, max=size();
+  while (max>min) // invar: |(m==0 or z(m-1)<zz) and (max<size() or z(max)>=zz)|
+  {
+    BlockElt x=(min+max)/2;
+    if (z(x)<zz)
+      min=x+1;
+    else
+      max=x;
+  }
+  assert(min==max);
+  return min;
 }
 
 unsigned int ext_block::list_edges()
@@ -1665,7 +1672,8 @@ ext_block::ext_block // for external twist; old style blocks
 ext_block::ext_block // for an external twist
   (const InnerClass& G,
    const param_block& block, const KGB& kgb,
-   const WeightInvolution& delta)
+   const WeightInvolution& delta,
+   bool verbose)
   : parent(block)
   , orbits(block.fold_orbits(delta))
   , folded(orbits,block.Dynkin())
@@ -1700,7 +1708,9 @@ ext_block::ext_block // for an external twist
   }
 
   complete_construction(fixed_points);
-} // |ext_block::ext_block|
+  if (not check(block,verbose)) // this sets the edge signs, not just a check!
+    throw std::runtime_error("Failure detected in extended block construction");
+} // |ext_block::ext_block|, from a |param_block|
 
 void ext_block::complete_construction(const BitMap& fixed_points)
 {
@@ -1842,17 +1852,17 @@ BlockEltPair ext_block::Cayleys(weyl::Generator s, BlockElt n) const
 
 // check validity, by comparing with results found using extended parameters
 // the signs are recorded in |eb|, and printed to |cout| is |verbose| holds.
-bool check(ext_block& eb, const param_block& block, bool verbose)
+bool ext_block::check(const param_block& block, bool verbose)
 {
-  context ctxt (block.context(),eb.delta(),block.gamma());
+  context ctxt (block.context(),delta(),block.gamma());
   containers::sl_list<std::pair<int,param> > links;
-  for (BlockElt n=0; n<eb.size(); ++n)
-  { auto z=eb.z(n);
-    for (weyl::Generator s=0; s<eb.rank(); ++s)
+  for (BlockElt n=0; n<size(); ++n)
+  { auto z=this->z(n);
+    for (weyl::Generator s=0; s<rank(); ++s)
     { param E(ctxt,block.x(z),block.lambda_rho(z)); // re-init each iteration
-      ext_gen p=eb.orbit(s); links.clear(); // output arguments for |star|
+      ext_gen p=orbit(s); links.clear(); // output arguments for |star|
       auto tp = star(E,p,links);
-      if (tp!=eb.descent_type(s,n))
+      if (tp!=descent_type(s,n))
 	return false;
 
       auto it = links.begin();
@@ -1870,13 +1880,13 @@ bool check(ext_block& eb, const param_block& block, bool verbose)
       case two_complex_ascent: case two_complex_descent:
       case three_complex_ascent: case three_complex_descent:
 	{ assert(links.size()==1);
-	  BlockElt m=eb.cross(s,n);
-	  BlockElt cz = eb.z(m); // corresponding element of block
+	  BlockElt m=cross(s,n);
+	  BlockElt cz = this->z(m); // corresponding element of block
 	  param F(ctxt,block.x(cz),block.lambda_rho(cz));
 	  assert(same_standard_reps(it->second,F));
 	  if (it->first!=sign_between(it->second,F))
 	  {
-	    eb.flip_edge(s,n,m);
+	    flip_edge(s,n,m);
 	    if (verbose)
 	      std::cout << "Flip at cross link " << unsigned{s}
                         << " from " << z << " to " << cz << '.' << std::endl;
@@ -1885,24 +1895,24 @@ bool check(ext_block& eb, const param_block& block, bool verbose)
       case one_imaginary_single: case one_real_single:
       case two_imaginary_single_single: case two_real_single_single:
 	{ assert(links.size()==2);
-	  BlockElt m=eb.some_scent(s,n); // the unique (inverse) Cayley
-	  BlockElt Cz = eb.z(m); // corresponding element of block
+	  BlockElt m=some_scent(s,n); // the unique (inverse) Cayley
+	  BlockElt Cz = this->z(m); // corresponding element of block
 	  param F(ctxt,block.x(Cz),block.lambda_rho(Cz));
 	  assert(same_standard_reps(it->second,F));
 	  if (it->first!=sign_between(it->second,F))
 	  {
-	    eb.flip_edge(s,n,m);
+	    flip_edge(s,n,m);
 	    if (verbose)
 	      std::cout << "Flip at Cayley link " << unsigned{s}
 	                << " from " << z << " to " << Cz << '.' << std::endl;
 	  }
 	  ++it;
-	  m=eb.cross(s,n); BlockElt cz = eb.z(m);
+	  m=cross(s,n); BlockElt cz = this->z(m);
 	  param Fc(ctxt,block.x(cz),block.lambda_rho(cz));
 	  assert(same_standard_reps(it->second,Fc));
 	  if (it->first!=sign_between(it->second,Fc))
 	  {
-	    eb.flip_edge(s,n,m);
+	    flip_edge(s,n,m);
 	    if (verbose)
 	      std::cout << "Flip at cross link " << unsigned{s}
 	                << " from " << z << " to " << cz << '.' << std::endl;
@@ -1912,13 +1922,13 @@ bool check(ext_block& eb, const param_block& block, bool verbose)
       case three_semi_imaginary: case three_real_semi:
       case three_imaginary_semi: case three_semi_real:
 	{ assert(links.size()==1);
-	  BlockElt m=eb.some_scent(s,n); // the unique (inverse) Cayley
-	  BlockElt Cz = eb.z(m); // corresponding element of block
+	  BlockElt m=some_scent(s,n); // the unique (inverse) Cayley
+	  BlockElt Cz = this->z(m); // corresponding element of block
 	  param F(ctxt,block.x(Cz),block.lambda_rho(Cz));
 	  assert(same_standard_reps(it->second,F));
 	  if (it->first!=sign_between(it->second,F))
 	  {
-	    eb.flip_edge(s,n,m);
+	    flip_edge(s,n,m);
 	    if (verbose)
 	      std::cout << "Flip at Cayley link " << unsigned{s}
 		      << " from " << z << " to " << Cz << '.' << std::endl;
@@ -1927,8 +1937,8 @@ bool check(ext_block& eb, const param_block& block, bool verbose)
       case one_imaginary_pair_fixed: case one_real_pair_fixed:
       case two_imaginary_double_double: case two_real_double_double:
 	{ assert(links.size()==2);
-	  BlockEltPair m=eb.Cayleys(s,n);
-	  BlockElt Cz0 = eb.z(m.first); BlockElt Cz1= eb.z(m.second);
+	  BlockEltPair m=Cayleys(s,n);
+	  BlockElt Cz0 = this->z(m.first); BlockElt Cz1= this->z(m.second);
 	  param F0(ctxt,block.x(Cz0),block.lambda_rho(Cz0));
 	  param F1(ctxt,block.x(Cz1),block.lambda_rho(Cz1));
 	  bool straight=same_standard_reps(it->second,F0);
@@ -1939,14 +1949,14 @@ bool check(ext_block& eb, const param_block& block, bool verbose)
 	  assert(same_standard_reps(node1.second,F1));
 	  if (node0.first!=sign_between(node0.second,F0))
 	  {
-	    eb.flip_edge(s,n,m.first);
+	    flip_edge(s,n,m.first);
 	    if (verbose)
 	      std::cout << "Flip at Cayley link " << unsigned{s}
 			<< " from " << z << " to " << Cz0 << '.' << std::endl;
 	  }
 	  if (node1.first!=sign_between(node1.second,F1))
 	  {
-	    eb.flip_edge(s,n,m.second);
+	    flip_edge(s,n,m.second);
 	    if (verbose)
 	      std::cout << "Flip at Cayley link " << unsigned{s}
 			<< " from " << z << " to " << Cz1 << '.' << std::endl;
@@ -1954,8 +1964,8 @@ bool check(ext_block& eb, const param_block& block, bool verbose)
 	} break;
       case two_imaginary_single_double_fixed: case two_real_single_double_fixed:
 	{ assert(links.size()==2);
-	  BlockEltPair m=eb.Cayleys(s,n);
-	  BlockElt Cz0 = eb.z(m.first); BlockElt Cz1= eb.z(m.second);
+	  BlockEltPair m=Cayleys(s,n);
+	  BlockElt Cz0 = this->z(m.first); BlockElt Cz1= this->z(m.second);
 	  param F0(ctxt,block.x(Cz0),block.lambda_rho(Cz0));
 	  param F1(ctxt,block.x(Cz1),block.lambda_rho(Cz1));
 	  bool straight=same_standard_reps(it->second,F0);
@@ -1966,14 +1976,14 @@ bool check(ext_block& eb, const param_block& block, bool verbose)
 	  assert(same_standard_reps(node1.second,F1));
 	  if (node0.first!=sign_between(node0.second,F0))
 	  {
-	    eb.flip_edge(s,n,m.first);
+	    flip_edge(s,n,m.first);
 	    if (verbose)
 	      std::cout << "Flip at Cayley link " << unsigned{s}
 			<< " from " << z << " to " << Cz0 << '.' << std::endl;
 	  }
 	  if (node1.first!=sign_between(node1.second,F1))
 	  {
-	    eb.flip_edge(s,n,m.second);
+	    flip_edge(s,n,m.second);
 	    if (verbose)
 	      std::cout << "Flip at Cayley link " << unsigned{s}
 			<< " from " << z << " to " << Cz1 << '.' << std::endl;
@@ -1984,6 +1994,57 @@ bool check(ext_block& eb, const param_block& block, bool verbose)
   } // |for(n)|
   return true; // report sucess if we get here
 } // |check|
+
+RankFlags ext_block::singular_orbits (const param_block& parent) const
+{ RankFlags result;
+  { auto singular = parent.singular_simple_roots();
+    for (weyl::Generator s=0; s<rank(); ++s)
+      result.set(s,singular[orbit(s).s0]);
+  }
+  return result;
+}
+
+weyl::Generator
+ext_block::first_descent_among(RankFlags singular_orbits, BlockElt y) const
+{ auto it=singular_orbits.begin();
+  for (; it(); ++it)
+    if (is_descent(descent_type(*it,y)))
+      return *it;
+
+  return rank();
+}
+
+// reduce a matrix to elements without descents among singular generators
+template<typename C> // matrix coefficient type (signed)
+containers::simple_list<BlockElt> // returns list of elements selected
+  ext_block::condense(matrix::Matrix<C>& M, const param_block& parent) const
+{
+  RankFlags sing_orbs = singular_orbits(parent);
+  containers::simple_list<BlockElt> result;
+
+  for (BlockElt y=M.numColumns(); y-->0; ) // reverse loop is essential here
+  { auto s = first_descent_among(sing_orbs,y);
+    if (s==rank())
+      result.push_front(y); // no singular descents, so a survivor
+    else // a singular descent found, so not a survivor
+    { // we contribute row |y| to all its descents by |s| with sign |-1|
+      // then conceptually we clear row |y|, but don't bother: it gets ignored
+      auto type=descent_type(s,y);
+      if (is_like_compact(type))
+	continue; // no descents, |y| represents zero; nothing to do for |y|
+
+      C c (orbit(s).length()%2==0 ? 1 : -1); // length change factor
+      if (has_double_image(type)) // 1r1f, 2r11
+      { auto pair = Cayleys(s,y);
+	M.rowOperation(pair.first,y,c);
+	M.rowOperation(pair.second,y,c);
+      }
+      else
+	M.rowOperation(some_scent(s,y),y,c);
+    }
+  }
+  return result;
+} // |ext_block::condense|
 
 // coefficient of neighbour |sx| of |x| in the action $(T_s+1)*a_x$
 Pol ext_block::T_coef(weyl::Generator s, BlockElt sx, BlockElt x) const
@@ -2127,6 +2188,11 @@ bool check_braid
   }
   return success;
 } // |check_braid|
+
+template containers::simple_list<BlockElt> ext_block::condense
+  (matrix::Matrix<int>& M, const param_block& parent) const;
+template containers::simple_list<BlockElt> ext_block::condense
+  (matrix::Matrix<Split_integer>& M, const param_block& parent) const;
 
 } // |namespace ext_block|
 

@@ -1,7 +1,7 @@
 <basic.at
 <representations.at { for spherical_principal_series }
 <kl.at
-<ext_deform.at
+<ext_deform.at { for full_deform@(Parma,mat), only used in |c_form_std_hold| }
 
 { a variable used in this file; set to true for more output from functions }
 set hermitian_debug = false
@@ -74,14 +74,12 @@ set c_form_irreducible (Param p)= ParamPol:
 ; P
 )
 
-{need to temporarily multiply ParamPol by 2, then divide by 2 at the end}
-
 {implements algorithm from Vogan in email 9/22/16
  for each term delta-fixed term q add full_deform(q)
  for each pair {q,delta(q)} add q*0
  convenient to get 2*answer then divide by 2: [2*full(deform(q)) or (q*0 +delta(q)*0)]*(1/2)
  it is not clear at the moment what the mathematical meaning of the expression is,
- so I'm calling it c_form_irreducible_delta for now. It is what is needed to compute the 
+ so I'm calling it c_form_irreducible_delta for now. It is what is needed to compute the
  Hermitian form on an irreducible (multiply each term in this sum by 1 or s)
 }
 set c_form_irreducible_delta(Param p)= ParamPol:
@@ -89,8 +87,8 @@ set c_form_irreducible_delta(Param p)= ParamPol:
   for ev@q in KL_sum_at_s(p)
   do let new_term=if is_fixed(delta,q) then 2*full_deform(q,delta) else (1+s)*(q*0) fi in
   P +:= ev*orientation_nr_term(ori_nr_p,q)*new_term od
-; (1/2)*P
-) 
+; divide_by(2,P)
+)
 
 set print_c_form_irreducible_long (Param p) = void:
 ( let (f,b) = c_form_irreducible_long(p) in
