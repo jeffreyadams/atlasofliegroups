@@ -21,20 +21,32 @@ set KL_P_polynomials ([Param] B_fixed,mat delta) = [[poly]]:
   for row@i in ^P
   do
     for entry@j in row
+    do {(-1)^length_diff(i,j,jumps)
+     *} if >=entry then polys[entry] else -polys[-entry] fi
+    od
+  od
+
+set KL_P_signed_polynomials ([Param] B_fixed,mat delta) = [[poly]]:
+  assert( all(for p in B_fixed do is_fixed(delta,p) od)
+  	, "Not every parameter is delta-fixed" );
+  let (P,polys,jumps)=raw_ext_KL(B_fixed[0],delta) in
+  for row@i in ^P
+  do
+    for entry@j in row
     do (-1)^length_diff(i,j,jumps)
      * if >=entry then polys[entry] else -polys[-entry] fi
     od
   od
 
 set KL_Q_polynomials ([Param] B_fixed, mat delta) = [[poly]]:
-  upper_unitriangluar_inverse (KL_P_polynomials(B_fixed,delta))
+  upper_unitriangluar_inverse (KL_P_signed_polynomials(B_fixed,delta))
 
 set deform (Param p, mat delta) = ParamPol:
 ( assert(is_fixed(delta,p),"parameter is not delta-fixed");
   let (B_f,index) = fixed_block(delta,p) { hopefully the same block as KL_P }
   , l_index=length(p) { use built-in function |length| for Param |p| }
   then P_polys=KL_P_polynomials(B_f,delta)
-  then Q_polys=upper_unitriangluar_inverse(P_polys)
+  then Q_polys=KL_Q_polynomials(B_f,delta)
   in
   if ed_verbose then prints("index=",index) fi;
   let outer_sum = null_module(real_form(p))
@@ -44,7 +56,7 @@ set deform (Param p, mat delta) = ParamPol:
       let l_i=length(p_i)
       , onr=(-1)^rat_as_int((orientation_nr(p)-orientation_nr(p_i))/2)
       , inner_sum=0 in
-      {let ()=prints("onr=", onr) in}
+      if ed_verbose then prints("onr=", onr)  fi;
       for p_j@j_minus_i in B_f[i:index]
       do
         let j=j_minus_i+i, l_j=length(p_j) in
@@ -59,13 +71,13 @@ set deform (Param p, mat delta) = ParamPol:
 	  then term= eval(P_ij,-1) * eval(Q_jindex,-1)
           in
           if ed_verbose then prints("   inner term: ", term) fi
- 	; inner_sum+:=term
+ 	; inner_sum+:=term; if ed_verbose then prints(" inner_sum is now:", inner_sum) fi
         fi
       od
     ; let contrib = (Split,Param):
         (onr*inner_sum {coefficient}, B_f[i] {monomial})
       in
-      if ed_verbose then prints("contribution with i=", i, ":", contrib) fi
+      if ed_verbose then prints("onr=",onr,new_line,"inner_sum=",inner_sum,new_line,"contribution with i=", i, ":", contrib) fi
     ; contrib
     od
     in (1-s)*outer_sum
