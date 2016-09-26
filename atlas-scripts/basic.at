@@ -446,6 +446,8 @@ set s_to_minus_1 (Split x) = int: -%x  { let (a,b)=%x in a-b }
 
 set split_as_int (Split x) = int:
   let (r,y)=%x in assert(=y,"split is not an integer"); r
+set \% (Split x, int n) = (Split,Split):
+  let (a,b)=%x then (qa,rq)=a\%n, (qb,rb)=b\%n in ((qa,qb),(rq,rb))
 
 { nicer display of Splits }
 set split_format (Split w) = string:
@@ -1108,6 +1110,10 @@ set - (ParamPol a, (Split,Param) (c,p)) = ParamPol: a+(-c,p)
 
 { deform a whole ParamPol, by deforming all individual terms }
 set * (ParamPol P, rat f) = ParamPol: 0*P + for c@q in P do (c,q*f) od
+
+{ inverse of scalar multiplication *@(int,ParamPol) }
+set divide_by (int n, ParamPol P) = ParamPol:
+  0*P+ for c@t in P do let (q,r)=c\%n in assert(=r,"Inexact division");(q,t) od
 
 { simulate coercion (KGBElt->RealForm) in some cases }
 set root_datum (ParamPol P) = RootDatum: real_form(P)
