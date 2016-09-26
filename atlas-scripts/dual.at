@@ -71,21 +71,23 @@ set KL_block_polynomials ([Param] B,bool signs)=
   poly_permute_basis(perm_B_block,P)
 )
 
-{ define the P and Q polynomials
-  P,Q matrices of polynomials in q
-  P,Q are upper triangular if B is in standard (increasing) order
-  P: positive/negative integer coefficients
-  Q: non-negative integer coefficients
-  P(1) is the multiplicity of a standard module in an irreducible
+{ define the P,P_signed and Q polynomials
+  P,P_signed,Q matrices of polynomials in q
+  upper triangular if B is in standard (increasing) order
+  P_signed: positive/negative integer coefficients
+  P: non-negative integer coefficients
+  Q: non-negative integer coefficients, inverse of P_signed
+  P_signed(1) is the multiplicity of a standard module in an irreducible
     (character formula)
   Q(1) is the multiplicity of an irreducible module in a standard module
 }
-set KL_P_polynomials ([Param] B) = KL_block_polynomials(B,true)
+set KL_P_polynomials ([Param] B) = KL_block_polynomials(B,false)
+set KL_P_signed_polynomials ([Param] B) = KL_block_polynomials(B,true)
 
-{ The Q polynomials are obtained from KL_P_polynomials(dual block)
+{ The Q polynomials are obtained from KL_P_signed_polynomials(dual block)
   after applying a permutation and transpose
-  should satisfy P*Q=I
-  test this with P*Q=identity_poly_matrix(#P)
+  should satisfy P_signed*Q=I
+  test this with P_signed*Q=identity_poly_matrix(#P)
   assuming B is in standard length increasing order:
   P and Q are  both upper triangular
 }
@@ -113,14 +115,14 @@ Q[index_irr][index_std]
   P*Q should be the identity}
 set test_duality (Param p)=
 ( let B=block_of(p) in
-  let P=KL_P_polynomials(B) in
+  let P_signed=KL_P_signed_polynomials(B) in
   let Q=KL_Q_polynomials(B) in
-  prints("P="); printPolyMatrix(P)
+  prints("P_signed="); printPolyMatrix(P_signed)
 ; prints("Q="); printPolyMatrix(Q)
-; let R=P*Q in
-  let rv= R=identity_poly_matrix(#P) in
+; let R=P_signed*Q in
+  let rv= R=identity_poly_matrix(#P_signed) in
   if rv then prints("passed: P*Q=I")
   else prints("failed: P*Q=I");printPolyMatrix(R)
   fi
-; (P,Q,rv)
+; (P_signed,Q,rv)
 )
