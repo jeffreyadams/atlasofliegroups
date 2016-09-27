@@ -13,11 +13,10 @@ set make_nu0 (ParamPol P) = ParamPol: 0*P + for w@p in P do (w,p*0) od
 { orientation_number_term(orientation_nr(p),q) =
   s^{[\ell_0(p)-\ell_0(q)]/2} which should be defined and gives 1 or s
 }
-set orientation_nr_term = (int,Param->Split):
+set orientation_nr_term (int ori_nr_p,Param q) = Split:
   let err()=
     error("computing orientation number for odd difference of lengths")
-  then act=[(->Split)]: [@Split:1,err,@:s,err]
-  in (int ori_nr_p,Param q) Split: act[(ori_nr_p-orientation_nr(q))%4]()
+  in case ori_nr_p-orientation_nr(q) in 1, err(), s, err() esac
 
 { c_form_std:
   write c-invariant form on standard module in terms of standardrepks,
@@ -26,14 +25,14 @@ set orientation_nr_term = (int,Param->Split):
 }
 set c_form_std (Param p) = ParamPol:
 ( if hermitian_debug then prints("computing c-form on standard module: ",p) fi
-; let G=real_form(p) in full_deform(p)
+; full_deform(p)
 )
 
-{ in the unequal rank case full_deform(p,delta) (deformation with twist by delta)
- is needed for the computation of invariant forms
+{ in the unequal rank case full_deform(p,delta) (deformation with twist by
+  delta) is needed for the computation of invariant forms
 }
 set c_form_std_delta (Param p) = ParamPol:
-( if hermitian_debug then prints("computing c-form on standard module: ",p) fi
+( if hermitian_debug then prints("computing deformation with twist: ",p) fi
 ; let G=real_form(p) in
   if is_equal_rank(G) then full_deform(p) { in this case built-in is faster }
   else full_deform(p,distinguished_involution(G)) { otherwise use extended }
@@ -54,40 +53,49 @@ set c_form_std_delta (Param p) = ParamPol:
   algorithm: compute the sum for J(y)_c, using signed_KL_col and c_form_std
 }
 set c_form_irreducible_long (Param p) = (ParamPol,[(Param,Split,ParamPol)]):
-( let P = null_module(real_form(p)), standards = [(Param,Split,ParamPol)]: []
-  , ori_nr_p = orientation_nr(p)
-  in
-  for ev@q in KL_sum_at_s(p)
-  do
-    let form_on_standard = c_form_std(q)
-    ,   factor           = ev*orientation_nr_term(ori_nr_p,q)
-    in P +:= factor*form_on_standard; standards #:= (q,factor,form_on_standard)
-  od
-; (P,standards)
+( let P = null_module(real_form(p)), ori_nr_p = orientation_nr(p)
+  then standards =
+    for ev@q in KL_sum_at_s(p)
+    do
+      let form_on_standard = c_form_std(q)
+      ,   factor           = ev*orientation_nr_term(ori_nr_p,q)
+      in P +:= factor*form_on_standard
+    ; (q,factor,form_on_standard)
+    od
+  in (P,standards)
 )
 
-{this is the correct formula for the c-form in all cases}
-set c_form_irreducible (Param p)= ParamPol:
+{ this is the correct formula for the c-form in all cases }
+set c_form_irreducible (Param p) = ParamPol:
 ( let ori_nr_p = orientation_nr(p), P = null_module(real_form(p)) in
   for ev@q in KL_sum_at_s(p)
   do P +:= ev*orientation_nr_term(ori_nr_p,q)*full_deform(q) od
 ; P
 )
 
-{implements algorithm from Vogan in email 9/22/16
- for each term delta-fixed term q add full_deform(q)
- for each pair {q,delta(q)} add q*0
- convenient to get 2*answer then divide by 2: [2*full(deform(q)) or (q*0 +delta(q)*0)]*(1/2)
- it is not clear at the moment what the mathematical meaning of the expression is,
- so I'm calling it c_form_irreducible_delta for now. It is what is needed to compute the
- Hermitian form on an irreducible (multiply each term in this sum by 1 or s)
+{ The following function implements algorithm from Vogan in email 9/22/16:
+  * for each term delta-fixed term q add full_deform(q,delta),
+  * for each pair {q,delta(q)} add q*0.
+  For second kind it it convenient to add q*0 and delta(q)*0 separately
+  and at the end divide the sum of such contributions by 2.
+  It is not clear at the moment what the mathematical meaning of the expression
+  is, so I'm calling it |c_form_irreducible_delta| for now. It is what is
+  needed to compute the Hermitian form on an irreducible (multiply each term
+  in this sum by 1 or s; which of the two is to be termined later)
 }
-set c_form_irreducible_delta(Param p)= ParamPol:
-( let ori_nr_p = orientation_nr(p), P = null_module(real_form(p)), delta=distinguished_involution(real_form(p)) in
+set c_form_irreducible_delta (Param p) = ParamPol:
+( let G=p.real_form
+  then ori_nr_p = orientation_nr(p), delta=distinguished_involution(G)
+  , fixed_terms = null_module(G), unfixed_terms = null_module(G)
+  in
   for ev@q in KL_sum_at_s(p)
-  do let new_term=if is_fixed(delta,q) then 2*full_deform(q,delta) else (1+s)*(q*0) fi in
-  P +:= ev*orientation_nr_term(ori_nr_p,q)*new_term od
-; divide_by(2,P)
+  do let c = ev*orientation_nr_term(ori_nr_p,q) in
+    if is_fixed(delta,q)
+    then fixed_terms +:= c*full_deform(q,delta)
+    else unfixed_terms +:= c*one_plus_s*(q*0)
+    fi
+  od
+; fixed_terms + divide_by(2,unfixed_terms)
 )
 
 set print_c_form_irreducible_long (Param p) = void:
