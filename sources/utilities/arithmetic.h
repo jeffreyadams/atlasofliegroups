@@ -143,6 +143,8 @@ class Split_integer
 
 }; // |class Split_integer|
 
+inline Split_integer operator* (const Split_integer& x, int n)
+  { return Split_integer(x)*=n; }
 std::ostream& operator<< (std::ostream& out, const Rational& frac);
 
 

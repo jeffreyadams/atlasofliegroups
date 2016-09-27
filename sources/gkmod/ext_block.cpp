@@ -2036,11 +2036,13 @@ containers::simple_list<BlockElt> // returns list of elements selected
       C c (orbit(s).length()%2==0 ? 1 : -1); // length change factor
       if (has_double_image(type)) // 1r1f, 2r11
       { auto pair = Cayleys(s,y);
-	M.rowOperation(pair.first,y,c);
-	M.rowOperation(pair.second,y,c);
+	M.rowOperation(pair.first,y,c*epsilon(s,pair.first,y));
+	M.rowOperation(pair.second,y,c*epsilon(s,pair.second,y));
       }
       else
-	M.rowOperation(some_scent(s,y),y,c);
+      { auto x = some_scent(s,y);
+	M.rowOperation(x,y,c*epsilon(s,x,y));
+      }
     }
   }
   return result;
