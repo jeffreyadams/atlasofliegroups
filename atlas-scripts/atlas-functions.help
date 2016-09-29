@@ -750,6 +750,17 @@ twisted_KL_sum_at_s: (Param->ParamPol): KL_sum_at_s, twisted KLV polynomials
   generators associated to the terms, so individual terms in the result are
   mathematically well defined only up to a possible factor -1. Also WARNING:
   the twisted KLV polynomials are not yet correctly computed in all cases.
+finalize_extended: (Param,mat->ParamPol): conversion for extended parameters
+  When interpreting parameters as representing a representation of the
+  delta-extended group (where delta is the second argument, a distinguished
+  involution commuting with the one defining the inner class), the way they
+  contribute to ParamPol values differs slightly from the way parameters usually
+  contribute to them, when they are (implicitly) converted to a sum of non-zero
+  final parameters. This function tries to do the right thing for extended
+  parameters: it replaces a parameter with a singular descent by the sum of the
+  parameters descended from it in the _extended_ block, and when there is a
+  "sign flip" along the edge used, the resulting parameter is multiplied by s.
+  And this is repeated recursively as long as singular descents are present.
 
 raw_KL: (Block->mat,[vec],vec): Kazhdan-Lusztig data for block, raw form
   The call raw_KL(b) produces a matrix of numbers identifying polynomials, a

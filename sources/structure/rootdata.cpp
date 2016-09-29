@@ -417,9 +417,7 @@ int_Matrix RootSystem::cartanMatrix() const
   return result;
 }
 
-/*!
-\brief Returns the Cartan matrix of the root subsystem with basis |rb|.
-*/
+// The Cartan matrix of the root subsystem with basis |rb|.
 int_Matrix RootSystem::cartanMatrix(const RootNbrList& rb) const
 {
   size_t r = rb.size();
@@ -592,8 +590,8 @@ bool RootSystem::sumIsRoot(RootNbr alpha, RootNbr beta, RootNbr& gamma) const
   return false; // not found
 }
 
-/*! \brief
-  Makes the orthogonal system |rset| into an equaivalent (for |refl_prod|) one
+/*
+  Make the orthogonal system |rset| into an equaivalent (for |refl_prod|) one
   that is additively closed inside the full root system.
 
   This can be achieved by repeatedly replacing a pair of short roots spanning
@@ -891,8 +889,8 @@ WeylWord RootDatum::reflectionWord(RootNbr alpha) const
 
 
 
-/*!\brief
-  Returns the expression of $q^{-1}$ as a product of simple reflections.
+/*
+  The expression of $q^{-1}$ as a product of simple reflections.
 
   Precondition: $q$ gives the action on the weight lattice of some Weyl group
   element
@@ -906,8 +904,8 @@ WeylWord RootDatum::word_of_inverse_matrix
   return to_dominant(q*twoRho());
 }
 
-/*!
-\brief Returns the sum of the positive roots in rl.
+/*
+  The sum of the positive roots in rl.
 
   Precondition: rl holds the roots in a sub-rootsystem of the root system of
   rd;
@@ -962,8 +960,8 @@ Coweight RootDatum::dual_twoRho(RootNbrSet rs) const
   return result;
 }
 
-/*!\brief
-  Returns a reduced expression of the shortest |w| making |w.v| dominant
+/*
+  A reduced expression of the shortest |w| making |w.v| dominant
 
   Algorithm: the greedy algorithm -- if v is not positive, there is a
   simple coroot alpha^v such that <v,alpha^v> is < 0; then s_alpha.v takes
@@ -989,8 +987,8 @@ WeylWord RootDatum::to_dominant(Weight v) const
   return result;
 }
 
-/*!
-\brief Writes in q the matrix represented by ww.
+/*
+  The matrix represented by ww.
 
   NOTE: not intended for heavy use. If that were the case, it would be better
   to use the decomposition of ww into pieces, and multiply those together.
@@ -1103,12 +1101,9 @@ CoweightInvolution dualBasedInvolution
 }
 
 
-/*!
-\brief Returns the elements of |subsys| which are orthogonal to all
-  elements of |o|.
-*/
+// The elements of |subsys| which are orthogonal to all elements of |o|.
 RootNbrSet makeOrthogonal(const RootNbrSet& o, const RootNbrSet& subsys,
-		       const RootSystem& rs)
+			  const RootSystem& rs)
 {
   RootNbrSet candidates = subsys;
   candidates.andnot(o); // roots of |o| itself need not be considered
@@ -1131,8 +1126,9 @@ RootNbrSet makeOrthogonal(const RootNbrSet& o, const RootNbrSet& subsys,
 }
 
 
-/*! \brief Transforms q, assumed a root datum involution, into a based root
-   datum involution w.q, which fixes the positive Weyl chamber.
+/*
+  Transform $q$, assumed a root datum involution, into a based root
+  datum involution $w.q,$ which fixes the positive Weyl chamber.
 
   Note that wq is then automatically an involution permuting the simple roots
 */
@@ -1302,6 +1298,16 @@ ext_gens fold_orbits (const RootDatum& rd, const WeightInvolution& delta)
 	throw std::runtime_error("Not a distinguished involution");
     }
   }
+  return result;
+}
+
+RankFlags singular_generators(const RootDatum& rd, const RatWeight& gamma)
+{
+  const Ratvec_Numer_t& v=gamma.numerator();
+  RankFlags result;
+  for (weyl::Generator s=0; s<rd.semisimpleRank(); ++s)
+    result.set(s,rd.simpleCoroot(s).dot(v) == 0);
+
   return result;
 }
 

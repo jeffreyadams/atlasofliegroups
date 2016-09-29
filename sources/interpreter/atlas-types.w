@@ -5069,6 +5069,36 @@ void twisted_KL_sum_at_s_wrapper(expression_base::level l)
   }
 }
 
+@ The function |finalize_extended| is useful in expanding a single module
+parameter into a linear combination of such parameters. The terms on the list
+are paired with a Boolean attribute recording a possible flip of extended
+parameters accumulated when the term. This flip is recorded with as
+coefficient the split integer unit~$s$, since applications where this required
+are envisioned (if remains possible to evaluate at $s:=-1$ afterwards if
+desired).
+
+@< Local function def...@>=
+
+void finalize_extended_wrapper(expression_base::level l)
+{ auto delta = get_own<matrix_value>(); // own because of |check_involution|
+  auto p = get<module_parameter_value>();
+  test_standard(*p,"Cannot finalize extended parameter");
+  const auto& rc = p->rc();
+  const RootDatum& rd = rc.rootDatum(); WeylWord ww;
+  check_involution(delta->val,rd,ww); // this makes |delta| distinguished
+  { auto& xi = rc.innerClass().distinguished();
+    if (delta->val*xi!=xi*delta->val)
+      throw runtime_error("Non commuting distinguished involution");
+  }
+  if (l==expression_base::no_value)
+    return;
+  auto params = ext_block::finalise(rc,p->val,delta->val);
+  repr::SR_poly result(rc.repr_less());
+  for (auto it=params.begin(); it!=params.end(); ++it)
+    result.add_term(it->first
+                   ,it->second ? Split_integer(0,1) : Split_integer(1,0));
+  push_value (std::make_shared<virtual_module_value>(p->rf,std::move(result)));
+}
 
 
 @ Finally we install everything related to polynomials formed from parameters.
@@ -5113,7 +5143,10 @@ install_function(srk_height_wrapper,@|"height" ,"(Param->int)");
 install_function(deform_wrapper,@|"deform" ,"(Param->ParamPol)");
 install_function(full_deform_wrapper,@|"full_deform","(Param->ParamPol)");
 install_function(KL_sum_at_s_wrapper,@|"KL_sum_at_s","(Param->ParamPol)");
-install_function(twisted_KL_sum_at_s_wrapper,@|"twisted_KL_sum_at_s","(Param->ParamPol)");
+install_function(twisted_KL_sum_at_s_wrapper,@|"twisted_KL_sum_at_s"
+                ,"(Param->ParamPol)");
+install_function(finalize_extended_wrapper,@|"finalize_extended"
+                ,"(Param,mat->ParamPol)");
 
 
 @*1 Kazhdan-Lusztig tables. We implement a simple function that gives raw

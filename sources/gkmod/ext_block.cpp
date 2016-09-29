@@ -365,10 +365,9 @@ bool same_standard_reps (const param& E, const param& F)
     and in_L_image(E.lambda_rho()-F.lambda_rho(),E.theta()-1);
 }
 
-KGBElt x(const param& E)
-{ TorusPart tp(E.l());
-  TitsElt a(E.ctxt.innerClass().titsGroup(),tp,E.tw);
-  return E.rc().kgb().lookup(a);
+KGBElt param::x() const
+{ TitsElt a(ctxt.innerClass().titsGroup(),TorusPart(l()),tw);
+  return rc().kgb().lookup(a);
 }
 
 #if 0 // unused code, but the formula is referred to in the comment below
@@ -378,6 +377,47 @@ int z (const param& E) // value modulo 4, exponent of imaginary unit $i$
 }
 #endif
 
+containers::sl_list<std::pair<StandardRepr,bool> > finalise
+  (const repr::Rep_context& rc,
+   const StandardRepr& sr, const WeightInvolution& delta)
+{ context ctxt(rc,delta,sr.gamma());
+  const ext_gens orbits = rootdata::fold_orbits(ctxt.id(),delta);
+  const RankFlags singular_orbits =
+    reduce_to(orbits,singular_generators(ctxt.id(),sr.gamma()));
+
+  containers::sl_list<std::pair<param,bool> >
+    to_do(1,std::make_pair(param(ctxt,sr),false));
+  containers::sl_list<std::pair<StandardRepr,bool> > result;
+
+  do
+  { auto& head=to_do.front(); // but don't pop just yet
+    const param E= std::move(head.first);
+    bool flipped = head.second;
+    to_do.pop_front(); // we are done with |head|
+    auto s = first_descent_among(singular_orbits,orbits,E);
+    if (s>=orbits.size()) // no singular descents, so append to result
+      result.emplace_back(std::make_pair(E.restrict(),flipped==is_default(E)));
+    else // |s| is a singular descent orbit
+    { containers::sl_list<std::pair<int,param> > links;
+      auto type = star(E,orbits[s],links);
+      if (is_like_compact(type))
+	to_do.pop_front(); // just drop |E| and its sign
+      else  // at least one descent, so replace |to_do.front()| by the first
+      { auto it = to_do.begin(); auto l_it=links.begin();
+	to_do.insert(it,std::make_pair
+		     (std::move(l_it->second),flipped==(l_it->first>0)));
+	if (has_double_image(type)) // then append a second node after |head|
+	{ ++it, ++l_it;
+	  to_do.insert(it,std::make_pair
+		       (std::move(l_it->second),flipped==(l_it->first>0)));
+	}
+      }
+    }
+  }
+  while(not to_do.empty());
+
+  return result;
+}
 
 /*
   The quotient of |z| values across a Cayley transform will only be used when
@@ -453,9 +493,6 @@ bool same_sign_with_one_of (const param& E, const param& F1, const param& F2)
     : throw std::runtime_error("Neither candidate has same standard repn");
 }
 
-bool is_default (const param& E)
-{ return same_sign(E,param(E.ctxt,x(E),E.lambda_rho())); }
-
 void ext_block::add_neighbours
   (BlockEltList& dst, weyl::Generator s, BlockElt n) const
 {
@@ -510,7 +547,6 @@ context::context
     , integr_datum(integrality_datum(rc.rootDatum(),gamma))
     , sub(SubSystem::integral(rc.rootDatum(),gamma))
 {}
-
 
 
 // old version of |extended_type| below, this one uses |Hermitian_dual| method
@@ -1629,6 +1665,49 @@ DescValue star (const param& E,
   return result;
 } // |star|
 
+bool is_descent (const ext_gen& kappa, const param& E)
+{ // like in |star|, generators are not simple for |E.rc().twistedWeylGroup()|
+  const InnerClass& ic = E.rc().innerClass();
+  const InvolutionTable& i_tab = ic.involution_table();
+  const InvolutionNbr theta = i_tab.nr(E.tw); // so use root action of |E.tw|
+  const RootDatum& rd = E.rc().rootDatum();
+
+  const RootNbr n_alpha = E.ctxt.subsys().parent_nr_simple(kappa.s0);
+  const RootNbr theta_alpha = i_tab.root_involution(theta,n_alpha);
+  const Weight& alpha = E.ctxt.id().simpleRoot(kappa.s0);
+
+  // we don't need to inspect |kappa.type|, it does not affect descent status
+  if (theta_alpha==n_alpha) // imaginary case, return whether compact
+    return ( ((E.ctxt.g()-E.l()).dot(alpha)-rd.level(n_alpha)) %2!=0 );
+  if (theta_alpha==rd.rootMinus(n_alpha)) // real, return whether parity
+  {
+    RootNbr alpha_simple = n_alpha; // copy to be made simple
+    const WeylWord ww = fixed_conjugate_simple(E.ctxt,alpha_simple);
+    const auto level = level_a(E,repr::Cayley_shift(ic,theta,ww),n_alpha);
+    if (rd.is_simple_root(alpha_simple)) // |fixed_conjugate_simple| succeeded
+      return level%2==0; // parity if |level| is even
+    else
+    {
+      RootNbr alpha_0 = // one of |alpha==alpha_0+alpha_1|
+	rd.permuted_root(rd.simpleRootNbr(rd.find_descent(alpha_simple)),ww);
+
+      if (i_tab.root_involution(theta,alpha_0)==rd.rootMinus(alpha_0))
+	// when |alpha_0| is real for theta, the parity condition is flipped:
+	return level%2!=0; // parity if |level| is odd
+      return level%2==0; // parity if |level| is even
+    }
+  }
+  else // complex
+    return rd.is_negroot(theta_alpha);
+}
+
+weyl::Generator first_descent_among
+  (RankFlags singular_orbits, const ext_gens& orbits, const param& E)
+{ for (auto it=singular_orbits.begin(); it(); ++it)
+    if (is_descent(orbits[*it],E))
+      return *it;
+  return orbits.size(); // no singular descents found
+}
 
 ext_block::ext_block // for external twist; old style blocks
   (const InnerClass& G,
@@ -1880,11 +1959,11 @@ bool ext_block::check(const param_block& block, bool verbose)
       case two_complex_ascent: case two_complex_descent:
       case three_complex_ascent: case three_complex_descent:
 	{ assert(links.size()==1);
-	  BlockElt m=cross(s,n);
-	  BlockElt cz = this->z(m); // corresponding element of block
-	  param F(ctxt,block.x(cz),block.lambda_rho(cz));
-	  assert(same_standard_reps(it->second,F));
-	  if (it->first!=sign_between(it->second,F))
+	  BlockElt m=cross(s,n); // cross neighbour as bare element of |*this|
+	  BlockElt cz = this->z(m); // corresponding element of (parent) |block|
+	  param F(ctxt,block.x(cz),block.lambda_rho(cz)); // default extension
+	  assert(same_standard_reps(it->second,F)); // must lie over same
+	  if (it->first!=sign_between(it->second,F)) // here != means XOR
 	  {
 	    flip_edge(s,n,m);
 	    if (verbose)
@@ -1995,14 +2074,16 @@ bool ext_block::check(const param_block& block, bool verbose)
   return true; // report sucess if we get here
 } // |check|
 
-RankFlags ext_block::singular_orbits (const param_block& parent) const
+RankFlags reduce_to(const ext_gens orbits, RankFlags gen_set)
 { RankFlags result;
-  { auto singular = parent.singular_simple_roots();
-    for (weyl::Generator s=0; s<rank(); ++s)
-      result.set(s,singular[orbit(s).s0]);
-  }
+  for (weyl::Generator s=0; s<orbits.size(); ++s)
+    result.set(s,gen_set[orbits[s].s0]);
   return result;
 }
+
+
+RankFlags ext_block::singular_orbits (const param_block& parent) const
+{ return reduce_to(orbits,parent.singular_simple_roots()); }
 
 weyl::Generator
 ext_block::first_descent_among(RankFlags singular_orbits, BlockElt y) const
