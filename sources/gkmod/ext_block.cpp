@@ -1720,32 +1720,24 @@ ext_block::ext_block // for external twist; old style blocks
   , d_delta(delta)
   , info()
   , data(orbits.size()) // create that many empty vectors
-  , l_start(parent.length(parent.size()-1)+2)
+  , l_start(parent.length(parent.size()-1)+2,0)
 {
   BitMap fixed_points(block.size());
 
-  { // compute |child_nr| and |parent_nr| tables, and the |l_start| vector
-    weyl::Twist twist(orbits);
+ // compute |child_nr| and |parent_nr| tables
+  weyl::Twist twist(orbits);
 
-    if (twisted(kgb,0,delta,twist)==UndefKGB or
-	twisted(dual_kgb,0,delta.transposed(),twist)==UndefKGB)
-      return; // if one or other not delta-stable, leave |size==0| and quit
+  if (twisted(kgb,0,delta,twist)==UndefKGB or
+      twisted(dual_kgb,0,delta.transposed(),twist)==UndefKGB)
+    return; // if one or other not delta-stable, leave |size==0| and quit
 
-    size_t cur_len=0; BlockElt cur=0; // one has |cur==fixed_points.size()|
-    l_start[cur_len]=0;
-    for (BlockElt z=0; z<block.size(); ++z)
-      if (twisted(block,kgb,dual_kgb,z,delta,twist)==z)
-      {
-	fixed_points.insert(z);
-	while (cur_len<parent.length(z)) // for new length level(s) reached
-	  l_start[++cur_len]=cur; // mark element as first of |cur_len|
-	++cur;
-      }
-    assert(cur_len+1<l_start.size());
-    l_start[++cur_len]=parent.size(); // makes |l_start[length(...)+1]| legal
-  }
+  for (BlockElt z=0; z<block.size(); ++z)
+    if (twisted(block,kgb,dual_kgb,z,delta,twist)==z)
+      fixed_points.insert(z);
 
   complete_construction(fixed_points);
+  // FIXME cannot call |check| here, although setting sign flips depends on it
+
 } // |ext_block::ext_block|
 
 ext_block::ext_block // for an external twist
@@ -1759,36 +1751,27 @@ ext_block::ext_block // for an external twist
   , d_delta(delta)
   , info()
   , data(orbits.size()) // create that many empty vectors
-  , l_start(parent.length(parent.size()-1)+2)
+  , l_start(parent.length(parent.size()-1)+2,0)
 {
   BitMap fixed_points(block.size());
 
-  { // compute the delta-fixed points of the block
+  // compute the delta-fixed points of the block
 
-    // the following is NOT |twist(orbits)|, which would be for subsystem
-    weyl::Twist twist(fold_orbits(block.rootDatum(),delta));
+  // the following is NOT |twist(orbits)|, which would be for subsystem
+  weyl::Twist twist(fold_orbits(block.rootDatum(),delta));
 
-    // test if twisting some block element lands in the same block
-    if (twisted(block,kgb,0,delta,twist)==UndefBlock)
-      return; // if block not delta-stable, leave |size==0| and quit
+  // test if twisting some block element lands in the same block
+  if (twisted(block,kgb,0,delta,twist)==UndefBlock)
+    return; // if block not delta-stable, leave |size==0| and quit
 
-    size_t cur_len=0; BlockElt cur=0; // one has |cur==fixed_points.size()|
-    l_start[cur_len]=0;
-    for (BlockElt z=0; z<block.size(); ++z)
-      if (twisted(block,kgb,z,delta,twist)==z)
-      {
-	fixed_points.insert(z);
-	while (cur_len<parent.length(z)) // for new length level(s) reached
-	  l_start[++cur_len]=cur; // mark element as first of |cur_len|
-	++cur;
-      }
-    assert(cur_len+1<l_start.size());
-    l_start[++cur_len]=parent.size(); // makes |l_start[length(...)+1]| legal
-  }
+  for (BlockElt z=0; z<block.size(); ++z)
+    if (twisted(block,kgb,z,delta,twist)==z)
+      fixed_points.insert(z);
 
   complete_construction(fixed_points);
   if (not check(block,verbose)) // this sets the edge signs, not just a check!
     throw std::runtime_error("Failure detected in extended block construction");
+
 } // |ext_block::ext_block|, from a |param_block|
 
 void ext_block::complete_construction(const BitMap& fixed_points)
@@ -1796,12 +1779,16 @@ void ext_block::complete_construction(const BitMap& fixed_points)
   unsigned int folded_rank = orbits.size();
   std::vector<BlockElt> child_nr(parent.size(),UndefBlock);
   std::vector<BlockElt> parent_nr(fixed_points.size());
-  { KGBElt x=0;
+  { BlockElt x=0; unsigned cur_len=0;
     for (auto it=fixed_points.begin(); it(); ++it,++x)
     {
       parent_nr[x]=*it;
       child_nr[*it]=x;
+      while (cur_len<parent.length(*it)) // for new length level(s) reached
+	l_start[++cur_len]=x; // mark |x| as first of length at least |cur_len|
     }
+    assert(cur_len+1<l_start.size());
+    l_start[++cur_len]=parent.size(); // makes |l_start[length(...)+1]| legal
   }
 
   info.reserve(parent_nr.size());  // reserve size of (smaller) extended block
