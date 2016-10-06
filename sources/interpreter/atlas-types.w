@@ -5281,7 +5281,7 @@ void raw_ext_KL_wrapper (expression_base::level l)
     std::vector<int> length_stops(block.length(block.size()-1)+2);
     length_stops[0]=0;
     for (size_t i=1; i<length_stops.size(); ++i)
-      length_stops[i]=block.length_first(i);
+      length_stops[i]=eb.length_first(i);
   @)
     push_value(std::move(M));
     push_value(std::move(polys));

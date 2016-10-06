@@ -1,4 +1,4 @@
-		<basic.at
+<basic.at
 <extended.at
 <extended_misc.at { for |fixed_block| }
 <polynomial.at
@@ -17,7 +17,7 @@ set has_nu0 (Param p) = bool: =nu(p)
 set KL_P_polynomials ([Param] B_fixed,mat delta) = [[poly]]:
   assert( all(for p in B_fixed do is_fixed(delta,p) od)
   	, "Not every parameter is delta-fixed" );
-  let (P,polys,jumps)=raw_ext_KL(B_fixed[0],delta) in
+  let (P,polys,)=raw_ext_KL(B_fixed[0],delta) in
   for row@i in ^P
   do
     for entry@j in row
