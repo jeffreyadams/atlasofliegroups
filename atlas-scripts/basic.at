@@ -808,8 +808,6 @@ set KGB_elt (RootDatum rd, mat theta, ratvec v) = KGBElt:
 set Cartan_class (InnerClass ic, mat theta) = CartanClass:
   Cartan_class(KGB_elt(ic,theta,ratvec:null(rank(ic))))
 
-
-
 set status (vec alpha,KGBElt x) = int: status(root_index(real_form(x),alpha),x)
 
 set cross (vec alpha,KGBElt x) = KGBElt:
@@ -1056,10 +1054,12 @@ set extended_status_texts = [string]:
   ,"3C+","3C-","3Ci","3r","3i","3Cr","3rn","3ic"
   ]
 
-set has_double_extended_Cayley (int n) =
-  if n<5 then n>=3 else n>=16 and n<20 fi { 1r1f,1i2f,2r11,2i12f,2r21f,2i22 }
-
-set print_extended_block (Param p, mat delta) = void:
+set print_extended_block = (Param,mat->):
+  let has_double_Cayley (int n) =
+    if n<5 then n>=3 else n>=16 and n<20 fi { 1r1f,1i2f,2r11,2i12f,2r21f,2i22 }
+  , has_defect(int n) =
+    if n<14 then n>=12 else n>=26 and n<30 fi { 2Ci, 2Cr, 3Ci, 3r, 3i, 3Cr }
+  in (Param p, mat delta) void:
   let (block,types,L0,L1) = extended_block(p,delta) then (l,r)=#types
   then w=width(#block-1)
   , with_sign(int n) = string: if n<0 then "-"+(minus_1-n) else "+"+n fi
@@ -1076,9 +1076,9 @@ set print_extended_block (Param p, mat delta) = void:
   , "]"
   , ## { cross actions }
     for j:r
-    do r_adjust (w+1, int_format(
-       if L0[i,j]=l or has_double_extended_Cayley(types[i,j])
-       then i { self cross when either no Cayleys (nor complex) or 2 of them }
+    do r_adjust (w+1, with_sign(
+       if L0[i,j]=l or has_double_Cayley(types[i,j]) or has_defect(types[i,j])
+       then i { self cross when either 0 or 2 Cayleys or there is a defect }
        elif L1[i,j]=l then L0[i,j] else L1[i,j] { complex resp single Cayley }
        fi))
     od
@@ -1086,10 +1086,11 @@ set print_extended_block (Param p, mat delta) = void:
   , ## { Cayley transforms }
     for j:r
     do c_adjust (2*w+3,
-       if L1[i,j]=l then "." { compact, nonparity or complex: no Cayley }
-       elif has_double_extended_Cayley(types[i,j])
+       if has_double_Cayley(types[i,j])
        then L0[i,j].with_sign+","+L1[i,j].with_sign { double valued Cayley }
-       else L0[i,j].with_sign { single valued Cayley }
+       elif has_defect(types[i,j]) or L1[i,j]<l
+       then L0[i,j].with_sign { defect case or other single valued Cayley }
+       else "." { compact, nonparity or complex: no Cayley }
        fi)
     od
   , "  x=" , #x(q) , ", " , lambda_minus_rho(q)

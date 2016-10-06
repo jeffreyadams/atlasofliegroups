@@ -1,9 +1,6 @@
-/*!
-\file
-\brief Class definitions and function declarations for the RootDatum class.
-*/
 /*
   This is rootdata.h
+   Class definitions and function declarations for the RootDatum class.
 
   Copyright (C) 2004,2005 Fokko du Cloux
   Copyright (C) 2006--2010 Marc van Leeuwen
@@ -72,12 +69,16 @@ unsigned int integrality_rank(const RootDatum& rd, const RatWeight& gamma);
 
 ext_gens fold_orbits (const RootDatum& rd, const WeightInvolution& delta);
 
+// indices of simple corotos that vanish on (infinitesimal character) |gamma|
+RankFlags singular_generators (const RootDatum& rd, const RatWeight& gamma);
+
 } // |namespace rootdata|
 
 /******** type definitions **************************************************/
 
 namespace rootdata {
 
+// RootSystem: an abstract set of roots, with relations, but no coordinates
 
 class RootSystem
 {
@@ -101,7 +102,7 @@ class RootSystem
 
   int_Vector two_rho_in_simple_roots;
 
-//!\brief Root permutations induced by reflections in all positive roots.
+// Root permutations induced by reflections in all positive roots.
   std::vector<Permutation> root_perm;
 
   // internal access methods
@@ -278,8 +279,8 @@ class RootSystem
 
 }; // |class RootSystem|
 
-/*!
-\brief Based root datum for a complex reductive group.
+/*
+	RootDatum:  Based root datum for a complex reductive group.
 
 What we call a root datum in this program is what is usually called a based
 root datum, in other words a fixed choice of positive roots is always assumed.
@@ -305,39 +306,28 @@ class RootDatum
 {
 
  private:
- /*!
-\brief Names describing the  bits of the bitset d_status.
-
-The last enum numFlags is there as a standard programming trick. Its
-value - in this case 2 - is one-past-the-last meaningful bit, for
-use by accessors.
-*/
+  // Names describing (except for the last) the bits of the bitset d_status.
   enum StatusFlagNames { IsAdjoint, IsSimplyConnected, numFlags };
 
 
   typedef BitSet<numFlags> Status;
 
-/*!
-\brief  Rank of the root datum.
-*/
-  size_t d_rank;
+  size_t d_rank; // here rank is that of maximal torus: number of coordinates
 
-  WeightList d_roots; //!< Full list of roots.
-  CoweightList d_coroots; //!< Full list of coroots.
-  WeightList weight_numer; //!< Fundamental weight numerators.
-  CoweightList coweight_numer; //!< Fundamental coweight numerators.
-  CoweightList d_radicalBasis; //!< Basis for orthogonal to coroots.
-  WeightList d_coradicalBasis; //!< Basis for orthogonal to roots.
+  WeightList d_roots; // Full list of roots.
+  CoweightList d_coroots; // Full list of coroots.
+  WeightList weight_numer; // Fundamental weight numerators.
+  CoweightList coweight_numer; // Fundamental coweight numerators.
+  CoweightList d_radicalBasis; // Basis for orthogonal to coroots.
+  WeightList d_coradicalBasis; // Basis for orthogonal to roots.
 
-/*!
-\brief Sum of the positive roots.
-*/
-  Weight d_2rho;
+  Weight d_2rho; // Sum of the positive roots.
+
   Coweight d_dual_2rho;
 
-  int Cartan_denom; //!< Denominator for (co)|weight_numer|
+  int Cartan_denom; // Denominator for (co)|weight_numer|
 
-/*!\brief BitSet recording whether the root datum is adjoint/simply connected.
+/* BitSet recording whether the root datum is adjoint/simply connected.
 
   "Adjoint" here means that the center of the complex group determined by the
   root datum is connected. "Simply connected" means that the derived group of
@@ -461,8 +451,8 @@ use by accessors.
 
 // other accessors
 
-/*!
-\brief Tells whether the rootdatum is the rootdatum of an adjoint group.
+/*
+  Whether the rootdatum is the rootdatum of an adjoint group.
 
   NOTE: we define a reductive group to be adjoint if its center is
   connected.  An equivalent condition is that the derived group
@@ -470,9 +460,8 @@ use by accessors.
 */
   bool isAdjoint() const { return d_status[IsAdjoint]; }
 
-/*!
-\brief Tells whether the rootdatum is the rootdatum of a simply connected
-  group.
+/*
+  Whether the rootdatum is the rootdatum of a simply connected group.
 
   NOTE: this is the dual condition to being adjoint: it means
   that the derived group is simply connected.  An equivalent condition

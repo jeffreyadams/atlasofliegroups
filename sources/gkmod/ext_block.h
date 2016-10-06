@@ -220,7 +220,7 @@ private:
 
 }; // |class ext_block|
 
-
+RankFlags reduce_to(const ext_gens orbits, RankFlags gen_set);
 
 // Extended parameters
 
@@ -231,7 +231,7 @@ class context // holds values that remain fixed across extended block
   RatWeight d_gamma; // representative of infinitesimal character
   RatCoweight d_g; // chosen lift of the common square for the square class
   RootDatum integr_datum; // intgrality datum
-  SubSystem sub;
+  SubSystem sub; // embeds |integr_datum| into parent root datum
 
  public:
   context
@@ -303,6 +303,9 @@ public:
   const WeightInvolution& theta () const
     { return ctxt.innerClass().matrix(tw); }
 
+  KGBElt x() const; // reconstruct |x| component
+  repr::StandardRepr restrict() const // underlying unexteded representation
+    { return ctxt.rc().sr_gamma(x(),lambda_rho(),ctxt.gamma()); }
 }; // |param|
 
 /* Try to conjugate |alpha| by product of folded-generators for the (full)
@@ -315,8 +318,6 @@ public:
  */
 WeylWord fixed_conjugate_simple (const context& c, RootNbr& alpha);
 
-KGBElt x(const param& E); // reconstruct |E|
-
 // whether |E| and |F| lie over equivalent |StandrdRepr| values
 bool same_standard_reps (const param& E, const param& F);
 // whether |E| and |F| give same sign, assuming |same_standard_reps(E,F)|
@@ -324,9 +325,22 @@ bool same_sign (const param& E, const param& F);
 inline int sign_between (const param& E, const param& F)
   { return same_sign(E,F) ? 1 : -1; }
 
+inline bool is_default (const param& E)
+{ return same_sign(E,param(E.ctxt,E.x(),E.lambda_rho())); }
+
+
 // find out type of extended parameters, and push its neighbours onto |links|
-DescValue type (const param& E, const ext_gen& p,
-		containers::sl_list<param>& links);
+DescValue star (const param& E, const ext_gen& p,
+		containers::sl_list<std::pair<int,param> >& links);
+
+bool is_descent (const ext_gen& kappa, const param& E);
+weyl::Generator first_descent_among
+  (RankFlags singular_orbits, const ext_gens& orbits, const param& E);
+
+// expand paramter into a signed sum of extended nonzero final parameters
+containers::sl_list<std::pair<StandardRepr,bool> > finalise
+  (const repr::Rep_context& rc,
+   const StandardRepr& sr, const WeightInvolution& delta);
 
 // check braid relation at |x|; also mark all involved elements in |cluster|
 bool check_braid
