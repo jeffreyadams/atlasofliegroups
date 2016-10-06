@@ -1812,7 +1812,6 @@ void ext_block::complete_construction(const BitMap& fixed_points)
   {
     BlockElt z=parent_nr[n];
     info.push_back(elt_info(z));
-    info.back().length = parent.length(z);
     for (weyl::Generator oi=0; oi<orbits.size(); ++oi) // |oi|: orbit index
     {
       const weyl::Generator s = orbits[oi].s0, t=orbits[oi].s1;
@@ -1867,6 +1866,22 @@ void ext_block::complete_construction(const BitMap& fixed_points)
     }
   } // |for(n)|
 } // |ext_block::complete_construction|
+
+// we compute $\max\{l\mid l_start[l]\leq n\}$, i.e. |upper_bound(,,n)-1|
+unsigned ext_block::length(BlockElt n) const
+{
+  unsigned min=0, max=l_start.size()-1; // the answer will lie in $[min,max)$
+  while (max>min+1) // body strictly reduces |max-min| in all cases
+  {
+    unsigned l=(min+max)/2;
+    if (l_start[l]>n)
+      max=l; // preserves invariant |l_start[max]>n|
+    else
+      min=l; // preserves invariant |l_start[min]<=n|
+  }
+  assert(min+1==max);
+  return min;
+}
 
 BlockElt ext_block::cross(weyl::Generator s, BlockElt n) const
 {
