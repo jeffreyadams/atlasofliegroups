@@ -898,9 +898,9 @@ void ext_KL_matrix (const StandardRepr p, const int_Matrix& delta,
 
   // flip signs for odd length distance, since that is what deformation wants
   for (BlockElt i=0; i<P_mat.numRows(); ++i)
-  { auto parity = B.length(compressed[i])%2;
+  { auto parity = eblock.length(compressed[i])%2;
     for (BlockElt j=0; j<P_mat.numColumns(); ++j)
-      if (B.length(compressed[j])%2!=parity)
+      if (eblock.length(compressed[j])%2!=parity)
 	P_mat(i,j) *= -1;
   }
 
