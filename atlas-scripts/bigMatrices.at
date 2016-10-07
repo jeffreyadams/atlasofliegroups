@@ -1,0 +1,107 @@
+<extended_misc.at { for twist@(mat,Param) }
+<polynomial.at { for type poly }
+<dual.at { for KL_P_polynomials@[Param] }
+<ext_deform.at { for KL_P_polynomials@([Param],mat) }
+
+set indices_subset ([Param] subset,  [Param] whole) = [int]:
+  let i=0, n=#whole in
+  for p in subset do while i<n and whole[i]!=p do i+:=1 od; i od
+
+{extract one index from each delta-orbit}
+set delta_orbit_reps([Param] B,mat delta)=[int]:
+let rv=[int]:[]  in
+for p@i in B do
+ let q=twist(delta,p) in
+  if p=q then rv#:=i else
+   let j=find(B,q)  in
+    assert(j!=-1, "Block not fixed by delta");
+    if i<j then rv#:=i fi fi od;rv
+
+{complete_indices(B,delta)=[(0,1),(0,-1),...,(k,0),...]
+ B[i] delta-fixed contributes (i,1),(i,-1)
+ each non-fixed pair (i,j_ contributes (i,0))
+}
+set complete_indices([Param] B,mat delta)=[(int,int)]:
+let delta_orbit_reps=delta_orbit_reps(B,delta) then
+rv=[] in
+for i in delta_orbit_reps do let p=B[i] in if is_fixed(delta,p) then rv#:=(i,1);rv#:=(i,-1) else
+   rv#:=(i,0) fi od;rv
+
+set my_extended_block(Param p,mat delta)=([Param],[int]):
+let B=block_of(p) then
+(eb,,,)=extended_block(p,delta) in (eb,indices_subset(eb,B))
+
+{B=[p_0,...,p_n] array of parameters
+ B^delta=[p_{i_0},...,p_{i_m}]  delta-fixed parameters
+ I=[0,1,...,n], I^delta=[i_0,...,i_m] indices of delta-fixed parameters
+ f:I^delta->I: B[f[i]]=B^delta[i]
+ g:I -> I^delta\cup -1: B^delta[g[i]]=B[i] if i\in I^delta, or -1 otherwise
+example:
+ B=[p_0,...,p_5]
+ suppose delta interchanges p_3<->p_4, fixes the rest
+ B_delta=[p_0,p_1,p_2,p_5]
+ I=[0,1,2,3,4,5]
+ I^delta=[0,1,2,5]
+ f=[0,1,2,5]         B[f[3]]=B^delta[3]=p_5
+ g=[0,1,2,-1,-1,3]   B^delta[g[5]=B[3]=p_5
+ complete_indices=[(0,1),(0,-1),(2,1),(2,-1),(3,1),(3,-1),(4,0),(5,1),(5,-1)]
+ delta_action=[0,1,2,4,3,5]  so delta_action[i]=j means delta:B[i]=B[j]
+ value: [I^delta,g,complete_indices,delta-action]
+tabulate_indices (B,delta)  (this is GL(3,C))
+Value: ([0,1,2,5],[0,1,2,-1,-1,3],[(0,1),(0,-1),(1,1),(1,-1),(2,1),(2,-1),(3,0),(5,1),(5,-1)],[0,1,2,4,3,5])
+}
+set tabulate_indices([Param] B,mat delta)=
+let n=#B then
+(eB,I_delta)=my_extended_block(B[0],delta) then
+complete_indices=complete_indices(B,delta) then
+delta_action=for p in B do find(B,twist(delta,p)) od then
+g=for i:n do find(I_delta,i) od in
+(I_delta,g,complete_indices,delta_action)
+
+set one=vec:[1]
+
+set poly_add(poly f,poly g)=flex_add(f,g)
+set poly_sub(poly f,poly g)=flex_sub(f,g)
+
+set big_KL_P_polynomials([Param] B,mat delta)=[[vec]]:
+let (I_delta,g,complete_indices,delta_action)=tabulate_indices(B,delta) then
+eB=for i in I_delta do B[i] od then
+P=KL_P_polynomials(B) then
+P_delta=KL_P_polynomials(eB,delta) then
+n=#complete_indices then
+rv=zero_poly_matrix(n) in
+for a:n do
+   let (i,epsilon_i)=complete_indices[a] in
+ for b:n-a from a do
+   let (j,epsilon_j)=complete_indices[b] in
+{    let ()=prints("a=",a," b=",b," i=",i," e_i=",epsilon_i," j=",j," e_j=",epsilon_j) in}
+    if a=b then  rv:=update_matrix_entry(rv,a,b,one) {diagonal entries} else
+    if (epsilon_i*epsilon_j=1) {both entries plus or both minus: P+P^delta} then
+     let x=g[i] then
+         y=g[j] in
+         rv:=update_matrix_entry(rv,a,b,divide_by(2,poly_add(P[i][j],P_delta[x][y])))
+    elif (epsilon_i*epsilon_j=-1) then {(+,-) or (-,+): P-P^delta}
+     let x=g[i] then
+         y=g[j] in
+         rv:=update_matrix_entry(rv,a,b,divide_by(2,poly_sub(P[i][j],P_delta[x][y])))
+    elif abs(epsilon_i)=1 and epsilon_j=0 {(\pm,ind): P} then
+      rv:=update_matrix_entry(rv,a,b,P[i][j])
+    elif epsilon_i=0 and abs(epsilon_j)=1  {(ind,\pm): P} then
+      rv:=update_matrix_entry(rv,a,b,P[i][j])
+    elif epsilon_i=0 and epsilon_j=0 then {(ind,ind): P(gamma,mu)+P(gamma,mu^delta)}
+      rv:=update_matrix_entry(rv,a,b,P[i][j]+P[i][delta_action[j]])
+    fi fi od od;rv
+
+set big_KL_P_signed_polynomials([Param] B,mat delta)=[[vec]]:
+let (I_delta,g,complete_indices,delta_action)=tabulate_indices(B,delta) then
+P=big_KL_P_polynomials(B,delta) then
+lengths=for i:#g do length(B[i]) od then
+n=#complete_indices in
+for a:n do for b:n do
+let (i,)=complete_indices[a] then
+(j,)=complete_indices[b] in
+P:=update_matrix_entry(P,a,b,P[a][b]*(-1)^(lengths[i]+lengths[j])) od od;P
+
+
+set big_KL_Q_polynomials([Param] B,mat delta)=[[vec]]:
+upper_unitriangular_inverse (big_KL_P_signed_polynomials(B,delta))
