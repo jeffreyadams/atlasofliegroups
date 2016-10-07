@@ -39,21 +39,21 @@ set KL_P_signed_polynomials ([Param] B_fixed,mat delta) = [[poly]]:
   od
 
 set KL_Q_polynomials ([Param] B_fixed, mat delta) = [[poly]]:
-  upper_unitriangluar_inverse (KL_P_signed_polynomials(B_fixed,delta))
+  upper_unitriangular_inverse (KL_P_signed_polynomials(B_fixed,delta))
 
 set deform (Param p, mat delta) = ParamPol:
 ( assert(is_fixed(delta,p),"parameter is not delta-fixed");
   let (B_f,index) = fixed_block(delta,p) { hopefully the same block as KL_P }
   , l_index=length(p) { use built-in function |length| for Param |p| }
-  then P_polys=KL_P_polynomials(B_f,delta)
-  then Q_polys=KL_Q_polynomials(B_f,delta)
+  then P_signed_polys=KL_P_signed_polynomials(B_f,delta)
+  then Q_polys=upper_unitriangular_inverse(P_signed_polys)
   in
   if ed_verbose then prints("index=",index) fi;
   let outer_sum = null_module(real_form(p))
   + for p_i@i in B_f[:index] { traverse |B_f| up to the index of |p| }
     do
       if ed_verbose then prints("outer loop i=",i) fi;
-      let l_i=length(p_i)
+      let l_i=length(p_i), P_signed_i=P_signed_polys[i]
       , onr=(-1)^rat_as_int((orientation_nr(p)-orientation_nr(p_i))/2)
       , inner_sum=0 in
       if ed_verbose then prints("onr=", onr)  fi;
@@ -66,18 +66,23 @@ set deform (Param p, mat delta) = ParamPol:
         fi;
         if is_odd(l_index-l_j)
         then
-          let P_ij=poly:P_polys[i][j]
-          , Q_jindex=poly:Q_polys[j][index]
+          let P_ij= poly: P_signed_i[j]
+          , Q_jindex= poly: Q_polys[j][index]
 	  then term= eval(P_ij,-1) * eval(Q_jindex,-1)
           in
           if ed_verbose then prints("   inner term: ", term) fi
-	; inner_sum+:=term; if ed_verbose then prints(" inner_sum is now:", inner_sum) fi
+	; inner_sum+:=term
+        ; if ed_verbose then prints(" inner_sum is now:", inner_sum) fi
         fi
       od
     ; let contrib = (Split,Param):
         (onr*inner_sum {coefficient}, B_f[i] {monomial})
       in
-      if ed_verbose then prints("onr=",onr,new_line,"inner_sum=",inner_sum,new_line,"contribution with i=", i, ":", contrib) fi
+      if ed_verbose
+      then prints("onr=",onr,new_line
+		 ,"inner_sum=",inner_sum,new_line
+		 ,"contribution with i=", i, ":", contrib)
+      fi
     ; contrib
     od
     in (1-s)*outer_sum

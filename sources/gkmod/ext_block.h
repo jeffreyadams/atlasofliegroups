@@ -106,9 +106,8 @@ class ext_block
   struct elt_info // per block element information
   {
     BlockElt z; // index into parent |Block_base| structure
-    unsigned short length; // length for extended group
     RankFlags flips[2];
-    elt_info(BlockElt zz): z(zz),length(0),flips{{},{}} {}
+    elt_info(BlockElt zz): z(zz),flips{{},{}} {}
 
   // methods that will allow building a hashtable with |info| as pool
     typedef std::vector<elt_info> Pooltype;
@@ -176,8 +175,8 @@ class ext_block
   const DescValue descent_type(weyl::Generator s, BlockElt n) const
     { assert(n<size()); assert(s<rank()); return data[s][n].type; }
 
-  size_t length(BlockElt n) const { return info[n].length; }
-  size_t l(BlockElt y, BlockElt x) const { return length(y)-length(x); }
+  unsigned length(BlockElt n) const;
+  unsigned l(BlockElt y, BlockElt x) const { return length(y)-length(x); }
   BlockElt length_first(size_t l) const { return l_start[l]; }
 
   // the following three function return ascents or descents as appropriate

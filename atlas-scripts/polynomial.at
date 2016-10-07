@@ -137,7 +137,7 @@ set =(poly_mat A,poly_mat B) = bool:
 set is_zero(poly_mat M)= bool:
   all(#M, (int i): let r=M[i] in all(#r, (int j): =#r[j]) )
 
-set upper_unitriangluar_inverse (poly_mat P) = poly_mat:
+set upper_unitriangular_inverse (poly_mat P) = poly_mat:
   let n=#P { number of rows in matrix }, dummy_row=zero_poly_row(0)
   then Q= for :n do dummy_row od { prepare |n| rows, but leave them empty now }
   in { solve equation $P*Q=I$ for $Q$, proceeding from bottom to top }
@@ -147,7 +147,7 @@ set upper_unitriangluar_inverse (poly_mat P) = poly_mat:
     (zero_poly_row(i) # poly_1) { beginning or row |Q[i]| is somewhat boring }
     ## { concatenate with more interesting newly computed part of |Q[i]| }
       for j: n-i-1 from i+1 { left to right, but computations are independent }
-            do let sum=poly_0 in for k: j-i from i+1 do sum -:= Pi[k] * Q[k][j] od
+      do let sum=poly_0 in for k: j-i from i+1 do sum -:= Pi[k] * Q[k][j] od
       ; sum    { contribute $Q_{i,j} = - \sum_{k=i+1}^j P_{i,k}Q_{k,j}$ }
       od
   ~od
