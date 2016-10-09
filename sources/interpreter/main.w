@@ -521,6 +521,8 @@ loop upon an error, as this circumstance is rather hard to detect: any error
 has already been reported on |std::cerr|, and leaves a situation not very
 different from successfully completing reading the file.
 
+@h "parsetree.h" // for |destroy_expr|
+
 @< Silently read in the files from |prelude_filenames| @>=
 for (auto it=prelude_filenames.begin(); it!=prelude_filenames.end(); ++it )
 { std::ostringstream log_stream; output_stream = &log_stream;

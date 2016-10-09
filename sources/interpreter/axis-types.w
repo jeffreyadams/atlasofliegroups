@@ -108,6 +108,8 @@ of a quite different nature than that of the main mathematical library.
 @< Includes needed in \.{axis-types.h} @>=
 #include <memory> // for |std::unique_ptr|, |std::shared_ptr|
 #include "../Atlas.h" // for utilities (like |sl_list|); must come first
+#include "buffer.h" // for |id_type|
+
 
 @* Types to represent types.
 %
@@ -1334,7 +1336,9 @@ value as usual.
 std::ostream& operator<< (std::ostream& out, const value_base& v)
 {@; v.print(out); return out; }
 
-@ Here we define a first type derived from |value_base|, namely the type for
+@*1 Row-of values.
+%
+Here we define a first type derived from |value_base|, namely the type for
 ``row of'' types. They are implemented using vectors from the standard
 template library.
 
@@ -1397,7 +1401,9 @@ void row_value::print(std::ostream& out) const
 }
 
 
-@ Since we use dynamically typed values internally, we can collect the
+@*1 Tuple values.
+%
+Since we use dynamically typed values internally, we can collect the
 components of a tuple in a vector without problem. In fact we could reuse the
 type |row_value| to hold the components of a tuple, if it weren't for the fact
 that it would then print with brackets. Therefore we trivially derive a new
@@ -1481,6 +1487,50 @@ void wrap_tuple(size_t n)
     result->val[n] =pop_value();
   push_value(std::move(result));
 }
+
+@*1 Union values.
+%
+Formally discriminated unions are in a sense dual to Cartesian products, but
+the concrete implementation is fairly different. We must just store an
+indication (a tag) of the variant of the union that is actually taken in the
+value at hand, and then the component value itself. Since it usually takes
+only a few bits to represent the tag, and pointers (especially $64$-bit ones)
+have some room to spare, it is tempting to somehow cram the tag bits into a
+pointer value and avoid an extra level of dereference. However if we want
+orthogonality of the language (the component can be any value, including a
+union) there is just no way to elegantly do this, so we store a structure with
+a tag and a pointer. We take advantage of padding space this would probably
+leave in the structure, and also add the name of the injector function that
+was used to produce this value, which will be used for printing purposes only.
+
+@< Type definitions @>=
+class union_value : public value_base
+{ shared_value comp;
+  unsigned short tag;
+  id_type injector_name;
+public:
+  union_value(unsigned short tag,shared_value&& v,id_type name) :
+     comp(std::move(v)),tag(tag),injector_name(name) @+{}
+  union_value* clone() const @+{@; return new union_value(*this); }
+  void print(std::ostream& out) const;
+  static const char* name() @+{@; return "union value"; }
+private:
+  union_value(const union_value& v) = default;
+ // copy constructor; used by |clone|
+};
+@)
+typedef std::unique_ptr<union_value> union_ptr;
+typedef std::shared_ptr<const union_value> shared_union;
+typedef std::shared_ptr<union_value> own_union;
+
+@ The |print| method for unions will print the value, followed by a dot and
+the injector name.
+
+@h "lexer.h" // for |main_hash_table|
+@< Function definitions @>=
+void union_value::print(std::ostream& out) const
+{@; out << *comp << '.' << main_hash_table->name_of(injector_name); }
+
 
 @*1 Representation of an evaluation context.
 %

@@ -146,13 +146,6 @@ identifier or of files names, which we lift out of that class by using a
 @< Includes needed... @>=
 #include "buffer.h" // for |Hash_table|
 
-@~Then here is how we identify an applied identifier. Since this |typedef| is
-written to \.{parse\_types.h}, all compilation units that include that file can
-also use it.
-
-@< Type declarations needed in definition of |struct expr@;| @>=
-typedef Hash_table::id_type id_type;
-
 @ In order to be able to track in which file a given user-defined function was
 defined, we shall include a record including the location of definition into
 the runtime values for such functions.

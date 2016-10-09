@@ -153,8 +153,9 @@ table, and the above code needs some types defined elsewhere.
 
 @< Includes needed in the header file @>=
 #include <map>
-#include "parsetree.h" // for |id_type|
+#include "buffer.h" // for |id_type|
 #include "axis-types.h" // for |shared_value|
+#include "parse_types.h" // for |expr_p|
 
 @~Overloading is not done in this table, so a simple associative table with
 the identifier as key is used.
@@ -1018,6 +1019,8 @@ catch (const std::exception& err)
 {@; handle(err,pat,phase,overload); }
 
 @ Here is the common part for various |catch| clauses.
+
+@h "parsetree.h" // for output of |id_pat| value
 
 @< Define auxiliary functions for |do_global_set| @>=
 void handle

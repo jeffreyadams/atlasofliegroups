@@ -37,8 +37,8 @@ module have been relegated to a separate module \.{global.w}.
 
 @( axis.h @>=
 
-#ifndef EVALUATOR_H
-#define EVALUATOR_H
+#ifndef AXIS_H
+#define AXIS_H
 
 #include "axis-types.h"
 
@@ -1909,6 +1909,8 @@ function called (both obtained from |call|), and a source location for the
 definition of the called function (obtained from |f|) in case it is
 user-defined; when the called function was built in we just report that.
 
+@h "parsetree.h" // for output of |source_location| value
+
 @< Local fun... @>=
 void extend_message
   (error_base& e,const call_base* call, const shared_function& f,
@@ -2720,8 +2722,7 @@ struct closure_value : public function_base
   virtual void apply(expression_base::level l) const;
   virtual expression_base::level argument_policy() const @+
   {@; return expression_base::single_value; }
-  virtual void report_origin(std::ostream& o) const @+
-  {@; o << "defined " << p->loc; }
+  virtual void report_origin(std::ostream& o) const;
   virtual expression_ptr build_call
     (const shared_function& owner,const std::string& name,
      expression_ptr&& arg, const source_location& loc) const;
@@ -2745,6 +2746,9 @@ be printed. But it's not done yet.
 void closure_value::print(std::ostream& out) const
 {@; out << "Function defined " << p->loc << std::endl << *p;
 }
+
+void closure_value::report_origin(std::ostream& o) const
+ @+ {@; o << "defined " << p->loc; }
 
 @ Evaluating a $\lambda$-expression just forms a closure using the current
 execution context, and returns that.
