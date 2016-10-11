@@ -154,11 +154,7 @@ class ext_block
 // manipulators
   void flip_edge(weyl::Generator s, BlockElt x, BlockElt y);
 
-  bool // return new value; true means edge was flipped to minus
-    toggle_edge(BlockElt x,BlockElt y, bool verbose=true);
-  bool set_edge(BlockElt x,BlockElt y);    // always set
   unsigned int list_edges();  // returns number of toggled pairs
-  void report_2Ci_toggles() const;
 
 // accessors
 

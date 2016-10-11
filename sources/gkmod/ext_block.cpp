@@ -210,57 +210,6 @@ unsigned int ext_block::list_edges()
   return count;
 }
 
-// calls to the following method should really use |flip_edge| instead
-bool ext_block::toggle_edge(BlockElt x,BlockElt y, bool verbose)
-{
-  x = element(x); y=element(y);
-  assert (x!=UndefBlock and y!=UndefBlock);
-
-  bool found=false, bit;
-  for (weyl::Generator kappa=0; kappa<rank(); ++kappa)
-    for (unsigned i=0; i<2; ++i) // try up to 2 links for |x|
-    { auto yy =
-	i==0 ? data[kappa][x].links.first : data[kappa][x].links.second;
-      if (yy==y)
-      { found=true;
-	auto &f = info[x].flips[i];
-	f.flip(kappa);
-	bit = f.test(kappa);
-	if (verbose)
-	  std::cerr << (f.test(kappa) ? "Set" : "Unset") << " edge ("
-		    << z(x) << ',' << z(y) << ") kappa=" << kappa+1
-		    << std::endl;
-	info[y].flips[data[kappa][y].links.first==x ? 0 : 1].flip(kappa);
-      }
-    }
-  assert(found); ndebug_use(found);
-  return bit;
-}
-
-// same as toggle_edge, but always set the edge; again don't use this one
-bool ext_block::set_edge(BlockElt x,BlockElt y)
-{
-  x = element(x); y=element(y);
-  assert (x!=UndefBlock and y!=UndefBlock);
-  bool found=false, bit;
-  for (weyl::Generator kappa=0; kappa<rank(); ++kappa)
-    for (unsigned i=0; i<2; ++i) // try up to 2 links for |x|
-    { auto yy =
-	i==0 ? data[kappa][x].links.first : data[kappa][x].links.second;
-      if (yy==y)
-      { found=true;
-	auto &f = info[x].flips[i];
-	bit = not f.test(kappa);
-	f.set(kappa);
-	std::cerr << "set edge (" << z(x) << ',' << z(y)
-		  << ") kappa=" << kappa+1 << std::endl;
-	info[y].flips[data[kappa][y].links.first==x ? 0 : 1].set(kappa);
-      }
-    }
-  assert(found); ndebug_use(found);
-  return bit;
-}
-
 // compute |bgv-(bgv+t_bits)*(1+theta)/2 == (bgv-t_bits-(bgv+t_bits)*theta)/2|
 Coweight ell (const KGB& kgb, KGBElt x)
 { auto diff= (kgb.base_grading_vector()-kgb.torus_factor(x)).normalize();
@@ -452,22 +401,6 @@ int z_quot (const param& E, const param& F)
 
 int z_quot (const param& E, const param& F, int t_mu)
 { return z_quot(E,F)*arithmetic::exp_minus_1(t_mu); }
-
-void ext_block::report_2Ci_toggles() const
-{
-  std::cout << "all (2Ci,2Cr) pairs and their flipped status" << std::endl;
-  for (weyl::Generator s=0; s<rank(); ++s)
-    for (BlockElt x=0; x<size(); ++x)
-      if (descent_type(s,x)==atlas::ext_block::two_semi_imaginary)
-      {
-	auto y=Cayley(s,x);
-	std::cout << s+1 << " " << z(x) << " " << z(y);
-	if (info[x].flips[0].test(s))
-	  std::cout << " flipped";
-	std::cout << std::endl;
-      }
-
-}
 
 // this implements (comparison using) the formula from Proposition 16 in
 // "Parameters for twisted repressentations" (with $\delta-1 = -(1-\delta)$
