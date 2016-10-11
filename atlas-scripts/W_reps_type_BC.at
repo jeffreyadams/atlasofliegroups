@@ -1,0 +1,342 @@
+<basic.at
+<sort.at
+<nilpotent.at
+<complex_nilpotent_orbits.at
+<partitions.at
+{in simple groups of type B or C}
+{
+three kinds of objects
+[int] P: permutation for nilpotent orbit of type B_n or C_n
+         (odd/even rows have even multiplicity)
+[[int] f,[int] g]: symbol as defined by Lusztig
+([int] p,[int] q):
+  pair of partitions, |p|+|q|=n, corresponding to a Weyl group representation
+note that symbol is of type [[int]] (always with two parts)
+Wrep is of type ([int],[int])
+symbol:
+0 \le f_1 < f_2 < ... < f_a
+0 \le g_1 < f_2 < ....< g_b
+equivalence: [f_1,.., f_a] -> [0,f_1+1,..., f_a+1], same on g
+every symbol is equivalent to a unique one with a=b+1 and at most one 0
+}
+
+: Orbit=[int]   {partition for type C, all odd rows have even multiplicity}
+: Symbol=[[int]]  {must have 2 parts: [f,g], other conditions above}
+: Wrep  =([int],[int])  {pair of partitions; |p|+|q|=n}
+
+{use equivalence relation on symbols to get one with at most one 0}
+set normalize([int] v)=[int]:
+let rec_fun f([int] v)=[int]:
+  if #v=0 then v elif v[0]>0 then v else f(for k in delete(v,0) do k-1 od) fi
+in f(v)
+
+{ other direction: replace [a1,,,.ak] with [0,1,...,r-1,a1+r,...,ak+r] }
+set expand([int] v, int r)=[int]: #r ## for c in v do c+r od
+
+{normalize symbol: |f|=|g|+1 and at most 1 zero}
+set normalize(Symbol S)=Symbol:
+let f=S[0], g=S[1] in
+let f=normalize(f), g=normalize(g) in
+if (#f=#g+1) then [f,g] elif
+(#f>#g+1) then  [f,expand(g,#f-#g-1)]
+else [expand(f,#g-#f+1),g] fi
+
+{if S=(f,g) is a symbol for C_n then rank(f)=rank(g)=n, independent
+of equivalence classes of f and g
+rank(f)=sum f_i -n(n-1)/2
+}
+set rank([int] f)=int:let n=#f in sum(f)-n*(n-1)\2
+set rank(Symbol S)=int:rank(S[0])
+
+{maps between Orbits, Symbols and Wreps}
+{Orbit -> Symbol <--> Wrep}
+
+{Orbit -> Symbol (injective map)}
+set symbol_B(Orbit P)=Symbol:
+assert(is_valid("B",P),"Not an orbit in type B");
+let e=for i:#P do P[#P-1-i]+i od then
+f=[int]:[],g=[int]:[]  in
+for j in e do if is_even(j) then f#:=j\2 else g#:=j\2 fi od;[f,g]
+
+{Orbit -> Symbol (injective map)}
+{add 0 to make an even number of parts}
+set symbol_C(Orbit P)=Symbol:
+let ()=if is_even(#P) then P#:=0 fi then
+e=for i:#P do P[#P-1-i]+i od then
+f=[int]:[],g=[int]:[]  in
+for j in e do if is_even(j) then f#:=j\2 else g#:=j\2 fi od;[f,g]
+
+{Symbol to Wrep (bijection)}
+set wrep(Symbol S)=Wrep:
+let f=S[0], g=S[1] in
+let p=[int]:[], q=[int]:[] in let
+()=for i:#f do if f[i]-i>0 then p#:=f[i]-i fi od then
+()=for i:#g do if g[i]-i>0 then q#:=g[i]-i fi od in
+(reverse(p),reverse(q))
+
+{Orbit -> Wrep}
+set wrep(Orbit P)=Wrep:wrep(symbol(P))
+
+{Symbol -> Orbit}
+{set orbit_B(Symbol S)=Orbit:
+not sure about this
+}
+
+{Symbol -> Orbit}
+set orbit_C(Symbol S)=Orbit:
+let S=normalize(S) then
+f=S[0],g=S[1] then
+F=for c in f do 2*c od then
+G=for c in g do 2*c+1 od then
+F_G=sort(F##G)  then
+H=F_G - for i:#F_G  do i od in let K=reverse(H) then
+rv=[int]:[] in  for c in K do if c>0 then rv#:=c fi od;rv
+
+{Wrep to Symbol}
+set symbol(Wrep sigma)=Symbol:
+let (p,q)=sigma then
+()=if #p<#q+1 then p##:=null(#q+1-#p)
+elif #q+1<#p then q##:=null(#p-#q-1) fi
+in [sort(p+for i:#p ~ do i od),sort(q+for j:#q ~ do j od)]
+
+{Wrep -> Orbit}
+{not sure about this yet
+set orbit_(Wrep sigma)=Orbit:orbit_C(symbol(sigma))
+}
+set orbit_C(Wrep sigma)=Orbit:orbit_C(symbol(sigma))
+
+{equality of Wreps}
+set =(Wrep  a,Wrep b)=bool: let (a1,a2)=a then (b1,b2)=b in a1=b1 and a2=b2
+
+{equality of symbols (not equivalence)}
+set symbols_equal(Symbol a,Symbol b)=bool:a[0]=b[0] and a[1]=b[1]
+
+set dimension(Wrep sigma)=int:
+let (p,q)=sigma in
+ dim_rep(p)*dim_rep(q)* { binom(size(p),size(q)) }
+   rat_as_int(fac(size(p)+size(q))/(fac(size(p))*fac(size(q))))
+
+set all_reps_BC(int n)=
+let rv=[Wrep]:[] in
+for r:n+1 do
+ for p in partitions(r) do
+  for q in partitions(n-r) do
+   rv#:=(p,q) od od od;rv
+
+{a (normalized) symbol is special if f_0<=g_0<= f_1...}
+set is_special_C(Symbol S)=bool:
+let f=S[0], g=S[1] in
+all(for i:#g do f[i]<=g[i] and g[i]<=f[i+1] od)
+
+set is_special_C(Orbit P)=bool:is_special_C(symbol(P))
+set is_special_C(Wrep sigma)=bool:is_special_C(symbol(sigma))
+
+set special_C_star(Symbol S)=string:if is_special_C(S) then "*" else "" fi
+set special_C_star(Orbit P)=string:if is_special_C(P) then "*" else "" fi
+set special_C_star(Wrep sigma)=string:if is_special_C(sigma) then "*" else "" fi
+
+{this is not correct, the map orbits to symbolsl is not surjective}
+set symbols(RootDatum rd)=[Symbol]:  
+    {see nilpotent.at for get_type}
+    assert(#Lie_type(rd)=1,"Only valid for simple root systems");
+    let type=get_type(rd) in 
+    assert(type=1 or type=2,"Only valid in types B/C");
+    if type=1 then for P in all_reps_BC(rank(rd)) do symbol(P) od 
+    else for P in all_reps_BC(rank(rd)) do symbol(P) od  fi
+
+{this is not correct, the map orbits to wreps is not surjective}
+set wreps(RootDatum rd)=[Wrep]:for P in nilpotent_orbits(rd) do wrep(P) od
+
+{given a cell C, get list of tau invariants from it
+ then construct the Levi set of C:
+ ( [P_0,...,P_r], [Q_0,...,Q_s] )
+ P_i: partition of n
+ Q_i: labelled partition of n, i.e. partition of n with one term specified
+ Q_i=([b0,...,bs],c) where c=bj for some j (not necessarily unique)
+P_i=[a0,...,ar] -> Levi factor of type GL(a1)x...xGL(ar), with Weyl group
+ S_{a0}x...xS_{ar}  (a1+...ar=n)
+Q_i=([b0,...,bs],c) -> Levi factor GL(a1)x...xSp(2bj)x...xGL(bs)
+ with Weyl group S_{b0}x...x W(C_{bj}) x ... S_{bs} (b1+...+bs=n)
+
+roots are labelled 0,...,n-1
+If tau=[c_0,...,c_k] occurs in C, then this contributes to the Levi set of C:
+c_k<n-1: type A Levi factor
+c_k=n-1: type AC Levi factor
+
+the Levi factor is obtained by grouping strings of adjacent c_j
+each string of length t not including n gives GL(t+1), S_{t+1} factor in P
+a string of length t including n gives Sp(2t), W(C_t)
+
+for example in C_8 (roots labelled 0-7)
+tau=[0,2,3,4] -> P=[4,2,1,1] (always add 1's at the end to add up to n)
+tau=[1,2,3,5,6,7] -> Q=([4,3,1],3) -> GL(4)xSp(6)xGL(1)
+}
+
+
+{given v=[a_0,...,a_n] increasing, returns (j,[a_{j},...,a_n])
+where [a_0,...,a_{j-1}] is the longest string (of length j)
+  increasing by 1 at each step
+}
+set cut_off_string([int] v)=(int,[int]):
+let n=#v in let i=last(#v, (int i)bool:v[i]=v[0]+i) in (i+1,v[i+1:n])
+
+
+{given v=[a_0,...,a_n] increasing, returns (k,[a_0,...,a_{n-k}]) where
+[a_{n-k+1},..,a_n] is the longest string (of length k)
+ increasing by 1 at each step
+}
+set cut_off_last_string([int] v)=(int,[int]):
+let n=#v in let k=last(#v, (int k)bool: v[n-1-k]=v[n-1]-k) in (k+1,v[0:n-k-1])
+
+{recursive function: given v=[a1,...,am] (increasing) return
+[c1,...,cr]: length of strings in v
+for example [0,1,4,5,7,9,10,11,12] -> [4,2,2,1]
+}
+set extract_strings([int] v)=[int]:let
+rec_fun f([int] w,[int] strings)=[int]:if #w=0 then strings else
+let (j,u)=cut_off_string(w) in f(u,strings#j) fi in reverse(sort(f(v,[])))
+
+{A Levi factor(tau invariant): strings, padded with ones to make rank=n}
+set A_Levi_factor(int rank, [int] tau)=[int]:
+let tau=sort(tau) in
+assert(tau[#tau-1] < rank,"last entry of tau is great than rank-1");
+assert(tau[#tau-1] != rank-1,"Levi factor is of type AC not A");
+let strings= for a in extract_strings(tau) do a+1 od
+in strings##(for i:rank-sum(strings) do 1 od)
+
+{AC Levi factor(tau invariant): same as (A_Levi_factor,c) where c gives the size of
+the type C factor
+}
+set AC_Levi_factor(int rank, [int] tau)=(int,[int]):
+assert(tau[#tau-1] = rank-1,"Levi factor is type A not AC");
+let (c,tau)=cut_off_last_string(tau) in
+let strings=extract_strings(tau) in
+for i:#strings-1 do strings[i]:=strings[i]+1 od;
+(c,strings## ones(rank-sum(strings)-c))
+
+{maximal (by inclusion)}
+set is_max([[int]] taus,[int] tau)=bool:
+all(for j:#taus do not tau<taus[j] od)
+
+{maximal tau sets only, non multiplicity}
+set max_only([[int]] taus)=[[int]]:
+let rv=[[int]]:[] in
+for tau in taus do if is_max(taus,tau) then
+{add it unless it is there already}
+if (find(rv,tau)) =-1 then rv#:=tau fi fi od;rv
+
+set Levi_signature(int rank,[[int]] tau_invariants)=([[int]],[(int,[int])]):
+{ if #tau_invariants=0 or #tau_invariants[0]=0
+  then ([[rank]],[(int,[int])]:[]) else }
+if #tau_invariants=0 then ([[int]]:[],[(int,[int])]:[])
+elif #tau_invariants[0]=0 then ([[int]]:[[]],[(int,[int])]:[]) else
+let
+tau_invariants=max_only(tau_invariants) then
+A_Levis=[[int]]:[] then
+AC_Levis=[(int,[int])]:[] in
+for tau in tau_invariants do
+let tau=sort(tau) in
+if tau[#tau-1]=rank-1 then
+AC_Levis#:=AC_Levi_factor(rank,tau) else
+A_Levis#:=A_Levi_factor(rank,tau) fi od;(A_Levis,AC_Levis) fi
+
+set my_max = ([int]->int): max(0) { take 0 for empty list }
+
+set max_first_entry([[int]] v)=int:
+  if #v=1 and #v[0]=0 then 0 else my_max(for i:#v do v[i][0] od) fi
+set keep_by_first_entry([[int]] v,int k)=[[int]]:
+  if #v=1 and  #v[0]=0 then v
+  else let rv=[[int]]:[] in for w in v do if w[0]=k then rv#:=w fi od; rv
+  fi
+set keep_by_first_entry_and_truncate([[int]] v,int k)=[[int]]:
+  let w=keep_by_first_entry(v,k) in
+  let rv=[[int]]:[] in for u in w do if #u>1 then rv#:=delete(u,0) fi od;rv
+
+{ set max_first_entry([(int,[int])] v)=int:
+    max(for i:#v do let (,w)=v[i] in w[0] od)
+}
+
+set max_tagged_entry([(int,[int])] v)=int:
+  my_max(for i:#v do let (c,)=v[i] in c od)
+set keep_by_first_entry([(int,[int])] v,int k)=[(int,[int])]:
+  let rv=[(int,[int])]:[] in
+  for (c,w) in v do if w[0]=k then rv#:=(c,w) fi od;rv
+set keep_by_first_entry([(int,[int])] v,int k)=[(int,[int])]:
+  let rv=[(int,[int])]:[] in
+  for (c,w) in v do if w[0]=k then rv#:=(c,w) fi od;rv
+
+set keep_by_first_entry_and_truncate([(int,[int])] v,int k)=[(int,[int])]:
+  let w=keep_by_first_entry(v,k) in
+  let rv=[(int,[int])]:[] in for (c,u) in w do
+  if c>0 and #u>1 then rv#:=(c,delete(u,0)) fi od;rv
+
+{Heart of the matter, implements the Noel-Jackson algorithm
+given a set of tau-invariants, gives a collection of Levi factors;
+find the unique W-rep containing the sign representation of precisely
+these Levis
+Note: tau_invariants=[[int]]:[] (in the inductive step signals done)
+is different from [[int]]:[[]] (gives the trivial rep, principal orbit
+}
+set wrep(int rank,[[int]] tau_invariants)=Wrep:
+  let rec_fun f
+    (int rank,[[int]] A_Levis,[(int,[int])] AC_Levis, [int] p,[int] q) =
+    ([int],[int]):
+if #A_Levis=0 and #AC_Levis=0 then
+let ()=prints("Done with p=",p, "q=",q) in
+assert(sum(p)+sum(q)=rank,"Error: |p|+|q| != rank");
+(transpose(q),transpose(p))
+elif #A_Levis=1 and #A_Levis[0]=0 and #AC_Levis=0 then ([rank],[]) else let
+()=prints();prints("p=",p," q=",q) then
+()=prints("A_Levis: ", A_Levis, " AC_Levis: ", AC_Levis) then
+{algorithm:
+ x+y=a
+   x=b => y=a-b
+ add x to p, y to q
+ keep only the Levis with first term a}
+a=max_first_entry(A_Levis) then
+b=max_tagged_entry(AC_Levis) then
+{()=prints("a= ", a, " b= ", b) then}
+x=b,y=a-b in  {add x to p, y to q, keep only Levis with first term a}
+{let ()=prints("x= ", x, " y=", y) in}
+if x>0 then p:=p#x fi;
+if y>0 then q:=q#y fi;
+f(rank,keep_by_first_entry_and_truncate(A_Levis,a)
+     ,keep_by_first_entry_and_truncate(AC_Levis,a),p,q)  fi in
+let (A_Levis,AC_Levis)=Levi_signature(rank,tau_invariants) in
+  f(rank,A_Levis,AC_Levis,[],[])
+
+set wrep(Block B,[int] cell)=Wrep:
+wrep(rank(real_form(B)), tau_invariants_of_cell_raw(B,cell))
+
+set wreps(Block B,[[int]] cells)=[Wrep]:for cell in cells do wrep(B,cell) od
+
+set print_wrep_cpt(Block B, [int] cell)=
+let rep=wrep(B,cell) in
+prints(cell, "              ", Aq_reps(B,cell), "             ", rep
+      ,special_C_star(rep), "        ", orbit(rep))
+
+set print_wrep(Block B, [int] cell)=
+let rep=wrep(B,cell) then
+taus=tau_invariants_of_cell_raw(B,cell) then
+max_taus=max_only(taus) in
+prints("cell: ",cell, "  (",#cell,")");
+let Aq=Aq_reps(B,cell) in
+ if #Aq=0 then prints("Not an Aq cell") else
+ prints("Aq reps: ", Aq) fi;
+prints("tau invs.: ",taus);
+prints("max taus: ",max_taus);
+prints("special rep: ", rep, special_C_star(rep));
+prints("orbit: ", orbit(rep))
+
+set print_wreps_cpt(Block B,[[int]] cells)=void:
+prints("cell             Aq's             special_rep        orbit");
+for cell in cells do print_wrep_cpt(B,cell) od
+
+set print_wreps(Block B,[[int]] cells)=void:
+for i:#cells do  prints("Cell ",i);print_wrep(B,cells[i]);prints() od
+
+set wreps(Block B,[[int]] cells)=[([int],[int])]:for C in cells do wrep(B,C) od
+
+
+
+
