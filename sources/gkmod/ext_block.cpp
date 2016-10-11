@@ -1958,7 +1958,7 @@ bool ext_block::check(const param_block& block, bool verbose)
       case three_real_nonparity: case three_imaginary_compact:
 	assert(links.empty()); break;
       case one_complex_ascent: case one_complex_descent:
-      case two_complex_ascent: case two_complex_descent:
+	//     case two_complex_ascent: case two_complex_descent:
       case three_complex_ascent: case three_complex_descent:
 	{ assert(links.size()==1);
 	  BlockElt m=cross(s,n); // cross neighbour as bare element of |*this|
@@ -1973,14 +1973,61 @@ bool ext_block::check(const param_block& block, bool verbose)
                         << " from " << z << " to " << cz << '.' << std::endl;
 	  }
 	} break;
+      case two_complex_ascent: case two_complex_descent:
+	{ assert(links.size()==1);
+	  BlockElt m=cross(s,n); // cross neighbour as bare element of |*this|
+	  BlockElt cz = this->z(m); // corresponding element of (parent) |block|
+	  param F(ctxt,block.x(cz),block.lambda_rho(cz)); // default extension
+	  assert(same_standard_reps(it->second,F)); // must lie over same
+	  flip_edge(s,n,m); // we are CHANGING all 2C links
+	  // The 2i** links needed to be changed, and doing that
+	  // breaks braid relations unless something else is changed;
+	  // simplest was 2C, which plausibly seemed wrong for the
+	  // same reason as 2i**
+	  if (it->first!=sign_between(it->second,F)) // here != means XOR
+	  {
+	    flip_edge(s,n,m);
+	    if (verbose)
+	      std::cout << "Flip at cross link " << unsigned{s}
+                        << " from " << z << " to " << cz << '.' << std::endl;
+	  }
+	} break;
       case one_imaginary_single: case one_real_single:
+	//      case two_imaginary_single_single: case two_real_single_single:
+	{ assert(links.size()==2);
+	  BlockElt m=some_scent(s,n); // the unique (inverse) Cayley
+	  BlockElt Cz = this->z(m); // corresponding element of block
+	  param F(ctxt,block.x(Cz),block.lambda_rho(Cz));
+	  assert(same_standard_reps(it->second,F));
+	    if (it->first!=sign_between(it->second,F))
+	  {
+	    flip_edge(s,n,m);
+	    if (verbose)
+	      std::cout << "Flip at Cayley link " << unsigned{s}
+	                << " from " << z << " to " << Cz << '.' << std::endl;
+	  }
+	  ++it;
+	  m=cross(s,n); BlockElt cz = this->z(m);
+	  param Fc(ctxt,block.x(cz),block.lambda_rho(cz));
+	  assert(same_standard_reps(it->second,Fc));
+	  if (it->first!=sign_between(it->second,Fc))
+	  {
+	    flip_edge(s,n,m);
+	    if (verbose)
+	      std::cout << "Flip at cross link " << unsigned{s}
+	                << " from " << z << " to " << cz << '.' << std::endl;
+	  }
+	} break;
+	//      case one_imaginary_single: case one_real_single:
       case two_imaginary_single_single: case two_real_single_single:
 	{ assert(links.size()==2);
 	  BlockElt m=some_scent(s,n); // the unique (inverse) Cayley
 	  BlockElt Cz = this->z(m); // corresponding element of block
 	  param F(ctxt,block.x(Cz),block.lambda_rho(Cz));
 	  assert(same_standard_reps(it->second,F));
-	  if (it->first!=sign_between(it->second,F))
+	    flip_edge(s,n,m); // we are CHANGING all 2i links
+	    // the twisted errata paper got all these signs backwards
+	    if (it->first!=sign_between(it->second,F))
 	  {
 	    flip_edge(s,n,m);
 	    if (verbose)
@@ -2000,6 +2047,24 @@ bool ext_block::check(const param_block& block, bool verbose)
 	  }
 	} break;
       case two_semi_imaginary: case two_semi_real:
+	//      case three_semi_imaginary: case three_real_semi:
+	//      case three_imaginary_semi: case three_semi_real:
+	{ assert(links.size()==1);
+	  BlockElt m=some_scent(s,n); // the unique (inverse) Cayley
+       	  // flip_edge(s,n,m); // uncommenting CHANGES all 2Cir links
+	  // but these flips seem correct without the CHANGES
+	  BlockElt Cz = this->z(m); // corresponding element of block
+	  param F(ctxt,block.x(Cz),block.lambda_rho(Cz));
+	  assert(same_standard_reps(it->second,F));
+	  if (it->first!=sign_between(it->second,F))
+	  {
+	    flip_edge(s,n,m);
+	    if (verbose)
+	      std::cout << "Flip at Cayley link " << unsigned{s}
+		      << " from " << z << " to " << Cz << '.' << std::endl;
+	  }
+	} break;
+	//      case two_semi_imaginary: case two_semi_real:
       case three_semi_imaginary: case three_real_semi:
       case three_imaginary_semi: case three_semi_real:
 	{ assert(links.size()==1);
@@ -2014,9 +2079,9 @@ bool ext_block::check(const param_block& block, bool verbose)
 	      std::cout << "Flip at Cayley link " << unsigned{s}
 		      << " from " << z << " to " << Cz << '.' << std::endl;
 	  }
-	} break;
+	} break;	
       case one_imaginary_pair_fixed: case one_real_pair_fixed:
-      case two_imaginary_double_double: case two_real_double_double:
+	//     case two_imaginary_double_double: case two_real_double_double:
 	{ assert(links.size()==2);
 	  BlockEltPair m=Cayleys(s,n);
 	  BlockElt Cz0 = this->z(m.first); BlockElt Cz1= this->z(m.second);
@@ -2043,9 +2108,42 @@ bool ext_block::check(const param_block& block, bool verbose)
 			<< " from " << z << " to " << Cz1 << '.' << std::endl;
 	  }
 	} break;
+       case two_imaginary_double_double: case two_real_double_double:
+	{ assert(links.size()==2);
+	  BlockEltPair m=Cayleys(s,n);
+	  flip_edge(s,n,m.first); // we are CHANGING all 2i links
+	  flip_edge(s,n,m.second); // we are CHANGING all 2i links
+	  // the twisted errata paper got all these signs backwards
+	  BlockElt Cz0 = this->z(m.first); BlockElt Cz1= this->z(m.second);
+	  param F0(ctxt,block.x(Cz0),block.lambda_rho(Cz0));
+	  param F1(ctxt,block.x(Cz1),block.lambda_rho(Cz1));
+	  bool straight=same_standard_reps(it->second,F0);
+          const auto& node0 = straight ? *it : *std::next(it);
+          const auto& node1 = straight ? *std::next(it) : *it;
+	  if (not straight)
+	    assert(same_standard_reps(node0.second,F0));
+	  assert(same_standard_reps(node1.second,F1));
+	  if (node0.first!=sign_between(node0.second,F0))
+	  {
+	    flip_edge(s,n,m.first);
+	    if (verbose)
+	      std::cout << "Flip at Cayley link " << unsigned{s}
+			<< " from " << z << " to " << Cz0 << '.' << std::endl;
+	  }
+	  if (node1.first!=sign_between(node1.second,F1))
+	  {
+	    flip_edge(s,n,m.second);
+	    if (verbose)
+	      std::cout << "Flip at Cayley link " << unsigned{s}
+			<< " from " << z << " to " << Cz1 << '.' << std::endl;
+	  }
+	} break;	
       case two_imaginary_single_double_fixed: case two_real_single_double_fixed:
 	{ assert(links.size()==2);
 	  BlockEltPair m=Cayleys(s,n);
+	  flip_edge(s,n,m.first); // we are CHANGING all 2i links	  
+	  flip_edge(s,n,m.second); // we are CHANGING all 2i links
+	  // the twisted errata paper got all these signs backwards
 	  BlockElt Cz0 = this->z(m.first); BlockElt Cz1= this->z(m.second);
 	  param F0(ctxt,block.x(Cz0),block.lambda_rho(Cz0));
 	  param F1(ctxt,block.x(Cz1),block.lambda_rho(Cz1));
