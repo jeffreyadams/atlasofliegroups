@@ -50,12 +50,14 @@
 sort the list by weakly increasing value of f  .}
 set sort_by((KGBElt -> int) f)= ([KGBElt] v) [KGBElt]:
   for index in inv_standardisation(for x in v do f(x) od) do v[index] od
+
 {. sort a list of KGB elements by their index numbers, in increasing order  .}
 set sort = ([KGBElt] -> [KGBElt]): sort_by((KGBElt x) int: #x)
 
 {. choose from a list of KGB elements the one (only unique if all associated
 to the same RealForm) with the smallest index number .}
 set min ([KGBElt] list)=sort(list)[0]
+
 {. choose from a list of KGB elements one with greatest index number  .}
 set max ([KGBElt] list)=sort(list)~[0]
 
@@ -64,8 +66,10 @@ set KGP_elt (KGPElt pair) = KGPElt: pair { identity; prefer cast KGPElt:(S,x) }
 
 {. the list S of simple roots of a KGP element .}
 set S (KGPElt(S,)) = [int]: S
+
 {. the root datum of the RealForm G of a KGP element .}
 set root_datum (KGPElt(,x)) = RootDatum: root_datum(x)
+
 {. the RealForm G of a KGP element .}
 set real_form  (KGPElt(,x)) = RealForm:  real_form(x)
 
@@ -108,6 +112,7 @@ set maximal ([int] S, KGBElt x) = KGBElt:
 
 {. the representative of a KGP element with maximal x .}
 set canonical_representative (KGPElt y) = KGPElt: (S(y),maximal(y))
+
 {. (unique) maximal KGB element representing a KGP element .}
 set x = (KGPElt->KGBElt): maximal@KGPElt
 
