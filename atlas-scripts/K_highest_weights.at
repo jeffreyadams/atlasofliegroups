@@ -237,7 +237,7 @@ set find_nci_root (KGBElt x,ratvec tau) = int:
             scr[i]*tau<0 and
             is_complex(i,x) and {<alpha,theta(alpha^vee)>=-1}
             scr[i]*involution(x)*sr[i] = -1 and
-            is_noncompact(x)( (1+involution(x))*sr[i] ) { why is that a root? }
+            is_noncompact(x)( (1+involution(x))*sr[i] ) { this is a root because alpha and theta(alpha) generate a subsystem of type A_2, so their sum is a root }
          )
   ; prints("j=",j);assert(>=j,"error in find_nci_root")
   ; root_index(rd,sr[j]+involution(x)*sr[j])
@@ -262,6 +262,7 @@ given (x,mu) -> mu+2rho_K(x) ->
 set project_on_dominant_cone (KGBElt x, ratvec mu) = (KGBElt,ratvec,ratvec):
 {let ()=prints("project_on_dominant_cone with x=", x, " mu=", mu) in}
 let rd=root_datum(x) then
+{make mu zero on the split part of h}
 mu=(1+involution(x))*mu/2 then
 (mu_1,w)=make_dominant(rd,mu) then
 x_1=cross(inverse(w),x) then
@@ -358,7 +359,7 @@ set all_G_spherical_same_differential (Param p) = [K_Type]:
   all_G_spherical_same_differential(K_type(p*0))
 
 { see KHatHowe, end of Section 13
-  mu-> phi=mu_2rho_c-rho-lambda
+  mu-> phi=lambda-mu_2-2rho_c+rho
     (=lambda-mu_3_orig from project_on_dominant_cone)
  write phi is a non-negative rational combination of simple roots
  the simple roots with strictly positive coefficient give the Levi factor L,
