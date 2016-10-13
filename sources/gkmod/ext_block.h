@@ -101,6 +101,8 @@ BlockElt twisted (const Block& block,
 
 typedef Polynomial<int> Pol;
 
+typedef bool (*extended_predicate)(DescValue);
+
 class ext_block
 {
   struct elt_info // per block element information
@@ -217,6 +219,7 @@ class ext_block
 private:
   void complete_construction(const BitMap& fixed_points);
   bool check(const param_block& block, bool verbose=false);
+  void flip_edges(extended_predicate match);
 
 }; // |class ext_block|
 

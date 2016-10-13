@@ -916,7 +916,7 @@ void test_f() // trial of twisted KLV computation
 }
 
 
-// Check for nasty endgame cases in block
+// Check braid relations extended block
 int test_braid(const ext_block::ext_block& eblock)
 {
   std::cout << "testing braids" << std::endl;
