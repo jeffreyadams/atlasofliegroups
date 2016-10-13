@@ -6,8 +6,8 @@
   quotient of KGB) such that (roughly) KGP(S) <-> $K\G/P_S$.
 
   More precisely, for any $x\in$ KGB and $p(\xi)=x$,
-  KGP(S) is canonically in bijection with $K_\xi\G/P_S$; i.e.,
-  $K_\xi$ conjugacy classes of parabolics of type S.
+  KGP(S) is canonically in bijection with $K_{\xi}\G/P_S$; i.e.,
+  $K_{\xi}$ conjugacy classes of parabolics of type S.
 
   K orbits on $G/P_S$, equivalently K-conjugacy classes of parabolics of type S:
   Given a RealForm and a subset S of the simple roots,
@@ -41,7 +41,7 @@
   S lists indices of a subset of the simple roots
   (S,x)=(S,y) if x is S-equivalent to y, see below
   Associated to (S,x) is a canonical K-conjugacy class of parabolics of type S
-  More precisely, for each \xi, a K_\xi-conjugacy class of parabolics of type S
+  More precisely, for each \xi, a K_{\xi}-conjugacy class of parabolics of type S
 }
 : KGPElt    = ([int], KGBElt)
 : Parabolic = ([int], KGBElt)  { synonym }
