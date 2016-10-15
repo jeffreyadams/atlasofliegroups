@@ -908,9 +908,15 @@ void ext_KL_matrix (const StandardRepr p, const int_Matrix& delta,
   lengths = int_Vector(0); lengths.reserve(size);
 
   const auto gamma = B.gamma();
+#ifndef incompletecpp11
   for (auto ez : compressed)
   {
-    auto z = eblock.z(ez);
+   auto z = eblock.z(ez);
+ #else
+  for (auto it=compressed.begin(); it!=compressed.end(); ++it)
+  {
+    auto z= eblock.z(*it);
+#endif
     block_list.push_back(rc.sr_gamma(B.x(z),B.lambda_rho(z),gamma));
     lengths.push_back(B.length(z));
   }

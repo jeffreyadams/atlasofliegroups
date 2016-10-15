@@ -107,7 +107,12 @@ class ext_block
   {
     BlockElt z; // index into parent |Block_base| structure
     RankFlags flips[2];
+#ifndef incompletecpp11
     elt_info(BlockElt zz): z(zz),flips{{},{}} {}
+#else
+  elt_info(BlockElt zz): z(zz),flips() {}
+#endif
+
 
   // methods that will allow building a hashtable with |info| as pool
     typedef std::vector<elt_info> Pooltype;

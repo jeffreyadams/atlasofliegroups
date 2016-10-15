@@ -2431,6 +2431,12 @@ struct balance_error : public expr_error
 { containers::sl_list<type_expr> variants;
   balance_error(const expr& e)
   : expr_error(e,"No common type found"), variants() @+{}
+#ifdef incompletecpp11
+  balance_error(const balance_error&)=@[delete@];
+  balance_error(balance_error&& o) @|
+  : expr_error(std::move(o)),variants(std::move(o.variants)) @+{}
+  ~balance_error() throw() @+{}
+#endif
 };
 
 @ Here is another special purpose error type, throwing of which does not

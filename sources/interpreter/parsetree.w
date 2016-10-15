@@ -2378,7 +2378,7 @@ struct assignment_node
 #ifdef incompletecpp11
   assignment_node(const assignment_node& x) = @[delete@];
   assignment_node(assignment_node&& x)
-@/: lhs(x.lhs)
+@/: lhs(std::move(x.lhs))
   , rhs(std::move(x.rhs))
   @+{}
 #endif

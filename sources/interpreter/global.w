@@ -2217,7 +2217,7 @@ void concatenate_strings_wrapper(expression_base::level l)
     s+=(*it)->size();
   std::string result(s,char()); auto dst=result.begin();
   for (auto it=p.cbegin(); it!=p.cend(); ++it)
-    dst=std::copy((*it)->cbegin(),(*it)->cend(),dst);
+    dst=std::copy((*it)->begin(),(*it)->end(),dst);
   assert(dst==result.end());
   push_value(std::make_shared<string_value>(std::move(result)));
 }

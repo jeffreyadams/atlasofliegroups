@@ -4933,10 +4933,10 @@ place) specifically for this purpose.
 
   if (f.flags.test(1)) // whether reversed assembly of return value
     loop.reset(new @| counted_for_expression<6>
-      (-1,std::move(call),nullptr,std::move(body)));
+      (-1,std::move(call),expression_ptr(nullptr),std::move(body)));
   else
     loop.reset(new @| counted_for_expression<4>
-      (-1,std::move(call),nullptr,std::move(body)));
+      (-1,std::move(call),expression_ptr(nullptr),std::move(body)));
 }
 
 @ Type-checking counted |for| loops is rather like that of other |for| loops,
@@ -4948,7 +4948,7 @@ case cfor_expr:
 { const cfor_node& c=*e.cfor_variant;
   expression_ptr count_expr = convert_expr(c.count,as_lvalue(int_type.copy()));
   expression_ptr bound_expr = is_empty(c.bound)
-    ? nullptr
+    ? expression_ptr(nullptr)
     : convert_expr(c.bound,as_lvalue(int_type.copy())) ;
 @)
   type_expr body_type;
