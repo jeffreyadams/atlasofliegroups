@@ -1787,8 +1787,8 @@ void ext_block::complete_construction(const BitMap& fixed_points)
       while (cur_len<parent.length(*it)) // for new length level(s) reached
 	l_start[++cur_len]=x; // mark |x| as first of length at least |cur_len|
     }
-    assert(cur_len+1<l_start.size());
-    l_start[++cur_len]=parent.size(); // makes |l_start[length(...)+1]| legal
+    while (++cur_len<l_start.size())
+      l_start[cur_len]=fixed_points.size(); // allow |l_start[length(...)+1]|
   }
 
   info.reserve(parent_nr.size());  // reserve size of (smaller) extended block

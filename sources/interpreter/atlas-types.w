@@ -4623,8 +4623,7 @@ void module_coefficient::evaluate(level l) const
     throw runtime_error @|
       ("Real form mismatch when subscripting ParamPol value");
   test_standard(*p,"In subscription of ParamPol value");
-  test_nonzero_final(*p,"In subscription of ParamPol value");
-@/// it is OK to do those tests before |make_dominant|
+     // it is OK to do this test before |make_dominant|
   StandardRepr sr = p->val;
   p->rc().make_dominant(sr);
   if (l!=expression_base::no_value)
