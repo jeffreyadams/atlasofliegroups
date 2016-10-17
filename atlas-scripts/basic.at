@@ -46,6 +46,15 @@ set first ([(->bool)] p) = int:
 set last ([(->bool)] p) = int: { this is somewhat more efficient than first }
   let i=#p-1 in while >=i and not p[i]() do i-:=1 od; i
 
+{ binary search first |i| in [low,high) with |pred(i)|, or |high| if none }
+{ of course |pred| is assumed monotonic here: $pred(i)\implies pred(i+1)$ }
+set binary_search_first ((int->bool)pred, int low, int high) = int:
+  while low<high
+  do let mid=(low+high)\2 in if pred(mid) then high:=mid else low:=mid+1 fi
+  od; low
+
+set from_stops ([int] stops) = (int->int):
+  stops:=stops[1:]; (int k): binary_search_first((int i):stops[i]>k,0,#stops)
 
 
 {				Integers				}
