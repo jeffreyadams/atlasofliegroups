@@ -211,8 +211,9 @@ set AC_Levi_factor(int rank, [int] tau)=(int,[int]):
 assert(tau[#tau-1] = rank-1,"Levi factor is type A not AC");
 let (c,tau)=cut_off_last_string(tau) in
 let strings=extract_strings(tau) in
-for i:#strings-1 do strings[i]:=strings[i]+1 od;
-(c,strings## ones(rank-sum(strings)-c))
+for i:#strings do strings[i]:=strings[i]+1 od;
+(c,c#strings## ones(rank-sum(strings)-c
+))
 
 {maximal (by inclusion)}
 set is_max([[int]] taus,[int] tau)=bool:
@@ -281,6 +282,7 @@ set wrep(int rank,[[int]] tau_invariants)=Wrep:
   let rec_fun f
     (int rank,[[int]] A_Levis,[(int,[int])] AC_Levis, [int] p,[int] q) =
     ([int],[int]):
+let ()=prints("rank=", rank, new_line, "A_Levis=", A_Levis, new_line, "AC_Levis=", AC_Levis, new_line , "p=", p, " q=", q) in
 if #A_Levis=0 and #AC_Levis=0 then
 let ()=prints("Done with p=",p, "q=",q) in
 assert(sum(p)+sum(q)=rank,"Error: |p|+|q| != rank");
@@ -293,7 +295,7 @@ elif #A_Levis=1 and #A_Levis[0]=0 and #AC_Levis=0 then ([rank],[]) else let
    x=b => y=a-b
  add x to p, y to q
  keep only the Levis with first term a}
-a=max_first_entry(A_Levis) then
+a=max_first_entry(A_Levis) ,
 b=max_tagged_entry(AC_Levis) then
 {()=prints("a= ", a, " b= ", b) then}
 x=b,y=a-b in  {add x to p, y to q, keep only Levis with first term a}
