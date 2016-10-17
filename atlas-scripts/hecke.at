@@ -377,9 +377,9 @@ set * = convolve@(vec,vec)
   of extended parameters {E_i=E(delta,gamma,x_i,g,y_i)}, assuming pair=(x,y)
   occurs in basis matrix of polynomials, see polynomials.at
 }
-set hecke_row (
-    int j, mat delta, ratvec gamma, ratvec g, KGB_pair pair, [KGB_pair] basis
-  ) = [poly]:
+set hecke_row = (int,mat,ratvec,ratvec,KGB_pair,[KGB_pair]->[poly]):
+  let q = poly:[0,1], q2=poly:[0,0,1] in
+(int j,mat delta,ratvec gamma,ratvec g,KGB_pair pair,[KGB_pair] basis) [poly]:
 begin
   let i=index(pair,basis), n=#basis in
   let R=zero_poly_row(n), (x,y)=pair in
@@ -568,7 +568,7 @@ set hecke_matrix (
 }
 set quadratic (poly_mat M, int length, bool show) = bool:
 begin
-  let value=(M+poly_1)*(M-q^length) in
+  let value=(M+poly_1)*(M-{q^length*identity:}(poly:null(length)#1)) in
   if show
   then prints("M="); printPolyMatrix(M); prints(); printPolyMatrix(value)
   fi

@@ -19,7 +19,6 @@ forget *@(vec,vec)
 
 { for convenience declare some constants, the ! makes changes to these illegal }
 set !poly_0 = poly:[], !poly_1 = poly:[1], !poly_2 = poly: [2]
-set !q = poly: [0,1], !q2 = poly: [0,0,1]
 
 set + = flex_add@(poly,poly)
 set - = flex_sub@(poly,poly)
