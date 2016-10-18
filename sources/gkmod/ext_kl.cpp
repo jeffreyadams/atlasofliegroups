@@ -868,7 +868,7 @@ void ext_KL_matrix (const StandardRepr p, const int_Matrix& delta,
     }
 
   P_mat = int_Matrix(size);
-  for (BlockElt x=0; x<entry_element; ++x) // |entry_element==size-1|
+  for (BlockElt x=0; x<size; ++x) // could stop at |size-1|
     for (BlockElt y=x+1; y<size; ++y)
     { auto pair= twisted_KLV.KL_pol_index(x,y);
       P_mat(x,y) = // |pol_value| at index of |it|, negated if |pair.second|
