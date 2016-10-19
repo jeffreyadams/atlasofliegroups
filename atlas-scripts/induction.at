@@ -5,7 +5,6 @@
 <coherent.at
 <synthetic.at {for unnormalized_torus_factor}
 <K_parameters.at
-<rho_shifts.at
 
 set verbose=false
 
@@ -40,6 +39,22 @@ set inverse_embed_KGB (KGBElt x_G,RealForm M) = KGBElt:
 
 
 {--------------------- real parabolic induction -------------------}
+
+{. Given an involution theta and a root datum, return the set S of complex root\
+s containing the
+  first positive representative of each quadruple (\pm alpha,\pm theta(alpha))
+.}
+set makeS (mat theta,RootDatum rd) = mat:
+  columns_with((int j,vec alpha):posroot_index(rd,theta*alpha)>j,posroots(rd))
+{. As previous function, with argument a KGB element x determining the involuti\
+on and root datum .}
+set makeS (KGBElt x) = mat: makeS(involution(x),root_datum(x))
+
+{. Half sum of roots in chosen set S of complex roots, described above .}
+set rho_S ((mat,RootDatum)pair) = ratvec: sum(makeS(pair))/2
+{. As previous function, with argument KGB element x. .}
+set rho_S (KGBElt x)            = ratvec: sum(makeS(x))/2
+
 
 { parameters for real Levi L -> parameters for G
   p_L=(x_L,lambda,nu) ->
