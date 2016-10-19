@@ -1004,9 +1004,10 @@ void Rep_table::add_block(ext_block::ext_block& block,
     auto y = *it;
     auto y_index = hash.find(sr(parent,block.z(y)));
     assert (y_index!=hash.empty); // since we looked up everything above
-    if (y_index>=old_size)
-    { SR_poly& dest = twisted_KLV_list[y_index];
-      dest = SR_poly(sr(parent,block.z(y)),repr_less()); // coefficient 1
+    assert (y_index<twisted_KLV_list.size());
+    SR_poly& dest = twisted_KLV_list[y_index];
+    if (dest.empty()) // this means the entry was never defined
+    { dest = SR_poly(sr(parent,block.z(y)),repr_less()); // coefficient 1
       unsigned int parity = block.length(y)%2;
       for (auto x_it=survivors.begin(); x_it!=it; ++x_it) // upper part
       {
@@ -1031,7 +1032,9 @@ SR_poly Rep_table::twisted_KL_column_at_s(StandardRepr z)
   }
   make_dominant(z);
   unsigned long hash_index=hash.find(z);
-  if (hash_index==hash.empty) // previously unknown parameter
+  if (hash_index==hash.empty // previously unknown parameter
+      or hash_index>=twisted_KLV_list.size() // block known but not extended
+      or twisted_KLV_list[hash_index].empty()) // same, but skipped over
   {
     BlockElt entry; // dummy needed to ensure full block is generated
     param_block block(*this,z,entry); // which this constructor does
@@ -1040,8 +1043,10 @@ SR_poly Rep_table::twisted_KL_column_at_s(StandardRepr z)
 
     add_block(eblock,block);
 
-    hash_index=hash.find(z);
-    assert(hash_index!=hash.empty);
+    if (hash_index==hash.empty) // then reset |hash_index| to now known value
+    { hash_index=hash.find(z);
+      assert(hash_index!=hash.empty);
+    }
   }
 
   return twisted_KLV_list[hash_index];
