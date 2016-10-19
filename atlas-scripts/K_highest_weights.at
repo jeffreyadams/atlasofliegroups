@@ -1,5 +1,4 @@
 {K_highest_weights.at}
-<rho_shifts.at
 <W_K.at
 <thetastable.at
 <LKT.at
@@ -248,6 +247,20 @@ set find_nci_root (KGBElt x,ratvec tau) = int:
  mu\in X^*, viewed modulo (1-delta)X^*
 in (X^*)^delta project it to X^*(T_K0) where T_K0=identity component of H^delta}
 {(x,mu) equivalent to (wx,w\mu) so WLOG mu is G-dominant}
+
+{ sum of the roots of K as an element of (X^*)^delta\otimes Q
+  (it can be half-integral)
+  x is assumed to be in the distinguished fiber, defining K
+  in particular alpha complex posroot implies theta(alpha) is a posroot too
+  tworho_K(x)\in X^* and tworho_K_fixed(x)\in 1/2(X^*)^delta map
+  to same element 2*rho_K(x) in X^*(T_{K_0})
+}
+set tworho_K_fixed (KGBElt x) = ratvec:
+( if not in_distinguished_fiber(x)
+  then prints("Warning: x is not in distinguished fiber") fi
+; let G=real_form(x) in sum(compact_posroots(x)) + sum(complex_posroots(x))/2
+)
+
 
 {This is the Vogan algorithm, version in khatHowe Section 13,
 which is a slight modification of BGB Proposition 5.3.3
