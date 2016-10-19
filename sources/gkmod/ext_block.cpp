@@ -2077,7 +2077,10 @@ containers::simple_list<BlockElt> // returns list of elements selected
       if (is_like_compact(type))
 	continue; // no descents, |y| represents zero; nothing to do for |y|
 
-      C c (orbit(s).length()%2==0 ? 1 : -1); // length change factor
+      // define sign |c| indicating length difference parity
+      C c (orbit(s).length()%2==0 ? 1 : -1); // length diff usually that of |s|
+      if (has_defect(type)) // but correct for defect cases where it is shorter
+	c = -c;
       if (has_double_image(type)) // 1r1f, 2r11
       { auto pair = Cayleys(s,y);
 	M.rowOperation(pair.first,y,c*epsilon(s,pair.first,y));
