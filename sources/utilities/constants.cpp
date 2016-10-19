@@ -44,7 +44,7 @@ namespace atlas {
 
     - bitMask : bitMask[j] flags bit j            : bitMask[j]==1ul<<j
     - leqMask : leqMask[j] flags bits i with i<=j : leqMask[j]==(1ul<<j+1)-1
-    - lMask : lMask[j]     flags bits i with i<j  : lMask[j]==(1ul<<j)-1
+    - lMask   : lMask[j]   flags bits i with i<j  : lMask[j]==(1ul<<j)-1
 
     for lMask the index j==longBits is useful and used; Fokko forgot this!
 

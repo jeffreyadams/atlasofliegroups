@@ -99,7 +99,6 @@ namespace {
   void test_f();
   //  void block_braid_f();
   void repr_braid_f();
-  void go_f();
 
   void roots_rootbasis_f();
   void coroots_rootbasis_f();
@@ -156,9 +155,6 @@ namespace {
 template<>
 void addTestCommands<commands::EmptymodeTag> (commands::CommandNode& mode)
 {
-  mode.add("go",go_f,
-	   "generates difficult SO(7,7) extended block, and runs 'braid'",
-	   commands::use_tag);
   mode.add("testrun",testrun_f,
 	   "iterates over root data of given rank, calling examine",
 	   commands::use_tag);
@@ -230,10 +226,6 @@ void addTestCommands<commands::BlockmodeTag> (commands::CommandNode& mode)
   mode.add("bbraid",block_braid_f,
 	   "tests braid relations on an extended block",commands::use_tag);
 #endif
-
-  mode.add("go",go_f,
-	   "generates difficult SO(5,5) extended block, and runs 'braid'",
-	   commands::use_tag);
 
   if (testMode == BlockMode)
     mode.add("test",test_f,test_tag);
@@ -924,7 +916,7 @@ void test_f() // trial of twisted KLV computation
 }
 
 
-// Check for nasty endgame cases in block
+// Check braid relations extended block
 int test_braid(const ext_block::ext_block& eblock)
 {
   std::cout << "testing braids" << std::endl;
@@ -995,137 +987,6 @@ void repr_braid_f()
   test_braid(eblock);
 }
 
-void fix_braid(ext_block::ext_block& eblock)
-{
-  bool OK=true; int count=0;
-  for (weyl::Generator t=1; t<eblock.rank(); ++t)
-    for (weyl::Generator s=0; s<t; ++s)
-    {
-      BitMap seen(eblock.size());
-      for (BlockElt x=0; x<eblock.size(); ++x)
-	if (not seen.isMember(x))
-	{
-	  BitMap cluster(eblock.size());
-	  if (ext_block::check_braid(eblock,s,t,x,cluster))
-	    ++count;
-	  else
-	  { //braid failure
-	    OK = false;
-	    std::cout  << "Braid relation failure: " << eblock.z(x)
-		       << ", s=" << s+1 << ", t=" << t+1;
-	    for (BitMap::iterator it=cluster.begin(); it(); ++it)
-	      std::cout << (it==cluster.begin() ? " (" : ",")
-			<< eblock.z(*it) << "["
-			<< descent_code(eblock.descent_type(t,*it)) << "]";
-	    std::cout << ")";
-	    if (cluster.size()>10)
-	    {
-	      bool found_2Ci=false;
-	      for (BitMap::iterator iter=cluster.begin(); iter(); ++iter)
-	      {
-		BlockElt x = eblock.z(*iter);
-		const ext_block::DescValue type = eblock.descent_type(t,*iter);
-		//	std::cout << " " << descent_code(type) << " ";
-		BlockElt y1,y2;
-		if (type==atlas::ext_block::two_semi_imaginary)
-		{
-		  if (not found_2Ci) // then we have a first match
-		  {
-		    found_2Ci=true;
-		    y1=eblock.Cayley(t,*iter);
-	 //   std::cout << std::endl << "first: " << x << ";" << eblock.z(y1);
-		  }
-		  else // a second match
-		  {
-		    y2=eblock.Cayley(t,*iter);
-		    // std::cout << "second: " << x << ";" << eblock.z(y2);
-		    eblock.toggle_edge(x,eblock.z(y2));
-		    std::cout << std::endl;
-		    if (eblock.z(y2)<eblock.z(y1))
-		      std::cout << "OUT OF ORDER"<< std::endl;
-		    break; // from iteration over cluster
-		  }
-		}
-	      }
-	    } // cluster.size()>10
-	    else //cluster.size()=4 or 6
-	    {
-	      std::cout << std::endl << "fixing small cluster ("
-			<< cluster.size() << ")" << std::endl;
-	      for (BitMap::iterator it=cluster.begin(); it(); ++it)
-	      {
-		BlockElt x=eblock.z(*it);
-		const ext_block::DescValue type = eblock.descent_type(t,*it);
-		if (type==atlas::ext_block::two_semi_imaginary)
-		{
-		  BlockElt y=eblock.Cayley(t,*it);
-		  eblock.set_edge(x,eblock.z(y));
-		  std::cout << std::endl;
-		}
-	      }
-	      std::cout << std::endl;
-	    }
-	    seen |= cluster; // don't do elements of same cluster again
-	  } // end of braid failure case
-	} // loop over |x|
-    } // |for (s)|
-  if (OK)
-    std::cout << "All " << count << " relations hold!\n";
-  std::cout << std::endl;
-} // |fix_braid|
-
-
-
-void go_f()
-{
-  ext_block::ext_block
-    eblock(commands::current_inner_class(),
-	   commands::currentBlock(),
-	   commands::currentRealGroup().kgb(),
-	   commands::currentDualRealGroup().kgb(),
-	   commands::current_inner_class().distinguished()
-	   );
-
-  int nr_failures=0;
-  int max_tries=10;
-
-  for (int j=0; j<max_tries; ++j)
-  {
-    int failures=test_braid(eblock);
-    if (failures==0)
-    {
-      std::cout << "Total braid relations fixed: " << nr_failures << std::endl;
-      eblock.report_2Ci_toggles();
-      break;
-    }
-    else
-    {
-      std::cout << "Number of braid relation failures: " << failures
-		<< std::endl;
-      nr_failures += failures;
-      std::cout << std::endl <<"Fixing braids pass " << j << std::endl;
-      fix_braid(eblock);
-      eblock.list_edges();
-    }
-  }
-
-  bool polynomials=false;
-  if (polynomials)
-  {
-    std::vector<ext_kl::Pol> pool;
-    ext_kl::KL_table twisted_KLV(eblock,pool);
-    twisted_KLV.fill_columns();
-
-    ioutils::OutputFile f;
-    for (BlockElt y=0; y<twisted_KLV.size(); ++y)
-      for (BlockElt x=y+1; x-->0; )
-	if (not twisted_KLV.P(x,y).isZero())
-	{
-	  f << "P(" << eblock.z(x) << ',' << eblock.z(y) << ")=";
-	  f << twisted_KLV.P(x,y) << std::endl;
-	}
-  }
-}
 
 
 // Block mode functions

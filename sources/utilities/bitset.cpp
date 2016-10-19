@@ -1,15 +1,14 @@
-/*!
-\file
-\brief Implementation of the BitSet class.
-*/
 /*
   This is bitset.cpp
 
   Copyright (C) 2004,2005 Fokko du Cloux
+  Copyright (C) 2016 Marc van Leeuwen
   part of the Atlas of Lie Groups and Representations
 
   For license information see the LICENSE file
 */
+
+// Implementation of the BitSet class.
 
 #include "bitset.h"
 #include <cassert>
@@ -191,6 +190,49 @@ void BitSetBase<2>::set(unsigned int j)
     |= constants::bitMask[j & constants::posBits];
 }
 
+void BitSetBase<2>::fill(unsigned int limit)
+{
+  if (limit<=constants::longBits)
+  {
+    d_bits0 = constants::lMask[limit];
+  }
+  else if (limit <= 2*constants::longBits)
+  {
+    d_bits0 = constants::lMask[constants::longBits];
+    d_bits1 = constants::lMask[limit - constants::longBits];
+  }
+  else
+    assert("limit out out range" and false);
+}
+
+void BitSetBase<2>::complement(unsigned int limit)
+{
+  if (limit<=constants::longBits)
+  {
+    d_bits0 ^= constants::lMask[limit];
+  }
+  else if (limit <= 2*constants::longBits)
+  {
+    d_bits0 = ~d_bits0;
+    d_bits1 ^= constants::lMask[limit - constants::longBits];
+  }
+  else
+    assert("limit out out range" and false);
+}
+
+void BitSetBase<2>::truncate(unsigned int limit)
+{
+  if (limit <= constants::longBits)
+  {
+    d_bits0 &= constants::lMask[limit];
+    d_bits1 = 0ul;
+  }
+  else if (limit <= 2*constants::longBits)
+    d_bits1 &= constants::lMask[limit - constants::longBits];
+  else
+    assert("limit out out range" and false);
+}
+
 void BitSetBase<2>::slice(const BitSetBase<2>& c)
 {
   unsigned int count=0;
@@ -220,30 +262,6 @@ void BitSetBase<2>::swap(BitSetBase<2>& source)
 {
   std::swap(d_bits0,source.d_bits0);
   std::swap(d_bits1,source.d_bits1);
-}
-
-void BitSetBase<2>::complement(unsigned int limit)
-{
-  if (limit<constants::longBits)
-  {
-    d_bits0 ^= constants::lMask[limit];
-  }
-  else if (limit < 2*constants::longBits)
-  {
-    d_bits0 = ~d_bits0;
-    d_bits1 ^= constants::lMask[limit & constants::posBits];
-  }
-}
-
-void BitSetBase<2>::truncate(unsigned int limit)
-{
-  if (limit < constants::longBits)
-  {
-    d_bits0 &= constants::lMask[limit];
-    d_bits1 = 0ul;
-  }
-  else if (limit < 2*constants::longBits)
-    d_bits1 &= constants::lMask[limit & constants::posBits];
 }
 
 bool BitSetBase<1>::iterator::operator== (const iterator& i) const

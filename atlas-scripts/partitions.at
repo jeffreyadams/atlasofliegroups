@@ -1,12 +1,16 @@
 <basic.at
+<sort.at
 
 : Partition = [int]   {partition a_1\ge a_2\ge ... a_n>0}
 
 set fac (int n) = int: let p=1 in for i:n-1 from 2 do p *:=i od; p
 
-{transpose of a partition}
+{ transpose of a partition }
 set transpose (Partition P) = Partition:
-  let P=reverse_sort(P) in if #P=0 then [] else for i:P[0] do  last(#P, (int j)bool:P[j]>i)+1 od fi
+  let P=reverse_sort(P), nP=#P in
+  if #P=0 then []
+  else for i:P[0] do binary_search_first((int j)bool:P[j]<=i,0,nP) od
+  fi
 
 set size (Partition P) =int: sum(vec: P)
 

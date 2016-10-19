@@ -101,13 +101,20 @@ BlockElt twisted (const Block& block,
 
 typedef Polynomial<int> Pol;
 
+typedef bool (*extended_predicate)(DescValue);
+
 class ext_block
 {
   struct elt_info // per block element information
   {
     BlockElt z; // index into parent |Block_base| structure
     RankFlags flips[2];
+#ifndef incompletecpp11
     elt_info(BlockElt zz): z(zz),flips{{},{}} {}
+#else
+  elt_info(BlockElt zz): z(zz),flips() {}
+#endif
+
 
   // methods that will allow building a hashtable with |info| as pool
     typedef std::vector<elt_info> Pooltype;
@@ -149,11 +156,7 @@ class ext_block
 // manipulators
   void flip_edge(weyl::Generator s, BlockElt x, BlockElt y);
 
-  bool // return new value; true means edge was flipped to minus
-    toggle_edge(BlockElt x,BlockElt y, bool verbose=true);
-  bool set_edge(BlockElt x,BlockElt y);    // always set
   unsigned int list_edges();  // returns number of toggled pairs
-  void report_2Ci_toggles() const;
 
 // accessors
 
@@ -216,6 +219,7 @@ class ext_block
 private:
   void complete_construction(const BitMap& fixed_points);
   bool check(const param_block& block, bool verbose=false);
+  void flip_edges(extended_predicate match);
 
 }; // |class ext_block|
 

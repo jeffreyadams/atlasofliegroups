@@ -2,26 +2,28 @@
 <extended.at
 <extended_misc.at { for |fixed_block| }
 <polynomial.at
-<dual.at { for |length_diff| }
+
+set survives (Param p) = bool: { whether no singular coroot is a descent }
+( p.x=dominant(p).x { this fails when there is a complex singular descent }
+  and not p.is_zero and p.is_final { test absence of other singluar descents }
+)
 
 set ext_KL_block (Param p, mat delta) = { emulate built-in KL_block }
     ([Param],int,mat,[vec],vec,vec,mat):
   let (regular_extblock,,,) = extended_block(p,delta)
   , (KL_mat,polys,stops) = raw_ext_KL(p,delta)
-  , survivors = vec: []
-  then columns = [vec]:
-    for q@j in regular_extblock
-    do let Q = finalize_extended(q,delta) in
-      if Q[q]=1 then survivors #:= j fi { gather those expanding to themselves }
-    ; vec: for i in regular_extblock do Q[i].s_to_minus_1 od
-    od
-  , reg_size = #regular_extblock
-  in (regular_extblock, first(reg_size,(int i):regular_extblock[i]=p)
-     ,KL_mat,polys,stops
-     ,survivors
-     ,matrix((#survivors,reg_size) { slice out the surviving rows: }
-            ,(int i,int j) int: columns[j][survivors[i]]
-            )
+  then survivors =
+    ## for q@j in regular_extblock do if q.survives then [j] else [] fi od
+  , length = from_stops(stops)
+  in ( regular_extblock, first(#regular_extblock,(int i):regular_extblock[i]=p)
+     , KL_mat, polys, stops
+     , vec: survivors
+     , for q@j in regular_extblock { run through columns }
+       do let lq=length(j), Q = finalize_extended(q,delta) in
+         for si in survivors
+         do minus_1^(lq-length(si))*Q[regular_extblock[si]].s_to_minus_1
+         od
+       od
      )
 
 set cook_KL_block ([Param] B,int entry_elem
@@ -37,13 +39,9 @@ set cook_KL_block ([Param] B,int entry_elem
   then cooked_P_mat = poly_mat:
      for i:n_surv do for j:n_surv do
        let raw_col_j = raw_P_mat[j], sum=poly_0 in
-       for k:nB do sum+:=contrib[i,k]*raw_col_j[k] od; sum
+       for k:nB do sum:=flex_add(sum,contrib[i,k]*raw_col_j[k]) od; sum
      od od
-  , get_index (int z) = int: { least |i| with |surv[i]>=z| }
-    let min=0, max=n_surv in
-    while min<max
-    do let avg=(min+max)\2 in if surv[avg]>=z then max:=avg else min:=avg+1 fi
-    od; min
+  , get_index (int z) = int: binary_search_first((int i):surv[i]>=z,0,n_surv)
   in ( for i in surv do B[i] od
      , get_index(entry_elem)
      , cooked_P_mat
@@ -75,12 +73,12 @@ set KL_P_polynomials ([Param] B_fixed,mat delta) = [[poly]]:
 set KL_P_signed_polynomials ([Param] B_fixed,mat delta) = [[poly]]:
   assert( all(for p in B_fixed do is_fixed(delta,p) od)
 	, "Not every parameter is delta-fixed" );
-  let (P,polys,jumps)=raw_ext_KL(B_fixed[0],delta) in
+  let (P,polys,jumps)=raw_ext_KL(B_fixed[0],delta) then len=from_stops(jumps) in
   for row@i in ^P
   do
     for entry@j in row
-    do (-1)^length_diff(i,j,jumps)
-     * if >=entry then polys[entry] else -polys[-entry] fi
+    do if >=entry then polys[entry] else -polys[-entry] fi
+     * minus_1^(len(j)-len(i))
     od
   od
 

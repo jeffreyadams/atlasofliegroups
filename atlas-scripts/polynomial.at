@@ -19,7 +19,6 @@ forget *@(vec,vec)
 
 { for convenience declare some constants, the ! makes changes to these illegal }
 set !poly_0 = poly:[], !poly_1 = poly:[1], !poly_2 = poly: [2]
-set !q = poly: [0,1], !q2 = poly: [0,0,1]
 
 set + = flex_add@(poly,poly)
 set - = flex_sub@(poly,poly)
@@ -163,18 +162,16 @@ set poly_permute_basis(poly P, poly_mat A) = poly_mat: { P is permutation }
 { make a printable string out of a polynomial and name of indeterminate,
   for use in other print functions }
 set stringPoly (poly v, string q)= string:
-  if =v then "0"
-  else
-    let rv="" in
-    for c@k in v do
-      if c!=0 then
-	let coef = if c<0 then "-" else "+" fi +
-            if abs(c)=1 and k>0 then "" else int_format(abs(c)) fi
-	,   term = if k>1 then q+"^"+int_format(k) elif k=0 then "" else q fi
-	in rv ##:= coef+term
+  if =v then "0" else
+  ##for c@k in v do
+      if =c then "" else
+      ##
+      [ { sign } if c<0 then "-" else "+" fi
+      , { coefficient } if abs(c)=1 and k>0 then "" else int_format(abs(c)) fi
+      , { monomial } if k>1 then q+"^"+int_format(k) elif k=0 then "" else q fi
+      ]
       fi
     od
-  ; rv
   fi
 
 { nice printing of a polynomial }
@@ -209,4 +206,4 @@ set * = dot_product@(vec,vec)
 set sgn_poly (int k) = poly:
   [if k<0 then -1 elif k>0 then 1 else error("taking sign of 0") fi]
 
-set divide_by(int k,poly v)=poly:ratvec_as_vec(v*(1/k))
+set divide_by(int k, poly v) = poly: assert(=v%k,"Inexact division"); v\k

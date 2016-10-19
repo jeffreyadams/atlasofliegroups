@@ -210,57 +210,6 @@ unsigned int ext_block::list_edges()
   return count;
 }
 
-// calls to the following method should really use |flip_edge| instead
-bool ext_block::toggle_edge(BlockElt x,BlockElt y, bool verbose)
-{
-  x = element(x); y=element(y);
-  assert (x!=UndefBlock and y!=UndefBlock);
-
-  bool found=false, bit;
-  for (weyl::Generator kappa=0; kappa<rank(); ++kappa)
-    for (unsigned i=0; i<2; ++i) // try up to 2 links for |x|
-    { auto yy =
-	i==0 ? data[kappa][x].links.first : data[kappa][x].links.second;
-      if (yy==y)
-      { found=true;
-	auto &f = info[x].flips[i];
-	f.flip(kappa);
-	bit = f.test(kappa);
-	if (verbose)
-	  std::cerr << (f.test(kappa) ? "Set" : "Unset") << " edge ("
-		    << z(x) << ',' << z(y) << ") kappa=" << kappa+1
-		    << std::endl;
-	info[y].flips[data[kappa][y].links.first==x ? 0 : 1].flip(kappa);
-      }
-    }
-  assert(found); ndebug_use(found);
-  return bit;
-}
-
-// same as toggle_edge, but always set the edge; again don't use this one
-bool ext_block::set_edge(BlockElt x,BlockElt y)
-{
-  x = element(x); y=element(y);
-  assert (x!=UndefBlock and y!=UndefBlock);
-  bool found=false, bit;
-  for (weyl::Generator kappa=0; kappa<rank(); ++kappa)
-    for (unsigned i=0; i<2; ++i) // try up to 2 links for |x|
-    { auto yy =
-	i==0 ? data[kappa][x].links.first : data[kappa][x].links.second;
-      if (yy==y)
-      { found=true;
-	auto &f = info[x].flips[i];
-	bit = not f.test(kappa);
-	f.set(kappa);
-	std::cerr << "set edge (" << z(x) << ',' << z(y)
-		  << ") kappa=" << kappa+1 << std::endl;
-	info[y].flips[data[kappa][y].links.first==x ? 0 : 1].set(kappa);
-      }
-    }
-  assert(found); ndebug_use(found);
-  return bit;
-}
-
 // compute |bgv-(bgv+t_bits)*(1+theta)/2 == (bgv-t_bits-(bgv+t_bits)*theta)/2|
 Coweight ell (const KGB& kgb, KGBElt x)
 { auto diff= (kgb.base_grading_vector()-kgb.torus_factor(x)).normalize();
@@ -452,22 +401,6 @@ int z_quot (const param& E, const param& F)
 
 int z_quot (const param& E, const param& F, int t_mu)
 { return z_quot(E,F)*arithmetic::exp_minus_1(t_mu); }
-
-void ext_block::report_2Ci_toggles() const
-{
-  std::cout << "all (2Ci,2Cr) pairs and their flipped status" << std::endl;
-  for (weyl::Generator s=0; s<rank(); ++s)
-    for (BlockElt x=0; x<size(); ++x)
-      if (descent_type(s,x)==atlas::ext_block::two_semi_imaginary)
-      {
-	auto y=Cayley(s,x);
-	std::cout << s+1 << " " << z(x) << " " << z(y);
-	if (info[x].flips[0].test(s))
-	  std::cout << " flipped";
-	std::cout << std::endl;
-      }
-
-}
 
 // this implements (comparison using) the formula from Proposition 16 in
 // "Parameters for twisted repressentations" (with $\delta-1 = -(1-\delta)$
@@ -1740,6 +1673,14 @@ ext_block::ext_block // for external twist; old style blocks
 
 } // |ext_block::ext_block|
 
+// we use these prediates to flip edges
+
+bool is_2ir (DescValue v)
+{ return generator_length(v)==2 and not is_complex(v) and not has_defect(v); }
+
+bool is_2C (DescValue v)
+{ return generator_length(v)==2 and is_complex(v); }
+
 ext_block::ext_block // for an external twist
   (const InnerClass& G,
    const param_block& block, const KGB& kgb,
@@ -1771,6 +1712,8 @@ ext_block::ext_block // for an external twist
   complete_construction(fixed_points);
   if (not check(block,verbose)) // this sets the edge signs, not just a check!
     throw std::runtime_error("Failure detected in extended block construction");
+  flip_edges(is_2ir); // the twisted errata paper had these signs backwards
+  flip_edges(is_2C); // and that correction appears to require this too
 
 } // |ext_block::ext_block|, from a |param_block|
 
@@ -1787,8 +1730,8 @@ void ext_block::complete_construction(const BitMap& fixed_points)
       while (cur_len<parent.length(*it)) // for new length level(s) reached
 	l_start[++cur_len]=x; // mark |x| as first of length at least |cur_len|
     }
-    assert(cur_len+1<l_start.size());
-    l_start[++cur_len]=parent.size(); // makes |l_start[length(...)+1]| legal
+    while (++cur_len<l_start.size())
+      l_start[cur_len]=fixed_points.size(); // allow |l_start[length(...)+1]|
   }
 
   info.reserve(parent_nr.size());  // reserve size of (smaller) extended block
@@ -1958,7 +1901,7 @@ bool ext_block::check(const param_block& block, bool verbose)
       case three_real_nonparity: case three_imaginary_compact:
 	assert(links.empty()); break;
       case one_complex_ascent: case one_complex_descent:
-	//     case two_complex_ascent: case two_complex_descent:
+      case two_complex_ascent: case two_complex_descent:
       case three_complex_ascent: case three_complex_descent:
 	{ assert(links.size()==1);
 	  BlockElt m=cross(s,n); // cross neighbour as bare element of |*this|
@@ -1973,61 +1916,14 @@ bool ext_block::check(const param_block& block, bool verbose)
                         << " from " << z << " to " << cz << '.' << std::endl;
 	  }
 	} break;
-      case two_complex_ascent: case two_complex_descent:
-	{ assert(links.size()==1);
-	  BlockElt m=cross(s,n); // cross neighbour as bare element of |*this|
-	  BlockElt cz = this->z(m); // corresponding element of (parent) |block|
-	  param F(ctxt,block.x(cz),block.lambda_rho(cz)); // default extension
-	  assert(same_standard_reps(it->second,F)); // must lie over same
-	  flip_edge(s,n,m); // we are CHANGING all 2C links
-	  // The 2i** links needed to be changed, and doing that
-	  // breaks braid relations unless something else is changed;
-	  // simplest was 2C, which plausibly seemed wrong for the
-	  // same reason as 2i**
-	  if (it->first!=sign_between(it->second,F)) // here != means XOR
-	  {
-	    flip_edge(s,n,m);
-	    if (verbose)
-	      std::cout << "Flip at cross link " << unsigned{s}
-                        << " from " << z << " to " << cz << '.' << std::endl;
-	  }
-	} break;
       case one_imaginary_single: case one_real_single:
-	//      case two_imaginary_single_single: case two_real_single_single:
-	{ assert(links.size()==2);
-	  BlockElt m=some_scent(s,n); // the unique (inverse) Cayley
-	  BlockElt Cz = this->z(m); // corresponding element of block
-	  param F(ctxt,block.x(Cz),block.lambda_rho(Cz));
-	  assert(same_standard_reps(it->second,F));
-	    if (it->first!=sign_between(it->second,F))
-	  {
-	    flip_edge(s,n,m);
-	    if (verbose)
-	      std::cout << "Flip at Cayley link " << unsigned{s}
-	                << " from " << z << " to " << Cz << '.' << std::endl;
-	  }
-	  ++it;
-	  m=cross(s,n); BlockElt cz = this->z(m);
-	  param Fc(ctxt,block.x(cz),block.lambda_rho(cz));
-	  assert(same_standard_reps(it->second,Fc));
-	  if (it->first!=sign_between(it->second,Fc))
-	  {
-	    flip_edge(s,n,m);
-	    if (verbose)
-	      std::cout << "Flip at cross link " << unsigned{s}
-	                << " from " << z << " to " << cz << '.' << std::endl;
-	  }
-	} break;
-	//      case one_imaginary_single: case one_real_single:
       case two_imaginary_single_single: case two_real_single_single:
 	{ assert(links.size()==2);
 	  BlockElt m=some_scent(s,n); // the unique (inverse) Cayley
 	  BlockElt Cz = this->z(m); // corresponding element of block
 	  param F(ctxt,block.x(Cz),block.lambda_rho(Cz));
 	  assert(same_standard_reps(it->second,F));
-	    flip_edge(s,n,m); // we are CHANGING all 2i links
-	    // the twisted errata paper got all these signs backwards
-	    if (it->first!=sign_between(it->second,F))
+	  if (it->first!=sign_between(it->second,F))
 	  {
 	    flip_edge(s,n,m);
 	    if (verbose)
@@ -2047,24 +1943,6 @@ bool ext_block::check(const param_block& block, bool verbose)
 	  }
 	} break;
       case two_semi_imaginary: case two_semi_real:
-	//      case three_semi_imaginary: case three_real_semi:
-	//      case three_imaginary_semi: case three_semi_real:
-	{ assert(links.size()==1);
-	  BlockElt m=some_scent(s,n); // the unique (inverse) Cayley
-       	  // flip_edge(s,n,m); // uncommenting CHANGES all 2Cir links
-	  // but these flips seem correct without the CHANGES
-	  BlockElt Cz = this->z(m); // corresponding element of block
-	  param F(ctxt,block.x(Cz),block.lambda_rho(Cz));
-	  assert(same_standard_reps(it->second,F));
-	  if (it->first!=sign_between(it->second,F))
-	  {
-	    flip_edge(s,n,m);
-	    if (verbose)
-	      std::cout << "Flip at Cayley link " << unsigned{s}
-		      << " from " << z << " to " << Cz << '.' << std::endl;
-	  }
-	} break;
-	//      case two_semi_imaginary: case two_semi_real:
       case three_semi_imaginary: case three_real_semi:
       case three_imaginary_semi: case three_semi_real:
 	{ assert(links.size()==1);
@@ -2079,9 +1957,9 @@ bool ext_block::check(const param_block& block, bool verbose)
 	      std::cout << "Flip at Cayley link " << unsigned{s}
 		      << " from " << z << " to " << Cz << '.' << std::endl;
 	  }
-	} break;	
+	} break;
       case one_imaginary_pair_fixed: case one_real_pair_fixed:
-	//     case two_imaginary_double_double: case two_real_double_double:
+      case two_imaginary_double_double: case two_real_double_double:
 	{ assert(links.size()==2);
 	  BlockEltPair m=Cayleys(s,n);
 	  BlockElt Cz0 = this->z(m.first); BlockElt Cz1= this->z(m.second);
@@ -2108,42 +1986,9 @@ bool ext_block::check(const param_block& block, bool verbose)
 			<< " from " << z << " to " << Cz1 << '.' << std::endl;
 	  }
 	} break;
-       case two_imaginary_double_double: case two_real_double_double:
-	{ assert(links.size()==2);
-	  BlockEltPair m=Cayleys(s,n);
-	  flip_edge(s,n,m.first); // we are CHANGING all 2i links
-	  flip_edge(s,n,m.second); // we are CHANGING all 2i links
-	  // the twisted errata paper got all these signs backwards
-	  BlockElt Cz0 = this->z(m.first); BlockElt Cz1= this->z(m.second);
-	  param F0(ctxt,block.x(Cz0),block.lambda_rho(Cz0));
-	  param F1(ctxt,block.x(Cz1),block.lambda_rho(Cz1));
-	  bool straight=same_standard_reps(it->second,F0);
-          const auto& node0 = straight ? *it : *std::next(it);
-          const auto& node1 = straight ? *std::next(it) : *it;
-	  if (not straight)
-	    assert(same_standard_reps(node0.second,F0));
-	  assert(same_standard_reps(node1.second,F1));
-	  if (node0.first!=sign_between(node0.second,F0))
-	  {
-	    flip_edge(s,n,m.first);
-	    if (verbose)
-	      std::cout << "Flip at Cayley link " << unsigned{s}
-			<< " from " << z << " to " << Cz0 << '.' << std::endl;
-	  }
-	  if (node1.first!=sign_between(node1.second,F1))
-	  {
-	    flip_edge(s,n,m.second);
-	    if (verbose)
-	      std::cout << "Flip at Cayley link " << unsigned{s}
-			<< " from " << z << " to " << Cz1 << '.' << std::endl;
-	  }
-	} break;	
       case two_imaginary_single_double_fixed: case two_real_single_double_fixed:
 	{ assert(links.size()==2);
 	  BlockEltPair m=Cayleys(s,n);
-	  flip_edge(s,n,m.first); // we are CHANGING all 2i links	  
-	  flip_edge(s,n,m.second); // we are CHANGING all 2i links
-	  // the twisted errata paper got all these signs backwards
 	  BlockElt Cz0 = this->z(m.first); BlockElt Cz1= this->z(m.second);
 	  param F0(ctxt,block.x(Cz0),block.lambda_rho(Cz0));
 	  param F1(ctxt,block.x(Cz1),block.lambda_rho(Cz1));
@@ -2173,6 +2018,24 @@ bool ext_block::check(const param_block& block, bool verbose)
   } // |for(n)|
   return true; // report sucess if we get here
 } // |check|
+
+void ext_block::flip_edges(extended_predicate match)
+{
+  DescValue t;
+  for (weyl::Generator s=0; s<rank(); ++s)
+    for (BlockElt n=0; n<size(); ++n)
+      if (match(t=descent_type(s,n)))
+      { if (is_like_compact(t) or is_like_nonparity(t))
+	  continue;
+	if (has_double_image(t))
+	{ BlockEltPair Cs = Cayleys(s,n);
+	  flip_edge(s,n,Cs.first);
+	  flip_edge(s,n,Cs.second);
+	}
+	else
+	  flip_edge(s,n,some_scent(s,n));
+      }
+}
 
 RankFlags reduce_to(const ext_gens orbits, RankFlags gen_set)
 { RankFlags result;
@@ -2214,7 +2077,10 @@ containers::simple_list<BlockElt> // returns list of elements selected
       if (is_like_compact(type))
 	continue; // no descents, |y| represents zero; nothing to do for |y|
 
-      C c (orbit(s).length()%2==0 ? 1 : -1); // length change factor
+      // define sign |c| indicating length difference parity
+      C c (orbit(s).length()%2==0 ? 1 : -1); // length diff usually that of |s|
+      if (has_defect(type)) // but correct for defect cases where it is shorter
+	c = -c;
       if (has_double_image(type)) // 1r1f, 2r11
       { auto pair = Cayleys(s,y);
 	M.rowOperation(pair.first,y,c*epsilon(s,pair.first,y));

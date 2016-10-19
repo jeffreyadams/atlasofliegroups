@@ -3,6 +3,8 @@
 <nilpotent.at
 <complex_nilpotent_orbits.at
 <partitions.at
+<wreps_type_C.at { for symbol@Orbit }
+
 {in simple groups of type B or C}
 {
 three kinds of objects
