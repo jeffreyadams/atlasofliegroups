@@ -1681,6 +1681,9 @@ bool is_2ir (DescValue v)
 bool is_2C (DescValue v)
 { return generator_length(v)==2 and is_complex(v); }
 
+bool is_3Cir (DescValue v)
+{ return generator_length(v)==3 and has_defect(v); }
+
 ext_block::ext_block // for an external twist
   (const InnerClass& G,
    const param_block& block, const KGB& kgb,
@@ -1714,6 +1717,7 @@ ext_block::ext_block // for an external twist
     throw std::runtime_error("Failure detected in extended block construction");
   flip_edges(is_2ir); // the twisted errata paper had these signs backwards
   flip_edges(is_2C); // and that correction appears to require this too
+  flip_edges(is_3Cir); // and this for GL(5,R)
 
 } // |ext_block::ext_block|, from a |param_block|
 
