@@ -15,18 +15,18 @@ half sum of complex roots.)
 For $\theta$-stable induction, the rho-shift is:
 $\rho_i(G)-\rho_i(L)+\rho_{complex}(G)-\rho_{complex}(L)
    =\rho(G)-\rho_r(G)-\rho(L)+\rho_r(L)$.
-  Since $\mathfrak q$ is $\theta$ -stable, $rho_r(G)-\rho_r(L)=0$, so the
+  Since $\mathfrak q$ is $\theta$ -stable, $\rho_r(G)-\rho_r(L)=0$, so the
   shift is $\rho(G)-\rho(L)=\rho(\mathfrak u)$.
 
-Then $Ind_L^G(I(p_L))=I(p_G)$. 
+Then $Ind_L^G I(p_L)=I(p_G)$. 
 
 In the $\theta$-stable case, the shifted parameter p_G may be non-standard
 and needs to be standardized:
 
 If p=(x,lambda,nu), and <lambda,$\alpha^{\vee}$><0 for some imaginary root $\alpha$ 
 (i.e. non-standard), let i_root_system=imaginary roots for x(p). Find $w$ so 
-that $w^{-1}$lambda is dominant for imaginary roots, set 
-p_dom=parameter(x,$w^{-1}$lambda,nu) and return coherent continuation action 
+that $w^{-1}\cdot$lambda is dominant for imaginary roots, set 
+p_dom=parameter(x,$w^{-1}\cdot$lambda,nu) and return coherent continuation action 
 (wrt imaginary roots) of $w$ on p_dom. !}
 
 <basic.at
@@ -51,7 +51,7 @@ set inverse_embed_KGB (KGBElt x_G,RealForm L) = KGBElt:
 
 {. Given an involution theta and a root datum, return the set S of complex roots 
    containing the first positive representative of each quadruple 
-   (\pm alpha,\pm theta(alpha)). .}
+   ($\pm$ alpha,$\pm$ theta(alpha)). .}
 set makeS (mat theta,RootDatum rd) = mat:
   columns_with((int j,vec alpha):posroot_index(rd,theta*alpha)>j,posroots(rd))
 
@@ -82,7 +82,7 @@ set real_induce_standard (ParamPol P,RealForm G) = ParamPol:
   result
 
 {. Write the (real) induced of an irreducible J(p_L) of L as a formal sum of 
-   standards for G; use the character formula to write J(p_L)
+   standards for G; uses the character formula to write J(p_L)
    as a formal sum of standards for L first. (Auxiliary function) .}
 set real_induce_irreducible_as_sum_of_standards (Param p_L, RealForm G) =
     ParamPol:
@@ -91,7 +91,7 @@ set real_induce_irreducible_as_sum_of_standards (Param p_L, RealForm G) =
   result
 
 {. Write the (real) induced Ind(J(p_L)) of an irreducible of L as a sum of 
-   irreducibles for G; use composition series to convert 
+   irreducibles for G; uses composition series to convert 
    output of the previous function into sum of irreducibles. .}
 set real_induce_irreducible(Param p_L, RealForm G)= ParamPol:
   let cf=real_induce_irreducible_as_sum_of_standards(p_L,G)
@@ -206,7 +206,7 @@ set theta_induce_standard (Param p_L,RealForm G) = ParamPol:
   p_G_standardized
 
 {. Write the (theta-stable) induced of an irreducible J(p_L) of L as a formal 
-   sum of standards for G; use the character formula to write J(p_L)
+   sum of standards for G; uses the character formula to write J(p_L)
    as a formal sum of standards for L first. (Auxiliary function) .}
 set theta_induce_irreducible_as_sum_of_standards (Param p_L, RealForm G) =
     ParamPol:
@@ -221,7 +221,7 @@ set theta_induce_irreducible_as_sum_of_standards (Param p_L, RealForm G) =
   result
 
 {. Write the (theta-stable) induced Ind(J(p_L)) of an irreducible of L 
-   as a sum of irreducibles for G; use composition series to convert 
+   as a sum of irreducibles for G; uses composition series to convert 
    output of the previous function into sum of irreducibles. .}
 set theta_induce_irreducible(Param p_L, RealForm G) = ParamPol:
   let cf=theta_induce_irreducible_as_sum_of_standards(p_L,G)
