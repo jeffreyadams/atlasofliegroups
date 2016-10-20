@@ -5072,9 +5072,9 @@ void twisted_KL_sum_at_s_wrapper(expression_base::level l)
 parameter into a linear combination of such parameters. The terms on the list
 are paired with a Boolean attribute recording a possible flip of extended
 parameters accumulated when the term. This flip is recorded with as
-coefficient the split integer unit~$s$, since applications where this required
-are envisioned (if remains possible to evaluate at $s:=-1$ afterwards if
-desired).
+coefficient the split integer unit~$s$ rather than $-1$, since applications
+where this is required are envisioned (and it remains possible to evaluate at
+$s:=-1$ afterwards if desired).
 
 @< Local function def...@>=
 
