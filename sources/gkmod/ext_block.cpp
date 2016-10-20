@@ -136,7 +136,7 @@ unsigned int generator_length(DescValue v)
 unsigned int link_count(DescValue v)
 { switch(v)
   {
-    // zero valued Cayleys: nothing recirded (cross action is trivial)
+    // zero valued Cayleys: nothing recorded (cross action is trivial)
   case one_real_nonparity: case one_imaginary_compact:
   case one_imaginary_pair_switched: case one_real_pair_switched:
   case two_real_nonparity: case two_imaginary_compact:
@@ -175,6 +175,10 @@ unsigned int link_count(DescValue v)
   }
   assert(false); return -1; // keep compiler happy
 }
+
+// number of links that are ascents or descents (not real/imaginary cross)
+unsigned int scent_count(DescValue v)
+{ return has_double_image(v) ? 2 : link_count(v)==0 ? 0 : 1; }
 
 // find element |n| such that |z(n)>=zz|
 BlockElt ext_block::element(BlockElt zz) const
@@ -351,7 +355,7 @@ containers::sl_list<std::pair<StandardRepr,bool> > finalise
       auto type = star(E,orbits[s],links);
       if (is_like_compact(type))
 	to_do.pop_front(); // just drop |E| and its sign
-      else  // at least one descent, so replace |to_do.front()| by the first
+      else  // at least one descent, so push them to the front of |to_do|
       { auto it = to_do.begin(); auto l_it=links.begin();
 	to_do.insert(it,std::make_pair
 		     (std::move(l_it->second),flipped==(l_it->first>0)));
@@ -1595,6 +1599,14 @@ DescValue star (const param& E,
     }
     break;
   }
+
+  // add a flip to links with a length difference of 2
+  if (p.length()-(has_defect(result)?1:0)==2)
+  { auto it=links.begin(); auto c=scent_count(result);
+    for (unsigned i=0; i<c; ++i,++it) // only affect ascent/descent links
+      it->first  = -it->first; // do the flip
+  }
+
   return result;
 } // |star|
 
@@ -1681,6 +1693,9 @@ bool is_2ir (DescValue v)
 bool is_2C (DescValue v)
 { return generator_length(v)==2 and is_complex(v); }
 
+bool is_3Cir (DescValue v)
+{ return generator_length(v)==3 and has_defect(v); }
+
 ext_block::ext_block // for an external twist
   (const InnerClass& G,
    const param_block& block, const KGB& kgb,
@@ -1712,8 +1727,6 @@ ext_block::ext_block // for an external twist
   complete_construction(fixed_points);
   if (not check(block,verbose)) // this sets the edge signs, not just a check!
     throw std::runtime_error("Failure detected in extended block construction");
-  flip_edges(is_2ir); // the twisted errata paper had these signs backwards
-  flip_edges(is_2C); // and that correction appears to require this too
 
 } // |ext_block::ext_block|, from a |param_block|
 
