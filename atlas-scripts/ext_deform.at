@@ -212,7 +212,9 @@ set recursive_deform (Param p, mat delta) = ParamPol:
       prints("full_def with: sc=", sc, ", p=", p);
       assert(is_standard(p)
 	    ,"non standard parameter encountered in deformation");
-      let acc=empty, at_nu0=ParamPol: sc*(p*0) { fully deformed |p| } in
+      let acc=empty
+      , at_nu0=sc*finalize_extended(p*0,delta).s_to_minus_1 { fully deform |p| }
+      in
       for factor in reducibility_points(p)
       ~do
 	let p_def=p*factor { next deformation of |p| }
@@ -231,7 +233,9 @@ set recursive_deform (Param p, mat delta) = ParamPol:
        { |sc| will simply scale the resulting ParamPol, |delta| is implicit }
     begin
       assert(is_standard(p),"non standard parameter in deformation");
-      let acc=empty, at_nu0=ParamPol: sc*(p*0) { fully deformed |p| } in
+      let acc=empty
+      , at_nu0=sc*finalize_extended(p*0,delta).s_to_minus_1 { fully deform |p| }
+      in
       for factor in reducibility_points(p)
       ~ { direction of deformation is down, towards 0; this is not essential }
       do acc+:=deformation_terms(p*factor,delta) od
