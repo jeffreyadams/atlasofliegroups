@@ -65,6 +65,17 @@ set c_form_irreducible_long (Param p) = (ParamPol,[(Param,Split,ParamPol)]):
   in (P,standards)
 )
 
+{divide Split by integer}
+set divide_by(Split w,int n)=let (q,r)=w\%n in assert(=r,"Inexact division");q
+
+{ this is the correct formula for the c-form in all cases }
+set c_form_irreducible (Param p) = ParamPol:
+( let ori_nr_p = orientation_nr(p), P = null_module(real_form(p)) in
+  for ev@q in KL_sum_at_s(p)
+  do P +:= ev*orientation_nr_term(ori_nr_p,q)*full_deform(q) od
+; P
+)
+
 { this is the correct formula for the c-form in all cases }
 set c_form_irreducible (Param p) = ParamPol:
 ( let ori_nr_p = orientation_nr(p), P = null_module(real_form(p)) in
@@ -74,6 +85,7 @@ set c_form_irreducible (Param p) = ParamPol:
 )
 
 { The following function implements algorithm from Vogan in email 9/22/16:
+  WITH CHANGE: start with twisted polynomial, not ordinary
   * for each term delta-fixed term q add full_deform(q,delta),
   * for each pair {q,delta(q)} add q*0.
   For second kind it it convenient to add q*0 and delta(q)*0 separately
@@ -84,15 +96,19 @@ set c_form_irreducible (Param p) = ParamPol:
   in this sum by 1 or s; which of the two is to be termined later)
 }
 set c_form_irreducible_delta (Param p) = ParamPol:
-( let G=p.real_form
-  then ori_nr_p = orientation_nr(p), delta=distinguished_involution(G)
-  , fixed_terms = null_module(G), unfixed_terms = null_module(G)
-  in
-  for ev@q in KL_sum_at_s(p)
-  do let c = ev*orientation_nr_term(ori_nr_p,q) in
-    if is_fixed(delta,q)
-    then fixed_terms +:= c*full_deform(q,delta)
-    else unfixed_terms +:= c*one_plus_s*(q*0)
+( let G=p.real_form then	 
+  delta=real_form(p).distinguished_involution then
+  ori_nr_p = orientation_nr(p) then
+  fixed_terms = null_module(G), unfixed_terms = null_module(G) then
+  Ptw=twisted_KL_sum_at_s(p) then
+  P=KL_sum_at_s(p) in
+  for ev@q in P 
+  do 
+    if is_fixed(delta,q) then
+     let new_ev=divide_by((P[q]+Ptw[q])+s*(P[q]-Ptw[q]),2)  then
+         c=new_ev*orientation_nr_term(ori_nr_p,q) in fixed_terms +:= c*full_deform(q,delta)
+    else 
+         let c=ev*orientation_nr_term(ori_nr_p,q) in unfixed_terms +:= c*one_plus_s*(q*0)
     fi
   od
 ; fixed_terms + divide_by(2,unfixed_terms)
@@ -239,3 +255,14 @@ set test_line (Param p) = void:
     od
   fi
 )
+
+
+set is_pure(Split w)=bool: let (x,y)=%w in =x or =y
+
+set test(Param p)=bool:
+let formula=c_form_irreducible_delta(p) then
+bad=null_module(real_form(p)) in
+for w@p in formula do 
+ if not is_pure(w) then bad+:=w*p fi od;
+if #bad=0 then prints("number of terms: ", #formula);true else
+prints("number of terms: ", #formula,new_line,"bad terms:", bad );false fi

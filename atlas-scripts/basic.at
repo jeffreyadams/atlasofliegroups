@@ -56,7 +56,6 @@ set binary_search_first ((int->bool)pred, int low, int high) = int:
 set from_stops ([int] stops) = (int->int):
   stops:=stops[1:]; (int k): binary_search_first((int i):stops[i]>k,0,#stops)
 
-
 {				Integers				}
 
 set abs (int k)= int: if <k then -k else k fi
@@ -481,7 +480,22 @@ set ^ = { exponentiation of split integers }
     then if is_even(n) then 1 else x fi { all of which are square roots of +1 }
     else error("Negative power "+n+" of split integer "+split_format(x))
     fi
+{   		    Miscellaneous find functions		     }
 
+{ find index of item in list, or -1 if not found; first does this }
+
+set find ([int] v, int k)=int:     first(#v,(int i)bool:v[i]=k)
+set find ([Param] P,Param p)=int:  first(#P,(int i)bool:P[i]=p)
+set find ([KGBElt] S,KGBElt x)=int:first(#S,(int i)bool:S[i]=x)
+
+{ used to find root v in list of roots S:}
+set find ([[int]] S,[int] v)=int:first(#S,(int i)bool:S[i]=v)
+
+{ need different name to avoid disambiguation problem }
+set find_vec([vec] S,vec v)=int:first(#S,(int i)bool:S[i]=v)
+
+{ pad string with blanks (for lining up columns in tables)}
+set pad(string s,int padding)=string: l_adjust(padding,s)
 
 {				Root data 				}
 
@@ -993,6 +1007,15 @@ set parameter_gamma(KGBElt x, ratvec lambda, ratvec gamma) = Param:
   { ((1-theta)*lambda+(1+theta)*gamma)/2 = (1+theta)*(gamma-lambda)/2+lambda }
   parameter(G,nx,(1+theta)*(gamma-lambda)/2+lambda,gamma)
 
+{block@Param gives wrong result for singular infinitesimal character
+ redefine it here
+}
+
+set block(Param p)=([Param],int):
+if is_regular(root_datum(p),infinitesimal_character(p)) then block(p) else
+let (all_parameters,,,,,indices,)=KL_block(p) then 
+B=for i in indices do all_parameters[i] od in (B,find(B,p)) fi
+
 { get just the parameters from a block, just a shorcut to: (params,)=block(p) }
 set block_of (Param p) = [Param]: let (params,)=block(p) in params
 
@@ -1201,19 +1224,3 @@ set delete ([[ratvec]] v, int k)=[[ratvec]]:v[:k]##v[k+1:]
 set delete ([[vec]] v, int k)   =[[vec]]:   v[:k]##v[k+1:]
 set delete ([ParamPol] P, int k)=[ParamPol]:P[:k]##P[k+1:]
 
-{   		    Miscellaneous find functions		     }
-
-{ find index of item in list, or -1 if not found; first does this }
-
-set find ([int] v, int k)=int:     first(#v,(int i)bool:v[i]=k)
-set find ([Param] P,Param p)=int:  first(#P,(int i)bool:P[i]=p)
-set find ([KGBElt] S,KGBElt x)=int:first(#S,(int i)bool:S[i]=x)
-
-{ used to find root v in list of roots S:}
-set find ([[int]] S,[int] v)=int:first(#S,(int i)bool:S[i]=v)
-
-{ need different name to avoid disambiguation problem }
-set find_vec([vec] S,vec v)=int:first(#S,(int i)bool:S[i]=v)
-
-{ pad string with blanks (for lining up columns in tables)}
-set pad(string s,int padding)=string: l_adjust(padding,s)

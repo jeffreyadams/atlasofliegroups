@@ -1,6 +1,6 @@
 <basic.at
-<extended_misc.at { for type extended_param }
-<extended_types.at { for ext_type_1@(int,extended_param) }
+<extended_misc.at { for type ExtParam }
+<extended_types.at { for ext_type_1@(int,ExtParam) }
 
 { this script defines the cross action by roots from the integrality datum
   associated to the (infinitsimal character of the) extended parameter in
@@ -8,15 +8,15 @@
 }
 
 { check that extended parameter |E| lies over cross image by |kappa| of |p| }
-set test_ext_cross (Param p, {Weyl word} [int] kappa, extended_param E) = void:
+set test_ext_cross (Param p, {Weyl word} [int] kappa, ExtParam E) = void:
   assert(valid(E),"Invalid extended parameter");
   let w=W_word:(root_datum(p),kappa) then q=parameter(E), cross=cross(w,p) in
   if q!=cross then error("cross/ext_cross are not consistent: ",q," ",cross) fi
 
 { extended cross action in length 1 }
 set ext_cross_1( int j
-               , extended_param(ic,delta,gamma,lambda,theta,g,l,omega,tau,t):E
-               ) = extended_param:
+               , ExtParam(ic,delta,gamma,lambda,theta,g,l,omega,tau,t):E
+               ) = ExtParam:
   let p=parameter(E)
   , (alpha, alpha_check) =
       let id=integrality_datum(ic,gamma) { DO NOT USE RootDatum:ic } in
@@ -51,8 +51,8 @@ set ext_cross_1( int j
 
 { extended cross action in length 2 }
 set ext_cross_2( int j
-               , extended_param(ic,delta,gamma,lambda,theta,g,l,omega,tau,t):E
-               ) = extended_param:
+               , ExtParam(ic,delta,gamma,lambda,theta,g,l,omega,tau,t):E
+               ) = ExtParam:
   let p=parameter(E), rd=integrality_datum(E)
   then type = string: { 2C+,2C-,2Ci,2Cr,2i11,2i12,2i22,2r22,2r21,2r11,2rn,2ic }
     ext_type_2(delta,j,p)
@@ -147,18 +147,18 @@ set ext_cross_2( int j
 
 
 { extenteded cross action not yet defined for length 3 cases }
-set ext_cross_3(int j,extended_param E) = extended_param:
+set ext_cross_3(int j,ExtParam E) = ExtParam:
   let p=parameter(E) then type=ext_type_3(delta(E),j,p)
   in prints("ext_cross_3"); E { should be defined properly here! FIXME }
 
 { ext_cross_simple calls one of the ext_cross_i; it supposes that the
   root(integrality_datum(E),j) is actually among simple_roots(RootDatum(ic(E)).
   This function used to be called in all cases, but now it is called by
-  nonintegral.rx:ext_cross@(int,extended_param) only in special cases (and
+  nonintegral.rx:ext_cross@(int,ExtParam) only in special cases (and
   after moving to a simple root), namely for types 2i11, 2i12, 2r22, and 2r21.
 }
-set ext_cross_simple (int j, extended_param (ic,delta,,,,,,,,):E) =
-    extended_param:
+set ext_cross_simple (int j, ExtParam (ic,delta,,,,,,,,):E) =
+    ExtParam:
 ( let p=parameter(E), l=ext_length(integrality_datum(E),delta,j) in
 { prints("length is:", l); }
   assert(is_fixed(delta,p),"Parameter is not fixed by delta")

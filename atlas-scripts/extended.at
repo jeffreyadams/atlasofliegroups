@@ -3,8 +3,8 @@
 <representations.at { for trivial_block }
 <synthetic.at       { for is_conjugate, also defines type KGBElt_gen }
 <parameters.at      { for square@KGBElt }
-<extended_misc.at   { base script extended parameters, defines extended_param }
-<extended_types.at  { for ext_type@(int,extended_param) }
+<extended_misc.at   { base script extended parameters, defines ExtParam }
+<extended_types.at  { for ext_type@(int,ExtParam) }
 
 set assert (bool b, (->string) mess ) = void: if not b then error(mess()) fi
 
@@ -18,9 +18,9 @@ set assert (bool b, (->string) mess ) = void: if not b then error(mess()) fi
 }
 
 { extended parameter:
-  the type abbreviation extended_param is defined in extended_misc.at
+  the type abbreviation ExtParam is defined in extended_misc.at
 
-  extended_param:(ic,delta,gamma,lambda,theta,g,l,omega,tau,t), is:
+  ExtParam:(ic,delta,gamma,lambda,theta,g,l,omega,tau,t), is:
 
 (InnerClass ic, {inner class}
  mat delta,     {twist}
@@ -97,7 +97,7 @@ set assert (bool b, (->string) mess ) = void: if not b then error(mess()) fi
   lambda\in X^*+\rho
 }
 set E (mat delta, KGBElt x, ratvec gamma, ratvec g, ratvec lambda) =
-  extended_param:
+  ExtParam:
 begin let ic = inner_class(x), theta = involution(x) in
   assert(is_fixed(delta,x),"x is not fixed by delta")
 ; assert(is_integer(square(x)-g)
@@ -125,7 +125,7 @@ end
 { version for the nonintegral case, using KGBElt_gen for y, see synthetic.at }
 
 set E (mat delta, ratvec gamma, KGBElt x, ratvec g, KGBElt_gen y) =
-  extended_param:
+  ExtParam:
 begin let ic = inner_class(x), theta = involution(x) in
   assert(dual(ic)=inner_class(y),"inner classes are not dual")
 ; assert(is_fixed(delta,x),"x is not fixed by delta")
@@ -146,20 +146,20 @@ begin let ic = inner_class(x), theta = involution(x) in
 end
 
 { in case of an integral parameter, we can deduce gamma, lambda from it }
-set E (mat delta, Param p, ratvec g) = extended_param:
+set E (mat delta, Param p, ratvec g) = ExtParam:
   E(delta,x(p), infinitesimal_character(p), g, lambda(p))
 
-set E (mat delta, Param p) = extended_param: E(delta,p,canonical_g(p))
+set E (mat delta, Param p) = ExtParam: E(delta,p,canonical_g(p))
 
 { allow defaulting |delta| across a session, by doing |set E=E(delta)|
   for instance as |set E=E(ic.distinguished_involution)|
 }
-set E (mat delta) = (Param->extended_param): (Param p): E(delta,p)
+set E (mat delta) = (Param->ExtParam): (Param p): E(delta,p)
 
-set torus_factor (extended_param E) = ratvec: E.g - E.l - E.rho_check
-set dual_torus_factor (extended_param E) = ratvec: E.gamma-E.lambda_rho-E.rho
-set nu (extended_param E) = ratvec: nu(E.gamma,E.x)
-set length(extended_param E) = int: length(parameter(E))
+set torus_factor (ExtParam E) = ratvec: E.g - E.l - E.rho_check
+set dual_torus_factor (ExtParam E) = ratvec: E.gamma-E.lambda_rho-E.rho
+set nu (ExtParam E) = ratvec: nu(E.gamma,E.x)
+set length(ExtParam E) = int: length(parameter(E))
 
 { sign(E,F)=\pm 1 (or 0): nonzero tells whether the parameters for G are
   equivalent up to sign, and gives that sign.
@@ -171,8 +171,8 @@ set length(extended_param E) = int: length(parameter(E))
 }
 
 set sign (
-    extended_param(ic1,delta1,gamma1,lambda1,theta1,g1,l1,omega1,tau1,t1):E1,
-    extended_param(ic2,delta2,gamma2,lambda2,theta2,g2,l2,omega2,tau2,t2):E2
+    ExtParam(ic1,delta1,gamma1,lambda1,theta1,g1,l1,omega1,tau1,t1):E1,
+    ExtParam(ic2,delta2,gamma2,lambda2,theta2,g2,l2,omega2,tau2,t2):E2
   ) = int:
   if  ic1!=ic2 or delta1!=delta2 or gamma1!=gamma2 or g1!=g2 or theta1!=theta2
       or omega1!=omega2 { redundant if parameters individually valid }
@@ -192,8 +192,8 @@ set sign (
   fi
 
 set sign_verbose (
-  extended_param(ic1,delta1,gamma1,lambda1,theta1,g1,l1,omega1,tau1,t1):E1,
-  extended_param(ic2,delta2,gamma2,lambda2,theta2,g2,l2,omega2,tau2,t2):E2
+  ExtParam(ic1,delta1,gamma1,lambda1,theta1,g1,l1,omega1,tau1,t1):E1,
+  ExtParam(ic2,delta2,gamma2,lambda2,theta2,g2,l2,omega2,tau2,t2):E2
  ) = int:
   let sign=0 in
   if   ic1!=ic2 then prints("inner classes are not equal")
@@ -216,8 +216,8 @@ set sign_verbose (
   parameters for G^\vee defined by E,F are equivalent or not
 }
 set dual_sign (
-  extended_param(ic1,delta1,gamma1,lambda1,theta1,g1,l1,omega1,tau1,t1):E1,
-  extended_param(ic2,delta2,gamma2,lambda2,theta2,g2,l2,omega2,tau2,t2):E2
+  ExtParam(ic1,delta1,gamma1,lambda1,theta1,g1,l1,omega1,tau1,t1):E1,
+  ExtParam(ic2,delta2,gamma2,lambda2,theta2,g2,l2,omega2,tau2,t2):E2
  ) = int:
   if ic1!=ic2 or delta1!=delta2 or gamma1!=gamma2 or g1!=g2 or theta1!=theta2
      or omega1!=omega2 {redundant} or x(E1)!=x(E2)
@@ -235,25 +235,25 @@ set dual_sign (
   define sign(E,(F1,F2))=sign(E,F1)+sign(E,F2)=\pm 1 (assuming sign(F1,F2)=0)
   This is mainly used when (F1,F2) is a double-valued Cayley
 }
-set sign (extended_param E,(extended_param F1,extended_param F2)) = int:
+set sign (ExtParam E,(ExtParam F1,ExtParam F2)) = int:
   sign(E,F1)+sign(E,F2)
-set sign ((extended_param E1,extended_param E2),extended_param F) = int:
+set sign ((ExtParam E1,ExtParam E2),ExtParam F) = int:
   sign(E1,F)+sign(E2,F)
 
 { default(F)=\pm F is the extended parameter constructed by Atlas }
-set default (extended_param F) = extended_param:
+set default (ExtParam F) = ExtParam:
   E(F.delta,F.x { defined in extended_misc; it uses (ic,theta,g,l) }
    ,F.gamma,F.g,F.lambda_rho+rho(F.ic))
 
-set      sign (extended_param E) =int:      sign(E,default(E))
-set dual_sign (extended_param E) =int: dual_sign(E,default(E))
-set = (extended_param E, extended_param F) = bool: sign(E,F)=1
-set is_default (extended_param E)=bool:E=default(E)
+set      sign (ExtParam E) =int:      sign(E,default(E))
+set dual_sign (ExtParam E) =int: dual_sign(E,default(E))
+set = (ExtParam E, ExtParam F) = bool: sign(E,F)=1
+set is_default (ExtParam E)=bool:E=default(E)
 
-set z (extended_param E) = rat: { implicit $\exp_{-1}$ }
+set z (ExtParam E) = rat: { implicit $\exp_{-1}$ }
   E.l * (E.delta-1) * E.tau / 2 + E.t * E.lambda_rho
 
-set z_quot (extended_param E, extended_param F) = int:
+set z_quot (ExtParam E, ExtParam F) = int:
   let d=E.z-F.z in assert(=d%1, "z_quot imaginary"); (-1)^(d\1)
 
 { print information about an extended block }
@@ -288,34 +288,34 @@ set print_ext_block = (mat,[Param]->void): ext_print_block@(mat,[Param])
 set print_ext_block = (mat,Param->void):   ext_print_block@(mat,Param)
 set print_ext_block = (Param->void):        ext_print_block@Param
 
-set ext_block_of (mat delta, Param p, ratvec g) = [extended_param]:
+set ext_block_of (mat delta, Param p, ratvec g) = [ExtParam]:
   for p in fixed_block_of(delta,p) do E(delta,p,g) od
-set ext_block_of (mat delta, Param p) = [extended_param]:
+set ext_block_of (mat delta, Param p) = [ExtParam]:
   ext_block_of(delta,p,canonical_g(p))
-set ext_block_of (Param p) = [extended_param]:
+set ext_block_of (Param p) = [ExtParam]:
   ext_block_of(distinguished_involution(real_form(p)),p)
 
-set ext_block (mat delta, Param p, ratvec g) = ([extended_param],int):
+set ext_block (mat delta, Param p, ratvec g) = ([ExtParam],int):
   let (b,index)=fixed_block(delta,p) in 
   (for p in b  do E(delta,p,g) od, index)
-set ext_block (mat delta, Param p) = ([extended_param],int):
+set ext_block (mat delta, Param p) = ([ExtParam],int):
   ext_block(delta,p,canonical_g(p))
-set ext_block (Param p) = ([extended_param],int):
+set ext_block (Param p) = ([ExtParam],int):
   ext_block(distinguished_involution(real_form(p)),p)
 
 { locate extended parameter up to sign, report its sign and index (or (0,-1)) }
-set sign_find ([extended_param] list,extended_param E) = (int,int):
+set sign_find ([ExtParam] list,ExtParam E) = (int,int):
   let i=#list-1, s=0 in
   while i>=0 and =(s:=sign(E,list[i])) do i -:= 1 od; (s,i)
 
-set sign_find (extended_param E,[extended_param] list) = (int,int): sign_find(list,E)
+set sign_find (ExtParam E,[ExtParam] list) = (int,int): sign_find(list,E)
 
 {locate parameter E exactly, report index or -1}
-set find ([extended_param] list,extended_param E) = int:
+set find ([ExtParam] list,ExtParam E) = int:
   let i=#list-1 in 
   while i>=0 and sign(E,list[i])!=1 do i -:= 1 od; i
 
-set find (extended_param E,[extended_param] list) = int: find(list,E)
+set find (ExtParam E,[ExtParam] list) = int: find(list,E)
 
 { for convenience
   usage: set (delta,B,g) = ext_basic(G)
