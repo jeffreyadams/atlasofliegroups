@@ -1,5 +1,5 @@
 <basic.at
-<extended_misc.at { for the type |extended_param| }
+<extended_misc.at { for the type |ExtParam| }
 
 {
   types of extended parameters:
@@ -19,7 +19,7 @@ set ext_length (RootDatum rd,mat delta, int j) = int:
   if alpha=beta then 1 elif coroot(rd,j)*beta=0 then 2 else 3 fi
 
 { E=extended parameter, ext_length(j,E) = ext_length(ic(E),delta(E),j) }
-set ext_length(int j, extended_param E) = int:
+set ext_length(int j, ExtParam E) = int:
   ext_length(integrality_datum(E),delta(E),j)
 
 { ext_type has many cases, split cases by length }
@@ -94,10 +94,10 @@ set ext_type (mat delta,int j,Param p) = string:
 { E=extended parameter, ext_type(j,E)=ext_type(delta,j,parameter(E))
   j=index of root in integral-simple roots (not in all simple roots)
 }
-set ext_type(int j,extended_param E) = string:
+set ext_type(int j,ExtParam E) = string:
   ext_type(delta(E),j,parameter(E))
 
 { E=extended parameter, ext_types=[ext_type(j,E)] }
-set ext_types(extended_param (ic,delta,,,,,,,,):E) = [string]:
+set ext_types(ExtParam (ic,delta,,,,,,,,):E) = [string]:
   let p=parameter(E) in
   for j:semisimple_rank(integrality_datum(p)) do ext_type(delta,j,p) od

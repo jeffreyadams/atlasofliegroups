@@ -3,7 +3,8 @@
 <synthetic.at { for type KGBElt_gen }
 <Vogan-dual.at { for y_alt@(Param,InnerClass) }
 <polynomial.at { type poly, update_matrix_entry@(poly_mat,int,int,poly) }
-<extended.at { for type extended_param }
+<extended.at { for type ExtParam }
+<KL_polynomial_matrices.at
 
 {some similar stuff to Vogan-dual.at, also some extra functionality}
 
@@ -14,8 +15,7 @@
    i^th entry gives index of B1[i] in B2
    B1[i]=B2[perm[i]]
 }
-set permutation ([Param] B1, [Param] B2) = [int]:
-  for p in B1 do find(B2,p) od
+set permutation ([Param] B1, [Param] B2) = [int]:for i:#B2 do find(B2,B1[i]) od
 
 { various functions for constructing dual block:
   dual(B), dual(B,g), dual(B,g,dual_inner_class), dual(B,dual_inner_class)
@@ -35,11 +35,10 @@ set dual_block ([Param] B, InnerClass dual_inner_class) = ([Param],[int]):
   (B_vee,permutation(B_dual,B_vee))
 
 {don't specify the inner class and/or the dual infinitesimal character}
-set dual_block ([Param] B) = ([Param],[int]):
-  dual_block(B,dual_inner_class(B[0]))
+set dual_block ([Param] B) = ([Param],[int]):dual_block(B,dual_inner_class(B[0]))
 
-set dual_extended_parameter ( extended_param
-    (ic,delta,gamma,lambda,theta,g,l,omega,tau,t)) = extended_param:
+set dual_ExtParameter ( ExtParam
+    (ic,delta,gamma,lambda,theta,g,l,omega,tau,t)) = ExtParam:
     (dual(ic),^delta,g,l,omega,gamma,lambda,theta,t,tau)
 
 { matrix of P-polynomials for B, with signs if second argument is true
@@ -47,32 +46,8 @@ set dual_extended_parameter ( extended_param
   in the same order, so perm_B_block is the identity. In particular this
   should hold if B was constructed using block_of().
   Otherwise perm_B_block might be nontrivial
+  In the singular case the matrix is of size #survivors
 }
-set KL_block_polynomials ([Param] B,bool signs)=
-( let (block,,Pmatrix,polynomials,stops,,)=KL_block(B[0])
-  then m=n_rows(Pmatrix)
-  , length_diff = let len=from_stops(stops) in (int i,int j) int: len(j)-len(i)
-  then P=poly_mat:
-    for i:m do for j:m
-    do let Pij=polynomials[Pmatrix[i,j]] in
-      if signs then Pij*minus_1^length_diff(i,j) else Pij fi
-    od od
-  in poly_permute_basis(permutation(B,block),P)
-)
-
-{ define the P,P_signed and Q polynomials
-  P,P_signed,Q matrices of polynomials in q
-  upper triangular if B is in standard (increasing) order
-  P_signed: positive/negative integer coefficients
-  P: non-negative integer coefficients
-  Q: non-negative integer coefficients, inverse of P_signed
-  P_signed(1) is the multiplicity of a standard module in an irreducible
-    (character formula)
-  Q(1) is the multiplicity of an irreducible module in a standard module
-}
-set KL_P_polynomials ([Param] B) = KL_block_polynomials(B,false)
-set KL_P_signed_polynomials ([Param] B) = KL_block_polynomials(B,true)
-
 { The Q polynomials are obtained from KL_P_signed_polynomials(dual block)
   after applying a permutation and transpose
   should satisfy P_signed*Q=I
@@ -82,7 +57,7 @@ set KL_P_signed_polynomials ([Param] B) = KL_block_polynomials(B,true)
 }
 set KL_Q_polynomials ([Param] B)=
   let (B_vee,perm)=dual_block(B) in
-  let Q_0=KL_block_polynomials(B_vee,false) in  { Q_0 is upper triangular }
+  let Q_0=KL_P_polynomials(B_vee) in  { Q_0 is upper triangular }
   let Q_1=poly_permute_basis(perm,Q_0) in  { Q_1 (usually) lower triangular }
   transpose(Q_1) { (usually) upper triangular }
 

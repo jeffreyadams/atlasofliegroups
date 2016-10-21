@@ -1,9 +1,9 @@
 <basic.at
-<extended_misc.at { for type extended_param }
-<extended_types.at { for ext_type@(int,extended_param) }
+<extended_misc.at { for type ExtParam }
+<extended_types.at { for ext_type@(int,ExtParam) }
 
 { debug ext_cayley construction, shouldn't be needed }
-set test_ext_cayley (Param p, int j, string ext_type, extended_param E) = void:
+set test_ext_cayley (Param p, int j, string ext_type, ExtParam E) = void:
 ( assert(valid(E),"E is not valid")
 { I'm not sure how the rest of this should work, therefore it is comment only
 ; let q=parameter(E)
@@ -34,8 +34,8 @@ set test_ext_cayley (Param p, int j, string ext_type, extended_param E) = void:
   See ext_Cayley(...) toward the bottom of this file
 }
 set ext_Cayley_1 (
-    int j, extended_param(ic,delta,gamma,lambda,theta,g,l,omega,tau,t):E) =
-    [extended_param]:
+    int j, ExtParam(ic,delta,gamma,lambda,theta,g,l,omega,tau,t):E) =
+    [ExtParam]:
 begin
   let id=integrality_datum(ic,gamma), p=parameter(E)
   then type=ext_type_1(delta,j,p)
@@ -108,8 +108,8 @@ end
   See ext_Cayley(...) toward the bottom of this file
 }
 set ext_Cayley_2 (
-    int j,extended_param(ic,delta,gamma,lambda,theta,g,l,omega,tau,t):E) =
-    [extended_param]:
+    int j,ExtParam(ic,delta,gamma,lambda,theta,g,l,omega,tau,t):E) =
+    [ExtParam]:
 begin
   let id=integrality_datum(ic,gamma), p=parameter(E)
   then type = ext_type_2(delta,j,p)
@@ -287,8 +287,8 @@ end
   See ext_Cayley(...) toward the bottom of this file
 }
 set ext_Cayley_3 (
-    int j,extended_param(ic,delta,gamma,lambda,theta,g,l,omega,tau,t):E)=
-    [extended_param]:
+    int j,ExtParam(ic,delta,gamma,lambda,theta,g,l,omega,tau,t):E)=
+    [ExtParam]:
 begin
   let p=parameter(E) then type=ext_type_1(delta,j,p)
   in {3C+,3C-,3Ci,3Cr,3i,3r,3rn,3ic}
@@ -303,8 +303,8 @@ end
   assuming this root is G-simple}
 
 set ext_Cayley_simple (
-    int j,extended_param(ic,delta,gamma,lambda,theta,g,l,omega,tau,t):E) =
-    [extended_param]:
+    int j,ExtParam(ic,delta,gamma,lambda,theta,g,l,omega,tau,t):E) =
+    [ExtParam]:
 begin
 { prints("ext_Cayley_simple in extended_cayley.at with  j=", j, "E:")
 ; display(E)
@@ -328,8 +328,8 @@ begin
         ,"root is integral-simple but not simple, "+
          "use nonintegral.at to define ext_Cayley")
   ; let l=ext_length(integrality_datum(p),delta,j) in
-    [ext_Cayley_1@(int,extended_param)
-    ,ext_Cayley_2@(int,extended_param)
-    ,ext_Cayley_3@(int,extended_param)] [l-1] (j,E)
+    [ext_Cayley_1@(int,ExtParam)
+    ,ext_Cayley_2@(int,ExtParam)
+    ,ext_Cayley_3@(int,ExtParam)] [l-1] (j,E)
   fi
 end

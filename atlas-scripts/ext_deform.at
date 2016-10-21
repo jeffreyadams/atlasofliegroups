@@ -60,38 +60,40 @@ set has_nu0 (Param p) = bool: =nu(p)
   |B_fixed| should be the delta-fixed parameters in a block
   The result is a row-gathered matrix of (univariate) polynomials
 }
-set KL_P_polynomials ([Param] B_fixed,mat delta) = [[poly]]:
+
+set KL_P_polynomials_1 ([Param] B_fixed,mat delta) = [[poly]]:
   assert( all(for p in B_fixed do is_fixed(delta,p) od)
   	, "Not every parameter is delta-fixed" );
   let (P,polys,)=raw_ext_KL(B_fixed[0],delta) in
   for row@i in ^P
   do
     for entry@j in row
-    do {(-1)^length_diff(i,j,jumps)
-     *} if >=entry then polys[entry] else -polys[-entry] fi
+    do if >=entry then polys[entry] else -polys[-entry] fi
     od
   od
 
-set KL_P_signed_polynomials ([Param] B_fixed,mat delta) = [[poly]]:
+set KL_P_signed_polynomials_1 ([Param] B_fixed,mat delta) = [[poly]]:
   assert( all(for p in B_fixed do is_fixed(delta,p) od)
 	, "Not every parameter is delta-fixed" );
-  let (P,polys,jumps)=raw_ext_KL(B_fixed[0],delta) then len=from_stops(jumps) in
+  let (P,polys,jumps)=raw_ext_KL(B_fixed[0],delta)
+  then length = from_stops(jumps)
+  in
   for row@i in ^P
   do
     for entry@j in row
-    do if >=entry then polys[entry] else -polys[-entry] fi
-     * minus_1^(len(j)-len(i))
+    do minus_1^(length(j)-length(i))
+     * if >=entry then polys[entry] else -polys[-entry] fi
     od
   od
 
 set KL_Q_polynomials ([Param] B_fixed, mat delta) = [[poly]]:
-  upper_unitriangular_inverse (KL_P_signed_polynomials(B_fixed,delta))
+  upper_unitriangular_inverse (KL_P_signed_polynomials_1(B_fixed,delta))
 
 set deform (Param p, mat delta) = ParamPol:
 ( assert(is_fixed(delta,p),"parameter is not delta-fixed");
   let (B_f,index) = fixed_block(delta,p) { hopefully the same block as KL_P }
   , l_index=length(p) { use built-in function |length| for Param |p| }
-  then P_signed_polys=KL_P_signed_polynomials(B_f,delta)
+  then P_signed_polys=KL_P_signed_polynomials_1(B_f,delta)
   then Q_polys=upper_unitriangular_inverse(P_signed_polys)
   in
   if ed_verbose then prints("index=",index) fi;

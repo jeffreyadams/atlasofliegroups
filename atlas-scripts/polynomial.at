@@ -19,12 +19,14 @@ forget *@(vec,vec)
 
 { for convenience declare some constants, the ! makes changes to these illegal }
 set !poly_0 = poly:[], !poly_1 = poly:[1], !poly_2 = poly: [2]
+set !q = poly: [0,1], !q2 = poly: [0,0,1]
 
 set + = flex_add@(poly,poly)
 set - = flex_sub@(poly,poly)
 set * = convolve@(vec,vec)
 
 set poly_product = *@(poly,poly) { this binding will remain exported }
+set poly_plus = +@(poly,poly) { this binding will remain exported }
 
 { reduce polynomial by dropping trailing zeros; shouldn't really be needed }
 set strip (poly v) = poly: v + poly_0 { operator + does actual stripping }
@@ -108,13 +110,20 @@ set update_matrix_row(poly_mat M, int i, [poly] row)= poly_mat: M[i]:=row; M
 set update_matrix_entry(poly_mat M, int i, int j, poly v)= poly_mat:
   let row=M[i] in row[j]:=v; M[i]:=row; M
 
+
+
 set zero_poly_row(int n) = [poly]: for i:n do poly_0 od
-set zero_poly_matrix(int n) = poly_mat:
-  let !row=zero_poly_row(n) in for i:n do row od
+set zero_poly_matrix(int rows, int columns)=
+  let !row=zero_poly_row(columns) in for i:rows do row od
+set zero_poly_matrix(int n) = poly_mat:zero_poly_matrix(n,n)
 set scalar_poly_matrix(int n, int c)= poly_mat:
   let !row=zero_poly_row(n) { model row, almost equal to each wanted row } in
   for i:n do let row_i=row in row_i[i]:=[c]; row_i od
 set identity_poly_matrix(int n) = scalar_poly_matrix(n,1)
+set mat_as_poly_mat(mat M)=
+ let (r,c)=#M then
+ rv=zero_poly_matrix(r,c) in
+  for i:r do for j:c do rv:=update_matrix_entry(rv,i,j,[M[i,j]]) od od;rv
 
 set +(poly_mat M, poly p) = poly_mat: { add polynomial scalar matrix }
   for row@i in M  do for e@j in row do if i=j then e+p else e fi od od
@@ -162,16 +171,18 @@ set poly_permute_basis(poly P, poly_mat A) = poly_mat: { P is permutation }
 { make a printable string out of a polynomial and name of indeterminate,
   for use in other print functions }
 set stringPoly (poly v, string q)= string:
-  if =v then "0" else
-  ##for c@k in v do
-      if =c then "" else
-      ##
-      [ { sign } if c<0 then "-" else "+" fi
-      , { coefficient } if abs(c)=1 and k>0 then "" else int_format(abs(c)) fi
-      , { monomial } if k>1 then q+"^"+int_format(k) elif k=0 then "" else q fi
-      ]
+  if =v then "0"
+  else
+    let rv="" in
+    for c@k in v do
+      if c!=0 then
+	let coef = if c<0 then "-" else "+" fi +
+            if abs(c)=1 and k>0 then "" else int_format(abs(c)) fi
+	,   term = if k>1 then q+"^"+int_format(k) elif k=0 then "" else q fi
+	in rv ##:= coef+term
       fi
     od
+  ; rv
   fi
 
 { nice printing of a polynomial }

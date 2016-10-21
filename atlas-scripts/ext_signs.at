@@ -1,8 +1,8 @@
 {signs for extended parameters in special cases, used primarily in hecke.at}
 
-<extended_misc.at { type extended_param }
-<extended_cross.at { ext_cross@(int,extended_param) }
-<extended_cayley.at { ext_Cayley@(int,extended_param) }
+<extended_misc.at { type ExtParam }
+<extended_cross.at { ext_cross@(int,ExtParam) }
+<extended_cayley.at { ext_Cayley@(int,ExtParam) }
 <hecke.at { for y_gen }
 
 { given E and F, where F occurs in 2i12-Cayley(E)
@@ -32,8 +32,8 @@
   you get 6 pluses and 2 minuses
 }
 
-set sign_2i12 (int j, extended_param E, extended_param F) = int:
-  let f (int j, extended_param E, extended_param F) = int:
+set sign_2i12 (int j, ExtParam E, ExtParam F) = int:
+  let f (int j, ExtParam E, ExtParam F) = int:
     let c=ext_Cayley(j,E) in sign(c[0],F)+sign(c[1],F)
   in if f(j,E,F)=1 and f(j,F,E)=1 then 1 else -1 fi
 
@@ -41,7 +41,7 @@ set sign_2i12 (int j, extended_param E, extended_param F) = int:
   by 2i12, compute the sign: coefficient of pi(F) in  T_kappa(\pi(E))
   see "More on the 2i12, 2Ci and 1i cases" Proposition 1.13
 }
-set sign_2i12_old (int j,extended_param E,extended_param F) = int:
+set sign_2i12_old (int j,ExtParam E,ExtParam F) = int:
 { (ic_E,delta_E,gamma_E,lambda_E,theta_E,g_E,l_E,omega_E,tau_E,t_E):E,
   (ic_F,delta_F,gamma_F,lambda_F,theta_F,g_F,l_F,omega_F,tau_F,t_F):F))=int:
 }
@@ -108,11 +108,11 @@ begin
 end
 
 { sign_2r21(j,E,F) is defined to be sign_2i12(j,F,E) }
-set sign_2r21(int j, extended_param E, extended_param F) =int:
+set sign_2r21(int j, ExtParam E, ExtParam F) =int:
   sign_2i12(j,F,E)
 
 { see "More on the 2i12, 2Ci and 1i cases" Section 2 }
-set sign_2Ci (int j,extended_param E) = int:
+set sign_2Ci (int j,ExtParam E) = int:
   let id=integrality_datum(E)
   then alpha=root(id,j), alpha_check=coroot(id,j)
   then beta=E.delta*alpha then beta_check=coroot(id,beta)
@@ -120,7 +120,7 @@ set sign_2Ci (int j,extended_param E) = int:
     ((alpha_check+beta_check)*E.tau) * ((E.g-E.l)*alpha-1) /2 )
   in (-1)^exponent
 
-set sign_2Cr (int j,extended_param E) = int:
+set sign_2Cr (int j,ExtParam E) = int:
   let id=integrality_datum(E)
   then alpha=root(id,j), alpha_check=coroot(id,j)
   then beta=E.delta*alpha then beta_check=coroot(id,beta)
@@ -128,7 +128,7 @@ set sign_2Cr (int j,extended_param E) = int:
     (alpha_check*(E.gamma-E.lambda_rho)-1) * (E.t*(alpha+beta)) /2 )
   in (-1)^exponent
 
-set signs_1i1(int j, extended_param E, extended_param E1, extended_param F) =
+set signs_1i1(int j, ExtParam E, ExtParam E1, ExtParam F) =
   (int,int):
 begin
   assert(ext_type(j,E)="1i1","Wrong type in signs_1i1")
@@ -155,6 +155,6 @@ begin
 end
 
 { not needed?
-  set signs_1r1f(int j, extended_param E, extended_param F) = int:
+  set signs_1r1f(int j, ExtParam E, ExtParam F) = int:
     signs_1i1(j,F,E)
 }

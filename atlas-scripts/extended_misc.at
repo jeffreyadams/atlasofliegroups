@@ -94,19 +94,19 @@ set square_is_central (InnerClass ic,x_rep(v,theta)) = bool:
   square_is_central(ic,theta,v) { use the function defined in parameters.at }
 
 
-: extended_param =
+: ExtParam =
   ( InnerClass ic, mat delta
   , ratvec gamma, vec lambda_rho, mat theta
   , ratvec g, vec l, mat omega
   , vec tau, vec t
   )
 
-set root_datum (extended_param E) = RootDatum: root_datum(E.ic)
-set rho        (extended_param E) = ratvec: rho(E.root_datum)
-set rho_check  (extended_param E) = ratvec: rho_check(E.root_datum)
+set root_datum (ExtParam E) = RootDatum: root_datum(E.ic)
+set rho        (ExtParam E) = ratvec: rho(E.root_datum)
+set rho_check  (ExtParam E) = ratvec: rho_check(E.root_datum)
 
-set dual_parameter (extended_param
-      (ic, delta, gamma, lambda, theta, g, l, omega, tau,t)) = extended_param:
+set dual_parameter (ExtParam
+      (ic, delta, gamma, lambda, theta, g, l, omega, tau,t)) = ExtParam:
   (dual(ic),^delta,g,l,omega,gamma,lambda,theta,t,tau)
 
 { in PFTR: z=i^<tau,(delta_0-1)l>(-1)^<lambda,t>
@@ -117,27 +117,27 @@ set log_z (mat delta, vec lambda_rho, vec l, vec tau,vec t) = rat: { modulo 1 }
 set log_zeta (mat delta, vec lambda, vec l,vec tau,vec t) = rat: { modulo 1 }
   (t*(delta-1)*lambda/2+l*tau)/2 % 1
 
-set log_z (extended_param E) = rat:
+set log_z (ExtParam E) = rat:
   log_z(E.delta,E.lambda_rho,E.l,E.tau,E.t)
-set log_zeta (extended_param E) = rat:
+set log_zeta (ExtParam E) = rat:
   log_zeta(E.delta,E.lambda_rho,E.l,E.tau,E.t)
 
 { compute x,y, the one-sided parameters of an extended parameter }
 
-set x (extended_param E) = KGBElt:
+set x (ExtParam E) = KGBElt:
   KGB_elt(E.ic, E.theta, E.g-E.rho_check-E.l)
 
-set y (extended_param E) = KGBElt: { assumes integral |E.gamma| }
+set y (ExtParam E) = KGBElt: { assumes integral |E.gamma| }
   KGB_elt(dual(E.ic),E.omega,E.gamma-E.lambda_rho-E.rho)
 
-{ recover ordinary Param value from extended_param; could be defined as
-  set parameter (extended_param E) = Param: parameter(x(E),y(E),E.gamma)
+{ recover ordinary Param value from ExtParam; could be defined as
+  set parameter (ExtParam E) = Param: parameter(x(E),y(E),E.gamma)
 
   actually this is better: use |(E.x,E.lambda,E.gamma)|
 }
-set parameter (extended_param E) = Param: param(E.x,E.lambda_rho,E.gamma)
+set parameter (ExtParam E) = Param: param(E.x,E.lambda_rho,E.gamma)
 
-set integrality_datum (extended_param E) = RootDatum:
+set integrality_datum (ExtParam E) = RootDatum:
   integrality_datum(E.ic,E.gamma)
 
 { assume gamma(E) is integrally dominant
@@ -148,8 +148,8 @@ set integrality_datum (extended_param E) = RootDatum:
       integrally dominant
   However, since not all functions allow that, it is still needed
 }
-set translate_to_dominant (extended_param
-    (ic,delta,gamma,lambda_rho,theta,g,l,omega,tau,t):E) = (extended_param,vec):
+set translate_to_dominant (ExtParam
+    (ic,delta,gamma,lambda_rho,theta,g,l,omega,tau,t):E) = (ExtParam,vec):
   let (new_gamma,shift) = make_dominant_using_roots(root_datum(E),gamma)
   in
    ((ic,delta, gamma+shift,lambda_rho+shift,theta, g,l,omega, tau,t) , shift)
@@ -158,7 +158,7 @@ set translate_to_dominant (extended_param
   test that an extended parameter satisfies the defining conditions
 }
 set valid (
-    extended_param(ic,delta,gamma,lambda_rho,theta,g,l,omega,tau,t)) = bool:
+    ExtParam(ic,delta,gamma,lambda_rho,theta,g,l,omega,tau,t)) = bool:
 begin let OK=false { pessimist: avoids having to set this in many branches } in
   if not square_is_central(ic,theta,(g-l-rho_check(ic)))
   then prints("xi^2 is not central")
@@ -188,7 +188,7 @@ set fixed_block_of (mat delta, Param p) = [Param]: fixed(delta,block_of(p))
 set fixed_block (mat delta, Param p) = ([Param],int):
   let b=fixed(delta,block_of(p)) in (b,find(b,p))
 
-set format (extended_param E) = string:
+set format (ExtParam E) = string:
   to_string ( "         x=", E.x
   , new_line, "     gamma=", E.gamma
   , new_line, "         g=", E.g
@@ -199,10 +199,10 @@ set format (extended_param E) = string:
   , new_line, "         t=", E.t
   )
 
-set short_format (extended_param E) = string: to_string(
+set short_format (ExtParam E) = string: to_string(
     "lambda_rho =",E.lambda_rho,", tau=", E.tau ,", l=", E.l, ", t=", E.t, ".")
-set long_format (extended_param E) = string: to_string(
+set long_format (ExtParam E) = string: to_string(
 "gamma=", E.gamma,", g=", E.g,", lambda_rho =",E.lambda_rho,", tau=", E.tau ,", l=", E.l, ", t=", E.t)
 
-set display (extended_param E) = void: prints(format(E))
-set display_one_line (extended_param E) = void: prints(short_format(E))
+set display (ExtParam E) = void: prints(format(E))
+set display_one_line (ExtParam E) = void: prints(short_format(E))

@@ -23,7 +23,7 @@ set != (KGB_pair(x,y), KGB_pair(z,w)) = bool: x!=z or y!=w
   omega-fixed. Compare definition to x@entended_param from extended_misc.rx,
   which implies that torus_factor(x(E))=(g-l-rho_check(ic))*(1+theta)/2
 }
-set y_gen(extended_param(ic,,gamma,lambda,,,,omega,,)) = KGBElt_gen:
+set y_gen(ExtParam(ic,,gamma,lambda,,,,omega,,)) = KGBElt_gen:
   (dual(ic),omega,(gamma-lambda-rho(ic))*(1+omega)/2)
 
 { this computes y_gen(E@(mat,Param,ratvec)(.,p,.)) without the unused stuff }
@@ -51,7 +51,7 @@ set add_pair( KGB_pair xy, [KGB_pair] xy_pairs) = [KGB_pair]:
   if index(xy,xy_pairs)>=0 then xy_pairs else xy_pairs#xy fi
 
 { index(E,list_of_pairs) = index(x(E),y(E),list_of_pairs) }
-set index( extended_param Ep, [KGB_pair] xy_pairs) = int:
+set index( ExtParam Ep, [KGB_pair] xy_pairs) = int:
   index((x(Ep),y_gen(Ep)),xy_pairs)
 
 { index(p,list_of_pairs)=index(x(p),y(p),list_of_pairs)
@@ -62,10 +62,10 @@ set index(Param p,[KGB_pair] xy_pairs) = int:
 
 
 
-{ compute all other |extended_param| values you can get to by applying a
+{ compute all other |ExtParam| values you can get to by applying a
   single Cayley transform or cross action to a given extended parameter
 }
-set neighbors(int j, extended_param Ep) = [extended_param]:
+set neighbors(int j, ExtParam Ep) = [ExtParam]:
   let type=ext_type(j,Ep) in
 { prints("Ep in neighbors: ",format(Ep)); }
 { prints("type in neighbors: ", type); }
@@ -117,7 +117,7 @@ set x_sort ([KGB_pair] v) = [KGB_pair]:
 
 { return [(x,y)] for the nodes connected to vertex by root j }
 set xy_neighbors (int j,
-  extended_param(ic,delta,gamma,lambda,theta,g,l,omega,tau,t):E) =
+  ExtParam(ic,delta,gamma,lambda,theta,g,l,omega,tau,t):E) =
   [KGB_pair]:
   for F in neighbors(j,E) do (x(F),y_gen(F)) od
 
@@ -168,7 +168,7 @@ begin
 end
 
 { generate_subspace is usually called this way: }
-set generate_subspace (int i, int j, extended_param E) = [KGB_pair]:
+set generate_subspace (int i, int j, ExtParam E) = [KGB_pair]:
   generate_subspace((i,j,delta(E),gamma(E),g(E),(x(E),y_gen(E))))
 
 { same, but just a single Hecke operator; supply it twice (does little harm) }
@@ -176,7 +176,7 @@ set generate_subspace(
     int j, mat delta, ratvec gamma, ratvec g, KGB_pair p) = [KGB_pair]:
   generate_subspace(j,j,delta,gamma,g,p)
 
-set generate_subspace (int i ,extended_param E) = [KGB_pair]:
+set generate_subspace (int i ,ExtParam E) = [KGB_pair]:
   generate_subspace(i,i,delta(E),gamma(E),g(E),(x(E),y_gen(E)))
 
 { decompose(i,j,delta,B,g) returns ([[KGB_pair]],int,[int])
@@ -238,8 +238,8 @@ end
   you get 6 pluses and 2 minuses
 }
 
-set sign_2i12 (int j, extended_param E, extended_param F) = int:
-  let f (int j, extended_param E, extended_param F) = int:
+set sign_2i12 (int j, ExtParam E, ExtParam F) = int:
+  let f (int j, ExtParam E, ExtParam F) = int:
     let c=ext_Cayley(j,E) in sign(c[0],F)+sign(c[1],F)
   in if f(j,E,F)=1 and f(j,F,E)=1 then 1 else -1 fi
 
@@ -247,7 +247,7 @@ set sign_2i12 (int j, extended_param E, extended_param F) = int:
   by 2i12, compute the sign: coefficient of pi(F) in  T_kappa(\pi(E))
   see "More on the 2i12, 2Ci and 1i cases" Proposition 1.13
 }
-set sign_2i12_old (int j,extended_param E,extended_param F) = int:
+set sign_2i12_old (int j,ExtParam E,ExtParam F) = int:
 { (ic_E,delta_E,gamma_E,lambda_E,theta_E,g_E,l_E,omega_E,tau_E,t_E):E,
   (ic_F,delta_F,gamma_F,lambda_F,theta_F,g_F,l_F,omega_F,tau_F,t_F):F))=int:
 }
@@ -314,11 +314,11 @@ begin
 end
 
 { sign_2r21(j,E,F) is defined to be sign_2i12(j,F,E) }
-set sign_2r21(int j, extended_param E, extended_param F) =int:
+set sign_2r21(int j, ExtParam E, ExtParam F) =int:
   sign_2i12(j,F,E)
 
 { see "More on the 2i12, 2Ci and 1i cases" Section 2 }
-set sign_2Ci (int j,extended_param E) = int:
+set sign_2Ci (int j,ExtParam E) = int:
   let id=integrality_datum(E)
   then alpha=root(id,j), alpha_check=coroot(id,j)
   then beta=E.delta*alpha then beta_check=coroot(id,beta)
@@ -326,7 +326,7 @@ set sign_2Ci (int j,extended_param E) = int:
     ((alpha_check+beta_check)*E.tau) * ((E.g-E.l)*alpha-1) /2 )
   in (-1)^exponent
 
-set sign_2Cr (int j,extended_param E) = int:
+set sign_2Cr (int j,ExtParam E) = int:
   let id=integrality_datum(E)
   then alpha=root(id,j), alpha_check=coroot(id,j)
   then beta=E.delta*alpha then beta_check=coroot(id,beta)
@@ -334,7 +334,7 @@ set sign_2Cr (int j,extended_param E) = int:
     (alpha_check*(E.gamma-E.lambda_rho)-1) * (E.t*(alpha+beta)) /2 )
   in (-1)^exponent
 
-set signs_1i1(int j, extended_param E, extended_param E1, extended_param F) =
+set signs_1i1(int j, ExtParam E, ExtParam E1, ExtParam F) =
   (int,int):
 begin
   assert(ext_type(j,E)="1i1","Wrong type in signs_1i1")
@@ -361,7 +361,7 @@ begin
 end
 
 { not needed?
-  set signs_1r1f(int j, extended_param E, extended_param F) = int:
+  set signs_1r1f(int j, ExtParam E, ExtParam F) = int:
     signs_1i1(j,F,E)
 }
 
@@ -377,9 +377,9 @@ set * = convolve@(vec,vec)
   of extended parameters {E_i=E(delta,gamma,x_i,g,y_i)}, assuming pair=(x,y)
   occurs in basis matrix of polynomials, see polynomials.at
 }
-set hecke_row = (int,mat,ratvec,ratvec,KGB_pair,[KGB_pair]->[poly]):
-  let q = poly:[0,1], q2=poly:[0,0,1] in
-(int j,mat delta,ratvec gamma,ratvec g,KGB_pair pair,[KGB_pair] basis) [poly]:
+set hecke_row (
+    int j, mat delta, ratvec gamma, ratvec g, KGB_pair pair, [KGB_pair] basis
+  ) = [poly]:
 begin
   let i=index(pair,basis), n=#basis in
   let R=zero_poly_row(n), (x,y)=pair in
@@ -548,7 +548,7 @@ set * = dot_product@(vec,vec)
   hecke_row(j,E,basis)
 }
 set hecke_row (
-    int j, extended_param(,delta,gamma,,,g,,,,):E, [KGB_pair] basis
+    int j, ExtParam(,delta,gamma,,,g,,,,):E, [KGB_pair] basis
  ) = [poly]:
  hecke_row(j,delta,gamma,g,(x(E),y_gen(E)),basis)
 
@@ -568,7 +568,7 @@ set hecke_matrix (
 }
 set quadratic (poly_mat M, int length, bool show) = bool:
 begin
-  let value=(M+poly_1)*(M-{q^length*identity:}(poly:null(length)#1)) in
+  let value=(M+poly_1)*(M-q^length) in
   if show
   then prints("M="); printPolyMatrix(M); prints(); printPolyMatrix(value)
   fi
@@ -595,9 +595,9 @@ set braid (poly_mat M,poly_mat N, int length) = bool: braid(M,N,length,false)
 
 { utility function modify(E,lambda,l,tau,t) replaces these terms in E }
 set modify(
-    extended_param(ic,delta,gamma,,theta,g,,omega,,)
+    ExtParam(ic,delta,gamma,,theta,g,,omega,,)
   , vec lambda, vec l, vec tau, vec t) =
-  extended_param: (ic,delta,gamma,lambda,theta,g,l,omega,tau,t)
+  ExtParam: (ic,delta,gamma,lambda,theta,g,l,omega,tau,t)
 
 {various tests of hecke relations}
 

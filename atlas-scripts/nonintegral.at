@@ -1,15 +1,15 @@
 <Wdelta.at
 <synthetic.at
-<extended_misc.at   { for extended_param }
+<extended_misc.at   { for ExtParam }
 <extended.at
 <extended_cross.at
 <extended_cayley.at { for ext_Cayley_simple }
 
 { only use ext_cross_simple from extended_cross.at: }
-forget test_ext_cross@(Param,[int],extended_param)
-forget ext_cross_1@(int,extended_param)
-forget ext_cross_2@(int,extended_param)
-forget ext_cross_3@(int,extended_param)
+forget test_ext_cross@(Param,[int],ExtParam)
+forget ext_cross_1@(int,ExtParam)
+forget ext_cross_2@(int,ExtParam)
+forget ext_cross_3@(int,ExtParam)
 
 { the following would override the grass-roots function from synthetic.at
   by a call to the new built-in cross@(vec,Param); it should do the same thing
@@ -85,8 +85,8 @@ set cross (mat w, Param p) = Param:
      extended_cross.rx
 }
 set ext_cross(
-  mat w,extended_param(ic,delta,gamma,lambda_rho,theta,g,l,,tau,t):E) =
-    extended_param:
+  mat w,ExtParam(ic,delta,gamma,lambda_rho,theta,g,l,,tau,t):E) =
+    ExtParam:
   assert(w*delta=delta*w,"w not in W^delta");
   prints("ext_cross by w=",w); prints("E:"); display(E);
   let rd=root_datum(ic), x=x(E), w1= inverse(w), gamma1=w*gamma
@@ -101,7 +101,7 @@ set ext_cross(
   { l*w1 + ( (g-rho_check(rd))*(1-w1)-(rho_check_i(x)*w1-rho_check_i(x1)) )\1 }
   , t1 = t*w1 - ratvec_as_vec( (rho_check_i(x)*w1-rho_check_i(x1))*(delta-1)/2 )
   then result =
-     extended_param:(ic,delta,gamma2,lambda_rho2,theta1,g,l1,-^theta1,tau1,t1)
+     ExtParam:(ic,delta,gamma2,lambda_rho2,theta1,g,l1,-^theta1,tau1,t1)
   in
   if not valid(result)
   then error(new_line+"invalid parameter in ext_cross, w=",w,format(E))
@@ -111,7 +111,7 @@ set ext_cross(
 { posroot i means i^th positive root in list of all positive roots,
   must be fixed by \delta_0
 }
-set posroot_ext_cross (int i, extended_param E) = extended_param:
+set posroot_ext_cross (int i, ExtParam E) = ExtParam:
   ext_cross(reflection(root_datum(E),i),E)
 
 { strongly simple: simple for all of G
@@ -121,10 +121,10 @@ set posroot_ext_cross (int i, extended_param E) = extended_param:
 { cross action of product of strongly simple reflections,
   must give w\in W^{\delta_0}
 }
-set ext_cross ([int] w, extended_param E) = extended_param:
+set ext_cross ([int] w, ExtParam E) = ExtParam:
   ext_cross(w_matrix(root_datum(E),w),E)
 
-set ext_cross_special (int i, extended_param E, bool show) = extended_param:
+set ext_cross_special (int i, ExtParam E, bool show) = ExtParam:
 ( if show then prints("ext_cross_special with ", i); display(E) fi
 ; let special_types=["2i12","2i22", "2r21","2r22"]
   , type=ext_type(i,E)
@@ -137,7 +137,7 @@ set ext_cross_special (int i, extended_param E, bool show) = extended_param:
   in
   if show then prints("in ext_cross_special with i=", i, "root=", alpha) fi
 ; if is_simple_root(rd,alpha)
-  then { call  ext_cross_simple@(int,extended_param) from extended_cross.at}
+  then { call  ext_cross_simple@(int,ExtParam) from extended_cross.at}
      ext_cross_simple(i,E)
   else let j=root_index(root_datum(E),alpha) in
     if show then prints("j=", j) fi;
@@ -160,17 +160,17 @@ set ext_cross_special (int i, extended_param E, bool show) = extended_param:
   fi
 )
 
-set ext_cross_special (int i, extended_param E) = extended_param:
+set ext_cross_special (int i, ExtParam E) = ExtParam:
   ext_cross_special(i,E,false)
 
 
-{ now define ext_cross@(int,extended_param) to replace the one defined in
+{ now define ext_cross@(int,ExtParam) to replace the one defined in
   extended_cross.at
   the root is root(integrality_datum,i)
   make w= s, st, or sts in lengths 1,2,3, respectively
 }
 
-set ext_cross(int i, extended_param E, bool show) = extended_param:
+set ext_cross(int i, ExtParam E, bool show) = ExtParam:
 ( let rd=root_datum(E), alpha=root(integrality_datum(E),i) in
   if show then prints("in ext_cross with i=", i, "root=", alpha) fi
 ; let s=reflection(rd,alpha), length=ext_length(i,E), type=ext_type(i,E) in
@@ -185,7 +185,7 @@ set ext_cross(int i, extended_param E, bool show) = extended_param:
   fi
 )
 
-set ext_cross(int i, extended_param E)= extended_param: ext_cross(i,E,false)
+set ext_cross(int i, ExtParam E)= ExtParam: ext_cross(i,E,false)
 
 
 
@@ -197,7 +197,7 @@ set ext_cross(int i, extended_param E)= extended_param: ext_cross(i,E,false)
   2Ci,2Cr, 2i11, 2i12, 2i12f,2i22, 2r22, 2r21f, 2r11;
   3Ci,3Cr,3i,3r
 }
-set posroot_ext_Cayley (int i,extended_param E, bool show) = [extended_param]:
+set posroot_ext_Cayley (int i,ExtParam E, bool show) = [ExtParam]:
 ( if show then prints("posroot_ext_Cayley i=", i);display(E) fi
 ; let ((,w),alpha) = conjugate_to_simple_by_Wdelta(root_datum(E), delta(E), i)
 { w*root(G,i)=alpha is simple for G, w is in W^\delta }
@@ -211,7 +211,7 @@ set posroot_ext_Cayley (int i,extended_param E, bool show) = [extended_param]:
   ;    prints("E2=") ; valid(E2); display(E2)
   ;    prints("j=",j); prints("Cayley transform of type:", ext_type(j,E2))
   fi
-; for E3 in [extended_param]: ext_Cayley_simple(j,E2)
+; for E3 in [ExtParam]: ext_Cayley_simple(j,E2)
   do let E4 = (E3.ic,E3.delta, E3.gamma-shift, E3.lambda_rho-shift, E3.theta
                              , E3.g, E3.l, E3.omega, E3.tau, E3.t)
 
@@ -219,7 +219,7 @@ set posroot_ext_Cayley (int i,extended_param E, bool show) = [extended_param]:
   od
 )
 
-set posroot_ext_Cayley (int i,extended_param E) = [extended_param]:
+set posroot_ext_Cayley (int i,ExtParam E) = [ExtParam]:
   posroot_ext_Cayley(i,E,false)
 
 { extended Cayley transform of any length, and not necessarily simple
@@ -228,7 +228,7 @@ set posroot_ext_Cayley (int i,extended_param E) = [extended_param]:
   otherwise, call nonintegral.rx:posroot_ext_Cayley
   (with the appropriate change in root number)
 }
-set ext_Cayley (int j, extended_param E, bool show) = [extended_param]:
+set ext_Cayley (int j, ExtParam E, bool show) = [ExtParam]:
 ( let type=ext_type(j,E)
   , cayley_types =
     [ "1i1", "1i2f", "1r1f", "1r2"
@@ -253,14 +253,14 @@ set ext_Cayley (int j, extended_param E, bool show) = [extended_param]:
     then alpha = root(id,j) { a simple root of the integral subsystem }
     in
       if is_simple_root(rd,alpha)
-      then { call ext_Cayley_simple@(int,extended_param), extended_cayley.rx }
+      then { call ext_Cayley_simple@(int,ExtParam), extended_cayley.rx }
 	ext_Cayley_simple(j,E)
-      else { call posroot_ext_Cayley@(int,extended_param) defined above }
+      else { call posroot_ext_Cayley@(int,ExtParam) defined above }
 	posroot_ext_Cayley(root_index(rd,alpha),E)
       fi
   fi
 )
 
-set ext_Cayley (int j, extended_param E) = [extended_param]:
+set ext_Cayley (int j, ExtParam E) = [ExtParam]:
   ext_Cayley(j,E,false)
 
