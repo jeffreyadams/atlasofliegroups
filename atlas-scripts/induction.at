@@ -18,13 +18,14 @@ $\rho_i(G)-\rho_i(L)+\rho_{complex}(G)-\rho_{complex}(L)
   Since $\mathfrak q$ is $\theta$ -stable, $\rho_r(G)-\rho_r(L)=0$, so the
   shift is $\rho(G)-\rho(L)=\rho(\mathfrak u)$.
 
-Then $Ind_L^G I(p_L)=I(p_G)$.
+Then $\operatorname{Ind}_P^G I(p_L)=I(p_G)$.
 
 In the $\theta$-stable case, the shifted parameter p_G may be non-standard
 and needs to be standardized:
 
-If p=(x,lambda,nu), and <lambda,$\alpha^{\vee}$><0 for some imaginary root $\alpha$
-(i.e. non-standard), let i_root_system=imaginary roots for x(p). Find $w$ so
+If p=(x,lambda,nu), and $\langle \text{lambda},\alpha^{\vee}\rangle <0$ for
+some imaginary root $\alpha$ (i.e. non-standard), let
+i_root_system=imaginary roots for x(p). Find $w$ so
 that $w^{-1}\cdot$lambda is dominant for imaginary roots, set
 p_dom=parameter(x,$w^{-1}\cdot$lambda,nu) and return coherent continuation action
 (wrt imaginary roots) of $w$ on p_dom. !}
