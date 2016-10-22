@@ -43,7 +43,7 @@ set find ([(int,int)] complete_indices,(int,int) pair)=int:first(#complete_indic
 set *(ExtParam E,rat r)=
 let  (ic,delta,gamma,lambda,theta,g,l,omega,tau,t)=E then
 nu=nu(E) then
-gamma_new=((1+theta)*lambda+(1-theta)*(nu*r))/2 in 
+gamma_new=((1+theta)*(lambda+rho(ic))+(1-theta)*(nu*r))/2 in 
 (ic,delta,gamma_new,lambda,theta,g,l,omega,tau,t)
 
 set deform (Param p, mat delta, int type) = ExtParamPol:
