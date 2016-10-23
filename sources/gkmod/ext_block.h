@@ -340,7 +340,29 @@ bool is_descent (const ext_gen& kappa, const param& E);
 weyl::Generator first_descent_among
   (RankFlags singular_orbits, const ext_gens& orbits, const param& E);
 
-// expand paramter into a signed sum of extended nonzero final parameters
+//  expand parameter into a signed sum of extended nonzero final
+//  parameters DAVID 10/23/16: this is used primarily or exclusively
+//  when the parameter represents a standard representation (not an
+//  irreducible); the goal is to write the [extended] standard
+//  I(sr_default) as a sum of [extended] final limit standards
+//  \sum_{y\in finalise} I(y_{first,default, y_second}); the second
+//  bool is the \pm. So the relevant y's are the descents of sr to
+//  final standard limits y. The bool tells whether it's y_{default,+}
+//  or y_{default,-} that's a composition factor (just one appears,
+//  with multiplicity 1). You can compute the sign change one descent
+//  at a time. For a descent of odd length change (type 1, or type 2
+//  defect, or type 3 nondefect) the sign change is the sign of the
+//  link; that's what's now done in the code. For a descent of even
+//  length change (type 2 nondefect, or type 3 defect) the sign change
+//  is MINUS the sign of the link, because we're looking at
+//  composition series of I(sr_default) rather than the character
+//  formula of J(sr_default). So the code needs to change the present
+//  boolean flipping at each even length descent link. Sorry that it's
+//  written too compactly for me to figure out how to do that! (Of
+//  course I'll keep trying.
+//  What I believe is that changing this could fix the
+//  c_form_irreducible_delta code in atlas.
+ 
 containers::sl_list<std::pair<StandardRepr,bool> > finalise
   (const repr::Rep_context& rc,
    const StandardRepr& sr, const WeightInvolution& delta);
