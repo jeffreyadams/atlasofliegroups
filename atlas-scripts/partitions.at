@@ -1,15 +1,15 @@
 <basic.at
-<sort.at
+<sort.at { for |reverse_sort@[int]| }
 
 : Partition = [int]   {partition a_1\ge a_2\ge ... a_n>0}
 
 set fac (int n) = int: let p=1 in for i:n-1 from 2 do p *:=i od; p
 
-{ transpose of a partition }
+{ transpose of a partition (maybe passed with nonstandard order of parts) }
 set transpose (Partition P) = Partition:
-  let P=reverse_sort(P), nP=#P in
   if #P=0 then []
-  else for i:P[0] do binary_search_first((int j)bool:P[j]<=i,0,nP) od
+  else P:=reverse_sort(P) { ensure parts are in weakly decreasing order }
+  ; for i:P[0] do binary_search_first((int j)bool:P[j]<=i,0,#P) od
   fi
 
 set size (Partition P) =int: sum(vec: P)

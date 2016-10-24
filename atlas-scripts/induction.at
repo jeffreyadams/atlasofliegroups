@@ -1,15 +1,15 @@
-{! Parabolic induction from real and $\theta$-stable parabolics; cuspidal and 
+{! Parabolic induction from real and $\theta$-stable parabolics; cuspidal and
 $\theta$-stable data of a parameter.
 
 If L is a $\theta$-stable Levi subgroup of G, then KGB for L embeds into KGB for G.
 
-For parabolic induction, a parameter p_L for the Levi L is assigned a parameter 
+For parabolic induction, a parameter p_L for the Levi L is assigned a parameter
 p_G for G:
-  
+
 p_L=(x_L,lambda,nu) -> p_G=(embed_KGB(x_L,G),lambda + appropriate rho-shift,nu).
-  
-For real parabolic induction, the rho-shift is: 
-$\rho_r(G)-\rho_r(L)+(1-\theta)(\rho_S(G)-\rho_S(L))$. (Here $\rho_S$ is a certain 
+
+For real parabolic induction, the rho-shift is:
+$\rho_r(G)-\rho_r(L)+(1-\theta)(\rho_S(G)-\rho_S(L))$. (Here $\rho_S$ is a certain
 half sum of complex roots.)
 
 For $\theta$-stable induction, the rho-shift is:
@@ -18,16 +18,16 @@ $\rho_i(G)-\rho_i(L)+\rho_{complex}(G)-\rho_{complex}(L)
   Since $\mathfrak q$ is $\theta$ -stable, $\rho_r(G)-\rho_r(L)=0$, so the
   shift is $\rho(G)-\rho(L)=\rho(\mathfrak u)$.
 
-Then $\operatorname{Ind}_P^G I(p_L)=I(p_G)$. 
+Then $\operatorname{Ind}_P^G I(p_L)=I(p_G)$.
 
 In the $\theta$-stable case, the shifted parameter p_G may be non-standard
 and needs to be standardized:
 
-If p=(x,lambda,nu), and $\langle \text{lambda},\alpha^{\vee}\rangle <0$ for 
-some imaginary root $\alpha$ (i.e. non-standard), let 
-i_root_system=imaginary roots for x(p). Find $w$ so 
-that $w^{-1}\cdot$lambda is dominant for imaginary roots, set 
-p_dom=parameter(x,$w^{-1}\cdot$lambda,nu) and return coherent continuation action 
+If p=(x,lambda,nu), and $\langle \text{lambda},\alpha^{\vee}\rangle <0$ for
+some imaginary root $\alpha$ (i.e. non-standard), let
+i_root_system=imaginary roots for x(p). Find $w$ so
+that $w^{-1}\cdot$lambda is dominant for imaginary roots, set
+p_dom=parameter(x,$w^{-1}\cdot$lambda,nu) and return coherent continuation action
 (wrt imaginary roots) of $w$ on p_dom. !}
 
 <basic.at
@@ -50,13 +50,13 @@ set inverse_embed_KGB (KGBElt x_G,RealForm L) = KGBElt:
 
 {--------------------- real parabolic induction -------------------}
 
-{. Given an involution theta and a root datum, return the set S of complex roots 
-   containing the first positive representative of each quadruple 
+{. Given an involution theta and a root datum, return the set S of complex roots
+   containing the first positive representative of each quadruple
    ($\pm$ alpha,$\pm$ theta(alpha)). .}
 set makeS (mat theta,RootDatum rd) = mat:
   columns_with((int j,vec alpha):posroot_index(rd,theta*alpha)>j,posroots(rd))
 
-{. As the previous function, with argument a KGB element x determining the involution 
+{. As the previous function, with argument a KGB element x determining the involution
    and root datum .}
 set makeS (KGBElt x) = mat: makeS(involution(x),root_datum(x))
 
@@ -75,14 +75,14 @@ set rho_S (KGBElt x)            = ratvec: sum(makeS(x))/2
   then shift=rho_r(x_G)-rho_r(x_L)+(1-theta)*(rho_S(x_G)-rho_S(x_L))
   in parameter(x_G,lambda(p_L)+shift,  nu(p_L))
 
-{. Real parabolic induction of standards, applied to a formal sum of 
-   parameters (ParamPol). .} 
+{. Real parabolic induction of standards, applied to a formal sum of
+   parameters (ParamPol). .}
 set real_induce_standard (ParamPol P,RealForm G) = ParamPol:
   let result=null_module(G) in
   for c@p in P do result+:=c*real_induce_standard(p,G) od;
   result
 
-{. Write the (real) induced of an irreducible J(p_L) of L as a formal sum of 
+{. Write the (real) induced of an irreducible J(p_L) of L as a formal sum of
    standards for G; uses the character formula to write J(p_L)
    as a formal sum of standards for L first. (Auxiliary function) .}
 set real_induce_irreducible_as_sum_of_standards (Param p_L, RealForm G) =
@@ -91,8 +91,8 @@ set real_induce_irreducible_as_sum_of_standards (Param p_L, RealForm G) =
   for coeff@p in cf do result+:=coeff*real_induce_standard(p,G) od;
   result
 
-{. Write the (real) induced Ind(J(p_L)) of an irreducible of L as a sum of 
-   irreducibles for G; uses composition series to convert 
+{. Write the (real) induced Ind(J(p_L)) of an irreducible of L as a sum of
+   irreducibles for G; uses composition series to convert
    output of the previous function into sum of irreducibles. .}
 set real_induce_irreducible(Param p_L, RealForm G)= ParamPol:
   let cf=real_induce_irreducible_as_sum_of_standards(p_L,G)
@@ -103,7 +103,7 @@ set real_induce_irreducible(Param p_L, RealForm G)= ParamPol:
 
 {  ----------------------   cuspidal data   ----------------------------- }
 {. Cuspidal data associated to a parameter p: a cuspidal parabolic subgroup P=MN
-   and parameter p_M for a relative limit of discrete series so that 
+   and parameter p_M for a relative limit of discrete series so that
    Ind(I(p_M))=I(p); uses real_parabolic(x) of parabolics.at .}
 set cuspidal_data (Param p) = (Parabolic,Param):
   let p=make_no_Cplus(p)
@@ -177,7 +177,7 @@ set standardize (ParamPol P) = ParamPol:
 {--------------------- theta-stable parabolic induction -------------------}
 
 {. Theta-stable (cohomological) parabolic induction of a standard module for
-   the Levi L of a theta-stable parabolic; if outside of weakly good range, 
+   the Levi L of a theta-stable parabolic; if outside of weakly good range,
    must apply standardize. .}
 set theta_induce_standard (Param p_L,RealForm G) = ParamPol:
   let L=real_form(x(p_L)), x_G=embed_KGB(x(p_L),G)
@@ -206,7 +206,7 @@ set theta_induce_standard (Param p_L,RealForm G) = ParamPol:
         , for q in monomials(p_G) do K_norm(q) od ); }
   p_G_standardized
 
-{. Write the (theta-stable) induced of an irreducible J(p_L) of L as a formal 
+{. Write the (theta-stable) induced of an irreducible J(p_L) of L as a formal
    sum of standards for G; uses the character formula to write J(p_L)
    as a formal sum of standards for L first. (Auxiliary function) .}
 set theta_induce_irreducible_as_sum_of_standards (Param p_L, RealForm G) =
@@ -221,8 +221,8 @@ set theta_induce_irreducible_as_sum_of_standards (Param p_L, RealForm G) =
   if verbose then prints("induced as sum of standards:", result) fi;
   result
 
-{. Write the (theta-stable) induced Ind(J(p_L)) of an irreducible of L 
-   as a sum of irreducibles for G; uses composition series to convert 
+{. Write the (theta-stable) induced Ind(J(p_L)) of an irreducible of L
+   as a sum of irreducibles for G; uses composition series to convert
    output of the previous function into sum of irreducibles. .}
 set theta_induce_irreducible(Param p_L, RealForm G) = ParamPol:
   let cf=theta_induce_irreducible_as_sum_of_standards(p_L,G)
@@ -255,8 +255,8 @@ set induce_standard (Param p_L,Parabolic P,RealForm G) = ParamPol:
   ; theta_induce_standard( p_L,G)
   fi
 
-{. Write the (real or theta-stable) induced Ind(J(p_L)) of an irreducible 
-   of L as a sum of irreducibles for G; error message if P=LN is not a real 
+{. Write the (real or theta-stable) induced Ind(J(p_L)) of an irreducible
+   of L as a sum of irreducibles for G; error message if P=LN is not a real
    or theta-stable parabolic. .}
 set induce_irreducible (Param p_L,Parabolic P,RealForm G) = ParamPol:
   assert(is_parabolic_real(P) or is_parabolic_theta_stable(P)

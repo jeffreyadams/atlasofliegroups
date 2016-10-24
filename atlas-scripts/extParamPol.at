@@ -19,14 +19,14 @@ set extParamPol(ExtParam E)=ExtParamPol:
  delta=real_form(p).distinguished_involution then
  N=null_module(real_form(p)) then
  F=N+p in
- if not is_fixed(delta,p) then (N,N,F) else 
-  if sign(E)=1 then (F,N,N) else (N,F,N) fi fi 
+ if not is_fixed(delta,p) then (N,N,F) else
+  if sign(E)=1 then (F,N,N) else (N,F,N) fi fi
 
 set extParamPol(Param p,int type)=ExtParamPol:
- let N=null_module(real_form(p)) in 
-  if type=1 then (N+p,N,N) 
-  elif type=-1 then (N,N+p,N) 
-  else (N,N,N+p) fi 
+ let N=null_module(real_form(p)) in
+  if type=1 then (N+p,N,N)
+  elif type=-1 then (N,N+p,N)
+  else (N,N,N+p) fi
 
 set *(Split s,ExtParam E)=s*extParamPol(E)
 
@@ -43,28 +43,28 @@ set find ([(int,int)] complete_indices,(int,int) pair)=int:first(#complete_indic
 set *(ExtParam E,rat r)=
 let  (ic,delta,gamma,lambda,theta,g,l,omega,tau,t)=E then
 nu=nu(E) then
-gamma_new=((1+theta)*(lambda+rho(ic))+(1-theta)*(nu*r))/2 in 
+gamma_new=((1+theta)*(lambda+rho(ic))+(1-theta)*(nu*r))/2 in
 (ic,delta,gamma_new,lambda,theta,g,l,omega,tau,t)
 
 set deform (Param p, mat delta, int type) = ExtParamPol:
-( 
-  let ()=if ed_verbose then prints("Computing deform(p,delta,type): p=", p, " type=", type) fi in 
+(
+  let ()=if ed_verbose then prints("Computing deform(p,delta,type): p=", p, " type=", type) fi in
   let G=real_form(p) in
   if type=-2 then null_ext_module(G) else let
   N=null_module(G) then
-  (B,index_p)=block(p) then 
+  (B,index_p)=block(p) then
   complete_indices=complete_indices(B,delta) then
-  sign_p=type then 
+  sign_p=type then
   index_p=find(complete_indices,(index_p,sign_p)) then
   l_p=length(p) then
   P=big_KL_P_polynomials(B,delta) then
   P_signed=big_KL_P_signed_polynomials(B,delta) then
-  Q=big_KL_Q_polynomials(B,delta) in 
+  Q=big_KL_Q_polynomials(B,delta) in
 {  let ()=prints("index_p=", index_p) in }
-  let outer_sum = null_ext_module(G) 
+  let outer_sum = null_ext_module(G)
   {for loops: I=1,...,index_p  (i,epsilon_I)=complete_indices[I]
               J=I...index_p  (j,epsilon_J)=complete_indices[J]}
-  + for I:index_p 
+  + for I:index_p
     do
       if ed_verbose then prints("I=",I) fi;
       let (i,epsilon_I)=complete_indices[I] then
@@ -75,7 +75,7 @@ set deform (Param p, mat delta, int type) = ExtParamPol:
       , onr=(-1)^rat_as_int((orientation_nr(p)-orientation_nr(p_i))/2)
       , inner_sum=0 in
       if ed_verbose then prints("onr=", onr)  fi;
-      for J:index_p-I from I 
+      for J:index_p-I from I
       do
         if ed_verbose then prints("J=",J) fi;
         let (j,sign_j)=complete_indices[J] then
@@ -94,7 +94,7 @@ set deform (Param p, mat delta, int type) = ExtParamPol:
     ; let contrib = ExtParamPol:
         let term=onr*inner_sum*B[i] in
          if epsilon_I=1 then (term,N,N)
-         elif epsilon_I=-1 then (N,term,N) 
+         elif epsilon_I=-1 then (N,term,N)
          else (N,N,term) fi in
     contrib
     od
@@ -112,17 +112,17 @@ let G=real_form(p) then
 delta=G.distinguished_involution then
 N=null_module(G) then
 rv=null_ext_module(G) in
-if type=0 then rv:= (N,N,ParamPol:p*factor) 
-else 
+if type=0 then rv:= (N,N,ParamPol:p*factor)
+else
 let P=finalize_extended(p*factor,delta) in
- for c@q in P do 
- let (a,b)=%c in 
+ for c@q in P do
+ let (a,b)=%c in
  if type=1 then  rv+:=(a*q,b*q,N)  else rv+:=(b*q,a*q,N) fi  od fi;rv
 
 {replace ExtParamPol (P_plus,P_minus,P_ind) with [(s_i,c_i,type_i)]}
 set %(ExtParamPol P)=[(Split,Param,int)]:
 let (P_plus,P_minus,P_ind)=P then
-rv=[] in 
+rv=[] in
 for c@p in P_plus do rv#:=(c,p,1) od;
 for c@p in P_minus do rv#:=(c,p,-1) od;
 for c@p in P_ind do rv#:=(c,p,0) od;rv
@@ -167,8 +167,8 @@ set print_extended_character_formula(Param p,[Param] B,mat delta)=void:
 let (I_delta,g,complete_indices,delta_action)=tabulate_indices(B,delta) then
 index=find(complete_indices,(find(B,p),1)) then
 P=big_KL_P_signed_polynomials(B,delta) in
-for i:#complete_indices do 
- let f=P[i][index] in 
+for i:#complete_indices do
+ let f=P[i][index] in
   if #f>0 then prints(complete_indices[i], ": ", stringPoly(f,"q")) fi od
 
 set print_extended_character_formula(Param p,mat delta)=void:print_extended_character_formula(p,block_of(p),delta)
@@ -178,15 +178,15 @@ set print_extended_composition_series(Param p,[Param] B,mat delta)=void:
 let index=find(B,p) then
 (I_delta,g,complete_indices,delta_action)=tabulate_indices(B,delta) then
 Q=big_KL_Q_polynomials(B,delta) in
-for i:#complete_indices do 
- let f=Q[i][index] in 
+for i:#complete_indices do
+ let f=Q[i][index] in
   if #f>0 then prints(complete_indices[i], ": ", stringPoly(f,"q")) fi od
 
 set print_extended_composition_series(Param p,mat delta)=void:print_extended_composition_series(p,block_of(p),delta)
 
 set print_extended_indices([Param] B,mat delta)=void:
 let (I_delta,g,complete_indices,delta_action)=tabulate_indices(B,delta) in
-prints("|B|=",#B, new_line,"delta-fixed parameters:=",I_delta,new_line, "complete indices=", complete_indices,new_line,"delta_action=",delta_action) 
+prints("|B|=",#B, new_line,"delta-fixed parameters:=",I_delta,new_line, "complete indices=", complete_indices,new_line,"delta_action=",delta_action)
 
 
 set character_formula (Param p,mat delta) = ExtParamPol:
@@ -200,16 +200,16 @@ set character_formula (Param p,mat delta) = ExtParamPol:
   rv=null_ext_module(G) then
   N=null_module(G) then
   P=big_KL_P_signed_polynomials(B,delta) in
-  for (j,type)@i in complete_indices do 
+  for (j,type)@i in complete_indices do
    let f=P[i][Index] then
    c=eval(f,1) in
-   rv +:= 
+   rv +:=
     if type=1 then (c*B[j],N,N)
-    elif type=-1 then (N,c*B[j],N) 
+    elif type=-1 then (N,c*B[j],N)
     else (N,N,c*B[j]) fi od ;rv
   )
 
-set c_form_irreducible (Param p,mat delta, int type) = 
+set c_form_irreducible (Param p,mat delta, int type) =
 ( let ori_nr_p = orientation_nr(p), P = null_ext_module(real_form(p)) then
   (plus,minus,induced)=character_formula(p,delta) then
   ()=prints("doing plus:");for coeff@q in plus do P+:=coeff*orientation_nr_term(ori_nr_p,q)*recursive_deform(q,delta,1) od then

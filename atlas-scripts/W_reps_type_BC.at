@@ -138,12 +138,12 @@ set special_C_star(Orbit P)=string:if is_special_C(P) then "*" else "" fi
 set special_C_star(Wrep sigma)=string:if is_special_C(sigma) then "*" else "" fi
 
 {this is not correct, the map orbits to symbolsl is not surjective}
-set symbols(RootDatum rd)=[Symbol]:  
+set symbols(RootDatum rd)=[Symbol]:
     {see nilpotent.at for get_type}
     assert(#Lie_type(rd)=1,"Only valid for simple root systems");
-    let type=get_type(rd) in 
+    let type=get_type(rd) in
     assert(type=1 or type=2,"Only valid in types B/C");
-    if type=1 then for P in all_reps_BC(rank(rd)) do symbol(P) od 
+    if type=1 then for P in all_reps_BC(rank(rd)) do symbol(P) od
     else for P in all_reps_BC(rank(rd)) do symbol(P) od  fi
 
 {this is not correct, the map orbits to wreps is not surjective}

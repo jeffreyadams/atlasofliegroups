@@ -362,7 +362,7 @@ weyl::Generator first_descent_among
 //  course I'll keep trying.
 //  What I believe is that changing this could fix the
 //  c_form_irreducible_delta code in atlas.
- 
+
 containers::sl_list<std::pair<StandardRepr,bool> > finalise
   (const repr::Rep_context& rc,
    const StandardRepr& sr, const WeightInvolution& delta);

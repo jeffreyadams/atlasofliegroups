@@ -116,7 +116,7 @@ set canonical_representative (KGPElt y) = KGPElt: (S(y),maximal(y))
 {. (unique) maximal KGB element representing a KGP element .}
 set x = (KGPElt->KGBElt): maximal@KGPElt
 
-{. equality of KGP elements: (S,x)=(T,y) if these give the same 
+{. equality of KGP elements: (S,x)=(T,y) if these give the same
 K-orbit of parabolics .}
 set = (KGPElt (S,x),KGPElt (T,y))=bool:
   real_form(x)=real_form(y) and S=T and maximal(S,x)=maximal(S,y)
@@ -136,12 +136,12 @@ set equivalence_class_of (KGPElt(S,x):y) = [KGBElt]:
   for i in sort(result) do KGB(G,i) od
 
 
-{. a minimal KGB element from an equivalence class defined by S 
+{. a minimal KGB element from an equivalence class defined by S
 (unlike x_max, it is not unique) .}
 set x_min (KGPElt P) = KGBElt:
   equivalence_class_of(P)[0] { inefficent, but at least avoid soring twice }
 
-{. the set of KGP elements associated to a RealForm and a set of 
+{. the set of KGP elements associated to a RealForm and a set of
 simple roots S; KGP(G,S) is in bijection with $K\backslash G/P_S$ .}
 set KGP (RealForm G,[int] S) = [KGPElt]:
   for x in maxima_in_partial_order(G,S) do KGPElt:(S,x) od
@@ -150,7 +150,7 @@ set KGP (RealForm G,[int] S) = [KGPElt]:
 set KGP_numbers (RealForm G,[int] S) =[int]: for (,x) in KGP(G,S) do #x od
 
 
-{. test whether y in $K\backslash G/P_S$ is open: <=> last element of y is last element 
+{. test whether y in $K\backslash G/P_S$ is open: <=> last element of y is last element
 of KGB .}
 set is_open (KGPElt y) = bool: #maximal(y) = KGB_size(real_form(y))-1
 

@@ -218,4 +218,3 @@ set sgn_poly (int k) = poly:
   [if k<0 then -1 elif k>0 then 1 else error("taking sign of 0") fi]
 
 set divide_by(int k,poly v)=poly:ratvec_as_vec(v*(1/k))
-

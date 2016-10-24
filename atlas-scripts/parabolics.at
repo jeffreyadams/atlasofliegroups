@@ -46,7 +46,7 @@ set is_Levi_theta_stable (Parabolic (S,x)) = bool:
   , alpha=simple_roots(G)
   in all(for s in S do = H*(theta*alpha[s]) od)
 
-{. make a real Levi factor from P=(S,x), the complex Levi of S must 
+{. make a real Levi factor from P=(S,x), the complex Levi of S must
 be $\theta_x$-stable .}
 set Levi (Parabolic(S,x):P) = RealForm:
   assert(is_Levi_theta_stable(P),"Levi factor is not theta-stable");
@@ -163,7 +163,7 @@ set nilrad_alt (ratvec H,KGBElt x) = mat: nilrad(parabolic_alt(H,x))
 set nilrad_roots_alt (ratvec H,KGBElt x) = mat:
   nilrad_roots(parabolic_alt(H,x))
 
-{. half sum of roots in nilradical of P defined by H (if L $\theta$-stable) .} 
+{. half sum of roots in nilradical of P defined by H (if L $\theta$-stable) .}
 set rho_u_alt (ratvec H,KGBElt x)= ratvec: sum(nilrad_roots_alt(H,x)) /2
 
 {. $\rho(L)$ for Levi of P defined by H (if L $\theta$-stable .}
@@ -193,7 +193,7 @@ set theta_stable_parabolic (KGBElt x) = Parabolic:
 
 { ------------------Levi factor of real parabolic----------- }
 
-{. Levi factor of real cuspidal parabolic;  M=centralizer of A in H=TA, as a 
+{. Levi factor of real cuspidal parabolic;  M=centralizer of A in H=TA, as a
 RealForm .}
 set real_Levi(KGBElt x) = RealForm:
   let theta = involution(x)
