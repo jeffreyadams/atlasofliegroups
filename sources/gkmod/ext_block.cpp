@@ -125,6 +125,12 @@ bool has_quadruple(DescValue v)
   return (1ul << v & mask) != 0; // whether |v| is one of the above
 }
 
+bool has_october_surprise(DescValue v)
+{
+  return (generator_length(v)==2 and not has_defect(v)) or
+    (generator_length(v)==3 and has_defect(v));
+}
+
 bool is_proper_ascent(DescValue v)
 {
   return not(is_descent(v) or is_like_nonparity(v));
@@ -356,7 +362,8 @@ containers::sl_list<std::pair<StandardRepr,bool> > finalise
       if (is_like_compact(type))
 	to_do.pop_front(); // just drop |E| and its sign
       else  // at least one descent, so push them to the front of |to_do|
-      { auto it = to_do.begin(); auto l_it=links.begin();
+      { if(has_october_surprise(type))  flipped = not flipped;
+	auto it = to_do.begin(); auto l_it=links.begin();
 	to_do.insert(it,std::make_pair
 		     (std::move(l_it->second),flipped==(l_it->first>0)));
 	if (has_double_image(type)) // then append a second node after |head|
