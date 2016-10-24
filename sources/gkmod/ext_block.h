@@ -80,6 +80,7 @@ bool is_like_type_1(DescValue v); // types 1i1, 1r1f, 2i11, 2r11
 bool is_like_type_2(DescValue v); // types 1i2f, 1r2, 2i22, 2r22
 bool has_defect(DescValue v); // types 2Ci, 2Cr, 3Ci, 3r, 3Cr, 3i
 bool has_quadruple(DescValue v); // types 2i12f and 2r21f
+bool has_october_surprise(DescValue v); // types 2i**, 2r**, 2C+, 2C-, 3Ci, 3Cr
 
 bool is_proper_ascent(DescValue v); // ascent with at least 1 link
 
@@ -340,29 +341,26 @@ bool is_descent (const ext_gen& kappa, const param& E);
 weyl::Generator first_descent_among
   (RankFlags singular_orbits, const ext_gens& orbits, const param& E);
 
-//  expand parameter into a signed sum of extended nonzero final
-//  parameters DAVID 10/23/16: this is used primarily or exclusively
-//  when the parameter represents a standard representation (not an
-//  irreducible); the goal is to write the [extended] standard
-//  I(sr_default) as a sum of [extended] final limit standards
-//  \sum_{y\in finalise} I(y_{first,default, y_second}); the second
-//  bool is the \pm. So the relevant y's are the descents of sr to
-//  final standard limits y. The bool tells whether it's y_{default,+}
-//  or y_{default,-} that's a composition factor (just one appears,
-//  with multiplicity 1). You can compute the sign change one descent
-//  at a time. For a descent of odd length change (type 1, or type 2
-//  defect, or type 3 nondefect) the sign change is the sign of the
-//  link; that's what's now done in the code. For a descent of even
-//  length change (type 2 nondefect, or type 3 defect) the sign change
-//  is MINUS the sign of the link, because we're looking at
-//  composition series of I(sr_default) rather than the character
-//  formula of J(sr_default). So the code needs to change the present
-//  boolean flipping at each even length descent link. Sorry that it's
-//  written too compactly for me to figure out how to do that! (Of
-//  course I'll keep trying.
-//  What I believe is that changing this could fix the
-//  c_form_irreducible_delta code in atlas.
 
+/* DAVID 10/23/16: |finalise| is used primarily or exclusively when the
+   parameter represents a standard representation (not an irreducible); the
+   goal is to write the [extended] standard I(sr_default) as a sum of
+   [extended] final limit standards \sum_{y\in finalise} I(y_{first,default,
+   y_second}); the second bool is the \pm. So the relevant y's are the
+   descents of sr to final standard limits y. The bool tells whether it's
+   y_{default,+} or y_{default,-} that's a composition factor (just one
+   appears, with multiplicity 1). You can compute the sign change one descent
+   at a time. For a descent of odd length change (type 1, or type 2 defect, or
+   type 3 nondefect) the sign change is the sign of the link; that's what's
+   now done in the code. For a descent of even length change (type 2
+   nondefect, or type 3 defect) the sign change is MINUS the sign of the link,
+   because we're looking at composition series of I(sr_default) rather than
+   the character formula of J(sr_default). So the code needs to change the
+   boolean flipping at each even length descent link. The predicate
+   |has_october_surprise| will detect the links needing an extra flip.
+*/
+
+//  expand parameter into a signed sum of extended nonzero final parameters
 containers::sl_list<std::pair<StandardRepr,bool> > finalise
   (const repr::Rep_context& rc,
    const StandardRepr& sr, const WeightInvolution& delta);
