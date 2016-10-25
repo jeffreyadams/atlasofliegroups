@@ -362,9 +362,7 @@ containers::sl_list<std::pair<StandardRepr,bool> > finalise
     else // |s| is a singular descent orbit
     { containers::sl_list<std::pair<int,param> > links;
       auto type = star(E,orbits[s],links);
-      if (is_like_compact(type))
-	to_do.pop_front(); // just drop |E| and its sign
-      else  // at least one descent, so push them to the front of |to_do|
+      if (not is_like_compact(type)) // some descent, push to front of |to_do|
       { if(has_october_surprise(type))  flipped = not flipped;
 	auto it = to_do.begin(); auto l_it=links.begin();
 	to_do.insert(it,std::make_pair
