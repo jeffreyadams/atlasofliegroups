@@ -125,10 +125,11 @@ bool has_quadruple(DescValue v)
   return (1ul << v & mask) != 0; // whether |v| is one of the above
 }
 
+// It came to light in October 2016 that links giving an even length difference
+// had to be singled out in certain circumstances; this had not been expected
 bool has_october_surprise(DescValue v)
 {
-  return (generator_length(v)==2 and not has_defect(v)) or
-    (generator_length(v)==3 and has_defect(v));
+  return generator_length(v) == (has_defect(v) ? 3 : 2);
 }
 
 bool is_proper_ascent(DescValue v)
@@ -338,8 +339,10 @@ int z (const param& E) // value modulo 4, exponent of imaginary unit $i$
 
 containers::sl_list<std::pair<StandardRepr,bool> > finalise
   (const repr::Rep_context& rc,
-   const StandardRepr& sr, const WeightInvolution& delta)
-{ context ctxt(rc,delta,sr.gamma());
+   StandardRepr sr, const WeightInvolution& delta)
+{ // in order that |singular_generators| generate the whole singular system:
+  rc.make_dominant(sr); // ensure that |sr.gamma()| is dominant
+  context ctxt(rc,delta,sr.gamma());
   const ext_gens orbits = rootdata::fold_orbits(ctxt.id(),delta);
   const RankFlags singular_orbits =
     reduce_to(orbits,singular_generators(ctxt.id(),sr.gamma()));
@@ -359,9 +362,7 @@ containers::sl_list<std::pair<StandardRepr,bool> > finalise
     else // |s| is a singular descent orbit
     { containers::sl_list<std::pair<int,param> > links;
       auto type = star(E,orbits[s],links);
-      if (is_like_compact(type))
-	to_do.pop_front(); // just drop |E| and its sign
-      else  // at least one descent, so push them to the front of |to_do|
+      if (not is_like_compact(type)) // some descent, push to front of |to_do|
       { if(has_october_surprise(type))  flipped = not flipped;
 	auto it = to_do.begin(); auto l_it=links.begin();
 	to_do.insert(it,std::make_pair
