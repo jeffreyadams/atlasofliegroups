@@ -215,7 +215,7 @@ set recursive_deform (Param p, mat delta) = ParamPol:
       assert(is_standard(p)
 	    ,"non standard parameter encountered in deformation");
       let acc=empty
-      , at_nu0=sc*finalize_extended(p*0,delta).s_to_minus_1 { fully deform |p| }
+      , at_nu0=sc*finalize_extended(p*0,delta) {.s_to_minus_1} { fully deform |p|; DV says the s_to_minus_1 is incorrect, although it has no effect in the recursive terms with an (s-1) factor }
       in
       for factor in reducibility_points(p)
       ~do
@@ -236,7 +236,7 @@ set recursive_deform (Param p, mat delta) = ParamPol:
     begin
       assert(is_standard(p),"non standard parameter in deformation");
       let acc=empty
-      , at_nu0=sc*finalize_extended(p*0,delta).s_to_minus_1 { fully deform |p| }
+      , at_nu0=sc*finalize_extended(p*0,delta) {.s_to_minus_1} { fully deform |p|; DV says the s_to_minus_1 is incorrect, although it has no effect in the recursive terms with an (s-1) factor }
       in
       for factor in reducibility_points(p)
       ~ { direction of deformation is down, towards 0; this is not essential }
