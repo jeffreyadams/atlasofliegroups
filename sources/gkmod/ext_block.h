@@ -363,7 +363,8 @@ weyl::Generator first_descent_among
 //  expand parameter into a signed sum of extended nonzero final parameters
 containers::sl_list<std::pair<StandardRepr,bool> > finalise
   (const repr::Rep_context& rc,
-   const StandardRepr& sr, const WeightInvolution& delta);
+   StandardRepr sr, // by value: internally |make_dominant| is applied to it
+   const WeightInvolution& delta);
 
 // check braid relation at |x|; also mark all involved elements in |cluster|
 bool check_braid
