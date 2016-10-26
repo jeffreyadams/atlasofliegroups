@@ -1,5 +1,5 @@
 <basic.at
-<K_parameters.at { for K_Type }
+<K.at { for K_Type }
 
 {----------------norm of K-types------------------}
 

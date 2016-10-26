@@ -1,4 +1,3 @@
-{K_highest_weights.at}
 <W_K.at
 <thetastable.at
 <LKT.at
@@ -255,7 +254,7 @@ in (X^*)^delta project it to X^*(T_K0) where T_K0=identity component of H^delta}
   tworho_K(x)\in X^* and tworho_K_fixed(x)\in 1/2(X^*)^delta map
   to same element 2*rho_K(x) in X^*(T_{K_0})
 }
-set tworho_K_fixed (KGBElt x) = ratvec:
+set tworho_K (KGBElt x) = ratvec:
 ( if not in_distinguished_fiber(x)
   then prints("Warning: x is not in distinguished fiber") fi
 ; let G=real_form(x) in sum(compact_posroots(x)) + sum(complex_posroots(x))/2
@@ -286,10 +285,10 @@ prints("x: ", x);
 prints("mu_1:", mu_1);
 prints("x_1: ", x_1) then
 }
-{ Note: tworho_K_fixed(x) (above) is in (\h^*)^theta,
+{ Note: tworho_K (x) (above) is in (\h^*)^theta,
   while rho_K(x) is in \t^*, need the former
 }
-mu_2=mu_1+tworho_K_fixed(x_1) in
+mu_2=mu_1+tworho_K (x_1) in
 {let ()=prints("mu_2:", mu_2) in}
 let (,y)=make_dominant(rd,mu_2) in
 let x_2=cross(inverse(y),x_1) in
