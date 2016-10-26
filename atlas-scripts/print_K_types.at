@@ -5,7 +5,6 @@ now consists almost exclusively of printing functions
 }
 
 <basic.at     { for *@(Param,rat) }
-<LKT.at       { for sort_by_height }
 <hermitian.at { for hermitian_form_irreducible }
 
 {the following functions have already been defined in K_types.at:

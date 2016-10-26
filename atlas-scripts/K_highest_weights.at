@@ -1,6 +1,5 @@
 <W_K.at
 <thetastable.at
-<LKT.at
 set LKT_verbose=false
 { see K_parameters.at
   K_types.at: K-types as final tempered limit paramters
@@ -78,6 +77,12 @@ set = (KHighestWeight (x,mu), KHighestWeight (y,tau)) = bool:
    prints("mu_3: ", mu_3, " tau_3 :", tau_3) fi;
    in_lattice((1-involution(cross(m,x))),mu_3-tau_3)
 ))
+
+{. .}
+set LKTs (Param p) = [K_Type]: for q in finalize(p*0) do K_type(q) od
+
+{..}
+set LKT (Param p) = K_Type: let lkts=LKTs(p) in assert(#lkts=1,"More than one LKT; use LKTs"); lkts[0]
 
 {---------------- map from K_types to KHighestWeights ----------------}
 {
