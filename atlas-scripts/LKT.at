@@ -1,5 +1,5 @@
 <misc.at
-<K_parameters.at
+<K.at
 { ---------------- LKT(p): list of K_types ---------------- }
 
 { this is simply a list [K_type] of K_types, i.e.
