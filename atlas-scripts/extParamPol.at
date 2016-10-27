@@ -312,6 +312,7 @@ for alpha in real_roots do
    if pairing=0 then pairs#:=alpha fi
   od;rat_as_int(#pairs/2)
 
+{implementing formula from Vogan in email 10/25/16, subject line mu(p)}
 set mu(Param p,mat delta)=rat:
 assert(nu(p)=null(rank(root_datum(p))),"nu(p) !=0");
 let (ic,delta,gamma,lambda,theta,g,l,omega,tau,t)=E(delta,p) then
@@ -322,6 +323,7 @@ scalar_term=number_real_orthogonal_pairs(x(p),delta)  in
 prints("mu_unextended=", mu_unextended,new_line,"dim_term=", dim_term,new_line,"scalar_term=",scalar_term);
 mu_unextended+tau_term+scalar_term
 
+{remaining terms copied over from corresponding versions in hermitian.at}
 set convert_cform_hermitian (ParamPol P,mat delta)= ParamPol:
   if #P=0 then P { since we cannot select a term for a null polynomial }
   else
@@ -330,7 +332,7 @@ set convert_cform_hermitian (ParamPol P,mat delta)= ParamPol:
       for w@p in P do (s^(rat_as_int(mu(p,delta)-a_mu))*w,p) od
   fi
 
-{ ParamPol giving the hermitian form on irreducible p in equal rank case }
+{ ParamPol giving the hermitian form on irreducible p in unequal rank case }
 set hermitian_form_irreducible(Param p,mat delta) = ParamPol:
 ( if hermitian_debug
   then prints("Computing Hermitian form on irreducible (delta): ",p)
