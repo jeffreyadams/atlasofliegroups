@@ -15,7 +15,8 @@
    i^th entry gives index of B1[i] in B2
    B1[i]=B2[perm[i]]
 }
-set permutation ([Param] B1, [Param] B2) = [int]:for i:#B2 do find(B2,B1[i]) od
+set permutation ([Param] B1, [Param] B2) = [int]:
+assert(#B1=#B2,"B1 and B2 not the same size");for i:#B1 do find(B2,B1[i]) od
 
 { various functions for constructing dual block:
   dual(B), dual(B,g), dual(B,g,dual_inner_class), dual(B,dual_inner_class)

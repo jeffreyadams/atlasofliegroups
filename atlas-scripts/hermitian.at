@@ -114,6 +114,41 @@ set c_form_irreducible_delta (Param p) = ParamPol:
 ; fixed_terms + divide_by(2,unfixed_terms)
 )
 
+set c_form_irreducible_delta_long (Param p) =
+( let G=p.real_form then	 
+  delta=real_form(p).distinguished_involution then
+  ori_nr_p = orientation_nr(p) then
+  fixed_terms = null_module(G), unfixed_terms = null_module(G) then
+  terms=[] then
+  Ptw=twisted_KL_sum_at_s(p) then
+  P=KL_sum_at_s(p) then
+  character_formula=P.s_to_1 in
+  for ev@q in P 
+  do 
+   let ()=prints("DOING", ev, " ", q) in
+    (if is_fixed(delta,q) then
+     let new_ev=divide_by((P[q]+Ptw[q])+s*(P[q]-Ptw[q]),2)  in
+      let contrib=new_ev*orientation_nr_term(ori_nr_p,q)*full_deform(q,delta) in
+      let ()=prints("ADDING:", contrib) in
+	 (fixed_terms+:=contrib,
+         terms#:=("fixed",ev,q,contrib))
+    else 
+         let contrib=ev*orientation_nr_term(ori_nr_p,q)*one_plus_s*(q*0) in
+	 (unfixed_terms+:=contrib, 
+         terms#:=("unfixed",ev,q,contrib))
+    fi)
+  od
+; (character_formula,terms,fixed_terms + divide_by(2,unfixed_terms))
+)
+
+set print_c_form_irreducible_delta_long (Param p) =
+let (character_formula,terms,answer)=c_form_irreducible_delta_long(p) then
+()=prints(new_line,"Character Formula:",character_formula,new_line) then
+()=for (type,coeff,p,P) in terms do prints("coeff*standard module:", coeff,"*",p,":",new_line,"fully deformed (", type, "):", P, new_line) od then
+()=prints("final result:", answer) in ()
+
+
+
 set print_c_form_irreducible_long (Param p) = void:
 ( let (f,b) = c_form_irreducible_long(p) in
   for (q,coeff,Q) in b
