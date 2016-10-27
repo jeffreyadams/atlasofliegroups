@@ -68,7 +68,7 @@ set KL_P_polynomials([Param] B)=poly_mat:
   block=for i in survivors do pseudo_block[i] od then
   (perm,valid)=permutation(B,block) then
   P=assert(valid,"given [Param] B does not agree with block_of B[0]");KL_P_polynomials(B[0])  in
-  let ()=prints("permutation in KL_P_polynomials:", perm) in
+{  let ()=prints("permutation in KL_P_polynomials:", perm) in}
   poly_permute_basis(perm,P)
 
 set KL_P_signed_polynomials([Param] B)=poly_mat:
@@ -132,7 +132,7 @@ set KL_P_polynomials([Param] B_fixed,mat delta)=poly_mat:
   block=for i in survivors do pseudo_block[i] od then
   (perm,valid)=permutation(B_fixed,block) then
   P=assert(valid,"given [Param] B_fixed does not agree with block_of B_fixed[0]");KL_P_polynomials(B_fixed[0],delta)  in
-  let ()=prints("permutation in KL_P_polynomials(p,delta):", perm) in
+{  let ()=prints("permutation in KL_P_polynomials(p,delta):", perm) in}
   poly_permute_basis(perm,P) fi
 
 {set KL_P_polynomials([Param] B_fixed,mat delta)=poly_mat:
