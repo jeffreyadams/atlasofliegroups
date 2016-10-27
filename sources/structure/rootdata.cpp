@@ -995,15 +995,15 @@ WeylWord RootDatum::to_dominant(Weight v) const
   However, that would be for the InnerClass to do, as it is it that has
   access to both the Weyl group and the root datum.
 */
-WeightInvolution RootDatum::matrix(const WeylWord& ww) const
+LatticeMatrix RootDatum::action_matrix(const WeylWord& ww) const
 {
-  WeightInvolution q(rank());
-
+  LatticeMatrix result(rank());
   for (size_t i=0; i<ww.size(); ++i)
-    q *= simple_reflection(ww[i]);
-
-  return q;
+    result *= simple_reflection(ww[i]);
+  return result;
 }
+
+
 
 /******** manipulators *******************************************************/
 
@@ -1097,7 +1097,7 @@ CoweightInvolution dualBasedInvolution
   (const WeightInvolution& q, const RootDatum& rd)
 {
   WeylWord w0 = rd.to_dominant(-rd.twoRho());
-  return (q*rd.matrix(w0)).negative_transposed();
+  return (q*rd.action_matrix(w0)).negative_transposed();
 }
 
 
@@ -1136,7 +1136,7 @@ RootNbrSet makeOrthogonal(const RootNbrSet& o, const RootNbrSet& subsys,
 void toDistinguished(WeightInvolution& q, const RootDatum& rd)
 { // easy implementation; using |simple_root_permutation| is more efficient
   Weight v = q*rd.twoRho();
-  q.leftMult(rd.matrix(rd.to_dominant(v)));
+  q.leftMult(rd.action_matrix(rd.to_dominant(v)));
 }
 
 /*
@@ -1311,6 +1311,36 @@ RankFlags singular_generators(const RootDatum& rd, const RatWeight& gamma)
   return result;
 }
 
+bool is_dominant_ratweight(const RootDatum& rd, const RatWeight& gamma)
+{
+  auto& numer = gamma.numerator();
+  for (weyl::Generator s=0; s<rd.semisimpleRank(); ++s)
+    if (rd.simpleCoroot(s).dot(numer)<0)
+      return false;
+  return true;
+}
+
+Weight rho_minus_w_rho(const RootDatum& rd, const WeylWord& ww)
+{ Weight sum(rd.rank(),0);
+  for (size_t i=0; i<ww.size(); ++i)
+  { RootNbr alpha=rd.simpleRootNbr(ww[i]);
+    for (size_t j=i; j-->0; )
+      rd.simple_reflect_root(ww[j],alpha);
+    sum += rd.root(alpha);
+  }
+  return sum;
+}
+
+Coweight rho_check_minus_rho_check_w(const RootDatum& rd, const WeylWord& ww)
+{ Coweight sum(rd.rank(),0);
+  for (size_t i=ww.size(); i-->0; )
+  { RootNbr alpha=rd.simpleRootNbr(ww[i]);
+    for (size_t j=i+1; j<ww.size(); ++j)
+      rd.simple_reflect_root(ww[j],alpha);
+    sum += rd.coroot(alpha);
+  }
+  return sum;
+}
 
 /*****************************************************************************
 

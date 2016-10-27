@@ -72,6 +72,11 @@ ext_gens fold_orbits (const RootDatum& rd, const WeightInvolution& delta);
 // indices of simple corotos that vanish on (infinitesimal character) |gamma|
 RankFlags singular_generators (const RootDatum& rd, const RatWeight& gamma);
 
+bool is_dominant_ratweight(const RootDatum& rd, const RatWeight& gamma);
+
+Weight rho_minus_w_rho(const RootDatum& rd, const WeylWord& ww);
+Coweight rho_check_minus_rho_check_w(const RootDatum& rd, const WeylWord& ww);
+
 } // |namespace rootdata|
 
 /******** type definitions **************************************************/
@@ -573,7 +578,7 @@ class RootDatum
   WeightInvolution simple_reflection(weyl::Generator i) const
     { return root_reflection(simpleRootNbr(i)); }
 
-  WeightInvolution matrix(const WeylWord& ww) const;
+  LatticeMatrix action_matrix(const WeylWord& ww) const;
 
   WeylWord reflectionWord(RootNbr r) const;
 

@@ -93,6 +93,14 @@ namespace innerclass {
 
 ******************************************************************************/
 
+// version of later |matrix| method that is usable during construction
+inline WeightInvolution compute_matrix
+  (const InnerClass& ic,const TwistedInvolution& tw)
+{
+  return ic.rootDatum().action_matrix(ic.weylGroup().word(tw.w()))
+    * ic.distinguished();
+}
+
 InnerClass::C_info::C_info
   (const InnerClass& G,const TwistedInvolution twi, CartanNbr i)
   : tw(twi)
@@ -100,7 +108,7 @@ InnerClass::C_info::C_info
   , rep(G.numRealForms()),        dual_rep(G.numDualRealForms())
   , below(i)
   , Cc(CartanClass(G.rootDatum(),G.dualRootDatum(),
-		   G.compute_matrix(tw))) // generate fiber and dual fiber
+		   compute_matrix(G,tw))) // generate fiber and dual fiber
   , real_labels(), dual_real_labels() // these start out emtpy
   {}
 
@@ -679,12 +687,6 @@ InvolutionNbr InnerClass::numInvolutions
     count += cartan(*it).orbitSize();
 
   return count;
-}
-
-WeightInvolution
-InnerClass::compute_matrix(const TwistedInvolution& tw)  const
-{
-  return rootDatum().matrix(weylGroup().word(tw.w())) * distinguished();
 }
 
 // Sum of the real roots

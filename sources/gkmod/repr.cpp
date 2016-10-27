@@ -307,7 +307,6 @@ WeylWord Rep_context::make_dominant(StandardRepr& z) const
 
   { weyl::Generator s;
     do
-    {
       for (s=0; s<rd.semisimpleRank(); ++s)
       {
 	int v=rd.simpleCoroot(s).dot(numer);
@@ -329,7 +328,6 @@ WeylWord Rep_context::make_dominant(StandardRepr& z) const
 	  break; // out of the loop |for(s)|
         } // |if(v<0)|
       } // |for(s)|
-    }
     while (s<rd.semisimpleRank()); // wait until inner loop runs to completion
   }
   z.y_bits=innerClass().involution_table().pack(kgb().inv_nr(x),lr);
@@ -397,20 +395,22 @@ RationalList Rep_context::reducibility_points(const StandardRepr& z) const
   const RootNbrSet pos_real = i_tab.real_roots(i_x) & rd.posRootSet();
   const Weight two_rho_real = rd.twoRho(pos_real);
 
-  // we shall associate to a first number a strict lower bound for some $k$
-  // if first number is $num>0$ we shall later form fractions $(d/num)*k$
+  // we shall associate to a number $num>0$ a strict lower bound for $k$,
+  // for which we shall then later form fractions $(d/num)*k$
   typedef std::map<long,long> table;
+
+  // because of the parity condition, distinguish cases with even and odd $k$
   table odds,evens; // name indicates the parity that $k$ will have
 
   for (RootNbrSet::iterator it=pos_real.begin(); it(); ++it)
   {
     arithmetic::Numer_t num =
-      rd.coroot(*it).dot(numer); // numerator of $\<\nu,\alpha^v>$
+      rd.coroot(*it).dot(numer); // numerator of $\<\alpha^v,\nu>$ in real case
     if (num!=0)
     {
       long lam_alpha = lam_rho.dot(rd.coroot(*it))+rd.colevel(*it);
       bool do_odd = (lam_alpha+two_rho_real.dot(rd.coroot(*it))/2)%2 ==0;
-      (do_odd ? &odds : &evens)->insert(std::make_pair(std::abs(num),0));
+      (do_odd ? odds : evens).insert(std::make_pair(std::abs(num),0));
     }
   }
 
@@ -420,13 +420,13 @@ RationalList Rep_context::reducibility_points(const StandardRepr& z) const
     RootNbr alpha=*it, beta=theta[alpha];
     arithmetic::Numer_t vala = rd.coroot(alpha).dot(numer);
     arithmetic::Numer_t valb = rd.coroot(beta).dot(numer);
-    arithmetic::Numer_t num = vala - valb; // numerator of $2\<\nu,\alpha^v>$
+    arithmetic::Numer_t num = vala - valb; // numerator of $2\<\alpha^v,\nu>$
     if (num!=0)
     {
-      assert((vala+valb)%d==0); // since |\<\gamma,a+b>=\<\lambda,a+b>|
+      assert((vala+valb)%d==0); // since |\<a+b,\gamma>=\<a+b,\lambda>|
       long lwb =std::abs(vala+valb)/d;
       std::pair<table::iterator,bool> trial =
-	(lwb%2==0 ? &evens : &odds)->insert(std::make_pair(std::abs(num),lwb));
+	(lwb%2==0 ? evens : odds).insert(std::make_pair(std::abs(num),lwb));
       if (not trial.second and lwb<trial.first->second)
 	trial.first->second=lwb; // if not new, maybe lower the old bound value
     }
