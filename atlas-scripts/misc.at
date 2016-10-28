@@ -32,6 +32,11 @@ set finalize (ParamPol P) = ParamPol:
   for c@q in P do let Q=finalize(q) in for r in Q do result+:=c*r od od;
   result
 
+{finalize@[Param]->[Param]: finalize each term and eliminate
+duplicates, i.e. finalize the corresponding ParamPol and return as an array}
+set finalize ([Param] P) = [Param]: let rv=null_module(P[0]) in 
+for p in P do rv+:=p od;monomials(rv)
+
 { evaluate at s=t for t integer (or rational?): replace w=a+bs with a+bt }
 { would seem to make sense only if t^2=1, so if either t=1 or t=-1 }
 set  #(Split w,int t)=let (a,b)=%w in int: a+t*b
