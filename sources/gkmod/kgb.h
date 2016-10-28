@@ -324,9 +324,9 @@ and in addition the Hasse diagram (set of all covering relations).
 
 // accessors
 
-//! \brief The based Tits group.
+// The based Tits group.
   const TitsCoset& basedTitsGroup() const { return *d_base; }
-//! \brief The Tits group.
+// The Tits group.
   const TitsGroup& titsGroup() const { return d_base->titsGroup(); }
 
   TorusPart torus_part(KGBElt x) const { return left_torus_part[x]; }
@@ -345,6 +345,8 @@ and in addition the Hasse diagram (set of all covering relations).
 
   KGBElt lookup(TitsElt a) const; // by value; it may return |UndefKGB|
 
+  // apply external twist (distinguished, commuting with inner class involution)
+  KGBElt twisted(KGBElt x,const WeightInvolution& delta) const;
 
 // manipulators
 

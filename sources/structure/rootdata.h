@@ -67,6 +67,7 @@ RootDatum integrality_datum(const RootDatum& rd, const RatWeight& gamma);
 RationalList integrality_points(const RootDatum& rd, const RatWeight& gamma);
 unsigned int integrality_rank(const RootDatum& rd, const RatWeight& gamma);
 
+weyl::Twist twist (const RootDatum& rd, const WeightInvolution& delta);
 ext_gens fold_orbits (const RootDatum& rd, const WeightInvolution& delta);
 
 // indices of simple corotos that vanish on (infinitesimal character) |gamma|

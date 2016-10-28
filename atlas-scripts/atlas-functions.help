@@ -639,6 +639,7 @@ Cayley: (vec,Param->Param): Cayley transform for (root,parameter)
   function (whichever is defined is applied, or else the parameter returned).
   The implementation is quite independent however, so comparison is useful.
 twist: (Param->Param): twist the parameter by the distinguished involution
+twist: (Param,mat->Param): twist the parameter by the given external involution
 orientation_nr: (Param->int): the orientation number
 reducibility_points: (Param->[rat]): the 0<t<=1 with I(x,lambda,t\nu) reducible
 print_block: (Param->): print (non-integral) block generated from parameter
@@ -750,15 +751,28 @@ twisted_KL_sum_at_s: (Param->ParamPol): KL_sum_at_s, twisted KLV polynomials
   generators associated to the terms, so individual terms in the result are
   mathematically well defined only up to a possible factor -1. Also WARNING:
   the twisted KLV polynomials are not yet correctly computed in all cases.
-finalize_extended: (Param,mat->ParamPol): conversion for extended parameters
+scale_extended: (Param,mat,rat->Param,bool) scale nu, recording extended flips
   When interpreting parameters as representing a representation of the
   delta-extended group (where delta is the second argument, a distinguished
-  involution commuting with the one defining the inner class), the way they
-  contribute to ParamPol values differs slightly from the way parameters usually
-  contribute to them, when they are (implicitly) converted to a sum of non-zero
-  final parameters. This function tries to do the right thing for extended
-  parameters: it replaces a parameter with a singular descent by the sum of the
-  parameters descended from it in the _extended_ block, and when there is a
+  involution commuting with the one defining the inner class), certain
+  changes to parameters may flip the default choice of extended representation;
+  this function takes care to record such a flip for the operation of scaling
+  the continuous component nu by a rational factor. With arguments (p,delta,f)
+  it is supposed that gamma(p) is dominant (if not, the function dominant is
+  applied without recording any flips); then a new parameter q is formed by
+  scaling the component nu(p) by f. In case gamma(q) is non-dominant (due to
+  some complex roots), it is then made dominant; in this phase any flip to the
+  default choice of delta-extended representation is recorded. Finally the
+  modified q and a Boolean telling whether a flip occurred are returned.
+finalize_extended: (Param,mat->ParamPol): conversion for extended parameters
+  Like scale_extended, this function is about tracking flips in the default
+  choice of extended representation, this time for the operation of expanding a
+  parameter in terms of parameters that have no singular descents that occurs
+  implicitly when they enter into a ParamPol. When interpreting the parameter as
+  specifying a delta-extended representation, the process is somewhat modified
+  and flips may be encountered. This function applied to (p,delta) requires p to
+  be delta-fixed; if it finds a singular descent, it replaces p by the sum of
+  the parameters descended from it in the extended block, and when there is a
   "sign flip" along the edge used, the resulting parameter is multiplied by s.
   And this is repeated recursively as long as singular descents are present.
 

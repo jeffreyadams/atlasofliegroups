@@ -40,15 +40,16 @@
 #include <set>
 
 #include "arithmetic.h"
+#include "lattice.h"
+#include "bitmap.h"  // for root sets
+#include "matreduc.h"
+#include "ratvec.h"
 
 #include "lietype.h"	// value returned from |LieType| method, |ext_gen|
 
 #include "dynkin.h"
-#include "lattice.h"
-#include "bitmap.h"  // for root sets
+#include "weyl.h" // for class |Twist|
 #include "prerootdata.h"
-#include "matreduc.h"
-#include "ratvec.h"
 
 // extra defs for windows compilation -spc
 #ifdef WIN32
@@ -1279,6 +1280,9 @@ RationalList integrality_points(const RootDatum& rd, const RatWeight& gamma)
 
   return RationalList(fracs.begin(),fracs.end());
 }
+
+weyl::Twist twist (const RootDatum& rd, const WeightInvolution& delta)
+{ return weyl::Twist(fold_orbits(rd,delta)); }
 
 ext_gens fold_orbits (const RootDatum& rd, const WeightInvolution& delta)
 {

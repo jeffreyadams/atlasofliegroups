@@ -178,13 +178,23 @@ template<size_t dim>
 BitVector<dim> BitMatrix<dim>::operator*(const BitVector<dim>& source) const
 {
   assert(d_columns==source.size());
+  // use |BitSet| vertion of |combination|, then size the result to |d_rows|
+  return BitVector<dim> (combination(d_data,source.data()),d_rows);
+}
 
-  BitVector<dim> result(combination(d_data,source.data()),d_rows);
+// the same, but acting on the right
+template<size_t dim>
+BitVector<dim> BitMatrix<dim>::right_act(const BitVector<dim>& source) const
+{
+  assert(d_rows==source.size());
+  BitVector<dim> result(d_columns);
+  for (unsigned j=0; j<numColumns(); ++j)
+    result.set(j,source.dot(column(j)));
   return result;
 }
 
 /*
-  A pipe-dream version of apply.
+  A pipe-dream version of binary matrix * vector multiplication.
 
   We assume that |I| is an InputIterator with value-type |BitVector<dim>|, and
   |O| an OutputIterator with the same value-type. Then we apply our matrix to

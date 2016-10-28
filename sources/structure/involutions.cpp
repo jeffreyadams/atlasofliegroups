@@ -371,7 +371,7 @@ void InvolutionTable::real_unique(InvolutionNbr inv, RatWeight& y) const
   (y/=2).normalize(); // and this gets us back to the class of the original |y|
 }
 
-TorusPart InvolutionTable::pack(InvolutionNbr inv, const Weight& lambda_rho)
+TorusPart InvolutionTable::y_pack(InvolutionNbr inv, const Weight& lambda_rho)
   const
 {
   const record& rec=data[inv];
@@ -380,7 +380,7 @@ TorusPart InvolutionTable::pack(InvolutionNbr inv, const Weight& lambda_rho)
   return TorusPart(v); // reduce coordinates modulo 2
 }
 
-Weight InvolutionTable::unpack(InvolutionNbr inv, TorusPart y_part) const
+Weight InvolutionTable::y_unpack(InvolutionNbr inv, TorusPart y_part) const
 {
   const record& rec=data[inv];
   Weight result(rec.lift_mat.numRows(),0);
