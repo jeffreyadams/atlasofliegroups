@@ -1,7 +1,5 @@
-<parabolics.at { for nilrad@Parabolic and nilrad@(ratvec,KGBElt) }
 <induction.at { for rho_S@(mat,RootDatum) }
 <finite_dimensional.at {for is_finite_dimensional}
-<kgp.at { for maximal@Parabolic }
 <canonical_x_K.at { for canonical_x_K@KGBElt }
 
 { basic functions are in parabolics.at
