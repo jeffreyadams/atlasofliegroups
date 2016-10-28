@@ -214,15 +214,17 @@ set recursive_deform (Param p, mat delta) = ParamPol:
       prints("full_def with: sc=", sc, ", p=", p);
       assert(is_standard(p)
 	    ,"non standard parameter encountered in deformation");
-      let acc=empty
-      , at_nu0=sc*finalize_extended(p*0,delta).s_to_minus_1 { fully deform |p| }
+      let acc=empty, at_nu0 =
+        let (p0,flipped) = scale_extended(p,delta,0)
+        in if flipped then s*sc else sc fi * finalize_extended(p0,delta)
       in
       for factor in reducibility_points(p)
       ~do
-	let p_def=p*factor { next deformation of |p| }
-	then def=deformation_terms(p_def,delta)
+	let (pf,flipped)=scale_extended(p,delta,factor) { next deformation }
+	then def=deformation_terms(pf,delta)
 	in
-	prints("adding deformation term: p=", p_def, new_line,"adding:", def)
+        if flipped then def := s*def fi { flip signatures in this rare case }
+      ; prints("adding deformation term: p=", pf, new_line,"adding:", def)
       ; acc+:=def
       od
     ; for k@q in acc { traverse the sum of the deformation terms spun off }
@@ -235,12 +237,16 @@ set recursive_deform (Param p, mat delta) = ParamPol:
        { |sc| will simply scale the resulting ParamPol, |delta| is implicit }
     begin
       assert(is_standard(p),"non standard parameter in deformation");
-      let acc=empty
-      , at_nu0=sc*finalize_extended(p*0,delta).s_to_minus_1 { fully deform |p| }
+      let acc=empty, at_nu0=
+        let (p0,flipped) = scale_extended(p,delta,0)
+        in if flipped then s*sc else sc fi * finalize_extended(p0,delta)
       in
       for factor in reducibility_points(p)
       ~ { direction of deformation is down, towards 0; this is not essential }
-      do acc+:=deformation_terms(p*factor,delta) od
+      do let (pf,flipped)=scale_extended(p,delta,factor)
+         then def=deformation_terms(pf,delta)
+	 in acc+:= if flipped then s*def else def fi
+      od
     ; for k@q in acc { traverse the sum of the deformation terms spun off }
       do at_nu0 +:= full_def(sc*k,q) od
     ; at_nu0

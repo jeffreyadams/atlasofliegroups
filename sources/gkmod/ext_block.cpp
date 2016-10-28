@@ -330,12 +330,48 @@ KGBElt param::x() const
   return rc().kgb().lookup(a);
 }
 
-#if 0 // unused code, but the formula is referred to in the comment below
-int z (const param& E) // value modulo 4, exponent of imaginary unit $i$
-{ return
-    (E.l().dot((E.delta()-1)*E.tau()) + 2*E.t().dot(E.lambda_rho())) % 4;
+StandardRepr scaled_extended_dominant // result will have its |gamma()| dominant
+(const Rep_context rc,
+ const StandardRepr& sr, const WeightInvolution& delta,
+ Rational factor, // |z.nu()| is scaled by |factor| first
+ bool& flipped // records whether and extended flip was recorded
+ )
+{ const RootDatum& rd=rc.rootDatum();
+  assert(is_dominant_ratweight(rd,sr.gamma())); // dominant
+  assert(((delta-1)*sr.gamma().numerator()).isZero()); // $\delta$-fixed
+  StandardRepr result = rc.sr(sr.x(),rc.lambda_rho(sr),sr.gamma()*factor);
+  Weight gamma_numer(result.gamma().numerator().begin(),
+		     result.gamma().numerator().end());
+  context ctxt(rc,delta,result.gamma());
+  const ext_gens orbits = rootdata::fold_orbits(ctxt.id(),delta);
+  param E(ctxt,result); // for convenience, to have fields as "variables"
+  KGBElt x = result.x(); // another variable, for convenience
+  WeightInvolution theta=E.theta(); // we need a variable here too
+
+  { unsigned i; // index into |orbits|
+    do
+      for (i=0; i<orbits.size(); ++i)
+	if (rc.kgb().status(x).isComplex(orbits[i].s0))
+	{ const auto& s=orbits[i];
+	  int v=rd.simpleCoroot(s.s0).dot(gamma_numer);
+	  if (v<0)
+	  { rd.act(s.w_tau,gamma_numer); // change inf.char representative
+	    E.set_lambda_rho(rd.image_by(s.w_tau,E.lambda_rho())
+			     +rho_minus_w_rho(rd,s.w_tau));
+	    E.set_tau(rd.image_by(s.w_tau,E.tau())
+		      +rho_check_minus_rho_check_w(rd,s.w_tau));
+	    E.set_l(rd.dual_image_by(E.l(),s.w_tau));
+	    E.set_t(rd.dual_image_by(E.t(),s.w_tau));
+	    x = rc.kgb().cross(s.w_tau,x);
+	  }
+	} // |for(s)|, if |isComplex|
+    while(i<orbits.size()); // continue until above |for| runs to completion
+  }
+  context new_ctxt(rc,delta,RatWeight(gamma_numer,sr.gamma().denominator()));
+  result = rc.sr_gamma(x,E.lambda_rho(),new_ctxt.gamma());
+  flipped = same_sign(E,param(new_ctxt,result));
+  return result;
 }
-#endif
 
 containers::sl_list<std::pair<StandardRepr,bool> > finalise
   (const repr::Rep_context& rc,
@@ -379,6 +415,13 @@ containers::sl_list<std::pair<StandardRepr,bool> > finalise
 
   return result;
 }
+
+#if 0 // unused code, but the formula is referred to in the comment below
+int z (const param& E) // value modulo 4, exponent of imaginary unit $i$
+{ return
+    (E.l().dot((E.delta()-1)*E.tau()) + 2*E.t().dot(E.lambda_rho())) % 4;
+}
+#endif
 
 /*
   The quotient of |z| values across a Cayley transform will only be used when

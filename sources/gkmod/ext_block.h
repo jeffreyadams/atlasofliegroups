@@ -341,6 +341,12 @@ bool is_descent (const ext_gen& kappa, const param& E);
 weyl::Generator first_descent_among
   (RankFlags singular_orbits, const ext_gens& orbits, const param& E);
 
+// a variation of |Rep_context::make_dominant|, used during extended deformation
+StandardRepr scaled_extended_dominant // result will have its |gamma()| dominant
+(const Rep_context rc, const StandardRepr& sr, const WeightInvolution& delta,
+ Rational factor, // |z.nu()| is scaled by |factor| first
+ bool& flipped // records whether and extended flip was recorded
+ );
 
 /* DAVID 10/23/16: |finalise| is used primarily or exclusively when the
    parameter represents a standard representation (not an irreducible); the

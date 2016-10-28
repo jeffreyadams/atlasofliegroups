@@ -3850,8 +3850,35 @@ void parameter_twist_wrapper(expression_base::level l)
 { shared_module_parameter p = get<module_parameter_value>();
   if (l!=expression_base::no_value)
     push_value(std::make_shared<module_parameter_value>
-		(p->rf,p->rc().twist(p->val)));
+		(p->rf,p->rc().inner_twisted(p->val)));
 }
+
+@ The same can be done for an external twist, specified by a matrix. The
+method of |Rep_context| to call is now |twisted| rather than |inner_twisted|,
+but more work is required in this wrapper function, because we must ensure
+that the external involution is compatible with the inner class.
+
+@< Local function def...@>=
+void test_compatible (const shared_module_parameter& p, own_matrix& delta)
+{ auto &rc = p->rc(); WeylWord ww; // dummy
+  check_involution(delta->val,rc.rootDatum(),ww);
+    // also makes |delta->val| distinguished
+  if (not p->rc().is_twist_fixed(p->val,delta->val))
+    throw runtime_error("Parameter not fixed by given involution");
+  auto& xi = rc.innerClass().distinguished();
+  if (delta->val*xi!=xi*delta->val)
+    throw runtime_error("Non commuting distinguished involution");
+}
+@)
+void external_twist_wrapper(expression_base::level l)
+{ auto delta = get_own<matrix_value>(); // own because of |check_involution|
+  auto p = get<module_parameter_value>();
+  test_compatible(p,delta);
+  if (l!=expression_base::no_value)
+    push_value(std::make_shared<module_parameter_value>
+		(p->rf,p->rc().twisted(p->val,delta->val)));
+}
+
 
 @ The library can also compute orientation numbers for parameters.
 
@@ -3980,7 +4007,7 @@ void partial_block_wrapper(expression_base::level l)
 @< Local function def...@>=
 void param_length_wrapper(expression_base::level l)
 { shared_module_parameter p = get<module_parameter_value>();
-  test_standard(*p,"Cannot determine block");
+  test_standard(*p,"Cannot determine block for parameter length");
   if (l!=expression_base::no_value)
     push_value(std::make_shared<int_value>(p->rt().length(p->val)));
 }
@@ -4144,19 +4171,14 @@ blocks available in \.{atlas}.
 
 @< Local function def...@>=
 void extended_block_wrapper(expression_base::level l)
-{ LatticeMatrix M(get<matrix_value>()->val); // initialise from provided matrix
+{ auto delta =get_own<matrix_value>(); // own needed for |test_compatible|
   shared_module_parameter p = get<module_parameter_value>();
   test_standard(*p,"Cannot generate block");
-  const auto& rc = p->rc();
-  const RootDatum& rd = rc.rootDatum(); WeylWord ww;
-  check_involution(M,rd,ww); // this makes |M| distinguished
-  { auto& xi = rc.innerClass().distinguished();
-    if (M*xi!=xi*M)
-      throw runtime_error("Non commuting distinguished involution");
-  }
+  test_compatible(p,delta);
   if (l==expression_base::no_value) return;
 @)
-  BlockElt start;
+  const auto& rc = p->rc();
+  BlockElt start; const auto& M=delta->val;
   param_block block(rc,p->val,start);
   if ( ((M-1)*block.gamma().numerator()).isZero()) // block globally stable
     @< Construct the extended block, then the return value components,
@@ -4234,13 +4256,7 @@ void extended_KL_block_wrapper(expression_base::level l)
 { auto delta = get_own<matrix_value>(); // own because of |check_involution|
   auto p = get<module_parameter_value>();
   test_standard(*p,"Cannot generate extended block");
-  const auto& rc = p->rc();
-  const RootDatum& rd = rc.rootDatum(); WeylWord ww;
-  check_involution(delta->val,rd,ww); // this makes |delta| distinguished
-  { auto& xi = rc.innerClass().distinguished();
-    if (delta->val*xi!=xi*delta->val)
-      throw runtime_error("Non commuting distinguished involution");
-  }
+  test_compatible(p,delta);
   if (l==expression_base::no_value) return;
 @)
   std::vector<StandardRepr> block;
@@ -4279,6 +4295,7 @@ install_function(parameter_inv_Cayley_wrapper,@|"inv_Cayley"
 install_function(root_parameter_cross_wrapper,@|"cross" ,"(vec,Param->Param)");
 install_function(root_parameter_Cayley_wrapper,@|"Cayley" ,"(vec,Param->Param)");
 install_function(parameter_twist_wrapper,@|"twist" ,"(Param->Param)");
+install_function(external_twist_wrapper,@|"twist" ,"(Param,mat->Param)");
 install_function(orientation_number_wrapper,@|"orientation_nr" ,"(Param->int)");
 install_function(reducibility_points_wrapper,@|
 		"reducibility_points" ,"(Param->[rat])");
@@ -5068,13 +5085,51 @@ void twisted_KL_sum_at_s_wrapper(expression_base::level l)
   }
 }
 
+@ The function |scale_extended| is intended for use with in the deformation
+algorithm when interpreting parameters as specifying a representation of he
+extended group. One can arrange that deformation starts with a parameter for
+which $\gamma$ is dominant, but when deforming this condition may be lost. In
+the ordinary deformation algorithm this is taken care of by an implicit
+|dominant| conversion of the parameter when it gets used to construct a block
+or when it is contributed to a virtual module. However this may potentially
+cause the default choice of extended representation associated to the
+parameter to flip (at the time of writing this, it appears to be a very rare
+event, if it occurs at all). the function below will scale the parameter,
+perform the conversion to dominant using extended parameters, and return the
+scaled parameter made dominant plus an indication of whether a flip occurred.
+The function |scaled_extended_dominant| in the module \\{ext\_block} does the
+actual work.
+
+@< Local function def...@>=
+
+void scale_extended_wrapper(expression_base::level l)
+{ auto factor = get<rat_value>();
+  auto delta = get_own<matrix_value>(); // own because of |check_involution|
+  auto p = get<module_parameter_value>();
+  test_standard(*p,"Cannot scale extended parameter");
+  test_compatible(p,delta);
+  if (l==expression_base::no_value)
+    return;
+@)
+  const auto& rc = p->rc();
+  StandardRepr sr = p->val;
+  rc.make_dominant(sr); // ensure this in case caller forgot
+  bool flipped;
+  sr = @;ext_block::scaled_extended_dominant
+    (rc,p->val,delta->val,factor->val,flipped);
+  push_value(std::make_shared<module_parameter_value>(p->rf,sr));
+  push_value(whether(flipped));
+  if (l==expression_base::single_value)
+    wrap_tuple<2>();
+}
+
 @ The function |finalize_extended| is useful in expanding a single module
 parameter into a linear combination of such parameters. The terms on the list
 are paired with a Boolean attribute recording a possible flip of extended
 parameters accumulated when the term. This flip is recorded with as
-coefficient the split integer unit~$s$ rather than $-1$, since applications
-where this is required are envisioned (and it remains possible to evaluate at
-$s:=-1$ afterwards if desired).
+coefficient the split integer unit~$s$, since it should be interpreted as a
+signature flip (in the ordinary finalisation procedure flips never occur).
+The function |finalise| in the module \\{ext\_block} does the actual work.
 
 @< Local function def...@>=
 
@@ -5082,16 +5137,12 @@ void finalize_extended_wrapper(expression_base::level l)
 { auto delta = get_own<matrix_value>(); // own because of |check_involution|
   auto p = get<module_parameter_value>();
   test_standard(*p,"Cannot finalize extended parameter");
-  const auto& rc = p->rc();
-  const RootDatum& rd = rc.rootDatum(); WeylWord ww;
-  check_involution(delta->val,rd,ww); // this makes |delta| distinguished
-  { auto& xi = rc.innerClass().distinguished();
-    if (delta->val*xi!=xi*delta->val)
-      throw runtime_error("Non commuting distinguished involution");
-  }
+  test_compatible(p,delta);
   if (l==expression_base::no_value)
     return;
-  auto params = ext_block::finalise(rc,p->val,delta->val);
+@)
+  const auto& rc = p->rc();
+  auto params = @;ext_block::finalise(rc,p->val,delta->val);
   repr::SR_poly result(rc.repr_less());
   for (auto it=params.begin(); it!=params.end(); ++it)
     result.add_term(it->first
@@ -5144,6 +5195,8 @@ install_function(full_deform_wrapper,@|"full_deform","(Param->ParamPol)");
 install_function(KL_sum_at_s_wrapper,@|"KL_sum_at_s","(Param->ParamPol)");
 install_function(twisted_KL_sum_at_s_wrapper,@|"twisted_KL_sum_at_s"
                 ,"(Param->ParamPol)");
+install_function(scale_extended_wrapper,@|"scale_extended"
+                ,"(Param,mat,rat->Param,bool)");
 install_function(finalize_extended_wrapper,@|"finalize_extended"
                 ,"(Param,mat->ParamPol)");
 
@@ -5236,21 +5289,16 @@ parameter and an involution matrix as argument.
 
 @< Local function def...@>=
 void raw_ext_KL_wrapper (expression_base::level l)
-{ LatticeMatrix delta(get<matrix_value>()->val);
+{ auto delta = get_own<matrix_value>();
   shared_module_parameter p = get<module_parameter_value>();
   test_standard(*p,"Cannot generate block");
-  const auto& rc = p->rc();
-  const RootDatum& rd = rc.rootDatum(); WeylWord ww;
-  check_involution(delta,rd,ww); // this makes |delta| distinguished
-  { auto& xi = rc.innerClass().distinguished();
-    if (delta*xi!=xi*delta)
-      throw runtime_error("Non commuting distinguished involution");
-  }
+  test_compatible(p,delta);
   if (l==expression_base::no_value) return;
 @)
+  const auto& rc = p->rc();
   BlockElt start;
   param_block block(rc,p->val,start);
-  if (not((delta-1)*block.gamma().numerator()).isZero())
+  if (not((delta->val-1)*block.gamma().numerator()).isZero())
   { // block not globally stable, so return empty values;
     push_value(std::make_shared<matrix_value>(int_Matrix()));
     push_value(std::make_shared<row_value>(0));
@@ -5258,7 +5306,7 @@ void raw_ext_KL_wrapper (expression_base::level l)
   }
   else
   {
-    ext_block::ext_block eb(rc.innerClass(),block,rc.kgb(),delta);
+    ext_block::ext_block eb(rc.innerClass(),block,rc.kgb(),delta->val);
     std::vector<Polynomial<int> > pool;
     ext_kl::KL_table klt(eb,pool); klt.fill_columns();
   @)

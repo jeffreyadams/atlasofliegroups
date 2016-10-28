@@ -139,6 +139,9 @@ class Rep_context
   bool is_oriented(const StandardRepr& z, RootNbr alpha) const;
   unsigned int orientation_number(const StandardRepr& z) const;
 
+  bool is_twist_fixed(StandardRepr z, const WeightInvolution& delta) const
+  { return z==twisted(z,delta); }
+
   // action by equivalence of parameters (not the cross action), changing gamma
   void W_act(const WeylWord& w,StandardRepr& z) const;
 
@@ -158,7 +161,8 @@ class Rep_context
   StandardRepr cross(weyl::Generator s, StandardRepr z) const;
   StandardRepr Cayley(weyl::Generator s, StandardRepr z) const;
   StandardRepr inv_Cayley(weyl::Generator s, StandardRepr z) const;
-  StandardRepr twist(StandardRepr z) const;
+  StandardRepr inner_twisted(StandardRepr z) const;
+  StandardRepr twisted(StandardRepr z, const WeightInvolution& delta) const;
 
   StandardRepr cross(const Weight& alpha, StandardRepr z) const;
   StandardRepr any_Cayley(const Weight& alpha, StandardRepr z) const;

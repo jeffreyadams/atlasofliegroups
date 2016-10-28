@@ -775,6 +775,18 @@ KGBElt KGB::lookup(TitsElt a) const
   return UndefKGB; // report failure
 }
 
+KGBElt KGB::twisted(KGBElt x,const WeightInvolution& delta) const
+{
+  auto a = titsElt(x);
+  auto delta_twist = rootdata::twist(G.rootDatum(),delta);
+  TitsElt twisted_a
+    (titsGroup(),
+     titsGroup().left_torus_part(a)*BinaryMap(delta),
+     weylGroup().translation(a.w(),delta_twist)
+     );
+  return lookup(twisted_a);
+}
+
 const poset::Poset& KGB::bruhatPoset() // this creates full poset on demand
 { return bruhatOrder().poset(); }
 

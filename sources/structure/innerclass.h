@@ -455,8 +455,6 @@ class InnerClass
   // matrix giving involution action of |tw| on weight lattice (lookup)
   const WeightInvolution& matrix(const TwistedInvolution& tw) const
   { return C_orb.matrix(tw); }
-  // version not relying on involution table, so usable during construction
-  WeightInvolution compute_matrix(const TwistedInvolution& tw) const;
 
   InvolutionData involution_data(const TwistedInvolution& tw) const
   { return InvolutionData::build(rootSystem(),twistedWeylGroup(),tw); }

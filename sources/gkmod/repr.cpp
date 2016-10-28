@@ -67,7 +67,7 @@ StandardRepr Rep_context::sr_gamma
   image = theta1*image/int(g_r.denominator()); // division must be exact
   matreduc::find_solution(theta1,image); // solution must exist
 #endif
-  return StandardRepr(x, i_tab.pack(kgb().inv_nr(x),lambda_rho), gamma);
+  return StandardRepr(x, i_tab.y_pack(kgb().inv_nr(x),lambda_rho), gamma);
 }
 
 RatWeight Rep_context::gamma
@@ -111,7 +111,7 @@ Weight Rep_context::lambda_rho(const StandardRepr& z) const
   Ratvec_Numer_t im_part2 = gamma_rho.numerator()+theta*gamma_rho.numerator();
   im_part2 /= gamma_rho.denominator(); // exact: $(1+\theta)(\lambda-\rho)$
   Weight i2(im_part2.begin(),im_part2.end()); // convert to |Weight|
-  return (i2 + i_tab.unpack(i_x,z.y()))/2; // division exact again
+  return (i2 + i_tab.y_unpack(i_x,z.y()))/2; // division exact again
 }
 
 // return $\lambda \in \rho+X^*$ as half-integer rational vector
@@ -174,7 +174,7 @@ bool Rep_context::is_final(const StandardRepr& z, RootNbr& witness) const
   const InvolutionNbr i_x = kgb().inv_nr(z.x());
   const InvolutionTable& i_tab = innerClass().involution_table();
   const RootNbrSet pos_real = i_tab.real_roots(i_x) & rd.posRootSet();
-  const Weight test_wt = i_tab.unpack(i_x,z.y()) // $(1-\theta)(\lambda-\rho)$
+  const Weight test_wt = i_tab.y_unpack(i_x,z.y()) // $(1-\theta)(\lambda-\rho)$
            + rd.twoRho()-rd.twoRho(pos_real); // replace $\rho$ by $\rho_R$
 
   for (RootNbrSet::iterator it=pos_real.begin(); it(); ++it)
@@ -201,7 +201,8 @@ bool Rep_context::is_oriented(const StandardRepr& z, RootNbr alpha) const
   const int denom = z.gamma().denominator();
   assert(numer%denom!=0); // and the real root alpha should be non-integral
 
-  const Weight test_wt = i_tab.unpack(i_x,z.y()) +rd.twoRho() -rd.twoRho(real);
+  const Weight test_wt =
+    i_tab.y_unpack(i_x,z.y()) +rd.twoRho() -rd.twoRho(real);
   const int eps = av.dot(test_wt)%4==0 ? 0 : denom;
 
   return arithmetic::remainder(numer+eps,2*denom)< (unsigned)denom;
@@ -216,7 +217,8 @@ unsigned int Rep_context::orientation_number(const StandardRepr& z) const
   const Permutation& root_inv = i_tab.root_involution(i_x);
   const Ratvec_Numer_t& numer = z.gamma().numerator();
   const arithmetic::Numer_t denom = z.gamma().denominator();
-  const Weight test_wt = i_tab.unpack(i_x,z.y()) +rd.twoRho() -rd.twoRho(real);
+  const Weight test_wt =
+    i_tab.y_unpack(i_x,z.y()) +rd.twoRho() -rd.twoRho(real);
 
   unsigned count = 0;
 
@@ -263,7 +265,7 @@ void Rep_context::W_act(const WeylWord& w,StandardRepr& z) const
     x = kgb().cross(s,x);
   }
   z.y_bits = // reinsert $y$ bits component
-    innerClass().involution_table().pack(kgb().inv_nr(x),lr);
+    innerClass().involution_table().y_pack(kgb().inv_nr(x),lr);
 }
 
 void
@@ -290,7 +292,7 @@ Rep_context::W_act(const WeylWord& w,StandardRepr& z,const SubSystem& subsys)
     rd.reflect(alpha,lambda2_shifted);
   }
   lambda2_shifted -= rd.twoRho() - rd.twoRho(i_tab.real_roots(i_x)); // unshift
-  z.y_bits=i_tab.pack(i_x,lambda2_shifted/2);
+  z.y_bits=i_tab.y_pack(i_x,lambda2_shifted/2);
 }
 
 WeylWord Rep_context::make_dominant(StandardRepr& z) const
@@ -307,7 +309,6 @@ WeylWord Rep_context::make_dominant(StandardRepr& z) const
 
   { weyl::Generator s;
     do
-    {
       for (s=0; s<rd.semisimpleRank(); ++s)
       {
 	int v=rd.simpleCoroot(s).dot(numer);
@@ -329,10 +330,9 @@ WeylWord Rep_context::make_dominant(StandardRepr& z) const
 	  break; // out of the loop |for(s)|
         } // |if(v<0)|
       } // |for(s)|
-    }
     while (s<rd.semisimpleRank()); // wait until inner loop runs to completion
   }
-  z.y_bits=innerClass().involution_table().pack(kgb().inv_nr(x),lr);
+  z.y_bits=innerClass().involution_table().y_pack(kgb().inv_nr(x),lr);
   return result;
 } // |make_dominant|
 
@@ -378,7 +378,7 @@ Rep_context::make_dominant(StandardRepr& z,const SubSystem& subsys) const
     while (s<subsys.rank()); // wait until inner loop runs to completion
   }
   lambda2_shifted -= rd.twoRho() - rd.twoRho(i_tab.real_roots(i_x)); // unshift
-  z.y_bits=i_tab.pack(i_x,lambda2_shifted/2);
+  z.y_bits=i_tab.y_pack(i_x,lambda2_shifted/2);
   return result;
 } // |make_dominant| (integrally)
 
@@ -397,20 +397,22 @@ RationalList Rep_context::reducibility_points(const StandardRepr& z) const
   const RootNbrSet pos_real = i_tab.real_roots(i_x) & rd.posRootSet();
   const Weight two_rho_real = rd.twoRho(pos_real);
 
-  // we shall associate to a first number a strict lower bound for some $k$
-  // if first number is $num>0$ we shall later form fractions $(d/num)*k$
+  // we shall associate to a number $num>0$ a strict lower bound for $k$,
+  // for which we shall then later form fractions $(d/num)*k$
   typedef std::map<long,long> table;
+
+  // because of the parity condition, distinguish cases with even and odd $k$
   table odds,evens; // name indicates the parity that $k$ will have
 
   for (RootNbrSet::iterator it=pos_real.begin(); it(); ++it)
   {
     arithmetic::Numer_t num =
-      rd.coroot(*it).dot(numer); // numerator of $\<\nu,\alpha^v>$
+      rd.coroot(*it).dot(numer); // numerator of $\<\alpha^v,\nu>$ in real case
     if (num!=0)
     {
       long lam_alpha = lam_rho.dot(rd.coroot(*it))+rd.colevel(*it);
       bool do_odd = (lam_alpha+two_rho_real.dot(rd.coroot(*it))/2)%2 ==0;
-      (do_odd ? &odds : &evens)->insert(std::make_pair(std::abs(num),0));
+      (do_odd ? odds : evens).insert(std::make_pair(std::abs(num),0));
     }
   }
 
@@ -420,13 +422,13 @@ RationalList Rep_context::reducibility_points(const StandardRepr& z) const
     RootNbr alpha=*it, beta=theta[alpha];
     arithmetic::Numer_t vala = rd.coroot(alpha).dot(numer);
     arithmetic::Numer_t valb = rd.coroot(beta).dot(numer);
-    arithmetic::Numer_t num = vala - valb; // numerator of $2\<\nu,\alpha^v>$
+    arithmetic::Numer_t num = vala - valb; // numerator of $2\<\alpha^v,\nu>$
     if (num!=0)
     {
-      assert((vala+valb)%d==0); // since |\<\gamma,a+b>=\<\lambda,a+b>|
+      assert((vala+valb)%d==0); // since |\<a+b,\gamma>=\<a+b,\lambda>|
       long lwb =std::abs(vala+valb)/d;
       std::pair<table::iterator,bool> trial =
-	(lwb%2==0 ? &evens : &odds)->insert(std::make_pair(std::abs(num),lwb));
+	(lwb%2==0 ? evens : odds).insert(std::make_pair(std::abs(num),lwb));
       if (not trial.second and lwb<trial.first->second)
 	trial.first->second=lwb; // if not new, maybe lower the old bound value
     }
@@ -622,7 +624,7 @@ StandardRepr Rep_context::any_Cayley(const Weight& alpha, StandardRepr z) const
   return z;
 }
 
-StandardRepr Rep_context::twist(StandardRepr z) const
+StandardRepr Rep_context::inner_twisted(StandardRepr z) const
 {
   make_dominant(z);
   const RatWeight infin_char=z.gamma(); // now get the infinitesimal character
@@ -637,6 +639,18 @@ StandardRepr Rep_context::twist(StandardRepr z) const
   return sr_gamma(src.x(),
 		  Weight(lr.numerator().begin(),lr.numerator().end()), // mod 2
 		  infin_char);
+}
+
+StandardRepr Rep_context::twisted
+  (StandardRepr z, const WeightInvolution& delta) const
+{
+  const auto& i_tab = innerClass().involution_table();
+  const InvolutionNbr i_x = kgb().inv_nr(z.x());
+
+  z.x_part = kgb().twisted(z.x_part,delta);
+  z.y_bits = i_tab.y_act(i_x,z.y_bits,delta);
+  z.infinitesimal_char = delta*z.infinitesimal_char;
+  return z;
 }
 
 Rep_context::compare Rep_context::repr_less() const
@@ -686,7 +700,7 @@ SR_poly Rep_context::expand_final(StandardRepr z) const // by value
 	singular_real_parity.set // record whether |s| is a real parity root
 	  // |unpack| gives $(1-\theta)(\lambda-\rho)$
 	  // real simple coroot odd on $\lambda-\rho$ means it is parity
-	  (s,rd.simpleCoroot(s).dot(i_tab.unpack(i_x,z.y()))%4!=0);
+	  (s,rd.simpleCoroot(s).dot(i_tab.y_unpack(i_x,z.y()))%4!=0);
       else if (i_tab.is_imaginary_simple(i_x,s))
       {
 	if (kgb().status(s,z.x())==gradings::Status::ImaginaryCompact)
