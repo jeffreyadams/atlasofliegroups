@@ -1,13 +1,8 @@
-<twist.at
-<polynomial.at
-<extended_misc.at
-<KL_polynomial_matrices.at
-<ext_deform.at
 <bigMatrices.at
-<hermitian.at
+<thetastable.at
 
 {implement ParamPol for extended parameters}
-ed_verbose:=true
+ed_verbose:=false
 {(P_plus,P_minus,P_ind)=(\sum_i s_ip_i, \sum_j t_jq_j, \sum_k u_kr_k) <->
 \sum_i s_iE(p_i,+) + \sum_j t_j E(q_j,-) + \sum_k u_k E(r_k,ind)
 }
@@ -215,10 +210,10 @@ set character_formula (Param p,mat delta) = ExtParamPol:
 set c_form_irreducible (Param p,mat delta, int type) =
 ( let ori_nr_p = orientation_nr(p), P = null_ext_module(real_form(p)) then
   (plus,minus,induced)=character_formula(p,delta) then
-  ()=prints("doing plus:");for coeff@q in plus do P+:=coeff*orientation_nr_term(ori_nr_p,q)*recursive_deform(q,delta,1) od then
-  ()=prints("doing minus:");for coeff@q in minus do P+:={s*}coeff*orientation_nr_term(ori_nr_p,q)*recursive_deform(q,delta,-1) od then
-  ()=prints("doing induced");for coeff@q in induced do P+:=coeff*orientation_nr_term(ori_nr_p,q)*recursive_deform(q,delta,0) od  then
-  ()=prints("Before:");display(P) in
+  ()=prints("character formula:");display(plus,minus,induced) then
+  ()=prints("deforming plus terms:");for coeff@q in plus do prints(new_line,coeff,"*",q);P+:=coeff*orientation_nr_term(ori_nr_p,q)*recursive_deform(q,delta,1) od then
+  ()=prints("deforming minus:");for coeff@q in minus do prints(new_line,coeff,"*",q);P+:={s*}coeff*orientation_nr_term(ori_nr_p,q)*recursive_deform(q,delta,-1) od then
+  ()=prints("deforming induced:");for coeff@q in induced do prints(new_line,coeff,"*",q);P+:=coeff*orientation_nr_term(ori_nr_p,q)*recursive_deform(q,delta,0) od  in
    {multiply induced terms by (1+s) and replace with plus/minus pair}
    let (P_plus,P_minus,P_ind)=P in
    for c@q in P_ind do (P_plus+:=c*q, P_minus+:=c*q) od ;(P_plus,P_minus,null_module(real_form(p)))

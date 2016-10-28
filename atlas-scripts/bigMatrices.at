@@ -171,14 +171,15 @@ for a:n do
 }
 
 set big_KL_P_signed_polynomials([Param] B,mat delta)=[[vec]]:
-let (I_delta,g,complete_indices,delta_action)=tabulate_indices(B,delta) then
+let (I_delta,g,complete_indices,delta_action)=tabulate_indices(B,delta) in
+if #I_delta=0 then KL_P_signed_polynomials(B) else let
 P=big_KL_P_polynomials(B,delta) then
 lengths=for i:#g do length(B[i]) od then
 n=#complete_indices in
 for a:n do for b:n do
 let (i,)=complete_indices[a] then
 (j,)=complete_indices[b] in
-P:=update_matrix_entry(P,a,b,P[a][b]*(-1)^(lengths[i]+lengths[j])) od od;P
+P:=update_matrix_entry(P,a,b,P[a][b]*(-1)^(lengths[i]+lengths[j])) od od;P fi
 
 set is_non_negative([poly] polynomials)=bool:all(for v in polynomials do is_non_negative(v) od)
 set is_non_negative(poly_mat M)=bool:all(for row in M do is_non_negative(row) od)
