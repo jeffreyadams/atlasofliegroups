@@ -1,6 +1,5 @@
 <induction.at { for rho_S@(mat,RootDatum) }
 <finite_dimensional.at {for is_finite_dimensional}
-<canonical_x_K.at { for canonical_x_K@KGBElt }
 
 { basic functions are in parabolics.at
   these are some additional functions related to theta-stable parabolics
@@ -13,6 +12,48 @@ parabolic(ratvec lambda,KGBElt x)
   returns a theta-stable parabolic if \theta_x(lambda)=lambda
 and all x-complex roots are type C+
 }
+
+
+{ if all complex roots for x are of type C+, then conjecturally the torus
+  parts (torus_factor) of all elements in the fiber are a subset of those for
+  the distinguished fiber:
+  KGB_elt(G,theta(x),torus_bits(x))=KGB_elt(G,theta(x),torus_bits(x_f)) for
+  some x_f in the fundamental fiber
+
+  Mapping x to x_K in the distinguished fiber
+  gives the version of K=K_{x_K} appropriate to y
+  aborts with an error if the conjecture is false for x
+
+  Note: this is false, but may be true with torus_bits in place of
+  torus_factor:
+  KGB_elt(G,theta(x),torus_bits(x))=KGB_elt(G,theta(x),torus_bits(x_f)) for
+  some x_f in the fundamental fiber this differs from the same identity for
+  torus_factor because
+  torus_factor(x)=(1+^theta(x))(torus_bits(x)+base_grading_vector) the
+  (1+^theta(x)) terms messes this up. An example is G=SO(6,2), x=KGB(G,11),
+  which should map to KGB(G,5)
+}
+set map_into_distinguished_fiber (KGBElt x)=KGBElt:
+begin assert(no_Cminus_roots(x),"Only defined if no C- roots")
+; let G=real_form(x) then F=distinguished_fiber(G)
+  then index=#F-1, t=torus_factor(x), tb=torus_bits(x)
+  in
+{  while index>=0 and t!=torus_factor(KGB(G,F[index])) do index-:=1 od}
+  while  index>=0 and tb!= torus_bits(KGB(G,F[index])) do index-:=1 od
+; if index<0
+  then prints("x:", x)
+  ; error("the torus parts for the fiber over x" +
+          " do not embed in those for the distinguished fiber")
+  fi
+; KGB(G,F[index])
+end
+
+{ first use complex cross actions to move to a fiber with no C-roots }
+set strong_map_into_distinguished_fiber (KGBElt x) = KGBElt:
+  let (y,)=make_no_Cminus(x) in map_into_distinguished_fiber(y)
+
+set canonical_x_K (KGBElt x) = KGBElt: strong_map_into_distinguished_fiber(x)
+set canonical_x_K (Param p)  = KGBElt: canonical_x_K(x(p))
 
 { set u(Parabolic P)=[vec]:...
   was broken; removed, use function in parabolics.at }
