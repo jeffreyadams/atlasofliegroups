@@ -34,7 +34,7 @@ set finalize (ParamPol P) = ParamPol:
 
 {finalize@[Param]->[Param]: finalize each term and eliminate
 duplicates, i.e. finalize the corresponding ParamPol and return as an array}
-set finalize ([Param] P) = [Param]: let rv=null_module(P[0]) in 
+set finalize ([Param] P) = [Param]: let rv=null_module(P[0]) in
 for p in P do rv+:=p od;monomials(rv)
 
 { evaluate at s=t for t integer (or rational?): replace w=a+bs with a+bt }

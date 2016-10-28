@@ -116,7 +116,7 @@ set c_form_irreducible_delta (Param p) = ParamPol:
 )
 
 set c_form_irreducible_delta_long (Param p) =
-( let G=p.real_form then	 
+( let G=p.real_form then
   delta=real_form(p).distinguished_involution then
   ori_nr_p = orientation_nr(p) then
   fixed_terms = null_module(G), unfixed_terms = null_module(G) then
@@ -124,8 +124,8 @@ set c_form_irreducible_delta_long (Param p) =
   Ptw=twisted_KL_sum_at_s(p) then
   P=KL_sum_at_s(p) then
   character_formula=P.s_to_1 in
-  for ev@q in P 
-  do 
+  for ev@q in P
+  do
    let ()=prints("DOING", ev, " ", q) in
     (if is_fixed(delta,q) then
      let new_ev=divide_by((P[q]+Ptw[q])+s*(P[q]-Ptw[q]),2)  in
@@ -133,9 +133,9 @@ set c_form_irreducible_delta_long (Param p) =
       let ()=prints("ADDING:", contrib) in
 	 (fixed_terms+:=contrib,
          terms#:=("fixed",ev,q,contrib))
-    else 
+    else
          let contrib=ev*orientation_nr_term(ori_nr_p,q)*one_plus_s*(q*0) in
-	 (unfixed_terms+:=contrib, 
+	 (unfixed_terms+:=contrib,
          terms#:=("unfixed",ev,q,contrib))
     fi)
   od
