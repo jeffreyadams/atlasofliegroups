@@ -1187,7 +1187,7 @@ set separate_by_infinitesimal_character (ParamPol P) = [(ratvec,ParamPol)]:
 { find index of item in list, or -1 if not found; first does this }
 
 set find ([int] v, int k) = int:      first(#v,(int i)bool:v[i]=k)
-set find ([Param] P,Param p) = int:   first(#P,(int i)bool:P[i]=p)
+set find ([Param] P,Param p) = int:   first(#P,(int i)bool:equals(P[i],p))
 set find ([KGBElt] S,KGBElt x) = int: first(#S,(int i)bool:S[i]=x)
 set find ([vec] S,vec v) = int:       first(#S,(int i)bool:S[i]=v)
 
