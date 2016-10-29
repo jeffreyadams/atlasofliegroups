@@ -3863,8 +3863,6 @@ void test_compatible (const shared_module_parameter& p, own_matrix& delta)
 { auto &rc = p->rc(); WeylWord ww; // dummy
   check_involution(delta->val,rc.rootDatum(),ww);
     // also makes |delta->val| distinguished
-  if (not p->rc().is_twist_fixed(p->val,delta->val))
-    throw runtime_error("Parameter not fixed by given involution");
   auto& xi = rc.innerClass().distinguished();
   if (delta->val*xi!=xi*delta->val)
     throw runtime_error("Non commuting distinguished involution");
@@ -4178,13 +4176,15 @@ void extended_block_wrapper(expression_base::level l)
   if (l==expression_base::no_value) return;
 @)
   const auto& rc = p->rc();
-  BlockElt start; const auto& M=delta->val;
+  BlockElt start;
   param_block block(rc,p->val,start);
-  if ( ((M-1)*block.gamma().numerator()).isZero()) // block globally stable
+  if ( ((delta->val-1)*block.gamma().numerator()).isZero())
+      // block globally stable
     @< Construct the extended block, then the return value components,
        calling |push_value| for each of them @>
-  else // block not globally stable under |M|, return empty data
-  { auto eb_rank = block.fold_orbits(M).size(); // size of folded diagram
+  else // block not globally stable under |delta->val|, return empty data
+  { auto eb_rank = block.fold_orbits(delta->val).size();
+     // size of folded diagram
     push_value(std::make_shared<row_value>(0));
     push_value(std::make_shared<matrix_value>(int_Matrix(0,eb_rank)));
     push_value(std::make_shared<matrix_value>(int_Matrix(0,eb_rank)));
@@ -4199,7 +4199,7 @@ void extended_block_wrapper(expression_base::level l)
 into a list of parameters and three tables in the form of matrices.
 
 @< Construct the extended block... @>=
-{ ext_block::ext_block eb(rc.innerClass(),block,rc.kgb(),M);
+{ ext_block::ext_block eb(rc.innerClass(),block,rc.kgb(),delta->val);
   own_row params = std::make_shared<row_value>(eb.size());
   int_Matrix types(eb.size(),eb.rank());
 @/int_Matrix links0(eb.size(),eb.rank());
@@ -5108,6 +5108,8 @@ void scale_extended_wrapper(expression_base::level l)
   auto p = get<module_parameter_value>();
   test_standard(*p,"Cannot scale extended parameter");
   test_compatible(p,delta);
+  if (not p->rc().is_twist_fixed(p->val,delta->val))
+    throw runtime_error("Parameter to be scaled not fixed by given involution");
   if (l==expression_base::no_value)
     return;
 @)
@@ -5138,6 +5140,8 @@ void finalize_extended_wrapper(expression_base::level l)
   auto p = get<module_parameter_value>();
   test_standard(*p,"Cannot finalize extended parameter");
   test_compatible(p,delta);
+  if (not p->rc().is_twist_fixed(p->val,delta->val))
+    throw runtime_error("Parameter not fixed by given involution");
   if (l==expression_base::no_value)
     return;
 @)
