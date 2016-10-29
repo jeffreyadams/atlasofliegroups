@@ -111,7 +111,7 @@ Weight Rep_context::lambda_rho(const StandardRepr& z) const
   Ratvec_Numer_t im_part2 = gamma_rho.numerator()+theta*gamma_rho.numerator();
   im_part2 /= gamma_rho.denominator(); // exact: $(1+\theta)(\lambda-\rho)$
   Weight i2(im_part2.begin(),im_part2.end()); // convert to |Weight|
-  return (i2 + i_tab.y_unpack(i_x,z.y()))/2; // division exact again
+  return (i2 + i_tab.y_lift(i_x,z.y()))/2; // division exact again
 }
 
 // return $\lambda \in \rho+X^*$ as half-integer rational vector
@@ -174,7 +174,7 @@ bool Rep_context::is_final(const StandardRepr& z, RootNbr& witness) const
   const InvolutionNbr i_x = kgb().inv_nr(z.x());
   const InvolutionTable& i_tab = innerClass().involution_table();
   const RootNbrSet pos_real = i_tab.real_roots(i_x) & rd.posRootSet();
-  const Weight test_wt = i_tab.y_unpack(i_x,z.y()) // $(1-\theta)(\lambda-\rho)$
+  const Weight test_wt = i_tab.y_lift(i_x,z.y()) // $(1-\theta)(\lambda-\rho)$
            + rd.twoRho()-rd.twoRho(pos_real); // replace $\rho$ by $\rho_R$
 
   for (RootNbrSet::iterator it=pos_real.begin(); it(); ++it)
@@ -202,7 +202,7 @@ bool Rep_context::is_oriented(const StandardRepr& z, RootNbr alpha) const
   assert(numer%denom!=0); // and the real root alpha should be non-integral
 
   const Weight test_wt =
-    i_tab.y_unpack(i_x,z.y()) +rd.twoRho() -rd.twoRho(real);
+    i_tab.y_lift(i_x,z.y()) +rd.twoRho() -rd.twoRho(real);
   const int eps = av.dot(test_wt)%4==0 ? 0 : denom;
 
   return arithmetic::remainder(numer+eps,2*denom)< (unsigned)denom;
@@ -218,7 +218,7 @@ unsigned int Rep_context::orientation_number(const StandardRepr& z) const
   const Ratvec_Numer_t& numer = z.gamma().numerator();
   const arithmetic::Numer_t denom = z.gamma().denominator();
   const Weight test_wt =
-    i_tab.y_unpack(i_x,z.y()) +rd.twoRho() -rd.twoRho(real);
+    i_tab.y_lift(i_x,z.y()) +rd.twoRho() -rd.twoRho(real);
 
   unsigned count = 0;
 
@@ -700,7 +700,7 @@ SR_poly Rep_context::expand_final(StandardRepr z) const // by value
 	singular_real_parity.set // record whether |s| is a real parity root
 	  // |unpack| gives $(1-\theta)(\lambda-\rho)$
 	  // real simple coroot odd on $\lambda-\rho$ means it is parity
-	  (s,rd.simpleCoroot(s).dot(i_tab.y_unpack(i_x,z.y()))%4!=0);
+	  (s,rd.simpleCoroot(s).dot(i_tab.y_lift(i_x,z.y()))%4!=0);
       else if (i_tab.is_imaginary_simple(i_x,s))
       {
 	if (kgb().status(s,z.x())==gradings::Status::ImaginaryCompact)
