@@ -3,11 +3,6 @@
 <extended_misc.at { for |fixed_block| }
 <polynomial.at
 
-set survives (Param p) = bool: { whether no singular coroot is a descent }
-( p.x=dominant(p).x { this fails when there is a complex singular descent }
-  and not p.is_zero and p.is_final { test absence of other singluar descents }
-)
-
 set KL_block (Param p, mat delta) = { emulate built-in |KL_block| }
     ([Param],int,mat,[vec],vec,vec,mat):
   let (regular_extblock,,,) = extended_block(p,delta)
