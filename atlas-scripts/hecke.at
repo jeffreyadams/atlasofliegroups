@@ -334,8 +334,7 @@ set sign_2Cr (int j,ExtParam E) = int:
     (alpha_check*(E.gamma-E.lambda_rho)-1) * (E.t*(alpha+beta)) /2 )
   in (-1)^exponent
 
-set signs_1i1(int j, ExtParam E, ExtParam E1, ExtParam F) =
-  (int,int):
+set signs_1i1(int j, ExtParam E, ExtParam E1, ExtParam F) = (int,int):
 begin
   assert(ext_type(j,E)="1i1","Wrong type in signs_1i1")
 ; let alpha=root(E.ic,j), alpha_check=coroot(E.ic,j), F=ext_Cayley(j,E)[0]
@@ -394,8 +393,8 @@ begin
   elif type ="1C-"
   then let F=ext_cross(j,E) in
     let k=index(F,basis) in
-    R:=update_row(R,k,sign(E)*q);
-    R:=update_row(R,i,q-poly_1)
+    R:=update_row(R,k,sign(E)*poly_q);
+    R:=update_row(R,i,poly_q-poly_1)
   elif type="1i1"
   then let E1=default(ext_cross(j,E)) in
     let F=default(ext_Cayley(j,E)[0]) in
@@ -418,7 +417,7 @@ begin
   ; R:=update_row(R,m0,poly_1)
   ; R:=update_row(R,m1,poly_1)
   elif type="1i2s" then R:=update_row(R,i,-poly_1)
-  elif type="1ic" then R:=update_row(R,i,q)
+  elif type="1ic" then R:=update_row(R,i,poly_q)
   elif type="1r1f"
   then let E0=default(ext_Cayley(j,E)[0]) in
     let E1=default(ext_Cayley(j,E)[1]) in
@@ -432,18 +431,18 @@ begin
     if sign_Cayley_1=-1
     then prints("sign_1r1f_Cayley_1=-1 in computing Hecke operator")
     fi
-  ; R:=update_row(R,i,q-poly_2)
-  ; R:=update_row(R,m0,sgn_poly(sign_Cayley_0)*(q-poly_1))
-  ; R:=update_row(R,m1,sgn_poly(sign_Cayley_1)*(q-poly_1))
-  elif type="1r1s" then R:=update_row(R,i,q)
+  ; R:=update_row(R,i,poly_q-poly_2)
+  ; R:=update_row(R,m0,sgn_poly(sign_Cayley_0)*(poly_q-poly_1))
+  ; R:=update_row(R,m1,sgn_poly(sign_Cayley_1)*(poly_q-poly_1))
+  elif type="1r1s" then R:=update_row(R,i,poly_q)
   elif type="1r2"
   then let E1=ext_cross(j,E) in
     let k=index(E1,basis) in
     let F=ext_Cayley(j,E)[0] in
     let m=index(F,basis) in
-    R:=update_row(R,i,q-poly_1)
+    R:=update_row(R,i,poly_q-poly_1)
   ; R:=update_row(R,k,sgn_poly(-sign(E1)))
-  ; R:=update_row(R,m,(q-poly_1)*sign(F))
+  ; R:=update_row(R,m,(poly_q-poly_1)*sign(F))
   elif type="1rn" then R:=update_row(R,i,-poly_1)
   elif type="2C+"
   then let F=ext_cross(j,E) in
@@ -452,8 +451,8 @@ begin
   elif type ="2C-"
   then let F=ext_cross(j,E) in
     let k=index(F,basis) in
-    R:=update_row(R,k,q2*sign(F))
-  ; R:=update_row(R,i,q2-poly_1)
+    R:=update_row(R,k,poly_q2*sign(F))
+  ; R:=update_row(R,i,poly_q2-poly_1)
   elif type ="2Ci"
   then let F=ext_Cayley(j,E)[0] in
    let a=sign_2Ci(j,E) in
@@ -462,8 +461,8 @@ begin
    let m=index(F,basis) in
    prints("2Ci signs for indices ", i, "->", m, " sign_2Ci(E):", a
          ,", sign(F):",b, " c:", c)
-  ; R:=update_row(R,m,(q+poly_1)*c)
-  ; R:=update_row(R,i,q)
+  ; R:=update_row(R,m,(poly_q+poly_1)*c)
+  ; R:=update_row(R,i,poly_q)
   elif type ="2Cr"
   then {sign must equal the one from the 2Ci direction}
     let E0=default(ext_Cayley(j,E)[0]) in
@@ -474,8 +473,8 @@ begin
     let m=index(E0,basis) in
     prints("2Cr signs for indices ", i, "->", m, " sign_2Ci(E0):", a
 	  , ", sign(F0):",b, " c:", c)
-  ; R:=update_row(R,m,(q2-q)*c)
-  ; R:=update_row(R,i,q2-q-poly_1)
+  ; R:=update_row(R,m,(poly_q2-poly_q)*c)
+  ; R:=update_row(R,i,poly_q2-poly_q-poly_1)
   elif type ="2i11"
   then let E1=ext_cross(j,E) in
     let k=index(E1,basis) in
@@ -507,9 +506,9 @@ begin
     let k=index(E1,basis) in
     let F=ext_Cayley(j,E)[0] in
     let m=index(F,basis) in
-    R:=update_row(R,m,sgn_poly(sign(F))*(q2-poly_1));
+    R:=update_row(R,m,sgn_poly(sign(F))*(poly_q2-poly_1));
     R:=update_row(R,k,-sgn_poly(sign(E1)));
-    R:=update_row(R,i,q2-poly_1)
+    R:=update_row(R,i,poly_q2-poly_1)
   elif type ="2r21"
   then let F=default(E) in
     let cayley=ext_Cayley(j,F) in
@@ -519,19 +518,19 @@ begin
     let sign_E2=sign_2r21(j,F,E2) in
     prints("type 2r21 for parameter with index ", index(E,basis)
           , " sign_E1:", sign_E1, ", sign_E2:", sign_E2)
-  ; R:=update_row(R,index(E1,basis),sgn_poly(sign_E1)*(q2-poly_1))
-  ; R:=update_row(R,index(E2,basis),sgn_poly(sign_E2)*(q2-poly_1))
-  ; R:=update_row(R,i,q2-poly_2)
+  ; R:=update_row(R,index(E1,basis),sgn_poly(sign_E1)*(poly_q2-poly_1))
+  ; R:=update_row(R,index(E2,basis),sgn_poly(sign_E2)*(poly_q2-poly_1))
+  ; R:=update_row(R,i,poly_q2-poly_2)
   elif type ="2r11"
   then let F0=ext_Cayley(j,E)[0] in
     let m0=index(F0,basis) in
     let F1=ext_Cayley(j,E)[1] in
     let m1=index(F1,basis) in
-    R:=update_row(R,m0,sgn_poly(sign(F0))*(q2-poly_1))
-  ; R:=update_row(R,m1,sgn_poly(sign(F1))*(q2-poly_1))
-  ; R:=update_row(R,i,q2-poly_2)
+    R:=update_row(R,m0,sgn_poly(sign(F0))*(poly_q2-poly_1))
+  ; R:=update_row(R,m1,sgn_poly(sign(F1))*(poly_q2-poly_1))
+  ; R:=update_row(R,i,poly_q2-poly_2)
   elif type ="2rn" then R:=update_row(R,i,-poly_1)
-  elif type ="2ic" then R:=update_row(R,i,q2)
+  elif type ="2ic" then R:=update_row(R,i,poly_q2)
   else R
   fi
 end
@@ -568,7 +567,7 @@ set hecke_matrix (
 }
 set quadratic (poly_mat M, int length, bool show) = bool:
 begin
-  let value=(M+poly_1)*(M-q^length) in
+  let value=(M+poly_1)*(M-poly_q^length) in
   if show
   then prints("M="); printPolyMatrix(M); prints(); printPolyMatrix(value)
   fi
