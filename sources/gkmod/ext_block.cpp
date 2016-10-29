@@ -369,7 +369,7 @@ StandardRepr scaled_extended_dominant // result will have its |gamma()| dominant
   }
   context new_ctxt(rc,delta,RatWeight(gamma_numer,sr.gamma().denominator()));
   result = rc.sr_gamma(x,E.lambda_rho(),new_ctxt.gamma());
-  flipped = same_sign(E,param(new_ctxt,result));
+  flipped = not same_sign(E,param(new_ctxt,result));
   return result;
 }
 
