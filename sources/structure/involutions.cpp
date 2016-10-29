@@ -380,7 +380,7 @@ TorusPart InvolutionTable::y_pack(InvolutionNbr inv, const Weight& lambda_rho)
   return TorusPart(v); // reduce coordinates modulo 2
 }
 
-Weight InvolutionTable::y_unpack(InvolutionNbr inv, TorusPart y_part) const
+Weight InvolutionTable::y_lift(InvolutionNbr inv, TorusPart y_part) const
 {
   const record& rec=data[inv];
   Weight result(rec.lift_mat.numRows(),0);
@@ -389,6 +389,14 @@ Weight InvolutionTable::y_unpack(InvolutionNbr inv, TorusPart y_part) const
     if (y_part[i])
       result += rec.lift_mat.column(i);
   return result;
+}
+
+// a variant of |y_pack| that is a direct left-inverse of |y_lift| (whence /2)
+TorusPart InvolutionTable::y_unlift(InvolutionNbr inv, const Weight& lift) const
+{
+  const record& rec=data[inv];
+  int_Vector v = rec.M_real * lift;
+  return TorusPart(v/2); // reduce coordinates modulo 2
 }
 
 // ------------------------------ Cartan_orbit --------------------------------

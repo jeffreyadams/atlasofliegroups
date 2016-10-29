@@ -201,10 +201,11 @@ class InvolutionTable
 
   // pack $\lambda-\rho$ into a |TorusPart|
   TorusPart y_pack(InvolutionNbr i, const Weight& lambda_rho) const;
-  Weight y_unpack(InvolutionNbr i, TorusPart y_part) const;
+  Weight y_lift(InvolutionNbr i, TorusPart y_part) const;
+  TorusPart y_unlift(InvolutionNbr i, const Weight& lifted) const;
   TorusPart y_act(InvolutionNbr i,
 		  TorusPart y_part, const WeightInvolution& delta) const
-  { return y_pack(i,delta*y_unpack(i,y_part)); }
+  { return y_unlift(i,delta*y_lift(i,y_part)); }
 
 
 
