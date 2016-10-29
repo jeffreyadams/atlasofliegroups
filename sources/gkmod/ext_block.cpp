@@ -367,7 +367,8 @@ StandardRepr scaled_extended_dominant // result will have its |gamma()| dominant
 	} // |for(s)|, if |isComplex|
     while(i<orbits.size()); // continue until above |for| runs to completion
   }
-  context new_ctxt(rc,delta,RatWeight(gamma_numer,sr.gamma().denominator()));
+  context new_ctxt(rc,delta,
+		   RatWeight(gamma_numer,result.gamma().denominator()));
   result = rc.sr_gamma(x,E.lambda_rho(),new_ctxt.gamma());
   flipped = not same_sign(E,param(new_ctxt,result));
   return result;
