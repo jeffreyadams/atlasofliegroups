@@ -343,7 +343,7 @@ StandardRepr scaled_extended_dominant // result will have its |gamma()| dominant
   Weight gamma_numer(result.gamma().numerator().begin(),
 		     result.gamma().numerator().end());
   context ctxt(rc,delta,result.gamma());
-  const ext_gens orbits = rootdata::fold_orbits(ctxt.id(),delta);
+  const ext_gens orbits = rootdata::fold_orbits(rd,delta);
 
   Weight lr, tau; Coweight l,t;
   { param E(ctxt,result); // comput fields as for extended parameter
