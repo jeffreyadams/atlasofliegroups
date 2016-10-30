@@ -363,12 +363,16 @@ StandardRepr scaled_extended_dominant // result will have its |gamma()| dominant
 	    E.set_l(rd.dual_image_by(E.l(),s.w_tau));
 	    E.set_t(rd.dual_image_by(E.t(),s.w_tau));
 	    x = rc.kgb().cross(s.w_tau,x);
+	    break;
 	  }
 	} // |for(s)|, if |isComplex|
     while(i<orbits.size()); // continue until above |for| runs to completion
   }
+  // since |gamma| may have changed, we need to buid a new |context|
   context new_ctxt(rc,delta,
 		   RatWeight(gamma_numer,result.gamma().denominator()));
+  // now ensure that |E| gets matching |gamma| and |theta| for flipped test
+  E = param(new_ctxt,rc.kgb().involution(x),E.lambda_rho(),E.tau(),E.l(),E.t());
   result = rc.sr_gamma(x,E.lambda_rho(),new_ctxt.gamma());
   flipped = not same_sign(E,param(new_ctxt,result));
   return result;
