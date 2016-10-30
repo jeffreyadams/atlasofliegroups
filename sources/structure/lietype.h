@@ -1,7 +1,3 @@
-/*!
-\file
-\brief Function and constant declarations for namespace lietype.
-*/
 /*
   This is lietype.h
 
@@ -10,6 +6,9 @@
 
   For license information see the LICENSE file
 */
+
+// The type |LieType| and related types, and operations for them
+
 
 #ifndef LIETYPE_H  /* guard against multiple inclusions */
 #define LIETYPE_H
@@ -147,15 +146,15 @@ struct ext_gen // generator of extended Weyl group
 {
   enum { one, two, three } type;
   weyl::Generator s0,s1;
-  WeylWord w_tau;
+  WeylWord w_kappa;
 
   explicit ext_gen (weyl::Generator s)
-    : type(one), s0(s), s1(~0), w_tau() { w_tau.push_back(s); }
+    : type(one), s0(s), s1(~0), w_kappa() { w_kappa.push_back(s); }
   ext_gen (bool b) = delete; // defuse implicit conversion
   ext_gen (bool commute, weyl::Generator s, weyl::Generator t)
   : type(commute ? two : three), s0(s), s1(t)
-  { w_tau.push_back(s);  w_tau.push_back(t);
-    if (not commute) w_tau.push_back(s);
+  { w_kappa.push_back(s);  w_kappa.push_back(t);
+    if (not commute) w_kappa.push_back(s);
   }
 
   int length() const { return type+1; }

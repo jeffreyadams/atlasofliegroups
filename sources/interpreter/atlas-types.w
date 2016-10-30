@@ -5118,7 +5118,7 @@ void scale_extended_wrapper(expression_base::level l)
   rc.make_dominant(sr); // ensure this in case caller forgot
   bool flipped;
   sr = @;ext_block::scaled_extended_dominant
-    (rc,p->val,delta->val,factor->val,flipped);
+    (rc,sr,delta->val,factor->val,flipped);
   push_value(std::make_shared<module_parameter_value>(p->rf,sr));
   push_value(whether(flipped));
   if (l==expression_base::single_value)

@@ -251,6 +251,9 @@ class context // holds values that remain fixed across extended block
   const WeightInvolution& delta () const { return d_delta; }
   const RatWeight& gamma() const { return d_gamma; }
   const RatCoweight& g() const { return d_g; }
+  // the next should match |realForm().g_rho_check()|, but uses stored |d_g|
+  RatCoweight g_rho_check() const
+  { return (g()-rho_check(rc().rootDatum())).normalize(); }
 }; // |context|
 
 // detailed parameter data; as defined by Jeff & David
