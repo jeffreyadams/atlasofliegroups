@@ -22,7 +22,7 @@ set KL_block (Param p, mat delta) = { emulate built-in |KL_block| }
      )
 
 { use output of |KL_block| to prepare block, signed KL matrix, and stops }
-set cook_KL_block([Param] B,int entry_elem
+set cook_KL_block ([Param] B,int entry_elem
                   ,mat KL,[poly] polys,vec stops
                   ,vec surv, mat contrib) =
   ([Param],int,poly_mat,vec): { singular block, z0, signed P matrix, lengths }
@@ -36,7 +36,7 @@ set cook_KL_block([Param] B,int entry_elem
      for si@i in surv do let lsi=len(si) in for sj@j in surv do
        let sum=poly_0 in
        for Pkj@k in inter_mat[j] do sum:=flex_add(sum,contrib[i,k]*Pkj) od
-     ; sum{ * minus_1^(len(sj)-lsi)}
+     ; sum * minus_1^(len(sj)-lsi)
      od od
   , get_index (int z) = int: binary_search_first((int i):surv[i]>=z,0,n_surv)
   in ( for i in surv do B[i] od { condensed block }
