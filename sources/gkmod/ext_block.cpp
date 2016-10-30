@@ -362,12 +362,12 @@ StandardRepr scaled_extended_dominant // result will have its |gamma()| dominant
 	{ const auto& s=orbits[i];
 	  int v=rd.simpleCoroot(s.s0).dot(gamma_numer);
 	  if (v<0)
-	  { rd.act(s.w_tau,gamma_numer); // change inf.char representative
-	    lr = rd.image_by(s.w_tau,lr) - rho_minus_w_rho(rd,s.w_tau);
-	    tau = rd.image_by(s.w_tau,tau);
-	    l = rd.dual_image_by(l,s.w_tau);
-	    t = rd.dual_image_by(t,s.w_tau);
-	    x = rc.kgb().cross(s.w_tau,x);
+	  { rd.act(s.w_kappa,gamma_numer); // change inf.char representative
+	    lr = rd.image_by(s.w_kappa,lr) - rho_minus_w_rho(rd,s.w_kappa);
+	    rd.act(s.w_kappa,tau);
+	    rd.dual_act(l,s.w_kappa);
+	    rd.dual_act(t,s.w_kappa);
+	    x = rc.kgb().cross(s.w_kappa,x);
 	    break;
 	  }
 	} // |for(s)|, if |isComplex|
@@ -943,8 +943,8 @@ param complex_cross(ext_gen p, const param& E)
   Weight tau=E.tau();
   Coweight t=E.t();
   const RootDatum& id = E.ctxt.id();
-  for (unsigned i=p.w_tau.size(); i-->0; )
-  { weyl::Generator s=p.w_tau[i]; // generator for integrality datum
+  for (unsigned i=p.w_kappa.size(); i-->0; )
+  { weyl::Generator s=p.w_kappa[i]; // generator for integrality datum
     tW.twistedConjugate(E.ctxt.subsys().reflection(s),tw);
     id.simple_reflect(s,ga_la_num);
     id.simple_reflect(s,rho_r_shift);
