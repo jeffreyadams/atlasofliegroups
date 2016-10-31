@@ -203,9 +203,10 @@ class InvolutionTable
   TorusPart y_pack(InvolutionNbr i, const Weight& lambda_rho) const;
   Weight y_lift(InvolutionNbr i, TorusPart y_part) const;
   TorusPart y_unlift(InvolutionNbr i, const Weight& lifted) const;
-  TorusPart y_act(InvolutionNbr i,
+  // for acting on a torus part involution may change; caller should supply
+  TorusPart y_act(InvolutionNbr i0, InvolutionNbr i1, // source, destination
 		  TorusPart y_part, const WeightInvolution& delta) const
-  { return y_unlift(i,delta*y_lift(i,y_part)); }
+  { return y_unlift(i1,delta*y_lift(i0,y_part)); }
 
 
 

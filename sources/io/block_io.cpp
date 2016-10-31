@@ -172,9 +172,11 @@ std::ostream& ext_block::print_to (std::ostream& strm) const
     // print cross actions
     for (weyl::Generator s = 0; s < rank(); ++s)
     {
-      strm << std::setw(width+pad);
-      if (cross(s,n)==UndefBlock) strm << '*';
-      else strm << z(cross(s,n));
+      auto csn = cross(s,n);
+      if (csn==UndefBlock) strm <<  std::setw(width+pad+1) << '*';
+      else strm << std::setw(pad)
+		<< (n==csn or epsilon(s,n,csn)>=0 ? '+' : '-' )
+		<< std::setw(width) << z(cross(s,n));
     }
     strm << std::setw(pad+1) << "";
 

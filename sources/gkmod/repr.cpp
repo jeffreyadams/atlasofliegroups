@@ -645,10 +645,10 @@ StandardRepr Rep_context::twisted
   (StandardRepr z, const WeightInvolution& delta) const
 {
   const auto& i_tab = innerClass().involution_table();
-  const InvolutionNbr i_x = kgb().inv_nr(z.x());
-
+  const InvolutionNbr i_x0 = kgb().inv_nr(z.x());
   z.x_part = kgb().twisted(z.x_part,delta);
-  z.y_bits = i_tab.y_act(i_x,z.y_bits,delta);
+  const InvolutionNbr i_x1 =  kgb().inv_nr(z.x()); // destination involution
+  z.y_bits = i_tab.y_act(i_x0,i_x1,z.y_bits,delta);
   z.infinitesimal_char = delta*z.infinitesimal_char;
   return z;
 }

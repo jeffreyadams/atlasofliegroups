@@ -2440,38 +2440,28 @@ void vec_positive_wrapper(expression_base::level l)
 @< Local function definitions @>=
 
 void ratvec_unary_eq_wrapper(expression_base::level l)
-{ shared_rational_vector i=get<rational_vector_value>();
+{ shared_rational_vector v=get<rational_vector_value>();
   if (l==expression_base::no_value)
     return;
-  const auto end=i->val.numerator().end();
-  for (auto it=i->val.numerator().begin(); it!=end; ++it)
-    if (*it!=0)
-    {@; push_value(whether(false));
-      return; }
-  push_value(whether(true));
+  push_value(whether(v->val.isZero()));
 }
 void ratvec_unary_neq_wrapper(expression_base::level l)
-{ shared_rational_vector i=get<rational_vector_value>();
+{ shared_rational_vector v=get<rational_vector_value>();
   if (l==expression_base::no_value)
     return;
-  const auto end=i->val.numerator().end();
-  for (auto it=i->val.numerator().begin(); it!=end; ++it)
-    if (*it!=0)
-    {@; push_value(whether(true));
-      return; }
-  push_value(whether(false));
+  push_value(whether(not v->val.isZero()));
 }
 void ratvec_eq_wrapper(expression_base::level l)
-{ shared_rational_vector j=get<rational_vector_value>();
-  shared_rational_vector i=get<rational_vector_value>();
+{ shared_rational_vector w=get<rational_vector_value>();
+  shared_rational_vector v=get<rational_vector_value>();
   if (l!=expression_base::no_value)
-    push_value(whether(i->val==j->val));
+    push_value(whether(v->val==w->val));
 }
 void ratvec_neq_wrapper(expression_base::level l)
-{ shared_rational_vector j=get<rational_vector_value>();
-  shared_rational_vector i=get<rational_vector_value>();
+{ shared_rational_vector w=get<rational_vector_value>();
+  shared_rational_vector v=get<rational_vector_value>();
   if (l!=expression_base::no_value)
-    push_value(whether(i->val!=j->val));
+    push_value(whether(v->val!=w->val));
 }
 
 @ Like for vectors, we add dominance tests.

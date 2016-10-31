@@ -1296,14 +1296,14 @@ DescValue star (const param& E,
 	  const Weight sigma =
 	    matreduc::find_solution(th_1,alpha*(at+mm)+beta*(bt-mm));
 
-	  const Weight new_tau = E.tau() - alpha*((at+m)/2) - beta*((bt-m)/2);
+	  const Weight new_tau0 = E.tau() - alpha*((at+m)/2) - beta*((bt-m)/2);
           const Coweight new_l = E.l()+alpha_v*(tf_alpha/2)+beta_v*(tf_beta/2);
 
 	  param F0(E.ctxt, new_tw,
-		   E.lambda_rho() + rho_r_shift + alpha*m, new_tau,
+		   E.lambda_rho() + rho_r_shift + alpha*m, new_tau0,
 		   new_l, E.t());
 	  param F1(E.ctxt, new_tw,
-		   E.lambda_rho() + rho_r_shift + alpha*mm, new_tau + sigma,
+		   E.lambda_rho() + rho_r_shift + alpha*mm, E.tau() + sigma,
 		   new_l, E.t());
 
 	  // compute signs before invoking |std::move|
@@ -1415,7 +1415,7 @@ DescValue star (const param& E,
 	  assert(E0.t().dot(alpha)==-m and E0.t().dot(beta)==m);
 
 	  E1.set_t(E.t() - s);
-	  assert(same_sign(E,E1)); // since only |t| change
+	  assert(same_sign(E,E1)); // since only |t| changes
 	  assert(E1.t().dot(alpha)==-mm and E1.t().dot(beta)==mm);
 
 	  param F0(E.ctxt, new_tw,
