@@ -36,7 +36,7 @@
   (RootDatum rd,[int] S) <->  G-conjugacy class of standard parabolic with
   Levi factor given by subset S of simple roots
 
-More topics addresses in this file:
+More topics addressed in this file:
   parabolics with $\theta$-stable Levi factor;
   $\theta$-stable parabolics;
   real parabolics.
