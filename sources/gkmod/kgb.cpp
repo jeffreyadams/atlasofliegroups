@@ -138,11 +138,6 @@ size_t KGB_base::packet_size(const TwistedInvolution& w) const
   return first_of_tau[i+1]-first_of_tau[i];
 }
 
-InvolutionNbr KGB_base::inv_nr(KGBElt x) const
-{
-  return inv_nrs[involution_index(x)];
-}
-
 // compute Cartan class with aid of |ic.involution_table()|
 CartanNbr KGB_base::Cartan_class(KGBElt x) const
 { // compute passing by involution index, |InvolutionNbr|
