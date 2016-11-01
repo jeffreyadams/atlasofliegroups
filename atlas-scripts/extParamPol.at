@@ -1,5 +1,6 @@
 <bigMatrices.at
 <thetastable.at
+<hermitian.at
 
 {implement ParamPol for extended parameters}
 ed_verbose:=false
@@ -42,7 +43,49 @@ nu=nu(E) then
 gamma_new=((1+theta)*(lambda+rho(ic))+(1-theta)*(nu*r))/2 in
 (ic,delta,gamma_new,lambda,theta,g,l,omega,tau,t)
 
-set deform (Param p, mat delta, int type) = ExtParamPol:
+set deform_unreduced (Param p, mat delta, int sign) = ExtParamPol:
+( let N=null_module(p) in
+  let ()=prints("Computing deform:", p, " sign=", sign) in
+  if sign=0 then null_ext_module(real_form(p)) else let
+  (B,index)=block(p) then
+  (I_delta,g,complete_indices,delta_action)=tabulate_indices(B,delta) then
+  complete_indices=complete_indices(B,delta) then
+  complete_index=find(complete_indices,(index,sign)) then
+  nB=complete_index+1 then
+  length=length(p) then
+  P_mat=principal_minor(calculate_big_P_signed_polynomials_at_minus_one(B,delta,index),nB) then
+  remainder=null(nB-1)#1,
+  solution=null(nB),
+  !opposite_parity=1-length%2, { opposite to that of |length(p)| }
+  !on_p = orientation_nr(p)
+  in
+    for q_ind : nB
+    ~do
+        let contrib=remainder[q_ind]*P_mat[q_ind] in {scalar_multiply@([poly],poly)}
+        let (ordinary_index_q,)=complete_indices[q_ind] in
+        let q=B[ordinary_index_q] in
+      remainder -:= contrib
+    ;
+      if length(q)%2=opposite_parity
+      then solution +:=contrib
+      fi
+    od
+        ;null_ext_module(real_form(p))+
+        for f@i in solution
+    do  let (ordinary_index_q,epsilon_q)=complete_indices[i] then q=B[ordinary_index_q] then
+        onr=(-1)^rat_as_int((on_p-orientation_nr(q))/2) then
+        term=(1-s)*onr*f*B[ordinary_index_q] in
+         if epsilon_q=1 then (term,N,N)
+         elif epsilon_q=-1 then (s*term,N,N)
+         else (N,N,term) fi
+    od
+fi
+)
+
+set deform(Param p,mat delta, int type)=ExtParamPol:let (plus,minus,induced)=
+deform_unreduced(p,delta,type) in (plus+s*minus,null_module(real_form(p)),induced)
+
+set deform_old (Param p, mat delta, int type) = ExtParamPol:
 (
   let ()=if ed_verbose then prints("Computing deform(p,delta,type): p=", p, " type=", type) fi in
   let G=real_form(p) in
@@ -53,10 +96,12 @@ set deform (Param p, mat delta, int type) = ExtParamPol:
   sign_p=type then
   index_p=find(complete_indices,(index_p,sign_p)) then
   l_p=length(p) then
-  P=big_KL_P_polynomials(B,delta) then
+{  P=big_KL_P_polynomials(B,delta) then}
   P_signed=big_KL_P_signed_polynomials(B,delta) then
   Q=big_KL_Q_polynomials(B,delta) in
-{  let ()=prints("index_p=", index_p) in }
+ { (P_signed,Q)=calculate_big_matrices(B,delta,index_p) in}
+{  let ()=prints("calculatad P ",#P ," Q ",#Q) in
+  let ()=prints("index_p=", index_p) in }
   let outer_sum = null_ext_module(G)
   {for loops: I=1,...,index_p  (i,epsilon_I)=complete_indices[I]
               J=I...index_p  (j,epsilon_J)=complete_indices[J]}
@@ -82,8 +127,8 @@ set deform (Param p, mat delta, int type) = ExtParamPol:
           , Q_J_index_p= poly: Q[J][index_p]
 	  then term= eval(P_IJ,-1) * eval(Q_J_index_p,-1)
           in
-          if ed_verbose then prints("   inner term: ", term) fi
-	; inner_sum+:=term
+          if ed_verbose then prints("   inner term: ", term) fi;
+	 inner_sum+:=term
         ; if ed_verbose then prints(" inner_sum is now:", inner_sum) fi
         fi
       od
@@ -123,7 +168,7 @@ for c@p in P_plus do rv#:=(c,p,1) od;
 for c@p in P_minus do rv#:=(c,p,-1) od;
 for c@p in P_ind do rv#:=(c,p,0) od;rv
 
-set recursive_deform (Param p, mat delta, int type) = ExtParamPol:
+set recursive_deform (Param p, mat delta, int type_p) = ExtParamPol:
 {  assert(is_fixed(delta,p), "Parameter is not fixed");} let
   G=real_form(p) then
   empty=null_ext_module(G) then
@@ -134,30 +179,25 @@ set recursive_deform (Param p, mat delta, int type) = ExtParamPol:
       prints("executing rec_fun with p=",p, " type=", type);
       assert(is_standard(p),"non standard parameter encountered in deformation");
       let acc=empty then
-      ()=prints("acc defined", "  sc=", sc, " p=", p, " type=", type) then
-      at_nu0=ExtParamPol: sc*change_nu(p,0,type) then
-      ()=prints("at_nu0 (A):", at_nu0) in
-      for factor in reducibility_points(p) ~do acc+:=deform(p*factor,delta, type) od;
-      prints("acc=", acc);
-      for (k,q,type) in %acc do at_nu0+:=full_def(sc*k,q,type) od;prints("at_nu0 is now: ");display(at_nu0);at_nu0
+{      ()=prints("acc defined", "  sc=", sc, " p=", p, " type=", type) then}
+      at_nu0=ExtParamPol: sc*change_nu(p,0,type) in
+{     let ()=prints("at_nu0 (A):", at_nu0) in}
+      for factor in reducibility_points(p) ~do
+      acc+:= deform(p*factor,delta, type) od;
+      for (k,q,type) in %acc do at_nu0+:=full_def(sc*k,q,type) od;{prints("at_nu0 is now: ");}display(at_nu0);at_nu0
     end
    else
   rec_fun full_def (Split sc,Param p, int type) ExtParamPol:
     begin
       assert(is_standard(p),"non standard parameter encountered in deformation");
       let acc=empty, at_nu0=ExtParamPol: sc*change_nu(p,0,type) in
-      for factor in reducibility_points(p) ~do acc+:=deform(p*factor,delta, type) od;
-      for (k,q,type) in %acc do at_nu0+:=full_def(sc*k,q,type) od;at_nu0
+      for factor in reducibility_points(p) ~do
+      acc+:=deform(p*factor,delta, type) od;
+      for (k,q,type_q) in %acc do {prints("full_def:",q);}at_nu0+:=full_def(sc*k,q,type_q) od;at_nu0
     end
-  fi  (Split:1,p,type)
+  fi  (Split:1,p,type_p)
 
 set full_deform = recursive_deform@(Param,mat,int)
-
-
-
-
-
-
 
 set print_extended_character_formula(Param p,[Param] B,mat delta)=void:
 let (I_delta,g,complete_indices,delta_action)=tabulate_indices(B,delta) then
@@ -197,27 +237,33 @@ set character_formula (Param p,mat delta) = ExtParamPol:
   rv=null_ext_module(G) then
   N=null_module(G) then
   ()=prints("computing big_KL_P_signed_polynomials") then
-  P=big_KL_P_signed_polynomials(B,delta) in
+{  P=big_KL_P_signed_polynomials(B,delta) in}
+  P=^eval(big_KL_P_signed_polynomials(B,delta),1) in
   for (j,type)@i in complete_indices do
-   let f=P[i][Index] then
-   c=eval(f,1) in
+   let c=P[i][Index] in
+{   c=eval(f,1) in}
    rv +:=
     if type=1 then (c*B[j],N,N)
     elif type=-1 then (N,c*B[j],N)
     else (N,N,c*B[j]) fi od ;rv
   )
 
-set c_form_irreducible (Param p,mat delta, int type) =
+set c_form_irreducible (Param p,mat delta, int type,ExtParamPol cf) =
 ( let ori_nr_p = orientation_nr(p), P = null_ext_module(real_form(p)) then
-  (plus,minus,induced)=character_formula(p,delta) then
+  (plus,minus,induced)=cf then
   ()=prints("character formula:");display(plus,minus,induced) then
-  ()=prints("deforming plus terms:");for coeff@q in plus do prints(new_line,coeff,"*",q);P+:=coeff*orientation_nr_term(ori_nr_p,q)*recursive_deform(q,delta,1) od then
-  ()=prints("deforming minus:");for coeff@q in minus do prints(new_line,coeff,"*",q);P+:={s*}coeff*orientation_nr_term(ori_nr_p,q)*recursive_deform(q,delta,-1) od then
-  ()=prints("deforming induced:");for coeff@q in induced do prints(new_line,coeff,"*",q);P+:=coeff*orientation_nr_term(ori_nr_p,q)*recursive_deform(q,delta,0) od  in
+  ()=for coeff@q in plus do {prints(new_line,coeff,"*",q, new_line,"#done=", #done);}P+:=coeff*orientation_nr_term(ori_nr_p,q)*recursive_deform(q,delta,1) od then
+  ()=prints("deforming minus:");for coeff@q in minus do {prints(new_line,coeff,"*",q, new_line,"#done=",#done);}P+:={s*}coeff*orientation_nr_term(ori_nr_p,q)*recursive_deform(q,delta,-1) od then
+  ()=for coeff@q in induced do {prints(new_line,coeff,"*",q,new_line, " #done=",#done);}P+:=coeff*orientation_nr_term(ori_nr_p,q)*recursive_deform(q,delta,0) od  in
    {multiply induced terms by (1+s) and replace with plus/minus pair}
    let (P_plus,P_minus,P_ind)=P in
    for c@q in P_ind do (P_plus+:=c*q, P_minus+:=c*q) od ;(P_plus,P_minus,null_module(real_form(p)))
 )
+
+set c_form_irreducible (Param p,mat delta, int type) =c_form_irreducible(p,delta,type,character_formula(p,delta))
+
+{for convenience}
+set c_form_irreducible(RealForm G)=c_form_irreducible(trivial(G),G.distinguished_involution,1)
 
 set c_form_irreducible_long (Param p,mat delta, int type) =
 (ExtParamPol,[((Split,Param),(ParamPol,ParamPol,ParamPol))],[((Split,Param),(ParamPol,ParamPol,ParamPol))],[((Split,Param),(ParamPol,ParamPol,ParamPol))],ExtParamPol):
@@ -257,91 +303,3 @@ let d=c_form_irreducible_delta(p) then
 (a,b,c)=c_form_irreducible(p,delta,1) then
 rv=a+s*b-d in
 prints(new_line,"Result:",rv,new_line);(d,(a,b,c), rv)
-
-
-
-
-
-{ commands for converting from c-form to hermitian-form}
-{ compute (lambda+rho) restricted to torus T }
-
-{ lambda\in X^*+rho =>
-    one can define a parameter with this lambda, as p=param(x,lambda-rho,0)
-  then infinitesimal_character(p)=(1+theta)lambda/2
-  which is lambda restricted to T-tilde
-  apply this with lambda-rho=0, returns (1+theta)rho/2     (on T-tilde)
-  apply this with lambda-rho,   return  (1+theta)lambda/2  (on T-tilde)
-  then the sum is (1+theta)(lambda+rho)/2 on T
-}
-set lambda_plus_rho_res_T(KGBElt x,ratvec lambda) = ratvec:
-  (1+involution(x))*(lambda+rho(real_form(x)))/2
-
-{ mu(p) is the value of the lowest K-type of p, evaluated at x(p) }
-{ formula: < (1+theta_x)(lambda+rho)/2 , torus_factor(x)+rho^\vee > }
-set mu(Param p) = rat:
-  lambda_plus_rho_res_T(x(p),lambda(p))*
-  (torus_factor(x(p))+rho_check(real_form(p)))
-
-{assumption: theta_x commutes with delta
-=> positive real roots are delta-invariant
-also no C- roots (this holds if x=x(p) from (finalized) parameter with nu=0)
-need number of pairs {alpha,delta(alpha)} for which alpha is positive real
-and <alpha,delta(alpha^vee)>=0
-this computes the sign of delta acting on Lambda^top(positive real roots)
-each orthgonal pair {alpha,delta(alpha)} contributes -1
-if <alpha,delta(alpha)>=-1 this contribute 1 by computation in SL(3,R)
- -1 from pair is cancelled by -1 from action on [X_alpha,X_delta(alpha)=X_{alpha+beta}
-if delta(alpha)=alpha contributes 1 by reduction to simple case,
-note every real-simple root is simple
-}
-set number_real_orthogonal_pairs(KGBElt x, mat delta)=
-let rd=root_datum(x) then
-theta=involution(x) in
-assert(delta*theta=theta*delta,"Cartan involution does not commute with delta");
-assert(no_Cminus_roots(x), "Not defined unless all complex roots are type C+");
-let real_roots=real_posroots(rd,theta) then
-pairs=[] in
-for alpha in real_roots do
- let pairing=delta*alpha*coroot(rd,alpha) in
-   assert(pairing=0 or pairing=-1 or pairing=2,"invalid pairing of root and coroot");
-   if pairing=0 then pairs#:=alpha fi
-  od;rat_as_int(#pairs/2)
-
-{implementing formula from Vogan in email 10/25/16, subject line mu(p)}
-set mu(Param p,mat delta)=rat:
-assert(nu(p)=null(rank(root_datum(p))),"nu(p) !=0");
-let (ic,delta,gamma,lambda,theta,g,l,omega,tau,t)=E(delta,p) then
-mu_unextended=mu(p) then
-tau_term=(tau*(delta-1)*l)/4 then
-dim_term=dim_u_cap_p(x(p)) then
-scalar_term=number_real_orthogonal_pairs(x(p),delta)  in
-prints("mu_unextended=", mu_unextended,new_line,"dim_term=", dim_term,new_line,"scalar_term=",scalar_term);
-mu_unextended+tau_term+scalar_term
-
-{remaining terms copied over from corresponding versions in hermitian.at}
-set convert_cform_hermitian (ParamPol P,mat delta)= ParamPol:
-  if #P=0 then P { since we cannot select a term for a null polynomial }
-  else
-    let a_mu = mu(first_param(P),delta)
-    in null_module(real_form(P)) +
-      for w@p in P do (s^(rat_as_int(mu(p,delta)-a_mu))*w,p) od
-  fi
-
-{ ParamPol giving the hermitian form on irreducible p in unequal rank case }
-set hermitian_form_irreducible(Param p,mat delta) = ParamPol:
-( if hermitian_debug
-  then prints("Computing Hermitian form on irreducible (delta): ",p)
-  fi
-; convert_cform_hermitian(c_form_irreducible_delta(p))
-)
-
-{ nice output of hermitian_form_irreducible }
-set print_hermitian_form_irreducible(Param p,mat delta) = void:
-  pol_format(hermitian_form_irreducible(p,delta))
-
-{ nice output of Hermitian forms on list of parameters }
-set print_hermitian_form_irreducible([Param] P,mat delta) = void:
-  for p in P
-  do prints("");prints("Hermitian form on irreducible: ",p)
-  ; print_hermitian_form_irreducible(p,delta)
-  od

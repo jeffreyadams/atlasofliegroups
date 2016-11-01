@@ -33,6 +33,7 @@ given (x,mu) -> mu+2rho_K(x) ->
 
 <W_K.at
 <thetastable.at
+<representations.at
 set LKT_verbose=false
 { see K.at: K-types as final tempered limit parameters
   (x,lambda) <-> representations of K

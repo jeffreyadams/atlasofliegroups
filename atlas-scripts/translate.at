@@ -1,8 +1,7 @@
 { the functions in this file have not been carefully checked }
 
 <basic.at
-<hermitian.at
-
+<kl.at
 set translate_debug=false
 
 {
@@ -111,23 +110,3 @@ set pseudo_tau_complement (Param p)= [int]: complement(pseudo_tau_bitset(p))
   i.e. to all of the root walls not in the pseudo_tau_invariant
 }
 set make_maximally_singular (Param p)= Param: Psi(p,pseudo_tau_complement(p))
-
-{
-  translate each term in a list of parameters to all the simple root walls
-  not in its tau_invariant, and test if it is unitary.
-  The even special unipotents of G should (all?) show up this way, varying
-  over all blocks at rho
-}
-set test_even_unipotent (Param p)= void:
-( let q=make_maximally_singular(p)
-  then Q=hermitian_form_irreducible(q)
-  in
-  prints(""); prints("original parameter: ",p)
-; prints("translated parameter: ",q,", ", infinitesimal_character(q))
-; prints("translated irreducible is unitary: ",is_unitary(Q))
-; if translate_debug then pol_format(Q) fi
-)
-
-{ test_even_unipotent of a list of parameters }
-set test_even_unipotent ([Param] params)= void:
-  for p in params do  test_even_unipotent(p) od

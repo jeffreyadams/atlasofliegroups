@@ -468,6 +468,12 @@ set split_format (Split w) = string:
     fi
   fi
 
+
+{divide Split by integer}
+set divide_by(Split w,int n)=let (q,r)=w\%n in assert(=r,"Inexact division");q
+
+set is_pure(Split w)=bool: let (x,y)=%w in =x or =y
+
 set ^ = { exponentiation of split integers }
   let split_power (Split x,int n) = Split: x { dummy }
   then () = split_power := ((Split x,int n): { we shall have n>0 }
