@@ -155,6 +155,7 @@ set rec_def (Param p,mat delta) = (Param,ParamPol):
       while inx>0
       do
         let p_def=param(x,lambda,gamma*rp[inx-:=1]) in
+{	let ()=prints("working on p_def",p_def) in}
         let def=deform(p_def,delta) in
 	if ed_verbose2
         then prints("adding deformation term: p=", p_def, new_line
@@ -188,9 +189,12 @@ set deformation_terms (Param p, mat delta) = ParamPol:
     in
     for q_ind : nB
     ~do let contrib=remainder[q_ind]*P_mat[q_ind] in
-      remainder -:= contrib
+      remainder -:= contrib 
     ; if length[q_ind]%2=opposite_parity
-      then solution +:= contrib
+      then solution +:= contrib 
+{;      prints(new_line,"contrib=",contrib);
+     prints("remainder=",remainder);
+      prints("solution=",solution)}
       fi
     od
   ; null_module(p)+
@@ -235,12 +239,15 @@ set recursive_deform (Param p, mat delta) = ParamPol:
        { |sc| will simply scale the resulting ParamPol, |delta| is implicit }
     begin
       assert(is_standard(p),"non standard parameter in deformation");
-      let acc=empty
+      let acc=empty 
       , at_nu0=sc*finalize_extended(p*0,delta).s_to_minus_1 { fully deform |p| }
       in
+{      let ()=prints("acc=",acc) in}
       for factor in reducibility_points(p)
       ~ { direction of deformation is down, towards 0; this is not essential }
-      do acc+:=deformation_terms(p*factor,delta) od
+      do 
+{      let ()=prints("working on: ", p*factor) in}
+      acc+:=deformation_terms(p*factor,delta) od
     ; for k@q in acc { traverse the sum of the deformation terms spun off }
       do at_nu0 +:= full_def(sc*k,q) od
     ; at_nu0

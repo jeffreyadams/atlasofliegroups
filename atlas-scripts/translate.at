@@ -1,8 +1,7 @@
 { the functions in this file have not been carefully checked }
 
 <basic.at
-<hermitian.at
-
+<kl.at
 set translate_debug=false
 
 {
@@ -118,7 +117,7 @@ set make_maximally_singular (Param p)= Param: Psi(p,pseudo_tau_complement(p))
   The even special unipotents of G should (all?) show up this way, varying
   over all blocks at rho
 }
-set test_even_unipotent (Param p)= void:
+{set test_even_unipotent (Param p)= void:
 ( let q=make_maximally_singular(p)
   then Q=hermitian_form_irreducible(q)
   in
@@ -131,3 +130,4 @@ set test_even_unipotent (Param p)= void:
 { test_even_unipotent of a list of parameters }
 set test_even_unipotent ([Param] params)= void:
   for p in params do  test_even_unipotent(p) od
+}

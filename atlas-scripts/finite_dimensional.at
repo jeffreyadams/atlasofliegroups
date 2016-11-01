@@ -1,6 +1,6 @@
 <basic.at
 <Weylgroup.at { dominant }
-<hermitian.at { c_form_irreducible }
+{<hermitian.at { c_form_irreducible }}
 
 { this file contains some special operations defined only for complex groups }
 
@@ -43,7 +43,7 @@ set complex_LKT (Param p) = vec:
 { set dimension_complex_Ktype(RealForm G, vec lambda) = int:
     dimension(K_0(G),lambda)
 }
-set testcomplex(RealForm G) = void:
+{set testcomplex(RealForm G) = void:
 ( let t=trivial(G)
   then b=block_of(t), P=c_form_irreducible(t)
   , rho_check = lower(rank(G)\2,rho_check(G))
@@ -63,3 +63,4 @@ set testcomplex(RealForm G) = void:
               ,twist(x(p))=x(p))
   od
 )
+}

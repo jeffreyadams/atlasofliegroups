@@ -2,7 +2,7 @@
 <extParamPol.at
 <K_types.at
 <complex_nilpotent_orbits.at
-<wreps_type_C.at
+{<wreps_type_C.at}
 <complex.at
 <test_unitarity.at
 <conjugacy_classes.at

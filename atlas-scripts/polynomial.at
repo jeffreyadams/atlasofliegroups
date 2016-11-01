@@ -221,3 +221,6 @@ set divide_by(int k,poly v)=poly:ratvec_as_vec(v*(1/k))
 
 {polynomial has only non-negative coefficients}
 set is_non_negative(poly v)=bool:all(for a in v do a>=0 od)
+
+set principal_minor(poly_mat M,int size) = poly_mat: 
+for i: size do for j:size do M[i][j] od od
