@@ -138,11 +138,6 @@ size_t KGB_base::packet_size(const TwistedInvolution& w) const
   return first_of_tau[i+1]-first_of_tau[i];
 }
 
-InvolutionNbr KGB_base::inv_nr(KGBElt x) const
-{
-  return inv_nrs[involution_index(x)];
-}
-
 // compute Cartan class with aid of |ic.involution_table()|
 CartanNbr KGB_base::Cartan_class(KGBElt x) const
 { // compute passing by involution index, |InvolutionNbr|
@@ -773,6 +768,18 @@ KGBElt KGB::lookup(TitsElt a) const
     if (Tg.left_torus_part(titsElt(x))==t)
       return x;
   return UndefKGB; // report failure
+}
+
+KGBElt KGB::twisted(KGBElt x,const WeightInvolution& delta) const
+{
+  auto a = titsElt(x);
+  auto delta_twist = rootdata::twist(G.rootDatum(),delta);
+  TitsElt twisted_a
+    (titsGroup(),
+     titsGroup().left_torus_part(a)*BinaryMap(delta),
+     weylGroup().translation(a.w(),delta_twist)
+     );
+  return lookup(twisted_a);
 }
 
 const poset::Poset& KGB::bruhatPoset() // this creates full poset on demand

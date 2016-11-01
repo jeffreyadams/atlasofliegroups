@@ -102,13 +102,12 @@ set W_c_perp(KGBElt x) = [(RootDatum,[int])]:
 { write a word for L as a word for G
   L is small_Levi() of type A_1^n
   every simple (in fact positive) root of L is simple for G, but with a
-  different number
+  different number; establish the mapping, and apply to the letters of w
 }
 set convert_W_word ((RootDatum rd_L,[int] w),RootDatum rd_G) = W_word:
-  let result=[int]:[]
-  , sr_L=simple_roots(rd_L), sr_G=[[int]]:simple_roots(rd_G)
-  in for i in w do result#:=find(sr_G,[int]:sr_L[i]) od;
-  W_word:(rd_G,result)
+  let map = [int]: let sr_G=[vec]:rd_G.simple_roots in
+    for alpha in rd_L.simple_roots do find(sr_G,alpha) od
+  in (rd_G, for i in w do map[i] od)
 
 { R_K_dom is W(K,T_K)\cap W_c_perp
   W(K,T_K)=R_K_dom \ltimes W(K_0,T_{K_0}) (KHatHowe Proposition 4.2)

@@ -173,15 +173,6 @@ weyl::Twist SubSystem::parent_twist(const WeightInvolution& theta,
   return result;
 }
 
-LatticeMatrix SubSystem::action_matrix(const WeylWord& ww)
- const
-{
-  LatticeMatrix result(rd.rank());
-  for (size_t i=0; i<ww.size(); ++i)
-    result *= rd.root_reflection(parent_nr_simple(ww[i]));
-  return result;
-}
-
 // get positive roots by converting the array |pos_map| to a |BitMap|
 RootNbrSet SubSystem::positive_roots() const
 { return RootNbrSet(rd.numRoots(),pos_map); }

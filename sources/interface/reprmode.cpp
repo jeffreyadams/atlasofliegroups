@@ -330,6 +330,13 @@ void blocktwist_f()
 
 void extblock_f()
 {
+  const auto& delta=current_inner_class().distinguished(); // implicit here
+  if (not ((delta-1)*sr->gamma().numerator()).isZero())
+  {
+    std::cout << "Infinitesimal character " << sr->gamma()
+	      <<" not fixed by distinguished involution." << std::endl;
+    return;
+  }
   ensure_full_block();
   ext_block::ext_block eblock
     (current_inner_class(),
@@ -342,17 +349,17 @@ void extblock_f()
 
 void gextblock_f()
 {
-  ensure_full_block();
   WeightInvolution delta = interactive::get_commuting_involution
     (commands::current_layout(), commands::current_lattice_basis());
-
-  auto& block = current_param_block();
-  if (not ((delta-1)*block.gamma().numerator()).isZero())
+  if (not ((delta-1)*sr->gamma().numerator()).isZero())
   {
-    std::cout << "Chosen delta does not fix gamma=" << block.gamma()
+    std::cout << "Chosen delta does not fix gamma=" << sr->gamma()
 	      << " for the current block." << std::endl;
     return;
   }
+
+  ensure_full_block();
+  auto& block = current_param_block();
   ext_block::ext_block eblock(current_inner_class(),block,
 			      currentRealGroup().kgb(),delta,true);
   std::cout << "Extended block structure checked successfully." << std::endl;
@@ -362,17 +369,17 @@ void gextblock_f()
 
 void extkl_f()
 {
-  ensure_full_block();
   WeightInvolution delta = interactive::get_commuting_involution
     (commands::current_layout(), commands::current_lattice_basis());
-
-  auto& block = current_param_block();
-  if (not ((delta-1)*block.gamma().numerator()).isZero())
+  if (not ((delta-1)*sr->gamma().numerator()).isZero())
   {
-    std::cout << "Chosen delta does not fix gamma=" << block.gamma()
+    std::cout << "Chosen delta does not fix gamma=" << sr->gamma()
 	      << " for the current block." << std::endl;
     return;
   }
+
+  ensure_full_block();
+  auto& block = current_param_block();
   ext_block::ext_block eblock(current_inner_class(),block,
 			      currentRealGroup().kgb(),delta,true);
   std::vector<ext_kl::Pol> pool;

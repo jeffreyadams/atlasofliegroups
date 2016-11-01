@@ -238,9 +238,9 @@ void validate(const param& E)
   assert((delta-1)*E.lambda_rho()==(1-theta)*E.tau());
   assert((delta-1).right_prod(E.l())==(theta+1).right_prod(E.t()));
   assert(((E.ctxt.g()-E.l()-rho_check(rd))*(1-theta)).numerator().isZero());
-  ndebug_use(delta); ndebug_use(theta); ndebug_use(rd);
   assert(((theta+1)*(E.ctxt.gamma()-E.lambda_rho()-rho(rd)))
 	 .numerator().isZero());
+  ndebug_use(delta); ndebug_use(theta); ndebug_use(rd);
 }
 
 param::param (const context& ec, const StandardRepr& sr)
@@ -330,12 +330,61 @@ KGBElt param::x() const
   return rc().kgb().lookup(a);
 }
 
-#if 0 // unused code, but the formula is referred to in the comment below
-int z (const param& E) // value modulo 4, exponent of imaginary unit $i$
-{ return
-    (E.l().dot((E.delta()-1)*E.tau()) + 2*E.t().dot(E.lambda_rho())) % 4;
+StandardRepr scaled_extended_dominant // result will have its |gamma()| dominant
+(const Rep_context rc,
+ const StandardRepr& sr, const WeightInvolution& delta,
+ Rational factor, // |z.nu()| is scaled by |factor| first
+ bool& flipped // records whether and extended flip was recorded
+ )
+{ const RootDatum& rd=rc.rootDatum();
+  assert(is_dominant_ratweight(rd,sr.gamma())); // dominant
+  assert(((delta-1)*sr.gamma().numerator()).isZero()); // $\delta$-fixed
+  StandardRepr result = rc.sr(sr.x(),rc.lambda_rho(sr),sr.gamma()*factor);
+  Weight gamma_numer(result.gamma().numerator().begin(),
+		     result.gamma().numerator().end());
+  context ctxt(rc,delta,result.gamma());
+  const ext_gens orbits = rootdata::fold_orbits(rd,delta);
+
+  Weight lr, tau; Coweight l,t;
+  { param E(ctxt,result); // comput fields as for extended parameter
+    lr=E.lambda_rho(); tau=E.tau(); l=E.l(); t=E.t();
+  }
+  KGBElt x = result.x(); // another variable, for convenience
+
+  const auto grc = ctxt.g_rho_check(); int denom=grc.denominator();
+  l*=denom; // scale to make shift applied to |l| below an integer vector
+  Coweight l_offset(grc.numerator().begin(),grc.numerator().end()); // convert
+  l-=l_offset; // shift so that reflections can apply directly
+  { unsigned i; // index into |orbits|
+    do
+      for (i=0; i<orbits.size(); ++i)
+	if (rc.kgb().status(x).isComplex(orbits[i].s0))
+	{ const auto& s=orbits[i];
+	  int v=rd.simpleCoroot(s.s0).dot(gamma_numer);
+	  if (v<0)
+	  { rd.act(s.w_kappa,gamma_numer); // change inf.char representative
+	    lr = rd.image_by(s.w_kappa,lr) - rho_minus_w_rho(rd,s.w_kappa);
+	    rd.act(s.w_kappa,tau);
+	    rd.dual_act(l,s.w_kappa);
+	    rd.dual_act(t,s.w_kappa);
+	    x = rc.kgb().cross(s.w_kappa,x);
+	    break;
+	  }
+	} // |for(s)|, if |isComplex|
+    while(i<orbits.size()); // continue until above |for| runs to completion
+  }
+  l+=l_offset;
+  l/=denom; // shift and scale back to original size
+
+  // since |gamma| may have changed, we need to buid a new |context|
+  context new_ctxt(rc,delta,
+		   RatWeight(gamma_numer,result.gamma().denominator()));
+  // now ensure that |E| gets matching |gamma| and |theta| for flipped test
+  param E(new_ctxt,rc.kgb().involution(x),lr,tau,l,t);
+  result = rc.sr_gamma(x,E.lambda_rho(),new_ctxt.gamma());
+  flipped = not same_sign(E,param(new_ctxt,result));
+  return result;
 }
-#endif
 
 containers::sl_list<std::pair<StandardRepr,bool> > finalise
   (const repr::Rep_context& rc,
@@ -379,6 +428,13 @@ containers::sl_list<std::pair<StandardRepr,bool> > finalise
 
   return result;
 }
+
+#if 0 // unused code, but the formula is referred to in the comment below
+int z (const param& E) // value modulo 4, exponent of imaginary unit $i$
+{ return
+    (E.l().dot((E.delta()-1)*E.tau()) + 2*E.t().dot(E.lambda_rho())) % 4;
+}
+#endif
 
 /*
   The quotient of |z| values across a Cayley transform will only be used when
@@ -887,8 +943,8 @@ param complex_cross(ext_gen p, const param& E)
   Weight tau=E.tau();
   Coweight t=E.t();
   const RootDatum& id = E.ctxt.id();
-  for (unsigned i=p.w_tau.size(); i-->0; )
-  { weyl::Generator s=p.w_tau[i]; // generator for integrality datum
+  for (unsigned i=p.w_kappa.size(); i-->0; )
+  { weyl::Generator s=p.w_kappa[i]; // generator for integrality datum
     tW.twistedConjugate(E.ctxt.subsys().reflection(s),tw);
     id.simple_reflect(s,ga_la_num);
     id.simple_reflect(s,rho_r_shift);
@@ -1240,14 +1296,14 @@ DescValue star (const param& E,
 	  const Weight sigma =
 	    matreduc::find_solution(th_1,alpha*(at+mm)+beta*(bt-mm));
 
-	  const Weight new_tau = E.tau() - alpha*((at+m)/2) - beta*((bt-m)/2);
+	  const Weight new_tau0 = E.tau() - alpha*((at+m)/2) - beta*((bt-m)/2);
           const Coweight new_l = E.l()+alpha_v*(tf_alpha/2)+beta_v*(tf_beta/2);
 
 	  param F0(E.ctxt, new_tw,
-		   E.lambda_rho() + rho_r_shift + alpha*m, new_tau,
+		   E.lambda_rho() + rho_r_shift + alpha*m, new_tau0,
 		   new_l, E.t());
 	  param F1(E.ctxt, new_tw,
-		   E.lambda_rho() + rho_r_shift + alpha*mm, new_tau + sigma,
+		   E.lambda_rho() + rho_r_shift + alpha*mm, E.tau() + sigma,
 		   new_l, E.t());
 
 	  // compute signs before invoking |std::move|
@@ -1359,7 +1415,7 @@ DescValue star (const param& E,
 	  assert(E0.t().dot(alpha)==-m and E0.t().dot(beta)==m);
 
 	  E1.set_t(E.t() - s);
-	  assert(same_sign(E,E1)); // since only |t| change
+	  assert(same_sign(E,E1)); // since only |t| changes
 	  assert(E1.t().dot(alpha)==-mm and E1.t().dot(beta)==mm);
 
 	  param F0(E.ctxt, new_tw,

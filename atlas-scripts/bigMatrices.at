@@ -26,7 +26,7 @@ for p@i in B do
   if p=q then rv#:=i else
    let j=find(B,q)  in
 {    assert(j!=-1, "Block not fixed by delta");}
-    if j=-1 then rv#:=i 
+    if j=-1 then rv#:=i
     elif i<j then rv#:=i fi fi od;rv
 
 {complete_indices(B,delta)=[(0,1),(0,-1),...,(k,0),...]
@@ -46,7 +46,7 @@ last argument: indices in block_of(p) of fixed entries}
 set my_extended_block(Param p,mat delta)=([Param],[int]):
 let B=block_of(p) then
 B_delta=fixed_subset(B,delta) in
-if #B_delta=0 then ([],[]) else let 
+if #B_delta=0 then ([],[]) else let
 {rv=finalize(B_delta) in (rv, indices_subset(rv,B_delta)) fi}
 rv=finalize(B_delta) in (rv, indices_subset(rv,B)) fi
 
@@ -71,7 +71,7 @@ Value: ([0,1,2,5],[0,1,2,-1,-1,3],[(0,1),(0,-1),(1,1),(1,-1),(2,1),(2,-1),(3,0),
 }
 set tabulate_indices([Param] B,mat delta)=([int],[int],[(int,int)], [int]):
 let B_delta=fixed_subset(B,delta) in
-if #B_delta=0 then ([],[],[],[]) else let 
+if #B_delta=0 then ([],[],[],[]) else let
 I_delta=indices_subset(B_delta,B) then
 g=for i:#B do find(I_delta,i) od then
 complete=complete_indices(B,delta) then
@@ -89,31 +89,31 @@ let (I_delta,g,complete_indices,delta_action)=tabulate_indices(B,delta) then
 B_delta=for i in I_delta do B[i] od then
 P=KL_P_polynomials(B) then
 P_delta=KL_P_polynomials(B_delta,delta) in
-let ()=prints("P_delta=",P_delta) in					
+let ()=prints("P_delta=",P_delta) in
 if #P_delta=0 then prints("Note: block not delta-fixed");KL_P_polynomials(B) {block is not fixed by delta} else let
 n=#complete_indices then
 rv=zero_poly_matrix(n) in
-for a:n do 
+for a:n do
    let (i,epsilon_i)=complete_indices[a] in
- for b:n-a from a do 
+ for b:n-a from a do
    let (j,epsilon_j)=complete_indices[b] in
 {    let ()=prints("a=",a," b=",b," i=",i," e_i=",epsilon_i," j=",j," e_j=",epsilon_j)  in }
-    if a=b then  rv:=update_matrix_entry(rv,a,b,one) {diagonal entries} else 
-    if (epsilon_i*epsilon_j=1) {both entries plus or both minus: P+P^delta} then 
+    if a=b then  rv:=update_matrix_entry(rv,a,b,one) {diagonal entries} else
+    if (epsilon_i*epsilon_j=1) {both entries plus or both minus: P+P^delta} then
      let x=g[i] then
          y=g[j] in
 {	 let ()=prints("P[i][j]=", P[i][j], " x=", x, " y=", y, " , Pdelta[x][y]=", P_delta[x][y]) in}
-         rv:=update_matrix_entry(rv,a,b,divide_by(2,poly_add(P[i][j],P_delta[x][y]))) 
-    elif (epsilon_i*epsilon_j=-1) then {(+,-) or (-,+): P-P^delta} 
+         rv:=update_matrix_entry(rv,a,b,divide_by(2,poly_add(P[i][j],P_delta[x][y])))
+    elif (epsilon_i*epsilon_j=-1) then {(+,-) or (-,+): P-P^delta}
      let x=g[i] then
          y=g[j] in
-         rv:=update_matrix_entry(rv,a,b,divide_by(2,poly_sub(P[i][j],P_delta[x][y]))) 
-    elif abs(epsilon_i)=1 and epsilon_j=0 {(\pm,ind): P} then 
-      rv:=update_matrix_entry(rv,a,b,P[i][j]) 
-    elif epsilon_i=0 and abs(epsilon_j)=1  {(ind,\pm): P} then 
-      rv:=update_matrix_entry(rv,a,b,P[i][j]) 
+         rv:=update_matrix_entry(rv,a,b,divide_by(2,poly_sub(P[i][j],P_delta[x][y])))
+    elif abs(epsilon_i)=1 and epsilon_j=0 {(\pm,ind): P} then
+      rv:=update_matrix_entry(rv,a,b,P[i][j])
+    elif epsilon_i=0 and abs(epsilon_j)=1  {(ind,\pm): P} then
+      rv:=update_matrix_entry(rv,a,b,P[i][j])
     elif epsilon_i=0 and epsilon_j=0 then {(ind,ind): P(gamma,mu)+P(gamma,mu^delta)}
-      rv:=update_matrix_entry(rv,a,b,poly_add(P[i][j],P[i][delta_action[j]])) 
+      rv:=update_matrix_entry(rv,a,b,poly_add(P[i][j],P[i][delta_action[j]]))
     fi fi od od ;rv fi
 }
 
@@ -125,27 +125,27 @@ P_delta=KL_P_polynomials(B_delta,delta) in
 if #P_delta=0 then prints("Note: block not delta-fixed");KL_P_polynomials(B) {block is not fixed by delta} else let
 n=#complete_indices then
 rv=zero_poly_matrix(n) in
-for a:n do 
+for a:n do
    let (i,epsilon_i)=complete_indices[a] in
- for b:n-a from a do 
+ for b:n-a from a do
    let (j,epsilon_j)=complete_indices[b] in
 {    let ()=prints("a=",a," b=",b," i=",i," e_i=",epsilon_i," j=",j," e_j=",epsilon_j)  in }
-    if a=b then  rv:=update_matrix_entry(rv,a,b,one) {diagonal entries} else 
-    if (epsilon_i*epsilon_j=1) {both entries plus or both minus: P+P^delta} then 
+    if a=b then  rv:=update_matrix_entry(rv,a,b,one) {diagonal entries} else
+    if (epsilon_i*epsilon_j=1) {both entries plus or both minus: P+P^delta} then
      let x=g[i] then
          y=g[j] in
 {	 let ()=prints("P[i][j]=", P[i][j], " x=", x, " y=", y, " , Pdelta[x][y]=", P_delta[x][y]) in}
-         rv:=update_matrix_entry(rv,a,b,divide_by(2,poly_add(P[i][j],P_delta[x][y]))) 
-    elif (epsilon_i*epsilon_j=-1) then {(+,-) or (-,+): P-P^delta} 
+         rv:=update_matrix_entry(rv,a,b,divide_by(2,poly_add(P[i][j],P_delta[x][y])))
+    elif (epsilon_i*epsilon_j=-1) then {(+,-) or (-,+): P-P^delta}
      let x=g[i] then
          y=g[j] in
-         rv:=update_matrix_entry(rv,a,b,divide_by(2,poly_sub(P[i][j],P_delta[x][y]))) 
-    elif abs(epsilon_i)=1 and epsilon_j=0 {(\pm,ind): P} then 
-      rv:=update_matrix_entry(rv,a,b,P[i][j]) 
-    elif epsilon_i=0 and abs(epsilon_j)=1  {(ind,\pm): P} then 
-      rv:=update_matrix_entry(rv,a,b,P[i][j]) 
+         rv:=update_matrix_entry(rv,a,b,divide_by(2,poly_sub(P[i][j],P_delta[x][y])))
+    elif abs(epsilon_i)=1 and epsilon_j=0 {(\pm,ind): P} then
+      rv:=update_matrix_entry(rv,a,b,P[i][j])
+    elif epsilon_i=0 and abs(epsilon_j)=1  {(ind,\pm): P} then
+      rv:=update_matrix_entry(rv,a,b,P[i][j])
     elif epsilon_i=0 and epsilon_j=0 then {(ind,ind): P(gamma,mu)+P(gamma,mu^delta)}
-      rv:=update_matrix_entry(rv,a,b,poly_add(P[i][j],P[i][delta_action[j]])) 
+      rv:=update_matrix_entry(rv,a,b,poly_add(P[i][j],P[i][delta_action[j]]))
     fi fi od od ;rv fi
 
 set big_KL_P_polynomials_at_minus_one([Param] B,mat delta)=mat:
@@ -196,9 +196,8 @@ set is_non_negative([poly] polynomials)=bool:all(for v in polynomials do is_non_
 set is_non_negative(poly_mat M)=bool:all(for row in M do is_non_negative(row) od)
 
 set big_KL_Q_polynomials([Param] B,mat delta)=[[vec]]:
-let ()=prints("computing big_KL_Q polynomials for B, #B=", #B) in
-let M=upper_unitriangular_inverse (big_KL_P_signed_polynomials(B,delta)) in 
-let pass=is_non_negative(M)  in 
+let M=upper_unitriangular_inverse (big_KL_P_signed_polynomials(B,delta)) in
+let pass=is_non_negative(M)  in
 let ()=if not pass then prints("M=: ",M);assert(pass,"M is not non-negative") fi in M
 
 {

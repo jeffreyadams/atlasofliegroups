@@ -146,13 +146,15 @@ class KGB_base
   const TwistedInvolution& nth_involution(inv_index n) const
   { return ic.involution_table().involution(inv_nrs[n]); }
 
+  InvolutionNbr inv_nr(KGBElt x) const // external number (within inner class)
+  { return inv_nrs[involution_index(x)]; }
+
   const TwistedInvolution& involution(KGBElt x) const // after construction only
-  { return nth_involution(involution_index(x)); } // the one associated to |x|
+  { return ic.involution_table().involution(inv_nr(x)); }
 
   const WeightInvolution & involution_matrix(KGBElt x) const
   { return ic.involution_table().matrix(inv_nr(x)); }
 
-  InvolutionNbr inv_nr(KGBElt x) const; // external number (within inner class)
 
   const DescentSet& descent(KGBElt x) const { return info[x].desc; }
   bool isDescent(weyl::Generator s, KGBElt x) const
@@ -324,9 +326,9 @@ and in addition the Hasse diagram (set of all covering relations).
 
 // accessors
 
-//! \brief The based Tits group.
+// The based Tits group.
   const TitsCoset& basedTitsGroup() const { return *d_base; }
-//! \brief The Tits group.
+// The Tits group.
   const TitsGroup& titsGroup() const { return d_base->titsGroup(); }
 
   TorusPart torus_part(KGBElt x) const { return left_torus_part[x]; }
@@ -345,6 +347,8 @@ and in addition the Hasse diagram (set of all covering relations).
 
   KGBElt lookup(TitsElt a) const; // by value; it may return |UndefKGB|
 
+  // apply external twist (distinguished, commuting with inner class involution)
+  KGBElt twisted(KGBElt x,const WeightInvolution& delta) const;
 
 // manipulators
 

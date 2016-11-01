@@ -7,10 +7,11 @@ set hermitian_debug = false
 { orientation_number_term(orientation_nr(p),q) =
   s^{[\ell_0(p)-\ell_0(q)]/2} which should be defined and gives 1 or s
 }
-set orientation_nr_term (int ori_nr_p,Param q) = Split:
+set orientation_nr_term = (int,Param->Split):
   let err()=
     error("computing orientation number for odd difference of lengths")
-  in case ori_nr_p-orientation_nr(q) in 1, err(), s, err() esac
+  in (int ori_nr_p,Param q) Split:
+  case (ori_nr_p-orientation_nr(q))%4 in 1, err(), s, err() esac
 
 {     c_form on irreducibles and standards, correct in equal and unequal rank cases }
 
@@ -71,18 +72,18 @@ set c_form_irreducible_long (Param p) = (ParamPol,[(Param,Split,ParamPol)]):
   in this sum by 1 or s; which of the two is to be determined later)
 }
 set c_form_irreducible_delta (Param p) = ParamPol:
-( let G=p.real_form then	 
+( let G=p.real_form then
   delta=real_form(p).distinguished_involution then
   ori_nr_p = orientation_nr(p) then
   fixed_terms = null_module(G), unfixed_terms = null_module(G) then
   Ptw=twisted_KL_sum_at_s(p) then
   P=KL_sum_at_s(p) in
-  for ev@q in P 
-  do 
+  for ev@q in P
+  do
     if is_fixed(delta,q) then
      let new_ev=divide_by((P[q]+Ptw[q])+s*(P[q]-Ptw[q]),2)  then
          c=new_ev*orientation_nr_term(ori_nr_p,q) in fixed_terms +:= c*full_deform(q,delta)
-    else 
+    else
          let c=ev*orientation_nr_term(ori_nr_p,q) in unfixed_terms +:= c*one_plus_s*(q*0)
     fi
   od
@@ -90,7 +91,7 @@ set c_form_irreducible_delta (Param p) = ParamPol:
 )
 
 set c_form_irreducible_delta_long (Param p) =
-( let G=p.real_form then	 
+( let G=p.real_form then
   delta=real_form(p).distinguished_involution then
   ori_nr_p = orientation_nr(p) then
   fixed_terms = null_module(G), unfixed_terms = null_module(G) then
@@ -100,17 +101,19 @@ set c_form_irreducible_delta_long (Param p) =
   character_formula=P.s_to_1 in
   for ev@q in P 
   do 
+  for ev@q in P
+  do
     (if is_fixed(delta,q) then
      let new_ev=divide_by((P[q]+Ptw[q])+s*(P[q]-Ptw[q]),2)  in
       let contrib=new_ev*orientation_nr_term(ori_nr_p,q)*full_deform(q,delta) in
 	 (fixed_terms+:=contrib,
          terms#:=("fixed",ev,q,contrib))
-    else 
+    else
          let contrib=ev*orientation_nr_term(ori_nr_p,q)*one_plus_s*(q*0) in
-	 (unfixed_terms+:=contrib, 
+	 (unfixed_terms+:=contrib,
          terms#:=("unfixed",ev,q,contrib))
     fi)
-  od
+  od od
 ; (character_formula,terms,fixed_terms + divide_by(2,unfixed_terms))
 )
 
@@ -325,7 +328,7 @@ set print_hermitian_form_irreducible([Param] P,mat delta) = void:
 set weak_test(Param p)=bool:
 let formula=c_form_irreducible_delta(p) then
 bad=null_module(real_form(p)) in
-for w@p in formula do 
+for w@p in formula do
  if not is_pure(w) then bad+:=w*p fi od;
 if #bad=0 then prints("number of terms: ", #formula);true else
 prints("number of terms: ", #formula,new_line,"bad terms:", bad );false fi

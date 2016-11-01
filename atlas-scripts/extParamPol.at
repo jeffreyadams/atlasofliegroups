@@ -47,7 +47,7 @@ set deform_unreduced (Param p, mat delta, int sign) = ExtParamPol:
 ( let N=null_module(p) in 
   let ()=prints("Computing deform:", p, " sign=", sign) in
   if sign=0 then null_ext_module(real_form(p)) else let
-  (B,index)=block(p) then 
+  (B,index)=singular_block(p) then 
   (I_delta,g,complete_indices,delta_action)=tabulate_indices(B,delta) then  
   complete_indices=complete_indices(B,delta) then
   complete_index=find(complete_indices,(index,sign)) then
@@ -281,14 +281,14 @@ set c_form_irreducible_long (Param p,mat delta, int type) =
 (ExtParamPol,[((Split,Param),(ParamPol,ParamPol,ParamPol))],[((Split,Param),(ParamPol,ParamPol,ParamPol))],[((Split,Param),(ParamPol,ParamPol,ParamPol))],ExtParamPol):
 ( let ori_nr_p = orientation_nr(p), P = null_ext_module(real_form(p)) then
   (plus,minus,induced)=character_formula(p,delta) then
-  (plus_terms,minus_terms,induced_terms)=([],[],[]) in let 
-()=  (for coeff@q in plus do 
+  (plus_terms,minus_terms,induced_terms)=([],[],[]) in let
+()=  (for coeff@q in plus do
      let new_term=coeff*orientation_nr_term(ori_nr_p,q)*recursive_deform(q,delta,1) in
      (P+:=new_term,plus_terms#:=((coeff,q),new_term)) od,
-  for coeff@q in minus do 
+  for coeff@q in minus do
      let new_term={s*}coeff*orientation_nr_term(ori_nr_p,q)*recursive_deform(q,delta,-1) in
      (P+:=new_term,minus_terms#:=((coeff,q),new_term)) od,
-  for coeff@q in induced do 
+  for coeff@q in induced do
      let new_term=coeff*orientation_nr_term(ori_nr_p,q)*recursive_deform(q,delta,0) in
      (P+:=new_term,minus_terms#:=((coeff,q),new_term)) od) in
   let    (P_plus,P_minus,P_ind)=P in
@@ -298,7 +298,7 @@ set c_form_irreducible_long (Param p,mat delta, int type) =
 set print_c_form_irreducible_long(ExtParamPol cf, [((Split,Param),ExtParamPol)] plus,[((Split,Param),ExtParamPol)] minus,[((Split,Param),ExtParamPol)] induced,ExtParamPol answer)=void:
 let ()=prints(new_line,new_line,"Character Formula:");
 display(cf) then
-()=prints(new_line,"plus parts of character formula:") in 
+()=prints(new_line,"plus parts of character formula:") in
 for ((w,a),b) in plus do prints(new_line,"Standard Module: ", w,"*",a, new_line, "fully deformed:");display(b) od;
 prints(new_line,"minus parts of character formula:");
 for ((w,a),b) in minus do prints(new_line,"Standard Module: ", w,"*",a, new_line, "fully deformed:");display(b) od;
@@ -313,7 +313,6 @@ print_c_form_irreducible_long(c_form_irreducible_long(p,delta,type))
 set test(Param p, mat delta)=
 let d=c_form_irreducible_delta(p) then
 (a,b,c)=c_form_irreducible(p,delta,1) then
-rv=a+s*b-d in 
+rv=a+s*b-d in
 prints(new_line,"Result:",rv,new_line);(d,(a,b,c), rv)
-
 

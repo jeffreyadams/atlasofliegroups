@@ -486,22 +486,6 @@ set ^ = { exponentiation of split integers }
     then if is_even(n) then 1 else x fi { all of which are square roots of +1 }
     else error("Negative power "+n+" of split integer "+split_format(x))
     fi
-{   		    Miscellaneous find functions		     }
-
-{ find index of item in list, or -1 if not found; first does this }
-
-set find ([int] v, int k)=int:     first(#v,(int i)bool:v[i]=k)
-set find ([Param] P,Param p)=int:  first(#P,(int i)bool:P[i]=p)
-set find ([KGBElt] S,KGBElt x)=int:first(#S,(int i)bool:S[i]=x)
-
-{ used to find root v in list of roots S:}
-set find ([[int]] S,[int] v)=int:first(#S,(int i)bool:S[i]=v)
-
-{ need different name to avoid disambiguation problem }
-set find_vec([vec] S,vec v)=int:first(#S,(int i)bool:S[i]=v)
-
-{ pad string with blanks (for lining up columns in tables)}
-set pad(string s,int padding)=string: l_adjust(padding,s)
 
 {				Root data 				}
 
@@ -965,7 +949,10 @@ set print_W_graph  ((RealForm,RealForm) p) = void: print_W_cells(block(p))
 
 {			    Module parameters				}
 
-set != (Param x,Param y) = bool: not(x=y)
+set != (Param x,Param y) = bool: not(x=y) { non equivalent parameters }
+set equals (Param p,Param q) = bool: { strict equality of components }
+  let (x0,lr0,gamma0)=%p, (x1,lr1,gamma1)=%q in
+  x0=x1 and lr0=lr1 and gamma0=gamma1
 
 set root_datum (Param p) = RootDatum: real_form(p)
 set inner_class (Param p) = InnerClass: real_form(p)
@@ -992,6 +979,12 @@ set integrality_datum (Param p)= RootDatum:
 set is_regular (Param p) = bool:
   is_regular(root_datum(p),infinitesimal_character(p))
 
+{ whether irreducible rpn survives translation functor from regular inf.char. }
+set survives (Param p) = bool: { whether no singular coroot is a descent }
+( p.x=dominant(p).x { this fails when there is a complex singular descent }
+  and not p.is_zero and p.is_final { test absence of other singluar descents }
+)
+
 set trivial (RealForm G) = Param: { parameter for the trivial representation }
   param(KGB(G,KGB_size(G)-1),null(rank(G)),rho(G))
 
@@ -1013,17 +1006,16 @@ set parameter_gamma(KGBElt x, ratvec lambda, ratvec gamma) = Param:
   { ((1-theta)*lambda+(1+theta)*gamma)/2 = (1+theta)*(gamma-lambda)/2+lambda }
   parameter(G,nx,(1+theta)*(gamma-lambda)/2+lambda,gamma)
 
-{block@Param gives wrong result for singular infinitesimal character
- redefine it here
-}
-
-set block(Param p)=([Param],int):
-if is_regular(root_datum(p),infinitesimal_character(p)) then block(p) else
-let (all_parameters,,,,,indices,)=KL_block(p) then 
-B=for i in indices do all_parameters[i] od in (B,find(B,p)) fi
+{ variation of built-in |block@Param| that weeds out non-starred block elts }
+set singular_block (Param p) = ([Param],int):
+  let (B,i)=block(p)
+  then block = ## for q in B do if q.survives then [q] else [] fi od
+  in (block, { new index of |p|:} first(for q in block do p=q od))
 
 { get just the parameters from a block, just a shorcut to: (params,)=block(p) }
 set block_of (Param p) = [Param]: let (params,)=block(p) in params
+set singular_block_of (Param p) = [Param]:
+  let (params,)=singular_block(p) in params
 
 { status of parameter with respect to integrality generator s, or root alpha }
 
@@ -1101,10 +1093,11 @@ set print_extended_block = (Param,mat->):
   let (block,types,L0,L1) = extended_block(p,delta)
   , G=p.real_form, parent_block=block_of(p)
   then (l,r)=#types
-  , indices =
-     let i=0 in for p in block do while parent_block[i]!=p do i+:=1 od; i od
-  , w=width(#block-1), wx=width(G.KGB_size-1), wp=width(#parent_block-1)
-  , with_sign(int n) = string: if n<0 then "-"+(minus_1-n) else "+"+n fi
+  , indices =  let i=0 in
+      for p in block do while not equals(parent_block[i],p) do i+:=1 od; i od
+  then wx=width(G.KGB_size-1), wp=width(#parent_block-1)
+  , with_sign(int n) = string:
+    if n<0 then "-"+(indices[minus_1-n]) else "+"+indices[n] fi
   in
   for q@i in block
   do prints
@@ -1118,7 +1111,7 @@ set print_extended_block = (Param,mat->):
   , "]"
   , ## { cross actions }
     for j:r
-    do r_adjust (w+2, with_sign(
+    do r_adjust (wp+2, with_sign(
        if L0[i,j]=l or has_double_Cayley(types[i,j]) or has_defect(types[i,j])
        then i { self cross when either 0 or 2 Cayleys or there is a defect }
        elif L1[i,j]=l then L0[i,j] else L1[i,j] { complex resp single Cayley }
@@ -1127,7 +1120,7 @@ set print_extended_block = (Param,mat->):
   , "; "
   , ## { Cayley transforms }
     for j:r
-    do c_adjust (2*w+3,
+    do c_adjust (2*wp+3,
        if has_double_Cayley(types[i,j])
        then L0[i,j].with_sign+","+L1[i,j].with_sign { double valued Cayley }
        elif has_defect(types[i,j]) or L1[i,j]<l
@@ -1195,8 +1188,30 @@ set separate_by_infinitesimal_character (ParamPol P) = [(ratvec,ParamPol)]:
 
 {				Miscellaneous				}
 
-set in_string_list (string s,[string] S)=bool:
-  let i=#S-1 in while >=i and S[i]!=s do i-:=1 od; >=i
+{   		    Miscellaneous find functions		     }
+
+{ find index of item in list, or -1 if not found; first does this }
+
+set find ([int] v, int k) = int:      first(#v,(int i)bool:v[i]=k)
+set find ([Param] P,Param p) = int:   first(#P,(int i)bool:equals(P[i],p))
+set find ([KGBElt] S,KGBElt x) = int: first(#S,(int i)bool:S[i]=x)
+set find ([vec] S,vec v) = int:       first(#S,(int i)bool:S[i]=v)
+
+{ No version for finding [int] due to potential ambiguity with vec version.
+  Note that |find(L,x)| has alternative |first(for y in L do x=y od)| which
+  can be used for all types having =, without separate definition of |find|
+}
+
+set in_string_list (string s,[string] S) = bool:
+  >=first(for t in S do s=t od)
+
+{ delete one term from a list }
+set delete ([int] v, int k)     =[int]:     v[:k]##v[k+1:]
+set delete ([vec] v, int k)     =[vec]:     v[:k]##v[k+1:]
+set delete ([ratvec] v, int k)  =[ratvec]:  v[:k]##v[k+1:]
+set delete ([[ratvec]] v, int k)=[[ratvec]]:v[:k]##v[k+1:]
+set delete ([[vec]] v, int k)   =[[vec]]:   v[:k]##v[k+1:]
+set delete ([ParamPol] P, int k)=[ParamPol]:P[:k]##P[k+1:]
 
 set positive_imaginary_roots_and_coroots = imaginary_sys@(RootDatum,mat)
 set positive_imaginary_roots_and_coroots = imaginary_sys@KGBElt
@@ -1219,18 +1234,13 @@ set complex_posroots (RootDatum rd,mat theta) =  mat:
 set complex_posroots (KGBElt x) =  mat:
   complex_posroots(root_datum(x),involution(x))
 
+{ pad string with blanks (for lining up columns in tables) }
+set pad(string s,int padding)=string: l_adjust(padding,s)
+
 { for user convenience; a ParamPol is an associative array ParamPol->Split
   so selecting its monomials (Param values) by position is not reliable, but
   allowing so is useful in user sessions to pick terms from a computed result
 }
 set monomials (ParamPol P) = [Param]: for c@p in P do p od
 set monomial  (ParamPol P,int i) = Param: monomials(P)[i]
-
-{ delete one term from a list }
-set delete ([int] v, int k)     =[int]:     v[:k]##v[k+1:]
-set delete ([vec] v, int k)     =[vec]:     v[:k]##v[k+1:]
-set delete ([ratvec] v, int k)  =[ratvec]:  v[:k]##v[k+1:]
-set delete ([[ratvec]] v, int k)=[[ratvec]]:v[:k]##v[k+1:]
-set delete ([[vec]] v, int k)   =[[vec]]:   v[:k]##v[k+1:]
-set delete ([ParamPol] P, int k)=[ParamPol]:P[:k]##P[k+1:]
 

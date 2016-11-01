@@ -103,7 +103,7 @@ set final_subset([Param] B)=[Param]: let rv=[] in for p in B do if is_final(p) t
 set KL_block_alt (Param p, mat delta) = { emulate built-in KL_block }
     ([Param],int,mat,[vec],vec,vec,mat):
 {  let (regular_extblock,,,) = extended_block(p,delta) {this sometimes fails, if block has no fixed elements(?), move it later}}
-  let (KL_mat,polys,stops) = raw_ext_KL(p,delta) in 
+  let (KL_mat,polys,stops) = raw_ext_KL(p,delta) in
    if #KL_mat=(0,0) then ([],-1,null(0,0),[],[],[],null(0,0)) else
   let (regular_extblock,,,) = extended_block(p,delta)
   , (KL_mat,polys,stops) = raw_ext_KL(p,delta)
