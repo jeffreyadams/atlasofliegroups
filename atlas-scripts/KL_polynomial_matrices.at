@@ -150,7 +150,7 @@ let (B,,,)=cook_KL_block(KL_block(p,delta)) then
  rv=KL_P_polynomials(p,delta) in
  for i:#B do for j:#B do
   rv:=update_matrix_entry(rv,i,j,(-1)^(length(B[i])-length(B[j]))*rv[i][j]) od od;rv
-set KL_P_signed_polynomials_at_one(Param p, mat delta)=mat:eval(KL_P_signed_polynomials(p,delta),-1)
+set KL_P_signed_polynomials_at_minus_one(Param p, mat delta)=mat:eval(KL_P_signed_polynomials(p,delta),-1)
 
 {basis: fixed parameters in B}
 
@@ -168,7 +168,7 @@ set KL_P_signed_polynomials([Param] B,mat delta)=poly_mat:
   (perm,valid)=permutation(B,block) then
   P=assert(valid,"given [Param] B does not agree with block_of B[0]");KL_P_signed_polynomials(B[0],delta)  in
   poly_permute_basis(perm,P)
-set KL_P_signed_polynomials_at_one([Param] B,mat delta)=mat:eval(KL_P_signed_polynomials(B,delta),-1)
+set KL_P_signed_polynomials_at_minus_one([Param] B,mat delta)=mat:eval(KL_P_signed_polynomials(B,delta),-1)
 
 {*DEFINE* the Q-polynomials as inverse of the signed P-matrix}
 {see dual.at for a different approach}
