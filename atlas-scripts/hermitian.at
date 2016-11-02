@@ -71,18 +71,18 @@ set c_form_irreducible_long (Param p) = (ParamPol,[(Param,Split,ParamPol)]):
   in this sum by 1 or s; which of the two is to be determined later)
 }
 set c_form_irreducible_delta (Param p) = ParamPol:
-( let G=p.real_form then	 
+( let G=p.real_form then
   delta=real_form(p).distinguished_involution then
   ori_nr_p = orientation_nr(p) then
   fixed_terms = null_module(G), unfixed_terms = null_module(G) then
   Ptw=twisted_KL_sum_at_s(p) then
   P=KL_sum_at_s(p) in
-  for ev@q in P 
-  do 
+  for ev@q in P
+  do
     if is_fixed(delta,q) then
      let new_ev=divide_by((P[q]+Ptw[q])+s*(P[q]-Ptw[q]),2)  then
          c=new_ev*orientation_nr_term(ori_nr_p,q) in fixed_terms +:= c*full_deform(q,delta)
-    else 
+    else
          let c=ev*orientation_nr_term(ori_nr_p,q) in unfixed_terms +:= c*one_plus_s*(q*0)
     fi
   od
@@ -90,7 +90,7 @@ set c_form_irreducible_delta (Param p) = ParamPol:
 )
 
 set c_form_irreducible_delta_long (Param p) =
-( let G=p.real_form then	 
+( let G=p.real_form then
   delta=real_form(p).distinguished_involution then
   ori_nr_p = orientation_nr(p) then
   fixed_terms = null_module(G), unfixed_terms = null_module(G) then
@@ -98,16 +98,16 @@ set c_form_irreducible_delta_long (Param p) =
   Ptw=twisted_KL_sum_at_s(p) then
   P=KL_sum_at_s(p) then
   character_formula=P.s_to_1 in
-  for ev@q in P 
-  do 
+  for ev@q in P
+  do
     (if is_fixed(delta,q) then
      let new_ev=divide_by((P[q]+Ptw[q])+s*(P[q]-Ptw[q]),2)  in
       let contrib=new_ev*orientation_nr_term(ori_nr_p,q)*full_deform(q,delta) in
 	 (fixed_terms+:=contrib,
          terms#:=("fixed",ev,q,contrib))
-    else 
+    else
          let contrib=ev*orientation_nr_term(ori_nr_p,q)*one_plus_s*(q*0) in
-	 (unfixed_terms+:=contrib, 
+	 (unfixed_terms+:=contrib,
          terms#:=("unfixed",ev,q,contrib))
     fi)
   od
@@ -276,12 +276,12 @@ assert(no_Cminus_roots(x), "Not defined unless all complex roots are type C+");
 let real_roots=real_posroots(rd,theta) then
 pairs=[] in
 for alpha in real_roots do
- let pairing=delta*alpha*coroot(rd,alpha) in 
+ let pairing=delta*alpha*coroot(rd,alpha) in
    assert(pairing=0 or pairing=-1 or pairing=2,"invalid pairing of root and coroot");
    if pairing=0 then pairs#:=alpha fi
   od;rat_as_int(#pairs/2)
 
-{implementing formula from Vogan in email 10/25/16, subject line mu(p)} 
+{implementing formula from Vogan in email 10/25/16, subject line mu(p)}
 set mu(Param p,mat delta)=rat:
 assert(nu(p)=null(rank(root_datum(p))),"nu(p) !=0");
 let (ic,delta,gamma,lambda,theta,g,l,omega,tau,t)=E(delta,p) then
@@ -325,7 +325,7 @@ set print_hermitian_form_irreducible([Param] P,mat delta) = void:
 set weak_test(Param p)=bool:
 let formula=c_form_irreducible_delta(p) then
 bad=null_module(real_form(p)) in
-for w@p in formula do 
+for w@p in formula do
  if not is_pure(w) then bad+:=w*p fi od;
 if #bad=0 then prints("number of terms: ", #formula);true else
 prints("number of terms: ", #formula,new_line,"bad terms:", bad );false fi
@@ -333,7 +333,7 @@ prints("number of terms: ", #formula,new_line,"bad terms:", bad );false fi
 set strong_test(Param p,mat delta)=bool:
 let formula=hermitian_form_irreducible_delta(p) then
 bad=null_module(real_form(p)) in
-for w@p in formula do 
+for w@p in formula do
  if not is_pure(w) then bad+:=w*p fi od;
 if #bad=0 then prints("number of terms: ", #formula);true else
 prints("number of terms: ", #formula,new_line,"bad terms:", bad );false fi
