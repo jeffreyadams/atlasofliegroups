@@ -22,7 +22,7 @@ set KL_block (Param p, mat delta) = { emulate built-in |KL_block| }
      )
 
 { use output of |KL_block| to prepare block, signed KL matrix, and stops }
-set cook_KL_block([Param] B,int entry_elem
+set cook_KL_block ([Param] B,int entry_elem
                   ,mat KL,[poly] polys,vec stops
                   ,vec surv, mat contrib) =
   ([Param],int,poly_mat,vec): { singular block, z0, signed P matrix, lengths }
@@ -84,7 +84,7 @@ set KL_P_signed_polynomials_1 ([Param] B_fixed,mat delta) = [[poly]]:
 set KL_Q_polynomials ([Param] B_fixed, mat delta) = [[poly]]:
   upper_unitriangular_inverse (KL_P_signed_polynomials_1(B_fixed,delta))
 
-set deform (Param p, mat delta) = ParamPol:
+set deform_deprecated (Param p, mat delta) = ParamPol:
 ( assert(is_fixed(delta,p),"parameter is not delta-fixed");
   let (B_f,index) = fixed_block(delta,p) { hopefully the same block as KL_P }
   , l_index=length(p) { use built-in function |length| for Param |p| }
@@ -151,7 +151,7 @@ set rec_def (Param p,mat delta) = (Param,ParamPol):
       do
         let p_def=param(x,lambda,gamma*rp[inx-:=1]) in
 {	let ()=prints("working on p_def",p_def) in}
-        let def=deform(p_def,delta) in
+        let def=deform_deprecated(p_def,delta) in
 	if ed_verbose2
         then prints("adding deformation term: p=", p_def, new_line
 	           , "adding:", def)
@@ -240,7 +240,6 @@ set recursive_deform (Param p, mat delta) = ParamPol:
         let (p0,flipped) = scale_extended(p,delta,0)
         in if flipped then s*sc else sc fi * finalize_extended(p0,delta)
       in
-{      let ()=prints("acc=",acc) in}
       for factor in reducibility_points(p)
       ~ { direction of deformation is down, towards 0; this is not essential }
       do let (pf,flipped)=scale_extended(p,delta,factor)
