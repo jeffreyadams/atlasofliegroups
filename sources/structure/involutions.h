@@ -200,8 +200,15 @@ class InvolutionTable
   void real_unique(InvolutionNbr i, RatWeight& y) const;
 
   // pack $\lambda-\rho$ into a |TorusPart|
-  TorusPart pack(InvolutionNbr i, const Weight& lambda_rho) const;
-  Weight unpack(InvolutionNbr i, TorusPart y_part) const;
+  TorusPart y_pack(InvolutionNbr i, const Weight& lambda_rho) const;
+  Weight y_lift(InvolutionNbr i, TorusPart y_part) const;
+  TorusPart y_unlift(InvolutionNbr i, const Weight& lifted) const;
+  // for acting on a torus part involution may change; caller should supply
+  TorusPart y_act(InvolutionNbr i0, InvolutionNbr i1, // source, destination
+		  TorusPart y_part, const WeightInvolution& delta) const
+  { return y_unlift(i1,delta*y_lift(i0,y_part)); }
+
+
 
   // the following produces a light-weight function object calling |involution|
   class mapper

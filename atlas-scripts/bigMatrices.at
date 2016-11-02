@@ -201,26 +201,6 @@ let M=upper_unitriangular_inverse (big_KL_P_signed_polynomials(B,delta)) in
 let pass=is_non_negative(M)  in
 let ()=if not pass then prints("M=: ",M);assert(pass,"M is not non-negative") fi in M
 
-{
-{set calculate_big_matrices([Param] B, mat delta, int index, ([Param] done,[int] pointers,[poly_mat] P_matrices,[poly_mat] Q_matrices))=}
-set calculate_big_matrices([Param] B, mat delta, int index)=
-{let ()=prints("#done=",#done) in}
-let p=B[index] then
-i=find_strong(done,p) in
-if i=-1 then
-{ let ()=prints("Calculating") in}
- let P=big_KL_P_signed_polynomials(B,delta) in
- let  Q=upper_unitriangular_inverse(P) in
- set done:=done ##B;
- set P_matrices:=P_matrices#P;
- set Q_matrices:=Q_matrices#Q;
- let n=#P_matrices-1 in
- for i:#B do pointers#:=n od;(P,Q)
-else
-{ let ()=prints("Re-using") in}
- let pointer=pointers[i] in (P_matrices[pointer],Q_matrices[pointer])
-fi
-}
 
 set calculate_big_P_signed_polynomials([Param] B, mat delta, int index)=
 {let ()=prints("#done=",#done) in}

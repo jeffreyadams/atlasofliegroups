@@ -24,8 +24,8 @@ namespace atlas {
 
 namespace bitvector {
 
-/* Put in |v| the $Z/2Z$-linear combination of the |BitVector|s of |b|
-  (each of size |n|) given by the bits of |e|.
+/* Put in |v| the $Z/2Z$-linear combination of the |BitVector|s of |b| (each
+  of size |n|, needed in case |b| is empty list) given by the bits of |e|.
 */
 template<size_t dim>
   BitVector<dim> combination
@@ -33,10 +33,9 @@ template<size_t dim>
    size_t n,
    const BitSet<dim>& e);
 
-// version with |BitSet|s instead of |BitVector|s; functional (size no issue)
+// version with |BitSet|s instead of |BitVector|s; (size is no issue here)
 template<size_t dim>
-  BitSet<dim> combination(const std::vector<BitSet<dim> >&,
-				  const BitSet<dim>&);
+  BitSet<dim> combination(const std::vector<BitSet<dim> >&, const BitSet<dim>&);
 
 
 /*
@@ -413,7 +412,7 @@ template<size_t dim> class BitMatrix
   }
 
   BitVector<dim> operator*(const BitVector<dim>& src) const; // matrix * vector
-
+  BitVector<dim> right_act(const BitVector<dim>& src) const; // vector * matrix
 
   template<typename I, typename O> void apply(const I&, const I&, O) const;
 
@@ -511,7 +510,11 @@ template<size_t dim> class BitMatrix
   BitMatrix& transpose();
 }; // |class BitMatrix|
 
-//			  Inlined function definition
+//			  Inlined function definitions
+
+template<size_t dim>
+BitVector<dim> operator*(const BitVector<dim>& v, const BitMatrix<dim>& A)
+{ return A.right_act(v); }
 
 inline
   BinaryEquation make_equation(const SmallBitVector& lhs, bool rhs)

@@ -7,10 +7,11 @@ set hermitian_debug = false
 { orientation_number_term(orientation_nr(p),q) =
   s^{[\ell_0(p)-\ell_0(q)]/2} which should be defined and gives 1 or s
 }
-set orientation_nr_term (int ori_nr_p,Param q) = Split:
+set orientation_nr_term = (int,Param->Split):
   let err()=
     error("computing orientation number for odd difference of lengths")
-  in case ori_nr_p-orientation_nr(q) in 1, err(), s, err() esac
+  in (int ori_nr_p,Param q) Split:
+  case (ori_nr_p-orientation_nr(q))%4 in 1, err(), s, err() esac
 
 {     c_form on irreducibles and standards, correct in equal and unequal rank cases }
 

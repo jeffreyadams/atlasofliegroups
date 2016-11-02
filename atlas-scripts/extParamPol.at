@@ -303,5 +303,3 @@ let d=c_form_irreducible_delta(p) then
 (a,b,c)=c_form_irreducible(p,delta,1) then
 rv=a+s*b-d in
 prints(new_line,"Result:",rv,new_line);(d,(a,b,c), rv)
-
-

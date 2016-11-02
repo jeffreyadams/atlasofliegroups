@@ -56,6 +56,7 @@ class RationalVector
   C denominator() const { return (C)d_denom; }
   const V& numerator() const { return d_num; }
   size_t size() const { return d_num.size(); }
+  bool isZero() const { return d_num.isZero(); }
 
   bool operator== (const RationalVector& a) const;
   bool operator!= (const RationalVector& a) const

@@ -78,16 +78,19 @@ let strings=extract_strings(tau) in
 for i:#strings do strings[i]:=strings[i]+1 od;
 (c,strings## ones(rank-sum(strings)))
 
-{maximal (by inclusion)}
+{ maximal (by inclusion) }
 set is_max([[int]] taus,[int] tau)=bool:
-all(for j:#taus do not tau<taus[j] od)
+  none(for x in taus do tau<x od)
 
-{maximal tau sets only, non multiplicity}
+{ maximal tau sets only, and without repetition }
 set max_only([[int]] taus)=[[int]]:
-let rv=[[int]]:[] in
-for tau in taus do if is_max(taus,tau) then
-{add it unless it is there already}
-if (find(rv,tau)) =-1 then rv#:=tau fi fi od;rv
+  let result = [[int]]: [] in
+  for tau in taus
+  do
+    if is_max(taus,tau) and none(for x in result do x=tau od)
+    then result#:=tau
+    fi
+  od; result
 
 set Levi_signature(int rank,[[int]] tau_invariants)=([[int]],[(int,[int])]):
 { if #tau_invariants=0 or #tau_invariants[0]=0
