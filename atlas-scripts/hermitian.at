@@ -103,8 +103,6 @@ set c_form_irreducible_twisted_long (Param p,mat delta) =(ParamPol,[(string,Spli
   P=KL_sum_at_s(p) then
   character_formula=P.s_to_1 in
   for ev@q in P 
-  do 
-  for ev@q in P
   do
     (if is_fixed(delta,q) then
      let new_ev=divide_by((P[q]+Ptw[q])+s*(P[q]-Ptw[q]),2)  in
@@ -116,7 +114,7 @@ set c_form_irreducible_twisted_long (Param p,mat delta) =(ParamPol,[(string,Spli
 	 (unfixed_terms+:=contrib,
          terms#:=("unfixed",ev,q,contrib))
     fi)
-  od od
+   od
 ; (character_formula,terms,fixed_terms + divide_by(2,unfixed_terms))
 )
 
@@ -136,7 +134,7 @@ let (character_formula,terms,answer)=c_form_irreducible_twisted_long(p) then
 ()=prints("final result:", answer) in ()
 
 set print_c_form_irreducible_twisted_long (Param p) = void:
-( let (f,b,) = c_form_irreducible_twisted_long(p) in
+( let (,b,f) = c_form_irreducible_twisted_long(p) in
   for (q,coeff,,Q) in b
   do prints("")
   ; prints("standard module: ",q)

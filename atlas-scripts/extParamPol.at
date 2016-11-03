@@ -229,7 +229,7 @@ set character_formula (Param p,mat delta) = ExtParamPol:
 ( let G=p.real_form then
 {  ()=prints("computing twisted character formula") then}
   delta=distinguished_involution(G) then
-  (B,index)=block(p) then
+  (B,index)=singular_block(p) then
   (I_delta,g,complete_indices,delta_action)=tabulate_indices(B,delta) then
   Index=
    if is_fixed(delta,p) then find(complete_indices,(index,1)) else find(complete_indices,(index,0)) fi then
