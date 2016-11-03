@@ -456,6 +456,11 @@ set split_as_int (Split x) = int:
   let (r,y)=%x in assert(=y,"split is not an integer"); r
 set \% (Split x, int n) = (Split,Split):
   let (a,b)=%x then (qa,rq)=a\%n, (qb,rb)=b\%n in ((qa,qb),(rq,rb))
+{ divide Split by integer, quotient of \% but requiring rest to be zero }
+set divide_by(Split w,int n)=let (q,r)=w\%n in assert(=r,"Inexact division");q
+
+{ a Split coefficient is pure if it has at most one nonzero component }
+set is_pure(Split w)=bool: =*%w { test if product of both components is zero }
 
 { nicer display of Splits }
 set split_format (Split w) = string:
@@ -468,11 +473,6 @@ set split_format (Split w) = string:
     fi
   fi
 
-
-{divide Split by integer}
-set divide_by(Split w,int n)=let (q,r)=w\%n in assert(=r,"Inexact division");q
-
-set is_pure(Split w)=bool: let (x,y)=%w in =x or =y
 
 set ^ = { exponentiation of split integers }
   let split_power (Split x,int n) = Split: x { dummy }
@@ -1084,9 +1084,6 @@ set orientation_nr_term = (int,Param->Split):
   case (ori_nr_p-orientation_nr(q))%4 in 1, err(), s, err() esac
 
 
-
-
-
 {			Extended blocks					}
 
 set extended_status_texts = [string]:
@@ -1198,20 +1195,20 @@ set separate_by_infinitesimal_character (ParamPol P) = [(ratvec,ParamPol)]:
   ; if not inserted then M #:= (gamma,ParamPol: p) fi
   in for c@p in P do insert(c,p) od; M
 
-{\sum w_ip_i is pure if all w_i are real or all w_i are non-real
- (stronger than all w_i are pure)}
+{ a module is considered pure if either all coefficients are integer of if all
+  coefficients are integer multiples of s; stronger than all coefficents pure }
 set is_pure(ParamPol P)=bool:
-let coeffs = for c@q in P do c od 
-in =for c in coeffs do +c od  or  =for c in coeffs do ^c od { all re or all im }
+  let coeffs = for c@q in P do c od in
+  all(for c in coeffs do =^c od) {all integer} or
+  all(for c in coeffs do =+c od) {all integer mulitples of |s| }
 
-{report number of real, non-real, and mixed terms}
+{ report number of integer, purely s, and mixed terms }
 set purity(ParamPol P)=(int,int,int):
-let (real,nonreal,mixed)=(0,0,0) in
-let coeffs=for c@q in P do c od in 
-for c in coeffs do let (a,b)=%c in 
- if a=0 then nonreal+:=1 
- elif b=0 then real+:=1 
- else mixed+:=1 fi od ;(real,nonreal,mixed)
+  let (x,y,z)=(0,0,0) in
+  for coef in P
+  do let (a,b)=%coef in { we know (a,b)/=(0,0), so 3 cases arise }
+    if =b then x+:=1 elif =a then y+:=1 else z+:=1 fi
+  od; (x,y,z)
 
 {				Miscellaneous				}
 

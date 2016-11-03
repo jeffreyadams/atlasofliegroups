@@ -36,7 +36,7 @@ set cook_KL_block ([Param] B,int entry_elem
      for si@i in surv do let lsi=len(si) in for sj@j in surv do
        let sum=poly_0 in
        for Pkj@k in inter_mat[j] do sum:=flex_add(sum,contrib[i,k]*Pkj) od
-     ; sum{ * minus_1^(len(sj)-lsi)}
+     ; sum * minus_1^(len(sj)-lsi)
      od od
   , get_index (int z) = int: binary_search_first((int i):surv[i]>=z,0,n_surv)
   in ( for i in surv do B[i] od { condensed block }
@@ -84,92 +84,6 @@ set KL_P_signed_polynomials_1 ([Param] B_fixed,mat delta) = [[poly]]:
 set KL_Q_polynomials ([Param] B_fixed, mat delta) = [[poly]]:
   upper_unitriangular_inverse (KL_P_signed_polynomials_1(B_fixed,delta))
 
-set deform_deprecated (Param p, mat delta) = ParamPol:
-( assert(is_fixed(delta,p),"parameter is not delta-fixed");
-  let (B_f,index) = fixed_block(delta,p) { hopefully the same block as KL_P }
-  , l_index=length(p) { use built-in function |length| for Param |p| }
-  then P_signed_polys=KL_P_signed_polynomials_1(B_f,delta)
-  then Q_polys=upper_unitriangular_inverse(P_signed_polys)
-  in
-  if ed_verbose then prints("index=",index) fi;
-  let outer_sum = null_module(real_form(p))
-  + for p_i@i in B_f[:index] { traverse |B_f| up to the index of |p| }
-    do
-      if ed_verbose then prints("outer loop i=",i) fi;
-      let l_i=length(p_i), P_signed_i=P_signed_polys[i]
-      , onr=(-1)^rat_as_int((orientation_nr(p)-orientation_nr(p_i))/2)
-      , inner_sum=0 in
-      if ed_verbose then prints("onr=", onr)  fi;
-      for p_j@j_minus_i in B_f[i:index]
-      do
-        let j=j_minus_i+i, l_j=length(p_j) in
-        if ed_verbose
-        then prints("  inner loop j=",j)
-        ;    prints("  length_diff:", l_index-l_j)
-        fi;
-        if is_odd(l_index-l_j)
-        then
-          let P_ij= poly: P_signed_i[j]
-          , Q_jindex= poly: Q_polys[j][index]
-	  then term= eval(P_ij,-1) * eval(Q_jindex,-1)
-          in
-          if ed_verbose then prints("   inner term: ", term) fi
-	; inner_sum+:=term
-        ; if ed_verbose then prints(" inner_sum is now:", inner_sum) fi
-        fi
-      od
-    ; let contrib = (Split,Param):
-        (onr*inner_sum {coefficient}, B_f[i] {monomial})
-      in
-      if ed_verbose
-      then prints("onr=",onr,new_line
-		 ,"inner_sum=",inner_sum,new_line
-		 ,"contribution with i=", i, ":", contrib)
-      fi
-    ; contrib
-    od
-    in (1-s)*outer_sum
-)
-
-set rec_def (Param p,mat delta) = (Param,ParamPol):
-  if ed_verbose2 then prints("rec_def with:", p) fi;
-  if is_zero(p) or not is_final(p) or not is_fixed(delta,p)
-  then error("improper parameter")
-  fi;
-  let !empty=null_module(real_form(p))
-  then rec_fun recd (Split coef,Param p) = (Param,ParamPol):
-     { |coef| to be multiplied to deformation terms }
-    begin
-    if ed_verbose2 then prints("recd with:", p) fi;
-    if has_nu0(p) then (p,empty) { but deformed |p| has |coef| implicitly }
-    elif not is_standard(p) then prints(p,%p); error("halt")
-    else
-      let (x,lambda,gamma)=%p, rp=reducibility_points(p)
-      then inx=#rp, at_nu0=empty, acc=empty
-      in
-      while inx>0
-      do
-        let p_def=param(x,lambda,gamma*rp[inx-:=1]) in
-{	let ()=prints("working on p_def",p_def) in}
-        let def=deform_deprecated(p_def,delta) in
-	if ed_verbose2
-        then prints("adding deformation term: p=", p_def, new_line
-	           , "adding:", def)
-	fi;
-	acc+:=def
-      od
-    ; for k@q in acc
-      do
-        let c=coef*k then (q0,nu0_terms) = recd(c,q)
-	in at_nu0 +:= nu0_terms+(c,q0)
-      od
-    ; { return deformed p and accumulated deformation terms }
-      (param(x,lambda,null_wt(#gamma)), at_nu0)
-    fi
-    end
-  in recd(1,p)
-
-{ alternative, use the new built-in |extended_KL_block| }
 set deformation_terms (Param p, mat delta) = ParamPol:
   assert(is_fixed(delta,p),"parameter is not delta-fixed");
   let (B,P_mat,length) = extended_KL_block(p,delta) then nB=#B in
@@ -253,7 +167,6 @@ set recursive_deform (Param p, mat delta) = ParamPol:
   fi { apply that recursive function to the initial argument: } (1,p)
 
 set full_deform = recursive_deform@(Param,mat)
-{ used to be: (Param p,mat delta) ParamPol: let (a,P)=rec_def(p,delta) in a+P }
 
 set c_form_std (Param p,mat delta) = ParamPol:
   let G=real_form(p) in

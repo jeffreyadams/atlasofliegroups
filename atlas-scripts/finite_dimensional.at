@@ -1,6 +1,5 @@
 <basic.at
 <Weylgroup.at { dominant }
-{<hermitian.at { c_form_irreducible }}
 
 { this file contains some special operations defined only for complex groups }
 
@@ -39,28 +38,3 @@ set complex_LKT (Param p) = vec:
   let (rd,mu):pair = (root_datum(p),(1+involution(x(p)))*(lambda(p)\1))
   then dom = dominant(pair)
   in lower(#dom\2,dom) { first half }
-
-{ set dimension_complex_Ktype(RealForm G, vec lambda) = int:
-    dimension(K_0(G),lambda)
-}
-{set testcomplex(RealForm G) = void:
-( let t=trivial(G)
-  then b=block_of(t), P=c_form_irreducible(t)
-  , rho_check = lower(rank(G)\2,rho_check(G))
-  then { get Param component of final term of P }
-    (,last)=let  Q = for c@p in P do (c,p) od in Q[#Q-1]
-  then shift=complex_LKT(last)
-  in
-  prints("rho_check= ", rho_check, "shift: ", shift)
-; for w@p in P
-  do prints(complex_LKT(p), ", ", shift-complex_LKT(p), ", "
-           ,split_format(w), ", ", ((shift-complex_LKT(p))*rho_check))
-  od
-; prints("")
-; for i:#b downto 0
-  do let p=b[i]
-     in prints(complex_LKT(p), ", ", length(p), ", ", p, ", "
-              ,twist(x(p))=x(p))
-  od
-)
-}

@@ -9,17 +9,20 @@
   as a ParamPol
 }
 set c_form_std (Param p) = ParamPol:
-let G=real_form(p) in if (is_equal_rank(G)) then full_deform(p) {built-in is faster in equal rank case}
-else full_deform(p,G.distinguished_involution) fi
+  let G=real_form(p) in
+  if (is_equal_rank(G))
+  then full_deform(p) {built-in is faster in equal rank case}
+  else full_deform(p,G.distinguished_involution)
+  fi
 
 set c_form_std(Param p, mat delta)=full_deform(p,delta)
 
 {    c_form on irreducible representations   }
 
 { this is the correct formula for the c-form on G in all cases
-if G is not equal rank we also need the c-form on the extended group
-in order to compute the Hermitian form on G, or equivalently
-c_form_irreducible_twisted (formerly known as c_form_irreducible_delta)
+  if G is not equal rank we also need the c-form on the extended group
+  in order to compute the Hermitian form on G, or equivalently
+  c_form_irreducible_twisted (formerly known as c_form_irreducible_delta)
 }
 set c_form_irreducible (Param p) = ParamPol:
 ( let ori_nr_p = orientation_nr(p), P = null_module(real_form(p)) in
@@ -68,7 +71,7 @@ set c_form_irreducible_long (Param p) = (ParamPol,[(Param,Split,ParamPol)]):
   in this sum by 1 or s; which of the two is to be determined later)
 }
 
-{basic version of c_form_irreducible_twisted, for any delta}
+{ basic version of c_form_irreducible_twisted, for any delta }
 set c_form_irreducible_twisted(Param p,mat delta) = ParamPol:
 ( let G=p.real_form then
   ori_nr_p = orientation_nr(p) then
@@ -102,7 +105,7 @@ set c_form_irreducible_twisted_long (Param p,mat delta) =(ParamPol,[(string,Spli
   Ptw=twisted_KL_sum_at_s(p) then
   P=KL_sum_at_s(p) then
   character_formula=P.s_to_1 in
-  for ev@q in P 
+  for ev@q in P
   do
     (if is_fixed(delta,q) then
      let new_ev=divide_by((P[q]+Ptw[q])+s*(P[q]-Ptw[q]),2)  in
@@ -114,7 +117,7 @@ set c_form_irreducible_twisted_long (Param p,mat delta) =(ParamPol,[(string,Spli
 	 (unfixed_terms+:=contrib,
          terms#:=("unfixed",ev,q,contrib))
     fi)
-   od
+  od
 ; (character_formula,terms,fixed_terms + divide_by(2,unfixed_terms))
 )
 
@@ -145,6 +148,7 @@ set print_c_form_irreducible_twisted_long (Param p) = void:
 ; prints(""); prints("c-form on irreducible module:")
 ; prints(p, " at ",infinitesimal_character(p)); pol_format(f)
 )
+
 { analyse }
 
 { print only terms with "mixed" coefficient (a+bs), i.e., both a,b\ne 0 }
@@ -213,7 +217,8 @@ let real_roots=real_posroots(rd,theta) then
 pairs=[] in
 for alpha in real_roots do
  let pairing=delta*alpha*coroot(rd,alpha) in
-   assert(pairing=0 or pairing=-1 or pairing=2,"invalid pairing of root and coroot");
+   assert(pairing=0 or pairing=-1 or pairing=2
+         ,"invalid pairing of root and coroot");
    if pairing=0 then pairs#:=alpha fi
   od;rat_as_int(#pairs/2)
 
@@ -225,7 +230,8 @@ mu_unextended=mu(p) then
 tau_term=(tau*(^delta-1)*l)/4 then
 dim_term=dim_u_cap_p(x(p)) then
 scalar_term=number_real_orthogonal_pairs(x(p),delta)  in
-prints("mu_unextended=", mu_unextended,new_line,"tau_term=",tau_term,new_line,"dim_term=", dim_term,new_line,"scalar_term=",scalar_term);
+prints("mu_unextended=", mu_unextended,new_line,"tau_term=",tau_term,new_line
+      ,"dim_term=", dim_term,new_line,"scalar_term=",scalar_term);
  mu_unextended+tau_term+scalar_term
 
 {remaining terms copied over from corresponding versions in hermitian.at}
@@ -242,7 +248,7 @@ set convert_cform_hermitian (ParamPol P,mat delta)= ParamPol:
 
 { ParamPol giving the hermitian form on irreducible p in all cases}
 set hermitian_form_irreducible(Param p) = ParamPol:
-if is_equal_rank(real_form(p)) then 
+if is_equal_rank(real_form(p)) then
    convert_cform_hermitian(c_form_irreducible(p))
 else
    convert_cform_hermitian(c_form_irreducible_twisted(p)) fi
@@ -281,20 +287,20 @@ set is_unitary(ParamPol P)= bool:is_pure(P)  {see basic.at}
 set is_unitary (Param p) = bool: is_unitary(hermitian_form_irreducible(p))
 
 set print_is_unitary(Param p)=void:
-let P=hermitian_form_irreducible(p) in 
+let P=hermitian_form_irreducible(p) in
 if is_unitary(P) then prints("Unitary") else
-let (real,nonreal,mixed)=purity(P) in 
+let (real,nonreal,mixed)=purity(P) in
 prints("Non-Unitary",new_line, real, " real terms", new_line, nonreal," nonreal terms", new_line, mixed, " mixed terms") fi
 
 {no mixed terms}
 set is_weakly_unitary(ParamPol P)= bool:
 let (,,mixed)=purity(P) in mixed=0
 
-{ compute Hermitian form on p, and report if it is weakly unitary, 
+{ compute Hermitian form on p, and report if it is weakly unitary,
 i.e. no mixed terms
 }
-set is_weakly_unitary (Param p) = bool: 
-let G=real_form(p) in 
+set is_weakly_unitary (Param p) = bool:
+let G=real_form(p) in
 if is_equal_rank(G) then is_weakly_unitary(c_form_irreducible(p)) else is_weakly_unitary(c_form_irreducible_delta(p)) fi
 
 {  "big" versions: see extParamPol.at }
