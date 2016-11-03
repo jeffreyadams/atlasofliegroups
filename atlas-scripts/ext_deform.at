@@ -240,7 +240,6 @@ set recursive_deform (Param p, mat delta) = ParamPol:
         let (p0,flipped) = scale_extended(p,delta,0)
         in if flipped then s*sc else sc fi * finalize_extended(p0,delta)
       in
-{      let ()=prints("acc=",acc) in}
       for factor in reducibility_points(p)
       ~ { direction of deformation is down, towards 0; this is not essential }
       do let (pf,flipped)=scale_extended(p,delta,factor)

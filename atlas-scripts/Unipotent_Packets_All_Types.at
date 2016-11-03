@@ -364,8 +364,8 @@ then G=real_form(B)
 then ()=prints("There are", " ", #U ," ", " real forms (and hence Unipotent packets) of", " ", P, " ","in this block")
 then ()=prints("The packets are")
 in for i:#U do prints("Packet" ," ", i);
-{print_stable(U[i]);
-print_stable(U[i]##all_missing);}
+print_stable(U[i]);
+print_stable(U[i]##all_missing);
 for v in U[i] do prints(v, ",", "The LKT is", " ", highest_weights(LKT(v), good_KGB_C(G)[0]))od od;
 
 if Unipotent_Algo_test_B(B,P) then prints("This is the complete set of Unipotent representations in this block")
