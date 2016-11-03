@@ -184,7 +184,8 @@ set recursive_deform (Param p, mat delta, int type_p) = ExtParamPol:
 {     let ()=prints("at_nu0 (A):", at_nu0) in}
       for factor in reducibility_points(p) ~do
       acc+:= deform(p*factor,delta, type) od;
-      for (k,q,type) in %acc do at_nu0+:=full_def(sc*k,q,type) od;{prints("at_nu0 is now: ");display(at_nu0);}at_nu0
+      for (k,q,type) in %acc do at_nu0+:=full_def(sc*k,q,type) od
+    ; {prints("at_nu0 is now: ");display(at_nu0);} at_nu0
     end
    else
   rec_fun full_def (Split sc,Param p, int type) ExtParamPol:
@@ -307,11 +308,11 @@ let (plus,minus,)=c_form_irreducible_big(p,delta,1) in  convert_cform_hermitian(
 set is_unitary_big (Param p) = bool: is_unitary(hermitian_form_irreducible_big(p))
 
 set print_is_unitary_big(Param p)=void:
-let P=hermitian_form_irreducible_big(p) in 
+let P=hermitian_form_irreducible_big(p) in
 if is_unitary(P) then prints("Unitary") else
-let (real,nonreal,mixed)=purity(P) in 
+let (real,nonreal,mixed)=purity(P) in
 prints("Non-Unitary",new_line, real, " real terms", new_line, nonreal," nonreal terms", new_line, mixed, " mixed terms") fi
 
 { compute Hermitian form on p, and report if it is unitary }
-set is_weakly_unitary_big (Param p) = bool: 
+set is_weakly_unitary_big (Param p) = bool:
 is_weakly_unitary(hermitian_form_irreducible_big(p))
