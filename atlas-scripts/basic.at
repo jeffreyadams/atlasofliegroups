@@ -1074,6 +1074,18 @@ set is_descent ((vec,Param) ap) = bool: status(ap)<4
 set lookup (Param p, [Param] block) = int:
   let i=#block-1 in while >=i and block[i]!=p do i-:=1 od; i
 
+{ (moved from hermitian.at) orientation_number_term(orientation_nr(p),q) =
+  s^{[\ell_0(p)-\ell_0(q)]/2} which should be defined and gives 1 or s
+}
+set orientation_nr_term = (int,Param->Split):
+  let err()=
+    error("computing orientation number for odd difference of lengths")
+  in (int ori_nr_p,Param q) Split:
+  case (ori_nr_p-orientation_nr(q))%4 in 1, err(), s, err() esac
+
+
+
+
 
 {			Extended blocks					}
 
@@ -1185,6 +1197,21 @@ set separate_by_infinitesimal_character (ParamPol P) = [(ratvec,ParamPol)]:
     od
   ; if not inserted then M #:= (gamma,ParamPol: p) fi
   in for c@p in P do insert(c,p) od; M
+
+{\sum w_ip_i is pure if all w_i are real or all w_i are non-real
+ (stronger than all w_i are pure)}
+set is_pure(ParamPol P)=bool:
+let coeffs = for c@q in P do c od 
+in =for c in coeffs do +c od  or  =for c in coeffs do ^c od { all re or all im }
+
+{report number of real, non-real, and mixed terms}
+set purity(ParamPol P)=(int,int,int):
+let (real,nonreal,mixed)=(0,0,0) in
+let coeffs=for c@q in P do c od in 
+for c in coeffs do let (a,b)=%c in 
+ if a=0 then nonreal+:=1 
+ elif b=0 then real+:=1 
+ else mixed+:=1 fi od ;(real,nonreal,mixed)
 
 {				Miscellaneous				}
 

@@ -1,9 +1,12 @@
+{this file is old and due to be modified, November 2016}
+
 <groups.at
 <hermitian.at
 <unitary.at
 <nilpotent.at
 <lietypes.at
 <representations.at
+
 
 { test list [(Param p,bool answer)],
   test p for unitarity and compare result with answer
@@ -111,3 +114,21 @@ set test8()= bool:
 { trivial of F4 takes up to two hours }
 set test9()=bool:
   prints("Testing trivial of F4"); is_unitary(trivial(split_form(F4)))
+
+set test_complex_spherical_unipotent_C(int n)=
+let GR=Sp(2*n,R) then
+lambdas=nilpotent_lambdas(GR) then
+G=Sp(2*n,C) then 
+t=trivial(G) in
+for lambda in lambdas do 
+ let p=parameter(x(t), rho(G), lambda##lambda) in 
+ prints(new_line, p);print_is_unitary(p) od;()
+
+set test_complex_spherical_unipotent_B(int n)=
+let GR=SO(n+1,n) then
+G=complexification(GR)  then
+lambdas=nilpotent_lambdas(GR) then
+t=trivial(G) in
+for lambda in lambdas do 
+ let p=parameter(x(t), rho(G), lambda##lambda) in 
+ prints(new_line, p);print_is_unitary(p) od;()

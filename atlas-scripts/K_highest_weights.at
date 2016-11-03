@@ -1,6 +1,6 @@
 {! Functions involving K-types (final tempered limit parameters) and K-highest weights.
    The main reference is Vogan, "Branching to a Maximal Compact Subgroup" [KHatHowe].
-   See also the notes on "K-types in atlas".
+   See also the notes on "K-types in atlas" in dropbox.
 
    The main functions are:
 
