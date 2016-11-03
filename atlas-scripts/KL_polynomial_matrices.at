@@ -51,10 +51,10 @@ set cook_KL_block_alt ([Param] B,int entry_elem
   Q(1) is the multiplicity of an irreducible module in a standard module
 }
 
-set eval(poly_mat M,int j)=mat:
+set eval(poly_mat M,int k)=mat:
 let (r,c)=(#M,#(M[0]))  then
 rv=null(r,c) in
-for i:r do for j:c do rv[i,j]:=eval(M[i][j], -1)  od od ;rv
+for i:r do for j:c do rv[i,j]:=eval(M[i][j], k)  od od ;rv
 
 set permutation ([Param] B1, [Param] B2) =([int],bool):
 let perm=for i:#B2 do find(B2,B1[i]) od in (perm,all(for i:#perm do i !=-1 od))
