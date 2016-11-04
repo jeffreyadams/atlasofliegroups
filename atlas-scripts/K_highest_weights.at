@@ -28,7 +28,7 @@ iii.) Apply ii) to all terms of finalize(p*0).
 
    (x_K,mu) -> {tau=(x,lambda)} multivalued; find $\theta$-stable data
    (Q=LU,p_L=(x_L,lambda_L,0)) for one K-type tau first, then
-   compute all (L-spherical) $(L\cap K)-types p_L'=(x_L,lambda_L')
+   compute all (L-spherical) $(L\cap K)$-types p_L'=(x_L,lambda_L')
    with the same infinitesimal character. There will be
    |R(K,mu)| of them.
 
@@ -42,7 +42,7 @@ Algorithm:
    then the simple roots contributing to difference between xi and
    mu_0 determine the $\theta$-stable parabolic Q=LU that is
    part of the $\theta$-stable data for tau=(x,lambda). The parameter for
-   (relatively split) L is obtained from xi by a rho-shift.
+   (relatively split) L is obtained from xi by a $\rho$-shift.
 !}
 
 <W_K.at
