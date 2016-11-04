@@ -189,8 +189,10 @@ set gcd ([int] v)= int:
 set * (int c,vec v) = vec: v*c
 
 { sum, product of entries }
-set sum (vec v)= (let one=1 in for x in v do one od) * v
-set product (vec v)= let s=1 in for e in v do s*:=e od; s
+set sum (vec v) = int: for x in v do 1 od * v { use scalar product for speed }
+set product (vec v) = int: let s=1 in for e in v do s*:=e od; s
+
+set half (int n) = int: let (q,r)=n\%2 in assert(=r,"Inexact halving"); q
 
 set reverse (vec v)= vec: v~[:]
 set lower (int k,vec v)= vec: v[:k]
@@ -451,16 +453,19 @@ set ^ =   s_part@Split
 
 set s_to_1 (Split x) = int: +%x        { let (a,b)=%x in a+b }
 set s_to_minus_1 (Split x) = int: -%x  { let (a,b)=%x in a-b }
+set times_s (Split x) = let (a,b)=%x in Split: (b,a)
 
 set split_as_int (Split x) = int:
   let (r,y)=%x in assert(=y,"split is not an integer"); r
 set \% (Split x, int n) = (Split,Split):
   let (a,b)=%x then (qa,rq)=a\%n, (qb,rb)=b\%n in ((qa,qb),(rq,rb))
 { divide Split by integer, quotient of \% but requiring rest to be zero }
-set divide_by(Split w,int n)=let (q,r)=w\%n in assert(=r,"Inexact division");q
+set half (Split w) = Split: let (q,r)=w\%2 in assert(=r,"Inexact halving"); q
+set divide_by (int n,Split w) = Split:
+  let (q,r)=w\%n in assert(=r,"Inexact division"); q
 
 { a Split coefficient is pure if it has at most one nonzero component }
-set is_pure(Split w)=bool: =*%w { test if product of both components is zero }
+set is_pure (Split w)=bool: =*%w { test if product of both components is zero }
 
 { nicer display of Splits }
 set split_format (Split w) = string:
@@ -749,8 +754,15 @@ set compact_rank (CartanClass cc) = int:
 set split_rank (CartanClass cc) = int:
   let ((,C,s),,,) = Cartan_info(cc) in C+s
 
-set compact_rank (InnerClass G) = int: compact_rank(fundamental_Cartan(G))
+set compact_rank (InnerClass ic) = int: compact_rank(fundamental_Cartan(ic))
 set split_rank (RealForm G)     = int: split_rank(most_split_Cartan(G))
+
+set is_equal_rank (InnerClass ic) = bool: { whether distinguished_involution=1 }
+  =split_rank(fundamental_Cartan(ic))
+{ implicitly is_equal_rank (RealForm G) = bool: is_equal_rank(InnerClass:G) }
+
+set is_split (RealForm G) = bool: { whether most split Cartan has theta = -1 }
+  =compact_rank(most_split_Cartan(G))
 
 { equality of Cartan classes }
 set = (CartanClass H,CartanClass J) = bool:
@@ -1158,9 +1170,11 @@ set - (ParamPol a, (Split,Param) (c,p)) = ParamPol: a+(-c,p)
 { deform a whole ParamPol, by deforming all individual terms }
 set * (ParamPol P, rat f) = ParamPol: 0*P + for c@q in P do (c,q*f) od
 
+set half (ParamPol P) = ParamPol:
+  0*P+ for c@t in P do (half(c),t) od
 { inverse of scalar multiplication *@(int,ParamPol) }
 set divide_by (int n, ParamPol P) = ParamPol:
-  0*P+ for c@t in P do let (q,r)=c\%n in assert(=r,"Inexact division");(q,t) od
+  0*P+ for c@t in P do (divide_by(n,c),t) od
 
 { simulate coercion (KGBElt->RealForm) in some cases }
 set root_datum (ParamPol P) = RootDatum: real_form(P)

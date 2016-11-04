@@ -1,5 +1,4 @@
 <basic.at
-<misc.at { for split_rank@RealForm }
 <lattice.at { for (co)restrict_action }
 <torus.at { for torus }
 
@@ -108,12 +107,5 @@ set adjoint (RealForm G) = RealForm:
 
 { ----------------tests for classes of groups---------------- }
 
-set is_equal_rank (InnerClass G) = bool: { whether distinguished_involution=1 }
-  =split_rank(fundamental_Cartan(G))
-{ implicitly is_equal_rank (RealForm G) = bool: is_equal_rank(InnerClass:G) }
-
-set is_split (RealForm G) = bool: { whether most split Cartan has theta = -1 }
-  =compact_rank(most_split_Cartan(G))
-
 set is_relatively_split (RealForm G) = bool: { whether is_split(derived(G))) }
-  compact_rank(most_split_Cartan(G))=compact_rank(radical(G))
+  compact_rank(most_split_Cartan(G))=compact_rank(radical(InnerClass:G))

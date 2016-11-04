@@ -10,30 +10,34 @@
 }
 set c_form_std (Param p) = ParamPol:
   let G=real_form(p) in
-  if (is_equal_rank(G))
+  if G.is_equal_rank
   then full_deform(p) {built-in is faster in equal rank case}
   else full_deform(p,G.distinguished_involution)
   fi
 
-set c_form_std(Param p, mat delta)=full_deform(p,delta)
+{ with explicit |delta|, always call |full_deform@(Param,mat)| }
+set c_form_std = (Param,mat->ParamPol): full_deform@(Param,mat)
 
 {    c_form on irreducible representations   }
 
-{ this is the correct formula for the c-form on G in all cases
-  if G is not equal rank we also need the c-form on the extended group
-  in order to compute the Hermitian form on G, or equivalently
-  c_form_irreducible_twisted (formerly known as c_form_irreducible_delta)
+{ a ParamPol of standardrepks giving the c-invariant form on irreducible(p)
+
+  this is the correct formula for the c-form on G in all cases
+  (it is only to compute the Hermitian form on G that we shall also need,
+  when G is not equal rank) the c-form on the extended group)
 }
 set c_form_irreducible (Param p) = ParamPol:
 ( let ori_nr_p = orientation_nr(p), P = null_module(real_form(p)) in
-  for ev@q in KL_sum_at_s(p)
-  do P +:= ev*orientation_nr_term(ori_nr_p,q)*full_deform(q) od
+  for c@q in KL_sum_at_s(p)
+  do P +:= c*orientation_nr_term(ori_nr_p,q)*full_deform(q) od
 ; P
 )
 
-{ c_form_irreducible_long(y) returns a ParamPol of standardrepks
-  giving the c-invariant form on irreducible(y)
-  formula used: when
+{ same as | c_form_irreducible|, but also return a second component that
+  exposes the linear combination of contributions from standard representations
+  that produced the result (parameter, coefficient, c_form on ths standard)
+
+  formulas: write
     J(y)  =sum_x               (-1)^{ell(x)-ell(y)}P(x,y)(q=1)I(x)
   then
     J(y)_c=sum_x (-1)^{on(x,y)}(-1)^{ell(x)-ell(y)}P(x,y)(q=s)I(x)_c
@@ -46,11 +50,11 @@ set c_form_irreducible (Param p) = ParamPol:
 }
 set c_form_irreducible_long (Param p) = (ParamPol,[(Param,Split,ParamPol)]):
 ( let P = null_module(real_form(p)), ori_nr_p = orientation_nr(p)
-  then standards =
-    for ev@q in KL_sum_at_s(p)
+  then standards = { list contributions; meanwhile compute |P| }
+    for c@q in KL_sum_at_s(p)
     do
       let form_on_standard = c_form_std(q)
-      ,   factor           = ev*orientation_nr_term(ori_nr_p,q)
+      ,   factor           = c*orientation_nr_term(ori_nr_p,q)
       in P +:= factor*form_on_standard
     ; (q,factor,form_on_standard)
     od
@@ -61,8 +65,8 @@ set c_form_irreducible_long (Param p) = (ParamPol,[(Param,Split,ParamPol)]):
 
 { The following function implements algorithm from Vogan in email 9/22/16:
   with change: start with twisted polynomial, not ordinary
-  * for each term delta-fixed term q add full_deform(q,delta),
-  * for each pair {q,delta(q)} add q*0.
+  * for each delta-fixed term q add full_deform(q,delta),
+  * for each pair {q,delta(q)} add q*0 (deformation to nu=0 of q).
   For second kind it it convenient to add q*0 and delta(q)*0 separately
   and at the end divide the sum of such contributions by 2.
   It is not clear at the moment what the mathematical meaning of the expression
@@ -77,19 +81,19 @@ set c_form_irreducible_twisted (Param p,mat delta) = ParamPol:
   then fixed_terms = null_module(G), unfixed_terms = null_module(G)
   , P=KL_sum_at_s(p), Ptw=twisted_KL_sum_at_s(p)
   in
-  for ev@q in P
+  for c@q in P
   do
     if is_fixed(delta,q)
     then
-      let new_ev=divide_by((P[q]+Ptw[q])+s*(P[q]-Ptw[q]),2)
-      then c=new_ev*orientation_nr_term(ori_nr_p,q)
+      let new_c=half((c+Ptw[q])+(c-Ptw[q]).times_s)
+      then c=new_c*orientation_nr_term(ori_nr_p,q)
       in fixed_terms +:= c*full_deform(q,delta)
     else
-      let c=ev*orientation_nr_term(ori_nr_p,q)
+      let c=c*orientation_nr_term(ori_nr_p,q)
       in unfixed_terms +:= c*one_plus_s*(q*0)
     fi
   od
-; fixed_terms + divide_by(2,unfixed_terms)
+; fixed_terms + half(unfixed_terms)
 )
 
 { if delta isn't given assume it is the default }
@@ -104,49 +108,48 @@ set c_form_irreducible_delta = (Param->ParamPol):
 set c_form_irreducible_twisted_long (Param p,mat delta) =
     (ParamPol,[(string,Split,Param,ParamPol)],ParamPol):
 ( let G=p.real_form
-  then ori_nr_p = orientation_nr(p)
+  , ori_nr_p = orientation_nr(p)
   then fixed_terms = null_module(G), unfixed_terms = null_module(G)
-  then terms=[]
-  then Ptw=twisted_KL_sum_at_s(p)
-  then P=KL_sum_at_s(p)
+  , terms=[(string,Split,Param,ParamPol)]: []
+  , P=KL_sum_at_s(p), Ptw=twisted_KL_sum_at_s(p)
   then character_formula=P.s_to_1
   in
-  for ev@q in P
+  for c@q in P
   do
     if is_fixed(delta,q)
     then
-      let new_ev=divide_by((P[q]+Ptw[q])+s*(P[q]-Ptw[q]),2)
-      then contrib=new_ev*orientation_nr_term(ori_nr_p,q)*full_deform(q,delta)
+      let new_c=half((P[q]+Ptw[q])+(P[q]-Ptw[q]).times_s)
+      then contrib=new_c*orientation_nr_term(ori_nr_p,q)*full_deform(q,delta)
       in
-        (fixed_terms+:=contrib, terms#:=("fixed",ev,q,contrib))
+        (fixed_terms+:=contrib, terms#:=("fixed",c,q,contrib))
     else
-      let contrib=ev*orientation_nr_term(ori_nr_p,q)*one_plus_s*(q*0)
+      let contrib=c*orientation_nr_term(ori_nr_p,q)*one_plus_s*(q*0)
       in
-        (unfixed_terms+:=contrib, terms#:=("unfixed",ev,q,contrib))
+        (unfixed_terms+:=contrib, terms#:=("unfixed",c,q,contrib))
     fi
   od
-; (character_formula,terms,fixed_terms + divide_by(2,unfixed_terms))
+; (character_formula,terms,fixed_terms + half(unfixed_terms))
 )
 
 { if delta isn't given assume it is the default }
 set c_form_irreducible_twisted_long (Param p) =
-   (ParamPol,[(string,Split,Param,ParamPol)],ParamPol):
+    (ParamPol,[(string,Split,Param,ParamPol)],ParamPol):
   c_form_irreducible_twisted_long(p,real_form(p).distinguished_involution)
 
 { for backwards compability: }
-set c_form_irreducible_delta_long (Param p) =
-    (ParamPol,[(string,Split,Param,ParamPol)],ParamPol):
-c_form_irreducible_twisted_long(p)
+set c_form_irreducible_delta_long =
+    (Param->ParamPol,[(string,Split,Param,ParamPol)],ParamPol):
+  c_form_irreducible_twisted_long@Param
 
 { print versions }
 set print_c_form_irreducible_twisted_long (Param p) = void:
-  let (character_formula,terms,answer)=c_form_irreducible_twisted_long(p)
-  then ()=prints(new_line,"Character Formula:",character_formula,new_line)
-  then ()=for (type,coeff,p,P) in terms
-          do prints("coeff*standard module:", coeff,"*",p,":",new_line
-	     	   ,"fully deformed (", type, "):", P, new_line)
-          od
-  then ()=prints("final result:", answer) in ()
+  let (character_formula,terms,answer)=c_form_irreducible_twisted_long(p) in
+  prints(new_line,"Character Formula:",character_formula,new_line);
+  for (type,coeff,p,P) in terms
+  do prints("coeff*standard module:", coeff,"*",p,":",new_line
+     	   ,"fully deformed (", type, "):", P, new_line)
+  od;
+  prints("final result:", answer)
 
 set print_c_form_irreducible_twisted_long (Param p) = void:
 ( let (,b,f) = c_form_irreducible_twisted_long(p) in
@@ -157,19 +160,19 @@ set print_c_form_irreducible_twisted_long (Param p) = void:
   ; prints("form on standard: ")
   ; pol_format(Q)
   od
-; prints(""); prints("c-form on irreducible module:")
+; prints(new_line,"c-form on irreducible module:")
 ; prints(p, " at ",infinitesimal_character(p)); pol_format(f)
 )
 
 { analyse }
 
 { print only terms with "mixed" coefficient (a+bs), i.e., both a,b\ne 0 }
-set mixed (Split w)= bool: let (a,b)=%w in a*b!=0
+set mixed (Split w)= bool: not w.is_pure
 set analyse (ParamPol P) = void:
 ( prints("Mixed terms:")
 ; for w@p in P
   do
-    if mixed(w)
+    if w.mixed
     then prints("(",split_format(w),")*",p,", ",infinitesimal_character(p))
     fi
   od
@@ -195,8 +198,7 @@ set lambda_plus_rho_res_T (KGBElt x,ratvec lambda) = ratvec:
 { mu(p) is the value of the lowest K-type of p, evaluated at x(p) }
 { formula: < (1+theta_x)(lambda+rho)/2 , torus_factor(x)+rho^\vee > }
 set mu(Param p) = rat:
-  lambda_plus_rho_res_T(x(p),lambda(p))*
-  (torus_factor(x(p))+rho_check(real_form(p)))
+  lambda_plus_rho_res_T(p.x,p.lambda) * (p.x.torus_factor+p.real_form.rho_check)
 
 set convert_cform_hermitian (ParamPol P)= ParamPol:
   if #P=0 then P { since we cannot select a term for a null polynomial }
@@ -222,32 +224,27 @@ set convert_cform_hermitian (ParamPol P)= ParamPol:
   note every real-simple root is simple
 }
 set number_real_orthogonal_pairs (KGBElt x, mat delta) = int:
-  let rd=root_datum(x)
-  then theta=involution(x)
-  in
+  let rd=x.root_datum, theta=x.involution in
   assert(delta*theta=theta*delta
         ,"Cartan involution does not commute with delta");
   assert(no_Cminus_roots(x)
         , "Not defined unless all complex roots are type C+");
-  let real_roots=real_posroots(rd,theta)
-  then pairs=[]
-  in
-  for alpha in real_roots
-  do
-    let pairing=delta*alpha*coroot(rd,alpha) in
+  let real_posroots=real_posroots(rd,theta) in
+  for alpha in real_posroots
+  do int:
+    let pairing=coroot(rd,alpha)*delta*alpha in
     assert(pairing=0 or pairing=-1 or pairing=2
           ,"invalid pairing of root and coroot");
-    if pairing=0 then pairs#:=alpha fi
-  od; rat_as_int(#pairs/2)
+    #=pairing { count zero pairings }
+  od.sum.half
 
 { implementing formula from Vogan in email 10/25/16, subject line mu(p) }
-set mu(Param p,mat delta) = rat:
-  assert(nu(p)=null(rank(root_datum(p))),"nu(p) !=0");
-  let (ic,delta,gamma,lambda,theta,g,l,omega,tau,t)=E(delta,p)
-  then mu_unextended=mu(p)
-  then tau_term=(tau*(^delta-1)*l)/4
-  then dim_term=dim_u_cap_p(x(p))
-  then scalar_term=number_real_orthogonal_pairs(x(p),delta)
+set mu (Param p,mat delta) = rat:
+  assert(=nu(p),"nu(p) !=0");
+  let E=E(delta,p), mu_unextended=mu(p), x=x(p)
+  then tau_term = E.l*(delta-1)*E.tau/4
+  ,    dim_term = dim_u_cap_p(x)
+  , scalar_term = number_real_orthogonal_pairs(x,delta)
   in
   prints("mu_unextended=", mu_unextended,new_line
         ,"tau_term=",tau_term,new_line
@@ -257,11 +254,11 @@ set mu(Param p,mat delta) = rat:
 
 {remaining terms copied over from corresponding versions in hermitian.at}
 set convert_cform_hermitian (ParamPol P,mat delta)= ParamPol:
-  if #P=0 then P { since we cannot select a term for a null polynomial }
+  if =#P then P { since we cannot select a term for a null polynomial }
   else
-    let a_mu = mu(first_param(P),delta)
-    in null_module(real_form(P)) +
-      for w@p in P do (s^(rat_as_int(mu(p,delta)-a_mu))*w,p) od
+    let a_mu = mu(P.first_param,delta) in
+    P.real_form.null_module +
+    for w@p in P do (s^rat_as_int(mu(p,delta)-a_mu)*w,p) od
   fi
 
 
@@ -281,7 +278,7 @@ set print_hermitian_form_irreducible (Param p,mat delta) = void:
 { nice output of Hermitian forms on list of parameters }
 set print_hermitian_form_irreducible ([Param] P,mat delta) = void:
   for p in P
-  do prints("");prints("Hermitian form on irreducible: ",p)
+  do prints(new_line,"Hermitian form on irreducible: ",p)
   ; print_hermitian_form_irreducible(p,delta)
   od
 
@@ -292,7 +289,7 @@ set print_hermitian_form_irreducible (Param p) = void:
 { nice output of Hermitian forms on list of parameters }
 set print_hermitian_form_irreducible ([Param] P) = void:
   for p in P
-  do prints("");prints("Hermitian form on irreducible: ",p)
+  do prints(new_line,"Hermitian form on irreducible: ",p)
   ; print_hermitian_form_irreducible(p)
   od
 
@@ -303,14 +300,14 @@ set print_hermitian_form_irreducible ([Param] P) = void:
   if it is unitary: <=> every Split coefficient is real,
   or every Split coefficient is nonreal
 }
-set is_unitary (ParamPol P)= bool: is_pure(P)  { from basic.at }
+set is_unitary = (ParamPol->bool): is_pure@ParamPol  { from basic.at }
 
 { compute Hermitian form on p, and report if it is unitary }
-set is_unitary (Param p) = bool: is_unitary(hermitian_form_irreducible(p))
+set is_unitary (Param p) = bool: hermitian_form_irreducible(p).is_unitary
 
 set print_is_unitary (Param p) = void:
   let P=hermitian_form_irreducible(p) in
-  if is_unitary(P)
+  if P.is_unitary
   then prints("Unitary")
   else let (real,nonreal,mixed)=purity(P) in
     prints("Non-Unitary",new_line
@@ -327,14 +324,14 @@ set is_weakly_unitary (Param p) = bool:
   let G=real_form(p) in
   if is_equal_rank(G)
   then is_weakly_unitary(c_form_irreducible(p))
-  else is_weakly_unitary(c_form_irreducible_delta(p))
+  else is_weakly_unitary(c_form_irreducible_twisted(p))
   fi
 
 { for "big" versions: see extParamPol.at }
 
 set test_line (Param p) = void:
 ( let (x,lambda_minus_rho,gamma) = %p
-  then points=reducibility_points(p)
+  , points=reducibility_points(p)
   ,   ipoints=integrality_points(root_datum(p),2*nu(p))
   in prints("testing line through ", p)
 ; prints("reducibility points: ",points)
@@ -358,7 +355,7 @@ set test_line (Param p) = void:
 
 set weak_test (Param p) = bool:
   let formula=c_form_irreducible_delta(p)
-  then bad=null_module(real_form(p))
+  , bad=null_module(real_form(p))
   in
   for w@p in formula do if not is_pure(w) then bad+:=w*p fi od;
   if #bad=0 then prints("number of terms: ", #formula); true
@@ -367,7 +364,7 @@ set weak_test (Param p) = bool:
 
 set strong_test (Param p,mat delta)=bool:
   let formula=hermitian_form_irreducible(p)
-  then bad=null_module(real_form(p))
+  , bad=null_module(real_form(p))
   in
   for w@p in formula do if not is_pure(w) then bad+:=w*p fi od;
   if #bad=0 then prints("number of terms: ", #formula);true
