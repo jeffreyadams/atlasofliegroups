@@ -17,6 +17,7 @@
 
   Data: ([int],KGBElt)=(S,x) where S lists the indices of a subset of the
   simple roots of root_datum(x)
+
   Equivalence: (S,x)=(S',y) if these correspond to the same K orbit on $G/P_S$,
   which means:
    real_form(x)=real_form(y), S=S'  (i.e. same complex parabolic), and
@@ -278,14 +279,14 @@ set parabolic (ratvec lambda,KGBElt x) = Parabolic:
 {. Levi factor of parabolic defined by weight lambda. .}
 set Levi (ratvec lambda,KGBElt x) = RealForm: Levi(parabolic(lambda,x))
 
-{. Positive coroots in nilradical of P defined by lambda (if L theta-stable). .}
+{. Positive coroots in nilradical of P defined by weight lambda (if L theta-stable). .}
 set nilrad (ratvec lambda,KGBElt x) = mat: nilrad(parabolic(lambda,x))
 
-{. Positive roots in nilradical of P defined by lambda (if L theta-stable). .}
+{. Positive roots in nilradical of P defined by weight lambda (if L theta-stable). .}
 set nilrad_roots (ratvec lambda,KGBElt x) = mat:
   nilrad_roots(parabolic(lambda,x))
 
-{. Half sum of positive roots in nilradical of P defined by lambda (if L
+{. Half sum of positive roots in nilradical of P defined by weight lambda (if L
 theta-stable). .}
 set rho_u (ratvec lambda,KGBElt x) = ratvec: sum(nilrad_roots(lambda,x)) / 2
 
@@ -310,10 +311,10 @@ set nilrad_alt (ratvec H,KGBElt x) = mat: nilrad(parabolic_alt(H,x))
 set nilrad_roots_alt (ratvec H,KGBElt x) = mat:
   nilrad_roots(parabolic_alt(H,x))
 
-{. Half sum of roots in nilradical of P defined by H (if L theta-stable). .}
+{. Half sum of roots in nilradical of P defined by coweight H (if L theta-stable). .}
 set rho_u_alt (ratvec H,KGBElt x)= ratvec: sum(nilrad_roots_alt(H,x)) /2
 
-{. $\rho(L)$ for Levi of P defined by H (if L theta-stable). .}
+{. $\rho(L)$ for Levi of P defined by coweight H (if L theta-stable). .}
 set rho_Levi_alt (ratvec H,KGBElt x) = ratvec: rho(Levi_alt(H,x))
 
 
@@ -329,7 +330,7 @@ set real_parabolic (KGBElt x) = Parabolic:
 
 { ---------------------theta-stable split parabolics---------------- }
 
-{. Theta stable parabolic defined by x has Levi factor L=centralizer(T),
+{. Theta-stable parabolic defined by x has Levi factor L=centralizer(T),
   $\mathfrak u$=positive roots not in L;
   for this to be stable: no C- roots. .}
 set theta_stable_parabolic (KGBElt x) = Parabolic:
