@@ -53,7 +53,8 @@ set deform_unreduced (Param p, mat delta, int sign) = ExtParamPol:
   complete_index=find(complete_indices,(index,sign)) then
   nB=complete_index+1 then
   length=length(p) then
-  P_mat=principal_minor(calculate_big_P_signed_polynomials_at_minus_one(B,delta,index),nB) then
+{  P_mat=principal_minor(calculate_big_P_signed_polynomials_at_minus_one(B,delta,index),nB) then}
+  P_mat=principal_minor(big_KL_P_signed_polynomials_at_minus_one(B,delta),nB) then
   remainder=null(nB-1)#1,
   solution=null(nB),
   !opposite_parity=1-length%2, { opposite to that of |length(p)| }
@@ -316,3 +317,5 @@ prints("Non-Unitary",new_line, real, " real terms", new_line, nonreal," nonreal 
 { compute Hermitian form on p, and report if it is unitary }
 set is_weakly_unitary_big (Param p) = bool:
 is_weakly_unitary(hermitian_form_irreducible_big(p))
+
+set reduce(ExtParamPol (plus,minus,ind))=plus+s*minus
