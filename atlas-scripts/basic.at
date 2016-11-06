@@ -920,12 +920,12 @@ set noncompact_posroots (KGBElt x) = mat:
 set rho_ci (KGBElt x)  = ratvec: sum(compact_posroots(x))/2
 set rho_nci (KGBElt x) = ratvec: sum(noncompact_posroots(x))/2
 
-set is_imaginary (vec v,KGBElt x) = bool: is_imaginary(x)(v)
-set is_real (vec v,KGBElt x) =      bool: is_real(x)(v)
-set is_complex (vec v,KGBElt x) =   bool: is_complex(x)(v)
-set is_compact_imaginary (vec v,KGBElt x) = bool: is_compact_imaginary(x)(v)
+set is_imaginary (vec v,KGBElt x) = bool: v.(is_imaginary(x))
+set is_real (vec v,KGBElt x) =      bool: v.(is_real(x))
+set is_complex (vec v,KGBElt x) =   bool: v.(is_complex(x))
+set is_compact_imaginary (vec v,KGBElt x) = bool: v.(is_compact_imaginary(x))
 set is_noncompact_imaginary (vec v,KGBElt x) = bool:
-  is_noncompact_imaginary(x)(v)
+  v.(is_noncompact_imaginary(x))
 
 set print_KGB (KGBElt x) = void:
 ( prints(new_line,"Element is number ",#x, " in following KGB set")
@@ -1185,9 +1185,12 @@ set virtual (RealForm G, [Param] ps) = ParamPol:
 { DON'T define virtual ([Param] pp): cannot be correctly defined when #pp=0 }
 
 { nice output of ParamPol: split_format the coefficients }
-set pol_format (ParamPol P)= void:
+set pol_format (ParamPol P)= string:
+  ##
   for w@p in P
-  do prints("(",split_format(w),")*",p,", ",infinitesimal_character(p)) od
+  do to_string("(",w.split_format,")*",p
+              ,", ",p.infinitesimal_character,new_line)
+  od
 
 { find what should be unique infintesimal character shared by all terms }
 set infinitesimal_character(ParamPol P) = ratvec:
