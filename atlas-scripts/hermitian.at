@@ -90,9 +90,21 @@ set c_form_irreducible_twisted (Param p,mat delta) = ParamPol:
     else
       unfixed_terms +:= c0*orient_c*one_plus_s*(q*0)
     fi
- { ;prints()}
   od
 ; fixed_terms + half(unfixed_terms)
+)
+
+{ utility function, show starting formula in the c-form calculation }
+set c_form_irr_twisted_as_sum_of_standards (Param p, mat delta) = ParamPol:
+( let G=p.real_form, ori_nr_p = orientation_nr(p)
+  , Ptw=twisted_KL_sum_at_s(p), P=KL_sum_at_s(p)
+  in null_module(G) +
+  for c@q in P
+  do
+  ( if is_fixed(delta,q) then half((c+Ptw[q])+s*(c-Ptw[q])) else c fi
+    * orientation_nr_term(ori_nr_p,q)
+  , q)
+  od
 )
 
 { if delta isn't given assume it is the inner class involution }
@@ -244,7 +256,22 @@ set convert_cform_hermitian (ParamPol P,mat delta)= ParamPol:
 set hermitian_form_irreducible (Param p) = ParamPol:
   if is_equal_rank(real_form(p))
   then convert_cform_hermitian(c_form_irreducible(p))
-  else convert_cform_hermitian(c_form_irreducible_twisted(p))
+  else
+   {debugging output}
+   let cf=c_form_irreducible_twisted(p,real_form(p).distinguished_involution)  then
+   mu_0=mu(first_param(cf)) in
+   let ()=prints("mu_0=", mu_0) in
+   for c@p in cf do
+     let (ic,delta,gamma,lambda,theta,g,l,omega,tau,t)=E(real_form(p).distinguished_involution,p) then
+     lambda_rho_term=lambda*(g-l) then
+     tau_term=(tau*(^delta-1)*l)/2 then
+     dim_term=dim_u_cap_p(x(p)) then
+     scalar_term=number_real_orthogonal_pairs(x(p),delta)  then
+     new_term=2*rho_r(x(p))*(g-l) then
+     mu=lambda_rho_term+tau_term+dim_term+scalar_term+new_term in
+     prints(p, "    ", c , "     ", "  ", lambda_rho_term, "  ", tau_term, "     ", dim_term, "     ", scalar_term, "     ", new_term, "   ", mu, "  ", c*s^(rat_as_int(mu-mu_0))) od;
+   {end debugging output}
+     convert_cform_hermitian(c_form_irreducible_twisted(p))
   fi
 
 { nice output of hermitian_form_irreducible }
