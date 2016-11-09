@@ -90,7 +90,7 @@ set c_form_irreducible_twisted (Param p,mat delta) = ParamPol:
     else
       unfixed_terms +:= c0*orient_c*one_plus_s*(q*0)
     fi
-  ; prints()
+ { ;prints()}
   od
 ; fixed_terms + half(unfixed_terms)
 )
