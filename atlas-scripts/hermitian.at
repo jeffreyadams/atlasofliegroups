@@ -1,7 +1,7 @@
 <basic.at
 <ext_deform.at { for full_deform@(Param,mat) }
 <thetastable.at {for dim_u_cap_p}
-
+set hf_debug=true
 {    c_form on standard representations, correct in all cases   }
 
 { c_form_std:
@@ -198,13 +198,6 @@ set lambda_plus_rho_res_T (KGBElt x,ratvec lambda) = ratvec:
 set mu (Param p) = rat:
   (p.x.torus_factor+p.real_form.rho_check) * lambda_plus_rho_res_T(p.x,p.lambda)
 
-set convert_cform_hermitian (ParamPol P)= ParamPol:
-  if #P=0 then P { since we cannot select a term for a null polynomial }
-  else let a_mu = mu(P.first_param) in
-    null_module(P.real_form) +
-    for w@p in P do ( w*s^(mu(p)-a_mu).rat_as_int , p ) od
-  fi
-
 {  converting to Hermitian forms in unequal rank case  }
 
 { assumption: theta=involution(x) commutes with delta and x has no complex
@@ -234,17 +227,55 @@ set number_real_orthogonal_pairs (KGBElt x, mat delta) = int:
     #=pairing { count zero pairings }
   od.sum.half { compensate for each pair being counted twice }
 
+
+
+
 { formula that was stated in Vogan in email of Oct 25, 2016; subject: mu(p) }
 set mu (Param p,mat delta) = rat:
   assert(=nu(p),"nu(p)!=0");
-  let E=E(delta,p), x=x(p)
-  then terms = [rat]:
-  [ mu(p) { unextended mu, equals < p.x.torus_factor+rho^v , p.gamma+rho > }
-  , E.l*(delta-1)*E.tau/2
-  , dim_u_cap_p(x)
-  , number_real_orthogonal_pairs(x,delta)
-  ]
-  in sum(terms) { will be interpreted modulo 2/1 }
+  let (ic,delta,gamma,lambda,theta,g,l,omega,tau,t)=E(delta,p) then
+  lambda_rho_term=lambda*(g-l) then
+  tau_term=(tau*(^delta-1)*l)/2 then
+  dim_term=dim_u_cap_p(x(p)) then
+  scalar_term=number_real_orthogonal_pairs(x(p),delta)  then
+  new_term=2*rho_r(x(p))*(g-l) then 
+  mu=lambda_rho_term+tau_term+dim_term+scalar_term+new_term in mu
+ { will be interpreted modulo 2/1 }
+
+set print_mu(Param p)=void:
+     let (ic,delta,gamma,lambda,theta,g,l,omega,tau,t)=E(real_form(p).distinguished_involution,p) then
+     lambda_rho_term=lambda*(g-l) then
+     tau_term=(tau*(^delta-1)*l)/2 then
+     dim_term=dim_u_cap_p(x(p)) then
+     scalar_term=number_real_orthogonal_pairs(x(p),delta)  then
+     new_term=2*rho_r(x(p))*(g-l) then 
+     mu=lambda_rho_term+tau_term+dim_term+scalar_term+new_term in
+     prints(p, "    ", 1 , "     ", "  ", lambda_rho_term, "  ", tau_term, "     ", dim_term, "     ", scalar_term, "     ", new_term, "   ", mu)
+
+set print_mus(ParamPol P)=
+   let delta=real_form(P).distinguished_involution in
+   let   mu_0=mu(first_param(P),delta) in
+   let ()=prints("mu_0=", mu_0) in 
+   for c@p in P do 
+     let (ic,delta,gamma,lambda,theta,g,l,omega,tau,t)=E(real_form(p).distinguished_involution,p) then
+     lambda_rho_term=lambda*(g-l) then
+     tau_term=(tau*(^delta-1)*l)/2 then
+     dim_term=dim_u_cap_p(x(p)) then
+     scalar_term=number_real_orthogonal_pairs(x(p),delta)  then
+     new_term=2*rho_r(x(p))*(g-l) then 
+     mu=lambda_rho_term+tau_term+dim_term+scalar_term+new_term in
+     prints(p, "    ", c , "     ", "  ", lambda_rho_term, "  ", tau_term, "     ", dim_term, "     ", scalar_term, "     ", new_term, "   ", mu, "  ", c*s^(rat_as_int(mu-mu_0))) od;()
+
+
+set convert_cform_hermitian (ParamPol P)= ParamPol:
+  if #P=0 then P { since we cannot select a term for a null polynomial }
+  else let a_mu = mu(P.first_param,real_form(P).distinguished_involution) in
+    let ()=prints("a_mu=",a_mu) in
+    null_module(P.real_form) +
+    for w@p in P do ( w*s^(mu(p)-a_mu).rat_as_int , p ) od
+  fi
+
+
 
 {remaining terms copied over from corresponding versions in hermitian.at}
 set convert_cform_hermitian (ParamPol P,mat delta)= ParamPol:
@@ -263,21 +294,9 @@ set hermitian_form_irreducible (Param p) = ParamPol:
   if is_equal_rank(real_form(p))
   then convert_cform_hermitian(c_form_irreducible(p))
   else 
-   {debugging output}
-   let cf=c_form_irreducible_twisted(p,real_form(p).distinguished_involution)  then
-   mu_0=mu(first_param(cf)) in
-   let ()=prints("mu_0=", mu_0) in 
-   for c@p in cf do 
-     let (ic,delta,gamma,lambda,theta,g,l,omega,tau,t)=E(real_form(p).distinguished_involution,p) then
-     lambda_rho_term=lambda*(g-l) then
-     tau_term=(tau*(^delta-1)*l)/2 then
-     dim_term=dim_u_cap_p(x(p)) then
-     scalar_term=number_real_orthogonal_pairs(x(p),delta)  then
-     new_term=2*rho_r(x(p))*(g-l) then 
-     mu=lambda_rho_term+tau_term+dim_term+scalar_term+new_term in
-     prints(p, "    ", c , "     ", "  ", lambda_rho_term, "  ", tau_term, "     ", dim_term, "     ", scalar_term, "     ", new_term, "   ", mu, "  ", c*s^(rat_as_int(mu-mu_0))) od;
-   {end debugging output}
-     convert_cform_hermitian(c_form_irreducible_twisted(p))
+     let cf=c_form_irreducible_twisted(p) in 
+     if hf_debug=true then prints("cf=", cf);print_mus(cf) fi;
+     convert_cform_hermitian(cf)
   fi
 
 { nice output of hermitian_form_irreducible }
