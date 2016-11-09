@@ -31,6 +31,7 @@ p_dom=parameter(x,$w^{-1}\cdot$lambda,nu) and return coherent continuation actio
 (wrt imaginary roots) of $w$ on p_dom. !}
 
 <basic.at
+<misc.at { for |simple_imaginary_subsystem| }
 <parabolics.at
 <kl.at { for character_formula }
 <coherent.at

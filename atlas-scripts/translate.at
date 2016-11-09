@@ -124,7 +124,7 @@ set make_maximally_singular (Param p)= Param: Psi(p,pseudo_tau_complement(p))
   prints(""); prints("original parameter: ",p)
 ; prints("translated parameter: ",q,", ", infinitesimal_character(q))
 ; prints("translated irreducible is unitary: ",is_unitary(Q))
-; if translate_debug then pol_format(Q) fi
+; if translate_debug then prints(Q.pol_format) fi
 )
 
 { test_even_unipotent of a list of parameters }
