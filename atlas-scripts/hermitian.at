@@ -263,25 +263,23 @@ set print_mus(ParamPol P)=
      prints(p, "    ", c , "     ", "  ", lambda_rho_term, "  ", tau_term, "     ", dim_term, "     ", scalar_term, "     ", new_term, "   ", mu, "  ", c*s^(rat_as_int(mu-mu_0))) od;()
 
 
-set convert_cform_hermitian (ParamPol P)= ParamPol:
-  if #P=0 then P { since we cannot select a term for a null polynomial }
-  else let a_mu = mu(P.first_param,real_form(P).distinguished_involution) in
-    let ()=prints("a_mu=",a_mu) in
-    null_module(P.real_form) +
-    for w@p in P do ( w*s^(mu(p)-a_mu).rat_as_int , p ) od
-  fi
 
-
-
-{remaining terms copied over from corresponding versions in hermitian.at}
 set convert_cform_hermitian (ParamPol P,mat delta)= ParamPol:
   if =#P then P { since we cannot select a term for a null polynomial }
   else
     let a_mu = mu(P.first_param,delta) in
     P.real_form.null_module +
-    for w@p in P do (w*s^(mu(p,delta)-a_mu).rat_as_int,p) od
-  fi
+    for w@p in P do
+{    let ()=prints("w=", w, " p=", p, " mu(p,delta)=", mu(p,delta),
+                  " a_mu=", a_mu, "power: ",(mu(p,delta)-a_mu).rat_as_int,
+                  " ", w*s^(mu(p,delta)-a_mu).rat_as_int) in}
+    (w*s^(mu(p,delta)-a_mu).rat_as_int,p) od
+    fi
 
+
+
+
+set convert_cform_hermitian (ParamPol P)= ParamPol:convert_cform_hermitian(P,P.first_param.real_form.distinguished_involution)
 
 {   Hermitian forms on irreducibles     }
 
