@@ -50,9 +50,9 @@ set c_form_irreducible (Param p) = ParamPol:
 }
 set c_form_irreducible_long (Param p) = (ParamPol,[(Param,Split,ParamPol)],ParamPol):
 ( let P = null_module(real_form(p)), ori_nr_p = orientation_nr(p)
-  then formula=KL_sum_at_s(p) 
+  then formula=KL_sum_at_s(p)
   then standards = { list contributions; meanwhile compute |P| }
-    for c@q in formula 
+    for c@q in formula
     do
       let form_on_standard = c_form_std(q)
       ,   factor           = c*orientation_nr_term(ori_nr_p,q)
@@ -412,3 +412,4 @@ set strong_test (Param p,mat delta)=bool:
   else prints("number of terms: ", #formula,new_line,"bad terms:", bad );false
   fi
 
+set init(RealForm G)=(RealForm,mat,Param):(G, G.distinguished_involution, trivial(G))

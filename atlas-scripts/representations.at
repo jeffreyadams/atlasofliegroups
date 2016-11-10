@@ -1,7 +1,7 @@
 <misc.at { for generate_all_subsets }
 <group_operations.at { for is_split and such }
 <cross_W_orbit.at
-
+<nilpotent.at
 
 { some common representations }
 
@@ -49,6 +49,28 @@ set minimal_spherical_principal_series(RealForm G,ratvec nu)=Param:
   minimal_principal_series(G,rho(G),nu)
 set minimal_spherical_principal_series(RealForm G)=Param:
   minimal_spherical_principal_series(G,rho(G))
+
+{ G should be absolutely simple, SL(n,R), Sp(2n,R), S(n,n) or SO(n+1,n)
+  or simple complex}
+set spherical_unipotent_representations(RealForm G)= [Param]:
+let lietype=Lie_type(root_datum(G)) in 
+ if #lietype=1 then  { assert(is_split(G),"Group is not split");}
+  for gamma in nilpotent_lambdas(G) do minimal_spherical_principal_series(G,gamma) od
+ elif #lietype=2 then
+  let first=(%lietype)[0],second=(%lietype)[1] then
+  type1=to_string(first)[10] then
+  type2=to_string(second)[10] then
+  rank1=to_string(first)[11] then
+  rank2=to_string(second)[11] in 
+   assert(type1=type2 and rank1 = rank2,"not a complex group");
+   let lambdas=nilpotent_lambdas(simply_connected(first)) then
+   t=trivial(G) in
+   for lambda in lambdas do parameter(x(t), rho(G), lambda##lambda) od  else [] fi
+
+
+
+
+
 
 { Harish-Chandra parameter of (relative) discrete series, with respect to
   given x_b }
