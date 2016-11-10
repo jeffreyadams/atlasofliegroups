@@ -79,26 +79,24 @@ set test_one_unitary(Param param)=test([(param,true)])
   for (nu,ans) in nu_pairs do (spherical_principal_series(G,nu),ans) od
 }
 
-{ for simple types, test spherical representations with nu=1/2 h(O^\vee)
-  G should be simple, split, SL(n,R), Sp(2n,R), SO(n,n),SO(n+1,n)
-  or simply connected;  see nilpotent_lambdas in nilpotent.at }
-set spherical_unipotent(RealForm G)= [Param]:
-assert(#Lie_type(root_datum(G))=1,"Not a simple group");
-assert(is_split(G),"Group is not split");
-for gamma in nilpotent_lambdas(G) do minimal_spherical_principal_series(G,gamma) od
+{ G should be absolutely simple, SL(n,R), Sp(2n,R), S(n,n) or SO(n+1,n)
+  or simple complex, see spherical_unipotent_representations in representations.at}
+set test_spherical_unipotent(RealForm G)=void:
+for p in spherical_unipotent_representations(G) do  prints(new_line,p);print_is_unitary(p) od
+
 
 { a series of tests if increasing length }
 { very fast tests }
-set test1()=test(spherical_unipotent(Sp(4,R)))
-set test2()=test(spherical_unipotent(split_form(G2)))
-set test3()=test(spherical_unipotent(Sp(6,R)))
+set test1()=test(spherical_unipotent_representations(Sp(4,R)))
+set test2()=test(spherical_unipotent_representations(split_form(G2)))
+set test3()=test(spherical_unipotent_representations(Sp(6,R)))
 set test4()=
   let G2=quasisplit_form(inner_class(adjoint("G2"),"e"))
   then p=trivial(G2) then (B,t)=block(p)
   in test (for p@i in B do (p,i<5 or i=t) od)
 
 { slightly longer, up to a few minutes }
-set test5()= test(spherical_unipotent(SO(5,4)))
+set test5()= test(spherical_unipotent_representations (SO(5,4)))
 set test6()=
   let p=trivial(Sp(4,R)) then (B,t)=block(p) in
   test(for p@i in B do (p,i<7 or i=t) od)
@@ -115,21 +113,3 @@ set test8()= bool:
 { trivial of F4 takes up to two hours }
 set test9()=bool:
   prints("Testing trivial of F4"); is_unitary(trivial(split_form(F4)))
-
-set test_complex_spherical_unipotent_C(int n)=
-let GR=Sp(2*n,R) then
-lambdas=nilpotent_lambdas(GR) then
-G=Sp(2*n,C) then 
-t=trivial(G) in
-for lambda in lambdas do 
- let p=parameter(x(t), rho(G), lambda##lambda) in 
- prints(new_line, p);print_is_unitary(p) od;()
-
-set test_complex_spherical_unipotent_B(int n)=
-let GR=SO(n+1,n) then
-G=complexification(GR)  then
-lambdas=nilpotent_lambdas(GR) then
-t=trivial(G) in
-for lambda in lambdas do 
- let p=parameter(x(t), rho(G), lambda##lambda) in 
- prints(new_line, p);print_is_unitary(p) od;()

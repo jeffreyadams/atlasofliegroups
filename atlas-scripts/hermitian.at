@@ -416,3 +416,4 @@ set strong_test (Param p,mat delta)=bool:
   else prints("number of terms: ", #formula,new_line,"bad terms:", bad );false
   fi
 
+set init(RealForm G)=(RealForm,mat,Param):(G, G.distinguished_involution, trivial(G))
