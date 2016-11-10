@@ -65,7 +65,7 @@ set deform_unreduced (Param p, mat delta, int sign) = ExtParamPol:
         let contrib=remainder[q_ind]*P_mat[q_ind] in {scalar_multiply@([poly],poly)}
         let (ordinary_index_q,)=complete_indices[q_ind] in
         let q=B[ordinary_index_q] in
-      remainder -:= contrib
+        remainder -:= contrib
     ;
       if length(q)%2=opposite_parity
       then solution +:=contrib
@@ -77,14 +77,14 @@ set deform_unreduced (Param p, mat delta, int sign) = ExtParamPol:
         onr=(-1)^rat_as_int((on_p-orientation_nr(q))/2) then
         term=(1-s)*onr*f*B[ordinary_index_q] in
          if epsilon_q=1 then (term,N,N)
-         elif epsilon_q=-1 then (s*term,N,N)
+{         elif epsilon_q=-1 then (s*term,N,N)}
+         elif epsilon_q=-1 then (N,term,N)
          else (N,N,term) fi
     od
 fi
 )
 
-set deform(Param p,mat delta, int type)=ExtParamPol:let (plus,minus,induced)=
-deform_unreduced(p,delta,type) in (plus+s*minus,null_module(real_form(p)),induced)
+set deform(Param p,mat delta, int type)=ExtParamPol:deform_unreduced(p,delta,type)
 
 set deform_old (Param p, mat delta, int type) = ExtParamPol:
 (
@@ -209,12 +209,11 @@ for i:#complete_indices do
  let f=P[i][index] in
   if #f>0 then prints(complete_indices[i], ": ", stringPoly(f,"q")) fi od
 
-set print_extended_character_formula(Param p,mat delta)=void:print_extended_character_formula(p,block_of(p),delta)
-
+set print_extended_character_formula(Param p,mat delta)=void:print_extended_character_formula(p,singular_block_of(p),delta)
 
 set print_extended_composition_series(Param p,[Param] B,mat delta)=void:
-let index=find(B,p) then
-(I_delta,g,complete_indices,delta_action)=tabulate_indices(B,delta) then
+let (I_delta,g,complete_indices,delta_action)=tabulate_indices(B,delta) then
+index=find(complete_indices,(find(B,p),1)) then
 Q=big_KL_Q_polynomials(B,delta) in
 for i:#complete_indices do
  let f=Q[i][index] in
@@ -239,11 +238,12 @@ set character_formula (Param p,mat delta) = ExtParamPol:
   rv=null_ext_module(G) then
   N=null_module(G) then
 {  ()=prints("computing big_KL_P_signed_polynomials") then}
-{  P=big_KL_P_signed_polynomials(B,delta) in}
-  P=^eval(big_KL_P_signed_polynomials(B,delta),1) in
+  P=big_KL_P_signed_polynomials(B,delta) in
+{  P=^eval(big_KL_P_signed_polynomials(B,delta),1) in}
   for (j,type)@i in complete_indices do
-   let c=P[i][Index] in
-{   c=eval(f,1) in}
+{   let c=P[i][Index] in }
+   let c=eval(P[i][Index],s) in 
+{   c=eval(f,s) in}
    rv +:=
     if type=1 then (c*B[j],N,N)
     elif type=-1 then (N,c*B[j],N)
