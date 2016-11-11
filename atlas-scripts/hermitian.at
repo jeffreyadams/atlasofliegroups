@@ -50,9 +50,9 @@ set c_form_irreducible (Param p) = ParamPol:
 }
 set c_form_irreducible_long (Param p) = (ParamPol,[(Param,Split,ParamPol)],ParamPol):
 ( let P = null_module(real_form(p)), ori_nr_p = orientation_nr(p)
-  then formula=KL_sum_at_s(p) 
+  then formula=KL_sum_at_s(p)
   then standards = { list contributions; meanwhile compute |P| }
-    for c@q in formula 
+    for c@q in formula
     do
       let form_on_standard = c_form_std(q)
       ,   factor           = c*orientation_nr_term(ori_nr_p,q)
@@ -237,8 +237,8 @@ set mu (Param p,mat delta) = rat:
   lambda_rho_term=lambda*(g-l) then
   tau_term=(tau*(^delta-1)*l)/2 then
   dim_term=dim_u_cap_p(x(p)) then
-  scalar_term=number_real_orthogonal_pairs(x(p),delta)  then
-  new_term=2*rho_r(x(p))*(g-l) then 
+  scalar_term=number_real_orthogonal_pairs(x(p),delta)/2  then
+  new_term=2*rho_r(x(p))*(g-l) then
   mu=lambda_rho_term+tau_term+dim_term+scalar_term+new_term in mu
  { will be interpreted modulo 2/1 }
 
@@ -247,8 +247,8 @@ set print_mu(Param p)=void:
      lambda_rho_term=lambda*(g-l) then
      tau_term=(tau*(^delta-1)*l)/2 then
      dim_term=dim_u_cap_p(x(p)) then
-     scalar_term=number_real_orthogonal_pairs(x(p),delta)  then
-     new_term=2*rho_r(x(p))*(g-l) then 
+     scalar_term=number_real_orthogonal_pairs(x(p),delta)/2  then
+     new_term=2*rho_r(x(p))*(g-l) then
      mu=lambda_rho_term+tau_term+dim_term+scalar_term+new_term in
      prints(p, "    ", 1 , "     ", "  ", lambda_rho_term, "  ", tau_term, "     ", dim_term, "     ", scalar_term, "     ", new_term, "   ", mu)
 
@@ -256,13 +256,13 @@ set print_mus(ParamPol P)=
    let delta=real_form(P).distinguished_involution in
    let   mu_0=mu(first_param(P),delta) in
    let ()=prints("columns are:", new_line, "coeff*p            <lambda,(g-l)>  <tau,(^delta-1)l>/2  dim(u\cap p)  #real_pairs  <2rho_r,(g-l)>  sum  s^sum*coeff",new_line) in
-   for c@p in P do 
+   for c@p in P do
      let (ic,delta,gamma,lambda,theta,g,l,omega,tau,t)=E(real_form(p).distinguished_involution,p) then
      lambda_rho_term=lambda*(g-l) then
      tau_term=(tau*(^delta-1)*l)/2 then
      dim_term=dim_u_cap_p(x(p)) then
-     scalar_term=number_real_orthogonal_pairs(x(p),delta)  then
-     new_term=2*rho_r(x(p))*(g-l) then 
+     scalar_term=number_real_orthogonal_pairs(x(p),delta)/2  then
+     new_term=2*rho_r(x(p))*(g-l) then
      mu=lambda_rho_term+tau_term+dim_term+scalar_term+new_term in
      prints(c,"*", p, "     ", "  ", lambda_rho_term, "  ", tau_term, "     ", dim_term, "     ", scalar_term, "     ", new_term, "   ", mu, "  ", c*s^(rat_as_int(mu-mu_0))) od;()
 
@@ -274,13 +274,13 @@ set convert_cform_hermitian (ParamPol P,mat delta)= ParamPol:
     let a_mu = mu(P.first_param,delta) in
     P.real_form.null_module +
     for w@p in P do
-{    let ()=prints("w=", w, " p=", p, " mu(p,delta)=", mu(p,delta), 
-                  " a_mu=", a_mu, "power: ",(mu(p,delta)-a_mu).rat_as_int, 
+{    let ()=prints("w=", w, " p=", p, " mu(p,delta)=", mu(p,delta),
+                  " a_mu=", a_mu, "power: ",(mu(p,delta)-a_mu).rat_as_int,
                   " ", w*s^(mu(p,delta)-a_mu).rat_as_int) in}
     (w*s^(mu(p,delta)-a_mu).rat_as_int,p) od
     fi
 
-set convert_cform_hermitian (ParamPol P)= ParamPol:convert_cform_hermitian(P,P.first_param.real_form.distinguished_involution) 
+set convert_cform_hermitian (ParamPol P)= ParamPol:convert_cform_hermitian(P,P.first_param.real_form.distinguished_involution)
 
 {   Hermitian forms on irreducibles     }
 
@@ -288,19 +288,19 @@ set convert_cform_hermitian (ParamPol P)= ParamPol:convert_cform_hermitian(P,P.f
 set hermitian_form_irreducible (Param p) = ParamPol:
   if is_equal_rank(real_form(p))
   then convert_cform_hermitian(c_form_irreducible(p))
-  else 
-     let cf=c_form_irreducible_twisted(p) in 
+  else
+     let cf=c_form_irreducible_twisted(p) in
      if hf_debug=true then print_mus(cf) fi;
      convert_cform_hermitian(cf)
   fi
 
 set hermitian_form_irreducible_long (Param p) = (ParamPol,[(Param,Split,ParamPol)],ParamPol):
   if is_equal_rank(real_form(p))
-  then 
-    let (formula,terms,cform)=c_form_irreducible_long(p)  in 
+  then
+    let (formula,terms,cform)=c_form_irreducible_long(p)  in
     (formula,terms,convert_cform_hermitian(cform))
-  else 
-     let (formula,terms,cform)=c_form_irreducible_twisted_long(p,real_form(p).distinguished_involution) in 
+  else
+     let (formula,terms,cform)=c_form_irreducible_twisted_long(p,real_form(p).distinguished_involution) in
      if hf_debug=true then print_mus(cform) fi;
      (formula,terms,convert_cform_hermitian(cform))
   fi
