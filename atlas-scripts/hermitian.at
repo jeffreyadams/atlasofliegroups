@@ -132,6 +132,7 @@ set c_form_irreducible_twisted_long (Param p,mat delta) =
     then
       let c1=Ptw[q] then c=half((c0+c1)+(c0-c1).times_s)
       then contrib=c*orient_c*full_deform(q,delta)
+{      then ()=prints(new_line,"q=",q, "c0=",c0,"c1=",c1,"c= ",c, " contrib=", contrib) }
       in
         (fixed_terms+:=contrib, terms#:=(q,c0,contrib))
     else
@@ -234,7 +235,7 @@ set mu (Param p,mat delta) = rat:
   [ { lambda_rho_term = } g_l*E.lambda_rho
   , { tau_term        = } (E.l*(delta-1)*E.tau)/2
   , { dim_term        = } dim_u_cap_p(x)
-  , { scalar_term     = } number_real_orthogonal_pairs(x,delta)
+  , { scalar_term     = } number_real_orthogonal_pairs(x,delta)/2
   , { new_term        = } g_l*rho_r(x)*2
   ]) { the sum will be interpreted modulo 2/1 }
 
@@ -243,7 +244,7 @@ set print_mu(Param p)=void:
      lambda_rho_term=lambda*(g-l) then
      tau_term=(tau*(^delta-1)*l)/2 then
      dim_term=dim_u_cap_p(x(p)) then
-     scalar_term=number_real_orthogonal_pairs(x(p),delta)  then
+     scalar_term=number_real_orthogonal_pairs(x(p),delta)/2  then
      new_term=2*rho_r(x(p))*(g-l) then
      mu=lambda_rho_term+tau_term+dim_term+scalar_term+new_term in
      prints(p, "    ", 1 , "     ", "  ", lambda_rho_term, "  ", tau_term, "     ", dim_term, "     ", scalar_term, "     ", new_term, "   ", mu)
@@ -257,7 +258,7 @@ set print_mus(ParamPol P)=
      lambda_rho_term=lambda*(g-l) then
      tau_term=(tau*(^delta-1)*l)/2 then
      dim_term=dim_u_cap_p(x(p)) then
-     scalar_term=number_real_orthogonal_pairs(x(p),delta)  then
+     scalar_term=number_real_orthogonal_pairs(x(p),delta)/2  then
      new_term=2*rho_r(x(p))*(g-l) then
      mu=lambda_rho_term+tau_term+dim_term+scalar_term+new_term in
      prints(c,"*", p, "     ", "  ", lambda_rho_term, "  ", tau_term, "     ", dim_term, "     ", scalar_term, "     ", new_term, "   ", mu, "  ", c*s^(rat_as_int(mu-mu_0))) od;()
@@ -278,12 +279,23 @@ set convert_cform_hermitian (ParamPol P,mat delta)= ParamPol:
 
 set convert_cform_hermitian (ParamPol P)= ParamPol:convert_cform_hermitian(P,P.first_param.real_form.distinguished_involution)
 
+set convert_cform_hermitian_equal_rank(ParamPol P)=ParamPol:
+  if =#P then P { since we cannot select a term for a null polynomial }
+  else
+    let a_mu = mu(P.first_param) in
+    P.real_form.null_module +
+    for w@p in P do
+    (w*s^(mu(p)-a_mu).rat_as_int,p) od
+    fi
+
 {   Hermitian forms on irreducibles     }
 
 { ParamPol giving the hermitian form on irreducible p in all cases}
 set hermitian_form_irreducible (Param p) = ParamPol:
   if is_equal_rank(real_form(p))
-  then convert_cform_hermitian(c_form_irreducible(p))
+  {use the equal rank mu function in this case}
+  {to test the mu function us: c_form_hermitian(c_form_irreducible(p))}
+  then convert_cform_hermitian_equal_rank(c_form_irreducible(p))
   else
      let cf=c_form_irreducible_twisted(p) in
      if hf_debug=true then print_mus(cf) fi;
@@ -294,7 +306,7 @@ set hermitian_form_irreducible_long (Param p) = (ParamPol,[(Param,Split,ParamPol
   if is_equal_rank(real_form(p))
   then
     let (formula,terms,cform)=c_form_irreducible_long(p)  in
-    (formula,terms,convert_cform_hermitian(cform))
+    (formula,terms,convert_cform_hermitian_equal_rank(cform))
   else
      let (formula,terms,cform)=c_form_irreducible_twisted_long(p,real_form(p).distinguished_involution) in
      if hf_debug=true then print_mus(cform) fi;
@@ -412,4 +424,6 @@ set strong_test (Param p,mat delta)=bool:
   else prints("number of terms: ", #formula,new_line,"bad terms:", bad );false
   fi
 
+{elementary utility function}
 set init(RealForm G)=(RealForm,mat,Param):(G, G.distinguished_involution, trivial(G))
+
