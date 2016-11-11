@@ -240,10 +240,9 @@ set sign (ExtParam E,(ExtParam F1,ExtParam F2)) = int:
 set sign ((ExtParam E1,ExtParam E2),ExtParam F) = int:
   sign(E1,F)+sign(E2,F)
 
-{ default(F)=\pm F is the extended parameter constructed by Atlas }
+{ default(F)=\pm F, should be the extended parameter constructed internally }
 set default (ExtParam F) = ExtParam:
-  E(F.delta,F.x { defined in extended_misc; it uses (ic,theta,g,l) }
-   ,F.gamma,F.g,F.lambda_rho+rho(F.ic))
+  E(F.delta, F.parameter) { project to |Param|, then reconstruct |ExtParam| }
 
 set      sign (ExtParam E) =int:      sign(E,default(E))
 set dual_sign (ExtParam E) =int: dual_sign(E,default(E))
