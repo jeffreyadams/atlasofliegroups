@@ -95,23 +95,17 @@ set c_form_irreducible_twisted (Param p,mat delta) = ParamPol:
 ; fixed_terms + half(unfixed_terms)
 )
 
-{utility function, show starting formula in the c-form calculation}
-set c_form_irr_twisted_as_sum_of_standards(Param p, mat delta)=ParamPol:
-( let G=p.real_form then
-  ori_nr_p = orientation_nr(p) then
-  rv=null_module(G) then
-  Ptw=twisted_KL_sum_at_s(p) then
-  P=KL_sum_at_s(p) in
-  for ev@q in P
+{ utility function, show starting formula in the c-form calculation }
+set c_form_irr_twisted_as_sum_of_standards (Param p, mat delta) = ParamPol:
+( let G=p.real_form, ori_nr_p = orientation_nr(p)
+  , Ptw=twisted_KL_sum_at_s(p), P=KL_sum_at_s(p)
+  in null_module(G) +
+  for c@q in P
   do
-    if is_fixed(delta,q) then
-     let new_ev=half((P[q]+Ptw[q])+s*(P[q]-Ptw[q]))  then
-         c=new_ev*orientation_nr_term(ori_nr_p,q) in rv +:= c*q
-    else
-         let c=ev*orientation_nr_term(ori_nr_p,q) in rv +:= c*q
-    fi
+  ( if is_fixed(delta,q) then half((c+Ptw[q])+s*(c-Ptw[q])) else c fi
+    * orientation_nr_term(ori_nr_p,q)
+  , q)
   od
-; rv
 )
 
 { if delta isn't given assume it is the inner class involution }
@@ -231,17 +225,19 @@ set number_real_orthogonal_pairs (KGBElt x, mat delta) = int:
 
 
 
-{ formula that was stated in Vogan in email of Oct 25, 2016; subject: mu(p) }
+{ formula first stated in Vogan in email of Oct 25, 2016; subject: mu(p)
+  significantly modified since
+}
 set mu (Param p,mat delta) = rat:
   assert(=nu(p),"nu(p)!=0");
-  let (ic,delta,gamma,lambda,theta,g,l,omega,tau,t)=E(delta,p) then
-  lambda_rho_term=lambda*(g-l) then
-  tau_term=(tau*(^delta-1)*l)/2 then
-  dim_term=dim_u_cap_p(x(p)) then
-  scalar_term=number_real_orthogonal_pairs(x(p),delta)/2  then
-  new_term=2*rho_r(x(p))*(g-l) then
-  mu=lambda_rho_term+tau_term+dim_term+scalar_term+new_term in mu
- { will be interpreted modulo 2/1 }
+  let E=E(delta,p), x=x(p) then g_l=E.g-E.l
+  in sum(
+  [ { lambda_rho_term = } g_l*E.lambda_rho
+  , { tau_term        = } (E.l*(delta-1)*E.tau)/2
+  , { dim_term        = } dim_u_cap_p(x)
+  , { scalar_term     = } number_real_orthogonal_pairs(x,delta)/2
+  , { new_term        = } g_l*rho_r(x)*2
+  ]) { the sum will be interpreted modulo 2/1 }
 
 set print_mu(Param p)=void:
      let (ic,delta,gamma,lambda,theta,g,l,omega,tau,t)=E(real_form(p).distinguished_involution,p) then
@@ -283,7 +279,7 @@ set convert_cform_hermitian (ParamPol P,mat delta)= ParamPol:
 
 set convert_cform_hermitian (ParamPol P)= ParamPol:convert_cform_hermitian(P,P.first_param.real_form.distinguished_involution)
 
-set convert_cform_hermitian_equal_rank(ParamPol P)=ParamPol: 
+set convert_cform_hermitian_equal_rank(ParamPol P)=ParamPol:
   if =#P then P { since we cannot select a term for a null polynomial }
   else
     let a_mu = mu(P.first_param) in
@@ -299,7 +295,7 @@ set hermitian_form_irreducible (Param p) = ParamPol:
   if is_equal_rank(real_form(p))
   {use the equal rank mu function in this case}
   {to test the mu function us: c_form_hermitian(c_form_irreducible(p))}
-  then convert_cform_hermitian_equal_rank(c_form_irreducible(p)) 
+  then convert_cform_hermitian_equal_rank(c_form_irreducible(p))
   else
      let cf=c_form_irreducible_twisted(p) in
      if hf_debug=true then print_mus(cf) fi;
@@ -430,3 +426,4 @@ set strong_test (Param p,mat delta)=bool:
 
 {elementary utility function}
 set init(RealForm G)=(RealForm,mat,Param):(G, G.distinguished_involution, trivial(G))
+

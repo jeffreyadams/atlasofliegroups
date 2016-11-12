@@ -242,7 +242,7 @@ set character_formula (Param p,mat delta) = ExtParamPol:
 {  P=^eval(big_KL_P_signed_polynomials(B,delta),1) in}
   for (j,type)@i in complete_indices do
 {   let c=P[i][Index] in }
-   let c=eval(P[i][Index],s) in 
+   let c=eval(P[i][Index],s) in
 {   c=eval(f,s) in}
    rv +:=
     if type=1 then (c*B[j],N,N)
