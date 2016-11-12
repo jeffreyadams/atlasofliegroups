@@ -227,36 +227,32 @@ set number_real_orthogonal_pairs (KGBElt x, mat delta) = int:
     #=pairing { count zero pairings }
   od.sum.half { compensate for each pair being counted twice }
 
-
-
-
-{ formula first stated in Vogan in email of Oct 25, 2016; subject: mu(p)
-  significantly modified since
+{ function |mu| below was intially described in Vogan in email of Oct 25, 2016
+  with subject: mu(p); it has been significantly modified since
+  It is a sum of rational terms, for which eventually differences (which should
+  be integer) will serve as exponents of |s|, therefore interpreted modulo 2
+  To facilitate analysis of the terms |mu_terms| returns them as a list of 5
 }
-set mu (Param p,mat delta) = rat:
+
+set mu_terms  (Param p,mat delta) = [rat]:
   assert(=nu(p),"nu(p)!=0");
   let E=E(delta,p), x=x(p) then g_l=E.g-E.l
-  in sum(
+  in
   [ { lambda_rho_term = } g_l*E.lambda_rho
   , { tau_term        = } (E.l*(delta-1)*E.tau)/2
   , { dim_term        = } dim_u_cap_p(x)
   , { scalar_term     = } number_real_orthogonal_pairs(x,delta)/2
   , { new_term        = } g_l*rho_r(x)*2
-  ]) { the sum will be interpreted modulo 2/1 }
+  ] { the sum of these will be interpreted modulo 2/1 }
+
+
+set mu (Param p,mat delta) = rat: sum(mu_terms(p,delta))
 
 set print_mu (Param p) = void:
-     let (ic,delta,gamma,lambda,theta,g,l,omega,tau,t) =
-       E(real_form(p).distinguished_involution,p)
-     then lambda_rho_term=lambda*(g-l)
-     , tau_term=(tau*(^delta-1)*l)/2
-     , dim_term=dim_u_cap_p(x(p))
-     , scalar_term=number_real_orthogonal_pairs(x(p),delta)/2
-     , new_term=2*rho_r(x(p))*(g-l)
-     then mu=lambda_rho_term+tau_term+dim_term+scalar_term+new_term
-     in
-     prints(p, "    ", 1 , "     ", "  ", lambda_rho_term, "  ", tau_term
-           , "     ", dim_term, "     ", scalar_term, "     ", new_term
-           , "   ", mu)
+     let terms=mu_terms(p,p.real_form.distinguished_involution) in
+     prints(p, "    ", 1 , "     ", "  ", terms[0], "  ", terms[1]
+           , "     ", terms[2], "     ", terms[3], "     ", terms[4]
+           , "   ", sum(terms))
 
 set print_mus (ParamPol P) = void:
   let delta=real_form(P).distinguished_involution
@@ -267,21 +263,11 @@ set print_mus (ParamPol P) = void:
           "  dim(u\cap p)  #real_pairs  <2rho_r,(g-l)>  sum  s^sum*coeff"
         ,new_line);
   for c@p in P
-  do
-    let (ic,delta,gamma,lambda,theta,g,l,omega,tau,t) =
-      E(real_form(p).distinguished_involution,p)
-    then lambda_rho_term=lambda*(g-l)
-    , tau_term=(tau*(^delta-1)*l)/2
-    , dim_term=dim_u_cap_p(x(p))
-    , scalar_term=number_real_orthogonal_pairs(x(p),delta)/2
-    , new_term=2*rho_r(x(p))*(g-l)
-    then mu=lambda_rho_term+tau_term+dim_term+scalar_term+new_term
-    in
-    prints(c,"*", p, "     ", "  ", lambda_rho_term, "  ", tau_term, "     "
-          , dim_term, "     ", scalar_term, "     ", new_term, "   ", mu
+  do let terms=mu_terms(p,delta) then mu=sum(terms) in
+    prints(c,"*", p, "     ", "  ", terms[0], "  ", terms[1], "     "
+          , terms[2], "     ", terms[3], "     ", terms[4], "   ", mu
           , "  ", c*s^(rat_as_int(mu-mu_0)))
   od
-
 
 
 set convert_cform_hermitian (ParamPol P,mat delta)= ParamPol:
