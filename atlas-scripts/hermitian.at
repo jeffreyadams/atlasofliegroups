@@ -48,7 +48,8 @@ set c_form_irreducible (Param p) = ParamPol:
     I(x)_c given as combination of standards x' with nu(x')=0 by c_form_std(x)
   algorithm: compute the sum for J(y)_c, using signed_KL_col and c_form_std
 }
-set c_form_irreducible_long (Param p) = (ParamPol,[(Param,Split,ParamPol)],ParamPol):
+set c_form_irreducible_long (Param p) =
+    (ParamPol,[(Param,Split,ParamPol)],ParamPol):
 ( let P = null_module(real_form(p)), ori_nr_p = orientation_nr(p)
   then formula=KL_sum_at_s(p)
   then standards = { list contributions; meanwhile compute |P| }
@@ -132,8 +133,8 @@ set c_form_irreducible_twisted_long (Param p,mat delta) =
     then
       let c1=Ptw[q] then c=half((c0+c1)+(c0-c1).times_s)
       then contrib=c*orient_c*full_deform(q,delta)
-{      then ()=prints(new_line,"q=",q, "c0=",c0,"c1=",c1,"c= ",c, " contrib=", contrib) }
       in
+{     prints(new_line,"q=",q, "c0=",c0,"c1=",c1,"c= ",c," contrib=", contrib); }
         (fixed_terms+:=contrib, terms#:=(q,c0,contrib))
     else
       let contrib=c0*orient_c*one_plus_s*(q*0) in
@@ -156,12 +157,16 @@ set c_form_irreducible_delta_long =
 { print versions }
 set print_c_form_irreducible_twisted_long (Param p) = void:
   let (formula,terms,answer)=c_form_irreducible_twisted_long(p) in
-  prints(new_line,new_line,"(twisted) c-form on irreducible in terms of standards:", formula,new_line);
+  prints(new_line,new_line
+        ,"(twisted) c-form on irreducible in terms of standards:"
+        ,formula,new_line);
   for (p,coeff,P) in terms
-  do prints("coeff*form on standard: ", new_line,coeff.split_format,"*",p,":",new_line
+  do prints("coeff*form on standard: ", new_line
+           ,coeff.split_format,"*",p,":",new_line
      	   ,"fully deformed",new_line, P.pol_format, new_line)
   od;
-  prints("c-form on irreducible module p=",p,":",new_line,answer.pol_format, "purity=", purity(answer))
+  prints("c-form on irreducible module p=",p,":",new_line
+        ,answer.pol_format, "purity=", purity(answer))
 
 { analyse }
 
@@ -222,47 +227,47 @@ set number_real_orthogonal_pairs (KGBElt x, mat delta) = int:
     #=pairing { count zero pairings }
   od.sum.half { compensate for each pair being counted twice }
 
-
-
-
-{ formula first stated in Vogan in email of Oct 25, 2016; subject: mu(p)
-  significantly modified since
+{ function |mu| below was intially described in Vogan in email of Oct 25, 2016
+  with subject: mu(p); it has been significantly modified since
+  It is a sum of rational terms, for which eventually differences (which should
+  be integer) will serve as exponents of |s|, therefore interpreted modulo 2
+  To facilitate analysis of the terms |mu_terms| returns them as a list of 5
 }
-set mu (Param p,mat delta) = rat:
+
+set mu_terms  (Param p,mat delta) = [rat]:
   assert(=nu(p),"nu(p)!=0");
   let E=E(delta,p), x=x(p) then g_l=E.g-E.l
-  in sum(
+  in
   [ { lambda_rho_term = } g_l*E.lambda_rho
   , { tau_term        = } (E.l*(delta-1)*E.tau)/2
   , { dim_term        = } dim_u_cap_p(x)
   , { scalar_term     = } number_real_orthogonal_pairs(x,delta)/2
   , { new_term        = } g_l*rho_r(x)*2
-  ]) { the sum will be interpreted modulo 2/1 }
+  ] { the sum of these will be interpreted modulo 2/1 }
 
-set print_mu(Param p)=void:
-     let (ic,delta,gamma,lambda,theta,g,l,omega,tau,t)=E(real_form(p).distinguished_involution,p) then
-     lambda_rho_term=lambda*(g-l) then
-     tau_term=(tau*(^delta-1)*l)/2 then
-     dim_term=dim_u_cap_p(x(p)) then
-     scalar_term=number_real_orthogonal_pairs(x(p),delta)/2  then
-     new_term=2*rho_r(x(p))*(g-l) then
-     mu=lambda_rho_term+tau_term+dim_term+scalar_term+new_term in
-     prints(p, "    ", 1 , "     ", "  ", lambda_rho_term, "  ", tau_term, "     ", dim_term, "     ", scalar_term, "     ", new_term, "   ", mu)
 
-set print_mus(ParamPol P)=
-   let delta=real_form(P).distinguished_involution in
-   let   mu_0=mu(first_param(P),delta) in
-   let ()=prints("columns are:", new_line, "coeff*p            <lambda,(g-l)>  <tau,(^delta-1)l>/2  dim(u\cap p)  #real_pairs  <2rho_r,(g-l)>  sum  s^sum*coeff",new_line) in
-   for c@p in P do
-     let (ic,delta,gamma,lambda,theta,g,l,omega,tau,t)=E(real_form(p).distinguished_involution,p) then
-     lambda_rho_term=lambda*(g-l) then
-     tau_term=(tau*(^delta-1)*l)/2 then
-     dim_term=dim_u_cap_p(x(p)) then
-     scalar_term=number_real_orthogonal_pairs(x(p),delta)/2  then
-     new_term=2*rho_r(x(p))*(g-l) then
-     mu=lambda_rho_term+tau_term+dim_term+scalar_term+new_term in
-     prints(c,"*", p, "     ", "  ", lambda_rho_term, "  ", tau_term, "     ", dim_term, "     ", scalar_term, "     ", new_term, "   ", mu, "  ", c*s^(rat_as_int(mu-mu_0))) od;()
+set mu (Param p,mat delta) = rat: sum(mu_terms(p,delta))
 
+set print_mu (Param p) = void:
+     let terms=mu_terms(p,p.real_form.distinguished_involution) in
+     prints(p, "    ", 1 , "     ", "  ", terms[0], "  ", terms[1]
+           , "     ", terms[2], "     ", terms[3], "     ", terms[4]
+           , "   ", sum(terms))
+
+set print_mus (ParamPol P) = void:
+  let delta=real_form(P).distinguished_involution
+  then mu_0=mu(first_param(P),delta)
+  in
+  prints("columns are:", new_line
+        , "coeff*p            <lambda,(g-l)>  <tau,(^delta-1)l>/2" ##
+          "  dim(u\cap p)  #real_pairs  <2rho_r,(g-l)>  sum  s^sum*coeff"
+        ,new_line);
+  for c@p in P
+  do let terms=mu_terms(p,delta) then mu=sum(terms) in
+    prints(c,"*", p, "     ", "  ", terms[0], "  ", terms[1], "     "
+          , terms[2], "     ", terms[3], "     ", terms[4], "   ", mu
+          , "  ", c*s^(rat_as_int(mu-mu_0)))
+  od
 
 
 set convert_cform_hermitian (ParamPol P,mat delta)= ParamPol:
@@ -277,7 +282,8 @@ set convert_cform_hermitian (ParamPol P,mat delta)= ParamPol:
     (w*s^(mu(p,delta)-a_mu).rat_as_int,p) od
     fi
 
-set convert_cform_hermitian (ParamPol P)= ParamPol:convert_cform_hermitian(P,P.first_param.real_form.distinguished_involution)
+set convert_cform_hermitian (ParamPol P)= ParamPol:
+  convert_cform_hermitian(P,P.first_param.real_form.distinguished_involution)
 
 set convert_cform_hermitian_equal_rank(ParamPol P)=ParamPol:
   if =#P then P { since we cannot select a term for a null polynomial }
@@ -302,13 +308,16 @@ set hermitian_form_irreducible (Param p) = ParamPol:
      convert_cform_hermitian(cf)
   fi
 
-set hermitian_form_irreducible_long (Param p) = (ParamPol,[(Param,Split,ParamPol)],ParamPol):
+set hermitian_form_irreducible_long (Param p) =
+    (ParamPol,[(Param,Split,ParamPol)],ParamPol):
   if is_equal_rank(real_form(p))
   then
     let (formula,terms,cform)=c_form_irreducible_long(p)  in
     (formula,terms,convert_cform_hermitian_equal_rank(cform))
   else
-     let (formula,terms,cform)=c_form_irreducible_twisted_long(p,real_form(p).distinguished_involution) in
+     let (formula,terms,cform) =
+       c_form_irreducible_twisted_long(p,real_form(p).distinguished_involution)
+     in
      if hf_debug=true then print_mus(cform) fi;
      (formula,terms,convert_cform_hermitian(cform))
   fi
@@ -320,12 +329,16 @@ set print_hermitian_form_irreducible (Param p,mat delta) = void:
 
 set print_hermitian_form_irreducible_long (Param p) = void:
   let (formula,terms,answer)=hermitian_form_irreducible_long(p) in
-  prints(new_line,new_line,"(twisted) c-form on irreducible in terms of standards:", formula,new_line);
+  prints(new_line,new_line
+        ,"(twisted) c-form on irreducible in terms of standards:"
+        , formula,new_line);
   for (p,coeff,P) in terms
-  do prints("coeff*form on standard: ", new_line,coeff.split_format,"*",p,":",new_line
+  do prints("coeff*form on standard: ", new_line
+           ,coeff.split_format,"*",p,":",new_line
      	   ,"fully deformed",new_line, P.pol_format, new_line)
   od;
-  prints("Hermitian form on irreducible module p=",p,":",new_line,answer.pol_format, "purity=", purity(answer))
+  prints("Hermitian form on irreducible module p=",p,":",new_line
+        ,answer.pol_format, "purity=", purity(answer))
 
 
 { nice output of Hermitian forms on list of parameters }
@@ -424,6 +437,7 @@ set strong_test (Param p,mat delta)=bool:
   else prints("number of terms: ", #formula,new_line,"bad terms:", bad );false
   fi
 
-{elementary utility function}
-set init(RealForm G)=(RealForm,mat,Param):(G, G.distinguished_involution, trivial(G))
+{ elementary utility function }
+set init (RealForm G) = (RealForm,mat,Param):
+  (G, G.distinguished_involution, trivial(G))
 
