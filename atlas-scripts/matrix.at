@@ -33,3 +33,21 @@ set weak_left_inverse(mat A) = (int,mat): { left inverse after saturation }
 
 set reduce (mat M) = { factor out common divisor } mat:
   let inf=inv_fact(M) in if =#inf then M else M\inf[0] fi
+
+{vec:v=[a_1,...,a_n] 
+ defines a permutation \sigma(i)=a_i 
+ (a_1,...,a_n must be a permutation of [1,...,n])
+ permutation(vec v)=matrix P which acts 
+ on the left, permuting the coordinates by \sigma, 
+ i.e. P(e_i)=e_{sigma(i)} where e_i is the i^th standard basis vector
+ NB: this means there is an inverse here:
+ P*[x_1,...,x_n]=[x_{sigma^{-1}}(1),...,x_{sigma^{-1}(n)}]
+}
+
+{standard basis vector e_i of length n}
+set e(int n,int i)=let v=null(n) in v[i]:=1;v
+
+{v is a permutation of [1,...,n]}
+set permutation_matrix(vec v)=mat:let n=#v in  for i:n do e(n,v[i]-1) od
+
+
