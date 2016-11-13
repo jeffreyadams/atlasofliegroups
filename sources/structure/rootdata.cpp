@@ -1149,7 +1149,7 @@ WeylWord wrt_distinguished(const RootSystem& rs, RootNbrList& Delta)
 {
   WeylWord result;
   const size_t rank=rs.rank();
-  matrix::Vector<int> v = rs.pos_system_vec(Delta);
+  matrix::Vector<int> v = rs.pos_system_vec(Delta); // image of $2\rho$
   weyl::Generator s;
   do
     for (s=0; s<rank; ++s)
