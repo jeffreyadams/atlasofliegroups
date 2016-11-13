@@ -3176,7 +3176,8 @@ void build_KGB_element_wrapper(expression_base::level l)
 
 
 @ One can conjugate a KGB element by the distinguished involution of the inner
-class.
+class, or by an explicitly supplied distinguished involution that
+should commute with the inner class one; |test_compatible| tests this.
 
 @< Local function def...@>=
 void KGB_twist_wrapper(expression_base::level l)
@@ -3185,6 +3186,26 @@ void KGB_twist_wrapper(expression_base::level l)
   if (l==expression_base::no_value)
     return;
   x->val= kgb.Hermitian_dual(x->val); // do twist
+  push_value(x);
+}
+@)
+void test_compatible (const InnerClass& ic, own_matrix& delta)
+{ WeylWord ww; // dummy
+  check_involution(delta->val,ic.rootDatum(),ww);
+    // also makes |delta->val| distinguished
+  auto& xi = ic.distinguished();
+  if (delta->val*xi!=xi*delta->val)
+    throw runtime_error("Non commuting distinguished involution");
+}
+@)
+void KGB_outer_twist_wrapper(expression_base::level l)
+{ own_matrix delta = get_own<matrix_value>();
+    // we need to own because of |check_involution|
+  own_KGB_elt x = get_own<KGB_elt_value>();
+  test_compatible(x->rf->parent.val,delta);
+  if (l==expression_base::no_value)
+    return;
+  x->val= x->rf->kgb().twisted(x->val,delta->val); // do twist
   push_value(x);
 }
 
@@ -3248,6 +3269,7 @@ install_function(KGB_status_wrapper,@|"status","(int,KGBElt->int)");
 install_function(build_KGB_element_wrapper,@|"KGB_elt"
 		,"(RealForm,mat,ratvec->KGBElt)");
 install_function(KGB_twist_wrapper,@|"twist","(KGBElt->KGBElt)");
+install_function(KGB_outer_twist_wrapper,@|"twist","(KGBElt,mat->KGBElt)");
 install_function(KGB_Cartan_wrapper,@|"Cartan_class","(KGBElt->CartanClass)");
 install_function(KGB_involution_wrapper,@|"involution","(KGBElt->mat)");
 install_function(KGB_length_wrapper,@|"length","(KGBElt->int)");
@@ -3855,23 +3877,13 @@ void parameter_twist_wrapper(expression_base::level l)
 
 @ The same can be done for an external twist, specified by a matrix. The
 method of |Rep_context| to call is now |twisted| rather than |inner_twisted|,
-but more work is required in this wrapper function, because we must ensure
-that the external involution is compatible with the inner class.
+but we first call |test_compatible|.
 
 @< Local function def...@>=
-void test_compatible (const shared_module_parameter& p, own_matrix& delta)
-{ auto &rc = p->rc(); WeylWord ww; // dummy
-  check_involution(delta->val,rc.rootDatum(),ww);
-    // also makes |delta->val| distinguished
-  auto& xi = rc.innerClass().distinguished();
-  if (delta->val*xi!=xi*delta->val)
-    throw runtime_error("Non commuting distinguished involution");
-}
-@)
-void external_twist_wrapper(expression_base::level l)
+void parameter_outer_twist_wrapper(expression_base::level l)
 { auto delta = get_own<matrix_value>(); // own because of |check_involution|
   auto p = get<module_parameter_value>();
-  test_compatible(p,delta);
+  test_compatible(p->rc().innerClass(),delta);
   if (l!=expression_base::no_value)
     push_value(std::make_shared<module_parameter_value>
 		(p->rf,p->rc().twisted(p->val,delta->val)));
@@ -4172,7 +4184,7 @@ void extended_block_wrapper(expression_base::level l)
 { auto delta =get_own<matrix_value>(); // own needed for |test_compatible|
   shared_module_parameter p = get<module_parameter_value>();
   test_standard(*p,"Cannot generate block");
-  test_compatible(p,delta);
+  test_compatible(p->rc().innerClass(),delta);
   if (l==expression_base::no_value) return;
 @)
   const auto& rc = p->rc();
@@ -4256,7 +4268,7 @@ void extended_KL_block_wrapper(expression_base::level l)
 { auto delta = get_own<matrix_value>(); // own because of |check_involution|
   auto p = get<module_parameter_value>();
   test_standard(*p,"Cannot generate extended block");
-  test_compatible(p,delta);
+  test_compatible(p->rc().innerClass(),delta);
   if (l==expression_base::no_value) return;
 @)
   std::vector<StandardRepr> block;
@@ -4295,7 +4307,7 @@ install_function(parameter_inv_Cayley_wrapper,@|"inv_Cayley"
 install_function(root_parameter_cross_wrapper,@|"cross" ,"(vec,Param->Param)");
 install_function(root_parameter_Cayley_wrapper,@|"Cayley" ,"(vec,Param->Param)");
 install_function(parameter_twist_wrapper,@|"twist" ,"(Param->Param)");
-install_function(external_twist_wrapper,@|"twist" ,"(Param,mat->Param)");
+install_function(parameter_outer_twist_wrapper,@|"twist" ,"(Param,mat->Param)");
 install_function(orientation_number_wrapper,@|"orientation_nr" ,"(Param->int)");
 install_function(reducibility_points_wrapper,@|
 		"reducibility_points" ,"(Param->[rat])");
@@ -5107,7 +5119,7 @@ void scale_extended_wrapper(expression_base::level l)
   auto delta = get_own<matrix_value>(); // own because of |check_involution|
   auto p = get<module_parameter_value>();
   test_standard(*p,"Cannot scale extended parameter");
-  test_compatible(p,delta);
+  test_compatible(p->rc().innerClass(),delta);
   if (not p->rc().is_twist_fixed(p->val,delta->val))
     throw runtime_error("Parameter to be scaled not fixed by given involution");
   if (l==expression_base::no_value)
@@ -5139,7 +5151,7 @@ void finalize_extended_wrapper(expression_base::level l)
 { auto delta = get_own<matrix_value>(); // own because of |check_involution|
   auto p = get<module_parameter_value>();
   test_standard(*p,"Cannot finalize extended parameter");
-  test_compatible(p,delta);
+  test_compatible(p->rc().innerClass(),delta);
   if (not p->rc().is_twist_fixed(p->val,delta->val))
     throw runtime_error("Parameter not fixed by given involution");
   if (l==expression_base::no_value)
@@ -5296,7 +5308,7 @@ void raw_ext_KL_wrapper (expression_base::level l)
 { auto delta = get_own<matrix_value>();
   shared_module_parameter p = get<module_parameter_value>();
   test_standard(*p,"Cannot generate block");
-  test_compatible(p,delta);
+  test_compatible(p->rc().innerClass(),delta);
   if (l==expression_base::no_value) return;
 @)
   const auto& rc = p->rc();
