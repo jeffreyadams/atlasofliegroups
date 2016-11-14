@@ -250,9 +250,9 @@ set mu_terms  (Param p,mat delta) = [rat]:
   let E=E(delta,p), x=x(p) then g_l=E.g-E.l
   in
   [ { lambda_rho_term = } (g_l-rho_check_r(x))*E.lambda_rho
-  , { tau_term        = } (E.l*(delta-1)*E.tau)
+  , { tau_term        = } (E.l*(delta-1)*E.tau)/2
   , { dim_term        = } DIM_u_cap_p(x)
-  , { scalar_term     = } number_real_orthogonal_pairs(x,delta)/2
+  , { scalar_term     = } number_real_orthogonal_pairs(x,delta)
     { new_term used to be |g_l*rho_r(x)*2| before it fell out of grace }
   , { brand_new_term  = } (E.t*rho_r(x))/2
   ] { the sum of these will be interpreted modulo 2/1 }
@@ -264,7 +264,7 @@ set print_mu (Param p) = void:
      let terms=mu_terms(p,p.real_form.distinguished_involution) in
      prints(p, "    ", 1 , "     ", "  ", terms[0], "  ", terms[1]
            , "     ", terms[2], "     ", terms[3], "     "
-           , { terms[4], "   ", } sum(terms))
+           ,   terms[4], "   ",   sum(terms))
 
 set print_mus (ParamPol P) = void:
   let delta=real_form(P).distinguished_involution
@@ -272,7 +272,7 @@ set print_mus (ParamPol P) = void:
   in
   prints("columns are:", new_line
         , "coeff*p           lambda_rho term    tau  term      " ##
-          "  dim term      #real_pairs" ## { "    new term   " ## }
+          "  dim term      #real_pairs" ##  " brand new term" ## 
           "  sum  s^sum*coeff", new_line);
   for c@p in P
   do let terms=mu_terms(p,delta) then mu=sum(terms) in
