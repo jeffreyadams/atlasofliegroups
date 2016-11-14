@@ -227,6 +227,17 @@ set number_real_orthogonal_pairs (KGBElt x, mat delta) = int:
     #=pairing { count zero pairings }
   od.sum.half { compensate for each pair being counted twice }
 
+{ this is a temporary correction of the incorrect dim_u_cap_p }
+
+set DIM_u_cap_p(KGBElt x) = int:
+  let sum=0/1 in
+  for alpha in posroots(root_datum(x)) do
+    if is_complex(alpha,x) then sum +:= 1/2
+    elif is_noncompact_imaginary(alpha,x) then sum+:=1
+    fi
+  od; rat_as_int(sum)
+
+
 { function |mu| below was intially described in Vogan in email of Oct 25, 2016
   with subject: mu(p); it has been significantly modified since
   It is a sum of rational terms, for which eventually differences (which should
@@ -240,9 +251,10 @@ set mu_terms  (Param p,mat delta) = [rat]:
   in
   [ { lambda_rho_term = } (g_l-rho_check_r(x))*E.lambda_rho
   , { tau_term        = } (E.l*(delta-1)*E.tau)
-  , { dim_term        = } dim_u_cap_p(x)
+  , { dim_term        = } DIM_u_cap_p(x)
   , { scalar_term     = } number_real_orthogonal_pairs(x,delta)/2
     { new_term used to be |g_l*rho_r(x)*2| before it fell out of grace }
+  , { brand_new_term  = } (E.t*rho_r(x))/2
   ] { the sum of these will be interpreted modulo 2/1 }
 
 
