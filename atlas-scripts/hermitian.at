@@ -272,13 +272,14 @@ set print_mus (ParamPol P) = void:
   in
   prints("columns are:", new_line
         , "coeff*p           lambda_rho term    tau  term      " ##
-          "  dim term      #real_pairs" ##  " brand new term" ## 
+          "  dim term      #real_pairs" ##  " brand new term" ##
           "  sum  s^sum*coeff", new_line);
   for c@p in P
-  do let terms=mu_terms(p,delta) then mu=sum(terms) in
+  do let terms=mu_terms(p,delta) in let ep=E(delta,p) then mu=sum(terms) in
     prints(c,"*", p, "     ", "  ", terms[0], "  ", terms[1], "     "
           , terms[2], "     ", terms[3], "     ", terms[4], "   ", mu
-          , "  ", c*s^(rat_as_int(mu-mu_0)))
+          , "  ", c*s^(rat_as_int(mu-mu_0)));
+	  prints({"    gamma = ",ep.gamma,} "  lambda_rho+2rho_r = ",ep.lambda_rho +2*rho_r(ep.x), "  tau = ",ep.tau, "  g - l - rho_check_r = ", ep.g - ep.l - rho_check_r(ep.x), new_line)
   od
 
 
