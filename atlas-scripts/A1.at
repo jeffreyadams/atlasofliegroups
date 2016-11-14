@@ -1,3 +1,7 @@
+<basic.at
+<lietypes.at { for A1="A1" }
+<group_operations.at { for *@(RootDatum,RootDatum) }
+
 set A1_Lie_type(int n_A1_factors, int n_torus_factors)=LieType:
 let rv=string:"" in for i:n_A1_factors do rv+:="A1." od;
 Lie_type(rv+:="T"+int_format(n_torus_factors))
@@ -36,7 +40,7 @@ inner_class(A1_root_datum(n_A1_factors,n_torus_factors,center), innerclass)
 set A1_inner_class(int n_A1_factors,int n_torus_factors, [vec] center, string innerclass)=InnerClass:
 A1_inner_class(n_A1_factors,n_torus_factors, central_subgroup_as_ratvec(center),innerclass)
 
-{same as previous commands with additional distinguished involution delta, given as 
+{same as previous commands with additional distinguished involution delta, given as
 a permutation of order 2, where [a_1,...a_n] means the permutation i->a_i
 return (inner_class, matrix of permutation)
 }

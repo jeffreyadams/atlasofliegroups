@@ -1309,28 +1309,29 @@ determining them is a small part of what the constructor for a
 rank).
 
 @h "tori.h"
+@f delta nullptr
 @< Local function def...@>=
 std::pair<size_t,size_t> classify_involution
-  (const WeightInvolution& M)
-{ size_t r=M.numRows();
-  @< Check that |M| is an $r\times{r}$ matrix defining an involution @>
-  tori::RealTorus Tor(M);
+  (const WeightInvolution& delta)
+{ size_t r=delta.numRows();
+  @< Check that |delta| is an $r\times{r}$ matrix defining an involution @>
+  tori::RealTorus Tor(delta);
   return std::make_pair(Tor.compactRank(),Tor.splitRank());
 }
 
-@ The test below that |M| is an involution ($M^2=\\{Id}$) is certainly
+@ The test below that |delta| is an involution ($\delta^2=\\{Id}$) is certainly
 necessary when |classify_involution| is called independently. If the code
 below is executed in the context of checking the involution for an inner
-class, it may seem redundant given the fact that we shall also check that |M|
+class, it may seem redundant given the fact that we shall also check that |delta|
 induces an involutive permutation of the roots; however even there it is not
 redundant in the presence of a torus part.
 
-@< Check that |M| is an $r\times{r}$ matrix defining an involution @>=
-{ if (M.numRows()!=r or M.numColumns()!=r) throw runtime_error
+@< Check that |delta| is an $r\times{r}$ matrix defining an involution @>=
+{ if (delta.numRows()!=r or delta.numColumns()!=r) throw runtime_error
     ("Involution should be a "+str(r)+"x"+str(r)+" matrix, got a "
 @.Involution should be...@>
-     +str(M.numRows())+"x"+str(M.numColumns())+" matrix");
-  WeightInvolution Id(r),Q(M*M);
+     +str(delta.numRows())+"x"+str(delta.numColumns())+" matrix");
+  WeightInvolution Id(r),Q(delta*delta);
   if (Q!=Id) throw runtime_error
       ("Given transformation is not an involution");
 @.Given transformation...@>
@@ -1357,24 +1358,73 @@ void classify_wrapper(expression_base::level l)
 @ We now come to the part of the analysis that involves the root datum. Since
 the matrix is already expressed on the basis of the weight lattice used by the
 root datum, the question of stabilising that lattice is settled, but we must
-check that the matrix is indeed an involution, and that it gives an
-automorphism of the root datum. In fact we need an automorphism of the based
-root datum, but we will allow a conjugate of such an automorphism to be
-supplied as~$M$, and export through the |ww| parameter a Weyl group element
-conjugates the based root datum automorphism to~$M$. If this succeeds, we
-shall have found an involution of the simple roots (a ``twist'') describing
-the inner class for the involution, and we return this value, which allows
-also using this function easily to test whether an involution is proper for a
-given inner class. After having done all this, we can also determine the Lie
-type of the root datum, the permutation possibly needed to map the standard
-(Bourbaki) ordering of that Dynkin diagram to the actual one, and the inner
-class letters corresponding to each of its factors. This is precisely the data
-stored in a |lietype::Layout| structure, so we provide as final argument a
-pointer |lo| to such a structure; if non null, those values will be computed
-and stored there. Given the amount of effort required below, one might wonder
-if recording a |Layout| in an inner class is really necessary, but its
-presence is essential to be able to associate real form names to internal data
-(namely gradings), so in the current set-up its computation cannot be avoided.
+check that the matrix is indeed an involution (for which we reuse a module),
+and that it gives an automorphism of the root datum. In fact we need an
+automorphism of the \emph{based} root datum, but we will allow any root datum
+automorphism to be supplied, and will compute from it a conjugate that sends
+all positive roots to positive roots. The following auxiliary function checks
+whether a given operator |delta|, assumed to be an involution, maps root to
+roots and coroots to coroots (throwing an error if it not), and returns a list
+of images of simple roots, which can then be used by the caller to transform
+|delta| into a based root datum involution.
+
+That |delta| is a root datum automorphism means that the roots are permuted
+among each other, that the coroots are (under right multiplication) also
+permuted among each other (this is not implied by the first condition if the
+root datum is not semisimple; when it does hold, the permutation is
+necessarily the same). By additivity of linear maps, it suffices to check
+these properties for simple roots and coroots.
+
+@f Delta nullptr
+
+@< Local function def...@>=
+RootNbrList check_root_datum_involution
+  (const RootDatum& rd, const WeightInvolution& delta)
+{ const size_t r=rd.rank(), s=rd.semisimpleRank();
+  @< Check that |delta| is an $r\times{r}$ matrix defining an involution @>
+  RootNbrList Delta(s);
+  for (weyl::Generator i=0; i<s; ++i)
+  { Delta[i]=rd.root_index(delta*rd.simpleRoot(i));
+    if (Delta[i]==rd.numRoots()) // then image not found
+      throw runtime_error@|
+        ("Matrix maps simple root "+str(i)+" to non-root");
+    if (delta.right_prod(rd.simpleCoroot(i))!=rd.coroot(Delta[i]))
+      throw runtime_error@|
+        ("Matrix does not map simple coroot "+str(i)
+        @|+" to coroot "+str(Delta[i]-rd.numPosRoots()));
+  }
+  return Delta;
+}
+@)
+void check_based_root_datum_involution
+  (const RootDatum& rd, const WeightInvolution& delta)
+{ const auto Delta=check_root_datum_involution(rd,delta);
+  const auto s=rd.semisimpleRank();
+  for (weyl::Generator i=0; i<s; ++i)
+    if (not rd.is_simple_root(Delta[i]))
+      throw runtime_error ("Root datum involution is not distinguished");
+}
+
+@ At a more outer level, the function |check_involution| will do all pertinent
+checks, and when successful both modifies its argument |delta| to a based root
+datum involution, and exports through the |ww| parameter the Weyl group
+element whose conjugation was used; finally the return value is the |Twist| of
+the Dynkin diagram corresponding to the modified~|delta| (this allows also
+using this function easily to test whether an involution is proper for a given
+inner class). After passing the test |check_root_datum_involution|, we are
+sure that |wrt_distinguished| will be able to map the images |Delta| to the
+simple roots by a Weyl group element.
+
+In addition to this, the function can also determine the Lie type of
+the root datum, the permutation possibly needed to map the standard (Bourbaki)
+ordering of that Dynkin diagram to the actual one, and the inner class letters
+corresponding to each of its factors. This is precisely the data stored in a
+|lietype::Layout| structure, so we provide as final argument a pointer |lo| to
+such a structure; if non null, those values will be computed and stored there.
+Given the amount of effort required below, one might wonder if recording a
+|Layout| in an inner class is really necessary, but its presence is essential
+to be able to associate real form names to internal data (namely gradings), so
+in the current set-up its computation cannot be avoided.
 
 The Lie type will in general be identical to that of the root datum (and in
 particular any torus factors will come at the end), but in case of Complex
@@ -1382,24 +1432,24 @@ inner classes we may be forced to permute the simple factors to make the
 identical factors associated to such classes adjacent (the permutation will be
 adapted to reflect this reordering of simple factors).
 
-We do not apply the function |classify_involution| defined above to the entire
-matrix describing a (purported) involution of the weight lattice, although we
-shall use it below for a matrix defined for the central torus part; we can
-however reuse the module that tests for being an involution here.
+We shall not apply the function |classify_involution| defined above to the
+entire matrix describing a (purported) involution of the weight lattice,
+but rather we shall apply it below to a matrix defined for the central torus
+part.
 
 @h "weyl.h"
 
 @< Local function def...@>=
 weyl::Twist check_involution
- (WeightInvolution& M, const RootDatum& rd,
+ (WeightInvolution& delta, const RootDatum& rd,
   WeylWord& ww, @| lietype::Layout* lo=nullptr)
-{ size_t r=rd.rank(),s=rd.semisimpleRank();
-  @< Check that |M| is an $r\times{r}$ matrix defining an involution @>
-@/weyl::Twist p;
-@/ @< Left-act by Weyl group on |M| to make it map positive roots to positive
-  roots, and set |ww| to the reversed Weyl group element used; also set |p| to
-  the permutation of the simple roots |M| now achieves. Throw a |runtime_error|
-  if |M| is not an automorphism of |rd| @>
+{ RootNbrList Delta = check_root_datum_involution(rd,delta);
+  ww = wrt_distinguished(rd,Delta);
+  const size_t r=rd.rank(), s=rd.semisimpleRank();
+  weyl::Twist p; // result
+ @/ @< Left-act on |delta| by the reverse of~|ww|, making it map positive roots
+  to positive roots, and set |p| to the permutation of the simple roots
+  |delta| now achieves. @>
   if (lo==nullptr)
     return p; // if no details are asked for, we are done now
 @/LieType& type=lo->d_type;
@@ -1413,44 +1463,15 @@ weyl::Twist check_involution
   return p;
 }
 
-@ That |M| is an automorphism means that the roots are permuted among each
-other, that the coroots are (under right multiplication) also permuted among
-each other (this is not implied by the first condition if the root datum is
-not semisimple; when it does hold, the permutation is necessarily the same),
-and that after applying the Weyl group action to map simple roots to simple
-roots, the result is a diagram automorphism. This final condition is tested by
-checking that the Cartan matrix is invariant under the corresponding
-permutation of its rows and columns.
-
-@f Delta nullptr
-
-@< Left-act by Weyl group on |M| to make it map positive roots...@>=
-{ RootNbrList Delta(s);
-  for (weyl::Generator i=0; i<s; ++i)
-  { Delta[i]=rd.root_index(M*rd.simpleRoot(i));
-    if (Delta[i]==rd.numRoots()) // then image not found
-      throw runtime_error@|
-        ("Matrix maps simple root "+str(i)+" to non-root");
-    if (M.right_prod(rd.simpleCoroot(i))!=rd.coroot(Delta[i]))
-      throw runtime_error@|
-        ("Matrix does not map simple coroot "+str(i)
-        @|+" to coroot "+str(Delta[i]-rd.numPosRoots()));
-  }
-  ww = wrt_distinguished(rd,Delta);
-  for (weyl::Generator i=0; i<s; ++i)
-    if (rd.is_simple_root(Delta[i])) // should have made every root simple
-      p[i]=rd.simpleRootIndex(Delta[i]);
-    else throw runtime_error
-      ("Matrix does not define a root datum automorphism");
-@.Matrix does not define...@>
-  for (weyl::Generator i=0; i<s; ++i)
-    for (weyl::Generator j=0; j<s; ++j)
-      if (rd.cartan(p[i],p[j])!=rd.cartan(i,j)) throw runtime_error@|
-      ("Matrix does not define a root datum automorphism");
+@
+@< Left-act on |delta|...@>=
+{ for (weyl::Generator i=0; i<s; ++i)
+    p[i]=rd.simpleRootIndex(Delta[i]);
+    // this |assert|s that |Delta[i]| is simple
 @)
-  // now adapt |M| so that it becomes the inner class distinguished involution
+// now adapt |delta| so that it becomes the inner class distinguished involution
   for (unsigned int i=0; i<ww.size(); ++i) // apply elements in generation order
-    rd.simple_reflect(ww[i],M);
+    rd.simple_reflect(ww[i],delta);
 }
 
 @ For each simple factor we look if there are any non-fixed points of the
@@ -1589,7 +1610,7 @@ block), and extract the bottom-right $(r-s)\times(r-s)$ block.
   int_Matrix basis =
      matreduc::adapted_basis(root_lattice,factor);
 @/WeightInvolution inv =
-     basis.inverse().block(s,0,r,r)*M*basis.block(0,s,r,r);
+     basis.inverse().block(s,0,r,r)*delta*basis.block(0,s,r,r);
     // involution on quotient by root lattice
   std::pair<size_t,size_t> cl=classify_involution(inv);
 @/size_t& compact_rank=cl.first;
@@ -3176,7 +3197,8 @@ void build_KGB_element_wrapper(expression_base::level l)
 
 
 @ One can conjugate a KGB element by the distinguished involution of the inner
-class.
+class, or by an explicitly supplied distinguished involution that
+should commute with the inner class one; |test_compatible| tests this.
 
 @< Local function def...@>=
 void KGB_twist_wrapper(expression_base::level l)
@@ -3185,6 +3207,23 @@ void KGB_twist_wrapper(expression_base::level l)
   if (l==expression_base::no_value)
     return;
   x->val= kgb.Hermitian_dual(x->val); // do twist
+  push_value(x);
+}
+@)
+void test_compatible (const InnerClass& ic, shared_matrix& delta)
+{ check_based_root_datum_involution(ic.rootDatum(),delta->val);
+  auto& xi = ic.distinguished();
+  if (delta->val*xi!=xi*delta->val)
+    throw runtime_error("Non commuting distinguished involution");
+}
+@)
+void KGB_outer_twist_wrapper(expression_base::level l)
+{ auto delta = get<matrix_value>();
+  own_KGB_elt x = get_own<KGB_elt_value>();
+  test_compatible(x->rf->parent.val,delta);
+  if (l==expression_base::no_value)
+    return;
+  x->val= x->rf->kgb().twisted(x->val,delta->val); // do twist
   push_value(x);
 }
 
@@ -3248,6 +3287,7 @@ install_function(KGB_status_wrapper,@|"status","(int,KGBElt->int)");
 install_function(build_KGB_element_wrapper,@|"KGB_elt"
 		,"(RealForm,mat,ratvec->KGBElt)");
 install_function(KGB_twist_wrapper,@|"twist","(KGBElt->KGBElt)");
+install_function(KGB_outer_twist_wrapper,@|"twist","(KGBElt,mat->KGBElt)");
 install_function(KGB_Cartan_wrapper,@|"Cartan_class","(KGBElt->CartanClass)");
 install_function(KGB_involution_wrapper,@|"involution","(KGBElt->mat)");
 install_function(KGB_length_wrapper,@|"length","(KGBElt->int)");
@@ -3855,23 +3895,13 @@ void parameter_twist_wrapper(expression_base::level l)
 
 @ The same can be done for an external twist, specified by a matrix. The
 method of |Rep_context| to call is now |twisted| rather than |inner_twisted|,
-but more work is required in this wrapper function, because we must ensure
-that the external involution is compatible with the inner class.
+but we first call |test_compatible|.
 
 @< Local function def...@>=
-void test_compatible (const shared_module_parameter& p, own_matrix& delta)
-{ auto &rc = p->rc(); WeylWord ww; // dummy
-  check_involution(delta->val,rc.rootDatum(),ww);
-    // also makes |delta->val| distinguished
-  auto& xi = rc.innerClass().distinguished();
-  if (delta->val*xi!=xi*delta->val)
-    throw runtime_error("Non commuting distinguished involution");
-}
-@)
-void external_twist_wrapper(expression_base::level l)
-{ auto delta = get_own<matrix_value>(); // own because of |check_involution|
+void parameter_outer_twist_wrapper(expression_base::level l)
+{ auto delta = get<matrix_value>();
   auto p = get<module_parameter_value>();
-  test_compatible(p,delta);
+  test_compatible(p->rc().innerClass(),delta);
   if (l!=expression_base::no_value)
     push_value(std::make_shared<module_parameter_value>
 		(p->rf,p->rc().twisted(p->val,delta->val)));
@@ -4169,10 +4199,10 @@ blocks available in \.{atlas}.
 
 @< Local function def...@>=
 void extended_block_wrapper(expression_base::level l)
-{ auto delta =get_own<matrix_value>(); // own needed for |test_compatible|
+{ auto delta =get<matrix_value>();
   shared_module_parameter p = get<module_parameter_value>();
   test_standard(*p,"Cannot generate block");
-  test_compatible(p,delta);
+  test_compatible(p->rc().innerClass(),delta);
   if (l==expression_base::no_value) return;
 @)
   const auto& rc = p->rc();
@@ -4253,10 +4283,10 @@ described, and a list of element lengths.
 
 @< Local function def...@>=
 void extended_KL_block_wrapper(expression_base::level l)
-{ auto delta = get_own<matrix_value>(); // own because of |check_involution|
+{ auto delta = get<matrix_value>();
   auto p = get<module_parameter_value>();
   test_standard(*p,"Cannot generate extended block");
-  test_compatible(p,delta);
+  test_compatible(p->rc().innerClass(),delta);
   if (l==expression_base::no_value) return;
 @)
   std::vector<StandardRepr> block;
@@ -4295,7 +4325,7 @@ install_function(parameter_inv_Cayley_wrapper,@|"inv_Cayley"
 install_function(root_parameter_cross_wrapper,@|"cross" ,"(vec,Param->Param)");
 install_function(root_parameter_Cayley_wrapper,@|"Cayley" ,"(vec,Param->Param)");
 install_function(parameter_twist_wrapper,@|"twist" ,"(Param->Param)");
-install_function(external_twist_wrapper,@|"twist" ,"(Param,mat->Param)");
+install_function(parameter_outer_twist_wrapper,@|"twist" ,"(Param,mat->Param)");
 install_function(orientation_number_wrapper,@|"orientation_nr" ,"(Param->int)");
 install_function(reducibility_points_wrapper,@|
 		"reducibility_points" ,"(Param->[rat])");
@@ -5104,10 +5134,10 @@ actual work.
 
 void scale_extended_wrapper(expression_base::level l)
 { auto factor = get<rat_value>();
-  auto delta = get_own<matrix_value>(); // own because of |check_involution|
+  auto delta = get<matrix_value>();
   auto p = get<module_parameter_value>();
   test_standard(*p,"Cannot scale extended parameter");
-  test_compatible(p,delta);
+  test_compatible(p->rc().innerClass(),delta);
   if (not p->rc().is_twist_fixed(p->val,delta->val))
     throw runtime_error("Parameter to be scaled not fixed by given involution");
   if (l==expression_base::no_value)
@@ -5136,10 +5166,10 @@ The function |finalise| in the module \\{ext\_block} does the actual work.
 @< Local function def...@>=
 
 void finalize_extended_wrapper(expression_base::level l)
-{ auto delta = get_own<matrix_value>(); // own because of |check_involution|
+{ auto delta = get<matrix_value>();
   auto p = get<module_parameter_value>();
   test_standard(*p,"Cannot finalize extended parameter");
-  test_compatible(p,delta);
+  test_compatible(p->rc().innerClass(),delta);
   if (not p->rc().is_twist_fixed(p->val,delta->val))
     throw runtime_error("Parameter not fixed by given involution");
   if (l==expression_base::no_value)
@@ -5293,10 +5323,10 @@ parameter and an involution matrix as argument.
 
 @< Local function def...@>=
 void raw_ext_KL_wrapper (expression_base::level l)
-{ auto delta = get_own<matrix_value>();
+{ auto delta = get<matrix_value>();
   shared_module_parameter p = get<module_parameter_value>();
   test_standard(*p,"Cannot generate block");
-  test_compatible(p,delta);
+  test_compatible(p->rc().innerClass(),delta);
   if (l==expression_base::no_value) return;
 @)
   const auto& rc = p->rc();

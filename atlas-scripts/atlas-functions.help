@@ -554,6 +554,8 @@ Cayley: (int,KGBElt->KGBElt): Cayley transform for (posrootnr,KGB element)
   which signifies a single-value inverse Cayley, or else the second value
 twist: (KGBElt->KGBElt): twist of KGB element x, useful for Hermitian dual
   This is defined by conjugation of x by the distinguished involution delta
+twist: (KGBElt,mat->KGBElt): twist of KGB element x by an external involution
+  The result of conjugation of x by the given involution of the weight lattice
 torus_factor: (KGBElt->ratvec): coweight for KGB element, twice that in print_X
   This is a \theta^t stable rational vector v with integral evaluations on
   all imaginary roots; interpreted modulo the image of 1+\theta^t acting
