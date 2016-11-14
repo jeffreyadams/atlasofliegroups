@@ -2,6 +2,8 @@
 <ext_deform.at { for full_deform@(Param,mat) }
 <thetastable.at {for dim_u_cap_p}
 set hf_debug=false
+set use_equal_rank_mu=true  {false: force use of twisted mu (for testing)}
+
 {    c_form on standard representations, correct in all cases   }
 
 { c_form_std:
@@ -125,7 +127,7 @@ set c_form_irreducible_twisted_long (Param p,mat delta) =
   then fixed_terms = null_module(G), unfixed_terms = null_module(G)
   , terms=[(Param,Split,ParamPol)]: []
   , P=KL_sum_at_s(p), Ptw=twisted_KL_sum_at_s(p)
-  then character_formula=P.s_to_1
+{  then character_formula=P.s_to_1}
   in
   for c0@q in P
   do let orient_c=orientation_nr_term(ori_nr_p,q) in
@@ -141,7 +143,7 @@ set c_form_irreducible_twisted_long (Param p,mat delta) =
         (unfixed_terms+:=contrib, terms#:=(q,c0,contrib))
     fi
   od
-; (character_formula,terms,fixed_terms + half(unfixed_terms))
+; ({character_formula}c_form_irr_twisted_as_sum_of_standards(p,delta),terms,fixed_terms + half(unfixed_terms))
 )
 
 { if delta isn't given assume it is the the inner class involution }
@@ -159,7 +161,7 @@ set print_c_form_irreducible_twisted_long (Param p) = void:
   let (formula,terms,answer)=c_form_irreducible_twisted_long(p) in
   prints(new_line,new_line
         ,"(twisted) c-form on irreducible in terms of standards:"
-        ,formula,new_line);
+       ,formula.pol_format,new_line);
   for (p,coeff,P) in terms
   do prints("coeff*form on standard: ", new_line
            ,coeff.split_format,"*",p,":",new_line
@@ -242,29 +244,30 @@ set DIM_u_cap_p(KGBElt x) = int:
   with subject: mu(p); it has been significantly modified since
   It is a sum of rational terms, for which eventually differences (which should
   be integer) will serve as exponents of |s|, therefore interpreted modulo 2
-  To facilitate analysis of the terms |mu_terms| returns them as a list of 5
+  To facilitate analysis of the terms |mu_terms| returns them as a list of 3
 }
 
 set mu_terms  (Param p,mat delta) = [rat]:
   assert(=nu(p),"nu(p)!=0");
   let E=E(delta,p), x=x(p) then g_l=E.g-E.l
   in
-  [ { lambda_rho_term = } (g_l-rho_check_r(x))*E.lambda_rho
+  [ { lambda_rho_term = } (g_l-rho_check_r(x))*(E.lambda_rho)
   , { tau_term        = } (E.l*(delta-1)*E.tau)/2
   , { dim_term        = } DIM_u_cap_p(x)
-  , { scalar_term     = } number_real_orthogonal_pairs(x,delta)
+ { , { scalar_term     = } {number_real_orthogonal_pairs(x,delta)} 0 }
     { new_term used to be |g_l*rho_r(x)*2| before it fell out of grace }
-  , { brand_new_term  = } (E.t*rho_r(x))/2
+ { , { brand_new_term  = } {(E.t*rho_r(x))/2}{ also fell out of grace } 0 }
   ] { the sum of these will be interpreted modulo 2/1 }
 
 
-set mu (Param p,mat delta) = rat: sum(mu_terms(p,delta))
+set mu (Param p,mat delta) = rat:
+if is_equal_rank(real_form(p)) and  use_equal_rank_mu then mu(p) else sum(mu_terms(p,delta)) fi
 
 set print_mu (Param p) = void:
      let terms=mu_terms(p,p.real_form.distinguished_involution) in
      prints(p, "    ", 1 , "     ", "  ", terms[0], "  ", terms[1]
-           , "     ", terms[2], "     ", terms[3], "     "
-           ,   terms[4], "   ",   sum(terms))
+           , "     ", terms[2], {"     ", terms[3], "     "
+           ,   terms[4], "   ",}   sum(terms))
 
 set print_mus (ParamPol P) = void:
   let delta=real_form(P).distinguished_involution
@@ -272,19 +275,24 @@ set print_mus (ParamPol P) = void:
   in
   prints("columns are:", new_line
         , "coeff*p           lambda_rho term    tau  term      " ##
-          "  dim term      #real_pairs" ##  " brand new term" ## 
+          "  dim term {     #real_pairs}" ##  {" brand new term" ##}
           "  sum  s^sum*coeff", new_line);
   for c@p in P
-  do let terms=mu_terms(p,delta) then mu=sum(terms) in
+  do let terms=mu_terms(p,delta) in let ep=E(delta,p) then mu=sum(terms) in
     prints(c,"*", p, "     ", "  ", terms[0], "  ", terms[1], "     "
-          , terms[2], "     ", terms[3], "     ", terms[4], "   ", mu
-          , "  ", c*s^(rat_as_int(mu-mu_0)))
+          , terms[2], "     "{, terms[3], "     ", terms[4], "   "}, mu
+          , "  ", c*s^(rat_as_int(mu-mu_0)));
+	  prints({"    gamma = ",ep.gamma,} "  lambda_rho =  ",ep.lambda_rho, "  tau = ",ep.tau, "  g - l - rho_check_r = ", ep.g - ep.l - rho_check_r(ep.x), new_line)
   od
 
 
 set convert_cform_hermitian (ParamPol P,mat delta)= ParamPol:
   if =#P then P { since we cannot select a term for a null polynomial }
   else
+     if is_equal_rank(real_form(P)) and use_equal_rank_mu then
+      prints("converting c_form using equal rank mu") else
+      prints("converting c_form using twisted mu")
+     fi;
     let a_mu = mu(P.first_param,delta) in
     P.real_form.null_module +
     for w@p in P do
@@ -297,6 +305,7 @@ set convert_cform_hermitian (ParamPol P,mat delta)= ParamPol:
 set convert_cform_hermitian (ParamPol P)= ParamPol:
   convert_cform_hermitian(P,P.first_param.real_form.distinguished_involution)
 
+{no longer used
 set convert_cform_hermitian_equal_rank(ParamPol P)=ParamPol:
   if =#P then P { since we cannot select a term for a null polynomial }
   else
@@ -305,21 +314,18 @@ set convert_cform_hermitian_equal_rank(ParamPol P)=ParamPol:
     for w@p in P do
     (w*s^(mu(p)-a_mu).rat_as_int,p) od
     fi
+}
 
 {   Hermitian forms on irreducibles     }
 
 { ParamPol giving the hermitian form on irreducible p in all cases}
 set hermitian_form_irreducible (Param p) = ParamPol:
-  {uses the equal rank mu function in the equal rank case}
-  {to force using the new mu function replace the next line with
-   if false
-   and also do this in hermitian_form_irreducible_long}
-  {if is_equal_rank(real_form(p))}
-  if false   {to force using the new mu function}
-  then convert_cform_hermitian_equal_rank(c_form_irreducible(p))
+  if is_equal_rank(real_form(p)) then
+     let cf=c_form_irreducible(p) in  {not twisted, in = rank case this is faster}
+     if hf_debug=true then print_mus(cf) fi;
+     convert_cform_hermitian(cf)   {this will use = rank mu if use_equal_rank_mu=true}
   else
      let cf=c_form_irreducible_twisted(p) in
-     if hf_debug=true then print_mus(cf) fi;
      convert_cform_hermitian(cf)
   fi
 
@@ -329,7 +335,7 @@ set hermitian_form_irreducible_long (Param p) =
   if false   {to force using the new mu function}
   then
     let (formula,terms,cform)=c_form_irreducible_long(p)  in
-    (formula,terms,convert_cform_hermitian_equal_rank(cform))
+    (formula,terms,convert_cform_hermitian(cform))
   else
      let (formula,terms,cform) =
        c_form_irreducible_twisted_long(p,real_form(p).distinguished_involution)

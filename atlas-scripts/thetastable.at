@@ -107,7 +107,12 @@ set two_rho_u_cap_s (Parabolic P) = vec:
 set rho_u_cap_k (Parabolic P) = ratvec: rho_u_cx(P)/2+rho_u_ic(P)
 set rho_u_cap_s (Parabolic P) = ratvec: rho_u(P)-rho_u_cap_k(P)
 
+set dim_u(Parabolic P) = int:n_columns(nilrad(P))
+set dim_u(KGBElt x) = int:dim_u(theta_stable_parabolic(x))
+set dim_u (ratvec H,KGBElt x) = n_columns(nilrad(H,x))
+
 set dim_u_cap_k (Parabolic (,x):P) = int:
+  assert(is_parabolic_theta_stable(P),"Parabolic is not theta-stable");
   let sum=0/1 in
   for alpha in nilrad_roots(P) do
     if is_complex(alpha,x) then sum +:= 1/2
@@ -115,12 +120,21 @@ set dim_u_cap_k (Parabolic (,x):P) = int:
     fi
   od; rat_as_int(sum)
 
-set dim_u_cap_k (KGBElt x) = int: dim_u_cap_k(theta_stable_parabolic(x))
+set dim_u_cap_k (KGBElt x) = int:dim_u_cap_k(theta_stable_parabolic(x))
+set dim_u_cap_k(ratvec lambda,KGBElt x) =  int:
+ let P=parabolic(lambda,x) in assert(is_parabolic_theta_stable(P),"Parabolic is not theta-stable");dim_u_cap_k(P)
 
-set dim_u_cap_p (Parabolic (S,):P) = int: dim_u_cap_k (S,x_min(P))
-
+set dim_u_cap_p (Parabolic (,x):P) = int:
+  assert(is_parabolic_theta_stable(P),"Parabolic is not theta-stable");
+  let sum=0/1 in
+  for alpha in nilrad_roots(P) do
+    if is_complex(alpha,x) then sum +:= 1/2
+    elif is_noncompact_imaginary(alpha,x) then sum+:=1
+    fi
+  od; rat_as_int(sum)
 set dim_u_cap_p (KGBElt x) = int: dim_u_cap_p(theta_stable_parabolic(x))
-set dim_u_cap_p (ratvec lambda,KGBElt x) = int: dim_u_cap_p(parabolic(lambda,x))
+set dim_u_cap_p (ratvec lambda,KGBElt x) = int:
+let P=parabolic(lambda,x) in assert(is_parabolic_theta_stable(P),"Parabolic is not theta-stable");dim_u_cap_p(P)
 
 set dim_u_cap_k_2 (Parabolic P,ratvec H { a coweight } ) = int:
   let x=x_min(P), sum=0/1 in
@@ -172,7 +186,7 @@ set dim_u_cap_p_1(Parabolic P, ratvec H)=
     fi
   od; rat_as_int(sum)
 
-set dim_u (ratvec H,KGBElt x) = n_columns(nilrad(H,x))
+
 
 { -----------------------some representations------------------------------- }
 
