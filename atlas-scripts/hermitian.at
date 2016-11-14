@@ -298,9 +298,12 @@ set convert_cform_hermitian_equal_rank(ParamPol P)=ParamPol:
 
 { ParamPol giving the hermitian form on irreducible p in all cases}
 set hermitian_form_irreducible (Param p) = ParamPol:
-  if is_equal_rank(real_form(p))
-  {use the equal rank mu function in this case}
-  {to test the mu function us: c_form_hermitian(c_form_irreducible(p))}
+  {uses the equal rank mu function in the equal rank case}
+  {to force using the new mu function replace the next line with 
+   if false
+   and also do this in hermitian_form_irreducible_long}
+  {if is_equal_rank(real_form(p))}
+  if false   {to force using the new mu function}
   then convert_cform_hermitian_equal_rank(c_form_irreducible(p))
   else
      let cf=c_form_irreducible_twisted(p) in
@@ -310,7 +313,8 @@ set hermitian_form_irreducible (Param p) = ParamPol:
 
 set hermitian_form_irreducible_long (Param p) =
     (ParamPol,[(Param,Split,ParamPol)],ParamPol):
-  if is_equal_rank(real_form(p))
+  {if is_equal_rank(real_form(p))}
+  if false   {to force using the new mu function}
   then
     let (formula,terms,cform)=c_form_irreducible_long(p)  in
     (formula,terms,convert_cform_hermitian_equal_rank(cform))
