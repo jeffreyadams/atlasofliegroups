@@ -249,12 +249,12 @@ set mu_terms  (Param p,mat delta) = [rat]:
   assert(=nu(p),"nu(p)!=0");
   let E=E(delta,p), x=x(p) then g_l=E.g-E.l
   in
-  [ { lambda_rho_term = } (g_l-rho_check_r(x))*E.lambda_rho
+  [ { lambda_rho_term = } (g_l-rho_check_r(x))*(E.lambda_rho + 2*rho_r(x))
   , { tau_term        = } (E.l*(delta-1)*E.tau)/2
   , { dim_term        = } DIM_u_cap_p(x)
   , { scalar_term     = } number_real_orthogonal_pairs(x,delta)
     { new_term used to be |g_l*rho_r(x)*2| before it fell out of grace }
-  , { brand_new_term  = } (E.t*rho_r(x))/2
+  , { brand_new_term  = } {(E.t*rho_r(x))/2}{ also fell out of grace } 0
   ] { the sum of these will be interpreted modulo 2/1 }
 
 
