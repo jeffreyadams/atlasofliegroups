@@ -2,6 +2,8 @@
 <ext_deform.at { for full_deform@(Param,mat) }
 <thetastable.at {for dim_u_cap_p}
 set hf_debug=false
+set use_equal_rank_mu=true  {false: force use of twisted mu (for testing)}
+
 {    c_form on standard representations, correct in all cases   }
 
 { c_form_std:
@@ -258,7 +260,8 @@ set mu_terms  (Param p,mat delta) = [rat]:
   ] { the sum of these will be interpreted modulo 2/1 }
 
 
-set mu (Param p,mat delta) = rat: sum(mu_terms(p,delta))
+set mu (Param p,mat delta) = rat: 
+if is_equal_rank(real_form(p)) and  use_equal_rank_mu then mu(p) else sum(mu_terms(p,delta)) fi
 
 set print_mu (Param p) = void:
      let terms=mu_terms(p,p.real_form.distinguished_involution) in
@@ -286,6 +289,10 @@ set print_mus (ParamPol P) = void:
 set convert_cform_hermitian (ParamPol P,mat delta)= ParamPol:
   if =#P then P { since we cannot select a term for a null polynomial }
   else
+     if is_equal_rank(real_form(P)) and use_equal_rank_mu then 
+      prints("converting c_form using equal rank mu") else
+      prints("converting c_form using twisted mu") 
+     fi;                               
     let a_mu = mu(P.first_param,delta) in
     P.real_form.null_module +
     for w@p in P do
@@ -298,6 +305,7 @@ set convert_cform_hermitian (ParamPol P,mat delta)= ParamPol:
 set convert_cform_hermitian (ParamPol P)= ParamPol:
   convert_cform_hermitian(P,P.first_param.real_form.distinguished_involution)
 
+{no longer used
 set convert_cform_hermitian_equal_rank(ParamPol P)=ParamPol:
   if =#P then P { since we cannot select a term for a null polynomial }
   else
@@ -306,21 +314,18 @@ set convert_cform_hermitian_equal_rank(ParamPol P)=ParamPol:
     for w@p in P do
     (w*s^(mu(p)-a_mu).rat_as_int,p) od
     fi
+}
 
 {   Hermitian forms on irreducibles     }
 
 { ParamPol giving the hermitian form on irreducible p in all cases}
 set hermitian_form_irreducible (Param p) = ParamPol:
-  {uses the equal rank mu function in the equal rank case}
-  {to force using the new mu function replace the next line with
-   if false
-   and also do this in hermitian_form_irreducible_long}
-  {if is_equal_rank(real_form(p))}
-  if false   {to force using the new mu function}
-  then convert_cform_hermitian_equal_rank(c_form_irreducible(p))
+  if is_equal_rank(real_form(p)) then
+     let cf=c_form_irreducible(p) in  {not twisted, in = rank case this is faster}
+     if hf_debug=true then print_mus(cf) fi;
+     convert_cform_hermitian(cf)   {this will use = rank mu if use_equal_rank_mu=true}
   else
      let cf=c_form_irreducible_twisted(p) in
-     if hf_debug=true then print_mus(cf) fi;
      convert_cform_hermitian(cf)
   fi
 
@@ -330,7 +335,7 @@ set hermitian_form_irreducible_long (Param p) =
   if false   {to force using the new mu function}
   then
     let (formula,terms,cform)=c_form_irreducible_long(p)  in
-    (formula,terms,convert_cform_hermitian_equal_rank(cform))
+    (formula,terms,convert_cform_hermitian(cform))
   else
      let (formula,terms,cform) =
        c_form_irreducible_twisted_long(p,real_form(p).distinguished_involution)
