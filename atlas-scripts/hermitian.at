@@ -242,19 +242,19 @@ set DIM_u_cap_p(KGBElt x) = int:
   with subject: mu(p); it has been significantly modified since
   It is a sum of rational terms, for which eventually differences (which should
   be integer) will serve as exponents of |s|, therefore interpreted modulo 2
-  To facilitate analysis of the terms |mu_terms| returns them as a list of 5
+  To facilitate analysis of the terms |mu_terms| returns them as a list of 3
 }
 
 set mu_terms  (Param p,mat delta) = [rat]:
   assert(=nu(p),"nu(p)!=0");
   let E=E(delta,p), x=x(p) then g_l=E.g-E.l
   in
-  [ { lambda_rho_term = } (g_l-rho_check_r(x))*(E.lambda_rho + 2*rho_r(x))
+  [ { lambda_rho_term = } (g_l-rho_check_r(x))*(E.lambda_rho)
   , { tau_term        = } (E.l*(delta-1)*E.tau)/2
   , { dim_term        = } DIM_u_cap_p(x)
-  , { scalar_term     = } number_real_orthogonal_pairs(x,delta)
+ { , { scalar_term     = } {number_real_orthogonal_pairs(x,delta)} 0 }
     { new_term used to be |g_l*rho_r(x)*2| before it fell out of grace }
-  , { brand_new_term  = } {(E.t*rho_r(x))/2}{ also fell out of grace } 0
+ { , { brand_new_term  = } {(E.t*rho_r(x))/2}{ also fell out of grace } 0 }
   ] { the sum of these will be interpreted modulo 2/1 }
 
 
@@ -263,8 +263,8 @@ set mu (Param p,mat delta) = rat: sum(mu_terms(p,delta))
 set print_mu (Param p) = void:
      let terms=mu_terms(p,p.real_form.distinguished_involution) in
      prints(p, "    ", 1 , "     ", "  ", terms[0], "  ", terms[1]
-           , "     ", terms[2], "     ", terms[3], "     "
-           ,   terms[4], "   ",   sum(terms))
+           , "     ", terms[2], {"     ", terms[3], "     "
+           ,   terms[4], "   ",}   sum(terms))
 
 set print_mus (ParamPol P) = void:
   let delta=real_form(P).distinguished_involution
@@ -272,14 +272,14 @@ set print_mus (ParamPol P) = void:
   in
   prints("columns are:", new_line
         , "coeff*p           lambda_rho term    tau  term      " ##
-          "  dim term      #real_pairs" ##  " brand new term" ##
+          "  dim term {     #real_pairs}" ##  {" brand new term" ##}
           "  sum  s^sum*coeff", new_line);
   for c@p in P
   do let terms=mu_terms(p,delta) in let ep=E(delta,p) then mu=sum(terms) in
     prints(c,"*", p, "     ", "  ", terms[0], "  ", terms[1], "     "
-          , terms[2], "     ", terms[3], "     ", terms[4], "   ", mu
+          , terms[2], "     "{, terms[3], "     ", terms[4], "   "}, mu
           , "  ", c*s^(rat_as_int(mu-mu_0)));
-	  prints({"    gamma = ",ep.gamma,} "  lambda_rho+2rho_r = ",ep.lambda_rho +2*rho_r(ep.x), "  tau = ",ep.tau, "  g - l - rho_check_r = ", ep.g - ep.l - rho_check_r(ep.x), new_line)
+	  prints({"    gamma = ",ep.gamma,} "  lambda_rho =  ",ep.lambda_rho, "  tau = ",ep.tau, "  g - l - rho_check_r = ", ep.g - ep.l - rho_check_r(ep.x), new_line) 
   od
 
 
