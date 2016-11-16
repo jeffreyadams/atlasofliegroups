@@ -260,7 +260,7 @@ set mu_terms  (Param p,mat delta) = [rat]:
   ] { the sum of these will be interpreted modulo 2/1 }
 
 
-set mu (Param p,mat delta) = rat: 
+set mu (Param p,mat delta) = rat:
 if is_equal_rank(real_form(p)) and  use_equal_rank_mu then mu(p) else sum(mu_terms(p,delta)) fi
 
 set print_mu (Param p) = void:
@@ -275,24 +275,24 @@ set print_mus (ParamPol P) = void:
   in
   prints("columns are:", new_line
         , "coeff*p           lambda_rho term    tau  term      " ##
-          "  dim term {     #real_pairs}" ##  {" brand new term" ##}
+          "  dim term    "{     #real_pairs} ##  {" brand new term" ##}
           "  sum  s^sum*coeff", new_line);
   for c@p in P
   do let terms=mu_terms(p,delta) in let ep=E(delta,p) then mu=sum(terms) in
     prints(c,"*", p, "     ", "  ", terms[0], "  ", terms[1], "     "
           , terms[2], "     "{, terms[3], "     ", terms[4], "   "}, mu
           , "  ", c*s^(rat_as_int(mu-mu_0)));
-	  prints({"    gamma = ",ep.gamma,} "  lambda_rho =  ",ep.lambda_rho, "  tau = ",ep.tau, "  g - l - rho_check_r = ", ep.g - ep.l - rho_check_r(ep.x), new_line) 
+	  prints({"    gamma = ",ep.gamma,} "  lambda_rho =  ",ep.lambda_rho, "  tau = ",ep.tau, "  g - l - rho_check_r = ", ep.g - ep.l - rho_check_r(ep.x), new_line)
   od
 
 
 set convert_cform_hermitian (ParamPol P,mat delta)= ParamPol:
   if =#P then P { since we cannot select a term for a null polynomial }
   else
-     if is_equal_rank(real_form(P)) and use_equal_rank_mu then 
+     if is_equal_rank(real_form(P)) and use_equal_rank_mu then
       prints("converting c_form using equal rank mu") else
-      prints("converting c_form using twisted mu") 
-     fi;                               
+      prints("converting c_form using twisted mu")
+     fi;
     let a_mu = mu(P.first_param,delta) in
     P.real_form.null_module +
     for w@p in P do
