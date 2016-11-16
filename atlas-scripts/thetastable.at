@@ -136,8 +136,8 @@ set u (KGBElt x) = mat: nilrad(theta_stable_parabolic(x)) { set of coroots }
   each pair {alpha,theta(alpha)} contributes \alpha/2, so
   rho_u_cx(P)=1/4(sum of complex roots of u) [note the denominator]
 }
-{. Half sum of positive complex roots in the nilradical of P; P must
-  be theta-stable. .}
+{. Half sum of positive complex roots (on fundamental Cartan) in the nilradical of P;
+  P must be theta-stable. .}
 set rho_u_cx (Parabolic P) = ratvec:
   assert(is_parabolic_theta_stable(P),"P is not theta-stable");
   {use the most compact Cartan in L}
@@ -171,22 +171,31 @@ set rho_u_ic (Parabolic P) = ratvec:
     x=canonical_x_K(maximal(P))
   in sum(columns_with(is_compact_imaginary(x),nilrad_roots(P))) / 2
 
-{. .}
+{. Sum of compact roots in $\mathfrak u$ (on $\mathfrak t$) for theta-stable parabolic P. .}
 set two_rho_u_cap_k (Parabolic P) = vec:
   ratvec_as_vec(rho_u_cx_T(P)+2*rho_u_ic(P))
 
-{. .}
+{. Sum of non-compact roots in $\mathfrak u$ (for theta-stable parabolic). .}
 set two_rho_u_cap_s (Parabolic P) = vec:
   ratvec_as_vec(2*rho_u(P))-two_rho_u_cap_k(P)
 
 {these give the same restriction to T_K0, but aren't necessarily integral:}
+{. Half sum of compact roots in $\mathfrak u$ (theta-stable parabolic). .}
 set rho_u_cap_k (Parabolic P) = ratvec: rho_u_cx(P)/2+rho_u_ic(P)
+
+{. Half sum of non-compact roots in $\mathfrak u$ (for theta-stable parabolic). .}
 set rho_u_cap_s (Parabolic P) = ratvec: rho_u(P)-rho_u_cap_k(P)
 
+{. Dimension of $\mathfrak u$ (nilrad of theta-stable parabolic). .}
 set dim_u(Parabolic P) = int:n_columns(nilrad(P))
+
+{. Dimension of the nilradical of the theta-stable parabolic determined by KGB elt x. .}
 set dim_u(KGBElt x) = int:dim_u(theta_stable_parabolic(x))
+
+{. Dimension of the nilradical of the parabolic determined by a weight H. .}
 set dim_u (ratvec H,KGBElt x) = n_columns(nilrad(H,x))
 
+{. Dimension of $\mathfrak u\cap\mathfrak k$ for theta-stable parabolic. .}
 set dim_u_cap_k (Parabolic (,x):P) = int:
   assert(is_parabolic_theta_stable(P),"Parabolic is not theta-stable");
   let sum=0/1 in
@@ -196,10 +205,14 @@ set dim_u_cap_k (Parabolic (,x):P) = int:
     fi
   od; rat_as_int(sum)
 
+{. Dimension of $\mathfrak u\cap\mathfrak k$ for theta-stable parabolic determined by x. .}
 set dim_u_cap_k (KGBElt x) = int:dim_u_cap_k(theta_stable_parabolic(x))
+
+{. Dimension of $\mathfrak u\cap\mathfrak k$ for theta-stable parabolic determined by weight lambda. .}
 set dim_u_cap_k(ratvec lambda,KGBElt x) =  int:
  let P=parabolic(lambda,x) in assert(is_parabolic_theta_stable(P),"Parabolic is not theta-stable");dim_u_cap_k(P)
 
+{. Dimension of $\mathfrak u\cap\mathfrak p$ for theta-stable parabolic. .}
 set dim_u_cap_p (Parabolic (,x):P) = int:
   assert(is_parabolic_theta_stable(P),"Parabolic is not theta-stable");
   let sum=0/1 in
@@ -208,8 +221,12 @@ set dim_u_cap_p (Parabolic (,x):P) = int:
     elif is_noncompact_imaginary(alpha,x) then sum+:=1
     fi
   od; rat_as_int(sum)
+
+{. Dimension of $\mathfrak u \cap\mathfrak p$ for theta-stable parabolic associated to x. .}
 set dim_u_cap_p (KGBElt x) = int: dim_u_cap_p(theta_stable_parabolic(x))
-set dim_u_cap_p (ratvec lambda,KGBElt x) = int: 
+
+{. Dimension of $\mathfrak u\cap\mathfrak p$ for theta-stable parabolic determined by weight lambda. .}
+set dim_u_cap_p (ratvec lambda,KGBElt x) = int:
 let P=parabolic(lambda,x) in assert(is_parabolic_theta_stable(P),"Parabolic is not theta-stable");dim_u_cap_p(P)
 
 set dim_u_cap_k_2 (Parabolic P,ratvec H { a coweight } ) = int:
