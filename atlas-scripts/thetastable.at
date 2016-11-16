@@ -5,19 +5,19 @@ Main functions:
 
 1) $A_q(\lambda)$ construction:
 
- Note: theta_induce_irreducible(pi_L,G) has infinitesimal character
+ Note: theta_induce_irreducible(pi_L,G) has infinitesimal character:
  infinitesimal character(pi_L)+rho(u)
 
  Aq(x,lambda,lambda_q) is defined as follows:
   if lambda_q is weakly dominant set q=q(x,lambda_q),
   apply derived functor to the one dimensional lambda-rho(u) of L.
 
-  REQUIRE: lambda-rho(u)\in X^*.
+  REQUIRE: lambda-rho(u) must be in X^*.
 
   Aq(x,lambda,lambda_q) has infinitesimal character lambda+rho_L,
   thus the one-dimensional lambda has infinitesimal character lambda+rho_L
   for L, and goes to a representation with
-  infinitesimal character lambda+rho_L for G; i.e.
+  infinitesimal character lambda+rho_L for G; i.e.,
   Aq takes infinitesimal character gamma_L to SAME infinitesimal character
   for G. For example, in equal rank, with x on the compact Cartan,
   Aq(x,rho(G),rho(G)) is a discrete series with infinitesimal character rho(G).
@@ -58,9 +58,9 @@ fair => vanishing outside middle degree => honest representation
 
 weakly fair: same implication
 
-NB: <gamma_L-rho_L_rho_U,alpha^vee> >= 0 does NOT imply vanishing
-  (in general) if pi_L is not one dimensional,
-  hence "weakly fair" is only defined if pi_L is one dimensional.
+NB: <gamma_L-rho_L_rho_u,alpha^vee> >= 0 does NOT imply vanishing
+  (in general) if pi_L is not one-dimensional,
+  hence "weakly fair" is only defined if pi_L is one-dimensional.
 !}
 
 <induction.at { for rho_S@(mat,RootDatum) }
@@ -115,14 +115,14 @@ set map_into_distinguished_fiber (KGBElt x)=KGBElt:
   end
 
 {. Map KGB element x to x_K in the distinguished fiber; if necessary, use complex
-  cross actions first to move x to a fiber with no C-roots. .}
+  cross actions first to move x to a fiber with no C- roots. .}
 set strong_map_into_distinguished_fiber (KGBElt x) = KGBElt:
   let (y,)=make_no_Cminus(x) in map_into_distinguished_fiber(y)
 
 {. Same as previous function. .}
 set canonical_x_K (KGBElt x) = KGBElt: strong_map_into_distinguished_fiber(x)
 
-{. Previous function applied to the KGB element of a parameter. .}
+{. Previous function with input a parameter p; it is applied to x(p). .}
 set canonical_x_K (Param p)  = KGBElt: canonical_x_K(x(p))
 
 {. Positive coroots in the nilradical of the theta-stable parabolic determined
@@ -180,7 +180,7 @@ set two_rho_u_cap_s (Parabolic P) = vec:
   ratvec_as_vec(2*rho_u(P))-two_rho_u_cap_k(P)
 
 {these give the same restriction to T_K0, but aren't necessarily integral:}
-{. Half sum of compact roots in $\mathfrak u$ (theta-stable parabolic). .}
+{. Half sum of compact roots in $\mathfrak u$ (for theta-stable parabolic). .}
 set rho_u_cap_k (Parabolic P) = ratvec: rho_u_cx(P)/2+rho_u_ic(P)
 
 {. Half sum of non-compact roots in $\mathfrak u$ (for theta-stable parabolic). .}
@@ -229,6 +229,7 @@ set dim_u_cap_p (KGBElt x) = int: dim_u_cap_p(theta_stable_parabolic(x))
 set dim_u_cap_p (ratvec lambda,KGBElt x) = int:
 let P=parabolic(lambda,x) in assert(is_parabolic_theta_stable(P),"Parabolic is not theta-stable");dim_u_cap_p(P)
 
+{. (Auxiliary function) .}
 set dim_u_cap_k_2 (Parabolic P,ratvec H { a coweight } ) = int:
   let x=x_min(P), sum=0/1 in
   for alpha in nilrad_roots(P) do
@@ -239,6 +240,7 @@ set dim_u_cap_k_2 (Parabolic P,ratvec H { a coweight } ) = int:
     fi
   od; rat_as_int(sum)
 
+{. (Auxiliary function) .}
 set dim_u_cap_k_ge2 (Parabolic P,ratvec H) = int:
   let x=x_min(P), sum=0/1 in
   for alpha in nilrad_roots(P) do
@@ -249,6 +251,7 @@ set dim_u_cap_k_ge2 (Parabolic P,ratvec H) = int:
     fi
   od; rat_as_int(sum)
 
+{. (Auxiliary function) .}
 set dim_u_cap_p_ge2 (Parabolic P,ratvec H) = int:
   let x=x_min(P), sum=0/1 in
   for alpha in nilrad_roots(P) do
@@ -259,6 +262,7 @@ set dim_u_cap_p_ge2 (Parabolic P,ratvec H) = int:
     fi
   od; rat_as_int(sum)
 
+{. (Auxiliary function) .}
 set dim_u_cap_k_1 (Parabolic P,ratvec H) = int:
   let x=x_min(P), sum=0/1 in
   for alpha in nilrad_roots(P) do
@@ -269,6 +273,7 @@ set dim_u_cap_k_1 (Parabolic P,ratvec H) = int:
     fi
   od; rat_as_int(sum)
 
+{. (Auxiliary function) .}
 set dim_u_cap_p_1(Parabolic P, ratvec H)=
   let x=x_min(P), sum=0/1 in
   for alpha in nilrad_roots(P) do
@@ -383,7 +388,8 @@ set is_weakly_fair(KGBElt x_in,ratvec lambda_in,ratvec lambda_q_in)=bool:
   let (x,lambda,lambda_q)=make_dominant(x_in,lambda_in,lambda_q_in)  in
   is_dominant(real_form(x),lambda)
 
-{. .}
+{. Determine the "goodness" for $\mathfrak u$ of a parameter for L;
+returns "good", "weakly good", "fair", "weakly fair", or "none". .}
 set goodness(Param p_L,Parabolic P,RealForm G)=string:
 let L=real_form(p_L) then
 rho_l=rho(L) then
