@@ -275,7 +275,7 @@ set print_mus (ParamPol P) = void:
   in
   prints("columns are:", new_line
         , "coeff*p           lambda_rho term    tau  term      " ##
-          "  dim term {     #real_pairs}" ##  {" brand new term" ##}
+          "  dim term    "{     #real_pairs} ##  {" brand new term" ##}
           "  sum  s^sum*coeff", new_line);
   for c@p in P
   do let terms=mu_terms(p,delta) in let ep=E(delta,p) then mu=sum(terms) in
