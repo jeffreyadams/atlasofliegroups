@@ -298,7 +298,7 @@ lambda_q is dominant
   dominant (auxiliary function). .}
 set make_dominant(KGBElt x_in,ratvec lambda_in, ratvec lambda_q_in)=(KGBElt,ratvec,ratvec):
   let (lambda_q,w)=make_dominant(real_form(x_in),lambda_q_in) in
-  (cross(inverse(w),x_in),act(inverse(w),lambda_in),lambda_q_in)
+  (cross(inverse(w),x_in),act(inverse(w),lambda_in),lambda_q)
 
 {. A_q(lambda) module; $\mathfrak q$ is defined by the weight lambda_q; x_in
   must be attached to the fundamental Cartan. The module is defined as a ParamPol,
