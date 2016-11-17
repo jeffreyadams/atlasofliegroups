@@ -10,7 +10,7 @@ Main functions:
 
  Aq(x,lambda,lambda_q) is defined as follows:
   if lambda_q is weakly dominant set q=q(x,lambda_q),
-  apply derived functor to the one dimensional lambda-rho(u) of L.
+  apply derived functor to the one-dimensional lambda-rho(u) of L.
 
   REQUIRE: lambda-rho(u) must be in X^*.
 
@@ -56,7 +56,7 @@ cohomological induction functor.
 
 fair => vanishing outside middle degree => honest representation
 
-weakly fair: same implication
+weakly fair: same implication for Aq(lambda).
 
 NB: <gamma_L-rho_L_rho_u,alpha^vee> >= 0 does NOT imply vanishing
   (in general) if pi_L is not one-dimensional,
@@ -336,23 +336,65 @@ set Aq (KGBElt x_in,ratvec lambda_in, ratvec lambda_q) = Param:
 set Aq (KGBElt x,ratvec lambda_in) = Param:
   Aq(x,lambda_in,lambda_in)
 
-{. A_q(lambda), specifying G, and not x, to use x=KGB(G,0). .}
+{. A_q(lambda), specify G, not x, to use x=KGB(G,0). .}
 set Aq (RealForm G,ratvec lambda_in, ratvec lambda_q) = Param:
   Aq(KGB(G)[0],lambda_in,lambda_q)
 
-{. A_q(lambda), specifying G, not x, and use lambda_q=lambda_in. .}
+{. A_q(lambda), specify G, not x, and use lambda_q=lambda_in. .}
 set Aq(RealForm G,ratvec lambda_in)=Param:
   Aq(G,lambda_in,lambda_in)
 
 
 {----------------------Good/Fair conditions------------------}
 
-{. Decide whether parameter for L is in the good range for u. .}
+{. Decide whether a parameter defines a one-dimensional representation. .}
+set is_one_dimensional(Param p)=bool:
+  is_finite_dimensional(p) and dimension(p)=1
+
+
+
+{. Decide whether A_q(lambda) is in the good range. .}
+set is_good(KGBElt x_in,ratvec lambda_in,ratvec lambda_q_in)=bool:
+  let (x,lambda,lambda_q)=make_dominant(x_in,lambda_in,lambda_q_in)  in
+  is_strictly_dominant(real_form(x),lambda+rho(Levi(lambda_q,x)))
+
+{. Decide whether A_q(lambda) is weakly good. .}
+set is_weakly_good(KGBElt x_in,ratvec lambda_in,ratvec lambda_q_in)=bool:
+  let (x,lambda,lambda_q)=make_dominant(x_in,lambda_in,lambda_q_in) in
+  is_dominant(real_form(x),lambda+rho(Levi(lambda_q,x)))
+
+{. Decide whether A_q(lambda) is fair. .}
+set is_fair(KGBElt x_in,ratvec lambda_in,ratvec lambda_q_in)=bool:
+  let (x,lambda,lambda_q)=make_dominant(x_in,lambda_in,lambda_q_in)  in
+  is_strictly_dominant(real_form(x),lambda)
+
+{. Decide whether A_q(lambda) is weakly fair. .}
+set is_weakly_fair(KGBElt x_in,ratvec lambda_in,ratvec lambda_q_in)=bool:
+  let (x,lambda,lambda_q)=make_dominant(x_in,lambda_in,lambda_q_in)  in
+  is_dominant(real_form(x),lambda)
+
+{. Determine the "goodness" of an Aq(lambda); returns "good", "weakly good",
+  "fair", "weakly fair", or "none". .}
+set goodness(KGBElt x,ratvec lambda_in,ratvec lambda_q) = void:
+  let G=real_form(x), P=parabolic(lambda_q,x)
+  then L=Levi(P) then rho_l=rho(L)
+  then rho_u=rho(G)-rho_l, infchar_l=lambda_in+rho_l in
+{  in prints("infinitesimal character(l)=", infchar_l);
+    prints("infinitesimal character(l)+rho(u)=", infchar_l+rho_u);
+    prints("infinitesimal character(l)+rho(u)-rho(l)=", infchar_l+rho_u-rho_l);}
+  if is_good(x,lambda_in,lambda_q) then prints("Good")
+  elif is_weakly_good(x,lambda_in,lambda_q) then prints("Weakly good")
+  elif is_fair(x,lambda_in,lambda_q) then prints("Fair")
+  elif is_weakly_fair(x,lambda_in,lambda_q) then prints("Weakly fair")
+  else prints("None")
+  fi
+
+{. Decide whether a parameter for L is in the good range for u. .}
 set is_good(Param p_L,Parabolic P,RealForm G)=bool:
   let v=infinitesimal_character(p_L)+rho_u(P) in
   all(for alpha_check in nilrad(P) do v*alpha_check>0 od)
 
-{. Decide whether parameter for L is in the weakly good range for u. .}
+{. Decide whether a parameter for L is in the weakly good range for u. .}
 set is_weakly_good(Param p_L,Parabolic P,RealForm G)=bool:
   let v=infinitesimal_character(p_L)+rho_u(P) in
   all(for alpha_check in nilrad(P) do v*alpha_check>=0 od)
@@ -363,30 +405,10 @@ set is_fair(Param p_L,Parabolic P,RealForm G)=bool:
   all(for alpha_check in nilrad(P) do v*alpha_check>0 od)
 
 {. Decide whether a parameter for L is weakly fair (provided pi_L
-  is finite dimensional. .}
+  is one-dimensional). .}
 set is_weakly_fair(Param p_L,Parabolic P,RealForm G)=bool:
   let v=infinitesimal_character(p_L)+rho_u(P)-rho(Levi(P)) in
-  is_finite_dimensional(p_L) and all(for alpha_check in nilrad(P) do v*alpha_check>0 od)
-
-{. Decide whether A_q is in the good range. .}
-set is_good(KGBElt x_in,ratvec lambda_in,ratvec lambda_q_in)=bool:
-  let (x,lambda,lambda_q)=make_dominant(x_in,lambda_in,lambda_q_in)  in
-  is_strictly_dominant(real_form(x),lambda+rho(Levi(lambda_q,x)))
-
-{. Decide whether A_q is weakly good. .}
-set is_weakly_good(KGBElt x_in,ratvec lambda_in,ratvec lambda_q_in)=bool:
-  let (x,lambda,lambda_q)=make_dominant(x_in,lambda_in,lambda_q_in) in
-  is_dominant(real_form(x),lambda+rho(Levi(lambda_q,x)))
-
-{. Decide whether A_q is fair. .}
-set is_fair(KGBElt x_in,ratvec lambda_in,ratvec lambda_q_in)=bool:
-  let (x,lambda,lambda_q)=make_dominant(x_in,lambda_in,lambda_q_in)  in
-  is_strictly_dominant(real_form(x),lambda)
-
-{. Decide whether A_q is weakly fair. .}
-set is_weakly_fair(KGBElt x_in,ratvec lambda_in,ratvec lambda_q_in)=bool:
-  let (x,lambda,lambda_q)=make_dominant(x_in,lambda_in,lambda_q_in)  in
-  is_dominant(real_form(x),lambda)
+  is_one_dimensional(p_L) and all(for alpha_check in nilrad(P) do v*alpha_check>=0 od)
 
 {. Determine the "goodness" for $\mathfrak u$ of a parameter for L;
 returns "good", "weakly good", "fair", "weakly fair", or "none". .}
@@ -404,25 +426,6 @@ elif is_weakly_good(p_L,P,G) then "Weakly good"
 elif is_fair(p_L,P,G) then "Fair"
 elif is_weakly_fair(p_L,P,G) then "Weakly fair"  else
 "None" fi
-
-{goodness is defined below, return type void
-set goodness(KGBElt x,ratvec lambda_in,ratvec lambda_q)=
-let G=real_form(x) then
-P=parabolic(lambda_q,x) then
-L=Levi(P) then
-rho_l=rho(L) then
-rho_u=rho(G)-rho(L) then
-infchar_l=lambda_in+rho_l in
-{ prints("infinitesimal character(l)=", infchar_l);
-  prints("infinitesimal character(l)+rho(u)=", infchar_l+rho_u);
-  prints("infinitesimal character(l)+rho(u)-rho(l)=", infchar_l+rho_u-rho_l);
-}
-if is_good(x,lambda_in,lambda_q) then "Good"
-elif is_weakly_good(x,lambda_in,lambda_q) then "Weakly good"
-elif is_fair(x,lambda_in,lambda_q) then "Fair"
-elif is_weakly_fair(x,lambda_in,lambda_q) then "Weakly fair" else
-"None" fi
-}
 
 set Aq_packet(RealForm G,ComplexParabolic P)=[Param]:
 let parabolics=theta_stable_parabolics(G,P) then
@@ -449,26 +452,13 @@ set is_fair (Param p_L,RealForm G) = bool:
   then rho_u=rho(G)-rho(L)
   in is_strictly_dominant(G,infinitesimal_character(p_L)+rho_u-rho(L))
 
-{ weakly fair only defined if pi_L is finite dimensional }
+{ weakly fair only defined if pi_L is one-dimensional }
 set is_weakly_fair (Param p_L,RealForm G) = bool:
   let L=real_form(p_L)
   then rho_u=rho(G)-rho(L)
-  in is_finite_dimensional(p_L) and dimension(p_L)=1 and
+  in is_one_dimensional(p_L) and
      is_dominant(G,infinitesimal_character(p_L)+rho_u-rho(L))
 
-{wrong defintion? is_good, is_weakly_good, is_fair, is_weakly fair require make_dominant, see above
-set is_good (KGBElt x,ratvec lambda_in,ratvec lambda_q) = bool:
-  let L=Levi(lambda_q,x) in is_strictly_dominant(real_form(x),lambda_in+rho(L))
-
-set is_weakly_good (KGBElt x,ratvec lambda_in,ratvec lambda_q) = bool:
-  let L=Levi(lambda_q,x) in is_dominant(root_datum(x),lambda_in+rho(L))
-
-set is_fair (KGBElt x,ratvec lambda_in,ratvec lambda_q) = bool:
-  is_strictly_dominant(real_form(x),lambda_in)
-
-set is_weakly_fair (KGBElt x,ratvec lambda_in,ratvec lambda_q) = bool:
-  is_dominant(real_form(x),lambda_in)
-}
 set goodness (Param p_L,RealForm G) = void:
   let L=real_form(p_L) then rho_l=rho(L)
   then rho_u=rho(G)-rho_l, infchar_l=infinitesimal_character(p_L)
@@ -483,16 +473,4 @@ set goodness (Param p_L,RealForm G) = void:
   else prints("None")
   fi
 
-set goodness(KGBElt x,ratvec lambda_in,ratvec lambda_q) = void:
-  let G=real_form(x), P=parabolic(lambda_q,x)
-  then L=Levi(P) then rho_l=rho(L)
-  then rho_u=rho(G)-rho_l, infchar_l=lambda_in+rho_l in
-{  in prints("infinitesimal character(l)=", infchar_l);
-    prints("infinitesimal character(l)+rho(u)=", infchar_l+rho_u);
-    prints("infinitesimal character(l)+rho(u)-rho(l)=", infchar_l+rho_u-rho_l);}
-  if is_good(x,lambda_in,lambda_q) then prints("Good")
-  elif is_weakly_good(x,lambda_in,lambda_q) then prints("Weakly good")
-  elif is_fair(x,lambda_in,lambda_q) then prints("Fair")
-  elif is_weakly_fair(x,lambda_in,lambda_q) then prints("Weakly fair")
-  else prints("None")
-  fi
+
