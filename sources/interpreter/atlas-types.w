@@ -5090,7 +5090,7 @@ $$
   \sum_{x\leq y}(-1)^{l(y)-l(x)}P_{x,y}[q:=s] * x
 $$
 There are in fact two variants, of this function an ordinary one and one using
-twisted KLV polynomials.
+twisted KLV polynomials, computed for the inner class involution.
 
 @< Local function def...@>=
 void KL_sum_at_s_wrapper(expression_base::level l)
@@ -5111,6 +5111,24 @@ void twisted_KL_sum_at_s_wrapper(expression_base::level l)
   if (l!=expression_base::no_value)
   {
     repr::SR_poly result = p->rt().twisted_KL_column_at_s(p->val);
+    push_value (std::make_shared<virtual_module_value>(p->rf,result));
+  }
+}
+
+@ We add another function in which the external involution is an argument
+
+@< Local function def...@>=
+void external_twisted_KL_sum_at_s_wrapper(expression_base::level l)
+{ shared_matrix delta = get<matrix_value>();
+  shared_module_parameter p = get<module_parameter_value>();
+  test_standard(*p,"Cannot compute Kazhdan-Lusztig sum");
+  test_nonzero_final(*p,"Cannot compute Kazhdan-Lusztig sum");
+  test_compatible(p->rc().innerClass(),delta);
+  if (not p->rc().is_twist_fixed(p->val,delta->val))
+    throw runtime_error("Parameter not fixed by given involution");
+  if (l!=expression_base::no_value)
+  {
+    repr::SR_poly result = twisted_KL_column_at_s(p->rc(),p->val,delta->val);
     push_value (std::make_shared<virtual_module_value>(p->rf,result));
   }
 }
@@ -5229,6 +5247,8 @@ install_function(full_deform_wrapper,@|"full_deform","(Param->ParamPol)");
 install_function(KL_sum_at_s_wrapper,@|"KL_sum_at_s","(Param->ParamPol)");
 install_function(twisted_KL_sum_at_s_wrapper,@|"twisted_KL_sum_at_s"
                 ,"(Param->ParamPol)");
+install_function(external_twisted_KL_sum_at_s_wrapper,@|"twisted_KL_sum_at_s"
+                ,"(Param,mat->ParamPol)");
 install_function(scale_extended_wrapper,@|"scale_extended"
                 ,"(Param,mat,rat->Param,bool)");
 install_function(finalize_extended_wrapper,@|"finalize_extended"

@@ -751,8 +751,12 @@ twisted_KL_sum_at_s: (Param->ParamPol): KL_sum_at_s, twisted KLV polynomials
   (the twist is for the distinguished involution) instead of ordinary KLV
   polynomials. The actual value depends on sign choices for Hecke module
   generators associated to the terms, so individual terms in the result are
-  mathematically well defined only up to a possible factor -1. Also WARNING:
-  the twisted KLV polynomials are not yet correctly computed in all cases.
+  mathematically well defined only up to a possible factor -1; however
+  consistent internal choices (default extensions) make the signs well-defined
+twisted_KL_sum_at_s: (Param,mat->ParamPol): sum of delta-twisted KLV polynomials
+  This version takes an explicit external involution matrix delta as second
+  argument. The parameter should be delta-fixed. Unlike the previous two, this
+  function does not tabulate results or look up previously computed ones.
 scale_extended: (Param,mat,rat->Param,bool) scale nu, recording extended flips
   When interpreting parameters as representing a representation of the
   delta-extended group (where delta is the second argument, a distinguished

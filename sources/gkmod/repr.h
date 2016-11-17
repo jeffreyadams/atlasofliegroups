@@ -239,6 +239,9 @@ Weight Cayley_shift (const InnerClass& G,
 		     InvolutionNbr theta_upstairs, // at the more split Cartan
 		     const WeylWord& to_simple); // acting from the left
 
+SR_poly twisted_KL_column_at_s
+  (const Rep_context& rc, StandardRepr z, const WeightInvolution& delta);
+
 } // |namespace repr|
 
 } // |namespace atlas|

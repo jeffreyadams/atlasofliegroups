@@ -958,6 +958,55 @@ std::ostream& Rep_context::print (std::ostream& str,const SR_poly& P) const
   return str;
 }
 
+// basic computation of twisted KL column sum, no tabulation of the result
+SR_poly twisted_KL_sum
+( const Rep_context& rc, ext_block::ext_block& eblock, BlockElt y,
+  param_block& parent) // its complete unextended block
+{
+  // compute cumulated KL polynomimals $P_{x,y}$ with $x\leq y$ survivors
+
+  // start with computing KL polynomials for the entire block
+  std::vector<ext_kl::Pol> pool;
+  ext_kl::KL_table twisted_KLV(eblock,pool);
+  twisted_KLV.fill_columns(y+1); // fill table up to |y| inclusive
+
+  // make a copy of |pool| in which polynomials have been evaluated as |s|
+  std::vector<Split_integer> pool_at_s; pool_at_s.reserve(pool.size());
+  for (unsigned i=0; i<pool.size(); ++i)
+    if (pool[i].isZero())
+      pool_at_s.push_back(Split_integer(0,0));
+    else
+    { const auto& P = pool[i];
+      auto d=P.degree();
+      Split_integer eval(P[d]);
+      while (d-->0)
+	eval = eval.times_s()+Split_integer(P[d]);
+      pool_at_s.push_back(eval);
+    }
+
+  // construct a one-column matrix $(P_{x,y}[q:=s])_{x,0}$, range $x$ is block
+  matrix::Matrix<Split_integer> P_at_s(y+1,1);
+  for (BlockElt x=0; x<=y; ++x)
+  { auto pair = twisted_KLV.KL_pol_index(x,y);
+    P_at_s(x,0) = // get value from |pool_at_s|, possibly negated
+      pair.second ? -pool_at_s[pair.first] : pool_at_s[pair.first];
+  }
+
+  // condense |P_at_s| to the extended block elements without singular descents
+  containers::simple_list<BlockElt> survivors = eblock.condense(P_at_s,parent);
+
+  // finally transcribe from |P_at_s| result
+  SR_poly result(rc.repr_less());
+  unsigned int parity = eblock.length(y)%2;
+  for (auto it=survivors.begin(); not survivors.at_end(it); ++it)
+  {
+    auto x = *it; auto factor = P_at_s(x,0);
+    if (eblock.length(x)%2!=parity) // flip sign at odd length difference
+      factor = -factor;
+    result.add_term(rc.sr(parent,eblock.z(x)),factor);
+  }
+  return result;
+} // |twisted_KL_sum|
 
 void Rep_table::add_block(ext_block::ext_block& block,
 			  param_block& parent) // its complete unextended block
@@ -971,7 +1020,7 @@ void Rep_table::add_block(ext_block::ext_block& block,
   // fill the |hash| table for new surviving parameters in this block
   RankFlags singular_orbits = block.singular_orbits(parent);
   for (BlockElt ez = 0; ez<block.size(); ++ez)
-    if (hash.match(sr(parent,block.z(ez)))>=old_size and
+    if (hash.find(sr(parent,block.z(ez)))>=old_size and
 	block.first_descent_among(singular_orbits,ez)==block.rank())
       new_survivors.push_back(ez);
 
@@ -1029,7 +1078,7 @@ void Rep_table::add_block(ext_block::ext_block& block,
 	auto factor = P_at_s(x,y);
 	if (block.length(x)%2!=parity) // flip sign at odd length difference
 	  factor = -factor;
-	dest.add_term(sr(parent,block.z(*x_it)),factor);
+	dest.add_term(sr(parent,block.z(x)),factor);
       }
       // since |dest| is a reference, the sum is stored at its destination
     } // |if (y_index>=old_size)|
@@ -1037,8 +1086,26 @@ void Rep_table::add_block(ext_block::ext_block& block,
 } // |Rep_table::add_block| (extended block)
 
 // compute and return sum of KL polynomials at $s$ for final parameter |z|
+SR_poly twisted_KL_column_at_s
+  (const Rep_context& rc, StandardRepr z, const WeightInvolution& delta)
+  // |z| must be delta-fixed, nonzero and final
+{
+  { RootNbr witness; // there should be no imaginary or real singular descents
+    if (rc.is_zero(z,witness) or not rc.is_final(z,witness))
+      throw std::runtime_error("Representation zero or not final");
+  }
+  rc.make_dominant(z);
+  BlockElt entry; // dummy needed to ensure full block is generated
+  param_block block(rc,z,entry); // which this constructor does
+  ext_block::ext_block eblock(rc.innerClass(),block,rc.kgb(),delta);
+
+  return twisted_KL_sum(rc,eblock,eblock.element(entry),block);
+}
+
+// look up or compute and return the alternating sum of twisted KL polynomials
+// at the inner class involution for final parameter |z|, evaluated at $q=s$
 SR_poly Rep_table::twisted_KL_column_at_s(StandardRepr z)
-  // |z| must be twist-fixed, nonzero and final
+  // |z| must be inner-class-twist-fixed, nonzero and final
 {
   { RootNbr witness;
     if (is_zero(z,witness) or not is_final(z,witness))
