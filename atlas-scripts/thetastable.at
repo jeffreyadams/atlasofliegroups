@@ -3,62 +3,52 @@ are in parabolics.at and induction.at.
 
 Main functions:
 
-1) $A_q(\lambda)$ construction:
+$A_q(\lambda)$ construction:
+============================
 
- Note: theta_induce_irreducible(pi_L,G) has infinitesimal character:
- infinitesimal character(pi_L)+rho(u)
-
- Aq(x,lambda,lambda_q) is defined as follows:
+| Note: theta_induce_irreducible(pi_L,G) has infinitesimal character:
+|infinitesimal character(pi_L)+rho(u).
+|Aq(x,lambda,lambda_q) is defined as follows:
   if lambda_q is weakly dominant set q=q(x,lambda_q),
   apply derived functor to the one-dimensional lambda-rho(u) of L.
-
-  REQUIRE: lambda-rho(u) must be in X^*.
-
-  Aq(x,lambda,lambda_q) has infinitesimal character lambda+rho_L,
-  thus the one-dimensional lambda has infinitesimal character lambda+rho_L
+|
+|  REQUIRE: lambda-rho(u) must be in X^*.
+|
+|Aq(x,lambda,lambda_q) has infinitesimal character lambda+rho_L,
+  thus the one-dimensional with weight lambda has infinitesimal character lambda+rho_L
   for L, and goes to a representation with
   infinitesimal character lambda+rho_L for G; i.e.,
   Aq takes infinitesimal character gamma_L to SAME infinitesimal character
-  for G. For example, in equal rank, with x on the compact Cartan,
-  Aq(x,rho(G),rho(G)) is a discrete series with infinitesimal character rho(G).
-
-  If lambda_q is not weakly dominant, define
-  Aq(x,lambda,lambda_q)=Aq(wx,w\lambda,w\lambda_q),
+  for G.
+| If lambda_q is not weakly dominant, define
+| Aq(x,lambda,lambda_q)=Aq(wx,w\lambda,w\lambda_q),
   where w\lambda_q is weakly dominant.
 
-2)  Good/Fair conditions:
+Good/Fair conditions:
+=====================
 
-i.)  Condition on the roots of $\mathfrak u$:
-
-  For theta_induce(pi_L,G),
-  gamma_L -> gamma_G=gamma_L+rho_u. Then:
-
-  GOOD:  <gamma_L+rho_u,alpha^vee> > 0;
-
-  WEAKLY GOOD:  <gamma_L+rho_u,alpha^vee> \ge 0;
-
-  FAIR: <gamma_L-rho_L+rho_u,alpha^vee> > 0.
-
-ii.) For  Aq(x,lambda,lambda_q): gamma_L=lambda+rho_L;
-
-  gamma_L -> gamma_G=gamma_L = lambda+rho_L
-
-Aq(x,lambda)=theta_induce(x,lambda-rho_u)
-
- GOOD: <lambda+rho_L,alpha^vee> > 0;
-
- FAIR: <lambda,alpha^vee> > 0;
-
- WEAKLY FAIR: <lambda,alpha^vee> \ge 0.
-
-theta_induce(pi_L,G) = Euler-Poincare characteristic of the
-cohomological induction functor.
-
-fair => vanishing outside middle degree => honest representation
-
-weakly fair: same implication for Aq(lambda).
-
-NB: <gamma_L-rho_L_rho_u,alpha^vee> >= 0 does NOT imply vanishing
+|  Condition on the roots of $\mathfrak u$:
+|  For theta_induce(pi_L,G), gamma_L -> gamma_G=gamma_L+rho_u.
+|  Then:
+|  GOOD:  <gamma_L+rho_u,alpha^vee> > 0;
+|  WEAKLY GOOD:  <gamma_L+rho_u,alpha^vee> \ge 0;
+|  FAIR: <gamma_L-rho_L+rho_u,alpha^vee> > 0.
+|
+| For  Aq(x,lambda,lambda_q): gamma_L=lambda+rho_L;
+| gamma_L -> gamma_G=gamma_L = lambda+rho_L
+| Aq(x,lambda)=theta_induce(x,lambda-rho_u)
+| Then:
+| GOOD: <lambda+rho_L,alpha^vee> > 0;
+| WEAKLY GOOD: <lambda+rho_L,alpha^vee> >= 0;
+| FAIR: <lambda,alpha^vee> > 0;
+| WEAKLY FAIR: <lambda,alpha^vee> \ge 0.
+|
+| theta_induce(pi_L,G) = Euler-Poincare characteristic of the
+  cohomological induction functor.
+|
+| fair => vanishing outside middle degree => honest representation
+| weakly fair: same implication.
+| NB: <gamma_L-rho_L_rho_u,alpha^vee> >= 0 does NOT imply vanishing
   (in general) if pi_L is not one-dimensional,
   hence "weakly fair" is only defined if pi_L is one-dimensional.
 !}
@@ -171,7 +161,7 @@ set rho_u_ic (Parabolic P) = ratvec:
     x=canonical_x_K(maximal(P))
   in sum(columns_with(is_compact_imaginary(x),nilrad_roots(P))) / 2
 
-{. Sum of compact roots in $\mathfrak u$ (on $\mathfrak t$) for theta-stable parabolic P. .}
+{. Sum of compact roots (of $\mathfrak t$) in $\mathfrak u$ for theta-stable parabolic P. .}
 set two_rho_u_cap_k (Parabolic P) = vec:
   ratvec_as_vec(rho_u_cx_T(P)+2*rho_u_ic(P))
 
@@ -205,12 +195,15 @@ set dim_u_cap_k (Parabolic (,x):P) = int:
     fi
   od; rat_as_int(sum)
 
-{. Dimension of $\mathfrak u\cap\mathfrak k$ for theta-stable parabolic determined by x. .}
+{. Dimension of $\mathfrak u\cap\mathfrak k$ for theta-stable parabolic determined
+  by x. .}
 set dim_u_cap_k (KGBElt x) = int:dim_u_cap_k(theta_stable_parabolic(x))
 
-{. Dimension of $\mathfrak u\cap\mathfrak k$ for theta-stable parabolic determined by weight lambda. .}
+{. Dimension of $\mathfrak u\cap\mathfrak k$ for theta-stable parabolic determined by
+  weight lambda. .}
 set dim_u_cap_k(ratvec lambda,KGBElt x) =  int:
- let P=parabolic(lambda,x) in assert(is_parabolic_theta_stable(P),"Parabolic is not theta-stable");dim_u_cap_k(P)
+  let P=parabolic(lambda,x) in
+  assert(is_parabolic_theta_stable(P),"Parabolic is not theta-stable");dim_u_cap_k(P)
 
 {. Dimension of $\mathfrak u\cap\mathfrak p$ for theta-stable parabolic. .}
 set dim_u_cap_p (Parabolic (,x):P) = int:
@@ -222,12 +215,15 @@ set dim_u_cap_p (Parabolic (,x):P) = int:
     fi
   od; rat_as_int(sum)
 
-{. Dimension of $\mathfrak u \cap\mathfrak p$ for theta-stable parabolic associated to x. .}
+{. Dimension of $\mathfrak u \cap\mathfrak p$ for theta-stable parabolic associated
+  to x. .}
 set dim_u_cap_p (KGBElt x) = int: dim_u_cap_p(theta_stable_parabolic(x))
 
-{. Dimension of $\mathfrak u\cap\mathfrak p$ for theta-stable parabolic determined by weight lambda. .}
+{. Dimension of $\mathfrak u\cap\mathfrak p$ for theta-stable parabolic determined by
+  weight lambda. .}
 set dim_u_cap_p (ratvec lambda,KGBElt x) = int:
-let P=parabolic(lambda,x) in assert(is_parabolic_theta_stable(P),"Parabolic is not theta-stable");dim_u_cap_p(P)
+  let P=parabolic(lambda,x) in
+  assert(is_parabolic_theta_stable(P),"Parabolic is not theta-stable");dim_u_cap_p(P)
 
 {. (Auxiliary function) .}
 set dim_u_cap_k_2 (Parabolic P,ratvec H { a coweight } ) = int:
@@ -351,9 +347,7 @@ set Aq(RealForm G,ratvec lambda_in)=Param:
 set is_one_dimensional(Param p)=bool:
   is_finite_dimensional(p) and dimension(p)=1
 
-
-
-{. Decide whether A_q(lambda) is in the good range. .}
+{. Decide whether A_q(lambda) is good. .}
 set is_good(KGBElt x_in,ratvec lambda_in,ratvec lambda_q_in)=bool:
   let (x,lambda,lambda_q)=make_dominant(x_in,lambda_in,lambda_q_in)  in
   is_strictly_dominant(real_form(x),lambda+rho(Levi(lambda_q,x)))
@@ -389,29 +383,33 @@ set goodness(KGBElt x,ratvec lambda_in,ratvec lambda_q) = void:
   else prints("None")
   fi
 
-{. Decide whether a parameter for L is in the good range for u. .}
+{. Decide whether a parameter for L is in the good range for u (only
+  makes sense if L is Levi of P and P is theta-stable). .}
 set is_good(Param p_L,Parabolic P,RealForm G)=bool:
   let v=infinitesimal_character(p_L)+rho_u(P) in
   all(for alpha_check in nilrad(P) do v*alpha_check>0 od)
 
-{. Decide whether a parameter for L is in the weakly good range for u. .}
+{. Decide whether a parameter for L is in the weakly good range for u
+  (only makes sense if L is Levi of P and P is theta-stable). .}
 set is_weakly_good(Param p_L,Parabolic P,RealForm G)=bool:
   let v=infinitesimal_character(p_L)+rho_u(P) in
   all(for alpha_check in nilrad(P) do v*alpha_check>=0 od)
 
-{. Decide whether a parameter for L is in the fair range for u. .}
+{. Decide whether a parameter for L is in the fair range for u (only
+  makes sense if L is Levi of P and P is theta-stable). .}
 set is_fair(Param p_L,Parabolic P,RealForm G)=bool:
   let v=infinitesimal_character(p_L)+rho_u(P)-rho(Levi(P)) in
   all(for alpha_check in nilrad(P) do v*alpha_check>0 od)
 
-{. Decide whether a parameter for L is weakly fair (provided pi_L
-  is one-dimensional). .}
+{. Decide whether a parameter for L is in the weakly fair range
+  for u (provided pi_L is one-dimensional; only
+  makes sense if L is Levi of P and P is theta-stable). .}
 set is_weakly_fair(Param p_L,Parabolic P,RealForm G)=bool:
   let v=infinitesimal_character(p_L)+rho_u(P)-rho(Levi(P)) in
   is_one_dimensional(p_L) and all(for alpha_check in nilrad(P) do v*alpha_check>=0 od)
 
 {. Determine the "goodness" for $\mathfrak u$ of a parameter for L;
-returns "good", "weakly good", "fair", "weakly fair", or "none". .}
+   returns "good", "weakly good", "fair", "weakly fair", or "none". .}
 set goodness(Param p_L,Parabolic P,RealForm G)=string:
 let L=real_form(p_L) then
 rho_l=rho(L) then
@@ -427,38 +425,47 @@ elif is_fair(p_L,P,G) then "Fair"
 elif is_weakly_fair(p_L,P,G) then "Weakly fair"  else
 "None" fi
 
-set Aq_packet(RealForm G,ComplexParabolic P)=[Param]:
-let parabolics=theta_stable_parabolics(G,P) then
-rv=[Param]:[] in
-for Q in parabolics do
- let ind=monomials(induce_irreducible(trivial(Levi(Q)),Q,G))
-  in assert(#ind=1,"induced in A_packet is not irreducible");rv#:=ind[0] od;rv
-
-set Aq_packet(RealForm G,[int] S)=[Param]:Aq_packet(G,ComplexParabolic:(G,S))
-set Aq_packet(RealForm G,[*] S)=[Param]:Aq_packet(G,[int]:S)
-
+{. Decide whether a parameter for L is in the good range for G; this only
+   makes sense if L is the Levi of a theta_stable parabolic. .}
 set is_good (Param p_L,RealForm G) = bool:
   let L=real_form(p_L)
   then rho_u=rho(G)-rho(L)
-  in is_strictly_dominant(G,infinitesimal_character(p_L)+rho_u)
+  in let v=infinitesimal_character(p_L)+rho_u
+  in let pcg=poscoroots(G)
+  in let rdl=root_datum(L)
+  in all(for alpha_check in pcg do v*alpha_check>0 or
+    is_positive_coroot(rdl)(alpha_check) od)
 
+{. Decide whether a parameter for L is in the weakly good range for G; this only
+   makes sense if L is the Levi of a theta_stable parabolic. .}
 set is_weakly_good (Param p_L,RealForm G) = bool:
   let L=real_form(p_L)
   then rho_u=rho(G)-rho(L)
   in is_dominant(G,infinitesimal_character(p_L)+rho_u)
 
+{. Decide whether a parameter for L is in the fair range for G; this only
+   makes sense if L is the Levi of a theta_stable parabolic. .}
 set is_fair (Param p_L,RealForm G) = bool:
   let L=real_form(p_L)
   then rho_u=rho(G)-rho(L)
-  in is_strictly_dominant(G,infinitesimal_character(p_L)+rho_u-rho(L))
+  in let v=infinitesimal_character(p_L)+rho_u-rho(L)
+  in let pcg=poscoroots(G)
+  in let rdl=root_datum(L)
+  in all(for alpha_check in pcg do v*alpha_check>0 or
+    is_positive_coroot(rdl)(alpha_check) od)
 
-{ weakly fair only defined if pi_L is one-dimensional }
+{. Decide whether a parameter for L is in the weakly fair range for G; this only
+   makes sense if L is the Levi of a theta_stable parabolic, and is only defined
+   if p_L is one-dimensional. .}
 set is_weakly_fair (Param p_L,RealForm G) = bool:
   let L=real_form(p_L)
   then rho_u=rho(G)-rho(L)
   in is_one_dimensional(p_L) and
      is_dominant(G,infinitesimal_character(p_L)+rho_u-rho(L))
 
+{. Determine the "goodness" of a parameter for L; returns "good", "weakly good",
+  "fair", "weakly fair", or "none"; only makes sense if L is Levi of theta-stable
+  parabolic. .}
 set goodness (Param p_L,RealForm G) = void:
   let L=real_form(p_L) then rho_l=rho(L)
   then rho_u=rho(G)-rho_l, infchar_l=infinitesimal_character(p_L)
@@ -473,4 +480,17 @@ set goodness (Param p_L,RealForm G) = void:
   else prints("None")
   fi
 
+{. List all A_q(0) (actually: R_q(trivial): infinitesimal character rho(G)) modules
+  with Q a theta-stable parabolic of type P. .}
+set Aq_packet(RealForm G,ComplexParabolic P)=[Param]:
+let parabolics=theta_stable_parabolics(G,P) then
+rv=[Param]:[] in
+for Q in parabolics do
+ let ind=monomials(induce_irreducible(trivial(Levi(Q)),Q,G))
+  in assert(#ind=1,"induced in A_packet is not irreducible");rv#:=ind[0] od;rv
 
+{. List all A_q(0) (infinitesimal character rho(G)) modules
+  with Q a theta-stable parabolic of type S (list of simple roots). .}
+set Aq_packet(RealForm G,[int] S)=[Param]:Aq_packet(G,ComplexParabolic:(G,S))
+
+set Aq_packet(RealForm G,[*] S)=[Param]:Aq_packet(G,[int]:S)
