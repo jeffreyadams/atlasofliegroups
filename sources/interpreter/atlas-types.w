@@ -5209,14 +5209,16 @@ The function |finalise| in the module \\{ext\_block} does the actual work.
 void finalize_extended_wrapper(expression_base::level l)
 { auto delta = get<matrix_value>();
   auto p = get<module_parameter_value>();
+  const auto& rc = p->rc();
   test_standard(*p,"Cannot finalize extended parameter");
-  test_compatible(p->rc().innerClass(),delta);
+  test_compatible(rc.innerClass(),delta);
   if (not p->rc().is_twist_fixed(p->val,delta->val))
     throw runtime_error("Parameter not fixed by given involution");
+  if (not is_dominant_ratweight(rc.rootDatum(),p->val.gamma()))
+    throw runtime_error("Parameter must have dominant gamma");
   if (l==expression_base::no_value)
     return;
 @)
-  const auto& rc = p->rc();
   auto params = @;ext_block::finalise(rc,p->val,delta->val);
   repr::SR_poly result(rc.repr_less());
   for (auto it=params.begin(); it!=params.end(); ++it)
