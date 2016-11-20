@@ -5032,14 +5032,19 @@ void srk_height_wrapper(expression_base::level l)
 }
 
 @*2 Deformation formulas.
-Here is our principal application of virtual modules.
+Here is one important application of virtual modules.
 %
-Using the computation of non-integral blocks, we can compute a deformation
-formula for the given parameter. This also involves computing Kazhdan-Lusztig
-polynomials, which happens inside the method |deformation_terms|, and produces
-an expression for the ``deformed'' parameter (meaning $\nu$ is infinitesimally
-decreased towards~$0$) in terms of certain other parameters found in the
-block.
+Using non-integral blocks, we can compute a deformation formula for the given
+parameter. This also involves computing Kazhdan-Lusztig polynomials, which
+happens inside the method |Rep_table::deformation_terms|, and produces an
+|SR_poly| describing the module that is ``split off'' from the standard module
+when the continuous part $\mu$ of the parameter is infinitesimally
+``deformed'' towards~$0$; these terms involve certain other parameters found
+below the parameter in its block. The code below used to apply |expand_final|
+to the |deformation_terms|, but that is redundant since that method already
+condenses the KL polynomials (and its result) to block elements without
+singular descents (so nonzero and final), for which |expand_final| has no
+effect.
 
 @< Local function def...@>=
 void deform_wrapper(expression_base::level l)
@@ -5051,12 +5056,7 @@ void deform_wrapper(expression_base::level l)
   repr::SR_poly terms
      = p->rt().deformation_terms(block,block.size()-1);
 
-  own_virtual_module acc = std::make_shared<virtual_module_value>
-    (p->rf, repr::SR_poly(p->rc().repr_less()));
-  for (repr::SR_poly::const_iterator it=terms.begin(); it!=terms.end(); ++it)
-    acc->val.add_multiple(p->rc().expand_final(it->first),it->second);
-
-  push_value(std::move(acc));
+  push_value(std::make_shared<virtual_module_value>(p->rf,std::move(terms)));
 }
 
 @ Here is a recursive form of this deformation, which stores intermediate
