@@ -4008,13 +4008,9 @@ also construct a module parameter value for each element of |block|.
 
 @< Push a list of parameter values for the elements of |block| @>=
 { own_row param_list = std::make_shared<row_value>(block.size());
-  const RatWeight& gamma=block.gamma();
   for (BlockElt z=0; z<block.size(); ++z)
-  { StandardRepr block_elt_param =
-      p->rc().sr_gamma(block.x(z),block.lambda_rho(z),gamma);
     param_list->val[z] =
-	std::make_shared<module_parameter_value>(p->rf,block_elt_param);
-  }
+	std::make_shared<module_parameter_value>(p->rf,p->rc().sr(block,z));
   push_value(std::move(param_list));
 
 }

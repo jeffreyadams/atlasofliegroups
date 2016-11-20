@@ -191,7 +191,8 @@ unsigned int scent_count(DescValue v)
 BlockElt ext_block::element(BlockElt zz) const
 {
   BlockElt min=0, max=size();
-  while (max>min) // invar: |(m==0 or z(m-1)<zz) and (max<size() or z(max)>=zz)|
+  // loop invariant: |(min==0 or z(min-1)<zz) and (max<size() or z(max)>=zz)|
+  while (max>min)
   {
     BlockElt x=(min+max)/2;
     if (z(x)<zz)
