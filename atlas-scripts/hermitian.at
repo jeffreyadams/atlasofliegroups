@@ -137,10 +137,12 @@ set c_form_irreducible_twisted_long (Param p,mat delta) =
       then contrib=c*orient_c*full_deform(q,delta)
       in
 {     prints(new_line,"q=",q, "c0=",c0,"c1=",c1,"c= ",c," contrib=", contrib); }
-        (fixed_terms+:=contrib, terms#:=(q,c0,contrib))
+{        (fixed_terms+:=contrib, terms#:=(q,c0,contrib))}
+        (fixed_terms+:=contrib, terms#:=(q,c*orient_c,contrib))
     else
       let contrib=c0*orient_c*one_plus_s*(q*0) in
-        (unfixed_terms+:=contrib, terms#:=(q,c0,contrib))
+{        (unfixed_terms+:=contrib, terms#:=(q,c0,contrib))}
+        (unfixed_terms+:=contrib, terms#:=(q,c0*orient_c,contrib))
     fi
   od
 ; ({character_formula}c_form_irr_twisted_as_sum_of_standards(p,delta),terms,fixed_terms + half(unfixed_terms))
@@ -160,7 +162,7 @@ set c_form_irreducible_delta_long =
 set print_c_form_irreducible_twisted_long (Param p) = void:
   let (formula,terms,answer)=c_form_irreducible_twisted_long(p) in
   prints(new_line,new_line
-        ,"(twisted) c-form on irreducible in terms of standards:"
+        ,"(twisted) c-form on irreducible in terms of standards:",new_line
        ,formula.pol_format,new_line);
   for (p,coeff,P) in terms
   do prints("coeff*form on standard: ", new_line
@@ -352,7 +354,7 @@ set print_hermitian_form_irreducible (Param p,mat delta) = void:
 set print_hermitian_form_irreducible_long (Param p) = void:
   let (formula,terms,answer)=hermitian_form_irreducible_long(p) in
   prints(new_line,new_line
-        ,"(twisted) c-form on irreducible in terms of standards:"
+        ,"(twisted) c-form on irreducible in terms of standards:", new_line
         , formula,new_line);
   for (p,coeff,P) in terms
   do prints("coeff*form on standard: ", new_line

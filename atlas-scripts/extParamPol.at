@@ -184,7 +184,12 @@ set recursive_deform (Param p, mat delta, int type_p) = ExtParamPol:
       at_nu0=ExtParamPol: sc*change_nu(p,0,type) in
 {     let ()=prints("at_nu0 (A):", at_nu0) in}
       for factor in reducibility_points(p) ~do
-      acc+:= deform(p*factor,delta, type) od;
+	let (pf,flipped)=
+          if is_fixed(delta,p) then scale_extended(p,delta,factor) else (p*factor,false) fi { next deformation }
+	then def=deform(pf,delta,type) in
+        if flipped then prints("flipped p=", p); def := s*def fi { flip signatures in this rare case } 
+{      ; prints("adding deformation term: p=", pf, new_line,"adding:", def)}
+      ; acc+:=def od;
       for (k,q,type) in %acc do at_nu0+:=full_def(sc*k,q,type) od
     ; {prints("at_nu0 is now: ");display(at_nu0);} at_nu0
     end
@@ -194,7 +199,12 @@ set recursive_deform (Param p, mat delta, int type_p) = ExtParamPol:
       assert(is_standard(p),"non standard parameter encountered in deformation");
       let acc=empty, at_nu0=ExtParamPol: sc*change_nu(p,0,type) in
       for factor in reducibility_points(p) ~do
-      acc+:=deform(p*factor,delta, type) od;
+	let (pf,flipped)=
+          if is_fixed(delta,p) then scale_extended(p,delta,factor) else (p*factor,false) fi { next deformation }
+	then def=deform(p*factor,delta,type) in
+        if flipped then prints("flipped p=",p);def := s*def fi { flip signatures in this rare case }
+{      ; prints("adding deformation term: p=", pf, new_line,"adding:", def)}
+      ; acc+:=def od;
       for (k,q,type_q) in %acc do {prints("full_def:",q);}at_nu0+:=full_def(sc*k,q,type_q) od;at_nu0
     end
   fi  (Split:1,p,type_p)

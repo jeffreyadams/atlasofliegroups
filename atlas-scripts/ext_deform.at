@@ -46,7 +46,6 @@ set cook_KL_block ([Param] B,int entry_elem
      )
 
 set ed_verbose=false
-set ed_verbose2=false
 
 set null_wt(int r) = ratvec: null(r)
 set has_nu0 (Param p) = bool: =nu(p)
@@ -116,6 +115,11 @@ set deformation_terms (Param p, mat delta) = ParamPol:
     od
   fi
 
+{verbose=false (default): keep track of the flips in scale extended during the 
+deformation, and use this on the top term, rather than the one-step version
+verbose=true version: without the scale_extended change
+verbose=true/false have the same level of debugging output
+}
 set recursive_deform (Param p, mat delta) = ParamPol:
   assert(not is_zero(p) and is_final(p) and is_fixed(delta,p)
 	,"improper parameter");
@@ -124,7 +128,7 @@ set recursive_deform (Param p, mat delta) = ParamPol:
   then rec_fun full_def (Split sc,Param p) ParamPol:
        { |sc| will simply scale the resulting ParamPol, |delta| is implicit }
     begin
-      prints("full_def with: sc=", sc, ", p=", p);
+{      prints("full_def with: sc=", sc, ", p=", p);}
       assert(is_standard(p)
 	    ,"non standard parameter encountered in deformation");
       let acc=empty, at_nu0 =
@@ -137,7 +141,7 @@ set recursive_deform (Param p, mat delta) = ParamPol:
 	then def=deformation_terms(pf,delta)
 	in
         if flipped then def := s*def fi { flip signatures in this rare case }
-      ; prints("adding deformation term: p=", pf, new_line,"adding:", def)
+{      ; prints("adding deformation term: p=", pf, new_line,"adding:", def)}
       ; acc+:=def
       od
     ; for k@q in acc { traverse the sum of the deformation terms spun off }
@@ -150,19 +154,23 @@ set recursive_deform (Param p, mat delta) = ParamPol:
        { |sc| will simply scale the resulting ParamPol, |delta| is implicit }
     begin
       assert(is_standard(p),"non standard parameter in deformation");
-      let acc=empty, at_nu0=
-        let (p0,flipped) = scale_extended(p,delta,0)
-        in if flipped then s*sc else sc fi * finalize_extended(p0,delta)
-      in
+      let acc=empty, at_nu0=null_module(p) then
+      total_flip=false in
       for factor in reducibility_points(p)
-      ~ { direction of deformation is down, towards 0; this is not essential }
-      do let (pf,flipped)=scale_extended(p,delta,factor)
+      ~do{ direction of deformation is down, towards 0; this is not essential }
+      let (pf,flipped)=scale_extended(p,delta,factor)
          then def=deformation_terms(pf,delta)
-	 in acc+:= if flipped then s*def else def fi
-      od
-    ; for k@q in acc { traverse the sum of the deformation terms spun off }
-      do at_nu0 +:= full_def(sc*k,q) od
-    ; at_nu0
+	 in acc+:= if flipped then 
+            total_flip:= not total_flip ;
+ 	    prints(new_line,new_line, "flipped term: p=", p, "factor= ", factor,new_line);
+            s*def else def fi
+      od;
+       let (p0,p0_flipped) = scale_extended(p,delta,0) in
+        if p0_flipped then prints(new_line,"nu=0 term flipped: p0=", p0,new_line) fi;
+        at_nu0+:=if total_flip then s*sc else sc fi * finalize_extended(p0,delta);
+        for k@q in acc do { traverse the sum of the deformation terms spun off }
+           at_nu0 +:= full_def(sc*k,q) od;
+    at_nu0
     end
   fi { apply that recursive function to the initial argument: } (1,p)
 
