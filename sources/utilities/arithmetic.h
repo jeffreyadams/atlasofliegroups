@@ -117,7 +117,8 @@ class Split_integer
 {
   int real_part, s_part;
  public:
-  explicit Split_integer(int a=0, int b=0) : real_part(a), s_part(b) {}
+  explicit constexpr Split_integer(int a=0, int b=0)
+  : real_part(a), s_part(b) {}
 
   int e() const { return real_part; }
   int s() const { return s_part; }
