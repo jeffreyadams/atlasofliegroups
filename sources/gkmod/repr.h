@@ -220,6 +220,11 @@ class Rep_table : public Rep_context
 
   SR_poly deformation(const StandardRepr& z);
 
+  SR_poly twisted_deformation_terms (param_block& block,BlockElt entry_elem);
+  // here |block| is non-|const| because it calls |add_block|
+
+  SR_poly twisted_deformation(const StandardRepr& z);
+
  private:
   void add_block(param_block& block, BlockEltList& survivors);
   // here |block| is non-|const| as the method generates KL polynomials in it

@@ -845,6 +845,8 @@ SR_poly Rep_table::deformation_terms (param_block& block,BlockElt entry_elem)
   BlockEltList survivors;
   add_block(block,survivors); // computes survivors, and add anything new
 
+  assert(hash.find(sr(block,entry_elem))!=hash.empty); // should be known now
+
   // count number of survivors of length strictly less than any occurring length
   std::vector<unsigned int> n_surv_length_less
     (block.length(survivors.back())+1); // slots for lengths |<=| largest length
@@ -856,8 +858,6 @@ SR_poly Rep_table::deformation_terms (param_block& block,BlockElt entry_elem)
 	n_surv_length_less[++l] = it-survivors.begin();
   }
 
-  assert(hash.find(sr(block,entry_elem))!=hash.empty); // should be known now
-
   // map indices of |survivors| to corresponding number in |hash|
   std::vector<unsigned long> remap(survivors.size());
   for (unsigned long i=0; i<survivors.size(); ++i)
@@ -867,21 +867,21 @@ SR_poly Rep_table::deformation_terms (param_block& block,BlockElt entry_elem)
     remap[i]=h;
   }
 
-  SR_poly Q(sr(block,entry_elem),repr_less()); // remainder, init (1,entry_elem)
+  SR_poly rem(sr(block,entry_elem),repr_less()); // remainder = 1*entry_elem
   std::vector<Split_integer> acc(survivors.size(),Split_integer(0));
 
   for (unsigned long i=survivors.size(); i-->0; ) // decreasing essential here
   {
     StandardRepr p_y=sr(block,survivors[i]);
-    Split_integer c_y = Q[p_y];
+    Split_integer c_y = rem[p_y];
     const SR_poly& KL_y = KL_list[remap[i]];
-    Q.add_multiple(KL_y,-c_y);
-    assert(Q[p_y]==Split_integer(0)); // check relation of being inverse
+    rem.add_multiple(KL_y,-c_y);
+    assert(rem[p_y]==Split_integer(0)); // check relation of being inverse
 
     c_y.times_1_s(); // deformation terms are all multiplied by $1-s$
     acc[i]=c_y; // store coefficient at index of survivor
   }
-  assert(Q.empty()); // since all terms in |KL_y| should be at most $y$
+  assert(rem.empty()); // since all terms in |KL_y| should be at most $y$
 
   // $\sum_{x\leq y<ee}y[l(ee)-l(y) odd] (-1)^{l(x)-l(y)}P_{x,y}*Q(y,ee)$
   unsigned int ll=block.length(entry_elem)-1; // last length of contributing |y|
@@ -942,6 +942,55 @@ SR_poly Rep_table::deformation(const StandardRepr& z)
 
   return result;
 } // |Rep_table::deformation|
+
+SR_poly Rep_table::twisted_deformation_terms
+  (param_block& block,BlockElt entry_elem)
+{
+  const auto& delta = innerClass().distinguished();
+  const auto sr_y = sr(block,entry_elem);
+
+  assert(is_twist_fixed(sr_y,delta));
+
+  SR_poly result(repr_less());
+  if (not block.survives(entry_elem) or block.length(entry_elem)==0)
+    return result; // easy cases, null result
+
+  ext_block::ext_block eblock(innerClass(),block,kgb(),delta);
+  add_block(eblock,block);
+  assert(eblock.is_present(entry_elem)); // since |is_twist_fixed| succeeded
+
+  assert(hash.find(sr_y)!=hash.empty); // |sr_y| should be known now
+  unsigned int parity = length(sr_y)%2;
+
+  SR_poly rem(sr_y,repr_less()); // remainder = 1*entry_elem
+
+  do
+  { const auto& term = *rem.rbegin();
+    const StandardRepr& p_x= term.first;
+    const Split_integer& c_x = term.second;
+    const SR_poly& KL_x = twisted_KLV_list[hash.find(p_x)];
+    rem.add_multiple(KL_x,-c_x);
+    assert(rem[p_x]==Split_integer(0)); // check relation of being inverse
+    if (length(p_x)%2!=parity)
+      result.add_multiple(KL_x,-c_x);
+  }
+  while (not rem.empty());
+
+  // correct signs in terms of result according to orientation numbers
+  unsigned int orient_y = orientation_number(sr_y);
+  for (SR_poly::iterator it=result.begin(); it!=result.end(); ++it)
+  {
+    static constexpr Split_integer factor[2] // tabulate $(1-s)*s^i$ for $i=0,1$
+      = { Split_integer {1,-1}, Split_integer {-1,1} };
+    const unsigned int // conversion to |unsigned| needed for proper div/mod ops
+      diff = orient_y-orientation_number(it->first);
+    assert(diff%2==0);
+    auto ev = it->second.e()-it->second.s(); // evaluation at $s=-1$ matters
+    it->second = factor[(diff/2)%2]*ev;
+  }
+
+  return result;
+} // |twisted_deformation_terms|
 
 std::ostream& Rep_context::print (std::ostream& str,const StandardRepr& z)
   const

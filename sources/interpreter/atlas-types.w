@@ -5046,6 +5046,17 @@ condenses the KL polynomials (and its result) to block elements without
 singular descents (so nonzero and final), for which |expand_final| has no
 effect.
 
+There is also a variation |twisted_deform| that uses twisted KLV polynomials
+instead, for the distinguished involution $\delta$ of the inner class. For the
+code here the difference consists mainly of calling the
+|Rep_table::twisted_deformation_terms| method instead of
+|Rep_table::deformation_terms|. However, that method requires a $\delta$-fixed
+involution, so we need to test for that here. If the test fails we report an
+error rather than returning for instance a null module, since a twisted
+deformation formula for a non-fixed parameter makes little sense; the user
+should avoid asking for it. Also, since the construction of an extended block
+currently cannot deal with a partial parent block.
+
 @< Local function def...@>=
 void deform_wrapper(expression_base::level l)
 { shared_module_parameter p = get<module_parameter_value>();
@@ -5055,6 +5066,22 @@ void deform_wrapper(expression_base::level l)
   param_block block(p->rc(),p->val); // partial block construction
   repr::SR_poly terms
      = p->rt().deformation_terms(block,block.size()-1);
+
+  push_value(std::make_shared<virtual_module_value>(p->rf,std::move(terms)));
+}
+@)
+void twisted_deform_wrapper(expression_base::level l)
+{ shared_module_parameter p = get<module_parameter_value>();
+  const auto& rc=p->rc();
+  test_standard(*p,"Cannot compute deformation formula");
+  if (not rc.is_twist_fixed(p->val,rc.innerClass().distinguished()))
+    throw runtime_error("Parameter not fixed by inner class involution");
+  if (l==expression_base::no_value)
+    return;
+  BlockElt entry_elem;
+  param_block block(p->rc(),p->val,entry_elem); // full block
+  repr::SR_poly terms
+     = p->rt().twisted_deformation_terms(block,entry_elem);
 
   push_value(std::make_shared<virtual_module_value>(p->rf,std::move(terms)));
 }
@@ -5239,6 +5266,7 @@ install_function(branch_wrapper,@|"branch" ,"(Param,int->ParamPol)");
 install_function(to_canonical_wrapper,@|"to_canonical" ,"(Param->Param)");
 install_function(srk_height_wrapper,@|"height" ,"(Param->int)");
 install_function(deform_wrapper,@|"deform" ,"(Param->ParamPol)");
+install_function(twisted_deform_wrapper,@|"twisted_deform" ,"(Param->ParamPol)");
 install_function(full_deform_wrapper,@|"full_deform","(Param->ParamPol)");
 install_function(KL_sum_at_s_wrapper,@|"KL_sum_at_s","(Param->ParamPol)");
 install_function(twisted_KL_sum_at_s_wrapper,@|"twisted_KL_sum_at_s"

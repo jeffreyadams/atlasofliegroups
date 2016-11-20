@@ -738,6 +738,9 @@ deform: (Param->ParamPol): compute deformation terms when nu decreases
   computed, from which the deformation terms involving other members of the
   block are computed. They are returned as a formal sum of parameters with
   split integer coefficients, which are in fact integer multiples of (1-s).
+twisted_deform: (Param->ParamPol): inner class twisted deformation terms
+  This is like deform, but uses the twisted KL polynomials (for the inner class
+  involution) instead. The argument parameter must be fixed under that twist.
 
 full_deform: (Param->ParamPol): perform deformation all the way to nu=0
   This is like deform, but recursively deforms all new terms produced as long
