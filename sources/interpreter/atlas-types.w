@@ -4008,13 +4008,9 @@ also construct a module parameter value for each element of |block|.
 
 @< Push a list of parameter values for the elements of |block| @>=
 { own_row param_list = std::make_shared<row_value>(block.size());
-  const RatWeight& gamma=block.gamma();
   for (BlockElt z=0; z<block.size(); ++z)
-  { StandardRepr block_elt_param =
-      p->rc().sr_gamma(block.x(z),block.lambda_rho(z),gamma);
     param_list->val[z] =
-	std::make_shared<module_parameter_value>(p->rf,block_elt_param);
-  }
+	std::make_shared<module_parameter_value>(p->rf,p->rc().sr(block,z));
   push_value(std::move(param_list));
 
 }
@@ -5036,14 +5032,30 @@ void srk_height_wrapper(expression_base::level l)
 }
 
 @*2 Deformation formulas.
-Here is our principal application of virtual modules.
+Here is one important application of virtual modules.
 %
-Using the computation of non-integral blocks, we can compute a deformation
-formula for the given parameter. This also involves computing Kazhdan-Lusztig
-polynomials, which happens inside the method |deformation_terms|, and produces
-an expression for the ``deformed'' parameter (meaning $\nu$ is infinitesimally
-decreased towards~$0$) in terms of certain other parameters found in the
-block.
+Using non-integral blocks, we can compute a deformation formula for the given
+parameter. This also involves computing Kazhdan-Lusztig polynomials, which
+happens inside the method |Rep_table::deformation_terms|, and produces an
+|SR_poly| describing the module that is ``split off'' from the standard module
+when the continuous part $\mu$ of the parameter is infinitesimally
+``deformed'' towards~$0$; these terms involve certain other parameters found
+below the parameter in its block. The code below used to apply |expand_final|
+to the |deformation_terms|, but that is redundant since that method already
+condenses the KL polynomials (and its result) to block elements without
+singular descents (so nonzero and final), for which |expand_final| has no
+effect.
+
+There is also a variation |twisted_deform| that uses twisted KLV polynomials
+instead, for the distinguished involution $\delta$ of the inner class. For the
+code here the difference consists mainly of calling the
+|Rep_table::twisted_deformation_terms| method instead of
+|Rep_table::deformation_terms|. However, that method requires a $\delta$-fixed
+involution, so we need to test for that here. If the test fails we report an
+error rather than returning for instance a null module, since a twisted
+deformation formula for a non-fixed parameter makes little sense; the user
+should avoid asking for it. Also, since the construction of an extended block
+currently cannot deal with a partial parent block.
 
 @< Local function def...@>=
 void deform_wrapper(expression_base::level l)
@@ -5055,12 +5067,23 @@ void deform_wrapper(expression_base::level l)
   repr::SR_poly terms
      = p->rt().deformation_terms(block,block.size()-1);
 
-  own_virtual_module acc = std::make_shared<virtual_module_value>
-    (p->rf, repr::SR_poly(p->rc().repr_less()));
-  for (repr::SR_poly::const_iterator it=terms.begin(); it!=terms.end(); ++it)
-    acc->val.add_multiple(p->rc().expand_final(it->first),it->second);
+  push_value(std::make_shared<virtual_module_value>(p->rf,std::move(terms)));
+}
+@)
+void twisted_deform_wrapper(expression_base::level l)
+{ shared_module_parameter p = get<module_parameter_value>();
+  const auto& rc=p->rc();
+  test_standard(*p,"Cannot compute deformation formula");
+  if (not rc.is_twist_fixed(p->val,rc.innerClass().distinguished()))
+    throw runtime_error("Parameter not fixed by inner class involution");
+  if (l==expression_base::no_value)
+    return;
+  BlockElt entry_elem;
+  param_block block(p->rc(),p->val,entry_elem); // full block
+  repr::SR_poly terms
+     = p->rt().twisted_deformation_terms(block,entry_elem);
 
-  push_value(std::move(acc));
+  push_value(std::make_shared<virtual_module_value>(p->rf,std::move(terms)));
 }
 
 @ Here is a recursive form of this deformation, which stores intermediate
@@ -5090,7 +5113,7 @@ $$
   \sum_{x\leq y}(-1)^{l(y)-l(x)}P_{x,y}[q:=s] * x
 $$
 There are in fact two variants, of this function an ordinary one and one using
-twisted KLV polynomials.
+twisted KLV polynomials, computed for the inner class involution.
 
 @< Local function def...@>=
 void KL_sum_at_s_wrapper(expression_base::level l)
@@ -5111,6 +5134,24 @@ void twisted_KL_sum_at_s_wrapper(expression_base::level l)
   if (l!=expression_base::no_value)
   {
     repr::SR_poly result = p->rt().twisted_KL_column_at_s(p->val);
+    push_value (std::make_shared<virtual_module_value>(p->rf,result));
+  }
+}
+
+@ We add another function in which the external involution is an argument
+
+@< Local function def...@>=
+void external_twisted_KL_sum_at_s_wrapper(expression_base::level l)
+{ shared_matrix delta = get<matrix_value>();
+  shared_module_parameter p = get<module_parameter_value>();
+  test_standard(*p,"Cannot compute Kazhdan-Lusztig sum");
+  test_nonzero_final(*p,"Cannot compute Kazhdan-Lusztig sum");
+  test_compatible(p->rc().innerClass(),delta);
+  if (not p->rc().is_twist_fixed(p->val,delta->val))
+    throw runtime_error("Parameter not fixed by given involution");
+  if (l!=expression_base::no_value)
+  {
+    repr::SR_poly result = twisted_KL_column_at_s(p->rc(),p->val,delta->val);
     push_value (std::make_shared<virtual_module_value>(p->rf,result));
   }
 }
@@ -5225,10 +5266,13 @@ install_function(branch_wrapper,@|"branch" ,"(Param,int->ParamPol)");
 install_function(to_canonical_wrapper,@|"to_canonical" ,"(Param->Param)");
 install_function(srk_height_wrapper,@|"height" ,"(Param->int)");
 install_function(deform_wrapper,@|"deform" ,"(Param->ParamPol)");
+install_function(twisted_deform_wrapper,@|"twisted_deform" ,"(Param->ParamPol)");
 install_function(full_deform_wrapper,@|"full_deform","(Param->ParamPol)");
 install_function(KL_sum_at_s_wrapper,@|"KL_sum_at_s","(Param->ParamPol)");
 install_function(twisted_KL_sum_at_s_wrapper,@|"twisted_KL_sum_at_s"
                 ,"(Param->ParamPol)");
+install_function(external_twisted_KL_sum_at_s_wrapper,@|"twisted_KL_sum_at_s"
+                ,"(Param,mat->ParamPol)");
 install_function(scale_extended_wrapper,@|"scale_extended"
                 ,"(Param,mat,rat->Param,bool)");
 install_function(finalize_extended_wrapper,@|"finalize_extended"

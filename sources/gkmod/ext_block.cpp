@@ -191,7 +191,8 @@ unsigned int scent_count(DescValue v)
 BlockElt ext_block::element(BlockElt zz) const
 {
   BlockElt min=0, max=size();
-  while (max>min) // invar: |(m==0 or z(m-1)<zz) and (max<size() or z(max)>=zz)|
+  // loop invariant: |(min==0 or z(min-1)<zz) and (max<size() or z(max)>=zz)|
+  while (max>min)
   {
     BlockElt x=(min+max)/2;
     if (z(x)<zz)
@@ -346,7 +347,7 @@ StandardRepr scaled_extended_dominant // result will have its |gamma()| dominant
   const ext_gens orbits = rootdata::fold_orbits(rd,delta);
 
   Weight lr, tau; Coweight l,t;
-  { param E(ctxt,result); // comput fields as for extended parameter
+  { param E(ctxt,result); // compute fields as for extended parameter
     lr=E.lambda_rho(); tau=E.tau(); l=E.l(); t=E.t();
   }
   KGBElt x = result.x(); // another variable, for convenience
@@ -412,7 +413,8 @@ containers::sl_list<std::pair<StandardRepr,bool> > finalise
     { containers::sl_list<std::pair<int,param> > links;
       auto type = star(E,orbits[s],links);
       if (not is_like_compact(type)) // some descent, push to front of |to_do|
-      { if(has_october_surprise(type))  flipped = not flipped;
+      { if (has_october_surprise(type))
+	  flipped = not flipped;
 	auto it = to_do.begin(); auto l_it=links.begin();
 	to_do.insert(it,std::make_pair
 		     (std::move(l_it->second),flipped==(l_it->first>0)));
@@ -2093,7 +2095,7 @@ bool ext_block::check(const param_block& block, bool verbose)
       } // |switch(tp)|
     } // |for(s)|
   } // |for(n)|
-  return true; // report sucess if we get here
+  return true; // report success if we get here
 } // |check|
 
 void ext_block::flip_edges(extended_predicate match)
@@ -2135,7 +2137,8 @@ ext_block::first_descent_among(RankFlags singular_orbits, BlockElt y) const
   return rank();
 }
 
-// reduce a matrix to elements without descents among singular generators
+// reduce matrix to rows for extended block elements without singular descents
+// the other rows are not removed, but the result lists the rows to retain
 template<typename C> // matrix coefficient type (signed)
 containers::simple_list<BlockElt> // returns list of elements selected
   ext_block::condense(matrix::Matrix<C>& M, const param_block& parent) const
@@ -2143,7 +2146,7 @@ containers::simple_list<BlockElt> // returns list of elements selected
   RankFlags sing_orbs = singular_orbits(parent);
   containers::simple_list<BlockElt> result;
 
-  for (BlockElt y=M.numColumns(); y-->0; ) // reverse loop is essential here
+  for (BlockElt y=M.numRows(); y-->0; ) // reverse loop is essential here
   { auto s = first_descent_among(sing_orbs,y);
     if (s==rank())
       result.push_front(y); // no singular descents, so a survivor

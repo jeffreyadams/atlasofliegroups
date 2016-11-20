@@ -738,6 +738,9 @@ deform: (Param->ParamPol): compute deformation terms when nu decreases
   computed, from which the deformation terms involving other members of the
   block are computed. They are returned as a formal sum of parameters with
   split integer coefficients, which are in fact integer multiples of (1-s).
+twisted_deform: (Param->ParamPol): inner class twisted deformation terms
+  This is like deform, but uses the twisted KL polynomials (for the inner class
+  involution) instead. The argument parameter must be fixed under that twist.
 
 full_deform: (Param->ParamPol): perform deformation all the way to nu=0
   This is like deform, but recursively deforms all new terms produced as long
@@ -751,8 +754,12 @@ twisted_KL_sum_at_s: (Param->ParamPol): KL_sum_at_s, twisted KLV polynomials
   (the twist is for the distinguished involution) instead of ordinary KLV
   polynomials. The actual value depends on sign choices for Hecke module
   generators associated to the terms, so individual terms in the result are
-  mathematically well defined only up to a possible factor -1. Also WARNING:
-  the twisted KLV polynomials are not yet correctly computed in all cases.
+  mathematically well defined only up to a possible factor -1; however
+  consistent internal choices (default extensions) make the signs well-defined
+twisted_KL_sum_at_s: (Param,mat->ParamPol): sum of delta-twisted KLV polynomials
+  This version takes an explicit external involution matrix delta as second
+  argument. The parameter should be delta-fixed. Unlike the previous two, this
+  function does not tabulate results or look up previously computed ones.
 scale_extended: (Param,mat,rat->Param,bool) scale nu, recording extended flips
   When interpreting parameters as representing a representation of the
   delta-extended group (where delta is the second argument, a distinguished

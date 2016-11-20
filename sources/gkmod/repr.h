@@ -220,6 +220,11 @@ class Rep_table : public Rep_context
 
   SR_poly deformation(const StandardRepr& z);
 
+  SR_poly twisted_deformation_terms (param_block& block,BlockElt entry_elem);
+  // here |block| is non-|const| because it calls |add_block|
+
+  SR_poly twisted_deformation(const StandardRepr& z);
+
  private:
   void add_block(param_block& block, BlockEltList& survivors);
   // here |block| is non-|const| as the method generates KL polynomials in it
@@ -238,6 +243,9 @@ class Rep_table : public Rep_context
 Weight Cayley_shift (const InnerClass& G,
 		     InvolutionNbr theta_upstairs, // at the more split Cartan
 		     const WeylWord& to_simple); // acting from the left
+
+SR_poly twisted_KL_column_at_s
+  (const Rep_context& rc, StandardRepr z, const WeightInvolution& delta);
 
 } // |namespace repr|
 

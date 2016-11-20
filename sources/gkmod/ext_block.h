@@ -173,8 +173,10 @@ class ext_block
   BlockElt z(BlockElt n) const { assert(n<size()); return info[n].z; }
 
   // Look up element by its index in |parent| (if that did define an element)
-  // more precisely returns smallest |x| with |z(x)<=z|, or |size()| if none
+  // more precisely returns smallest |n| with |z(n)>=z|, or |size()| if none
   BlockElt element(BlockElt z) const; // partial inverse of method |z|
+  bool is_present(BlockElt zz) const
+  { auto n=element(zz); return n<size() and z(n)==zz; }
 
   const DescValue descent_type(weyl::Generator s, BlockElt n) const
     { assert(n<size()); assert(s<rank()); return data[s][n].type; }
