@@ -271,7 +271,7 @@ set print_mu (Param p) = void:
 
 set print_mus (ParamPol P) = void:
   let delta=real_form(P).distinguished_involution
-  then mu_0=mu(first_param(P),delta)
+  then mu_0=mu(last_param(P),delta)
   in
   prints("columns are:", new_line
         , "coeff*p           lambda_rho term    tau  term      " ##
@@ -293,7 +293,7 @@ set convert_cform_hermitian (ParamPol P,mat delta)= ParamPol:
       prints("converting c_form using equal rank mu") else
       prints("converting c_form using twisted mu")
      fi;
-    let a_mu = mu(P.first_param,delta) in
+    let a_mu = mu(P.last_param,delta) in
     P.real_form.null_module +
     for w@p in P do
 {    let ()=prints("w=", w, " p=", p, " mu(p,delta)=", mu(p,delta),
@@ -303,13 +303,13 @@ set convert_cform_hermitian (ParamPol P,mat delta)= ParamPol:
     fi
 
 set convert_cform_hermitian (ParamPol P)= ParamPol:
-  convert_cform_hermitian(P,P.first_param.real_form.distinguished_involution)
+  convert_cform_hermitian(P,P.last_param.real_form.distinguished_involution)
 
 {no longer used
 set convert_cform_hermitian_equal_rank(ParamPol P)=ParamPol:
   if =#P then P { since we cannot select a term for a null polynomial }
   else
-    let a_mu = mu(P.first_param) in
+    let a_mu = mu(P.last_param) in
     P.real_form.null_module +
     for w@p in P do
     (w*s^(mu(p)-a_mu).rat_as_int,p) od
