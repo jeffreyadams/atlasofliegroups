@@ -391,7 +391,8 @@ containers::sl_list<std::pair<StandardRepr,bool> > finalise
   (const repr::Rep_context& rc,
    StandardRepr sr, const WeightInvolution& delta)
 { // in order that |singular_generators| generate the whole singular system:
-  rc.make_dominant(sr); // ensure that |sr.gamma()| is dominant
+  assert(is_dominant_ratweight(rc.rootDatum(),sr.gamma()));
+  // must assume gamma dominant, DON'T call make_dominant here
   context ctxt(rc,delta,sr.gamma());
   const ext_gens orbits = rootdata::fold_orbits(ctxt.id(),delta);
   const RankFlags singular_orbits =

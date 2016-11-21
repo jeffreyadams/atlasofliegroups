@@ -56,7 +56,7 @@ set binary_search_first ((int->bool)pred, int low, int high) = int:
 set from_stops ([int] stops) = (int->int):
   stops:=stops[1:]; (int k): binary_search_first((int i):stops[i]>k,0,#stops)
 
-{				Integers				}
+{                               Integers                                }
 
 set abs (int k)= int: if <k then -k else k fi
 set sign (int k)= int: if >k then 1 elif <k then minus_1 else 0 fi
@@ -98,7 +98,7 @@ set != ((int,int)(x0,y0),(int,int)(x1,y1)) = bool: x0!=x1 or y0!=y1
 
 
 
-{			    Rational numbers				}
+{                           Rational numbers                            }
 
 set numer (rat a) = let (n,)=%a in n
 set denom (rat a) = let (,d)=%a in d
@@ -126,7 +126,7 @@ set rat_as_int (rat r) = int:
   let (n,d)=%r in if d=1 then n else error("Not an integer") fi
 
 
-{				Strings					}
+{                               Strings                                 }
 
 set !new_line = ascii(10) { including this in a string passes to a new line }
 
@@ -175,7 +175,7 @@ set fgrep (string s, string text) = [string]:
   do if is_substring(s,line) then result#:=line fi
   od; result
 
-{				Vectors					}
+{                               Vectors                                 }
 
 set vector (int n,(int->int)f) = vec: for i:n do f(i) od
 
@@ -221,7 +221,7 @@ set power_set ([int] S) = [[int]]:
   for inx in power_set(#S) do for i in inx do S[i] od od
 
 
-{				Matrices				}
+{                               Matrices                                }
 
 { matrix defined by its dimension and expression for general entry }
 set matrix ((int,int)(r,c),(int,int->int) f) = mat:
@@ -276,7 +276,7 @@ set ^ =
     ( (mat m,int n): { we shall have n>0 }
       if n=1 then m
       else let (q,r)=n\%2 then mm=matrix_power(m,q) in
-	mm*if =r then mm else mm*m fi
+        mm*if =r then mm else mm*m fi
       fi
     )
   ; (mat m,int n) mat: { the actual operator ^ :}
@@ -378,7 +378,7 @@ set order (mat !M) = int:
 
 
 
-{			    Rational vectors				}
+{                           Rational vectors                            }
 
 set numer (ratvec a) = vec: let (n,)=%a in n
 set denom (ratvec a) = int: let (,d)=%a in d
@@ -440,7 +440,7 @@ set solve (mat A, ratvec b) = [ratvec]:
   fi
 
 
-{			    Split integers				}
+{                           Split integers                              }
 
 set !s = Split:(0,1) { ! means it is a constant }
 set !one_minus_s = Split:(1,-1), !one_plus_s = Split:(1,1)  { near idempotents }
@@ -492,7 +492,7 @@ set ^ = { exponentiation of split integers }
     else error("Negative power "+n+" of split integer "+split_format(x))
     fi
 
-{				Root data 				}
+{                               Root data                               }
 
 { backwards compatibility function; used to be the built-in prototype }
 set root_datum ([vec] simple_roots, [vec] simple_coroots, int r) = RootDatum:
@@ -708,7 +708,7 @@ set fundamental_coweights (RootDatum rd) = [ratvec]:
 
 
 
-{				Inner classes				}
+{                               Inner classes                           }
 
 set != (InnerClass x,InnerClass y) = bool: not(x=y)
 
@@ -717,7 +717,7 @@ set dual_integral (InnerClass ic, ratvec gamma) = InnerClass:
   inner_class(dual(integrality_datum(ic,gamma)),-^distinguished_involution(ic))
 
 
-{				Cartan classes				}
+{                               Cartan classes                          }
 
 set Cartan_classes (InnerClass ic) = [CartanClass]:
   for i:nr_of_Cartan_classes(ic) do Cartan_class(ic,i) od
@@ -735,7 +735,7 @@ set print_Cartan_info (CartanClass cc) = void:
      ; prints(str)
     )
   ; prints("twisted involution orbit size: ",orbit_size,
-	   "; fiber size: ",fiber_size,"; strong inv: ",orbit_size*fiber_size)
+           "; fiber size: ",fiber_size,"; strong inv: ",orbit_size*fiber_size)
   ; prints("imaginary root system: ",show(str(i_tp)))
   ; prints("real root system: ",show(str(r_tp)))
   ; prints("complex factor: ",show(str(C_tp)))
@@ -773,7 +773,7 @@ set = (CartanClass H,CartanClass J) = bool:
 set number(CartanClass H,RealForm G) = int:
   last(nr_of_Cartan_classes(G), (int i)bool: Cartan_class(G,i)=H)
 
-{				Real forms				}
+{                               Real forms                              }
 
 set != (RealForm f, RealForm g) = bool: not(f=g)
 
@@ -806,7 +806,7 @@ set is_compact (RealForm G) = bool: { real form 0 in equal rank inner class }
 
 
 
-{			       KGB elements				}
+{                              KGB elements                             }
 
 set != (KGBElt x,KGBElt y) = bool: not(x=y)
 set real_form (KGBElt x) = let (rf,) = %x in rf
@@ -936,7 +936,7 @@ set no_Cminus_roots (KGBElt x) = bool:
 set no_Cplus_roots (KGBElt x) = bool:
   none(semisimple_rank(real_form(x)), (int i)bool: status(i,x)=4)
 
-{				Blocks					}
+{                               Blocks                                  }
 
 set blocks (InnerClass ic) = [Block]:
   let result = [Block]: [] in
@@ -959,7 +959,7 @@ set print_W_cells  ((RealForm,RealForm) p) = void: print_W_cells(block(p))
 set print_W_graph  ((RealForm,RealForm) p) = void: print_W_cells(block(p))
 
 
-{			    Module parameters				}
+{                           Module parameters                           }
 
 set != (Param x,Param y) = bool: not(x=y) { non equivalent parameters }
 set equals (Param p,Param q) = bool: { strict equality of components }
@@ -1096,7 +1096,7 @@ set orientation_nr_term = (int,Param->Split):
   case (ori_nr_p-orientation_nr(q))%4 in 1, err(), s, err() esac
 
 
-{			Extended blocks					}
+{                       Extended blocks                                 }
 
 set extended_status_texts = [string]:
   [ { 0:} "1C+","1C-","1i1","1r1f","1i2f","1r2","1i2s","1r1s","1rn","1ic"
@@ -1153,7 +1153,7 @@ set print_extended_block = (Param,mat->):
   )
   od
 
-{		    Polynomials in module parameters			}
+{                   Polynomials in module parameters                    }
 
 set null_module (ParamPol P) = ParamPol: 0*P
 set -(ParamPol P) = ParamPol: minus_1*P
@@ -1166,6 +1166,16 @@ set s_to_minus_1 (ParamPol P) = ParamPol: 0*P + for x@q in P do (-%x,q) od
 
 { counterpart to built-in +@(ParamPol,(Split,Param)) }
 set - (ParamPol a, (Split,Param) (c,p)) = ParamPol: a+(-c,p)
+
+set sum (RealForm G,[ParamPol] Ps) = ParamPol:
+  let n=#Ps in
+  if n<2 then if n=0 then G.null_module else Ps[0] fi
+  else Ps. { do divide and conquer so as to priviledge balanced additions }
+    ( rec_fun s([ParamPol] Ps) ParamPol:
+        let n=#Ps in
+        if n=2 then Ps[0]+Ps[1] else let h=n\2 in s(Ps[:h])+s(Ps[h:]) fi
+    )
+  fi
 
 { deform a whole ParamPol, by deforming all individual terms }
 set * (ParamPol P, rat f) = ParamPol: 0*P + for c@q in P do (c,q*f) od
@@ -1227,9 +1237,9 @@ set purity(ParamPol P)=(int,int,int):
     if =b then x+:=1 elif =a then y+:=1 else z+:=1 fi
   od; (x,y,z)
 
-{				Miscellaneous				}
+{                               Miscellaneous                           }
 
-{   		    Miscellaneous find functions		     }
+{                   Miscellaneous find functions                     }
 
 { find index of item in list, or -1 if not found; first does this }
 
@@ -1284,4 +1294,3 @@ set pad(string s,int padding)=string: l_adjust(padding,s)
 }
 set monomials (ParamPol P) = [Param]: for c@p in P do p od
 set monomial  (ParamPol P,int i) = Param: monomials(P)[i]
-

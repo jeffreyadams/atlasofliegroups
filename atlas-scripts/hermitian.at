@@ -127,7 +127,6 @@ set c_form_irreducible_twisted_long (Param p,mat delta) =
   then fixed_terms = null_module(G), unfixed_terms = null_module(G)
   , terms=[(Param,Split,ParamPol)]: []
   , P=KL_sum_at_s(p), Ptw=twisted_KL_sum_at_s(p)
-{  then character_formula=P.s_to_1}
   in
   for c0@q in P
   do let orient_c=orientation_nr_term(ori_nr_p,q) in
@@ -136,16 +135,15 @@ set c_form_irreducible_twisted_long (Param p,mat delta) =
       let c1=Ptw[q] then c=half((c0+c1)+(c0-c1).times_s)
       then contrib=c*orient_c*full_deform(q,delta)
       in
-{     prints(new_line,"q=",q, "c0=",c0,"c1=",c1,"c= ",c," contrib=", contrib); }
-{        (fixed_terms+:=contrib, terms#:=(q,c0,contrib))}
         (fixed_terms+:=contrib, terms#:=(q,c*orient_c,contrib))
     else
       let contrib=c0*orient_c*one_plus_s*(q*0) in
-{        (unfixed_terms+:=contrib, terms#:=(q,c0,contrib))}
         (unfixed_terms+:=contrib, terms#:=(q,c0*orient_c,contrib))
     fi
   od
-; ({character_formula}c_form_irr_twisted_as_sum_of_standards(p,delta),terms,fixed_terms + half(unfixed_terms))
+; ({character_formula} c_form_irr_twisted_as_sum_of_standards(p,delta)
+  , terms, fixed_terms + half(unfixed_terms)
+  )
 )
 
 { if delta isn't given assume it is the the inner class involution }
