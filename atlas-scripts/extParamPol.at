@@ -9,7 +9,8 @@ ed_verbose:=false
 }
 :ExtParamPol=(ParamPol,ParamPol,ParamPol)
 
-set *(Split s,ExtParamPol (P_plus,P_minus,P_ind))= ExtParamPol: (s*P_plus,s*P_minus,s*P_ind)
+set *(Split s,ExtParamPol (P_plus,P_minus,P_ind))= ExtParamPol:
+  (s*P_plus,s*P_minus,s*P_ind)
 set extParamPol(ExtParam E)=ExtParamPol:
  let p=parameter(E) then
  delta=real_form(p).distinguished_involution then
@@ -126,10 +127,10 @@ set deform_old (Param p, mat delta, int type) = ExtParamPol:
         then
           let P_IJ= poly: P_signed_I[J]
           , Q_J_index_p= poly: Q[J][index_p]
-	  then term= eval(P_IJ,-1) * eval(Q_J_index_p,-1)
+          then term= eval(P_IJ,-1) * eval(Q_J_index_p,-1)
           in
           if ed_verbose then prints("   inner term: ", term) fi;
-	 inner_sum+:=term
+         inner_sum+:=term
         ; if ed_verbose then prints(" inner_sum is now:", inner_sum) fi
         fi
       od
@@ -183,9 +184,22 @@ set recursive_deform (Param p, mat delta, int type_p) = ExtParamPol:
 {      ()=prints("acc defined", "  sc=", sc, " p=", p, " type=", type) then}
       at_nu0=ExtParamPol: sc*change_nu(p,0,type) in
 {     let ()=prints("at_nu0 (A):", at_nu0) in}
-      for factor in reducibility_points(p) ~do
-      acc+:= deform(p*factor,delta, type) od;
-      for (k,q,type) in %acc do at_nu0+:=full_def(sc*k,q,type) od
+      for factor in reducibility_points(p)
+      ~do
+        let (pf,flipped) = { next deformation }
+          if is_fixed(delta,p)
+          then scale_extended(p,delta,factor)
+          else (p*factor,false)
+          fi
+        then def=deform(pf,delta,type)
+        in
+        if flipped { flip signatures in this rare case }
+        then prints("flipped p=", p); def := s*def
+        fi
+{     ; prints("adding deformation term: p=", pf, new_line,"adding:", def) }
+      ; acc+:=def
+      od
+    ; for (k,q,type) in %acc do at_nu0+:=full_def(sc*k,q,type) od
     ; {prints("at_nu0 is now: ");display(at_nu0);} at_nu0
     end
    else
@@ -193,9 +207,25 @@ set recursive_deform (Param p, mat delta, int type_p) = ExtParamPol:
     begin
       assert(is_standard(p),"non standard parameter encountered in deformation");
       let acc=empty, at_nu0=ExtParamPol: sc*change_nu(p,0,type) in
-      for factor in reducibility_points(p) ~do
-      acc+:=deform(p*factor,delta, type) od;
-      for (k,q,type_q) in %acc do {prints("full_def:",q);}at_nu0+:=full_def(sc*k,q,type_q) od;at_nu0
+      for factor in reducibility_points(p)
+      ~do
+        let (pf,flipped) =  { next deformation }
+          if is_fixed(delta,p)
+          then scale_extended(p,delta,factor)
+          else (p*factor,false)
+          fi
+        then def = deform(pf,delta,type)
+        in
+        if flipped { flip signatures in this rare case }
+        then prints("flipped p=",p);def := s*def
+        fi
+{     ; prints("adding deformation term: p=", pf, new_line,"adding:", def) }
+      ; acc+:=def
+      od
+    ; for (k,q,type_q) in %acc
+      do { prints("full_def:",q); }at_nu0+:=full_def(sc*k,q,type_q)
+      od
+    ; at_nu0
     end
   fi  (Split:1,p,type_p)
 
