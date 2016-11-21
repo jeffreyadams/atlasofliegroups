@@ -1,6 +1,5 @@
 <basic.at
 <extended.at
-<extended_misc.at { for |fixed_block| }
 <polynomial.at
 
 set KL_block (Param p, mat delta) = { emulate built-in |KL_block| }
