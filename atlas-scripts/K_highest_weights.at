@@ -46,7 +46,7 @@ Algorithm:
 !}
 
 <W_K.at
-<thetastable.at
+<induction.at
 <representations.at
 
 set LKT_verbose=false

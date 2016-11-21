@@ -1,34 +1,76 @@
 {! Parabolic induction from real and $\theta$-stable parabolics; cuspidal and
-$\theta$-stable data of a parameter.
+$\theta$-stable data of a parameter, and some functions related to $\theta$-stable parabolics.
 
-If L is a $\theta$-stable Levi subgroup of G, then KGB for L embeds into KGB for G.
+Parabolic induction:
+_________________________
 
-For parabolic induction, a parameter p_L for the Levi L is assigned a parameter
-p_G for G:
-
-p_L=(x_L,lambda,nu) -> p_G=(embed_KGB(x_L,G),lambda + appropriate rho-shift,nu).
-
-For real parabolic induction, the rho-shift is:
-$\rho_r(G)-\rho_r(L)+(1-\theta)(\rho_S(G)-\rho_S(L))$. (Here $\rho_S$ is a certain
-half sum of complex roots.)
-
-For $\theta$-stable induction, the rho-shift is:
-$\rho_i(G)-\rho_i(L)+\rho_{complex}(G)-\rho_{complex}(L)
-   =\rho(G)-\rho_r(G)-\rho(L)+\rho_r(L)$.
-  Since $\mathfrak q$ is $\theta$ -stable, $\rho_r(G)-\rho_r(L)=0$, so the
-  shift is $\rho(G)-\rho(L)=\rho(\mathfrak u)$.
-
-Then $\operatorname{Ind}_P^G I(p_L)=I(p_G)$.
-
-In the $\theta$-stable case, the shifted parameter p_G may be non-standard
-and needs to be standardized:
-
-If p=(x,lambda,nu), and $\langle \text{lambda},\alpha^{\vee}\rangle <0$ for
-some imaginary root $\alpha$ (i.e. non-standard), let
-i_root_system=imaginary roots for x(p). Find $w$ so
+| If L is a $\theta$-stable Levi subgroup of G, then KGB for L embeds into KGB for G.
+| For parabolic induction, a parameter p_L for the Levi L is assigned a parameter p_G for G:
+|
+| p_L=(x_L,lambda,nu) -> p_G=(embed_KGB(x_L,G),lambda + appropriate rho-shift,nu).
+|
+| For real parabolic induction, the rho-shift is: $\rho_r(G)-\rho_r(L)+(1-\theta)(\rho_S(G)-\rho_S(L))$.
+| (Here $\rho_S$ is a certain half sum of complex roots.)
+|
+| For $\theta$-stable induction, the rho-shift is:
+| $\rho_i(G)-\rho_i(L)+\rho_{complex}(G)-\rho_{complex}(L)  =\rho(G)-\rho_r(G)-\rho(L)+\rho_r(L)$.
+|  Since $\mathfrak q$ is $\theta$ -stable, $\rho_r(G)-\rho_r(L)=0$, so the shift is $\rho(G)-\rho(L)=\rho(\mathfrak u)$.
+| Then $\operatorname{Ind}_P^G I(p_L)=I(p_G)$.
+| In the $\theta$-stable case, the shifted parameter p_G may be non-standard and needs to be standardized:
+| If p=(x,lambda,nu), and $\langle \text{lambda},\alpha^{\vee}\rangle <0$ for some imaginary root $\alpha$ (i.e. non-standard),
+| let i_root_system=imaginary roots for x(p). Find $w$ so
 that $w^{-1}\cdot$lambda is dominant for imaginary roots, set
 p_dom=parameter(x,$w^{-1}\cdot$lambda,nu) and return coherent continuation action
-(wrt imaginary roots) of $w$ on p_dom. !}
+(wrt imaginary roots) of $w$ on p_dom.
+
+$A_q(\lambda)$ construction:
+_______________________________
+
+| Note: theta_induce_irreducible(pi_L,G) has infinitesimal character:
+| infinitesimal character(pi_L)+rho(u).
+| Aq(x,lambda,lambda_q) is defined as follows:
+| if lambda_q is weakly dominant set q=q(x,lambda_q),
+| apply derived functor to the one-dimensional lambda-rho(u) of L.
+|
+|  REQUIRE: lambda-rho(u) must be in X^*.
+|
+| Aq(x,lambda,lambda_q) has infinitesimal character lambda+rho_L,
+| thus the one-dimensional with weight lambda has infinitesimal character
+| lambda+rho_L for L, and goes to a representation with
+| infinitesimal character lambda+rho_L for G; i.e., Aq takes infinitesimal
+| character gamma_L to SAME infinitesimal character for G.
+| If lambda_q is not weakly dominant, define
+| Aq(x,lambda,lambda_q)=Aq(wx,w\lambda,w\lambda_q),
+| where w\lambda_q is weakly dominant.
+
+Good/Fair conditions:
+________________________
+
+| Condition on the roots of $\mathfrak u$:
+| For theta_induce(pi_L,G), gamma_L -> gamma_G=gamma_L+rho_u.
+| Then:
+| GOOD:  <gamma_L+rho_u,alpha^vee> > 0;
+| WEAKLY GOOD:  <gamma_L+rho_u,alpha^vee> \ge 0;
+| FAIR: <gamma_L-rho_L+rho_u,alpha^vee> > 0.
+|
+| For  Aq(x,lambda,lambda_q): gamma_L=lambda+rho_L;
+| gamma_L -> gamma_G=gamma_L = lambda+rho_L
+| Aq(x,lambda)=theta_induce(x,lambda-rho_u)
+| Then:
+| GOOD: <lambda+rho_L,alpha^vee> > 0;
+| WEAKLY GOOD: <lambda+rho_L,alpha^vee> >= 0;
+| FAIR: <lambda,alpha^vee> > 0;
+| WEAKLY FAIR: <lambda,alpha^vee> \ge 0.
+|
+| theta_induce(pi_L,G) = Euler-Poincare characteristic of the
+| cohomological induction functor.
+|
+| fair => vanishing outside middle degree => honest representation
+| weakly fair: same implication.
+| NB: <gamma_L-rho_L_rho_u,alpha^vee> >= 0 does NOT imply vanishing
+|  (in general) if pi_L is not one-dimensional,
+|  hence "weakly fair" is only defined if pi_L is one-dimensional.
+!}
 
 <basic.at
 <misc.at { for |simple_imaginary_subsystem| }
@@ -37,6 +79,7 @@ p_dom=parameter(x,$w^{-1}\cdot$lambda,nu) and return coherent continuation actio
 <coherent.at
 <synthetic.at {for unnormalized_torus_factor}
 <K.at
+<finite_dimensional.at
 
 set verbose=false
 
@@ -188,9 +231,7 @@ set theta_induce_standard (Param p_L,RealForm G) = ParamPol:
     then prints("theta_induce_standard of parameter on L: ",p_L)
     ; prints("shift (rho_G-rho_L): ", shift)
     fi;
-  let { p_G=parameter(x_G,lambda(p_L)+rho(G)-rho_r(x_G)-rho(L)+rho_r(x(p_L))
-                     , nu(p_L)) then }
-    p_G=parameter(x_G,lambda(p_L)+shift,nu(p_L))
+  let p_G=parameter(x_G,lambda(p_L)+shift,nu(p_L))
   in if verbose then prints("p_G before standardization:", p_G) fi;
   { if verbose
     then prints("K_norm(p_G) before standardization:", K_norm(p_G*0)) fi; }
@@ -274,3 +315,447 @@ set induce_standard (ParamPol pol,Parabolic P,RealForm G) = ParamPol:
   let result=null_module(G) in
   for c@p in pol do result+:=c*induce_standard(p,P,G) od;
   result
+
+{  from parabolics.at:
+Parabolic:([int] P,KGBElt x)
+theta_stable_parabolic(KGBElt x)
+  returns a theta-stable parabolic provided all complex roots of x are type C+
+parabolic(ratvec lambda,KGBElt x)
+  returns a theta-stable parabolic if \theta_x(lambda)=lambda
+and all x-complex roots are type C+
+}
+
+{ if all complex roots for x are of type C+, then conjecturally the torus
+  parts (torus_factor) of all elements in the fiber are a subset of those for
+  the distinguished fiber:
+  KGB_elt(G,theta(x),torus_bits(x))=KGB_elt(G,theta(x),torus_bits(x_f)) for
+  some x_f in the fundamental fiber
+
+  Mapping x to x_K in the distinguished fiber
+  gives the version of K=K_{x_K} appropriate to y
+  aborts with an error if the conjecture is false for x
+
+  Note: this is false, but may be true with torus_bits in place of
+  torus_factor:
+  KGB_elt(G,theta(x),torus_bits(x))=KGB_elt(G,theta(x),torus_bits(x_f)) for
+  some x_f in the fundamental fiber this differs from the same identity for
+  torus_factor because
+  torus_factor(x)=(1+^theta(x))(torus_bits(x)+base_grading_vector) the
+  (1+^theta(x)) terms messes this up. An example is G=SO(6,2), x=KGB(G,11),
+  which should map to KGB(G,5)
+}
+{. (Auxiliary function) .}
+set map_into_distinguished_fiber (KGBElt x)=KGBElt:
+  begin assert(no_Cminus_roots(x),"Only defined if no C- roots")
+  ; let G=real_form(x) then F=distinguished_fiber(G)
+  then index=#F-1, t=torus_factor(x), tb=torus_bits(x)
+  in
+{  while index>=0 and t!=torus_factor(KGB(G,F[index])) do index-:=1 od}
+  while  index>=0 and tb!= torus_bits(KGB(G,F[index])) do index-:=1 od
+  ; if index<0
+  then prints("x:", x)
+  ; error("the torus parts for the fiber over x" +
+          " do not embed in those for the distinguished fiber")
+  fi
+  ; KGB(G,F[index])
+  end
+
+{. Map KGB element x to x_K in the distinguished fiber; if necessary, use complex
+  cross actions first to move x to a fiber with no C- roots. .}
+set strong_map_into_distinguished_fiber (KGBElt x) = KGBElt:
+  let (y,)=make_no_Cminus(x) in map_into_distinguished_fiber(y)
+
+{. Same as previous function. .}
+set canonical_x_K (KGBElt x) = KGBElt: strong_map_into_distinguished_fiber(x)
+
+{. Previous function with input a parameter p; it is applied to x(p). .}
+set canonical_x_K (Param p)  = KGBElt: canonical_x_K(x(p))
+
+{. Positive coroots in the nilradical of the theta-stable parabolic determined
+by x. .}
+set u (KGBElt x) = mat: nilrad(theta_stable_parabolic(x)) { set of coroots }
+
+{ Write \h=\t\oplus\a with respect to theta
+  \t^* is a quotient of \h^*, also \t^* is a sub of \h^*
+  (those elements vanishing on \a) via this decomposition
+  rho_u_cx(P) is in \t^* viewed as a subset of \h^*
+  each pair {alpha,theta(alpha)} contributes \alpha/2, so
+  rho_u_cx(P)=1/4(sum of complex roots of u) [note the denominator]
+}
+{. Half sum of positive complex roots (on fundamental Cartan) in the nilradical of P;
+  P must be theta-stable. .}
+set rho_u_cx (Parabolic P) = ratvec:
+  assert(is_parabolic_theta_stable(P),"P is not theta-stable");
+  {use the most compact Cartan in L}
+  sum(columns_with(is_complex(x_min(P)),nilrad_roots(P))) / 2
+
+{
+  rho_u_cx(P) is not necessarily in X^*
+  rho_u_cx_T(P) \in X^*, same restriction to T_K0,
+  i.e. same image modulo (1-delta)X^* (need this to define \rho_u_cap_k)
+  in rho_u_cx(P) have terms (alpha+theta(alpha)/2, replace these with alpha,
+  which has the same restriction
+  rho_S(theta,rd): each pair alpha,theta(alpha) contributes alpha/2
+  so 2*rho_S(theta,rd) contribution is \alpha, which is what we want
+}
+{. Element of $X^*$ with same restriction to $(X^*)^{\theta}$ as rho_u_cx(P);
+  P must be theta-stable. .}
+set rho_u_cx_T (Parabolic P) = vec:
+  assert(is_parabolic_theta_stable(P),"P is not theta-stable");
+  let x=x_min(P)
+  then rd=root_datum(x), rd_L=root_datum(Levi(P)), theta=involution(x)
+  in ratvec_as_vec(2*rho_S(theta,rd)-2*rho_S(theta,rd_L))
+
+{ \rho_u_ic(P) is in \t^* as a subset of \h^*s
+  =1/2 the sum of the imaginary, compact roots in u
+}
+{. Half sum of imaginary compact roots in nilradical of (theta-stable) P. .}
+set rho_u_ic (Parabolic P) = ratvec:
+  assert(is_parabolic_theta_stable(P),"P is not theta-stable");
+  let
+{   x=x_min(P) in {???}}
+    x=canonical_x_K(maximal(P))
+  in sum(columns_with(is_compact_imaginary(x),nilrad_roots(P))) / 2
+
+{. Sum of compact roots (of $\mathfrak t$) in $\mathfrak u$ for theta-stable parabolic P. .}
+set two_rho_u_cap_k (Parabolic P) = vec:
+  ratvec_as_vec(rho_u_cx_T(P)+2*rho_u_ic(P))
+
+{. Sum of non-compact roots in $\mathfrak u$ (for theta-stable parabolic). .}
+set two_rho_u_cap_s (Parabolic P) = vec:
+  ratvec_as_vec(2*rho_u(P))-two_rho_u_cap_k(P)
+
+{these give the same restriction to T_K0, but aren't necessarily integral:}
+{. Half sum of compact roots in $\mathfrak u$ (for theta-stable parabolic). .}
+set rho_u_cap_k (Parabolic P) = ratvec: rho_u_cx(P)/2+rho_u_ic(P)
+
+{. Half sum of non-compact roots in $\mathfrak u$ (for theta-stable parabolic). .}
+set rho_u_cap_s (Parabolic P) = ratvec: rho_u(P)-rho_u_cap_k(P)
+
+{. Dimension of $\mathfrak u$ (nilrad of theta-stable parabolic). .}
+set dim_u(Parabolic P) = int:n_columns(nilrad(P))
+
+{. Dimension of the nilradical of the theta-stable parabolic determined by KGB elt x. .}
+set dim_u(KGBElt x) = int:dim_u(theta_stable_parabolic(x))
+
+{. Dimension of the nilradical of the parabolic determined by a weight H. .}
+set dim_u (ratvec H,KGBElt x) = n_columns(nilrad(H,x))
+
+{. Dimension of $\mathfrak u\cap\mathfrak k$ for theta-stable parabolic. .}
+set dim_u_cap_k (Parabolic (,x):P) = int:
+  assert(is_parabolic_theta_stable(P),"Parabolic is not theta-stable");
+  let sum=0/1 in
+  for alpha in nilrad_roots(P) do
+    if is_complex(alpha,x) then sum +:= 1/2
+    elif is_compact_imaginary(alpha,x) then sum+:=1
+    fi
+  od; rat_as_int(sum)
+
+{. Dimension of $\mathfrak u\cap\mathfrak k$ for theta-stable parabolic determined
+  by x. .}
+set dim_u_cap_k (KGBElt x) = int:dim_u_cap_k(theta_stable_parabolic(x))
+
+{. Dimension of $\mathfrak u\cap\mathfrak k$ for theta-stable parabolic determined by
+  weight lambda. .}
+set dim_u_cap_k(ratvec lambda,KGBElt x) =  int:
+  let P=parabolic(lambda,x) in
+  assert(is_parabolic_theta_stable(P),"Parabolic is not theta-stable");dim_u_cap_k(P)
+
+{. Dimension of $\mathfrak u\cap\mathfrak p$ for theta-stable parabolic. .}
+set dim_u_cap_p (Parabolic (,x):P) = int:
+  assert(is_parabolic_theta_stable(P),"Parabolic is not theta-stable");
+  let sum=0/1 in
+  for alpha in nilrad_roots(P) do
+    if is_complex(alpha,x) then sum +:= 1/2
+    elif is_noncompact_imaginary(alpha,x) then sum+:=1
+    fi
+  od; rat_as_int(sum)
+
+{. Dimension of $\mathfrak u \cap\mathfrak p$ for theta-stable parabolic associated
+  to x. .}
+set dim_u_cap_p (KGBElt x) = int: dim_u_cap_p(theta_stable_parabolic(x))
+
+{. Dimension of $\mathfrak u\cap\mathfrak p$ for theta-stable parabolic determined by
+  weight lambda. .}
+set dim_u_cap_p (ratvec lambda,KGBElt x) = int:
+  let P=parabolic(lambda,x) in
+  assert(is_parabolic_theta_stable(P),"Parabolic is not theta-stable");dim_u_cap_p(P)
+
+{. (Auxiliary function) .}
+set dim_u_cap_k_2 (Parabolic P,ratvec H { a coweight } ) = int:
+  let x=x_min(P), sum=0/1 in
+  for alpha in nilrad_roots(P) do
+    if H*alpha=2 then
+      if is_complex(alpha,x) then sum+:=1/2
+      elif is_compact_imaginary(alpha,x) then sum+:=1
+      fi
+    fi
+  od; rat_as_int(sum)
+
+{. (Auxiliary function) .}
+set dim_u_cap_k_ge2 (Parabolic P,ratvec H) = int:
+  let x=x_min(P), sum=0/1 in
+  for alpha in nilrad_roots(P) do
+    if H*alpha>=2 then
+      if is_complex(alpha,x) then sum+:=1/2
+      elif is_compact_imaginary(alpha,x) then sum+:=1
+      fi
+    fi
+  od; rat_as_int(sum)
+
+{. (Auxiliary function) .}
+set dim_u_cap_p_ge2 (Parabolic P,ratvec H) = int:
+  let x=x_min(P), sum=0/1 in
+  for alpha in nilrad_roots(P) do
+    if H*alpha>=2 then
+      if is_complex(alpha,x) then sum+:=1/2
+      elif is_noncompact_imaginary(alpha,x) then sum+:=1
+      fi
+    fi
+  od; rat_as_int(sum)
+
+{. (Auxiliary function) .}
+set dim_u_cap_k_1 (Parabolic P,ratvec H) = int:
+  let x=x_min(P), sum=0/1 in
+  for alpha in nilrad_roots(P) do
+    if H*alpha=1 then
+      if is_complex(alpha,x) then sum+:=1/2
+      elif is_compact_imaginary(alpha,x) then sum+:=1
+      fi
+    fi
+  od; rat_as_int(sum)
+
+{. (Auxiliary function) .}
+set dim_u_cap_p_1(Parabolic P, ratvec H)=
+  let x=x_min(P), sum=0/1 in
+  for alpha in nilrad_roots(P) do
+    if H*alpha=1 then
+      if is_complex(alpha,x) then sum+:=1/2
+      elif is_noncompact_imaginary(alpha,x) then sum+:=1
+      fi
+    fi
+  od; rat_as_int(sum)
+
+
+
+{ -----------------------some representations------------------------------- }
+
+
+
+{
+Aq(x,lambda,lambda_q)=Aq(wx,wlambda,wlambda_q) so we can assume
+lambda_q is dominant
+}
+{. Conjugate the triple (x,lambda, lambda_q) to make lambda_q weakly
+  dominant (auxiliary function). .}
+set make_dominant(KGBElt x_in,ratvec lambda_in, ratvec lambda_q_in)=(KGBElt,ratvec,ratvec):
+  let (lambda_q,w)=make_dominant(real_form(x_in),lambda_q_in) in
+  (cross(inverse(w),x_in),act(inverse(w),lambda_in),lambda_q)
+
+{. A_q(lambda) module; $\mathfrak q$ is defined by the weight lambda_q; x_in
+  must be attached to the fundamental Cartan. The module is defined as a ParamPol,
+  in case it is reducible. .}
+set Aq_param_pol (KGBElt x_in,ratvec lambda_in, ratvec lambda_q) = ParamPol:
+  let G=real_form(x_in)
+{find w making lambda_q weakly dominant}
+  then (lambda_q_new,w)=make_dominant(G,lambda_q)
+  then x_new=cross(inverse(w),x_in)
+  then lambda_in_new=act(inverse(w),lambda_in)
+  then P_new=parabolic(lambda_q_new,x_new)
+  then L_new=Levi(P_new)
+  then t_L_new=trivial(L_new)
+  in
+  assert(is_parabolic_theta_stable(P_new),"q is not theta-stable");
+  let pi_L= parameter
+    (x(t_L_new)
+    ,lambda(t_L_new)+lambda_in_new-rho_u(parabolic(lambda_q_new,x_new))
+    ,nu(t_L_new)+lambda_in_new-rho_u(parabolic(lambda_q_new,x_new))
+    )
+  in
+  assert(dimension(pi_L)=1,"pi_L is not one-dimensional");
+  theta_induce_irreducible(pi_L,G)
+
+{. A_q(lambda) module defined as above, but as a parameter, assuming it is
+  irreducible. .}
+set Aq (KGBElt x_in,ratvec lambda_in, ratvec lambda_q) = Param:
+  let P=%Aq_param_pol(x_in,lambda_in,lambda_q)
+  in assert(#P<=1,"Aq is not irreducible. Use Aq_param_pol(x,lambda) instead");
+  let (c,p)=P[0]
+  in assert(c=1,"Aq has multiplicity. Use Aq_param_pol(x,lambda) instead");
+  p
+
+{. If not provided, assume lambda_q=lambda_in in the definition of A_q. .}
+set Aq (KGBElt x,ratvec lambda_in) = Param:
+  Aq(x,lambda_in,lambda_in)
+
+{. A_q(lambda), specify G, not x, to use x=KGB(G,0). .}
+set Aq (RealForm G,ratvec lambda_in, ratvec lambda_q) = Param:
+  Aq(KGB(G)[0],lambda_in,lambda_q)
+
+{. A_q(lambda), specify G, not x, and use lambda_q=lambda_in. .}
+set Aq(RealForm G,ratvec lambda_in)=Param:
+  Aq(G,lambda_in,lambda_in)
+
+
+{----------------------Good/Fair conditions------------------}
+
+{. Decide whether a parameter defines a one-dimensional representation. .}
+set is_one_dimensional(Param p)=bool:
+  is_finite_dimensional(p) and dimension(p)=1
+
+{. Decide whether A_q(lambda) is good. .}
+set is_good(KGBElt x_in,ratvec lambda_in,ratvec lambda_q_in)=bool:
+  let (x,lambda,lambda_q)=make_dominant(x_in,lambda_in,lambda_q_in)  in
+  is_strictly_dominant(real_form(x),lambda+rho(Levi(lambda_q,x)))
+
+{. Decide whether A_q(lambda) is weakly good. .}
+set is_weakly_good(KGBElt x_in,ratvec lambda_in,ratvec lambda_q_in)=bool:
+  let (x,lambda,lambda_q)=make_dominant(x_in,lambda_in,lambda_q_in) in
+  is_dominant(real_form(x),lambda+rho(Levi(lambda_q,x)))
+
+{. Decide whether A_q(lambda) is fair. .}
+set is_fair(KGBElt x_in,ratvec lambda_in,ratvec lambda_q_in)=bool:
+  let (x,lambda,lambda_q)=make_dominant(x_in,lambda_in,lambda_q_in)  in
+  is_strictly_dominant(real_form(x),lambda)
+
+{. Decide whether A_q(lambda) is weakly fair. .}
+set is_weakly_fair(KGBElt x_in,ratvec lambda_in,ratvec lambda_q_in)=bool:
+  let (x,lambda,lambda_q)=make_dominant(x_in,lambda_in,lambda_q_in)  in
+  is_dominant(real_form(x),lambda)
+
+{. Determine the "goodness" of an Aq(lambda); returns "good", "weakly good",
+  "fair", "weakly fair", or "none". .}
+set goodness(KGBElt x,ratvec lambda_in,ratvec lambda_q) = void:
+  let G=real_form(x), P=parabolic(lambda_q,x)
+  then L=Levi(P) then rho_l=rho(L)
+  then rho_u=rho(G)-rho_l, infchar_l=lambda_in+rho_l in
+{  in prints("infinitesimal character(l)=", infchar_l);
+    prints("infinitesimal character(l)+rho(u)=", infchar_l+rho_u);
+    prints("infinitesimal character(l)+rho(u)-rho(l)=", infchar_l+rho_u-rho_l);}
+  if is_good(x,lambda_in,lambda_q) then prints("Good")
+  elif is_weakly_good(x,lambda_in,lambda_q) then prints("Weakly good")
+  elif is_fair(x,lambda_in,lambda_q) then prints("Fair")
+  elif is_weakly_fair(x,lambda_in,lambda_q) then prints("Weakly fair")
+  else prints("None")
+  fi
+
+{ These functions are superfluous; use is_good(p_L,G) etc. instead..
+
+{. Decide whether a parameter for L is in the good range for u (only
+  makes sense if L is Levi of P and P is theta-stable). .}
+set is_good(Param p_L,Parabolic P,RealForm G)=bool:
+  assert(is_parabolic_theta_stable(P), "Parabolic is not theta-stable");
+  let v=infinitesimal_character(p_L)+rho_u(P) in
+  all(for alpha_check in nilrad(P) do v*alpha_check>0 od)
+
+{. Decide whether a parameter for L is in the weakly good range for u
+  (only makes sense if L is Levi of P and P is theta-stable). .}
+set is_weakly_good(Param p_L,Parabolic P,RealForm G)=bool:
+  assert(is_parabolic_theta_stable(P), "Parabolic is not theta-stable");
+  assert (real_form(p_L)=Levi(P), "Levi subgroup mismatch");
+  let v=infinitesimal_character(p_L)+rho_u(P) in
+  all(for alpha_check in nilrad(P) do v*alpha_check>=0 od)
+
+{. Decide whether a parameter for L is in the fair range for u (only
+  makes sense if L is Levi of P and P is theta-stable). .}
+set is_fair(Param p_L,Parabolic P,RealForm G)=bool:
+  assert(is_parabolic_theta_stable(P), "Parabolic is not theta-stable");
+  let v=infinitesimal_character(p_L)+rho_u(P)-rho(Levi(P)) in
+  all(for alpha_check in nilrad(P) do v*alpha_check>0 od)
+
+{. Decide whether a parameter for L is in the weakly fair range
+  for u (provided pi_L is one-dimensional; only
+  makes sense if L is Levi of P and P is theta-stable). .}
+set is_weakly_fair(Param p_L,Parabolic P,RealForm G)=bool:
+  assert(is_parabolic_theta_stable(P), "Parabolic is not theta-stable");
+  let v=infinitesimal_character(p_L)+rho_u(P)-rho(Levi(P)) in
+  is_one_dimensional(p_L) and all(for alpha_check in nilrad(P) do v*alpha_check>=0 od)
+
+{. Determine the "goodness" for $\mathfrak u$ of a parameter for L;
+   returns "good", "weakly good", "fair", "weakly fair", or "none". .}
+set goodness(Param p_L,Parabolic P,RealForm G)=string:
+  assert(is_parabolic_theta_stable(P), "Parabolic is not theta-stable");
+  let L=real_form(p_L) then
+  rho_l=rho(L) then
+  rho_u=rho(G)-rho(L) then
+  infchar_l=infinitesimal_character(p_L) in
+  { prints("infinitesimal character(l)=", infchar_l);
+  prints("infinitesimal character(l)+rho(u)=", infchar_l+rho_u);
+  prints("infinitesimal character(l)+rho(u)-rho(l)=", infchar_l+rho_u-rho_l);
+  }
+  if is_good(p_L,P,G) then "Good"
+  elif is_weakly_good(p_L,P,G) then "Weakly good"
+  elif is_fair(p_L,P,G) then "Fair"
+  elif is_weakly_fair(p_L,P,G) then "Weakly fair"  else
+  "None" fi
+}
+
+{. Decide whether a parameter for L is in the good range for G; this only
+   makes sense if L is the Levi of a theta-stable parabolic. .}
+set is_good (Param p_L,RealForm G) = bool:
+  let L=real_form(p_L)
+  in let rho_u=rho(G)-rho(L)
+  in let v=infinitesimal_character(p_L)+rho_u
+  in let pcg=poscoroots(G)
+  in let rdl=root_datum(L)
+  in all(for alpha_check in pcg do v*alpha_check>0 or
+    is_positive_coroot(rdl)(alpha_check) od)
+
+{. Decide whether a parameter for L is in the weakly good range for G; this only
+   makes sense if L is the Levi of a theta-stable parabolic. .}
+set is_weakly_good (Param p_L,RealForm G) = bool:
+  let L=real_form(p_L)
+  then rho_u=rho(G)-rho(L)
+  in is_dominant(G,infinitesimal_character(p_L)+rho_u)
+
+{. Decide whether a parameter for L is in the fair range for G; this only
+   makes sense if L is the Levi of a theta-stable parabolic. .}
+set is_fair (Param p_L,RealForm G) = bool:
+  let L=real_form(p_L)
+  then rho_u=rho(G)-rho(L)
+  in let v=infinitesimal_character(p_L)+rho_u-rho(L)
+  in let pcg=poscoroots(G)
+  in let rdl=root_datum(L)
+  in all(for alpha_check in pcg do v*alpha_check>0 or
+    is_positive_coroot(rdl)(alpha_check) od)
+
+{. Decide whether a parameter for L is in the weakly fair range for G; this only
+   makes sense if L is the Levi of a theta-stable parabolic, and is only defined
+   if p_L is one-dimensional. .}
+set is_weakly_fair (Param p_L,RealForm G) = bool:
+  let L=real_form(p_L)
+  then rho_u=rho(G)-rho(L)
+  in is_one_dimensional(p_L) and
+     is_dominant(G,infinitesimal_character(p_L)+rho_u-rho(L))
+
+{. Determine the "goodness" of a parameter for L; returns "good", "weakly good",
+  "fair", "weakly fair", or "none"; only makes sense if L is Levi of theta-stable
+  parabolic. .}
+set goodness (Param p_L,RealForm G) = void:
+  let L=real_form(p_L) then rho_l=rho(L)
+  then rho_u=rho(G)-rho_l, infchar_l=infinitesimal_character(p_L)
+  in
+{ prints("infinitesimal character(l)=", infchar_l);
+  prints("infinitesimal character(l)+rho(u)=", infchar_l+rho_u);
+  prints("infinitesimal character(l)+rho(u)-rho(l)=", infchar_l+rho_u-rho_l); }
+  if is_good(p_L,G) then prints("Good")
+  elif is_weakly_good(p_L,G) then prints("Weakly good")
+  elif is_fair(p_L,G) then prints("Fair")
+  elif is_weakly_fair(p_L,G) then prints("Weakly fair")
+  else prints("None")
+  fi
+
+{. List all A_q(0) (actually: R_q(trivial): infinitesimal character rho(G)) modules
+  with Q a theta-stable parabolic of type P. .}
+set Aq_packet(RealForm G,ComplexParabolic P)=[Param]:
+let parabolics=theta_stable_parabolics(G,P) then
+rv=[Param]:[] in
+for Q in parabolics do
+ let ind=monomials(induce_irreducible(trivial(Levi(Q)),Q,G))
+  in assert(#ind=1,"induced in A_packet is not irreducible");rv#:=ind[0] od;rv
+
+{. List all A_q(0) (infinitesimal character rho(G)) modules
+  with Q a theta-stable parabolic of type S (list of simple roots). .}
+set Aq_packet(RealForm G,[int] S)=[Param]:Aq_packet(G,ComplexParabolic:(G,S))
+
+set Aq_packet(RealForm G,[*] S)=[Param]:Aq_packet(G,[int]:S)
