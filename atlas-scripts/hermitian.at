@@ -1,6 +1,6 @@
 <basic.at
 <ext_deform.at { for full_deform@(Param,mat) }
-<thetastable.at {for dim_u_cap_p}
+<induction.at {for dim_u_cap_p}
 set hf_debug=false
 set use_equal_rank_mu=true  {false: force use of twisted mu (for testing)}
 
