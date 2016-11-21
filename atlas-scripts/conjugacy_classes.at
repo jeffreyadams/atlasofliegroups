@@ -1,4 +1,3 @@
-<Weylgroup.at { for type W_word }
 <W_orbit.at { for generate_W@RootDatum }
 
 { compute conjugacy class of w, inspired by cross_W_orbit.at
