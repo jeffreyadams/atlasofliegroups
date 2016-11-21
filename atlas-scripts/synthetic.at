@@ -1,4 +1,3 @@
-<basic.at
 <Weylgroup.at   { for make_simple@(RootDatum,vec) }
 <parameters.at  { for parity }
 <lattice.at     { for in_lattice }

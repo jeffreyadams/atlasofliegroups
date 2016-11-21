@@ -1,4 +1,3 @@
-<basic.at
 <matrix.at { for 'principal_minor' (this dependency might be eliminated) }
 
 { M is an nxk matrix, columns of M define a Z-module W=image(M)\subset Z^n }

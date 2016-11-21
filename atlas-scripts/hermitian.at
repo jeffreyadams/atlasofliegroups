@@ -1,4 +1,3 @@
-<basic.at
 <ext_deform.at { for full_deform@(Param,mat) }
 <induction.at {for dim_u_cap_p}
 set hf_debug=false

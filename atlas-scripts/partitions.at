@@ -1,4 +1,3 @@
-<basic.at
 <sort.at { for |reverse_sort@[int]| }
 
 : Partition = [int]   {partition a_1\ge a_2\ge ... a_n>0}

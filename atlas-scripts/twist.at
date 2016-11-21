@@ -1,6 +1,5 @@
 { computing the twist of an external involution on a KGB set, and on a Block }
 
-<basic.at
 <lattice.at { for restrict_action }
 
 set check (InnerClass ic, mat delta) = bool:

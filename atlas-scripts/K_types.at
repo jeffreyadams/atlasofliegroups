@@ -1,6 +1,5 @@
 {see K_parameters.at}
 
-<basic.at     { for *@(Param,rat) }
 <hermitian.at { for hermitian_form_irreducible }
 <K_highest_weights.at
 

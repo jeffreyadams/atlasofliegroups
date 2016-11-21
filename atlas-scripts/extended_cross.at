@@ -1,5 +1,3 @@
-<basic.at
-<extended_misc.at { for type ExtParam }
 <extended_types.at { for ext_type_1@(int,ExtParam) }
 
 { this script defines the cross action by roots from the integrality datum

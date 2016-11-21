@@ -10,49 +10,43 @@ misc.at			basic { general utility functions }
 sort.at			basic { merge sort integers, sort by statistic }
 matrix.at		basic { get blocks from matrix, partial inverses }
 polynomial.at		basic { polynomials and matrices with poly entries }
-Weylgroup.at		basic { W_word, W action; making (integr.) dominant }
 groups.at		basic { function for constructing groups by name }
 generate_groups.at	basic { list real forms by isogeny and rank }
 nilpotent.at		basic { list complex nilp. orbits; tables for G2-E8 }
 parameters.at		basic { attributes of and functions for Param values }
 iterate_deform.at	basic { legacy implementation of deformation algorithm }
 torus.at		basic { construct torus by compact/complex/split ranks }
-partitions.at		basic { hook length dimension formula }
+partitions.at		basic, sort { hook length dimension formula }
 galois.at		basic, groups, generate_groups
 			{ count conn. components, real forms in square class }
 lattice.at		basic, matrix { sublattice embeddings and quotients }
 twist.at		basic, lattice { twist by a distinguished involution }
-kgp.at			basic, sort, Weylgroup { basic parabolics }
-K_parameters.at		basic, sort, Weylgroup { Param values with nu=0 }
-parabolics.at		kgp, Weylgroup, misc { complex parabolics }
 group_operations.at	basic, torus, lattice { torus, product, radical etc. }
-center.at		group_operations, lattice { center of G(C), G(R) }
+center.at		basic { center of G(C), G(R) }
+Weylgroup.at		basic, center { W_word, W action; making (integr.) dominant }
+parabolics.at		sort, Weylgroup, group_operations
+                        { complex, real, theta-stable, general parabolics }
 Vogan-dual.at		basic, parameters { compute y of Param, and full dual }
-K.at			basic, matrix { embedding of compact root system }
+K.at			sort, matrix, Weylgroup { embedding of compact root system }
 W_orbit.at		basic, Weylgroup { W orbit on vectors, list all W }
 cross_W_orbit.at	basic, Weylgroup { W orbit on KGB and action rep.ives }
-tits.at			basic, Weylgroup { directly compute in full Tits group }
+tits.at			basic, Weylgroup, W_orbit
+                        { directly compute in full Tits group }
 Wdelta.at		basic, Weylgroup, K { inner class with another invol. }
 kl.at			basic, polynomial { character/composition formulas }
 synthetic.at		basic, Weylgroup, parameters, lattice
 			       { do KGB and Param computations from scratch }
-representations.at	basic, misc, group_operations { various "series" }
-hermitian.at		basic, representations, kl { unitarity test }
-test_unitarity.at       groups, hermitian, unitary, nilpotent, lietypes
+representations.at	misc, group_operations, cross_W_orbit, nilpotent
+                        { various discrete and principal series }
 			{ define a suite of tests for the deformation code }
-translate.at		basic, hermitian { translation functors, to walls }
-finite_dimensional.at	basic, Weylgroup, hermitian { highest wts, dim, ... }
-W_K.at			parabolics, K, W_orbit
-LKT.at			basic, cross_W_orbit, finite_dim.l, W_K, thetastable
-                        { lowest K types }
-LKT_aux.at		LKT.at { conversions between K-type parameters }
-K_types.at		basic, hermitian, LKT { branching modules to K }
+translate.at		basic, kl { translation functors, to walls }
+finite_dimensional.at	basic, Weylgroup { highest wts, dim, ... }
+W_K.at			basic, misc, parabolics, K, W_orbit, cross_W_orbit
+                        { Weyl group of disconnected maximal compact subgroup }
+K_highest_weights.at	W_K, induction, representations { K-types and highest weights }
 coherent.at		basic, translate, W_orbit { coherent continuations }
-induction.at		K, parabolics, kl, coherent, synthetic, K_parameters
-			  { parabolic induction }
-canonical_x_K.at	Weylgroup, misc { mapping canonically? to dist. fiber }
-thetastable.at		parabolics, induction, finite_dimensional, canonical_x_K
-
+induction.at		misc, parabolics, kl, coherent, synthetic, K, finite_dimensional
+			  { real and theta-stable parabolic induction }
 extended_misc.at	basic, lattice, parameters, Weylgroup
  			{ foundation for extended_param operations }
 extended_types.at	basic, extended_misc { classify extended parameters }
@@ -60,21 +54,25 @@ extended_cross.at       basic, extended_misc/types { cross action ext. param. }
 extended_cayley.at      basic, extended_misc/types { Cayley trf. ext. param. }
 extended.at		basic, lattice, rep'ns, synth, param's, ext_misc/types
 			{ construction functions for extended_param, signs }
+ext_deform.at		extended, polynomial
+hermitian.at		basic, ext_deform, induction { unitarity test }
+K_types.at		basic, hermitian, K_highest_weights { branching modules to K }
+test_unitarity.at       groups, hermitian, unitary, nilpotent, lietypes, representations
 nonintegral.at		Wdelta, synthetic, extended* { cross/Cayley; extended }
-synthetic_aux.at	synthetic, Weyl, Weylgroup, translate
+synthetic_aux.at	synthetic, Weylgroup, translate
 			{ auxiliary file used to help correcting synthetic.at }
-hecke.at		basic, sort, polynomial, extended*, nonintegral
+hecke.at		basic, sort, polynomial, extended, extended_cayley, nonintegral
 			{ cross actions and Cayleys for extended params; tests }
 
 
-modules.at		basic, misc, kl { ParamPol values tagged }
+modules.at		basic, misc, kl, K_types { ParamPol values tagged }
 
 
 ---------------------------------------------------------------------------
 
 std_decs.at		{ convenience script pre-declaring some variables }
 complex_nilpotent_orbits.at
-	    basic, misc, Weylgroup, sort, lattice, kgp, parabolics, parameters
+	                misc, Weylgroup, sort, lattice, parabolics, parameters
 conjugacy_classes.at   	Weylgroup, W_orbit
 
 ---------------------------------------------------------------------------
@@ -82,7 +80,8 @@ conjugacy_classes.at   	Weylgroup, W_orbit
 
 elliptic_elements.at	{ some tables }
 2i12.at			{ example construction }
-wreps_type_C.at		basic, sort, nilpotent, c_n_orbits, partitions {type C}
+wreps_type_C.at	        basic, sort, nilpotent, complex_nilpotent_orbits,
+                        partitions {type C}
 dual.at			extended, polynomial, parameters, Vogan-dual
 all_Kparameters.at      lattice, kgp, K_parameters, thetastable { ? }
 complex.at		LKT { some things specific for complex groups }

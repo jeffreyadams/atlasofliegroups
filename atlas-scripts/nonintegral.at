@@ -1,6 +1,5 @@
 <Wdelta.at
 <synthetic.at
-<extended_misc.at   { for ExtParam }
 <extended.at
 <extended_cross.at
 <extended_cayley.at { for ext_Cayley_simple }

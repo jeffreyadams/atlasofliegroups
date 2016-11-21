@@ -1,4 +1,3 @@
-<basic.at
 <center.at { for lie_coradical_part }
 
 { Functions for computing with Weyl words }

@@ -1,6 +1,5 @@
 { the functions in this file have not been carefully checked }
 
-<basic.at
 <kl.at
 set translate_debug=false
 

@@ -1,4 +1,3 @@
-<basic.at
 <Weylgroup.at { dominant }
 
 { this file contains some special operations defined only for complex groups }
