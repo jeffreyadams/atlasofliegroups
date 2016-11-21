@@ -46,7 +46,6 @@ set cook_KL_block ([Param] B,int entry_elem
      )
 
 set ed_verbose=false
-set ed_verbose2=false
 
 set null_wt(int r) = ratvec: null(r)
 set has_nu0 (Param p) = bool: =nu(p)
