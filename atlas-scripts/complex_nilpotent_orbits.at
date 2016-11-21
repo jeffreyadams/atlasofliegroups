@@ -1,6 +1,4 @@
 <misc.at { for dimension@RootDatum }
-<Weylgroup.at { for word@(RootDatum,mat) }
-<sort.at { for sort_u@[int] }
 <lattice.at { for in_lattice@(mat,ratvec) }
 <parabolics.at { for Levi@Parabolic }
 <parameters.at { for parameter@(KGBElt,KGBElt,ratvec) }
