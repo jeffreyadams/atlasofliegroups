@@ -353,25 +353,7 @@ StandardRepr scaled_extended_dominant // result will have its |gamma()| dominant
  bool& flipped // records whether and extended flip was recorded
  );
 
-/* DAVID 10/23/16: |finalise| is used primarily or exclusively when the
-   parameter represents a standard representation (not an irreducible); the
-   goal is to write the [extended] standard I(sr_default) as a sum of
-   [extended] final limit standards \sum_{y\in finalise} I(y_{first,default,
-   y_second}); the second bool is the \pm. So the relevant y's are the
-   descents of sr to final standard limits y. The bool tells whether it's
-   y_{default,+} or y_{default,-} that's a composition factor (just one
-   appears, with multiplicity 1). You can compute the sign change one descent
-   at a time. For a descent of odd length change (type 1, or type 2 defect, or
-   type 3 nondefect) the sign change is the sign of the link; that's what's
-   now done in the code. For a descent of even length change (type 2
-   nondefect, or type 3 defect) the sign change is MINUS the sign of the link,
-   because we're looking at composition series of I(sr_default) rather than
-   the character formula of J(sr_default). So the code needs to change the
-   boolean flipping at each even length descent link. The predicate
-   |has_october_surprise| will detect the links needing an extra flip.
-*/
-
-//  expand parameter into a signed sum of extended nonzero final parameters
+// expand parameter into a signed sum of extended nonzero final parameters
 containers::sl_list<std::pair<StandardRepr,bool> > finalise
   (const repr::Rep_context& rc,
    StandardRepr sr, // by value: internally |make_dominant| is applied to it

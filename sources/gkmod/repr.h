@@ -129,6 +129,9 @@ class Rep_context
   RatWeight lambda(const StandardRepr& z) const; // half-integer
   RatWeight nu(const StandardRepr& z) const; // rational, $-\theta$-fixed
 
+  // the value of $\exp_{-1}(\gamma-\lambda)$ is $y$ value in a |param_block|
+  TorusElement y_as_torus_elt(const StandardRepr& z) const;
+
   // attributes
   bool is_standard  // whether $I(z)$ is non-virtual: gamma imaginary-dominant
     (const StandardRepr& z, RootNbr& witness) const; // simple-imaginary witness
@@ -223,7 +226,7 @@ class Rep_table : public Rep_context
   SR_poly twisted_deformation_terms (param_block& block,BlockElt entry_elem);
   // here |block| is non-|const| because it calls |add_block|
 
-  SR_poly twisted_deformation(const StandardRepr& z);
+  SR_poly twisted_deformation(StandardRepr z); // by value
 
  private:
   void add_block(param_block& block, BlockEltList& survivors);

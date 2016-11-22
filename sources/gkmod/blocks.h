@@ -345,6 +345,7 @@ class param_block : public Block_base
   RatWeight y_part(BlockElt z) const; // raw torus part info, normalized
 
   BlockElt lookup(KGBElt x, const TorusElement& y_rep) const;
+  BlockElt lookup(const StandardRepr& sr) const;
 
   ext_gens fold_orbits(const WeightInvolution& delta) const;
 

@@ -129,6 +129,9 @@ RatWeight Rep_context::nu(const StandardRepr& z) const
   return RatWeight(num,2*z.gamma().denominator()).normalize();
 }
 
+TorusElement Rep_context::y_as_torus_elt(const StandardRepr& z) const
+{ return y_values::exp_pi(z.gamma()-lambda(z)); }
+
 // |z| standard means (weakly) dominant on the (simple-)imaginary roots
 bool Rep_context::is_standard(const StandardRepr& z, RootNbr& witness) const
 {
@@ -175,7 +178,7 @@ bool Rep_context::is_final(const StandardRepr& z, RootNbr& witness) const
   const InvolutionTable& i_tab = innerClass().involution_table();
   const RootNbrSet pos_real = i_tab.real_roots(i_x) & rd.posRootSet();
   const Weight test_wt = i_tab.y_lift(i_x,z.y()) // $(1-\theta)(\lambda-\rho)$
-           + rd.twoRho()-rd.twoRho(pos_real); // replace $\rho$ by $\rho_R$
+	   + rd.twoRho()-rd.twoRho(pos_real); // replace $\rho$ by $\rho_R$
 
   for (RootNbrSet::iterator it=pos_real.begin(); it(); ++it)
   {
@@ -312,11 +315,11 @@ WeylWord Rep_context::make_dominant(StandardRepr& z) const
       for (s=0; s<rd.semisimpleRank(); ++s)
       {
 	int v=rd.simpleCoroot(s).dot(numer);
-        if (v<0 or (v==0 and kgb().isComplexDescent(s,x)))
-        {
+	if (v<0 or (v==0 and kgb().isComplexDescent(s,x)))
+	{
 	  result.push_back(s);
-          rd.simple_reflect(s,numer);
-          rd.simple_reflect(s,lr);
+	  rd.simple_reflect(s,numer);
+	  rd.simple_reflect(s,lr);
 	  switch (kgb().status(s,x))
 	  {
 	  case gradings::Status::ImaginaryCompact:
@@ -326,9 +329,9 @@ WeylWord Rep_context::make_dominant(StandardRepr& z) const
 	    lr -= rd.simpleRoot(s); // pivot around $\rho-\rho_r$
 	  case gradings::Status::Real: {} // no compensation for real roots
 	  }
-          x = kgb().cross(s,x);
+	  x = kgb().cross(s,x);
 	  break; // out of the loop |for(s)|
-        } // |if(v<0)|
+	} // |if(v<0)|
       } // |for(s)|
     while (s<rd.semisimpleRank()); // wait until inner loop runs to completion
   }
@@ -359,8 +362,8 @@ Rep_context::make_dominant(StandardRepr& z,const SubSystem& subsys) const
       {
 	RootNbr alpha = subsys.parent_nr_simple(s);
 	arithmetic::Numer_t v=rd.coroot(alpha).dot(gamma_num);
-        if (v<0 or (v==0 and i_tab.is_complex_descent(i_x,alpha)))
-        {
+	if (v<0 or (v==0 and i_tab.is_complex_descent(i_x,alpha)))
+	{
 	  if (i_tab.imaginary_roots(i_x).isMember(alpha))
 	    throw std::runtime_error
 	      ("Cannot make non-standard parameter integrally dominant");
@@ -370,9 +373,9 @@ Rep_context::make_dominant(StandardRepr& z,const SubSystem& subsys) const
 	  gamma_num.subtract(rd.root(alpha).begin(),v);
 	  x = kgb().cross(rd.reflectionWord(alpha),x);
 	  i_x = kgb().inv_nr(x);
-          rd.reflect(alpha,lambda2_shifted);
+	  rd.reflect(alpha,lambda2_shifted);
 	  break; // out of the loop |for(s)|
-        } // |if(v<0)|
+	} // |if(v<0)|
       } // |for(s)|
     }
     while (s<subsys.rank()); // wait until inner loop runs to completion
@@ -397,8 +400,8 @@ RationalList Rep_context::reducibility_points(const StandardRepr& z) const
   const RootNbrSet pos_real = i_tab.real_roots(i_x) & rd.posRootSet();
   const Weight two_rho_real = rd.twoRho(pos_real);
 
-  // we shall associate to a number $num>0$ a strict lower bound for $k$,
-  // for which we shall then later form fractions $(d/num)*k$
+  // we shall associate to certain numbers $num>0$ a strict lower bound $lwb$
+  // for which we shall then later form fractions $(d/num)*k$ for $k>lwb$
   typedef std::map<long,long> table;
 
   // because of the parity condition, distinguish cases with even and odd $k$
@@ -407,7 +410,7 @@ RationalList Rep_context::reducibility_points(const StandardRepr& z) const
   for (RootNbrSet::iterator it=pos_real.begin(); it(); ++it)
   {
     arithmetic::Numer_t num =
-      rd.coroot(*it).dot(numer); // numerator of $\<\alpha^v,\nu>$ in real case
+      rd.coroot(*it).dot(numer); // now $\<\alpha^v,\nu>=num/d$ (real $\alpha$)
     if (num!=0)
     {
       long lam_alpha = lam_rho.dot(rd.coroot(*it))+rd.colevel(*it);
@@ -422,12 +425,12 @@ RationalList Rep_context::reducibility_points(const StandardRepr& z) const
     RootNbr alpha=*it, beta=theta[alpha];
     arithmetic::Numer_t vala = rd.coroot(alpha).dot(numer);
     arithmetic::Numer_t valb = rd.coroot(beta).dot(numer);
-    arithmetic::Numer_t num = vala - valb; // numerator of $2\<\alpha^v,\nu>$
+    arithmetic::Numer_t num = vala - valb; // $2\<\alpha^v,\nu>=num/d$ (complex)
     if (num!=0)
     {
-      assert((vala+valb)%d==0); // since |\<a+b,\gamma>=\<a+b,\lambda>|
+      assert((vala+valb)%d==0); // since $\<a+b,\gamma>=\<a+b,\lambda>$
       long lwb =std::abs(vala+valb)/d;
-      std::pair<table::iterator,bool> trial =
+      std::pair<table::iterator,bool> trial = // try insert |lwb| as |num| value
 	(lwb%2==0 ? evens : odds).insert(std::make_pair(std::abs(num),lwb));
       if (not trial.second and lwb<trial.first->second)
 	trial.first->second=lwb; // if not new, maybe lower the old bound value
@@ -455,9 +458,9 @@ StandardRepr Rep_context::cross(weyl::Generator s, StandardRepr z) const
   const RootDatum& rd = rootDatum();
   const SubSystem& subsys = SubSystem::integral(rd,infin_char);
   blocks::nblock_help aux(realGroup(),subsys);
-  blocks::nblock_elt src(z.x(),y_values::exp_pi(infin_char-lambda(z)));
+  blocks::nblock_elt src(z.x(),y_as_torus_elt(z));
   aux.cross_act(src,s);
-  const RatWeight& t =  src.y().as_Qmod2Z();
+  const RatWeight& t =	src.y().as_Qmod2Z();
   // InvolutionNbr i_x = kgb().inv_nr(z.x());
   // no need to do |innerClass().involution_table().real_unique(i_x,t)|
 
@@ -506,9 +509,9 @@ StandardRepr Rep_context::Cayley(weyl::Generator s, StandardRepr z) const
   const RootDatum& rd = rootDatum();
   const SubSystem& subsys = SubSystem::integral(rd,infin_char);
   blocks::nblock_help aux(realGroup(),subsys);
-  blocks::nblock_elt src(z.x(),y_values::exp_pi(infin_char-lambda(z)));
+  blocks::nblock_elt src(z.x(),y_as_torus_elt(z));
   aux.do_up_Cayley(src,s);
-  RatWeight t =  src.y().log_pi(false);
+  RatWeight t =	 src.y().log_pi(false);
   // InvolutionNbr i_x = kgb().inv_nr(z.x());
   // no need to do |innerClass().involution_table().real_unique(i_x,t)|
 
@@ -526,9 +529,9 @@ StandardRepr Rep_context::inv_Cayley(weyl::Generator s, StandardRepr z) const
   const RootDatum& rd = rootDatum();
   const SubSystem& subsys = SubSystem::integral(rd,infin_char);
   blocks::nblock_help aux(realGroup(),subsys);
-  blocks::nblock_elt src(z.x(),y_values::exp_pi(infin_char-lambda(z)));
+  blocks::nblock_elt src(z.x(),y_as_torus_elt(z));
   aux.do_down_Cayley(src,s);
-  RatWeight t =  src.y().log_pi(false);
+  RatWeight t =	 src.y().log_pi(false);
   // InvolutionNbr i_x = kgb().inv_nr(z.x());
   // no need to do |innerClass().involution_table().real_unique(i_x,t)|
 
@@ -631,7 +634,7 @@ StandardRepr Rep_context::inner_twisted(StandardRepr z) const
   const RootDatum& rd = rootDatum();
   const SubSystem& subsys = SubSystem::integral(rd,infin_char);
   blocks::nblock_help aux(realGroup(),subsys);
-  blocks::nblock_elt src(z.x(),y_values::exp_pi(infin_char-lambda(z)));
+  blocks::nblock_elt src(z.x(),y_as_torus_elt(z));
   aux.twist(src);
   RatWeight lr =
     (infin_char - src.y().log_pi(false) - rho(rd)).normalize();
@@ -786,7 +789,7 @@ void Rep_table::add_block(param_block& block, BlockEltList& survivors)
       const kl::KLPol& pol = klc.klPol(x,z); // regular KL polynomial
       Split_integer eval(0);
       for (polynomials::Degree d=pol.size(); d-->0; )
-	eval = eval.times_s()+Split_integer(static_cast<int>(pol[d]));
+	eval.times_s()+=static_cast<int>(pol[d]);
       if (eval!=Split_integer(0))
       {
 	unsigned long z_index = old_size+(it-new_survivors.begin());
@@ -918,7 +921,6 @@ SR_poly Rep_table::deformation(const StandardRepr& z)
   StandardRepr z_near = sr(z.x(),lam_rho,nu_z*rp.back());
   make_dominant(z_near);
 
-  unsigned long h=hash.find(z_near);
   { // look up if closest reducibility point to |z| is already known
     unsigned long h=hash.find(z_near);
     if (h!=hash.empty and not def_formula[h].empty())
@@ -936,7 +938,7 @@ SR_poly Rep_table::deformation(const StandardRepr& z)
   }
 
   // now store result for future lookup
-  h=hash.find(z_near);
+  unsigned long h=hash.find(z_near);
   assert(h!=hash.empty); // it should have been added by |deformation_terms|
   def_formula[h]=result;
 
@@ -966,8 +968,8 @@ SR_poly Rep_table::twisted_deformation_terms
 
   do
   { const auto& term = *rem.rbegin();
-    const StandardRepr& p_x= term.first;
-    const Split_integer& c_x = term.second;
+    const StandardRepr p_x= term.first;
+    const Split_integer c_x = term.second;
     const SR_poly& KL_x = twisted_KLV_list[hash.find(p_x)];
     rem.add_multiple(KL_x,-c_x);
     assert(rem[p_x]==Split_integer(0)); // check relation of being inverse
@@ -991,6 +993,66 @@ SR_poly Rep_table::twisted_deformation_terms
 
   return result;
 } // |twisted_deformation_terms|
+
+SR_poly Rep_table::twisted_deformation (StandardRepr z)
+{
+  const auto& delta = innerClass().distinguished();
+  RationalList rp=reducibility_points(z);
+  bool flip_start=false; // whether a flip in descending to first point
+  if (rp.size()==0) // then the interesting point is the deformation to $\nu=0$
+    z = ext_block::scaled_extended_dominant
+	  (*this,z,delta,Rational(0,1),flip_start);
+  else if (rp.back()!=Rational(1,1)) // then shrink wrap toward $\nu=0$
+  { z = ext_block::scaled_extended_dominant(*this,z,delta,rp.back(),flip_start);
+    Rational f=rp.back();
+    for (auto it=rp.begin(); it!=rp.end(); ++it)
+      (*it)/=f; // rescale reducibility points to new parameter |z|
+  }
+
+  // check if a result was previously computed and stored
+  { unsigned long h=hash.find(z);
+    if (h!=hash.empty and not twisted_def_formula[h].empty())
+      return flip_start // if so we must multiply the stored value by $s$
+	? SR_poly(repr_less()) // need an empty polynomial here
+	  .add_multiple(twisted_def_formula[h],Split_integer(0,1))
+	: twisted_def_formula[h];
+  }
+
+  // this is the first time for |z|, so we must compute
+  SR_poly result(repr_less());
+  { // initialise |result| to fully deformed parameter expanded to finals
+    bool flipped;
+    auto z0 = ext_block::scaled_extended_dominant
+		(*this,z,delta,Rational(0,1),flipped);
+    auto L = ext_block::finalise(*this,z0,delta);
+    for (auto it=L.begin(); it!=L.end(); ++it)
+      result.add_term(it->first, it->second==flipped
+				 ? Split_integer(1,0) : Split_integer(0,1) );
+  }
+
+  for (unsigned i=rp.size(); i-->0; )
+  {
+    Rational r=rp[i]; bool flipped; BlockElt dummy;
+    auto zi = ext_block::scaled_extended_dominant(*this,z,delta,r,flipped);
+    param_block parent(*this,zi,dummy); // full parent block needed for now
+    auto L = ext_block::finalise(*this,zi,delta); // rarely a long list
+    for (auto it=L.begin(); it!=L.end(); ++it)
+    { auto z = parent.lookup(it->first);
+      SR_poly terms = twisted_deformation_terms(parent,z);
+      for (SR_poly::iterator jt=terms.begin(); jt!=terms.end(); ++jt)
+	result.add_multiple(twisted_deformation(jt->first),  // recursion
+		    flipped==it->second ? jt->second : jt->second.times_s());
+    }
+  }
+  // now store result for future lookup
+  unsigned long h=hash.find(z);
+  assert(h!=hash.empty); // it should have been added by |deformation_terms|
+  def_formula[h]=result;
+
+  return flip_start // if so we must multiply the stored value by $s$
+    ? SR_poly(repr_less()).add_multiple(result,Split_integer(0,1))
+    : result;
+} // |Rep_table::twisted_deformation|
 
 std::ostream& Rep_context::print (std::ostream& str,const StandardRepr& z)
   const
@@ -1073,9 +1135,9 @@ void Rep_table::add_block(ext_block::ext_block& block,
 	block.first_descent_among(singular_orbits,ez)==block.rank())
       new_survivors.push_back(ez);
 
-  // extend space in twisted tables
-  twisted_KLV_list.resize(hash.size(),SR_poly(repr_less())); // init empty
-  twisted_def_formula.resize(hash.size(),SR_poly(repr_less()));
+  // extend space in twisted tables; zero polynomial means no computed value
+  twisted_KLV_list.resize(hash.size(),SR_poly(repr_less())); // init empties
+  twisted_def_formula.resize(hash.size(),SR_poly(repr_less())); // init empties
 
   // compute cumulated KL polynomimals $P_{x,y}$ with $x\leq y$ survivors
 
