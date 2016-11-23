@@ -1,3 +1,4 @@
+<basic.at
 <extended.at
 <polynomial.at
 
@@ -45,44 +46,8 @@ set cook_KL_block ([Param] B,int entry_elem
 
 set ed_verbose=false
 
-set null_wt(int r) = ratvec: null(r)
-set has_nu0 (Param p) = bool: =nu(p)
-
-{ Compute the direct (P) extended Kazhdan-Lusztig-Vogan polynomials
-  |B_fixed| should be the delta-fixed parameters in a block
-  The result is a row-gathered matrix of (univariate) polynomials
-}
-
-set KL_P_polynomials_1 ([Param] B_fixed,mat delta) = [[poly]]:
-  assert( all(for p in B_fixed do is_fixed(delta,p) od)
-  	, "Not every parameter is delta-fixed" );
-  let (P,polys,)=raw_ext_KL(B_fixed[0],delta) in
-  for row@i in ^P
-  do
-    for entry@j in row
-    do if >=entry then polys[entry] else -polys[-entry] fi
-    od
-  od
-
-set KL_P_signed_polynomials_1 ([Param] B_fixed,mat delta) = [[poly]]:
-  assert( all(for p in B_fixed do is_fixed(delta,p) od)
-	, "Not every parameter is delta-fixed" );
-  let (P,polys,jumps)=raw_ext_KL(B_fixed[0],delta)
-  then length = from_stops(jumps)
-  in
-  for row@i in ^P
-  do
-    for entry@j in row
-    do minus_1^(length(j)-length(i))
-     * if >=entry then polys[entry] else -polys[-entry] fi
-    od
-  od
-
-set KL_Q_polynomials ([Param] B_fixed, mat delta) = [[poly]]:
-  upper_unitriangular_inverse (KL_P_signed_polynomials_1(B_fixed,delta))
-
 set deformation_terms (Param p, mat delta) = ParamPol:
-  assert(is_fixed(delta,p),"parameter is not delta-fixed");
+  assert(twist(p,delta)=p,"parameter is not delta-fixed");
   let (B,P_mat,length) = extended_KL_block(p,delta) then nB=#B in
   if =nB or B~[0]!=p
   then null_module(p) { if |p| itself is not among survivors, return 0 }
@@ -95,12 +60,13 @@ set deformation_terms (Param p, mat delta) = ParamPol:
     in
     for q_ind : nB
     ~do let contrib=remainder[q_ind]*P_mat[q_ind] in
+      if ed_verbose
+      then prints("Contribution: ",remainder[q_ind],"*",P_mat[q_ind])
+      fi;
       remainder -:= contrib
     ; if length[q_ind]%2=opposite_parity
       then solution +:= contrib
-{;      prints(new_line,"contrib=",contrib);
-     prints("remainder=",remainder);
-      prints("solution=",solution)}
+      ; if ed_verbose then prints("added, giving ",solution) fi
       fi
     od
   ; null_module(p)+
@@ -128,6 +94,7 @@ set recursive_deform (Param p, mat delta) = ParamPol:
         let (p0,flipped) = scale_extended(p,delta,0)
         in if flipped then s*sc else sc fi * finalize_extended(p0,delta)
       in
+      prints("deformation at nu=0 contributes ",at_nu0);
       for factor in reducibility_points(p)
       ~do
 	let (pf,flipped)=scale_extended(p,delta,factor) { next deformation }
@@ -169,9 +136,3 @@ set recursive_deform (Param p, mat delta) = ParamPol:
   fi { apply that recursive function to the initial argument: } (1,p)
 
 set full_deform = recursive_deform@(Param,mat)
-
-set c_form_std (Param p,mat delta) = ParamPol:
-  let G=real_form(p) in
-  if is_equal_rank(G) then full_deform(p) { buiit in }
-  else full_deform(p,delta) { defined above }
-  fi

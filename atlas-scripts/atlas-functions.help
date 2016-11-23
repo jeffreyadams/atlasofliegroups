@@ -745,6 +745,9 @@ twisted_deform: (Param->ParamPol): inner class twisted deformation terms
 full_deform: (Param->ParamPol): perform deformation all the way to nu=0
   This is like deform, but recursively deforms all new terms produced as long
   as they do not have nu=0; all terms in the result therefore have nu=0.
+twisted_full_deform: (Param->ParamPol): inner class twisted deformation to nu=0
+  This is like full_deform, but uses the twisted KL polynomials (for the inner
+  class involution) instead. The parameter must be fixed under that twist.
 
 KL_sum_at_s: (Param->ParamPol): signed sum of KL polynomials at s, fixed y
   Computes \sum_{x\leq y}(-1)^{l(y)-l(x)}P_{x,y}[q:=s].x where y is the block

@@ -751,6 +751,11 @@ BlockElt param_block::lookup(KGBElt x, const TorusElement& y_rep) const
   return earlier(x,y);
 }
 
+BlockElt param_block::lookup(const StandardRepr& sr) const
+{ assert(sr.gamma()==gamma());
+  return lookup(sr.x(),rc.y_as_torus_elt(sr));
+}
+
 ext_gens param_block::fold_orbits(const WeightInvolution& delta) const
 {
   assert(delta*gamma().numerator()==gamma().numerator());
@@ -938,7 +943,7 @@ param_block::param_block
 
   // step 1: get |y|, which has $y.t=\exp(\pi\ii(\gamma-\lambda))$ (vG based)
   const KGBElt x_org = sr.x();
-  const TorusElement y_org = y_values::exp_pi(infin_char-rc.lambda(sr));
+  const TorusElement y_org = rc.y_as_torus_elt(sr);
   auto z_start = nblock_elt(x_org,y_org); // working copy
 
   // step 2: move up toward the most split fiber for the current real form
@@ -1416,7 +1421,7 @@ param_block::param_block
 
   // step 1: get |y|, which has $y.t=\exp(\pi\ii(\gamma-\lambda))$ (vG based)
   const KGBElt x_org = sr.x();
-  const nblock_elt org(x_org,y_values::exp_pi(infin_char-rc.lambda(sr)));
+  const nblock_elt org(x_org,rc.y_as_torus_elt(sr));
 
   // generate partial block in |aux|
   BlockElt last=aux.nblock_below(org,0); // this fills |y_hash| and |z_hash|

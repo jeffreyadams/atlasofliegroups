@@ -5060,7 +5060,7 @@ currently cannot deal with a partial parent block.
 @< Local function def...@>=
 void deform_wrapper(expression_base::level l)
 { shared_module_parameter p = get<module_parameter_value>();
-  test_standard(*p,"Cannot compute deformation formula");
+  test_standard(*p,"Cannot compute deformation");
   if (l==expression_base::no_value)
     return;
   param_block block(p->rc(),p->val); // partial block construction
@@ -5073,7 +5073,7 @@ void deform_wrapper(expression_base::level l)
 void twisted_deform_wrapper(expression_base::level l)
 { shared_module_parameter p = get<module_parameter_value>();
   const auto& rc=p->rc();
-  test_standard(*p,"Cannot compute deformation formula");
+  test_standard(*p,"Cannot compute twisted deformation");
   if (not rc.is_twist_fixed(p->val,rc.innerClass().distinguished()))
     throw runtime_error("Parameter not fixed by inner class involution");
   if (l==expression_base::no_value)
@@ -5093,10 +5093,23 @@ within the |real_form_value|.
 @< Local function def...@>=
 void full_deform_wrapper(expression_base::level l)
 { shared_module_parameter p = get<module_parameter_value>();
-  test_standard(*p,"Cannot compute deformation formula");
+  test_standard(*p,"Cannot compute full deformation");
   if (l!=expression_base::no_value)
   {
     repr::SR_poly result = p->rt().deformation(p->val);
+    push_value(std::make_shared<virtual_module_value>(p->rf,result));
+  }
+}
+@)
+void twisted_full_deform_wrapper(expression_base::level l)
+{ shared_module_parameter p = get<module_parameter_value>();
+  const auto& rc=p->rc();
+  test_standard(*p,"Cannot compute full twisted deformation");
+  if (not rc.is_twist_fixed(p->val,rc.innerClass().distinguished()))
+    throw runtime_error("Parameter not fixed by inner class involution");
+  if (l!=expression_base::no_value)
+  {
+    repr::SR_poly result = p->rt().twisted_deformation(p->val);
     push_value(std::make_shared<virtual_module_value>(p->rf,result));
   }
 }
@@ -5270,6 +5283,8 @@ install_function(srk_height_wrapper,@|"height" ,"(Param->int)");
 install_function(deform_wrapper,@|"deform" ,"(Param->ParamPol)");
 install_function(twisted_deform_wrapper,@|"twisted_deform" ,"(Param->ParamPol)");
 install_function(full_deform_wrapper,@|"full_deform","(Param->ParamPol)");
+install_function(twisted_full_deform_wrapper,@|"twisted_full_deform"
+                ,"(Param->ParamPol)");
 install_function(KL_sum_at_s_wrapper,@|"KL_sum_at_s","(Param->ParamPol)");
 install_function(twisted_KL_sum_at_s_wrapper,@|"twisted_KL_sum_at_s"
                 ,"(Param->ParamPol)");
