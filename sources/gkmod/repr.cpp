@@ -974,7 +974,7 @@ SR_poly Rep_table::twisted_deformation_terms
     rem.add_multiple(KL_x,-c_x);
     assert(rem[p_x]==Split_integer(0)); // check relation of being inverse
     if (length(p_x)%2!=parity)
-      result.add_multiple(KL_x,-c_x);
+      result.add_multiple(KL_x,c_x);
   }
   while (not rem.empty());
 
