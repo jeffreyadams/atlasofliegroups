@@ -61,12 +61,13 @@ set deformation_terms (Param p, mat delta) = ParamPol:
     in
     for q_ind : nB
     ~do let contrib=remainder[q_ind]*P_mat[q_ind] in
+      if ed_verbose
+      then prints("Contribution: ",remainder[q_ind],"*",P_mat[q_ind])
+      fi;
       remainder -:= contrib
     ; if length[q_ind]%2=opposite_parity
       then solution +:= contrib
-{;      prints(new_line,"contrib=",contrib);
-     prints("remainder=",remainder);
-      prints("solution=",solution)}
+      ; if ed_verbose then prints("added, giving ",solution) fi
       fi
     od
   ; null_module(p)+
@@ -94,6 +95,7 @@ set recursive_deform (Param p, mat delta) = ParamPol:
         let (p0,flipped) = scale_extended(p,delta,0)
         in if flipped then s*sc else sc fi * finalize_extended(p0,delta)
       in
+      prints("deformation at nu=0 contributes ",at_nu0);
       for factor in reducibility_points(p)
       ~do
 	let (pf,flipped)=scale_extended(p,delta,factor) { next deformation }
