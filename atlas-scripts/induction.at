@@ -111,8 +111,10 @@ set rho_S (KGBElt x)            = ratvec: sum(makeS(x))/2
 
 {. Real parabolic induction of a standard module of real Levi L to G .}
    set real_induce_standard (Param p_L,RealForm G) = Param:
-  let x_L=x(p_L)
-  then  L=real_form(x_L), x_G=embed_KGB(x_L,G)
+  let x_L=x(p_L) in
+  let  L=real_form(x_L) in
+  assert(is_parabolic_real(make_parabolic(L,G)),"L is not Levi of real parabolic");
+  let x_G=embed_KGB(x_L,G)
   then theta=involution(x_G)
   then shift=rho_r(x_G)-rho_r(x_L)+(1-theta)*(rho_S(x_G)-rho_S(x_L))
   in parameter(x_G,lambda(p_L)+shift,  nu(p_L))
@@ -224,7 +226,8 @@ set standardize (ParamPol P) = ParamPol:
 set theta_induce_standard (Param p_L,RealForm G) = ParamPol:
   let L=real_form(x(p_L)), x_G=embed_KGB(x(p_L),G)
   then shift=rho(G)-rho(L)
-  in
+  in assert(is_parabolic_theta_stable(make_parabolic(L,G)),
+  "L is not Levi of theta_stable parabolic");
     if verbose
     then prints("theta_induce_standard of parameter on L: ",p_L)
     ; prints("shift (rho_G-rho_L): ", shift)
@@ -637,18 +640,16 @@ set goodness(KGBElt x,ratvec lambda_in,ratvec lambda_q) = void:
   else prints("None")
   fi
 
-{ These functions are superfluous; use is_good(p_L,G) etc. instead..
-
 {. Decide whether a parameter for L is in the good range for u (only
   makes sense if L is Levi of P and P is theta-stable). .}
-set is_good(Param p_L,Parabolic P,RealForm G)=bool:
+set is_good(Param p_L,Parabolic P)=bool:
   assert(is_parabolic_theta_stable(P), "Parabolic is not theta-stable");
   let v=infinitesimal_character(p_L)+rho_u(P) in
   all(for alpha_check in nilrad(P) do v*alpha_check>0 od)
 
 {. Decide whether a parameter for L is in the weakly good range for u
   (only makes sense if L is Levi of P and P is theta-stable). .}
-set is_weakly_good(Param p_L,Parabolic P,RealForm G)=bool:
+set is_weakly_good(Param p_L,Parabolic P)=bool:
   assert(is_parabolic_theta_stable(P), "Parabolic is not theta-stable");
   assert (real_form(p_L)=Levi(P), "Levi subgroup mismatch");
   let v=infinitesimal_character(p_L)+rho_u(P) in
@@ -656,7 +657,7 @@ set is_weakly_good(Param p_L,Parabolic P,RealForm G)=bool:
 
 {. Decide whether a parameter for L is in the fair range for u (only
   makes sense if L is Levi of P and P is theta-stable). .}
-set is_fair(Param p_L,Parabolic P,RealForm G)=bool:
+set is_fair(Param p_L,Parabolic P)=bool:
   assert(is_parabolic_theta_stable(P), "Parabolic is not theta-stable");
   let v=infinitesimal_character(p_L)+rho_u(P)-rho(Levi(P)) in
   all(for alpha_check in nilrad(P) do v*alpha_check>0 od)
@@ -664,35 +665,37 @@ set is_fair(Param p_L,Parabolic P,RealForm G)=bool:
 {. Decide whether a parameter for L is in the weakly fair range
   for u (provided pi_L is one-dimensional; only
   makes sense if L is Levi of P and P is theta-stable). .}
-set is_weakly_fair(Param p_L,Parabolic P,RealForm G)=bool:
+set is_weakly_fair(Param p_L,Parabolic P)=bool:
   assert(is_parabolic_theta_stable(P), "Parabolic is not theta-stable");
   let v=infinitesimal_character(p_L)+rho_u(P)-rho(Levi(P)) in
   is_one_dimensional(p_L) and all(for alpha_check in nilrad(P) do v*alpha_check>=0 od)
 
 {. Determine the "goodness" for $\mathfrak u$ of a parameter for L;
    returns "good", "weakly good", "fair", "weakly fair", or "none". .}
-set goodness(Param p_L,Parabolic P,RealForm G)=string:
+set goodness(Param p_L,Parabolic P)=string:
   assert(is_parabolic_theta_stable(P), "Parabolic is not theta-stable");
   let L=real_form(p_L) then
   rho_l=rho(L) then
-  rho_u=rho(G)-rho(L) then
+  rho_u=rho(real_form(P))-rho(L) then
   infchar_l=infinitesimal_character(p_L) in
   { prints("infinitesimal character(l)=", infchar_l);
   prints("infinitesimal character(l)+rho(u)=", infchar_l+rho_u);
   prints("infinitesimal character(l)+rho(u)-rho(l)=", infchar_l+rho_u-rho_l);
   }
-  if is_good(p_L,P,G) then "Good"
-  elif is_weakly_good(p_L,P,G) then "Weakly good"
-  elif is_fair(p_L,P,G) then "Fair"
-  elif is_weakly_fair(p_L,P,G) then "Weakly fair"  else
+  if is_good(p_L,P) then "Good"
+  elif is_weakly_good(p_L,P) then "Weakly good"
+  elif is_fair(p_L,P) then "Fair"
+  elif is_weakly_fair(p_L,P) then "Weakly fair"  else
   "None" fi
-}
+
 
 {. Decide whether a parameter for L is in the good range for G; this only
    makes sense if L is the Levi of a theta-stable parabolic. .}
 set is_good (Param p_L,RealForm G) = bool:
-  let L=real_form(p_L)
-  in let rho_u=rho(G)-rho(L)
+  let L=real_form(p_L) in
+  assert(is_parabolic_theta_stable(make_parabolic(L,G)),
+  "L is not Levi of theta-stable parabolic");
+  let rho_u=rho(G)-rho(L)
   in let v=infinitesimal_character(p_L)+rho_u
   in let pcg=poscoroots(G)
   in let rdl=root_datum(L)
@@ -702,15 +705,19 @@ set is_good (Param p_L,RealForm G) = bool:
 {. Decide whether a parameter for L is in the weakly good range for G; this only
    makes sense if L is the Levi of a theta-stable parabolic. .}
 set is_weakly_good (Param p_L,RealForm G) = bool:
-  let L=real_form(p_L)
-  then rho_u=rho(G)-rho(L)
+  let L=real_form(p_L) in
+  assert(is_parabolic_theta_stable(make_parabolic(L,G)),
+  "L is not Levi of theta-stable parabolic");
+  let rho_u=rho(G)-rho(L)
   in is_dominant(G,infinitesimal_character(p_L)+rho_u)
 
 {. Decide whether a parameter for L is in the fair range for G; this only
    makes sense if L is the Levi of a theta-stable parabolic. .}
 set is_fair (Param p_L,RealForm G) = bool:
-  let L=real_form(p_L)
-  then rho_u=rho(G)-rho(L)
+  let L=real_form(p_L) in
+  assert(is_parabolic_theta_stable(make_parabolic(L,G)),
+  "L is not Levi of theta-stable parabolic");
+  let rho_u=rho(G)-rho(L)
   in let v=infinitesimal_character(p_L)+rho_u-rho(L)
   in let pcg=poscoroots(G)
   in let rdl=root_datum(L)
@@ -721,8 +728,10 @@ set is_fair (Param p_L,RealForm G) = bool:
    makes sense if L is the Levi of a theta-stable parabolic, and is only defined
    if p_L is one-dimensional. .}
 set is_weakly_fair (Param p_L,RealForm G) = bool:
-  let L=real_form(p_L)
-  then rho_u=rho(G)-rho(L)
+  let L=real_form(p_L) in
+  assert(is_parabolic_theta_stable(make_parabolic(L,G)),
+  "L is not Levi of theta-stable parabolic");
+  let rho_u=rho(G)-rho(L)
   in is_one_dimensional(p_L) and
      is_dominant(G,infinitesimal_character(p_L)+rho_u-rho(L))
 
