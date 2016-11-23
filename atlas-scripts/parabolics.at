@@ -205,13 +205,6 @@ set Levi (Parabolic(S,x):P) = RealForm:
   then ic_Levi=inner_class(complex_Levi(root_datum(x),S),theta)
   in { synthetic } real_form(ic_Levi,theta,torus_factor(x_min))
 
-{. Given a Levi subgroup L of G, construct the parabolic with Levi L
-  (this reverses the previous function). .}
-set make_parabolic (RealForm L,RealForm G)=Parabolic:
-   let rdl=root_datum(L) in
-   let S=[int]:[] in for alpha@i in simple_roots(G) do
-   if is_positive_root(rdl)(alpha) then S #:= i fi od; (S,embed_KGB(KGB(L,0),G))
-
 {. Test if parabolic P=(S,x) is theta-stable: <=>
    the complex Levi factor L is theta-stable, P is closed, and for
    alpha simple, not in S => alpha is imaginary or C+ wrt maximal(P). .}
