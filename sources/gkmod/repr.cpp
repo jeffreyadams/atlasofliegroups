@@ -980,7 +980,7 @@ SR_poly Rep_table::twisted_deformation_terms
 
   // correct signs in terms of result according to orientation numbers
   unsigned int orient_y = orientation_number(sr_y);
-  for (SR_poly::iterator it=result.begin(); it!=result.end(); ++it)
+  for (SR_poly::iterator it=result.begin(); it!=result.end(); ) // no increment
   {
     static constexpr Split_integer factor[2] // tabulate $(1-s)*s^i$ for $i=0,1$
       = { Split_integer {1,-1}, Split_integer {-1,1} };
@@ -988,7 +988,12 @@ SR_poly Rep_table::twisted_deformation_terms
       diff = orient_y-orientation_number(it->first);
     assert(diff%2==0);
     auto ev = it->second.e()-it->second.s(); // evaluation at $s=-1$ matters
-    it->second = factor[(diff/2)%2]*ev;
+    if (ev==0)
+      result.erase(it++); // must do increment before erase here
+    else
+    { it->second = factor[(diff/2)%2]*ev;
+      ++it; // do ordinary increment for loop
+    }
   }
 
   return result;
