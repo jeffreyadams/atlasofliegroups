@@ -999,22 +999,24 @@ SR_poly Rep_table::twisted_deformation (StandardRepr z)
   const auto& delta = innerClass().distinguished();
   RationalList rp=reducibility_points(z);
   bool flip_start=false; // whether a flip in descending to first point
-  if (rp.size()==0) // then the interesting point is the deformation to $\nu=0$
+  if (rp.empty()) // then the interesting point is the deformation to $\nu=0$
     z = ext_block::scaled_extended_dominant
 	  (*this,z,delta,Rational(0,1),flip_start);
-  else if (rp.back()!=Rational(1,1)) // then shrink wrap toward $\nu=0$
-  { z = ext_block::scaled_extended_dominant(*this,z,delta,rp.back(),flip_start);
-    Rational f=rp.back();
-    for (auto it=rp.begin(); it!=rp.end(); ++it)
-      (*it)/=f; // rescale reducibility points to new parameter |z|
-  }
+  else
+  { if (rp.back()!=Rational(1,1)) // then shrink wrap toward $\nu=0$
+    { z =
+	ext_block::scaled_extended_dominant(*this,z,delta,rp.back(),flip_start);
+      Rational f=rp.back();
+      for (auto it=rp.begin(); it!=rp.end(); ++it)
+	(*it)/=f; // rescale reducibility points to new parameter |z|
+    }
 
-  // check if a result was previously computed and stored
-  { unsigned long h=hash.find(z);
+    // now (still with |not rp.empty()| check if a result was previously stored
+    unsigned long h=hash.find(z);
     if (h!=hash.empty and not twisted_def_formula[h].empty())
       return flip_start // if so we must multiply the stored value by $s$
 	? SR_poly(repr_less()) // need an empty polynomial here
-	  .add_multiple(twisted_def_formula[h],Split_integer(0,1))
+	.add_multiple(twisted_def_formula[h],Split_integer(0,1))
 	: twisted_def_formula[h];
   }
 
@@ -1030,24 +1032,27 @@ SR_poly Rep_table::twisted_deformation (StandardRepr z)
 				 ? Split_integer(1,0) : Split_integer(0,1) );
   }
 
-  for (unsigned i=rp.size(); i-->0; )
+  if (not rp.empty()) // without reducuibilty points, just return |result| now
   {
-    Rational r=rp[i]; bool flipped; BlockElt dummy;
-    auto zi = ext_block::scaled_extended_dominant(*this,z,delta,r,flipped);
-    param_block parent(*this,zi,dummy); // full parent block needed for now
-    auto L = ext_block::finalise(*this,zi,delta); // rarely a long list
-    for (auto it=L.begin(); it!=L.end(); ++it)
-    { auto z = parent.lookup(it->first);
-      SR_poly terms = twisted_deformation_terms(parent,z);
-      for (SR_poly::iterator jt=terms.begin(); jt!=terms.end(); ++jt)
-	result.add_multiple(twisted_deformation(jt->first),  // recursion
-		    flipped==it->second ? jt->second : jt->second.times_s());
+    for (unsigned i=rp.size(); i-->0; )
+    {
+      Rational r=rp[i]; bool flipped; BlockElt dummy;
+      auto zi = ext_block::scaled_extended_dominant(*this,z,delta,r,flipped);
+      param_block parent(*this,zi,dummy); // full parent block needed for now
+      auto L = ext_block::finalise(*this,zi,delta); // rarely a long list
+      for (auto it=L.begin(); it!=L.end(); ++it)
+      { auto zz = parent.lookup(it->first);
+	SR_poly terms = twisted_deformation_terms(parent,zz);
+	for (SR_poly::iterator jt=terms.begin(); jt!=terms.end(); ++jt)
+	  result.add_multiple(twisted_deformation(jt->first),  // recursion
+		      flipped==it->second ? jt->second : jt->second.times_s());
+      }
     }
+    // now store result for future lookup
+    unsigned long h=hash.find(z);
+    assert(h!=hash.empty); // it should have been added by |deformation_terms|
+    twisted_def_formula[h]=result;
   }
-  // now store result for future lookup
-  unsigned long h=hash.find(z);
-  assert(h!=hash.empty); // it should have been added by |deformation_terms|
-  def_formula[h]=result;
 
   return flip_start // if so we must multiply the stored value by $s$
     ? SR_poly(repr_less()).add_multiple(result,Split_integer(0,1))
