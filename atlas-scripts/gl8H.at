@@ -1,0 +1,65 @@
+<<all.at
+<<coordinates.at
+set G=quasicompact_form(GL(8,R))
+set S=SL(4,H)
+set delta_G=G.distinguished_involution
+set delta_S=S.distinguished_involution
+set formula_G=c_form_irr_twisted_as_sum_of_standards(trivial(G),delta_G)
+set formula_S=c_form_irr_twisted_as_sum_of_standards(trivial(S),delta_S)
+
+set A=change_basis(S,simple_roots(G))
+set B=inverse_change_basis(G,simple_roots(S))
+
+set convert_SG(Param pS, ratmat M)=Param:parameter(KGB(G,#x(pS)), M*lambda(pS), M*nu(pS))
+set convert_SG(ParamPol P, ratmat M)=ParamPol:let rv=null_module(G) in  for c@p in P do rv+:=c*convert_SG(p,M) od;rv
+set convert_SG(Param pS)=Param:convert_SG(pS,A)
+set convert_SG(ParamPol P)=ParamPol:convert_SG(P,A)
+
+{convert(formula_S,A)=formula_G}
+
+set BG=block_of(trivial(G))
+set BS=block_of(trivial(S))
+
+set pG=BG[1]
+set pS=BS[1]
+
+prints("pS corresponds to pG: ", convert_SG(pS,A)=pG)
+prints(new_line,"finalize_extended pG:", finalize_extended(pG*0,delta_G))
+prints(new_line,"finalize_extended pS:", finalize_extended(pS*0,delta_S))
+
+set EG=E(delta_G,pG)
+set ES=E(delta_S,pS)
+set FS=ES
+FS.g:=(EG.g)*B
+FS.l:=null(7)
+
+
+
+prints("ES=");display(ES)
+prints("ES is valid:", valid(ES))
+prints("parameter(ES)= ", parameter(ES))
+
+
+prints("FS=");display(FS)
+prints("FS is valid:", valid(FS))
+prints("parameter(FS)= ", parameter(FS))
+
+prints("inner_class(ES)=inner_class(FS):", ES.ic=FS.ic)
+prints("real form of ES:", real_form(parameter(ES)))
+prints("real form of FS:", real_form(parameter(FS)))
+{prints("parameter(ES)=parameter(FS):", parameter(ES)=parameter(FS))}  {real form mismatch, but should be true}
+
+prints(new_line,"Main Problem:")
+{FS and EG are essentially the same, but finalize_extended behaves differently}
+
+prints("FS=");display(FS)
+prints("parameter(FS)=", parameter(FS))
+
+prints("EG=");display(EG)
+prints("parameter(EG)=", parameter(EG))
+prints("convert(parameter(FS))=parameter(EG):", convert_SG(parameter(FS))=parameter(EG))
+prints("EG.g*B=FS.g: ", EG.g*B=FS.g)
+prints("B*FS.gamma=EG.gamma:", B*FS.gamma=EG.gamma)
+
+prints(new_line,"finalize_extended parameter(EG)*0,delta_G)=", finalize_extended(parameter(EG)*0,delta_G))
+prints(new_line,"finalize_extended parameter(FS)*0,delta_S)=", finalize_extended(parameter(FS)*0,delta_S))
