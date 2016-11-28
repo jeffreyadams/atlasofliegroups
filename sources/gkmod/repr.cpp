@@ -1208,11 +1208,15 @@ SR_poly Rep_table::twisted_deformation (StandardRepr z)
 
   if (not rp.empty()) // without reducuibilty points, just return |result| now
   {
+    BlockElt dummy;
+    param_block parent(*this,z,dummy); // full parent block needed for now
+    ext_block::ext_block eblock(innerClass(),parent,delta);
+    add_block(eblock,parent);
+
     for (unsigned i=rp.size(); i-->0; )
     {
-      Rational r=rp[i]; bool flipped; BlockElt dummy;
+      Rational r=rp[i]; bool flipped;
       auto zi = ext_block::scaled_extended_dominant(*this,z,delta,r,flipped);
-      param_block parent(*this,zi,dummy); // full parent block needed for now
       auto L = ext_block::finalise(*this,zi,delta); // rarely a long list
       for (auto it=L.begin(); it!=L.end(); ++it)
       { auto zz = parent.lookup(it->first);
@@ -1224,7 +1228,7 @@ SR_poly Rep_table::twisted_deformation (StandardRepr z)
     }
     // now store result for future lookup
     unsigned long h=hash.find(z);
-    assert(h!=hash.empty); // it should have been added by |deformation_terms|
+    assert(h!=hash.empty); // it should have been added by |add_block|
     twisted_def_formula[h]=result;
   }
 
