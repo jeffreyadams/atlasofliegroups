@@ -63,3 +63,18 @@ prints("B*FS.gamma=EG.gamma:", B*FS.gamma=EG.gamma)
 
 prints(new_line,"finalize_extended parameter(EG)*0,delta_G)=", finalize_extended(parameter(EG)*0,delta_G))
 prints(new_line,"finalize_extended parameter(FS)*0,delta_S)=", finalize_extended(parameter(FS)*0,delta_S))
+
+set pS0=pS*0
+set pG0=pG*0
+set fpS0=finalize(pS0)[0]
+set fpG0=finalize(pG0)[0]
+
+set rdSint=integrality_datum(pS0)
+set icSint=inner_class(rdSint,delta_S)
+set Sint=real_forms(icSint)[0]
+set pS0int=parameter(KGB(Sint,1),lambda(pS0),nu(pS0))
+
+set rdGint=integrality_datum(pG0)
+set icGint=inner_class(rdGint,delta_G)
+set Gint=real_forms(icGint)[0]
+set pG0int=parameter(KGB(Gint,1),lambda(pG0),nu(pG0))
