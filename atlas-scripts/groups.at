@@ -137,19 +137,19 @@ set U (int p,int q) = RealForm:
 
 set SL_R (int n)  = RealForm: quasisplit_form(inner_class(SL(n),-id_mat(n-1)))
 set PSL_R (int n) = RealForm: quasisplit_form(inner_class(PSL(n),-id_mat(n-1)))
-set PGL_R (int n) = RealForm: PSL_R(n)
+set PGL_R = (int->RealForm): PSL_R@int
 
 set SL_C (int n)  = RealForm: complex(SL(n))
 set PSL_C (int n) = RealForm: complex(PSL(n))
-set PGL_C (int n) = RealForm: PSL_C(n)
+set PGL_C = (int->RealForm): PSL_C@int
 
 set SL_H (int n)  = RealForm: quasicompact_form(inner_class(SL(2*n),"s"))
 set PSL_H (int n) = RealForm: quasicompact_form(inner_class(PSL(2*n),"s"))
-set PGL_H (int n) = RealForm: PSL_H(n)
+set PGL_H = (int->RealForm): PSL_H@int
 
 set GL_R (int n) = RealForm: quasisplit_form(inner_class(GL(n),-id_mat(n)))
 set GL_C (int n) = RealForm: complex(GL(n))
-set GL_H (int n) = RealForm: error("gl(n,H) is not yet implemented")
+set GL_H (int n) = RealForm: quasicompact_form(inner_class(GL(2*n),"ss"))
 
 {complex and quaternionic groups of type A}
 
