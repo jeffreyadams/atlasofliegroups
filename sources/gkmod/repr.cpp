@@ -1183,6 +1183,7 @@ SR_poly Rep_table::twisted_deformation (StandardRepr z)
       Rational f=rp.back();
       for (auto it=rp.begin(); it!=rp.end(); ++it)
 	(*it)/=f; // rescale reducibility points to new parameter |z|
+      assert(rp.back()==Rational(1,1)); // should make first reduction at |z|
     }
 
     // now (still with |not rp.empty()| check if a result was previously stored
@@ -1212,24 +1213,29 @@ SR_poly Rep_table::twisted_deformation (StandardRepr z)
     param_block parent(*this,z,dummy); // full parent block needed for now
     ext_block::ext_block eblock(innerClass(),parent,delta);
     add_block(eblock,parent);
+    const unsigned long h=hash.find(z);
+    assert(h!=hash.empty); // it was just added by |add_block|
 
     for (unsigned i=rp.size(); i-->0; )
     {
       Rational r=rp[i]; bool flipped;
       auto zi = ext_block::scaled_extended_dominant(*this,z,delta,r,flipped);
+      std::unique_ptr<param_block> bp;
+      if (i+1<rp.size()) // avoid regenerating same parent block first time
+        bp.reset(new param_block(*this,zi,dummy));
+      param_block& block = bp.get()==nullptr ? parent : *bp;
+
       auto L = ext_block::finalise(*this,zi,delta); // rarely a long list
       for (auto it=L.begin(); it!=L.end(); ++it)
-      { auto zz = parent.lookup(it->first);
-	SR_poly terms = twisted_deformation_terms(parent,zz);
+      { auto zz = block.lookup(it->first);
+	SR_poly terms = twisted_deformation_terms(block,zz);
 	for (SR_poly::iterator jt=terms.begin(); jt!=terms.end(); ++jt)
 	  result.add_multiple(twisted_deformation(jt->first),  // recursion
 		      flipped==it->second ? jt->second : jt->second.times_s());
       }
     }
-    // now store result for future lookup
-    unsigned long h=hash.find(z);
-    assert(h!=hash.empty); // it should have been added by |add_block|
-    twisted_def_formula[h]=result;
+    twisted_def_formula[h]=result; // now store result for future lookup
+
   }
 
   return flip_start // if so we must multiply the stored value by $s$

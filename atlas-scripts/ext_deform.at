@@ -135,4 +135,60 @@ set recursive_deform (Param p, mat delta) = ParamPol:
     end
   fi { apply that recursive function to the initial argument: } (1,p)
 
+set twisted_recursive_deform (Param p) = ParamPol:
+  assert(not is_zero(p) and is_final(p) and twist(p)=p,"improper parameter");
+  let G=p.real_form
+  then !empty=G.null_module, !delta=G.distinguished_involution in
+  if ed_verbose { choose verbose or non-verbose version of the function }
+  then rec_fun full_def (Split sc,Param p) ParamPol:
+       { |sc| will simply scale the resulting ParamPol, |delta| is implicit }
+    begin
+      prints("full_def with: sc=", sc, ", p=", p);
+      assert(is_standard(p)
+	    ,"non standard parameter encountered in deformation");
+      let acc=empty, at_nu0 =
+        let (p0,flipped) = scale_extended(p,delta,0)
+        in if flipped then s*sc else sc fi * finalize_extended(p0,delta)
+      in
+      prints("deformation at nu=0 contributes ",at_nu0);
+      for factor in reducibility_points(p)
+      ~do
+	let (pf,flipped)=scale_extended(p,delta,factor) { next deformation }
+	then def= sum(G,
+          for c@q in finalize_extended(pf,delta)
+          do if flipped then s*c else c fi * twisted_deform(q)
+          od )
+	in
+        if flipped then def := s*def fi { flip signatures in this rare case }
+      ; prints("adding deformation term for p=", pf, new_line,"adding:", def)
+      ; acc+:=def
+      od
+    ; for k@q in acc { traverse the sum of the deformation terms spun off }
+      do { apply |full_def| recursively to all those terms }
+        at_nu0 +:= full_def(sc*k,q) { gather harvest from those deformations }
+      od
+    ; at_nu0
+    end
+  else rec_fun full_def (Split sc,Param p) ParamPol:
+       { |sc| will simply scale the resulting ParamPol, |delta| is implicit }
+    begin
+      assert(is_standard(p),"non standard parameter in deformation");
+      let acc=empty, at_nu0=
+        let (p0,flipped) = scale_extended(p,delta,0)
+        in if flipped then s*sc else sc fi * finalize_extended(p0,delta)
+      in
+      for factor in reducibility_points(p)
+      ~ { direction of deformation is down, towards 0; this is not essential }
+      do let (pf,flipped)=scale_extended(p,delta,factor) in
+        acc+:= sum(G,
+          for c@q in finalize_extended(pf,delta)
+          do if flipped then s*c else c fi * twisted_deform(q)
+          od )
+      od
+    ; for k@q in acc { traverse the sum of the deformation terms spun off }
+      do at_nu0 +:= full_def(sc*k,q) od
+    ; at_nu0
+    end
+  fi { apply that recursive function to the initial argument: } (1,p)
+
 set full_deform = recursive_deform@(Param,mat)

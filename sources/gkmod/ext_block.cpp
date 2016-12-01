@@ -1456,7 +1456,7 @@ DescValue star (const param& E,
 	    (E.ctxt.gamma() - E.lambda_rho()).dot(alpha_v)- rd.colevel(n_alpha);
 
 	  const Weight new_lambda_rho = E.lambda_rho() + alpha*f + rho_r_shift;
-	  // both $\gama-\lambda$ and $\tau$ get $f*alpha$ subtracted by
+	  // both $\gamma-\lambda$ and $\tau$ get $f*alpha$ subtracted by
 	  // $\alpha$-reflection; adapt $\tau$ for vanishing $1-\delta$ image
 	  const Weight new_tau = rd.reflection(n_alpha,E.tau()) + alpha*f;
 
