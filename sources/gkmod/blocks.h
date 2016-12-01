@@ -359,6 +359,10 @@ class param_block : public Block_base
 
 
  private:
+  // this used to be |lambda_rho|, before conformation to |StandardRepr| choices
+  Weight internal_lambda_rho(BlockElt z) const; // temporary cludge
+
+
 /*
   reverse lengths and order block with them increasing, and by increasing
   |x(z)| among elements of given length; adapt tables accordingly. Argument
