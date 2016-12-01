@@ -628,7 +628,7 @@ RatWeight param_block::nu(BlockElt z) const
 
 // reconstruct $\lambda-\rho$ from $\gamma$ and the torus part $t$ of $y$
 // here the lift $t$ is normalised using |InvolutionTable::real_unique|
-Weight param_block::lambda_rho(BlockElt z) const
+Weight param_block::internal_lambda_rho(BlockElt z) const
 {
   RatWeight t =  y_rep(y(z)).log_pi(false); // take a copy
   InvolutionNbr i_x = rc.kgb().inv_nr(x(z));
@@ -639,16 +639,29 @@ Weight param_block::lambda_rho(BlockElt z) const
   return Weight(lr.numerator().begin(),lr.numerator().end());
 }
 
+Weight param_block::lambda_rho(BlockElt z) const
+{
+  const RatWeight gamma_rho = gamma() - rho(rootDatum());
+  const Weight gr_numer(gamma_rho.numerator().begin(),
+			gamma_rho.numerator().end());
+  int gr_denom = gamma_rho.denominator();
+
+  auto& i_tab = rc.innerClass().involution_table();
+  InvolutionNbr i_x = rc.kgb().inv_nr(x(z));
+  const WeightInvolution& theta = i_tab.matrix(i_x);
+
+  // do effort to replace |lambda_rho(x)| by what returns from a |Param|
+  return (theta*gr_numer + gr_numer // |(1+theta)*gr_numer|, without matrix dup
+	  +i_tab.y_lift(i_x,i_tab.y_pack(i_x,internal_lambda_rho(z)))*gr_denom
+	  )/(2*gr_denom);
+}
+
 // reconstruct $\lambda$ from $\gamma$ and the torus part $t$ of $y$ using the
 // formula $\lambda = \gamma - {1-\theta\over2}.\log({t\over\pi\ii})$
 // the projection factor $1-\theta\over2$ kills the modded-out-by part of $t$
 RatWeight param_block::lambda(BlockElt z) const
 {
-  InvolutionNbr i_x = rc.kgb().inv_nr(x(z));
-  const WeightInvolution& theta = involution_table().matrix(i_x);
-  RatWeight t =  y_rep(y(z)).log_2pi(); // implicit division by 2 here
-  const Ratvec_Numer_t& num = t.numerator();
-  return infin_char - RatWeight(num-theta*num,t.denominator());
+  return rho(rootDatum())+lambda_rho(z);
 }
 
 
