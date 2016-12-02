@@ -43,6 +43,7 @@ More topics addressed in this file:
   real parabolics.
 !}
 
+<misc.at { for is_simple_root }
 <sort.at { for inv_standardisation }
 <Weylgroup.at
 <group_operations { for is_relatively_split }
@@ -277,8 +278,24 @@ set parabolic (ratvec lambda,KGBElt x) = Parabolic:
   let rd=root_datum(x) then (lambda_dom,w)=make_dominant(rd,numer(lambda)) in
   Parabolic:(zero_simple_coroots(rd,lambda_dom), cross(inverse(w),x))
 
+{. Theta-stable parabolic defined by weight lambda. .}
+set theta_stable_parabolic (ratvec lambda,KGBElt x) = Parabolic:
+   let theta=involution(x) in parabolic((1+theta)*lambda,x)
+
+{. Real parabolic defined by weight lambda. .}
+set real_parabolic (ratvec lambda,KGBElt x) = Parabolic:
+   let theta=involution(x) in parabolic((1-theta)*lambda,x)
+
 {. Levi factor of parabolic defined by weight lambda. .}
 set Levi (ratvec lambda,KGBElt x) = RealForm: Levi(parabolic(lambda,x))
+
+{. Levi factor of theta-stable parabolic defined by weight lambda. .}
+set theta_stable_Levi (ratvec lambda, KGBElt x) = RealForm:
+   Levi(theta_stable_parabolic(lambda,x))
+
+{. Levi factor of real parabolic defined by weight lambda. .}
+set real_Levi (ratvec lambda, KGBElt x) = RealForm:
+   Levi(real_parabolic(lambda,x))
 
 {. Positive coroots in nilradical of P defined by weight lambda (if L theta-stable). .}
 set nilrad (ratvec lambda,KGBElt x) = mat: nilrad(parabolic(lambda,x))
@@ -319,7 +336,6 @@ set rho_u_alt (ratvec H,KGBElt x)= ratvec: sum(nilrad_roots_alt(H,x)) /2
 set rho_Levi_alt (ratvec H,KGBElt x) = ratvec: rho(Levi_alt(H,x))
 
 
-
 { ----------------------(real) cuspidal parabolics------------------- }
 
 {. Real parabolic defined by x has Levi factor M=centralizer(A),
@@ -328,6 +344,9 @@ set rho_Levi_alt (ratvec H,KGBElt x) = ratvec: rho(Levi_alt(H,x))
 set real_parabolic (KGBElt x) = Parabolic:
   assert(no_Cplus_roots(x),"x has some C+ roots");
   parabolic((1-involution(x))*rho(root_datum(x)),x)
+
+{. Levi factor of real parabolic defined by x (must have no C+ roots). .}
+set real_Levi (KGBElt x) = RealForm: Levi(real_parabolic(x))
 
 { ---------------------theta-stable split parabolics---------------- }
 
@@ -338,65 +357,8 @@ set theta_stable_parabolic (KGBElt x) = Parabolic:
   assert(no_Cminus_roots(x),"x has some C- roots");
   parabolic((1+involution(x))*rho(root_datum(x)),x)
 
-{ ------------------Levi factor of real parabolic----------- }
-
-{. Levi factor of real cuspidal parabolic;  M=centralizer of A in H=TA, as a
-RealForm. .}
-set real_Levi(KGBElt x) = RealForm:
-  let theta = involution(x)
-  then ic_M =
-    inner_class(root_datum(simple_from_positive(imaginary_sys(x))),theta)
-  in { construct synthetic } real_form(ic_M,theta,torus_factor(x))
-
-{ (begin comment)
-{ Levi factors of general real parabolic }
-
-{ Real Levi defined by set of root indices for its simple system, and x; this
-  should duplicate Levi(Parabolic:(simple_root_numbers,x)) }
-set real_Levi_from_simple(
-    RealForm G,[int] simpleroot_numbers,KGBElt x,bool show) =  RealForm:
-  let theta = involution(x), rd=RootDatum: G
-  then roots = rank(rd) # for i in simpleroot_numbers do root(rd,i) od
-  , coroots  = rank(rd) # for i in simpleroot_numbers do coroot(rd,i) od
-  then new_rd = root_datum(
-       	      	  if show then print(roots,coroots) else (roots,coroots) fi)
-  in real_form(inner_class(new_rd,theta),theta,torus_factor(x))
-
-
-set real_Levi_from_simple(RealForm G,[int] inx,KGBElt x) = RealForm:
-  real_Levi_from_simple(G,inx,x,false)
-
-{ Real Levi defined by set of root indices for its positive system;
-  this could give a non-standard Levi... }
-set real_Levi_from_positive(
-  RealForm G,[int] posroot_numbers,KGBElt x, bool show) = RealForm:
-  let theta = involution(x), rd=RootDatum: G
-  then roots = rank(rd) # for i in posroot_numbers do root(rd,i) od
-  , coroots  = rank(rd) # for i in posroot_numbers do coroot(rd,i) od
-  then new_rd = root_datum(simple_from_positive(
-              	  if show then print(roots,coroots) else (roots,coroots) fi))
-  in real_form(inner_class(new_rd,theta),theta,torus_factor(x))
-
-set real_Levi_from_positive(RealForm G,[int] inx,KGBElt x) = RealForm:
-  real_Levi_from_positive(G,inx,x,false)
-
-{ M=centralizer of (1-theta_x)v
-  (can easily be constructed using Levi(lambda,x)?) }
-set real_Levi (KGBElt x,ratvec v) = RealForm:
-  let theta=involution(x) then w=(1-theta)*v, rd=RootDatum:real_form(x)
-  then poscoroots = columns_with( (vec alphav): =alphav*w, poscoroots(rd))
-  then posroots = rank(rd) # for alphav in poscoroots do root(rd,alphav) od
-  then rd_M=root_datum(simple_from_positive(posroots,poscoroots))
-  in real_form(inner_class(rd_M,theta),theta,torus_factor(x))
-
-set theta_stable_Levi (KGBElt x) = RealForm:
-  let ic_L=inner_class(root_datum(simple_from_positive(real_sys(x)))
-		      ,involution(x)) in quasisplit_form(ic_L)
-{
-set M = real_Levi@KGBElt { synonym }
-set L = theta_stable_Levi@KGBElt { synonym }
-}
-(end comment  ---}
+{. Levi factor of theta-stable parabolic defined by x (must have no C- roots). .}
+set theta_stable_Levi (KGBElt x) = RealForm: Levi(theta_stable_parabolic(x))
 
 {. Check whether a Levi subgroup L is standard in G
   (simple roots of L are simple for G). .}

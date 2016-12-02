@@ -24,7 +24,7 @@ twist.at		lattice { twist by a distinguished involution }
 group_operations.at	torus, lattice { torus, product, radical etc. }
 center.at		basic { center of G(C), G(R) }
 Weylgroup.at		center { W_word, W action; making (integr.) dominant }
-parabolics.at		sort, Weylgroup, group_operations
+parabolics.at		misc, sort, Weylgroup, group_operations
                         { complex, real, theta-stable, general parabolics }
 Vogan-dual.at		parameters { compute y of Param, and full dual }
 K.at			sort, matrix, Weylgroup { embedding of compact root system }
