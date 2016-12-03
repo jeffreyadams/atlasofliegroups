@@ -21,7 +21,7 @@ _________________________
 | let i_root_system=imaginary roots for x(p). Find $w$ so that $w^{-1}\cdot$lambda is dominant for
 | imaginary roots, set p_dom=parameter(x,$w^{-1}\cdot$lambda,nu) and return coherent continuation
 | action (wrt imaginary roots) of $w$ on p_dom.
-
+|
 $A_q(\lambda)$ construction:
 _______________________________
 
@@ -69,6 +69,7 @@ ________________________
 | weakly fair: same implication.
 | NB: <gamma_L-rho_L_rho_u,alpha^vee> >= 0 does NOT imply vanishing (in general) if pi_L is not
 | one-dimensional, hence "weakly fair" is only defined if pi_L is one-dimensional.
+|
 !}
 
 <misc.at { for |simple_imaginary_subsystem| }
@@ -647,6 +648,9 @@ set goodness(KGBElt x,ratvec lambda_in,ratvec lambda_q) = void:
   else prints("None")
   fi
 
+{Begin Comment:
+These functions are not necessary; use is_good(p_L,G) etc. below instead.
+
 {. Decide whether a parameter for L is in the good range for u (only
   makes sense if L is Levi of P and P is theta-stable). .}
 set is_good(Param p_L,Parabolic P)=bool:
@@ -697,12 +701,13 @@ set goodness(Param p_L,Parabolic P)=string:
   elif is_fair(p_L,P) then "Fair"
   elif is_weakly_fair(p_L,P) then "Weakly fair"  else
   "None" fi
-
+}
 
 {. Decide whether a parameter for L is in the good range for G; this only
-   makes sense if L is the Levi of a theta-stable parabolic. .}
+   makes sense if L is the Levi of a (standard) theta-stable parabolic. .}
 set is_good (Param p_L,RealForm G) = bool:
   let L=real_form(p_L) in
+  assert(is_standard_Levi(L,G),"L is not standard");
   assert(is_parabolic_theta_stable(make_parabolic(L,G)),
   "L is not Levi of theta-stable parabolic");
   let rho_u=rho(G)-rho(L)
@@ -716,6 +721,7 @@ set is_good (Param p_L,RealForm G) = bool:
    makes sense if L is the Levi of a theta-stable parabolic. .}
 set is_weakly_good (Param p_L,RealForm G) = bool:
   let L=real_form(p_L) in
+  assert(is_standard_Levi(L,G),"L is not standard");
   assert(is_parabolic_theta_stable(make_parabolic(L,G)),
   "L is not Levi of theta-stable parabolic");
   let rho_u=rho(G)-rho(L)
@@ -725,6 +731,7 @@ set is_weakly_good (Param p_L,RealForm G) = bool:
    makes sense if L is the Levi of a theta-stable parabolic. .}
 set is_fair (Param p_L,RealForm G) = bool:
   let L=real_form(p_L) in
+  assert(is_standard_Levi(L,G),"L is not standard");
   assert(is_parabolic_theta_stable(make_parabolic(L,G)),
   "L is not Levi of theta-stable parabolic");
   let rho_u=rho(G)-rho(L)
@@ -739,6 +746,7 @@ set is_fair (Param p_L,RealForm G) = bool:
    if p_L is one-dimensional. .}
 set is_weakly_fair (Param p_L,RealForm G) = bool:
   let L=real_form(p_L) in
+  assert(is_standard_Levi(L,G),"L is not standard");
   assert(is_parabolic_theta_stable(make_parabolic(L,G)),
   "L is not Levi of theta-stable parabolic");
   let rho_u=rho(G)-rho(L)
