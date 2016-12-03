@@ -288,10 +288,11 @@ set print_mus (ParamPol P) = void:
 set convert_cform_hermitian (ParamPol P,mat delta)= ParamPol:
   if =#P then P { since we cannot select a term for a null polynomial }
   else
-     if is_equal_rank(real_form(P)) and use_equal_rank_mu then
+{     if is_equal_rank(real_form(P)) and use_equal_rank_mu then
       prints("converting c_form using equal rank mu") else
       prints("converting c_form using twisted mu")
      fi;
+}
     let a_mu = mu(P.last_param,delta) in
     P.real_form.null_module +
     for w@p in P do
