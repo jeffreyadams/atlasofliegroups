@@ -72,9 +72,13 @@ set fpG0=finalize(pG0)[0]
 set rdSint=integrality_datum(pS0)
 set icSint=inner_class(rdSint,delta_S)
 set Sint=real_forms(icSint)[0]
+set pSint=parameter(KGB(Sint,1),lambda(pS),nu(pS))
+set BSint=block_of(pSint)
 set pS0int=parameter(KGB(Sint,1),lambda(pS0),nu(pS0))
 
 set rdGint=integrality_datum(pG0)
 set icGint=inner_class(rdGint,delta_G)
 set Gint=real_forms(icGint)[0]
+set pGint=parameter(KGB(Gint,1),lambda(pG),nu(pG))
+set BGint=block_of(pGint)
 set pG0int=parameter(KGB(Gint,1),lambda(pG0),nu(pG0))
