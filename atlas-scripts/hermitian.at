@@ -259,9 +259,16 @@ set mu_terms  (Param p,mat delta) = [rat]:
  { , { brand_new_term  = } {(E.t*rho_r(x))/2}{ also fell out of grace } 0 }
   ] { the sum of these will be interpreted modulo 2/1 }
 
+{mu.pdf Proposition 1.2, see email from DAV 12/3/2016
+used in assert in mu, two definitions of mu should agree}
+set mu_in_terms_of_z(Param p,mat delta)=rat:
+let E=E(delta,p) in (E.g-E.l-rho_check_r(E.x)+E.t)*(E.lambda_rho)+E.z+DIM_u_cap_p(E.x)
 
 set mu (Param p,mat delta) = rat:
-if is_equal_rank(real_form(p)) and  use_equal_rank_mu then mu(p) else sum(mu_terms(p,delta)) fi
+if is_equal_rank(real_form(p)) and  use_equal_rank_mu then mu(p) else
+let rv=sum(mu_terms(p,delta)) in
+{prints("mu=", rv, "   mu_z=", mu_in_terms_of_z(p,delta));}
+assert(rv=mu_in_terms_of_z(p,delta),"two version of mu differ");rv fi
 
 set print_mu (Param p) = void:
      let terms=mu_terms(p,p.real_form.distinguished_involution) in
