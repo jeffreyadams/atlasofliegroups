@@ -784,3 +784,10 @@ for Q in parabolics do
 set Aq_packet(RealForm G,[int] S)=[Param]:Aq_packet(G,ComplexParabolic:(G,S))
 
 set Aq_packet(RealForm G,[*] S)=[Param]:Aq_packet(G,[int]:S)
+
+{. List all good Aq(0) (inf. char. rho) of G; this is more or less
+  blocku (there may be duplications). .}
+set Aq_zeros(RealForm G)=[Param]:
+  let tsl=for P in theta_stable_parabolics(G) do Levi(P) od in
+  let Aqs= for L in tsl do theta_induce_irreducible(trivial(L),G) od in
+  for Q in Aqs do let S=%Q in let (c,p)=S[0] in p od
