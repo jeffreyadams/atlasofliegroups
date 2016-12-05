@@ -337,8 +337,7 @@ class param_block : public Block_base
   const TorusElement& y_rep(KGBElt y) const { return y_pool[y].repr(); }
 
   RatWeight nu(BlockElt z) const; // "real" projection of |infin_char|
-  Weight lambda_rho(BlockElt z) const; // reconstruct from y value
-  Weight new_lambda_rho(BlockElt z) const; // reconstruct from |y_bits| value
+  Weight lambda_rho(BlockElt z) const; // reconstruct from |y_bits| value
   RatWeight lambda(BlockElt z) const; // reconstruct from y value
   RankFlags singular_simple_roots() const { return singular; }
   bool survives(BlockElt z) const; // whether $J(z_{reg})$ survives tr. functor
@@ -363,6 +362,7 @@ class param_block : public Block_base
  private:
   // this used to be |lambda_rho|, before conformation to |StandardRepr| choices
   Weight internal_lambda_rho(BlockElt z) const; // temporary cludge
+  Weight old_lambda_rho(BlockElt z) const; // reconstruct from y value
 
   void compute_y_bits(); // set the |y_bits| at the end of construction
 /*

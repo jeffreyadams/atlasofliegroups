@@ -122,22 +122,9 @@ std::ostream& param_block::print
   unsigned int xwidth = ioutils::digits(kgb.size()-1,10ul);
   unsigned int ysize = y_part(z).size();
 
-  const RatWeight gamma_rho = gamma() - rho(rootDatum());
-  const Weight gr_numer(gamma_rho.numerator().begin(),
-			gamma_rho.numerator().end());
-  int gr_denom = gamma_rho.denominator();
-
-  auto& i_tab = rc.innerClass().involution_table();
-  InvolutionNbr i_x = kgb.inv_nr(x(z));
-  const WeightInvolution& theta = i_tab.matrix(i_x);
-
-  // do effort to replace |lambda_rho(x)| by what it prints like in a |Param|
-  auto lr = ((theta+1)*gr_numer
-	     +i_tab.y_lift(i_x,i_tab.y_pack(i_x,lambda_rho(z)))*gr_denom
-	     )/(2*gr_denom);
   strm << (survives(z) ? '*' : ' ')
        << "(x=" << std::setw(xwidth) << x(z)
-       << ",lam_rho=" << std::setw(3*ysize+1) << lr
+       << ",lam_rho=" << std::setw(3*ysize+1) << lambda_rho(z)
        << ", nu=" << std::setw(3*ysize+3) << nu(z)
        << ')' << std::setw(2) << "";
 

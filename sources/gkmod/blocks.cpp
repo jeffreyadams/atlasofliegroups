@@ -640,7 +640,7 @@ Weight param_block::internal_lambda_rho(BlockElt z) const
   return Weight(lr.numerator().begin(),lr.numerator().end());
 }
 
-Weight param_block::lambda_rho(BlockElt z) const
+Weight param_block::old_lambda_rho(BlockElt z) const
 {
   const RatWeight gamma_rho = gamma() - rho(rootDatum());
   const Weight gr_numer(gamma_rho.numerator().begin(),
@@ -651,13 +651,13 @@ Weight param_block::lambda_rho(BlockElt z) const
   InvolutionNbr i_x = rc.kgb().inv_nr(x(z));
   const WeightInvolution& theta = i_tab.matrix(i_x);
 
-  // do effort to replace |lambda_rho(x)| by what returns from a |Param|
+  // do effort to replace |lambda_rho(x)| by value returned from a |Param|
   return (theta*gr_numer + gr_numer // |(1+theta)*gr_numer|, without matrix dup
 	  +i_tab.y_lift(i_x,i_tab.y_pack(i_x,internal_lambda_rho(z)))*gr_denom
 	  )/(2*gr_denom);
 }
 
-Weight param_block::new_lambda_rho(BlockElt z) const
+Weight param_block::lambda_rho(BlockElt z) const
 {
   const RatWeight gamma_rho = gamma() - rho(rootDatum());
   const Weight gr_numer(gamma_rho.numerator().begin(),
@@ -1586,7 +1586,7 @@ void param_block::compute_y_bits()
     assert (lr.denominator()==1);
     const Weight lambda_rho(lr.numerator().begin(),lr.numerator().end());
     y_bits.push_back(i_tab.y_pack(i_x,lambda_rho));
-    assert(this->lambda_rho(z)==new_lambda_rho(z));
+    assert(old_lambda_rho(z)==this->lambda_rho(z));
   }
 }
 
