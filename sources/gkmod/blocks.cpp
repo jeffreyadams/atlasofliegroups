@@ -1579,7 +1579,10 @@ void param_block::compute_y_bits()
 	break;
     assert(x!=xsize()); // every |y| must have some matching |x|
     InvolutionNbr i_x = rc.kgb().inv_nr(x);
-    const RatWeight lr = (gamma_rho - y_rep(y).log_pi(false)).normalize();
+    RatWeight yr = y_rep(y).log_pi(false);
+    yr -= i_tab.matrix(i_x)*yr;
+    yr /= 2; // now |yr| has been projected to the $-1$ eigenspace of $\theta$
+    const RatWeight lr = (gamma_rho - yr).normalize();
     assert (lr.denominator()==1);
     const Weight lambda_rho(lr.numerator().begin(),lr.numerator().end());
     y_bits.push_back(i_tab.y_pack(i_x,lambda_rho));
