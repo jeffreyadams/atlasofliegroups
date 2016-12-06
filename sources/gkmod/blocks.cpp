@@ -394,17 +394,17 @@ BlockEltPair Block_base::link
 
 void Block::compute_first_zs() // assumes |x| values weakly increase
 {
-  d_first_z_of_x.resize(xsize()+1);
+  d_first_z_of_x.resize(xrange+1);
   KGBElt xx=0;
   d_first_z_of_x[xx]=0; // |d_first_z_of_x[xx]| is smallest |z] with |x(z)>=xx|
   for (BlockElt z=0; z<size(); ++z)
     while (xx<x(z)) // no increment in test: often there should be none at all
       d_first_z_of_x[++xx]=z;
 
-  // now |xx==x(size()-1)|; finish off with a sentinel value |size()|
-  do // although the largest |x| should be present: |x(size()-1)==xsize()-1|
+  // now |xx==x(size()-1)|; finish off with a sentinel value(s) |size()|
+  do // although the largest |x| should be present, so |x==xrange-1| here
     d_first_z_of_x[++xx]=size(); // we don't not depend on that, and fill out
-  while (xx<xsize()); // stop after setting |d_first_z_of_x[xsize()]=size()|
+  while (xx<xrange); // stop after setting |d_first_z_of_x[xrange]=size()|
 }
 
 /*!
@@ -625,36 +625,6 @@ RatWeight param_block::nu(BlockElt z) const
   const WeightInvolution& theta = involution_table().matrix(i_x);
   return RatWeight (gamma().numerator()-theta*gamma().numerator()
 		    ,2*gamma().denominator()).normalize();
-}
-
-// reconstruct $\lambda-\rho$ from $\gamma$ and the torus part $t$ of $y$
-// here the lift $t$ is normalised using |InvolutionTable::real_unique|
-Weight param_block::internal_lambda_rho(BlockElt z) const
-{
-  RatWeight t =  y_rep(y(z)).log_pi(false); // take a copy
-  InvolutionNbr i_x = rc.kgb().inv_nr(x(z));
-  involution_table().real_unique(i_x,t);
-
-  RatWeight lr =(infin_char - t - rho(realGroup().rootDatum())).normalize();
-  assert(lr.denominator()==1);
-  return Weight(lr.numerator().begin(),lr.numerator().end());
-}
-
-Weight param_block::old_lambda_rho(BlockElt z) const
-{
-  const RatWeight gamma_rho = gamma() - rho(rootDatum());
-  const Weight gr_numer(gamma_rho.numerator().begin(),
-			gamma_rho.numerator().end());
-  int gr_denom = gamma_rho.denominator();
-
-  auto& i_tab = rc.innerClass().involution_table();
-  InvolutionNbr i_x = rc.kgb().inv_nr(x(z));
-  const WeightInvolution& theta = i_tab.matrix(i_x);
-
-  // do effort to replace |lambda_rho(x)| by value returned from a |Param|
-  return (theta*gr_numer + gr_numer // |(1+theta)*gr_numer|, without matrix dup
-	  +i_tab.y_lift(i_x,i_tab.y_pack(i_x,internal_lambda_rho(z)))*gr_denom
-	  )/(2*gr_denom);
 }
 
 Weight param_block::lambda_rho(BlockElt z) const
@@ -947,11 +917,12 @@ param_block::param_block // full block constructor
   : Block_base(rootdata::integrality_rank(rc.rootDatum(),sr.gamma()))
   , rc(rc)
   , infin_char(0) // don't set yet
-  , singular() // idem
   , y_pool()
   , y_hash(y_pool)
   , y_bits()
   , z_hash(info)
+  , highest_x(rc.realGroup().KGB_size()-1)
+  , singular() // idem
 {
   const InnerClass& G = innerClass();
   const RootDatum& rd = G.rootDatum();
@@ -1426,11 +1397,12 @@ param_block::param_block // partial block constructor, for interval below |sr|
   : Block_base(rootdata::integrality_rank(rc.rootDatum(),sr.gamma()))
   , rc(rc)
   , infin_char(0) // don't set yet
-  , singular() // idem
   , y_pool()
   , y_hash(y_pool)
   , y_bits()
   , z_hash(info)
+  , highest_x(0) // it won't be less than this; increased later
+  , singular() // don't set yet
 {
   const RootDatum& rd = innerClass().rootDatum();
 
@@ -1470,6 +1442,8 @@ param_block::param_block // partial block constructor, for interval below |sr|
   for (BlockElt i=0; i<size; ++i)
   {
     const block_elt_entry& z=z_hash[i];
+    if (z.x>highest_x) // but first make sure we record highest |x|, for |max_x|
+      highest_x=z.x;
 
     DescentStatus& desc_z = info[i].descent;
     for (weyl::Generator s=0; s<our_rank; ++s)
@@ -1567,17 +1541,17 @@ param_block::param_block // partial block constructor, for interval below |sr|
 } // |param_block::param_block|, partial block version
 
 void param_block::compute_y_bits()
-{ y_bits.reserve(ysize());
+{ y_bits.reserve(y_pool.size());
   const InvolutionTable& i_tab = innerClass().involution_table();
   const RatWeight gamma_rho = gamma() - rho(rootDatum());
 
-  for (KGBElt y=0; y<ysize(); ++y)
+  for (KGBElt y=0; y<y_pool.size(); ++y)
   { KGBElt x=0; // need to look up an |x| matching |y|
     BlockElt z;
-    for (; x<xsize(); ++x)
+    for (; x<=highest_x; ++x)
       if ((z=earlier(x,y))!=z_hash.empty) // whether block elt $(x,y)$ exists
 	break;
-    assert(x!=xsize()); // every |y| must have some matching |x|
+    assert(x<=highest_x); // since every |y| must have at least one matching |x|
     InvolutionNbr i_x = rc.kgb().inv_nr(x);
     RatWeight yr = y_rep(y).log_pi(false);
     yr -= i_tab.matrix(i_x)*yr;
@@ -1586,7 +1560,6 @@ void param_block::compute_y_bits()
     assert (lr.denominator()==1);
     const Weight lambda_rho(lr.numerator().begin(),lr.numerator().end());
     y_bits.push_back(i_tab.y_pack(i_x,lambda_rho));
-    assert(old_lambda_rho(z)==this->lambda_rho(z));
   }
 }
 
