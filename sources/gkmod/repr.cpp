@@ -1007,7 +1007,7 @@ SR_poly twisted_KL_column_at_s
   rc.make_dominant(z);
   BlockElt entry; // dummy needed to ensure full block is generated
   param_block block(rc,z,entry); // which this constructor does
-  ext_block::ext_block eblock(rc.innerClass(),block,rc.kgb(),delta);
+  ext_block::ext_block eblock(rc.innerClass(),block,delta);
 
   return twisted_KL_sum(rc,eblock,eblock.element(entry),block);
 } // |twisted_KL_column_at_s|
@@ -1107,7 +1107,7 @@ SR_poly Rep_table::twisted_KL_column_at_s(StandardRepr z)
     BlockElt entry; // dummy needed to ensure full block is generated
     param_block block(*this,z,entry); // which this constructor does
     const auto &ic = innerClass();
-    ext_block::ext_block eblock(ic,block,kgb(),ic.distinguished());
+    ext_block::ext_block eblock(ic,block,ic.distinguished());
 
     add_block(eblock,block);
 
@@ -1132,7 +1132,7 @@ SR_poly Rep_table::twisted_deformation_terms
   if (not block.survives(entry_elem) or block.length(entry_elem)==0)
     return result; // easy cases, null result
 
-  ext_block::ext_block eblock(innerClass(),block,kgb(),delta);
+  ext_block::ext_block eblock(innerClass(),block,delta);
   add_block(eblock,block);
   assert(eblock.is_present(entry_elem)); // since |is_twist_fixed| succeeded
 

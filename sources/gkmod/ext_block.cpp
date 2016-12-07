@@ -869,45 +869,26 @@ DescValue extended_type(const Block_base& block, BlockElt z, const ext_gen& p,
   assert(false); return one_complex_ascent; // keep compiler happy
 } // |extended_type|
 
-// act by external twist |delta| on KGB element |x|
-KGBElt twisted (const KGB& kgb, KGBElt x,
-		const WeightInvolution& delta, const weyl::Twist& twist)
-{
-  RatCoweight g_rho_l = kgb.torus_factor(x);
-  delta.right_mult(g_rho_l.numerator());
-  const RatCoweight diff = (g_rho_l - kgb.base_grading_vector()).normalize();
-  if (diff.denominator()!=1)
-    return UndefKGB;
-
-  TorusPart delta_t(diff.numerator());
-
-  const WeylGroup& W = kgb.innerClass().weylGroup();
-  TitsElt te = kgb.titsElt(x);
-  WeylElt delta_w = W.translation(te.w(),twist); // act on twisted involution
-  TitsElt delta_te (kgb.innerClass().titsGroup(),delta_t,delta_w);
-  return kgb.lookup(delta_te);
-}
-
 // involution for dual KGB is just $\delta$ transposed, no factor $-w_0$ here
 // both |kgb| and |dual_kgb| must be known to be twist-stable
 BlockElt twisted (const Block& block,
 		  const KGB& kgb, const KGB& dual_kgb, // all are needed
 		  BlockElt z,
-		  const WeightInvolution& delta,
-		  const weyl::Twist& twist)
+		  const WeightInvolution& delta)
 { return block.element
-    (twisted(kgb,block.x(z),delta,twist),
-     twisted(dual_kgb,block.y(z),delta.transposed(),twist));
+    (kgb.twisted(block.x(z),delta),
+     dual_kgb.twisted(block.y(z),delta.transposed()));
 }
 
-BlockElt twisted (const param_block& block, const KGB& kgb,
+BlockElt twisted (const param_block& block,
 		  BlockElt z,
 		  const WeightInvolution& delta,
 		  const weyl::Twist& twist)
 {
   KGBElt x = block.x(z);
   TorusElement y = block.y_rep(block.y(z));
-  KGBElt xx= twisted(kgb,x,delta,twist);
+  const KGB& kgb = block.context().kgb();
+  KGBElt xx= kgb.twisted(x,delta);
   if (xx==UndefKGB)
     return UndefBlock;
   y.act_by(delta);
@@ -1739,12 +1720,12 @@ ext_block::ext_block // for external twist; old style blocks
  // compute |child_nr| and |parent_nr| tables
   weyl::Twist twist(orbits);
 
-  if (twisted(kgb,0,delta,twist)==UndefKGB or
-      twisted(dual_kgb,0,delta.transposed(),twist)==UndefKGB)
+  if (kgb.twisted(0,delta)==UndefKGB or
+      dual_kgb.twisted(0,delta.transposed())==UndefKGB)
     return; // if one or other not delta-stable, leave |size==0| and quit
 
   for (BlockElt z=0; z<block.size(); ++z)
-    if (twisted(block,kgb,dual_kgb,z,delta,twist)==z)
+    if (twisted(block,kgb,dual_kgb,z,delta)==z)
       fixed_points.insert(z);
 
   complete_construction(fixed_points);
@@ -1765,8 +1746,7 @@ bool is_3Cir (DescValue v)
 
 ext_block::ext_block // for an external twist
   (const InnerClass& G,
-   const param_block& block, const KGB& kgb,
-   const WeightInvolution& delta,
+   const param_block& block, const WeightInvolution& delta,
    bool verbose)
   : parent(block)
   , orbits(block.fold_orbits(delta))
@@ -1784,11 +1764,11 @@ ext_block::ext_block // for an external twist
   weyl::Twist twist(fold_orbits(block.rootDatum(),delta));
 
   // test if twisting some block element lands in the same block
-  if (twisted(block,kgb,0,delta,twist)==UndefBlock)
+  if (twisted(block,0,delta,twist)==UndefBlock)
     return; // if block not delta-stable, leave |size==0| and quit
 
   for (BlockElt z=0; z<block.size(); ++z)
-    if (twisted(block,kgb,z,delta,twist)==z)
+    if (twisted(block,z,delta,twist)==z)
       fixed_points.insert(z);
 
   complete_construction(fixed_points);

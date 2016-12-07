@@ -982,8 +982,7 @@ void repr_braid_f()
 	      << " for the current block." << std::endl;
     return;
   }
-  ext_block::ext_block eblock(commands::current_inner_class(),block,
-			      commands::currentRealGroup().kgb(),delta,true);
+  ext_block::ext_block eblock(commands::current_inner_class(),block,delta,true);
   test_braid(eblock);
 }
 

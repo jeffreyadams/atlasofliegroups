@@ -4225,7 +4225,7 @@ void extended_block_wrapper(expression_base::level l)
 into a list of parameters and three tables in the form of matrices.
 
 @< Construct the extended block... @>=
-{ ext_block::ext_block eb(rc.innerClass(),block,rc.kgb(),delta->val);
+{ ext_block::ext_block eb(rc.innerClass(),block,delta->val);
   own_row params = std::make_shared<row_value>(eb.size());
   int_Matrix types(eb.size(),eb.rank());
 @/int_Matrix links0(eb.size(),eb.rank());
@@ -5401,7 +5401,7 @@ void raw_ext_KL_wrapper (expression_base::level l)
   }
   else
   {
-    ext_block::ext_block eb(rc.innerClass(),block,rc.kgb(),delta->val);
+    ext_block::ext_block eb(rc.innerClass(),block,delta->val);
     std::vector<Polynomial<int> > pool;
     ext_kl::KL_table klt(eb,pool); klt.fill_columns();
   @)

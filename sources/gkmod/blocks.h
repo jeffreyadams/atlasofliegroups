@@ -258,16 +258,14 @@ class Block : public Block_base
 
   size_t max_Cartan() const { return Cartan_class(size()-1); } // for printing
 
-/*!
-  \brief Returns the twisted involution corresponding to z.
-
-  This is the corresponding Weyl group element w, such that w.delta is the
-  root datum involution tau corresponding to z
+/*
+  The twisted involution corresponding to the involution $\theta$ for |z|.
+  This is the Weyl group element $w$, such that $\theta=w.\delta$
 */
   virtual const TwistedInvolution& involution(BlockElt z) const
     { assert(z<size()); return d_involution[z]; }
 
-  //! \brief the simple roots occurring in reduced expression |involution(z)|
+  // flag among simple roots those occurring in reduced expr for |involution(z)|
   const RankFlags& involutionSupport(BlockElt z) const
   {
     assert(z<size());
