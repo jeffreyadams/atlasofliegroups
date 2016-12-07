@@ -791,3 +791,26 @@ set Aq_zeros(RealForm G)=[Param]:
   let tsl=for P in theta_stable_parabolics(G) do Levi(P) od in
   let Aqs= for L in tsl do theta_induce_irreducible(trivial(L),G) od in
   for Q in Aqs do let S=%Q in let (c,p)=S[0] in p od
+
+{. Given a KGB element x, list all theta-stable parabolics in G
+  with maximal element x. .}
+set theta_stable_parabolics_max(KGBElt x)=[Parabolic]:
+  let G=real_form(x) in let tsp=theta_stable_parabolics(G) in
+  let temp=[Parabolic]:[] in for P in tsp do if x=maximal(P) then temp#:=P fi od;
+  temp
+
+{. Decide whether a parameter p has KGB element that is maximal for a theta-stable
+  parabolic. .}
+set is_x_theta_maximal(Param p)=bool:
+  let x=x(p) in #theta_stable_parabolics_max(x)>0
+
+{. List of parameters p_L in the good range for G so that p is theta-induced
+  from p_L; may be empty, or more than one. .}
+set is_good_range_induced_from(Param p)=[Param]: let x=x(p) in
+  let tsp=theta_stable_parabolics_max(x) in
+  let G=real_form(p) in
+  let result=[Param]:[] in
+  for P in tsp do let L=Levi(P) in let x_L=inverse_embed_KGB (x,L) in
+  let p_L=parameter(x_L,lambda(p)-rho(real_form(p))+rho(L),nu(p)) in
+  if (is_final(p_L) and is_good(p_L,G) and p=theta_induce_irreducible(p_L,G))
+  then result#:=p_L fi od ; result
