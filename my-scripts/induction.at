@@ -806,7 +806,7 @@ set is_x_theta_maximal(Param p)=bool:
 
 {. List of parameters p_L in the good range for G so that p is theta-induced
   from p_L; may be empty, or more than one. .}
-set is_good_range_induced_from(Param p)=[Param]: let x=x(p) in
+set good_theta_induced_from(Param p)=[Param]: let x=x(p) in
   let tsp=theta_stable_parabolics_max(x) in
   let G=real_form(p) in
   let result=[Param]:[] in
