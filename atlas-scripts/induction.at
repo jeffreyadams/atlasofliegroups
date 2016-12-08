@@ -11,11 +11,15 @@ _________________________
 |
 | For real parabolic induction, the rho-shift is: $\rho_r(G)-\rho_r(L)+(1-\theta)(\rho_S(G)-\rho_S(L))$.
 | (Here $\rho_S$ is a certain half sum of complex roots.)
+| The Levi L must be the Levi factor of a REAL parabolic subgroup.
 |
-| For $\theta$-stable induction, the rho-shift is:
+| For $\theta$-stable (cohomological parabolic) induction, the rho-shift is:
 | $\rho_i(G)-\rho_i(L)+\rho_{complex}(G)-\rho_{complex}(L)  =\rho(G)-\rho_r(G)-\rho(L)+\rho_r(L)$.
 |  Since $\mathfrak q$ is $\theta$ -stable, $\rho_r(G)-\rho_r(L)=0$, so the shift is $\rho(G)-\rho(L)=\rho(\mathfrak u)$.
+| The group L must be the Levi factor of a THETA-STABLE parabolic subgroup of G.
+|
 | Then $\operatorname{Ind}_P^G I(p_L)=I(p_G)$.
+|
 | In the $\theta$-stable case, the shifted parameter p_G may be non-standard and needs to be standardized:
 | If p=(x,lambda,nu), and $\langle \text{lambda},\alpha^{\vee}\rangle <0$ for some imaginary root $\alpha$ (i.e. non-standard),
 | let i_root_system=imaginary roots for x(p). Find $w$ so that $w^{-1}\cdot$lambda is dominant for
@@ -117,7 +121,8 @@ set make_parabolic (RealForm L,RealForm G)=Parabolic:
    let S=[int]:[] in for alpha@i in simple_roots(G) do
    if is_posroot((rdl,alpha)) then S #:= i fi od; (S,embed_KGB(KGB(L,0),G))
 
-{. Real parabolic induction of a standard module of real Levi L to G .}
+{. Real parabolic induction of a standard module of real Levi L (i.e., L
+  must be the Levi factor of a real parabolic subgroup) to G .}
    set real_induce_standard (Param p_L,RealForm G) = Param:
   let x_L=x(p_L) in
   let  L=real_form(x_L) in
@@ -145,7 +150,8 @@ set real_induce_irreducible_as_sum_of_standards (Param p_L, RealForm G) =
 
 {. Write the (real) induced Ind(J(p_L)) of an irreducible of L as a sum of
    irreducibles for G; uses composition series to convert
-   output of the previous function into sum of irreducibles. .}
+   output of the previous function into sum of irreducibles. L must
+   be the Levi factor of a real parabolic subgroup. .}
 set real_induce_irreducible(Param p_L, RealForm G)= ParamPol:
   let cf=real_induce_irreducible_as_sum_of_standards(p_L,G)
   , result=null_module(G)
@@ -274,7 +280,8 @@ set theta_induce_irreducible_as_sum_of_standards (Param p_L, RealForm G) =
 
 {. Write the (theta-stable) induced Ind(J(p_L)) of an irreducible of L
    as a sum of irreducibles for G; uses composition series to convert
-   output of the previous function into sum of irreducibles. .}
+   output of the previous function into sum of irreducibles. The subgroup
+   L must be the Levi factor of a theta-stable parabolic. .}
 set theta_induce_irreducible(Param p_L, RealForm G) = ParamPol:
   let cf=theta_induce_irreducible_as_sum_of_standards(p_L,G)
   , result=null_module(G)
@@ -283,56 +290,6 @@ set theta_induce_irreducible(Param p_L, RealForm G) = ParamPol:
   if verbose then prints("induced as sum of irreducibles: ", result) fi;
   result
 
-
-{ ------------------- combined real and theta-stable induction ------------- }
-{ induce_standard(p_L,P,G)=induce_standard( (x_L,lambda_L,nu_L), (S,x), G)
-  in the theta-stable case may need to use action of Weyl group
-  ** (S,x) is the standard parabolic only if x=x_min(P) (up to W_L)
-  otherwise, need to apply coherent continuation (or something...)
-  in application to highest_weight_to_K_type (in LKT_aux.at) it appears
-  we can arrange before calling induce_standard that this holds
-  for now throw an error if this fails
-}
-
-{. Real or theta-stable parabolic induction of a standard module,
-   depending on whether P=LN a real or theta-stable parabolic
-   (returns error message if neither). .}
-set induce_standard (Param p_L,Parabolic P,RealForm G) = ParamPol:
-  assert(is_parabolic_real(P) or is_parabolic_theta_stable(P)
-        ,"Induction only defined for real or theta-stable parabolics");
-  if is_parabolic_real(P) then ParamPol:real_induce_standard(p_L,G)
-  else let L=Levi(P), (S,)=P, x_P=x_min(P), x_G=embed_KGB(x(p_L),G) in
-    assert((S,x_G)=(S,x_P),"x(p_L) and x(P) don't agree up to W_L")
-  ; theta_induce_standard( p_L,G)
-  fi
-
-{. Write the (real or theta-stable) induced Ind(J(p_L)) of an irreducible
-   of L as a sum of irreducibles for G; error message if P=LN is not a real
-   or theta-stable parabolic. .}
-set induce_irreducible (Param p_L,Parabolic P,RealForm G) = ParamPol:
-  assert(is_parabolic_real(P) or is_parabolic_theta_stable(P)
-        ,"Induction only defined for real or theta-stable parabolics");
-  if is_parabolic_real(P) then ParamPol:real_induce_irreducible(p_L,G)
-  else let L=Levi(P), (S,)=P, x_P=x_min(P), x_G=embed_KGB(x(p_L),G) in
-    assert((S,x_G)=(S,x_P),"x(p_L) and x(P) don't agree up to W_L")
-  ; theta_induce_irreducible( p_L,G)
-  fi
-
-{. Real or theta-stable parabolic induction applied to a linear combination
-   of standard modules (error message if P is not real or theta-stable). .}
-set induce_standard (ParamPol pol,Parabolic P,RealForm G) = ParamPol:
-  let result=null_module(G) in
-  for c@p in pol do result+:=c*induce_standard(p,P,G) od;
-  result
-
-{  from parabolics.at:
-Parabolic:([int] P,KGBElt x)
-theta_stable_parabolic(KGBElt x)
-  returns a theta-stable parabolic provided all complex roots of x are type C+
-parabolic(ratvec lambda,KGBElt x)
-  returns a theta-stable parabolic if \theta_x(lambda)=lambda
-and all x-complex roots are type C+
-}
 
 { if all complex roots for x are of type C+, then conjecturally the torus
   parts (torus_factor) of all elements in the fiber are a subset of those for
@@ -648,61 +605,6 @@ set goodness(KGBElt x,ratvec lambda_in,ratvec lambda_q) = void:
   else prints("None")
   fi
 
-{Begin Comment:
-These functions are not necessary; use is_good(p_L,G) etc. below instead.
-
-{. Decide whether a parameter for L is in the good range for u (only
-  makes sense if L is Levi of P and P is theta-stable). .}
-set is_good(Param p_L,Parabolic P)=bool:
-  assert(is_parabolic_theta_stable(P), "Parabolic is not theta-stable");
-  assert (real_form(p_L)=Levi(P), "Levi subgroup mismatch");
-  let v=infinitesimal_character(p_L)+rho_u(P) in
-  all(for alpha_check in nilrad(P) do v*alpha_check>0 od)
-
-{. Decide whether a parameter for L is in the weakly good range for u
-  (only makes sense if L is Levi of P and P is theta-stable). .}
-set is_weakly_good(Param p_L,Parabolic P)=bool:
-  assert(is_parabolic_theta_stable(P), "Parabolic is not theta-stable");
-  assert (real_form(p_L)=Levi(P), "Levi subgroup mismatch");
-  let v=infinitesimal_character(p_L)+rho_u(P) in
-  all(for alpha_check in nilrad(P) do v*alpha_check>=0 od)
-
-{. Decide whether a parameter for L is in the fair range for u (only
-  makes sense if L is Levi of P and P is theta-stable). .}
-set is_fair(Param p_L,Parabolic P)=bool:
-  assert(is_parabolic_theta_stable(P), "Parabolic is not theta-stable");
-  assert (real_form(p_L)=Levi(P), "Levi subgroup mismatch");
-  let v=infinitesimal_character(p_L)+rho_u(P)-rho(Levi(P)) in
-  all(for alpha_check in nilrad(P) do v*alpha_check>0 od)
-
-{. Decide whether a parameter for L is in the weakly fair range
-  for u (provided pi_L is one-dimensional; only
-  makes sense if L is Levi of P and P is theta-stable). .}
-set is_weakly_fair(Param p_L,Parabolic P)=bool:
-  assert(is_parabolic_theta_stable(P), "Parabolic is not theta-stable");
-  assert (real_form(p_L)=Levi(P), "Levi subgroup mismatch");
-  let v=infinitesimal_character(p_L)+rho_u(P)-rho(Levi(P)) in
-  is_one_dimensional(p_L) and all(for alpha_check in nilrad(P) do v*alpha_check>=0 od)
-
-{. Determine the "goodness" for $\mathfrak u$ of a parameter for L;
-   returns "good", "weakly good", "fair", "weakly fair", or "none". .}
-set goodness(Param p_L,Parabolic P)=string:
-  assert(is_parabolic_theta_stable(P), "Parabolic is not theta-stable");
-  let L=real_form(p_L) then
-  rho_l=rho(L) then
-  rho_u=rho(real_form(P))-rho(L) then
-  infchar_l=infinitesimal_character(p_L) in
-  { prints("infinitesimal character(l)=", infchar_l);
-  prints("infinitesimal character(l)+rho(u)=", infchar_l+rho_u);
-  prints("infinitesimal character(l)+rho(u)-rho(l)=", infchar_l+rho_u-rho_l);
-  }
-  if is_good(p_L,P) then "Good"
-  elif is_weakly_good(p_L,P) then "Weakly good"
-  elif is_fair(p_L,P) then "Fair"
-  elif is_weakly_fair(p_L,P) then "Weakly fair"  else
-  "None" fi
-}
-
 {. Decide whether a parameter for L is in the good range for G; this only
    makes sense if L is the Levi of a (standard) theta-stable parabolic. .}
 set is_good (Param p_L,RealForm G) = bool:
@@ -776,7 +678,7 @@ set Aq_packet(RealForm G,ComplexParabolic P)=[Param]:
 let parabolics=theta_stable_parabolics(G,P) then
 rv=[Param]:[] in
 for Q in parabolics do
- let ind=monomials(induce_irreducible(trivial(Levi(Q)),Q,G))
+ let ind=monomials(theta_induce_irreducible(trivial(Levi(Q)),G))
   in assert(#ind=1,"induced in A_packet is not irreducible");rv#:=ind[0] od;rv
 
 {. List all A_q(0) (infinitesimal character rho(G)) modules
@@ -798,11 +700,6 @@ set theta_stable_parabolics_max(KGBElt x)=[Parabolic]:
   let G=real_form(x) in let tsp=theta_stable_parabolics(G) in
   let temp=[Parabolic]:[] in for P in tsp do if x=maximal(P) then temp#:=P fi od;
   temp
-
-{. Decide whether a parameter p has KGB element that is maximal for a theta-stable
-  parabolic. .}
-set is_x_theta_maximal(Param p)=bool:
-  let x=x(p) in #theta_stable_parabolics_max(x)>0
 
 {. List of parameters p_L in the good range for G so that p is theta-induced
   from p_L; may be empty, or more than one. .}

@@ -273,10 +273,16 @@ set zero_simple_coroots (RootDatum rd, vec lambda) = [int]:
   for alpha_v@j in simple_coroots(rd)
   do if alpha_v*lambda=0 then result #:= j fi od; result
 
-{. Parabolic defined by weight lambda. .}
+{. Parabolic defined by weight lambda; message whether parabolic is real
+  or theta-stable. .}
 set parabolic (ratvec lambda,KGBElt x) = Parabolic:
   let rd=root_datum(x) then (lambda_dom,w)=make_dominant(rd,numer(lambda)) in
-  Parabolic:(zero_simple_coroots(rd,lambda_dom), cross(inverse(w),x))
+  let P=
+  Parabolic:(zero_simple_coroots(rd,lambda_dom), cross(inverse(w),x)) in
+  if is_parabolic_theta_stable(P) then prints("Parabolic is theta-stable.")
+  else if is_parabolic_real(P) then prints("Parabolic is real.")
+  else prints("The parabolic is neither real nor theta-stable.") fi fi;
+  P
 
 {. Theta-stable parabolic defined by weight lambda. .}
 set theta_stable_parabolic (ratvec lambda,KGBElt x) = Parabolic:
@@ -314,10 +320,16 @@ set zero_simple_roots(RootDatum rd, vec cowt) = [int]:
   for alpha@j in simple_roots(rd)
   do if cowt*alpha=0 then result #:= j fi od; result
 
-{. Parabolic defined by coweight H. .}
+{. Parabolic defined by coweight H; message whether parabolic is real
+   or theta-stable. .}
 set parabolic_alt (ratvec H,KGBElt x) = Parabolic:
   let rd=root_datum(x) then (H_dom,w)=dual_make_dominant(rd,numer(H)) in
-  Parabolic:(zero_simple_roots(rd,H_dom), cross(inverse(w),x))
+  let P=
+  Parabolic:(zero_simple_roots(rd,H_dom), cross(inverse(w),x)) in
+  if is_parabolic_theta_stable(P) then prints("Parabolic is theta-stable.")
+  else if is_parabolic_real(P) then prints("Parabolic is real.")
+  else prints("The parabolic is neither real nor theta-stable.") fi fi;
+  P
 
 {. Levi factor of parabolic defined by coweight H. .}
 set Levi_alt (ratvec H,KGBElt x) = RealForm: Levi(parabolic_alt(H,x))
