@@ -1,6 +1,9 @@
+<misc.at { for |finalize@Param| }
+<hermitian.at { for |hermitian_form_irreducible@Param| }
+
 {p-> p_0=finalize(t*0)[0]=parameter(x,lambda,0)->
-complementary series (parameter(x,lambda,t*rho) -> 
-q=parameter(x,lambda,t_0*rho) where 
+complementary series (parameter(x,lambda,t*rho) ->
+q=parameter(x,lambda,t_0*rho) where
 t_0=reducibility_point(x,lambda,rho)[0]
 this is the smallest _possible_ reducibility point
 and is necessarily unitary
@@ -14,12 +17,12 @@ q=parameter(x(p), lambda(p), rho(real_form(p))) then
 rp=reducibility_points(q) in
 if #rp=0 then (false,p) else (true, q*rp[0]) fi
 
-{given a list of parameters params, return 
+{given a list of parameters params, return
 list [(q,purity(hf))] where hf is the Hermitian form on q,
 all hf should be pure, in fact integers
 }
 set test_endpoint_complementary_series([Param] params)=
-let rv=[] in 
+let rv=[] in
 for p in params do  let (deformable,q)=end_of_complementary_series(p) then
 hf=hermitian_form_irreducible(q) then
 purity=purity(hf) in

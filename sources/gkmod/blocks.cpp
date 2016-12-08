@@ -282,7 +282,8 @@ weyl::Generator Block_base::firstStrictGoodDescent(BlockElt z) const
 
 void param_block::reverse_length_and_sort(bool full_block)
 {
-  const unsigned max_length = // full block ends compact, partial blcok starts so
+  const unsigned max_length =
+    // full block ends compact, while partial blcok starts so
     (full_block ? info.back() : info.front()).length;
 
   const KGBElt x_lim=realGroup().KGB_size(); // limit for |x| values
@@ -297,7 +298,7 @@ void param_block::reverse_length_and_sort(bool full_block)
   Permutation ranks = // standardization permutation, to be used for reordering
     permutations::standardization(value,(max_length+1)*x_lim,nullptr);
 
-  ranks.permute(info); // permute |info| by increasing |value|
+  ranks.permute(info); // permute |info|, ordering them by increasing |value|
   z_hash.reconstruct(); // adapt to permutation of the block
 
   if (not full_block) // data fields are inserted only later for partial block
@@ -639,6 +640,23 @@ Weight param_block::internal_lambda_rho(BlockElt z) const
   return Weight(lr.numerator().begin(),lr.numerator().end());
 }
 
+Weight param_block::old_lambda_rho(BlockElt z) const
+{
+  const RatWeight gamma_rho = gamma() - rho(rootDatum());
+  const Weight gr_numer(gamma_rho.numerator().begin(),
+			gamma_rho.numerator().end());
+  int gr_denom = gamma_rho.denominator();
+
+  auto& i_tab = rc.innerClass().involution_table();
+  InvolutionNbr i_x = rc.kgb().inv_nr(x(z));
+  const WeightInvolution& theta = i_tab.matrix(i_x);
+
+  // do effort to replace |lambda_rho(x)| by value returned from a |Param|
+  return (theta*gr_numer + gr_numer // |(1+theta)*gr_numer|, without matrix dup
+	  +i_tab.y_lift(i_x,i_tab.y_pack(i_x,internal_lambda_rho(z)))*gr_denom
+	  )/(2*gr_denom);
+}
+
 Weight param_block::lambda_rho(BlockElt z) const
 {
   const RatWeight gamma_rho = gamma() - rho(rootDatum());
@@ -652,7 +670,7 @@ Weight param_block::lambda_rho(BlockElt z) const
 
   // do effort to replace |lambda_rho(x)| by what returns from a |Param|
   return (theta*gr_numer + gr_numer // |(1+theta)*gr_numer|, without matrix dup
-	  +i_tab.y_lift(i_x,i_tab.y_pack(i_x,internal_lambda_rho(z)))*gr_denom
+	  +i_tab.y_lift(i_x,y_bits[y(z)])*gr_denom
 	  )/(2*gr_denom);
 }
 
@@ -921,7 +939,7 @@ void param_block::add_z(KGBElt x,KGBElt y)
   ndebug_use(z);
 }
 
-param_block::param_block
+param_block::param_block // full block constructor
   (const Rep_context& rc,
    StandardRepr sr,             // by value; made dominant internally
    BlockElt& entry_element	// set to block element matching input
@@ -932,6 +950,7 @@ param_block::param_block
   , singular() // idem
   , y_pool()
   , y_hash(y_pool)
+  , y_bits()
   , z_hash(info)
 {
   const InnerClass& G = innerClass();
@@ -1039,7 +1058,7 @@ param_block::param_block
 
     ys.clear();
     size_t nr_y = 0;
-    // now traverse R_packet of |first_x|, collecting their |y|'s
+    // now traverse R-packet of |first_x|, collecting their |y|'s
     for (BlockElt z=next; z<info.size() and x(z)==first_x; ++z,++nr_y)
     {
       assert(y_hash[y(z)].nr==i_theta); // involution of |y| must match |x|
@@ -1237,13 +1256,12 @@ param_block::param_block
   z_hash.reconstruct(); // adapt to permutation of the block
 
   compute_duals(G,sub); // finally compute Hermitian duals
+  compute_y_bits();
 
   // and look up which element matches the original input
   entry_element = lookup(x_org,y_org);
 
 } // |param_block::param_block|, full block version
-
-
 
 // a derived class whose main additional method computes a Bruhat order ideal
 struct partial_nblock_help : public nblock_help
@@ -1403,8 +1421,7 @@ BlockElt
 } // |partial_nblock_help::nblock_below|
 
 
-// alternative constructor, for interval below |sr|
-param_block::param_block
+param_block::param_block // partial block constructor, for interval below |sr|
 (const Rep_context& rc, StandardRepr sr) // by value; made dominant internally
   : Block_base(rootdata::integrality_rank(rc.rootDatum(),sr.gamma()))
   , rc(rc)
@@ -1412,6 +1429,7 @@ param_block::param_block
   , singular() // idem
   , y_pool()
   , y_hash(y_pool)
+  , y_bits()
   , z_hash(info)
 {
   const RootDatum& rd = innerClass().rootDatum();
@@ -1544,9 +1562,33 @@ param_block::param_block
   } // |for(i)|
 
   compute_duals(innerClass(),sub);
+  compute_y_bits();
 
 } // |param_block::param_block|, partial block version
 
+void param_block::compute_y_bits()
+{ y_bits.reserve(ysize());
+  const InvolutionTable& i_tab = innerClass().involution_table();
+  const RatWeight gamma_rho = gamma() - rho(rootDatum());
+
+  for (KGBElt y=0; y<ysize(); ++y)
+  { KGBElt x=0; // need to look up an |x| matching |y|
+    BlockElt z;
+    for (; x<xsize(); ++x)
+      if ((z=earlier(x,y))!=z_hash.empty) // whether block elt $(x,y)$ exists
+	break;
+    assert(x!=xsize()); // every |y| must have some matching |x|
+    InvolutionNbr i_x = rc.kgb().inv_nr(x);
+    RatWeight yr = y_rep(y).log_pi(false);
+    yr -= i_tab.matrix(i_x)*yr;
+    yr /= 2; // now |yr| has been projected to the $-1$ eigenspace of $\theta$
+    const RatWeight lr = (gamma_rho - yr).normalize();
+    assert (lr.denominator()==1);
+    const Weight lambda_rho(lr.numerator().begin(),lr.numerator().end());
+    y_bits.push_back(i_tab.y_pack(i_x,lambda_rho));
+    assert(old_lambda_rho(z)==this->lambda_rho(z));
+  }
+}
 
 RatWeight param_block::y_part(BlockElt z) const
 {

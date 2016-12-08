@@ -55,12 +55,12 @@ class Block_base
     DescentStatus descent;
     unsigned short length;
     BlockElt dual; // number of Hermitian dual of this element, if any
-  EltInfo(KGBElt xx,KGBElt yy,DescentStatus dd, unsigned short ll)
-  : x(xx),y(yy),descent(dd),length(ll), dual(UndefBlock) {}
+    EltInfo(KGBElt xx,KGBElt yy,DescentStatus dd, unsigned short ll)
+      : x(xx),y(yy),descent(dd),length(ll), dual(UndefBlock) {}
 
-  // sometimes leave |descent| and |ll| (which |hashCode| ignores) blank
-  EltInfo(KGBElt xx,KGBElt yy)
-  : x(xx),y(yy),descent(),length(0), dual(UndefBlock) {}
+  // sometimes leave |descent| and |length| (which |hashCode| ignores) blank
+    EltInfo(KGBElt xx,KGBElt yy)
+      : x(xx),y(yy),descent(),length(0), dual(UndefBlock) {}
 
   // methods that will allow building a hashtable with |info| as pool
     typedef std::vector<EltInfo> Pooltype;
@@ -75,13 +75,13 @@ class Block_base
   {
     BlockElt cross_image;
     BlockEltPair Cayley_image;
-  block_fields()
-  : cross_image(UndefBlock), Cayley_image(UndefBlock,UndefBlock) {}
+    block_fields()
+      : cross_image(UndefBlock), Cayley_image(UndefBlock,UndefBlock) {}
   };
 
   std::vector<EltInfo> info; // its size defines the size of the block
   std::vector<std::vector<block_fields> > data;  // size |d_rank| * |size()|
-  ext_gens orbits;
+  ext_gens orbits; // orbits of simple generators under distinguished involution
 
   DynkinDiagram dd;
   // possible tables of Bruhat order and Kazhdan-Lusztig polynomials
@@ -301,12 +301,13 @@ class param_block : public Block_base
 
   y_entry::Pooltype y_pool;
   y_part_hash y_hash; // hash table allows storing |y| parts by index
+  std::vector<TorusPart> y_bits; // as in |StandardRepr|, indexed by |y|
 
   // A simple structure to pack a pair of already sequenced numbers (indices
   // into the |info| field for some future block) into a hashable value
 
   block_hash z_hash; //  on |Block_base::info|
-
+  KGBElt highest_x; // highest |x| value ocurring in this (maybe partial) block
 
  public:
 
@@ -336,7 +337,7 @@ class param_block : public Block_base
   const TorusElement& y_rep(KGBElt y) const { return y_pool[y].repr(); }
 
   RatWeight nu(BlockElt z) const; // "real" projection of |infin_char|
-  Weight lambda_rho(BlockElt z) const; // reconstruct from y value
+  Weight lambda_rho(BlockElt z) const; // reconstruct from |y_bits| value
   RatWeight lambda(BlockElt z) const; // reconstruct from y value
   RankFlags singular_simple_roots() const { return singular; }
   bool survives(BlockElt z) const; // whether $J(z_{reg})$ survives tr. functor
@@ -361,8 +362,9 @@ class param_block : public Block_base
  private:
   // this used to be |lambda_rho|, before conformation to |StandardRepr| choices
   Weight internal_lambda_rho(BlockElt z) const; // temporary cludge
+  Weight old_lambda_rho(BlockElt z) const; // reconstruct from y value
 
-
+  void compute_y_bits(); // set the |y_bits| at the end of construction
 /*
   reverse lengths and order block with them increasing, and by increasing
   |x(z)| among elements of given length; adapt tables accordingly. Argument

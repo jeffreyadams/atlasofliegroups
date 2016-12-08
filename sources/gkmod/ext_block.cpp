@@ -1205,7 +1205,7 @@ DescValue star (const param& E,
 	  param F1(E.ctxt,new_tw,
 		   new_lambda_rho, F0.tau(), E.l() + alpha_v, E0.t());
 
-	  int sign0 = z_quot(E0,F0), sign1 = z_quot(E0,F0);
+	  int sign0 = z_quot(E0,F0), sign1 = z_quot(E0,F1);
 
 	  links.push_back(std::make_pair(sign0,std::move(F0))); // first Cayley
 	  links.push_back(std::make_pair(sign1,std::move(F1))); // second Cayley
