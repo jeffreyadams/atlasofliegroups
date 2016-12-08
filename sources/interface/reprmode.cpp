@@ -419,10 +419,10 @@ void deform_f()
   for (BlockElt x=0; x<=entry_z; ++x)
     if (block.survives(x))
     {
-      hash.match(rt.sr(block,x));
+      hash.match(block.sr(x));
       if (first) first=false;
       else f<< ", ";
-      StandardRepr r = rt.sr(block,x);
+      StandardRepr r = block.sr(x);
       f << x << ": " <<  rt.orientation_number(r);
     }
   f << ".\n";

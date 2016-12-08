@@ -4010,7 +4010,7 @@ also construct a module parameter value for each element of |block|.
 { own_row param_list = std::make_shared<row_value>(block.size());
   for (BlockElt z=0; z<block.size(); ++z)
     param_list->val[z] =
-	std::make_shared<module_parameter_value>(p->rf,p->rc().sr(block,z));
+	std::make_shared<module_parameter_value>(p->rf,block.sr(z));
   push_value(std::move(param_list));
 
 }

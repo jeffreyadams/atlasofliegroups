@@ -333,6 +333,7 @@ class param_block : public Block_base
 
   const RatWeight& gamma() const { return infin_char; }
   const TorusElement& y_rep(KGBElt y) const { return y_pool[y].repr(); }
+  StandardRepr sr(BlockElt z) const; // parameter associated to block element
 
   RatWeight nu(BlockElt z) const; // "real" projection of |infin_char|
   Weight lambda_rho(BlockElt z) const; // reconstruct from |y_bits| value

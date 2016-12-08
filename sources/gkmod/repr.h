@@ -121,7 +121,6 @@ class Rep_context
     sr(const standardrepk::StandardRepK& srk,
        const standardrepk::SRK_context& srkc,
        const RatWeight& nu) const;
-  StandardRepr sr(const param_block& b, BlockElt i) const;
 
   // component extraction
   Weight lambda_rho(const StandardRepr& z) const;

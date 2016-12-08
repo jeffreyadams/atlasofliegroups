@@ -880,20 +880,10 @@ BlockElt twisted (const Block& block,
      dual_kgb.twisted(block.y(z),delta.transposed()));
 }
 
-BlockElt twisted (const param_block& block,
-		  BlockElt z,
-		  const WeightInvolution& delta,
-		  const weyl::Twist& twist)
+BlockElt twisted
+  (const param_block& block, BlockElt z, const WeightInvolution& delta)
 {
-  KGBElt x = block.x(z);
-  TorusElement y = block.y_rep(block.y(z));
-  const KGB& kgb = block.context().kgb();
-  KGBElt xx= kgb.twisted(x,delta);
-  if (xx==UndefKGB)
-    return UndefBlock;
-  y.act_by(delta);
-  BlockElt result=block.lookup(xx,y);
-  return result;
+  return block.lookup(block.context().twisted(block.sr(z),delta));
 }
 
 
@@ -1760,15 +1750,12 @@ ext_block::ext_block // for an external twist
 
   // compute the delta-fixed points of the block
 
-  // the following is NOT |twist(orbits)|, which would be for subsystem
-  weyl::Twist twist(fold_orbits(block.rootDatum(),delta));
-
   // test if twisting some block element lands in the same block
-  if (twisted(block,0,delta,twist)==UndefBlock)
+  if (twisted(block,0,delta)==UndefBlock)
     return; // if block not delta-stable, leave |size==0| and quit
 
   for (BlockElt z=0; z<block.size(); ++z)
-    if (twisted(block,z,delta,twist)==z)
+    if (twisted(block,z,delta)==z)
       fixed_points.insert(z);
 
   complete_construction(fixed_points);
