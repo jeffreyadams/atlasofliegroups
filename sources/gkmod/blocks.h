@@ -377,12 +377,6 @@ class param_block : public Block_base
  */
   void reverse_length_and_sort(bool full_block);
 
-  // find already constructed element, to be called during construction
-  BlockElt earlier(const block_hash& hash,KGBElt x,KGBElt y) const
-  { return hash.find(block_elt_entry(x,y)); } // used during construction
-
-  void add_z(block_hash& hash,KGBElt x,KGBElt y);
-
 }; // |class param_block|
 
 

@@ -704,6 +704,12 @@ BlockEltList param_block::survivors_below(BlockElt z) const
   return result;
 } // |param_block::survivors_below|
 
+// find already constructed element, to be called during construction
+BlockElt find_in(const block_hash& hash,KGBElt x,KGBElt y)
+{ return hash.find(block_elt_entry(x,y)); } // used during construction
+
+
+
 void param_block::compute_duals
   (const y_part_hash& y_hash,const block_hash& hash,
    const InnerClass& G,const SubSystem& rs)
@@ -740,7 +746,7 @@ void param_block::compute_duals
 	const KGBElt y =
 	  y_hash.find(involution_table().pack(t,rc.kgb().inv_nr(dual_x)));
 
-	info[z].dual = earlier(hash,dual_x,y);
+	info[z].dual = find_in(hash,dual_x,y);
       }
     }
   }
@@ -893,12 +899,12 @@ y_entry nblock_help::pack_y(const nblock_elt& z) const
 
 
 // add a new block element to |zz_hash| and (therfore) to |info|
-void param_block::add_z(block_hash& hash,KGBElt x,KGBElt y)
+void add_z(block_hash& hash,KGBElt x,KGBElt y)
 {
-  size_t old_size=info.size();
+  size_t old_size=hash.size();
   BlockElt z=hash.match(block_elt_entry(x,y)); // constructor sets |length==0|
   assert(z==old_size);
-  assert(z+1==info.size());
+  assert(z+1==hash.size());
   ndebug_use(old_size);
   ndebug_use(z);
 }
@@ -1099,7 +1105,7 @@ param_block::param_block // full block constructor
 	} // |if(new_cross)|
 	else // install cross links to previously existing elements
 	  for (unsigned int j=0; j<nr_y; ++j)
-	    tab_s[base_z+j].cross_image = earlier(zz_hash,s_x_n,cross_ys[j]);
+	    tab_s[base_z+j].cross_image = find_in(zz_hash,s_x_n,cross_ys[j]);
 
 	// compute component |s| of |info[z].descent|, this |n|, all |y|s
 	KGBElt conj_n = kgb.cross(sub.to_simple(s),n); // conjugate
@@ -1208,14 +1214,14 @@ param_block::param_block // full block constructor
 	  if (descentValue(s,base_z+j)!=DescentStatus::RealNonparity)
 	  {
 	    KGBElt cty=Cayley_ys[p++]; // unique Cayley transform of |y|
-	    BlockElt target = earlier(zz_hash,ctx1,cty);
+	    BlockElt target = find_in(zz_hash,ctx1,cty);
 	    tab_s[base_z+j].Cayley_image.first = target;
 	    first_free_slot(tab_s[target].Cayley_image) = base_z+j;
 	    if (Cayleys.second!=UndefKGB) // then double valued (type1)
 	    {
 	      KGBElt ctx2 = kgb.cross(Cayleys.second,sub.to_simple(s));
 	      assert (x_seen.isMember(ctx2));
-	      target = earlier(zz_hash,ctx2,cty);
+	      target = find_in(zz_hash,ctx2,cty);
 	      tab_s[base_z+j].Cayley_image.second = target;
 	      first_free_slot(tab_s[target].Cayley_image) = base_z+j;
 	    }
