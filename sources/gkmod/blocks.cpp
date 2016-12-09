@@ -631,11 +631,6 @@ RatWeight param_block::nu(BlockElt z) const
 
 Weight param_block::lambda_rho(BlockElt z) const
 {
-  const RatWeight gamma_rho = gamma() - rho(rootDatum());
-  const Weight gr_numer(gamma_rho.numerator().begin(),
-			gamma_rho.numerator().end());
-  int gr_denom = gamma_rho.denominator();
-
   auto& i_tab = rc.innerClass().involution_table();
   InvolutionNbr i_x = rc.kgb().inv_nr(x(z));
   const WeightInvolution& theta = i_tab.matrix(i_x);
@@ -916,12 +911,14 @@ param_block::param_block // full block constructor
   : Block_base(rootdata::integrality_rank(rc.rootDatum(),sr.gamma()))
   , rc(rc)
   , infin_char(0) // don't set yet
+  , gr_numer() // idem
   , y_bits()
   , z_pool()
   , z_hash(z_pool)
+  , gr_denom()
   , highest_x(rc.realGroup().KGB_size()-1)
   , highest_y() // defined when generation is complete
-  , singular() // idem
+  , singular()
 {
   y_entry::Pooltype y_pool;
   y_part_hash y_hash(y_pool); // hash table allows storing |y| parts by index
@@ -937,6 +934,10 @@ param_block::param_block // full block constructor
 
   rc.make_dominant(sr); // make dominant before computing subsystem
   infin_char=sr.gamma(); // now we can set the infinitesimal character
+  { const RatWeight gamma_rho = (gamma() - rho(rootDatum())).normalize();
+    gr_numer=Weight(gamma_rho.numerator().begin(),gamma_rho.numerator().end());
+    gr_denom = gamma_rho.denominator();
+  }
 
   const SubSystem sub = SubSystem::integral(rd,infin_char);
   Block_base::dd =
@@ -1403,9 +1404,11 @@ param_block::param_block // partial block constructor, for interval below |sr|
   : Block_base(rootdata::integrality_rank(rc.rootDatum(),sr.gamma()))
   , rc(rc)
   , infin_char(0) // don't set yet
+  , gr_numer() // idem
   , y_bits()
   , z_pool()
   , z_hash(z_pool)
+  , gr_denom()
   , highest_x(0) // it won't be less than this; increased later
   , highest_y() // defined when generation is complete
   , singular() // don't set yet
@@ -1419,6 +1422,10 @@ param_block::param_block // partial block constructor, for interval below |sr|
 
   rc.make_dominant(sr); // make dominant before computing subsystem
   infin_char=sr.gamma(); // now we can set the infinitesimal character
+  { const RatWeight gamma_rho = (gamma() - rho(rootDatum())).normalize();
+    gr_numer=Weight(gamma_rho.numerator().begin(),gamma_rho.numerator().end());
+    gr_denom = gamma_rho.denominator();
+  }
 
   const SubSystem sub = SubSystem::integral(rd,infin_char);
   Block_base::dd =

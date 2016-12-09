@@ -305,6 +305,7 @@ class param_block : public Block_base
   const Rep_context& rc; // accesses many things, including KGB set for x
 
   RatWeight infin_char; // infinitesimal character
+  Weight gr_numer; // numerator of |gamma-rho|
 
   std::vector<TorusPart> y_bits; // as in |StandardRepr|, indexed by |y|
 
@@ -312,6 +313,8 @@ class param_block : public Block_base
   param_entry::Pooltype z_pool;
   param_hash z_hash;
 
+  // group small components together:
+  int gr_denom;
   KGBElt highest_x,highest_y; // maxima over this (maybe partial) block
   RankFlags singular; // flags simple roots for which |infin_char| is singular
 
