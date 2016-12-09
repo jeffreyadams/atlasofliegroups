@@ -283,11 +283,21 @@ private:
 
 }; // |class Block|
 
+struct param_entry
+{ KGBElt x; TorusPart y;
 
+  // obligatory fields for hashable entry
+  typedef std::vector<param_entry> Pooltype;
+  size_t hashCode(size_t modulus) const
+  { return (5*x-11*y.data().to_ulong())&(modulus-1); }
+  bool operator !=(const param_entry& o) const { return x!=o.x or y!=o.y; }
+
+}; // |struct param_entry|
 
 typedef HashTable<y_entry,KGBElt> y_part_hash;
 typedef Block_base::EltInfo block_elt_entry;
 typedef HashTable<block_elt_entry,BlockElt> block_hash;
+typedef HashTable<param_entry,BlockElt> param_hash;
 
 // a class for blocks of (possibly non integral) parameters
 class param_block : public Block_base
@@ -296,15 +306,13 @@ class param_block : public Block_base
 
   RatWeight infin_char; // infinitesimal character
 
-  y_entry::Pooltype y_pool;
-  y_part_hash y_hash; // hash table allows storing |y| parts by index
   std::vector<TorusPart> y_bits; // as in |StandardRepr|, indexed by |y|
 
-  // A simple structure to pack a pair of already sequenced numbers (indices
-  // into the |info| field for some future block) into a hashable value
+  // hash structure to allow rapid lookup of |StandardRepr| values
+  param_entry::Pooltype z_pool;
+  param_hash z_hash;
 
-  block_hash z_hash; //  on |Block_base::info|
-  KGBElt highest_x; // highest |x| value ocurring in this (maybe partial) block
+  KGBElt highest_x,highest_y; // maxima over this (maybe partial) block
   RankFlags singular; // flags simple roots for which |infin_char| is singular
 
  public:
@@ -320,9 +328,6 @@ class param_block : public Block_base
     (const repr::Rep_context& rc,
      StandardRepr sr); // by value,since it will be made dominant before use
 
-  // auxiliary for construction
-  void compute_duals(const InnerClass& G,const SubSystem& rs);
-
  public:
   // accessors that get values via |rc|
   const repr::Rep_context& context() const { return rc; }
@@ -332,7 +337,6 @@ class param_block : public Block_base
   RealReductiveGroup& realGroup() const;
 
   const RatWeight& gamma() const { return infin_char; }
-  const TorusElement& y_rep(KGBElt y) const { return y_pool[y].repr(); }
   StandardRepr sr(BlockElt z) const; // parameter associated to block element
 
   RatWeight nu(BlockElt z) const; // "real" projection of |infin_char|
@@ -342,16 +346,13 @@ class param_block : public Block_base
   bool survives(BlockElt z) const; // whether $J(z_{reg})$ survives tr. functor
   BlockEltList survivors_below(BlockElt z) const; // expression for $I(z)$
 
-  RatWeight y_part(BlockElt z) const; // raw torus part info, normalized
-
-  BlockElt lookup(KGBElt x, const TorusElement& y_rep) const;
   BlockElt lookup(const StandardRepr& sr) const;
 
   ext_gens fold_orbits(const WeightInvolution& delta) const;
 
   // virtual methods
   virtual KGBElt max_x() const { return highest_x; } // might not be final |x|
-  virtual KGBElt max_y() const { return y_hash.size()-1; }
+  virtual KGBElt max_y() const { return highest_y; }
   virtual const TwistedInvolution& involution(BlockElt z) const; // from |kgb|
 
   virtual std::ostream& print // defined in block_io.cpp
@@ -359,7 +360,12 @@ class param_block : public Block_base
 
 
  private:
-  void compute_y_bits(); // set the |y_bits| at the end of construction
+  void compute_y_bits(const y_entry::Pooltype& y_pool,
+		      const block_hash& hash); // set the |y_bits|
+  void compute_duals
+  (const y_part_hash& y_hash,const block_hash& hash,
+   const InnerClass& G,const SubSystem& rs);
+
 /*
   reverse lengths and order block with them increasing, and by increasing
   |x(z)| among elements of given length; adapt tables accordingly. Argument
@@ -368,10 +374,11 @@ class param_block : public Block_base
  */
   void reverse_length_and_sort(bool full_block);
 
-  BlockElt earlier(KGBElt x,KGBElt y) const // find already constructed element
-  { return z_hash.find(block_elt_entry(x,y)); } // used during construction
+  // find already constructed element, to be called during construction
+  BlockElt earlier(const block_hash& hash,KGBElt x,KGBElt y) const
+  { return hash.find(block_elt_entry(x,y)); } // used during construction
 
-  void add_z(KGBElt x,KGBElt y);
+  void add_z(block_hash& hash,KGBElt x,KGBElt y);
 
 }; // |class param_block|
 
