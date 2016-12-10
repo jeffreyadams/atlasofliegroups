@@ -641,9 +641,6 @@ Weight param_block::lambda_rho(BlockElt z) const
 	  )/(2*gr_denom);
 }
 
-// reconstruct $\lambda$ from $\gamma$ and the torus part $t$ of $y$ using the
-// formula $\lambda = \gamma - {1-\theta\over2}.\log({t\over\pi\ii})$
-// the projection factor $1-\theta\over2$ kills the modded-out-by part of $t$
 RatWeight param_block::lambda(BlockElt z) const
 {
   return rho(rootDatum())+lambda_rho(z);
@@ -699,7 +696,7 @@ BlockEltList param_block::survivors_below(BlockElt z) const
 	break; // restart outer loop if a descent was applied
       } // |if(descent(*it,z)|
   }
-  while (it());
+  while (it()); // terminate on no-break of inner loop
   result.push_back(z);
   return result;
 } // |param_block::survivors_below|
@@ -930,7 +927,7 @@ param_block::param_block // full block constructor
   y_part_hash y_hash(y_pool); // hash table allows storing |y| parts by index
   // A simple structure to pack a pair of already sequenced numbers (indices
   // into the |info| field for some future block) into a hashable value
-  block_hash zz_hash(info);
+  block_hash xy_hash(info);
 
   const InnerClass& G = innerClass();
   const RootDatum& rd = G.rootDatum();
@@ -1014,7 +1011,7 @@ param_block::param_block // full block constructor
       data[s].reserve(y_hash.size());
 
     for (size_t i=0; i<y_hash.size(); ++i)
-      add_z(zz_hash,x0,i); // adds information to |info|; we leave |length==0|
+      add_z(xy_hash,x0,i); // adds information to |info|; we leave |length==0|
 
   } // end of step 3
 
@@ -1096,7 +1093,7 @@ param_block::param_block // full block constructor
 	  {
 	    tab_s[base_z+j].cross_image = info.size(); // link to new element
 
-	    add_z(zz_hash,s_x_n,cross_ys[j]);
+	    add_z(xy_hash,s_x_n,cross_ys[j]);
 	    // same |x| neighbour throughout loop, but |y| neighbour varies
 
 	    info.back().length=next_length;
@@ -1105,7 +1102,7 @@ param_block::param_block // full block constructor
 	} // |if(new_cross)|
 	else // install cross links to previously existing elements
 	  for (unsigned int j=0; j<nr_y; ++j)
-	    tab_s[base_z+j].cross_image = find_in(zz_hash,s_x_n,cross_ys[j]);
+	    tab_s[base_z+j].cross_image = find_in(xy_hash,s_x_n,cross_ys[j]);
 
 	// compute component |s| of |info[z].descent|, this |n|, all |y|s
 	KGBElt conj_n = kgb.cross(sub.to_simple(s),n); // conjugate
@@ -1200,7 +1197,7 @@ param_block::param_block // full block constructor
 	    for (auto it=orbit.begin(); it(); ++it)
 	      for (unsigned int y=y_start; y<y_hash.size(); ++y)
 	      {
-		add_z(zz_hash,*it,y);
+		add_z(xy_hash,*it,y);
 		info.back().length=next_length;
 	      }
 
@@ -1214,14 +1211,14 @@ param_block::param_block // full block constructor
 	  if (descentValue(s,base_z+j)!=DescentStatus::RealNonparity)
 	  {
 	    KGBElt cty=Cayley_ys[p++]; // unique Cayley transform of |y|
-	    BlockElt target = find_in(zz_hash,ctx1,cty);
+	    BlockElt target = find_in(xy_hash,ctx1,cty);
 	    tab_s[base_z+j].Cayley_image.first = target;
 	    first_free_slot(tab_s[target].Cayley_image) = base_z+j;
 	    if (Cayleys.second!=UndefKGB) // then double valued (type1)
 	    {
 	      KGBElt ctx2 = kgb.cross(Cayleys.second,sub.to_simple(s));
 	      assert (x_seen.isMember(ctx2));
-	      target = find_in(zz_hash,ctx2,cty);
+	      target = find_in(xy_hash,ctx2,cty);
 	      tab_s[base_z+j].Cayley_image.second = target;
 	      first_free_slot(tab_s[target].Cayley_image) = base_z+j;
 	    }
@@ -1237,10 +1234,10 @@ param_block::param_block // full block constructor
 
   highest_y=y_hash.size()-1; // set highest occurring |y| value, for |ysize|
   reverse_length_and_sort(true); // reorder block by increasing value of |x|
-  zz_hash.reconstruct(); // adapt to permutation of the block
+  xy_hash.reconstruct(); // adapt to permutation of the block
 
-  compute_duals(y_hash,zz_hash,G,sub); // finally compute Hermitian duals
-  compute_y_bits(y_pool,zz_hash);
+  compute_duals(y_hash,xy_hash,G,sub); // finally compute Hermitian duals
+  compute_y_bits(y_pool,xy_hash);
 
   // and look up which element matches the original input
   entry_element = lookup(sr);
@@ -1421,7 +1418,7 @@ param_block::param_block // partial block constructor, for interval below |sr|
 {
   y_entry::Pooltype y_pool;
   y_part_hash y_hash(y_pool); // hash table allows storing |y| parts by index
-  block_hash zz_hash(info);
+  block_hash xy_hash(info);
   const RootDatum& rd = innerClass().rootDatum();
 
   const KGB& kgb = rc.kgb();
@@ -1442,7 +1439,7 @@ param_block::param_block // partial block constructor, for interval below |sr|
     singular.set(s,rd.coroot(sub.parent_nr_simple(s))
 			    .dot(infin_char.numerator())==0);
 
-  partial_nblock_help aux(realGroup(),sub,y_hash,zz_hash);
+  partial_nblock_help aux(realGroup(),sub,y_hash,xy_hash);
   highest_y=y_hash.size()-1;
 
   // step 1: get |y|, which has $y.t=\exp(\pi\ii(\gamma-\lambda))$ (vG based)
@@ -1450,14 +1447,14 @@ param_block::param_block // partial block constructor, for interval below |sr|
   const nblock_elt org(x_org,rc.y_as_torus_elt(sr));
 
   // generate partial block in |aux|
-  BlockElt last=aux.nblock_below(org,0); // this fills |y_hash| and |zz_hash|
+  BlockElt last=aux.nblock_below(org,0); // this fills |y_hash| and |xy_hash|
 
   size_t size= last+1;
   assert(info.size()==size); // |info| should have obtained precisely this size
 
 
   reverse_length_and_sort(false); // do reversal operation for partial block
-  zz_hash.reconstruct(); // adapt to permutation of the block
+  xy_hash.reconstruct(); // adapt to permutation of the block
 
   // allocate link fields with |UndefBlock| entries
   data.assign(our_rank,std::vector<block_fields>(size));
@@ -1558,8 +1555,8 @@ param_block::param_block // partial block constructor, for interval below |sr|
     } // |for(s)|
   } // |for(i)|
 
-  compute_duals(y_hash,zz_hash,innerClass(),sub);
-  compute_y_bits(y_pool,zz_hash);
+  compute_duals(y_hash,xy_hash,innerClass(),sub);
+  compute_y_bits(y_pool,xy_hash);
 
 } // |param_block::param_block|, partial block version
 
