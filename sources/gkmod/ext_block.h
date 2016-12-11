@@ -351,7 +351,7 @@ StandardRepr scaled_extended_dominant // result will have its |gamma()| dominant
  );
 
 // expand parameter into a signed sum of extended nonzero final parameters
-containers::sl_list<std::pair<StandardRepr,bool> > finalise
+containers::sl_list<std::pair<StandardRepr,bool> > extended_finalise
   (const repr::Rep_context& rc,
    StandardRepr sr, // by value: internally |make_dominant| is applied to it
    const WeightInvolution& delta);

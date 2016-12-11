@@ -331,6 +331,21 @@ KGBElt param::x() const
   return rc().kgb().lookup(a);
 }
 
+/*
+  This function serves to replace and circumvent |Rep_context::make_dominant|,
+  which maps any ordinary parameter to one with a dominant |gamma| component,
+  and moreover descends through simgular complex descents in the block to the
+  lowest parameter equivalent to the inital parameter. The difference with
+  that method is that here we keep track of all extended parameter components,
+  transforming them from the default choices at the initial elemnt, and at the
+  end comparing with the default choices at the final paremeter, recording the
+  sign in |flipped|.
+
+  This is intended for use in deformation, and the initial extended parameter
+  components are those inherited from |sr| before scaling its |nu| part by
+  |factor|. The user should make sure |sr| itself has dominant |gamma|, which
+  moreover is assumed to be fixed by |delta| (if not, don't use this function).
+ */
 StandardRepr scaled_extended_dominant // result will have its |gamma()| dominant
 (const Rep_context rc,
  const StandardRepr& sr, const WeightInvolution& delta,
@@ -351,6 +366,7 @@ StandardRepr scaled_extended_dominant // result will have its |gamma()| dominant
     lr=E.lambda_rho(); tau=E.tau(); l=E.l(); t=E.t();
   }
   KGBElt x = result.x(); // another variable, for convenience
+  flipped=false; // prepare to record some explicit link flips
 
   const auto grc = ctxt.g_rho_check(); int denom=grc.denominator();
   l*=denom; // scale to make shift applied to |l| below an integer vector
@@ -362,8 +378,11 @@ StandardRepr scaled_extended_dominant // result will have its |gamma()| dominant
 	if (rc.kgb().status(x).isComplex(orbits[i].s0))
 	{ const auto& s=orbits[i];
 	  int v=rd.simpleCoroot(s.s0).dot(gamma_numer);
-	  if (v<0)
-	  { rd.act(s.w_kappa,gamma_numer); // change inf.char representative
+	  if (v<=0)
+	  { if (v<0)
+	      rd.act(s.w_kappa,gamma_numer); // change inf.char representative
+	    else if (s.length()==2) // 2C descent in block: October surprise
+	      flipped = not flipped;
 	    lr = rd.image_by(s.w_kappa,lr) - rho_minus_w_rho(rd,s.w_kappa);
 	    rd.act(s.w_kappa,tau);
 	    rd.dual_act(l,s.w_kappa);
@@ -383,11 +402,18 @@ StandardRepr scaled_extended_dominant // result will have its |gamma()| dominant
   // now ensure that |E| gets matching |gamma| and |theta| for flipped test
   param E(new_ctxt,rc.kgb().involution(x),lr,tau,l,t);
   result = rc.sr_gamma(x,E.lambda_rho(),new_ctxt.gamma());
-  flipped = not same_sign(E,param(new_ctxt,result));
+  if (not same_sign(E,param(new_ctxt,result)))
+    flipped = not flipped;
   return result;
-}
+} // |scaled_extended_dominant|
 
-containers::sl_list<std::pair<StandardRepr,bool> > finalise
+/*
+ This function is destined to be used after |scaled_extended_dominant|, to
+ express the standard representation as linear combination of ones without
+ singular descents, while keeping track (unlike |Rep_context::expand_final|)
+ of flips that might occur during the process.
+ */
+containers::sl_list<std::pair<StandardRepr,bool> > extended_finalise
   (const repr::Rep_context& rc,
    StandardRepr sr, const WeightInvolution& delta)
 { // in order that |singular_generators| generate the whole singular system:
@@ -403,7 +429,7 @@ containers::sl_list<std::pair<StandardRepr,bool> > finalise
   containers::sl_list<std::pair<StandardRepr,bool> > result;
 
   do
-  { auto& head=to_do.front(); // but don't pop just yet
+  { auto& head=to_do.front();
     const param E= std::move(head.first);
     bool flipped = head.second;
     to_do.pop_front(); // we are done with |head|
@@ -430,7 +456,7 @@ containers::sl_list<std::pair<StandardRepr,bool> > finalise
   while(not to_do.empty());
 
   return result;
-}
+} // |finalise|
 
 #if 0 // unused code, but the formula is referred to in the comment below
 int z (const param& E) // value modulo 4, exponent of imaginary unit $i$
