@@ -5232,7 +5232,7 @@ void finalize_extended_wrapper(expression_base::level l)
   if (l==expression_base::no_value)
     return;
 @)
-  auto params = @;ext_block::finalise(rc,p->val,delta->val);
+  auto params = @;ext_block::extended_finalise(rc,p->val,delta->val);
   repr::SR_poly result(rc.repr_less());
   for (auto it=params.begin(); it!=params.end(); ++it)
     result.add_term(it->first

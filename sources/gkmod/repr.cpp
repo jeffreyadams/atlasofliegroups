@@ -1194,7 +1194,7 @@ SR_poly Rep_table::twisted_deformation (StandardRepr z)
     bool flipped;
     auto z0 = ext_block::scaled_extended_dominant
 		(*this,z,delta,Rational(0,1),flipped);
-    auto L = ext_block::finalise(*this,z0,delta);
+    auto L = ext_block::extended_finalise(*this,z0,delta);
     for (auto it=L.begin(); it!=L.end(); ++it)
       result.add_term(it->first, it->second==flipped
 				 ? Split_integer(1,0) : Split_integer(0,1) );
@@ -1218,7 +1218,8 @@ SR_poly Rep_table::twisted_deformation (StandardRepr z)
         bp.reset(new param_block(*this,zi,dummy));
       param_block& block = bp.get()==nullptr ? parent : *bp;
 
-      auto L = ext_block::finalise(*this,zi,delta); // rarely a long list
+      auto L =
+	ext_block::extended_finalise(*this,zi,delta); // rarely a long list
       for (auto it=L.begin(); it!=L.end(); ++it)
       { auto zz = block.lookup(it->first);
 	SR_poly terms = twisted_deformation_terms(block,zz);
