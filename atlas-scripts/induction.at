@@ -701,14 +701,39 @@ set theta_stable_parabolics_max(KGBElt x)=[Parabolic]:
   let temp=[Parabolic]:[] in for P in tsp do if x=maximal(P) then temp#:=P fi od;
   temp
 
+{. Given a KGB element x, list all proper theta-stable parabolics in G
+  determined by x. .}
+set theta_stable_parabolics_with(KGBElt x)=[Parabolic]:
+  let G=real_form(x) in let tsp=theta_stable_parabolics(G) in
+  let temp=[Parabolic]:[] in for i:#tsp-1 do let (S,y)=tsp[i] in
+  if (S,x)=(S,y) then temp#:=tsp[i] fi od; temp
+
 {. List of parameters p_L in the good range for G so that p is theta-induced
   from p_L; may be empty, or more than one. .}
 set is_good_range_induced_from(Param p)=[Param]: let x=x(p) in
-  let tsp=theta_stable_parabolics_max(x) in
+  let tsp=theta_stable_parabolics_with(x) in
   let G=real_form(p) in
   let result=[Param]:[] in
   for P in tsp do let L=Levi(P) in let x_L=inverse_embed_KGB (x,L) in
   let p_L=parameter(x_L,lambda(p)-rho(real_form(p))+rho(L),nu(p)) in
-  if (is_final(p_L) and is_good(p_L,G) and p=theta_induce_irreducible(p_L,G))
-  then result#:=p_L fi od ; result
+  if is_final(p_L) then
+  if p!=theta_induce_irreducible(p_L,G) then prints("Ind(p_L) is not p") fi;
+  if (is_good(p_L,G) and p=theta_induce_irreducible(p_L,G))
+  then result#:=p_L fi fi od ; result
+
+{. As previous function, but with more information, and including parameters
+  that are not in the good range. .}
+set is_good_range_induced_from_long(Param p)=[Param]: let x=x(p) in
+  let tsp=theta_stable_parabolics_with(x) in
+  let G=real_form(p) in
+  let result=[Param]:[] in
+  for P in tsp do let L=Levi(P) in let x_L=inverse_embed_KGB (x,L) in
+  let p_L=parameter(x_L,lambda(p)-rho(real_form(p))+rho(L),nu(p)) in
+  if not is_final(p_L) then prints("p_L is not final") else
+  prints(goodness(p_L,G));
+  {if not is_good(p_L,G) then prints("p_L is not in the good range") fi;}
+  if p!=theta_induce_irreducible(p_L,G) then prints("Ind(p_L) is not p") fi;
+  if p=theta_induce_irreducible(p_L,G)
+  then result#:=p_L fi fi od ; result
+
 
