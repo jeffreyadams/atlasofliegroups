@@ -217,6 +217,12 @@ set highest_weight (K_Type p) = KHighestWeight:
   assert(#hwts=1,"highest weight it not unique, use highest_weights instead");
   hwts[0]
 
+{. Unique highest weight of a K-type w.r.t. x_K (or error if not unique). .}
+set highest_weight (K_Type p,KGBElt x_K) = KHighestWeight:
+  let hwts=highest_weights(p,x_K) in
+  assert(#hwts=1,"highest weight it not unique, use highest_weights instead");
+  hwts[0]
+
 {. Unique highest weight of (unique) LKT of a parameter (or error if not unique). .}
 set highest_weight (Param p) = KHighestWeight:
   let hws=highest_weights(p) in
