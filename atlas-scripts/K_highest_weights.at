@@ -401,7 +401,7 @@ set all_G_spherical_same_differential (Param p) = [K_Type]:
 }
 
 {. Parabolic attached to KHighestWeight by Vogan algorithm. .}
-set parabolic (KHighestWeight (x,mu)) = Parabolic:
+set parabolic_LKT (KHighestWeight (x,mu)) = Parabolic:
   let rd=root_datum(x), (y,mu_3_orig,lambda) = project_on_dominant_cone(x,mu)
   then diff=lambda-mu_3_orig
   then S= list( (int i): fundamental_coweight(rd,i)*diff>0, ss_rank(rd))
@@ -426,7 +426,7 @@ set make_strongly_dominant (KHighestWeight mu,KGBElt x_Q) = KHighestWeight:
 {. All K_types with the same KHighestWeight. .}
 set K_types (KHighestWeight mu_in)= [K_Type]:
   let (mu,,,)=make_strongly_dominant(mu_in) in
-  let  Q=parabolic(mu)  {Q is theta-stable}
+  let  Q=parabolic_LKT(mu)  {Q is theta-stable}
   in
   assert(is_parabolic_theta_stable(Q), "Q is not theta stable");
   let x_Q=x_min(Q)
