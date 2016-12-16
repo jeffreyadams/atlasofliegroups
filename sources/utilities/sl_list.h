@@ -343,7 +343,7 @@ template<typename T, typename Alloc>
   simple_list (size_type n, const T& x, const alloc_type& a=alloc_type())
   : alloc_type(a), head(nullptr)
   {
-    assign(n,x);
+    insert(begin(),n,x);
   }
 
   simple_list (std::initializer_list<T> l, const alloc_type& a=alloc_type())
@@ -556,9 +556,12 @@ template<typename T, typename Alloc>
     head.reset(); // smart pointer magic destroys all nodes
   }
 
+  // replace value of list by |n| copies of |x|
   void assign (size_type n, const T& x)
   {
     iterator p = begin();
+    // if |length>=n| fill |n| positions and decrease |n| by |length|
+    // otherwise fill |n| values and point after them (and ignore final |n|)
     for ( ; not at_end(p) and n-->0; ++p)
       *p = x;
 
@@ -773,7 +776,7 @@ template<typename T, typename Alloc>
   , node_count(x.node_count)
   { x.set_empty(); }
 
-  explicit sl_list (simple_list<T,Alloc>&& x) // move and complete constructor
+  explicit sl_list (simple_list<T,Alloc>&& x) // move and dress constructor
   : alloc_type(std::move(x))
   , head(x.head.release())
   , tail(&head)
@@ -806,15 +809,15 @@ template<typename T, typename Alloc>
   }
 
   sl_list (size_type n, const T& x, const alloc_type& a=alloc_type())
-  : alloc_type(a), head(nullptr), tail(&head), node_count(n)
+  : alloc_type(a), head(nullptr), tail(&head), node_count(0)
   {
-    assign(n,x);
+    insert(begin(),n,x); // this increases |node_count| to |n|
   }
 
   sl_list (std::initializer_list<T> l, const alloc_type& a=alloc_type())
   : alloc_type(a), head(nullptr), tail(&head), node_count(0)
   {
-    assign(l.begin(),l.end());
+    assign(l.begin(),l.end()); // this increases |node_count| to |l.size()|
   }
 
   ~sl_list () {} // when called, |head| is already destructed/cleaned up
@@ -1104,15 +1107,18 @@ template<typename T, typename Alloc>
     set_empty();
   }
 
+  // replace value of list by |n| copies of |x|
   void assign (size_type n, const T& x)
   {
     const size_type given_n = n; // cannot store yet for exception safety
     iterator p = begin();
+    // if |length>=n| fill |n| positions and decrease |n| by |length|
+    // otherwise fill |n| values and point after them (and ignore final |n|)
     for ( ; p!=end() and n-->0; ++p)
       *p = x;
 
-    if (p==end())
-      insert(p,n,x); // this also increases |node_count|
+    if (p==end()) // then |n>=0| more nodes need to be added
+      insert(p,n,x); // at |end()|; this also increases |node_count|
     else // we have exhausted |n| before |p|, and need to truncate after |p|
     {
       (tail = p.link_loc)->reset();
