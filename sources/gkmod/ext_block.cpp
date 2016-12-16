@@ -377,7 +377,8 @@ StandardRepr scaled_extended_dominant // result will have its |gamma()| dominant
       for (i=0; i<orbits.size(); ++i)
 	if (kgb.status(x).isComplex(orbits[i].s0))
 	{ const auto& s=orbits[i];
-	  int v=rd.simpleCoroot(s.s0).dot(gamma_numer);
+	  const auto& alpha_v = rd.simpleCoroot(s.s0);
+	  int v=alpha_v.dot(gamma_numer);
 	  if (v<0 or (v==0 and kgb.isDescent(s.s0,x)))
 	  { if (v<0)
 	      rd.act(s.w_kappa,gamma_numer); // change inf.char representative
@@ -398,8 +399,11 @@ StandardRepr scaled_extended_dominant // result will have its |gamma()| dominant
 	      lr -= alpha*f; // this effectively reflects $\lambda=lr+\rho$
 	      // as |alpha| is not $\delta$-fixed, |tau| needs correction too:
 	      tau = rd.simple_reflection(s.s0,tau) + alpha*f; // extra |alpha|
-	      rd.coreflect(l,s.s0);
-	      rd.coreflect(t,s.s0);
+	      Coweight dl = alpha_v*l.dot(alpha);
+	      l -= dl; // |rd.simple_coreflect(l,s.s0);|
+	      dl /= denom; // to get same correction for |t|, unscale
+	      rd.simple_coreflect(t,s.s0);
+	      t -= dl;
 	      x = kgb.cross(s.s0,x);
 	    }
 	    break;
