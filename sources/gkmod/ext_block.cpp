@@ -352,7 +352,7 @@ StandardRepr scaled_extended_dominant // result will have its |gamma()| dominant
  Rational factor, // |z.nu()| is scaled by |factor| first
  bool& flipped // records whether and extended flip was recorded
  )
-{ const RootDatum& rd=rc.rootDatum();
+{ const RootDatum& rd=rc.rootDatum(); const KGB& kgb = rc.kgb();
   assert(is_dominant_ratweight(rd,sr.gamma())); // dominant
   assert(((delta-1)*sr.gamma().numerator()).isZero()); // $\delta$-fixed
   StandardRepr result = rc.sr(sr.x(),rc.lambda_rho(sr),sr.gamma()*factor);
@@ -375,19 +375,33 @@ StandardRepr scaled_extended_dominant // result will have its |gamma()| dominant
   { unsigned i; // index into |orbits|
     do
       for (i=0; i<orbits.size(); ++i)
-	if (rc.kgb().status(x).isComplex(orbits[i].s0))
+	if (kgb.status(x).isComplex(orbits[i].s0))
 	{ const auto& s=orbits[i];
 	  int v=rd.simpleCoroot(s.s0).dot(gamma_numer);
-	  if (v<=0)
+	  if (v<0 or (v==0 and kgb.isDescent(s.s0,x)))
 	  { if (v<0)
 	      rd.act(s.w_kappa,gamma_numer); // change inf.char representative
-	    else if (s.length()==2) // 2C descent in block: October surprise
-	      flipped = not flipped;
-	    lr = rd.image_by(s.w_kappa,lr) - rho_minus_w_rho(rd,s.w_kappa);
-	    rd.act(s.w_kappa,tau);
-	    rd.dual_act(l,s.w_kappa);
-	    rd.dual_act(t,s.w_kappa);
-	    x = rc.kgb().cross(s.w_kappa,x);
+            else // 3Cr excluded, as it would make |s.s0+s.s1| real singular
+              assert(s.length()!=3 or kgb.cross(s.w_kappa,x)!=x);
+	    if (v<0 or s.length()!=2 or kgb.cross(s.s0,x)!=kgb.cross(s.s1,x))
+	    {
+	      lr = rd.image_by(s.w_kappa,lr) - rho_minus_w_rho(rd,s.w_kappa);
+	      rd.act(s.w_kappa,tau);
+	      rd.dual_act(l,s.w_kappa);
+	      rd.dual_act(t,s.w_kappa);
+	      x = kgb.cross(s.w_kappa,x);
+	    }
+	    else // we have a singular 2Cr descent; do just one reflection
+	    { // almost the above code with |s.s0| instead of |s.w_kappa|:
+	      const auto& alpha = rd.simpleRoot(s.s0);
+	      const auto f = rd.simpleCoroot(s.s0).dot(lr)+1;
+	      lr -= alpha*f; // this effectively reflects $\lambda=lr+\rho$
+	      // as |alpha| is not $\delta$-fixed, |tau| needs correction too:
+	      tau = rd.simple_reflection(s.s0,tau) + alpha*f; // extra |alpha|
+	      rd.coreflect(l,s.s0);
+	      rd.coreflect(t,s.s0);
+	      x = kgb.cross(s.s0,x);
+	    }
 	    break;
 	  }
 	} // |for(s)|, if |isComplex|
@@ -400,7 +414,7 @@ StandardRepr scaled_extended_dominant // result will have its |gamma()| dominant
   context new_ctxt(rc,delta,
 		   RatWeight(gamma_numer,result.gamma().denominator()));
   // now ensure that |E| gets matching |gamma| and |theta| for flipped test
-  param E(new_ctxt,rc.kgb().involution(x),lr,tau,l,t);
+  param E(new_ctxt,kgb.involution(x),lr,tau,l,t);
   result = rc.sr_gamma(x,E.lambda_rho(),new_ctxt.gamma());
   if (not same_sign(E,param(new_ctxt,result)))
     flipped = not flipped;
@@ -440,8 +454,8 @@ containers::sl_list<std::pair<StandardRepr,bool> > extended_finalise
     { containers::sl_list<std::pair<int,param> > links;
       auto type = star(E,orbits[s],links);
       if (not is_like_compact(type)) // some descent, push to front of |to_do|
-      { if (has_october_surprise(type))
-	  flipped = not flipped;
+      { if (has_october_surprise(type)) // then |star| made an extra flip
+	  flipped = not flipped; // but we don't want that here, so undo it!
 	auto it = to_do.begin(); auto l_it=links.begin();
 	to_do.insert(it,std::make_pair
 		     (std::move(l_it->second),flipped==(l_it->first>0)));
@@ -1515,7 +1529,8 @@ DescValue star (const param& E,
 
 	  const int f = level_a(E,rho_r_shift,n_alpha);
 
-	  const Weight new_lambda_rho = E.lambda_rho() - rho_r_shift + alpha*f;
+	  const Weight new_lambda_rho = // \emph{reflect} parallel to alpha
+	    E.lambda_rho() - rho_r_shift + alpha*f;
 	  const Weight new_tau = rd.reflection(n_alpha,E.tau()) - alpha*f;
 
 	  const int dual_f =
@@ -1664,7 +1679,7 @@ DescValue star (const param& E,
     break;
   }
 
-  // add a flip to links with a length difference of 2
+  // October surprise: add a flip to links with a length difference of 2
   if (p.length()-(has_defect(result)?1:0)==2)
   { auto it=links.begin(); auto c=scent_count(result);
     for (unsigned i=0; i<c; ++i,++it) // only affect ascent/descent links
