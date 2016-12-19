@@ -368,10 +368,12 @@ StandardRepr scaled_extended_dominant // result will have its |gamma()| dominant
   KGBElt x = result.x(); // another variable, for convenience
   flipped=false; // prepare to record some explicit link flips
 
-  const auto grc = ctxt.g_rho_check(); int denom=grc.denominator();
-  l*=denom; // scale to make shift applied to |l| below an integer vector
-  Coweight l_offset(grc.numerator().begin(),grc.numerator().end()); // convert
-  l-=l_offset; // shift so that reflections can apply directly
+  const RatCoweight& g=ctxt.g();
+  int_Vector r_g_eval (rd.semisimpleRank()); // evaluations at |rho^v-g|
+  for (unsigned i=0; i<r_g_eval.size(); ++i)
+    r_g_eval[i] = 1 - g.dot(rd.simpleRoot(i));
+
+  const int_Vector ones(rd.semisimpleRank(),1); // for action about $-\rho$
   { unsigned i; // index into |orbits|
     do
       for (i=0; i<orbits.size(); ++i)
@@ -386,33 +388,28 @@ StandardRepr scaled_extended_dominant // result will have its |gamma()| dominant
               assert(s.length()!=3 or kgb.cross(s.w_kappa,x)!=x);
 	    if (v<0 or s.length()!=2 or kgb.cross(s.s0,x)!=kgb.cross(s.s1,x))
 	    {
-	      lr = rd.image_by(s.w_kappa,lr) - rho_minus_w_rho(rd,s.w_kappa);
+	      rd.shifted_act(s.w_kappa,lr,ones);
 	      rd.act(s.w_kappa,tau);
-	      rd.dual_act(l,s.w_kappa);
+	      rd.shifted_dual_act(l,s.w_kappa,r_g_eval);
 	      rd.dual_act(t,s.w_kappa);
 	      x = kgb.cross(s.w_kappa,x);
 	    }
 	    else // we have a singular 2Cr descent; do just one reflection
-	    { // almost the above code with |s.s0| instead of |s.w_kappa|:
+	    { // corrections to |tau| and |t| are as in 2Cr case of |star| below
+	      const int f = alpha_v.dot(lr)+1;
 	      const auto& alpha = rd.simpleRoot(s.s0);
-	      const auto f = rd.simpleCoroot(s.s0).dot(lr)+1;
-	      lr -= alpha*f; // this effectively reflects $\lambda=lr+\rho$
-	      // as |alpha| is not $\delta$-fixed, |tau| needs correction too:
-	      tau = rd.simple_reflection(s.s0,tau) + alpha*f; // extra |alpha|
-	      Coweight dl = alpha_v*l.dot(alpha);
-	      l -= dl; // |rd.simple_coreflect(l,s.s0);|
-	      dl /= denom; // to get same correction for |t|, unscale
-	      rd.simple_coreflect(t,s.s0);
-	      t -= dl;
+	      lr -= alpha*f; // equivalently |rd.simple_reflect(s.s0,lr,1)|
+	      rd.simple_reflect(s.s0,tau,-f); // shift |-f| adds extra |alpha*f|
+	      const int df = l.dot(alpha)+r_g_eval[s.s0]; // factor of |alpha_v|
+	      l -= alpha_v*df; // |rd.simple_coreflect(l,s.s0,r_g_eval[s.s0]);|
+	      rd.simple_coreflect(t,s.s0,df);
 	      x = kgb.cross(s.s0,x);
 	    }
 	    break;
 	  }
 	} // |for(s)|, if |isComplex|
     while(i<orbits.size()); // continue until above |for| runs to completion
-  }
-  l+=l_offset;
-  l/=denom; // shift and scale back to original size
+  } // end of transformation of extended parameter components
 
   // since |gamma| may have changed, we need to buid a new |context|
   context new_ctxt(rc,delta,
