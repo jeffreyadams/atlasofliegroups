@@ -219,8 +219,8 @@ not being defined.
 #include <readline/history.h>
 #endif
 #ifdef NOT_UNIX
-#define isatty() true // if we cannot find out, guess it is ``yes''
-#define chdir()
+#define isatty(x) true // if we cannot find out, guess it is ``yes''
+#define chdir(x) (-1) // just fail for every argument
 #else
 #include <unistd.h>
 #endif
