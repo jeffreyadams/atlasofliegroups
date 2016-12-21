@@ -244,7 +244,7 @@ void validate(const param& E)
   ndebug_use(delta); ndebug_use(theta); ndebug_use(rd);
 }
 
-param::param (const context& ec, const StandardRepr& sr)
+param::param (const context& ec, const StandardRepr& sr, bool flipped)
   : ctxt(ec)
   , tw(ec.rc().kgb().involution(sr.x()))
   , d_l(ell(ec.realGroup().kgb(),sr.x()))
@@ -252,11 +252,13 @@ param::param (const context& ec, const StandardRepr& sr)
   , d_tau(matreduc::find_solution(1-theta(),(delta()-1)*lambda_rho()))
   , d_t(matreduc::find_solution
 	(theta().transposed()+1,(delta()-1).right_prod(l())))
+  , d_flipped(flipped)
 {
   validate(*this);
 }
 
-param::param (const context& ec, KGBElt x, const Weight& lambda_rho)
+param::param (const context& ec,
+	      KGBElt x, const Weight& lambda_rho, bool flipped)
   : ctxt(ec)
   , tw(ec.realGroup().kgb().involution(x))
   , d_l(ell(ec.realGroup().kgb(),x))
@@ -264,17 +266,20 @@ param::param (const context& ec, KGBElt x, const Weight& lambda_rho)
   , d_tau(matreduc::find_solution(1-theta(),(delta()-1)*lambda_rho))
   , d_t(matreduc::find_solution
 	(theta().transposed()+1,(delta()-1).right_prod(l())))
+  , d_flipped(flipped)
 {
   validate(*this);
 }
 
 param::param (const context& ec, const TwistedInvolution& tw,
-	      Weight lambda_rho, Weight tau, Coweight l, Coweight t)
+	      Weight lambda_rho, Weight tau, Coweight l, Coweight t,
+	      bool flipped)
   : ctxt(ec), tw(tw)
   , d_l(std::move(l))
   , d_lambda_rho(std::move(lambda_rho))
   , d_tau(std::move(tau))
   , d_t(std::move(t))
+  , d_flipped(flipped)
 {
   validate(*this);
 }
@@ -493,6 +498,12 @@ int z (const param& E) // value modulo 4, exponent of imaginary unit $i$
   but the quotient evaluated at the simple situation. So for these cases we
   should just compute the contribution to the difference of values |z| that
   would come \emph{from its first term} above only. This function does that:
+
+  This function ignores flips that may be recorded in |E| and/or |F|, since in
+  all cases the computed sign will label a link with the parameter in
+  question, so incorporating a flip into the sign would effectively just undo
+  the recorded flip. Ultimately that sign should be integrated into the
+  parameter itself, so that there would be no need to return the value here.
  */
 int z_quot (const param& E, const param& F)
 { assert(E.t()==F.t()); // we require preparing |t| upstairs to get this
@@ -528,7 +539,7 @@ bool same_sign (const param& E, const param& F)
   assert (i_exp%2==0);
   int n1_exp =
     (F.l()-E.l()).dot(E.tau()) + F.t().dot(F.lambda_rho()-E.lambda_rho());
-  return (i_exp/2+n1_exp)%2==0;
+  return ((i_exp/2+n1_exp)%2==0)!=(E.is_flipped()!=F.is_flipped());
 }
 
 bool same_sign_with_one_of (const param& E, const param& F1, const param& F2)
