@@ -266,12 +266,15 @@ private:
   Weight d_lambda_rho; // lift of that value in a |StandardRepr|
   Weight d_tau; // a solution to $(1-\theta)*\tau=(\delta-1)\lambda_\rho$
   Coweight d_t; // a solution to $t(1-theta)=l(\delta-1)$
+  bool d_flipped; // whether tensored with the fliiping representation
 
 public:
-  param (const context& ec, const StandardRepr& sr);
-  param (const context& ec, KGBElt x, const Weight& lambda_rho);
+  param (const context& ec, const StandardRepr& sr, bool flipped=false);
+  param (const context& ec,
+	 KGBElt x, const Weight& lambda_rho, bool flipped=false);
   param (const context& ec, const TwistedInvolution& tw,
-	 Weight lambda_rho, Weight tau, Coweight l, Coweight t);
+	 Weight lambda_rho, Weight tau, Coweight l, Coweight t,
+	 bool flipped=false);
 
   param (const param& p) = default;
   param (param&& p)
@@ -280,17 +283,20 @@ public:
   , d_lambda_rho(std::move(p.d_lambda_rho))
   , d_tau(std::move(p.d_tau))
   , d_t(std::move(p.d_t))
+  , d_flipped(p.d_flipped)
   {}
 
   param& operator= (const param& p)
   { assert(tw==p.tw); // cannot assign this, so it should match
     d_l=p.d_l; d_lambda_rho=p.d_lambda_rho; d_tau=p.d_tau; d_t=p.d_t;
+    d_flipped=p.d_flipped;
     return *this;
   }
   param& operator= (param&& p)
   { assert(tw==p.tw); // cannot assign this, so it should match
     d_l=std::move(p.d_l); d_lambda_rho=std::move(p.d_lambda_rho);
     d_tau=std::move(p.d_tau); d_t=std::move(p.d_t);
+    d_flipped=p.d_flipped;
     return *this;
   }
 
@@ -298,11 +304,13 @@ public:
   const Weight& lambda_rho () const { return d_lambda_rho; }
   const Weight& tau () const { return d_tau; }
   const Coweight& t () const { return d_t; }
+  bool is_flipped() const { return d_flipped; }
 
   void set_l (Coweight l) { d_l=l; }
   void set_lambda_rho (Weight lambda_rho) { d_lambda_rho=lambda_rho; }
   void set_tau (Weight tau) { d_tau=tau; }
   void set_t (Coweight t) { d_t=t; }
+  void flip () { d_flipped=not d_flipped; }
 
   const repr::Rep_context rc() const { return ctxt.rc(); }
   const WeightInvolution& delta () const { return ctxt.delta(); }
