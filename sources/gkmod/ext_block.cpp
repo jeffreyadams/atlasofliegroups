@@ -1062,6 +1062,30 @@ int level_a (const param& E, const Weight& shift, RootNbr alpha)
     - rd.colevel(alpha); // final term $<\alpha^\vee,\rho>$
 }
 
+/*
+  For the unstairs and downstairs conjugation scenario where we call
+  |repr::Cayley_shift| to make a shift to |lambda_rho|, we also need the sign
+  by which |delta| acts on wedge product for |repr::Cayley_shift| roots, more
+  precisely those positive roots that |to_simple| maps to negative, and which
+  are complex downstairs while they were real upstairs. In fact this is just
+  full set of those positive-to-negative roots that are real upstairs.
+ */
+bool Cayley_shift_flip
+  (const context& ec,
+   InvolutionNbr theta_upstairs, // at the more split Cartan
+   const WeylWord& to_simple)
+{ const RootDatum& rd = ec.rc().rootDatum();
+  const InvolutionTable& i_tab = ec.innerClass().involution_table();
+  RootNbrSet S = pos_to_neg(rd,to_simple) & i_tab.real_roots(theta_upstairs);
+  Permutation pi = ec.rc().rootDatum().rootPermutation(ec.delta());
+  unsigned count=0; // will count 2-element |delta|-orbits
+  for (auto it=S.begin(); it(); ++it)
+    if (pi[*it]!=*it)
+      ++count;
+  assert(count%2==0); // since |S| is supposed to be $\delta$-stable
+  return count%4!=0;
+}
+
 // version of |type| that will also export signs for every element of |links|
 DescValue star (const param& E,
 		const ext_gen& p,
@@ -1101,7 +1125,10 @@ DescValue star (const param& E,
 	// try to make $\alpha$ simple by conjugating by $W^\delta$
 	RootNbr alpha_simple = n_alpha;
 	const WeylWord ww = fixed_conjugate_simple(E.ctxt,alpha_simple);
-	const Weight rho_r_shift = repr::Cayley_shift(ic,i_tab.nr(new_tw),ww);
+	const auto theta_p = i_tab.nr(new_tw); // upstairs
+	const Weight rho_r_shift = repr::Cayley_shift(ic,theta_p,ww);
+	const bool flipped = Cayley_shift_flip(E.ctxt,theta_p,ww);
+
 	assert(E.ctxt.delta()*rho_r_shift==rho_r_shift); // $ww\in W^\delta$
 	assert(E.t().dot(alpha)==0); // follows from $\delta*\alpha=\alpha$
 
@@ -1127,7 +1154,8 @@ DescValue star (const param& E,
 
 	  param F(E.ctxt,new_tw,
 		  E.lambda_rho() + first + rho_r_shift, E0.tau()+diff*tau_coef,
-		  E.l()+alpha_v*(tf_alpha/2), E.t());
+		  E.l()+alpha_v*(tf_alpha/2), E.t(),
+		  flipped);
 
  	  E0.set_l(tf_alpha%4==0 ? F.l()+alpha_v : F.l()); // for cross
 	  assert(not same_standard_reps(E,E0));
@@ -1151,9 +1179,11 @@ DescValue star (const param& E,
 	  param F0(E.ctxt,new_tw,
 		   E.lambda_rho() + first + rho_r_shift,
 		   E.tau() - alpha*(tau_coef/2) - first,
-		   E.l() + alpha_v*(tf_alpha/2), E.t());
+		   E.l() + alpha_v*(tf_alpha/2), E.t(),
+		   flipped);
 	  param F1(E.ctxt,new_tw,
-		   F0.lambda_rho() + alpha, F0.tau(), F0.l(), E.t());
+		   F0.lambda_rho() + alpha, F0.tau(), F0.l(), E.t(),
+		   flipped);
 
 	  int sign0 = z_quot(E,F0);
 	  int sign1 = z_quot(E,F1);
@@ -1171,6 +1201,7 @@ DescValue star (const param& E,
 	  tW.prod(subs.reflection(p.s0),E.tw);
 
 	Weight rho_r_shift = repr::Cayley_shift(ic,theta,ww);
+	const bool flipped = Cayley_shift_flip(E.ctxt,theta,ww);
 	assert((delta_1*rho_r_shift).isZero()); // since $ww\in W^\delta$
 
 	RootNbr alpha_0 = // maybe one of |alpha==alpha_0+alpha_1|
@@ -1224,9 +1255,11 @@ DescValue star (const param& E,
 	  assert(same_sign(E,E0)); // since only |t| changes
 
 	  param F0(E.ctxt,new_tw,
-		   new_lambda_rho, E.tau() + tau_correction, E.l(), E0.t());
+		   new_lambda_rho, E.tau() + tau_correction, E.l(), E0.t(),
+		   flipped);
 	  param F1(E.ctxt,new_tw,
-		   new_lambda_rho, F0.tau(), E.l() + alpha_v, E0.t());
+		   new_lambda_rho, F0.tau(), E.l() + alpha_v, E0.t(),
+		   flipped);
 
 	  int sign0 = z_quot(E0,F0), sign1 = z_quot(E0,F1);
 
@@ -1249,7 +1282,8 @@ DescValue star (const param& E,
 	  assert(not same_standard_reps(E0,E1));
 
 	  param F(E.ctxt,new_tw,
-		  new_lambda_rho, E.tau() + tau_correction, E.l(), E0.t());
+		  new_lambda_rho, E.tau() + tau_correction, E.l(), E0.t(),
+		  flipped);
 	  int sign0 = z_quot(E0,F);
 	  int sign1 = sign0*z_quot(E1,F);
 
@@ -1289,7 +1323,10 @@ DescValue star (const param& E,
 	// make $\alpha$ simple by conjugating by $W^\delta$
 	RootNbr alpha_simple = n_alpha;
 	const WeylWord ww = fixed_conjugate_simple(E.ctxt,alpha_simple);
-	const Weight rho_r_shift = repr::Cayley_shift(ic,i_tab.nr(new_tw),ww);
+	const auto theta_p = i_tab.nr(new_tw); // upstairs
+
+	const Weight rho_r_shift = repr::Cayley_shift(ic,theta_p,ww);
+	const bool flipped = Cayley_shift_flip(E.ctxt,theta_p,ww);
 	assert(E.ctxt.delta()*rho_r_shift==rho_r_shift); // $ww\in W^\delta$
 	assert(rd.is_simple_root(alpha_simple)); // cannot fail for length 2
 
@@ -1302,7 +1339,8 @@ DescValue star (const param& E,
 
 	  param F (E.ctxt, new_tw,
 		   E.lambda_rho() + rho_r_shift,  E.tau() + sigma,
-		   E.l()+alpha_v*(tf_alpha/2)+beta_v*(tf_beta/2), E.t());
+		   E.l()+alpha_v*(tf_alpha/2)+beta_v*(tf_beta/2), E.t(),
+		   flipped);
 
 	  E0.set_l(E.l()+alpha_v+beta_v);
 	  int sign = z_quot(E,F); // no 3rd arg, since |E.lambda_rho| unchanged
@@ -1327,10 +1365,12 @@ DescValue star (const param& E,
 
 	  param F0(E.ctxt, new_tw,
 		   E.lambda_rho() + rho_r_shift + alpha*m, new_tau0,
-		   new_l, E.t());
+		   new_l, E.t(),
+		   flipped);
 	  param F1(E.ctxt, new_tw,
 		   E.lambda_rho() + rho_r_shift + alpha*mm, E.tau() + sigma,
-		   new_l, E.t());
+		   new_l, E.t(),
+		   flipped);
 
 	  // compute signs before invoking |std::move|
 	  int t_alpha=E.t().dot(alpha);
@@ -1351,11 +1391,13 @@ DescValue star (const param& E,
 	  param F0(E.ctxt, new_tw,
 		   E.lambda_rho() + rho_r_shift + alpha*m,
 		   E.tau() - alpha*((at+m)/2) - beta*((bt-m)/2),
-		   E.l()+alpha_v*(tf_alpha/2)+beta_v*(tf_beta/2), E.t());
+		   E.l()+alpha_v*(tf_alpha/2)+beta_v*(tf_beta/2), E.t(),
+		   flipped);
 	  param F1(E.ctxt, new_tw,
 		   E.lambda_rho() + rho_r_shift + alpha*(1-m) + beta,
 		   E.tau() - alpha*((at-m)/2) - beta*((bt+m)/2),
-		   F0.l(),E.t());
+		   F0.l(),E.t(),
+		   flipped);
 	  // get signs before invoking the |std::move| from |F0|, |F1|
 	  int ta = E.t().dot(alpha), tb=E.t().dot(beta);
 	  int sign0=z_quot(E,F0,ta*m)
@@ -1373,6 +1415,7 @@ DescValue star (const param& E,
 	assert(rd.is_simple_root(alpha_simple)); // no complications here
 
 	const Weight rho_r_shift = repr::Cayley_shift(ic,theta,ww);
+	const bool flipped = Cayley_shift_flip(E.ctxt,theta,ww);
 	assert((delta_1*rho_r_shift).isZero()); // since $ww\in W^\delta$
 
 	const int a_level = level_a(E,rho_r_shift,n_alpha);
@@ -1411,9 +1454,11 @@ DescValue star (const param& E,
 	  assert(E1.t().dot(alpha)==m and E1.t().dot(beta)==-m);
 
 	  param F0(E.ctxt, new_tw,
-		   new_lambda_rho,E.tau(), E.l()+alpha_v*m, E0.t());
+		   new_lambda_rho,E.tau(), E.l()+alpha_v*m, E0.t(),
+		   flipped);
 	  param F1(E.ctxt, new_tw,
-		   new_lambda_rho,E.tau(), E.l()+alpha_v*(1-m)+beta_v,E1.t());
+		   new_lambda_rho,E.tau(), E.l()+alpha_v*(1-m)+beta_v,E1.t(),
+		   flipped);
 
 	  int sign0=z_quot(E0,F0,m*((b_level-a_level)/2));
 	  int sign1=z_quot(E1,F1,m*((a_level-b_level)/2));
@@ -1445,9 +1490,11 @@ DescValue star (const param& E,
 	  assert(E1.t().dot(alpha)==-mm and E1.t().dot(beta)==mm);
 
 	  param F0(E.ctxt, new_tw,
-		   new_lambda_rho, E.tau(), E.l()+alpha_v*m, E0.t());
+		   new_lambda_rho, E.tau(), E.l()+alpha_v*m, E0.t(),
+		   flipped);
 	  param F1(E.ctxt, new_tw,
-		   new_lambda_rho, E.tau(), E.l()+alpha_v*mm, E1.t());
+		   new_lambda_rho, E.tau(), E.l()+alpha_v*mm, E1.t(),
+		   flipped);
 
 	  int sign0=z_quot(E0,F0,m *((b_level-a_level)/2));
 	  int sign1=z_quot(E1,F1,mm*((b_level-a_level)/2));
@@ -1471,7 +1518,8 @@ DescValue star (const param& E,
 	  E1.set_t(E0.t()); // cross action, keeps adaption of |t| to |F| below
 	  assert(not same_standard_reps(E0,E1));
 
-	  param F(E.ctxt, new_tw, new_lambda_rho, E.tau(), E.l(), E0.t());
+	  param F(E.ctxt, new_tw, new_lambda_rho, E.tau(), E.l(), E0.t(),
+		  flipped);
 
 	  int sign0=z_quot(E0,F); // no 3rd arg, as |E.t().dot(alpha)==0| etc.
 	  int sign1=sign0*z_quot(E1,F); // total sign from |E| to its cross |E1|
@@ -1537,6 +1585,7 @@ DescValue star (const param& E,
 	  assert(rd.is_simple_root(alpha_simple)); // no complications here
 
 	  const Weight rho_r_shift = repr::Cayley_shift(ic,theta,ww);
+	  const bool flipped = Cayley_shift_flip(E.ctxt,theta,ww);
 	  assert((delta_1*rho_r_shift).isZero()); // since $ww\in W^\delta$
 
 	  const int f = level_a(E,rho_r_shift,n_alpha);
@@ -1551,7 +1600,8 @@ DescValue star (const param& E,
           const Coweight new_t =
 	    rd.coreflection(E.t(),n_alpha) + alpha_v*dual_f;
 
-	  param F (E.ctxt, new_tw, new_lambda_rho, new_tau, new_l, new_t);
+	  param F (E.ctxt, new_tw, new_lambda_rho, new_tau, new_l, new_t,
+		   flipped);
 
 	  int t_ab = E.t().dot(beta-alpha);
 	  assert (t_ab%2==0);
@@ -1591,14 +1641,18 @@ DescValue star (const param& E,
 
 	RootNbr alpha_simple = n_alpha;
 	const WeylWord ww = fixed_conjugate_simple(E.ctxt,alpha_simple);
-	const Weight rho_r_shift = repr::Cayley_shift(ic,i_tab.nr(new_tw),ww);
+	const auto theta_p = i_tab.nr(new_tw); // upstairs
+
+	const Weight rho_r_shift = repr::Cayley_shift(ic,theta_p,ww);
+	const bool flipped = Cayley_shift_flip(E.ctxt,theta_p,ww);
 	assert(E.ctxt.delta()*rho_r_shift==rho_r_shift); // $ww\in W^\delta$
 	assert(rd.is_simple_root(alpha_simple)); // cannot fail for length 3
 
 	param F(E.ctxt, new_tw,
 		E.lambda_rho() + rho_r_shift,
 		E.tau() - alpha*kappa_v.dot(E.tau()),
-		E.l() + kappa_v*((tf_alpha+tf_beta)/2), E.t());
+		E.l() + kappa_v*((tf_alpha+tf_beta)/2), E.t(),
+		flipped);
 
 	int sign = z_quot(E,F); // |lambda_rho| unchanged at simple Cayley
 
@@ -1611,6 +1665,7 @@ DescValue star (const param& E,
 	assert(rd.is_simple_root(alpha_simple)); // no complications here
 
 	const Weight rho_r_shift = repr::Cayley_shift(ic,theta,ww);
+	const bool flipped = Cayley_shift_flip(E.ctxt,theta,ww);
 	assert((delta_1*rho_r_shift).isZero()); // since $ww\in W^\delta$
 
 	const int a_level = level_a(E,rho_r_shift,n_alpha);
@@ -1630,7 +1685,7 @@ DescValue star (const param& E,
 	E0.set_t(E.t()-alpha_v*kappa.dot(E.t())); // makes |E.t().dot(kappa)==0|
 	assert(same_sign(E,E0)); // since only |t| changes
 
-	param F(E.ctxt, new_tw,	new_lambda_rho,E.tau(), E.l(), E0.t() );
+	param F(E.ctxt, new_tw,	new_lambda_rho,E.tau(),E.l(),E0.t(), flipped);
 
 	int sign = z_quot(E0,F); // no 3rd arg since |E.t().dot(kappa)==0|
 	links.push_back(std::make_pair(sign,std::move(F))); // Cayley link
@@ -1646,8 +1701,9 @@ DescValue star (const param& E,
 	  const WeylWord ww = fixed_conjugate_simple(E.ctxt,alpha_simple);
 	  assert(rd.is_simple_root(alpha_simple)); // no complications here
 
-	  const Weight rho_r_shift =
-	    repr::Cayley_shift(ic,ascent ? i_tab.nr(new_tw) : theta,ww);
+	  const auto theta_upstairs = ascent ? i_tab.nr(new_tw) : theta;
+	  const Weight rho_r_shift = repr::Cayley_shift(ic,theta_upstairs,ww);
+	  const bool flipped = Cayley_shift_flip(E.ctxt,theta_upstairs,ww);
 	  assert((delta_1*rho_r_shift).isZero()); // since $ww\in W^\delta$
 
 	  int tf_alpha = (E.ctxt.g() - E.l()).dot(alpha) - rd.level(n_alpha);
@@ -1659,14 +1715,15 @@ DescValue star (const param& E,
 	  { param F(E.ctxt,new_tw,
 		    dtf_alpha%2==0 ? new_lambda_rho : new_lambda_rho + kappa,
 		    E.tau() - kappa*(kappa_v.dot(E.tau())/2),
-		    E.l() + kappa_v*tf_alpha, E.t());
+		    E.l() + kappa_v*tf_alpha, E.t(),
+		    flipped);
 
 	    assert(E.t().dot(kappa)==0);
 	    // since it is half of |t*(1+theta)*kappa=l*(delta-1)*kappa==0|
 	    int sign  = z_quot(E,F); // may ignore possible shift by |kappa|
 	    links.push_back(std::make_pair(sign,std::move(F))); // Cayley link
 	  }
-	  else // 3Cr
+	  else // descent, so 3Cr
 	  {
 	    E0.set_t // make |E.t().dot(kappa)==0| using |kappa_v|
 	      (E.t() - kappa_v*(kappa.dot(E.t())/2));
@@ -1674,7 +1731,8 @@ DescValue star (const param& E,
 
 	    param F(E.ctxt, new_tw,
 		    new_lambda_rho + kappa*dtf_alpha, E.tau(),
-		    tf_alpha%2==0 ? E.l() : E.l()+kappa_v, E0.t());
+		    tf_alpha%2==0 ? E.l() : E.l()+kappa_v, E0.t(),
+		    flipped);
 
 	    int sign = z_quot(E0,F); // no 3rd arg since |E.t().dot(kappa)==0|
 	    links.push_back(std::make_pair(sign,std::move(F))); // Cayley link
