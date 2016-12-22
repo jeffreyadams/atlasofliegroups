@@ -1080,7 +1080,7 @@ bool Cayley_shift_flip
   Permutation pi = ec.rc().rootDatum().rootPermutation(ec.delta());
   unsigned count=0; // will count 2-element |delta|-orbits
   for (auto it=S.begin(); it(); ++it)
-    if (pi[*it]!=*it)
+    if (pi[*it]!=*it and not rd.sumIsRoot(*it,pi[*it]))
       ++count;
   assert(count%2==0); // since |S| is supposed to be $\delta$-stable
   return count%4!=0;

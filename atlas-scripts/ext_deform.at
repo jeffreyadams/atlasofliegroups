@@ -53,6 +53,7 @@ set deformation_terms (Param p, mat delta) = ParamPol:
   then null_module(p) { if |p| itself is not among survivors, return 0 }
   else { compute final column |acc| of |Q| matrix by solving linear system
          $P'*acc=e_p$ with $P'$ a matrix of Split, columns from |KL_sum_at_s| }
+    if ed_verbose then prints("Deformation terms for ",p) fi;
     let remainder = null(nB-1)#1 { start with standard basis vector for |p| }
     , solution=null(nB)
     , !opposite_parity=1-length~[0]%2 { opposite to that of |length(p)| }
