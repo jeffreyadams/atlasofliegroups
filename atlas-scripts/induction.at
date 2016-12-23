@@ -705,8 +705,11 @@ set theta_stable_parabolics_max(KGBElt x)=[Parabolic]:
   determined by x. .}
 set theta_stable_parabolics_with(KGBElt x)=[Parabolic]:
   let G=real_form(x) in let tsp=theta_stable_parabolics(G) in
-  let temp=[Parabolic]:[] in for i:#tsp-1 do let (S,y)=tsp[i] in
+  let temp=[Parabolic]:[] in for i:#tsp do let (S,y)=tsp[i] in
   if (S,x)=(S,y) then temp#:=tsp[i] fi od; temp
+
+{. Decide whether there is a theta-stable parabolic determined by x. .}
+set is_theta_x(KGBElt x)=bool: #theta_stable_parabolics_with(x)>0
 
 {. List of parameters p_L in the (weakly) good range for G so that p is
   theta-induced from p_L; may be empty, or more than one. .}
@@ -727,3 +730,36 @@ set is_good_range_induced_from(Param p)=[Param]:
   result#:=p_L
   fi
   fi fi od fi fi ; result
+
+{. Find the smallest (wrt containment) theta-stable parabolic determined
+  by x. .}
+set min_theta_parabolic_with(KGBElt x)=Parabolic: let G=real_form(x) in
+  let tsp=theta_stable_parabolics_with(x) in
+  {assert(#tsp>0,"No such theta-stable parabolic!");}
+  let ssr=semisimple_rank(G) in
+  let S=[int]:[] in for i:ssr do
+  if all(for (T,) in tsp do is_member(T)(i) od) then S#:=i
+  fi od;  (S,x)
+
+{. Find the parameter p_L so that p is cohomologically induced, in the
+  (weakly) good range, from p_L, with L minimal (may be G). .}
+set is_min_good_induced_from(Param p)=Param:
+  let x=x(p) in
+  {assert(is_theta_x(x),"This is not an induced parameter.");}
+  let G=real_form(p) in
+  let P=min_theta_parabolic_with(x) in
+  let L=Levi(P) in let x_L=inverse_embed_KGB (x,L) in
+  let p_L=parameter(x_L,lambda(p)-rho(real_form(p))+rho(L),nu(p)) in
+  if not is_final(p_L) then prints("p_L is not final") else
+  if is_weakly_good(p_L,G) then
+  prints(goodness(p_L,G));
+  if p!=theta_induce_irreducible(p_L,G) then prints("Ind(p_L) is not p")
+  fi
+  fi fi;
+  p_L
+
+{. Determine whether p is a (weakly) good Aq(lambda). .}
+set is_good_Aq(Param p)=bool:
+   let p_L=is_min_good_induced_from(p) in
+   is_one_dimensional(p_L)
+
