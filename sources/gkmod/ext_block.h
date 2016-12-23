@@ -336,8 +336,6 @@ WeylWord fixed_conjugate_simple (const context& c, RootNbr& alpha);
 bool same_standard_reps (const param& E, const param& F);
 // whether |E| and |F| give same sign, assuming |same_standard_reps(E,F)|
 bool same_sign (const param& E, const param& F);
-inline int sign_between (const param& E, const param& F)
-  { return same_sign(E,F) ? 1 : -1; }
 
 inline bool is_default (const param& E)
 { return same_sign(E,param(E.ctxt,E.x(),E.lambda_rho())); }
@@ -345,7 +343,7 @@ inline bool is_default (const param& E)
 
 // find out type of extended parameters, and push its neighbours onto |links|
 DescValue star (const param& E, const ext_gen& p,
-		containers::sl_list<std::pair<int,param> >& links);
+		containers::sl_list<param>& links);
 
 bool is_descent (const ext_gen& kappa, const param& E);
 weyl::Generator first_descent_among
