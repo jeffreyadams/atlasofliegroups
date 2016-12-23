@@ -148,7 +148,7 @@ public:
   bool operator==(const self& x) const { return link_loc == x.link_loc; }
   bool operator!=(const self& x) const { return link_loc != x.link_loc; }
 
-  bool at_end () const { return *link_loc==nullptr; }
+  bool at_end () const { return link_loc->get()==nullptr; }
 }; // |struct sl_list_const_iterator| template
 
 
@@ -443,7 +443,7 @@ template<typename T, typename Alloc>
   weak_iterator wbegin() { return weak_iterator(head.get()); }
 
   // instead of |end()| we provide the |at_end| condition
-  static bool at_end (iterator p) { return p.link_loc->get()==nullptr; }
+  static bool at_end (iterator p) { return p.at_end(); }
   static bool at_end (weak_iterator p) { return p.at_end(); }
 
   // for weak pointers getting the end is efficient, so we supply a method
@@ -515,7 +515,7 @@ template<typename T, typename Alloc>
   >::value>::type >
     iterator insert (const_iterator pos, InputIt first, InputIt last)
   {
-    iterator result(*pos.link_loc); // non-const copy of |pos|
+    const iterator result(*pos.link_loc); // non |const_iterator| copy of |pos|
     for( ; first!=last; ++first,++pos)
     { // |insert(pos++,*first);|
     // construct node value
@@ -631,7 +631,7 @@ template<typename T, typename Alloc>
   const_iterator begin () const { return const_iterator(head); }
   const_iterator cbegin () const { return const_iterator(head); }
   // instead of |end()| we provide the |at_end| condition
-  static bool at_end (const_iterator p) { return p.link_loc->get()==nullptr; }
+  static bool at_end (const_iterator p) { return p.at_end(); }
   static bool at_end (weak_const_iterator p) { return p.at_end(); }
 
   // for weak pointers getting the end is efficient, so we supply methods
@@ -733,14 +733,14 @@ template<typename T, typename Alloc>
   void set_empty () { tail=&head; node_count=0; }
 
   class ensure // a helper class that exists for its destructor only
-  { link_type* &tail;
-    link_type* &dst;
+  { link_type* &tail; // reference so that it can be assigned to in destructor
+    const_iterator &p; // reference to pick up external changes during lifetime
   public:
     ensure(link_type*& tail, const_iterator& p) // maybe makes |tail=p.link_loc|
-      : tail(tail),  dst(p.link_loc) {}
+      : tail(tail),  p(p) {}
     ~ensure()
-    { if (dst->get()==nullptr) // if at destruction time |dst| is at end
-	tail = dst; // then make |tail| point to it
+    { if (p.at_end()) // if at destruction time |p| is at end
+	tail = p.link_loc; // then make |tail| point to it
     }
   };
 
@@ -1028,7 +1028,8 @@ template<typename T, typename Alloc>
   >::value>::type >
     iterator insert (const_iterator pos, InputIt first, InputIt last)
   {
-    ensure me(tail,pos); // will adapt |tail| if |at_end(pos)| throughout
+    const iterator result(*pos.link_loc); // non |const_iterator| copy of |pos|
+    ensure me(tail,pos); // will adapt |tail| if |at_end(pos)| holds throughout
     for( ; first!=last; ++first)
     { // |insert(pos++,*first);|, except we don't update |tail|
       node_type* p = allocator_new(node_allocator(),*first);
@@ -1037,6 +1038,7 @@ template<typename T, typename Alloc>
       pos = iterator(p->next); // or simply |++pos|
       ++node_count;
     }
+    return result;
   }
 
   template<typename InputIt>
