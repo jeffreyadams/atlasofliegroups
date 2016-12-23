@@ -710,19 +710,19 @@ set theta_stable_parabolics_with(KGBElt x)=[Parabolic]:
 
 {. List of parameters p_L in the (weakly) good range for G so that p is
   theta-induced from p_L; may be empty, or more than one. .}
-set is_good_range_induced_from(Param p)=[Param]: let q=make_no_Cminus(p) in
-  let x=x(q) in
+set is_good_range_induced_from(Param p)=[Param]:
+  let x=x(p) in
   let tsp=theta_stable_parabolics_with(x) in
-  let G=real_form(q) in
+  let G=real_form(p) in
   let result=[Param]:[] in
-  if is_zero(q) then prints("This is the zero module.") else
-  if not is_final(q) then prints("The parameter is not final.") else
+  if is_zero(p) then prints("This is the zero module.") else
+  if not is_final(p) then prints("The parameter is not final.") else
   for P in tsp do let L=Levi(P) in let x_L=inverse_embed_KGB (x,L) in
-  let p_L=parameter(x_L,lambda(q)-rho(real_form(q))+rho(L),nu(q)) in
+  let p_L=parameter(x_L,lambda(p)-rho(real_form(p))+rho(L),nu(p)) in
   if not is_final(p_L) then prints("p_L is not final") else
   if is_weakly_good(p_L,G) then
   prints(goodness(p_L,G));
-  if q!=theta_induce_irreducible(p_L,G) then prints("Ind(p_L) is not p")
+  if p!=theta_induce_irreducible(p_L,G) then prints("Ind(p_L) is not p")
   else
   result#:=p_L
   fi
