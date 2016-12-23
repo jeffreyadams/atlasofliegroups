@@ -100,8 +100,6 @@ BlockElt twisted (const Block& block,
 
 typedef Polynomial<int> Pol;
 
-typedef bool (*extended_predicate)(DescValue);
-
 class ext_block
 {
   struct elt_info // per block element information
@@ -219,7 +217,6 @@ class ext_block
 private:
   void complete_construction(const BitMap& fixed_points);
   bool check(const param_block& block, bool verbose=false);
-  void flip_edges(extended_predicate match);
 
 }; // |class ext_block|
 
@@ -235,6 +232,7 @@ class context // holds values that remain fixed across extended block
   RatCoweight d_g; // chosen lift of the common square for the square class
   RootDatum integr_datum; // intgrality datum
   SubSystem sub; // embeds |integr_datum| into parent root datum
+  Permutation pi_delta; // permutation of |delta| on roots of full root datum
 
  public:
   context
@@ -252,7 +250,9 @@ class context // holds values that remain fixed across extended block
   const RatCoweight& g() const { return d_g; }
   // the next should match |realForm().g_rho_check()|, but uses stored |d_g|
   RatCoweight g_rho_check() const
-  { return (g()-rho_check(rc().rootDatum())).normalize(); }
+    { return (g()-rho_check(rc().rootDatum())).normalize(); }
+  RootNbr delta_of(RootNbr alpha) const { return pi_delta[alpha]; }
+
 }; // |context|
 
 // detailed parameter data; as defined by Jeff & David
@@ -310,7 +310,7 @@ public:
   void set_lambda_rho (Weight lambda_rho) { d_lambda_rho=lambda_rho; }
   void set_tau (Weight tau) { d_tau=tau; }
   void set_t (Coweight t) { d_t=t; }
-  void flip () { d_flipped=not d_flipped; }
+  void flip (bool whether=true) { d_flipped=(whether!=d_flipped); }
 
   const repr::Rep_context rc() const { return ctxt.rc(); }
   const WeightInvolution& delta () const { return ctxt.delta(); }
@@ -361,8 +361,7 @@ StandardRepr scaled_extended_dominant // result will have its |gamma()| dominant
 // expand parameter into a signed sum of extended nonzero final parameters
 containers::sl_list<std::pair<StandardRepr,bool> > extended_finalise
   (const repr::Rep_context& rc,
-   StandardRepr sr, // by value: internally |make_dominant| is applied to it
-   const WeightInvolution& delta);
+   const StandardRepr& sr, const WeightInvolution& delta);
 
 // check braid relation at |x|; also mark all involved elements in |cluster|
 bool check_braid

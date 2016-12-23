@@ -367,11 +367,11 @@ StandardRepr scaled_extended_dominant // result will have its |gamma()| dominant
   const ext_gens orbits = rootdata::fold_orbits(rd,delta);
 
   Weight lr, tau; Coweight l,t;
-  { param E(ctxt,result); // compute fields as for extended parameter
+  { // class |param| cannot change its |gamma|, so work on separate components
+    param E(ctxt,result); // compute fields as for extended parameter
     lr=E.lambda_rho(); tau=E.tau(); l=E.l(); t=E.t();
   }
   KGBElt x = result.x(); // another variable, for convenience
-  flipped=false; // prepare to record some explicit link flips
 
   const RatCoweight& g=ctxt.g();
   int_Vector r_g_eval (rd.semisimpleRank()); // evaluations at |rho^v-g|
@@ -407,7 +407,7 @@ StandardRepr scaled_extended_dominant // result will have its |gamma()| dominant
 	      rd.simple_reflect(s.s0,tau,-f); // shift |-f| adds extra |alpha*f|
 	      const int df = l.dot(alpha)+r_g_eval[s.s0]; // factor of |alpha_v|
 	      l -= alpha_v*df; // |rd.simple_coreflect(l,s.s0,r_g_eval[s.s0]);|
-	      rd.simple_coreflect(t,s.s0,df);
+	      rd.simple_coreflect(t,s.s0,df); // |df| subs extra |alpha_v*df|
 	      x = kgb.cross(s.s0,x);
 	    }
 	    break;
@@ -422,8 +422,7 @@ StandardRepr scaled_extended_dominant // result will have its |gamma()| dominant
   // now ensure that |E| gets matching |gamma| and |theta| for flipped test
   param E(new_ctxt,kgb.involution(x),lr,tau,l,t);
   result = rc.sr_gamma(x,E.lambda_rho(),new_ctxt.gamma());
-  if (not same_sign(E,param(new_ctxt,result)))
-    flipped = not flipped;
+  flipped = not same_sign(E,param(new_ctxt,result));
   return result;
 } // |scaled_extended_dominant|
 
@@ -435,7 +434,7 @@ StandardRepr scaled_extended_dominant // result will have its |gamma()| dominant
  */
 containers::sl_list<std::pair<StandardRepr,bool> > extended_finalise
   (const repr::Rep_context& rc,
-   StandardRepr sr, const WeightInvolution& delta)
+   const StandardRepr& sr, const WeightInvolution& delta)
 { // in order that |singular_generators| generate the whole singular system:
   assert(is_dominant_ratweight(rc.rootDatum(),sr.gamma()));
   // must assume gamma dominant, DON'T call make_dominant here
@@ -497,33 +496,34 @@ int z (const param& E) // value modulo 4, exponent of imaginary unit $i$
   |lambda_rho|, it turns out that the Right Thing is not to use that quotient,
   but the quotient evaluated at the simple situation. So for these cases we
   should just compute the contribution to the difference of values |z| that
-  would come \emph{from its first term} above only. This function does that:
+  would come \emph{from its first term} above only.
 
-  This function ignores flips that may be recorded in |E| and/or |F|, since in
-  all cases the computed sign will label a link with the parameter in
-  question, so incorporating a flip into the sign would effectively just undo
-  the recorded flip. Ultimately that sign should be integrated into the
-  parameter itself, so that there would be no need to return the value here.
- */
-int z_quot (const param& E, const param& F)
+  This function does that, and possibly flips the second parameter accordingly
+*/
+void z_align (const param& E, param& F)
 { assert(E.t()==F.t()); // we require preparing |t| upstairs to get this
   int d = E.l().dot((E.delta()-1)*E.tau()) - F.l().dot((F.delta()-1)*F.tau());
-  return arithmetic::exp_i(d); // asserts |d| is even, and returns $(-1)^(d/2)$
+  assert(d%2==0);
+  F.flip(d%4!=0);
 }
 
 /*
   In some cases, notably 2i12, one or both of the Cayley transforms may
   involve (in the simple root case) a change |mu| in |lambda_rho| that does
   not necessarily satisfy |t.dot(mu)==0|. In such cases the previous version
-  of |z_quot| is insufficient, and we should include a contribution from the
-  second term. But retrieving |mu| from the parameters |E| and |F| themselves
-  is complicated by the posssible contribution from |Cayley_shift| that should
-  be ignored; however at the place of call the value of |mu| is explicitely
-  available, so we ask here to pass |t.dot(mu)| as third argument |t_mu|.
+  of |z_align| is insufficient, and we should include a contribution from the
+  second term of the formula for |z|. But retrieving |mu| from the parameters
+  |E| and |F| themselves is complicated by the posssible contribution from
+  |Cayley_shift|, which contribution should be ignored; however at the place
+  of call the value of |mu| is explicitely available, so we ask here to pass
+  |t.dot(mu)| as third argument |t_mu|.
  */
+void z_align (const param& E, param& F, int t_mu)
+{ z_align(E,F);
+  F.flip(t_mu%2!=0);
+}
 
-int z_quot (const param& E, const param& F, int t_mu)
-{ return z_quot(E,F)*arithmetic::exp_minus_1(t_mu); }
+
 
 // this implements (comparison using) the formula from Proposition 16 in
 // "Parameters for twisted repressentations" (with $\delta-1 = -(1-\delta)$
@@ -602,6 +602,7 @@ context::context
     , d_g(rc.kgb().base_grading_vector()+rho_check(rc.rootDatum()))
     , integr_datum(integrality_datum(rc.rootDatum(),gamma))
     , sub(SubSystem::integral(rc.rootDatum(),gamma))
+    , pi_delta(rc.rootDatum().rootPermutation(d_delta))
 {}
 
 
@@ -961,7 +962,7 @@ param complex_cross(ext_gen p, const param& E)
   auto& ga_la_num = gamma_lambda.numerator();
   Weight rho_r_shift = rd.twoRho(i_tab.real_roots(theta));
 
-  const RatCoweight g_rho_check = E.ctxt.g() - rho_check(rd);
+  const RatCoweight g_rho_check = E.ctxt.g_rho_check();
   RatCoweight torus_factor =  g_rho_check - E.l();
   auto& tf_num = torus_factor.numerator();
   Coweight dual_rho_im_shift = rd.dual_twoRho(i_tab.imaginary_roots(theta));
@@ -1077,10 +1078,9 @@ bool Cayley_shift_flip
 { const RootDatum& rd = ec.rc().rootDatum();
   const InvolutionTable& i_tab = ec.innerClass().involution_table();
   RootNbrSet S = pos_to_neg(rd,to_simple) & i_tab.real_roots(theta_upstairs);
-  Permutation pi = ec.rc().rootDatum().rootPermutation(ec.delta());
   unsigned count=0; // will count 2-element |delta|-orbits
   for (auto it=S.begin(); it(); ++it)
-    if (pi[*it]!=*it and not rd.sumIsRoot(*it,pi[*it]))
+    if (*it!=ec.delta_of(*it) and not rd.sumIsRoot(*it,ec.delta_of(*it)))
       ++count;
   assert(count%2==0); // since |S| is supposed to be $\delta$-stable
   return count%4!=0;
@@ -1159,11 +1159,10 @@ DescValue star (const param& E,
 
  	  E0.set_l(tf_alpha%4==0 ? F.l()+alpha_v : F.l()); // for cross
 	  assert(not same_standard_reps(E,E0));
-	  int sign  = z_quot(E,F);
-	  int sign0 = sign*z_quot(E0,F);
-
-	  links.push_back(std::make_pair(sign,std::move(F))); // Cayley link
-	  links.push_back(std::make_pair(sign0,std::move(E0))); // cross link
+	  z_align(E,F);
+	  z_align(F,E0);
+	  links.push_back(std::make_pair(1,std::move(F))); // Cayley link
+	  links.push_back(std::make_pair(1,std::move(E0))); // cross link
 	} // end of 1i1 case
 	else
 	{ // imaginary type 2; now we need to distinguish 1i2f and 1i2s
@@ -1185,11 +1184,11 @@ DescValue star (const param& E,
 		   F0.lambda_rho() + alpha, F0.tau(), F0.l(), E.t(),
 		   flipped);
 
-	  int sign0 = z_quot(E,F0);
-	  int sign1 = z_quot(E,F1);
+	  z_align(E,F0);
+	  z_align(E,F1);
 
-	  links.push_back(std::make_pair(sign0,std::move(F0))); // Cayley link
-	  links.push_back(std::make_pair(sign1,std::move(F1))); // Cayley link
+	  links.push_back(std::make_pair(1,std::move(F0))); // Cayley link
+	  links.push_back(std::make_pair(1,std::move(F1))); // Cayley link
 	} // end of type 2 case
       } // end of length 1 imaginary case
 
@@ -1261,10 +1260,11 @@ DescValue star (const param& E,
 		   new_lambda_rho, F0.tau(), E.l() + alpha_v, E0.t(),
 		   flipped);
 
-	  int sign0 = z_quot(E0,F0), sign1 = z_quot(E0,F1);
+	  z_align(E0,F0);
+	  z_align(E0,F1);
 
-	  links.push_back(std::make_pair(sign0,std::move(F0))); // first Cayley
-	  links.push_back(std::make_pair(sign1,std::move(F1))); // second Cayley
+	  links.push_back(std::make_pair(1,std::move(F0))); // first Cayley
+	  links.push_back(std::make_pair(1,std::move(F1))); // second Cayley
 
 	} // end of 1r1 case
 	else // real type 2
@@ -1284,11 +1284,11 @@ DescValue star (const param& E,
 	  param F(E.ctxt,new_tw,
 		  new_lambda_rho, E.tau() + tau_correction, E.l(), E0.t(),
 		  flipped);
-	  int sign0 = z_quot(E0,F);
-	  int sign1 = sign0*z_quot(E1,F);
+	  z_align(E0,F);
+	  z_align(F,E1);
 
-	  links.push_back(std::make_pair(sign0,std::move(F ))); // Cayley link
-	  links.push_back(std::make_pair(sign1,std::move(E1))); // cross link
+	  links.push_back(std::make_pair(1,std::move(F ))); // Cayley link
+	  links.push_back(std::make_pair(1,std::move(E1))); // cross link
 	}
       }
       else // length 1 complex case
@@ -1343,10 +1343,10 @@ DescValue star (const param& E,
 		   flipped);
 
 	  E0.set_l(E.l()+alpha_v+beta_v);
-	  int sign = z_quot(E,F); // no 3rd arg, since |E.lambda_rho| unchanged
-	  int sign0 = sign * z_quot(E0,F);
-	  links.push_back(std::make_pair(sign,std::move(F)));	// Cayley link
-	  links.push_back(std::make_pair(sign0,std::move(E0))); // cross link
+	  z_align(E,F); // no 3rd arg, since |E.lambda_rho| unchanged
+	  z_align(F,E0);
+	  links.push_back(std::make_pair(1,std::move(F)));  // Cayley link
+	  links.push_back(std::make_pair(1,std::move(E0))); // cross link
 	}
 	else if (matreduc::has_solution(th_1,alpha+beta)) // case 2i12
 	{
@@ -1372,13 +1372,13 @@ DescValue star (const param& E,
 		   new_l, E.t(),
 		   flipped);
 
-	  // compute signs before invoking |std::move|
 	  int t_alpha=E.t().dot(alpha);
-	  int sign0=z_quot(E,F0,m*t_alpha), sign1=z_quot(E,F1,mm*t_alpha);
+	  z_align(E,F0,m*t_alpha);
+	  z_align(E,F1,mm*t_alpha);
 
 	  // first Cayley link will be the one that does not need |sigma|
-	  links.push_back(std::make_pair(sign0,std::move(F0))); // first Cayley
-	  links.push_back(std::make_pair(sign1,std::move(F1))); // second Cayley
+	  links.push_back(std::make_pair(1,std::move(F0))); // first Cayley
+	  links.push_back(std::make_pair(1,std::move(F1))); // second Cayley
 	} // end of case 2i12f
 	else
 	{ // type 2i22
@@ -1400,11 +1400,11 @@ DescValue star (const param& E,
 		   flipped);
 	  // get signs before invoking the |std::move| from |F0|, |F1|
 	  int ta = E.t().dot(alpha), tb=E.t().dot(beta);
-	  int sign0=z_quot(E,F0,ta*m)
-	    , sign1=z_quot(E,F1,ta*(1-m)+tb);
+	  z_align(E,F0,ta*m);
+	  z_align(E,F1,ta*(1-m)+tb);
 
-	  links.push_back(std::make_pair(sign0,std::move(F0))); // first Cayley
-	  links.push_back(std::make_pair(sign1,std::move(F1))); // second Cayley
+	  links.push_back(std::make_pair(1,std::move(F0))); // first Cayley
+	  links.push_back(std::make_pair(1,std::move(F1))); // second Cayley
 	} // end type 2i22 case
       }
 
@@ -1460,12 +1460,12 @@ DescValue star (const param& E,
 		   new_lambda_rho,E.tau(), E.l()+alpha_v*(1-m)+beta_v,E1.t(),
 		   flipped);
 
-	  int sign0=z_quot(E0,F0,m*((b_level-a_level)/2));
-	  int sign1=z_quot(E1,F1,m*((a_level-b_level)/2));
+	  z_align(E0,F0,m*((b_level-a_level)/2));
+	  z_align(E1,F1,m*((a_level-b_level)/2));
 
 	  // Cayley links
-	  links.push_back(std::make_pair(sign0,std::move(F0)));
-	  links.push_back(std::make_pair(sign1,std::move(F1)));
+	  links.push_back(std::make_pair(1,std::move(F0)));
+	  links.push_back(std::make_pair(1,std::move(F1)));
 	} // end 2r11 case
 	else if (matreduc::has_solution(theta_1,alpha+beta))
 	{ // type 2r21
@@ -1496,12 +1496,12 @@ DescValue star (const param& E,
 		   new_lambda_rho, E.tau(), E.l()+alpha_v*mm, E1.t(),
 		   flipped);
 
-	  int sign0=z_quot(E0,F0,m *((b_level-a_level)/2));
-	  int sign1=z_quot(E1,F1,mm*((b_level-a_level)/2));
+	  z_align(E0,F0,m *((b_level-a_level)/2));
+	  z_align(E1,F1,mm*((b_level-a_level)/2));
 
 	  // Cayley links
-	  links.push_back(std::make_pair(sign0,std::move(F0)));
-	  links.push_back(std::make_pair(sign1,std::move(F1)));
+	  links.push_back(std::make_pair(1,std::move(F0)));
+	  links.push_back(std::make_pair(1,std::move(F1)));
 
 	} // end of case 2r21f
 	else // case 2r22
@@ -1521,11 +1521,11 @@ DescValue star (const param& E,
 	  param F(E.ctxt, new_tw, new_lambda_rho, E.tau(), E.l(), E0.t(),
 		  flipped);
 
-	  int sign0=z_quot(E0,F); // no 3rd arg, as |E.t().dot(alpha)==0| etc.
-	  int sign1=sign0*z_quot(E1,F); // total sign from |E| to its cross |E1|
+	  z_align(E0,F); // no 3rd arg, as |E.t().dot(alpha)==0| etc.
+	  z_align(F,E1);
 
-	  links.push_back(std::make_pair(sign0,std::move(F ))); // Cayley link
-	  links.push_back(std::make_pair(sign1,std::move(E1))); // cross link
+	  links.push_back(std::make_pair(1,std::move(F ))); // Cayley link
+	  links.push_back(std::make_pair(1,std::move(E1))); // cross link
 	} // end of case 2r22
       }
       else // length 2 complex case
@@ -1654,9 +1654,9 @@ DescValue star (const param& E,
 		E.l() + kappa_v*((tf_alpha+tf_beta)/2), E.t(),
 		flipped);
 
-	int sign = z_quot(E,F); // |lambda_rho| unchanged at simple Cayley
+	z_align(E,F); // |lambda_rho| unchanged at simple Cayley
 
-	links.push_back(std::make_pair(sign,std::move(F))); // Cayley link
+	links.push_back(std::make_pair(1,std::move(F))); // Cayley link
       }
       else if (theta_alpha==rd.rootMinus(n_alpha)) // length 3 real case
       {
@@ -1687,8 +1687,8 @@ DescValue star (const param& E,
 
 	param F(E.ctxt, new_tw,	new_lambda_rho,E.tau(),E.l(),E0.t(), flipped);
 
-	int sign = z_quot(E0,F); // no 3rd arg since |E.t().dot(kappa)==0|
-	links.push_back(std::make_pair(sign,std::move(F))); // Cayley link
+	z_align(E0,F); // no 3rd arg since |E.t().dot(kappa)==0|
+	links.push_back(std::make_pair(1,std::move(F))); // Cayley link
       }
       else // length 3 complex case
       { const bool ascent = rd.is_posroot(theta_alpha);
@@ -1720,8 +1720,8 @@ DescValue star (const param& E,
 
 	    assert(E.t().dot(kappa)==0);
 	    // since it is half of |t*(1+theta)*kappa=l*(delta-1)*kappa==0|
-	    int sign  = z_quot(E,F); // may ignore possible shift by |kappa|
-	    links.push_back(std::make_pair(sign,std::move(F))); // Cayley link
+	    z_align(E,F); // may ignore possible shift by |kappa|
+	    links.push_back(std::make_pair(1,std::move(F))); // Cayley link
 	  }
 	  else // descent, so 3Cr
 	  {
@@ -1734,8 +1734,8 @@ DescValue star (const param& E,
 		    tf_alpha%2==0 ? E.l() : E.l()+kappa_v, E0.t(),
 		    flipped);
 
-	    int sign = z_quot(E0,F); // no 3rd arg since |E.t().dot(kappa)==0|
-	    links.push_back(std::make_pair(sign,std::move(F))); // Cayley link
+	    z_align(E0,F); // no 3rd arg since |E.t().dot(kappa)==0|
+	    links.push_back(std::make_pair(1,std::move(F))); // Cayley link
 	  }
 
 	}
@@ -2176,24 +2176,6 @@ bool ext_block::check(const param_block& block, bool verbose)
   } // |for(n)|
   return true; // report success if we get here
 } // |check|
-
-void ext_block::flip_edges(extended_predicate match)
-{
-  DescValue t;
-  for (weyl::Generator s=0; s<rank(); ++s)
-    for (BlockElt n=0; n<size(); ++n)
-      if (match(t=descent_type(s,n)))
-      { if (is_like_compact(t) or is_like_nonparity(t))
-	  continue;
-	if (has_double_image(t))
-	{ BlockEltPair Cs = Cayleys(s,n);
-	  flip_edge(s,n,Cs.first);
-	  flip_edge(s,n,Cs.second);
-	}
-	else
-	  flip_edge(s,n,some_scent(s,n));
-      }
-}
 
 RankFlags reduce_to(const ext_gens orbits, RankFlags gen_set)
 { RankFlags result;
