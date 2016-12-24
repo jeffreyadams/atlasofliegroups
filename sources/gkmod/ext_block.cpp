@@ -937,7 +937,7 @@ BlockElt twisted
   (for |l|) the same thing with |rho_check_imaginary|. This is done by the
   "correction" terms below.
  */
-param complex_cross(ext_gen p, const param& E)
+param complex_cross(const ext_gen& p, param E) // by-value for |E|, modified
 { const RootDatum& rd = E.rc().rootDatum();
   const RootDatum& id = E.ctxt.id();
   const InvolutionTable& i_tab = E.rc().innerClass().involution_table();
@@ -947,7 +947,6 @@ param complex_cross(ext_gen p, const param& E)
   Weight rho_r_shift = rd.twoRho(i_tab.real_roots(theta));
   Coweight dual_rho_im_shift = rd.dual_twoRho(i_tab.imaginary_roots(theta));
 
-  param F=E; // a copy to operate upon
   // the reflections for |E.lambda_rho()| pivot around $\gamma-\rho$
   const RatWeight gamma_rho = E.ctxt.gamma() - rho(rd);
   int_Vector lambda_shifts (id.semisimpleRank());
@@ -961,28 +960,28 @@ param complex_cross(ext_gen p, const param& E)
 
   for (unsigned i=p.w_kappa.size(); i-->0; )
   { weyl::Generator s=p.w_kappa[i]; // generator for integrality datum
-    tW.twistedConjugate(E.ctxt.subsys().reflection(s),F.tw);
-    id.simple_reflect(s,F.d_lambda_rho,lambda_shifts[s]);
+    tW.twistedConjugate(E.ctxt.subsys().reflection(s),E.tw);
+    id.simple_reflect(s,E.d_lambda_rho,lambda_shifts[s]);
     id.simple_reflect(s,rho_r_shift);
-    id.simple_reflect(s,F.d_tau);
-    id.simple_coreflect(F.d_l,s,l_shifts[s]);
+    id.simple_reflect(s,E.d_tau);
+    id.simple_coreflect(E.d_l,s,l_shifts[s]);
     id.simple_coreflect(dual_rho_im_shift,s);
-    id.simple_coreflect(F.d_t,s);
+    id.simple_coreflect(E.d_t,s);
   }
 
-  rho_r_shift -= rd.twoRho(i_tab.real_roots(i_tab.nr(F.tw)));
+  rho_r_shift -= rd.twoRho(i_tab.real_roots(i_tab.nr(E.tw)));
   rho_r_shift/=2; // now it is just a sum of (real) roots
-  F.d_lambda_rho -= rho_r_shift;
+  E.d_lambda_rho -= rho_r_shift;
 
   assert(E.ctxt.delta()*rho_r_shift==rho_r_shift); // diff of $\delta$-fixed
 
-  dual_rho_im_shift -= rd.dual_twoRho(i_tab.imaginary_roots(i_tab.nr(F.tw)));
+  dual_rho_im_shift -= rd.dual_twoRho(i_tab.imaginary_roots(i_tab.nr(E.tw)));
   dual_rho_im_shift/=2; // now it is just a sum of (imaginary) coroots
-  F.d_l -= dual_rho_im_shift;
+  E.d_l -= dual_rho_im_shift;
 
   assert(E.ctxt.delta().right_prod(dual_rho_im_shift)==dual_rho_im_shift);
 
-  return F;
+  return E;
 } // |complex_cross|
 
 
@@ -1141,7 +1140,7 @@ DescValue star (const param& E,	const ext_gen& p,
 		  E.l()+alpha_v*(tf_alpha/2), E.t(),
 		  flipped);
 
- 	  E0.set_l(tf_alpha%4==0 ? F.l()+alpha_v : F.l()); // for cross
+ 	  E0.d_l = tf_alpha%4==0 ? F.l()+alpha_v : F.l(); // for cross
 	  assert(not same_standard_reps(E,E0));
 	  z_align(E,F);
 	  z_align(F,E0);
@@ -1233,7 +1232,7 @@ DescValue star (const param& E,	const ext_gen& p,
 	    return one_real_pair_switched;
 	  result = one_real_pair_fixed; // what remains is case 1r1f
 
-	  E0.set_t(E.t() - alpha_v*(t_alpha/2));
+	  E0.d_t -= alpha_v*(t_alpha/2);
 	  assert(same_sign(E,E0)); // since only |t| changes
 
 	  param F0(E.ctxt,new_tw,
@@ -1256,11 +1255,11 @@ DescValue star (const param& E,	const ext_gen& p,
 	    matreduc::find_solution(i_tab.matrix(new_tw).transposed()+1,
 				    alpha_v);
 
-	  E0.set_t(E.t() - diff*t_alpha);
+	  E0.d_t -= diff*t_alpha;
 	  assert(same_sign(E,E0)); // since only |t| changes
 
 	  param E1 = E0; // for cross neighbour; share updated value of |t|
-	  E1.set_lambda_rho(E.lambda_rho()+alpha);
+	  E1.d_lambda_rho += alpha;
 	  assert(not same_standard_reps(E0,E1));
 
 	  param F(E.ctxt,new_tw,
@@ -1324,7 +1323,7 @@ DescValue star (const param& E,	const ext_gen& p,
 		   E.l()+alpha_v*(tf_alpha/2)+beta_v*(tf_beta/2), E.t(),
 		   flipped);
 
-	  E0.set_l(E.l()+alpha_v+beta_v);
+	  E0.d_l += alpha_v+beta_v;
 	  z_align(E,F); // no 3rd arg, since |E.lambda_rho| unchanged
 	  z_align(F,E0);
 	  links.push_back(std::move(F));  // Cayley link
@@ -1425,11 +1424,11 @@ DescValue star (const param& E,	const ext_gen& p,
 	  int m =  static_cast<unsigned int>(ta)%2;
 
 	  // set two values for |t|; actually the same value in case |m==0|
-	  E0.set_t(E.t() - alpha_v*((ta+m)/2) - beta_v*((tb-m)/2));
+	  E0.d_t -= alpha_v*((ta+m)/2) + beta_v*((tb-m)/2);
 	  assert(same_sign(E,E0)); // since only |t| changes
 	  assert(E0.t().dot(alpha)==-m and E0.t().dot(beta)==m);
 
-	  E1.set_t(E.t() - alpha_v*((ta-m)/2) - beta_v*((tb+m)/2));
+	  E1.d_t -= alpha_v*((ta-m)/2) + beta_v*((tb+m)/2);
 	  assert(same_sign(E,E1)); // since only |t| changes
 	  assert(E1.t().dot(alpha)==m and E1.t().dot(beta)==-m);
 
@@ -1461,11 +1460,11 @@ DescValue star (const param& E,	const ext_gen& p,
 				    alpha_v*(ta+mm)+beta_v*(tb-mm));
 
 	  // E0 is parameter adapted to Cayley transform that does not need |s|
-	  E0.set_t(E.t() - alpha_v*((ta+m)/2) - beta_v*((tb-m)/2));
+	  E0.d_t -= alpha_v*((ta+m)/2) + beta_v*((tb-m)/2);
 	  assert(same_sign(E,E0)); // since only |t| changes
 	  assert(E0.t().dot(alpha)==-m and E0.t().dot(beta)==m);
 
-	  E1.set_t(E.t() - s);
+	  E1.d_t -= s;
 	  assert(same_sign(E,E1)); // since only |t| changes
 	  assert(E1.t().dot(alpha)==-mm and E1.t().dot(beta)==mm);
 
@@ -1488,12 +1487,12 @@ DescValue star (const param& E,	const ext_gen& p,
 	    matreduc::find_solution(i_tab.matrix(new_tw).transposed()+1,
 				    alpha_v*ta+beta_v*tb);
 
-	  E0.set_t(E.t() - s); // parameter adapted to Cayley transform |F|
+	  E0.d_t -= s; // parameter adapted to Cayley transform |F|
 	  assert(same_sign(E,E0)); // since only |t| changes
 	  assert(E.t().dot(alpha)==0 and E.t().dot(beta)==0);
 
-	  E1.set_lambda_rho(E.lambda_rho()+alpha+beta);
-	  E1.set_t(E0.t()); // cross action, keeps adaption of |t| to |F| below
+	  E1.d_lambda_rho += alpha+beta;
+	  E1.d_t = E0.d_t; // cross action, keeps adaption of |t| to |F| below
 	  assert(not same_standard_reps(E0,E1));
 
 	  param F(E.ctxt, new_tw, new_lambda_rho, E.tau(), E.l(), E0.t(),
@@ -1658,7 +1657,7 @@ DescValue star (const param& E,	const ext_gen& p,
 	const Weight new_lambda_rho = // make level for |kappa| zero
 	  E.lambda_rho()-rho_r_shift + kappa*((a_level+b_level)/2);
 
-	E0.set_t(E.t()-alpha_v*kappa.dot(E.t())); // makes |E.t().dot(kappa)==0|
+	E0.d_t -= alpha_v*kappa.dot(E.t()); // makes |E.t().dot(kappa)==0|
 	assert(same_sign(E,E0)); // since only |t| changes
 
 	param F(E.ctxt, new_tw,	new_lambda_rho,E.tau(),E.l(),E0.t(), flipped);
@@ -1700,9 +1699,8 @@ DescValue star (const param& E,	const ext_gen& p,
 	    links.push_back(std::move(F)); // Cayley link
 	  }
 	  else // descent, so 3Cr
-	  {
-	    E0.set_t // make |E.t().dot(kappa)==0| using |kappa_v|
-	      (E.t() - kappa_v*(kappa.dot(E.t())/2));
+	  { // make |E.t().dot(kappa)==0| using |kappa_v|
+	    E0.d_t -= kappa_v*(kappa.dot(E0.t())/2);
 	    assert(same_sign(E,E0)); // since only |t| changes
 
 	    param F(E.ctxt, new_tw,

@@ -303,10 +303,6 @@ public:
   const Coweight& t () const { return d_t; }
   bool is_flipped() const { return d_flipped; }
 
-  void set_l (Coweight l) { d_l=std::move(l); }
-  void set_lambda_rho (Weight lambda_rho){ d_lambda_rho=std::move(lambda_rho); }
-  void set_tau (Weight tau) { d_tau=std::move(tau); }
-  void set_t (Coweight t) { d_t=std::move(t); }
   void flip (bool whether=true) { d_flipped=(whether!=d_flipped); }
 
   const repr::Rep_context rc() const { return ctxt.rc(); }
