@@ -217,10 +217,10 @@ void validate(const param& E)
   const auto& theta = i_tab.matrix(E.tw);
   const auto& delta = E.ctxt.delta();
   assert(delta*theta==theta*delta);
-  assert((delta-1)*E.lambda_rho()==(1-theta)*E.tau());
-  assert((delta-1).right_prod(E.l())==(theta+1).right_prod(E.t()));
-  assert(((E.ctxt.g()-E.l()-rho_check(rd))*(1-theta)).numerator().isZero());
-  assert(((theta+1)*(E.ctxt.gamma()-E.lambda_rho()-rho(rd)))
+  assert((delta-1)*E.lambda_rho==(1-theta)*E.tau);
+  assert((delta-1).right_prod(E.l)==(theta+1).right_prod(E.t));
+  assert(((E.ctxt.g()-E.l-rho_check(rd))*(1-theta)).numerator().isZero());
+  assert(((theta+1)*(E.ctxt.gamma()-E.lambda_rho-rho(rd)))
 	 .numerator().isZero());
   ndebug_use(delta); ndebug_use(theta); ndebug_use(rd);
 }
@@ -228,12 +228,12 @@ void validate(const param& E)
 param::param (const context& ec, const StandardRepr& sr, bool flipped)
   : ctxt(ec)
   , tw(ec.rc().kgb().involution(sr.x()))
-  , d_l(ell(ec.realGroup().kgb(),sr.x()))
-  , d_lambda_rho(ec.rc().lambda_rho(sr))
-  , d_tau(matreduc::find_solution(1-theta(),(delta()-1)*lambda_rho()))
-  , d_t(matreduc::find_solution
-	(theta().transposed()+1,(delta()-1).right_prod(l())))
-  , d_flipped(flipped)
+  , l(ell(ec.realGroup().kgb(),sr.x()))
+  , lambda_rho(ec.rc().lambda_rho(sr))
+  , tau(matreduc::find_solution(1-theta(),(delta()-1)*lambda_rho))
+  , t(matreduc::find_solution
+	(theta().transposed()+1,(delta()-1).right_prod(l)))
+  , flipped(flipped)
 {
   validate(*this);
 }
@@ -242,12 +242,12 @@ param::param (const context& ec,
 	      KGBElt x, const Weight& lambda_rho, bool flipped)
   : ctxt(ec)
   , tw(ec.realGroup().kgb().involution(x))
-  , d_l(ell(ec.realGroup().kgb(),x))
-  , d_lambda_rho(lambda_rho)
-  , d_tau(matreduc::find_solution(1-theta(),(delta()-1)*lambda_rho))
-  , d_t(matreduc::find_solution
-	(theta().transposed()+1,(delta()-1).right_prod(l())))
-  , d_flipped(flipped)
+  , l(ell(ec.realGroup().kgb(),x))
+  , lambda_rho(lambda_rho)
+  , tau(matreduc::find_solution(1-theta(),(delta()-1)*lambda_rho))
+  , t(matreduc::find_solution
+	(theta().transposed()+1,(delta()-1).right_prod(l)))
+  , flipped(flipped)
 {
   validate(*this);
 }
@@ -256,11 +256,11 @@ param::param (const context& ec, const TwistedInvolution& tw,
 	      Weight lambda_rho, Weight tau, Coweight l, Coweight t,
 	      bool flipped)
   : ctxt(ec), tw(tw)
-  , d_l(std::move(l))
-  , d_lambda_rho(std::move(lambda_rho))
-  , d_tau(std::move(tau))
-  , d_t(std::move(t))
-  , d_flipped(flipped)
+  , l(std::move(l))
+  , lambda_rho(std::move(lambda_rho))
+  , tau(std::move(tau))
+  , t(std::move(t))
+  , flipped(flipped)
 {
   validate(*this);
 }
@@ -308,12 +308,12 @@ bool same_standard_reps (const param& E, const param& F)
       return false;
   } // otherwise there might still be a match, so fall through
   return E.theta()==F.theta()
-    and in_R_image(E.theta()+1,E.l()-F.l())
-    and in_L_image(E.lambda_rho()-F.lambda_rho(),E.theta()-1);
+    and in_R_image(E.theta()+1,E.l-F.l)
+    and in_L_image(E.lambda_rho-F.lambda_rho,E.theta()-1);
 }
 
 KGBElt param::x() const
-{ TitsElt a(ctxt.innerClass().titsGroup(),TorusPart(l()),tw);
+{ TitsElt a(ctxt.innerClass().titsGroup(),TorusPart(l),tw);
   return rc().kgb().lookup(a);
 }
 
@@ -352,7 +352,7 @@ StandardRepr scaled_extended_dominant // result will have its |gamma()| dominant
   Weight lr, tau; Coweight l,t;
   { // class |param| cannot change its |gamma|, so work on separate components
     param E(ctxt,result); // compute fields as for extended parameter
-    lr=E.lambda_rho(); tau=E.tau(); l=E.l(); t=E.t();
+    lr=E.lambda_rho; tau=E.tau; l=E.l; t=E.t;
   }
   KGBElt x = result.x(); // another variable, for convenience
 
@@ -404,7 +404,7 @@ StandardRepr scaled_extended_dominant // result will have its |gamma()| dominant
 		   RatWeight(gamma_numer,result.gamma().denominator()));
   // now ensure that |E| gets matching |gamma| and |theta| for flipped test
   param E(new_ctxt,kgb.involution(x),lr,tau,l,t);
-  result = rc.sr_gamma(x,E.lambda_rho(),new_ctxt.gamma());
+  result = rc.sr_gamma(x,E.lambda_rho,new_ctxt.gamma());
   flipped = not same_sign(E,param(new_ctxt,result));
   return result;
 } // |scaled_extended_dominant|
@@ -459,14 +459,14 @@ containers::sl_list<std::pair<StandardRepr,bool> > extended_finalise
 #if 0 // unused code, but the formula is referred to in the comment below
 int z (const param& E) // value modulo 4, exponent of imaginary unit $i$
 { return
-    (E.l().dot((E.delta()-1)*E.tau()) + 2*E.t().dot(E.lambda_rho())) % 4;
+    (E.l.dot((E.delta()-1)*E.tau) + 2*E.t.dot(E.lambda_rho)) % 4;
 }
 #endif
 
 /*
   The quotient of |z| values across a Cayley transform will only be used when
   value of |t| is the same upstairs as downstairs. Then in the quotient of |z|
-  values the second term contributes |t.dot(E.lambda_rho()-F.lambda_rho())|.
+  values the second term contributes |t.dot(E.lambda_rho-F.lambda_rho)|.
   That difference is often zero for the Cayley transform by a \emph{simple}
   root |alpha| or (length 1) changes by |alpha| with |t.cdot(alpha)==0|; in
   those cases the second term in |z| contributes nothing. For Cayley by a
@@ -480,8 +480,8 @@ int z (const param& E) // value modulo 4, exponent of imaginary unit $i$
   This function does that, and possibly flips the second parameter accordingly
 */
 void z_align (const param& E, param& F)
-{ assert(E.t()==F.t()); // we require preparing |t| upstairs to get this
-  int d = E.l().dot((E.delta()-1)*E.tau()) - F.l().dot((F.delta()-1)*F.tau());
+{ assert(E.t==F.t); // we require preparing |t| upstairs to get this
+  int d = E.l.dot((E.delta()-1)*E.tau) - F.l.dot((F.delta()-1)*F.tau);
   assert(d%2==0);
   F.flip(d%4!=0);
 }
@@ -511,13 +511,13 @@ bool same_sign (const param& E, const param& F)
 {
   assert(same_standard_reps(E,F));
   const WeightInvolution& delta = E.delta();
-  Weight kappa1=E.tau(), kappa2=F.tau();
+  Weight kappa1=E.tau, kappa2=F.tau;
   kappa1 -= delta*kappa1;
   kappa2 -= delta*kappa2;
-  int i_exp = E.l().dot(kappa1) - F.l().dot(kappa2);
+  int i_exp = E.l.dot(kappa1) - F.l.dot(kappa2);
   assert(i_exp%2==0);
   int n1_exp =
-    (F.l()-E.l()).dot(E.tau()) + F.t().dot(F.lambda_rho()-E.lambda_rho());
+    (F.l-E.l).dot(E.tau) + F.t.dot(F.lambda_rho-E.lambda_rho);
   return ((i_exp/2+n1_exp)%2==0)!=(E.is_flipped()!=F.is_flipped());
 }
 
@@ -947,12 +947,12 @@ param complex_cross(const ext_gen& p, param E) // by-value for |E|, modified
   Weight rho_r_shift = rd.twoRho(i_tab.real_roots(theta));
   Coweight dual_rho_im_shift = rd.dual_twoRho(i_tab.imaginary_roots(theta));
 
-  // the reflections for |E.lambda_rho()| pivot around $\gamma-\rho$
+  // the reflections for |E.lambda_rho| pivot around $\gamma-\rho$
   const RatWeight gamma_rho = E.ctxt.gamma() - rho(rd);
   int_Vector lambda_shifts (id.semisimpleRank());
   for (unsigned i=0; i<lambda_shifts.size(); ++i)
     lambda_shifts[i] = -gamma_rho.dot(id.simpleCoroot(i));
-  // the reflections for |E.l()| pivot around $g-\check\rho$
+  // the reflections for |E.l| pivot around $g-\check\rho$
   const RatCoweight g_rho_check = E.ctxt.g_rho_check();
   int_Vector l_shifts (id.semisimpleRank());
   for (unsigned i=0; i<lambda_shifts.size(); ++i)
@@ -961,26 +961,27 @@ param complex_cross(const ext_gen& p, param E) // by-value for |E|, modified
   for (unsigned i=p.w_kappa.size(); i-->0; )
   { weyl::Generator s=p.w_kappa[i]; // generator for integrality datum
     tW.twistedConjugate(E.ctxt.subsys().reflection(s),E.tw);
-    id.simple_reflect(s,E.d_lambda_rho,lambda_shifts[s]);
+    id.simple_reflect(s,E.lambda_rho,lambda_shifts[s]);
     id.simple_reflect(s,rho_r_shift);
-    id.simple_reflect(s,E.d_tau);
-    id.simple_coreflect(E.d_l,s,l_shifts[s]);
+    id.simple_reflect(s,E.tau);
+    id.simple_coreflect(E.l,s,l_shifts[s]);
     id.simple_coreflect(dual_rho_im_shift,s);
-    id.simple_coreflect(E.d_t,s);
+    id.simple_coreflect(E.t,s);
   }
 
   rho_r_shift -= rd.twoRho(i_tab.real_roots(i_tab.nr(E.tw)));
   rho_r_shift/=2; // now it is just a sum of (real) roots
-  E.d_lambda_rho -= rho_r_shift;
+  E.lambda_rho -= rho_r_shift;
 
   assert(E.ctxt.delta()*rho_r_shift==rho_r_shift); // diff of $\delta$-fixed
 
   dual_rho_im_shift -= rd.dual_twoRho(i_tab.imaginary_roots(i_tab.nr(E.tw)));
   dual_rho_im_shift/=2; // now it is just a sum of (imaginary) coroots
-  E.d_l -= dual_rho_im_shift;
+  E.l -= dual_rho_im_shift;
 
   assert(E.ctxt.delta().right_prod(dual_rho_im_shift)==dual_rho_im_shift);
 
+  validate(E);
   return E;
 } // |complex_cross|
 
@@ -1036,14 +1037,14 @@ WeylWord fixed_conjugate_simple (const context& ctxt, RootNbr& alpha)
 /*
   for real Cayley transforms, one will subtract $\rho_r$ from |lambda_rho|
   before projecting it parallel to |alpha| so as to make |alpha_v| vanish on
-  |gamma-lambda_rho-rho|. Here we compute from |E.lambda_rho()|, corrected by
+  |gamma-lambda_rho-rho|. Here we compute from |E.lambda_rho|, corrected by
   that |shift|, the multiple of $\alpha/2$ that such a projection would add
   to |lambda_rho| (or equivalently, subtract from |gamma-lambda_rho-rho|).
 */
 int level_a (const param& E, const Weight& shift, RootNbr alpha)
 {
   const RootDatum& rd = E.rc().rootDatum();
-  return (E.ctxt.gamma() - E.lambda_rho() + shift).dot(rd.coroot(alpha))
+  return (E.ctxt.gamma() - E.lambda_rho + shift).dot(rd.coroot(alpha))
     - rd.colevel(alpha); // final term $<\alpha^\vee,\rho>$
 }
 
@@ -1095,7 +1096,7 @@ DescValue star (const param& E,	const ext_gen& p,
 
       if (theta_alpha==n_alpha) // length 1 imaginary case
       { // first find out if the simply-integral root $\alpha$ is compact
-	int tf_alpha = (E.ctxt.g() - E.l()).dot(alpha)-rd.level(n_alpha);
+	int tf_alpha = (E.ctxt.g() - E.l).dot(alpha)-rd.level(n_alpha);
 	if (tf_alpha%2!=0) // then $\alpha$ is compact
 	  return one_imaginary_compact; // quit here, do not collect \$200
 
@@ -1103,7 +1104,7 @@ DescValue star (const param& E,	const ext_gen& p,
 	const TwistedInvolution new_tw= tW.prod(subs.reflection(p.s0),E.tw);
 	const WeightInvolution th_1 = i_tab.matrix(new_tw)-1; // upstairs
 
-	int tau_coef = alpha_v.dot(E.tau()); // take $\tau_\alpha$ of table 2
+	int tau_coef = alpha_v.dot(E.tau); // take $\tau_\alpha$ of table 2
 
 	// try to make $\alpha$ simple by conjugating by $W^\delta$
 	RootNbr alpha_simple = n_alpha;
@@ -1113,7 +1114,7 @@ DescValue star (const param& E,	const ext_gen& p,
 	const bool flipped = Cayley_shift_flip(E.ctxt,theta_p,ww);
 
 	assert(E.ctxt.delta()*rho_r_shift==rho_r_shift); // $ww\in W^\delta$
-	assert(E.t().dot(alpha)==0); // follows from $\delta*\alpha=\alpha$
+	assert(E.t.dot(alpha)==0); // follows from $\delta*\alpha=\alpha$
 
 	Weight first; // maybe a root with |(1-delta)*first==alpha|
 	if (rd.is_simple_root(alpha_simple))
@@ -1136,11 +1137,11 @@ DescValue star (const param& E,	const ext_gen& p,
 	      matreduc::find_solution(th_1,alpha); // solutions are equivalent
 
 	  param F(E.ctxt,new_tw,
-		  E.lambda_rho() + first + rho_r_shift, E0.tau()+diff*tau_coef,
-		  E.l()+alpha_v*(tf_alpha/2), E.t(),
+		  E.lambda_rho + first + rho_r_shift, E0.tau+diff*tau_coef,
+		  E.l+alpha_v*(tf_alpha/2), E.t,
 		  flipped);
 
- 	  E0.d_l = tf_alpha%4==0 ? F.l()+alpha_v : F.l(); // for cross
+ 	  E0.l = tf_alpha%4==0 ? F.l+alpha_v : F.l; // for cross
 	  assert(not same_standard_reps(E,E0));
 	  z_align(E,F);
 	  z_align(F,E0);
@@ -1153,18 +1154,18 @@ DescValue star (const param& E,	const ext_gen& p,
 	  if (tau_coef%2!=0) // was set up so that this means: switched
 	  { // no spurious $\tau'$ since $\<\alpha^\vee,(X^*)^\theta>=2\Z$:
 	    assert(not matreduc::has_solution
-		   (th_1, delta_1*(E.lambda_rho()+rho_r_shift)));
+		   (th_1, delta_1*(E.lambda_rho+rho_r_shift)));
 	    return one_imaginary_pair_switched; // case 1i2s
 	  }
 	  result = one_imaginary_pair_fixed;  // what remains is case 1i2f
 
 	  param F0(E.ctxt,new_tw,
-		   E.lambda_rho() + first + rho_r_shift,
-		   E.tau() - alpha*(tau_coef/2) - first,
-		   E.l() + alpha_v*(tf_alpha/2), E.t(),
+		   E.lambda_rho + first + rho_r_shift,
+		   E.tau - alpha*(tau_coef/2) - first,
+		   E.l + alpha_v*(tf_alpha/2), E.t,
 		   flipped);
 	  param F1(E.ctxt,new_tw,
-		   F0.lambda_rho() + alpha, F0.tau(), F0.l(), E.t(),
+		   F0.lambda_rho + alpha, F0.tau, F0.l, E.t,
 		   flipped);
 
 	  z_align(E,F0);
@@ -1221,25 +1222,25 @@ DescValue star (const param& E,	const ext_gen& p,
 	}
 
 	const Weight new_lambda_rho =
-	  E.lambda_rho() - rho_r_shift + alpha*(level/2);
+	  E.lambda_rho - rho_r_shift + alpha*(level/2);
 	assert((E.ctxt.gamma()-new_lambda_rho).dot(alpha_v)
 	       ==rd.colevel(n_alpha)); // check that |level_a| did its work
 
-	const int t_alpha = E.t().dot(alpha);
+	const int t_alpha = E.t.dot(alpha);
 	if (type1)
 	{ // now distinguish 1r1f and 1r1s
 	  if (t_alpha%2!=0) // no effect of |alpha_simple|, unlike 1i2 cases
 	    return one_real_pair_switched;
 	  result = one_real_pair_fixed; // what remains is case 1r1f
 
-	  E0.d_t -= alpha_v*(t_alpha/2);
+	  E0.t -= alpha_v*(t_alpha/2);
 	  assert(same_sign(E,E0)); // since only |t| changes
 
 	  param F0(E.ctxt,new_tw,
-		   new_lambda_rho, E.tau() + tau_correction, E.l(), E0.t(),
+		   new_lambda_rho, E.tau + tau_correction, E.l, E0.t,
 		   flipped);
 	  param F1(E.ctxt,new_tw,
-		   new_lambda_rho, F0.tau(), E.l() + alpha_v, E0.t(),
+		   new_lambda_rho, F0.tau, E.l + alpha_v, E0.t,
 		   flipped);
 
 	  z_align(E0,F0);
@@ -1255,15 +1256,15 @@ DescValue star (const param& E,	const ext_gen& p,
 	    matreduc::find_solution(i_tab.matrix(new_tw).transposed()+1,
 				    alpha_v);
 
-	  E0.d_t -= diff*t_alpha;
+	  E0.t -= diff*t_alpha;
 	  assert(same_sign(E,E0)); // since only |t| changes
 
 	  param E1 = E0; // for cross neighbour; share updated value of |t|
-	  E1.d_lambda_rho += alpha;
+	  E1.lambda_rho += alpha;
 	  assert(not same_standard_reps(E0,E1));
 
 	  param F(E.ctxt,new_tw,
-		  new_lambda_rho, E.tau() + tau_correction, E.l(), E0.t(),
+		  new_lambda_rho, E.tau + tau_correction, E.l, E0.t,
 		  flipped);
 
 	  z_align(E0,F);
@@ -1292,8 +1293,8 @@ DescValue star (const param& E,	const ext_gen& p,
 
       if (theta_alpha==n_alpha) // length 2 imaginary case
       { // first find out if the simply-integral root $\alpha$ is compact
-	int tf_alpha = (E.ctxt.g() - E.l()).dot(alpha)-rd.level(n_alpha);
-	int tf_beta = (E.ctxt.g() - E.l()).dot(beta)-rd.level(n_alpha);
+	int tf_alpha = (E.ctxt.g() - E.l).dot(alpha)-rd.level(n_alpha);
+	int tf_beta = (E.ctxt.g() - E.l).dot(beta)-rd.level(n_alpha);
 	assert((tf_alpha-tf_beta)%2==0); // same compactness
 	if (tf_alpha%2!=0) // then $\alpha$ and $\beta$ are compact
 	  return two_imaginary_compact;
@@ -1311,7 +1312,7 @@ DescValue star (const param& E,	const ext_gen& p,
 	assert(E.ctxt.delta()*rho_r_shift==rho_r_shift); // $ww\in W^\delta$
 	assert(rd.is_simple_root(alpha_simple)); // cannot fail for length 2
 
-	int at = alpha_v.dot(E.tau()); int bt = beta_v.dot(E.tau());
+	int at = alpha_v.dot(E.tau); int bt = beta_v.dot(E.tau);
 	const WeightInvolution th_1 = i_tab.matrix(new_tw)-1;
 
 	if (matreduc::has_solution(th_1,alpha)) // then type 2i11
@@ -1319,11 +1320,11 @@ DescValue star (const param& E,	const ext_gen& p,
 	  const Weight sigma = matreduc::find_solution(th_1,alpha*at+beta*bt);
 
 	  param F (E.ctxt, new_tw,
-		   E.lambda_rho() + rho_r_shift,  E.tau() + sigma,
-		   E.l()+alpha_v*(tf_alpha/2)+beta_v*(tf_beta/2), E.t(),
+		   E.lambda_rho + rho_r_shift,  E.tau + sigma,
+		   E.l+alpha_v*(tf_alpha/2)+beta_v*(tf_beta/2), E.t,
 		   flipped);
 
-	  E0.d_l += alpha_v+beta_v;
+	  E0.l += alpha_v+beta_v;
 	  z_align(E,F); // no 3rd arg, since |E.lambda_rho| unchanged
 	  z_align(F,E0);
 	  links.push_back(std::move(F));  // Cayley link
@@ -1341,20 +1342,20 @@ DescValue star (const param& E,	const ext_gen& p,
 	  const Weight sigma =
 	    matreduc::find_solution(th_1,alpha*(at+mm)+beta*(bt-mm));
 
-	  const Weight new_tau0 = E.tau() - alpha*((at+m)/2) - beta*((bt-m)/2);
-          const Coweight new_l = E.l()+alpha_v*(tf_alpha/2)+beta_v*(tf_beta/2);
+	  const Weight new_tau0 = E.tau - alpha*((at+m)/2) - beta*((bt-m)/2);
+          const Coweight new_l = E.l+alpha_v*(tf_alpha/2)+beta_v*(tf_beta/2);
 
 	  // first Cayley link |F0| will be the one that does not need |sigma|
 	  param F0(E.ctxt, new_tw,
-		   E.lambda_rho() + rho_r_shift + alpha*m, new_tau0,
-		   new_l, E.t(),
+		   E.lambda_rho + rho_r_shift + alpha*m, new_tau0,
+		   new_l, E.t,
 		   flipped);
 	  param F1(E.ctxt, new_tw,
-		   E.lambda_rho() + rho_r_shift + alpha*mm, E.tau() + sigma,
-		   new_l, E.t(),
+		   E.lambda_rho + rho_r_shift + alpha*mm, E.tau + sigma,
+		   new_l, E.t,
 		   flipped);
 
-	  int t_alpha=E.t().dot(alpha);
+	  int t_alpha=E.t.dot(alpha);
 	  z_align(E,F0,m*t_alpha);
 	  z_align(E,F1,mm*t_alpha);
 	  links.push_back(std::move(F0)); // first Cayley
@@ -1369,17 +1370,17 @@ DescValue star (const param& E,	const ext_gen& p,
 	  int m = static_cast<unsigned int>(at)%2; // safe modular reduction
 
 	  param F0(E.ctxt, new_tw,
-		   E.lambda_rho() + rho_r_shift + alpha*m,
-		   E.tau() - alpha*((at+m)/2) - beta*((bt-m)/2),
-		   E.l()+alpha_v*(tf_alpha/2)+beta_v*(tf_beta/2), E.t(),
+		   E.lambda_rho + rho_r_shift + alpha*m,
+		   E.tau - alpha*((at+m)/2) - beta*((bt-m)/2),
+		   E.l+alpha_v*(tf_alpha/2)+beta_v*(tf_beta/2), E.t,
 		   flipped);
 	  param F1(E.ctxt, new_tw,
-		   E.lambda_rho() + rho_r_shift + alpha*(1-m) + beta,
-		   E.tau() - alpha*((at-m)/2) - beta*((bt+m)/2),
-		   F0.l(),E.t(),
+		   E.lambda_rho + rho_r_shift + alpha*(1-m) + beta,
+		   E.tau - alpha*((at-m)/2) - beta*((bt+m)/2),
+		   F0.l,E.t,
 		   flipped);
 
-	  int ta = E.t().dot(alpha), tb=E.t().dot(beta);
+	  int ta = E.t.dot(alpha), tb=E.t.dot(beta);
 	  z_align(E,F0,ta*m);
 	  z_align(E,F1,ta*(1-m)+tb);
 	  links.push_back(std::move(F0)); // first Cayley
@@ -1409,10 +1410,10 @@ DescValue star (const param& E,	const ext_gen& p,
 	const TwistedInvolution new_tw = // downstairs
 	  tW.prod(subs.reflection(p.s1),tW.prod(subs.reflection(p.s0),E.tw));
 
-	const Weight new_lambda_rho = E.lambda_rho() - rho_r_shift
+	const Weight new_lambda_rho = E.lambda_rho - rho_r_shift
 	  + alpha*(a_level/2) + beta*(b_level/2);
 
-	int ta = E.t().dot(alpha); int tb = E.t().dot(beta);
+	int ta = E.t.dot(alpha); int tb = E.t.dot(beta);
 	param E1=E; // another modifiable copy, like |E0|
 
 	if (matreduc::has_solution(theta_1,alpha))
@@ -1424,19 +1425,19 @@ DescValue star (const param& E,	const ext_gen& p,
 	  int m =  static_cast<unsigned int>(ta)%2;
 
 	  // set two values for |t|; actually the same value in case |m==0|
-	  E0.d_t -= alpha_v*((ta+m)/2) + beta_v*((tb-m)/2);
+	  E0.t -= alpha_v*((ta+m)/2) + beta_v*((tb-m)/2);
 	  assert(same_sign(E,E0)); // since only |t| changes
-	  assert(E0.t().dot(alpha)==-m and E0.t().dot(beta)==m);
+	  assert(E0.t.dot(alpha)==-m and E0.t.dot(beta)==m);
 
-	  E1.d_t -= alpha_v*((ta-m)/2) + beta_v*((tb+m)/2);
+	  E1.t -= alpha_v*((ta-m)/2) + beta_v*((tb+m)/2);
 	  assert(same_sign(E,E1)); // since only |t| changes
-	  assert(E1.t().dot(alpha)==m and E1.t().dot(beta)==-m);
+	  assert(E1.t.dot(alpha)==m and E1.t.dot(beta)==-m);
 
 	  param F0(E.ctxt, new_tw,
-		   new_lambda_rho,E.tau(), E.l()+alpha_v*m, E0.t(),
+		   new_lambda_rho,E.tau, E.l+alpha_v*m, E0.t,
 		   flipped);
 	  param F1(E.ctxt, new_tw,
-		   new_lambda_rho,E.tau(), E.l()+alpha_v*(1-m)+beta_v,E1.t(),
+		   new_lambda_rho,E.tau, E.l+alpha_v*(1-m)+beta_v,E1.t,
 		   flipped);
 
 	  z_align(E0,F0,m*((b_level-a_level)/2));
@@ -1460,20 +1461,20 @@ DescValue star (const param& E,	const ext_gen& p,
 				    alpha_v*(ta+mm)+beta_v*(tb-mm));
 
 	  // E0 is parameter adapted to Cayley transform that does not need |s|
-	  E0.d_t -= alpha_v*((ta+m)/2) + beta_v*((tb-m)/2);
+	  E0.t -= alpha_v*((ta+m)/2) + beta_v*((tb-m)/2);
 	  assert(same_sign(E,E0)); // since only |t| changes
-	  assert(E0.t().dot(alpha)==-m and E0.t().dot(beta)==m);
+	  assert(E0.t.dot(alpha)==-m and E0.t.dot(beta)==m);
 
-	  E1.d_t -= s;
+	  E1.t -= s;
 	  assert(same_sign(E,E1)); // since only |t| changes
-	  assert(E1.t().dot(alpha)==-mm and E1.t().dot(beta)==mm);
+	  assert(E1.t.dot(alpha)==-mm and E1.t.dot(beta)==mm);
 
 	  // Cayley links
 	  param F0(E.ctxt, new_tw,
-		   new_lambda_rho, E.tau(), E.l()+alpha_v*m, E0.t(),
+		   new_lambda_rho, E.tau, E.l+alpha_v*m, E0.t,
 		   flipped);
 	  param F1(E.ctxt, new_tw,
-		   new_lambda_rho, E.tau(), E.l()+alpha_v*mm, E1.t(),
+		   new_lambda_rho, E.tau, E.l+alpha_v*mm, E1.t,
 		   flipped);
 
 	  z_align(E0,F0,m *((b_level-a_level)/2));
@@ -1487,18 +1488,18 @@ DescValue star (const param& E,	const ext_gen& p,
 	    matreduc::find_solution(i_tab.matrix(new_tw).transposed()+1,
 				    alpha_v*ta+beta_v*tb);
 
-	  E0.d_t -= s; // parameter adapted to Cayley transform |F|
+	  E0.t -= s; // parameter adapted to Cayley transform |F|
 	  assert(same_sign(E,E0)); // since only |t| changes
-	  assert(E.t().dot(alpha)==0 and E.t().dot(beta)==0);
+	  assert(E.t.dot(alpha)==0 and E.t.dot(beta)==0);
 
-	  E1.d_lambda_rho += alpha+beta;
-	  E1.d_t = E0.d_t; // cross action, keeps adaption of |t| to |F| below
+	  E1.lambda_rho += alpha+beta;
+	  E1.t = E0.t; // cross action, keeps adaption of |t| to |F| below
 	  assert(not same_standard_reps(E0,E1));
 
-	  param F(E.ctxt, new_tw, new_lambda_rho, E.tau(), E.l(), E0.t(),
+	  param F(E.ctxt, new_tw, new_lambda_rho, E.tau, E.l, E0.t,
 		  flipped);
 
-	  z_align(E0,F); // no 3rd arg, as |E.t().dot(alpha)==0| etc.
+	  z_align(E0,F); // no 3rd arg, as |E.t.dot(alpha)==0| etc.
 	  z_align(F,E1);
 	  links.push_back(std::move(F )); // Cayley link
 	  links.push_back(std::move(E1)); // cross link
@@ -1529,23 +1530,23 @@ DescValue star (const param& E,	const ext_gen& p,
 	  // downstairs cross by |ww| only has imaginary and complex steps, so
 	  // $\alpha_v.(\gamma-\lambda_\rho)$ is unchanged across |ww|
 	  const int f = // number of times $\alpha$ is added to $\lambda_\rho$
-	    (E.ctxt.gamma() - E.lambda_rho()).dot(alpha_v)- rd.colevel(n_alpha);
+	    (E.ctxt.gamma() - E.lambda_rho).dot(alpha_v)- rd.colevel(n_alpha);
 
-	  const Weight new_lambda_rho = E.lambda_rho() + alpha*f + rho_r_shift;
+	  const Weight new_lambda_rho = E.lambda_rho + alpha*f + rho_r_shift;
 	  // both $\gamma-\lambda$ and $\tau$ get $f*alpha$ subtracted by
 	  // $\alpha$-reflection; adapt $\tau$ for vanishing $1-\delta$ image
-	  const Weight new_tau = rd.reflection(n_alpha,E.tau()) + alpha*f;
+	  const Weight new_tau = rd.reflection(n_alpha,E.tau) + alpha*f;
 
 	  // but |dual_v| needs correction by |ell_shift|
 	  const int dual_f =
-	    (E.ctxt.g() - E.l()).dot(alpha) - rd.level(n_alpha);
+	    (E.ctxt.g() - E.l).dot(alpha) - rd.level(n_alpha);
 
-	  const Coweight new_l = E.l() + alpha_v*dual_f;
+	  const Coweight new_l = E.l + alpha_v*dual_f;
           const Coweight new_t =
-	    rd.coreflection(E.t(),n_alpha) - alpha_v*dual_f;
+	    rd.coreflection(E.t,n_alpha) - alpha_v*dual_f;
 	  param F (E.ctxt, new_tw, new_lambda_rho, new_tau, new_l, new_t);
 
-	  int ab_tau = (alpha_v+beta_v).dot(E.tau());
+	  int ab_tau = (alpha_v+beta_v).dot(E.tau);
 	  assert (ab_tau%2==0);
 	  F.flip((ab_tau*dual_f)%4!=0);
 	  links.push_back(std::move(F));  // "Cayley" link
@@ -1567,21 +1568,21 @@ DescValue star (const param& E,	const ext_gen& p,
 	  const int f = level_a(E,rho_r_shift,n_alpha);
 
 	  const Weight new_lambda_rho = // \emph{reflect} parallel to alpha
-	    E.lambda_rho() - rho_r_shift + alpha*f;
-	  const Weight new_tau = rd.reflection(n_alpha,E.tau()) - alpha*f;
+	    E.lambda_rho - rho_r_shift + alpha*f;
+	  const Weight new_tau = rd.reflection(n_alpha,E.tau) - alpha*f;
 
 	  const int dual_f =
-	    (E.ctxt.g() - E.l()).dot(alpha) - rd.level(n_alpha);
-	  const Coweight new_l = E.l() + alpha_v*dual_f;
+	    (E.ctxt.g() - E.l).dot(alpha) - rd.level(n_alpha);
+	  const Coweight new_l = E.l + alpha_v*dual_f;
           const Coweight new_t =
-	    rd.coreflection(E.t(),n_alpha) + alpha_v*dual_f;
+	    rd.coreflection(E.t,n_alpha) + alpha_v*dual_f;
 
 	  param F (E.ctxt, new_tw, new_lambda_rho, new_tau, new_l, new_t,
 		   flipped);
 
-	  int t_ab = E.t().dot(beta-alpha);
+	  int t_ab = E.t.dot(beta-alpha);
 	  assert(t_ab%2==0);
-	  F.flip((t_ab * (f+alpha_v.dot(E.tau())))%4!=0);
+	  F.flip((t_ab * (f+alpha_v.dot(E.tau)))%4!=0);
 	  links.push_back(std::move(F));  // "Cayley" link
 	}
       }
@@ -1606,8 +1607,8 @@ DescValue star (const param& E,	const ext_gen& p,
 
       if (theta_alpha==n_alpha) // length 3 imaginary case
       { // first find out if the simply-integral root $\alpha$ is compact
-	int tf_alpha = (E.ctxt.g() - E.l()).dot(alpha)-rd.level(n_alpha);
-	int tf_beta = (E.ctxt.g() - E.l()).dot(beta)-rd.level(n_alpha);
+	int tf_alpha = (E.ctxt.g() - E.l).dot(alpha)-rd.level(n_alpha);
+	int tf_beta = (E.ctxt.g() - E.l).dot(beta)-rd.level(n_alpha);
 	assert((tf_alpha-tf_beta)%2==0); // same compactness
 	if (tf_alpha%2!=0) // then $\alpha$ and $\beta$ are compact
 	  return three_imaginary_compact;
@@ -1625,9 +1626,9 @@ DescValue star (const param& E,	const ext_gen& p,
 	assert(rd.is_simple_root(alpha_simple)); // cannot fail for length 3
 
 	param F(E.ctxt, new_tw,
-		E.lambda_rho() + rho_r_shift,
-		E.tau() - alpha*kappa_v.dot(E.tau()),
-		E.l() + kappa_v*((tf_alpha+tf_beta)/2), E.t(),
+		E.lambda_rho + rho_r_shift,
+		E.tau - alpha*kappa_v.dot(E.tau),
+		E.l + kappa_v*((tf_alpha+tf_beta)/2), E.t,
 		flipped);
 
 	z_align(E,F); // |lambda_rho| unchanged at simple Cayley
@@ -1655,14 +1656,14 @@ DescValue star (const param& E,	const ext_gen& p,
 	assert(b_level%2==0); // since |a_level| and |b_level| have same parity
 
 	const Weight new_lambda_rho = // make level for |kappa| zero
-	  E.lambda_rho()-rho_r_shift + kappa*((a_level+b_level)/2);
+	  E.lambda_rho-rho_r_shift + kappa*((a_level+b_level)/2);
 
-	E0.d_t -= alpha_v*kappa.dot(E.t()); // makes |E.t().dot(kappa)==0|
+	E0.t -= alpha_v*kappa.dot(E.t); // makes |E.t.dot(kappa)==0|
 	assert(same_sign(E,E0)); // since only |t| changes
 
-	param F(E.ctxt, new_tw,	new_lambda_rho,E.tau(),E.l(),E0.t(), flipped);
+	param F(E.ctxt, new_tw,	new_lambda_rho,E.tau,E.l,E0.t, flipped);
 
-	z_align(E0,F); // no 3rd arg since |E.t().dot(kappa)==0|
+	z_align(E0,F); // no 3rd arg since |E.t.dot(kappa)==0|
 	links.push_back(std::move(F)); // Cayley link
       }
       else // length 3 complex case
@@ -1681,34 +1682,34 @@ DescValue star (const param& E,	const ext_gen& p,
 	  const bool flipped = Cayley_shift_flip(E.ctxt,theta_upstairs,ww);
 	  assert((delta_1*rho_r_shift).isZero()); // since $ww\in W^\delta$
 
-	  int tf_alpha = (E.ctxt.g() - E.l()).dot(alpha) - rd.level(n_alpha);
-	  int dtf_alpha = (E.ctxt.gamma() - E.lambda_rho()).dot(alpha_v)
+	  int tf_alpha = (E.ctxt.g() - E.l).dot(alpha) - rd.level(n_alpha);
+	  int dtf_alpha = (E.ctxt.gamma() - E.lambda_rho).dot(alpha_v)
 	    - rd.colevel(n_alpha);
-	  Weight new_lambda_rho = E.lambda_rho() + rho_r_shift; // for now
+	  Weight new_lambda_rho = E.lambda_rho + rho_r_shift; // for now
 
 	  if (ascent) // 3Ci
 	  { param F(E.ctxt,new_tw,
 		    dtf_alpha%2==0 ? new_lambda_rho : new_lambda_rho + kappa,
-		    E.tau() - kappa*(kappa_v.dot(E.tau())/2),
-		    E.l() + kappa_v*tf_alpha, E.t(),
+		    E.tau - kappa*(kappa_v.dot(E.tau)/2),
+		    E.l + kappa_v*tf_alpha, E.t,
 		    flipped);
 
-	    assert(E.t().dot(kappa)==0);
+	    assert(E.t.dot(kappa)==0);
 	    // since it is half of |t*(1+theta)*kappa=l*(delta-1)*kappa==0|
 	    z_align(E,F); // may ignore possible shift by |kappa|
 	    links.push_back(std::move(F)); // Cayley link
 	  }
 	  else // descent, so 3Cr
-	  { // make |E.t().dot(kappa)==0| using |kappa_v|
-	    E0.d_t -= kappa_v*(kappa.dot(E0.t())/2);
+	  { // make |E.t.dot(kappa)==0| using |kappa_v|
+	    E0.t -= kappa_v*(kappa.dot(E0.t)/2);
 	    assert(same_sign(E,E0)); // since only |t| changes
 
 	    param F(E.ctxt, new_tw,
-		    new_lambda_rho + kappa*dtf_alpha, E.tau(),
-		    tf_alpha%2==0 ? E.l() : E.l()+kappa_v, E0.t(),
+		    new_lambda_rho + kappa*dtf_alpha, E.tau,
+		    tf_alpha%2==0 ? E.l : E.l+kappa_v, E0.t,
 		    flipped);
 
-	    z_align(E0,F); // no 3rd arg since |E.t().dot(kappa)==0|
+	    z_align(E0,F); // no 3rd arg since |E.t.dot(kappa)==0|
 	    links.push_back(std::move(F)); // Cayley link
 	  }
 
@@ -1746,7 +1747,7 @@ bool is_descent (const ext_gen& kappa, const param& E)
 
   // we don't need to inspect |kappa.type|, it does not affect descent status
   if (theta_alpha==n_alpha) // imaginary case, return whether compact
-    return ( ((E.ctxt.g()-E.l()).dot(alpha)-rd.level(n_alpha)) %2!=0 );
+    return ( ((E.ctxt.g()-E.l).dot(alpha)-rd.level(n_alpha)) %2!=0 );
   if (theta_alpha==rd.rootMinus(n_alpha)) // real, return whether parity
   {
     RootNbr alpha_simple = n_alpha; // copy to be made simple
