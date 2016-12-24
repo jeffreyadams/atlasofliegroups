@@ -582,7 +582,12 @@ context::context
     , integr_datum(integrality_datum(rc.rootDatum(),gamma))
     , sub(SubSystem::integral(rc.rootDatum(),gamma))
     , pi_delta(rc.rootDatum().rootPermutation(d_delta))
-{}
+    , twist()
+{
+  const RootDatum& rd = rc.rootDatum();
+  for (weyl::Generator s=0; s<rd.semisimpleRank(); ++s)
+    twist[s] = rd.simpleRootIndex(delta_of(rd.simpleRootNbr(s)));
+}
 
 
 // old version of |extended_type| below, this one uses |Hermitian_dual| method
@@ -988,45 +993,25 @@ param complex_cross(const ext_gen& p, param E) // by-value for |E|, modified
 
 WeylWord fixed_conjugate_simple (const context& ctxt, RootNbr& alpha)
 { const RootDatum& rd = ctxt.innerClass().rootDatum();
-  std::vector<weyl::Generator> delta (rd.semisimpleRank());
-  std::vector<bool> is_length_3 (delta.size());
 
-  // tabulate action of |delta| on simple roots
-  // this could and should be precomputed in |ctxt|
-  for (weyl::Generator s=0; s<delta.size(); ++s)
-  { weyl::Generator t =
-      rd.simpleRootIndex(rd.root_index(ctxt.delta()*rd.simpleRoot(s)));
-    delta[s]=t;
-    if (s==t)
-      is_length_3[s]=false;
-    else
-    { delta[t]=s;
-      is_length_3[s] = rd.cartan(s,t)<0;
-    }
-  }
-
-  RootNbr delta_alpha = rd.root_index(ctxt.delta()*rd.root(alpha));
   WeylWord result;
   while (not rd.is_simple_root(alpha)) // also |break| halfway is possible
   {
-    weyl::Generator s =
-      rd.descent_set(alpha).andnot(rd.ascent_set(delta_alpha)).firstBit();
+    weyl::Generator s = rd.descent_set(alpha)
+      .andnot(rd.ascent_set(ctxt.delta_of(alpha))).firstBit();
     assert(s<rd.semisimpleRank()); // exists for positive non-simple roots
-    if (is_length_3[s] and //"sum of swapped non-commuting roots" case:
-	rd.simple_reflected_root(s,alpha)==rd.simpleRootNbr(delta[s]))
-      break;
+    weyl::Generator t = ctxt.twisted(s);
+    if (rd.simple_reflected_root(s,alpha)==rd.simpleRootNbr(t))
+      break; // |alpha| is sum of (non-commuting) simple roots |s|,|twisted(s)|
     result.push_back(s);
     rd.simple_reflect_root(s,alpha);
-    rd.simple_reflect_root(delta[s],delta_alpha);
-    if (delta[s]!=s) // second generator for cases of length 2,3
-    { result.push_back(delta[s]);
-      rd.simple_reflect_root(delta[s],alpha);
-      rd.simple_reflect_root(s,delta_alpha);
-      if (is_length_3[s])
-      { // final generator for cases of length 3
+    if (s!=t) // second generator for cases of length 2,3
+    { result.push_back(t);
+      rd.simple_reflect_root(t,alpha);
+      if (rd.sumIsRoot(s,t)) // this should never occur, but symmetrise anyway
+      { // final reflection by |s| for case where $sts=tst$
 	result.push_back(s);
 	rd.simple_reflect_root(s,alpha);
-	rd.simple_reflect_root(delta[s],delta_alpha);
       }
     }
   }
