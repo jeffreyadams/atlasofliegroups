@@ -231,6 +231,7 @@ class context // holds values that remain fixed across extended block
   RootDatum integr_datum; // intgrality datum
   SubSystem sub; // embeds |integr_datum| into parent root datum
   Permutation pi_delta; // permutation of |delta| on roots of full root datum
+  weyl::Twist twist;
 
  public:
   context
@@ -250,6 +251,7 @@ class context // holds values that remain fixed across extended block
   RatCoweight g_rho_check() const
     { return (g()-rho_check(rc().rootDatum())).normalize(); }
   RootNbr delta_of(RootNbr alpha) const { return pi_delta[alpha]; }
+  weyl::Generator twisted(weyl::Generator s) const { return twist[s]; }
 
 }; // |context|
 
