@@ -152,8 +152,6 @@ class ext_block
 // manipulators
   void flip_edge(weyl::Generator s, BlockElt x, BlockElt y);
 
-  unsigned int list_edges();  // returns number of toggled pairs
-
 // accessors
 
   size_t rank() const { return orbits.size(); }
@@ -256,12 +254,11 @@ class context // holds values that remain fixed across extended block
 }; // |context|
 
 // detailed parameter data; as defined by Jeff & David
-struct param // prefer |struct| with |const| members for ease of access
+struct param // allow public member access; methods ensure no invariants anyway
 {
   const context& ctxt;
-  const TwistedInvolution tw; // implicitly defines $\theta$
+  TwistedInvolution tw; // implicitly defines $\theta$
 
-private:
   Coweight d_l; // with |tw| gives a |GlobalTitsElement|; lifts its |t|
   Weight d_lambda_rho; // lift of that value in a |StandardRepr|
   Weight d_tau; // a solution to $(1-\theta)*\tau=(\delta-1)\lambda_\rho$
@@ -306,10 +303,10 @@ public:
   const Coweight& t () const { return d_t; }
   bool is_flipped() const { return d_flipped; }
 
-  void set_l (Coweight l) { d_l=l; }
-  void set_lambda_rho (Weight lambda_rho) { d_lambda_rho=lambda_rho; }
-  void set_tau (Weight tau) { d_tau=tau; }
-  void set_t (Coweight t) { d_t=t; }
+  void set_l (Coweight l) { d_l=std::move(l); }
+  void set_lambda_rho (Weight lambda_rho){ d_lambda_rho=std::move(lambda_rho); }
+  void set_tau (Weight tau) { d_tau=std::move(tau); }
+  void set_t (Coweight t) { d_t=std::move(t); }
   void flip (bool whether=true) { d_flipped=(whether!=d_flipped); }
 
   const repr::Rep_context rc() const { return ctxt.rc(); }

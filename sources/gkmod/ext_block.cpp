@@ -11,7 +11,6 @@
 
 #include <cassert>
 #include <vector>
-#include <iostream> // |std::cout| used in methods like |ext_block::list_edges|
 
 #include "innerclass.h"
 #include "weyl.h"
@@ -204,24 +203,6 @@ BlockElt ext_block::element(BlockElt zz) const
   return min;
 }
 
-unsigned int ext_block::list_edges()
-{
-  std::set<BlockEltPair>::iterator it;
-  std::cout << "flipped edges:" << std::endl;
-  unsigned int count=0;
-  for (BlockElt x=0; x<info.size(); ++x)
-    for (unsigned i=0; i<2; ++i) // two groups of links
-      for (auto it=info[x].flips[i].begin(); it(); ++it)
-      {
-	auto &l = data[*it][x].links;
-	std::cout << z(x) << "->" << z(i==0 ? l.first : l.second)
-		  << ", s=" << *it+1 << std::endl;
-	++count;
-      }
-  std::cout << std::endl;
-  return count;
-}
-
 // compute |bgv-(bgv+t_bits)*(1+theta)/2 == (bgv-t_bits-(bgv+t_bits)*theta)/2|
 Coweight ell (const KGB& kgb, KGBElt x)
 { auto diff= (kgb.base_grading_vector()-kgb.torus_factor(x)).normalize();
@@ -360,6 +341,8 @@ StandardRepr scaled_extended_dominant // result will have its |gamma()| dominant
 { const RootDatum& rd=rc.rootDatum(); const KGB& kgb = rc.kgb();
   assert(is_dominant_ratweight(rd,sr.gamma())); // dominant
   assert(((delta-1)*sr.gamma().numerator()).isZero()); // $\delta$-fixed
+
+  // First approximation to result is scaled input, will later be overwritten
   StandardRepr result = rc.sr(sr.x(),rc.lambda_rho(sr),sr.gamma()*factor);
   Weight gamma_numer(result.gamma().numerator().begin(),
 		     result.gamma().numerator().end());
@@ -443,7 +426,7 @@ containers::sl_list<std::pair<StandardRepr,bool> > extended_finalise
   const RankFlags singular_orbits =
     reduce_to(orbits,singular_generators(ctxt.id(),sr.gamma()));
 
-  containers::sl_list<param> to_do(1,param(ctxt,sr));
+  containers::sl_list<param> to_do { param(ctxt,sr) };
   containers::sl_list<std::pair<StandardRepr,bool> > result;
 
   do
@@ -532,7 +515,7 @@ bool same_sign (const param& E, const param& F)
   kappa1 -= delta*kappa1;
   kappa2 -= delta*kappa2;
   int i_exp = E.l().dot(kappa1) - F.l().dot(kappa2);
-  assert (i_exp%2==0);
+  assert(i_exp%2==0);
   int n1_exp =
     (F.l()-E.l()).dot(E.tau()) + F.t().dot(F.lambda_rho()-E.lambda_rho());
   return ((i_exp/2+n1_exp)%2==0)!=(E.is_flipped()!=F.is_flipped());
@@ -939,61 +922,67 @@ BlockElt twisted
 /*
   An auxiliary routine to compute extended parameters across complex links.
   The situation is complicated by the fact that the cross action is by a
-  generator of the folded integral system, so already to compute the cross
-  action at the level of involutions involves "unfolding" the generator to a
-  |length<=3| word in the integral generators, and then translating those
-  integrally-simple reflections into a word on the simple generators. As a
-  consequence many simple reflections for the full root datum can be involved,
-  and it is not certain that all of them will be complex.
+  generator of the folded integral system, so we need to exapand it first into
+  a product of |length<=3| integral generators, and then have those generators
+  act on the components of |E|. For the purpose of changing |E.tw| we further
+  develop those generators into reflection words for the full root datum, but
+  the reflection action on the othe components can be done more directly.
+
+  However, though the integral generators are complex, they action of those
+  reflection words neeed not be purely complex, which implies that the effect
+  on the |lambda_rho| and |l| components are not purely reflection. The
+  difference with respect to pure reflection action can be computed comparing
+  |rho_r| values (half sums of positive real roots in the full system) with
+  the reflected image of that value taken at the starting point, respectively
+  (for |l|) the same thing with |rho_check_imaginary|. This is done by the
+  "correction" terms below.
  */
 param complex_cross(ext_gen p, const param& E)
 { const RootDatum& rd = E.rc().rootDatum();
+  const RootDatum& id = E.ctxt.id();
   const InvolutionTable& i_tab = E.rc().innerClass().involution_table();
   auto &tW = E.rc().twistedWeylGroup(); // caution: |p| refers to integr. datum
 
-  TwistedInvolution tw=E.tw;
-  InvolutionNbr theta = i_tab.nr(tw);
-  const RatWeight gamma_rho = E.ctxt.gamma() - rho(rd);
-  RatWeight gamma_lambda =  gamma_rho - E.lambda_rho();
-  auto& ga_la_num = gamma_lambda.numerator();
+  InvolutionNbr theta = i_tab.nr(E.tw);
   Weight rho_r_shift = rd.twoRho(i_tab.real_roots(theta));
-
-  const RatCoweight g_rho_check = E.ctxt.g_rho_check();
-  RatCoweight torus_factor =  g_rho_check - E.l();
-  auto& tf_num = torus_factor.numerator();
   Coweight dual_rho_im_shift = rd.dual_twoRho(i_tab.imaginary_roots(theta));
 
-  Weight tau=E.tau();
-  Coweight t=E.t();
-  const RootDatum& id = E.ctxt.id();
+  param F=E; // a copy to operate upon
+  // the reflections for |E.lambda_rho()| pivot around $\gamma-\rho$
+  const RatWeight gamma_rho = E.ctxt.gamma() - rho(rd);
+  int_Vector lambda_shifts (id.semisimpleRank());
+  for (unsigned i=0; i<lambda_shifts.size(); ++i)
+    lambda_shifts[i] = -gamma_rho.dot(id.simpleCoroot(i));
+  // the reflections for |E.l()| pivot around $g-\check\rho$
+  const RatCoweight g_rho_check = E.ctxt.g_rho_check();
+  int_Vector l_shifts (id.semisimpleRank());
+  for (unsigned i=0; i<lambda_shifts.size(); ++i)
+    l_shifts[i] = -g_rho_check.dot(id.simpleRoot(i));
+
   for (unsigned i=p.w_kappa.size(); i-->0; )
   { weyl::Generator s=p.w_kappa[i]; // generator for integrality datum
-    tW.twistedConjugate(E.ctxt.subsys().reflection(s),tw);
-    id.simple_reflect(s,ga_la_num);
+    tW.twistedConjugate(E.ctxt.subsys().reflection(s),F.tw);
+    id.simple_reflect(s,F.d_lambda_rho,lambda_shifts[s]);
     id.simple_reflect(s,rho_r_shift);
-    id.simple_reflect(s,tau);
-    id.simple_coreflect(tf_num,s);
-    id.simple_coreflect(t,s);
+    id.simple_reflect(s,F.d_tau);
+    id.simple_coreflect(F.d_l,s,l_shifts[s]);
     id.simple_coreflect(dual_rho_im_shift,s);
+    id.simple_coreflect(F.d_t,s);
   }
-  const RatWeight lr_ratvec = (gamma_rho - gamma_lambda).normalize();
-  assert(lr_ratvec.denominator()==1);
-  Weight lambda_rho(lr_ratvec.numerator().begin(),
-		    lr_ratvec.numerator().end()); // convert to |Weight|
-  rho_r_shift -= rd.twoRho(i_tab.real_roots(i_tab.nr(tw)));
+
+  rho_r_shift -= rd.twoRho(i_tab.real_roots(i_tab.nr(F.tw)));
   rho_r_shift/=2; // now it is just a sum of (real) roots
-  Weight tau_corr = ((E.ctxt.delta()-1)*rho_r_shift)/2; // hope it divides
+  F.d_lambda_rho -= rho_r_shift;
 
-  const RatWeight l_ratvec = (g_rho_check - torus_factor).normalize();
-  assert(l_ratvec.denominator()==1);
-  Coweight l(l_ratvec.numerator().begin(), l_ratvec.numerator().end());
-  dual_rho_im_shift -= rd.dual_twoRho(i_tab.imaginary_roots(i_tab.nr(tw)));
+  assert(E.ctxt.delta()*rho_r_shift==rho_r_shift); // diff of $\delta$-fixed
+
+  dual_rho_im_shift -= rd.dual_twoRho(i_tab.imaginary_roots(i_tab.nr(F.tw)));
   dual_rho_im_shift/=2; // now it is just a sum of (imaginary) coroots
-  Coweight t_corr = ((E.ctxt.delta()-1).right_prod(dual_rho_im_shift))/2;
+  F.d_l -= dual_rho_im_shift;
 
-  return param(E.ctxt, tw,
-	       lambda_rho-rho_r_shift, tau+tau_corr,
-	       l-dual_rho_im_shift, t+t_corr);
+  assert(E.ctxt.delta().right_prod(dual_rho_im_shift)==dual_rho_im_shift);
+
+  return F;
 } // |complex_cross|
 
 
