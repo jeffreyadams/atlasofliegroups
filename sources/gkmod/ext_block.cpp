@@ -339,29 +339,33 @@ StandardRepr scaled_extended_dominant // result will have its |gamma()| dominant
  bool& flipped // records whether and extended flip was recorded
  )
 { const RootDatum& rd=rc.rootDatum(); const KGB& kgb = rc.kgb();
+  const ext_gens orbits = rootdata::fold_orbits(rd,delta);
   assert(is_dominant_ratweight(rd,sr.gamma())); // dominant
   assert(((delta-1)*sr.gamma().numerator()).isZero()); // $\delta$-fixed
 
-  // First approximation to result is scaled input, will later be overwritten
+  // First approximation to result is scaled input; will later be overwritten
   StandardRepr result = rc.sr(sr.x(),rc.lambda_rho(sr),sr.gamma()*factor);
+
+  // it will be convenent to have a working copy of the numerator of |gamma|
   Weight gamma_numer(result.gamma().numerator().begin(),
 		     result.gamma().numerator().end());
-  context ctxt(rc,delta,result.gamma());
-  const ext_gens orbits = rootdata::fold_orbits(rd,delta);
 
+  // class |param| cannot change its |gamma|, so work on separate components
   Weight lr, tau; Coweight l,t;
-  { // class |param| cannot change its |gamma|, so work on separate components
-    param E(ctxt,result); // compute fields as for extended parameter
-    lr=E.lambda_rho; tau=E.tau; l=E.l; t=E.t;
+  { context ctxt(rc,delta,result.gamma()); // scaffolding for construction
+    param E(ctxt,result); // default extend |result| to an extended parameter
+    lr=E.lambda_rho; tau=E.tau; l=E.l; t=E.t; // and copy fields to variables
   }
   KGBElt x = result.x(); // another variable, for convenience
 
-  const RatCoweight& g_r=rc.realGroup().g_rho_check();
   int_Vector r_g_eval (rd.semisimpleRank()); // evaluations at |-gr|
-  for (unsigned i=0; i<r_g_eval.size(); ++i)
-    r_g_eval[i] = -g_r.dot(rd.simpleRoot(i));
+  { const RatCoweight& g_r=rc.realGroup().g_rho_check();
+    for (unsigned i=0; i<r_g_eval.size(); ++i)
+      r_g_eval[i] = -g_r.dot(rd.simpleRoot(i));
+  }
+  // since |gamma| reflects along, our action with be affine about $-\rho$
+  const int_Vector ones(rd.semisimpleRank(),1);
 
-  const int_Vector ones(rd.semisimpleRank(),1); // for action about $-\rho$
   { unsigned i; // index into |orbits|
     do
       for (i=0; i<orbits.size(); ++i)
@@ -399,14 +403,18 @@ StandardRepr scaled_extended_dominant // result will have its |gamma()| dominant
     while(i<orbits.size()); // continue until above |for| runs to completion
   } // end of transformation of extended parameter components
 
-  // since |gamma| may have changed, we need to buid a new |context|
-  context new_ctxt(rc,delta,
-		   RatWeight(gamma_numer,result.gamma().denominator()));
-  // now ensure that |E| gets matching |gamma| and |theta| for flipped test
-  param E(new_ctxt,kgb.involution(x),lr,tau,l,t);
-  result = rc.sr_gamma(x,E.lambda_rho,new_ctxt.gamma());
-  flipped = not same_sign(E,param(new_ctxt,result));
+  // since |gamma| may have changed, we only now build our |context|
+  context ctxt(rc,delta, RatWeight(gamma_numer,result.gamma().denominator()));
+  // now ensure that |E| gets matching |gamma| and |theta| (for flipped test)
+  param E(ctxt,kgb.involution(x),lr,tau,l,t);
+
+  // finally extract |StarndarRepr| from |E|, overwriting |result|
+  result = rc.sr_gamma(x,E.lambda_rho,ctxt.gamma());
+
+  // but the whole point of this function is to record the relative flip too!
+  flipped = not same_sign(E,param(ctxt,result)); // compare |E| to default ext.
   return result;
+
 } // |scaled_extended_dominant|
 
 /*
