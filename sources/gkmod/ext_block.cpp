@@ -219,7 +219,7 @@ void validate(const param& E)
   assert(delta*theta==theta*delta);
   assert((delta-1)*E.lambda_rho==(1-theta)*E.tau);
   assert((delta-1).right_prod(E.l)==(theta+1).right_prod(E.t));
-  assert(((E.ctxt.g()-E.l-rho_check(rd))*(1-theta)).numerator().isZero());
+  assert(((E.ctxt.g_rho_check()-E.l)*(1-theta)).numerator().isZero());
   assert(((theta+1)*(E.ctxt.gamma()-E.lambda_rho-rho(rd)))
 	 .numerator().isZero());
   ndebug_use(delta); ndebug_use(theta); ndebug_use(rd);
@@ -303,7 +303,7 @@ bool same_standard_reps (const param& E, const param& F)
       throw std::runtime_error
 	("Comparing extended parameters from different inner classes");
     if (E.delta()!=F.delta()
-	or E.ctxt.g()!=F.ctxt.g()
+	or E.ctxt.g_rho_check()!=F.ctxt.g_rho_check()
 	or E.ctxt.gamma()!=F.ctxt.gamma())
       return false;
   } // otherwise there might still be a match, so fall through
@@ -356,10 +356,10 @@ StandardRepr scaled_extended_dominant // result will have its |gamma()| dominant
   }
   KGBElt x = result.x(); // another variable, for convenience
 
-  const RatCoweight& g=ctxt.g();
-  int_Vector r_g_eval (rd.semisimpleRank()); // evaluations at |rho^v-g|
+  const RatCoweight& g_r=rc.realGroup().g_rho_check();
+  int_Vector r_g_eval (rd.semisimpleRank()); // evaluations at |-gr|
   for (unsigned i=0; i<r_g_eval.size(); ++i)
-    r_g_eval[i] = 1 - g.dot(rd.simpleRoot(i));
+    r_g_eval[i] = -g_r.dot(rd.simpleRoot(i));
 
   const int_Vector ones(rd.semisimpleRank(),1); // for action about $-\rho$
   { unsigned i; // index into |orbits|
@@ -579,7 +579,6 @@ context::context
   (const repr::Rep_context& rc, WeightInvolution delta, const RatWeight& gamma)
     : d_rc(rc)
     , d_delta(std::move(delta)), d_gamma(gamma)
-    , d_g(rc.kgb().base_grading_vector()+rho_check(rc.rootDatum()))
     , integr_datum(integrality_datum(rc.rootDatum(),gamma))
     , sub(SubSystem::integral(rc.rootDatum(),gamma))
     , pi_delta(rc.rootDatum().rootPermutation(d_delta))
@@ -1082,7 +1081,7 @@ DescValue star (const param& E,	const ext_gen& p,
 
       if (theta_alpha==n_alpha) // length 1 imaginary case
       { // first find out if the simply-integral root $\alpha$ is compact
-	int tf_alpha = (E.ctxt.g() - E.l).dot(alpha)-rd.level(n_alpha);
+	int tf_alpha = (E.ctxt.g_rho_check() - E.l).dot(alpha);
 	if (tf_alpha%2!=0) // then $\alpha$ is compact
 	  return one_imaginary_compact; // quit here, do not collect \$200
 
@@ -1276,8 +1275,8 @@ DescValue star (const param& E,	const ext_gen& p,
 
       if (theta_alpha==n_alpha) // length 2 imaginary case
       { // first find out if the simply-integral root $\alpha$ is compact
-	int tf_alpha = (E.ctxt.g() - E.l).dot(alpha)-rd.level(n_alpha);
-	int tf_beta = (E.ctxt.g() - E.l).dot(beta)-rd.level(n_alpha);
+	int tf_alpha = (E.ctxt.g_rho_check() - E.l).dot(alpha);
+	int tf_beta = (E.ctxt.g_rho_check() - E.l).dot(beta);
 	assert((tf_alpha-tf_beta)%2==0); // same compactness
 	if (tf_alpha%2!=0) // then $\alpha$ and $\beta$ are compact
 	  return two_imaginary_compact;
@@ -1512,8 +1511,7 @@ DescValue star (const param& E,	const ext_gen& p,
 	  const Weight new_tau = rd.reflection(n_alpha,E.tau) + alpha*f;
 
 	  // but |dual_v| needs correction by |ell_shift|
-	  const int dual_f =
-	    (E.ctxt.g() - E.l).dot(alpha) - rd.level(n_alpha);
+	  const int dual_f = (E.ctxt.g_rho_check() - E.l).dot(alpha);
 
 	  const Coweight new_l = E.l + alpha_v*dual_f;
           const Coweight new_t =
@@ -1546,8 +1544,7 @@ DescValue star (const param& E,	const ext_gen& p,
 	    E.lambda_rho - rho_r_shift + alpha*f;
 	  const Weight new_tau = rd.reflection(n_alpha,E.tau) - alpha*f;
 
-	  const int dual_f =
-	    (E.ctxt.g() - E.l).dot(alpha) - rd.level(n_alpha);
+	  const int dual_f = (E.ctxt.g_rho_check() - E.l).dot(alpha);
 	  const Coweight new_l = E.l + alpha_v*dual_f;
           const Coweight new_t =
 	    rd.coreflection(E.t,n_alpha) + alpha_v*dual_f;
@@ -1582,8 +1579,8 @@ DescValue star (const param& E,	const ext_gen& p,
 
       if (theta_alpha==n_alpha) // length 3 imaginary case
       { // first find out if the simply-integral root $\alpha$ is compact
-	int tf_alpha = (E.ctxt.g() - E.l).dot(alpha)-rd.level(n_alpha);
-	int tf_beta = (E.ctxt.g() - E.l).dot(beta)-rd.level(n_alpha);
+	int tf_alpha = (E.ctxt.g_rho_check() - E.l).dot(alpha);
+	int tf_beta = (E.ctxt.g_rho_check() - E.l).dot(beta);
 	assert((tf_alpha-tf_beta)%2==0); // same compactness
 	if (tf_alpha%2!=0) // then $\alpha$ and $\beta$ are compact
 	  return three_imaginary_compact;
@@ -1656,7 +1653,7 @@ DescValue star (const param& E,	const ext_gen& p,
 	  const bool flipped = Cayley_shift_flip(E.ctxt,theta_upstairs,ww);
 	  assert((delta_1*rho_r_shift).isZero()); // since $ww\in W^\delta$
 
-	  int tf_alpha = (E.ctxt.g() - E.l).dot(alpha) - rd.level(n_alpha);
+	  int tf_alpha = (E.ctxt.g_rho_check() - E.l).dot(alpha);
 	  int dtf_alpha = (E.ctxt.gamma() - E.lambda_rho).dot(alpha_v)
 	    - rd.colevel(n_alpha);
 	  Weight new_lambda_rho = E.lambda_rho + rho_r_shift; // for now
@@ -1719,7 +1716,7 @@ bool is_descent (const ext_gen& kappa, const param& E)
 
   // we don't need to inspect |kappa.type|, it does not affect descent status
   if (theta_alpha==n_alpha) // imaginary case, return whether compact
-    return ( ((E.ctxt.g()-E.l).dot(alpha)-rd.level(n_alpha)) %2!=0 );
+    return (E.ctxt.g_rho_check()-E.l).dot(alpha) %2!=0;
   if (theta_alpha==rd.rootMinus(n_alpha)) // real, return whether parity
   {
     RootNbr alpha_simple = n_alpha; // copy to be made simple
