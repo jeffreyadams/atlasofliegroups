@@ -708,11 +708,19 @@ set theta_stable_parabolics_with(KGBElt x)=[Parabolic]:
   let temp=[Parabolic]:[] in for i:#tsp do let (S,y)=tsp[i] in
   if (S,x)=(S,y) then temp#:=tsp[i] fi od; temp
 
+{. Same as previous function, but takes the output of
+  theta_stable_parabolics(G) as additional input for efficiency. .}
+set theta_stable_parabolics_with([Parabolic] tsp,KGBElt x)=[Parabolic]:
+  let G=real_form(x) in
+  assert(G=real_form(tsp[0]),"Group mismatch!");
+  let temp=[Parabolic]:[] in for i:#tsp do let (S,y)=tsp[i] in
+  if (S,x)=(S,y) then temp#:=tsp[i] fi od; temp
+
 {. Decide whether there is a theta-stable parabolic determined by x. .}
 set is_theta_x(KGBElt x)=bool: #theta_stable_parabolics_with(x)>0
 
 {. List of parameters p_L in the (weakly) good range for G so that p is
-  theta-induced from p_L; may be empty, or more than one. .}
+  theta-induced from p_L; may be more than one. .}
 set is_good_range_induced_from(Param p)=[Param]:
   let x=x(p) in
   let tsp=theta_stable_parabolics_with(x) in
@@ -735,31 +743,64 @@ set is_good_range_induced_from(Param p)=[Param]:
   by x. .}
 set min_theta_parabolic_with(KGBElt x)=Parabolic: let G=real_form(x) in
   let tsp=theta_stable_parabolics_with(x) in
-  {assert(#tsp>0,"No such theta-stable parabolic!");}
   let ssr=semisimple_rank(G) in
   let S=[int]:[] in for i:ssr do
   if all(for (T,) in tsp do is_member(T)(i) od) then S#:=i
   fi od;  (S,x)
 
+{. Same as previous function, but takes the output of
+  theta_stable_parabolics(G) as additional input for efficiency. .}
+set min_theta_parabolic_with([Parabolic] tsp,KGBElt x)=Parabolic:
+  let G=real_form(x) in
+  let tspx=theta_stable_parabolics_with(tsp,x) in
+  let ssr=semisimple_rank(G) in
+  let S=[int]:[] in for i:ssr do
+  if all(for (T,) in tspx do is_member(T)(i) od) then S#:=i
+  fi od;  (S,x)
+
 {. Find the parameter p_L so that p is cohomologically induced, in the
   (weakly) good range, from p_L, with L minimal (may be G). .}
 set is_min_good_induced_from(Param p)=Param:
+  if not is_final(p) then prints("p is not final") fi;
   let x=x(p) in
-  {assert(is_theta_x(x),"This is not an induced parameter.");}
   let G=real_form(p) in
   let P=min_theta_parabolic_with(x) in
   let L=Levi(P) in let x_L=inverse_embed_KGB (x,L) in
   let p_L=parameter(x_L,lambda(p)-rho(real_form(p))+rho(L),nu(p)) in
-  if not is_final(p_L) then prints("p_L is not final") else
-  if is_weakly_good(p_L,G) then
   prints(goodness(p_L,G));
-  if p!=theta_induce_irreducible(p_L,G) then prints("Ind(p_L) is not p")
-  fi
-  fi fi;
+  p_L
+
+{. Same as previous function, but takes the output of
+  theta_stable_parabolics(G) as additional input for efficiency. .}
+set is_min_good_induced_from([Parabolic] tsp,Param p)=Param:
+  if not is_final(p) then prints("p is not final") fi;
+  let x=x(p) in
+  let G=real_form(p) in
+  let P=min_theta_parabolic_with(tsp,x) in
+  let L=Levi(P) in let x_L=inverse_embed_KGB (x,L) in
+  let p_L=parameter(x_L,lambda(p)-rho(real_form(p))+rho(L),nu(p)) in
+  prints(goodness(p_L,G));
   p_L
 
 {. Determine whether p is a (weakly) good Aq(lambda). .}
 set is_good_Aq(Param p)=bool:
    let p_L=is_min_good_induced_from(p) in
    is_one_dimensional(p_L)
+
+{. Same as previous function, but takes the output of
+  theta_stable_parabolics(G) as additional input for efficiency. .}
+set is_good_Aq([Parabolic] tsp,Param p)=bool:
+   let p_L=is_min_good_induced_from(tsp,p) in
+   is_one_dimensional(p_L)
+
+{. Determine whether p is a proper (weakly) good As(lambda). .}
+set is_proper_Aq(Param p)=bool:
+   let p_L=is_min_good_induced_from(p) in
+   real_form(p)!=real_form(p_L) and is_one_dimensional(p_L)
+
+{. Same as previous function, but takes the output of
+  theta_stable_parabolics(G) as additional input for efficiency. .}
+set is_proper_Aq([Parabolic] tsp,Param p)=bool:
+   let p_L=is_min_good_induced_from(tsp,p) in
+   real_form(p)!=real_form(p_L) and is_one_dimensional(p_L)
 
