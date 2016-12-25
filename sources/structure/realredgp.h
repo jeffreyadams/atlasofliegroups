@@ -86,7 +86,7 @@ class RealReductiveGroup
 
   TorusPart x0_torus_part() const { return torus_part_x0; }
   RatCoweight g() const; // |square_class_cocharacter| + $\check\rho$
-  RatCoweight g_rho_check() const // that |g()|, minus $\check\rho$:
+  const RatCoweight& g_rho_check() const // that is |g()| minus $\check\rho$:
     { return square_class_cocharacter; }
   Grading base_grading() const; // grading (1=noncompact) at square class base
 

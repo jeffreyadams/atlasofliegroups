@@ -227,7 +227,7 @@ class context // holds values that remain fixed across extended block
   const repr::Rep_context& d_rc;
   WeightInvolution d_delta;
   RatWeight d_gamma; // representative of infinitesimal character
-  RatCoweight d_g; // chosen lift of the common square for the square class
+  // RatCoweight d_g; // we might record |g|, but in fact defer to |realGroup|
   RootDatum integr_datum; // intgrality datum
   SubSystem sub; // embeds |integr_datum| into parent root datum
   Permutation pi_delta; // permutation of |delta| on roots of full root datum
@@ -246,10 +246,8 @@ class context // holds values that remain fixed across extended block
   const InnerClass& innerClass () const { return realGroup().innerClass(); }
   const WeightInvolution& delta () const { return d_delta; }
   const RatWeight& gamma() const { return d_gamma; }
-  const RatCoweight& g() const { return d_g; }
-  // the next should match |realForm().g_rho_check()|, but uses stored |d_g|
-  RatCoweight g_rho_check() const
-    { return (g()-rho_check(rc().rootDatum())).normalize(); }
+  const RatCoweight& g_rho_check() const { return realGroup().g_rho_check(); }
+  RatCoweight g() const { return realGroup().g(); }
   RootNbr delta_of(RootNbr alpha) const { return pi_delta[alpha]; }
   weyl::Generator twisted(weyl::Generator s) const { return twist[s]; }
 
