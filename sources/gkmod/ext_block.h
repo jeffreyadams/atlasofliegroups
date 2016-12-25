@@ -232,11 +232,12 @@ class context // holds values that remain fixed across extended block
   SubSystem sub; // embeds |integr_datum| into parent root datum
   Permutation pi_delta; // permutation of |delta| on roots of full root datum
   weyl::Twist twist;
+  int_Vector lambda_shifts,l_shifts; // affine centers for complex cross actions
 
  public:
   context
     (const repr::Rep_context& rc,
-     WeightInvolution delta, // by value
+     const WeightInvolution& delta,
      const RatWeight& gamma);
 
   const repr::Rep_context& rc () const { return d_rc; }
@@ -250,6 +251,8 @@ class context // holds values that remain fixed across extended block
   RatCoweight g() const { return realGroup().g(); }
   RootNbr delta_of(RootNbr alpha) const { return pi_delta[alpha]; }
   weyl::Generator twisted(weyl::Generator s) const { return twist[s]; }
+  int lambda_shift(weyl::Generator s) const { return lambda_shifts[s]; }
+  int l_shift(weyl::Generator s) const { return l_shifts[s]; }
 
 }; // |context|
 

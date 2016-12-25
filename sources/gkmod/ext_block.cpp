@@ -583,17 +583,31 @@ BlockEltList ext_block::down_set(BlockElt n) const
 }
 
 context::context
-  (const repr::Rep_context& rc, WeightInvolution delta, const RatWeight& gamma)
+  (const repr::Rep_context& rc,
+   const WeightInvolution& delta,
+   const RatWeight& gamma)
     : d_rc(rc)
-    , d_delta(std::move(delta)), d_gamma(gamma)
+    , d_delta(delta)
+    , d_gamma(gamma)
     , integr_datum(integrality_datum(rc.rootDatum(),gamma))
     , sub(SubSystem::integral(rc.rootDatum(),gamma))
     , pi_delta(rc.rootDatum().rootPermutation(d_delta))
     , twist()
+    , lambda_shifts (integr_datum.semisimpleRank())
+    , l_shifts (integr_datum.semisimpleRank())
 {
   const RootDatum& rd = rc.rootDatum();
   for (weyl::Generator s=0; s<rd.semisimpleRank(); ++s)
     twist[s] = rd.simpleRootIndex(delta_of(rd.simpleRootNbr(s)));
+
+  // the reflections for |E.lambda_rho| pivot around $\gamma-\rho$
+  const RatWeight gamma_rho = gamma - rho(rd);
+  for (unsigned i=0; i<lambda_shifts.size(); ++i)
+    lambda_shifts[i] = -gamma_rho.dot(integr_datum.simpleCoroot(i));
+  // the reflections for |E.l| pivot around |g_rho_check()|
+  const RatCoweight& g_rho_check = this->g_rho_check();
+  for (unsigned i=0; i<l_shifts.size(); ++i)
+    l_shifts[i] = -g_rho_check.dot(integr_datum.simpleRoot(i));
 }
 
 
@@ -780,6 +794,7 @@ DescValue extended_type(const Block_base& block, BlockElt z, const ext_gen& p,
   assert(false); return one_complex_ascent; // keep compiler happy
 } // |extended_type|
 
+// auxiliary function to recognise local situation in |ext_block| construction
 // the following function assumes a full block, and precomputed |fixed_points|
 DescValue extended_type(const Block_base& block, BlockElt z, const ext_gen& p,
 			BlockElt& link, const BitMap& fixed_points)
@@ -959,24 +974,13 @@ param complex_cross(const ext_gen& p, param E) // by-value for |E|, modified
   Weight rho_r_shift = rd.twoRho(i_tab.real_roots(theta));
   Coweight dual_rho_im_shift = rd.dual_twoRho(i_tab.imaginary_roots(theta));
 
-  // the reflections for |E.lambda_rho| pivot around $\gamma-\rho$
-  const RatWeight gamma_rho = E.ctxt.gamma() - rho(rd);
-  int_Vector lambda_shifts (id.semisimpleRank());
-  for (unsigned i=0; i<lambda_shifts.size(); ++i)
-    lambda_shifts[i] = -gamma_rho.dot(id.simpleCoroot(i));
-  // the reflections for |E.l| pivot around $g-\check\rho$
-  const RatCoweight g_rho_check = E.ctxt.g_rho_check();
-  int_Vector l_shifts (id.semisimpleRank());
-  for (unsigned i=0; i<lambda_shifts.size(); ++i)
-    l_shifts[i] = -g_rho_check.dot(id.simpleRoot(i));
-
-  for (unsigned i=p.w_kappa.size(); i-->0; )
+  for (unsigned i=p.w_kappa.size(); i-->0; ) // at most 3 letters, right-to-left
   { weyl::Generator s=p.w_kappa[i]; // generator for integrality datum
     tW.twistedConjugate(E.ctxt.subsys().reflection(s),E.tw);
-    id.simple_reflect(s,E.lambda_rho,lambda_shifts[s]);
+    id.simple_reflect(s,E.lambda_rho,E.ctxt.lambda_shift(s));
     id.simple_reflect(s,rho_r_shift);
     id.simple_reflect(s,E.tau);
-    id.simple_coreflect(E.l,s,l_shifts[s]);
+    id.simple_coreflect(E.l,s,E.ctxt.l_shift(s));
     id.simple_coreflect(dual_rho_im_shift,s);
     id.simple_coreflect(E.t,s);
   }
@@ -1015,9 +1019,9 @@ WeylWord fixed_conjugate_simple (const context& ctxt, RootNbr& alpha)
     if (s!=t) // second generator for cases of length 2,3
     { result.push_back(t);
       rd.simple_reflect_root(t,alpha);
-      if (rd.sumIsRoot(s,t)) // this should never occur, but symmetrise anyway
-      { // final reflection by |s| for case where $sts=tst$
-	result.push_back(s);
+      if (rd.sumIsRoot(s,t)) // then another to symmetrise the reflection word
+      { result.push_back(s);
+	// final reflection by |s|, we have $sts=tst$
 	rd.simple_reflect_root(s,alpha);
       }
     }
