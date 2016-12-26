@@ -418,8 +418,25 @@ set all_rel_split_theta_stable_parabolics (RealForm G) = [Parabolic]:
 
 
 {. For each theta-stable parabolic of G, print S, Levi factor, and maximal x. .}
-set print_theta_stable_parabolics (RealForm G) = void:
-  let all = theta_stable_parabolics(G) in
+set print_theta_stable_parabolics (RealForm G) = void:  let all = theta_stable_parabolics(G) in
   for (S,x):P in all do prints("S=", S, " L= ", Levi(P), "  x=",x) od;
   prints("Total: ",#all)
 
+{. The smallest list of simple roots such that descents lead to the
+  distinguished fiber. .}
+set support(KGBElt x)=[int]:
+  let rd=root_datum(x) in
+  let delta=distinguished_involution(real_form(x)) in
+  let W=word(word(rd,involution(x)*delta)) in
+  let result=[] in for i:semisimple_rank(rd) do
+  if is_member(W)(i) then result#:=i fi od;
+  result
+
+{. Auxiliary function. .}
+set support_alt(KGBElt x)=[int]:
+  let rd=root_datum(x) in
+  let delta=distinguished_involution(real_form(x)) in
+  let W=word(word(rd,delta*involution(x))) in
+  let result=[] in for i:semisimple_rank(rd) do
+  if is_member(W)(i) then result#:=i fi od;
+  result

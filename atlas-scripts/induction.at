@@ -701,7 +701,7 @@ set theta_stable_parabolics_max(KGBElt x)=[Parabolic]:
   let temp=[Parabolic]:[] in for P in tsp do if x=maximal(P) then temp#:=P fi od;
   temp
 
-{. Given a KGB element x, list all proper theta-stable parabolics in G
+{. Given a KGB element x, list all theta-stable parabolics in G
   determined by x. .}
 set theta_stable_parabolics_with(KGBElt x)=[Parabolic]:
   let G=real_form(x) in let tsp=theta_stable_parabolics(G) in
@@ -738,6 +738,9 @@ set is_good_range_induced_from(Param p)=[Param]:
   result#:=p_L
   fi
   fi fi od fi fi ; result
+
+{------------------------------Some outdated functions; ----------------
+                       will keep them for purposes of testing.
 
 {. Find the smallest (wrt containment) theta-stable parabolic determined
   by x. .}
@@ -783,23 +786,46 @@ set is_min_good_induced_from([Parabolic] tsp,Param p)=Param:
   p_L
 
 {. Determine whether p is a (weakly) good Aq(lambda). .}
-set is_good_Aq(Param p)=bool:
+set is_good_Aq_old(Param p)=bool:
    let p_L=is_min_good_induced_from(p) in
    is_one_dimensional(p_L)
 
 {. Same as previous function, but takes the output of
   theta_stable_parabolics(G) as additional input for efficiency. .}
-set is_good_Aq([Parabolic] tsp,Param p)=bool:
+set is_good_Aq_old([Parabolic] tsp,Param p)=bool:
    let p_L=is_min_good_induced_from(tsp,p) in
    is_one_dimensional(p_L)
 
-{. Determine whether p is a proper (weakly) good As(lambda). .}
-set is_proper_Aq(Param p)=bool:
+{. Determine whether p is a proper (weakly) good Aq(lambda). .}
+set is_proper_Aq_old(Param p)=bool:
    let p_L=is_min_good_induced_from(p) in
    real_form(p)!=real_form(p_L) and is_one_dimensional(p_L)
 
 {. Same as previous function, but takes the output of
   theta_stable_parabolics(G) as additional input for efficiency. .}
-set is_proper_Aq([Parabolic] tsp,Param p)=bool:
+set is_proper_Aq_old([Parabolic] tsp,Param p)=bool:
    let p_L=is_min_good_induced_from(tsp,p) in
+   real_form(p)!=real_form(p_L) and is_one_dimensional(p_L)
+
+-------------------------------------------------------------------}
+
+{. Find the parameter p_L so that p is cohomologically induced, in the
+  (weakly) good range, from p_L, with L minimal (may be G). .}
+set reduce_good_range(Param p)=Param:
+  if not is_final(p) then prints("p is not final") fi;
+  if is_zero(p) then prints("The module is zero.") fi;
+  let x=x(p) in let P=Parabolic:(support(x),x) in
+  let L=Levi(P) in let x_L=inverse_embed_KGB (x,L) in
+  let p_L=parameter(x_L,lambda(p)-rho(real_form(p))+rho(L),nu(p)) in
+  prints(goodness(p_L,real_form(p)));
+  p_L
+
+{. Determine whether p is a (weakly) good Aq(lambda). .}
+set is_good_Aq(Param p)=bool:
+   let p_L=reduce_good_range(p) in
+   is_one_dimensional(p_L)
+
+{. Determine whether p is a proper (weakly) good Aq(lambda). .}
+set is_proper_Aq(Param p)=bool:
+   let p_L=reduce_good_range(p) in
    real_form(p)!=real_form(p_L) and is_one_dimensional(p_L)
