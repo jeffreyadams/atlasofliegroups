@@ -105,9 +105,9 @@ class Block_base
 
 // accessors
 
-  size_t rank() const { return data.size(); } // semisimple rank matters
-  size_t folded_rank() const { return orbits.size(); }
-  size_t size() const { return info.size(); }
+  unsigned int rank() const { return data.size(); } // semisimple rank matters
+  unsigned int folded_rank() const { return orbits.size(); }
+  BlockElt size() const { return info.size(); }
 
   virtual KGBElt max_x() const = 0; // used virtually mainly for printing
   virtual KGBElt max_y() const = 0; // used virtually mainly for printing

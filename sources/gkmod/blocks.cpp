@@ -1017,7 +1017,7 @@ param_block::param_block // full block constructor
 
   // step 4: generate packets for successive involutions
 
-  BlockEltList queue(1,info.size()); // involution packet boundaries
+  containers::queue<BlockElt> queue { size() }; // invol. packet boundaries
   KGBEltList ys; ys.reserve(0x100); // enough for |1<<RANK_MAX|
   KGBEltList cross_ys(ys.size()); cross_ys.reserve(0x100);
   KGBEltList Cayley_ys(ys.size()); Cayley_ys.reserve(0x100);
@@ -1025,11 +1025,10 @@ param_block::param_block // full block constructor
   BitMap x_seen(kgb.size());
   x_seen.insert(z_start.x()); // the only value of |x| seen so far
 
-  size_t qi=0; // index into queue
+  BlockElt next=0;
 
-  for (BlockElt next=0; qi<queue.size(); next=queue[qi++])
-  { // process involution packet of elements from |next| to |queue[qi]|
-
+  do
+  { // process involution packet of elements from |next| to |queue.front()|
     const KGBElt first_x = x(next);
     const InvolutionNbr i_theta = kgb.inv_nr(first_x);
 
@@ -1039,7 +1038,7 @@ param_block::param_block // full block constructor
     ys.clear();
     size_t nr_y = 0;
     // now traverse R-packet of |first_x|, collecting their |y|'s
-    for (BlockElt z=next; z<info.size() and x(z)==first_x; ++z,++nr_y)
+    for (BlockElt z=next; z<size() and x(z)==first_x; ++z,++nr_y)
     {
       assert(y_hash[y(z)].nr==i_theta); // involution of |y| must match |x|
       ndebug_use(i_theta);
@@ -1047,13 +1046,13 @@ param_block::param_block // full block constructor
       ys.push_back(y(z));           // so |ys| could have been avoided
     }
 
-    assert((queue[qi]-next)%nr_y==0); // |x| values in equal-size R-packets
-    unsigned int nr_x= (queue[qi]-next)/nr_y; // number of R-packets here
+    assert((queue.front()-next)%nr_y==0); // |x| values in equal-size R-packets
+    unsigned int nr_x= (queue.front()-next)/nr_y; // number of R-packets here
 
     for (weyl::Generator s=0; s<our_rank; ++s)
     {
       std::vector<block_fields>& tab_s = data[s];
-      tab_s.resize(info.size()); // ensure enough slots for now
+      tab_s.resize(size()); // ensure enough slots for now
 
       unsigned int y_start=y_hash.size(); // new |y|s numbered from here up
 
@@ -1091,7 +1090,7 @@ param_block::param_block // full block constructor
 	  x_seen.insert(s_x_n); // record the new |x| value
 	  for (unsigned int j=0; j<nr_y; ++j)
 	  {
-	    tab_s[base_z+j].cross_image = info.size(); // link to new element
+	    tab_s[base_z+j].cross_image = size(); // link to new element
 
 	    add_z(xy_hash,s_x_n,cross_ys[j]);
 	    // same |x| neighbour throughout loop, but |y| neighbour varies
@@ -1179,18 +1178,17 @@ param_block::param_block // full block constructor
 	    RootNbrList ib = rd.simpleBasis(pos_imag);
 	    auto orbit = BitMap{kgb.size()};
 	    orbit.insert(ctx1);
-	    { auto todo = containers::queue<KGBElt> {}; // no list init
-	      todo.push(ctx1); // so manually insert
+	    { auto to_do = containers::queue<KGBElt> { ctx1 };
 	      do
-	      { KGBElt cur_x = todo.front(); todo.pop();
+	      { KGBElt cur_x = to_do.front(); to_do.pop();
 		for (size_t r=0; r<ib.size(); ++r)
 		{
 		  KGBElt new_x = kgb.cross(rd.reflectionWord(ib[r]),cur_x);
 		  if (not orbit.isMember(new_x))
-		    orbit.insert(new_x), todo.push(new_x);
+		    orbit.insert(new_x), to_do.push(new_x);
 		} // |for(r)|
 	      }
-	      while (not todo.empty());
+	      while (not to_do.empty());
 	    }
 	    x_seen |= orbit;
 	    // then generate corrsponding part of block, combining (x,y)'s
@@ -1202,7 +1200,7 @@ param_block::param_block // full block constructor
 	      }
 
 	    // finallly make sure that Cayley links slots exist for code below
-	    tab_s.resize(info.size());
+	    tab_s.resize(size());
 	  } // |if (new_Cayley)|: finished creating new R-packets
 	} // |if (i==0)|: finished work for first |x| when some |y| is parity
 
@@ -1227,9 +1225,10 @@ param_block::param_block // full block constructor
       } // |for(i)
 
       if (y_hash.size()>y_start)
-	queue.push_back(info.size()); // mark end of new involution packet
+	queue.push(size()); // mark end of a new involution packet
     } // |for(s)|
-  } // |for (next<queue[qi])|
+  }
+  while (next=queue.front(), queue.pop(), not queue.empty());
   // end of step 4
 
   highest_y=y_hash.size()-1; // set highest occurring |y| value, for |ysize|

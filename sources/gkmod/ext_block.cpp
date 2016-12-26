@@ -12,15 +12,17 @@
 #include <cassert>
 #include <vector>
 
+#include "bitmap.h"
+#include "polynomials.h"
+#include "matreduc.h"
+#include "sl_list.h"
+
 #include "innerclass.h"
 #include "weyl.h"
 #include "kgb.h"
 #include "blocks.h"
 #include "repr.h"
 
-#include "bitmap.h"
-#include "polynomials.h"
-#include "matreduc.h"
 /*
   For an extended group, the block structure is more complicated than an
   ordinary block, because each link in fact represents a local part of the
@@ -434,12 +436,12 @@ containers::sl_list<std::pair<StandardRepr,bool> > extended_finalise
   const RankFlags singular_orbits =
     reduce_to(orbits,singular_generators(ctxt.id(),sr.gamma()));
 
-  containers::sl_list<param> to_do { param(ctxt,sr) };
+  containers::queue<param> to_do { param(ctxt,sr) };
   containers::sl_list<std::pair<StandardRepr,bool> > result;
 
   do
   { const param E= to_do.front();
-    to_do.pop_front(); // we are done with |head|
+    to_do.pop(); // we are done with |head|
     auto s = first_descent_among(singular_orbits,orbits,E);
     if (s>=orbits.size()) // no singular descents, so append to result
       result.emplace_back(std::make_pair(E.restrict(),not is_default(E)));
@@ -448,13 +450,13 @@ containers::sl_list<std::pair<StandardRepr,bool> > extended_finalise
       auto type = star(E,orbits[s],links);
       if (not is_like_compact(type)) // some descent, push to front of |to_do|
       { bool flip = has_october_surprise(type); // to undo extra flip |star|
-	auto it = to_do.begin(); auto l_it=links.begin();
+	auto l_it=links.begin();
 	l_it->flip(flip);
-	to_do.insert(it,*l_it);
+	to_do.push(*l_it);
 	if (has_double_image(type)) // then append a second node after |head|
-	{ ++it, ++l_it;
+	{ ++l_it;
 	  l_it->flip(flip);
-	  to_do.insert(it,*l_it);
+	  to_do.push(*l_it);
 	}
       }
     }
@@ -1245,8 +1247,8 @@ DescValue star (const param& E,	const ext_gen& p,
 	  links.push_back(std::move(F1)); // second Cayley
 
 	} // end of 1r1 case
-	else // real type 2
-	{
+	else
+	{ // type 1r2
 	  result = one_real_single;
 	  Coweight diff = // called $s$ in table 2 of [Ptr]
 	    matreduc::find_solution(i_tab.matrix(new_tw).transposed()+1,
@@ -1267,7 +1269,7 @@ DescValue star (const param& E,	const ext_gen& p,
 	  z_align(F,E1);
 	  links.push_back(std::move(F )); // Cayley link
 	  links.push_back(std::move(E1)); // cross link
-	}
+	} // end of 1r2 case
       }
       else // length 1 complex case
       { result = rd.is_posroot(theta_alpha)
@@ -2277,19 +2279,19 @@ bool check_braid
   static const unsigned int cox_entry[] = {2, 3, 4, 6};
   unsigned int len = cox_entry[b.Dynkin().edge_multiplicity(s,t)];
 
-  BitMap todo(b.size()),used(b.size());
-  todo.insert(x);
-  for (unsigned int i=0; i<len; ++i)
-    for (BitMap::iterator it=todo.begin(); it(); ++it)
+  BitMap to_do(b.size()),used(b.size());
+  to_do.insert(x);
+  for (unsigned int i=0; i<len; ++i) // repeat |len| times, |i| is not used
+    for (BitMap::iterator it=to_do.begin(); it(); ++it)
     {
       used.insert(*it);
-      todo.remove(*it);
-      BlockEltList l; l.reserve(4);
+      to_do.remove(*it);
+      BlockEltList l; l.reserve(4); // for neighbours of |*it| by |s| and |t|
       b.add_neighbours(l,s,*it);
       b.add_neighbours(l,t,*it);
       for (unsigned j=0; j<l.size(); ++j)
 	if (not used.isMember(l[j]))
-	  todo.insert(l[j]);
+	  to_do.insert(l[j]);
     }
 
   unsigned int n=used.size();

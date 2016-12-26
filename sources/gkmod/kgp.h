@@ -12,7 +12,6 @@
 
 #include "kgb.h"
 #include "bruhat.h"
-#include <queue>
 #include "sl_list.h"
 
 namespace atlas {
@@ -86,7 +85,7 @@ public:
 
 private:
   // helper function - removes redundant edges from a closure relation
-  typedef std::queue<KGPElt,containers::sl_list<KGPElt> > KGP_queue;
+  typedef containers::queue<KGPElt> KGP_queue;
   void reduce(KGP_queue& q, std::vector<bool>& closure,
 	      std::vector<set::EltList>& hasse, KGPElt minelt);
 

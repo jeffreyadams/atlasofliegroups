@@ -5,7 +5,6 @@
 
 - Fix bug occurring when switching the real form when coming from realmode
 - Fix lack of edge flipping in first (classical) extended block contructor
-- Make containers::queue defined in sl_list_fwd.h actually use sl_list
 - Rewrite block construction using methods inspired by synthetic operations
 - Remove code for storing the Hermitian dual in KGB structures and blocks
 - Rewrite K type computations to use data type more compatible with Param
