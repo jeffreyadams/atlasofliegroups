@@ -1081,7 +1081,6 @@ DescValue star (const param& E,	const ext_gen& p,
   const RootDatum& integr_datum = E.ctxt.id();
   const SubSystem& subs = E.ctxt.subsys();
   const InvolutionNbr theta = i_tab.nr(E.tw);
-  const WeightInvolution delta_1 = E.ctxt.delta()-1;
   switch (p.type)
   {
   case ext_gen::one:
@@ -1150,7 +1149,7 @@ DescValue star (const param& E,	const ext_gen& p,
 	  if (tau_coef%2!=0) // was set up so that this means: switched
 	  { // no spurious $\tau'$ since $\<\alpha^\vee,(X^*)^\theta>=2\Z$:
 	    assert(not matreduc::has_solution
-		   (th_1, delta_1*(E.lambda_rho+rho_r_shift)));
+		   (th_1, (E.ctxt.delta()-1)*(E.lambda_rho+rho_r_shift)));
 	    return one_imaginary_pair_switched; // case 1i2s
 	  }
 	  result = one_imaginary_pair_fixed;  // what remains is case 1i2f
@@ -1180,7 +1179,7 @@ DescValue star (const param& E,	const ext_gen& p,
 
 	Weight rho_r_shift = repr::Cayley_shift(ic,theta,ww);
 	const bool flipped = Cayley_shift_flip(E.ctxt,theta,ww);
-	assert((delta_1*rho_r_shift).isZero()); // since $ww\in W^\delta$
+	assert(E.ctxt.delta()*rho_r_shift==rho_r_shift); // as $ww\in W^\delta$
 
 	RootNbr alpha_0 = // maybe one of |alpha==alpha_0+alpha_1|
 	  rd.is_simple_root(alpha_simple) ? 0 // unused
@@ -1213,7 +1212,8 @@ DescValue star (const param& E,	const ext_gen& p,
 	    // now we must add $d$ to $\tau$ with $(1-\theta')d=(1-\delta)*a0$
 	    // since $\theta'*a0 = a1 = \delta*a_0$, we can take $d=a0$
 	    tau_correction = a0;
-	    assert((i_tab.matrix(new_tw)-1)*tau_correction==delta_1*a0);
+	    assert((i_tab.matrix(new_tw)-1)*tau_correction
+		   ==(E.ctxt.delta()-1)*a0);
 	  }
 	}
 
@@ -1392,7 +1392,7 @@ DescValue star (const param& E,	const ext_gen& p,
 
 	const Weight rho_r_shift = repr::Cayley_shift(ic,theta,ww);
 	const bool flipped = Cayley_shift_flip(E.ctxt,theta,ww);
-	assert((delta_1*rho_r_shift).isZero()); // since $ww\in W^\delta$
+	assert(E.ctxt.delta()*rho_r_shift==rho_r_shift); // as $ww\in W^\delta$
 
 	const int a_level = level_a(E,rho_r_shift,n_alpha);
 
@@ -1521,7 +1521,7 @@ DescValue star (const param& E,	const ext_gen& p,
 
 	  const auto theta_p = i_tab.nr(new_tw); // upstairs
 	  const Weight rho_r_shift = repr::Cayley_shift(ic,theta_p,ww);
-	  assert((delta_1*rho_r_shift).isZero()); // since $ww\in W^\delta$
+	  assert(E.ctxt.delta()*rho_r_shift==rho_r_shift); // $ww\in W^\delta$
 
 	  // downstairs cross by |ww| only has imaginary and complex steps, so
 	  // $\alpha_v.(\gamma-\lambda_\rho)$ is unchanged across |ww|
@@ -1558,7 +1558,7 @@ DescValue star (const param& E,	const ext_gen& p,
 
 	  const Weight rho_r_shift = repr::Cayley_shift(ic,theta,ww);
 	  const bool flipped = Cayley_shift_flip(E.ctxt,theta,ww);
-	  assert((delta_1*rho_r_shift).isZero()); // since $ww\in W^\delta$
+	  assert(E.ctxt.delta()*rho_r_shift==rho_r_shift); // $ww\in W^\delta$
 
 	  const int f = level_a(E,rho_r_shift,n_alpha);
 
@@ -1636,7 +1636,7 @@ DescValue star (const param& E,	const ext_gen& p,
 
 	const Weight rho_r_shift = repr::Cayley_shift(ic,theta,ww);
 	const bool flipped = Cayley_shift_flip(E.ctxt,theta,ww);
-	assert((delta_1*rho_r_shift).isZero()); // since $ww\in W^\delta$
+	assert(E.ctxt.delta()*rho_r_shift==rho_r_shift); // as $ww\in W^\delta$
 
 	const int a_level = level_a(E,rho_r_shift,n_alpha);
 
@@ -1674,7 +1674,7 @@ DescValue star (const param& E,	const ext_gen& p,
 	  const auto theta_upstairs = ascent ? i_tab.nr(new_tw) : theta;
 	  const Weight rho_r_shift = repr::Cayley_shift(ic,theta_upstairs,ww);
 	  const bool flipped = Cayley_shift_flip(E.ctxt,theta_upstairs,ww);
-	  assert((delta_1*rho_r_shift).isZero()); // since $ww\in W^\delta$
+	  assert(E.ctxt.delta()*rho_r_shift==rho_r_shift); // $ww\in W^\delta$
 
 	  int tf_alpha = (E.ctxt.g_rho_check() - E.l).dot(alpha);
 	  int dtf_alpha = (E.ctxt.gamma() - E.lambda_rho).dot(alpha_v)
@@ -1802,17 +1802,6 @@ ext_block::ext_block // for external twist; old style blocks
   // FIXME cannot call |check| here, although setting sign flips depends on it
 
 } // |ext_block::ext_block|
-
-// we use these prediates to flip edges
-
-bool is_2ir (DescValue v)
-{ return generator_length(v)==2 and not is_complex(v) and not has_defect(v); }
-
-bool is_2C (DescValue v)
-{ return generator_length(v)==2 and is_complex(v); }
-
-bool is_3Cir (DescValue v)
-{ return generator_length(v)==3 and has_defect(v); }
 
 ext_block::ext_block // for an external twist
   (const InnerClass& G,
@@ -2002,7 +1991,7 @@ BlockEltPair ext_block::Cayleys(weyl::Generator s, BlockElt n) const
 
 
 // check validity, by comparing with results found using extended parameters
-// the signs are recorded in |eb|, and printed to |cout| is |verbose| holds.
+// the signs are recorded in |eb|, and printed to |cout| if |verbose| holds.
 bool ext_block::check(const param_block& block, bool verbose)
 {
   context ctxt (block.context(),delta(),block.gamma());
