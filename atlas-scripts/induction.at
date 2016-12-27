@@ -812,20 +812,25 @@ set is_proper_Aq_old([Parabolic] tsp,Param p)=bool:
 {. Find the parameter p_L so that p is cohomologically induced, in the
   (weakly) good range, from p_L, with L minimal (may be G). .}
 set reduce_good_range(Param p)=Param:
+  let G=real_form(p) in
   if not is_final(p) then prints("p is not final") fi;
   if is_zero(p) then prints("The module is zero.") fi;
   let x=x(p) in let P=Parabolic:(support(x),x) in
-  let L=Levi(P) in let x_L=inverse_embed_KGB (x,L) in
-  let p_L=parameter(x_L,lambda(p)-rho(real_form(p))+rho(L),nu(p)) in
-  prints(goodness(p_L,real_form(p)));
-  p_L
+  let L=Levi(P) in
+  if semisimple_rank(L)=semisimple_rank(G) then prints("No reduction: P=G.");
+  p else
+  let x_L=inverse_embed_KGB (x,L) in
+  let p_L=parameter(x_L,lambda(p)-rho(G)+rho(L),nu(p)) in
+  prints(goodness(p_L,G));
+  p_L fi
 
 {. Determine whether p is a (weakly) good Aq(lambda). .}
 set is_good_Aq(Param p)=bool:
    let p_L=reduce_good_range(p) in
-   is_one_dimensional(p_L)
+   is_one_dimensional(p_L)and not is_zero(p)
 
 {. Determine whether p is a proper (weakly) good Aq(lambda). .}
 set is_proper_Aq(Param p)=bool:
    let p_L=reduce_good_range(p) in
-   real_form(p)!=real_form(p_L) and is_one_dimensional(p_L)
+   real_form(p)!=real_form(p_L) and is_one_dimensional(p_L) and
+   not is_zero(p)
