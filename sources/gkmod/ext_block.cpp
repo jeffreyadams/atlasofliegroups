@@ -1274,7 +1274,19 @@ DescValue star (const param& E,	const ext_gen& p,
       else // length 1 complex case
       { result = rd.is_posroot(theta_alpha)
 	  ? one_complex_ascent : one_complex_descent ;
-	links.push_back(complex_cross(p,E));
+
+	TwistedInvolution new_tw = E.tw;
+	tW.twistedConjugate(subs.reflection(p.s0),new_tw);
+	RootNbr alpha_simple = n_alpha;
+	const WeylWord ww = fixed_conjugate_simple(E.ctxt,alpha_simple);
+	assert(rd.is_simple_root(alpha_simple)); // no complications here
+	const auto theta_q = i_tab.nr(new_tw);
+	const bool flipped = ascent ?
+	  Cayley_shift_flip(E.ctxt,theta_q,ww) :
+	  Cayley_shift_flip(E.ctxt,theta,ww);
+	  E0.flipped = flipped;
+
+	links.push_back(complex_cross(p,E0));
       }
     }
     break;
@@ -1508,7 +1520,19 @@ DescValue star (const param& E,	const ext_gen& p,
 	if (theta_alpha != (ascent ? n_beta : rd.rootMinus(n_beta)))
 	{ // twisted non-commutation with |s0.s1|
 	  result = ascent ? two_complex_ascent : two_complex_descent;
-	  links.push_back(complex_cross(p,E));
+
+	  TwistedInvolution new_tw = E.tw;
+	  tW.twistedConjugate(subs.reflection(p.s0),new_tw);
+	  tW.twistedConjugate(subs.reflection(p.s1),new_tw);
+	  RootNbr alpha_simple = n_alpha;
+	  const WeylWord ww = fixed_conjugate_simple(E.ctxt,alpha_simple);
+	  assert(rd.is_simple_root(alpha_simple)); // no complications here
+	  const auto theta_q = i_tab.nr(new_tw);
+	  const bool flipped = ascent ?
+	    Cayley_shift_flip(E.ctxt,theta_q,ww) :
+	    Cayley_shift_flip(E.ctxt,theta,ww);
+	  E0.flipped = flipped;
+	  links.push_back(complex_cross(p,E0));
 	}
 	else if (ascent)
 	{ // twisted commutation with |s0.s1|: 2Ci
@@ -1713,7 +1737,21 @@ DescValue star (const param& E,	const ext_gen& p,
 	else // twisted non-commutation: 3C+ or 3C-
 	{
 	  result = ascent ? three_complex_ascent : three_complex_descent;
-	  links.push_back(complex_cross(p,E));
+
+	  TwistedInvolution new_tw = E.tw;
+	  tW.twistedConjugate(subs.reflection(p.s0),new_tw);
+	  tW.twistedConjugate(subs.reflection(p.s1),new_tw);
+	  tW.twistedConjugate(subs.reflection(p.s0),new_tw);
+	  RootNbr alpha_simple = n_alpha;
+	  const WeylWord ww = fixed_conjugate_simple(E.ctxt,alpha_simple);
+	  assert(rd.is_simple_root(alpha_simple)); // no complications here
+	  const auto theta_q = i_tab.nr(new_tw);
+	  const bool flipped = ascent ?
+	    Cayley_shift_flip(E.ctxt,theta_q,ww) :
+	    Cayley_shift_flip(E.ctxt,theta,ww);
+	  E0.flipped = flipped;
+	  
+	  links.push_back(complex_cross(p,E0));
 	}
       }
     }
