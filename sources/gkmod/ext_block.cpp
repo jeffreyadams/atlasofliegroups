@@ -1318,7 +1318,8 @@ DescValue star (const param& E,	const ext_gen& p,
 	tW.twistedConjugate(subs.reflection(p.s0),new_tw);
 	RootNbr alpha_simple = n_alpha;
 	const WeylWord ww = fixed_conjugate_simple(E.ctxt,alpha_simple);
-	assert(rd.is_simple_root(alpha_simple)); // no complications here
+	//	assert(rd.is_simple_root(alpha_simple));
+	// Haven't thought whether there's an issue
 	const auto theta_q = i_tab.nr(new_tw);
 	const bool flipped = rd.is_posroot(theta_alpha) ?
 	  Cayley_shift_flip(E.ctxt,theta_q,ww) :
