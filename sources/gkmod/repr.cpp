@@ -1009,18 +1009,11 @@ SR_poly twisted_KL_column_at_s
 void Rep_table::add_block(ext_block::ext_block& block,
 			  param_block& parent) // its complete unextended block
 {
-  const unsigned long old_size = hash.size();
   { BlockEltList survivors;  // this exported value will not be used
     add_block(parent,survivors); // but we must ensure parent block is known
   }
-  BlockEltList new_survivors; new_survivors.reserve(block.size());
 
-  // fill the |hash| table for new surviving parameters in this block
   RankFlags singular_orbits = block.singular_orbits(parent);
-  for (BlockElt ez = 0; ez<block.size(); ++ez)
-    if (hash.find(parent.sr(block.z(ez)))>=old_size and
-	block.first_descent_among(singular_orbits,ez)==block.rank())
-      new_survivors.push_back(ez);
 
   // extend space in twisted tables; zero polynomial means no computed value
   twisted_KLV_list.resize(hash.size(),SR_poly(repr_less())); // init empties
@@ -1094,9 +1087,8 @@ SR_poly Rep_table::twisted_KL_column_at_s(StandardRepr z)
   }
   make_dominant(z);
   unsigned long hash_index=hash.find(z);
-  if (hash_index==hash.empty // previously unknown parameter
-      or hash_index>=twisted_KLV_list.size() // block known but not extended
-      or twisted_KLV_list[hash_index].empty()) // same, but skipped over
+  if (hash_index>=twisted_KLV_list.size() // |z| unknown or not extended to, or
+      or twisted_KLV_list[hash_index].empty()) // slot created by another block
   {
     BlockElt entry; // dummy needed to ensure full block is generated
     param_block block(*this,z,entry); // which this constructor does
@@ -1139,9 +1131,10 @@ SR_poly Rep_table::twisted_deformation_terms
   { const auto& term = *rem.rbegin();
     const StandardRepr p_x= term.first;
     const Split_integer c_x = term.second;
+    assert(hash.find(p_x)<twisted_KLV_list.size());
     const SR_poly& KL_x = twisted_KLV_list[hash.find(p_x)];
     rem.add_multiple(KL_x,-c_x);
-    assert(rem[p_x]==Split_integer(0)); // check relation of being inverse
+    assert(rem[p_x].is_zero()); // check relation of being inverse
     if (length(p_x)%2!=parity)
       result.add_multiple(KL_x,c_x);
   }
@@ -1188,7 +1181,7 @@ SR_poly Rep_table::twisted_deformation (StandardRepr z)
 
     // now (still with |not rp.empty()| check if a result was previously stored
     unsigned long h=hash.find(z);
-    if (h!=hash.empty and not twisted_def_formula[h].empty())
+    if (h<twisted_def_formula.size() and not twisted_def_formula[h].empty())
       return flip_start // if so we must multiply the stored value by $s$
 	? SR_poly(repr_less()) // need an empty polynomial here
 	.add_multiple(twisted_def_formula[h],Split_integer(0,1))
@@ -1211,10 +1204,10 @@ SR_poly Rep_table::twisted_deformation (StandardRepr z)
   {
     BlockElt dummy;
     param_block parent(*this,z,dummy); // full parent block needed for now
-    ext_block::ext_block eblock(innerClass(),parent,delta);
+    ext_block::ext_block eblock(innerClass(),parent,delta); // full as well
     add_block(eblock,parent);
     const unsigned long h=hash.find(z);
-    assert(h!=hash.empty); // it was just added by |add_block|
+    assert(h<twisted_def_formula.size()); // it was just added by |add_block|
 
     for (unsigned i=rp.size(); i-->0; )
     {
