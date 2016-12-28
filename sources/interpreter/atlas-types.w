@@ -4400,12 +4400,12 @@ void split_int_value::print(std::ostream& out) const @+
 void split_unary_eq_wrapper(expression_base::level l)
 { Split_integer i=get<split_int_value>()->val;
   if (l!=expression_base::no_value)
-    push_value(whether(i.e()==0 and i.s()==0));
+    push_value(whether(i.is_zero()));
 }
 void split_unary_neq_wrapper(expression_base::level l)
 { Split_integer i=get<split_int_value>()->val;
   if (l!=expression_base::no_value)
-    push_value(whether(i.s()!=0 or i.e()!=0));
+    push_value(whether(not i.is_zero()));
 }
 @)
 void split_eq_wrapper(expression_base::level l)
