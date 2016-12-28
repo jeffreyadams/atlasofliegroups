@@ -138,9 +138,10 @@ class RootSystem
   // Cartan matrix by entry and as a whole
   int cartan(weyl::Generator i, weyl::Generator j) const
   { return Cartan_entry(i,j); };
+  bool diagram_linked(weyl::Generator i, weyl::Generator j) const
+  { return Cartan_entry(i,j)<0; };
   int_Matrix cartanMatrix() const;
   LieType Lie_type() const;
-
   // for subsystem
   int_Matrix cartanMatrix(const RootNbrList& sub) const;
   LieType Lie_type(RootNbrList sub) const;

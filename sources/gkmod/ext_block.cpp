@@ -1021,9 +1021,9 @@ WeylWord fixed_conjugate_simple (const context& ctxt, RootNbr& alpha)
     if (s!=t) // second generator for cases of length 2,3
     { result.push_back(t);
       rd.simple_reflect_root(t,alpha);
-      if (rd.sumIsRoot(s,t)) // then another to symmetrise the reflection word
-      { result.push_back(s);
-	// final reflection by |s|, we have $sts=tst$
+      if (rd.diagram_linked(s,t)) // then simple reflections |s,t| don't commute
+      { // we have $sts=tst$, re-apply |s| to symmetrise the reflection word
+	result.push_back(s);
 	rd.simple_reflect_root(s,alpha);
       }
     }
