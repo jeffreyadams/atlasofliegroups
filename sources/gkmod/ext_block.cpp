@@ -1110,20 +1110,26 @@ DescValue star (const param& E,	const ext_gen& p,
 	const Weight rho_r_shift = repr::Cayley_shift(ic,theta_p,ww);
 	const bool flipped = Cayley_shift_flip(E.ctxt,theta_p,ww);
         if(flipped) std::cout << "1i flip" << std::endl;
-	
+
 	assert(E.ctxt.delta()*rho_r_shift==rho_r_shift); // $ww\in W^\delta$
 	assert(E.t.dot(alpha)==0); // follows from $\delta*\alpha=\alpha$
 
 	Weight first; // maybe a root with |(1-delta)*first==alpha|
+	RootNbr alpha_0 = 0;
+	bool has_first=false;
 	if (rd.is_simple_root(alpha_simple))
 	  first = Weight(rd.rank(),0); // effectively not used in this case
 	else
 	{
+	  has_first=true;
+	  std::cout << "can't make simple alpha = " << n_alpha << std::endl;
 	  --tau_coef; // the parity change and decrease are both relevant
 	  weyl::Generator s = // first switched root index
 	    rd.find_descent(alpha_simple);
+	  alpha_0 = rd.permuted_root(rd.simpleRootNbr(s),ww);
 	  first = // corresponding root summand, conjugated back
 	      rd.root(rd.permuted_root(rd.simpleRootNbr(s),ww));
+	  assert(alpha == first + E.ctxt.delta()*first );
 	} // with this set-up, |alpha_simple| needs no more inspection
 
 	// now separate cases; based on type 1 or 2 first
@@ -1156,7 +1162,6 @@ DescValue star (const param& E,	const ext_gen& p,
 	    return one_imaginary_pair_switched; // case 1i2s
 	  }
 	  result = one_imaginary_pair_fixed;  // what remains is case 1i2f
-
 	  param F0(E.ctxt,new_tw,
 		   E.lambda_rho + first + rho_r_shift,
 		   E.tau - alpha*(tau_coef/2) - first,
@@ -1165,6 +1170,28 @@ DescValue star (const param& E,	const ext_gen& p,
 	  param F1(E.ctxt,new_tw,
 		   F0.lambda_rho + alpha, F0.tau, F0.l, E.t,
 		   flipped);
+
+	  if(has_first and (((-F0.lambda_rho + rho_r_shift)
+			      //    rho_r_shift_old)
+			      .dot(rd.coroot(alpha_0)) -
+			     rd.colevel(alpha_0))%2 != 0 ))
+	    F0.flipped = not F0.flipped; //test alpha0 nonparity at nu=0
+	    if(has_first) std::cout << "parity test0 = " <<
+			    (-F0.lambda_rho + rho_r_shift)
+			    .dot(rd.coroot(alpha_0)) -
+			    rd.colevel(alpha_0) << std::endl
+				    << "alpha_0 = " << alpha_0
+				    << ", alpha = " << n_alpha << std::endl;
+
+	    if(has_first and (((-F1.lambda_rho + rho_r_shift)
+			      // - rho_r_shift_old)
+				.dot(rd.coroot(alpha_0)) -
+			     rd.colevel(alpha_0))%2 != 0 ))
+	    F1.flipped = not F1.flipped; //test alpha0 nonparity at nu=0
+	    if(has_first) std::cout << "parity test1 = " <<
+			    (-F1.lambda_rho + rho_r_shift)
+			    .dot(rd.coroot(alpha_0)) -
+			    rd.colevel(alpha_0) << std::endl;
 
 	  z_align(E,F0);
 	  z_align(E,F1);
@@ -1194,6 +1221,15 @@ DescValue star (const param& E,	const ext_gen& p,
 	bool shift_correct = // whether |alpha_0| is defined and real at |theta|
 	  not rd.is_simple_root(alpha_simple) and
 	  i_tab.root_involution(theta,alpha_0)==rd.rootMinus(alpha_0);
+	bool flipped_correct = // shift_correct, and alpha_0 nonparity
+			       // at nu=0
+	  shift_correct and ( ((- E.lambda_rho + rho_r_shift)
+				// - rho_r_shift_new)
+			       .dot(rd.coroot(alpha_0))
+			       - rd.colevel(alpha_0))%2!=0);
+			      bool flipped1 = flipped_correct ?
+			      not flipped : flipped;
+
 	const int level = level_a(E,rho_r_shift,n_alpha) +
 	   (shift_correct ? 1 : 0 ); // add 1 if |alpha_0| is defined and real
 
@@ -1209,6 +1245,7 @@ DescValue star (const param& E,	const ext_gen& p,
 	else
 	{
 	  const Weight a0 = rd.root(alpha_0);
+	  assert(alpha == a0 + E.ctxt.delta()*a0);
 	  if (shift_correct)
 	  {
 	    rho_r_shift += a0; // non delta-fixed contribution
@@ -1238,10 +1275,10 @@ DescValue star (const param& E,	const ext_gen& p,
 
 	  param F0(E.ctxt,new_tw,
 		   new_lambda_rho, E.tau + tau_correction, E.l, E0.t,
-		   flipped);
+		   flipped1);
 	  param F1(E.ctxt,new_tw,
 		   new_lambda_rho, F0.tau, E.l + alpha_v, E0.t,
-		   flipped);
+		   flipped1);
 
 	  z_align(E0,F0);
 	  z_align(E0,F1);
@@ -1265,7 +1302,7 @@ DescValue star (const param& E,	const ext_gen& p,
 
 	  param F(E.ctxt,new_tw,
 		  new_lambda_rho, E.tau + tau_correction, E.l, E0.t,
-		  flipped);
+		  flipped1);
 
 	  z_align(E0,F);
 	  z_align(F,E1);
