@@ -81,6 +81,7 @@ set c_form_irreducible_long (Param p) =
 
 { basic version of c_form_irreducible_twisted, for any delta }
 set c_form_irreducible_twisted (Param p,mat delta) = ParamPol:
+assert(is_fixed(delta,p),"parameter is not fixed by involution");
 ( let G=p.real_form, ori_nr_p = orientation_nr(p)
   then fixed_terms = null_module(G), unfixed_terms = null_module(G)
   , P=KL_sum_at_s(p), Ptw=twisted_KL_sum_at_s(p)
@@ -122,6 +123,7 @@ set c_form_irreducible_delta = (Param->ParamPol):
 { more information about c_form_irreducible_delta }
 set c_form_irreducible_twisted_long (Param p,mat delta) =
     (ParamPol,[(Param,Split,ParamPol)],ParamPol):
+assert(is_fixed(delta,p),"parameter is not fixed by involution");
 ( let G=p.real_form
   , ori_nr_p = orientation_nr(p)
   then fixed_terms = null_module(G), unfixed_terms = null_module(G)
