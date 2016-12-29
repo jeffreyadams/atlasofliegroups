@@ -968,21 +968,28 @@ BlockElt twisted
  */
 param complex_cross(const ext_gen& p, param E) // by-value for |E|, modified
 { const RootDatum& rd = E.rc().rootDatum();
-  const RootDatum& id = E.ctxt.id();
+  const auto& ec = E.ctxt;
+  const RootDatum& id = ec.id();
   const InvolutionTable& i_tab = E.rc().innerClass().involution_table();
   auto &tW = E.rc().twistedWeylGroup(); // caution: |p| refers to integr. datum
 
   InvolutionNbr theta = i_tab.nr(E.tw);
-  Weight rho_r_shift = rd.twoRho(i_tab.real_roots(theta));
+  const RootNbrSet& theta_real_roots = i_tab.real_roots(theta);
+  Weight rho_r_shift = rd.twoRho(theta_real_roots);
   Coweight dual_rho_im_shift = rd.dual_twoRho(i_tab.imaginary_roots(theta));
+
+  WeylWord ww;
+  ww.reserve(p.length()*ec.subsys().reflection(p.s0).size());
 
   for (unsigned i=p.w_kappa.size(); i-->0; ) // at most 3 letters, right-to-left
   { weyl::Generator s=p.w_kappa[i]; // generator for integrality datum
-    tW.twistedConjugate(E.ctxt.subsys().reflection(s),E.tw);
-    id.simple_reflect(s,E.lambda_rho,E.ctxt.lambda_shift(s));
+    auto& refl = ec.subsys().reflection(s);
+    ww.insert(ww.end(),refl.begin(),refl.end());
+    tW.twistedConjugate(refl,E.tw);
+    id.simple_reflect(s,E.lambda_rho,ec.lambda_shift(s));
     id.simple_reflect(s,rho_r_shift);
     id.simple_reflect(s,E.tau);
-    id.simple_coreflect(E.l,s,E.ctxt.l_shift(s));
+    id.simple_coreflect(E.l,s,ec.l_shift(s));
     id.simple_coreflect(dual_rho_im_shift,s);
     id.simple_coreflect(E.t,s);
   }
@@ -991,13 +998,21 @@ param complex_cross(const ext_gen& p, param E) // by-value for |E|, modified
   rho_r_shift/=2; // now it is just a sum of (real) roots
   E.lambda_rho -= rho_r_shift;
 
-  assert(E.ctxt.delta()*rho_r_shift==rho_r_shift); // diff of $\delta$-fixed
+  assert(ec.delta()*rho_r_shift==rho_r_shift); // diff of $\delta$-fixed
 
   dual_rho_im_shift -= rd.dual_twoRho(i_tab.imaginary_roots(i_tab.nr(E.tw)));
   dual_rho_im_shift/=2; // now it is just a sum of (imaginary) coroots
   E.l -= dual_rho_im_shift;
 
-  assert(E.ctxt.delta().right_prod(dual_rho_im_shift)==dual_rho_im_shift);
+  assert(ec.delta().right_prod(dual_rho_im_shift)==dual_rho_im_shift);
+
+  RootNbrSet shift_roots = pos_to_neg(rd,ww).andnot(theta_real_roots);
+  unsigned count=0; // will count 2-element |delta|-orbits
+  for (auto it=shift_roots.begin(); it(); ++it)
+    if (*it!=ec.delta_of(*it) and not rd.sumIsRoot(*it,ec.delta_of(*it)))
+      ++count;
+  assert(count%2==0); // since |S| is supposed to be $\delta$-stable
+  E.flip(count%4!=0);
 
   validate(E);
   return E;
