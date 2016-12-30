@@ -214,6 +214,7 @@ Coweight ell (const KGB& kgb, KGBElt x)
 
 void validate(const param& E)
 {
+#ifndef NDEBUG // make sure this is a no-op when debugging is disabled
   const auto& i_tab = E.rc().innerClass().involution_table();
   const auto& rd = E.rc().innerClass().rootDatum();
   const auto& theta = i_tab.matrix(E.tw);
@@ -224,7 +225,7 @@ void validate(const param& E)
   assert(((E.ctxt.g_rho_check()-E.l)*(1-theta)).numerator().isZero());
   assert(((theta+1)*(E.ctxt.gamma()-E.lambda_rho-rho(rd)))
 	 .numerator().isZero());
-  ndebug_use(delta); ndebug_use(theta); ndebug_use(rd);
+#endif
 }
 
 param::param (const context& ec, const StandardRepr& sr, bool flipped)
@@ -968,36 +969,56 @@ BlockElt twisted
  */
 param complex_cross(const ext_gen& p, param E) // by-value for |E|, modified
 { const RootDatum& rd = E.rc().rootDatum();
-  const RootDatum& id = E.ctxt.id();
+  const auto& ec = E.ctxt;
+  const RootDatum& id = ec.id();
   const InvolutionTable& i_tab = E.rc().innerClass().involution_table();
   auto &tW = E.rc().twistedWeylGroup(); // caution: |p| refers to integr. datum
 
   InvolutionNbr theta = i_tab.nr(E.tw);
-  Weight rho_r_shift = rd.twoRho(i_tab.real_roots(theta));
+  const RootNbrSet& theta_real_roots = i_tab.real_roots(theta);
+  Weight rho_r_shift = rd.twoRho(theta_real_roots);
   Coweight dual_rho_im_shift = rd.dual_twoRho(i_tab.imaginary_roots(theta));
 
   for (unsigned i=p.w_kappa.size(); i-->0; ) // at most 3 letters, right-to-left
   { weyl::Generator s=p.w_kappa[i]; // generator for integrality datum
-    tW.twistedConjugate(E.ctxt.subsys().reflection(s),E.tw);
-    id.simple_reflect(s,E.lambda_rho,E.ctxt.lambda_shift(s));
+    tW.twistedConjugate(ec.subsys().reflection(s),E.tw);
+    id.simple_reflect(s,E.lambda_rho,ec.lambda_shift(s));
     id.simple_reflect(s,rho_r_shift);
     id.simple_reflect(s,E.tau);
-    id.simple_coreflect(E.l,s,E.ctxt.l_shift(s));
+    id.simple_coreflect(E.l,s,ec.l_shift(s));
     id.simple_coreflect(dual_rho_im_shift,s);
     id.simple_coreflect(E.t,s);
   }
 
-  rho_r_shift -= rd.twoRho(i_tab.real_roots(i_tab.nr(E.tw)));
+  const RootNbrSet& new_theta_real_roots = i_tab.real_roots(i_tab.nr(E.tw));
+  rho_r_shift -= rd.twoRho(new_theta_real_roots);
   rho_r_shift/=2; // now it is just a sum of (real) roots
   E.lambda_rho -= rho_r_shift;
 
-  assert(E.ctxt.delta()*rho_r_shift==rho_r_shift); // diff of $\delta$-fixed
+  assert(ec.delta()*rho_r_shift==rho_r_shift); // diff of $\delta$-fixed
 
   dual_rho_im_shift -= rd.dual_twoRho(i_tab.imaginary_roots(i_tab.nr(E.tw)));
   dual_rho_im_shift/=2; // now it is just a sum of (imaginary) coroots
   E.l -= dual_rho_im_shift;
 
-  assert(E.ctxt.delta().right_prod(dual_rho_im_shift)==dual_rho_im_shift);
+  assert(ec.delta().right_prod(dual_rho_im_shift)==dual_rho_im_shift);
+
+  auto& subs=ec.subsys();
+  RootNbr alpha_simple = subs.parent_nr_simple(p.s0);
+  const WeylWord to_simple = fixed_conjugate_simple(ec,alpha_simple);
+  // by symmetry by $\delta$, |to_simple| conjugates $\delta(\alpha)$ to simple:
+  assert(p.length()==1 or rd.is_simple_root(rd.permuted_root(to_simple,
+				                subs.parent_nr_simple(p.s1))));
+
+  RootNbrSet S = pos_to_neg(rd,to_simple);
+  S &= theta_real_roots ^ new_theta_real_roots; // select real-changing roots
+
+  unsigned count=0; // will count 2-element |delta|-orbits
+  for (auto it=S.begin(); it(); ++it)
+    if (*it!=ec.delta_of(*it) and not rd.sumIsRoot(*it,ec.delta_of(*it)))
+      ++count;
+  assert(count%2==0); // since |S| is supposed to be $\delta$-stable
+  E.flip(count%4!=0);
 
   validate(E);
   return E;
@@ -1047,7 +1068,7 @@ int level_a (const param& E, const Weight& shift, RootNbr alpha)
 }
 
 /*
-  For the unstairs and downstairs conjugation scenario where we call
+  For the upstairs and downstairs conjugation scenario where we call
   |repr::Cayley_shift| to make a shift to |lambda_rho|, we also need the sign
   by which |delta| acts on wedge product for |repr::Cayley_shift| roots, more
   precisely those positive roots that |to_simple| maps to negative, and which
