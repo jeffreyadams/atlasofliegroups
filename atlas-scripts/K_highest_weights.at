@@ -448,7 +448,7 @@ set K_types (KHighestWeight mu_in)= [K_Type]:
   let all_pL=all_G_spherical_same_differential(pL[0]) in
   for qL in all_pL
   do  let ()=if LKT_verbose then prints("qL:", qL) fi then
-     ind=monomials(induce_standard(parameter(qL),Q,real_form(x))) in
+     ind=monomials(theta_induce_standard(parameter(qL),real_form(x))) in
 {    let ()=prints("induced:", ind) in}
     assert(#ind=1,"induced has more than one term");
     result#:=K_type(ind[0])
