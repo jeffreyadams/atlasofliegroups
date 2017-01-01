@@ -1,3 +1,4 @@
+<basic.at
 <ext_deform.at { for full_deform@(Param,mat) }
 <induction.at {for dim_u_cap_p}
 set hf_debug=false
@@ -266,8 +267,8 @@ set mu_in_terms_of_z(Param p,mat delta)=rat:
 let E=E(delta,p) in (E.g-E.l-rho_check_r(E.x)+E.t)*(E.lambda_rho)+E.z+DIM_u_cap_p(E.x)
 
 set mu (Param p,mat delta) = rat:
-if is_equal_rank(real_form(p)) and  use_equal_rank_mu then mu(p) else 
-let rv=sum(mu_terms(p,delta)) in 
+if is_equal_rank(real_form(p)) and  use_equal_rank_mu then mu(p) else
+let rv=sum(mu_terms(p,delta)) in
 {prints("mu=", rv, "   mu_z=", mu_in_terms_of_z(p,delta));}
 assert(rv=mu_in_terms_of_z(p,delta),"two version of mu differ");rv fi
 
@@ -471,4 +472,3 @@ set strong_test (Param p,mat delta)=bool:
 { elementary utility function }
 set init (RealForm G) = (RealForm,mat,Param):
   (G, G.distinguished_involution, trivial(G))
-

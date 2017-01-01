@@ -124,8 +124,7 @@ in for t in B do
 set ind_one_dim_from_parabolic (Parabolic Q) = ([Param]):
 let L=Levi(Q)
 then B=one_dimensionals(L)
-then rv=[Param]:[]
-in for t in B do rv#:=last_param(induce_irreducible(t, Q, real_form(Q))) od; rv
+in for t in B do last_param(theta_induce_irreducible(t, real_form(Q))) od
 
 set closed_real_parabolics_associated_to_a_lambda( RealForm G, [int] H)=[Parabolic]:
 let V=x_min_parabolic_in_dis_fiber(G, H)
@@ -241,8 +240,7 @@ while i<#P
 set induced_from_closed_parabolics_B(RealForm G, [int] P)=[Param]:
 let (H,)=make_dominant(G, orbit_H_Bn(G, P))
 then V=closed_real_parabolics_associated_to_a_lambda(G, H)
-then rv=[Param]:[]
-in for v in V do rv#:=last_param(induce_irreducible(trivial(Levi(v)), v, G)) od; rv
+in for v in V do last_param(real_induce_irreducible(trivial(Levi(v)), G)) od
 
 
 set real_forms_of_complex_orbit_as_Reps_B (Block B, [int] P)=[Param]:
@@ -430,8 +428,7 @@ in for i:#A do
 set induced_from_closed_parabolics_C(RealForm G, [int] P)=[Param]:
 let (H,)=make_dominant(G, orbit_H_Cn(G, P))
 then V=closed_real_parabolics_associated_to_a_lambda(G, H)
-then rv=[Param]:[]
-in for v in V do rv#:=last_param(induce_irreducible(trivial(Levi(v)), v, G)) od; rv
+in for v in V do last_param(real_induce_irreducible(trivial(Levi(v)), G)) od
 
 
 

@@ -1,4 +1,6 @@
+<basic.at
 <K.at          { for K_root_datum, K_0 }
+<Weylgroup.at  { for make_simple_sequence }
 
 { functions related to W^\delta }
 
