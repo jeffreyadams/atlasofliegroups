@@ -22,6 +22,7 @@
 #include "kgb.h"
 #include "blocks.h"
 #include "repr.h"
+#include "prettyprint.h" 
 
 /*
   For an extended group, the block structure is more complicated than an
@@ -338,7 +339,7 @@ StandardRepr scaled_extended_dominant // result will have its |gamma()| dominant
 (const Rep_context rc,
  const StandardRepr& sr, const WeightInvolution& delta,
  Rational factor, // |z.nu()| is scaled by |factor| first
- bool& flipped // records whether and extended flip was recorded
+ bool& flipped // records whether an extended flip was recorded
  )
 { const RootDatum& rd=rc.rootDatum(); const KGB& kgb = rc.kgb();
   const ext_gens orbits = rootdata::fold_orbits(rd,delta);
@@ -410,7 +411,7 @@ StandardRepr scaled_extended_dominant // result will have its |gamma()| dominant
   // now ensure that |E| gets matching |gamma| and |theta| (for flipped test)
   param E(ctxt,kgb.involution(x),lr,tau,l,t);
 
-  // finally extract |StarndarRepr| from |E|, overwriting |result|
+  // finally extract |StandardRepr| from |E|, overwriting |result|
   result = rc.sr_gamma(x,E.lambda_rho,ctxt.gamma());
 
   // but the whole point of this function is to record the relative flip too!
@@ -464,7 +465,7 @@ containers::sl_list<std::pair<StandardRepr,bool> > extended_finalise
   while(not to_do.empty());
 
   return result;
-} // |finalise|
+} // |extended_finalise|
 
 #if 0 // unused code, but the formula is referred to in the comment below
 int z (const param& E) // value modulo 4, exponent of imaginary unit $i$
@@ -1072,9 +1073,25 @@ bool Cayley_shift_flip
   for (auto it=T.begin(); it(); ++it)
     if (*it!=ec.delta_of(*it) and not rd.sumIsRoot(*it,ec.delta_of(*it)))
       ++countdown;
-  assert(countdown==0); // since that's what we see
+  //  Weight gamma_numer(ec.gamma().numerator().begin(),
+  //		     ec.gamma().numerator().end());
+  //  unsigned int gamma_denom = ec.gamma().denominator();
+  if (not (countdown==0)) std::cout << "countup = " << countup
+				    << ", countdown = " << countdown
+				    << ", thetaup = " << theta_upstairs
+				    << ", thetadown = " << theta_downstairs
+				    << std::endl;
+  // if (not (countdown==0)) prettyprint::printVector(std::cout
+  // << "gamma_denom = "
+  //						   << gamma_denom
+  //						   << ", gamma_numer = "
+  //						   ,gamma_numer);
+  // if (not (countdown==0)) std::cout << std::endl;
+    //std::cout << "gamma_numer = " << gamma_numer
+    //				    <<std::endl;
+  // assert(countdown==0); // since that's what we see
   return (countup-countdown)%4!=0;
-}
+} // Cayley_shift_flip
 
 // version of |type| that will also export signs for every element of |links|
 DescValue star (const param& E,	const ext_gen& p,
@@ -1329,9 +1346,10 @@ DescValue star (const param& E,	const ext_gen& p,
 	//	assert(rd.is_simple_root(alpha_simple));
 	// Haven't thought whether there's an issue
 	const auto theta_q = i_tab.nr(new_tw);
-	Weight rho_r_shift = rd.is_posroot(theta_alpha) ?
-	  repr::Cayley_shift(ic,theta_q,ww) :
-	  repr::Cayley_shift(ic,theta_q,ww);
+	//	if (rd.is_posroot(theta_alpha)) assert (theta_q > theta);
+	// Weight rho_r_shift = rd.is_posroot(theta_alpha) ?
+	//   repr::Cayley_shift(ic,theta_q,ww) :
+	//   repr::Cayley_shift(ic,theta,ww);
 
 	const bool flipped = rd.is_posroot(theta_alpha) ?
 	  Cayley_shift_flip(E.ctxt,theta_q,theta,ww) :
@@ -1339,7 +1357,7 @@ DescValue star (const param& E,	const ext_gen& p,
 	if(flipped) std::cout << "1C flip" << std::endl;
 	auto E1=complex_cross(p,E0);
 	E1.flipped = flipped;
-	E1.lambda_rho -= rho_r_shift;
+	//  E1.lambda_rho -= rho_r_shift; already done in complex_cross
 	links.push_back(E1);
       }
     }
@@ -1584,16 +1602,16 @@ DescValue star (const param& E,	const ext_gen& p,
 	  const WeylWord ww = fixed_conjugate_simple(E.ctxt,alpha_simple);
 	  assert(rd.is_simple_root(alpha_simple)); // no complications here
 	  const auto theta_q = i_tab.nr(new_tw);
-	  Weight rho_r_shift = rd.is_posroot(theta_alpha) ?
-	    repr::Cayley_shift(ic,theta_q,ww) :
-	    repr::Cayley_shift(ic,theta_q,ww);
+	  //	  Weight rho_r_shift = ascent ?
+	  //	    repr::Cayley_shift(ic,theta_q,ww) :
+	  //	    repr::Cayley_shift(ic,theta,ww);
 	  const bool flipped = ascent ?
 	    Cayley_shift_flip(E.ctxt,theta_q,theta,ww) :
 	    Cayley_shift_flip(E.ctxt,theta,theta_q,ww);
 	  if(flipped) std::cout << "2C flip" << std::endl;
 	auto E1=complex_cross(p,E0);
 	E1.flipped = flipped;
-	E1.lambda_rho -= rho_r_shift;
+	// E1.lambda_rho -= rho_r_shift; // done in complex_cross
 	links.push_back(E1);
 	}
 	else if (ascent)
@@ -1819,11 +1837,17 @@ DescValue star (const param& E,	const ext_gen& p,
 	  const WeylWord ww = fixed_conjugate_simple(E.ctxt,alpha_simple);
 	  assert(rd.is_simple_root(alpha_simple)); // no complications here
 	  const auto theta_q = i_tab.nr(new_tw);
+
+	  //	  Weight rho_r_shift = ascent ?
+	  //	    repr::Cayley_shift(ic,theta_q,ww) :
+	  //	    repr::Cayley_shift(ic,theta,ww);
 	  const bool flipped = ascent ?
 	    Cayley_shift_flip(E.ctxt,theta_q,theta,ww) :
 	    Cayley_shift_flip(E.ctxt,theta,theta_q,ww);
-	  E0.flipped = flipped;
-	  links.push_back(complex_cross(p,E0));
+	  auto E1=complex_cross(p,E0);
+	  E1.flipped = flipped;
+	  //	  E1.lambda_rho -= rho_r_shift;
+	  links.push_back(E1);
 	}
       }
     }
