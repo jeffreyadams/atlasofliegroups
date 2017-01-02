@@ -22,7 +22,7 @@
 #include "kgb.h"
 #include "blocks.h"
 #include "repr.h"
-#include "prettyprint.h" 
+// #include "prettyprint.h" 
 
 /*
   For an extended group, the block structure is more complicated than an
@@ -492,6 +492,7 @@ int z (const param& E) // value modulo 4, exponent of imaginary unit $i$
 */
 void z_align (const param& E, param& F)
 { assert(E.t==F.t); // we require preparing |t| upstairs to get this
+  assert(E.t.dot(E.lambda_rho-F.lambda_rho) == 0);
   int d = E.l.dot((E.delta()-1)*E.tau) - F.l.dot((F.delta()-1)*F.tau);
   assert(d%2==0);
   F.flip(d%4!=0);
@@ -505,11 +506,13 @@ void z_align (const param& E, param& F)
   second term of the formula for |z|. But retrieving |mu| from the parameters
   |E| and |F| themselves is complicated by the posssible contribution from
   |Cayley_shift|, which contribution should be ignored; however at the place
-  of call the value of |mu| is explicitely available, so we ask here to pass
+  of call the value of |mu| is explicitly available, so we ask here to pass
   |t.dot(mu)| as third argument |t_mu|.
  */
 void z_align (const param& E, param& F, int t_mu)
-{ z_align(E,F);
+{
+  assert(E.t.dot(E.lambda_rho-F.lambda_rho) == t_mu);
+  z_align(E,F);
   F.flip(t_mu%2!=0);
 }
 
@@ -1093,6 +1096,30 @@ bool Cayley_shift_flip
   return (countup-countdown)%4!=0;
 } // Cayley_shift_flip
 
+  /* In the case of Cayley_shift_flip, the tau parameter of the target must also be modified by the sum of one real root from each delta orbit.
+   */
+  /* Weight tau_shift
+  (const context& ec,
+   InvolutionNbr theta_upstairs, // top of the link (more split Cartan)
+   InvolutionNbr theta_downstairs, // at the bottom of the link
+   const WeylWord& to_simple)
+{ const RootDatum& rd = ec.rc().rootDatum();
+  const InvolutionTable& i_tab = ec.innerClass().involution_table();
+  RootNbrSet S = pos_to_neg(rd,to_simple) & i_tab.real_roots(theta_upstairs);
+  RootNbrSet T = pos_to_neg(rd,to_simple) & i_tab.real_roots(theta_downstairs);
+  Weight result(rd.rank(),0); // this will be one root from each delta pair
+  for (auto it=S.begin(); it(); ++it)
+    if (*it < ec.delta_of(*it))
+      // (*it!=ec.delta_of(*it) and
+	// not rd.sumIsRoot(*it,ec.delta_of(*it)))
+      result += rd.root(*it); // add smaller root in delta orbit
+  for (auto it=T.begin(); it(); ++it)
+    if (*it < ec.delta_of(*it))
+      result -= rd.root(*it); // subtract downstairs
+  return result;
+} // tau_shift
+*/
+
 // version of |type| that will also export signs for every element of |links|
 DescValue star (const param& E,	const ext_gen& p,
 		containers::sl_list<param>& links)
@@ -1131,7 +1158,8 @@ DescValue star (const param& E,	const ext_gen& p,
 	RootNbr alpha_simple = n_alpha;
 	const WeylWord ww = fixed_conjugate_simple(E.ctxt,alpha_simple);
 	const auto theta_p = i_tab.nr(new_tw); // upstairs
-	const Weight rho_r_shift = repr::Cayley_shift(ic,theta_p,ww);
+	const Weight rho_r_shift = repr::Cayley_shift(ic,theta_p,theta,ww);
+	//	const Weight tau_shift = tau_shift(E.ctxt,theta_p,theta,ww);
 	const bool flipped = Cayley_shift_flip(E.ctxt,theta_p,theta,ww);
         if(flipped) std::cout << "1i flip" << std::endl;
 
@@ -1165,14 +1193,16 @@ DescValue star (const param& E,	const ext_gen& p,
 	      matreduc::find_solution(th_1,alpha); // solutions are equivalent
 
 	  param F(E.ctxt,new_tw,
-		  E.lambda_rho + first + rho_r_shift, E0.tau+diff*tau_coef,
+		  E.lambda_rho + first + rho_r_shift,
+		  E0.tau+diff*tau_coef, // + tau_shift,
 		  E.l+alpha_v*(tf_alpha/2), E.t,
 		  flipped);
 
  	  E0.l = tf_alpha%4==0 ? F.l+alpha_v : F.l; // for cross
 	  assert(not same_standard_reps(E,E0));
 	  z_align(E,F);
-	  z_align(F,E0);
+	  //	  z_align(F,E0); 
+	  z_align(E,E0);
 	  links.push_back(std::move(F )); // Cayley link
 	  links.push_back(std::move(E0)); // cross link
 	} // end of 1i1 case
@@ -1188,7 +1218,7 @@ DescValue star (const param& E,	const ext_gen& p,
 	  result = one_imaginary_pair_fixed;  // what remains is case 1i2f
 	  param F0(E.ctxt,new_tw,
 		   E.lambda_rho + first + rho_r_shift,
-		   E.tau - alpha*(tau_coef/2) - first,
+		   E.tau - alpha*(tau_coef/2) - first, // + tau_shift,
 		   E.l + alpha_v*(tf_alpha/2), E.t,
 		   flipped);
 	  param F1(E.ctxt,new_tw,
@@ -1231,9 +1261,10 @@ DescValue star (const param& E,	const ext_gen& p,
 	const TwistedInvolution new_tw = // downstairs
 	  tW.prod(subs.reflection(p.s0),E.tw);
 
-	Weight rho_r_shift = repr::Cayley_shift(ic,theta,ww);
 	const auto theta_p = i_tab.nr(new_tw); // downstairs
+	Weight rho_r_shift = repr::Cayley_shift(ic,theta,theta_p,ww);
 	const bool flipped = Cayley_shift_flip(E.ctxt,theta,theta_p,ww);
+	//	const Weight tau_shift = tau_shift(E.ctxt,theta,theta_p,ww);
         if(flipped) std::cout << "1r flip" << std::endl;
 	assert(E.ctxt.delta()*rho_r_shift==rho_r_shift); // as $ww\in W^\delta$
 
@@ -1330,7 +1361,8 @@ DescValue star (const param& E,	const ext_gen& p,
 		  flipped1);
 
 	  z_align(E0,F);
-	  z_align(F,E1);
+	  //	  z_align(F,E1);
+	  z_align(E0,E1);
 	  links.push_back(std::move(F )); // Cayley link
 	  links.push_back(std::move(E1)); // cross link
 	} // end of 1r2 case
@@ -1389,8 +1421,9 @@ DescValue star (const param& E,	const ext_gen& p,
 	const WeylWord ww = fixed_conjugate_simple(E.ctxt,alpha_simple);
 	const auto theta_p = i_tab.nr(new_tw); // upstairs
 
-	const Weight rho_r_shift = repr::Cayley_shift(ic,theta_p,ww);
+	const Weight rho_r_shift = repr::Cayley_shift(ic,theta_p,theta,ww);
 	const bool flipped = Cayley_shift_flip(E.ctxt,theta_p,theta,ww);
+	//	const Weight tau_shift = tau_shift(E.ctxt,theta,theta_p,ww);
 	if(flipped) std::cout << "2i flip" << std::endl;
 	assert(E.ctxt.delta()*rho_r_shift==rho_r_shift); // $ww\in W^\delta$
 	assert(rd.is_simple_root(alpha_simple)); // cannot fail for length 2
@@ -1403,13 +1436,14 @@ DescValue star (const param& E,	const ext_gen& p,
 	  const Weight sigma = matreduc::find_solution(th_1,alpha*at+beta*bt);
 
 	  param F (E.ctxt, new_tw,
-		   E.lambda_rho + rho_r_shift,  E.tau + sigma,
+		   E.lambda_rho + rho_r_shift,  E.tau + sigma,// + tau_shift,
 		   E.l+alpha_v*(tf_alpha/2)+beta_v*(tf_beta/2), E.t,
 		   flipped);
 
 	  E0.l += alpha_v+beta_v;
 	  z_align(E,F); // no 3rd arg, since |E.lambda_rho| unchanged
-	  z_align(F,E0);
+	  //	  z_align(F,E0);
+	  z_align(E,E0);
 	  links.push_back(std::move(F));  // Cayley link
 	  links.push_back(std::move(E0)); // cross link
 	}
@@ -1426,6 +1460,7 @@ DescValue star (const param& E,	const ext_gen& p,
 	    matreduc::find_solution(th_1,alpha*(at+mm)+beta*(bt-mm));
 
 	  const Weight new_tau0 = E.tau - alpha*((at+m)/2) - beta*((bt-m)/2);
+	  //  + tau_shift;
           const Coweight new_l = E.l+alpha_v*(tf_alpha/2)+beta_v*(tf_beta/2);
 
 	  // first Cayley link |F0| will be the one that does not need |sigma|
@@ -1479,7 +1514,7 @@ DescValue star (const param& E,	const ext_gen& p,
 	const TwistedInvolution new_tw = // downstairs
 	  tW.prod(subs.reflection(p.s1),tW.prod(subs.reflection(p.s0),E.tw));
 	const auto theta_p = i_tab.nr(new_tw); // downstairs
-	const Weight rho_r_shift = repr::Cayley_shift(ic,theta,ww);
+	const Weight rho_r_shift = repr::Cayley_shift(ic,theta,theta_p,ww);
 	const bool flipped = Cayley_shift_flip(E.ctxt,theta,theta_p,ww);
 	if(flipped) std::cout << "2r flip" << std::endl;
 	assert(E.ctxt.delta()*rho_r_shift==rho_r_shift); // as $ww\in W^\delta$
@@ -1525,8 +1560,8 @@ DescValue star (const param& E,	const ext_gen& p,
 		   flipped);
 
 	  z_align(E0,F0,m*((b_level-a_level)/2));
-	  z_align(E1,F1,m*((a_level-b_level)/2));
-
+	  //	  z_align(E1,F1,m*((a_level-b_level)/2));
+	  z_align(E0,F1,m*((a_level-b_level)/2));
 	  // Cayley links
 	  links.push_back(std::move(F0));
 	  links.push_back(std::move(F1));
@@ -1562,7 +1597,8 @@ DescValue star (const param& E,	const ext_gen& p,
 		   flipped);
 
 	  z_align(E0,F0,m *((b_level-a_level)/2));
-	  z_align(E1,F1,mm*((b_level-a_level)/2));
+	  //	  z_align(E1,F1,mm*((b_level-a_level)/2));
+	  z_align(E0,F1,mm*((b_level-a_level)/2));
 	  links.push_back(std::move(F0));
 	  links.push_back(std::move(F1));
 	} // end of case 2r21f
@@ -1584,7 +1620,8 @@ DescValue star (const param& E,	const ext_gen& p,
 		  flipped);
 
 	  z_align(E0,F); // no 3rd arg, as |E.t.dot(alpha)==0| etc.
-	  z_align(F,E1);
+	  //	  z_align(F,E1);
+	  z_align(E0,E1);
 	  links.push_back(std::move(F )); // Cayley link
 	  links.push_back(std::move(E1)); // cross link
 	} // end of case 2r22
@@ -1626,7 +1663,7 @@ DescValue star (const param& E,	const ext_gen& p,
 	  assert(rd.is_simple_root(alpha_simple)); // no complications here
 
 	  const auto theta_p = i_tab.nr(new_tw); // upstairs
-	  const Weight rho_r_shift = repr::Cayley_shift(ic,theta_p,ww);
+	  const Weight rho_r_shift = repr::Cayley_shift(ic,theta_p,theta,ww);
 	  assert(E.ctxt.delta()*rho_r_shift==rho_r_shift); // $ww\in W^\delta$
 
 	  const bool flipped = Cayley_shift_flip(E.ctxt,theta_p,theta,ww);
@@ -1666,7 +1703,7 @@ DescValue star (const param& E,	const ext_gen& p,
 	  RootNbr alpha_simple = n_alpha;
 	  const WeylWord ww = fixed_conjugate_simple(E.ctxt,alpha_simple);
 	  assert(rd.is_simple_root(alpha_simple)); // no complications here
-	  const Weight rho_r_shift = repr::Cayley_shift(ic,theta,ww);
+	  const Weight rho_r_shift = repr::Cayley_shift(ic,theta,theta_p,ww);
 	  const bool flipped = Cayley_shift_flip(E.ctxt,theta,theta_p,ww);
 	  if(flipped) std::cout << "2Cr flip" << std::endl;
 	  assert(E.ctxt.delta()*rho_r_shift==rho_r_shift); // $ww\in W^\delta$
@@ -1725,7 +1762,7 @@ DescValue star (const param& E,	const ext_gen& p,
 	const WeylWord ww = fixed_conjugate_simple(E.ctxt,alpha_simple);
 	const auto theta_p = i_tab.nr(new_tw); // upstairs
 
-	const Weight rho_r_shift = repr::Cayley_shift(ic,theta_p,ww);
+	const Weight rho_r_shift = repr::Cayley_shift(ic,theta_p,theta,ww);
 	const bool flipped = Cayley_shift_flip(E.ctxt,theta_p,theta,ww);
 	if(flipped) std::cout << "3Ci flip" << std::endl;
 	assert(E.ctxt.delta()*rho_r_shift==rho_r_shift); // $ww\in W^\delta$
@@ -1745,9 +1782,9 @@ DescValue star (const param& E,	const ext_gen& p,
 	RootNbr alpha_simple = n_alpha;
 	const WeylWord ww = fixed_conjugate_simple(E.ctxt,alpha_simple);
 	assert(rd.is_simple_root(alpha_simple)); // no complications here
-	const auto theta_p = i_tab.nr(new_tw); // upstairs
+	const auto theta_p = i_tab.nr(new_tw); // downstairs
 
-	const Weight rho_r_shift = repr::Cayley_shift(ic,theta,ww);
+	const Weight rho_r_shift = repr::Cayley_shift(ic,theta,theta_p,ww);
 	const bool flipped = Cayley_shift_flip(E.ctxt,theta,theta_p,ww);
 	if(flipped) std::cout << "3Cr flip" << std::endl;
 	assert(E.ctxt.delta()*rho_r_shift==rho_r_shift); // as $ww\in W^\delta$
@@ -1787,7 +1824,8 @@ DescValue star (const param& E,	const ext_gen& p,
 
 	  const auto theta_upstairs = ascent ? i_tab.nr(new_tw) : theta;
 	  const auto theta_downstairs = ascent ? theta : i_tab.nr(new_tw);
-	  const Weight rho_r_shift = repr::Cayley_shift(ic,theta_upstairs,ww);
+	  const Weight rho_r_shift =
+	    repr::Cayley_shift(ic,theta_upstairs,theta_downstairs,ww);
 	  const bool flipped =
 	    Cayley_shift_flip(E.ctxt,theta_upstairs,theta_downstairs,ww);
 	  if(flipped) std::cout << "3Ci flip" << std::endl;
@@ -1866,11 +1904,12 @@ DescValue star (const param& E,	const ext_gen& p,
 
 bool is_descent (const ext_gen& kappa, const param& E)
 { // like in |star|, generators are not simple for |E.rc().twistedWeylGroup()|
+  const TwistedWeylGroup& tW = E.rc().twistedWeylGroup();
   const InnerClass& ic = E.rc().innerClass();
   const InvolutionTable& i_tab = ic.involution_table();
   const InvolutionNbr theta = i_tab.nr(E.tw); // so use root action of |E.tw|
   const RootDatum& rd = E.rc().rootDatum();
-
+  const SubSystem& subs = E.ctxt.subsys();
   const RootNbr n_alpha = E.ctxt.subsys().parent_nr_simple(kappa.s0);
   const RootNbr theta_alpha = i_tab.root_involution(theta,n_alpha);
   const Weight& alpha = E.ctxt.id().simpleRoot(kappa.s0);
@@ -1878,11 +1917,18 @@ bool is_descent (const ext_gen& kappa, const param& E)
   // we don't need to inspect |kappa.type|, it does not affect descent status
   if (theta_alpha==n_alpha) // imaginary case, return whether compact
     return (E.ctxt.g_rho_check()-E.l).dot(alpha) %2!=0;
+  TwistedInvolution new_tw = tW.prod(subs.reflection(kappa.s0),E.tw);
   if (theta_alpha==rd.rootMinus(n_alpha)) // real, return whether parity
   {
+    if (not (kappa.type == ext_gen::one))
+      new_tw = tW.prod(subs.reflection(kappa.s1),new_tw);
+    if (kappa.type == ext_gen::three)
+      new_tw = tW.prod(subs.reflection(kappa.s0),new_tw);
+    InvolutionNbr theta_downstairs = i_tab.nr(new_tw);
     RootNbr alpha_simple = n_alpha; // copy to be made simple
     const WeylWord ww = fixed_conjugate_simple(E.ctxt,alpha_simple);
-    const auto level = level_a(E,repr::Cayley_shift(ic,theta,ww),n_alpha);
+    const auto level = level_a(E,repr::Cayley_shift(ic,theta,theta_downstairs,
+						    ww),n_alpha);
     if (rd.is_simple_root(alpha_simple)) // |fixed_conjugate_simple| succeeded
       return level%2==0; // parity if |level| is even
     else

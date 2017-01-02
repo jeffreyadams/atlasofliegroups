@@ -241,9 +241,10 @@ class Rep_table : public Rep_context
 // 				Functions
 
 // shift in $\lambda$ component involved in non-simple Cayleys (and crosses)
-// gets added to |lambda_rho| in imaginary cases, subtracted in real cases
+// gets added to |lambda_rho| in ascent cases, subtracted in descent cases
 Weight Cayley_shift (const InnerClass& G,
-		     InvolutionNbr theta_upstairs, // at the more split Cartan
+		     InvolutionNbr theta_upstairs, // at the "more split"
+		     InvolutionNbr theta_downstairs,
 		     const WeylWord& to_simple); // acting from the left
 
 SR_poly twisted_KL_column_at_s

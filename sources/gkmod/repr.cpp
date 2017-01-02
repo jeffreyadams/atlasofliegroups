@@ -550,13 +550,17 @@ StandardRepr Rep_context::inv_Cayley(weyl::Generator s, StandardRepr z) const
 */
 Weight Cayley_shift (const InnerClass& G,
 		     InvolutionNbr theta_upstairs, // at the more split Cartan
+		     InvolutionNbr theta_downstairs,
 		     const WeylWord& to_simple)
 { const RootDatum& rd=G.rootDatum();
   const InvolutionTable& i_tab = G.involution_table();
   RootNbrSet S = pos_to_neg(rd,to_simple) & i_tab.real_roots(theta_upstairs);
+  RootNbrSet T = pos_to_neg(rd,to_simple) & i_tab.real_roots(theta_downstairs);
   Weight sum(rd.rank(),0); // difference of $\rho_r$ values
   for (auto it=S.begin(); it(); ++it)
     sum += rd.root(*it); // sum real posroots upstairs that |to_simple| negates
+  for (auto it=T.begin(); it(); ++it)
+    sum -= rd.root(*it); // same downstairs
   return sum;
 }
 
@@ -614,7 +618,8 @@ StandardRepr Rep_context::any_Cayley(const Weight& alpha, StandardRepr z) const
   x = kgb.cross(x,ww); // finally cross back
 
   lr += // apply shift depending on distance from being simply-real upstairs
-    Cayley_shift(innerClass(),ascent ? kgb.inv_nr(x) : inv0,ww);
+    Cayley_shift(innerClass(),ascent ? kgb.inv_nr(x) : inv0,
+		 ascent ? inv0 : kgb.inv_nr(x), ww);
   z = sr_gamma(x,lr,infin_char);
 
   W_act(w,z); // move back to origingal infinitesimal character representative
