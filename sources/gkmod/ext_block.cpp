@@ -22,7 +22,7 @@
 #include "kgb.h"
 #include "blocks.h"
 #include "repr.h"
-// #include "prettyprint.h" 
+#include "prettyprint.h" 
 
 /*
   For an extended group, the block structure is more complicated than an
@@ -221,8 +221,32 @@ void validate(const param& E)
   const auto& delta = E.ctxt.delta();
   assert(delta*theta==theta*delta);
   assert((delta-1)*E.lambda_rho==(1-theta)*E.tau);
-  assert((delta-1).right_prod(E.l)==(theta+1).right_prod(E.t));
-  assert(((E.ctxt.g_rho_check()-E.l)*(1-theta)).numerator().isZero());
+  if (not ((delta-1).right_prod(E.l)==(theta+1).right_prod(E.t)))
+    {
+      auto ec = E.ctxt;
+      Weight gamma_numer(ec.gamma().numerator().begin(),
+	     ec.gamma().numerator().end());
+      unsigned int gamma_denom = ec.gamma().denominator();
+      prettyprint::printVector(std::cout << "gamma_denom = "
+			       << gamma_denom << ", gamma_numer = "
+			       ,gamma_numer);
+      std::cout << std::endl;
+    }
+  //  assert((delta-1).right_prod(E.l)==(theta+1).right_prod(E.t));
+  if (not ((E.ctxt.g_rho_check()-E.l)*(1-theta)).numerator().isZero())
+    {
+      auto ec = E.ctxt;
+      prettyprint::printVector(std::cout << "l = ",E.l);
+      std::cout << std::endl;
+      Coweight g_numer(ec.g_rho_check().numerator().begin(),
+		       ec.g_rho_check().numerator().end());
+      unsigned int g_denom = ec.g_rho_check().denominator();
+      prettyprint::printVector(std::cout << "g_rho_check_denom = "
+			       << g_denom << ", g_rho_check_numer = "
+			       ,g_numer);
+      std::cout << std::endl;
+    }
+  // assert(((E.ctxt.g_rho_check()-E.l)*(1-theta)).numerator().isZero());
   assert(((theta+1)*(E.ctxt.gamma()-E.lambda_rho-rho(rd)))
 	 .numerator().isZero());
   ndebug_use(delta); ndebug_use(theta); ndebug_use(rd);
@@ -484,6 +508,9 @@ int z (const param& E) // value modulo 4, exponent of imaginary unit $i$
   non-simple root, although the quotient of |z| values might pick up a
   contribution from the second term due to a |Cayley_shift| added to
   |lambda_rho|, it turns out that the Right Thing is not to use that quotient,
+
+  hmmm?
+
   but the quotient evaluated at the simple situation. So for these cases we
   should just compute the contribution to the difference of values |z| that
   would come \emph{from its first term} above only.
@@ -491,9 +518,11 @@ int z (const param& E) // value modulo 4, exponent of imaginary unit $i$
   This function does that, and possibly flips the second parameter accordingly
 */
 void z_align (const param& E, param& F)
-{ assert(E.t==F.t); // we require preparing |t| upstairs to get this
-  assert(E.t.dot(E.lambda_rho-F.lambda_rho) == 0);
-  int d = E.l.dot((E.delta()-1)*E.tau) - F.l.dot((F.delta()-1)*F.tau);
+{ // assert(E.t==F.t); // we require preparing |t| upstairs to get this
+  // assert(E.t.dot(E.lambda_rho-F.lambda_rho) == 0);
+  int d = E.l.dot((E.delta()-1)*E.tau) - F.l.dot((F.delta()-1)*F.tau)
+    // add correction so always works?
+    + 2*E.t.dot(E.lambda_rho) - 2*F.t.dot(F.lambda_rho);
   assert(d%2==0);
   F.flip(d%4!=0);
 }
@@ -505,7 +534,11 @@ void z_align (const param& E, param& F)
   of |z_align| is insufficient, and we should include a contribution from the
   second term of the formula for |z|. But retrieving |mu| from the parameters
   |E| and |F| themselves is complicated by the posssible contribution from
-  |Cayley_shift|, which contribution should be ignored; however at the place
+  |Cayley_shift|, which contribution should be ignored;
+
+  hmmm???
+
+  however at the place
   of call the value of |mu| is explicitly available, so we ask here to pass
   |t.dot(mu)| as third argument |t_mu|.
  */
@@ -962,7 +995,7 @@ BlockElt twisted
   the reflection action on the othe components can be done more directly.
 
   However, though the integral generators are complex, they action of those
-  reflection words neeed not be purely complex, which implies that the effect
+  reflection words need not be purely complex, which implies that the effect
   on the |lambda_rho| and |l| components are not purely reflection. The
   difference with respect to pure reflection action can be computed comparing
   |rho_r| values (half sums of positive real roots in the full system) with
@@ -992,13 +1025,15 @@ param complex_cross(const ext_gen& p, param E) // by-value for |E|, modified
   }
 
   rho_r_shift -= rd.twoRho(i_tab.real_roots(i_tab.nr(E.tw)));
+  assert(rho_r_shift==(rho_r_shift/2) + (rho_r_shift/2));
   rho_r_shift/=2; // now it is just a sum of (real) roots
-  E.lambda_rho -= rho_r_shift;
+  E.lambda_rho -= rho_r_shift; //add real on new side, subtract on original
 
   assert(E.ctxt.delta()*rho_r_shift==rho_r_shift); // diff of $\delta$-fixed
 
   dual_rho_im_shift -= rd.dual_twoRho(i_tab.imaginary_roots(i_tab.nr(E.tw)));
   dual_rho_im_shift/=2; // now it is just a sum of (imaginary) coroots
+  assert(dual_rho_im_shift.isZero());
   E.l -= dual_rho_im_shift;
 
   assert(E.ctxt.delta().right_prod(dual_rho_im_shift)==dual_rho_im_shift);
@@ -1051,7 +1086,7 @@ int level_a (const param& E, const Weight& shift, RootNbr alpha)
 }
 
 /*
-  For the unstairs and downstairs conjugation scenario where we call
+  For the upstairs and downstairs conjugation scenario where we call
   |repr::Cayley_shift| to make a shift to |lambda_rho|, we also need the sign
   by which |delta| acts on wedge product for |repr::Cayley_shift| roots, more
   precisely those positive roots that |to_simple| maps to negative, and which
@@ -1072,7 +1107,7 @@ bool Cayley_shift_flip
     if (*it!=ec.delta_of(*it) and not rd.sumIsRoot(*it,ec.delta_of(*it)))
       ++countup;
   assert(countup%2==0); // since |S| is supposed to be $\delta$-stable
-  unsigned countdown=0; // will count 2-element |delta|-orbits upstairs
+  unsigned countdown=0; // will count 2-element |delta|-orbits downstairs
   for (auto it=T.begin(); it(); ++it)
     if (*it!=ec.delta_of(*it) and not rd.sumIsRoot(*it,ec.delta_of(*it)))
       ++countdown;
@@ -1436,7 +1471,7 @@ DescValue star (const param& E,	const ext_gen& p,
 	  const Weight sigma = matreduc::find_solution(th_1,alpha*at+beta*bt);
 
 	  param F (E.ctxt, new_tw,
-		   E.lambda_rho + rho_r_shift,  E.tau + sigma,// + tau_shift,
+		   E.lambda_rho + rho_r_shift,  E.tau + sigma,
 		   E.l+alpha_v*(tf_alpha/2)+beta_v*(tf_beta/2), E.t,
 		   flipped);
 
@@ -1473,9 +1508,11 @@ DescValue star (const param& E,	const ext_gen& p,
 		   new_l, E.t,
 		   flipped);
 
-	  int t_alpha=E.t.dot(alpha);
-	  z_align(E,F0,m*t_alpha);
-	  z_align(E,F1,mm*t_alpha);
+	  //	  int t_alpha=E.t.dot(alpha);
+	  // z_align(E,F0,m*t_alpha);
+	  z_align(E,F0);
+	  // z_align(E,F1,mm*t_alpha);
+	  z_align(E,F1);
 	  links.push_back(std::move(F0)); // first Cayley
 	  links.push_back(std::move(F1)); // second Cayley
 	} // end of case 2i12f
@@ -1486,21 +1523,27 @@ DescValue star (const param& E,	const ext_gen& p,
 	  // $(1-\delta)\tau\in(X^*)^\theta+2X^*$ so $<av-bv,\tau>$ is even
 	  assert((at-bt)%2==0);
 	  int m = static_cast<unsigned int>(at)%2; // safe modular reduction
-
+	  assert (m==0 or m==1);
 	  param F0(E.ctxt, new_tw,
-		   E.lambda_rho + rho_r_shift + alpha*m,
+		   E.lambda_rho + rho_r_shift
+		   + alpha*m,
 		   E.tau - alpha*((at+m)/2) - beta*((bt-m)/2),
 		   E.l+alpha_v*(tf_alpha/2)+beta_v*(tf_beta/2), E.t,
 		   flipped);
 	  param F1(E.ctxt, new_tw,
-		   E.lambda_rho + rho_r_shift + alpha*(1-m) + beta,
+		   E.lambda_rho + rho_r_shift
+		   + alpha*(1-m) + beta,
 		   E.tau - alpha*((at-m)/2) - beta*((bt+m)/2),
 		   F0.l,E.t,
 		   flipped);
 
-	  int ta = E.t.dot(alpha), tb=E.t.dot(beta);
-	  z_align(E,F0,ta*m);
-	  z_align(E,F1,ta*(1-m)+tb);
+	  //	  int ta = E.t.dot(alpha), tb=E.t.dot(beta);
+	  // z_align(E,F0,ta*m);
+	  z_align(E,F0);
+	  // z_align(E,F1,ta*(1-m)+tb);
+	  z_align(E,F1);
+	  // F0.lambda_rho += rho_r_shift;
+	  // F1.lambda_rho += rho_r_shift;
 	  links.push_back(std::move(F0)); // first Cayley
 	  links.push_back(std::move(F1)); // second Cayley
 	} // end type 2i22 case
@@ -1558,10 +1601,16 @@ DescValue star (const param& E,	const ext_gen& p,
 	  param F1(E.ctxt, new_tw,
 		   new_lambda_rho,E.tau, E.l+alpha_v*(1-m)+beta_v,E1.t,
 		   flipped);
-
-	  z_align(E0,F0,m*((b_level-a_level)/2));
+	  // F0.lambda_rho += rho_r_shift;
+	  // F1.lambda_rho += rho_r_shift;
+	  // z_align(E0,F0,m*((b_level-a_level)/2));
+	  z_align(E0,F0);
 	  //	  z_align(E1,F1,m*((a_level-b_level)/2));
-	  z_align(E0,F1,m*((a_level-b_level)/2));
+	  // z_align(E0,F1,m*((a_level-b_level)/2));
+	  z_align(E0,F1);
+	  // F0.lambda_rho -= rho_r_shift;
+	  // F1.lambda_rho -= rho_r_shift;
+
 	  // Cayley links
 	  links.push_back(std::move(F0));
 	  links.push_back(std::move(F1));
@@ -1596,9 +1645,15 @@ DescValue star (const param& E,	const ext_gen& p,
 		   new_lambda_rho, E.tau, E.l+alpha_v*mm, E1.t,
 		   flipped);
 
-	  z_align(E0,F0,m *((b_level-a_level)/2));
+	  // z_align(E0,F0,m *((b_level-a_level)/2));
+	  // F0.lambda_rho += rho_r_shift;
+	  // F1.lambda_rho += rho_r_shift;
+	  z_align(E0,F0);
 	  //	  z_align(E1,F1,mm*((b_level-a_level)/2));
-	  z_align(E0,F1,mm*((b_level-a_level)/2));
+	  // z_align(E0,F1,mm*((b_level-a_level)/2));
+	  z_align(E0,F1);
+	  // F0.lambda_rho -= rho_r_shift;
+	  // F1.lambda_rho -= rho_r_shift;
 	  links.push_back(std::move(F0));
 	  links.push_back(std::move(F1));
 	} // end of case 2r21f
@@ -1613,14 +1668,15 @@ DescValue star (const param& E,	const ext_gen& p,
 	  assert(E.t.dot(alpha)==0 and E.t.dot(beta)==0);
 
 	  E1.lambda_rho += alpha+beta;
-	  E1.t = E0.t; // cross action, keeps adaption of |t| to |F| below
+	  E1.t = E0.t; // cross action, keeps adaptation of |t| to |F| below
 	  assert(not same_standard_reps(E0,E1));
 
 	  param F(E.ctxt, new_tw, new_lambda_rho, E.tau, E.l, E0.t,
 		  flipped);
-
+	  // F.lambda_rho += rho_r_shift;
 	  z_align(E0,F); // no 3rd arg, as |E.t.dot(alpha)==0| etc.
 	  //	  z_align(F,E1);
+	  // F.lambda_rho -= rho_r_shift;
 	  z_align(E0,E1);
 	  links.push_back(std::move(F )); // Cayley link
 	  links.push_back(std::move(E1)); // cross link
@@ -1639,16 +1695,18 @@ DescValue star (const param& E,	const ext_gen& p,
 	  const WeylWord ww = fixed_conjugate_simple(E.ctxt,alpha_simple);
 	  assert(rd.is_simple_root(alpha_simple)); // no complications here
 	  const auto theta_q = i_tab.nr(new_tw);
-	  //	  Weight rho_r_shift = ascent ?
-	  //	    repr::Cayley_shift(ic,theta_q,ww) :
-	  //	    repr::Cayley_shift(ic,theta,ww);
+	  Weight rho_r_shift = ascent ?
+	    repr::Cayley_shift(ic,theta_q,theta,ww) :
+	    repr::Cayley_shift(ic,theta,theta_q,ww);
 	  const bool flipped = ascent ?
 	    Cayley_shift_flip(E.ctxt,theta_q,theta,ww) :
 	    Cayley_shift_flip(E.ctxt,theta,theta_q,ww);
 	  if(flipped) std::cout << "2C flip" << std::endl;
-	auto E1=complex_cross(p,E0);
+	auto E1=complex_cross(p,E0); 
 	E1.flipped = flipped;
-	// E1.lambda_rho -= rho_r_shift; // done in complex_cross
+	// E1.lambda_rho += rho_r_shift;
+	z_align(E0,E1);
+	// E1.lambda_rho -= rho_r_shift;
 	links.push_back(E1);
 	}
 	else if (ascent)
