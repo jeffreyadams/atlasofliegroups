@@ -494,7 +494,7 @@ void z_align (const param& E, param& F)
 { assert(E.t==F.t); // we require preparing |t| upstairs to get this
   int d = E.l.dot((E.delta()-1)*E.tau) - F.l.dot((F.delta()-1)*F.tau);
   assert(d%2==0);
-  F.flip(d%4!=0);
+  F.flip(E.is_flipped()!=(d%4!=0)); // XOR new sign with flip of |E| into |F|
 }
 
 /*
@@ -1144,7 +1144,8 @@ DescValue star (const param& E,	const ext_gen& p,
 	    rd.find_descent(alpha_simple);
 	  first = // corresponding root summand, conjugated back
 	      rd.root(rd.permuted_root(rd.simpleRootNbr(s),ww));
-	} // with this set-up, |alpha_simple| needs no more inspection
+	  assert(alpha == first + E.ctxt.delta()*first);
+	}
 
 	// now separate cases; based on type 1 or 2 first
 	if (matreduc::has_solution(th_1,alpha))
