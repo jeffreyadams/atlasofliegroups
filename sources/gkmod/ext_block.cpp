@@ -369,24 +369,34 @@ StandardRepr scaled_extended_dominant // result will have its |gamma()| dominant
   const ext_gens orbits = rootdata::fold_orbits(rd,delta);
   assert(is_dominant_ratweight(rd,sr.gamma())); // dominant
   assert(((delta-1)*sr.gamma().numerator()).isZero()); // $\delta$-fixed
-
   // First approximation to result is scaled input; will later be overwritten
   StandardRepr result = rc.sr(sr.x(),rc.lambda_rho(sr),sr.gamma()*factor);
 
   // it will be convenent to have a working copy of the numerator of |gamma|
   Weight gamma_numer(result.gamma().numerator().begin(),
 		     result.gamma().numerator().end());
-
+  context old_ctxt(rc,delta,result.gamma());
   // class |param| cannot change its |gamma|, so work on separate components
   Weight lr, tau; Coweight l,t;
-  { context ctxt(rc,delta,result.gamma()); // scaffolding for construction
-    param E(ctxt,result); // default extend |result| to an extended parameter
+  { // context ctxt(rc,delta,result.gamma()); // scaffolding for construction
+    param E(old_ctxt,result); // default extend |result| to extended parameter
     lr=E.lambda_rho; tau=E.tau; l=E.l; t=E.t; // and copy fields to variables
-  }
+   }
+   WeightInvolution theta = kgb.involution_matrix(sr.x());
+   const RatCoweight& g_r = rc.realGroup().g_rho_check();
+
+  assert((delta-1).right_prod(l)==(theta+1).right_prod(t));
+  assert(((g_r-l)*(1-theta)).numerator().isZero());
   KGBElt x = result.x(); // another variable, for convenience
 
+  const auto grc = old_ctxt.g_rho_check();
+  int denom=grc.denominator();
+  l*=denom; // scale to make shift applied to |l| below an integer vector
+  Coweight l_offset(grc.numerator().begin(),grc.numerator().end()); // convert
+  l-=l_offset; // shift so that reflections can apply directly
+
   int_Vector r_g_eval (rd.semisimpleRank()); // evaluations at |-gr|
-  { const RatCoweight& g_r=rc.realGroup().g_rho_check();
+  { // const RatCoweight& g_r=rc.realGroup().g_rho_check();
     for (unsigned i=0; i<r_g_eval.size(); ++i)
       r_g_eval[i] = -g_r.dot(rd.simpleRoot(i));
   }
@@ -403,15 +413,21 @@ StandardRepr scaled_extended_dominant // result will have its |gamma()| dominant
 	  if (v<0 or (v==0 and kgb.isDescent(s.s0,x)))
 	  { if (v<0)
 	      rd.act(s.w_kappa,gamma_numer); // change inf.char representative
-            else // 3Cr excluded, as it would make |s.s0+s.s1| real singular
+            else // 3Cr excluded, as it would make |s.s0+s.s1|
+	         // real singular parity
               assert(s.length()!=3 or kgb.cross(s.w_kappa,x)!=x);
 	    if (v<0 or s.length()!=2 or kgb.cross(s.s0,x)!=kgb.cross(s.s1,x))
 	    {
 	      rd.shifted_act(s.w_kappa,lr,ones);
 	      rd.act(s.w_kappa,tau);
-	      rd.shifted_dual_act(l,s.w_kappa,r_g_eval);
+	      // rd.shifted_dual_act(l,s.w_kappa,r_g_eval);
+	      rd.dual_act(l,s.w_kappa); // this was in old master,
+	      // where l was shifted first.
 	      rd.dual_act(t,s.w_kappa);
 	      x = kgb.cross(s.w_kappa,x);
+	      theta = kgb.involution_matrix(x);
+	      assert((delta-1).right_prod(l)==(theta+1).right_prod(t));
+	      assert((1-theta).right_prod(l).isZero());
 	    }
 	    else // we have a singular 2Cr descent; do just one reflection
 	    { // corrections to |tau| and |t| are as in 2Cr case of |star| below
@@ -419,16 +435,23 @@ StandardRepr scaled_extended_dominant // result will have its |gamma()| dominant
 	      const auto& alpha = rd.simpleRoot(s.s0);
 	      lr -= alpha*f; // equivalently |rd.simple_reflect(s.s0,lr,1)|
 	      rd.simple_reflect(s.s0,tau,-f); // shift |-f| adds extra |alpha*f|
-	      const int df = l.dot(alpha)+r_g_eval[s.s0]; // factor of |alpha_v|
-	      l -= alpha_v*df; // |rd.simple_coreflect(l,s.s0,r_g_eval[s.s0]);|
+	      const int df = l.dot(alpha)+r_g_eval[s.s0];
+	      //	      l -= alpha_v*df;
+	      // |rd.simple_coreflect(l,s.s0,r_g_eval[s.s0]);|
+	      rd.simple_coreflect(l,s.s0);
 	      rd.simple_coreflect(t,s.s0,df); // |df| subs extra |alpha_v*df|
 	      x = kgb.cross(s.s0,x);
+	      theta = kgb.involution_matrix(x);
+	      assert((delta-1).right_prod(l)==(theta+1).right_prod(t));
+	      assert((1-theta).right_prod(l).isZero());
 	    }
 	    break;
 	  }
 	} // |for(s)|, if |isComplex|
     while(i<orbits.size()); // continue until above |for| runs to completion
   } // end of transformation of extended parameter components
+  l+=l_offset;
+  l/=denom; //shift and scale back to original
 
   // since |gamma| may have changed, we only now build our |context|
   context ctxt(rc,delta, RatWeight(gamma_numer,result.gamma().denominator()));
