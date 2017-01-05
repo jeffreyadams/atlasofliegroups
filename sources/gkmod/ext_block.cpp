@@ -247,8 +247,24 @@ void validate(const param& E)
       std::cout << std::endl;
     }
   // assert(((E.ctxt.g_rho_check()-E.l)*(1-theta)).numerator().isZero());
-  assert(((theta+1)*(E.ctxt.gamma()-E.lambda_rho-rho(rd)))
-	 .numerator().isZero());
+
+  if (not  ((theta+1)*(E.ctxt.gamma()-E.lambda_rho-rho(rd)))
+      .numerator().isZero())
+    {
+      auto ec = E.ctxt;
+      prettyprint::printVector(std::cout << "lambda_rho = ",E.lambda_rho);
+      std::cout << std::endl;
+      Weight gamma_numer(ec.gamma().numerator().begin(),
+		       ec.gamma().numerator().end());
+      unsigned int gamma_denom = ec.gamma().denominator();
+      prettyprint::printVector(std::cout << "gamma_denom = "
+			       << gamma_denom << ", gamma_numer = "
+			       ,gamma_numer);
+      std::cout << std::endl;
+    }
+  // assert(((theta+1)*(E.ctxt.gamma()-E.lambda_rho-rho(rd)))
+  //	 .numerator().isZero());
+
   ndebug_use(delta); ndebug_use(theta); ndebug_use(rd);
 }
 
@@ -532,7 +548,7 @@ int z (const param& E) // value modulo 4, exponent of imaginary unit $i$
   contribution from the second term due to a |Cayley_shift| added to
   |lambda_rho|, it turns out that the Right Thing is not to use that quotient,
 
-  hmmm?
+  DV agrees 1/4/17
 
   but the quotient evaluated at the simple situation. So for these cases we
   should just compute the contribution to the difference of values |z| that
@@ -547,7 +563,7 @@ void z_align (const param& E, param& F)
     // add correction so always works?
     + 2*E.t.dot(E.lambda_rho) - 2*F.t.dot(F.lambda_rho);
   assert(d%2==0);
-  F.flipped &= (d%4!=0);
+  F.flipped ^= (d%4!=0); // XOR with "d not zero mod 4"
 }
 
 /*
@@ -559,7 +575,7 @@ void z_align (const param& E, param& F)
   |E| and |F| themselves is complicated by the posssible contribution from
   |Cayley_shift|, which contribution should be ignored;
 
-  hmmm???
+  DV agrees 1/4/17
 
   however at the place
   of call the value of |mu| is explicitly available, so we ask here to pass
@@ -1015,7 +1031,7 @@ BlockElt twisted
   a product of |length<=3| integral generators, and then have those generators
   act on the components of |E|. For the purpose of changing |E.tw| we further
   develop those generators into reflection words for the full root datum, but
-  the reflection action on the othe components can be done more directly.
+  the reflection action on the other components can be done more directly.
 
   However, though the integral generators are complex, they action of those
   reflection words need not be purely complex, which implies that the effect
@@ -1279,36 +1295,36 @@ DescValue star (const param& E,	const ext_gen& p,
 	    return one_imaginary_pair_switched; // case 1i2s
 	  }
 	  result = one_imaginary_pair_fixed;  // what remains is case 1i2f
-	  param F0(E.ctxt,new_tw,
-		   E.lambda_rho + first + rho_r_shift,
-		   E.tau - alpha*(tau_coef/2) - first, // + tau_shift,
+
+	  param F0(E.ctxt,new_tw, E.lambda_rho + first + rho_r_shift,
+		   E.tau - alpha*(tau_coef/2) - first,
 		   E.l + alpha_v*(tf_alpha/2), E.t,
 		   flipped);
-	  param F1(E.ctxt,new_tw,
-		   E.lambda_rho + first + rho_r_shift
-		   + alpha, F0.tau, F0.l, E.t,
-		   flipped);
-	  if(has_first and (((-F0.lambda_rho - first - rho_r_shift)
-			      //    rho_r_shift_old)
+	  param F1(E.ctxt,new_tw, F0.lambda_rho + alpha,
+		   F0.tau, F0.l, E.t, flipped);
+
+	  if(has_first and (((-F0.lambda_rho+rho_r_shift)
 			      .dot(rd.coroot(alpha_0)) -
 			     rd.colevel(alpha_0))%2 != 0 ))
 	    F0.flipped = not F0.flipped; //test alpha0 nonparity at nu=0
-	    if(has_first) std::cout << "parity test0 = " <<
-			    (-F0.lambda_rho - rho_r_shift - first)
+	  if(has_first) std::cout << "parity test0 = " <<
+			    (-F0.lambda_rho+rho_r_shift)
 			    .dot(rd.coroot(alpha_0)) -
 			    rd.colevel(alpha_0) << std::endl
 				    << "alpha_0 = " << alpha_0
 				    << ", alpha = " << n_alpha << std::endl;
+	  if(F0.flipped) std::cout << "F0 ended up flipped." <<std::endl;
 
-	    if(has_first and (((-F1.lambda_rho - first - rho_r_shift)
-			      // - rho_r_shift_old)
+	  if(has_first and (((-F1.lambda_rho+rho_r_shift)
 				.dot(rd.coroot(alpha_0)) -
 			     rd.colevel(alpha_0))%2 != 0 ))
 	    F1.flipped = not F1.flipped; //test alpha0 nonparity at nu=0
-	    if(has_first) std::cout << "parity test1 = " <<
-			    (-F1.lambda_rho + rho_r_shift)
+	  if(has_first) std::cout << "parity test1 = " <<
+			    (-F1.lambda_rho+rho_r_shift)
 			    .dot(rd.coroot(alpha_0)) -
 			    rd.colevel(alpha_0) << std::endl;
+	  if(F1.flipped) std::cout << "F1 ended up flipped." <<std::endl;
+
 	  F0.lambda_rho-=first+rho_r_shift;
 	  F1.lambda_rho-=first+rho_r_shift;
 	  z_align(E,F0);
@@ -1317,6 +1333,8 @@ DescValue star (const param& E,	const ext_gen& p,
 	  F1.lambda_rho+=first+rho_r_shift;
 	  links.push_back(std::move(F0)); // Cayley link
 	  links.push_back(std::move(F1)); // Cayley link
+	  if(F0.flipped) std::cout << "F0 REALLY ended up flipped." <<std::endl;
+	  if(F1.flipped) std::cout << "F1 REALLY ended up flipped." <<std::endl;
 	} // end of type 2 case
       } // end of length 1 imaginary case
 
@@ -1348,7 +1366,6 @@ DescValue star (const param& E,	const ext_gen& p,
 	bool flipped_correct = // shift_correct, and alpha_0 nonparity
 			       // at nu=0
 	  shift_correct and ( ((- E.lambda_rho + rho_r_shift)
-				// - rho_r_shift_new)
 			       .dot(rd.coroot(alpha_0))
 			       - rd.colevel(alpha_0))%2!=0);
 			      bool flipped1 = flipped_correct ?
