@@ -1956,9 +1956,10 @@ DescValue star (const param& E,	const ext_gen& p,
 	E0.t -= alpha_v*kappa.dot(E.t); // makes |E.t.dot(kappa)==0|
 	assert(same_sign(E,E0)); // since only |t| changes
 
-	param F(E.ctxt, new_tw,	new_lambda_rho + rho_r_shift,
+	param F(E.ctxt, new_tw,	new_lambda_rho,
 		E.tau,E.l,E0.t, flipped);
 
+	F.lambda_rho+=rho_r_shift;
 	z_align(E0,F); // no 3rd arg since |E.t.dot(kappa)==0|
 	F.lambda_rho-=rho_r_shift;
 	links.push_back(std::move(F)); // Cayley link
@@ -2366,7 +2367,15 @@ bool ext_block::check(const param_block& block, bool verbose)
 	  BlockElt m=cross(s,n); // cross neighbour as bare element of |*this|
 	  BlockElt cz = this->z(m); // corresponding element of (parent) |block|
 	  param F(ctxt,block.x(cz),block.lambda_rho(cz)); // default extension
-	  assert(same_standard_reps(*it,F)); // must lie over same
+	  if (not (same_standard_reps(*it,F)) )
+	    {
+
+	      std::cout << "link type = " << tp << ", block element " << n
+			<< " linked to " << m <<std::endl;
+	      std::cout << "s = " << s << ", z(m) = " << cz << ", z(n) = "
+			<< this->z(n) << std::endl;
+	    }
+	  //	  assert(same_standard_reps(*it,F)); // must lie over same
 	  if (not same_sign(*it,F))
 	  {
 	    flip_edge(s,n,m);
