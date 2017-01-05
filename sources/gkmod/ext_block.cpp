@@ -1207,7 +1207,10 @@ DescValue star (const param& E,	const ext_gen& p,
 	  return one_imaginary_compact; // quit here, do not collect \$200
 
 	// noncompact case
+	bool monoflip = false;
 	const TwistedInvolution new_tw= tW.prod(subs.reflection(p.s0),E.tw);
+	unsigned int d = i_tab.length(new_tw) - i_tab.length(E.tw);
+	if (d%2==0) monoflip = not monoflip;
 	const WeightInvolution th_1 = i_tab.matrix(new_tw)-1; // upstairs
 
 	int tau_coef = alpha_v.dot(E.tau); // take $\tau_\alpha$ of table 2
@@ -1254,7 +1257,7 @@ DescValue star (const param& E,	const ext_gen& p,
 		  E.lambda_rho + first + rho_r_shift,
 		  E0.tau+diff*tau_coef, // + tau_shift,
 		  E.l+alpha_v*(tf_alpha/2), E.t,
-		  flipped);
+		  flipped&monoflip);
 
  	  E0.l = tf_alpha%4==0 ? F.l+alpha_v : F.l; // for cross
 	  assert(not same_standard_reps(E,E0));
@@ -1278,11 +1281,10 @@ DescValue star (const param& E,	const ext_gen& p,
 		   E.lambda_rho + first + rho_r_shift,
 		   E.tau - alpha*(tau_coef/2) - first, // + tau_shift,
 		   E.l + alpha_v*(tf_alpha/2), E.t,
-		   flipped);
+		   flipped&monoflip);
 	  param F1(E.ctxt,new_tw,
 		   F0.lambda_rho + alpha, F0.tau, F0.l, E.t,
-		   flipped);
-
+		   flipped&monoflip);
 	  if(has_first and (((-F0.lambda_rho + rho_r_shift)
 			      //    rho_r_shift_old)
 			      .dot(rd.coroot(alpha_0)) -
@@ -1318,7 +1320,9 @@ DescValue star (const param& E,	const ext_gen& p,
 	const WeylWord ww = fixed_conjugate_simple(E.ctxt,alpha_simple);
 	const TwistedInvolution new_tw = // downstairs
 	  tW.prod(subs.reflection(p.s0),E.tw);
-
+	bool monoflip=false;
+	unsigned int d = i_tab.length(E.tw) - i_tab.length(new_tw);
+	if (d%2==0) monoflip = not monoflip;
 	const auto theta_p = i_tab.nr(new_tw); // downstairs
 	Weight rho_r_shift = repr::Cayley_shift(ic,theta,theta_p,ww);
 	const bool flipped = Cayley_shift_flip(E.ctxt,theta,theta_p,ww);
@@ -1389,10 +1393,10 @@ DescValue star (const param& E,	const ext_gen& p,
 
 	  param F0(E.ctxt,new_tw,
 		   new_lambda_rho, E.tau + tau_correction, E.l, E0.t,
-		   flipped1);
+		   flipped1&monoflip);
 	  param F1(E.ctxt,new_tw,
 		   new_lambda_rho, F0.tau, E.l + alpha_v, E0.t,
-		   flipped1);
+		   flipped1&monoflip);
 
 	  z_align(E0,F0);
 	  z_align(E0,F1);
@@ -1416,7 +1420,7 @@ DescValue star (const param& E,	const ext_gen& p,
 
 	  param F(E.ctxt,new_tw,
 		  new_lambda_rho, E.tau + tau_correction, E.l, E0.t,
-		  flipped1);
+		  flipped1&monoflip);
 
 	  z_align(E0,F);
 	  //	  z_align(F,E1);
@@ -1430,6 +1434,11 @@ DescValue star (const param& E,	const ext_gen& p,
 	  ? one_complex_ascent : one_complex_descent ;
 
 	TwistedInvolution new_tw = E.tw;
+	bool monoflip=false;
+	unsigned int d = rd.is_posroot(theta_alpha) ?
+	  i_tab.length(new_tw) - i_tab.length(E.tw) :
+	  i_tab.length(E.tw) - i_tab.length(new_tw);
+	if (d%2==0) monoflip = not monoflip;
 	tW.twistedConjugate(subs.reflection(p.s0),new_tw);
 	RootNbr alpha_simple = n_alpha;
 	const WeylWord ww = fixed_conjugate_simple(E.ctxt,alpha_simple);
@@ -1446,7 +1455,7 @@ DescValue star (const param& E,	const ext_gen& p,
 	  Cayley_shift_flip(E.ctxt,theta,theta_q,ww);
 	if(flipped) std::cout << "1C flip" << std::endl;
 	auto E1=complex_cross(p,E0);
-	E1.flipped = flipped;
+	E1.flipped = flipped&monoflip;
 	//  E1.lambda_rho -= rho_r_shift; already done in complex_cross
 	links.push_back(E1);
       }
@@ -1474,6 +1483,9 @@ DescValue star (const param& E,	const ext_gen& p,
 	// noncompact case
 	const TwistedInvolution new_tw =
 	  tW.prod(subs.reflection(p.s1),tW.prod(subs.reflection(p.s0),E.tw));
+	bool monoflip=false;
+	unsigned int d = i_tab.length(new_tw) - i_tab.length(E.tw);
+	if (d%2!=0) monoflip = not monoflip;
 	// make $\alpha$ simple by conjugating by $W^\delta$
 	RootNbr alpha_simple = n_alpha;
 	const WeylWord ww = fixed_conjugate_simple(E.ctxt,alpha_simple);
@@ -1496,7 +1508,7 @@ DescValue star (const param& E,	const ext_gen& p,
 	  param F (E.ctxt, new_tw,
 		   E.lambda_rho + rho_r_shift,  E.tau + sigma,
 		   E.l+alpha_v*(tf_alpha/2)+beta_v*(tf_beta/2), E.t,
-		   flipped);
+		   flipped&monoflip);
 
 	  E0.l += alpha_v+beta_v;
 	  z_align(E,F); // no 3rd arg, since |E.lambda_rho| unchanged
@@ -1525,11 +1537,11 @@ DescValue star (const param& E,	const ext_gen& p,
 	  param F0(E.ctxt, new_tw,
 		   E.lambda_rho + rho_r_shift + alpha*m, new_tau0,
 		   new_l, E.t,
-		   flipped);
+		   flipped&monoflip);
 	  param F1(E.ctxt, new_tw,
 		   E.lambda_rho + rho_r_shift + alpha*mm, E.tau + sigma,
 		   new_l, E.t,
-		   flipped);
+		   flipped&monoflip);
 
 	  //	  int t_alpha=E.t.dot(alpha);
 	  // z_align(E,F0,m*t_alpha);
@@ -1552,13 +1564,13 @@ DescValue star (const param& E,	const ext_gen& p,
 		   + alpha*m,
 		   E.tau - alpha*((at+m)/2) - beta*((bt-m)/2),
 		   E.l+alpha_v*(tf_alpha/2)+beta_v*(tf_beta/2), E.t,
-		   flipped);
+		   flipped&monoflip);
 	  param F1(E.ctxt, new_tw,
 		   E.lambda_rho + rho_r_shift
 		   + alpha*(1-m) + beta,
 		   E.tau - alpha*((at-m)/2) - beta*((bt+m)/2),
 		   F0.l,E.t,
-		   flipped);
+		   flipped&monoflip);
 
 	  //	  int ta = E.t.dot(alpha), tb=E.t.dot(beta);
 	  // z_align(E,F0,ta*m);
@@ -1579,6 +1591,9 @@ DescValue star (const param& E,	const ext_gen& p,
 	assert(rd.is_simple_root(alpha_simple)); // no complications here
 	const TwistedInvolution new_tw = // downstairs
 	  tW.prod(subs.reflection(p.s1),tW.prod(subs.reflection(p.s0),E.tw));
+	bool monoflip=false;
+	unsigned int d = i_tab.length(E.tw) - i_tab.length(new_tw);
+	if (d%2!=0) monoflip = not monoflip;
 	const auto theta_p = i_tab.nr(new_tw); // downstairs
 	const Weight rho_r_shift = repr::Cayley_shift(ic,theta,theta_p,ww);
 	const bool flipped = Cayley_shift_flip(E.ctxt,theta,theta_p,ww);
@@ -1620,10 +1635,10 @@ DescValue star (const param& E,	const ext_gen& p,
 
 	  param F0(E.ctxt, new_tw,
 		   new_lambda_rho,E.tau, E.l+alpha_v*m, E0.t,
-		   flipped);
+		   flipped&monoflip);
 	  param F1(E.ctxt, new_tw,
 		   new_lambda_rho,E.tau, E.l+alpha_v*(1-m)+beta_v,E1.t,
-		   flipped);
+		   flipped&monoflip);
 	  // F0.lambda_rho += rho_r_shift;
 	  // F1.lambda_rho += rho_r_shift;
 	  // z_align(E0,F0,m*((b_level-a_level)/2));
@@ -1663,10 +1678,10 @@ DescValue star (const param& E,	const ext_gen& p,
 	  // Cayley links
 	  param F0(E.ctxt, new_tw,
 		   new_lambda_rho, E.tau, E.l+alpha_v*m, E0.t,
-		   flipped);
+		   flipped&monoflip);
 	  param F1(E.ctxt, new_tw,
 		   new_lambda_rho, E.tau, E.l+alpha_v*mm, E1.t,
-		   flipped);
+		   flipped&monoflip);
 
 	  // z_align(E0,F0,m *((b_level-a_level)/2));
 	  // F0.lambda_rho += rho_r_shift;
@@ -1695,7 +1710,7 @@ DescValue star (const param& E,	const ext_gen& p,
 	  assert(not same_standard_reps(E0,E1));
 
 	  param F(E.ctxt, new_tw, new_lambda_rho, E.tau, E.l, E0.t,
-		  flipped);
+		  flipped&monoflip);
 	  // F.lambda_rho += rho_r_shift;
 	  z_align(E0,F); // no 3rd arg, as |E.t.dot(alpha)==0| etc.
 	  //	  z_align(F,E1);
@@ -1714,6 +1729,12 @@ DescValue star (const param& E,	const ext_gen& p,
 	  TwistedInvolution new_tw = E.tw;
 	  tW.twistedConjugate(subs.reflection(p.s0),new_tw);
 	  tW.twistedConjugate(subs.reflection(p.s1),new_tw);
+	  bool monoflip=false;
+	  unsigned int d = ascent ?
+	  i_tab.length(new_tw) - i_tab.length(E.tw) :
+	  i_tab.length(E.tw) - i_tab.length(new_tw);
+	  if (d%2!=0) monoflip = not monoflip;
+
 	  RootNbr alpha_simple = n_alpha;
 	  const WeylWord ww = fixed_conjugate_simple(E.ctxt,alpha_simple);
 	  assert(rd.is_simple_root(alpha_simple)); // no complications here
@@ -1725,8 +1746,8 @@ DescValue star (const param& E,	const ext_gen& p,
 	    Cayley_shift_flip(E.ctxt,theta_q,theta,ww) :
 	    Cayley_shift_flip(E.ctxt,theta,theta_q,ww);
 	  if(flipped) std::cout << "2C flip" << std::endl;
-	auto E1=complex_cross(p,E0); 
-	E1.flipped = flipped;
+	auto E1=complex_cross(p,E0);
+	E1.flipped = flipped&monoflip;
 	// E1.lambda_rho += rho_r_shift;
 	z_align(E0,E1);
 	// E1.lambda_rho -= rho_r_shift;
@@ -1738,7 +1759,9 @@ DescValue star (const param& E,	const ext_gen& p,
 
 	  TwistedInvolution new_tw = E.tw;
 	  tW.twistedConjugate(subs.reflection(p.s0),new_tw); // same for |p.s1|
-
+	  bool monoflip=false;
+	  unsigned int d = i_tab.length(new_tw) - i_tab.length(E.tw);
+	  if (d%2==0) monoflip = not monoflip;
 	  RootNbr alpha_simple = n_alpha;
 	  const WeylWord ww = fixed_conjugate_simple(E.ctxt,alpha_simple);
 	  assert(rd.is_simple_root(alpha_simple)); // no complications here
@@ -1767,7 +1790,7 @@ DescValue star (const param& E,	const ext_gen& p,
           const Coweight new_t =
 	    rd.coreflection(E.t,n_alpha) - alpha_v*dual_f;
 	  param F (E.ctxt, new_tw, new_lambda_rho, new_tau, new_l, new_t,
-		   flipped);
+		   flipped&monoflip);
 
 	  int ab_tau = (alpha_v+beta_v).dot(E.tau);
 	  assert (ab_tau%2==0);
@@ -1780,6 +1803,9 @@ DescValue star (const param& E,	const ext_gen& p,
 	  TwistedInvolution new_tw = E.tw;
 	  tW.twistedConjugate(subs.reflection(p.s0),new_tw); // same for |p.s1|
 	  const auto theta_p = i_tab.nr(new_tw); // downstairs
+	  bool monoflip=false;
+	  unsigned int d = i_tab.length(E.tw) - i_tab.length(new_tw);
+	  if (d%2==0) monoflip = not monoflip;
 
 	  RootNbr alpha_simple = n_alpha;
 	  const WeylWord ww = fixed_conjugate_simple(E.ctxt,alpha_simple);
@@ -1801,7 +1827,7 @@ DescValue star (const param& E,	const ext_gen& p,
 	    rd.coreflection(E.t,n_alpha) + alpha_v*dual_f;
 
 	  param F (E.ctxt, new_tw, new_lambda_rho, new_tau, new_l, new_t,
-		   flipped);
+		   flipped&monoflip);
 
 	  int t_ab = E.t.dot(beta-alpha);
 	  assert(t_ab%2==0);
@@ -1827,6 +1853,9 @@ DescValue star (const param& E,	const ext_gen& p,
       const Coweight& kappa_v = integr_datum.coroot(n_kappa);
 
       const TwistedInvolution new_tw = tW.prod(s_kappa,E.tw); // when applicable
+      bool monoflip=false;
+      unsigned int d = i_tab.length(new_tw) - i_tab.length(E.tw);
+      if (d%2!=0) monoflip = not monoflip;
 
       if (theta_alpha==n_alpha) // length 3 imaginary case
       { // first find out if the simply-integral root $\alpha$ is compact
@@ -1853,13 +1882,17 @@ DescValue star (const param& E,	const ext_gen& p,
 		E.lambda_rho + rho_r_shift,
 		E.tau - alpha*kappa_v.dot(E.tau),
 		E.l + kappa_v*((tf_alpha+tf_beta)/2), E.t,
-		flipped);
+		flipped&monoflip);
 
 	z_align(E,F); // |lambda_rho| unchanged at simple Cayley
 	links.push_back(std::move(F)); // Cayley link
       }
       else if (theta_alpha==rd.rootMinus(n_alpha)) // length 3 real case
       {
+	monoflip=false;
+	d = i_tab.length(E.tw) - i_tab.length(new_tw);
+	if (d%2!=0) monoflip = not monoflip;
+
 	RootNbr alpha_simple = n_alpha;
 	const WeylWord ww = fixed_conjugate_simple(E.ctxt,alpha_simple);
 	assert(rd.is_simple_root(alpha_simple)); // no complications here
@@ -1887,7 +1920,7 @@ DescValue star (const param& E,	const ext_gen& p,
 	E0.t -= alpha_v*kappa.dot(E.t); // makes |E.t.dot(kappa)==0|
 	assert(same_sign(E,E0)); // since only |t| changes
 
-	param F(E.ctxt, new_tw,	new_lambda_rho,E.tau,E.l,E0.t, flipped);
+	param F(E.ctxt, new_tw,	new_lambda_rho,E.tau,E.l,E0.t, flipped&monoflip);
 
 	z_align(E0,F); // no 3rd arg since |E.t.dot(kappa)==0|
 	links.push_back(std::move(F)); // Cayley link
@@ -1922,7 +1955,7 @@ DescValue star (const param& E,	const ext_gen& p,
 		    dtf_alpha%2==0 ? new_lambda_rho : new_lambda_rho + kappa,
 		    E.tau - kappa*(kappa_v.dot(E.tau)/2),
 		    E.l + kappa_v*tf_alpha, E.t,
-		    flipped);
+		    flipped&monoflip);
 
 	    assert(E.t.dot(kappa)==0);
 	    // since it is half of |t*(1+theta)*kappa=l*(delta-1)*kappa==0|
@@ -1937,7 +1970,7 @@ DescValue star (const param& E,	const ext_gen& p,
 	    param F(E.ctxt, new_tw,
 		    new_lambda_rho + kappa*dtf_alpha, E.tau,
 		    tf_alpha%2==0 ? E.l : E.l+kappa_v, E0.t,
-		    flipped);
+		    flipped&monoflip);
 
 	    z_align(E0,F); // no 3rd arg since |E.t.dot(kappa)==0|
 	    links.push_back(std::move(F)); // Cayley link
@@ -1964,7 +1997,7 @@ DescValue star (const param& E,	const ext_gen& p,
 	    Cayley_shift_flip(E.ctxt,theta_q,theta,ww) :
 	    Cayley_shift_flip(E.ctxt,theta,theta_q,ww);
 	  auto E1=complex_cross(p,E0);
-	  E1.flipped = flipped;
+	  E1.flipped = flipped&monoflip;
 	  //	  E1.lambda_rho -= rho_r_shift;
 	  links.push_back(E1);
 	}
