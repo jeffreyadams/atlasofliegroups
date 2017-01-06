@@ -1064,14 +1064,11 @@ param complex_cross(const ext_gen& p, param E) // by-value for |E|, modified
   }
 
   rho_r_shift -= rd.twoRho(i_tab.real_roots(i_tab.nr(E.tw)));
-  //  assert(rho_r_shift==(rho_r_shift/2) + (rho_r_shift/2));
-  // rho_r_shift/=2; // now it is just a sum of (real) roots
   E.lambda_rho -= rho_r_shift; //add real on new side, subtract on original
 
   assert(E.ctxt.delta()*rho_r_shift==rho_r_shift); // diff of $\delta$-fixed
 
   dual_rho_im_shift -= rd.dual_twoRho(i_tab.imaginary_roots(i_tab.nr(E.tw)));
-  // dual_rho_im_shift/=2; // now it is just a sum of (imaginary) coroots
   assert(dual_rho_im_shift.isZero());
   E.l -= dual_rho_im_shift;
 
