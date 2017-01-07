@@ -552,7 +552,9 @@ class RootDatum
   void shifted_act(const WeylWord& ww,Weight& lambda,int_Vector shift) const
     {
       for (weyl::Generator i=ww.size(); i-->0; )
-	simple_reflect(ww[i],lambda,shift[i]);
+	{ auto s=ww[i];
+	simple_reflect(s,lambda,shift[s]);
+	}
     }
 
   Weight image_by(const WeylWord& ww,Weight lambda) const
@@ -592,7 +594,9 @@ class RootDatum
     (Coweight& ell,const WeylWord& ww,int_Vector shift) const
     {
       for (weyl::Generator i=0; i<ww.size(); ++i)
-	simple_coreflect(ell,ww[i],shift[i]);
+	{ auto s=ww[i];
+	simple_coreflect(ell,s,shift[s]);
+	}
     }
 
   Weight dual_image_by(Coweight ell,const WeylWord& ww) const
