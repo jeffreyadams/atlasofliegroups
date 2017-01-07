@@ -391,28 +391,26 @@ StandardRepr scaled_extended_dominant // result will have its |gamma()| dominant
   // it will be convenent to have a working copy of the numerator of |gamma|
   Weight gamma_numer(result.gamma().numerator().begin(),
 		     result.gamma().numerator().end());
-  context old_ctxt(rc,delta,result.gamma());
+
   // class |param| cannot change its |gamma|, so work on separate components
   Weight lr, tau; Coweight l,t;
-  { // context ctxt(rc,delta,result.gamma()); // scaffolding for construction
-    param E(old_ctxt,result); // default extend |result| to extended parameter
+  { context ctxt(rc,delta,result.gamma()); // scaffolding for construction
+    param E(ctxt,result); // default extend |result| to extended parameter
     lr=E.lambda_rho; tau=E.tau; l=E.l; t=E.t; // and copy fields to variables
    }
-   WeightInvolution theta = kgb.involution_matrix(sr.x());
-   const RatCoweight& g_r = rc.realGroup().g_rho_check();
-
-  assert((delta-1).right_prod(l)==(theta+1).right_prod(t));
-  assert(((g_r-l)*(1-theta)).numerator().isZero());
+  //   WeightInvolution theta = kgb.involution_matrix(sr.x());
+  //   const RatCoweight& g_r = rc.realGroup().g_rho_check();
   KGBElt x = result.x(); // another variable, for convenience
 
-  const auto grc = old_ctxt.g_rho_check();
-  int denom=grc.denominator();
-  l*=denom; // scale to make shift applied to |l| below an integer vector
-  Coweight l_offset(grc.numerator().begin(),grc.numerator().end()); // convert
-  l-=l_offset; // shift so that reflections can apply directly
+  // const auto grc = old_ctxt.g_rho_check();
+  // int denom=grc.denominator();
+  //  l*=denom; // scale to make shift applied to |l| below an integer vector
+  //  Coweight l_offset(grc.numerator().begin(),grc.numerator().end());
+  // convert
+  //  l-=l_offset; // shift so that reflections can apply directly
 
   int_Vector r_g_eval (rd.semisimpleRank()); // evaluations at |-gr|
-  { // const RatCoweight& g_r=rc.realGroup().g_rho_check();
+  { const RatCoweight& g_r=rc.realGroup().g_rho_check();
     for (unsigned i=0; i<r_g_eval.size(); ++i)
       r_g_eval[i] = -g_r.dot(rd.simpleRoot(i));
   }
@@ -436,14 +434,12 @@ StandardRepr scaled_extended_dominant // result will have its |gamma()| dominant
 	    {
 	      rd.shifted_act(s.w_kappa,lr,ones);
 	      rd.act(s.w_kappa,tau);
-	      // rd.shifted_dual_act(l,s.w_kappa,r_g_eval);
-	      rd.dual_act(l,s.w_kappa); // this was in old master,
-	      // where l was shifted first.
+	      rd.shifted_dual_act(l,s.w_kappa,r_g_eval);
 	      rd.dual_act(t,s.w_kappa);
 	      x = kgb.cross(s.w_kappa,x);
-	      theta = kgb.involution_matrix(x);
-	      assert((delta-1).right_prod(l)==(theta+1).right_prod(t));
-	      assert((1-theta).right_prod(l).isZero());
+	      //	      theta = kgb.involution_matrix(x);
+	      //    assert((delta-1).right_prod(l)==(theta+1).right_prod(t));
+	      //	      assert((1-theta).right_prod(l).isZero());
 	    }
 	    else // we have a singular 2Cr descent; do just one reflection
 	    { // corrections to |tau| and |t| are as in 2Cr case of |star| below
@@ -452,22 +448,21 @@ StandardRepr scaled_extended_dominant // result will have its |gamma()| dominant
 	      lr -= alpha*f; // equivalently |rd.simple_reflect(s.s0,lr,1)|
 	      rd.simple_reflect(s.s0,tau,-f); // shift |-f| adds extra |alpha*f|
 	      const int df = l.dot(alpha)+r_g_eval[s.s0];
-	      //	      l -= alpha_v*df;
-	      // |rd.simple_coreflect(l,s.s0,r_g_eval[s.s0]);|
+	      l -= alpha_v*df; // rd.simple_coreflect(l,s.s0,r_g_eval[s.s0]);|
 	      rd.simple_coreflect(l,s.s0);
 	      rd.simple_coreflect(t,s.s0,df); // |df| subs extra |alpha_v*df|
 	      x = kgb.cross(s.s0,x);
-	      theta = kgb.involution_matrix(x);
-	      assert((delta-1).right_prod(l)==(theta+1).right_prod(t));
-	      assert((1-theta).right_prod(l).isZero());
+	      //	      theta = kgb.involution_matrix(x);
+	      //      assert((delta-1).right_prod(l)==(theta+1).right_prod(t));
+	      //      assert((1-theta).right_prod(l).isZero());
 	    }
 	    break;
 	  }
 	} // |for(s)|, if |isComplex|
     while(i<orbits.size()); // continue until above |for| runs to completion
   } // end of transformation of extended parameter components
-  l+=l_offset;
-  l/=denom; //shift and scale back to original
+  //  l+=l_offset;
+  // l/=denom; //shift and scale back to original
 
   // since |gamma| may have changed, we only now build our |context|
   context ctxt(rc,delta, RatWeight(gamma_numer,result.gamma().denominator()));
@@ -1044,40 +1039,62 @@ BlockElt twisted
  */
 param complex_cross(const ext_gen& p, param E) // by-value for |E|, modified
 { const RootDatum& rd = E.rc().rootDatum();
-  const RootDatum& id = E.ctxt.id();
+  const auto& ec = E.ctxt;
+  const RootDatum& id = ec.id();
   const InvolutionTable& i_tab = E.rc().innerClass().involution_table();
   auto &tW = E.rc().twistedWeylGroup(); // caution: |p| refers to integr. datum
 
   InvolutionNbr theta = i_tab.nr(E.tw);
-  Weight rho_r_shift = rd.twoRho(i_tab.real_roots(theta));
+  const RootNbrSet& theta_real_roots = i_tab.real_roots(theta);
+  Weight rho_r_shift = rd.twoRho(theta_real_roots);
   Coweight dual_rho_im_shift = rd.dual_twoRho(i_tab.imaginary_roots(theta));
 
   for (unsigned i=p.w_kappa.size(); i-->0; ) // at most 3 letters, right-to-left
   { weyl::Generator s=p.w_kappa[i]; // generator for integrality datum
-    tW.twistedConjugate(E.ctxt.subsys().reflection(s),E.tw);
-    id.simple_reflect(s,E.lambda_rho,E.ctxt.lambda_shift(s));
+    tW.twistedConjugate(ec.subsys().reflection(s),E.tw);
+    id.simple_reflect(s,E.lambda_rho,ec.lambda_shift(s));
     id.simple_reflect(s,rho_r_shift);
     id.simple_reflect(s,E.tau);
-    id.simple_coreflect(E.l,s,E.ctxt.l_shift(s));
+    id.simple_coreflect(E.l,s,ec.l_shift(s));
     id.simple_coreflect(dual_rho_im_shift,s);
     id.simple_coreflect(E.t,s);
   }
 
-  rho_r_shift -= rd.twoRho(i_tab.real_roots(i_tab.nr(E.tw)));
-  E.lambda_rho -= rho_r_shift; //add real on new side, subtract on original
+  const RootNbrSet& new_theta_real_roots = i_tab.real_roots(i_tab.nr(E.tw));
+  rho_r_shift -= rd.twoRho(new_theta_real_roots);
+  rho_r_shift/=2; // now it is just a sum of (real) roots
+  E.lambda_rho -= rho_r_shift;
 
-  assert(E.ctxt.delta()*rho_r_shift==rho_r_shift); // diff of $\delta$-fixed
+  assert(ec.delta()*rho_r_shift==rho_r_shift); // diff of $\delta$-fixed
 
   dual_rho_im_shift -= rd.dual_twoRho(i_tab.imaginary_roots(i_tab.nr(E.tw)));
-  assert(dual_rho_im_shift.isZero());
+  dual_rho_im_shift/=2; // now it is just a sum of (imaginary) coroots
   E.l -= dual_rho_im_shift;
 
-  assert(E.ctxt.delta().right_prod(dual_rho_im_shift)==dual_rho_im_shift);
+  assert(ec.delta().right_prod(dual_rho_im_shift)==dual_rho_im_shift);
+
+  auto& subs=ec.subsys();
+  RootNbr alpha_simple = subs.parent_nr_simple(p.s0);
+  const WeylWord to_simple = fixed_conjugate_simple(ec,alpha_simple);
+  // by symmetry by $\delta$, |to_simple| conjugates $\delta(\alpha)$ to simple:
+  assert(p.length()==1 or rd.is_simple_root(rd.permuted_root(to_simple,
+				                subs.parent_nr_simple(p.s1))));
+  assert(rd.is_simple_root(rd.permuted_root(to_simple,
+					    subs.parent_nr_simple(p.s1))));
+  RootNbrSet S = pos_to_neg(rd,to_simple);
+  S &= theta_real_roots ^ new_theta_real_roots; // select real-changing roots
+
+  unsigned count=0; // will count 2-element |delta|-orbits
+  for (auto it=S.begin(); it(); ++it)
+    if (*it!=ec.delta_of(*it) and not rd.sumIsRoot(*it,ec.delta_of(*it)))
+      ++count;
+  assert(count%2==0); // since |S| is supposed to be $\delta$-stable
+  if(count%4!=0) std::cout << "complex_cross flip" << std::endl;
+  E.flip(count%4!=0);
 
   validate(E);
   return E;
 } // |complex_cross|
-
 
 WeylWord fixed_conjugate_simple (const context& ctxt, RootNbr& alpha)
 { const RootDatum& rd = ctxt.innerClass().rootDatum();
@@ -1457,13 +1474,9 @@ DescValue star (const param& E,	const ext_gen& p,
       else // length 1 complex case
       { result = rd.is_posroot(theta_alpha)
 	  ? one_complex_ascent : one_complex_descent ;
-
+	links.push_back(complex_cross(p,E));
+	/*
 	TwistedInvolution new_tw = E.tw;
-	bool monoflip=false;
-	unsigned int d = rd.is_posroot(theta_alpha) ?
-	  i_tab.length(new_tw) - i_tab.length(E.tw) :
-	  i_tab.length(E.tw) - i_tab.length(new_tw);
-	if (d%2==0) monoflip = not monoflip;
 	tW.twistedConjugate(subs.reflection(p.s0),new_tw);
 	RootNbr alpha_simple = n_alpha;
 	const WeylWord ww = fixed_conjugate_simple(E.ctxt,alpha_simple);
@@ -1483,6 +1496,7 @@ DescValue star (const param& E,	const ext_gen& p,
 	E1.flipped = flipped;
 	//  E1.lambda_rho -= rho_r_shift; already done in complex_cross
 	links.push_back(E1);
+	*/
       }
     }
     break;
@@ -1602,15 +1616,15 @@ DescValue star (const param& E,	const ext_gen& p,
 		   F0.l,E.t,
 		   flipped);
 
-	  //	  int ta = E.t.dot(alpha), tb=E.t.dot(beta);
-	  // z_align(E,F0,ta*m);
-	  F0.lambda_rho -= rho_r_shift;
-	  F1.lambda_rho -= rho_r_shift;
-	  z_align(E,F0);
-	  // z_align(E,F1,ta*(1-m)+tb);
-	  z_align(E,F1);
-	  F0.lambda_rho += rho_r_shift;
-	  F1.lambda_rho += rho_r_shift;
+	  int ta = E.t.dot(alpha), tb=E.t.dot(beta);
+	  z_align(E,F0,ta*m);
+	  //	  F0.lambda_rho -= rho_r_shift;
+	  //	  F1.lambda_rho -= rho_r_shift;
+	  // 	  z_align(E,F0);
+	  z_align(E,F1,ta*(1-m)+tb);
+	  //	  z_align(E,F1);
+	  // F0.lambda_rho += rho_r_shift;
+	  // F1.lambda_rho += rho_r_shift;
 	  links.push_back(std::move(F0)); // first Cayley
 	  links.push_back(std::move(F1)); // second Cayley
 	} // end type 2i22 case
@@ -1742,10 +1756,10 @@ DescValue star (const param& E,	const ext_gen& p,
 
 	  param F(E.ctxt, new_tw, new_lambda_rho, E.tau,
 		  E.l, E0.t, flipped);
-	  F.lambda_rho += rho_r_shift;
+	  // F.lambda_rho += rho_r_shift;
 	  z_align(E0,F); // no 3rd arg, as |E.t.dot(alpha)==0| etc.
 	  //	  z_align(F,E1);
-	  F.lambda_rho -= rho_r_shift;
+	  // F.lambda_rho -= rho_r_shift;
 	  z_align(E0,E1);
 	  links.push_back(std::move(F )); // Cayley link
 	  links.push_back(std::move(E1)); // cross link
@@ -1756,16 +1770,11 @@ DescValue star (const param& E,	const ext_gen& p,
 	if (theta_alpha != (ascent ? n_beta : rd.rootMinus(n_beta)))
 	{ // twisted non-commutation with |s0.s1|
 	  result = ascent ? two_complex_ascent : two_complex_descent;
-
+	  links.push_back(complex_cross(p,E));
+	  /*
 	  TwistedInvolution new_tw = E.tw;
 	  tW.twistedConjugate(subs.reflection(p.s0),new_tw);
 	  tW.twistedConjugate(subs.reflection(p.s1),new_tw);
-	  bool monoflip=false;
-	  unsigned int d = ascent ?
-	  i_tab.length(new_tw) - i_tab.length(E.tw) :
-	  i_tab.length(E.tw) - i_tab.length(new_tw);
-	  if (d%2!=0) monoflip = not monoflip;
-
 	  RootNbr alpha_simple = n_alpha;
 	  const WeylWord ww = fixed_conjugate_simple(E.ctxt,alpha_simple);
 	  assert(rd.is_simple_root(alpha_simple)); // no complications here
@@ -1779,10 +1788,11 @@ DescValue star (const param& E,	const ext_gen& p,
 	  if(flipped) std::cout << "2C flip" << std::endl;
 	auto E1=complex_cross(p,E0);
 	E1.flipped = flipped;
-	E1.lambda_rho += rho_r_shift;
+	//	E1.lambda_rho += rho_r_shift; already in complex_cross?
 	z_align(E0,E1);
-	E1.lambda_rho -= rho_r_shift;
+	//	E1.lambda_rho -= rho_r_shift;
 	links.push_back(E1);
+	  */
 	}
 	else if (ascent)
 	{ // twisted commutation with |s0.s1|: 2Ci
@@ -2021,7 +2031,8 @@ DescValue star (const param& E,	const ext_gen& p,
 	else // twisted non-commutation: 3C+ or 3C-
 	{
 	  result = ascent ? three_complex_ascent : three_complex_descent;
-
+	  links.push_back(complex_cross(p,E));
+	  /*
 	  TwistedInvolution new_tw = E.tw;
 	  tW.twistedConjugate(subs.reflection(p.s0),new_tw);
 	  tW.twistedConjugate(subs.reflection(p.s1),new_tw);
@@ -2048,6 +2059,7 @@ DescValue star (const param& E,	const ext_gen& p,
 	  z_align(E0,E1);
 	  E1.lambda_rho += rho_r_shift;
 	  links.push_back(E1);
+	  */
 	}
       }
     }
@@ -2367,13 +2379,24 @@ bool ext_block::check(const param_block& block, bool verbose)
 	  BlockElt m=cross(s,n); // cross neighbour as bare element of |*this|
 	  BlockElt cz = this->z(m); // corresponding element of (parent) |block|
 	  param F(ctxt,block.x(cz),block.lambda_rho(cz)); // default extension
-	  if (not (same_standard_reps(*it,F)) )
+	  if (not (same_standard_reps(*it,F)) ) // *it is the proposed complex
+	    // cross from star
 	    {
-
+	      param E = *it;
 	      std::cout << "link type = " << tp << ", block element " << n
 			<< " linked to " << m <<std::endl;
 	      std::cout << "s = " << s << ", z(m) = " << cz << ", z(n) = "
 			<< this->z(n) << std::endl;
+	      std::cout << "target theta = " << std::endl;
+	      prettyprint::printMatrix(std::cout, F.theta());
+	      prettyprint::printVector(std::cout
+				       << "target lambda_rho actually = ",
+				       F.lambda_rho);
+	      std::cout << std::endl;
+	      prettyprint::printVector(std::cout
+				       << "star suggests it should be = ",
+				       E.lambda_rho);
+	      std::cout << std::endl;
 	    }
 	  //	  assert(same_standard_reps(*it,F)); // must lie over same
 	  if (not same_sign(*it,F))
