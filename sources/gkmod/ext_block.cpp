@@ -401,8 +401,6 @@ StandardRepr scaled_extended_dominant // result will have its |gamma()| dominant
     param E(ctxt,result); // default extend |result| to extended parameter
     lr=E.lambda_rho; tau=E.tau; l=E.l; t=E.t; // and copy fields to variables
    }
-  //   WeightInvolution theta = kgb.involution_matrix(sr.x());
-  //   const RatCoweight& g_r = rc.realGroup().g_rho_check();
   KGBElt x = result.x(); // another variable, for convenience
 
   int_Vector r_g_eval (rd.semisimpleRank()); // evaluations at |-gr|
@@ -433,8 +431,6 @@ StandardRepr scaled_extended_dominant // result will have its |gamma()| dominant
 	      rd.shifted_dual_act(l,s.w_kappa,r_g_eval);
 	      rd.dual_act(t,s.w_kappa);
 	      x = kgb.cross(s.w_kappa,x);
-	      //    assert((delta-1).right_prod(l)==(theta+1).right_prod(t));
-	      //	      assert((1-theta).right_prod(l).isZero());
 	    }
 	    else // we have a singular 2Cr descent; do just one reflection
 	    { // corrections to |tau| and |t| are as in 2Cr case of |star| below
@@ -444,7 +440,6 @@ StandardRepr scaled_extended_dominant // result will have its |gamma()| dominant
 	      rd.simple_reflect(s.s0,tau,-f); // shift |-f| adds extra |alpha*f|
 	      const int df = l.dot(alpha)+r_g_eval[s.s0];
 	      l -= alpha_v*df; // rd.simple_coreflect(l,s.s0,r_g_eval[s.s0]);|
-	      rd.simple_coreflect(l,s.s0);
 	      rd.simple_coreflect(t,s.s0,df); // |df| subs extra |alpha_v*df|
 	      x = kgb.cross(s.s0,x);
 	      //      assert((delta-1).right_prod(l)==(theta+1).right_prod(t));
@@ -455,8 +450,6 @@ StandardRepr scaled_extended_dominant // result will have its |gamma()| dominant
 	} // |for(s)|, if |isComplex|
     while(i<orbits.size()); // continue until above |for| runs to completion
   } // end of transformation of extended parameter components
-  //  l+=l_offset;
-  // l/=denom; //shift and scale back to original
 
   // since |gamma| may have changed, we only now build our |context|
   context ctxt(rc,delta, RatWeight(gamma_numer,result.gamma().denominator()));
