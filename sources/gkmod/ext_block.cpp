@@ -545,6 +545,10 @@ void z_align (const param& E, param& F)
     // add correction so always works?
     //    + 2*E.t.dot(E.lambda_rho) - 2*F.t.dot(F.lambda_rho);
   assert(d%2==0);
+  if(d%4!=0)
+    {
+      std::cout << "z_align did a flip here at x = " << E.x() << std::endl;
+    }
   F.flip(E.is_flipped()!=(d%4!=0));
   // F.flipped ^= (d%4!=0); // XOR with "d not zero mod 4"
 }
@@ -1080,7 +1084,7 @@ param complex_cross(const ext_gen& p, param E) // by-value for |E|, modified
   if(count%4!=0) std::cout << "complex_cross flip" << std::endl;
   E.flip(count%4!=0);
   //   E.flip(p.w_kappa.size()==2); // a guess parallel to the new 2i,2r flips
-  //   previous line makes trivial(GL(4,C)) nonunitary
+  //   previous line makes trivial(GL(3,C)) nonunitary
   validate(E);
   return E;
 } // |complex_cross|
@@ -1762,9 +1766,6 @@ DescValue star (const param& E,	const ext_gen& p,
 
 	  TwistedInvolution new_tw = E.tw;
 	  tW.twistedConjugate(subs.reflection(p.s0),new_tw); // same for |p.s1|
-	  //	  bool monoflip=false;
-	  //	  unsigned int d = i_tab.length(new_tw) - i_tab.length(E.tw);
-	  //	  if (d%2==0) monoflip = not monoflip;
 	  RootNbr alpha_simple = n_alpha;
 	  const WeylWord ww = fixed_conjugate_simple(E.ctxt,alpha_simple);
 	  assert(rd.is_simple_root(alpha_simple)); // no complications here
@@ -1795,8 +1796,8 @@ DescValue star (const param& E,	const ext_gen& p,
 	  param F (E.ctxt, new_tw, new_lambda_rho,
 		   new_tau, new_l, new_t, flipped);
 	  F.lambda_rho-=rho_r_shift;
-	  int ab_tau = (alpha_v+beta_v).dot(E.tau) + 2;
-	   // 2 is from (46j) in twisted paper
+	  int ab_tau = (alpha_v+beta_v).dot(E.tau); // + 2;
+	   // 2 is from (46j) in twisted paper ALREADY COUNTED?
 	  assert (ab_tau%2==0);
 	  // F.flip((F.flip)&((ab_tau*dual_f)%4!=0));
 	  F.flip((ab_tau*dual_f)%4!=0);
@@ -1836,8 +1837,8 @@ DescValue star (const param& E,	const ext_gen& p,
 		   new_t,  flipped);
 
 	  F.lambda_rho+=rho_r_shift;
-	  int t_ab = E.t.dot(beta-alpha) +2;
-	  // 2 is dual to 2Ci 2
+	  int t_ab = E.t.dot(beta-alpha); // +2;
+	  // 2 is dual to 2Ci 2 // but they both don't exist?
 	  assert(t_ab%2==0);
 	  // F.flip((F.flip)&((t_ab * (f+alpha_v.dot(E.tau)))%4!=0));
 	  F.flip((t_ab * (f+alpha_v.dot(E.tau)))%4!=0);
