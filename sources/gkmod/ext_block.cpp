@@ -1079,7 +1079,8 @@ param complex_cross(const ext_gen& p, param E) // by-value for |E|, modified
   assert(count%2==0); // since |S| is supposed to be $\delta$-stable
   if(count%4!=0) std::cout << "complex_cross flip" << std::endl;
   E.flip(count%4!=0);
-  // E.flip(p.w_kappa.size()==2);
+  //   E.flip(p.w_kappa.size()==2); // a guess parallel to the new 2i,2r flips
+  //   previous line makes trivial(GL(4,C)) nonunitary
   validate(E);
   return E;
 } // |complex_cross|
@@ -1794,7 +1795,8 @@ DescValue star (const param& E,	const ext_gen& p,
 	  param F (E.ctxt, new_tw, new_lambda_rho,
 		   new_tau, new_l, new_t, flipped);
 	  F.lambda_rho-=rho_r_shift;
-	  int ab_tau = (alpha_v+beta_v).dot(E.tau);
+	  int ab_tau = (alpha_v+beta_v).dot(E.tau) + 2;
+	   // 2 is from (46j) in twisted paper
 	  assert (ab_tau%2==0);
 	  // F.flip((F.flip)&((ab_tau*dual_f)%4!=0));
 	  F.flip((ab_tau*dual_f)%4!=0);
@@ -1834,7 +1836,8 @@ DescValue star (const param& E,	const ext_gen& p,
 		   new_t,  flipped);
 
 	  F.lambda_rho+=rho_r_shift;
-	  int t_ab = E.t.dot(beta-alpha);
+	  int t_ab = E.t.dot(beta-alpha) +2;
+	  // 2 is dual to 2Ci 2
 	  assert(t_ab%2==0);
 	  // F.flip((F.flip)&((t_ab * (f+alpha_v.dot(E.tau)))%4!=0));
 	  F.flip((t_ab * (f+alpha_v.dot(E.tau)))%4!=0);
