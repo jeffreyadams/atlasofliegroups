@@ -22,7 +22,7 @@
 #include "kgb.h"
 #include "blocks.h"
 #include "repr.h"
-#include "prettyprint.h" 
+#include "prettyprint.h"
 
 /*
   For an extended group, the block structure is more complicated than an
@@ -1086,7 +1086,7 @@ param complex_cross(const ext_gen& p, param E) // by-value for |E|, modified
   assert(count%2==0); // since |S| is supposed to be $\delta$-stable
   if(count%4!=0) std::cout << "complex_cross flip" << std::endl;
   E.flip(count%4!=0);
-  E.flip(p.w_kappa.size()==2);
+  // E.flip(p.w_kappa.size()==2);
   validate(E);
   return E;
 } // |complex_cross|
@@ -1206,10 +1206,10 @@ DescValue star (const param& E,	const ext_gen& p,
 	  return one_imaginary_compact; // quit here, do not collect \$200
 
 	// noncompact case
-	bool monoflip = false;
+	//	bool monoflip = false;
 	const TwistedInvolution new_tw= tW.prod(subs.reflection(p.s0),E.tw);
-	unsigned int d = i_tab.length(new_tw) - i_tab.length(E.tw);
-	if (d%2==0) monoflip = not monoflip;
+	//	unsigned int d = i_tab.length(new_tw) - i_tab.length(E.tw);
+	//	if (d%2==0) monoflip = not monoflip;
 	const WeightInvolution th_1 = i_tab.matrix(new_tw)-1; // upstairs
 
 	int tau_coef = alpha_v.dot(E.tau); // take $\tau_\alpha$ of table 2
@@ -1326,9 +1326,9 @@ DescValue star (const param& E,	const ext_gen& p,
 	const WeylWord ww = fixed_conjugate_simple(E.ctxt,alpha_simple);
 	const TwistedInvolution new_tw = // downstairs
 	  tW.prod(subs.reflection(p.s0),E.tw);
-	bool monoflip=false;
-	unsigned int d = i_tab.length(E.tw) - i_tab.length(new_tw);
-	if (d%2==0) monoflip = not monoflip;
+	//	bool monoflip=false;
+	//	unsigned int d = i_tab.length(E.tw) - i_tab.length(new_tw);
+	//	if (d%2==0) monoflip = not monoflip;
 	const auto theta_p = i_tab.nr(new_tw); // downstairs
 	Weight rho_r_shift = repr::Cayley_shift(ic,theta,theta_p,ww);
 	const bool flipped = Cayley_shift_flip(E.ctxt,theta,theta_p,ww);
@@ -1490,9 +1490,9 @@ DescValue star (const param& E,	const ext_gen& p,
 	// noncompact case
 	const TwistedInvolution new_tw =
 	  tW.prod(subs.reflection(p.s1),tW.prod(subs.reflection(p.s0),E.tw));
-	bool monoflip=false;
-	unsigned int d = i_tab.length(new_tw) - i_tab.length(E.tw);
-	if (d%2!=0) monoflip = not monoflip;
+	//	bool monoflip=false;
+	//	unsigned int d = i_tab.length(new_tw) - i_tab.length(E.tw);
+	//	if (d%2!=0) monoflip = not monoflip;
 	// make $\alpha$ simple by conjugating by $W^\delta$
 	RootNbr alpha_simple = n_alpha;
 	const WeylWord ww = fixed_conjugate_simple(E.ctxt,alpha_simple);
@@ -1605,9 +1605,9 @@ DescValue star (const param& E,	const ext_gen& p,
 	assert(rd.is_simple_root(alpha_simple)); // no complications here
 	const TwistedInvolution new_tw = // downstairs
 	  tW.prod(subs.reflection(p.s1),tW.prod(subs.reflection(p.s0),E.tw));
-	bool monoflip=false;
-	unsigned int d = i_tab.length(E.tw) - i_tab.length(new_tw);
-	if (d%2!=0) monoflip = not monoflip;
+	//	bool monoflip=false;
+	//	unsigned int d = i_tab.length(E.tw) - i_tab.length(new_tw);
+	//	if (d%2!=0) monoflip = not monoflip;
 	const auto theta_p = i_tab.nr(new_tw); // downstairs
 	const Weight rho_r_shift = repr::Cayley_shift(ic,theta,theta_p,ww);
 	const bool flipped = Cayley_shift_flip(E.ctxt,theta,theta_p,ww);
@@ -1768,9 +1768,9 @@ DescValue star (const param& E,	const ext_gen& p,
 
 	  TwistedInvolution new_tw = E.tw;
 	  tW.twistedConjugate(subs.reflection(p.s0),new_tw); // same for |p.s1|
-	  bool monoflip=false;
-	  unsigned int d = i_tab.length(new_tw) - i_tab.length(E.tw);
-	  if (d%2==0) monoflip = not monoflip;
+	  //	  bool monoflip=false;
+	  //	  unsigned int d = i_tab.length(new_tw) - i_tab.length(E.tw);
+	  //	  if (d%2==0) monoflip = not monoflip;
 	  RootNbr alpha_simple = n_alpha;
 	  const WeylWord ww = fixed_conjugate_simple(E.ctxt,alpha_simple);
 	  assert(rd.is_simple_root(alpha_simple)); // no complications here
@@ -1814,9 +1814,9 @@ DescValue star (const param& E,	const ext_gen& p,
 	  TwistedInvolution new_tw = E.tw;
 	  tW.twistedConjugate(subs.reflection(p.s0),new_tw); // same for |p.s1|
 	  const auto theta_p = i_tab.nr(new_tw); // downstairs
-	  bool monoflip=false;
-	  unsigned int d = i_tab.length(E.tw) - i_tab.length(new_tw);
-	  if (d%2==0) monoflip = not monoflip;
+	  //	  bool monoflip=false;
+	  //	  unsigned int d = i_tab.length(E.tw) - i_tab.length(new_tw);
+	  //	  if (d%2==0) monoflip = not monoflip;
 
 	  RootNbr alpha_simple = n_alpha;
 	  const WeylWord ww = fixed_conjugate_simple(E.ctxt,alpha_simple);
@@ -1867,10 +1867,10 @@ DescValue star (const param& E,	const ext_gen& p,
       const Coweight& kappa_v = integr_datum.coroot(n_kappa);
 
       const TwistedInvolution new_tw = tW.prod(s_kappa,E.tw); // when applicable
-      bool monoflip=false;
-      int e = i_tab.length(new_tw) - i_tab.length(E.tw);
-      unsigned int d = (e>0) ? e : -e;
-      if (d%2==0) monoflip = not monoflip;
+      //      bool monoflip=false;
+      //      int e = i_tab.length(new_tw) - i_tab.length(E.tw);
+      //     unsigned int d = (e>0) ? e : -e;
+      //      if (d%2==0) monoflip = not monoflip;
 
       if (theta_alpha==n_alpha) // length 3 imaginary case
       { // first find out if the simply-integral root $\alpha$ is compact
@@ -2001,34 +2001,6 @@ DescValue star (const param& E,	const ext_gen& p,
 	{
 	  result = ascent ? three_complex_ascent : three_complex_descent;
 	  links.push_back(complex_cross(p,E));
-	  /*
-	  TwistedInvolution new_tw = E.tw;
-	  tW.twistedConjugate(subs.reflection(p.s0),new_tw);
-	  tW.twistedConjugate(subs.reflection(p.s1),new_tw);
-	  tW.twistedConjugate(subs.reflection(p.s0),new_tw);
-	  bool monoflip=false;
-	  unsigned int d = rd.is_posroot(theta_alpha) ?
-	  i_tab.length(new_tw) - i_tab.length(E.tw) :
-	  i_tab.length(E.tw) - i_tab.length(new_tw);
-	  if (d%2==0) monoflip = not monoflip;
-
-	  RootNbr alpha_simple = n_alpha;
-	  const WeylWord ww = fixed_conjugate_simple(E.ctxt,alpha_simple);
-	  assert(rd.is_simple_root(alpha_simple)); // no complications here
-	  const auto theta_q = i_tab.nr(new_tw);
-	  Weight rho_r_shift = ascent ?
-	    repr::Cayley_shift(ic,theta_q,theta,ww) :
-	    repr::Cayley_shift(ic,theta,theta_q,ww);
-	  const bool flipped = ascent ?
-	    Cayley_shift_flip(E.ctxt,theta_q,theta,ww) :
-	    Cayley_shift_flip(E.ctxt,theta,theta_q,ww);
-	  auto E1=complex_cross(p,E0);
-	  E1.flipped = flipped;
-	  E1.lambda_rho -= rho_r_shift;
-	  z_align(E0,E1);
-	  E1.lambda_rho += rho_r_shift;
-	  links.push_back(E1);
-	  */
 	}
       }
     }
