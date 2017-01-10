@@ -374,6 +374,9 @@ KGBElt param::x() const
   components are those inherited from |sr| before scaling its |nu| part by
   |factor|. The user should make sure |sr| itself has dominant |gamma|, which
   moreover is assumed to be fixed by |delta| (if not, don't use this function).
+
+  Change one simple at a time, never change real roots; so no
+  Cayley_shift_flip contribution.
  */
 StandardRepr scaled_extended_dominant // result will have its |gamma()| dominant
 (const Rep_context rc,
@@ -401,13 +404,6 @@ StandardRepr scaled_extended_dominant // result will have its |gamma()| dominant
   //   WeightInvolution theta = kgb.involution_matrix(sr.x());
   //   const RatCoweight& g_r = rc.realGroup().g_rho_check();
   KGBElt x = result.x(); // another variable, for convenience
-
-  // const auto grc = old_ctxt.g_rho_check();
-  // int denom=grc.denominator();
-  //  l*=denom; // scale to make shift applied to |l| below an integer vector
-  //  Coweight l_offset(grc.numerator().begin(),grc.numerator().end());
-  // convert
-  //  l-=l_offset; // shift so that reflections can apply directly
 
   int_Vector r_g_eval (rd.semisimpleRank()); // evaluations at |-gr|
   { const RatCoweight& g_r=rc.realGroup().g_rho_check();
@@ -437,7 +433,6 @@ StandardRepr scaled_extended_dominant // result will have its |gamma()| dominant
 	      rd.shifted_dual_act(l,s.w_kappa,r_g_eval);
 	      rd.dual_act(t,s.w_kappa);
 	      x = kgb.cross(s.w_kappa,x);
-	      //	      theta = kgb.involution_matrix(x);
 	      //    assert((delta-1).right_prod(l)==(theta+1).right_prod(t));
 	      //	      assert((1-theta).right_prod(l).isZero());
 	    }
@@ -452,7 +447,6 @@ StandardRepr scaled_extended_dominant // result will have its |gamma()| dominant
 	      rd.simple_coreflect(l,s.s0);
 	      rd.simple_coreflect(t,s.s0,df); // |df| subs extra |alpha_v*df|
 	      x = kgb.cross(s.s0,x);
-	      //	      theta = kgb.involution_matrix(x);
 	      //      assert((delta-1).right_prod(l)==(theta+1).right_prod(t));
 	      //      assert((1-theta).right_prod(l).isZero());
 	    }
@@ -1165,9 +1159,6 @@ bool Cayley_shift_flip
   for (auto it=T.begin(); it(); ++it)
     if (*it!=ec.delta_of(*it) and not rd.sumIsRoot(*it,ec.delta_of(*it)))
       ++countdown;
-  //  Weight gamma_numer(ec.gamma().numerator().begin(),
-  //		     ec.gamma().numerator().end());
-  //  unsigned int gamma_denom = ec.gamma().denominator();
   if (not (countdown==0)) std::cout << "countup = " << countup
 				    << ", countdown = " << countdown
 				    << ", thetaup = " << theta_upstairs
@@ -1185,29 +1176,6 @@ bool Cayley_shift_flip
   return (countup-countdown)%4!=0;
 } // Cayley_shift_flip
 
-  /* In the case of Cayley_shift_flip, the tau parameter of the target must also be modified by the sum of one real root from each delta orbit.
-   */
-  /* Weight tau_shift
-  (const context& ec,
-   InvolutionNbr theta_upstairs, // top of the link (more split Cartan)
-   InvolutionNbr theta_downstairs, // at the bottom of the link
-   const WeylWord& to_simple)
-{ const RootDatum& rd = ec.rc().rootDatum();
-  const InvolutionTable& i_tab = ec.innerClass().involution_table();
-  RootNbrSet S = pos_to_neg(rd,to_simple) & i_tab.real_roots(theta_upstairs);
-  RootNbrSet T = pos_to_neg(rd,to_simple) & i_tab.real_roots(theta_downstairs);
-  Weight result(rd.rank(),0); // this will be one root from each delta pair
-  for (auto it=S.begin(); it(); ++it)
-    if (*it < ec.delta_of(*it))
-      // (*it!=ec.delta_of(*it) and
-	// not rd.sumIsRoot(*it,ec.delta_of(*it)))
-      result += rd.root(*it); // add smaller root in delta orbit
-  for (auto it=T.begin(); it(); ++it)
-    if (*it < ec.delta_of(*it))
-      result -= rd.root(*it); // subtract downstairs
-  return result;
-} // tau_shift
-*/
 
 // version of |type| that will also export signs for every element of |links|
 DescValue star (const param& E,	const ext_gen& p,
@@ -1929,10 +1897,11 @@ DescValue star (const param& E,	const ext_gen& p,
 		E.lambda_rho + rho_r_shift,
 		E.tau - alpha*kappa_v.dot(E.tau),
 		E.l + kappa_v*((tf_alpha+tf_beta)/2), E.t,
-		flipped);
-	F.lambda_rho-=rho_r_shift;
+		not flipped); //January unsurprise: delta acts by -1
+	// on some wedge?
+	//	F.lambda_rho-=rho_r_shift;
 	z_align(E,F); // |lambda_rho| unchanged at simple Cayley
-	F.lambda_rho+=rho_r_shift;
+	//	F.lambda_rho+=rho_r_shift;
 	links.push_back(std::move(F)); // Cayley link
       }
       else if (theta_alpha==rd.rootMinus(n_alpha)) // length 3 real case
@@ -1965,11 +1934,11 @@ DescValue star (const param& E,	const ext_gen& p,
 	assert(same_sign(E,E0)); // since only |t| changes
 
 	param F(E.ctxt, new_tw,	new_lambda_rho,
-		E.tau,E.l,E0.t, flipped);
+		E.tau,E.l,E0.t, not flipped); //January unsurprise
 
-	F.lambda_rho+=rho_r_shift;
+	// F.lambda_rho+=rho_r_shift;
 	z_align(E0,F); // no 3rd arg since |E.t.dot(kappa)==0|
-	F.lambda_rho-=rho_r_shift;
+	// F.lambda_rho-=rho_r_shift;
 	links.push_back(std::move(F)); // Cayley link
       }
       else // length 3 complex case 3Ci or 3Cr or 3C
@@ -2003,13 +1972,13 @@ DescValue star (const param& E,	const ext_gen& p,
 		    dtf_alpha%2==0 ? new_lambda_rho : new_lambda_rho + kappa,
 		    E.tau - kappa*(kappa_v.dot(E.tau)/2),
 		    E.l + kappa_v*tf_alpha, E.t,
-		    flipped);
+		    not flipped); // January unsurprise
 
 	    assert(E.t.dot(kappa)==0);
 	    // since it is half of |t*(1+theta)*kappa=l*(delta-1)*kappa==0|
-	    F.lambda_rho-=rho_r_shift;
+	    //	    F.lambda_rho-=rho_r_shift;
 	    z_align(E,F); // may ignore possible shift by |kappa|
-	    F.lambda_rho+=rho_r_shift;
+	    //	    F.lambda_rho+=rho_r_shift;
 	    links.push_back(std::move(F)); // Cayley link
 	  }
 	  else // descent, so 3Cr
@@ -2020,7 +1989,7 @@ DescValue star (const param& E,	const ext_gen& p,
 	    param F(E.ctxt, new_tw,
 		    new_lambda_rho + kappa*dtf_alpha, E.tau,
 		    tf_alpha%2==0 ? E.l : E.l+kappa_v, E0.t,
-		    flipped);
+		    not flipped); //January unsurprise
 	    F.lambda_rho-=rho_r_shift;
 	    z_align(E0,F); // no 3rd arg since |E.t.dot(kappa)==0|
 	    F.lambda_rho+=rho_r_shift;
