@@ -78,6 +78,9 @@ bool is_dominant_ratweight(const RootDatum& rd, const RatWeight& gamma);
 Weight rho_minus_w_rho(const RootDatum& rd, const WeylWord& ww);
 Coweight rho_check_minus_rho_check_w(const RootDatum& rd, const WeylWord& ww);
 
+Weight root_sum(const RootDatum& rd, const RootNbrSet& S);
+Coweight coroot_sum(const RootDatum& rd, const RootNbrSet& S);
+
 } // |namespace rootdata|
 
 /******** type definitions **************************************************/

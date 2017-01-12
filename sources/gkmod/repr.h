@@ -240,6 +240,17 @@ class Rep_table : public Rep_context
 
 // 				Functions
 
+/*
+  Set of roots whose sum gives a shift in $\lambda$ component for a link for
+  an integrally-simple root mapped by |to_simple| to a simple root, the link
+  going from involution |theta| to |theta_p|: positive roots that |to_simple|
+  maps to negative and the change real status between |theta| and |theta_p|.
+*/
+RootNbrSet to_simple_shift
+  (const InnerClass& G,
+   InvolutionNbr theta, InvolutionNbr theta_p, // involutions at ends of link
+   const WeylWord& to_simple); // Weyl word acting from the left on roots
+
 // shift in $\lambda$ component involved in non-simple Cayleys (and crosses)
 // gets added to |lambda_rho| in imaginary cases, subtracted in real cases
 Weight Cayley_shift (const InnerClass& G,
