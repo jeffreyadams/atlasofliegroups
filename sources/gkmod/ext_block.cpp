@@ -1488,9 +1488,6 @@ DescValue star (const param& E,	const ext_gen& p,
 	// noncompact case
 	const TwistedInvolution new_tw =
 	  tW.prod(subs.reflection(p.s1),tW.prod(subs.reflection(p.s0),E.tw));
-	//	bool monoflip=false;
-	//	unsigned int d = i_tab.length(new_tw) - i_tab.length(E.tw);
-	//	if (d%2!=0) monoflip = not monoflip;
 	// make $\alpha$ simple by conjugating by $W^\delta$
 	RootNbr alpha_simple = n_alpha;
 	const WeylWord ww = fixed_conjugate_simple(E.ctxt,alpha_simple);
@@ -1513,7 +1510,7 @@ DescValue star (const param& E,	const ext_gen& p,
 	  param F (E.ctxt, new_tw,
 		   E.lambda_rho + rho_r_shift,
 		   E.tau + sigma, E.l+alpha_v*(tf_alpha/2)+beta_v*(tf_beta/2),
-		   E.t, not flipped);
+		   E.t, flipped);
 
 	  E0.l += alpha_v+beta_v;
 	  // F.lambda_rho-=rho_r_shift;
@@ -1538,17 +1535,16 @@ DescValue star (const param& E,	const ext_gen& p,
 	    matreduc::find_solution(th_1,alpha*(at+mm)+beta*(bt-mm));
 
 	  const Weight new_tau0 = E.tau - alpha*((at+m)/2) - beta*((bt-m)/2);
-	  //  + tau_shift;
           const Coweight new_l = E.l+alpha_v*(tf_alpha/2)+beta_v*(tf_beta/2);
 
 	  // first Cayley link |F0| will be the one that does not need |sigma|
 	  param F0(E.ctxt, new_tw,
 		   E.lambda_rho + rho_r_shift
-		   + alpha*m, new_tau0, new_l, E.t, not flipped);
+		   + alpha*m, new_tau0, new_l, E.t, flipped);
 	  param F1(E.ctxt, new_tw,
 		   E.lambda_rho + rho_r_shift
-		   + alpha*mm, E.tau + sigma, new_l, E.t, not flipped);
-
+		   + alpha*mm, F0.tau + sigma, new_l, E.t, flipped);
+	  //change E.tau to F0.tau?
 	  int t_alpha=E.t.dot(alpha);
 	  z_align(E,F0,m*t_alpha);
 	  //	  F0.lambda_rho-=rho_r_shift;
@@ -1559,7 +1555,10 @@ DescValue star (const param& E,	const ext_gen& p,
 	  // F0.lambda_rho+=rho_r_shift;
 	  // F1.lambda_rho+=rho_r_shift;
 	  links.push_back(std::move(F0)); // first Cayley
+	  std::cout << "2i12, KGBElt = " << E.restrict().x() << std::endl;
+	  if(F0.flipped) std::cout << "first 2i12 Cayley flipped" << std::endl;
 	  links.push_back(std::move(F1)); // second Cayley
+	  if(F1.flipped) std::cout << "second 2i12 Cayley flipped" << std::endl;
 	} // end of case 2i12f
 	else
 	{ // type 2i22
@@ -1574,13 +1573,13 @@ DescValue star (const param& E,	const ext_gen& p,
 		   + alpha*m,
 		   E.tau - alpha*((at+m)/2) - beta*((bt-m)/2),
 		   E.l+alpha_v*(tf_alpha/2)+beta_v*(tf_beta/2), E.t,
-		   not flipped);
+		   flipped);
 	  param F1(E.ctxt, new_tw,
 		   E.lambda_rho + rho_r_shift
 		   + alpha*(1-m) + beta,
 		   E.tau - alpha*((at-m)/2) - beta*((bt+m)/2),
 		   F0.l,E.t,
-		   not flipped);
+		   flipped);
 
 	  int ta = E.t.dot(alpha), tb=E.t.dot(beta);
 	  z_align(E,F0,ta*m);
@@ -1644,13 +1643,14 @@ DescValue star (const param& E,	const ext_gen& p,
 	  E1.t -= alpha_v*((ta-m)/2) + beta_v*((tb+m)/2);
 	  assert(same_sign(E,E1)); // since only |t| changes
 	  assert(E1.t.dot(alpha)==m and E1.t.dot(beta)==-m);
+	  // these modified t's allow computing sign of link by comparing z's
 
 	  param F0(E.ctxt, new_tw,
 		   new_lambda_rho, E.tau, E.l+alpha_v*m, E0.t,
-		   not flipped);
+		   flipped);
 	  param F1(E.ctxt, new_tw,
 		   new_lambda_rho, E.tau,
-		   E.l+alpha_v*(1-m)+beta_v,E1.t, not flipped);
+		   E.l+alpha_v*(1-m)+beta_v,E1.t, flipped);
 	  z_align(E0,F0,m*((b_level-a_level)/2));
 	  // F0.lambda_rho -= rho_r_shift;
 	  // F1.lambda_rho -= rho_r_shift;
@@ -1689,10 +1689,10 @@ DescValue star (const param& E,	const ext_gen& p,
 	  // Cayley links
 	  param F0(E.ctxt, new_tw,
 		   new_lambda_rho, E.tau, E.l+alpha_v*m, E0.t,
-		   not flipped);
+		   flipped);
 	  param F1(E.ctxt, new_tw,
 		   new_lambda_rho, E.tau, E.l+alpha_v*mm, E1.t,
-		   not flipped);
+		   flipped);
 
 	  z_align(E0,F0,m *((b_level-a_level)/2));
 	  // F0.lambda_rho += rho_r_shift;
@@ -1704,7 +1704,14 @@ DescValue star (const param& E,	const ext_gen& p,
 	  // F0.lambda_rho -= rho_r_shift;
 	  // F1.lambda_rho -= rho_r_shift;
 	  links.push_back(std::move(F0));
+	  std::cout << "2r21, KGBElt = " << E.restrict().x() << std::endl;
+	  if(F0.flipped) std::cout << "first 2r21 Cayley flipped "
+			   // to KGBELT = " << F0.restrict().x()
+				   << std::endl;
 	  links.push_back(std::move(F1));
+	  if(F1.flipped) std::cout << "second 2r21 Cayley flipped "
+			   // to KGBElt = " << F1.restrict().x()
+				   << std::endl;
 	} // end of case 2r21f
 	else // case 2r22
 	{ result = two_real_single_single;
@@ -1721,7 +1728,7 @@ DescValue star (const param& E,	const ext_gen& p,
 	  assert(not same_standard_reps(E0,E1));
 
 	  param F(E.ctxt, new_tw, new_lambda_rho, E.tau,
-		  E.l, E0.t, not flipped);
+		  E.l, E0.t, flipped);
 	  // F.lambda_rho += rho_r_shift;
 	  z_align(E0,F); // no 3rd arg, as |E.t.dot(alpha)==0| etc.
 	  // z_align(F,E1);
