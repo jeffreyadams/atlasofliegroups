@@ -383,15 +383,25 @@ StandardRepr scaled_extended_dominant // result will have its |gamma()| dominant
 	      x = kgb.cross(s.w_kappa,x);
 	    }
 	    else // we have a singular 2Cr descent; do just one reflection
-	    { // corrections to |E.tau| and |E.t| are as in 2Cr case of |star| below
-	      const int f = alpha_v.dot(E.lambda_rho)+1;
-	      const auto& alpha = rd.simpleRoot(s.s0);
-	      // now effectively do |rd.simple_reflect(s.s0,E.lambda_rho,1)|:
-	      E.lambda_rho -= alpha*f;
-	      rd.simple_reflect(s.s0,E.tau,-f); // shift |-f| adds extra |alpha*f|
-	      const int df = E.l.dot(alpha)+r_g_eval[s.s0]; // factor of |alpha_v|
-	      E.l -= alpha_v*df; // |rd.simple_coreflect(E.l,s.s0,r_g_eval[s.s0]);|
-	      rd.simple_coreflect(E.t,s.s0,df); // |df| subs extra |alpha_v*df|
+	    { // we call |star| to move down the descent, recording any flips
+	      // but we first need integral equivalent of simple orbit |i|
+	      weyl::Generator k; // generator of integral system
+	      for (k=0; k<ctxt.subsys().rank(); ++k)
+		if (ctxt.subsys().parent_nr_simple(k)==rd.simpleRootNbr(s.s0))
+		  break;
+	      assert(k<ctxt.subsys().rank()); // found an integral generator
+
+	      ext_gens int_orbits = rootdata::fold_orbits(ctxt.id(),delta);
+	      unsigned j; // index into |int_orbits;
+	      for (j=0; j<int_orbits.size(); ++j)
+		if (int_orbits[j].s0==k or int_orbits[j].s1==k)
+		  break;
+	      assert(j<int_orbits.size()); // found the orbit continaing it
+
+	      containers::sl_list<param> links;
+	      auto type = star(E,int_orbits[j],links);
+	      assert(type==two_semi_real);
+	      E = *links.begin(); // replace |E| by descended parameter
 	      x = kgb.cross(s.s0,x);
 	    }
 	    break;
@@ -400,14 +410,11 @@ StandardRepr scaled_extended_dominant // result will have its |gamma()| dominant
     while(i<orbits.size()); // continue until above |for| runs to completion
   } // end of transformation of extended parameter components
 
-  // build |F| with matching |gamma| and |theta| (for flipped test)
-  param F(ctxt,kgb.involution(x),E.lambda_rho,E.tau,E.l,E.t);
-
   // finally extract |StarndarRepr| from |E|, overwriting |result|
-  result = rc.sr_gamma(x,F.lambda_rho,ctxt.gamma());
+  result = rc.sr_gamma(x,E.lambda_rho,ctxt.gamma());
 
   // but the whole point of this function is to record the relative flip too!
-  flipped = not same_sign(F,param(ctxt,result)); // compare |E| to default ext.
+  flipped = not same_sign(E,param(ctxt,result)); // compare |E| to default ext.
   return result;
 
 } // |scaled_extended_dominant|
