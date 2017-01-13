@@ -97,11 +97,12 @@ class RationalVector
 
 /*
   Returns the scalar product of |*this| and |w|, which are assumed to be of
-  same size and such that the scalar product is integral.
+  same size and such that the scalar product is integral. If this is not the
+  case then the remainder is simply forgotten (probably rounds towards zero).
 
   A very long standing bug was to forget to cast |d_denom| to integer before
   the division. With that omission the scalar product is \emph{implicitly}
-  cast to |unsigned int| instead, with desastrous consequences for the result.
+  cast to |unsigned int| instead, with disastrous consequences for the result.
 
   NOTE : this implementation does not worry about overflow. It is appropriate
   only for small denominators.

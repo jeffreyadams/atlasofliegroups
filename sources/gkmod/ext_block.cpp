@@ -368,7 +368,7 @@ StandardRepr scaled_extended_dominant // result will have its |gamma()| dominant
 	if (kgb.status(x).isComplex(orbits[i].s0))
 	{ const auto& s=orbits[i];
 	  const auto& alpha_v = rd.simpleCoroot(s.s0);
-	  int v=ctxt.gamma().dot(alpha_v);
+	  int v=alpha_v.dot(ctxt.gamma().numerator());
 	  if (v<0 or (v==0 and kgb.isDescent(s.s0,x)))
 	  { if (v<0)
 	      ctxt.act_on_gamma(s.w_kappa); // change inf.char representative
