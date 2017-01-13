@@ -240,11 +240,13 @@ class context // holds values that remain fixed across extended block
      const WeightInvolution& delta,
      const RatWeight& gamma);
 
+  // accessors
   const repr::Rep_context& rc () const { return d_rc; }
   const RootDatum& id() const { return integr_datum; }
   const SubSystem& subsys() const { return sub; }
+  const RootDatum& rootDatum() const { return d_rc.rootDatum(); }
+  const InnerClass& innerClass () const { return d_rc.innerClass(); }
   RealReductiveGroup& realGroup () const { return d_rc.realGroup(); }
-  const InnerClass& innerClass () const { return realGroup().innerClass(); }
   const WeightInvolution& delta () const { return d_delta; }
   const RatWeight& gamma() const { return d_gamma; }
   const RatCoweight& g_rho_check() const { return realGroup().g_rho_check(); }
@@ -253,6 +255,9 @@ class context // holds values that remain fixed across extended block
   weyl::Generator twisted(weyl::Generator s) const { return twist[s]; }
   int lambda_shift(weyl::Generator s) const { return lambda_shifts[s]; }
   int l_shift(weyl::Generator s) const { return l_shifts[s]; }
+
+  // manipulator
+  void act_on_gamma(const WeylWord& ww); // left-apply |ww| to |d_gamma|
 
 }; // |context|
 
