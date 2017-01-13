@@ -349,16 +349,9 @@ StandardRepr scaled_extended_dominant // result will have its |gamma()| dominant
   // First approximation to result is scaled input; will later be overwritten
   StandardRepr result = rc.sr(sr.x(),rc.lambda_rho(sr),sr.gamma()*factor);
 
-  // it will be convenent to have a working copy of the numerator of |gamma|
-  Weight gamma_numer(result.gamma().numerator().begin(),
-		     result.gamma().numerator().end());
+  context ctxt(rc,delta,result.gamma());
+  param E(ctxt,result); // default extend |result| to an extended parameter
 
-  // class |param| cannot change its |gamma|, so work on separate components
-  Weight lr, tau; Coweight l,t;
-  { context ctxt(rc,delta,result.gamma()); // scaffolding for construction
-    param E(ctxt,result); // default extend |result| to an extended parameter
-    lr=E.lambda_rho; tau=E.tau; l=E.l; t=E.t; // and copy fields to variables
-  }
   KGBElt x = result.x(); // another variable, for convenience
 
   int_Vector r_g_eval (rd.semisimpleRank()); // evaluations at |-gr|
@@ -375,29 +368,30 @@ StandardRepr scaled_extended_dominant // result will have its |gamma()| dominant
 	if (kgb.status(x).isComplex(orbits[i].s0))
 	{ const auto& s=orbits[i];
 	  const auto& alpha_v = rd.simpleCoroot(s.s0);
-	  int v=alpha_v.dot(gamma_numer);
+	  int v=ctxt.gamma().dot(alpha_v);
 	  if (v<0 or (v==0 and kgb.isDescent(s.s0,x)))
 	  { if (v<0)
-	      rd.act(s.w_kappa,gamma_numer); // change inf.char representative
+	      ctxt.act_on_gamma(s.w_kappa); // change inf.char representative
             else // 3Cr excluded, as it would make |s.s0+s.s1| real singular
               assert(s.length()!=3 or kgb.cross(s.w_kappa,x)!=x);
 	    if (v<0 or s.length()!=2 or kgb.cross(s.s0,x)!=kgb.cross(s.s1,x))
 	    {
-	      rd.shifted_act(s.w_kappa,lr,ones);
-	      rd.act(s.w_kappa,tau);
-	      rd.shifted_dual_act(l,s.w_kappa,r_g_eval);
-	      rd.dual_act(t,s.w_kappa);
+	      rd.shifted_act(s.w_kappa,E.lambda_rho,ones);
+	      rd.act(s.w_kappa,E.tau);
+	      rd.shifted_dual_act(E.l,s.w_kappa,r_g_eval);
+	      rd.dual_act(E.t,s.w_kappa);
 	      x = kgb.cross(s.w_kappa,x);
 	    }
 	    else // we have a singular 2Cr descent; do just one reflection
-	    { // corrections to |tau| and |t| are as in 2Cr case of |star| below
-	      const int f = alpha_v.dot(lr)+1;
+	    { // corrections to |E.tau| and |E.t| are as in 2Cr case of |star| below
+	      const int f = alpha_v.dot(E.lambda_rho)+1;
 	      const auto& alpha = rd.simpleRoot(s.s0);
-	      lr -= alpha*f; // equivalently |rd.simple_reflect(s.s0,lr,1)|
-	      rd.simple_reflect(s.s0,tau,-f); // shift |-f| adds extra |alpha*f|
-	      const int df = l.dot(alpha)+r_g_eval[s.s0]; // factor of |alpha_v|
-	      l -= alpha_v*df; // |rd.simple_coreflect(l,s.s0,r_g_eval[s.s0]);|
-	      rd.simple_coreflect(t,s.s0,df); // |df| subs extra |alpha_v*df|
+	      // now effectively do |rd.simple_reflect(s.s0,E.lambda_rho,1)|:
+	      E.lambda_rho -= alpha*f;
+	      rd.simple_reflect(s.s0,E.tau,-f); // shift |-f| adds extra |alpha*f|
+	      const int df = E.l.dot(alpha)+r_g_eval[s.s0]; // factor of |alpha_v|
+	      E.l -= alpha_v*df; // |rd.simple_coreflect(E.l,s.s0,r_g_eval[s.s0]);|
+	      rd.simple_coreflect(E.t,s.s0,df); // |df| subs extra |alpha_v*df|
 	      x = kgb.cross(s.s0,x);
 	    }
 	    break;
@@ -406,16 +400,14 @@ StandardRepr scaled_extended_dominant // result will have its |gamma()| dominant
     while(i<orbits.size()); // continue until above |for| runs to completion
   } // end of transformation of extended parameter components
 
-  // since |gamma| may have changed, we only now build our |context|
-  context ctxt(rc,delta, RatWeight(gamma_numer,result.gamma().denominator()));
-  // now ensure that |E| gets matching |gamma| and |theta| (for flipped test)
-  param E(ctxt,kgb.involution(x),lr,tau,l,t);
+  // build |F| with matching |gamma| and |theta| (for flipped test)
+  param F(ctxt,kgb.involution(x),E.lambda_rho,E.tau,E.l,E.t);
 
   // finally extract |StarndarRepr| from |E|, overwriting |result|
-  result = rc.sr_gamma(x,E.lambda_rho,ctxt.gamma());
+  result = rc.sr_gamma(x,F.lambda_rho,ctxt.gamma());
 
   // but the whole point of this function is to record the relative flip too!
-  flipped = not same_sign(E,param(ctxt,result)); // compare |E| to default ext.
+  flipped = not same_sign(F,param(ctxt,result)); // compare |E| to default ext.
   return result;
 
 } // |scaled_extended_dominant|
@@ -613,6 +605,11 @@ context::context
     l_shifts[i] = -g_rho_check.dot(integr_datum.simpleRoot(i));
 }
 
+void context::act_on_gamma(const WeylWord& ww)
+{ auto& gamma_numer = d_gamma.numerator();
+  for (auto it=ww.rbegin(); it!=ww.rend(); ++it)
+    rootDatum().simple_reflect(*it,gamma_numer);
+}
 
 // old version of |extended_type| below, this one uses |Hermitian_dual| method
 DescValue extended_type(const Block_base& block, BlockElt z, const ext_gen& p,
