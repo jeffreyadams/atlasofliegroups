@@ -703,6 +703,10 @@ void context::act_on_gamma(const WeylWord& ww)
 { auto& gamma_numer = d_gamma.numerator();
   for (auto it=ww.rbegin(); it!=ww.rend(); ++it)
     rootDatum().simple_reflect(*it,gamma_numer);
+  sub.integral(d_rc.rootDatum(),d_gamma);
+  // SubSystem new_sub = SubSystem::integral(d_rc.rootDatum(),d_gamma);
+  // sub = std::move(new_sub);
+  // sub = SubSystem::integral(d_rc.rootDatum(),d_gamma);
 }
 
 // old version of |extended_type| below, this one uses |Hermitian_dual| method
