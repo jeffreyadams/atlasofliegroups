@@ -436,6 +436,8 @@ StandardRepr scaled_extended_dominant // result will have its |gamma()| dominant
 	      rd.shifted_dual_act(E.l,s.w_kappa,r_g_eval);
 	      rd.dual_act(E.t,s.w_kappa);
 	      x = kgb.cross(s.w_kappa,x);
+	      E.rc().twistedWeylGroup().twistedConjugate(s.w_kappa,E.tw);
+	      E.flip(s.length()==2);
 	    }
 	    else // we have a singular 2Cr descent; do just one reflection
 	      /* Replace by Marc's new code 1/13/17
