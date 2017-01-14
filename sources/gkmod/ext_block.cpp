@@ -381,6 +381,7 @@ StandardRepr scaled_extended_dominant // result will have its |gamma()| dominant
 	      rd.shifted_dual_act(E.l,s.w_kappa,r_g_eval);
 	      rd.dual_act(E.t,s.w_kappa);
 	      x = kgb.cross(s.w_kappa,x);
+	      E.tw = kgb.involution(x); // maintain |E| in step with |x|
 	    }
 	    else // we have a singular 2Cr descent; do just one reflection
 	    { // we call |star| to move down the descent, recording any flips
@@ -403,6 +404,7 @@ StandardRepr scaled_extended_dominant // result will have its |gamma()| dominant
 	      assert(type==two_semi_real);
 	      E = *links.begin(); // replace |E| by descended parameter
 	      x = kgb.cross(s.s0,x);
+	      assert(E.tw==kgb.involution(x)); // check that |E.tw| is in step
 	    }
 	    break;
 	  }

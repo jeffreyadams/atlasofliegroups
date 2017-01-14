@@ -15,6 +15,8 @@
 #include "ratvec_fwd.h" // ensure coherence
 
 #include <vector>
+#include <cassert>
+
 #include "matrix.h"
 #include "arithmetic.h"
 
@@ -97,8 +99,7 @@ class RationalVector
 
 /*
   Returns the scalar product of |*this| and |w|, which are assumed to be of
-  same size and such that the scalar product is integral. If this is not the
-  case then the remainder is simply forgotten (probably rounds towards zero).
+  same size and such that the scalar product is integral.
 
   A very long standing bug was to forget to cast |d_denom| to integer before
   the division. With that omission the scalar product is \emph{implicitly}
@@ -110,7 +111,9 @@ class RationalVector
   template <typename C1>
     C dot(const matrix::Vector<C1>& w) const
   {
-    return w.dot(d_num)/(C)d_denom; // order is imposed here by return type |C|
+    auto num = w.dot(d_num);
+    assert(num%(C)d_denom==0); // division below must be without remainder
+    return num/(C)d_denom; // order is imposed here by return type |C|
   }
 
 //manipulators
