@@ -421,7 +421,7 @@ StandardRepr scaled_extended_dominant // result will have its |gamma()| dominant
 	{ const auto& s=orbits[i];
 	  const auto& alpha_v = rd.simpleCoroot(s.s0);
 	  //	  int v=alpha_v.dot(gamma_numer);
-	  int v=ctxt.gamma().numerator().dot(alpha_v);
+	  int v=alpha_v.dot(ctxt.gamma().numerator());
 	  if (v<0 or (v==0 and kgb.isDescent(s.s0,x)))
 	  { if (v<0)
 	      //  rd.act(s.w_kappa,gamma_numer);
@@ -1110,7 +1110,7 @@ param complex_cross(const ext_gen& p, param E) // by-value for |E|, modified
   assert(count%2==0); // since |S| is supposed to be $\delta$-stable
   if(count%4!=0) std::cout << "complex_cross flip" << std::endl;
   // E.flip(count%4!=0); // try turning it off
-  // E.flip(p.w_kappa.size()==2); // a guess parallel to the new 2i,2r flips
+  E.flip(p.w_kappa.size()==2); // a guess parallel to the new 2i,2r flips
   //   previous line makes trivial(GL(3,C)) nonunitary
   validate(E);
   return E;
@@ -1217,6 +1217,7 @@ DescValue star (const param& E,	const ext_gen& p,
   const RootDatum& integr_datum = E.ctxt.id();
   const SubSystem& subs = E.ctxt.subsys();
   const InvolutionNbr theta = i_tab.nr(E.tw);
+  const bool twoitwor = true; // whether add "wedge two" flip in 2i/2r links
   switch (p.type)
   {
   case ext_gen::one:
@@ -1524,9 +1525,10 @@ DescValue star (const param& E,	const ext_gen& p,
 	const auto theta_p = i_tab.nr(new_tw); // upstairs
 
 	const Weight rho_r_shift = repr::Cayley_shift(ic,theta_p,theta,ww);
-	const bool flipped = Cayley_shift_flip(E.ctxt,theta_p,theta,ww);
+	bool flipped = Cayley_shift_flip(E.ctxt,theta_p,theta,ww);
 	//	const Weight tau_shift = tau_shift(E.ctxt,theta,theta_p,ww);
 	if(flipped) std::cout << "2i flip" << std::endl;
+	if(twoitwor) flipped = not flipped;
 	assert(E.ctxt.delta()*rho_r_shift==rho_r_shift); // $ww\in W^\delta$
 	assert(rd.is_simple_root(alpha_simple)); // cannot fail for length 2
 
@@ -1536,11 +1538,9 @@ DescValue star (const param& E,	const ext_gen& p,
 	if (matreduc::has_solution(th_1,alpha)) // then type 2i11
 	{ result = two_imaginary_single_single;
 	  const Weight sigma = matreduc::find_solution(th_1,alpha*at+beta*bt);
-
 	  param F (E.ctxt, new_tw,
 		   E.lambda_rho + rho_r_shift,
 		   E.tau + sigma, E.l+alpha_v*(tf_alpha/2)+beta_v*(tf_beta/2),
-		   //		   E.t, not flipped);
 		   E.t, flipped);
 	  E0.l += alpha_v+beta_v;
 	  // F.lambda_rho-=rho_r_shift;
@@ -1571,12 +1571,10 @@ DescValue star (const param& E,	const ext_gen& p,
 	  param F0(E.ctxt, new_tw,
 		   E.lambda_rho + rho_r_shift
 		   + alpha*m, new_tau0, new_l,
-		   //		   E.t, not flipped);
 		   E.t, flipped);
 	  param F1(E.ctxt, new_tw,
 		   E.lambda_rho + rho_r_shift
 		   + alpha*mm, E.tau + sigma, new_l,
-		   // E.t, not flipped);
 		   E.t, flipped);
 	  // change E.tau to F0.tau? Marc says NO 1/13
 	  int t_alpha=E.t.dot(alpha);
@@ -1607,13 +1605,11 @@ DescValue star (const param& E,	const ext_gen& p,
 		   + alpha*m,
 		   E.tau - alpha*((at+m)/2) - beta*((bt-m)/2),
 		   E.l+alpha_v*(tf_alpha/2)+beta_v*(tf_beta/2),
-		   // E.t, not flipped);
 		   E.t, flipped);
 	  param F1(E.ctxt, new_tw,
 		   E.lambda_rho + rho_r_shift
 		   + alpha*(1-m) + beta,
 		   E.tau - alpha*((at-m)/2) - beta*((bt+m)/2), F0.l,
-		   // E.t, not flipped);
 		   E.t, flipped);
 
 	  int ta = E.t.dot(alpha), tb=E.t.dot(beta);
@@ -1639,8 +1635,9 @@ DescValue star (const param& E,	const ext_gen& p,
 	  tW.prod(subs.reflection(p.s1),tW.prod(subs.reflection(p.s0),E.tw));
 	const auto theta_p = i_tab.nr(new_tw); // downstairs
 	const Weight rho_r_shift = repr::Cayley_shift(ic,theta,theta_p,ww);
-	const bool flipped = Cayley_shift_flip(E.ctxt,theta,theta_p,ww);
+	bool flipped = Cayley_shift_flip(E.ctxt,theta,theta_p,ww);
 	if(flipped) std::cout << "2r flip" << std::endl;
+	if(twoitwor) flipped = not flipped;
 	assert(E.ctxt.delta()*rho_r_shift==rho_r_shift); // as $ww\in W^\delta$
 
 	const int a_level = level_a(E,rho_r_shift,n_alpha);
@@ -1678,14 +1675,10 @@ DescValue star (const param& E,	const ext_gen& p,
 	  // these modified t's allow computing sign of link by comparing z's
 
 	  param F0(E.ctxt, new_tw,
-		   new_lambda_rho, E.tau, E.l+alpha_v*m, E0.t,
-		   // not flipped);
-		   flipped);
+		   new_lambda_rho, E.tau, E.l+alpha_v*m, E0.t, flipped);
 	  param F1(E.ctxt, new_tw,
 		   new_lambda_rho, E.tau,
-		   E.l+alpha_v*(1-m)+beta_v, E1.t,
-		   // not flipped);
-		   flipped);
+		   E.l+alpha_v*(1-m)+beta_v, E1.t, flipped);
 	  z_align(E0,F0,m*((b_level-a_level)/2));
 	  // F0.lambda_rho -= rho_r_shift;
 	  // F1.lambda_rho -= rho_r_shift;
@@ -1723,13 +1716,9 @@ DescValue star (const param& E,	const ext_gen& p,
 
 	  // Cayley links
 	  param F0(E.ctxt, new_tw,
-		   new_lambda_rho, E.tau, E.l+alpha_v*m, E0.t,
-		   // not flipped);
-		   flipped);
+		   new_lambda_rho, E.tau, E.l+alpha_v*m, E0.t, flipped);
 	  param F1(E.ctxt, new_tw,
-		   new_lambda_rho, E.tau, E.l+alpha_v*mm, E1.t,
-		   // not flipped);
-		   flipped);
+		   new_lambda_rho, E.tau, E.l+alpha_v*mm, E1.t, flipped);
 
 	  z_align(E0,F0,m *((b_level-a_level)/2));
 	  // F0.lambda_rho += rho_r_shift;
@@ -1765,8 +1754,7 @@ DescValue star (const param& E,	const ext_gen& p,
 	  assert(not same_standard_reps(E0,E1));
 
 	  param F(E.ctxt, new_tw, new_lambda_rho, E.tau,
-		  E.l, E0.t, // not flipped);
-		  flipped);
+		  E.l, E0.t, flipped);
 	  // F.lambda_rho += rho_r_shift;
 	  z_align(E0,F); // no 3rd arg, as |E.t.dot(alpha)==0| etc.
 	  // z_align(F,E1);
