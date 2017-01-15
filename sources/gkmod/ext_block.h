@@ -257,8 +257,8 @@ class context // holds values that remain fixed across extended block
   int lambda_shift(weyl::Generator s) const { return lambda_shifts[s]; }
   int l_shift(weyl::Generator s) const { return l_shifts[s]; }
 
-  // manipulator
-  void act_on_gamma(const WeylWord& ww); // left-apply |ww| to |d_gamma|
+  // possible manipulator; |RootDatum|,|SubSystem| need to implement this first
+  // void act_on_gamma(const WeylWord& ww); // left-apply |ww| to |d_gamma|
 
 }; // |context|
 
