@@ -1,16 +1,11 @@
- { embedding of the complex group K defined by compact imaginary root system }
-<sort.at
-<matrix.at { for left_inverse }
-<Weylgroup.at { for make_no_Cminus }
+{! Embedding of the complex group K defined by compact imaginary root system
 
-
-{ ------------------    matrices related to T_K0\subset H  ------------------ }
-
-{ T_K0=(H^delta)_0 =Cartan subgroup of K0
-  T_K0\subset T_K=H^delta \subset H
-  T_K0 is a torus \subset T_K abelian (possibly disconnected)
-  X^*(T_K0)= X^*/(X^*)^{-delta}
-  X^*(T_K)    = X^*/(1-delta)X^* -->> X^*(T_K0) (restriction map is surjective)
+ $T_{K_0}=(H^{\delta})_0 =$ Cartan subgroup of $K_0$
+ $T_{K_0}\subset T_K=H^{\delta} \subset H$
+ $T_{K_0} is a torus in $T_K$ abelian (possibly disconnected)
+ $X^*(T_{K_0})= X^*/(X^*)^{-\delta}$
+ $X^*(T_K)    = X^*/(1-\delta)X^* \twoheadrightarrow X^*(T_{K_0})$
+ (restriction map is surjective)
   see W_K.at
 
   K_0=identity component of K, with Cartan subgroup T_K0
@@ -18,12 +13,20 @@
   returns a matrix B with rank(K_0) columns, rank(ic) rows
   columns are a basis of the +1 left-eigenspace delta
 
-  This matrix B satisfies ^delta*B=B
-  left multiplication by ^B is
-      projection X^*(H)  -> X^*(T_K0) = X^*(H)/X^*(H)^{-delta}
-  left multiplication by  B is
-      injection  X_*(T_K0)-> X_*(H)   [^delta*v=v for v in image]
-}
+  This matrix $B$ satisfies $^\delta*B=B$
+  left multiplication by $^B$ is
+      projection $X^*(H)  -> X^*(T_{K_0}) = X^*(H)/X^*(H)^{-\delta}$
+  left multiplication by  $B$ is
+      injection  $X_*(T_{K_0})-> X_*(H)$   [$^\delta*v=v$ for $v$ in image]
+!}
+
+<sort.at
+<matrix.at { for left_inverse }
+<Weylgroup.at { for make_no_Cminus }
+
+
+{ ------------------    matrices related to T_K0\subset H  ------------------ }
+
 
 set cocharacter_lattice_K (InnerClass ic) = mat:
   let delta=distinguished_involution(ic) in
