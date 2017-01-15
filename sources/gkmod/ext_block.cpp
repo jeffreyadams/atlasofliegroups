@@ -420,6 +420,8 @@ StandardRepr scaled_extended_dominant // result will have its |gamma()| dominant
 
 } // |scaled_extended_dominant|
 
+
+
 /*
  This function is destined to be used after |scaled_extended_dominant|, to
  express the standard representation as linear combination of ones without
@@ -2151,7 +2153,7 @@ bool ext_block::check(const param_block& block, bool verbose)
   return true; // report success if we get here
 } // |check|
 
-RankFlags reduce_to(const ext_gens orbits, RankFlags gen_set)
+RankFlags reduce_to(const ext_gens& orbits, RankFlags gen_set)
 { RankFlags result;
   for (weyl::Generator s=0; s<orbits.size(); ++s)
     result.set(s,gen_set[orbits[s].s0]);
