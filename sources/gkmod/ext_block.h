@@ -219,7 +219,7 @@ private:
 }; // |class ext_block|
 
 // reduce marked set |gen_set| (supposed a union of orbits) to set of |orbits|
-RankFlags reduce_to(const ext_gens orbits, RankFlags gen_set);
+RankFlags reduce_to(const ext_gens& orbits, RankFlags gen_set);
 
 // Extended parameters
 
