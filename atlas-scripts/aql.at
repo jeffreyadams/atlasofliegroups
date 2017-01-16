@@ -47,9 +47,34 @@ set is_weakly_fair_Aq_P (Param p, Parabolic P)=bool:
    let list=wf_aqs_param (p,P) in
    not none(for q in list do q=p od)
 
+{. List all proper theta-stable parabolics for G that are not Borels. .}
+set special_theta_stable_parabolics(RealForm G)=[Parabolic]:
+  let result=[] in
+  for P in theta_stable_parabolics(G) do
+  if #S(P)!=0 and #S(P)!=semisimple_rank(G) then
+  result#:=P fi od; result
+
+set special_theta_stable_parabolics(RealForm G,[int] list)=[Parabolic]:
+  let result=[] in
+  let PS=power_set(list) in
+  for S in PS do if #S!=0 and #S!=#list then
+  for P in theta_stable_parabolics_type(G,S) do
+  result#:=P od fi od; result
+
 {. Determine whether parameter p is that of a (constituent of a)
   weakly fair Aq(lambda) module. .}
 set is_weakly_fair_Aq (Param p) = bool:
+   if is_good_Aq(p) then prints("This is (weakly) good."); true
+   else
    let G=real_form(p) in
-   let tsp=theta_stable_parabolics(G) in
-   not none(for P in tsp do is_weakly_fair_Aq_P(p,P) od)
+   let tsp=special_theta_stable_parabolics(G) in
+   not none (for P in tsp do
+   is_weakly_fair_Aq_P(p,P) od) fi
+
+set is_weakly_fair_Aq_alt (Param p) = bool:
+   if is_good_Aq(p) then prints("This is (weakly) good."); true
+   else
+   let G=real_form(p) in
+   let tsp=special_theta_stable_parabolics(G,support(x(p))) in
+   not none (for P in tsp do
+   is_weakly_fair_Aq_P(p,P) od) fi
