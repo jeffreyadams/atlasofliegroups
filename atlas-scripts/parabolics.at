@@ -284,16 +284,24 @@ set parabolic (ratvec lambda,KGBElt x) = Parabolic:
   else prints("The parabolic is neither real nor theta-stable.") fi fi;
   P
 
+{. Parabolic defined by weight lambda; NO message whether parabolic is real
+  or theta-stable. .}
+set parabolic_mute (ratvec lambda,KGBElt x) = Parabolic:
+  let rd=root_datum(x) then (lambda_dom,w)=make_dominant(rd,numer(lambda)) in
+  let P=
+  Parabolic:(zero_simple_coroots(rd,lambda_dom), cross(inverse(w),x)) in
+  P
+
 {. Theta-stable parabolic defined by weight lambda. .}
 set theta_stable_parabolic (ratvec lambda,KGBElt x) = Parabolic:
-   let theta=involution(x) in parabolic((1+theta)*lambda,x)
+   let theta=involution(x) in parabolic_mute((1+theta)*lambda,x)
 
 {. Real parabolic defined by weight lambda. .}
 set real_parabolic (ratvec lambda,KGBElt x) = Parabolic:
-   let theta=involution(x) in parabolic((1-theta)*lambda,x)
+   let theta=involution(x) in parabolic_mute((1-theta)*lambda,x)
 
 {. Levi factor of parabolic defined by weight lambda. .}
-set Levi (ratvec lambda,KGBElt x) = RealForm: Levi(parabolic(lambda,x))
+set Levi (ratvec lambda,KGBElt x) = RealForm: Levi(parabolic_mute(lambda,x))
 
 {. Levi factor of theta-stable parabolic defined by weight lambda. .}
 set theta_stable_Levi (ratvec lambda, KGBElt x) = RealForm:
@@ -304,11 +312,11 @@ set real_Levi (ratvec lambda, KGBElt x) = RealForm:
    Levi(real_parabolic(lambda,x))
 
 {. Positive coroots in nilradical of P defined by weight lambda (if L theta-stable). .}
-set nilrad (ratvec lambda,KGBElt x) = mat: nilrad(parabolic(lambda,x))
+set nilrad (ratvec lambda,KGBElt x) = mat: nilrad(parabolic_mute(lambda,x))
 
 {. Positive roots in nilradical of P defined by weight lambda (if L theta-stable). .}
 set nilrad_roots (ratvec lambda,KGBElt x) = mat:
-  nilrad_roots(parabolic(lambda,x))
+  nilrad_roots(parabolic_mute(lambda,x))
 
 {. Half sum of positive roots in nilradical of P defined by weight lambda (if L
 theta-stable). .}
@@ -355,7 +363,7 @@ set rho_Levi_alt (ratvec H,KGBElt x) = ratvec: rho(Levi_alt(H,x))
   for M to be stable: x must have no C+ roots. .}
 set real_parabolic (KGBElt x) = Parabolic:
   assert(no_Cplus_roots(x),"x has some C+ roots");
-  parabolic((1-involution(x))*rho(root_datum(x)),x)
+  parabolic_mute((1-involution(x))*rho(root_datum(x)),x)
 
 {. Levi factor of real parabolic defined by x (must have no C+ roots). .}
 set real_Levi (KGBElt x) = RealForm: Levi(real_parabolic(x))

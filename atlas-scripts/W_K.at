@@ -70,7 +70,7 @@ set small_Levi (KGBElt x) = RealForm:
   assert(is_dominant(real_form(x),tworho_c(x))
         ,"x does not make 2rho_c dominant");
   { Levi_from_lambda(tworho_c(x),x) }
-  Levi(parabolic(tworho_c(x),x))
+  Levi(parabolic_mute(tworho_c(x),x))
 
 { utility function, a coroot beta^\vee of L=small_Levi(x) is in X_*(H)^delta,
   which is the image of X_*(T_K) \hookrightarrow X_*(H)
