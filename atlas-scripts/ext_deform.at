@@ -103,9 +103,7 @@ set recursive_deform (Param p, mat delta) = ParamPol:
           for c@q in finalize_extended(pf,delta)
           do if flipped then s*c else c fi * deformation_terms(q,delta)
           od )
-	in
-        if flipped then def := s*def fi { flip signatures in this rare case }
-      ; prints("adding deformation term for p=", pf, new_line,"adding:", def)
+	in prints("adding deformation term for p=",pf,new_line, "adding:",def)
       ; acc+:=def
       od
     ; for k@q in acc { traverse the sum of the deformation terms spun off }
