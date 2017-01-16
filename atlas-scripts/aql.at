@@ -37,7 +37,9 @@ set wf_aqs_param_pol (Param p, Parabolic P)=[ParamPol]:
 set wf_aqs_param (Param p, Parabolic P)=[Param]:
    let result=[] in
    for Q in wf_aqs_param_pol (p,P) do
-     let R=%Q in for r in R do let (,q)=r in result#:=q od od;
+     let R=%Q in for r in R do let (k,q)=r in
+     if k!=1 then prints("Warning: negative coefficient!") fi;
+     result#:=q od od;
      result
 
 {. Auxiliary function. .}
