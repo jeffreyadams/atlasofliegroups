@@ -394,7 +394,9 @@ StandardRepr scaled_extended_dominant // result will have its |gamma()| dominant
  Rational factor, // |z.nu()| is scaled by |factor| first
  bool& flipped // records whether and extended flip was recorded
  )
-{ const RootDatum& rd=rc.rootDatum(); const KGB& kgb = rc.kgb();
+{
+  flipped = false;
+  const RootDatum& rd=rc.rootDatum(); const KGB& kgb = rc.kgb();
   const ext_gens orbits = rootdata::fold_orbits(rd,delta);
   assert(is_dominant_ratweight(rd,sr.gamma())); // dominant
   assert(((delta-1)*sr.gamma().numerator()).isZero()); // $\delta$-fixed
@@ -436,6 +438,11 @@ StandardRepr scaled_extended_dominant // result will have its |gamma()| dominant
 	    rd.act(s.w_kappa,tau);
 	    rd.shifted_dual_act(l,s.w_kappa,r_g_eval);
 	    rd.dual_act(t,s.w_kappa);
+	    if((s.length()==2) & (kgb.cross(s.w_kappa,x) < x))
+	      {
+		std::cout << "v<0 flipped descent" << std::endl;
+		flipped = not flipped;
+	      }
 	    x = kgb.cross(s.w_kappa,x);
 	    break; // indicate we advanced; restart search for |s|
 	  }
@@ -483,7 +490,12 @@ StandardRepr scaled_extended_dominant // result will have its |gamma()| dominant
       auto type = star(E,p,links); // compute neighbours in extended block
       assert(is_complex(type) or type==two_semi_real);
       E = *links.begin(); // replace |E| by descended parameter
-      E.flip(has_october_surprise(type));
+      if(has_october_surprise(type))
+	{
+	  std::cout << "v=0 flipped descent" << std::endl;
+	  flipped = not flipped;
+	}
+      // E.flip(has_october_surprise(type));
       assert(x>E.x()); // make sure we advance; we did simple complex descents
       x = E.x(); // adapt |x| for complex descent test
     } // |while| a singular complex descent exists
@@ -493,7 +505,7 @@ StandardRepr scaled_extended_dominant // result will have its |gamma()| dominant
   result = rc.sr_gamma(x,E.lambda_rho,ctxt.gamma());
 
   // but the whole point of this function is to record the relative flip too!
-  flipped = not same_sign(E,param(ctxt,result)); // compare |E| to default ext.
+  flipped ^= not same_sign(E,param(ctxt,result)); // compare |E| to default ext.
   return result;
 
 } // |scaled_extended_dominant|
