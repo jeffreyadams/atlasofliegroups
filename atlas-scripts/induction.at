@@ -817,11 +817,12 @@ set reduce_good_range(Param p)=Param:
   if is_zero(p) then prints("The module is zero.") fi;
   let x=x(p) in let P=Parabolic:(support(x),x) in
   let L=Levi(P) in
-  if semisimple_rank(L)=semisimple_rank(G) then prints("No reduction: P=G.");
+  if semisimple_rank(L)=semisimple_rank(G) then
+  prints("No weakly good reduction.");
   p else
   let x_L=inverse_embed_KGB (x,L) in
   let p_L=parameter(x_L,lambda(p)-rho(G)+rho(L),nu(p)) in
-  prints(goodness(p_L,G));
+  prints("Reduction is:"); goodness(p_L,G);
   p_L fi
 
 {. Determine whether p is a (weakly) good Aq(lambda). .}

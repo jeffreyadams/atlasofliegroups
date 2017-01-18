@@ -22,30 +22,33 @@ set wf_one_dim_params (ratvec ic, Parabolic P)=[Param]:
    if is_one_dimensional(p) and is_weakly_fair(p,G) then
    result#:=p fi od; result
 
-{. Auxiliary function. .}
-set wf_aqs_param_pol (Param p, Parabolic P)=[ParamPol]:
+{. Auxiliary function: List of all weakly fair Aq(lambda) modules
+  with infinitesimal character of p, and induced from P. .}
+set wf_aqs_param_pol (Param p, Parabolic P)=[(Param,ParamPol)]:
    let G=real_form(P) in
    let ics=inf_chars_for_L(p,P) in
    let result=[] in
    for v in ics do
     let list=wf_one_dim_params (v,P) in
      for q in list do let aq=theta_induce_irreducible(q,G) in
-     result#:=aq
+     result#:=(q,aq)
      od od; result
 
-{. Auxiliary function. .}
-set wf_aqs_param (Param p, Parabolic P)=[Param]:
+{. Auxiliary function: As previous function, except a list of all
+   parameters occurring as constitutents of such modules. .}
+set wf_aqs_param (Param p, Parabolic P)=[(Param,Param)]:
    let result=[] in
-   for Q in wf_aqs_param_pol (p,P) do
+   for pair in wf_aqs_param_pol (p,P) do let (pL,Q)=pair in
      let R=%Q in for r in R do let (k,q)=r in
      if k!=1 then prints("Warning: negative coefficient!") fi;
-     result#:=q od od;
+     result#:=(pL,q) od od;
      result
 
-{. Auxiliary function. .}
-set is_weakly_fair_Aq_P (Param p, Parabolic P)=bool:
+{. Decide whether p is the parameter of a (constituent of a) weakly fair
+  Aq(lambda) induced from parabolic P. .}
+set is_weakly_fair_Aq_from_P (Param p, Parabolic P)=bool:
    let list=wf_aqs_param (p,P) in
-   not none(for q in list do q=p od)
+   not none(for pair in list do let (,q)=pair in q=p od)
 
 {. List all proper theta-stable parabolics for G that are not Borels. .}
 set special_theta_stable_parabolics(RealForm G)=[Parabolic]:
@@ -54,27 +57,30 @@ set special_theta_stable_parabolics(RealForm G)=[Parabolic]:
   if #S(P)!=0 and #S(P)!=semisimple_rank(G) then
   result#:=P fi od; result
 
-set special_theta_stable_parabolics(RealForm G,[int] list)=[Parabolic]:
-  let result=[] in
-  let PS=power_set(list) in
-  for S in PS do if #S!=0 and #S!=#list then
-  for P in theta_stable_parabolics_type(G,S) do
-  result#:=P od fi od; result
-
 {. Determine whether parameter p is that of a (constituent of a)
   weakly fair Aq(lambda) module. .}
 set is_weakly_fair_Aq (Param p) = bool:
-   if is_good_Aq(p) then prints("This is (weakly) good."); true
+   if is_zero(p) then prints("Zero Module");false
+   else if not is_final(p) then prints("Parameter is not final.");false
+   else
+   if is_good_Aq(p) then prints("This is a (weakly) good Aq."); true
    else
    let G=real_form(p) in
-   let tsp=special_theta_stable_parabolics(G) in
+   let tsp=special_theta_stable_parabolics(G) in if
    not none (for P in tsp do
-   is_weakly_fair_Aq_P(p,P) od) fi
+   is_weakly_fair_Aq_from_P(p,P) od) then
+   prints("This is a weakly fair Aq.");true else false fi fi fi fi
 
-set is_weakly_fair_Aq_alt (Param p) = bool:
-   if is_good_Aq(p) then prints("This is (weakly) good."); true
-   else
+{. List all one-dimensional parameters pL so that p is theta-induced
+  from pL in the weakly fair range. .}
+set is_wf_induced_from_one_dim(Param p)=[Param]:
+   let result=[] in if is_zero(p) then prints("Zero Module")
+   else if not is_final(p) then prints("Parameter is not final.") else
    let G=real_form(p) in
-   let tsp=special_theta_stable_parabolics(G,support(x(p))) in
-   not none (for P in tsp do
-   is_weakly_fair_Aq_P(p,P) od) fi
+   if is_good_Aq(p) then prints("This is a (weakly) good Aq.");
+   result#:=reduce_good_range(p) else
+   let tsp=special_theta_stable_parabolics(G) in
+   for P in tsp do for pair in wf_aqs_param(p,P) do
+   let (pL,q)=pair in if p=q then prints("Weakly fair Aq");
+   result#:=pL fi od od fi fi fi;
+   result
