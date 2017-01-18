@@ -81,7 +81,7 @@ bool is_like_type_2(DescValue v); // types 1i2f, 1r2, 2i22, 2r22
 bool has_defect(DescValue v); // types 2Ci, 2Cr, 3Ci, 3r, 3Cr, 3i
 bool has_quadruple(DescValue v); // types 2i12f and 2r21f
 bool has_october_surprise(DescValue v); // types 2i**, 2r**, 2C+, 2C-, 3Ci, 3Cr
-
+bool is_2i_2r(DescValue v); // types 2i*,2r*
 bool is_proper_ascent(DescValue v); // ascent with at least 1 link
 
 unsigned int generator_length(DescValue v);
