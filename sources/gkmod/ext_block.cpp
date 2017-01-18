@@ -1135,12 +1135,13 @@ param complex_cross(const ext_gen& p, param E) // by-value for |E|, modified
   //		    subs.parent_nr_simple(p.s1))));
   RootNbrSet S = pos_to_neg(rd,to_simple);
   // S &= theta_real_roots ^ new_theta_real_roots; // select real-changing roots
-
+  std::cout << "size of S = " << S.size() << std::endl;
   unsigned countold=0; // will count 2-element |delta|-orbits
   for (auto it=S.begin(); it(); ++it)
      for (auto it=S.begin(); it(); ++it)
     if (*it!=ec.delta_of(*it) and
 	ec.delta_of(*it)!= i_tab.root_involution(theta,*it) and
+	*it!=rd.rootMinus(i_tab.root_involution(theta,*it)) and
 	ec.delta_of(*it)!=
 	rd.rootMinus(i_tab.root_involution(theta,*it)))
       //   if (*it!=ec.delta_of(*it) and not rd.sumIsRoot(*it,ec.delta_of(*it)))
@@ -1152,6 +1153,7 @@ param complex_cross(const ext_gen& p, param E) // by-value for |E|, modified
      for (auto it=S.begin(); it(); ++it)
     if (*it!=ec.delta_of(*it) and
 	ec.delta_of(*it)!= i_tab.root_involution(new_theta,*it) and
+	*it!=rd.rootMinus(i_tab.root_involution(new_theta,*it)) and
 	ec.delta_of(*it)!=
 	rd.rootMinus(i_tab.root_involution(new_theta,*it)))
       //   if (*it!=ec.delta_of(*it) and not rd.sumIsRoot(*it,ec.delta_of(*it)))
@@ -1228,10 +1230,12 @@ bool Cayley_shift_flip
   //  .andnot(i_tab.real_roots(theta_upstairs)); // replace & with andnot
   //  RootNbrSet T = pos_to_neg(rd,to_simple);
     //  .andnot(i_tab.real_roots(theta_downstairs)); // replace & ...
+  std::cout << "size of S = " << S.size() << std::endl;
   unsigned countup=0; // will count 2-element |delta|-orbits upstairs
   for (auto it=S.begin(); it(); ++it)
     if (*it!=ec.delta_of(*it) and
 	ec.delta_of(*it)!= i_tab.root_involution(theta_upstairs,*it) and
+	*it!=rd.rootMinus(i_tab.root_involution(theta_upstairs,*it)) and
 	ec.delta_of(*it)!=
 	rd.rootMinus(i_tab.root_involution(theta_upstairs,*it)))
       //	and not rd.sumIsRoot(*it,ec.delta_of(*it)))
@@ -1241,15 +1245,17 @@ bool Cayley_shift_flip
   for (auto it=S.begin(); it(); ++it)
     if (*it!=ec.delta_of(*it) and
 	ec.delta_of(*it)!= i_tab.root_involution(theta_downstairs,*it) and
-	ec.delta_of(*it)!=
+	*it!=rd.rootMinus(i_tab.root_involution(theta_downstairs,*it)) and
+ 	ec.delta_of(*it)!=
 	rd.rootMinus(i_tab.root_involution(theta_downstairs,*it)))
 	// and not rd.sumIsRoot(*it,ec.delta_of(*it)))
       ++countdown;
   assert(countup%2==0);// since |S| is $\delta$-stable
-  if (not (countdown==0)) std::cout << "countup = " << countup
-				    << ", countdown = " << countdown
-				    << ", thetaup = " << theta_upstairs
-				    << ", thetadown = " << theta_downstairs
+  //if (not (countdown==0))
+  std::cout << "countup = " << countup
+	    << ", countdown = " << countdown
+	    << ", thetaup = " << theta_upstairs
+	    << ", thetadown = " << theta_downstairs
 				    << std::endl;
   // if (not (countdown==0)) prettyprint::printVector(std::cout
   // << "gamma_denom = "
