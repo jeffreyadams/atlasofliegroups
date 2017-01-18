@@ -1,5 +1,6 @@
 <W_orbit.at
 <induction.at
+<all_Kparameters.at {for all_parameters_x_gamma}
 
 {. Given a parameter p for G and a theta-stable parabolic P, list all
   infinitesimal characters v for L so that v+rho(u) is the infinitesimal
