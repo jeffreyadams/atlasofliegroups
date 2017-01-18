@@ -440,7 +440,7 @@ StandardRepr scaled_extended_dominant // result will have its |gamma()| dominant
 	    rd.dual_act(t,s.w_kappa);
 	    if((s.length()==2) & (kgb.cross(s.w_kappa,x) < x))
 	      {
-		std::cout << "v<0 flipped descent" << std::endl;
+		// std::cout << "v<0 flipped descent" << std::endl;
 		flipped = not flipped;
 	      }
 	    x = kgb.cross(s.w_kappa,x);
@@ -492,7 +492,7 @@ StandardRepr scaled_extended_dominant // result will have its |gamma()| dominant
       E = *links.begin(); // replace |E| by descended parameter
       if(has_october_surprise(type))
 	{
-	  std::cout << "v=0 flipped descent" << std::endl;
+	  // std::cout << "v=0 flipped descent" << std::endl;
 	  flipped=not flipped;
 	}
       // E.flip(has_october_surprise(type));
@@ -594,7 +594,7 @@ void z_align (const param& E, param& F)
   assert(d%2==0);
   if(d%4!=0)
     {
-      std::cout << "z_align did a flip here at x = " << E.x() << std::endl;
+      // std::cout << "z_align did a flip here at x = " << E.x() << std::endl;
     }
   F.flip(E.is_flipped()!=(d%4!=0));
   // F.flipped ^= (d%4!=0); // XOR with "d not zero mod 4"
@@ -1159,7 +1159,7 @@ param complex_cross(const ext_gen& p, param E) // by-value for |E|, modified
   assert(countnew%2==0); // since |S| is supposed to be $\delta$-stable
   //  std::cout << "countold = "<< countold << ", countnew = "
   //	    << countnew <<std::endl;
-  if((countold - countnew)%4!=0) std::cout << "complex_cross flip" << std::endl;
+  // if((countold - countnew)%4!=0) std::cout << "complex_cross flip" << std::endl;
   E.flip((countold-countnew)%4!=0); // try turning it off
   E.flip(p.w_kappa.size()==2); // a guess parallel to the new 2i,2r flips
   //   previous line makes trivial(GL(3,C)) nonunitary
@@ -1312,7 +1312,7 @@ DescValue star (const param& E,	const ext_gen& p,
 	const Weight rho_r_shift = repr::Cayley_shift(ic,theta_p,theta,ww);
 	//	const Weight tau_shift = tau_shift(E.ctxt,theta_p,theta,ww);
 	const bool flipped = Cayley_shift_flip(E.ctxt,theta_p,theta,ww);
-        if(flipped) std::cout << "1i flip" << std::endl;
+        // if(flipped) std::cout << "1i flip" << std::endl;
 
 	assert(E.ctxt.delta()*rho_r_shift==rho_r_shift); // $ww\in W^\delta$
 	assert(E.t.dot(alpha)==0); // follows from $\delta*\alpha=\alpha$
@@ -1422,7 +1422,7 @@ DescValue star (const param& E,	const ext_gen& p,
 	const auto theta_p = i_tab.nr(new_tw); // downstairs
 	Weight rho_r_shift = repr::Cayley_shift(ic,theta,theta_p,ww);
 	const bool flipped = Cayley_shift_flip(E.ctxt,theta,theta_p,ww);
-        if(flipped) std::cout << "1r flip" << std::endl;
+	//   if(flipped) std::cout << "1r flip" << std::endl;
 	assert(E.ctxt.delta()*rho_r_shift==rho_r_shift); // as $ww\in W^\delta$
 
 	Weight first; // maybe a root with |(1+delta)*first==alpha|
@@ -1560,7 +1560,7 @@ DescValue star (const param& E,	const ext_gen& p,
 	const bool flipped = rd.is_posroot(theta_alpha) ?
 	  Cayley_shift_flip(E.ctxt,theta_q,theta,ww) :
 	  Cayley_shift_flip(E.ctxt,theta,theta_q,ww);
-	if(flipped) std::cout << "1C flip" << std::endl;
+	// if(flipped) std::cout << "1C flip" << std::endl;
 	auto E1=complex_cross(p,E0);
 	E1.flipped = flipped;
 	//  E1.lambda_rho -= rho_r_shift; already done in complex_cross
@@ -1599,7 +1599,7 @@ DescValue star (const param& E,	const ext_gen& p,
 	const Weight rho_r_shift = repr::Cayley_shift(ic,theta_p,theta,ww);
 	bool flipped = Cayley_shift_flip(E.ctxt,theta_p,theta,ww);
 	//	const Weight tau_shift = tau_shift(E.ctxt,theta,theta_p,ww);
-	if(flipped) std::cout << "2i flip" << std::endl;
+	// if(flipped) std::cout << "2i flip" << std::endl;
 	if(twoitwor) flipped = not flipped;
 	assert(E.ctxt.delta()*rho_r_shift==rho_r_shift); // $ww\in W^\delta$
 	assert(rd.is_simple_root(alpha_simple)); // cannot fail for length 2
@@ -1659,10 +1659,10 @@ DescValue star (const param& E,	const ext_gen& p,
 	  // F0.lambda_rho+=rho_r_shift;
 	  // F1.lambda_rho+=rho_r_shift;
 	  links.push_back(std::move(F0)); // first Cayley
-	  std::cout << "2i12, KGBElt = " << E.restrict().x() << std::endl;
-	  if(F0.flipped) std::cout << "first 2i12 Cayley flipped" << std::endl;
+	  // std::cout << "2i12, KGBElt = " << E.restrict().x() << std::endl;
+	  // if(F0.flipped) std::cout << "first 2i12 Cayley flipped" << std::endl;
 	  links.push_back(std::move(F1)); // second Cayley
-	  if(F1.flipped) std::cout << "second 2i12 Cayley flipped" << std::endl;
+	  // if(F1.flipped) std::cout << "second 2i12 Cayley flipped" << std::endl;
 	} // end of case 2i12f
 	else
 	{ // type 2i22
@@ -1708,7 +1708,7 @@ DescValue star (const param& E,	const ext_gen& p,
 	const auto theta_p = i_tab.nr(new_tw); // downstairs
 	const Weight rho_r_shift = repr::Cayley_shift(ic,theta,theta_p,ww);
 	bool flipped = Cayley_shift_flip(E.ctxt,theta,theta_p,ww);
-	if(flipped) std::cout << "2r flip" << std::endl;
+	// if(flipped) std::cout << "2r flip" << std::endl;
 	if(twoitwor) flipped = not flipped;
 	assert(E.ctxt.delta()*rho_r_shift==rho_r_shift); // as $ww\in W^\delta$
 
@@ -1802,14 +1802,14 @@ DescValue star (const param& E,	const ext_gen& p,
 	  // F0.lambda_rho -= rho_r_shift;
 	  // F1.lambda_rho -= rho_r_shift;
 	  links.push_back(std::move(F0));
-	  std::cout << "2r21, KGBElt = " << E.restrict().x() << std::endl;
-	  if(F0.flipped) std::cout << "first 2r21 Cayley flipped "
+	  // std::cout << "2r21, KGBElt = " << E.restrict().x() << std::endl;
+	  // if(F0.flipped) std::cout << "first 2r21 Cayley flipped "
 			   // to KGBELT = " << F0.restrict().x()
-				   << std::endl;
+	  //	   << std::endl;
 	  links.push_back(std::move(F1));
-	  if(F1.flipped) std::cout << "second 2r21 Cayley flipped "
+	  // if(F1.flipped) std::cout << "second 2r21 Cayley flipped "
 			   // to KGBElt = " << F1.restrict().x()
-				   << std::endl;
+	  //	   << std::endl;
 	} // end of case 2r21f
 	else // case 2r22
 	{ result = two_real_single_single;
@@ -1882,7 +1882,7 @@ DescValue star (const param& E,	const ext_gen& p,
 	  assert(E.ctxt.delta()*rho_r_shift==rho_r_shift); // $ww\in W^\delta$
 
 	  const bool flipped = Cayley_shift_flip(E.ctxt,theta_p,theta,ww);
-	  if(flipped) std::cout << "2Ci flip" << std::endl;
+	  // if(flipped) std::cout << "2Ci flip" << std::endl;
 
 	  // downstairs cross by |ww| only has imaginary and complex steps, so
 	  // $\alpha_v.(\gamma-\lambda_\rho)$ is unchanged across |ww|
@@ -1908,7 +1908,7 @@ DescValue star (const param& E,	const ext_gen& p,
 	  int ab_tau = (alpha_v+beta_v).dot(E.tau); // + 2;
 	  // 2 is from (46j) in twisted paper ALREADY COUNTED?
 	  assert (ab_tau%2==0);
-	  if ((ab_tau*dual_f)%4!=0) std::cout << "2Ci z flip" << std::endl;
+	  // if ((ab_tau*dual_f)%4!=0) std::cout << "2Ci z flip" << std::endl;
 	  F.flip((ab_tau*dual_f)%4!=0);
 	  //	  F.lambda_rho+=rho_r_shift; //removed 1/13
 	  links.push_back(std::move(F));  // "Cayley" link
@@ -1919,16 +1919,13 @@ DescValue star (const param& E,	const ext_gen& p,
 	  TwistedInvolution new_tw = E.tw;
 	  tW.twistedConjugate(subs.reflection(p.s0),new_tw); // same for |p.s1|
 	  const auto theta_p = i_tab.nr(new_tw); // downstairs
-	  //	  bool monoflip=false;
-	  //	  unsigned int d = i_tab.length(E.tw) - i_tab.length(new_tw);
-	  //	  if (d%2==0) monoflip = not monoflip;
 
 	  RootNbr alpha_simple = n_alpha;
 	  const WeylWord ww = fixed_conjugate_simple(E.ctxt,alpha_simple);
 	  assert(rd.is_simple_root(alpha_simple)); // no complications here
 	  const Weight rho_r_shift = repr::Cayley_shift(ic,theta,theta_p,ww);
 	  const bool flipped = Cayley_shift_flip(E.ctxt,theta,theta_p,ww);
-	  if(flipped) std::cout << "2Cr flip" << std::endl;
+	  // if(flipped) std::cout << "2Cr flip" << std::endl;
 	  assert(E.ctxt.delta()*rho_r_shift==rho_r_shift); // $ww\in W^\delta$
 
 	  const int f = level_a(E,rho_r_shift,n_alpha);
@@ -1950,8 +1947,8 @@ DescValue star (const param& E,	const ext_gen& p,
 	  int t_ab = E.t.dot(beta-alpha); // +2;
 	  // 2 is dual to 2Ci 2 // but they both don't exist?
 	  assert(t_ab%2==0);
-	  if ((t_ab*(f+alpha_v.dot(E.tau)))%4!=0) std::cout << "2Cr z flip"
-							    << std::endl;
+	  // if ((t_ab*(f+alpha_v.dot(E.tau)))%4!=0) std::cout << "2Cr z flip"
+	  //		    << std::endl;
 	  F.flip((t_ab * (f+alpha_v.dot(E.tau)))%4!=0);
 	  // F.lambda_rho-=rho_r_shift; //removed 1/13
 	  links.push_back(std::move(F));  // "Cayley" link
@@ -1997,7 +1994,7 @@ DescValue star (const param& E,	const ext_gen& p,
 
 	const Weight rho_r_shift = repr::Cayley_shift(ic,theta_p,theta,ww);
 	const bool flipped = Cayley_shift_flip(E.ctxt,theta_p,theta,ww);
-	if(flipped) std::cout << "3Ci flip" << std::endl;
+	// if(flipped) std::cout << "3Ci flip" << std::endl;
 	assert(E.ctxt.delta()*rho_r_shift==rho_r_shift); // $ww\in W^\delta$
 	assert(rd.is_simple_root(alpha_simple)); // cannot fail for length 3
 
@@ -2021,7 +2018,7 @@ DescValue star (const param& E,	const ext_gen& p,
 
 	const Weight rho_r_shift = repr::Cayley_shift(ic,theta,theta_p,ww);
 	const bool flipped = Cayley_shift_flip(E.ctxt,theta,theta_p,ww);
-	if(flipped) std::cout << "3Cr flip" << std::endl;
+	// if(flipped) std::cout << "3Cr flip" << std::endl;
 	assert(E.ctxt.delta()*rho_r_shift==rho_r_shift); // as $ww\in W^\delta$
 
 	const int a_level = level_a(E,rho_r_shift,n_alpha);
@@ -2067,7 +2064,7 @@ DescValue star (const param& E,	const ext_gen& p,
 	  rho_r_shift = ascent ? rho_r_shift : -rho_r_shift;
 	  const bool flipped =
 	    Cayley_shift_flip(E.ctxt,theta_upstairs,theta_downstairs,ww);
-	  if(flipped) std::cout << "3Ci flip" << std::endl;
+	  // if(flipped) std::cout << "3Ci flip" << std::endl;
 	  assert(E.ctxt.delta()*rho_r_shift==rho_r_shift); // $ww\in W^\delta$
 
 	  int tf_alpha = (E.ctxt.g_rho_check() - E.l).dot(alpha);
