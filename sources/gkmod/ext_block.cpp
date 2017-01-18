@@ -493,7 +493,7 @@ StandardRepr scaled_extended_dominant // result will have its |gamma()| dominant
       if(has_october_surprise(type))
 	{
 	  std::cout << "v=0 flipped descent" << std::endl;
-	  flipped = not flipped;
+	  flipped=not flipped;
 	}
       // E.flip(has_october_surprise(type));
       assert(x>E.x()); // make sure we advance; we did simple complex descents
@@ -502,7 +502,7 @@ StandardRepr scaled_extended_dominant // result will have its |gamma()| dominant
   }
 
   // finally extract |StandardRepr| from |E|, overwriting |result|
-  result = rc.sr_gamma(x,E.lambda_rho,ctxt.gamma());
+  result = rc.sr_gamma(x,E.lambda_rho,ctxt.gamma()); 
 
   // but the whole point of this function is to record the relative flip too!
   flipped ^= not same_sign(E,param(ctxt,result)); // compare |E| to default ext.
@@ -1135,10 +1135,9 @@ param complex_cross(const ext_gen& p, param E) // by-value for |E|, modified
   //		    subs.parent_nr_simple(p.s1))));
   RootNbrSet S = pos_to_neg(rd,to_simple);
   // S &= theta_real_roots ^ new_theta_real_roots; // select real-changing roots
-  std::cout << "size of S = " << S.size() << std::endl;
-  unsigned countold=0; // will count 2-element |delta|-orbits
+  // std::cout << "size of S = " << S.size() << std::endl;
+  unsigned countold=0; // will count 2-element |delta|-orbits not 2r or 2Ci/r
   for (auto it=S.begin(); it(); ++it)
-     for (auto it=S.begin(); it(); ++it)
     if (*it!=ec.delta_of(*it) and
 	ec.delta_of(*it)!= i_tab.root_involution(theta,*it) and
 	*it!=rd.rootMinus(i_tab.root_involution(theta,*it)) and
@@ -1150,7 +1149,6 @@ param complex_cross(const ext_gen& p, param E) // by-value for |E|, modified
 
   unsigned countnew=0; // will count 2-element |delta|-orbits
   for (auto it=S.begin(); it(); ++it)
-     for (auto it=S.begin(); it(); ++it)
     if (*it!=ec.delta_of(*it) and
 	ec.delta_of(*it)!= i_tab.root_involution(new_theta,*it) and
 	*it!=rd.rootMinus(i_tab.root_involution(new_theta,*it)) and
@@ -1159,7 +1157,8 @@ param complex_cross(const ext_gen& p, param E) // by-value for |E|, modified
       //   if (*it!=ec.delta_of(*it) and not rd.sumIsRoot(*it,ec.delta_of(*it)))
       ++countnew;
   assert(countnew%2==0); // since |S| is supposed to be $\delta$-stable
-
+  //  std::cout << "countold = "<< countold << ", countnew = "
+  //	    << countnew <<std::endl;
   if((countold - countnew)%4!=0) std::cout << "complex_cross flip" << std::endl;
   E.flip((countold-countnew)%4!=0); // try turning it off
   E.flip(p.w_kappa.size()==2); // a guess parallel to the new 2i,2r flips
@@ -1230,7 +1229,7 @@ bool Cayley_shift_flip
   //  .andnot(i_tab.real_roots(theta_upstairs)); // replace & with andnot
   //  RootNbrSet T = pos_to_neg(rd,to_simple);
     //  .andnot(i_tab.real_roots(theta_downstairs)); // replace & ...
-  std::cout << "size of S = " << S.size() << std::endl;
+  //  std::cout << "size of S = " << S.size() << std::endl;
   unsigned countup=0; // will count 2-element |delta|-orbits upstairs
   for (auto it=S.begin(); it(); ++it)
     if (*it!=ec.delta_of(*it) and
@@ -1252,11 +1251,11 @@ bool Cayley_shift_flip
       ++countdown;
   assert(countup%2==0);// since |S| is $\delta$-stable
   //if (not (countdown==0))
-  std::cout << "countup = " << countup
-	    << ", countdown = " << countdown
-	    << ", thetaup = " << theta_upstairs
-	    << ", thetadown = " << theta_downstairs
-				    << std::endl;
+  //  std::cout << "countup = " << countup
+  //	    << ", countdown = " << countdown
+  //	    << ", thetaup = " << theta_upstairs
+  //	    << ", thetadown = " << theta_downstairs
+  //				    << std::endl;
   // if (not (countdown==0)) prettyprint::printVector(std::cout
   // << "gamma_denom = "
   //						   << gamma_denom
@@ -1534,7 +1533,7 @@ DescValue star (const param& E,	const ext_gen& p,
 		  E.l, E0.t, flipped1);
 	  // F.lambda_rho+=rho_r_shift;
 	  z_align(E0,F);
-	  z_align(F,E1);
+	  //  z_align(F,E1); this incorrectly puts a sign on the cross link
 	  //  z_align(E0,E1); // can't because t's don't match FIX?
 	  // F.lambda_rho-=rho_r_shift;
 	  links.push_back(std::move(F )); // Cayley link
@@ -1842,6 +1841,8 @@ DescValue star (const param& E,	const ext_gen& p,
 	if (theta_alpha != (ascent ? n_beta : rd.rootMinus(n_beta)))
 	{ // twisted non-commutation with |s0.s1|
 	  result = ascent ? two_complex_ascent : two_complex_descent;
+	  // std::cout << "computing 2C cross for theta = "
+	  // << theta << std::endl;
 	  links.push_back(complex_cross(p,E));
 	  /*
 	  TwistedInvolution new_tw = E.tw;
