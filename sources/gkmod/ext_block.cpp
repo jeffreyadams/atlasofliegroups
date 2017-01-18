@@ -1353,7 +1353,8 @@ DescValue star (const param& E,	const ext_gen& p,
 	  assert(not same_standard_reps(E,E0));
 	  //	  F.lambda_rho-=first + rho_r_shift;
 	  z_align(E,F);
-	  //	  z_align(F,E0);
+	  //	  z_align(F,E0); // this changes sign of cross link
+	  //	  when Cayley link is flipped, and that's bad. 
 	  z_align(E,E0);
 	  //	  F.lambda_rho+=first + rho_r_shift;
 	  links.push_back(std::move(F )); // Cayley link
@@ -1617,7 +1618,8 @@ DescValue star (const param& E,	const ext_gen& p,
 	  E0.l += alpha_v+beta_v;
 	  // F.lambda_rho-=rho_r_shift;
 	  z_align(E,F); // no 3rd arg, since |E.lambda_rho| unchanged
-	  z_align(F,E0);
+	  // z_align(F,E0); // this changes a cross link sign if a Cayley
+			 // link is flipped, and that seems bad
 	  // F.lambda_rho-=rho_r_shift;
 	  // z_align(E,E0); // can't because t's don't match. FIX?
 	  // F.lambda_rho+=rho_r_shift;
@@ -1756,7 +1758,6 @@ DescValue star (const param& E,	const ext_gen& p,
 	  // F1.lambda_rho -= rho_r_shift;
 	  // z_align(E0,F0);
 	  z_align(E1,F1,m*((a_level-b_level)/2));
-	  z_align(E0,F0,m*((b_level-a_level)/2));
 	  // z_align(E0,F1);
 	  // F0.lambda_rho -= rho_r_shift;
 	  // F1.lambda_rho -= rho_r_shift;
@@ -1829,9 +1830,11 @@ DescValue star (const param& E,	const ext_gen& p,
 		  E.l, E0.t, flipped);
 	  // F.lambda_rho += rho_r_shift;
 	  z_align(E0,F); // no 3rd arg, as |E.t.dot(alpha)==0| etc.
-	  // z_align(F,E1);
+	  // z_align(F,E1); // this would put a sign on a cross when
+	  // there's one on a Cayley, which is bad
 	  // F.lambda_rho -= rho_r_shift;
 	  z_align(E0,E1); // this time t's DO match
+	  // worry that nothing similar happens in other cross links?
 	  links.push_back(std::move(F )); // Cayley link
 	  links.push_back(std::move(E1)); // cross link
 	} // end of case 2r22
@@ -1844,28 +1847,6 @@ DescValue star (const param& E,	const ext_gen& p,
 	  // std::cout << "computing 2C cross for theta = "
 	  // << theta << std::endl;
 	  links.push_back(complex_cross(p,E));
-	  /*
-	  TwistedInvolution new_tw = E.tw;
-	  tW.twistedConjugate(subs.reflection(p.s0),new_tw);
-	  tW.twistedConjugate(subs.reflection(p.s1),new_tw);
-	  RootNbr alpha_simple = n_alpha;
-	  const WeylWord ww = fixed_conjugate_simple(E.ctxt,alpha_simple);
-	  assert(rd.is_simple_root(alpha_simple)); // no complications here
-	  const auto theta_q = i_tab.nr(new_tw);
-	  Weight rho_r_shift = ascent ?
-	    repr::Cayley_shift(ic,theta_q,theta,ww) :
-	    -(repr::Cayley_shift(ic,theta,theta_q,ww));
-	  const bool flipped = ascent ?
-	    Cayley_shift_flip(E.ctxt,theta_q,theta,ww) :
-	    Cayley_shift_flip(E.ctxt,theta,theta_q,ww);
-	  if(flipped) std::cout << "2C flip" << std::endl;
-	auto E1=complex_cross(p,E0);
-	E1.flipped = flipped;
-	//	E1.lambda_rho += rho_r_shift; already in complex_cross?
-	z_align(E0,E1);
-	//	E1.lambda_rho -= rho_r_shift;
-	links.push_back(E1);
-	  */
 	}
 	else if (ascent)
 	{ // twisted commutation with |s0.s1|: 2Ci
