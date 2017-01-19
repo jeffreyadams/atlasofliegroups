@@ -2213,6 +2213,37 @@ ext_block::ext_block // for an external twist
   complete_construction(fixed_points);
   if (not check(block,verbose)) // this sets the edge signs, not just a check!
     throw std::runtime_error("Failure detected in extended block construction");
+  //  test braids;
+  bool OK=true; int count=0; int failed=0;
+  for (weyl::Generator t=0; t<rank(); ++t)
+    for (weyl::Generator s=0; s<t+1; ++s)
+    {
+      BitMap seen(size());
+      for (BlockElt x=0; x<size(); ++x)
+	if (not seen.isMember(x))
+	  {
+	    BitMap cluster(size());
+	    if (check_braid(*this,s,t,x,cluster))
+	      ++count;
+	    else
+	    {
+	      ++failed;
+	      OK = false;
+	      std::cout <<  "Braid relation failure: " << z(x)
+			<< ", s=" << s+1 << ", t=" << t+1;
+	      for (BitMap::iterator it=cluster.begin(); it(); ++it)
+		std::cout << (it==cluster.begin() ? " (" : ",")
+			  << z(*it) ;
+
+	      std::cout << ')' << std::endl;
+	    }
+	    seen |= cluster; // don't do elements of same cluster again
+	  }
+    }
+  //  if(OK) std::cout << "All " << count
+  // << " braid relations hold!" <<std::endl;
+  if(not OK) std::cout << "braid failure!" << std::endl;
+  //  assert(OK);
 
 } // |ext_block::ext_block|, from a |param_block|
 
@@ -2669,13 +2700,88 @@ void show_mat(std::ostream& strm,const matrix::Matrix<Pol> M,unsigned inx)
     //  strm << " " << std::endl;
     }
 }
-
+  /*
+void show_vec(std::ostream& strm, const matrix::Vector<Pol> V)
+{
+  for (unsigned i=0; i<V.size(); ++i)
+    {
+      strm << " " << std::endl;
+      V(i).print(strm << ' ',"q");
+    }
+  strm << " " << std::endl;
+}
+  */
 bool check_braid
   (const ext_block& b, weyl::Generator s, weyl::Generator t, BlockElt x,
    BitMap& cluster)
 {
   if (s==t)
-    return true;
+    {
+      unsigned int len = 2;
+      BitMap to_do(b.size()),used(b.size());
+      to_do.insert(x);
+      for (unsigned int i=0; i<len; ++i) // repeat |len| times, |i| is not used
+	for (BitMap::iterator it=to_do.begin(); it(); ++it)
+	  {
+	    used.insert(*it);
+	    to_do.remove(*it);
+	    BlockEltList l; l.reserve(2); // for neighbours of |*it| by |s|
+	    b.add_neighbours(l,s,*it);
+	    for (unsigned j=0; j<l.size(); ++j)
+	      if (not used.isMember(l[j]))
+		to_do.insert(l[j]);
+	  }
+
+      unsigned int n=used.size();
+      matrix::Matrix<Pol> Ts(n,n,Pol());
+
+      unsigned int j=0;
+      for (BitMap::iterator jt=used.begin(); jt(); ++jt,++j)
+	{
+	  BlockElt y = *jt;
+	  set(Ts,j,j, b.T_coef(s,y,y)-Pol(1));
+	  BlockEltList l; l.reserve(2);
+	  b.add_neighbours(l,s,*jt);
+	  for (unsigned int i=0; i<l.size(); ++i)
+	    if (used.isMember(l[i]))
+	      set(Ts,used.position(l[i]),j, b.T_coef(s,l[i],y));
+	  l.clear();
+	}
+      //      matrix::Vector<Pol> v(n,Pol()), w(n,Pol()), result1, result2;
+      //      v[used.position(x)]=Pol(1); result1=v; // x
+      //     w[used.position(x)]=Pol(1); result2=w; //qx
+
+  // finally compute quadratic relation
+      matrix::Matrix<Pol> result1=Ts, result2=Ts,Q(n,n,Pol());
+      for(unsigned j=0; j<n;++j)
+	set(Q,j,j,Pol(b.orbit(s).length(),1)); // q^d times I
+      result1*=Ts;
+      result1+=Ts; // Ts^2 + Ts
+      result2*=Q;
+      result2+=Q; // q(Ts+1)
+      /*
+      Ts.apply_to(result1); // result1=(Ts)x
+      result1+=v; // result1=(Ts+1)x
+      Ts.apply_to(result1); // (Ts^2 + Ts)x
+      Ts.apply_to(result2); // result2=q(Ts)x
+      result2+=w; //result2=q(Ts+1)x
+      */
+  cluster |= used;
+
+  // static bool verbose = false;
+  bool success = result1==result2;
+  if (not success)
+  {
+    //    std::cout << "success: " << success << std::endl;
+    show_mat(std::cout,Ts,s);
+    std::cout << std::endl;
+    show_mat(std::cout,result1,s);
+    std::cout << std::endl;
+    show_mat(std::cout,result2,s);
+    std::cout << std::endl;
+  }
+  return success;
+    }
   static const unsigned int cox_entry[] = {2, 3, 4, 6};
   unsigned int len = cox_entry[b.Dynkin().edge_multiplicity(s,t)];
 
@@ -2725,9 +2831,9 @@ bool check_braid
 
   cluster |= used;
 
-  static bool verbose = false;
+  // static bool verbose = false;
   bool success = v==w;
-  if (verbose and (not success or b.z(x)==59))
+  if (not success)
   {
     //    std::cout << "success: " << success << std::endl;
     show_mat(std::cout,Ts,s);
