@@ -22,7 +22,7 @@ rx> set t=trivial(Levi(P))
 Identifier t: Param
 rx> t
 Value: final parameter (x=2,lambda=[1,-1]/2,nu=[1,-1]/2)
-rx> set p=induce_standard (t,P,G)   
+rx> set p=theta_induce_standard (t,P,G)
 {specify the parabolic, this will be theta-stable or real parabolic induction as appropriate}
 theta_induce_standard of parameter on L: final parameter (x=2,lambda=[1,-1]/2,nu=[1,-1]/2)
 shift: [ 3, 3 ]/2
@@ -68,7 +68,7 @@ rx> M
 Value: disconnected split real group with Lie algebra 'sl(2,R).gl(1,R)'
 rx> set tM=trivial(M)
 Identifier tM: Param
-rx> induce_standard (tM,Q,G)  {ordinary parabolic induction}
+rx> real_induce_standard (tM,Q,G)  {ordinary parabolic induction}
 Value: 
 1*final parameter (x=10,lambda=[2,1]/1,nu=[1,1]/2)
 rx> 
