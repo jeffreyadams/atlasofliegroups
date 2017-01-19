@@ -57,6 +57,7 @@
 - Write a tutorial on the axis languge, in bottom-up style
 
 * Work on makefiles, distribution and support programs (cwebx)
+- change build process so 'atlas' is ensured to get most recent version string
 - change name of parser.y to parser.ypp, and adapt all Makefiles
 - Figure out how to avoid 'unrecognised typedefs' all the time
 - Make cweavex format a 2-line "do x; while(y);" with correct indentation
