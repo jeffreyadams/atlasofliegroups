@@ -448,4 +448,3 @@ set support_alt(KGBElt x)=[int]:
   let result=[] in for i:semisimple_rank(rd) do
   if is_member(W)(i) then result#:=i fi od;
   result
-

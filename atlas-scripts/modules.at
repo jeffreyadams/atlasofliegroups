@@ -1,3 +1,4 @@
+<basic.at
 <misc.at { for prettyPrint }
 <kl.at { for composition_series, character_formula }
 <K_types { for branch_std, branch_irr }

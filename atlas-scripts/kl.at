@@ -4,6 +4,7 @@
   Also (compared to old implementation) no regular/singular case distinction
 }
 
+<basic.at
 <polynomial.at { defines types poly, poly_mat }
 
 {
