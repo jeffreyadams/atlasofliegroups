@@ -921,8 +921,8 @@ int test_braid(const ext_block::ext_block& eblock)
 {
   std::cout << "testing braids" << std::endl;
   bool OK=true; int count=0; int failed=0;
-  for (weyl::Generator t=1; t<eblock.rank(); ++t)
-    for (weyl::Generator s=0; s<t; ++s)
+  for (weyl::Generator t=0; t<eblock.rank(); ++t)
+    for (weyl::Generator s=0; s<t+1; ++s)
     {
       BitMap seen(eblock.size());
       for (BlockElt x=0; x<eblock.size(); ++x)
