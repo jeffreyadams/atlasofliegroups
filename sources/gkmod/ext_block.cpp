@@ -515,13 +515,16 @@ int z (const param& E) // value modulo 4, exponent of imaginary unit $i$
   should just compute the contribution to the difference of values |z| that
   would come \emph{from its first term} above only.
 
-  This function does that, and possibly flips the second parameter accordingly
-*/
-void z_align (const param& E, param& F)
+  This function does that, and sets the second parameter accordingly. It turns
+  out that there is sometimes an independent source of flip that must be
+  applied after the above adaptation of the second extended parameter has
+  taken place
+ */
+void z_align (const param& E, param& F, bool extra_flip)
 { assert(E.t==F.t); // we require preparing |t| upstairs to get this
   int d = E.l.dot((E.delta()-1)*E.tau) - F.l.dot((F.delta()-1)*F.tau);
   assert(d%2==0);
-  F.flip(E.is_flipped()!=(d%4!=0)); // XOR new sign with flip of |E| into |F|
+  F.flipped = E.is_flipped()^(d%4!=0)^extra_flip; // XOR 3 Booleans into |F|
 }
 
 /*
@@ -535,8 +538,8 @@ void z_align (const param& E, param& F)
   of call the value of |mu| is explicitly available, so we ask here to pass
   |t.dot(mu)| as third argument |t_mu|.
  */
-void z_align (const param& E, param& F, int t_mu)
-{ z_align(E,F);
+void z_align (const param& E, param& F, bool extra_flip, int t_mu)
+{ z_align(E,F,extra_flip);
   F.flip(t_mu%2!=0);
 }
 
@@ -1180,17 +1183,17 @@ DescValue star (const param& E,	const ext_gen& p,
 
 	  param F(E.ctxt,new_tw,
 		  E.lambda_rho + first + rho_r_shift, E0.tau+diff*tau_coef,
-		  E.l+alpha_v*(tf_alpha/2), E.t,
-		  flipped);
+		  E.l+alpha_v*(tf_alpha/2), E.t);
+
+ 	  E0.l = tf_alpha%4==0 ? F.l+alpha_v : F.l; // for cross
+	  assert(not same_standard_reps(E,E0));
+	  z_align(E,F,flipped);
+	  z_align(F,E0,flipped);
 
 	  // flip |F| if |first| is nonparity at $\nu=0$
 	  if (not rd.is_simple_root(alpha_simple))
 	    F.flip((rho(rd)+(F.lambda_rho-rho_r_shift)).dot(first)%2!=0);
 
- 	  E0.l = tf_alpha%4==0 ? F.l+alpha_v : F.l; // for cross
-	  assert(not same_standard_reps(E,E0));
-	  z_align(E,F);
-	  z_align(F,E0);
 	  links.push_back(std::move(F )); // Cayley link
 	  links.push_back(std::move(E0)); // cross link
 	} // end of 1i1 case
@@ -1208,20 +1211,18 @@ DescValue star (const param& E,	const ext_gen& p,
 	  param F0(E.ctxt,new_tw,
 		   E.lambda_rho + first + rho_r_shift,
 		   E.tau - alpha*(tau_coef/2) - first,
-		   E.l + alpha_v*(tf_alpha/2), E.t,
-		   flipped);
+		   E.l + alpha_v*(tf_alpha/2), E.t);
 	  param F1(E.ctxt,new_tw,
-		   F0.lambda_rho + alpha, F0.tau, F0.l, E.t,
-		   flipped);
+		   F0.lambda_rho + alpha, F0.tau, F0.l, E.t);
 
+	  z_align(E,F0,flipped);
+	  z_align(E,F1,flipped);
 	  // flip |F0| and |F1| if |first| is nonparity at $\nu=0$
 	  if (not rd.is_simple_root(alpha_simple))
 	  {
 	    F0.flip((rho(rd)+(F0.lambda_rho-rho_r_shift)).dot(first)%2!=0);
 	    F1.flip((rho(rd)+(F1.lambda_rho-rho_r_shift)).dot(first)%2!=0);
 	  }
-	  z_align(E,F0);
-	  z_align(E,F1);
 	  links.push_back(std::move(F0)); // Cayley link
 	  links.push_back(std::move(F1)); // Cayley link
 	} // end of type 2 case
@@ -1295,14 +1296,12 @@ DescValue star (const param& E,	const ext_gen& p,
 	  assert(same_sign(E,E0)); // since only |t| changes
 
 	  param F0(E.ctxt,new_tw,
-		   new_lambda_rho, E.tau + tau_correction, E.l, E0.t,
-		   flipped);
+		   new_lambda_rho, E.tau + tau_correction, E.l, E0.t);
 	  param F1(E.ctxt,new_tw,
-		   new_lambda_rho, F0.tau, E.l + alpha_v, E0.t,
-		   flipped);
+		   new_lambda_rho, F0.tau, E.l + alpha_v, E0.t);
 
-	  z_align(E0,F0);
-	  z_align(E0,F1);
+	  z_align(E0,F0,flipped);
+	  z_align(E0,F1,flipped);
 	  links.push_back(std::move(F0)); // first Cayley
 	  links.push_back(std::move(F1)); // second Cayley
 
@@ -1322,11 +1321,10 @@ DescValue star (const param& E,	const ext_gen& p,
 	  assert(not same_standard_reps(E0,E1));
 
 	  param F(E.ctxt,new_tw,
-		  new_lambda_rho, E.tau + tau_correction, E.l, E0.t,
-		  flipped);
+		  new_lambda_rho, E.tau + tau_correction, E.l, E0.t);
 
-	  z_align(E0,F);
-	  z_align(F,E1);
+	  z_align(E0,F,flipped);
+	  z_align(F,E1,flipped);
 	  links.push_back(std::move(F )); // Cayley link
 	  links.push_back(std::move(E1)); // cross link
 	} // end of 1r2 case
@@ -1382,12 +1380,11 @@ DescValue star (const param& E,	const ext_gen& p,
 
 	  param F (E.ctxt, new_tw,
 		   E.lambda_rho + rho_r_shift,  E.tau + sigma,
-		   E.l+alpha_v*(tf_alpha/2)+beta_v*(tf_beta/2), E.t,
-		   flipped);
+		   E.l+alpha_v*(tf_alpha/2)+beta_v*(tf_beta/2), E.t);
 
 	  E0.l += alpha_v+beta_v;
-	  z_align(E,F); // no 3rd arg, since |E.lambda_rho| unchanged
-	  z_align(F,E0);
+	  z_align(E,F,flipped); // no 4th arg, since |E.lambda_rho| unchanged
+	  z_align(F,E0,flipped);
 	  links.push_back(std::move(F));  // Cayley link
 	  links.push_back(std::move(E0)); // cross link
 	}
@@ -1411,16 +1408,14 @@ DescValue star (const param& E,	const ext_gen& p,
 	  // first Cayley link |F0| will be the one that does not need |sigma|
 	  param F0(E.ctxt, new_tw,
 		   E.lambda_rho + rho_r_shift + alpha*m, new_tau0,
-		   new_l, E.t,
-		   flipped);
+		   new_l, E.t);
 	  param F1(E.ctxt, new_tw,
 		   E.lambda_rho + rho_r_shift + alpha*mm, E.tau + sigma,
-		   new_l, E.t,
-		   flipped);
+		   new_l, E.t);
 
 	  int t_alpha=E.t.dot(alpha);
-	  z_align(E,F0,m*t_alpha);
-	  z_align(E,F1,mm*t_alpha);
+	  z_align(E,F0,flipped,m*t_alpha);
+	  z_align(E,F1,flipped,mm*t_alpha);
 	  links.push_back(std::move(F0)); // first Cayley
 	  links.push_back(std::move(F1)); // second Cayley
 	} // end of case 2i12f
@@ -1437,17 +1432,15 @@ DescValue star (const param& E,	const ext_gen& p,
 	  param F0(E.ctxt, new_tw,
 		   E.lambda_rho + rho_r_shift + alpha*m,
 		   E.tau - alpha*((at+m)/2) - beta*((bt-m)/2),
-		   E.l+alpha_v*(tf_alpha/2)+beta_v*(tf_beta/2), E.t,
-		   flipped);
+		   E.l+alpha_v*(tf_alpha/2)+beta_v*(tf_beta/2), E.t);
 	  param F1(E.ctxt, new_tw,
 		   E.lambda_rho + rho_r_shift + alpha*(1-m) + beta,
 		   E.tau - alpha*((at-m)/2) - beta*((bt+m)/2),
-		   F0.l,E.t,
-		   flipped);
+		   F0.l,E.t);
 
 	  int ta = E.t.dot(alpha), tb=E.t.dot(beta);
-	  z_align(E,F0,ta*m);
-	  z_align(E,F1,ta*(1-m)+tb);
+	  z_align(E,F0,flipped,ta*m);
+	  z_align(E,F1,flipped,ta*(1-m)+tb);
 	  links.push_back(std::move(F0)); // first Cayley
 	  links.push_back(std::move(F1)); // second Cayley
 	} // end type 2i22 case
@@ -1502,14 +1495,12 @@ DescValue star (const param& E,	const ext_gen& p,
 	  flipped = not flipped; // extra non-October surprise flip for 2r11
 
 	  param F0(E.ctxt, new_tw,
-		   new_lambda_rho,E.tau, E.l+alpha_v*m, E0.t,
-		   flipped);
+		   new_lambda_rho,E.tau, E.l+alpha_v*m, E0.t);
 	  param F1(E.ctxt, new_tw,
-		   new_lambda_rho,E.tau, E.l+alpha_v*(1-m)+beta_v,E1.t,
-		   flipped);
+		   new_lambda_rho,E.tau, E.l+alpha_v*(1-m)+beta_v,E1.t);
 
-	  z_align(E0,F0,m*((b_level-a_level)/2));
-	  z_align(E1,F1,m*((a_level-b_level)/2));
+	  z_align(E0,F0,flipped,m*((b_level-a_level)/2));
+	  z_align(E1,F1,flipped,m*((a_level-b_level)/2));
 
 	  // Cayley links
 	  links.push_back(std::move(F0));
@@ -1541,14 +1532,12 @@ DescValue star (const param& E,	const ext_gen& p,
 
 	  // Cayley links
 	  param F0(E.ctxt, new_tw,
-		   new_lambda_rho, E.tau, E.l+alpha_v*m, E0.t,
-		   flipped);
+		   new_lambda_rho, E.tau, E.l+alpha_v*m, E0.t);
 	  param F1(E.ctxt, new_tw,
-		   new_lambda_rho, E.tau, E.l+alpha_v*mm, E1.t,
-		   flipped);
+		   new_lambda_rho, E.tau, E.l+alpha_v*mm, E1.t);
 
-	  z_align(E0,F0,m *((b_level-a_level)/2));
-	  z_align(E1,F1,mm*((b_level-a_level)/2));
+	  z_align(E0,F0,flipped,m *((b_level-a_level)/2));
+	  z_align(E1,F1,flipped,mm*((b_level-a_level)/2));
 	  links.push_back(std::move(F0));
 	  links.push_back(std::move(F1));
 	} // end of case 2r21f
@@ -1568,11 +1557,10 @@ DescValue star (const param& E,	const ext_gen& p,
 
 	  flipped = not flipped; // extra non-October surprise flip for 2r22
 
-	  param F(E.ctxt, new_tw, new_lambda_rho, E.tau, E.l, E0.t,
-		  flipped);
+	  param F(E.ctxt, new_tw, new_lambda_rho, E.tau, E.l, E0.t);
 
-	  z_align(E0,F); // no 3rd arg, as |E.t.dot(alpha)==0| etc.
-	  z_align(F,E1);
+	  z_align(E0,F,flipped); // no 4th arg, as |E.t.dot(alpha)==0| etc.
+	  z_align(F,E1,flipped);
 	  links.push_back(std::move(F )); // Cayley link
 	  links.push_back(std::move(E1)); // cross link
 	} // end of case 2r22
@@ -1707,10 +1695,9 @@ DescValue star (const param& E,	const ext_gen& p,
 	param F(E.ctxt, new_tw,
 		E.lambda_rho + rho_r_shift,
 		E.tau - alpha*kappa_v.dot(E.tau),
-		E.l + kappa_v*((tf_alpha+tf_beta)/2), E.t,
-		flipped);
+		E.l + kappa_v*((tf_alpha+tf_beta)/2), E.t);
 
-	z_align(E,F); // |lambda_rho| unchanged at simple Cayley
+	z_align(E,F,flipped); // |lambda_rho| unchanged at simple Cayley
 	links.push_back(std::move(F)); // Cayley link
       }
       else if (theta_alpha==rd.rootMinus(n_alpha)) // length 3 real case
@@ -1743,9 +1730,9 @@ DescValue star (const param& E,	const ext_gen& p,
 
 	flipped = not flipped; // January unsurprise for 3r: delta acts by -1
 
-	param F(E.ctxt, new_tw,	new_lambda_rho,E.tau,E.l,E0.t, flipped);
+	param F(E.ctxt, new_tw,	new_lambda_rho,E.tau,E.l,E0.t);
 
-	z_align(E0,F); // no 3rd arg since |E.t.dot(kappa)==0|
+	z_align(E0,F,flipped); // no 4th arg since |E.t.dot(kappa)==0|
 	links.push_back(std::move(F)); // Cayley link
       }
       else // length 3 complex case (one of 3Ci or 3Cr or 3C+/-)
@@ -1774,12 +1761,11 @@ DescValue star (const param& E,	const ext_gen& p,
 	  { param F(E.ctxt,new_tw,
 		    dtf_alpha%2==0 ? new_lambda_rho : new_lambda_rho + kappa,
 		    E.tau - kappa*(kappa_v.dot(E.tau)/2),
-		    E.l + kappa_v*tf_alpha, E.t,
-		    flipped);
+		    E.l + kappa_v*tf_alpha, E.t);
 
 	    assert(E.t.dot(kappa)==0);
 	    // since it is half of |t*(1+theta)*kappa=l*(delta-1)*kappa==0|
-	    z_align(E,F); // may ignore possible shift by |kappa|
+	    z_align(E,F, flipped); // we may ignore possible shift by |kappa|
 	    links.push_back(std::move(F)); // Cayley link
 	  }
 	  else // descent, so 3Cr
@@ -1789,10 +1775,9 @@ DescValue star (const param& E,	const ext_gen& p,
 
 	    param F(E.ctxt, new_tw,
 		    new_lambda_rho + kappa*dtf_alpha, E.tau,
-		    tf_alpha%2==0 ? E.l : E.l+kappa_v, E0.t,
-		    flipped);
+		    tf_alpha%2==0 ? E.l : E.l+kappa_v, E0.t);
 
-	    z_align(E0,F); // no 3rd arg since |E.t.dot(kappa)==0|
+	    z_align(E0,F,flipped); // no 3rd arg since |E.t.dot(kappa)==0|
 	    links.push_back(std::move(F)); // Cayley link
 	  }
 
