@@ -1603,7 +1603,7 @@ DescValue star (const param& E,	const ext_gen& p,
           const Coweight new_t =
 	    rd.coreflection(E.t,n_alpha) - alpha_v*dual_f;
 	  param F (E.ctxt, new_tw, new_lambda_rho, new_tau, new_l, new_t,
-		   flipped);
+		   E.is_flipped()!=flipped);
 
 	  // do extra conditional flip for 2Ci case
 	  int ab_tau = (alpha_v+beta_v).dot(E.tau);
@@ -1638,7 +1638,7 @@ DescValue star (const param& E,	const ext_gen& p,
 	    rd.coreflection(E.t,n_alpha) + alpha_v*dual_f;
 
 	  param F (E.ctxt, new_tw, new_lambda_rho, new_tau, new_l, new_t,
-		   flipped);
+		   E.is_flipped()!=flipped);
 
 	  // do extra conditional flip for 2Cr case
 	  int t_ab = E.t.dot(beta-alpha);
