@@ -323,11 +323,11 @@ KGBElt param::x() const
 /*
   This function serves to replace and circumvent |Rep_context::make_dominant|,
   which maps any ordinary parameter to one with a dominant |gamma| component,
-  and moreover descends through simgular complex descents in the block to the
+  and moreover descends through singular complex descents in the block to the
   lowest parameter equivalent to the inital parameter. The difference with
   that method is that here we keep track of all extended parameter components,
   transforming them from the default choices at the initial elemnt, and at the
-  end comparing with the default choices at the final paremeter, recording the
+  end comparing with the default choices at the final parameter, recording the
   sign in |flipped|.
 
   This is intended for use in deformation, and the initial extended parameter
@@ -518,7 +518,7 @@ int z (const param& E) // value modulo 4, exponent of imaginary unit $i$
   This function does that, and sets the second parameter accordingly. It turns
   out that there is sometimes an independent source of flip that must be
   applied after the above adaptation of the second extended parameter has
-  taken place
+  taken place, which we accept as third argument.
  */
 void z_align (const param& E, param& F, bool extra_flip)
 { assert(E.t==F.t); // we require preparing |t| upstairs to get this
@@ -1160,17 +1160,17 @@ DescValue star (const param& E,	const ext_gen& p,
 	assert(E.ctxt.delta()*rho_r_shift==rho_r_shift); // $ww\in W^\delta$
 	assert(E.t.dot(alpha)==0); // follows from $\delta*\alpha=\alpha$
 
-	Weight first; // maybe a root with |(1-delta)*first==alpha|
+	RootNbr first; // maybe a root with |(1-delta)*rd.root(first)==alpha|
 	if (rd.is_simple_root(alpha_simple))
-	  first = Weight(rd.rank(),0); // effectively not used in this case
+	  first = rd.numPosRoots(); // effectively not used in this case
 	else
 	{
 	  --tau_coef; // the parity change and decrease are both relevant
 	  weyl::Generator s = // first switched root index
 	    rd.find_descent(alpha_simple);
 	  first = // corresponding root summand, conjugated back
-	      rd.root(rd.permuted_root(rd.simpleRootNbr(s),ww));
-	  assert(alpha == first + E.ctxt.delta()*first);
+	    rd.permuted_root(rd.simpleRootNbr(s),ww);
+	  assert(alpha == (E.ctxt.delta()+1)*rd.root(first));
 	}
 
 	// now separate cases; based on type 1 or 2 first
@@ -1182,7 +1182,8 @@ DescValue star (const param& E,	const ext_gen& p,
 	      matreduc::find_solution(th_1,alpha); // solutions are equivalent
 
 	  param F(E.ctxt,new_tw,
-		  E.lambda_rho + first + rho_r_shift, E0.tau+diff*tau_coef,
+		  E.lambda_rho + rd.root(first) + rho_r_shift,
+		  E0.tau+diff*tau_coef,
 		  E.l+alpha_v*(tf_alpha/2), E.t);
 
  	  E0.l = tf_alpha%4==0 ? F.l+alpha_v : F.l; // for cross
@@ -1192,7 +1193,8 @@ DescValue star (const param& E,	const ext_gen& p,
 
 	  // flip |F| if |first| is nonparity at $\nu=0$
 	  if (not rd.is_simple_root(alpha_simple))
-	    F.flip((rho(rd)+(F.lambda_rho-rho_r_shift)).dot(first)%2!=0);
+	    F.flip((rho(rd)+(F.lambda_rho-rho_r_shift)).dot(rd.coroot(first))
+		   %2!=0);
 
 	  links.push_back(std::move(F )); // Cayley link
 	  links.push_back(std::move(E0)); // cross link
@@ -1209,8 +1211,8 @@ DescValue star (const param& E,	const ext_gen& p,
 	  result = one_imaginary_pair_fixed;  // what remains is case 1i2f
 
 	  param F0(E.ctxt,new_tw,
-		   E.lambda_rho + first + rho_r_shift,
-		   E.tau - alpha*(tau_coef/2) - first,
+		   E.lambda_rho + rd.root(first) + rho_r_shift,
+		   E.tau - alpha*(tau_coef/2) - rd.root(first),
 		   E.l + alpha_v*(tf_alpha/2), E.t);
 	  param F1(E.ctxt,new_tw,
 		   F0.lambda_rho + alpha, F0.tau, F0.l, E.t);
@@ -1220,8 +1222,10 @@ DescValue star (const param& E,	const ext_gen& p,
 	  // flip |F0| and |F1| if |first| is nonparity at $\nu=0$
 	  if (not rd.is_simple_root(alpha_simple))
 	  {
-	    F0.flip((rho(rd)+(F0.lambda_rho-rho_r_shift)).dot(first)%2!=0);
-	    F1.flip((rho(rd)+(F1.lambda_rho-rho_r_shift)).dot(first)%2!=0);
+	    F0.flip((rho(rd)+(F0.lambda_rho-rho_r_shift)).dot(rd.coroot(first))
+		    %2!=0);
+	    F1.flip((rho(rd)+(F1.lambda_rho-rho_r_shift)).dot(rd.coroot(first))
+		    %2!=0);
 	  }
 	  links.push_back(std::move(F0)); // Cayley link
 	  links.push_back(std::move(F1)); // Cayley link
@@ -1240,17 +1244,17 @@ DescValue star (const param& E,	const ext_gen& p,
 	bool flipped = shift_flip(E.ctxt,S);
 	assert(E.ctxt.delta()*rho_r_shift==rho_r_shift); // as $ww\in W^\delta$
 
-	RootNbr alpha_0 = // maybe one of |alpha==alpha_0+alpha_1|
-	  rd.is_simple_root(alpha_simple) ? 0 // unused
+	RootNbr first = // maybe one of |alpha==first+second|
+	  rd.is_simple_root(alpha_simple) ? rd.numPosRoots() // unused
 	  : rd.permuted_root(rd.simpleRootNbr(rd.find_descent(alpha_simple)),
 			     ww);
 
 	// test parity, taking into account modifications that will be applied
-	bool shift_correct = // whether |alpha_0| is defined and real at |theta|
+	bool shift_correct = // whether |first| is defined and real at |theta|
 	  not rd.is_simple_root(alpha_simple) and
-	  i_tab.root_involution(theta,alpha_0)==rd.rootMinus(alpha_0);
+	  i_tab.root_involution(theta,first)==rd.rootMinus(first);
 	const int level = level_a(E,rho_r_shift,n_alpha) +
-	   (shift_correct ? 1 : 0 ); // add 1 if |alpha_0| is defined and real
+	   (shift_correct ? 1 : 0 ); // add 1 if |first| is defined and real
 
 	if (level%2!=0) // nonparity
 	   return one_real_nonparity; // case 1rn, no link added here
@@ -1263,20 +1267,20 @@ DescValue star (const param& E,	const ext_gen& p,
 	  tau_correction = Weight(rd.rank(),0); // no correction needed here
 	else
 	{
-	  const Weight a0 = rd.root(alpha_0);
-	  assert(alpha == a0 + E.ctxt.delta()*a0);
+	  assert(alpha == (E.ctxt.delta()+1)*rd.root(first));
 	  if (shift_correct)
 	  {
-	    rho_r_shift += a0; // non delta-fixed contribution
+	    rho_r_shift += rd.root(first); // non delta-fixed contribution
 
 	    // now we must add $d$ to $\tau$ with $(1-\theta')d=(1-\delta)*a0$
+	    // where |a0=rd.root(first)|
 	    // since $\theta'*a0 = a1 = \delta*a_0$, we can take $d=a0$
-	    tau_correction = a0;
+	    tau_correction = rd.root(first);
 
-	    flipped ^= // do extra flip when |alpha_0| is nonparity at $\nu=0$
-	      (rho(rd)+(E.lambda_rho-rho_r_shift)).dot(rd.coroot(alpha_0))%2!=0;
+	    flipped ^= // do extra flip when |first| is nonparity at $\nu=0$
+	      (rho(rd)+(E.lambda_rho-rho_r_shift)).dot(rd.coroot(first))%2!=0;
 	    assert((i_tab.matrix(new_tw)-1)*tau_correction
-		   ==(E.ctxt.delta()-1)*a0);
+		   ==(E.ctxt.delta()-1)*rd.root(first));
 	  }
 	}
 
