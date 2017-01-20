@@ -554,7 +554,7 @@ containers::sl_list<std::pair<StandardRepr,bool> > extended_finalise
 	auto l_it=links.begin();
 	//if (l_it->x() == 20)
 	{
-	  std::cout << "at old x = " << E.x() << ",new x = "
+	  std::cout << "at old x = " << E.x() << ", new x = "
 		    << l_it->x() << ", old flip = " << E.is_flipped()
 		    << ", new flip = " << l_it->is_flipped()
 		    << ", October flip = " << flip << std::endl;
@@ -1176,7 +1176,7 @@ param complex_cross(const ext_gen& p, param E) // by-value for |E|, modified
   //  std::cout << "countold = "<< countold << ", countnew = "
   //	    << countnew <<std::endl;
   // if((countold - countnew)%4!=0) std::cout << "complex_cross flip" << std::endl;
-  E.flip((countold-countnew)%4!=0); // try turning it off
+  E.flip((countold-countnew)%4!=0); //
   E.flip(p.w_kappa.size()==2); // a guess parallel to the new 2i,2r flips
   //   previous line makes trivial(GL(3,C)) nonunitary
   validate(E);
@@ -1363,14 +1363,15 @@ DescValue star (const param& E,	const ext_gen& p,
 		  E.lambda_rho + first + rho_r_shift,
 		  E0.tau+diff*tau_coef,
 		  E.l+alpha_v*(tf_alpha/2), E.t,
-		  flipped^E.flipped);
+		  flipped);
 
  	  E0.l = tf_alpha%4==0 ? F.l+alpha_v : F.l; // for cross
 	  assert(not same_standard_reps(E,E0));
 	  //	  F.lambda_rho-=first + rho_r_shift;
 	  z_align(E,F);
+	  // this compares F.flipped with E.flipped, GOOD!
 	  //	  z_align(F,E0); // this changes sign of cross link
-	  //	  when Cayley link is flipped, and that's bad. 
+	  //	  when Cayley link is flipped, and that's bad.
 	  z_align(E,E0);
 	  //	  F.lambda_rho+=first + rho_r_shift;
 	  links.push_back(std::move(F )); // Cayley link
@@ -1389,9 +1390,9 @@ DescValue star (const param& E,	const ext_gen& p,
 
 	  param F0(E.ctxt,new_tw, E.lambda_rho + first + rho_r_shift,
 		   E.tau - alpha*(tau_coef/2) - first,
-		   E.l + alpha_v*(tf_alpha/2), E.t, flipped^E.flipped);
+		   E.l + alpha_v*(tf_alpha/2), E.t, flipped);
 	  param F1(E.ctxt,new_tw, F0.lambda_rho + alpha,
-		   F0.tau, F0.l, E.t, flipped^E.flipped);
+		   F0.tau, F0.l, E.t, flipped);
 
 	  if(has_first and (((-F0.lambda_rho+rho_r_shift)
 			      .dot(rd.coroot(alpha_0)) -
@@ -1516,10 +1517,10 @@ DescValue star (const param& E,	const ext_gen& p,
 
 	  param F0(E.ctxt,new_tw,
 		   new_lambda_rho, E.tau + tau_correction,
-		   E.l, E0.t, flipped1^E.flipped);
+		   E.l, E0.t, flipped1);
 	  param F1(E.ctxt,new_tw,
 		   new_lambda_rho, F0.tau, E.l + alpha_v, E0.t,
-		   flipped1^E.flipped);
+		   flipped1);
 
 	  //	  F0.lambda_rho+=rho_r_shift;
 	  //	  F1.lambda_rho+=rho_r_shift;
@@ -1547,7 +1548,7 @@ DescValue star (const param& E,	const ext_gen& p,
 
 	  param F(E.ctxt,new_tw,
 		  new_lambda_rho, E.tau + tau_correction,
-		  E.l, E0.t, flipped1^E.flipped);
+		  E.l, E0.t, flipped1);
 	  // F.lambda_rho+=rho_r_shift;
 	  z_align(E0,F);
 	  //  z_align(F,E1); this incorrectly puts a sign on the cross link
@@ -1630,7 +1631,7 @@ DescValue star (const param& E,	const ext_gen& p,
 	  param F (E.ctxt, new_tw,
 		   E.lambda_rho + rho_r_shift,
 		   E.tau + sigma, E.l+alpha_v*(tf_alpha/2)+beta_v*(tf_beta/2),
-		   E.t, flipped^E.flipped);
+		   E.t, flipped);
 	  E0.l += alpha_v+beta_v;
 	  // F.lambda_rho-=rho_r_shift;
 	  z_align(E,F); // no 3rd arg, since |E.lambda_rho| unchanged
@@ -1661,11 +1662,11 @@ DescValue star (const param& E,	const ext_gen& p,
 	  param F0(E.ctxt, new_tw,
 		   E.lambda_rho + rho_r_shift
 		   + alpha*m, new_tau0, new_l,
-		   E.t, flipped^E.flipped);
+		   E.t, flipped);
 	  param F1(E.ctxt, new_tw,
 		   E.lambda_rho + rho_r_shift
 		   + alpha*mm, E.tau + sigma, new_l,
-		   E.t, flipped^E.flipped);
+		   E.t, flipped);
 	  // change E.tau to F0.tau? Marc says NO 1/13
 	  int t_alpha=E.t.dot(alpha);
 	  z_align(E,F0,m*t_alpha);
@@ -1695,12 +1696,12 @@ DescValue star (const param& E,	const ext_gen& p,
 		   + alpha*m,
 		   E.tau - alpha*((at+m)/2) - beta*((bt-m)/2),
 		   E.l+alpha_v*(tf_alpha/2)+beta_v*(tf_beta/2),
-		   E.t, flipped^E.flipped);
+		   E.t, flipped);
 	  param F1(E.ctxt, new_tw,
 		   E.lambda_rho + rho_r_shift
 		   + alpha*(1-m) + beta,
 		   E.tau - alpha*((at-m)/2) - beta*((bt+m)/2), F0.l,
-		   E.t, flipped^E.flipped);
+		   E.t, flipped);
 
 	  int ta = E.t.dot(alpha), tb=E.t.dot(beta);
 	  z_align(E,F0,ta*m);
@@ -1766,10 +1767,10 @@ DescValue star (const param& E,	const ext_gen& p,
 
 	  param F0(E.ctxt, new_tw,
 		   new_lambda_rho, E.tau, E.l+alpha_v*m, E0.t,
-		   flipped^E.flipped);
+		   flipped);
 	  param F1(E.ctxt, new_tw,
 		   new_lambda_rho, E.tau,
-		   E.l+alpha_v*(1-m)+beta_v, E1.t, flipped^E.flipped);
+		   E.l+alpha_v*(1-m)+beta_v, E1.t, flipped);
 	  z_align(E0,F0,m*((b_level-a_level)/2));
 	  // F0.lambda_rho -= rho_r_shift;
 	  // F1.lambda_rho -= rho_r_shift;
@@ -1807,10 +1808,10 @@ DescValue star (const param& E,	const ext_gen& p,
 	  // Cayley links
 	  param F0(E.ctxt, new_tw,
 		   new_lambda_rho, E.tau, E.l+alpha_v*m, E0.t,
-		   flipped^E.flipped);
+		   flipped);
 	  param F1(E.ctxt, new_tw,
 		   new_lambda_rho, E.tau, E.l+alpha_v*mm, E1.t,
-		   flipped^E.flipped);
+		   flipped);
 
 	  z_align(E0,F0,m *((b_level-a_level)/2));
 	  // F0.lambda_rho += rho_r_shift;
@@ -1846,7 +1847,7 @@ DescValue star (const param& E,	const ext_gen& p,
 	  assert(not same_standard_reps(E0,E1));
 
 	  param F(E.ctxt, new_tw, new_lambda_rho, E.tau,
-		  E.l, E0.t, flipped^E.flipped);
+		  E.l, E0.t, flipped);
 	  // F.lambda_rho += rho_r_shift;
 	  z_align(E0,F); // no 3rd arg, as |E.t.dot(alpha)==0| etc.
 	  // z_align(F,E1); // this would put a sign on a cross when
@@ -1902,6 +1903,8 @@ DescValue star (const param& E,	const ext_gen& p,
 	    rd.coreflection(E.t,n_alpha) - alpha_v*dual_f;
 	  param F (E.ctxt, new_tw, new_lambda_rho,
 		   new_tau, new_l, new_t, flipped^E.flipped);
+	  // ^E.flipped is needed because there is no z_align to see
+	  // this extra flip in E.
 	  // "not" added 1/12/17 to fix SL(4,R) trivial extblock braid
 	  // "not" breaks unitarity for GL(2,C) trivial
 	  //	  F.lambda_rho-=rho_r_shift; //removed 1/13 per latest?
@@ -1941,6 +1944,7 @@ DescValue star (const param& E,	const ext_gen& p,
 
 	  param F (E.ctxt, new_tw, new_lambda_rho, new_tau, new_l,
 		   new_t,  flipped^E.flipped);
+	  // ^E.flipped as in 2Ci
 	  // "not" added 1/12/17 to fix extblock SL(4,R) trivial braid
 	  // "not" breaks unitarity for GL(2,C) trivial
 	  // F.lambda_rho+=rho_r_shift; //removed 1/13
@@ -2002,7 +2006,7 @@ DescValue star (const param& E,	const ext_gen& p,
 		E.lambda_rho + rho_r_shift,
 		E.tau - alpha*kappa_v.dot(E.tau),
 		E.l + kappa_v*((tf_alpha+tf_beta)/2), E.t,
-		(not flipped)^E.flipped); //January unsurprise: delta acts by -1
+		not flipped); //January unsurprise: delta acts by -1
 	// on some wedge?
 	//	F.lambda_rho-=rho_r_shift;
 	z_align(E,F); // |lambda_rho| unchanged at simple Cayley
@@ -2039,7 +2043,7 @@ DescValue star (const param& E,	const ext_gen& p,
 	assert(same_sign(E,E0)); // since only |t| changes
 
 	param F(E.ctxt, new_tw,	new_lambda_rho,
-		E.tau,E.l,E0.t, (not flipped)^E.flipped); //January unsurprise
+		E.tau,E.l,E0.t, not flipped); //January unsurprise
 
 	// F.lambda_rho+=rho_r_shift;
 	z_align(E0,F); // no 3rd arg since |E.t.dot(kappa)==0|
@@ -2077,7 +2081,7 @@ DescValue star (const param& E,	const ext_gen& p,
 		    dtf_alpha%2==0 ? new_lambda_rho : new_lambda_rho + kappa,
 		    E.tau - kappa*(kappa_v.dot(E.tau)/2),
 		    E.l + kappa_v*tf_alpha, E.t,
-		    (not flipped)^E.flipped); // January unsurprise
+		    not flipped); // January unsurprise
 
 	    assert(E.t.dot(kappa)==0);
 	    // since it is half of |t*(1+theta)*kappa=l*(delta-1)*kappa==0|
@@ -2094,7 +2098,7 @@ DescValue star (const param& E,	const ext_gen& p,
 	    param F(E.ctxt, new_tw,
 		    new_lambda_rho + kappa*dtf_alpha, E.tau,
 		    tf_alpha%2==0 ? E.l : E.l+kappa_v, E0.t,
-		    (not flipped)^E.flipped); //January unsurprise
+		    not flipped); //January unsurprise
 	    F.lambda_rho-=rho_r_shift;
 	    z_align(E0,F); // no 3rd arg since |E.t.dot(kappa)==0|
 	    F.lambda_rho+=rho_r_shift;
@@ -2468,26 +2472,7 @@ bool ext_block::check(const param_block& block, bool verbose)
 	  BlockElt m=cross(s,n); // cross neighbour as bare element of |*this|
 	  BlockElt cz = this->z(m); // corresponding element of (parent) |block|
 	  param F(ctxt,block.x(cz),block.lambda_rho(cz)); // default extension
-	  if (not (same_standard_reps(*it,F)) ) // *it is the proposed complex
-	    // cross from star
-	    {
-	      param E = *it;
-	      std::cout << "link type = " << tp << ", block element " << n
-			<< " linked to " << m <<std::endl;
-	      std::cout << "s = " << s << ", z(m) = " << cz << ", z(n) = "
-			<< this->z(n) << std::endl;
-	      std::cout << "target theta = " << std::endl;
-	      prettyprint::printMatrix(std::cout, F.theta());
-	      prettyprint::printVector(std::cout
-				       << "target lambda_rho actually = ",
-				       F.lambda_rho);
-	      std::cout << std::endl;
-	      prettyprint::printVector(std::cout
-				       << "star suggests it should be = ",
-				       E.lambda_rho);
-	      std::cout << std::endl;
-	    }
-	  //	  assert(same_standard_reps(*it,F)); // must lie over same
+	  assert(same_standard_reps(*it,F)); // must lie over same
 	  if (not same_sign(*it,F))
 	  {
 	    flip_edge(s,n,m);
