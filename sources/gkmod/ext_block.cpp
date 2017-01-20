@@ -162,7 +162,7 @@ unsigned int link_count(DescValue v)
   case three_complex_descent:
     return 1;
 
-    // semi cases do not record thei (trivial) cross action
+    // semi cases do not record their (trivial) cross action
   case two_semi_imaginary: case two_semi_real:
   case three_semi_imaginary: case three_real_semi:
   case three_imaginary_semi: case three_semi_real:
@@ -341,7 +341,9 @@ StandardRepr scaled_extended_dominant // result will have its |gamma()| dominant
  Rational factor, // |z.nu()| is scaled by |factor| first
  bool& flipped // records whether an extended flip was recorded
  )
-{ const RootDatum& rd=rc.rootDatum(); const KGB& kgb = rc.kgb();
+{
+  bool pre_flip = false;
+  const RootDatum& rd=rc.rootDatum(); const KGB& kgb = rc.kgb();
   const ext_gens orbits = rootdata::fold_orbits(rd,delta);
   assert(is_dominant_ratweight(rd,sr.gamma())); // dominant
   assert(((delta-1)*sr.gamma().numerator()).isZero()); // $\delta$-fixed
@@ -383,6 +385,8 @@ StandardRepr scaled_extended_dominant // result will have its |gamma()| dominant
 	    rd.act(s.w_kappa,tau);
 	    rd.shifted_dual_act(l,s.w_kappa,r_g_eval);
 	    rd.dual_act(t,s.w_kappa);
+	    if (s.length()==2)
+	      pre_flip = not pre_flip; // record flip for 2C+/2C- done
 	    x = kgb.cross(s.w_kappa,x);
 	    break; // indicate we advanced; restart search for |s|
 	  }
@@ -393,7 +397,7 @@ StandardRepr scaled_extended_dominant // result will have its |gamma()| dominant
   // since |gamma| may have changed, we only now build our |context|
   context ctxt(rc,delta, RatWeight(gamma_numer,result.gamma().denominator()));
   // now ensure that |E| gets matching |gamma| and |theta| (for flipped test)
-  param E(ctxt,kgb.involution(x),lr,tau,l,t);
+  param E(ctxt,kgb.involution(x),lr,tau,l,t,pre_flip);
 
   { // descend through complex singular simple descents
     const ext_gens integral_orbits = rootdata::fold_orbits(ctxt.id(),delta);
@@ -539,9 +543,7 @@ void z_align (const param& E, param& F, bool extra_flip)
   |t.dot(mu)| as third argument |t_mu|.
  */
 void z_align (const param& E, param& F, bool extra_flip, int t_mu)
-{ z_align(E,F,extra_flip);
-  F.flip(t_mu%2!=0);
-}
+{ z_align(E,F,extra_flip^(t_mu%2!=0)); }
 
 
 
@@ -1373,15 +1375,14 @@ DescValue star (const param& E,	const ext_gen& p,
 	assert(E.ctxt.delta()*rho_r_shift==rho_r_shift); // $ww\in W^\delta$
 	assert(rd.is_simple_root(alpha_simple)); // cannot fail for length 2
 
+	flipped = not flipped; // because of wedge correction for 2i/2r cases
+
 	int at = alpha_v.dot(E.tau); int bt = beta_v.dot(E.tau);
 	const WeightInvolution th_1 = i_tab.matrix(new_tw)-1;
 
 	if (matreduc::has_solution(th_1,alpha)) // then type 2i11
 	{ result = two_imaginary_single_single;
 	  const Weight sigma = matreduc::find_solution(th_1,alpha*at+beta*bt);
-
-	  flipped = not flipped; // extra non-October surprise flip for 2i11
-
 	  param F (E.ctxt, new_tw,
 		   E.lambda_rho + rho_r_shift,  E.tau + sigma,
 		   E.l+alpha_v*(tf_alpha/2)+beta_v*(tf_beta/2), E.t);
@@ -1407,8 +1408,6 @@ DescValue star (const param& E,	const ext_gen& p,
 	  const Weight new_tau0 = E.tau - alpha*((at+m)/2) - beta*((bt-m)/2);
           const Coweight new_l = E.l+alpha_v*(tf_alpha/2)+beta_v*(tf_beta/2);
 
-	  flipped = not flipped; // extra non-October surprise flip for 2i12f
-
 	  // first Cayley link |F0| will be the one that does not need |sigma|
 	  param F0(E.ctxt, new_tw,
 		   E.lambda_rho + rho_r_shift + alpha*m, new_tau0,
@@ -1430,8 +1429,6 @@ DescValue star (const param& E,	const ext_gen& p,
 	  // $(1-\delta)\tau\in(X^*)^\theta+2X^*$ so $<av-bv,\tau>$ is even
 	  assert((at-bt)%2==0);
 	  int m = static_cast<unsigned int>(at)%2; // safe modular reduction
-
-	  flipped = not flipped; // extra non-October surprise flip for 2i22
 
 	  param F0(E.ctxt, new_tw,
 		   E.lambda_rho + rho_r_shift + alpha*m,
@@ -1462,6 +1459,8 @@ DescValue star (const param& E,	const ext_gen& p,
 	const Weight rho_r_shift = root_sum(rd,S);
 	bool flipped = shift_flip(E.ctxt,S);
 	assert(E.ctxt.delta()*rho_r_shift==rho_r_shift); // as $ww\in W^\delta$
+
+	flipped = not flipped; // because of wedge correction for 2i/2r cases
 
 	const int a_level = level_a(E,rho_r_shift,n_alpha);
 
@@ -1495,8 +1494,6 @@ DescValue star (const param& E,	const ext_gen& p,
 	  E1.t -= alpha_v*((ta-m)/2) + beta_v*((tb+m)/2);
 	  assert(same_sign(E,E1)); // since only |t| changes
 	  assert(E1.t.dot(alpha)==m and E1.t.dot(beta)==-m);
-
-	  flipped = not flipped; // extra non-October surprise flip for 2r11
 
 	  param F0(E.ctxt, new_tw,
 		   new_lambda_rho,E.tau, E.l+alpha_v*m, E0.t);
@@ -1532,8 +1529,6 @@ DescValue star (const param& E,	const ext_gen& p,
 	  assert(same_sign(E,E1)); // since only |t| changes
 	  assert(E1.t.dot(alpha)==-mm and E1.t.dot(beta)==mm);
 
-	  flipped = not flipped; // extra non-October surprise flip for 2r21f
-
 	  // Cayley links
 	  param F0(E.ctxt, new_tw,
 		   new_lambda_rho, E.tau, E.l+alpha_v*m, E0.t);
@@ -1558,8 +1553,6 @@ DescValue star (const param& E,	const ext_gen& p,
 	  E1.lambda_rho += alpha+beta;
 	  E1.t = E0.t; // cross action, keeps adaptation of |t| to |F| below
 	  assert(not same_standard_reps(E0,E1));
-
-	  flipped = not flipped; // extra non-October surprise flip for 2r22
 
 	  param F(E.ctxt, new_tw, new_lambda_rho, E.tau, E.l, E0.t);
 
@@ -2342,6 +2335,36 @@ void show_mat(std::ostream& strm,const matrix::Matrix<Pol> M,unsigned inx)
       M(i,j).print(strm  << ' ',"q");
     //  strm << " " << std::endl;
     }
+}
+
+bool check_quadratic (const ext_block& b, weyl::Generator s, BlockElt x)
+{ BlockEltList l; l.reserve(4);
+
+  b.add_neighbours(l,s,x);
+
+  if (l.empty()) // compact or nonparity cases, there is nothing to check
+    return true;
+
+  // check symmetry of link signs
+  for (auto it=l.begin(); it!=l.end(); ++it)
+    if (b.epsilon(s,x,*it)!=b.epsilon(s,*it,x))
+      return false;
+
+  auto tp = b.descent_type(s,x);
+  if (l.size()==1) // cases without cycles; we're done
+    return true;
+  assert(l.size()==2);
+
+  if (has_quadruple(tp))
+  { b.add_neighbours(l,s,l[0]);
+    if (l[1]==l[2])
+      l[2]=l[3]; // make sure |l[2]| complets the square
+    assert (l[2]!=l[0] and l[2]!=l[1]);
+    return b.epsilon(s,x,l[0])*b.epsilon(s,x,l[1]) != // negative product here!
+      b.epsilon(s,l[0],l[2])*b.epsilon(s,l[1],l[2]);
+  }
+  else
+    return b.epsilon(s,x,l[0])*b.epsilon(s,x,l[1])==b.epsilon(s,l[0],l[1]);
 }
 
 bool check_braid

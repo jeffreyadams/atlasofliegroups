@@ -359,6 +359,9 @@ containers::sl_list<std::pair<StandardRepr,bool> > extended_finalise
   (const repr::Rep_context& rc,
    const StandardRepr& sr, const WeightInvolution& delta);
 
+// check quadratic relation for |s| at |x|
+bool check_quadratic (const ext_block& b, weyl::Generator s, BlockElt x);
+
 // check braid relation at |x|; also mark all involved elements in |cluster|
 bool check_braid
   (const ext_block& b, weyl::Generator s, weyl::Generator t, BlockElt x,
