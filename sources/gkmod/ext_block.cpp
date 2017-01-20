@@ -2236,7 +2236,7 @@ ext_block::ext_block // for an external twist
   if (not check(block,verbose)) // this sets the edge signs, not just a check!
     throw std::runtime_error("Failure detected in extended block construction");
   //  test braids;
-  bool OK=true; int count=0; int failed=0;
+  /* bool OK=true; int count=0; int failed=0;
   for (weyl::Generator t=0; t<rank(); ++t)
     for (weyl::Generator s=0; s<t+1; ++s)
     {
@@ -2266,7 +2266,7 @@ ext_block::ext_block // for an external twist
   // << " braid relations hold!" <<std::endl;
   if(not OK) std::cout << "braid failure!" << std::endl;
   //  assert(OK);
-
+  */
 } // |ext_block::ext_block|, from a |param_block|
 
 void ext_block::complete_construction(const BitMap& fixed_points)
