@@ -496,13 +496,13 @@ StandardRepr scaled_extended_dominant // result will have its |gamma()| dominant
 	{
 	  std::cout << "star flip in scaled" << std::endl;
 	  flipped=not flipped; // record funny flips
-	}
+	  } */
       if(has_october_surprise(type))
 	{
 	  // std::cout << "v=0 flipped descent" << std::endl;
 	  flipped=not flipped;
 	}
-      */
+
       // E.flip(has_october_surprise(type));
       assert(x>E.x()); // make sure we advance; we did simple complex descents
       x = E.x(); // adapt |x| for complex descent test
@@ -553,12 +553,13 @@ containers::sl_list<std::pair<StandardRepr,bool> > extended_finalise
       { bool flip = has_october_surprise(type); // to undo extra flip |star|
 	auto l_it=links.begin();
 	//if (l_it->x() == 20)
-	{
+	/*	{
 	  std::cout << "at old x = " << E.x() << ", new x = "
 		    << l_it->x() << ", old flip = " << E.is_flipped()
 		    << ", new flip = " << l_it->is_flipped()
 		    << ", October flip = " << flip << std::endl;
-	}
+		    }*/
+	// this was diagnostic for cases that flips were not passed
 
 	l_it->flip(flip);
 	to_do.push(*l_it);
@@ -1176,7 +1177,7 @@ param complex_cross(const ext_gen& p, param E) // by-value for |E|, modified
   //  std::cout << "countold = "<< countold << ", countnew = "
   //	    << countnew <<std::endl;
   // if((countold - countnew)%4!=0) std::cout << "complex_cross flip" << std::endl;
-  E.flip((countold-countnew)%4!=0); //
+  E.flip((countold-countnew)%4!=0);
   E.flip(p.w_kappa.size()==2); // a guess parallel to the new 2i,2r flips
   //   previous line makes trivial(GL(3,C)) nonunitary
   validate(E);
