@@ -487,14 +487,22 @@ StandardRepr scaled_extended_dominant // result will have its |gamma()| dominant
 	     ==rd.simpleRootNbr(orbit_simple[i])); // check that we located it
 
       containers::sl_list<param> links;
+      //     bool oldflipped = E.flipped;
       auto type = star(E,p,links); // compute neighbours in extended block
       assert(is_complex(type) or type==two_semi_real);
       E = *links.begin(); // replace |E| by descended parameter
+      /* This was a mistake: E is keeping track of flips separate from flipped
+     if(E.flipped!=oldflipped)
+	{
+	  std::cout << "star flip in scaled" << std::endl;
+	  flipped=not flipped; // record funny flips
+	}
       if(has_october_surprise(type))
 	{
 	  // std::cout << "v=0 flipped descent" << std::endl;
 	  flipped=not flipped;
 	}
+      */
       // E.flip(has_october_surprise(type));
       assert(x>E.x()); // make sure we advance; we did simple complex descents
       x = E.x(); // adapt |x| for complex descent test
@@ -544,13 +552,14 @@ containers::sl_list<std::pair<StandardRepr,bool> > extended_finalise
       if (not is_like_compact(type)) // some descent, push to front of |to_do|
       { bool flip = has_october_surprise(type); // to undo extra flip |star|
 	auto l_it=links.begin();
-	/* if (l_it->x() == 20)
+	//if (l_it->x() == 20)
 	{
-	  std::cout << "at x = " << l_it->x() << ", new.flip = "
-		    << l_it->is_flipped()
-		    << ", flip = " << flip << std::endl;
-		    }
-*/
+	  std::cout << "at old x = " << E.x() << ",new x = "
+		    << l_it->x() << ", old flip = " << E.is_flipped()
+		    << ", new flip = " << l_it->is_flipped()
+		    << ", October flip = " << flip << std::endl;
+	}
+
 	l_it->flip(flip);
 	to_do.push(*l_it);
 	if (has_double_image(type)) // then append a second node after |head|
@@ -2236,7 +2245,7 @@ ext_block::ext_block // for an external twist
   if (not check(block,verbose)) // this sets the edge signs, not just a check!
     throw std::runtime_error("Failure detected in extended block construction");
   //  test braids;
-  /* bool OK=true; int count=0; int failed=0;
+  /*bool OK=true; int count=0; int failed=0;
   for (weyl::Generator t=0; t<rank(); ++t)
     for (weyl::Generator s=0; s<t+1; ++s)
     {
@@ -2266,7 +2275,7 @@ ext_block::ext_block // for an external twist
   // << " braid relations hold!" <<std::endl;
   if(not OK) std::cout << "braid failure!" << std::endl;
   //  assert(OK);
-  */
+*/
 } // |ext_block::ext_block|, from a |param_block|
 
 void ext_block::complete_construction(const BitMap& fixed_points)
