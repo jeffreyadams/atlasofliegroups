@@ -544,6 +544,13 @@ containers::sl_list<std::pair<StandardRepr,bool> > extended_finalise
       if (not is_like_compact(type)) // some descent, push to front of |to_do|
       { bool flip = has_october_surprise(type); // to undo extra flip |star|
 	auto l_it=links.begin();
+	/* if (l_it->x() == 20)
+	{
+	  std::cout << "at x = " << l_it->x() << ", new.flip = "
+		    << l_it->is_flipped()
+		    << ", flip = " << flip << std::endl;
+		    }
+*/
 	l_it->flip(flip);
 	to_do.push(*l_it);
 	if (has_double_image(type)) // then append a second node after |head|
@@ -1347,7 +1354,7 @@ DescValue star (const param& E,	const ext_gen& p,
 		  E.lambda_rho + first + rho_r_shift,
 		  E0.tau+diff*tau_coef,
 		  E.l+alpha_v*(tf_alpha/2), E.t,
-		  flipped);
+		  flipped^E.flipped);
 
  	  E0.l = tf_alpha%4==0 ? F.l+alpha_v : F.l; // for cross
 	  assert(not same_standard_reps(E,E0));
@@ -1373,9 +1380,9 @@ DescValue star (const param& E,	const ext_gen& p,
 
 	  param F0(E.ctxt,new_tw, E.lambda_rho + first + rho_r_shift,
 		   E.tau - alpha*(tau_coef/2) - first,
-		   E.l + alpha_v*(tf_alpha/2), E.t, flipped);
+		   E.l + alpha_v*(tf_alpha/2), E.t, flipped^E.flipped);
 	  param F1(E.ctxt,new_tw, F0.lambda_rho + alpha,
-		   F0.tau, F0.l, E.t, flipped);
+		   F0.tau, F0.l, E.t, flipped^E.flipped);
 
 	  if(has_first and (((-F0.lambda_rho+rho_r_shift)
 			      .dot(rd.coroot(alpha_0)) -
@@ -1500,10 +1507,10 @@ DescValue star (const param& E,	const ext_gen& p,
 
 	  param F0(E.ctxt,new_tw,
 		   new_lambda_rho, E.tau + tau_correction,
-		   E.l, E0.t, flipped1);
+		   E.l, E0.t, flipped1^E.flipped);
 	  param F1(E.ctxt,new_tw,
 		   new_lambda_rho, F0.tau, E.l + alpha_v, E0.t,
-		   flipped1);
+		   flipped1^E.flipped);
 
 	  //	  F0.lambda_rho+=rho_r_shift;
 	  //	  F1.lambda_rho+=rho_r_shift;
@@ -1531,7 +1538,7 @@ DescValue star (const param& E,	const ext_gen& p,
 
 	  param F(E.ctxt,new_tw,
 		  new_lambda_rho, E.tau + tau_correction,
-		  E.l, E0.t, flipped1);
+		  E.l, E0.t, flipped1^E.flipped);
 	  // F.lambda_rho+=rho_r_shift;
 	  z_align(E0,F);
 	  //  z_align(F,E1); this incorrectly puts a sign on the cross link
@@ -1614,7 +1621,7 @@ DescValue star (const param& E,	const ext_gen& p,
 	  param F (E.ctxt, new_tw,
 		   E.lambda_rho + rho_r_shift,
 		   E.tau + sigma, E.l+alpha_v*(tf_alpha/2)+beta_v*(tf_beta/2),
-		   E.t, flipped);
+		   E.t, flipped^E.flipped);
 	  E0.l += alpha_v+beta_v;
 	  // F.lambda_rho-=rho_r_shift;
 	  z_align(E,F); // no 3rd arg, since |E.lambda_rho| unchanged
@@ -1645,11 +1652,11 @@ DescValue star (const param& E,	const ext_gen& p,
 	  param F0(E.ctxt, new_tw,
 		   E.lambda_rho + rho_r_shift
 		   + alpha*m, new_tau0, new_l,
-		   E.t, flipped);
+		   E.t, flipped^E.flipped);
 	  param F1(E.ctxt, new_tw,
 		   E.lambda_rho + rho_r_shift
 		   + alpha*mm, E.tau + sigma, new_l,
-		   E.t, flipped);
+		   E.t, flipped^E.flipped);
 	  // change E.tau to F0.tau? Marc says NO 1/13
 	  int t_alpha=E.t.dot(alpha);
 	  z_align(E,F0,m*t_alpha);
@@ -1679,12 +1686,12 @@ DescValue star (const param& E,	const ext_gen& p,
 		   + alpha*m,
 		   E.tau - alpha*((at+m)/2) - beta*((bt-m)/2),
 		   E.l+alpha_v*(tf_alpha/2)+beta_v*(tf_beta/2),
-		   E.t, flipped);
+		   E.t, flipped^E.flipped);
 	  param F1(E.ctxt, new_tw,
 		   E.lambda_rho + rho_r_shift
 		   + alpha*(1-m) + beta,
 		   E.tau - alpha*((at-m)/2) - beta*((bt+m)/2), F0.l,
-		   E.t, flipped);
+		   E.t, flipped^E.flipped);
 
 	  int ta = E.t.dot(alpha), tb=E.t.dot(beta);
 	  z_align(E,F0,ta*m);
@@ -1749,10 +1756,11 @@ DescValue star (const param& E,	const ext_gen& p,
 	  // these modified t's allow computing sign of link by comparing z's
 
 	  param F0(E.ctxt, new_tw,
-		   new_lambda_rho, E.tau, E.l+alpha_v*m, E0.t, flipped);
+		   new_lambda_rho, E.tau, E.l+alpha_v*m, E0.t,
+		   flipped^E.flipped);
 	  param F1(E.ctxt, new_tw,
 		   new_lambda_rho, E.tau,
-		   E.l+alpha_v*(1-m)+beta_v, E1.t, flipped);
+		   E.l+alpha_v*(1-m)+beta_v, E1.t, flipped^E.flipped);
 	  z_align(E0,F0,m*((b_level-a_level)/2));
 	  // F0.lambda_rho -= rho_r_shift;
 	  // F1.lambda_rho -= rho_r_shift;
@@ -1789,9 +1797,11 @@ DescValue star (const param& E,	const ext_gen& p,
 
 	  // Cayley links
 	  param F0(E.ctxt, new_tw,
-		   new_lambda_rho, E.tau, E.l+alpha_v*m, E0.t, flipped);
+		   new_lambda_rho, E.tau, E.l+alpha_v*m, E0.t,
+		   flipped^E.flipped);
 	  param F1(E.ctxt, new_tw,
-		   new_lambda_rho, E.tau, E.l+alpha_v*mm, E1.t, flipped);
+		   new_lambda_rho, E.tau, E.l+alpha_v*mm, E1.t,
+		   flipped^E.flipped);
 
 	  z_align(E0,F0,m *((b_level-a_level)/2));
 	  // F0.lambda_rho += rho_r_shift;
@@ -1827,7 +1837,7 @@ DescValue star (const param& E,	const ext_gen& p,
 	  assert(not same_standard_reps(E0,E1));
 
 	  param F(E.ctxt, new_tw, new_lambda_rho, E.tau,
-		  E.l, E0.t, flipped);
+		  E.l, E0.t, flipped^E.flipped);
 	  // F.lambda_rho += rho_r_shift;
 	  z_align(E0,F); // no 3rd arg, as |E.t.dot(alpha)==0| etc.
 	  // z_align(F,E1); // this would put a sign on a cross when
@@ -1882,7 +1892,7 @@ DescValue star (const param& E,	const ext_gen& p,
           const Coweight new_t =
 	    rd.coreflection(E.t,n_alpha) - alpha_v*dual_f;
 	  param F (E.ctxt, new_tw, new_lambda_rho,
-		   new_tau, new_l, new_t, flipped);
+		   new_tau, new_l, new_t, flipped^E.flipped);
 	  // "not" added 1/12/17 to fix SL(4,R) trivial extblock braid
 	  // "not" breaks unitarity for GL(2,C) trivial
 	  //	  F.lambda_rho-=rho_r_shift; //removed 1/13 per latest?
@@ -1921,7 +1931,7 @@ DescValue star (const param& E,	const ext_gen& p,
 	    rd.coreflection(E.t,n_alpha) + alpha_v*dual_f;
 
 	  param F (E.ctxt, new_tw, new_lambda_rho, new_tau, new_l,
-		   new_t,  flipped);
+		   new_t,  flipped^E.flipped);
 	  // "not" added 1/12/17 to fix extblock SL(4,R) trivial braid
 	  // "not" breaks unitarity for GL(2,C) trivial
 	  // F.lambda_rho+=rho_r_shift; //removed 1/13
@@ -1983,7 +1993,7 @@ DescValue star (const param& E,	const ext_gen& p,
 		E.lambda_rho + rho_r_shift,
 		E.tau - alpha*kappa_v.dot(E.tau),
 		E.l + kappa_v*((tf_alpha+tf_beta)/2), E.t,
-		not flipped); //January unsurprise: delta acts by -1
+		(not flipped)^E.flipped); //January unsurprise: delta acts by -1
 	// on some wedge?
 	//	F.lambda_rho-=rho_r_shift;
 	z_align(E,F); // |lambda_rho| unchanged at simple Cayley
@@ -2020,7 +2030,7 @@ DescValue star (const param& E,	const ext_gen& p,
 	assert(same_sign(E,E0)); // since only |t| changes
 
 	param F(E.ctxt, new_tw,	new_lambda_rho,
-		E.tau,E.l,E0.t, not flipped); //January unsurprise
+		E.tau,E.l,E0.t, (not flipped)^E.flipped); //January unsurprise
 
 	// F.lambda_rho+=rho_r_shift;
 	z_align(E0,F); // no 3rd arg since |E.t.dot(kappa)==0|
@@ -2058,7 +2068,7 @@ DescValue star (const param& E,	const ext_gen& p,
 		    dtf_alpha%2==0 ? new_lambda_rho : new_lambda_rho + kappa,
 		    E.tau - kappa*(kappa_v.dot(E.tau)/2),
 		    E.l + kappa_v*tf_alpha, E.t,
-		    not flipped); // January unsurprise
+		    (not flipped)^E.flipped); // January unsurprise
 
 	    assert(E.t.dot(kappa)==0);
 	    // since it is half of |t*(1+theta)*kappa=l*(delta-1)*kappa==0|
@@ -2075,7 +2085,7 @@ DescValue star (const param& E,	const ext_gen& p,
 	    param F(E.ctxt, new_tw,
 		    new_lambda_rho + kappa*dtf_alpha, E.tau,
 		    tf_alpha%2==0 ? E.l : E.l+kappa_v, E0.t,
-		    not flipped); //January unsurprise
+		    (not flipped)^E.flipped); //January unsurprise
 	    F.lambda_rho-=rho_r_shift;
 	    z_align(E0,F); // no 3rd arg since |E.t.dot(kappa)==0|
 	    F.lambda_rho+=rho_r_shift;
@@ -2099,7 +2109,19 @@ DescValue star (const param& E,	const ext_gen& p,
     for (unsigned i=0; i<c; ++i,++it) // only affect ascent/descent links
       it->flip(); // do the flip
   }
-
+  /*  This code was meant to ensure that star kept any flip in E. But
+      complex cross already did that automatically; so (maybe??)
+      better to do it in each case??
+if(E.is_flipped())
+    {
+      auto it=links.begin(); auto c=links.size();
+      std::cout << "well, E was already flipped. links.size()= " << c
+		<< ", link.is_flipped() = " << it->is_flipped() <<std::endl;
+      for (unsigned i=0; i<c; ++i,++it) it->flip();
+      std::cout << "after flipping, links.is_flipped() = "
+		<< links.begin()->is_flipped() << std::endl;
+		}
+*/
   return result;
 } // |star|
 
