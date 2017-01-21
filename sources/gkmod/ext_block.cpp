@@ -172,7 +172,7 @@ unsigned int link_count(DescValue v)
   case three_complex_descent:
     return 1;
 
-    // semi cases do not record thei (trivial) cross action
+    // semi cases do not record their (trivial) cross action
   case two_semi_imaginary: case two_semi_real:
   case three_semi_imaginary: case three_real_semi:
   case three_imaginary_semi: case three_semi_real:
@@ -491,12 +491,6 @@ StandardRepr scaled_extended_dominant // result will have its |gamma()| dominant
       auto type = star(E,p,links); // compute neighbours in extended block
       assert(is_complex(type) or type==two_semi_real);
       E = *links.begin(); // replace |E| by descended parameter
-      /* This was a mistake: E is keeping track of flips separate from flipped
-     if(E.flipped!=oldflipped)
-	{
-	  std::cout << "star flip in scaled" << std::endl;
-	  flipped=not flipped; // record funny flips
-	  } */
       if(has_october_surprise(type))
 	{
 	  // std::cout << "v=0 flipped descent" << std::endl;
@@ -552,15 +546,6 @@ containers::sl_list<std::pair<StandardRepr,bool> > extended_finalise
       if (not is_like_compact(type)) // some descent, push to front of |to_do|
       { bool flip = has_october_surprise(type); // to undo extra flip |star|
 	auto l_it=links.begin();
-	//if (l_it->x() == 20)
-	/*	{
-	  std::cout << "at old x = " << E.x() << ", new x = "
-		    << l_it->x() << ", old flip = " << E.is_flipped()
-		    << ", new flip = " << l_it->is_flipped()
-		    << ", October flip = " << flip << std::endl;
-		    }*/
-	// this was diagnostic for cases that flips were not passed
-
 	l_it->flip(flip);
 	to_do.push(*l_it);
 	if (has_double_image(type)) // then append a second node after |head|
@@ -606,13 +591,7 @@ void z_align (const param& E, param& F)
 { assert(E.t==F.t); // we require preparing |t| upstairs to get this
   // assert(E.t.dot(E.lambda_rho-F.lambda_rho) == 0);
   int d = E.l.dot((E.delta()-1)*E.tau) - F.l.dot((F.delta()-1)*F.tau);
-    // add correction so always works?
-    //    + 2*E.t.dot(E.lambda_rho) - 2*F.t.dot(F.lambda_rho);
   assert(d%2==0);
-  if(d%4!=0)
-    {
-      // std::cout << "z_align did a flip here at x = " << E.x() << std::endl;
-    }
   F.flip(E.is_flipped()!=(d%4!=0));
   // F.flipped ^= (d%4!=0); // XOR with "d not zero mod 4"
 }
@@ -1246,7 +1225,6 @@ bool Cayley_shift_flip
   //  .andnot(i_tab.real_roots(theta_upstairs)); // replace & with andnot
   //  RootNbrSet T = pos_to_neg(rd,to_simple);
     //  .andnot(i_tab.real_roots(theta_downstairs)); // replace & ...
-  //  std::cout << "size of S = " << S.size() << std::endl;
   unsigned countup=0; // will count 2-element |delta|-orbits upstairs
   for (auto it=S.begin(); it(); ++it)
     if (*it!=ec.delta_of(*it) and
@@ -1267,21 +1245,6 @@ bool Cayley_shift_flip
 	// and not rd.sumIsRoot(*it,ec.delta_of(*it)))
       ++countdown;
   assert(countup%2==0);// since |S| is $\delta$-stable
-  //if (not (countdown==0))
-  //  std::cout << "countup = " << countup
-  //	    << ", countdown = " << countdown
-  //	    << ", thetaup = " << theta_upstairs
-  //	    << ", thetadown = " << theta_downstairs
-  //				    << std::endl;
-  // if (not (countdown==0)) prettyprint::printVector(std::cout
-  // << "gamma_denom = "
-  //						   << gamma_denom
-  //						   << ", gamma_numer = "
-  //						   ,gamma_numer);
-  // if (not (countdown==0)) std::cout << std::endl;
-    //std::cout << "gamma_numer = " << gamma_numer
-    //				    <<std::endl;
-  // assert(countdown==0); // since that's what we see
   return (countup-countdown)%4!=0;
 	   // return false; // try turning this off; see what happens.
 } // Cayley_shift_flip
@@ -1425,10 +1388,6 @@ DescValue star (const param& E,	const ext_gen& p,
 	  F1.lambda_rho+=first+rho_r_shift;
 	  links.push_back(std::move(F0)); // Cayley link
 	  links.push_back(std::move(F1)); // Cayley link
-	  // if(F0.flipped) std::cout << "F0 REALLY ended up flipped."
-	  // <<std::endl;
-	  // if(F1.flipped) std::cout << "F1 REALLY ended up flipped."
-	  // <<std::endl;
 	} // end of type 2 case
       } // end of length 1 imaginary case
 
@@ -1446,12 +1405,12 @@ DescValue star (const param& E,	const ext_gen& p,
 
 	Weight first; // maybe a root with |(1+delta)*first==alpha|
 	RootNbr alpha_0 = 0; // maybe one of |alpha==alpha_0+alpha_1|
-	bool has_first=false;
+	// bool has_first=false;
 	  if (rd.is_simple_root(alpha_simple)) //? 0 // unused
 	    first = Weight(rd.rank(),0); //not used
 	  else
 	    {
-	      has_first=true;
+	      //    has_first=true;
 	      weyl::Generator s = // first switched root index
 		rd.find_descent(alpha_simple);
 	      alpha_0 = rd.permuted_root(rd.simpleRootNbr(s),ww);
@@ -1555,6 +1514,14 @@ DescValue star (const param& E,	const ext_gen& p,
 	  //  z_align(F,E1); this incorrectly puts a sign on the cross link
 	  //  z_align(E0,E1); // can't because t's don't match FIX?
 	  // F.lambda_rho-=rho_r_shift;
+	  if(shift_correct)
+	    {
+	      // test whether alpha_0 is parity for E0; flip if not
+	      // if(( (E0.lambda_rho + rho_r_shift).dot(rd.coroot(alpha_0))-
+	      //	  rd.colevel(alpha_0))%2!=0)
+	      // F.flipped = not F.flipped; // done by tau correction already?
+	      E1.flipped = not E1.flipped;
+	    }
 	  links.push_back(std::move(F )); // Cayley link
 	  links.push_back(std::move(E1)); // cross link
 	} // end of 1r2 case
@@ -1563,28 +1530,6 @@ DescValue star (const param& E,	const ext_gen& p,
       { result = rd.is_posroot(theta_alpha)
 	  ? one_complex_ascent : one_complex_descent ;
 	links.push_back(complex_cross(p,E));
-	/*
-	TwistedInvolution new_tw = E.tw;
-	tW.twistedConjugate(subs.reflection(p.s0),new_tw);
-	RootNbr alpha_simple = n_alpha;
-	const WeylWord ww = fixed_conjugate_simple(E.ctxt,alpha_simple);
-	//	assert(rd.is_simple_root(alpha_simple));
-	// Haven't thought whether there's an issue
-	const auto theta_q = i_tab.nr(new_tw);
-	//	if (rd.is_posroot(theta_alpha)) assert (theta_q > theta);
-	// Weight rho_r_shift = rd.is_posroot(theta_alpha) ?
-	//   repr::Cayley_shift(ic,theta_q,ww) :
-	//   repr::Cayley_shift(ic,theta,ww);
-
-	const bool flipped = rd.is_posroot(theta_alpha) ?
-	  Cayley_shift_flip(E.ctxt,theta_q,theta,ww) :
-	  Cayley_shift_flip(E.ctxt,theta,theta_q,ww);
-	// if(flipped) std::cout << "1C flip" << std::endl;
-	auto E1=complex_cross(p,E0);
-	E1.flipped = flipped;
-	//  E1.lambda_rho -= rho_r_shift; already done in complex_cross
-	links.push_back(E1);
-	*/
       }
     }
     break;
@@ -1977,10 +1922,6 @@ DescValue star (const param& E,	const ext_gen& p,
       const Coweight& kappa_v = integr_datum.coroot(n_kappa);
 
       const TwistedInvolution new_tw = tW.prod(s_kappa,E.tw); // when applicable
-      //      bool monoflip=false;
-      //      int e = i_tab.length(new_tw) - i_tab.length(E.tw);
-      //     unsigned int d = (e>0) ? e : -e;
-      //      if (d%2==0) monoflip = not monoflip;
 
       if (theta_alpha==n_alpha) // length 3 imaginary case
       { // first find out if the simply-integral root $\alpha$ is compact
@@ -2123,19 +2064,6 @@ DescValue star (const param& E,	const ext_gen& p,
     for (unsigned i=0; i<c; ++i,++it) // only affect ascent/descent links
       it->flip(); // do the flip
   }
-  /*  This code was meant to ensure that star kept any flip in E. But
-      complex cross already did that automatically; so (maybe??)
-      better to do it in each case??
-if(E.is_flipped())
-    {
-      auto it=links.begin(); auto c=links.size();
-      std::cout << "well, E was already flipped. links.size()= " << c
-		<< ", link.is_flipped() = " << it->is_flipped() <<std::endl;
-      for (unsigned i=0; i<c; ++i,++it) it->flip();
-      std::cout << "after flipping, links.is_flipped() = "
-		<< links.begin()->is_flipped() << std::endl;
-		}
-*/
   return result;
 } // |star|
 
