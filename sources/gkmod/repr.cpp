@@ -536,23 +536,6 @@ StandardRepr Rep_context::inv_Cayley(weyl::Generator s, StandardRepr z) const
 		  infin_char);
 }
 
-/*
-  Compute roots contributing to a shift in the |lambda| component of parameter
-  for a link for integrally-simple root $\alpha$, from involutions |theta| to
-  |theta_p|, where |to_simple| left-conjugates $\alpha$ to some simple root.
-  This is the set of positive roots that map to negative by |to_simple|, and
-  whose real status is different at |theta| and |theta_p|.
-*/
-RootNbrSet to_simple_shift
-  (const InnerClass& G,
-   InvolutionNbr theta, InvolutionNbr theta_p,
-   const WeylWord& to_simple)
-{ const RootDatum& rd=G.rootDatum();
-  const InvolutionTable& i_tab = G.involution_table();
-  return pos_to_neg(rd,to_simple) &
-    (i_tab.real_roots(theta) ^i_tab.real_roots(theta_p));
-}
-
 
 /*
   Compute shift in |lambda| component of parameter for Cayley transform by a

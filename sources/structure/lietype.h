@@ -153,11 +153,12 @@ struct ext_gen // generator of extended Weyl group
   ext_gen (bool b) = delete; // defuse implicit conversion
   ext_gen (bool commute, weyl::Generator s, weyl::Generator t)
   : type(commute ? two : three), s0(s), s1(t)
-  { w_kappa.push_back(s);  w_kappa.push_back(t);
+  { w_kappa.reserve(commute ? 2 : 3);
+    w_kappa.push_back(s);  w_kappa.push_back(t);
     if (not commute) w_kappa.push_back(s);
   }
 
-  int length() const { return type+1; }
+  int length() const { return type+1; } // also equals |w_kappa.size()|
 };
 
 
