@@ -1359,6 +1359,7 @@ DescValue star (const param& E,	const ext_gen& p,
 
 	  z_align(E0,F,flipped);
 	  z_align(F,E1,flipped);
+	  assert(E1.flipped==E0.flipped); // as |z_align| ignores |lambda_rho|
 	  links.push_back(std::move(F )); // Cayley link
 	  links.push_back(std::move(E1)); // cross link
 	} // end of 1r2 case
