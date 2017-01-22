@@ -2391,9 +2391,9 @@ bool check_quadratic (const ext_block& b, weyl::Generator s, BlockElt x)
 
   if (has_quadruple(tp))
   { b.add_neighbours(l,s,l[0]);
-    if (l[1]==l[2])
+    if (x==l[2])
       l[2]=l[3]; // make sure |l[2]| complets the square
-    assert (l[2]!=l[0] and l[2]!=l[1]);
+    assert (l[2]!=x);
     return b.epsilon(s,x,l[0])*b.epsilon(s,x,l[1]) != // negative product here!
       b.epsilon(s,l[0],l[2])*b.epsilon(s,l[1],l[2]);
   }
