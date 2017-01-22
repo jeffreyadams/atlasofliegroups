@@ -1193,7 +1193,7 @@ DescValue star (const param& E,	const ext_gen& p,
 
 	RootNbr first; // maybe a root with |(1-delta)*rd.root(first)==alpha|
 	if (rd.is_simple_root(alpha_simple))
-	  first = rd.numPosRoots(); // effectively not used in this case
+	  first = -1; // invalid value, not used in this case
 	else
 	{
 	  --tau_coef; // the parity change and decrease are both relevant
@@ -1203,6 +1203,8 @@ DescValue star (const param& E,	const ext_gen& p,
 	    rd.permuted_root(rd.simpleRootNbr(s),ww);
 	  assert(alpha == (E.ctxt.delta()+1)*rd.root(first));
 	}
+	auto new_lambda_rho = rd.is_simple_root(alpha_simple) ? E.lambda_rho
+	  : E.lambda_rho + rd.root(first);
 
 	// now separate cases; based on type 1 or 2 first
 	if (matreduc::has_solution(th_1,alpha))
@@ -1213,7 +1215,7 @@ DescValue star (const param& E,	const ext_gen& p,
 	      matreduc::find_solution(th_1,alpha); // solutions are equivalent
 
 	  param F(E.ctxt,new_tw,
-		  E.lambda_rho + rd.root(first) + rho_r_shift,
+		  new_lambda_rho + rho_r_shift,
 		  E0.tau+diff*tau_coef,
 		  E.l+alpha_v*(tf_alpha/2), E.t);
 
@@ -1241,9 +1243,11 @@ DescValue star (const param& E,	const ext_gen& p,
 	  }
 	  result = one_imaginary_pair_fixed;  // what remains is case 1i2f
 
+	  auto new_tau = rd.is_simple_root(alpha_simple) ? E.tau
+	    : E.tau - rd.root(first);
+
 	  param F0(E.ctxt,new_tw,
-		   E.lambda_rho + rd.root(first) + rho_r_shift,
-		   E.tau - alpha*(tau_coef/2) - rd.root(first),
+		   new_lambda_rho + rho_r_shift, new_tau - alpha*(tau_coef/2),
 		   E.l + alpha_v*(tf_alpha/2), E.t);
 	  param F1(E.ctxt,new_tw,
 		   F0.lambda_rho + alpha, F0.tau, F0.l, E.t);
@@ -1277,7 +1281,7 @@ DescValue star (const param& E,	const ext_gen& p,
 	assert(E.ctxt.delta()*rho_r_shift==rho_r_shift); // as $ww\in W^\delta$
 
 	RootNbr first = // maybe one of |alpha==first+second|
-	  rd.is_simple_root(alpha_simple) ? rd.numPosRoots() // unused
+	  rd.is_simple_root(alpha_simple) ? -1 // unused
 	  : rd.permuted_root(rd.simpleRootNbr(rd.find_descent(alpha_simple)),
 			     ww);
 
@@ -1294,11 +1298,9 @@ DescValue star (const param& E,	const ext_gen& p,
 	const WeightInvolution& th_1 = i_tab.matrix(E.tw)-1; // upstairs
 	bool type1 = matreduc::has_solution(th_1,alpha);
 
-	Weight tau_correction; // adapt to integrality based change of lambda
-	if (rd.is_simple_root(alpha_simple))
-	  tau_correction = Weight(rd.rank(),0); // no correction needed here
-	else
-	{
+	Weight new_tau=E.tau; // maybe modified below
+	if (not rd.is_simple_root(alpha_simple))
+	{ // adapt to integrality based change of lambda
 	  assert(alpha == (E.ctxt.delta()+1)*rd.root(first));
 	  if (shift_correct)
 	  {
@@ -1307,12 +1309,12 @@ DescValue star (const param& E,	const ext_gen& p,
 	    // now we must add $d$ to $\tau$ with $(1-\theta')d=(1-\delta)*a0$
 	    // where |a0=rd.root(first)|
 	    // since $\theta'*a0 = a1 = \delta*a_0$, we can take $d=a0$
-	    tau_correction = rd.root(first);
+	    new_tau += rd.root(first);
+	    assert((i_tab.matrix(new_tw)-1)*rd.root(first) ==
+		   (E.ctxt.delta()      -1)*rd.root(first)); // (-1's redundant)
 
 	    flipped ^= // do extra flip when |first| is nonparity at $\nu=0$
 	      (rho(rd)+(E.lambda_rho-rho_r_shift)).dot(rd.coroot(first))%2!=0;
-	    assert((i_tab.matrix(new_tw)-1)*tau_correction
-		   ==(E.ctxt.delta()-1)*rd.root(first));
 	  }
 	}
 
@@ -1331,10 +1333,8 @@ DescValue star (const param& E,	const ext_gen& p,
 	  E0.t -= alpha_v*(t_alpha/2);
 	  assert(same_sign(E,E0)); // since only |t| changes
 
-	  param F0(E.ctxt,new_tw,
-		   new_lambda_rho, E.tau + tau_correction, E.l, E0.t);
-	  param F1(E.ctxt,new_tw,
-		   new_lambda_rho, F0.tau, E.l + alpha_v, E0.t);
+	  param F0(E.ctxt,new_tw, new_lambda_rho, new_tau, E.l          , E0.t);
+	  param F1(E.ctxt,new_tw, new_lambda_rho, new_tau, E.l + alpha_v, E0.t);
 
 	  z_align(E0,F0,flipped);
 	  z_align(E0,F1,flipped);
@@ -1348,7 +1348,6 @@ DescValue star (const param& E,	const ext_gen& p,
 	  Coweight diff = // called $s$ in table 2 of [Ptr]
 	    matreduc::find_solution(i_tab.matrix(new_tw).transposed()+1,
 				    alpha_v);
-
 	  E0.t -= diff*t_alpha;
 	  assert(same_sign(E,E0)); // since only |t| changes
 
@@ -1356,8 +1355,7 @@ DescValue star (const param& E,	const ext_gen& p,
 	  E1.lambda_rho += alpha;
 	  assert(not same_standard_reps(E0,E1));
 
-	  param F(E.ctxt,new_tw,
-		  new_lambda_rho, E.tau + tau_correction, E.l, E0.t);
+	  param F(E.ctxt,new_tw, new_lambda_rho, new_tau, E.l, E0.t);
 
 	  z_align(E0,F,flipped);
 	  z_align(F,E1,flipped);
