@@ -131,3 +131,6 @@ set test8()= bool:
 set test9()=bool:
   prints("Testing trivial of F4"); is_unitary(trivial(split_form(F4)))
 }
+
+set test_all_real_induced_one_dimensional(RealForm G)=test(all_real_induced_one_dimensional(G))
+set print_test_all_real_induced_one_dimensional(RealForm G)=print_test(all_real_induced_one_dimensional(G))
