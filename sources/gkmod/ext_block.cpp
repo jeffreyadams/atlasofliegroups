@@ -230,7 +230,7 @@ void validate(const param& E)
   const auto& delta = E.ctxt.delta();
   assert(delta*theta==theta*delta);
   assert((delta-1)*E.lambda_rho==(1-theta)*E.tau);
-  if (not ((delta-1).right_prod(E.l)==(theta+1).right_prod(E.t)))
+  /* if (not ((delta-1).right_prod(E.l)==(theta+1).right_prod(E.t)))
     {
       auto ec = E.ctxt;
       Weight gamma_numer(ec.gamma().numerator().begin(),
@@ -240,8 +240,8 @@ void validate(const param& E)
 			       << gamma_denom << ", gamma_numer = "
 			       ,gamma_numer);
       std::cout << std::endl;
-    }
-  //  assert((delta-1).right_prod(E.l)==(theta+1).right_prod(E.t));
+      } */
+  assert((delta-1).right_prod(E.l)==(theta+1).right_prod(E.t));
   if (not ((E.ctxt.g_rho_check()-E.l)*(1-theta)).numerator().isZero())
     {
       auto ec = E.ctxt;
@@ -257,7 +257,7 @@ void validate(const param& E)
     }
   // assert(((E.ctxt.g_rho_check()-E.l)*(1-theta)).numerator().isZero());
 
-  if (not  ((theta+1)*(E.ctxt.gamma()-E.lambda_rho-rho(rd)))
+  /* if (not  ((theta+1)*(E.ctxt.gamma()-E.lambda_rho-rho(rd)))
       .numerator().isZero())
     {
       auto ec = E.ctxt;
@@ -270,9 +270,9 @@ void validate(const param& E)
 			       << gamma_denom << ", gamma_numer = "
 			       ,gamma_numer);
       std::cout << std::endl;
-    }
-  // assert(((theta+1)*(E.ctxt.gamma()-E.lambda_rho-rho(rd)))
-  //	 .numerator().isZero());
+      } */
+  assert(((theta+1)*(E.ctxt.gamma()-E.lambda_rho-rho(rd)))
+	 .numerator().isZero());
 
   ndebug_use(delta); ndebug_use(theta); ndebug_use(rd);
 }
@@ -1358,7 +1358,8 @@ DescValue star (const param& E,	const ext_gen& p,
 	  param F1(E.ctxt,new_tw, F0.lambda_rho + alpha,
 		   F0.tau, F0.l, E.t, flipped);
 
-	  if(has_first and (((-F0.lambda_rho+rho_r_shift)
+	  if(has_first and (((-F0.lambda_rho)
+	  // if(has_first and (((-F0.lambda_rho + rho_r_shift) // no reason
 			      .dot(rd.coroot(alpha_0)) -
 			     rd.colevel(alpha_0))%2 != 0 ))
 	    F0.flipped = not F0.flipped; //test alpha0 nonparity at nu=0
@@ -1370,7 +1371,8 @@ DescValue star (const param& E,	const ext_gen& p,
 	  //			    << ", alpha = " << n_alpha << std::endl;
 	  // if(F0.flipped) std::cout << "F0 ended up flipped." <<std::endl;
 
-	  if(has_first and (((-F1.lambda_rho+rho_r_shift)
+	  if(has_first and (((-F1.lambda_rho)
+	  // if(has_first and (((-F1.lambda_rho) + rho_r_shift) // no reason
 				.dot(rd.coroot(alpha_0)) -
 			     rd.colevel(alpha_0))%2 != 0 ))
 	    F1.flipped = not F1.flipped; //test alpha0 nonparity at nu=0
@@ -1380,12 +1382,12 @@ DescValue star (const param& E,	const ext_gen& p,
 	  //		    rd.colevel(alpha_0) << std::endl;
 	  // if(F1.flipped) std::cout << "F1 ended up flipped." <<std::endl;
 
-	  F0.lambda_rho-=first+rho_r_shift;
-	  F1.lambda_rho-=first+rho_r_shift;
+	  // F0.lambda_rho-=first+rho_r_shift; // took out similar elsewhere?
+	  // F1.lambda_rho-=first+rho_r_shift; // took out similar elsewhere?
 	  z_align(E,F0);
 	  z_align(E,F1);
-	  F0.lambda_rho+=first+rho_r_shift;
-	  F1.lambda_rho+=first+rho_r_shift;
+	  // F0.lambda_rho+=first+rho_r_shift; // see above
+	  // F1.lambda_rho+=first+rho_r_shift; // see above
 	  links.push_back(std::move(F0)); // Cayley link
 	  links.push_back(std::move(F1)); // Cayley link
 	} // end of type 2 case
@@ -1426,7 +1428,8 @@ DescValue star (const param& E,	const ext_gen& p,
 	  i_tab.root_involution(theta,alpha_0)==rd.rootMinus(alpha_0);
 	bool flipped_correct = // shift_correct, and alpha_0 nonparity
 			       // at nu=0
-	  shift_correct and ( ((- E.lambda_rho + rho_r_shift)
+	  shift_correct and ( ((- E.lambda_rho)
+	  // shift_correct and ( ((- E.lambda_rho + rho_r_shift) // no reason
 			       .dot(rd.coroot(alpha_0))
 			       - rd.colevel(alpha_0))%2!=0);
 			      bool flipped1 = flipped_correct ?
@@ -1949,6 +1952,7 @@ DescValue star (const param& E,	const ext_gen& p,
 		E.tau - alpha*kappa_v.dot(E.tau),
 		E.l + kappa_v*((tf_alpha+tf_beta)/2), E.t,
 		not flipped); //January unsurprise: delta acts by -1
+	// flipped); // removing not made 1 0 0 0 -1 nonunitary
 	// on some wedge?
 	//	F.lambda_rho-=rho_r_shift;
 	z_align(E,F); // |lambda_rho| unchanged at simple Cayley
@@ -1964,7 +1968,7 @@ DescValue star (const param& E,	const ext_gen& p,
 
 	const Weight rho_r_shift = repr::Cayley_shift(ic,theta,theta_p,ww);
 	const bool flipped = Cayley_shift_flip(E.ctxt,theta,theta_p,ww);
-	// if(flipped) std::cout << "3Cr flip" << std::endl;
+	// if(flipped) std::cout << "3r flip" << std::endl;
 	assert(E.ctxt.delta()*rho_r_shift==rho_r_shift); // as $ww\in W^\delta$
 
 	const int a_level = level_a(E,rho_r_shift,n_alpha);
@@ -1978,17 +1982,45 @@ DescValue star (const param& E,	const ext_gen& p,
 	const int b_level = level_a(E,rho_r_shift,n_beta);
 	assert(b_level%2==0); // since |a_level| and |b_level| have same parity
 
-	const Weight new_lambda_rho = // make level for |kappa| zero
-	  E.lambda_rho-rho_r_shift + kappa*((a_level+b_level)/2);
-
+	// const Weight new_lambda_rho = // make level for |kappa| zero
+	//	  E.lambda_rho-rho_r_shift + kappa*((a_level+b_level)/2);
+	const Weight new_lambda_rho = E.lambda_rho - rho_r_shift
+	  + alpha*(a_level + b_level); //
 	E0.t -= alpha_v*kappa.dot(E.t); // makes |E.t.dot(kappa)==0|
-	assert(same_sign(E,E0)); // since only |t| changes
-
-	param F(E.ctxt, new_tw,	new_lambda_rho,
-		E.tau,E.l,E0.t, not flipped); //January unsurprise
-
+	E0.lambda_rho -= alpha*(a_level + b_level); //even shift
+	assert(same_sign(E,E0)); // since |t| change has no effect, + even
+	// shift on lambda by real root has no effect
+	E0.tau -= (kappa-alpha-alpha)*((a_level+b_level)/2);
+	/*	std::cout << "constructing 3r link from " << E.x() << std::endl;
+	prettyprint::printVector(std::cout << "old lambda_rho = ",
+				       E.lambda_rho);
+	std::cout << std::endl;
+	prettyprint::printVector(std::cout << "old tau = ",
+				       E.tau);
+	std::cout << std::endl;
+	prettyprint::printVector(std::cout << "new lambda_rho = ",
+				       E0.lambda_rho);
+	std::cout << std::endl;
+	prettyprint::printVector(std::cout << "new tau = ",
+				       E0.tau);
+	std::cout << std::endl;
+  	std::cout << std::endl;
+	prettyprint::printVector(std::cout << "old and new l = ",
+				       E.l);
+	std::cout << std::endl;
+	prettyprint::printVector(std::cout << "old t = ",
+				       E.t);
+	std::cout << std::endl;
+	prettyprint::printVector(std::cout << "new t = ",
+				       E0.t);
+	std::cout << std::endl;
+	std::cout << std::endl; */
+	validate(E0);
+	param F(E.ctxt, new_tw,	E0.lambda_rho,
+		E0.tau, E.l, E0.t, not flipped^E.flipped); //January unsurprise
+		// E.tau, E.l, E0.t, flipped); //remove not -> bad 1 0 0 0 -1
 	// F.lambda_rho+=rho_r_shift;
-	z_align(E0,F); // no 3rd arg since |E.t.dot(kappa)==0|
+	// z_align(E0,F); // no 3rd arg since |E.t.dot(kappa)==0|
 	// F.lambda_rho-=rho_r_shift;
 	links.push_back(std::move(F)); // Cayley link
       }
@@ -2005,7 +2037,7 @@ DescValue star (const param& E,	const ext_gen& p,
 
 	  const auto theta_upstairs = ascent ? i_tab.nr(new_tw) : theta;
 	  const auto theta_downstairs = ascent ? theta : i_tab.nr(new_tw);
-	  Weight rho_r_shift = 
+	  Weight rho_r_shift =
 	    repr::Cayley_shift(ic,theta_upstairs,theta_downstairs,ww);
 	  rho_r_shift = ascent ? rho_r_shift : -rho_r_shift;
 	  const bool flipped =
@@ -2019,16 +2051,47 @@ DescValue star (const param& E,	const ext_gen& p,
 	  Weight new_lambda_rho = E.lambda_rho + rho_r_shift; // for now
 
 	  if (ascent) // 3Ci
-	  { param F(E.ctxt,new_tw,
+	    {
+	      const Coweight new_l = E.l + kappa_v*tf_alpha;
+	      Weight new_tau = E.tau - kappa*(kappa_v.dot(E.tau)/2);
+	      new_lambda_rho = dtf_alpha%2==0 ? new_lambda_rho :
+		new_lambda_rho + kappa - alpha - alpha; // add beta-alpha
+	      new_tau = dtf_alpha%2==0 ? new_tau : new_tau + alpha
+		+ alpha - kappa;
+
+
+	      /*	    param F(E.ctxt,new_tw,
 		    dtf_alpha%2==0 ? new_lambda_rho : new_lambda_rho + kappa,
 		    E.tau - kappa*(kappa_v.dot(E.tau)/2),
 		    E.l + kappa_v*tf_alpha, E.t,
-		    not flipped); // January unsurprise
-
+       		    not flipped); // January unsurprise
+		    // flipped); // trouble in 1 0 0 0 -1 */
+	      E0.l = new_l;
+	      E0.tau = new_tau;
+	      if (dtf_alpha%2!=0) E0.lambda_rho += kappa - alpha - alpha;
+	      /*  std::cout << "constructing 3Ci link from " << E.x() 
+		  << std::endl;
+	      prettyprint::printVector(std::cout << "old lambda_rho = ",
+				       E.lambda_rho);
+	      std::cout << std::endl;
+	      prettyprint::printVector(std::cout << "old tau = ",
+				       E.tau);
+	      std::cout << std::endl;
+	      prettyprint::printVector(std::cout << "new lambda_rho = ",
+				       E0.lambda_rho);
+	      std::cout << std::endl;
+	      prettyprint::printVector(std::cout << "new tau = ",
+				       E0.tau);
+	      std::cout << std::endl;
+	      std::cout << std::endl; */
+	      validate(E0);
+	      bool flipped1 = flipped^same_sign(E,E0);
+	      param F(E.ctxt, new_tw, new_lambda_rho, new_tau, new_l, E.t,
+		      not flipped1);
 	    assert(E.t.dot(kappa)==0);
 	    // since it is half of |t*(1+theta)*kappa=l*(delta-1)*kappa==0|
 	    //	    F.lambda_rho-=rho_r_shift;
-	    z_align(E,F); // may ignore possible shift by |kappa|
+	    // z_align(E,F); // may ignore possible shift by |kappa|
 	    //	    F.lambda_rho+=rho_r_shift;
 	    links.push_back(std::move(F)); // Cayley link
 	  }
@@ -2041,6 +2104,7 @@ DescValue star (const param& E,	const ext_gen& p,
 		    new_lambda_rho + kappa*dtf_alpha, E.tau,
 		    tf_alpha%2==0 ? E.l : E.l+kappa_v, E0.t,
 		    not flipped); //January unsurprise
+		    // flipped); //try the other??
 	    F.lambda_rho-=rho_r_shift;
 	    z_align(E0,F); // no 3rd arg since |E.t.dot(kappa)==0|
 	    F.lambda_rho+=rho_r_shift;
