@@ -1315,6 +1315,8 @@ DescValue star (const param& E,	const ext_gen& p,
 
 	    flipped ^= // do extra flip when |first| is nonparity at $\nu=0$
 	      (rho(rd)+(E.lambda_rho-rho_r_shift)).dot(rd.coroot(first))%2!=0;
+	    // note adding |alpha| to |lambda_rho| would make that opposite
+	    // because |rd.coroot(first).dot(alpha)==1|
 	  }
 	}
 
@@ -1358,8 +1360,8 @@ DescValue star (const param& E,	const ext_gen& p,
 	  param F(E.ctxt,new_tw, new_lambda_rho, new_tau, E.l, E0.t);
 
 	  z_align(E0,F,flipped);
-	  z_align(F,E1,flipped);
-	  assert(E1.flipped==E0.flipped); // as |z_align| ignores |lambda_rho|
+	  // if |shift_correct|, then |flipped| would be opposite for |E1|
+	  z_align(F,E1,flipped!=shift_correct); // as explained above
 	  links.push_back(std::move(F )); // Cayley link
 	  links.push_back(std::move(E1)); // cross link
 	} // end of 1r2 case
