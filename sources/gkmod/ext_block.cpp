@@ -1191,6 +1191,7 @@ DescValue star (const param& E,	const ext_gen& p,
 	assert(E.ctxt.delta()*rho_r_shift==rho_r_shift); // $ww\in W^\delta$
 	assert(E.t.dot(alpha)==0); // follows from $\delta*\alpha=\alpha$
 
+	auto new_lambda_rho = E.lambda_rho;
 	RootNbr first; // maybe a root with |(1-delta)*rd.root(first)==alpha|
 	if (rd.is_simple_root(alpha_simple))
 	  first = -1; // invalid value, not used in this case
@@ -1202,9 +1203,8 @@ DescValue star (const param& E,	const ext_gen& p,
 	  first = // corresponding root summand, conjugated back
 	    rd.permuted_root(rd.simpleRootNbr(s),ww);
 	  assert(alpha == (E.ctxt.delta()+1)*rd.root(first));
+	  new_lambda_rho += rd.root(first);
 	}
-	auto new_lambda_rho = rd.is_simple_root(alpha_simple) ? E.lambda_rho
-	  : E.lambda_rho + rd.root(first);
 
 	// now separate cases; based on type 1 or 2 first
 	if (matreduc::has_solution(th_1,alpha))
@@ -1768,7 +1768,6 @@ DescValue star (const param& E,	const ext_gen& p,
       }
       else // length 3 complex case (one of 3Ci or 3Cr or 3C+/-)
       { const bool ascent = rd.is_posroot(theta_alpha);
-	const RootNbr n_beta = subs.parent_nr_simple(p.s1);
 	if (theta_alpha == (ascent ? n_beta : rd.rootMinus(n_beta)))
 	{ // reflection by |alpha+beta| twisted commutes with |E.tw|: 3Ci or 3Cr
 	  result = ascent ? three_semi_imaginary : three_semi_real;
@@ -1789,12 +1788,13 @@ DescValue star (const param& E,	const ext_gen& p,
 	  int dtf_alpha = (E.ctxt.gamma() - E.lambda_rho).dot(alpha_v)
 	    - rd.colevel(n_alpha);
 	  Weight new_lambda_rho = E.lambda_rho + rho_r_shift; // for now
+	  if (dtf_alpha%2!=0)
+	    new_lambda_rho += kappa;
 
 	  flipped = not flipped; // January unsurprise for 3Ci and 3Cr
 	  if (ascent) // 3Ci
 	  { param F(E.ctxt,new_tw,
-		    dtf_alpha%2==0 ? new_lambda_rho : new_lambda_rho + kappa,
-		    E.tau - kappa*(kappa_v.dot(E.tau)/2),
+		    new_lambda_rho, E.tau - kappa*(kappa_v.dot(E.tau)/2),
 		    E.l + kappa_v*tf_alpha, E.t);
 
 	    assert(E.t.dot(kappa)==0);
@@ -2104,9 +2104,9 @@ bool ext_block::check(const param_block& block, bool verbose)
   containers::sl_list<param> links;
   for (BlockElt n=0; n<size(); ++n)
   { auto z=this->z(n);
+    const param E(ctxt,block.x(z),block.lambda_rho(z));
     for (weyl::Generator s=0; s<rank(); ++s)
-    { param E(ctxt,block.x(z),block.lambda_rho(z)); // re-init each iteration
-      ext_gen p=orbit(s); links.clear(); // output arguments for |star|
+    { const ext_gen& p=orbit(s); links.clear(); // output arguments for |star|
       auto tp = star(E,p,links);
       if (tp!=descent_type(s,n))
 	return false;

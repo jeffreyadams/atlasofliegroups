@@ -926,7 +926,7 @@ int test_braid(const ext_block::ext_block& eblock)
       if (not ext_block::check_quadratic(eblock,s,x))
       {
 	std::cout <<  "Quadratic relation failure: " << eblock.z(x)
-		  << ", s=" << s+1 << std::endl;
+		  << ", s=" << (unsigned)s << std::endl;
 	++failed;
       }
   if (failed>0)
@@ -948,7 +948,7 @@ int test_braid(const ext_block::ext_block& eblock)
 	    {
 	      ++failed;
 	      std::cout <<  "Braid relation failure: " << eblock.z(x)
-			<< ", s=" << s+1 << ", t=" << t+1;
+			<< ", s=" << (unsigned)s << ", t=" << (unsigned)t;
 	      for (BitMap::iterator it=cluster.begin(); it(); ++it)
 		std::cout << (it==cluster.begin() ? " (" : ",")
 			  << eblock.z(*it) ;
