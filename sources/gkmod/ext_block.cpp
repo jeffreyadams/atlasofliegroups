@@ -230,7 +230,8 @@ void validate(const param& E)
   const auto& delta = E.ctxt.delta();
   assert(delta*theta==theta*delta);
   assert((delta-1)*E.lambda_rho==(1-theta)*E.tau);
-  /* if (not ((delta-1).right_prod(E.l)==(theta+1).right_prod(E.t)))
+  assert((delta-1).right_prod(E.l)==(theta+1).right_prod(E.t));
+ /* if (not ((delta-1).right_prod(E.l)==(theta+1).right_prod(E.t)))
     {
       auto ec = E.ctxt;
       Weight gamma_numer(ec.gamma().numerator().begin(),
@@ -241,8 +242,7 @@ void validate(const param& E)
 			       ,gamma_numer);
       std::cout << std::endl;
       } */
-  assert((delta-1).right_prod(E.l)==(theta+1).right_prod(E.t));
-  if (not ((E.ctxt.g_rho_check()-E.l)*(1-theta)).numerator().isZero())
+  /* if (not ((E.ctxt.g_rho_check()-E.l)*(1-theta)).numerator().isZero())
     {
       auto ec = E.ctxt;
       prettyprint::printVector(std::cout << "l = ",E.l);
@@ -254,8 +254,7 @@ void validate(const param& E)
 			       << g_denom << ", g_rho_check_numer = "
 			       ,g_numer);
       std::cout << std::endl;
-    }
-  // assert(((E.ctxt.g_rho_check()-E.l)*(1-theta)).numerator().isZero());
+      }*/
 
   /* if (not  ((theta+1)*(E.ctxt.gamma()-E.lambda_rho-rho(rd)))
       .numerator().isZero())
@@ -271,7 +270,8 @@ void validate(const param& E)
 			       ,gamma_numer);
       std::cout << std::endl;
       } */
-  assert(((theta+1)*(E.ctxt.gamma()-E.lambda_rho-rho(rd)))
+   assert(((E.ctxt.g_rho_check()-E.l)*(1-theta)).numerator().isZero());
+   assert(((theta+1)*(E.ctxt.gamma()-E.lambda_rho-rho(rd)))
 	 .numerator().isZero());
 
   ndebug_use(delta); ndebug_use(theta); ndebug_use(rd);
@@ -1358,10 +1358,10 @@ DescValue star (const param& E,	const ext_gen& p,
 	  param F1(E.ctxt,new_tw, F0.lambda_rho + alpha,
 		   F0.tau, F0.l, E.t, flipped);
 
-	  if(has_first and (((-F0.lambda_rho)
+	  if(has_first and (((-F0.lambda_rho + rho_r_shift)
 	  // if(has_first and (((-F0.lambda_rho + rho_r_shift) // no reason
-			      .dot(rd.coroot(alpha_0)) -
-			     rd.colevel(alpha_0))%2 != 0 ))
+			     .dot(rd.coroot(alpha_0))
+			     - rd.colevel(alpha_0))%2 != 0 ))
 	    F0.flipped = not F0.flipped; //test alpha0 nonparity at nu=0
 	  // if(has_first) std::cout << "parity test0 = " <<
 	  //		    (-F0.lambda_rho+rho_r_shift)
@@ -1371,10 +1371,10 @@ DescValue star (const param& E,	const ext_gen& p,
 	  //			    << ", alpha = " << n_alpha << std::endl;
 	  // if(F0.flipped) std::cout << "F0 ended up flipped." <<std::endl;
 
-	  if(has_first and (((-F1.lambda_rho)
-	  // if(has_first and (((-F1.lambda_rho) + rho_r_shift) // no reason
-				.dot(rd.coroot(alpha_0)) -
-			     rd.colevel(alpha_0))%2 != 0 ))
+	  if(has_first and (((-F1.lambda_rho + rho_r_shift)
+	  // if(has_first and (((-F1.lambda_rho) // + rho_r_shift) // no reason
+			     .dot(rd.coroot(alpha_0))
+			     - rd.colevel(alpha_0))%2 != 0 ))
 	    F1.flipped = not F1.flipped; //test alpha0 nonparity at nu=0
 	  // if(has_first) std::cout << "parity test1 = " <<
 	  //		    (-F1.lambda_rho+rho_r_shift)
@@ -1428,12 +1428,14 @@ DescValue star (const param& E,	const ext_gen& p,
 	  i_tab.root_involution(theta,alpha_0)==rd.rootMinus(alpha_0);
 	bool flipped_correct = // shift_correct, and alpha_0 nonparity
 			       // at nu=0
-	  shift_correct and ( ((- E.lambda_rho)
-	  // shift_correct and ( ((- E.lambda_rho + rho_r_shift) // no reason
+	  // shift_correct and (level_a(E,rho_r_shift,alpha_0)%2 !=0);
+
+	  shift_correct and ( ((- E.lambda_rho + rho_r_shift) // no reason
 			       .dot(rd.coroot(alpha_0))
 			       - rd.colevel(alpha_0))%2!=0);
-			      bool flipped1 = flipped_correct ?
-			      not flipped : flipped;
+	//	std::cout << "rho_r_shift on alpha_0 = "
+	//		  << rho_r_shift.dot(rd.coroot(alpha_0)) << std::endl;
+	  bool flipped1 = flipped_correct ? not flipped : flipped;
 
 	const int level = level_a(E,rho_r_shift,n_alpha) +
 	   (shift_correct ? 1 : 0 ); // add 1 if |alpha_0| is defined and real
@@ -1943,7 +1945,7 @@ DescValue star (const param& E,	const ext_gen& p,
 
 	const Weight rho_r_shift = repr::Cayley_shift(ic,theta_p,theta,ww);
 	const bool flipped = Cayley_shift_flip(E.ctxt,theta_p,theta,ww);
-	// if(flipped) std::cout << "3Ci flip" << std::endl;
+	// if(flipped) std::cout << "3i flip" << std::endl;
 	assert(E.ctxt.delta()*rho_r_shift==rho_r_shift); // $ww\in W^\delta$
 	assert(rd.is_simple_root(alpha_simple)); // cannot fail for length 3
 
@@ -1985,19 +1987,15 @@ DescValue star (const param& E,	const ext_gen& p,
 	// const Weight new_lambda_rho = // make level for |kappa| zero
 	//	  E.lambda_rho-rho_r_shift + kappa*((a_level+b_level)/2);
 	const Weight new_lambda_rho = E.lambda_rho - rho_r_shift
-	  + alpha*(a_level + b_level); //
+	  + alpha*(a_level + b_level); // make level for |kappa| zero
 	E0.t -= alpha_v*kappa.dot(E.t); // makes |E.t.dot(kappa)==0|
-	E0.lambda_rho -= alpha*(a_level + b_level); //even shift
-	assert(same_sign(E,E0)); // since |t| change has no effect, + even
-	// shift on lambda by real root has no effect
-	E0.tau -= (kappa-alpha-alpha)*((a_level+b_level)/2);
-	/*	std::cout << "constructing 3r link from " << E.x() << std::endl;
-	prettyprint::printVector(std::cout << "old lambda_rho = ",
-				       E.lambda_rho);
-	std::cout << std::endl;
-	prettyprint::printVector(std::cout << "old tau = ",
-				       E.tau);
-	std::cout << std::endl;
+	E0.lambda_rho += alpha*(a_level + b_level); //even shift
+	E0.tau += (kappa-alpha-alpha)*((a_level+b_level)/2);
+	assert(same_sign(E,E0)); // since |t| change has no effect, even
+	// shift on lambda by real roots has no effect
+	// std::cout << "constructing 3r link from " << E.x() << std::endl;
+
+	/*
 	prettyprint::printVector(std::cout << "new lambda_rho = ",
 				       E0.lambda_rho);
 	std::cout << std::endl;
@@ -2015,9 +2013,32 @@ DescValue star (const param& E,	const ext_gen& p,
 				       E0.t);
 	std::cout << std::endl;
 	std::cout << std::endl; */
+	/*	std::cout << std::endl;
+	prettyprint::printVector(std::cout << "old lambda_rho = ",
+				 E.lambda_rho);
+	std::cout << std::endl;
+	prettyprint::printVector(std::cout << "old tau = ",
+				 E.tau);
+	std::cout << std::endl;
+
+	prettyprint::printVector(std::cout << "new lambda_rho = ",
+				 E0.lambda_rho);
+	std::cout << std::endl;
+	prettyprint::printVector(std::cout << "new tau = ",
+				 E0.tau);
+	std::cout << std::endl;
+	std::cout << std::endl;
+	const auto& delta = E.ctxt.delta();
+	const auto& theta_mat = i_tab.matrix(E.tw);
+	const auto& theta_p_mat = i_tab.matrix(new_tw);
+	assert((delta-1)*E0.lambda_rho == (1-theta_mat)*E0.tau);
+	assert((delta-1)*E0.lambda_rho == (1-theta_p_mat)*E0.tau);
+       	std::cout << "validating E0" << std::endl; */
 	validate(E0);
-	param F(E.ctxt, new_tw,	E0.lambda_rho,
-		E0.tau, E.l, E0.t, not flipped^E.flipped); //January unsurprise
+	//	std::cout << "done validating E0" << std::endl;
+	param F(E.ctxt, new_tw,	E0.lambda_rho -rho_r_shift,
+		E0.tau, E.l, E0.t, flipped^E.flipped); //3r Cayley
+	//January unsurprise
 		// E.tau, E.l, E0.t, flipped); //remove not -> bad 1 0 0 0 -1
 	// F.lambda_rho+=rho_r_shift;
 	// z_align(E0,F); // no 3rd arg since |E.t.dot(kappa)==0|
@@ -2055,10 +2076,9 @@ DescValue star (const param& E,	const ext_gen& p,
 	      const Coweight new_l = E.l + kappa_v*tf_alpha;
 	      Weight new_tau = E.tau - kappa*(kappa_v.dot(E.tau)/2);
 	      new_lambda_rho = dtf_alpha%2==0 ? new_lambda_rho :
-		new_lambda_rho + kappa - alpha - alpha; // add beta-alpha
-	      new_tau = dtf_alpha%2==0 ? new_tau : new_tau + alpha
-		+ alpha - kappa;
-
+		new_lambda_rho + kappa - alpha*2; // add beta-alpha
+	      new_tau = dtf_alpha%2==0 ? new_tau : new_tau + alpha*2
+		- kappa;
 
 	      /*	    param F(E.ctxt,new_tw,
 		    dtf_alpha%2==0 ? new_lambda_rho : new_lambda_rho + kappa,
@@ -2068,8 +2088,8 @@ DescValue star (const param& E,	const ext_gen& p,
 		    // flipped); // trouble in 1 0 0 0 -1 */
 	      E0.l = new_l;
 	      E0.tau = new_tau;
-	      if (dtf_alpha%2!=0) E0.lambda_rho += kappa - alpha - alpha;
-	      /*  std::cout << "constructing 3Ci link from " << E.x() 
+	      if (dtf_alpha%2!=0) E0.lambda_rho += kappa - alpha*2;
+	      /*  std::cout << "constructing 3Ci link from " << E.x()
 		  << std::endl;
 	      prettyprint::printVector(std::cout << "old lambda_rho = ",
 				       E.lambda_rho);
@@ -2085,9 +2105,9 @@ DescValue star (const param& E,	const ext_gen& p,
 	      std::cout << std::endl;
 	      std::cout << std::endl; */
 	      validate(E0);
-	      bool flipped1 = flipped^same_sign(E,E0);
+	      bool flipped1 = flipped^(not same_sign(E,E0));
 	      param F(E.ctxt, new_tw, new_lambda_rho, new_tau, new_l, E.t,
-		      not flipped1);
+		      flipped1^E.flipped); //3Ci Cayley
 	    assert(E.t.dot(kappa)==0);
 	    // since it is half of |t*(1+theta)*kappa=l*(delta-1)*kappa==0|
 	    //	    F.lambda_rho-=rho_r_shift;
