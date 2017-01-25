@@ -1129,7 +1129,7 @@ param complex_cross(const ext_gen& p, param E) // by-value for |E|, modified
 				                subs.parent_nr_simple(p.s1))));
   // assert(rd.is_simple_root(rd.permuted_root(to_simple,
   //		    subs.parent_nr_simple(p.s1))));
-  RootNbrSet S = pos_to_neg(rd,to_simple);
+const  RootNbrSet S = pos_to_neg(rd,to_simple);
   // S &= theta_real_roots ^ new_theta_real_roots; // select real-changing roots
   // std::cout << "size of S = " << S.size() << std::endl;
 
@@ -1193,6 +1193,15 @@ param complex_cross(const ext_gen& p, param E) // by-value for |E|, modified
 	else ++countnewCC;
       }
   int countnew = countnewCC; // + countnewCi + countnewCr;
+    if(countoldreal + countoldCi + countoldCr + countoldCi != 0)
+    {
+      std::cout << "from " << theta << " to " << new_theta
+	    << ", realold/new = " << countoldreal << "/" << countnewreal
+	    << ", Ciold/new = " << countoldCi << "/" << countnewCi
+	    << ", Crold/new = " << countoldCr << "/" << countnewCr
+	    << ", CCold/new = " << countoldCC << "/" << countnewCC << std::endl
+	    << std::endl;
+    }
   E.flip((countold-countnew)%4!=0);
   E.flip(p.w_kappa.size()==2); // a guess parallel to the new 2i,2r flips
   validate(E);
@@ -1315,13 +1324,15 @@ bool Cayley_shift_flip
       ++countdown;
       assert(countup%2==0);// since |S| is $\delta$-stable */
   int countdown=countdownCC; //+countdownCi+countdownCr;
-  /*  std::cout << "from " << theta_downstairs << " to " << theta_upstairs
+  if(countdownreal + countdownCi + countdownCr + countdownCi != 0)
+    {
+      std::cout << "from " << theta_downstairs << " to " << theta_upstairs
 	    << ", realdown/up = " << countdownreal << "/" << countupreal
 	    << ", Cidown/up = " << countdownCi << "/" << countupCi
 	    << ", Crdown/up = " << countdownCr << "/" << countupCr
 	    << ", CCdown/up = " << countdownCC << "/" << countupCC << std::endl
 	    << std::endl;
-  */
+    }
   return (countup-countdown)%4!=0;
 	   // return false; // try turning this off; see what happens.
 } // Cayley_shift_flip
