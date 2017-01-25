@@ -1132,7 +1132,8 @@ param complex_cross(const ext_gen& p, param E) // by-value for |E|, modified
   RootNbrSet S = pos_to_neg(rd,to_simple);
   // S &= theta_real_roots ^ new_theta_real_roots; // select real-changing roots
   // std::cout << "size of S = " << S.size() << std::endl;
-  unsigned countold=0; // will count 2-element |delta|-orbits not 2r or 2Ci/r
+
+  /* unsigned countold=0; // will count 2-element |delta|-orbits not 2r or 2Ci/r
   for (auto it=S.begin(); it(); ++it)
     if (*it!=ec.delta_of(*it) and
 	ec.delta_of(*it)!= i_tab.root_involution(theta,*it) and
@@ -1141,9 +1142,27 @@ param complex_cross(const ext_gen& p, param E) // by-value for |E|, modified
 	rd.rootMinus(i_tab.root_involution(theta,*it)))
       //   if (*it!=ec.delta_of(*it) and not rd.sumIsRoot(*it,ec.delta_of(*it)))
       ++countold;
-  assert(countold%2==0); // since |S| is supposed to be $\delta$-stable
+      assert(countold%2==0); // since |S| is supposed to be $\delta$-stable */
 
-  unsigned countnew=0; // will count 2-element |delta|-orbits
+  unsigned countoldreal=0;
+  unsigned countoldCi = 0;
+  unsigned countoldCr = 0;
+  unsigned countoldCC = 0;
+  for (auto it=S.begin(); it(); ++it)
+    if (*it!=ec.delta_of(*it))
+      {
+	if (*it==rd.rootMinus(i_tab.root_involution(theta,*it)))
+		   ++countoldreal;
+	else if (ec.delta_of(*it)== i_tab.root_involution(theta,*it))
+		     ++countoldCi;
+	else if (ec.delta_of(*it)==
+		 rd.rootMinus(i_tab.root_involution(theta,*it)))
+		   ++countoldCr;
+	else ++countoldCC;
+      }
+  int countold=countoldCC; // +countoldCi+countoldCr;
+
+  /*  unsigned countnew=0; // will count 2-element |delta|-orbits
   for (auto it=S.begin(); it(); ++it)
     if (*it!=ec.delta_of(*it) and
 	ec.delta_of(*it)!= i_tab.root_involution(new_theta,*it) and
@@ -1155,10 +1174,27 @@ param complex_cross(const ext_gen& p, param E) // by-value for |E|, modified
   assert(countnew%2==0); // since |S| is supposed to be $\delta$-stable
   //  std::cout << "countold = "<< countold << ", countnew = "
   //	    << countnew <<std::endl;
-  // if((countold - countnew)%4!=0) std::cout << "complex_cross flip" << std::endl;
+  // if((countold - countnew)%4!=0) std::cout << "complex_cross flip" << std::endl; */
+
+  unsigned countnewreal=0;
+  unsigned countnewCi = 0;
+  unsigned countnewCr = 0;
+  unsigned countnewCC = 0;
+  for (auto it=S.begin(); it(); ++it)
+    if (*it!=ec.delta_of(*it))
+      {
+	if (*it==rd.rootMinus(i_tab.root_involution(new_theta,*it)))
+		   ++countnewreal;
+	else if (ec.delta_of(*it)== i_tab.root_involution(new_theta,*it))
+		     ++countnewCi;
+	else if (ec.delta_of(*it)==
+		 rd.rootMinus(i_tab.root_involution(new_theta,*it)))
+		   ++countnewCr;
+	else ++countnewCC;
+      }
+  int countnew = countnewCC; // + countnewCi + countnewCr;
   E.flip((countold-countnew)%4!=0);
   E.flip(p.w_kappa.size()==2); // a guess parallel to the new 2i,2r flips
-  //   previous line makes trivial(GL(3,C)) nonunitary
   validate(E);
   return E;
 } // |complex_cross|
@@ -1225,8 +1261,24 @@ bool Cayley_shift_flip
   //  .andnot(i_tab.real_roots(theta_upstairs)); // replace & with andnot
   //  RootNbrSet T = pos_to_neg(rd,to_simple);
     //  .andnot(i_tab.real_roots(theta_downstairs)); // replace & ...
-  unsigned countup=0; // will count 2-element |delta|-orbits upstairs
+  // unsigned countup=0; // will count 2-element |delta|-orbits upstairs
+  unsigned countupreal=0;
+  unsigned countupCi = 0;
+  unsigned countupCr = 0;
+  unsigned countupCC = 0;
   for (auto it=S.begin(); it(); ++it)
+    if (*it!=ec.delta_of(*it))
+      {
+	if (*it==rd.rootMinus(i_tab.root_involution(theta_upstairs,*it)))
+		   ++countupreal;
+	else if (ec.delta_of(*it)== i_tab.root_involution(theta_upstairs,*it))
+		     ++countupCi;
+	else if (ec.delta_of(*it)==
+		 rd.rootMinus(i_tab.root_involution(theta_upstairs,*it)))
+		   ++countupCr;
+	else ++countupCC;
+      }
+      /*	if ec.delta_of(*it)!
     if (*it!=ec.delta_of(*it) and
 	ec.delta_of(*it)!= i_tab.root_involution(theta_upstairs,*it) and
 	*it!=rd.rootMinus(i_tab.root_involution(theta_upstairs,*it)) and
@@ -1234,17 +1286,42 @@ bool Cayley_shift_flip
 	rd.rootMinus(i_tab.root_involution(theta_upstairs,*it)))
       //	and not rd.sumIsRoot(*it,ec.delta_of(*it)))
       ++countup;
-  assert(countup%2==0); // since |S| is supposed to be $\delta$-stable
-  unsigned countdown=0; // will count 2-element |delta|-orbits downstairs
+      assert(countup%2==0); // since |S| is supposed to be $\delta$-stable */
+  int countup=countupCC; //+countupCi+countupCr;
+
+      // unsigned countdown=0; // will count 2-element |delta|-orbits downstairs
+  unsigned countdownreal=0;
+  unsigned countdownCi = 0;
+  unsigned countdownCr = 0;
+  unsigned countdownCC = 0;
   for (auto it=S.begin(); it(); ++it)
-    if (*it!=ec.delta_of(*it) and
+    if (*it!=ec.delta_of(*it))
+      {
+	if (*it==rd.rootMinus(i_tab.root_involution(theta_downstairs,*it)))
+		   ++countdownreal;
+	else if (ec.delta_of(*it)== i_tab.root_involution(theta_downstairs,*it))
+		     ++countdownCi;
+	else if (ec.delta_of(*it)==
+		 rd.rootMinus(i_tab.root_involution(theta_downstairs,*it)))
+		   ++countdownCr;
+	else ++countdownCC;
+      }
+	/*   if (*it!=ec.delta_of(*it) and
 	ec.delta_of(*it)!= i_tab.root_involution(theta_downstairs,*it) and
 	*it!=rd.rootMinus(i_tab.root_involution(theta_downstairs,*it)) and
  	ec.delta_of(*it)!=
 	rd.rootMinus(i_tab.root_involution(theta_downstairs,*it)))
 	// and not rd.sumIsRoot(*it,ec.delta_of(*it)))
       ++countdown;
-  assert(countup%2==0);// since |S| is $\delta$-stable
+      assert(countup%2==0);// since |S| is $\delta$-stable */
+  int countdown=countdownCC; //+countdownCi+countdownCr;
+  /*  std::cout << "from " << theta_downstairs << " to " << theta_upstairs
+	    << ", realdown/up = " << countdownreal << "/" << countupreal
+	    << ", Cidown/up = " << countdownCi << "/" << countupCi
+	    << ", Crdown/up = " << countdownCr << "/" << countupCr
+	    << ", CCdown/up = " << countdownCC << "/" << countupCC << std::endl
+	    << std::endl;
+  */
   return (countup-countdown)%4!=0;
 	   // return false; // try turning this off; see what happens.
 } // Cayley_shift_flip
@@ -1305,7 +1382,7 @@ DescValue star (const param& E,	const ext_gen& p,
 	else
 	{
 	  has_first=true;
-	  std::cout << "can't make simple alpha = " << n_alpha << std::endl;
+	  // std::cout << "can't make simple alpha = " << n_alpha << std::endl;
 	  --tau_coef; // the parity change and decrease are both relevant
 	  weyl::Generator s = // first switched root index
 	    rd.find_descent(alpha_simple);
@@ -2037,7 +2114,7 @@ DescValue star (const param& E,	const ext_gen& p,
 	validate(E0);
 	//	std::cout << "done validating E0" << std::endl;
 	param F(E.ctxt, new_tw,	E0.lambda_rho -rho_r_shift,
-		E0.tau, E.l, E0.t, flipped^E.flipped); //3r Cayley
+		E0.tau, E.l, E0.t, not flipped^E.flipped); //3r Cayley
 	//January unsurprise
 		// E.tau, E.l, E0.t, flipped); //remove not -> bad 1 0 0 0 -1
 	// F.lambda_rho+=rho_r_shift;
@@ -2107,7 +2184,7 @@ DescValue star (const param& E,	const ext_gen& p,
 	      validate(E0);
 	      bool flipped1 = flipped^(not same_sign(E,E0));
 	      param F(E.ctxt, new_tw, new_lambda_rho, new_tau, new_l, E.t,
-		      flipped1^E.flipped); //3Ci Cayley
+		      not flipped1^E.flipped); //3Ci Cayley
 	    assert(E.t.dot(kappa)==0);
 	    // since it is half of |t*(1+theta)*kappa=l*(delta-1)*kappa==0|
 	    //	    F.lambda_rho-=rho_r_shift;
@@ -2865,9 +2942,9 @@ bool check_braid
   if (not success)
   {
     //    std::cout << "success: " << success << std::endl;
-    show_mat(std::cout,Ts,s);
-    std::cout << std::endl;
-    show_mat(std::cout,Tt,t);
+    // show_mat(std::cout,Ts,s);
+    // std::cout << std::endl;
+    // show_mat(std::cout,Tt,t);
   }
   return success;
 } // |check_braid|
