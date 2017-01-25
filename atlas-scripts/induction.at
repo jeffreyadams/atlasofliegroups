@@ -55,7 +55,6 @@ ________________________
 | Then:
 | GOOD:  <gamma_L+rho_u,alpha^vee> > 0;
 | WEAKLY GOOD:  <gamma_L+rho_u,alpha^vee> \ge 0;
-| FAIR: <gamma_L-rho_L+rho_u,alpha^vee> > 0.
 |
 | For  Aq(x,lambda,lambda_q): gamma_L=lambda+rho_L;
 | gamma_L -> gamma_G=gamma_L = lambda+rho_L
@@ -71,8 +70,8 @@ ________________________
 |
 | fair => vanishing outside middle degree => honest representation
 | weakly fair: same implication.
-| NB: <gamma_L-rho_L_rho_u,alpha^vee> >= 0 does NOT imply vanishing (in general) if pi_L is not
-| one-dimensional, hence "weakly fair" is only defined if pi_L is one-dimensional.
+| NB: <gamma_L-rho_L_rho_u,alpha^vee> >= 0 does NOT imply vanishing (in general) if pi_L is not weakly unipotent (e.g.,
+| one-dimensional), hence "weakly fair" is only defined if pi_L is one-dimensional.
 |
 !}
 
@@ -521,7 +520,7 @@ set make_dominant(KGBElt x_in,ratvec lambda_in, ratvec lambda_q_in)=(KGBElt,ratv
 {. A_q(lambda) module; $\mathfrak q$ is defined by the weight lambda_q; x_in
   must be attached to the fundamental Cartan. The module is defined as a ParamPol,
   in case it is reducible. .}
-set Aq_param_pol (KGBElt x_in,ratvec lambda_in, ratvec lambda_q) = ParamPol:
+set Aq_reducible (KGBElt x_in,ratvec lambda_in, ratvec lambda_q) = ParamPol:
   let G=real_form(x_in)
 {find w making lambda_q weakly dominant}
   then (lambda_q_new,w)=make_dominant(G,lambda_q)
@@ -544,10 +543,10 @@ set Aq_param_pol (KGBElt x_in,ratvec lambda_in, ratvec lambda_q) = ParamPol:
 {. A_q(lambda) module defined as above, but as a parameter, assuming it is
   irreducible. .}
 set Aq (KGBElt x_in,ratvec lambda_in, ratvec lambda_q) = Param:
-  let P=%Aq_param_pol(x_in,lambda_in,lambda_q)
-  in assert(#P<=1,"Aq is not irreducible. Use Aq_param_pol(x,lambda) instead");
+  let P=%Aq_reducible(x_in,lambda_in,lambda_q)
+  in assert(#P<=1,"Aq is not irreducible. Use Aq_reducible(x,lambda) instead");
   let (c,p)=P[0]
-  in assert(c=1,"Aq has multiplicity. Use Aq_param_pol(x,lambda) instead");
+  in assert(c=1,"Aq has multiplicity. Use Aq_reducible(x,lambda) instead");
   p
 
 {. If not provided, assume lambda_q=lambda_in in the definition of A_q. .}
@@ -637,7 +636,8 @@ set is_weakly_good (Param p_L,RealForm G) = bool:
   in is_dominant(G,infinitesimal_character(p_L)+rho_u)
 
 {. Decide whether a parameter for L is in the fair range for G; this only
-   makes sense if L is the Levi of a theta-stable parabolic. .}
+   makes sense if L is the Levi of a theta-stable parabolic, and is only
+   defined if p_L is one_dimensional. .}
 set is_fair (Param p_L,RealForm G) = bool:
   let L=real_form(p_L) in
   assert(is_standard_Levi(L,G),"L is not standard");
@@ -647,7 +647,8 @@ set is_fair (Param p_L,RealForm G) = bool:
   in let v=infinitesimal_character(p_L)+rho_u-rho(L)
   in let pcg=poscoroots(G)
   in let rdl=root_datum(L)
-  in all(for alpha_check in pcg do v*alpha_check>0 or
+  in is_one_dimensional(p_L) and
+    all(for alpha_check in pcg do v*alpha_check>0 or
     is_positive_coroot(rdl)(alpha_check) od)
 
 {. Decide whether a parameter for L is in the weakly fair range for G; this only
@@ -746,29 +747,29 @@ set is_good_range_induced_from(Param p)=[Param]:
   fi
   fi fi od fi fi ; result
 
-{. Find the parameter p_L so that p is cohomologically induced, in the
-  (weakly) good range, from p_L, with L minimal (may be G). .}
-set reduce_good_range(Param p)=Param:
+{. Find the parabolic P and parameter p_L so that p is cohomologically induced,
+  in the (weakly) good range, from p_L, with L minimal (may be G). .}
+set reduce_good_range(Param p)=(Parabolic,Param):
   let G=real_form(p) in
   if not is_final(p) then prints("p is not final") fi;
   if is_zero(p) then prints("The module is zero.") fi;
   let x=x(p) in let P=Parabolic:(support(x),x) in
   let L=Levi(P) in
   if semisimple_rank(L)=semisimple_rank(G) then if ind_verbose then prints("No reduction: P=G.") fi;
-  p else
+  (P,p) else
   let x_L=inverse_embed_KGB (x,L) in
   let p_L=parameter(x_L,lambda(p)-rho(G)+rho(L),nu(p)) in
   if ind_verbose then prints(goodness(p_L,G)) fi;
-  p_L fi
+  (P,p_L) fi
 
 {. Determine whether p is a (weakly) good unitary Aq(lambda). .}
 set is_good_Aq(Param p)=bool:
-   let p_L=reduce_good_range(p) in
+   let (,p_L)=reduce_good_range(p) in
    is_unitary_character(p_L)and not is_zero(p)
 
 {. Determine whether p is a proper (weakly) good unitary Aq(lambda). .}
 set is_proper_Aq(Param p)=bool:
-   let p_L=reduce_good_range(p) in
+   let (,p_L)=reduce_good_range(p) in
    real_form(p)!=real_form(p_L) and is_unitary_character(p_L) and
    not is_zero(p)
 
