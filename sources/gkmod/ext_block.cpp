@@ -2802,12 +2802,12 @@ bool check_braid
   if (not success)
   {
     //    std::cout << "success: " << success << std::endl;
-    show_mat(std::cout,Ts,s);
-    std::cout << std::endl;
-    show_mat(std::cout,result1,s);
-    std::cout << std::endl;
-    show_mat(std::cout,result2,s);
-    std::cout << std::endl;
+    //    show_mat(std::cout,Ts,s);
+    //    std::cout << std::endl;
+    //    show_mat(std::cout,result1,s);
+    //    std::cout << std::endl;
+    //    show_mat(std::cout,result2,s);
+    //    std::cout << std::endl;
   }
   return success;
     }
