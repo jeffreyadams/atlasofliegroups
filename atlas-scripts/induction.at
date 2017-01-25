@@ -569,6 +569,13 @@ set Aq(RealForm G,ratvec lambda_in)=Param:
 set is_one_dimensional(Param p)=bool:
   is_finite_dimensional(p) and dimension(p)=1
 
+{. Decide whether a parameter defines a unitary one-dimensional character. .}
+set is_unitary_character(Param p)=bool:
+  if is_one_dimensional(p) then let ic=infinitesimal_character(p) in
+  let theta=involution(x(p)) in let lam=ic-rho(root_datum(p)) in
+  theta*lam=lam
+  else false fi
+
 {. Decide whether A_q(lambda) is good. .}
 set is_good(KGBElt x_in,ratvec lambda_in,ratvec lambda_q_in)=bool:
   let (x,lambda,lambda_q)=make_dominant(x_in,lambda_in,lambda_q_in)  in
@@ -739,76 +746,6 @@ set is_good_range_induced_from(Param p)=[Param]:
   fi
   fi fi od fi fi ; result
 
-{------------------------------Some outdated functions; ----------------
-                       will keep them for purposes of testing.
-
-{. Find the smallest (wrt containment) theta-stable parabolic determined
-  by x. .}
-set min_theta_parabolic_with(KGBElt x)=Parabolic: let G=real_form(x) in
-  let tsp=theta_stable_parabolics_with(x) in
-  let ssr=semisimple_rank(G) in
-  let S=[int]:[] in for i:ssr do
-  if all(for (T,) in tsp do is_member(T)(i) od) then S#:=i
-  fi od;  (S,x)
-
-{. Same as previous function, but takes the output of
-  theta_stable_parabolics(G) as additional input for efficiency. .}
-set min_theta_parabolic_with([Parabolic] tsp,KGBElt x)=Parabolic:
-  let G=real_form(x) in
-  let tspx=theta_stable_parabolics_with(tsp,x) in
-  let ssr=semisimple_rank(G) in
-  let S=[int]:[] in for i:ssr do
-  if all(for (T,) in tspx do is_member(T)(i) od) then S#:=i
-  fi od;  (S,x)
-
-{. Find the parameter p_L so that p is cohomologically induced, in the
-  (weakly) good range, from p_L, with L minimal (may be G). .}
-set is_min_good_induced_from(Param p)=Param:
-  if not is_final(p) then prints("p is not final") fi;
-  let x=x(p) in
-  let G=real_form(p) in
-  let P=min_theta_parabolic_with(x) in
-  let L=Levi(P) in let x_L=inverse_embed_KGB (x,L) in
-  let p_L=parameter(x_L,lambda(p)-rho(real_form(p))+rho(L),nu(p)) in
-  prints(goodness(p_L,G));
-  p_L
-
-{. Same as previous function, but takes the output of
-  theta_stable_parabolics(G) as additional input for efficiency. .}
-set is_min_good_induced_from([Parabolic] tsp,Param p)=Param:
-  if not is_final(p) then prints("p is not final") fi;
-  let x=x(p) in
-  let G=real_form(p) in
-  let P=min_theta_parabolic_with(tsp,x) in
-  let L=Levi(P) in let x_L=inverse_embed_KGB (x,L) in
-  let p_L=parameter(x_L,lambda(p)-rho(real_form(p))+rho(L),nu(p)) in
-  prints(goodness(p_L,G));
-  p_L
-
-{. Determine whether p is a (weakly) good Aq(lambda). .}
-set is_good_Aq_old(Param p)=bool:
-   let p_L=is_min_good_induced_from(p) in
-   is_one_dimensional(p_L)
-
-{. Same as previous function, but takes the output of
-  theta_stable_parabolics(G) as additional input for efficiency. .}
-set is_good_Aq_old([Parabolic] tsp,Param p)=bool:
-   let p_L=is_min_good_induced_from(tsp,p) in
-   is_one_dimensional(p_L)
-
-{. Determine whether p is a proper (weakly) good Aq(lambda). .}
-set is_proper_Aq_old(Param p)=bool:
-   let p_L=is_min_good_induced_from(p) in
-   real_form(p)!=real_form(p_L) and is_one_dimensional(p_L)
-
-{. Same as previous function, but takes the output of
-  theta_stable_parabolics(G) as additional input for efficiency. .}
-set is_proper_Aq_old([Parabolic] tsp,Param p)=bool:
-   let p_L=is_min_good_induced_from(tsp,p) in
-   real_form(p)!=real_form(p_L) and is_one_dimensional(p_L)
-
--------------------------------------------------------------------}
-
 {. Find the parameter p_L so that p is cohomologically induced, in the
   (weakly) good range, from p_L, with L minimal (may be G). .}
 set reduce_good_range(Param p)=Param:
@@ -824,15 +761,15 @@ set reduce_good_range(Param p)=Param:
   if ind_verbose then prints(goodness(p_L,G)) fi;
   p_L fi
 
-{. Determine whether p is a (weakly) good Aq(lambda). .}
+{. Determine whether p is a (weakly) good unitary Aq(lambda). .}
 set is_good_Aq(Param p)=bool:
    let p_L=reduce_good_range(p) in
-   is_one_dimensional(p_L)and not is_zero(p)
+   is_unitary_character(p_L)and not is_zero(p)
 
-{. Determine whether p is a proper (weakly) good Aq(lambda). .}
+{. Determine whether p is a proper (weakly) good unitary Aq(lambda). .}
 set is_proper_Aq(Param p)=bool:
    let p_L=reduce_good_range(p) in
-   real_form(p)!=real_form(p_L) and is_one_dimensional(p_L) and
+   real_form(p)!=real_form(p_L) and is_unitary_character(p_L) and
    not is_zero(p)
 
 set all_real_induced_one_dimensional(RealForm G)=[Param]:

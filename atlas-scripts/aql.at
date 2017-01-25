@@ -15,17 +15,17 @@ set inf_chars_for_L (Param p,Parabolic P)=[ratvec]:
    for v in orb do if is_dominant(rdl,v-rho) then
    list#:=v-rho fi od; list
 
-{. List all one-dimensional characters, in the weakly fair range,
+{. List all one-dimensional unitary characters, in the weakly fair range,
   of L, with given infinitesimal character. .}
 set wf_one_dim_params (ratvec ic, Parabolic P)=[Param]:
    let L=Levi(P) in let n=#KGB(L) in let x=KGB(L,n-1) in
    let G=real_form(P) in
    let list=all_parameters_x_gamma(x,ic) in
    let result=[] in for p in list do
-   if is_one_dimensional(p) and is_weakly_fair(p,G) then
+   if is_unitary_character(p) and is_weakly_fair(p,G) then
    result#:=p fi od; result
 
-{. Auxiliary function: List of all weakly fair Aq(lambda) modules
+{. Auxiliary function: List of all unitary weakly fair Aq(lambda) modules
   with infinitesimal character of p, and induced from P. .}
 set wf_aqs_param_pol (Param p, Parabolic P)=[(Param,ParamPol)]:
    let G=real_form(P) in
@@ -47,8 +47,8 @@ set wf_aqs_param (Param p, Parabolic P)=[(Param,Param)]:
      result#:=(pL,q) od od;
      result
 
-{. Decide whether p is the parameter of a (constituent of a) weakly fair
-  Aq(lambda) induced from parabolic P. .}
+{. Decide whether p is the parameter of a (constituent of a) unitary
+  weakly fair Aq(lambda) induced from parabolic P. .}
 set is_weakly_fair_Aq_from_P (Param p, Parabolic P)=bool:
    let list=wf_aqs_param (p,P) in
    not none(for pair in list do let (,q)=pair in q=p od)
@@ -61,7 +61,7 @@ set special_theta_stable_parabolics(RealForm G)=[Parabolic]:
   result#:=P fi od; result
 
 {. Determine whether parameter p is that of a (constituent of a)
-  weakly fair Aq(lambda) module. .}
+  unitary weakly fair Aq(lambda) module. .}
 set is_weakly_fair_Aq (Param p) = bool:
    if is_zero(p) then prints("Zero Module");false
    else if not is_final(p) then prints("Parameter is not final.");false
@@ -74,7 +74,7 @@ set is_weakly_fair_Aq (Param p) = bool:
    is_weakly_fair_Aq_from_P(p,P) od) then
    if aql_verbose then prints("This is a weakly fair Aq.") fi;true else false fi fi fi fi
 
-{. List all one-dimensional parameters pL so that p is theta-induced
+{. List all one-dimensional unitary parameters pL so that p is theta-induced
   from pL in the weakly fair range. .}
 set is_wf_induced_from_one_dim(Param p)=[Param]:
    let result=[] in if is_zero(p) then prints("Zero Module")
