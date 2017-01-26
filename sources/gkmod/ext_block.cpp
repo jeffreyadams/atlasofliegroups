@@ -1143,9 +1143,9 @@ param complex_cross(const ext_gen& p, param E) // by-value for |E|, modified
   S.andnot(ec.delta_fixed());
   unsigned count=0; // will count 2-element |delta|-orbits
   for (auto it=S.begin(); it(); ++it)
-    if(ec.is_very_complex(theta,*it) != ec.is_very_complex(new_theta,*it))
-      // maybe a |rd.sumIsRoot(*it,ec.delta_of(*it)))| condition needed too
-      ++count;
+    if(ec.is_very_complex(theta,*it) != ec.is_very_complex(new_theta,*it)
+       and not rd.sumIsRoot(*it,ec.delta_of(*it)))
+       ++count;
   assert(count%2==0); // since |S| is supposed to be $\delta$-stable
   E.flip(count%4!=0);
   E.flip(p.length()==2); // parallel to the 2i,2r flips
@@ -1215,9 +1215,9 @@ bool Cayley_shift_flip
   unsigned count=0; // will count 2-element |delta|-orbits upstairs
   for (auto it=S.begin(); it(); ++it)
     if (ec.is_very_complex(theta_upstairs,*it) !=
-	ec.is_very_complex(theta_downstairs,*it))
-       // maybe a |rd.sumIsRoot(*it,ec.delta_of(*it)))| condition needed too
-	++count;
+	ec.is_very_complex(theta_downstairs,*it) and not
+	rd.sumIsRoot(*it,ec.delta_of(*it)))
+ 	++count;
   assert(count%2==0); // since set of roots changing sign is delta-stable
   return count%4!=0;
 } // Cayley_shift_flip
