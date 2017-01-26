@@ -76,6 +76,8 @@ struct Permutation
 
   int sign(const Permutation& pi); // signature of permutation
 
+  bitmap::BitMap fixed_points(const Permutation& pi); //elements fixed
+  
   void compose(Permutation&, const Permutation&, unsigned long n = 0);
 
   template<typename U>

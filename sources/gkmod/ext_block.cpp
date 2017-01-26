@@ -700,6 +700,7 @@ context::context
     , integr_datum(integrality_datum(rc.rootDatum(),gamma))
     , sub(SubSystem::integral(rc.rootDatum(),gamma))
     , pi_delta(rc.rootDatum().rootPermutation(d_delta))
+    , delta_fixed_roots(fixed_points(pi_delta))
     , twist()
     , lambda_shifts (integr_datum.semisimpleRank())
     , l_shifts (integr_datum.semisimpleRank())
@@ -716,6 +717,15 @@ context::context
   const RatCoweight& g_rho_check = this->g_rho_check();
   for (unsigned i=0; i<l_shifts.size(); ++i)
     l_shifts[i] = -g_rho_check.dot(integr_datum.simpleRoot(i));
+}
+
+bool context::is_very_complex (InvolutionNbr theta, RootNbr alpha) const
+{ const auto& i_tab = innerClass().involution_table();
+  const auto& rd = rootDatum();
+  assert (rd.is_posroot(alpha)); // this is a precondition
+  auto image = i_tab.root_involution(theta,alpha);
+  make_positive(rd,image);
+  return image!=alpha and image!=delta_of(alpha);
 }
 
 void context::act_on_gamma(const WeylWord& ww)
@@ -1129,113 +1139,17 @@ param complex_cross(const ext_gen& p, param E) // by-value for |E|, modified
 				                subs.parent_nr_simple(p.s1))));
   // assert(rd.is_simple_root(rd.permuted_root(to_simple,
   //		    subs.parent_nr_simple(p.s1))));
-const  RootNbrSet S = pos_to_neg(rd,to_simple);
-  // S &= theta_real_roots ^ new_theta_real_roots; // select real-changing roots
-
-  /* unsigned countold=0; // will count 2-element |delta|-orbits not 2r or 2Ci/r
+  RootNbrSet S = pos_to_neg(rd,to_simple);
+  S.andnot(ec.delta_fixed());
+  unsigned count=0; // will count 2-element |delta|-orbits
   for (auto it=S.begin(); it(); ++it)
-    if (*it!=ec.delta_of(*it) and
-	ec.delta_of(*it)!= i_tab.root_involution(theta,*it) and
-	*it!=rd.rootMinus(i_tab.root_involution(theta,*it)) and
-	ec.delta_of(*it)!=
-	rd.rootMinus(i_tab.root_involution(theta,*it)))
-      //   if (*it!=ec.delta_of(*it) and not rd.sumIsRoot(*it,ec.delta_of(*it)))
-      ++countold;
-      assert(countold%2==0); // since |S| is supposed to be $\delta$-stable */
+    if(ec.is_very_complex(theta,*it) != ec.is_very_complex(new_theta,*it))
+      // maybe a |rd.sumIsRoot(*it,ec.delta_of(*it)))| condition needed too
+      ++count;
+  assert(count%2==0); // since |S| is supposed to be $\delta$-stable
+  E.flip(count%4!=0);
+  E.flip(p.length()==2); // parallel to the 2i,2r flips
 
-  unsigned countoldreal=0;
-  unsigned countoldCi = 0;
-  unsigned countoldCr = 0;
-  unsigned countoldCCplus = 0;
-  unsigned countoldCCminus = 0;
-  for (auto it=S.begin(); it(); ++it)
-    if (*it!=ec.delta_of(*it))
-      {
-	if (*it==rd.rootMinus(i_tab.root_involution(theta,*it)))
-	  {
-	    ++countoldreal;
-	  }
-	else if (ec.delta_of(*it)== i_tab.root_involution(theta,*it))
-	  {
-	    ++countoldCi;
-	  }
-	else if (ec.delta_of(*it)==
-		 rd.rootMinus(i_tab.root_involution(theta,*it)))
-	  {
-	    ++countoldCr;
-	  }
-	else if (rd.is_posroot(i_tab.root_involution(theta,*it)))
-	  {
-	    ++countoldCCplus;
-	  }
-	else
-	  {
-	    ++countoldCCminus;
-	  }
-      }
-  int countold=countoldCCplus+countoldCCminus; // +countoldCi+countoldCr;
-
-  /*  unsigned countnew=0; // will count 2-element |delta|-orbits
-  for (auto it=S.begin(); it(); ++it)
-    if (*it!=ec.delta_of(*it) and
-	ec.delta_of(*it)!= i_tab.root_involution(new_theta,*it) and
-	*it!=rd.rootMinus(i_tab.root_involution(new_theta,*it)) and
-	ec.delta_of(*it)!=
-	rd.rootMinus(i_tab.root_involution(new_theta,*it)))
-      //   if (*it!=ec.delta_of(*it) and not rd.sumIsRoot(*it,ec.delta_of(*it)))
-      ++countnew;
-  assert(countnew%2==0); // since |S| is supposed to be $\delta$-stable
-  //  std::cout << "countold = "<< countold << ", countnew = "
-  //	    << countnew <<std::endl;
-  // if((countold - countnew)%4!=0) std::cout << "complex_cross flip" << std::endl; */
-
-  unsigned countnewreal=0;
-  unsigned countnewCi = 0;
-  unsigned countnewCr = 0;
-  unsigned countnewCCplus = 0;
-  unsigned countnewCCminus = 0;
-  for (auto it=S.begin(); it(); ++it)
-
-    if (*it!=ec.delta_of(*it))
-      {
-	if (*it==rd.rootMinus(i_tab.root_involution(new_theta,*it)))
-	  {
-	    ++countnewreal;
-	  }
-	else if (ec.delta_of(*it)== i_tab.root_involution(new_theta,*it))
-	  {
-	    ++countnewCi;
-	  }
-	else if (ec.delta_of(*it)==
-		 rd.rootMinus(i_tab.root_involution(new_theta,*it)))
-	  {
-	    ++countnewCr;
-	  }
-	else if(rd.is_posroot(i_tab.root_involution(new_theta,*it)))
-	  {
-	    ++countnewCCplus;
-	  }
-	else
-	  {
-	    ++countnewCCminus;
-	  }
-      }
-  int countnew = countnewCCplus + countnewCCminus; // + countnewCi + countnewCr;
-  /*   if(countoldreal + countoldCi + countoldCr + countoldCCplus
-       + countoldCCminus != 0)
-    {
-      std::cout << theta << " to " << new_theta
-	    << ", Rold/new = " << countoldreal << "/" << countnewreal
-	    << ", Ciold/new = " << countoldCi << "/" << countnewCi
-	    << ", Crold/new = " << countoldCr << "/" << countnewCr
-	    << ", CC+old/new = " << countoldCCplus << "/" << countnewCCplus
-	    << ", CC-old/new = " << countoldCCminus << "/" << countnewCCminus
-		<< std::endl
-	    << std::endl;
-	    } */
-  E.flip((countold-countnew)%4!=0);
-  E.flip(p.w_kappa.size()==2); // a guess parallel to the new 2i,2r flips
-  validate(E);
   return E;
 } // |complex_cross|
 
