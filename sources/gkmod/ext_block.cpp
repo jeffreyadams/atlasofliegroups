@@ -1131,7 +1131,6 @@ param complex_cross(const ext_gen& p, param E) // by-value for |E|, modified
   //		    subs.parent_nr_simple(p.s1))));
 const  RootNbrSet S = pos_to_neg(rd,to_simple);
   // S &= theta_real_roots ^ new_theta_real_roots; // select real-changing roots
- if (S.size() != 0) std::cout << "size of cross S = " << S.size() << std::endl;
 
   /* unsigned countold=0; // will count 2-element |delta|-orbits not 2r or 2Ci/r
   for (auto it=S.begin(); it(); ++it)
@@ -1222,7 +1221,7 @@ const  RootNbrSet S = pos_to_neg(rd,to_simple);
 	  }
       }
   int countnew = countnewCCplus + countnewCCminus; // + countnewCi + countnewCr;
-    if(countoldreal + countoldCi + countoldCr + countoldCCplus
+  /*   if(countoldreal + countoldCi + countoldCr + countoldCCplus
        + countoldCCminus != 0)
     {
       std::cout << theta << " to " << new_theta
@@ -1233,7 +1232,7 @@ const  RootNbrSet S = pos_to_neg(rd,to_simple);
 	    << ", CC-old/new = " << countoldCCminus << "/" << countnewCCminus
 		<< std::endl
 	    << std::endl;
-    }
+	    } */
   E.flip((countold-countnew)%4!=0);
   E.flip(p.w_kappa.size()==2); // a guess parallel to the new 2i,2r flips
   validate(E);
@@ -1387,7 +1386,7 @@ bool Cayley_shift_flip
       ++countdown;
       assert(countup%2==0);// since |S| is $\delta$-stable */
   int countdown=countdownCCplus + countdownCCminus; //+countdownCi+countdownCr;
-  if(countdownreal + countdownCi + countdownCr + countdownCCplus
+  /* if(countdownreal + countdownCi + countdownCr + countdownCCplus
      + countdownCCminus != 0)
     {
       std::cout << theta_downstairs << " to " << theta_upstairs
@@ -1398,7 +1397,7 @@ bool Cayley_shift_flip
 	    << ", CC-down/up = " << countdownCCminus << "/" << countupCCminus
 		<< std::endl
 	    << std::endl;
-    }
+	    } */
   return (countup-countdown)%4!=0;
 	   // return false; // try turning this off; see what happens.
 } // Cayley_shift_flip
@@ -1511,7 +1510,12 @@ DescValue star (const param& E,	const ext_gen& p,
 		   E.l + alpha_v*(tf_alpha/2), E.t, flipped);
 	  param F1(E.ctxt,new_tw, F0.lambda_rho + alpha,
 		   F0.tau, F0.l, E.t, flipped);
-
+	  if(has_first)
+	    {
+	      F0.flipped = not F0.flipped;
+	      F1.flipped = not F1.flipped;
+	    }
+	  /* try removing the +/- signs
 	  if(has_first and (((-F0.lambda_rho + rho_r_shift)
 	  // if(has_first and (((-F0.lambda_rho + rho_r_shift) // no reason
 			     .dot(rd.coroot(alpha_0))
@@ -1538,6 +1542,7 @@ DescValue star (const param& E,	const ext_gen& p,
 
 	  // F0.lambda_rho-=first+rho_r_shift; // took out similar elsewhere?
 	  // F1.lambda_rho-=first+rho_r_shift; // took out similar elsewhere?
+	  */
 	  z_align(E,F0);
 	  z_align(E,F1);
 	  // F0.lambda_rho+=first+rho_r_shift; // see above
@@ -1580,16 +1585,16 @@ DescValue star (const param& E,	const ext_gen& p,
 	bool shift_correct = // whether |alpha_0| is defined and real at |theta|
 	  not rd.is_simple_root(alpha_simple) and
 	  i_tab.root_involution(theta,alpha_0)==rd.rootMinus(alpha_0);
-	bool flipped_correct = // shift_correct, and alpha_0 nonparity
+	// bool flipped_correct = // shift_correct, and alpha_0 nonparity
 			       // at nu=0
 	  // shift_correct and (level_a(E,rho_r_shift,alpha_0)%2 !=0);
 
-	  shift_correct and ( ((- E.lambda_rho + rho_r_shift) // no reason
-			       .dot(rd.coroot(alpha_0))
-			       - rd.colevel(alpha_0))%2!=0);
+	  // shift_correct and ( ((- E.lambda_rho + rho_r_shift) // no reason
+	  //		       .dot(rd.coroot(alpha_0))
+	//		       - rd.colevel(alpha_0))%2!=0);
 	//	std::cout << "rho_r_shift on alpha_0 = "
 	//		  << rho_r_shift.dot(rd.coroot(alpha_0)) << std::endl;
-	  bool flipped1 = flipped_correct ? not flipped : flipped;
+	//	  bool flipped1 = flipped_correct ? not flipped : flipped;
 
 	const int level = level_a(E,rho_r_shift,n_alpha) +
 	   (shift_correct ? 1 : 0 ); // add 1 if |alpha_0| is defined and real
@@ -1636,10 +1641,10 @@ DescValue star (const param& E,	const ext_gen& p,
 
 	  param F0(E.ctxt,new_tw,
 		   new_lambda_rho, E.tau + tau_correction,
-		   E.l, E0.t, flipped1);
+		   E.l, E0.t, flipped);
 	  param F1(E.ctxt,new_tw,
 		   new_lambda_rho, F0.tau, E.l + alpha_v, E0.t,
-		   flipped1);
+		   flipped);
 
 	  //	  F0.lambda_rho+=rho_r_shift;
 	  //	  F1.lambda_rho+=rho_r_shift;
@@ -1667,7 +1672,7 @@ DescValue star (const param& E,	const ext_gen& p,
 
 	  param F(E.ctxt,new_tw,
 		  new_lambda_rho, E.tau + tau_correction,
-		  E.l, E0.t, flipped1);
+		  E.l, E0.t, flipped);
 	  // F.lambda_rho+=rho_r_shift;
 	  z_align(E0,F);
 	  //  z_align(F,E1); this incorrectly puts a sign on the cross link
@@ -1678,8 +1683,8 @@ DescValue star (const param& E,	const ext_gen& p,
 	      // test whether alpha_0 is parity for E0; flip if not
 	      // if(( (E0.lambda_rho + rho_r_shift).dot(rd.coroot(alpha_0))-
 	      //	  rd.colevel(alpha_0))%2!=0)
-	      // F.flipped = not F.flipped; // done by tau correction already?
-	      E1.flipped = not E1.flipped;
+	      F.flipped = not F.flipped; // done by tau correction already?
+	      // E1.flipped = not E1.flipped;
 	    }
 	  links.push_back(std::move(F )); // Cayley link
 	  links.push_back(std::move(E1)); // cross link
