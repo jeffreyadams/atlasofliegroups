@@ -1210,110 +1210,16 @@ bool Cayley_shift_flip
    InvolutionNbr theta_downstairs, // at the bottom of the link
    const WeylWord& to_simple)
 { const RootDatum& rd = ec.rc().rootDatum();
-  const InvolutionTable& i_tab = ec.innerClass().involution_table();
   RootNbrSet S = pos_to_neg(rd,to_simple);
-  //  if (S.size() != 0) std::cout << "size of flip S = " << S.size()
-  // << std::endl;
-  //  .andnot(i_tab.real_roots(theta_upstairs)); // replace & with andnot
-  //  RootNbrSet T = pos_to_neg(rd,to_simple);
-    //  .andnot(i_tab.real_roots(theta_downstairs)); // replace & ...
-  // unsigned countup=0; // will count 2-element |delta|-orbits upstairs
-  unsigned countupreal=0;
-  unsigned countupCi = 0;
-  unsigned countupCr = 0;
-  unsigned countupCCplus = 0;
-  unsigned countupCCminus = 0;
+  S.andnot(ec.delta_fixed());
+  unsigned count=0; // will count 2-element |delta|-orbits upstairs
   for (auto it=S.begin(); it(); ++it)
-    if (*it!=ec.delta_of(*it))
-      {
-	if (*it==rd.rootMinus(i_tab.root_involution(theta_upstairs,*it)))
-	  {
-	    ++countupreal;
-	  }
-	else if (ec.delta_of(*it)== i_tab.root_involution(theta_upstairs,*it))
-	  {
-	    ++countupCi;
-	  }
-	else if (ec.delta_of(*it)==
-		 rd.rootMinus(i_tab.root_involution(theta_upstairs,*it)))
-	  {
-	    ++countupCr;
-	  }
-	else if (rd.is_posroot(i_tab.root_involution(theta_upstairs,*it)))
-	  {
-	    ++countupCCplus;
-	  }
-	else
-	  {
-	    ++countupCCminus;
-	  }
-      }
-      /*	if ec.delta_of(*it)!
-    if (*it!=ec.delta_of(*it) and
-	ec.delta_of(*it)!= i_tab.root_involution(theta_upstairs,*it) and
-	*it!=rd.rootMinus(i_tab.root_involution(theta_upstairs,*it)) and
-	ec.delta_of(*it)!=
-	rd.rootMinus(i_tab.root_involution(theta_upstairs,*it)))
-      //	and not rd.sumIsRoot(*it,ec.delta_of(*it)))
-      ++countup;
-      assert(countup%2==0); // since |S| is supposed to be $\delta$-stable */
-  int countup=countupCCplus + countupCCminus; //+countupCi+countupCr;
-
-      // unsigned countdown=0; // will count 2-element |delta|-orbits downstairs
-  unsigned countdownreal=0;
-  unsigned countdownCi = 0;
-  unsigned countdownCr = 0;
-  unsigned countdownCCplus = 0;
-  unsigned countdownCCminus = 0;
-  for (auto it=S.begin(); it(); ++it)
-    if (*it!=ec.delta_of(*it))
-      {
-	if (*it==rd.rootMinus(i_tab.root_involution(theta_downstairs,*it)))
-	  {
-	    ++countdownreal;
-	  }
-	else if (ec.delta_of(*it)== i_tab.root_involution(theta_downstairs,*it))
-	  {
-	    ++countdownCi;
-	  }
-	else if (ec.delta_of(*it)==
-		 rd.rootMinus(i_tab.root_involution(theta_downstairs,*it)))
-	  {
-	    ++countdownCr;
-	  }
-	else if (rd.is_posroot(i_tab.root_involution(theta_downstairs,*it)))
-	  {
-	    ++countdownCCplus;
-	  }
-	else
-	  {
-	    ++countdownCCminus;
-	  }
-
-      }
-	/*   if (*it!=ec.delta_of(*it) and
-	ec.delta_of(*it)!= i_tab.root_involution(theta_downstairs,*it) and
-	*it!=rd.rootMinus(i_tab.root_involution(theta_downstairs,*it)) and
- 	ec.delta_of(*it)!=
-	rd.rootMinus(i_tab.root_involution(theta_downstairs,*it)))
-	// and not rd.sumIsRoot(*it,ec.delta_of(*it)))
-      ++countdown;
-      assert(countup%2==0);// since |S| is $\delta$-stable */
-  int countdown=countdownCCplus + countdownCCminus; //+countdownCi+countdownCr;
-  /* if(countdownreal + countdownCi + countdownCr + countdownCCplus
-     + countdownCCminus != 0)
-    {
-      std::cout << theta_downstairs << " to " << theta_upstairs
-	    << ", Rdown/up = " << countdownreal << "/" << countupreal
-	    << ", Cidown/up = " << countdownCi << "/" << countupCi
-	    << ", Crdown/up = " << countdownCr << "/" << countupCr
-	    << ", CC+down/up = " << countdownCCplus << "/" << countupCCplus
-	    << ", CC-down/up = " << countdownCCminus << "/" << countupCCminus
-		<< std::endl
-	    << std::endl;
-	    } */
-  return (countup-countdown)%4!=0;
-	   // return false; // try turning this off; see what happens.
+    if (ec.is_very_complex(theta_upstairs,*it) !=
+	ec.is_very_complex(theta_downstairs,*it))
+       // maybe a |rd.sumIsRoot(*it,ec.delta_of(*it)))| condition needed too
+	++count;
+  assert(count%2==0); // since set of roots changing sign is delta-stable
+  return count%4!=0;
 } // Cayley_shift_flip
 
 
@@ -1365,20 +1271,17 @@ DescValue star (const param& E,	const ext_gen& p,
 	assert(E.t.dot(alpha)==0); // follows from $\delta*\alpha=\alpha$
 
 	Weight first; // maybe a root with |(1+delta)*first==alpha|
-	RootNbr alpha_0 = 0;
 	bool has_first=false;
 	if (rd.is_simple_root(alpha_simple))
 	  first = Weight(rd.rank(),0); // effectively not used in this case
 	else
 	{
 	  has_first=true;
-	  // std::cout << "can't make simple alpha = " << n_alpha << std::endl;
 	  --tau_coef; // the parity change and decrease are both relevant
 	  weyl::Generator s = // first switched root index
 	    rd.find_descent(alpha_simple);
-	  alpha_0 = rd.permuted_root(rd.simpleRootNbr(s),ww);
 	  first = // corresponding root summand, conjugated back
-	      rd.root(rd.permuted_root(rd.simpleRootNbr(s),ww));
+	    rd.root(rd.permuted_root(rd.simpleRootNbr(s),ww));
 	  assert(alpha == first + E.ctxt.delta()*first );
 	} // with this set-up, |alpha_simple| needs no more inspection
 
@@ -1398,13 +1301,8 @@ DescValue star (const param& E,	const ext_gen& p,
 
  	  E0.l = tf_alpha%4==0 ? F.l+alpha_v : F.l; // for cross
 	  assert(not same_standard_reps(E,E0));
-	  //	  F.lambda_rho-=first + rho_r_shift;
 	  z_align(E,F);
-	  // this compares F.flipped with E.flipped, GOOD!
-	  //	  z_align(F,E0); // this changes sign of cross link
-	  //	  when Cayley link is flipped, and that's bad.
 	  z_align(E,E0);
-	  //	  F.lambda_rho+=first + rho_r_shift;
 	  links.push_back(std::move(F )); // Cayley link
 	  links.push_back(std::move(E0)); // cross link
 	} // end of 1i1 case
@@ -1429,38 +1327,8 @@ DescValue star (const param& E,	const ext_gen& p,
 	      F0.flipped = not F0.flipped;
 	      F1.flipped = not F1.flipped;
 	    }
-	  /* try removing the +/- signs
-	  if(has_first and (((-F0.lambda_rho + rho_r_shift)
-	  // if(has_first and (((-F0.lambda_rho + rho_r_shift) // no reason
-			     .dot(rd.coroot(alpha_0))
-			     - rd.colevel(alpha_0))%2 != 0 ))
-	    F0.flipped = not F0.flipped; //test alpha0 nonparity at nu=0
-	  // if(has_first) std::cout << "parity test0 = " <<
-	  //		    (-F0.lambda_rho+rho_r_shift)
-	  //		    .dot(rd.coroot(alpha_0)) -
-	  //		    rd.colevel(alpha_0) << std::endl
-	  //			    << "alpha_0 = " << alpha_0
-	  //			    << ", alpha = " << n_alpha << std::endl;
-	  // if(F0.flipped) std::cout << "F0 ended up flipped." <<std::endl;
-
-	  if(has_first and (((-F1.lambda_rho + rho_r_shift)
-	  // if(has_first and (((-F1.lambda_rho) // + rho_r_shift) // no reason
-			     .dot(rd.coroot(alpha_0))
-			     - rd.colevel(alpha_0))%2 != 0 ))
-	    F1.flipped = not F1.flipped; //test alpha0 nonparity at nu=0
-	  // if(has_first) std::cout << "parity test1 = " <<
-	  //		    (-F1.lambda_rho+rho_r_shift)
-	  //		    .dot(rd.coroot(alpha_0)) -
-	  //		    rd.colevel(alpha_0) << std::endl;
-	  // if(F1.flipped) std::cout << "F1 ended up flipped." <<std::endl;
-
-	  // F0.lambda_rho-=first+rho_r_shift; // took out similar elsewhere?
-	  // F1.lambda_rho-=first+rho_r_shift; // took out similar elsewhere?
-	  */
 	  z_align(E,F0);
 	  z_align(E,F1);
-	  // F0.lambda_rho+=first+rho_r_shift; // see above
-	  // F1.lambda_rho+=first+rho_r_shift; // see above
 	  links.push_back(std::move(F0)); // Cayley link
 	  links.push_back(std::move(F1)); // Cayley link
 	} // end of type 2 case
@@ -1475,17 +1343,14 @@ DescValue star (const param& E,	const ext_gen& p,
 	const auto theta_p = i_tab.nr(new_tw); // downstairs
 	Weight rho_r_shift = repr::Cayley_shift(ic,theta,theta_p,ww);
 	const bool flipped = Cayley_shift_flip(E.ctxt,theta,theta_p,ww);
-	//   if(flipped) std::cout << "1r flip" << std::endl;
 	assert(E.ctxt.delta()*rho_r_shift==rho_r_shift); // as $ww\in W^\delta$
 
 	Weight first; // maybe a root with |(1+delta)*first==alpha|
 	RootNbr alpha_0 = 0; // maybe one of |alpha==alpha_0+alpha_1|
-	// bool has_first=false;
 	  if (rd.is_simple_root(alpha_simple)) //? 0 // unused
 	    first = Weight(rd.rank(),0); //not used
 	  else
 	    {
-	      //    has_first=true;
 	      weyl::Generator s = // first switched root index
 		rd.find_descent(alpha_simple);
 	      alpha_0 = rd.permuted_root(rd.simpleRootNbr(s),ww);
@@ -1499,16 +1364,6 @@ DescValue star (const param& E,	const ext_gen& p,
 	bool shift_correct = // whether |alpha_0| is defined and real at |theta|
 	  not rd.is_simple_root(alpha_simple) and
 	  i_tab.root_involution(theta,alpha_0)==rd.rootMinus(alpha_0);
-	// bool flipped_correct = // shift_correct, and alpha_0 nonparity
-			       // at nu=0
-	  // shift_correct and (level_a(E,rho_r_shift,alpha_0)%2 !=0);
-
-	  // shift_correct and ( ((- E.lambda_rho + rho_r_shift) // no reason
-	  //		       .dot(rd.coroot(alpha_0))
-	//		       - rd.colevel(alpha_0))%2!=0);
-	//	std::cout << "rho_r_shift on alpha_0 = "
-	//		  << rho_r_shift.dot(rd.coroot(alpha_0)) << std::endl;
-	//	  bool flipped1 = flipped_correct ? not flipped : flipped;
 
 	const int level = level_a(E,rho_r_shift,n_alpha) +
 	   (shift_correct ? 1 : 0 ); // add 1 if |alpha_0| is defined and real
@@ -1560,12 +1415,8 @@ DescValue star (const param& E,	const ext_gen& p,
 		   new_lambda_rho, F0.tau, E.l + alpha_v, E0.t,
 		   flipped);
 
-	  //	  F0.lambda_rho+=rho_r_shift;
-	  //	  F1.lambda_rho+=rho_r_shift;
 	  z_align(E0,F0);
 	  z_align(E0,F1);
-	  //	  F0.lambda_rho-=rho_r_shift;
-	  //	  F1.lambda_rho-=rho_r_shift;
 	  links.push_back(std::move(F0)); // first Cayley
 	  links.push_back(std::move(F1)); // second Cayley
 
@@ -1587,18 +1438,10 @@ DescValue star (const param& E,	const ext_gen& p,
 	  param F(E.ctxt,new_tw,
 		  new_lambda_rho, E.tau + tau_correction,
 		  E.l, E0.t, flipped);
-	  // F.lambda_rho+=rho_r_shift;
 	  z_align(E0,F);
-	  //  z_align(F,E1); this incorrectly puts a sign on the cross link
-	  //  z_align(E0,E1); // can't because t's don't match FIX?
-	  // F.lambda_rho-=rho_r_shift;
 	  if(shift_correct)
 	    {
-	      // test whether alpha_0 is parity for E0; flip if not
-	      // if(( (E0.lambda_rho + rho_r_shift).dot(rd.coroot(alpha_0))-
-	      //	  rd.colevel(alpha_0))%2!=0)
-	      F.flipped = not F.flipped; // done by tau correction already?
-	      // E1.flipped = not E1.flipped;
+	      F.flipped = not F.flipped;
 	    }
 	  links.push_back(std::move(F )); // Cayley link
 	  links.push_back(std::move(E1)); // cross link
@@ -1620,7 +1463,6 @@ DescValue star (const param& E,	const ext_gen& p,
       const Weight& beta = integr_datum.simpleRoot(p.s1);
       const Coweight& beta_v = integr_datum.simpleCoroot(p.s1);
       RootNbr n_beta = subs.parent_nr_simple(p.s1);
-      // RootNbr theta_beta = i_tab.root_involution(theta,n_beta);
 
       if (theta_alpha==n_alpha) // length 2 imaginary case
       { // first find out if the simply-integral root $\alpha$ is compact
@@ -1640,8 +1482,6 @@ DescValue star (const param& E,	const ext_gen& p,
 
 	const Weight rho_r_shift = repr::Cayley_shift(ic,theta_p,theta,ww);
 	bool flipped = Cayley_shift_flip(E.ctxt,theta_p,theta,ww);
-	//	const Weight tau_shift = tau_shift(E.ctxt,theta,theta_p,ww);
-	// if(flipped) std::cout << "2i flip" << std::endl;
 	if(twoitwor) flipped = not flipped;
 	assert(E.ctxt.delta()*rho_r_shift==rho_r_shift); // $ww\in W^\delta$
 	assert(rd.is_simple_root(alpha_simple)); // cannot fail for length 2
@@ -1657,13 +1497,7 @@ DescValue star (const param& E,	const ext_gen& p,
 		   E.tau + sigma, E.l+alpha_v*(tf_alpha/2)+beta_v*(tf_beta/2),
 		   E.t, flipped);
 	  E0.l += alpha_v+beta_v;
-	  // F.lambda_rho-=rho_r_shift;
 	  z_align(E,F); // no 3rd arg, since |E.lambda_rho| unchanged
-	  // z_align(F,E0); // this changes a cross link sign if a Cayley
-			 // link is flipped, and that seems bad
-	  // F.lambda_rho-=rho_r_shift;
-	  // z_align(E,E0); // can't because t's don't match. FIX?
-	  // F.lambda_rho+=rho_r_shift;
 	  links.push_back(std::move(F));  // Cayley link
 	  links.push_back(std::move(E0)); // cross link
 	}
@@ -1691,21 +1525,11 @@ DescValue star (const param& E,	const ext_gen& p,
 		   E.lambda_rho + rho_r_shift
 		   + alpha*mm, E.tau + sigma, new_l,
 		   E.t, flipped);
-	  // change E.tau to F0.tau? Marc says NO 1/13
 	  int t_alpha=E.t.dot(alpha);
 	  z_align(E,F0,m*t_alpha);
-	  //	  F0.lambda_rho-=rho_r_shift;
-	  //      F1.lambda_rho-=rho_r_shift;
-	  // z_align(E,F0);
 	  z_align(E,F1,mm*t_alpha);
-	  // z_align(E,F1);
-	  // F0.lambda_rho+=rho_r_shift;
-	  // F1.lambda_rho+=rho_r_shift;
 	  links.push_back(std::move(F0)); // first Cayley
-	  // std::cout << "2i12, KGBElt = " << E.restrict().x() << std::endl;
-	  // if(F0.flipped) std::cout << "first 2i12 Cayley flipped" << std::endl;
 	  links.push_back(std::move(F1)); // second Cayley
-	  // if(F1.flipped) std::cout << "second 2i12 Cayley flipped" << std::endl;
 	} // end of case 2i12f
 	else
 	{ // type 2i22
@@ -1729,13 +1553,7 @@ DescValue star (const param& E,	const ext_gen& p,
 
 	  int ta = E.t.dot(alpha), tb=E.t.dot(beta);
 	  z_align(E,F0,ta*m);
-	  //	  F0.lambda_rho -= rho_r_shift;
-	  //	  F1.lambda_rho -= rho_r_shift;
-	  // 	  z_align(E,F0);
 	  z_align(E,F1,ta*(1-m)+tb);
-	  //	  z_align(E,F1);
-	  // F0.lambda_rho += rho_r_shift;
-	  // F1.lambda_rho += rho_r_shift;
 	  links.push_back(std::move(F0)); // first Cayley
 	  links.push_back(std::move(F1)); // second Cayley
 	} // end type 2i22 case
@@ -1796,13 +1614,7 @@ DescValue star (const param& E,	const ext_gen& p,
 		   new_lambda_rho, E.tau,
 		   E.l+alpha_v*(1-m)+beta_v, E1.t, flipped);
 	  z_align(E0,F0,m*((b_level-a_level)/2));
-	  // F0.lambda_rho -= rho_r_shift;
-	  // F1.lambda_rho -= rho_r_shift;
-	  // z_align(E0,F0);
 	  z_align(E1,F1,m*((a_level-b_level)/2));
-	  // z_align(E0,F1);
-	  // F0.lambda_rho -= rho_r_shift;
-	  // F1.lambda_rho -= rho_r_shift;
 	  // Cayley links
 	  links.push_back(std::move(F0));
 	  links.push_back(std::move(F1));
@@ -1838,23 +1650,9 @@ DescValue star (const param& E,	const ext_gen& p,
 		   flipped);
 
 	  z_align(E0,F0,m *((b_level-a_level)/2));
-	  // F0.lambda_rho += rho_r_shift;
-	  // F1.lambda_rho += rho_r_shift;
-	  // z_align(E0,F0);
 	  z_align(E1,F1,mm*((b_level-a_level)/2));
-	  // z_align(E0,F1,mm*((b_level-a_level)/2));
-	  // z_align(E0,F1);
-	  // F0.lambda_rho -= rho_r_shift;
-	  // F1.lambda_rho -= rho_r_shift;
 	  links.push_back(std::move(F0));
-	  // std::cout << "2r21, KGBElt = " << E.restrict().x() << std::endl;
-	  // if(F0.flipped) std::cout << "first 2r21 Cayley flipped "
-			   // to KGBELT = " << F0.restrict().x()
-	  //	   << std::endl;
 	  links.push_back(std::move(F1));
-	  // if(F1.flipped) std::cout << "second 2r21 Cayley flipped "
-			   // to KGBElt = " << F1.restrict().x()
-	  //	   << std::endl;
 	} // end of case 2r21f
 	else // case 2r22
 	{ result = two_real_single_single;
@@ -1872,11 +1670,7 @@ DescValue star (const param& E,	const ext_gen& p,
 
 	  param F(E.ctxt, new_tw, new_lambda_rho, E.tau,
 		  E.l, E0.t, flipped);
-	  // F.lambda_rho += rho_r_shift;
 	  z_align(E0,F); // no 3rd arg, as |E.t.dot(alpha)==0| etc.
-	  // z_align(F,E1); // this would put a sign on a cross when
-	  // there's one on a Cayley, which is bad
-	  // F.lambda_rho -= rho_r_shift;
 	  z_align(E0,E1); // this time t's DO match
 	  // worry that nothing similar happens in other cross links?
 	  links.push_back(std::move(F )); // Cayley link
@@ -1888,8 +1682,6 @@ DescValue star (const param& E,	const ext_gen& p,
 	if (theta_alpha != (ascent ? n_beta : rd.rootMinus(n_beta)))
 	{ // twisted non-commutation with |s0.s1|
 	  result = ascent ? two_complex_ascent : two_complex_descent;
-	  // std::cout << "computing 2C cross for theta = "
-	  // << theta << std::endl;
 	  links.push_back(complex_cross(p,E));
 	}
 	else if (ascent)
@@ -1907,10 +1699,6 @@ DescValue star (const param& E,	const ext_gen& p,
 	  assert(E.ctxt.delta()*rho_r_shift==rho_r_shift); // $ww\in W^\delta$
 
 	  const bool flipped = Cayley_shift_flip(E.ctxt,theta_p,theta,ww);
-	  // if(flipped) std::cout << "2Ci flip" << std::endl;
-
-	  // downstairs cross by |ww| only has imaginary and complex steps, so
-	  // $\alpha_v.(\gamma-\lambda_\rho)$ is unchanged across |ww|
 	  const int f = // number of times $\alpha$ is added to $\lambda_\rho$
 	    (E.ctxt.gamma() - E.lambda_rho).dot(alpha_v)- rd.colevel(n_alpha);
 
@@ -1929,15 +1717,9 @@ DescValue star (const param& E,	const ext_gen& p,
 		   new_tau, new_l, new_t, flipped^E.flipped);
 	  // ^E.flipped is needed because there is no z_align to see
 	  // this extra flip in E.
-	  // "not" added 1/12/17 to fix SL(4,R) trivial extblock braid
-	  // "not" breaks unitarity for GL(2,C) trivial
-	  //	  F.lambda_rho-=rho_r_shift; //removed 1/13 per latest?
-	  int ab_tau = (alpha_v+beta_v).dot(E.tau); // + 2;
-	  // 2 is from (46j) in twisted paper ALREADY COUNTED?
+	  int ab_tau = (alpha_v+beta_v).dot(E.tau);
 	  assert (ab_tau%2==0);
-	  // if ((ab_tau*dual_f)%4!=0) std::cout << "2Ci z flip" << std::endl;
 	  F.flip((ab_tau*dual_f)%4!=0);
-	  //	  F.lambda_rho+=rho_r_shift; //removed 1/13
 	  links.push_back(std::move(F));  // "Cayley" link
 	}
 	else // twisted commutation with |s0.s1|, and not |ascent|: 2Cr
@@ -1952,7 +1734,6 @@ DescValue star (const param& E,	const ext_gen& p,
 	  assert(rd.is_simple_root(alpha_simple)); // no complications here
 	  const Weight rho_r_shift = repr::Cayley_shift(ic,theta,theta_p,ww);
 	  const bool flipped = Cayley_shift_flip(E.ctxt,theta,theta_p,ww);
-	  // if(flipped) std::cout << "2Cr flip" << std::endl;
 	  assert(E.ctxt.delta()*rho_r_shift==rho_r_shift); // $ww\in W^\delta$
 
 	  const int f = level_a(E,rho_r_shift,n_alpha);
@@ -1969,16 +1750,9 @@ DescValue star (const param& E,	const ext_gen& p,
 	  param F (E.ctxt, new_tw, new_lambda_rho, new_tau, new_l,
 		   new_t,  flipped^E.flipped);
 	  // ^E.flipped as in 2Ci
-	  // "not" added 1/12/17 to fix extblock SL(4,R) trivial braid
-	  // "not" breaks unitarity for GL(2,C) trivial
-	  // F.lambda_rho+=rho_r_shift; //removed 1/13
-	  int t_ab = E.t.dot(beta-alpha); // +2;
-	  // 2 is dual to 2Ci 2 // but they both don't exist?
+	  int t_ab = E.t.dot(beta-alpha);
 	  assert(t_ab%2==0);
-	  // if ((t_ab*(f+alpha_v.dot(E.tau)))%4!=0) std::cout << "2Cr z flip"
-	  //		    << std::endl;
 	  F.flip((t_ab * (f+alpha_v.dot(E.tau)))%4!=0);
-	  // F.lambda_rho-=rho_r_shift; //removed 1/13
 	  links.push_back(std::move(F));  // "Cayley" link
 	}
       }
@@ -2018,7 +1792,6 @@ DescValue star (const param& E,	const ext_gen& p,
 
 	const Weight rho_r_shift = repr::Cayley_shift(ic,theta_p,theta,ww);
 	const bool flipped = Cayley_shift_flip(E.ctxt,theta_p,theta,ww);
-	// if(flipped) std::cout << "3i flip" << std::endl;
 	assert(E.ctxt.delta()*rho_r_shift==rho_r_shift); // $ww\in W^\delta$
 	assert(rd.is_simple_root(alpha_simple)); // cannot fail for length 3
 
@@ -2027,11 +1800,7 @@ DescValue star (const param& E,	const ext_gen& p,
 		E.tau - alpha*kappa_v.dot(E.tau),
 		E.l + kappa_v*((tf_alpha+tf_beta)/2), E.t,
 		not flipped); //January unsurprise: delta acts by -1
-	// flipped); // removing not made 1 0 0 0 -1 nonunitary
-	// on some wedge?
-	//	F.lambda_rho-=rho_r_shift;
 	z_align(E,F); // |lambda_rho| unchanged at simple Cayley
-	//	F.lambda_rho+=rho_r_shift;
 	links.push_back(std::move(F)); // Cayley link
       }
       else if (theta_alpha==rd.rootMinus(n_alpha)) // length 3 real case
@@ -2043,7 +1812,6 @@ DescValue star (const param& E,	const ext_gen& p,
 
 	const Weight rho_r_shift = repr::Cayley_shift(ic,theta,theta_p,ww);
 	const bool flipped = Cayley_shift_flip(E.ctxt,theta,theta_p,ww);
-	// if(flipped) std::cout << "3r flip" << std::endl;
 	assert(E.ctxt.delta()*rho_r_shift==rho_r_shift); // as $ww\in W^\delta$
 
 	const int a_level = level_a(E,rho_r_shift,n_alpha);
@@ -2052,13 +1820,12 @@ DescValue star (const param& E,	const ext_gen& p,
 	   return three_real_nonparity; // no link added here
 
 	// parity case
-	result = three_real_semi; // 3r
+	result = three_real_semi; // 3r. Goal is to use SAME coordinates on
+	// each side of 3r/3Ci link.
 
 	const int b_level = level_a(E,rho_r_shift,n_beta);
 	assert(b_level%2==0); // since |a_level| and |b_level| have same parity
 
-	// const Weight new_lambda_rho = // make level for |kappa| zero
-	//	  E.lambda_rho-rho_r_shift + kappa*((a_level+b_level)/2);
 	const Weight new_lambda_rho = E.lambda_rho - rho_r_shift
 	  + alpha*(a_level + b_level); // make level for |kappa| zero
 	E0.t -= alpha_v*kappa.dot(E.t); // makes |E.t.dot(kappa)==0|
@@ -2066,56 +1833,10 @@ DescValue star (const param& E,	const ext_gen& p,
 	E0.tau += (kappa-alpha-alpha)*((a_level+b_level)/2);
 	assert(same_sign(E,E0)); // since |t| change has no effect, even
 	// shift on lambda by real roots has no effect
-	// std::cout << "constructing 3r link from " << E.x() << std::endl;
-
-	/*
-	prettyprint::printVector(std::cout << "new lambda_rho = ",
-				       E0.lambda_rho);
-	std::cout << std::endl;
-	prettyprint::printVector(std::cout << "new tau = ",
-				       E0.tau);
-	std::cout << std::endl;
-  	std::cout << std::endl;
-	prettyprint::printVector(std::cout << "old and new l = ",
-				       E.l);
-	std::cout << std::endl;
-	prettyprint::printVector(std::cout << "old t = ",
-				       E.t);
-	std::cout << std::endl;
-	prettyprint::printVector(std::cout << "new t = ",
-				       E0.t);
-	std::cout << std::endl;
-	std::cout << std::endl; */
-	/*	std::cout << std::endl;
-	prettyprint::printVector(std::cout << "old lambda_rho = ",
-				 E.lambda_rho);
-	std::cout << std::endl;
-	prettyprint::printVector(std::cout << "old tau = ",
-				 E.tau);
-	std::cout << std::endl;
-
-	prettyprint::printVector(std::cout << "new lambda_rho = ",
-				 E0.lambda_rho);
-	std::cout << std::endl;
-	prettyprint::printVector(std::cout << "new tau = ",
-				 E0.tau);
-	std::cout << std::endl;
-	std::cout << std::endl;
-	const auto& delta = E.ctxt.delta();
-	const auto& theta_mat = i_tab.matrix(E.tw);
-	const auto& theta_p_mat = i_tab.matrix(new_tw);
-	assert((delta-1)*E0.lambda_rho == (1-theta_mat)*E0.tau);
-	assert((delta-1)*E0.lambda_rho == (1-theta_p_mat)*E0.tau);
-       	std::cout << "validating E0" << std::endl; */
-	validate(E0);
-	//	std::cout << "done validating E0" << std::endl;
+	//	validate(E0);
 	param F(E.ctxt, new_tw,	E0.lambda_rho -rho_r_shift,
 		E0.tau, E.l, E0.t, not flipped^E.flipped); //3r Cayley
 	//January unsurprise
-		// E.tau, E.l, E0.t, flipped); //remove not -> bad 1 0 0 0 -1
-	// F.lambda_rho+=rho_r_shift;
-	// z_align(E0,F); // no 3rd arg since |E.t.dot(kappa)==0|
-	// F.lambda_rho-=rho_r_shift;
 	links.push_back(std::move(F)); // Cayley link
       }
       else // length 3 complex case 3Ci or 3Cr or 3C
@@ -2136,7 +1857,6 @@ DescValue star (const param& E,	const ext_gen& p,
 	  rho_r_shift = ascent ? rho_r_shift : -rho_r_shift;
 	  const bool flipped =
 	    Cayley_shift_flip(E.ctxt,theta_upstairs,theta_downstairs,ww);
-	  // if(flipped) std::cout << "3Ci flip" << std::endl;
 	  assert(E.ctxt.delta()*rho_r_shift==rho_r_shift); // $ww\in W^\delta$
 
 	  int tf_alpha = (E.ctxt.g_rho_check() - E.l).dot(alpha);
@@ -2152,40 +1872,15 @@ DescValue star (const param& E,	const ext_gen& p,
 		new_lambda_rho + kappa - alpha*2; // add beta-alpha
 	      new_tau = dtf_alpha%2==0 ? new_tau : new_tau + alpha*2
 		- kappa;
-
-	      /*	    param F(E.ctxt,new_tw,
-		    dtf_alpha%2==0 ? new_lambda_rho : new_lambda_rho + kappa,
-		    E.tau - kappa*(kappa_v.dot(E.tau)/2),
-		    E.l + kappa_v*tf_alpha, E.t,
-       		    not flipped); // January unsurprise
-		    // flipped); // trouble in 1 0 0 0 -1 */
 	      E0.l = new_l;
 	      E0.tau = new_tau;
 	      if (dtf_alpha%2!=0) E0.lambda_rho += kappa - alpha*2;
-	      /*  std::cout << "constructing 3Ci link from " << E.x()
-		  << std::endl;
-	      prettyprint::printVector(std::cout << "old lambda_rho = ",
-				       E.lambda_rho);
-	      std::cout << std::endl;
-	      prettyprint::printVector(std::cout << "old tau = ",
-				       E.tau);
-	      std::cout << std::endl;
-	      prettyprint::printVector(std::cout << "new lambda_rho = ",
-				       E0.lambda_rho);
-	      std::cout << std::endl;
-	      prettyprint::printVector(std::cout << "new tau = ",
-				       E0.tau);
-	      std::cout << std::endl;
-	      std::cout << std::endl; */
-	      validate(E0);
+	      //	      validate(E0);
 	      bool flipped1 = flipped^(not same_sign(E,E0));
 	      param F(E.ctxt, new_tw, new_lambda_rho, new_tau, new_l, E.t,
 		      not flipped1^E.flipped); //3Ci Cayley
 	    assert(E.t.dot(kappa)==0);
 	    // since it is half of |t*(1+theta)*kappa=l*(delta-1)*kappa==0|
-	    //	    F.lambda_rho-=rho_r_shift;
-	    // z_align(E,F); // may ignore possible shift by |kappa|
-	    //	    F.lambda_rho+=rho_r_shift;
 	    links.push_back(std::move(F)); // Cayley link
 	  }
 	  else // descent, so 3Cr
