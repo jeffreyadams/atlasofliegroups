@@ -1766,7 +1766,7 @@ DescValue star (const param& E,	const ext_gen& p,
 	assert(E0.lambda_rho-rho_r_shift==new_lambda_rho);
 	validate(E0);
 
-	// flipped = not flipped; // no January unsurprise for 3r
+	flipped = not flipped; // January unsurprise for 3r
 
 	param F(E.ctxt, new_tw,	new_lambda_rho,E0.tau,E.l,E0.t);
 
@@ -1812,7 +1812,7 @@ DescValue star (const param& E,	const ext_gen& p,
 
 	    param F(E.ctxt,new_tw, new_lambda_rho, new_tau, new_l, E.t);
 
-	    // since it is half of |t*(1+theta)*kappa=l*(delta-1)*kappa==0|
+	    flipped = not flipped; // January unsurprise for 3Ci
 	    z_align(E0,F, flipped^(not same_sign(E,E0)));
 	    links.push_back(std::move(F)); // Cayley link
 	  }
