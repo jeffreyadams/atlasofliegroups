@@ -676,10 +676,10 @@ bool context::shift_flip
   (InvolutionNbr theta, InvolutionNbr theta_p, RootNbrSet S) const
 { S.andnot(delta_fixed()); // $\delta$-fixed roots won't contribute
 
-  unsigned count=0; // will count 2-element |delta|-orbits
+  unsigned count=0; // will count 2-element |delta|-orbit elements
   for (auto it=S.begin(); it(); ++it)
-    if (is_very_complex(theta,*it) != is_very_complex(theta_p,*it))
-      // maybe a |rd.sumIsRoot(*it,ec.delta_of(*it)))| condition needed too
+    if (is_very_complex(theta,*it) != is_very_complex(theta_p,*it) and
+	not rootDatum().sumIsRoot(*it,delta_of(*it)))
       ++count;
 
   assert(count%2==0); // since |pos_to_neg| is supposed to be $\delta$-stable
@@ -1186,7 +1186,7 @@ DescValue star (const param& E,	const ext_gen& p,
 	const auto theta_p = i_tab.nr(new_tw);
 	const auto S = pos_to_neg(rd,ww);
 	const Weight rho_r_shift = E.ctxt.to_simple_shift(theta,theta_p,S);
-	const bool flipped = E.ctxt.shift_flip(theta,theta_p,S);
+	bool flipped = E.ctxt.shift_flip(theta,theta_p,S);
 
 	assert(E.ctxt.delta()*rho_r_shift==rho_r_shift); // $ww\in W^\delta$
 	assert(E.t.dot(alpha)==0); // follows from $\delta*\alpha=\alpha$
@@ -1224,11 +1224,6 @@ DescValue star (const param& E,	const ext_gen& p,
 	  z_align(E,F,flipped);
 	  z_align(F,E0,flipped);
 
-	  // flip |F| if |first| is nonparity at $\nu=0$
-	  if (not rd.is_simple_root(alpha_simple))
-	    F.flip((rho(rd)+(F.lambda_rho-rho_r_shift)).dot(rd.coroot(first))
-		   %2!=0);
-
 	  links.push_back(std::move(F )); // Cayley link
 	  links.push_back(std::move(E0)); // cross link
 	} // end of 1i1 case
@@ -1252,16 +1247,11 @@ DescValue star (const param& E,	const ext_gen& p,
 	  param F1(E.ctxt,new_tw,
 		   F0.lambda_rho + alpha, F0.tau, F0.l, E.t);
 
+	  if (not rd.is_simple_root(alpha_simple))
+	    flipped = not flipped;
+
 	  z_align(E,F0,flipped);
 	  z_align(E,F1,flipped);
-	  // flip |F0| and |F1| if |first| is nonparity at $\nu=0$
-	  if (not rd.is_simple_root(alpha_simple))
-	  {
-	    F0.flip((rho(rd)+(F0.lambda_rho-rho_r_shift)).dot(rd.coroot(first))
-		    %2!=0);
-	    F1.flip((rho(rd)+(F1.lambda_rho-rho_r_shift)).dot(rd.coroot(first))
-		    %2!=0);
-	  }
 	  links.push_back(std::move(F0)); // Cayley link
 	  links.push_back(std::move(F1)); // Cayley link
 	} // end of type 2 case
@@ -1312,11 +1302,6 @@ DescValue star (const param& E,	const ext_gen& p,
 	    new_tau += rd.root(first);
 	    assert((i_tab.matrix(new_tw)-1)*rd.root(first) ==
 		   (E.ctxt.delta()      -1)*rd.root(first)); // (-1's redundant)
-
-	    flipped ^= // do extra flip when |first| is nonparity at $\nu=0$
-	      (rho(rd)+(E.lambda_rho-rho_r_shift)).dot(rd.coroot(first))%2!=0;
-	    // note adding |alpha| to |lambda_rho| would make that opposite
-	    // because |rd.coroot(first).dot(alpha)==1|
 	  }
 	}
 
@@ -1359,9 +1344,14 @@ DescValue star (const param& E,	const ext_gen& p,
 
 	  param F(E.ctxt,new_tw, new_lambda_rho, new_tau, E.l, E0.t);
 
+	  flipped = flipped!=shift_correct; // flip both in |shift_correct| case
+
 	  z_align(E0,F,flipped);
-	  // if |shift_correct|, then |flipped| would be opposite for |E1|
-	  z_align(F,E1,flipped!=shift_correct); // as explained above
+	  z_align(F,E1,flipped); // as explained above
+
+	  // since |z_align| ignores |lambda_rho|, we must have equal flips:
+	  assert(E0.is_flipped()==E1.is_flipped());
+
 	  links.push_back(std::move(F )); // Cayley link
 	  links.push_back(std::move(E1)); // cross link
 	} // end of 1r2 case
@@ -1689,6 +1679,7 @@ DescValue star (const param& E,	const ext_gen& p,
       RootNbr theta_alpha = i_tab.root_involution(theta,n_alpha);
       const Weight& beta = integr_datum.simpleRoot(p.s1);
       RootNbr n_beta = subs.parent_nr_simple(p.s1);
+      const Coweight& beta_v = integr_datum.simpleCoroot(p.s1);
 
       RootNbr n_kappa =integr_datum.simple_reflected_root
 	 (p.s1, integr_datum.simpleRootNbr(p.s0));
@@ -1723,14 +1714,15 @@ DescValue star (const param& E,	const ext_gen& p,
 	assert(E.ctxt.delta()*rho_r_shift==rho_r_shift); // $ww\in W^\delta$
 	assert(rd.is_simple_root(alpha_simple)); // cannot fail for length 3
 
+	E0.tau -= alpha*kappa_v.dot(E.tau); // make |kappa_v.dot(E.tau)==0|
+	E0.l += alpha_v*(tf_alpha+tf_beta);
+	E0.t += (beta_v-alpha_v)*((tf_alpha+tf_beta)/2);
+
+	param F(E.ctxt, new_tw,	E.lambda_rho + rho_r_shift, E0.tau, E0.l, E.t);
+
 	flipped = not flipped; // January unsurprise for 3i: delta acts by -1
+	z_align(E0,F,flipped^not same_sign(E,E0));
 
-	param F(E.ctxt, new_tw,
-		E.lambda_rho + rho_r_shift,
-		E.tau - alpha*kappa_v.dot(E.tau),
-		E.l + kappa_v*((tf_alpha+tf_beta)/2), E.t);
-
-	z_align(E,F,flipped); // |lambda_rho| unchanged at simple Cayley
 	links.push_back(std::move(F)); // Cayley link
       }
       else if (theta_alpha==rd.rootMinus(n_alpha)) // length 3 real case
@@ -1817,16 +1809,22 @@ DescValue star (const param& E,	const ext_gen& p,
 	    links.push_back(std::move(F)); // Cayley link
 	  }
 	  else // descent, so 3Cr
-	  { // make |E.t.dot(kappa)==0| using |kappa_v|
-	    E0.t -= kappa_v*(kappa.dot(E0.t)/2);
-	    assert(same_sign(E,E0)); // since only |t| changes
+	  {
+	    E0.lambda_rho += kappa*dtf_alpha;
+	    new_lambda_rho += kappa*dtf_alpha;
 
-	    param F(E.ctxt, new_tw,
-		    new_lambda_rho + kappa*dtf_alpha, E.tau,
-		    tf_alpha%2==0 ? E.l : E.l+kappa_v, E0.t);
+	    E0.t -= kappa_v*(kappa.dot(E.t)/2); // makes |E0.t.dot(kappa)==0|
+	    if (tf_alpha%2!=0)
+	    {
+	      auto b_a = beta_v-alpha_v; // or |kappa_v-alpha_v*2|
+	      E0.l += b_a;
+	      E0.t -= b_a;
+	    }
+	    param F(E.ctxt, new_tw, new_lambda_rho, E0.tau, E0.l, E0.t);
 
 	    flipped = not flipped; // January unsurprise for 3Cr
-	    z_align(E0,F,flipped); // no 3rd arg since |E.t.dot(kappa)==0|
+	    z_align(E0,F,flipped^not same_sign(E,E0));
+	    // there was no 4th argument there since |E.t.dot(kappa)==0|
 	    links.push_back(std::move(F)); // Cayley link
 	  }
 
