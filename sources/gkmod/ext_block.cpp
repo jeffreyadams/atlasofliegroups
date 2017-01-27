@@ -1772,7 +1772,6 @@ DescValue star (const param& E,	const ext_gen& p,
 
       const Weight& kappa = integr_datum.root(n_kappa);
       const Coweight& kappa_v = integr_datum.coroot(n_kappa);
-
       const TwistedInvolution new_tw = tW.prod(s_kappa,E.tw); // when applicable
 
       if (theta_alpha==n_alpha) // length 3 imaginary case
@@ -1784,7 +1783,8 @@ DescValue star (const param& E,	const ext_gen& p,
 	  return three_imaginary_compact;
 
 	// noncompact case
-	result = three_imaginary_semi; //3i
+	result = three_imaginary_semi; //3i. As for 3r/3Ci, seek to use
+	// SAME coords on each side of 3i/3Cr link.
 
 	RootNbr alpha_simple = n_alpha;
 	const WeylWord ww = fixed_conjugate_simple(E.ctxt,alpha_simple);
@@ -1794,13 +1794,15 @@ DescValue star (const param& E,	const ext_gen& p,
 	const bool flipped = Cayley_shift_flip(E.ctxt,theta_p,theta,ww);
 	assert(E.ctxt.delta()*rho_r_shift==rho_r_shift); // $ww\in W^\delta$
 	assert(rd.is_simple_root(alpha_simple)); // cannot fail for length 3
-
+	const Coweight new_l = E.l + alpha_v*(tf_alpha + tf_beta);
+	E0.tau -= alpha*kappa_v.dot(E.tau); // so |E0.tau.dot(kappa_v)==0
+	E0.l += alpha_v*(tf_alpha+tf_beta); // even shift
+	E0.t += (kappa_v-alpha_v*2)*((tf_alpha+tf_beta)/2);
+        bool flipped1 = flipped^(not same_sign(E,E0));
 	param F(E.ctxt, new_tw,
-		E.lambda_rho + rho_r_shift,
-		E.tau - alpha*kappa_v.dot(E.tau),
-		E.l + kappa_v*((tf_alpha+tf_beta)/2), E.t,
-		not flipped); //January unsurprise: delta acts by -1
-	z_align(E,F); // |lambda_rho| unchanged at simple Cayley
+		E0.lambda_rho + rho_r_shift, E0.tau, E0.l, E0.t,
+		not flipped1); //January unsurprise: delta acts by -1
+	// z_align(E,F); // |lambda_rho| unchanged at simple Cayley
 	links.push_back(std::move(F)); // Cayley link
       }
       else if (theta_alpha==rd.rootMinus(n_alpha)) // length 3 real case
@@ -1884,18 +1886,23 @@ DescValue star (const param& E,	const ext_gen& p,
 	    links.push_back(std::move(F)); // Cayley link
 	  }
 	  else // descent, so 3Cr
-	  { // make |E.t.dot(kappa)==0| using |kappa_v|
-	    E0.t -= kappa_v*(kappa.dot(E0.t)/2);
-	    assert(same_sign(E,E0)); // since only |t| changes
+	  {
+	    new_lambda_rho += kappa*dtf_alpha;
+	    Coweight new_t = E.t - kappa_v*(kappa.dot(E.t)/2);
+	    // make |E.t.dot(kappa)==0| using |kappa_v|
+	    Coweight new_l = tf_alpha%2==0 ? E.l : E.l + kappa_v - alpha_v*2;
+	    // add beta_v - alpha_v to be valid both sides of link
+	    new_t = tf_alpha%2==0 ? new_t : new_t + alpha_v*2 - kappa_v;
+	    // add alpha_v - beta_v to compensate shift in l
+	    E0.lambda_rho = new_lambda_rho;
+	    E0.l = new_l;
+	    E0.t = new_t;
+	    bool flipped1 = flipped^(not same_sign(E,E0));
 
 	    param F(E.ctxt, new_tw,
-		    new_lambda_rho + kappa*dtf_alpha, E.tau,
-		    tf_alpha%2==0 ? E.l : E.l+kappa_v, E0.t,
-		    not flipped); //January unsurprise
-		    // flipped); //try the other??
-	    F.lambda_rho-=rho_r_shift;
-	    z_align(E0,F); // no 3rd arg since |E.t.dot(kappa)==0|
-	    F.lambda_rho+=rho_r_shift;
+		    E0.lambda_rho - rho_r_shift, E0.tau, E0.l, E0.t,
+		    not flipped1); //January unsurprise
+	    //	    z_align(E0,F); // no 3rd arg since |E.t.dot(kappa)==0|
 	    links.push_back(std::move(F)); // Cayley link
 	  }
 
