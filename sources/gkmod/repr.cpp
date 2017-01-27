@@ -143,9 +143,21 @@ bool Rep_context::is_standard(const StandardRepr& z, RootNbr& witness) const
   return true;
 }
 
+// |z| dominant means precisely |gamma| is (weakly) dominant
+bool Rep_context::is_dominant(const StandardRepr& z, RootNbr& witness) const
+{
+  const RootDatum& rd = rootDatum();
+  const auto& numer = z.gamma().numerator();
+
+  for (auto it=rd.beginSimpleCoroot(); it!=rd.endSimpleCoroot(); ++it)
+    if (it->dot(numer)<0)
+      return witness=rd.simpleRootNbr(it-rd.beginSimpleCoroot()),false;
+  return true;
+}
+
 // |z| zero means that no singular simple-imaginary roots are compact; this
 // code assumes |is_standard(z)|, namely |gamma| is dominant on imaginary roots
-bool Rep_context::is_zero(const StandardRepr& z, RootNbr& witness) const
+bool Rep_context::is_nonzero(const StandardRepr& z, RootNbr& witness) const
 {
   const RootDatum& rd = rootDatum();
   const InvolutionNbr i_x = kgb().inv_nr(z.x());
@@ -157,11 +169,23 @@ bool Rep_context::is_zero(const StandardRepr& z, RootNbr& witness) const
     const RootNbr alpha = i_tab.imaginary_basis(i_x,i);
     if (rd.coroot(alpha).dot(numer)==0 and // simple-imaginary, singular
 	not kgb().simple_imaginary_grading(z.x(),alpha)) // and compact
-      return witness=alpha,true;
+      return witness=alpha,false;
   }
-  return false;
+  return true;
 }
 
+bool Rep_context::is_normal(const StandardRepr& z, RootNbr& witness) const
+{
+  const RootDatum& rd = rootDatum();
+  const auto& numer = z.gamma().numerator();
+
+  assert(is_dominant(z,witness));
+
+  for (weyl::Generator s=0; s<rd.semisimpleRank(); ++s)
+    if (kgb().isComplexDescent(s,z.x()) and rd.simpleCoroot(s).dot(numer)==0)
+      return witness=rd.simpleRootNbr(s),false;
+  return true;
+}
 
 // |z| final means that no singular real roots satisfy the parity condition
 // we do not assume |gamma| to be dominant, so all real roots must be tested
@@ -832,7 +856,7 @@ void Rep_table::add_block(param_block& block, BlockEltList& survivors)
 SR_poly Rep_table::KL_column_at_s(StandardRepr z) // must be nonzero and final
 {
   { RootNbr witness;
-    assert(not is_zero(z,witness));
+    assert(is_nonzero(z,witness));
     assert(is_final(z,witness));
     ndebug_use(witness);
   }
@@ -1013,7 +1037,7 @@ SR_poly twisted_KL_column_at_s
   // |z| must be delta-fixed, nonzero and final
 {
   { RootNbr witness; // there should be no imaginary or real singular descents
-    if (rc.is_zero(z,witness) or not rc.is_final(z,witness))
+    if (not (rc.is_nonzero(z,witness) and rc.is_final(z,witness)))
       throw std::runtime_error("Representation zero or not final");
   }
   rc.make_dominant(z);
@@ -1100,7 +1124,7 @@ SR_poly Rep_table::twisted_KL_column_at_s(StandardRepr z)
   // |z| must be inner-class-twist-fixed, nonzero and final
 {
   { RootNbr witness;
-    if (is_zero(z,witness) or not is_final(z,witness))
+    if (not (is_nonzero(z,witness) and is_final(z,witness)))
       throw std::runtime_error("Representation zero or not final");
   }
   make_dominant(z);

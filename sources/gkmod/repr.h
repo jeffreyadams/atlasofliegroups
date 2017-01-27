@@ -131,11 +131,15 @@ class Rep_context
   // the value of $\exp_{-1}(\gamma-\lambda)$ is $y$ value in a |param_block|
   TorusElement y_as_torus_elt(const StandardRepr& z) const;
 
-  // attributes
+  // attributes; they set |witness| only in case they return |false|
   bool is_standard  // whether $I(z)$ is non-virtual: gamma imaginary-dominant
-    (const StandardRepr& z, RootNbr& witness) const; // simple-imaginary witness
-  bool is_zero  // whether $I(z)=0$: exists singular simple-imaginary compact
-    (const StandardRepr& z, RootNbr& witness) const; // simple-imaginary witness
+    (const StandardRepr& z, RootNbr& witness) const; // simply-imaginary witness
+  bool is_dominant  // whether |gamma| is dominant
+    (const StandardRepr& z, RootNbr& witness) const; // simple witness
+  bool is_nonzero  // whether $I(z)!=0$: no singular simply-imaginary compact
+    (const StandardRepr& z, RootNbr& witness) const; // simply-imaginary witness
+  bool is_normal  // assumes |is_dominant|; whether no singular complex descents
+    (const StandardRepr& z, RootNbr& witness) const; // complex simple witness
   bool is_final  // whether $I(z)$ unrelated by Hecht-Schmid to more compact
     (const StandardRepr& z, RootNbr& witness) const; // singular real witness
   bool is_oriented(const StandardRepr& z, RootNbr alpha) const;
