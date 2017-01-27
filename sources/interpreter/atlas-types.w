@@ -3640,10 +3640,11 @@ satisfying the parity condition) or ``final'' (the good ones; the condition
 implies ``standard'' an ``non-zero'').
 
 @< Expression for adjectives... @>=
-( rc.is_standard(val,witness) ?
-    rc.is_zero(val,witness) ? "zero" :
-      rc.is_final(val,witness) ? "final" : "non-final"
-  : "non-standard" )
+( not rc.is_standard(val,witness) ? "non-standard"
+  : not rc.is_dominant(val,witness) ? "non-dominant"
+  : not rc.is_normal(val,witness) ? "non-normal"
+  : not rc.is_nonzero(val,witness) ? "zero"
+  : rc.is_final(val,witness) ? "final" : "non-final")
 
 @ To make a module parameter, one should provide a KGB element~$x$, an
 integral weight $\lambda-\rho$, and a rational weight~$\nu$. Since only its
@@ -3715,7 +3716,7 @@ void is_zero_wrapper(expression_base::level l)
 { shared_module_parameter p = get<module_parameter_value>();
   RootNbr witness;
   if (l!=expression_base::no_value)
-    push_value(whether(p->rc().is_zero(p->val,witness)));
+    push_value(whether(not p->rc().is_nonzero(p->val,witness)));
 }
 
 void is_final_wrapper(expression_base::level l)
@@ -3957,11 +3958,11 @@ void test_standard(const module_parameter_value& p, const char* descr)
 }
 
 void test_nonzero_final(const module_parameter_value& p, const char* descr)
-{ RootNbr witness; bool zero=p.rc().is_zero(p.val,witness);
-  if (not zero and p.rc().is_final(p.val,witness))
+{ RootNbr witness; bool nonzero=p.rc().is_nonzero(p.val,witness);
+  if (nonzero and p.rc().is_final(p.val,witness))
     return; // nothing to report
   std::ostringstream os; p.print(os << descr << ": ");
-@/os << "\nParameter is " << (zero ? "zero" : "not final")
+@/os << "\nParameter is " << (nonzero ? "not final" : "zero")
    @|  <<", as witnessed by coroot #" << witness;
   throw runtime_error(os.str());
 }
