@@ -17,4 +17,3 @@ for G in groups do prints();print_test_Aq(G) od
 
 set data=[(Sp(4,R),[1,0]), (GL(3,R),[1,0,-1]), (GL(4,R),[1,0,0,-1]) ]
 for (G,lambda) in data do prints(new_line);print_test_Aq(all_parameters_gamma(G,lambda)) od
-

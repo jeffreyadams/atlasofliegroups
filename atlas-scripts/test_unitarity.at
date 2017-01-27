@@ -92,6 +92,19 @@ set print_test_Aq([Param] B)=void:print_test(for p in B do
      if is_weakly_fair_Aq(p) then (p,1) else (p,0) fi
     fi od)
 
+
+{special test in U(p,q) case}
+set print_test_Upq_Aq([Param] B)=void:print_test(for p in B do
+    let G=real_form(p) in
+    if is_regular(G,infinitesimal_character(p)) then  {should be regular integral?}
+     if is_good_Aq(p) then (p,1) else (p,-1) fi
+    else
+     if is_weakly_fair_Aq(p) then (p,1) else (p,-1) fi
+    fi od)
+
+set print_test_Upq_Aq(int p, int q, ratvec gamma)=void:let B=all_parameters_gamma(U(p,q),gamma) in print_test(B)
+
+
 set test_Aq(RealForm G)=
 let B=block_of(trivial(G)) in
 test(for p in B do if is_good_Aq(p) then (p,1) else (p,-1) fi od)
