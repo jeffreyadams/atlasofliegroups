@@ -232,6 +232,7 @@ class context // holds values that remain fixed across extended block
   const RootDatum integr_datum; // intgrality datum
   const SubSystem sub; // embeds |integr_datum| into parent root datum
   Permutation pi_delta; // permutation of |delta| on roots of full root datum
+  RootNbrSet delta_fixed_roots;
   weyl::Twist twist;
   int_Vector lambda_shifts,l_shifts; // affine centers for complex cross actions
 
@@ -253,9 +254,17 @@ class context // holds values that remain fixed across extended block
   const RatCoweight& g_rho_check() const { return realGroup().g_rho_check(); }
   RatCoweight g() const { return realGroup().g(); }
   RootNbr delta_of(RootNbr alpha) const { return pi_delta[alpha]; }
+  const RootNbrSet& delta_fixed() const { return delta_fixed_roots; }
   weyl::Generator twisted(weyl::Generator s) const { return twist[s]; }
   int lambda_shift(weyl::Generator s) const { return lambda_shifts[s]; }
   int l_shift(weyl::Generator s) const { return l_shifts[s]; }
+
+  // whether positive $\alpha$ has $\theta(\alpha)\neq\pm(1|\delta)(\alpha)$
+  bool is_very_complex (InvolutionNbr theta, RootNbr alpha) const;
+  Weight to_simple_shift(InvolutionNbr theta, InvolutionNbr theta_p,
+			 RootNbrSet pos_to_neg) const;
+  bool shift_flip(InvolutionNbr theta, InvolutionNbr theta_p,
+		  RootNbrSet pos_to_neg) const;
 
   // possible manipulator; |RootDatum|,|SubSystem| need to implement this first
   // void act_on_gamma(const WeylWord& ww); // left-apply |ww| to |d_gamma|
