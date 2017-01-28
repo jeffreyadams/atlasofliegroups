@@ -226,11 +226,11 @@ RankFlags reduce_to(const ext_gens& orbits, RankFlags gen_set);
 class context // holds values that remain fixed across extended block
 {
   const repr::Rep_context& d_rc;
-  WeightInvolution d_delta;
+  const WeightInvolution d_delta;
   RatWeight d_gamma; // representative of infinitesimal character
   // RatCoweight d_g; // we might record |g|, but in fact defer to |realGroup|
-  RootDatum integr_datum; // intgrality datum
-  SubSystem sub; // embeds |integr_datum| into parent root datum
+  const RootDatum integr_datum; // intgrality datum
+  const SubSystem sub; // embeds |integr_datum| into parent root datum
   Permutation pi_delta; // permutation of |delta| on roots of full root datum
   weyl::Twist twist;
   int_Vector lambda_shifts,l_shifts; // affine centers for complex cross actions
@@ -241,6 +241,7 @@ class context // holds values that remain fixed across extended block
      const WeightInvolution& delta,
      const RatWeight& gamma);
 
+  // accessors
   const repr::Rep_context& rc () const { return d_rc; }
   const RootDatum& id() const { return integr_datum; }
   const SubSystem& subsys() const { return sub; }
@@ -255,6 +256,9 @@ class context // holds values that remain fixed across extended block
   weyl::Generator twisted(weyl::Generator s) const { return twist[s]; }
   int lambda_shift(weyl::Generator s) const { return lambda_shifts[s]; }
   int l_shift(weyl::Generator s) const { return l_shifts[s]; }
+
+  // possible manipulator; |RootDatum|,|SubSystem| need to implement this first
+  // void act_on_gamma(const WeylWord& ww); // left-apply |ww| to |d_gamma|
 
 }; // |context|
 

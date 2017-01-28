@@ -15,6 +15,8 @@
 #include "ratvec_fwd.h" // ensure coherence
 
 #include <vector>
+#include <cassert>
+
 #include "matrix.h"
 #include "arithmetic.h"
 
@@ -101,7 +103,7 @@ class RationalVector
 
   A very long standing bug was to forget to cast |d_denom| to integer before
   the division. With that omission the scalar product is \emph{implicitly}
-  cast to |unsigned int| instead, with desastrous consequences for the result.
+  cast to |unsigned int| instead, with disastrous consequences for the result.
 
   NOTE : this implementation does not worry about overflow. It is appropriate
   only for small denominators.
@@ -109,7 +111,9 @@ class RationalVector
   template <typename C1>
     C dot(const matrix::Vector<C1>& w) const
   {
-    return w.dot(d_num)/(C)d_denom; // order is imposed here by return type |C|
+    auto num = w.dot(d_num);
+    assert(num%(C)d_denom==0); // division below must be without remainder
+    return num/(C)d_denom; // order is imposed here by return type |C|
   }
 
 //manipulators
