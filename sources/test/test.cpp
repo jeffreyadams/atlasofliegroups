@@ -919,8 +919,21 @@ void test_f() // trial of twisted KLV computation
 // Check braid relations extended block
 int test_braid(const ext_block::ext_block& eblock)
 {
+  int failed=0;
+  std::cout << "testing quadratic relations" << std::endl;
+  for (BlockElt x=0; x<eblock.size(); ++x)
+    for (weyl::Generator s=0; s<eblock.rank(); ++s)
+      if (not ext_block::check_quadratic(eblock,s,x))
+      {
+	std::cout <<  "Quadratic relation failure: " << eblock.z(x)
+		  << ", s=" << (unsigned)s << std::endl;
+	++failed;
+      }
+  if (failed>0)
+    return failed; // avoid testing braid relations when quadratics fail
+
   std::cout << "testing braids" << std::endl;
-  bool OK=true; int count=0; int failed=0;
+  int count=0;
   for (weyl::Generator t=1; t<eblock.rank(); ++t)
     for (weyl::Generator s=0; s<t; ++s)
     {
@@ -934,21 +947,24 @@ int test_braid(const ext_block::ext_block& eblock)
 	    else
 	    {
 	      ++failed;
-	      OK = false;
 	      std::cout <<  "Braid relation failure: " << eblock.z(x)
-			<< ", s=" << s+1 << ", t=" << t+1;
+			<< ", s=" << (unsigned)s << ", t=" << (unsigned)t;
 	      for (BitMap::iterator it=cluster.begin(); it(); ++it)
 		std::cout << (it==cluster.begin() ? " (" : ",")
 			  << eblock.z(*it) ;
 
 	      std::cout << ')' << std::endl;
+	      seen |= cluster; // don't do elements of failed cluster again
 	    }
-	    seen |= cluster; // don't do elements of same cluster again
 	  }
     }
-  if (OK)
-    std::cout << "All " << count << " relations hold!\n";
-  std::cout << std::endl;
+  if (failed==0 and count>0)
+  { if (count==1)
+      std::cout << "The braid relation holds!\n";
+    else
+      std::cout << "All " << count << " braid relations hold!\n";
+    std::cout << std::endl;
+  }
   return failed;
 } // |test_braid|
 

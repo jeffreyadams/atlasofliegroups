@@ -2286,6 +2286,36 @@ void show_mat(std::ostream& strm,const matrix::Matrix<Pol> M,unsigned inx)
     }
 }
 
+bool check_quadratic (const ext_block& b, weyl::Generator s, BlockElt x)
+{ BlockEltList l; l.reserve(4);
+
+  b.add_neighbours(l,s,x);
+
+  if (l.empty()) // compact or nonparity cases, there is nothing to check
+    return true;
+
+  // check symmetry of link signs
+  for (auto it=l.begin(); it!=l.end(); ++it)
+    if (b.epsilon(s,x,*it)!=b.epsilon(s,*it,x))
+      return false;
+
+  auto tp = b.descent_type(s,x);
+  if (l.size()==1) // cases without cycles; we're done
+    return true;
+  assert(l.size()==2);
+
+  if (has_quadruple(tp))
+  { b.add_neighbours(l,s,l[0]);
+    if (x==l[2])
+      l[2]=l[3]; // make sure |l[2]| complets the square
+    assert (l[2]!=x);
+    return b.epsilon(s,x,l[0])*b.epsilon(s,x,l[1]) != // negative product here!
+      b.epsilon(s,l[0],l[2])*b.epsilon(s,l[1],l[2]);
+  }
+  else
+    return b.epsilon(s,x,l[0])*b.epsilon(s,x,l[1])==b.epsilon(s,l[0],l[1]);
+}
+
 bool check_braid
   (const ext_block& b, weyl::Generator s, weyl::Generator t, BlockElt x,
    BitMap& cluster)
