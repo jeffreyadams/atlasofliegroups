@@ -1746,38 +1746,36 @@ DescValue star (const param& E,	const ext_gen& p,
   return result;
 } // |star|
 
+
+/*
+  On one occasion we need to know whether an extended generator |kappa| is a
+  descent at a given extended parameter, without having an |ext_block| at
+  hand: when trying to find singular descents in |extended_finalise|. In that
+  case |kappa| is an orbit of singularly-simple roots, and since |gamma| is
+  dominant these are actually simple roots. Therefore, rather than call |star|
+  here to do the full analysis, we can do a simplified test of notably the
+  parity condition in the real case (need not worry about |to_simple_shift|).
+ */
 bool is_descent (const ext_gen& kappa, const param& E)
-{ // like in |star|, generators are not simple for |E.rc().twistedWeylGroup()|
+{ // easy solution would be to |return is_descent(star(E,kappa,dummy))|;
+
   const InnerClass& ic = E.rc().innerClass();
   const InvolutionTable& i_tab = ic.involution_table();
   const InvolutionNbr theta = i_tab.nr(E.tw); // so use root action of |E.tw|
   const RootDatum& rd = E.rc().rootDatum();
+  const SubSystem& subs = E.ctxt.subsys();
 
-  const RootNbr n_alpha = E.ctxt.subsys().parent_nr_simple(kappa.s0);
+  const RootNbr n_alpha = subs.parent_nr_simple(kappa.s0);
   const RootNbr theta_alpha = i_tab.root_involution(theta,n_alpha);
-  const Weight& alpha = E.ctxt.id().simpleRoot(kappa.s0);
+  assert(rd.is_simple_root(n_alpha)); // as explained in the comment above
 
   // we don't need to inspect |kappa.type|, it does not affect descent status
   if (theta_alpha==n_alpha) // imaginary case, return whether compact
-    return (E.ctxt.g_rho_check()-E.l).dot(alpha) %2!=0;
+    return (E.ctxt.g_rho_check()-E.l).dot(rd.root(n_alpha)) %2!=0;
   if (theta_alpha==rd.rootMinus(n_alpha)) // real, return whether parity
-  {
-    RootNbr alpha_simple = n_alpha; // copy to be made simple
-    const WeylWord ww = fixed_conjugate_simple(E.ctxt,alpha_simple);
-    const auto level = level_a(E,repr::Cayley_shift(ic,theta,ww),n_alpha);
-    if (rd.is_simple_root(alpha_simple)) // |fixed_conjugate_simple| succeeded
-      return level%2==0; // parity if |level| is even
-    else
-    {
-      RootNbr alpha_0 = // one of |alpha==alpha_0+alpha_1|
-	rd.permuted_root(rd.simpleRootNbr(rd.find_descent(alpha_simple)),ww);
-
-      if (i_tab.root_involution(theta,alpha_0)==rd.rootMinus(alpha_0))
-	// when |alpha_0| is real for theta, the parity condition is flipped:
-	return level%2!=0; // parity if |level| is odd
-      return level%2==0; // parity if |level| is even
-    }
-  }
+    // whether $\<\alpha^\vee,\gamma-\lambda>$ even, but with |lambda_rho|: odd
+    // (we use this only for singular $\alpha$, so |gamma| could be suppressed)
+    return (E.ctxt.gamma()-E.lambda_rho).dot(rd.coroot(n_alpha)) %2!=0;
   else // complex
     return rd.is_negroot(theta_alpha);
 }
