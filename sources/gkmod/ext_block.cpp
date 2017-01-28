@@ -323,11 +323,11 @@ KGBElt param::x() const
 /*
   This function serves to replace and circumvent |Rep_context::make_dominant|,
   which maps any ordinary parameter to one with a dominant |gamma| component,
-  and moreover descends through simgular complex descents in the block to the
+  and moreover descends through singular complex descents in the block to the
   lowest parameter equivalent to the inital parameter. The difference with
   that method is that here we keep track of all extended parameter components,
   transforming them from the default choices at the initial elemnt, and at the
-  end comparing with the default choices at the final paremeter, recording the
+  end comparing with the default choices at the final parameter, recording the
   sign in |flipped|.
 
   This is intended for use in deformation, and the initial extended parameter
@@ -522,7 +522,7 @@ int z (const param& E) // value modulo 4, exponent of imaginary unit $i$
   This function does that, and sets the second parameter accordingly. It turns
   out that there is sometimes an independent source of flip that must be
   applied after the above adaptation of the second extended parameter has
-  taken place
+  taken place, which we accept as third argument.
  */
 void z_align (const param& E, param& F, bool extra_flip)
 { assert(E.t==F.t); // we require preparing |t| upstairs to get this
@@ -1162,17 +1162,19 @@ DescValue star (const param& E,	const ext_gen& p,
 	assert(E.ctxt.delta()*rho_r_shift==rho_r_shift); // $ww\in W^\delta$
 	assert(E.t.dot(alpha)==0); // follows from $\delta*\alpha=\alpha$
 
-	Weight first; // maybe a root with |(1-delta)*first==alpha|
+	auto new_lambda_rho = E.lambda_rho;
+	RootNbr first; // maybe a root with |(1-delta)*rd.root(first)==alpha|
 	if (rd.is_simple_root(alpha_simple))
-	  first = Weight(rd.rank(),0); // effectively not used in this case
+	  first = -1; // invalid value, not used in this case
 	else
 	{
 	  --tau_coef; // the parity change and decrease are both relevant
 	  weyl::Generator s = // first switched root index
 	    rd.find_descent(alpha_simple);
 	  first = // corresponding root summand, conjugated back
-	      rd.root(rd.permuted_root(rd.simpleRootNbr(s),ww));
-	  assert(alpha == first + E.ctxt.delta()*first);
+	    rd.permuted_root(rd.simpleRootNbr(s),ww);
+	  assert(alpha == (E.ctxt.delta()+1)*rd.root(first));
+	  new_lambda_rho += rd.root(first);
 	}
 
 	// now separate cases; based on type 1 or 2 first
@@ -1184,7 +1186,8 @@ DescValue star (const param& E,	const ext_gen& p,
 	      matreduc::find_solution(th_1,alpha); // solutions are equivalent
 
 	  param F(E.ctxt,new_tw,
-		  E.lambda_rho + first + rho_r_shift, E0.tau+diff*tau_coef,
+		  new_lambda_rho + rho_r_shift,
+		  E0.tau+diff*tau_coef,
 		  E.l+alpha_v*(tf_alpha/2), E.t);
 
 	  E0.l = tf_alpha%4==0 ? F.l+alpha_v : F.l; // for cross
@@ -1206,9 +1209,11 @@ DescValue star (const param& E,	const ext_gen& p,
 	  }
 	  result = one_imaginary_pair_fixed;  // what remains is case 1i2f
 
+	  auto new_tau = rd.is_simple_root(alpha_simple) ? E.tau
+	    : E.tau - rd.root(first);
+
 	  param F0(E.ctxt,new_tw,
-		   E.lambda_rho + first + rho_r_shift,
-		   E.tau - alpha*(tau_coef/2) - first,
+		   new_lambda_rho + rho_r_shift, new_tau - alpha*(tau_coef/2),
 		   E.l + alpha_v*(tf_alpha/2), E.t);
 	  param F1(E.ctxt,new_tw,
 		   F0.lambda_rho + alpha, F0.tau, F0.l, E.t);
@@ -1232,17 +1237,17 @@ DescValue star (const param& E,	const ext_gen& p,
 	bool flipped = shift_flip(E.ctxt,S);
 	assert(E.ctxt.delta()*rho_r_shift==rho_r_shift); // as $ww\in W^\delta$
 
-	RootNbr alpha_0 = // maybe one of |alpha==alpha_0+alpha_1|
-	  rd.is_simple_root(alpha_simple) ? 0 // unused
+	RootNbr first = // maybe one of |alpha==first+second|
+	  rd.is_simple_root(alpha_simple) ? -1 // unused
 	  : rd.permuted_root(rd.simpleRootNbr(rd.find_descent(alpha_simple)),
 			     ww);
 
 	// test parity, taking into account modifications that will be applied
-	bool shift_correct = // whether |alpha_0| is defined and real at |theta|
+	bool shift_correct = // whether |first| is defined and real at |theta|
 	  not rd.is_simple_root(alpha_simple) and
-	  i_tab.root_involution(theta,alpha_0)==rd.rootMinus(alpha_0);
+	  i_tab.root_involution(theta,first)==rd.rootMinus(first);
 	const int level = level_a(E,rho_r_shift,n_alpha) +
-	   (shift_correct ? 1 : 0 ); // add 1 if |alpha_0| is defined and real
+	   (shift_correct ? 1 : 0 ); // add 1 if |first| is defined and real
 
 	if (level%2!=0) // nonparity
 	   return one_real_nonparity; // case 1rn, no link added here
@@ -1250,22 +1255,20 @@ DescValue star (const param& E,	const ext_gen& p,
 	const WeightInvolution& th_1 = i_tab.matrix(E.tw)-1; // upstairs
 	bool type1 = matreduc::has_solution(th_1,alpha);
 
-	Weight tau_correction; // adapt to integrality based change of lambda
-	if (rd.is_simple_root(alpha_simple))
-	  tau_correction = Weight(rd.rank(),0); // no correction needed here
-	else
-	{
-	  const Weight a0 = rd.root(alpha_0);
-	  assert(alpha == a0 + E.ctxt.delta()*a0);
+	Weight new_tau=E.tau; // maybe modified below
+	if (not rd.is_simple_root(alpha_simple))
+	{ // adapt to integrality based change of lambda
+	  assert(alpha == (E.ctxt.delta()+1)*rd.root(first));
 	  if (shift_correct)
 	  {
-	    rho_r_shift += a0; // non delta-fixed contribution
+	    rho_r_shift += rd.root(first); // non delta-fixed contribution
 
 	    // now we must add $d$ to $\tau$ with $(1-\theta')d=(1-\delta)*a0$
+	    // where |a0=rd.root(first)|
 	    // since $\theta'*a0 = a1 = \delta*a_0$, we can take $d=a0$
-	    tau_correction = a0;
-	    assert((i_tab.matrix(new_tw)-1)*tau_correction
-		   ==(E.ctxt.delta()-1)*a0);
+	    new_tau += rd.root(first);
+	    assert((i_tab.matrix(new_tw)-1)*rd.root(first) ==
+		   (E.ctxt.delta()      -1)*rd.root(first)); // (-1's redundant)
 	  }
 	}
 
@@ -1284,10 +1287,8 @@ DescValue star (const param& E,	const ext_gen& p,
 	  E0.t -= alpha_v*(t_alpha/2);
 	  assert(same_sign(E,E0)); // since only |t| changes
 
-	  param F0(E.ctxt,new_tw,
-		   new_lambda_rho, E.tau + tau_correction, E.l, E0.t);
-	  param F1(E.ctxt,new_tw,
-		   new_lambda_rho, F0.tau, E.l + alpha_v, E0.t);
+	  param F0(E.ctxt,new_tw, new_lambda_rho, new_tau, E.l          , E0.t);
+	  param F1(E.ctxt,new_tw, new_lambda_rho, new_tau, E.l + alpha_v, E0.t);
 
 	  z_align(E0,F0,flipped);
 	  z_align(E0,F1,flipped);
@@ -1301,7 +1302,6 @@ DescValue star (const param& E,	const ext_gen& p,
 	  Coweight diff = // called $s$ in table 2 of [Ptr]
 	    matreduc::find_solution(i_tab.matrix(new_tw).transposed()+1,
 				    alpha_v);
-
 	  E0.t -= diff*t_alpha;
 	  assert(same_sign(E,E0)); // since only |t| changes
 
@@ -1309,8 +1309,7 @@ DescValue star (const param& E,	const ext_gen& p,
 	  E1.lambda_rho += alpha;
 	  assert(not same_standard_reps(E0,E1));
 
-	  param F(E.ctxt,new_tw,
-		  new_lambda_rho, E.tau + tau_correction, E.l, E0.t);
+	  param F(E.ctxt,new_tw, new_lambda_rho, new_tau, E.l, E0.t);
 
 	  z_align(E0,F,flipped);
 	  z_align(F,E1,flipped);
@@ -1711,7 +1710,6 @@ DescValue star (const param& E,	const ext_gen& p,
       }
       else // length 3 complex case (one of 3Ci or 3Cr or 3C+/-)
       { const bool ascent = rd.is_posroot(theta_alpha);
-	const RootNbr n_beta = subs.parent_nr_simple(p.s1);
 	if (theta_alpha == (ascent ? n_beta : rd.rootMinus(n_beta)))
 	{ // reflection by |alpha+beta| twisted commutes with |E.tw|: 3Ci or 3Cr
 	  result = ascent ? three_semi_imaginary : three_semi_real;
@@ -2043,9 +2041,9 @@ bool ext_block::check(const param_block& block, bool verbose)
   containers::sl_list<param> links;
   for (BlockElt n=0; n<size(); ++n)
   { auto z=this->z(n);
+    const param E(ctxt,block.x(z),block.lambda_rho(z));
     for (weyl::Generator s=0; s<rank(); ++s)
-    { param E(ctxt,block.x(z),block.lambda_rho(z)); // re-init each iteration
-      ext_gen p=orbit(s); links.clear(); // output arguments for |star|
+    { const ext_gen& p=orbit(s); links.clear(); // output arguments for |star|
       auto tp = star(E,p,links);
       if (tp!=descent_type(s,n))
 	return false;
