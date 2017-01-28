@@ -1358,13 +1358,14 @@ DescValue star (const param& E,	const ext_gen& p,
 	assert(E.ctxt.delta()*rho_r_shift==rho_r_shift); // $ww\in W^\delta$
 	assert(rd.is_simple_root(alpha_simple)); // cannot fail for length 2
 
+	flipped = not flipped; // because of wedge correction for 2i/2r cases
+
 	int at = alpha_v.dot(E.tau); int bt = beta_v.dot(E.tau);
 	const WeightInvolution th_1 = i_tab.matrix(new_tw)-1;
 
 	if (matreduc::has_solution(th_1,alpha)) // then type 2i11
 	{ result = two_imaginary_single_single;
 	  const Weight sigma = matreduc::find_solution(th_1,alpha*at+beta*bt);
-
 	  param F (E.ctxt, new_tw,
 		   E.lambda_rho + rho_r_shift,  E.tau + sigma,
 		   E.l+alpha_v*(tf_alpha/2)+beta_v*(tf_beta/2), E.t);
@@ -1441,6 +1442,8 @@ DescValue star (const param& E,	const ext_gen& p,
 	const Weight rho_r_shift = root_sum(rd,S);
 	bool flipped = shift_flip(E.ctxt,S);
 	assert(E.ctxt.delta()*rho_r_shift==rho_r_shift); // as $ww\in W^\delta$
+
+	flipped = not flipped; // because of wedge correction for 2i/2r cases
 
 	const int a_level = level_a(E,rho_r_shift,n_alpha);
 
@@ -1667,6 +1670,8 @@ DescValue star (const param& E,	const ext_gen& p,
 	assert(E.ctxt.delta()*rho_r_shift==rho_r_shift); // $ww\in W^\delta$
 	assert(rd.is_simple_root(alpha_simple)); // cannot fail for length 3
 
+	flipped = not flipped; // January unsurprise for 3i: delta acts by -1
+
 	param F(E.ctxt, new_tw,
 		E.lambda_rho + rho_r_shift,
 		E.tau - alpha*kappa_v.dot(E.tau),
@@ -1703,6 +1708,8 @@ DescValue star (const param& E,	const ext_gen& p,
 	E0.t -= alpha_v*kappa.dot(E.t); // makes |E.t.dot(kappa)==0|
 	assert(same_sign(E,E0)); // since only |t| changes
 
+	flipped = not flipped; // January unsurprise for 3r: delta acts by -1
+
 	param F(E.ctxt, new_tw,	new_lambda_rho,E.tau,E.l,E0.t);
 
 	z_align(E0,F,flipped); // no 4th arg since |E.t.dot(kappa)==0|
@@ -1728,6 +1735,7 @@ DescValue star (const param& E,	const ext_gen& p,
 	    - rd.colevel(n_alpha);
 	  Weight new_lambda_rho = E.lambda_rho + rho_r_shift; // for now
 
+	  flipped = not flipped; // January unsurprise for 3Ci and 3Cr
 	  if (ascent) // 3Ci
 	  { param F(E.ctxt,new_tw,
 		    dtf_alpha%2==0 ? new_lambda_rho : new_lambda_rho + kappa,
