@@ -1084,18 +1084,8 @@ param complex_cross(const ext_gen& p, param E) // by-value for |E|, modified
   // by symmetry by $\delta$, |to_simple| conjugates $\delta(\alpha)$ to simple:
   assert(p.length()==1 or rd.is_simple_root(rd.permuted_root(to_simple,
 				                subs.parent_nr_simple(p.s1))));
-
-  RootNbrSet S = pos_to_neg(rd,to_simple);
-  S.andnot(ec.delta_fixed());
-
-  unsigned count=0; // will count 2-element |delta|-orbits
-  for (auto it=S.begin(); it(); ++it)
-    if (ec.is_very_complex(theta,*it) != ec.is_very_complex(new_theta,*it))
-      // maybe a |rd.sumIsRoot(*it,ec.delta_of(*it)))| condition needed too
-      ++count;
-
-  assert(count%2==0); // since |S| is supposed to be $\delta$-stable
-  E.flip(count%4!=0);
+  // apply flip for $\delta$ acting on root set for |to_simple|, as elsewhere
+  E.flip(ec.shift_flip(theta,new_theta,pos_to_neg(rd,to_simple)));
 
   E.flip(p.length()==2); // to parallel the 2i,2r flips
 
