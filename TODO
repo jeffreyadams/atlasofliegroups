@@ -4,9 +4,9 @@
 * Work on the Atlas library
 
 - Fix bug occurring when switching the real form when coming from realmode
-- Make containers::queue defined in sl_list_fwd.h actually use sl_list
-- Incorporate the calculation of c-invariant forms into the library
+- Fix lack of edge flipping in first (classical) extended block contructor
 - Rewrite block construction using methods inspired by synthetic operations
+- Remove code for storing the Hermitian dual in KGB structures and blocks
 - Rewrite K type computations to use data type more compatible with Param
 
 * Work on the Fokko program
@@ -57,6 +57,7 @@
 - Write a tutorial on the axis languge, in bottom-up style
 
 * Work on makefiles, distribution and support programs (cwebx)
+- change build process so 'atlas' is ensured to get most recent version string
 - change name of parser.y to parser.ypp, and adapt all Makefiles
 - Figure out how to avoid 'unrecognised typedefs' all the time
 - Make cweavex format a 2-line "do x; while(y);" with correct indentation

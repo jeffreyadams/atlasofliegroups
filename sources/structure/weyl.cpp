@@ -1,6 +1,5 @@
-/*!
-\file
-\brief Implementation of WeylGroup.
+/*
+  Implementation of WeylGroup.
 
   I have decided to represent elements as fixed-size arrays of
   unsigned characters. This forces expressing things in the standard
@@ -25,7 +24,6 @@
 
 #include <algorithm>
 #include <set>
-#include <stack>
 
 #include "ratvec.h"	// to act upon |RatWeight|s
 #include "dynkin.h"	// to analyze Cartan matrices
@@ -125,8 +123,8 @@ namespace {
 
 namespace weyl {
 
-/*!
-  \brief Build the Weyl group corresponding to the Cartan matrix c,
+/*
+  Build the Weyl group corresponding to the Cartan matrix |c|,
   and incorporate the possibly given twist (take identity if |twist==NULL|).
 
   NOTE : |c| and |twist| use some (consistent) labelling of simple roots,
@@ -215,8 +213,8 @@ WeylElt WeylGroup::genIn (Generator i) const
   return s;
 }
 
-/*!
-  \brief Multiply w on the right by internally numbered generator s: w *= s.
+/*
+  Multiply |w| on the right by internally numbered generator |s|: |w *= s|.
 
   Returns +1 if the length moves up, -1 if the length goes down.
 
@@ -279,14 +277,15 @@ int WeylGroup::multIn(WeylElt& w, Generator s) const
   return w[j]>wj ? 1 : -1; // no need to use d_length, numeric '>' suffices
 }
 
-/*!\brief Multiply w on the right by v (in internal numbering): w *= v.
+/*
+  Multiply |w| on the right by |v| (in internal numbering): |w *= v|.
 
   Returns nonpositive even value $l(wv)-l(w)-l(v)$
 
-  Precondition: v is written in the _internal_ generators.
+  Precondition: |v| is written in the _internal_ generators.
 
   Algorithm: do the elementary multiplication by the generators, running
-  through v left-to-right.
+  through |v| left-to-right.
 */
 int WeylGroup::multIn(WeylElt& w, const WeylWord& v) const
 
@@ -298,8 +297,8 @@ int WeylGroup::multIn(WeylElt& w, const WeylWord& v) const
   return result;
 }
 
-/*!
-  \brief Transforms w into s*w, with s in internal numbering;
+/*
+  Transform |w| into |s*w|, with |s| in internal numbering;
   returns $l(sw)-l(w)\in\{+1,-1}$
 
   Algorithm: note that our transducers are geared towards _right_
@@ -326,10 +325,10 @@ int WeylGroup::leftMultIn(WeylElt& w, Generator s) const
   return l;
 }
 
-/*!
-  \brief Multiply w on the right by v, and put the product in w: w*=v.
+/*
+  Multiply |w| on the right by |v|, and put the product in |w|: |w*=v|.
 
-  Algorithm: increment w by the various pieces of v, whose reduced
+  Algorithm: increment |w| by the various pieces of |v|, whose reduced
   expressions are available from the transducer.
 */
 void WeylGroup::mult(WeylElt& w, const WeylElt& v) const
@@ -338,8 +337,8 @@ void WeylGroup::mult(WeylElt& w, const WeylElt& v) const
     multIn(w,wordPiece(v,j));
 }
 
-/*!
-  \brief Multiply w on the right by v, and put the product in w: w*=v.
+/*
+  Multiply |w| on the right by |v|, and put the product in |w|: |w*=v|.
 
   Algorithm: do the elementary multiplication by the generators, running
   through v left-to-right.
@@ -350,17 +349,17 @@ void WeylGroup::mult(WeylElt& w, const WeylWord& v) const
     mult(w,v[j]);
 }
 
-/*! \brief set |w=xw| */
+// Set |w=xw|
 void WeylGroup::leftMult(WeylElt& w, const WeylElt& x) const
 {
   WeylElt xx=x; mult(xx,w); w=xx;
 }
 
-/*!
-  \brief return inverse of |w|
+/*
+  Inverse of |w|
 
   Algorithm: read backwards the reduced expression gotten from the
-  pieces of w.
+  pieces of |w|.
 */
 WeylElt WeylGroup::inverse(const WeylElt& w) const
 {
@@ -376,41 +375,39 @@ WeylElt WeylGroup::inverse(const WeylElt& w) const
   return wi;
 }
 
-/*!
-  \brief Puts into |c| the conjugacy class of |w|.
+/*
+  Put into |c| the conjugacy class of |w|.
 
   Algorithm: straightforward enumeration of the connected component of |w| in
-  the graph defined by the operation conjugatee, using a |std::set| structure
-  to record previously encountered elements and a |std::stack| to store
+  the graph defined by the operation |conjugate|, using a |std::set| structure
+  to record previously encountered elements and a |containers::queue| to store
   elements whose neighbors have not yet been generated.
 
 */
 void WeylGroup::conjugacyClass(WeylEltList& c, const WeylElt& w) const
 {
-  std::set<WeylElt> found;
-  std::stack<WeylElt,containers::mirrored_simple_list<WeylElt> > toDo;
+  std::set<WeylElt> found { w };
+  containers::queue<WeylElt> to_do { w };
 
-  found.insert(w);
-  toDo.push(w);
+  while (not to_do.empty())
+  {
+    WeylElt v = to_do.front(); to_do.pop();
 
-  while (not toDo.empty()) {
-
-    WeylElt v = toDo.top(); toDo.pop();
-
-    for (Generator s = 0; s < rank(); ++s) {
+    for (Generator s = 0; s < rank(); ++s)
+    {
       conjugate(v,s);
       if (found.insert(v).second) // then it was new, put it on to-do list
-	toDo.push(v);
+	to_do.push(v);
     }
   }
 
   // now convert set |found| to vector
-  c.clear(); c.reserve(found.size());
-  std::copy(found.begin(),found.end(),back_inserter(c));
+  c.reserve(found.size());
+  c.assign(found.begin(),found.end());
 }
 
-/*!
-  \brief Tells whether sw < w.
+/*
+  Whether |sw < w|.
 
   Method: we multiply from $s$ to $sw$, at least by the word pieces of |w| at
   the relevant pieces: those from |min_neighbor(s)| to |s| inclusive. If any
@@ -449,9 +446,8 @@ bool WeylGroup::hasDescent(const WeylElt& w,Generator s) const
 }
 
 
-/*!
-
-  \brief Returns a left descent generator for |w|, or |UndefGenerator| if
+/*
+  Return a left descent generator for |w|, or |UndefGenerator| if
   there is no such (i.e., if $w = e$). In fact this is the index |i| of the
   first piece of |w| that is not 0 (identity), converted to external
   numbering, since the canonical (minimal for ShortLex) expression for |w|
@@ -468,8 +464,8 @@ Generator WeylGroup::leftDescent(const WeylElt& w) const
 }
 
 
-/*!
-  \brief Returns the length of w.
+/*
+  Return the length of |w|.
 
   This is relatively efficient (compared to |involutionLength|)
 */
@@ -507,8 +503,8 @@ WeylWord WeylGroup::word(const WeylElt& w) const
   return result;
 }
 
-/*!
-  \brief Returns the list of all reflections (conjugates of generators).
+/*
+  Return the list of all reflections (conjugates of generators).
 
   NOTE: the ordering of the reflections is the ordering induced by our
   operator<, which is not very significative mathematically, but has the
@@ -534,8 +530,8 @@ WeylEltList WeylGroup::reflections() const
   return WeylEltList(found.begin(),found.end()); // convert set to vector
 }
 
-/*!
-  \brief Return the packed form of w. This will work only if the order of
+/*
+  Return the packed form of |w|. This will work only if the order of
   the group fits into an |unsigned long|, and should therefore not be used.
 
   This is the mixed-radix interpretation of the sequence of pieces, where
@@ -553,8 +549,8 @@ unsigned long WeylGroup::toUlong(const WeylElt& w) const
   return u;
 }
 
-/*!
-  \brief Returns the WeylElt whose packed form is u
+/*
+  Return the WeylElt whose packed form is |u|
 
   Its pieces for the mixed-radix representation of |u|, which as usual can be
   found starting at the least significant end by repeated Euclidean divisions
@@ -571,8 +567,8 @@ WeylElt WeylGroup::toWeylElt(unsigned long u) const
   return w;
 }
 
-/*!
-\brief Applies to |w| the generator permutation in |I|, which should be an
+/*
+  Apply to |w| the generator permutation in |I|, which should be an
   automorphism of the Dynkin diagram, expressed in terms of outer numbering.
 
   Algorithm: we use the standard reduced decomposition of |w|, and rebuild the
@@ -658,8 +654,7 @@ void WeylGroup::act(const PreRootDatum& prd, const WeylElt& w, LatticeMatrix& M)
   }
 }
 
-/*!
-  \brief
+/*
   Same as |act(rd,inverse(w),v)|, but avoiding computation of |inverse(w)|.
   Here the leftmost factors act first.
 */
@@ -750,48 +745,42 @@ void TwistedWeylGroup::twistedConjugate // $tw = w.tw.twist(w)^{-1}$
   tw.contents()=x;
 }
 
-/*!
-  \brief Puts in c the twistes conjugacy class of w.
+/*
+  Put into |c| the twisted conjugacy class of |w|.
 
   Algorithm: straightforward enumeration of the connected component of |w| in
-  the graph defined by the operation twistedConjugate, using a
-  |std::set| structure to record previously encountered elements and a
-  |std::stack| to store elements whose neighbors have not yet been generated.
-
+  the graph defined by the operation |twistedConjugate|, using a |std::set|
+  to record previously encountered elements and a |containers::queue| to store
+  elements whose neighbors have not yet been generated.
 */
 void TwistedWeylGroup::twistedConjugacyClass
   (TwistedInvolutionList& c, const TwistedInvolution& tw)
   const
 {
-  std::set<TwistedInvolution> found;
-  std::stack<TwistedInvolution,
-	     containers::mirrored_simple_list<TwistedInvolution> > toDo;
+  std::set<TwistedInvolution> found { tw } ;
+  containers::queue<TwistedInvolution> to_do { tw };
 
-  found.insert(tw);
-  toDo.push(tw);
-
-  while (not toDo.empty()) {
-
-    TwistedInvolution v = toDo.top();
-    toDo.pop();
+  while (not to_do.empty())
+  {
+    TwistedInvolution v = to_do.front();
+    to_do.pop();
 
     for (Generator s=0; s<W.rank(); ++s)
     {
-	twistedConjugate(v,s);
+      twistedConjugate(v,s);
       if (found.insert(v).second)
-	toDo.push(v);
+	to_do.push(v);
     }
   }
 
   // now convert set |found| to vector
-  c.clear(); c.reserve(found.size());
-  std::copy(found.begin(),found.end(),back_inserter(c));
-
+  c.reserve(found.size());
+  c.assign(found.begin(),found.end());
 }
 
 
-/*!
-  \brief Tells whether |w| twisted-commutes with |s|: $s.w.\delta(s)=w$
+/*
+  Tell whether |w| twisted-commutes with |s|: $s.w.\delta(s)=w$
 
   Precondition: |w| is a twisted involution: $w^{-1}=\delta(w)$. Therefore
   twisted commutation is equivalent to $s.w$ being a twisted involution.
@@ -975,10 +964,10 @@ InvolutionWord TwistedWeylGroup::extended_involution_expr(TwistedInvolution tw)
 }
 
 
-/*!
-  \brief Returns the length of tw as a twisted involution.
+/*
+  The length of |tw| as a twisted involution.
 
-  Precondition: tw is a twisted involution;
+  Precondition: |tw| is a twisted involution;
 
   Algorithm: this is a simplified version of |involutionOut| that records only
   the length. This statistic plays a predominant role in the kgb and block
@@ -1047,8 +1036,8 @@ WeightInvolution TwistedWeylGroup::involution_matrix
 
 namespace weyl {
 
-/*!
-\brief Constructs subquotient \#r for the Coxeter matrix c.
+/*
+  Construct subquotient \#r for the Coxeter matrix c.
 
   This uses the Coxeter matrix only up to index r. In fact we can behave as
   if generator |r| is the final one, since we ignore any higher ones for now.
@@ -1228,7 +1217,8 @@ size_t TI_Entry::hashCode(size_t modulus) const
 
 namespace weyl {
 
-/*!\brief Returns the twist defined by |d| relative to |rd|.
+/*
+  Return the twist defined by |d| relative to |rd|.
 
   Precondition: |d| is an involution of the root datum |rd|. If not an
   involution of the based datum, an appropriate Weyl group action is applied
@@ -1261,10 +1251,10 @@ Twist make_twist(const RootDatum& rd, const WeightInvolution& d)
 
 namespace {
 
-/*!
-  \brief Returns the minimal element in the orbit of x under s and t.
+/*
+  Return the minimal element in the orbit of |x| under |s| and |t|.
 
-  Precondition : s is in the descent set of x;
+  Precondition : |s| is in the descent set of |x|;
 */
 WeylElt::EltPiece dihedralMin(const weyl::Transducer& qa,
 				    WeylElt::EltPiece x,
@@ -1287,9 +1277,9 @@ WeylElt::EltPiece dihedralMin(const weyl::Transducer& qa,
 }
 
 
-/*!
-  \brief Returns the result of applying s and t alternately to x, for a
-  total of d times.
+/*
+  Return the result of applying |s| and |t| alternately to |x|, for a
+  total of |d| times.
 */
 WeylElt::EltPiece dihedralShift(const weyl::Transducer& qa,
 				      WeylElt::EltPiece x,
@@ -1311,8 +1301,8 @@ WeylElt::EltPiece dihedralShift(const weyl::Transducer& qa,
 }
 
 
-/*!
-  \brief Fills in the Coxeter matrix cox.
+/*
+  Fill in the Coxeter matrix |cox|.
 
   Precondition: cart is a Cartan matrix; a holds a normalizing permutation
   for cart, such as constructed by normalize(a,d) where d is the Dynkin diagram

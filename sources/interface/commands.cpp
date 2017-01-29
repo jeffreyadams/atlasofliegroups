@@ -351,11 +351,11 @@ void CommandTree::run() const
   runFlag = true;
   const char* name; // needed in catch blocks
   while (runFlag) // exit through |exitInteractive|, i.e., "qq"
+  {
+    const CommandTree* mode = modeStack.back();  // get current active mode
+    name = getCommand(mode->prompt()); // user input, edited by readline
     try
     {
-      const CommandTree* mode = modeStack.back();  // get current active mode
-      name = getCommand(mode->prompt()); // user input, edited by readline
-
       CheckResult status = NotFound; // must initialise this before the call
       CommandTree const* where;
       CommandTree::const_iterator it = mode->look_up(name,status,where);
@@ -406,7 +406,7 @@ void CommandTree::run() const
     {
       std::cerr << std::endl << "unidentified error occurred" << std::endl;
     }
-  // |for(runFlag)|
+  } // |for(runFlag)|
 } // |run_from|
 
 

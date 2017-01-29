@@ -91,18 +91,14 @@ DescValue extended_type(const Block_base& block, BlockElt z, const ext_gen& p,
 			BlockElt& first_link);
 
 
-KGBElt twisted (const KGB& kgb, KGBElt x,
-		const WeightInvolution& delta, const weyl::Twist& twist);
+KGBElt twisted (const KGB& kgb, KGBElt x, const WeightInvolution& delta);
 
 BlockElt twisted (const Block& block,
 		  const KGB& kgb, const KGB& dual_kgb, // all are needed
 		  BlockElt z,
-		  const WeightInvolution& delta,
-		  const weyl::Twist& twist);
+		  const WeightInvolution& delta);
 
 typedef Polynomial<int> Pol;
-
-typedef bool (*extended_predicate)(DescValue);
 
 class ext_block
 {
@@ -150,14 +146,11 @@ class ext_block
 	    const KGB& kgb, const KGB& dual_kgb, // all are needed
 	    const WeightInvolution& delta);
   ext_block(const InnerClass& G,
-	    const param_block& block, const KGB& kgb,
-	    const WeightInvolution& delta,
+	    const param_block& block, const WeightInvolution& delta,
 	    bool verbose=false);
 
 // manipulators
   void flip_edge(weyl::Generator s, BlockElt x, BlockElt y);
-
-  unsigned int list_edges();  // returns number of toggled pairs
 
 // accessors
 
@@ -222,90 +215,108 @@ class ext_block
 private:
   void complete_construction(const BitMap& fixed_points);
   bool check(const param_block& block, bool verbose=false);
-  void flip_edges(extended_predicate match);
 
 }; // |class ext_block|
 
-RankFlags reduce_to(const ext_gens orbits, RankFlags gen_set);
+// reduce marked set |gen_set| (supposed a union of orbits) to set of |orbits|
+RankFlags reduce_to(const ext_gens& orbits, RankFlags gen_set);
 
 // Extended parameters
 
 class context // holds values that remain fixed across extended block
 {
   const repr::Rep_context& d_rc;
-  WeightInvolution d_delta;
+  const WeightInvolution d_delta;
   RatWeight d_gamma; // representative of infinitesimal character
-  RatCoweight d_g; // chosen lift of the common square for the square class
-  RootDatum integr_datum; // intgrality datum
-  SubSystem sub; // embeds |integr_datum| into parent root datum
+  // RatCoweight d_g; // we might record |g|, but in fact defer to |realGroup|
+  const RootDatum integr_datum; // intgrality datum
+  const SubSystem sub; // embeds |integr_datum| into parent root datum
+  Permutation pi_delta; // permutation of |delta| on roots of full root datum
+  RootNbrSet delta_fixed_roots;
+  weyl::Twist twist;
+  int_Vector lambda_shifts,l_shifts; // affine centers for complex cross actions
 
  public:
   context
     (const repr::Rep_context& rc,
-     WeightInvolution delta, // by value
+     const WeightInvolution& delta,
      const RatWeight& gamma);
 
+  // accessors
   const repr::Rep_context& rc () const { return d_rc; }
   const RootDatum& id() const { return integr_datum; }
   const SubSystem& subsys() const { return sub; }
+  const RootDatum& rootDatum() const { return d_rc.rootDatum(); }
+  const InnerClass& innerClass () const { return d_rc.innerClass(); }
   RealReductiveGroup& realGroup () const { return d_rc.realGroup(); }
-  const InnerClass& innerClass () const { return realGroup().innerClass(); }
   const WeightInvolution& delta () const { return d_delta; }
   const RatWeight& gamma() const { return d_gamma; }
-  const RatCoweight& g() const { return d_g; }
-  // the next should match |realForm().g_rho_check()|, but uses stored |d_g|
-  RatCoweight g_rho_check() const
-  { return (g()-rho_check(rc().rootDatum())).normalize(); }
+  const RatCoweight& g_rho_check() const { return realGroup().g_rho_check(); }
+  RatCoweight g() const { return realGroup().g(); }
+  RootNbr delta_of(RootNbr alpha) const { return pi_delta[alpha]; }
+  const RootNbrSet& delta_fixed() const { return delta_fixed_roots; }
+  weyl::Generator twisted(weyl::Generator s) const { return twist[s]; }
+  int lambda_shift(weyl::Generator s) const { return lambda_shifts[s]; }
+  int l_shift(weyl::Generator s) const { return l_shifts[s]; }
+
+  // whether positive $\alpha$ has $\theta(\alpha)\neq\pm(1|\delta)(\alpha)$
+  bool is_very_complex (InvolutionNbr theta, RootNbr alpha) const;
+  Weight to_simple_shift(InvolutionNbr theta, InvolutionNbr theta_p,
+			 RootNbrSet pos_to_neg) const;
+  bool shift_flip(InvolutionNbr theta, InvolutionNbr theta_p,
+		  RootNbrSet pos_to_neg) const;
+
+  // possible manipulator; |RootDatum|,|SubSystem| need to implement this first
+  // void act_on_gamma(const WeylWord& ww); // left-apply |ww| to |d_gamma|
+
 }; // |context|
 
 // detailed parameter data; as defined by Jeff & David
-struct param // prefer |struct| with |const| members for ease of access
+struct param // allow public member access; methods ensure no invariants anyway
 {
   const context& ctxt;
-  const TwistedInvolution tw; // implicitly defines $\theta$
+  TwistedInvolution tw; // implicitly defines $\theta$
 
-private:
-  Coweight d_l; // with |tw| gives a |GlobalTitsElement|; lifts its |t|
-  Weight d_lambda_rho; // lift of that value in a |StandardRepr|
-  Weight d_tau; // a solution to $(1-\theta)*\tau=(\delta-1)\lambda_\rho$
-  Coweight d_t; // a solution to $t(1-theta)=l(\delta-1)$
+  Coweight l; // with |tw| gives a |GlobalTitsElement|; lifts its |t|
+  Weight lambda_rho; // lift of that value in a |StandardRepr|
+  Weight tau; // a solution to $(1-\theta)*\tau=(\delta-1)\lambda_\rho$
+  Coweight t; // a solution to $t(1-theta)=l(\delta-1)$
+  bool flipped; // whether tensored with the fliiping representation
 
-public:
-  param (const context& ec, const StandardRepr& sr);
-  param (const context& ec, KGBElt x, const Weight& lambda_rho);
+  param (const context& ec, const StandardRepr& sr, bool flipped=false);
+  param (const context& ec,
+	 KGBElt x, const Weight& lambda_rho, bool flipped=false);
   param (const context& ec, const TwistedInvolution& tw,
-	 Weight lambda_rho, Weight tau, Coweight l, Coweight t);
+	 Weight lambda_rho, Weight tau, Coweight l, Coweight t,
+	 bool flipped=false);
 
   param (const param& p) = default;
   param (param&& p)
   : ctxt(p.ctxt), tw(std::move(p.tw))
-  , d_l(std::move(p.d_l))
-  , d_lambda_rho(std::move(p.d_lambda_rho))
-  , d_tau(std::move(p.d_tau))
-  , d_t(std::move(p.d_t))
+  , l(std::move(p.l))
+  , lambda_rho(std::move(p.lambda_rho))
+  , tau(std::move(p.tau))
+  , t(std::move(p.t))
+  , flipped(p.flipped)
   {}
 
   param& operator= (const param& p)
-  { assert(tw==p.tw); // cannot assign this, so it should match
-    d_l=p.d_l; d_lambda_rho=p.d_lambda_rho; d_tau=p.d_tau; d_t=p.d_t;
+  { tw=p.tw;
+    l=p.l; lambda_rho=p.lambda_rho; tau=p.tau; t=p.t;
+    flipped=p.flipped;
     return *this;
   }
   param& operator= (param&& p)
-  { assert(tw==p.tw); // cannot assign this, so it should match
-    d_l=std::move(p.d_l); d_lambda_rho=std::move(p.d_lambda_rho);
-    d_tau=std::move(p.d_tau); d_t=std::move(p.d_t);
+  { tw=std::move(p.tw);
+    l=std::move(p.l); lambda_rho=std::move(p.lambda_rho);
+    tau=std::move(p.tau); t=std::move(p.t);
+    flipped=p.flipped;
     return *this;
   }
 
-  const Coweight& l () const { return d_l; }
-  const Weight& lambda_rho () const { return d_lambda_rho; }
-  const Weight& tau () const { return d_tau; }
-  const Coweight& t () const { return d_t; }
+  bool is_flipped() const { return flipped; }
 
-  void set_l (Coweight l) { d_l=l; }
-  void set_lambda_rho (Weight lambda_rho) { d_lambda_rho=lambda_rho; }
-  void set_tau (Weight tau) { d_tau=tau; }
-  void set_t (Coweight t) { d_t=t; }
+  void flip (bool whether=true) { flipped=(whether!=flipped); }
 
   const repr::Rep_context rc() const { return ctxt.rc(); }
   const WeightInvolution& delta () const { return ctxt.delta(); }
@@ -314,7 +325,7 @@ public:
 
   KGBElt x() const; // reconstruct |x| component
   repr::StandardRepr restrict() const // underlying unexteded representation
-    { return ctxt.rc().sr_gamma(x(),lambda_rho(),ctxt.gamma()); }
+    { return ctxt.rc().sr_gamma(x(),lambda_rho,ctxt.gamma()); }
 }; // |param|
 
 /* Try to conjugate |alpha| by product of folded-generators for the (full)
@@ -331,16 +342,14 @@ WeylWord fixed_conjugate_simple (const context& c, RootNbr& alpha);
 bool same_standard_reps (const param& E, const param& F);
 // whether |E| and |F| give same sign, assuming |same_standard_reps(E,F)|
 bool same_sign (const param& E, const param& F);
-inline int sign_between (const param& E, const param& F)
-  { return same_sign(E,F) ? 1 : -1; }
 
 inline bool is_default (const param& E)
-{ return same_sign(E,param(E.ctxt,E.x(),E.lambda_rho())); }
+{ return same_sign(E,param(E.ctxt,E.x(),E.lambda_rho)); }
 
 
 // find out type of extended parameters, and push its neighbours onto |links|
 DescValue star (const param& E, const ext_gen& p,
-		containers::sl_list<std::pair<int,param> >& links);
+		containers::sl_list<param>& links);
 
 bool is_descent (const ext_gen& kappa, const param& E);
 weyl::Generator first_descent_among
@@ -354,10 +363,12 @@ StandardRepr scaled_extended_dominant // result will have its |gamma()| dominant
  );
 
 // expand parameter into a signed sum of extended nonzero final parameters
-containers::sl_list<std::pair<StandardRepr,bool> > finalise
+containers::sl_list<std::pair<StandardRepr,bool> > extended_finalise
   (const repr::Rep_context& rc,
-   StandardRepr sr, // by value: internally |make_dominant| is applied to it
-   const WeightInvolution& delta);
+   const StandardRepr& sr, const WeightInvolution& delta);
+
+// check quadratic relation for |s| at |x|
+bool check_quadratic (const ext_block& b, weyl::Generator s, BlockElt x);
 
 // check braid relation at |x|; also mark all involved elements in |cluster|
 bool check_braid

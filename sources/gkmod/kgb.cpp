@@ -770,13 +770,20 @@ KGBElt KGB::lookup(TitsElt a) const
   return UndefKGB; // report failure
 }
 
+// act by external twist |delta| on KGB element |x|
 KGBElt KGB::twisted(KGBElt x,const WeightInvolution& delta) const
 {
   auto a = titsElt(x);
   auto delta_twist = rootdata::twist(G.rootDatum(),delta);
+  auto delta2 = BinaryMap(delta);
+  RatCoweight diff = (base_grading_vector()-base_grading_vector()*delta)
+    .normalize();
+  if (diff.denominator()!=1)
+    return UndefKGB;
+  TorusPart corr(diff.numerator());
   TitsElt twisted_a
     (titsGroup(),
-     titsGroup().left_torus_part(a)*BinaryMap(delta),
+     titsGroup().left_torus_part(a)*delta2+corr,
      weylGroup().translation(a.w(),delta_twist)
      );
   return lookup(twisted_a);

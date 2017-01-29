@@ -4011,7 +4011,7 @@ also construct a module parameter value for each element of |block|.
 { own_row param_list = std::make_shared<row_value>(block.size());
   for (BlockElt z=0; z<block.size(); ++z)
     param_list->val[z] =
-	std::make_shared<module_parameter_value>(p->rf,p->rc().sr(block,z));
+	std::make_shared<module_parameter_value>(p->rf,block.sr(z));
   push_value(std::move(param_list));
 
 }
@@ -4226,7 +4226,7 @@ void extended_block_wrapper(expression_base::level l)
 into a list of parameters and three tables in the form of matrices.
 
 @< Construct the extended block... @>=
-{ ext_block::ext_block eb(rc.innerClass(),block,rc.kgb(),delta->val);
+{ ext_block::ext_block eb(rc.innerClass(),block,delta->val);
   own_row params = std::make_shared<row_value>(eb.size());
   int_Matrix types(eb.size(),eb.rank());
 @/int_Matrix links0(eb.size(),eb.rank());
@@ -4401,12 +4401,12 @@ void split_int_value::print(std::ostream& out) const @+
 void split_unary_eq_wrapper(expression_base::level l)
 { Split_integer i=get<split_int_value>()->val;
   if (l!=expression_base::no_value)
-    push_value(whether(i.e()==0 and i.s()==0));
+    push_value(whether(i.is_zero()));
 }
 void split_unary_neq_wrapper(expression_base::level l)
 { Split_integer i=get<split_int_value>()->val;
   if (l!=expression_base::no_value)
-    push_value(whether(i.s()!=0 or i.e()!=0));
+    push_value(whether(not i.is_zero()));
 }
 @)
 void split_eq_wrapper(expression_base::level l)
@@ -5233,7 +5233,7 @@ void finalize_extended_wrapper(expression_base::level l)
   if (l==expression_base::no_value)
     return;
 @)
-  auto params = @;ext_block::finalise(rc,p->val,delta->val);
+  auto params = @;ext_block::extended_finalise(rc,p->val,delta->val);
   repr::SR_poly result(rc.repr_less());
   for (auto it=params.begin(); it!=params.end(); ++it)
     result.add_term(it->first
@@ -5402,7 +5402,7 @@ void raw_ext_KL_wrapper (expression_base::level l)
   }
   else
   {
-    ext_block::ext_block eb(rc.innerClass(),block,rc.kgb(),delta->val);
+    ext_block::ext_block eb(rc.innerClass(),block,delta->val);
     std::vector<Polynomial<int> > pool;
     ext_kl::KL_table klt(eb,pool); klt.fill_columns();
   @)

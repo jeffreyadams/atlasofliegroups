@@ -148,7 +148,7 @@ public:
   bool operator==(const self& x) const { return link_loc == x.link_loc; }
   bool operator!=(const self& x) const { return link_loc != x.link_loc; }
 
-  bool at_end () const { return *link_loc==nullptr; }
+  bool at_end () const { return link_loc->get()==nullptr; }
 }; // |struct sl_list_const_iterator| template
 
 
@@ -343,7 +343,7 @@ template<typename T, typename Alloc>
   simple_list (size_type n, const T& x, const alloc_type& a=alloc_type())
   : alloc_type(a), head(nullptr)
   {
-    assign(n,x);
+    insert(begin(),n,x);
   }
 
   simple_list (std::initializer_list<T> l, const alloc_type& a=alloc_type())
@@ -443,7 +443,7 @@ template<typename T, typename Alloc>
   weak_iterator wbegin() { return weak_iterator(head.get()); }
 
   // instead of |end()| we provide the |at_end| condition
-  static bool at_end (iterator p) { return p.link_loc->get()==nullptr; }
+  static bool at_end (iterator p) { return p.at_end(); }
   static bool at_end (weak_iterator p) { return p.at_end(); }
 
   // for weak pointers getting the end is efficient, so we supply a method
@@ -515,7 +515,7 @@ template<typename T, typename Alloc>
   >::value>::type >
     iterator insert (const_iterator pos, InputIt first, InputIt last)
   {
-    iterator result(*pos.link_loc); // non-const copy of |pos|
+    const iterator result(*pos.link_loc); // non |const_iterator| copy of |pos|
     for( ; first!=last; ++first,++pos)
     { // |insert(pos++,*first);|
     // construct node value
@@ -556,9 +556,12 @@ template<typename T, typename Alloc>
     head.reset(); // smart pointer magic destroys all nodes
   }
 
+  // replace value of list by |n| copies of |x|
   void assign (size_type n, const T& x)
   {
     iterator p = begin();
+    // if |length>=n| fill |n| positions and decrease |n| by |length|
+    // otherwise fill |n| values and point after them (and ignore final |n|)
     for ( ; not at_end(p) and n-->0; ++p)
       *p = x;
 
@@ -628,7 +631,7 @@ template<typename T, typename Alloc>
   const_iterator begin () const { return const_iterator(head); }
   const_iterator cbegin () const { return const_iterator(head); }
   // instead of |end()| we provide the |at_end| condition
-  static bool at_end (const_iterator p) { return p.link_loc->get()==nullptr; }
+  static bool at_end (const_iterator p) { return p.at_end(); }
   static bool at_end (weak_const_iterator p) { return p.at_end(); }
 
   // for weak pointers getting the end is efficient, so we supply methods
@@ -730,14 +733,14 @@ template<typename T, typename Alloc>
   void set_empty () { tail=&head; node_count=0; }
 
   class ensure // a helper class that exists for its destructor only
-  { link_type* &tail;
-    link_type* &dst;
+  { link_type* &tail; // reference so that it can be assigned to in destructor
+    const_iterator &p; // reference to pick up external changes during lifetime
   public:
     ensure(link_type*& tail, const_iterator& p) // maybe makes |tail=p.link_loc|
-      : tail(tail),  dst(p.link_loc) {}
+      : tail(tail),  p(p) {}
     ~ensure()
-    { if (dst->get()==nullptr) // if at destruction time |dst| is at end
-	tail = dst; // then make |tail| point to it
+    { if (p.at_end()) // if at destruction time |p| is at end
+	tail = p.link_loc; // then make |tail| point to it
     }
   };
 
@@ -773,7 +776,7 @@ template<typename T, typename Alloc>
   , node_count(x.node_count)
   { x.set_empty(); }
 
-  explicit sl_list (simple_list<T,Alloc>&& x) // move and complete constructor
+  explicit sl_list (simple_list<T,Alloc>&& x) // move and dress constructor
   : alloc_type(std::move(x))
   , head(x.head.release())
   , tail(&head)
@@ -806,15 +809,15 @@ template<typename T, typename Alloc>
   }
 
   sl_list (size_type n, const T& x, const alloc_type& a=alloc_type())
-  : alloc_type(a), head(nullptr), tail(&head), node_count(n)
+  : alloc_type(a), head(nullptr), tail(&head), node_count(0)
   {
-    assign(n,x);
+    insert(begin(),n,x); // this increases |node_count| to |n|
   }
 
   sl_list (std::initializer_list<T> l, const alloc_type& a=alloc_type())
   : alloc_type(a), head(nullptr), tail(&head), node_count(0)
   {
-    assign(l.begin(),l.end());
+    assign(l.begin(),l.end()); // this increases |node_count| to |l.size()|
   }
 
   ~sl_list () {} // when called, |head| is already destructed/cleaned up
@@ -1025,7 +1028,8 @@ template<typename T, typename Alloc>
   >::value>::type >
     iterator insert (const_iterator pos, InputIt first, InputIt last)
   {
-    ensure me(tail,pos); // will adapt |tail| if |at_end(pos)| throughout
+    const iterator result(*pos.link_loc); // non |const_iterator| copy of |pos|
+    ensure me(tail,pos); // will adapt |tail| if |at_end(pos)| holds throughout
     for( ; first!=last; ++first)
     { // |insert(pos++,*first);|, except we don't update |tail|
       node_type* p = allocator_new(node_allocator(),*first);
@@ -1034,6 +1038,7 @@ template<typename T, typename Alloc>
       pos = iterator(p->next); // or simply |++pos|
       ++node_count;
     }
+    return result;
   }
 
   template<typename InputIt>
@@ -1104,15 +1109,18 @@ template<typename T, typename Alloc>
     set_empty();
   }
 
+  // replace value of list by |n| copies of |x|
   void assign (size_type n, const T& x)
   {
     const size_type given_n = n; // cannot store yet for exception safety
     iterator p = begin();
+    // if |length>=n| fill |n| positions and decrease |n| by |length|
+    // otherwise fill |n| values and point after them (and ignore final |n|)
     for ( ; p!=end() and n-->0; ++p)
       *p = x;
 
-    if (p==end())
-      insert(p,n,x); // this also increases |node_count|
+    if (p==end()) // then |n>=0| more nodes need to be added
+      insert(p,n,x); // at |end()|; this also increases |node_count|
     else // we have exhausted |n| before |p|, and need to truncate after |p|
     {
       (tail = p.link_loc)->reset();

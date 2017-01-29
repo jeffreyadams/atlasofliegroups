@@ -105,12 +105,12 @@ class Block_base
 
 // accessors
 
-  size_t rank() const { return data.size(); } // semisimple rank matters
-  size_t folded_rank() const { return orbits.size(); }
-  size_t size() const { return info.size(); }
+  unsigned int rank() const { return data.size(); } // semisimple rank matters
+  unsigned int folded_rank() const { return orbits.size(); }
+  BlockElt size() const { return info.size(); }
 
-  virtual KGBElt xsize() const = 0;
-  virtual KGBElt ysize() const = 0;
+  virtual KGBElt max_x() const = 0; // used virtually mainly for printing
+  virtual KGBElt max_y() const = 0; // used virtually mainly for printing
 
   const DynkinDiagram& Dynkin() const { return dd; }
   ext_gen orbit(weyl::Generator s) const { return orbits[s]; }
@@ -216,7 +216,7 @@ class Block : public Block_base
   TwistedInvolutionList d_involution; // of size |size()|
 
   // map KGB element |x| to the first block element |z| with |this->x(z)>=x|
-  BlockEltList d_first_z_of_x; // of size |xsize+1|
+  BlockEltList d_first_z_of_x; // of size |xrange+1|
 
   // Flags the generators occurring in reduced expression for |d_involution|.
   std::vector<RankFlags> d_involutionSupport; // of size |size()|
@@ -247,8 +247,8 @@ class Block : public Block_base
   const TwistedWeylGroup& twistedWeylGroup() const { return tW; }
   const WeylGroup& weylGroup() const { return tW.weylGroup(); }
 
-  virtual KGBElt xsize() const { return xrange; }
-  virtual KGBElt ysize() const { return yrange; }
+  virtual KGBElt max_x() const { return xrange-1; }
+  virtual KGBElt max_y() const { return yrange-1; }
 
   // Look up element by |x|, |y| coordinates
   BlockElt element(KGBElt x,KGBElt y) const;
@@ -258,16 +258,14 @@ class Block : public Block_base
 
   size_t max_Cartan() const { return Cartan_class(size()-1); } // for printing
 
-/*!
-  \brief Returns the twisted involution corresponding to z.
-
-  This is the corresponding Weyl group element w, such that w.delta is the
-  root datum involution tau corresponding to z
+/*
+  The twisted involution corresponding to the involution $\theta$ for |z|.
+  This is the Weyl group element $w$, such that $\theta=w.\delta$
 */
   virtual const TwistedInvolution& involution(BlockElt z) const
     { assert(z<size()); return d_involution[z]; }
 
-  //! \brief the simple roots occurring in reduced expression |involution(z)|
+  // flag among simple roots those occurring in reduced expr for |involution(z)|
   const RankFlags& involutionSupport(BlockElt z) const
   {
     assert(z<size());
@@ -285,11 +283,21 @@ private:
 
 }; // |class Block|
 
+struct param_entry
+{ KGBElt x; TorusPart y;
 
+  // obligatory fields for hashable entry
+  typedef std::vector<param_entry> Pooltype;
+  size_t hashCode(size_t modulus) const
+  { return (5*x-11*y.data().to_ulong())&(modulus-1); }
+  bool operator !=(const param_entry& o) const { return x!=o.x or y!=o.y; }
+
+}; // |struct param_entry|
 
 typedef HashTable<y_entry,KGBElt> y_part_hash;
 typedef Block_base::EltInfo block_elt_entry;
 typedef HashTable<block_elt_entry,BlockElt> block_hash;
+typedef HashTable<param_entry,BlockElt> param_hash;
 
 // a class for blocks of (possibly non integral) parameters
 class param_block : public Block_base
@@ -297,17 +305,18 @@ class param_block : public Block_base
   const Rep_context& rc; // accesses many things, including KGB set for x
 
   RatWeight infin_char; // infinitesimal character
-  RankFlags singular; // flags simple roots for which |infin_char| is singular
+  Weight gr_numer; // numerator of |gamma-rho|
 
-  y_entry::Pooltype y_pool;
-  y_part_hash y_hash; // hash table allows storing |y| parts by index
   std::vector<TorusPart> y_bits; // as in |StandardRepr|, indexed by |y|
 
-  // A simple structure to pack a pair of already sequenced numbers (indices
-  // into the |info| field for some future block) into a hashable value
+  // hash structure to allow rapid lookup of |StandardRepr| values
+  param_entry::Pooltype z_pool;
+  param_hash z_hash;
 
-  block_hash z_hash; //  on |Block_base::info|
-  KGBElt highest_x; // highest |x| value ocurring in this (maybe partial) block
+  // group small components together:
+  int gr_denom;
+  KGBElt highest_x,highest_y; // maxima over this (maybe partial) block
+  RankFlags singular; // flags simple roots for which |infin_char| is singular
 
  public:
 
@@ -322,9 +331,6 @@ class param_block : public Block_base
     (const repr::Rep_context& rc,
      StandardRepr sr); // by value,since it will be made dominant before use
 
-  // auxiliary for construction
-  void compute_duals(const InnerClass& G,const SubSystem& rs);
-
  public:
   // accessors that get values via |rc|
   const repr::Rep_context& context() const { return rc; }
@@ -334,7 +340,7 @@ class param_block : public Block_base
   RealReductiveGroup& realGroup() const;
 
   const RatWeight& gamma() const { return infin_char; }
-  const TorusElement& y_rep(KGBElt y) const { return y_pool[y].repr(); }
+  StandardRepr sr(BlockElt z) const; // parameter associated to block element
 
   RatWeight nu(BlockElt z) const; // "real" projection of |infin_char|
   Weight lambda_rho(BlockElt z) const; // reconstruct from |y_bits| value
@@ -343,16 +349,13 @@ class param_block : public Block_base
   bool survives(BlockElt z) const; // whether $J(z_{reg})$ survives tr. functor
   BlockEltList survivors_below(BlockElt z) const; // expression for $I(z)$
 
-  RatWeight y_part(BlockElt z) const; // raw torus part info, normalized
-
-  BlockElt lookup(KGBElt x, const TorusElement& y_rep) const;
   BlockElt lookup(const StandardRepr& sr) const;
 
   ext_gens fold_orbits(const WeightInvolution& delta) const;
 
   // virtual methods
-  virtual KGBElt xsize() const { return x(size()-1)+1; } // we're sorted by |x|
-  virtual KGBElt ysize() const { return y_hash.size(); } // child |y| range
+  virtual KGBElt max_x() const { return highest_x; } // might not be final |x|
+  virtual KGBElt max_y() const { return highest_y; }
   virtual const TwistedInvolution& involution(BlockElt z) const; // from |kgb|
 
   virtual std::ostream& print // defined in block_io.cpp
@@ -360,11 +363,12 @@ class param_block : public Block_base
 
 
  private:
-  // this used to be |lambda_rho|, before conformation to |StandardRepr| choices
-  Weight internal_lambda_rho(BlockElt z) const; // temporary cludge
-  Weight old_lambda_rho(BlockElt z) const; // reconstruct from y value
+  void compute_y_bits(const y_entry::Pooltype& y_pool,
+		      const block_hash& hash); // set the |y_bits|
+  void compute_duals
+  (const y_part_hash& y_hash,const block_hash& hash,
+   const InnerClass& G,const SubSystem& rs);
 
-  void compute_y_bits(); // set the |y_bits| at the end of construction
 /*
   reverse lengths and order block with them increasing, and by increasing
   |x(z)| among elements of given length; adapt tables accordingly. Argument
@@ -372,11 +376,6 @@ class param_block : public Block_base
   in this case (only) the |data| fields are adapted to the permutation
  */
   void reverse_length_and_sort(bool full_block);
-
-  BlockElt earlier(KGBElt x,KGBElt y) const // find already constructed element
-  { return z_hash.find(block_elt_entry(x,y)); } // used during construction
-
-  void add_z(KGBElt x,KGBElt y);
 
 }; // |class param_block|
 

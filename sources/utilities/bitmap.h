@@ -243,8 +243,7 @@ class BitMap
 
 
 
-  /*!
-  \brief Traverses the set bits of a BitMap.
+  /* Iterator to traverse the \emph{set} bits (members present) of a BitMap.
 
   Because of the nature of a bitmap, only constant iterators make sense (just
   like for iterators into std::set); one cannot "change the value" of an

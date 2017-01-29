@@ -95,12 +95,6 @@ StandardRepr
   return sr(x,lambda_rho,nu);
 }
 
-StandardRepr Rep_context::sr(const param_block& b, BlockElt i) const
-{
-  assert(i<b.size());
-  return sr_gamma(b.x(i),b.lambda_rho(i),b.gamma());
-}
-
 Weight Rep_context::lambda_rho(const StandardRepr& z) const
 {
   const InvolutionNbr i_x = kgb().inv_nr(z.x());
@@ -566,6 +560,7 @@ StandardRepr Rep_context::inv_Cayley(weyl::Generator s, StandardRepr z) const
 		  infin_char);
 }
 
+
 /*
   Compute shift in |lambda| component of parameter for Cayley transform by a
   non-simple root $\alpha$, from involutions |theta_down| to |theta_up|, where
@@ -783,7 +778,7 @@ void Rep_table::add_block(param_block& block, BlockEltList& survivors)
   // fill the |hash| table for new surviving parameters in this block
   for (BlockEltList::const_iterator
 	 it=survivors.begin(); it!=survivors.end(); ++it)
-    if (hash.match(sr(block,*it))>=old_size)
+    if (hash.match(block.sr(*it))>=old_size)
       new_survivors.push_back(*it);
 
   assert(hash.size()==old_size+new_survivors.size()); // only new surv. added
@@ -829,12 +824,12 @@ void Rep_table::add_block(param_block& block, BlockEltList& survivors)
       if (eval!=Split_integer(0))
       {
 	unsigned long z_index = old_size+(it-new_survivors.begin());
-	assert(hash.find(sr(block,z))==z_index);
+	assert(hash.find(block.sr(z))==z_index);
 	SR_poly& dest = KL_list[z_index];
 	if (lengths[z_index]%2!=parity)
 	  eval.negate(); // incorporate sign for length difference
 	for (unsigned int i=0; i<xs.size(); ++i)
-	  dest.add_term(sr(block,xs[i]),eval);
+	  dest.add_term(block.sr(xs[i]),eval);
       }
     } // |for(it)|
   } // |for(x)|
@@ -872,7 +867,7 @@ SR_poly Rep_table::deformation_terms (param_block& block,BlockElt entry_elem)
   BlockEltList survivors;
   add_block(block,survivors); // computes survivors, and add anything new
 
-  assert(hash.find(sr(block,entry_elem))!=hash.empty); // should be known now
+  assert(hash.find(block.sr(entry_elem))!=hash.empty); // should be known now
 
   // count number of survivors of length strictly less than any occurring length
   std::vector<unsigned int> n_surv_length_less
@@ -889,17 +884,17 @@ SR_poly Rep_table::deformation_terms (param_block& block,BlockElt entry_elem)
   std::vector<unsigned long> remap(survivors.size());
   for (unsigned long i=0; i<survivors.size(); ++i)
   {
-    unsigned long h=hash.find(sr(block,survivors[i]));
+    unsigned long h=hash.find(block.sr(survivors[i]));
     assert(h!=hash.empty);
     remap[i]=h;
   }
 
-  SR_poly rem(sr(block,entry_elem),repr_less()); // remainder = 1*entry_elem
+  SR_poly rem(block.sr(entry_elem),repr_less()); // remainder = 1*entry_elem
   std::vector<Split_integer> acc(survivors.size(),Split_integer(0));
 
   for (unsigned long i=survivors.size(); i-->0; ) // decreasing essential here
   {
-    StandardRepr p_y=sr(block,survivors[i]);
+    StandardRepr p_y=block.sr(survivors[i]);
     Split_integer c_y = rem[p_y];
     const SR_poly& KL_y = KL_list[remap[i]];
     rem.add_multiple(KL_y,-c_y);
@@ -918,7 +913,7 @@ SR_poly Rep_table::deformation_terms (param_block& block,BlockElt entry_elem)
       result.add_multiple(KL_list[remap[yy]],acc[yy]);
 
   // correct signs in terms of result according to orientation numbers
-  unsigned int orient_ee = orientation_number(sr(block,entry_elem));
+  unsigned int orient_ee = orientation_number(block.sr(entry_elem));
   for (SR_poly::iterator it=result.begin(); it!=result.end(); ++it)
   {
     unsigned int orient_x=orientation_number(it->first);
@@ -1014,7 +1009,7 @@ SR_poly twisted_KL_sum
     auto x = *it; auto factor = P_at_s(x,0);
     if (eblock.length(x)%2!=parity) // flip sign at odd length difference
       factor = -factor;
-    result.add_term(rc.sr(parent,eblock.z(x)),factor);
+    result.add_term(parent.sr(eblock.z(x)),factor);
   }
   return result;
 } // |twisted_KL_sum|
@@ -1031,7 +1026,7 @@ SR_poly twisted_KL_column_at_s
   rc.make_dominant(z);
   BlockElt entry; // dummy needed to ensure full block is generated
   param_block block(rc,z,entry); // which this constructor does
-  ext_block::ext_block eblock(rc.innerClass(),block,rc.kgb(),delta);
+  ext_block::ext_block eblock(rc.innerClass(),block,delta);
 
   return twisted_KL_sum(rc,eblock,eblock.element(entry),block);
 } // |twisted_KL_column_at_s|
@@ -1039,18 +1034,11 @@ SR_poly twisted_KL_column_at_s
 void Rep_table::add_block(ext_block::ext_block& block,
 			  param_block& parent) // its complete unextended block
 {
-  const unsigned long old_size = hash.size();
   { BlockEltList survivors;  // this exported value will not be used
     add_block(parent,survivors); // but we must ensure parent block is known
   }
-  BlockEltList new_survivors; new_survivors.reserve(block.size());
 
-  // fill the |hash| table for new surviving parameters in this block
   RankFlags singular_orbits = block.singular_orbits(parent);
-  for (BlockElt ez = 0; ez<block.size(); ++ez)
-    if (hash.find(sr(parent,block.z(ez)))>=old_size and
-	block.first_descent_among(singular_orbits,ez)==block.rank())
-      new_survivors.push_back(ez);
 
   // extend space in twisted tables; zero polynomial means no computed value
   twisted_KLV_list.resize(hash.size(),SR_poly(repr_less())); // init empties
@@ -1093,12 +1081,12 @@ void Rep_table::add_block(ext_block::ext_block& block,
   for (auto it=survivors.begin(); not survivors.at_end(it); ++it)
   { assert(block.first_descent_among(singular_orbits,*it)==block.rank());
     auto y = *it;
-    auto y_index = hash.find(sr(parent,block.z(y)));
+    auto y_index = hash.find(parent.sr(block.z(y)));
     assert (y_index!=hash.empty); // since we looked up everything above
     assert (y_index<twisted_KLV_list.size());
     SR_poly& dest = twisted_KLV_list[y_index];
     if (dest.empty()) // this means the entry was never defined
-    { dest = SR_poly(sr(parent,block.z(y)),repr_less()); // coefficient 1
+    { dest = SR_poly(parent.sr(block.z(y)),repr_less()); // coefficient 1
       unsigned int parity = block.length(y)%2;
       for (auto x_it=survivors.begin(); x_it!=it; ++x_it) // upper part
       {
@@ -1106,7 +1094,7 @@ void Rep_table::add_block(ext_block::ext_block& block,
 	auto factor = P_at_s(x,y);
 	if (block.length(x)%2!=parity) // flip sign at odd length difference
 	  factor = -factor;
-	dest.add_term(sr(parent,block.z(x)),factor);
+	dest.add_term(parent.sr(block.z(x)),factor);
       }
       // since |dest| is a reference, the sum is stored at its destination
     } // |if (y_index>=old_size)|
@@ -1124,14 +1112,13 @@ SR_poly Rep_table::twisted_KL_column_at_s(StandardRepr z)
   }
   make_dominant(z);
   unsigned long hash_index=hash.find(z);
-  if (hash_index==hash.empty // previously unknown parameter
-      or hash_index>=twisted_KLV_list.size() // block known but not extended
-      or twisted_KLV_list[hash_index].empty()) // same, but skipped over
+  if (hash_index>=twisted_KLV_list.size() // |z| unknown or not extended to, or
+      or twisted_KLV_list[hash_index].empty()) // slot created by another block
   {
     BlockElt entry; // dummy needed to ensure full block is generated
     param_block block(*this,z,entry); // which this constructor does
     const auto &ic = innerClass();
-    ext_block::ext_block eblock(ic,block,kgb(),ic.distinguished());
+    ext_block::ext_block eblock(ic,block,ic.distinguished());
 
     add_block(eblock,block);
 
@@ -1148,7 +1135,7 @@ SR_poly Rep_table::twisted_deformation_terms
   (param_block& block,BlockElt entry_elem)
 {
   const auto& delta = innerClass().distinguished();
-  const auto sr_y = sr(block,entry_elem);
+  const auto sr_y = block.sr(entry_elem);
 
   assert(is_twist_fixed(sr_y,delta));
 
@@ -1156,7 +1143,7 @@ SR_poly Rep_table::twisted_deformation_terms
   if (not block.survives(entry_elem) or block.length(entry_elem)==0)
     return result; // easy cases, null result
 
-  ext_block::ext_block eblock(innerClass(),block,kgb(),delta);
+  ext_block::ext_block eblock(innerClass(),block,delta);
   add_block(eblock,block);
   assert(eblock.is_present(entry_elem)); // since |is_twist_fixed| succeeded
 
@@ -1169,9 +1156,10 @@ SR_poly Rep_table::twisted_deformation_terms
   { const auto& term = *rem.rbegin();
     const StandardRepr p_x= term.first;
     const Split_integer c_x = term.second;
+    assert(hash.find(p_x)<twisted_KLV_list.size());
     const SR_poly& KL_x = twisted_KLV_list[hash.find(p_x)];
     rem.add_multiple(KL_x,-c_x);
-    assert(rem[p_x]==Split_integer(0)); // check relation of being inverse
+    assert(rem[p_x].is_zero()); // check relation of being inverse
     if (length(p_x)%2!=parity)
       result.add_multiple(KL_x,c_x);
   }
@@ -1213,11 +1201,12 @@ SR_poly Rep_table::twisted_deformation (StandardRepr z)
       Rational f=rp.back();
       for (auto it=rp.begin(); it!=rp.end(); ++it)
 	(*it)/=f; // rescale reducibility points to new parameter |z|
+      assert(rp.back()==Rational(1,1)); // should make first reduction at |z|
     }
 
     // now (still with |not rp.empty()| check if a result was previously stored
     unsigned long h=hash.find(z);
-    if (h!=hash.empty and not twisted_def_formula[h].empty())
+    if (h<twisted_def_formula.size() and not twisted_def_formula[h].empty())
       return flip_start // if so we must multiply the stored value by $s$
 	? SR_poly(repr_less()) // need an empty polynomial here
 	.add_multiple(twisted_def_formula[h],Split_integer(0,1))
@@ -1230,7 +1219,7 @@ SR_poly Rep_table::twisted_deformation (StandardRepr z)
     bool flipped;
     auto z0 = ext_block::scaled_extended_dominant
 		(*this,z,delta,Rational(0,1),flipped);
-    auto L = ext_block::finalise(*this,z0,delta);
+    auto L = ext_block::extended_finalise(*this,z0,delta);
     for (auto it=L.begin(); it!=L.end(); ++it)
       result.add_term(it->first, it->second==flipped
 				 ? Split_integer(1,0) : Split_integer(0,1) );
@@ -1238,24 +1227,34 @@ SR_poly Rep_table::twisted_deformation (StandardRepr z)
 
   if (not rp.empty()) // without reducuibilty points, just return |result| now
   {
+    BlockElt dummy;
+    param_block parent(*this,z,dummy); // full parent block needed for now
+    ext_block::ext_block eblock(innerClass(),parent,delta); // full as well
+    add_block(eblock,parent);
+    const unsigned long h=hash.find(z);
+    assert(h<twisted_def_formula.size()); // it was just added by |add_block|
+
     for (unsigned i=rp.size(); i-->0; )
     {
-      Rational r=rp[i]; bool flipped; BlockElt dummy;
+      Rational r=rp[i]; bool flipped;
       auto zi = ext_block::scaled_extended_dominant(*this,z,delta,r,flipped);
-      param_block parent(*this,zi,dummy); // full parent block needed for now
-      auto L = ext_block::finalise(*this,zi,delta); // rarely a long list
+      std::unique_ptr<param_block> bp;
+      if (i+1<rp.size()) // avoid regenerating same parent block first time
+        bp.reset(new param_block(*this,zi,dummy));
+      param_block& block = bp.get()==nullptr ? parent : *bp;
+
+      auto L =
+	ext_block::extended_finalise(*this,zi,delta); // rarely a long list
       for (auto it=L.begin(); it!=L.end(); ++it)
-      { auto zz = parent.lookup(it->first);
-	SR_poly terms = twisted_deformation_terms(parent,zz);
+      { auto zz = block.lookup(it->first);
+	SR_poly terms = twisted_deformation_terms(block,zz);
 	for (SR_poly::iterator jt=terms.begin(); jt!=terms.end(); ++jt)
 	  result.add_multiple(twisted_deformation(jt->first),  // recursion
 		      flipped==it->second ? jt->second : jt->second.times_s());
       }
     }
-    // now store result for future lookup
-    unsigned long h=hash.find(z);
-    assert(h!=hash.empty); // it should have been added by |deformation_terms|
-    twisted_def_formula[h]=result;
+    twisted_def_formula[h]=result; // now store result for future lookup
+
   }
 
   return flip_start // if so we must multiply the stored value by $s$

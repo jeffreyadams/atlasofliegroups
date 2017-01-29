@@ -78,6 +78,9 @@ bool is_dominant_ratweight(const RootDatum& rd, const RatWeight& gamma);
 Weight rho_minus_w_rho(const RootDatum& rd, const WeylWord& ww);
 Coweight rho_check_minus_rho_check_w(const RootDatum& rd, const WeylWord& ww);
 
+Weight root_sum(const RootDatum& rd, const RootNbrSet& S);
+Coweight coroot_sum(const RootDatum& rd, const RootNbrSet& S);
+
 } // |namespace rootdata|
 
 /******** type definitions **************************************************/
@@ -138,9 +141,10 @@ class RootSystem
   // Cartan matrix by entry and as a whole
   int cartan(weyl::Generator i, weyl::Generator j) const
   { return Cartan_entry(i,j); };
+  bool diagram_linked(weyl::Generator i, weyl::Generator j) const
+  { return Cartan_entry(i,j)<0; };
   int_Matrix cartanMatrix() const;
   LieType Lie_type() const;
-
   // for subsystem
   int_Matrix cartanMatrix(const RootNbrList& sub) const;
   LieType Lie_type(RootNbrList sub) const;
@@ -499,9 +503,14 @@ class RootDatum
     void coreflect(matrix::Vector<C>& co_lambda, RootNbr alpha) const
     { co_lambda.subtract(coroot(alpha).begin(),root(alpha).dot(co_lambda)); }
 
-  // on matrices we have left and right multiplication by reflection matrices
-  void reflect(RootNbr alpha, LatticeMatrix& M) const;
-  void reflect(LatticeMatrix& M,RootNbr alpha) const;
+  // Apply reflection about root |alpha| with offset |d| to a weight |lambda|.
+  template<typename C>
+    void reflect(RootNbr alpha,matrix::Vector<C>& lambda,int d) const
+    { lambda.subtract(root(alpha).begin(),coroot(alpha).dot(lambda)+d); }
+  //  Apply reflection about coroot |alpha| with offset |d| to |co_lambda|
+  template<typename C>
+    void coreflect(matrix::Vector<C>& co_lambda, RootNbr alpha, int d) const
+    { co_lambda.subtract(coroot(alpha).begin(),root(alpha).dot(co_lambda)+d); }
 
   template<typename C>
     matrix::Vector<C>
@@ -514,16 +523,17 @@ class RootDatum
 
   template<typename C>
     void simple_reflect(weyl::Generator i,matrix::Vector<C>& v) const
-  { reflect(simpleRootNbr(i),v); }
+    { reflect(simpleRootNbr(i),v); }
   template<typename C>
-  void simple_coreflect(matrix::Vector<C>& v, weyl::Generator i) const
+    void simple_coreflect(matrix::Vector<C>& v, weyl::Generator i) const
     { coreflect(v,simpleRootNbr(i)); }
 
-  void simple_reflect(weyl::Generator i, LatticeMatrix& M) const
-  { reflect(simpleRootNbr(i),M); }
-  void simple_reflect(LatticeMatrix& M,weyl::Generator i) const
-  { reflect(M,simpleRootNbr(i)); }
-
+  template<typename C>
+    void simple_reflect(weyl::Generator i,matrix::Vector<C>& v, int d) const
+    { reflect(simpleRootNbr(i),v,d); }
+  template<typename C>
+    void simple_coreflect(matrix::Vector<C>& v, weyl::Generator i,int d) const
+    { coreflect(v,simpleRootNbr(i),d); }
 
   template<typename C>
     matrix::Vector<C>
@@ -535,32 +545,45 @@ class RootDatum
     { simple_coreflect(ell,i); return ell; }
 
   WeylWord to_dominant(Weight lambda) const; // call by value
+
   void act(const WeylWord& ww,Weight& lambda) const
     {
       for (weyl::Generator i=ww.size(); i-->0; )
 	simple_reflect(ww[i],lambda);
     }
+  // action centered at weight $\mu$ with $simpleCoroot(i).dot(mu) == -shift[i]|
+  void shifted_act(const WeylWord& ww,Weight& lambda,int_Vector shift) const
+    {
+      for (weyl::Generator i=ww.size(); i-->0; )
+      { auto s=ww[i];
+	simple_reflect(s,lambda,shift[s]);
+      }
+    }
+
   Weight image_by(const WeylWord& ww,Weight lambda) const
-    { act(ww,lambda); return lambda; }
+  { act(ww,lambda); return lambda; }
+  Weight shifted_image_by
+    (const WeylWord& ww,Weight lambda, int_Vector shift) const
+  { shifted_act(ww,lambda,shift); return lambda; }
 
   // with inverse we invert operands to remind how letters of |ww| are used
   void act_inverse(Weight& lambda,const WeylWord& ww) const
-    {
-      for (weyl::Generator i=0; i<ww.size(); ++i)
-	simple_reflect(ww[i],lambda);
-    }
+  {
+    for (weyl::Generator i=0; i<ww.size(); ++i)
+      simple_reflect(ww[i],lambda);
+  }
 
   Weight image_by_inverse(Weight lambda,const WeylWord& ww) const
-    { act_inverse(lambda,ww); return lambda; }
+  { act_inverse(lambda,ww); return lambda; }
 
 #if 0
   void dual_act_inverse(const WeylWord& ww,Coweight& ell) const
-    {
-      for (weyl::Generator i=ww.size(); i-->0; )
-	simple_coreflect(ell,ww[i]);
-    }
+  {
+    for (weyl::Generator i=ww.size(); i-->0; )
+      simple_coreflect(ell,ww[i]);
+  }
   Weight dual_image_by_inverse(const WeylWord& ww,Weight lambda) const
-    { dual_act_inverse(ww,lambda); return lambda; }
+  { dual_act_inverse(ww,lambda); return lambda; }
 #endif
 
   // here the word |ww| is travered as in |act_inverse|, but coreflection used
@@ -569,8 +592,32 @@ class RootDatum
       for (weyl::Generator i=0; i<ww.size(); ++i)
 	simple_coreflect(ell,ww[i]);
     }
+  // action centered at coweight $\mu$ with $mu.dot(simpleRoot(i)) == -shift[i]|
+  void shifted_dual_act
+    (Coweight& ell,const WeylWord& ww,int_Vector shift) const
+    {
+      for (weyl::Generator i=0; i<ww.size(); ++i)
+      { auto s=ww[i];
+	simple_coreflect(ell,s,shift[s]);
+      }
+    }
+
   Weight dual_image_by(Coweight ell,const WeylWord& ww) const
     { dual_act(ell,ww); return ell; }
+  Weight shifted_dual_image_by
+    (Coweight ell,const WeylWord& ww, int_Vector shift) const
+    { shifted_dual_act(ell,ww,shift); return ell; }
+
+
+  // on matrices we have left and right multiplication by reflection matrices
+  void reflect(RootNbr alpha, LatticeMatrix& M) const;
+  void reflect(LatticeMatrix& M,RootNbr alpha) const;
+
+  void simple_reflect(weyl::Generator i, LatticeMatrix& M) const
+    { reflect(simpleRootNbr(i),M); }
+  void simple_reflect(LatticeMatrix& M,weyl::Generator i) const
+    { reflect(M,simpleRootNbr(i)); }
+
 
   // here any matrix permuting the roots is allowed, e.g., root_reflection(r)
   Permutation rootPermutation(const WeightInvolution& q) const;

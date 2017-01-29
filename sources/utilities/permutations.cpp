@@ -134,6 +134,13 @@ int sign(const Permutation& pi)
   return result;
 }
 
+bitmap::BitMap fixed_points(const Permutation& pi)
+{ bitmap::BitMap result(pi.size());
+  for (size_t i=0; i<pi.size(); ++i)
+    if (pi[i]==i)
+      result.insert(i);
+  return result;
+}
 
 // Make column |j| of matrix be column |pi[j]| of the old matrix, for all |j|
 template<typename T>

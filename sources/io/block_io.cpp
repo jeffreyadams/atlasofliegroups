@@ -47,8 +47,8 @@ std::ostream& Block_base::print_to(std::ostream& strm,
 {
   // compute maximal width of entry
   int width = ioutils::digits(size()-1,10ul);
-  int xwidth = ioutils::digits(xsize()-1,10ul);
-  int ywidth = ioutils::digits(ysize()-1,10ul);
+  int xwidth = ioutils::digits(max_x(),10ul);
+  int ywidth = ioutils::digits(max_y(),10ul);
   int lwidth = ioutils::digits(length(size()-1),10ul);
 
   const int pad = 2;
@@ -119,13 +119,13 @@ std::ostream& param_block::print
   (std::ostream& strm, BlockElt z,bool as_invol_expr) const
 {
   const KGB& kgb = rc.kgb();
-  unsigned int xwidth = ioutils::digits(kgb.size()-1,10ul);
-  unsigned int ysize = y_part(z).size();
+  unsigned int xwidth = ioutils::digits(highest_x,10ul);
+  unsigned int rk = rootDatum().semisimpleRank();
 
   strm << (survives(z) ? '*' : ' ')
        << "(x=" << std::setw(xwidth) << x(z)
-       << ",lam_rho=" << std::setw(3*ysize+1) << lambda_rho(z)
-       << ", nu=" << std::setw(3*ysize+3) << nu(z)
+       << ",lam_rho=" << std::setw(3*rk+1) << lambda_rho(z)
+       << ", nu=" << std::setw(3*rk+3) << nu(z)
        << ')' << std::setw(2) << "";
 
   const TwistedInvolution& ti = kgb.involution(x(z));
@@ -261,10 +261,10 @@ namespace block_io {
 
 
 /*
-  Synopsis: outputs the unitary elements in the block in the usual format.
+  Print the unitary elements in the block in the usual block element format.
 
-  Explanation: as David explained to me, the unitary representations are
-  exactly those for which the support of the involution consists entirely
+  Explanation: as David explained to me (Fokko), the unitary representations
+  are exactly those for which the support of the involution consists entirely
   of descents.
 
   NOTE: checking that condtion is awkward here, because currently blocks
@@ -279,8 +279,8 @@ std::ostream& printBlockU(std::ostream& strm, const Block& block)
 
   // compute maximal width of entry
   int width = ioutils::digits(block.size()-1,10ul);
-  int xwidth = ioutils::digits(block.xsize()-1,10ul);
-  int ywidth = ioutils::digits(block.ysize()-1,10ul);
+  int xwidth = ioutils::digits(block.max_x(),10ul);
+  int ywidth = ioutils::digits(block.max_y(),10ul);
   int lwidth = ioutils::digits(block.length(block.size()-1),10ul);
   int cwidth = ioutils::digits(block.Cartan_class(block.size()-1),10ul);
   const int pad = 2;

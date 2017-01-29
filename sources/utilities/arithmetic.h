@@ -125,6 +125,7 @@ class Split_integer
 
   bool operator== (Split_integer y) const { return e()==y.e() and s()==y.s(); }
   bool operator!= (Split_integer y) const { return not operator==(y); }
+  bool is_zero() const { return e()==0 and s()==0; }
 
   Split_integer& operator +=(int n) { real_part+=n; return *this; }
   Split_integer& operator -=(int n) { real_part-=n; return *this; }

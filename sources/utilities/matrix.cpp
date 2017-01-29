@@ -475,8 +475,8 @@ template<typename C>
   void Matrix_base<C>::set_block
        (unsigned k, unsigned l, const Matrix_base<C>& src)
 {
-  const size_t r=src.numRows(), c=src.numColumns();
-  assert(k+r<=numRows() and l+c<=numColumns());
+  const size_t r=src.numRows();
+  assert(k+r<=numRows() and l+src.numColumns()<=numColumns());
   for (size_t i=0; i<r; ++i)
     std::copy(src.at(i,0),src.at(i+1,0),this->at(k+i,l));
 }
