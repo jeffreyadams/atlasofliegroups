@@ -1068,21 +1068,16 @@ int level_a (const param& E, const Weight& shift, RootNbr alpha)
     - rd.colevel(alpha); // final term $<\alpha^\vee,\rho>$
 }
 
+
 /*
-  For the upstairs and downstairs conjugation scenario where we call
-  |repr::Cayley_shift| to make a shift to |lambda_rho|, we also need the sign
-  by which |delta| acts on wedge product for |repr::Cayley_shift| roots, more
-  precisely those positive roots that |to_simple| maps to negative, and which
-  are complex downstairs while they were real upstairs. In fact this is just
-  full set of those positive-to-negative roots that are real upstairs.
- */
-bool Cayley_shift_flip
-  (const context& ec,
-   InvolutionNbr theta_upstairs, // at the more split Cartan
-   const WeylWord& to_simple)
-{ const RootDatum& rd = ec.rc().rootDatum();
-  const InvolutionTable& i_tab = ec.innerClass().involution_table();
-  RootNbrSet S = pos_to_neg(rd,to_simple) & i_tab.real_roots(theta_upstairs);
+  For the conjugation to simple scenario, we compute a set |S| of (positive)
+  roots whose sum is added as a shift to |lambda_rho|, we also need the sign
+  by which |delta| acts on wedge product for these roots. It is basically the
+  sign of the permutation that |delta| induces, except that pair of
+  interchanged roots whose sum is a gina a root do not contribute to the sign.
+*/
+bool shift_flip (const context& ec, const RootNbrSet& S)
+{ const auto& rd = ec.rootDatum();
   unsigned count=0; // will count 2-element |delta|-orbits
   for (auto it=S.begin(); it(); ++it)
     if (*it!=ec.delta_of(*it) and not rd.sumIsRoot(*it,ec.delta_of(*it)))
@@ -1128,9 +1123,10 @@ DescValue star (const param& E,	const ext_gen& p,
 	// try to make $\alpha$ simple by conjugating by $W^\delta$
 	RootNbr alpha_simple = n_alpha;
 	const WeylWord ww = fixed_conjugate_simple(E.ctxt,alpha_simple);
-	const auto theta_p = i_tab.nr(new_tw); // upstairs
-	const Weight rho_r_shift = repr::Cayley_shift(ic,theta_p,ww);
-	const bool flipped = Cayley_shift_flip(E.ctxt,theta_p,ww);
+	const auto theta_p = i_tab.nr(new_tw);
+	const auto S = repr::to_simple_shift(ic,theta,theta_p,ww);
+	const Weight rho_r_shift = root_sum(rd,S);
+	const bool flipped = shift_flip(E.ctxt,S);
 
 	assert(E.ctxt.delta()*rho_r_shift==rho_r_shift); // $ww\in W^\delta$
 	assert(E.t.dot(alpha)==0); // follows from $\delta*\alpha=\alpha$
@@ -1200,8 +1196,9 @@ DescValue star (const param& E,	const ext_gen& p,
 	const TwistedInvolution new_tw = // downstairs
 	  tW.prod(subs.reflection(p.s0),E.tw);
 
-	Weight rho_r_shift = repr::Cayley_shift(ic,theta,ww);
-	const bool flipped = Cayley_shift_flip(E.ctxt,theta,ww);
+	const auto S = repr::to_simple_shift(ic,theta,i_tab.nr(new_tw),ww);
+	Weight rho_r_shift = root_sum(rd,S);
+	bool flipped = shift_flip(E.ctxt,S);
 	assert(E.ctxt.delta()*rho_r_shift==rho_r_shift); // as $ww\in W^\delta$
 
 	RootNbr alpha_0 = // maybe one of |alpha==alpha_0+alpha_1|
@@ -1325,8 +1322,9 @@ DescValue star (const param& E,	const ext_gen& p,
 	const WeylWord ww = fixed_conjugate_simple(E.ctxt,alpha_simple);
 	const auto theta_p = i_tab.nr(new_tw); // upstairs
 
-	const Weight rho_r_shift = repr::Cayley_shift(ic,theta_p,ww);
-	const bool flipped = Cayley_shift_flip(E.ctxt,theta_p,ww);
+	const auto S = repr::to_simple_shift(ic,theta,theta_p,ww);
+	const Weight rho_r_shift = root_sum(rd,S);
+	bool flipped = shift_flip(E.ctxt,S);
 	assert(E.ctxt.delta()*rho_r_shift==rho_r_shift); // $ww\in W^\delta$
 	assert(rd.is_simple_root(alpha_simple)); // cannot fail for length 2
 
@@ -1406,9 +1404,12 @@ DescValue star (const param& E,	const ext_gen& p,
 	RootNbr alpha_simple = n_alpha;
 	const WeylWord ww = fixed_conjugate_simple(E.ctxt,alpha_simple);
 	assert(rd.is_simple_root(alpha_simple)); // no complications here
+	const TwistedInvolution new_tw = // downstairs
+	  tW.prod(subs.reflection(p.s1),tW.prod(subs.reflection(p.s0),E.tw));
 
-	const Weight rho_r_shift = repr::Cayley_shift(ic,theta,ww);
-	const bool flipped = Cayley_shift_flip(E.ctxt,theta,ww);
+	const auto S = repr::to_simple_shift(ic,theta,i_tab.nr(new_tw),ww);
+	const Weight rho_r_shift = root_sum(rd,S);
+	bool flipped = shift_flip(E.ctxt,S);
 	assert(E.ctxt.delta()*rho_r_shift==rho_r_shift); // as $ww\in W^\delta$
 
 	const int a_level = level_a(E,rho_r_shift,n_alpha);
@@ -1420,8 +1421,6 @@ DescValue star (const param& E,	const ext_gen& p,
 	assert(b_level%2==0); // since |a_level| and |b_level| have same parity
 
 	WeightInvolution theta_1 = i_tab.matrix(theta)-1; // upstairs
-	const TwistedInvolution new_tw = // downstairs
-	  tW.prod(subs.reflection(p.s1),tW.prod(subs.reflection(p.s0),E.tw));
 
 	const Weight new_lambda_rho = E.lambda_rho - rho_r_shift
 	  + alpha*(a_level/2) + beta*(b_level/2);
@@ -1532,8 +1531,9 @@ DescValue star (const param& E,	const ext_gen& p,
 	  assert(rd.is_simple_root(alpha_simple)); // no complications here
 
 	  const auto theta_p = i_tab.nr(new_tw); // upstairs
-	  const Weight rho_r_shift = repr::Cayley_shift(ic,theta_p,ww);
-	  bool flipped = Cayley_shift_flip(E.ctxt,theta_p,ww);
+	  const auto S = repr::to_simple_shift(ic,theta,theta_p,ww);
+	  const Weight rho_r_shift = root_sum(rd,S);
+	  bool flipped = shift_flip(E.ctxt,S);
 	  assert(E.ctxt.delta()*rho_r_shift==rho_r_shift); // $ww\in W^\delta$
 
 	  // downstairs cross by |ww| only has imaginary and complex steps, so
@@ -1571,8 +1571,9 @@ DescValue star (const param& E,	const ext_gen& p,
 	  const WeylWord ww = fixed_conjugate_simple(E.ctxt,alpha_simple);
 	  assert(rd.is_simple_root(alpha_simple)); // no complications here
 
-	  const Weight rho_r_shift = repr::Cayley_shift(ic,theta,ww);
-	  const bool flipped = Cayley_shift_flip(E.ctxt,theta,ww);
+	  const auto S = repr::to_simple_shift(ic,theta,i_tab.nr(new_tw),ww);
+	  const Weight rho_r_shift = root_sum(rd,S);
+	  bool flipped = shift_flip(E.ctxt,S);
 	  assert(E.ctxt.delta()*rho_r_shift==rho_r_shift); // $ww\in W^\delta$
 
 	  const int f = level_a(E,rho_r_shift,n_alpha);
@@ -1630,8 +1631,9 @@ DescValue star (const param& E,	const ext_gen& p,
 	const WeylWord ww = fixed_conjugate_simple(E.ctxt,alpha_simple);
 	const auto theta_p = i_tab.nr(new_tw); // upstairs
 
-	const Weight rho_r_shift = repr::Cayley_shift(ic,theta_p,ww);
-	const bool flipped = Cayley_shift_flip(E.ctxt,theta_p,ww);
+	const auto S = repr::to_simple_shift(ic,theta,theta_p,ww);
+	const Weight rho_r_shift = root_sum(rd,S);
+	bool flipped = shift_flip(E.ctxt,S);
 	assert(E.ctxt.delta()*rho_r_shift==rho_r_shift); // $ww\in W^\delta$
 	assert(rd.is_simple_root(alpha_simple)); // cannot fail for length 3
 
@@ -1649,8 +1651,9 @@ DescValue star (const param& E,	const ext_gen& p,
 	const WeylWord ww = fixed_conjugate_simple(E.ctxt,alpha_simple);
 	assert(rd.is_simple_root(alpha_simple)); // no complications here
 
-	const Weight rho_r_shift = repr::Cayley_shift(ic,theta,ww);
-	const bool flipped = Cayley_shift_flip(E.ctxt,theta,ww);
+	const auto S = repr::to_simple_shift(ic,theta,i_tab.nr(new_tw),ww);
+	const Weight rho_r_shift = root_sum(rd,S);
+	bool flipped = shift_flip(E.ctxt,S);
 	assert(E.ctxt.delta()*rho_r_shift==rho_r_shift); // as $ww\in W^\delta$
 
 	const int a_level = level_a(E,rho_r_shift,n_alpha);
@@ -1686,9 +1689,9 @@ DescValue star (const param& E,	const ext_gen& p,
 	  const WeylWord ww = fixed_conjugate_simple(E.ctxt,alpha_simple);
 	  assert(rd.is_simple_root(alpha_simple)); // no complications here
 
-	  const auto theta_upstairs = ascent ? i_tab.nr(new_tw) : theta;
-	  const Weight rho_r_shift = repr::Cayley_shift(ic,theta_upstairs,ww);
-	  const bool flipped = Cayley_shift_flip(E.ctxt,theta_upstairs,ww);
+	  const auto S = repr::to_simple_shift(ic,theta,i_tab.nr(new_tw),ww);
+	  const Weight rho_r_shift = ascent ? root_sum(rd,S) : -root_sum(rd,S);
+	  bool flipped = shift_flip(E.ctxt,S);
 	  assert(E.ctxt.delta()*rho_r_shift==rho_r_shift); // $ww\in W^\delta$
 
 	  int tf_alpha = (E.ctxt.g_rho_check() - E.l).dot(alpha);

@@ -1346,6 +1346,20 @@ Coweight rho_check_minus_rho_check_w(const RootDatum& rd, const WeylWord& ww)
   return sum;
 }
 
+Weight root_sum(const RootDatum& rd, const RootNbrSet& S)
+{ Weight sum(rd.rank(),0);
+  for (auto it=S.begin(); it(); ++it)
+    sum += rd.root(*it);
+  return sum;
+}
+
+Coweight coroot_sum(const RootDatum& rd, const RootNbrSet& S)
+{ Coweight sum(rd.rank(),0);
+  for (auto it=S.begin(); it(); ++it)
+    sum += rd.coroot(*it);
+  return sum;
+}
+
 /*****************************************************************************
 
                 Chapter III -- Auxiliary methods.
