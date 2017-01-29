@@ -1157,7 +1157,7 @@ DescValue star (const param& E,	const ext_gen& p,
 	const auto theta_p = i_tab.nr(new_tw);
 	const auto S = repr::to_simple_shift(ic,theta,theta_p,ww);
 	const Weight rho_r_shift = root_sum(rd,S);
-	const bool flipped = shift_flip(E.ctxt,S);
+	bool flipped = shift_flip(E.ctxt,S);
 
 	assert(E.ctxt.delta()*rho_r_shift==rho_r_shift); // $ww\in W^\delta$
 	assert(E.t.dot(alpha)==0); // follows from $\delta*\alpha=\alpha$
@@ -1217,6 +1217,9 @@ DescValue star (const param& E,	const ext_gen& p,
 		   E.l + alpha_v*(tf_alpha/2), E.t);
 	  param F1(E.ctxt,new_tw,
 		   F0.lambda_rho + alpha, F0.tau, F0.l, E.t);
+
+	  if (not rd.is_simple_root(alpha_simple))
+	    flipped = not flipped;
 
 	  z_align(E,F0,flipped);
 	  z_align(E,F1,flipped);
@@ -1311,8 +1314,13 @@ DescValue star (const param& E,	const ext_gen& p,
 
 	  param F(E.ctxt,new_tw, new_lambda_rho, new_tau, E.l, E0.t);
 
+	  flipped = flipped!=shift_correct; // flip both in |shift_correct| case
+
 	  z_align(E0,F,flipped);
 	  z_align(F,E1,flipped);
+
+	  // since |z_align| ignores |lambda_rho|, we must have equal flips:
+	  assert(E0.is_flipped()==E1.is_flipped());
 
 	  links.push_back(std::move(F )); // Cayley link
 	  links.push_back(std::move(E1)); // cross link
