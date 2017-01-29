@@ -1209,7 +1209,7 @@ DescValue star (const param& E,	const ext_gen& p,
 		  E0.tau+diff*tau_coef,
 		  E.l+alpha_v*(tf_alpha/2), E.t);
 
- 	  E0.l = tf_alpha%4==0 ? F.l+alpha_v : F.l; // for cross
+	  E0.l = tf_alpha%4==0 ? F.l+alpha_v : F.l; // for cross
 	  assert(not same_standard_reps(E,E0));
 	  z_align(E,F,flipped);
 	  z_align(F,E0,flipped);
@@ -1337,7 +1337,7 @@ DescValue star (const param& E,	const ext_gen& p,
 	  flipped = flipped!=shift_correct; // flip both in |shift_correct| case
 
 	  z_align(E0,F,flipped);
-	  z_align(F,E1,flipped); // as explained above
+	  z_align(F,E1,flipped);
 
 	  // since |z_align| ignores |lambda_rho|, we must have equal flips:
 	  assert(E0.is_flipped()==E1.is_flipped());
@@ -1708,7 +1708,7 @@ DescValue star (const param& E,	const ext_gen& p,
 	E0.l += alpha_v*(tf_alpha+tf_beta);
 	E0.t += (beta_v-alpha_v)*((tf_alpha+tf_beta)/2);
 
-	param F(E.ctxt, new_tw,	E.lambda_rho + rho_r_shift, E0.tau, E0.l, E.t);
+	param F(E.ctxt, new_tw,	E0.lambda_rho+rho_r_shift, E0.tau, E0.l, E0.t);
 
 	flipped = not flipped; // January unsurprise for 3i: delta acts by -1
 	z_align(E0,F,flipped^not same_sign(E,E0));
@@ -1743,14 +1743,14 @@ DescValue star (const param& E,	const ext_gen& p,
 
 	E0.t -= alpha_v*kappa.dot(E.t); // makes |E.t.dot(kappa)==0|
 	E0.lambda_rho += alpha*(a_level+b_level); // even multiple of |alpha|
-	E0.tau += (beta_alpha)*((a_level+b_level)/2);
+	E0.tau += beta_alpha*((a_level+b_level)/2);
 	assert(same_sign(E,E0)); // neither |t| change nor 2*real_root matter
 	assert(E0.lambda_rho-rho_r_shift==new_lambda_rho);
 	validate(E0);
 
 	flipped = not flipped; // January unsurprise for 3r
 
-	param F(E.ctxt, new_tw,	new_lambda_rho,E0.tau,E.l,E0.t);
+	param F(E.ctxt, new_tw,	new_lambda_rho,E0.tau,E0.l,E0.t);
 
 	z_align(E0,F,flipped); // no 4th arg since |E.t.dot(kappa)==0|
 	links.push_back(std::move(F)); // Cayley link
@@ -1780,19 +1780,17 @@ DescValue star (const param& E,	const ext_gen& p,
 
 	  if (ascent) // 3Ci
 	  {
-	    const Coweight new_l = E.l + kappa_v*tf_alpha;
-	    Weight new_tau = E.tau - kappa*(kappa_v.dot(E.tau)/2);
 	    if (dtf_alpha%2!=0)
 	    { new_lambda_rho += beta_alpha;
 	      E0.lambda_rho += beta_alpha;
-	      new_tau -= beta_alpha;
+	      E0.tau -= beta_alpha;
 	    }
-	    E0.l = new_l;
-	    E0.tau = new_tau;
+	    E0.l += kappa_v*tf_alpha;
+	    E0.tau -= kappa*(kappa_v.dot(E.tau)/2);
 	    validate(E0);
-	    assert(E.t.dot(kappa)==0);
+	    assert(E0.t.dot(kappa)==0);
 
-	    param F(E.ctxt,new_tw, new_lambda_rho, new_tau, new_l, E.t);
+	    param F(E.ctxt,new_tw, new_lambda_rho, E0.tau, E0.l, E0.t);
 
 	    flipped = not flipped; // January unsurprise for 3Ci
 	    z_align(E0,F, flipped^(not same_sign(E,E0)));
@@ -1818,7 +1816,7 @@ DescValue star (const param& E,	const ext_gen& p,
 	    links.push_back(std::move(F)); // Cayley link
 	  }
 
-	}
+	} // end of 3ci and 3Cr cases
 	else // twisted non-commutation: 3C+ or 3C-
 	{
 	  result = ascent ? three_complex_ascent : three_complex_descent;
