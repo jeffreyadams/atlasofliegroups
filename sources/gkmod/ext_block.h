@@ -152,8 +152,6 @@ class ext_block
 // manipulators
   void flip_edge(weyl::Generator s, BlockElt x, BlockElt y);
 
-  unsigned int list_edges();  // returns number of toggled pairs
-
 // accessors
 
   size_t rank() const { return orbits.size(); }
