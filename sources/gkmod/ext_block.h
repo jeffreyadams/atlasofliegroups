@@ -243,8 +243,9 @@ class context // holds values that remain fixed across extended block
   const repr::Rep_context& rc () const { return d_rc; }
   const RootDatum& id() const { return integr_datum; }
   const SubSystem& subsys() const { return sub; }
+  const RootDatum& rootDatum() const { return d_rc.rootDatum(); }
+  const InnerClass& innerClass () const { return d_rc.innerClass(); }
   RealReductiveGroup& realGroup () const { return d_rc.realGroup(); }
-  const InnerClass& innerClass () const { return realGroup().innerClass(); }
   const WeightInvolution& delta () const { return d_delta; }
   const RatWeight& gamma() const { return d_gamma; }
   const RatCoweight& g_rho_check() const { return realGroup().g_rho_check(); }

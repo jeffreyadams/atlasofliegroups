@@ -160,7 +160,7 @@ unsigned int link_count(DescValue v)
   case three_complex_descent:
     return 1;
 
-    // semi cases do not record thei (trivial) cross action
+    // semi cases do not record their (trivial) cross action
   case two_semi_imaginary: case two_semi_real:
   case three_semi_imaginary: case three_real_semi:
   case three_imaginary_semi: case three_semi_real:
@@ -336,7 +336,7 @@ StandardRepr scaled_extended_dominant // result will have its |gamma()| dominant
 (const Rep_context rc,
  const StandardRepr& sr, const WeightInvolution& delta,
  Rational factor, // |z.nu()| is scaled by |factor| first
- bool& flipped // records whether and extended flip was recorded
+ bool& flipped // records whether an extended flip was recorded
  )
 { const RootDatum& rd=rc.rootDatum(); const KGB& kgb = rc.kgb();
   const ext_gens orbits = rootdata::fold_orbits(rd,delta);
@@ -462,7 +462,7 @@ containers::sl_list<std::pair<StandardRepr,bool> > extended_finalise
   while(not to_do.empty());
 
   return result;
-} // |finalise|
+} // |extended_finalise|
 
 #if 0 // unused code, but the formula is referred to in the comment below
 int z (const param& E) // value modulo 4, exponent of imaginary unit $i$
@@ -954,10 +954,10 @@ BlockElt twisted
   a product of |length<=3| integral generators, and then have those generators
   act on the components of |E|. For the purpose of changing |E.tw| we further
   develop those generators into reflection words for the full root datum, but
-  the reflection action on the othe components can be done more directly.
+  the reflection action on the other components can be done more directly.
 
   However, though the integral generators are complex, they action of those
-  reflection words neeed not be purely complex, which implies that the effect
+  reflection words need not be purely complex, which implies that the effect
   on the |lambda_rho| and |l| components are not purely reflection. The
   difference with respect to pure reflection action can be computed comparing
   |rho_r| values (half sums of positive real roots in the full system) with
@@ -1068,7 +1068,7 @@ bool Cayley_shift_flip
   return count%4!=0;
 }
 
-// version of |type| that will also export signs for every element of |links|
+// compute type of |p| for |E|, and export adjacent |param| values in |links|
 DescValue star (const param& E,	const ext_gen& p,
 		containers::sl_list<param>& links)
 {
@@ -1082,7 +1082,6 @@ DescValue star (const param& E,	const ext_gen& p,
   const RootDatum& integr_datum = E.ctxt.id();
   const SubSystem& subs = E.ctxt.subsys();
   const InvolutionNbr theta = i_tab.nr(E.tw);
-  const WeightInvolution delta_1 = E.ctxt.delta()-1;
   switch (p.type)
   {
   case ext_gen::one:
@@ -1152,7 +1151,7 @@ DescValue star (const param& E,	const ext_gen& p,
 	  if (tau_coef%2!=0) // was set up so that this means: switched
 	  { // no spurious $\tau'$ since $\<\alpha^\vee,(X^*)^\theta>=2\Z$:
 	    assert(not matreduc::has_solution
-		   (th_1, delta_1*(E.lambda_rho+rho_r_shift)));
+		   (th_1, (E.ctxt.delta()-1)*(E.lambda_rho+rho_r_shift)));
 	    return one_imaginary_pair_switched; // case 1i2s
 	  }
 	  result = one_imaginary_pair_fixed;  // what remains is case 1i2f
@@ -1180,7 +1179,7 @@ DescValue star (const param& E,	const ext_gen& p,
 
 	Weight rho_r_shift = repr::Cayley_shift(ic,theta,ww);
 	const bool flipped = Cayley_shift_flip(E.ctxt,theta,ww);
-	assert((delta_1*rho_r_shift).isZero()); // since $ww\in W^\delta$
+	assert(E.ctxt.delta()*rho_r_shift==rho_r_shift); // as $ww\in W^\delta$
 
 	RootNbr alpha_0 = // maybe one of |alpha==alpha_0+alpha_1|
 	  rd.is_simple_root(alpha_simple) ? 0 // unused
@@ -1195,7 +1194,7 @@ DescValue star (const param& E,	const ext_gen& p,
 	   (shift_correct ? 1 : 0 ); // add 1 if |alpha_0| is defined and real
 
 	if (level%2!=0) // nonparity
-	   return one_real_nonparity; // no link added here
+	   return one_real_nonparity; // case 1rn, no link added here
 
 	const WeightInvolution& th_1 = i_tab.matrix(E.tw)-1; // upstairs
 	bool type1 = matreduc::has_solution(th_1,alpha);
@@ -1206,6 +1205,7 @@ DescValue star (const param& E,	const ext_gen& p,
 	else
 	{
 	  const Weight a0 = rd.root(alpha_0);
+	  assert(alpha == a0 + E.ctxt.delta()*a0);
 	  if (shift_correct)
 	  {
 	    rho_r_shift += a0; // non delta-fixed contribution
@@ -1213,7 +1213,8 @@ DescValue star (const param& E,	const ext_gen& p,
 	    // now we must add $d$ to $\tau$ with $(1-\theta')d=(1-\delta)*a0$
 	    // since $\theta'*a0 = a1 = \delta*a_0$, we can take $d=a0$
 	    tau_correction = a0;
-	    assert((i_tab.matrix(new_tw)-1)*tau_correction==delta_1*a0);
+	    assert((i_tab.matrix(new_tw)-1)*tau_correction
+		   ==(E.ctxt.delta()-1)*a0);
 	  }
 	}
 
@@ -1226,7 +1227,7 @@ DescValue star (const param& E,	const ext_gen& p,
 	if (type1)
 	{ // now distinguish 1r1f and 1r1s
 	  if (t_alpha%2!=0) // no effect of |alpha_simple|, unlike 1i2 cases
-	    return one_real_pair_switched;
+	    return one_real_pair_switched; // case 1r1s
 	  result = one_real_pair_fixed; // what remains is case 1r1f
 
 	  E0.t -= alpha_v*(t_alpha/2);
@@ -1242,9 +1243,9 @@ DescValue star (const param& E,	const ext_gen& p,
 	  links.push_back(std::move(F0)); // first Cayley
 	  links.push_back(std::move(F1)); // second Cayley
 
-	} // end of 1r1 case
-	else // real type 2
-	{
+	} // end of 1r1f case
+	else
+	{ // type 1r2
 	  result = one_real_single;
 	  Coweight diff = // called $s$ in table 2 of [Ptr]
 	    matreduc::find_solution(i_tab.matrix(new_tw).transposed()+1,
@@ -1265,7 +1266,7 @@ DescValue star (const param& E,	const ext_gen& p,
 
 	  links.push_back(std::move(F )); // Cayley link
 	  links.push_back(std::move(E1)); // cross link
-	}
+	} // end of 1r2 case
       }
       else // length 1 complex case
       { result = rd.is_posroot(theta_alpha)
@@ -1385,7 +1386,7 @@ DescValue star (const param& E,	const ext_gen& p,
 
 	const Weight rho_r_shift = repr::Cayley_shift(ic,theta,ww);
 	const bool flipped = Cayley_shift_flip(E.ctxt,theta,ww);
-	assert((delta_1*rho_r_shift).isZero()); // since $ww\in W^\delta$
+	assert(E.ctxt.delta()*rho_r_shift==rho_r_shift); // as $ww\in W^\delta$
 
 	const int a_level = level_a(E,rho_r_shift,n_alpha);
 
@@ -1478,7 +1479,7 @@ DescValue star (const param& E,	const ext_gen& p,
 	  assert(E.t.dot(alpha)==0 and E.t.dot(beta)==0);
 
 	  E1.lambda_rho += alpha+beta;
-	  E1.t = E0.t; // cross action, keeps adaption of |t| to |F| below
+	  E1.t = E0.t; // cross action, keeps adaptation of |t| to |F| below
 	  assert(not same_standard_reps(E0,E1));
 
 	  param F(E.ctxt, new_tw, new_lambda_rho, E.tau, E.l, E0.t);
@@ -1531,11 +1532,12 @@ DescValue star (const param& E,	const ext_gen& p,
 	  param F (E.ctxt, new_tw, new_lambda_rho, new_tau, new_l, new_t,
 		   E.is_flipped()!=flipped);
 
+	  // do extra conditional flip for 2Ci case
 	  int ab_tau = (alpha_v+beta_v).dot(E.tau);
 	  assert (ab_tau%2==0);
 	  F.flip((ab_tau*dual_f)%4!=0);
 	  links.push_back(std::move(F));  // "Cayley" link
-	}
+	} // end of 2Ci case
 	else // twisted commutation with |s0.s1|, and not |ascent|: 2Cr
 	{ result = two_semi_real;
 
@@ -1548,7 +1550,7 @@ DescValue star (const param& E,	const ext_gen& p,
 
 	  const Weight rho_r_shift = repr::Cayley_shift(ic,theta,ww);
 	  const bool flipped = Cayley_shift_flip(E.ctxt,theta,ww);
-	  assert((delta_1*rho_r_shift).isZero()); // since $ww\in W^\delta$
+	  assert(E.ctxt.delta()*rho_r_shift==rho_r_shift); // $ww\in W^\delta$
 
 	  const int f = level_a(E,rho_r_shift,n_alpha);
 
@@ -1564,11 +1566,12 @@ DescValue star (const param& E,	const ext_gen& p,
 	  param F (E.ctxt, new_tw, new_lambda_rho, new_tau, new_l, new_t,
 		   E.is_flipped()!=flipped);
 
+	  // do extra conditional flip for 2Cr case
 	  int t_ab = E.t.dot(beta-alpha);
 	  assert(t_ab%2==0);
 	  F.flip((t_ab * (f+alpha_v.dot(E.tau)))%4!=0);
 	  links.push_back(std::move(F));  // "Cayley" link
-	}
+	} // end of 2Cr case
       }
     }
     break;
@@ -1598,7 +1601,7 @@ DescValue star (const param& E,	const ext_gen& p,
 	  return three_imaginary_compact;
 
 	// noncompact case
-	result = three_imaginary_semi;
+	result = three_imaginary_semi; // this is the 3i case
 
 	RootNbr alpha_simple = n_alpha;
 	const WeylWord ww = fixed_conjugate_simple(E.ctxt,alpha_simple);
@@ -1625,7 +1628,7 @@ DescValue star (const param& E,	const ext_gen& p,
 
 	const Weight rho_r_shift = repr::Cayley_shift(ic,theta,ww);
 	const bool flipped = Cayley_shift_flip(E.ctxt,theta,ww);
-	assert((delta_1*rho_r_shift).isZero()); // since $ww\in W^\delta$
+	assert(E.ctxt.delta()*rho_r_shift==rho_r_shift); // as $ww\in W^\delta$
 
 	const int a_level = level_a(E,rho_r_shift,n_alpha);
 
@@ -1633,7 +1636,7 @@ DescValue star (const param& E,	const ext_gen& p,
 	   return three_real_nonparity; // no link added here
 
 	// parity case
-	result = three_real_semi;
+	result = three_real_semi; // this is the 3r case
 
 	const int b_level = level_a(E,rho_r_shift,n_beta);
 	assert(b_level%2==0); // since |a_level| and |b_level| have same parity
@@ -1649,7 +1652,7 @@ DescValue star (const param& E,	const ext_gen& p,
 	z_align(E0,F,flipped); // no 4th arg since |E.t.dot(kappa)==0|
 	links.push_back(std::move(F)); // Cayley link
       }
-      else // length 3 complex case
+      else // length 3 complex case (one of 3Ci or 3Cr or 3C+/-)
       { const bool ascent = rd.is_posroot(theta_alpha);
 	const RootNbr n_beta = subs.parent_nr_simple(p.s1);
 	if (theta_alpha == (ascent ? n_beta : rd.rootMinus(n_beta)))
@@ -1663,7 +1666,7 @@ DescValue star (const param& E,	const ext_gen& p,
 	  const auto theta_upstairs = ascent ? i_tab.nr(new_tw) : theta;
 	  const Weight rho_r_shift = repr::Cayley_shift(ic,theta_upstairs,ww);
 	  const bool flipped = Cayley_shift_flip(E.ctxt,theta_upstairs,ww);
-	  assert((delta_1*rho_r_shift).isZero()); // since $ww\in W^\delta$
+	  assert(E.ctxt.delta()*rho_r_shift==rho_r_shift); // $ww\in W^\delta$
 
 	  int tf_alpha = (E.ctxt.g_rho_check() - E.l).dot(alpha);
 	  int dtf_alpha = (E.ctxt.gamma() - E.lambda_rho).dot(alpha_v)
@@ -1789,17 +1792,6 @@ ext_block::ext_block // for external twist; old style blocks
   // FIXME cannot call |check| here, although setting sign flips depends on it
 
 } // |ext_block::ext_block|
-
-// we use these prediates to flip edges
-
-bool is_2ir (DescValue v)
-{ return generator_length(v)==2 and not is_complex(v) and not has_defect(v); }
-
-bool is_2C (DescValue v)
-{ return generator_length(v)==2 and is_complex(v); }
-
-bool is_3Cir (DescValue v)
-{ return generator_length(v)==3 and has_defect(v); }
 
 ext_block::ext_block // for an external twist
   (const InnerClass& G,
@@ -1989,7 +1981,7 @@ BlockEltPair ext_block::Cayleys(weyl::Generator s, BlockElt n) const
 
 
 // check validity, by comparing with results found using extended parameters
-// the signs are recorded in |eb|, and printed to |cout| is |verbose| holds.
+// the signs are recorded in |eb|, and printed to |cout| if |verbose| holds.
 bool ext_block::check(const param_block& block, bool verbose)
 {
   context ctxt (block.context(),delta(),block.gamma());
@@ -2021,7 +2013,7 @@ bool ext_block::check(const param_block& block, bool verbose)
 	  BlockElt m=cross(s,n); // cross neighbour as bare element of |*this|
 	  BlockElt cz = this->z(m); // corresponding element of (parent) |block|
 	  param F(ctxt,block.x(cz),block.lambda_rho(cz)); // default extension
-	  assert(same_standard_reps(*it,F)); // must lie over same
+	  assert(same_standard_reps(*it,F)); // must lie over same parameter
 	  if (not same_sign(*it,F))
 	  {
 	    flip_edge(s,n,m);
