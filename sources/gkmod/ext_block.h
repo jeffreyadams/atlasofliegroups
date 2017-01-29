@@ -256,19 +256,17 @@ class context // holds values that remain fixed across extended block
 }; // |context|
 
 // detailed parameter data; as defined by Jeff & David
-struct param // prefer |struct| with |const| members for ease of access
+struct param // allow public member access; methods ensure no invariants anyway
 {
   const context& ctxt;
-  const TwistedInvolution tw; // implicitly defines $\theta$
+  TwistedInvolution tw; // implicitly defines $\theta$
 
-private:
-  Coweight d_l; // with |tw| gives a |GlobalTitsElement|; lifts its |t|
-  Weight d_lambda_rho; // lift of that value in a |StandardRepr|
-  Weight d_tau; // a solution to $(1-\theta)*\tau=(\delta-1)\lambda_\rho$
-  Coweight d_t; // a solution to $t(1-theta)=l(\delta-1)$
-  bool d_flipped; // whether tensored with the fliiping representation
+  Coweight l; // with |tw| gives a |GlobalTitsElement|; lifts its |t|
+  Weight lambda_rho; // lift of that value in a |StandardRepr|
+  Weight tau; // a solution to $(1-\theta)*\tau=(\delta-1)\lambda_\rho$
+  Coweight t; // a solution to $t(1-theta)=l(\delta-1)$
+  bool flipped; // whether tensored with the fliiping representation
 
-public:
   param (const context& ec, const StandardRepr& sr, bool flipped=false);
   param (const context& ec,
 	 KGBElt x, const Weight& lambda_rho, bool flipped=false);
@@ -279,38 +277,30 @@ public:
   param (const param& p) = default;
   param (param&& p)
   : ctxt(p.ctxt), tw(std::move(p.tw))
-  , d_l(std::move(p.d_l))
-  , d_lambda_rho(std::move(p.d_lambda_rho))
-  , d_tau(std::move(p.d_tau))
-  , d_t(std::move(p.d_t))
-  , d_flipped(p.d_flipped)
+  , l(std::move(p.l))
+  , lambda_rho(std::move(p.lambda_rho))
+  , tau(std::move(p.tau))
+  , t(std::move(p.t))
+  , flipped(p.flipped)
   {}
 
   param& operator= (const param& p)
-  { assert(tw==p.tw); // cannot assign this, so it should match
-    d_l=p.d_l; d_lambda_rho=p.d_lambda_rho; d_tau=p.d_tau; d_t=p.d_t;
-    d_flipped=p.d_flipped;
+  { tw=p.tw;
+    l=p.l; lambda_rho=p.lambda_rho; tau=p.tau; t=p.t;
+    flipped=p.flipped;
     return *this;
   }
   param& operator= (param&& p)
-  { assert(tw==p.tw); // cannot assign this, so it should match
-    d_l=std::move(p.d_l); d_lambda_rho=std::move(p.d_lambda_rho);
-    d_tau=std::move(p.d_tau); d_t=std::move(p.d_t);
-    d_flipped=p.d_flipped;
+  { tw=std::move(p.tw);
+    l=std::move(p.l); lambda_rho=std::move(p.lambda_rho);
+    tau=std::move(p.tau); t=std::move(p.t);
+    flipped=p.flipped;
     return *this;
   }
 
-  const Coweight& l () const { return d_l; }
-  const Weight& lambda_rho () const { return d_lambda_rho; }
-  const Weight& tau () const { return d_tau; }
-  const Coweight& t () const { return d_t; }
-  bool is_flipped() const { return d_flipped; }
+  bool is_flipped() const { return flipped; }
 
-  void set_l (Coweight l) { d_l=l; }
-  void set_lambda_rho (Weight lambda_rho) { d_lambda_rho=lambda_rho; }
-  void set_tau (Weight tau) { d_tau=tau; }
-  void set_t (Coweight t) { d_t=t; }
-  void flip (bool whether=true) { d_flipped=(whether!=d_flipped); }
+  void flip (bool whether=true) { flipped=(whether!=flipped); }
 
   const repr::Rep_context rc() const { return ctxt.rc(); }
   const WeightInvolution& delta () const { return ctxt.delta(); }
@@ -319,7 +309,7 @@ public:
 
   KGBElt x() const; // reconstruct |x| component
   repr::StandardRepr restrict() const // underlying unexteded representation
-    { return ctxt.rc().sr_gamma(x(),lambda_rho(),ctxt.gamma()); }
+    { return ctxt.rc().sr_gamma(x(),lambda_rho,ctxt.gamma()); }
 }; // |param|
 
 /* Try to conjugate |alpha| by product of folded-generators for the (full)
@@ -338,7 +328,7 @@ bool same_standard_reps (const param& E, const param& F);
 bool same_sign (const param& E, const param& F);
 
 inline bool is_default (const param& E)
-{ return same_sign(E,param(E.ctxt,E.x(),E.lambda_rho())); }
+{ return same_sign(E,param(E.ctxt,E.x(),E.lambda_rho)); }
 
 
 // find out type of extended parameters, and push its neighbours onto |links|
