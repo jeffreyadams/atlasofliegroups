@@ -1,8 +1,7 @@
 /*
-  This is sl_list.h, a revolutionary singly linked list container type
-*/
-/*
-  Copyright (C) 2015 Marc van Leeuwen
+  This is sl_list_fwd.h, for a revolutionary singly linked list container type
+
+  Copyright (C) 2016 Marc van Leeuwen
   part of the Atlas of Lie Groups and Representations
 
   For license information see the LICENSE file
@@ -15,6 +14,7 @@
 #include <cstdlib>
 #include <memory>
 
+// include to access the adapter templates, so we can replace default container
 #include <stack>
 #include <queue>
 
@@ -39,31 +39,34 @@ template<typename T,typename Alloc = std::allocator<T> >
   class mirrored_sl_list; // trivial adapter, to allow use with |std::stack|
 
 template<typename T,typename Alloc = std::allocator<T> >
-#ifndef incompletecpp11
-  using stack = std::stack<T, mirrored_simple_list<T,Alloc> >;
-#else
 struct stack : public std::stack<T, mirrored_simple_list<T,Alloc> >
 {
+#ifndef incompletecpp11
+  using std::stack<T, mirrored_simple_list<T,Alloc> >::stack;
+#else
   template <typename... Args>
     stack(Args&&... args)
     : std::stack<T, mirrored_simple_list<T,Alloc> >
       (std::forward<Args>(args)...)
   {}
-}; // |struct stack|
 #endif
+}; // |struct stack|
 
 template<typename T,typename Alloc = std::allocator<T> >
-#ifndef incompletecpp11
-  using queue = std::queue<T, sl_list<T,Alloc> >;
-#else
 struct queue : public std::queue<T, sl_list<T,Alloc> >
 {
+#ifndef incompletecpp11
+  using std::queue<T, sl_list<T,Alloc> >::queue;
+#else
   template <typename... Args>
     queue(Args&&... args)
     : std::queue<T, sl_list<T,Alloc> > (std::forward<Args>(args)...)
   {}
-}; // |struct stack|
 #endif
+  queue() : std::queue<T, sl_list<T,Alloc> > ( sl_list<T,Alloc> {} ) {}
+  queue(std::initializer_list<T> l)
+    : std::queue<T, sl_list<T,Alloc> > ( sl_list<T,Alloc>(l) ) {}
+}; // |struct queue|
 
 } // |namespace cantainers|
 
@@ -71,4 +74,3 @@ struct queue : public std::queue<T, sl_list<T,Alloc> >
 
 
 #endif
-

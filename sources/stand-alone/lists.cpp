@@ -6,7 +6,6 @@
 #include <cstdlib> // for |exit|
 #include <list> // for comparison
 #include <stack> // for comparison
-#include <queue> // for comparison
 #include "sl_list.h"
 
 
@@ -350,5 +349,9 @@ void tester() // test all methods at least once
 
 int main()
 {
-  tester();
+  atlas::containers::queue<char> Q { 'a', 'r', 't' };
+  Q.push ('a'); Q.push('b');
+  std::cout<< Q.front();
+  Q.push('c'); Q.pop();
+  std::cout<< Q.front(); Q.pop();std::cout<< Q.front(); Q.pop();
 }

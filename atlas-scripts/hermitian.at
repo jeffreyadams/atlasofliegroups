@@ -463,4 +463,3 @@ set strong_test (Param p,mat delta)=bool:
 { elementary utility function }
 set init (RealForm G) = (RealForm,mat,Param):
   (G, G.distinguished_involution, trivial(G))
-

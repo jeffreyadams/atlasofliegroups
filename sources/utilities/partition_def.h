@@ -1,13 +1,11 @@
-/*!
-\file
-  \brief Template definitions for the class Partition.
+/*
+  Template definitions for the class |Partition|.
 
   This file contains the definition of the template declared in partition.h:
 
     - orbits(Partition&, F a, unsigned long, unsigned long) : constructs
       the orbit partition defined by the "action function" a;
-*/
-/*
+
   This is partition_def.h.
 
   Copyright (C) 2004,2005 Fokko du Cloux
@@ -16,7 +14,6 @@
   For license information see the LICENSE file
 */
 
-#include <queue>
 
 #include "bitmap.h"
 #include "sl_list.h"
@@ -69,7 +66,7 @@ namespace partition {
             if x'=a(j,x) is in B:
               remove x' from B, push x' onto S, and add it to the current orbit
 */
-template<typename F> // class F serving as function object (ul,ul)->ul
+template<typename F> // class |F| holds a binary function object: |(ul,ul)->ul|
   Partition orbits(const F& a, size_t c, unsigned long n)
 {
   Partition result(n);
@@ -81,13 +78,12 @@ template<typename F> // class F serving as function object (ul,ul)->ul
   {
     unsigned long root = *it; // starting element for a fresh orbit
     unsigned long thisClass = result.new_class(root);
-    std::queue<unsigned long,containers::sl_list<unsigned long> > q;
-    q.push(root);
+    containers::queue<unsigned long> to_do { root };
     b.remove(root); // avoid looping back to |root| later
 
     do
     {
-      unsigned long x = q.front(); q.pop();
+      unsigned long x = to_do.front(); to_do.pop();
 
       for (unsigned long i=0; i<c; ++i)
       {
@@ -96,11 +92,11 @@ template<typename F> // class F serving as function object (ul,ul)->ul
 	{
 	  b.remove(y);
 	  result.addToClass(thisClass,y);
-	  q.push(y);
+	  to_do.push(y);
 	}
       }
     }
-    while (not q.empty());
+    while (not to_do.empty());
   }
   return result;
 }
