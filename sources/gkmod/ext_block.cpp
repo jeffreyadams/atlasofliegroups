@@ -1669,13 +1669,17 @@ DescValue star (const param& E,	const ext_gen& p,
       RootNbr theta_alpha = i_tab.root_involution(theta,n_alpha);
       const Weight& beta = integr_datum.simpleRoot(p.s1);
       RootNbr n_beta = subs.parent_nr_simple(p.s1);
+      const Coweight& beta_v = integr_datum.simpleCoroot(p.s1);
 
       RootNbr n_kappa =integr_datum.simple_reflected_root
 	 (p.s1, integr_datum.simpleRootNbr(p.s0));
       WeylWord s_kappa = subs.reflection(integr_datum.posRootIndex(n_kappa));
 
       const Weight& kappa = integr_datum.root(n_kappa);
+      assert (kappa==alpha+beta);
       const Coweight& kappa_v = integr_datum.coroot(n_kappa);
+
+      const Weight beta_alpha = beta - alpha;
 
       const TwistedInvolution new_tw = tW.prod(s_kappa,E.tw); // when applicable
 
@@ -1700,14 +1704,15 @@ DescValue star (const param& E,	const ext_gen& p,
 	assert(E.ctxt.delta()*rho_r_shift==rho_r_shift); // $ww\in W^\delta$
 	assert(rd.is_simple_root(alpha_simple)); // cannot fail for length 3
 
+	E0.tau -= alpha*kappa_v.dot(E.tau); // make |kappa_v.dot(E.tau)==0|
+	E0.l += alpha_v*(tf_alpha+tf_beta);
+	E0.t += (beta_v-alpha_v)*((tf_alpha+tf_beta)/2);
+
+	param F(E.ctxt, new_tw,	E.lambda_rho + rho_r_shift, E0.tau, E0.l, E0.t);
+
 	flipped = not flipped; // January unsurprise for 3i: delta acts by -1
+	z_align(E0,F,flipped^not same_sign(E,E0));
 
-	param F(E.ctxt, new_tw,
-		E.lambda_rho + rho_r_shift,
-		E.tau - alpha*kappa_v.dot(E.tau),
-		E.l + kappa_v*((tf_alpha+tf_beta)/2), E.t);
-
-	z_align(E,F,flipped); // |lambda_rho| unchanged at simple Cayley
 	links.push_back(std::move(F)); // Cayley link
       }
       else if (theta_alpha==rd.rootMinus(n_alpha)) // length 3 real case
@@ -1733,19 +1738,23 @@ DescValue star (const param& E,	const ext_gen& p,
 	const int b_level = level_a(E,rho_r_shift,n_beta);
 	assert(b_level%2==0); // since |a_level| and |b_level| have same parity
 
-	const Weight new_lambda_rho = // make level for |kappa| zero
-	  E.lambda_rho-rho_r_shift + kappa*((a_level+b_level)/2);
+	const Weight new_lambda_rho = // use |alpha| to make level for |kappa| 0
+	  E.lambda_rho-rho_r_shift + alpha*(a_level+b_level); // even multiple
 
 	E0.t -= alpha_v*kappa.dot(E.t); // makes |E.t.dot(kappa)==0|
-	assert(same_sign(E,E0)); // since only |t| changes
+	E0.lambda_rho += alpha*(a_level+b_level); // even multiple of |alpha|
+	E0.tau += (beta_alpha)*((a_level+b_level)/2);
+	assert(same_sign(E,E0)); // neither |t| change nor 2*real_root matter
+	assert(E0.lambda_rho-rho_r_shift==new_lambda_rho);
+	validate(E0);
 
-	flipped = not flipped; // January unsurprise for 3r: delta acts by -1
+	flipped = not flipped; // January unsurprise for 3r
 
-	param F(E.ctxt, new_tw,	new_lambda_rho,E.tau,E.l,E0.t);
+	param F(E.ctxt, new_tw,	new_lambda_rho,E0.tau,E0.l,E0.t);
 
 	z_align(E0,F,flipped); // no 4th arg since |E.t.dot(kappa)==0|
 	links.push_back(std::move(F)); // Cayley link
-      }
+      } // end of 3i case
       else // length 3 complex case (one of 3Ci or 3Cr or 3C+/-)
       { const bool ascent = rd.is_posroot(theta_alpha);
 	if (theta_alpha == (ascent ? n_beta : rd.rootMinus(n_beta)))
@@ -1769,32 +1778,45 @@ DescValue star (const param& E,	const ext_gen& p,
 	    - rd.colevel(n_alpha);
 	  Weight new_lambda_rho = E.lambda_rho + rho_r_shift; // for now
 
-	  flipped = not flipped; // January unsurprise for 3Ci and 3Cr
 	  if (ascent) // 3Ci
-	  { param F(E.ctxt,new_tw,
-		    dtf_alpha%2==0 ? new_lambda_rho : new_lambda_rho + kappa,
-		    E.tau - kappa*(kappa_v.dot(E.tau)/2),
-		    E.l + kappa_v*tf_alpha, E.t);
+	  {
+	    if (dtf_alpha%2!=0)
+	    { new_lambda_rho += beta_alpha;
+	      E0.lambda_rho += beta_alpha;
+	      E0.tau -= beta_alpha;
+	    }
+	    E0.l += kappa_v*tf_alpha;
+	    E0.tau -= kappa*(kappa_v.dot(E.tau)/2);
+	    validate(E0);
+	    assert(E0.t.dot(kappa)==0);
 
-	    assert(E.t.dot(kappa)==0);
-	    // since it is half of |t*(1+theta)*kappa=l*(delta-1)*kappa==0|
-	    z_align(E,F, flipped); // we may ignore possible shift by |kappa|
+	    param F(E.ctxt,new_tw, new_lambda_rho, E0.tau, E0.l, E0.t);
+
+	    flipped = not flipped; // January unsurprise for 3Ci
+	    z_align(E0,F, flipped^(not same_sign(E,E0)));
 	    links.push_back(std::move(F)); // Cayley link
 	  }
 	  else // descent, so 3Cr
-	  { // make |E.t.dot(kappa)==0| using |kappa_v|
-	    E0.t -= kappa_v*(kappa.dot(E0.t)/2);
-	    assert(same_sign(E,E0)); // since only |t| changes
+	  {
+	    E0.lambda_rho += kappa*dtf_alpha;
+	    new_lambda_rho += kappa*dtf_alpha;
 
-	    param F(E.ctxt, new_tw,
-		    new_lambda_rho + kappa*dtf_alpha, E.tau,
-		    tf_alpha%2==0 ? E.l : E.l+kappa_v, E0.t);
+	    E0.t -= kappa_v*(kappa.dot(E.t)/2); // makes |E0.t.dot(kappa)==0|
+	    if (tf_alpha%2!=0)
+	    {
+	      auto b_a = beta_v-alpha_v; // or |kappa_v-alpha_v*2|
+	      E0.l += b_a;
+	      E0.t -= b_a;
+	    }
+	    param F(E.ctxt, new_tw, new_lambda_rho, E0.tau, E0.l, E0.t);
 
-	    z_align(E0,F,flipped); // no 3rd arg since |E.t.dot(kappa)==0|
+	    flipped = not flipped; // January unsurprise for 3Cr
+	    z_align(E0,F,flipped^not same_sign(E,E0));
+	    // there was no 4th argument there since |E.t.dot(kappa)==0|
 	    links.push_back(std::move(F)); // Cayley link
 	  }
 
-	}
+	} // end of 3ci and 3Cr cases
 	else // twisted non-commutation: 3C+ or 3C-
 	{
 	  result = ascent ? three_complex_ascent : three_complex_descent;
