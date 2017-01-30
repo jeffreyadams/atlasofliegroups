@@ -823,7 +823,7 @@ set reduce_good_range(Param p)=Param:
   else
     let x_L=inverse_embed_KGB (x,L) in
     let p_L=parameter(x_L,lambda(p)-rho(G)+rho(L),nu(p)) in
-    prints("Reduction is:"); goodness(p_L,G);
+    prints(goodness(p_L,G));
     p_L
   fi
 
@@ -837,3 +837,7 @@ set is_proper_Aq(Param p)=bool:
    let p_L=reduce_good_range(p) in
    real_form(p)!=real_form(p_L) and is_one_dimensional(p_L) and
    not is_zero(p)
+
+set all_real_induced_one_dimensional(RealForm G)=[Param]:
+let rv=[] in
+for P in all_real_parabolics(G) do for p in monomials(real_induce_irreducible(trivial(Levi(P)),G)) do rv#:=p od od;rv
