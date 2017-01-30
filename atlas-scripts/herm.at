@@ -10,11 +10,9 @@ set use_equal_rank_mu=true  { false: force use of twisted mu (for testing) }
   write c-invariant form on standard module in terms of standardrepks,
   as a ParamPol
 }
-set c_form_std (Param p) = ParamPol:
-  let G=real_form(p) in
-  if G.is_equal_rank then full_deform(p) else twisted_full_deform(p) fi
+set c_form_std = (Param->ParamPol): { never involves |twisted_full_deform| }
+  full_deform@Param { built-in }
 
-{ with explicit always call |full_deform@(Param,mat)| }
 set twisted_c_form_std = (Param->ParamPol): twisted_full_deform@Param
 
 {    c_form on irreducible representations   }
@@ -27,7 +25,7 @@ set c_form_irreducible (Param p) = ParamPol:
 ; P
 )
 
-{ same as | c_form_irreducible|, but also return a second component that
+{ same as |c_form_irreducible|, but also return a second component that
   exposes the linear combination of contributions from standard representations
   that produced the result (parameter, coefficient, c_form on ths standard)
 
@@ -261,26 +259,22 @@ set print_mus (ParamPol P) = void:
     prints(c,"*", p, "     ", "  ", terms[0], "  ", terms[1], "     "
           , terms[2], "     "{, terms[3], "     ", terms[4], "   "}, mu
           , "  ", c*s^(rat_as_int(mu-mu_0)));
-	  prints({"    gamma = ",ep.gamma,} "  lambda_rho =  ",ep.lambda_rho, "  tau = ",ep.tau, "  g - l - rho_check_r = ", ep.g - ep.l - rho_check_r(ep.x), new_line)
+	  prints({"    gamma = ",ep.gamma,} "  lambda_rho =  ",ep.lambda_rho
+                , "  tau = ",ep.tau
+                , "  g - l - rho_check_r = ", ep.g - ep.l - rho_check_r(ep.x)
+                , new_line)
   od
 
-
+{.convert (twisted) c-form to hermitian form.}
 set convert_cform_hermitian (ParamPol P,mat delta)= ParamPol:
   if =#P then P { since we cannot select a term for a null polynomial }
-  else
-    if is_equal_rank(real_form(P)) and use_equal_rank_mu
-    then prints("converting c_form using equal rank mu")
-    else prints("converting c_form using twisted mu")
-    fi
-  ; let a_mu = mu(P.last_param,delta) in
-    P.real_form.null_module +
-    for w@p in P
-    do
-{     prints("w=", w, " p=", p, " mu(p,delta)=", mu(p,delta)
-            ," a_mu=", a_mu, "power: ",(mu(p,delta)-a_mu).rat_as_int
-            ," ", w*s^(mu(p,delta)-a_mu).rat_as_int); }
-      (w*s^(mu(p,delta)-a_mu).rat_as_int,p)
-    od
+  else let a_mu = mu(P.last_param,delta)
+    then result = P.real_form.null_module +
+         for w@p in P do (w*s^(mu(p,delta)-a_mu).rat_as_int,p) od
+
+    { normalization: make coefficient of top term in Z if possible}
+    then (c,)=last_term(result)
+    in if int_part(c)=0 then s*result else result fi
   fi
 
 set convert_cform_hermitian (ParamPol P)= ParamPol:
@@ -290,13 +284,13 @@ set convert_cform_hermitian (ParamPol P)= ParamPol:
 
 { ParamPol giving the hermitian form on irreducible p in all cases}
 set hermitian_form_irreducible (Param p) = ParamPol:
-  if is_equal_rank(real_form(p)) then
-     let cf=c_form_irreducible(p) in  {not twisted, in = rank case this is faster}
-     if hf_debug=true then print_mus(cf) fi;
-     convert_cform_hermitian(cf)   {this will use = rank mu if use_equal_rank_mu=true}
+  if is_equal_rank(real_form(p))
+  then
+    let cf=c_form_irreducible(p) in {not twisted, in = rank case this is faster}
+    if hf_debug=true then print_mus(cf) fi;
+    convert_cform_hermitian(cf)  { uses = rank mu if |use_equal_rank_mu| holds}
   else
-     let cf=c_form_irreducible_twisted(p) in
-     convert_cform_hermitian(cf)
+    let cf=c_form_irreducible_twisted(p) in convert_cform_hermitian(cf)
   fi
 
 set hermitian_form_irreducible_long (Param p) =

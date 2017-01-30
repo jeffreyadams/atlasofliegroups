@@ -1,12 +1,12 @@
 {this file is old and due to be modified, November 2016}
 
 <groups.at
-<hermitian.at
+<herm.at
 <unitary.at
 <nilpotent.at
 <lietypes.at
 <representations.at
-
+<aql.at
 
 { test list [(Param p,bool answer)],
   test p for unitarity and compare result with answer
@@ -18,56 +18,68 @@
     number of deformations
 }
 
-set new_test=true
+set uflag (int predicted) = string:
+  case predicted+1 in { -1 } "non-unitary", { 0 } "none" , { 1 } "unitary" esac
 
-set test([(Param,bool)] parameters)= bool:
+set uflag (bool flag) = string:
+  if flag then "unitary" else "non-unitary" fi
+set as_predicted (int predicted, bool unitary) = bool:
+  if unitary then predicted>=0 else predicted<=0 fi
+set passedflag(int predicted, bool unitary) = string:
+  if as_predicted(predicted,unitary) then "passed" else "failed" fi
+set passedflag (bool flag) = string: if flag then "passed" else "failed" fi
+
+{test list of parameters for same group for unitarity/non-unitarity
+parameters=[(param p, int predicted)]
+predicted takes values 1,0, or -1 which respecively mean
+parameter is predicted to be unitary / no prediction / predicted non-unitary
+}
+set test ([(Param,int)] parameters) = (bool,[(Param,ParamPol,int,bool)]):
   let rf = let (p,)=parameters[0] in real_form(p)
-  , rv=true
-  then ()=prints("Testing ", #parameters, " parameters for ",rf)
+  ,passed=true then
+  rv=[]
   in
-if new_test
-then
-  for (p,answer)@i in parameters do
-    prints("Case ", i, " is ", p, ", should "
-          , if answer then "be" else "not be" fi, " unitary.")
-  ;(let (c_form,count)=
-      let on_p=orientation_nr(p), P = null_module(rf)
-      , KL_sum = KL_sum_at_s(p)
+{ prints("Testing ", #parameters, " parameters for ",rf,new_line
+        ,"index, parameter purity  predicted/computed result"); }
+  for (p,predicted)@i in parameters
+  do
+    if is_fixed(rf.distinguished_involution,p)
+    then
+      let hf=hermitian_form_irreducible(p)
+      then unitary= is_unitary(hf)
       in
-        for ev@q in KL_sum
-        do let fd=full_deform(q) in
-          prints("Deformed ", q,": "
-                ,#(reducibility_points(q))," points, ",#fd, " terms.")
-        ; P+:= ev*orientation_nr_term(on_p,q)*fd
-	od
-      ; (P,#KL_sum)
-    then form=convert_cform_hermitian(c_form)
-    then unitary=is_unitary(form)
-    in
-      if unitary !=answer then rv:=false fi
-    ; prints("Found ", answer, ", statistics "
-            , #(reducibility_points(p)),", ",count)
-   )
-  od
-; prints("Result: ",if rv then "Passed" else "Failed" fi); rv
-else
-  for (p,answer)@i in parameters do
-{    let (c_form,list)=c_form_irreducible_long(p)}
-    let (formula,terms,c_form)=c_form_irreducible_long(p)
-    then form=convert_cform_hermitian(c_form)
-    then unitary=is_unitary(form)
-    in
-    if unitary !=answer then rv:=false fi
-  ; prints(i, ", ",p, ", ", unitary, ", ", answer,
-           ", ", #(reducibility_points(p)),", ", #formula)
-  od
-; prints("Result: ",if rv then "Passed" else "Failed" fi); rv
-fi
+      passed := passed and as_predicted(predicted, unitary)
+    ; (rv#:=(p,hf,predicted,unitary))
+  { else prints(p, " is not delta-fixed") }
+    fi
+  od;
+  (passed,rv)
 
-set test([Param] parameters)= bool:test(for p in parameters do (p,true) od)
+set print_test ([(Param,int)] parameters) = void:
+  let (passed,terms)=test(parameters) in
+  let (p,)=parameters[0] then G=real_form(p) in
+  prints("G=",G,new_line,"Testing ", #parameters, " parameters ",new_line
+        , "index, parameter purity  predicted/computed result");
+  for (p,hf,predicted,unitary)@i in terms
+  do
+    prints(i, ": ", p, " ", purity(hf)
+          , " ", uflag(predicted), "/", uflag(unitary)
+          , " ", passedflag(predicted,unitary))
+  od;
+  prints(passedflag(passed));()
 
-set test_one(Param param,bool unitary)=test([(param,unitary)])
-set test_one_unitary(Param param)=test([(param,true)])
+set test([Param] parameters) = (bool,[(Param,ParamPol,int,bool)]):
+  test(for p in parameters do (p,1) od)
+set print_test([Param] parameters) = void:
+  print_test(for p in parameters do (p,1) od)
+set test_one (Param param,int unitary) =  (bool,[(Param,ParamPol,int,bool)]):
+  test([(param,unitary)])
+set print_test_one (Param param,int unitary) = void:
+  print_test([(param,unitary)])
+set test_one_unitary (Param param) = (bool,[(Param,ParamPol,int,bool)]):
+  test([(param,1)])
+
+
 
 { prepare parameters, all are supposed to be unitary }
 {set all_unitary([Param] parameters)= [(Param,bool)]:
@@ -81,10 +93,63 @@ set test_one_unitary(Param param)=test([(param,true)])
 
 { G should be absolutely simple, SL(n,R), Sp(2n,R), S(n,n) or SO(n+1,n)
   or simple complex, see spherical_unipotent_representations in representations.at}
-set test_spherical_unipotent(RealForm G)=void:
-for p in spherical_unipotent_representations(G) do  prints(new_line,p);print_is_unitary(p) od
+set test_spherical_unipotent (RealForm G) = (bool,[(Param,ParamPol,int,bool)]):
+  test(spherical_unipotent_representations(G))
+set print_test_spherical_unipotent(RealForm G)= void:
+  prints("Testing spherical unipotent representations of ",G);
+  print_test(spherical_unipotent_representations(G))
+
+set test_Aq ([Param] B) = (bool,[(Param,ParamPol,int,bool)]):
+  test(
+    for p in B
+    do (p
+    , let G=real_form(p) in
+      if is_regular(G,infinitesimal_character(p)) {should be regular integral?}
+      then if is_good_Aq(p) then 1 else -1 fi
+      elif is_weakly_fair_Aq(p) then 1 else 0
+      fi
+    )
+    od
+  )
+
+set print_test_Aq ([Param] B) = void:
+  print_test(
+    for p in B do
+      let G=real_form(p) in
+      if is_regular(G,infinitesimal_character(p)) {should be regular integral?}
+      then if is_good_Aq(p) then (p,1) else (p,-1) fi
+      else if is_weakly_fair_Aq(p) then (p,1) else (p,0) fi
+      fi
+    od
+  )
 
 
+{special test in U(p,q) case}
+set print_test_Upq_Aq ([Param] B) = void:
+  print_test(
+    for p in B do
+      let G=real_form(p) in
+      if is_regular(G,infinitesimal_character(p)) {should be regular integral?}
+      then if is_good_Aq(p) then (p,1) else (p,-1) fi
+      else if is_weakly_fair_Aq(p) then (p,1) else (p,-1) fi
+      fi
+    od
+  )
+
+set print_test_Upq_Aq (int p, int q, ratvec gamma) = void:
+  let B=all_parameters_gamma(U(p,q),gamma) in print_test(B)
+
+
+set test_Aq (RealForm G) =  (bool,[(Param,ParamPol,int,bool)]):
+  let B=block_of(trivial(G)) in
+  test(for p in B do if is_good_Aq(p) then (p,1) else (p,-1) fi od)
+
+set print_test_Aq (RealForm G) = void:
+  prints("testing Aq(lambda) representations of ", G);
+  let B=block_of(trivial(G)) in
+  print_test(for p in B do if is_good_Aq(p) then (p,1) else (p,-1) fi od)
+
+{
 { a series of tests if increasing length }
 { very fast tests }
 set test1()=test(spherical_unipotent_representations(Sp(4,R)))
@@ -103,13 +168,25 @@ set test6()=
 
 { first 49 of 59 spherical unitary parameters for F4 }
 set test7()= bool:
-  test(for i:49 do minimal_spherical_principal_series(split_form(F4),F4_spherical_unitary[i]) od)
+  test(for i:49
+       do minimal_spherical_principal_series
+            (split_form(F4),F4_spherical_unitary[i])
+       od)
 
 { first 100 of spherical unitary for E7
   requires more memory}
 set test8()= bool:
-  test(for i:100 do minimal_spherical_principal_series(split_form(E7),E7_spherical_unitary[i]) od)
+  test(for i:100
+  do minimal_spherical_principal_series(split_form(E7),E7_spherical_unitary[i])
+  od)
 
 { trivial of F4 takes up to two hours }
 set test9()=bool:
   prints("Testing trivial of F4"); is_unitary(trivial(split_form(F4)))
+}
+
+set test_all_real_induced_one_dimensional (RealForm G) =
+  (bool,[(Param,ParamPol,int,bool)]):
+  test(all_real_induced_one_dimensional(G))
+set print_test_all_real_induced_one_dimensional (RealForm G) = void:
+  print_test(all_real_induced_one_dimensional(G))

@@ -1,4 +1,6 @@
 <basic.at { for sum@vec }
+<coordinates.at
+<groups.at
 
 { (complex) nilpotent orbits for simple groups,
   and 1/2 h(O^\vee) for dual nilpotent orbits O^\vee
@@ -314,17 +316,50 @@ set nilpotent_lambdas_E(int n)= [ratvec]:
   G: GL(n), SP(2n), SO(n), standard coordinates
   or simple, exceptional, fundamental weight coordinates }
 
-set nilpotent_lambdas(RootDatum rd)=[ratvec]:
-  let lt = Lie_type(rd), r=rank(rd)
-  then code=get_type(lt)
-  in
-  if code<4
-  then  for p in dual_nilpotent_orbits(rd) do nilpotent_lambda(lt,p) od
-  elif code=6 then nilpotent_lambdas_G2
-  elif code=5 then nilpotent_lambdas_F4
-  elif code=4 then nilpotent_lambdas_E(r)
-  else error("Wrong type")
-  fi
+set nilpotent_lambdas(RootDatum rd)=
+ let rank=rank(rd) then
+ rv=[ratvec]:[] then
+ lietype=Lie_type(rd) in
+ if #lietype=1 then   {absolutely simple}
+  let type=to_string((%lietype)[0])[10]  in
+  if type="A" then   {simple type A}
+   let D=inverse_change_basis(rd,simple_roots(GL(rank+1,R))) in
+   rv :=for P in dual_nilpotent_orbits(rd) do D*nilpotent_lambda(lietype,P) od
+  else  {simple not type A}
+   rv:=for P in dual_nilpotent_orbits(rd) do nilpotent_lambda(lietype,P) od fi
+ elif #lietype=2 then  {simple complex or GL(n,R)}
+  let first=(%lietype)[0],second=(%lietype)[1] then
+  type1=to_string(first)[10] then
+  type2=to_string(second)[10] then
+  rank1=to_string(first)[11] then
+  rank2=to_string(second)[11] in
+  if (type1="A" and type2="T" and rank2="1") then  {GL(n,R)}
+   let n=rank(rd) in
+   rv:=for P in dual_nilpotent_orbits(rd) do nilpotent_lambda(lietype,P) od
+  elif (type1=type2 and rank1=rank2) then  {simple complex}
+  if type1="A" then {SL(n,C)}
+   let   n=(rank(rd)+2)\2 then
+   theta=involution(x(trivial(GL(n,C)))) then
+   D=inverse_change_basis(SL(n,C), simple_roots(GL(n,C))) in
+      rv :=for P in dual_nilpotent_orbits(GL(n,R))  do let lambda=(1-theta)*(nilpotent_lambda(GL(n,R),P)##null(n)) in D*lambda od
+  else  {simple complex not type A}
+   let rd1=simply_connected(first) in
+   rv:=for P in dual_nilpotent_orbits(rd1)  do let lambda=nilpotent_lambda(rd1,P) in lambda##lambda od fi fi
+  elif #lietype=4 then  {should be GL(n,C)}
+   let first=(%lietype)[0],second=(%lietype)[1],third=(%lietype)[2],fourth=(%lietype)[3] then
+   type1=to_string(first)[10] then
+   type2=to_string(second)[10] then
+   type3=to_string(third)[10] then
+   type4=to_string(fourth)[10] then
+   rank1=to_string(first)[11] then
+   rank2=to_string(second)[11] then
+   rank3=to_string(third)[11] then
+   rank4=to_string(fourth)[11] in
+  if (type1="A" and type2="A" and type3="T" and type4="T" and rank3="1" and rank4="1") then  {GL(n,C)}
+   let    n=rank(rd)\2 then
+   theta=involution(x(trivial(GL(n,C)))) in
+   rv :=for P in dual_nilpotent_orbits(GL(n,R))  do let lambda=(1-theta)*(nilpotent_lambda(GL(n,R),P)##null(n)) in lambda od fi
+  else [ratvec]:[] fi;rv
 
 { same as previous for RealForm or, for example, "E8" }
 set nilpotent_lambdas(RealForm G)=[ratvec]:
