@@ -84,7 +84,7 @@ ________________________
 <K.at
 <finite_dimensional.at
 
-set verbose=false
+set ind_verbose=false
 
 {. If L is a theta-stable Levi factor in G,  KGB for L embeds in KGB for G. .}
 set embed_KGB (KGBElt x_L,RealForm G) = KGBElt:
@@ -242,21 +242,21 @@ set theta_induce_standard (Param p_L,RealForm G) = ParamPol:
   then shift=rho(G)-rho(L)
   in assert(is_parabolic_theta_stable(make_parabolic(L,G)),
   "L is not Levi of theta_stable parabolic");
-    if verbose
+    if ind_verbose
     then prints("theta_induce_standard of parameter on L: ",p_L)
     ; prints("shift (rho_G-rho_L): ", shift)
     fi;
   let p_G=parameter(x_G,lambda(p_L)+shift,nu(p_L))
-  in if verbose then prints("p_G before standardization:", p_G) fi;
-  { if verbose
+  in if ind_verbose then prints("p_G before standardization:", p_G) fi;
+  { if ind_verbose
     then prints("K_norm(p_G) before standardization:", K_norm(p_G*0)) fi; }
   let p_G_standardized=null_module(G) in
   if is_standard(p_G)
   then p_G_standardized:=(ParamPol:p_G)
-  ; if verbose then prints("p_G is standard: ", p_G, standardize(p_G)) fi
-  else if verbose then prints("Need to standardize:", p_G) fi
+  ; if ind_verbose then prints("p_G is standard: ", p_G, standardize(p_G)) fi
+  else if ind_verbose then prints("Need to standardize:", p_G) fi
   ; p_G_standardized:=standardize(p_G)
-  ; if verbose then prints("p_G standardized:", p_G_standardized) fi
+  ; if ind_verbose then prints("p_G standardized:", p_G_standardized) fi
 { prints("K_norm(p_G standardized):", K_norm(p_G)}
   fi;
 { prints("K_norms of terms of p_G: "
@@ -269,13 +269,13 @@ set theta_induce_standard (Param p_L,RealForm G) = ParamPol:
 set theta_induce_irreducible_as_sum_of_standards (Param p_L, RealForm G) =
     ParamPol:
   let cf=character_formula(p_L) in
-  if verbose
+  if ind_verbose
   then prints("p_L:",p_L); prints("Character formula for p_L:"); prints(cf)
   fi;
   let result=null_module(G) in
   for coeff@p in cf
   do let new=theta_induce_standard(p,G) in result+:=coeff*new od;
-  if verbose then prints("induced as sum of standards:", result) fi;
+  if ind_verbose then prints("induced as sum of standards:", result) fi;
   result
 
 {. Write the (theta-stable) induced Ind(J(p_L)) of an irreducible of L
@@ -287,7 +287,7 @@ set theta_induce_irreducible(Param p_L, RealForm G) = ParamPol:
   , result=null_module(G)
   in
   for coeff@p in cf do result+:=coeff*composition_series(p) od;
-  if verbose then prints("induced as sum of irreducibles: ", result) fi;
+  if ind_verbose then prints("induced as sum of irreducibles: ", result) fi;
   result
 
 
@@ -591,18 +591,18 @@ set is_weakly_fair(KGBElt x_in,ratvec lambda_in,ratvec lambda_q_in)=bool:
 
 {. Determine the "goodness" of an Aq(lambda); returns "good", "weakly good",
   "fair", "weakly fair", or "none". .}
-set goodness(KGBElt x,ratvec lambda_in,ratvec lambda_q) = void:
+set goodness(KGBElt x,ratvec lambda_in,ratvec lambda_q) = string:
   let G=real_form(x), P=parabolic(lambda_q,x)
   then L=Levi(P) then rho_l=rho(L)
   then rho_u=rho(G)-rho_l, infchar_l=lambda_in+rho_l in
-{  in prints("infinitesimal character(l)=", infchar_l);
+{   prints("infinitesimal character(l)=", infchar_l);
     prints("infinitesimal character(l)+rho(u)=", infchar_l+rho_u);
     prints("infinitesimal character(l)+rho(u)-rho(l)=", infchar_l+rho_u-rho_l);}
-  if is_good(x,lambda_in,lambda_q) then prints("Good")
-  elif is_weakly_good(x,lambda_in,lambda_q) then prints("Weakly good")
-  elif is_fair(x,lambda_in,lambda_q) then prints("Fair")
-  elif is_weakly_fair(x,lambda_in,lambda_q) then prints("Weakly fair")
-  else prints("None")
+  if is_good(x,lambda_in,lambda_q) then "Good"
+  elif is_weakly_good(x,lambda_in,lambda_q) then "Weakly good"
+  elif is_fair(x,lambda_in,lambda_q) then "Fair"
+  elif is_weakly_fair(x,lambda_in,lambda_q) then "Weakly fair"
+  else "None"
   fi
 
 {. Decide whether a parameter for L is in the good range for G; this only
@@ -658,18 +658,18 @@ set is_weakly_fair (Param p_L,RealForm G) = bool:
 {. Determine the "goodness" of a parameter for L; returns "good", "weakly good",
   "fair", "weakly fair", or "none"; only makes sense if L is Levi of theta-stable
   parabolic. .}
-set goodness (Param p_L,RealForm G) = void:
+set goodness (Param p_L,RealForm G) = string:
   let L=real_form(p_L) then rho_l=rho(L)
   then rho_u=rho(G)-rho_l, infchar_l=infinitesimal_character(p_L)
   in
 { prints("infinitesimal character(l)=", infchar_l);
   prints("infinitesimal character(l)+rho(u)=", infchar_l+rho_u);
   prints("infinitesimal character(l)+rho(u)-rho(l)=", infchar_l+rho_u-rho_l); }
-  if is_good(p_L,G) then prints("Good")
-  elif is_weakly_good(p_L,G) then prints("Weakly good")
-  elif is_fair(p_L,G) then prints("Fair")
-  elif is_weakly_fair(p_L,G) then prints("Weakly fair")
-  else prints("None")
+  if is_good(p_L,G) then "Good"
+  elif is_weakly_good(p_L,G) then "Weakly good"
+  elif is_fair(p_L,G) then "Fair"
+  elif is_weakly_fair(p_L,G) then "Weakly fair"
+  else "None"
   fi
 
 {. List all A_q(0) (actually: R_q(trivial): infinitesimal character rho(G)) modules
@@ -817,7 +817,7 @@ set reduce_good_range(Param p)=Param:
   if is_zero(p) then prints("The module is zero.") fi;
   let x=x(p) in let P=Parabolic:(support(x),x) in
   let L=Levi(P) in
-  if semisimple_rank(L)=semisimple_rank(G) then prints("No reduction: P=G.");
+  if semisimple_rank(L)=semisimple_rank(G) then if ind_verbose then prints("No reduction: P=G.") fi;
   p else
   let x_L=inverse_embed_KGB (x,L) in
   let p_L=parameter(x_L,lambda(p)-rho(G)+rho(L),nu(p)) in
