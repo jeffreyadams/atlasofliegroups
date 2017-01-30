@@ -4,6 +4,14 @@
 
 set aql_verbose=false
 
+{. Given a parameter p for G and a real parabolic P, list all Weyl(G)
+  conjugates of the infinitesimal character of p that are dominant for L. .}
+set inf_chars_dom_for_L (Param p, Parabolic P)=[ratvec]:
+  let rd=root_datum(p) in let L=Levi(P) in let rdl=root_datum(L) in
+  let orb=W_orbit(rd,infinitesimal_character(p)) in
+  let list=[] in for v in orb do if is_dominant(rdl,v) then
+  list#:=v fi od; list
+
 {. Given a parameter p for G and a theta-stable parabolic P, list all
   infinitesimal characters v for L so that v+rho(u) is the infinitesimal
   character of p. .}
@@ -15,14 +23,21 @@ set inf_chars_for_L (Param p,Parabolic P)=[ratvec]:
    for v in orb do if is_dominant(rdl,v-rho) then
    list#:=v-rho fi od; list
 
-{. List all one-dimensional unitary characters, in the weakly fair range,
-  of L, with given infinitesimal character. .}
-set wf_one_dim_params (ratvec ic, Parabolic P)=[Param]:
+{. List all one-dimensional unitary characters with given
+  infinitesimal character. .}
+set one_dim_params_gamma (ratvec ic, Parabolic P)=[Param]:
    let L=Levi(P) in let n=#KGB(L) in let x=KGB(L,n-1) in
    let G=real_form(P) in
    let list=all_parameters_x_gamma(x,ic) in
    let result=[] in for p in list do
-   if is_unitary_character(p) and is_weakly_fair(p,G) then
+   if is_unitary_character(p) then
+   result#:=p fi od; result
+
+{. List all one-dimensional unitary characters, in the weakly fair range,
+  of L, with given infinitesimal character. .}
+set wf_one_dim_params (ratvec ic, Parabolic P)=[Param]:
+   let list=one_dim_params_gamma(ic,P) in let G=real_form(P) in
+   let result=[] in for p in list do if is_weakly_fair(p,G) then
    result#:=p fi od; result
 
 {. Auxiliary function: List of all unitary weakly fair Aq(lambda) modules
@@ -78,7 +93,7 @@ set is_weakly_fair_Aq (Param p) = bool:
 
 {. List all one-dimensional unitary parameters pL so that p is theta-induced
   from pL in the weakly fair range. .}
-set is_wf_induced_from_one_dim(Param p)=[Param]:
+set is_wf_induced_from_one_dim (Param p) = [(Parabolic,Param)]:
    let result=[] in
    if is_zero(p) then prints("Zero Module")
    elif not is_final(p) then prints("Parameter is not final.")
@@ -92,9 +107,59 @@ set is_wf_induced_from_one_dim(Param p)=[Param]:
        for P in tsp do
 	 for pair in wf_aqs_param(p,P) do
 	   let (pL,q)=pair in
-	   if p=q then prints("Weakly fair Aq"); result#:=pL fi
+	   if p=q then prints("Weakly fair Aq"); result#:=(P,pL) fi
 	 od
        od
      fi
    fi;
+   result
+
+{. Auxiliary function: List of all modules with infinitesimal character
+  of p, that are induced from a unitary character on the Levi of P. .}
+set one_dim_real_induced_param_pol (Param p, Parabolic P)=[(Param,ParamPol)]:
+   let G=real_form(P) in
+   let ics=inf_chars_dom_for_L(p,P) in
+   let result=[] in
+   for v in ics do
+    let list=one_dim_params_gamma (v,P) in
+     for q in list do let mod=real_induce_irreducible(q,G) in
+     result#:=(q,mod)
+     od od; result
+
+{. Auxiliary function: As previous function, except a list of all
+   parameters occurring as constitutents of such modules. .}
+set one_dim_real_induced_param (Param p, Parabolic P)=[(Param,Param)]:
+   let result=[] in
+   for pair in one_dim_real_induced_param_pol (p,P) do let (pL,Q)=pair in
+     let R=%Q in for r in R do let (k,q)=r in
+     result#:=(pL,q) od od;
+     result
+
+{. Decide whether p is the parameter of a (constituent of a) module
+  induced from a unitary character on the real parabolic P. .}
+set is_real_induced_from_character_from_P (Param p, Parabolic P)=bool:
+   let list=one_dim_real_induced_param (p,P) in
+   not none(for pair in list do let (,q)=pair in q=p od)
+
+{. Determine whether parameter p is that of a (constituent of a) module (real)
+  induced from a unitary character. .}
+set is_real_induced_from_one_dimensional (Param p) = bool:
+   if is_zero(p) then prints("Zero Module");false
+   else if not is_final(p) then prints("Parameter is not final.");false
+   else let G=real_form(p) in
+   let rps=all_real_parabolics(G) in if
+   not none (for P in rps do
+   is_real_induced_from_character_from_P(p,P) od) then
+   true else false fi fi fi
+
+{. List all one-dimensional unitary parameters pL so that p is real-induced
+  from pL .}
+set real_induced_from_one_dim(Param p)=[(Parabolic,Param)]:
+   let result=[] in if is_zero(p) then prints("Zero Module")
+   else if not is_final(p) then prints("Parameter is not final.") else
+   let G=real_form(p) in
+   let rps=all_real_parabolics(G) in
+   for P in rps do for pair in one_dim_real_induced_param (p,P) do
+   let (pL,q)=pair in if p=q then
+   result#:=(P,pL) fi od od fi fi;
    result
