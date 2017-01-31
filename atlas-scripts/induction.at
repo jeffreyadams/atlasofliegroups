@@ -729,30 +729,34 @@ set is_theta_x(KGBElt x)=bool: #theta_stable_parabolics_with(x)>0
 
 {. List of parameters p_L in the (weakly) good range for G so that p is
   theta-induced from p_L; may be more than one. .}
-set is_good_range_induced_from(Param p)=[Param]:
-  let x=x(p) in
-  let tsp=theta_stable_parabolics_with(x) in
-  let G=real_form(p) in
-  let result=[Param]:[] in
-  if is_zero(p) then prints("This is the zero module.") else
-  if not is_final(p) then prints("The parameter is not final.") else
-  for P in tsp do let L=Levi(P) in let x_L=inverse_embed_KGB (x,L) in
-  let p_L=parameter(x_L,lambda(p)-rho(real_form(p))+rho(L),nu(p)) in
-  if not is_final(p_L) then prints("p_L is not final") else
-  if is_weakly_good(p_L,G) then
-  prints(goodness(p_L,G));
-  if p!=theta_induce_irreducible(p_L,G) then prints("Ind(p_L) is not p")
+set is_good_range_induced_from (Param p) = [Param]:
+  let x=x(p), G=real_form(p) then tsp=theta_stable_parabolics_with(x) in
+  let result=[Param]:[], txt=[string]:[] { stuff to print if |ind_verbose| } in
+  if is_zero(p) then txt#:="This is the zero module."
+  elif not is_final(p) then txt#:="The parameter is not final."
   else
-  result#:=p_L
-  fi
-  fi fi od fi fi ; result
+    for P in tsp
+    do let L=Levi(P) then x_L=inverse_embed_KGB (x,L) in
+      let p_L=parameter(x_L,lambda(p)-rho(real_form(p))+rho(L),nu(p)) in
+      if not is_final(p_L) then txt#:="p_L is not final"
+      elif is_weakly_good(p_L,G)
+      then txt#:=goodness(p_L,G);
+        if p!=theta_induce_irreducible(p_L,G) then txt#:="Ind(p_L) is not p"
+        else result#:=p_L
+        fi
+      fi
+    od
+  fi;
+  if ind_verbose then for t in txt do prints(t) od fi; result
 
 {. Find the parabolic P and parameter p_L so that p is cohomologically induced,
   in the (weakly) good range, from p_L, with L minimal (may be G). .}
-set reduce_good_range(Param p)=(Parabolic,Param):
+set reduce_good_range (Param p) = (Parabolic,Param):
   let G=real_form(p) in
-  if not is_final(p) then prints("p is not final") fi;
-  if is_zero(p) then prints("The module is zero.") fi;
+  if ind_verbose
+  then if not is_final(p) then prints("p is not final") fi
+  ;    if is_zero(p) then prints("The module is zero.") fi
+  fi;
   let x=x(p) in let P=Parabolic:(support(x),x) in
   let L=Levi(P) in
   (P,
@@ -762,7 +766,7 @@ set reduce_good_range(Param p)=(Parabolic,Param):
     else
       let x_L=inverse_embed_KGB (x,L) in
       let p_L=parameter(x_L,lambda(p)-rho(G)+rho(L),nu(p)) in
-      prints(goodness(p_L,G));
+      if ind_verbose then prints(goodness(p_L,G)) fi;
       p_L
     fi
   )

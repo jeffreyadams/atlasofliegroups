@@ -34,39 +34,40 @@ parameters=[(param p, int predicted)]
 predicted takes values 1,0, or -1 which respecively mean
 parameter is predicted to be unitary / no prediction / predicted non-unitary
 }
-set test ([(Param,int)] parameters) = (bool,[(Param,ParamPol,int,bool)]):
-  let rf = let (p,)=parameters[0] in real_form(p)
-  ,passed=true then
-  rv=[]
-  in
-{ prints("Testing ", #parameters, " parameters for ",rf,new_line
-        ,"index, parameter purity  predicted/computed result"); }
+set test ([(Param,int)] parameters,bool verbose) =
+    (bool,[(Param,ParamPol,int,bool)]):
+  let G=real_form(let (p,)=parameters[0] in p) in
+  if verbose then
+    prints("G=",G,new_line
+          ,"Testing ", #parameters, " parameters ",new_line
+          , "index, parameter purity  predicted/computed result")
+  fi;
+  let !delta=G.distinguished_involution, passed=true, result=[] in
+
   for (p,predicted)@i in parameters
   do
-    if is_fixed(rf.distinguished_involution,p)
+    if is_fixed(delta,p)
     then
       let hf=hermitian_form_irreducible(p)
       then unitary= is_unitary(hf)
       in
       passed := passed and as_predicted(predicted, unitary)
-    ; (rv#:=(p,hf,predicted,unitary))
-  { else prints(p, " is not delta-fixed") }
+    ; result#:=(p,hf,predicted,unitary)
+    ; if verbose
+      then
+        prints(i, ": ", p, " ", purity(hf)
+              , " ", uflag(predicted), "/", uflag(unitary)
+              , " ", passedflag(predicted,unitary))
+      fi
+  { else if verbose then prints(p, " is not delta-fixed") fi }
     fi
   od;
-  (passed,rv)
+  (passed,result)
+
+set test ([(Param,int)] parameters) = test(parameters,false) { default quiet }
 
 set print_test ([(Param,int)] parameters) = void:
-  let (passed,terms)=test(parameters) in
-  let (p,)=parameters[0] then G=real_form(p) in
-  prints("G=",G,new_line,"Testing ", #parameters, " parameters ",new_line
-        , "index, parameter purity  predicted/computed result");
-  for (p,hf,predicted,unitary)@i in terms
-  do
-    prints(i, ": ", p, " ", purity(hf)
-          , " ", uflag(predicted), "/", uflag(unitary)
-          , " ", passedflag(predicted,unitary))
-  od;
-  prints(passedflag(passed));()
+  let (passed,terms)=test(parameters,true) in prints(passedflag(passed))
 
 set test([Param] parameters) = (bool,[(Param,ParamPol,int,bool)]):
   test(for p in parameters do (p,1) od)
