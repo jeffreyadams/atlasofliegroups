@@ -49,8 +49,6 @@ More topics addressed in this file:
 <group_operations { for is_relatively_split }
 
 
-set parabolics_verbose=false
-
 {. Data type for a K_orbit on G/P_S, equivalently a K-conjugacy class of
    parabolics of type S. .}
 : KGPElt    = ([int], KGBElt)
@@ -281,7 +279,7 @@ set parabolic (ratvec lambda,KGBElt x) = Parabolic:
   let rd=root_datum(x) then (lambda_dom,w)=make_dominant(rd,numer(lambda)) in
   let P=
   Parabolic:(zero_simple_coroots(rd,lambda_dom), cross(inverse(w),x)) in
-  if is_parabolic_theta_stable(P) then if parabolics_verbose then prints("Parabolic is theta-stable.") fi
+  if is_parabolic_theta_stable(P) then prints("Parabolic is theta-stable.")
   else if is_parabolic_real(P) then prints("Parabolic is real.")
   else prints("The parabolic is neither real nor theta-stable.") fi fi;
   P
@@ -336,7 +334,7 @@ set parabolic_alt (ratvec H,KGBElt x) = Parabolic:
   let rd=root_datum(x) then (H_dom,w)=dual_make_dominant(rd,numer(H)) in
   let P=
   Parabolic:(zero_simple_roots(rd,H_dom), cross(inverse(w),x)) in
-  if is_parabolic_theta_stable(P) then if parabolics_verbose then prints("Parabolic is theta-stable.") fi
+  if is_parabolic_theta_stable(P) then prints("Parabolic is theta-stable.")
   else if is_parabolic_real(P) then prints("Parabolic is real.")
   else prints("The parabolic is neither real nor theta-stable.") fi fi;
   P
