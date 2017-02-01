@@ -83,7 +83,9 @@ ________________________
 <K.at
 <finite_dimensional.at
 
+
 set ind_verbose=false
+
 
 {. If L is a theta-stable Levi factor in G,  KGB for L embeds in KGB for G. .}
 set embed_KGB (KGBElt x_L,RealForm G) = KGBElt:
@@ -423,7 +425,7 @@ set dim_u_cap_k (KGBElt x) = int:dim_u_cap_k(theta_stable_parabolic(x))
 {. Dimension of $\mathfrak u\cap\mathfrak k$ for theta-stable parabolic determined by
   weight lambda. .}
 set dim_u_cap_k(ratvec lambda,KGBElt x) =  int:
-  let P=parabolic(lambda,x) in
+  let P=parabolic_mute(lambda,x) in
   assert(is_parabolic_theta_stable(P),"Parabolic is not theta-stable");dim_u_cap_k(P)
 
 {. Dimension of $\mathfrak u\cap\mathfrak p$ for theta-stable parabolic. .}
