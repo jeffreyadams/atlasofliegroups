@@ -1714,7 +1714,7 @@ DescValue star (const param& E,	const ext_gen& p,
 	z_align(E0,F,flipped^not same_sign(E,E0));
 
 	links.push_back(std::move(F)); // Cayley link
-      }
+      } // end of 3i case
       else if (theta_alpha==rd.rootMinus(n_alpha)) // length 3 real case
       {
 	RootNbr alpha_simple = n_alpha;
@@ -1754,7 +1754,7 @@ DescValue star (const param& E,	const ext_gen& p,
 
 	z_align(E0,F,flipped); // no 4th arg since |E.t.dot(kappa)==0|
 	links.push_back(std::move(F)); // Cayley link
-      } // end of 3i case
+      } // end of 3r case
       else // length 3 complex case (one of 3Ci or 3Cr or 3C+/-)
       { const bool ascent = rd.is_posroot(theta_alpha);
 	if (theta_alpha == (ascent ? n_beta : rd.rootMinus(n_beta)))
@@ -2239,6 +2239,20 @@ bool ext_block::check(const param_block& block, bool verbose)
       } // |switch(tp)|
     } // |for(s)|
   } // |for(n)|
+#ifndef NDEBUG // when debugging test braid relations for each extended block
+  BitMap dummy(size());
+  for (BlockElt x=0; x<size(); ++x)
+    for (weyl::Generator s=0; s<rank(); ++s)
+    {
+      if (not check_quadratic(*this,s,x))
+	throw std::runtime_error
+	  ("Quadratic relation failure in extended block construction");
+      for (weyl::Generator t=s+1; t<rank(); ++t)
+	if (not check_braid(*this,s,t,x,dummy))
+	  throw std::runtime_error
+	    ("Braid relation failure in extended block construction");
+    }
+#endif
   return true; // report success if we get here
 } // |check|
 
