@@ -440,8 +440,9 @@ StandardRepr scaled_extended_dominant // result will have its |gamma()| dominant
     } // |while| a singular complex descent exists
   }
 
-  // finally extract |StandardRepr| from |E|, overwriting |result|
-  result = rc.sr_gamma(x,E.lambda_rho,ctxt.gamma());
+  // finally get result ordinary parameter and check that it agrees with |E|
+  rc.make_dominant(result);
+  assert(result == rc.sr_gamma(x,E.lambda_rho,ctxt.gamma()));
 
   // but the whole point of this function is to record the relative flip too!
   flipped = not same_sign(E,param(ctxt,result)); // compare |E| to default ext.
