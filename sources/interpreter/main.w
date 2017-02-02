@@ -469,7 +469,6 @@ while (ana.reset()) // get a fresh line for lexical analyser, or quit
       std::cout << "Expression before type analysis: " << *parse_tree
                 << std::endl;
   }
-  interrupt_flag=0; // clear interrupt before starting evaluation
   @< Analyse types and then evaluate and print, or catch runtime or other
      errors @>
   output_stream= &std::cout; // reset output stream if it was changed
