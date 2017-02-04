@@ -280,40 +280,26 @@ void Rep_context::W_act(const WeylWord& w,StandardRepr& z) const
   {
     weyl::Generator s=w[i];
     rd.simple_reflect(s,numer);
-    rd.simple_reflect(s,lr);
-    if (kgb().status(s,x)!=gradings::Status::Real) // center at $\rho-\rho_r$
-      lr -= rd.simpleRoot(s); // so unless |s| is real root compensate
+    rd.simple_reflect(s,lr,kgb().status(s,x)==gradings::Status::Real ? 0 : 1);
     x = kgb().cross(s,x);
   }
   z.y_bits = // reinsert $y$ bits component
     innerClass().involution_table().y_pack(kgb().inv_nr(x),lr);
 }
 
-void
-Rep_context::W_act(const WeylWord& w,StandardRepr& z,const SubSystem& subsys)
-  const
+void Rep_context::W_cross_act(StandardRepr& z,const WeylWord& w) const
 {
   const RootDatum& rd = rootDatum();
   KGBElt& x= z.x_part;
-  InvolutionNbr i_x = kgb().inv_nr(x);
-  const InvolutionTable& i_tab = innerClass().involution_table();
+  Weight lr = lambda_rho(z);
 
-  // the following are non-|const|, and modified in the loop below
-  Weight lambda2_shifted = (lambda_rho(z)*=2)
-    + rd.twoRho() - rd.twoRho(i_tab.real_roots(i_x));
-  Ratvec_Numer_t& gamma_num = z.infinitesimal_char.numerator();
-
-  for (unsigned i=w.size(); i-->0; )
-  {
-    weyl::Generator s=w[i];
-    RootNbr alpha = subsys.parent_nr_simple(s);
-    rd.reflect(alpha,gamma_num);
-    x = kgb().cross(rd.reflectionWord(alpha),x);
-    i_x = kgb().inv_nr(x);
-    rd.reflect(alpha,lambda2_shifted);
+  for (auto it=w.begin(); it!=w.end(); ++it)
+  { weyl::Generator s=*it;
+    rd.simple_reflect(s,lr,kgb().status(s,x)==gradings::Status::Real ? 0 : 1);
+    x = kgb().cross(s,x);
   }
-  lambda2_shifted -= rd.twoRho() - rd.twoRho(i_tab.real_roots(i_x)); // unshift
-  z.y_bits=i_tab.y_pack(i_x,lambda2_shifted/2);
+  z.y_bits = // reinsert $y$ bits component
+    innerClass().involution_table().y_pack(kgb().inv_nr(x),lr);
 }
 
 WeylWord Rep_context::make_dominant(StandardRepr& z) const
@@ -365,6 +351,13 @@ WeylWord Rep_context::normalise(StandardRepr& z) const
   { const auto& numer = z.infinitesimal_char.numerator();
     for (weyl::Generator s=0; s<rd.semisimpleRank(); ++s)
       simple_singulars.set(s,rd.simpleCoroot(s).dot(numer)==0);
+  }
+
+  { // move to canonical involution for singular subsystem first;
+    TwistedInvolution tw = kgb().involution(z.x_part);
+    WeylWord ww = innerClass().canonicalize(tw,simple_singulars);
+    W_cross_act(z,ww); // move to that involution
+    assert(tw == kgb().involution(z.x_part));
   }
 
   // the following are non-|const|, and modified in the loop below

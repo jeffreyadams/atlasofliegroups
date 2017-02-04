@@ -703,13 +703,13 @@ InnerClass::posImaginaryRootSum(const TwistedInvolution& tw) const
   return rootDatum().twoRho(involution_data(tw).imaginary_roots());
 }
 
-/* Make |sigma| canonical and return Weyl group |w| element that
-   twisted conjugates the canonical representative back to original |sigma|.
+/* Make |sigma| canonical and return Weyl group |w| element that left
+   twisted-conjugates the canonical representative back to original |sigma|.
 
-   We find conjugating generators starting at the original `|sigma|' end, so
-   these form the letters of |w| from left (last applied) to right (first).
+   We find conjugating generators starting at the original `|sigma|' value,
+   and from that involution the canonical involution is right-conjugation
 */
-WeylWord // return value is conjugating element
+WeylWord // letters in result will all be among those specified in |gens|
 InnerClass::canonicalize
   (TwistedInvolution &sigma, // element to modify
    RankFlags gens) // subset of generators, "defaults" to all simple generators
@@ -718,7 +718,7 @@ InnerClass::canonicalize
   return innerclass::canonicalize(sigma,rootDatum(),twistedWeylGroup(),gens);
 }
 
-//!\brief find number of Cartan class containing twisted involution |sigma|
+// find the number of the Cartan class containing twisted involution |sigma|
 CartanNbr InnerClass::class_number(TwistedInvolution sigma) const
 {
   canonicalize(sigma);
@@ -1066,8 +1066,8 @@ WeylWord canonicalize // return value conjugates new |sigma| value to old one
       for (it=gens.begin(); it(); ++it)
       {
 	weyl::Generator s=*it;
-	LatticeCoeff c=rrs.dot(rd.simpleCoroot(s));
-	if (c<0 or (c==0 and irs.dot(rd.simpleCoroot(s))<0))
+	LatticeCoeff c=rd.simpleCoroot(s).dot(rrs);
+	if (c<0 or (c==0 and rd.simpleCoroot(s).dot(irs)<0))
 	{
 	  rd.simple_reflect(s,rrs);   // apply $s_i$ to real-root sum
 	  rd.simple_reflect(s,irs);   // apply $s_i$ to iminary-root sum

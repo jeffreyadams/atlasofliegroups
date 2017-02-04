@@ -1,7 +1,3 @@
-/*!
-\file
-\brief Class definitions and function declarations for WeylGroup.
-*/
 /*
   This is weyl.h
 
@@ -10,6 +6,7 @@
 
   For license information see the LICENSE file
 */
+// Class definitions and function declarations for WeylGroup.
 
 #ifndef WEYL_H  /* guard against multiple inclusions */
 #define WEYL_H
