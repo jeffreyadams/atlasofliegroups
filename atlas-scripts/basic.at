@@ -993,7 +993,7 @@ set is_regular (Param p) = bool:
 
 { whether irreducible rpn survives translation functor from regular inf.char. }
 set survives (Param p) = bool: { whether no singular coroot is a descent }
-( p.x=dominant(p).x { this fails when there is a complex singular descent }
+( p.x=normal(p).x { this fails when there is a complex singular descent }
   and not p.is_zero and p.is_final { test absence of other singluar descents }
 )
 

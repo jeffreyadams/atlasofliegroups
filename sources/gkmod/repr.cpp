@@ -322,7 +322,7 @@ WeylWord Rep_context::make_dominant(StandardRepr& z) const
 
   // the following are non-|const|, and modified in the loop below
   Weight lr = lambda_rho(z);
-  KGBElt& x = z.x_part;
+  KGBElt& x = z.x_part; // the |x_part| will be modified in-place
   Ratvec_Numer_t& numer = z.infinitesimal_char.numerator();
 
   WeylWord result;
@@ -333,20 +333,19 @@ WeylWord Rep_context::make_dominant(StandardRepr& z) const
       for (s=0; s<rd.semisimpleRank(); ++s)
       {
 	int v=rd.simpleCoroot(s).dot(numer);
-	if (v<0 or (v==0 and kgb().isComplexDescent(s,x)))
+	if (v<0)
 	{
 	  result.push_back(s);
 	  rd.simple_reflect(s,numer);
-	  rd.simple_reflect(s,lr);
+	  int offset; // used to pivot |lr| around $\rho_r-\rho$
 	  switch (kgb().status(s,x))
 	  {
-	  case gradings::Status::ImaginaryCompact:
-	  case gradings::Status::ImaginaryNoncompact:
+	  case gradings::Status::Complex: offset = 1; break;
+	  case gradings::Status::Real:    offset = 0; break;
+	  default: // |s| is an imaginary root; we will not cope with that here
 	    throw std::runtime_error("Non standard parameter in make_dominant");
-	  case gradings::Status::Complex:
-	    lr -= rd.simpleRoot(s); // pivot around $\rho-\rho_r$
-	  case gradings::Status::Real: {} // no compensation for real roots
 	  }
+	  rd.simple_reflect(s,lr,offset);
 	  x = kgb().cross(s,x);
 	  break; // out of the loop |for(s)|
 	} // |if(v<0)|
@@ -357,6 +356,42 @@ WeylWord Rep_context::make_dominant(StandardRepr& z) const
   return result;
 } // |make_dominant|
 
+WeylWord Rep_context::normalise(StandardRepr& z) const
+{
+  make_dominant(z);
+  const RootDatum& rd = rootDatum();
+
+  RankFlags simple_singulars;
+  { const auto& numer = z.infinitesimal_char.numerator();
+    for (weyl::Generator s=0; s<rd.semisimpleRank(); ++s)
+      simple_singulars.set(s,rd.simpleCoroot(s).dot(numer)==0);
+  }
+
+  // the following are non-|const|, and modified in the loop below
+  Weight lr = lambda_rho(z);
+  KGBElt& x = z.x_part;
+
+  WeylWord result;
+  result.reserve(kgb().length(x)); // enough to accommodate the WeylWord
+
+  { RankFlags::iterator it;
+    do
+      for (it=simple_singulars.begin(); it(); ++it)
+	if (kgb().isComplexDescent(*it,x))
+	{
+	  weyl::Generator s=*it;
+	  result.push_back(s);
+	  rd.simple_reflect(s,lr,1); // pivot |lr| around $-\rho$
+	  x = kgb().cross(s,x);
+	  break; // out of the loop |for(s)|
+	} // |if(v<0)|
+    while (it()); // wait until inner loop runs to completion
+  }
+  z.y_bits=innerClass().involution_table().y_pack(kgb().inv_nr(x),lr);
+  return result;
+} // |normalise|
+
+// a method used to ensure |z| is integrally dominant, used by |any_Cayley|
 WeylWord
 Rep_context::make_dominant(StandardRepr& z,const SubSystem& subsys) const
 {
@@ -380,7 +415,7 @@ Rep_context::make_dominant(StandardRepr& z,const SubSystem& subsys) const
       {
 	RootNbr alpha = subsys.parent_nr_simple(s);
 	arithmetic::Numer_t v=rd.coroot(alpha).dot(gamma_num);
-	if (v<0 or (v==0 and i_tab.is_complex_descent(i_x,alpha)))
+	if (v<0)
 	{
 	  if (i_tab.imaginary_roots(i_x).isMember(alpha))
 	    throw std::runtime_error
@@ -642,9 +677,9 @@ StandardRepr Rep_context::any_Cayley(const Weight& alpha, StandardRepr z) const
     Cayley_shift(innerClass(),ascent ? kgb.inv_nr(x) : inv0,ww);
   z = sr_gamma(x,lr,infin_char);
 
-  W_act(w,z); // move back to origingal infinitesimal character representative
+  W_act(w,z); // move back to original infinitesimal character representative
   return z;
-}
+} // |Rep_context::any_Cayley|
 
 StandardRepr Rep_context::inner_twisted(StandardRepr z) const
 {
@@ -722,7 +757,7 @@ SR_poly Rep_context::expand_final(StandardRepr z) const // by value
   const RootDatum& rd = rootDatum();
   const InvolutionTable& i_tab = innerClass().involution_table();
 
-  make_dominant(z); // this simplifies matters a lot; |z| is unchanged hereafter
+  normalise(z); // this simplifies matters a lot; |z| is unchanged hereafter
 
   const InvolutionNbr i_x = kgb().inv_nr(z.x());
   const RatWeight& gamma=z.gamma();
@@ -732,7 +767,7 @@ SR_poly Rep_context::expand_final(StandardRepr z) const // by value
     if (rd.simpleCoroot(s).dot(gamma.numerator())==0)
     { if (i_tab.is_real_simple(i_x,s))
 	singular_real_parity.set // record whether |s| is a real parity root
-	  // |unpack| gives $(1-\theta)(\lambda-\rho)$
+	  // |y_lift| gives $(1-\theta)(\lambda-\rho)$
 	  // real simple coroot odd on $\lambda-\rho$ means it is parity
 	  (s,rd.simpleCoroot(s).dot(i_tab.y_lift(i_x,z.y()))%4!=0);
       else if (i_tab.is_imaginary_simple(i_x,s))
@@ -741,7 +776,7 @@ SR_poly Rep_context::expand_final(StandardRepr z) const // by value
 	  return SR_poly(repr_less());; // return a zero result
       }
       else
-	assert(not kgb().isComplexDescent(s,z.x())); // because |make_dominant|
+	assert(not kgb().isComplexDescent(s,z.x())); // because of |normalise|
     }
   // having made dominant, any non-final is witnessed on a (real) simple root
   if (singular_real_parity.any())
@@ -762,7 +797,7 @@ SR_poly Rep_context::expand_final(StandardRepr z) const // by value
       result += expand_final(sr(p.second,lr,gamma));
     return result;
   }
-  else return SR_poly(z,repr_less());
+  else return SR_poly(z,repr_less()); // absent singular descents, return |1*z|
 } // |Rep_context::expand_final|
 
 void Rep_table::add_block(param_block& block, BlockEltList& survivors)
@@ -843,10 +878,10 @@ SR_poly Rep_table::KL_column_at_s(StandardRepr z) // must be nonzero and final
     assert(is_final(z,witness));
     ndebug_use(witness);
   }
-  make_dominant(z); // so that |z| it will appear at the top of its own block
+  normalise(z); // implies that |z| it will appear at the top of its own block
   unsigned long hash_index=hash.find(z);
   if (hash_index==hash.empty) // previously unknown parameter
-  {
+  { // then we need to compute to find the requested polynomial
     param_block block(*this,z);
     BlockEltList survivors;
     add_block(block,survivors);
@@ -933,12 +968,12 @@ SR_poly Rep_table::deformation(const StandardRepr& z)
   StandardRepr z0 = sr(z.x(),lam_rho,RatWeight(rank()));
   SR_poly result = expand_final(z0); // value without deformation terms
 
-  RationalList rp=reducibility_points(z);
+  RationalList rp=reducibility_points(z); // this is OK before |make_dominant|
   if (rp.size()==0) // without deformation terms
     return result; // don't even bother to store the result
 
   StandardRepr z_near = sr(z.x(),lam_rho,nu_z*rp.back());
-  make_dominant(z_near);
+  normalise(z_near); // so that we may find a stored equivalent parameter
 
   { // look up if closest reducibility point to |z| is already known
     unsigned long h=hash.find(z_near);
@@ -946,6 +981,7 @@ SR_poly Rep_table::deformation(const StandardRepr& z)
       return def_formula[h];
   }
 
+  // otherwise compute the deformation terms at all reducibility points
   for (unsigned i=rp.size(); i-->0; )
   {
     Rational r=rp[i];
@@ -1023,7 +1059,7 @@ SR_poly twisted_KL_column_at_s
     if (not (rc.is_nonzero(z,witness) and rc.is_final(z,witness)))
       throw std::runtime_error("Representation zero or not final");
   }
-  rc.make_dominant(z);
+  rc.normalise(z);
   BlockElt entry; // dummy needed to ensure full block is generated
   param_block block(rc,z,entry); // which this constructor does
   ext_block::ext_block eblock(rc.innerClass(),block,delta);
@@ -1110,7 +1146,7 @@ SR_poly Rep_table::twisted_KL_column_at_s(StandardRepr z)
     if (not (is_nonzero(z,witness) and is_final(z,witness)))
       throw std::runtime_error("Representation zero or not final");
   }
-  make_dominant(z);
+  normalise(z);
   unsigned long hash_index=hash.find(z);
   if (hash_index>=twisted_KLV_list.size() // |z| unknown or not extended to, or
       or twisted_KLV_list[hash_index].empty()) // slot created by another block

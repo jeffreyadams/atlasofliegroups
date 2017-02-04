@@ -154,9 +154,10 @@ class Rep_context
   // same, but interpreting the Weyl word in a subsystem
   void W_act(const WeylWord& w,StandardRepr& z,const SubSystem& subsys) const;
 
-  // prepare for |deform|: make |gamma| dominant, and as theta-stable as can be
-  // return the sequence of Weyl generators that was applied (to the right)
-  WeylWord make_dominant(StandardRepr& z) const;
+  WeylWord make_dominant(StandardRepr& z) const; // ensure |z.gamma()| dominant
+
+  // in addition to |make_dominant| ensure a normalised form of the parameter
+  WeylWord normalise(StandardRepr& z) const;
 
   // make integrally dominant, with precomputed integral subsystem
   WeylWord make_dominant(StandardRepr& z,const SubSystem& subsys) const;

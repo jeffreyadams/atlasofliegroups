@@ -618,12 +618,16 @@ is_final: (Param->bool): whether parameter defines a final standard module
   on more compact Cartans by a Hecht-Schmid identity. So is_final(p) is true
   provided no real coroots for which gamma is singular satisfy the parity
   condition. Note: one could still have is_zero(p); this needs a separate test.
-dominant: (Param->Param): make gamma dominant and do singular complex descents
+dominant: (Param->Param): ensure parameter has dominant infinitesimal character
   This brings the parameter p into standard form, in which it will appear when
   p occurs in a ParamPol (which also requires is_final(p) and not is_zero(p)).
+normal: (Param->Param): do 'dominant' and also any singular complex descents
+  This is meant to bring the parameter into a normalized form (parameters p
+  appearing in a ParamPol are always nomalized, and also have is_final(p) and
+  not is_zero(p)).
 operator = : (Param,Param->bool): test equivalence of parameters
-  This is implemented by applying dominant and testing identity of all
-  three components x, lambda (defined modulo (1-theta_x)X^*) and nu.
+  This is implemented by applying normal to both arguments, and then testing
+  identity of all components x, lambda (defined modulo (1-theta_x)X^*) and nu.
 cross: (int,Param->Param): cross action for (Weyl group generator,parameter)
   This first argument indexes (starting at 0) a simple root for the subsystem
   for the given parameter p: integrality_datum(infinitesimal_character(p))

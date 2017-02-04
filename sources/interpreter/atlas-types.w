@@ -3759,6 +3759,14 @@ void parameter_dominant_wrapper(expression_base::level l)
   }
 }
 
+void parameter_normal_wrapper(expression_base::level l)
+{ own_module_parameter p = get_own<module_parameter_value>();
+  if (l!=expression_base::no_value)
+  {@; p->rc().normalise(p->val);
+    push_value(p);
+  }
+}
+
 void parameter_equivalent_wrapper(expression_base::level l)
 { shared_module_parameter q = get<module_parameter_value>();
   shared_module_parameter p = get<module_parameter_value>();
@@ -3769,7 +3777,7 @@ void parameter_equivalent_wrapper(expression_base::level l)
   { RootNbr witness;
     StandardRepr z0=p->val, z1=q->val; // copy
     if (p->rc().is_standard(z0,witness) and q->rc().is_standard(z1,witness))
-  @/{@; p->rc().make_dominant(z0); q->rc().make_dominant(z1); }
+  @/{@; p->rc().normalise(z0); q->rc().normalise(z1); }
     push_value(whether(z0==z1));
   }
 }
@@ -4314,6 +4322,7 @@ install_function(is_standard_wrapper,@|"is_standard" ,"(Param->bool)");
 install_function(is_zero_wrapper,@|"is_zero" ,"(Param->bool)");
 install_function(is_final_wrapper,@|"is_final" ,"(Param->bool)");
 install_function(parameter_dominant_wrapper,@|"dominant" ,"(Param->Param)");
+install_function(parameter_normal_wrapper,@|"normal" ,"(Param->Param)");
 install_function(parameter_equivalent_wrapper,@|"=" ,"(Param,Param->bool)");
 install_function(parameter_cross_wrapper,@|"cross" ,"(int,Param->Param)");
 install_function(parameter_Cayley_wrapper,@|"Cayley" ,"(int,Param->Param)");
@@ -4631,12 +4640,12 @@ void virtual_module_size_wrapper(expression_base::level l)
 }
 
 
-@ We allow implicitly converting a parameter to a virtual module. This
-invokes conversion by the |Rep_context::expand_final| method to \emph{final}
+@ We allow implicitly converting a parameter to a virtual module. This invokes
+conversion by the |Rep_context::expand_final| method to \emph{final}
 parameters (there can be zero, one, or more of them), to initiate the
 invariant that only standard nonzero final parameters with dominant $\gamma$
-can be stored in a |virtual_module_value| (the method calls |make_dominant|
-internally, so we don't have to do that here).
+can be stored in a |virtual_module_value| (the |expand_final| method calls
+|normalise| internally, so we don't have to do that here).
 
 @< Local function def...@>=
 void param_to_poly()
