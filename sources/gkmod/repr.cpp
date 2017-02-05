@@ -342,48 +342,6 @@ WeylWord Rep_context::make_dominant(StandardRepr& z) const
   return result;
 } // |make_dominant|
 
-WeylWord Rep_context::normalise(StandardRepr& z) const
-{
-  make_dominant(z);
-  const RootDatum& rd = rootDatum();
-
-  RankFlags simple_singulars;
-  { const auto& numer = z.infinitesimal_char.numerator();
-    for (weyl::Generator s=0; s<rd.semisimpleRank(); ++s)
-      simple_singulars.set(s,rd.simpleCoroot(s).dot(numer)==0);
-  }
-
-  { // move to canonical involution for singular subsystem first;
-    TwistedInvolution tw = kgb().involution(z.x_part);
-    WeylWord ww = innerClass().canonicalize(tw,simple_singulars);
-    W_cross_act(z,ww); // move to that involution
-    assert(tw == kgb().involution(z.x_part));
-  }
-
-  // the following are non-|const|, and modified in the loop below
-  Weight lr = lambda_rho(z);
-  KGBElt& x = z.x_part;
-
-  WeylWord result;
-  result.reserve(kgb().length(x)); // enough to accommodate the WeylWord
-
-  { RankFlags::iterator it;
-    do
-      for (it=simple_singulars.begin(); it(); ++it)
-	if (kgb().isComplexDescent(*it,x))
-	{
-	  weyl::Generator s=*it;
-	  result.push_back(s);
-	  rd.simple_reflect(s,lr,1); // pivot |lr| around $-\rho$
-	  x = kgb().cross(s,x);
-	  break; // out of the loop |for(s)|
-	} // |if(v<0)|
-    while (it()); // wait until inner loop runs to completion
-  }
-  z.y_bits=innerClass().involution_table().y_pack(kgb().inv_nr(x),lr);
-  return result;
-} // |normalise|
-
 // a method used to ensure |z| is integrally dominant, used by |any_Cayley|
 WeylWord
 Rep_context::make_dominant(StandardRepr& z,const SubSystem& subsys) const
@@ -430,6 +388,84 @@ Rep_context::make_dominant(StandardRepr& z,const SubSystem& subsys) const
   z.y_bits=i_tab.y_pack(i_x,lambda2_shifted/2);
   return result;
 } // |make_dominant| (integrally)
+
+// an auxiliar that moves to a fixed conjugate under the |
+void Rep_context::to_singular_canonical(RankFlags gens, StandardRepr& z) const
+{
+  TwistedInvolution tw = kgb().involution(z.x_part);
+  WeylWord ww = innerClass().canonicalize(tw,gens);
+  W_cross_act(z,ww); // move to that involution
+  assert(tw == kgb().involution(z.x_part));
+}
+
+WeylWord Rep_context::normalise(StandardRepr& z) const
+{
+  make_dominant(z);
+  const RootDatum& rd = rootDatum();
+
+  RankFlags simple_singulars;
+  { const auto& numer = z.infinitesimal_char.numerator();
+    for (weyl::Generator s=0; s<rd.semisimpleRank(); ++s)
+      simple_singulars.set(s,rd.simpleCoroot(s).dot(numer)==0);
+  }
+
+  to_singular_canonical(simple_singulars,z);
+
+  // the following are non-|const|, and modified in the loop below
+  Weight lr = lambda_rho(z);
+  KGBElt& x = z.x_part;
+
+  WeylWord result;
+  result.reserve(kgb().length(x)); // enough to accommodate the WeylWord
+
+  { RankFlags::iterator it;
+    do
+      for (it=simple_singulars.begin(); it(); ++it)
+	if (kgb().isComplexDescent(*it,x))
+	{
+	  weyl::Generator s=*it;
+	  result.push_back(s);
+	  rd.simple_reflect(s,lr,1); // pivot |lr| around $-\rho$
+	  x = kgb().cross(s,x);
+	  break; // out of the loop |for(s)|
+	} // |if(v<0)|
+    while (it()); // wait until inner loop runs to completion
+  }
+  z.y_bits=innerClass().involution_table().y_pack(kgb().inv_nr(x),lr);
+  return result;
+} // |normalise|
+
+// equivalence is equality after |make_dominant| and |to_singular_canonical|
+bool Rep_context::equivalent(StandardRepr z0, StandardRepr z1) const
+{
+  if (kgb().Cartan_class(z0.x_part)!=kgb().Cartan_class(z1.x_part))
+    return false; // this non-equivalence can be seen before |make_dominant|
+
+  { // preempt failing of |make_dominant| on non standard parameters
+    RootNbr witness;
+    if (not (is_standard(z0,witness) and is_standard(z1,witness)))
+      return z0==z1; // strict equality unless both are parameters standard
+  }
+
+  make_dominant(z0);
+  make_dominant(z1);
+
+  if (z0.infinitesimal_char!=z1.infinitesimal_char)
+    return false;
+
+  const RootDatum& rd = rootDatum();
+
+  RankFlags simple_singulars;
+  { const auto& numer = z0.infinitesimal_char.numerator();
+    for (weyl::Generator s=0; s<rd.semisimpleRank(); ++s)
+      simple_singulars.set(s,rd.simpleCoroot(s).dot(numer)==0);
+  }
+
+  to_singular_canonical(simple_singulars,z0);
+  to_singular_canonical(simple_singulars,z0);
+
+  return z0==z1;
+}
 
 RationalList Rep_context::reducibility_points(const StandardRepr& z) const
 {

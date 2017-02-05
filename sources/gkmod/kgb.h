@@ -174,6 +174,8 @@ class KGB_base
       and not (status(s,x) == gradings::Status::ImaginaryCompact);
     }
 
+  CartanNbr Cartan_class(KGBElt x) const;
+
   size_t weylLength(KGBElt x) const // needed in sorting, in case |length| ties
     { return weylGroup().length(involution(x).w()); }
 
@@ -187,7 +189,6 @@ class KGB_base
   size_t packet_size(const TwistedInvolution&) const;
 
 // virtual methods
-  virtual CartanNbr Cartan_class(KGBElt x) const; // default, uses |G| tables
   // print derived-class specific per-element information
   virtual std::ostream& print(std::ostream& strm, KGBElt x) const
   { return strm; }

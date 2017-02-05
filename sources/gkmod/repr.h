@@ -156,11 +156,13 @@ class Rep_context
 
   WeylWord make_dominant(StandardRepr& z) const; // ensure |z.gamma()| dominant
 
+  // make integrally dominant, with precomputed integral subsystem
+  WeylWord make_dominant(StandardRepr& z,const SubSystem& subsys) const;
+
   // in addition to |make_dominant| ensure a normalised form of the parameter
   WeylWord normalise(StandardRepr& z) const;
 
-  // make integrally dominant, with precomputed integral subsystem
-  WeylWord make_dominant(StandardRepr& z,const SubSystem& subsys) const;
+  bool equivalent(StandardRepr z0, StandardRepr z1) const; // by value
 
   RationalList reducibility_points(const StandardRepr& z) const; // normalised
 
@@ -191,6 +193,8 @@ class Rep_context
   std::ostream& print (std::ostream&,const StandardRepr& z) const;
   std::ostream& print (std::ostream&,const poly& P) const;
 
+ private:
+  void to_singular_canonical(RankFlags gens, StandardRepr& z) const;
 }; // |Rep_context|
 
 typedef Rep_context::poly SR_poly;
