@@ -5,7 +5,7 @@
 
 #include "polynomials.h"
 #include "hashtable.h"
-#include "atlas_types.h"
+#include "../Atlas.h"
 #include "matrix.h"
 #include "basic_io.h"
 #include "error.h"

@@ -7,7 +7,7 @@
 #include <cassert>
 #include <stdexcept>
 
-#include "atlas_types.h"
+#include "../Atlas.h"
 #include "filekl_in.h"
 #include "basic_io.h"
 #include "tally.h"
