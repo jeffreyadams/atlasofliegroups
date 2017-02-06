@@ -10,11 +10,7 @@ set use_equal_rank_mu=true  { false: force use of twisted mu (for testing) }
   write c-invariant form on standard module in terms of standardrepks,
   as a ParamPol
 }
-set c_form_std (Param p) = ParamPol:
-  let G=real_form(p) in
-  if G.is_equal_rank then full_deform(p) else twisted_full_deform(p) fi
-
-{ with explicit always call |full_deform@(Param,mat)| }
+set c_form_std (Param p) = ParamPol:full_deform(p) {correct in all cases}
 set twisted_c_form_std = (Param->ParamPol): twisted_full_deform@Param
 
 {    c_form on irreducible representations   }

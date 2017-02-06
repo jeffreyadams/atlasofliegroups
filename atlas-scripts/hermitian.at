@@ -1,3 +1,5 @@
+{herm.at uses built-in functions and is faster}
+
 <basic.at
 <ext_deform.at { for full_deform@(Param,mat) }
 <induction.at {for dim_u_cap_p}
@@ -81,6 +83,7 @@ set c_form_irreducible_long (Param p) =
 
 { basic version of c_form_irreducible_twisted, for any delta }
 set c_form_irreducible_twisted (Param p,mat delta) = ParamPol:
+prints("Warning: using version from hermitian.at, slower than using herm.at");
 assert(is_fixed(delta,p),"parameter is not fixed by involution");
 ( let G=p.real_form, ori_nr_p = orientation_nr(p)
   then fixed_terms = null_module(G), unfixed_terms = null_module(G)
@@ -123,6 +126,7 @@ set c_form_irreducible_delta = (Param->ParamPol):
 
 { more information about c_form_irreducible_delta }
 set c_form_irreducible_twisted_long (Param p,mat delta) =
+prints("Warning: using version from hermitian.at, slower than using herm.at");
     (ParamPol,[(Param,Split,ParamPol)],ParamPol):
 assert(is_fixed(delta,p),"parameter is not fixed by involution");
 ( let G=p.real_form
