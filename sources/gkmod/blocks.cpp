@@ -88,8 +88,8 @@
       (   s^x   ,   y     y' )     Real Type II (twice)     s^z_1  s^z_2
 
   When $\alpha,\alpha^\vee$ are the root and coroot for |s|, the involution of
-  $X^*$ at the more compact Cartan is $\theta$ and at the more split Cartan
-  $\theta'=s_\alpha*\theta$, then one has equivalences
+  $X^*$ at the more compact Cartan (downstairs) is $\theta$ and at the more
+  split Cartan (upstairs) $\theta'=s_\alpha*\theta$, then one has equivalences
 
     \alpha^\vee\notin X_*(1+\theta) \iff \alpha\in(1-\theta')X^* \iff type 1
 

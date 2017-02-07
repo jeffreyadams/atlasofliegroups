@@ -1181,31 +1181,22 @@ DescValue star (const param& E,	const ext_gen& p,
 	assert(E.ctxt.delta()*rho_r_shift==rho_r_shift); // $ww\in W^\delta$
 	assert(E.t.dot(alpha)==0); // follows from $\delta*\alpha=\alpha$
 
-	auto new_lambda_rho = E.lambda_rho;
-	RootNbr first; // maybe a root with |(1-delta)*rd.root(first)==alpha|
-	if (rd.is_simple_root(alpha_simple))
-	  first = -1; // invalid value, not used in this case
-	else
-	{
-	  --tau_coef; // the parity change and decrease are both relevant
-	  weyl::Generator s = // first switched root index
-	    rd.find_descent(alpha_simple);
-	  first = // corresponding root summand, conjugated back
-	    rd.permuted_root(rd.simpleRootNbr(s),ww);
-	  assert(alpha == (E.ctxt.delta()+1)*rd.root(first));
-	  new_lambda_rho += rd.root(first);
-	}
-
 	// now separate cases; based on type 1 or 2 first
 	if (matreduc::has_solution(th_1,alpha))
 	{ // type 1, so extended type is 1i1
 	  result = one_imaginary_single;
 
+	  /* if imaginary integrally simple |alpha| were sum of two simple
+	     roots these cannot be imaginary (hence integral), so they must be
+	     interchanged by $\theta$, but then we are in type 2
+	   */
+	  assert(rd.is_simple_root(alpha_simple));
+
 	  Weight diff = // called $-\sigma$ in table 2 of [Ptr] (NOTE MINUS)
 	      matreduc::find_solution(th_1,alpha); // solutions are equivalent
 
 	  param F(E.ctxt,new_tw,
-		  new_lambda_rho + rho_r_shift,
+		  E.lambda_rho + rho_r_shift,
 		  E0.tau+diff*tau_coef,
 		  E.l+alpha_v*(tf_alpha/2), E.t);
 
@@ -1220,6 +1211,22 @@ DescValue star (const param& E,	const ext_gen& p,
 	else
 	{ // imaginary type 2; now we need to distinguish 1i2f and 1i2s
 
+	  auto new_lambda_rho = E.lambda_rho; auto new_tau = E.tau;
+	  RootNbr first; // maybe a root with |(1-delta)*rd.root(first)==alpha|
+	  if (rd.is_simple_root(alpha_simple))
+	    first = -1; // invalid value, not used in this case
+	  else
+	  {
+	    --tau_coef; // the parity change and decrease are both relevant
+	    weyl::Generator s = // first switched root index
+	      rd.find_descent(alpha_simple);
+	    first = // corresponding root summand, conjugated back
+	      rd.permuted_root(rd.simpleRootNbr(s),ww);
+	    assert(alpha == (E.ctxt.delta()+1)*rd.root(first));
+	    new_lambda_rho += rd.root(first);
+	    new_tau -= rd.root(first);
+	  }
+
 	  if (tau_coef%2!=0) // was set up so that this means: switched
 	  { // no spurious $\tau'$ since $\<\alpha^\vee,(X^*)^\theta>=2\Z$:
 	    assert(not matreduc::has_solution
@@ -1228,8 +1235,6 @@ DescValue star (const param& E,	const ext_gen& p,
 	  }
 	  result = one_imaginary_pair_fixed;  // what remains is case 1i2f
 
-	  auto new_tau = rd.is_simple_root(alpha_simple) ? E.tau
-	    : E.tau - rd.root(first);
 
 	  param F0(E.ctxt,new_tw,
 		   new_lambda_rho + rho_r_shift, new_tau - alpha*(tau_coef/2),
@@ -1260,58 +1265,30 @@ DescValue star (const param& E,	const ext_gen& p,
 	bool flipped = E.ctxt.shift_flip(theta,theta_p,S);
 	assert(E.ctxt.delta()*rho_r_shift==rho_r_shift); // as $ww\in W^\delta$
 
-	RootNbr first = // maybe one of |alpha==first+second|
-	  rd.is_simple_root(alpha_simple) ? -1 // unused
-	  : rd.permuted_root(rd.simpleRootNbr(rd.find_descent(alpha_simple)),
-			     ww);
-
-	// test parity, taking into account modifications that will be applied
-	bool shift_correct = // whether |first| is defined and real at |theta|
-	  not rd.is_simple_root(alpha_simple) and
-	  i_tab.root_involution(theta,first)==rd.rootMinus(first);
-	const int level = level_a(E,rho_r_shift,n_alpha) +
-	   (shift_correct ? 1 : 0 ); // add 1 if |first| is defined and real
-
-	if (level%2!=0) // nonparity
-	   return one_real_nonparity; // case 1rn, no link added here
-
-	const WeightInvolution& th_1 = i_tab.matrix(E.tw)-1; // upstairs
-	bool type1 = matreduc::has_solution(th_1,alpha);
-
-	Weight new_tau=E.tau; // maybe modified below
-	if (not rd.is_simple_root(alpha_simple))
-	{ // adapt to integrality based change of lambda
-	  assert(alpha == (E.ctxt.delta()+1)*rd.root(first));
-	  if (shift_correct)
-	  {
-	    rho_r_shift += rd.root(first); // non delta-fixed contribution
-
-	    // now we must add $d$ to $\tau$ with $(1-\theta')d=(1-\delta)*a0$
-	    // where |a0=rd.root(first)|
-	    // since $\theta'*a0 = a1 = \delta*a_0$, we can take $d=a0$
-	    new_tau += rd.root(first);
-	    assert((i_tab.matrix(new_tw)-1)*rd.root(first) ==
-		   (E.ctxt.delta()      -1)*rd.root(first)); // (-1's redundant)
-	  }
-	}
-
-	const Weight new_lambda_rho =
-	  E.lambda_rho - rho_r_shift + alpha*(level/2);
-	assert((E.ctxt.gamma()-new_lambda_rho).dot(alpha_v)
-	       ==rd.colevel(n_alpha)); // check that |level_a| did its work
-
 	const int t_alpha = E.t.dot(alpha);
-	if (type1)
-	{ // now distinguish 1r1f and 1r1s
-	  if (t_alpha%2!=0) // no effect of |alpha_simple|, unlike 1i2 cases
+	if (matreduc::has_solution(i_tab.matrix(E.tw)-1,alpha)) // then type 1
+	{ // length 1 type 1 real case
+	  // for the same reason as |alpha| must be simple in case 1i1, we have:
+	  assert(rd.is_simple_root(alpha_simple));
+	  const int level = level_a(E,rho_r_shift,n_alpha);
+	  if (level%2!=0) // nonparity
+	    return one_real_nonparity; // case 1rn, no link added here
+
+	  // now distinguish 1r1f and 1r1s
+	  if (t_alpha%2!=0)
 	    return one_real_pair_switched; // case 1r1s
 	  result = one_real_pair_fixed; // what remains is case 1r1f
+
+	  const Weight new_lambda_rho =
+	    E.lambda_rho - rho_r_shift + alpha*(level/2);
+	  assert((E.ctxt.gamma()-new_lambda_rho).dot(alpha_v)
+		 ==rd.colevel(n_alpha)); // check that |level_a| did its work
 
 	  E0.t -= alpha_v*(t_alpha/2);
 	  assert(same_sign(E,E0)); // since only |t| changes
 
-	  param F0(E.ctxt,new_tw, new_lambda_rho, new_tau, E.l          , E0.t);
-	  param F1(E.ctxt,new_tw, new_lambda_rho, new_tau, E.l + alpha_v, E0.t);
+	  param F0(E.ctxt,new_tw, new_lambda_rho, E.tau, E.l          , E0.t);
+	  param F1(E.ctxt,new_tw, new_lambda_rho, E.tau, E.l + alpha_v, E0.t);
 
 	  z_align(E0,F0,flipped);
 	  z_align(E0,F1,flipped);
@@ -1319,10 +1296,42 @@ DescValue star (const param& E,	const ext_gen& p,
 	  links.push_back(std::move(F1)); // second Cayley
 
 	} // end of 1r1f case
-	else
-	{ // type 1r2
-	  result = one_real_single;
-	  Coweight diff = // called $s$ in table 2 of [Ptr]
+	else // type 2
+	{ // length 1 type 2 real
+
+	  int level = level_a(E,rho_r_shift,n_alpha);
+
+	  Weight new_tau=E.tau; // maybe modified below
+	  if (not rd.is_simple_root(alpha_simple))
+	  { // adapt to integrality based change of lambda
+	    RootNbr first = // one of summand roots in |alpha==first+second|
+	      rd.permuted_root(rd.simpleRootNbr(rd.find_descent(alpha_simple)),
+			       ww);
+	    assert(alpha == (E.ctxt.delta()+1)*rd.root(first));
+            assert(i_tab.real_roots(theta).isMember(first));
+
+	    rho_r_shift += rd.root(first); // non delta-fixed contribution
+	    ++level; // the change in |rho_r_shift| augments its $\alpha$-level
+
+	    // now we must add $d$ to $\tau$ with $(1-\theta')d=(1-\delta)*a0$
+	    // where |a0=rd.root(first)|
+	    // since $\theta'*a0 = a1 = \delta*a_0$, we can take $d=a0$
+	    assert((i_tab.matrix(new_tw))*rd.root(first) ==
+		   (E.ctxt.delta()      )*rd.root(first));
+	    new_tau += rd.root(first);
+
+	    flipped = not flipped; // flip the Cayley links in this case
+	  }
+	  if (level%2!=0) // nonparity
+	    return one_real_nonparity; // case 1rn, no link added here
+	  result = one_real_single; // case 1r2
+
+	  const Weight new_lambda_rho =
+	    E.lambda_rho - rho_r_shift + alpha*(level/2);
+	  assert((E.ctxt.gamma()-new_lambda_rho).dot(alpha_v)
+		 ==rd.colevel(n_alpha)); // check that |level_a| did its work
+
+	  const Coweight diff = // called $s$ in table 2 of [Ptr]
 	    matreduc::find_solution(i_tab.matrix(new_tw).transposed()+1,
 				    alpha_v);
 	  E0.t -= diff*t_alpha;
@@ -1334,7 +1343,6 @@ DescValue star (const param& E,	const ext_gen& p,
 
 	  param F(E.ctxt,new_tw, new_lambda_rho, new_tau, E.l, E0.t);
 
-	  flipped = flipped!=shift_correct; // flip both in |shift_correct| case
 
 	  z_align(E0,F,flipped);
 	  z_align(F,E1,flipped);
