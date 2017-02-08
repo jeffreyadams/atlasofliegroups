@@ -23,6 +23,16 @@ set inf_chars_for_L (Param p,Parabolic P)=[ratvec]:
    for v in orb do if is_dominant(rdl,v-rho) then
    list#:=v-rho fi od; list
 
+{. Given an infinitesimal character gamma for G and a theta-stable parabolic P, list  all infinitesimal characters v for L so that v+rho(u) is the infinitesimal
+  character of p. .}
+set inf_chars_for_L (ratvec gamma,Parabolic P)=[ratvec]:
+   let rd=root_datum(real_form(P)) in let L=Levi(P) in let rdl=root_datum(L) in
+   let orb=W_orbit(rd,gamma) in
+   let rho=rho_u(P) in
+   let list=[] in
+   for v in orb do if is_dominant(rdl,v-rho) then
+   list#:=v-rho fi od; list
+
 {. List all one-dimensional unitary characters with given
   infinitesimal character. .}
 set one_dim_params_gamma (ratvec ic, Parabolic P)=[Param]:
@@ -74,6 +84,14 @@ set special_theta_stable_parabolics(RealForm G)=[Parabolic]:
   for P in theta_stable_parabolics(G) do
   if #S(P)!=0 and #S(P)!=semisimple_rank(G) then
   result#:=P fi od; result
+
+{. List all parameters of constituents of weakly fair Aq(lambda) modules with
+  the same infinitesimal character as p. .}
+set all_wf_Aq_with_ic_of(Param p)=[Param]:
+  let list=[] in for P in theta_stable_parabolics(real_form(p)) do
+  let aqs=wf_aqs_param (p,P) in for pair in aqs do let (,q)=pair in
+  list#:=q od od; list
+
 
 {. Determine whether parameter p is that of a (constituent of a)
   unitary weakly fair Aq(lambda) module. .}
@@ -163,3 +181,25 @@ set real_induced_from_one_dim(Param p)=[(Parabolic,Param)]:
    let (pL,q)=pair in if p=q then
    result#:=(P,pL) fi od od fi fi;
    result
+
+{. List of all unitary weakly fair Aq(lambda) modules
+  with infinitesimal character gamma, and induced from P. .}
+set wf_aqs_param_pol (ratvec gamma, Parabolic P)=[(Param,ParamPol)]:
+   let G=real_form(P) in
+   let ics=inf_chars_for_L(gamma,P) in
+   let result=[] in
+   for v in ics do
+    let list=wf_one_dim_params (v,P) in
+     for q in list do let aq=theta_induce_irreducible(q,G) in
+     result#:=(q,aq)
+     od od; result
+
+{. As previous function, except a list of all
+   parameters occurring as constitutents of such modules. .}
+set wf_aqs_param (ratvec gamma, Parabolic P)=[(Param,Param)]:
+   let result=[] in
+   for pair in wf_aqs_param_pol (gamma,P) do let (pL,Q)=pair in
+     let R=%Q in for r in R do let (k,q)=r in
+     if k!=1 then prints("Warning: negative coefficient!") fi;
+     result#:=(pL,q) od od;
+     result
