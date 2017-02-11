@@ -1,4 +1,3 @@
-/*! \file \brief Classes and utilities for manipulating representations */
 /*
   This is repr.h
 
@@ -7,6 +6,7 @@
 
   For license information see the LICENSE file
 */
+// Classes and utilities for manipulating representations
 
 #ifndef REPR_H  /* guard against multiple inclusions */
 #define REPR_H
@@ -151,15 +151,18 @@ class Rep_context
   // action by equivalence of parameters (not the cross action), changing gamma
   void W_act(const WeylWord& w,StandardRepr& z) const;
 
-  // same, but interpreting the Weyl word in a subsystem
-  void W_act(const WeylWord& w,StandardRepr& z,const SubSystem& subsys) const;
+  // act on |z| by right cross-actions by |w| (does not change |z.gamma()|)
+  void W_cross_act(StandardRepr& z,const WeylWord& w) const;
 
-  // prepare for |deform|: make |gamma| dominant, and as theta-stable as can be
-  // return the sequence of Weyl generators that was applied (to the right)
-  WeylWord make_dominant(StandardRepr& z) const;
+  WeylWord make_dominant(StandardRepr& z) const; // ensure |z.gamma()| dominant
 
   // make integrally dominant, with precomputed integral subsystem
   WeylWord make_dominant(StandardRepr& z,const SubSystem& subsys) const;
+
+  // in addition to |make_dominant| ensure a normalised form of the parameter
+  WeylWord normalise(StandardRepr& z) const;
+
+  bool equivalent(StandardRepr z0, StandardRepr z1) const; // by value
 
   RationalList reducibility_points(const StandardRepr& z) const; // normalised
 
@@ -190,6 +193,8 @@ class Rep_context
   std::ostream& print (std::ostream&,const StandardRepr& z) const;
   std::ostream& print (std::ostream&,const poly& P) const;
 
+ private:
+  void to_singular_canonical(RankFlags gens, StandardRepr& z) const;
 }; // |Rep_context|
 
 typedef Rep_context::poly SR_poly;

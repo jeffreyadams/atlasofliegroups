@@ -1,8 +1,3 @@
-/*!
-\file
-\brief Class definition and function declarations for the classes
-StandardRepK and KhatContext.
-*/
 /*
   This is standardrepk.h
 
@@ -11,6 +6,10 @@ StandardRepK and KhatContext.
   part of the Atlas of Lie Groups and Representations version 0.2.4
 
   For license information see the LICENSE file
+*/
+/*
+  Class definition and function declarations for the classes
+  StandardRepK and KhatContext.
 */
 
 #ifndef STANDARDREPK_H  /* guard against multiple inclusions */
@@ -36,6 +35,10 @@ namespace standardrepk {
 
 
 // type |HCParam|: image of a weight of the $\rho$-cover mod $(1-\theta)X^*$
+// |typedef std::pair<Weight,RankFlags> HCParam;|: free part wrt rho, torsion
+
+// |typedef Free_Abelian<StandardRepK> Char;| $\Z$-lin. comb. of |StandardRepK|
+// |typedef Free_Abelian<StandardRepK,Polynomial<int> > q_Char;|
 
 // the following cannot be in ../Atlas.h: they need free_abelian.h
 typedef Char::coef_t CharCoeff;
@@ -74,14 +77,14 @@ template <typename C>
 /******** type definitions **************************************************/
 
 
-/*!
-  \brief Represents the restriction to $K$ of a (coherently) continued
+/*
+  |StandardRepK| represents the restriction to $K$ of a (coherently) continued
   standard Harish-Chandra module.
 
   This is a parameter type like Tits elements; the important operations are
   modifying and comparing values, not storing additional data that facilitate
   methods. For that, auxiliary classes |SRK_context| and |KhatContext|, which
-  has a role similar to |WeylGroup| with respect to |WeylElt|, will be used
+  has a role similar to |WeylGroup| with respect to |WeylElt|, will be used.
 
   For us a standard Harish-Chandra module is attached to
   1) a real Cartan subgroup $H(R)=H(R)_c H(R)_s$, with $H(R)_c = H(R)\cap K$
@@ -134,7 +137,6 @@ template <typename C>
   the integer vector gives the non-torsion part of $(X^*+\rho)/(1-\theta)X^*$
   on a basis of $(1/2)X^*$ held in |KhatContext|, and the bitvector gives the
   torsion part, via a basis also given there.
-
 */
 
 class StandardRepK
@@ -142,20 +144,14 @@ class StandardRepK
 
   friend class SRK_context; // which is like |WeylGroup| is for |WeylElt|
 
-/*!
-  \brief Number of the Cartan to which the HC module is associated.
-*/
+  // Number of the Cartan to which the HC module is associated.
   size_t d_cartan;
 
-// no real form or base grading recorded in elements; they're in |KhatContext|
-/*!
-  \brief Element of the fiber group; left torus part of the strong involution
-*/
+  // no real form or base grading recorded in elements; they're in |KhatContext|
+  // Element of the fiber group; left torus part of the strong involution
   TorusPart d_fiberElt; // a SmallBitVector
 
-/*!
-  \brief Character of the rho cover of H^theta, on basis of $(1/2)X^*$
-*/
+  // Character of the rho cover of H^theta, on basis of $(1/2)X^*$
   HCParam d_lambda;
 
 // constructors, destructors, and swap
@@ -190,7 +186,7 @@ public:
 }; // |class StandardRepK|
 
 
-//! \brief per Cartan class information for handling |StandardRepK| values
+// Per Cartan class information for handling |StandardRepK| values
 struct Cartan_info
 {
   // projection matrix to torsion free part
@@ -323,7 +319,7 @@ class SRK_context
 /*
   The conditions below are defined by
    Standard: $\<\lambda,\alpha\vee>\geq0$ when $\alpha$ positive imaginary
-   Normal: $\<\lambda,\alpha\vee+\theta\alpha\vee>\geq0$ when $\alpha$ simple,
+   Normal: $\<\alpha^\vee(1+\theta),\lambda>\geq0$ when $\alpha$ simple,
      complex, and orthogonal to sums of positive imaginary resp. real roots.
    Zero: $\<\lambda,\alpha\vee>=0$ for some simple-imaginary compact $\alpha$
    Final: $\<\lambda,\alpha\vee>$ odd for all simple-real roots $\alpha$

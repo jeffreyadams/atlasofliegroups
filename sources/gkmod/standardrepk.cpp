@@ -1158,8 +1158,9 @@ qKhatContext::qKhatContext
 /******** accessors *******************************************************/
 
 
-/* map a character to one containing only Normal Standard terms
-   this version ensures the basic |standardize| is recursively called first */
+/* transform a character |chi| to a |combination| of Normal Standard terms
+   this version ensures the basic |standardize| is recursively called first
+*/
 combination KhatContext::standardize(const Char& chi)
 {
   combination result(height_graded);

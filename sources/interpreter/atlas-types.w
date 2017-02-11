@@ -1958,11 +1958,17 @@ Here are our first functions that access a operate on values of type
 construction, and the final one constructs the dual inner class.
 
 @< Local function def...@>=
-void inner_class_equality_wrapper(expression_base::level l)
+void inner_class_eq_wrapper(expression_base::level l)
 { shared_inner_class G = get<inner_class_value>();
   shared_inner_class H = get<inner_class_value>();
   if (l!=expression_base::no_value)
     push_value(whether(&G->val==&H->val));
+}
+void inner_class_neq_wrapper(expression_base::level l)
+{ shared_inner_class G = get<inner_class_value>();
+  shared_inner_class H = get<inner_class_value>();
+  if (l!=expression_base::no_value)
+    push_value(whether(&G->val!=&H->val));
 }
 @)
 void distinguished_involution_wrapper(expression_base::level l)
@@ -2111,8 +2117,8 @@ install_function(set_type_wrapper,@|"inner_class"
                 ,"(LieType,[ratvec],string->InnerClass)");
 install_function(set_inner_class_wrapper,@|"inner_class"
                 ,"(RootDatum,string->InnerClass)");
-install_function(inner_class_equality_wrapper,@|"="
-                ,"(InnerClass,InnerClass->bool)");
+install_function(inner_class_eq_wrapper,@|"=","(InnerClass,InnerClass->bool)");
+install_function(inner_class_neq_wrapper,@|"!=","(InnerClass,InnerClass->bool)");
 install_function(distinguished_involution_wrapper,@|"distinguished_involution"
                 ,"(InnerClass->mat)");
 install_function(root_datum_of_inner_class_wrapper,@|"root_datum"
@@ -2377,12 +2383,20 @@ inline bool operator!=
   (const RealReductiveGroup& x, const RealReductiveGroup& y)
 {@; return not(x==y); }
 @)
-void real_form_equals_wrapper(expression_base::level l)
+void real_form_eq_wrapper(expression_base::level l)
 { shared_real_form y = get<real_form_value>();
   shared_real_form x = get<real_form_value>();
   if (l==expression_base::no_value)
     return;
   push_value(whether(x->val==y->val));
+}
+
+void real_form_neq_wrapper(expression_base::level l)
+{ shared_real_form y = get<real_form_value>();
+  shared_real_form x = get<real_form_value>();
+  if (l==expression_base::no_value)
+    return;
+  push_value(whether(x->val!=y->val));
 }
 
 @*2 Dual real forms.
@@ -2545,7 +2559,8 @@ install_function(KGB_size_wrapper,@|"KGB_size","(RealForm->int)");
 install_function(base_grading_vector_wrapper
                 ,@|"base_grading_vector","(RealForm->ratvec)");
 install_function(Cartan_order_matrix_wrapper,@|"Cartan_order","(RealForm->mat)");
-install_function(real_form_equals_wrapper,"=","(RealForm,RealForm->bool)");
+install_function(real_form_eq_wrapper,"=","(RealForm,RealForm->bool)");
+install_function(real_form_neq_wrapper,"!=","(RealForm,RealForm->bool)");
 install_function(dual_real_form_wrapper,@|"dual_real_form"
 				       ,"(InnerClass,int->RealForm)");
 install_function(dual_quasisplit_form_wrapper,@|"dual_quasisplit_form"
@@ -3269,12 +3284,20 @@ objects for identity, and real form numbers for equality. This distinction is
 important to make synthesised real forms first class citizens.
 
 @< Local function def...@>=
-void KGB_equals_wrapper(expression_base::level l)
+void KGB_eq_wrapper(expression_base::level l)
 { shared_KGB_elt y = get<KGB_elt_value>();
   shared_KGB_elt x = get<KGB_elt_value>();
   if (l==expression_base::no_value)
     return;
   push_value(whether(x->rf->val==y->rf->val and x->val==y->val));
+}
+
+void KGB_neq_wrapper(expression_base::level l)
+{ shared_KGB_elt y = get<KGB_elt_value>();
+  shared_KGB_elt x = get<KGB_elt_value>();
+  if (l==expression_base::no_value)
+    return;
+  push_value(whether(x->rf->val!=y->rf->val or x->val!=y->val));
 }
 
 @ Finally we install everything related to $K\backslash G/B$ elements.
@@ -3293,7 +3316,8 @@ install_function(KGB_involution_wrapper,@|"involution","(KGBElt->mat)");
 install_function(KGB_length_wrapper,@|"length","(KGBElt->int)");
 install_function(torus_bits_wrapper,@|"torus_bits","(KGBElt->vec)");
 install_function(torus_factor_wrapper,@|"torus_factor","(KGBElt->ratvec)");
-install_function(KGB_equals_wrapper,@|"=","(KGBElt,KGBElt->bool)");
+install_function(KGB_eq_wrapper,@|"=","(KGBElt,KGBElt->bool)");
+install_function(KGB_neq_wrapper,@|"!=","(KGBElt,KGBElt->bool)");
 
 
 @*1 Blocks associated to a real form and a dual real form.
@@ -3759,6 +3783,27 @@ void parameter_dominant_wrapper(expression_base::level l)
   }
 }
 
+void parameter_normal_wrapper(expression_base::level l)
+{ own_module_parameter p = get_own<module_parameter_value>();
+  if (l!=expression_base::no_value)
+  {@; p->rc().normalise(p->val);
+    push_value(p);
+  }
+}
+@)
+void parameter_eq_wrapper(expression_base::level l)
+{ shared_module_parameter q = get<module_parameter_value>();
+  shared_module_parameter p = get<module_parameter_value>();
+  if (l!=expression_base::no_value)
+    push_value(whether(p->rf->val==q->rf->val and p->val==q->val));
+}
+void parameter_neq_wrapper(expression_base::level l)
+{ shared_module_parameter q = get<module_parameter_value>();
+  shared_module_parameter p = get<module_parameter_value>();
+  if (l!=expression_base::no_value)
+    push_value(whether(p->rf->val!=q->rf->val or p->val!=q->val));
+}
+
 void parameter_equivalent_wrapper(expression_base::level l)
 { shared_module_parameter q = get<module_parameter_value>();
   shared_module_parameter p = get<module_parameter_value>();
@@ -3766,12 +3811,7 @@ void parameter_equivalent_wrapper(expression_base::level l)
     throw runtime_error @|
       ("Real form mismatch when testing equivalence");
   if (l!=expression_base::no_value)
-  { RootNbr witness;
-    StandardRepr z0=p->val, z1=q->val; // copy
-    if (p->rc().is_standard(z0,witness) and q->rc().is_standard(z1,witness))
-  @/{@; p->rc().make_dominant(z0); q->rc().make_dominant(z1); }
-    push_value(whether(z0==z1));
-  }
+    push_value(whether(p->rc().equivalent(p->val,q->val)));
 }
 
 @ While parameters can be used to compute blocks of (other) parameters, it can
@@ -4314,7 +4354,11 @@ install_function(is_standard_wrapper,@|"is_standard" ,"(Param->bool)");
 install_function(is_zero_wrapper,@|"is_zero" ,"(Param->bool)");
 install_function(is_final_wrapper,@|"is_final" ,"(Param->bool)");
 install_function(parameter_dominant_wrapper,@|"dominant" ,"(Param->Param)");
-install_function(parameter_equivalent_wrapper,@|"=" ,"(Param,Param->bool)");
+install_function(parameter_normal_wrapper,@|"normal" ,"(Param->Param)");
+install_function(parameter_eq_wrapper,@|"=", "(Param,Param->bool)");
+install_function(parameter_neq_wrapper,@|"!=", "(Param,Param->bool)");
+install_function(parameter_equivalent_wrapper,@|"equivalent"
+                ,"(Param,Param->bool)");
 install_function(parameter_cross_wrapper,@|"cross" ,"(int,Param->Param)");
 install_function(parameter_Cayley_wrapper,@|"Cayley" ,"(int,Param->Param)");
 install_function(parameter_inv_Cayley_wrapper,@|"inv_Cayley"
@@ -4631,12 +4675,12 @@ void virtual_module_size_wrapper(expression_base::level l)
 }
 
 
-@ We allow implicitly converting a parameter to a virtual module. This
-invokes conversion by the |Rep_context::expand_final| method to \emph{final}
+@ We allow implicitly converting a parameter to a virtual module. This invokes
+conversion by the |Rep_context::expand_final| method to \emph{final}
 parameters (there can be zero, one, or more of them), to initiate the
 invariant that only standard nonzero final parameters with dominant $\gamma$
-can be stored in a |virtual_module_value| (the method calls |make_dominant|
-internally, so we don't have to do that here).
+can be stored in a |virtual_module_value| (the |expand_final| method calls
+|normalise| internally, so we don't have to do that here).
 
 @< Local function def...@>=
 void param_to_poly()

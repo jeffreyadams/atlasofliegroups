@@ -357,10 +357,10 @@ inner_class: (Lie_type,[ratvec],string->InnerClass): inner class as in Atlas
     ; rd=root_datum(lt,basis), inv=based_involution(lt,basis,ic_string)
     in inner_class(rd,inv).
 
-operator = : (InnerClass,InnerClass->bool): identity of inner classes
-  This holds only when both arguments refer to the same inner class creation,
-  in other words it will recognize ic=inner_class(real_form(ic,0)) as true,
-  but any freshly built inner class tests unequal to anything preexisting
+operators =, != : (InnerClass,InnerClass->bool): (non)identity of inner classes
+  Equality holds only when both arguments refer to the same inner class
+  creation, in other words it will recognize ic=inner_class(real_form(ic,0)) as
+  true, but any freshly built inner class tests unequal to anything preexisting
 distinguished_involution: (InnerClass->mat): involution of the inner class.
   Extract the distinguished involution of X^* that defines the inner class
 dual: (InnerClass->InnerClass): dual inner class for dual complex group
@@ -409,8 +409,9 @@ count_Cartans: (RealForm->int): number of Cartan classes for this real form
   The Cartan classes are actually constructed, and remembered, by this command
   whence its first execution for some real form may take some time
 
-=: (RealForm,RealForm->bool): equality of real forms
-  It means they belong to an identical inner class, and have same form number
+operators =, !=: (RealForm,RealForm->bool): (in)equality of real forms
+  It means they belong to an identical inner class (not two inner classes
+  created separately from identical argumnets), and have same form number
 
 KGB_size: (RealForm->int): size of the set K\G/B for this real form
 base_grading_vector: (RealForm->ratvec): Offset implicit in torus_bits values
@@ -580,7 +581,9 @@ KGB_elt: (RealForm,mat,ratvec): KGB element defined by rational coweight
   to v modulo the image of ^M+1 (i.e., M+1 applied on right), which x is then
   returned by this function (if no such x is found, an error is signaled).
 
-operator = : (KGBElt,KGBElt): equality of elements of a same KGB set
+operators =, != : (KGBElt,KGBElt): equality of elements of a same KGB set
+  Equality of KGB elements implies equality of their real forms, and thereby
+  the fact that they have identical (not created separately) inner classes
 
 block: (RealForm,RealForm->Block): construct traditional atlas block
 %: (Block->RealForm,RealForm): decompose block, inverse of 'block'
@@ -618,12 +621,19 @@ is_final: (Param->bool): whether parameter defines a final standard module
   on more compact Cartans by a Hecht-Schmid identity. So is_final(p) is true
   provided no real coroots for which gamma is singular satisfy the parity
   condition. Note: one could still have is_zero(p); this needs a separate test.
-dominant: (Param->Param): make gamma dominant and do singular complex descents
-  This brings the parameter p into standard form, in which it will appear when
-  p occurs in a ParamPol (which also requires is_final(p) and not is_zero(p)).
-operator = : (Param,Param->bool): test equivalence of parameters
-  This is implemented by applying dominant and testing identity of all
-  three components x, lambda (defined modulo (1-theta_x)X^*) and nu.
+equivalent : (Param,Param->bool): test equivalence of parameters
+  Equivalence allows the infinitesimal character (representative) of any
+  standard parameter to be made dominant, and among such parameters is defined
+  as reachability of one from the other using singular complex cross actions.
+  If either parameter fails to be standard, this reverts to strict equality.
+dominant: (Param->Param): ensure parameter has dominant infinitesimal character
+  This gives an equivalent form of the parameter in which the infinitesimal
+  character has been made dominant (it may not be unique for this property)
+normal: (Param->Param): bring parameter to a canonical form under equivalence
+  This form has dominant infinitesimal character and no singular complex
+  descents; there may be more than one such form, of which a preferred one is
+  chosen (terms in a ParamPol are always normalized, and moreover have
+  is_final(p) and not is_zero(p); in this case the form described is unique).
 cross: (int,Param->Param): cross action for (Weyl group generator,parameter)
   This first argument indexes (starting at 0) a simple root for the subsystem
   for the given parameter p: integrality_datum(infinitesimal_character(p))

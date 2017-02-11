@@ -35,14 +35,8 @@ namespace innerclass {
 /******** function declarations **********************************************/
 
 
-WeylWord canonicalize // return value is conjugator, built left-to-right
-  (TwistedInvolution& sigma,
-   const RootDatum& rd,
-   const TwistedWeylGroup& W,
-   RankFlags gens);
-
-/* this function should NOT be made into a method, suppressing the |rs| and |W|
-   parameters, as these can be be dual to those in the |InnerClass|!
+/* the next function should NOT be made into a method, suppressing the |rs|
+   and |W| parameters, as these can be be dual to those in the |InnerClass|!
 */
 void Cayley_and_cross_part(RootNbrSet& Cayley,
 			   WeylWord& cross,

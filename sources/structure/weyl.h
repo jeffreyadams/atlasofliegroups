@@ -1,7 +1,3 @@
-/*!
-\file
-\brief Class definitions and function declarations for WeylGroup.
-*/
 /*
   This is weyl.h
 
@@ -10,6 +6,7 @@
 
   For license information see the LICENSE file
 */
+// Class definitions and function declarations for WeylGroup.
 
 #ifndef WEYL_H  /* guard against multiple inclusions */
 #define WEYL_H
@@ -76,37 +73,33 @@ Twist make_twist(const RootDatum& rd,
 
 /******** main class definitions *******************************************/
 
-  /*!
-\brief Element of a Weyl group.
+/*
+  Representation of an individual element of a Weyl group.
 
-The representation is described in detail in the description of the
-class WeylGroup.  An array of RANK_MAX unsigned char, the ith
-representing a shortest length coset representative of a parabolic
-subquotient W_{i-1}\\W_i.
-  */
-class WeylElt // a.k.a. |TwistedInvolution|
+  The representation is described in detail in the description of the
+  class WeylGroup.  An array of RANK_MAX unsigned char, the ith
+  representing a shortest length coset representative of a parabolic
+  subquotient W_{i-1}\\W_i.
+
+  The class |WeylElt| is also known under the typedef name |TwistedInvolution|
+*/
+class WeylElt
 {
-
   friend class WeylGroup; // so we can shield implementation from all others
 
 public:
-  /*!
-\brief Represents a minimal length coset representative for one of the
-  parabolic subquotients W_{i-1}\\W_i.
-  */
+  // Numbering of minimal length coset representative in some $W_{i-1}\\W_i$.
   typedef unsigned char EltPiece;
 
  private:
 
-  /*!
+/*
+  A Weyl group element represented as a product of shortest length coset
+  representatives for parabolic subquotients $W_{i-1}\\W_i$.
 
-\brief Represents factorization of Weyl group element w as a product
-of shortest length coset representatives for parabolic subquotients
-W_{i-1}\\W_i.
-
-Entry \#i-1 is an unsigned char parametrizing the ith coset
-representative w_i for an element of W_{i-1}\\W_i.  Then w =
-w_1.w_2...w_n.
+  Entry number $i-1$ is an unsigned char parametrizing the $i$-th coset
+  representative $w_i$ for an element of $W_{i-1}\\W_i$.
+  Then $w = w_1.w_2...w_n$.
   */
   EltPiece d_data[constants::RANK_MAX];
 
@@ -114,14 +107,10 @@ w_1.w_2...w_n.
 
 // constructors and destructors
 
-/*!
-\brief Constructs the identity element of W.
-*/
-  WeylElt() {
-    std::memset(d_data,0,sizeof(d_data));
-  }
+  // Default constructor; set element to the identity element of W.
+  WeylElt() { std::memset(d_data,0,sizeof(d_data)); }
 
-  /*! \brief interpret |w| in weyl group |W| */
+  // Construct element from a word |w| in simple generators of |W|
   WeylElt(const WeylWord& w, const WeylGroup& W);
 
 // copy and assignment
@@ -129,44 +118,24 @@ w_1.w_2...w_n.
 
 // accessors
 
+  bool operator== (const WeylElt& w) const
+  { return std::memcmp(d_data,w.d_data,sizeof(d_data))==0; }
 
-  /*!
-\brief Tests whether this Weyl group element is lexicographically
-strictly less than the Weyl group element following the < sign.
-  */
-  bool operator< (const WeylElt& w) const {
-    return std::memcmp(d_data,w.d_data,sizeof(d_data)) < 0;
-  }
-
-  /*!
-\brief Tests whether this Weyl group element is equal to the Weyl
-group element following the == sign.
-  */
-  bool operator== (const WeylElt& w) const {
-    return std::memcmp(d_data,w.d_data,sizeof(d_data))==0;
-  }
-
-  /*!
-\brief Tests whether this Weyl group element is not equal to the Weyl
-group element following the != sign.
-  */
   bool operator!= (const WeylElt& w) const {
     return std::memcmp(d_data,w.d_data,sizeof(d_data))!=0;
   }
 
+  // lexicograpic ordering by internal parabolic quotient list
+  bool operator< (const WeylElt& w) const
+  { return std::memcmp(d_data,w.d_data,sizeof(d_data)) < 0; }
+
 protected: // these are for |WeylGroup| and |TI_Entry|'s eyes only
 
-/*!
-\brief Returns the jth factor of the Weyl group element.
-*/
-  EltPiece operator[] (size_t j) const {
-    return d_data[j];
-  }
+  // Get an individual |EltPiece|
+  EltPiece operator[] (size_t j) const { return d_data[j]; }
 
 // manipulators
-  EltPiece& operator[] (size_t j) {
-    return d_data[j];
-  }
+  EltPiece& operator[] (size_t j) { return d_data[j]; }
 
 public:
 // dummy methods that mark transition of interpretation
@@ -184,10 +153,9 @@ public:
 
 const WeylElt Identity; // default constructor initialises to identity
 
-/*!
-\brief Represents one row of a transducer table for a Weyl group.
-*/
-class RowBase {
+// One row of a transducer table for a Weyl group.
+class RowBase
+{
 
  private:
 
@@ -222,62 +190,57 @@ class RowBase {
   }
 }; // |class RowBase|
 
-/*!
-\brief Right multiplication action of simple reflections on a Weyl
-group modulo (to the left) a maximal parabolic subgroup.
+/*
+  Right multiplication action of simple reflections on a Weyl group modulo (to
+  the left) a maximal parabolic subgroup.
 
-In the notation from the description of the class WeylGroup, there
-will be one Transducer object for each parabolic subquotient
-W_{r-1}\\W_r. List the shortest length coset representatives for this
-subquotient as x_0,...,x_{N_r-1}.  Recall that the simple roots were
-ordered to guarantee that N_r-1 fits in an unsigned char, so each
-coset representative can be indexed by an unsigned char.  We wish to
-compute the product x_i.s_j for j between 1 and r.  The key
-theoretical fact about multiplication is that there are two mutually
-exclusive possibilities:
+  In the notation from the description of the class WeylGroup, there will be
+  one Transducer object for each parabolic subquotient W_{r-1}\\W_r. List the
+  shortest length coset representatives for this subquotient as
+  x_0,...,x_{N_r-1}. Recall that the simple roots were ordered to guarantee
+  that N_r-1 fits in an unsigned char, so each coset representative can be
+  indexed by an unsigned char. We wish to compute the product x_i.s_j for j
+  between 1 and r. The key theoretical fact about multiplication is that there
+  are two mutually exclusive possibilities:
 
-x_i.s_j = x_{i'}  (some i' ne i)
+      x_i.s_j = x_{i'}  (some i' ne i)
 
-OR
+  OR
 
-x_i.s_j = s_k.x_i  (some k < r).
+      x_i.s_j = s_k.x_i  (some k < r).
 
-The first possibility is called _transition_ and the second _transduction_.
-(Confusingly Fokko's 1999 paper interchanges these terms at their definition,
-but their usual meaning and the sequel makes clear that this was an error).
+  The first possibility is called _transition_ and the second _transduction_.
+  (Confusingly Fokko's 1999 paper interchanges these terms at their definition,
+  but their usual meaning and the sequel makes clear that this was an error).
 
-The Transducer has tables to describe the two cases. the first table |d_shift|
-describes the transistions, namely |d_shift[i][j]==i'| in the first case; the
-cases that are transductions can be distinguished from these by the fact that
-|d_shift[i][j]==i|. In these cases, the value |k| emitted by the transduction
-is stored in |d_out[i][j]|, which otherwise contains the value |UndefGenerator|
+  The Transducer has tables to describe the two cases. the first table
+  |d_shift| describes the transistions, namely |d_shift[i][j]==i'| in the
+  first case; the cases that are transductions can be distinguished from these
+  by the fact that |d_shift[i][j]==i|. In these cases, the value |k| emitted
+  by the transduction is stored in |d_out[i][j]|, which otherwise contains the
+  value |UndefGenerator|
 */
 
-class Transducer {
+class Transducer
+{
   // there is one such object for each $r\in\{1,2,\ldots,n\}$
   // but $r$ is not explicitly stored in the Tranducer object
 
-  /*!
-\brief Right multiplication by $s_j$ gives transition |i -> d_shift[i][j]|
-  */
+  // Right multiplication by $s_j$ gives transition |i -> d_shift[i][j]|
   std::vector<ShiftRow> d_shift;
 
-  /*!
-\brief If |d_shift[i][j]==i| then $s_j$ transduces in state $i$ to $s_k$
- with $k=d_out[i][j]$ (otherwise |d_out[i][j]==UndefGenerator|).
+/*
+  If |d_shift[i][j]==i| then $s_j$ transduces in state $i$ to $s_k$
+  with $k=d_out[i][j]$ (otherwise |d_out[i][j]==UndefGenerator|).
 
   In this case $x_i.s_j = s_k.x_i$, so the state $i$ remains unchanged.
-  */
+*/
   std::vector<OutRow> d_out;
 
-  /*!
-\brief Lengths of the minimal coset representatives $x_i$.
-  */
+  // Lengths of the minimal coset representatives $x_i$.
   std::vector<unsigned long> d_length;
 
-  /*!
-\brief Reduced expressions of the minimal coset representatives.
-  */
+  // Reduced expressions of the minimal coset representatives.
   std::vector<WeylWord> d_piece;
 
  public:
@@ -292,139 +255,139 @@ class Transducer {
 // accessors
 
 
-  /*!
-\brief Length of minimal coset representative x.
-  */
+  // Length of minimal coset representative x.
   unsigned long length(WeylElt::EltPiece x) const { return d_length[x]; }
 
 
-  /*!
-\brief Maximal length of minimal coset representatives.
+/*
+  Maximal length of minimal coset representatives.
 
-This is the number of positive roots for the Levi subgroup L_r, minus
-the number of positive roots for L_{r-1}.
-  */
+  This is the number of positive roots for the Levi subgroup L_r, minus
+  the number of positive roots for L_{r-1}.
+*/
   unsigned long maxlength() const { return d_length.back(); }
 
 
-  /*!
-\brief Simple reflection t (strictly preceding s) so that xs = tx, if any
+/*
+  Simple reflection t (strictly preceding s) so that xs = tx, if any
 
-In case of a transition, this returns UndefGenerator.
-  */
+  In case of a transition, this returns |UndefGenerator|.
+*/
   Generator out(WeylElt::EltPiece x, Generator s) const { return d_out[x][s]; }
 
-  /*!
-\brief Right coset x' defined by x' = xs.
+/*
+  Right coset x' defined by x' = xs.
 
-When x' is not equal to s, this is an equality of minimal coset
-representatives. When x'=x, the equation for minimal coset representatives
-is out(x,s).x = x.s.
-  */
+  When x' is not equal to s, this is an equality of minimal coset
+  representatives. When x'=x, the equation for minimal coset representatives
+  is out(x,s).x = x.s.
+*/
   WeylElt::EltPiece shift(WeylElt::EltPiece x, Generator s) const
    { return d_shift[x][s]; }
 
-  /*!
-\brief Number of cosets W_{r-1}\\W_r.
-  */
-  unsigned long size() const {
-    return d_shift.size();
-  }
+  // Number of cosets W_{r-1}\\W_r.
+  unsigned long size() const { return d_shift.size(); }
 
 
-  /*!
-\brief Reduced decomposition in W (or W_r) of minimal coset representative x.
-  */
+  // Reduced decomposition in W (or W_r) of minimal coset representative x.
   const WeylWord& wordPiece(WeylElt::EltPiece x) const { return d_piece[x]; }
 
-// this class should have no manipulators!
+  // this class should have no manipulators!
 }; // |class Transducer|
 
 
-  /*!
-\brief Represents a Weyl group for the purpose of manipulating its elements
+/*
+  The |WeylGroup| class provides supporting context, whose methods allow
+  light-weight |WeylElt| objects to be manipulated as Weyl groups elements.
+  (The Atlas software uses many such (supporting context,value) class pairs.)
 
-  The WeylGroup class is a variation on Fokko's own and favourite
-  implementation in terms of transducers.
+  It uses a variation on Fokko's own and favourite implementation of Coxeter
+  groups in terms of transducers. What follows are Fokko's own words:
 
-  I have tried to make a careful choice of datatype for the group
-  elements in order to strike the right balance between efficiency and
-  generality. [Since this is Fokko's mathematics as well as his code,
-  I have tried to keep his voice. Occasional amplifications are in
-  brackets.  DV 7/23/06.] This has led me to the choice of _fixed
-  size_ arrays of unsigned chars, representing the "parabolic
-  subquotient" representation of a given element; in other words, in a
-  group of rank n, the first n elements of the array are used (but
-  since it is fixed size, we have to allocate it to some constant
-  value, namely RANK_MAX.)
+  [Since this is Fokko's mathematics as well as his code, I have tried to keep
+  his voice. Occasional amplifications are in brackets. DV 7/23/06.]
 
-  [Meaning of "parabolic subquotient representation: one orders the
-  simple generators in an appropriate fashion s_1,...,s_n (henceforth
-  called the "internal representation). Define W_i = <s_1,...,s_i>,
-  so that W_0 = {1} subset W_1 subset W_2 subset ... subset W_n =
-  W. Each W_i is a parabolic subgroup of W, so its length function is
-  the restriction of that of W. Each right coset in W_{i-1}\\W_i has
-  a unique minimal length coset representative. Write N_i for the
-  number of cosets (or representatives). Then the cardinality of W is
-  N_1.N_2...N_n. More precisely, and element of W has a unique
-  factorization as x_1.x_2...x_n, with x_i one of the N_i minimal
+   I have tried to make a careful choice of datatype for the group elements in
+   order to strike the right balance between efficiency and generality. This
+   has led me to the choice of _fixed size_ arrays of unsigned chars,
+   representing the "parabolic subquotient" representation of a given element;
+   in other words, in a group of rank n, the first n elements of the array are
+   used (but since it is fixed size, we have to allocate it to some constant
+   value, namely RANK_MAX.)
+
+  [Meaning of "parabolic subquotient representation": one orders the simple
+  generators in an appropriate fashion s_1,...,s_n (henceforth called the
+  "internal representation"). Define W_i = <s_1,...,s_i>, so that W_0 = {1}
+  subset W_1 subset W_2 subset ... subset W_n = W. Each W_i is a parabolic
+  subgroup of W, so its length function is the restriction of that of W. Each
+  right coset in W_{i-1}\\W_i has a unique minimal length coset
+  representative. Write N_i for the number of cosets (or representatives).
+  Then the cardinality of W is N_1.N_2...N_n. More precisely, an element of W
+  has a unique factorization as x_1.x_2...x_n, with x_i one of the N_i minimal
   length coset representatives of W_{i-1}\\W_i.
 
-  The key to the implementation is to order the generators in such a
-  way that every parabolic subquotient W_{i-1}\\W_i has cardinality
-  fitting into an unsigned char: that is, cardinality at most 256.
-  (This is possible for any Weyl group of rank at most 128.) A
-  WeylElt is an array of unsigned char of size RANK_MAX; the unsigned
-  char in entry i is the number of the factor x_i.
+  The key to the implementation is to order the generators in such a way that
+  every parabolic subquotient W_{i-1}\\W_i has cardinality fitting into an
+  unsigned char: that is, cardinality at most 256. (This is possible for any
+  Weyl group of rank at most 128.) A WeylElt is an array of unsigned char of
+  size RANK_MAX; the unsigned char in entry i is the number of the factor x_i.
 
   There is a little more about how the group structure is computed in
   this representation in the description of the class Transducer.  The
   mathematical reference is Fokko du Cloux, "A transducer approach to
   Coxeter groups," J. Symbolic Computation 27 (1999), 311-324.]
 
-  This is not so wasteful as it may sound : of course the
-  representation as a single number is more compact, but will overflow
-  even on 64-bit machines for some groups of rank <= 16, and much
-  sooner of course on 32-bit machines; also it imposes some
-  computational overhead for packing and unpacking.
+   This is not so wasteful as it may sound : of course the
+   representation as a single number is more compact, but will overflow
+   even on 64-bit machines for some groups of rank <= 16, and much
+   sooner of course on 32-bit machines; also it imposes some
+   computational overhead for packing and unpacking.
 
-  [Meaning of "representation as a single number:" if the cardinality
-  of W fits in an unsigned long, then an element of W may be
-  represented as the unsigned long
+  [Meaning of "representation as a single number:" if the cardinality of W
+  fits in an unsigned long, then an element of W may be represented as the
+  unsigned long
 
   x_1 + x_2(N_1) + x_3(N_1N_2) + ... +x_n(N_1...N_n).
 
-  In this formula I have changed the meaning of x_i: now it means the
-  integer between 0 and N_i enumerating the coset representative
-  previously called x_i. This representation is called the "packed
-  form" in the software.  On a 32 bit machine, this representation
-  works for W(E8), but not for W(A12) (which has order 13!, which is
-  about 1.5 x 2^{32}).]
+  In this formula I have changed the meaning of x_i: now it means the integer
+  between 0 and N_i enumerating the coset representative previously called
+  x_i. On a 32 bit machine, this representation works for W(E8), but not for
+  W(A12) (which has order 13!, which is about 1.5 x 2^{32}).]
 
-  Any variable-size structure like the STL vector uses already three
-  unsigned longs for its control structure (the address of the data,
-  the size and the capacity), and then it still has to allocate. This
-  could perhaps be simplified to just a pointer (after all the size of
-  the allocation is known to the group) but you still have the big
-  overhead of allocating and deallocating memory from the heap, and
-  remembering to delete the pointers when they go out of scope, or
-  else use autopointers ...
+   Any variable-size structure like the STL vector uses already three
+   unsigned longs for its control structure (the address of the data,
+   the size and the capacity), and then it still has to allocate. This
+   could perhaps be simplified to just a pointer (after all the size of
+   the allocation is known to the group) but you still have the big
+   overhead of allocating and deallocating memory from the heap, and
+   remembering to delete the pointers when they go out of scope, or
+   else use autopointers ...
 
-  And if worst comes to worst and one really is worried about a factor
-  2 waste for type E8 (which might be significant if one deals with
-  huge containers of group elements), then one can still recompile
-  with RANK_MAX=8, which will then give a datatype that in 64 bits is
-  the same size as an unsigned long.
+   And if worst comes to worst and one really is worried about a factor
+   2 waste for type E8 (which might be significant if one deals with
+   huge containers of group elements), then one can still recompile
+   with RANK_MAX=8, which will then give a datatype that in 64 bits is
+   the same size as an unsigned long.
 
-  Notice that the unsigned char type miraculously suffices for all
-  subquotients of all groups up to rank 128 (indeed, the biggest subquotient
-  for B128 is of order 256), _provided_ the generators are enumerated in an
-  appropriate order. This forces us to do quite a bit of type recognition,
-  which is relegated to the dynkin namespace. Because of this reordering, the
-  group carries a little interface that will translate back and forth from the
-  external ordering and the internal one. To speed up some computations we
-  precompute in |d_min_star| for each generator the smallest other generator
-  with which it does not commute (or the generator itself if there are none).
+   Notice that the unsigned char type miraculously suffices for all
+   subquotients of all groups up to rank 128 (indeed, the biggest subquotient
+   for B128 is of order 256), _provided_ the generators are enumerated in an
+   appropriate order. This forces us to do quite a bit of type recognition,
+   which is relegated to the dynkin namespace. Because of this reordering, the
+   group carries a little interface that will translate back and forth from
+   the external ordering and the internal one.
+
+  In reality |WeylElt| values are not stored in large quantities in the Atlas
+  software, so Fokko's considerations of storage requirements for them are not
+  very important. They serve mainly for computational navigation while
+  determining the set of twisted involutions in the (twisted) Weyl group, and
+  these form a much smaller set for which identification by a single number is
+  feasible in all cases. Indeed we even tabulate the full set of twisted
+  involutions, which admittedly limits the size of groups that can be handled.
+
+  To speed up some computations we precompute in |d_min_star| for each
+  generator the smallest other generator with which it does not commute (or
+  the generator itself if there are none).
 */
 class WeylGroup
 {
@@ -458,9 +421,7 @@ class WeylGroup
   const WeylWord& wordPiece(const WeylElt& w, Generator j) const
     { return d_transducer[j].wordPiece(w[j]); }
 
-  /*!
-    \brief first generator $<s$ not commuting with |s|, or |s| if none exist
-  */
+  // First generator $<s$ not commuting with |s|, or |s| if none exist
   Generator min_neighbor (Generator s) const { return d_min_star[s]; }
 
   WeylElt genIn (Generator i) const; // $s_i$ as Weyl group element
@@ -540,17 +501,15 @@ public:
 
   void conjugacyClass(WeylEltList&, const WeylElt&) const;
 
-  /*! \brief Conjugates |w| by the generator |s|: |w=sws|. */
+  // Conjugate |w| by the generator |s|: |w=sws|.
   void conjugate(WeylElt& w, Generator s) const
     { leftMult(w,s); mult(w,s); }
 
-  /*! \brief $w^(-1)$ */
   WeylElt inverse(const WeylElt& w) const;
-
-  /*! \brief set |w=w^(-1)| */
   void invert(WeylElt& w) const { w=inverse(w); }
 
-  /*! \brief return a left descent for |w|, or |UndefGenerator| if |w==e|
+  /*
+   Find a left descent for |w|, or |UndefGenerator| if |w==e|
 
    In fact the descent whose internal number is lowest is returned, but
    converted to external numbering.
@@ -574,7 +533,7 @@ public:
 
   unsigned long maxlength() const { return d_maxlength; }
 
-  /*! \brief the order of the Weyl group */
+  // the order of the Weyl group
   const size::Size& order() const { return d_order; }
 
   size_t rank() const { return d_rank; }
@@ -616,18 +575,14 @@ public:
     const;
   void act(const PreRootDatum& prd, const WeylElt& w, RatWeight& v) const;
   void act(const PreRootDatum& prd, const WeylElt& w, LatticeMatrix& M) const;
- /*!
-  \brief Nondestructive version of |act| method
-*/
+  // Nondestructive version of |act| method
   Weight
     image_by(const RootDatum& rd, const WeylElt& w, Weight v) const
     { act(rd,w,v); return v; }
 
   void inverse_act(const RootDatum& rd, const WeylElt& w, Weight& v) const;
 
-/*!
-  \brief Nondestructive version of |inverse_act| method
-*/
+  // Nondestructive version of |inverse_act| method
   Weight
     image_by_inverse(const RootDatum& rd, const WeylElt& w, Weight v) const
     { inverse_act(rd,w,v); return v; }
@@ -739,20 +694,16 @@ public:
   void twistedConjugacyClass(TwistedInvolutionList&, const TwistedInvolution&)
     const;
 
-  /*!\brief
-    Twisted conjugates element |tw| by |w|: \f$tw:=w.tw.\delta(w^{-1})\f$.
-   */
+  // Twisted conjugate element |tw| by |w|: $tw:=w.tw.\delta(w^{-1})$.
   void twistedConjugate(TwistedInvolution& tw, const WeylElt& w) const;
 
   bool hasTwistedCommutation(Generator, const TwistedInvolution&) const;
 
-/*!
-  \brief Returns the length of |tw| as a twisted involution.
-*/
+  // The length of |tw| as a twisted involution.
   unsigned long involutionLength(const TwistedInvolution& tw) const;
 
- /*!
-  \brief Returns a reduced expression of |tw| as a twisted involution.
+/*
+  Return a reduced expression of |tw| as a twisted involution.
   The second form assures the lexicographically first possible form is used
 */
    InvolutionWord involution_expr(TwistedInvolution tw) const; // call by value
@@ -761,14 +712,13 @@ public:
    // extended involution expression for a twist-fixed twisted involution
    InvolutionWord extended_involution_expr(TwistedInvolution tw) const; // idem
 
-  //!\brief Roots that are images of the simple roots under involution of |tw|
+  // Roots that are images of the simple roots under the true involution of |tw|
   RootNbrList simple_images
     (const RootSystem& rs, const TwistedInvolution& tw) const;
 
-//!\brief Matrix of involution of |tw| in adjoint coordinates
+// Matrix of the true involution of |tw|, in adjoint coordinates
   WeightInvolution
-    involution_matrix(const RootSystem& rs,
-		      const TwistedInvolution& tw) const;
+    involution_matrix(const RootSystem& rs, const TwistedInvolution& tw) const;
 
 }; // |class TwistedWeylGroup|
 
