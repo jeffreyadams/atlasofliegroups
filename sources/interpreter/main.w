@@ -476,20 +476,16 @@ while (ana.reset()) // get a fresh line for lexical analyser, or quit
 
 @ If a type error is detected by |analyse_types|, then it will have signalled
 it and thrown a |program_error|; if not, then evaluation may instead produce a
-|runtime_error|. Therefore the manipulation below of |type_OK| to see whether
-we passed the analysis phase successfully should be redundant. If the result
-of evaluation is an empty tuple, we suppress printing of the uninteresting
-value.
+|runtime_error|. If the result of evaluation is an empty tuple, we suppress
+printing of the uninteresting value.
 
 @h <stdexcept>
 @h "axis.h"
 
 @< Analyse types and then evaluate and print... @>=
-{ bool type_OK=false;
-  try
+{ try
   { expression_ptr e;
     type_expr found_type=analyse_types(*parse_tree,e);
-    type_OK=true;
     if (verbosity>0)
       std::cout << "Type found: " << found_type << std::endl @|
 	        << "Converted expression: " << *e << std::endl;
@@ -591,15 +587,13 @@ method |close_includes| defined in \.{buffer.w}.
 
 @< Various |catch| phrases for the main loop @>=
 catch (const runtime_error& err)
-{ assert(type_OK);
-  std::cerr << "Runtime error:\n  " << err.what() << "\nEvaluation aborted."
+{ std::cerr << "Runtime error:\n  " << err.what() << "\nEvaluation aborted."
             << std::endl;
 @/clean=false;
   reset_evaluator(); main_input_buffer->close_includes();
 }
 catch (const program_error& err)
-{ assert(not type_OK);
-  std::cerr << err.what() << std::endl;
+{ std::cerr << err.what() << std::endl;
 @/clean=false;
   reset_evaluator(); main_input_buffer->close_includes();
 }

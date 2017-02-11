@@ -1152,6 +1152,8 @@ DescValue star (const param& E,	const ext_gen& p,
   const InvolutionNbr theta = i_tab.nr(E.tw);
   switch (p.type)
   {
+  default: assert(false);
+    result=one_complex_ascent; // shut up "maybe uninitialsed" warning
   case ext_gen::one:
     { const Weight& alpha = integr_datum.simpleRoot(p.s0);
       const Coweight& alpha_v = integr_datum.simpleCoroot(p.s0);

@@ -1149,6 +1149,7 @@ void Rep_table::add_block(ext_block::ext_block& block,
   // finally transcribe columns from |P_at_s| into |twisted_KLV_list|
   for (auto it=survivors.begin(); not survivors.at_end(it); ++it)
   { assert(block.first_descent_among(singular_orbits,*it)==block.rank());
+    ndebug_use(singular_orbits);
     auto y = *it;
     auto y_index = hash.find(parent.sr(block.z(y)));
     assert (y_index!=hash.empty); // since we looked up everything above
