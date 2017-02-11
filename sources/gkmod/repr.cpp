@@ -92,7 +92,11 @@ StandardRepr
   Weight lambda_rho = srkc.lift(srk)-rootDatum().twoRho();
   lambda_rho/=2; // undo doubled coordinates
 
-  return sr(x,lambda_rho,nu);
+  auto result = sr(x,lambda_rho,nu);
+
+  // while standard, final and nonzero, |result| need not be normal
+  normalise(result); // prepare |result| for direct inclusion in an |SR_poly|
+  return result;
 }
 
 Weight Rep_context::lambda_rho(const StandardRepr& z) const
