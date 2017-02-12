@@ -306,7 +306,7 @@ void Rep_context::W_cross_act(StandardRepr& z,const WeylWord& w) const
     innerClass().involution_table().y_pack(kgb().inv_nr(x),lr);
 }
 
-WeylWord Rep_context::make_dominant(StandardRepr& z) const
+void Rep_context::make_dominant(StandardRepr& z) const
 {
   const RootDatum& rd = rootDatum();
 
@@ -315,9 +315,6 @@ WeylWord Rep_context::make_dominant(StandardRepr& z) const
   KGBElt& x = z.x_part; // the |x_part| will be modified in-place
   Ratvec_Numer_t& numer = z.infinitesimal_char.numerator();
 
-  WeylWord result;
-  result.reserve(rd.numPosRoots()); // enough to accommodate the WeylWord
-
   { weyl::Generator s;
     do
       for (s=0; s<rd.semisimpleRank(); ++s)
@@ -325,7 +322,6 @@ WeylWord Rep_context::make_dominant(StandardRepr& z) const
 	int v=rd.simpleCoroot(s).dot(numer);
 	if (v<0)
 	{
-	  result.push_back(s);
 	  rd.simple_reflect(s,numer);
 	  int offset; // used to pivot |lr| around $\rho_r-\rho$
 	  switch (kgb().status(s,x))
@@ -343,7 +339,6 @@ WeylWord Rep_context::make_dominant(StandardRepr& z) const
     while (s<rd.semisimpleRank()); // wait until inner loop runs to completion
   }
   z.y_bits=innerClass().involution_table().y_pack(kgb().inv_nr(x),lr);
-  return result;
 } // |make_dominant|
 
 // a method used to ensure |z| is integrally dominant, used by |any_Cayley|
@@ -402,7 +397,7 @@ void Rep_context::to_singular_canonical(RankFlags gens, StandardRepr& z) const
   assert(tw == kgb().involution(z.x_part));
 }
 
-WeylWord Rep_context::normalise(StandardRepr& z) const
+void Rep_context::normalise(StandardRepr& z) const
 {
   make_dominant(z);
   const RootDatum& rd = rootDatum();
@@ -419,16 +414,12 @@ WeylWord Rep_context::normalise(StandardRepr& z) const
   Weight lr = lambda_rho(z);
   KGBElt& x = z.x_part;
 
-  WeylWord result;
-  result.reserve(kgb().length(x)); // enough to accommodate the WeylWord
-
   { RankFlags::iterator it;
     do
       for (it=simple_singulars.begin(); it(); ++it)
 	if (kgb().isComplexDescent(*it,x))
 	{
 	  weyl::Generator s=*it;
-	  result.push_back(s);
 	  rd.simple_reflect(s,lr,1); // pivot |lr| around $-\rho$
 	  x = kgb().cross(s,x);
 	  break; // out of the loop |for(s)|
@@ -436,7 +427,6 @@ WeylWord Rep_context::normalise(StandardRepr& z) const
     while (it()); // wait until inner loop runs to completion
   }
   z.y_bits=innerClass().involution_table().y_pack(kgb().inv_nr(x),lr);
-  return result;
 } // |normalise|
 
 // equivalence is equality after |make_dominant| and |to_singular_canonical|

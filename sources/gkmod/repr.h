@@ -154,13 +154,13 @@ class Rep_context
   // act on |z| by right cross-actions by |w| (does not change |z.gamma()|)
   void W_cross_act(StandardRepr& z,const WeylWord& w) const;
 
-  WeylWord make_dominant(StandardRepr& z) const; // ensure |z.gamma()| dominant
+  void make_dominant(StandardRepr& z) const; // ensure |z.gamma()| dominant
 
-  // make integrally dominant, with precomputed integral subsystem
+  // make integrally dominant, with precomputed integral subsystem; return path
   WeylWord make_dominant(StandardRepr& z,const SubSystem& subsys) const;
 
   // in addition to |make_dominant| ensure a normalised form of the parameter
-  WeylWord normalise(StandardRepr& z) const;
+  void normalise(StandardRepr& z) const;
 
   bool equivalent(StandardRepr z0, StandardRepr z1) const; // by value
 
