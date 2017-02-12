@@ -1,0 +1,72 @@
+<basic.at
+<torus.at { for torus@(int,int,int) }
+<herm.at { for hermitian_form_irreducible@Param }
+
+{ all coefficients a+bs in a ParamPol have a,b\ge 0 }
+set is_positive(ParamPol P)=bool:
+  all(for c@P in P do let (a,b)=%c in a>=0 and b>=0 od)
+
+{ make first coefficient have a>0 or a=0, b>0 }
+set coeff_normalize(ParamPol P)=ParamPol:
+  if #P=0 then P
+  else let (w,)=first_term(P) then (a,b)=%w in
+   (if a<0 or (a=0 and b<0) then -1 else 1 fi)*P
+  fi
+
+set is_positive_or_negative(ParamPol P)=bool:
+  is_positive(coeff_normalize(P))
+
+set test_positive(ParamPol P)=(ParamPol,bool):
+  if #P=0 then (null_module(torus(0,0,0)),true) {null_module of null group}
+  else let result=true, badterms=null_module(real_form(P)) in
+    for c@p in P
+    do let (a,b)=%c in
+      if a<0 or b<0 then result:=false;badterms+:=c*p fi
+    od
+  ; (badterms,result)
+  fi
+
+set test_positive_or_negative(ParamPol P)=(ParamPol,bool):
+  test_positive(coeff_normalize(P))
+
+{ assume all params are K-types (standardrepks); write up to height
+  bound as sum of actual K-types (irreducible representations of K)
+  then: all coefficients a+bs have a,b\ge 0. In other words, this is a
+  sum of standardrepks which give the actual K-types of a representation
+  (not just a virtual representation), at least up to the given height
+}
+set is_genuine(ParamPol P, int height_bound)=bool:
+  assert(all(for p in monomials(P) do (is_final(p) and 0*nu(p)=nu(p)) od)
+        ,"terms of P are not all standard-final-limit");
+  is_positive(branch(P,height_bound))
+
+set test_genuine(ParamPol P, int height_bound)=(ParamPol,bool):
+  assert(all(for p in monomials(P) do (is_final(p) and 0*nu(p)=nu(p)) od)
+        ,"terms of P are not all standard-final-limit");
+  if #P=0 then (null_module(torus(0,0,0)),true) {null_module of null group}
+  else test_positive(branch(P,height_bound))
+  fi
+
+{ on jeff branch use hermitian_form_normalized, but on master branch
+  this doesn't exist. Temporarily (until merge jeff->master) add this
+  command.
+}
+set hermitian_form_irreducible_normalized(Param p)=ParamPol:
+  hermitian_form_irreducible(p)
+
+{ test hermitian form on irreducible is genuine }
+set is_hermitian_form_irreducible_genuine(Param p,int height_bound)=bool:
+  is_genuine(hermitian_form_irreducible_normalized(p),height_bound)
+
+set test_hermitian_form_irreducible_genuine(Param p,int height_bound)=
+    (ParamPol,bool):
+  test_genuine(hermitian_form_irreducible_normalized(p),height_bound)
+
+{ too much trouble to deal with these, if you want them see the jeff branch
+
+set is_hermitian_form_std_genuine(Param p,int height_bound)=bool:
+  is_genuine(hermitian_form_std(p),height_bound)
+
+set test_hermitian_form_std_genuine(Param p,int height_bound)=(ParamPol,bool):
+  test_genuine(hermitian_form_std(p),height_bound)
+}
