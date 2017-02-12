@@ -1008,7 +1008,8 @@ SR_poly Rep_table::deformation(const StandardRepr& z)
   for (unsigned i=rp.size(); i-->0; )
   {
     Rational r=rp[i];
-    const StandardRepr zi = sr(z.x(),lam_rho,nu_z*r);
+    StandardRepr zi = sr(z.x(),lam_rho,nu_z*r);
+    normalise(zi); // necessary so |deformation_terms| won't reject it
     param_block b(*this,zi);
     const SR_poly terms = deformation_terms(b,b.size()-1);
     for (SR_poly::const_iterator it=terms.begin(); it!=terms.end(); ++it)
