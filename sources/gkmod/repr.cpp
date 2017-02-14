@@ -57,16 +57,17 @@ const TwistedInvolution Rep_context::involution_of_Cartan(size_t cn) const
 
 StandardRepr Rep_context::sr_gamma
   (KGBElt x, const Weight& lambda_rho, const RatWeight& gamma) const
-{
-  const InvolutionTable& i_tab = innerClass().involution_table();
+{ // we use |lambda_rho| only for its real projection |(theta-1)/2*lambda_rho|
 #ifndef NDEBUG // check that constructor below builds a valid StandardRepr
   int_Matrix theta1 = kgb().involution_matrix(x)+1;
   RatWeight g_r = gamma - rho(rootDatum());
   Weight image (g_r.numerator().begin(),g_r.numerator().end()); // convert
   // |gamma| is compatible with |x| if neither of next two lines throws
   image = theta1*image/int(g_r.denominator()); // division must be exact
-  matreduc::find_solution(theta1,image); // solution must exist
+  // we \emph{do not} |assert(theta1*lambda_rho==image)|; however
+  matreduc::find_solution(theta1,image); // a solution must exist
 #endif
+  const InvolutionTable& i_tab = innerClass().involution_table();
   return StandardRepr(x, i_tab.y_pack(kgb().inv_nr(x),lambda_rho), gamma);
 }
 
@@ -806,18 +807,11 @@ SR_poly Rep_context::expand_final(StandardRepr z) const // by value
   {
     const weyl::Generator s= singular_real_parity.firstBit();
     const KGBEltPair p = kgb().inverseCayley(s,z.x());
-    Weight lr = lambda_rho(z);
+    Weight lr = lambda_rho(z); // no need to modify it for |sr_gamma|
 
-    // |lr| may need replacement by an equivalent (at |z.x()|) before it is
-    // passed to inverse Cayleys, which will reinterpret is at $x$'s from |p|
-    assert(rd.simpleCoroot(s).dot(lr)%2!=0); // we tested this odd above
-    lr -= // correct so that $\<\lambda,\alpha^\vee>=0$ (like $\gamma$)
-      rd.simpleRoot(s)*((rd.simpleCoroot(s).dot(lr)+1)/2); // project on perp
-    assert(rd.simpleCoroot(s).dot(lr)==-1); // because $\<\rho,\alpha^\vee>=1$
-
-    SR_poly result = expand_final(sr(p.first,lr,gamma));
+    SR_poly result = expand_final(sr_gamma(p.first,lr,gamma));
     if (p.second!=UndefKGB)
-      result += expand_final(sr(p.second,lr,gamma));
+      result += expand_final(sr_gamma(p.second,lr,gamma));
     return result;
   }
   else return SR_poly(z,repr_less()); // absent singular descents, return |1*z|
