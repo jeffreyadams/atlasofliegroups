@@ -115,7 +115,7 @@ namespace atlas {
       : std::queue<T, sl_list<T,Alloc> > ( sl_list<T,Alloc>(l) ) {}
   }; // |struct queue|
 
-  } // |namespace cantainers|
+  } // |namespace containers|
 
   namespace arithmetic {
     typedef long long int Numer_t;

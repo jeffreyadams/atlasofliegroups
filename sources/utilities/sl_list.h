@@ -175,7 +175,7 @@ public:
   // increment operators also need overload, with covariant return type
   self operator++() { Base::operator++(); return *this; }
   self operator++(int) // post-increment
-  { self tmp=*this; Base::operator++(nullptr); return tmp; }
+  { self tmp=*this; Base::operator++(); return tmp; }
 }; // |struct sl_list_iterator| template
 
 template<typename T, typename Alloc> struct weak_sl_list_iterator;
