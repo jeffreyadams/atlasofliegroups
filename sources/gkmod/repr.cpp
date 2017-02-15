@@ -741,18 +741,19 @@ StandardRepr Rep_context::any_Cayley(const Weight& alpha, StandardRepr z) const
 StandardRepr Rep_context::inner_twisted(StandardRepr z) const
 {
   make_dominant(z);
-  const RatWeight infin_char=z.gamma(); // now get the infinitesimal character
+  RatWeight gamma=z.gamma(); // now get the infinitesimal character
   const RootDatum& rd = rootDatum();
-  const SubSystem& subsys = SubSystem::integral(rd,infin_char);
+  const SubSystem& subsys = SubSystem::integral(rd,gamma);
   blocks::nblock_help aux(realGroup(),subsys);
   blocks::nblock_elt src(z.x(),y_as_torus_elt(z));
+
+  innerClass().distinguished().apply_to(gamma.numerator()); // twist |gamma|
   aux.twist(src);
-  RatWeight lr =
-    (infin_char - src.y().log_pi(false) - rho(rd)).normalize();
+  RatWeight lr = (gamma - src.y().log_pi(false) - rho(rd)).normalize();
   assert(lr.denominator()==1);
   return sr_gamma(src.x(),
 		  Weight(lr.numerator().begin(),lr.numerator().end()), // mod 2
-		  infin_char);
+		  gamma);
 }
 
 StandardRepr Rep_context::twisted
