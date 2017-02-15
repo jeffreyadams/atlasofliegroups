@@ -194,7 +194,7 @@ bool Rep_context::is_normal(const StandardRepr& z, RootNbr& witness) const
 
 // |z| final means that no singular real roots satisfy the parity condition
 // we do not assume |gamma| to be dominant, so all real roots must be tested
-bool Rep_context::is_final(const StandardRepr& z, RootNbr& witness) const
+bool Rep_context::is_semifinal(const StandardRepr& z, RootNbr& witness) const
 {
   const RootDatum& rd = rootDatum();
   const InvolutionNbr i_x = kgb().inv_nr(z.x());
@@ -213,7 +213,7 @@ bool Rep_context::is_final(const StandardRepr& z, RootNbr& witness) const
   return true;
 }
 
-bool Rep_context::is_fine(const StandardRepr& z) const
+bool Rep_context::is_final(const StandardRepr& z) const
 {
   const RootDatum& rd = rootDatum();
   const InvolutionTable& i_tab = innerClass().involution_table();
@@ -981,7 +981,7 @@ void Rep_table::add_block(param_block& block, BlockEltList& survivors)
 SR_poly Rep_table::KL_column_at_s(StandardRepr z) // |z| must be final
 {
   normalise(z); // implies that |z| it will appear at the top of its own block
-  assert(is_fine(z));
+  assert(is_final(z));
   unsigned long hash_index=hash.find(z);
   if (hash_index==hash.empty) // previously unknown parameter
   { // then we need to compute to find the requested polynomial
@@ -1068,7 +1068,7 @@ SR_poly Rep_table::deformation(const StandardRepr& z)
 // that |z| is dominant and final is a precondition assured in the recursion
 // for more general |z|, do the preconditioning outside the recursion
 {
-  assert(is_fine(z));
+  assert(is_final(z));
   Weight lam_rho = lambda_rho(z);
   RatWeight nu_z =  nu(z);
   StandardRepr z0 = sr(z.x(),lam_rho,RatWeight(rank()));
@@ -1080,7 +1080,7 @@ SR_poly Rep_table::deformation(const StandardRepr& z)
 
   StandardRepr z_near = sr(z.x(),lam_rho,nu_z*rp.back());
   normalise(z_near); // so that we may find a stored equivalent parameter
-  assert(is_fine(z_near));
+  assert(is_final(z_near));
 
   { // look up if closest reducibility point to |z| is already known
     unsigned long h=hash.find(z_near);
@@ -1094,7 +1094,7 @@ SR_poly Rep_table::deformation(const StandardRepr& z)
     Rational r=rp[i];
     StandardRepr zi = sr(z.x(),lam_rho,nu_z*r);
     normalise(zi); // necessary to ensure the following |assert| will hold
-    assert(is_fine(zi)); // ensures that |deformation_terms| won't refuse
+    assert(is_final(zi)); // ensures that |deformation_terms| won't refuse
     param_block b(*this,zi);
     const SR_poly terms = deformation_terms(b,b.size()-1);
     for (SR_poly::const_iterator it=terms.begin(); it!=terms.end(); ++it)
@@ -1166,7 +1166,7 @@ SR_poly twisted_KL_column_at_s
   // |z| must be delta-fixed, nonzero and final
 {
   rc.normalise(z);
-  if (not rc.is_fine(z))
+  if (not rc.is_final(z))
     throw std::runtime_error("Parameter is not final");
   BlockElt entry; // dummy needed to ensure full block is generated
   param_block block(rc,z,entry); // which this constructor does
@@ -1252,7 +1252,7 @@ SR_poly Rep_table::twisted_KL_column_at_s(StandardRepr z)
   // |z| must be inner-class-twist-fixed, nonzero and final
 {
   normalise(z);
-  if (not is_fine(z))
+  if (not is_final(z))
     throw std::runtime_error("Parameter not final");
 
   unsigned long hash_index=hash.find(z);

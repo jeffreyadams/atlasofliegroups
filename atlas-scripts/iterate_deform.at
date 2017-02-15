@@ -77,28 +77,25 @@ set recursive_deform (Param p) = (Param,ParamPol):
   ) { value in parentheses is recursive |recd|; apply it: } (Split:1,p,@:())
 
 set rec_def (Param p) = (Param,ParamPol):
-  if is_zero(p) or not is_final(p) then error("improper parameter")
-  else
-    let empty=null_module(real_form(p))
-    then recd = (Split c,Param p) (Param,ParamPol): (p,empty) { dummy }
-    in
-    ( recd := { now create a recursive function be reassigning to |recd| }
-      begin (Split coef,Param p): { coef to be multiplied to deformation terms }
-	if has_nu0(p) then (p,empty) { but deformed |p| has |coef| implicitly }
-	elif not is_standard(p) then prints(p,%p); error("halt")
-	else
-	  let (x,lambda,gamma)=%p, rp=reducibility_points(p)
-	  then inx=#rp, at_nu0=empty, acc=empty
-	  in while inx>0 do acc+:=deform(param(x,lambda,gamma*rp[inx-:=1])) od
-	  ; for k@q in acc
-	    do
-	      let c=coef*k then (q0,nu0_terms) = recd(c,q)
-	      in at_nu0 +:= nu0_terms + (c,q0)
-	    od
-	  ; { return deformed p and accumulated deformation terms }
-	  (param(x,lambda,null_wt(#gamma)), at_nu0)
-	fi
-      end
-    ) { value in parentheses is recursive |recd|; apply it: }
-  (1,p)
-  fi
+  assert(is_final(p),"improper parameter");
+  let empty=null_module(real_form(p))
+  then recd = (Split c,Param p) (Param,ParamPol): (p,empty) { dummy }
+  in
+  ( recd := { now create a recursive function be reassigning to |recd| }
+    begin (Split coef,Param p): { coef to be multiplied to deformation terms }
+      if has_nu0(p) then (p,empty) { but deformed |p| has |coef| implicitly }
+      elif not is_standard(p) then prints(p,%p); error("halt")
+      else
+	let (x,lambda,gamma)=%p, rp=reducibility_points(p)
+	then inx=#rp, at_nu0=empty, acc=empty
+	in while inx>0 do acc+:=deform(param(x,lambda,gamma*rp[inx-:=1])) od
+	; for k@q in acc
+	  do
+	    let c=coef*k then (q0,nu0_terms) = recd(c,q)
+	    in at_nu0 +:= nu0_terms + (c,q0)
+	  od
+	; { return deformed p and accumulated deformation terms }
+	(param(x,lambda,null_wt(#gamma)), at_nu0)
+      fi
+    end
+  ) { value in parentheses is recursive |recd|; apply it: } (1,p)

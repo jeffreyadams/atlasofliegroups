@@ -3668,7 +3668,7 @@ implies ``standard'' an ``non-zero'').
   : not rc.is_dominant(val,witness) ? "non-dominant"
   : not rc.is_normal(val,witness) ? "non-normal"
   : not rc.is_nonzero(val,witness) ? "zero"
-  : rc.is_final(val,witness) ? "final" : "non-final")
+  : rc.is_semifinal(val,witness) ? "final" : "non-final")
 
 @ To make a module parameter, one should provide a KGB element~$x$, an
 integral weight $\lambda-\rho$, and a rational weight~$\nu$. Since only its
@@ -3743,17 +3743,17 @@ void is_zero_wrapper(expression_base::level l)
     push_value(whether(not p->rc().is_nonzero(p->val,witness)));
 }
 
-void is_final_wrapper(expression_base::level l)
+void is_semifinal_wrapper(expression_base::level l)
 { shared_module_parameter p = get<module_parameter_value>();
   RootNbr witness;
   if (l!=expression_base::no_value)
-    push_value(whether(p->rc().is_final(p->val,witness)));
+    push_value(whether(p->rc().is_semifinal(p->val,witness)));
 }
 
-void is_fine_wrapper(expression_base::level l)
+void is_final_wrapper(expression_base::level l)
 { shared_module_parameter p = get<module_parameter_value>();
   if (l!=expression_base::no_value)
-    push_value(whether(p->rc().is_fine(p->val)));
+    push_value(whether(p->rc().is_final(p->val)));
 }
 
 @ Before constructing (non-integral) blocks, it is essential that the
@@ -4005,7 +4005,7 @@ void test_standard(const module_parameter_value& p, const char* descr)
 
 void test_nonzero_final(const module_parameter_value& p, const char* descr)
 { RootNbr witness; bool nonzero=p.rc().is_nonzero(p.val,witness);
-  if (nonzero and p.rc().is_final(p.val,witness))
+  if (nonzero and p.rc().is_semifinal(p.val,witness))
     return; // nothing to report
   std::ostringstream os; p.print(os << descr << ": ");
 @/os << "\nParameter is " << (nonzero ? "not final" : "zero")
@@ -4358,8 +4358,8 @@ install_function(real_form_of_parameter_wrapper,@|"real_form"
 		,"(Param->RealForm)");
 install_function(is_standard_wrapper,@|"is_standard" ,"(Param->bool)");
 install_function(is_zero_wrapper,@|"is_zero" ,"(Param->bool)");
+install_function(is_semifinal_wrapper,@|"is_semifinal" ,"(Param->bool)");
 install_function(is_final_wrapper,@|"is_final" ,"(Param->bool)");
-install_function(is_fine_wrapper,@|"is_fine" ,"(Param->bool)");
 install_function(parameter_dominant_wrapper,@|"dominant" ,"(Param->Param)");
 install_function(parameter_normal_wrapper,@|"normal" ,"(Param->Param)");
 install_function(parameter_eq_wrapper,@|"=", "(Param,Param->bool)");
@@ -4534,7 +4534,7 @@ efficiently maintained. In order to use it we must have seen the header file
 for the module \.{free\_abelian} on which the implementation is based. While
 that class itself does not have such an invariant, the handling of these
 formal sums in \.{atlas} will be such that all terms are ensured to have the
-predicate |is_fine| true, which ensures a number of desirable properties,
+predicate |is_final| true, which ensures a number of desirable properties,
 including having a dominant representative $\gamma$ of the infinitesimal
 character. Only under such restriction can it be guaranteed that equivalent
 terms (which now must actually be equal) will always be combined, and the test

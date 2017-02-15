@@ -99,10 +99,12 @@ set KL_Q_polynomials ([Param] B)=poly_mat:upper_unitriangular_inverse (KL_P_sign
 
 {                     twisted versions                                   }
 
-set final_subset([Param] B)=[Param]: let rv=[] in for p in B do if is_final(p) then rv#:=p fi od;rv
+set final_subset ([Param] B) = [Param]:
+  ## for p in B do if is_final(p) then [p] else [] fi od
+
 {this is KL_block@(Param,mat), the twisted analogue of KL_block@Param
- Marc called this of ext_KL_block@(Param,mat); the ext is superflous and
- in keeping with other conventions not used
+ Marc called this of ext_KL_block@(Param,mat); the ext is superflous and,
+ in keeping with other conventions, not used
 }
 set KL_block_alt (Param p, mat delta) = { emulate built-in KL_block }
     ([Param],int,mat,[vec],vec,vec,mat):

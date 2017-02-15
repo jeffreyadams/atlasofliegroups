@@ -388,7 +388,7 @@ set test_line (Param p) = void:
 ; prints("integrality points (for 2*nu): ",ipoints)
 ; if #points=0
   then prints("entire line is irreducible and unitary"
-       	     ,if is_final(p*0) then "" else " (nu=0 is not final)" fi)
+             ,if is_final(p*0) then "" else " (nu=0 is not final)" fi)
   else points:=(0/1)#points { tack on initial zero }
   ; if not points[#points-1]=1/1 then points:=points#(1/1) fi
   ; for i:#points-1 from 1

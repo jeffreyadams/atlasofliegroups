@@ -140,9 +140,9 @@ class Rep_context
     (const StandardRepr& z, RootNbr& witness) const; // simply-imaginary witness
   bool is_normal  // assumes |is_dominant|; whether no singular complex descents
     (const StandardRepr& z, RootNbr& witness) const; // complex simple witness
-  bool is_final  // whether $I(z)$ unrelated by Hecht-Schmid to more compact
+  bool is_semifinal  // whether $I(z)$ unrelated by Hecht-Schmid to more compact
     (const StandardRepr& z, RootNbr& witness) const; // singular real witness
-  bool is_fine // dominant nonzero without singular descents: all of the above
+  bool is_final // dominant nonzero without singular descents: all of the above
     (const StandardRepr& z) const;
   bool is_oriented(const StandardRepr& z, RootNbr alpha) const;
   unsigned int orientation_number(const StandardRepr& z) const;

@@ -82,8 +82,7 @@ set deformation_terms (Param p, mat delta) = ParamPol:
 
 
 set recursive_deform (Param p, mat delta) = ParamPol:
-  assert(not is_zero(p) and is_final(p) and is_fixed(delta,p)
-	,"improper parameter");
+  assert(is_final(p) and is_fixed(delta,p),"improper parameter");
   let G=p.real_form then !empty=G.null_module in
   ( rec_fun full_def (Split sc,Param p) ParamPol:
        { |sc| will simply scale the resulting ParamPol, |delta| is implicit }
@@ -119,7 +118,7 @@ set recursive_deform (Param p, mat delta) = ParamPol:
   ) { apply that recursive function to the initial argument: } (1,p)
 
 set twisted_recursive_deform (Param p) = ParamPol:
-  assert(not is_zero(p) and is_final(p) and twist(p)=p,"improper parameter");
+  assert(is_final(p) and twist(p)=p,"improper parameter");
   let G=p.real_form
   then !empty=G.null_module, !delta=G.distinguished_involution in
   ( rec_fun full_def (Split sc,Param p) ParamPol:
