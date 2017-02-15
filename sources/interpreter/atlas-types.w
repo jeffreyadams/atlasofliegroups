@@ -3750,6 +3750,12 @@ void is_final_wrapper(expression_base::level l)
     push_value(whether(p->rc().is_final(p->val,witness)));
 }
 
+void is_fine_wrapper(expression_base::level l)
+{ shared_module_parameter p = get<module_parameter_value>();
+  if (l!=expression_base::no_value)
+    push_value(whether(p->rc().is_fine(p->val)));
+}
+
 @ Before constructing (non-integral) blocks, it is essential that the
 infinitesimal character is made dominant, and that possible singular (simple)
 complex descents are applied to the parameter, as the result of the block
@@ -4353,6 +4359,7 @@ install_function(real_form_of_parameter_wrapper,@|"real_form"
 install_function(is_standard_wrapper,@|"is_standard" ,"(Param->bool)");
 install_function(is_zero_wrapper,@|"is_zero" ,"(Param->bool)");
 install_function(is_final_wrapper,@|"is_final" ,"(Param->bool)");
+install_function(is_fine_wrapper,@|"is_fine" ,"(Param->bool)");
 install_function(parameter_dominant_wrapper,@|"dominant" ,"(Param->Param)");
 install_function(parameter_normal_wrapper,@|"normal" ,"(Param->Param)");
 install_function(parameter_eq_wrapper,@|"=", "(Param,Param->bool)");
