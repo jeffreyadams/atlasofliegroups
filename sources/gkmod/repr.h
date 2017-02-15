@@ -142,6 +142,8 @@ class Rep_context
     (const StandardRepr& z, RootNbr& witness) const; // complex simple witness
   bool is_final  // whether $I(z)$ unrelated by Hecht-Schmid to more compact
     (const StandardRepr& z, RootNbr& witness) const; // singular real witness
+  bool is_fine // dominant nonzero without singular descents: all of the above
+    (const StandardRepr& z) const;
   bool is_oriented(const StandardRepr& z, RootNbr alpha) const;
   unsigned int orientation_number(const StandardRepr& z) const;
 
@@ -189,6 +191,8 @@ class Rep_context
   typedef Free_Abelian<StandardRepr,Split_integer,compare> poly;
 
   poly expand_final(StandardRepr z) const; // express in final SReprs (by value)
+  containers::sl_list<StandardRepr>
+    finals_below(StandardRepr z) const; // like |survivors_below| (by value)
 
   std::ostream& print (std::ostream&,const StandardRepr& z) const;
   std::ostream& print (std::ostream&,const poly& P) const;
@@ -201,9 +205,23 @@ typedef Rep_context::poly SR_poly;
 
 /*
   In addition to providing methods inherited from |Rep_context|, the class
-  |Rep_table| provides storage for data that was prevously computed for
-  various related |StandardRepr| values. By also providing the methods that do
-  these computations, the data storage and retieval is performed by this class.
+  |Rep_table| provides storage for data that was previously computed for
+  various related nonzero final |StandardRepr| values.
+
+  The data stored consists of lengths, (twisted) KL polynomials evaluated as
+  $q=s$, and (twisted) full deformation formulae. This class provides methods
+  for those computations, and handles the data storage and retrieval.
+
+  The deformation information for a parameter will actually be stored for its
+  first reducibility point (thus avoiding some duplication of the same
+  information, and avoiding memory usage for parameters without any
+  reducibility points), at the normalised form of the parameter there (the
+  deformation might have made some complex simple coroots singular, crossing
+  their wall). Since no slots are created for parameters that are zero or
+  non-final, such parameters must be expanded into finals before attempting
+  look-up or storage of deformation formulae; the nonzero and final conditions
+  are preserved at intermediate deformation points (though possibly not at the
+  terminating point $\nu=0$ of the deformation).
 */
 class Rep_table : public Rep_context
 {

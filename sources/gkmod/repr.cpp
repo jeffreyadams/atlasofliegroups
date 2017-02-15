@@ -213,6 +213,39 @@ bool Rep_context::is_final(const StandardRepr& z, RootNbr& witness) const
   return true;
 }
 
+bool Rep_context::is_fine(const StandardRepr& z) const
+{
+  const RootDatum& rd = rootDatum();
+  const InvolutionTable& i_tab = innerClass().involution_table();
+  const auto& numer = z.gamma().numerator();
+  KGBElt x=z.x();
+  const InvolutionNbr i_x = kgb().inv_nr(x);
+
+  for (weyl::Generator s=0; s<rd.semisimpleRank(); ++s)
+  {
+    auto v=rd.simpleCoroot(s).dot(numer);
+    if (v<0)
+      return false;
+    else if (v==0)
+      switch (kgb().status(s,x))
+      {
+      case gradings::Status::Complex:
+	if (kgb().isDescent(s,x))
+	  return false;
+	break;
+      case gradings::Status::ImaginaryCompact:
+	return false; // certainly fails |is_nonzero|
+      case gradings::Status::Real:
+	if (rd.simpleCoroot(s).dot(i_tab.y_lift(i_x,z.y()))%4!=0)
+	  return false;
+      default: {} // ImaginaryNoncompact is fine
+      }
+  }
+  RootNbr witness;
+  return is_nonzero(z,witness); // check \emph{all} simply-imaginary coroots
+}
+
+
 bool Rep_context::is_oriented(const StandardRepr& z, RootNbr alpha) const
 {
   const RootDatum& rd = rootDatum();
@@ -817,6 +850,63 @@ SR_poly Rep_context::expand_final(StandardRepr z) const // by value
   else return SR_poly(z,repr_less()); // absent singular descents, return |1*z|
 } // |Rep_context::expand_final|
 
+containers::sl_list<StandardRepr>
+  Rep_context::finals_below(StandardRepr z) const
+{
+  const RootDatum& rd = rootDatum();
+  const InvolutionTable& i_tab = innerClass().involution_table();
+
+  make_dominant(z);
+  const RatWeight& gamma=z.gamma();
+
+  RankFlags singular;
+  for (weyl::Generator s=0; s<rd.semisimpleRank(); ++s)
+    singular.set(s,rd.simpleCoroot(s).dot(gamma.numerator())==0);
+
+  containers::sl_list<StandardRepr> result { z };
+  auto rit=result.begin();
+  do
+  { auto it=singular.begin();
+    for (; it(); ++it)
+    { const auto s=*it;
+      const KGBElt x=rit->x();
+      if (kgb().status(s,x)==gradings::Status::ImaginaryCompact)
+      {
+        result.erase(rit++); // discard zero parameter (increment, then erase)
+	break;
+      }
+      else if (kgb().status(s,x)==gradings::Status::Complex)
+      { if (kgb().isDescent(s,x))
+	{ // replace |*rit| by its complex descent for |s|
+	  Weight lr = lambda_rho(*rit);
+	  rd.simple_reflect(s,lr,1); // pivot |lr| around $-\rho$
+	  rit->x_part = kgb().cross(s,x);
+	  rit->y_bits=i_tab.y_pack(kgb().inv_nr(rit->x_part),lr);
+	  break; // reconsider all singular roots for the new parameter
+	}
+      }
+      else if (kgb().status(s,x)==gradings::Status::Real)
+      { // only do something for parity roots
+	const InvolutionNbr i_x = kgb().inv_nr(x);
+	if (rd.simpleCoroot(s).dot(i_tab.y_lift(i_x,rit->y()))%4!=0)
+	{ // found parity root; |kgb()| can distinguish type 1 and type 2
+	  const KGBEltPair p = kgb().inverseCayley(s,z.x());
+	  Weight lr = lambda_rho(z);
+	  assert(rd.simpleCoroot(s).dot(lr)%2!=0); // parity says this
+	  *rit = sr_gamma(p.first,lr,gamma); // |*rit| by first inverse Cayley
+	  if (p.second!=UndefKGB) // insert second inverse Cayley after first
+	    result.insert(std::next(rit),sr_gamma(p.second,lr,gamma));
+	  break;
+	}
+      }
+    }
+    if (not it()) // no singular descents found: consolidate |*rit|
+      ++rit;
+  }
+  while (not result.at_end(rit));
+  return result;
+}
+
 void Rep_table::add_block(param_block& block, BlockEltList& survivors)
 {
   survivors.reserve(block.size());
@@ -888,14 +978,10 @@ void Rep_table::add_block(param_block& block, BlockEltList& survivors)
 } // |Rep_table::add_block|
 
 // compute and return sum of KL polynomials at $s$ for final parameter |z|
-SR_poly Rep_table::KL_column_at_s(StandardRepr z) // must be nonzero and final
+SR_poly Rep_table::KL_column_at_s(StandardRepr z) // |z| must be final
 {
-  { RootNbr witness;
-    assert(is_nonzero(z,witness));
-    assert(is_final(z,witness));
-    ndebug_use(witness);
-  }
   normalise(z); // implies that |z| it will appear at the top of its own block
+  assert(is_fine(z));
   unsigned long hash_index=hash.find(z);
   if (hash_index==hash.empty) // previously unknown parameter
   { // then we need to compute to find the requested polynomial
@@ -979,7 +1065,10 @@ SR_poly Rep_table::deformation_terms (param_block& block,BlockElt entry_elem)
 } // |deformation_terms|
 
 SR_poly Rep_table::deformation(const StandardRepr& z)
+// that |z| is dominant and final is a precondition assured in the recursion
+// for more general |z|, do the preconditioning outside the recursion
 {
+  assert(is_fine(z));
   Weight lam_rho = lambda_rho(z);
   RatWeight nu_z =  nu(z);
   StandardRepr z0 = sr(z.x(),lam_rho,RatWeight(rank()));
@@ -991,6 +1080,7 @@ SR_poly Rep_table::deformation(const StandardRepr& z)
 
   StandardRepr z_near = sr(z.x(),lam_rho,nu_z*rp.back());
   normalise(z_near); // so that we may find a stored equivalent parameter
+  assert(is_fine(z_near));
 
   { // look up if closest reducibility point to |z| is already known
     unsigned long h=hash.find(z_near);
@@ -1003,7 +1093,8 @@ SR_poly Rep_table::deformation(const StandardRepr& z)
   {
     Rational r=rp[i];
     StandardRepr zi = sr(z.x(),lam_rho,nu_z*r);
-    normalise(zi); // necessary so |deformation_terms| won't reject it
+    normalise(zi); // necessary to ensure the following |assert| will hold
+    assert(is_fine(zi)); // ensures that |deformation_terms| won't refuse
     param_block b(*this,zi);
     const SR_poly terms = deformation_terms(b,b.size()-1);
     for (SR_poly::const_iterator it=terms.begin(); it!=terms.end(); ++it)
@@ -1069,15 +1160,14 @@ SR_poly twisted_KL_sum
 } // |twisted_KL_sum|
 
 // compute and return sum of KL polynomials at $s$ for final parameter |z|
+// since |delta| need not be the inner class involution, no storage is done
 SR_poly twisted_KL_column_at_s
   (const Rep_context& rc, StandardRepr z, const WeightInvolution& delta)
   // |z| must be delta-fixed, nonzero and final
 {
-  { RootNbr witness; // there should be no imaginary or real singular descents
-    if (not (rc.is_nonzero(z,witness) and rc.is_final(z,witness)))
-      throw std::runtime_error("Representation zero or not final");
-  }
   rc.normalise(z);
+  if (not rc.is_fine(z))
+    throw std::runtime_error("Parameter is not final");
   BlockElt entry; // dummy needed to ensure full block is generated
   param_block block(rc,z,entry); // which this constructor does
   ext_block::ext_block eblock(rc.innerClass(),block,delta);
@@ -1161,11 +1251,10 @@ void Rep_table::add_block(ext_block::ext_block& block,
 SR_poly Rep_table::twisted_KL_column_at_s(StandardRepr z)
   // |z| must be inner-class-twist-fixed, nonzero and final
 {
-  { RootNbr witness;
-    if (not (is_nonzero(z,witness) and is_final(z,witness)))
-      throw std::runtime_error("Representation zero or not final");
-  }
   normalise(z);
+  if (not is_fine(z))
+    throw std::runtime_error("Parameter not final");
+
   unsigned long hash_index=hash.find(z);
   if (hash_index>=twisted_KLV_list.size() // |z| unknown or not extended to, or
       or twisted_KLV_list[hash_index].empty()) // slot created by another block

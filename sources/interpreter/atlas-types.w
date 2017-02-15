@@ -4527,11 +4527,11 @@ efficiently maintained. In order to use it we must have seen the header file
 for the module \.{free\_abelian} on which the implementation is based. While
 that class itself does not have such an invariant, the handling of these
 formal sums in \.{atlas} will be such that all terms are ensured to have the
-predicates |is_standard| and |is_final| true, while |is_zero| is false, and to
-have a dominant representative $\gamma$ of the infinitesimal character. Only
-under such restriction can it be guaranteed that equivalent terms (which now
-must actually be equal) will always be combined, and the test for the sum
-being zero therefore mathematically correct.
+predicate |is_fine| true, which ensures a number of desirable properties,
+including having a dominant representative $\gamma$ of the infinitesimal
+character. Only under such restriction can it be guaranteed that equivalent
+terms (which now must actually be equal) will always be combined, and the test
+for the sum being zero therefore mathematically correct.
 
 @< Includes needed in the header file @>=
 #include "free_abelian.h" // needed to make |repr::SR_poly| a complete type
@@ -5141,7 +5141,11 @@ void full_deform_wrapper(expression_base::level l)
   test_standard(*p,"Cannot compute full deformation");
   if (l!=expression_base::no_value)
   {
-    repr::SR_poly result = p->rt().deformation(p->val);
+    const auto& rc = p->rc();
+    auto finals = rc.finals_below(p->val);
+    repr::SR_poly result (rc.repr_less());
+    for (auto it=finals.cbegin(); it!=finals.cend(); ++it)
+      result += p->rt().deformation(*it);
     push_value(std::make_shared<virtual_module_value>(p->rf,result));
   }
 }
@@ -5150,11 +5154,16 @@ void twisted_full_deform_wrapper(expression_base::level l)
 { shared_module_parameter p = get<module_parameter_value>();
   const auto& rc=p->rc();
   test_standard(*p,"Cannot compute full twisted deformation");
-  if (not rc.is_twist_fixed(p->val,rc.innerClass().distinguished()))
+  auto& delta = rc.innerClass().distinguished();
+  if (not rc.is_twist_fixed(p->val,delta))
     throw runtime_error("Parameter not fixed by inner class involution");
   if (l!=expression_base::no_value)
   {
-    repr::SR_poly result = p->rt().twisted_deformation(p->val);
+    auto finals = ext_block::extended_finalise(rc,p->val,delta);
+    repr::SR_poly result (rc.repr_less());
+    for (auto it=finals.cbegin(); it!=finals.cend(); ++it)
+      result.add_multiple(p->rt().twisted_deformation(it->first) @|
+                         ,it->second ? Split_integer(0,1) : Split_integer(1,0));
     push_value(std::make_shared<virtual_module_value>(p->rf,result));
   }
 }
