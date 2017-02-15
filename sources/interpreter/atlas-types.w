@@ -3991,24 +3991,27 @@ have a pointer available when we call |test_standard|, we define this function
 to take a reference (requiring us to write a dereferencing at each call),
 because the type of pointer (shared or raw) available is not always the same.
 The reference is of course not owned by |test_standard|. A similar test is
-|is_nonzero_final|.
+|is_nonzero_final|, which tests is the parameter will, after applying
+|Rep_table::normalise|, will satisfy the |is_final| predicate. When these
+functions fail, they try to be specific about what condition fails, in erms of
+the situation before applying |normalise|
 
 @< Local function def...@>=
 void test_standard(const module_parameter_value& p, const char* descr)
 { RootNbr witness;
   if (p.rc().is_standard(p.val,witness))
     return;
-  std::ostringstream os; p.print(os << descr << ": ");
-  os << "\nParameter not standard, negative on coroot #" << witness;
+  std::ostringstream os; p.print(os << descr << ":\n  ");
+  os << "\n  Parameter not standard, negative on coroot #" << witness;
   throw runtime_error(os.str());
 }
 
-void test_nonzero_final(const module_parameter_value& p, const char* descr)
+void test_normal_is_final(const module_parameter_value& p, const char* descr)
 { RootNbr witness; bool nonzero=p.rc().is_nonzero(p.val,witness);
   if (nonzero and p.rc().is_semifinal(p.val,witness))
     return; // nothing to report
-  std::ostringstream os; p.print(os << descr << ": ");
-@/os << "\nParameter is " << (nonzero ? "not final" : "zero")
+  std::ostringstream os; p.print(os << descr << ":\n  ");
+@/os << "\n  Parameter is " << (nonzero ? "not semifinal" : "zero")
    @|  <<", as witnessed by coroot #" << witness;
   throw runtime_error(os.str());
 }
@@ -5193,7 +5196,7 @@ twisted KLV polynomials, computed for the inner class involution.
 void KL_sum_at_s_wrapper(expression_base::level l)
 { shared_module_parameter p = get<module_parameter_value>();
   test_standard(*p,"Cannot compute Kazhdan-Lusztig sum");
-  test_nonzero_final(*p,"Cannot compute Kazhdan-Lusztig sum");
+  test_normal_is_final(*p,"Cannot compute Kazhdan-Lusztig sum");
   if (l!=expression_base::no_value)
   {
     repr::SR_poly result = p->rt().KL_column_at_s(p->val);
@@ -5204,7 +5207,7 @@ void KL_sum_at_s_wrapper(expression_base::level l)
 void twisted_KL_sum_at_s_wrapper(expression_base::level l)
 { shared_module_parameter p = get<module_parameter_value>();
   test_standard(*p,"Cannot compute Kazhdan-Lusztig sum");
-  test_nonzero_final(*p,"Cannot compute Kazhdan-Lusztig sum");
+  test_normal_is_final(*p,"Cannot compute Kazhdan-Lusztig sum");
   if (l!=expression_base::no_value)
   {
     repr::SR_poly result = p->rt().twisted_KL_column_at_s(p->val);
@@ -5219,7 +5222,7 @@ void external_twisted_KL_sum_at_s_wrapper(expression_base::level l)
 { shared_matrix delta = get<matrix_value>();
   shared_module_parameter p = get<module_parameter_value>();
   test_standard(*p,"Cannot compute Kazhdan-Lusztig sum");
-  test_nonzero_final(*p,"Cannot compute Kazhdan-Lusztig sum");
+  test_normal_is_final(*p,"Cannot compute Kazhdan-Lusztig sum");
   test_compatible(p->rc().innerClass(),delta);
   if (not p->rc().is_twist_fixed(p->val,delta->val))
     throw runtime_error("Parameter not fixed by given involution");
