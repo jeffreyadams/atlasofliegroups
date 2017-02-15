@@ -5257,20 +5257,21 @@ void scale_extended_wrapper(expression_base::level l)
 { auto factor = get<rat_value>();
   auto delta = get<matrix_value>();
   auto p = get<module_parameter_value>();
+  const StandardRepr sr = p->val;
+  const auto& rc = p->rc();
   test_standard(*p,"Cannot scale extended parameter");
+  if (not is_dominant_ratweight(rc.rootDatum(),sr.gamma()))
+    throw runtime_error("Parameter to be scaled not dominant");
   test_compatible(p->rc().innerClass(),delta);
-  if (not p->rc().is_twist_fixed(p->val,delta->val))
+  if (not rc.is_twist_fixed(sr,delta->val))
     throw runtime_error("Parameter to be scaled not fixed by given involution");
   if (l==expression_base::no_value)
     return;
 @)
-  const auto& rc = p->rc();
-  StandardRepr sr = p->val;
-  rc.make_dominant(sr); // ensure this in case caller forgot
   bool flipped;
-  sr = @;ext_block::scaled_extended_dominant
+  auto result = @;ext_block::scaled_extended_dominant
     (rc,sr,delta->val,factor->val,flipped);
-  push_value(std::make_shared<module_parameter_value>(p->rf,sr));
+  push_value(std::make_shared<module_parameter_value>(p->rf,result));
   push_value(whether(flipped));
   if (l==expression_base::single_value)
     wrap_tuple<2>();
