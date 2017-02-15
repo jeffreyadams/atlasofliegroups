@@ -179,17 +179,11 @@ bool Rep_context::is_nonzero(const StandardRepr& z, RootNbr& witness) const
   return true;
 }
 
-bool Rep_context::is_normal(const StandardRepr& z, RootNbr& witness) const
+bool Rep_context::is_normal(const StandardRepr& z) const
 {
-  const RootDatum& rd = rootDatum();
-  const auto& numer = z.gamma().numerator();
-
-  assert(is_dominant(z,witness));
-
-  for (weyl::Generator s=0; s<rd.semisimpleRank(); ++s)
-    if (kgb().isComplexDescent(s,z.x()) and rd.simpleCoroot(s).dot(numer)==0)
-      return witness=rd.simpleRootNbr(s),false;
-  return true;
+  auto z_normal = z;
+  normalise(z_normal);
+  return z_normal==z;
 }
 
 // |z| final means that no singular real roots satisfy the parity condition

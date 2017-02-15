@@ -3654,21 +3654,24 @@ method |print| should not.
 void module_parameter_value::print(std::ostream& out) const
 {@; interpreter::print(out,val,rc()); }
 
-@ We provide one of the adjectives ``non-standard'' (when $\lambda$ fails to
-be imaginary-dominant; in this case little can be done with the parameter),
-``zero'' (the standard module vanishes due to the singular infinitesimal
-character, namely by the presence of a singular compact simple-imaginary
-root), ``non-final'' (the standard module is non-zero, but can be expressed in
-terms of standard modules at more compact Cartans using a singular real root
-satisfying the parity condition) or ``final'' (the good ones; the condition
-implies ``standard'' an ``non-zero'').
+@ We provide one of the adjectives ``non-standard'' (when $\gamma$ and
+therefore $\lambda$ fails to be imaginary-dominant), ``zero'' (the standard
+module vanishes due to the singular infinitesimal character, namely by the
+presence of a singular compact simple-imaginary root), ``non-final'' (the
+standard module is non-zero, but can be expressed in terms of standard modules
+at more compact Cartans using a singular real root satisfying the parity
+condition), ``non-normal'' (the parameter differs from its normal form; when
+we come to this point it implies there is a complex singular descent), or
+finally ``final'' (the good ones that could go into a \.{ParamPol} value; the
+condition |is_final| should apply, though it is not tested here).
 
 @< Expression for adjectives... @>=
 ( not rc.is_standard(val,witness) ? "non-standard"
-  : not rc.is_dominant(val,witness) ? "non-dominant"
-  : not rc.is_normal(val,witness) ? "non-normal"
-  : not rc.is_nonzero(val,witness) ? "zero"
-  : rc.is_semifinal(val,witness) ? "final" : "non-final")
+@|: not rc.is_dominant(val,witness) ? "non-dominant"
+@|: not rc.is_nonzero(val,witness) ? "zero"
+@|: not rc.is_semifinal(val,witness) ? "non-final"
+@|: not rc.is_normal(val) ? "non-normal"
+@|: "final")
 
 @ To make a module parameter, one should provide a KGB element~$x$, an
 integral weight $\lambda-\rho$, and a rational weight~$\nu$. Since only its
