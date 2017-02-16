@@ -190,8 +190,7 @@ SRK_context::SRK_context(RealReductiveGroup &GR)
 } // |SRK_context::SRK_context|
 
 
-HCParam SRK_context::project
-  (size_t cn, Weight lambda) const
+HCParam SRK_context::project (CartanNbr cn, Weight lambda) const
 {
   const Cartan_info& ci=info(cn);
 
@@ -204,7 +203,7 @@ HCParam SRK_context::project
      );
 }
 
-Weight SRK_context::lift(size_t cn, HCParam p) const
+Weight SRK_context::lift(CartanNbr cn, HCParam p) const
 {
   const Cartan_info& ci=info(cn);
   Weight result=ci.freeLift*p.first; // lift free part
@@ -234,7 +233,7 @@ StandardRepK SRK_context::std_rep (const Weight& two_lambda, TitsElt a) const
 
   Weight mu=rd.image_by_inverse(two_lambda,ww); // move weight to canonical
 
-  size_t cn = innerClass().class_number(sigma);
+  CartanNbr cn = innerClass().class_number(sigma);
   StandardRepK result(cn,
 		      info(cn).fiber_modulus.mod_image
 		        (titsGroup().left_torus_part(a)),
@@ -243,6 +242,7 @@ StandardRepK SRK_context::std_rep (const Weight& two_lambda, TitsElt a) const
   return result;
 } // |std_rep|
 
+#if 0
 // the following is a variant of |std_rep_rho_plus| intended for |KGB_sum|
 // it should only transform the parameters for the Levi factor given by |gens|
 // since |lambda| is $\rho$-centered, care should be taken in transforming it
@@ -271,7 +271,7 @@ RawRep SRK_context::Levi_rep (Weight lambda, TitsElt a, RankFlags gens) const
 
 StandardRepK SRK_context::KGB_elt_rep(KGBElt z) const
 { return std_rep(rootDatum().twoRho(),kgb().titsElt(z)); }
-
+#endif
 
 level
 SRK_context::height(const StandardRepK& sr) const
@@ -340,7 +340,7 @@ bool SRK_context::isStandard(const StandardRepK& sr, size_t& witness) const
   return true;
 }
 
-bool SRK_context::isNormal(Weight lambda, size_t cn, size_t& witness) const
+bool SRK_context::isNormal(Weight lambda, CartanNbr cn, size_t& witness) const
 {
   size_t i=0; // position of |*it| below in |info(cn).bi_ortho|
   for (RankFlags::iterator it=info(cn).bi_ortho.begin(); it(); ++it,++i)
@@ -388,7 +388,7 @@ bool SRK_context::isFinal(const StandardRepK& sr, size_t& witness) const
 void SRK_context::normalize(StandardRepK& sr) const
 {
   const RootDatum& rd = rootDatum();
-  size_t cn = sr.Cartan();
+  CartanNbr cn = sr.Cartan();
   const Cartan_info& ci = info(cn);
   Weight lambda = lift(sr);
 
@@ -412,7 +412,7 @@ q_Char SRK_context::q_reflect_eq(const StandardRepK& sr,size_t i,
 {
   const RootDatum& rd = rootDatum();
   const TorusPart& x = sr.d_fiberElt;
-  size_t cn = sr.Cartan();
+  CartanNbr cn = sr.Cartan();
 
   int n = -lambda.dot(cowt);
 
@@ -573,10 +573,9 @@ KGBEltList SRK_context::sub_KGB(const PSalgebra& q) const
   while (not queue.empty());
 
   return KGBEltList(flagged.begin(),flagged.end());
-} // sub_KGB
+} // |sub_KGB|
 
-RawChar SRK_context::KGB_sum(const PSalgebra& q,
-			     const Weight& lambda) const
+RawChar SRK_context::KGB_sum(const PSalgebra& q, const Weight& lambda) const
 {
   const RootDatum& rd=rootDatum();
   KGBEltList sub=sub_KGB(q); std::reverse(sub.begin(),sub.end());
@@ -587,7 +586,7 @@ RawChar SRK_context::KGB_sum(const PSalgebra& q,
     sub_inv[sub[i]]=i; // partially fill array with inverse index
 
   std::vector<Weight> mu; // list of $\rho$-centered weights,
-  mu.reserve(sub.size());               // associated to the elements of |sub|
+  mu.reserve(sub.size()); // associated to the elements of |sub|
 
   mu.push_back(lambda); (mu[0]-=rd.twoRho())/=2; // make $\rho$-centered
 
@@ -614,11 +613,11 @@ RawChar SRK_context::KGB_sum(const PSalgebra& q,
       {
 	size_t k=sub_inv[kgb().cayley(*it,x)];
 	assert(k!=~0ul); // we ought to land in the subset
-	Weight nu=mu[k]; // $\rho-\lambda$ at split side
+	Weight nu=mu[k]; // $\rho-\lambda$ upstairs
 	assert(nu.dot(rd.simpleCoroot(*it))%2 == 0); // finality
 	Weight alpha=rd.simpleRoot(*it);
 	nu -= (alpha *= nu.dot(rd.simpleCoroot(*it))/2); // project
-	mu.push_back(nu); // use projected weight at compact side of transform
+	mu.push_back(nu); // use projected weight downstairs
 	break;
       }
     }
@@ -664,9 +663,8 @@ SRK_context::K_type_formula(const StandardRepK& sr, level bound)
     const TitsElt& strong=it->first.second; // Tits elt from |KGB_sum_p|
     InvolutionData id = innerClass().involution_data(strong.tw());
 
-    RootNbrSet A(rd.numRoots());
-    for (BitMap::iterator
-	   rt=p.radical().begin(); rt!=p.radical().end(); ++rt)
+    RootNbrSet A(rd.numRoots()); // oversized: negative roots unused
+    for (BitMap::iterator rt=p.radical().begin(); rt(); ++rt)
     {
       RootNbr alpha=*rt;
       assert(not id.real_roots().isMember(alpha));
@@ -685,7 +683,7 @@ SRK_context::K_type_formula(const StandardRepK& sr, level bound)
     typedef free_abelian::Monoid_Ring<Weight> polynomial;
     const WeightInvolution theta = innerClass().matrix(strong.tw());
 
-    // compute $X^\mu*\prod_{\alpha\in A}(1-X^\alpha)$ in |pol|
+    // compute in |pol| the product $X^\mu*\prod_{\alpha\in A}(1-X^\alpha)$
     polynomial pol(mu);
     for (RootNbrSet::iterator it=A.begin(); it!=A.end(); ++it)
     {
@@ -1155,8 +1153,19 @@ qKhatContext::qKhatContext
     , expanded()
 {}
 
-/******** accessors *******************************************************/
+/******** manipulators and accessors ***************************************/
 
+seq_no KhatContext::match_final(const StandardRepK& sr)
+{ seq_no n=finals.find(sr);
+  if (n!=Hash::empty)
+    return n;
+  size_t witness;
+  assert (isStandard(sr,witness) and
+	  not isZero(sr,witness) and isFinal(sr,witness));
+  assert(height_of.size()==final_pool.size());
+  height_of.push_back(height(sr)); // store height
+  return finals.match(sr); // expand table
+}
 
 /* transform a character |chi| to a |combination| of Normal Standard terms
    this version ensures the basic |standardize| is recursively called first
@@ -1665,29 +1674,21 @@ void KhatContext::go(const StandardRepK& initial)
 
 ******************************************************************************/
 
-PSalgebra::PSalgebra(TitsElt base,
-		     const InnerClass& G)
+PSalgebra::PSalgebra(TitsElt base, const InnerClass& G)
     : strong_inv(base)
     , cn(G.class_number(base.tw()))
     , sub_diagram() // class |RankFlags| needs no dimensioning
-    , nilpotents(G.rootDatum().numRoots())
+    , nilpotents(G.rootDatum().posRootSet())
 {
   const RootDatum& rd=G.rootDatum();
   InvolutionData id = G.involution_data(base.tw());
 
-  // Put real simple roots into Levi factor
+  // get |rd.simpleRootSet&id.real_roots()|, shifted to fit in |RankFlags|
   for (size_t i=0; i<rd.semisimpleRank(); ++i)
     if (id.real_roots().isMember(rd.simpleRootNbr(i)))
       sub_diagram.set(i);
 
-
-  // put any imaginary or complex positive roots into radical
-  for (size_t i=0; i<rd.numPosRoots(); ++i)
-  {
-    RootNbr alpha=rd.posRootNbr(i);
-    if (not id.real_roots().isMember(alpha))
-      nilpotents.insert(alpha);
-  }
+  nilpotents.andnot(id.real_roots());
 }
 
 

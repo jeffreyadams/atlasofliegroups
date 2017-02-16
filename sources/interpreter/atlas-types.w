@@ -4925,12 +4925,12 @@ void first_term_wrapper (expression_base::level l)
 @*2 Computing with $K$-types.
 The ``restriction to $K$'' component of the Atlas library has for a long time
 had an isolated existence, in part because the ``nonzero final standard
-$K$ parameters'' used to designate $K$-types is both hard to decipher and does
+$K$ parameters'' used to designate $K$-types are both hard to decipher and do
 not seem to relate easily to values used elsewhere. However, these parameters
 do in fact correspond to the subset of module pareters with $\nu=0$.
 
 The function |K_type_formula| converts its parameter to a |StandardRepK|
-value~|sr|, for which it calls the method |SRK_context::K_type_formula|. Since
+value~|srk|, for which it calls the method |SRK_context::K_type_formula|. Since
 the terms of that formula are not necessarily standard, one needs to pass each
 term though |KhatContext::standardize|; finally, to incorporate the resulting
 terms into a |virtual_module|, they need to be passed through
@@ -4946,13 +4946,14 @@ void K_type_formula_wrapper(expression_base::level l)
   RealReductiveGroup& G = p->rf->val;
   const Rep_context& rc = p->rc();
   standardrepk::KhatContext khc(G);
-  StandardRepK sr =
+  StandardRepK srk =
     khc.std_rep_rho_plus (rc.lambda_rho(p->val),G.kgb().titsElt(p->val.x()));
-  @< Check that |sr| is final, and if not |throw| an error @>
+  @< Check that |srk| is final, and if not |throw| an error @>
   if (l==expression_base::no_value)
     return;
 @)
-  const standardrepk::Char formula = khc.K_type_formula(sr).second;
+  const standardrepk::Char formula = khc.K_type_formula(srk).second;
+   // don't need |first==srk|
   const RatWeight zero_nu(p->rf->val.rank());
 @/own_virtual_module acc @|
     (new virtual_module_value(p->rf, repr::SR_poly(p->rc().repr_less())));
@@ -4973,11 +4974,11 @@ void K_type_formula_wrapper(expression_base::level l)
 |K_type_formula| will fail. The error message mentions restriction to $K$,
 since the parameter itself reported here might be final.
 
-@< Check that |sr| is final, and if not |throw| an error @>=
+@< Check that |srk| is final, and if not |throw| an error @>=
 { size_t witness;
-  if (not khc.isFinal(sr,witness))
+  if (not khc.isFinal(srk,witness))
   { std::ostringstream os;
-    RootNbr simp_wit = khc.fiber(sr).simpleReal(witness);
+    RootNbr simp_wit = khc.fiber(srk).simpleReal(witness);
     print(os << "Non final restriction to K: ",p->val,rc)
     @| << "\n  (witness "	<< khc.rootDatum().coroot(simp_wit) << ')';
     throw runtime_error(os.str());
@@ -4985,55 +4986,83 @@ since the parameter itself reported here might be final.
 }
 
 @ A main function is the actual branching to~$K$: decomposition of a standard
-final representation into $K$-types, up to a given limit.
+representation into $K$-types, up to a given limit. This used to be limited to
+final representations, but it turns out that |KhatContext::standardize| will
+expand non-final |StandardRepK| values into sums of final ones, so we decided
+to drop that restriction without otherwise changing the code below. Since
+|KhatContext::standardize| also does what its name suggests, it seems likely
+that we could drop the ``standard'' condition as well, though this will
+involve a longer rewriting process (using Hecht-Schmid identities) than the
+expansion into finals.
 
 @< Local function def...@>=
 void branch_wrapper(expression_base::level l)
 { int bound = get<int_value>()->val;
+  // not ``branch and bound'' but ``branch up to bound''
   shared_module_parameter p = get<module_parameter_value>();
+  test_standard(*p,"Branching of non-standard parameter is not allowed");
   const Rep_context rc = p->rc();
   RealReductiveGroup& G=p->rf->val;
   standardrepk::KhatContext khc(G);
-  StandardRepK sr=
+  StandardRepK srk=
     khc.std_rep_rho_plus (rc.lambda_rho(p->val),G.kgb().titsElt(p->val.x()));
-  @< Check that |sr| is standard and final, and if not |throw| an error @>
+@/{@; size_t witness;
+   assert(khc.isStandard(srk,witness));
+  } // should be ensured by |test_standard|
 @)
   if (l==expression_base::no_value)
     return;
-  standardrepk::combination combo=khc.standardize(sr);
+  standardrepk::combination combo=khc.standardize(srk);
   RatWeight zero_nu(G.rank());
 @/own_virtual_module acc @|
     (new virtual_module_value(p->rf, repr::SR_poly(rc.repr_less())));
-  for (auto it=combo.begin(); it!=combo.end(); ++it) // loop runs once at most
+  for (auto it=combo.begin(); it!=combo.end(); ++it)
+    // loop over finals from |srk|
   {
     standardrepk::combination chunk = khc.branch(it->first,bound);
     for (auto jt=chunk.begin(); jt!=chunk.end(); ++jt)
     {
-      StandardRepr sr = rc.sr(khc.rep_no(jt->first),khc,zero_nu);
-      acc->val.add_term(sr,Split_integer(it->second*jt->second));
+      StandardRepr srk = rc.sr(khc.rep_no(jt->first),khc,zero_nu);
+      acc->val.add_term(srk,Split_integer(it->second*jt->second));
     }
   }
   push_value(acc);
 }
 
-@ We must test the parameter for being normal and final, or else the method
-|branch| will fail. The error message mentions restriction to $K$, since the
-``final'' status reported here may differ from that of the parameter itself.
+@ One can also branch from a polynomial. Since terms of a polynomial are
+guaranteed to be final, we can transform its terms to |StandardRepK| values
+that can be directly fed to |KhatContext::branch| without passing through
+|standardize|. We did need to add a method |KhatContext::match_final| to
+transform |srk| into a sequence number inside |khc|, which is what branching
+needs.
 
-@< Check that |sr| is standard and final, and if not |throw| an error @>=
-{ size_t witness;
-  bool nonstand=not khc.isStandard(sr,witness);
-  if (nonstand or not khc.isFinal(sr,witness))
-  { std::ostringstream os;
-    RootNbr simp_wit = nonstand ?
-      khc.fiber(sr).simpleImaginary(witness)
-    : khc.fiber(sr).simpleReal(witness);
-    print
-      (os << "Non " << (nonstand?"standard":"final") << "restriction to K: "
-      ,p->val,rc)
-    @| << "\n  (witness "	<< khc.rootDatum().coroot(simp_wit) << ')';
-    throw runtime_error(os.str());
+@< Local function def...@>=
+void branch_pol_wrapper(expression_base::level l)
+{ int bound = get<int_value>()->val;
+  // not ``branch and bound'' but ``branch up to bound''
+  shared_virtual_module P = get<virtual_module_value>();
+  if (l==expression_base::no_value)
+    return;
+@)
+  const Rep_context rc = P->rc();
+  RealReductiveGroup& G=P->rf->val;
+  standardrepk::KhatContext khc(G);
+@/own_virtual_module acc @|
+    (new virtual_module_value(P->rf, repr::SR_poly(rc.repr_less())));
+  RatWeight zero_nu(G.rank());
+  for (auto it=P->val.begin(); it!=P->val.end(); ++it)
+    // loop over terms of |P|
+  {
+    StandardRepK srk= khc.std_rep_rho_plus
+       (rc.lambda_rho(it->first),G.kgb().titsElt(it->first.x()));
+    standardrepk::combination chunk = khc.branch(khc.match_final(srk),bound);
+    for (auto jt=chunk.begin(); jt!=chunk.end(); ++jt)
+    {
+      StandardRepr srk = rc.sr(khc.rep_no(jt->first),khc,zero_nu);
+      acc->val.add_term(srk,Split_integer(it->second*jt->second));
+    }
   }
+  push_value(acc);
 }
 
 @ In the K-type code, standard representations restricted to $K$ are always
@@ -5076,9 +5105,9 @@ void srk_height_wrapper(expression_base::level l)
 { shared_module_parameter p = get<module_parameter_value>();
   standardrepk::SRK_context srkc(p->rf->val);
   TitsElt a=p->rf->kgb().titsElt(p->val.x());
-  StandardRepK sr=srkc.std_rep_rho_plus (p->rc().lambda_rho(p->val),a);
+  StandardRepK srk=srkc.std_rep_rho_plus (p->rc().lambda_rho(p->val),a);
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<int_value>(srkc.height(sr)));
+    push_value(std::make_shared<int_value>(srkc.height(srk)));
 }
 
 @*2 Deformation formulas.
@@ -5341,6 +5370,7 @@ install_function(last_term_wrapper,"last_term","(ParamPol->Split,Param)");
 install_function(first_term_wrapper,"first_term","(ParamPol->Split,Param)");
 install_function(K_type_formula_wrapper,@|"K_type_formula" ,"(Param->ParamPol)");
 install_function(branch_wrapper,@|"branch" ,"(Param,int->ParamPol)");
+install_function(branch_pol_wrapper,@|"branch" ,"(ParamPol,int->ParamPol)");
 install_function(to_canonical_wrapper,@|"to_canonical" ,"(Param->Param)");
 install_function(srk_height_wrapper,@|"height" ,"(Param->int)");
 install_function(deform_wrapper,@|"deform" ,"(Param->ParamPol)");

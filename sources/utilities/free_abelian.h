@@ -106,6 +106,7 @@ template<typename T, typename C=long int, typename Compare=std::less<T> >
 
   Monoid_Ring operator*(const Monoid_Ring& p);
 
+  // add to |*this| a multiple of |p| by the mono-nomial $cX^{\\{expon}}$
   Monoid_Ring& add_multiple(const Monoid_Ring& p, C m,const T& expon);
 
 }; // |class Monoid_Ring|

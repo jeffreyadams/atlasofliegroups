@@ -2,7 +2,7 @@
   This is standardrepk.h
 
   Copyright (C) 2004, 2005 Fokko du Cloux
-  Copyright (C) 2008, 2009 Marc van Leeuwen
+  Copyright (C) 2008, 2009, 2017 Marc van Leeuwen
   part of the Atlas of Lie Groups and Representations version 0.2.4
 
   For license information see the LICENSE file
@@ -145,7 +145,7 @@ class StandardRepK
   friend class SRK_context; // which is like |WeylGroup| is for |WeylElt|
 
   // Number of the Cartan to which the HC module is associated.
-  size_t d_cartan;
+  CartanNbr d_cartan;
 
   // no real form or base grading recorded in elements; they're in |KhatContext|
   // Element of the fiber group; left torus part of the strong involution
@@ -158,7 +158,7 @@ class StandardRepK
 
   // main constructor is private, used by |SRK_context| methods
   // fundamental bare-bones constructor
-  StandardRepK(size_t cn, const TorusPart& x, const HCParam& lambda)
+  StandardRepK(CartanNbr cn, const TorusPart& x, const HCParam& lambda)
     : d_cartan(cn), d_fiberElt(x), d_lambda(lambda) {}
 
 public:
@@ -268,29 +268,28 @@ class SRK_context
   const TwistedWeylGroup& twistedWeylGroup() const
     { return G.twistedWeylGroup(); }
   const TitsGroup& titsGroup() const { return G.titsGroup(); }
-  const TitsCoset& basedTitsGroup() const
-    { return G.basedTitsGroup(); }
+  const TitsCoset& basedTitsGroup() const { return G.basedTitsGroup(); }
 
-  const TwistedInvolution involution_of_Cartan(size_t cn) const
+  const TwistedInvolution involution_of_Cartan(CartanNbr cn) const
     { return innerClass().involution_of_Cartan(cn); }
   const Fiber& fiber(const StandardRepK& sr) const
     { return G.cartan(sr.Cartan()).fiber(); }
 
   const KGB& kgb() const { return G.kgb(); }
 
-  const Cartan_info& info(size_t cn) const
+  const Cartan_info& info(CartanNbr cn) const
     { return C_info[Cartan_set.position(cn)]; }
   const BinaryMap& dual_reflection(weyl::Generator i) const
   { return simple_reflection_mod_2[i]; }
 
   // projection (keeping free & torsion parts): doubled |Weight| to |HCParam|
-  HCParam project(size_t cn, Weight lambda) const; // by value
+  HCParam project(CartanNbr cn, Weight lambda) const; // by value
 
   // a section of |project|
-  Weight lift(size_t cn, HCParam p) const;
+  Weight lift(CartanNbr cn, HCParam p) const;
 
   // $(1+\theta)$ times |lift(cn,p)|; this is independent of choice of lift
-  Weight theta_lift(size_t cn, HCParam p) const
+  Weight theta_lift(CartanNbr cn, HCParam p) const
   {
     Weight result=lift(cn,p);
     result += G.cartan(cn).involution()*result;
@@ -305,15 +304,16 @@ class SRK_context
 
   StandardRepK std_rep (const Weight& two_lambda, TitsElt a) const;
 
-  StandardRepK std_rep_rho_plus (Weight lambda, TitsElt a) const
+  StandardRepK std_rep_rho_plus (Weight lambda_rho, TitsElt a) const
   {
-    (lambda *= 2) += rootDatum().twoRho();
-    return std_rep(lambda,a);
+    (lambda_rho *= 2) += rootDatum().twoRho();
+    return std_rep(lambda_rho,a); // in fact first argument now is $2\lambda$
   }
 
   // RepK from KGB number only, with |lambda=rho|; method is currently unused
   StandardRepK KGB_elt_rep(KGBElt z) const;
 
+  // RepK' for |(lambda,a)| relative to Levi subgroup given by |gens|; unused
   RawRep Levi_rep (Weight lambda, TitsElt a, RankFlags gens) const;
 
 /*
@@ -334,7 +334,7 @@ class SRK_context
   canonical twisted involution for the Cartan class of |sr|.
 */
   bool isStandard(const StandardRepK& sr, size_t& witness) const;
-  bool isNormal(Weight lambda, size_t cn, size_t& witness) const;
+  bool isNormal(Weight lambda, CartanNbr cn, size_t& witness) const;
   bool isNormal(const StandardRepK& sr, size_t& witness) const
     { return isNormal(lift(sr),sr.Cartan(),witness); }
   bool isZero(const StandardRepK& sr, size_t& witness) const;
@@ -352,15 +352,11 @@ class SRK_context
     return TitsElt(titsGroup(), involution_of_Cartan(s.d_cartan), s.d_fiberElt);
   }
 
+  // list of elements below element representing |q|, by Levi (real) generators
   KGBEltList sub_KGB(const PSalgebra& q) const;
 
   PSalgebra theta_stable_parabolic
     (const StandardRepK& sr, WeylWord& conjugator) const;
-
-  CharForm K_type_formula
-    (const StandardRepK& sr, level bound=~0u); // non-|const| (|height_bound|)
-  q_CharForm q_K_type_formula
-    (const StandardRepK& sr, level bound=~0u); // non-|const| (|height_bound|)
 
   // Hecht-Schmid identity for simple-imaginary root $\alpha$
   HechtSchmid HS_id(const StandardRepK& s, RootNbr alpha) const;
@@ -373,26 +369,33 @@ class SRK_context
 
   // no need for |q_back_HS_id_eq|, it would not involve $q$; use |back_HS_id|
 
-  /*! Returns the sum of absolute values of the scalar products of
-    $(1+theta)\lambda$ and the positive coroots. This gives a Weyl group
-    invariant limit on the size of the weights that will be needed.
-  */
+/*
+  The sum of absolute values on the positive coroots of $(1+theta)\lambda$.
+  This gives a Weyl group invariant limit on the size of the weights that will
+  be needed.
+*/
   level height(const StandardRepK& s) const;
-
-  //! Lower bound for height of representation after adding positive roots
-  level height_bound(const Weight& lambda); // non |const|
 
   std::ostream& print(std::ostream& strm, const StandardRepK& sr) const;
   std::ostream& print(std::ostream& strm, const Char& ch) const;
   std::ostream& print(std::ostream& strm, const q_Char& ch) const;
 
+  // manipulators
+
+  // lower bound for height of representation after adding positive roots
+  level height_bound(const Weight& lambda); // non |const|, see |get_projection|
+
+  CharForm K_type_formula
+    (const StandardRepK& sr, level bound=~0u); // non-|const| (|height_bound|)
+  q_CharForm q_K_type_formula
+    (const StandardRepK& sr, level bound=~0u); // non-|const| (|height_bound|)
+
 // private methods
  private:
-  RawChar KGB_sum(const PSalgebra& q, const Weight& lambda)
-    const;
+  // alternating sum over |sub_KGB(q)| of |RawRep| values deduced from |lambda|
+  RawChar KGB_sum(const PSalgebra& q, const Weight& lambda) const;
 
-  Raw_q_Char q_KGB_sum(const PSalgebra& q, const Weight& lambda)
-    const;
+  Raw_q_Char q_KGB_sum(const PSalgebra& q, const Weight& lambda) const;
 
   const proj_info& get_projection(RankFlags gens); // non |const|
 
@@ -413,9 +416,11 @@ public:
   }
 }; // |class graded_compare|
 
-// This class serves to store tables of previously computed mappings from
-// "bad" standard representations to good ones. Also the information
-// necessary to interpret the d_lambda field in StandardRepK are stored here
+/*
+  This class serves to store tables of previously computed mappings from "bad"
+  standard representations to good ones. Also the information necessary to
+  interpret the |d_lambda| field in |StandardRepK| are stored here
+*/
 class KhatContext : public SRK_context
 {
   typedef HashTable<StandardRepK,seq_no> Hash;
@@ -451,6 +456,7 @@ class KhatContext : public SRK_context
 
   const graded_compare& height_order() const { return height_graded; }
 
+  seq_no match_final(const StandardRepK& sr); // look up |sr|, assumed final
   combination standardize(const StandardRepK& sr); // non |const|: |expanded++|
   combination standardize(const Char& chi); // non |const|
 
@@ -579,7 +585,7 @@ class HechtSchmid
 class PSalgebra // Parabolic subalgebra
 {
   TitsElt strong_inv; // corresponding strong involution
-  size_t cn; // number of the Cartan class
+  CartanNbr cn; // number of the Cartan class
   RankFlags sub_diagram; // simple roots forming basis of Levi factor
   RootNbrSet nilpotents; // (positive) roots in nilpotent radical
  public:
@@ -588,7 +594,7 @@ class PSalgebra // Parabolic subalgebra
 
   const TitsElt& strong_involution() const { return strong_inv; }
   TwistedInvolution involution() const { return strong_inv.tw(); }
-  size_t Cartan_no() const { return cn; }
+  CartanNbr Cartan_no() const { return cn; }
   RankFlags Levi_gens() const { return sub_diagram; }
   const RootNbrSet& radical() const { return nilpotents; }
 }; // |class PSalgebra|
