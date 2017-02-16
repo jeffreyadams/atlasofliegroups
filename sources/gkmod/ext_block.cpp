@@ -482,12 +482,15 @@ containers::sl_list<std::pair<StandardRepr,bool> > extended_finalise
       auto type = star(E,orbits[s],links);
       if (not is_like_compact(type)) // some descent, push to front of |to_do|
       { bool flip = has_october_surprise(type); // to undo extra flip |star|
-	auto l_it=links.begin();
-	l_it->flip(flip);
-	to_do.push(*l_it);
-	if (has_double_image(type)) // then append a second node after |head|
-	{ ++l_it;
+	auto l_it=links.begin(); RootNbr witness;
+	if (rc.is_nonzero(l_it->restrict(),witness))
+	{
 	  l_it->flip(flip);
+	  to_do.push(*l_it);
+	}
+	if (has_double_image(type)  // then maybe add second node after |head|
+	    and rc.is_nonzero((++l_it)->restrict(),witness))
+	{ l_it->flip(flip);
 	  to_do.push(*l_it);
 	}
       }

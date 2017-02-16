@@ -79,7 +79,7 @@ set deformation (Param p) = (Param,ParamPol): { deformed Param and new terms }
 
 set recursive_deform (Param p) = ParamPol:
   if d_verbose then prints("recursive_deform with:", p) fi;
-  if is_zero(p) or not is_final(p) then error("improper parameter") fi;
+  if not is_final(p) then error("improper parameter") fi;
   let empty=null_module(real_form(p)) in
   if d_verbose { choose verbose or non-verbose version of the function }
   then rec_fun full_def (Split sc,Param p) ParamPol:

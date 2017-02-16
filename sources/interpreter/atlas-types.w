@@ -3654,21 +3654,24 @@ method |print| should not.
 void module_parameter_value::print(std::ostream& out) const
 {@; interpreter::print(out,val,rc()); }
 
-@ We provide one of the adjectives ``non-standard'' (when $\lambda$ fails to
-be imaginary-dominant; in this case little can be done with the parameter),
-``zero'' (the standard module vanishes due to the singular infinitesimal
-character, namely by the presence of a singular compact simple-imaginary
-root), ``non-final'' (the standard module is non-zero, but can be expressed in
-terms of standard modules at more compact Cartans using a singular real root
-satisfying the parity condition) or ``final'' (the good ones; the condition
-implies ``standard'' an ``non-zero'').
+@ We provide one of the adjectives ``non-standard'' (when $\gamma$ and
+therefore $\lambda$ fails to be imaginary-dominant), ``zero'' (the standard
+module vanishes due to the singular infinitesimal character, namely by the
+presence of a singular compact simple-imaginary root), ``non-final'' (the
+standard module is non-zero, but can be expressed in terms of standard modules
+at more compact Cartans using a singular real root satisfying the parity
+condition), ``non-normal'' (the parameter differs from its normal form; when
+we come to this point it implies there is a complex singular descent), or
+finally ``final'' (the good ones that could go into a \.{ParamPol} value; the
+condition |is_final| should apply, though it is not tested here).
 
 @< Expression for adjectives... @>=
 ( not rc.is_standard(val,witness) ? "non-standard"
-  : not rc.is_dominant(val,witness) ? "non-dominant"
-  : not rc.is_normal(val,witness) ? "non-normal"
-  : not rc.is_nonzero(val,witness) ? "zero"
-  : rc.is_final(val,witness) ? "final" : "non-final")
+@|: not rc.is_dominant(val,witness) ? "non-dominant"
+@|: not rc.is_nonzero(val,witness) ? "zero"
+@|: not rc.is_semifinal(val,witness) ? "non-final"
+@|: not rc.is_normal(val) ? "non-normal"
+@|: "final")
 
 @ To make a module parameter, one should provide a KGB element~$x$, an
 integral weight $\lambda-\rho$, and a rational weight~$\nu$. Since only its
@@ -3743,11 +3746,17 @@ void is_zero_wrapper(expression_base::level l)
     push_value(whether(not p->rc().is_nonzero(p->val,witness)));
 }
 
-void is_final_wrapper(expression_base::level l)
+void is_semifinal_wrapper(expression_base::level l)
 { shared_module_parameter p = get<module_parameter_value>();
   RootNbr witness;
   if (l!=expression_base::no_value)
-    push_value(whether(p->rc().is_final(p->val,witness)));
+    push_value(whether(p->rc().is_semifinal(p->val,witness)));
+}
+
+void is_final_wrapper(expression_base::level l)
+{ shared_module_parameter p = get<module_parameter_value>();
+  if (l!=expression_base::no_value)
+    push_value(whether(p->rc().is_final(p->val)));
 }
 
 @ Before constructing (non-integral) blocks, it is essential that the
@@ -3985,24 +3994,27 @@ have a pointer available when we call |test_standard|, we define this function
 to take a reference (requiring us to write a dereferencing at each call),
 because the type of pointer (shared or raw) available is not always the same.
 The reference is of course not owned by |test_standard|. A similar test is
-|is_nonzero_final|.
+|is_nonzero_final|, which tests is the parameter will, after applying
+|Rep_table::normalise|, will satisfy the |is_final| predicate. When these
+functions fail, they try to be specific about what condition fails, in erms of
+the situation before applying |normalise|
 
 @< Local function def...@>=
 void test_standard(const module_parameter_value& p, const char* descr)
 { RootNbr witness;
   if (p.rc().is_standard(p.val,witness))
     return;
-  std::ostringstream os; p.print(os << descr << ": ");
-  os << "\nParameter not standard, negative on coroot #" << witness;
+  std::ostringstream os; p.print(os << descr << ":\n  ");
+  os << "\n  Parameter not standard, negative on coroot #" << witness;
   throw runtime_error(os.str());
 }
 
-void test_nonzero_final(const module_parameter_value& p, const char* descr)
+void test_normal_is_final(const module_parameter_value& p, const char* descr)
 { RootNbr witness; bool nonzero=p.rc().is_nonzero(p.val,witness);
-  if (nonzero and p.rc().is_final(p.val,witness))
+  if (nonzero and p.rc().is_semifinal(p.val,witness))
     return; // nothing to report
-  std::ostringstream os; p.print(os << descr << ": ");
-@/os << "\nParameter is " << (nonzero ? "not final" : "zero")
+  std::ostringstream os; p.print(os << descr << ":\n  ");
+@/os << "\n  Parameter is " << (nonzero ? "not semifinal" : "zero")
    @|  <<", as witnessed by coroot #" << witness;
   throw runtime_error(os.str());
 }
@@ -4352,6 +4364,7 @@ install_function(real_form_of_parameter_wrapper,@|"real_form"
 		,"(Param->RealForm)");
 install_function(is_standard_wrapper,@|"is_standard" ,"(Param->bool)");
 install_function(is_zero_wrapper,@|"is_zero" ,"(Param->bool)");
+install_function(is_semifinal_wrapper,@|"is_semifinal" ,"(Param->bool)");
 install_function(is_final_wrapper,@|"is_final" ,"(Param->bool)");
 install_function(parameter_dominant_wrapper,@|"dominant" ,"(Param->Param)");
 install_function(parameter_normal_wrapper,@|"normal" ,"(Param->Param)");
@@ -4527,11 +4540,11 @@ efficiently maintained. In order to use it we must have seen the header file
 for the module \.{free\_abelian} on which the implementation is based. While
 that class itself does not have such an invariant, the handling of these
 formal sums in \.{atlas} will be such that all terms are ensured to have the
-predicates |is_standard| and |is_final| true, while |is_zero| is false, and to
-have a dominant representative $\gamma$ of the infinitesimal character. Only
-under such restriction can it be guaranteed that equivalent terms (which now
-must actually be equal) will always be combined, and the test for the sum
-being zero therefore mathematically correct.
+predicate |is_final| true, which ensures a number of desirable properties,
+including having a dominant representative $\gamma$ of the infinitesimal
+character. Only under such restriction can it be guaranteed that equivalent
+terms (which now must actually be equal) will always be combined, and the test
+for the sum being zero therefore mathematically correct.
 
 @< Includes needed in the header file @>=
 #include "free_abelian.h" // needed to make |repr::SR_poly| a complete type
@@ -5141,7 +5154,11 @@ void full_deform_wrapper(expression_base::level l)
   test_standard(*p,"Cannot compute full deformation");
   if (l!=expression_base::no_value)
   {
-    repr::SR_poly result = p->rt().deformation(p->val);
+    const auto& rc = p->rc();
+    auto finals = rc.finals_below(p->val);
+    repr::SR_poly result (rc.repr_less());
+    for (auto it=finals.cbegin(); it!=finals.cend(); ++it)
+      result += p->rt().deformation(*it);
     push_value(std::make_shared<virtual_module_value>(p->rf,result));
   }
 }
@@ -5150,11 +5167,16 @@ void twisted_full_deform_wrapper(expression_base::level l)
 { shared_module_parameter p = get<module_parameter_value>();
   const auto& rc=p->rc();
   test_standard(*p,"Cannot compute full twisted deformation");
-  if (not rc.is_twist_fixed(p->val,rc.innerClass().distinguished()))
+  auto& delta = rc.innerClass().distinguished();
+  if (not rc.is_twist_fixed(p->val,delta))
     throw runtime_error("Parameter not fixed by inner class involution");
   if (l!=expression_base::no_value)
   {
-    repr::SR_poly result = p->rt().twisted_deformation(p->val);
+    auto finals = ext_block::extended_finalise(rc,p->val,delta);
+    repr::SR_poly result (rc.repr_less());
+    for (auto it=finals.cbegin(); it!=finals.cend(); ++it)
+      result.add_multiple(p->rt().twisted_deformation(it->first) @|
+                         ,it->second ? Split_integer(0,1) : Split_integer(1,0));
     push_value(std::make_shared<virtual_module_value>(p->rf,result));
   }
 }
@@ -5177,7 +5199,7 @@ twisted KLV polynomials, computed for the inner class involution.
 void KL_sum_at_s_wrapper(expression_base::level l)
 { shared_module_parameter p = get<module_parameter_value>();
   test_standard(*p,"Cannot compute Kazhdan-Lusztig sum");
-  test_nonzero_final(*p,"Cannot compute Kazhdan-Lusztig sum");
+  test_normal_is_final(*p,"Cannot compute Kazhdan-Lusztig sum");
   if (l!=expression_base::no_value)
   {
     repr::SR_poly result = p->rt().KL_column_at_s(p->val);
@@ -5188,7 +5210,7 @@ void KL_sum_at_s_wrapper(expression_base::level l)
 void twisted_KL_sum_at_s_wrapper(expression_base::level l)
 { shared_module_parameter p = get<module_parameter_value>();
   test_standard(*p,"Cannot compute Kazhdan-Lusztig sum");
-  test_nonzero_final(*p,"Cannot compute Kazhdan-Lusztig sum");
+  test_normal_is_final(*p,"Cannot compute Kazhdan-Lusztig sum");
   if (l!=expression_base::no_value)
   {
     repr::SR_poly result = p->rt().twisted_KL_column_at_s(p->val);
@@ -5203,7 +5225,7 @@ void external_twisted_KL_sum_at_s_wrapper(expression_base::level l)
 { shared_matrix delta = get<matrix_value>();
   shared_module_parameter p = get<module_parameter_value>();
   test_standard(*p,"Cannot compute Kazhdan-Lusztig sum");
-  test_nonzero_final(*p,"Cannot compute Kazhdan-Lusztig sum");
+  test_normal_is_final(*p,"Cannot compute Kazhdan-Lusztig sum");
   test_compatible(p->rc().innerClass(),delta);
   if (not p->rc().is_twist_fixed(p->val,delta->val))
     throw runtime_error("Parameter not fixed by given involution");
@@ -5235,20 +5257,21 @@ void scale_extended_wrapper(expression_base::level l)
 { auto factor = get<rat_value>();
   auto delta = get<matrix_value>();
   auto p = get<module_parameter_value>();
+  const StandardRepr sr = p->val;
+  const auto& rc = p->rc();
   test_standard(*p,"Cannot scale extended parameter");
+  if (not is_dominant_ratweight(rc.rootDatum(),sr.gamma()))
+    throw runtime_error("Parameter to be scaled not dominant");
   test_compatible(p->rc().innerClass(),delta);
-  if (not p->rc().is_twist_fixed(p->val,delta->val))
+  if (not rc.is_twist_fixed(sr,delta->val))
     throw runtime_error("Parameter to be scaled not fixed by given involution");
   if (l==expression_base::no_value)
     return;
 @)
-  const auto& rc = p->rc();
-  StandardRepr sr = p->val;
-  rc.make_dominant(sr); // ensure this in case caller forgot
   bool flipped;
-  sr = @;ext_block::scaled_extended_dominant
+  auto result = @;ext_block::scaled_extended_dominant
     (rc,sr,delta->val,factor->val,flipped);
-  push_value(std::make_shared<module_parameter_value>(p->rf,sr));
+  push_value(std::make_shared<module_parameter_value>(p->rf,result));
   push_value(whether(flipped));
   if (l==expression_base::single_value)
     wrap_tuple<2>();
