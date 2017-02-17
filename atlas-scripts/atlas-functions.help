@@ -616,16 +616,21 @@ is_standard: (Param->bool): whether parameter defines a standard module
   This is true whenever gamma is dominant relative to the imaginary roots
 is_zero: (Param->bool): whether parameter defines a zero standard module
   True whenever gamma is singular on a compact (for x) simple-imaginary root
-is_final: (Param->bool): whether parameter defines a final standard module
+is_semifinal: (Param->bool): whether parameter has no singular real descents
   False whenever associated standard representation is combination of others
-  on more compact Cartans by a Hecht-Schmid identity. So is_final(p) is true
-  provided no real coroots for which gamma is singular satisfy the parity
+  on more compact Cartans by a Hecht-Schmid identity. So is_semifinal(p) is
+  true provided no real coroots for which gamma is singular satisfy the parity
   condition. Note: one could still have is_zero(p); this needs a separate test.
+is_final: (Param->bool): whether p parameterizes an irreducible representation
+  This means that is_standard(p) and not is_zero(p) and is_semifinal(p) holds,
+  as well as p=dominant(p)=normal(p). Parameters that satisfy |is_final(p)|
+  are the ones that can occur as monomials in a |ParamPol| value.
 equivalent : (Param,Param->bool): test equivalence of parameters
   Equivalence allows the infinitesimal character (representative) of any
   standard parameter to be made dominant, and among such parameters is defined
   as reachability of one from the other using singular complex cross actions.
-  If either parameter fails to be standard, this reverts to strict equality.
+  If either parameter fails to be standard, this reverts to strict equality,
+  otherwise the equivalent(p,q) amounts to the same as normal(p)=normal(q).
 dominant: (Param->Param): ensure parameter has dominant infinitesimal character
   This gives an equivalent form of the parameter in which the infinitesimal
   character has been made dominant (it may not be unique for this property)
@@ -736,7 +741,10 @@ branch: (Param,int->ParamPol) Find K-types of standardrepn up to given limit
   as restricted to K (the nu component is replaced by a zero vector), while
   the argument second is a bound on the height; the result should be
   interpreted as linear combination of K-types, each standard final parameter
-  term standing for its lowest K-type.
+  term (which will have nu=0) standing for its lowest K-type.
+branch: (ParamPol,int->ParamPol) Find K-types of polynomial up to given limit
+  This is just forming the Split-linear combination for all terms of the
+  results of branch on the standard representations for those terms
 to_canonical: (Param->Param) Move parameter to canonical fiber (making nu=0)
 height: (Param->int) W-invariant height measure standardrepn restricted to K
   This is the sum of absolute values of the scalar products of (1+theta)lambda

@@ -1182,6 +1182,13 @@ set virtual (RealForm G, [Param] ps) = ParamPol:
   let one=Split:(1,0) in null_module(G)+for p in ps do (one,p) od
 { DON'T define virtual ([Param] pp): cannot be correctly defined when #pp=0 }
 
+{ branch to get only the coefficient of a specific K-type }
+set branch (Param std, Param K_type) = int:
+  branch(std,height(K_type))[K_type].int_part
+
+set branch (ParamPol P, Param K_type) = Split: { Split coefficients possible }
+  branch(P,height(K_type))[K_type]
+
 { nice output of ParamPol: split_format the coefficients }
 set pol_format (ParamPol P)= string:
   ##
