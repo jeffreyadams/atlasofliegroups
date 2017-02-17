@@ -73,17 +73,14 @@ set c_form_irreducible_long (Param p) =
 set c_form_irreducible_twisted (Param p) = ParamPol:
 ( let G=p.real_form, ori_nr_p = orientation_nr(p)
   then fixed_terms = null_module(G), unfixed_terms = null_module(G)
-  , P=KL_sum_at_s(p), Ptw=twisted_KL_sum_at_s(p)
   in
-  for c0@q in P
+  for c0@q in (1+s)*KL_sum_at_s(p) + (1-s)*twisted_KL_sum_at_s(p)
   do let orient_c=orientation_nr_term(ori_nr_p,q) in
-    if twist(q,G.distinguished_involution)=q
-    then
-      let c1=Ptw[q] then c=half((c0+c1)+(c0-c1).times_s) in
-      fixed_terms +:= c*orient_c*twisted_full_deform(q)
-    else
-      { the presence of |one_plus_s| justifies not using |scale_extended|: }
-      unfixed_terms +:= c0*orient_c*one_plus_s*(q*0)
+    if twist(q)=q
+    then { fixed under the inner class twist }
+      fixed_terms +:= half(c0)*orient_c*twisted_full_deform(q)
+    else { the presence of |one_plus_s| justifies not using |scale_extended|: }
+      unfixed_terms +:= c0*orient_c*(q*0)
     fi
   od
 ; fixed_terms + half(unfixed_terms)
