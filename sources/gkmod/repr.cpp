@@ -1249,6 +1249,8 @@ SR_poly Rep_table::twisted_KL_column_at_s(StandardRepr z)
   normalise(z);
   if (not is_final(z))
     throw std::runtime_error("Parameter not final");
+  if (z!=inner_twisted(z))
+    throw std::runtime_error("Parameter not twist-fixed");
 
   unsigned long hash_index=hash.find(z);
   if (hash_index>=twisted_KLV_list.size() // |z| unknown or not extended to, or
@@ -1325,6 +1327,8 @@ SR_poly Rep_table::twisted_deformation_terms
   return result;
 } // |twisted_deformation_terms|
 
+// the next function is recursive, so avoid testing properties each time
+// notably assure |z| is final and inner-twist |fixed| before calling this
 SR_poly Rep_table::twisted_deformation (StandardRepr z)
 {
   const auto& delta = innerClass().distinguished();
@@ -1348,7 +1352,7 @@ SR_poly Rep_table::twisted_deformation (StandardRepr z)
     if (h<twisted_def_formula.size() and not twisted_def_formula[h].empty())
       return flip_start // if so we must multiply the stored value by $s$
 	? SR_poly(repr_less()) // need an empty polynomial here
-	.add_multiple(twisted_def_formula[h],Split_integer(0,1))
+	  .add_multiple(twisted_def_formula[h],Split_integer(0,1))
 	: twisted_def_formula[h];
   }
 

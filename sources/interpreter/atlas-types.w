@@ -4252,23 +4252,15 @@ void extended_block_wrapper(expression_base::level l)
   shared_module_parameter p = get<module_parameter_value>();
   test_standard(*p,"Cannot generate block");
   test_compatible(p->rc().innerClass(),delta);
+  if (not ((delta->val-1)*p->val.gamma().numerator()).isZero())
+    throw runtime_error("Involution does not fix infinitesimal character");
   if (l==expression_base::no_value) return;
 @)
   const auto& rc = p->rc();
   BlockElt start;
   param_block block(rc,p->val,start);
-  if ( ((delta->val-1)*block.gamma().numerator()).isZero())
-      // block globally stable
-    @< Construct the extended block, then the return value components,
-       calling |push_value| for each of them @>
-  else // block not globally stable under |delta->val|, return empty data
-  { auto eb_rank = block.fold_orbits(delta->val).size();
-     // size of folded diagram
-    push_value(std::make_shared<row_value>(0));
-    push_value(std::make_shared<matrix_value>(int_Matrix(0,eb_rank)));
-    push_value(std::make_shared<matrix_value>(int_Matrix(0,eb_rank)));
-    push_value(std::make_shared<matrix_value>(int_Matrix(0,eb_rank)));
-  }
+  @< Construct the extended block, then the return value components,
+     calling |push_value| for each of them @>
 @)
   if (l==expression_base::single_value)
     wrap_tuple<4>();
@@ -5167,7 +5159,7 @@ void twisted_full_deform_wrapper(expression_base::level l)
 { shared_module_parameter p = get<module_parameter_value>();
   const auto& rc=p->rc();
   test_standard(*p,"Cannot compute full twisted deformation");
-  auto& delta = rc.innerClass().distinguished();
+  const auto& delta = rc.innerClass().distinguished();
   if (not rc.is_twist_fixed(p->val,delta))
     throw runtime_error("Parameter not fixed by inner class involution");
   if (l!=expression_base::no_value)
@@ -5211,6 +5203,9 @@ void twisted_KL_sum_at_s_wrapper(expression_base::level l)
 { shared_module_parameter p = get<module_parameter_value>();
   test_standard(*p,"Cannot compute Kazhdan-Lusztig sum");
   test_normal_is_final(*p,"Cannot compute Kazhdan-Lusztig sum");
+  const auto& delta = p->rc().innerClass().distinguished();
+  if (not p->rc().is_twist_fixed(p->val,delta))
+    throw runtime_error("Parameter not fixed by inner class involution");
   if (l!=expression_base::no_value)
   {
     repr::SR_poly result = p->rt().twisted_KL_column_at_s(p->val);
