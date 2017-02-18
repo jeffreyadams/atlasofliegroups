@@ -1,3 +1,5 @@
+{ alternative to herm.at, using (slower) script functions from ext_deform.at }
+
 <basic.at
 <ext_deform.at { for full_deform@(Param,mat) }
 <induction.at {for dim_u_cap_p}
