@@ -154,4 +154,4 @@ set twisted_recursive_deform (Param p) = ParamPol:
     end
   ) { apply that recursive function to the initial argument: } (1,p)
 
-set full_deform = recursive_deform@(Param,mat)
+set twisted_full_deform = recursive_deform@(Param,mat)

@@ -3227,7 +3227,7 @@ void KGB_twist_wrapper(expression_base::level l)
 @)
 void test_compatible (const InnerClass& ic, shared_matrix& delta)
 { check_based_root_datum_involution(ic.rootDatum(),delta->val);
-  auto& xi = ic.distinguished();
+  const auto& xi = ic.distinguished();
   if (delta->val*xi!=xi*delta->val)
     throw runtime_error("Non commuting distinguished involution");
 }
