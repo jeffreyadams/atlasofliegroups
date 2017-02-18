@@ -492,6 +492,9 @@ set ^ = { exponentiation of split integers }
     else error("Negative power "+n+" of split integer "+split_format(x))
     fi
 
+set sum ([Split] list) = Split:
+  let result=Split:0 in for x in list do result+:=x od; result
+
 {                               Root data                               }
 
 { backwards compatibility function; used to be the built-in prototype }

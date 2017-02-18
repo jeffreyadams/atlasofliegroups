@@ -83,9 +83,7 @@ ________________________
 <K.at
 <finite_dimensional.at
 
-
 set ind_verbose=false
-
 
 {. If L is a theta-stable Levi factor in G,  KGB for L embeds in KGB for G. .}
 set embed_KGB (KGBElt x_L,RealForm G) = KGBElt:
@@ -784,6 +782,7 @@ set is_proper_Aq(Param p)=bool:
    real_form(p)!=real_form(p_L) and is_unitary_character(p_L) and
    not is_zero(p)
 
-set all_real_induced_one_dimensional(RealForm G)=[Param]:
-let rv=[] in
-for P in all_real_parabolics(G) do for p in monomials(real_induce_irreducible(trivial(Levi(P)),G)) do rv#:=p od od;rv
+set all_real_induced_one_dimensional (RealForm G) = [Param]:
+  ##
+  for P in all_real_parabolics(G)
+  do monomials(real_induce_irreducible(trivial(Levi(P)),G)) od

@@ -98,8 +98,10 @@ set mult_std (Param p_K,Param p) = int:
 set mult_irr (Param p_K,Param p) = int:
   split_as_int(branch_irr(p,height(p_K))[p_K])
 
-set mult_std(Param p_K, ParamPol P)=Split:let rv=Split:0 in for c@p in P do rv+:=c*mult_std(p_K,p) od ;rv
-set mult_irr(Param p_K, ParamPol P)=Split:let rv=Split:0 in for c@p in P do rv+:=c*mult_irr(p_K,p) od ;rv
+set mult_std(Param p_K, ParamPol P) = Split:
+  sum(for c@p in P do c*mult_std(p_K,p) od)
+set mult_irr(Param p_K, ParamPol P) = Split:
+  sum(for c@p in P do c*mult_irr(p_K,p) od)
 
 set K_signature_irr (Param p,int bound) = (ParamPol,ParamPol):
   let form=hermitian_form_irreducible(p) in
