@@ -1,5 +1,3 @@
-{this file is old and due to be modified, November 2016}
-
 <groups.at
 <herm.at
 <unitary.at
@@ -29,10 +27,10 @@ set passedflag(int predicted, bool unitary) = string:
   if as_predicted(predicted,unitary) then "passed" else "failed" fi
 set passedflag (bool flag) = string: if flag then "passed" else "failed" fi
 
-{test list of parameters for same group for unitarity/non-unitarity
-parameters=[(param p, int predicted)]
-predicted takes values 1,0, or -1 which respecively mean
-parameter is predicted to be unitary / no prediction / predicted non-unitary
+{ test list of parameters for same group for unitarity/non-unitarity
+  parameters=[(param p, int predicted)]
+  predicted takes values 1,0, or -1 which respecively mean
+  parameter is predicted to be unitary / no prediction / predicted non-unitary
 }
 set test ([(Param,int)] parameters,bool verbose) =
     (bool,[(Param,ParamPol,int,bool)]):
@@ -40,7 +38,7 @@ set test ([(Param,int)] parameters,bool verbose) =
   if verbose then
     prints("G=",G,new_line
           ,"Testing ", #parameters, " parameters ",new_line
-          , "index, parameter purity  predicted/computed result")
+          ,"index, parameter purity  predicted/computed result")
   fi;
   let !delta=G.distinguished_involution, passed=true, result=[] in
 
@@ -81,19 +79,9 @@ set test_one_unitary (Param param) = (bool,[(Param,ParamPol,int,bool)]):
   test([(param,1)])
 
 
-
-{ prepare parameters, all are supposed to be unitary }
-{set all_unitary([Param] parameters)= [(Param,bool)]:
-  for p in parameters do (p,true) od
+{ G should be absolutely simple, SL(n,R), Sp(2n,R), S(n,n) or SO(n+1,n) or
+  simple complex, see spherical_unipotent_representations in representations.at
 }
-
-{ prepare parameters from |nu| values only }
-{set spherical_mixed(RealForm G,[(ratvec,bool)] nu_pairs)=  [(Param,bool)]:
-  for (nu,ans) in nu_pairs do (spherical_principal_series(G,nu),ans) od
-}
-
-{ G should be absolutely simple, SL(n,R), Sp(2n,R), S(n,n) or SO(n+1,n)
-  or simple complex, see spherical_unipotent_representations in representations.at}
 set test_spherical_unipotent (RealForm G) = (bool,[(Param,ParamPol,int,bool)]):
   test(spherical_unipotent_representations(G))
 set print_test_spherical_unipotent(RealForm G)= void:
@@ -150,6 +138,11 @@ set print_test_Aq (RealForm G) = void:
   let B=block_of(trivial(G)) in
   print_test(for p in B do if is_good_Aq(p) then (p,1) else (p,-1) fi od)
 
+set test_all_real_induced_one_dimensional(RealForm G) =
+    (bool,[(Param,ParamPol,int,bool)]):
+  test(all_real_induced_one_dimensional(G))
+set print_test_all_real_induced_one_dimensional(RealForm G) = void:
+  print_test(all_real_induced_one_dimensional(G))
 {
 { a series of tests if increasing length }
 { very fast tests }
@@ -185,9 +178,3 @@ set test8()= bool:
 set test9()=bool:
   prints("Testing trivial of F4"); is_unitary(trivial(split_form(F4)))
 }
-
-set test_all_real_induced_one_dimensional (RealForm G) =
-  (bool,[(Param,ParamPol,int,bool)]):
-  test(all_real_induced_one_dimensional(G))
-set print_test_all_real_induced_one_dimensional (RealForm G) = void:
-  print_test(all_real_induced_one_dimensional(G))
