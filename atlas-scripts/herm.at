@@ -4,7 +4,6 @@
 <induction.at { for dim_u_cap_p }
 
 set hf_debug=false
-set use_equal_rank_mu=true  { false: force use of twisted mu (for testing) }
 
 {    c_form on standard representations, correct in all cases   }
 
@@ -219,18 +218,17 @@ set mu_terms  (Param p,mat delta) = [rat]:
   , { dim_term        = } dim_u_cap_p(x)
   ] { the sum of these will be interpreted modulo 2/1 }
 
-{ mu.pdf Proposition 1.2, see email from DAV 12/3/2016
-  used only in assert in mu; the two definitions of mu should agree
-}
+{alternative version of mu, included only for testing}
 set mu_in_terms_of_z (Param p,mat delta) = rat:
   let E=E(delta,p) in
   (E.g-E.l-rho_check_r(E.x)+E.t)*E.lambda_rho+z(E)+dim_u_cap_p(E.x)
 
 set mu (Param p,mat delta) = rat:
-  if is_equal_rank(real_form(p)) and  use_equal_rank_mu then mu(p)
+  if is_equal_rank(real_form(p)) then mu(p)  {could also use the general formula}
   else let result=sum(mu_terms(p,delta)) in
-  assert(result=mu_in_terms_of_z(p,delta),"two version of mu differ");
-  result
+  {double-check two formulas for mu agree}
+  assert(result=mu_in_terms_of_z(p,delta),"two versions of mu differ");
+  result 
   fi
 
 set print_mu (Param p) = void:
@@ -279,8 +277,7 @@ set hermitian_form_irreducible (Param p) = ParamPol:
   if is_equal_rank(real_form(p))
   then
     let cf=c_form_irreducible(p) in {not twisted, in = rank case this is faster}
-    if hf_debug=true then print_mus(cf) fi;
-    convert_cform_hermitian(cf)  { uses = rank mu if |use_equal_rank_mu| holds}
+    convert_cform_hermitian(cf)
   else
     let cf=twisted_c_form_irreducible(p) in convert_cform_hermitian(cf)
   fi
