@@ -93,7 +93,7 @@ set twisted_c_form_irreducible (Param p) = ParamPol:
 )
 
 { utility; starting formula in the c-form calculation without deformation }
-set c_form_irr_twisted_as_sum_of_standards (Param p) = ParamPol:
+set twisted_c_form_irr_as_sum_of_standards (Param p) = ParamPol:
 ( let G=p.real_form, ori_nr_p = orientation_nr(p) in
   null_module(G) +
   for c@q in (1+s)*KL_sum_at_s(p) + (1-s)*twisted_KL_sum_at_s(p)
@@ -124,7 +124,7 @@ assert(twist(p)=p,"parameter is not fixed by inner class involution");
       (unfixed_terms+:=contrib, terms#:=(q,coef,contrib))
     fi
   od
-; ({character_formula} c_form_irr_twisted_as_sum_of_standards(p)
+; ({character_formula} twisted_c_form_irr_as_sum_of_standards(p)
   , terms, fixed_terms + half(unfixed_terms)
   )
 )
