@@ -2151,7 +2151,6 @@ connected complex reductive group; the corresponding Atlas class is called
 
 @< Includes... @>=
 #include "realredgp.h"
-#include "kgb.h"
 
 @*2 Class definition.
 The layout of this type of value is different from what we have seen before.
@@ -2168,6 +2167,11 @@ fields. To remind us that the |parent| is not there to be changed by us, we
 declare it |const|. The object referred to may in fact undergo internal change
 however, via manipulators of the |val| field.
 
+This class also serves to store persistent data related to the real form, in
+values of type |KhatContext| and |Rep_table|. In order to avoid overhead at
+construction, and also to not require including other header files from our
+current header file, we store pointer that will only be assigned on first use.
+
 @< Type definitions @>=
 struct real_form_value : public value_base
 { const inner_class_value parent;
@@ -2175,12 +2179,15 @@ struct real_form_value : public value_base
 @)
   real_form_value(const inner_class_value& p,RealFormNbr f) @/
   : parent(p), val(p.val,f)
+  , khc_p(nullptr)
   , rt_p(nullptr) @+{}
   real_form_value
     (const inner_class_value& p,RealFormNbr f
     ,const RatCoweight& coch, TorusPart tp) @/
   : parent(p), val(p.val,f,coch,tp)
+  , khc_p(nullptr)
   , rt_p(nullptr) @+{}
+  virtual ~real_form_value ();
 @)
   virtual void print(std::ostream& out) const;
   real_form_value* clone() const @+
@@ -2188,31 +2195,35 @@ struct real_form_value : public value_base
   static const char* name() @+{@; return "real form"; }
   const KGB& kgb () @+{@; return val.kgb(); }
    // generate and return $K\backslash G/B$ set
+  KhatContext& khc();
   const Rep_context& rc();
   Rep_table& rt();
-  ~real_form_value() @+{@; delete rt_p; }
 private:
+  KhatContext* khc_p;
   Rep_table* rt_p;
-    // owned pointer, initially |nullptr|, assigned at most once
+    // owned pointers, initially |nullptr|, assigned at most once
 };
 @)
 typedef std::shared_ptr<const real_form_value> shared_real_form;
 typedef std::shared_ptr<real_form_value> own_real_form;
 
-@ The methods |rc| and |rt| ensure a |Rep_table| value is constructed at
-|*rt_p|, and return a reference. The value so obtained will serve to
-manipulate parameters for standard modules, for which we shall define an Atlas
-type below. Storing the value here ensures that it will be shared between
-different parameters, and that it will live as long as those parameter values
-do. The value itself does not take much space, but constructing it implicitly
-calls the |val.kgb| method, so we avoid doing this until there is a concrete
-need.
+@ The method |khc| ensures a |KhatContext| value is constructed at |*khc_p|,
+and similarly |rc| and |rt| ensure a |Rep_table| value is constructed at
+|*rt_p|, and then these methods return an appropriate reference. The value so
+obtained will serve to manipulate parameters for standard modules, for which
+we shall define an Atlas type below. Storing the value here ensures that it
+will be shared between different parameters for the same real form, and that
+it will live as long as those parameter values do.
 
 @< Function def...@>=
+  KhatContext& real_form_value::khc()
+    {@; return *(khc_p==nullptr ? khc_p=new KhatContext(val) : khc_p); }
   const Rep_context& real_form_value::rc()
     {@; return *(rt_p==nullptr ? rt_p=new Rep_table(val) : rt_p); }
   Rep_table& real_form_value::rt()
     {@; return *(rt_p==nullptr ? rt_p=new Rep_table(val) : rt_p); }
+@)
+  real_form_value::~real_form_value () @+{@; delete khc_p; delete rt_p; }
 
 @ When printing a real form, we give the name by which it is known in the
 parent inner class, and provide some information about its connectivity.
@@ -2367,7 +2378,11 @@ real form numbers are the same too). However it is useful to define a test
 here; not only can we do the tests more efficiently, the same test will later
 also be used in other equality tests (for KGB elements, or module parameters);
 there one should resist the temptation to test (by pointer equality) for
-identical |RealReductiveGroup| objects, which would be too strict.
+identical |RealReductiveGroup| objects, which would be too strict. Except if
+real form generation above were to be defined in such a way that in the
+presence of an equal real form value in its inner class, a newly generated one
+would actually return a reference to the old one, which would in fact be a
+good idea (but would require additional administration).
 
 @< Local function def...@>=
 
@@ -4945,7 +4960,7 @@ void K_type_formula_wrapper(expression_base::level l)
 { shared_module_parameter p = get<module_parameter_value>();
   RealReductiveGroup& G = p->rf->val;
   const Rep_context& rc = p->rc();
-  standardrepk::KhatContext khc(G);
+  KhatContext& khc = p->rf->khc();
   StandardRepK srk =
     khc.std_rep_rho_plus (rc.lambda_rho(p->val),G.kgb().titsElt(p->val.x()));
   @< Check that |srk| is final, and if not |throw| an error @>
@@ -5003,7 +5018,7 @@ void branch_wrapper(expression_base::level l)
   test_standard(*p,"Branching of non-standard parameter is not allowed");
   const Rep_context rc = p->rc();
   RealReductiveGroup& G=p->rf->val;
-  standardrepk::KhatContext khc(G);
+  KhatContext& khc = p->rf->khc();
   StandardRepK srk=
     khc.std_rep_rho_plus (rc.lambda_rho(p->val),G.kgb().titsElt(p->val.x()));
 @/{@; size_t witness;
@@ -5044,9 +5059,9 @@ void branch_pol_wrapper(expression_base::level l)
   if (l==expression_base::no_value)
     return;
 @)
-  const Rep_context rc = P->rc();
   RealReductiveGroup& G=P->rf->val;
-  standardrepk::KhatContext khc(G);
+  const Rep_context rc = P->rc();
+  KhatContext& khc = P->rf->khc();
 @/own_virtual_module acc @|
     (new virtual_module_value(P->rf, repr::SR_poly(rc.repr_less())));
   RatWeight zero_nu(G.rank());
