@@ -375,7 +375,7 @@ set real_Levi (KGBElt x) = RealForm: Levi(real_parabolic(x))
   for this to be stable: no C- roots. .}
 set theta_stable_parabolic (KGBElt x) = Parabolic:
   assert(no_Cminus_roots(x),"x has some C- roots");
-  parabolic((1+involution(x))*rho(root_datum(x)),x)
+  parabolic_mute((1+involution(x))*rho(root_datum(x)),x)
 
 {. Levi factor of theta-stable parabolic defined by x (must have no C- roots). .}
 set theta_stable_Levi (KGBElt x) = RealForm: Levi(theta_stable_parabolic(x))
