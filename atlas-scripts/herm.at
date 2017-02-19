@@ -1,6 +1,7 @@
 <basic.at
 <extended.at { for E@(mat,Param) }
 <ext_deform.at { we need this for general $\delta$, full_deform@(Param,mat) }
+<induction.at { for dim_u_cap_p }
 
 set hf_debug=false
 set use_equal_rank_mu=true  { false: force use of twisted mu (for testing) }
@@ -202,17 +203,6 @@ set number_real_orthogonal_pairs (KGBElt x, mat delta) = int:
     #=pairing { count zero pairings }
   od.sum.half { compensate for each pair being counted twice }
 
-{ this is a temporary correction of the incorrect dim_u_cap_p }
-
-set DIM_u_cap_p(KGBElt x) = int:
-  let sum=0/1 in
-  for alpha in posroots(root_datum(x)) do
-    if is_complex(alpha,x) then sum +:= 1/2
-    elif is_noncompact_imaginary(alpha,x) then sum+:=1
-    fi
-  od; rat_as_int(sum)
-
-
 { function |mu| below was intially described in Vogan in email of Oct 25, 2016
   with subject: mu(p); it has been significantly modified since
   It is a sum of rational terms, for which eventually differences (which should
@@ -226,7 +216,7 @@ set mu_terms  (Param p,mat delta) = [rat]:
   in
   [ { lambda_rho_term = } (g_l-rho_check_r(x))*(E.lambda_rho)
   , { tau_term        = } (E.l*(delta-1)*E.tau)/2
-  , { dim_term        = } DIM_u_cap_p(x)
+  , { dim_term        = } dim_u_cap_p(x)
   ] { the sum of these will be interpreted modulo 2/1 }
 
 { mu.pdf Proposition 1.2, see email from DAV 12/3/2016
@@ -234,7 +224,7 @@ set mu_terms  (Param p,mat delta) = [rat]:
 }
 set mu_in_terms_of_z (Param p,mat delta) = rat:
   let E=E(delta,p) in
-  (E.g-E.l-rho_check_r(E.x)+E.t)*E.lambda_rho+z(E)+DIM_u_cap_p(E.x)
+  (E.g-E.l-rho_check_r(E.x)+E.t)*E.lambda_rho+z(E)+dim_u_cap_p(E.x)
 
 set mu (Param p,mat delta) = rat:
   if is_equal_rank(real_form(p)) and  use_equal_rank_mu then mu(p)

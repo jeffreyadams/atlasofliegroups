@@ -443,7 +443,7 @@ set dim_u_cap_p (KGBElt x) = int: dim_u_cap_p(theta_stable_parabolic(x))
 {. Dimension of $\mathfrak u\cap\mathfrak p$ for theta-stable parabolic determined by
   weight lambda. .}
 set dim_u_cap_p (ratvec lambda,KGBElt x) = int:
-  let P=parabolic(lambda,x) in
+  let P=parabolic_mute(lambda,x) in
   assert(is_parabolic_theta_stable(P),"Parabolic is not theta-stable");dim_u_cap_p(P)
 
 {. (Auxiliary function) .}
