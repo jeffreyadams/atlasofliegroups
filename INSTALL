@@ -1,5 +1,6 @@
 Instructions  installation of the Atlas software.
 For more information about the software see the README file.
+More details at www.liegroups.org
 
 The Atlas software provides two main programs, called 'atlas' and 'Fokko'.
 
@@ -14,9 +15,10 @@ selection flag -std=c++0x, but you can substitute other compilers for this,
 provided they have at least some support for C++11 (notably basic rvalue
 references and the unique_ptr and shared_ptr class templates; g++-4.4 is OK).
 
-There is some dependence on UNIX conventions (for instance using '/' as
-directory separator. Compilation on Linux, Mac OSX, solaris, should be easy.
-Compilation under Windows probably requires a bit more work,
+There is some dependence on UNIX conventions (for instance using '/'
+as directory separator. Compilation on Linux and Solaris is
+straightforward, see www.liegroups.org/linux. Mac OSX is similar, see
+www.liegroups.org/mac. For Windows see www.liegroups.org/windows.
 
 SHORT INSTRUCTIONS:
 
@@ -146,124 +148,6 @@ If you can't get them to compile with readline, you can as last resort do
 make readline=false
 
 to compile the programs without this feature.
--------------------------------------------------------------------
-Compiling with readline on a Mac (contributed by David Vogan)
 
-Get readline-5.2.tar.gz, for example from
-
-ftp://ftp.cwru.edu/pub/bash/readline-5.2.tar.gz
-
-Mac automatically unzips.  Put file readline-5.2.tar someplace
-convenient.  In a terminal window, go to the directory with this tar
-file, and type
-
-  tar -xvf readline-5.2.tar
-
-This will create a new subdirectory "readline-5.2."  Do a cd to that
-directory.
-
-There appears to be a small problem with the "configure" script when
-it is used with OS 10.4. To work around it, edit the file
-
-readline-5.2/support/shobj-conf
-
-Line 170 should be changed from
-
-SHOBJ_LDFLAGS='-dynamic'
-
-to
-
-SHOBJ_LDFLAGS='-dynamiclib'
-
-Back in the readline-5.2 directory, type
-
-  ./configure
-
-Type
-
-  make everything
-
-Type
-
-  sudo make install
-
-The Gnu readline library should now be installed on your Mac.
-
-There is a problem when the Atlas software is linked: the linker
-will find most of the readline commands in someplace like
-
-/usr/lib/libreadline.dylib,
-
-instead of in the Gnu readline library that you just installed, which
-lives at
-
-/usr/local/lib/libreadline.5.dylib
-
-The difficulty is that the Mac library lacks two or three of the
-commands used in the Atlas readline, so the linker will refuse to
-finish.  I don't know the best or most natural way to fix this.  One
-thing which works is to edit the Makefile, modifying the line
-
-        rl_libs := -lreadline
-
-to read
-
-        rl_libs := -lreadline.5 -lcurses
-
-Now the Atlas software should link.
-
--------------------------------------------------------------------
-
-ATLAS
-
-While the program 'Fokko' gives a direct interface to the basic functions in
-the Atlas software, the 'atlas' program provides the same functionality
-withing the setting of a fairly elaborate user programming language.
-
-This is best run from the subdirectory atlas-scripts, which provides a large
-collection of predefined user functions, and also contains the help files for
-the program (unlike Fokko, you cannot access the help files from the atlas
-command line; just open the files separately in a text editor). A first
-introduction to various aspects of the language is given in atlas.help, a
-long list of functions built into the language is given in functions.help, and
-a brief overview of the scripts that come with the system is given in
-scripts.help (very succinct, the main purpose is to order the scripts by
-dependency on each other; for more information read the scripts themselves).
-
--------------------------------------------------------------------
-WINDOWS
-
-(No recent binary distribution for Windows is available. The following refers
-to a Windows distribution of an early version of the software.)
-
-1) Download the distribution atlas4win....zip to your windows
-machine.
-
-2) Right click on the file to extract the archive.
-
-3) Double click on the atlas file to execute.
-
-When you extract the file you create a folder. This contains the
-executable atlas.exe. It also contains three necessary dll files. You
-must run the executable from a folder containing these files.
--------------------------------------------------------------------
-
-MAC
-
-1) Download the distribution atlasMac....zip to your mac.
-
-2) Double click on the file to extract the archive.
-
-3) Double click on the atlas file to execute it.
-
-The executable must be in the same directory as the messages directory
-for help system to work.
-
-If the help system doesn't work, try the following.  Open a terminal
-window, and navigate to the directory containing atlasNRL. Give the
-command "./atlasMacNRL".
-
--------------------------------------------------------------------
-
-Please report any problems to Jeffrey Adams at jda@math.umd.edu or to
-Marc.van-Leeuwen@math.univ-poitiers.fr.
+Please report any problems to Jeffrey Adams jda@math.umd.edu or to
+Marc van Leeuwen Marc.van-Leeuwen@math.univ-poitiers.fr.
