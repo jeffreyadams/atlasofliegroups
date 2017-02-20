@@ -42,7 +42,7 @@ set large_discrete_series (RealForm G) = Param:
   large_discrete_series(G,rho(G))
 
 set minimal_principal_series(RealForm G,ratvec lambda,ratvec nu)=Param:
-  let n=KGB_size(G)-1 in parameter(KGB(G,n),lambda,nu)
+  let n=KGB_size(G)-1 in normal(parameter(KGB(G,n),lambda,nu))
 set minimal_principal_series(RealForm G)=Param:
   minimal_principal_series(G,rho(G),rho(G))
 set minimal_spherical_principal_series(RealForm G,ratvec nu)=Param:
@@ -65,7 +65,8 @@ let lietype=Lie_type(root_datum(G)) in
    assert(type1=type2 and rank1 = rank2,"not a complex group");
    let lambdas=nilpotent_lambdas(simply_connected(first)) then
    t=trivial(G) in
-   for lambda in lambdas do parameter(x(t), rho(G), lambda##lambda) od  else [] fi
+   {parameter might not be normal}
+   for lambda in lambdas do dominant(parameter(x(t), rho(G), lambda##lambda)) od  else [] fi
 
 
 
