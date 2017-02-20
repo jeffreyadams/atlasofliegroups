@@ -1,4 +1,5 @@
-{ alternative to herm.at, using (slower) script functions from ext_deform.at }
+{ alternative to herm.at or hermitian.at using (slower) script functions from ext_deform.at,
+primiarly for debugging}
 
 <basic.at
 <ext_deform.at { for full_deform@(Param,mat) }
