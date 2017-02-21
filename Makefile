@@ -26,7 +26,7 @@ INSTALL = /usr/bin/install
 #   INSTALLDIR := /usr/local/atlas
 #   BINDIR     := /usr/local/bin
 
-# The default: use current directoty for both
+# The default: use current directory for executables, shell script in ~/bin
 INSTALLDIR := $(shell pwd)
 BINDIR := $(HOME)/bin
 
