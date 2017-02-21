@@ -218,7 +218,7 @@ set KL_P_polynomials_old (Param p)=poly_mat:
 )
 set KL_P_polynomials_old ([Param] B_fixed,mat delta) = [[poly]]:
   assert( all(for p in B_fixed do is_fixed(delta,p) od)
-  	, "Not every parameter is delta-fixed" );
+	, "Not every parameter is delta-fixed" );
   let (P,polys,)=raw_ext_KL(B_fixed[0],delta) in
   for row@i in ^P
   do

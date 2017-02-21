@@ -150,7 +150,7 @@ set print_twisted_c_form_irreducible_long (Param p) = void:
   for (p,coeff,P) in terms
   do prints("coeff*form on standard: ", new_line
            ,coeff.split_format,"*",p,":",new_line
-     	   ,"fully deformed",new_line, P.pol_format, new_line)
+	   ,"fully deformed",new_line, P.pol_format, new_line)
   od;
   prints("c-form on irreducible module p=",p,":",new_line
         ,answer.pol_format, "purity=", purity(answer))
@@ -230,9 +230,7 @@ set mu_terms  (Param p,mat delta) = [rat]:
   , { dim_term        = } dim_u_cap_p(x)
   ] { the sum of these will be interpreted modulo 2/1 }
 
-{ mu.pdf Proposition 1.2, see email from DAV 12/3/2016
-  used only in assert in mu; the two definitions of mu should agree
-}
+{ alternative version of mu, included only for testing }
 set mu_in_terms_of_z (Param p,mat delta) = rat:
   let E=E(delta,p) in
   (E.g-E.l-rho_check_r(E.x)+E.t)*E.lambda_rho+z(E)+dim_u_cap_p(E.x)
@@ -240,8 +238,8 @@ set mu_in_terms_of_z (Param p,mat delta) = rat:
 set mu (Param p,mat delta) = rat:
   if is_equal_rank(real_form(p)) and  use_equal_rank_mu then mu(p)
   else let result=sum(mu_terms(p,delta)) in
-  assert(result=mu_in_terms_of_z(p,delta),"two version of mu differ");
-  result
+{ assert(result=mu_in_terms_of_z(p,delta),"two versions of mu differ"); }
+    result
   fi
 
 set print_mu (Param p) = void:
@@ -289,27 +287,19 @@ set convert_cform_hermitian (ParamPol P)= ParamPol:
 set hermitian_form_irreducible (Param p) = ParamPol:
   if is_equal_rank(real_form(p))
   then
-    let cf=c_form_irreducible(p) in {not twisted, in = rank case this is faster}
-    if hf_debug=true then print_mus(cf) fi;
-    convert_cform_hermitian(cf)  { uses = rank mu if |use_equal_rank_mu| holds}
-  else
-    let cf=twisted_c_form_irreducible(p) in convert_cform_hermitian(cf)
-  fi
+    let cf=c_form_irreducible(p) in { not twisted, which is faster here }
+    if hf_debug then print_mus(cf) fi;
+    cf
+  else twisted_c_form_irreducible(p)
+  fi.convert_cform_hermitian
 
 set hermitian_form_irreducible_long (Param p) =
     (ParamPol,[(Param,Split,ParamPol)],ParamPol):
-  {if is_equal_rank(real_form(p))}
-  if false   {to force using the new mu function}
-  then
-    let (formula,terms,cform)=c_form_irreducible_long(p)  in
+  { here we just use |twisted_c_form_irreducible| in all cases }
+  let (formula,terms,cform) =
+    twisted_c_form_irreducible_long(p,real_form(p).distinguished_involution)
+  in if hf_debug then print_mus(cform) fi;
     (formula,terms,convert_cform_hermitian(cform))
-  else
-     let (formula,terms,cform) =
-       twisted_c_form_irreducible_long(p,real_form(p).distinguished_involution)
-     in
-     if hf_debug=true then print_mus(cform) fi;
-     (formula,terms,convert_cform_hermitian(cform))
-  fi
 
 
 { nice output of hermitian_form_irreducible }
@@ -324,7 +314,7 @@ set print_hermitian_form_irreducible_long (Param p) = void:
   for (p,coeff,P) in terms
   do prints("coeff*form on standard: ", new_line
            ,coeff.split_format,"*",p,":",new_line
-     	   ,"fully deformed",new_line, P.pol_format, new_line)
+	   ,"fully deformed",new_line, P.pol_format, new_line)
   od;
   prints("Hermitian form on irreducible module p=",p,":",new_line
         ,answer.pol_format, "purity=", purity(answer))

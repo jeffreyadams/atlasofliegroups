@@ -79,9 +79,9 @@ begin
     , new_t = ratvec_as_vec(t-((t*alpha)/2)*alpha_check)
     , new_tau=tau
     then F_1=(ic,delta,gamma,new_lambda,new_theta,g,new_l,new_omega
-    	     ,new_tau,new_t)
+	     ,new_tau,new_t)
     then F_2=(ic,delta,gamma,new_lambda,new_theta,g,new_l+alpha_check,new_omega
-             ,new_tau,new_t)
+	     ,new_tau,new_t)
     in test_ext_cayley(p,j,"1r1f",F_1); test_ext_cayley(p,j,"1r1f",F_2)
   ; [F_1,F_2]
   elif (type="1r2")
