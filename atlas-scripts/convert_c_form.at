@@ -116,7 +116,18 @@ set convert_cform_hermitian (ParamPol P, Param p0)= ParamPol:
     then result = P.real_form.null_module +
          for w@p in P do (w*s^(mu(p,delta)-a_mu).rat_as_int,p) od in result fi
 
-{use last_param(P) for p0}
-set convert_cform_hermitian (ParamPol P)= ParamPol:
-  if =#P then P else convert_cform_hermitian(P,last_param(P)) fi
 
+set convert_cform_hermitian (ParamPol P,mat delta)= ParamPol:
+  if =#P then P { since we cannot select a term for a null polynomial }
+  else let a_mu = mu(P.last_param,delta)
+    then result = P.real_form.null_module +
+         for w@p in P do (w*s^(mu(p,delta)-a_mu).rat_as_int,p) od
+
+    { normalization: make coefficient of top term in Z if possible}
+    then (c,)=last_term(result)
+    in if int_part(c)=0 then s*result else result fi
+  fi
+
+
+set convert_cform_hermitian (ParamPol P)= ParamPol:
+if =#P then P else convert_cform_hermitian(P,real_form(P).distinguished_involution) fi
