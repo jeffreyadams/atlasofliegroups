@@ -285,12 +285,27 @@ adjoint: (LieType->RootDatum): adjoint root datum for given type.
            od
     in root_datum(type,M)
 
+root, coroot: (RootDatum,int->vec): root/cooroot with given index in root system
+  Indexing is from -nr_of_posroots(rd) upto nr_of_posroots(rd)-1, with
+  negative indices giving negative (co)roots, and non-negative indices giving
+  positive (co)roots; simple (co)roots are consecutive from index 0 upwards.
+
 simple_roots: (RootDatum->mat): matrix of simple roots in the root datum.
 simple_coroots: (RootDatum->mat): matrix of simple coroots in the root datum.
 posroots: (RootDatum->mat): matrix of positive roots in the root datum.
 poscoroots: (RootDatum->mat): matrix of positive coroots in the root datum.
-roots: (RootDatum->mat): set of roots in the root datum (columns of result).
-coroots: (RootDatum->mat): set of coroots in the root datum (as columns).
+  Individual roots/coroots are columns of these matrices, which is somewhat
+  unnatural in the case of coroots, but necessary to be able to do a for-loop
+  over these matrices, which loops over its columns. The result is given as a
+  matrix instead of as a list of vectors because this retains the information
+  about the rank (number of rows of the matrix) even when there are 0 columns.
+
+roots: (RootDatum->mat): full set of roots of root datum (columns of result).
+coroots: (RootDatum->mat): full set of coroots of root datum (as columns).
+  Since these include negative roots/coroots, the numbering of the columns
+  (necessarily starting at 0) is shifted with respect to the indexing given by
+  the root/coroot functions (which have negative roots at negative indices).
+
 root_coradical: (RootDatum->mat): simple roots and coradical basis.
   With respect to simple_roots, add columns for coradical basis generators
 coroot_radical: (RootDatum->mat): simple coroots and radical basis.
@@ -310,10 +325,10 @@ nr_of_posroots: (RootDatum->int) Number of positive roots in the root datum.
 
 root_index: (RootDatum,vec->int): Index of root with respect to posroots
 coroot_index: (RootDatum,vec->int): Index of coroot with respect to poscoroots
-  These functions look up the vector in posroots(rd) or poscoroots(rd), and
-  return the index found shifted down by nr_of_posroots(rd), so that the
-  simple roots start at 0, and negative roots give a negative result. In case
-  the vector is not found at all, the value nr_of_posroots(rd) is returned.
+  These functions return the index of the root/coroot in the root system rd, or
+  return nr_of_posroots(rd) if the argument is not found among the (co)roots.
+  The indexing is as in the root/coroot functions above, so if fond the index i
+  returned has -nr_of_posroots(rd) <= i < nr_of_posroots(rd).
 
 integrality_datum: (RootDatum,ratvec->RootDatum): integral coroots subdatum
   Applied to (rd,gamma), forms the root datum whose coroots form the closed
