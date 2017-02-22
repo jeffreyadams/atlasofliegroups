@@ -1,7 +1,6 @@
 <basic.at
-<extended.at { for E@(mat,Param) }
+<convert_c_form.at
 <ext_deform.at { we need this for general $\delta$, full_deform@(Param,mat) }
-<induction.at { for dim_u_cap_p }
 
 set hf_debug=false { for printing of mu's in hermitian_form_irreducible_long }
 
@@ -156,125 +155,23 @@ set mixed_terms (ParamPol P) = ParamPol:
 set analyse (ParamPol P) = void:
   prints("Mixed terms:",P.mixed_terms.pol_format)
 
-{ ---------------------------------------- }
-
-{ commands for converting from c-form to hermitian-form}
-{ Compute (lambda+rho) restricted to torus T }
-
-{ lambda\in X^*+rho =>
-    one can define a parameter with this lambda, as p=param(x,lambda-rho,0)
-  then infinitesimal_character(p)=(1+theta)*lambda/2
-  which is lambda restricted to T-tilde
-  apply this with lambda itself returns (1+theta)*lambda/2  (on T-tilde)
-  apply this with lambda=rho,   returns (1+theta)*rho/2     (on T-tilde)
-  then the sum is (1+theta)(lambda+rho)/2 on T
-}
-set lambda_plus_rho_res_T (KGBElt x,ratvec lambda) = ratvec:
-  (1+x.involution)*(lambda+rho(x.root_datum))/2
-
-{ mu(p) is the value of the lowest K-type of p, evaluated at x(p) }
-{ formula: mu(p) = < torus_factor(x)+rho^\vee , (1+theta_x)(lambda+rho)/2 > }
-set mu (Param p) = rat:
-  (p.x.torus_factor+p.real_form.rho_check) * lambda_plus_rho_res_T(p.x,p.lambda)
-
-{  converting to Hermitian forms in unequal rank case  }
-
-{ assumption: theta=involution(x) commutes with delta and x has no complex
-  descents (this holds for x=x(p) when p is finalized parameter with nu(p)=0)
-  Then the set of positive real roots is delta-invariant; the following
-  function computes the number of unordered pairs $P=\{ alpha,delta(alpha) \}$
-  with alpha a positive real real and < alpha^vee , delta*alpha > = 0,
-  whose parity gives sign of delta acting on Wedge^top(positive real roots).
-  Each orthogonal pair $P$ contributes $-1$ to sign, others contribute nothing:
-    if <alpha^vee,delta*alpha> = -1, contributes 1 by computation in SL(3,R):
-      -1 from pair is cancelled by -1 from action on
-      [X_alpha,X_delta(alpha)=X_{alpha+delta(alpha)}
-    if delta(alpha)=alpha, contributes 1 by reduction to simple case,
-  note: every really-simple root (simple among real roots) is actualy simple
-}
-set number_real_orthogonal_pairs (KGBElt x, mat delta) = int:
-  let rd=x.root_datum, theta=x.involution in
-  assert(delta*theta=theta*delta
-        ,"Cartan involution does not commute with delta");
-  assert(no_Cminus_roots(x)
-        , "Not defined unless all complex roots are type C+");
-  for alpha in real_posroots(rd,theta)
-  do int:
-    let pairing=coroot(rd,alpha)*delta*alpha in
-    assert(=pairing or pairing=-1 or pairing=2 { since we paired \emph{roots} }
-          ,"invalid pairing of root and coroot");
-    #=pairing { count zero pairings }
-  od.sum.half { compensate for each pair being counted twice }
-
-{ function |mu| below was intially described in Vogan in email of Oct 25, 2016
-  with subject: mu(p); it has been significantly modified since
-  It is a sum of rational terms, for which eventually differences (which should
-  be integer) will serve as exponents of |s|, therefore interpreted modulo 2
-  To facilitate analysis of the terms |mu_terms| returns them as a list of 3
-}
-
-set mu_terms  (Param p,mat delta) = [rat]:
-  assert(=nu(p),"nu(p)!=0");
-  let E=E(delta,p), x=x(p) then g_l=E.g-E.l
-  in
-  [ { lambda_rho_term = } (g_l-rho_check_r(x))*(E.lambda_rho)
-  , { tau_term        = } (E.l*(delta-1)*E.tau)/2
-  , { dim_term        = } dim_u_cap_p(x)
-  ] { the sum of these will be interpreted modulo 2/1 }
-
-{ alternative version of mu, included only for testing }
-set mu_in_terms_of_z (Param p,mat delta) = rat:
-  let E=E(delta,p) in
-  (E.g-E.l-rho_check_r(E.x)+E.t)*E.lambda_rho+z(E)+dim_u_cap_p(E.x)
-
-set mu (Param p,mat delta) = rat: sum(mu_terms(p,delta))
-
-set print_mu (Param p) = void:
-     let terms=mu_terms(p,p.real_form.distinguished_involution) in
-     prints(p, "    ", 1 , "     ", "  ", terms[0], "  ", terms[1]
-           , "     ", terms[2],    sum(terms))
-
-set print_mus (ParamPol P) = void:
-  let delta=real_form(P).distinguished_involution
-  then mu_0=mu(last_param(P),delta)
-  in
-  prints("columns are:", new_line
-        , "coeff*p           lambda_rho term    tau  term      " ##
-          "  dim term    "{     #real_pairs} ##  {" brand new term" ##}
-          "  sum  s^sum*coeff", new_line);
-  for c@p in P
-  do let terms=mu_terms(p,delta) in let ep=E(delta,p) then mu=sum(terms) in
-    prints(c,"*", p, "     ", "  ", terms[0], "  ", terms[1], "     "
-          , terms[2], "     "{, terms[3], "     ", terms[4], "   "}, mu
-          , "  ", c*s^(rat_as_int(mu-mu_0)));
-	  prints({"    gamma = ",ep.gamma,} "  lambda_rho =  ",ep.lambda_rho
-                , "  tau = ",ep.tau
-                , "  g - l - rho_check_r = ", ep.g - ep.l - rho_check_r(ep.x)
-                , new_line)
-  od
-
-{.convert (twisted) c-form to hermitian form, using p0 for normalization.}
-set convert_cform_hermitian (ParamPol P,mat delta, Param p0)= ParamPol:
-  if =#P then P { since we cannot select a term for a null polynomial }
-  else let a_mu = mu(p0,delta) in
-    P.real_form.null_module +
-    for w@p in P do (w*s^(mu(p,delta)-a_mu).rat_as_int,p) od
-  fi
-
-{.version that defaults delta to inner class involution.}
-set convert_cform_hermitian (ParamPol P,Param p0)= ParamPol:
-  convert_cform_hermitian(P,P.real_form.distinguished_involution,p0)
-
-{ as default use last_param(P) for normalisation }
-set convert_cform_hermitian (ParamPol P,mat delta) = ParamPol:
-  convert_cform_hermitian(P,delta,last_param(P))
-
-{.version that defaults delta to inner class involution.}
-set convert_cform_hermitian (ParamPol P)= ParamPol:
-  convert_cform_hermitian(P,P.real_form.distinguished_involution,P.last_param)
-
-{   Hermitian forms on irreducibles     }
+{   Hermitian forms   }
 { Unlike the c-invariant forms, Hermitian forms need a choice of normalization }
+
+
+set hermitian_form_std (Param p,Param p0) = ParamPol:
+  let c_invariant_form =
+    if is_equal_rank(real_form(p))
+    then c_form_std(p)
+    else twisted_c_form_std(p)
+    fi
+  in convert_cform_hermitian(c_invariant_form,p0)
+
+set hermitian_form_std (Param p) = ParamPol:
+  if is_equal_rank(real_form(p))
+  then c_form_std(p)
+  else twisted_c_form_std(p)
+  fi. convert_cform_hermitian
 
 set hermitian_form_irreducible (Param p,Param p0) = ParamPol:
   let c_invariant_form =
@@ -415,17 +312,3 @@ set strong_test (Param p,mat delta)=bool:
   if #bad=0 then prints("number of terms: ", #formula);true
   else prints("number of terms: ", #formula,new_line,"bad terms:", bad );false
   fi
-
-set hermitian_form_std (Param p,Param p0) = ParamPol:
-  let c_invariant_form =
-    if is_equal_rank(real_form(p))
-    then c_form_std(p)
-    else twisted_c_form_std(p)
-    fi
-  in convert_cform_hermitian(c_invariant_form,p0)
-
-set hermitian_form_std (Param p) = ParamPol:
-  if is_equal_rank(real_form(p))
-  then c_form_std(p)
-  else twisted_c_form_std(p)
-  fi. convert_cform_hermitian
