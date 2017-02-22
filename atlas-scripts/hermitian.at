@@ -1,3 +1,5 @@
+{ this file, together with convert_c_form.at, should replace herm.at}
+
 <basic.at
 <convert_c_form.at
 <ext_deform.at { we need this for general $\delta$, full_deform@(Param,mat) }
@@ -40,7 +42,8 @@ set c_form_irreducible (Param p) = ParamPol:
     I(x)_c given as combination of standards x' with nu(x')=0 by c_form_std(x)
   algorithm: compute the sum for J(y)_c, using signed_KL_col and c_form_std
 }
-set c_form_irreducible_long (Param p) = { uses built-in full_deform@Param }
+{.c-form on an irreducible, with extra output.}
+set c_form_irreducible_long (Param p) =
     (ParamPol,[(Param,Split,ParamPol)],ParamPol):
 ( let P = null_module(real_form(p)), ori_nr_p = orientation_nr(p)
   then formula=KL_sum_at_s(p)
@@ -85,6 +88,8 @@ set twisted_c_form_irreducible_as_sum_of_standards (Param p) = ParamPol:
   replace each pair of delta-interchanged I(q)_c with q*0
   this is the formula which can then be converted to give the Hermitian form
 }
+
+{.twisted c-invariant form on an irreducible in terms of standardrepks.}
 set twisted_c_form_irreducible (Param p) = ParamPol:
 ( let G=p.real_form
   then fixed_terms = null_module(G), unfixed_terms = null_module(G)
@@ -94,7 +99,7 @@ set twisted_c_form_irreducible (Param p) = ParamPol:
     if twist(q)=q
     then { fixed under the inner class twist }
       fixed_terms +:= c*twisted_full_deform(q)
-    else { now |1+s| divides |c0|, which justifies not using |scale_extended|: }
+    else { now |1+s| divides |c|, which justifies not using |scale_extended|: }
       unfixed_terms +:= c*(q*0) { postpone halving here }
     fi
   od
@@ -209,6 +214,7 @@ set hermitian_form_irreducible_long (Param p, Param p0) =
     for (q,z,P) in terms do (q,z,convert_cform_hermitian(cform,p0)) od
   in (formula,converted_terms,convert_cform_hermitian(cform,p0))
 
+{. Hermitian form on an irreducible, with extra information.}
 set hermitian_form_irreducible_long (Param p) =
     (ParamPol,[(Param,Split,ParamPol)],ParamPol):
   assert(is_hermitian(p)
@@ -219,6 +225,7 @@ set hermitian_form_irreducible_long (Param p) =
 set print_hermitian_form_irreducible (Param p,mat delta,Param p0) = void:
   hermitian_form_irreducible(p,p0).pol_format.prints
 
+{.print Hermitian form on irreducible, plus extra information.}
 set print_hermitian_form_irreducible_long (Param p,Param p0) = void:
   let (formula,terms,answer)=hermitian_form_irreducible_long(p,p0) in
   prints(new_line,new_line
@@ -265,10 +272,10 @@ set is_unitary (Param p) = bool:
 
 set print_is_unitary (Param p) = void:
   if p.is_hermitian
-  then let P=hermitian_form_irreducible(p) in
-    if P.is_unitary
+  then let hf=hermitian_form_irreducible(p) in
+    if hf.is_unitary
     then prints("Unitary")
-    else let (real,nonreal,mixed)=purity(P) in
+    else let (real,nonreal,mixed)=purity(hf) in
       prints("Non-Unitary",new_line
 	    , real, " real terms", new_line
 	    , nonreal," nonreal terms", new_line
@@ -313,7 +320,6 @@ set test_line (Param p) = void:
     od
   fi
 )
-
 
 set weak_test (Param p) = bool:
   let formula=twisted_c_form_irreducible(p)
