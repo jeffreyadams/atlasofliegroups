@@ -266,11 +266,11 @@ set convert_cform_hermitian (ParamPol P,Param p0)= ParamPol:
   convert_cform_hermitian(P,P.real_form.distinguished_involution,p0)
 
 { as default use last_param(P) for normalisation }
-set convert_cform_hermitian_normalized (ParamPol P,mat delta) = ParamPol:
+set convert_cform_hermitian (ParamPol P,mat delta) = ParamPol:
   convert_cform_hermitian(P,delta,last_param(P))
 
 {.version that defaults delta to inner class involution.}
-set convert_cform_hermitian_normalized (ParamPol P)= ParamPol:
+set convert_cform_hermitian (ParamPol P)= ParamPol:
   convert_cform_hermitian(P,P.real_form.distinguished_involution,P.last_param)
 
 {   Hermitian forms on irreducibles     }
@@ -284,11 +284,11 @@ set hermitian_form_irreducible (Param p,Param p0) = ParamPol:
     fi
   in convert_cform_hermitian(c_invariant_form,p0)
 
-set hermitian_form_irreducible_normalized (Param p) = ParamPol:
+set hermitian_form_irreducible (Param p) = ParamPol:
   if is_equal_rank(real_form(p))
   then c_form_irreducible(p) { not twisted, in equal rank case this is faster }
   else twisted_c_form_irreducible(p)
-  fi.convert_cform_hermitian_normalized
+  fi.convert_cform_hermitian
 
 set hermitian_form_irreducible_long (Param p, Param p0) =
     (ParamPol,[(Param,Split,ParamPol)],ParamPol):
@@ -298,7 +298,7 @@ set hermitian_form_irreducible_long (Param p, Param p0) =
     for (q,z,P) in terms do (q,z,convert_cform_hermitian(cform,p0)) od
   in (formula,converted_terms,convert_cform_hermitian(cform,p0))
 
-set hermitian_form_irreducible_normalized_long (Param p) =
+set hermitian_form_irreducible_long (Param p) =
     (ParamPol,[(Param,Split,ParamPol)],ParamPol):
   hermitian_form_irreducible_long(p,twisted_c_form_irreducible(p).last_param)
 
@@ -348,10 +348,10 @@ set is_unitary = (ParamPol->bool): is_pure@ParamPol  { from basic.at }
 
 { compute Hermitian form on p, and report if it is unitary }
 set is_unitary (Param p) = bool:
-  hermitian_form_irreducible_normalized(p).is_unitary
+  hermitian_form_irreducible(p).is_unitary
 
 set print_is_unitary (Param p) = void:
-  let P=hermitian_form_irreducible_normalized(p) in
+  let P=hermitian_form_irreducible(p) in
   if P.is_unitary
   then prints("Unitary")
   else let (real,nonreal,mixed)=purity(P) in
@@ -408,7 +408,7 @@ set weak_test (Param p) = bool:
   fi
 
 set strong_test (Param p,mat delta)=bool:
-  let formula=hermitian_form_irreducible_normalized(p)
+  let formula=hermitian_form_irreducible(p)
   , bad=null_module(real_form(p))
   in
   for w@p in formula do if not w.is_pure then bad+:=w*p fi od;
@@ -428,4 +428,4 @@ set hermitian_form_std (Param p) = ParamPol:
   if is_equal_rank(real_form(p))
   then c_form_std(p)
   else twisted_c_form_std(p)
-  fi. convert_cform_hermitian_normalized
+  fi. convert_cform_hermitian
