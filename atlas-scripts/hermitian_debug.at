@@ -278,16 +278,28 @@ set convert_cform_hermitian (ParamPol P,mat delta)= ParamPol:
 set convert_cform_hermitian (ParamPol P)= ParamPol:
   convert_cform_hermitian(P,P.last_param.real_form.distinguished_involution)
 
-{   Hermitian forms on irreducibles     }
+{  Hermitian forms  }
 
-{ ParamPol giving the hermitian form on irreducible p in all cases}
+{.Hermitian dual.}
+set hermitian_dual (Param p) = Param: normal(twist(p))
+
+{.whether J(p) admits an invariant Hermitian form.}
+set is_hermitian (Param p) = bool: equivalent(twist(p),p) { compares |normal|s }
+
+set check_hermitian (Param p, bool irreducible) = void:
+  if not p.is_hermitian
+  then error(if irreducible then "Irreducible" else "Standard" fi
+            ," module does not admit any invariant Hermitian form")
+  fi
+
+{.Hermitian form on a irreducible module, canonical normalization.}
 set hermitian_form_irreducible (Param p) = ParamPol:
   if is_equal_rank(real_form(p))
   then
     let cf=c_form_irreducible(p) in { not twisted, which is faster here }
     if hf_debug then print_mus(cf) fi;
     cf
-  else twisted_c_form_irreducible(p)
+  else check_hermitian(p,true); twisted_c_form_irreducible(p)
   fi.convert_cform_hermitian
 
 set hermitian_form_irreducible_long (Param p) =
@@ -345,17 +357,22 @@ set print_hermitian_form_irreducible ([Param] P) = void:
 set is_unitary = (ParamPol->bool): is_pure@ParamPol  { from basic.at }
 
 { compute Hermitian form on p, and report if it is unitary }
-set is_unitary (Param p) = bool: hermitian_form_irreducible(p).is_unitary
+set is_unitary (Param p) = bool:
+  p.is_hermitian and hermitian_form_irreducible(p).is_unitary
 
 set print_is_unitary (Param p) = void:
-  let P=hermitian_form_irreducible(p) in
-  if P.is_unitary
-  then prints("Unitary")
-  else let (real,nonreal,mixed)=purity(P) in
-    prints("Non-Unitary",new_line
-          , real, " real terms", new_line
-          , nonreal," nonreal terms", new_line
-	  , mixed, " mixed terms") fi
+  if p.is_hermitian
+  then let P=hermitian_form_irreducible(p) in
+    if P.is_unitary
+    then prints("Unitary")
+    else let (real,nonreal,mixed)=purity(P) in
+      prints("Non-Unitary",new_line
+	    , real, " real terms", new_line
+	    , nonreal," nonreal terms", new_line
+	    , mixed, " mixed terms")
+    fi
+  else prints("Irreducible module does not admit any invariant Hermitian form")
+  fi
 
 { no mixed terms }
 set is_weakly_unitary (ParamPol P) = bool:
