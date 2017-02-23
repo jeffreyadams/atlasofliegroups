@@ -1,6 +1,6 @@
 <basic.at
 <extended.at { for E@(mat,Param) }
-<induction.at { for dim_u_cap_p }
+<induction.at { for dim_u_cap_p@KGBElt }
 
 { commands for converting from c-form to hermitian-form}
 { Compute (lambda+rho) restricted to torus T }
@@ -109,11 +109,16 @@ set convert_cform_hermitian (ParamPol P,mat delta, Param p0)= ParamPol:
 set convert_cform_hermitian (ParamPol P,Param p0)= ParamPol:
   convert_cform_hermitian(P,P.real_form.distinguished_involution,p0)
 
-{ as default use last_param(P) for normalisation }
+{ if no |p0| provided, use |last_param(P)| BUT try to make final term in \Z }
 set convert_cform_hermitian (ParamPol P,mat delta) = ParamPol:
-  convert_cform_hermitian(P,delta,last_param(P))
+  if =#P then P { since we cannot select a term for a null polynomial }
+  else
+    let result=convert_cform_hermitian(P,delta,last_param(P))
+    then (c,)=last_term(result)
+    in if int_part(c)=0 then s*result else result fi
+  fi
 
-{.version that defaults delta to inner class involution.}
+{.version that uses previous one, defaulting delta to inner class involution.}
 set convert_cform_hermitian (ParamPol P)= ParamPol:
-  convert_cform_hermitian(P,P.real_form.distinguished_involution,P.last_param)
+  convert_cform_hermitian(P,P.real_form.distinguished_involution)
 
