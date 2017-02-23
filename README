@@ -1,12 +1,18 @@
 This is the Atlas of Reductive Lie Groups Software Package
 Copyright (C) 2004-2006, Fokko du Cloux
-Copyright (C) 2005-2016, Marc van Leeuwen
+Copyright (C) 2005-2017, Marc van Leeuwen
+
+For more information see www.liegroups.org.
 
 The software computes structure representation of real reductive Lie
-groups.  For more information see www.liegroups.org/software, where
-this software is freely available.
+groups. The software is freely available from
+www.liegroups.org/software/download.
 
 For help installing the software see the INSTALL file included with
 this distribution.
 
-For more information contact Jeffrey Adams at jda@math.umd.edu
+Extensive documentation, including installation instructions, and help
+getting started, is at www.liegroups.org/help.
+
+Contact: Jeffrey Adams jda@math.umd.edu
+
