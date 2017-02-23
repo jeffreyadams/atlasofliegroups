@@ -66,11 +66,6 @@ set mu_terms  (Param p,mat delta) = [rat]:
   , { dim_term        = } dim_u_cap_p(x)
   ] { the sum of these will be interpreted modulo 2/1 }
 
-{ alternative version of mu, included only for testing }
-set mu_in_terms_of_z (Param p,mat delta) = rat:
-  let E=E(delta,p) in
-  (E.g-E.l-rho_check_r(E.x)+E.t)*E.lambda_rho+z(E)+dim_u_cap_p(E.x)
-
 set mu (Param p,mat delta) = rat: sum(mu_terms(p,delta))
 
 set print_mu (Param p) = void:
@@ -121,4 +116,3 @@ set convert_cform_hermitian (ParamPol P,mat delta) = ParamPol:
 {.version that uses previous one, defaulting delta to inner class involution.}
 set convert_cform_hermitian (ParamPol P)= ParamPol:
   convert_cform_hermitian(P,P.real_form.distinguished_involution)
-

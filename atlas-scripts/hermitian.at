@@ -2,9 +2,6 @@
 
 <basic.at
 <convert_c_form.at
-<ext_deform.at { we need this for general $\delta$, full_deform@(Param,mat) }
-
-set hf_debug=false { for printing of mu's in hermitian_form_irreducible_long }
 
 {.c-invariant form on standard module.}
 set c_form_std = (Param->ParamPol): { never involves |twisted_full_deform| }
@@ -12,10 +9,6 @@ set c_form_std = (Param->ParamPol): { never involves |twisted_full_deform| }
 
 set twisted_c_form_std = (Param->ParamPol): { c-form on extended group }
   twisted_full_deform@Param { built-in }
-
-{ with explicit |delta|, call |full_deform@(Param,mat)| from ext_deform.at }
-set twisted_c_form_std = (Param,mat->ParamPol): { c-form delta-extended group }
-  twisted_full_deform@(Param,mat) { this one is from ext_deform.at }
 
 {    c_form on irreducible representations   }
 
