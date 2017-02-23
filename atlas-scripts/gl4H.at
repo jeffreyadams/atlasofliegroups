@@ -4,8 +4,8 @@ set G=quasicompact_form(GL(8,R))
 set S=SL(4,H)
 set delta_G=G.distinguished_involution
 set delta_S=S.distinguished_involution
-set formula_G=c_form_irr_twisted_as_sum_of_standards(trivial(G))
-set formula_S=c_form_irr_twisted_as_sum_of_standards(trivial(S))
+set formula_G=twisted_c_form_irr_as_sum_of_standards(trivial(G))
+set formula_S=twisted_c_form_irr_as_sum_of_standards(trivial(S))
 
 set A=change_basis(S,simple_roots(G))
 set B=inverse_change_basis(G,simple_roots(S))

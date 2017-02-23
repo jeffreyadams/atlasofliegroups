@@ -235,7 +235,7 @@ struct bitset_entry : public RankFlags
 
 /* This class stores the information necessary to interpret a |StandardRepK|,
    but it does not store extensive tables concerning them, which is relegated
-   to the derived class |KHatContext| defined below.
+   to the derived class |KhatContext| defined below.
 
    Just one dynamic table is held, for projection matrices correponding to
    different subsets of simple roots; they serve to speed up the height

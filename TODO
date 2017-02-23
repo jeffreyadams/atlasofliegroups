@@ -25,6 +25,9 @@
 
 - See if cloning of all value types is needed, and remove unnecessary ones
 
+- Make system test for duplicate objects like two equivalent real forms in the
+  same inner class that will test equal; they should be the same object.
+
 - For errors during implict conversion, provide back-tracing as for calls
 
 - Implement operate-and-assign directly. While 'v #:= x' (with vec v, int x)

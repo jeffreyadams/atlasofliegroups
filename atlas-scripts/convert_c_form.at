@@ -1,5 +1,6 @@
 <basic.at
 <extended.at { for E@(mat,Param) }
+<induction.at { for dim_u_cap_p@KGBElt }
 
 { commands for converting from c-form to hermitian-form}
 { Compute (lambda+rho) restricted to torus T }
@@ -49,17 +50,6 @@ set number_real_orthogonal_pairs (KGBElt x, mat delta) = int:
     #=pairing { count zero pairings }
   od.sum.half { compensate for each pair being counted twice }
 
-{ this is a temporary correction of the incorrect dim_u_cap_p }
-
-set DIM_u_cap_p(KGBElt x) = int:
-  let sum=0/1 in
-  for alpha in posroots(root_datum(x)) do
-    if is_complex(alpha,x) then sum +:= 1/2
-    elif is_noncompact_imaginary(alpha,x) then sum+:=1
-    fi
-  od; rat_as_int(sum)
-
-
 { function |mu| below was intially described in Vogan in email of Oct 25, 2016
   with subject: mu(p); it has been significantly modified since
   It is a sum of rational terms, for which eventually differences (which should
@@ -73,20 +63,15 @@ set mu_terms  (Param p,mat delta) = [rat]:
   in
   [ { lambda_rho_term = } (g_l-rho_check_r(x))*(E.lambda_rho)
   , { tau_term        = } (E.l*(delta-1)*E.tau)/2
-  , { dim_term        = } DIM_u_cap_p(x)
- { , { scalar_term     = } {number_real_orthogonal_pairs(x,delta)} 0 }
-    { new_term used to be |g_l*rho_r(x)*2| before it fell out of grace }
- { , { brand_new_term  = } {(E.t*rho_r(x))/2}{ also fell out of grace } 0 }
+  , { dim_term        = } dim_u_cap_p(x)
   ] { the sum of these will be interpreted modulo 2/1 }
-
 
 set mu (Param p,mat delta) = rat: sum(mu_terms(p,delta))
 
 set print_mu (Param p) = void:
-  let terms=mu_terms(p,p.real_form.distinguished_involution) in
-  prints(p, "    ", 1 , "     ", "  ", terms[0], "  ", terms[1]
-        , "     ", terms[2], {"     ", terms[3], "     "
-        ,   terms[4], "   ",}   sum(terms))
+     let terms=mu_terms(p,p.real_form.distinguished_involution) in
+     prints(p, "    ", 1 , "     ", "  ", terms[0], "  ", terms[1]
+           , "     ", terms[2],    sum(terms))
 
 set print_mus (ParamPol P) = void:
   let delta=real_form(P).distinguished_involution
@@ -107,27 +92,27 @@ set print_mus (ParamPol P) = void:
                 , new_line)
   od
 
-{ParamPol is assumed to be the formula for the (twisted) c-form of a representation}
-{.convert (twisted) c-form on ParamPol to hermitian form, requires p0 for normalization.}
-set convert_cform_hermitian (ParamPol P, Param p0)= ParamPol:
-  if =#P then P  
-  else let a_mu = mu(p0,real_form(P).distinguished_involution) 
-    then delta=real_form(p0).distinguished_involution 
-    then result = P.real_form.null_module +
-         for w@p in P do (w*s^(mu(p,delta)-a_mu).rat_as_int,p) od in result fi
-
-
-set convert_cform_hermitian (ParamPol P,mat delta)= ParamPol:
+{.convert (twisted) c-form to hermitian form, using p0 for normalization.}
+set convert_cform_hermitian (ParamPol P,mat delta, Param p0)= ParamPol:
   if =#P then P { since we cannot select a term for a null polynomial }
-  else let a_mu = mu(P.last_param,delta)
-    then result = P.real_form.null_module +
-         for w@p in P do (w*s^(mu(p,delta)-a_mu).rat_as_int,p) od
+  else let a_mu = mu(p0,delta) in
+    P.real_form.null_module +
+    for w@p in P do (w*s^(mu(p,delta)-a_mu).rat_as_int,p) od
+  fi
 
-    { normalization: make coefficient of top term in Z if possible}
+{.version that defaults delta to inner class involution.}
+set convert_cform_hermitian (ParamPol P,Param p0)= ParamPol:
+  convert_cform_hermitian(P,P.real_form.distinguished_involution,p0)
+
+{ if no |p0| provided, use |last_param(P)| BUT try to make final term in \Z }
+set convert_cform_hermitian (ParamPol P,mat delta) = ParamPol:
+  if =#P then P { since we cannot select a term for a null polynomial }
+  else
+    let result=convert_cform_hermitian(P,delta,last_param(P))
     then (c,)=last_term(result)
     in if int_part(c)=0 then s*result else result fi
   fi
 
-
+{.version that uses previous one, defaulting delta to inner class involution.}
 set convert_cform_hermitian (ParamPol P)= ParamPol:
-if =#P then P else convert_cform_hermitian(P,real_form(P).distinguished_involution) fi
+  convert_cform_hermitian(P,P.real_form.distinguished_involution)

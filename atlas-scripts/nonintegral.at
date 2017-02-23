@@ -180,7 +180,7 @@ set ext_cross(int i, ExtParam E, bool show) = ExtParam:
   else
     let t=reflection(rd,delta(E)*alpha)
     then w = assert(length<=3,"something wrong") { choose for length=1,2,3: }
-    	     ; case length-1 in s, s*t, s*t*s esac
+	     ; case length-1 in s, s*t, s*t*s esac
     in ext_cross(mat: w,E)
   fi
 )

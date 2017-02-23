@@ -132,7 +132,7 @@ set = (KGPElt (S,x),KGPElt (T,y))=bool:
   real_form(x)=real_form(y) and S=T and maximal(S,x)=maximal(S,y)
 
 {. the equivalence class of a KGB element in partial order defined by S. .}
-set equivalence_class_of (KGPElt(S,x):y) = [KGBElt]:
+set equivalence_class_of (KGPElt(S,x)) = [KGBElt]:
   let x_max=maximal(S,x)
   then G=real_form(x_max), !last=#x_max
   then result=[last], done=0, present = for :last do false od

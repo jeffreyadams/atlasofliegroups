@@ -465,6 +465,7 @@ namespace atlas {
   }
   using standardrepk::StandardRepK;
   using standardrepk::SRK_context;
+  using standardrepk::KhatContext;
 
   namespace repr {
     class StandardRepr;	// triple $(x,\lambda,\gamma)$

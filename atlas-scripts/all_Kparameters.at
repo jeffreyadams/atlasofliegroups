@@ -138,7 +138,7 @@ set all_dominant_in_image_oneplustheta_norm_upto (
   InnerClass ic, mat theta,ratvec v,int N ) = mat: { columns are weights }
   let th1=theta+1 in
   columns_with((vec mu): in_lattice(th1,mu-th1*rho(ic)),
-  	       all_dominant_norm_upto(ic,v,N))
+	       all_dominant_norm_upto(ic,v,N))
 
 { Given mu\in X^*,
   solve mu=(1+theta_x)*lambda for lambda\in X^*+rho
