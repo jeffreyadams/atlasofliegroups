@@ -26,8 +26,12 @@ set test_other ([RealForm] groups) = void:
   for G in groups
   do prints("Testing block of trivial representation of ", G)
   ; for p in block_of(trivial(G))
-    do prints(p, " ", print_hermitian_form_irreducible(p)) od
+    do
+      if p.is_hermitian then prints(p); print_hermitian_form_irreducible(p) fi
+    od
   ; prints("Testing block of spherical representation at rho/2 of ", G)
   ; for p in block_of(trivial(G)*/2)
-    do prints(p, " ", print_hermitian_form_irreducible(p)) od
+    do
+      if p.is_hermitian then prints(p); print_hermitian_form_irreducible(p) fi
+    od
   od
