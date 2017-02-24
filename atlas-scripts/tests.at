@@ -22,9 +22,12 @@ begin
   do prints(new_line);print_test_Aq(all_parameters_gamma(G,lambda)) od
 end
 
-set test_other([RealForm] groups)=void:
-for G in groups do 
-prints("Testing block of trivial representation of ", G);
-for p in block_of(trivial(G)) do prints(p, " ", print_hermitian_form_irreducible(p)) od;
-prints("Testing block of spherical representation at rho/2 of ", G);
-for p in block_of(trivial(G)*(1/2)) do prints(p, " ", print_hermitian_form_irreducible(p)) od od
+set test_other ([RealForm] groups) = void:
+  for G in groups
+  do prints("Testing block of trivial representation of ", G)
+  ; for p in block_of(trivial(G))
+    do prints(p, " ", print_hermitian_form_irreducible(p)) od
+  ; prints("Testing block of spherical representation at rho/2 of ", G)
+  ; for p in block_of(trivial(G)*/2)
+    do prints(p, " ", print_hermitian_form_irreducible(p)) od
+  od
