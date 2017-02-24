@@ -5,9 +5,7 @@ set groups1=[SL(2,R), SL(3,R), SL(4,R), SL(2,C), SL(3,C)]
 set groups2=for n:4 from 2 do SL(n,R) od ## [SL(2,C), SL(3,C), Sp(4,C) ]
 set groups3= groups2 # SO(5,3)
 
-set groups=groups3 { global variable accessed by |go| below }
-
-set go () = void:
+set test_unitarity ([RealForm] groups) = void:
 begin
   prints(new_line,"Testing spherical unipotents")
 ; for G in groups do prints();print_test_spherical_unipotent(G) od
@@ -23,3 +21,13 @@ begin
   for (G,lambda) in data
   do prints(new_line);print_test_Aq(all_parameters_gamma(G,lambda)) od
 end
+
+set test_other ([RealForm] groups) = void:
+  for G in groups
+  do prints("Testing block of trivial representation of ", G)
+  ; for p in block_of(trivial(G))
+    do prints(p, " ", print_hermitian_form_irreducible(p)) od
+  ; prints("Testing block of spherical representation at rho/2 of ", G)
+  ; for p in block_of(trivial(G)*/2)
+    do prints(p, " ", print_hermitian_form_irreducible(p)) od
+  od

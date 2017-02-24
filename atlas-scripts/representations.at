@@ -14,14 +14,15 @@
 set finite_dimensional (RealForm G,vec gamma) = Param:
   param(KGB(G,KGB_size(G)-1),gamma,gamma+rho(G))
 
-set finite_dimensional_fundamental_weight_coordinates(RealForm G,vec tau)=Param:
+set finite_dimensional_fundamental_weight_coordinates (RealForm G,vec tau) =
+  Param:
   let fw=fundamental_weights(G), result=ratvec:null(rank(G)) in
   for i:#tau do result+:=tau[i]*fw[i] od;
   assert(is_integer(result), "weight is not integral");
   finite_dimensional(G,result\1)
 
 { the trivial block }
-set trivial_block(RealForm G)=[Param]:block_of(trivial(G))
+set trivial_block (RealForm G) = [Param]: block_of(trivial(G))
 
 {return a large fundamental series if G is quasisplit (not necessarily unique)}
 set large_fundamental_series (RealForm G,ratvec lambda) = Param:
@@ -41,40 +42,38 @@ set large_discrete_series (RealForm G,ratvec lambda) = Param:
 set large_discrete_series (RealForm G) = Param:
   large_discrete_series(G,rho(G))
 
-set minimal_principal_series(RealForm G,ratvec lambda,ratvec nu)=Param:
-  let n=KGB_size(G)-1 in parameter(KGB(G,n),lambda,nu)
-set minimal_principal_series(RealForm G)=Param:
-  minimal_principal_series(G,rho(G),rho(G))
-set minimal_spherical_principal_series(RealForm G,ratvec nu)=Param:
+set minimal_principal_series (RealForm G,ratvec lambda,ratvec nu) = Param:
+  let n=KGB_size(G)-1 in normal(parameter(KGB(G,n),lambda,nu))
+set minimal_principal_series(RealForm G) = Param:
+  minimal_principal_series (G,rho(G),rho(G))
+set minimal_spherical_principal_series (RealForm G,ratvec nu) = Param:
   minimal_principal_series(G,rho(G),nu)
-set minimal_spherical_principal_series(RealForm G)=Param:
+set minimal_spherical_principal_series (RealForm G) = Param:
   minimal_spherical_principal_series(G,rho(G))
 
-{ G should be absolutely simple, SL(n,R), Sp(2n,R), S(n,n) or SO(n+1,n)
-  or simple complex}
-set spherical_unipotent_representations(RealForm G)= [Param]:
-let lietype=Lie_type(root_datum(G)) in 
- if #lietype=1 then  { assert(is_split(G),"Group is not split");}
-  for gamma in nilpotent_lambdas(G) do minimal_spherical_principal_series(G,gamma) od
- elif #lietype=2 then
-  let first=(%lietype)[0],second=(%lietype)[1] then
-  type1=to_string(first)[10] then
-  type2=to_string(second)[10] then
-  rank1=to_string(first)[11] then
-  rank2=to_string(second)[11] in 
-   assert(type1=type2 and rank1 = rank2,"not a complex group");
-   let lambdas=nilpotent_lambdas(simply_connected(first)) then
-   t=trivial(G) in
-   for lambda in lambdas do parameter(x(t), rho(G), lambda##lambda) od  else [] fi
-
-
-
+{ G should be absolutely simple, SL(n,R), Sp(2n,R), S(n,n) or SO(n+1,n) or
+  simple complex, and have standard coordinates (as we use |nilpotent_lambdas|)
+}
+set spherical_unipotent_representations (RealForm G) = [Param]:
+  let lietype=Lie_type(root_datum(G)) in
+  if #lietype=1 then  { assert(is_split(G),"Group is not split");}
+    for gamma in nilpotent_lambdas(G)
+    do minimal_spherical_principal_series(G,gamma) od
+  elif #lietype=2 then { check that it looks like a simple complex group }
+    let (first,second)=let arr=%lietype in (arr[0],arr[1]) in
+    assert(Cartan_matrix(first)=Cartan_matrix(second),"not a complex group");
+    let lambdas=nilpotent_lambdas(simply_connected(first))
+    , x=x(trivial(G)), zero=null(rank(G))
+    in {parameter might not be normal}
+    for lambda in lambdas do dominant(param(x, zero, lambda##lambda)) od
+  else []
+  fi
 
 
 
 { Harish-Chandra parameter of (relative) discrete series, with respect to
   given x_b }
-set hc_parameter(Param p,KGBElt x_b)=ratvec:
+set hc_parameter (Param p,KGBElt x_b) = ratvec:
   assert(is_equal_rank(derived(real_form(p)))
         ,"Group is not equal rank mod center");
   assert(Cartan_class(p)=fundamental_Cartan(real_form(p))
@@ -83,11 +82,11 @@ set hc_parameter(Param p,KGBElt x_b)=ratvec:
 
 { Harish-Chandra parameter of (relative) discrete series, with respect to
   x_b=KGB(G,0) }
-set hc_parameter(Param p)=ratvec:
+set hc_parameter (Param p) = ratvec:
   hc_parameter(p,KGB(real_form(p),0))
 
 { discrete series parameter with given HC parameter lambda, wrt given x }
-set discrete_series(KGBElt x,ratvec lambda)=Param:
+set discrete_series (KGBElt x,ratvec lambda) = Param:
   let G=real_form(x) in
   assert(is_equal_rank(derived(G)),"G is not equal rank mod center");
   assert(is_integer(lambda-rho(G)),"lambda is not in rho+X^*");
@@ -96,24 +95,7 @@ set discrete_series(KGBElt x,ratvec lambda)=Param:
   parameter(cross(w,x),lambda_dom,null(rank(G)))
 
 { discrete series parameter with given HC parameter lambda, wrt KGB(G,0) }
-set discrete_series(RealForm G,ratvec lambda)=Param:
+set discrete_series (RealForm G,ratvec lambda) = Param:
   discrete_series(KGB(G,0),lambda)
 
 { for lists of multiple representations see all_parameters.at }
-
-{
-set principal_series_by_tau (RealForm G,[int] tau_invariant) = Param:
-  let lambda = ratvec: null(rank(sc_split_only(G)))
-  then ()=for i in tau_invariant do lambda+:=fundamental_weight(G,i) od
-  in param(KGB(G,KGB_size(G)-1),ratvec_as_vec(rho(G)+lambda),rho(G))
-
-set principal_series_by_tau_complement (RealForm G,[int] tau_invariant) = Param:
-  let lambda = ratvec: null(rank(sc_split_only(G)))
-  then ()=for i in tau_invariant do lambda+:=fundamental_weight(G,i) od
-  in param(KGB(G,KGB_size(G)-1),ratvec_as_vec(lambda),rho(G))
-
-
-set all_principal_series(RealForm G) = [Param]:
-  for tau in generate_all_subsets(#semisimple_rank(G))
-  do principal_series_by_tau(G,tau) od
-}
