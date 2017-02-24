@@ -484,7 +484,7 @@ bool Rep_context::equivalent(StandardRepr z0, StandardRepr z1) const
   }
 
   to_singular_canonical(simple_singulars,z0);
-  to_singular_canonical(simple_singulars,z0);
+  to_singular_canonical(simple_singulars,z1);
 
   return z0==z1;
 }
