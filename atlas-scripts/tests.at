@@ -3,7 +3,7 @@
 
 set groups1=[SL(2,R), SL(3,R), SL(4,R), SL(2,C), SL(3,C)]
 set groups2=for n:4 from 2 do SL(n,R) od ## [SL(2,C), SL(3,C), Sp(4,C) ]
-set groups3= groups2 # SO(5,3)
+set groups3= groups2 # SO(5,5)
 
 set test_unitarity ([RealForm] groups) = void:
 begin
@@ -16,18 +16,17 @@ begin
 
 ; prints(new_line,"Testing regular Aq")
 ; for G in groups do prints();print_test_Aq(G) od
-
-; let data=[(Sp(4,R),[1,0]), (GL(3,R),[1,0,-1]), (GL(4,R),[1,0,0,-1]) ] in
-  for (G,lambda) in data
-  do prints(new_line);print_test_Aq(all_parameters_gamma(G,lambda)) od
 end
 
 set test_other ([RealForm] groups) = void:
-  for G in groups
-  do prints("Testing block of trivial representation of ", G)
-  ; for p in block_of(trivial(G))
-    do prints(p, " ", print_hermitian_form_irreducible(p)) od
+  for G in groups do
+  let delta=G.distinguished_involution in
+  prints("Testing block of trivial representation of ", G)
+  ; for p in fixed(delta,block_of(trivial(G)))
+    do prints(p); print_hermitian_form_irreducible(p) od
   ; prints("Testing block of spherical representation at rho/2 of ", G)
-  ; for p in block_of(trivial(G)*/2)
-    do prints(p, " ", print_hermitian_form_irreducible(p)) od
+  ; for p in  fixed(delta,block_of(trivial(G)*/2))
+    do prints(p);print_hermitian_form_irreducible(p) od
   od
+
+set test_other(RealForm G)=void:test_other([G])
