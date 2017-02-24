@@ -6,10 +6,10 @@ here=$(pwd)
 version=$1
 distr=atlas_$version
 distr_subdirs="messages sources atlas-scripts"
-distr_files="COPYRIGHT LICENSE README CHANGES"
+distr_files="COPYRIGHT LICENSE README"
 distr_all_src="error interface io utilities structure gkmod test stand-alone interpreter"
 dirs_with_cweb="interpreter stand-alone io"  # directories containing *.w files
-help_files="README.atlas-scripts examples" # files *.help are also included
+help_files="README.atlas-scripts" # files *.help are also included
 
 echo Building $distr
 
