@@ -859,18 +859,26 @@ become broad enough to accommodate them (for instance |void| can accommodate
 every possible type). So we prune |conflict| before possibly reporting an
 error.
 
-In case of success, any branches that were originally found to have a
-different (narrower) type, or whose conversion threw a balancing error inside
-the branch, are converted again, replacing a possible previous result in
-|components|. Branches that threw a |balance_error| are certain to satisfy the
-test |comp_type[i]!=target| below (which in their case means that |target| has
-changed since a copy was taken to initialise |comp_type[i]|), since such an
-error will have contributed to |conflicts| type that were strict
-specialisations of the original |target|, and which cannot have been pruned
-unless |target| was changed to a broader type since. The new conversion may
-insert coercions that were absent in the original conversion (it may also
-throw some other type error if conversion in that context turns out to be
-impossible after all).
+In case of success, the context type |target| that was used as initial goal
+for the conversion of the balanced expressions is set to |common|; the change
+here can only involve specialisation. Then any branches that were originally
+found to have a different type than |common|, but apparently were saved by
+pruning (so their type is narrower than |common|), are converted again in the
+context of |common| (i.e., of the specialised |target|), and the result of
+that conversion replaces the previous result in the |components| vector. The
+new conversion may insert coercions that were absent in the original
+conversion. Alternatively, it may also throw some other type error if
+conversion in the context of |common| turns out to be impossible after all.
+
+The same treatment is given to branches whose conversion threw a balancing
+error when initially converted, but for which all types involved in the
+balancing were later pruned. Such branches leave their |comp_type| at the
+value |target| had for the attempted initial conversion, and the fact that
+pruning removed the balanced types shows that those were strict
+specialisations of the original |target|, and that |target| was since
+specialised to a broader type; this ensures that the test
+|comp_type[i]!=target| applies to them, and |components[i]| gets set by the
+new conversion (it was left unset by the failed initial conversion).
 
 @< Local function definitions @>=
 
@@ -904,16 +912,27 @@ void balance
 
 @ We try to maintain |common| as the maximal type between the branches for the
 |broader_eq| relation. If this fails due to incomparable types we move the
-non-conforming type to |conflicts|. That list also collects types from
-|balance_error| if thrown directly by one of the calls to |convert_expr|.
-Since such type collections have internal incompatibilities, they never
-provide the common type; no comparison with |common| is needed.
+non-conforming type to |conflicts|.
 
-When catching a |balance_error|, we re-|throw| if the error was produced in a
-subexpression of the branch, as this indicates an error independent of out
-balancing. If that branch was a list display, the reported types are somewhat
-laboriously wrapped in a ``row-of'' to produce the component type that
-interests us here.
+That list also collects types from |balance_error| if thrown directly by one
+of the calls to |convert_expr|. The reason is that it might happen that all of
+the conflicting types can be converted to a final |common| type once it gets
+determined by other branches, so we are prudent here to not propagate the
+error. However, when catching a |balance_error| that was produced in a
+subexpression of the branch we do re-|throw|, as a more specialised type
+|common| cannot salvage in this case: the thrown |balance_error| is in fact
+independent of our current balancing. For the case where we do move the types
+from the |balance_error| to |conflicts|, the fact that they apparently have
+internal incompatibilities means that they can never provide the |common|
+type, which justifies making no comparison with that type.
+
+If a branch that produces a maybe salvageable |balance_error| is a list
+display, the type that it will give for our current balancing has an
+additional ``row-of'' with respect to the types balanced in the subexpression.
+Therefore we (somewhat laboriously) wrap the types from the |balance_error| in
+a  ``row-of'' before moving them to |conflicts|. These wrapped types will not
+be the |common| type, but at least they will compare correctly to it for the
+purpose of pruning.
 
 @< Convert each expression in |elist| in the context... @>=
 for (wel_const_iterator it(elist); not it.at_end(); ++it)
