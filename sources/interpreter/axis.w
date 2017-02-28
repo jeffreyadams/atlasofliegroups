@@ -4098,6 +4098,61 @@ case int_case_expr:
     int_case_expression(std::move(c),std::move(conv)));
 }
 
+@*1 Union-controlled case expressions (discrimination expressions).
+%
+The discrimination expression (multi-way branch controlled by a union value)
+is syntactically similar to the integer case expression, but semantically a
+bit more complicated. The main difference is that each branch can bind
+independently to value whose tag (variant of the union) is being discriminated
+upon, as if each were a different \&{let} expression.
+
+@< Type def... @>=
+typedef std::pair<id_pat,expression_ptr> choice_part;
+
+struct union_case_expression : public expression_base
+{ expression_ptr condition; std::vector<choice_part> branches;
+@)
+  union_case_expression
+   (expression_ptr&& c,std::vector<choice_part>&& b)
+   : condition(c.release()),branches(std::move(b))
+  @+{}
+  virtual ~@[union_case_expression() nothing_new_here@];
+  virtual void evaluate(level l) const;
+  virtual void print(std::ostream& out) const;
+};
+
+@ To print a case expression is straightforward.
+
+@< Function definitions @>=
+void union_case_expression::print(std::ostream& out) const
+{ auto it = branches.cbegin();
+  assert(it!=branches.cend());
+  out << " case " << *condition << " in (" << it->first << "):" << *it->second;
+  while (++it!=branches.cend())
+    out << ", (" << it->first << "):" << *it->second;
+  out << " esac ";
+}
+
+@ Evaluating a discrimination expression ends up evaluating the expression in
+one of its |branches|, after binding the pattern it contains. More precisely,
+we start evaluating the |condition| expression upon which to discriminate,
+pop that value from the stack into |discriminant|, then
+select a |branch| depending on its |variant()| attribute (the numeric value
+of its tag). Given that a |frame| is created, in which the |contents()| of the
+tagged value is bound to the pattern |branch.first|, and in the context so
+established the body |branch.second| is evaluated to produce the result of the
+discrimination expression.
+
+@< Function definitions @>=
+void union_case_expression::evaluate(level l) const
+{ condition->eval();
+  shared_union discriminant = get<union_value>();
+  const auto& branch = branches[discriminant->variant()]; // make selection
+  frame fr(branch.first);
+  fr.bind(discriminant->contents());
+  branch.second->evaluate(l);
+}
+
 @*1 While loops.
 %
 Next we consider different kinds of loops. Apart from the distinction between

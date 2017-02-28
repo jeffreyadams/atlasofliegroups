@@ -1511,11 +1511,13 @@ class union_value : public value_base
 public:
   union_value(unsigned short tag,shared_value&& v,id_type name) :
      comp(std::move(v)),tag(tag),injector_name(name) @+{}
+  unsigned int variant() const @+{@; return tag; }
+  const shared_value& contents() const @+{@; return comp; }
   union_value* clone() const @+{@; return new union_value(*this); }
   void print(std::ostream& out) const;
   static const char* name() @+{@; return "union value"; }
 private:
-  union_value(const union_value& v) = default;
+  union_value@[(const union_value& v) = default@];
  // copy constructor; used by |clone|
 };
 @)
