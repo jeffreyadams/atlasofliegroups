@@ -19,14 +19,17 @@ begin
 end
 
 set test_other ([RealForm] groups) = void:
-  for G in groups do
-  let delta=G.distinguished_involution in
-  prints("Testing block of trivial representation of ", G)
-  ; for p in fixed(delta,block_of(trivial(G)))
-    do prints(p); print_hermitian_form_irreducible(p) od
+  for G in groups
+  do prints("Testing block of trivial representation of ", G)
+  ; for p in block_of(trivial(G))
+    do
+      if p.is_hermitian then prints(p); print_hermitian_form_irreducible(p) fi
+    od
   ; prints("Testing block of spherical representation at rho/2 of ", G)
-  ; for p in  fixed(delta,block_of(trivial(G)*/2))
-    do prints(p);print_hermitian_form_irreducible(p) od
+  ; for p in block_of(trivial(G)*/2)
+    do
+      if p.is_hermitian then prints(p); print_hermitian_form_irreducible(p) fi
+    od
   od
 
 set test_other(RealForm G)=void:test_other([G])
