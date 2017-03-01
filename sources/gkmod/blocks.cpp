@@ -1236,7 +1236,7 @@ param_block::param_block // full block constructor
   xy_hash.reconstruct(); // adapt to permutation of the block
 
   compute_duals(y_hash,xy_hash,G,sub); // finally compute Hermitian duals
-  compute_y_bits(y_pool,xy_hash);
+  compute_y_bits(y_pool);
 
   // and look up which element matches the original input
   entry_element = lookup(sr);
@@ -1555,22 +1555,24 @@ param_block::param_block // partial block constructor, for interval below |sr|
   } // |for(i)|
 
   compute_duals(y_hash,xy_hash,innerClass(),sub);
-  compute_y_bits(y_pool,xy_hash);
+  compute_y_bits(y_pool);
 
 } // |param_block::param_block|, partial block version
 
-void param_block::compute_y_bits(const y_entry::Pooltype& y_pool,
-				 const block_hash& hash)
+void param_block::compute_y_bits(const y_entry::Pooltype& y_pool)
 { y_bits.reserve(y_pool.size());
   const InvolutionTable& i_tab = innerClass().involution_table();
   const RatWeight gamma_rho = gamma() - rho(rootDatum());
 
+  // tabulate some |x| (in fact to first) for every value |y|
+  std::vector<KGBElt> x_of_y(y_pool.size(),UndefKGB);
+  for (BlockElt z=0; z<size(); ++z)
+    if (x_of_y[y(z)]==UndefKGB)
+      x_of_y[y(z)]=x(z);
+
   for (KGBElt y=0; y<y_pool.size(); ++y)
-  { KGBElt x=0; // need to look up an |x| matching |y|
-    BlockElt z;
-    while (x<=highest_x and (z=hash.find(block_elt_entry(x,y)))==hash.empty)
-      ++x;
-    assert(x<=highest_x); // since every |y| must have at least one matching |x|
+  { KGBElt x=x_of_y[y];
+    assert(x!=UndefKGB); // since every |y| must have at least one matching |x|
     InvolutionNbr i_x = rc.kgb().inv_nr(x);
     RatWeight yr = y_pool[y].repr().log_pi(false);
     yr -= i_tab.matrix(i_x)*yr;

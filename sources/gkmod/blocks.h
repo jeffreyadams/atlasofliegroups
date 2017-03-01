@@ -363,8 +363,7 @@ class param_block : public Block_base
 
 
  private:
-  void compute_y_bits(const y_entry::Pooltype& y_pool,
-		      const block_hash& hash); // set the |y_bits|
+  void compute_y_bits(const y_entry::Pooltype& y_pool); // set the |y_bits|
   void compute_duals
   (const y_part_hash& y_hash,const block_hash& hash,
    const InnerClass& G,const SubSystem& rs);
