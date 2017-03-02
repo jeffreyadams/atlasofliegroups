@@ -4100,11 +4100,12 @@ case int_case_expr:
 
 @*1 Union-controlled case expressions (discrimination expressions).
 %
-The discrimination expression (multi-way branch controlled by a union value)
-is syntactically similar to the integer case expression, but semantically a
-bit more complicated. The main difference is that each branch can bind
-independently to value whose tag (variant of the union) is being discriminated
-upon, as if each were a different \&{let} expression.
+The union-case expression (a multi-way branch controlled by a union value),
+also called discrimination expression, is syntactically similar to the integer
+case expression, but semantically a bit more complicated. The main difference
+is that each branch can bind independently to value whose tag (variant of the
+union) is being discriminated upon, as if each were a different \&{let}
+expression.
 
 @< Type def... @>=
 typedef std::pair<id_pat,expression_ptr> choice_part;
@@ -4151,6 +4152,84 @@ void union_case_expression::evaluate(level l) const
   frame fr(branch.first);
   fr.bind(discriminant->contents());
   branch.second->evaluate(l);
+}
+
+@ Like conditionals and integer case expressions, the branches of a
+discrimination expression should have balanced types. However, our current
+implementation of balancing is not really up to the task of handling
+discrimination clauses, since it will convert, and occasionally re-convert,
+all expressions to be balanced in the same (lexical) context, while the
+branches of a discrimination clause set up different local bindings for each
+of them. So awaiting a more flexible implementation of balancing, we implement
+type checking and conversion of discrimination expressions without balancing,
+simply using for each branch the type provided by the context as possibly
+modified by the conversion of previous branches. For now we also don't use the
+identifiers (tags) provided in the branches to possibly reorder the branches,
+instead insisting that they handle the cases for the union type of the
+|subject| expression in their standard order.
+
+@< Cases for type-checking and converting... @>=
+case discrimination_expr:
+{ auto& exp = *e.disc_variant;
+  type_expr subject_type;
+  expression_ptr c  =  convert_expr(exp.subject,subject_type);
+  if (subject_type.kind!=union_type)
+    throw type_error(e,std::move(subject_type),
+                       std::move(*branches_type(exp.branches)));
+  size_t n_variants=length(subject_type.tupple);
+  auto branch_p=&exp.branches;
+  if (length(branch_p)!=n_variants)
+    @< Complain that union case-expression |e| has wrong number of branches @>
+  std::vector<choice_part> choices; choices.reserve(n_variants);
+
+  for (wtl_const_iterator it(subject_type.tupple); not it.at_end();
+       ++it,branch_p=branch_p->next.get())
+    @< Type-check branch |branch_p->contents| for variant type |*it|, and
+       push the |choice_part| resulting from the conversion to |choices| @>
+@/return expression_ptr(new @|
+    union_case_expression(std::move(c),std::move(choices)));
+}
+
+@ In the above code we generated a union type expected for the |subject|
+expression from the branches, using the function below. Since the branches
+have only been syntactically analysed at this point, and we don't want to risk
+errors that might occur in the process of throwing an error, we just count the
+number of branches, and create un unknown union of that many variants.
+
+@< Local fun... @>=
+type_ptr branches_type(const containers::sl_node<case_variant>& branches)
+{ type_list l; auto p=&branches; // pointer to the initial node
+  do
+    l.push_front(unknown_type.copy());
+  while ((p=p->next.get())!=nullptr);
+  return mk_union_type(std::move(l));
+}
+
+@ The error message below could be improved a bit by mentioning |subject_type|
+explicitly.
+
+@< Complain that union case-expression |e| has wrong number of branches @>=
+{
+  auto nb=length(&exp.branches);
+  throw expr_error(e,"Wrong number " + str(nb) +
+                     " of cases in union case-expression");
+}
+
+@ Here is a first approach to type-checking the branch of a union-case
+expression.
+
+@< Type-check branch |branch_p->contents| for variant type |*it|... @>=
+{ const auto& branch = branch_p->contents;
+  auto n=count_identifiers(branch.pattern);
+  expression_ptr result;
+  if (n==0) // avoid creating an empty (lexical) |layer|;
+    result=convert_expr(branch.branch,type);
+  else
+  { layer branch_layer(n);
+    thread_bindings(branch.pattern,*it,branch_layer,false);
+    result=convert_expr(branch.branch,type);
+  }
+  choices.push_back(choice_part(copy_id_pat(branch.pattern),std::move(result)));
 }
 
 @*1 While loops.
