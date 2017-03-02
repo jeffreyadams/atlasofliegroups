@@ -3,8 +3,8 @@
 set is_unitary_temp (Param p)=bool:
    let G=real_form(p) in let ic=infinitesimal_character(p) in
    let rd=root_datum(G) in
-   if is_integral(rd,ic-rho(G)) and is_regular(rd,ic) then
-   prints("This is regular integral"); is_good_Aq(p)
+   if is_dominant(rd,ic-rho(G))then
+   prints("This is strongly regular."); is_good_Aq(p)
     else prints("now checking for equal_rank wf Aq");
       if (is_equal_rank(G) and is_integral(rd,ic-rho(G)) and
         is_weakly_fair_Aq(p)) then true
