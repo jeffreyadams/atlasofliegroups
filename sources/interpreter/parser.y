@@ -107,10 +107,10 @@
 %destructor { destroy_type($$); } nostar_type type
 %type <type_l> types union_list union_list_opt
 %destructor { destroy_type_list($$); } types union_list union_list_opt
-%type <id_sp1> id_spec struct_spec struct_field
+%type <id_sp1> id_spec type_spec type_field
 %destructor { destroy_type($$.type_pt);destroy_id_pat($$.ip);
-            } id_spec struct_spec struct_field
-%type <id_sp> id_specs id_specs_opt struct_specs
+            } id_spec type_spec type_field
+%type <id_sp> id_specs id_specs_opt struct_specs union_specs
 %destructor { destroy_type_list($$.typel);destroy_pattern($$.patl);
             } id_specs id_specs_opt
 %type <case_l> caselist
@@ -148,9 +148,9 @@ input:	'\n'			{ YYABORT; } /* null input, skip evaluator */
 		{ struct raw_id_pat id; id.kind=0x1; id.name=$1;
 		  global_set_identifier(id,$3,0); YYABORT; }
 	| IDENT ':' type '\n'	{ global_declare_identifier($1,$3); YYABORT; }
-	| ':' IDENT '=' struct_spec '\n'
+	| ':' IDENT '=' type_spec '\n'
 	  { type_define_identifier($2,$4.type_pt,$4.ip,@4); YYABORT; }
-	| ':' TYPE_ID '=' struct_spec '\n'
+	| ':' TYPE_ID '=' type_spec '\n'
 	  { type_define_identifier($2,$4.type_pt,$4.ip,@4); YYABORT; }
 	| QUIT	'\n'		{ *verbosity =-1; } /* causes immediate exit */
 	| SET IDENT '\n' // set an option; option identifiers have lowest codes
@@ -580,26 +580,42 @@ id_specs_opt: id_specs
 	| /* empty */ { $$.typel=nullptr; $$.patl=nullptr; }
 ;
 
-struct_spec: type { $$.type_pt=$1; $$.ip.kind=0x0; }
+type_spec: type { $$.type_pt=$1; $$.ip.kind=0x0; }
 	| '(' struct_specs ')'
-	{ $$.type_pt=make_tuple_type($2.typel);
-	  $$.ip.kind=0x2; $$.ip.sublist=reverse_patlist($2.patl);
-	}
+	  { $$.type_pt=make_tuple_type($2.typel);
+	    $$.ip.kind=0x2; $$.ip.sublist=reverse_patlist($2.patl);
+	  }
+	| '(' union_specs ')'
+	  { $$.type_pt=make_union_type($2.typel);
+	    $$.ip.kind=0x2; $$.ip.sublist=reverse_patlist($2.patl);
+	  }
 ;
 
-struct_specs: struct_field ',' struct_field
-	{ auto head_typel=make_type_singleton($1.type_pt);
-	  auto head_pat =make_pattern_node(nullptr,$1.ip);
-	  $$.typel=make_type_list(head_typel,$3.type_pt);
-	  $$.patl=make_pattern_node(head_pat,$3.ip);
-	}
-	| struct_specs ',' struct_field
-	{ $$.typel=make_type_list($1.typel,$3.type_pt);
-	  $$.patl=make_pattern_node($1.patl,$3.ip);
-	}
+struct_specs: type_field ',' type_field
+	  { auto head_typel=make_type_singleton($1.type_pt);
+	    auto head_pat =make_pattern_node(nullptr,$1.ip);
+	    $$.typel=make_type_list(head_typel,$3.type_pt);
+	    $$.patl=make_pattern_node(head_pat,$3.ip);
+	  }
+	| struct_specs ',' type_field
+	  { $$.typel=make_type_list($1.typel,$3.type_pt);
+	    $$.patl=make_pattern_node($1.patl,$3.ip);
+	  }
 ;
 
-struct_field : type IDENT { $$.type_pt=$1; $$.ip.kind=0x1; $$.ip.name=$2; }
+union_specs: type_field '|' type_field
+	  { auto head_typel=make_type_singleton($1.type_pt);
+	    auto head_pat =make_pattern_node(nullptr,$1.ip);
+	    $$.typel=make_type_list(head_typel,$3.type_pt);
+	    $$.patl=make_pattern_node(head_pat,$3.ip);
+	  }
+	| union_specs '|' type_field
+	  { $$.typel=make_type_list($1.typel,$3.type_pt);
+	    $$.patl=make_pattern_node($1.patl,$3.ip);
+	  }
+;
+
+type_field : type IDENT { $$.type_pt=$1; $$.ip.kind=0x1; $$.ip.name=$2; }
 	| type '.'{ $$.type_pt=$1; $$.ip.kind=0x0; }
 ;
 

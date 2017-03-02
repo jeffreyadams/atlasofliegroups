@@ -3879,6 +3879,107 @@ void projector_call::evaluate(level l) const
 void projector_call::print(std::ostream& out) const
 {@; out << *argument << '.' << main_hash_table->name_of(id); }
 
+@* Injection functions.
+%
+For union types there is notion corresponding to projection functions for
+tuple types, but dual to it: the injection functions map each of the
+constituent types of the union into the union type. Contrary to projection
+functions, the use of these is necessary for union types, as the language does
+not provide any other means of forming values of these types.
+
+@< Type def... @>=
+struct injector_value : public function_base
+{ type_expr type; // used for printing purposes only
+  unsigned position;
+  id_type id;
+  source_location loc;
+@)
+  injector_value
+     (const type_expr& t,unsigned i,id_type id,const source_location& loc)
+  : type(t.copy()),position(i),id(id),loc(loc) @+ {}
+  virtual ~ @[injector_value() nothing_new_here@];
+  virtual void print(std::ostream& out) const;
+  virtual void apply(expression_base::level l) const;
+  virtual expression_base::level argument_policy() const;
+  virtual void report_origin(std::ostream& o) const;
+  virtual expression_ptr build_call
+    (const shared_function& owner,const std::string& name,
+     expression_ptr&& arg, const source_location& loc) const;
+@)
+  virtual injector_value* clone() const @+
+  {@; return new injector_value(*this); }
+  static const char* name() @+{@; return "built-in function"; }
+private:
+  injector_value(const injector_value& v)
+@/:type(v.type.copy()),position(v.position),loc(v.loc)@+{}
+};
+
+@ Here are two virtual methods. We print the position selected and the type
+selected from. The (tuple) operand of a selection is to be computed as a
+|single_value|, since it is unlikely to be given as a tuple display anyway,
+and this makes it easy to replace the value on the stack by one of its
+components.
+
+@< Function def... @>=
+void injector_value::print(std::ostream& out) const
+  {@; out << "{."<< main_hash_table->name_of(id) << ": "
+                 << position << type << '}'; }
+expression_base::level injector_value::argument_policy() const
+  {@; return expression_base::single_value; }
+void injector_value::report_origin(std::ostream& o) const
+ {@; o << "injector defined " << loc; }
+
+@ Applying an injector is quite easy: we pop the value from the stack, attach
+the proper tag (number), and then push that to the stack again.
+
+@< Function def... @>=
+void injector_value::apply(expression_base::level l) const
+{ shared_value component = pop_value();
+  push_value(std::make_shared<union_value>(position,std::move(component),id));
+}
+
+@ Like for projectors, injectors are usually applied in special call
+expressions built at ``compile time''.
+
+@< Type def... @>=
+struct injector_call : public overloaded_call
+{ unsigned position; id_type id;
+@)
+  injector_call @|
+   (const injector_value& f,const std::string& n,expression_ptr&& a
+   ,const source_location& loc)
+  : overloaded_call(n,std::move(a),loc), position(f.position), id(f.id) @+ {}
+  virtual ~@[injector_call() nothing_new_here@];
+  virtual void evaluate(level l) const;
+  virtual void print(std::ostream& out) const;
+};
+
+@ Here is how a |injector_value| can turn itself into an |injector_call| when
+provided with an argument expression, as well as a |name| to call itself and a
+|source_location| for the call. We don't store a (shared) pointer to the
+|injector_value|, so we ignore the initial argument here.
+
+@< Function def... @>=
+expression_ptr injector_value::build_call
+    (const shared_function&,const std::string& name,
+     expression_ptr&& arg, const source_location& loc) const
+{@; return expression_ptr(new injector_call(*this,name,std::move(arg),loc));
+}
+
+@ The virtual methods for |injector_call| are easy. Since nothing can go
+wrong with injection, the method |injector_call::evaluate| does no effort to
+contribute to an error back-trace.
+
+@< Function def... @>=
+void injector_call::evaluate(level l) const
+{
+  argument->eval(); // evaluate arguments as a single value
+  push_value(std::make_shared<union_value>(position,pop_value(),id));
+}
+@)
+void injector_call::print(std::ostream& out) const
+{@; out << *argument << '.' << main_hash_table->name_of(id); }
+
 @* Control structures.
 %
 We shall now introduce conventional control structures, which must of course

@@ -1091,16 +1091,24 @@ void type_define_identifier
 { type_ptr saf(t); id_pat fields(ip); // ensure clean-up
   type_expr& type=*t;
   if (not fields.sublist.empty()) // do this before we move from |type|
-  { assert(type.kind==tuple_type);
+  { assert(type.kind==tuple_type or type.kind==union_type);
     auto tp_it =wtl_const_iterator(type.tupple);
     unsigned count=0;
     for (auto it=fields.sublist.wcbegin(); not it.at_end();
          ++tp_it,++count,++it)
       if (it->kind==0x1) // field selector present
-      { type_expr fun_type(type.copy(),tp_it->copy()); // make projector type
-        shared_function projector =
-          std::make_shared<projector_value>(type,count,it->name,loc);
-        add_overload(it->name,std::move(projector),std::move(fun_type));
+      { shared_function tor; type_expr tor_type;
+        if (type.kind==tuple_type)
+        { // projector
+          tor=std::make_shared<projector_value>(type,count,it->name,loc);
+          tor_type.set_from(type_expr(type.copy(),tp_it->copy()));
+        }
+        else
+        { // injector
+          tor=std::make_shared<injector_value>(type,count,it->name,loc);
+          tor_type.set_from(type_expr(tp_it->copy(),type.copy()));
+        }
+        add_overload(it->name,std::move(tor),std::move(tor_type));
       }
   }
 @)

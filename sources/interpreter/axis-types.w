@@ -860,7 +860,9 @@ bool operator== (const type_expr& x,const type_expr& y)
   // whether both lists terminated
 }
 
-@ Instead of using the constructors directly, we often use the constructing
+@*2 Type constructing functions.
+%
+Instead of using the constructors directly, we often use the constructing
 functions below. The versions with |mk| return |type_ptr| values owning the
 constructed expression. They also take such smart pointers, or |type_list|
 values, as argument whenever the underlying pointer is to be directly inserted
