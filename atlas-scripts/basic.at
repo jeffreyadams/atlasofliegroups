@@ -1197,7 +1197,7 @@ set pol_format (ParamPol P)= string:
   ##
   for w@p in P
   do to_string("(",w.split_format,")*",p
-              ,", ",p.infinitesimal_character,new_line)
+             { ,", ",p.infinitesimal_character},new_line)  {don't print the infinitesimal character}
   od
 
 { find what should be unique infintesimal character shared by all terms }
