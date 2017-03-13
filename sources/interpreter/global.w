@@ -644,7 +644,7 @@ create the table.
 @< Global variable definitions @>=
 overload_table* global_overload_table=nullptr;
 
-@* Global operations.
+@* Operations other than evaluation of expressions.
 %
 We start with several operations at the outer level of the interpreter such as
 initialisations and the initial invocation of the type checker.
@@ -731,14 +731,11 @@ type_expr analyse_types(const expr& e,expression_ptr& p)
 @.Expression analysis failed@>
 }
 
-
-@*1 Operations other than evaluation of expressions.
+@*1 Operations to change the state of user environment.
 %
 This section will be devoted to some interactions between user and program
 that do not consist just of evaluating expressions.
 
-@*2 Defining global identifiers or overloads.
-%X
 The function |global_set_identifier| handles introducing identifiers, either
 normal ones or overloaded instances of functions, using the \&{set} syntax.
 It has a variant for multiple declarations |global_set_identifiers|.
@@ -781,7 +778,7 @@ std::ostream* output_stream= &std::cout;
 possibilities as for local definitions (the \&{let}
 syntax); therefore it takes a |raw_let_list| as argument. Some other syntactic
 forms (operator definition, syntax using |':'|) can only handle one identifier
-at a time, and invokes the |global_set_identifier| function. The latter case
+at a time; these invoke the |global_set_identifier| function. The latter case
 sometimes forbids or requires a definition to the overload table; the argument
 |overload| specifies the options permitted ($0$ means no overloading, $2$
 requires overloading, and $1$ allows both).
@@ -802,7 +799,78 @@ void global_set_identifiers(const raw_let_list& d)
   do_global_set(std::move(pat_expr.first),pat_expr.second,1);
 }
 
-@ The function |do_global_set| takes |id_pat| by rvalue reference just to be
+
+@*2 Grouping identifiers for simultaneous definition.
+%
+While local identifier definitions proceed in nested lexical groupings that
+are implemented using the |layer| class defined in the \.{axis} module, global
+definitions do not occur in a nested fashion. Nevertheless there can be
+definitions of multiple identifiers in the same command, which we want to
+treat as a whole (for instance rejecting the whole command if any of the
+definitions it contains was going to cause a problem). It used to be the case
+that the |layer| class was used to group definitions in some cases, but while
+it worked, this was contrary to the spirit of that class, whose main purpose
+remained unused, namely temporarily altering the context in which
+|convert_expr| takes place. We shall now define an alternative class to use in
+its place, geared directly to the situation of global definitions. This also
+allows us to address specific issues, like forbidding definitions in certain
+cases when their effect on the global state would be undesirable.
+
+@< Type def... @>=
+class definition_group
+{ typedef std::vector<std::pair<id_type,type_expr> > association;
+  association bindings;
+  BitMap constness;
+  bool error; // whether an error was detected
+public:
+  definition_group(unsigned int n_ids);
+@) // manipulators
+  void add(id_type id,type_expr&& t, bool is_const);
+  void thread_bindings (const id_pat& pat,const type_expr& type);
+  association::iterator begin() @+{@; return bindings.begin(); }
+  association::iterator end() @+{@; return bindings.end(); }
+@) // accessors
+  bool is_const (association::const_iterator it) const
+  {@; return constness.isMember(it-bindings.cbegin()); }
+  bool has_error() const @+{@; return error; }
+};
+
+@ The methods of |definition_group| are simplified with respect to |layer|,
+since they do not need to maintain |lexical_context| in any way. Also
+|thread_bindings| is now a method rather than a free function (which ``saves''
+the destination argument in (recursive) calls), and it also lacks the
+constness-overriding argument that has no use for global definitions.
+
+@< Global function definitions @>=
+definition_group::definition_group(unsigned int n_ids)
+: bindings(), constness(n_ids), error(false)
+{@; bindings.reserve(n_ids); }
+@)
+void definition_group::add(id_type id,type_expr&& t, bool is_const)
+{ for (auto it=bindings.cbegin(); it!=bindings.cend(); ++it)
+  // check previous bindings in group
+    if (it->first==id)
+    {@; error=true; return; }
+  constness.set_to(bindings.size(),is_const);
+  bindings.emplace_back(id,std::move(t));
+}
+@)
+void definition_group::thread_bindings(const id_pat& pat,const type_expr& type)
+{ if ((pat.kind & 0x1)!=0)
+    add(pat.name,type.copy(),(pat.kind & 0x4)!=0);
+  if ((pat.kind & 0x2)!=0)
+    // recursively traverse sub-list for a tuple of identifiers
+  { assert(type.kind==tuple_type);
+    wtl_const_iterator t_it(type.tupple);
+    for (auto p_it=pat.sublist.begin(); not pat.sublist.at_end(p_it);
+         ++p_it,++t_it)
+      thread_bindings(*p_it,*t_it);
+  }
+}
+
+@*2 Defining global identifiers or overloads.
+%
+The function |do_global_set| takes |id_pat| by rvalue reference just to be
 able to clobber the value prepared by the caller without taking a copy; we do
 not intend to actually move from the argument.
 
@@ -820,7 +888,8 @@ from such mixing for syntactic reasons). There is an implicit restriction
 though, that any identifier gets at most one binding per call of
 |do_global_set| (in other words, per \&{set} command), because the call to
 |thread_bindings| cannot put multiple bindings of the same identifier into its
-|layer|. This restriction should not cause much inconvenience to users.
+|definition_group|. This restriction should not cause much inconvenience to
+users.
 
 We follow the logic for type-analysis of a let-expression, and for evaluation
 we follow the logic of binding identifiers in a user-defined function (these
@@ -843,9 +912,10 @@ void do_global_set(id_pat&& pat, const expr& rhs, int overload)
       @< Report that type |t| of |rhs| does not have required structure,
          and |throw| @>
     @< Check that we are not setting an operator to a non-function value @>
-    layer b(n_id);
-    thread_bindings(pat,t,b,false); // match identifiers and their future types
-
+    definition_group b(n_id);
+    b.thread_bindings(pat,t); // match identifiers and their future types
+    if (b.has_error())
+      throw program_error("Identical identifiers in global definition");
 @)
     phase=1; // evaluation of right hand side
 @/  e->eval();
@@ -855,9 +925,9 @@ void do_global_set(id_pat&& pat, const expr& rhs, int overload)
     v.reserve(n_id);
     thread_components(pat,pop_value(),std::back_inserter(v));
      // associate values with identifiers
-    auto v_it = v.cbegin();
+    auto v_it = v.begin();
     for (auto it = b.begin(); it!=b.end(); ++it,++v_it)
-    { assert(v_it!=v.cend());
+    { assert(v_it!=v.end());
       @< Emit indentation corresponding to the input level to
          |*output_stream| @>
       if (overload==0 or it->second.kind!=function_type)
@@ -1137,7 +1207,7 @@ and emit an error message instead when it is attempted..
   }
 }
 
-@*2 Printing information from internal tables.
+@*1 Printing information from internal tables.
 %
 It is useful to print type information, either for a single expression or
 for all identifiers in the table. The function |type_of_expr| prints the type
