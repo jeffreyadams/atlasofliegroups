@@ -145,9 +145,10 @@ set equivalence_class_of (KGPElt(S,x)) = [KGBElt]:
   for i in sort(result) do KGB(G,i) od
 
 {. a minimal KGB element from an equivalence class defined by S
-(unlike x_max, it is not unique). .}
-set x_min (KGPElt P) = KGBElt:
-  equivalence_class_of(P)[0] { inefficent, but at least avoid soring twice }
+   (unlike x_max, it is not unique). .}
+set rec_fun x_min (KGPElt P) = KGBElt:
+   let (S,x)=P in if #down_neighbors(P)=0 then x else
+   x_min(S,KGB(real_form(x),down_neighbors(P)[0]))  fi
 
 {. the set of KGP elements associated to a RealForm and a set of
 simple roots S; KGP(G,S) is in bijection with $K\backslash G/P_S$. .}
