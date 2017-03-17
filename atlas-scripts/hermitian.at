@@ -179,7 +179,7 @@ set hermitian_form_std (Param p,Param p0) = ParamPol:
 
 {.Hermitian form on a standard module, canonical normalization.}
 set hermitian_form_std (Param p) = ParamPol:
-  hermitian_form_std(p,p*0)
+  hermitian_form_std(p,normal(p*0))
 
 set hermitian_form_irreducible (Param p,Param p0) = ParamPol:
   let c_invariant_form =
@@ -190,7 +190,7 @@ set hermitian_form_irreducible (Param p,Param p0) = ParamPol:
   in convert_cform_hermitian(c_invariant_form,p0)
 
 set hermitian_form_irreducible (Param p) = ParamPol:
-  hermitian_form_irreducible(p,p*0)
+  hermitian_form_irreducible(p,normal(p*0))
 
 set hermitian_form_irreducible_long (Param p, Param p0) =
     (ParamPol,[(Param,Split,ParamPol)],ParamPol):
@@ -206,13 +206,13 @@ set hermitian_form_irreducible_long (Param p) =
     (ParamPol,[(Param,Split,ParamPol)],ParamPol):
   assert(is_hermitian(p)
         ,"Irreducible module does not admit any invariant Hermitian form");
-  hermitian_form_irreducible_long(p,p*0)
+  hermitian_form_irreducible_long(p,normal(p*0))
 
 { nice output of hermitian_form_irreducible }
 set print_hermitian_form_irreducible (Param p,Param p0) = void:
   hermitian_form_irreducible(p,p0).pol_format.prints
 set print_hermitian_form_irreducible (Param p) = void:
-  print_hermitian_form_irreducible(p,p*0)
+  print_hermitian_form_irreducible(p,normal(p*0))
 
 {.print Hermitian form on irreducible, plus extra information.}
 set print_hermitian_form_irreducible_long (Param p,Param p0) = void:
@@ -228,7 +228,7 @@ set print_hermitian_form_irreducible_long (Param p,Param p0) = void:
   prints("Hermitian form on irreducible module p=",p,":",new_line
         ,answer.pol_format, "purity=", purity(answer))
 set print_hermitian_form_irreducible_long (Param p) = void:
-  print_hermitian_form_irreducible_long(p,p*0)
+  print_hermitian_form_irreducible_long(p,normal(p*0))
 
 { for a list of parameters need p0 to have a consistent normalization}
 {. nice output of Hermitian forms on list of parameters .}
