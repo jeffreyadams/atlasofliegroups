@@ -1586,7 +1586,7 @@ void param_block::compute_y_bits(const y_entry::Pooltype& y_pool)
   // finally install values into |z_hash|
   z_pool.reserve(size());
   for (BlockElt z=0; z<size(); ++z)
-    z_hash.match(param_entry{x(z),y_bits[y(z)]});
+    z_hash.match(param_entry{this->x(z),y_bits[this->y(z)]});
 }
 
 
