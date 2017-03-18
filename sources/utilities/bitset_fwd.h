@@ -24,7 +24,7 @@ namespace atlas {
 
 namespace bitset {
 
-  template<size_t n> class BitSet;
+  template<unsigned int n> class BitSet;
 
 }
 

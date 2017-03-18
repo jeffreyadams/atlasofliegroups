@@ -39,7 +39,7 @@ namespace basic_io {
 
 namespace bitset {
 
-template<size_t d>
+template<unsigned int d>
   std::ostream& operator<< (std::ostream& strm, const BitSet<d>& b)
 {
   for (size_t i = 0; i < d; ++i)
@@ -61,7 +61,7 @@ template <typename C>
 
 namespace bitvector {
 
-template<size_t dim>
+template<unsigned int dim>
   std::ostream& operator<< (std::ostream& strm,  const BitVector<dim>& v)
 {
   for (size_t i=0; i<v.size(); ++i)

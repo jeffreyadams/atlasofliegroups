@@ -2,6 +2,7 @@
   This is bitvector.h
 
   Copyright (C) 2004,2005 Fokko du Cloux
+  Copyright (C) 2017 Marc van Leeuwen
   part of the Atlas of Lie Groups and Representations
 
   For license information see the LICENSE file
@@ -27,14 +28,14 @@ namespace bitvector {
 /* Put in |v| the $Z/2Z$-linear combination of the |BitVector|s of |b| (each
   of size |n|, needed in case |b| is empty list) given by the bits of |e|.
 */
-template<size_t dim>
+template<unsigned int dim>
   BitVector<dim> combination
   (const std::vector<BitVector<dim> >& b,
    size_t n,
    const BitSet<dim>& e);
 
 // version with |BitSet|s instead of |BitVector|s; (size is no issue here)
-template<size_t dim>
+template<unsigned int dim>
   BitSet<dim> combination(const std::vector<BitSet<dim> >&, const BitSet<dim>&);
 
 
@@ -42,7 +43,7 @@ template<size_t dim>
   Find out whether any combination of the vectos in |b| adds to |rhs|, and if
   so flag such a combination in the bits of |c|. Nothing changes when |false|.
 */
-template<size_t dim>
+template<unsigned int dim>
   bool combination_exists(const std::vector<BitVector<dim> >& b,
 			  const BitVector<dim>& rhs,
 			  BitSet<dim>& c);
@@ -58,45 +59,47 @@ template<size_t dim>
   indeterminates, which is one less than the size of each equation; however,
   if the set of equations is empty, |sol| is left unchanged.
 */
-template<size_t dimsol, size_t dimeq>
+template<unsigned int dimsol, unsigned int dimeq>
   bool solvable(const std::vector<BitVector<dimeq> >& eqns,
 		BitVector<dimsol>& sol);
 
-template<size_t dim> void identityMatrix(BitMatrix<dim>&, size_t);
+template<unsigned int dim> void identityMatrix(BitMatrix<dim>&, size_t);
 
-template<size_t dim> void initBasis(std::vector<BitVector<dim> >&, size_t);
+template<unsigned int dim>
+  void initBasis(std::vector<BitVector<dim> >&, size_t);
 
-template<size_t dim>
+template<unsigned int dim>
   void Gauss_Jordan(BitSet<dim>&, std::vector<BitVector<dim> >&);
 
-template<size_t dim>
+template<unsigned int dim>
   void normalSpanAdd(std::vector<BitVector<dim> >&, std::vector<size_t>&,
 		     const BitVector<dim>&);
 /* unused functions
-template<size_t dim>
+template<unsigned int dim>
   void complement(BitSet<dim>&, const std::vector<BitVector<dim> >&,
 		  size_t);
 
-template<size_t dim> bool isIndependent(const std::vector<BitVector<dim> >&);
+template<unsigned int dim>
+   bool isIndependent(const std::vector<BitVector<dim> >&);
 
-template<size_t dim>
+template<unsigned int dim>
   void projection(BitMatrix<dim>& p, const std::vector<BitVector<dim> >& b,
 		  size_t d);
 
-template<size_t dim>
+template<unsigned int dim>
   void reflectionMatrix(BitMatrix<dim>&, const BitVector<dim>&,
 			const BitVector<dim>&);
 
-template<size_t dim>
+template<unsigned int dim>
   void relations(std::vector<BitVector<dim> >&,
 		 const std::vector<BitVector<dim> >&);
 */
 
-template<size_t dim>
+template<unsigned int dim>
   void spanAdd(std::vector<BitVector<dim> >&, std::vector<size_t>&,
 	       const BitVector<dim>&);
 
-template<size_t dim> int_Vector lift(const BitVector<dim>& v);
+template<unsigned int dim> int_Vector lift(const BitVector<dim>& v);
 
 /******** type definitions **************************************************/
 
@@ -130,7 +133,7 @@ template<size_t dim> int_Vector lift(const BitVector<dim>& v);
   This does not stop |BitVector|s from being used most for coweights modulo 2.
 */
 
-template<size_t dim> class BitVector
+template<unsigned int dim> class BitVector
 {
  public:
   typedef BitSet<dim> base_set;
@@ -297,7 +300,7 @@ template<size_t dim> class BitVector
    some constructors that mimick those of |BitVector|, we also provide a
    constructor that converts from |WeightList|, reducing coefficients mod 2
  */
-template<size_t dim> class BitVectorList
+template<unsigned int dim> class BitVectorList
  : public std::vector<BitVector<dim> >
 {
  public:
@@ -354,7 +357,7 @@ template<size_t dim> class BitVectorList
   easier and safer to store it once for the whole |BitMatrix|, and also to
   modify it just once when the matrix is resized.
 */
-template<size_t dim> class BitMatrix
+template<unsigned int dim> class BitMatrix
 {
 /*
   A vector of |d_columns| |BitSet| values (each to be thought of as a vector
@@ -512,7 +515,7 @@ template<size_t dim> class BitMatrix
 
 //			  Inlined function definitions
 
-template<size_t dim>
+template<unsigned int dim>
 BitVector<dim> operator*(const BitVector<dim>& v, const BitMatrix<dim>& A)
 { return A.right_act(v); }
 

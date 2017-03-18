@@ -45,7 +45,7 @@ struct Permutation
     template<typename T> // any assignable type
       std::vector<T> pull_back(const std::vector<T>& v) const;
 
-    template<size_t n>
+    template<unsigned int n>
       bitset::BitSet<n> pull_back(const bitset::BitSet<n>& v) const;
 
   // left-compose with |*this|
