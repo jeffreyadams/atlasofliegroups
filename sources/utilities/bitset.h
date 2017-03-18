@@ -72,10 +72,11 @@ namespace bitset {
 typedef uint_least32_t chunk; // unit of grouping of bits
 
 /*
-   First a template class |BitSetBase| is defined, which provides the basic
-   implementation (a small fixed number of unsigned long integers), but not
-   yet the desired interface. Instances of the template class |BitSet| will be
-   privately derived from instances of |BitSetBase| (with a different argument).
+  First a template class |BitSetBase| is defined, which provides the basic
+  implementation (a small fixed number of |chunk|s), but not yet the full
+  external interface. Because instances of the template class |BitSet| will be
+  publicly derived from instances of |BitSetBase| (with a different argument),
+  many methods will be directly used by the |BitSet| template instances.
 */
 
 template <unsigned int n> class BitSetBase; // instantiate only a few values |n|
@@ -87,7 +88,7 @@ template <unsigned int n> class BitSetBase; // instantiate only a few values |n|
 
   The class |BitSet<n>| for |1<=n<=32| will be derived from this instance.
 */
-template<> class BitSetBase<1>
+template<> class BitSetBase<1u>
 {
   chunk d_bits; // one chunk of (at least) 32 bits
 
@@ -99,12 +100,6 @@ template<> class BitSetBase<1>
 // constructors
   BitSetBase<1>() : d_bits(0u) {}
   explicit BitSetBase<1>(unsigned long b): d_bits(static_cast<chunk>(b))  {}
-/* Copy construct from another BitSet size (not BitSetBase) by copying the
-   |to_ulong()| value.
-*/
-  template<unsigned int m>
-    explicit BitSetBase<1>(const BitSet<m>& b)
-    : d_bits(static_cast<chunk>(b.to_ulong(0))) {}
 
 // accessors
 
@@ -137,7 +132,6 @@ template<> class BitSetBase<1>
   { return bits::bitCount(d_bits&b.d_bits)%2 != 0; }
 
   unsigned long to_ulong() const { return d_bits; }
-  unsigned long to_ulong(unsigned int n) const { return n==0 ? d_bits : 0; }
 
   iterator begin() const;
 
@@ -214,19 +208,13 @@ template<> class BitSetBase<2>
   never needs to construct a |BitSet| with an explicit value that requires
   more than 32 bits: for instance |gradings::Status::set(size_t,Value)|
   constructs a |bitset::TwoRankFlags| using an |unsigned long|, but the value
-  latter provided in the latter in fact only uses the least significant 2
-  bits, which bits are then shifted in place later using |operator<<=|.
+  provided in the latter in fact only uses the least significant 2 bits, which
+  bits are then shifted in place later using |operator<<=|.
 */
   explicit BitSetBase<2>(unsigned long b)
     : d_bits0(b&0xFFFFFFFF), d_bits1((b&0xFFFFFFFF00000000ul)>>32) {}
 
   BitSetBase<2>(const BitSetBase<2>& b) = default;
-/* Copy construct from another BitSet size (not BitSetBase) by copying the
-   |to_ulong()| value.
-*/
-  template<unsigned int m>
-    explicit BitSetBase<2>(const BitSet<m>& b)
-  { auto ul=b.to_ulong(); d_bits0 = ul&0xFFFFFFFF; d_bits1 = ul>>32; }
 
 // accessors
 
@@ -256,8 +244,6 @@ template<> class BitSetBase<2>
 
   unsigned long to_ulong() const
   { return d_bits0^(static_cast<uint_least64_t>(d_bits1)<<32u); }
-  unsigned long to_ulong(unsigned int n) const
-    { return n==0 ? d_bits0 : n==1 ? d_bits1 : 0; }
 
   iterator begin() const;
 
@@ -285,32 +271,28 @@ template<> class BitSetBase<2>
  }; // |class BitSetBase<2>|
 
 
-/*
-  The class BaseSize computes (with its member 'value') the base size
-  - the number of words needed for a BitSet holding n bits. Since n must be a
-  compile time constant, BaseSize<n>::value will be one as well.
+#ifdef constexpr // when this is a macro, dont use it
+#define chunks_for(n) (((n) + 31)/32)
+#else
+ constexpr unsigned int chunks_for(unsigned int n) { return (n+31)/32; }
+#endif
 
-  Essentially we must divide n by longBits, but the fractional result
-  must be rounded up to the next integer; this is achieved by adding
-  constants::posBits=longBits-1 to n before performing the division.
-  Code simplified by MvL.
 
-*/
-template<unsigned int n> struct BaseSize
-{
-  static const size_t value = (n + 31)/32;
-}; // |struct BaseSize|
 
-// the actual |BitSet| class
+
+// the actual			|BitSet| class
+
+
 /*
   Bitset of n bits.
 
   The class is derived from |BitSetBase<m>| for $m=\lceil n/32\rceil$
 */
+
 template<unsigned int n> class BitSet
-  : public BitSetBase<BaseSize<n>::value>
+  : public BitSetBase<chunks_for(n)>
 {
-  typedef BitSetBase<BaseSize<n>::value> Base;
+  typedef BitSetBase<chunks_for(n)> Base;
 
  public:
 
@@ -334,9 +316,6 @@ template<unsigned int n> class BitSet
 
   template<typename I> // integer type
     explicit BitSet(const std::vector<I>& v); // takes parity bit of each entry
-
-  // Copy from other size BitSets, only to be used with |m<n|
-  template<unsigned int m> BitSet(const BitSet<m>& b) : Base(b) {}
 
 // accessors
 
@@ -363,7 +342,6 @@ template<unsigned int n> class BitSet
   bool scalarProduct(const BitSet& b) const { return Base::scalarProduct(b); }
 
   unsigned long to_ulong() const { return Base::to_ulong(); }
-  unsigned long to_ulong(unsigned int i) const { return Base::to_ulong(i); }
 #endif
 
   iterator begin() const { return iterator(Base::begin()); }

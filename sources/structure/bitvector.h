@@ -522,7 +522,8 @@ BitVector<dim> operator*(const BitVector<dim>& v, const BitMatrix<dim>& A)
 inline
   BinaryEquation make_equation(const SmallBitVector& lhs, bool rhs)
   {
-    BinaryEquation eqn(lhs.data(),lhs.size());
+    BinaryEquation eqn(BitSet<constants::RANK_MAX+1>(lhs.data().to_ulong()),
+		       lhs.size());
     eqn.pushBack(rhs);
     return eqn;
   }
