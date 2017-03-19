@@ -41,13 +41,13 @@ BitSetBase<1>::iterator BitSetBase<1>::begin() const
 */
 void BitSetBase<1>::slice(const BitSetBase<1>& c)
 {
-  unsigned long result=0, mask=1;
+  auto val = *this; // copy old value while writing new one
+  reset(); // and clear our value
 
-  for (iterator it = c.begin(); it(); ++it,mask<<=1)
-    if (test(*it))
-      result |= mask;
-
-  d_bits=result; // overwrite with compacted bits
+  unsigned int count=0;
+  for (iterator it = c.begin(); it(); ++it,++count)
+    if (val.test(*it))
+      set(count);
 }
 
 /*
@@ -56,13 +56,13 @@ void BitSetBase<1>::slice(const BitSetBase<1>& c)
 */
 void BitSetBase<1>::unslice(const BitSetBase<1>& c)
 {
-  unsigned long result=0, mask=1;
+  auto val = *this; // copy old value while writing new one
+  reset(); // and clear our value
 
-  for (iterator it = c.begin(); it(); ++it,mask<<=1)
-    if ((d_bits&mask)!=0)
-      result |= constants::bitMask[*it];
-
-  d_bits=result; // overwrite with expanded bits
+  unsigned int count=0;
+  for (iterator it = c.begin(); it(); ++it,++count)
+    if (val.test(count))
+      set(*it);
 }
 
 unsigned int BitSetBase<2>::firstBit() const
@@ -231,26 +231,24 @@ void BitSetBase<2>::truncate(unsigned int limit)
 
 void BitSetBase<2>::slice(const BitSetBase<2>& c)
 {
+  auto val = *this; // copy old value while writing new one
+  reset(); // and clear our value
+
   unsigned int count=0;
-  BitSetBase<2> tmp;
-
   for (iterator it = c.begin(); it(); ++it,++count)
-    if (test(*it))
-      tmp.set(count);
-
-  operator= (tmp); // copy new value to |*this|
+    if (val.test(*it))
+      set(count);
 }
 
 void BitSetBase<2>::unslice(const BitSetBase<2>& c)
 {
+  auto val = *this; // copy old value while writing new one
+  reset(); // and clear our value
+
   unsigned int count=0;
-  BitSetBase<2> tmp;
-
   for (iterator it = c.begin(); it(); ++it,++count)
-    if (test(count))
-      tmp.set(*it);
-
-  operator= (tmp); // copy new value to |*this|
+    if (val.test(count))
+      set(*it);
 }
 
 
@@ -258,33 +256,6 @@ void BitSetBase<2>::swap(BitSetBase<2>& source)
 {
   std::swap(d_bits0,source.d_bits0);
   std::swap(d_bits1,source.d_bits1);
-}
-
-bool BitSetBase<1>::iterator::operator== (const iterator& i) const
-{ return d_bits==i.d_bits; } // iterators must be into same bitset
-bool BitSetBase<1>::iterator::operator!= (const iterator& i) const
-{ return d_bits!=i.d_bits; } // iterators must be into same bitset
-
-bool BitSetBase<2>::iterator::operator== (const iterator& i) const
-{ return d_bits0==i.d_bits0 and d_bits1==i.d_bits1; } // into same bitset
-bool BitSetBase<2>::iterator::operator!= (const iterator& i) const
-{ return d_bits0!=i.d_bits0 or d_bits1!=i.d_bits1; } // into same bitset
-
-unsigned int BitSetBase<2>::iterator::operator* () const
-{ // this is like |BitSetBase<2>::firstbit|, but we cannot call it
-  return d_bits0!=0
-    ? bits::firstBit(d_bits0)
-    : bits::firstBit(d_bits1) + constants::longBits;
-}
-
-
-BitSetBase<2>::iterator& BitSetBase<2>::iterator::operator++ ()
-{ // having separate fields instead of one |BitSetBase<2>| is essential here
-  if (d_bits0!=0)
-    d_bits0 &= d_bits0-1;
-  else
-    d_bits1 &= d_bits1-1;
-  return *this;
 }
 
 // force instantiations

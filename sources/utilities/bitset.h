@@ -70,6 +70,7 @@ namespace bitset {
 ******************************************************************************/
 
 typedef uint_least32_t chunk; // unit of grouping of bits
+typedef uint_least64_t wide_uint; // exchange format for all |BitSet| instances
 
 /*
   First a template class |BitSetBase| is defined, which provides the basic
@@ -95,11 +96,11 @@ template<> class BitSetBase<1u>
  protected:
 
 // associated types
-  class iterator; // iterator type is an embedded class
+  class iterator; // (input) iterator type is an embedded class
 
 // constructors
   BitSetBase<1>() : d_bits(0u) {}
-  explicit BitSetBase<1>(unsigned long b): d_bits(static_cast<chunk>(b))  {}
+  explicit BitSetBase<1>(wide_uint b): d_bits(static_cast<chunk>(b))  {}
 
 // accessors
 
@@ -131,7 +132,7 @@ template<> class BitSetBase<1u>
   bool scalarProduct(const BitSetBase<1>& b) const
   { return bits::bitCount(d_bits&b.d_bits)%2 != 0; }
 
-  unsigned long to_ulong() const { return d_bits; }
+  wide_uint to_ulong() const { return d_bits; }
 
   iterator begin() const;
 
@@ -182,36 +183,23 @@ template<> class BitSetBase<1u>
 */
 template<> class BitSetBase<2>
 {
+  // use two |chunk|s rather than a |wide_uint| for less strict alignment
   chunk d_bits0,d_bits1;
 
  protected:
 
 // associated types
-  class iterator;
+  class iterator; // (input) iterator type is an embedded class
 
 // constructors and destructors
   BitSetBase<2>() : d_bits0(0u), d_bits1(0u) {}
 
 /*
-  Constructor initializing first word to b and second word to 0.
-
-  [added by DV to let the software compile with RANK_MAX equal to the
-  machine word size.]
-
   The class |BitSet| will assume that any |BitSetBase| instance has a
-  constructor with argument an |unsigned long|. It is not guaranteed that this
-  type has at least 64 bits in all implementations, but it often does. When
-  |unsigned long| has only 32 bits, the compiler will probably warn that the
-  below initialisation of |d_bits1| will just set it to 0, if this code gets
-  instantiated at all (which is not the case when |constants::RankMax <=16|).
-  But even setting |d_bits1=0| is OK in practice, as the current software
-  never needs to construct a |BitSet| with an explicit value that requires
-  more than 32 bits: for instance |gradings::Status::set(size_t,Value)|
-  constructs a |bitset::TwoRankFlags| using an |unsigned long|, but the value
-  provided in the latter in fact only uses the least significant 2 bits, which
-  bits are then shifted in place later using |operator<<=|.
+  constructor with argument a |wide_uint|, which is guaranteed to contain at
+  least 64 bits. We shift them into place into the two |chunk|s here.
 */
-  explicit BitSetBase<2>(unsigned long b)
+  explicit BitSetBase<2>(wide_uint b)
     : d_bits0(b&0xFFFFFFFF), d_bits1((b&0xFFFFFFFF00000000ul)>>32) {}
 
   BitSetBase<2>(const BitSetBase<2>& b) = default;
@@ -242,8 +230,8 @@ template<> class BitSetBase<2>
   unsigned int position(unsigned int j) const;
   bool scalarProduct(const BitSetBase<2>& b) const;
 
-  unsigned long to_ulong() const
-  { return d_bits0^(static_cast<uint_least64_t>(d_bits1)<<32u); }
+  wide_uint to_ulong() const
+  { return d_bits0^(static_cast<wide_uint>(d_bits1)<<32u); }
 
   iterator begin() const;
 
@@ -297,22 +285,12 @@ template<unsigned int n> class BitSet
  public:
 
 // associated types; there are only constant iterators
-  struct iterator : public Base::iterator
-  {
-    // associated types
-
-    typedef std::forward_iterator_tag iterator_category;
-    typedef unsigned int value_type;
-
-  iterator() : Base::iterator() {} // zero (end) iterator
-    explicit iterator(const typename Base::iterator& b) : Base::iterator(b) {}
-
-  };
+  struct iterator; // derived
   typedef iterator const_iterator;
 
 // constructors and destructors
   BitSet() : Base() {}
-  explicit BitSet(unsigned long b) : Base(b) {} // set at most |longBits| bits
+  explicit BitSet(wide_uint b) : Base(b) {} // set at most |longBits| bits
 
   template<typename I> // integer type
     explicit BitSet(const std::vector<I>& v); // takes parity bit of each entry
@@ -341,7 +319,7 @@ template<unsigned int n> class BitSet
 
   bool scalarProduct(const BitSet& b) const { return Base::scalarProduct(b); }
 
-  unsigned long to_ulong() const { return Base::to_ulong(); }
+  wide_uint to_ulong() const { return Base::to_ulong(); }
 #endif
 
   iterator begin() const { return iterator(Base::begin()); }
@@ -395,6 +373,12 @@ template<unsigned int n> class BitSet
 
 
 
+
+//			    Iterator classes
+
+// iterators claim just InputIterator status, rather than ForwardIterator:
+// while multipass would be possible, no true |reference| type is used
+
 // Iterator through the _set_ bits (like |BitMap::iterator|)
 class BitSetBase<1>::iterator
   : public std::iterator<std::input_iterator_tag,unsigned int>
@@ -408,8 +392,8 @@ class BitSetBase<1>::iterator
   explicit iterator(const BitSetBase<1>& b) : d_bits(b.d_bits) {}
 
 // accessors
-  bool operator== (const iterator& i) const; // can usefully test for end
-  bool operator!= (const iterator& i) const; // can usefully test for end
+  bool operator== (iterator i) const { return d_bits==i.d_bits; }
+  bool operator!= (iterator i) const { return d_bits!=i.d_bits; }
   unsigned int operator* () const { return bits::firstBit(d_bits); }
   bool operator() () const { return d_bits!=0; }
 
@@ -421,25 +405,33 @@ class BitSetBase<1>::iterator
 class BitSetBase<2>::iterator
   : public std::iterator<std::input_iterator_tag,unsigned int>
 {
-  chunk d_bits0,d_bits1; // copy of bitset data
+  uint_least64_t d_bits; // pack bitset data into one unit for efficiency
 
  public:
 
 // constructors and destructors
-  iterator() : d_bits0(0u), d_bits1(0u) {}
+  iterator() : d_bits(0ul) {}
   explicit iterator(const BitSetBase<2>& b)
-    : d_bits0(b.d_bits0), d_bits1(b.d_bits1) {}
+    : d_bits(b.d_bits0^(static_cast<wide_uint>(b.d_bits1)<<32)) {}
 
 // accessors
-  bool operator== (const iterator& i) const;
-  bool operator!= (const iterator& i) const;
-  unsigned int operator* () const;
-  bool operator() () const { return d_bits0!=0 or d_bits1!=0; }
+  bool operator== (iterator i) const { return d_bits==i.d_bits; }
+  bool operator!= (iterator i) const { return d_bits!=i.d_bits; }
+  unsigned int operator* () const { return bits::firstBit(d_bits); }
+  bool operator() () const { return d_bits!=0; }
 
 // manipulators
-  iterator& operator++ ();
+  iterator& operator++ () { d_bits &= d_bits-1; return *this; }
   iterator operator++ (int) { iterator tmp(*this); ++(*this); return tmp; }
 }; // |class BitSetBase<2>::iterator|
+
+// |BitSet| iterator just inherits from the |BitSetBase| iterator type
+template<unsigned int n>
+  struct BitSet<n>::iterator : public BitSet<n>::Base::iterator
+  {
+    iterator() : Base::iterator() {} // zero (end) iterator
+    explicit iterator(const typename Base::iterator& b) : Base::iterator(b) {}
+  }; // |struct Bitset<n>::iterator|
 
 } // |namespace bitset|
 
