@@ -545,6 +545,7 @@ class RootDatum
     { simple_coreflect(ell,i); return ell; }
 
   WeylWord to_dominant(Weight lambda) const; // call by value
+  Weight& make_dominant(Weight& lambda) const; // transform |lambda| to dominant
 
   void act(const WeylWord& ww,Weight& lambda) const
     {

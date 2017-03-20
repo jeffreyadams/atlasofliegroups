@@ -961,6 +961,7 @@ Coweight RootDatum::dual_twoRho(RootNbrSet rs) const
   return result;
 }
 
+
 /*
   A reduced expression of the shortest |w| making |w.v| dominant
 
@@ -986,6 +987,22 @@ WeylWord RootDatum::to_dominant(Weight v) const
   // reverse result (action is from right to left)
   std::reverse(result.begin(),result.end());
   return result;
+}
+
+// the same algorithm, but now modifying |v| in place, forgetting |w|
+Weight& RootDatum::make_dominant(Weight& v) const
+{
+  weyl::Generator i;
+  do
+    for (i=0; i<semisimpleRank(); ++i)
+      if (v.dot(simpleCoroot(i)) < 0)
+      {
+	simple_reflect(i,v);
+	break;
+      }
+  while (i<semisimpleRank());
+
+  return v;
 }
 
 /*

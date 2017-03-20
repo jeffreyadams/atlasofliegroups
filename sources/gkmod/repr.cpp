@@ -58,17 +58,27 @@ const TwistedInvolution Rep_context::involution_of_Cartan(size_t cn) const
 StandardRepr Rep_context::sr_gamma
   (KGBElt x, const Weight& lambda_rho, const RatWeight& gamma) const
 { // we use |lambda_rho| only for its real projection |(theta-1)/2*lambda_rho|
-#ifndef NDEBUG // check that constructor below builds a valid StandardRepr
   int_Matrix theta1 = kgb().involution_matrix(x)+1;
-  RatWeight g_r = gamma - rho(rootDatum());
-  Weight image (g_r.numerator().begin(),g_r.numerator().end()); // convert
-  // |gamma| is compatible with |x| if neither of next two lines throws
-  image = theta1*image/int(g_r.denominator()); // division must be exact
-  // we \emph{do not} |assert(theta1*lambda_rho==image)|; however
+  Weight t1_gamma (gamma.numerator().begin(), gamma.numerator().end());
+  // the division in the next computation may throw when |gamma| is bad for |x|
+  t1_gamma = theta1*t1_gamma/static_cast<int>(gamma.denominator());
+#ifndef NDEBUG // check that constructor below builds a valid |StandardRepr|
+  Weight image = // $(\theta-1)(\gamma-rho)$
+    t1_gamma-(theta1*rootDatum().twoRho()/2);
   matreduc::find_solution(theta1,image); // a solution must exist
 #endif
   const InvolutionTable& i_tab = innerClass().involution_table();
-  return StandardRepr(x, i_tab.y_pack(kgb().inv_nr(x),lambda_rho), gamma);
+  return StandardRepr(x, i_tab.y_pack(kgb().inv_nr(x),lambda_rho), gamma,
+		      height(t1_gamma));
+}
+
+// Height is $\max_{w\in W} \< \rho^v*w , (\theta+1)\gamma >$
+unsigned int Rep_context::height(Weight theta_plus_1_gamma) const
+{
+  const auto& rd=rootDatum();
+  int result = rd.dual_twoRho().dot(rd.make_dominant(theta_plus_1_gamma));
+  assert(result>=0); assert(result%2==0);
+  return static_cast<unsigned int>(result/2);
 }
 
 RatWeight Rep_context::gamma
@@ -768,6 +778,8 @@ Rep_context::compare Rep_context::repr_less() const
 bool Rep_context::compare::operator()
   (const StandardRepr& r,const StandardRepr& s) const
 {
+  if (r.height()!=s.height())
+    return r.height()<s.height();
   if (r.x()!=s.x()) // order by |x| component first
     return r.x()<s.x();
 
