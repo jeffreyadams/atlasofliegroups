@@ -1682,7 +1682,12 @@ template <bool variadic>
   virtual builtin_value* clone() const @+{@; return new builtin_value(*this); }
   static const char* name() @+{@; return "built-in function"; }
 private:
+#ifndef incompletecpp11
   builtin_value@[(const builtin_value& v) = default@];
+#else
+  builtin_value@[(const builtin_value& v)
+  : val(v.val), print_name(v.print_name) {}
+#endif
 };
 typedef std::shared_ptr<const builtin_value<false> > shared_builtin;
 typedef std::shared_ptr<const builtin_value<true> > shared_variadic_builtin;

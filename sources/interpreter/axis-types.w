@@ -1266,7 +1266,11 @@ struct value_base
   virtual value_base* clone() const @+{@; assert(false); return nullptr; }
   static const char* name(); // just a model; this instance remains undefined
 protected:
+#ifndef incompletecpp11
   value_base(const value_base& x) = @[default@];
+#else
+  value_base(const value_base& x) {}
+#endif
 public:
   value_base& operator=(const value_base& x) = @[delete@];
 };

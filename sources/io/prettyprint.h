@@ -21,15 +21,15 @@ namespace atlas {
 
 namespace prettyprint {
 
-template<size_t d>
+template<unsigned int d>
 std::ostream& prettyPrint(std::ostream&, const BitSet<d>&, size_t);
 
 std::ostream& prettyPrint(std::ostream&, const BitMap&, size_t n = 0);
 
-template<size_t dim>
+template<unsigned int dim>
 std::ostream& prettyPrint(std::ostream&, const BitVector<dim>&);
 
-template<size_t dim>
+template<unsigned int dim>
 std::ostream& prettyPrint(std::ostream&, const std::vector<BitVector<dim> >&);
 
 template<typename V>

@@ -57,7 +57,7 @@ namespace atlas {
   }
 
   namespace bitset {
-    template<size_t n> class BitSet;
+    template<unsigned int n> class BitSet;
   }
   using bitset::BitSet;
   typedef BitSet<constants::RANK_MAX> RankFlags;
@@ -225,9 +225,9 @@ namespace atlas {
   typedef matrix::PID_Matrix<LatticeCoeff> LatticeMatrix;
 
   namespace bitvector {
-    template<size_t> class BitVector;
-    template<size_t> class BitVectorList;
-    template<size_t> class BitMatrix;
+    template<unsigned int> class BitVector;
+    template<unsigned int> class BitVectorList;
+    template<unsigned int> class BitMatrix;
   }
   using bitvector::BitVector;
   using bitvector::BitVectorList;
@@ -239,8 +239,8 @@ namespace atlas {
   typedef BitMatrix<constants::RANK_MAX> BinaryMap;
 
   namespace subquotient {
-    template<size_t dim> class Subspace;
-    template<size_t dim> class Subquotient;
+    template<unsigned int dim> class Subspace;
+    template<unsigned int dim> class Subquotient;
   }
   typedef subquotient::Subspace<constants::RANK_MAX> SmallSubspace;
   typedef subquotient::Subquotient<constants::RANK_MAX> SmallSubquotient;

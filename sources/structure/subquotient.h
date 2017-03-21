@@ -24,7 +24,7 @@ namespace atlas {
 
 namespace subquotient {
 
-template<size_t dim>
+template<unsigned int dim>
   BitMatrix<dim> subquotientMap
    (const Subquotient<dim>&,
     const Subquotient<dim>&,
@@ -48,7 +48,7 @@ template<size_t dim>
   (of capacity |d_rank|); the number of set bits in |d_support| is equal to
   the dimension |d_basis.size()| of the |Subspace|.
 */
-template<size_t dim> class Subspace
+template<unsigned int dim> class Subspace
 {
   BitVectorList<dim> d_basis; ///< reduced echelon basis
   BitSet<dim> d_support; ///< pivot (leading nonzero bit) positions
@@ -144,7 +144,7 @@ template<size_t dim> class Subspace
   sets is flagged by the |BitSet d_support|. The number of set bets in
   |d_support| is therefore the dimension of the subquotient.
   */
-template<size_t dim> class Subquotient
+template<unsigned int dim> class Subquotient
 {
   Subspace<dim> d_space; // larger space, expressed as a |Subspace|.
   Subspace<dim> d_subspace; // smaller space, expressed as a Subspace.
@@ -271,7 +271,7 @@ BitSet<dim> d_rel_support;
 
   void swap(Subquotient&);
 
- }; // |template <size_t dim> class Subquotient|
+ }; // |template <unsigned int dim> class Subquotient|
 
 } // |namespace subquotient|
 

@@ -24,10 +24,9 @@ namespace atlas {
 
 namespace bits {
 
-/*!
-  Synopsis: returns the sum of the bits (i.e., the number of set bits) in x.
-*/
-unsigned int bitCount(unsigned long x)
+// Return the sum of the bits (i.e., the number of set bits) in |x|.
+
+unsigned int bitCount(unsigned long long int x)
 /*
   This used to be the following code
   {
@@ -40,17 +39,19 @@ unsigned int bitCount(unsigned long x)
   tricks and techniques'' to volume~4 of ``The Art of Computer Programming'',
   p.~11), is attributed to D.~B. Gillies and J.~C.~P. Miller. It is faster on
   the average (assuming non-sparse bitsets), without depending on the number
-  of bits in |unsigned long| (except that it is a multiple of 8 less than 256)
+  of bits in |unsigned long long| (except that it is a multiple of 8 and
+  less than 256)
 */
-{ static const unsigned long int b0= ~(~0ul/3);
+{ static const unsigned long long int b0= ~(~0ull/0x3);
      // |0xAAAA...|; flags odd bit positions
-  static const unsigned long int b1= ~(~0ul/5);
+  static const unsigned long long int b1= ~(~0ull/0x5);
      // |0xCCCC...|; flags positions $\cong2,3 \pmod4$
-  static const unsigned long int b2= ~(~0ul/17);
+  static const unsigned long int b2= ~(~0ull/0x11);
      // |0xF0F0...|; flags positions $\cong4$--$7\pmod8$
-  static const unsigned long int ones= ~0ul/255;
+  static const unsigned long int ones= ~0ull/0xFF;
      // |0x0101...|; flags the low bit of each octet
-  static const unsigned int high_byte_shift=8*(sizeof(unsigned long int)-1);
+  static const unsigned int high_byte_shift =
+    8*(sizeof(unsigned long long int)-1);
 
   x-=(x&b0)>>1;          // replace pairs of bits $10\to01$ and $11\to10$
   x=(x&~b1)+((x&b1)>>2);
@@ -61,19 +62,16 @@ unsigned int bitCount(unsigned long x)
    // add lower 4-tuples of bytes in high octet, and extract
 }
 
-size_t firstBit(unsigned long f)
-
-/*!
-  Synopsis: returns the position of the first set bit in f.
-
-  Returns longBits if there is no such bit.
+/*
+  Return the position of the first set bit in |f|.
+  Returns |constants::longBits| if there is no such bit.
 */
-
+unsigned int firstBit(unsigned long long int f)
 {
   if (f == 0)
     return constants::longBits;
 
-  size_t fb = 0;
+  unsigned int fb = 0;
 
   for (; (f & constants::firstCharMask) == 0; f >>= constants::charBits)
     fb += constants::charBits;
@@ -82,16 +80,16 @@ size_t firstBit(unsigned long f)
 }
 
 
-/*!
-  Synopsis: returns the position of the last (most significant)
-  set bit in f, PLUS ONE.  Returns 0 if there is no such bit.
+/*
+  Return the position of the last (most significant) set bit in |f|, PLUS ONE.
+  Return 0 if there is no such bit.
 */
-size_t lastBit(unsigned long f)
+unsigned int lastBit(unsigned long long int f)
 {
   if (f == 0)
     return 0;
 
-  unsigned lb; // number of skipped low-order bits
+  unsigned int lb; // number of skipped low-order bits
   for (lb=0; (f & ~constants::firstCharMask)!=0; f >>= constants::charBits)
     lb += constants::charBits;
 

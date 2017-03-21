@@ -43,8 +43,8 @@ namespace atlas {
   This function initializes the following constants :
 
     - bitMask : bitMask[j] flags bit j            : bitMask[j]==1ul<<j
-    - leqMask : leqMask[j] flags bits i with i<=j : leqMask[j]==(1ul<<j+1)-1
     - lMask   : lMask[j]   flags bits i with i<j  : lMask[j]==(1ul<<j)-1
+    - leqMask : leqMask[j] flags bits i with i<=j : leqMask[j]==(1ul<<j+1)-1
 
     for lMask the index j==longBits is useful and used; Fokko forgot this!
 
@@ -58,37 +58,30 @@ namespace atlas {
 
 constants constants::init()
 {
-  lMask[0] = 0; // probably unused, but not written in the following loop
-
   for (unsigned long j = 0; j < longBits; ++j)
   {
-    bitMask[j] = 1ul << j;                    // bit j set
-    leqMask[j] = (bitMask[j]-1) | bitMask[j]; // bits 0..j set
-    lMask[j+1] = leqMask[j];                  // lMask[j+1] has bits 0..j set
+    bitMask[j] = 1ul << j;              // bit j set
+    lMask[j]   = bitMask[j]-1;          // lMask[j] has bits 0..j-1 set
+    leqMask[j] = lMask[j] | bitMask[j]; // bits 0..j set
   }
+  lMask[longBits] = leqMask[longBits-1]; // add final entry; all bits set
 
   firstbit[0] = charBits; // out-of-bounds indication
   firstbit[1] = 0;
+  lastbit[0] = 0; // out-of-bounds indication
+  lastbit[1] = 1; // this points to bit 0, because of position+1 convention
 
-  // find least significant set bit by a simple recurrence
+
+  // find least and most significant set bits by a simple recurrence
   for (unsigned int j = 1; j < (1 << (charBits-1)); ++j)
   {
     firstbit[2*j]   = firstbit[j]+1; // for even numbers use recursion
     firstbit[2*j+1] = 0;             // for odd numbers, it is 0
-  }
-
-  lastbit[0] = 0; // out-of-bounds indication
-  lastbit[1] = 1; // this points to bit 0, because of position+1 convention
-
-  // find most significant set bit by a simple recurrence
-  for (unsigned int j = 1; j < (1 << (charBits-1)); ++j)
-  {
-    lastbit[2*j]   = lastbit[j]+1; // for even numbers use recursion
-    lastbit[2*j+1] = lastbit[j]+1; // for odd numbers use recursion as well
+    lastbit[2*j] = lastbit[2*j+1] = lastbit[j]+1; // two same values, recursion
   }
 
   return constants(); // return an (empty) instance of our own class
-}
+} // |constants::init|
 
 /* Code that makes sure that |init| is called whenever this module is linked
    into a program

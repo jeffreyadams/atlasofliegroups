@@ -51,12 +51,12 @@ namespace ratvec {
 }
 
 namespace bitset {
-template<size_t d>
+template<unsigned int d>
   std::ostream& operator<< (std::ostream&, const BitSet<d>&);
 }
 
 namespace bitvector {
-template<size_t dim>
+template<unsigned int dim>
   std::ostream& operator<< (std::ostream&, const BitVector<dim>&);
 }
 

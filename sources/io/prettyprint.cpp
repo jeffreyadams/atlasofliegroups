@@ -55,7 +55,7 @@ std::ostream& prettyPrint(std::ostream& strm, const BitMap& b,
 
 
 // Prints the n first bits of v on strm left-to-right.
-template<size_t d>
+template<unsigned int d>
 std::ostream& prettyPrint(std::ostream& strm, const BitSet<d>& b,
 			  size_t n)
 {
@@ -70,7 +70,7 @@ std::ostream& prettyPrint(std::ostream& strm, const BitSet<d>& b,
 
 
 // Prints the bits of |v| on |strm| in a "vector-like" format.
-template<size_t dim>
+template<unsigned int dim>
 std::ostream& prettyPrint(std::ostream& strm, const BitVector<dim>& v)
 {
   set::EltList vi;
@@ -86,7 +86,7 @@ std::ostream& prettyPrint(std::ostream& strm, const BitVector<dim>& v)
 
 
 // Pretty-prints a list of bitvectors, one per line.
-template<size_t dim>
+template<unsigned int dim>
 std::ostream& prettyPrint(std::ostream& strm,
 			  const std::vector<BitVector<dim> >& a)
 {

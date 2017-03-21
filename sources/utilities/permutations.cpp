@@ -41,7 +41,7 @@ Permutation::Permutation(const Permutation& pi, int) // inverse
 }
 
 
-template<size_t n>
+template<unsigned int n>
   bitset::BitSet<n> Permutation::pull_back(const bitset::BitSet<n>& v) const
 {
   assert(size()<=n);

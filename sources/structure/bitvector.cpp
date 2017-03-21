@@ -2,7 +2,7 @@
   This is bitvector.cpp
 
   Copyright (C) 2004,2005 Fokko du Cloux
-  Copyright (C) 2008-2016 Marc van Leeuwen
+  Copyright (C) 2008-2017 Marc van Leeuwen
   part of the Atlas of Lie Groups and Representations
 
   For license information see the LICENSE file
@@ -36,7 +36,7 @@ namespace atlas {
 
 namespace bitvector {
 
-template<size_t dim> template<typename C>
+template<unsigned int dim> template<typename C>
 BitVector<dim>::BitVector(const matrix::Vector<C>& v) // reduce mod 2
   : d_data()
   , d_size(v.size())
@@ -55,7 +55,7 @@ BitVector<dim>::BitVector(const matrix::Vector<C>& v) // reduce mod 2
   |dim|. This is typically applied with |d_size<=RANK_MAX| initially, and
   |dim>=RANK_MAX+1|.
 */
-template<size_t dim> BitVector<dim>& BitVector<dim>::pushBack(bool b)
+template<unsigned int dim> BitVector<dim>& BitVector<dim>::pushBack(bool b)
 
 {
   assert(d_size<dim); // inequality must be strict here
@@ -79,7 +79,7 @@ template<size_t dim> BitVector<dim>& BitVector<dim>::pushBack(bool b)
 
   Note that |slice| changes (weakly decreases) the size of its |BitVector|.
 */
-template<size_t dim>
+template<unsigned int dim>
 void BitVector<dim>::slice(const BitSet<dim>& t)
 
 {
@@ -108,7 +108,7 @@ void BitVector<dim>::slice(const BitSet<dim>& t)
 
   Note that |unslice| changes (weakly increases) the size of its |BitVector|.
 */
-template<size_t dim>
+template<unsigned int dim>
 void BitVector<dim>::unslice(BitSet<dim> t,size_t new_size)
 {
   BitSet<dim> result;
@@ -134,7 +134,7 @@ namespace bitvector {
 
   NOTE : it is assumed that all the vectors in |b| have the same size.
 */
-template<size_t dim>
+template<unsigned int dim>
 BitMatrix<dim>::BitMatrix(const std::vector<BitVector<dim> >& b,
 			  unsigned short int num_rows)  // size of columns
   : d_data() // start out empty
@@ -154,7 +154,7 @@ BitMatrix<dim>::BitMatrix(const std::vector<BitVector<dim> >& b,
 
 }
 
-template<size_t dim>
+template<unsigned int dim>
 BitMatrix<dim>::BitMatrix(const matrix::Matrix<int>& m) // set modulo 2
   : d_data(m.numColumns(),BitSet<dim>())
   , d_rows(m.numRows())
@@ -174,7 +174,7 @@ BitMatrix<dim>::BitMatrix(const matrix::Matrix<int>& m) // set modulo 2
   It is assumed that |d_columns| is equal to |source.size()|. The result size
   will be set from |d_rows|.
 */
-template<size_t dim>
+template<unsigned int dim>
 BitVector<dim> BitMatrix<dim>::operator*(const BitVector<dim>& source) const
 {
   assert(d_columns==source.size());
@@ -183,7 +183,7 @@ BitVector<dim> BitMatrix<dim>::operator*(const BitVector<dim>& source) const
 }
 
 // the same, but acting on the right
-template<size_t dim>
+template<unsigned int dim>
 BitVector<dim> BitMatrix<dim>::right_act(const BitVector<dim>& source) const
 {
   assert(d_rows==source.size());
@@ -200,7 +200,7 @@ BitVector<dim> BitMatrix<dim>::right_act(const BitVector<dim>& source) const
   |O| an OutputIterator with the same value-type. Then we apply our matrix to
   each vector in [first,last[ and output it to out.
 */
-template<size_t dim> template<typename I, typename O>
+template<unsigned int dim> template<typename I, typename O>
 void BitMatrix<dim>::apply(const I& first, const I& last, O out) const
 {
   for (I i = first; i != last; ++i)
@@ -211,7 +211,7 @@ void BitMatrix<dim>::apply(const I& first, const I& last, O out) const
 }
 
 // The i-th row of the matrix.
-template<size_t dim>
+template<unsigned int dim>
 BitVector<dim> BitMatrix<dim>::row(size_t i) const
 {
   assert(d_columns<=dim);
@@ -224,7 +224,7 @@ BitVector<dim> BitMatrix<dim>::row(size_t i) const
 
 
 // Put in |b| a basis of the image of the matrix.
-template<size_t dim>
+template<unsigned int dim>
 BitVectorList<dim> BitMatrix<dim>::image() const
 {
   BitVectorList<dim> b;
@@ -244,7 +244,7 @@ BitVectorList<dim> BitMatrix<dim>::image() const
   This is based on making the transpose matrix echelon, and then solving the
   resulting trivialised system of equations.
 */
-template<size_t dim> BitVectorList<dim> BitMatrix<dim>::kernel() const
+template<unsigned int dim> BitVectorList<dim> BitMatrix<dim>::kernel() const
 {
   BitVectorList<dim> result;
 
@@ -300,7 +300,7 @@ template<size_t dim> BitVectorList<dim> BitMatrix<dim>::kernel() const
 
   Precondition: |m| has the same size as the current matrix.
 */
-template<size_t dim>
+template<unsigned int dim>
 BitMatrix<dim>& BitMatrix<dim>::operator+= (const BitMatrix<dim>& m)
 {
   assert(d_rows==m.d_rows);
@@ -320,7 +320,7 @@ BitMatrix<dim>& BitMatrix<dim>::operator+= (const BitMatrix<dim>& m)
 
   NOTE : of course |m.numRows()| must be equal to |numColumns()|.
 */
-template<size_t dim>
+template<unsigned int dim>
 BitMatrix<dim>& BitMatrix<dim>::operator*= (const BitMatrix<dim>& m)
 {
   assert(d_columns==m.d_rows);
@@ -356,7 +356,7 @@ BitMatrix<dim>& BitMatrix<dim>::operator*= (const BitMatrix<dim>& m)
   $(Z/2Z)^r$; the corresponding column of $B$ (its preimage by $A$) is moved
   to the appropriate column of $B$ (its remaining columns are zero).
 */
-template<size_t dim> BitMatrix<dim> BitMatrix<dim>::section() const
+template<unsigned int dim> BitMatrix<dim> BitMatrix<dim>::section() const
 {
 
   std::vector<BitSet<dim> > basis (d_columns,BitSet<dim>()); // square matrix
@@ -422,14 +422,14 @@ template<size_t dim> BitMatrix<dim> BitMatrix<dim>::section() const
 
 
 // Reset the matrix to zero.
-template<size_t dim> void BitMatrix<dim>::reset()
+template<unsigned int dim> void BitMatrix<dim>::reset()
 {
   for (unsigned long j = 0; j < d_data.size(); ++j)
     d_data[j].reset();
 }
 
 // Resize the matrix to |m| rows, |n| columns, leaving data around
-template<size_t dim> void BitMatrix<dim>::resize(size_t m, size_t n)
+template<unsigned int dim> void BitMatrix<dim>::resize(size_t m, size_t n)
 {
   assert(m<=dim);
   d_data.resize(n);
@@ -438,7 +438,7 @@ template<size_t dim> void BitMatrix<dim>::resize(size_t m, size_t n)
   d_columns = n;
 }
 
-template<size_t dim> void BitMatrix<dim>::swap(BitMatrix<dim>& m)
+template<unsigned int dim> void BitMatrix<dim>::swap(BitMatrix<dim>& m)
 {
   d_data.swap(m.d_data);
   std::swap(d_rows,m.d_rows);
@@ -446,7 +446,7 @@ template<size_t dim> void BitMatrix<dim>::swap(BitMatrix<dim>& m)
 }
 
 // Transpose the matrix.
-template<size_t dim> BitMatrix<dim>& BitMatrix<dim>::transpose()
+template<unsigned int dim> BitMatrix<dim>& BitMatrix<dim>::transpose()
 {
   BitMatrix<dim> result(d_columns,d_rows);
 
@@ -468,14 +468,13 @@ template<size_t dim> BitMatrix<dim>& BitMatrix<dim>::transpose()
 
 namespace bitvector {
 
-/*!
-  \brief Puts in |v| the linear combination of the elements of |b| given by
-  |e|.
+/*
+  Put in |v| the linear combination of the elements of |b| given by |e|.
 
   NOTE : it is the caller's responsibility to check that |v| already has the
   correct size. (The right size cannot be determined here if |b.size()=0|.)
 */
-template<size_t dim>
+template<unsigned int dim>
   BitVector<dim> combination
    (const std::vector<BitVector<dim> >& b,
     size_t n,
@@ -490,13 +489,13 @@ template<size_t dim>
   return result;
 }
 
-/*!
-  \brief Returns the linear combination of the elements of |b| given by |coef|.
+/*
+  Return the linear combination of the elements of |b| given by |coef|.
 
   Contrary to the previous case, there is no notion of size for |v|, and
   there is no need for any particular preparation.
 */
-template<size_t dim>
+template<unsigned int dim>
   BitSet<dim> combination(const std::vector<BitSet<dim> >& b,
 				  const BitSet<dim>& coef)
   {
@@ -511,7 +510,7 @@ template<size_t dim>
   Find out whether any combination of the vectors in |b| adds to |rhs|, and if
   so flag such a combination in the bits of |c|. Nothing changes when |false|.
 */
-template<size_t dim>
+template<unsigned int dim>
   bool combination_exists(const std::vector<BitVector<dim> >& b,
 			  const BitVector<dim>& rhs,
 			  BitSet<dim>& c)
@@ -585,14 +584,14 @@ template<size_t dim>
   return true;
 }
 
-/*!
-  \brief Either find a solution of the system of equations |eqn|, putting it
+/*
+  Either find a solution of the system of equations |eqn|, putting it
   into |sol| and returning |true|, or return |false| if no solution exists.
 
   Here |eqn| holds a system of equations, the last bit of each being
   interpreted as the right hand side.
 */
-template<size_t dimsol, size_t dimeq>
+template<unsigned int dimsol, unsigned int dimeq>
 bool solvable(const std::vector<BitVector<dimeq> >& eqns,
 	      BitVector<dimsol>& sol)
 {
@@ -631,12 +630,9 @@ bool solvable(const std::vector<BitVector<dimeq> >& eqns,
 }
 
 
-/*!
-  \brief Puts in m the identity matrix in rank n.
-
-  Precondition: n <= dim;
-*/
-template<size_t dim> void identityMatrix(BitMatrix<dim>& m, size_t n)
+// Put in |m| the identity matrix in rank |n|. Precondition: |n <= dim|;
+template<unsigned int dim>
+  void identityMatrix(BitMatrix<dim>& m, size_t n)
 {
   m.resize(n,n);
   m.reset();
@@ -646,10 +642,9 @@ template<size_t dim> void identityMatrix(BitMatrix<dim>& m, size_t n)
 }
 
 
-/*!
-  \brief Initializes b to the canonical basis in dimension n.
-*/
-template<size_t dim> void initBasis(std::vector<BitVector<dim> >& b, size_t n)
+// Initialize |b| to the canonical basis in dimension |n|.
+template<unsigned int dim>
+  void initBasis(std::vector<BitVector<dim> >& b, size_t n)
 {
   assert(n<=dim);
   b.assign(n,BitVector<dim>(n)); // set to |n| null vectors of size |n|
@@ -662,7 +657,7 @@ template<size_t dim> void initBasis(std::vector<BitVector<dim> >& b, size_t n)
    This auxiliary unary function class is used as comparison object, to
    partially sort bit vectors by the position of their leading bit
 */
-template<size_t dim> struct FirstBit
+template<unsigned int dim> struct FirstBit
 {
   typedef const BitVector<dim>& argument_type;
   typedef size_t result_type;
@@ -670,8 +665,8 @@ template<size_t dim> struct FirstBit
   result_type operator() (argument_type v) const { return v.firstBit(); }
 };
 
-/*!
-  \brief Replaces |b| by the ordered canonical basis of the vector space $V$
+/*
+  Replace |b| by the ordered canonical basis of the vector space $V$
   it spans. Flags in |t| the set of coordinate positions associated to |b|.
 
   What is flagged in |t| is the set $J$ in described in the comment for
@@ -687,7 +682,7 @@ template<size_t dim> struct FirstBit
   $p(0)\ldots,p(l-1)$ is the result of sorting $f[0]\ldots,f[l-1]$
   with $l=f.size()=a.size()$.
 */
-template<size_t dim>
+template<unsigned int dim>
   void Gauss_Jordan(BitSet<dim>& t, std::vector<BitVector<dim> >& b)
 
 {
@@ -710,9 +705,9 @@ template<size_t dim>
 }
 
 
-/*!
-  \brief Transforms the normal basis defined by the unordered list $a$ into
-  one for the span of $a$ and $v$
+/*
+  Transform the normal basis defined by the unordered list $a$ into one for
+  the span of $a$ and $v$
 
   Also updates the list |f| of the same length $l$ as |a| such that
   |a[i][f[j]]==(i==j?1:0)| for all $i,j<l$.
@@ -746,7 +741,7 @@ template<size_t dim>
   in |a| are modified to clear their coordinate |n|.
 */
 
-template<size_t dim>
+template<unsigned int dim>
   void normalSpanAdd(std::vector<BitVector<dim> >& a, std::vector<size_t>& f,
 		     const BitVector<dim>& v)
 
@@ -783,8 +778,8 @@ template<size_t dim>
 }
 
 
-/*!
-  \brief Enlarges the basis |a| so as to span |v|.
+/*
+  Enlarge the basis |a| so as to span |v|.
 
   This is a simplified version of |normalSpanAdd|
 
@@ -802,9 +797,10 @@ template<size_t dim>
   condition for calling |spanAdd| again; this is the (only) difference with
   |normalSpanAdd|.
 */
-template<size_t dim> void spanAdd(std::vector<BitVector<dim> >& a,
-				  std::vector<size_t>& f,
-				  const BitVector<dim>& v)
+template<unsigned int dim>
+  void spanAdd(std::vector<BitVector<dim> >& a,
+	       std::vector<size_t>& f,
+	       const BitVector<dim>& v)
 {
   assert(a.size()==0 or a[0].size()==v.size());
   assert(a.size()==f.size());
@@ -826,7 +822,7 @@ template<size_t dim> void spanAdd(std::vector<BitVector<dim> >& a,
   a.push_back(w);
 }
 
-template<size_t dim> int_Vector lift(const BitVector<dim>& v)
+template<unsigned int dim> int_Vector lift(const BitVector<dim>& v)
 { int_Vector result(v.size(),0);
   for (auto it=v.data().begin(); it(); ++it)
     result[*it]=1;
@@ -848,7 +844,7 @@ template<size_t dim> int_Vector lift(const BitVector<dim>& v)
   to set bits beyond that (so that |c.count()|, for instance, yields the
   correct dimension of the complement.)
 */
-template<size_t dim>
+template<unsigned int dim>
   void complement(BitSet<dim>& c,
 		  const std::vector<BitVector<dim> >& b,
 		  size_t d)
@@ -869,7 +865,8 @@ template<size_t dim>
 }
 
 // Tell whether the system of bitvectors is independent.
-template<size_t dim> bool isIndependent(const std::vector<BitVector<dim> >& b)
+template<unsigned int dim>
+  bool isIndependent(const std::vector<BitVector<dim> >& b)
 {
   std::vector<BitVector<dim> > a;
   std::vector<size_t> f;
@@ -895,7 +892,7 @@ template<size_t dim> bool isIndependent(const std::vector<BitVector<dim> >& b)
 
   NOTE : we need to pass the dimension in case b is empty.
 */
-template<size_t dim>
+template<unsigned int dim>
   void projection(BitMatrix<dim>& p, const std::vector<BitVector<dim> >& b,
 		  size_t d)
 {
@@ -941,7 +938,7 @@ template<size_t dim>
   This is the operator x -> x + <x,a_check>a (we can write + because we are
   in characteristic two.)
 */
-template<size_t dim>
+template<unsigned int dim>
   void reflectionMatrix(BitMatrix<dim>& m, const BitVector<dim>& a,
 			const BitVector<dim>& a_check)
 {
@@ -958,7 +955,7 @@ template<size_t dim>
   In other words, it solves the system of equations defined by the _rows_ in
   the matrix whose columns are given by b.
 */
-template<size_t dim>
+template<unsigned int dim>
   void relations(std::vector<BitVector<dim> >& rel,
 		 const std::vector<BitVector<dim> >& b)
 {
