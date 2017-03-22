@@ -778,30 +778,18 @@ Rep_context::compare Rep_context::repr_less() const
 bool Rep_context::compare::operator()
   (const StandardRepr& r,const StandardRepr& s) const
 {
-  if (r.height()!=s.height())
+  if (r.height()!=s.height()) // order by increasing height first
     return r.height()<s.height();
-  if (r.x()!=s.x()) // order by |x| component first
-    return r.x()<s.x();
+  if (r.x()!=s.x()) // then order by decreasing numeric value of |x|
+    return r.x()>s.x(); // (height tends to change in opposite sense to |x|)
+  if (r.y()!=s.y()) // then order by increasing internal value of |y|
+    return r.y()<s.y(); // uses |SmallBitVector::operator<|, internal comparison
 
-  // then compare by scalar product of |gamma()| and |level_vec|
-  if (r.gamma()!=s.gamma()) // quick test to avoid work within a same block
-  {
-    const int rgd=r.gamma().denominator(), sgd=s.gamma().denominator();
-    const int lr = sgd*level_vec.dot(r.gamma().numerator()); // cross multiply
-    const int ls = rgd*level_vec.dot(s.gamma().numerator());
-    if (lr!=ls)
-      return lr<ls;
+  // finally in rare cases individual components of |gamma| need comparison
+  auto r_vec = s.gamma().numerator()*r.gamma().denominator(); // cross multiply
+  auto s_vec = r.gamma().numerator()*s.gamma().denominator(); // cross multiply
 
-    // next by individual components of |gamma()|
-    for (size_t i=0; i<level_vec.size(); ++i)
-      if (sgd*r.gamma().numerator()[i]!=rgd*s.gamma().numerator()[i])
-	return sgd*r.gamma().numerator()[i]<rgd*s.gamma().numerator()[i];
-
-    assert(false); return false; // cannot happen since |r.gamma()!=s.gamma()|
-  }
-
-  // and when neither |x| nor |gamma()| discriminate, use the |y| component
-  return r.y()<s.y(); // uses |SmallBitVector::operator<|, internal comparison
+  return r_vec<s_vec;
 }
 
 unsigned int Rep_table::length(StandardRepr z)
@@ -1306,11 +1294,12 @@ SR_poly Rep_table::twisted_deformation_terms
   SR_poly rem(sr_y,repr_less()); // remainder = 1*entry_elem
 
   do
-  { const auto& term = *rem.rbegin();
+  { const auto& term = *rem.begin();
     const StandardRepr p_x= term.first;
     const Split_integer c_x = term.second;
     assert(hash.find(p_x)<twisted_KLV_list.size());
     const SR_poly& KL_x = twisted_KLV_list[hash.find(p_x)];
+    assert(KL_x.begin()->first==p_x);
     rem.add_multiple(KL_x,-c_x);
     assert(rem[p_x].is_zero()); // check relation of being inverse
     if (length(p_x)%2!=parity)
