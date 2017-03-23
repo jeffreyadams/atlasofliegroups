@@ -1,5 +1,5 @@
 <bigMatrices.at
-<herm.at
+<hermitian.at
 
 {implement ParamPol for extended parameters}
 ed_verbose:=false

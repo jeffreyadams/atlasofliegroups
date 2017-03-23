@@ -1,5 +1,5 @@
 <misc.at { for |finalize@Param| }
-<herm.at { for |hermitian_form_irreducible@Param| }
+<hermitian.at { for |hermitian_form_irreducible@Param| }
 
 {p-> p_0=finalize(t*0)[0]=parameter(x,lambda,0)->
 complementary series (parameter(x,lambda,t*rho) ->
