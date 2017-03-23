@@ -1,7 +1,7 @@
 {see K_parameters.at}
 
 <basic.at     { for *@(Param,rat) }
-<herm.at { for hermitian_form_irreducible }
+<hermitian.at { for hermitian_form_irreducible }
 <K_highest_weights.at
 
 set sort_by_height (ParamPol P) = [(Split,Param)]:

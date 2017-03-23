@@ -1,6 +1,6 @@
 <basic.at
 <torus.at { for torus@(int,int,int) }
-<herm.at { for hermitian_form_irreducible@Param }
+<hermitian.at { for hermitian_form_irreducible@Param }
 
 { all coefficients a+bs in a ParamPol have a,b\ge 0 }
 set is_positive(ParamPol P)=bool:
