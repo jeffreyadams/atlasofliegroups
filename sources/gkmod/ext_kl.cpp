@@ -907,6 +907,7 @@ void ext_KL_matrix (const StandardRepr p, const int_Matrix& delta,
   lengths = int_Vector(0); lengths.reserve(size);
 
   const auto gamma = B.gamma();
+  assert(is_dominant_ratweight(rc.rootDatum(),gamma)); // from |param_block|
 #ifndef incompletecpp11
   for (auto ez : compressed)
   {

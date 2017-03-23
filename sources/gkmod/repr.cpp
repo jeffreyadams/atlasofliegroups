@@ -900,7 +900,7 @@ containers::sl_list<StandardRepr>
   }
   while (not result.at_end(rit));
   return result;
-}
+} // |Rep_context::finals_below|
 
 void Rep_table::add_block(param_block& block, BlockEltList& survivors)
 {
@@ -1294,12 +1294,12 @@ SR_poly Rep_table::twisted_deformation_terms
   SR_poly rem(sr_y,repr_less()); // remainder = 1*entry_elem
 
   do
-  { const auto& term = *rem.begin();
+  { const auto& term = *rem.begin(); // get leading term (minimal height)
     const StandardRepr p_x= term.first;
     const Split_integer c_x = term.second;
     assert(hash.find(p_x)<twisted_KLV_list.size());
     const SR_poly& KL_x = twisted_KLV_list[hash.find(p_x)];
-    assert(KL_x.begin()->first==p_x);
+    assert(KL_x.begin()->first==p_x); // |p_x| is leading parameter here too
     rem.add_multiple(KL_x,-c_x);
     assert(rem[p_x].is_zero()); // check relation of being inverse
     if (length(p_x)%2!=parity)

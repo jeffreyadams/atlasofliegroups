@@ -1,4 +1,13 @@
 /*
+  This is weyl.cpp
+  Copyright (C) 2004,2005 Fokko du Cloux
+  Copyright (C) 2007--2011 Marc van Leeuwen
+  part of the Atlas of Lie Groups and Representations
+
+  For license information see the LICENSE file
+*/
+
+/*
   Implementation of WeylGroup.
 
   I have decided to represent elements as fixed-size arrays of
@@ -10,14 +19,6 @@
   It has seemed to me that this is the best compromise between size of the
   dataype, generality and efficiency.
   [Fokko du Cloux]
-*/
-/*
-  This is weyl.cpp
-  Copyright (C) 2004,2005 Fokko du Cloux
-  Copyright (C) 2007--2011 Marc van Leeuwen
-  part of the Atlas of Lie Groups and Representations
-
-  For license information see the LICENSE file
 */
 
 #include "weyl.h"
@@ -622,7 +623,7 @@ void WeylGroup::act(const RootDatum& rd, const WeylElt& w, LatticeMatrix& M)
   {
     const WeylWord& xw = wordPiece(w,i);
     for (size_t j = xw.size(); j-->0; )
-      rd.simple_reflect(d_out[xw[j]],M);
+      rd.simple_reflect(d_out[xw[j]],M); // left-multiply |M| by letters of |w|
   }
 }
 
