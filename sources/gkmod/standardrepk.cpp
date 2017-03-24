@@ -1159,10 +1159,12 @@ seq_no KhatContext::match_final(const StandardRepK& sr)
 { seq_no n=finals.find(sr);
   if (n!=Hash::empty)
     return n;
+#ifndef NDEBUG
   size_t witness;
   assert (isStandard(sr,witness) and
 	  not isZero(sr,witness) and isFinal(sr,witness));
   assert(height_of.size()==final_pool.size());
+#endif
   height_of.push_back(height(sr)); // store height
   return finals.match(sr); // expand table
 }

@@ -958,15 +958,15 @@ void Rep_table::add_block(param_block& block, BlockEltList& survivors)
       Split_integer eval(0);
       for (polynomials::Degree d=pol.size(); d-->0; )
 	eval.times_s()+=static_cast<int>(pol[d]);
-      if (eval!=Split_integer(0))
+      if (not eval.is_zero())
       {
 	unsigned long z_index = old_size+(it-new_survivors.begin());
 	assert(hash.find(block.sr(z))==z_index);
-	SR_poly& dest = KL_list[z_index];
+	SR_poly& dest = KL_list[z_index]; // a poly to which |x| contributes
 	if (lengths[z_index]%2!=parity)
 	  eval.negate(); // incorporate sign for length difference
-	for (unsigned int i=0; i<xs.size(); ++i)
-	  dest.add_term(block.sr(xs[i]),eval);
+	for (unsigned int i=0; i<xs.size(); ++i) // from |survivors_below(x)|
+	  dest.add_term(block.sr(xs[i]),eval); // contribute each with |eval|
       }
     } // |for(it)|
   } // |for(x)|
@@ -991,69 +991,61 @@ SR_poly Rep_table::KL_column_at_s(StandardRepr z) // |z| must be final
   return KL_list[hash_index];
 } // |Rep_table::KL_column_at_s|
 
-SR_poly Rep_table::deformation_terms (param_block& block,BlockElt entry_elem)
+SR_poly Rep_table::deformation_terms (param_block& block,BlockElt y)
 {
   SR_poly result(repr_less());
-  if (not block.survives(entry_elem) or block.length(entry_elem)==0)
+  if (not block.survives(y) or block.length(y)==0)
     return result; // easy cases, null result
 
   BlockEltList survivors;
   add_block(block,survivors); // computes survivors, and add anything new
 
-  assert(hash.find(block.sr(entry_elem))!=hash.empty); // should be known now
-
-  // count number of survivors of length strictly less than any occurring length
-  std::vector<unsigned int> n_surv_length_less
-    (block.length(survivors.back())+1); // slots for lengths |<=| largest length
-  { // compute |n_surv_length_less| values
-    unsigned int l=0;  n_surv_length_less[l]=0;
-    for (BlockEltList::const_iterator
-	   it=survivors.begin(); it!=survivors.end(); ++it)
-      while (l<block.length(*it))
-	n_surv_length_less[++l] = it-survivors.begin();
-  }
-
   // map indices of |survivors| to corresponding number in |hash|
-  std::vector<unsigned long> remap(survivors.size());
-  for (unsigned long i=0; i<survivors.size(); ++i)
+  auto sr_y = block.sr(y);
+  auto y_parity=block.length(y)%2;
+  assert(hash.find(sr_y)!=hash.empty); // |sr_y| should be known now
+
+  std::vector<unsigned long> remap; remap.reserve(survivors.size());
+  std::vector<unsigned int> index(hash.find(sr_y)+1); // a large sparse array
+  for (unsigned i=0; survivors[i]<y; ++i)
   {
     unsigned long h=hash.find(block.sr(survivors[i]));
     assert(h!=hash.empty);
-    remap[i]=h;
+    remap.push_back(h);
+    index[h]=i;
   }
+  assert(survivors[remap.size()]==y);
+  index.back()=remap.size();
+  remap.push_back(hash.find(sr_y));
 
-  SR_poly rem(block.sr(entry_elem),repr_less()); // remainder = 1*entry_elem
-  std::vector<Split_integer> acc(survivors.size(),Split_integer(0));
+  // since we evaluate at $s=-1$ eventually, we can use integer coefficients
+  std::vector<int> acc(remap.size(),0);
+  std::vector<int> remainder(remap.size(),0);
+  remainder.back()=1; // we initialised remainder = 1*sr_y
 
-  for (unsigned long i=survivors.size(); i-->0; ) // decreasing essential here
+  for (unsigned long i=remainder.size(); i-->0; ) // decreasing essential here
   {
     StandardRepr p_y=block.sr(survivors[i]);
-    Split_integer c_y = rem[p_y];
+    int c_y = remainder[i];
     const SR_poly& KL_y = KL_list[remap[i]];
-    rem.add_multiple(KL_y,-c_y);
-    assert(rem[p_y]==Split_integer(0)); // check relation of being inverse
-
-    c_y.times_1_s(); // deformation terms are all multiplied by $1-s$
-    acc[i]=c_y; // store coefficient at index of survivor
+    const bool contribute = block.length(survivors[i])%2!=y_parity;
+    for (auto it=KL_y.begin(); it!=KL_y.end(); ++it)
+    { auto j = index[hash.find(it->first)];
+      assert(j<=i); // triangularity of |KL_y|
+      int c = c_y*it->second.s_to_minus_1();
+      remainder[j] -= c;
+      if (contribute) // optimisation will apply loop unswitching to this test
+	acc[j] += c; // here we contribute
+    }
+    assert(remainder[i]==0); // check relation of being inverse
   }
-  assert(rem.empty()); // since all terms in |KL_y| should be at most $y$
 
-  // $\sum_{x\leq y<ee}y[l(ee)-l(y) odd] (-1)^{l(x)-l(y)}P_{x,y}*Q(y,ee)$
-  unsigned int ll=block.length(entry_elem)-1; // last length of contributing |y|
-
-  for (unsigned int l=ll%2; l<=ll; l+=2) // length of parity opposite |ee|
-    for (BlockElt yy=n_surv_length_less[l]; yy<n_surv_length_less[l+1]; ++yy)
-      result.add_multiple(KL_list[remap[yy]],acc[yy]);
-
-  // correct signs in terms of result according to orientation numbers
-  unsigned int orient_ee = orientation_number(block.sr(entry_elem));
-  for (SR_poly::iterator it=result.begin(); it!=result.end(); ++it)
-  {
-    unsigned int orient_x=orientation_number(it->first);
-    assert((orient_ee-orient_x)%2==0);
-    int orient_express = (orient_ee-orient_x)/2;
-    if (orient_express%2!=0)
-      it->second.times_s();
+  unsigned int orient_ee = orientation_number(sr_y);
+  for (unsigned i=0; i<acc.size(); ++i)
+  { auto sr_x=block.sr(survivors[i]);
+    unsigned int orient_express=orient_ee-orientation_number(sr_x);
+    auto coef = acc[i]*arithmetic::exp_i(orient_express);
+    result.add_term(sr_x,Split_integer(1,-1)*coef);
   }
 
   return result;

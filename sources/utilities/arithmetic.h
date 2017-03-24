@@ -136,19 +136,21 @@ class Split_integer
   Split_integer operator +(Split_integer y) { return y+= *this; }
   Split_integer operator -(Split_integer y) { return y.negate()+= *this; }
   Split_integer operator -() const { return Split_integer(*this).negate(); }
-  Split_integer operator* (Split_integer y) const
-  { return Split_integer(e()*y.e()+s()*y.s(),e()*y.s()+s()*y.e()); }
 
   Split_integer& operator*= (int n) { real_part*=n; s_part*=n; return *this; }
+  Split_integer operator* (int n) const { return Split_integer(*this)*=n; }
+  Split_integer operator* (Split_integer y) const
+  { return Split_integer(e()*y.e()+s()*y.s(),e()*y.s()+s()*y.e()); }
   Split_integer& operator*= (Split_integer y) { return *this=operator*(y); }
+
   Split_integer& negate() { real_part=-e(); s_part=-s(); return *this; }
   Split_integer& times_s() { std::swap(real_part,s_part); return *this; }
   Split_integer& times_1_s() { real_part= -(s_part-=e()); return *this; }
 
+  int s_to_1() const { return e()+s(); }
+  int s_to_minus_1() const { return e()-s(); }
 }; // |class Split_integer|
 
-inline Split_integer operator* (const Split_integer& x, int n)
-  { return Split_integer(x)*=n; }
 std::ostream& operator<< (std::ostream& out, const Rational& frac);
 
 
