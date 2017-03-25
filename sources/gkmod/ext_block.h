@@ -164,6 +164,8 @@ class ext_block
   const WeightInvolution& delta() const { return d_delta; }
 
   BlockElt z(BlockElt n) const { assert(n<size()); return info[n].z; }
+  StandardRepr sr(BlockElt n, const param_block& parent) const
+  { return parent.sr(z(n)); }
 
   // Look up element by its index in |parent| (if that did define an element)
   // more precisely returns smallest |n| with |z(n)>=z|, or |size()| if none

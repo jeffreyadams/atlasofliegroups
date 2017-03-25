@@ -239,7 +239,7 @@ class Rep_table : public Rep_context
   std::vector<StandardRepr> pool;
   HashTable<StandardRepr,unsigned long> hash;
   std::vector<unsigned short int> lengths;
-  std::vector<SR_poly> KL_list; // indexed by |hash| values for |StandardRepr|s
+  std::vector<SR_poly> KLV_list; // indexed by |hash| values for |StandardRepr|s
   std::vector<SR_poly> def_formula; // idem
 
   std::vector<SR_poly> twisted_KLV_list; // values at twist-fixed |hash|s only
@@ -247,7 +247,7 @@ class Rep_table : public Rep_context
 
  public:
   Rep_table(RealReductiveGroup &G)
-    : Rep_context(G), pool(), hash(pool), KL_list(), def_formula()
+    : Rep_context(G), pool(), hash(pool), KLV_list(), def_formula()
   {}
 
   unsigned int length(StandardRepr z); // by value
@@ -270,7 +270,8 @@ class Rep_table : public Rep_context
   // here |block| is non-|const| as the method generates KL polynomials in it
   // and |survivors| is non-|const| because the method computes and exports it
 
-  void add_block(ext_block::ext_block& block, param_block& parent);
+  void add_block(ext_block::ext_block& block, param_block& parent,
+		 BlockElt top_elt, BlockEltList& extended_finals);
   // here |block| is non-|const|; the method generates twisted KLV polys in it
 
 }; // |Rep_table|
