@@ -231,7 +231,11 @@ $(dvifiles): $(CWEAVE)
 
 # Our executable program 'atlas' is in Atlas root directory.
 $(Atlas_root)/atlas: $(objects)
+ifeq ($(profile),true)
+	$(CXX) -pg -o $@ $^ $(LDFLAGS)
+else
 	$(CXX) -o $@ $^ $(LDFLAGS)
+endif
 
 # the parser is produced by bison, and compiled using the C++ compiler
 parser.tab.c parser.tab.h: parser.y

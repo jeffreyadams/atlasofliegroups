@@ -86,7 +86,7 @@ dependencies := $(Fokko_objects:%.o=%.d)
 nflags := -Wall -DNDEBUG
 oflags := -Wall -O3 -DNDEBUG
 gflags := -Wall -ggdb
-pflags := -Wall -pg -O -DNREADLINE
+pflags := -Wall -pg -O3 -DNDEBUG -DNREADLINE
 
 
 # these flags are necessary for compilation, the -c should not be altered
