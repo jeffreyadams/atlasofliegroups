@@ -262,6 +262,17 @@ set theta_induce_standard (Param p_L,RealForm G) = ParamPol:
         , for q in monomials(p_G) do K_norm(q) od ); }
   p_G_standardized
 
+{. Given a ParamPol P, form a new ParamPol by theta-inducing each
+   summand. .}
+set theta_induce_parampol (ParamPol P, RealForm G)=ParamPol:
+   let L=real_form(P) in
+   assert(is_parabolic_theta_stable(make_parabolic(L,G)),
+  "L is not Levi of theta_stable parabolic");
+   let result=null_module(G) in
+   for coeff@p in P do let new=theta_induce_standard(p,G) in
+   result+:=coeff*new od;
+   result
+
 {. Write the (theta-stable) induced of an irreducible J(p_L) of L as a formal
    sum of standards for G; uses the character formula to write J(p_L)
    as a formal sum of standards for L first. (Auxiliary function) .}
