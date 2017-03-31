@@ -342,7 +342,7 @@ set project_on_dominant_cone (KGBElt x, vec mu) = (KGBElt,ratvec,ratvec):
 
 {possibly multivalued, coming from G-spherical case}
 
-{ This function is the same as basis_lambda_differential_0 in all_Kparameters.at
+{ This function is the same as basis_lambda_differential_0 in all_parameters.at
    List of weights representative of a set of generators of the elementary
    2-group ker(1+theta(x))/im(1-theta(x)).
 characters_order_2@KGBElt

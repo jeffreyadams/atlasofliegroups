@@ -42,8 +42,13 @@ set large_discrete_series (RealForm G,ratvec lambda) = Param:
 set large_discrete_series (RealForm G) = Param:
   large_discrete_series(G,rho(G))
 
+{warning: p may fail to be final}
+{.minimal principal series of split group with given lambda,nu}
 set minimal_principal_series (RealForm G,ratvec lambda,ratvec nu) = Param:
-  let n=KGB_size(G)-1 in normal(parameter(KGB(G,n),lambda,nu))
+  assert(is_split(G),"group is not split");
+  let n=KGB_size(G)-1 in 
+  normal(parameter(KGB(G,n),lambda,nu))
+
 set minimal_principal_series(RealForm G) = Param:
   minimal_principal_series (G,rho(G),rho(G))
 set minimal_spherical_principal_series (RealForm G,ratvec nu) = Param:
@@ -55,6 +60,7 @@ set minimal_spherical_principal_series (RealForm G) = Param:
   simple complex, and have standard coordinates (as we use |nilpotent_lambdas|)
 }
 set spherical_unipotent_representations (RealForm G) = [Param]:
+  assert(is_split(G),"group is not split");
   let lietype=Lie_type(root_datum(G)) in
   if #lietype=1 then  { assert(is_split(G),"Group is not split");}
     for gamma in nilpotent_lambdas(G)

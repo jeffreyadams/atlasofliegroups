@@ -1,6 +1,6 @@
 <W_orbit.at
 <induction.at
-<all_Kparameters.at {for all_parameters_x_gamma}
+<all_parameters.at {for all_parameters_x_gamma}
 
 set aql_verbose=false
 
