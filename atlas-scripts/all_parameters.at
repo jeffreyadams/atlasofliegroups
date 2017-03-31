@@ -32,6 +32,9 @@ set cone (rat limit, [rat] cs { all >0 } ) = mat: { columns are weights }
     fi
   in cn(limit,0)
 
+{this file used to be called all_Kparameters.at;
+it includes functions for constructing both Kparameters and parameters}
+
 {
   matrix whose columns are weights representative of a set of generators
   of the elementary 2-group ker(1+theta(x))/im(1-theta(x)). Might do as well:
@@ -61,8 +64,8 @@ set all_equal_dlambda_K_parameters (K_Type(x,lambda)) = [K_Type]:
 
 { all actual parameters with same dlambda as p, same nu }
 set all_parameters (Param p) = [Param]:
-  let (x,lambda,nu)=%p in
-  for v in all_lambda_differential_0(x) do parameter(x,lambda+v,nu) od
+  let x=x(p),lambda=lambda(p),nu=nu(p) in
+  for v in all_lambda_differential_0(x) do  parameter(x,lambda+v,nu) od
 
 { all parameters with given infinitesimal character and attached to given x }
 set all_parameters_x_gamma (KGBElt x,ratvec gamma) = [Param]:
@@ -87,6 +90,24 @@ set all_parameters_gamma (RealForm G,ratvec gamma) = [Param]:
     od
   od; reduce(params)  { keep only 1 from each equivalence class }
 
+{      all discrete/minimal principal series                  }
+
+set all_discrete_series(RealForm G, ratvec gamma)=[Param]:
+   assert(is_equal_rank(G),"group is not equal rank");
+   assert(is_regular(G,gamma),"gamma is not regular");
+   assert(is_integer(gamma+rho(G)),"gamma is not in X^*+rho");
+   let (gamma_dom,)=make_dominant(G,gamma) in
+   for i in distinguished_fiber(G) do parameter(KGB(G,i),gamma_dom,null(rank(G))) od
+
+
+{there are 2^rank minimal principal series of a split group
+with given infinitesimal character gamma, parameter(x,lambda,gamma)
+where lambda runs over characters of M=Z_2^rank
+warning: some parameters may fail to be final}
+{.all minimal principal series of split group with given infinitesimal character.}
+set all_minimal_principal_series(RealForm G,ratvec gamma)=[Param]:
+    assert(is_split(G),"group is not split");
+    all_parameters(minimal_spherical_principal_series(G,gamma))
 
 { all_dominant_norm_less_than(InnerClass ic,ratvec v,int N):
   returns mu dominant (which will be 2*d*lambda=(1+theta)*lambda) such that
