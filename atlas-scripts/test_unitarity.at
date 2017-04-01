@@ -47,7 +47,7 @@ set test ([(Param,int)] parameters,bool verbose) =
     if is_fixed(delta,p)
     then
       let hf=hermitian_form_irreducible(p)
-      then unitary= is_unitary(hf)
+      then unitary= is_pure(hf)
       in
       passed := passed and as_predicted(predicted, unitary)
     ; result#:=(p,hf,predicted,unitary)
