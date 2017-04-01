@@ -443,6 +443,7 @@ set solve (mat A, ratvec b) = [ratvec]:
 {                           Split integers                              }
 
 set !s = Split:(0,1) { ! means it is a constant }
+set !split_1 = Split:1 { do conversion now }
 set !one_minus_s = Split:(1,-1), !one_plus_s = Split:(1,1)  { near idempotents }
 
 set int_part (Split x) = int: let (r,)=%x in r
@@ -463,6 +464,7 @@ set \% (Split x, int n) = (Split,Split):
 set half (Split w) = Split: let (q,r)=w\%2 in assert(=r,"Inexact halving"); q
 set divide_by (int n,Split w) = Split:
   let (q,r)=w\%n in assert(=r,"Inexact division"); q
+set exp_s(int n) = Split: if n.is_even then 1 else s fi
 
 { a Split coefficient is pure if it has at most one nonzero component }
 set is_pure (Split w)=bool: =*%w { test if product of both components is zero }
@@ -480,16 +482,16 @@ set split_format (Split w) = string:
 
 
 set ^ = { exponentiation of split integers }
-  let split_power (Split x,int n) = Split: x { dummy }
-  then () = split_power := ((Split x,int n): { we shall have n>0 }
+  let rec_fun split_power (Split x,int n) = Split: { we shall have n>0 }
     if n=1 then x
     else let (q,r)=n\%2 then y=split_power(x,q) in y*if =r then y else x*y fi
-    fi)
+    fi
   in { set ^ = } (Split x,int n): Split:
-    if n>0 then split_power(x,n) elif =n then Split:(1,0)
-    elif let (a,b)=%x in abs(a)+abs(b)=1 { cases of invertible (unit) Split }
-    then if is_even(n) then 1 else x fi { all of which are square roots of +1 }
-    else error("Negative power "+n+" of split integer "+split_format(x))
+    if let (a,b)=%x in abs(a)+abs(b)=1 { cases of invertible (unit) Split }
+    then if n.is_even then split_1 else x fi { all are square roots of +1 }
+    elif n.> then split_power(x,n)
+    elif n.= then split_1
+    else error("Negative power ",n," of split integer ",split_format(x))
     fi
 
 set sum ([Split] list) = Split:
@@ -1194,11 +1196,7 @@ set branch (ParamPol P, Param K_type) = Split: { Split coefficients possible }
 
 { nice output of ParamPol: split_format the coefficients }
 set pol_format (ParamPol P)= string:
-  ##
-  for w@p in P
-  do to_string("(",w.split_format,")*",p
-             { ,", ",p.infinitesimal_character},new_line)  {don't print the infinitesimal character}
-  od
+  ## for w@p in P do to_string("(",w.split_format,")*",p,new_line) od
 
 { find what should be unique infintesimal character shared by all terms }
 set infinitesimal_character(ParamPol P) = ratvec:

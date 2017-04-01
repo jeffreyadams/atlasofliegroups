@@ -1,29 +1,21 @@
 <basic.at
 <extended.at { for E@(mat,Param) }
-<ext_deform.at { we need this for general $\delta$, full_deform@(Param,mat) }
-<induction.at { for dim_u_cap_p }
+<induction.at { for dim_u_cap_p@KGBElt }
 
 set hf_debug=false { for printing of mu's in hermitian_form_irreducible_long }
 
 {    c_form on standard representations, correct in all cases   }
 
-{ c_form_std:
-  write c-invariant form on standard module in terms of standardrepks,
-  as a ParamPol
-}
+{.write c-invariant form on standard module as a ParamPol of standardrepKs.}
 set c_form_std = (Param->ParamPol): { never involves |twisted_full_deform| }
   full_deform@Param { built-in }
 
 set twisted_c_form_std = (Param->ParamPol): { c-form on extended group }
   twisted_full_deform@Param { built-in }
 
-{ with explicit |delta|, call |full_deform@(Param,mat)| from ext_deform.at }
-set twisted_c_form_std = (Param,mat->ParamPol): { c-form delta-extended group }
-  twisted_full_deform@(Param,mat) { this one is from ext_deform.at }
-
 {    c_form on irreducible representations   }
 
-{ a ParamPol of standardrepks giving the c-invariant form on irreducible(p) }
+{.c-invariant form on irreducible module of p as ParamPol of standardrepKs.}
 set c_form_irreducible (Param p) = ParamPol:
 ( let ori_nr_p = orientation_nr(p), P = null_module(real_form(p)) in
   for c@q in KL_sum_at_s(p)
@@ -46,6 +38,7 @@ set c_form_irreducible (Param p) = ParamPol:
     I(x)_c given as combination of standards x' with nu(x')=0 by c_form_std(x)
   algorithm: compute the sum for J(y)_c, using signed_KL_col and c_form_std
 }
+{.c-form on an irreducible, with extra output.}
 set c_form_irreducible_long (Param p) =
     (ParamPol,[(Param,Split,ParamPol)],ParamPol):
 ( let P = null_module(real_form(p)), ori_nr_p = orientation_nr(p)
@@ -215,17 +208,7 @@ set mu_terms  (Param p,mat delta) = [rat]:
   , { dim_term        = } dim_u_cap_p(x)
   ] { the sum of these will be interpreted modulo 2/1 }
 
-{ alternative version of mu, included only for testing }
-set mu_in_terms_of_z (Param p,mat delta) = rat:
-  let E=E(delta,p) in
-  (E.g-E.l-rho_check_r(E.x)+E.t)*E.lambda_rho+z(E)+dim_u_cap_p(E.x)
-
-set mu (Param p,mat delta) = rat:
-  if is_equal_rank(real_form(p)) then mu(p) { just because its simpler }
-  else let result=sum(mu_terms(p,delta)) in
-{ assert(result=mu_in_terms_of_z(p,delta),"two versions of mu differ"); }
-    result
-  fi
+set mu (Param p,mat delta) = rat: sum(mu_terms(p,delta))
 
 set print_mu (Param p) = void:
      let terms=mu_terms(p,p.real_form.distinguished_involution) in
@@ -251,20 +234,16 @@ set print_mus (ParamPol P) = void:
                 , new_line)
   od
 
-{.convert (twisted) c-form to hermitian form.}
+{.convert (twisted) c-form to hermitian form, use lowest term as reference.}
 set convert_cform_hermitian (ParamPol P,mat delta)= ParamPol:
   if =#P then P { since we cannot select a term for a null polynomial }
-  else let a_mu = mu(P.last_param,delta)
-    then result = P.real_form.null_module +
-         for w@p in P do (w*s^(mu(p,delta)-a_mu).rat_as_int,p) od
-
-    { normalization: make coefficient of top term in Z if possible}
-    then (c,)=last_term(result)
-    in if int_part(c)=0 then s*result else result fi
+  else let a_mu = mu(P.first_param,delta) in
+    P.real_form.null_module +
+      for c@p in P do (c*(mu(p,delta)-a_mu).rat_as_int.exp_s,p) od
   fi
 
 set convert_cform_hermitian (ParamPol P)= ParamPol:
-  convert_cform_hermitian(P,P.last_param.real_form.distinguished_involution)
+  convert_cform_hermitian(P,P.real_form.distinguished_involution)
 
 {  Hermitian forms  }
 
@@ -287,13 +266,14 @@ set hermitian_form_std (Param p) = ParamPol:
   else check_hermitian(p,false); twisted_c_form_std(p)
   fi. convert_cform_hermitian
 
-{.Hermitian form on a irreducible module, canonical normalization.}
+{.Hermitian form on a irreducible module, normalization from its initial term.}
 set hermitian_form_irreducible (Param p) = ParamPol:
   if is_equal_rank(real_form(p))
   then c_form_irreducible(p) { not twisted, in equal rank case this is faster }
   else check_hermitian(p,true); twisted_c_form_irreducible(p)
   fi.convert_cform_hermitian
 
+{. Hermitian form on an irreducible, with extra information.}
 set hermitian_form_irreducible_long (Param p) =
     (ParamPol,[(Param,Split,ParamPol)],ParamPol):
   { here we just use |twisted_c_form_irreducible| in all cases }
@@ -302,10 +282,16 @@ set hermitian_form_irreducible_long (Param p) =
   if hf_debug then print_mus(cform) fi;
   (formula,terms,convert_cform_hermitian(cform))
 
-
-{ nice output of hermitian_form_irreducible }
-set print_hermitian_form_irreducible (Param p,mat delta) = void:
+{.nice output of hermitian_form_irreducible.}
+set print_hermitian_form_irreducible (Param p) = void:
   hermitian_form_irreducible(p).pol_format.prints
+
+{ nice output of Hermitian forms on list of parameters }
+set print_hermitian_form_irreducible ([Param] P) = void:
+  for p in P
+  do prints(new_line,"Hermitian form on irreducible: ",p)
+  ; print_hermitian_form_irreducible(p)
+  od
 
 set print_hermitian_form_irreducible_long (Param p) = void:
   let (formula,terms,answer)=hermitian_form_irreducible_long(p) in
@@ -319,25 +305,6 @@ set print_hermitian_form_irreducible_long (Param p) = void:
   od;
   prints("Hermitian form on irreducible module p=",p,":",new_line
         ,answer.pol_format, "purity=", purity(answer))
-
-
-{ nice output of Hermitian forms on list of parameters }
-set print_hermitian_form_irreducible ([Param] P,mat delta) = void:
-  for p in P
-  do prints(new_line,"Hermitian form on irreducible: ",p)
-  ; print_hermitian_form_irreducible(p,delta)
-  od
-
-{ nice output of hermitian_form_irreducible }
-set print_hermitian_form_irreducible (Param p) = void:
-  hermitian_form_irreducible(p).pol_format.prints
-
-{ nice output of Hermitian forms on list of parameters }
-set print_hermitian_form_irreducible ([Param] P) = void:
-  for p in P
-  do prints(new_line,"Hermitian form on irreducible: ",p)
-  ; print_hermitian_form_irreducible(p)
-  od
 
 {   unitarity and weak unitarity tests }
 
@@ -413,7 +380,7 @@ set weak_test (Param p) = bool:
   else prints("number of terms: ", #formula,new_line,"bad terms:", bad ); false
   fi
 
-set strong_test (Param p,mat delta)=bool:
+set strong_test (Param p)=bool:
   let formula=hermitian_form_irreducible(p)
   , bad=null_module(real_form(p))
   in
