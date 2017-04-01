@@ -349,21 +349,14 @@ set print_hermitian_form_irreducible ([Param] P) = void:
 
 {   unitarity and weak unitarity tests }
 
-{ assuming P is the ParamPol of the Hermitian
-  form on an irreducible, is_unitary(P) tests
-  if it is unitary: <=> every Split coefficient is real,
-  or every Split coefficient is nonreal
-}
-set is_unitary = (ParamPol->bool): is_pure@ParamPol  { from basic.at }
-
 { compute Hermitian form on p, and report if it is unitary }
 set is_unitary (Param p) = bool:
-  p.is_hermitian and hermitian_form_irreducible(p).is_unitary
+  p.is_hermitian and hermitian_form_irreducible(p).is_pure
 
 set print_is_unitary (Param p) = void:
   if p.is_hermitian
   then let P=hermitian_form_irreducible(p) in
-    if P.is_unitary
+    if P.is_pure
     then prints("Unitary")
     else let (real,nonreal,mixed)=purity(P) in
       prints("Non-Unitary",new_line

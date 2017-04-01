@@ -347,11 +347,11 @@ set hermitian_form_irreducible_big(Param p) = ParamPol:
 let delta=real_form(p).distinguished_involution in
 let (plus,minus,)=c_form_irreducible_big(p,delta,1) in  convert_cform_hermitian(plus+s*minus)
 
-set is_unitary_big (Param p) = bool: is_unitary(hermitian_form_irreducible_big(p))
+set is_unitary_big (Param p) = bool: is_pure(hermitian_form_irreducible_big(p))
 
 set print_is_unitary_big(Param p)=void:
 let P=hermitian_form_irreducible_big(p) in
-if is_unitary(P) then prints("Unitary") else
+if is_pure(P) then prints("Unitary") else
 let (real,nonreal,mixed)=purity(P) in
 prints("Non-Unitary",new_line, real, " real terms", new_line, nonreal," nonreal terms", new_line, mixed, " mixed terms") fi
 
