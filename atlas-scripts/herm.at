@@ -2,8 +2,6 @@
 <extended.at { for E@(mat,Param) }
 <induction.at { for dim_u_cap_p@KGBElt }
 
-set hf_debug=false { for printing of mu's in hermitian_form_irreducible_long }
-
 {    c_form on standard representations, correct in all cases   }
 
 {.write c-invariant form on standard module as a ParamPol of standardrepKs.}
@@ -56,66 +54,56 @@ set c_form_irreducible_long (Param p) =
 
 {    twisted_c_form_irreducible and its variants   }
 
+{ utility: compute fixed and unfixed contributions to c-form on irreducible(p)
+  no deformation, but include orientation numbers;
+  fixed contributions are already halved; for unfixed ones this needs to wait
+}
+set twisted_c_form_irreducible_contributions (Param p) =
+    (ParamPol,ParamPol): { (fixed part, 2*unfixed part) }
+  let G=p.real_form, ori_nr_p = orientation_nr(p)
+  then fixed_terms=G.null_module, unfixed_terms=G.null_module
+  in
+  for c@q in (1+s)*KL_sum_at_s(p) + (1-s)*twisted_KL_sum_at_s(p)
+  do if twist(q)=q
+     then fixed_terms+:=(half(c)*orientation_nr_term(ori_nr_p,q),q)
+     else unfixed_terms+:=(c*orientation_nr_term(ori_nr_p,q),q)
+     fi
+  od; (fixed_terms,unfixed_terms)
+
 { The following function implements algorithm from Vogan in email 9/22/16:
-  (but the starting formula was changed since then):
-  * for each delta-fixed term q add c_form_std(q,delta) (fully twisted-deformed)
+  * for each delta-fixed term q add c_form_std(q) (fully twisted-deformed)
   * for each pair {q,delta(q)} add q*0 (deformation to nu=0 of q).
   For second kind it it convenient to add q*0 and delta(q)*0 separately
   and at the end divide the sum of such contributions by 2.
 }
 
-{ basic version of twisted_c_form_irreducible, for the inner class involution }
+{.twisted c-invariant form on an irreducible in terms of standardrepKs.}
 set twisted_c_form_irreducible (Param p) = ParamPol:
-( let G=p.real_form, ori_nr_p = orientation_nr(p)
-  then fixed_terms = null_module(G), unfixed_terms = null_module(G)
+( let result=p.real_form.null_module
+  , (fixed,unfixed)=twisted_c_form_irreducible_contributions(p)
   in
-  for c0@q in (1+s)*KL_sum_at_s(p) + (1-s)*twisted_KL_sum_at_s(p)
-  do let orient_c=orientation_nr_term(ori_nr_p,q) in
-    if twist(q)=q
-    then { fixed under the inner class twist }
-      fixed_terms +:= half(c0)*orient_c*twisted_full_deform(q)
-    else { now |1+s| divides |c0|, which justifies not using |scale_extended|: }
-      unfixed_terms +:= c0*orient_c*(q*0) { postpone halving here }
-    fi
-  od
-; fixed_terms + half(unfixed_terms)
+  for c@q in unfixed do result+:=c*(q*0) od { here |1-s| divides |c| }
+; result:=half(result) { each delta-orbit contributed the same result twice }
+; for c@q in fixed do result+:=c*twisted_full_deform(q) od
+; result
 )
 
-{ utility; starting formula in the c-form calculation without deformation }
-set twisted_c_form_irr_as_sum_of_standards (Param p) = ParamPol:
-( let G=p.real_form, ori_nr_p = orientation_nr(p) in
-  null_module(G) +
-  for c@q in (1+s)*KL_sum_at_s(p) + (1-s)*twisted_KL_sum_at_s(p)
-  do
-  ( if twist(q)=q then half(c) else c fi * orientation_nr_term(ori_nr_p,q)
-  , q
-  )
-  od
-)
-
-{ more information about twisted_c_form_irreducible }
+{.c_form_irrecible with extra information.}
 set twisted_c_form_irreducible_long (Param p) =
     (ParamPol,[(Param,Split,ParamPol)],ParamPol):
 assert(twist(p)=p,"parameter is not fixed by inner class involution");
-( let G=p.real_form, ori_nr_p = orientation_nr(p)
-  then fixed_terms = null_module(G), unfixed_terms = null_module(G)
-  , terms=[(Param,Split,ParamPol)]: []
+( let (fixed,unfixed)= twisted_c_form_irreducible_contributions(p)
+  , !zero=p.real_form.null_module
+  then result = zero, terms=[(Param,Split,ParamPol)]: []
   in
-  for c@q in (1+s)*KL_sum_at_s(p) + (1-s)*twisted_KL_sum_at_s(p)
-  do let orient_c=orientation_nr_term(ori_nr_p,q) in
-    if twist(q)=q
-    then
-      let coef=half(c)*orient_c then contrib=coef*twisted_c_form_std(q) in
-      (fixed_terms+:=contrib, terms#:=(q,coef,contrib))
-    else
-      { now |1+s| devides |c|, which justifies not using |scale_extended|: }
-      let coef=c*orient_c then contrib=coef*(q*0) in
-      (unfixed_terms+:=contrib, terms#:=(q,coef,contrib))
-    fi
+  for c@q in unfixed
+  do let contrib=c*(q*0) in terms#:=(q,c,contrib); result+:=contrib od
+; result:=half(result)
+; for c@q in fixed
+  do let contrib=c*twisted_full_deform(q) in
+    terms#:=(q,c,contrib); result+:=contrib
   od
-; ({character_formula} twisted_c_form_irr_as_sum_of_standards(p)
-  , terms, fixed_terms + half(unfixed_terms)
-  )
+; (zero+fixed+unfixed {starting formula }, terms, result)
 )
 
 { print versions }
@@ -279,14 +267,13 @@ set hermitian_form_irreducible_long (Param p) =
   { here we just use |twisted_c_form_irreducible| in all cases }
   check_hermitian(p,true);
   let (formula,terms,cform) = twisted_c_form_irreducible_long(p) in
-  if hf_debug then print_mus(cform) fi;
   (formula,terms,convert_cform_hermitian(cform))
 
 {.nice output of hermitian_form_irreducible.}
 set print_hermitian_form_irreducible (Param p) = void:
   hermitian_form_irreducible(p).pol_format.prints
 
-{ nice output of Hermitian forms on list of parameters }
+{.nice output of Hermitian forms on list of parameters.}
 set print_hermitian_form_irreducible ([Param] P) = void:
   for p in P
   do prints(new_line,"Hermitian form on irreducible: ",p)
@@ -321,10 +308,10 @@ set is_unitary (Param p) = bool:
 
 set print_is_unitary (Param p) = void:
   if p.is_hermitian
-  then let P=hermitian_form_irreducible(p) in
-    if P.is_unitary
+  then let hf=hermitian_form_irreducible(p) in
+    if hf.is_unitary
     then prints("Unitary")
-    else let (real,nonreal,mixed)=purity(P) in
+    else let (real,nonreal,mixed)=purity(hf) in
       prints("Non-Unitary",new_line
 	    , real, " real terms", new_line
 	    , nonreal," nonreal terms", new_line
@@ -369,7 +356,6 @@ set test_line (Param p) = void:
     od
   fi
 )
-
 
 set weak_test (Param p) = bool:
   let formula=twisted_c_form_irreducible(p)
