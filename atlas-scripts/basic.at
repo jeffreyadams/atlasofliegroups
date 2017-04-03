@@ -462,8 +462,9 @@ set \% (Split x, int n) = (Split,Split):
   let (a,b)=%x then (qa,rq)=a\%n, (qb,rb)=b\%n in ((qa,qb),(rq,rb))
 { divide Split by integer, quotient of \% but requiring rest to be zero }
 set half (Split w) = Split: let (q,r)=w\%2 in assert(=r,"Inexact halving"); q
-set divide_by (int n,Split w) = Split:
+set / (Split w,int n) = Split:
   let (q,r)=w\%n in assert(=r,"Inexact division"); q
+set % (Split w,int n) = Split: let (a,b)=%w in (a%n,b%n)
 set exp_s(int n) = Split: if n.is_even then 1 else s fi
 
 { a Split coefficient is pure if it has at most one nonzero component }
@@ -1148,7 +1149,7 @@ set print_extended_block = (Param,mat->):
 
 {                   Polynomials in module parameters                    }
 
-set null_module (ParamPol P) = ParamPol: 0*P
+set null_module (ParamPol P) = ParamPol: 0*P { built-in does this efficiently }
 set -(ParamPol P) = ParamPol: minus_1*P
 
 set first_param (ParamPol P) = Param: let (,p)=first_term(P) in p
@@ -1162,22 +1163,22 @@ set - (ParamPol a, (Split,Param) (c,p)) = ParamPol: a+(-c,p)
 
 set sum (RealForm G,[ParamPol] Ps) = ParamPol:
   let n=#Ps in
-  if n<2 then if n=0 then G.null_module else Ps[0] fi
-  else Ps. { do divide and conquer so as to priviledge balanced additions }
-    ( rec_fun s([ParamPol] Ps) ParamPol:
-        let n=#Ps in
-        if n=2 then Ps[0]+Ps[1] else let h=n\2 in s(Ps[:h])+s(Ps[h:]) fi
+  if n=0 then G.null_module
+  else Ps. { do divide and conquer so as to privilege balanced additions }
+    ( rec_fun s([ParamPol] Ps) ParamPol: { |Ps| has at least one term }
+        let h = (#Ps)\2 in if =h then Ps[0] else s(Ps[:h])+s(Ps[h:]) fi
     )
   fi
+
+set map ((Param->ParamPol)f, ParamPol P) = ParamPol:
+  sum(P.real_form,for c@p in P do c*f(p) od)
 
 { deform a whole ParamPol, by deforming all individual terms }
 set * (ParamPol P, rat f) = ParamPol: 0*P + for c@q in P do (c,q*f) od
 
-set half (ParamPol P) = ParamPol:
-  0*P+ for c@t in P do (half(c),t) od
-{ inverse of scalar multiplication *@(int,ParamPol) }
-set divide_by (int n, ParamPol P) = ParamPol:
-  0*P+ for c@t in P do (divide_by(n,c),t) od
+set half (ParamPol P) = ParamPol: 0*P+ for c@t in P do (half(c),t) od
+{ inverse of multiplication *@(int,ParamPol); don't confuse with scaling }
+set divide_by (int n, ParamPol P) = ParamPol: 0*P+ for c@t in P do (c/n,t) od
 
 { simulate coercion (KGBElt->RealForm) in some cases }
 set root_datum (ParamPol P) = RootDatum: real_form(P)

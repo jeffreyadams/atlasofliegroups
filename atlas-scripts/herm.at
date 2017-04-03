@@ -55,7 +55,7 @@ set c_form_irreducible_long (Param p) =
 {    twisted_c_form_irreducible and its variants   }
 
 { utility: compute fixed and unfixed contributions to c-form on irreducible(p)
-  no deformation, but include orientation numbers;
+  no deformation is done, but orientation numbers are included;
   fixed contributions are already halved; for unfixed ones this needs to wait
 }
 set twisted_c_form_irreducible_contributions (Param p) =
@@ -79,13 +79,9 @@ set twisted_c_form_irreducible_contributions (Param p) =
 
 {.twisted c-invariant form on an irreducible in terms of standardrepKs.}
 set twisted_c_form_irreducible (Param p) = ParamPol:
-( let result=p.real_form.null_module
-  , (fixed,unfixed)=twisted_c_form_irreducible_contributions(p)
-  in
-  for c@q in unfixed do result+:=c*(q*0) od { here |1-s| divides |c| }
-; result:=half(result) { each delta-orbit contributed the same result twice }
-; for c@q in fixed do result+:=c*twisted_full_deform(q) od
-; result
+( let (fixed,unfixed)=twisted_c_form_irreducible_contributions(p)
+{ |1+s| divides |unfixed|, no need for |scale_extended|; take half at |nu=0| }
+  in map(twisted_full_deform@Param,fixed)+half(unfixed*0)
 )
 
 {.c_form_irrecible with extra information.}
