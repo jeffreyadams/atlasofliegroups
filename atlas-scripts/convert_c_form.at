@@ -100,7 +100,7 @@ set convert_cform_hermitian (ParamPol P,mat delta, Param p0)= ParamPol:
       for c@p in P do (c*(mu(p,delta)-a_mu).rat_as_int.exp_s,p) od
   fi
 
-{ if no |p0| provided, use |first_param(P)| }
+{ if no |p0| provided, use |first_param(P)|, a term of least height in |P| }
 set convert_cform_hermitian (ParamPol P,mat delta) = ParamPol:
   convert_cform_hermitian(P,delta,first_param(P))
 
