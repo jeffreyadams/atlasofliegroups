@@ -1170,6 +1170,9 @@ set sum (RealForm G,[ParamPol] Ps) = ParamPol:
     )
   fi
 
+set map ((Param->Param)f, ParamPol P) = ParamPol:
+  0*P + for c@p in P do (c,f(p)) od
+
 set map ((Param->ParamPol)f, ParamPol P) = ParamPol:
   sum(P.real_form,for c@p in P do c*f(p) od)
 
