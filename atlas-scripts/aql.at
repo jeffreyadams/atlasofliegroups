@@ -234,14 +234,19 @@ set is_unitary_sr (Param p)=bool:
    else is_unitary(p) fi
 
 {. Test whether a representation is unitary, checking first whether
-   it is strongly regular; if not, reducing it in the good range, and
-   testing the parameter of the smaller group. .}
+   it is strongly regular; if not, reducing it in the (weakly) good range,
+   and testing the parameter of the smaller group. .}
 set is_unitary_reduced (Param p)=bool:
    let G=real_form(p) in let ic=infinitesimal_character(p) in
    let rd=root_datum(G) in
    if is_dominant(rd,ic-rho(G))then
    prints("This is strongly regular."); is_good_Aq(p)
    else let (,p_L)=reduce_good_range(p) in
-      if is_good(p_L,G) then
-    prints("Checking unitarity of ",p_L," of ",real_form(p_L)); is_unitary(p_L)
-      else is_unitary(p) fi fi
+      if is_good(p_L,G)
+      then prints("Checking unitarity of ",p_L," of ",real_form(p_L))
+      ; is_unitary(p_L)
+      else prints(p_L," of ",real_form(p_L)," is in the weakly good range");
+        let hfl=hermitian_form_irreducible(p_L) in
+        is_pure(theta_induce_parampol(hfl,G))
+      fi
+   fi
