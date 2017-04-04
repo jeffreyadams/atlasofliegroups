@@ -249,7 +249,7 @@ set is_unitary_reduced_with_form (Param p)=(ParamPol,bool):
                  real_form(p_L)," This is in the  ",goodness(p_L,G)," range")
      fi;
      let hfl=hermitian_form_irreducible(p_L) in
-     if aql_verbose then prints("p_L unitary: ",is_pure(hfl)) fi;
+     if aql_verbose then prints(hfl," p_L unitary: ",is_pure(hfl)) fi;
      let result=theta_induce_parampol(hfl,G) in (result,is_pure(result))
    fi
 
