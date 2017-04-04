@@ -46,7 +46,7 @@ set large_discrete_series (RealForm G) = Param:
 {.minimal principal series of split group with given lambda,nu}
 set minimal_principal_series (RealForm G,ratvec lambda,ratvec nu) = Param:
   assert(is_split(G),"group is not split");
-  let n=KGB_size(G)-1 in 
+  let n=KGB_size(G)-1 in
   normal(parameter(KGB(G,n),lambda,nu))
 
 set minimal_principal_series(RealForm G) = Param:

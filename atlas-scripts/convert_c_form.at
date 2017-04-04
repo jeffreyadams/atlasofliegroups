@@ -97,17 +97,16 @@ set convert_cform_hermitian (ParamPol P,mat delta, Param p0)= ParamPol:
   if =#P then P { since we cannot select a term for a null polynomial }
   else let a_mu = mu(p0,delta) in
     P.real_form.null_module +
-    for w@p in P do (w*s^(mu(p,delta)-a_mu).rat_as_int,p) od
+      for c@p in P do (c*(mu(p,delta)-a_mu).rat_as_int.exp_s,p) od
   fi
+
+{ if no |p0| provided, use |first_param(P)|, a term of least height in |P| }
+set convert_cform_hermitian (ParamPol P,mat delta) = ParamPol:
+  convert_cform_hermitian(P,delta,first_param(P))
 
 {.version that defaults delta to inner class involution.}
 set convert_cform_hermitian (ParamPol P,Param p0)= ParamPol:
   convert_cform_hermitian(P,P.real_form.distinguished_involution,p0)
 
-{ if no |p0| provided, use |last_param(P)| }
-set convert_cform_hermitian (ParamPol P,mat delta) = ParamPol:
-  convert_cform_hermitian(P,delta,last_param(P))
-
-{.version that uses previous one, defaulting delta to inner class involution.}
 set convert_cform_hermitian (ParamPol P)= ParamPol:
   convert_cform_hermitian(P,P.real_form.distinguished_involution)

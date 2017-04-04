@@ -228,16 +228,28 @@ void validate(const param& E)
 #endif
 }
 
+// compute the components in a default extended parameter for parameter |sr|
+void set_default_extended
+(const Rep_context& rc, const StandardRepr& sr, const WeightInvolution& delta,
+   Weight& lambda_rho, Weight& tau, Coweight& l, Coweight& t)
+{
+  const auto& kgb = rc.kgb(); const auto x=sr.x();
+  WeightInvolution theta = rc.innerClass().matrix(kgb.involution(x));
+
+  lambda_rho=rc.lambda_rho(sr);
+  tau=matreduc::find_solution(1-theta,(delta-1)*lambda_rho);
+  l=ell(kgb,x);
+  t=matreduc::find_solution(theta.transposed()+1,(delta-1).right_prod(l));
+}
+
+// build a default extended parameter for |sr| in the context |ec|
 param::param (const context& ec, const StandardRepr& sr, bool flipped)
   : ctxt(ec)
   , tw(ec.rc().kgb().involution(sr.x()))
-  , l(ell(ec.realGroup().kgb(),sr.x()))
-  , lambda_rho(ec.rc().lambda_rho(sr))
-  , tau(matreduc::find_solution(1-theta(),(delta()-1)*lambda_rho))
-  , t(matreduc::find_solution
-	(theta().transposed()+1,(delta()-1).right_prod(l)))
+  , l(), lambda_rho(), tau(), t() // components to be computed just below
   , flipped(flipped)
 {
+  set_default_extended(ec.rc(),sr,ec.delta(), lambda_rho,tau,l,t);
   validate(*this);
 }
 
@@ -357,10 +369,8 @@ StandardRepr scaled_extended_dominant // result will have its |gamma()| dominant
 
   // class |param| cannot change its |gamma|, so work on separate components
   Weight lr, tau; Coweight l,t;
-  { context ctxt(rc,delta,result.gamma()); // scaffolding for construction
-    param E(ctxt,result); // default extend |result| to an extended parameter
-    lr=E.lambda_rho; tau=E.tau; l=E.l; t=E.t; // and copy fields to variables
-  }
+  // initialise without building a |context| (as |result.gamma()| undominant):
+  set_default_extended(rc,result,delta, lr,tau,l,t);
   KGBElt x = result.x(); // another variable, for convenience
 
   int_Vector r_g_eval (rd.semisimpleRank()); // evaluations at |-gr|
@@ -636,6 +646,8 @@ context::context
     , l_shifts (integr_datum.semisimpleRank())
 {
   const RootDatum& rd = rc.rootDatum();
+  assert(is_dominant_ratweight(rd,d_gamma)); // this is a class invariant
+
   for (weyl::Generator s=0; s<rd.semisimpleRank(); ++s)
     twist[s] = rd.simpleRootIndex(delta_of(rd.simpleRootNbr(s)));
 

@@ -164,6 +164,8 @@ class ext_block
   const WeightInvolution& delta() const { return d_delta; }
 
   BlockElt z(BlockElt n) const { assert(n<size()); return info[n].z; }
+  StandardRepr sr(BlockElt n, const param_block& parent) const
+  { return parent.sr(z(n)); }
 
   // Look up element by its index in |parent| (if that did define an element)
   // more precisely returns smallest |n| with |z(n)>=z|, or |size()| if none
@@ -227,7 +229,7 @@ class context // holds values that remain fixed across extended block
 {
   const repr::Rep_context& d_rc;
   const WeightInvolution d_delta;
-  RatWeight d_gamma; // representative of infinitesimal character
+  RatWeight d_gamma; // dominant representative of infinitesimal character
   // RatCoweight d_g; // we might record |g|, but in fact defer to |realGroup|
   const RootDatum integr_datum; // intgrality datum
   const SubSystem sub; // embeds |integr_datum| into parent root datum

@@ -60,10 +60,10 @@ namespace {
 namespace interactive_lattice {
 
 /*
-  Gets the generators of X/Q, where Q is the root lattice, from the user.
+  Get the generators of X/Q, where Q is the root lattice, from the user.
 
-  It throws an InputError if the interaction with the user does not conclude
-  successfully. In that case, d_rwl is not modified.
+  This function throws an InputError if the interaction with the user does not
+  conclude successfully. In that case, d_rwl is not modified.
 */
 int getGenerators(RatWeightList& d_rwl, const CoeffList& u)
   throw(error::InputError)
@@ -302,7 +302,7 @@ GeneratorError checkGenerator(input::InputBuffer& buf, size_t& r,
 
 
 /*
-  Synopsis: puts in |q| a basis for the lattice "orthogonal" to |rwl|.
+  Put in |q| a basis for the lattice "orthogonal" to |rwl|.
 
   Precondition: each of the elements of |rwl| is a rational weight, size |r|.
 
@@ -380,13 +380,9 @@ std::ostream& printCenter(std::ostream& strm, const CoeffList& u)
 }
 
 
-/*!
-  \brief: returns generator from |buf|, with |n_gen| entries, denominator |d|
+// return generator from |buf|, with |n_gen| entries, denominator |d|
 
-*/
-RatWeight readGenerator(size_t n_gen,
-                                      LatticeCoeff d,
-				      input::InputBuffer& buf)
+RatWeight readGenerator(size_t n_gen, LatticeCoeff d, input::InputBuffer& buf)
 {
   int_Vector numer(n_gen);
   char dummy; // bit bucket for separator characters

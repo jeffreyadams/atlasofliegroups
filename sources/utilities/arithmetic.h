@@ -115,40 +115,46 @@ public:
 
 class Split_integer
 {
-  int real_part, s_part;
+  int ev_1, ev_minus_1; // store evaluations at $1$ and $-1$ for efficiency
+  // class invariant: |ev_1| and |ev_minus_1| have the same parity
  public:
   explicit constexpr Split_integer(int a=0, int b=0)
-  : real_part(a), s_part(b) {}
+  : ev_1(a+b), ev_minus_1(a-b) {}
 
-  int e() const { return real_part; }
-  int s() const { return s_part; }
+  int e() const { return (ev_1+ev_minus_1)/2; }
+  int s() const { return (ev_1-ev_minus_1)/2; }
 
-  bool operator== (Split_integer y) const { return e()==y.e() and s()==y.s(); }
+  bool operator== (Split_integer y) const
+  { return ev_1==y.ev_1 and ev_minus_1==y.ev_minus_1; }
   bool operator!= (Split_integer y) const { return not operator==(y); }
-  bool is_zero() const { return e()==0 and s()==0; }
+  bool is_zero() const { return ev_1==0 and ev_minus_1==0; }
 
-  Split_integer& operator +=(int n) { real_part+=n; return *this; }
-  Split_integer& operator -=(int n) { real_part-=n; return *this; }
+  Split_integer& operator +=(int n) { ev_1+=n; ev_minus_1+=n; return *this; }
+  Split_integer& operator -=(int n) { ev_1-=n; ev_minus_1-=n; return *this; }
   Split_integer& operator +=(Split_integer y)
-  { real_part+=y.e(); s_part+=y.s(); return *this; }
+  { ev_1+=y.ev_1; ev_minus_1+=y.ev_minus_1; return *this; }
   Split_integer& operator -=(Split_integer y)
-  { real_part-=y.e(); s_part-=y.s(); return *this; }
+  { ev_1-=y.ev_1; ev_minus_1-=y.ev_minus_1; return *this; }
   Split_integer operator +(Split_integer y) { return y+= *this; }
   Split_integer operator -(Split_integer y) { return y.negate()+= *this; }
   Split_integer operator -() const { return Split_integer(*this).negate(); }
-  Split_integer operator* (Split_integer y) const
-  { return Split_integer(e()*y.e()+s()*y.s(),e()*y.s()+s()*y.e()); }
 
-  Split_integer& operator*= (int n) { real_part*=n; s_part*=n; return *this; }
-  Split_integer& operator*= (Split_integer y) { return *this=operator*(y); }
-  Split_integer& negate() { real_part=-e(); s_part=-s(); return *this; }
-  Split_integer& times_s() { std::swap(real_part,s_part); return *this; }
-  Split_integer& times_1_s() { real_part= -(s_part-=e()); return *this; }
+  Split_integer& operator*= (int n) { ev_1*=n; ev_minus_1*=n; return *this; }
+  Split_integer operator* (int n) const { return Split_integer(*this)*=n; }
+  // multiplication is where the "split" representation really wins out:
+  Split_integer& operator*= (Split_integer y)
+  { ev_1*=y.ev_1; ev_minus_1*=y.ev_minus_1; return *this; }
+  Split_integer operator* (Split_integer y) const { return y*= *this; }
 
+  Split_integer& negate() { ev_1=-ev_1; ev_minus_1=-ev_minus_1; return *this; }
+  Split_integer& times_s() { ev_minus_1=-ev_minus_1; return *this; }
+  Split_integer& times_1_s() { ev_1=0; // see "Who Killed the ELectric Car"
+    ev_minus_1*=2; return *this; }
+
+  int s_to_1() const { return ev_1; }
+  int s_to_minus_1() const { return ev_minus_1; }
 }; // |class Split_integer|
 
-inline Split_integer operator* (const Split_integer& x, int n)
-  { return Split_integer(x)*=n; }
 std::ostream& operator<< (std::ostream& out, const Rational& frac);
 
 

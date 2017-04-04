@@ -244,15 +244,15 @@ set is_unitary_reduced_with_form (Param p)=(ParamPol,bool):
    if aql_verbose then
    prints("This is strongly regular.") fi; (null_module(G),is_good_Aq(p))
    else let (,p_L)=reduce_good_range(p) in
-     if aql_verbose then prints("Checking unitarity of ",p_L," of ",
-     real_form(p_L)," This is in the  ",goodness(p_L,G)," range") fi;
+     if aql_verbose
+     then prints("Checking unitarity of ",p_L," of ",
+                 real_form(p_L)," This is in the  ",goodness(p_L,G)," range")
+     fi;
      let hfl=hermitian_form_irreducible(p_L) in
-      if aql_verbose then prints(hfl," p_L unitary: ",is_pure(hfl)) fi;
-      let result=theta_induce_parampol(hfl,G) in
-      (result,is_pure(result))
-      fi
+     if aql_verbose then prints(hfl," p_L unitary: ",is_pure(hfl)) fi;
+     let result=theta_induce_parampol(hfl,G) in (result,is_pure(result))
+   fi
 
 {. As previous function, but only returns true/false. .}
 set is_unitary_reduced (Param p)=bool:
     let (,b)=is_unitary_reduced_with_form(p) in b
-

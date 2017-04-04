@@ -46,7 +46,7 @@ gamma_new=((1+theta)*(lambda+rho(ic))+(1-theta)*(nu*r))/2 in
 set deform_unreduced (Param p, mat delta, int type) = ExtParamPol:
 ( let N=null_module(p) in
 { if type=0 then we're getting sums of terms of the form
-  (1-s)*(I(p,+)+I(p,-)); when passing to the Hermitian form this 
+  (1-s)*(I(p,+)+I(p,-)); when passing to the Hermitian form this
   becomes (1-s)(1+s)I(p)_h=0, so can ignore these
   but for completeness sake leave them in}
 {  if type=0 then null_ext_module(real_form(p)) else }
@@ -157,12 +157,12 @@ let G=real_form(p) then
 delta=G.distinguished_involution then
 N=null_module(G) then
 rv=null_ext_module(G) in
-if type=0 then 
- let q=normal(p*factor) in  
- {although p is not delta-fixed, it may be when nu is varied, this 
+if type=0 then
+ let q=normal(p*factor) in
+ {although p is not delta-fixed, it may be when nu is varied, this
   is always the case if factor=0
   then replace (N,N,q) with (q,q,N)}
- if is_fixed(delta,q) then rv:=(q,q,N) else rv:=(N,N,q) fi 
+ if is_fixed(delta,q) then rv:=(q,q,N) else rv:=(N,N,q) fi
 else
 let P=finalize_extended(p*factor,delta) in
  for c@q in P do
@@ -286,7 +286,7 @@ set c_form_irreducible_big (Param p,mat delta, int type,ExtParamPol cf) =ExtPara
 ( let ori_nr_p = orientation_nr(p), P = null_ext_module(real_form(p)) then
   (plus,minus,induced)=cf then
   ()=for coeff@q in plus do {prints(new_line,coeff,"*",q, new_line,"#done=", #done);}P+:=coeff*orientation_nr_term(ori_nr_p,q)*recursive_deform(q,delta,1) od then
-  ()={prints("deforming minus:");}for coeff@q in minus do 
+  ()={prints("deforming minus:");}for coeff@q in minus do
   P+:={s*}coeff*orientation_nr_term(ori_nr_p,q)*recursive_deform(q,delta,-1) od then
 {  ()=prints(ori_nr_p, " ", q, " ", orientation_nr_term(ori_nr_p,q),"P=", P) then}
   ()=for coeff@q in induced do {prints(new_line,coeff,"*",q,new_line, " #done=",#done);}P+:=coeff*orientation_nr_term(ori_nr_p,q)*recursive_deform(q,delta,0) od  in

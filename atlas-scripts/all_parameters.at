@@ -96,12 +96,12 @@ set all_discrete_series(RealForm G, ratvec gamma)=[Param]:
    assert(is_equal_rank(G),"group is not equal rank");
    assert(is_regular(G,gamma),"gamma is not regular");
    assert(is_integer(gamma+rho(G)),"gamma is not in X^*+rho");
-   let (gamma_dom,)=make_dominant(G,gamma) in 
+   let (gamma_dom,)=make_dominant(G,gamma) in
    for i in distinguished_fiber(G) do parameter(KGB(G,i),gamma_dom,null(rank(G))) od
 
 
-{there are 2^rank minimal principal series of a split group 
-with given infinitesimal character gamma, parameter(x,lambda,gamma) 
+{there are 2^rank minimal principal series of a split group
+with given infinitesimal character gamma, parameter(x,lambda,gamma)
 where lambda runs over characters of M=Z_2^rank
 warning: some parameters may fail to be final}
 {.all minimal principal series of split group with given infinitesimal character.}

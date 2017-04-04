@@ -1,9 +1,7 @@
-{ this file, together with convert_c_form.at, should replace herm.at}
-
 <basic.at
 <convert_c_form.at
 
-{.c-invariant form on standard module.}
+{.write c-invariant form on standard module as a ParamPol of standardrepKs.}
 set c_form_std = (Param->ParamPol): { never involves |twisted_full_deform| }
   full_deform@Param { built-in }
 
@@ -12,7 +10,7 @@ set twisted_c_form_std = (Param->ParamPol): { c-form on extended group }
 
 {    c_form on irreducible representations   }
 
-{.c-invariant form on irreducible module in terms of standardrepks.}
+{.c-invariant form on irreducible module of p as ParamPol of standardrepKs.}
 set c_form_irreducible (Param p) = ParamPol:
 ( let ori_nr_p = orientation_nr(p), P = null_module(real_form(p)) in
   for c@q in KL_sum_at_s(p)
@@ -53,50 +51,38 @@ set c_form_irreducible_long (Param p) =
 
 {    twisted_c_form_irreducible and its variants   }
 
-{ The functions below implement the algorithm from Vogan in email 9/22/16
-  (but the starting formula was changed since then):
-  * for each delta-fixed term q add c_form_std(q,delta) (fully twisted-deformed)
+{ utility: compute fixed and unfixed contributions to c-form on irreducible(p)
+  no deformation is done, but orientation numbers are included;
+  fixed contributions are already halved; for unfixed ones this needs to wait
+}
+set twisted_c_form_irreducible_contributions (Param p) =
+    (ParamPol,ParamPol): { (fixed part, 2*unfixed part) }
+  let G=p.real_form, ori_nr_p = orientation_nr(p)
+  then fixed_terms=G.null_module, unfixed_terms=G.null_module
+  in
+  for c@q in (1+s)*KL_sum_at_s(p) + (1-s)*twisted_KL_sum_at_s(p)
+  do if twist(q)=q
+     then fixed_terms+:=(half(c)*orientation_nr_term(ori_nr_p,q),q)
+     else unfixed_terms+:=(c*orientation_nr_term(ori_nr_p,q),q)
+     fi
+  od; (fixed_terms,unfixed_terms)
+
+{ starting formula in the c-form calculation: J(p)_c=\sum w(q)I(q)_c }
+set twisted_c_form_irreducible_as_sum_of_standards (Param p) = ParamPol:
+  +twisted_c_form_irreducible_contributions(p) { add twisted and untwisted }
+
+{ The following function implements algorithm from Vogan in email 9/22/16:
+  * for each delta-fixed term q add c_form_std(q) (fully twisted-deformed)
   * for each pair {q,delta(q)} add q*0 (deformation to nu=0 of q).
   For second kind it it convenient to add q*0 and delta(q)*0 separately
   and at the end divide the sum of such contributions by 2.
 }
 
-{ starting formula in the c-form calculation: J(p)_c=\sum w(q)I(q)_c
-  no deformation, but include orientation numbers; unfixed terms not yet halved
-}
-set twisted_c_form_irreducible_as_sum_of_standards (Param p) = ParamPol:
-( let G=p.real_form, ori_nr_p = orientation_nr(p) in
-  null_module(G) +
-  for c@q in (1+s)*KL_sum_at_s(p) + (1-s)*twisted_KL_sum_at_s(p)
-  do
-  ( if twist(q)=q then half(c) else c fi * orientation_nr_term(ori_nr_p,q)
-  , q
-  )
-  od
-)
-
-{ basic version of twisted_c_form_irreducible, for the inner class involution
-  start with formula from c_form_irreducible_twisted_as_sum_of_standards
-  replace each delta-fixed I(q)_c with twisted_full_deform(q)
-  replace each pair of delta-interchanged I(q)_c with q*0
-  this is the formula which can then be converted to give the Hermitian form
-}
-
-{.twisted c-invariant form on an irreducible in terms of standardrepks.}
+{.twisted c-invariant form on an irreducible in terms of standardrepKs.}
 set twisted_c_form_irreducible (Param p) = ParamPol:
-( let G=p.real_form
-  then fixed_terms = null_module(G), unfixed_terms = null_module(G)
-  in
-  for c@q in twisted_c_form_irreducible_as_sum_of_standards(p)
-  do
-    if twist(q)=q
-    then { fixed under the inner class twist }
-      fixed_terms +:= c*twisted_full_deform(q)
-    else { now |1+s| divides |c|, which justifies not using |scale_extended|: }
-      unfixed_terms +:= c*(q*0) { postpone halving here }
-    fi
-  od
-; fixed_terms + half(unfixed_terms)
+( let (fixed,unfixed)=twisted_c_form_irreducible_contributions(p)
+{ |1+s| divides |unfixed|, no need for |scale_extended|; take half at |nu=0| }
+  in map(twisted_full_deform@Param,fixed)+half(unfixed*0)
 )
 
 {.c_form_irrecible with extra information.}
@@ -104,22 +90,30 @@ set twisted_c_form_irreducible_long (Param p) =
     (ParamPol,[(Param,Split,ParamPol)],ParamPol):
 ( assert(twist(p)=p,"parameter is not fixed by inner class involution");
   let G=p.real_form, terms=[(Param,Split,ParamPol)]: []
-  , start = twisted_c_form_irreducible_as_sum_of_standards(p)
+  , (fixed,unfixed) = twisted_c_form_irreducible_contributions(p)
   then fixed_terms = null_module(G), unfixed_terms = null_module(G)
   in
-  for c@q in start
+  for c@q in fixed
   do
-    if twist(q)=q
-    then
-      let contrib=c*twisted_full_deform(q) in
-      (fixed_terms+:=contrib, terms#:=(q,c,contrib))
-    else
-      { now |1+s| devides |c|, which justifies not using |scale_extended|: }
-      let contrib=c*(q*0) in
-      (unfixed_terms+:=contrib, terms#:=(q,c,contrib))
-    fi
+    let contrib=c*twisted_full_deform(q) in
+    (fixed_terms+:=contrib, terms#:=(q,c,contrib))
   od
-; ( start, terms, fixed_terms + half(unfixed_terms) )
+; for c@q in unfixed
+  do { now |1+s| devides |c|, which justifies not using |scale_extended|: }
+    let contrib=c*(q*0) in (unfixed_terms+:=contrib, terms#:=(q,c,contrib))
+  od
+; ( fixed+unfixed, terms, fixed_terms + half(unfixed_terms) )
+)
+
+set twist_orbits (ParamPol P) = ParamPol:
+( assert(map(twist@Param,P)=P) { polynomial is assumed to be twist-stable }
+; let result=0*P in
+  while !=P
+  do let (c,q):term = P.first_term then tq=twist(q) in
+    result+:=term
+  ; if q=tq then P-:=term else let m_c = -c in P+:=[(m_c,q),(m_c,tq)] fi
+  od
+; result
 )
 
 { print versions }
@@ -167,20 +161,21 @@ set check_hermitian (Param p, bool irreducible) = void:
             ," module does not admit any invariant Hermitian form")
   fi
 
-{ Unlike the c-invariant forms, Hermitian forms need a choice of normalization }
-
-set hermitian_form_std (Param p,Param p0) = ParamPol:
-  let c_invariant_form =
-    if is_equal_rank(real_form(p))
-    then c_form_std(p)
-    else check_hermitian(p,false); twisted_c_form_std(p)
-    fi
-  in convert_cform_hermitian(c_invariant_form,p0)
-
 {.Hermitian form on a standard module, canonical normalization.}
 set hermitian_form_std (Param p) = ParamPol:
-  hermitian_form_std(p,normal(p*0))
+  if is_equal_rank(real_form(p))
+  then c_form_std(p)
+  else check_hermitian(p,false); twisted_c_form_std(p)
+  fi. convert_cform_hermitian
 
+{.Hermitian form on a irreducible module, normalization from its initial term.}
+set hermitian_form_irreducible (Param p) = ParamPol:
+  if is_equal_rank(real_form(p))
+  then c_form_irreducible(p) { not twisted, in equal rank case this is faster }
+  else check_hermitian(p,true); twisted_c_form_irreducible(p)
+  fi.convert_cform_hermitian
+
+{.Hermitian form on a irreducible module, normalization from p0.}
 set hermitian_form_irreducible (Param p,Param p0) = ParamPol:
   let c_invariant_form =
     if is_equal_rank(real_form(p)) { then avoid twisted version, for speed }
@@ -189,30 +184,54 @@ set hermitian_form_irreducible (Param p,Param p0) = ParamPol:
     fi
   in convert_cform_hermitian(c_invariant_form,p0)
 
-set hermitian_form_irreducible (Param p) = ParamPol:
-  hermitian_form_irreducible(p,finalize(p*0)[0])
+{. Hermitian form on an irreducible, with extra information.}
+set hermitian_form_irreducible_long (Param p) =
+    (ParamPol,[(Param,Split,ParamPol)],ParamPol):
+  { here we just use |twisted_c_form_irreducible| in all cases }
+  check_hermitian(p,true);
+  let (formula,terms,cform) = twisted_c_form_irreducible_long(p) in
+  (formula,terms,convert_cform_hermitian(cform))
 
 set hermitian_form_irreducible_long (Param p, Param p0) =
     (ParamPol,[(Param,Split,ParamPol)],ParamPol):
-  { here we just use |twisted_c_form_irreducible| in all cases }
   check_hermitian(p,true);
   let (formula,terms,cform) = twisted_c_form_irreducible_long(p)
   then converted_terms=
     for (q,z,P) in terms do (q,z,convert_cform_hermitian(cform,p0)) od
   in (formula,converted_terms,convert_cform_hermitian(cform,p0))
 
-{. Hermitian form on an irreducible, with extra information.}
-set hermitian_form_irreducible_long (Param p) =
-    (ParamPol,[(Param,Split,ParamPol)],ParamPol):
-  assert(is_hermitian(p)
-        ,"Irreducible module does not admit any invariant Hermitian form");
-  hermitian_form_irreducible_long(p,normal(p*0))
+{.nice output of hermitian_form_irreducible.}
+set print_hermitian_form_irreducible (Param p) = void:
+  hermitian_form_irreducible(p).pol_format.prints
 
-{ nice output of hermitian_form_irreducible }
+{.nice output of Hermitian forms on list of parameters.}
+set print_hermitian_form_irreducible ([Param] P) = void:
+  for p in P
+  do prints(new_line,"Hermitian form on irreducible: ",p)
+  ; print_hermitian_form_irreducible(p)
+  od
+
 set print_hermitian_form_irreducible (Param p,Param p0) = void:
   hermitian_form_irreducible(p,p0).pol_format.prints
-set print_hermitian_form_irreducible (Param p) = void:
-  print_hermitian_form_irreducible(p,normal(p*0))
+
+set print_hermitian_form_irreducible ([Param] P,Param p0) = void:
+  for p in P
+  do prints(new_line,"Hermitian form on irreducible: ",p)
+  ; print_hermitian_form_irreducible(p,p0)
+  od
+
+set print_hermitian_form_irreducible_long (Param p) = void:
+  let (formula,terms,answer)=hermitian_form_irreducible_long(p) in
+  prints(new_line,new_line
+        ,"(twisted) c-form on irreducible in terms of standards:", new_line
+        , formula,new_line);
+  for (p,coeff,P) in terms
+  do prints("coeff*form on standard: ", new_line
+           ,coeff.split_format,"*",p,":",new_line
+	   ,"fully deformed",new_line, (coeff*P).pol_format, new_line)
+  od;
+  prints("Hermitian form on irreducible module p=",p,":",new_line
+        ,answer.pol_format, "purity=", purity(answer))
 
 {.print Hermitian form on irreducible, plus extra information.}
 set print_hermitian_form_irreducible_long (Param p,Param p0) = void:
@@ -227,16 +246,32 @@ set print_hermitian_form_irreducible_long (Param p,Param p0) = void:
   od;
   prints("Hermitian form on irreducible module p=",p,":",new_line
         ,answer.pol_format, "purity=", purity(answer))
-set print_hermitian_form_irreducible_long (Param p) = void:
-  print_hermitian_form_irreducible_long(p,normal(p*0))
 
-{ for a list of parameters need p0 to have a consistent normalization}
-{. nice output of Hermitian forms on list of parameters .}
-set print_hermitian_form_irreducible ([Param] P,Param p0) = void:
-  for p in P
-  do prints(new_line,"Hermitian form on irreducible: ",p)
-  ; print_hermitian_form_irreducible(p,p0)
-  od
+{ cut the red tape and tell about the hermitian form analysis directly }
+set analyse_hermitian_form_irreducible (Param p) = void:
+  if not p.is_hermitian
+  then prints("Parameter ",p," is not delta-fixed; no hermitian form exists")
+  else prints("Parameter ",p," is delta-fixed",new_line,
+    "twisted c_form on irreducble in terms of standard representations:")
+  ; let (fixed,unfixed) = twisted_c_form_irreducible_contributions(p)
+    , c_form=p.real_form.null_module
+    in
+    if !=fixed then prints("Twist-fixed contributions:") fi
+  ; for c@q in fixed
+    do let contribution = c*twisted_full_deform(q) in
+      prints(c,"* form on I(",q,"), fully deformed:",contribution,new_line)
+    ; c_form+:=contribution
+    od
+  ; if !=unfixed then prints(new_line,"Non twist-fixed terms:") fi
+  ; for c@q in twist_orbits(unfixed)
+    do let contribution = half(c*(q*0)+c*(twist(q)*0)) in
+      prints(c,"*(I(",q,")",new_line
+          ,"        +I(",twist(q),")), at nu=0:",contribution,new_line)
+    ; c_form+:=contribution
+    od
+  ; prints(new_line,"Complete c-invariant form:",c_form,new_line)
+  ; prints("Hermitian form:",c_form.convert_cform_hermitian,new_line)
+  fi
 
 {   unitarity and weak unitarity tests }
 

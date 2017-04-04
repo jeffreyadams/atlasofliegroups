@@ -30,30 +30,38 @@ namespace atlas {
 namespace repr {
 
 /*
-We represent the parameter of a standard representation as a triplet
-$(x,\tilde\lambda,gamma)$, where |x| is an element of the set $K\\backslash
-G/B$ for our fixed real form (determining amongs others an involution $\thata$
-of $X^*$), $\tilde\lambda$ is a genuine character of the $\rho$-cover of
-$H^{\theta_x}$, and $\gamma$ is a character of the complex Lie algebra $h$.
-The latter two values are related; $(1+\theta)\gamma=(1+\theta)\lambda$, in
-other words $\gamma-\tilde\lambda$ is fixed by $-\theta$; the projection of
-$\gamma$ on the $+1$-eigenspace of $\theta$ is determined by this relation and
-is called the discrete part $\lamda_0$ of $\gamma$. The difference
-$\gamma-\lambda_0$, i.e., the projection of $\gamma$ on the $-1$-eigenspace,
-is called $\nu$. This component is what we are adding with respect to the
-values encoded in the |standardrepk::StandarRepK| type. The part of
-$\tilde\lambda$ that is independent of $lambda_0$ is its "torsion part"
-(disconnected $H(R)_c$), which would be represented in the |Block| structure
-by the |TorusPart| component of the |TitsElt| of the dual KGB-element ($y$).
-In fact we convert it intenally to a |TorusPart| here too. It repesents an
-element of the quotient of $X^* /2X^*$ by the image of $(X^*)^\theta$, which
-can be converted to the difference $\tilde\lambda-\lambda_0$ by the method
-|involutions::InvolutionTable::unpack|.
+  A parameter of a standard representation is determined by a triplet
+  $(x,\tilde\lambda,gamma)$, where $x\in K\\backslash G/B$ for our fixed real
+  form (determining amongs others an involution $\thata$ of $X^*$),
+  $\tilde\lambda$ is a genuine character of the $\rho$-cover of
+  $H^{\theta_x}$, and $\gamma$ is a character of the complex Lie algebra $h$.
+  The latter two values are related; $(1+\theta)\gamma=(1+\theta)\lambda$, in
+  other words $\gamma-\tilde\lambda$ is fixed by $-\theta$; the projection of
+  $\gamma$ on the $+1$-eigenspace of $\theta$ is determined by this relation
+  and is called the free part $\lambda_0$ of $\gamma$. The difference
+  $\gamma-\lambda_0$, i.e., the projection of $\gamma$ on the $-1$-eigenspace,
+  is called $\nu$. This component is what we are adding with respect to the
+  values encoded in the |standardrepk::StandarRepK| type. The part of
+  $\tilde\lambda$ that is independent of $\lambda_0$ is its "torsion part"
+  (due to the disconnectedness of $H(R)_c$), which would be represented in the
+  |Block| structure by the |TorusPart| component of the |TitsElt| of the dual
+  KGB-element ($y$). In fact we also convert it internally to a |TorusPart|
+  here, called |y_bits|. It represents an element of the quotient of
+  $(X^*)^{-\theta}$ by the image $(1-\theta)X^*$; from it we can recover
+  $\tilde\lambda-\lambda_0$. using |involutions::InvolutionTable::unpack|.
 
-In principle $\gamma$ could take any complex values compatible with
-$\tildelambda$, but we shall only be interested in real values, and in fact
-record a rational value, because that is all we can do in an exact manner, and
-all interesting phenomena take place at rational infinitesimal character.
+  In principle $\gamma$ could take any complex values compatible with
+  $\tilde\lambda$. But we are only interested in real values, and in fact
+  record a rational value, because we do exact computations, and because all
+  interesting phenomena take place at rational infinitesimal character.
+
+  We add a field |height| that is determined by the other ones (in the context
+  of a given real reductive group), indeed just by $\lambda_0$. It is useful
+  because this is the first statistic used for sorting parameters when they
+  are combinined into "parameter polynomials", and this will be faster if we
+  don't need the somewhat lengthy computation of the height (twice) for each
+  comparison made. On the other hand we now need to compute the height once
+  for each parameter constructed, even if it never enters a polynomial.
 */
 
 class StandardRepr
@@ -61,19 +69,21 @@ class StandardRepr
   friend class Rep_context;
 
   KGBElt x_part;
-  TorusPart y_bits;
-  RatWeight infinitesimal_char; // $\gamma$
+  unsigned int hght; // determined by other fields; mainly for (fast) sorting
+  TorusPart y_bits; // torsion part of $\lambda$
+  RatWeight infinitesimal_char; // $\gamma$ (determines free part of $\lambda$)
 
   // one should call constructor from |Rep_context| only
-  StandardRepr (KGBElt x,TorusPart y,const RatWeight& gamma)
-    : x_part(x), y_bits(y), infinitesimal_char(gamma)
-  { infinitesimal_char.normalize(); } // ensure this class invariant
+  StandardRepr (KGBElt x,TorusPart y,const RatWeight& gamma,unsigned int h)
+    : x_part(x), hght(h), y_bits(y), infinitesimal_char(gamma)
+  { infinitesimal_char.normalize(); } // to ensure this class invariant
 
  public:
 
   const RatWeight& gamma() const { return infinitesimal_char; }
   KGBElt x() const { return x_part; }
   const TorusPart& y() const { return y_bits; }
+  unsigned int height() const { return hght; }
 
   bool operator== (const StandardRepr&) const;
 
@@ -199,6 +209,7 @@ class Rep_context
 
  private:
   void to_singular_canonical(RankFlags gens, StandardRepr& z) const;
+  unsigned int height(Weight theta_plus_1_gamma) const;
 }; // |Rep_context|
 
 typedef Rep_context::poly SR_poly;
@@ -228,7 +239,7 @@ class Rep_table : public Rep_context
   std::vector<StandardRepr> pool;
   HashTable<StandardRepr,unsigned long> hash;
   std::vector<unsigned short int> lengths;
-  std::vector<SR_poly> KL_list; // indexed by |hash| values for |StandardRepr|s
+  std::vector<SR_poly> KLV_list; // indexed by |hash| values for |StandardRepr|s
   std::vector<SR_poly> def_formula; // idem
 
   std::vector<SR_poly> twisted_KLV_list; // values at twist-fixed |hash|s only
@@ -236,7 +247,7 @@ class Rep_table : public Rep_context
 
  public:
   Rep_table(RealReductiveGroup &G)
-    : Rep_context(G), pool(), hash(pool), KL_list(), def_formula()
+    : Rep_context(G), pool(), hash(pool), KLV_list(), def_formula()
   {}
 
   unsigned int length(StandardRepr z); // by value
@@ -259,7 +270,8 @@ class Rep_table : public Rep_context
   // here |block| is non-|const| as the method generates KL polynomials in it
   // and |survivors| is non-|const| because the method computes and exports it
 
-  void add_block(ext_block::ext_block& block, param_block& parent);
+  void add_block(ext_block::ext_block& block, param_block& parent,
+		 BlockElt top_elt, BlockEltList& extended_finals);
   // here |block| is non-|const|; the method generates twisted KLV polys in it
 
 }; // |Rep_table|

@@ -3643,31 +3643,35 @@ typedef std::shared_ptr<module_parameter_value> own_module_parameter;
 @ When printing a module parameter, we shall indicate a triple
 $(x,\lambda,\nu)$ that defines it. Since we shall need to print |StandardRepr|
 values in other contexts as well, we shall define an auxiliary output function
-of such values first and then use that. The auxiliary function needs the
-|Rep_context|, so we pass that explicitly. Using the same name |print| for the
-auxiliary function seems natural, but forces us to qualify it as
-|interpreter::print| when calling it from a method called |print|, to avoid
-being masked by an attempt at a recursive call.
+|print_stdrep| for such values first, which takes and additional |Rep_context|
+argument, and then call that function from |module_parameter_value::print|. By
+choosing a name for the auxiliary function different from |print|, we avoid
+having that call being mistaken for a recursive call.
 
 @f nu nullptr
 
 @< Local function def...@>=
-std::ostream& print
+std::ostream& print_stdrep
   (std::ostream& out,const StandardRepr& val, const Rep_context& rc)
-{ RootNbr witness; // dummy needed in call
-  return
-  out << @< Expression for adjectives that apply to a module parameter @>@;@;
-@/    << " parameter (x="
+{ return @|
+  out << "parameter(x="
       << val.x() << ",lambda="
       << rc.lambda(val) << ",nu="
       << rc.nu(val) << ')';
 }
-@ While that function was local (in the anonymous namespace), the virtual
-method |print| should not.
+
+@ Here is virtual method |module_parameter_value::print|, used when printing a
+value of type \.{Param} (as opposed to for instance printing a term of
+a \.{ParamPol}, which calls |print_stdrep|). Here we prefix the parameter text
+proper with additional information about the parameter that may be relevant to
+the user.
 
 @< Function definition... @>=
 void module_parameter_value::print(std::ostream& out) const
-{@; interpreter::print(out,val,rc()); }
+{ RootNbr witness; // dummy needed in call
+  out << @< Expression for adjectives that apply to a module parameter @>@;@;;
+  print_stdrep(out << ' ',val,rc());
+}
 
 @ We provide one of the adjectives ``non-standard'' (when $\gamma$ and
 therefore $\lambda$ fails to be imaginary-dominant), ``zero'' (the standard
@@ -3681,11 +3685,11 @@ finally ``final'' (the good ones that could go into a \.{ParamPol} value; the
 condition |is_final| should apply, though it is not tested here).
 
 @< Expression for adjectives... @>=
-( not rc.is_standard(val,witness) ? "non-standard"
-@|: not rc.is_dominant(val,witness) ? "non-dominant"
-@|: not rc.is_nonzero(val,witness) ? "zero"
-@|: not rc.is_semifinal(val,witness) ? "non-final"
-@|: not rc.is_normal(val) ? "non-normal"
+( not rc().is_standard(val,witness) ? "non-standard"
+@|: not rc().is_dominant(val,witness) ? "non-dominant"
+@|: not rc().is_nonzero(val,witness) ? "zero"
+@|: not rc().is_semifinal(val,witness) ? "non-final"
+@|: not rc().is_normal(val) ? "non-normal"
 @|: "final")
 
 @ To make a module parameter, one should provide a KGB element~$x$, an
@@ -4615,7 +4619,8 @@ void virtual_module_value::print(std::ostream& out) const
       out << it->second.e();
     else
       out << it->second.s() << 's';
-    interpreter::print(out << '*',it->first,rc()); // print parameter
+    print_stdrep(out << '*',it->first,rc()); // print parameter
+    out << " [" << it->first.height() << ']';
   }
 }
 
@@ -4994,7 +4999,7 @@ since the parameter itself reported here might be final.
   if (not khc.isFinal(srk,witness))
   { std::ostringstream os;
     RootNbr simp_wit = khc.fiber(srk).simpleReal(witness);
-    print(os << "Non final restriction to K: ",p->val,rc)
+    print_stdrep(os << "Non final restriction to K: ",p->val,rc)
     @| << "\n  (witness "	<< khc.rootDatum().coroot(simp_wit) << ')';
     throw runtime_error(os.str());
   }

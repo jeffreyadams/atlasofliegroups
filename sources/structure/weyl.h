@@ -566,7 +566,7 @@ public:
     const;
   // standard reflection action of Weyl group using a root datum
   void act(const RootDatum& rd, const WeylElt& w, RatWeight& v) const;
-  // standard reflection action of Weyl group using a root datum
+  // standard reflection left action of Weyl group using a root datum
   void act(const RootDatum& rd, const WeylElt& w, LatticeMatrix& M) const;
 
   // same using only lists of simple (co)roots avoiding construction root datum
