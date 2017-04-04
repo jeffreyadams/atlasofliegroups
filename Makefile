@@ -26,9 +26,9 @@ INSTALL = /usr/bin/install
 #   INSTALLDIR := /usr/local/atlas
 #   BINDIR     := /usr/local/bin
 
-# The default: use current directoty for both
+# The default: use current directory for executables, shell script in ~/bin
 INSTALLDIR := $(shell pwd)
-BINDIR := $(shell pwd)
+BINDIR := $(HOME)/bin
 
 version := $(shell ./getversion.pl)
 
@@ -232,11 +232,9 @@ include sources/interpreter/dependencies # these are manually maintained for now
 install: Fokko atlas
 ifneq ($(INSTALLDIR),$(shell pwd))
 	@echo "Installing directories and files in $(INSTALLDIR)"
-	$(INSTALL) -d $(INSTALLDIR)/www
 	$(INSTALL) -d $(INSTALLDIR)/messages $(INSTALLDIR)/atlas-scripts
 	$(INSTALL) -m 644 LICENSE COPYRIGHT README $(INSTALLDIR)
 	$(INSTALL) -p Fokko atlas $(INSTALLDIR)
-	$(INSTALL) -m 644 www/*html $(INSTALLDIR)/www/
 	$(INSTALL) -m 644 messages/*.help $(INSTALLDIR)/messages/
 	$(INSTALL) -m 644 messages/intro_mess $(INSTALLDIR)/messages/
 	$(INSTALL) -m 644 atlas-scripts/* $(INSTALLDIR)/atlas-scripts/
@@ -248,7 +246,7 @@ ifneq ($(BINDIR),$(INSTALLDIR))
 	ln -s $(INSTALLDIR)/Fokko $(BINDIR)/Fokko # make symbolic link
 # whenever BINDIR is not INSTALLDIR, we can put a shell script as bin/atlas
 # which ensures the search path will be properly set (no compiled-in path here)
-	(echo '#!/bin/sh'; echo 'exec $(INSTALLDIR)/atlas --path=$(INSTALLDIR)/atlas-scripts basic.at "$$@"') >$(BINDIR)/atlas; chmod a+x $(BINDIR)/atlas
+	(echo '#!/bin/sh'; echo 'exec $(INSTALLDIR)/atlas --path=$(INSTALLDIR)/atlas-scripts all.at "$$@"') >$(BINDIR)/atlas; chmod a+x $(BINDIR)/atlas
 endif
 
 version:
