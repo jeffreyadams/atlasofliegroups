@@ -5076,6 +5076,7 @@ void branch_pol_wrapper(expression_base::level l)
   {
     StandardRepK srk= khc.std_rep_rho_plus
        (rc.lambda_rho(it->first),G.kgb().titsElt(it->first.x()));
+    khc.normalize(srk);
     standardrepk::combination chunk = khc.branch(khc.match_final(srk),bound);
     for (auto jt=chunk.begin(); jt!=chunk.end(); ++jt)
     {
