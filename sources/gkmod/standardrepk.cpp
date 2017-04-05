@@ -284,7 +284,7 @@ SRK_context::height(const StandardRepK& sr) const
 	 it=rd.beginPosCoroot(); it!=rd.endPosCoroot(); ++it)
     sum += std::abs(mu.dot(*it));
 
-  return sum/2; // each |dot| above is even
+  return sum/4; // |mu| has doubled coordinates, and use the coroot half-sum
 } // |SRK_context::height|
 
 
@@ -320,7 +320,7 @@ level SRK_context::height_bound(const Weight& lambda)
   while (new_negatives.any());
 
   level sp=mu.dot(rd.dual_twoRho());
-  level d=2*get_projection(negatives).denom; // double to match |sum/2| above
+  level d=4*get_projection(negatives).denom; // quadruple to match |height|
   return (sp+d-1)/d; // round upwards, since height is always integer
 } // |SRK_context::height_bound|
 
@@ -1540,6 +1540,8 @@ combination KhatContext::branch(seq_no s, level bound)
     combination::iterator head=remainder.begin(); // leading term
 
     equation eq=mu_equation(head->first,bound);
+
+    assert(eq.second.begin()->first==head->first); // so our loop will advance
 
     result += combination(eq.first,head->second,height_graded);
     remainder.add_multiple(eq.second,-head->second);

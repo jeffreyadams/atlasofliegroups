@@ -370,9 +370,9 @@ class SRK_context
   // no need for |q_back_HS_id_eq|, it would not involve $q$; use |back_HS_id|
 
 /*
-  The sum of absolute values on the positive coroots of $(1+theta)\lambda$.
-  This gives a Weyl group invariant limit on the size of the weights that will
-  be needed.
+  Half the sum of absolute values on the positive coroots of $(1+theta)\lambda$
+  or equivalently that weight made dominant paired with $\rho^\vee$. This gives
+  a Weyl group invariant limit on the size of the weights that will be needed.
 */
   level height(const StandardRepK& s) const;
 
