@@ -5032,6 +5032,7 @@ void branch_wrapper(expression_base::level l)
 @)
   if (l==expression_base::no_value)
     return;
+  khc.normalize(srk);
   standardrepk::combination combo=khc.standardize(srk);
   RatWeight zero_nu(G.rank());
 @/own_virtual_module acc @|
@@ -5117,17 +5118,17 @@ void to_canonical_wrapper(expression_base::level l)
 }
 
 @ Here is one more useful function: computing the height of a parameter
-(ignoring the $\nu$ component), as used in the |bound| argument to |branch|
-abouve.
+(ignoring the $\nu$ component). This is the same height displayed when
+printing \.{ParamPol} values, and it is also used when comparing to the
+|bound| argument to |branch| above. While this used to be obtained from the
+method |SRK_context::height|, the height is now stored inside |StandardRepr|
+values themselves, so we get it from there.
 
 @< Local function def...@>=
 void srk_height_wrapper(expression_base::level l)
 { shared_module_parameter p = get<module_parameter_value>();
-  standardrepk::SRK_context srkc(p->rf->val);
-  TitsElt a=p->rf->kgb().titsElt(p->val.x());
-  StandardRepK srk=srkc.std_rep_rho_plus (p->rc().lambda_rho(p->val),a);
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<int_value>(srkc.height(srk)));
+    push_value(std::make_shared<int_value>(p->val.height()));
 }
 
 @*2 Deformation formulas.

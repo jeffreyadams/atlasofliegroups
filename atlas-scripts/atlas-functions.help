@@ -754,7 +754,7 @@ K_type_formula: (Param->ParamPol) Express K-type in terms of standardrepns|_K
 branch: (Param,int->ParamPol) Find K-types of standardrepn up to given limit
   The first argument is taken as standard representation, and is interpreted
   as restricted to K (the nu component is replaced by a zero vector), while
-  the argument second is a bound on the height; the result should be
+  the second argument is a bound on the height; the result should be
   interpreted as linear combination of K-types, each standard final parameter
   term (which will have nu=0) standing for its lowest K-type.
 branch: (ParamPol,int->ParamPol) Find K-types of polynomial up to given limit
