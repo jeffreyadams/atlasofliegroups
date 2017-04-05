@@ -210,8 +210,8 @@ struct Cartan_info
 
   Cartan_info() : torsionProjector(0) {}
 
-  const Weight& coroot_sum(size_t i) const
-    { assert (bi_ortho[i]); return sum_coroots[bi_ortho.position(i)]; }
+  const Weight& coroot_sum(unsigned int i) const
+  { assert(i<sum_coroots.size()); return sum_coroots[i]; }
 
 }; // |struct Cartan_info|
 
@@ -256,6 +256,8 @@ class SRK_context
   bitset_entry::Pooltype proj_pool;
   HashTable<bitset_entry,unsigned int> proj_sets;
   std::vector<proj_info> proj_data;
+
+  static RootNbr offender; // |static| so |const| methods can tamper with it
 
  public:
   SRK_context(RealReductiveGroup &G);
@@ -327,18 +329,21 @@ class SRK_context
   The condition Zero is a sufficient, but possibly not necessary, condition
   for the parameter to determine a zero representation.
 
-  The |witness| parameter is set to an index of a root that witnesses
-  the failure to be Standard, non-Zero, or Final in case of such verdicts.
-  This index is into |f.simpleImaginary| for |isStandard| and |isZero|, and
-  it is into |f.simpleReal| for |isFinal|, where |f| is the |Fiber| at the
-  canonical twisted involution for the Cartan class of |sr|.
+  On a negative result, these functions set the value of |offender| to the
+  number of a root that witnesses the failure to be Standard, non-Zero, final.
+  This number can be retrieved (and is then cleared) by calling |witness|.
+  For |isNormal| the stored number indexes |sum_coroots|, so is not a root
+  number (use |bi_ortho.n_th_bit| for that) but otherwise use is the same.
 */
-  bool isStandard(const StandardRepK& sr, size_t& witness) const;
-  bool isNormal(Weight lambda, CartanNbr cn, size_t& witness) const;
-  bool isNormal(const StandardRepK& sr, size_t& witness) const
-    { return isNormal(lift(sr),sr.Cartan(),witness); }
-  bool isZero(const StandardRepK& sr, size_t& witness) const;
-  bool isFinal(const StandardRepK& sr, size_t& witness) const;
+  bool isStandard(const StandardRepK& sr) const;
+  bool isNormal(Weight lambda, CartanNbr cn) const;
+  bool isNormal(const StandardRepK& sr) const
+    { return isNormal(lift(sr),sr.Cartan()); }
+  bool isZero(const StandardRepK& sr) const;
+  bool isFinal(const StandardRepK& sr) const;
+
+  // after one of the above fail, |witness| tells which root caused it to
+  RootNbr witness() const { auto result=offender; offender=-1; return result; }
 
   void normalize(StandardRepK& sr) const;
 

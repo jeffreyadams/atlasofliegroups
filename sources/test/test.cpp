@@ -362,12 +362,11 @@ void Ktypeform_f()
   StandardRepK sr=interactive::get_standardrep(khc);
 
   {
-    size_t witness;
-    if (not khc.isFinal(sr,witness))
+    if (not khc.isFinal(sr))
     {
       khc.print(std::cout << "Representation ",sr)
         << " is not final, as witnessed by coroot "
-	<< G.rootDatum().coroot(khc.fiber(sr).simpleReal(witness)) << ".\n";
+	<< G.rootDatum().coroot(khc.witness()) << ".\n";
       return;
     }
   }
@@ -426,12 +425,11 @@ void qKtypeform_f()
   StandardRepK sr=interactive::get_standardrep(khc);
 
   {
-    size_t witness;
-    if (not khc.isFinal(sr,witness))
+    if (not khc.isFinal(sr))
     {
       khc.print(std::cout << "Representation ",sr)
         << " is not final, as witnessed by coroot "
-	<< G.rootDatum().coroot(khc.fiber(sr).simpleReal(witness)) << ".\n";
+	<< G.rootDatum().coroot(khc.witness()) << ".\n";
       return;
     }
   }
@@ -486,20 +484,19 @@ void Ktypemat_f()
   khc.normalize(sr);
 
   {
-    size_t witness;
-    if (not khc.isStandard(sr,witness))
+    if (not khc.isStandard(sr))
     {
       khc.print(std::cout << "Representation ",sr)
         << " is not standard, as witnessed by coroot "
-	<< G.rootDatum().coroot(khc.fiber(sr).simpleImaginary(witness))
+	<< G.rootDatum().coroot(khc.witness())
 	<< ".\n";
       return;
     }
-    if (not khc.isFinal(sr,witness))
+    if (not khc.isFinal(sr))
     {
       khc.print(std::cout << "Representation ",sr)
         << " is not final, as witnessed by coroot "
-	<< G.rootDatum().coroot(khc.fiber(sr).simpleReal(witness)) << ".\n";
+	<< G.rootDatum().coroot(khc.witness()) << ".\n";
       return;
     }
   }
@@ -570,28 +567,27 @@ void qKtypemat_f()
   StandardRepK sr=interactive::get_standardrep(khc);
 
   {
-    size_t witness;
-    if (not khc.isNormal(sr,witness))
+    if (not khc.isNormal(sr))
     {
       khc.print(std::cout << "Representation ",sr)
         << " is not normal, as witnessed by coroot sum "
-	<< khc.info(sr.Cartan()).coroot_sum(witness)
+	<< khc.info(sr.Cartan()).coroot_sum(khc.witness())
 	<< ".\n";
       return;
     }
-    if (not khc.isStandard(sr,witness))
+    if (not khc.isStandard(sr))
     {
       khc.print(std::cout << "Representation ",sr)
         << " is not standard, as witnessed by coroot "
-	<< G.rootDatum().coroot(khc.fiber(sr).simpleImaginary(witness))
+	<< G.rootDatum().coroot(khc.witness())
 	<< ".\n";
       return;
     }
-    if (not khc.isFinal(sr,witness))
+    if (not khc.isFinal(sr))
     {
       khc.print(std::cout << "Representation ",sr)
         << " is not final, as witnessed by coroot "
-	<< G.rootDatum().coroot(khc.fiber(sr).simpleReal(witness)) << ".\n";
+	<< G.rootDatum().coroot(khc.witness()) << ".\n";
       return;
     }
   }
@@ -722,20 +718,19 @@ void branch_f()
   StandardRepK sr=interactive::get_standardrep(khc);
 
   {
-    size_t witness;
-    if (not khc.isStandard(sr,witness))
+    if (not khc.isStandard(sr))
     {
       khc.print(std::cout << "Representation ",sr)
         << " is not standard, as witnessed by coroot "
-	<< G.rootDatum().coroot(khc.fiber(sr).simpleImaginary(witness))
+	<< G.rootDatum().coroot(khc.witness())
 	<< ".\n";
       return;
     }
-    if (not khc.isFinal(sr,witness))
+    if (not khc.isFinal(sr))
     {
       khc.print(std::cout << "Representation ",sr)
         << " is not final, as witnessed by coroot "
-	<< G.rootDatum().coroot(khc.fiber(sr).simpleReal(witness)) << ".\n";
+	<< G.rootDatum().coroot(khc.witness()) << ".\n";
       return;
     }
   }
@@ -777,20 +772,19 @@ void qbranch_f()
   StandardRepK sr=interactive::get_standardrep(khc);
 
   {
-    size_t witness;
-    if (not khc.isStandard(sr,witness))
+    if (not khc.isStandard(sr))
     {
       khc.print(std::cout << "Representation ",sr)
         << " is not standard, as witnessed by coroot "
-	<< G.rootDatum().coroot(khc.fiber(sr).simpleImaginary(witness))
+	<< G.rootDatum().coroot(khc.witness())
 	<< ".\n";
       return;
     }
-    if (not khc.isFinal(sr,witness))
+    if (not khc.isFinal(sr))
     {
       khc.print(std::cout << "Representation ",sr)
         << " is not final, as witnessed by coroot "
-	<< G.rootDatum().coroot(khc.fiber(sr).simpleReal(witness)) << ".\n";
+	<< G.rootDatum().coroot(khc.witness()) << ".\n";
       return;
     }
   }

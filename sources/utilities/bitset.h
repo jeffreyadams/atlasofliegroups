@@ -325,6 +325,8 @@ template<unsigned int n> class BitSet
   iterator begin() const { return iterator(Base::begin()); }
   iterator end() const { return iterator(); } // zero value is end indicator
 
+  unsigned int n_th_bit(unsigned int count) const; // "inverse" of position
+
 // manipulators
 
   BitSet& operator^= (const BitSet& b) { Base::operator^=(b); return *this; }

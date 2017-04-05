@@ -4995,12 +4995,10 @@ void K_type_formula_wrapper(expression_base::level l)
 since the parameter itself reported here might be final.
 
 @< Check that |srk| is final, and if not |throw| an error @>=
-{ size_t witness;
-  if (not khc.isFinal(srk,witness))
+{ if (not khc.isFinal(srk))
   { std::ostringstream os;
-    RootNbr simp_wit = khc.fiber(srk).simpleReal(witness);
-    print_stdrep(os << "Non final restriction to K: ",p->val,rc)
-    @| << "\n  (witness "	<< khc.rootDatum().coroot(simp_wit) << ')';
+    print_stdrep(os << "Non final restriction to K: ",p->val,rc) @|
+      << "\n  (witness " << khc.rootDatum().coroot(khc.witness()) << ')';
     throw runtime_error(os.str());
   }
 }
@@ -5026,9 +5024,7 @@ void branch_wrapper(expression_base::level l)
   KhatContext& khc = p->rf->khc();
   StandardRepK srk=
     khc.std_rep_rho_plus (rc.lambda_rho(p->val),G.kgb().titsElt(p->val.x()));
-@/{@; size_t witness;
-   assert(khc.isStandard(srk,witness));
-  } // should be ensured by |test_standard|
+  assert(khc.isStandard(srk)); // should be ensured by |test_standard|
 @)
   if (l==expression_base::no_value)
     return;
