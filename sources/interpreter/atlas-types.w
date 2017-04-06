@@ -5086,8 +5086,8 @@ void branch_wrapper(expression_base::level l)
     standardrepk::combination chunk = khc.branch(it->first,bound);
     for (auto jt=chunk.begin(); jt!=chunk.end(); ++jt)
     {
-      StandardRepr srk = rc.sr(khc.rep_no(jt->first),khc,zero_nu);
-      acc->val.add_term(srk,Split_integer(it->second*jt->second));
+      StandardRepr z = rc.sr(khc.rep_no(jt->first),khc,zero_nu);
+      acc->val.add_term(z,Split_integer(it->second*jt->second));
     }
   }
   push_value(acc);
@@ -5111,20 +5111,21 @@ void branch_pol_wrapper(expression_base::level l)
   RealReductiveGroup& G=P->rf->val;
   const Rep_context rc = P->rc();
   KhatContext& khc = P->rf->khc();
+  auto P0 = rc.scale_0(P->val);
 @/own_virtual_module acc @|
     (new virtual_module_value(P->rf, repr::SR_poly(rc.repr_less())));
   RatWeight zero_nu(G.rank());
-  for (auto it=P->val.begin(); it!=P->val.end(); ++it)
-    // loop over terms of |P|
+  for (auto it=P0.begin(); it!=P0.end(); ++it)
+    // loop over terms of |P0|
   {
     StandardRepK srk= khc.std_rep_rho_plus
        (rc.lambda_rho(it->first),G.kgb().titsElt(it->first.x()));
-    khc.normalize(srk);
+    assert(khc.isNormal(srk));
     standardrepk::combination chunk = khc.branch(khc.match_final(srk),bound);
     for (auto jt=chunk.begin(); jt!=chunk.end(); ++jt)
     {
-      StandardRepr srk = rc.sr(khc.rep_no(jt->first),khc,zero_nu);
-      acc->val.add_term(srk,Split_integer(it->second*jt->second));
+      StandardRepr z = rc.sr(khc.rep_no(jt->first),khc,zero_nu);
+      acc->val.add_term(z,it->second*jt->second);
     }
   }
   push_value(acc);
