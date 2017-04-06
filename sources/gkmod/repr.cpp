@@ -110,6 +110,9 @@ StandardRepr
   return result;
 }
 
+const WeightInvolution& Rep_context::theta (const StandardRepr& z) const
+{ return innerClass().involution_table().matrix(kgb().inv_nr(z.x())); }
+
 Weight Rep_context::lambda_rho(const StandardRepr& z) const
 {
   const InvolutionNbr i_x = kgb().inv_nr(z.x());
@@ -123,19 +126,18 @@ Weight Rep_context::lambda_rho(const StandardRepr& z) const
   return (i2 + i_tab.y_lift(i_x,z.y()))/2; // division exact again
 }
 
-// return $\lambda \in \rho+X^*$ as half-integer rational vector
-RatWeight Rep_context::lambda(const StandardRepr& z) const
+RatWeight Rep_context::gamma_0 (const StandardRepr& z) const
 {
-  RatWeight result(rho(rootDatum()));
-  return result.normalize()+lambda_rho(z);
+  const InvolutionTable& i_tab = innerClass().involution_table();
+  const auto& theta = i_tab.matrix(kgb().inv_nr(z.x()));
+  return ((z.gamma()+theta*z.gamma())/=2).normalize();
 }
 
 RatWeight Rep_context::nu(const StandardRepr& z) const
 {
-  const InvolutionNbr i_x = kgb().inv_nr(z.x());
-  const WeightInvolution& theta = innerClass().involution_table().matrix(i_x);
-  const Ratvec_Numer_t num = z.gamma().numerator()-theta*z.gamma().numerator();
-  return RatWeight(num,2*z.gamma().denominator()).normalize();
+  const InvolutionTable& i_tab = innerClass().involution_table();
+  const auto& theta = i_tab.matrix(kgb().inv_nr(z.x()));
+  return ((z.gamma()-theta*z.gamma())/=2).normalize();
 }
 
 TorusElement Rep_context::y_as_torus_elt(const StandardRepr& z) const
@@ -499,6 +501,19 @@ bool Rep_context::equivalent(StandardRepr z0, StandardRepr z1) const
   return z0==z1;
 }
 
+StandardRepr& Rep_context::scale(StandardRepr& z, const Rational& f) const
+{ // we can just replace the |infinitesimal_char|, nothing else changes
+  auto image = theta(z)*z.gamma();
+  auto diff = z.gamma()-image; // this equals $2\nu(z)$
+  z.infinitesimal_char += image;
+  z.infinitesimal_char += diff*f; // now we have |(gamma_0(z)+nu(z)*f)*2|
+  (z.infinitesimal_char/=2).normalize();
+  return z;
+}
+
+StandardRepr& Rep_context::scale_0(StandardRepr& z) const
+{ z.infinitesimal_char = gamma_0(z); return z; }
+
 RationalList Rep_context::reducibility_points(const StandardRepr& z) const
 {
   const RootDatum& rd = rootDatum();
@@ -802,6 +817,30 @@ unsigned int Rep_table::length(StandardRepr z)
   // otherwise do it the hard way, constructing a block up to |z|
   param_block block(*this,z); // compute partial block
   return block.length(block.size()-1);
+}
+
+SR_poly Rep_context::scale(const poly& P, const Rational& f) const
+{
+  poly result(repr_less());
+  for (auto it=P.begin(); it!=P.end(); ++it)
+  { auto z=it->first; // take a copy for modification
+    auto zs = finals_below(scale(z,f));
+    for (auto jt=zs.begin(); not zs.at_end(jt); ++jt)
+      result.add_term(*jt,it->second);
+  }
+  return result;
+}
+
+SR_poly Rep_context::scale_0(const poly& P) const
+{
+  poly result(repr_less());
+  for (auto it=P.begin(); it!=P.end(); ++it)
+  { auto z=it->first; // take a copy for modification
+    auto zs = finals_below(scale_0(z));
+    for (auto jt=zs.begin(); not zs.at_end(jt); ++jt)
+      result.add_term(*jt,it->second);
+  }
+  return result;
 }
 
 SR_poly Rep_context::expand_final(StandardRepr z) const // by value

@@ -4005,6 +4005,30 @@ void reducibility_points_wrapper(expression_base::level l)
   }
 }
 
+@ Scaling the continuous component~$\nu$ of a parameter is an important
+ingredient for calculating signatures of Hermitian forms. This was for a long
+time done with a user defined function, but having this built in is more
+efficient. Moreover scaling by~$0$ (called ``deformation to $\nu=0$'') can be
+done even more efficiently by specialised code.
+
+@< Local function def...@>=
+void scale_parameter_wrapper(expression_base::level l)
+{ shared_rat f = get<rat_value>();
+  own_module_parameter p = get_own<module_parameter_value>();
+  if (l!=expression_base::no_value)
+@/{@; p->rc().scale(p->val,f->val);
+    push_value(std::move(p));
+  }
+}
+
+void scale_0_parameter_wrapper(expression_base::level l)
+{ own_module_parameter p = get_own<module_parameter_value>();
+  if (l!=expression_base::no_value)
+@/{@; p->rc().scale_0(p->val);
+    push_value(std::move(p));
+  }
+}
+
 @ One of the main reasons to introduce module parameter values is that they
 allow computing a block, whose elements are again given by module parameters.
 Before we define the functions the do that, let us define a common function
@@ -4394,6 +4418,8 @@ install_function(parameter_outer_twist_wrapper,@|"twist" ,"(Param,mat->Param)");
 install_function(orientation_number_wrapper,@|"orientation_nr" ,"(Param->int)");
 install_function(reducibility_points_wrapper,@|
 		"reducibility_points" ,"(Param->[rat])");
+install_function(scale_parameter_wrapper,"*", "(Param,rat->Param)");
+install_function(scale_0_parameter_wrapper,"at_nu_0", "(Param->Param)");
 install_function(print_n_block_wrapper,@|"print_block","(Param->)");
 install_function(block_wrapper,@|"block" ,"(Param->[Param],int)");
 install_function(partial_block_wrapper,@|"partial_block","(Param->[Param])");
@@ -4624,7 +4650,9 @@ void virtual_module_value::print(std::ostream& out) const
   }
 }
 
-@ To start off a |virtual_module_value|, one usually takes an empty sum, but
+@*2 Functions for virtual modules.
+%
+To start off a |virtual_module_value|, one usually takes an empty sum, but
 one needs to specify a real form to fill the |rf| field. The information
 allows us to extract the real form from a virtual module even if it is empty.
 We allow testing the number of terms of the sum, and directly testing the sum
@@ -4940,6 +4968,25 @@ void first_term_wrapper (expression_base::level l)
   push_value(std::make_shared<module_parameter_value>(m->rf,term.first));
   if (l==expression_base::single_value)
     wrap_tuple<2>();
+}
+
+@ Here are variations of the scaling functions for parameters that operate on
+entire virtual modules.
+
+@< Local function def...@>=
+void scale_poly_wrapper(expression_base::level l)
+{ shared_rat f = get<rat_value>();
+  shared_virtual_module P = get<virtual_module_value>();
+  if (l!=expression_base::no_value)
+    push_value@|(std::make_shared<virtual_module_value>
+      (P->rf,P->rc().scale(P->val,f->val)));
+}
+
+void scale_0_poly_wrapper(expression_base::level l)
+{ shared_virtual_module P = get<virtual_module_value>();
+  if (l!=expression_base::no_value)
+    push_value@|(std::make_shared<virtual_module_value>
+      (P->rf,P->rc().scale_0(P->val)));
 }
 
 @*2 Computing with $K$-types.
@@ -5386,6 +5433,8 @@ install_function(split_mult_virtual_module_wrapper,@|"*"
 		,"(Split,ParamPol->ParamPol)");
 install_function(last_term_wrapper,"last_term","(ParamPol->Split,Param)");
 install_function(first_term_wrapper,"first_term","(ParamPol->Split,Param)");
+install_function(scale_poly_wrapper,"*", "(ParamPol,rat->ParamPol)");
+install_function(scale_0_poly_wrapper,"at_nu_0", "(ParamPol->ParamPol)");
 install_function(K_type_formula_wrapper,@|"K_type_formula" ,"(Param->ParamPol)");
 install_function(branch_wrapper,@|"branch" ,"(Param,int->ParamPol)");
 install_function(branch_pol_wrapper,@|"branch" ,"(ParamPol,int->ParamPol)");

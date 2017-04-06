@@ -86,7 +86,7 @@ public:
   Rational& operator/=(Rational q) { return operator=(operator/(q)); }
   Rational& operator%=(Rational q) { return operator=(operator%(q)); }
 
-  // assignment operators with integers have efficient implemementations
+  // assignment operators with integers have efficient implementations
   Rational& operator+=(Numer_t n);
   Rational& operator-=(Numer_t n);
   Rational& operator*=(Numer_t n);

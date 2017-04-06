@@ -248,7 +248,8 @@ set theta_induce_standard (Param p_L,RealForm G) = ParamPol:
   let p_G=parameter(x_G,lambda(p_L)+shift,nu(p_L))
   in if ind_verbose then prints("p_G before standardization:", p_G) fi;
   { if ind_verbose
-    then prints("K_norm(p_G) before standardization:", K_norm(p_G*0)) fi; }
+    then prints("K_norm(p_G) before standardization:", K_norm(p_G.at_nu_0))
+    fi; }
   let p_G_standardized=null_module(G) in
   if is_standard(p_G)
   then p_G_standardized:=(ParamPol:p_G)

@@ -17,10 +17,10 @@ i) If G is relatively split, Cartan is (relatively) split, all roots in the
    tau-invariant, this is the "G-spherical" case of KHatHowe, Section 8.
 
 ii) If p is final standard limit tempered, it has a unique LKT,
-    use theta_stable_data (see induction.at) to write p as cohomologically induced
-    from a relatively split L.
+    use theta_stable_data (see induction.at) to write p as cohomologically
+    induced from a relatively split L.
 
-iii.) Apply ii) to all terms of finalize(p*0).
+iii.) Apply ii) to all terms of finalize(p.at_nu_0).
 
 
 2) K_types: Given a KHighestWeight mu=(x,kappa), find all K_types containing
@@ -121,7 +121,7 @@ set = (KHighestWeight (x,mu), KHighestWeight (y,tau)) = bool:
 
 {. List of LKTs (as final tempered limit parameters) of a module given by a
    parameter. .}
-set LKTs (Param p) = [K_Type]: for q in finalize(p*0) do K_type(q) od
+set LKTs (Param p) = [K_Type]: for q in finalize(p.at_nu_0) do K_type(q) od
 
 {. LKT of module given by a parameter, if it is unique (otherwise error message) .}
 set LKT (Param p) = K_Type: let lkts=LKTs(p) in assert(#lkts=1,"More than one LKT; use LKTs"); lkts[0]
@@ -159,7 +159,7 @@ set highest_weight_split_spherical(K_Type p)=KHighestWeight:
 
 {. Highest weight of LKT of a G-spherical parameter (is unique). .}
 set highest_weight_split_spherical (Param p) = KHighestWeight:
-  highest_weight_split_spherical(K_type(p*0))
+  highest_weight_split_spherical(K_type(p.at_nu_0))
 
 {. Highest weight of LKT of G-spherical K-type w.r.t. x_K (is unique). .}
 set highest_weight_split_spherical (K_Type p,KGBElt x_K) = KHighestWeight:
@@ -390,7 +390,7 @@ result=[K_Type]:[] in
 
 {. All G-spherical K-types with same differential as the LKT of parameter p. .}
 set all_G_spherical_same_differential (Param p) = [K_Type]:
-  all_G_spherical_same_differential(K_type(p*0))
+  all_G_spherical_same_differential(K_type(p.at_nu_0))
 
 { see KHatHowe, end of Section 13
   mu-> phi=lambda-mu_2-2rho_c+rho

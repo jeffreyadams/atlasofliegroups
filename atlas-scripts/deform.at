@@ -66,13 +66,13 @@ set d_verbose=false
 set weak_lower (Param p) = Param:
   let (x,lambda,gamma)=%p, rp=reducibility_points(p)
   then lim = #rp
-  in param(x,lambda,if lim=0 then gamma*0 else gamma*rp[lim-1] fi)
+  in param(x,lambda,gamma*if lim=0 then 0 else rp[lim-1] fi)
 
 { go to next reducibility point (move even if at reducibility point) }
 set lower (Param p) = Param:
   let (x,lambda,gamma)=%p, rp=reducibility_points(p)
   then lim = let nrp=#rp in if nrp>0 and rp[nrp-1]=1/1 then nrp-1 else nrp fi
-  in  param(x,lambda,if lim=0 then gamma*0 else gamma*rp[lim-1] fi)
+  in  param(x,lambda,gamma*if lim=0 then 0 else rp[lim-1] fi)
 
 set deformation (Param p) = (Param,ParamPol): { deformed Param and new terms }
   (lower(p),deform(p)) { here |deform| may be replaced by |deformation_terms| }
@@ -88,7 +88,7 @@ set recursive_deform (Param p) = ParamPol:
       prints("full_def with: sc=", sc, ", p=", p);
       assert(is_standard(p)
 	    ,"non standard parameter encountered in deformation");
-      let acc=empty, at_nu0=ParamPol: sc*(p*0) { fully deformed |p| } in
+      let acc=empty, at_nu0=ParamPol: sc*(p.at_nu_0) { fully deformed |p| } in
       for factor in reducibility_points(p)
       ~do
 	let p_def=p*factor { next deformation of |p| }
@@ -107,7 +107,7 @@ set recursive_deform (Param p) = ParamPol:
 			 { |sc| will simply scale the resulting ParamPol }
     begin
       assert(is_standard(p),"non standard parameter in deformation");
-      let acc=empty, at_nu0=ParamPol: sc*(p*0) { fully deformed |p| } in
+      let acc=empty, at_nu0=ParamPol: sc*(p.at_nu_0) { fully deformed |p| } in
       for factor in reducibility_points(p)
       ~ { direction of deformation is down, towards 0; this is not essential }
       do acc+:=deformation_terms(p*factor) od

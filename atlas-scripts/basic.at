@@ -968,10 +968,6 @@ set inner_class (Param p) = InnerClass: real_form(p)
 set null_module (Param p) = ParamPol:
   null_module(real_form(p)) { avoid using ParamPol version below, could throw }
 
-{ deforming |nu| (operand order avoids conflicting with *@(int,ParamPol) ) }
-set * (Param p,rat f) = Param: { multiplying the infinitesmal character works: }
-  let (x,lambda_rho,gamma)=%p in param(x,lambda_rho,gamma*f)
-
 set x (Param p) = KGBElt: let (x,,) =%p in x
 set lambda_minus_rho (Param p) = vec: let (,lambda_rho,) =%p in lambda_rho
 set lambda (Param p) = ratvec: lambda_minus_rho(p)+rho(real_form(p))
@@ -1175,9 +1171,6 @@ set map ((Param->Param)f, ParamPol P) = ParamPol:
 
 set map ((Param->ParamPol)f, ParamPol P) = ParamPol:
   sum(P.real_form,for c@p in P do c*f(p) od)
-
-{ deform a whole ParamPol, by deforming all individual terms }
-set * (ParamPol P, rat f) = ParamPol: 0*P + for c@q in P do (c,q*f) od
 
 set half (ParamPol P) = ParamPol: 0*P+ for c@t in P do (half(c),t) od
 { inverse of multiplication *@(int,ParamPol); don't confuse with scaling }

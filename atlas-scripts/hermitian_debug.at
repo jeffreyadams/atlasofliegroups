@@ -85,7 +85,7 @@ assert(is_fixed(delta,p),"parameter is not fixed by given involution");
     then { fixed under the inner class twist }
       fixed_terms +:= half(c0)*orient_c*twisted_full_deform(q,delta)
     else { now |1+s| divides |c0|, which justifies not using |scale_extended|: }
-      unfixed_terms +:= c0*orient_c*(q*0) { postpone halving here }
+      unfixed_terms +:= c0*orient_c*(q.at_nu_0) { postpone halving here }
     fi
   od
 ; fixed_terms + half(unfixed_terms)
@@ -123,7 +123,7 @@ assert(twist(p,delta)=p,"parameter is not fixed by given involution");
       (fixed_terms+:=contrib, terms#:=(q,coef,contrib))
     else
       { now |1+s| devides |c|, which justifies not using |scale_extended|: }
-      let coef=c*orient_c then contrib=coef*(q*0) in
+      let coef=c*orient_c then contrib=coef*(q.at_nu_0) in
       (unfixed_terms+:=contrib, terms#:=(q,coef,contrib))
     fi
   od
@@ -390,7 +390,7 @@ set test_line (Param p) = void:
 ; prints("integrality points (for 2*nu): ",ipoints)
 ; if #points=0
   then prints("entire line is irreducible and unitary"
-             ,if is_final(p*0) then "" else " (nu=0 is not final)" fi)
+             ,if p.at_nu_0.is_final then "" else " (nu=0 is not final)" fi)
   else points:=(0/1)#points { tack on initial zero }
   ; if not points[#points-1]=1/1 then points:=points#(1/1) fi
   ; for i:#points-1 from 1
