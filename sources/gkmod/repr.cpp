@@ -331,8 +331,11 @@ void Rep_context::W_act(const WeylWord& w,StandardRepr& z) const
     innerClass().involution_table().y_pack(kgb().inv_nr(x),lr);
 }
 
+// an auxiliary for |to_singular_canonical|, used in normalisation
 void Rep_context::W_cross_act(StandardRepr& z,const WeylWord& w) const
-{
+{ // here |w| is for full Weyl group, but only singular "letters" should occur
+  // these cross actions no not affect |z.height()| or |z.gamma()|
+  // so we can allow ourselves to modify |z.x_part| and |z.y_bits| in place
   const RootDatum& rd = rootDatum();
   KGBElt& x= z.x_part;
   Weight lr = lambda_rho(z);
@@ -428,9 +431,9 @@ Rep_context::make_dominant(StandardRepr& z,const SubSystem& subsys) const
   return result;
 } // |make_dominant| (integrally)
 
-// an auxiliar that moves to a fixed conjugate under the |
+// auxiliary: move to a canonical for the |gens| (singular) subgroup of $W$
 void Rep_context::to_singular_canonical(RankFlags gens, StandardRepr& z) const
-{
+{ // simply-singular coroots are simple, so no need to constuct a subsystem
   TwistedInvolution tw = kgb().involution(z.x_part);
   WeylWord ww = innerClass().canonicalize(tw,gens);
   W_cross_act(z,ww); // move to that involution
@@ -843,47 +846,6 @@ SR_poly Rep_context::scale_0(const poly& P) const
   return result;
 }
 
-SR_poly Rep_context::expand_final(StandardRepr z) const // by value
-{
-  const RootDatum& rd = rootDatum();
-  const InvolutionTable& i_tab = innerClass().involution_table();
-
-  normalise(z); // this simplifies matters a lot; |z| is unchanged hereafter
-
-  const InvolutionNbr i_x = kgb().inv_nr(z.x());
-  const RatWeight& gamma=z.gamma();
-
-  RankFlags singular_real_parity;
-  for (weyl::Generator s=0; s<rd.semisimpleRank(); ++s)
-    if (rd.simpleCoroot(s).dot(gamma.numerator())==0)
-    { if (i_tab.is_real_simple(i_x,s))
-	singular_real_parity.set // record whether |s| is a real parity root
-	  // |y_lift| gives $(1-\theta)(\lambda-\rho)$
-	  // real simple coroot odd on $\lambda-\rho$ means it is parity
-	  (s,rd.simpleCoroot(s).dot(i_tab.y_lift(i_x,z.y()))%4!=0);
-      else if (i_tab.is_imaginary_simple(i_x,s))
-      {
-	if (kgb().status(s,z.x())==gradings::Status::ImaginaryCompact)
-	  return SR_poly(repr_less());; // return a zero result
-      }
-      else
-	assert(not kgb().isComplexDescent(s,z.x())); // because of |normalise|
-    }
-  // having made dominant, any non-final is witnessed on a (real) simple root
-  if (singular_real_parity.any())
-  {
-    const weyl::Generator s= singular_real_parity.firstBit();
-    const KGBEltPair p = kgb().inverseCayley(s,z.x());
-    Weight lr = lambda_rho(z); // no need to modify it for |sr_gamma|
-
-    SR_poly result = expand_final(sr_gamma(p.first,lr,gamma));
-    if (p.second!=UndefKGB)
-      result += expand_final(sr_gamma(p.second,lr,gamma));
-    return result;
-  }
-  else return SR_poly(z,repr_less()); // absent singular descents, return |1*z|
-} // |Rep_context::expand_final|
-
 containers::sl_list<StandardRepr>
   Rep_context::finals_below(StandardRepr z) const
 {
@@ -900,13 +862,13 @@ containers::sl_list<StandardRepr>
   containers::sl_list<StandardRepr> result { z };
   auto rit=result.begin();
   do
-  { auto it=singular.begin();
+  { const KGBElt x=rit->x();
+    auto it=singular.begin();
     for (; it(); ++it)
     { const auto s=*it;
-      const KGBElt x=rit->x();
       if (kgb().status(s,x)==gradings::Status::ImaginaryCompact)
       {
-        result.erase(rit++); // discard zero parameter (increment, then erase)
+        result.erase(rit); // discard zero parameter
 	break;
       }
       else if (kgb().status(s,x)==gradings::Status::Complex)
@@ -914,8 +876,7 @@ containers::sl_list<StandardRepr>
 	{ // replace |*rit| by its complex descent for |s|
 	  Weight lr = lambda_rho(*rit);
 	  rd.simple_reflect(s,lr,1); // pivot |lr| around $-\rho$
-	  rit->x_part = kgb().cross(s,x);
-	  rit->y_bits=i_tab.y_pack(kgb().inv_nr(rit->x_part),lr);
+	  *rit = sr_gamma(kgb().cross(s,x),lr,rit->gamma());
 	  break; // reconsider all singular roots for the new parameter
 	}
       }
@@ -924,8 +885,8 @@ containers::sl_list<StandardRepr>
 	const InvolutionNbr i_x = kgb().inv_nr(x);
 	if (rd.simpleCoroot(s).dot(i_tab.y_lift(i_x,rit->y()))%4!=0)
 	{ // found parity root; |kgb()| can distinguish type 1 and type 2
-	  const KGBEltPair p = kgb().inverseCayley(s,z.x());
-	  Weight lr = lambda_rho(z);
+	  const KGBEltPair p = kgb().inverseCayley(s,x);
+	  Weight lr = lambda_rho(*rit);
 	  assert(rd.simpleCoroot(s).dot(lr)%2!=0); // parity says this
 	  *rit = sr_gamma(p.first,lr,gamma); // |*rit| by first inverse Cayley
 	  if (p.second!=UndefKGB) // insert second inverse Cayley after first
@@ -940,6 +901,15 @@ containers::sl_list<StandardRepr>
   while (not result.at_end(rit));
   return result;
 } // |Rep_context::finals_below|
+
+SR_poly Rep_context::expand_final (StandardRepr z) const
+{
+  auto finals = finals_below(z);
+  poly result (repr_less());
+  for (auto it=finals.cbegin(); not finals.at_end(it); ++it)
+    result += *it;
+  return result;
+} // |Rep_context::expand_final|
 
 void Rep_table::add_block(param_block& block, BlockEltList& survivors)
 {
