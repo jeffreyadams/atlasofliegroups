@@ -674,6 +674,9 @@ twist: (Param->Param): twist the parameter by the distinguished involution
 twist: (Param,mat->Param): twist the parameter by the given external involution
 orientation_nr: (Param->int): the orientation number
 reducibility_points: (Param->[rat]): the 0<t<=1 with I(x,lambda,t\nu) reducible
+operator * : (Param,rat->Param): scale component nu by given rational factor
+at_nu_0 : (Param->Param): reduce component nu to 0 (scale it be a factor 0)
+
 print_block: (Param->): print (non-integral) block generated from parameter
 block: (Param->[Param],int): return block as list of parameters, and index
   The second component is the index into the first of the original parameter.
@@ -746,6 +749,11 @@ operator * : (int,ParamPol->ParamPol): integer multiple of a formal sum
 operator * : (Split,ParamPol->ParamPol): split integer multiple of a formal sum
 last_term: (ParamPol->Split,Param): highest term (for #x(p)) of non-empty module
 first_term: (ParamPol->Split,Param): lowest term (for #x(p)) of non-empty module
+operator * : (ParamPol,rat->ParamPol): scale nu in each term, and renormalize
+  After scaling the continuous part of the parameter in each term, some may no
+  longer be dominant or final, and need to be rewritten in the same way as
+  parameters are when incorporated into a ParamPol; this is the renormalization
+at_nu_0 : (ParamPol->ParamPol): scale nu in each term by 0
 
 K_type_formula: (Param->ParamPol) Express K-type in terms of standardrepns|_K
   The argument parameter is interpreted as giving an irreducible module; its

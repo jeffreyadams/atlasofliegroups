@@ -4005,6 +4005,30 @@ void reducibility_points_wrapper(expression_base::level l)
   }
 }
 
+@ Scaling the continuous component~$\nu$ of a parameter is an important
+ingredient for calculating signatures of Hermitian forms. This was for a long
+time done with a user defined function, but having this built in is more
+efficient. Moreover scaling by~$0$ (called ``deformation to $\nu=0$'') can be
+done even more efficiently by specialised code.
+
+@< Local function def...@>=
+void scale_parameter_wrapper(expression_base::level l)
+{ shared_rat f = get<rat_value>();
+  own_module_parameter p = get_own<module_parameter_value>();
+  if (l!=expression_base::no_value)
+@/{@; p->rc().scale(p->val,f->val);
+    push_value(std::move(p));
+  }
+}
+
+void scale_0_parameter_wrapper(expression_base::level l)
+{ own_module_parameter p = get_own<module_parameter_value>();
+  if (l!=expression_base::no_value)
+@/{@; p->rc().scale_0(p->val);
+    push_value(std::move(p));
+  }
+}
+
 @ One of the main reasons to introduce module parameter values is that they
 allow computing a block, whose elements are again given by module parameters.
 Before we define the functions the do that, let us define a common function
@@ -4162,7 +4186,7 @@ void KL_block_wrapper(expression_base::level l)
   own_matrix contributes_to = std::make_shared<matrix_value>(
     int_Matrix(n_survivors,block.size(),0));
   for (BlockElt z=0; z<block.size(); ++z)
-  { BlockEltList sb = block.survivors_below(z);
+  { BlockEltList sb = block.finals_for(z);
     for (BlockEltList::const_iterator it=sb.begin(); it!=sb.end(); ++it)
     { BlockElt x= permutations::find_index<int>(survivor->val,*it);
         // a row index
@@ -4241,7 +4265,7 @@ void partial_KL_block_wrapper(expression_base::level l)
   own_matrix contributes_to = std::make_shared<matrix_value>(
     int_Matrix(n_survivors,block.size(),0));
   for (BlockElt z=0; z<block.size(); ++z)
-  { BlockEltList sb = block.survivors_below(z);
+  { BlockEltList sb = block.finals_for(z);
     for (BlockEltList::const_iterator it=sb.begin(); it!=sb.end(); ++it)
     { BlockElt x= permutations::find_index<int>(survivor->val,*it);
         // a row index
@@ -4394,6 +4418,8 @@ install_function(parameter_outer_twist_wrapper,@|"twist" ,"(Param,mat->Param)");
 install_function(orientation_number_wrapper,@|"orientation_nr" ,"(Param->int)");
 install_function(reducibility_points_wrapper,@|
 		"reducibility_points" ,"(Param->[rat])");
+install_function(scale_parameter_wrapper,"*", "(Param,rat->Param)");
+install_function(scale_0_parameter_wrapper,"at_nu_0", "(Param->Param)");
 install_function(print_n_block_wrapper,@|"print_block","(Param->)");
 install_function(block_wrapper,@|"block" ,"(Param->[Param],int)");
 install_function(partial_block_wrapper,@|"partial_block","(Param->[Param])");
@@ -4624,7 +4650,9 @@ void virtual_module_value::print(std::ostream& out) const
   }
 }
 
-@ To start off a |virtual_module_value|, one usually takes an empty sum, but
+@*2 Functions for virtual modules.
+%
+To start off a |virtual_module_value|, one usually takes an empty sum, but
 one needs to specify a real form to fill the |rf| field. The information
 allows us to extract the real form from a virtual module even if it is empty.
 We allow testing the number of terms of the sum, and directly testing the sum
@@ -4773,8 +4801,11 @@ void subtract_module_wrapper(expression_base::level l)
   }
 }
 
-@ More generally than adding or subtracting, we can incorporate a term
-with specified coefficient.
+@ More generally than adding or subtracting, we can incorporate a term with
+specified coefficient. Here, rather than building a polynomial with the set of
+parameters but without the coefficient,as |expand_final| gives us, we directly
+iterate over the list produced by |finals_for|, attaching |coef| for each of
+its final parameters.
 
 @< Local function def...@>=
 
@@ -4788,7 +4819,9 @@ void add_module_term_wrapper(expression_base::level l)
     throw runtime_error @|
       ("Real form mismatch when adding a term to a module");
   if (l!=expression_base::no_value)
-  @/{@; accumulator->val.add_multiple(p->rc().expand_final(p->val),coef);
+  { auto finals = p->rc().finals_for(p->val);
+    for (auto it=finals.wcbegin(); not finals.at_end(it); ++it)
+      accumulator->val.add_term(*it,coef);
     push_value(accumulator);
   }
 }
@@ -4812,7 +4845,9 @@ void add_module_termlist_wrapper(expression_base::level l)
       if (accumulator->rf!=p->rf)
         throw runtime_error @|
           ("Real form mismatch when adding terms to a module");
-      accumulator->val.add_multiple(p->rc().expand_final(p->val),coef);
+       auto finals = p->rc().finals_for(p->val);
+       for (auto it=finals.wcbegin(); not finals.at_end(it); ++it)
+         accumulator->val.add_term(*it,coef);
      }
     push_value(accumulator);
   }
@@ -4942,6 +4977,25 @@ void first_term_wrapper (expression_base::level l)
     wrap_tuple<2>();
 }
 
+@ Here are variations of the scaling functions for parameters that operate on
+entire virtual modules.
+
+@< Local function def...@>=
+void scale_poly_wrapper(expression_base::level l)
+{ shared_rat f = get<rat_value>();
+  shared_virtual_module P = get<virtual_module_value>();
+  if (l!=expression_base::no_value)
+    push_value@|(std::make_shared<virtual_module_value>
+      (P->rf,P->rc().scale(P->val,f->val)));
+}
+
+void scale_0_poly_wrapper(expression_base::level l)
+{ shared_virtual_module P = get<virtual_module_value>();
+  if (l!=expression_base::no_value)
+    push_value@|(std::make_shared<virtual_module_value>
+      (P->rf,P->rc().scale_0(P->val)));
+}
+
 @*2 Computing with $K$-types.
 The ``restriction to $K$'' component of the Atlas library has for a long time
 had an isolated existence, in part because the ``nonzero final standard
@@ -4983,8 +5037,10 @@ void K_type_formula_wrapper(expression_base::level l)
     for (auto stit=st.cbegin(); stit!=st.cend(); ++stit)
     {
       StandardRepr term =  rc.sr(khc.rep_no(stit->first),khc,zero_nu);
-      acc->val.add_multiple(rc.expand_final(term),
-                            Split_integer(it->second*stit->second));
+      Split_integer coef (it->second*stit->second);
+      auto finals = p->rc().finals_for(term);
+      for (auto jt=finals.wcbegin(); not finals.at_end(jt); ++jt)
+         acc->val.add_term(*jt,coef);
     }
   }
   push_value(acc);
@@ -4995,12 +5051,10 @@ void K_type_formula_wrapper(expression_base::level l)
 since the parameter itself reported here might be final.
 
 @< Check that |srk| is final, and if not |throw| an error @>=
-{ size_t witness;
-  if (not khc.isFinal(srk,witness))
+{ if (not khc.isFinal(srk))
   { std::ostringstream os;
-    RootNbr simp_wit = khc.fiber(srk).simpleReal(witness);
-    print_stdrep(os << "Non final restriction to K: ",p->val,rc)
-    @| << "\n  (witness "	<< khc.rootDatum().coroot(simp_wit) << ')';
+    print_stdrep(os << "Non final restriction to K: ",p->val,rc) @|
+      << "\n  (witness " << khc.rootDatum().coroot(khc.witness()) << ')';
     throw runtime_error(os.str());
   }
 }
@@ -5026,9 +5080,7 @@ void branch_wrapper(expression_base::level l)
   KhatContext& khc = p->rf->khc();
   StandardRepK srk=
     khc.std_rep_rho_plus (rc.lambda_rho(p->val),G.kgb().titsElt(p->val.x()));
-@/{@; size_t witness;
-   assert(khc.isStandard(srk,witness));
-  } // should be ensured by |test_standard|
+  assert(khc.isStandard(srk)); // should be ensured by |test_standard|
 @)
   if (l==expression_base::no_value)
     return;
@@ -5043,8 +5095,8 @@ void branch_wrapper(expression_base::level l)
     standardrepk::combination chunk = khc.branch(it->first,bound);
     for (auto jt=chunk.begin(); jt!=chunk.end(); ++jt)
     {
-      StandardRepr srk = rc.sr(khc.rep_no(jt->first),khc,zero_nu);
-      acc->val.add_term(srk,Split_integer(it->second*jt->second));
+      StandardRepr z = rc.sr(khc.rep_no(jt->first),khc,zero_nu);
+      acc->val.add_term(z,Split_integer(it->second*jt->second));
     }
   }
   push_value(acc);
@@ -5068,19 +5120,21 @@ void branch_pol_wrapper(expression_base::level l)
   RealReductiveGroup& G=P->rf->val;
   const Rep_context rc = P->rc();
   KhatContext& khc = P->rf->khc();
+  auto P0 = rc.scale_0(P->val);
 @/own_virtual_module acc @|
     (new virtual_module_value(P->rf, repr::SR_poly(rc.repr_less())));
   RatWeight zero_nu(G.rank());
-  for (auto it=P->val.begin(); it!=P->val.end(); ++it)
-    // loop over terms of |P|
+  for (auto it=P0.begin(); it!=P0.end(); ++it)
+    // loop over terms of |P0|
   {
     StandardRepK srk= khc.std_rep_rho_plus
        (rc.lambda_rho(it->first),G.kgb().titsElt(it->first.x()));
+    assert(khc.isNormal(srk));
     standardrepk::combination chunk = khc.branch(khc.match_final(srk),bound);
     for (auto jt=chunk.begin(); jt!=chunk.end(); ++jt)
     {
-      StandardRepr srk = rc.sr(khc.rep_no(jt->first),khc,zero_nu);
-      acc->val.add_term(srk,Split_integer(it->second*jt->second));
+      StandardRepr z = rc.sr(khc.rep_no(jt->first),khc,zero_nu);
+      acc->val.add_term(z,it->second*jt->second);
     }
   }
   push_value(acc);
@@ -5197,7 +5251,7 @@ void full_deform_wrapper(expression_base::level l)
   if (l!=expression_base::no_value)
   {
     const auto& rc = p->rc();
-    auto finals = rc.finals_below(p->val);
+    auto finals = rc.finals_for(p->val);
     repr::SR_poly result (rc.repr_less());
     for (auto it=finals.cbegin(); it!=finals.cend(); ++it)
       result += p->rt().deformation(*it);
@@ -5389,6 +5443,8 @@ install_function(split_mult_virtual_module_wrapper,@|"*"
 		,"(Split,ParamPol->ParamPol)");
 install_function(last_term_wrapper,"last_term","(ParamPol->Split,Param)");
 install_function(first_term_wrapper,"first_term","(ParamPol->Split,Param)");
+install_function(scale_poly_wrapper,"*", "(ParamPol,rat->ParamPol)");
+install_function(scale_0_poly_wrapper,"at_nu_0", "(ParamPol->ParamPol)");
 install_function(K_type_formula_wrapper,@|"K_type_formula" ,"(Param->ParamPol)");
 install_function(branch_wrapper,@|"branch" ,"(Param,int->ParamPol)");
 install_function(branch_pol_wrapper,@|"branch" ,"(ParamPol,int->ParamPol)");

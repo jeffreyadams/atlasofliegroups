@@ -24,6 +24,7 @@
 #include "free_abelian.h"
 #include "arithmetic.h" // |SplitInteger|
 
+#include "rootdata.h" // for |rho|, so |Rep_context::lambda| can be inlined
 
 namespace atlas {
 
@@ -125,7 +126,7 @@ class Rep_context
     (KGBElt x, const Weight& lambda_rho, const RatWeight& gamma) const;
   StandardRepr sr // construct parameter from |(x,\lambda,\nu)| triplet
     (KGBElt x, const Weight& lambda_rho, const RatWeight& nu) const
-  { return sr_gamma(x,lambda_rho,gamma(x,lambda_rho,nu)); }
+    { return sr_gamma(x,lambda_rho,gamma(x,lambda_rho,nu)); }
 
   StandardRepr
     sr(const standardrepk::StandardRepK& srk,
@@ -133,9 +134,14 @@ class Rep_context
        const RatWeight& nu) const;
 
   // component extraction
-  Weight lambda_rho(const StandardRepr& z) const;
+  const WeightInvolution& theta (const StandardRepr& z) const;
 
-  RatWeight lambda(const StandardRepr& z) const; // half-integer
+  Weight lambda_rho(const StandardRepr& z) const;
+  RatWeight lambda(const StandardRepr& z) const // half-integer
+  { return rho(rootDatum()).normalize()+lambda_rho(z); }
+  RatWeight gamma_0 // infinitesimal character deformed to $\nu=0$
+    (const StandardRepr& z) const;
+
   RatWeight nu(const StandardRepr& z) const; // rational, $-\theta$-fixed
 
   // the value of $\exp_{-1}(\gamma-\lambda)$ is $y$ value in a |param_block|
@@ -176,6 +182,10 @@ class Rep_context
 
   bool equivalent(StandardRepr z0, StandardRepr z1) const; // by value
 
+  // deforming the $\nu$ component
+  StandardRepr& scale(StandardRepr& sr, const Rational& f) const;
+  StandardRepr& scale_0(StandardRepr& sr) const;
+
   RationalList reducibility_points(const StandardRepr& z) const; // normalised
 
   // the following take |z| by value, modifying and in some cases returning it
@@ -200,9 +210,12 @@ class Rep_context
 
   typedef Free_Abelian<StandardRepr,Split_integer,compare> poly;
 
-  poly expand_final(StandardRepr z) const; // express in final SReprs (by value)
-  containers::sl_list<StandardRepr>
-    finals_below(StandardRepr z) const; // like |survivors_below| (by value)
+  poly scale(const poly& P, const Rational& f) const;
+  poly scale_0(const poly& P) const;
+
+  containers::sl_list<StandardRepr> finals_for // like |param_block::finals_for|
+    (StandardRepr z) const; // by value
+  poly expand_final(StandardRepr z) const; // the same, as |poly| (by value)
 
   std::ostream& print (std::ostream&,const StandardRepr& z) const;
   std::ostream& print (std::ostream&,const poly& P) const;
@@ -278,17 +291,6 @@ class Rep_table : public Rep_context
 
 
 // 				Functions
-
-/*
-  Set of roots whose sum gives a shift in $\lambda$ component for a link for
-  an integrally-simple root mapped by |to_simple| to a simple root, the link
-  going from involution |theta| to |theta_p|: positive roots that |to_simple|
-  maps to negative and the change real status between |theta| and |theta_p|.
-*/
-RootNbrSet to_simple_shift
-  (const InnerClass& G,
-   InvolutionNbr theta, InvolutionNbr theta_p, // involutions at ends of link
-   const WeylWord& to_simple); // Weyl word acting from the left on roots
 
 // shift in $\lambda$ component involved in non-simple Cayleys (and crosses)
 // gets added to |lambda_rho| in imaginary cases, subtracted in real cases

@@ -104,6 +104,8 @@ size_t StandardRepK::hashCode(size_t modulus) const
 
 ******************************************************************************/
 
+RootNbr SRK_context::offender = -1; // meaning no error signalled yet
+
 SRK_context::SRK_context(RealReductiveGroup &GR)
   : G(GR)
   , Cartan_set(GR.Cartan_set())
@@ -325,7 +327,7 @@ level SRK_context::height_bound(const Weight& lambda)
 } // |SRK_context::height_bound|
 
 
-bool SRK_context::isStandard(const StandardRepK& sr, size_t& witness) const
+bool SRK_context::isStandard(const StandardRepK& sr) const
 {
   const RootDatum& rd=rootDatum();
   Weight lambda=lift(sr);
@@ -334,25 +336,25 @@ bool SRK_context::isStandard(const StandardRepK& sr, size_t& witness) const
   for (size_t i=0; i<f.imaginaryRank(); ++i)
     if (lambda.dot(rd.coroot(f.simpleImaginary(i)))<0)
     {
-      witness=i; return false;
+      offender=f.simpleImaginary(i); return false;
     }
 
   return true;
 }
 
-bool SRK_context::isNormal(Weight lambda, CartanNbr cn, size_t& witness) const
+bool SRK_context::isNormal(Weight lambda, CartanNbr cn) const
 {
-  size_t i=0; // position of |*it| below in |info(cn).bi_ortho|
-  for (RankFlags::iterator it=info(cn).bi_ortho.begin(); it(); ++it,++i)
-    if (lambda.dot(info(cn).sum_coroots[i])<0)
+  const auto& sc = info(cn).sum_coroots;
+  for (unsigned int i=0; i<sc.size(); ++i)
+    if (lambda.dot(sc[i])<0)
     {
-      witness=*it; return false; // |witness| indicates a complex simple root
+      offender=i; return false; // |witness| indicates a complex simple root
     }
 
   return true;
 }
 
-bool SRK_context::isZero(const StandardRepK& sr, size_t& witness) const
+bool SRK_context::isZero(const StandardRepK& sr) const
 {
   const RootDatum& rd=rootDatum();
   Weight lambda=lift(sr);
@@ -363,13 +365,13 @@ bool SRK_context::isZero(const StandardRepK& sr, size_t& witness) const
     if (not basedTitsGroup().grading(a,f.simpleImaginary(i)) // i.e., compact
 	and lambda.dot(rd.coroot(f.simpleImaginary(i)))==0)
     {
-      witness=i; return true;
+      offender=f.simpleImaginary(i); return true;
     }
 
   return false;
 }
 
-bool SRK_context::isFinal(const StandardRepK& sr, size_t& witness) const
+bool SRK_context::isFinal(const StandardRepK& sr) const
 {
   const RootDatum& rd=rootDatum();
   Weight lambda=lift(sr);
@@ -379,7 +381,7 @@ bool SRK_context::isFinal(const StandardRepK& sr, size_t& witness) const
   for (size_t i=0; i<f.realRank(); ++i)
     if (lambda.dot(rd.coroot(f.simpleReal(i)))%4 == 0)
     {
-      witness=i; return false;
+      offender=f.simpleReal(i); return false;
     }
 
   return true;
@@ -392,9 +394,11 @@ void SRK_context::normalize(StandardRepK& sr) const
   const Cartan_info& ci = info(cn);
   Weight lambda = lift(sr);
 
-  size_t i=~0ul; // number of a complex simple root
-  while (not isNormal(lambda,cn,i))
-    lambda -= rd.simpleRoot(i)*lambda.dot(ci.coroot_sum(i));
+  while (not isNormal(lambda,cn))
+  { auto ind=witness(); // index into |bi_ortho| bitset
+    auto i = ci.bi_ortho.n_th_bit(ind); // simple root for |ind| in |bi_ortho|
+    lambda -= rd.simpleRoot(i)*lambda.dot(ci.coroot_sum(ind));
+  }
 
   sr.d_lambda = project(cn,lambda);
 } // |normalize|
@@ -1159,12 +1163,8 @@ seq_no KhatContext::match_final(const StandardRepK& sr)
 { seq_no n=finals.find(sr);
   if (n!=Hash::empty)
     return n;
-#ifndef NDEBUG
-  size_t witness;
-  assert (isStandard(sr,witness) and
-	  not isZero(sr,witness) and isFinal(sr,witness));
+  assert (isStandard(sr) and not isZero(sr) and isFinal(sr));
   assert(height_of.size()==final_pool.size());
-#endif
   height_of.push_back(height(sr)); // store height
   return finals.match(sr); // expand table
 }
@@ -1195,8 +1195,7 @@ combination KhatContext::standardize(const StandardRepK& sr)
       return expanded[n]; // in this case an equation is known
   }
 
-  size_t witness;
-  if (isStandard(sr,witness))
+  if (isStandard(sr))
   {
     { // now check if we already know |sr| to be Final
       seq_no n=finals.find(sr);
@@ -1204,13 +1203,14 @@ combination KhatContext::standardize(const StandardRepK& sr)
 	return combination(n,height_graded); // single term known to be final
     }
 
-    if (isZero(sr,witness))
+    if (isZero(sr))
     {
+      witness(); // clear and ignore indication of which root said "zero"
       combination zero(height_graded);
       return equate(nonfinals.match(sr),zero); // add at end of |expanded|
     }
 
-    if (isFinal(sr,witness))
+    if (isFinal(sr))
     {
       assert(height_of.size()==final_pool.size());
       height_of.push_back(height(sr));
@@ -1219,7 +1219,7 @@ combination KhatContext::standardize(const StandardRepK& sr)
 
     // now |sr| is known to be Standard, but neither Zero nor Final
 
-    HechtSchmid equation= back_HS_id(sr,fiber(sr).simpleReal(witness));
+    HechtSchmid equation= back_HS_id(sr,witness());
     assert(equation.n_lhs()==1); // |back_HS_id| gives 1-term left hand side
     assert(equation.n_rhs()!=0); // and never a null right hand side
 
@@ -1229,7 +1229,7 @@ combination KhatContext::standardize(const StandardRepK& sr)
   } // if (isStandard(sr,witness))
 
   // now |sr| is not Standard; apply a Hecht-Schmid identity
-  HechtSchmid equation= HS_id(sr,fiber(sr).simpleImaginary(witness));
+  HechtSchmid equation= HS_id(sr,witness());
   assert(equation.n_lhs()==2); // all cases of |HS_id| produce 2-term lhs
 
   // recursively standardize all terms of |equation.equivalent()|, storing rules
@@ -1258,17 +1258,16 @@ q_combin qKhatContext::standardize(const StandardRepK& sr)
       return expanded[n];
   }
 
-  size_t witness;
-  if (not isNormal(sr,witness))
+  if (not isNormal(sr))
   {
-    q_Char rhs = q_normalize_eq(sr,witness); // expression to replace |sr| by
+    q_Char rhs = q_normalize_eq(sr,witness()); // expression to replace |sr| by
     q_combin result= standardize(rhs);         // convert recursively
     return equate(nonfinals.match(sr),result); // and add rule for |sr|
   }
 
-  if (not isStandard(sr,witness))
+  if (not isStandard(sr))
   {
-    q_Char equiv = q_HS_id_eq(sr,fiber(sr).simpleImaginary(witness));
+    q_Char equiv = q_HS_id_eq(sr,witness());
 
     // recursively standardize all terms of |equiv|, storing rules
     q_combin result= standardize(equiv);
@@ -1281,13 +1280,14 @@ q_combin qKhatContext::standardize(const StandardRepK& sr)
       return q_combin(n,height_graded); // single term known to be final
   }
 
-  if (isZero(sr,witness))
+  if (isZero(sr))
   {
+    witness(); // to clear |offender|
     q_combin zero(height_graded);
     return equate(nonfinals.match(sr),zero);
   }
 
-  if (isFinal(sr,witness))
+  if (isFinal(sr))
   {
     assert(height_of.size()==final_pool.size());
     height_of.push_back(height(sr));
@@ -1296,7 +1296,7 @@ q_combin qKhatContext::standardize(const StandardRepK& sr)
 
   // now |sr| is known to be Standard, but neither Zero nor Final
 
-  HechtSchmid equation= back_HS_id(sr,fiber(sr).simpleReal(witness));
+  HechtSchmid equation= back_HS_id(sr,witness());
   assert(equation.n_lhs()==1); // |back_HS_id| gives 1-term left hand side
   assert(equation.n_rhs()!=0); // and never a null right hand side
 
@@ -1636,19 +1636,17 @@ void KhatContext::go(const StandardRepK& initial)
     for (size_t i=0; i<nonfinal_pool.size(); ++i)
     {
       const StandardRepK& sr=nonfinal_pool[i];
-      size_t witness;
-      const Fiber& f=fiber(sr);
       print(std::cout << 'N' << i << ": ",sr) << " [" << height(sr) << ']';
 
-      if (not isStandard(sr,witness))
+      if (not isStandard(sr))
 	std::cout << ", non Standard, witness "
-		  << rd.coroot(f.simpleImaginary(witness));
-      if (isZero(sr,witness))
+		  << rd.coroot(witness());
+      if (isZero(sr))
 	std::cout << ", Zero, witness "
-		  << rd.coroot(f.simpleImaginary(witness));
-      if (not isFinal(sr,witness))
+		  << rd.coroot(witness());
+      if (not isFinal(sr))
 	std::cout << ", non Final, witness "
-		  << rd.coroot(f.simpleReal(witness));
+		  << rd.coroot(witness());
       std::cout << std::endl;
     }
   }

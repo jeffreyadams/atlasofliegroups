@@ -73,16 +73,16 @@ set twisted_c_form_irreducible_as_sum_of_standards (Param p) = ParamPol:
 
 { The following function implements algorithm from Vogan in email 9/22/16:
   * for each delta-fixed term q add c_form_std(q) (fully twisted-deformed)
-  * for each pair {q,delta(q)} add q*0 (deformation to nu=0 of q).
-  For second kind it it convenient to add q*0 and delta(q)*0 separately
-  and at the end divide the sum of such contributions by 2.
+  * for each pair {q,delta(q)} add q.at_nu_0 (deformation to nu=0 of q).
+  For second kind it it convenient to add q.at_nu_0 and delta(q).at_nu_0
+  separately and at the end divide the sum of such contributions by 2.
 }
 
 {.twisted c-invariant form on an irreducible in terms of standardrepKs.}
 set twisted_c_form_irreducible (Param p) = ParamPol:
 ( let (fixed,unfixed)=twisted_c_form_irreducible_contributions(p)
 { |1+s| divides |unfixed|, no need for |scale_extended|; take half at |nu=0| }
-  in map(twisted_full_deform@Param,fixed)+half(unfixed*0)
+  in map(twisted_full_deform@Param,fixed)+half(unfixed.at_nu_0)
 )
 
 {.c_form_irrecible with extra information.}
@@ -96,11 +96,11 @@ set twisted_c_form_irreducible_long (Param p) =
   for c@q in fixed
   do
     let contrib=c*twisted_full_deform(q) in
-    (fixed_terms+:=contrib, terms#:=(q,c,contrib))
+    fixed_terms+:=contrib; terms#:=(q,c,contrib)
   od
 ; for c@q in unfixed
   do { now |1+s| devides |c|, which justifies not using |scale_extended|: }
-    let contrib=c*(q*0) in (unfixed_terms+:=contrib, terms#:=(q,c,contrib))
+    let contrib=c*(q.at_nu_0) in unfixed_terms+:=contrib; terms#:=(q,c,contrib)
   od
 ; ( fixed+unfixed, terms, fixed_terms + half(unfixed_terms) )
 )
@@ -264,7 +264,7 @@ set analyse_hermitian_form_irreducible (Param p) = void:
     od
   ; if !=unfixed then prints(new_line,"Non twist-fixed terms:") fi
   ; for c@q in twist_orbits(unfixed)
-    do let contribution = half(c*(q*0)+c*(twist(q)*0)) in
+    do let contribution = half(c*(q.at_nu_0)+c*(twist(q).at_nu_0)) in
       prints(c,"*(I(",q,")",new_line
           ,"        +I(",twist(q),")), at nu=0:",contribution,new_line)
     ; c_form+:=contribution
@@ -316,7 +316,7 @@ set test_line (Param p) = void:
 ; prints("integrality points (for 2*nu): ",ipoints)
 ; if #points=0
   then prints("entire line is irreducible and unitary"
-             ,if is_final(p*0) then "" else " (nu=0 is not final)" fi)
+             ,if p.at_nu_0.is_final then "" else " (nu=0 is not final)" fi)
   else points:=(0/1)#points { tack on initial zero }
   ; if not points[#points-1]=1/1 then points:=points#(1/1) fi
   ; for i:#points-1 from 1

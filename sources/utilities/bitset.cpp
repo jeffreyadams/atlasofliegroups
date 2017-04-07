@@ -27,6 +27,10 @@ template <unsigned int n>
     set(i,v[i]%2!=0);
 }
 
+template <unsigned int n>
+   unsigned int BitSet<n>::n_th_bit (unsigned int count) const
+{ auto it=begin(); while (count-->0) ++it; return *it; }
+
 /*
   Return an iterator pointing to the first set bit; this is essentially just
   d_bits itself.

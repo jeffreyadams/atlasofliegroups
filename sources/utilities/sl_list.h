@@ -141,8 +141,8 @@ public:
   const T* operator->() const { return &(*link_loc)->contents; }
 
   self operator++() { link_loc = &(*link_loc)->next; return *this; }
-  self operator++(int) // post-increment
-  { self tmp=*this; link_loc = &(*link_loc)->next; return tmp; }
+  // post-increment not defined, using it would almost certainly be a coding
+  // error, notably erasing nodes should use |l.erase(it)| without any |++|
 
   // equality testing methods
   bool operator==(const self& x) const { return link_loc == x.link_loc; }
@@ -174,8 +174,9 @@ public:
 
   // increment operators also need overload, with covariant return type
   self operator++() { Base::operator++(); return *this; }
-  self operator++(int) // post-increment
-  { self tmp=*this; Base::operator++(); return tmp; }
+  // post-increment not defined, using it would almost certainly be a coding
+  // error, notably erasing nodes should use |l.erase(it)| without any |++|
+
 }; // |struct sl_list_iterator| template
 
 template<typename T, typename Alloc> struct weak_sl_list_iterator;

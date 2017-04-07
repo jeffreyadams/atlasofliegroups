@@ -362,12 +362,11 @@ void Ktypeform_f()
   StandardRepK sr=interactive::get_standardrep(khc);
 
   {
-    size_t witness;
-    if (not khc.isFinal(sr,witness))
+    if (not khc.isFinal(sr))
     {
       khc.print(std::cout << "Representation ",sr)
         << " is not final, as witnessed by coroot "
-	<< G.rootDatum().coroot(khc.fiber(sr).simpleReal(witness)) << ".\n";
+	<< G.rootDatum().coroot(khc.witness()) << ".\n";
       return;
     }
   }
@@ -426,12 +425,11 @@ void qKtypeform_f()
   StandardRepK sr=interactive::get_standardrep(khc);
 
   {
-    size_t witness;
-    if (not khc.isFinal(sr,witness))
+    if (not khc.isFinal(sr))
     {
       khc.print(std::cout << "Representation ",sr)
         << " is not final, as witnessed by coroot "
-	<< G.rootDatum().coroot(khc.fiber(sr).simpleReal(witness)) << ".\n";
+	<< G.rootDatum().coroot(khc.witness()) << ".\n";
       return;
     }
   }
@@ -486,20 +484,19 @@ void Ktypemat_f()
   khc.normalize(sr);
 
   {
-    size_t witness;
-    if (not khc.isStandard(sr,witness))
+    if (not khc.isStandard(sr))
     {
       khc.print(std::cout << "Representation ",sr)
         << " is not standard, as witnessed by coroot "
-	<< G.rootDatum().coroot(khc.fiber(sr).simpleImaginary(witness))
+	<< G.rootDatum().coroot(khc.witness())
 	<< ".\n";
       return;
     }
-    if (not khc.isFinal(sr,witness))
+    if (not khc.isFinal(sr))
     {
       khc.print(std::cout << "Representation ",sr)
         << " is not final, as witnessed by coroot "
-	<< G.rootDatum().coroot(khc.fiber(sr).simpleReal(witness)) << ".\n";
+	<< G.rootDatum().coroot(khc.witness()) << ".\n";
       return;
     }
   }
@@ -570,28 +567,27 @@ void qKtypemat_f()
   StandardRepK sr=interactive::get_standardrep(khc);
 
   {
-    size_t witness;
-    if (not khc.isNormal(sr,witness))
+    if (not khc.isNormal(sr))
     {
       khc.print(std::cout << "Representation ",sr)
         << " is not normal, as witnessed by coroot sum "
-	<< khc.info(sr.Cartan()).coroot_sum(witness)
+	<< khc.info(sr.Cartan()).coroot_sum(khc.witness())
 	<< ".\n";
       return;
     }
-    if (not khc.isStandard(sr,witness))
+    if (not khc.isStandard(sr))
     {
       khc.print(std::cout << "Representation ",sr)
         << " is not standard, as witnessed by coroot "
-	<< G.rootDatum().coroot(khc.fiber(sr).simpleImaginary(witness))
+	<< G.rootDatum().coroot(khc.witness())
 	<< ".\n";
       return;
     }
-    if (not khc.isFinal(sr,witness))
+    if (not khc.isFinal(sr))
     {
       khc.print(std::cout << "Representation ",sr)
         << " is not final, as witnessed by coroot "
-	<< G.rootDatum().coroot(khc.fiber(sr).simpleReal(witness)) << ".\n";
+	<< G.rootDatum().coroot(khc.witness()) << ".\n";
       return;
     }
   }
@@ -719,38 +715,38 @@ void branch_f()
 
   standardrepk::KhatContext khc(G);
 
-  StandardRepK sr=interactive::get_standardrep(khc);
+  StandardRepK srk=interactive::get_standardrep(khc);
 
   {
-    size_t witness;
-    if (not khc.isStandard(sr,witness))
+    if (not khc.isStandard(srk))
     {
-      khc.print(std::cout << "Representation ",sr)
+      khc.print(std::cout << "Representation ",srk)
         << " is not standard, as witnessed by coroot "
-	<< G.rootDatum().coroot(khc.fiber(sr).simpleImaginary(witness))
+	<< G.rootDatum().coroot(khc.witness())
 	<< ".\n";
       return;
     }
-    if (not khc.isFinal(sr,witness))
+    if (not khc.isFinal(srk))
     {
-      khc.print(std::cout << "Representation ",sr)
+      khc.print(std::cout << "Representation ",srk)
         << " is not final, as witnessed by coroot "
-	<< G.rootDatum().coroot(khc.fiber(sr).simpleReal(witness)) << ".\n";
+	<< G.rootDatum().coroot(khc.witness()) << ".\n";
       return;
     }
   }
 
-  standardrepk::combination c=khc.standardize(sr);
+  khc.normalize(srk); // needed so |K_type_formula| gives itself as leading term
+  standardrepk::combination c=khc.standardize(srk);
 
   if (c.empty())
   {
-    khc.print(std::cout << "Representation ",sr) << " is zero.\n";
+    khc.print(std::cout << "Representation ",srk) << " is zero.\n";
     return;
   }
 
-  assert(c.size()==1 and khc.rep_no(c.begin()->first)==sr);
+  assert(c.size()==1 and khc.rep_no(c.begin()->first)==srk);
 
-  khc.print(std::cout << "Height of representation ",sr) << " is "
+  khc.print(std::cout << "Height of representation ",srk) << " is "
     << khc.height(c.begin()->first) << ".\n";
   unsigned long bound=
     interactive::get_bounded_int(interactive::common_input(),
@@ -774,38 +770,38 @@ void qbranch_f()
 
   standardrepk::qKhatContext khc(G);
 
-  StandardRepK sr=interactive::get_standardrep(khc);
+  StandardRepK srk=interactive::get_standardrep(khc);
 
   {
-    size_t witness;
-    if (not khc.isStandard(sr,witness))
+    if (not khc.isStandard(srk))
     {
-      khc.print(std::cout << "Representation ",sr)
+      khc.print(std::cout << "Representation ",srk)
         << " is not standard, as witnessed by coroot "
-	<< G.rootDatum().coroot(khc.fiber(sr).simpleImaginary(witness))
+	<< G.rootDatum().coroot(khc.witness())
 	<< ".\n";
       return;
     }
-    if (not khc.isFinal(sr,witness))
+    if (not khc.isFinal(srk))
     {
-      khc.print(std::cout << "Representation ",sr)
+      khc.print(std::cout << "Representation ",srk)
         << " is not final, as witnessed by coroot "
-	<< G.rootDatum().coroot(khc.fiber(sr).simpleReal(witness)) << ".\n";
+	<< G.rootDatum().coroot(khc.witness()) << ".\n";
       return;
     }
   }
 
-  standardrepk::q_combin c=khc.standardize(sr);
+  khc.normalize(srk); // needed so |K_type_formula| gives itself as leading term
+  standardrepk::q_combin c=khc.standardize(srk);
 
   if (c.empty())
   {
-    khc.print(std::cout << "Representation ",sr) << " is zero.\n";
+    khc.print(std::cout << "Representation ",srk) << " is zero.\n";
     return;
   }
 
-  assert(c.size()==1 and khc.rep_no(c.begin()->first)==sr);
+  assert(c.size()==1 and khc.rep_no(c.begin()->first)==srk);
 
-  khc.print(std::cout << "Height of representation ",sr) << " is "
+  khc.print(std::cout << "Height of representation ",srk) << " is "
     << khc.height(c.begin()->first) << ".\n";
   unsigned long bound=
     interactive::get_bounded_int(interactive::common_input(),
