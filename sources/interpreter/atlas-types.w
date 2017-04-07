@@ -4801,8 +4801,11 @@ void subtract_module_wrapper(expression_base::level l)
   }
 }
 
-@ More generally than adding or subtracting, we can incorporate a term
-with specified coefficient.
+@ More generally than adding or subtracting, we can incorporate a term with
+specified coefficient. Here, rather than building a polynomial with the set of
+parameters but without the coefficient,as |expand_final| gives us, we directly
+iterate over the list produced by |finals_for|, attaching |coef| for each of
+its final parameters.
 
 @< Local function def...@>=
 
@@ -4816,7 +4819,9 @@ void add_module_term_wrapper(expression_base::level l)
     throw runtime_error @|
       ("Real form mismatch when adding a term to a module");
   if (l!=expression_base::no_value)
-  @/{@; accumulator->val.add_multiple(p->rc().expand_final(p->val),coef);
+  { auto finals = p->rc().finals_for(p->val);
+    for (auto it=finals.wcbegin(); not finals.at_end(it); ++it)
+      accumulator->val.add_term(*it,coef);
     push_value(accumulator);
   }
 }
@@ -4840,7 +4845,9 @@ void add_module_termlist_wrapper(expression_base::level l)
       if (accumulator->rf!=p->rf)
         throw runtime_error @|
           ("Real form mismatch when adding terms to a module");
-      accumulator->val.add_multiple(p->rc().expand_final(p->val),coef);
+       auto finals = p->rc().finals_for(p->val);
+       for (auto it=finals.wcbegin(); not finals.at_end(it); ++it)
+         accumulator->val.add_term(*it,coef);
      }
     push_value(accumulator);
   }
@@ -5030,8 +5037,10 @@ void K_type_formula_wrapper(expression_base::level l)
     for (auto stit=st.cbegin(); stit!=st.cend(); ++stit)
     {
       StandardRepr term =  rc.sr(khc.rep_no(stit->first),khc,zero_nu);
-      acc->val.add_multiple(rc.expand_final(term),
-                            Split_integer(it->second*stit->second));
+      Split_integer coef (it->second*stit->second);
+      auto finals = p->rc().finals_for(term);
+      for (auto jt=finals.wcbegin(); not finals.at_end(jt); ++jt)
+         acc->val.add_term(*jt,coef);
     }
   }
   push_value(acc);
