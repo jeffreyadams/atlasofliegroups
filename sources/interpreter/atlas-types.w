@@ -4186,7 +4186,7 @@ void KL_block_wrapper(expression_base::level l)
   own_matrix contributes_to = std::make_shared<matrix_value>(
     int_Matrix(n_survivors,block.size(),0));
   for (BlockElt z=0; z<block.size(); ++z)
-  { BlockEltList sb = block.survivors_below(z);
+  { BlockEltList sb = block.finals_for(z);
     for (BlockEltList::const_iterator it=sb.begin(); it!=sb.end(); ++it)
     { BlockElt x= permutations::find_index<int>(survivor->val,*it);
         // a row index
@@ -4265,7 +4265,7 @@ void partial_KL_block_wrapper(expression_base::level l)
   own_matrix contributes_to = std::make_shared<matrix_value>(
     int_Matrix(n_survivors,block.size(),0));
   for (BlockElt z=0; z<block.size(); ++z)
-  { BlockEltList sb = block.survivors_below(z);
+  { BlockEltList sb = block.finals_for(z);
     for (BlockEltList::const_iterator it=sb.begin(); it!=sb.end(); ++it)
     { BlockElt x= permutations::find_index<int>(survivor->val,*it);
         // a row index
@@ -5242,7 +5242,7 @@ void full_deform_wrapper(expression_base::level l)
   if (l!=expression_base::no_value)
   {
     const auto& rc = p->rc();
-    auto finals = rc.finals_below(p->val);
+    auto finals = rc.finals_for(p->val);
     repr::SR_poly result (rc.repr_less());
     for (auto it=finals.cbegin(); it!=finals.cend(); ++it)
       result += p->rt().deformation(*it);

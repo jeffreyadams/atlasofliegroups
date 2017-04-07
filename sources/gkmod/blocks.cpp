@@ -662,7 +662,7 @@ bool param_block::survives(BlockElt z) const
 
 // descend through singular simple coroots and return any survivors that were
 // reached; they express singular $I(z)$ as sum of 0 or more surviving $I(z')$
-BlockEltList param_block::survivors_below(BlockElt z) const
+BlockEltList param_block::finals_for(BlockElt z) const
 {
   BlockEltList result;
   RankFlags::iterator it;
@@ -683,7 +683,7 @@ BlockEltList param_block::survivors_below(BlockElt z) const
 	case descents::DescentStatus::RealTypeI:
 	  {
 	    BlockEltPair iC=inverseCayley(*it,z);
-	    BlockEltList left=survivors_below(iC.first);
+	    BlockEltList left=finals_for(iC.first);
 	    if (result.empty())
 	      left.swap(result); // take left result as current value
 	    else
@@ -699,7 +699,7 @@ BlockEltList param_block::survivors_below(BlockElt z) const
   while (it()); // terminate on no-break of inner loop
   result.push_back(z);
   return result;
-} // |param_block::survivors_below|
+} // |param_block::finals_for|
 
 // find already constructed element, to be called during construction
 BlockElt find_in(const block_hash& hash,KGBElt x,KGBElt y)

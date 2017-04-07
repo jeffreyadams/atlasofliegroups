@@ -213,9 +213,9 @@ class Rep_context
   poly scale(const poly& P, const Rational& f) const;
   poly scale_0(const poly& P) const;
 
-  poly expand_final(StandardRepr z) const; // express in final SReprs (by value)
-  containers::sl_list<StandardRepr>
-    finals_below(StandardRepr z) const; // like |survivors_below| (by value)
+  containers::sl_list<StandardRepr> finals_for // like |param_block::finals_for|
+    (StandardRepr z) const; // by value
+  poly expand_final(StandardRepr z) const; // the same, as |poly| (by value)
 
   std::ostream& print (std::ostream&,const StandardRepr& z) const;
   std::ostream& print (std::ostream&,const poly& P) const;

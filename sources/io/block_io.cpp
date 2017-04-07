@@ -458,7 +458,7 @@ std::ostream& print_KL(std::ostream& f, param_block& block, BlockElt z)
       Poly p(pol); // convert
       if (block.length(x)%2!=parity)
 	p*=-1;
-      BlockEltList nb=block.survivors_below(x);
+      BlockEltList nb=block.finals_for(x);
       for (size_t i=0; i<nb.size(); ++i)
       {
 	std::pair<map_type::iterator,bool> trial =

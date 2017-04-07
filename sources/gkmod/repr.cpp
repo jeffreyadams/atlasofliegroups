@@ -827,7 +827,7 @@ SR_poly Rep_context::scale(const poly& P, const Rational& f) const
   poly result(repr_less());
   for (auto it=P.begin(); it!=P.end(); ++it)
   { auto z=it->first; // take a copy for modification
-    auto zs = finals_below(scale(z,f));
+    auto zs = finals_for(scale(z,f));
     for (auto jt=zs.begin(); not zs.at_end(jt); ++jt)
       result.add_term(*jt,it->second);
   }
@@ -839,7 +839,7 @@ SR_poly Rep_context::scale_0(const poly& P) const
   poly result(repr_less());
   for (auto it=P.begin(); it!=P.end(); ++it)
   { auto z=it->first; // take a copy for modification
-    auto zs = finals_below(scale_0(z));
+    auto zs = finals_for(scale_0(z));
     for (auto jt=zs.begin(); not zs.at_end(jt); ++jt)
       result.add_term(*jt,it->second);
   }
@@ -847,7 +847,7 @@ SR_poly Rep_context::scale_0(const poly& P) const
 }
 
 containers::sl_list<StandardRepr>
-  Rep_context::finals_below(StandardRepr z) const
+  Rep_context::finals_for(StandardRepr z) const
 {
   const RootDatum& rd = rootDatum();
   const InvolutionTable& i_tab = innerClass().involution_table();
@@ -900,11 +900,11 @@ containers::sl_list<StandardRepr>
   }
   while (not result.at_end(rit));
   return result;
-} // |Rep_context::finals_below|
+} // |Rep_context::finals_for|
 
 SR_poly Rep_context::expand_final (StandardRepr z) const
 {
-  auto finals = finals_below(z);
+  auto finals = finals_for(z);
   poly result (repr_less());
   for (auto it=finals.cbegin(); not finals.at_end(it); ++it)
     result += *it;
@@ -941,7 +941,7 @@ void Rep_table::add_block(param_block& block, BlockEltList& survivors)
   const kl::KLContext& klc = block.klc(block.size()-1,false); // silently
 
   /* get $P(x,z)$ for |x<=z| with |z| among new |survivors|, and contribute
-   parameters from |block.survivors_below(x)| with coefficient $P(x,z)[q:=s]$
+   parameters from |block.finals_for(x)| with coefficient $P(x,z)[q:=s]$
    to the |SR_poly| at |KLV_list[old_size+i], where |z=new_survivors[i]| */
 
   BlockEltList::const_iterator z_start=new_survivors.begin();
@@ -950,7 +950,7 @@ void Rep_table::add_block(param_block& block, BlockEltList& survivors)
 
   for (BlockElt x=0; x<=new_survivors.back(); ++x)
   {
-    BlockEltList xs=block.survivors_below(x);
+    BlockEltList xs=block.finals_for(x);
     if (xs.empty())
       continue; // no point doing work for |x|'s that don't contribute anywhere
 
@@ -974,7 +974,7 @@ void Rep_table::add_block(param_block& block, BlockEltList& survivors)
 	SR_poly& dest = KLV_list[z_index]; // a poly to which |x| contributes
 	if (lengths[z_index]%2!=parity)
 	  eval.negate(); // incorporate sign for length difference
-	for (unsigned int i=0; i<xs.size(); ++i) // from |survivors_below(x)|
+	for (unsigned int i=0; i<xs.size(); ++i) // from |finals_for(x)|
 	  dest.add_term(block.sr(xs[i]),eval); // contribute each with |eval|
       }
     } // |for(it)|
