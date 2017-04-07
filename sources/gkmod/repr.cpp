@@ -1063,16 +1063,14 @@ SR_poly Rep_table::deformation(const StandardRepr& z)
 // for more general |z|, do the preconditioning outside the recursion
 {
   assert(is_final(z));
-  Weight lam_rho = lambda_rho(z);
-  RatWeight nu_z =  nu(z);
-  StandardRepr z0 = sr(z.x(),lam_rho,RatWeight(rank()));
+  StandardRepr z0 = z; scale_0(z0);
   SR_poly result = expand_final(z0); // value without deformation terms
 
   RationalList rp=reducibility_points(z); // this is OK before |make_dominant|
   if (rp.size()==0) // without deformation terms
     return result; // don't even bother to store the result
 
-  StandardRepr z_near = sr(z.x(),lam_rho,nu_z*rp.back());
+  StandardRepr z_near = z; scale(z_near,rp.back());
   normalise(z_near); // so that we may find a stored equivalent parameter
   assert(is_final(z_near));
 
@@ -1085,11 +1083,10 @@ SR_poly Rep_table::deformation(const StandardRepr& z)
   // otherwise compute the deformation terms at all reducibility points
   for (unsigned i=rp.size(); i-->0; )
   {
-    Rational r=rp[i];
-    StandardRepr zi = sr(z.x(),lam_rho,nu_z*r);
+    StandardRepr zi = z; scale(zi,rp[i]);
     normalise(zi); // necessary to ensure the following |assert| will hold
     assert(is_final(zi)); // ensures that |deformation_terms| won't refuse
-    param_block b(*this,zi);
+    param_block b(*this,zi); // construct block interval below |zi|
     const SR_poly terms = deformation_terms(b,b.size()-1);
     for (SR_poly::const_iterator it=terms.begin(); it!=terms.end(); ++it)
       result.add_multiple(deformation(it->first),it->second); // recursion
@@ -1102,6 +1099,7 @@ SR_poly Rep_table::deformation(const StandardRepr& z)
 
   return result;
 } // |Rep_table::deformation|
+
 
 // basic computation of twisted KL column sum, no tabulation of the result
 SR_poly twisted_KL_sum
