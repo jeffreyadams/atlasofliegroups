@@ -275,6 +275,37 @@ set analyse_hermitian_form_irreducible (Param p) = void:
 
 {   unitarity and weak unitarity tests }
 
+{ compute |p.hermitian_form_irreducible.is_pure|; try to get |false| rapidly }
+set hermitian_form_is_pure (Param p) = bool:
+( let (fixed,unfixed) = twisted_c_form_irreducible_contributions(p)
+  , result = p.real_form.null_module
+  , p0 = p.at_nu_0.first_param { reference for |mu| }
+  then limit = 1 + (fixed+unfixed).last_param.height
+  then lowest (ParamPol P) = if =P then limit else P.first_param.height fi
+  , cur_fix = result, cur_unfix = result
+  in unfixed:=twist_orbits(unfixed) { choose one of each delta-exchanged pair }
+; while
+    let fh=fixed.lowest, uh=unfixed.lowest then height = min(fh,uh)+1 in
+    height<=limit { equivalently |!=fixed or !=unfixed| }
+  do
+    if fh<height
+    then set (cur_fix,fixed) := height_split(fixed,height)
+    else cur_fix:=p.real_form.null_module
+    fi
+  ; if uh<height
+    then set (cur_unfix,unfixed):=height_split(unfixed,height)
+    else cur_unfix:=p.real_form.null_module
+    fi
+  ; result +:= map(twisted_full_deform@Param,cur_fix)+cur_unfix.at_nu_0
+  ; let (cur_result,later_result)=height_split(result,height) in
+    if not convert_cform_hermitian(cur_result,p0).is_pure_1
+    then return false
+    fi
+  ; result:=later_result { we are done with terms below |height|, forget them }
+  od
+; convert_cform_hermitian(result,p0).is_pure_1
+)
+
 { compute Hermitian form on p, and report if it is unitary }
 set is_unitary (Param p) = bool:
   p.is_hermitian and hermitian_form_irreducible(p).is_pure
