@@ -3,7 +3,6 @@
 
 * Work on the Atlas library
 
-- Fix bug occurring when switching the real form when coming from realmode
 - Fix lack of edge flipping in first (classical) extended block contructor
 - Rewrite block construction using methods inspired by synthetic operations
 - Remove code for storing the Hermitian dual in KGB structures and blocks
@@ -12,6 +11,7 @@
 * Work on the Fokko program
 
 - correct bug with mysterious typeahead after bailing out with ? (done?)
+- Fix bug occurring when switching the real form when coming from realmode
 - clean up the mess dealing with input (interface/input, io/interactive...)
 
 * Work on the atlas program

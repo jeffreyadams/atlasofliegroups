@@ -1,7 +1,7 @@
 /*
   This is repr.cpp
 
-  Copyright (C) 2009-2012 Marc van Leeuwen
+  Copyright (C) 2009-2017 Marc van Leeuwen
   part of the Atlas of Lie Groups and Representations
 
   For license information see the LICENSE file
@@ -313,42 +313,6 @@ unsigned int Rep_context::orientation_number(const StandardRepr& z) const
   return count;
 } // |orientation_number|
 
-void Rep_context::W_act(const WeylWord& w,StandardRepr& z) const
-{
-  const RootDatum& rd = rootDatum();
-  Weight lr = lambda_rho(z);
-  KGBElt& x = z.x_part;
-  Ratvec_Numer_t& numer = z.infinitesimal_char.numerator();
-
-  for (unsigned i=w.size(); i-->0; )
-  {
-    weyl::Generator s=w[i];
-    rd.simple_reflect(s,numer);
-    rd.simple_reflect(s,lr,kgb().status(s,x)==gradings::Status::Real ? 0 : 1);
-    x = kgb().cross(s,x);
-  }
-  z.y_bits = // reinsert $y$ bits component
-    innerClass().involution_table().y_pack(kgb().inv_nr(x),lr);
-}
-
-// an auxiliary for |to_singular_canonical|, used in normalisation
-void Rep_context::W_cross_act(StandardRepr& z,const WeylWord& w) const
-{ // here |w| is for full Weyl group, but only singular "letters" should occur
-  // these cross actions no not affect |z.height()| or |z.gamma()|
-  // so we can allow ourselves to modify |z.x_part| and |z.y_bits| in place
-  const RootDatum& rd = rootDatum();
-  KGBElt& x= z.x_part;
-  Weight lr = lambda_rho(z);
-
-  for (auto it=w.begin(); it!=w.end(); ++it)
-  { weyl::Generator s=*it;
-    rd.simple_reflect(s,lr,kgb().status(s,x)==gradings::Status::Real ? 0 : 1);
-    x = kgb().cross(s,x);
-  }
-  z.y_bits = // reinsert $y$ bits component
-    innerClass().involution_table().y_pack(kgb().inv_nr(x),lr);
-}
-
 void Rep_context::make_dominant(StandardRepr& z) const
 {
   const RootDatum& rd = rootDatum();
@@ -384,59 +348,26 @@ void Rep_context::make_dominant(StandardRepr& z) const
   z.y_bits=innerClass().involution_table().y_pack(kgb().inv_nr(x),lr);
 } // |make_dominant|
 
-// a method used to ensure |z| is integrally dominant, used by |any_Cayley|
-WeylWord
-Rep_context::make_dominant(StandardRepr& z,const SubSystem& subsys) const
+StandardRepr&
+Rep_context::singular_cross (StandardRepr& z,weyl::Generator s) const
 {
-  const RootDatum& rd = rootDatum();
-  KGBElt& x= z.x_part;
-  InvolutionNbr i_x = kgb().inv_nr(x);
-  const InvolutionTable& i_tab = innerClass().involution_table();
-
-  // the following are non-|const|, and modified in the loop below
-  Weight lambda2_shifted = (lambda_rho(z)*=2)
-    + rd.twoRho() - rd.twoRho(i_tab.real_roots(i_x));
-  Ratvec_Numer_t& gamma_num = z.infinitesimal_char.numerator();
-
-  WeylWord result;
-  result.reserve(subsys.numPosRoots()); // enough to accommodate the WeylWord
-
-  { weyl::Generator s;
-    do
-    {
-      for (s=0; s<subsys.rank(); ++s)
-      {
-	RootNbr alpha = subsys.parent_nr_simple(s);
-	arithmetic::Numer_t v=rd.coroot(alpha).dot(gamma_num);
-	if (v<0)
-	{
-	  if (i_tab.imaginary_roots(i_x).isMember(alpha))
-	    throw std::runtime_error
-	      ("Cannot make non-standard parameter integrally dominant");
-	  result.push_back(s);
-
-	  // reflect |gamma| by |alpha|
-	  gamma_num.subtract(rd.root(alpha).begin(),v);
-	  x = kgb().cross(rd.reflectionWord(alpha),x);
-	  i_x = kgb().inv_nr(x);
-	  rd.reflect(alpha,lambda2_shifted);
-	  break; // out of the loop |for(s)|
-	} // |if(v<0)|
-      } // |for(s)|
-    }
-    while (s<subsys.rank()); // wait until inner loop runs to completion
-  }
-  lambda2_shifted -= rd.twoRho() - rd.twoRho(i_tab.real_roots(i_x)); // unshift
-  z.y_bits=i_tab.y_pack(i_x,lambda2_shifted/2);
-  return result;
-} // |make_dominant| (integrally)
+  assert(rootDatum().simpleCoroot(s).dot(z.gamma().numerator())==0);
+  Weight lr = lambda_rho(z); auto& x=z.x_part;
+  rootDatum().simple_reflect
+    (s, lr, kgb().status(s,x)==gradings::Status::Real ? 0 : 1);
+  x = kgb().cross(s,x);
+  z.y_bits = // reinsert $y$ bits component
+    innerClass().involution_table().y_pack(kgb().inv_nr(x),lr);
+  return z;
+}
 
 // auxiliary: move to a canonical for the |gens| (singular) subgroup of $W$
 void Rep_context::to_singular_canonical(RankFlags gens, StandardRepr& z) const
 { // simply-singular coroots are simple, so no need to constuct a subsystem
-  TwistedInvolution tw = kgb().involution(z.x_part);
+  TwistedInvolution tw = kgb().involution(z.x_part); // copy to be modified
   WeylWord ww = innerClass().canonicalize(tw,gens);
-  W_cross_act(z,ww); // move to that involution
+  for (auto it=ww.begin(); it!=ww.end(); ++it) // move to that involution
+    singular_cross(z,*it);
   assert(tw == kgb().involution(z.x_part));
 }
 
@@ -699,6 +630,53 @@ Weight Cayley_shift (const InnerClass& G,
   return sum;
 }
 
+// a method used to ensure |z| is integrally dominant, used by |any_Cayley|
+WeylWord
+Rep_context::make_dominant(StandardRepr& z,const SubSystem& subsys) const
+{
+  const RootDatum& rd = rootDatum();
+  KGBElt& x= z.x_part;
+  InvolutionNbr i_x = kgb().inv_nr(x);
+  const InvolutionTable& i_tab = innerClass().involution_table();
+
+  // the following are non-|const|, and modified in the loop below
+  Weight lambda2_shifted = (lambda_rho(z)*=2)
+    + rd.twoRho() - rd.twoRho(i_tab.real_roots(i_x));
+  Ratvec_Numer_t& gamma_num = z.infinitesimal_char.numerator();
+
+  WeylWord result;
+  result.reserve(subsys.numPosRoots()); // enough to accommodate the WeylWord
+
+  { weyl::Generator s;
+    do
+    {
+      for (s=0; s<subsys.rank(); ++s)
+      {
+	RootNbr alpha = subsys.parent_nr_simple(s);
+	arithmetic::Numer_t v=rd.coroot(alpha).dot(gamma_num);
+	if (v<0)
+	{
+	  if (i_tab.imaginary_roots(i_x).isMember(alpha))
+	    throw std::runtime_error
+	      ("Cannot make non-standard parameter integrally dominant");
+	  result.push_back(s);
+
+	  // reflect |gamma| by |alpha|
+	  gamma_num.subtract(rd.root(alpha).begin(),v);
+	  x = kgb().cross(rd.reflectionWord(alpha),x);
+	  i_x = kgb().inv_nr(x);
+	  rd.reflect(alpha,lambda2_shifted);
+	  break; // out of the loop |for(s)|
+	} // |if(v<0)|
+      } // |for(s)|
+    }
+    while (s<subsys.rank()); // wait until inner loop runs to completion
+  }
+  lambda2_shifted -= rd.twoRho() - rd.twoRho(i_tab.real_roots(i_x)); // unshift
+  z.y_bits=i_tab.y_pack(i_x,lambda2_shifted/2);
+  return result;
+} // |make_dominant| (integrally)
+
 StandardRepr Rep_context::any_Cayley(const Weight& alpha, StandardRepr z) const
 {
   const RootDatum& rd = rootDatum();
@@ -756,7 +734,6 @@ StandardRepr Rep_context::any_Cayley(const Weight& alpha, StandardRepr z) const
     Cayley_shift(innerClass(),ascent ? kgb.inv_nr(x) : inv0,ww);
   z = sr_gamma(x,lr,infin_char);
 
-  W_act(w,z); // move back to original infinitesimal character representative
   return z;
 } // |Rep_context::any_Cayley|
 
@@ -874,9 +851,7 @@ containers::sl_list<StandardRepr>
       else if (kgb().status(s,x)==gradings::Status::Complex)
       { if (kgb().isDescent(s,x))
 	{ // replace |*rit| by its complex descent for |s|
-	  Weight lr = lambda_rho(*rit);
-	  rd.simple_reflect(s,lr,1); // pivot |lr| around $-\rho$
-	  *rit = sr_gamma(kgb().cross(s,x),lr,rit->gamma());
+	  singular_cross(*rit,s);
 	  break; // reconsider all singular roots for the new parameter
 	}
       }
@@ -1063,16 +1038,14 @@ SR_poly Rep_table::deformation(const StandardRepr& z)
 // for more general |z|, do the preconditioning outside the recursion
 {
   assert(is_final(z));
-  Weight lam_rho = lambda_rho(z);
-  RatWeight nu_z =  nu(z);
-  StandardRepr z0 = sr(z.x(),lam_rho,RatWeight(rank()));
+  StandardRepr z0 = z; scale_0(z0);
   SR_poly result = expand_final(z0); // value without deformation terms
 
   RationalList rp=reducibility_points(z); // this is OK before |make_dominant|
   if (rp.size()==0) // without deformation terms
     return result; // don't even bother to store the result
 
-  StandardRepr z_near = sr(z.x(),lam_rho,nu_z*rp.back());
+  StandardRepr z_near = z; scale(z_near,rp.back());
   normalise(z_near); // so that we may find a stored equivalent parameter
   assert(is_final(z_near));
 
@@ -1085,11 +1058,10 @@ SR_poly Rep_table::deformation(const StandardRepr& z)
   // otherwise compute the deformation terms at all reducibility points
   for (unsigned i=rp.size(); i-->0; )
   {
-    Rational r=rp[i];
-    StandardRepr zi = sr(z.x(),lam_rho,nu_z*r);
+    StandardRepr zi = z; scale(zi,rp[i]);
     normalise(zi); // necessary to ensure the following |assert| will hold
     assert(is_final(zi)); // ensures that |deformation_terms| won't refuse
-    param_block b(*this,zi);
+    param_block b(*this,zi); // construct block interval below |zi|
     const SR_poly terms = deformation_terms(b,b.size()-1);
     for (SR_poly::const_iterator it=terms.begin(); it!=terms.end(); ++it)
       result.add_multiple(deformation(it->first),it->second); // recursion
@@ -1102,6 +1074,7 @@ SR_poly Rep_table::deformation(const StandardRepr& z)
 
   return result;
 } // |Rep_table::deformation|
+
 
 // basic computation of twisted KL column sum, no tabulation of the result
 SR_poly twisted_KL_sum

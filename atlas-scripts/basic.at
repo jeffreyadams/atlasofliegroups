@@ -1204,6 +1204,13 @@ set infinitesimal_character(ParamPol P) = ratvec:
            ,"infinitesimal character not unique")
   od; gamma
 
+{ split up a ParamPol into terms below a given height and the rest }
+set height_split (ParamPol P, int h) = (ParamPol,ParamPol):
+  let below=0*P, above=0*P in
+  for c@q in P
+  do if q.height<h then below+:=(c,q) else above+:=(c,q) fi
+  od; (below,above)
+
 { more generally, groups terms into different ParamPol, by value of gamma }
 set separate_by_infinitesimal_character (ParamPol P) = [(ratvec,ParamPol)]:
   let M = [(ratvec,ParamPol)]:[]
@@ -1215,15 +1222,16 @@ set separate_by_infinitesimal_character (ParamPol P) = [(ratvec,ParamPol)]:
   ; if not inserted then M #:= (gamma,ParamPol: p) fi
   in for c@p in P do insert(c,p) od; M
 
+{ whether all coefficients are integer repectively integer mulitples of |s| }
+set is_pure_1 (ParamPol P)=bool: all(for c in P do c.s_part.= od)
+set is_pure_s (ParamPol P)=bool: all(for c in P do c.int_part.= od)
+
 { a module is considered pure if either all coefficients are integer of if all
   coefficients are integer multiples of s; stronger than all coefficents pure }
-set is_pure(ParamPol P)=bool:
-  let coeffs = for c@q in P do c od in
-  all(for c in coeffs do =^c od) {all integer} or
-  all(for c in coeffs do =+c od) {all integer mulitples of |s| }
+set is_pure (ParamPol P)=bool: P.is_pure_1 or P.is_pure_s
 
 { report number of integer, purely s, and mixed terms }
-set purity(ParamPol P)=(int,int,int):
+set purity (ParamPol P)=(int,int,int):
   let (x,y,z)=(0,0,0) in
   for coef in P
   do let (a,b)=%coef in { we know (a,b)/=(0,0), so 3 cases arise }

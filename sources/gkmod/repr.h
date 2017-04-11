@@ -166,16 +166,7 @@ class Rep_context
   bool is_twist_fixed(StandardRepr z, const WeightInvolution& delta) const
   { return z==twisted(z,delta); }
 
-  // action by equivalence of parameters (not the cross action), changing gamma
-  void W_act(const WeylWord& w,StandardRepr& z) const;
-
-  // act on |z| by right cross-actions by |w| (does not change |z.gamma()|)
-  void W_cross_act(StandardRepr& z,const WeylWord& w) const;
-
   void make_dominant(StandardRepr& z) const; // ensure |z.gamma()| dominant
-
-  // make integrally dominant, with precomputed integral subsystem; return path
-  WeylWord make_dominant(StandardRepr& z,const SubSystem& subsys) const;
 
   // in addition to |make_dominant| ensure a normalised form of the parameter
   void normalise(StandardRepr& z) const;
@@ -221,6 +212,9 @@ class Rep_context
   std::ostream& print (std::ostream&,const poly& P) const;
 
  private:
+  // make integrally dominant, with precomputed integral subsystem; return path
+  WeylWord make_dominant(StandardRepr& z,const SubSystem& subsys) const;
+  StandardRepr& singular_cross (StandardRepr& z,weyl::Generator s) const;
   void to_singular_canonical(RankFlags gens, StandardRepr& z) const;
   unsigned int height(Weight theta_plus_1_gamma) const;
 }; // |Rep_context|
