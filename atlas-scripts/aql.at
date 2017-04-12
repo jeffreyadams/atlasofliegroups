@@ -2,7 +2,7 @@
 <induction.at
 <all_parameters.at {for all_parameters_x_gamma}
 
-set aql_verbose=false
+set aql_verbose=true
 
 {. Given a parameter p for G and a real parabolic P, list all Weyl(G)
   conjugates of the infinitesimal character of p that are dominant for L. .}
@@ -241,9 +241,10 @@ set is_unitary_reduced_with_form (Param p)=(ParamPol,bool):
    let G=real_form(p) in let ic=infinitesimal_character(p) in
    let rd=root_datum(G) in
    if is_dominant(rd,ic-rho(G))then
-   if aql_verbose then
-   prints("This is strongly regular.") fi; (null_module(G),is_good_Aq(p))
-   else let (,p_L)=reduce_good_range(p) in
+   prints("This is strongly regular.") ; (null_module(G),is_good_Aq(p))
+   else if not is_hermitian(p) then prints("This is not Hermitian.");
+   (null_module(G),false) else
+     let (,p_L)=reduce_good_range(p) in
      if aql_verbose
      then prints("Checking unitarity of ",p_L," of ",
                  real_form(p_L)," This is in the  ",goodness(p_L,G)," range")
@@ -251,7 +252,7 @@ set is_unitary_reduced_with_form (Param p)=(ParamPol,bool):
      let hfl=hermitian_form_irreducible(p_L) in
      if aql_verbose then prints(hfl," p_L unitary: ",is_pure(hfl)) fi;
      let result=theta_induce_parampol(hfl,G) in (result,is_pure(result))
-   fi
+      fi fi
 
 {. As previous function, but only returns true/false. .}
 set is_unitary_reduced (Param p)=bool:
