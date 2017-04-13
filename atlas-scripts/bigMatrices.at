@@ -47,8 +47,7 @@ set my_extended_block(Param p,mat delta)=([Param],[int]):
 let B=block_of(p) then
 B_delta=fixed_subset(B,delta) in
 if #B_delta=0 then ([],[]) else let
-{rv=finalize(B_delta) in (rv, indices_subset(rv,B_delta)) fi}
-rv=finalize(B_delta) in (rv, indices_subset(rv,B)) fi
+rv=monomials(finalize(B_delta)) in (rv, indices_subset(rv,B)) fi
 
 {B=[p_0,...,p_n] array of parameters
  B^delta=[p_{i_0},...,p_{i_m}]  delta-fixed parameters

@@ -66,8 +66,8 @@ prints(new_line,"finalize_extended parameter(FS)*0,delta_S)=", finalize_extended
 
 set pS0=pS*0
 set pG0=pG*0
-set fpS0=finalize(pS0)[0]
-set fpG0=finalize(pG0)[0]
+set fpS0=first_param(finalize(pS0))
+set fpG0=first_param(finalize(pG0))
 
 set rdSint=integrality_datum(pS0)
 set icSint=inner_class(rdSint,delta_S)
