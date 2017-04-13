@@ -121,7 +121,7 @@ set = (KHighestWeight (x,mu), KHighestWeight (y,tau)) = bool:
 
 {. List of LKTs (as final tempered limit parameters) of a module given by a
    parameter. .}
-set LKTs (Param p) = [K_Type]: for q in finalize(p.at_nu_0) do K_type(q) od
+set LKTs (Param p) = [K_Type]: for q in monomials(finalize(p.at_nu_0)) do K_type(q) od
 
 {. LKT of module given by a parameter, if it is unique (otherwise error message) .}
 set LKT (Param p) = K_Type: let lkts=LKTs(p) in assert(#lkts=1,"More than one LKT; use LKTs"); lkts[0]
@@ -443,8 +443,8 @@ set K_types (KHighestWeight mu_in)= [K_Type]:
      prints("tau: ", tau);
      prints("arg:", tau-2*rho_u_cap_s(Q)+rho_l(Q)) fi then
   ()=assert(is_relatively_split(L),"L is not relatively split") then
-  pL=finalize(parameter(KGB(L,#KGB(L)-1),
-	                tau-two_rho_u_cap_s(Q)+rho_l(Q), null(rank(L))))
+  pL=monomials(finalize(parameter(KGB(L,#KGB(L)-1),
+	                tau-two_rho_u_cap_s(Q)+rho_l(Q), null(rank(L)))))
   then
   ()=if LKT_verbose then
      prints("pL:", pL);
