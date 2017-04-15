@@ -150,13 +150,24 @@ set real_induce_irreducible_as_sum_of_standards (Param p_L, RealForm G) =
 {. Write the (real) induced Ind(J(p_L)) of an irreducible of L as a sum of
    irreducibles for G; uses composition series to convert
    output of the previous function into sum of irreducibles. L must
-   be the Levi factor of a real parabolic subgroup. .}
-set real_induce_irreducible(Param p_L, RealForm G)= ParamPol:
+   be the Levi factor of a real parabolic subgroup. The parameter p_L
+   must be final. .}
+set real_induce_irreducible_final(Param p_L, RealForm G)= ParamPol:
   let cf=real_induce_irreducible_as_sum_of_standards(p_L,G)
   , result=null_module(G)
   in for coeff@p in cf do result+:=coeff*composition_series(p) od;
   result
 
+{. Given a polynomial of parameters of L, real induce each term,
+   and write the result as a polynomial of parameters for G. .}
+set real_induce_irreducible(ParamPol P,RealForm G)=ParamPol:
+  let result=null_module(G) in for coeff@p in P do
+     result+:=coeff*real_induce_irreducible_final(p,G) od;
+  result
+
+{. As real_induce_irreducible_final, but the p need not be final. .}
+set real_induce_irreducible(Param p,RealForm G)=ParamPol:
+   real_induce_irreducible(finalize(p),G)
 
 {  ----------------------   cuspidal data   ----------------------------- }
 {. Cuspidal data associated to a parameter p: a cuspidal parabolic subgroup P=MN
@@ -292,14 +303,27 @@ set theta_induce_irreducible_as_sum_of_standards (Param p_L, RealForm G) =
 {. Write the (theta-stable) induced Ind(J(p_L)) of an irreducible of L
    as a sum of irreducibles for G; uses composition series to convert
    output of the previous function into sum of irreducibles. The subgroup
-   L must be the Levi factor of a theta-stable parabolic. .}
-set theta_induce_irreducible(Param p_L, RealForm G) = ParamPol:
+   L must be the Levi factor of a theta-stable parabolic. The parameter
+   p_L must be final. .}
+set theta_induce_irreducible_final(Param p_L, RealForm G) = ParamPol:
   let cf=theta_induce_irreducible_as_sum_of_standards(p_L,G)
   , result=null_module(G)
   in
   for coeff@p in cf do result+:=coeff*composition_series(p) od;
   if ind_verbose then prints("induced as sum of irreducibles: ", result) fi;
   result
+
+{. Given a polynomial of parameters, theta-induce each constituent, and
+   write the result as a polynomial of parameters. .}
+set theta_induce_irreducible(ParamPol P,RealForm G)=ParamPol:
+  let result=null_module(G) in
+   for coeff@p in P do result+:=coeff*theta_induce_irreducible_final(p,G) od;
+   result
+
+{. As theta_induce_irreducible_final, except that the parameter need
+   not be final. .}
+set theta_induce_irreducible(Param p_L,RealForm G)=ParamPol:
+   theta_induce_irreducible(finalize(p_L),G)
 
 
 { if all complex roots for x are of type C+, then conjecturally the torus
