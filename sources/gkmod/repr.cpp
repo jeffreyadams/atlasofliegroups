@@ -403,6 +403,23 @@ void Rep_context::normalise(StandardRepr& z) const
   z.y_bits=innerClass().involution_table().y_pack(kgb().inv_nr(x),lr);
 } // |normalise|
 
+bool Rep_context::is_twist_fixed
+  (StandardRepr z, const WeightInvolution& delta) const
+{
+  make_dominant(z);
+  const RootDatum& rd = rootDatum();
+
+  RankFlags simple_singulars;
+  { const auto& numer = z.infinitesimal_char.numerator();
+    for (weyl::Generator s=0; s<rd.semisimpleRank(); ++s)
+      simple_singulars.set(s,rd.simpleCoroot(s).dot(numer)==0);
+  }
+
+  to_singular_canonical(simple_singulars,z);
+
+  return z==twisted(z,delta);
+} // |normalise|
+
 // equivalence is equality after |make_dominant| and |to_singular_canonical|
 bool Rep_context::equivalent(StandardRepr z0, StandardRepr z1) const
 {

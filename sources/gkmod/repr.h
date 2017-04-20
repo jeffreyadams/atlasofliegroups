@@ -18,6 +18,7 @@
 #include "matrix.h"	// containment
 #include "ratvec.h"	// containment
 
+#include "innerclass.h" // inlines
 #include "realredgp.h"	// inlines
 
 #include "hashtable.h"
@@ -163,8 +164,9 @@ class Rep_context
   bool is_oriented(const StandardRepr& z, RootNbr alpha) const;
   unsigned int orientation_number(const StandardRepr& z) const;
 
-  bool is_twist_fixed(StandardRepr z, const WeightInvolution& delta) const
-  { return z==twisted(z,delta); }
+  bool is_twist_fixed(StandardRepr z, const WeightInvolution& delta) const;
+  bool is_twist_fixed(const StandardRepr& z) const
+  { return is_twist_fixed(z,innerClass().distinguished()); }
 
   void make_dominant(StandardRepr& z) const; // ensure |z.gamma()| dominant
 

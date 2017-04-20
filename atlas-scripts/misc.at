@@ -23,12 +23,12 @@ set parts (ParamPol P)=(integer_part(P),s_part(P))
 set param(RealForm G,int k, vec lambda_rho,ratvec nu) = Param:
   param(KGB(G,k),lambda_rho,nu)
 
-{ replace non-final parameter with ParamPol 
-  this function used to return a [Param] instead, with coefficients ignored}
-set finalize (Param p)=ParamPol:p 
+{ replace non-final parameter with ParamPol
+  this function used to return a [Param] instead, with coefficients ignored }
+set finalize (Param p) = ParamPol: p
 
-set finalize ([Param] P) = ParamPol: let rv=null_module(P[0]) in
-for p in P do rv+:=p od;rv
+set finalize ([Param] P) = ParamPol: { will fail on an empty list }
+  P[0].null_module + for p in P do (Split:1,p) od
 
 { evaluate at s=t for t integer (or rational?): replace w=a+bs with a+bt }
 { would seem to make sense only if t^2=1, so if either t=1 or t=-1 }

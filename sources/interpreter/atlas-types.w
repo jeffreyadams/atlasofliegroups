@@ -4032,15 +4032,15 @@ void scale_0_parameter_wrapper(expression_base::level l)
 @ One of the main reasons to introduce module parameter values is that they
 allow computing a block, whose elements are again given by module parameters.
 Before we define the functions the do that, let us define a common function
-they will use to test a parameter for validity. Even though we shall always
-have a pointer available when we call |test_standard|, we define this function
-to take a reference (requiring us to write a dereferencing at each call),
-because the type of pointer (shared or raw) available is not always the same.
-The reference is of course not owned by |test_standard|. A similar test is
-|is_nonzero_final|, which tests is the parameter will, after applying
-|Rep_table::normalise|, will satisfy the |is_final| predicate. When these
-functions fail, they try to be specific about what condition fails, in erms of
-the situation before applying |normalise|
+|test_standard| they will use to test a parameter for validity. Even though we
+shall always have a pointer available when we call |test_standard|, we define
+this function to take a reference (requiring us to write a dereferencing at
+each call), because the type of pointer (shared or raw) available is not
+always the same. The reference is of course not owned by |test_standard|. A
+similar test is |test_normal_is_final|, which tests if the parameter will,
+after applying |Rep_table::normalise|, satisfy the |is_final| predicate.
+When these functions fail, they try to be specific about what condition fails,
+in terms of the situation before applying |normalise|
 
 @< Local function def...@>=
 void test_standard(const module_parameter_value& p, const char* descr)
@@ -5263,12 +5263,14 @@ void twisted_full_deform_wrapper(expression_base::level l)
 { shared_module_parameter p = get<module_parameter_value>();
   const auto& rc=p->rc();
   test_standard(*p,"Cannot compute full twisted deformation");
-  const auto& delta = rc.innerClass().distinguished();
-  if (not rc.is_twist_fixed(p->val,delta))
+  auto sr=p->val; // take a copy
+  rc.make_dominant(sr); // |is_twist_fixed| and |extended_finalise| like this
+  if (not rc.is_twist_fixed(sr))
     throw runtime_error("Parameter not fixed by inner class involution");
   if (l!=expression_base::no_value)
   {
-    auto finals = ext_block::extended_finalise(rc,p->val,delta);
+    auto finals =
+      ext_block::extended_finalise(rc,sr,rc.innerClass().distinguished());
     repr::SR_poly result (rc.repr_less());
     for (auto it=finals.cbegin(); it!=finals.cend(); ++it)
       result.add_multiple(p->rt().twisted_deformation(it->first) @|
@@ -5307,12 +5309,14 @@ void twisted_KL_sum_at_s_wrapper(expression_base::level l)
 { shared_module_parameter p = get<module_parameter_value>();
   test_standard(*p,"Cannot compute Kazhdan-Lusztig sum");
   test_normal_is_final(*p,"Cannot compute Kazhdan-Lusztig sum");
-  const auto& delta = p->rc().innerClass().distinguished();
-  if (not p->rc().is_twist_fixed(p->val,delta))
+  auto sr=p->val; // take a copy
+  p->rc().make_dominant(sr);
+    // |is_twist_fixed| and |twisted_KL_column_at_s| like this
+  if (not p->rc().is_twist_fixed(sr))
     throw runtime_error("Parameter not fixed by inner class involution");
   if (l!=expression_base::no_value)
   {
-    repr::SR_poly result = p->rt().twisted_KL_column_at_s(p->val);
+    repr::SR_poly result = p->rt().twisted_KL_column_at_s(sr);
     push_value (std::make_shared<virtual_module_value>(p->rf,result));
   }
 }
