@@ -122,10 +122,10 @@ set make_parabolic (RealForm L,RealForm G)=Parabolic:
 
 {. Real parabolic induction of a standard module of real Levi L (i.e., L
   must be the Levi factor of a real parabolic subgroup) to G .}
-   set real_induce_standard (Param p_L,RealForm G) = Param:
+set real_induce_standard (Param p_L,RealForm G) = Param:
   let x_L=x(p_L) in
-  let  L=real_form(x_L) in
-  assert(is_parabolic_real(make_parabolic(L,G)),"L is not Levi of real parabolic");
+  assert(is_parabolic_real(make_parabolic(real_form(x_L),G)),
+         "L is not Levi of real parabolic");
   let x_G=embed_KGB(x_L,G)
   then theta=involution(x_G)
   then shift=rho_r(x_G)-rho_r(x_L)+(1-theta)*(rho_S(x_G)-rho_S(x_L))
@@ -134,40 +134,34 @@ set make_parabolic (RealForm L,RealForm G)=Parabolic:
 {. Real parabolic induction of standards, applied to a formal sum of
    parameters (ParamPol). .}
 set real_induce_standard (ParamPol P,RealForm G) = ParamPol:
-  let result=null_module(G) in
-  for c@p in P do result+:=c*real_induce_standard(p,G) od;
-  result
+  null_module(G) + for c@p in P do (c,real_induce_standard(p,G)) od
 
 {. Write the (real) induced of an irreducible J(p_L) of L as a formal sum of
    standards for G; uses the character formula to write J(p_L)
    as a formal sum of standards for L first. (Auxiliary function) .}
 set real_induce_irreducible_as_sum_of_standards (Param p_L, RealForm G) =
     ParamPol:
-  let cf=character_formula(p_L), result=null_module(G) in
-  for coeff@p in cf do result+:=coeff*real_induce_standard(p,G) od;
-  result
+  real_induce_standard(character_formula(p_L),G)
 
-{. Write the (real) induced Ind(J(p_L)) of an irreducible of L as a sum of
-   irreducibles for G; uses composition series to convert
-   output of the previous function into sum of irreducibles. L must
-   be the Levi factor of a real parabolic subgroup. The parameter p_L
-   must be final. .}
-set real_induce_irreducible_final(Param p_L, RealForm G)= ParamPol:
-  let cf=real_induce_irreducible_as_sum_of_standards(p_L,G)
-  , result=null_module(G)
-  in for coeff@p in cf do result+:=coeff*composition_series(p) od;
-  result
+{. Write the (real) induced $Ind(J(p_L))$ of an irreducible of |L| as a sum of
+   irreducibles for |G|; uses composition series to convert output of the
+   |real_induce_irreducible_as_sum_of_standards| into sum of irreducibles.
+   The real form |L| of |p_L| must be the Levi factor of a real parabolic
+   subgroup; and the parameter p_L must be final. .}
+set real_induce_irreducible_final (Param p_L, RealForm G) = ParamPol:
+  real_induce_irreducible_as_sum_of_standards(p_L,G).composition_series
 
 {. Given a polynomial of parameters of L, real induce each term,
    and write the result as a polynomial of parameters for G. .}
-set real_induce_irreducible(ParamPol P,RealForm G)=ParamPol:
-  let result=null_module(G) in for coeff@p in P do
-     result+:=coeff*real_induce_irreducible_final(p,G) od;
+set real_induce_irreducible (ParamPol P,RealForm G) = ParamPol:
+{ map |(Param p):real_induce_irreducible_final(p,G)| over terms of |P|, but we
+  cannot use |map@((Param->ParamPol),ParamPol)|, since the real group changes }
+  let result=null_module(G) in
+  for coeff@p in P do result+:=coeff*real_induce_irreducible_final(p,G) od;
   result
 
-{. As real_induce_irreducible_final, but the p need not be final. .}
-set real_induce_irreducible(Param p,RealForm G)=ParamPol:
-   real_induce_irreducible(finalize(p),G)
+{ |real_induce_irreducible@(Param,RealForm)| not defined, as the |ParamPol|
+  version suffices: implicit conversion |Param->ParamPol| will apply }
 
 {  ----------------------   cuspidal data   ----------------------------- }
 {. Cuspidal data associated to a parameter p: a cuspidal parabolic subgroup P=MN
@@ -238,9 +232,7 @@ set standardize (Param p) = ParamPol:
   fi
 
 {. standardize a formal linear combination of possibly non-standard parameters .}
-set standardize (ParamPol P) = ParamPol:
-  let result=null_module(P) in
-  for c@p in P do result+:=c*standardize(p) od;result
+set standardize (ParamPol P) = ParamPol: map (standardize@Param, P)
 
 {--------------------- theta-stable parabolic induction -------------------}
 
@@ -261,28 +253,25 @@ set theta_induce_standard (Param p_L,RealForm G) = ParamPol:
   { if ind_verbose
     then prints("K_norm(p_G) before standardization:", K_norm(p_G.at_nu_0))
     fi; }
-  let p_G_standardized=null_module(G) in
   if is_standard(p_G)
-  then p_G_standardized:=(ParamPol:p_G)
-  ; if ind_verbose then prints("p_G is standard: ", p_G, standardize(p_G)) fi
-  else if ind_verbose then prints("Need to standardize:", p_G) fi
-  ; p_G_standardized:=standardize(p_G)
-  ; if ind_verbose then prints("p_G standardized:", p_G_standardized) fi
-{ prints("K_norm(p_G standardized):", K_norm(p_G)}
-  fi;
-{ prints("K_norms of terms of p_G: "
-        , for q in monomials(p_G) do K_norm(q) od ); }
-  p_G_standardized
+  then
+    if ind_verbose then prints("p_G is standard: ", p_G, ParamPol: p_G) fi;
+    p_G
+  else if ind_verbose then prints("Need to standardize:", p_G) fi;
+    let result = standardize(p_G) in
+    if ind_verbose then prints("p_G standardized:", result) fi;
+{ prints("K_norm(p_G standardized):", K_norm(p_G) }
+{ prints("K_norms of terms of p_G: ", for @q in result do K_norm(q) od ); }
+    result
+  fi
 
 {. Given a ParamPol P, form a new ParamPol by theta-inducing each
    summand. .}
 set theta_induce_parampol (ParamPol P, RealForm G)=ParamPol:
-   let L=real_form(P) in
-   assert(is_parabolic_theta_stable(make_parabolic(L,G)),
-  "L is not Levi of theta_stable parabolic");
-   let result=null_module(G) in
-   for coeff@p in P do let new=theta_induce_standard(p,G) in
-   result+:=coeff*new od;
+   assert(is_parabolic_theta_stable(make_parabolic(real_form(P),G)),
+          "L is not Levi of theta_stable parabolic");
+   let result = null_module(G) in
+   for coeff@p in P do result+:=coeff*theta_induce_standard(p,G) od;
    result
 
 {. Write the (theta-stable) induced of an irreducible J(p_L) of L as a formal
@@ -292,11 +281,9 @@ set theta_induce_irreducible_as_sum_of_standards (Param p_L, RealForm G) =
     ParamPol:
   let cf=character_formula(p_L) in
   if ind_verbose
-  then prints("p_L:",p_L); prints("Character formula for p_L:"); prints(cf)
+  then prints("p_L:",p_L); prints("Character formula for p_L:",cf)
   fi;
-  let result=null_module(G) in
-  for coeff@p in cf
-  do let new=theta_induce_standard(p,G) in result+:=coeff*new od;
+  let result = theta_induce_parampol(cf,G) in
   if ind_verbose then prints("induced as sum of standards:", result) fi;
   result
 
@@ -305,26 +292,24 @@ set theta_induce_irreducible_as_sum_of_standards (Param p_L, RealForm G) =
    output of the previous function into sum of irreducibles. The subgroup
    L must be the Levi factor of a theta-stable parabolic. The parameter
    p_L must be final. .}
-set theta_induce_irreducible_final(Param p_L, RealForm G) = ParamPol:
-  let cf=theta_induce_irreducible_as_sum_of_standards(p_L,G)
-  , result=null_module(G)
+set theta_induce_irreducible_final (Param p_L, RealForm G) = ParamPol:
+  let result =
+    theta_induce_irreducible_as_sum_of_standards(p_L,G).composition_series
   in
-  for coeff@p in cf do result+:=coeff*composition_series(p) od;
   if ind_verbose then prints("induced as sum of irreducibles: ", result) fi;
   result
 
 {. Given a polynomial of parameters, theta-induce each constituent, and
    write the result as a polynomial of parameters. .}
-set theta_induce_irreducible(ParamPol P,RealForm G)=ParamPol:
-  let result=null_module(G) in
+set theta_induce_irreducible (ParamPol P,RealForm G) = ParamPol:
+{ map |(Param p):theta_induce_irreducible_final(p,G)| over terms of |P|, but we
+  cannot use |map@((Param->ParamPol),ParamPol)|, since the real group changes }
+   let result=null_module(G) in
    for coeff@p in P do result+:=coeff*theta_induce_irreducible_final(p,G) od;
    result
 
-{. As theta_induce_irreducible_final, except that the parameter need
-   not be final. .}
-set theta_induce_irreducible(Param p_L,RealForm G)=ParamPol:
-   theta_induce_irreducible(finalize(p_L),G)
-
+{ |theta_induce_irreducible@(Param,RealForm)| not defined, as the |ParamPol|
+  version suffices: implicit conversion |Param->ParamPol| will apply }
 
 { if all complex roots for x are of type C+, then conjecturally the torus
   parts (torus_factor) of all elements in the fiber are a subset of those for
@@ -716,14 +701,14 @@ set goodness (Param p_L,RealForm G) = string:
   else "None"
   fi
 
-{. List all A_q(0) (actually: R_q(trivial): infinitesimal character rho(G)) modules
-  with Q a theta-stable parabolic of type P. .}
-set Aq_packet(RealForm G,ComplexParabolic P)=[Param]:
-let parabolics=theta_stable_parabolics(G,P) then
-rv=[Param]:[] in
-for Q in parabolics do
- let ind=monomials(theta_induce_irreducible(trivial(Levi(Q)),G))
-  in assert(#ind=1,"induced in A_packet is not irreducible");rv#:=ind[0] od;rv
+{. List all A_q(0) (actually: R_q(trivial): infinitesimal character rho(G))
+   modules with Q a theta-stable parabolic of type P. .}
+set Aq_packet (RealForm G,ComplexParabolic P) = [Param]:
+  for Q in theta_stable_parabolics(G,P)
+  do let ind=theta_induce_irreducible(trivial(Levi(Q)),G) in
+    assert(#ind=1,"induced in A_packet is not irreducible");
+    ind.first_param { forget the coefficient, collect the parameter }
+  od
 
 {. List all A_q(0) (infinitesimal character rho(G)) modules
   with Q a theta-stable parabolic of type S (list of simple roots). .}
@@ -742,7 +727,8 @@ set Aq_zeros(RealForm G)=[Param]:
   with maximal element x. .}
 set theta_stable_parabolics_max(KGBElt x)=[Parabolic]:
   let G=real_form(x) in let tsp=theta_stable_parabolics(G) in
-  let temp=[Parabolic]:[] in for P in tsp do if x=maximal(P) then temp#:=P fi od;
+  let temp=[Parabolic]:[] in
+  for P in tsp do if x=maximal(P) then temp#:=P fi od;
   temp
 
 {. Given a KGB element x, list all theta-stable parabolics in G
