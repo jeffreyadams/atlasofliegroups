@@ -459,6 +459,18 @@ public:
   bool remove(id_type id, const type_expr& arg_t); //deletion
 };
 
+@ We introduce a single overload table in the same way as the global
+identifier table.
+
+@< Declarations of global variables @>=
+extern overload_table* global_overload_table;
+
+@~Here we set the pointer to a null value; the main program will actually
+create the table.
+
+@< Global variable definitions @>=
+overload_table* global_overload_table=nullptr;
+
 @ The |variants| method just returns a reference to the found vector of
 overload instances, or else an empty vector. Since it is returned as
 reference, a static empty vector is used to ensure sufficient lifetime.
@@ -471,12 +483,80 @@ const overload_table::variant_list& overload_table::variants
   return p==table.end() ? empty : p->second;
 }
 
-@ The |add| method is what introduces and controls overloading. We first look
-up the identifier; if it is not found we associate a singleton vector with the
-given value and type to the identifier, but if the identifier already had a
-vector associate to it, we must test the new pair against existing elements,
-reject it if there is a conflicting entry present, and otherwise make sure it
-is inserted before any strictly less specific overloaded instances.
+@ The local function |locate| compares an argument type against those in a list
+of existing variants, and returns the index where it is to be inserted, and a
+Boolean telling whether a conflict was encountered.
+
+We call |is_close| to do the comparisons; if it returns a nonzero value it
+must be either |0x6|, in which case insertion must be after that entry, or
+|0x5|, in which case insertion must be not before that entry (insertion at
+that spot would push the entry ahead of it). Any place that satisfies these
+restrictions is fine for insertion; we |assert| that such a place is left, and
+in case none of the comparisons came close, we indicate to insert at the end.
+
+Mutually convertible types or close but mutually non convertible types are a
+problem, unless the types are actually equal. The problem cases are reported by
+setting the Boolean return component to |true|, while equality of types found
+is indicated by returning the current index with |false|. In either case the
+return is immediate (in the latter case the presence of an identical type in
+the list shows that the remainder of the scan will return no errors).
+
+@< Local function... @>=
+size_t locate
+  (id_type id,const overload_table::variant_list& slot,const type_expr& arg_type)
+{ size_t lwb=0; size_t upb=slot.size();
+  for (size_t i=0; i<slot.size(); ++i)
+  { unsigned int cmp= is_close(arg_type,slot[i].type().arg_type);
+    switch (cmp)
+    {
+      case 0x6: lwb=i+1; break;
+        // existent type |i| converts to |type|, which must come later
+      case 0x5: @+ if (upb>i) upb=i; @+ break;
+        // |type| converts to type |i|, so it must come before
+      case 0x7: // mutually convertible types, maybe identical ones
+        if (slot[i].type().arg_type==arg_type)
+          // identical ones: overload redefinition case
+            return i;
+      @/// |else| {\bf fall through}
+      case 0x4:
+       @< Throw a |program_error| reporting a conflict of attempted overload
+          for |id| with previous one in |slot[i]| @>
+      default: @+{} // nothing for unrelated argument types
+    }
+  }
+  if (lwb>upb)
+    throw logic_error("Conflicting order of related overload types");
+
+  return upb;
+}
+
+@ When we get here the argument types to be added are either mutually
+convertible but distinct form existing types (the fall through case above), or
+close to existing types without being convertible in any direction (which
+would have given a way to disambiguate), so we must report an error. The error
+message is quite verbose, but tries to precisely pinpoint the kind of problem
+encountered so that the user will hopefully be able to understand.
+
+@< Throw a |program_error| reporting a conflict... @>=
+{ std::ostringstream o;
+  o << "Cannot overload `" << main_hash_table->name_of(id) << "':\n" @|
+       "already overloaded type '" << slot[i].type().arg_type
+ @| << "' is too close to new argument type '"@| << arg_type
+ @| << "',\nwhich would make overloading ambiguous for certain arguments. " @|
+       "Simultaneous\noverloading for these types is not possible, " @|
+       "forget the other one first.";
+  throw program_error(o.str());
+}
+
+
+
+@ The |overload_table::add| method is what introduces and controls
+overloading. We first look up the identifier; if it is not found we associate
+a singleton vector with the given value and type to the identifier, but if the
+identifier already had a vector associate to it, we must test the new pair
+against existing elements, reject it if there is a conflicting entry present,
+and otherwise make sure it is inserted before any strictly less specific
+overloaded instances.
 
 @< Global function def... @>=
 void overload_table::add
@@ -487,110 +567,46 @@ void overload_table::add
   if (its.first==its.second) // a fresh overloaded identifier
   {
 #ifdef incompletecpp11
-    auto it=table.insert
+    auto pos=table.insert
       (its.first,std::make_pair(id, variant_list()));
-#else
-    auto it=table.emplace_hint(its.first,id,variant_list())
-;
-#endif
-    it->second.push_back(
+    pos->second.push_back(
       overload_data( std::move(val), std::move(type)) );
+#else
+    auto pos=table.emplace_hint(its.first,id,variant_list());
+    pos->second.emplace_back(std::move(val), std::move(type) );
+#endif
   }
   else
-  { variant_list& slot=its.first->second; // vector of all variants
-    @< Compare |type| against entries of |slot|, if none are close then add
-    |val| and |type| at the end, if any is close without being one-way
-    convertible to or from it throw an error, and in the remaining case make
-    sure |type| is added after any types that convert to it and before any types
-    it converts to @>
+    @< Insert an overload for function |val| with type |type| into
+     the list of variants at |its->first.second|, or throw an error if
+     there is an incompatibility with a previously existing variant @>
+}
+
+@ By calling |locate|, we find out where to insert our new entry, and whether
+that is forbidden due to a conflict with a previously existing entry. The case
+where it is not forbidden actually covers two cases, the usual one where the
+overload is added to the existing ones, and the case where it will replace an
+overload with the same argument type; although the distinction was clear
+inside |locate|, that information was not passed to us. However in most cases
+the fact that |pos| is at the end of |slot|, so does not point at any entry,
+allows us to avoid testing any types again here.
+
+@< Insert an overload for function |val| with type |type|... @>=
+{ variant_list& slot=its.first->second; // vector of all variants
+  auto pos=locate(id,slot,type.arg_type); // may |throw|
+  if (pos<slot.size() and slot[pos].type().arg_type==type.arg_type)
+     // equality found
+    slot[pos] = overload_data(std::move(val),std::move(type)); // overwrite
+  else
+  {
+#ifdef incompletecpp11
+    slot.insert
+      (slot.begin()+pos,overload_data(std::move(val),std::move(type)));
+#else
+    slot.emplace(slot.begin()+pos,std::move(val),std::move(type));
+#endif
   }
 }
-
-@ We call |is_close| for each existing argument type; if it returns a nonzero
-value it must be either |0x6|, in which case insertion must be after that
-entry, or |0x5|, in which case insertion must be no later than at this
-position, so that the entry in question (after shifting forward) stays ahead.
-The last of the former cases and the first of the latter are recorded, and
-their requirements should be compatible.
-
-Although the module name does not mention it, we allow one case of close and
-mutually convertible types, namely identical types; in this case we simply
-replace the old definition for this type by the new one. This could still
-change the result type, but that does not matter because if any calls that
-were type-checked against the old definition should survive (in a closure),
-they have been also bound to the (function) \emph{value} that was previously
-accessed by that definition, and will continue to use it; their operation is
-in no way altered by the replacement of the definition.
-
-@< Compare |type| against entries of |slot|... @>=
-{ size_t lwb=0; size_t upb=slot.size();
-  for (size_t i=0; i<slot.size(); ++i)
-  { unsigned int cmp= is_close(type.arg_type,slot[i].type().arg_type);
-    switch (cmp)
-    {
-      case 0x6: lwb=i+1; break;
-        // existent type |i| converts to |type|, which must come later
-      case 0x5: @+ if (upb>i) upb=i; @+ break;
-        // |type| converts to type |i|, so it must come before
-      case 0x7: // mutually convertible types, maybe identical ones
-        if (slot[i].type().arg_type==type.arg_type)
-          // identical ones: overload redefinition case
-        @/{@; slot[i] = overload_data(std::move(val),std::move(type));
-            return;
-          }
-      @/// |else| {\bf fall through}
-      case 0x4:
-         @< Report conflict of attempted overload for |id| with previous one
-            in |slot[i]| @>
-      default: @+{} // nothing for unrelated argument types
-    }
-  }
-  @< Insert |val| and |type| after |lwb| and before |upb| @>
-}
-
-@ We get here when the argument types to be added are either mutually
-convertible but distinct form existing types (the fall through case above), or
-close to existing types without being convertible in any direction (which
-would have given a way to disambiguate), so we must report an error. The error
-message is quite verbose, but tries to precisely pinpoint the kind of problem
-encountered so that the user will hopefully able to understand.
-
-@< Report conflict of attempted overload for |id| with previous one in
-  |slot[i]| @>=
-{ std::ostringstream o;
-  o << "Cannot overload `" << main_hash_table->name_of(id) << "': " @|
-       "previous type " << slot[i].type().arg_type
-    << "\nis too close to "@| << type.arg_type
-    << ",\nmaking overloading potentially ambiguous." @|
-       " Broadness cannot disambiguate,\nas "
-    << (cmp==0x4 ? "neither" :"either") @|
-    << " type converts to the other";
-  throw program_error(o.str());
-}
-
-@ Once we arrive here, the value of |lwb| indicates the first position in
-|slot| where we could insert our overload (after any narrower match, and |upb|
-indicates the last possible position (before any broader match). It should not
-be possible (by transitivity of convertibility) that any narrower match comes
-after any broader match, so we insist that |lwb>upb| always, and throw a
-|logic_error| in case it should fail. Having passed this test, we insert
-the new overload into the vector |slot| at position |upb|, the last possible
-one.
-
-Shifting entries during a call of |insert| is done by moving, so it should not
-risk doubling any unique pointers, since moving those immediately nullifies
-the pointer moved from. Similar remarks apply in case of necessary
-reallocation; a properly implemented |insert| (or |emplace|) should provide
-a strong exception guarantee.
-
-@< Insert |val| and |type| after |lwb| and before |upb| @>=
-if (lwb>upb)
-  throw logic_error("Conflicting order of related overload types");
-else
-{ slot.insert // better use |emplace| with gcc 4.8
-  (slot.begin()+upb,overload_data(std::move(val),std::move(type)));
-}
-
 
 @ The |remove| method allows removing an entry from the overload table, for
 instance to make place for another one. It returns a Boolean telling whether
@@ -631,18 +647,6 @@ std::ostream& operator<< (std::ostream& out, const overload_table& p)
 
 @< Declarations of exported functions @>=
 std::ostream& operator<< (std::ostream& out, const overload_table& p);
-
-@ We introduce a single overload table in the same way as the global
-identifier table.
-
-@< Declarations of global variables @>=
-extern overload_table* global_overload_table;
-
-@~Here we set the pointer to a null value; the main program will actually
-create the table.
-
-@< Global variable definitions @>=
-overload_table* global_overload_table=nullptr;
 
 @* Operations other than evaluation of expressions.
 %
@@ -737,15 +741,16 @@ This section will be devoted to some interactions between user and program
 that do not consist just of evaluating expressions.
 
 The function |global_set_identifier| handles introducing identifiers, either
-normal ones or overloaded instances of functions, using the \&{set} syntax.
-It has a variant for multiple declarations |global_set_identifiers|.
-The function |global_declare_identifier| just introduces an identifier into
-the global (non-overloaded) table with a definite type, but does not provide a
-value (it will then have to be assigned to before it can be validly used).
-Conversely |global_forget_identifier| removes an identifier from the global
-table. The last three functions serve to provide the user with information
-about the state of the global tables (but invoking |type_of_expr| will
-actually go through the full type analysis and conversion process).
+normal ones or overloaded instances of functions, using the \&{set} syntax. It
+has a variant for multiple declarations |global_set_identifiers|. The function
+|global_declare_identifier| just introduces an identifier into the global
+(non-overloaded) table with a definite type, but does not provide a value (it
+will then have to be assigned to before it can be validly used). Conversely
+|global_forget_identifier| removes an identifier from the global table. The
+function |type_define_identifier| will define an identifier as an abbreviation
+of a type expression. The last three functions serve to provide the user with
+information about the state of the global tables (but invoking |type_of_expr|
+will actually go through the full type analysis and conversion process).
 
 @< Declarations of exported functions @>=
 void global_set_identifier(const struct raw_id_pat& id, expr_p e, int overload);
@@ -821,7 +826,6 @@ class definition_group
 { typedef std::vector<std::pair<id_type,type_expr> > association;
   association bindings;
   BitMap constness;
-  bool error; // whether an error was detected
 public:
   definition_group(unsigned int n_ids);
 @) // manipulators
@@ -832,28 +836,19 @@ public:
 @) // accessors
   bool is_const (association::const_iterator it) const
   {@; return constness.isMember(it-bindings.cbegin()); }
-  bool has_error() const @+{@; return error; }
 };
 
-@ The methods of |definition_group| are simplified with respect to |layer|,
-since they do not need to maintain |lexical_context| in any way. Also
-|thread_bindings| is now a method rather than a free function (which ``saves''
-the destination argument in (recursive) calls), and it also lacks the
-constness-overriding argument that has no use for global definitions.
+@ The methods of |definition_group| are closely related those of |layer|, but
+simplified because since they do not need to maintain |lexical_context| in any
+way (in particular there is no need for a user-defined destructor). We also
+include |thread_bindings| now as a method rather than a free function (which
+``saves'' the destination argument in (recursive) calls), and it also lacks
+the constness-overriding argument that has no use for global definitions.
 
 @< Global function definitions @>=
 definition_group::definition_group(unsigned int n_ids)
-: bindings(), constness(n_ids), error(false)
+: bindings(), constness(n_ids)
 {@; bindings.reserve(n_ids); }
-@)
-void definition_group::add(id_type id,type_expr&& t, bool is_const)
-{ for (auto it=bindings.cbegin(); it!=bindings.cend(); ++it)
-  // check previous bindings in group
-    if (it->first==id)
-    {@; error=true; return; }
-  constness.set_to(bindings.size(),is_const);
-  bindings.emplace_back(id,std::move(t));
-}
 @)
 void definition_group::thread_bindings(const id_pat& pat,const type_expr& type)
 { if ((pat.kind & 0x1)!=0)
@@ -866,6 +861,41 @@ void definition_group::thread_bindings(const id_pat& pat,const type_expr& type)
          ++p_it,++t_it)
       thread_bindings(*p_it,*t_it);
   }
+}
+
+@ For the method |add| we do have some actions absent from or different than
+in |layer::add|, since we have somewhat different conditions to check for
+validity of the definitions. Although there might be cases where several
+overloads for the same identifiers could be validly added in a single group,
+we forbid this as it would complicate the necessary testing considerably for
+little practical gain. Besides this test we check that each identifier of
+function type can be validly added to the overload table.
+
+@< Global function definitions @>=
+
+void definition_group::add(id_type id,type_expr&& t, bool is_const)
+{ for (auto it=bindings.cbegin(); it!=bindings.cend(); ++it)
+  // check repeated identifiers
+    if (it->first==id)
+      @< Throw an error signalling multiple occurrences of identifier |id| @>
+@)
+  if (t.kind==function_type)
+  { const auto& var=global_overload_table->variants(id);
+    locate(id,var,t.func->arg_type); // may |throw|; otherwise ignore result
+  }
+@)
+  constness.set_to(bindings.size(),is_const);
+  bindings.emplace_back(id,std::move(t));
+}
+
+@ When a double identifier is found, we exit the |add| method by throwing a
+|program_error| detailing the problem.
+
+@< Throw an error signalling multiple occurrences of identifier |id| @>=
+{ std::ostringstream o;
+  o << "Multiple occurrences of '" << main_hash_table->name_of(id)
+    @| << "' cannot be defined in same definition";
+  throw program_error(o.str());
 }
 
 @*2 Defining global identifiers or overloads.
@@ -914,8 +944,6 @@ void do_global_set(id_pat&& pat, const expr& rhs, int overload)
     @< Check that we are not setting an operator to a non-function value @>
     definition_group b(n_id);
     b.thread_bindings(pat,t); // match identifiers and their future types
-    if (b.has_error())
-      throw program_error("Identical identifiers in global definition");
 @)
     phase=1; // evaluation of right hand side
 @/  e->eval();
@@ -940,7 +968,6 @@ void do_global_set(id_pat&& pat, const expr& rhs, int overload)
   }
   @< Catch block for errors thrown during a global identifier definition @>
 }
-
 
 @ When |overload>0|, choosing whether the definition enters into the overload
 table or into the global identifier table is determined by the type of the
