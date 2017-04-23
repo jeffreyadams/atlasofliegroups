@@ -1187,26 +1187,32 @@ void type_define_identifier
   (id_type id, type_p t, raw_id_pat ip, const YYLTYPE& loc)
 { type_ptr saf(t); id_pat fields(ip); // ensure clean-up
   type_expr& type=*t;
+  const auto n=length(fields.sublist);
+  definition_group group(n);
+  std::vector<shared_function> tors; tors.reserve(n);
   if (not fields.sublist.empty()) // do this before we move from |type|
   { assert(type.kind==tuple_type or type.kind==union_type);
+    dressed_type_list tor_types;
     auto tp_it =wtl_const_iterator(type.tupple);
-    unsigned count=0;
-    for (auto it=fields.sublist.wcbegin(); not it.at_end();
-         ++tp_it,++count,++it)
-      if (it->kind==0x1) // field selector present
-      { shared_function tor; type_expr tor_type;
-        if (type.kind==tuple_type)
-        { // projector
-          tor=std::make_shared<projector_value>(type,count,it->name,loc);
-          tor_type.set_from(type_expr(type.copy(),tp_it->copy()));
+    auto id_it=fields.sublist.wcbegin();
+    if (type.kind==tuple_type)
+      for (unsigned i=0; i<n; ++i,id_it++,tp_it++)
+        if (id_it->kind==0x1) // field selector present
+        { tors.push_back
+            (std::make_shared<projector_value>(type,i,id_it->name,loc));
+          tor_types.emplace_back(type_expr(type.copy(),tp_it->copy()));
         }
-        else
-        { // injector
-          tor=std::make_shared<injector_value>(type,count,it->name,loc);
-          tor_type.set_from(type_expr(tp_it->copy(),type.copy()));
+        else tor_types.emplace_back(); // filler type
+    else
+      for (unsigned i=0; i<n; ++i,id_it++,tp_it++)
+        if (id_it->kind==0x1) // field selector present
+        {  tors.push_back
+            (std::make_shared<injector_value>(type,i,id_it->name,loc));
+          tor_types.emplace_back(type_expr(tp_it->copy(),type.copy()));
         }
-        add_overload(it->name,std::move(tor),std::move(tor_type));
-      }
+        else tor_types.emplace_back(); // filler type
+    auto combined_type=mk_tuple_type(tor_types.undress());
+    group.thread_bindings(fields,*combined_type);
   }
 @)
   bool redefine = global_id_table->is_defined_type(id);
@@ -1218,6 +1224,10 @@ void type_define_identifier
             << (redefine ? "' redefined as " : "' defined as ") << type
             << std::endl;
 @/global_id_table->add_type_def(id,std::move(type));
+@)
+  unsigned count=0;
+  for (auto it=group.begin(); it!=group.end(); ++count,++it)
+    add_overload(it->first,std::move(tors[count]),std::move(it->second));
 }
 
 @ Defining a type name would make any global identifier or overload of the same
