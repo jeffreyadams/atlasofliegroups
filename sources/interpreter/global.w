@@ -1013,10 +1013,9 @@ reporting the changes made to the user.
 
 One difference is that here the |add| method may throw because of a
 conflict of a new definition with an existing one; we therefore do not print
-anything before the |add| method has successfully completed. An unfortunate
-consequence of this possibility is that we may end up with a multiple \&{set}
-command that gets partially executed and then aborts. This is quite rare
-though, and not catastrophic, so we don't do any effort here to exclude this.
+anything before the |add| method has successfully completed. This concern has
+been made superfluous by the use of |definition_group| which will ensure that
+such an error will have been signalled before we come here.
 
 @< Define auxiliary functions for |do_global_set| @>=
 void add_overload(id_type id, shared_function&& f, type_expr&& type)
@@ -1186,62 +1185,121 @@ abbreviation for a type.
 void type_define_identifier
   (id_type id, type_p t, raw_id_pat ip, const YYLTYPE& loc)
 { type_ptr saf(t); id_pat fields(ip); // ensure clean-up
-  type_expr& type=*t;
+  type_expr& type=*t; const bool is_tuple = type.kind==tuple_type;
+    // save for when |type| is pilfered
   const auto n=length(fields.sublist);
   definition_group group(n);
   std::vector<shared_function> tors; tors.reserve(n);
-  if (not fields.sublist.empty()) // do this before we move from |type|
-  { assert(type.kind==tuple_type or type.kind==union_type);
-    dressed_type_list tor_types;
-    auto tp_it =wtl_const_iterator(type.tupple);
-    auto id_it=fields.sublist.wcbegin();
-    if (type.kind==tuple_type)
-      for (unsigned i=0; i<n; ++i,id_it++,tp_it++)
-        if (id_it->kind==0x1) // field selector present
-        { tors.push_back
-            (std::make_shared<projector_value>(type,i,id_it->name,loc));
-          tor_types.emplace_back(type_expr(type.copy(),tp_it->copy()));
-        }
-        else tor_types.emplace_back(); // filler type
-    else
-      for (unsigned i=0; i<n; ++i,id_it++,tp_it++)
-        if (id_it->kind==0x1) // field selector present
-        {  tors.push_back
-            (std::make_shared<injector_value>(type,i,id_it->name,loc));
-          tor_types.emplace_back(type_expr(tp_it->copy(),type.copy()));
-        }
-        else tor_types.emplace_back(); // filler type
-    auto combined_type=mk_tuple_type(tor_types.undress());
-    group.thread_bindings(fields,*combined_type);
+  try
+  {
+    if (not fields.sublist.empty()) // do this before we move from |type|
+      @< Bind in |group| any field identifiers in |field.sublist| to the
+         types of their projector or injector functions, and store the
+         corresponding function values themselves in |tors| @>
+@)
+    @< Add |id| as abbreviation for |type| to |global_id_table|, unless there
+       are conflicts preventing this in which case |throw| a |program_error| @>
+    if (group.begin()!=group.end())
+      @< For field identifiers bound in |group|, add projector or injector
+         function value from |tors| to |global_overload_table| @>
   }
+  catch (const program_error& err)
+  { std::cerr << "Error in type definition " << loc << "\n  " @|
+                << err.what() << std::endl;
+    throw program_error("Type definition aborted");
+  }
+}
+
+@ A type definition introducing a structure or union type may introduce field
+names for their components, which names will then be associated to projector
+respectively injector functions for the type; these also have uses beyond that
+of mere functions. All field names must be distinct, and it must be possible
+to add the corresponding functions to the overload table, which is what the
+code below tests by passing |fields| through
+|definition_group::thread_bindings|. We make an ephemeral type |combined_type|
+that holds the types that will be bound by |thread_bindings| at the proper
+positions. Not all fields need to have names (although for a union type it
+seems rather pointless to omit any of them), so we fill the space that will
+not be used by undefined type expressions.
+
+@< Bind in |group| any field identifiers in |field.sublist| to the types of
+   their projector or injector functions, and store the corresponding function
+   values themselves in |tors| @>=
+{ assert(type.kind==tuple_type or type.kind==union_type);
+  dressed_type_list tor_types;
+  auto tp_it =wtl_const_iterator(type.tupple);
+  auto id_it=fields.sublist.wcbegin();
+  if (is_tuple)
+    for (unsigned i=0; i<n; ++i,id_it++,tp_it++)
+      if (id_it->kind==0x1) // field selector present
+      { tors.push_back
+          (std::make_shared<projector_value>(type,i,id_it->name,loc));
+        tor_types.emplace_back(type_expr(type.copy(),tp_it->copy()));
+          // projector type
+      }
+      else tor_types.emplace_back(); // filler type
+  else
+    for (unsigned i=0; i<n; ++i,id_it++,tp_it++)
+      if (id_it->kind==0x1) // field selector present
+      {  tors.push_back
+          (std::make_shared<injector_value>(type,i,id_it->name,loc));
+        tor_types.emplace_back(type_expr(tp_it->copy(),type.copy()));
+          // injector type
+      }
+      else tor_types.emplace_back(); // filler type
+  type_ptr combined_type=mk_tuple_type(tor_types.undress());
+  group.thread_bindings(fields,*combined_type);
+}
+
+@ When tests have been passed successfully, we run the code below to copy the
+projector or injector functions from |tors| to the global overload table.
+@< For field identifiers bound in |group|, add projector or injector function
+   value from |tors| to |global_overload_table| @>=
+{ @< Emit indentation corresponding to the input level to |*output_stream| @>
+  *output_stream << "  with " << (is_tuple ? "pro" : "in");
+  unsigned count=0;
+  for (auto it=group.begin(); it!=group.end(); ++count,++it)
+  { global_overload_table->add
+      (it->first,std::move(tors[count]),std::move(it->second));
+    *output_stream << (it==group.begin() ? "jectors: " : ", ")
+                @| << main_hash_table->name_of(it->first);
+  }
+  *output_stream << '.' << std::endl;
+}
+
+@  Defining a type name would make any global identifier or overload of the same
+name inaccessible. Since this is probably not intended, we refuse to do this,
+and emit an error message instead when it is attempted. We start checking if
+the user deviously hid a \emph{new} definition of the same identifier in the
+field list.
+
+@< Add |id| as abbreviation for |type| to |global_id_table|, unless...@>=
+{ for (auto it=group.begin(); it!=group.end(); ++it)
+    if (it->first==id)
+    { std::ostringstream o;
+      o << "Type definition of '" << main_hash_table->name_of(id) @|
+                << "' cannot contain a field of the same name";
+      throw program_error(o.str());
+    }
 @)
   bool redefine = global_id_table->is_defined_type(id);
   if (not redefine)
-    @< Test that |id| has no global definition or overloads;
-       if it does, report problem and |return| @>
+     // no test is necessary if |id| was already a type identifier
+  { const bool p = global_id_table->present(id);
+    if (p or not global_overload_table->variants(id).empty())
+    { std::ostringstream o;
+      o << "Cannot define '" << main_hash_table->name_of(id) @|
+                << "' as a type; it is in use as " @|
+                << (p? "global variable" : "function");
+      throw program_error(o.str());
+    }
+  }
+@)
   @< Emit indentation corresponding to the input level to |*output_stream| @>
   *output_stream << "Type name '" << main_hash_table->name_of(id) @|
             << (redefine ? "' redefined as " : "' defined as ") << type
             << std::endl;
 @/global_id_table->add_type_def(id,std::move(type));
-@)
-  unsigned count=0;
-  for (auto it=group.begin(); it!=group.end(); ++count,++it)
-    add_overload(it->first,std::move(tors[count]),std::move(it->second));
-}
-
-@ Defining a type name would make any global identifier or overload of the same
-name inaccessible. Since this is probably not intended, we refuse to do this,
-and emit an error message instead when it is attempted..
-
-@< Test that |id| has no global definition or overloads... @>=
-{ const bool p = global_id_table->present(id);
-  if (p or not global_overload_table->variants(id).empty())
-  { *output_stream << "Cannot define '" << main_hash_table->name_of(id) @|
-              << "' as a type; it is in use as " @|
-              << (p? "global variable" : "function") << std::endl;
-    return;
-  }
 }
 
 @*1 Printing information from internal tables.

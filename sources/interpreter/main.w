@@ -451,26 +451,30 @@ while (ana.reset()) // get a fresh line for lexical analyser, or quit
   expr_p parse_tree;
   int old_verbosity=verbosity;
   std::ofstream redirect; // if opened, this will be closed at end of loop
-  if (yyparse(&parse_tree,&verbosity)!=0)
-     // syntax error (inputs are closed) or non-expression
-    continue;
-  if (verbosity!=0) // then some special action was requested
-  { if (verbosity<0)
-      break; // \.{quit} command
-    if (verbosity==2 or verbosity==3)
-      // indicates output redirection was requested
-    { auto write_mode =
-        verbosity==2 ? std::ios_base::trunc : std::ios_base::@;app;
-      verbosity=old_verbosity; // ensure that verbosity change remains temporary
-      @< Open |redirect| to specified file, and if successful make
-      |output_stream| point to it; otherwise |continue| @>
+ try
+  { if (yyparse(&parse_tree,&verbosity)!=0)
+      // syntax error (inputs are closed) or non-expression
+      continue;
+    if (verbosity!=0) // then some special action was requested
+    { if (verbosity<0)
+        break; // \.{quit} command
+      if (verbosity==2 or verbosity==3)
+        // indicates output redirection was requested
+      { auto write_mode =
+          verbosity==2 ? std::ios_base::trunc : std::ios_base::@;app;
+        verbosity=old_verbosity;
+          // ensure that verbosity change remains temporary
+        @< Open |redirect| to specified file, and if successful make
+        |output_stream| point to it; otherwise |continue| @>
+      }
+      if (verbosity==1) //
+        std::cout << "Expression before type analysis: " << *parse_tree
+                  << std::endl;
     }
-    if (verbosity==1) //
-      std::cout << "Expression before type analysis: " << *parse_tree
-                << std::endl;
+    @< Analyse types and then evaluate and print, or catch runtime or other
+       errors @>
   }
-  @< Analyse types and then evaluate and print, or catch runtime or other
-     errors @>
+  @< Various |catch| phrases for the main loop @>
   output_stream= &std::cout; // reset output stream if it was changed
 }
 
@@ -483,23 +487,20 @@ printing of the uninteresting value.
 @h "axis.h"
 
 @< Analyse types and then evaluate and print... @>=
-{ try
-  { expression_ptr e;
-    type_expr found_type=analyse_types(*parse_tree,e);
-    if (verbosity>0)
-      std::cout << "Type found: " << found_type << std::endl @|
-	        << "Converted expression: " << *e << std::endl;
-    if (found_type==void_type)
-      e->void_eval();
-    else
-    { e->eval();
-      last_type = std::move(found_type);
-      last_value=pop_value();
-      *output_stream << "Value: " << *last_value << std::endl;
-    }
-    destroy_expr(parse_tree);
+{ expression_ptr e;
+  type_expr found_type=analyse_types(*parse_tree,e);
+  if (verbosity>0)
+    std::cout << "Type found: " << found_type << std::endl @|
+              << "Converted expression: " << *e << std::endl;
+  if (found_type==void_type)
+    e->void_eval();
+  else
+  { e->eval();
+    last_type = std::move(found_type);
+    last_value=pop_value();
+    *output_stream << "Value: " << *last_value << std::endl;
   }
-  @< Various |catch| phrases for the main loop @>
+  destroy_expr(parse_tree);
 }
 
 @*1 Reading in the prelude files.
