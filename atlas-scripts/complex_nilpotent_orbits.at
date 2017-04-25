@@ -90,22 +90,6 @@ set sort_by_length =([(vec,rat)]->[(vec,rat)]):
 sort_by((vec v,rat c) rat: c)
 
 
-set smash([int] v,[[int]] A)=[[int]]:
-let rv=[[int]]:[] in
-for a in A do
- for c in v do rv#:=c#a od od;rv
-
-set rec_fun box(int height, int rank)=[[int]]:
-if rank=1 then for i:height do [i] od else
-smash(for i:height do i od,box(height,rank-1)) fi
-
-set rec_fun box([int] heights)=[[int]]:
-if #heights=1 then for i:heights[0] do [i] od else
-smash(for i:heights[0]  do i od,box(delete(heights,0))) fi
-
-set flatten([[int]] v)=
-let rv=[int]:[] in
-for a in v do for b in a do rv#:=b od od;rv
 
 {these is a superset of the possible H in a Lie triple [H,E,F]}
 set all_H(RootDatum rd)=[(vec,rat)]:
