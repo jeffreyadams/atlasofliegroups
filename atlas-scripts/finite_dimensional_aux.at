@@ -1,49 +1,9 @@
-<basic.at
-<Weylgroup.at { dominant }
+<K_types.at  {K_signature_irr}
 
-{ finite dimensional representations of G(C)}
-
-
-set is_finite_dimensional(Param p) = bool:
-  let ssr = semisimple_rank(real_form(p))
-  in semisimple_rank(integrality_datum(p))=ssr and #tau(p)=ssr
-
-set fd_only (Param p) = Param:
-  assert(is_finite_dimensional(p),"representation is infinite dimensional"); p
-
-{ dimension of finite dimensional with given highest weight }
-set dimension (RootDatum rd, ratvec lambda_in) = int:
-  let lambda=
-    if is_dominant(rd,lambda_in) then lambda_in
-    else
-      let lambda_dominant = dominant(rd,lambda_in) in
-     { prints("Warning: changed ", lambda_in, ", to ", lambda_dominant
-               ," to make it dominant");}
-       lambda_dominant
-    fi
-  then rho=rho(rd), dim=1/1 { now apply Weyl's dimension formula }
-  in for a in poscoroots(rd) do dim*:=(lambda+rho)*a/(rho*a) od; dim\1
-
-set highest_weight_finite_dimensional(Param p) = ratvec:
-  infinitesimal_character(fd_only(p)) - rho(root_datum(p))  {automatically dominant}
-
-set dimension(Param p) = int:
-  dimension(root_datum(p),highest_weight_finite_dimensional(p))
-
-set fundamental_weight_coordinates (Param p) = vec:
-  ratvec_as_vec(highest_weight_finite_dimensional(p)*simple_coroots(root_datum(p)))
-
-{ this function depends on a complex root datum, with half-swapping involution }
-set complex_LKT (Param p) = vec:
-  let (rd,mu):pair = (root_datum(p),(1+involution(x(p)))*(lambda(p)\1))
-  then dom = dominant(pair)
-  in lower(#dom\2,dom) { first half }
-
-{-------------------------------------------------------------------}
 {some functions related to Frobenius-Schur indicator, 
 real/quaternionic indicator, and sign of Hermitian form 
 on finite dimensional representation}
-{
+
 set is_self_dual(Param p)=bool:
 let lambda=highest_weight_finite_dimensional(fd_only(p)) in
 -act(w_long(root_datum(p)),lambda)=lambda
@@ -88,4 +48,3 @@ for mu in weights do
   let p=finite_dimensional(G,ratvec_as_vec(lambda))
 in prints("fund wt: ", mu, "  lambda:", lambda, " dim:", dimension(p), "  self-dual/self-conj.:", is_self_dual(p), "/", is_self_conjugate(p), "    FS/RQ: ", fs(p), "/", rq(p), "  signature: ", signature_str(p)) fi od
 
-}
