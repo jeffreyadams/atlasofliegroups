@@ -353,7 +353,7 @@ create the table.
 @< Global variable definitions @>=
 Id_table* global_id_table=nullptr; // will never be |nullptr| at run time
 
-@*1 Overload tables.
+@*1 The overload table.
 %
 To implement overloading we use a similar structure as the ordinary global
 identifier table. However the basic table entry for an overloading needs a
@@ -647,6 +647,62 @@ std::ostream& operator<< (std::ostream& out, const overload_table& p)
 
 @< Declarations of exported functions @>=
 std::ostream& operator<< (std::ostream& out, const overload_table& p);
+
+@*1 Table of defined types.
+%
+When the user defines an identifier to stand for a type, this fact is
+primarily recorded in the |global_id_table| by calling its |add_type_def|
+method which stores a type but no value at all in that table. While this
+mechanism suffices for identifiers serving simply as abbreviation for a type
+expression, is has become too limited to store the relevant information as
+type definitions were extended with more possibilities. We therefore define
+another table structure here to store additional information about type
+definitions.
+
+Since this table is probably going to be used more often for searching than
+for modification, we for now choose for a simple sorted array rather than for
+an associative container.
+
+@< Type definitions @>=
+
+class type_table
+{ @+ public: @+ typedef std::vector<id_type> field_list;
+@)
+  private:@+ std::vector<std::pair<id_type,field_list> > assoc;
+public:
+  type_table() : assoc() @+ {}
+  void add (id_type id, field_list&& names);
+  const field_list& fields (id_type type) const;
+};
+
+@ We maintain |assoc| ordered by numeric value of the identifier, so that we
+can use binary search to locate the entry.
+
+@< Global function def... @>=
+static bool compare (const std::pair<id_type,type_table::field_list>& x, @|
+                     id_type y) {@; return x.first<y; }
+@)
+void type_table::add (id_type id, field_list&& names)
+{ auto pos = std::lower_bound(assoc.begin(),assoc.end(), id, compare);
+  if (pos==assoc.end() or pos->first!=id) // new type, insert
+    assoc.emplace(pos,id,std::move(names));
+  else
+    pos->second=std::move(names); // previously defined type, replace
+}
+@)
+const type_table::field_list& type_table::fields (id_type type) const
+{ static field_list empty;
+  auto pos = std::lower_bound(assoc.begin(),assoc.end(), type, compare);
+  return pos==assoc.end() ? empty : pos->second;
+}
+
+@ There will be a table of defined types, usable in other modules.
+@< Declaration of global variables @>=
+extern type_table typedef_table;
+
+@ Here we install the unique instance |typedef_table| of |type_table|.
+@< Global variable definitions @>=
+type_table typedef_table;
 
 @* Operations other than evaluation of expressions.
 %
@@ -1258,13 +1314,16 @@ projector or injector functions from |tors| to the global overload table.
 { @< Emit indentation corresponding to the input level to |*output_stream| @>
   *output_stream << "  with " << (is_tuple ? "pro" : "in");
   unsigned count=0;
+  std::vector<id_type> names; names.reserve(group.end()-group.begin());
   for (auto it=group.begin(); it!=group.end(); ++count,++it)
   { global_overload_table->add
       (it->first,std::move(tors[count]),std::move(it->second));
+    names.push_back(it->first);
     *output_stream << (it==group.begin() ? "jectors: " : ", ")
                 @| << main_hash_table->name_of(it->first);
   }
   *output_stream << '.' << std::endl;
+  typedef_table.add(id,std::move(names));
 }
 
 @  Defining a type name would make any global identifier or overload of the same
