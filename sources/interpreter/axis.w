@@ -5491,20 +5491,15 @@ return the value again.
 @< Cases for type-checking and converting... @>=
 case op_cast_expr:
 { const op_cast& c=e.op_cast_variant;
-  const overload_table::variant_list& variants =
-   global_overload_table->variants(c->oper);
   const type_expr& ctype=c->type;
   std::ostringstream o;
   o << main_hash_table->name_of(c->oper) << '@@' << ctype;
+  const auto* entry = global_overload_table->entry(c->oper,ctype);
 @)
-  size_t i;
-  for (i=0; i<variants.size(); ++i)
-    if (variants[i].type().arg_type==ctype)
-      break;
-  if (i<variants.size()) // something was found
+  if (entry!=nullptr) // something was found
   {
-    expression_ptr p(new capture_expression(variants[i].value(),o.str()));
-    const type_expr& res_t = variants[i].type().result_type;
+    expression_ptr p(new capture_expression(entry->value(),o.str()));
+    const type_expr& res_t = entry->type().result_type;
     if (functype_specialise(type,ctype,res_t) or type==void_type)
       return p;
     throw type_error(e,type_expr(ctype.copy(),res_t.copy()),std::move(type));
@@ -6499,21 +6494,15 @@ case field_ass_stat:
 @.Name is constant @>
 @) // Now get selector function from the overload table; ignore local bindings
   const projector_value* proj;
-  { value selector;
-    const auto& variants = global_overload_table->variants(sel);
-    auto it=variants.begin();
-    for (; it!=variants.end(); ++it)
-      if (it->type().arg_type==*tuple_t)
-      {@; selector=it->value().get();
-        break;
-      }
-    if (it==variants.end())
+  { const auto* entry=global_overload_table->entry(sel,*tuple_t);
+    if (entry==nullptr)
       throw expr_error (e,"Improper selection in field assignment");
-    proj=dynamic_cast<const projector_value*>(selector);
+    proj=dynamic_cast<const projector_value*>(entry->value().get());
     if (proj==nullptr)
       throw expr_error
         (e,"Selector in field assignment is not a projector function");
-    assert(tuple_t->kind==tuple_type and proj->position<length(tuple_t->tupple));
+    assert(tuple_t->kind == tuple_type and
+           proj->position < length(tuple_t->tupple));
   }
 @)
   type_p comp_loc;
