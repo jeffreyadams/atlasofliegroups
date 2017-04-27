@@ -5724,7 +5724,8 @@ void print_blockstabilizer_wrapper(expression_base::level l)
     wrap_tuple<0>();
 }
 
-@ The function |print_KGB| takes only a real form as argument.
+@ The functions |print_KGB|, |print_KGB_order| and |print_KGB_graph| take only
+a real form as argument.
 
 @h "kgb.h"
 @h "kgb_io.h"
@@ -5737,6 +5738,28 @@ void print_KGB_wrapper(expression_base::level l)
     << "kgbsize: " << rf->val.KGB_size() << std::endl;
   const KGB& kgb=rf->kgb();
   kgb_io::var_print_KGB(*output_stream,rf->val.innerClass(),kgb);
+@)
+  if (l==expression_base::single_value)
+    wrap_tuple<0>();
+}
+@)
+void print_KGB_order_wrapper(expression_base::level l)
+{ own_real_form rf= non_const_get<real_form_value>();
+@)
+  *output_stream
+    << "kgbsize: " << rf->val.KGB_size() << std::endl;
+  kgb_io::printBruhatOrder(*output_stream,rf->val.Bruhat_KGB());
+@)
+  if (l==expression_base::single_value)
+    wrap_tuple<0>();
+}
+@)
+void print_KGB_graph_wrapper(expression_base::level l)
+{ own_real_form rf= non_const_get<real_form_value>();
+@)
+  *output_stream
+    << "kgbsize: " << rf->val.KGB_size() << std::endl;
+  kgb_io::makeDotFile(*output_stream,rf->kgb(),rf->val.Bruhat_KGB());
 @)
   if (l==expression_base::single_value)
     wrap_tuple<0>();
@@ -5893,6 +5916,8 @@ install_function(print_blockd_wrapper,@|"print_blockd","(Block->)");
 install_function(print_blockstabilizer_wrapper,@|"print_blockstabilizer"
 		,"(Block,CartanClass->)");
 install_function(print_KGB_wrapper,@|"print_KGB","(RealForm->)");
+install_function(print_KGB_order_wrapper,@|"print_KGB_order","(RealForm->)");
+install_function(print_KGB_graph_wrapper,@|"print_KGB_graph","(RealForm->)");
 install_function(print_X_wrapper,@|"print_X","(InnerClass->)");
 install_function(print_KL_basis_wrapper,@|"print_KL_basis","(Block->)");
 install_function(print_prim_KL_wrapper,@|"print_prim_KL","(Block->)");

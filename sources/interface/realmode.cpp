@@ -322,9 +322,6 @@ void kgbgraph_f()
   std::cout << "kgbsize: " << G_R.KGB_size() << std::endl;
 
   ioutils::OutputFile file;
-  if (file.is_std_cout()) // make sure the user entered an actual filename
-    throw error::InputError(); // as standard output makes no sense here
-
   kgb_io::makeDotFile(file,G_R.kgb(),G_R.Bruhat_KGB());
 }
 

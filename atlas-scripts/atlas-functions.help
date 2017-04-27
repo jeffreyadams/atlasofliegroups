@@ -901,6 +901,8 @@ print_blocku: (Block->):
 print_blockd: (Block->):
 print_blockstabilizer: (Block,CartanClass->):
 print_KGB: (RealForm->):
+print_KGB_order: (RealForm->):
+print_KGB_graph: (RealForm->):
 print_X: (InnerClass->):
 print_KL_basis: (Block->):
 print_prim_KL: (Block->):
