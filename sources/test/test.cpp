@@ -541,7 +541,7 @@ void Ktypemat_f()
     khc.K_type_matrix(singleton,bound,new_order,&m);
 #else
   matrix::Matrix_base<standardrepk::CharCoeff> ktypemat =
-    khc.K_type_matrix(singleton,bound,new_order,NULL);
+    khc.K_type_matrix(singleton,bound,new_order,nullptr);
 #endif
 
   std::cout << "Ordering of representations/K-types:\n";
@@ -650,7 +650,7 @@ void qKtypemat_f()
     khc.K_type_matrix(singleton,bound,new_order,&m);
 #else
   matrix::Matrix_base<standardrepk::q_CharCoeff> ktypemat =
-    khc.K_type_matrix(singleton,bound,new_order,NULL);
+    khc.K_type_matrix(singleton,bound,new_order,nullptr);
 #endif
 
   f << "Ordering of representations/K-types:\n";

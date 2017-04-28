@@ -126,7 +126,7 @@ namespace weyl {
 
 /*
   Build the Weyl group corresponding to the Cartan matrix |c|,
-  and incorporate the possibly given twist (take identity if |twist==NULL|).
+  and incorporate the possibly given twist (take identity if |twist==nullptr|).
 
   NOTE : |c| and |twist| use some (consistent) labelling of simple roots,
   but we will determine an internal renumbering making the subquotients small

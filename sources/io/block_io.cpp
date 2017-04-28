@@ -244,7 +244,7 @@ const char* descent_code(DescValue v)
   case three_real_nonparity: return "3rn  ";
   case three_imaginary_compact: return "3ic  ";
   }
-  assert(false); return NULL;
+  assert(false); return nullptr;
 }
 
 } // |namespace ext_block|

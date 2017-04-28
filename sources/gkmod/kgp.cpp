@@ -46,7 +46,7 @@ KGP::KGP(realredgp::RealReductiveGroup& G_R, RankFlags generators)
 : kgb(G_R.kgb())
 , kgborder(G_R.Bruhat_KGB())
 , kgptable(kgb.size(),KGPElt(~0))
-, bruhat(NULL)
+, bruhat(nullptr)
 , msize(0)
 {
   // local data
@@ -131,7 +131,7 @@ KGP::KGP(realredgp::RealReductiveGroup& G_R, RankFlags generators)
     // fill closure function
 void KGP::fillClosure()
 {
-  if (bruhat!= NULL)
+  if (bruhat!= nullptr)
     return;
 
   size_t kgpsize = data.size();

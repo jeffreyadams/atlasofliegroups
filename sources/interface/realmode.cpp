@@ -75,8 +75,8 @@ namespace {
 
   // local variables
 
-  RealReductiveGroup* G_R_pointer=NULL;
-  Rep_table* rt=NULL;
+  RealReductiveGroup* G_R_pointer=nullptr;
+  Rep_table* rt=nullptr;
 } // |namespace|
 
 /*****************************************************************************
@@ -187,12 +187,12 @@ void realform_f()
 
 
 /*
-  Synopsis: destroys the real group and its interface, resoring NULL pointers
+  Synopsis: destroys the real group and its interface, resoring nullptr pointers
 */
 void real_mode_exit()
 {
-  delete G_R_pointer; G_R_pointer=NULL;
-  delete rt; rt=NULL;
+  delete G_R_pointer; G_R_pointer=nullptr;
+  delete rt; rt=nullptr;
 }
 
 

@@ -1,8 +1,6 @@
-/*!
-\file
-  This is graph.h
-*/
 /*
+  This is graph.h
+
   Copyright (C) 2004,2005 Fokko du Cloux
   part of the Atlas of Lie Groups and Representations
 
@@ -36,11 +34,10 @@ class OrientedGraph
 
   explicit OrientedGraph(size_t n):d_edges(n) {}
 
-// copy, construction and swap
-  void swap(OrientedGraph& other) { d_edges.swap(other.d_edges); }
+// copy, construction and swap: nothing needed beyond defualts
 
 // accessors
-  void cells(partition::Partition&, OrientedGraph* p = 0) const;
+  partition::Partition cells(OrientedGraph* p = 0) const;
 
   Vertex edge(Vertex x, size_t j) const { return d_edges[x][j]; } // edge #j
 
@@ -49,7 +46,7 @@ class OrientedGraph
   size_t size() const { return d_edges.size(); } // number of vertices
 
 // manipulators
-  Vertex& edge(Vertex x, size_t j) { return d_edges[x][j]; } // allow clobbering
+  Edge& edge(Vertex x, size_t j) { return d_edges[x][j]; } // allow clobbering
 
   EdgeList& edgeList(const Vertex& x) { return d_edges[x]; } // even globally
 

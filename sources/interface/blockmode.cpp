@@ -83,10 +83,10 @@ namespace {
 
   // local variables
 
-  InnerClass* dual_G_C_pointer=NULL;
-  RealReductiveGroup* dual_G_R_pointer=NULL;
-  Block* block_pointer=NULL;
-  wgraph::WGraph* WGr_pointer=NULL;
+  InnerClass* dual_G_C_pointer=nullptr;
+  RealReductiveGroup* dual_G_R_pointer=nullptr;
+  Block* block_pointer=nullptr;
+  wgraph::WGraph* WGr_pointer=nullptr;
 } // |namespace|
 
 /*****************************************************************************
@@ -167,7 +167,7 @@ RealFormNbr currentDualRealForm()
 
 Block& currentBlock()
 {
-  if (block_pointer==NULL)
+  if (block_pointer==nullptr)
     block_pointer =
       new Block(Block::build(currentRealGroup(),currentDualRealGroup()));
 
@@ -181,7 +181,7 @@ kl::KLContext& currentKL()
 
 const wgraph::WGraph& currentWGraph()
 {
-  if (WGr_pointer==NULL)
+  if (WGr_pointer==nullptr)
   {
     const kl::KLContext& c=currentKL();
     WGr_pointer=new wgraph::WGraph(c.rank());
@@ -246,8 +246,8 @@ void dualrealform_f()
     // we can call the swap method for rvalues, but not with and rvalue arg
     RealReductiveGroup(*dual_G_C_pointer,drf).swap(*dual_G_R_pointer);
 
-    delete block_pointer; block_pointer=NULL;
-    delete WGr_pointer; WGr_pointer=NULL;
+    delete block_pointer; block_pointer=nullptr;
+    delete WGr_pointer; WGr_pointer=nullptr;
     drop_to(block_mode); // exit from (hypothetical) descendant modes
   }
   catch (error::InputError& e) {
@@ -258,14 +258,14 @@ void dualrealform_f()
 
 
 /*
-  Synopsis: destroys any local data, resoring NULL pointers
+  Synopsis: destroys any local data, resoring nullptr pointers
 */
 void block_mode_exit()
 {
-  delete dual_G_C_pointer; dual_G_C_pointer=NULL;
-  delete dual_G_R_pointer; dual_G_R_pointer=NULL;
-  delete block_pointer; block_pointer=NULL;
-  delete WGr_pointer; WGr_pointer=NULL;
+  delete dual_G_C_pointer; dual_G_C_pointer=nullptr;
+  delete dual_G_R_pointer; dual_G_R_pointer=nullptr;
+  delete block_pointer; block_pointer=nullptr;
+  delete WGr_pointer; WGr_pointer=nullptr;
 }
 
 /*****************************************************************************

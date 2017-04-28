@@ -166,8 +166,8 @@ inline BlockElt& first_free_slot(BlockEltPair& p)
 Block_base::Block_base(const KGB& kgb,const KGB& dual_kgb)
   : info(), data(kgb.rank()), orbits()
   , dd(kgb.innerClass().rootDatum().cartanMatrix())
-  , d_bruhat(NULL)
-  , klc_ptr(NULL)
+  , d_bruhat(nullptr)
+  , klc_ptr(nullptr)
 {
 } // |Block_base::Block_base|
 
@@ -175,15 +175,15 @@ Block_base::Block_base(const KGB& kgb,const KGB& dual_kgb)
 Block_base::Block_base(unsigned int rank)
   : info(), data(rank), orbits()
   , dd()
-  , d_bruhat(NULL)
-  , klc_ptr(NULL)
+  , d_bruhat(nullptr)
+  , klc_ptr(nullptr)
 {}
 
 Block_base::Block_base(const Block_base& b) // copy constructor, unused
   : info(b.info), data(b.data), orbits(b.orbits)
   , dd(b.dd)
-  , d_bruhat(NULL) // don't care to copy; is empty in |Block::build| anyway
-  , klc_ptr(NULL)  // likewise
+  , d_bruhat(nullptr) // don't care to copy; is empty in |Block::build| anyway
+  , klc_ptr(nullptr)  // likewise
 {
 #ifdef VERBOSE // then show that we're called (does not actually happen)
   std::cerr << "copying a block" << std::endl;
@@ -412,7 +412,7 @@ void Block::compute_first_zs() // assumes |x| values weakly increase
 */
 void Block_base::fillBruhat()
 {
-  if (d_bruhat==NULL) // do this only the first time
+  if (d_bruhat==nullptr) // do this only the first time
   {
     std::vector<set::EltList> hd = makeHasse(*this);
     d_bruhat = new BruhatOrder(hd); // commit iff new completed without throwing
@@ -422,7 +422,7 @@ void Block_base::fillBruhat()
 // computes and stores the KL polynomials
 void Block_base::fill_klc(BlockElt last_y,bool verbose)
 {
-  if (klc_ptr==NULL) // do this only the first time
+  if (klc_ptr==nullptr) // do this only the first time
     klc_ptr=new kl::KLContext(*this);
 
   klc_ptr->fill(last_y,verbose); // extend tables to contain |last_y|

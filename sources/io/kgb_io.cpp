@@ -59,7 +59,7 @@ std::ostream& print(std::ostream& strm,
 		    const InnerClass* G,
 		    const KGBEltList* which)
 {
-  bool subset= which!=NULL;
+  bool subset= which!=nullptr;
 
   // compute maximal width of entry
   int width = ioutils::digits(kgb.size()-1,10ul);
@@ -105,7 +105,7 @@ std::ostream& print(std::ostream& strm,
     if (not traditional)
     {
       kgb.print(strm,j) // virtual print method
-	<< (G!=NULL and
+	<< (G!=nullptr and
 	    kgb.involution(j)==G->involution_of_Cartan(kgb.Cartan_class(j))
 	    ? '#' : ' ');
       unsigned cc= kgb.Cartan_class(j);
@@ -124,7 +124,7 @@ std::ostream& print(std::ostream& strm,
 
 std::ostream& printKGB(std::ostream& strm, const KGB& kgb)
 {
-  return print(strm,kgb,true,NULL,NULL);
+  return print(strm,kgb,true,nullptr,nullptr);
 }
 
 std::ostream& print_sub_KGB(std::ostream& strm,
@@ -133,7 +133,7 @@ std::ostream& print_sub_KGB(std::ostream& strm,
 {
   prettyprint::prettyPrint(strm << "Base grading: [",
 			   kgb.base_grading(),kgb.rank()) << "].\n";
-  return print(strm,kgb,false,NULL,&which);
+  return print(strm,kgb,false,nullptr,&which);
 }
 
 std::ostream& var_print_KGB(std::ostream& strm,
@@ -142,7 +142,7 @@ std::ostream& var_print_KGB(std::ostream& strm,
 {
   prettyprint::prettyPrint(strm << "Base grading: [",
 			   kgb.base_grading(),kgb.rank()) << "].\n";
-  return print(strm,kgb,false,&G,NULL);
+  return print(strm,kgb,false,&G,nullptr);
 }
 
 
@@ -154,7 +154,7 @@ std::ostream& print_X(std::ostream& strm, const global_KGB& kgb)
     strm << "\\exp(i\\pi\\check\\rho) = \\exp(2i\\pi("
 	 << t_off.log_2pi() << "))" << std::endl;
   }
-  return print(strm,kgb,false,NULL,NULL);
+  return print(strm,kgb,false,nullptr,nullptr);
 }
 
 std::ostream& print_twist(std::ostream& strm, const KGB_base& kgb)

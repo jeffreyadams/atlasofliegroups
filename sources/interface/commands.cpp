@@ -118,7 +118,7 @@ namespace {
 
   bool runFlag;   // set to false to initiate shutdown of the program
 
-  const char* command_name = NULL; // name of currently executing command
+  const char* command_name = nullptr; // name of currently executing command
 
   // auxiliaries for running the command interface
   const char* getCommand(const char* prompt); // get command string

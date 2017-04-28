@@ -387,7 +387,7 @@ InnerClass::InnerClass(const InnerClass& G,
   : d_rootDatum(G.d_dualRootDatum)
   , d_dualRootDatum(G.d_rootDatum)
 
-  , my_W(NULL), W(G.W) // not owned here, we depend on existence of |G|
+  , my_W(nullptr), W(G.W) // not owned here, we depend on existence of |G|
 
   , d_fundamental(G.d_dualFundamental)
   , d_dualFundamental(G.d_fundamental)

@@ -53,11 +53,11 @@ namespace standardrepk {
 
 Char HechtSchmid::rhs () const
 {
-  if (rh1==NULL)
+  if (rh1==nullptr)
     return Char();
 
   Char result(*rh1);
-  if (rh2!=NULL)
+  if (rh2!=nullptr)
     result+= Char(*rh2);
 
   return result;
@@ -66,7 +66,7 @@ Char HechtSchmid::rhs () const
 Char HechtSchmid::equivalent () const
 {
   Char result=rhs();
-  if (lh2!=NULL)
+  if (lh2!=nullptr)
     result -= Char(*lh2);
 
   return result;
@@ -1485,7 +1485,7 @@ matrix::Matrix_base<CharCoeff> KhatContext::K_type_matrix
   std::vector<equation> system=saturate(eq_set,bound);
 
   matrix::Matrix_base<CharCoeff> loc; // local matrix, maybe unused
-  matrix::Matrix_base<CharCoeff>& m = direct_p==NULL ? loc : *direct_p;
+  matrix::Matrix_base<CharCoeff>& m = direct_p==nullptr ? loc : *direct_p;
 
   m=triangularize(system,new_order);
 
@@ -1503,7 +1503,7 @@ matrix::Matrix_base<q_CharCoeff> qKhatContext::K_type_matrix
   std::vector<q_equation> system=saturate(eq_set,bound);
 
   matrix::Matrix_base<q_CharCoeff> loc; // local matrix, maybe unused
-  matrix::Matrix_base<q_CharCoeff>& m = direct_p==NULL ? loc : *direct_p;
+  matrix::Matrix_base<q_CharCoeff>& m = direct_p==nullptr ? loc : *direct_p;
 
   m=triangularize(system,new_order);
 
@@ -1742,7 +1742,7 @@ template <typename C>
       throw std::runtime_error ("triangularize: system not saturated");
   }
 
-  Partition order; incidence.cells(order,NULL);
+  Partition order = incidence.cells(nullptr);
 
   new_order.resize(n);
   for (size_t i=0; i<n; ++i) // we abuse |i| as either a class or element

@@ -426,7 +426,7 @@ std::ostream& printCartanOrder(std::ostream& strm,
   // all covering relations in |g| are grouped by lower (covered) element
   for (size_t j = 1; j < g.size(); ++j)
   {
-    const graph::VertexList& e = g.edgeList(j);
+    const graph::EdgeList& e = g.edgeList(j);
     if (not e.empty()) // suppress other non-covered elements: not for |G_R|
       basic_io::seqPrint(strm << j << ": ",e.begin(),e.end()) << std::endl;
   }

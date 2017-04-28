@@ -54,50 +54,31 @@ class WGraph
 // constructors and destructors
   explicit WGraph(size_t r) :d_rank(r) {}
 
-// copy, assignment and swap
-  void swap(WGraph&);
+// copy, assignment and swap: nothing needed beyond defaults
 
 // accessors
-  void cells(Partition& pi, graph::OrientedGraph* p = 0) const {
-    d_graph.cells(pi,p);
-  }
+  Partition cells(graph::OrientedGraph* p = 0) const
+    { return d_graph.cells(p); }
 
-  const WCoeffList& coeffList(graph::Vertex x) const {
-    return d_coeff[x];
-  }
+  const WCoeffList& coeffList(graph::Vertex x) const { return d_coeff[x]; }
 
-  const RankFlags& descent(graph::Vertex x) const {
-    return d_descent[x];
-  }
+  const RankFlags& descent(graph::Vertex x) const { return d_descent[x]; }
 
-  const graph::EdgeList& edgeList(graph::Vertex x) const {
-    return d_graph.edgeList(x);
-  }
+  const graph::EdgeList& edgeList(graph::Vertex x) const
+    { return d_graph.edgeList(x); }
 
-  const graph::OrientedGraph& graph() const {
-    return d_graph;
-  }
+  const graph::OrientedGraph& graph() const { return d_graph; }
 
-  const size_t rank() const {
-    return d_rank;
-  }
+  const size_t rank() const { return d_rank; }
 
-  size_t size() const {
-    return d_graph.size();
-  }
+  size_t size() const { return d_graph.size(); }
 
 // manipulators
-  WCoeffList& coeffList(graph::Vertex x) {
-    return d_coeff[x];
-  }
+  WCoeffList& coeffList(graph::Vertex x) { return d_coeff[x]; }
 
-  RankFlags& descent(graph::Vertex x) {
-    return d_descent[x];
-  }
+  RankFlags& descent(graph::Vertex x) { return d_descent[x]; }
 
-  graph::EdgeList& edgeList(graph::Vertex x) {
-    return d_graph.edgeList(x);
-  }
+  graph::EdgeList& edgeList(graph::Vertex x) { return d_graph.edgeList(x); }
 
   void reset();
 
@@ -119,16 +100,8 @@ class DecomposedWGraph
 
 // constructors and destructors
   explicit DecomposedWGraph(const WGraph& wg);
-  ~DecomposedWGraph() {}
 
-// copy, assignment and swap
-  void swap(DecomposedWGraph& other)
-  {
-    d_cell.swap(other.d_cell);
-    d_part.swap(other.d_part);
-    d_id.swap(other.d_id);
-    d_induced.swap(other.d_induced);
-  }
+// copy, assignment and swap: nothing needed beyond defaults
 
 // accessors
   size_t rank () const { return d_cell[0].rank(); } // all ranks are equal
