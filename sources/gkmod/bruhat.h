@@ -1,8 +1,3 @@
-/*!
-\file
-\brief Class definition and function declarations for the class BruhatOrder.
-*/
-
 /*
   This is bruhat.h
 
@@ -11,6 +6,7 @@
 
   For license information see the LICENSE file
 */
+// Class definition and function declarations for the class |BruhatOrder|
 
 #ifndef BRUHAT_H  /* guard against multiple inclusions */
 #define BRUHAT_H
@@ -27,7 +23,7 @@ namespace atlas {
 
 namespace bruhat {
 
-/*!\brief
+/*
   Intended to represent the Bruhat order on K orbits on G/B, or
   on a block of representations.
 
@@ -36,18 +32,18 @@ namespace bruhat {
 */
 class BruhatOrder
 {
-  /*!
-\brief Hasse diagram for a Bruhat order.
+  /*
+    Hasse diagram for a Bruhat order.
 
-Entry \#j lists the numbers of the immediate predecessors of element
-  \#j in the order.
+    Entry \#j lists the numbers of the immediate predecessors of element \#j
+    in the order.
   */
   std::vector<set::EltList> d_hasse; // probably sparse; avoid |BitMap|s
-  /*!
-\brief Poset relation.
+  /*
+     Poset relation.
 
-It is assumed that element \#i can precede element \#j in the poset
-only if i < j.
+     It is assumed that element \#i can precede element \#j in the poset
+     only if i < j.
   */
   poset::Poset d_poset;
 
@@ -62,26 +58,16 @@ only if i < j.
 
   size_t size() const { return d_hasse.size(); }
 
-  //!\brief Returns row |x| of the Hasse diagram for the order.
+  // Return row |x| of the Hasse diagram for the order.
+  const set::EltList& hasse(size_t x) const { return d_hasse[x]; }
 
-  const set::EltList& hasse(size_t x) const {
-    return d_hasse[x];
-  }
-
-  /*!
-\brief Returns the number of comparable pairs in the order.
-  */
-  unsigned long n_comparable() const {
-    return poset::n_comparable_from_Hasse(d_hasse);
-  }
+  // Return the number of comparable pairs in the order.
+  unsigned long n_comparable() const
+  { return poset::n_comparable_from_Hasse(d_hasse); }
 
   // manipulators
-  /*!
-\brief Returns the full poset relation.
-   */
-  const poset::Poset& poset() {
-    fillPoset(); return d_poset;
-  }
+  // Return the full poset relation.
+  const poset::Poset& poset() { fillPoset(); return d_poset; }
 
   private:
   void fillPoset();

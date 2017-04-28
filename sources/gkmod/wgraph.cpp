@@ -28,16 +28,6 @@ namespace wgraph {
 /******** constructors and destructors ***************************************/
 
 /******** copy, assignment and swap ******************************************/
-void WGraph::swap(WGraph& other)
-
-{
-  std::swap(d_rank,other.d_rank);
-  d_graph.swap(other.d_graph);
-  d_coeff.swap(other.d_coeff);
-  d_descent.swap(other.d_descent);
-
-  return;
-}
 
 /******** manipulators *******************************************************/
 
@@ -70,8 +60,8 @@ void WGraph::resize(size_t n)
 DecomposedWGraph::DecomposedWGraph(const WGraph& wg)
   : d_cell(), d_part(wg.size()), d_id(), d_induced()
 {
-  Partition pi;
-  wg.cells(pi,&d_induced); // |OrientedGraph::cells| does the real work
+  Partition pi =
+    wg.cells(&d_induced); // |OrientedGraph::cells| does the real work
 
   d_cell.reserve(pi.classCount()); // there will be this many cells
   d_id.resize(pi.classCount());    // and vectors of identification numbers
@@ -138,8 +128,8 @@ namespace wgraph {
 */
 void cells(std::vector<WGraph>& wc, const WGraph& wg)
 {
-  Partition pi;
-  wg.cells(pi); // do not collect information about induced graph here
+  Partition pi =
+    wg.cells(); // do not collect information about induced graph here
 
   for (Partition::iterator i(pi); i(); ++i)
   {
@@ -186,7 +176,7 @@ WGraph wGraph
   typedef std::auto_ptr<filekl::polynomial_info> pol_aptr;
 
   filekl::matrix_info mi(block_file,matrix_file);
-  pol_aptr pol_p(NULL);
+  pol_aptr pol_p(nullptr);
 
   try
   { pol_p=pol_aptr(new filekl::cached_pol_info(KL_file));

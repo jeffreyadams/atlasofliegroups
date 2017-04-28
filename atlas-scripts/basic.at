@@ -832,7 +832,11 @@ set KGB_elt (RootDatum rd, mat theta, ratvec v) = KGBElt:
   in KGB_elt(rf,theta,v)           { find KGB element within rf }
 
 set Cartan_class (InnerClass ic, mat theta) = CartanClass:
-  Cartan_class(KGB_elt(ic,theta,ratvec:null(rank(ic))))
+  KGB_elt(ic,theta,ratvec:null(rank(ic))).Cartan_class
+
+{ use the following as: set <= = Bruhat_order(G) }
+set Bruhat_order (RealForm G) = (KGBElt,KGBElt->bool):
+  let M=inverse(1-KGB_Hasse(G)) in (KGBElt x, KGBElt y) bool: !=M[#x,#y]
 
 set status (vec alpha,KGBElt x) = int: status(root_index(real_form(x),alpha),x)
 

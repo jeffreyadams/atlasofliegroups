@@ -574,7 +574,7 @@ TitsGroup::involutionMatrix(const WeylWord& ww) const
  */
 
 TitsCoset::TitsCoset(const InnerClass& G, Grading base_grading)
-  : my_Tits_group(NULL) // no ownership in this case
+  : my_Tits_group(nullptr) // no ownership in this case
   , Tg(G.titsGroup())
   , grading_offset(base_grading)
   , rs(G.rootDatum())

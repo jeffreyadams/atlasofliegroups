@@ -11,8 +11,8 @@
   and the infinitesimal character is gamma+rho
 }
 set finite_dimensional (RealForm G,vec lambda) = Param:
-  let (lambda_dom,)=make_dominant(G,lambda) in 
-  parameter(KGB(G,KGB_size(G)-1),lambda_dom+rho(G),lambda_dom+rho(G))
+  let (lambda_dom,)=make_dominant(G,lambda) then gamma=lambda_dom+rho(G) in
+  parameter(KGB(G,KGB_size(G)-1),gamma,gamma)
 
 set finite_dimensional_fundamental_weight_coordinates (RealForm G,vec tau) =
   Param:

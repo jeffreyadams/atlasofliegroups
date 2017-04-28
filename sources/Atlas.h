@@ -151,9 +151,9 @@ namespace atlas {
   using poset::Poset;
 
   namespace graph {
-    typedef set::Elt Vertex;
+    typedef unsigned int Vertex; // assume at most some 4 billion vertices
     typedef std::vector<Vertex> VertexList;
-    typedef Vertex Edge;
+    typedef unsigned long Edge; // allow for a huge number of edges
     typedef std::vector<Edge> EdgeList;
     class OrientedGraph;
   }

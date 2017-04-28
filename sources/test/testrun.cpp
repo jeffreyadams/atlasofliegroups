@@ -337,7 +337,7 @@ void TorusMapIterator::reset(const BitMap& qr)
 */
 CoveringIterator::CoveringIterator(const LieType& lt)
   : d_lieType(lt)
-  , d_dcenter(NULL)
+  , d_dcenter(nullptr)
   , d_rank(lt.rank())
   , d_semisimpleRank(lt.semisimple_rank())
   , d_torusRank(d_rank-d_semisimpleRank)
@@ -384,7 +384,7 @@ CoveringIterator::CoveringIterator(const LieType& lt)
 */
 CoveringIterator::CoveringIterator(const CoveringIterator& i)
   : d_lieType(i.d_lieType)
-  , d_dcenter(i.d_dcenter==NULL ? NULL
+  , d_dcenter(i.d_dcenter==nullptr ? nullptr
               : new abelian::FiniteAbelianGroup(*i.d_dcenter))
   , d_rank(i.d_rank)
   , d_semisimpleRank(i.d_semisimpleRank)

@@ -49,8 +49,8 @@ RealReductiveGroup::RealReductiveGroup
 
   , d_Tg(new // allocate private copy
 	 TitsCoset(G_C,grading_of_simples(G_C,square_class_cocharacter)))
-  , kgb_ptr(NULL)
-  , dual_kgb_ptr(NULL)
+  , kgb_ptr(nullptr)
+  , dual_kgb_ptr(nullptr)
   , d_status()
 { construct(); }
 
@@ -67,8 +67,8 @@ RealReductiveGroup::RealReductiveGroup
 
   , d_Tg(new // allocate private copy
 	 TitsCoset(G_C,grading_of_simples(G_C,square_class_cocharacter)))
-  , kgb_ptr(NULL)
-  , dual_kgb_ptr(NULL)
+  , kgb_ptr(nullptr)
+  , dual_kgb_ptr(nullptr)
   , d_status()
 { construct(); }
 
@@ -203,7 +203,7 @@ RootNbrSet RealReductiveGroup::noncompactRoots() const
 // return stored KGB structure, after generating it if necessary
 const KGB& RealReductiveGroup::kgb()
 {
-  if (kgb_ptr==NULL)
+  if (kgb_ptr==nullptr)
     kgb_ptr = new KGB(*this,Cartan_set(),false); // generate as non-dual
   return *kgb_ptr;
 }
@@ -211,7 +211,7 @@ const KGB& RealReductiveGroup::kgb()
 // return stored KGB structure, after generating it if necessary
 const KGB& RealReductiveGroup::kgb_as_dual()
 {
-  if (dual_kgb_ptr==NULL)
+  if (dual_kgb_ptr==nullptr)
     dual_kgb_ptr = new KGB(*this,Cartan_set(),true); // generate as dual
   return *dual_kgb_ptr;
 }
@@ -219,7 +219,7 @@ const KGB& RealReductiveGroup::kgb_as_dual()
 // return stored Bruhat order of KGB, after generating it if necessary
 const BruhatOrder& RealReductiveGroup::Bruhat_KGB()
 {
-  kgb(); // ensure |kgb_ptr!=NULL|, but we cannot use (|const|) result here
+  kgb(); // ensure |kgb_ptr!=nullptr|, but we cannot use (|const|) result here
   return kgb_ptr->bruhatOrder(); // get Bruhat order (generate if necessary)
 }
 

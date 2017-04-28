@@ -83,9 +83,9 @@ namespace {
 
   lietype::Layout layout;
   WeightList lattice_basis; // allows mapping Lie type info to complex group
-  InnerClass* G_C_pointer=NULL;
-  InnerClass* dual_G_C_pointer=NULL;
-  output::Interface* G_I_pointer=NULL;
+  InnerClass* G_C_pointer=nullptr;
+  InnerClass* dual_G_C_pointer=nullptr;
+  output::Interface* G_I_pointer=nullptr;
 
 } // |namespace|
 
@@ -104,7 +104,7 @@ InnerClass& current_inner_class()
 
 InnerClass& current_dual_group()
 {
-  if (dual_G_C_pointer==NULL)
+  if (dual_G_C_pointer==nullptr)
     dual_G_C_pointer = new InnerClass
       (current_inner_class(), tags::DualTag());
   return *dual_G_C_pointer;
@@ -126,7 +126,7 @@ void replace_inner_class(InnerClass* G
   delete dual_G_C_pointer;
   delete G_I_pointer;
   G_C_pointer=G;
-  dual_G_C_pointer=NULL;
+  dual_G_C_pointer=nullptr;
   G_I_pointer=I;
 }
 
@@ -159,7 +159,7 @@ void main_mode_entry() throw(EntryError)
 // function only called from |exitMode|
 void main_mode_exit()
 {
-  replace_inner_class(NULL,NULL); lattice_basis.clear();
+  replace_inner_class(nullptr,nullptr); lattice_basis.clear();
 }
 
 } // |namespace|

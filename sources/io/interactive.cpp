@@ -105,8 +105,8 @@ InputFile::InputFile(std::string prompt, std::ios_base::openmode mode)
 #ifndef NREADLINE
   rl_compentry_func_t* old_completion_function = rl_completion_entry_function;
   rl_compdisp_func_t * old_hook = rl_completion_display_matches_hook;
-  rl_completion_entry_function = NULL;
-  rl_completion_display_matches_hook = NULL;
+  rl_completion_entry_function = nullptr;
+  rl_completion_display_matches_hook = nullptr;
 
   bool error=false;
 
@@ -679,7 +679,7 @@ unsigned long get_int_in_set(const char* prompt,
 
   unsigned long c;
 
-  if (linep!=NULL) // first try to get value from line passed
+  if (linep!=nullptr) // first try to get value from line passed
   {
     input::InputBuffer& line = *linep;
     ioutils::skipSpaces(line);

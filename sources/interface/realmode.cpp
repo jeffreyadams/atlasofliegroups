@@ -75,8 +75,8 @@ namespace {
 
   // local variables
 
-  RealReductiveGroup* G_R_pointer=NULL;
-  Rep_table* rt=NULL;
+  RealReductiveGroup* G_R_pointer=nullptr;
+  Rep_table* rt=nullptr;
 } // |namespace|
 
 /*****************************************************************************
@@ -187,12 +187,12 @@ void realform_f()
 
 
 /*
-  Synopsis: destroys the real group and its interface, resoring NULL pointers
+  Synopsis: destroys the real group and its interface, resoring nullptr pointers
 */
 void real_mode_exit()
 {
-  delete G_R_pointer; G_R_pointer=NULL;
-  delete rt; rt=NULL;
+  delete G_R_pointer; G_R_pointer=nullptr;
+  delete rt; rt=nullptr;
 }
 
 
@@ -322,9 +322,6 @@ void kgbgraph_f()
   std::cout << "kgbsize: " << G_R.KGB_size() << std::endl;
 
   ioutils::OutputFile file;
-  if (file.is_std_cout()) // make sure the user entered an actual filename
-    throw error::InputError(); // as standard output makes no sense here
-
   kgb_io::makeDotFile(file,G_R.kgb(),G_R.Bruhat_KGB());
 }
 

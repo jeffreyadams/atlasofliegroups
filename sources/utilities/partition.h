@@ -1,17 +1,17 @@
 /*
-    Class definitions and function declarations for class Partition.
-
-The purpose of the class Partition is to represent the partition of a
-finite set given by a group action.  A typical example is a Weyl group
-acting on elements of order 2 in a torus.
-*/
-/*
   This is partition.h
 
   Copyright (C) 2004,2005 Fokko du Cloux
   part of the Atlas of Lie Groups and Representations
 
   For license information see the LICENSE file
+*/
+/*
+  Class definitions and function declarations for class Partition.
+
+  The purpose of the class Partition is to represent the partition of a
+  finite set given by a group action.  A typical example is a Weyl group
+  acting on elements of order 2 in a torus.
 */
 
 #ifndef PARTITION_H  /* guard against multiple inclusions */
@@ -106,9 +106,8 @@ class Partition
 
 // manipulators
 
-/*!
-  \brief Adds value j to class \#c.
-
+/*
+  Add value j to class \#c.
   Assumes that class \#c is already non-empty; that is, that j is not
   the first element of the class.  For the first element of a class,
   use newClass(j) instead.
@@ -119,19 +118,13 @@ class Partition
     d_class[j] = c;
   }
 
-  /*!
-\brief Clears all entries of d_classRep.
-  */
+  // Clear all entries of d_classRep.
   void clear() { d_classRep.clear(); }
 
   unsigned long new_class(unsigned long c);
 
-  /*!
-\brief Resizes the class to be a partition of [0,n[.
-  */
-  void resize(unsigned long n) {
-    d_class.resize(n);
-  }
+  // Resize the class to be a partition of [0,n[.
+  void resize(unsigned long n) { d_class.resize(n); }
 }; // |class Partition|
 
 /*!

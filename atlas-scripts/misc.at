@@ -92,21 +92,18 @@ set prettyPrint (ParamPol P)= void:
 for w@p in P
 do prints("(",prettyPrint(w),")*",p,", ",infinitesimal_character(p)) od
 
-{a few basic utility functions, used to be in complex_nilpotent_orbits.at}
-set smash([int] v,[[int]] A)=[[int]]:
-let rv=[[int]]:[] in
-for a in A do
- for c in v do rv#:=c#a od od;rv
+{ a few basic utility functions, used to be in complex_nilpotent_orbits.at }
+{ prefix every element of |A| with every element of |v|, gather results }
+set smash ([int] v,[[int]] A)=[[int]]:
+  ## for a in A do for c in v do c#a od od
 
-set rec_fun box(int height, int rank)=[[int]]:
-if rank=1 then for i:height do [i] od else
-smash(for i:height do i od,box(height,rank-1)) fi
+{. Cartesian power (#height)^rank, lists of length rank of numbers <height .}
+set rec_fun box(int height, int rank) = [[int]]:
+  if rank=0 then [[]] else smash(#height,box(height,rank-1)) fi
 
-set rec_fun box([int] heights)=[[int]]:
-if #heights=1 then for i:heights[0] do [i] od else
-smash(for i:heights[0]  do i od,box(delete(heights,0))) fi
+{. Cartesian product (#heights[0])*(#heights[1])*...*(heights~[0]) .}
+set rec_fun box([int] heights) = [[int]]:
+  if #heights=0 then [[]] else smash(#heights[0],box(heights[1:])) fi
 
-set flatten([[int]] v)=
-let rv=[int]:[] in
-for a in v do for b in a do rv#:=b od od;rv
+set flatten = ## @ [[int]]
 

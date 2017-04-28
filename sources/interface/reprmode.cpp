@@ -81,10 +81,10 @@ namespace commands {
   // mode-local variables
   block_type state=noblock;
   BlockElt entry_z = UndefBlock;
-  SubSystemWithGroup* sub=NULL;
-  StandardRepr* sr=NULL;
-  param_block* block_pointer=NULL; // block contains |KLContext| pointer
-  wgraph::WGraph* WGr_pointer=NULL;
+  SubSystemWithGroup* sub=nullptr;
+  StandardRepr* sr=nullptr;
+  param_block* block_pointer=nullptr; // block contains |KLContext| pointer
+  wgraph::WGraph* WGr_pointer=nullptr;
 
 
 /*****************************************************************************
@@ -235,8 +235,8 @@ void repr_f()
     sr = new
       StandardRepr(currentRepContext().sr(x,lambda_rho,gamma));
     state = noblock;
-    delete block_pointer; block_pointer=NULL;
-    delete WGr_pointer; WGr_pointer=NULL;
+    delete block_pointer; block_pointer=nullptr;
+    delete WGr_pointer; WGr_pointer=nullptr;
     drop_to(repr_mode); // exit from (hypothetical) descendant modes
   }
   catch (error::InputError& e)
@@ -245,14 +245,14 @@ void repr_f()
   }
 }
 /*
-  Synopsis: destroys any local data, resoring NULL pointers
+  Synopsis: destroys any local data, resoring nullptr pointers
 */
 void repr_mode_exit()
 {
   state=noblock;
-  delete sr; sr=NULL;
-  delete block_pointer; block_pointer=NULL;
-  delete WGr_pointer; WGr_pointer=NULL;
+  delete sr; sr=nullptr;
+  delete block_pointer; block_pointer=nullptr;
+  delete WGr_pointer; WGr_pointer=nullptr;
 }
 
 
@@ -269,7 +269,7 @@ void nblock_f()
 {
   if (state!=nblock)
   {
-    delete WGr_pointer; WGr_pointer=NULL;
+    delete WGr_pointer; WGr_pointer=nullptr;
     delete block_pointer; // destroy installed block first
     block_pointer =
       new param_block(currentRepContext(),currentStandardRepr(),entry_z);
@@ -282,7 +282,7 @@ void ensure_full_block()
 {
   if (state!=nblock)
   {
-    delete WGr_pointer; WGr_pointer=NULL;
+    delete WGr_pointer; WGr_pointer=nullptr;
     delete block_pointer; // destroy installed block first
     block_pointer =
       new param_block(currentRepContext(),currentStandardRepr(),entry_z);
@@ -294,7 +294,7 @@ void partial_block_f()
 {
   if (state!=partial_block)
   {
-    delete WGr_pointer; WGr_pointer=NULL;
+    delete WGr_pointer; WGr_pointer=nullptr;
     delete block_pointer; // destroy installed block first
     block_pointer =
       new param_block(currentRepContext(),currentStandardRepr());

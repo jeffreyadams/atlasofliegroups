@@ -485,8 +485,8 @@ KGB::KGB(RealReductiveGroup& G,
   , Cartan()
   , left_torus_part()
   , d_state()
-  , d_bruhat(NULL)
-  , d_base(NULL)
+  , d_bruhat(nullptr)
+  , d_base(nullptr)
 {
   //const TitsGroup& Tg = ic.titsGroup();
   size_t rank = ic.semisimpleRank(); // |ic.rank()| does not interest us here
@@ -814,7 +814,7 @@ void KGB::fillBruhat()
   BruhatOrder* bp = new BruhatOrder(hd); // pointer stored immediately: safe
 
   // commit
-  assert(d_bruhat==NULL); // so no |delete| is needed
+  assert(d_bruhat==nullptr); // so no |delete| is needed
   d_bruhat = bp;
   d_state.set(BruhatConstructed);
 }

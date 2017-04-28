@@ -1,8 +1,6 @@
-/*!
-\file
-  This is graph.cpp
-*/
 /*
+  This is graph.cpp
+
   Copyright (C) 2004,2005 Fokko du Cloux
   part of the Atlas of Lie Groups and Representations
 
@@ -37,8 +35,8 @@ namespace graph {
 
 /*!
   OrientedGraph::cells puts in pi the partition of the vertex set into strong
-  components for the graph, and if gr!=NULL also puts in *gr the graph of the
-  partial order relation induced by our graph on the quotient.
+  components for the graph, and if gr!=nullptr also puts in *gr the graph of
+  the partial order relation induced by our graph on the quotient.
 
   Explanation: define a preorder relation on the vertices by setting x <= y
   iff there is an oriented path from x to y (note the "inversion": edges go
@@ -125,7 +123,7 @@ struct info
 
 } // |namespace|
 
-void OrientedGraph::cells(partition::Partition& pi, OrientedGraph* gr) const
+partition::Partition OrientedGraph::cells(OrientedGraph* gr) const
 {
   std::vector<seqno> rank(size(),0);
 
@@ -134,8 +132,8 @@ void OrientedGraph::cells(partition::Partition& pi, OrientedGraph* gr) const
 
   std::vector<info> active;
 
-  pi.resize(size());           // |pi| will be a partition of the vertex set
-  if (gr!=NULL) gr->resize(0); // start induced graph with a clean slate
+  partition::Partition pi(size()); // |pi| will be a partition of the vertex set
+  if (gr!=nullptr) gr->resize(0); // start induced graph with a clean slate
 
   /* the following loop guarantees that all strong components will be found
      regardless of where in the graph we start, and whether or not it is
@@ -192,7 +190,7 @@ void OrientedGraph::cells(partition::Partition& pi, OrientedGraph* gr) const
 	      // now remove |x| and its descendance from |active|
 	      active.erase(active.begin()+cur_pos,active.end());
 
-	      if (gr!=NULL) gr->addLinks(out,pi);
+	      if (gr!=nullptr) gr->addLinks(out,pi);
 	    }
 	  else // |x| matures but does not head a new strong component
 	    {  // note that |x| cannot be |x0|, so active[x.parent] exists
@@ -206,8 +204,8 @@ void OrientedGraph::cells(partition::Partition& pi, OrientedGraph* gr) const
 
     } //for (x0) if (rank[x0]<infinity)
 
+#if 1
   // maybe reverse the numbering of the classes in the partition (deactivated)
-  if (false)
   {
     unsigned long last=pi.classCount()-1;
     std::vector<unsigned long> f(pi.size());
@@ -215,10 +213,12 @@ void OrientedGraph::cells(partition::Partition& pi, OrientedGraph* gr) const
       f[i]=last-pi.class_of(i); // opposite renumbering
 
     // replace |pi| by its reversely numbered equivalent
-    partition::Partition(f,tags::UnnormalizedTag()).swap(pi);
+    pi = partition::Partition(f,tags::UnnormalizedTag());
 
-    if (gr!=NULL) gr->reverseNumbering();
+    if (gr!=nullptr) gr->reverseNumbering();
   }
+#endif
+  return pi;
 }
 
 /*

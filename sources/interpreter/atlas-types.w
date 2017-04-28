@@ -2350,12 +2350,12 @@ void base_grading_vector_wrapper(expression_base::level l)
 
 @ There is a partial ordering on the Cartan classes defined for a real form. A
 matrix for this partial ordering is computed by the function
-|Cartan_order_matrix|, which more or less replaces the \.{corder} command in
+|Cartan_order|, which more or less replaces the \.{corder} command in
 \.{Fokko}.
 
 @h "poset.h"
 @< Local function def...@>=
-void Cartan_order_matrix_wrapper(expression_base::level l)
+void Cartan_order_wrapper(expression_base::level l)
 { shared_real_form rf= get<real_form_value>();
   if (l==expression_base::no_value)
     return;
@@ -2366,6 +2366,27 @@ void Cartan_order_matrix_wrapper(expression_base::level l)
     for (size_t j=i; j<n; ++j)
       if (p.lesseq(i,j)) M->val(i,j)=1;
 
+  push_value(std::move(M));
+}
+
+@ A similar function is |KGB_Hasse| which encodes the Bruhat order on the KGB
+set as a matrix.
+
+@h "bruhat.h"
+
+@< Local function def...@>=
+void KGB_Hasse_wrapper(expression_base::level l)
+{ own_real_form rf= non_const_get<real_form_value>();
+  if (l==expression_base::no_value)
+    return;
+  size_t n=rf->val.KGB_size();
+  own_matrix M = std::make_shared<matrix_value>(int_Matrix(n,n,0));
+  const auto& Bruhat = rf->val.Bruhat_KGB();
+  for (size_t j=0; j<n; ++j)
+  { const auto& col = Bruhat.hasse(j);
+    for (auto it=col.begin(); it!=col.end(); ++it)
+      M->val(*it,j)=1;
+  }
   push_value(std::move(M));
 }
 
@@ -2573,7 +2594,8 @@ install_function(count_Cartans_wrapper,@|"count_Cartans","(RealForm->int)");
 install_function(KGB_size_wrapper,@|"KGB_size","(RealForm->int)");
 install_function(base_grading_vector_wrapper
                 ,@|"base_grading_vector","(RealForm->ratvec)");
-install_function(Cartan_order_matrix_wrapper,@|"Cartan_order","(RealForm->mat)");
+install_function(Cartan_order_wrapper,@|"Cartan_order","(RealForm->mat)");
+install_function(KGB_Hasse_wrapper,@|"KGB_Hasse","(RealForm->mat)");
 install_function(real_form_eq_wrapper,"=","(RealForm,RealForm->bool)");
 install_function(real_form_neq_wrapper,"!=","(RealForm,RealForm->bool)");
 install_function(dual_real_form_wrapper,@|"dual_real_form"
@@ -5724,7 +5746,8 @@ void print_blockstabilizer_wrapper(expression_base::level l)
     wrap_tuple<0>();
 }
 
-@ The function |print_KGB| takes only a real form as argument.
+@ The functions |print_KGB|, |print_KGB_order| and |print_KGB_graph| take only
+a real form as argument.
 
 @h "kgb.h"
 @h "kgb_io.h"
@@ -5737,6 +5760,28 @@ void print_KGB_wrapper(expression_base::level l)
     << "kgbsize: " << rf->val.KGB_size() << std::endl;
   const KGB& kgb=rf->kgb();
   kgb_io::var_print_KGB(*output_stream,rf->val.innerClass(),kgb);
+@)
+  if (l==expression_base::single_value)
+    wrap_tuple<0>();
+}
+@)
+void print_KGB_order_wrapper(expression_base::level l)
+{ own_real_form rf= non_const_get<real_form_value>();
+@)
+  *output_stream
+    << "kgbsize: " << rf->val.KGB_size() << std::endl;
+  kgb_io::printBruhatOrder(*output_stream,rf->val.Bruhat_KGB());
+@)
+  if (l==expression_base::single_value)
+    wrap_tuple<0>();
+}
+@)
+void print_KGB_graph_wrapper(expression_base::level l)
+{ own_real_form rf= non_const_get<real_form_value>();
+@)
+  *output_stream
+    << "kgbsize: " << rf->val.KGB_size() << std::endl;
+  kgb_io::makeDotFile(*output_stream,rf->kgb(),rf->val.Bruhat_KGB());
 @)
   if (l==expression_base::single_value)
     wrap_tuple<0>();
@@ -5893,6 +5938,8 @@ install_function(print_blockd_wrapper,@|"print_blockd","(Block->)");
 install_function(print_blockstabilizer_wrapper,@|"print_blockstabilizer"
 		,"(Block,CartanClass->)");
 install_function(print_KGB_wrapper,@|"print_KGB","(RealForm->)");
+install_function(print_KGB_order_wrapper,@|"print_KGB_order","(RealForm->)");
+install_function(print_KGB_graph_wrapper,@|"print_KGB_graph","(RealForm->)");
 install_function(print_X_wrapper,@|"print_X","(InnerClass->)");
 install_function(print_KL_basis_wrapper,@|"print_KL_basis","(Block->)");
 install_function(print_prim_KL_wrapper,@|"print_prim_KL","(Block->)");
