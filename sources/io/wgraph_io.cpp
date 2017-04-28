@@ -73,8 +73,7 @@ void printCells(std::ostream& strm, const wgraph::WGraph& wg)
 */
 
 {
-  std::vector<wgraph::WGraph> wc;
-  wgraph::cells(wc,wg);
+  auto wc = wgraph::cells(wg);
 
   for (size_t j = 0; j < wc.size(); ++j) {
     strm << "// cell #" << j << std::endl;

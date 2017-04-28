@@ -24,19 +24,17 @@
 
 namespace atlas {
 
-/******** function declarations *********************************************/
-
 namespace kl {
 
-  void wGraph(wgraph::WGraph&, const KLContext&);
+/******** function declarations *********************************************/
 
-}
+
+wgraph::WGraph wGraph(const KLContext&);
+
 
 /******** type definitions **************************************************/
 
 /* Namely: the definition of KLContext itself */
-
-namespace kl {
 
 typedef std::vector<std::pair<BlockElt,MuCoeff> > MuRow;
 

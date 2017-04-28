@@ -5866,7 +5866,7 @@ void print_W_cells_wrapper(expression_base::level l)
   kl::KLContext klc(block); klc.fill(false);
 @)
 
-  wgraph::WGraph wg(klc.rank()); kl::wGraph(wg,klc);
+  wgraph::WGraph wg = kl::wGraph(klc);
   wgraph::DecomposedWGraph dg(wg);
 @)
   wgraph_io::printWDecomposition(*output_stream,dg);
@@ -5884,7 +5884,7 @@ void W_cells_wrapper(expression_base::level l)
   const Block &block = b->val;
   kl::KLContext klc(block); klc.fill(false);
 @)
-  wgraph::WGraph wg(klc.rank()); kl::wGraph(wg,klc);
+  wgraph::WGraph wg = kl::wGraph(klc);
   wgraph::DecomposedWGraph dg(wg);
 @)
 
@@ -5911,7 +5911,7 @@ void print_W_graph_wrapper(expression_base::level l)
   kl::KLContext klc(block); klc.fill(false);
 @)
 
-  wgraph::WGraph wg(klc.rank()); kl::wGraph(wg,klc);
+  wgraph::WGraph wg = kl::wGraph(klc);
 @)
   wgraph_io::printWGraph(*output_stream,wg);
 @)

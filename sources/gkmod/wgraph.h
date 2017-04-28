@@ -27,7 +27,7 @@ namespace atlas {
 
 namespace wgraph {
 
-void cells(std::vector<WGraph>&, const WGraph&);
+std::vector<WGraph> cells(const WGraph&);
 
 // Functions
 
@@ -52,7 +52,7 @@ class WGraph
  public:
 
 // constructors and destructors
-  explicit WGraph(size_t r) :d_rank(r) {}
+  explicit WGraph(size_t r, size_t n);
 
 // copy, assignment and swap: nothing needed beyond defaults
 
@@ -80,9 +80,6 @@ class WGraph
 
   graph::EdgeList& edgeList(graph::Vertex x) { return d_graph.edgeList(x); }
 
-  void reset();
-
-  void resize(size_t);
 }; // |class WGraph|
 
 class DecomposedWGraph

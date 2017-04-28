@@ -2,6 +2,7 @@
   This is graph.cpp
 
   Copyright (C) 2004,2005 Fokko du Cloux
+  Copyright (C) 2006,2017 Marc van Leeuwen
   part of the Atlas of Lie Groups and Representations
 
   For license information see the LICENSE file
@@ -33,8 +34,8 @@ namespace graph {
 
 /******** accessors **********************************************************/
 
-/*!
-  OrientedGraph::cells puts in pi the partition of the vertex set into strong
+/*
+  OrientedGraph::cells returns the partition of the vertex set into strong
   components for the graph, and if gr!=nullptr also puts in *gr the graph of
   the partial order relation induced by our graph on the quotient.
 
@@ -204,7 +205,7 @@ partition::Partition OrientedGraph::cells(OrientedGraph* gr) const
 
     } //for (x0) if (rank[x0]<infinity)
 
-#if 1
+#if 0
   // maybe reverse the numbering of the classes in the partition (deactivated)
   {
     unsigned long last=pi.classCount()-1;

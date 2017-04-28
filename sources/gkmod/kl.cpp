@@ -1226,8 +1226,8 @@ void KLContext::verbose_fill(BlockElt last_y)
  *****************************************************************************/
 
 
-/*!
-  \brief Puts in wg the W-graph for this block.
+/*
+  Return the W-graph for this block.
 
   Explanation: the W-graph is a graph with one vertex for each element of the
   block; the corresponding descent set is the tau-invariant, i.e. the set of
@@ -1243,10 +1243,9 @@ void KLContext::verbose_fill(BlockElt last_y)
 
   NOTE: if I'm not mistaken, the edgelists come already out sorted.
 */
-void wGraph(wgraph::WGraph& wg, const KLContext& klc)
+wgraph::WGraph wGraph(const KLContext& klc)
 {
-  wg.reset();
-  wg.resize(klc.size());
+  wgraph::WGraph wg(klc.rank(),klc.size());
 
   // fill in descent sets
   for (BlockElt y = 0; y < klc.size(); ++y)
@@ -1278,7 +1277,7 @@ void wGraph(wgraph::WGraph& wg, const KLContext& klc)
       }
     }
   }
-
+  return wg;
 } // |wGraph|
 
 } // |namespace kl|

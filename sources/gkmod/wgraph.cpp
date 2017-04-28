@@ -27,35 +27,13 @@ namespace wgraph {
 
 /******** constructors and destructors ***************************************/
 
+WGraph::WGraph(size_t r, size_t n)
+  : d_rank(r), d_graph(n), d_coeff(n), d_descent(n) {}
+
+
 /******** copy, assignment and swap ******************************************/
 
 /******** manipulators *******************************************************/
-
-/*
-  Synopsis: resets the W-graph
-
-  Preserves size and rank; resets edge and coefficient lists to empty lists;
-  resets descent sets to empty.
-*/
-void WGraph::reset()
-{
-  d_graph.reset();
-  d_coeff.assign(size(),WCoeffList());
-  d_descent.assign(size(),RankFlags());
-}
-
-
-/*
-  Synopsis: resizes the lists to size n
-
-  Preserves the existing parts if n > size().
-*/
-void WGraph::resize(size_t n)
-{
-  d_graph.resize(n);
-  d_coeff.resize(n);
-  d_descent.resize(n);
-}
 
 DecomposedWGraph::DecomposedWGraph(const WGraph& wg)
   : d_cell(), d_part(wg.size()), d_id(), d_induced()
@@ -71,14 +49,12 @@ DecomposedWGraph::DecomposedWGraph(const WGraph& wg)
   Partition::iterator i(pi);
   for (cell_no n=0; n<d_id.size(); ++n,++i)
   {
-    d_cell.push_back(WGraph(wg.rank()));
+    d_cell.push_back(WGraph(wg.rank(),i->second-i->first));
     WGraph& cur_cell = d_cell.back();
-    cur_cell.resize(i->second-i->first);
     std::vector<unsigned int>& idn=d_id[n];
     idn.resize(cur_cell.size());
 
-    for (Partition::iterator::SubIterator
-	   j=i->first; j!=i->second; ++j)
+    for (Partition::iterator::SubIterator j=i->first; j!=i->second; ++j)
     {
       size_t y = *j; size_t z=j-i->first; // |y| gets renamed |z| in cell
 
@@ -126,40 +102,42 @@ namespace wgraph {
 /*
   Synopsis: puts in wc the cells of the W-graph wg.
 */
-void cells(std::vector<WGraph>& wc, const WGraph& wg)
+std::vector<WGraph> cells(const WGraph& wg)
 {
   Partition pi =
     wg.cells(); // do not collect information about induced graph here
 
-  for (Partition::iterator i(pi); i(); ++i)
-  {
-    wc.push_back(WGraph(wg.rank()));
-    WGraph& wci = wc.back();
-    wci.resize(i->second - i->first);
+  std::vector<WGraph> wc; wc.reserve(pi.classCount());
 
-    /* looping over |z| rather than using |*i| directly implements the
-       renumbering of each cell (what was |y=*(i->first+z)| becomes just |z|)
+  for (Partition::iterator it(pi); it(); ++it) // loop over cells
+  {
+    wc.push_back(WGraph(wg.rank(),it->second - it->first));
+    WGraph& wci = wc.back();
+
+    /* looping over |z| rather than using |*it| directly implements the
+       renumbering of each cell (what was |y=*(it->first+z)| becomes just |z|)
     */
     for (size_t z = 0; z < wci.size(); ++z)
     {
-      size_t y = i->first[z];
+      size_t y = it->first[z];
       wci.descent(z) = wg.descent(y);
       const graph::EdgeList& el = wg.edgeList(y);
       graph::EdgeList& eli = wci.edgeList(z);
       const WCoeffList& cl = wg.coeffList(y);
       WCoeffList& cli = wci.coeffList(z);
-      for (size_t j = 0; j < el.size(); ++j) {
+      for (size_t j = 0; j < el.size(); ++j)
+      {
 	size_t x = el[j];
 	if (pi.class_of(x) != pi.class_of(y))
 	  continue; // ignore edge leading out of the current cell
 	// find relative address of x in this class
-	size_t xi = std::lower_bound(i->first,i->second,x) - i->first;
+	size_t xi = std::lower_bound(it->first,it->second,x) - it->first;
 	eli.push_back(xi);
 	cli.push_back(cl[j]);
       }
     } //for (z)
-  } // for (i)
-
+  } // for (it)
+  return wc;
 } // cells
 
 /* The following function is an alternative to the function |wGraph| defined
@@ -192,7 +170,7 @@ WGraph wGraph
   size_t max_mu=1;                       // maximal mu found
   std::pair<BlockElt,BlockElt> max_pair; // corresponding (x,y)
 
-  WGraph result(mi.rank()); result.resize(mi.block_size());
+  WGraph result(mi.rank(),mi.block_size());
 
   // fill in descent sets
   for (BlockElt y = 0; y < mi.block_size(); ++y)
