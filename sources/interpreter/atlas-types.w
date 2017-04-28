@@ -2350,12 +2350,12 @@ void base_grading_vector_wrapper(expression_base::level l)
 
 @ There is a partial ordering on the Cartan classes defined for a real form. A
 matrix for this partial ordering is computed by the function
-|Cartan_order_matrix|, which more or less replaces the \.{corder} command in
+|Cartan_order|, which more or less replaces the \.{corder} command in
 \.{Fokko}.
 
 @h "poset.h"
 @< Local function def...@>=
-void Cartan_order_matrix_wrapper(expression_base::level l)
+void Cartan_order_wrapper(expression_base::level l)
 { shared_real_form rf= get<real_form_value>();
   if (l==expression_base::no_value)
     return;
@@ -2366,6 +2366,27 @@ void Cartan_order_matrix_wrapper(expression_base::level l)
     for (size_t j=i; j<n; ++j)
       if (p.lesseq(i,j)) M->val(i,j)=1;
 
+  push_value(std::move(M));
+}
+
+@ A similar function is |KGB_Hasse| which encodes the Bruhat order on the KGB
+set as a matrix.
+
+@h "bruhat.h"
+
+@< Local function def...@>=
+void KGB_Hasse_wrapper(expression_base::level l)
+{ own_real_form rf= non_const_get<real_form_value>();
+  if (l==expression_base::no_value)
+    return;
+  size_t n=rf->val.KGB_size();
+  own_matrix M = std::make_shared<matrix_value>(int_Matrix(n,n,0));
+  const auto& Bruhat = rf->val.Bruhat_KGB();
+  for (size_t j=0; j<n; ++j)
+  { const auto& col = Bruhat.hasse(j);
+    for (auto it=col.begin(); it!=col.end(); ++it)
+      M->val(*it,j)=1;
+  }
   push_value(std::move(M));
 }
 
@@ -2573,7 +2594,8 @@ install_function(count_Cartans_wrapper,@|"count_Cartans","(RealForm->int)");
 install_function(KGB_size_wrapper,@|"KGB_size","(RealForm->int)");
 install_function(base_grading_vector_wrapper
                 ,@|"base_grading_vector","(RealForm->ratvec)");
-install_function(Cartan_order_matrix_wrapper,@|"Cartan_order","(RealForm->mat)");
+install_function(Cartan_order_wrapper,@|"Cartan_order","(RealForm->mat)");
+install_function(KGB_Hasse_wrapper,@|"KGB_Hasse","(RealForm->mat)");
 install_function(real_form_eq_wrapper,"=","(RealForm,RealForm->bool)");
 install_function(real_form_neq_wrapper,"!=","(RealForm,RealForm->bool)");
 install_function(dual_real_form_wrapper,@|"dual_real_form"

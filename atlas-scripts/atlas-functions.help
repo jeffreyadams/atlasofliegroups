@@ -454,6 +454,13 @@ base_grading_vector: (RealForm->ratvec): Offset implicit in torus_bits values
 Cartan_order: (RealForm->mat): matrix describing ordering of Cartan classes
   The Cartan classes for a given real form form a partially ordered set; this
   function returns this partial ordering in the form of a square 0-1 matrix
+KGB_Hasse: (RealForm->mat): Hasse diagram of Bruhat order on K\G/B
+  The Bruhat order x<=y among K-orbits in G/B describes when x is contained in
+  the (topological) closure of y. KGB_Hasse(G) is a matrix describing the Hasse
+  diagram of this finite partial order: the set of pairs (x,z) for which the
+  interval { y | x<=y<=z } contains exaclty the two elements, namely x et z.
+  The matrix is indexed by the numbers #x of the K\G/B elements x, and the
+  entry at (#x,#z) is 1 when (x,z) is in the Hasse diagram, and 0 othewise.
 
 dual_real_form: (InnerClass,int->RealForm): select a dual real form
   This is like real_form, but selects a dual real form for the inner class
