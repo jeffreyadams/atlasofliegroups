@@ -43,6 +43,12 @@ WGraph wGraph
 
 namespace wgraph {
 
+/*
+  The |WGraph| class provides a shell to store a graph, edge weights
+  (coefficients), and descent sets. The construction of the graph is left
+  entirely to the client of this class, whence write access is given to all
+  fields of thi class. It might as well have left all its members be public.
+*/
 class WGraph
 {
   size_t d_rank;

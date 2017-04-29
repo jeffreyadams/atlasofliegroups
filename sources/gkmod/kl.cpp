@@ -1241,7 +1241,12 @@ void KLContext::verbose_fill(BlockElt last_y)
   assumed that the descent sets were not equal.) In both cases, the
   coefficient corresponding to the edge is mu(x,y).
 
-  NOTE: if I'm not mistaken, the edgelists come already out sorted.
+  The edge lists are constructed in already sorted order: for a given element,
+  the outgoing edges to smaller elements are first constructed when |y| equals
+  that element (and they come in increasing order because |mrow| has its
+  first components (|x|) increasing), then to larger elements when the given
+  element occurs as |x| for another as |y|; the |y| are always increasing.
+
 */
 wgraph::WGraph wGraph(const KLContext& klc)
 {
@@ -1252,26 +1257,31 @@ wgraph::WGraph wGraph(const KLContext& klc)
     wg.descent(y) = klc.descentSet(y);
 
   // fill in edges and coefficients
-  for (BlockElt y = 0; y < klc.size(); ++y) {
+  for (BlockElt y = 0; y < klc.size(); ++y)
+  {
     const RankFlags& d_y = wg.descent(y);
     const MuRow& mrow = klc.muRow(y);
-    for (size_t j = 0; j < mrow.size(); ++j) {
+    for (size_t j = 0; j < mrow.size(); ++j)
+    {
       BlockElt x = mrow[j].first;
       const RankFlags& d_x = wg.descent(x);
       if (d_x == d_y)
 	continue;
       MuCoeff mu = mrow[j].second;
-      if (klc.length(y) - klc.length(x) > 1) { // add edge from x to y
+      if (klc.length(y) - klc.length(x) > 1)
+      { // nonzero $\mu$, unequal descents, $l(x)+1<l(y)$: edge from $x$ to $y$
 	wg.edgeList(x).push_back(y);
 	wg.coeffList(x).push_back(mu);
 	continue;
       }
-      // if we get here, the length difference is 1
-      if (not d_y.contains(d_x)) { // then add edge from x to y
+      // now length difference is 1: edges except to a larger descent set
+      if (not d_y.contains(d_x)) // then add edge from $x$ to $y$
+      {
 	wg.edgeList(x).push_back(y);
 	wg.coeffList(x).push_back(mu);
       }
-      if (not d_x.contains(d_y)) { // then add edge from y to x
+      if (not d_x.contains(d_y)) // then add edge from $y$ to $x$
+      {
 	wg.edgeList(y).push_back(x);
 	wg.coeffList(y).push_back(mu);
       }

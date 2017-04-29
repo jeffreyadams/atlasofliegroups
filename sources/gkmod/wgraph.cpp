@@ -62,14 +62,14 @@ DecomposedWGraph::DecomposedWGraph(const WGraph& wg)
       d_part[y]=n; // or equivalently |d_part[y]=pi(y)|
       relno[y]=z; idn[z]=y;
 
-      cur_cell.descent(z) = wg.descent(y);
+      cur_cell.descent(z) = wg.descent(y); // transfer descent set unchanged
     }
   }
-  // make sure all values |relno[y]| are defined before proceeding
+  // we have made sure all values |relno[y]| are defined before proceeding
 
   for (it.rewind(); it(); ++it)
   {
-    cell_no n=d_part[*it->first]; // cell number, constant through next loop
+    const cell_no n=d_part[*it->first]; // cell number, fixed for next loop
     for (Partition::iterator::SubIterator
 	   j=it->first; j!=it->second; ++j)
     {

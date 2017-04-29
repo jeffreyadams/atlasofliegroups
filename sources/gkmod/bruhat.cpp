@@ -1,8 +1,3 @@
-/*!
-\file
-\brief Implementation of the class BruhatOrder.
-*/
-
 /*
   This is bruhat.cpp
 
@@ -12,6 +7,7 @@
   For license information see the LICENSE file
 */
 
+// Implementation of the class BruhatOrder.
 #include "bruhat.h"
 
 namespace atlas {
@@ -26,9 +22,7 @@ namespace atlas {
 namespace bruhat {
 
 
-/*!
-  \brief Computes the full poset from the stored Hasse diagram.
-*/
+// Computes the full poset from the stored Hasse diagram.
 void BruhatOrder::fillPoset()
 {
   if (d_poset.size()==0)

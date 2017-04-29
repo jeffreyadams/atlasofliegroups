@@ -32,18 +32,19 @@ namespace bruhat {
 */
 class BruhatOrder
 {
-  /*
-    Hasse diagram for a Bruhat order. Entry \#j lists the numbers of the
-    immediate predecessors of element \#j in the order.
-  */
+/*
+  Hasse diagram for a Bruhat order. Entry \#j lists the numbers of the
+  immediate predecessors of element \#j in the order.
+*/
   // As this is probably sparse; avoid |BitMap|s
   std::vector<poset::Poset::EltList> d_hasse;
-  /*
-     Poset relation.
 
-     It is assumed that element \#i can precede element \#j in the poset
-     only if i < j.
-  */
+/*
+   Full poset relation. Only computed on demand, until then has size 0.
+
+   It is assumed (byt the calss |Poset|) that element \#i can precede
+   element \#j in the poset only if i < j.
+*/
   poset::Poset d_poset;
 
  public:
