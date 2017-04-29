@@ -87,7 +87,7 @@ private:
   // helper function - removes redundant edges from a closure relation
   typedef containers::queue<KGPElt> KGP_queue;
   void reduce(KGP_queue& q, std::vector<bool>& closure,
-	      std::vector<set::EltList>& hasse, KGPElt minelt);
+	      std::vector<Poset::EltList>& hasse, KGPElt minelt);
 
 }; // |class KGP|
 

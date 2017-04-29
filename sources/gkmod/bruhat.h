@@ -33,12 +33,11 @@ namespace bruhat {
 class BruhatOrder
 {
   /*
-    Hasse diagram for a Bruhat order.
-
-    Entry \#j lists the numbers of the immediate predecessors of element \#j
-    in the order.
+    Hasse diagram for a Bruhat order. Entry \#j lists the numbers of the
+    immediate predecessors of element \#j in the order.
   */
-  std::vector<set::EltList> d_hasse; // probably sparse; avoid |BitMap|s
+  // As this is probably sparse; avoid |BitMap|s
+  std::vector<poset::Poset::EltList> d_hasse;
   /*
      Poset relation.
 
@@ -50,7 +49,7 @@ class BruhatOrder
  public:
 
 // constructors and destructors
-  explicit BruhatOrder(const std::vector<set::EltList>& Hasse_diagram)
+  explicit BruhatOrder(const std::vector<poset::Poset::EltList>& Hasse_diagram)
     : d_hasse(Hasse_diagram), d_poset(0) {}
 
 
@@ -59,7 +58,8 @@ class BruhatOrder
   size_t size() const { return d_hasse.size(); }
 
   // Return row |x| of the Hasse diagram for the order.
-  const set::EltList& hasse(size_t x) const { return d_hasse[x]; }
+  const std::vector<poset::Poset::Elt>& hasse(size_t x) const
+  { return d_hasse[x]; }
 
   // Return the number of comparable pairs in the order.
   unsigned long n_comparable() const

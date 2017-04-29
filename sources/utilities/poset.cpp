@@ -36,22 +36,20 @@ namespace poset {
 /******** constructors and destructors ***************************************/
 
 
-/*!
-  Synopsis: constructs the discrete poset of size n.
-*/
-Poset::Poset(size_t n)
+// Construct the discrete poset of size |n|. (relations can be added later)
+Poset::Poset(Elt n)
 : d_below(n)
 {
-  for (size_t j = 0; j < n; ++j)
+  for (Elt j = 0; j < n; ++j)
   {
     d_below[j].set_capacity(j); // clears all bits up to the diagaonal
   }
 }
 
-Poset::Poset(size_t n,const std::vector<Link>& lk)
+Poset::Poset(Elt n,const std::vector<Link>& lk)
 : d_below(n)
 {
-  for (size_t j = 0; j < n; ++j)
+  for (Elt j = 0; j < n; ++j)
   {
     d_below[j].set_capacity(j); // clears all bits up to the diagaonal
   }
@@ -61,7 +59,7 @@ Poset::Poset(size_t n,const std::vector<Link>& lk)
 Poset::Poset(const Poset& p, tags::DualTag)
   : d_below()
 {
-  size_t n=p.size()-1;
+  Elt n=p.size()-1; // duality renumbering will be subtraction from |n|
   d_below.reserve(n+1);
   for (size_t i=0; i<=n; ++i)
   {
@@ -88,7 +86,7 @@ bool Poset::operator==(const Poset& other) const
   return true;
 }
 
-bitmap::BitMap Poset::above(set::Elt x) const
+bitmap::BitMap Poset::above(Elt x) const
 {
   bitmap::BitMap result(size());
 
@@ -105,7 +103,7 @@ bitmap::BitMap Poset::above(set::Elt x) const
   Algorithm: the largest element x in b (if any) is maximal; add that to a,
   remove from b the intersection with the closure of x, and iterate.
 */
-set::EltList Poset::maxima(const bitmap::BitMap& b) const
+bitmap::BitMap Poset::maxima(const bitmap::BitMap& b) const
 {
   unsigned long x=b.capacity();
   bitmap::BitMap result = b; // working copy; we shall remove covered elements
@@ -113,64 +111,48 @@ set::EltList Poset::maxima(const bitmap::BitMap& b) const
   while (result.back_up(x))
     result.andnot(d_below[x]); // remove below |x| (|bl[x]| remains set)
 
-  return set::EltList(result.begin(),result.end()); // convert bitmap to vector
+  return result;
 }
 
-set::EltList Poset::minima(const bitmap::BitMap& b) const
+bitmap::BitMap Poset::minima(const bitmap::BitMap& b) const
 {
-  set::EltList result; // we shall produce a list of elements directly
+  bitmap::BitMap result(size()); // start with a copy
   for (bitmap::BitMap::iterator it=b.begin(); it(); ++it)
-    if (b.disjoint(d_below[*it]))
-      result.push_back(*it); // if intersection was empty, |*it| is minimal
-
-  return result;
-}
-
-// while dual to |covered_by|, this is harder (and untested)
-set::EltList Poset::covers_of(set::Elt x) const
-{
-  set::EltList result; // we shall produce a list of elements directly
-  bitmap::BitMap candidates = above(x);
-
-  // in the next loop |candidates| is sieved while looping; this is allowed
-  for (bitmap::BitMap::iterator it=candidates.begin(); it(); ++it)
-  {
-    result.push_back(*it); // record a covering element
-    bitmap::BitMap::iterator jt=it; // copy iterator over |candidates|
-    while ((++jt)()) // check remaining candidates
-      if (d_below[*jt].isMember(*it)) // then |*jt| above |*it|, no |x|-cover
-	candidates.remove(*jt); // so remove |*jt| from |candidates|
-  }
+    if (d_below[*it].disjoint(b))
+      result.insert(*it); // if intersection was empty, |*it| is minimal
 
   return result;
 }
 
 
-/*!
-\brief Puts in h the Hasse diagram of the poset
+/*
+  Return the Hasse diagram of the poset
 
-  Explanation: the Hasse diagram is the oriented graph whose vertices are
-  the elements of the poset, with an edge from each vertex to each vertex
-  immediately below it.
+  Explanation: the Hasse diagram is the minimal oriented graph (or relation)
+  for which the poset is the symmetric transitive closure. Its edges are the
+  pairs a comparable distinct elements the interval between them containing no
+  other elements.
 */
 graph::OrientedGraph Poset::hasseDiagram() const
 {
   graph::OrientedGraph h(size()); // empty graph of size of Poset
 
-  for (set::Elt x = 0; x < size(); ++x)
-    h.edgeList(x)=maxima(d_below[x]);// |x| is already absent from |d_below[x]|
-
+  for (Elt x = 0; x < size(); ++x)
+  { bitmap::BitMap targets=covered_by(x);
+    h.edgeList(x).assign(targets.begin(),targets.end());
+  }
   return h;
 }
 
-/* Puts in |h| the Hasse diagram of the downward closure of |max|. Since we do
-   not want to renumber, all elements up to and including |max| will define
-   vertices of the graph, but those not comparable to |max| will be isolated
-   points. This (in particular the absence of incoming edges) is admittedly
-   hard to detect; in practice 0 will be a least element, so that for other
-   elements the absence of outgoing edges witnesses incomparability with |max|
+/*
+  Return the Hasse diagram of the downward closure of |max|. Since we do not
+  want to renumber, all elements up to and including |max| will define
+  vertices of the graph, but those not comparable to |max| will be isolated
+  points. This (in particular the absence of incoming edges) is admittedly
+  hard to detect; in practice 0 will be a least element, so that for other
+  elements the absence of outgoing edges witnesses incomparability with |max|
  */
-graph::OrientedGraph Poset::hasseDiagram(set::Elt max) const
+graph::OrientedGraph Poset::hasseDiagram(unsigned int max) const
 {
   bitmap::BitMap cl(max+1);
   cl |= d_below[max]; cl.insert(max); // we must not forget |max| iself.
@@ -179,8 +161,8 @@ graph::OrientedGraph Poset::hasseDiagram(set::Elt max) const
 
   for (bitmap::BitMap::iterator it = cl.begin(); it(); ++it)
   {
-    set::Elt x=*it;
-    h.edgeList(x)=maxima(d_below[x]); // contained in |cl| by transitivity
+    bitmap::BitMap targets = covered_by(*it); // inside |cl| by transitivity
+    h.edgeList(*it).assign(targets.begin(),targets.end());
   }
   return h;
 }
@@ -209,28 +191,24 @@ void Poset::resize(unsigned long n)
     d_below[j].set_capacity(j);
 }
 
-}
-
 /*****************************************************************************
 
         Chapter I -- The SymmetricPoset class
 
 ******************************************************************************/
 
-namespace poset {
-
 /******** constructors and destructors ***************************************/
 
 unsigned long n_comparable_from_Hasse
-  (const std::vector<set::EltList>& hasse)
+  (const std::vector<Poset::EltList>& hasse)
 {
   const size_t n=hasse.size();
-  set::EltList min_after(n+1);
+  Poset::EltList min_after(n+1);
   min_after[n]=n;
 
   for (size_t i=n; i-->0;)
   {
-    set::Elt min=min_after[i+1];
+    Poset::Elt min=min_after[i+1];
     for (size_t j=0; j<hasse[i].size(); ++j)
       if (hasse[i][j]<min)
 	min=hasse[i][j];

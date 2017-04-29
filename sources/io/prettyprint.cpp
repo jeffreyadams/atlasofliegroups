@@ -13,6 +13,7 @@
 #include <iomanip>
 #include <sstream>
 
+#include "poset.h"
 #include "bitmap.h"
 #include "polynomials.h"
 
@@ -73,12 +74,12 @@ std::ostream& prettyPrint(std::ostream& strm, const BitSet<d>& b,
 template<unsigned int dim>
 std::ostream& prettyPrint(std::ostream& strm, const BitVector<dim>& v)
 {
-  set::EltList vi;
+  Poset::EltList vi;
 
   for (size_t i = 0; i < v.size(); ++i)
     vi.push_back(v[i]?1:0);
 
-  const set::EltList& vir=vi; // this type already used with |seqPrint|
+  const Poset::EltList& vir=vi; // this type already used with |seqPrint|
   basic_io::seqPrint(strm,vir.begin(),vir.end(),",","(",")");
 
   return strm;

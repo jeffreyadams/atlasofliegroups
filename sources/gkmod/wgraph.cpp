@@ -2,6 +2,7 @@
   This is wgraph.cpp
 
   Copyright (C) 2004,2005 Fokko du Cloux
+  Copyright (C) 2007,2017 Marc van Leeuwen
   part of the Atlas of Lie Groups and Representations
 
   For license information see the LICENSE file
@@ -46,17 +47,17 @@ DecomposedWGraph::DecomposedWGraph(const WGraph& wg)
 
 
   std::vector<unsigned int> relno(wg.size()); // number of element in its cell
-  Partition::iterator i(pi);
-  for (cell_no n=0; n<d_id.size(); ++n,++i)
+  Partition::iterator it(pi);
+  for (cell_no n=0; n<d_id.size(); ++n,++it)
   {
-    d_cell.push_back(WGraph(wg.rank(),i->second-i->first));
+    d_cell.push_back(WGraph(wg.rank(),it->second-it->first));
     WGraph& cur_cell = d_cell.back();
     std::vector<unsigned int>& idn=d_id[n];
     idn.resize(cur_cell.size());
 
-    for (Partition::iterator::SubIterator j=i->first; j!=i->second; ++j)
+    for (Partition::iterator::SubIterator j=it->first; j!=it->second; ++j)
     {
-      size_t y = *j; size_t z=j-i->first; // |y| gets renamed |z| in cell
+      size_t y = *j; size_t z=j-it->first; // |y| gets renamed |z| in cell
 
       d_part[y]=n; // or equivalently |d_part[y]=pi(y)|
       relno[y]=z; idn[z]=y;
@@ -66,13 +67,13 @@ DecomposedWGraph::DecomposedWGraph(const WGraph& wg)
   }
   // make sure all values |relno[y]| are defined before proceeding
 
-  for (i.rewind(); i(); ++i)
+  for (it.rewind(); it(); ++it)
   {
-    cell_no n=d_part[*i->first]; // cell number, constant through next loop
+    cell_no n=d_part[*it->first]; // cell number, constant through next loop
     for (Partition::iterator::SubIterator
-	   j=i->first; j!=i->second; ++j)
+	   j=it->first; j!=it->second; ++j)
     {
-      size_t y = *j; size_t z=relno[y]; // |z==j-i->first|
+      size_t y = *j; size_t z=relno[y]; // |z==j-it->first|
       const graph::EdgeList& edge = wg.edgeList(y);
       const WCoeffList& coeff = wg.coeffList(y);
       graph::EdgeList& cur_el = d_cell[n].edgeList(z);
@@ -84,11 +85,10 @@ DecomposedWGraph::DecomposedWGraph(const WGraph& wg)
 	  cur_cl.push_back(     coeff[k]);
 	}
     } // for (j)
-  } // for (i)
+  } // for (it)
 
-}
+} // |DecomposedWGraph::DecomposedWGraph|
 
-} // |namespace wgraph|
 
 /*****************************************************************************
 
@@ -96,12 +96,8 @@ DecomposedWGraph::DecomposedWGraph(const WGraph& wg)
 
 ******************************************************************************/
 
-namespace wgraph {
 
-
-/*
-  Synopsis: puts in wc the cells of the W-graph wg.
-*/
+// Return the cells of the W-graph |wg|
 std::vector<WGraph> cells(const WGraph& wg)
 {
   Partition pi =
@@ -138,7 +134,7 @@ std::vector<WGraph> cells(const WGraph& wg)
     } //for (z)
   } // for (it)
   return wc;
-} // cells
+} // |cells|
 
 /* The following function is an alternative to the function |wGraph| defined
    in kl.cpp. Here we do not assume that a KLContext is available, but that
@@ -247,7 +243,7 @@ WGraph wGraph
 	    << '.' << std::endl;
 
   return result;
-}
+} // |wGraph| (from file data)
 
 
 } // |namespace wgraph|

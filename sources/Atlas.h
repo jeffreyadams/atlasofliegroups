@@ -51,11 +51,6 @@ namespace atlas {
    any header files from that subdirectory, so the definitions here will be
    the only ones seen when compiling the Atlas library.
  */
-  namespace set {
-    typedef size_t Elt;
-    typedef std::vector<Elt> EltList;
-  }
-
   namespace bitset {
     template<unsigned int n> class BitSet;
   }
@@ -146,15 +141,12 @@ namespace atlas {
 
   namespace poset {
     class Poset;
-    typedef std::pair<set::Elt,set::Elt> Link;
   }
   using poset::Poset;
 
   namespace graph {
     typedef unsigned int Vertex; // assume at most some 4 billion vertices
-    typedef std::vector<Vertex> VertexList;
-    typedef unsigned long Edge; // allow for a huge number of edges
-    typedef std::vector<Edge> EdgeList;
+    typedef std::vector<Vertex> EdgeList; // list of targets of outgoing edges
     class OrientedGraph;
   }
   using graph::OrientedGraph;
@@ -184,7 +176,6 @@ namespace atlas {
   }
 
 // we should now refrain from subsequently reading the original forward files
-#define SET_H
 #define BITSET_FWD_H
 #define BITMAP_FWD_H
 #define SL_LIST_FWD_H
@@ -194,6 +185,7 @@ namespace atlas {
 #define PERMUTATIONS_FWD_H
 #define PARTITIONS_FWD_H
 #define POSET_FWD_H
+#define GRAPH_FWD_H
 #define HASHTABLE_FWD_H
 #define FREE_ABELIAN_FWD_H
 #define POLYNOMIALS_FWD_H

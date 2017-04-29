@@ -14,22 +14,27 @@
 
 #include <cassert>
 
-/*!****************************************************************************
-\file
-  \brief Contains the implementation of the BitMap class.
+/*****************************************************************************
 
-  A BitMap should be seen as a container of _unsigned long_, not bits; the
-  idea is that the unsigned longs it contains are the bit-addresses of the set
-  bits, i.e., their indices in the bit-array. It obeys the semantics of a
-  Forward Container (notion from the C++ standard library).
+  The implementation of the BitMap class.
 
-  A bitmap is a implemented as a vector of unsigned long, each representing a
-  "chunk" of bits in the map. We wish to provide bit-address access to this
-  map; for this purpose we use the reference trick from vector<bool>. Also we
-  wish to define an iterator class, which traverses the _set_ bits of the
-  bitmap; so that for instance, |b.begin()| would give access to the first set
-  bit (but is not a pointer or a reference to any value). Dereferencing the
-  iterator returns the integer bit-address of that first set bit.
+  A BitMap should be seen as a container of some unsigned integer type, with
+  values bounded by the capacity of the bitmap, and which will be produced as
+  |unsigned integer| values (though these can then be narrowed to a smaller
+  type that can fit all possible values). The fact that bits are used to
+  signal the presence or absence of numbers is an inplementation details that
+  this class somewhat hides (though the class name is an obvious giveaway). It
+  obeys the semantics of a Forward Container (from the C++ standard library).
+
+  A bitmap is a implemented as a vector of |unsigned long| (no relation with
+  the same type used to represent values the container holds), each
+  representing a "chunk" of bits in the map. We wish to provide bit-address
+  access to this map; for this purpose we use the reference trick from
+  vector<bool>. Also we wish to define an iterator class, which traverses the
+  _set_ bits of the bitmap; so that for instance, |b.begin()| would give
+  access to the first set bit (but is not a pointer or a reference to any
+  value). Dereferencing the iterator returns the integer bit-address of that
+  first set bit.
 
 ******************************************************************************/
 

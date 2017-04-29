@@ -63,7 +63,7 @@ namespace kgb {
 
 namespace {
 
-void makeHasse(std::vector<set::EltList>&, const KGB_base&);
+void makeHasse(std::vector<Poset::EltList>&, const KGB_base&);
 
 } // |namespace|
 
@@ -529,9 +529,9 @@ KGB::KGB(RealReductiveGroup& G,
     RealFormNbr rf=G.realForm();
     assert(square_class_base.square()==ic.xi_square(rf));
 
-    set::EltList mins=ic.Cartan_ordering().minima(Cartan_classes);
+    bitmap::BitMap mins=ic.Cartan_ordering().minima(Cartan_classes);
     // for (small) block there should be just one minimum, but we loop anyway
-    for (set::EltList::iterator it=mins.begin(); it!=mins.end(); ++it)
+    for (auto it=mins.begin(); it(); ++it)
     {
       TitsElt a= square_class_base.backtrack_seed(ic,rf,CartanNbr(*it));
       i_tab.reduce(a);
@@ -810,7 +810,7 @@ void KGB::fillBruhat()
   if (d_state.test(BruhatConstructed)) // work was already done
     return;
 
-  std::vector<set::EltList> hd; makeHasse(hd,*this);
+  std::vector<Poset::EltList> hd; makeHasse(hd,*this);
   BruhatOrder* bp = new BruhatOrder(hd); // pointer stored immediately: safe
 
   // commit
@@ -890,7 +890,7 @@ namespace {
   Explanation: this is the closure ordering of orbits. We use the algorithm
   from Richardson and Springer.
 */
-void makeHasse(std::vector<set::EltList>& Hasse, const KGB_base& kgb)
+void makeHasse(std::vector<Poset::EltList>& Hasse, const KGB_base& kgb)
 {
   Hasse.resize(kgb.size());
 
@@ -915,7 +915,7 @@ void makeHasse(std::vector<set::EltList>& Hasse, const KGB_base& kgb)
     }
     h_x.insert(sx);
 
-    for (set::EltList::const_iterator
+    for (Poset::EltList::const_iterator
 	   it=Hasse[sx].begin(); it!= Hasse[sx].end(); ++it)
     {
       KGBElt z = *it; // element below |sx| in Bruhat order

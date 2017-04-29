@@ -2,6 +2,7 @@
   This is wgraph.h
 
   Copyright (C) 2004,2005 Fokko du Cloux
+  Copyright (C) 2007,2017 Marc van Leeuwen
   part of the Atlas of Lie Groups and Representations
 
   For license information see the LICENSE file

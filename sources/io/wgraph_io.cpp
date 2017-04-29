@@ -27,10 +27,8 @@ namespace atlas {
 namespace wgraph_io {
 
 
-void printWGraph(std::ostream& strm, const wgraph::WGraph& wg)
-
 /*
-  Synopsis: outputs the structural data for the W-graph to strm.
+  Output the structural data for the W-graph to strm.
 
   The output format is as follows: one line peer vertex, consisting of three
   colon-separated fields:
@@ -46,7 +44,7 @@ void printWGraph(std::ostream& strm, const wgraph::WGraph& wg)
   that it can be easily parsed by another program (for instance, a
   prettyprinter?)
 */
-
+void printWGraph(std::ostream& strm, const wgraph::WGraph& wg)
 {
   for (size_t z = 0; z < wg.size(); ++z) {
     strm << z << ":";
@@ -63,22 +61,14 @@ void printWGraph(std::ostream& strm, const wgraph::WGraph& wg)
     strm << "}";
     strm << std::endl;
   }
-}
+} // |printWGraph|
 
+//  Output the various cells in wg, as W-graphs, in the format of printWGraph.
 void printCells(std::ostream& strm, const wgraph::WGraph& wg)
-
-/*
-  Synopsis: outputs the various cells in wg, as W-graphs, in the format
-  of printWGraph.
-*/
-
 {
   auto wc = wgraph::cells(wg);
-
-  for (size_t j = 0; j < wc.size(); ++j) {
-    strm << "// cell #" << j << std::endl;
-    printWGraph(strm,wc[j]);
-  }
+  for (size_t j = 0; j < wc.size(); ++j)
+    printWGraph(strm << "// cell #" << j << std::endl,wc[j]);
 }
 
 /*
@@ -132,7 +122,7 @@ void printWDecomposition(std::ostream& strm, const wgraph::DecomposedWGraph& g)
       } // for (j)
       strm << "\n"; // empty line between cells
     } // for (i)
-}
+} // |printWDecomposition|
 
 }
 
