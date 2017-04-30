@@ -478,15 +478,18 @@ set K0_highest_weight (KHighestWeight(x,mu)) = Param:
                              =dimension of representation of K_0,
 			        given by Weyl dimension formula }
 
+{ dimension_rat allows for dimension up to 2^63-1}
 {. Dimension of the K_#-type with KHighestWeight mu. .}
+set dimension_rat (KHighestWeight mu) = rat:dimension_rat(K0_highest_weight(mu))
 set dimension (KHighestWeight mu) = int:dimension(K0_highest_weight(mu))
 
 {. Dimension of a K-type. .}
-set dimension (K_Type p) = int:
+set dimension_rat (K_Type p) = rat:
 let hw=highest_weights(p) then
 mu=hw[0] then
-(x,)=mu in dimension(mu)*rat_as_int(#R_K_dom(x)/#R_K_dom_mu(mu))
+(x,)=mu in dimension_rat(mu)*#R_K_dom(x)/#R_K_dom_mu(mu)
 
+set dimension (K_Type p) = int: rat_as_int(dimension_rat(p))
 
 { given mu in X^*(T_K)=X^*(H)/(1-delta)X^*(H), choose representative in X^*(H)
   giving a KHighestWeight (x,mu) cannot necessarily take mu to be \delta-fixed

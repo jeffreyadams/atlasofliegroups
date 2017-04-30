@@ -3,7 +3,6 @@
 
 { finite dimensional representations of G(C)}
 
-
 set is_finite_dimensional(Param p) = bool:
   let ssr = semisimple_rank(real_form(p))
   in semisimple_rank(integrality_datum(p))=ssr and #tau(p)=ssr
@@ -11,24 +10,28 @@ set is_finite_dimensional(Param p) = bool:
 set fd_only (Param p) = Param:
   assert(is_finite_dimensional(p),"representation is infinite dimensional"); p
 
-{ dimension of finite dimensional with given highest weight }
-set dimension (RootDatum rd, ratvec lambda_in) = int:
+{ dimension of finite dimensional with given highest weight 
+  as a rational to allow up to 2^63-1}
+set dimension_rat (RootDatum rd, ratvec lambda_in) = rat:
   let lambda=
     if is_dominant(rd,lambda_in) then lambda_in
     else
       let lambda_dominant = dominant(rd,lambda_in) in
-     { prints("Warning: changed ", lambda_in, ", to ", lambda_dominant
-               ," to make it dominant");}
+{     prints("Warning: changed ", lambda_in, ", to ", lambda_dominant, " to make it dominant");}
        lambda_dominant
     fi
   then rho=rho(rd), dim=1/1 { now apply Weyl's dimension formula }
-  in for a in poscoroots(rd) do dim*:=(lambda+rho)*a/(rho*a) od; dim\1
+  in for a in poscoroots(rd) do dim*:=(lambda+rho)*a/(rho*a) od; dim
+
+set dimension (RootDatum rd, ratvec lambda_in) = int:rat_as_int(dimension_rat(rd,lambda_in))
 
 set highest_weight_finite_dimensional(Param p) = ratvec:
   infinitesimal_character(fd_only(p)) - rho(root_datum(p))  {automatically dominant}
 
-set dimension(Param p) = int:
-  dimension(root_datum(p),highest_weight_finite_dimensional(p))
+set dimension_rat(Param p) = rat:
+  dimension_rat(root_datum(p),highest_weight_finite_dimensional(p))
+
+set dimension(Param p) = int:rat_as_int(dimension_rat(p))
 
 set fundamental_weight_coordinates (Param p) = vec:
   ratvec_as_vec(highest_weight_finite_dimensional(p)*simple_coroots(root_datum(p)))
@@ -39,53 +42,7 @@ set complex_LKT (Param p) = vec:
   then dom = dominant(pair)
   in lower(#dom\2,dom) { first half }
 
-{-------------------------------------------------------------------}
 {some functions related to Frobenius-Schur indicator,
 real/quaternionic indicator, and sign of Hermitian form
-on finite dimensional representation}
-{
-set is_self_dual(Param p)=bool:
-let lambda=highest_weight_finite_dimensional(fd_only(p)) in
--act(w_long(root_datum(p)),lambda)=lambda
-
-set Frobenius_Schur(Param p)=int:
-if is_self_dual(fd_only(p)) then
-let lambda=highest_weight_finite_dimensional(p) in
-(-1)^(rat_as_int(2*lambda*rho_check(real_form(p)))) else 0 fi
-
-set fs(Param p)=int:Frobenius_Schur(fd_only(p))
-
-set is_self_conjugate(Param p)=bool:
-let lambda=highest_weight_finite_dimensional(fd_only(p)) in
-let G=real_form(p) in
--distinguished_involution(G)*act(w_long(G),lambda)=lambda
-
-set real_quaternionic(Param p)=int:
-if is_self_conjugate(fd_only(p)) then
-let lambda=highest_weight_finite_dimensional(p) then
-x_squared=square(x(p)) in (-1)^(rat_as_int(2*x_squared*lambda*fs(p))) else 0 fi
-
-set rq(Param p)=int:real_quaternionic(fd_only(p))
-
-set signature(Param p)=(int,int):
-let G=real_form(fd_only(p)) then
-height=rat_as_int(2*infinitesimal_character(p)*rho_check(G))  then
-(pos,neg)=K_signature_irr(p,height) in
-(  sum(for c@p in pos do split_as_int(c*dimension(K_type(p))) od),
-sum(for c@p in neg do split_as_int(c*dimension(K_type(p))) od))
-
-set signature_str(Param p)=string:
-if not is_hermitian(fd_only(p)) then "*" else
-let (pos,neg)=signature(p)  in
-"(" + int_format(pos) + "," + int_format(neg) + ")"  fi
-
-set fd_report(RealForm G, int k)=void:
-let weights=box(k+1, ss_rank(G)) then  {all [a_1,...,a_rank] with 0\le a_i\le k}
-M=ratvecs_as_ratmat(fundamental_weights(G)) in
-for mu in weights do
- let lambda=M*mu in
-  if is_integer(lambda) then
-  let p=finite_dimensional(G,ratvec_as_vec(lambda))
-in prints("fund wt: ", mu, "  lambda:", lambda, " dim:", dimension(p), "  self-dual/self-conj.:", is_self_dual(p), "/", is_self_conjugate(p), "    FS/RQ: ", fs(p), "/", rq(p), "  signature: ", signature_str(p)) fi od
-
-}
+on finite dimensional representation 
+MOVED TO finite_dimensional_signature.at}
