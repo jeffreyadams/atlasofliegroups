@@ -1,4 +1,4 @@
-{load this file to load all recommended .at files}
+{Load this file to load all recommended .at files}
 <extParamPol.at
 <K_types.at
 <complex_nilpotent_orbits.at
@@ -15,5 +15,5 @@
 <print_K_types.at
 <galois.at
 <jantzen.at
-<finite_dimensional_aux.at
+<finite_dimensional_signature.at
 
