@@ -417,9 +417,8 @@ namespace atlas {
 
   namespace klsupport { class KLSupport; }
   namespace wgraph {
-    class WGraph;
+    struct WGraph;
     class DecomposedWGraph;
-    typedef std::vector<unsigned short> WCoeffList;
   }
   namespace kl {
     class KLContext;

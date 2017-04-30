@@ -29,7 +29,7 @@ namespace wgraph {
 /******** constructors and destructors ***************************************/
 
 WGraph::WGraph(size_t r, size_t n)
-  : d_rank(r), d_graph(n), d_coeff(n), d_descent(n) {}
+  : d_rank(r), oriented_graph(n), coefficients(n), descent_sets(n) {}
 
 
 /******** copy, assignment and swap ******************************************/
@@ -39,8 +39,7 @@ WGraph::WGraph(size_t r, size_t n)
 DecomposedWGraph::DecomposedWGraph(const WGraph& wg)
   : d_cell(), d_part(wg.size()), d_id(), d_induced()
 {
-  Partition pi =
-    wg.cells(&d_induced); // |OrientedGraph::cells| does the real work
+  Partition pi = wg.oriented_graph.cells(&d_induced);
 
   d_cell.reserve(pi.classCount()); // there will be this many cells
   d_id.resize(pi.classCount());    // and vectors of identification numbers
@@ -62,7 +61,8 @@ DecomposedWGraph::DecomposedWGraph(const WGraph& wg)
       d_part[y]=n; // or equivalently |d_part[y]=pi(y)|
       relno[y]=z; idn[z]=y;
 
-      cur_cell.descent(z) = wg.descent(y); // transfer descent set unchanged
+      // transfer descent set unchanged
+      cur_cell.descent_sets[z] = wg.descent_sets[y];
     }
   }
   // we have made sure all values |relno[y]| are defined before proceeding
@@ -70,19 +70,16 @@ DecomposedWGraph::DecomposedWGraph(const WGraph& wg)
   for (it.rewind(); it(); ++it)
   {
     const cell_no n=d_part[*it->first]; // cell number, fixed for next loop
-    for (Partition::iterator::SubIterator
-	   j=it->first; j!=it->second; ++j)
+    auto& cell = d_cell[n];
+    auto& graph = cell.oriented_graph;
+    for (Partition::iterator::SubIterator j=it->first; j!=it->second; ++j)
     {
       size_t y = *j; size_t z=relno[y]; // |z==j-it->first|
-      const graph::EdgeList& edge = wg.edgeList(y);
-      const WCoeffList& coeff = wg.coeffList(y);
-      graph::EdgeList& cur_el = d_cell[n].edgeList(z);
-      WCoeffList& cur_cl = d_cell[n].coeffList(z);
-      for (size_t k = 0; k < edge.size(); ++k)
-	if (d_part[edge[k]]==n) // only look at edges within this cell
+      for (size_t k = 0; k < wg.degree(z); ++k)
+	if (d_part[wg.edge_target(y,k)]==n) // ignore edges outside this cell
 	{
-	  cur_el.push_back(relno[edge[k]]);
-	  cur_cl.push_back(     coeff[k]);
+	  graph.edgeList(z).push_back(relno[wg.edge_target(y,k)]);
+	  cell.coefficients[z].push_back(wg.coefficient(y,k));
 	}
     } // for (j)
   } // for (it)
@@ -100,40 +97,38 @@ DecomposedWGraph::DecomposedWGraph(const WGraph& wg)
 // Return the cells of the W-graph |wg|
 std::vector<WGraph> cells(const WGraph& wg)
 {
-  Partition pi =
-    wg.cells(); // do not collect information about induced graph here
+  Partition pi = wg.oriented_graph.cells(nullptr);
+  // we do not collect information about induced graph here
 
-  std::vector<WGraph> wc; wc.reserve(pi.classCount());
+  std::vector<WGraph> result; result.reserve(pi.classCount());
 
   for (Partition::iterator it(pi); it(); ++it) // loop over cells
   {
-    wc.push_back(WGraph(wg.rank(),it->second - it->first));
-    WGraph& wci = wc.back();
+    result.push_back(WGraph(wg.rank(),it->second - it->first));
+    WGraph& cur_cell = result.back();
+    auto& graph = cur_cell.oriented_graph;
 
     /* looping over |z| rather than using |*it| directly implements the
        renumbering of each cell (what was |y=*(it->first+z)| becomes just |z|)
     */
-    for (size_t z = 0; z < wci.size(); ++z)
+    for (size_t z = 0; z < cur_cell.size(); ++z)
     {
       size_t y = it->first[z];
-      wci.descent(z) = wg.descent(y);
-      const graph::EdgeList& el = wg.edgeList(y);
-      graph::EdgeList& eli = wci.edgeList(z);
-      const WCoeffList& cl = wg.coeffList(y);
-      WCoeffList& cli = wci.coeffList(z);
-      for (size_t j = 0; j < el.size(); ++j)
+      cur_cell.descent_sets[z] = wg.descent_sets[y];
+      for (size_t j = 0; j < wg.degree(y); ++j)
       {
-	size_t x = el[j];
-	if (pi.class_of(x) != pi.class_of(y))
-	  continue; // ignore edge leading out of the current cell
-	// find relative address of x in this class
-	size_t xi = std::lower_bound(it->first,it->second,x) - it->first;
-	eli.push_back(xi);
-	cli.push_back(cl[j]);
+	graph::Vertex x = wg.edge_target(y,j);
+	if (pi.class_of(x) == pi.class_of(y))
+	{ // ignore edge leading out of the current cell
+	  graph::Vertex xi = // find relative address of x in this class
+	    std::lower_bound(it->first,it->second,x) - it->first;
+	  graph.edgeList(z).push_back(xi);
+	  cur_cell.coefficients[z].push_back(wg.coefficient(y,j));
+	}
       }
-    } //for (z)
-  } // for (it)
-  return wc;
+    } // |for (z)|
+  } // |for (it)|
+  return result;
 } // |cells|
 
 /* The following function is an alternative to the function |wGraph| defined
@@ -171,7 +166,7 @@ WGraph wGraph
   // fill in descent sets
   for (BlockElt y = 0; y < mi.block_size(); ++y)
   {
-    RankFlags d_y = result.descent(y) = mi.descent_set(y);
+    RankFlags d_y = result.descent_sets[y] = mi.descent_set(y);
     size_t ly = mi.length(y);
     if (ly==0) continue; // nothing more to do; avoid negative |d| below
 
@@ -198,10 +193,10 @@ WGraph wGraph
 
 	  if (poli.degree(klp)==d)
 	  {
-	    result.edgeList(x).push_back(y);
+	    result.oriented_graph.edgeList(x).push_back(y);
 	    size_t mu=poli.leading_coeff(klp);
 	    if (mu>max_mu) { max_mu=mu; max_pair=std::make_pair(x,y); }
-	    result.coeffList(x).push_back(mu);
+	    result.coefficients[x].push_back(mu);
 	  }
 
 	} // for (start...) if (descent!=d_y)
@@ -220,13 +215,13 @@ WGraph wGraph
 	if (mu>max_mu) { max_mu=mu; max_pair=std::make_pair(x,y); }
 	if (not d_y.contains(d_x))
 	{
-	  result.edgeList(x).push_back(y);
-	  result.coeffList(x).push_back(mu);
+	  result.oriented_graph.edgeList(x).push_back(y);
+	  result.coefficients[x].push_back(mu);
 	}
 	if (not d_x.contains(d_y))
 	{
-	  result.edgeList(y).push_back(x);
-	  result.coeffList(y).push_back(mu);
+	  result.oriented_graph.edgeList(y).push_back(x);
+	  result.coefficients[y].push_back(mu);
 	}
       } // if (klp!=KLIndex(0))
     } // for (x)
@@ -234,7 +229,7 @@ WGraph wGraph
 
   size_t n_edges=0;
   for (BlockElt y = 0; y < mi.block_size(); ++y)
-    n_edges+=result.edgeList(y).size();
+    n_edges += result.degree(y);
 
   if (max_mu==1) std::cout << "All edges found are simple.\n";
   else std::cout << "Maximal edge multiplicity " << max_mu << " for ("

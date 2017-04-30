@@ -1252,38 +1252,36 @@ wgraph::WGraph wGraph(const KLContext& klc)
 {
   wgraph::WGraph wg(klc.rank(),klc.size());
 
-  // fill in descent sets
-  for (BlockElt y = 0; y < klc.size(); ++y)
-    wg.descent(y) = klc.descentSet(y);
-
-  // fill in edges and coefficients
+  // fill in descent sets, edges and coefficients
   for (BlockElt y = 0; y < klc.size(); ++y)
   {
-    const RankFlags& d_y = wg.descent(y);
+    const RankFlags& d_y = klc.descentSet(y);
+    wg.descent_sets[y] = d_y;
     const MuRow& mrow = klc.muRow(y);
     for (size_t j = 0; j < mrow.size(); ++j)
     {
       BlockElt x = mrow[j].first;
-      const RankFlags& d_x = wg.descent(x);
+      assert(x<y); // this is a property of |muRow|
+      const RankFlags& d_x = klc.descentSet(x);
       if (d_x == d_y)
 	continue;
       MuCoeff mu = mrow[j].second;
       if (klc.length(y) - klc.length(x) > 1)
       { // nonzero $\mu$, unequal descents, $l(x)+1<l(y)$: edge from $x$ to $y$
-	wg.edgeList(x).push_back(y);
-	wg.coeffList(x).push_back(mu);
+	wg.oriented_graph.edgeList(x).push_back(y);
+	wg.coefficients[x].push_back(mu);
 	continue;
       }
       // now length difference is 1: edges except to a larger descent set
       if (not d_y.contains(d_x)) // then add edge from $x$ to $y$
       {
-	wg.edgeList(x).push_back(y);
-	wg.coeffList(x).push_back(mu);
+	wg.oriented_graph.edgeList(x).push_back(y);
+	wg.coefficients[x].push_back(mu);
       }
       if (not d_x.contains(d_y)) // then add edge from $y$ to $x$
       {
-	wg.edgeList(y).push_back(x);
-	wg.coeffList(y).push_back(mu);
+	wg.oriented_graph.edgeList(y).push_back(x);
+	wg.coefficients[y].push_back(mu);
       }
     }
   }
