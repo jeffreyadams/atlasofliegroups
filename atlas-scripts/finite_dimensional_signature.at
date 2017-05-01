@@ -57,14 +57,16 @@ if not is_hermitian(fd_only(p)) then "*" else
 let (pos,neg)=signature(p)  {type (rat,rat)}
 in "(" + long_rat_as_integer_string(pos) + "," + long_rat_as_integer_string(neg) + ")" fi
 
-{. index p-q of Hermitian form on a finite dimensional representation.}
-set index(Param p)=rat:let (pos,neg)=signature(p) in pos-neg
+{. index min(p,q) of Hermitian form on a finite dimensional representation.}
+set index(Param p)=rat:let (pos,neg)=signature(p) in if pos<=neg then pos else neg fi
 
 set index_string(Param p)=string: 
 if not is_hermitian(fd_only(p)) then "*" else long_rat_as_integer_string(index(p)) fi
 
-{loses information if index>=2^31}
-set index(Param p)=int:rat_as_int(index(p))
+set anisotropic_part(Param p)=rat: let (pos,neg)=signature(p) in abs(pos-neg)
+
+set anisotropic_part_string(Param p)=
+if not is_hermitian(fd_only(p)) then "*" else long_rat_as_integer_string(anisotropic_part(p)) fi
 
 {report using direct computation of Hermitian form}
 set fd_report(RealForm G, int k)=void:
@@ -75,8 +77,9 @@ new_line,"dim: dimension",
 new_line,"FS: Frobenius-Schur indicator: 1:orthogonal, -1: symplectic, 0: not self-dual",
 new_line,"RQ: Real-Quaternionic indicator: 1:real, -1: quaternionic, 0: not self-conjugate",
 new_line,"signature:  signature (p,q) of Hermitian form (if Hermitian)",
-new_line,"index: index p-q of Hermitian form (if Hermitian)",
-new_line,"computing signature/index directly from the Hermitian form") fi;
+new_line,"index: index min(p,q) of Hermitian form (if Hermitian)",
+new_line,"aniso: dimension |p-q| of anisotropic part of Hermitian form (if Hermitian)",
+new_line,"computing directly from the Hermitian form") fi;
 let weights=box(k+1, ss_rank(G)) then  {all [a_1,...,a_rank] with 0\le a_i\le k} 
 M=ratvecs_as_ratmat(fundamental_weights(G)) in
 for mu in weights do 
@@ -84,23 +87,25 @@ for mu in weights do
   if is_integer(lambda) then 
   let p=finite_dimensional(G,ratvec_as_vec(lambda))
 in 
-prints("fund wt: ", mu, "  lambda:", lambda, " dim:", dimension(p), "   FS/RQ: ", fs(p), "/", rq(p), "  signature: ", signature_string(p), "  index: ", index_string(p)) fi od
+prints("fund wt: ", mu, "  lambda:", lambda, " dim:", dimension(p), "   FS/RQ: ", fs(p), "/", rq(p), "  signature: ", signature_string(p), "  index: ", index_string(p), "  aniso: ", anisotropic_part_string(p)) fi od
 
 {-------------------------------------------------------------------------}
 
 {alternative (faster) computation of signature and index, in equal
 rank case, using Weyl character formula}
 
-set index_wcf(Param p)=rat:
-let G=real_form(p) then    
-v=(torus_factor(KGB(G,0))+rho_check(G))/2 then
-(,trace)=wcf(fd_only(p),v) in trace
-
 set signature_wcf(Param p)=(rat,rat):
 let G=real_form(p) then    
-dim=dimension_rat(fd_only(p)) then
-ind=index_wcf(p) in 
-((dim+ind)/2, (dim-ind)/2)
+v=(torus_factor(KGB(G,0))+rho_check(G))/2 then
+(,diff)=wcf(fd_only(p),v) then
+dim=dimension_rat(fd_only(p)) in
+((dim+diff)/2, (dim-diff)/2)
+
+set index_wcf(Param p)=rat:
+let (pos,neg)=signature_wcf(p) in if pos<=neg then pos else neg fi
+
+
+
 
 {.signature as a string.}
 set signature_wcf_string(Param p)=string:
@@ -110,6 +115,11 @@ let (pos,neg)=signature_wcf(p)  in
 
 set index_wcf_string(Param p)=string: 
 if not is_hermitian(fd_only(p)) then "*" else long_rat_as_integer_string(index_wcf(p)) fi
+
+set anisotropic_part_wcf(Param p)=rat: let (pos,neg)=signature_wcf(p) in abs(pos-neg)
+
+set anisotropic_part_wcf_string(Param p)=
+if not is_hermitian(fd_only(p)) then "*" else long_rat_as_integer_string(anisotropic_part_wcf(p)) fi
 
 
 {report using computation of Hermitian form via the Weyl character formula}
@@ -123,15 +133,16 @@ new_line,"dim: dimension",
 new_line,"FS: Frobenius-Schur indicator: 1:orthogonal, -1: symplectic, 0: not self-dual",
 new_line,"RQ: Real-Quaternionic indicator: 1:real, -1: quaternionic, 0: not self-conjugate",
 new_line,"signature:  signature (p,q) of Hermitian form (if Hermitian)",
-new_line,"index: index p-q of Hermitian form (if Hermitian)",
-new_line,"computing signature/index using the Weyl character formula") fi;
+new_line,"index: index min(p,q) of Hermitian form (if Hermitian)",
+new_line,"aniso: dimension |p-q| of anisotropic part of Hermitian form (if Hermitian)",
+new_line,"computing using the Weyl character formula") fi;
 let weights=box(k+1, ss_rank(G)) then  {all [a_1,...,a_rank] with 0\le a_i\le k} 
 M=ratvecs_as_ratmat(fundamental_weights(G)) in
 for mu in weights do 
  let lambda=M*mu in 
   if is_integer(lambda) then 
   let p=finite_dimensional(G,ratvec_as_vec(lambda)) in
-prints("fund wt: ", mu, "  lambda:", lambda, " dim:", long_rat_as_integer_string(dimension_rat(p)), "   FS/RQ: ", fs(p), "/", rq(p), "  signature: ", signature_wcf_string(p), "  index: ", index_wcf_string(p)) fi od
+prints("fund wt: ", mu, "  lambda:", lambda, " dim:", long_rat_as_integer_string(dimension_rat(p)), "   FS/RQ: ", fs(p), "/", rq(p), "  signature: ", signature_wcf_string(p), "  index: ", index_wcf_string(p), "  aniso: ", anisotropic_part_wcf_string(p)) fi od
 
 set wcf_report(RootDatum rd, ratvec v, int k)=void:
 let weights=box(k+1, ss_rank(rd)) then  {all [a_1,...,a_rank] with 0\le a_i\le k} 
