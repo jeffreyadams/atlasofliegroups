@@ -1,0 +1,111 @@
+<rational_polynomial.at
+
+set Cartesian ([int] a, [int] b) = [int]:
+    ## for x in a do for y in b do x*y od od
+
+{. divisors of an integer .}
+set divisors (int n) = [int]:
+   if =n then return [] fi;
+   ((2,abs(n)).
+    (rec_fun d(int b, int n) [int]:
+      if b*b>n then if n=1 then [1] else [1,n] fi
+      else let (q,r)=n\%b in
+         if !=r then d(b+1,n)
+         else let i=1, l=[1,b] in
+            while =q%b do q\:=b; l:= 1 # (l*b) od
+         ;  Cartesian(l,d(b+1,q))
+         fi
+      fi
+    ).sort)
+
+{. n^th Cyclotomic Polynomial .}
+set cyclotomic_polynomial (int n) = poly:
+   let phis=[poly]:[], divs=divisors(n)
+   then locate (int d) = binary_search_first((int i)bool: divs[i]>=d,0,#divs)
+   in
+   for d@i in divs
+   do let P=poly: (-1) # null(d-1) # 1 in { X^d - 1 }
+      for dd in divisors(d)[:1~] do set(P,):=monic_divide(P,phis[locate(dd)]) od
+   ;  phis#:=P
+   od; phis~[0]
+
+{. Euler Phi-function .}
+set Phi(int n)=int:#cyclotomic_polynomial(n)-1
+
+{ a can be negative, N must be positive }
+{. integer a -> representative 0\le b\le N-1 mod N .}
+set mod(int a, int N)=assert(N>0,"N<0");a%N
+
+
+{Q/Z \simeq finite roots of 1
+ r+Z -> exp(2i\pi r)
+ |rat| r -> (int a,int N) where
+ where exp(2i\pi r)=exp(2i\pi a/N) with 0\le a\le N-1
+ in other words
+ exp(2i\pi r)=\zeta^a where \zeta=\exp(2i\pi/N) is a primitive N-th root of 1
+}
+
+{ root_of_unity(rat r): returns (int a,int N) 
+  where N=order(exp(2i\pi r)),
+  exp(2i\pi r)=zeta^a, with zeta=exp(2i\pi /N) 
+  and 0\le a\le N-1  (=> GCD(a,N)=1)
+}
+set root_of_unity(rat r)=(int,int):  let (p,q)=%r in (p%q,q)
+{ root_of_unity(rat r,int N): returns (int a,int N) 
+  similar to previous, except N is fixed
+  requirement: order(exp(2i\pi r) divides N) (or abort with error)
+  exp(2i\pi r)=zeta^a, with zeta=exp(2i\pi /N) 
+  and 0\le a\le N-1  (=> GCD(a,N)=1)
+}
+set root_of_unity(rat r, int N)=(int,int):
+assert(is_integer(N*r),"N*r not in Z");
+let (p,q)=%r in (rat_as_int(p*N/q)%N,N)
+
+{  cyclotomic Fields and their elements }
+
+: cyclotomicField = (int n,poly f)
+: cyclotomicFieldElement = (ratvec v,cyclotomicField F)
+
+set n(cyclotomicField (n,))=int:n
+set f(cyclotomicField (,f))=poly:f
+set =(cyclotomicField E,cyclotomicField F)=bool:F.n=E.n
+
+set v(cyclotomicFieldElement (v,))=ratvec:v
+set F(cyclotomicFieldElement (,F))=cyclotomicField:F
+set n(cyclotomicFieldElement (,F))=int:F.n
+set f(cyclotomicFieldElement (,F))=poly:F.f
+
+
+set cyclotomic_field(int n)=cyclotomicField:(n, cyclotomic_polynomial(n))
+set cyclotomic_field_element(ratvec v,int n)=cyclotomicFieldElement:(v,cyclotomic_field(n))
+set cyclotomic_field_element(ratvec v,cyclotomicField F)=cyclotomicFieldElement:(v,F)
+set map_rational_cyclotomic(rat r,cyclotomicField F)=cyclotomicFieldElement:cyclotomic_field_element(ratvec:[r],F)
+set one(cyclotomicField F)=cyclotomicFieldElement:map_rational_cyclotomic(1,F)
+
+set primitive_root(cyclotomicField F)=cyclotomic_field_element([0,1],F)
+
+set reduce(cyclotomicFieldElement x)=cyclotomicFieldElement:let (,r)=divide(x.v,x.f) in (r,x.F)
+
+set =(cyclotomicFieldElement x,cyclotomicFieldElement y) = 
+let (x_red,F)=reduce(x), (y_red,G)=reduce(y) in x_red=y_red
+
+set *(cyclotomicFieldElement x,cyclotomicFieldElement y) = 
+assert(x.F=y.F,"cyclotomic fields do not agree");
+reduce(ratpoly_product(x.v,y.v),x.F)
+
+set +(cyclotomicFieldElement x,cyclotomicFieldElement y) = 
+assert(x.F=y.F,"cyclotomic fields do not agree");
+reduce(ratpoly_plus(x.v,y.v),x.F)
+
+set *(rat r,cyclotomicFieldElement x)=cyclotomicFieldElement:(r*x.v,x.F)
+set -(cyclotomicFieldElement x)=cyclotomicFieldElement:(-1)*x
+
+set ^(cyclotomicFieldElement x,int k)=cyclotomicFieldElement:reduce(x.v^k,x.F)
+
+{order of element of F, returns -1 if element not of finite order}
+set order(cyclotomicFieldElement x)=
+let F=x.F in if x=F.one then 0 else first(x.n,(int i)bool: x^(i+1)=F.one)+1 fi {i+1 so loop starts at 1} 
+
+set embed_QmodZ_cyclotomic(rat r,cyclotomicField F)=cyclotomicFieldElement:
+let n=F.n then
+(k,)=root_of_unity(r,n) in cyclotomic_field_element(null(k)#1,F)
