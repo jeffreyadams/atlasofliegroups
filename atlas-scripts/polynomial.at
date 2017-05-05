@@ -231,3 +231,18 @@ set is_non_negative = (poly->bool): >=@poly { same condition as "dominance" }
 
 set principal_minor (poly_mat M,int size) = poly_mat:
   for row in M[:size] do row[:size] od
+
+{division of integer polynomials, d is not required to be monic, but might fail}
+{. division of integer polynomials p=dq+r .}
+set divide(poly p,poly d) = (poly,poly):
+   let rec_fun f(poly q, poly r) = (poly,poly):
+      if #r<#d then (q,r)
+      else let t=poly: null(#r-#d) # rat_as_int(r~[0]/d~[0]) in
+         f(poly_plus(q,t),poly_plus(r,-poly_product(t,d)))
+      fi
+   in f(poly_0,p)
+
+{ division of integer polynomials, d is monic }
+{. division of polynomials p=dq+r, d is required to be monic .}
+set monic_divide(poly p,poly d)=(poly,poly):
+    assert(#d>0 and d~[0]=1,"Not a monic divisor");divide(p,d)

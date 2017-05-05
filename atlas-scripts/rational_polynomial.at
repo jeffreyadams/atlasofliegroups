@@ -1,0 +1,74 @@
+<basic.at
+
+: ratpoly = ratvec { in this file vectors will represent polynomials }
+{ poly: [a_0,...,a_n] represents the polynomial a_0+a_1q+...+a_nq^n }
+
+{ addition of vectors (overrides definition in basic.at) to allow vectors of
+  possibly different lengths, implicitly extending on the right by zeros as
+  needed. This gives the right thing for coefficient vectors of polynomials.
+}
+
+set fix_add = +@(ratvec,ratvec)
+set fix_sub = -@(ratvec,ratvec) { save fixed-length vector addition and subtraction }
+set dot_product = *@(ratvec,ratvec) { and scalar product }
+
+{ prepare for binding arithmetic on |poly| values differently inside this file }
+forget +@(ratvec,ratvec)
+forget -@(ratvec,ratvec)
+forget *@(ratvec,ratvec)
+
+{ for convenience declare some constants, the ! makes changes to these illegal }
+set !ratpoly_0 = ratpoly:[], !ratpoly_1 = ratpoly:[1], !ratpoly_2 = ratpoly: [2]
+set !ratpoly_q = ratpoly: [0,1], !ratpoly_q2 = ratpoly: [0,0,1]
+
+set flex_add(ratpoly f,ratpoly g)=let (fn,fd)=%f, (gn,gd)=%g in flex_add(gd*fn,fd*gn)/(fd*gd)
+set flex_sub(ratpoly f,ratpoly g)=let (fn,fd)=%f, (gn,gd)=%g in flex_sub(gd*fn,fd*gn)/(fd*gd)
+set convolve(ratpoly f,ratpoly g)=let (fn,fd)=%f, (gn,gd)=%g in convolve(fn,gn)/(fd*gd)
+
+set + = flex_add@(ratpoly,ratpoly)
+set - = flex_sub@(ratpoly,ratpoly)
+set * = convolve@(ratvec,ratvec)
+
+set ratpoly_product = *@(ratpoly,ratpoly) { this binding will remain exported }
+set ratpoly_plus = +@(ratpoly,ratpoly) { this binding will remain exported }
+set ratpoly_sub = -@(ratpoly,ratpoly) { this binding will remain exported }
+
+{ reduce polynomial by dropping trailing zeros; shouldn't really be needed }
+set strip (ratpoly v) = ratpoly: v + ratpoly_0 { operator + does actual stripping }
+
+{ evaluate polynomial at integer }
+set evaluate_at_1 = sum@ratpoly { from basic.at; often we need this easy case }
+
+{. returns polynomials (q,r) where p=q*d+r and r=0 or deg(r)<deg(d) .}
+set divide(poly p,poly d) = (poly,poly):
+   let rec_fun f(poly q, poly r) = (poly,poly):
+      if #r<#d then (q,r)
+      else let t=poly: null(#r-#d) # rat_as_int(r~[0]/d~[0]) in
+         f(poly_plus(q,t),poly_plus(r,-poly_product(t,d)))
+      fi
+   in f(poly_0,p)
+
+set ^ = (ratpoly,int->ratpoly): { power of a rational polynomial }
+  let one=ratpoly:[1] { use local constant for efficiency } in
+  (ratpoly p,int n) ratpoly: { the actual powering function }
+    if n=0 then [1]
+    else { no point in trying to do this by repeated squaring: is not faster }
+      let f=p in while (n-:=1)>0 do f *:= p od; f
+    fi
+
+{. returns rational polynomials (q,r) where p=q*d+r and r=0 or deg(r)<deg(d) .}
+set divide(ratpoly p,ratpoly d) = (ratpoly,ratpoly):
+   let rec_fun f(ratpoly q, ratpoly r) = (ratpoly,ratpoly):
+      if #r<#d then
+      assert(d*q+r=p,"bug in rat_divide");(q,r) 
+      else let (c,e)=%(r~[0]/d~[0]) then  t=ratpoly: (null(#r-#d) # c)/e  in
+        f(q+t,r-d*t) fi
+   in f(ratpoly_0,p) 
+
+{ restore normal vector arithmetic }
+forget +@(ratvec,ratvec)
+forget -@(ratvec,ratvec)
+forget *@(ratvec,ratvec)
+set + = fix_add@(ratvec,ratvec)
+set - = fix_sub@(ratvec,ratvec)
+set * = dot_product@(ratvec,ratvec)

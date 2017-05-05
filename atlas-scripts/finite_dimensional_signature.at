@@ -7,12 +7,10 @@ on finite dimensional representation}
 
 set verbose_fdsig=true
 
-set chop(string s,int k)=string:let rv=string:"" in for i:#s-k do rv+:=s[i] od;rv
-
 {assuming a rational is an integer, replace it with a string,
 to allow output of integers up to 2^63-1}
 set long_rat_as_integer_string(rat r)=
-assert(denom(r)=1,"r is not an integer");chop(to_string(r),2)
+assert(denom(r)=1,"r is not an integer");to_string(r)[:2~] {cut off /1}
 
 set is_self_dual(Param p)=bool:
 let lambda=highest_weight_finite_dimensional(fd_only(p)) in
@@ -103,9 +101,6 @@ dim=dimension_rat(fd_only(p)) in
 
 set index_wcf(Param p)=rat:
 let (pos,neg)=signature_wcf(p) in if pos<=neg then pos else neg fi
-
-
-
 
 {.signature as a string.}
 set signature_wcf_string(Param p)=string:
