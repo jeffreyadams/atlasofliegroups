@@ -32,6 +32,10 @@ set cyclotomic_polynomial (int n) = poly:
 {. Euler Phi-function .}
 set Phi(int n)=int:#cyclotomic_polynomial(n)-1
 
+set relatively_prime(int n)=[int]:
+let rv=[int]:[1] in 
+ for i:n-2 from 2 do if gcd([i,n])=1 then rv#:=i fi od;rv
+
 { a can be negative, N must be positive }
 {. integer a -> representative 0\le b\le N-1 mod N .}
 set mod(int a, int N)=assert(N>0,"N<0");a%N
@@ -70,11 +74,12 @@ set n(cyclotomicField (n,))=int:n
 set f(cyclotomicField (,f))=poly:f
 set =(cyclotomicField E,cyclotomicField F)=bool:F.n=E.n
 
+set degree(cyclotomicField F)=int:Phi(F.n)
+
 set v(cyclotomicFieldElement (v,))=ratvec:v
 set F(cyclotomicFieldElement (,F))=cyclotomicField:F
 set n(cyclotomicFieldElement (,F))=int:F.n
 set f(cyclotomicFieldElement (,F))=poly:F.f
-
 
 set cyclotomic_field(int n)=cyclotomicField:(n, cyclotomic_polynomial(n))
 set cyclotomic_field_element(ratvec v,int n)=cyclotomicFieldElement:(v,cyclotomic_field(n))
@@ -106,6 +111,47 @@ set ^(cyclotomicFieldElement x,int k)=cyclotomicFieldElement:reduce(x.v^k,x.F)
 set order(cyclotomicFieldElement x)=
 let F=x.F in if x=F.one then 0 else first(x.n,(int i)bool: x^(i+1)=F.one)+1 fi {i+1 so loop starts at 1} 
 
+{embed roots of unity in F}
 set embed_QmodZ_cyclotomic(rat r,cyclotomicField F)=cyclotomicFieldElement:
 let n=F.n then
 (k,)=root_of_unity(r,n) in cyclotomic_field_element(null(k)#1,F)
+
+
+{embed Q in F as the constant polynomials}
+set embed_Q(rat r,cyclotomicField F)=cyclotomicFieldElement:r*F.one
+
+
+{action of k\in Z/nZ on zeta^j in cyclotomic field F }
+set galois_action(int k, cyclotomicField F, int j)=cyclotomicFieldElement:
+let a=primitive_root(F) in a^(k*j)
+
+set pad(ratvec v,int n)=ratvec:v##null(n-#v)
+set pad(cyclotomicFieldElement z)=cyclotomicFieldElement:
+(pad(reduce(z).v,degree(z.F)),z.F)
+
+set *(ratmat M,cyclotomicFieldElement z)=cyclotomicFieldElement:
+(M* (pad(reduce(z)).v),z.F)
+
+set galois_matrix(int k,cyclotomicField F)=ratmat:
+let n=F.n in ratvecs_as_ratmat(for i:Phi(n) do 
+pad(galois_action(k,F,i).v,Phi(n)) od)
+
+set galois_matrices(cyclotomicField F)=[ratmat]:
+for i in relatively_prime(F.n) do galois_matrix(i,F) od
+
+set matrix_of_multiplication(cyclotomicFieldElement z)=ratmat:
+let F=z.F then
+zeta=primitive_root(F) in
+ratvecs_as_ratmat(for i:Phi(F.n) do 
+pad(((z*(zeta^i)).v,Phi(F.n))) od)
+
+set norm(cyclotomicFieldElement z)=rat:det(matrix_of_multiplication(z))
+
+set inverse(cyclotomicFieldElement z)=cyclotomicFieldElement:
+let z=reduce(z) then
+F=z.F then
+N=norm(z) then
+matrices=galois_matrices(F) then
+w=F.one in
+for A in matrices[1:] do cw*:=A*z  od;(1/N)*w
+

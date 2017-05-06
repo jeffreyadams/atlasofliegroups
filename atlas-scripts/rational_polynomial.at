@@ -21,6 +21,8 @@ forget *@(ratvec,ratvec)
 set !ratpoly_0 = ratpoly:[], !ratpoly_1 = ratpoly:[1], !ratpoly_2 = ratpoly: [2]
 set !ratpoly_q = ratpoly: [0,1], !ratpoly_q2 = ratpoly: [0,0,1]
 
+set common(int a,int b)=lcm([a,b])
+
 set flex_add(ratpoly f,ratpoly g)=let (fn,fd)=%f, (gn,gd)=%g in flex_add(gd*fn,fd*gn)/(fd*gd)
 set flex_sub(ratpoly f,ratpoly g)=let (fn,fd)=%f, (gn,gd)=%g in flex_sub(gd*fn,fd*gn)/(fd*gd)
 set convolve(ratpoly f,ratpoly g)=let (fn,fd)=%f, (gn,gd)=%g in convolve(fn,gn)/(fd*gd)
@@ -60,7 +62,7 @@ set ^ = (ratpoly,int->ratpoly): { power of a rational polynomial }
 set divide(ratpoly p,ratpoly d) = (ratpoly,ratpoly):
    let rec_fun f(ratpoly q, ratpoly r) = (ratpoly,ratpoly):
       if #r<#d then
-      assert(d*q+r=p,"bug in rat_divide");(q,r) 
+{      prints("p=",p, new_line,"  q=",q,new_line,"d=",d,new_line,"r=",r,new_line,"d*q+r=",d*q+r, " "); }assert(strip(d*q+r)=strip(p),"bug in divide");(q,r) 
       else let (c,e)=%(r~[0]/d~[0]) then  t=ratpoly: (null(#r-#d) # c)/e  in
         f(q+t,r-d*t) fi
    in f(ratpoly_0,p) 
