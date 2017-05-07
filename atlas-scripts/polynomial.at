@@ -23,10 +23,11 @@ set !poly_q = poly: [0,1], !poly_q2 = poly: [0,0,1]
 
 set + = flex_add@(poly,poly)
 set - = flex_sub@(poly,poly)
-set * = convolve@(vec,vec)
+set * = convolve@(poly,poly)
 
 set poly_product = *@(poly,poly) { this binding will remain exported }
-set poly_plus = +@(poly,poly) { this binding will remain exported }
+set poly_plus    = +@(poly,poly) { this binding will remain exported }
+set poly_minus   = -@(poly,poly) { this binding will remain exported }
 
 { reduce polynomial by dropping trailing zeros; shouldn't really be needed }
 set strip (poly v) = poly: v + poly_0 { operator + does actual stripping }
@@ -38,11 +39,17 @@ set eval (poly v,int k) = int:
   let sum=0 in  for e in v ~do sum:= e + k*sum od; sum
 
 { evaluate polynomial at Split value }
-set eval (vec v,Split w)= Split:
+set eval (poly v,Split w)= Split:
   let sum=Split:0 in  for e in v ~do sum:= e + w*sum od; sum
 
-set at_s (vec v) = Split: eval(v,Split:(0,1))
+set at_s (poly v) = Split: eval(v,Split:(0,1))
 
+set monic_divide (poly P, poly D) = (poly,poly): { quotient, remainder }
+  assert(#D>0 and D~[0]=1,"Not a monic divisor");
+  let deg_D = #D-1 in
+  for i: #P-deg_D { quotient has $\deg P+1-\deg D$ terms }
+  do let c=P~[i] in for j:deg_D from 1 do P~[i+j] -:= c*D~[j] od
+  od; (P[deg_D:],P[:deg_D].strip)
 
 
 {			  Polynomial matrices				}

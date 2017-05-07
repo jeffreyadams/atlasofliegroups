@@ -302,6 +302,18 @@ set det (mat M) = int:
   fi
 )
 
+set trace (mat A) = int:
+  let (n,):sh=#A in assert(=sh,"Non square matrix"); sum(for i:n do A[i,i] od)
+
+set char_poly (mat A) = vec: { characteristic polynomial of integer matrix }
+  let ps = vec:[] { power sums of the eigenvalues }
+  , es = vec:[1] { elementary sym.fct.s of minus the eigenvalues, reversed }
+  , B=A, (n,):sh=#A
+  then trace (mat M) = sum(for i:n do M[i,i] od) { a bit faster than the above }
+  in assert(=sh,"Non square matrix");
+  { use Newton's identities $k*e_k=-\sum_{i=1}^k p_i*e_{k-i}$ to compute |es| }
+  for k:n from 1 do ps #:= trace(B); B*:=A; es := (es*ps\-k) # es od; es
+
 set saturated_span (mat M) = bool: { whether columns span saturated sublattice }
   let inv_f = inv_fact(M) in
   =#inv_f or inv_f~[0]=1 { all invariant factors are 1? test last one, if any }
