@@ -1,5 +1,6 @@
 <K_types.at  {K_signature_irr}
-<WeylCharacterFormula.at
+{<WeylCharacterFormula.at}
+<weyl_character_formula.at
 
 {some functions related to Frobenius-Schur indicator, 
 real/quaternionic indicator, and sign of Hermitian form 
@@ -90,12 +91,14 @@ prints("fund wt: ", mu, "  lambda:", lambda, " dim:", dimension(p), "   FS/RQ: "
 {-------------------------------------------------------------------------}
 
 {alternative (faster) computation of signature and index, in equal
-rank case, using Weyl character formula}
+rank case, using Weyl character formula, 
+evaluated at strong real form (equal rank case only)
+}
 
 set signature_wcf(Param p)=(rat,rat):
 let G=real_form(p) then    
 v=(torus_factor(KGB(G,0))+rho_check(G))/2 then
-(,diff)=wcf(fd_only(p),v) then
+(,diff)=wcf_strong_real(fd_only(p),v) then  {special version of wcf}
 dim=dimension_rat(fd_only(p)) in
 ((dim+diff)/2, (dim-diff)/2)
 
@@ -146,7 +149,7 @@ for mu in weights do
  let lambda=M*mu in 
   if is_integer(lambda) then 
   let p=finite_dimensional(split_form(rd),ratvec_as_vec(lambda)) in 
-  prints("fund wt: ", mu, "  lambda:", lambda, " dim:", dimension(p), "   self-dual: ",is_self_dual(p), " FS: ", fs(p),"   trace(x): ",wcf(rd,lambda,v)) fi od
+  prints("fund wt: ", mu, "  lambda:", lambda, " dim:", dimension(p), "   self-dual: ",is_self_dual(p), " FS: ", fs(p),"   trace(x): ",wcf(p,v)) fi od
 
 {detailed information about K-signature of finite dimensional
  also see print_K_types:print_K_signature_irr (defined for any p)}

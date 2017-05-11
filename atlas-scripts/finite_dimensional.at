@@ -28,9 +28,14 @@ set dimension_rat (RootDatum rd, ratvec lambda_in) = rat:
 {. dimension of finite dimensional, valid up to 2^31-1.}
 set dimension (RootDatum rd, ratvec lambda_in) = int:rat_as_int(dimension_rat(rd,lambda_in))
 
+{deprecated: should be X^* coords, i.e. vec, not ratvec }
 {.highest weight of finite dimensional in X^* (+rho) coordinates.}
-set highest_weight_finite_dimensional(Param p) = ratvec:
-  infinitesimal_character(fd_only(p)) - rho(root_datum(p))  {automatically dominant}
+{set highest_weight_finite_dimensional(Param p) = ratvec:
+  infinitesimal_character(fd_only(p)) - rho(root_datum(p))  {automatically dominant}}
+
+{.highest weight of finite dimensional in X^* coordinates.}
+set highest_weight_finite_dimensional(Param p) = vec:
+  ratvec_as_vec(infinitesimal_character(fd_only(p)) - rho(root_datum(p)))  {automatically dominant}
 
 {. dimension of finite dimensional parameter, valid up to 2^63-1.}
 set dimension_rat(Param p) = rat:

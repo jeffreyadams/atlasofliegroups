@@ -1,0 +1,6 @@
+set highest_root(RootDatum rd)=posroots(rd)~[0]
+
+set coxeter_number(RootDatum rd)=int:rat_as_int(highest_root(rd)*rho_check(rd)+1)
+
+set coxeter_torus_element(RootDatum rd)=ratvec:(1/coxeter_number(rd))*rho_check(rd)
+
