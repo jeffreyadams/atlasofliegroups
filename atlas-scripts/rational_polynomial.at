@@ -1,4 +1,5 @@
 <basic.at
+<polynomial.at
 
 : ratpoly = ratvec { in this file vectors will represent polynomials }
 { poly: [a_0,...,a_n] represents the polynomial a_0+a_1q+...+a_nq^n }
@@ -74,3 +75,8 @@ forget *@(ratvec,ratvec)
 set + = fix_add@(ratvec,ratvec)
 set - = fix_sub@(ratvec,ratvec)
 set * = dot_product@(ratvec,ratvec)
+
+{ make a printable string out of a ratpol and name of indeterminate,
+  for use in other print functions, see polynomial.at:stringPoly }
+set stringPoly (ratpoly v, string q)= string:
+  if =v then "0" else "("+stringPoly(numer(v),q)+")/"+int_format(denom(v)) fi

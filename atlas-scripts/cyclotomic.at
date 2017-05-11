@@ -1,4 +1,6 @@
 <rational_polynomial.at
+<sort.at
+<ratmat.at
 
 set Cartesian ([int] a, [int] b) = [int]:
     ## for x in a do for y in b do x*y od od
@@ -29,9 +31,10 @@ set cyclotomic_polynomial (int n) = poly:
    ;  phis#:=P
    od; phis~[0]
 
-{. Euler Phi-function .}
-set Phi(int n)=int:#cyclotomic_polynomial(n)-1
+{. Euler phi-function .}
+set phi(int n)=int:#cyclotomic_polynomial(n)-1
 
+{. set of integers relatively prime to n.}
 set relatively_prime(int n)=[int]:
 let rv=[int]:[1] in 
  for i:n-2 from 2 do if gcd([i,n])=1 then rv#:=i fi od;rv
@@ -67,59 +70,70 @@ let (p,q)=%r in (rat_as_int(p*N/q)%N,N)
 
 {  cyclotomic Fields and their elements }
 
-: cyclotomicField = (int n,poly f)
+{Q adjoin a primitive root of 1, extension of Q of degree phi(n)
+ order(F)=order(root of 1)}
+{. cyclotomic field .}
+: cyclotomicField = (int order,poly Phi)   
+
+{. element in a cyclotomic field.}
 : cyclotomicFieldElement = (ratvec v,cyclotomicField F)
+{v must satisfy: F.order*v is integral}
 
-set n(cyclotomicField (n,))=int:n
-set f(cyclotomicField (,f))=poly:f
-set =(cyclotomicField E,cyclotomicField F)=bool:F.n=E.n
+set =(cyclotomicField E,cyclotomicField F)=bool:F.order=E.order
+set degree(cyclotomicField F)=int:phi(F.order)   {degree=phi(order)}
 
-set degree(cyclotomicField F)=int:Phi(F.n)
+set order(cyclotomicFieldElement (,F))=int:F.order
+set Phi(cyclotomicFieldElement (,F))=poly:F.Phi
 
-set v(cyclotomicFieldElement (v,))=ratvec:v
-set F(cyclotomicFieldElement (,F))=cyclotomicField:F
-set n(cyclotomicFieldElement (,F))=int:F.n
-set f(cyclotomicFieldElement (,F))=poly:F.f
+{. construct a cyclotomic field.}
+set cyclotomic_field(int order)=cyclotomicField:(order, cyclotomic_polynomial(order))
+set CF(int order)=cyclotomicField:cyclotomic_field(order)  {abbreviation}
 
-set cyclotomic_field(int n)=cyclotomicField:(n, cyclotomic_polynomial(n))
-set cyclotomic_field_element(ratvec v,int n)=cyclotomicFieldElement:(v,cyclotomic_field(n))
+
+set cyclotomic_field_element(ratvec v,int order)=cyclotomicFieldElement:(v,cyclotomic_field(order))
 set cyclotomic_field_element(ratvec v,cyclotomicField F)=cyclotomicFieldElement:(v,F)
 set map_rational_cyclotomic(rat r,cyclotomicField F)=cyclotomicFieldElement:cyclotomic_field_element(ratvec:[r],F)
 set one(cyclotomicField F)=cyclotomicFieldElement:map_rational_cyclotomic(1,F)
-
+set zero(cyclotomicField F)=cyclotomicFieldElement:map_rational_cyclotomic(0,F)
 set primitive_root(cyclotomicField F)=cyclotomic_field_element([0,1],F)
 
-set reduce(cyclotomicFieldElement x)=cyclotomicFieldElement:let (,r)=divide(x.v,x.f) in (r,x.F)
+{.reduce rational polynomial modulo Phi(n).}
+set reduce(cyclotomicFieldElement x)=cyclotomicFieldElement:let (,r)=divide(x.v,x.Phi) in (r,x.F)
+
+{operations on elements of cyclotomic fields}
 
 set =(cyclotomicFieldElement x,cyclotomicFieldElement y) = 
 let (x_red,F)=reduce(x), (y_red,G)=reduce(y) in x_red=y_red
 
 set *(cyclotomicFieldElement x,cyclotomicFieldElement y) = 
-assert(x.F=y.F,"cyclotomic fields do not agree");
-reduce(ratpoly_product(x.v,y.v),x.F)
+assert(x.F=y.F,"cyclotomic fields do not agree");reduce(ratpoly_product(x.v,y.v),x.F)
 
 set +(cyclotomicFieldElement x,cyclotomicFieldElement y) = 
-assert(x.F=y.F,"cyclotomic fields do not agree");
-reduce(ratpoly_plus(x.v,y.v),x.F)
+assert(x.F=y.F,"cyclotomic fields do not agree");reduce(ratpoly_plus(x.v,y.v),x.F)
 
 set *(rat r,cyclotomicFieldElement x)=cyclotomicFieldElement:(r*x.v,x.F)
 set -(cyclotomicFieldElement x)=cyclotomicFieldElement:(-1)*x
-
+set -(cyclotomicFieldElement x,cyclotomicFieldElement y)=x+(-y)
 set ^(cyclotomicFieldElement x,int k)=cyclotomicFieldElement:reduce(x.v^k,x.F)
 
 {order of element of F, returns -1 if element not of finite order}
 set order(cyclotomicFieldElement x)=
-let F=x.F in if x=F.one then 0 else first(x.n,(int i)bool: x^(i+1)=F.one)+1 fi {i+1 so loop starts at 1} 
+let F=x.F in if x=F.one then 0 else first(x.order,(int i)bool: x^(i+1)=F.one)+1 fi {i+1 so loop starts at 1} 
+
+set is_rational(cyclotomicFieldElement z)=bool:#reduce(z).v<=1
+set to_rational(cyclotomicFieldElement z)=rat:
+assert(is_rational(z),"element is not rational");reduce(z).v[0]
+set is_integer(cyclotomicFieldElement z)=bool:is_integer(to_rational(z))
+set to_integer(cyclotomicFieldElement z)=int:
+assert(is_rational(z),"element is not an integer");rat_as_int(to_rational(z))
 
 {embed roots of unity in F}
 set embed_QmodZ_cyclotomic(rat r,cyclotomicField F)=cyclotomicFieldElement:
-let n=F.n then
+let n=F.order then
 (k,)=root_of_unity(r,n) in cyclotomic_field_element(null(k)#1,F)
-
 
 {embed Q in F as the constant polynomials}
 set embed_Q(rat r,cyclotomicField F)=cyclotomicFieldElement:r*F.one
-
 
 {action of k\in Z/nZ on zeta^j in cyclotomic field F }
 set galois_action(int k, cyclotomicField F, int j)=cyclotomicFieldElement:
@@ -133,25 +147,33 @@ set *(ratmat M,cyclotomicFieldElement z)=cyclotomicFieldElement:
 (M* (pad(reduce(z)).v),z.F)
 
 set galois_matrix(int k,cyclotomicField F)=ratmat:
-let n=F.n in ratvecs_as_ratmat(for i:Phi(n) do 
-pad(galois_action(k,F,i).v,Phi(n)) od)
+let n=F.order in ratvecs_as_ratmat(for i:phi(n) do 
+pad(galois_action(k,F,i).v,phi(n)) od)
 
 set galois_matrices(cyclotomicField F)=[ratmat]:
-for i in relatively_prime(F.n) do galois_matrix(i,F) od
+for i in relatively_prime(F.order) do galois_matrix(i,F) od
 
 set matrix_of_multiplication(cyclotomicFieldElement z)=ratmat:
 let F=z.F then
 zeta=primitive_root(F) in
-ratvecs_as_ratmat(for i:Phi(F.n) do 
-pad(((z*(zeta^i)).v,Phi(F.n))) od)
+ratvecs_as_ratmat(for i:phi(F.order) do 
+pad(((z*(zeta^i)).v,phi(F.order))) od)
 
 set norm(cyclotomicFieldElement z)=rat:det(matrix_of_multiplication(z))
 
+{this function inverts an entire matrix, should be sped up
+by computing just first column of the inverse}
+{. inverse of element in cyclotomic field.}
 set inverse(cyclotomicFieldElement z)=cyclotomicFieldElement:
 let z=reduce(z) then
 F=z.F then
 N=norm(z) then
 matrices=galois_matrices(F) then
 w=F.one in
-for A in matrices[1:] do cw*:=A*z  od;(1/N)*w
+for A in matrices[1:] do w*:=A*z  od;(1/N)*w
 
+{.convert cyclotomic field element to a string for output.}
+set to_string(cyclotomicFieldElement z)=string:stringPoly(z.v,"x")+" in F("+ (z.F).order+ ")"
+
+{.display cyclotomic field element as polynomial in x.}
+set show(cyclotomicFieldElement z)=void:prints(to_string(z))
