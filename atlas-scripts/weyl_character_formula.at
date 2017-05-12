@@ -24,7 +24,7 @@ implemented. If t has order n then trace(pi(t)) is an algebraic
 integer in the cyclotomic field of n^th roots of 1, i.e. an integral
 linear combination of roots of 1. 
 
-See https://www2.bc.edu/mark-reeder/WeylChar.pdf Proposition 6.1} !}
+See https://www2.bc.edu/mark-reeder/WeylChar.pdf Proposition 6.1 !}
 
 {. set true for more output .}
 set verbose_wcf=false
