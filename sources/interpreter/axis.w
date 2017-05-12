@@ -701,6 +701,7 @@ we do find a type error due to a wrong number of components, this is reported
 via a type pattern; this is probably as clear as mentioning too few or too
 many components explicitly.
 
+@h <memory> // for |std::unique_ptr|
 @< Cases for type-checking and converting... @>=
 case tuple_display:
 { type_expr tup=unknown_tuple(length(e.sublist));

@@ -9,6 +9,7 @@
 
 #include "repr.h"
 
+#include <memory> // for |std::unique_ptr|
 #include <map> // used in computing |reducibility_points|
 #include <iostream>
 #include "error.h"
