@@ -8,8 +8,8 @@ set find_ratvec_mod_vec ([ratvec] v, ratvec w) = int:first(#v,(int i)bool:is_int
 { keep coset representatives of list of ratvecs mod Z^n}
 set reduce_ratvecs_mod_lattice([ratvec] S)=[ratvec]:
     let rv=[S[0]] in
-    for i:#S-1 from 1 do 
-     let found= find_ratvec_mod_vec(rv,S[i]) in 
+    for i:#S-1 from 1 do
+     let found= find_ratvec_mod_vec(rv,S[i]) in
      if  found = -1 then rv#:=S[i] fi od;rv
 
 {action is by dual(rd) since v is in X_*(T)_Q}
@@ -27,20 +27,20 @@ set centralizer(RootDatum rd,ratvec v) = RootDatum:
   then coroots = rank(rd) # for alpha in roots do coroot(rd,alpha) od
   in root_datum(simple_from_positive(roots,coroots))
 
-set QmodZ_order(ratvec v)=int:denom(v) 
+set QmodZ_order(ratvec v)=int:denom(v)
 
 { evaluate character (in Z^n) of T on t\in T of finite order,
 giving result in the given cycltomic field}
 set eval_char_T(vec lambda, ratvec v,cyclotomicField F)=cyclotomicFieldElement:
 embed_QmodZ_cyclotomic(lambda*v,F)
 
-{assuming x^2 is central: e^{-\alpha}(x)=\pm1, and 
-the roots for which it is 1 is the centralizer, 
+{assuming x^2 is central: e^{-\alpha}(x)=\pm1, and
+the roots for which it is 1 is the centralizer,
 so the quotient is a power of 2}
 set weyl_denominator_quotient(RootDatum rd, vec v,cyclotomicField F)=cyclotomicFieldElement:
     let rv=F.one in
-    for alpha in posroots(rd) do 
-     if not is_integer(alpha*v) then rv*:=(F.one*embed_QmodZ_cyclotomic(alpha*v,F)) fi od;rv 
+    for alpha in posroots(rd) do
+     if not is_integer(alpha*v) then rv*:=(F.one*embed_QmodZ_cyclotomic(alpha*v,F)) fi od;rv
 
 
 {Weyl Character Formula evaluated on an element x\in T with x^2\in Z
@@ -56,7 +56,7 @@ zeta=e^{\pi i\theta}}
 set wcf(RootDatum rd, vec lambda,ratvec v,cyclotomicField F)=cyclotomicFieldElement:
     let S=W_orbit_torus_element(rd,v) then
     rv=F.one in
-    for w in S do 		      
+    for w in S do
       let rd_w=centralizer(rd,w) in
        let term_1=eval_char_T(lambda,w,F) then
            term_2_inverse=weyl_denominator_quotient(rd,w,F) then
@@ -67,10 +67,10 @@ set wcf(RootDatum rd, vec lambda,ratvec v,cyclotomicField F)=cyclotomicFieldElem
 
 {set wcf(RootDatum rd, ratvec lambda,ratvec v)=(rat,rat):
     let S=W_orbit_torus_element(rd,v) then
-    denominator=weyl_denominator_quotient(rd,v) then    
-    rv=rat:0 in			      
+    denominator=weyl_denominator_quotient(rd,v) then
+    rv=rat:0 in
     if verbose_wcf then prints("centralizer(x): ", centralizer(rd,v), new_line, "denominator: ", denominator) fi;
-    for w in S do 		      
+    for w in S do
       let rd_w=centralizer(rd,w) in
       rv+:=exp(lambda,2*(w-v))*(1/denominator)*dimension(rd_w,lambda+rho(rd)-rho(rd_w))
      od;(lambda*v,rv)
@@ -82,7 +82,7 @@ set wcf(Param p,ratvec v)=(rat,rat):wcf(root_datum(p),highest_weight_finite_dime
 {compute exp(2\pi i<lambda,v>
  assuming lambda\in P, 2v\in R^v this is \pm 1}
 set exp(ratvec lambda,ratvec v)=int:
-{let ()=prints("exp lambda=", lambda, " v=", v) then } let 
+{let ()=prints("exp lambda=", lambda, " v=", v) then } let
 c=lambda*v in assert(is_integer(c), "<lambda,v> is not an integer");(-1)^rat_as_int(c)
 
 
@@ -90,22 +90,22 @@ c=lambda*v in assert(is_integer(c), "<lambda,v> is not an integer");(-1)^rat_as_
 
 {
 set wcf_check(RootDatum rd, ratvec v, int k)=
-let weights=box(k+1, ss_rank(rd)) then  {all [a_1,...,a_rank] with 0\le a_i\le k} 
+let weights=box(k+1, ss_rank(rd)) then  {all [a_1,...,a_rank] with 0\le a_i\le k}
 M=ratvecs_as_ratmat(fundamental_weights(rd)) in
-for mu in weights do 
- let lambda=M*mu in 
-  if is_integer(lambda) then 
-  let p=finite_dimensional(split_form(rd),ratvec_as_vec(lambda)) in 
+for mu in weights do
+ let lambda=M*mu in
+  if is_integer(lambda) then
+  let p=finite_dimensional(split_form(rd),ratvec_as_vec(lambda)) in
   prints("", dimension(p), " ",wcf(rd,lambda,v)) fi od
 }
 {
 set wcf_check_long(RootDatum rd, ratvec v, int k)=
-let weights=box(k+1, ss_rank(rd)) then  {all [a_1,...,a_rank] with 0\le a_i\le k} 
+let weights=box(k+1, ss_rank(rd)) then  {all [a_1,...,a_rank] with 0\le a_i\le k}
 M=ratvecs_as_ratmat(fundamental_weights(rd)) in
-for mu in weights do 
- let lambda=M*mu in 
-  if is_integer(lambda) then 
-  let p=finite_dimensional(split_form(rd),ratvec_as_vec(lambda)) in 
+for mu in weights do
+ let lambda=M*mu in
+  if is_integer(lambda) then
+  let p=finite_dimensional(split_form(rd),ratvec_as_vec(lambda)) in
   prints(signature_str(p), " ", wcf(rd,lambda,v)) fi od
 }
 

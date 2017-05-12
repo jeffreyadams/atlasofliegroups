@@ -1,4 +1,5 @@
 <basic.at
+<polynomial.at
 
 : ratpoly = ratvec { in this file vectors will represent polynomials }
 { poly: [a_0,...,a_n] represents the polynomial a_0+a_1q+...+a_nq^n }
@@ -62,10 +63,10 @@ set ^ = (ratpoly,int->ratpoly): { power of a rational polynomial }
 set divide(ratpoly p,ratpoly d) = (ratpoly,ratpoly):
    let rec_fun f(ratpoly q, ratpoly r) = (ratpoly,ratpoly):
       if #r<#d then
-{      prints("p=",p, new_line,"  q=",q,new_line,"d=",d,new_line,"r=",r,new_line,"d*q+r=",d*q+r, " "); }assert(strip(d*q+r)=strip(p),"bug in divide");(q,r) 
+{      prints("p=",p, new_line,"  q=",q,new_line,"d=",d,new_line,"r=",r,new_line,"d*q+r=",d*q+r, " "); }assert(strip(d*q+r)=strip(p),"bug in divide");(q,r)
       else let (c,e)=%(r~[0]/d~[0]) then  t=ratpoly: (null(#r-#d) # c)/e  in
         f(q+t,r-d*t) fi
-   in f(ratpoly_0,p) 
+   in f(ratpoly_0,p)
 
 { restore normal vector arithmetic }
 forget +@(ratvec,ratvec)
