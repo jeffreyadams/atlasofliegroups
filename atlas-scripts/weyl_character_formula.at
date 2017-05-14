@@ -30,25 +30,27 @@ See https://www2.bc.edu/mark-reeder/WeylChar.pdf Proposition 6.1 !}
 set verbose_wcf=false
 
 { see if w is equivalent to v mod Z^n for some v in list}
-set find_ratvec_mod_vec ([ratvec] v, ratvec w) = int:first(#v,(int i)bool:is_integer(v[i]-w))
+set find_ratvec_mod_vec ([ratvec] v, ratvec w) = int:
+   first(for r in v do =(r-w)%1 od)
 
 { keep coset representatives of list of ratvecs mod Z^n}
-set reduce_ratvecs_mod_lattice([ratvec] S)=[ratvec]:
-    let rv=[S[0]] in
-    for i:#S-1 from 1 do
-     let found= find_ratvec_mod_vec(rv,S[i]) in
-     if  found = -1 then rv#:=S[i] fi od;rv
+set reduce_ratvecs_mod_lattice ([ratvec] S) = [ratvec]:
+   let reduced= for s in S do s%1 od, result=[ratvec]:[] in
+   for x in reduced
+   do if all(for y in result do x!=y od) then result#:=x fi
+   od; result
 
-{action is by dual(rd) since v is in X_*(T)_Q}
+{ action is by dual(rd) since v is in X_*(T)_Q }
 set W_orbit_torus_element(RootDatum rd,ratvec v)=[ratvec]:
-    let S=W_orbit(dual(rd),v) in reduce_ratvecs_mod_lattice(S)
+   reduce_ratvecs_mod_lattice(W_orbit(dual(rd),v))
 
-{see centralizer@(KGBElt,ratvec) in K_highest_weights.at
- don't need x, and test is <alpha,v> is an integer}
+{ see centralizer@(KGBElt,ratvec) in K_highest_weights.at
+  don't need x, and test is <alpha,v> is an integer
+}
 set centralizer(RootDatum rd,ratvec v) = RootDatum:
-  let roots = columns_with((vec alpha): is_integer(alpha*v), posroots(rd))
-  then coroots = rank(rd) # for alpha in roots do coroot(rd,alpha) od
-  in root_datum(simple_from_positive(roots,coroots))
+   let roots = columns_with((vec alpha): is_integer(alpha*v), posroots(rd))
+   then coroots = rank(rd) # for alpha in roots do coroot(rd,alpha) od
+   in root_datum(simple_from_positive(roots,coroots))
 
 {. order of element of Q/Z.}
 set QmodZ_order(ratvec v)=int:denom(v)
@@ -58,31 +60,38 @@ giving result in the given cyclotomic field}
 set eval_char_T(vec lambda, ratvec v,cyclotomicField F)=cyclotomicFieldElement:
    exp_1(lambda*v,F)
 
-{.product (1-e^{-alplha}(t)) over all roots where this is nonzero.}
-set weyl_denominator_quotient(RootDatum rd, ratvec v,cyclotomicField F)=cyclotomicFieldElement:
-    let rv=F.one in
-    for alpha in posroots(rd) do
-     if not is_integer(alpha*v) then rv*:=(F.one-F.one*exp_1(-alpha*v,F)) fi od;rv
+{.product of $1-\exp(-alpha)(t)$ over all posroots $\alpha$ making it nonzero.}
+set weyl_denominator_quotient(RootDatum rd, ratvec v,cyclotomicField F) =
+      cyclotomicFieldElement:
+   let result=F.one in
+   for alpha in posroots(rd)
+   do let eval=(alpha*v)%1 in
+      if !=eval then result*:=(F.one-F.one*exp_1(-eval,F)) fi
+   od; result
 
 
-
-{.Weyl character formula for finite dimensional with extremal weight lambda at t=e(2i\pi v).}
-set wcf(RootDatum rd, vec lambda,ratvec v,cyclotomicField F)=cyclotomicFieldElement:
-    let S=W_orbit_torus_element(rd,v) then
-    rv=F.zero in
-    for w in S do
-      let rd_w=centralizer(rd,w) in
-       let num=eval_char_T(lambda,w,F) then
-           denom=weyl_denominator_quotient(rd,w,F) then
-	   denom_inverse=inverse(denom) then
-           dim_term=embed_Q(dimension(rd_w,lambda+rho(rd)-rho(rd_w)),F) in
-	   if verbose_wcf then
-	      prints(new_line, "t= ", w);
-              prints("numerator= ", to_string(num),new_line, "denominator= ", to_string(denom), new_line, "dimension term= ", dim_term);
-	      prints("centralizer: ", rd_w);
-              prints("inverse of denominator:", denom_inverse, "  ", to_string(denom_inverse));
-	      prints("contribution: ", to_string((num*denom_inverse)*dim_term)) fi;
-           rv+:=(num*denom_inverse)*dim_term od;rv
+{.Weyl character formula for finite dimensional with extremal weight lambda
+  at t=exp_1(v).}
+set wcf(RootDatum rd, vec lambda,ratvec v,cyclotomicField F) =
+      cyclotomicFieldElement:
+   let S=W_orbit_torus_element(rd,v), rv=F.zero in
+   for w in S
+   do let rd_w=centralizer(rd,w), num=eval_char_T(lambda,w,F)
+      ,  denom=weyl_denominator_quotient(rd,w,F)
+      then denom_inverse=inverse(denom)
+      ,    dim_term=embed_Q(dimension(rd_w,lambda+rho(rd)-rho(rd_w)),F)
+      in if verbose_wcf
+         then prints(new_line, "t= ", w);
+            prints("numerator= ", to_string(num),new_line
+                  ,"denominator= ", to_string(denom), new_line
+                  ,"dimension term= ", dim_term)
+         ;  prints("centralizer: ", rd_w)
+	 ;  prints("inverse of denominator:", denom_inverse
+	          ,"  ", to_string(denom_inverse))
+         ;  prints("contribution: ", to_string((num*denom_inverse)*dim_term))
+         fi
+      ;  rv+:=(num*denom_inverse)*dim_term
+   od; rv
 
 {mainly for debugging; same as previous, also returning an array of terms from the computation}
 set wcf_long(RootDatum rd, vec lambda,ratvec v,cyclotomicField F)=(cyclotomicFieldElement,[cyclotomicFieldElement]):
@@ -106,12 +115,19 @@ set wcf_long(RootDatum rd, vec lambda,ratvec v,cyclotomicField F)=(cyclotomicFie
 	   list#:=contrib od;(rv,list)
 
 {variants of wcf functions}
-set wcf(RootDatum rd, vec lambda,ratvec v)=cyclotomicFieldElement:wcf(rd,lambda,v,CF(denom(v)))
-set wcf(vec lambda,(RootDatum rd,ratvec v))=cyclotomicFieldElement:wcf(rd,lambda,v,CF(denom(v)))
-set wcf(Param p, ratvec v)=cyclotomicFieldElement:wcf(root_datum(p),highest_weight_finite_dimensional(fd_only(p)),v)
+set wcf (RootDatum rd, vec lambda,ratvec v) = cyclotomicFieldElement:
+   wcf(rd,lambda,v,CF(denom(v)))
+set wcf (vec lambda,(RootDatum rd,ratvec v)) = cyclotomicFieldElement:
+   wcf(rd,lambda,v,CF(denom(v)))
+set wcf(Param p, ratvec v) = cyclotomicFieldElement:
+   wcf(root_datum(p),highest_weight_finite_dimensional(fd_only(p)),v)
 
-set wcf_long(RootDatum rd, vec lambda,ratvec v)=(cyclotomicFieldElement,[cyclotomicFieldElement]):wcf_long(rd,lambda,v,CF(denom(v)))
-set wcf_long(vec lambda,(RootDatum rd,ratvec v))=(cyclotomicFieldElement,[cyclotomicFieldElement]):wcf_long(rd,lambda,v,CF(denom(v)))
+set wcf_long (RootDatum rd, vec lambda,ratvec v) =
+      (cyclotomicFieldElement,[cyclotomicFieldElement]):
+   wcf_long(rd,lambda,v,CF(denom(v)))
+set wcf_long (vec lambda,(RootDatum rd,ratvec v)) =
+      (cyclotomicFieldElement,[cyclotomicFieldElement]):
+   wcf_long(rd,lambda,v,CF(denom(v)))
 
 {special case of Weyl character formula: x^2\in T (strong real form)
  used for computing signatures of Hermitian forms, need to handle
@@ -127,17 +143,24 @@ set wcf_long(vec lambda,(RootDatum rd,ratvec v))=(cyclotomicFieldElement,[cyclot
 
 {.Weyl character formula for highest weight lambda evaluated on an element x in T with x^2 in Z.}
 set wcf_strong_real(RootDatum rd, ratvec lambda,ratvec v)=(rat,rat):
-    let S=W_orbit_torus_element(rd,v) then
-    denominator=to_rational(weyl_denominator_quotient(rd,v,CF(1))) {power of 2, same on all elements of orbit} then
-    rv=rat:0 in
-    if verbose_wcf then prints("centralizer(x): ", centralizer(rd,v), new_line, "denominator: ", denominator) fi;
-    for w in S do
-      let rd_w=centralizer(rd,w) in
-      rv+:=(-1)^(rat_as_int(lambda*w))*(1/denominator)*dimension_rat(rd_w,lambda+rho(rd)-rho(rd_w))
-     od;(lambda*v,rv)
+(  let S=W_orbit_torus_element(rd,v)
+   , denominator=weyl_denominator_quotient(rd,v,cyclotomic_field(1)).to_rational
+       { this is a power of 2, and same on all elements of orbit }
+   , result=rat: 0
+   in if verbose_wcf
+      then prints("centralizer(x): ", centralizer(rd,v), new_line
+                 ,"denominator: ", denominator)
+      fi
+   ;  for w in S
+      do let rd_w=centralizer(rd,w) in
+         result+:= minus_1^(lambda*w).rat_as_int
+                  *(dimension_rat(rd_w,lambda+rho(rd)-rho(rd_w))/denominator)
+     od; (lambda*v,result)
+)
 
 {.Weyl character formula for finite dimensional p evaluated on an element x in T with x^2 in Z.}
-set wcf_strong_real(Param p,ratvec v)=(rat,rat):wcf_strong_real(root_datum(p),highest_weight_finite_dimensional(fd_only(p)),v)
+set wcf_strong_real (Param p,ratvec v) = (rat,rat):
+   wcf_strong_real(root_datum(p),p.fd_only.highest_weight_finite_dimensional,v)
 
 {Weyl character formula: given set of weights, add them up at exp(2i\pi t)
  input should be the set of weights (with multiplicities) of a representation}
