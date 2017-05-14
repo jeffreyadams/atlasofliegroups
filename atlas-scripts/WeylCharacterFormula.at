@@ -64,7 +64,8 @@ set exp (ratvec lambda, ratvec v) = int:
   zeta^{1/2} is a square root of the central character evaluated as x^2
   zeta=e^{\pi i\theta}
 }
-{.Weyl character formula for highest weight lambda evaluated on an element x in T with x^2 in Z.}
+{.Weyl character formula for highest weight lambda evaluated on an element
+  x in T with x^2 in Z.}
 set wcf (RootDatum rd, ratvec lambda,ratvec v) = (rat,rat):
 (  let S=W_orbit_torus_element(rd,v)
    , denominator=weyl_denominator_quotient(rd,v)

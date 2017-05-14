@@ -30,9 +30,9 @@ set dimension_rat (RootDatum rd, ratvec lambda_in) = rat:
 set dimension (RootDatum rd, ratvec lambda_in) = int:
    rat_as_int(dimension_rat(rd,lambda_in))
 
-{.highest weight of finite dimensional in X^* (+rho) coordinates.}
-set highest_weight_finite_dimensional(Param p) = ratvec:
-   p.fd_only.dominant.infinitesimal_character - p.root_datum.rho
+{.highest weight of finite dimensional in X^* coordinates.}
+set highest_weight_finite_dimensional(Param p) = vec:
+   (p.fd_only.dominant.infinitesimal_character - p.root_datum.rho).ratvec_as_vec
 
 set on_fundamental_weights (ratvec v,RootDatum rd) = vec:
    (v*simple_coroots(rd)).ratvec_as_vec
@@ -54,7 +54,8 @@ set complex_LKT (Param p) = vec:
   let dom = dominant(root_datum(p), (1+p.x.involution)*p.lambda.ratvec_as_vec)
   in lower(#dom\2,dom) { first half }
 
-{some functions related to Frobenius-Schur indicator,
-real/quaternionic indicator, and sign of Hermitian form
-on finite dimensional representation
-MOVED TO finite_dimensional_signature.at}
+{
+  some functions related to Frobenius-Schur indicator, real/quaternionic indicator,
+  and sign of Hermitian form on finite dimensional representation are
+  MOVED TO finite_dimensional_signature.at
+}
