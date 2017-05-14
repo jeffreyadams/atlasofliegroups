@@ -60,7 +60,7 @@ set mod (int a, int N) = int: assert(N>0,"N<=0");a%N
   The application is that $\exp(2\pi i r)=\zeta^a$ where $\zeta=\exp(2\pi i/n)$
 }
 set to_denominator (rat r, int N) = int:
-   let (numer,denom)=%(r\1) { reduce modulo 1, then split }
+   let (numer,denom)=%(r%1) { reduce modulo 1, then split }
    then (q,r)=N\%denom
    in assert(r=0,"root of unity is not in the specified cyclotomic field");
    q*numer
