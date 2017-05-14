@@ -1,3 +1,5 @@
+<basic.at
+
 set highest_root(RootDatum rd)=posroots(rd)~[0]
 
 set coxeter_number(RootDatum rd)=int:rat_as_int(highest_root(rd)*rho_check(rd)+1)

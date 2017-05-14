@@ -2,16 +2,16 @@
 <Weylgroup.at { dominant }
 
 { finite dimensional representations of G(C)}
-{. true if p is finite dimensional.}
+{.whether p is finite dimensional.}
 set is_finite_dimensional(Param p) = bool:
   let ssr = semisimple_rank(real_form(p))
   in semisimple_rank(integrality_datum(p))=ssr and #tau(p)=ssr
 
-{. for use in aborting functions defined only for finite dimensionals.}
+{.for protecting functions intended for finite dimensional parameters only.}
 set fd_only (Param p) = Param:
   assert(is_finite_dimensional(p),"representation is infinite dimensional"); p
 
-{ dimension of finite dimensional with given highest weight 
+{ dimension of finite dimensional with given highest weight
   as a rational to allow up to 2^63-1}
 {.dimension of finite dimensional, valid up to 2^63-1.}
 set dimension_rat (RootDatum rd, ratvec lambda_in) = rat:
@@ -19,42 +19,43 @@ set dimension_rat (RootDatum rd, ratvec lambda_in) = rat:
     if is_dominant(rd,lambda_in) then lambda_in
     else
       let lambda_dominant = dominant(rd,lambda_in) in
-     prints("Warning: changed ", lambda_in, ", to ", lambda_dominant, " to make it dominant");
+     prints("Warning: changed ", lambda_in, ", to ", lambda_dominant
+           , " to make it dominant");
        lambda_dominant
     fi
   then rho=rho(rd), dim=1/1 { now apply Weyl's dimension formula }
   in for a in poscoroots(rd) do dim*:=(lambda+rho)*a/(rho*a) od; dim
 
-{. dimension of finite dimensional, valid up to 2^31-1.}
-set dimension (RootDatum rd, ratvec lambda_in) = int:rat_as_int(dimension_rat(rd,lambda_in))
-
-{deprecated: should be X^* coords, i.e. vec, not ratvec }
-{.highest weight of finite dimensional in X^* (+rho) coordinates.}
-{set highest_weight_finite_dimensional(Param p) = ratvec:
-  infinitesimal_character(fd_only(p)) - rho(root_datum(p))  {automatically dominant}}
+{.dimension of finite dimensional, valid up to 2^31-1.}
+set dimension (RootDatum rd, ratvec lambda_in) = int:
+   rat_as_int(dimension_rat(rd,lambda_in))
 
 {.highest weight of finite dimensional in X^* coordinates.}
 set highest_weight_finite_dimensional(Param p) = vec:
-  ratvec_as_vec(infinitesimal_character(fd_only(p)) - rho(root_datum(p)))  {automatically dominant}
+   (p.fd_only.dominant.infinitesimal_character - p.root_datum.rho).ratvec_as_vec
 
-{. dimension of finite dimensional parameter, valid up to 2^63-1.}
-set dimension_rat(Param p) = rat:
-  dimension_rat(root_datum(p),highest_weight_finite_dimensional(p))
+set on_fundamental_weights (ratvec v,RootDatum rd) = vec:
+   (v*simple_coroots(rd)).ratvec_as_vec
 
-{. dimension of finite dimensional parameter, valid up to 2^31-1.}
-set dimension(Param p) = int:rat_as_int(dimension_rat(p))
-
-{. fundamental weight coordinates of finite dimensional parameter.}
+{.fundamental weight coordinates of finite dimensional parameter.}
 set fundamental_weight_coordinates (Param p) = vec:
-  ratvec_as_vec(highest_weight_finite_dimensional(p)*simple_coroots(root_datum(p)))
+   on_fundamental_weights(highest_weight_finite_dimensional(p),root_datum(p))
+
+{.dimension of finite dimensional parameter, valid up to 2^63-1.}
+set dimension_rat(Param p) = rat:
+   dimension_rat(root_datum(p),highest_weight_finite_dimensional(p))
+
+{.dimension of finite dimensional parameter, valid up to 2^31-1.}
+set dimension(Param p) = int: rat_as_int(dimension_rat(p))
+
 
 { this function depends on a complex root datum, with half-swapping involution }
 set complex_LKT (Param p) = vec:
-  let (rd,mu):pair = (root_datum(p),(1+involution(x(p)))*(lambda(p)\1))
-  then dom = dominant(pair)
+  let dom = dominant(root_datum(p), (1+p.x.involution)*p.lambda.ratvec_as_vec)
   in lower(#dom\2,dom) { first half }
 
-{some functions related to Frobenius-Schur indicator,
-real/quaternionic indicator, and sign of Hermitian form
-on finite dimensional representation 
-MOVED TO finite_dimensional_signature.at}
+{
+  some functions related to Frobenius-Schur indicator, real/quaternionic indicator,
+  and sign of Hermitian form on finite dimensional representation are
+  MOVED TO finite_dimensional_signature.at
+}
