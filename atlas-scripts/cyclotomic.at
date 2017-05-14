@@ -155,23 +155,17 @@ set zeta_power (int k, cyclotomicField F) = cyclotomicFieldElement:
    { first reduce modulo $X^n-1$, then modulo $\Phi(n)$ }
    reduce(null(k%F.order)#1,F)
 
-set pad (ratvec v,int n)=ratvec: v##null(n-#v) { un-trancate to length |n|}
-set pad (cyclotomicFieldElement (v,F)) = cyclotomicFieldElement:
-   (pad(v,degree(F)),F)
-
 set * (ratmat M,cyclotomicFieldElement (v,F)) = cyclotomicFieldElement:
-   ( M*pad(v,degree(F)), F )
+   ( M*v , F )
 
 set galois_matrix (int k,cyclotomicField F) = ratmat:
-  let d=degree(F) in
-  ratvecs_as_ratmat(for i:d do pad(zeta_power(k*i,F).v,d) od)
+  let d=degree(F) in ratvecs_as_ratmat(for i:d do zeta_power(k*i,F).v od)
 
 set galois_matrices(cyclotomicField F) = [ratmat]:
    for i in relative_primes(F.order) do galois_matrix(i,F) od
 
 set matrix_of_multiplication (cyclotomicFieldElement z) = ratmat:
-   let d=degree(z.F), zeta=primitive_root(z.F) in
-   ratvecs_as_ratmat(for i:d do pad((z*zeta_power(i,z.F)).v,d) od)
+   for i:degree(z.F) do (z*zeta_power(i,z.F)).v od.ratvecs_as_ratmat
 
 set norm (cyclotomicFieldElement z) = rat: det(matrix_of_multiplication(z))
 
