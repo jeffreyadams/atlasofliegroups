@@ -115,7 +115,7 @@ set * (cyclotomicFieldElement (v,F),cyclotomicFieldElement (w,G)) =
 
 { positive power (should use repeated squaring; code below will do for now) }
 set ^ (cyclotomicFieldElement (v,F),int k) = cyclotomicFieldElement:
-   assert(k>=0,"Negative power in cyclotimic field not implemented");
+   assert(k>=0,"Negative power in cyclotomic field not implemented");
 (  if =k then [1]
    else let p=v in
       while >(k-:=1) do set(p,):=reduce(ratpoly_product(p,v),F) od; p
@@ -168,14 +168,27 @@ set matrix_of_multiplication (cyclotomicFieldElement z) = ratmat:
 
 set norm (cyclotomicFieldElement z) = rat: det(matrix_of_multiplication(z))
 
-{.inverse of element in cyclotomic field.}
-set inverse (cyclotomicFieldElement (,F):z) = cyclotomicFieldElement:
+{two ways of computing inverse of element of cyclotomic field
+ it appears the matrix method is better, but we're leaving in both 
+ options for now}
+
+{.inverse of z=products of nontrivial galois conjugates/norm.}
+set inverse_by_norm (cyclotomicFieldElement (,F):z) = cyclotomicFieldElement:
    let w=F.one in z:=reduce(z);
    for A in galois_matrices(F)[1:] do w*:=A*z  od; (/norm(z))*w
 
+{.inverse of z = inverse of (matrix of multipliciation by z) applied to F.one.}
+set inverse_by_matrix (cyclotomicFieldElement (,F):z) = cyclotomicFieldElement:
+inverse(matrix_of_multiplication(z))*F.one
+
+{use inverse_by_matrix}
+{.inverse of element in cyclotomic field.}
+set inverse (cyclotomicFieldElement (,F):z) = cyclotomicFieldElement:inverse_by_matrix(z)
+
 {.convert cyclotomic field element to a string for output.}
 set to_string (cyclotomicFieldElement z) = string:
-  stringPoly(z.v,"x")+" in F("+ (z.F).order+ ")"
+  if is_integer(z.v) then stringPoly(ratvec_as_vec(z.v),"x")+" in F("+ (z.F).order+ ")" else
+  stringPoly(z.v,"x")+" in F("+ (z.F).order+ ")" fi
 
 {.display cyclotomic field element as polynomial in x.}
 set show (cyclotomicFieldElement z) = void: prints(to_string(z))
