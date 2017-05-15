@@ -169,9 +169,13 @@ set matrix_of_multiplication (cyclotomicFieldElement z) = ratmat:
 
 set norm (cyclotomicFieldElement z) = rat: det(matrix_of_multiplication(z))
 
-{two ways of computing inverse of element of cyclotomic field
- it appears the matrix method is better, but we're leaving in both
- options for now}
+{ three ways of computing inverse of element of cyclotomic field:
+  using conjugates and norm in the cyclotomic field (risks overflow even
+  when inverting elements of the subfield $\Q$), inverting by applying the
+  inverse of the multiplication matrix, and inverting by solving the
+  mulitplication problem using linear algebra (probably this has the least
+  risk of umeric overflow, so it is selected as |inverse|).
+}
 
 {.inverse of z=products of nontrivial galois conjugates/norm.}
 set inverse_by_norm (cyclotomicFieldElement (,F):z) = cyclotomicFieldElement:
@@ -179,17 +183,28 @@ set inverse_by_norm (cyclotomicFieldElement (,F):z) = cyclotomicFieldElement:
    for A in galois_matrices(F)[1:] do w*:=A*z  od; (/norm(z))*w
 
 {.inverse of z = inverse of (matrix of multipliciation by z) applied to F.one.}
-set inverse_by_matrix (cyclotomicFieldElement (,F):z) = cyclotomicFieldElement:
-inverse(matrix_of_multiplication(z))*F.one
+set inverse_by_matrix (cyclotomicFieldElement(,F):z) = cyclotomicFieldElement:
+   inverse(matrix_of_multiplication(z))*F.one
 
-{use inverse_by_matrix}
+set inverse_by_solve (cyclotomicFieldElement(,F):z) = cyclotomicFieldElement:
+   (solve(matrix_of_multiplication(z),F.one.v)[0],F)
+
+{ use inverse_by_solve }
 {.inverse of element in cyclotomic field.}
-set inverse (cyclotomicFieldElement (,F):z) = cyclotomicFieldElement:inverse_by_matrix(z)
+set inverse = inverse_by_solve@cyclotomicFieldElement
+
+set / = inverse@cyclotomicFieldElement { unary division is inverse }
+
+set / (cyclotomicFieldElement(v,F), cyclotomicFieldElement z) =
+      cyclotomicFieldElement:
+   (solve(matrix_of_multiplication(z),v)[0],F)
 
 {.convert cyclotomic field element to a string for output.}
 set to_string (cyclotomicFieldElement z) = string:
-  if is_integer(z.v) then stringPoly(ratvec_as_vec(z.v),"x")+" in F("+ (z.F).order+ ")" else
-  stringPoly(z.v,"x")+" in F("+ (z.F).order+ ")" fi
+   if z.v.is_integer
+   then stringPoly(z.v.ratvec_as_vec,"x")+" in F("+ z.F.order+ ")"
+   else stringPoly(z.v,"x")+" in F("+ z.F.order+ ")"
+   fi
 
 {.display cyclotomic field element as polynomial in x.}
 set show (cyclotomicFieldElement z) = void: prints(to_string(z))
