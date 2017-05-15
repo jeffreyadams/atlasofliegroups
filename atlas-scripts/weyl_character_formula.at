@@ -74,52 +74,48 @@ set weyl_denominator_quotient(RootDatum rd, ratvec v,cyclotomicField F) =
   at t=exp_1(v).}
 set wcf(RootDatum rd, vec lambda,ratvec v,cyclotomicField F) =
       cyclotomicFieldElement:
-   let S=W_orbit_torus_element(rd,v), rv=F.zero in
+   let S=W_orbit_torus_element(rd,v), result=F.zero in
    for w in S
    do let rd_w=centralizer(rd,w), num=eval_char_T(lambda,w,F)
       ,  denom=weyl_denominator_quotient(rd,w,F)
-      then denom_inverse=inverse(denom)
-      ,    dim_term=embed_Q(dimension(rd_w,lambda+rho(rd)-rho(rd_w)),F)
+      then dim_factor= dimension_rat(rd_w,lambda+rho(rd)-rho(rd_w))
+      then contribution = dim_factor*(num/denom)
       in if verbose_wcf
          then prints(new_line, "t= ", w)
          ;  prints("numerator= ", to_string(num),new_line
                   ,"denominator= ", to_string(denom), new_line
-                  ,"dimension term= ", dim_term)
+                  ,"dimension factor= ", dim_factor)
          ;  prints("centralizer: ", rd_w)
-	 ;  prints("inverse of denominator:", denom_inverse
-	          ,"  ", to_string(denom_inverse))
-         ;  prints("contribution: ", to_string((num*denom_inverse)*dim_term))
+         ;  prints("contribution: ", contribution.to_string)
          fi
-      ;  rv+:=(num*denom_inverse)*dim_term
-   od; assert(is_integer(rv.v),"Character value is not an algebraic integer");
-   rv
+      ;  result+:= contribution
+   od;
+   assert(is_integer(result.v),"Character value is not an algebraic integer");
+   result
 
 {mainly for debugging;
  same as previous, also returning an array of terms from the computation }
 set wcf_long (RootDatum rd, vec lambda,ratvec v,cyclotomicField F) =
       (cyclotomicFieldElement,[cyclotomicFieldElement]):
    let S=W_orbit_torus_element(rd,v)
-   , rv=F.zero, list=[cyclotomicFieldElement]:[]
+   , result=F.zero, list=[cyclotomicFieldElement]:[]
    in
    for w in S
    do let rd_w=centralizer(rd,w), num=eval_char_T(lambda,w,F)
       ,  denom=weyl_denominator_quotient(rd,w,F)
-      then denom_inverse=inverse(denom)
-      ,    dim_term=embed_Q(dimension(rd_w,lambda+rho(rd)-rho(rd_w)),F)
-      then contrib=(num*denom_inverse)*dim_term
+      then dim_factor= dimension_rat(rd_w,lambda+rho(rd)-rho(rd_w))
+      then contribution = dim_factor*(num/denom)
       in if verbose_wcf
          then prints(new_line, "t= ", w)
          ;  prints("numerator= ", to_string(num),new_line
-	          ,"denominator= ", to_string(denom), new_line
-		  ,"dimension term= ", dim_term)
+                  ,"denominator= ", to_string(denom), new_line
+                  ,"dimension factor= ", dim_factor)
          ;  prints("centralizer: ", rd_w)
-         ;  prints("inverse of denominator:", denom_inverse
-	    	  ,"  ", to_string(denom_inverse))
-         ;  prints("contribution: ", to_string((num*denom_inverse)*dim_term))
+         ;  prints("contribution: ", contribution.to_string)
 	 fi
-      ;  rv+:=(num*denom_inverse)*dim_term
-      ;  list#:=contrib
-   od; (rv,list)
+      ;  result +:= contribution
+      ;  list   #:= contribution
+   od; (result,list)
 
 {variants of wcf functions}
 set wcf (RootDatum rd, vec lambda,ratvec v) = cyclotomicFieldElement:
