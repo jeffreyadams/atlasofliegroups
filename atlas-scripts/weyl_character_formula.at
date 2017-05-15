@@ -64,8 +64,6 @@ set weyl_denominator_quotient(RootDatum rd, ratvec v,cyclotomicField F)=cyclotom
     for alpha in posroots(rd) do
      if not is_integer(alpha*v) then rv*:=(F.one-F.one*exp_1(-alpha*v,F)) fi od;rv
 
-
-
 {.Weyl character formula for finite dimensional with extremal weight lambda at t=e(2i\pi v).}
 set wcf(RootDatum rd, vec lambda,ratvec v,cyclotomicField F)=cyclotomicFieldElement:
     let S=W_orbit_torus_element(rd,v) then
@@ -82,7 +80,7 @@ set wcf(RootDatum rd, vec lambda,ratvec v,cyclotomicField F)=cyclotomicFieldElem
 	      prints("centralizer: ", rd_w);
               prints("inverse of denominator:", denom_inverse, "  ", to_string(denom_inverse));
 	      prints("contribution: ", to_string((num*denom_inverse)*dim_term)) fi;
-           rv+:=(num*denom_inverse)*dim_term od;rv
+              rv+:=(num*denom_inverse)*dim_term od;assert(is_integer(rv.v),"Character value is not an algebraic integer");rv
 
 {mainly for debugging; same as previous, also returning an array of terms from the computation}
 set wcf_long(RootDatum rd, vec lambda,ratvec v,cyclotomicField F)=(cyclotomicFieldElement,[cyclotomicFieldElement]):
@@ -113,7 +111,7 @@ set wcf(Param p, ratvec v)=cyclotomicFieldElement:wcf(root_datum(p),highest_weig
 set wcf_long(RootDatum rd, vec lambda,ratvec v)=(cyclotomicFieldElement,[cyclotomicFieldElement]):wcf_long(rd,lambda,v,CF(denom(v)))
 set wcf_long(vec lambda,(RootDatum rd,ratvec v))=(cyclotomicFieldElement,[cyclotomicFieldElement]):wcf_long(rd,lambda,v,CF(denom(v)))
 
-{special case of Weyl character formula: x^2\in T (strong real form)
+{special case of Weyl character formula: x^2\in Z (strong real form)
  used for computing signatures of Hermitian forms, need to handle
  large integers
  currently integer is of size <=2^31-1, want to allow 2^63-1
@@ -128,12 +126,12 @@ set wcf_long(vec lambda,(RootDatum rd,ratvec v))=(cyclotomicFieldElement,[cyclot
 {.Weyl character formula for highest weight lambda evaluated on an element x in T with x^2 in Z.}
 set wcf_strong_real(RootDatum rd, ratvec lambda,ratvec v)=(rat,rat):
     let S=W_orbit_torus_element(rd,v) then
-    denominator=to_rational(weyl_denominator_quotient(rd,v,CF(1))) {power of 2, same on all elements of orbit} then
+    denominator=to_rational(weyl_denominator_quotient(rd,v,CF(2))) {power of 2, same on all elements of orbit} then
     rv=rat:0 in
     if verbose_wcf then prints("centralizer(x): ", centralizer(rd,v), new_line, "denominator: ", denominator) fi;
     for w in S do
       let rd_w=centralizer(rd,w) in
-      rv+:=(-1)^(rat_as_int(lambda*w))*(1/denominator)*dimension_rat(rd_w,lambda+rho(rd)-rho(rd_w))
+      rv+:=(-1)^(rat_as_int(lambda*2*(w-v)))*(1/denominator)*dimension(rd_w,lambda+rho(rd)-rho(rd_w))
      od;(lambda*v,rv)
 
 {.Weyl character formula for finite dimensional p evaluated on an element x in T with x^2 in Z.}
@@ -164,5 +162,6 @@ wcf_report(real_form(p), highest_weight_finite_dimensional(fd_only(p)),t)
 set wcf_report(RealForm G, int height_bound, ratvec t)=void:
 prints("Computing trace of exp(2i\pi",t,") on representations up to height ", height_bound,new_line);
 let M=ratvecs_as_ratmat(fundamental_weights(G)) in
-for mu in box(height_bound,rank(G)) do
-let lambda=ratvec_as_vec(M*mu) in wcf_report(G,lambda,t) od
+for mu in box(height_bound,ss_rank(G)) do
+let lambda=M*mu in 
+if is_integer(lambda) then wcf_report(G,ratvec_as_vec(lambda),t) fi od
