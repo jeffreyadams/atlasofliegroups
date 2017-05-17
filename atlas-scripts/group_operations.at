@@ -1,6 +1,7 @@
 <basic.at
 <lattice.at { for (co)restrict_action }
 <torus.at { for torus }
+<ratmat.at {needed for simply_connected_cover et. al. }
 
 {----------------some more general group constructions----------------}
 
@@ -109,3 +110,29 @@ set adjoint (RealForm G) = RealForm:
 
 set is_relatively_split (RealForm G) = bool: { whether is_split(derived(G))) }
   compact_rank(most_split_Cartan(G))=compact_rank(radical(InnerClass:G))
+
+{ --------- a few new ways of constructing a root datum----}
+
+{these really should be in basic.at but they require ratmat.at}
+
+{Converting rd=(S,T)  (S=simple_roots, T=simple_coroots)
+to  (S_new,T_new), also return  |ratmat| M satisfying:
+M*S=S_new
+^M*T_new=T
+Note: ^S*T=C=^S_new*T_new (C is the Cartan matrix)
+the built-in |dervied_info| is of the same form
+}
+
+{.simply connected cover of a semisimple root datum.}
+set simply_connected_cover(RootDatum rd)=(RootDatum, ratmat):
+assert(is_semisimple(rd), "rd is not semisimple");
+let S=simple_roots(rd) then
+S_new=Cartan_matrix(rd) then
+T_new=id_mat(rank(rd)) in
+(root_datum(S_new,T_new), S_new*rational_inverse(S))
+
+{.simply connected cover of the derived root datum.}
+set simply_connected_cover_derived(RootDatum rd)=(RootDatum,ratmat):
+let (rd_der,A)=derived_info(rd) then 
+(rd_sc,B)=simply_connected_cover(rd_der) in (rd_sc,B*A)
+
