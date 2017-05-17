@@ -55,8 +55,7 @@ void big_int::compl_neg(std::vector<digit>::iterator it, bool negate)
   *it = ~ *it + static_cast<digit>(negate);
   if (negate and *it==neg_flag)
     d.push_back(0); // positive version of this number needs a leading $0$
-  else
-    *it<neg_flag ? shrink_pos() : shrink_neg(); // or else result might shrink
+  else shrink(); // or else result might shrink in rare cases
 }
 
 void big_int::shrink_pos()
@@ -107,7 +106,7 @@ void big_int::add (const big_int& x)
   { if ((*it xor x.d.back())>=neg_flag)
     {
       *it += x.d.back()+c; // opposite signs, so no overflow can occur
-      *it<neg_flag ? shrink_pos() : shrink_neg(); // but result may shrink
+      shrink(); // but result may shrink
     }
     else
       if (((*it+=x.d.back()+c)xor x.d.back())>=neg_flag) // overflow occurred
@@ -133,7 +132,7 @@ void big_int::add (const big_int& x)
 big_int& big_int::operator+= (const big_int& x)
 {
   if (d.size()<x.d.size()) // ensure |*this| is at least as long as |x|
-    d.resize(x.d.size(),negative() ? -1 : 0); // by sign-extending
+    sign_extend(x.d.size()); // by sign-extending
   add(x);
   return *this;
 }
@@ -158,7 +157,7 @@ void big_int::sub (const big_int& x)
   { if ((*it xor x.d.back())<neg_flag)
     {
       *it += ~x.d.back()+c; // same signs, so no overflow can occur
-      *it<neg_flag ? shrink_pos() : shrink_neg(); // but result may shrink
+      shrink(); // but result may shrink
     }
     else
       if (((*it += ~x.d.back()+c)xor x.d.back())<neg_flag) // overflow occurred
@@ -193,7 +192,7 @@ void big_int::sub_from (const big_int& x)
   { if ((*it xor x.d.back())<neg_flag)
     {
       *it = x.d.back()+~*it+c; // same signs, so no overflow can occur
-      *it<neg_flag ? shrink_pos() : shrink_neg(); // but result may shrink
+      shrink(); // but result may shrink
     }
     else
       if (((*it = x.d.back()+~*it+c)xor x.d.back())>=neg_flag) // then overflow
@@ -214,7 +213,7 @@ void big_int::sub_from (const big_int& x)
 big_int& big_int::operator-= (const big_int& x)
 {
   if (d.size()<x.d.size()) // ensure |*this| is at least as long as |x|
-    d.resize(x.d.size(),negative() ? -1 : 0); // by sign-extending
+    sign_extend(x.d.size()); // by sign-extending
   sub(x);
   return *this;
 }
@@ -234,7 +233,7 @@ big_int& big_int::operator-= (big_int&& x)
 big_int& big_int::subtract_from (const big_int& x)
 {
   if (d.size()<x.d.size()) // ensure |*this| is at least as long as |x|
-    d.resize(x.d.size(),negative() ? -1 : 0); // by sign-extending
+    sign_extend(x.d.size()); // by sign-extending
   sub_from(x);
   return *this;
 }
@@ -251,6 +250,37 @@ big_int& big_int::subtract_from (big_int&& x)
   return *this;
 }
 
+big_int big_int::operator* (const big_int& x) const
+{
+  big_int result;
+  result.d.resize(d.size()+ x.d.size(),0);
+  for (auto it=d.begin(); it!=d.end(); ++it)
+  { auto r_it = result.d.begin() + (it - d.begin());
+    two_digits acc=0, f=*it;
+    for (auto x_it = x.d.begin(); x_it!=x.d.end(); ++x_it, ++r_it)
+    { acc += f * *x_it + *r_it;
+      *r_it = acc; // strip to lower 32 bits and store
+      acc >>= 32; // shift upper 32 bits to lower
+    }
+    *r_it = acc; // here we can safely overwrite; no previous value present
+  }
+  if (is_negative())
+  { digit c=1; // complemented borrow
+    auto r_it = result.d.end() - x.d.size();
+    for (auto x_it = x.d.begin(); x_it!=x.d.end(); ++x_it, ++r_it)
+      if (digit s = ~*x_it+c) // for twice, contextually convert |s| to |bool|
+	c = static_cast<digit>((*r_it+=s)<s);
+  }
+  if (x.is_negative())
+  { digit c=1; // complemented borrow
+    auto r_it = result.d.end() - d.size();
+    for (auto it = d.begin(); it!=d.end(); ++it, ++r_it)
+      if (digit s = ~*it+c) // for thrice, contextually convert |s| to |bool|
+	c = static_cast<digit>((*r_it+=s)<s);
+  }
+  result.shrink(); // sign is automiatically correct, but we may need to shrink
+  return result;
+}
 
 } // |namespace arithmetic|
 } // |namespace atlas|

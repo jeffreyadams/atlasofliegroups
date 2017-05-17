@@ -44,7 +44,7 @@ public:
   big_int& subtract_from (big_int&& x);
   big_int& negate ()     { compl_neg(d.begin(),true); return *this; }
   big_int& complement () { compl_neg(d.begin(),false); return *this; }
-  big_int operator * (const big_int&);
+  big_int operator* (const big_int&) const;
   big_int& mod_assign (const big_int& divisor, big_int* quotient);
 
 #ifdef incompletecpp11
@@ -72,7 +72,7 @@ public:
       return *this = *q;
     }
 
-  bool negative() const { return (d.back()&neg_flag)!=0; }
+  bool is_negative() const { return d.back()>=neg_flag; }
   bool is_zero() const { return d.size()==1 and d[0]==0; }
 
 private:
@@ -80,8 +80,10 @@ private:
   void borrow(std::vector<digit>::iterator it); // borrow into position |*it|
   void shrink_pos(); // strip of any excessive leading words $0$
   void shrink_neg(); // strip of any excessive leading words $-1$
+  void shrink() { is_negative() ? shrink_neg() : shrink_pos(); }
+  void sign_extend(size_t s) { d.resize(s,is_negative() ? -1 : 0); }
   void add (const big_int& x); // with precondition |x.d.size()<=d.size()|
-  void sub (const big_int& x); // with precondition |x.d.size()<=d.size()|
+  void sub (const big_int& x); // with preconditi(const big_int&) constis_on |x.d.size()<=d.size()|
   void sub_from (const big_int& x); // with precondition |x.d.size()<=d.size()|
   void compl_neg(std::vector<digit>::iterator it,bool negate);
 
