@@ -127,7 +127,7 @@ the built-in |dervied_info| is of the same form
 set simply_connected_cover(RootDatum rd)=(RootDatum, ratmat):
 assert(is_semisimple(rd), "rd is not semisimple");
 let S=simple_roots(rd) then
-S_new=Cartan_matrix(rd) then
+S_new=^Cartan_matrix(rd) then
 T_new=id_mat(rank(rd)) in
 (root_datum(S_new,T_new), S_new*rational_inverse(S))
 
