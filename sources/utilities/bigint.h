@@ -13,6 +13,7 @@
 #include <memory> // for |std::unique_ptr|
 #include <cstdint> // for |uint_32_t| and |uint_64_t|
 #include <vector>
+#include <iostream>
 
 namespace atlas {
 namespace arithmetic {
@@ -45,7 +46,9 @@ public:
   big_int& negate ()     { compl_neg(d.begin(),true); return *this; }
   big_int& complement () { compl_neg(d.begin(),false); return *this; }
   big_int operator* (const big_int&) const;
-  big_int& mod_assign (const big_int& divisor, big_int* quotient);
+
+  digit shift_modulo(digit base); // divide by |base|, return remainder
+  big_int& reduce_mod (const big_int& divisor, big_int* quotient);
 
 #ifdef incompletecpp11
   big_int operator+ (const big_int& x) const
@@ -65,15 +68,21 @@ public:
 
   big_int& operator*= (const big_int& x) { return *this = *this * x; }
   big_int& operator%= (const big_int& divisor)
-    { return mod_assign(divisor,nullptr); }
+    { return reduce_mod(divisor,nullptr); }
 
   big_int& operator/= (const big_int& divisor)
-    { std::unique_ptr<big_int> q(new big_int); mod_assign(divisor,q.get());
+    { std::unique_ptr<big_int> q(new big_int); reduce_mod(divisor,q.get());
       return *this = *q;
     }
 
   bool is_negative() const { return d.back()>=neg_flag; }
   bool is_zero() const { return d.size()==1 and d[0]==0; }
+  bool operator<  (const big_int& x) const;
+  bool operator>  (const big_int& x) const { return x < *this; }
+  bool operator>= (const big_int& x) const { return not (*this < x); }
+  bool operator<= (const big_int& x) const { return not (x < *this); }
+
+  size_t size () const { return d.size(); }
 
 private:
   void carry(std::vector<digit>::iterator it); // carry into position |*it|
@@ -83,12 +92,17 @@ private:
   void shrink() { is_negative() ? shrink_neg() : shrink_pos(); }
   void sign_extend(size_t s) { d.resize(s,is_negative() ? -1 : 0); }
   void add (const big_int& x); // with precondition |x.d.size()<=d.size()|
-  void sub (const big_int& x); // with preconditi(const big_int&) constis_on |x.d.size()<=d.size()|
+  void sub (const big_int& x); // with precondition |x.d.size()<=d.size()|
   void sub_from (const big_int& x); // with precondition |x.d.size()<=d.size()|
   void compl_neg(std::vector<digit>::iterator it,bool negate);
 
+  void operator<<= (unsigned char n); // unsigned up-shift (multiply by $2^n$)
+  void operator>>= (unsigned char n); // signed down-shift (divide by $2^n$)
 }; // |class big_int|
 
+std::ostream& operator<< (std::ostream& out, big_int&& number);
+inline std::ostream& operator<< (std::ostream& out, const big_int& number)
+  { return out << big_int(number); }
 
 } // |namespace arithmetic|
 } // |namespace atlas|

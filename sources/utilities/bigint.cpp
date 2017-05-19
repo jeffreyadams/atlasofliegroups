@@ -9,19 +9,22 @@
 
 #include "bigint.h"
 #include <cassert>
+#include <iomanip>
+#include "bits.h" // for |lastBit|
+#include "constants.h" // for |bitMask|, |leqFlag|
 
 namespace atlas {
 namespace arithmetic {
 
 /*
-  precondition for |carry| and |borrow|: when called with |d.size()>1|, they
+  precondition for |carry| and |borrow|: when called with |size()>1|, they
   never cause actual sign change (since they are only called in cases where a
   strictly shorter number is added or subtracted from |*this|)
  */
 
 void big_int::carry(std::vector<digit>::iterator it)
 { while (it != d.end()-1)
-    if (++(*it) != 0)
+    if (++(*it) != 0) // stop when something else than $0$ is produced
     { if (*it == neg_flag and ++it == d.end()-1 and ~*it == 0)
 	d.pop_back(); // negative number with leading |~0| can drop that digit
       return;
@@ -35,7 +38,7 @@ void big_int::carry(std::vector<digit>::iterator it)
 
 void big_int::borrow(std::vector<digit>::iterator it)
 { while (it != d.end()-1)
-    if (~ --(*it) == 0)
+    if (~ --(*it) != 0) // stop when something else than $-1$ is produced
     { if (*it == ~neg_flag and ++it == d.end()-1 and *it == 0)
 	d.pop_back(); // positive number with leading |0| can drop that digit
       return;
@@ -73,7 +76,7 @@ void big_int::shrink_neg()
 
 
 big_int& big_int::operator+= (digit x)
-{ if (d.size()==1) // then do signed addition of single digits numbers
+{ if (size()==1) // then do signed addition of single digits numbers
   { if ((d[0] xor x)>=neg_flag)
       d[0]+=x; // opposite signs, so no overflow can occur
     else
@@ -84,12 +87,12 @@ big_int& big_int::operator+= (digit x)
   { if (x<neg_flag)
     { if ((d[0]+=x)<x) // adding positive |x| overflows if result becomes |<x|
 	carry(d.begin()+1);
-      else shrink_neg(); // only needed if |d.size()==2|, but harmless
+      else shrink_neg(); // only needed if |size()==2|, but harmless
     }
     else
       if ((d[0]+=x)>=x) // adding negative |x| underflows if result is |>=x|
 	borrow(d.begin()+1);
-      else shrink_pos(); // only needed if |d.size()==2|, but harmless
+      else shrink_pos(); // only needed if |size()==2|, but harmless
   }
   return *this;
 }
@@ -97,8 +100,8 @@ big_int& big_int::operator+= (digit x)
 void big_int::add (const big_int& x)
 {
   auto it=d.begin(); digit c=0; // carry, either 0 or 1
-  for (auto xit = x.d.begin(); xit!=x.d.end()-1; ++xit,++it)
-    if (digit s = *xit+c) // for once, contextually convert |s| to |bool|
+  for (auto x_it = x.d.begin(); x_it!=x.d.end()-1; ++x_it,++it)
+    if (digit s = *x_it+c) // for once, contextually convert |s| to |bool|
       c = static_cast<digit>((*it+=s)<s);
     // |else| nothing: add |0| to |*it| and keep |c| as is
 
@@ -131,15 +134,15 @@ void big_int::add (const big_int& x)
 
 big_int& big_int::operator+= (const big_int& x)
 {
-  if (d.size()<x.d.size()) // ensure |*this| is at least as long as |x|
-    sign_extend(x.d.size()); // by sign-extending
+  if (size()<x.size()) // ensure |*this| is at least as long as |x|
+    sign_extend(x.size()); // by sign-extending
   add(x);
   return *this;
 }
 
 big_int& big_int::operator+= (big_int&& x)
 {
-  if (d.size()<x.d.size()) // ensure |*this| is at least as long as |x|
+  if (size()<x.size()) // ensure |*this| is at least as long as |x|
     d.swap(x.d); // interchanging vectors avoids extending our shorter vector
   add(x);
   return *this;
@@ -148,8 +151,8 @@ big_int& big_int::operator+= (big_int&& x)
 void big_int::sub (const big_int& x)
 {
   auto it=d.begin(); digit c=1; // complemented borrow, either 0 or 1
-  for (auto xit = x.d.begin(); xit!=x.d.end()-1; ++xit,++it)
-    if (digit s = ~*xit+c) // for once, contextually convert |s| to |bool|
+  for (auto x_it = x.d.begin(); x_it!=x.d.end()-1; ++x_it,++it)
+    if (digit s = ~*x_it+c) // for once, contextually convert |s| to |bool|
       c = static_cast<digit>((*it+=s)<s);
     // |else| nothing: add |0| to |*it| and keep |c| as is
 
@@ -183,9 +186,9 @@ void big_int::sub (const big_int& x)
 void big_int::sub_from (const big_int& x)
 {
   auto it=d.begin(); digit c=1; // complemented borrow, either 0 or 1
-  for (auto xit = x.d.begin(); xit!=x.d.end()-1; ++xit,++it)
+  for (auto x_it = x.d.begin(); x_it!=x.d.end()-1; ++x_it,++it)
     if (digit s = ~*it+c) // for once, contextually convert |s| to |bool|
-      c = static_cast<digit>((*it+=*xit+s)<s);
+      c = static_cast<digit>((*it+=*x_it+s)<s);
     // |else| nothing: add |0| to |*it| and keep |c| as is
 
   if (it == d.end()-1) // equal length case
@@ -212,15 +215,15 @@ void big_int::sub_from (const big_int& x)
 
 big_int& big_int::operator-= (const big_int& x)
 {
-  if (d.size()<x.d.size()) // ensure |*this| is at least as long as |x|
-    sign_extend(x.d.size()); // by sign-extending
+  if (size()<x.size()) // ensure |*this| is at least as long as |x|
+    sign_extend(x.size()); // by sign-extending
   sub(x);
   return *this;
 }
 
 big_int& big_int::operator-= (big_int&& x)
 {
-  if (d.size()>=x.d.size()) // ensure |*this| is at least as long as |x|
+  if (size()>=x.size()) // ensure |*this| is at least as long as |x|
     sub(x);
   else
   {
@@ -232,15 +235,15 @@ big_int& big_int::operator-= (big_int&& x)
 
 big_int& big_int::subtract_from (const big_int& x)
 {
-  if (d.size()<x.d.size()) // ensure |*this| is at least as long as |x|
-    sign_extend(x.d.size()); // by sign-extending
+  if (size()<x.size()) // ensure |*this| is at least as long as |x|
+    sign_extend(x.size()); // by sign-extending
   sub_from(x);
   return *this;
 }
 
 big_int& big_int::subtract_from (big_int&& x)
 {
-  if (d.size()>=x.d.size()) // ensure |*this| is at least as long as |x|
+  if (size()>=x.size()) // ensure |*this| is at least as long as |x|
     sub_from(x);
   else
   {
@@ -253,10 +256,11 @@ big_int& big_int::subtract_from (big_int&& x)
 big_int big_int::operator* (const big_int& x) const
 {
   big_int result;
-  result.d.resize(d.size()+ x.d.size(),0);
+  result.d.resize(size()+ x.size(),0);
   for (auto it=d.begin(); it!=d.end(); ++it)
   { auto r_it = result.d.begin() + (it - d.begin());
-    two_digits acc=0, f=*it;
+    two_digits acc=0;
+    two_digits const f =*it; // 64 bit width to ensure full length multiply
     for (auto x_it = x.d.begin(); x_it!=x.d.end(); ++x_it, ++r_it)
     { acc += f * *x_it + *r_it;
       *r_it = acc; // strip to lower 32 bits and store
@@ -266,20 +270,240 @@ big_int big_int::operator* (const big_int& x) const
   }
   if (is_negative())
   { digit c=1; // complemented borrow
-    auto r_it = result.d.end() - x.d.size();
+    auto r_it = result.d.end() - x.size();
     for (auto x_it = x.d.begin(); x_it!=x.d.end(); ++x_it, ++r_it)
       if (digit s = ~*x_it+c) // for twice, contextually convert |s| to |bool|
 	c = static_cast<digit>((*r_it+=s)<s);
   }
   if (x.is_negative())
   { digit c=1; // complemented borrow
-    auto r_it = result.d.end() - d.size();
+    auto r_it = result.d.end() - size();
     for (auto it = d.begin(); it!=d.end(); ++it, ++r_it)
       if (digit s = ~*it+c) // for thrice, contextually convert |s| to |bool|
 	c = static_cast<digit>((*r_it+=s)<s);
   }
   result.shrink(); // sign is automiatically correct, but we may need to shrink
   return result;
+}
+
+// divide by base, return remainder
+big_int::digit big_int::shift_modulo(digit base)
+{ auto it = d.end();
+  two_digits acc = 0;
+  if (not is_negative())
+  { do
+    { (acc<<=32) |= *--it;
+      *it = acc/base; acc%=base;
+    }
+    while (it!=d.begin());
+    shrink_pos();
+    return acc;
+  }
+  else // negative
+  { do
+    { (acc<<=32) |= ~ *--it;
+      *it = ~ (acc/base); acc%=base;
+    }
+    while (it!=d.begin());
+    shrink_neg();
+    return base + ~ acc;
+  }
+}
+
+// do output for the |number|, assumed non negative (recursive auxiliary)
+void print (std::ostream& out, big_int&& number)
+{ if (number.size()==1)
+    out << number;
+  else
+  {
+    auto last = number.shift_modulo(1000000000u); // that is $10^9<2^{32}$
+    print(out,std::move(number));
+    out << std::setw(9) << last; // caller should set fill character to |'0'|
+  }
+}
+
+std::ostream& operator<< (std::ostream& out, big_int&& number)
+{
+  if (number.is_negative())
+  { out << '-';
+    number.negate();
+  }
+  char prev=out.fill('0');
+  print(out,std::move(number));
+  out.fill(prev);
+  return out;
+}
+
+big_int&  big_int::reduce_mod (const big_int& divisor, big_int* quotient)
+{
+  if (size()<divisor.size()) // easy case, quotient is $0$ or $-1$
+  {
+    if (is_negative()==divisor.is_negative())
+    {
+      if (quotient!=nullptr)
+	*quotient = big_int(0);
+    }
+    else
+    {
+      if (quotient!=nullptr)
+	*quotient = big_int(-1);
+      *this += divisor; // this brings remainder to sign of divisor
+    }
+    return *this;
+  }
+
+  if (divisor.size()==1)
+  { if (divisor.d[0]==0)
+      throw std::runtime_error("Division by zero");
+    digit div = divisor.d[0];
+    if (div>=neg_flag)
+    { div = -div;
+      // |div| has an unsigned interpretation, so |div==neg_flag| does no harm
+      negate(); // now division effectively round quotient upwards
+    }
+
+    auto remainder = shift_modulo(div);
+    if (divisor.is_negative())
+      remainder = -remainder; // less than |div| in absolute value, so signed OK
+
+    if (quotient!=nullptr)
+      quotient->d = std::move(d); // export quotient, currently in |*this|
+
+    return *this = big_int(remainder);
+  }
+
+  big_int div(divisor); // make a modifiable copy
+  if (divisor.is_negative())
+  {
+    div.negate(); // ensure |div| is positive
+    negate(); // and negate |*this| too, to get the same quotient
+  }
+  if (div.d.back()==0) // positive "sign word" (possibly appended by |negate|)
+  {
+    div.d.pop_back(); // |div| is interpreted unsigned, remove any leading $0$
+    if (div.size()==1) // then redo code above for |divisor.size()==1|
+    { auto remainder=shift_modulo(div.d[0]); // here |div.d[0]=neg_flag|
+      if (quotient!=nullptr)
+	quotient->d = std::move(d); // export quotient, currently in |*this|
+      if (remainder<neg_flag)
+        d=std::vector<digit>{remainder};
+      else
+        d=std::vector<digit>{remainder, 0}; // stick on a necessary sign word
+      if (divisor.is_negative())
+	negate(); // negate remainder if divisor was negative
+      return *this;
+    }
+  }
+
+  const unsigned char shift = 32-bits::lastBit(div.d.back());
+  div <<= shift;
+  sign_extend(size()+1); // extend dividend by a word
+  *this <<= shift; // this may partially fill leading word, but keeps its sign
+
+  bool below_0 = is_negative(); // whether current remainder is negative
+
+  auto it = d.rbegin();
+  const two_digits lead= div.d.rbegin()[0];
+  const two_digits sub_lead = div.d.rbegin()[1];
+  two_digits acc = below_0 ? ~ *it : *it;
+  do
+  {
+    ++it; // now |it| points at second word of remainder
+    // the following variable is 64, but holds a lower 32 bit word an a sign
+    two_digits q_hat; // our quotient digit; might be exact or too high by 1
+    if (acc==lead) // exceptional case, inital division would leave $2^{32}$
+      q_hat = -1; // maximal digit; this is not too small, and at most 1 too big
+    else // normal case: do a true division giving a single word quotient
+    {
+      (acc<<=32) |= below_0 ? ~ it[0] : it[0]; // leading 2 digits of remainder
+      q_hat = acc/lead;
+      if ((acc%lead<<32|(below_0 ? ~it[1] : it[1])) < q_hat*sub_lead)
+	--q_hat; // |q_hat| was certainly too big; now it is at most 1 too big
+    }
+
+    acc = 0; // accumlator for subtracting from or adding to the remainder
+    auto r_it = it + div.size()-1; // a reverse iterator, contrary to |d_it|
+    if (below_0)
+      q_hat = -q_hat; // so that subtractions below actually become additions
+
+    for (auto d_it= div.d.begin(); d_it!=div.d.end(); ++d_it,--r_it)
+    { acc += *r_it - q_hat * *d_it; // mult in 64 bits; result may go below $0$
+      *r_it = acc; // store lower word
+      acc >>= 32; // and shift upper word to lower
+    }
+    acc += *r_it; // include leading digit of remainder, should mostly cancel
+    assert(digit(acc)+1<2); // namely: now either |acc==0| or |acc==-1|
+
+    *r_it = q_hat; // this is at the location |*(it-1)|
+    if (below_0 and q_hat!=0)
+      // compensate unsigned add at |r_it| by essentially doing
+      // |borrow(r_it.base())|, but leaving out the size-adjusting stuff
+      for (auto borrow_it=r_it.base(); borrow_it!=d.end(); ++borrow_it)
+	if (~ --(*borrow_it) !=0)
+	  break;
+
+    below_0 = // whether the remainder is to be considered as negative
+      static_cast<digit>(acc)!=0; // only the lower word of |acc| is nonzero
+    acc = below_0 ? ~ it[0] : it[0]; // load high digit for next iteration
+  }
+  while (it+div.size()!=d.rend()); // stop after last |div.size()| words ajusted
+
+  if (below_0) // then we must add $1$ to quotient and add |div| the remainder
+  {
+    for (auto borrow_it=it.base(); borrow_it!=d.end(); ++borrow_it)
+      if (~ --(*borrow_it) !=0)
+	break;
+
+    auto it=d.begin(); digit c=0; // carry, either 0 or 1
+    for (auto d_it = div.d.begin(); d_it!=div.d.end(); ++d_it,++it)
+      if (digit s = *d_it+c) // contextually convert |s| to |bool|
+	c = static_cast<digit>((*it+=s)<s);
+      // |else| nothing: add |0| to |*it| and keep |c| as is
+    assert(c==1); // the addition should rise above $-1$, so give a carry
+  }
+
+  // unnormalise and transfer results
+  if (quotient!=nullptr)
+  {
+    quotient->d.assign(it.base(),d.end());
+    quotient->shrink(); // quotient automatically has the correct sign bit
+  }
+  d.resize(div.size()); // restrict to remainder
+  if (shift!=0)
+    *this >>= shift; // shift remainder back to proper position
+  else if (is_negative())
+    d.push_back(0); // ensure a positive sign bit
+  shrink_pos();
+  if (divisor.is_negative())
+    negate(); // change sign of remainder for negative divisor
+
+  return *this;
+} // |big_int::reduce_mod|
+
+void big_int::operator<<= (unsigned char n) // unsigned up-shift (times $2^n$)
+{
+  if (n==0)
+    return; // this avoids shifting right by $32$ (undefined behaviour) below
+  auto it=d.end();
+  while (--it!=d.begin()) // loop |size()-1| times
+  { *it <<= n; // shift bits that remain in the same word (lost bits were used)
+    *it |= *(it-1)>> (32-n); // lower bits from previous (parentheses redundant)
+  }
+  *it <<= n; // this shifts zeros into the lowest |n| bits
+}
+
+void big_int::operator>>= (unsigned char n) // signed down-shift (divide $2^n$)
+{
+  if (n==0)
+    return; // this avoids shifting left by $32$ (undefined behaviour) below
+  auto it=d.rend();
+  while (--it!=d.rbegin()) // loop |size()-1| times
+  { *it >>= n; // shift bits that remain in the same word (lost bits were used)
+    *it |= *(it-1)<< (32-n); // higher bits from previous word
+  }
+  *it >>= n; // this shifts zeros into the highest |n| bits
+  if ((*it & constants::bitMask[n])!=0)
+    *it |= ~constants::leqMask[n]; // replace those zeros by copies of the sign
 }
 
 } // |namespace arithmetic|
