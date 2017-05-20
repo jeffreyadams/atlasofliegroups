@@ -405,46 +405,58 @@ big_int&  big_int::reduce_mod (const big_int& divisor, big_int* quotient)
   auto it = d.rbegin();
   const two_digits lead= div.d.rbegin()[0];
   const two_digits sub_lead = div.d.rbegin()[1];
-  two_digits acc = below_0 ? ~ *it : *it;
   do
   {
-    ++it; // now |it| points at second word of remainder
-    // the following variable is 64, but holds a lower 32 bit word an a sign
+    two_digits acc = below_0 ? ~ *it++ : *it++; // load high digit and advance
+    // |q_hat| is 64 bits to have wide multiply, but its upper word remains 0
     two_digits q_hat; // our quotient digit; might be exact or too high by 1
     if (acc==lead) // exceptional case, inital division would leave $2^{32}$
-      q_hat = -1; // maximal digit; this is not too small, and at most 1 too big
+      q_hat = static_cast<digit>(-1); // not too small, and at most 1 too big
     else // normal case: do a true division giving a single word quotient
     {
       (acc<<=32) |= below_0 ? ~ it[0] : it[0]; // leading 2 digits of remainder
-      q_hat = acc/lead;
+      q_hat = acc/lead; // a value now certain to be less than $2^{32}$
       if ((acc%lead<<32|(below_0 ? ~it[1] : it[1])) < q_hat*sub_lead)
 	--q_hat; // |q_hat| was certainly too big; now it is at most 1 too big
     }
 
-    acc = 0; // accumlator for subtracting from or adding to the remainder
+    if (q_hat==0) // we need to test this anyway might as well do this now
+      continue; // don't change remainder, don't change |below_0| status
+    acc = 0; // use as accumlator for subtracting or adding to the remainder
     auto r_it = it + div.size()-1; // a reverse iterator, contrary to |d_it|
-    if (below_0)
-      q_hat = -q_hat; // so that subtractions below actually become additions
+    if (not below_0)
+    { // do subtraction complemented: sandwiched between |~|, \emph{add} product
+      for (auto d_it= div.d.begin(); d_it!=div.d.end(); ++d_it,--r_it)
+      { acc += ~ *r_it + q_hat * *d_it; // multiply in 64 bits; will not OVF
+	*r_it = ~ acc; // computation is complemented, store lower word
+	acc >>= 32; // and shift upper word to lower (shift in $0$ high-word)
+      }
+      acc += ~*r_it; // include leading digit of remainder, should mostly cancel
+      assert(digit(acc)+1<2); // namely: |acc-(1<<32)| is either $-1$ or $0$
 
-    for (auto d_it= div.d.begin(); d_it!=div.d.end(); ++d_it,--r_it)
-    { acc += *r_it - q_hat * *d_it; // mult in 64 bits; result may go below $0$
-      *r_it = acc; // store lower word
-      acc >>= 32; // and shift upper word to lower
+      *r_it = q_hat; // this is at the location |*(it-1)|
+      below_0 = // whether the remainder is to be considered as negative
+	static_cast<digit>(acc)==0; // namely whether |acc=0x100000000|
+
     }
-    acc += *r_it; // include leading digit of remainder, should mostly cancel
-    assert(digit(acc)+1<2); // namely: now either |acc==0| or |acc==-1|
-
-    *r_it = q_hat; // this is at the location |*(it-1)|
-    if (below_0 and q_hat!=0)
-      // compensate unsigned add at |r_it| by essentially doing
-      // |borrow(r_it.base())|, but leaving out the size-adjusting stuff
+    else // |below_0| case
+    {
+      for (auto d_it= div.d.begin(); d_it!=div.d.end(); ++d_it,--r_it)
+      { acc += *r_it + q_hat * *d_it; // multiply in 64 bits; will not OVF
+	*r_it = acc; // store lower word
+	acc >>= 32; // and shift upper word to lower
+      }
+      acc += *r_it; // include leading digit of remainder, mostly cancels:
+      assert(digit(acc)+1<2); // namely: now either |acc==0| or |acc==-1|
+      *r_it = -q_hat; // this is at the location |*(it-1)|
+      // since |q_hat>0|, this requires essentially |borrow(r_it.base())|,
+      // but without the size-adjusting stuff, whence we write explicitly:
       for (auto borrow_it=r_it.base(); borrow_it!=d.end(); ++borrow_it)
 	if (~ --(*borrow_it) !=0)
 	  break;
-
-    below_0 = // whether the remainder is to be considered as negative
-      static_cast<digit>(acc)!=0; // only the lower word of |acc| is nonzero
-    acc = below_0 ? ~ it[0] : it[0]; // load high digit for next iteration
+      below_0 = // whether the remainder is to be considered as still negative
+	static_cast<digit>(acc)!=0; // namely whether |acc=0xFFFFFFFF|
+    }
   }
   while (it+div.size()!=d.rend()); // stop after last |div.size()| words ajusted
 
