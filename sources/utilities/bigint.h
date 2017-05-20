@@ -30,6 +30,7 @@ class big_int
 public:
   constexpr static digit neg_flag = 0x80000000;
   big_int (digit n) : d(1,n) {} // make a single-digit |big_int|
+  int int_val() const; // extract 32-bits signed value, or throw an error
 
   big_int& operator+= (const big_int& x);
   big_int& operator+= (big_int&& x);
@@ -81,6 +82,8 @@ public:
   bool operator>  (const big_int& x) const { return x < *this; }
   bool operator>= (const big_int& x) const { return not (*this < x); }
   bool operator<= (const big_int& x) const { return not (x < *this); }
+  bool operator== (const big_int& x) const;
+  bool operator!= (const big_int& x) const { return not (*this==x); }
 
   size_t size () const { return d.size(); }
 
@@ -107,4 +110,3 @@ inline std::ostream& operator<< (std::ostream& out, const big_int& number)
 } // |namespace arithmetic|
 } // |namespace atlas|
 #endif
-

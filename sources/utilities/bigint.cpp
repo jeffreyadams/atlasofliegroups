@@ -10,6 +10,7 @@
 #include "bigint.h"
 #include <cassert>
 #include <iomanip>
+#include <stdexcept>
 #include "bits.h" // for |lastBit|
 #include "constants.h" // for |bitMask|, |leqFlag|
 
@@ -73,7 +74,32 @@ void big_int::shrink_neg()
     d.pop_back();
 }
 
+bool big_int::operator<  (const big_int& x) const
+{ if (is_negative()!=x.is_negative()) // opposite sides of zero
+    return is_negative();
+  else if (size()!=x.size())
+    return is_negative() ? x.size()<size() : size()<x.size();
+  for (auto it=d.rbegin(), x_it=x.d.rbegin(); it!=d.rend(); ++it,++x_it)
+    if (*it != *x_it)
+      return *it < *x_it; // this is right regardless of |is_negative()|
+  return false;
+}
 
+bool big_int::operator== (const big_int& x) const
+{ if (size()!=x.size())
+    return false; // because values are always normalised
+  // now just look for a difference in any order
+  for (auto it=d.begin(), x_it=x.d.begin(); it!=d.end(); ++it,++x_it)
+    if (*it != *x_it)
+      return false;
+  return true;
+}
+
+int big_int::int_val() const
+{ if (size()>1)
+    throw std::runtime_error("Integer value to big for conversion");
+  return static_cast<int>(d[0]);
+}
 
 big_int& big_int::operator+= (digit x)
 { if (size()==1) // then do signed addition of single digits numbers
