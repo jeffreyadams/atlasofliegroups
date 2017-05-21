@@ -382,7 +382,7 @@ big_int::big_int (const char * p, unsigned char base, unsigned (*convert)(char))
   d.push_back(0);
 
   while (*p!='\0')
-    mult_add(base,*p++);
+    mult_add(base,convert(*p++));
 }
 
 std::ostream& operator<< (std::ostream& out, big_int&& number)

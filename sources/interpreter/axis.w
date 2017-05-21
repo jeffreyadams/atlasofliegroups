@@ -466,14 +466,18 @@ a unique pointer.
 The code below takes into account the possibility that a denotation is
 converted immediately to some other type, for instance integer denotations can
 be used where a rational number is expected. The function |conform_types|
-(defined in \.{axis-types.w}) will test whether the denotation provides or can be
-converted to the required type, and may modify its final argument in the
-latter case.
+(defined in \.{axis-types.w}) will test whether the denotation provides or can
+be converted to the required type, and may modify its final argument in the
+latter case. Because of the call to |conform_type|, which needs both the
+converted denotation and (for error reporting) the original expression, we
+cannot move the |big_int| pointed to by |e.int_denotation_variant| into the
+|denotation|, but rather copy it.
 
 @< Cases for type-checking and converting... @>=
 case integer_denotation:
   { expression_ptr d@|(new denotation
-      (std::make_shared<int_value>(e.int_denotation_variant)));
+      (std::make_shared<int_value>(@|
+         arithmetic::big_int(e.str_denotation_variant.c_str(),10))));
     return conform_types(int_type,type,std::move(d),e);
   }
 case string_denotation:

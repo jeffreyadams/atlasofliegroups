@@ -18,9 +18,6 @@
 namespace atlas {
 namespace arithmetic {
 
-unsigned char_val (char c) // for reading from strings
-{ return c<='9'? c-'0' : c<='Z' ? c='A' : c-'a'; }
-
 class big_int
 {
   typedef std::uint32_t digit;
@@ -29,6 +26,9 @@ class big_int
   std::vector<digit> d;
 
   big_int () : d() {} // private constructor leaving number in invalid state
+
+static unsigned char_val (char c) // for reading from strings
+{ return c<='9'? c-'0' : c<='Z' ? c='A' : c-'a'; }
 
 public:
   constexpr static digit neg_flag = 0x80000000;
