@@ -18,6 +18,9 @@
 namespace atlas {
 namespace arithmetic {
 
+unsigned char_val (char c) // for reading from strings
+{ return c<='9'? c-'0' : c<='Z' ? c='A' : c-'a'; }
+
 class big_int
 {
   typedef std::uint32_t digit;
@@ -30,8 +33,12 @@ class big_int
 public:
   constexpr static digit neg_flag = 0x80000000;
   big_int (digit n) : d(1,n) {} // make a single-digit |big_int|
+  big_int (const char * p, unsigned char base, // from text in base |base|
+	   unsigned (*convert)(char) = &char_val); // maybe custom conversion
   int int_val() const; // extract 32-bits signed value, or throw an error
 
+  big_int& operator++ () { carry(d.begin()); return *this; }
+  big_int& operator-- () { borrow(d.begin()); return *this; }
   big_int& operator+= (const big_int& x);
   big_int& operator+= (big_int&& x);
   big_int& operator-= (const big_int& x);
@@ -39,13 +46,12 @@ public:
   big_int& operator+= (digit x);
   big_int& operator-= (digit x)
   { return x!=neg_flag ? *this += -x : ++*this += ~neg_flag; }
-  big_int& operator++ () { carry(d.begin()); return *this; }
-  big_int& operator-- () { borrow(d.begin()); return *this; }
-
   big_int& subtract_from (const big_int& x);
   big_int& subtract_from (big_int&& x);
   big_int& negate ()     { compl_neg(d.begin(),true); return *this; }
   big_int& complement () { compl_neg(d.begin(),false); return *this; }
+
+  big_int& operator*= (digit x);
   big_int operator* (const big_int&) const;
 
   digit shift_modulo(digit base); // divide by |base|, return remainder
@@ -99,6 +105,7 @@ private:
   void sub_from (const big_int& x); // with precondition |x.d.size()<=d.size()|
   void compl_neg(std::vector<digit>::iterator it,bool negate);
 
+  void mult_add (digit x, digit a);
   void operator<<= (unsigned char n); // unsigned up-shift (multiply by $2^n$)
   void operator>>= (unsigned char n); // signed down-shift (divide by $2^n$)
 }; // |class big_int|

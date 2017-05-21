@@ -11,6 +11,7 @@
 #include <cassert>
 #include <iomanip>
 #include <stdexcept>
+#include <cstring>
 #include "bits.h" // for |lastBit|
 #include "constants.h" // for |bitMask|, |leqFlag|
 
@@ -279,6 +280,32 @@ big_int& big_int::subtract_from (big_int&& x)
   return *this;
 }
 
+// here assume unsigned interpretation for |*this|, |x|, and |a|
+void big_int::mult_add (digit x, digit a)
+{ two_digits acc=a, xx=x; // we need 64-bit unsigned arithmetic here
+  for (auto it=d.begin(); it!=d.end(); ++it)
+  {
+    acc += *it * xx;
+    *it = acc; // save lower bits
+    acc>>=32; // and retain higher bits for next operation
+  }
+  if (acc!=0)
+    d.push_back(acc);
+  else if(is_negative())
+    d.push_back(0); // ensure positive sign
+}
+
+big_int& big_int::operator*= (digit x)
+{ if (x<neg_flag)
+    mult_add(x,0);
+  else
+  { negate();
+    mult_add(x,0);
+    negate();
+  }
+  return *this;
+}
+
 big_int big_int::operator* (const big_int& x) const
 {
   big_int result;
@@ -346,6 +373,16 @@ void print (std::ostream& out, big_int&& number)
     print(out,std::move(number));
     out << std::setw(9) << last; // caller should set fill character to |'0'|
   }
+}
+
+big_int::big_int (const char * p, unsigned char base, unsigned (*convert)(char))
+  : d()
+{ assert(base>1u and base<=36u);
+  d.reserve(1+std::strlen(p)/bits::lastBit(base-1));
+  d.push_back(0);
+
+  while (*p!='\0')
+    mult_add(base,*p++);
 }
 
 std::ostream& operator<< (std::ostream& out, big_int&& number)
