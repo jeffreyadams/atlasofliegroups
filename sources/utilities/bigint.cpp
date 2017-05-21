@@ -339,7 +339,7 @@ big_int::digit big_int::shift_modulo(digit base)
 // do output for the |number|, assumed non negative (recursive auxiliary)
 void print (std::ostream& out, big_int&& number)
 { if (number.size()==1)
-    out << number;
+    out << number.int_val();
   else
   {
     auto last = number.shift_modulo(1000000000u); // that is $10^9<2^{32}$

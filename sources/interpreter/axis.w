@@ -3516,7 +3516,7 @@ inline std::string range_mess
 @)
 template <bool reversed>
 void row_subscription<reversed>::evaluate(level l) const
-{ int i=(index->eval(),get<int_value>()->val);
+{ int i=(index->eval(),get<int_value>()->int_val());
   shared_row r=(array->eval(),get<row_value>());
   size_t n = r->val.size();
   if (reversed)
@@ -3528,7 +3528,7 @@ void row_subscription<reversed>::evaluate(level l) const
 @)
 template <bool reversed>
 void vector_subscription<reversed>::evaluate(level l) const
-{ int i=(index->eval(),get<int_value>()->val);
+{ int i=(index->eval(),get<int_value>()->int_val());
   shared_vector v=(array->eval(),get<vector_value>());
   size_t n = v->val.size();
   if (reversed)
@@ -3541,7 +3541,7 @@ void vector_subscription<reversed>::evaluate(level l) const
 @)
 template <bool reversed>
 void ratvec_subscription<reversed>::evaluate(level l) const
-{ int i=(index->eval(),get<int_value>()->val);
+{ int i=(index->eval(),get<int_value>()->int_val());
   shared_rational_vector v=(array->eval(),get<rational_vector_value>());
   size_t n = v->val.size();
   if (reversed)
@@ -3555,7 +3555,7 @@ void ratvec_subscription<reversed>::evaluate(level l) const
 @)
 template <bool reversed>
 void string_subscription<reversed>::evaluate(level l) const
-{ int i=(index->eval(),get<int_value>()->val);
+{ int i=(index->eval(),get<int_value>()->int_val());
   shared_string s=(array->eval(),get<string_value>());
   size_t n = s->val.size();
   if (reversed)
@@ -3573,8 +3573,8 @@ just slightly more complicated.
 template <bool reversed>
 void matrix_subscription<reversed>::evaluate(level l) const
 { index->multi_eval(); @+
-  int j=get<int_value>()->val;
-  int i=get<int_value>()->val;
+  int j=get<int_value>()->int_val();
+  int i=get<int_value>()->int_val();
   shared_matrix m=(array->eval(),get<matrix_value>());
   size_t r = m->val.numRows();
   size_t c = m->val.numColumns();
@@ -3592,7 +3592,7 @@ void matrix_subscription<reversed>::evaluate(level l) const
 @)
 template <bool reversed>
 void matrix_get_column<reversed>::evaluate(level l) const
-{ int j=(index->eval(),get<int_value>()->val);
+{ int j=(index->eval(),get<int_value>()->int_val());
   shared_matrix m=(array->eval(),get<matrix_value>());
   size_t c = m->val.numColumns();
   if (reversed)
@@ -3627,8 +3627,8 @@ void slice_range_error
 @)
 template <unsigned flags>
 void row_slice<flags>::evaluate(level l) const
-{ int upb=(upper->eval(),get<int_value>()->val);
-  int lwb=(lower->eval(),get<int_value>()->val);
+{ int upb=(upper->eval(),get<int_value>()->int_val());
+  int lwb=(lower->eval(),get<int_value>()->int_val());
   shared_row arr=(array->eval(),get<row_value>());
   const auto& r = arr->val;
   int n = r.size();
@@ -3651,8 +3651,8 @@ void row_slice<flags>::evaluate(level l) const
 
 template <unsigned flags>
 void vector_slice<flags>::evaluate(level l) const
-{ int upb=(upper->eval(),get<int_value>()->val);
-  int lwb=(lower->eval(),get<int_value>()->val);
+{ int upb=(upper->eval(),get<int_value>()->int_val());
+  int lwb=(lower->eval(),get<int_value>()->int_val());
   shared_vector arr=(array->eval(),get<vector_value>());
   const auto& r = arr->val;
   int n = r.size();
@@ -3678,8 +3678,8 @@ constructor takes care of normalising the result.
 
 template <unsigned flags>
 void ratvec_slice<flags>::evaluate(level l) const
-{ int upb=(upper->eval(),get<int_value>()->val);
-  int lwb=(lower->eval(),get<int_value>()->val);
+{ int upb=(upper->eval(),get<int_value>()->int_val());
+  int lwb=(lower->eval(),get<int_value>()->int_val());
   shared_rational_vector arr=(array->eval(),get<rational_vector_value>());
   const auto& r = arr->val.numerator();
   int n = r.size();
@@ -3705,8 +3705,8 @@ void ratvec_slice<flags>::evaluate(level l) const
 
 template <unsigned flags>
 void string_slice<flags>::evaluate(level l) const
-{ int upb=(upper->eval(),get<int_value>()->val);
-  int lwb=(lower->eval(),get<int_value>()->val);
+{ int upb=(upper->eval(),get<int_value>()->int_val());
+  int lwb=(lower->eval(),get<int_value>()->int_val());
   shared_string arr=(array->eval(),get<string_value>());
   const auto& r = arr->val;
   int n = r.size();
@@ -3733,8 +3733,8 @@ but it is not hard to do the right thing using the integer indices |lwb|,
 
 template <unsigned flags>
 void matrix_slice<flags>::evaluate(level l) const
-{ int upb=(upper->eval(),get<int_value>()->val);
-  int lwb=(lower->eval(),get<int_value>()->val);
+{ int upb=(upper->eval(),get<int_value>()->int_val());
+  int lwb=(lower->eval(),get<int_value>()->int_val());
   shared_matrix mat=(array->eval(),get<matrix_value>());
   const auto& m = mat->val;
   int n = m.numColumns();
@@ -4055,7 +4055,7 @@ void int_case_expression::print(std::ostream& out) const
 @< Function definitions @>=
 void int_case_expression::evaluate(level l) const
 { condition->eval();
-  int i = get<int_value>()->val;
+  int i = get<int_value>()->int_val();
   if (static_cast<unsigned>(i)>=branches.size())
     throw runtime_error(range_mess(i,branches.size(),this,"case expression"));
   branches[i]->evaluate(l);
@@ -5059,12 +5059,12 @@ simplifies the termination condition and might therefore be marginally faster.
 @< Function definitions @>=
 template <unsigned flags>
 void counted_for_expression<flags>::evaluate(level l) const
-{ int c=(count->eval(),get<int_value>()->val);
+{ int c=(count->eval(),get<int_value>()->int_val());
   if (c<0)
     c=0; // no negative size result
 
   if (has_frame(flags)) // then loop uses index
-  { int b=(bound.get()==nullptr ? 0 : (bound->eval(),get<int_value>()->val));
+  { int b=(bound.get()==nullptr ? 0 : (bound->eval(),get<int_value>()->int_val()));
     id_pat pattern(id);
     if (l==no_value)
       @< Perform counted loop that uses an index, without storing result,
@@ -6014,7 +6014,7 @@ Afterwards, depending on |l|, we may put back the stack-top value as result of
 the component assignment, possibly expanding a tuple in the process.
 
 @< Replace component at |index| in row |loc|... @>=
-{ unsigned int i=(index->eval(),get<int_value>()->val);
+{ unsigned int i=(index->eval(),get<int_value>()->int_val());
   std::vector<shared_value>& a=force<row_value>(loc)->val;
   size_t n=a.size();
   if (i>=n)
@@ -6030,12 +6030,13 @@ no expansion, so we either leave it on the stack, or remove it if the value of
 the component assignment expression is not used.
 
 @< Replace entry at |index| in vector |loc|... @>=
-{ unsigned int i=(index->eval(),get<int_value>()->val);
+{ unsigned int i=(index->eval(),get<int_value>()->int_val());
   std::vector<int>& v=force<vector_value>(loc)->val;
   size_t n=v.size();
   if (i>=n)
     throw runtime_error(range_mess(i,v.size(),this,"component assignment"));
-  v[reversed ? n-1-i : i]= force<int_value>(execution_stack.back().get())->val;
+  v[reversed ? n-1-i : i]=
+    force<int_value>(execution_stack.back().get())->int_val();
     // assign |int| from un-popped top
   if (lev==no_value)
     execution_stack.pop_back(); // pop it anyway if result not needed
@@ -6046,8 +6047,8 @@ indices, and there are two bound checks.
 
 @< Replace entry at |index| in matrix |loc|... @>=
 { index->multi_eval();
-  unsigned int j=get<int_value>()->val;
-  unsigned int i=get<int_value>()->val;
+  unsigned int j=get<int_value>()->int_val();
+  unsigned int i=get<int_value>()->int_val();
 @/
   int_Matrix& m=force<matrix_value>(loc)->val;
   size_t k=m.numRows(),l=m.numColumns();
@@ -6057,7 +6058,7 @@ indices, and there are two bound checks.
     throw runtime_error(
       range_mess(j,m.numColumns(),this,"matrix entry assignment"));
   m(reversed ? k-1-i : i,reversed ? l-1-j : j)=
-    force<int_value>(execution_stack.back().get())->val;
+    force<int_value>(execution_stack.back().get())->int_val();
     // assign |int| from un-popped top
   if (lev==no_value)
     execution_stack.pop_back(); // pop it anyway if result not needed
@@ -6067,7 +6068,7 @@ indices, and there are two bound checks.
 for matching column length.
 
 @< Replace column at |index| in matrix |loc|... @>=
-{ unsigned int j=(index->eval(),get<int_value>()->val);
+{ unsigned int j=(index->eval(),get<int_value>()->int_val());
   int_Matrix& m=force<matrix_value>(loc)->val;
 @/const int_Vector& v=force<vector_value>(execution_stack.back().get())->val;
     // don't pop
