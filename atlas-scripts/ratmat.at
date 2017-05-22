@@ -1,6 +1,7 @@
 { implement type ratmat that makes linear algebra over Q possible }
 
 <basic.at
+<matrix.at
 
 { a trick to locally rebind |s| (defined in basic.at) to constant string "/" }
 save_s : s

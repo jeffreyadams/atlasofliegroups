@@ -134,7 +134,7 @@ M*B_new=B
 {.adjoint root datum and change of basis matrix.}
 set adjoint_info (RootDatum rd) = (RootDatum,mat): { change weight basis to simple roots }
 let A=simple_roots(rd) then
-A_new=id_mat(ss_rank(rd)) then
+A_new=id_mat(semisimple_rank(rd)) then
 B_new=Cartan_matrix(rd) in 
 (root_datum(A_new,B_new), left_inverse(A))
 
@@ -152,8 +152,8 @@ let (rd_sc,)=simply_connected_cover_info(rd) in rd_sc
 
 {.simply connected cover of derived group, with change of basis matrix.}
 set simply_connected_cover_derived_info(RootDatum rd)=(RootDatum,ratmat):
-let (rd_der,A)=derived_info(rd) then 
-(rd_sc,B)=simply_connected_cover_info(rd_der) in (rd_sc,B*A)
+let (rd_der,M)=derived_info(rd) then 
+(rd_sc,N)=simply_connected_cover_info(rd_der) in (rd_sc,N*M)
 
 {.simply connected cover of complex group}
 set simply_connected_cover_derived(RootDatum rd)=RootDatum:
