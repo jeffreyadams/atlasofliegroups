@@ -2219,7 +2219,7 @@ void string_geq_wrapper(expression_base::level l)
 @)
 void int_format_wrapper(expression_base::level l)
 { shared_int n=get<int_value>();
-  std::ostringstream o; o<<n;
+  std::ostringstream o; o<<n->val;
   if (l!=expression_base::no_value)
     push_value(std::make_shared<string_value>(o.str()));
 }

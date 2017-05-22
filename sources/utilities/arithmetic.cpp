@@ -33,7 +33,7 @@ namespace atlas {
 namespace arithmetic {
 
 
-/*!
+/*
   The classical Euclidian algorithm for positive (indeed unsigned) numbers.
   It is assumed that |b != 0|, but |a| might be zero.
 */
@@ -49,9 +49,10 @@ Denom_t unsigned_gcd(Denom_t a, Denom_t b)
 
 Denom_t dummy_gcd, dummy_mult; // for default arguments to |lcm|
 
-/* |lcm(a,b,gcd,mult_a)| returns the least common multiple of |a| and |b|,
-   sets |gcd| to their greatest common divisor and |mult_a| to a multiple of
-   |a| with |gcd==mult_a%b|. A Bezout coefficient for |a| is |mult_a/gcd|.
+/*
+  |lcm(a,b,gcd,mult_a)| returns the least common multiple of |a| and |b|,
+  sets |gcd| to their greatest common divisor and |mult_a| to a multiple of
+  |a| with |gcd==mult_a%b|. A Bezout coefficient for |gcd| is |mult_a/a|.
 
   Precondition: a > 0;
 */

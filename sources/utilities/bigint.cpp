@@ -306,6 +306,19 @@ big_int& big_int::operator*= (digit x)
   return *this;
 }
 
+// constructor from string, with specified base and char-to-digit conversion
+big_int::big_int (const char * p, unsigned char base, unsigned (*convert)(char))
+  : d()
+{ assert(base>1u);
+  // estimate number of |digit|s required conservatively:
+  d.reserve(1+std::strlen(p)*bits::lastBit(base-1)/32);
+
+  d.push_back(0); // start with a single zero |digit| to have a valid state
+
+  while (*p!='\0')
+    mult_add(base,convert(*p++));
+}
+
 big_int big_int::operator* (const big_int& x) const
 {
   big_int result;
@@ -373,16 +386,6 @@ void print (std::ostream& out, big_int&& number)
     print(out,std::move(number));
     out << std::setw(9) << last; // caller should set fill character to |'0'|
   }
-}
-
-big_int::big_int (const char * p, unsigned char base, unsigned (*convert)(char))
-  : d()
-{ assert(base>1u and base<=36u);
-  d.reserve(1+std::strlen(p)/bits::lastBit(base-1));
-  d.push_back(0);
-
-  while (*p!='\0')
-    mult_add(base,convert(*p++));
 }
 
 std::ostream& operator<< (std::ostream& out, big_int&& number)

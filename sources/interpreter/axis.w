@@ -468,10 +468,7 @@ converted immediately to some other type, for instance integer denotations can
 be used where a rational number is expected. The function |conform_types|
 (defined in \.{axis-types.w}) will test whether the denotation provides or can
 be converted to the required type, and may modify its final argument in the
-latter case. Because of the call to |conform_type|, which needs both the
-converted denotation and (for error reporting) the original expression, we
-cannot move the |big_int| pointed to by |e.int_denotation_variant| into the
-|denotation|, but rather copy it.
+latter case.
 
 @< Cases for type-checking and converting... @>=
 case integer_denotation:
