@@ -352,6 +352,19 @@ big_int big_int::operator* (const big_int& x) const
   return result;
 }
 
+big_int big_int::power (unsigned int e) const
+{
+  if (e<=1)
+    return e==0 ? big_int(1u) : *this;
+
+  big_int result = *this; // take a working copy;
+
+  // multiply repeatedly; repeated squaring is asymptotically as bad: $O(e^2)$
+  do result *= *this;
+  while (--e>1); // repeat |e-1| times
+  return result;
+}
+
 // divide by base, return remainder
 big_int::digit big_int::shift_modulo(digit base)
 { auto it = d.end();
@@ -407,12 +420,12 @@ big_int&  big_int::reduce_mod (const big_int& divisor, big_int* quotient)
     if (is_negative()==divisor.is_negative())
     {
       if (quotient!=nullptr)
-	*quotient = big_int(0);
+	*quotient = big_int(0u);
     }
     else
     {
       if (quotient!=nullptr)
-	*quotient = big_int(-1);
+	*quotient = big_int(-1u);
       *this += divisor; // this brings remainder to sign of divisor
     }
     return *this;

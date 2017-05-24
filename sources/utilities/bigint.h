@@ -33,6 +33,8 @@ static unsigned char_val (char c) // for reading from strings
 public:
   constexpr static digit neg_flag = 0x80000000;
   big_int (digit n) : d(1,n) {} // make a single-digit |big_int|
+  big_int (unsigned long long n)  // maybe 2-digit
+  : d { static_cast<digit>(n), static_cast<digit>(n>>32) } { shrink();}
   big_int (const char * p, unsigned char base, // from text in base |base|
 	   unsigned (*convert)(char) = &char_val); // maybe custom conversion
   int int_val() const; // extract 32-bits signed value, or throw an error
@@ -91,6 +93,7 @@ public:
   bool operator== (const big_int& x) const;
   bool operator!= (const big_int& x) const { return not (*this==x); }
 
+  big_int power (unsigned int e) const;
   size_t size () const { return d.size(); }
 
 private:

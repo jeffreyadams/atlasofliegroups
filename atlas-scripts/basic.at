@@ -108,10 +108,6 @@ set sign (rat a)= int: sign(numer(a)) { denominator is always positive }
 
 set abs(rat a)=rat: sign(a)*a
 
-set floor (rat a) = int: \ %a     { decompose, then integer division }
-set ceil  (rat a) = int: -\ %-a   { same, sandwiched in negations }
-
-set \ ((rat,int)p) = int: floor(/p)
 set \ ((rat,rat)p) = int: floor(/p)
 set \% ((rat,int)p) = (int,rat): (\p,%p) { shouldn't these two be built-in? }
 set \% ((rat,rat)p) = (int,rat): (\p,%p)

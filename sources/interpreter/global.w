@@ -1766,12 +1766,13 @@ void times_wrapper(expression_base::level l)
 because ``$/$'' is used to form rational numbers. We take the occasion of
 defining a division operation to repair the integer division operation
 |operator/| built into \Cpp, which is traditionally broken for negative
-dividends. This is done by using |arithmetic::divide| that handles such cases
-correctly (rounding the quotient systematically downwards). Since
-|arithmetic::divide| takes an unsigned second argument, we handle the case of
-a negative divisor ourselves. We do so by stipulating $a\backslash(-b)$ as
-$-(a\backslash b)$. (Another option is to define $a\backslash(-b)$ as
-$(-a)\backslash b$; the jury is still out on which one is preferable.)
+dividends. This used to be done by using |arithmetic::divide| that handles
+such cases correctly (rounding the quotient systematically downwards); the
+same precaution are taken by the |reduce_mod| method of |arithmetic::big_int|
+that now implements integers of the \.{axis} programming language. It also
+handles negative dividends by stipulating $a\backslash(-b)=(-a)\backslash b$,
+which implies $a\%(-b)=-(a\%b)$: for division by $-b<0$ the remainder~$r$ is
+in the range $-b<r\leq0$.
 
 @< Local function definitions @>=
 void divide_wrapper(expression_base::level l)
@@ -1808,7 +1809,7 @@ void divmod_wrapper(expression_base::level l)
     throw runtime_error("DivMod by zero");
   if (l==expression_base::no_value)
     return;
-  own_int quotient = std::make_shared<int_value>(arithmetic::big_int(0));
+  own_int quotient = std::make_shared<int_value>(arithmetic::big_int(0u));
   i->val.reduce_mod(j->val,&quotient->val);
   push_value(quotient);
   push_value(i); // remainder
@@ -1834,15 +1835,11 @@ void power_wrapper(expression_base::level l)
     return;
 @)
   if (unit_base)
-  {@; push_value(b->int_val()>0 or n%2==0 ? one : minus_one);
+  {@; push_value(n%2!=0 and b->val.is_negative() ? minus_one : one);
       return;
   }
 @)
-  // repeated squaring is asymptotically as bad: $O(n^2)$
-  own_int result = std::make_shared<int_value>(1);
-  for (int i=0; i<n; ++i)
-    result->val *= b->val;
-  push_value(result);
+  push_value(std::make_shared<int_value>(b->val.power(n)));
 }
 
 @*1 Rationals.
@@ -1853,10 +1850,7 @@ the |Rational| constructor requires an unsigned denominator, we must make sure
 the integer passed to it is positive. The opposite operation of separating a
 rational number into numerator and denominator is also provided; this
 operation is essential in order to be able to get from rationals back into the
-world of integers. Currently this splitting operation has an intrinsic danger,
-since the \Cpp-type |int| used in |int_value| is smaller than the types used
-for numerator and denominator of |Rational| values (which are |long long int|
-respectively |unsigned long long int|).
+world of integers.
 
 @< Local function definitions @>=
 
@@ -1886,46 +1880,61 @@ for efficiency.
 void rat_plus_int_wrapper(expression_base::level l)
 { int i=get<int_value>()->int_val();
   own_rat q=get_own<rat_value>();
-  if (l==expression_base::no_value)
-    return;
-  q->val+=i;
-  push_value(q);
+  if (l!=expression_base::no_value)
+  {@;
+    q->val+=i;
+    push_value(q);
+  }
 }
 void rat_minus_int_wrapper(expression_base::level l)
 { int i=get<int_value>()->int_val();
   own_rat q=get_own<rat_value>();
-  if (l==expression_base::no_value)
-    return;
-  q->val-=i;
-  push_value(q);
+  if (l!=expression_base::no_value)
+  {@;
+    q->val-=i;
+    push_value(q);
+  }
 }
 void rat_times_int_wrapper(expression_base::level l)
 { int i=get<int_value>()->int_val();
   own_rat q=get_own<rat_value>();
-  if (l==expression_base::no_value)
-    return;
-  q->val*=i;
-  push_value(q);
+  if (l!=expression_base::no_value)
+  {@;
+    q->val*=i;
+    push_value(q);
+  }
 }
 void rat_divide_int_wrapper(expression_base::level l)
 { int i=get<int_value>()->int_val();
   own_rat q=get_own<rat_value>();
   if (i==0)
     throw runtime_error("Rational division by zero");
-  if (l==expression_base::no_value)
-    return;
-  q->val/=i;
-  push_value(q);
+  if (l!=expression_base::no_value)
+  {@;
+    q->val/=i;
+    push_value(q);
+  }
 }
+
+void rat_quotient_int_wrapper(expression_base::level l)
+{ shared_int i=get<int_value>();
+  shared_rat q=get<rat_value>();
+  if (i->val.is_zero())
+    throw runtime_error("Rational quotient by zero");
+  if (l!=expression_base::no_value)
+    push_value(std::make_shared<int_value>(q->val.quotient(i->int_val())));
+}
+
 void rat_modulo_int_wrapper(expression_base::level l)
 { int i=get<int_value>()->int_val();
   own_rat q=get_own<rat_value>();
   if (i==0)
     throw runtime_error("Rational modulo zero");
-  if (l==expression_base::no_value)
-    return;
-  q->val%=i;
-  push_value(q);
+  if (l!=expression_base::no_value)
+  {@;
+    q->val%=i;
+    push_value(q);
+  }
 }
 
 @ We define arithmetic operations for rational numbers, made possible thanks to
@@ -1945,14 +1954,12 @@ void rat_minus_wrapper(expression_base::level l)
   if (l!=expression_base::no_value)
     push_value(std::make_shared<rat_value>(i-j));
 }
-@)
 void rat_times_wrapper(expression_base::level l)
 { Rational j=get<rat_value>()->val;
   Rational i=get<rat_value>()->val;
   if (l!=expression_base::no_value)
     push_value(std::make_shared<rat_value>(i*j));
 }
-@)
 void rat_divide_wrapper(expression_base::level l)
 { Rational j=get<rat_value>()->val;
   Rational i=get<rat_value>()->val;
@@ -1971,17 +1978,38 @@ void rat_modulo_wrapper(expression_base::level l)
 }
 @)
 void rat_unary_minus_wrapper(expression_base::level l)
-{@; Rational i=get<rat_value>()->val;
+{ Rational i=get<rat_value>()->val;
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<rat_value>(Rational(0)-i)); }
-@)
+    push_value(std::make_shared<rat_value>(-i));
+}
 void rat_inverse_wrapper(expression_base::level l)
-{@; Rational i=get<rat_value>()->val;
+{ Rational i=get<rat_value>()->val;
   if (i.numerator()==0)
     throw runtime_error("Inverse of zero");
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<rat_value>(Rational(1)/i)); }
+    push_value(std::make_shared<rat_value>(i.inverse()));
+}
+
 @)
+void rat_floor_wrapper(expression_base::level l)
+{ Rational i=get<rat_value>()->val;
+  if (l!=expression_base::no_value)
+    push_value(std::make_shared<int_value>(i.floor()));
+}
+void rat_ceil_wrapper(expression_base::level l)
+{ Rational i=get<rat_value>()->val;
+  if (l!=expression_base::no_value)
+    push_value(std::make_shared<int_value>(i.ceil()));
+}
+void rat_quotient_wrapper(expression_base::level l)
+{ int j=get<int_value>()->int_val();
+  Rational i=get<rat_value>()->val;
+  if (j==0)
+    throw runtime_error("Rational quotient by zero");
+  if (l!=expression_base::no_value)
+    push_value(std::make_shared<int_value>
+      (j>0 ? i.quotient(j) : (-i).quotient(-j)));
+}
 void rat_power_wrapper(expression_base::level l)
 { int n=get<int_value>()->int_val(); Rational b=get<rat_value>()->val;
   if (b.numerator()==0 and n<0)
@@ -3044,6 +3072,9 @@ install_function(rat_divide_wrapper,"/","(rat,rat->rat)");
 install_function(rat_modulo_wrapper,"%","(rat,rat->rat)");
 install_function(rat_unary_minus_wrapper,"-","(rat->rat)");
 install_function(rat_inverse_wrapper,"/","(rat->rat)");
+install_function(rat_floor_wrapper,"floor","(rat->int)");
+install_function(rat_ceil_wrapper,"ceil","(rat->int)");
+install_function(rat_quotient_wrapper,"\\","(rat,int->int)");
 install_function(rat_power_wrapper,"^","(rat,int->rat)");
 install_function(int_unary_eq_wrapper,"=","(int->bool)");
 install_function(int_unary_neq_wrapper,"!=","(int->bool)");
