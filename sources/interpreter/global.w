@@ -1249,6 +1249,18 @@ struct int_value : public value_base
 { arithmetic::big_int val;
 @)
   explicit int_value(int v) : val(static_cast<unsigned>(v)) @+ {}
+    // usual conversion into |int_val|
+  explicit int_value(arithmetic::Numer_t v) // use this for 64-bits values
+  : val(v) @+ {} // use constructor with unsigned value
+  explicit int_value(unsigned int v)
+    // allow providing |unsigned|, widened to ensure no sign-flip occurs
+    : val(static_cast<arithmetic::Denom_t>(v)) @+ {}
+  explicit int_value(unsigned long v)
+    // once one overloads two integral types, one must do all
+    : val(static_cast<arithmetic::Denom_t>(v)) @+ {}
+  explicit int_value(unsigned long long v)
+    // allow providing |unsigned|, widened to ensure no sign-flip occurs
+    : val(static_cast<arithmetic::Denom_t>(v)) @+ {}
   explicit int_value(arithmetic::big_int&& v) : val(std::move(v)) @+ {}
   ~int_value()@+ {}
   void print(std::ostream& out) const @+{@; out << val; }
@@ -1855,11 +1867,18 @@ world of integers.
 @< Local function definitions @>=
 
 void fraction_wrapper(expression_base::level l)
-{ int d=get<int_value>()->int_val(); int n=get<int_value>()->int_val();
-  if (d==0) throw runtime_error("fraction with zero denominator");
-  if (d<0) {@; d=-d; n=-n; } // ensure denominator is positive
-  if (l!=expression_base::no_value)
-    push_value(std::make_shared<rat_value>(Rational(n,d)));
+{ shared_int d=get<int_value>();
+  shared_int n=get<int_value>();
+  if (d->val.is_zero())
+    throw runtime_error("fraction with zero denominator");
+  if (l==expression_base::no_value)
+    return;
+  if (d>0)
+    push_value(std::make_shared<rat_value>@|
+      (Rational(n->val.long_val(),d->val.ulong_val())));
+  else // ensure denominator is positive
+    push_value(std::make_shared<rat_value>@|
+      (Rational((-n->val).long_val(),(-d->val).ulong_val())));
 }
 @)
 
@@ -1867,7 +1886,7 @@ void unfraction_wrapper(expression_base::level l)
 { Rational q=get<rat_value>()->val;
   if (l!=expression_base::no_value)
   { push_value(std::make_shared<int_value>(q.numerator()));
-    push_value(std::make_shared<int_value>(q.denominator()));
+    push_value(std::make_shared<int_value>(q.true_denominator()));
     if (l==expression_base::single_value)
       wrap_tuple<2>();
   }

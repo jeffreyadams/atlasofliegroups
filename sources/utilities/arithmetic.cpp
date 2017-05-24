@@ -191,7 +191,7 @@ Rational& Rational::power(int n)
 
 std::ostream& operator<< (std::ostream& out, const Rational& frac)
 {
-  return out << frac.numerator() << '/' << frac.denominator();
+  return out << frac.numerator() << '/' << frac.true_denominator();
 }
 
 } // |namespace arithmetic|

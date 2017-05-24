@@ -102,6 +102,23 @@ int big_int::int_val() const
   return static_cast<int>(d[0]);
 }
 
+arithmetic::Numer_t big_int::long_val() const
+{ if (size()>2)
+    throw std::runtime_error("Integer value to big for conversion");
+  if (size()==1)
+    return static_cast<std::int32_t>(d[0]); // sign-extend unique word
+  return static_cast<std::int64_t>(d[0]+(static_cast<two_digits>(d[1])<<32));
+}
+
+arithmetic::Denom_t big_int::ulong_val() const
+{ if (is_negative())
+    throw std::runtime_error("Negative integer where unsigned is required");
+  if (not (size()<3 or (size()==3 and d[2]==0)))
+    throw std::runtime_error("Integer value to big for conversion");
+  return size()==1 ? d[0] : d[0]+(static_cast<two_digits>(d[1])<<32);
+}
+
+
 big_int& big_int::operator+= (digit x)
 { if (size()==1) // then do signed addition of single digits numbers
   { if ((d[0] xor x)>=neg_flag)

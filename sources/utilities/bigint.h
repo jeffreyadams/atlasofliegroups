@@ -15,6 +15,8 @@
 #include <vector>
 #include <iostream>
 
+#include "arithmetic.h"
+
 namespace atlas {
 namespace arithmetic {
 
@@ -33,11 +35,19 @@ static unsigned char_val (char c) // for reading from strings
 public:
   constexpr static digit neg_flag = 0x80000000;
   big_int (digit n) : d(1,n) {} // make a single-digit |big_int|
-  big_int (unsigned long long n)  // maybe 2-digit
+  big_int (Numer_t n)  // maybe 2-digit
   : d { static_cast<digit>(n), static_cast<digit>(n>>32) } { shrink();}
+  big_int (Denom_t n)  // maybe 2-digit
+  : d { static_cast<digit>(n), static_cast<digit>(n>>32) }
+  { if (d[1]<neg_flag)
+      shrink(); // maybe it's $1$ word after all
+    else d.push_back(0); // conserve positive sign
+  }
   big_int (const char * p, unsigned char base, // from text in base |base|
 	   unsigned (*convert)(char) = &char_val); // maybe custom conversion
   int int_val() const; // extract 32-bits signed value, or throw an error
+  arithmetic:: Numer_t long_val() const; // extract 64 bits signed value
+  arithmetic:: Denom_t ulong_val() const; // extract 64 bits unsigned value
 
   big_int& operator++ () { carry(d.begin()); return *this; }
   big_int& operator-- () { borrow(d.begin()); return *this; }
@@ -60,11 +70,18 @@ public:
   big_int& reduce_mod (const big_int& divisor, big_int* quotient);
 
 #ifdef incompletecpp11
+  big_int operator- () const
+    { big_int result(*this); return result.negate(); }
   big_int operator+ (const big_int& x) const
     { big_int result(*this); return result+=x; }
   big_int operator- (const big_int& x) const
     { big_int result(*this); return result-=x; }
+  big_int operator- () const
+    { big_int result(*this); return result.negate(); }
 #else
+  big_int operator- () const &
+    { big_int result(*this); return result.negate(); }
+  big_int operator- () && { return this->negate(); }
   big_int operator+ (const big_int& x) const &
     { big_int result(*this); return result+=x; }
   big_int operator- (const big_int& x) const &

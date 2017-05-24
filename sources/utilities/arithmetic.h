@@ -65,10 +65,17 @@ public:
 
   Numer_t numerator() const   { return num; }
 
-  /* the C++ rule that one unsigned operand silently converts the other
-     operand to unsigned as well makes exporting denominator as unsigned too
-     error prone; e.g., floor=numerator()/denominator() would wreak havoc */
+  /*
+    The C++ rule that one unsigned operand silently converts the other operand
+    to unsigned as well makes exporting denominator as unsigned too error
+    prone; e.g., floor=numerator()/denominator() would wreak havoc. Generally
+    speaking, casting unsigend to sogned is not a good thing, but typically
+    when this happens we risk having (had) overflow anyway, so accept it.
+  */
   Numer_t denominator() const { return Numer_t(denom); }
+
+  // however sometimes (printing, |big_int| conversion, we want the Real Thing
+  Denom_t true_denominator() const { return denom; }
 
   // these operators all return normalised results
   Rational operator+(Rational q) const;
