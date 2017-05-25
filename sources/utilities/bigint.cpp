@@ -430,25 +430,18 @@ std::ostream& operator<< (std::ostream& out, big_int&& number)
   return out;
 }
 
-big_int&  big_int::reduce_mod (const big_int& divisor, big_int* quotient)
+// reduce |*this| modulo |divisor| and return the quotient
+big_int big_int::reduce_mod (const big_int& divisor)
 {
   if (size()<divisor.size()) // easy case, quotient is $0$ or $-1$
-  {
     if (is_negative()==divisor.is_negative())
-    {
-      if (quotient!=nullptr)
-	*quotient = big_int(0u);
-    }
+      return big_int(0u);
     else
     {
-      if (quotient!=nullptr)
-	*quotient = big_int(-1u);
       *this += divisor; // this brings remainder to sign of divisor
+      return big_int(-1u);
     }
-    return *this;
-  }
-
-  if (divisor.size()==1)
+  else if (divisor.size()==1)
   { if (divisor.d[0]==0)
       throw std::runtime_error("Division by zero");
     digit div = divisor.d[0];
@@ -462,10 +455,9 @@ big_int&  big_int::reduce_mod (const big_int& divisor, big_int* quotient)
     if (divisor.is_negative())
       remainder = -remainder; // less than |div| in absolute value, so signed OK
 
-    if (quotient!=nullptr)
-      quotient->d = std::move(d); // export quotient, currently in |*this|
-
-    return *this = big_int(remainder);
+    big_int quotient = std::move(*this);
+    *this = big_int(remainder);
+    return quotient;
   }
 
   big_int div(divisor); // make a modifiable copy
@@ -478,16 +470,14 @@ big_int&  big_int::reduce_mod (const big_int& divisor, big_int* quotient)
   {
     div.d.pop_back(); // |div| is interpreted unsigned, remove any leading $0$
     if (div.size()==1) // then redo code above for |divisor.size()==1|
-    { auto remainder=shift_modulo(div.d[0]); // here |div.d[0]=neg_flag|
-      if (quotient!=nullptr)
-	quotient->d = std::move(d); // export quotient, currently in |*this|
-      if (remainder<neg_flag)
-        d=std::vector<digit>{remainder};
-      else
-        d=std::vector<digit>{remainder, 0}; // stick on a necessary sign word
+    { auto remainder=shift_modulo(div.d[0]); // here |div.d[0]>=neg_flag|
+      big_int quotient = std::move(*this);
+      *this = big_int(remainder);
+      if (remainder>=neg_flag)
+	d.push_back(0); // stick on a necessary sign word
       if (divisor.is_negative())
 	negate(); // negate remainder if divisor was negative
-      return *this;
+      return quotient;
     }
   }
 
@@ -571,11 +561,10 @@ big_int&  big_int::reduce_mod (const big_int& divisor, big_int* quotient)
   }
 
   // unnormalise and transfer results
-  if (quotient!=nullptr)
-  {
-    quotient->d.assign(it.base(),d.end());
-    quotient->shrink(); // quotient automatically has the correct sign bit
-  }
+  big_int quotient;
+  quotient.d.assign(it.base(),d.end()); // extract quotient part
+  quotient.shrink(); // quotient automatically has the correct sign bit
+
   d.resize(div.size()); // restrict to remainder
   if (shift!=0)
     *this >>= shift; // shift remainder back to proper position
@@ -585,7 +574,7 @@ big_int&  big_int::reduce_mod (const big_int& divisor, big_int* quotient)
   if (divisor.is_negative())
     negate(); // change sign of remainder for negative divisor
 
-  return *this;
+  return quotient;
 } // |big_int::reduce_mod|
 
 void big_int::operator<<= (unsigned char n) // unsigned up-shift (times $2^n$)
@@ -613,6 +602,27 @@ void big_int::operator>>= (unsigned char n) // signed down-shift (divide $2^n$)
   if ((*it & constants::bitMask[n])!=0)
     *it |= ~constants::leqMask[n]; // replace those zeros by copies of the sign
 }
+
+big_int gcd(big_int a, big_int b)
+{ if (a.is_zero())
+    return b;
+  do
+    if ((b%=a).is_zero())
+      return a;
+  while (not (a%=b).is_zero());
+  return b;
+}
+
+big_int lcm(const big_int& a,const big_int& b)
+{ big_int d=gcd(a,b);
+  if (d==1)
+    return a*b;
+  else if (a.size()<=b.size())
+    return (a/d)*b;
+  return a*(b/d);
+}
+
+
 
 } // |namespace arithmetic|
 } // |namespace atlas|

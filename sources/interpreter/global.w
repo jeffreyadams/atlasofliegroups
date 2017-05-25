@@ -1821,9 +1821,7 @@ void divmod_wrapper(expression_base::level l)
     throw runtime_error("DivMod by zero");
   if (l==expression_base::no_value)
     return;
-  own_int quotient = std::make_shared<int_value>(arithmetic::big_int(0u));
-  i->val.reduce_mod(j->val,&quotient->val);
-  push_value(quotient);
+  push_value(std::make_shared<int_value>(i->val.reduce_mod(j->val)));
   push_value(i); // remainder
   if (l==expression_base::single_value)
     wrap_tuple<2>();

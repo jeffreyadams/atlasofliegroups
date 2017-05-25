@@ -65,9 +65,10 @@ public:
 
   big_int& operator*= (digit x);
   big_int operator* (const big_int&) const;
+  big_int operator/ (const big_int& div) const { return big_int(*this)/=div; }
 
   digit shift_modulo(digit base); // divide by |base|, return remainder
-  big_int& reduce_mod (const big_int& divisor, big_int* quotient);
+  big_int reduce_mod (const big_int& divisor); // return value is the quotient!
 
 #ifdef incompletecpp11
   big_int operator- () const
@@ -93,16 +94,16 @@ public:
   big_int operator- (big_int&& x) const { return x.subtract_from(*this); }
 
   big_int& operator*= (const big_int& x) { return *this = *this * x; }
-  big_int& operator%= (const big_int& divisor)
-    { return reduce_mod(divisor,nullptr); }
 
+  big_int& operator%= (const big_int& divisor)
+    { reduce_mod(divisor); return *this; }
   big_int& operator/= (const big_int& divisor)
-    { std::unique_ptr<big_int> q(new big_int); reduce_mod(divisor,q.get());
-      return *this = *q;
-    }
+    { return *this = reduce_mod(divisor); } // replace remainder by quotient
 
   bool is_negative() const { return d.back()>=neg_flag; }
   bool is_zero() const { return d.size()==1 and d[0]==0; }
+  bool operator== (digit v) const { return d[0]==v and d.size()==1; }
+  bool operator!= (digit v) const { return d[0]!=v or d.size()>1; }
   bool operator<  (const big_int& x) const;
   bool operator>  (const big_int& x) const { return x < *this; }
   bool operator>= (const big_int& x) const { return not (*this < x); }
@@ -133,6 +134,11 @@ private:
 std::ostream& operator<< (std::ostream& out, big_int&& number);
 inline std::ostream& operator<< (std::ostream& out, const big_int& number)
   { return out << big_int(number); }
+
+
+big_int gcd(big_int a,big_int b);
+big_int lcm(const big_int& a,const big_int& b);
+
 
 } // |namespace arithmetic|
 } // |namespace atlas|
