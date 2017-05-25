@@ -1248,19 +1248,19 @@ types where this applies we also |typedef| a non-|const| instance of the
 struct int_value : public value_base
 { arithmetic::big_int val;
 @)
-  explicit int_value(int v) : val(static_cast<unsigned>(v)) @+ {}
+  explicit int_value(int v) : val{v} @+ {}
     // usual conversion into |int_val|
   explicit int_value(arithmetic::Numer_t v) // use this for 64-bits values
-  : val(v) @+ {} // use constructor with unsigned value
+  : val{big_int::from_signed(v)} @+ {} // use constructor with signed value
   explicit int_value(unsigned int v)
     // allow providing |unsigned|, widened to ensure no sign-flip occurs
-    : val(static_cast<arithmetic::Denom_t>(v)) @+ {}
+    : val{big_int::from_unsigned(v)} @+ {}
   explicit int_value(unsigned long v)
     // once one overloads two integral types, one must do all
-    : val(static_cast<arithmetic::Denom_t>(v)) @+ {}
+    : val{big_int::from_unsigned(v)} @+ {}
   explicit int_value(unsigned long long v)
     // allow providing |unsigned|, widened to ensure no sign-flip occurs
-    : val(static_cast<arithmetic::Denom_t>(v)) @+ {}
+    : val{big_int::from_unsigned(v)} @+ {}
   explicit int_value(arithmetic::big_int&& v) : val(std::move(v)) @+ {}
   ~int_value()@+ {}
   void print(std::ostream& out) const @+{@; out << val; }
@@ -1771,7 +1771,7 @@ void times_wrapper(expression_base::level l)
   if (l==expression_base::no_value)
     return;
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<int_value>(arithmetic::big_int(i->val*j->val)));
+    push_value(std::make_shared<int_value>(i->val*j->val));
 }
 
 @ Euclidean division operation will be bound to the operator ``$\backslash$'',

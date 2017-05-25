@@ -18,6 +18,27 @@
 namespace atlas {
 namespace arithmetic {
 
+big_int big_int::from_signed (Numer_t n)
+{ big_int result;
+  digit high_word = static_cast<digit>(n>>32), low_word = static_cast<digit>(n);
+  if (low_word<neg_flag ? high_word==0u : high_word==-1u)
+    result.d.assign ({ low_word });
+  else result.d.assign ({ low_word, high_word });
+  return result;
+}
+
+big_int big_int::from_unsigned (Denom_t n)
+{ big_int result;
+  digit high_word = n>>32, low_word = static_cast<digit>(n);
+  if (high_word>=neg_flag)
+    result.d.assign ({ low_word, high_word , 0u });
+  else if (high_word!=0 or low_word>=neg_flag)
+    result.d.assign ({ low_word, high_word });
+  else result.d.assign ({ low_word });
+  return result;
+}
+
+
 /*
   precondition for |carry| and |borrow|: when called with |size()>1|, they
   never cause actual sign change (since they are only called in cases where a
@@ -372,7 +393,7 @@ big_int big_int::operator* (const big_int& x) const
 big_int big_int::power (unsigned int e) const
 {
   if (e<=1)
-    return e==0 ? big_int(1u) : *this;
+    return e==0 ? big_int{1} : *this;
 
   big_int result = *this; // take a working copy;
 
@@ -435,11 +456,11 @@ big_int big_int::reduce_mod (const big_int& divisor)
 {
   if (size()<divisor.size()) // easy case, quotient is $0$ or $-1$
     if (is_negative()==divisor.is_negative())
-      return big_int(0u);
+      return big_int{0};
     else
     {
       *this += divisor; // this brings remainder to sign of divisor
-      return big_int(-1u);
+      return big_int{-1};
     }
   else if (divisor.size()==1)
   { if (divisor.d[0]==0)
@@ -451,12 +472,13 @@ big_int big_int::reduce_mod (const big_int& divisor)
       negate(); // now division effectively round quotient upwards
     }
 
-    auto remainder = shift_modulo(div);
+    int remainder = static_cast<int>
+      (shift_modulo(div)); // less than |div| in absolute value, so signed OK
     if (divisor.is_negative())
-      remainder = -remainder; // less than |div| in absolute value, so signed OK
+      remainder = -remainder;
 
     big_int quotient = std::move(*this);
-    *this = big_int(remainder);
+    *this = big_int{remainder};
     return quotient;
   }
 
@@ -472,9 +494,7 @@ big_int big_int::reduce_mod (const big_int& divisor)
     if (div.size()==1) // then redo code above for |divisor.size()==1|
     { auto remainder=shift_modulo(div.d[0]); // here |div.d[0]>=neg_flag|
       big_int quotient = std::move(*this);
-      *this = big_int(remainder);
-      if (remainder>=neg_flag)
-	d.push_back(0); // stick on a necessary sign word
+      *this = big_int::from_unsigned(remainder);
       if (divisor.is_negative())
 	negate(); // negate remainder if divisor was negative
       return quotient;

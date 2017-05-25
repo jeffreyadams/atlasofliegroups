@@ -474,7 +474,7 @@ latter case.
 case integer_denotation:
   { expression_ptr d@|(new denotation
       (std::make_shared<int_value>(@|
-         arithmetic::big_int(e.str_denotation_variant.c_str(),10))));
+         big_int(e.str_denotation_variant.c_str(),10))));
     return conform_types(int_type,type,std::move(d),e);
   }
 case string_denotation:

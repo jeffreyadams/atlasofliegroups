@@ -34,15 +34,10 @@ static unsigned char_val (char c) // for reading from strings
 
 public:
   constexpr static digit neg_flag = 0x80000000;
-  big_int (digit n) : d(1,n) {} // make a single-digit |big_int|
-  big_int (Numer_t n)  // maybe 2-digit
-  : d { static_cast<digit>(n), static_cast<digit>(n>>32) } { shrink();}
-  big_int (Denom_t n)  // maybe 2-digit
-  : d { static_cast<digit>(n), static_cast<digit>(n>>32) }
-  { if (d[1]<neg_flag)
-      shrink(); // maybe it's $1$ word after all
-    else d.push_back(0); // conserve positive sign
-  }
+  explicit big_int (int n) // normal constructor only for single |digit| case
+    : d(1,static_cast<digit>(n)) {}
+  static big_int from_signed (Numer_t n);  // factory for up to 2-digit signed
+  static big_int from_unsigned (Denom_t n);  // factory, up to 3-digit unsigned
   big_int (const char * p, unsigned char base, // from text in base |base|
 	   unsigned (*convert)(char) = &char_val); // maybe custom conversion
   int int_val() const; // extract 32-bits signed value, or throw an error
