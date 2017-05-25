@@ -625,7 +625,13 @@ void big_int::operator>>= (unsigned char n) // signed down-shift (divide $2^n$)
 
 big_int gcd(big_int a, big_int b)
 { if (a.is_zero())
+  { if (b.is_negative())
+      b.negate();
     return b;
+  }
+  if (a.is_negative())
+    a.negate(); // this will make |b| positive by the first |%=|
+
   do
     if ((b%=a).is_zero())
       return a;
@@ -642,7 +648,40 @@ big_int lcm(const big_int& a,const big_int& b)
   return a*(b/d);
 }
 
+big_rat big_rat::operator+ (const big_rat& x) const
+{ big_int common = lcm(den,x.den);
+  big_int q0 = common/den, q1=common/x.den;
+  return big_rat(num*std::move(q0)+x.num*std::move(q1) , common);
+}
 
+big_rat big_rat::operator- (const big_rat& x) const
+{ big_int common = lcm(den,x.den);
+  big_int q0 = common/den, q1=common/x.den;
+  return big_rat(num*std::move(q0)-x.num*std::move(q1) , common);
+}
+
+big_int big_rat::floor () const { return num/den; }
+big_int big_rat::ceil () const { return -((-num)/den); }
+big_rat big_rat::frac () const { return big_rat(num%den,den); }
+big_int big_rat::quotient (const big_int& n) const { return num/(n*den); }
+big_rat& big_rat::operator%= (const big_int& n) { num%=n*den; return *this; }
+big_int big_rat::quotient (const big_rat& r) const
+  { return (num*r.den)/(den*r.num); }
+big_rat big_rat::operator% (const big_rat& r) const
+  { return big_rat((num*r.den)%(den*r.num),den*r.den); }
+
+big_rat big_rat::power (unsigned int e) const
+{
+  if (e<=1)
+    return e==0 ? big_rat(Rational{1,1}) : *this;
+
+  big_rat result(*this); // take a working copy
+
+  // multiply repeatedly; repeated squaring is asymptotically as bad: $O(e^2)$
+  do result.num*=num, result.den*=den;
+  while (--e>1); // repeat |e-1| times
+  return result;
+}
 
 } // |namespace arithmetic|
 } // |namespace atlas|

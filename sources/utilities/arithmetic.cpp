@@ -74,8 +74,8 @@ Denom_t lcm (Denom_t a, Denom_t b, Denom_t& gcd, Denom_t& mult_a)
 }
 
 
-/*!
-  Synopsis: return a * b mod n.
+/*
+  Return a * b mod n.
 
   Precondition: a < n; b < n.
 

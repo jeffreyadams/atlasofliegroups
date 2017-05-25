@@ -61,6 +61,7 @@ public:
   big_int& operator*= (digit x);
   big_int operator* (const big_int&) const;
   big_int operator/ (const big_int& div) const { return big_int(*this)/=div; }
+  big_int operator% (const big_int& div) const { return big_int(*this)%=div; }
 
   digit shift_modulo(digit base); // divide by |base|, return remainder
   big_int reduce_mod (const big_int& divisor); // return value is the quotient!
@@ -74,19 +75,26 @@ public:
     { big_int result(*this); return result-=x; }
   big_int operator- () const
     { big_int result(*this); return result.negate(); }
+  big_int operator+ (big_int&& x) const { return x += *this; }
+  big_int operator- (big_int&& x) const { return x.subtract_from(*this); }
 #else
   big_int operator- () const &
     { big_int result(*this); return result.negate(); }
   big_int operator- () && { return this->negate(); }
+
   big_int operator+ (const big_int& x) const &
     { big_int result(*this); return result+=x; }
   big_int operator- (const big_int& x) const &
     { big_int result(*this); return result-=x; }
+  big_int operator+ (big_int&& x) const & { return x += *this; }
+  big_int operator- (big_int&& x) const & { return x.subtract_from(*this); }
   big_int operator+ (const big_int& x) && { return *this += x; }
   big_int operator- (const big_int& x) && { return *this -= x; }
+  big_int operator+ (big_int&& x) &&
+    { return size()<x.size() ? x += *this : *this += x; }
+  big_int operator- (big_int&& x) &&
+    { return size()<x.size() ? x.subtract_from(*this) : *this -= x; }
 #endif
-  big_int operator+ (big_int&& x) const { return x += *this; }
-  big_int operator- (big_int&& x) const { return x.subtract_from(*this); }
 
   big_int& operator*= (const big_int& x) { return *this = *this * x; }
 
@@ -133,6 +141,103 @@ inline std::ostream& operator<< (std::ostream& out, const big_int& number)
 
 big_int gcd(big_int a,big_int b);
 big_int lcm(const big_int& a,const big_int& b);
+
+class big_rat
+{ big_int num, den;
+public:
+  explicit big_rat(const big_int& int_val) : num(int_val), den(1u) {}
+  explicit big_rat(big_int&& int_val) : num(std::move(int_val)), den(1u) {}
+  big_rat(big_int numer, big_int denom)
+    : num(std::move(numer)), den(std::move(denom))
+  { if (den.is_zero())
+      throw std::runtime_error("Zero denominator in fraction");
+    normalise();
+  }
+  big_rat(Rational r)
+  : num(big_int::from_signed(r.normalize().numerator()))
+  , den(big_int::from_unsigned(r.true_denominator()))
+  {}
+
+  const big_int& numerator() const { return num; }
+  const big_int& denominator() const { return den; }
+  Rational rat_val() const // limited precision rational, or throw an error
+  { return Rational(num.long_val(),den.ulong_val()); }
+
+  bool is_negative() const { return num.is_negative(); }
+  bool is_zero() const { return num.is_zero(); }
+  bool operator<  (const big_rat& x) const { return num*x.den<x.num*den; }
+  bool operator>  (const big_rat& x) const { return x < *this; }
+  bool operator>= (const big_rat& x) const { return not (*this < x); }
+  bool operator<= (const big_rat& x) const { return not (x < *this); }
+  bool operator== (const big_rat& x) const { return num==x.num and den==x.den; }
+  bool operator!= (const big_rat& x) const { return not (*this==x); }
+
+  big_rat operator+ (const big_int& x) const { return big_rat(num+x*den, den); }
+  friend big_rat operator+ (const big_int& x, const big_rat& r)
+    { return big_rat(r.num+x*r.den, r.den); }
+  big_rat operator- (const big_int& x) const { return big_rat(num-x*den, den); }
+  friend big_rat operator- (const big_int& x, const big_rat& r)
+    { return big_rat(x*r.den - r.num, r.den); }
+  big_rat operator* (const big_int& x) const { return big_rat(num*x, den); }
+  friend big_rat operator* (const big_int& x, const big_rat& r)
+    { return big_rat(x*r.num, r.den); }
+  big_rat operator/ (const big_int& x) const
+  { if (x.is_zero())
+      throw std::runtime_error("Division by zero");
+    return big_rat(num , den*x);
+  };
+  friend big_rat operator/ (const big_int& x, const big_rat& r)
+  { if (r.is_zero())
+      throw std::runtime_error("Division by zero");
+    return big_rat(x*r.den , r.num);
+  };
+
+  big_rat operator+ (const big_rat&) const;
+  big_rat operator- (const big_rat&) const;
+  big_rat operator* (const big_rat& x) const
+    { return big_rat(num*x.num , den*x.den); }
+  big_rat operator/ (const big_rat& x) const
+  { if (x.is_zero())
+      throw std::runtime_error("Division by zero");
+    return big_rat(num*x.den , den*x.num);
+  }
+
+
+  big_rat operator- () const { return big_rat(-num,den); }
+  big_rat inverse () const
+  { if (is_zero())
+      throw std::runtime_error("Inverse of zero");
+    return big_rat(den,num);
+  }
+
+  big_int floor () const; // integer part
+  big_int ceil () const; // rounded up integer part
+  big_rat frac () const; // fractional part (in $[0,1)$)
+  big_int quotient (const big_int&) const; // Euclidean quotient (cf. |floor|)
+  big_rat& operator%= (const big_int& n); // replace by remainder modulo |n|
+  big_rat operator% (const big_int& n) const { return big_rat(*this)%=n; }
+  big_int quotient (const big_rat& r) const; // quotient of integer division
+  big_rat operator% (const big_rat& r) const; // remainder modulo |r|
+
+  big_rat power (unsigned int e) const;
+private:
+  big_rat& normalise()
+  { if (den.is_negative())
+    {
+      den.negate();
+      num.negate();
+    }
+    auto d=gcd(den,num);
+    if (d!=1)
+    {
+      num/=d;
+      den/=d;
+    }
+    return *this;
+  }
+
+
+}; // class big_rat|
 
 
 } // |namespace arithmetic|
