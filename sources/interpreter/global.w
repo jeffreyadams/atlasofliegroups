@@ -23,6 +23,7 @@
 \def\foreign#1{{\sl#1\/}}
 \def\id{\mathop{\rm id}}
 \def\Zee{{\bf Z}} % cwebx uses \Z and \ZZ itself
+\def\axis.{\.{axis}}
 
 @* Outline.
 %
@@ -1234,35 +1235,44 @@ class template) into ours.
 
 @*1 First primitive types: integer, rational, string and Boolean values.
 %
-We derive the first ``primitive'' value types. Value are are generally
-accessed through shared pointers to constant values, so for each type we give
-a |typedef| for a corresponding |const| instance of the |shared_ptr| template,
-using the \&{shared\_} prefix. In some cases we need to construct values to be
-returned by first allocating and then setting a value, which only then (when
-being pushed onto the execution stack) becomes available for sharing; for the
-types where this applies we also |typedef| a non-|const| instance of the
-|shared_ptr| template, using the \&{own\_} prefix.
+We derive the first ``primitive'' value types. For integers we used to have implementation type |int|,
+but this was changed to |big_int| so that at least
+using this fundamental type the user of the \axis. language will not be
+exposed to the phenomenon of integer overflow. Untypically for value types,
+the type |int_value| has many constructors, which are mostly from plain
+integral types. The reason is that wrapper functions must frequently convert
+plain integral values to |big_int| when constructing an |int_value| (often
+through many levels of forwarding from |std::make_shared<int_value>|), and it
+is vital that no implicit conversion between signed and unsigned types be
+inserted, as this could lead to erroneous |big_int| values; however the only
+way \Cpp\ provides to avoid such conversions is to provide an exact match for
+each type that is ever presented. Each of these constructors then either
+called the |big_int| constructor for |int|, or one of the factory functions
+|from_signed| or |from_unsigned| for wide integer types.
+
+Values are generally accessed through shared pointers to constant values, so
+for each type we give a |typedef| for a corresponding |const| instance of the
+|shared_ptr| template, using the \&{shared\_} prefix. In some cases we need to
+construct values to be returned by first allocating and then setting a value,
+which only then (when being pushed onto the execution stack) becomes available
+for sharing; for the types where this applies we also |typedef| a non-|const|
+instance of the |shared_ptr| template, using the \&{own\_} prefix.
 
 @< Type definitions @>=
 
 struct int_value : public value_base
 { arithmetic::big_int val;
 @)
-  explicit int_value(int v) : val{v} @+ {}
-    // usual conversion into |int_val|
-  explicit int_value(arithmetic::Numer_t v) // use this for 64-bits values
-  : val{big_int::from_signed(v)} @+ {} // use constructor with signed value
+  explicit int_value(int v) : val(v) @+ {}
+  explicit int_value(arithmetic::Numer_t v)
+  : val(big_int::from_signed(v)) @+ {}
   explicit int_value(unsigned int v)
-    // allow providing |unsigned|, widened to ensure no sign-flip occurs
-    : val{big_int::from_unsigned(v)} @+ {}
+    : val(big_int::from_unsigned(v)) @+ {}
   explicit int_value(unsigned long v)
-    // once one overloads two integral types, one must do all
-    : val{big_int::from_unsigned(v)} @+ {}
+    : val(big_int::from_unsigned(v)) @+ {}
   explicit int_value(unsigned long long v)
-    // allow providing |unsigned|, widened to ensure no sign-flip occurs
-    : val{big_int::from_unsigned(v)} @+ {}
+    : val(big_int::from_unsigned(v)) @+ {}
   explicit int_value(arithmetic::big_int&& v) : val(std::move(v)) @+ {}
-  ~int_value()@+ {}
   void print(std::ostream& out) const @+{@; out << val; }
   int_value* clone() const @+{@; return new int_value(*this); }
   static const char* name() @+{@; return "integer"; }
@@ -1279,7 +1289,6 @@ struct rat_value : public value_base
 { Rational val;
 @)
   explicit rat_value(Rational v) : val(v) @+ {}
-  ~rat_value()@+ {}
   void print(std::ostream& out) const @+{@; out << val; }
   rat_value* clone() const @+{@; return new rat_value(*this); }
   static const char* name() @+{@; return "integer"; }
@@ -1415,14 +1424,15 @@ struct rational_vector_value : public value_base
 @)
   explicit rational_vector_value(const RatWeight& v)
    : val(v) {@; val.normalize();}
-  explicit rational_vector_value(RatWeight&& v)
-   : val(std::move(v)) {@; val.normalize();}
   rational_vector_value(const int_Vector& v,int d)
    : val(v,d) @+ {@; val.normalize(); }
-  rational_vector_value(int_Vector&& v,int d)
+  rational_vector_value(matrix::Vector<arithmetic::Numer_t>&& v,
+                       arithmetic::Denom_t d)
    : val(std::move(v),d) @+ {@; val.normalize(); }
-  template <typename I> rational_vector_value(I begin, I end, int d)
-    : val(int_Vector(begin,end),d) @+ {@; val.normalize(); }
+  template <typename I>
+     rational_vector_value(I begin, I end, arithmetic::Denom_t d)
+    : val(matrix::Vector<arithmetic::Numer_t>(begin,end),d)
+    {@; val.normalize(); }
   ~rational_vector_value()@+ {}
   virtual void print(std::ostream& out) const;
   rational_vector_value* clone() const
@@ -1516,20 +1526,25 @@ void rational_convert() // convert integer to rational (with denominator~1)
 @)
 void ratlist_ratvec_convert() // convert list of rationals to rational vector
 { shared_row r = get<row_value>();
-  int_Vector numer(r->val.size()),denom(r->val.size());
-  unsigned int d=1;
+  matrix::Vector<arithmetic::Numer_t> numer(r->val.size());
+  std::vector<arithmetic::Denom_t> denom(r->val.size());
+  big_int d(1);
   for (size_t i=0; i<r->val.size(); ++i)
   // collect numerators and denominators separately
   { Rational frac = force<rat_value>(r->val[i].get())->val;
     numer[i]=frac.numerator();
-    denom[i]=frac.denominator();
-    d=arithmetic::lcm(d,denom[i]); // and compute the least common denominator
+    denom[i]=frac.true_denominator();
+    d=lcm(d,big_int::from_unsigned(denom[i])); // compute common denominator
   }
   for (size_t i=0; i<r->val.size(); ++i)
-    numer[i]*= d/denom[i]; // adjust numerators to common denominator
+  { big_int n =
+      big_int::from_signed(numer[i])*(d/big_int::from_unsigned(denom[i]));
+    numer[i] = n.long_val();
+    // adjust numerators to common denominator, if it fits
+  }
 
-  push_value(std::make_shared<rational_vector_value>(std::move(numer),d));
-  // normalises
+  push_value(std::make_shared<rational_vector_value>
+     (std::move(numer),d.ulong_val()));
 }
 @)
 void ratvec_ratlist_convert() // convert rational vector to list of rationals
@@ -1543,9 +1558,8 @@ void ratvec_ratlist_convert() // convert rational vector to list of rationals
 }
 @)
 void vec_ratvec_convert() // convert vector to rational vector
-{ own_vector v = get_own<vector_value>();
-  push_value(std::make_shared<rational_vector_value>@|
-    (RatWeight(std::move(v->val),1)));
+{ shared_vector v = get<vector_value>();
+  push_value(std::make_shared<rational_vector_value> (RatWeight(v->val,1)));
 }
 
 @ The conversions into vectors or matrices use an auxiliary function
@@ -1781,7 +1795,7 @@ defining a division operation to repair the integer division operation
 dividends. This used to be done by using |arithmetic::divide| that handles
 such cases correctly (rounding the quotient systematically downwards); the
 same precaution are taken by the |reduce_mod| method of |arithmetic::big_int|
-that now implements integers of the \.{axis} programming language. It also
+that now implements integers of the \axis. programming language. It also
 handles negative dividends by stipulating $a\backslash(-b)=(-a)\backslash b$,
 which implies $a\%(-b)=-(a\%b)$: for division by $-b<0$ the remainder~$r$ is
 in the range $-b<r\leq0$.
@@ -2590,7 +2604,7 @@ void mat_neq_wrapper(expression_base::level l)
 
 @*2 Vector arithmetic.
 %
-While vector arithmetic operations can easily be implemented in the \.{axis}
+While vector arithmetic operations can easily be implemented in the \axis.
 language, and this was actually done (with the exception of scalar and matrix
 products) for a long time, they certainly profit in terms of efficiency from
 being built-in.

@@ -53,6 +53,9 @@ class RationalVector
   template <typename C1>
     RationalVector(const matrix::Vector<C1>& v, C d);
 
+  RationalVector(V&& v, C d);
+
+
 // accessors
   // unsigned denominator requires care: plain % or / taboo; so export signed
   C denominator() const { return (C)d_denom; }
