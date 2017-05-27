@@ -1754,29 +1754,41 @@ void install_function
 Our first built-in functions implement integer arithmetic. Arithmetic
 operators are implemented by wrapper functions with two integer arguments.
 Since arguments to built-in functions are evaluated with |level| parameter
-|multi_value|, two separate values will be present on the stack. Note that
-these are pulled from the stack in reverse order, which is important for the
-non-commutative operations like `|-|' and `|/|'. Since values are shared, we
-must allocate new value objects for the results.
+|multi_value|, two separate values will be present on the stack. These are
+pulled from the stack in reverse order, which is important for the
+non-commutative operations like~`|-|'.
+
+We try to avoid allocation of a new object for the result if the storage of an
+argument can be used for this. Our mechanism is to call |get_own|, which
+claims the storage without duplication if it can (namely if |unique| holds).
+We could do this for either argument, but don't wish to spend time in each
+addition trying to figure out which one is best (it would be preferable, if
+both options are available, to use the one with currently the larger storage),
+so instead we just place our bets on the second argument. The rationale for
+this is that it is more likely to be unshared (when adding to or subtracting
+from a value held in an \axis. variable, the variable is usually used as the
+first operand, which is then not |unique| because of the variable itself). For
+multiplication neither of the arguments can be clobbered into, so we don't
+even try to |get_own| here.
 
 @< Local function definitions @>=
 
 void plus_wrapper(expression_base::level l)
-{ shared_int j=get<int_value>();
-  own_int i=get_own<int_value>();
+{ own_int j=get_own<int_value>();
+  shared_int i=get<int_value>(); // |j| more likely |unique|
   if (l==expression_base::no_value)
     return;
-  i->val += j->val;
-  push_value(i);
+  j->val += i->val;
+  push_value(j);
 }
 @)
 void minus_wrapper(expression_base::level l)
-{ shared_int j=get<int_value>();
-  own_int i=get_own<int_value>();
+{ own_int j=get_own<int_value>();
+  shared_int i=get<int_value>(); // |j| more likely |unique|
   if (l==expression_base::no_value)
     return;
-  i->val -= j->val;
-  push_value(i);
+  j->val.subtract_from(i->val);
+  push_value(j);
 }
 @)
 void times_wrapper(expression_base::level l)
@@ -1800,6 +1812,13 @@ handles negative dividends by stipulating $a\backslash(-b)=(-a)\backslash b$,
 which implies $a\%(-b)=-(a\%b)$: for division by $-b<0$ the remainder~$r$ is
 in the range $-b<r\leq0$.
 
+Contrary to the additive functions, we try to get unique ownership of
+the \emph{first} argument (the dividend) rather than the second (the divisor),
+because we cannot re-use the storage for latter anyway (integer division uses
+the storage of the dividend in all cases; in case of a long dividend the
+quotient gets copied to new storage in the process, but that is if no concern
+to us here).
+
 @< Local function definitions @>=
 void divide_wrapper(expression_base::level l)
 { shared_int j=get<int_value>();
@@ -1815,6 +1834,9 @@ void divide_wrapper(expression_base::level l)
 @ We also define a remainder operation |modulo|, a combined
 quotient-and-remainder operation |divmod|, unary subtraction, and an integer
 power operation (defined whenever the result is integer).
+Again we can only re-use storage of the dividend. It may be noted that
+untypically the non-|const| method |reduce_mod| does not return the modified
+object, but rather the quotient of the division operation.
 
 @< Local function definitions @>=
 void modulo_wrapper(expression_base::level l)
@@ -1836,6 +1858,7 @@ void divmod_wrapper(expression_base::level l)
   if (l==expression_base::no_value)
     return;
   push_value(std::make_shared<int_value>(i->val.reduce_mod(j->val)));
+  // quotient
   push_value(i); // remainder
   if (l==expression_base::single_value)
     wrap_tuple<2>();
@@ -1849,8 +1872,10 @@ void unary_minus_wrapper(expression_base::level l)
 @)
 void power_wrapper(expression_base::level l)
 { static shared_int one = std::make_shared<int_value>(1);
+  // constants shared between calls
   static shared_int minus_one  = std::make_shared<int_value>(-1);
-@/int n=get<int_value>()->int_val(); // exponent is small
+@)
+  int n=get<int_value>()->int_val(); // exponent is small
   shared_int b=get<int_value>(); // base can be large
   bool unit_base = b->val.size()==1 and std::abs(b->int_val())==1;
   if (n<0 and not unit_base)
@@ -1909,40 +1934,40 @@ for efficiency.
 
 @< Local function definitions @>=
 void rat_plus_int_wrapper(expression_base::level l)
-{ int i=get<int_value>()->int_val();
+{ shared_int i=get<int_value>();
   own_rat q=get_own<rat_value>();
   if (l!=expression_base::no_value)
   {@;
-    q->val+=i;
+    q->val+=i->val.long_val();
     push_value(q);
   }
 }
 void rat_minus_int_wrapper(expression_base::level l)
-{ int i=get<int_value>()->int_val();
+{ shared_int i=get<int_value>();
   own_rat q=get_own<rat_value>();
   if (l!=expression_base::no_value)
   {@;
-    q->val-=i;
+    q->val-=i->val.long_val();
     push_value(q);
   }
 }
 void rat_times_int_wrapper(expression_base::level l)
-{ int i=get<int_value>()->int_val();
+{ shared_int i=get<int_value>();
   own_rat q=get_own<rat_value>();
   if (l!=expression_base::no_value)
   {@;
-    q->val*=i;
+    q->val*=i->val.long_val();
     push_value(q);
   }
 }
 void rat_divide_int_wrapper(expression_base::level l)
-{ int i=get<int_value>()->int_val();
+{ shared_int i=get<int_value>();
   own_rat q=get_own<rat_value>();
   if (i==0)
     throw runtime_error("Rational division by zero");
   if (l!=expression_base::no_value)
   {@;
-    q->val/=i;
+    q->val/=i->val.long_val();
     push_value(q);
   }
 }
@@ -1953,17 +1978,17 @@ void rat_quotient_int_wrapper(expression_base::level l)
   if (i->val.is_zero())
     throw runtime_error("Rational quotient by zero");
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<int_value>(q->val.quotient(i->int_val())));
+    push_value(std::make_shared<int_value>(q->val.quotient(i->val.ulong_val())));
 }
 
 void rat_modulo_int_wrapper(expression_base::level l)
-{ int i=get<int_value>()->int_val();
+{ shared_int i=get<int_value>();
   own_rat q=get_own<rat_value>();
   if (i==0)
     throw runtime_error("Rational modulo zero");
   if (l!=expression_base::no_value)
   {@;
-    q->val%=i;
+    q->val%=i->val.ulong_val();
     push_value(q);
   }
 }
