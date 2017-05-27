@@ -1,4 +1,4 @@
-% Copyright (C) 2012--2015 Marc van Leeuwen
+% Copyright (C) 2012--2017 Marc van Leeuwen
 % This file is part of the Atlas of Lie Groups and Representations (the Atlas)
 
 % This program is made available under the terms stated in the GNU
@@ -1235,9 +1235,10 @@ class template) into ours.
 
 @*1 First primitive types: integer, rational, string and Boolean values.
 %
-We derive the first ``primitive'' value types. For integers we used to have implementation type |int|,
-but this was changed to |big_int| so that at least
-using this fundamental type the user of the \axis. language will not be
+We derive the first ``primitive'' value types. For integers and rational
+numbers we used to have implementation types |int| respectively |Rational|,
+but this was changed to |big_int| respectively |big_rat| so that at least
+using these fundamental types the user of the \axis. language will not be
 exposed to the phenomenon of integer overflow. Untypically for value types,
 the type |int_value| has many constructors, which are mostly from plain
 integral types. The reason is that wrapper functions must frequently convert
@@ -1248,7 +1249,8 @@ inserted, as this could lead to erroneous |big_int| values; however the only
 way \Cpp\ provides to avoid such conversions is to provide an exact match for
 each type that is ever presented. Each of these constructors then either
 called the |big_int| constructor for |int|, or one of the factory functions
-|from_signed| or |from_unsigned| for wide integer types.
+|from_signed| or |from_unsigned| for wide integer types. For |big_rat| there
+is no such difficulty, as there is only one |Rational| type.
 
 Values are generally accessed through shared pointers to constant values, so
 for each type we give a |typedef| for a corresponding |const| instance of the
@@ -1286,18 +1288,27 @@ typedef std::shared_ptr<const int_value> shared_int;
 typedef std::shared_ptr<int_value> own_int;
 @)
 struct rat_value : public value_base
-{ Rational val;
+{ big_rat val;
 @)
   explicit rat_value(Rational v) : val(v) @+ {}
-  explicit rat_value(big_rat&& r) : val(r.rat_val()) @+{}
+  explicit rat_value(big_rat&& r) : val(std::move(r)) @+{}
 @)
   void print(std::ostream& out) const @+{@; out << val; }
   rat_value* clone() const @+{@; return new rat_value(*this); }
   static const char* name() @+{@; return "integer"; }
 @)
-  big_int numerator() const { return big_int::from_signed(val.numerator()); }
-  big_int denominator() const
-    { return big_int::from_unsigned(val.true_denominator()); }
+#ifdef incompletecpp11
+  big_int numerator() const @+{@; return val.numerator(); }
+  big_int denominator() const @+{@; return val.denominator(); }
+  big_int& numerator() @+{@; return val.numerator(); }
+  big_int& denominator() @+{@; return val.denominator(); }
+#else
+  big_int numerator() const & @+{@; return val.numerator(); }
+  big_int denominator() const & @+{@; return val.denominator(); }
+  big_int&& numerator() & @+{@; return std::move(val).numerator(); }
+  big_int&& denominator() & @+{@; return std::move(val).denominator(); }
+#endif
+  Rational rat_val() const @+{@; return val.rat_val(); }
 
 private:
   rat_value(const rat_value& v) : val(v.val) @+{}
@@ -1922,10 +1933,10 @@ void fraction_wrapper(expression_base::level l)
 @)
 
 void unfraction_wrapper(expression_base::level l)
-{ Rational q=get<rat_value>()->val;
+{ own_rat q=get_own<rat_value>();
   if (l!=expression_base::no_value)
-  { push_value(std::make_shared<int_value>(q.numerator()));
-    push_value(std::make_shared<int_value>(q.true_denominator()));
+  { push_value(std::make_shared<int_value>(q->numerator()));
+    push_value(std::make_shared<int_value>(q->denominator()));
     if (l==expression_base::single_value)
       wrap_tuple<2>();
   }
@@ -1940,7 +1951,7 @@ void rat_plus_int_wrapper(expression_base::level l)
   own_rat q=get_own<rat_value>();
   if (l!=expression_base::no_value)
   {@;
-    q->val+=i->val.long_val();
+    q->val+=i->val;
     push_value(q);
   }
 }
@@ -1949,29 +1960,23 @@ void rat_minus_int_wrapper(expression_base::level l)
   own_rat q=get_own<rat_value>();
   if (l!=expression_base::no_value)
   {@;
-    q->val-=i->val.long_val();
+    q->val-=i->val;
     push_value(q);
   }
 }
 void rat_times_int_wrapper(expression_base::level l)
 { shared_int i=get<int_value>();
-  own_rat q=get_own<rat_value>();
+  shared_rat q=get<rat_value>();
   if (l!=expression_base::no_value)
-  {@;
-    q->val*=i->val.long_val();
-    push_value(q);
-  }
+    push_value(std::make_shared<rat_value>(q->val*i->val));
 }
 void rat_divide_int_wrapper(expression_base::level l)
 { shared_int i=get<int_value>();
-  own_rat q=get_own<rat_value>();
+  shared_rat q=get<rat_value>();
   if (i==0)
     throw runtime_error("Rational division by zero");
   if (l!=expression_base::no_value)
-  {@;
-    q->val/=i->val.long_val();
-    push_value(q);
-  }
+    push_value(std::make_shared<rat_value>(q->val/i->val));
 }
 
 void rat_quotient_int_wrapper(expression_base::level l)
@@ -1980,7 +1985,7 @@ void rat_quotient_int_wrapper(expression_base::level l)
   if (i->val.is_zero())
     throw runtime_error("Rational quotient by zero");
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<int_value>(q->val.quotient(i->val.ulong_val())));
+    push_value(std::make_shared<int_value>(q->val.quotient(i->val)));
 }
 
 void rat_modulo_int_wrapper(expression_base::level l)
@@ -1990,7 +1995,7 @@ void rat_modulo_int_wrapper(expression_base::level l)
     throw runtime_error("Rational modulo zero");
   if (l!=expression_base::no_value)
   {@;
-    q->val%=i->val.ulong_val();
+    q->val%=i->val;
     push_value(q);
   }
 }
@@ -2066,8 +2071,8 @@ void rat_quotient_wrapper(expression_base::level l)
     throw runtime_error("Rational quotient by zero");
   if (l!=expression_base::no_value)
     push_value(std::make_shared<int_value>@|
-      (not j->val.is_negative() ? i->val.quotient(j->val.long_val())
-                                : (-i->val).quotient(-j->val.long_val())));
+      (not j->val.is_negative() ? i->val.quotient(j->val)
+                                : (-i->val).quotient(-j->val)));
 }
 void rat_power_wrapper(expression_base::level l)
 { int n=get<int_value>()->int_val(); own_rat b=get_own<rat_value>();
@@ -2170,32 +2175,32 @@ void int_greatereq_wrapper(expression_base::level l)
 void rat_unary_eq_wrapper(expression_base::level l)
 { shared_rat i=get<rat_value>();
   if (l!=expression_base::no_value)
-    push_value(whether(i->val.numerator()==0));
+    push_value(whether(i->val.is_zero()));
 }
 void rat_unary_neq_wrapper(expression_base::level l)
 { shared_rat i=get<rat_value>();
   if (l!=expression_base::no_value)
-    push_value(whether(i->val.numerator()!=0));
+    push_value(whether(not i->val.is_zero()));
 }
 void rat_non_negative_wrapper(expression_base::level l)
 { shared_rat i=get<rat_value>();
   if (l!=expression_base::no_value)
-    push_value(whether(i->val.numerator()>=0));
+    push_value(whether(not i->val.is_negative()));
 }
 void rat_positive_wrapper(expression_base::level l)
 { shared_rat i=get<rat_value>();
   if (l!=expression_base::no_value)
-    push_value(whether(i->val.numerator()>0));
+    push_value(whether(not (i->val.is_negative() or i->val.is_zero())));
 }
 void rat_non_positive_wrapper(expression_base::level l)
 { shared_rat i=get<rat_value>();
   if (l!=expression_base::no_value)
-    push_value(whether(i->val.numerator()<=0));
+    push_value(whether(i->val.is_negative() or i->val.is_zero()));
 }
 void rat_negative_wrapper(expression_base::level l)
 { shared_rat i=get<rat_value>();
   if (l!=expression_base::no_value)
-    push_value(whether(i->val.numerator()<0));
+    push_value(whether(i->val.is_negative()));
 }
 
 @ Here are the traditional, binary, versions of the relations for the
@@ -2948,21 +2953,21 @@ void ratvec_modulo_int_wrapper(expression_base::level l)
 @)
 
 void ratvec_times_rat_wrapper(expression_base::level l)
-{ Rational r= get<rat_value>()->val;
+{ shared_rat r= get<rat_value>();
   own_rational_vector v= get_own<rational_vector_value>();
   if (l==expression_base::no_value)
     return;
-  (v->val *= r).normalize();
+  (v->val *= r->rat_val()).normalize();
   push_value(v);
 }
 void ratvec_divide_rat_wrapper(expression_base::level l)
-{ Rational r= get<rat_value>()->val;
+{ shared_rat r= get<rat_value>();
   own_rational_vector v= get_own<rational_vector_value>();
-  if (r.numerator()==0)
+  if (r->val.is_zero())
     throw runtime_error("Rational vector division by 0");
   if (l==expression_base::no_value)
     return;
-  (v->val /= r).normalize();
+  (v->val /= r->rat_val()).normalize();
   push_value(v);
 }
 

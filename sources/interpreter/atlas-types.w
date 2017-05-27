@@ -4041,7 +4041,7 @@ void scale_parameter_wrapper(expression_base::level l)
 { shared_rat f = get<rat_value>();
   own_module_parameter p = get_own<module_parameter_value>();
   if (l!=expression_base::no_value)
-@/{@; p->rc().scale(p->val,f->val);
+@/{@; p->rc().scale(p->val,f->rat_val());
     push_value(std::move(p));
   }
 }
@@ -5011,7 +5011,7 @@ void scale_poly_wrapper(expression_base::level l)
   shared_virtual_module P = get<virtual_module_value>();
   if (l!=expression_base::no_value)
     push_value@|(std::make_shared<virtual_module_value>
-      (P->rf,P->rc().scale(P->val,f->val)));
+      (P->rf,P->rc().scale(P->val,f->rat_val())));
 }
 
 void scale_0_poly_wrapper(expression_base::level l)
@@ -5398,7 +5398,7 @@ void scale_extended_wrapper(expression_base::level l)
 @)
   bool flipped;
   auto result = @;ext_block::scaled_extended_dominant
-    (rc,sr,delta->val,factor->val,flipped);
+    (rc,sr,delta->val,factor->rat_val(),flipped);
   push_value(std::make_shared<module_parameter_value>(p->rf,result));
   push_value(whether(flipped));
   if (l==expression_base::single_value)

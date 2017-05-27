@@ -158,8 +158,18 @@ public:
   , den(big_int::from_unsigned(r.true_denominator()))
   {}
 
+#ifdef incompletecpp11
   const big_int& numerator() const { return num; }
   const big_int& denominator() const { return den; }
+  big_int& numerator() { return num; }
+  big_int& denominator() { return den; }
+#else // more exactly we only allow field modification for rvalue objects
+  const big_int& numerator() const & { return num; }
+  const big_int& denominator() const & { return den; }
+  big_int&& numerator() && { return std::move(num); }
+  big_int&& denominator() && { return std::move(den); }
+#endif
+
   Rational rat_val() const // limited precision rational, or throw an error
   { return Rational(num.long_val(),den.ulong_val()); }
 
@@ -191,6 +201,11 @@ public:
       throw std::runtime_error("Division by zero");
     return big_rat(x*r.den , r.num);
   };
+
+  big_rat& operator+= (const big_int& x) { num+=x*den; return *this; }
+  big_rat& operator-= (const big_int& x) { num-=x*den; return *this; }
+  big_rat& subtract_from (const big_int& x)
+    { num.subtract_from(x*den); return *this; }
 
   big_rat operator+ (const big_rat&) const;
   big_rat operator- (const big_rat&) const;
@@ -239,6 +254,8 @@ private:
 
 }; // class big_rat|
 
+inline std::ostream& operator<< (std::ostream& out, const big_rat& number)
+{ return out << number.numerator() << '/' << number.denominator(); }
 
 } // |namespace arithmetic|
 } // |namespace atlas|
