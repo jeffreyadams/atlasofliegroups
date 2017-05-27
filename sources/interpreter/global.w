@@ -2074,6 +2074,11 @@ void rat_quotient_wrapper(expression_base::level l)
       (not j->val.is_negative() ? i->val.quotient(j->val)
                                 : (-i->val).quotient(-j->val)));
 }
+void rat_frac_wrapper(expression_base::level l)
+{ shared_rat i=get<rat_value>();
+  if (l!=expression_base::no_value)
+    push_value(std::make_shared<rat_value>(i->val.frac()));
+}
 void rat_power_wrapper(expression_base::level l)
 { int n=get<int_value>()->int_val(); own_rat b=get_own<rat_value>();
   if (b->val.numerator()==0 and n<0)
@@ -3139,6 +3144,7 @@ install_function(rat_inverse_wrapper,"/","(rat->rat)");
 install_function(rat_floor_wrapper,"floor","(rat->int)");
 install_function(rat_ceil_wrapper,"ceil","(rat->int)");
 install_function(rat_quotient_wrapper,"\\","(rat,int->int)");
+install_function(rat_frac_wrapper,"frac","(rat->rat)");
 install_function(rat_power_wrapper,"^","(rat,int->rat)");
 install_function(int_unary_eq_wrapper,"=","(int->bool)");
 install_function(int_unary_neq_wrapper,"!=","(int->bool)");
