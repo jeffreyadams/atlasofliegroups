@@ -1289,9 +1289,16 @@ struct rat_value : public value_base
 { Rational val;
 @)
   explicit rat_value(Rational v) : val(v) @+ {}
+  explicit rat_value(big_rat&& r) : val(r.rat_val()) @+{}
+@)
   void print(std::ostream& out) const @+{@; out << val; }
   rat_value* clone() const @+{@; return new rat_value(*this); }
   static const char* name() @+{@; return "integer"; }
+@)
+  big_int numerator() const { return big_int::from_signed(val.numerator()); }
+  big_int denominator() const
+    { return big_int::from_unsigned(val.true_denominator()); }
+
 private:
   rat_value(const rat_value& v) : val(v.val) @+{}
 };
@@ -1520,8 +1527,8 @@ vectors.
 
 @< Local function def... @>=
 void rational_convert() // convert integer to rational (with denominator~1)
-{@; int i = get<int_value>()->int_val();
-    push_value(std::make_shared<rat_value>(Rational(i)));
+{ own_int i = get_own<int_value>();
+  push_value(std::make_shared<rat_value>(big_rat(std::move(i->val))));
 }
 @)
 void ratlist_ratvec_convert() // convert list of rationals to rational vector
@@ -1531,10 +1538,10 @@ void ratlist_ratvec_convert() // convert list of rationals to rational vector
   big_int d(1);
   for (size_t i=0; i<r->val.size(); ++i)
   // collect numerators and denominators separately
-  { Rational frac = force<rat_value>(r->val[i].get())->val;
-    numer[i]=frac.numerator();
-    denom[i]=frac.true_denominator();
-    d=lcm(d,big_int::from_unsigned(denom[i])); // compute common denominator
+  { const auto* frac = force<rat_value>(r->val[i].get());
+    numer[i]=frac->numerator().long_val();
+    denom[i]=frac->denominator().ulong_val();
+    d=lcm(d,frac->denominator()); // compute least common denominator safely
   }
   for (size_t i=0; i<r->val.size(); ++i)
   { big_int n =
@@ -1910,12 +1917,7 @@ void fraction_wrapper(expression_base::level l)
     throw runtime_error("fraction with zero denominator");
   if (l==expression_base::no_value)
     return;
-  if (d>0)
-    push_value(std::make_shared<rat_value>@|
-      (Rational(n->val.long_val(),d->val.ulong_val())));
-  else // ensure denominator is positive
-    push_value(std::make_shared<rat_value>@|
-      (Rational((-n->val).long_val(),(-d->val).ulong_val())));
+  push_value(std::make_shared<rat_value> (big_rat(n->val,d->val)));
 }
 @)
 
@@ -1999,79 +2001,80 @@ operator overloading.
 @< Local function definitions @>=
 
 void rat_plus_wrapper(expression_base::level l)
-{ Rational j=get<rat_value>()->val;
-  Rational i=get<rat_value>()->val;
+{ shared_rat j=get<rat_value>();
+  shared_rat i=get<rat_value>();
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<rat_value>(i+j));
+    push_value(std::make_shared<rat_value>(i->val+j->val));
 }
 void rat_minus_wrapper(expression_base::level l)
-{ Rational j=get<rat_value>()->val;
-  Rational i=get<rat_value>()->val;
+{ shared_rat j=get<rat_value>();
+  shared_rat i=get<rat_value>();
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<rat_value>(i-j));
+    push_value(std::make_shared<rat_value>(i->val-j->val));
 }
 void rat_times_wrapper(expression_base::level l)
-{ Rational j=get<rat_value>()->val;
-  Rational i=get<rat_value>()->val;
+{ shared_rat j=get<rat_value>();
+  shared_rat i=get<rat_value>();
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<rat_value>(i*j));
+    push_value(std::make_shared<rat_value>(i->val*j->val));
 }
 void rat_divide_wrapper(expression_base::level l)
-{ Rational j=get<rat_value>()->val;
-  Rational i=get<rat_value>()->val;
-  if (j.numerator()==0)
+{ shared_rat j=get<rat_value>();
+  shared_rat i=get<rat_value>();
+  if (j->val.numerator()==0)
     throw runtime_error("Rational division by zero");
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<rat_value>(i/j));
+    push_value(std::make_shared<rat_value>(i->val/j->val));
 }
 void rat_modulo_wrapper(expression_base::level l)
-{ Rational j=get<rat_value>()->val;
-  Rational i=get<rat_value>()->val;
-  if (j.numerator()==0)
+{ shared_rat j=get<rat_value>();
+  shared_rat i=get<rat_value>();
+  if (j->val.numerator()==0)
     throw runtime_error("Rational modulo zero");
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<rat_value>(i%j));
+    push_value(std::make_shared<rat_value>(i->val%j->val));
 }
 @)
 void rat_unary_minus_wrapper(expression_base::level l)
-{ Rational i=get<rat_value>()->val;
+{ shared_rat i=get<rat_value>();
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<rat_value>(-i));
+    push_value(std::make_shared<rat_value>(-i->val));
 }
 void rat_inverse_wrapper(expression_base::level l)
-{ Rational i=get<rat_value>()->val;
-  if (i.numerator()==0)
+{ shared_rat i=get<rat_value>();
+  if (i->val.numerator()==0)
     throw runtime_error("Inverse of zero");
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<rat_value>(i.inverse()));
+    push_value(std::make_shared<rat_value>(i->val.inverse()));
 }
 
 @)
 void rat_floor_wrapper(expression_base::level l)
-{ Rational i=get<rat_value>()->val;
+{ shared_rat i=get<rat_value>();
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<int_value>(i.floor()));
+    push_value(std::make_shared<int_value>(i->val.floor()));
 }
 void rat_ceil_wrapper(expression_base::level l)
-{ Rational i=get<rat_value>()->val;
+{ shared_rat i=get<rat_value>();
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<int_value>(i.ceil()));
+    push_value(std::make_shared<int_value>(i->val.ceil()));
 }
 void rat_quotient_wrapper(expression_base::level l)
-{ int j=get<int_value>()->int_val();
-  Rational i=get<rat_value>()->val;
-  if (j==0)
+{ shared_int j=get<int_value>();
+  shared_rat i=get<rat_value>();
+  if (j->val.is_zero())
     throw runtime_error("Rational quotient by zero");
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<int_value>
-      (j>0 ? i.quotient(j) : (-i).quotient(-j)));
+    push_value(std::make_shared<int_value>@|
+      (not j->val.is_negative() ? i->val.quotient(j->val.long_val())
+                                : (-i->val).quotient(-j->val.long_val())));
 }
 void rat_power_wrapper(expression_base::level l)
-{ int n=get<int_value>()->int_val(); Rational b=get<rat_value>()->val;
-  if (b.numerator()==0 and n<0)
+{ int n=get<int_value>()->int_val(); own_rat b=get_own<rat_value>();
+  if (b->val.numerator()==0 and n<0)
     throw runtime_error("Negative power of zero");
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<rat_value>(b.power(n)));
+    push_value(std::make_shared<rat_value>(b->val.power(n)));
 }
 
 @*1 Booleans.
@@ -2165,34 +2168,34 @@ void int_greatereq_wrapper(expression_base::level l)
 @< Local function definitions @>=
 
 void rat_unary_eq_wrapper(expression_base::level l)
-{ Rational i=get<rat_value>()->val;
+{ shared_rat i=get<rat_value>();
   if (l!=expression_base::no_value)
-    push_value(whether(i.numerator()==0));
+    push_value(whether(i->val.numerator()==0));
 }
 void rat_unary_neq_wrapper(expression_base::level l)
-{ Rational i=get<rat_value>()->val;
+{ shared_rat i=get<rat_value>();
   if (l!=expression_base::no_value)
-    push_value(whether(i.numerator()!=0));
+    push_value(whether(i->val.numerator()!=0));
 }
 void rat_non_negative_wrapper(expression_base::level l)
-{ Rational i=get<rat_value>()->val;
+{ shared_rat i=get<rat_value>();
   if (l!=expression_base::no_value)
-    push_value(whether(i.numerator()>=0));
+    push_value(whether(i->val.numerator()>=0));
 }
 void rat_positive_wrapper(expression_base::level l)
-{ Rational i=get<rat_value>()->val;
+{ shared_rat i=get<rat_value>();
   if (l!=expression_base::no_value)
-    push_value(whether(i.numerator()>0));
+    push_value(whether(i->val.numerator()>0));
 }
 void rat_non_positive_wrapper(expression_base::level l)
-{ Rational i=get<rat_value>()->val;
+{ shared_rat i=get<rat_value>();
   if (l!=expression_base::no_value)
-    push_value(whether(i.numerator()<=0));
+    push_value(whether(i->val.numerator()<=0));
 }
 void rat_negative_wrapper(expression_base::level l)
-{ Rational i=get<rat_value>()->val;
+{ shared_rat i=get<rat_value>();
   if (l!=expression_base::no_value)
-    push_value(whether(i.numerator()<0));
+    push_value(whether(i->val.numerator()<0));
 }
 
 @ Here are the traditional, binary, versions of the relations for the
@@ -2201,39 +2204,39 @@ rational numbers.
 @< Local function definitions @>=
 
 void rat_eq_wrapper(expression_base::level l)
-{ Rational j=get<rat_value>()->val; Rational i=get<rat_value>()->val;
+{ shared_rat j=get<rat_value>(); shared_rat i=get<rat_value>();
   if (l!=expression_base::no_value)
-    push_value(whether(i==j));
+    push_value(whether(i->val==j->val));
 }
 @)
 void rat_neq_wrapper(expression_base::level l)
-{ Rational j=get<rat_value>()->val; Rational i=get<rat_value>()->val;
+{ shared_rat j=get<rat_value>(); shared_rat i=get<rat_value>();
   if (l!=expression_base::no_value)
-    push_value(whether(i!=j));
+    push_value(whether(i->val!=j->val));
 }
 @)
 void rat_less_wrapper(expression_base::level l)
-{ Rational j=get<rat_value>()->val; Rational i=get<rat_value>()->val;
+{ shared_rat j=get<rat_value>(); shared_rat i=get<rat_value>();
   if (l!=expression_base::no_value)
-    push_value(whether(i<j));
+    push_value(whether(i->val<j->val));
 }
 @)
 void rat_lesseq_wrapper(expression_base::level l)
-{ Rational j=get<rat_value>()->val; Rational i=get<rat_value>()->val;
+{ shared_rat j=get<rat_value>(); shared_rat i=get<rat_value>();
   if (l!=expression_base::no_value)
-    push_value(whether(i<=j));
+    push_value(whether(i->val<=j->val));
 }
 @)
 void rat_greater_wrapper(expression_base::level l)
-{ Rational j=get<rat_value>()->val; Rational i=get<rat_value>()->val;
+{ shared_rat j=get<rat_value>(); shared_rat i=get<rat_value>();
   if (l!=expression_base::no_value)
-    push_value(whether(i>j));
+    push_value(whether(i->val>j->val));
 }
 @)
 void rat_greatereq_wrapper(expression_base::level l)
-{ Rational j=get<rat_value>()->val; Rational i=get<rat_value>()->val;
+{ shared_rat j=get<rat_value>(); shared_rat i=get<rat_value>();
   if (l!=expression_base::no_value)
-    push_value(whether(i>=j));
+    push_value(whether(i->val>=j->val));
 }
 
 @ For booleans we also have equality and ineqality.
