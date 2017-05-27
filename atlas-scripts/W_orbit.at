@@ -35,7 +35,8 @@ set generate_from_dom ([(ratvec->ratvec)] S,ratvec v) = ([[int]],[ratvec]):
 
 
 { same as previous, but add supplied |rd| to make words into |W_word| values }
-set generate_from_dom (RootDatum rd,[(ratvec->ratvec)] S,ratvec v) = ([W_word],[ratvec]):
+set generate_from_dom (RootDatum rd,[(ratvec->ratvec)] S,ratvec v) =
+     ([W_word],[ratvec]):
   let (words,orbit)=generate_from_dom(S,v) in
   (for w in words do (rd,w) od,orbit)
 
@@ -102,6 +103,6 @@ set generate ([W_word] S,ratvec v) = ([[int]],[ratvec]):
   returns either (true,w) or (false,[])
 }
 set conjugate_to([W_word] S, ratvec v,ratvec w) = (bool,[int]):
-  let (words,orbit) = generate(S,v), i=0 in
+  let (words,orbit) = generate(S,v) then i=#orbit-1 in
   while >=i and orbit[i]!=w do i-:=1 od;
   if >=i then (true,words[i]) else (false,[]) fi

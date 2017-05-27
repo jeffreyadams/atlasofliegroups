@@ -109,12 +109,24 @@ set - (mat M,[ratvec] MM)=ratmat: mat_as_ratmat(M)-ratvecs_as_ratmat(MM)
 {define inverse of mat as ratmat}
 set rational_inverse(mat M) = ratmat:inverse(mat_as_ratmat(M))
 
+{right inverse of rational matrix
+ adapted from right_inverse in matrix.at
+ (l,r) matrix, l\le r
+ diagonalize: LAR=D   D=diag(d_1,...,d_l) # (l-r) columns of 0's
+ LARE=I_l  where E = diag(1/d1,...,1/dl) plus (l-r) rows of 0's
+ conjugate by L^{-1}
+ A(REL)=I
+}
 {.right inverse of a rational matrix.}
-set right_inverse(ratmat M)=ratmat:
-let (A,,d)=M in right_inverse(A)*inverse(mat_as_ratmat(d*id_mat(n_rows(A))))
+set right_inverse(ratmat A) = ratmat:
+  let (M,,d)=A in
+  let (diag,L,R) = diagonalize(M), (l,r)=#M { also sizes of L,R } in
+  assert(#diag>=l,"image does not have full rank");
+  ratvecs_as_ratmat (for j:l do (1/diag[j])*R[j] od) * mat_as_ratmat(L) *
+    (d*id_mat(l))
 
-{.left inverse of rational matrix.}
-set left_inverse(ratmat M)=ratmat:^right_inverse(^M)
+{.left inverse of a rational matrix.}
+set left_inverse(ratmat A) = ratmat:^right_inverse(^A)
 
 set ratvec_to_string(ratvec v) = string: { show ratvec as [rat], simplified }
    ## for a in v
