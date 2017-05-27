@@ -130,8 +130,8 @@ private:
   void compl_neg(std::vector<digit>::iterator it,bool negate);
 
   void mult_add (digit x, digit a);
-  void operator<<= (unsigned char n); // unsigned up-shift (multiply by $2^n$)
-  void operator>>= (unsigned char n); // signed down-shift (divide by $2^n$)
+  void LSL (unsigned char n); // logical shift left (unsigned)
+  void LSR (unsigned char n); // logical shift right (unsigned)
 }; // |class big_int|
 
 std::ostream& operator<< (std::ostream& out, big_int&& number);

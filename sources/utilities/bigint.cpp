@@ -502,9 +502,12 @@ big_int big_int::reduce_mod (const big_int& divisor)
   }
 
   const unsigned char shift = 32-bits::lastBit(div.d.back());
-  div <<= shift;
   sign_extend(size()+1); // extend dividend by a word
-  *this <<= shift; // this may partially fill leading word, but keeps its sign
+  if (shift!=0)
+  { // shift up both |div| (to fill its leading bit) and ourselves (|*this|)
+    div.LSL(shift);
+    LSL(shift); // this may partially fill leading word, but keeps our sign
+  }
 
   bool below_0 = is_negative(); // whether current remainder is negative
 
@@ -587,20 +590,19 @@ big_int big_int::reduce_mod (const big_int& divisor)
 
   d.resize(div.size()); // restrict to remainder
   if (shift!=0)
-    *this >>= shift; // shift remainder back to proper position
+    LSR(shift); // shift remainder back to proper position, makes it positive
   else if (is_negative())
     d.push_back(0); // ensure a positive sign bit
-  shrink_pos();
+  shrink_pos(); // then ensure we hold a normalised value before continuing
   if (divisor.is_negative())
     negate(); // change sign of remainder for negative divisor
 
   return quotient;
 } // |big_int::reduce_mod|
 
-void big_int::operator<<= (unsigned char n) // unsigned up-shift (times $2^n$)
+void big_int::LSL (unsigned char n) // unsigned up-shift (multiply by $2^n$)
 {
-  if (n==0)
-    return; // this avoids shifting right by $32$ (undefined behaviour) below
+  assert(n!=0); // caller should avoid this, shift by 32 would be undefined
   auto it=d.end();
   while (--it!=d.begin()) // loop |size()-1| times
   { *it <<= n; // shift bits that remain in the same word (lost bits were used)
@@ -609,18 +611,15 @@ void big_int::operator<<= (unsigned char n) // unsigned up-shift (times $2^n$)
   *it <<= n; // this shifts zeros into the lowest |n| bits
 }
 
-void big_int::operator>>= (unsigned char n) // signed down-shift (divide $2^n$)
+void big_int::LSR (unsigned char n) // unsigned down-shift (divide by $2^n$)
 {
-  if (n==0)
-    return; // this avoids shifting left by $32$ (undefined behaviour) below
+  assert(n!=0); // caller should avoid this, shift by 32 would be undefined
   auto it=d.rend();
   while (--it!=d.rbegin()) // loop |size()-1| times
   { *it >>= n; // shift bits that remain in the same word (lost bits were used)
     *it |= *(it-1)<< (32-n); // higher bits from previous word
   }
   *it >>= n; // this shifts zeros into the highest |n| bits
-  if ((*it & constants::bitMask[n])!=0)
-    *it |= ~constants::leqMask[n]; // replace those zeros by copies of the sign
 }
 
 big_int gcd(big_int a, big_int b)
