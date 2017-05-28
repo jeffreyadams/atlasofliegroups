@@ -530,7 +530,10 @@ big_int big_int::reduce_mod (const big_int& divisor)
     }
 
     if (q_hat==0) // we need to test this anyway might as well do this now
+    {
+      it[-1]=0; // store the 0 digit in quotient, independently of |below_0|
       continue; // don't change remainder, don't change |below_0| status
+    }
     acc = 0; // use as accumlator for subtracting or adding to the remainder
     auto r_it = it + div.size()-1; // a reverse iterator, contrary to |d_it|
     if (not below_0)
