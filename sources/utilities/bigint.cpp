@@ -253,7 +253,7 @@ void big_int::sub_from (const big_int& x)
   auto it=d.begin(); digit c=1; // complemented borrow, either 0 or 1
   for (auto x_it = x.d.begin(); x_it!=x.d.end()-1; ++x_it,++it)
     if (digit s = ~*it+c) // for once, contextually convert |s| to |bool|
-      c = static_cast<digit>((*it+=*x_it+s)<s);
+      c = static_cast<digit>((*it=*x_it+s)<s);
     // |else| nothing: add |0| to |*it| and keep |c| as is
 
   if (it == d.end()-1) // equal length case
