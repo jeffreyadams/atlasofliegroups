@@ -503,36 +503,45 @@ big_int big_int::reduce_mod (const big_int& divisor)
 
   const unsigned char shift = 32-bits::lastBit(div.d.back());
   sign_extend(size()+1); // extend dividend by a word
-  if (shift!=0)
-  { // shift up both |div| (to fill its leading bit) and ourselves (|*this|)
-    div.LSL(shift);
-    LSL(shift); // this may partially fill leading word, but keeps our sign
-  }
-
   bool below_0 = is_negative(); // whether current remainder is negative
 
+  big_int work;
+  work.d.assign(div.d.end()-(shift==0 or div.size()==2 ? 2 : 3), div.d.end());
+  if (shift>0)
+    work.LSL(shift);
+  const two_digits lead= work.d.rbegin()[0];
+  const two_digits sub_lead = work.d.rbegin()[1];
+
   auto it = d.rbegin();
-  const two_digits lead= div.d.rbegin()[0];
-  const two_digits sub_lead = div.d.rbegin()[1];
   do
   {
     two_digits acc = below_0 ? ~ *it++ : *it++; // load high digit and advance
-    // |q_hat| is 64 bits to have wide multiply, but its upper word remains 0
-    two_digits q_hat; // our quotient digit; might be exact or too high by 1
-    if (acc==lead) // exceptional case, inital division would leave $2^{32}$
-      q_hat = static_cast<digit>(-1); // not too small, and at most 1 too big
-    else // normal case: do a true division giving a single word quotient
+    (acc<<=32) |= below_0 ? ~ it[0] : it[0]; // leading 2 digits of remainder
+    if (shift!=0)
     {
-      (acc<<=32) |= below_0 ? ~ it[0] : it[0]; // leading 2 digits of remainder
-      q_hat = acc/lead; // a value now certain to be less than $2^{32}$
-      if ((acc%lead<<32|(below_0 ? ~it[1] : it[1])) < q_hat*sub_lead)
-	--q_hat; // |q_hat| was certainly too big; now it is at most 1 too big
+      acc<<=shift; // scale by same left shift that was applied above to |work|
+      acc |= (below_0 ? ~it[1] : it[1])>>(32-shift); // shift in bits from right
     }
+
+    // |q_hat| is 64 bits to have wide multiply, but its upper word remains 0
+    two_digits q_hat = // our quotient digit; might be exact or too high by 1
+      acc/lead;
+    if (q_hat>=0x100000000) // impossibly large a approximative quotient
+      q_hat  = 0x0FFFFFFFF; // maximal possible quotient; is at most 1 too big
+    else if (acc%lead < (q_hat*sub_lead>>32)) // conservative test |q_hat|
+      --q_hat; // |q_hat| was certainly too big; now it is at most 1 too big
+  /*
+    |else| it looks like |q_hat| is OK, though it still might be too big. But
+    $(\hbox{leading 3 words of }|*this<<shift|)-(q_hat*(lead:sub_lead))$,
+    though maybe negative, is $>-2^32$; therefore replacing its subtrahend by
+    $(q_hat-1)(lead:sub_lead+1)$ is more than enough to make the difference
+    positive. So we know |q_hat| does not overshoot quotient by more than $1$
+  */
 
     if (q_hat==0) // we need to test this anyway might as well do this now
     {
       it[-1]=0; // store the 0 digit in quotient, independently of |below_0|
-      continue; // don't change remainder, don't change |below_0| status
+      continue; // don't change remainder, don't change the |below_0| status
     }
     acc = 0; // use as accumlator for subtracting or adding to the remainder
     auto r_it = it + div.size()-1; // a reverse iterator, contrary to |d_it|
@@ -592,9 +601,7 @@ big_int big_int::reduce_mod (const big_int& divisor)
   quotient.shrink(); // quotient automatically has the correct sign bit
 
   d.resize(div.size()); // restrict to remainder
-  if (shift!=0)
-    LSR(shift); // shift remainder back to proper position, makes it positive
-  else if (is_negative())
+  if (is_negative())
     d.push_back(0); // ensure a positive sign bit
   shrink_pos(); // then ensure we hold a normalised value before continuing
   if (divisor.is_negative())
