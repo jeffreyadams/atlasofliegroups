@@ -501,9 +501,14 @@ big_int big_int::reduce_mod (const big_int& divisor)
     }
   }
 
-  const unsigned char shift = 32-bits::lastBit(div.d.back());
-  sign_extend(size()+1); // extend dividend by a word
   bool below_0 = is_negative(); // whether current remainder is negative
+
+  // ensure invariant: |-div.d.back()<remainder.d.back()<=div.d.back():|
+  if (size()==div.size() // ensure at least one |digit| for the quotient
+      or (below_0 ? d.back() <= ~div.d.back() : d.back() >= div.d.back()))
+    sign_extend(size()+1);
+
+  const unsigned char shift = 32-bits::lastBit(div.d.back());
 
   big_int work;
   work.d.assign(div.d.end()-(shift==0 or div.size()==2 ? 2 : 3), div.d.end());
@@ -543,7 +548,7 @@ big_int big_int::reduce_mod (const big_int& divisor)
       it[-1]=0; // store the 0 digit in quotient, independently of |below_0|
       continue; // don't change remainder, don't change the |below_0| status
     }
-    acc = 0; // use as accumlator for subtracting or adding to the remainder
+    acc = 0; // now use as accumlator for subtracting or adding to the remainder
     auto r_it = it + div.size()-1; // a reverse iterator, contrary to |d_it|
     if (not below_0)
     { // do subtraction complemented: sandwiched between |~|, \emph{add} product
