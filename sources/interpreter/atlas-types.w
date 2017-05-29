@@ -765,6 +765,7 @@ install_function(based_involution_wrapper,"involution",
 Now we are ready to introduce a new primitive type for root data.
 
 @< Includes needed in the header file @>=
+#include <memory> // for |std::unique_ptr|
 #include "rootdata.h"
 
 @ The root datum type is laid out just like previous primitive types are.
