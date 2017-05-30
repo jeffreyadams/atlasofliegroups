@@ -1,6 +1,7 @@
 { implement type ratmat that makes linear algebra over Q possible }
 
 <basic.at
+<matrix.at
 
 { a trick to locally rebind |s| (defined in basic.at) to constant string "/" }
 save_s : s
@@ -107,6 +108,13 @@ set - (mat M,[ratvec] MM)=ratmat: mat_as_ratmat(M)-ratvecs_as_ratmat(MM)
 
 {define inverse of mat as ratmat}
 set rational_inverse(mat M) = ratmat:inverse(mat_as_ratmat(M))
+
+{.right inverse of a rational matrix.}
+set right_inverse(ratmat M)=ratmat:
+let (A,,d)=M in right_inverse(A)*inverse(mat_as_ratmat(d*id_mat(n_rows(A))))
+
+{.left inverse of rational matrix.}
+set left_inverse(ratmat M)=ratmat:^right_inverse(^M)
 
 set ratvec_to_string(ratvec v) = string: { show ratvec as [rat], simplified }
    ## for a in v

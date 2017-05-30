@@ -160,6 +160,11 @@ set * (ratmat M,cyclotomicFieldElement (v,F)) = cyclotomicFieldElement:
 set galois_matrix (int k,cyclotomicField F) = ratmat:
   let d=degree(F) in ratvecs_as_ratmat(for i:d do zeta_power(k*i,F).v od)
 
+set pad(cyclotomicFieldElement z)=cyclotomicFieldElement:(z.v##null(z.F.degree-#z.v),z.F)
+
+set galois_action(int k, cyclotomicFieldElement z)=cyclotomicFieldElement:
+let z=pad(z) in (galois_matrix(k,z.F)*z.v,z.F)
+
 set galois_matrices(cyclotomicField F) = [ratmat]:
    for i in relative_primes(F.order) do galois_matrix(i,F) od
 
@@ -207,3 +212,14 @@ set to_string (cyclotomicFieldElement z) = string:
 
 {.display cyclotomic field element as polynomial in x.}
 set show (cyclotomicFieldElement z) = void: prints(to_string(z))
+
+set complex_conjugate(cyclotomicFieldElement z)=cyclotomicFieldElement:
+let v=z.v then
+zeta=z.F.primitive_root then
+rv=z.F.zero in
+for j:#v do rv+:=v[j]*inverse(zeta^j) od;rv
+
+set bar(cyclotomicFieldElement z)=cyclotomicFieldElement:complex_conjugate(z)
+set is_real(cyclotomicFieldElement z)=bool:z=z.bar
+
+set absolute_value_squared(cyclotomicFieldElement z)=cyclotomicFieldElement:z*z.bar
