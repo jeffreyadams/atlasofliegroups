@@ -454,36 +454,40 @@ std::ostream& operator<< (std::ostream& out, big_int&& number)
 // reduce |*this| modulo |divisor| and return the quotient
 big_int big_int::reduce_mod (const big_int& divisor)
 {
-  if (size()<divisor.size()) // easy case, quotient is $0$ or $-1$
-    if (is_negative()==divisor.is_negative())
-      return big_int{0};
+  const bool neg_div = divisor.is_negative();
+  if (size()<=divisor.size() and // test easy cases with quotient $0$ or $-1$
+      (size()<divisor.size() or // else compare leading absolute values
+       (is_negative() ? -d.back() : d.back()) < // conservatively
+       (neg_div ? -divisor.d.back(): divisor.d.back())
+     ))
+    if (is_negative()==neg_div or is_zero())
+      return big_int{0}; // then |*this| is valid remainder for |div|
     else
     {
       *this += divisor; // this brings remainder to sign of divisor
       return big_int{-1};
     }
-  else if (divisor.size()==1)
+  else if (divisor.size()==1) // relatively easy case, |shift_modulo| suffices
   { if (divisor.d[0]==0)
       throw std::runtime_error("Division by zero");
     digit div = divisor.d[0];
-    if (div>=neg_flag)
+    if (neg_div)
     { div = -div;
-      // |div| has an unsigned interpretation, so |div==neg_flag| does no harm
-      negate(); // now division effectively round quotient upwards
+      // |div| gets an unsigned interpretation, so |div==neg_flag| does no harm
+      negate(); // now division will effectively round quotient upwards
     }
 
-    int remainder = static_cast<int>
-      (shift_modulo(div)); // less than |div| in absolute value, so signed OK
-    if (divisor.is_negative())
-      remainder = -remainder;
-
+    digit remainder = shift_modulo(div);
     big_int quotient = std::move(*this);
-    *this = big_int{remainder};
+
+    assert (remainder<neg_flag); // since it is strictly less than |div|
+    *this = big_int(neg_div ? -remainder : remainder); // sign bit correct
+
     return quotient;
   }
 
   big_int div(divisor); // make a modifiable copy
-  if (divisor.is_negative())
+  if (neg_div)
   {
     div.negate(); // ensure |div| is positive
     negate(); // and negate |*this| too, to get the same quotient
@@ -495,7 +499,7 @@ big_int big_int::reduce_mod (const big_int& divisor)
     { auto remainder=shift_modulo(div.d[0]); // here |div.d[0]>=neg_flag|
       big_int quotient = std::move(*this);
       *this = big_int::from_unsigned(remainder);
-      if (divisor.is_negative())
+      if (neg_div)
 	negate(); // negate remainder if divisor was negative
       return quotient;
     }
@@ -609,7 +613,7 @@ big_int big_int::reduce_mod (const big_int& divisor)
   if (is_negative())
     d.push_back(0); // ensure a positive sign bit
   shrink_pos(); // then ensure we hold a normalised value before continuing
-  if (divisor.is_negative())
+  if (neg_div)
     negate(); // change sign of remainder for negative divisor
 
   return quotient;
