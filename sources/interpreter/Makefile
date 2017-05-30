@@ -109,6 +109,7 @@ Atlas_objects := $(sources_dir)/structure/prerootdata.o \
  $(sources_dir)/structure/involutions.o \
  $(sources_dir)/structure/y_values.o \
  $(sources_dir)/gkmod/ext_block.o \
+ $(sources_dir)/utilities/bigint.o \
  $(sources_dir)/gkmod/ext_kl.o
 
 cwebx_sources :=  buffer.w parsetree.w lexer.w \

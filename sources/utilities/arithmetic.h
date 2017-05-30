@@ -65,10 +65,17 @@ public:
 
   Numer_t numerator() const   { return num; }
 
-  /* the C++ rule that one unsigned operand silently converts the other
-     operand to unsigned as well makes exporting denominator as unsigned too
-     error prone; e.g., floor=numerator()/denominator() would wreak havoc */
+  /*
+    The C++ rule that one unsigned operand silently converts the other operand
+    to unsigned as well makes exporting denominator as unsigned too error
+    prone; e.g., floor=numerator()/denominator() would wreak havoc. Generally
+    speaking, casting unsigend to sogned is not a good thing, but typically
+    when this happens we risk having (had) overflow anyway, so accept it.
+  */
   Numer_t denominator() const { return Numer_t(denom); }
+
+  // however sometimes (printing, |big_int| conversion, we want the Real Thing
+  Denom_t true_denominator() const { return denom; }
 
   // these operators all return normalised results
   Rational operator+(Rational q) const;
@@ -76,6 +83,10 @@ public:
   Rational operator*(Rational q) const;
   Rational operator/(Rational q) const; // assumes $q\neq0$, will not throw
   Rational operator%(Rational q) const; // assumes $q\neq0$, will not throw
+
+  Rational operator-() const { return Rational(-num,denom); } // uniary minus
+  Rational inverse() const // multiplicative inverse; nonzero value assumed
+  { return num>0 ? Rational(denom,num) : Rational(-denom,-num); }
 
   Rational& operator=(Rational q)
     { num=q.num; denom=q.denom; return normalize(); }
@@ -92,6 +103,10 @@ public:
   Rational& operator*=(Numer_t n);
   Rational& operator/=(Numer_t n); // assumes $n\neq0$, will not throw
   Rational& operator%=(Numer_t n); // assumes $n\neq0$, will not throw
+
+  Numer_t floor () const { return divide(num,denom); }
+  Numer_t ceil () const { return -divide(-num,denom); }
+  Numer_t quotient (Denom_t n) const { return divide(num,n*denom); }
 
   // these definitions must use |denominator()| to ensure signed comparison
   bool operator==(Rational q) const

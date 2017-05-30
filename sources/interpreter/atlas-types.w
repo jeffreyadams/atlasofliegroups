@@ -441,11 +441,11 @@ annihilator_modulo(const LatticeMatrix& M, arithmetic::Denom_t denominator)
 
 @< Local function definitions @>=
 void ann_mod_wrapper(expression_base::level l)
-{ shared_int d=get<int_value>();
+{ int d=get<int_value>()->int_val();
   shared_matrix m=get<matrix_value>();
 @)
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<matrix_value>(annihilator_modulo(m->val,d->val)));
+    push_value(std::make_shared<matrix_value>(annihilator_modulo(m->val,d)));
 }
 
 @ Next a simple administrative routine, introduced because we could not handle
@@ -765,6 +765,7 @@ install_function(based_involution_wrapper,"involution",
 Now we are ready to introduce a new primitive type for root data.
 
 @< Includes needed in the header file @>=
+#include <memory> // for |std::unique_ptr|
 #include "rootdata.h"
 
 @ The root datum type is laid out just like previous primitive types are.
@@ -978,7 +979,7 @@ apply a shift by the number of positive roots here.
 
 @< Local function definitions @>=
 void root_wrapper(expression_base::level l)
-{ int root_index = get<int_value>()->val;
+{ int root_index = get<int_value>()->int_val();
   shared_root_datum rd(get<root_datum_value>());
   RootNbr npr = rd->val.numPosRoots();
   RootNbr alpha = npr+root_index;
@@ -988,7 +989,7 @@ void root_wrapper(expression_base::level l)
      push_value(std::make_shared<vector_value>(rd->val.root(alpha)));
 }
 void coroot_wrapper(expression_base::level l)
-{ int root_index = get<int_value>()->val;
+{ int root_index = get<int_value>()->int_val();
   shared_root_datum rd(get<root_datum_value>());
   RootNbr npr = rd->val.numPosRoots();
   RootNbr alpha = npr+root_index;
@@ -1117,7 +1118,7 @@ basis, which is easier since they are rational vectors.
 
 @< Local function definitions @>=
 void fundamental_weight_wrapper(expression_base::level l)
-{ int i= get<int_value>()->val;
+{ int i= get<int_value>()->int_val();
   shared_root_datum rd(get<root_datum_value>());
   if (unsigned(i)>=rd->val.semisimpleRank())
     throw runtime_error("Invalid index "+str(i));
@@ -1127,7 +1128,7 @@ void fundamental_weight_wrapper(expression_base::level l)
 }
 @)
 void fundamental_coweight_wrapper(expression_base::level l)
-{ int i= get<int_value>()->val;
+{ int i= get<int_value>()->int_val();
   shared_root_datum rd(get<root_datum_value>());
   if (unsigned(i)>=rd->val.semisimpleRank())
     throw runtime_error("Invalid index "+str(i));
@@ -2251,13 +2252,13 @@ As a special case we also provide the quasisplit form.
 
 @< Local function def...@>=
 void real_form_wrapper(expression_base::level l)
-{ shared_int i(get<int_value>());
+{ int i = get<int_value>()->int_val();
   shared_inner_class G = get<inner_class_value>();
-  if (size_t(i->val)>=G->val.numRealForms())
-    throw runtime_error ("Illegal real form number: "+str(i->val));
+  if (size_t(i)>=G->val.numRealForms())
+    throw runtime_error ("Illegal real form number: "+str(i));
 @.Illegal real form number@>
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<real_form_value>(*G,G->interface.in(i->val)));
+    push_value(std::make_shared<real_form_value>(*G,G->interface.in(i)));
 }
 @)
 void form_number_wrapper(expression_base::level l)
@@ -2453,17 +2454,17 @@ index. We also provide the dual quasisplit form.
 
 @< Local function def...@>=
 void dual_real_form_wrapper(expression_base::level l)
-{ shared_int i(get<int_value>());
+{ int i =get<int_value>()->int_val();
   shared_inner_class G = get<inner_class_value>();
-  if (size_t(i->val)>=G->val.numDualRealForms())
-    throw runtime_error ("Illegal dual real form number: "+str(i->val));
+  if (size_t(i)>=G->val.numDualRealForms())
+    throw runtime_error ("Illegal dual real form number: "+str(i));
 @.Illegal dual real form number@>
   if (l==expression_base::no_value)
     return;
   inner_class_value G_check(*G,tags::DualTag());
    // tailor make an |inner_class_value|
   push_value(std::make_shared<real_form_value>@|
-    (G_check ,G->dual_interface.in(i->val)));
+    (G_check ,G->dual_interface.in(i)));
 }
 @)
 void dual_quasisplit_form_wrapper(expression_base::level l)
@@ -2676,15 +2677,15 @@ a valid index into its list of Cartan classes.
 
 @< Local function def...@>=
 void ic_Cartan_class_wrapper(expression_base::level l)
-{ shared_int i(get<int_value>());
+{ int i=get<int_value>()->int_val();
   shared_inner_class ic = get<inner_class_value>();
-  if (size_t(i->val)>=ic->val.numCartanClasses())
-    throw runtime_error ("Illegal Cartan class number: "+str(i->val)
+  if (size_t(i)>=ic->val.numCartanClasses())
+    throw runtime_error ("Illegal Cartan class number: "+str(i)
 @.Illegal Cartan class number@>
     +", this inner class only has "+str(ic->val.numCartanClasses())
     +" of them");
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<Cartan_class_value>(*ic,i->val));
+    push_value(std::make_shared<Cartan_class_value>(*ic,i));
 }
 
 @ Alternatively (and this used to be the only way) one can provide a
@@ -2694,15 +2695,15 @@ containing inner class, and then get the Cartan class from there.
 
 @< Local function def...@>=
 void rf_Cartan_class_wrapper(expression_base::level l)
-{ shared_int i(get<int_value>());
+{ int i=get<int_value>()->int_val();
   shared_real_form rf= get<real_form_value>();
-  if (size_t(i->val)>=rf->val.numCartan())
-    throw runtime_error ("Illegal Cartan class number: "+str(i->val)
+  if (size_t(i)>=rf->val.numCartan())
+    throw runtime_error ("Illegal Cartan class number: "+str(i)
 @.Illegal Cartan class number@>
     +", this real form only has "+str(rf->val.numCartan())+" of them");
   BitMap cs=rf->val.Cartan_set();
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<Cartan_class_value>(rf->parent,cs.n_th(i->val)));
+    push_value(std::make_shared<Cartan_class_value>(rf->parent,cs.n_th(i)));
 }
 
 @ Like the quasisplit real form for inner classes, there is a particular
@@ -3058,7 +3059,7 @@ void KGB_elt_value::print(std::ostream& out) const
 
 @< Local function def...@>=
 void KGB_elt_wrapper(expression_base::level l)
-{ int i = get<int_value>()->val;
+{ int i = get<int_value>()->int_val();
   own_real_form rf= non_const_get<real_form_value>();
   if (size_t(i)>=rf->val.KGB_size())
     throw runtime_error ("Inexistent KGB element: "+str(i));
@@ -3132,7 +3133,7 @@ void KGB_cross_wrapper(expression_base::level l)
 { own_KGB_elt x = get_own<KGB_elt_value>();
   const KGB& kgb=x->rf->kgb();
   RootNbr npr=kgb.rootDatum().numPosRoots();
-  RootNbr alpha = get_reflection_index(get<int_value>()->val,npr);
+  RootNbr alpha = get_reflection_index(get<int_value>()->int_val(),npr);
 @)
   if (l==expression_base::no_value)
     return;
@@ -3147,7 +3148,7 @@ void KGB_Cayley_wrapper(expression_base::level l)
 { own_KGB_elt x = get_own<KGB_elt_value>();
   const KGB& kgb=x->rf->kgb();
   RootNbr npr=kgb.rootDatum().numPosRoots();
-  RootNbr alpha = get_reflection_index(get<int_value>()->val,npr);
+  RootNbr alpha = get_reflection_index(get<int_value>()->int_val(),npr);
 @)
   if (l==expression_base::no_value)
     return;
@@ -3179,7 +3180,7 @@ void KGB_status_wrapper(expression_base::level l)
 { shared_KGB_elt x = get<KGB_elt_value>();
   const KGB& kgb=x->rf->kgb();
   RootNbr npr=kgb.rootDatum().numPosRoots();
-  RootNbr alpha = get_reflection_index(get<int_value>()->val,npr);
+  RootNbr alpha = get_reflection_index(get<int_value>()->int_val(),npr);
 @)
   if (l==expression_base::no_value)
     return;
@@ -3469,9 +3470,9 @@ void block_size_wrapper(expression_base::level l)
 }
 
 void block_element_wrapper(expression_base::level l)
-{ shared_int i(get<int_value>());
+{ int i=get<int_value>()->int_val();
   shared_Block b = get<Block_value>();
-  BlockElt z = i->val; // extract value unsigned
+  BlockElt z = i; // extract value unsigned
   if (z>=b->val.size())
     throw runtime_error
       ("Block element " +str(z) + " out of range (<" + str(b->val.size())+")");
@@ -3533,9 +3534,9 @@ a Weyl group generator with respect to a block element.
 
 @< Local function def...@>=
 void block_status_wrapper(expression_base::level l)
-{ BlockElt i = get<int_value>()->val;
+{ BlockElt i = get<int_value>()->int_val();
   shared_Block b = get<Block_value>();
-  unsigned int s = get<int_value>()->val;
+  unsigned int s = get<int_value>()->int_val();
   if (s>=b->rf->val.semisimpleRank())
     throw runtime_error ("Illegal simple reflection: "+str(s));
   if (i>=b->val.size())
@@ -3555,9 +3556,9 @@ void block_status_wrapper(expression_base::level l)
 @< Local function def...@>=
 
 void block_cross_wrapper(expression_base::level l)
-{ BlockElt i = get<int_value>()->val;
+{ BlockElt i = get<int_value>()->int_val();
   shared_Block b = get<Block_value>();
-  unsigned int s = get<int_value>()->val;
+  unsigned int s = get<int_value>()->int_val();
   if (s>=b->rf->val.semisimpleRank())
     throw runtime_error ("Illegal simple reflection: "+str(s));
   if (i>=b->val.size())
@@ -3570,16 +3571,17 @@ void block_cross_wrapper(expression_base::level l)
 @)
 void block_Cayley_wrapper(expression_base::level l)
 { shared_int i = get<int_value>();
+  unsigned int ii = i->int_val();
   shared_Block b = get<Block_value>();
-  unsigned int s = get<int_value>()->val;
+  unsigned int s = get<int_value>()->int_val();
   if (s>=b->rf->val.semisimpleRank())
     throw runtime_error ("Illegal simple reflection: "+str(s));
-  if (static_cast<unsigned int>(i->val) >= b->val.size())
+  if (ii >= b->val.size())
     throw runtime_error
-      ("Block element " +str(i) + " out of range (<" + str(b->val.size())+")");
+      ("Block element " +str(ii) + " out of range (<" + str(b->val.size())+")");
   if (l==expression_base::no_value)
     return;
-  BlockElt sx = b->val.cayley(s,i->val).first;
+  BlockElt sx = b->val.cayley(s,ii).first;
   if (sx==UndefBlock) // when undefined, return i to indicate so
     push_value(i);
   else
@@ -3587,17 +3589,18 @@ void block_Cayley_wrapper(expression_base::level l)
 }
 @)
 void block_inverse_Cayley_wrapper(expression_base::level l)
-{ shared_int i = get<int_value>();
+{ shared_int i=get<int_value>();
+  unsigned int ii = i->int_val();
   shared_Block b = get<Block_value>();
-  unsigned int s = get<int_value>()->val;
+  unsigned int s = get<int_value>()->int_val();
   if (s>=b->rf->val.semisimpleRank())
     throw runtime_error ("Illegal simple reflection: "+str(s));
-  if (static_cast<unsigned int>(i->val) >= b->val.size())
+  if (ii >= b->val.size())
     throw runtime_error
-      ("Block element " +str(i) + " out of range (<" + str(b->val.size())+")");
+      ("Block element " +str(ii) + " out of range (<" + str(b->val.size())+")");
   if (l==expression_base::no_value)
     return;
-  BlockElt sx = b->val.inverseCayley(s,i->val).first;
+  BlockElt sx = b->val.inverseCayley(s,ii).first;
   if (sx==UndefBlock) // when undefined, return i to indicate so
     push_value(i);
   else
@@ -3886,7 +3889,7 @@ here, which present a single-minded interface to these transforms.
 @< Local function def...@>=
 void parameter_cross_wrapper(expression_base::level l)
 { shared_module_parameter p = get<module_parameter_value>();
-  int s = get<int_value>()->val;
+  int s = get<int_value>()->int_val();
   unsigned int r =
     rootdata::integrality_rank(p->rf->val.rootDatum(),p->val.gamma());
   if (static_cast<unsigned>(s)>=r)
@@ -3899,7 +3902,7 @@ void parameter_cross_wrapper(expression_base::level l)
 @)
 void parameter_Cayley_wrapper(expression_base::level l)
 { shared_module_parameter p = get<module_parameter_value>();
-  int s = get<int_value>()->val;
+  int s = get<int_value>()->int_val();
   unsigned int r =
     rootdata::integrality_rank(p->rf->val.rootDatum(),p->val.gamma());
   if (static_cast<unsigned>(s)>=r)
@@ -3912,7 +3915,7 @@ void parameter_Cayley_wrapper(expression_base::level l)
 
 void parameter_inv_Cayley_wrapper(expression_base::level l)
 { shared_module_parameter p = get<module_parameter_value>();
-  int s = get<int_value>()->val;
+  int s = get<int_value>()->int_val();
   unsigned int r =
     rootdata::integrality_rank(p->rf->val.rootDatum(),p->val.gamma());
   if (static_cast<unsigned>(s)>=r)
@@ -4038,7 +4041,7 @@ void scale_parameter_wrapper(expression_base::level l)
 { shared_rat f = get<rat_value>();
   own_module_parameter p = get_own<module_parameter_value>();
   if (l!=expression_base::no_value)
-@/{@; p->rc().scale(p->val,f->val);
+@/{@; p->rc().scale(p->val,f->rat_val());
     push_value(std::move(p));
   }
 }
@@ -4571,14 +4574,14 @@ split integers, and an explicit operator for converting back to a pair.
 @< Local function definitions @>=
 
 void int_to_split_coercion()
-{ int a=get<int_value>()->val;
+{ int a=get<int_value>()->int_val();
 @/push_value(std::make_shared<split_int_value>(Split_integer(a)));
 }
 @)
 void pair_to_split_coercion()
 { push_tuple_components();
-  int b=get<int_value>()->val;
-  int a=get<int_value>()->val;
+  int b=get<int_value>()->int_val();
+  int a=get<int_value>()->int_val();
   push_value(std::make_shared<split_int_value>(Split_integer(a,b)));
 }
 @)
@@ -4932,7 +4935,7 @@ correctly for it (albeit not in the fastest possible way).
 
 void int_mult_virtual_module_wrapper(expression_base::level l)
 { int c =
-    force<int_value>(execution_stack[execution_stack.size()-2].get())->val;
+    force<int_value>(execution_stack[execution_stack.size()-2].get())->int_val();
   // below top
   if (c==0) // then do multiply by $0$ efficiently:
   { shared_virtual_module m = get<virtual_module_value>();
@@ -5008,7 +5011,7 @@ void scale_poly_wrapper(expression_base::level l)
   shared_virtual_module P = get<virtual_module_value>();
   if (l!=expression_base::no_value)
     push_value@|(std::make_shared<virtual_module_value>
-      (P->rf,P->rc().scale(P->val,f->val)));
+      (P->rf,P->rc().scale(P->val,f->rat_val())));
 }
 
 void scale_0_poly_wrapper(expression_base::level l)
@@ -5093,7 +5096,7 @@ expansion into finals.
 
 @< Local function def...@>=
 void branch_wrapper(expression_base::level l)
-{ int bound = get<int_value>()->val;
+{ int bound = get<int_value>()->int_val();
   // not ``branch and bound'' but ``branch up to bound''
   shared_module_parameter p = get<module_parameter_value>();
   test_standard(*p,"Branching of non-standard parameter is not allowed");
@@ -5133,7 +5136,7 @@ needs.
 
 @< Local function def...@>=
 void branch_pol_wrapper(expression_base::level l)
-{ int bound = get<int_value>()->val;
+{ int bound = get<int_value>()->int_val();
   // not ``branch and bound'' but ``branch up to bound''
   shared_virtual_module P = get<virtual_module_value>();
   if (l==expression_base::no_value)
@@ -5395,7 +5398,7 @@ void scale_extended_wrapper(expression_base::level l)
 @)
   bool flipped;
   auto result = @;ext_block::scaled_extended_dominant
-    (rc,sr,delta->val,factor->val,flipped);
+    (rc,sr,delta->val,factor->rat_val(),flipped);
   push_value(std::make_shared<module_parameter_value>(p->rf,result));
   push_value(whether(flipped));
   if (l==expression_base::single_value)

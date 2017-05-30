@@ -103,7 +103,9 @@ namespace atlas
   }@;
 }@;
 
-@ For a large part the declarations for the parser consist of the recursive
+@*1 Outline of the type \ {\bf expr}.
+%
+For a large part the declarations for the parser consist of the recursive
 definition of the type |expr|. While that used to be a POD type used directly
 on the parser stack, this solution was very inflexible; it was therefore
 replaced by one where |expr| is not so constrained, and raw pointers |expr_p|
@@ -352,19 +354,28 @@ the symbol \.\$ referring to the last value computed.
 @*2 Denotations.
 %
 We call simple constant expressions ``denotations''. There are recognised by
-the scanner, and either the scanner or the parser will build an appropriate
-node for them, which just stores the constant value denoted. For integer and
-Boolean denotations, the value itself will fit comfortably inside the |struct
-expr@;|. For strings we store a |std::string|, which is more complicated to
-handle than the |char*@[@]@;| that we used to store; it will provide a first
-example of how the special member functions of |expr| should handle non-POD
-variants, which can neither be assigned to non-initialised memory without
-calling a constructor, nor be left in memory that will be reclaimed without
-calling a destructor.
+the scanner, and the parser will build an appropriate node for them, which
+just stores the constant value denoted, or in case of integers the string of
+characters. The latter will be converted below to a |arithmetic::big_int| to be
+stored in the |expr| value.
+
+@< Includes needed... @>=
+#include "bigint.h" // defines |arithmetic::big_int|
+
+@ To keep the size of the |union| in |expr| small, we only use variants that
+are no bigger than a pointer, storing a pointer when more than that is needed.
+For Boolean denotations, the value itself will fit comfortably inside the
+|struct expr@;|. For integers and strings we store a |std::string| value since
+it turns out to have the size of a single pointer; it will an example of how
+the special member functions of |expr| should handle non-POD variants (they
+can neither be assigned to non-initialised memory without calling a
+constructor, nor be left in memory that will be reclaimed without calling a
+destructor). If \Cpp11 support is incomplete, we store a raw character pointer
+|char*@[@]@;| instead. In the integer case we leave the conversion from
+character string to numeric value until after type checking.
 
 @< Variants of ... @>=
 
-int int_denotation_variant;
 bool bool_denotation_variant;
 #ifdef incompletecpp11
 const char* str_denotation_variant;
@@ -377,75 +388,102 @@ std::string str_denotation_variant;
 @< Enumeration tags for |expr_kind| @>=
 integer_denotation, string_denotation, boolean_denotation, @[@]
 
-@ For most of these variants there is a corresponding constructor that
-placement-constructs the constant value into that variant. For the integer and
-Boolean case we might alternatively have assigned to the field, but not for
-the string variant. Constructors whose arguments ther than |loc| have easily
-convertible argument types like |int| or |bool| are given an additional tag
-argument to avoid accidentally invoking an unintended constructor. This
-removes in particular the danger of accidentally invoking the Boolean
+@ For most of the variants there is a corresponding constructor that
+placement-constructs the constant value into that variant. For the Boolean
+case we might alternatively have assigned to the field, but not for the
+integer and string variants. Constructors whose arguments other than |loc| have
+easily convertible argument types like |int| or |bool| are given an additional
+tag argument to avoid accidentally invoking an unintended constructor. This
+also removes in particular the danger of accidentally invoking the Boolean
 constructor by accidentally passing some unrelated type by pointer (which
 would implicitly convert to |bool|).
 
 @< Methods of |expr| @>=
   struct int_tag @+{}; @+
-  struct bool_tag @+{};
-  expr(int n, const YYLTYPE& loc, int_tag)
-@/: kind(integer_denotation), int_denotation_variant(n), loc(loc) @+{}
+  struct bool_tag @+{}; @+
+  struct string_tag @+{};
   expr (bool b, const YYLTYPE& loc, bool_tag)
 @/: kind(boolean_denotation), bool_denotation_variant(b), loc(loc) @+{}
-  expr(std::string&& s, const YYLTYPE& loc)
-   : kind(string_denotation)
 #ifdef incompletecpp11
+  expr(std::string&& s, const YYLTYPE& loc, int_tag)
+@/: kind(integer_denotation)
+  , str_denotation_variant(std::strcpy(new char[s.size()+1],s.c_str()))
+  , loc(loc) @+{}
+  expr(std::string&& s, const YYLTYPE& loc, string_tag)
+@/ : kind(string_denotation)
    , str_denotation_variant(std::strcpy(new char[s.size()+1],s.c_str()))
-#else
-   , str_denotation_variant(std::move(s))
-#endif
    , loc(loc) @+{}
+#else
+  expr(std::string&& s, const YYLTYPE& loc, int_tag)
+@/: kind(integer_denotation)
+  , str_denotation_variant(std::move(s))
+  , loc(loc) @+{}
+  expr(std::string&& s, const YYLTYPE& loc, string_tag)
+@/ : kind(string_denotation)
+   , str_denotation_variant(std::move(s))
+   , loc(loc) @+{}
+#endif
 
 @~For more explicit construction of these variants in a dynamically allocated
-|expr| object, we provide the functions below. Note that
-|make_string_denotation| untypically takes a pointer to a |std::string| as
+|expr| object, we provide the functions below. Note that |make_int_denotation|
+and |make_string_denotation| untypically take a pointer to a |std::string| as
 argument; this is because the value of a string token is maintained on the
 parser stack as a variant of a |union| and so cannot be a type with a
 nontrivial destructor (destruction being handled by explicit calls).
 
 @< Declarations of functions for the parser @>=
-expr_p make_int_denotation (int val, const YYLTYPE& loc);
+expr_p make_int_denotation (std::string* val_p, const YYLTYPE& loc);
 expr_p make_bool_denotation(bool val, const YYLTYPE& loc);
 expr_p make_string_denotation(std::string* val_p, const YYLTYPE& loc);
 
 @~The definition of these functions is quite easy, as will be typical for
 node-building functions. Since the parser stack only contains plain types, the
-argument to |make_string_denotation| is a raw pointer to |std::string|, which
-it takes care to call |delete|, so that the temporarily allocated variable
-gets cleaned up whenever a string token becomes an expression (the parser now
-only has to define clean-up action in case such a token gets popped in error
-recovery without ever becoming an expression).
+argument to |make_int_denotation| and |make_string_denotation| are raw
+pointers to |std::string|, for which they will take care to call |delete|, so
+that the temporarily allocated variable gets cleaned up (as this happens
+whenever a string token becomes an expression, the parser only has to perform
+clean-up during error recovery, when such a token gets popped without becoming
+an expression). We can move from the pointed-to string before it gets
+destroyed, avoiding to copy the string.
+
+As a special service to the parser, which for some rules will generate
+integer denotations with the value $0$ not coming from the program text (for
+instance for certain omitted arguments), we allow calling
+|make_int_denotation| with |nullptr| as first argument, that will be replaced
+by a string specifying $0$ here. It happens that the empty string converts to
+the value $0$, so we provide that string rather than |"0"| here.
 
 @< Definitions of functions for the parser @>=
-expr_p make_int_denotation (int val, const YYLTYPE& loc)
-{@; return new expr(val,loc,expr::int_tag()); }
+expr_p make_int_denotation (std::string* val_p, const YYLTYPE& loc)
+{ std::unique_ptr<std::string>p(val_p); // this ensures clean-up
+  if (val_p==nullptr)
+    p.reset(new std::string); // empty string will convert to $0$
+  return new expr(std::move(*p),loc,expr::int_tag());
+}
 
 expr_p make_bool_denotation(bool val, const YYLTYPE& loc)
 {@; return new expr (val,loc,expr::bool_tag()); }
 
 expr_p make_string_denotation(std::string* val_p, const YYLTYPE& loc)
-{@; expr_p result=new expr(std::move(*val_p),loc);
+{@; expr_p result=new expr(std::move(*val_p),loc,expr::string_tag());
   delete val_p;
   return result;
 }
 
-@ For integer and Boolean denotations there is nothing to destroy. For string
-denotations however we must destroy the |std::string| object. It was quite a
-puzzle to find the right syntax for that, because of what is essentially a bug
-in \.{gcc}, namely with |string| in place of |basic_string<char>|,
-the look-up of the destructor fails.
+@ For Boolean denotations there is nothing to destroy. For integer and string
+denotations however we must destroy the object held through the variant. Since
+there is no level of pointer, we should call the destructor for the variant
+itself explicitly (in other variants we shall see raw pointers as variants,
+for which calling |delete| is the proper action). It was quite a puzzle to
+find the right syntax for that, because of what is essentially a bug
+in \.{gcc}, namely with |string| in place of |basic_string<char>| below, the
+look-up of the destructor fails.
 
 @s basic_string string
 
 @< Cases for destroying... @>=
-case integer_denotation: case boolean_denotation: break;
+case boolean_denotation: break;
+case integer_denotation:
 case string_denotation:
 #ifdef incompletecpp11
   delete[](str_denotation_variant); break;
@@ -461,10 +499,9 @@ efficiency, and it will probably leave an empty shell to be destructed, but
 this does not mean we can omit the destruction.
 
 @< Cases for copying... @>=
-  case integer_denotation:
-    int_denotation_variant = other.int_denotation_variant; break;
   case boolean_denotation:
     bool_denotation_variant = other.bool_denotation_variant; break;
+  case integer_denotation:
   case string_denotation:
 #ifdef incompletecpp11
     str_denotation_variant = other.str_denotation_variant;
@@ -482,7 +519,7 @@ for Boolean denotations this requires making sure that the stream has its
 print the stored string enclosed in quotes.
 
 @< Cases for printing... @>=
-case integer_denotation: out << e.int_denotation_variant; break;
+case integer_denotation: out << e.str_denotation_variant; break; // no quotes
 case boolean_denotation:
    out << std::boolalpha << e.bool_denotation_variant; break;
 case string_denotation:
