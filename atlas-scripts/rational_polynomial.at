@@ -1,22 +1,29 @@
 <basic.at
 <polynomial.at
 
-: ratpoly = ratvec { in this file vectors will represent polynomials }
+
+: ratpoly = [rat] { in this file [rat] will represent polynomials }
 { poly: [a_0,...,a_n] represents the polynomial a_0+a_1q+...+a_nq^n }
 
 { addition of vectors (overrides definition in basic.at) to allow vectors of
   possibly different lengths, implicitly extending on the right by zeros as
   needed. This gives the right thing for coefficient vectors of polynomials.
+  Special care is required so that [int] never gets converted to vec,
+  so that bigint information is preserved
 }
 
-set fix_add = +@(ratvec,ratvec)
-set fix_sub = -@(ratvec,ratvec) { save fixed-length vector addition and subtraction }
-set dot_product = *@(ratvec,ratvec) { and scalar product }
+{these definitions caused conflicts in the setting of big integers, so
+ I'll comment them out. Instead of using convenient +,-,*, use
+flex_add, flex_sub, convolve}
+
+{set fix_add = +@(ratvec,ratvec)}
+{set fix_sub = -@(ratvec,ratvec) { save fixed-length vector addition and subtraction }}
+{set dot_product = *@(ratvec,ratvec) { and scalar product }}
 
 { prepare for binding arithmetic on |poly| values differently inside this file }
-forget +@(ratvec,ratvec)
-forget -@(ratvec,ratvec)
-forget *@(ratvec,ratvec)
+{forget +@(ratvec,ratvec)}
+{forget -@(ratvec,ratvec)}
+{forget *@(ratvec,ratvec)}
 
 { for convenience declare some constants, the ! makes changes to these illegal }
 set !ratpoly_0 = ratpoly:[], !ratpoly_1 = ratpoly:[1], !ratpoly_2 = ratpoly: [2]
@@ -24,27 +31,62 @@ set !ratpoly_q = ratpoly: [0,1], !ratpoly_q2 = ratpoly: [0,0,1]
 
 set common(int a,int b)=lcm([a,b])
 
+{this is needed for multiplying an integers times a [int], so that it doesn't
+convert to vec and lose bigints}
+
+{set times(int n, vec v)=[int]:for x in v do x*n od}
+set times(int n, [int] v)=[int]:for x in v do x*n od
+
+{redefined strip to work with [int] and [rat], but need a new name because of disambiguation error}
+{like strip@vec defined in polnomial.at, but works with [int]}
+set rec_fun strip_int ([int] v)=[int]:
+if #v=0 then [] else if v~[0]=0 then strip_int(delete(v,#v-1)) else v fi fi
+set strip_int(ratpoly v)=ratpoly:let (num,denom)=%v in strip_int(num)*(1/denom)
+
+{the next 3 definitions were modified to avoid conversions to/from vecs,
+and work with [int] rather than vec}
+set flex_add_int([int] a,[int] b)=[int]:
+if #a<#b then 
+for i:#b-#a do a:=a#0 od else
+for i:#a-#b do b:=b#0 od fi;
+strip_int(for i:#a do a[i]+b[i] od)
+
+set flex_sub_int([int] a,[int] b)=[int]:
+if #a<#b then 
+for i:#b-#a do a:=a#0 od else
+for i:#a-#b do b:=b#0 od fi;
+strip_int(for i:#a do a[i]-b[i] od)
+
 set flex_add (ratpoly f,ratpoly g) = ratpoly:
-   let (fn,fd)=%f, (gn,gd)=%g in flex_add(gd*fn,fd*gn)/(fd*gd)
-set flex_sub(ratpoly f,ratpoly g) = ratpoly:
-   let (fn,fd)=%f, (gn,gd)=%g in flex_sub(gd*fn,fd*gn)/(fd*gd)
+   let (fn,fd)=%f, (gn,gd)=%g in {flex_add(gd*fn,fd*gn)/(fd*gd)}
+   let d=fd*gd in 
+   for a in flex_add_int(times(gd,fn), times(fd,gn)) do a/d od
+
+set flex_sub (ratpoly f,ratpoly g) = ratpoly:
+   let (fn,fd)=%f, (gn,gd)=%g in {flex_add(gd*fn,fd*gn)/(fd*gd)}
+   let d=fd*gd in 
+{   for a in flex_add(gd*fn,fd*gn) do a/d od}
+   for a in flex_sub_int(times(gd,fn), times(fd,gn)) do a/d od
+
 set convolve (ratpoly f,ratpoly g) = ratpoly:
-   let (fn,fd)=%f, (gn,gd)=%g in convolve(fn,gn)/(fd*gd)
+   let (fn,fd)=%f, (gn,gd)=%g in {convolve(fn,gn)/(fd*gd)}
+   let d=fd*gd in
+   for a in convolve(fn,gn) do a/d od
 
-set + = flex_add@(ratpoly,ratpoly)
-set - = flex_sub@(ratpoly,ratpoly)
-set * = convolve@(ratvec,ratvec)
+{these convenient overloads cause trouble and so we avoid them. See above}
+{set + = flex_add@(ratpoly,ratpoly)}
+{set - = flex_sub@(ratpoly,ratpoly)}
+{set * = convolve@([rat],[rat])}
 
-set ratpoly_product = *@(ratpoly,ratpoly) { this binding will remain exported }
-set ratpoly_plus = +@(ratpoly,ratpoly) { this binding will remain exported }
-set ratpoly_sub = -@(ratpoly,ratpoly) { this binding will remain exported }
+set ratpoly_product = convolve@(ratpoly,ratpoly) { this binding will remain exported }
+set ratpoly_plus = flex_add@(ratpoly,ratpoly) { this binding will remain exported }
+set ratpoly_sub = flex_sub@(ratpoly,ratpoly) { this binding will remain exported }
 
-{ reduce polynomial by dropping trailing zeros; shouldn't really be needed }
-set strip (ratpoly v) = ratpoly: v + ratpoly_0 { operator + does actual work }
-set degree (ratpoly P) = int: #P.strip-1 { degree, or -1 for the zero ratpoly }
+set degree (ratpoly P) = int: #P.strip_int-1 { degree, or -1 for the zero ratpoly }
 
+{this command was modified to preserve bigints (avoid conversion to vec)}
 { evaluate polynomial at integer }
-set evaluate_at_1 = sum@ratpoly { from basic.at; often we need this easy case }
+set evaluate_at_1(ratpoly v) = rat: sum(ratvec:v) { from basic.at; often we need this easy case }
 
 {. returns polynomials (q,r) where p=q*d+r and r=0 or deg(r)<deg(d) .}
 set divide(poly p,poly d) = (poly,poly):
@@ -55,21 +97,24 @@ set divide(poly p,poly d) = (poly,poly):
       fi
    in f(poly_0,p)
 
+{this command was modified to preserve bigints (avoid conversion to vec)}
 set ^ = (ratpoly,int->ratpoly): { power of a rational polynomial }
   let one=ratpoly:[1] { use local constant for efficiency } in
   (ratpoly p,int n) ratpoly: { the actual powering function }
     if n=0 then [1]
     else { no point in trying to do this by repeated squaring: is not faster }
-      let f=p in while (n-:=1)>0 do f *:= p od; f
+      let f=p in while (n-:=1)>0 do { f *:= p}  f:=convolve(f,p) od; f
     fi
 
+{this command was modified to preserve bigints (avoid conversion to vec)}
 {. returns rational polynomials (q,r) where p=q*d+r and r=0 or deg(r)<deg(d) .}
 set divide(ratpoly p,ratpoly d) = (ratpoly,ratpoly):
    let rec_fun f(ratpoly q, ratpoly r) = (ratpoly,ratpoly):
       if #r<#d then
-{      prints("p=",p, new_line,"  q=",q,new_line,"d=",d,new_line,"r=",r,new_line,"d*q+r=",d*q+r, " "); }assert(strip(d*q+r)=strip(p),"bug in divide");(q,r)
+{      prints("p=",p, new_line,"  q=",q,new_line,"d=",d,new_line,"r=",r,new_line,"d*q+r=",d*q+r, " "); }
+      assert(strip_int(flex_sub(convolve(d,q),r))=strip_int(p),"bug in divide");(q,r)
       else let (c,e)=%(r~[0]/d~[0]) then  t=ratpoly: (null(#r-#d) # c)/e  in
-        f(q+t,r-d*t) fi
+        f(flex_add(q,t),flex_sub(r,convolve(d,t))) fi
    in f(ratpoly_0,p)
 
 {.Euclidean division of rational polynomial by a monic rational polynomial.}
@@ -86,13 +131,20 @@ set monic_divide ([rat] P, ratpoly D) =
    ;  (P[deg_D:] {quotient from upper part}, P[:deg_D] {remainder} )
    fi
 
+{convert |vec| to [rat]}
+set vec_as_array_of_rat(vec v)=[rat]:for a in v do rat:a od
+
+{need special definition to handle monic_divide@([rat],vec)}
+set monic_divide ([rat] P, vec v) =
+       (ratpoly,ratpoly): monic_divide(P,vec_as_array_of_rat(v))
+
 { restore normal vector arithmetic }
-forget +@(ratvec,ratvec)
-forget -@(ratvec,ratvec)
-forget *@(ratvec,ratvec)
-set + = fix_add@(ratvec,ratvec)
-set - = fix_sub@(ratvec,ratvec)
-set * = dot_product@(ratvec,ratvec)
+{forget +@(ratvec,ratvec)}
+{forget -@(ratvec,ratvec)}
+{forget *@(ratvec,ratvec)}
+{set + = fix_add@(ratvec,ratvec)}
+{set - = fix_sub@(ratvec,ratvec)}
+{set * = dot_product@(ratvec,ratvec)}
 
 { make a printable string out of a ratpol and name of indeterminate,
   for use in other print functions, see polynomial.at:stringPoly }

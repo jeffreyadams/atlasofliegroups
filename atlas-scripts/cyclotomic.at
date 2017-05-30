@@ -78,8 +78,10 @@ set degree (cyclotomicField F) = int: #F.Phi-1
 
 set = (cyclotomicField E,cyclotomicField F) = bool: F.order=E.order
 
+{element in a cyclotomic field is ([rat],cyclotomicField)
+ use [rat] rather than ratvec to allow bigints}
 {. element in a cyclotomic field.}
-: cyclotomicFieldElement = (ratvec v,cyclotomicField F)
+: cyclotomicFieldElement = ([rat] v,cyclotomicField F)
 
 {.reduce rational polynomial modulo Phi(n).}
 set reduce (cyclotomicFieldElement (v,F)) = cyclotomicFieldElement:
@@ -89,7 +91,7 @@ set = (cyclotomicFieldElement(v,F),cyclotomicFieldElement(w,G)) = bool:
    assert(F=G,"cyclotomic fieds differ in comparison");
    let (,r)= monic_divide(ratpoly_sub(v,w),F.Phi) in =r
 
-set cyclotomic_field_element = reduce@(ratvec,cyclotomicField)
+set cyclotomic_field_element = reduce@([rat],cyclotomicField)
 
 {.embed Q in cyclotomic field as (images of) constant polynomials.}
 set embed_Q (rat r,cyclotomicField F) = cyclotomicFieldElement:
@@ -148,11 +150,11 @@ set to_integer(cyclotomicFieldElement z)=int:
 { embed roots of unity in F }
 set exp_1 (rat r,cyclotomicField F) = cyclotomicFieldElement:
    let k=to_denominator(r,F.order) in
-   cyclotomic_field_element(null(k)#1,F)
+   cyclotomic_field_element(null(k)##[1/1],F)
 
 set zeta_power (int k, cyclotomicField F) = cyclotomicFieldElement:
    { first reduce modulo $X^n-1$, then modulo $\Phi(n)$ }
-   reduce(null(k%F.order)#1,F)
+   reduce(null(k%F.order)##[1/1],F)
 
 set * (ratmat M,cyclotomicFieldElement (v,F)) = cyclotomicFieldElement:
    ( M*v , F )
