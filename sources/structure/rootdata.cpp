@@ -738,6 +738,15 @@ RootDatum::RootDatum(int_Matrix& projector, const RootDatum& rd,
 
   // the restriction map is surjective, and therefore called |projector|
   projector = row.block(d,0,r,r); // cokernel of |kernel|, projects weights
+
+/* |projector| directly transforms weights, so can be applied to roots.
+   For coroots we could try to solve new_coroot*projector = old_coroot, which
+   has a (unique) solution since each old_coroot, as linear form, vanishes on
+   the kernel of |projector|. However it is more efficient to apply directly
+   right multiplication by a fixed matrix to coroots, for which a section
+   (right-inverse) for projector will do, as the kernel of old_coroot contains
+   (the kernel of |projector|, hence) the image of $(section*projector - Id_r)$
+ */
   int_Matrix section // will satisfy $projector*section=Id_d$;
     = row.inverse().block(0,d,r,r); // transforms coweights by right-action
 
