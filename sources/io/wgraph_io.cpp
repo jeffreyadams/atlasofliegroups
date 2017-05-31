@@ -27,10 +27,8 @@ namespace atlas {
 namespace wgraph_io {
 
 
-void printWGraph(std::ostream& strm, const wgraph::WGraph& wg)
-
 /*
-  Synopsis: outputs the structural data for the W-graph to strm.
+  Output the structural data for the W-graph to strm.
 
   The output format is as follows: one line peer vertex, consisting of three
   colon-separated fields:
@@ -46,40 +44,30 @@ void printWGraph(std::ostream& strm, const wgraph::WGraph& wg)
   that it can be easily parsed by another program (for instance, a
   prettyprinter?)
 */
-
+void printWGraph(std::ostream& strm, const wgraph::WGraph& wg)
 {
-  for (size_t z = 0; z < wg.size(); ++z) {
+  for (size_t z = 0; z < wg.size(); ++z)
+  {
     strm << z << ":";
-    prettyprint::printDescentSet(strm,wg.descent(z),wg.rank());
-    const graph::EdgeList& el = wg.edgeList(z);
-    const wgraph::WCoeffList& cl = wg.coeffList(z);
-    assert(el.size()==cl.size());
+    prettyprint::printDescentSet(strm,wg.descent_set(z),wg.rank());
+    assert(wg.coefficients.size()==wg.degree(z));
     strm << ":{";
-    for (size_t j = 0; j < el.size(); ++j) {
-      if (j)
+    for (size_t j = 0; j < wg.degree(z); ++j)
+    {
+      if (j>0)
 	strm << ",";
-      strm << "(" << el[j] << "," << cl[j] << ")";
+      strm << "(" << wg.edge_target(z,j) << "," << wg.coefficient(z,j) << ")";
     }
-    strm << "}";
-    strm << std::endl;
+    strm << "}" << std::endl;
   }
-}
+} // |printWGraph|
 
+//  Output the various cells in wg, as W-graphs, in the format of printWGraph.
 void printCells(std::ostream& strm, const wgraph::WGraph& wg)
-
-/*
-  Synopsis: outputs the various cells in wg, as W-graphs, in the format
-  of printWGraph.
-*/
-
 {
-  std::vector<wgraph::WGraph> wc;
-  wgraph::cells(wc,wg);
-
-  for (size_t j = 0; j < wc.size(); ++j) {
-    strm << "// cell #" << j << std::endl;
-    printWGraph(strm,wc[j]);
-  }
+  auto wc = wgraph::cells(wg);
+  for (size_t j = 0; j < wc.size(); ++j)
+    printWGraph(strm << "// cell #" << j << std::endl,wc[j]);
 }
 
 /*
@@ -120,20 +108,19 @@ void printWDecomposition(std::ostream& strm, const wgraph::DecomposedWGraph& g)
       for (size_t j=0; j<cell.size(); ++j)
       {
 	strm << j << '[' << mem[j] << "]: ";
-	prettyprint::printDescentSet(strm,cell.descent(j),g.rank());
-	const graph::EdgeList& el = cell.edgeList(j);
-	const wgraph::WCoeffList& cl = cell.coeffList(j);
-	for (size_t k=0; k<el.size(); ++k)
+	prettyprint::printDescentSet(strm,cell.descent_set(j),g.rank());
+	for (size_t k=0; k<cell.degree(j); ++k)
 	{
 	  strm << (k==0 ? " --> " : ",");
-	  if (cl[k]==1) strm << el[k];
-	  else strm << '(' << el[k] << ',' << cl[k] << ')';
+	  if (cell.coefficient(j,k)==1) strm << cell.edge_target(j,k);
+	  else strm << '(' << cell.edge_target(j,k)
+		    << ',' << cell.coefficient(j,k) << ')';
 	} // for (k)
 	strm << "\n"; // end line
       } // for (j)
       strm << "\n"; // empty line between cells
     } // for (i)
-}
+} // |printWDecomposition|
 
 }
 

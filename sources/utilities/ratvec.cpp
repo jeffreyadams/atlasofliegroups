@@ -28,7 +28,18 @@ template<typename C>
 template<typename C1>
 RationalVector<C>::RationalVector(const  matrix::Vector<C1>& v, C d)
   : d_num(v.begin(),v.end()), d_denom(std::abs(d))
-{ if (d<C(0)) d_num*=-C(1); }
+{ if (d<C(0))
+    d_num*=-C(1);
+} // don't try to normalize, caller can do the explicitly if needed
+
+template<typename C>
+RationalVector<C>::RationalVector(V&& v, C d)
+  : d_num(std::move(v)), d_denom(d)
+{ if (d<C(0))
+    d_num*=-C(1);
+} // don't try to normalize, caller can do the explicitly if needed
+
+
 
 // the following implementation assumes |long| can hold cross products
 template<typename C>

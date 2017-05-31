@@ -108,7 +108,6 @@ $(atlas_dir)/axis.o $(atlas_dir)/axis.tex : \
  $(sources_dir)/utilities/poset.h \
  $(sources_dir)/utilities/poset_fwd.h \
  $(sources_dir)/utilities/ratvec.h \
- $(sources_dir)/utilities/set.h \
  $(sources_dir)/utilities/size.h \
  $(sources_dir)/utilities/size_fwd.h \
  $(sources_dir)/utilities/sl_list.h \
@@ -172,7 +171,6 @@ $(atlas_dir)/atlas-types.o $(atlas_dir)/atlas-types.tex: \
  $(sources_dir)/utilities/poset.h \
  $(sources_dir)/utilities/poset_fwd.h \
  $(sources_dir)/utilities/ratvec.h \
- $(sources_dir)/utilities/set.h \
  $(sources_dir)/utilities/size.h \
  $(sources_dir)/utilities/size_fwd.h \
  $(sources_dir)/utilities/sl_list.h \
@@ -247,7 +245,6 @@ $(atlas_dir)/main.o $(atlas_dir)/main.tex: \
  $(sources_dir)/utilities/poset.h \
  $(sources_dir)/utilities/poset_fwd.h \
  $(sources_dir)/utilities/ratvec.h \
- $(sources_dir)/utilities/set.h \
  $(sources_dir)/utilities/size.h \
  $(sources_dir)/utilities/size_fwd.h \
  $(sources_dir)/utilities/tags.h \

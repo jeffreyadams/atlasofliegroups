@@ -2,6 +2,7 @@
   This is bitmap.cpp
 
   Copyright (C) 2004,2005 Fokko du Cloux
+  Copyright (C) 2006,2017 Marc van Leeuwen
   part of the Atlas of Lie Groups and Representations
 
   For license information see the LICENSE file
@@ -14,22 +15,24 @@
 
 #include <cassert>
 
-/*!****************************************************************************
-\file
-  \brief Contains the implementation of the BitMap class.
+/*****************************************************************************
 
-  A BitMap should be seen as a container of _unsigned long_, not bits; the
-  idea is that the unsigned longs it contains are the bit-addresses of the set
-  bits, i.e., their indices in the bit-array. It obeys the semantics of a
-  Forward Container (notion from the C++ standard library).
+  The implementation of the BitMap class.
 
-  A bitmap is a implemented as a vector of unsigned long, each representing a
-  "chunk" of bits in the map. We wish to provide bit-address access to this
-  map; for this purpose we use the reference trick from vector<bool>. Also we
-  wish to define an iterator class, which traverses the _set_ bits of the
-  bitmap; so that for instance, |b.begin()| would give access to the first set
-  bit (but is not a pointer or a reference to any value). Dereferencing the
-  iterator returns the integer bit-address of that first set bit.
+  A BitMap should be seen as a container of some unsigned integer type, with
+  values bounded by the capacity of the bitmap, and which will be produced as
+  |unsigned long| values (though these can then be narrowed to a smaller type
+  that can fit all possible values). The fact that bits are used to signal the
+  presence or absence of numbers is an inplementation details that this class
+  somewhat hides (though the class name is an obvious giveaway). It obeys the
+  semantics of a Forward Container (from the C++ standard library).
+
+  A bitmap is a implemented as a vector of |unsigned long| (no relation with
+  the same type used to represent values the container holds), each
+  representing a "chunk" of bits in the map. We do not wish to provide
+  bit-address access to this map. We do wish to define an iterator class,
+  which traverses the _set_ bits of the bitmap; so that dereferencing for
+  instance |b.begin()| returns the index of the first set bit in the bitmap.
 
 ******************************************************************************/
 
@@ -133,8 +136,8 @@ BitMap::iterator BitMap::begin() const
   return iterator(d_map.begin()+(n>>baseShift),n,d_capacity);
 }
 
-/*!
-  \brief returns the past-the-end iterator for the bitmap.
+/*
+  Return the past-the-end iterator for the bitmap.
 
   This is only needed to allow using these iterators in genereric algorithms
   which typically do |for (iterator it=x.begin(), it!=x.end(); ++it)|. In code
@@ -153,8 +156,8 @@ BitMap::iterator BitMap::end() const
 /******** accessors **********************************************************/
 
 
-/*!
-  Synopsis: decrements |n| until it points to a member of the bitset,
+/*
+  Decrement |n| until it points to a member of the bitset,
   or if none is found returns |false| (in which case |n| is unchanged)
 */
 bool BitMap::back_up(unsigned long& n) const
@@ -216,8 +219,8 @@ bool BitMap::empty() const
 }
 
 
-/*!
-  Synopsis: returns the address of the first member (set bit) of the bitmap,
+/*
+  Return the address of the first member (set bit) of the bitmap,
   or past-the-end indicator |d_capacity| if there is no such.
 */
 unsigned long BitMap::front() const
@@ -256,13 +259,13 @@ bool BitMap::full() const
 }
 
 
-/*!
-  Synopsis: returns the index of set bit number i in the bitset; in other
-  words, viewing a bitset b as a container of unsigned long, b.n_th(i) is the
-  value of the element i of b, and the syntax b[i] would have been logical
-  (as usual, the first element is number 0). This returns d_capacity if there
-  is no such element, in other words if at most i bits are set in the bitmap.
-  The condition b.position(b.n_th(i))==i holds whenever 0<=i<=size().
+/*
+  Return the index of set bit number |i| in the bitset; in other words,
+  viewing a bitset |b| as a container of |unsigned long|, |b.n_th(i)| is the
+  value of the element |i| of |b|, and the syntax |b[i]| would have been
+  logical (as usual, the first element is number 0). This returns |d_capacity|
+  if there is no such element, in other words if at most |i| bits are set in
+  the bitmap. Whenever |0<=i<=size()| one has |b.position(b.n_th(i))==i|.
 */
 unsigned long BitMap::n_th(unsigned long i) const
 {
@@ -297,10 +300,10 @@ unsigned long BitMap::n_th(unsigned long i) const
   return pos + bits::firstBit(f); // some bit i
 }
 
-/*!
-  Synopsis: returns the number of set bits in positions < n; viewing a bitset
-  b as a container of unsigned long, this is the number of values < n that b
-  contains. If n itself is a member of b, then n==b.n_th(b.position(n)).
+/*
+  Return the number of set bits in positions |< n|; viewing a bitset |b| as
+  a container of |unsigned long|, this is the number of values |< n| that |b|
+  contains. If |n| itself is a member of |b|, then |n==b.n_th(b.position(n))|.
 */
 unsigned long BitMap::position(unsigned long n) const
 {
@@ -317,10 +320,10 @@ unsigned long BitMap::position(unsigned long n) const
 }
 
 
-/*!
-  Synopsis: returns r bits from position n.
+/*
+  Return |r| bits from position |n|.
 
-  Precondition: r divides longBits, and n is a multiple of r.
+  Precondition: |r| divides |longBits|, and |n| is a multiple of |r|.
 
   Thus the bits extracted are found in single element of d_map, and such
   elements define an integral number of disjoint ranges
@@ -355,8 +358,8 @@ unsigned long BitMap::size() const
 
 /******** manipulators *******************************************************/
 
-/*!
-  Synopsis: transforms the bitmap into its bitwise complement at returns itself
+/*
+  Transform the bitmap into its bitwise complement at returns itself
 
   NOTE: one has to be careful about the last chunk, resetting the unused
   bits to zero.
@@ -376,10 +379,7 @@ BitMap& BitMap::operator~ ()
   return *this;
 }
 
-/*!
-  Synopsis: intersects the current bitmap with |b|, return value tells whether
-  the result is non-empty.
-*/
+// Intersect the current bitmap with |b|, return whether result is non-empty.
 bool BitMap::operator&= (const BitMap& b)
 {
   assert(b.capacity()<=capacity());
@@ -394,9 +394,7 @@ bool BitMap::operator&= (const BitMap& b)
   return any;
 }
 
-/*!
-  Synopsis: unites |b| into the current bitmap.
-*/
+// Unite |b| into the current bitmap.
 BitMap& BitMap::operator|= (const BitMap& b)
 {
   assert(b.capacity()<=capacity());
@@ -406,9 +404,7 @@ BitMap& BitMap::operator|= (const BitMap& b)
   return *this;
 }
 
-/*!
-  Synopsis: xor's |b| into the current bitmap.
-*/
+// Perform exclusive or (XOR) of |b| into the current bitmap.
 BitMap& BitMap::operator^= (const BitMap& b)
 {
   assert(b.capacity()<=capacity());
@@ -418,8 +414,9 @@ BitMap& BitMap::operator^= (const BitMap& b)
   return *this;
 }
 
-/*! Synopsis: takes the current bitmap into its set-difference with |b|, i.e.,
-  removes from our bitmap any elements appearing in |b|; the latter should not
+/*
+  Take the current bitmap into its set-difference with |b|, i.e.,
+  remove from our bitmap any elements appearing in |b|; the latter should not
   exceed the size of the current bitmap (but may be smaller).
   Return whether any bits remain in the result.
 */
@@ -476,8 +473,8 @@ BitMap& BitMap::operator>>= (unsigned long delta) // decrease values by |delta|
   return *this;
 }
 
-/*!
-  Synopsis: sets all the bits in the bitmap.
+/*
+  Set all the bits in the bitmap.
 
   As usual we have to be careful to leave the unused bits at the end to zero.
 */
@@ -489,7 +486,7 @@ void BitMap::fill()
     d_map.back() = constants::lMask[d_capacity&posBits];
 }
 
-//!\brief Sets all the bits in positions |i| with |start<=i<stop|.
+// Set all the bits in positions |i| with |start<=i<stop|.
 void BitMap::fill(size_t start, size_t stop)
 {
   if (start>=stop) return;
@@ -507,7 +504,7 @@ void BitMap::fill(size_t start, size_t stop)
   }
 }
 
-//!\brief Sets all the bits in positions |i| with |start<=i<stop|.
+// Set all the bits in positions |i| with |start<=i<stop|.
 void BitMap::clear(size_t start, size_t stop)
 {
   if (start>=stop) return;

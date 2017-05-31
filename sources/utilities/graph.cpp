@@ -2,6 +2,7 @@
   This is graph.cpp
 
   Copyright (C) 2004,2005 Fokko du Cloux
+  Copyright (C) 2006,2017 Marc van Leeuwen
   part of the Atlas of Lie Groups and Representations
 
   For license information see the LICENSE file
@@ -33,8 +34,8 @@ namespace graph {
 
 /******** accessors **********************************************************/
 
-/*!
-  OrientedGraph::cells puts in pi the partition of the vertex set into strong
+/*
+  OrientedGraph::cells returns the partition of the vertex set into strong
   components for the graph, and if gr!=nullptr also puts in *gr the graph of
   the partial order relation induced by our graph on the quotient.
 
@@ -148,63 +149,63 @@ partition::Partition OrientedGraph::cells(OrientedGraph* gr) const
       work_addr cur_pos=0; // point current position to x0
 
       while(cur_pos!=nil)
+      {
+      next_x:
+	info& x = active[cur_pos];
+	const EdgeList& edges = edgeList(x.v);
+
+	while (x.next_edge < edges.size())
 	{
-	next_x:
-	  info& x = active[cur_pos];
-	  const EdgeList& edges = edgeList(x.v);
+	  Vertex y = edges[x.next_edge++];
+	  if (rank[y]==0) // y is a fresh vertex
+	  {
+	    work_addr y_pos=active.size();
+	    rank[y]=count++;
+	    active.push_back(info(y,cur_pos,rank[y]));
+	    cur_pos=y_pos;
+	    goto next_x;
+	  }
+	  else // |y| was seen before (cross edge), or |y| is settled
+	  {  // if |y| is settled nothing will happen
+	    if (rank[y] < x.min) // then record that we can reach y
+	      x.min = rank[y];
+	  }
+	} // while (x.next_edge < edges.size())
 
-	  while (x.next_edge < edges.size())
-	    {
-	      Vertex y = edges[x.next_edge++];
-	      if (rank[y]==0) // y is a fresh vertex
-		{
-		  work_addr y_pos=active.size();
-		  rank[y]=count++;
-		  active.push_back(info(y,cur_pos,rank[y]));
-		  cur_pos=y_pos;
-		  goto next_x;
-		}
-	      else // |y| was seen before (cross edge), or |y| is settled
-		{  // if |y| is settled nothing will happen
-		  if (rank[y] < x.min) // then record that we can reach y
-		    x.min = rank[y];
-		}
-	    } // while (x.next_edge < edges.size())
+	// at this point we have exhausted the edges of |x.v|, it matures
+	work_addr new_pos=x.parent; // we will back-up to parent of |x| next
 
-	  // at this point we have exhausted the edges of |x.v|, it matures
-	  work_addr new_pos=x.parent; // we will back-up to parent of |x| next
+	if (x.min == rank[x.v]) // no older vertex reachable from |x|
+	  { // split off strong component
+	    unsigned long c =
+	      pi.new_class(x.v);  // x will be added again in loop, harmless
+	    std::vector<const EdgeList*> out; // to gather outgoing edges
+	    out.reserve(active.size()-cur_pos);
+	    for (work_addr i=cur_pos; i<active.size(); ++i)
+	      {
+		Vertex y=active[i].v; // the first time |y==x.v|
+		pi.addToClass(c,y);
+		rank[y]=infinity;     // |y| is now settled
+		out.push_back(&edgeList(y));
+	      }
+	    // now remove |x| and its descendance from |active|
+	    active.erase(active.begin()+cur_pos,active.end());
 
-	  if (x.min == rank[x.v]) // no older vertex reachable from |x|
-	    { // split off strong component
-	      unsigned long c =
-		pi.new_class(x.v);  // x will be added again in loop, harmless
-	      std::vector<const EdgeList*> out; // to gather outgoing edges
-	      out.reserve(active.size()-cur_pos);
-	      for (work_addr i=cur_pos; i<active.size(); ++i)
-		{
-		  Vertex y=active[i].v; // the first time |y==x.v|
-		  pi.addToClass(c,y);
-		  rank[y]=infinity;     // |y| is now settled
-		  out.push_back(&edgeList(y));
-		}
-	      // now remove |x| and its descendance from |active|
-	      active.erase(active.begin()+cur_pos,active.end());
-
-	      if (gr!=nullptr) gr->addLinks(out,pi);
-	    }
-	  else // |x| matures but does not head a new strong component
-	    {  // note that |x| cannot be |x0|, so active[x.parent] exists
-	      if (x.min < active[x.parent].min) // then update parent info
-		active[x.parent].min=x.min; // what x sees, its parent sees
-	    }
-	  cur_pos=new_pos;
-	}  // while(cur_pos!=nil)
+	    if (gr!=nullptr) gr->addLinks(out,pi);
+	  }
+	else // |x| matures but does not head a new strong component
+	  {  // note that |x| cannot be |x0|, so active[x.parent] exists
+	    if (x.min < active[x.parent].min) // then update parent info
+	      active[x.parent].min=x.min; // what x sees, its parent sees
+	  }
+	cur_pos=new_pos;
+      }  // while(cur_pos!=nil)
 
       assert(active.empty());
 
     } //for (x0) if (rank[x0]<infinity)
 
-#if 1
+#if 0
   // maybe reverse the numbering of the classes in the partition (deactivated)
   {
     unsigned long last=pi.classCount()-1;

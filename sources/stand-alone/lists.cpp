@@ -4,6 +4,7 @@
 #include <cctype>
 #include <cstring>
 #include <cstdlib> // for |exit|
+#include <memory> // for |std::unique_ptr|
 #include <list> // for comparison
 #include <stack> // for comparison
 #include "sl_list.h"

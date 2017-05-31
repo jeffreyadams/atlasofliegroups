@@ -184,8 +184,7 @@ const wgraph::WGraph& currentWGraph()
   if (WGr_pointer==nullptr)
   {
     const kl::KLContext& c=currentKL();
-    WGr_pointer=new wgraph::WGraph(c.rank());
-    kl::wGraph(*WGr_pointer,c);
+    WGr_pointer=new wgraph::WGraph(kl::wGraph(c));
   }
   return *WGr_pointer;
 }

@@ -9,6 +9,7 @@
 
 #include "ext_kl.h"
 #include "basic_io.h"
+#include "wgraph.h"
 
 namespace atlas {
 namespace ext_kl {
@@ -64,7 +65,7 @@ descent_table::descent_table(const ext_block::ext_block& eb)
     for (weyl::Generator s=0; s<block.rank(); ++s)
     {
       ext_block::DescValue v = block.descent_type(s,x);
-      if (is_descent(v))
+      if (ext_block::is_descent(v))
 	desc.set(s);
       else if (not has_double_image(v))
 	good_asc.set(s); // good ascent: at most one upward neighbour
@@ -142,7 +143,6 @@ bool descent_table::extr_back_up(BlockElt& x, BlockElt y) const
 
 KL_table::KL_table(const ext_block::ext_block& b, std::vector<Pol>& pool)
   : aux(b), storage_pool(pool), column()
-  , untwisted(b.untwisted())
 { // ensure first two pool entries are constant polynomials $0$, and $1$
   if (pool.empty())
     pool.push_back(Pol(0));
@@ -152,10 +152,6 @@ KL_table::KL_table(const ext_block::ext_block& b, std::vector<Pol>& pool)
     pool.push_back(Pol(1));
   else
     assert(pool[1]==Pol(1));
-
-#ifndef NDEBUG
-  untwisted.fill(false);
-#endif
 }
 
 std::pair<kl::KLIndex,bool>
@@ -177,16 +173,13 @@ Pol KL_table::P(BlockElt x, BlockElt y) const
 }
 
 // coefficient of P_{x,y} of $q^{(l(y/x)-i)/2}$ (used with i=1,2,3 only)
-int KL_table::mu(int i,BlockElt x, BlockElt y) const
+int KL_table::mu(short unsigned int i,BlockElt x, BlockElt y) const
 {
-  if (aux.block.length(x)+i>aux.block.length(y))
-    return 0; // coefficient would be at negative degree
-  unsigned d=aux.block.l(y,x)-i;
-  if (d%2!=0)
-    return 0; // coefficient would be at non-integral degree
-  d/=2;
+  unsigned int d=l(y,x);
+  if (d<i or (d-=i)%2!=0) // or |l(y,x)<i|
+    return 0; // coefficient would be at negative or non-integral degree
   PolRef Pxy=P(x,y);
-  return Pxy.degree_less_than(d) ? 0 : Pxy[d];
+  return Pxy.degree_less_than(d/=2) ? 0 : Pxy[d];
 }
 
 Pol qk_plus_1(int k)
@@ -218,20 +211,23 @@ Pol qk_minus_q(int k)
 Pol KL_table::product_comp (BlockElt x, weyl::Generator s, BlockElt sy) const
 {
   assert(is_descent(type(s,x)));  // otherwise don't call this function
-  const ext_block::ext_block& b = aux.block;
   BlockEltList neighbours; neighbours.reserve(s);
   aux.block.add_neighbours(neighbours,s,x);
-  Pol result=b.T_coef(s,x,x)*P(x,sy); // start with term from diagonal
+  Pol result=aux.block.T_coef(s,x,x)*P(x,sy); // start with term from diagonal
   for (auto it=neighbours.begin(); it!=neighbours.end(); ++it)
-    result += b.T_coef(s,x,*it)*P(*it,sy);
+    result += aux.block.T_coef(s,x,*it)*P(*it,sy);
   return result;
 } // |KL_table::product_comp|
 
 
-/* our analogue of $\mu$ in ordinary KL computations takes the form of a
-   symmetric Laurent polynomial $m$ in $r=\sqrt q$. Since we have no data
-   structure for Laurent polynomials, we shift exponents to get into $\Z[q]$
- */
+/*
+  In the descriptions below $r=\sqrt q$ and $p_{x,y}=r^{-l(y/x)}P_{x,y}$,
+  which is a polynomial in $\Z[r^{-1}]$, without constant term unless $x=y$.
+
+  our analogue of $\mu$ in ordinary KL computations takes the form of a
+  symmetric Laurent polynomial $m$ in $r$. Since we have no data structure
+  for Laurent polynomials, we shift exponents to get into $\Z[q]$
+*/
 
 // auxiliary to form $aq^{-1}+b+aq$, shifted to an ordinary polynomial
 inline Pol m(int a,int b) { return a==0 ? Pol(b) : qk_plus_1(2)*a + Pol(1,b); }
@@ -254,7 +250,7 @@ inline Pol m(int a,int b) { return a==0 ? Pol(b) : qk_plus_1(2)*a + Pol(1,b); }
   This function will be called when the values of $m(u)$ have already been
   computed for $u$ of length greater than $x$, and these values are passed in
   the final argument |M|, so as to avoid inefficient recursive calls.
- */
+*/
 Pol KL_table::get_M(weyl::Generator s, BlockElt x, BlockElt y,
 		    const std::vector<Pol>& M) const
 {
@@ -265,11 +261,11 @@ Pol KL_table::get_M(weyl::Generator s, BlockElt x, BlockElt y,
   const unsigned k = bl.orbit(s).length();
 
   if (k==1)
-    return Pol(mu(1,x,y)); // will be zero if $l(x,y)$ is even
+    return Pol(mu(1,x,y)); // will be zero if $l(y,x)$ is even
 
   if (k==2)
   {
-    if (bl.l(y,x)%2!=0)
+    if (l(y,x)%2!=0)
       return q_plus_1() * Pol(mu(1,x,y));
     if (defect==0)
     {
@@ -281,26 +277,26 @@ Pol KL_table::get_M(weyl::Generator s, BlockElt x, BlockElt y,
       }
       for (unsigned l=bl.length(x)+1; l<bl.length(z); l+=2)
 	for (BlockElt u=bl.length_first(l); u<bl.length_first(l+1); ++u)
-	  if (aux.descent_set(u)[s] and not M[u].isZero())
+	  if (aux.is_descent(s,u) and not M[u].isZero())
 	    acc -= mu(1,x,u)*M[u][0];
       return Pol(acc);
     }
     // for |k==2| there remains the defect (for the |y| to |z| link) case
-    int acc= product_comp(x,s,y).up_remainder(1,(bl.l(z,x)+1)/2);
-    for (unsigned l=bl.length(x)+2; l<bl.length(z); l+=2)
-      for (BlockElt u=bl.length_first(l); u<bl.length_first(l+1); ++u)
-	if (aux.descent_set(u)[s] and not M[u].isZero())
-	  acc -= P(x,u).up_remainder(1,bl.l(u,x)/2)*M[u][0];
+    int acc= product_comp(x,s,y).up_remainder(1,(l(z,x)+1)/2);
+    for (unsigned lu=bl.length(x)+2; lu<bl.length(z); lu+=2)
+      for (BlockElt u=bl.length_first(lu); u<bl.length_first(lu+1); ++u)
+	if (aux.is_descent(s,u) and not M[u].isZero())
+	  acc -= P(x,u).up_remainder(1,l(u,x)/2)*M[u][0];
     return Pol(acc);
   }
   if (k==3)
   {
-    if (bl.l(y,x)%2==0) // now we need a multiple of $1+q$
+    if (l(y,x)%2==0) // now we need a multiple of $1+q$
     {
       int acc = mu(2,x,y); // degree $1$ coefficient of |product_comp(x,s,y)|
       for (unsigned l=bl.length(x)+1; l<bl.length(z); l+=2)
 	for (BlockElt u=bl.length_first(l); u<bl.length_first(l+1); ++u)
-	  if (aux.descent_set(u)[s] and M[u].degree()==2)
+	  if (aux.is_descent(s,u) and M[u].degree()==2)
 	    acc -= mu(1,x,u)*M[u][2];
       return q_plus_1() * acc;
     }
@@ -317,26 +313,26 @@ Pol KL_table::get_M(weyl::Generator s, BlockElt x, BlockElt y,
       }
       for (BlockElt u=bl.length_first(bl.length(x)+1);
 	   u<aux.length_floor(z); u++ )
-	if (aux.descent_set(u)[s] and M[u].degree()==2-bl.l(u,x)%2)
+	if (aux.is_descent(s,u) and M[u].degree()==2-l(u,x)%2)
 	  b -= mu(M[u].degree(),x,u)*M[u][M[u].degree()];
       return m(a,b);
     }
     // there remains the |k==3|, even degree $m_s(x,y)$, defect $y$ case
     Pol Q = product_comp(x,s,y);
     if (a!=0)
-      Q -= Pol((bl.l(z,x)-1)/2,qk_plus_1(2)*a); // shaves top term
-    assert(Q.degree_less_than((bl.l(z,x)+3)/2)); // $\deg(Q)\leq(l(z,x)+1)/2$
-    int b= Q.up_remainder(1,(bl.l(z,x)+1)/2); // remainder by $q+1$
+      Q -= Pol((l(z,x)-1)/2,qk_plus_1(2)*a); // shaves top term
+    assert(Q.degree_less_than((l(z,x)+3)/2)); // $\deg(Q)\leq(l(z,x)+1)/2$
+    int b= Q.up_remainder(1,(l(z,x)+1)/2); // remainder by $q+1$
 
     /* since odd degree $m_s(u,y)$ do not contribute to $q+1$ remainder
        we restrict to those $u$ of the same length parity as $x$ */
-    for (unsigned l=bl.length(x)+2; l<bl.length(z); l+=2)
-      for (BlockElt u=bl.length_first(l); u<bl.length_first(l+1); ++u)
-	if (aux.descent_set(u)[s] and not M[u].isZero())
+    for (unsigned lu=bl.length(x)+2; lu<bl.length(z); lu+=2)
+      for (BlockElt u=bl.length_first(lu); u<bl.length_first(lu+1); ++u)
+	if (aux.is_descent(s,u) and not M[u].isZero())
 	{ // extract $b-2a$ from |M[u]| representing $ar^{-2}+br^0+ar^2$
 	  assert(M[u].degree()%2==0);
 	  int mu_rem = M[u].degree()==0 ? M[u][0] : M[u][1]-2*M[u][0];
-	  b -= P(x,u).up_remainder(1,bl.l(u,x)/2)*mu_rem;
+	  b -= P(x,u).up_remainder(1,l(u,x)/2)*mu_rem;
 	}
     return m(a,b);
   }
@@ -345,14 +341,14 @@ Pol KL_table::get_M(weyl::Generator s, BlockElt x, BlockElt y,
   Pol Q= product_comp(x,s,y);
 
   for (BlockElt u=bl.length_first(bl.length(x)+1); u<aux.length_floor(z); u++)
-    if (aux.descent_set(u)[s] and not M[u].isZero())
+    if (aux.is_descent(s,u) and not M[u].isZero())
     { // subtract $q^{(d-deg(M))/2}M_u*P_{x,u}$ from contribution for $x$
-      unsigned d=bl.l(z,u)+defect; // doubled implicit degree shift
+      unsigned d=l(z,u)+defect; // doubled implicit degree shift
       assert(M[u].degree()<=d);
       Q -= Pol((d-M[u].degree())/2,P(x,u)*M[u]);
     }
 
-  return extract_M(Q,bl.l(z,x)+defect,defect);
+  return extract_M(Q,l(z,x)+defect,defect);
 } // |KL_table::get_M|
 
 /*
@@ -375,15 +371,15 @@ Pol KL_table::get_Mp(weyl::Generator s, BlockElt x, BlockElt y,
   const ext_block::ext_block& bl=aux.block;
   const unsigned k = bl.orbit(s).length();
   if (k==1) // nothing changed for this case
-    return  Pol(bl.l(y,x)%2==0 ? 0 : mu(1,x,y));
+    return  Pol(l(y,x)%2==0 ? 0 : mu(1,x,y));
   if (k==2)
   {
-    if (bl.l(y,x)%2!=0)
+    if (l(y,x)%2!=0)
       return q_plus_1() * Pol(mu(1,x,y));
     int acc = mu(2,x,y);
     for (unsigned l=bl.length(x)+1; l<bl.length(y); l+=2)
       for (BlockElt u=bl.length_first(l); u<bl.length_first(l+1); ++u)
-	if (aux.descent_set(u)[s] and not M[u].isZero())
+	if (aux.is_descent(s,u) and not M[u].isZero())
 	{
 	  assert(M[u].degree()==1 and M[u][0]==M[u][1]);
 	  acc -= mu(1,x,u)*M[u][1];
@@ -392,12 +388,12 @@ Pol KL_table::get_Mp(weyl::Generator s, BlockElt x, BlockElt y,
   }
 
   assert(k==3); // this case remains
-  if (bl.l(y,x)%2==0) // now we need a multiple of $1+q$
+  if (l(y,x)%2==0) // now we need a multiple of $1+q$
   {
     int acc = mu(2,x,y); // degree $1$ coefficient of |product_comp(x,s,y)|
     for (unsigned l=bl.length(x)+1; l<bl.length(y); l+=2)
       for (BlockElt u=bl.length_first(l); u<bl.length_first(l+1); ++u)
-	if (aux.descent_set(u)[s] and M[u].degree()==2)
+	if (aux.is_descent(s,u) and M[u].degree()==2)
 	  acc -= mu(1,x,u)*M[u][2];
     return q_plus_1() * acc;
   }
@@ -406,7 +402,7 @@ Pol KL_table::get_Mp(weyl::Generator s, BlockElt x, BlockElt y,
   int a = mu(1,x,y); // degree $2$ coefficient of |product_comp(x,s,y)|
   int b = mu(3,x,y); // degree $0$ coefficient of |product_comp(x,s,y)|
   for (BlockElt u=bl.length_first(bl.length(x)+1); u<aux.length_floor(y); u++)
-    if (aux.descent_set(u)[s] and M[u].degree()==2-bl.l(u,x)%2)
+    if (aux.is_descent(s,u) and M[u].degree()==2-l(u,x)%2)
       b -= mu(M[u].degree(),x,u)*M[u][M[u].degree()];
   return m(a,b);
 } // |KL_table::get_Mp|
@@ -445,7 +441,7 @@ void KL_table::fill_columns(BlockElt y)
   what remains by $q+1$, which division must be exact. Return $r^{deg(m)}m$.
   Implemented only under the hypothesis that $\deg(Q)<(d+3)/2$ initially,
   and $\deg(Q)\leq d$ (so if $d=0$ then $Q$ must be constant). $Q$ can be zero.
- */
+*/
 Pol KL_table::extract_M(Pol& Q,unsigned d,unsigned defect) const
 {
   assert(Q.degree_less_than(d/2+2) and Q.degree_less_than(d+1));
@@ -468,7 +464,10 @@ Pol KL_table::extract_M(Pol& Q,unsigned d,unsigned defect) const
       if (M_deg==2)
 	M[1]=Q[Q.degree()-1]; // set sub-dominant coefficient here
     }
-    assert(Q.degree()>=M_deg); // this "explains" the precondition $\deg(Q)\leq d$
+
+    assert(Q.degree()>=M_deg);
+    // the need to have this "explains" the precondition $\deg(Q)\leq d$
+
     Q -= Pol(Q.degree()-M_deg,M); // subtract monomial multiple of |M|
     return M;
   } // |if(defect==0)|
@@ -521,12 +520,12 @@ void KL_table::fill_next_column(PolHash& hash)
 
     // fill array |cy| with initial contributions from $(T_s+1)*c_{sy}$
     for (BlockElt x=floor_y; x-->0; )
-      if (aux.descent_set(x)[s]) // compute contributions at all descent elts
+      if (aux.is_descent(s,x)) // compute contributions at all descent elts
 	cy[x] = product_comp(x,s,sy);
 
     // next loop downwards, refining coefficient polys to meet degree bound
     for (BlockElt u=floor_y; u-->0; )
-      if (aux.descent_set(u)[s])
+      if (aux.is_descent(s,u))
       {
 	unsigned d=aux.block.l(y,u)+defect; // doubled degree shift of |cy[u]|
 	assert(u<cy.size());
@@ -546,7 +545,7 @@ void KL_table::fill_next_column(PolHash& hash)
 	d/=2;
 	// now update contributions to all lower descents |x|
 	for (BlockElt x=aux.length_floor(u); x-->0; )
-	  if (aux.descent_set(x)[s])
+	  if (aux.is_descent(s,x))
 	  { // subtract $q^{(d-M_deg)/2}M_u*P_{x,u}$ from contribution for $x$
 	    assert(x<cy.size());
 	    cy[x] -= Pol(d,P(x,u)*Ms[u]);
@@ -556,7 +555,7 @@ void KL_table::fill_next_column(PolHash& hash)
     // finally copy relevant coefficients from |cy| array to |column[y]|
     kl::KLRow::reverse_iterator it = column.back().rbegin();
     for (BlockElt x=floor_y; aux.prim_back_up(x,y); it++)
-      if (aux.descent_set(x)[s]) // then we computed $P(x,y)$ above
+      if (aux.is_descent(s,x)) // then we computed $P(x,y)$ above
         *it = hash.match(cy[x]*sign);
       else // |x| might not be descent for |s| if primitive but not extremal
       { // find and use a double-valued ascent for |x| that is decsent for |y|
@@ -822,6 +821,9 @@ bool check(const Pol& P_sigma, const KLPol& P)
 bool KL_table::check_polys(BlockElt y) const
 {
   bool result = true;
+#ifndef NDEBUG
+  kl::KLContext untwisted(aux.block.untwisted());
+  untwisted.fill();
   for (BlockElt x=y; x-->0; )
     if (not check(P(x,y),untwisted.klPol(aux.block.z(x),aux.block.z(y))))
     {
@@ -831,6 +833,7 @@ bool KL_table::check_polys(BlockElt y) const
 		<< untwisted.klPol(aux.block.z(x),aux.block.z(y)) << std::endl;
       result=false;
     }
+#endif
   return result;
 }
 
@@ -855,13 +858,14 @@ void ext_KL_matrix (const StandardRepr p, const int_Matrix& delta,
   KL_table twisted_KLV(eblock,pool);
   twisted_KLV.fill_columns(size); // fill up to and including |p|
 
-  int_Vector pol_value (pool.size());
+  int_Vector pol_value (pool.size()); // polynomials evaluated as $q=-1$
   for (auto it=pool.begin(); it!=pool.end(); ++it)
     if (it->isZero())
       pol_value[it-pool.begin()]=0;
     else
-    { int sum=(*it)[it->degree()];
-      for (auto d=it->degree(); d-->0; )
+    { auto d=it->degree();
+      int sum=(*it)[d];
+      while (d-->0)
 	sum=(*it)[d]-sum;
       pol_value[it-pool.begin()]=sum;
     }
