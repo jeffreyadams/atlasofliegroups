@@ -1,9 +1,8 @@
-/*!
-\file
-  This is bits.cpp
-*/
 /*
+  This is bits.cpp
+
   Copyright (C) 2004,2005 Fokko du Cloux
+  Copyright (C) 2006,2017 Marc van Leeuwen
   part of the Atlas of Lie Groups and Representations
 
   For license information see the LICENSE file
@@ -64,7 +63,7 @@ unsigned int bitCount(unsigned long long int x)
 
 /*
   Return the position of the first set bit in |f|.
-  Returns |constants::longBits| if there is no such bit.
+  Return |constants::longBits| if there is no such bit.
 */
 unsigned int firstBit(unsigned long long int f)
 {

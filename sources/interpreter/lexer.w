@@ -455,8 +455,12 @@ slot (holding a null pointer) instead.
   }
 }
 
-@ Numbers do not include a sign, and are always scanned as |unsigned long|
-values.
+@ Number denotations get as parsing value the string of characters
+(representing digits) that forms the denotation; no conversion is done here.
+This is in order to allow writing arbitrarily large integers without the
+parser needing to know about the |arithmetic::big_int| class that will be used
+to represent them. As explained below for strings denotations, we store a raw
+pointer to a |std::string|, again to minimise complications for the parser.
 
 @< Scan a number @>=
 { const char* p=input.point@[()@]-1; // start of token
@@ -464,9 +468,7 @@ values.
     c=input.shift();
   while(std::isdigit(c));
   input.unshift();
-  const char* end=input.point();
-  unsigned long val=*p++-'0'; @+  while (p<end) val=10*val+(*p++-'0');
-  valp->val=val; code=INT;
+  valp->str = new std::string(p,input.point()); code=INT;
 }
 
 @ For reasons of limited look-ahead in the parser, certain operator symbols
@@ -663,15 +665,15 @@ reasons having a |std::string| itself as token value is not practical (it
 would define a union member with non-trivial destructor, and though \Cpp\ will
 allow that if certain provisions are made, the parser generator which
 is \Cpp-agnostic does not make those provisions). There is only one parser
-action for |STRING| tokens, and it will turn the token value into a string
-denotation expression; the code below used to circumvent to problem by already
-performing this conversion inside the scanner, and letting the mentioned
-parser action be empty. The current solution, though a doing a bit of extra
-work, is cleaner. It was chosen so that the parser can pass a complete
-location description when the string denotation expression is built; when the
-current code is executed the start of the token is recorded in |locp|, but not
-yet its end. Also this is allows for possible future addition of parser rules
-involving |STRING|.
+action for |STRING| tokens, and it will turn the token value produced here
+into a string denotation expression; the code below used to avoid this by
+already performing this conversion inside the scanner, and letting the
+mentioned parser action be empty. The current solution, though a doing a bit
+of extra work, is cleaner. It was chosen so that the parser can pass a
+complete location description when the string denotation expression is built;
+when the current code is executed the start of the token is recorded in
+|locp|, but not yet its end. Also this is allows for possible future addition
+of parser rules involving |STRING|.
 
 @< Scan a string... @>=
 {@; valp->str = new std::string(scan_quoted_string()); code=STRING; }

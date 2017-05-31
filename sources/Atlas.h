@@ -117,10 +117,14 @@ namespace atlas {
     typedef unsigned long long int Denom_t;
     class Rational;
     class Split_integer;
+    class big_int;
+    class big_rat;
   }
   using arithmetic::Rational;
   typedef std::vector<Rational> RationalList;
   using arithmetic::Split_integer;
+  using arithmetic::big_int;
+  using arithmetic::big_rat;
 
   namespace matrix {
     template<typename C> class Vector;
