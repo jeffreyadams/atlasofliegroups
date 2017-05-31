@@ -751,7 +751,7 @@ RootDatum::RootDatum(int_Matrix& projector, const RootDatum& rd,
   d_dual_2rho = section.right_prod(rd.d_dual_2rho);
 
   fillStatus();
-} // |RootDatum::RootDatum(...,Derived_Tag)|
+} // |RootDatum::RootDatum(...,DerivedTag)|
 
 /* Construct the adjoint root datum, and put weight mapping into |injector| */
 
@@ -793,7 +793,7 @@ RootDatum::RootDatum(int_Matrix& injector, const RootDatum& rd,
   d_dual_2rho = injector.right_prod(rd.d_dual_2rho);
 
   fillStatus();
-} // |RootDatum::RootDatum(...,Adjoint_Tag)|
+} // |RootDatum::RootDatum(...,AdjointTag)|
 
 
 
