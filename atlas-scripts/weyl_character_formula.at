@@ -2,7 +2,7 @@
 <coxeter.at
 <W_orbit.at
 <representations.at
-<finite_dimensional.at
+<finite_dimensional.at { for dimension_rat@(RootDatum,ratvec)}
 
 {! Weyl character formula computed at elements of finite order
 
@@ -41,13 +41,13 @@ set reduce_ratvecs_mod_lattice ([ratvec] S) = [ratvec]:
    od; result
 
 { action is by dual(rd) since v is in X_*(T)_Q }
-set W_orbit_torus_element(RootDatum rd,ratvec v)=[ratvec]:
+set W_orbit_torus_element (RootDatum rd,ratvec v) = [ratvec]:
    reduce_ratvecs_mod_lattice(W_orbit(dual(rd),v))
 
 { see centralizer@(KGBElt,ratvec) in K_highest_weights.at
   don't need x, and test is <alpha,v> is an integer
 }
-set centralizer(RootDatum rd,ratvec v) = RootDatum:
+set centralizer (RootDatum rd,ratvec v) = RootDatum:
    let roots = columns_with((vec alpha): is_integer(alpha*v), posroots(rd))
    then coroots = rank(rd) # for alpha in roots do coroot(rd,alpha) od
    in root_datum(simple_from_positive(roots,coroots))
@@ -61,32 +61,34 @@ set eval_char_T(vec lambda, ratvec v,cyclotomicField F)=cyclotomicFieldElement:
    exp_1(lambda*v,F)
 
 {.product of $1-\exp(-alpha)(t)$ over all posroots $\alpha$ making it nonzero.}
-set weyl_denominator_quotient(RootDatum rd, ratvec v,cyclotomicField F) =
+set weyl_denominator_quotient (RootDatum rd, ratvec v,cyclotomicField F) =
       cyclotomicFieldElement:
    let result=F.one in
    for alpha in posroots(rd)
    do let eval=(alpha*v)%1 in
-      if !=eval then result*:=(F.one-F.one*exp_1(-eval,F)) fi
+      if !=eval then result*:=(F.one-exp_1(-eval,F)) fi
    od; result
 
 
 {.Weyl character formula for finite dimensional with extremal weight lambda
   at t=exp_1(v), in the semisimple simply connected case.}
-set wcf_semisimple_simply_connected(RootDatum rd, vec lambda,ratvec v,cyclotomicField F) =
-    cyclotomicFieldElement:
-    assert(is_simply_connected(rd), "root datum is not semisimple and simply connected");
+set wcf_semisimple_simply_connected (RootDatum rd, vec lambda, ratvec v,
+        cyclotomicField F) =
+      cyclotomicFieldElement:
+    assert(is_simply_connected(rd)
+          ,"root datum is not semisimple and simply connected");
    let S=W_orbit_torus_element(rd,v), result=F.zero in
-   for w in S do
-    let rd_w=centralizer(rd,w), num=eval_char_T(lambda,w,F)
-      ,  denom=weyl_denominator_quotient(rd,w,F)
-      then dim_factor= dimension_rat(rd_w,lambda+rho(rd)-rho(rd_w))
+   for t in S do
+    let rd_t=centralizer(rd,t), num=eval_char_T(lambda,t,F)
+      ,  denom=weyl_denominator_quotient(rd,t,F)
+      then dim_factor= dimension_rat(rd_t,lambda+rho(rd)-rho(rd_t))
       then contribution = dim_factor*(num/denom)
       in if verbose_wcf
-         then prints(new_line, "t= ", w)
+         then prints(new_line, "t= ", t)
          ;  prints("numerator= ", to_string(num),new_line
                   ,"denominator= ", to_string(denom), new_line
                   ,"dimension factor= ", dim_factor)
-         ;  prints("centralizer: ", rd_w)
+         ;  prints("centralizer: ", rd_t)
          ;  prints("contribution: ", contribution.to_string)
          fi
       ;  result+:= contribution
@@ -94,16 +96,18 @@ set wcf_semisimple_simply_connected(RootDatum rd, vec lambda,ratvec v,cyclotomic
    assert(is_integer(result.v),"Character value is not an algebraic integer");
    result
 
-{ Weyl charater formula in general case is obtained by reduction to 
-the semisimple simply connected case}
-{.Weyl character formula for finite dimensional with extremal weight lambda exp_1(v).}
-set wcf(RootDatum rd, vec lambda, ratvec t, cyclotomicField F)=cyclotomicFieldElement:
-let (rd_sc,M)=simply_connected_cover_derived_info(rd) then
-lambda_sc=ratvec_as_vec(M*lambda) then
-t_sc=left_inverse(^M)*t then
-{t and ^M*t_sc=^M*(left_inverse(^M)) differ by something central}
-central_term=lambda*(t-^M*t_sc) in   
-exp_1(central_term,F)*wcf_semisimple_simply_connected(rd_sc,lambda_sc,t_sc,F)
+{ Weyl charater formula in general case is obtained by reduction to the
+  semisimple simply connected case }
+{.Weyl character formula for finite dimensional with extremal weight lambda
+  at exp_1(t).}
+set wcf (RootDatum rd, vec lambda, ratvec t, cyclotomicField F) =
+      cyclotomicFieldElement:
+   let (rd_sc,M)=simply_connected_cover_derived_info(rd)
+   then lambda_sc = ratvec_as_vec(M*lambda), t_sc=left_inverse(^M)*t
+        {t and ^M*t_sc=^M*(left_inverse(^M)) differ by something central}
+   then central_term=lambda*(t-^M*t_sc)
+   in
+   exp_1(central_term,F)*wcf_semisimple_simply_connected(rd_sc,lambda_sc,t_sc,F)
 
 {mainly for debugging;
  same as previous, also returning an array of terms from the computation }
@@ -112,17 +116,17 @@ set wcf_long (RootDatum rd, vec lambda,ratvec v,cyclotomicField F) =
    let S=W_orbit_torus_element(rd,v)
    , result=F.zero, list=[cyclotomicFieldElement]:[]
    in
-   for w in S
-   do let rd_w=centralizer(rd,w), num=eval_char_T(lambda,w,F)
-      ,  denom=weyl_denominator_quotient(rd,w,F)
-      then dim_factor= dimension_rat(rd_w,lambda+rho(rd)-rho(rd_w))
+   for t in S
+   do let rd_t=centralizer(rd,t), num=eval_char_T(lambda,t,F)
+      ,  denom=weyl_denominator_quotient(rd,t,F)
+      then dim_factor= dimension_rat(rd_t,lambda+rho(rd)-rho(rd_t))
       then contribution = dim_factor*(num/denom)
       in if verbose_wcf
-         then prints(new_line, "t= ", w)
+         then prints(new_line, "t= ", t)
          ;  prints("numerator= ", to_string(num),new_line
                   ,"denominator= ", to_string(denom), new_line
                   ,"dimension factor= ", dim_factor)
-         ;  prints("centralizer: ", rd_w)
+         ;  prints("centralizer: ", rd_t)
          ;  prints("contribution: ", contribution.to_string)
 	 fi
       ;  result +:= contribution
@@ -167,10 +171,10 @@ set wcf_strong_real(RootDatum rd, ratvec lambda,ratvec v)=(rat,rat):
       then prints("centralizer(x): ", centralizer(rd,v), new_line
                  ,"denominator: ", denominator)
       fi
-   ;  for w in S
-      do let rd_w=centralizer(rd,w) in
-         result+:= minus_1^(lambda*2*(w-v)).rat_as_int
-                  *(dimension_rat(rd_w,lambda+rho(rd)-rho(rd_w))/denominator)
+   ;  for t in S
+      do let rd_t=centralizer(rd,t) in
+         result+:= minus_1^(lambda*2*(t-v)).rat_as_int
+                  *(dimension_rat(rd_t,lambda+rho(rd)-rho(rd_t))/denominator)
      od; (lambda*v,result)
 )
 

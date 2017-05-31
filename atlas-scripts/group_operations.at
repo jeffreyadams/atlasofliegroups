@@ -114,47 +114,48 @@ set is_relatively_split (RealForm G) = bool: { whether is_split(derived(G))) }
 {  converting between root data, and including a change of basis matrix }
 
 {Converting rd=(A,B)  (A=simple_roots, B=simple_coroots)
-to  (A_new,B_new), also return  |ratmat| M (or |mat|)
-M  = change of basis matrix from X*(T) to X^*(T_new)
-^M = change of basis matrix from X_*(T_new) to X_*(T) 
+to  (A_new,B_new), also return  |ratmat M| (or |mat|)
+M  = matrix of natural linear map from X*(T) to X^*(T_new)
+^M = matrix of natural linear map from X_*(T_new) to X_*(T)
 M satisfies:
 M*A=A_new
 ^M*B_new=B
 Note: ^A*B=C=^A_new*B_new (C is the Cartan matrix)
 the built-in |derived_info| is of this form
 with |mat| in place of |ratmat|
-Similarly |mod_central_torus_info, except that in 
-M satisfies the transpose conditions:
-^M*A=A_new
-M*B_new=B
+Similarly for |mod_central_torus_info| and |adjoint_info|, except that in thes
+cases M satisfies the dual conditions:
+M*A_new=A
+^M*B=B_new
 }
 
 {derived_info and mod_central_torus_info are built-in}
 
 {.adjoint root datum and change of basis matrix.}
-set adjoint_info (RootDatum rd) = (RootDatum,mat): { change weight basis to simple roots }
-let A=simple_roots(rd) then
-A_new=id_mat(semisimple_rank(rd)) then
-B_new=Cartan_matrix(rd) in 
-(root_datum(A_new,B_new), left_inverse(A))
-
-{.simply connected cover of complex group, with change of basis matrix.}
-set simply_connected_cover_info(RootDatum rd)=(RootDatum, ratmat):
-assert(is_semisimple(rd), "rd is not semisimple");
-let A=simple_roots(rd) then
-A_new=^Cartan_matrix(rd) then
-B_new=id_mat(rank(rd)) in
-(root_datum(A_new,B_new), A_new*rational_inverse(A))
-
-{.simply connected cover of complex group}
-set simply_connected_cover(RootDatum rd)=RootDatum:
-let (rd_sc,)=simply_connected_cover_info(rd) in rd_sc
+{ change weight basis to simple roots }
+set adjoint_info (RootDatum rd) = (RootDatum,mat):
+   let A_new=id_mat(semisimple_rank(rd))
+   , B_new=Cartan_matrix(rd) { not transposed: simple coroots in fund.cowght. }
+   in (root_datum(A_new,B_new), simple_roots(rd))
 
 {.simply connected cover of derived group, with change of basis matrix.}
-set simply_connected_cover_derived_info(RootDatum rd)=(RootDatum,ratmat):
-let (rd_der,M)=derived_info(rd) then 
-(rd_sc,N)=simply_connected_cover_info(rd_der) in (rd_sc,N*M)
+set simply_connected_cover_derived_info (RootDatum rd) = (RootDatum,mat):
+   let M = ^simple_coroots(rd) { rows compute fund. weight coordinates } in
+   (root_datum(M*simple_roots(rd){=^Cartan_matrix(rd)},M.n_rows.id_mat) , M )
 
 {.simply connected cover of complex group}
 set simply_connected_cover_derived(RootDatum rd)=RootDatum:
-let (rd_sc,)=simply_connected_cover_derived_info(rd) in rd_sc
+   root_datum(^Cartan_matrix(rd),rd.semisimple_rank.id_mat)
+
+{ two functions maintained for reference; however cover_derived versions above
+  will do the same thing more generally, and without using rational matrices }
+
+{.simply connected cover of complex group, with change of basis matrix.}
+set simply_connected_cover_info(RootDatum rd)=(RootDatum, ratmat):
+   assert(is_semisimple(rd), "rd is not semisimple");
+   let A=simple_roots(rd), A_new=^Cartan_matrix(rd), B_new=id_mat(rank(rd)) in
+   (root_datum(A_new,B_new), A_new*rational_inverse(A))
+
+{.simply connected cover of complex group}
+set simply_connected_cover(RootDatum rd)=RootDatum:
+   let (rd_sc,)=simply_connected_cover_info(rd) in rd_sc
