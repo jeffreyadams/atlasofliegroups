@@ -17,6 +17,7 @@
 #include "bitset.h"
 #include "bitmap.h"
 #include "matrix.h"
+#include "bigint.h"
 
 /*
   This file contains the non-template definitions of the functions declared
@@ -288,6 +289,9 @@ Permutation::renumber(std::vector<unsigned int>&, unsigned int) const; // blocks
 
 template void
 permute_columns(matrix::Matrix_base<int>& M, const Permutation& pi); // matreduc
+
+template void permute_columns
+  (matrix::Matrix_base<arithmetic::big_int>& M, const Permutation& pi);
 
 template void
 Permutation::inv_conjugate(matrix::Matrix_base<int>& M) const; // weyl

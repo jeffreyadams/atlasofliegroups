@@ -18,6 +18,7 @@
 #include "matreduc.h"
 #include "permutations.h"
 #include "arithmetic.h"
+#include "bigint.h"
 #include "polynomials.h" // and most importantly polynomials_def.h
 
 
@@ -767,7 +768,7 @@ template<typename C>
  // type abreviations used in these instantiations
 typedef arithmetic::Numer_t Num;
 typedef polynomials::Polynomial<int> Pol;
-
+typedef arithmetic::big_int bigint;
 
 template std::vector<Vector<int> > standard_basis<int>(size_t n);
 template PID_Matrix<int>& operator+=(PID_Matrix<int>&,int);
@@ -777,10 +778,13 @@ template class Vector<signed char>;   // used inside root data
 template class Vector<unsigned long>; // for |abelian::Homomorphism|
 template class Vector<Num>;           // numerators of rational vectors
 template class Matrix_base<int>;
-template class Matrix<int>;           // the main instance used
+template class Matrix_base<bigint>;
 template class Matrix_base<unsigned long>; // for |abelian::Endomorphism|
+template class Matrix<int>;           // the main instance used
+template class Matrix<bigint>;
 template class Matrix<arithmetic::Split_integer>; // KL matrices eval'd at |s|
 template class PID_Matrix<int>;
+template class PID_Matrix<bigint>;
 
 // template member instances
 template Vector<int>& Vector<int>::add(Vector<int>::const_iterator b,int c);

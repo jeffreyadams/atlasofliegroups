@@ -14,6 +14,7 @@
 #include "permutations.h"
 #include "matrix.h"
 #include "arithmetic.h"
+#include "bigint.h"
 
 namespace atlas {
 
@@ -478,6 +479,11 @@ bool has_solution(const matrix::PID_Matrix<int>& A, matrix::Vector<int> b);
 template
 matrix::Vector<int> find_solution(const matrix::PID_Matrix<int>& A,
 				  matrix::Vector<int> b);
+typedef arithmetic::big_int bigint;
+template
+std::vector<bigint> diagonalise(matrix::PID_Matrix<bigint> M,
+			     matrix::PID_Matrix<bigint>& row,
+			     matrix::PID_Matrix<bigint>& col);
 
 } // |namespace matreduc|
 } // |namespace atlas|

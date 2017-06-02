@@ -20,9 +20,10 @@ namespace atlas {
 
 namespace arithmetic {
 
-// operations without conversion for all integral types (all are inlined below)
-  template<typename I> I divide(I, Denom_t);
-  template<typename I> Denom_t remainder(I, Denom_t);
+// operations without conversion for signed integral types
+// second argument is signed (to simplify inteface), but it must be non-negative
+  template<typename I> I divide(I, I);
+  template<typename I> I remainder(I, I);
   //  template<typename I> I factorial(I); // moved to the size module
 
   extern Denom_t dummy_gcd, dummy_mult;
@@ -101,9 +102,10 @@ public:
   Rational& operator/=(Numer_t n); // assumes $n\neq0$, will not throw
   Rational& operator%=(Numer_t n); // assumes $n\neq0$, will not throw
 
-  Numer_t floor () const { return divide(num,denom); }
-  Numer_t ceil () const { return -divide(-num,denom); }
-  Numer_t quotient (Denom_t n) const { return divide(num,n*denom); }
+  Numer_t floor () const { return divide(num,static_cast<Numer_t>(denom)); }
+  Numer_t ceil () const { return -divide(-num,static_cast<Numer_t>(denom)); }
+  Numer_t quotient (Denom_t n) const
+    { return divide(num,static_cast<Numer_t>(n*denom)); }
 
   // these definitions must use |denominator()| to ensure signed comparison
   bool operator==(Rational q) const
@@ -183,14 +185,28 @@ std::ostream& operator<< (std::ostream& out, const Rational& frac);
   instance, divide(-1,2) should be -1, so that -1 = -1.2 + 1, but on my
   machine, -1/2 is 0 (which is the other value accepted by the C standard;
   Fokko.) [Note that the correct symmetry to apply to |a|, one that maps
-  classes with the same quotient to each other, is not $a\to -a$ but
-  $a\to -1-a$, where the latter value can be conveniently written as |~a|
-  in C or C++. Amazingly Fokko's incorrect original expresion |-(-a/b -1)|
-  never did any harm. MvL]
+  classes with the same quotient to each other, is not $a\to -a$ but $a\to
+  -1-a$. The latter value can be conveniently written as |~a| if |a| is of an
+  unsigned type, but that is not the case for the arguments here, and the
+  standards refuse to clearly specify complementing on signed values. So for
+  possbly negative values we spell out sutraction from $-1$ below, hoping that
+  the optimiser will emit complementation for it; however once a signed value
+  has been made positive, we do unsigned division (after converting implicitly
+  because unsigned operator arguments beat signed), and finally convert back
+  to signed, taking care to do any possibly negative computation after the
+  conversion to signed (but remainders are never negative).
+
+  [Amazingly Fokko's incorrect original expresion |-(-a/b -1)| never did any
+  harm. MvL]
 */
+
 template<typename I>
-  inline I divide(I a, Denom_t b)
-  { return a >= 0 ? a/b : ~(~a/b); } // left operand is safely made unsigned
+  I divide(I a, I b_signed)
+{ typedef typename std::make_unsigned<I>::type UI;
+  UI b(b_signed); // interpret unsigned, even though it was passed as signed
+  // use unsigned division (because |b| is so), then convert back to signed
+  return a >= 0 ? I(a/b) : -1-I((-1-a)/b); // quotient may be negative
+}
 
 // override for |I=Denom_t| (is instantiated for |Matrix<Denom_t>|)
 template<>
@@ -210,10 +226,12 @@ template<>
   and satifies |~(q*b+r)==~q*b+(b+~r)|, the result is always correct.
 */
 template<typename I>
-  inline Denom_t remainder(I a, Denom_t b)
-  { return a >= 0 ? a%b // safe implicit conversion to unsigned here
-      : b+~(~static_cast<Denom_t>(a)%b); // safe explicit conversion here
-  }
+  I remainder(I a, I b_signed)
+{ typedef typename std::make_unsigned<I>::type UI;
+  UI b(b_signed); // interpret unsigned, even though it was passed as signed
+  // use unsigned division (because |b| is so), then convert back to signed
+  return I(a >= 0 ? a%b : ~((-1-a)%b) + b); // remainder is never negative
+}
 
   inline Denom_t div_gcd (Denom_t d, Denom_t a) { return d/unsigned_gcd(a,d); }
 

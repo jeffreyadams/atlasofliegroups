@@ -141,6 +141,12 @@ std::ostream& operator<< (std::ostream& out, big_int&& number);
 inline std::ostream& operator<< (std::ostream& out, const big_int& number)
   { return out << big_int(number); }
 
+template<>
+  inline big_int divide<big_int>(big_int a, big_int b) { return a/=b; }
+template<>
+  inline big_int remainder<big_int>(big_int a, big_int b) { return a%=b; }
+
+inline big_int abs(big_int a) { return a.is_negative() ? a.negate() : a; }
 
 big_int gcd(big_int a,big_int b);
 big_int lcm(const big_int& a,const big_int& b);

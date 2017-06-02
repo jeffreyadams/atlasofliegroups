@@ -560,7 +560,7 @@ numerators are reduced modulo their original denominator, and then brought to
 the new denominator~|d|.
 
 @< Compute common denominator |d| of entries in~$L$... @>=
-{ std::vector<arithmetic::Denom_t> denom(L->length());
+{ std::vector<arithmetic::Numer_t> denom(L->length());
   for (size_t j=0; j<L->length(); ++j)
   { const RatWeight& gen =
       force<rational_vector_value>(&*L->val[j])->val;
@@ -580,7 +580,7 @@ the new denominator~|d|.
 @.Improper generator entry@>
          +str(col[i])+'/'+str(denom[j])+" not a multiple of 1/"
          +str(v->val[i]));
-      M(i,j) = arithmetic::remainder(col[i],denom[j]);
+      M(i,j) = arithmetic::remainder<arithmetic::Numer_t>(col[i],denom[j]);
       // ``mod $\Zee$''; makes |M(i,j)| non-negative
     }
   }
