@@ -612,23 +612,23 @@ void to_array(GrpArr& a, GrpNbr x, const GroupType& t)
 }
 
 
-/*!
-  Synopsis: reduces v mod d_type.
+/*
+  Reduce |v| modulo |d_type|.
 
   The only difficulty is to make sure that negative values are reduced in
-  the way that we want.
+  the way that we want, which |arithmetic::remainder| does for us>
 
-  Precondition: a is set to v.size();
+  Precondition: |a| is set to |v.size()|;
 */
 void to_array(GrpArr& a, const matrix::Vector<int>& v, const GroupType& t)
 {
   for (size_t i=0; i<v.size(); ++i)
-    a[i] = arithmetic::remainder(v[i],t[i]);
+    a[i] = arithmetic::remainder<long int>(v[i],t[i]);
 }
 
 
-/*!
-  Synopsis: transforms q into the corresponding Endomorphism.
+/*
+  Transform |q| into the corresponding |Endomorphism|.
 
   This just involves rewriting the coeficients as unsigned longs modulo
   the type factors.
@@ -640,7 +640,7 @@ void toEndomorphism(Endomorphism& e, const matrix::PID_Matrix<int>& q,
 
   for (size_t j=0; j<q.numColumns(); ++j)
     for (size_t i=0; i<q.numRows(); ++i)
-      e(i,j) = arithmetic::remainder(q(i,j),A.type()[i]);
+      e(i,j) = arithmetic::remainder<long int>(q(i,j),A.type()[i]);
 }
 
 

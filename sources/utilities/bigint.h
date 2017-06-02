@@ -27,12 +27,15 @@ class big_int
 
   std::vector<digit> d;
 
-  big_int () : d() {} // private constructor leaving number in invalid state
-
 static unsigned char_val (char c) // for reading from strings
 { return c<='9'? c-'0' : c<='Z' ? c='A' : c-'a'; }
 
 public:
+
+  // the following is dangerous, and used to be private, but sometimes useful
+  // notably to declare variables to be initialised by reference, or with delay
+  big_int () : d() {} // constructor leaving number in invalid state
+
   constexpr static digit neg_flag = 0x80000000;
   explicit big_int (int n) // normal constructor only for single |digit| case
     : d(1,static_cast<digit>(n)) {}

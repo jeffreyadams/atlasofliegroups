@@ -1667,7 +1667,7 @@ void intlistlist_matrix_convert()
   { int_Vector col = row_to_weight(*force<row_value>(r->val[j].get()));
     if (col.size()!=n)
       throw runtime_error("List sizes differ in conversion to matrix");
-@.List differ in conversion@>
+@.List sizes differ in conversion@>
     m->val.set_column(j,col);
   }
   push_value(std::move(m));

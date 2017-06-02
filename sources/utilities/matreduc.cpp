@@ -209,16 +209,16 @@ std::vector<C> diagonalise(matrix::PID_Matrix<C> M, // by value
 
     if (i>k) // first non-zero entry below diagonal; add it to 0 on diagonal
     {
-      C u = M(i,l)>0 ? 1 : -1;  // ensure diagonal entry becomes positive
+      C u (M(i,l)>C(0) ? 1 : -1);  // ensure diagonal entry becomes positive
       M.rowOperation(k,i,u);
       row.rowOperation(k,i,u);
     }
     else // we have |i==k|
     { ++i; // search for (further) nonzero column entries will start here
-      if (M(k,l)<0) // negative pivot entry, make it positive
+      if (M(k,l)<C(0)) // negative pivot entry, make it positive
       {
-	M.rowMultiply(k,-1);
-	row.rowMultiply(k,-1);
+	M.rowMultiply(k,C(-1));
+	row.rowMultiply(k,C(-1));
 	row_sign = -row_sign;
       }
     }
@@ -271,9 +271,9 @@ std::vector<C> diagonalise(matrix::PID_Matrix<C> M, // by value
   if (diagonal.size()>0 and row_sign!=col_sign)
     diagonal[0] = -diagonal[0];
   if (row_sign<0)
-    row.rowMultiply(0,-1); // ensure determinant of |row| is |1|
+    row.rowMultiply(0,C(-1)); // ensure determinant of |row| is |1|
   if (col_sign<0)
-    col.columnMultiply(0,-1); // ensure determinant of |col| is |1|
+    col.columnMultiply(0,C(-1)); // ensure determinant of |col| is |1|
 
   return diagonal;
 }

@@ -1,7 +1,7 @@
 // This is arithmetic.h
 /*
   Copyright (C) 2004,2005 Fokko du Cloux
-  Copyright (C) 2006-2016 Marc van Leeuwen
+  Copyright (C) 2006-2017 Marc van Leeuwen
   part of the Atlas of Lie Groups and Representations
 
   For license information see the LICENSE file
@@ -49,11 +49,8 @@ namespace arithmetic {
 
   Denom_t modProd(Denom_t, Denom_t, Denom_t);
 
-} // |namespace arithmetic|
 
 /*        Class definitions        */
-
-namespace arithmetic {
 
 class Rational
 {
@@ -69,7 +66,7 @@ public:
     The C++ rule that one unsigned operand silently converts the other operand
     to unsigned as well makes exporting denominator as unsigned too error
     prone; e.g., floor=numerator()/denominator() would wreak havoc. Generally
-    speaking, casting unsigend to sogned is not a good thing, but typically
+    speaking, casting unsigend to signed is not a good thing, but typically
     when this happens we risk having (had) overflow anyway, so accept it.
   */
   Numer_t denominator() const { return Numer_t(denom); }
@@ -175,7 +172,7 @@ std::ostream& operator<< (std::ostream& out, const Rational& frac);
 
 /******** inline function definitions ***************************************/
 
-/*! The result of |divide(a,b)| is the unique integer $q$ with $a = q.b + r$,
+/* The result of |divide(a,b)| is the unique integer $q$ with $a = q.b + r$,
   and $0 \leq r < b$. Here the sign of |a| may be arbitrary, the requirement
   for |r| assumes |b| positive, which is why it is passed as unsigned (also
   this better matches the specification of |remainder| below). Callers must
@@ -196,7 +193,8 @@ template<typename I>
   { return a >= 0 ? a/b : ~(~a/b); } // left operand is safely made unsigned
 
 // override for |I=Denom_t| (is instantiated for |Matrix<Denom_t>|)
-inline Denom_t divide (Denom_t a, Denom_t b)
+template<>
+  inline Denom_t divide<Denom_t> (Denom_t a, Denom_t b)
   { return a/b; } // unsigned division is OK in this case
 
 /*

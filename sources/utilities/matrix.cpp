@@ -575,7 +575,8 @@ PID_Matrix<C>& PID_Matrix<C>::invert(C& d)
   if (diagonal.size()<n) // insufficient rank for inversion
   { d=C(0); return *this; } // record zero determinant, leave |*this| unchanged
 
-  d=std::abs(diagonal[0]); // guaranteed to exist if we get here
+  using std::abs; // possibly use |std::abs|, or argument dependent |abs|
+  d=abs(diagonal[0]); // guaranteed to exist if we get here
   for (size_t i=1; i<n; ++i)
     d=arithmetic::lcm(d,diagonal[i]); // other diagonal entries are positive
 

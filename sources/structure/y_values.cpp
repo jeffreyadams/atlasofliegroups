@@ -108,11 +108,11 @@ TorusElement& TorusElement::operator+=(TorusPart v)
 
 TorusElement& TorusElement::reduce()
 {
-  arithmetic::Denom_t d=2u*repr.denominator();
+  arithmetic::Numer_t d=2*repr.denominator();
   Ratvec_Numer_t& num=repr.numerator();
-  for (size_t i=0; i<num.size(); ++i)
-    if (arithmetic::Denom_t(num[i])>=d) // avoid division if not necessary
-      num[i] = arithmetic::remainder(num[i],d);
+  for (auto it=num.begin(); it!=num.end(); ++it)
+    if (*it<0 or *it>=d) // avoid division if not necessary
+      *it = arithmetic::remainder(*it,d);
   return *this;
 }
 
