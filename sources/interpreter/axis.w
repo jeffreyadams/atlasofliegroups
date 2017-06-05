@@ -4204,8 +4204,8 @@ case int_case_expr:
 The union-case expression (a multi-way branch controlled by a union value),
 also called discrimination expression, is syntactically similar to the integer
 case expression, but semantically a bit more complicated. The main difference
-is that each branch can bind independently to value whose tag (variant of the
-union) is being discriminated upon, as if each were a different \&{let}
+is that each branch can bind independently to the value whose tag (variant of
+the union) is being discriminated upon, as if each were a different \&{let}
 expression.
 
 @< Type def... @>=
@@ -4229,9 +4229,9 @@ struct union_case_expression : public expression_base
 void union_case_expression::print(std::ostream& out) const
 { auto it = branches.cbegin();
   assert(it!=branches.cend());
-  out << " case " << *condition << " in (" << it->first << "):" << *it->second;
-  while (++it!=branches.cend())
-    out << ", (" << it->first << "):" << *it->second;
+  out << " case " << *condition;
+  do out << " | (" << it->first << "):" << *it->second;
+  while (++it!=branches.cend());
   out << " esac ";
 }
 
@@ -4274,18 +4274,26 @@ case discrimination_expr:
 { auto& exp = *e.disc_variant;
   type_expr subject_type;
   expression_ptr c  =  convert_expr(exp.subject,subject_type);
+  const auto type_name = typedef_table.find(subject_type);
+  const auto& field_names = typedef_table.fields(type_name);
   if (subject_type.kind!=union_type)
     throw type_error(e,std::move(subject_type),
                        std::move(*branches_type(exp.branches)));
   size_t n_variants=length(subject_type.tupple);
-  auto branch_p=&exp.branches;
-  if (length(branch_p)!=n_variants)
+  std::ostringstream o; // for use in error messages
+  if (type_name==type_table::no_id)
+    @< Report that union type |subject_type| cannot be used in discrimination
+    expression anonymously @>
+
+  if (length(&exp.branches)!=n_variants)
     @< Complain that union case-expression |e| has wrong number of branches @>
   std::vector<choice_part> choices; choices.reserve(n_variants);
 
-  for (wtl_const_iterator it(subject_type.tupple); not it.at_end();
-       ++it,branch_p=branch_p->next.get())
-    @< Type-check branch |branch_p->contents| for variant type |*it|, and
+  wtl_const_iterator it(subject_type.tupple);
+  auto f_it = field_names.begin();
+  for (auto branch_p=&exp.branches; branch_p!=nullptr;
+       branch_p=branch_p->next.get(),++it,++f_it)
+  @/@< Type-check branch |branch_p->contents| for variant type |*it|, and
        push the |choice_part| resulting from the conversion to |choices| @>
 @/return expression_ptr(new @|
     union_case_expression(std::move(c),std::move(choices)));
@@ -4306,21 +4314,35 @@ type_ptr branches_type(const containers::sl_node<case_variant>& branches)
   return mk_union_type(std::move(l));
 }
 
-@ The error message below could be improved a bit by mentioning |subject_type|
-explicitly.
+@ Here we just observe that using a discrimination expression requires using a
+\emph{named} union  type.
+
+@< Report that union type |subject_type| cannot be used in discrimination
+   expression anonymously @>=
+{
+  o << "Discrimination on expression of type " << subject_type
+    << " requires naming its variants";
+  throw expr_error(e,o.str());
+}
+
+@ We report the type, and the mismatching number of branches here.
 
 @< Complain that union case-expression |e| has wrong number of branches @>=
 {
-  auto nb=length(&exp.branches);
-  throw expr_error(e,"Wrong number " + str(nb) +
-                     " of cases in union case-expression");
+  o << "Discrimination on expression of type " << subject_type @|
+    << " requires " << n_variants << " branches in case-expression.\n" @|
+    << "Found " << length(&exp.branches) << " branches instead";
+  throw expr_error(e,o.str());
 }
 
 @ Here is a first approach to type-checking the branch of a union-case
-expression.
+expression. We simply check that the provided variant identifier
+|branch_p->label| matches the one |*f_it| stored for the union type.
 
 @< Type-check branch |branch_p->contents| for variant type |*it|... @>=
 { const auto& branch = branch_p->contents;
+  if (branch.label!=*f_it)
+    @< Report mismatch of provided label |branch.label| with variant |f_it| @>
   auto n=count_identifiers(branch.pattern);
   expression_ptr result;
   if (n==0) // avoid creating an empty (lexical) |layer|;
@@ -4331,6 +4353,15 @@ expression.
     result=convert_expr(branch.branch,type);
   }
   choices.push_back(choice_part(copy_id_pat(branch.pattern),std::move(result)));
+}
+
+@ When reporting a mismatched branch, we print the whole discrimination
+expression.
+
+@< Report mismatch of provided label |branch.label| with variant |f_it| @>=
+{ o << "Branch has label " << main_hash_table->name_of(branch.label) @|
+    << " where variant has name " << main_hash_table->name_of(*f_it);
+  throw expr_error(e,o.str());
 }
 
 @*1 While loops.
