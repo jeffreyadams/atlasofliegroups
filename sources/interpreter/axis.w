@@ -4273,28 +4273,38 @@ instead insisting that they handle the cases for the union type of the
 case discrimination_expr:
 { auto& exp = *e.disc_variant;
   type_expr subject_type;
+  std::ostringstream o; // for use in various error messages
   expression_ptr c  =  convert_expr(exp.subject,subject_type);
-  const auto type_name = typedef_table.find(subject_type);
-  const auto& field_names = typedef_table.fields(type_name);
   if (subject_type.kind!=union_type)
     throw type_error(e,std::move(subject_type),
                        std::move(*branches_type(exp.branches)));
-  size_t n_variants=length(subject_type.tupple);
-  std::ostringstream o; // for use in error messages
+  const wtl_const_iterator types_start(subject_type.tupple);
+@)
+  const auto type_name = typedef_table.find(subject_type);
   if (type_name==type_table::no_id)
     @< Report that union type |subject_type| cannot be used in discrimination
     expression anonymously @>
+  const auto& field_names = typedef_table.fields(type_name);
+@)
+  size_t n_variants=length(subject_type.tupple),
+         n_branches=length(&exp.branches);
 
-  if (length(&exp.branches)!=n_variants)
+  if (n_branches!=n_variants)
     @< Complain that union case-expression |e| has wrong number of branches @>
-  std::vector<choice_part> choices; choices.reserve(n_variants);
-
-  wtl_const_iterator it(subject_type.tupple);
-  auto f_it = field_names.begin();
+  std::vector<choice_part> choices(n_variants);
+@)
   for (auto branch_p=&exp.branches; branch_p!=nullptr;
-       branch_p=branch_p->next.get(),++it,++f_it)
-  @/@< Type-check branch |branch_p->contents| for variant type |*it|, and
-       push the |choice_part| resulting from the conversion to |choices| @>
+       branch_p=branch_p->next.get())
+  { const auto& branch = branch_p->contents;
+    size_t k = std::find(field_names.begin(), field_names.end(),branch.label)
+               -field_names.begin();
+    @< Check that |k| is a valid index into |choices|, and that the slot
+       |choices[k]| has not been used before @>
+    const auto& variant_type = *std::next(types_start,k);
+  @/@< Type-check branch |branch.branch|, with |branch.pattern| bound to
+       |variant_type|, against result type |type|,  and insert the
+       |choice_part| resulting from the conversion into |choices[k]| @>
+  }
 @/return expression_ptr(new @|
     union_case_expression(std::move(c),std::move(choices)));
 }
@@ -4314,13 +4324,35 @@ type_ptr branches_type(const containers::sl_node<case_variant>& branches)
   return mk_union_type(std::move(l));
 }
 
+@ Type checking a branch is easy once everything is put in place. We have the
+identifier pattern for the branch in |branch.pattern|, and its type in
+|variant_type|, so the |layer| data type and its |thread_bindings| method will
+take care of setting up the evaluation context, and then |convert_expr| will
+to the actual type checking. We just need to take care to avoid creating a
+|layer| in the case where |branch.pattern| does not bind any identifiers at
+all (the runtime mechanism for getting values bound to identifiers forbids
+them).
+
+@< Type-check branch |branch.branch|, with |branch.pattern|... @>=
+{ auto n=count_identifiers(branch.pattern);
+  expression_ptr result;
+  if (n==0) // we must avoid creating an empty (lexical) |layer|;
+    result=convert_expr(branch.branch,type);
+  else
+  { layer branch_layer(n);
+    thread_bindings(branch.pattern,variant_type,branch_layer,false);
+    result=convert_expr(branch.branch,type);
+  }
+  choices[k] = choice_part(copy_id_pat(branch.pattern),std::move(result));
+}
+
 @ Here we just observe that using a discrimination expression requires using a
-\emph{named} union  type.
+\emph{named} union type.
 
 @< Report that union type |subject_type| cannot be used in discrimination
    expression anonymously @>=
 {
-  o << "Discrimination on expression of type " << subject_type
+  o << "Discrimination on expression of type " << subject_type @|
     << " requires naming its variants";
   throw expr_error(e,o.str());
 }
@@ -4331,37 +4363,26 @@ type_ptr branches_type(const containers::sl_node<case_variant>& branches)
 {
   o << "Discrimination on expression of type " << subject_type @|
     << " requires " << n_variants << " branches in case-expression.\n" @|
-    << "Found " << length(&exp.branches) << " branches instead";
+    << "Found " << n_branches
+    << (n_branches==1 ? " branch" : " branches") << " instead";
   throw expr_error(e,o.str());
 }
 
-@ Here is a first approach to type-checking the branch of a union-case
-expression. We simply check that the provided variant identifier
-|branch_p->label| matches the one |*f_it| stored for the union type.
+@ When reporting a mismatched branch or when a pair of identical branch labels
+is found, we print the whole discrimination expression.
 
-@< Type-check branch |branch_p->contents| for variant type |*it|... @>=
-{ const auto& branch = branch_p->contents;
-  if (branch.label!=*f_it)
-    @< Report mismatch of provided label |branch.label| with variant |f_it| @>
-  auto n=count_identifiers(branch.pattern);
-  expression_ptr result;
-  if (n==0) // avoid creating an empty (lexical) |layer|;
-    result=convert_expr(branch.branch,type);
-  else
-  { layer branch_layer(n);
-    thread_bindings(branch.pattern,*it,branch_layer,false);
-    result=convert_expr(branch.branch,type);
+@< Check that |k| is a valid index into |choices|, and that the slot... @>=
+{ if (k==field_names.size())
+  { o << "Branch has label " << main_hash_table->name_of(branch.label) @|
+      << " not associated to any variant of the union type "
+      << subject_type;
+    throw expr_error(e,o.str());
   }
-  choices.push_back(choice_part(copy_id_pat(branch.pattern),std::move(result)));
-}
-
-@ When reporting a mismatched branch, we print the whole discrimination
-expression.
-
-@< Report mismatch of provided label |branch.label| with variant |f_it| @>=
-{ o << "Branch has label " << main_hash_table->name_of(branch.label) @|
-    << " where variant has name " << main_hash_table->name_of(*f_it);
-  throw expr_error(e,o.str());
+  if (choices[k].second.get()!=nullptr)
+  { o << "Multiple branches with label "
+      << main_hash_table->name_of(branch.label);
+    throw expr_error(e,o.str());
+  }
 }
 
 @*1 While loops.
