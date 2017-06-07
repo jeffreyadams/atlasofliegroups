@@ -507,10 +507,13 @@ big_int big_int::reduce_mod (const big_int& divisor)
 
   bool below_0 = is_negative(); // whether current remainder is negative
 
-  // ensure invariant: |-div.d.back()<remainder.d.back()<=div.d.back():|
-  if (size()==div.size() // ensure at least one |digit| for the quotient
-      or (below_0 ? d.back() <= ~div.d.back() : d.back() >= div.d.back()))
-    sign_extend(size()+1);
+  { // our invariant will be |-div.d.back()<remainder.d.back()<=div.d.back()|
+    // but in order to to ensure correctness of the quotient sign bit,
+    auto half_top = div.d.back()>>1; // we start out twice as strict
+    if (size()==div.size() // ensure at least one |digit| for the quotient
+	or (below_0 ? d.back() <= ~half_top : d.back() >= half_top))
+      sign_extend(size()+1);
+  }
 
   const unsigned char shift = 32-bits::lastBit(div.d.back());
 

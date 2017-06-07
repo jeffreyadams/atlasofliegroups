@@ -138,7 +138,7 @@ void KGP::fillClosure()
 
   // build the Hasse diagram
   // use a bit vector to keep track of closure relations
-  std::vector<set::EltList> hasse(kgpsize);
+  std::vector<Poset::EltList> hasse(kgpsize);
   std::vector<bool> closure(kgpsize,0);
   for (KGPElt i=0; i<kgpsize; i++)
   { // for each kgb orbit in this kgp orbit, examine closure edges of degree one
@@ -147,7 +147,7 @@ void KGP::fillClosure()
     size_t minelt = kgpsize;
     for (size_t j=0; j<osize; j++)
     { // get closure edges
-      const set::EltList& clist = kgborder.hasse(kgporbit.data[j]);
+      const Poset::EltList& clist = kgborder.hasse(kgporbit.data[j]);
       size_t lsize = clist.size();
 
       // fill the kgp closure list
@@ -184,7 +184,7 @@ void KGP::fillClosure()
 // helper function - removes redundant edges from a closure relation
 void KGP::reduce(KGP_queue& q,
 		 std::vector<bool>& closure,
-		 std::vector<set::EltList>& hasse,
+		 std::vector<Poset::EltList>& hasse,
 		 KGPElt minelt)
 {
   // while the queue is not empty, recursively remove edges
@@ -197,7 +197,7 @@ void KGP::reduce(KGP_queue& q,
     closure[currelt]=0;
 
     // walk the list of lower edges
-    set::EltList& clist = hasse[currelt];
+    Poset::EltList& clist = hasse[currelt];
     size_t lsize = clist.size();
     for (size_t i=0; i<lsize; i++)
       if (clist[i] >= minelt)
@@ -243,7 +243,7 @@ std::ostream& KGP::printClosure(std::ostream& strm) const
     strm << std::setw(kgpwidth) << i << ": ";
 
     // print the list
-    const set::EltList& clist = bruhat->hasse(i);
+    const Poset::EltList& clist = bruhat->hasse(i);
     size_t lsize = clist.size();
 
     for (size_t j=0; j<lsize; j++)
@@ -277,7 +277,7 @@ void KGP::makeDotFile(std::ostream& strm)
   // add edges
   for (size_t i=0; i<kgpsize; i++)
   {
-    const set::EltList& clist = bruhat->hasse(i);
+    const Poset::EltList& clist = bruhat->hasse(i);
     size_t clsize = clist.size();
     for (size_t j=0; j<clsize; j++) // add an edge in the graph
       strm << "v" << i << " -> v" << clist[j]

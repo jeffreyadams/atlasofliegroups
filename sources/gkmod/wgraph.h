@@ -2,6 +2,7 @@
   This is wgraph.h
 
   Copyright (C) 2004,2005 Fokko du Cloux
+  Copyright (C) 2007,2017 Marc van Leeuwen
   part of the Atlas of Lie Groups and Representations
 
   For license information see the LICENSE file
@@ -27,7 +28,7 @@ namespace atlas {
 
 namespace wgraph {
 
-void cells(std::vector<WGraph>&, const WGraph&);
+std::vector<WGraph> cells(const WGraph&);
 
 // Functions
 
@@ -42,47 +43,44 @@ WGraph wGraph
 
 namespace wgraph {
 
-class WGraph
+/*
+  The |WGraph| structure stores a graph, edge weights (coefficients), and
+  descent sets. The construction of the graph is left to the client.
+*/
+struct WGraph
 {
-  size_t d_rank;
-  graph::OrientedGraph d_graph;
-  std::vector<WCoeffList> d_coeff;
-  std::vector<RankFlags> d_descent;
+  typedef unsigned short Coeff;
+  typedef std::vector<Coeff> CoeffList;
 
- public:
+  size_t d_rank;
+  graph::OrientedGraph oriented_graph;
+  std::vector<CoeffList> coefficients;
+  std::vector<RankFlags> descent_sets;
 
 // constructors and destructors
-  explicit WGraph(size_t r) :d_rank(r) {}
+  explicit WGraph(size_t rank, size_t size);
 
 // copy, assignment and swap: nothing needed beyond defaults
 
 // accessors
-  Partition cells(graph::OrientedGraph* p = 0) const
-    { return d_graph.cells(p); }
+  Coeff coefficient(graph::Vertex x,unsigned int index) const
+    { return coefficients[x][index]; }
 
-  const WCoeffList& coeffList(graph::Vertex x) const { return d_coeff[x]; }
+  const RankFlags& descent_set(graph::Vertex x) const
+    { return descent_sets[x]; }
 
-  const RankFlags& descent(graph::Vertex x) const { return d_descent[x]; }
+  unsigned int degree (graph::Vertex x) const
+    { return oriented_graph.edgeList(x).size(); }
 
-  const graph::EdgeList& edgeList(graph::Vertex x) const
-    { return d_graph.edgeList(x); }
+  graph::Vertex edge_target (graph::Vertex x,unsigned int index) const
+  { return oriented_graph.edgeList(x)[index]; }
 
-  const graph::OrientedGraph& graph() const { return d_graph; }
+  const graph::OrientedGraph& graph() const { return oriented_graph; }
 
   const size_t rank() const { return d_rank; }
 
-  size_t size() const { return d_graph.size(); }
+  size_t size() const { return oriented_graph.size(); }
 
-// manipulators
-  WCoeffList& coeffList(graph::Vertex x) { return d_coeff[x]; }
-
-  RankFlags& descent(graph::Vertex x) { return d_descent[x]; }
-
-  graph::EdgeList& edgeList(graph::Vertex x) { return d_graph.edgeList(x); }
-
-  void reset();
-
-  void resize(size_t);
 }; // |class WGraph|
 
 class DecomposedWGraph

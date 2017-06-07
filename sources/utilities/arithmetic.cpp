@@ -135,7 +135,7 @@ Rational& Rational::operator/=(Numer_t n)
 
 Rational& Rational::operator%=(Numer_t n)
 { assert(n!=0);
-  num = remainder(num,denom*std::abs(n));
+  num = remainder(num,static_cast<Numer_t>(denom*std::abs(n)));
   return *this;
 }
 
@@ -171,8 +171,9 @@ Rational Rational::operator/(Rational q) const
 Rational Rational::operator%(Rational q) const
 {
   assert(q.num!=0);
-  return Rational(remainder(num*Numer_t(q.denom),denom*std::abs(q.num)),
-		  denom*q.denom).normalize();
+  return Rational
+            (remainder(num*Numer_t(q.denom),Numer_t(denom*std::abs(q.num))) ,
+	     denom*q.denom).normalize();
 }
 
 Rational& Rational::power(int n)

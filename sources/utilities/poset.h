@@ -1,8 +1,6 @@
-/*!
-\file
-  This is poset.h
-*/
 /*
+  This is poset.h
+
   Copyright (C) 2004,2005 Fokko du Cloux
   part of the Atlas of Lie Groups and Representations
 
@@ -25,93 +23,90 @@ namespace atlas {
 
 namespace poset {
 
-
-
 /******** type definitions **************************************************/
 
-  /*!
-\brief Represents a poset by the matrix of order relations.
+/*
+  A |Poset| represents a poset as the matrix of order relations, but using
+  a compact representation of the matrix.
 
   It is required that the ordering be compatible with the natural ordering
-  on integers.
-
-  */
+  on integers, so the matrix is upper triangular.
+*/
 class Poset {
-/*!
-\brief Matrix of order relations.
 
-Bit i of d_below[j] is set if and only if |i| is less than |j| in the poset.
-In other words, viewed as a set of integers, d_below[j]union{j} represents the
-downwards closure in the poset of the singleton {j}.
+ public:
+  typedef unsigned int Elt; // should suffice for any realistic Poset
+  typedef std::vector<Elt> EltList;
 
-By the assumption on the poset structure, the capacity of |d_below[j]| need
-only be |j|.
+  // a type used to represent a poset relation in arguments of certain methods
+  typedef std::pair<Elt,Elt> Link;
+
+ private:
+/*
+  List of bitsets representing (upper part of) matrix of order relations.
+
+  Bit i of d_below[j] is set if and only if |i| is less than |j| in the poset.
+  In other words, viewed as a set of integers, d_below[j]union{j} represents
+  the downwards closure in the poset of the singleton {j}.
+
+  By the assumption on the poset structure, the capacity of |d_below[j]| need
+  only be |j|.
 */
   std::vector<bitmap::BitMap> d_below;
-
-  //! The basic method to add elementary relations
-  void new_cover(unsigned long  x,unsigned long y) // add $x<y$, $y$ maximal
-  { (d_below[y] |= d_below[x]).insert(x); }
-
 
  public:
 
 // constructors and destructors
   Poset() : d_below() {}
 
-  explicit Poset(size_t n); // poset without any (nontrivial) comparabilities
+  explicit Poset(Elt n); // poset without any (nontrivial) comparabilities
 
-  //! \brief Build Poset from its Hasse diagram
+  // Construct a |Poset| from its Hasse diagram
   template<typename C> // |C| is some container of |set::Elt|
-  explicit Poset(const std::vector<C>& hasse);
+    explicit Poset(const std::vector<C>& hasse);
 
-  //! \brief Build Poset from arbitrary list of links
-  Poset(size_t n,const std::vector<Link>&);
+  // Build a |Poset| from arbitrary list of (generating) links
+  Poset(Elt n,const std::vector<Link>&);
 
   Poset(const Poset& p, tags::DualTag);
 
   ~Poset() {}
 
 // swap
-  void swap(Poset& other) {
-    d_below.swap(other.d_below);
-  }
+  void swap(Poset& other) { d_below.swap(other.d_below); }
 
 // accessors
 
-  /*!
-\brief The order relation itself.
-  */
-
-  bool lesseq(set::Elt i, set::Elt j) const
+  // The order relation itself.
+  bool lesseq(Elt i, Elt j) const
   { return i<j ? d_below[j].isMember(i) : i==j; }
 
   bool operator==(const Poset& other) const;
 
-  size_t size() const { return d_below.size(); }
+  Elt size() const { return d_below.size(); }
 
-  const bitmap::BitMap& below(set::Elt y)const { return d_below[y]; }
-  bitmap::BitMap above(set::Elt x) const;
+  const bitmap::BitMap& below(Elt y)const { return d_below[y]; }
+  bitmap::BitMap above(Elt x) const;
 
-  set::EltList maxima(const bitmap::BitMap&) const;
-  set::EltList minima(const bitmap::BitMap&) const;
+  bitmap::BitMap maxima(const bitmap::BitMap&) const;
+  bitmap::BitMap minima(const bitmap::BitMap&) const;
 
-  set::EltList covered_by(set::Elt y) const { return maxima(d_below[y]); }
-  set::EltList covers_of(set::Elt x) const;
+  bitmap::BitMap covered_by(Elt y) const { return maxima(below(y)); }
+  bitmap::BitMap covers_of(Elt x) const { return minima(above(x)); }
 
   graph::OrientedGraph hasseDiagram() const; // full Hasse diagram
-  graph::OrientedGraph hasseDiagram(set::Elt max) const; // part |<=max|
+  graph::OrientedGraph hasseDiagram(Elt max) const; // part |<=max|
 
-  //! \brief Number of comparable pairs (including those on the diagonal)
+  // Number of comparable pairs (including those on the diagonal)
   unsigned long n_comparable() const;
 
 // manipulators
   void resize(unsigned long);
 
-/*!
-\brief Transforms the poset into the weakest ordering containing the relations
-  it previously contained, plus the relations |first < second| for all elements
-  listed in |lks|.
+/*
+  Transform the poset into the weakest ordering containing the relations
+  it previously contained, plus the relations |first < second| for
+  all elements listed in |lks|.
 
   Precondition: |lks| is sorted in increasing lexicographical order, and is
   compatible with relations already present in the poset. More precisely the
@@ -121,24 +116,28 @@ only be |j|.
   second (larger) member in another Link, and no element smaller in a
   pre-existing relation should be the larger element of a link. This
   guarantees that the calls of |new_cover| generate the transitive closure.
-
 */
   void extend(const std::vector<Link>& lks)
   {
-    for (size_t i=0; i<lks.size(); ++i)
-      new_cover(lks[i].first,lks[i].second);
+    for (auto it=lks.begin(); it!=lks.end(); ++it)
+      new_cover(it->first,it->second);
   }
 
   // add a new maximal element, comparable with elements in |container|
   template<typename C> void new_max(C container)
   {
-    size_t y=d_below.size();
+    Elt y=d_below.size();
     d_below.push_back(bitmap::BitMap(y));
 
     for (typename C::const_iterator
 	   it=container.begin(); it!=container.end(); ++it)
       new_cover(*it,y);
   }
+
+ private:
+  // The basic method to add elementary relations
+  void new_cover(unsigned long  x,unsigned long y) // add $x<y$, $y$ maximal
+  { (d_below[y] |= d_below[x]).insert(x); }
 
 }; // class Poset
 
@@ -147,22 +146,22 @@ only be |j|.
 
 // memory-efficient version of |Poset(hasse).n_comparable()|
 unsigned long n_comparable_from_Hasse
-  (const std::vector<set::EltList>& hasse);
+  (const std::vector<Poset::EltList>& hasse);
 
-/*!
-\brief Constructs a Poset from its Hasse diagram.
+/*
+  Construct a Poset from its Hasse diagram.
 
   Precondition: it is assumed that for each |x|, |hasse(x)| is a container |C|
   listing elements covered by |x|, which elements must be numbers $<x$.
 
-  As a consequence, the closure at |x| can be computed once |hasse(x)|
-  is inspected, for increaing |x|.
+  As a consequence, for increasing |x| the closure at |x| can be computed
+  once |hasse(x)| is inspected.
 */
 template<typename C>
-Poset::Poset(const std::vector<C>& hasse)
+  Poset::Poset(const std::vector<C>& hasse)
 : d_below(hasse.size())
 {
-  for (size_t i=0; i<hasse.size(); ++i)
+  for (Elt i=0; i<hasse.size(); ++i)
   {
     d_below[i].set_capacity(i);
     for (typename C::const_iterator

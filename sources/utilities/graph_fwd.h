@@ -10,7 +10,7 @@
 #ifndef GRAPH_FWD_H  /* guard against multiple inclusions */
 #define GRAPH_FWD_H
 
-#include "set.h" // that is really a forward-declaration only header file
+#include <vector>
 
 /******** type declarations   ******************************************/
 
@@ -19,9 +19,7 @@ namespace atlas {
 namespace graph {
 
   typedef unsigned int Vertex; // assume at most some 4 billion vertices
-  typedef std::vector<Vertex> VertexList;
-  typedef unsigned long Edge; // allow for a huge number of edges
-  typedef std::vector<Edge> EdgeList;
+  typedef std::vector<Vertex> EdgeList; // list of targets of outgoing edges
 
   class OrientedGraph;
 

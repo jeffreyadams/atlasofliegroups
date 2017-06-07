@@ -11,8 +11,10 @@
 #define GRAPH_H
 
 #include "graph_fwd.h"
+
+#include <vector>
+
 #include "partition.h"
-#include "set.h"
 
 /******** type definitions **************************************************/
 
@@ -22,6 +24,13 @@ namespace atlas {
 
 namespace graph {
 
+/*
+  |OrientedGraph| is a very simple data structure, modelling a graph by
+  storing for every vertex a list of "edges", each one just giving the number
+  of a vertex at the end of an outgoing edge. Vertices can be dynamically
+  added, and since reference access is given to the edge lists, nothing is
+  really protected.
+*/
 class OrientedGraph
 {
 
@@ -46,7 +55,7 @@ class OrientedGraph
   size_t size() const { return d_edges.size(); } // number of vertices
 
 // manipulators
-  Edge& edge(Vertex x, size_t j) { return d_edges[x][j]; } // allow clobbering
+  Vertex& edge(Vertex x, size_t j) { return d_edges[x][j]; } // allow clobbering
 
   EdgeList& edgeList(const Vertex& x) { return d_edges[x]; } // even globally
 

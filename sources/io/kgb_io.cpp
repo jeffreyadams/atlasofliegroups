@@ -192,7 +192,7 @@ printBruhatOrder(std::ostream& strm, const BruhatOrder& bruhat)
   size_t size = bruhat.size();
   strm << "0:" << std::endl;
   for (size_t j = 1; j < size; ++j) {
-    const set::EltList& e = bruhat.hasse(j);
+    const Poset::EltList& e = bruhat.hasse(j);
     strm << j << ": ";
     basic_io::seqPrint(strm,e.begin(),e.end()) << std::endl;
   }
@@ -280,12 +280,12 @@ void makeDotFile
   // finally, add the closure edges
   for (size_t i=0; i<size; i++) {
     // get the list
-    const set::EltList& clist = bruhat.hasse(i);
+    const Poset::EltList& clist = bruhat.hasse(i);
     size_t clsize = clist.size();
 
     // add edges for the ones that arent already there
     for (size_t j=0; j<clsize; j++) {
-      set::Elt e = clist[j];
+      Poset::Elt e = clist[j];
       if (edges[i].count(e) == 0) {
           // add an edge in the graph
           strm << "v" << i << " -> v" << e << "[color=" << colorcl

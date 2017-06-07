@@ -560,7 +560,7 @@ numerators are reduced modulo their original denominator, and then brought to
 the new denominator~|d|.
 
 @< Compute common denominator |d| of entries in~$L$... @>=
-{ std::vector<arithmetic::Denom_t> denom(L->length());
+{ std::vector<arithmetic::Numer_t> denom(L->length());
   for (size_t j=0; j<L->length(); ++j)
   { const RatWeight& gen =
       force<rational_vector_value>(&*L->val[j])->val;
@@ -580,7 +580,7 @@ the new denominator~|d|.
 @.Improper generator entry@>
          +str(col[i])+'/'+str(denom[j])+" not a multiple of 1/"
          +str(v->val[i]));
-      M(i,j) = arithmetic::remainder(col[i],denom[j]);
+      M(i,j) = arithmetic::remainder<arithmetic::Numer_t>(col[i],denom[j]);
       // ``mod $\Zee$''; makes |M(i,j)| non-negative
     }
   }
@@ -5869,7 +5869,7 @@ void print_W_cells_wrapper(expression_base::level l)
   kl::KLContext klc(block); klc.fill(false);
 @)
 
-  wgraph::WGraph wg(klc.rank()); kl::wGraph(wg,klc);
+  wgraph::WGraph wg = kl::wGraph(klc);
   wgraph::DecomposedWGraph dg(wg);
 @)
   wgraph_io::printWDecomposition(*output_stream,dg);
@@ -5887,7 +5887,7 @@ void W_cells_wrapper(expression_base::level l)
   const Block &block = b->val;
   kl::KLContext klc(block); klc.fill(false);
 @)
-  wgraph::WGraph wg(klc.rank()); kl::wGraph(wg,klc);
+  wgraph::WGraph wg = kl::wGraph(klc);
   wgraph::DecomposedWGraph dg(wg);
 @)
 
@@ -5914,7 +5914,7 @@ void print_W_graph_wrapper(expression_base::level l)
   kl::KLContext klc(block); klc.fill(false);
 @)
 
-  wgraph::WGraph wg(klc.rank()); kl::wGraph(wg,klc);
+  wgraph::WGraph wg = kl::wGraph(klc);
 @)
   wgraph_io::printWGraph(*output_stream,wg);
 @)

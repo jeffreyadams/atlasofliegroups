@@ -16,9 +16,6 @@
 
 * Work on the atlas program
 
-- Integrate a bigint library to store atlas int (and rat?) values; while
-  attending that, signal overflow in arithmetic operations / conversions
-
 - Improve output of expressions
   Distinguish one-line (maybe abbreviated) and long forms.
   Nuance "simply connected" and "adjoint" for non-semisimple root data
@@ -41,7 +38,8 @@
   operations. Note that this can never be done for user-defined functions, as
   they have no means of indicating how the return value might reuse the memory
   from the argument. The combined operator would be most useful for
-  concatenation, but operations such as vector addition could also profit.
+  concatenation, but operations on large values, such as vector addition,
+  could also profit; indeed also (big) integer arithmetic might used this.
 
 - Extend language with recursive types, as well as disjoint union types.
 - Extend type system to deal with second-order types
@@ -53,7 +51,7 @@
 
 * Work on the atlas scripts
 - Complete the groups in groups.rx (types G,F); also avoid use of "s" etc.
-- Adapt scripts to use/illustrate the new lanuage features, once implemented.
+- Adapt scripts to use/illustrate the new language features, once implemented.
 
 * Work on documentation
 

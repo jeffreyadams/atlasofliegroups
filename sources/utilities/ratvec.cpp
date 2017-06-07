@@ -17,6 +17,7 @@
 #include <vector>
 
 #include "arithmetic.h"
+#include "bigint.h"
 
 namespace atlas {
 
@@ -29,35 +30,43 @@ template<typename C1>
 RationalVector<C>::RationalVector(const  matrix::Vector<C1>& v, C d)
   : d_num(v.begin(),v.end()), d_denom(std::abs(d))
 { if (d<C(0))
-    d_num*=-C(1);
+    d_num.negate();
 } // don't try to normalize, caller can do the explicitly if needed
 
 template<typename C>
 RationalVector<C>::RationalVector(V&& v, C d)
-  : d_num(std::move(v)), d_denom(d)
+  : d_num(std::move(v)), d_denom(std::abs(d))
 { if (d<C(0))
-    d_num*=-C(1);
+    d_num.negate();
 } // don't try to normalize, caller can do the explicitly if needed
 
 
 
-// the following implementation assumes |long| can hold cross products
+// unnormalised comparison without assuming |Numer_t| can hold cross products
 template<typename C>
   bool RationalVector<C>::operator==(const RationalVector<C>& v) const
-{ return  // cross multiply
-    d_num*arithmetic::Numer_t(v.d_denom) ==
-    v.d_num*arithmetic::Numer_t(d_denom);
+{ typedef arithmetic::big_int bigint;
+  bigint dv = bigint::from_unsigned(v.d_denom),
+    dthis = bigint::from_unsigned(d_denom);
+  for (size_t i=0; i<d_num.size(); ++i)
+    if (bigint::from_signed(d_num[i])*dv !=
+	bigint::from_signed(v.d_num[i])*dthis)
+      return false;
+  return true;
 }
 
 template<typename C>
   bool RationalVector<C>::operator<(const RationalVector<C>& v) const
 { // cross multiply component-wise, and compare
+  typedef arithmetic::big_int bigint;
+  bigint dv = bigint::from_unsigned(v.d_denom),
+    dthis = bigint::from_unsigned(d_denom);
   for (size_t i=0; i<d_num.size(); ++i)
   {
-    C d = d_num[i]*arithmetic::Numer_t(v.d_denom)
-      - v.d_num[i]*arithmetic::Numer_t(d_denom);
-    if (d!=0)
-      return d<0;
+    bigint d =
+      bigint::from_signed(d_num[i])*dv - bigint::from_signed(v.d_num[i])*dthis;
+    if (not d.is_zero())
+      return d.is_negative();
   }
   return false; // equality if we get here
 }
@@ -114,7 +123,7 @@ RationalVector<C>& RationalVector<C>::operator%=(C n)
 {
   assert(n!=0);
   for (auto it=d_num.begin(); it!=d_num.end(); ++it)
-    *it = arithmetic::remainder(*it,d_denom*arithmetic::Denom_t(std::abs(n)));
+    *it = arithmetic::remainder(*it,C(d_denom*std::abs(n)));
   return *this;
 }
 

@@ -1428,7 +1428,7 @@ even make the recursive function anonymous to the outside, as follows
 
   atlas> set fac (int n) = { no return type needed here }
     if n<0 then error("factorial of negative number ",n," is not defined") fi;
-    (rec_fun f(int n) = int: if n<=0 then 1 else n*f(n-1) fi) (n) { call it! }
+    (rec_fun f(int n) int: if n<=0 then 1 else n*f(n-1) fi) (n) { call it! }
 
 Finally, one could avoid making a new (local) recursive function each time the
 global function is called by postponing the introduction of its arguments;

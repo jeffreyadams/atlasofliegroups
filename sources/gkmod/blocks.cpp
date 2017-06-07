@@ -135,7 +135,7 @@ DescentStatus descents(KGBElt x, KGBElt y,
 		       const KGB_base& kgb, const KGB_base& dual_kgb);
 
   // compute Hasse diagram of the Bruhat order of a block
-std::vector<set::EltList> makeHasse(const Block_base&);
+std::vector<Poset::EltList> makeHasse(const Block_base&);
 
 
 } // |namespace|
@@ -414,7 +414,7 @@ void Block_base::fillBruhat()
 {
   if (d_bruhat==nullptr) // do this only the first time
   {
-    std::vector<set::EltList> hd = makeHasse(*this);
+    std::vector<Poset::EltList> hd = makeHasse(*this);
     d_bruhat = new BruhatOrder(hd); // commit iff new completed without throwing
   }
 }
@@ -1634,7 +1634,7 @@ DescentStatus descents(KGBElt x, KGBElt y,
   part of the coatom list for a given element arising from a given descent.
 */
 void insertAscents(std::set<BlockElt>& hs,
-		   const set::EltList& hr,
+		   const Poset::EltList& hr,
 		   size_t s,
 		   const Block_base& block)
 {
@@ -1669,9 +1669,9 @@ void insertAscents(std::set<BlockElt>& hs,
   kgb. If it doesn't then we're essentially at a split principal series. The
   immediate predecessors of z are just the inverse Cayley transforms.
 */
-std::vector<set::EltList> makeHasse(const Block_base& block)
+std::vector<Poset::EltList> makeHasse(const Block_base& block)
 {
-  std::vector<set::EltList> result(block.size());
+  std::vector<Poset::EltList> result(block.size());
 
   for (BlockElt z = 0; z < block.size(); ++z)
   {

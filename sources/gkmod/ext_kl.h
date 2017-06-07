@@ -43,6 +43,8 @@ class descent_table
 // accessors
 
   RankFlags descent_set(BlockElt y) const { return descents[y]; }
+  bool is_descent(weyl::Generator s, BlockElt y) const
+  { return descent_set(y).test(s); }
 
   // index of primitive element corresponding to $x$ in row for $y$
   unsigned int x_index(BlockElt x, BlockElt y) const
@@ -75,17 +77,19 @@ class KL_table
 
   std::vector<kl::KLRow> column; // columns are lists of polynomial pointers
 
-  //TEMPORARY
-  kl::KLContext untwisted;
-
  public:
   KL_table(const ext_block::ext_block& b, std::vector<Pol>& pool);
 
   size_t rank() const { return aux.block.rank(); }
   size_t size() const { return column.size(); }
 
+  RankFlags descent_set (BlockElt y) const
+  { return aux.descent_set(y); }
+
   ext_block::DescValue type(weyl::Generator s,BlockElt y) const
   { return aux.block.descent_type(s,y); }
+
+  unsigned l(BlockElt y, BlockElt x) const { return aux.block.l(y,x); }
 
   std::pair<kl::KLIndex,bool> KL_pol_index(BlockElt x, BlockElt y) const;
 
@@ -95,9 +99,11 @@ class KL_table
   bool extremal(BlockElt x, BlockElt y) const
   { return aux.descent_set(x).contains(aux.descent_set(y)); }
 
+  // list of elements |x| such that |mu(x,y)| is nonzero
+  BlockEltList mu_column (BlockElt y) const;
 
   // coefficients of P_{x,y} of $q^{(l(y/x)-i)/2}$ (use with i=1,2,3)
-  int mu(int i,BlockElt x, BlockElt y) const;
+  int mu(short unsigned int i,BlockElt x, BlockElt y) const;
 
   // manipulator
   void fill_columns(BlockElt y=0);
@@ -117,8 +123,7 @@ class KL_table
   Pol get_Mp(weyl::Generator s,BlockElt x, BlockElt y,
 	     const std::vector<Pol>& Ms) const; // previous values $M(s,u,sy)$
 
-  // look for a direct recursion and return whether possible;
-  // if possible also get contributions from $c_s*a_y$ into |out|
+  // look for a direct recursion and return whether possible
   bool has_direct_recursion(BlockElt y,weyl::Generator& s, BlockElt& sy) const;
 
   void do_new_recursion(BlockElt y,PolHash& hash);
@@ -127,6 +132,7 @@ class KL_table
 
 }; // |KL_table|
 
+// compute matrix of extended KLV polynomials evaluated at $q=-1$
 void ext_KL_matrix (const StandardRepr p, const int_Matrix& delta,
 		    const Rep_context& rc, // the rest is output
 		    std::vector<StandardRepr>& block_list,

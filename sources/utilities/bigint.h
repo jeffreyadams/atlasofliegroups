@@ -27,12 +27,15 @@ class big_int
 
   std::vector<digit> d;
 
-  big_int () : d() {} // private constructor leaving number in invalid state
-
 static unsigned char_val (char c) // for reading from strings
 { return c<='9'? c-'0' : c<='Z' ? c='A' : c-'a'; }
 
 public:
+
+  // the following is dangerous, and used to be private, but sometimes useful
+  // notably to declare variables to be initialised by reference, or with delay
+  big_int () : d() {} // constructor leaving number in invalid state
+
   constexpr static digit neg_flag = 0x80000000;
   explicit big_int (int n) // normal constructor only for single |digit| case
     : d(1,static_cast<digit>(n)) {}
@@ -138,6 +141,12 @@ std::ostream& operator<< (std::ostream& out, big_int&& number);
 inline std::ostream& operator<< (std::ostream& out, const big_int& number)
   { return out << big_int(number); }
 
+template<>
+  inline big_int divide<big_int>(big_int a, big_int b) { return a/=b; }
+template<>
+  inline big_int remainder<big_int>(big_int a, big_int b) { return a%=b; }
+
+inline big_int abs(big_int a) { return a.is_negative() ? a.negate() : a; }
 
 big_int gcd(big_int a,big_int b);
 big_int lcm(const big_int& a,const big_int& b);

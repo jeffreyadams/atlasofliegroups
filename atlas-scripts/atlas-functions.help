@@ -1,8 +1,9 @@
 operators +, -, * : (int,int->int): usual integer arithmetic operations
 operator - : (int->int): integral unary minus
 operator ^ : (int,int->int): integer exponentiation (whenever result integral)
-operators \, % : (int,int->int): integer (Euclidean) division and remainder
-operator \% :(int,int->int,int): Euclidean division with remainder
+operators \ : (int,int->int): integer quotient (of Euclidean division)
+operators % : (int,int->int): integer remainder (of Euclidean division)
+operator \% : (int,int->int,int): division and remainder of Euclidean division
 operators +, -, *, / : (rat,rat->rat): usual rational arithmetic operations
 operators +, -, *, / : (rat,int->rat): more efficient in applicable cases
 operator % : (rat,int->rat): remainder after removing greatest integer multiple
