@@ -4208,8 +4208,15 @@ is that each branch can bind independently to the value whose tag (variant of
 the union) is being discriminated upon, as if each were a different \&{let}
 expression.
 
+Note that exceptionally we use shared pointers to access the branch
+expressions. This is because the user can define a default branch expression
+(which cannot use the variant of the union value) that will be chosen for all
+variants (tags, though variants with an absent tag are also eligible here) for
+which the user did not otherwise specify a branch; this expression can
+therefore be shared between different branches.
+
 @< Type def... @>=
-typedef std::pair<id_pat,expression_ptr> choice_part;
+typedef std::pair<id_pat,shared_expression> choice_part;
 
 struct union_case_expression : public expression_base
 { expression_ptr condition; std::vector<choice_part> branches;
@@ -4289,22 +4296,11 @@ case discrimination_expr:
   size_t n_variants=length(subject_type.tupple),
          n_branches=length(&exp.branches);
 
-  if (n_branches!=n_variants)
-    @< Complain that union case-expression |e| has wrong number of branches @>
   std::vector<choice_part> choices(n_variants);
 @)
-  for (auto branch_p=&exp.branches; branch_p!=nullptr;
-       branch_p=branch_p->next.get())
-  { const auto& branch = branch_p->contents;
-    size_t k = std::find(field_names.begin(), field_names.end(),branch.label)
-               -field_names.begin();
-    @< Check that |k| is a valid index into |choices|, and that the slot
-       |choices[k]| has not been used before @>
-    const auto& variant_type = *std::next(types_start,k);
-  @/@< Type-check branch |branch.branch|, with |branch.pattern| bound to
-       |variant_type|, against result type |type|,  and insert the
-       |choice_part| resulting from the conversion into |choices[k]| @>
-  }
+  @< Process |branches| and assign them to |choices|, possibly reordering them
+    according to the specified variant names and taking into account a
+    possible default branch @>
 @/return expression_ptr(new @|
     union_case_expression(std::move(c),std::move(choices)));
 }
@@ -4313,15 +4309,45 @@ case discrimination_expr:
 expression from the branches, using the function below. Since the branches
 have only been syntactically analysed at this point, and we don't want to risk
 errors that might occur in the process of throwing an error, we just count the
-number of branches, and create un unknown union of that many variants.
+number of branches, and create un unknown union of that many variants. The
+number of branches cannot be reliably determined in the presence of a default,
+so this is really just a guess; in any case we ensure that at least two
+unspecified variants are listed so that it will at least be clear that some
+union type was called for.
 
 @< Local fun... @>=
 type_ptr branches_type(const containers::sl_node<case_variant>& branches)
-{ type_list l; auto p=&branches; // pointer to the initial node
-  do
+{ type_list l; auto n = std::max<unsigned int>(2,length(&branches));
+  while (n-->0)
     l.push_front(unknown_type.copy());
-  while ((p=p->next.get())!=nullptr);
   return mk_union_type(std::move(l));
+}
+
+@ In order to be able to share the default branch expression among multiple
+branches, we define a shared expression |default_choice| that a default branch
+if present will set.
+
+@< Process |branches| and assign them to |choices|... @>=
+{ shared_expression default_choice;
+  for (auto branch_p=&exp.branches; branch_p!=nullptr;
+       branch_p=branch_p->next.get())
+  { const auto& branch = branch_p->contents;
+    if (branch.label==type_table::no_id)
+      @< Use |branch| to set |default_choice| @>
+    else
+    { size_t k = std::find(field_names.begin(), field_names.end(),branch.label)
+                 -field_names.begin();
+      @< Check that |k| is a valid index into |choices|, and that the slot
+         |choices[k]| has not been used before @>
+      const auto& variant_type = *std::next(types_start,k);
+      // type of variant for this branch
+    @/@< Type-check branch |branch.branch|, with |branch.pattern| bound to
+         |variant_type|, against result type |type|,  and insert the
+         |choice_part| resulting from the conversion into |choices[k]| @>
+    }
+  }
+  @< Check valid use of default branch, and insert it into the empty slots
+      of |choices| @>
 }
 
 @ Type checking a branch is easy once everything is put in place. We have the
@@ -4346,28 +4372,6 @@ them).
   choices[k] = choice_part(copy_id_pat(branch.pattern),std::move(result));
 }
 
-@ Here we just observe that using a discrimination expression requires using a
-\emph{named} union type.
-
-@< Report that union type |subject_type| cannot be used in discrimination
-   expression anonymously @>=
-{
-  o << "Discrimination on expression of type " << subject_type @|
-    << " requires naming its variants";
-  throw expr_error(e,o.str());
-}
-
-@ We report the type, and the mismatching number of branches here.
-
-@< Complain that union case-expression |e| has wrong number of branches @>=
-{
-  o << "Discrimination on expression of type " << subject_type @|
-    << " requires " << n_variants << " branches in case-expression.\n" @|
-    << "Found " << n_branches
-    << (n_branches==1 ? " branch" : " branches") << " instead";
-  throw expr_error(e,o.str());
-}
-
 @ When reporting a mismatched branch or when a pair of identical branch labels
 is found, we print the whole discrimination expression.
 
@@ -4383,6 +4387,51 @@ is found, we print the whole discrimination expression.
       << main_hash_table->name_of(branch.label);
     throw expr_error(e,o.str());
   }
+}
+
+@ Here we just observe that using a discrimination expression requires using a
+\emph{named} union type.
+
+@< Report that union type |subject_type| cannot be used in discrimination
+   expression anonymously @>=
+{
+  o << "Discrimination on expression of type " << subject_type @|
+    << " requires naming its variants";
+  throw expr_error(e,o.str());
+}
+
+@ A default branch is just an expression, which we store unless a default
+branch was already defined.
+
+@< Use |branch| to set |default_choice| @>=
+{ if (default_choice.get()!=nullptr)
+    throw expr_error(e,"Multiple default branches present");
+  default_choice = convert_expr(branch.branch,type);
+}
+
+@ A default branch should be present if and only if the number of other
+branches specified is strictly less than the number of variants.
+
+@< Check valid use of default branch, and insert it into the empty slots
+      of |choices| @>=
+{
+  if (n_branches>n_variants)
+    throw expr_error(e,"Spurious default branch present");
+  else if (n_branches<n_variants and default_choice.get()==nullptr)
+  {
+    auto it=choices.begin();
+    while(it->second.get()!=nullptr) ++it;
+    auto variant=field_names[it-choices.begin()];
+    if (variant==type_table::no_id)
+      o << "Missing branch for anonymous variant " << it-choices.begin();
+    else
+      o << "Missing branch for variant " << main_hash_table->name_of(variant);
+    o << " of type " << subject_type << " in discrimination expression";
+    throw expr_error(e,o.str());
+  }
+  for (auto it=choices.begin(); it!=choices.end(); ++it)
+    if (it->second.get()==nullptr)
+      *it = choice_part(id_pat(),default_choice); // share |default_choice| here
 }
 
 @*1 While loops.

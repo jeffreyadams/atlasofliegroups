@@ -2088,8 +2088,11 @@ case discrimination_expr:
 
   for (containers::weak_sl_list_const_iterator<case_variant> it(l);
     @| not it.at_end(); ++it)
-    out << " |" << main_hash_table->name_of(it->label)
-     @| << '(' << it->pattern << "):" << it->branch;
+    if (it->label==type_table::no_id)
+      out << " | else " << it->branch;
+    else
+      out << " |" << main_hash_table->name_of(it->label)
+       @| << '(' << it->pattern << "):" << it->branch;
   out << " esac ";
 }
 break;

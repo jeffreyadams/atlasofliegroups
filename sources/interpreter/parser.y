@@ -675,6 +675,12 @@ caselist: IDENT closed_pattern  ':' expr { $$=make_case_node($1,$2,$4); }
 	  { $$=append_case_node($1,$3,$4,$6); }
 	| caselist '|' pattern '.' IDENT ':' expr
 	  { $$=append_case_node($1,$5,$3,$7); }
+	| ELSE expr
+	  { struct raw_id_pat id; id.kind=0x0; $$=make_case_node(-1,id,$2); }
+	| caselist '|' ELSE expr
+	  { struct raw_id_pat id; id.kind=0x0;
+	    $$=append_case_node($1,-1,id,$4);
+	  }
 ;
 
 %%
