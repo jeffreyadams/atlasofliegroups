@@ -104,10 +104,14 @@ public:
   big_int& operator%= (const big_int& divisor)
     { reduce_mod(divisor); return *this; }
   big_int& operator/= (const big_int& divisor)
-    { return *this = reduce_mod(divisor); } // replace remainder by quotient
+    { if (divisor.is_one())
+	return *this; // simplifying by $\gcd=1$ is common with rationals
+      return *this = reduce_mod(divisor); // else replace remainder by quotient
+    }
 
   bool is_negative() const { return d.back()>=neg_flag; }
   bool is_zero() const { return d.size()==1 and d[0]==0; }
+  bool is_one() const { return d.size()==1 and d[0]==1; }
   bool operator== (digit v) const { return d[0]==v and d.size()==1; }
   bool operator!= (digit v) const { return d[0]!=v or d.size()>1; }
   bool operator<  (const big_int& x) const;
@@ -156,16 +160,19 @@ class big_rat
 public:
   explicit big_rat(const big_int& int_val) : num(int_val), den(1u) {}
   explicit big_rat(big_int&& int_val) : num(std::move(int_val)), den(1u) {}
+private:
   big_rat(big_int numer, big_int denom)
     : num(std::move(numer)), den(std::move(denom))
-  { if (den.is_zero())
-      throw std::runtime_error("Zero denominator in fraction");
-    normalise();
-  }
+    { if (den.is_zero())
+        throw std::runtime_error("Zero denominator in fraction");
+    }
+public:
+  static big_rat from_fraction(big_int numer, big_int denom)
+  { return big_rat(std::move(numer),std::move(denom)).normalise(); }
   big_rat(Rational r)
-  : num(big_int::from_signed(r.normalize().numerator()))
-  , den(big_int::from_unsigned(r.true_denominator()))
-  {}
+    : num(big_int::from_signed(r.normalize().numerator()))
+    , den(big_int::from_unsigned(r.true_denominator()))
+    {}
 
 #ifdef incompletecpp11
   const big_int& numerator() const { return num; }
@@ -193,22 +200,29 @@ public:
 
   big_rat operator+ (const big_int& x) const { return big_rat(num+x*den, den); }
   friend big_rat operator+ (const big_int& x, const big_rat& r)
-    { return big_rat(r.num+x*r.den, r.den); }
+  { return big_rat(r.num+x*r.den, r.den); } // already reduced
   big_rat operator- (const big_int& x) const { return big_rat(num-x*den, den); }
   friend big_rat operator- (const big_int& x, const big_rat& r)
-    { return big_rat(x*r.den - r.num, r.den); }
-  big_rat operator* (const big_int& x) const { return big_rat(num*x, den); }
+    { return big_rat(x*r.den - r.num, r.den); } // already reduced
+  big_rat operator* (const big_int& x) const
+    { big_int d = gcd(den,x);
+      return d.is_one() ? big_rat(num*x, den) : big_rat(num*(x/d), den/d);
+    }
   friend big_rat operator* (const big_int& x, const big_rat& r)
-    { return big_rat(x*r.num, r.den); }
+    { big_int d = gcd(r.den,x);
+      return d.is_one() ? big_rat(r.num*x,r.den) : big_rat(r.num*(x/d),r.den/d);
+    }
   big_rat operator/ (const big_int& x) const
-  { if (x.is_zero())
-      throw std::runtime_error("Division by zero");
-    return big_rat(num , den*x);
-  };
+    { if (x.is_zero())
+        throw std::runtime_error("Division by zero");
+      big_int d = gcd(num,x);
+      return d.is_one() ? big_rat(num,den*x) : big_rat(num/d, den*(x/d));
+    };
   friend big_rat operator/ (const big_int& x, const big_rat& r)
   { if (r.is_zero())
       throw std::runtime_error("Division by zero");
-    return big_rat(x*r.den , r.num);
+    big_int d = gcd(r.num,x);
+    return d.is_one() ? big_rat(x*r.den,r.num) : big_rat(x/d*r.den,r.num/d);
   };
 
   big_rat& operator+= (const big_int& x) { num+=x*den; return *this; }
@@ -219,13 +233,15 @@ public:
   big_rat operator+ (const big_rat&) const;
   big_rat operator- (const big_rat&) const;
   big_rat operator* (const big_rat& x) const
-    { return big_rat(num*x.num , den*x.den); }
+    { big_int d0 = gcd(num,x.den), d1=gcd(den,x.num);
+      return big_rat((num/d0)*(x.num/d1),(den/d1)*(x.den/d0));
+    }
   big_rat operator/ (const big_rat& x) const
-  { if (x.is_zero())
-      throw std::runtime_error("Division by zero");
-    return big_rat(num*x.den , den*x.num);
-  }
-
+    { if (x.is_zero())
+	throw std::runtime_error("Division by zero");
+      big_int d0 = gcd(num,x.num), d1=gcd(den,x.den);
+      return big_rat((num/d0)*(x.den/d1),(den/d1)*(x.num/d0));
+    }
 
   big_rat operator- () const { return big_rat(-num,den); }
   big_rat inverse () const

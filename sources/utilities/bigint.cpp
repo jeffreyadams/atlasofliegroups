@@ -468,8 +468,17 @@ big_int big_int::reduce_mod (const big_int& divisor)
       return big_int{-1};
     }
   else if (divisor.size()==1) // relatively easy case, |shift_modulo| suffices
-  { if (divisor.d[0]==0)
-      throw std::runtime_error("Division by zero");
+  {
+    if (divisor.d[0]+1<3u) // handle division by $-1$, $0$, $1$ rapidly
+    { if (divisor.d[0]==0)
+	throw std::runtime_error("Division by zero");
+      big_int quotient = std::move(*this);
+      if (neg_div) // division by $-1$
+	quotient.negate(); // is same as multiplication
+      d.assign( {0} ); // remainder is $0$
+      return quotient;
+    }
+
     digit div = divisor.d[0];
     if (neg_div)
     { div = -div;
@@ -670,15 +679,23 @@ big_int lcm(const big_int& a,const big_int& b)
 }
 
 big_rat big_rat::operator+ (const big_rat& x) const
-{ big_int common = lcm(den,x.den);
-  big_int q0 = common/den, q1=common/x.den;
-  return big_rat(num*std::move(q0)+x.num*std::move(q1) , common);
+{ big_int d = gcd(den,x.den);
+  if (d.is_one())
+    return big_rat(num*x.den+x.num*den, den*x.den);
+  big_int q = x.den/d;
+  big_int numer = num*q+x.num*(den/d);
+  big_int dd = gcd(numer,d); // no prime divisors of |q*(den/d)| divide |numer|
+  return dd.is_one() ? big_rat(numer,den*q) : big_rat(numer/dd,den*q/dd);
 }
 
 big_rat big_rat::operator- (const big_rat& x) const
-{ big_int common = lcm(den,x.den);
-  big_int q0 = common/den, q1=common/x.den;
-  return big_rat(num*std::move(q0)-x.num*std::move(q1) , common);
+{ big_int d = gcd(den,x.den);
+  if (d==1)
+    return big_rat::from_fraction(num*x.den-x.num*den, den*x.den);
+  big_int q = x.den/d;
+  big_int numer = num*q-x.num*(den/d);
+  big_int dd = gcd(numer,d); // no prime divisors of |q*(den/d)| divide |numer|
+  return dd.is_one() ? big_rat(numer,den*q) : big_rat(numer/dd,den*q/dd);
 }
 
 big_int big_rat::floor () const { return num/den; }
@@ -689,7 +706,12 @@ big_rat& big_rat::operator%= (const big_int& n) { num%=n*den; return *this; }
 big_int big_rat::quotient (const big_rat& r) const
   { return (num*r.den)/(den*r.num); }
 big_rat big_rat::operator% (const big_rat& r) const
-  { return big_rat((num*r.den)%(den*r.num),den*r.den); }
+{ big_int d = gcd(den,r.den);
+  if (d.is_one())
+    return big_rat((num*r.den)%(den*r.num),den*r.den);
+  const big_int q = den/d;
+  return big_rat((num*(r.den/d))%(q*r.num),q*r.den);
+}
 
 big_rat big_rat::power (unsigned int e) const
 {
