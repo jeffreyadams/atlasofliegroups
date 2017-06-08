@@ -1928,7 +1928,8 @@ void fraction_wrapper(expression_base::level l)
     throw runtime_error("fraction with zero denominator");
   if (l==expression_base::no_value)
     return;
-  push_value(std::make_shared<rat_value> (big_rat(n->val,d->val)));
+  push_value(std::make_shared<rat_value>
+     (big_rat::from_fraction(n->val,d->val)));
 }
 @)
 
