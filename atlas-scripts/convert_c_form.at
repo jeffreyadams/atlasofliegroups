@@ -75,21 +75,21 @@ set print_mu (Param p) = void:
 
 set print_mus (ParamPol P) = void:
   let delta=real_form(P).distinguished_involution
-  then mu_0=mu(last_param(P),delta)
+  then mu_0=mu(first_param(P),delta)
   in
   prints("columns are:", new_line
         , "coeff*p           lambda_rho term    tau  term      " ##
           "  dim term    "{     #real_pairs} ##  {" brand new term" ##}
           "  sum  s^sum*coeff", new_line);
   for c@p in P
-  do let terms=mu_terms(p,delta) in let ep=E(delta,p) then mu=sum(terms) in
+  do let terms=mu_terms(p,delta), ep=E(delta,p) then mu=sum(terms) in
     prints(c,"*", p, "     ", "  ", terms[0], "  ", terms[1], "     "
           , terms[2], "     "{, terms[3], "     ", terms[4], "   "}, mu
-          , "  ", c*s^(rat_as_int(mu-mu_0)));
-	  prints({"    gamma = ",ep.gamma,} "  lambda_rho =  ",ep.lambda_rho
-                , "  tau = ",ep.tau
-                , "  g - l - rho_check_r = ", ep.g - ep.l - rho_check_r(ep.x)
-                , new_line)
+          , "  ", c*s^(mu-mu_0).rat_as_int)
+  ; prints({"    gamma = ",ep.gamma,} "  lambda_rho =  ",ep.lambda_rho
+          , "  tau = ",ep.tau
+          , "  g - l - rho_check_r = ", ep.g - ep.l - rho_check_r(ep.x)
+          , new_line)
   od
 
 {.convert (twisted) c-form to hermitian form, using p0 for normalization.}

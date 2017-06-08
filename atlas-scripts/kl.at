@@ -37,7 +37,7 @@ for c@p in P do result+:=c*character_formula(p) od;result
 set composition_series (Param p) = ParamPol:
 ( let acc = ParamPol: p, result = null_module(p) in
   while !=acc { non null module }
-  do let (coef,final):term=last_term(acc) in
+  do let (coef,final):term=first_term(acc) in
     result +:= term; acc -:= coef*character_formula(final)
   od
 ; result

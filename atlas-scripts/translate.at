@@ -24,7 +24,7 @@ set T(Param p, ratvec gamma_new)= Param:
 set T(ParamPol P, ratvec gamma_new)= ParamPol:
   if =P then P { without any terms, there is nothing to change }
   else
-    let gamma = infinitesimal_character(last_param(P))
+    let gamma = infinitesimal_character(first_param(P))
     then shift = ratvec_as_vec(gamma_new-gamma)
     in 0*P + for w@q in P do (w,translate_by(q,shift)) od
   fi
