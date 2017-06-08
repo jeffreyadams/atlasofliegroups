@@ -2065,16 +2065,6 @@ void rat_ceil_wrapper(expression_base::level l)
   if (l!=expression_base::no_value)
     push_value(std::make_shared<int_value>(i->val.ceil()));
 }
-void rat_quotient_wrapper(expression_base::level l)
-{ shared_int j=get<int_value>();
-  shared_rat i=get<rat_value>();
-  if (j->val.is_zero())
-    throw runtime_error("Rational quotient by zero");
-  if (l!=expression_base::no_value)
-    push_value(std::make_shared<int_value>@|
-      (not j->val.is_negative() ? i->val.quotient(j->val)
-                                : (-i->val).quotient(-j->val)));
-}
 void rat_frac_wrapper(expression_base::level l)
 { shared_rat i=get<rat_value>();
   if (l!=expression_base::no_value)
@@ -3135,6 +3125,7 @@ install_function(rat_minus_int_wrapper,"-","(rat,int->rat)");
 install_function(rat_times_int_wrapper,"*","(rat,int->rat)");
 install_function(rat_divide_int_wrapper,"/","(rat,int->rat)");
 install_function(rat_modulo_int_wrapper,"%","(rat,int->rat)");
+install_function(rat_quotient_int_wrapper,"\\","(rat,int->int)");
 install_function(rat_plus_wrapper,"+","(rat,rat->rat)");
 install_function(rat_minus_wrapper,"-","(rat,rat->rat)");
 install_function(rat_times_wrapper,"*","(rat,rat->rat)");
@@ -3144,7 +3135,6 @@ install_function(rat_unary_minus_wrapper,"-","(rat->rat)");
 install_function(rat_inverse_wrapper,"/","(rat->rat)");
 install_function(rat_floor_wrapper,"floor","(rat->int)");
 install_function(rat_ceil_wrapper,"ceil","(rat->int)");
-install_function(rat_quotient_wrapper,"\\","(rat,int->int)");
 install_function(rat_frac_wrapper,"frac","(rat->rat)");
 install_function(rat_power_wrapper,"^","(rat,int->rat)");
 install_function(int_unary_eq_wrapper,"=","(int->bool)");
