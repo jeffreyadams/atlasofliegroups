@@ -246,37 +246,37 @@ set print_mu (Param p) = void:
 
 set print_mus (ParamPol P) = void:
   let delta=real_form(P).distinguished_involution
-  then mu_0=mu(last_param(P),delta)
+  then mu_0=mu(first_param(P),delta)
   in
   prints("columns are:", new_line
         , "coeff*p           lambda_rho term    tau  term      " ##
-          "  dim term    "{     #real_pairs} ##  {" brand new term" ##}
+          "  dim term    " {     #real_pairs} ##  {" brand new term" ##}
           "  sum  s^sum*coeff", new_line);
   for c@p in P
   do let terms=mu_terms(p,delta) in let ep=E(delta,p) then mu=sum(terms) in
     prints(c,"*", p, "     ", "  ", terms[0], "  ", terms[1], "     "
           , terms[2], "     "{, terms[3], "     ", terms[4], "   "}, mu
           , "  ", c*s^(rat_as_int(mu-mu_0)));
-	  prints({"    gamma = ",ep.gamma,} "  lambda_rho =  ",ep.lambda_rho
-                , "  tau = ",ep.tau
-                , "  g - l - rho_check_r = ", ep.g - ep.l - rho_check_r(ep.x)
-                , new_line)
+    prints({"    gamma = ",ep.gamma,} "  lambda_rho =  ",ep.lambda_rho
+          , "  tau = ",ep.tau
+          , "  g - l - rho_check_r = ", ep.g - ep.l - rho_check_r(ep.x)
+          , new_line)
   od
 
 {.convert (twisted) c-form to hermitian form.}
 set convert_cform_hermitian (ParamPol P,mat delta)= ParamPol:
   if =#P then P { since we cannot select a term for a null polynomial }
-  else let a_mu = mu(P.last_param,delta)
+  else let a_mu = mu(P.first_param,delta)
     then result = P.real_form.null_module +
          for w@p in P do (w*s^(mu(p,delta)-a_mu).rat_as_int,p) od
 
     { normalization: make coefficient of top term in Z if possible}
-    then (c,)=last_term(result)
+    then (c,)=first_term(result)
     in if int_part(c)=0 then s*result else result fi
   fi
 
 set convert_cform_hermitian (ParamPol P)= ParamPol:
-  convert_cform_hermitian(P,P.last_param.real_form.distinguished_involution)
+  convert_cform_hermitian(P,P.first_param.real_form.distinguished_involution)
 
 {  Hermitian forms  }
 

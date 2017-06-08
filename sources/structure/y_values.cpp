@@ -30,7 +30,7 @@ TorusElement::TorusElement(const RatWeight& r, bool two)
   : repr(r) // but possibly multiplied by 2 below
 { if (two)
     repr*=2;
-  arithmetic::Denom_t d=2u*repr.denominator(); // we reduce modulo $2\Z^rank$
+  arithmetic::Numer_t d=2*repr.denominator(); // we reduce modulo $2\Z^rank$
   Ratvec_Numer_t& num=repr.numerator();
   for (size_t i=0; i<num.size(); ++i)
     num[i] = arithmetic::remainder(num[i],d);
@@ -54,7 +54,7 @@ RatWeight TorusElement::log_2pi() const
 Rational TorusElement::evaluate_at (const SmallBitVector& alpha) const
 {
   assert(alpha.size()==rank());
-  arithmetic::Denom_t d = repr.denominator();
+  arithmetic::Numer_t d = repr.denominator();
   arithmetic::Numer_t s = 0;
   for (auto it=alpha.data().begin(); it(); ++it)
     s += repr.numerator()[*it];
@@ -64,7 +64,7 @@ Rational TorusElement::evaluate_at (const SmallBitVector& alpha) const
 // evaluation giving rational number modulo 2
 Rational TorusElement::evaluate_at (const Coweight& alpha) const
 {
-  arithmetic::Denom_t d = repr.denominator();
+  arithmetic::Numer_t d = repr.denominator();
   arithmetic::Numer_t n =
     arithmetic::remainder(alpha.dot(repr.numerator()),d+d);
   return Rational(n,d);
@@ -108,11 +108,11 @@ TorusElement& TorusElement::operator+=(TorusPart v)
 
 TorusElement& TorusElement::reduce()
 {
-  arithmetic::Denom_t d=2u*repr.denominator();
+  arithmetic::Numer_t d=2*repr.denominator();
   Ratvec_Numer_t& num=repr.numerator();
-  for (size_t i=0; i<num.size(); ++i)
-    if (arithmetic::Denom_t(num[i])>=d) // avoid division if not necessary
-      num[i] = arithmetic::remainder(num[i],d);
+  for (auto it=num.begin(); it!=num.end(); ++it)
+    if (*it<0 or *it>=d) // avoid division if not necessary
+      *it = arithmetic::remainder(*it,d);
   return *this;
 }
 

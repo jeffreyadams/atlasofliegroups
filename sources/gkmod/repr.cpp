@@ -263,15 +263,15 @@ bool Rep_context::is_oriented(const StandardRepr& z, RootNbr alpha) const
   assert(real.isMember(alpha)); // only real roots should be tested
 
   const Weight& av = rootDatum().coroot(alpha);
-  const int numer = av.dot(z.gamma().numerator());
-  const int denom = z.gamma().denominator();
+  const auto numer = av.dot(z.gamma().numerator());
+  const auto denom = z.gamma().denominator();
   assert(numer%denom!=0); // and the real root alpha should be non-integral
 
   const Weight test_wt =
     i_tab.y_lift(i_x,z.y()) +rd.twoRho() -rd.twoRho(real);
-  const int eps = av.dot(test_wt)%4==0 ? 0 : denom;
+  const auto eps = av.dot(test_wt)%4==0 ? 0 : denom;
 
-  return arithmetic::remainder(numer+eps,2*denom)< (unsigned)denom;
+  return arithmetic::remainder(numer+eps,2*denom) < denom;
 }
 
 unsigned int Rep_context::orientation_number(const StandardRepr& z) const
