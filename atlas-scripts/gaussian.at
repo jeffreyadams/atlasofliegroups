@@ -56,7 +56,9 @@ set make_inverse ([(int,[rat])] data) = [[rat]]:
 {. inverse of matrix [[rat]] .}
 set inverse ([[rat]] M) = [[rat]]: M.get_data.make_inverse
 
+set make_solver ([(int,[rat])] data) = ([rat]->[rat]):
+   ([rat] rhs) [rat]:
+      for (pivot,coefs)@j in data do rhs:=apply(j,pivot,coefs)(rhs) od; rhs
+
 {. solve matrix equation using big rationals .}
-set solve([[rat]] M, [rat] v)=[rat]:times(inverse(M),v)
-
-
+set solve([[rat]] M, [rat] v)=[rat]:M.get_data.make_solver(v)

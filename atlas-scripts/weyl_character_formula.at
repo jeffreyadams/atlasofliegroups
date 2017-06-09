@@ -202,7 +202,7 @@ set torus_factor_x (RealForm G) = (RootDatum,[rat]):
 
 {.output of Weyl character formula.}
 set wcf_report (RealForm G, vec lambda, [rat] t) = void:
-   prints("highest weight=", lambda, "  "
+   prints("highest weight=", lambda, " fund. wt. coords: ", lambda*simple_coroots(G)
          ," dimension=", dimension(finite_dimensional(G,lambda))
          ," trace=", wcf(lambda,(G,t)).to_string)
 
