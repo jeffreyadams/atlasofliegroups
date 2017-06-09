@@ -1642,10 +1642,10 @@ The conditions for suppressing parentheses are tested using dynamic casts.
 
 @< Function definitions @>=
 void call_expression::print(std::ostream& out) const
-{ if (dynamic_cast<identifier*>(function.get())!=nullptr)
+{ if (dynamic_cast<const identifier*>(function.get())!=nullptr)
     out << *function;
   else out << '(' << *function << ')';
-  if (dynamic_cast<tuple_expression*>(argument.get())!=nullptr)
+  if (dynamic_cast<const tuple_expression*>(argument.get())!=nullptr)
     out << *argument;
   else out << '(' << *argument << ')';
 }
@@ -1742,7 +1742,7 @@ struct overloaded_call : public call_base
 @< Function definitions @>=
 void overloaded_call::print(std::ostream& out) const
 { out << name;
-  if (dynamic_cast<tuple_expression*>(argument.get())!=nullptr)
+  if (dynamic_cast<const tuple_expression*>(argument.get())!=nullptr)
      out << *argument;
   else out << '(' << *argument << ')';
 }
@@ -3273,7 +3273,7 @@ void subscr_base::print(std::ostream& out,bool reversed) const
 template <bool reversed>
 void matrix_subscription<reversed>::print(std::ostream& out) const
 { out  << *array << (reversed ? "~[" : "[");
-  tuple_expression* p=dynamic_cast<tuple_expression*>(index.get());
+  auto* p=dynamic_cast<const tuple_expression*>(index.get());
   if (p==nullptr) out << *index << ']';
   else
     out << *p->component[0] << ',' << *p->component[1] << ']';
@@ -4107,8 +4107,8 @@ void conditional_expression::print(std::ostream& out) const
 { out << " if "; const conditional_expression* cur=this;
   do
   { out << *cur->condition << " then " << *cur->then_branch;
-    conditional_expression* p =
-      dynamic_cast<conditional_expression*>(cur->else_branch.get());
+    auto* p =
+      dynamic_cast<const conditional_expression*>(cur->else_branch.get());
     if (p==nullptr)
       break;
     out << " elif "; cur=p;

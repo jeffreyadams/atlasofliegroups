@@ -1634,8 +1634,8 @@ struct expression_base
 };
 @)
 typedef expression_base* expression;
-typedef std::unique_ptr<expression_base> expression_ptr;
-typedef std::shared_ptr<expression_base> shared_expression;
+typedef std::unique_ptr<const expression_base> expression_ptr;
+typedef std::shared_ptr<const expression_base> shared_expression;
 
 @ Like for values, we can assure right away that printing converted
 expressions will work.
