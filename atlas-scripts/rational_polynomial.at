@@ -1,6 +1,7 @@
 <basic.at
 <polynomial.at
 
+{ratpoly has been redefined from ratvec to [rat] to allow big integers and rationals}
 
 : ratpoly = [rat] { in this file [rat] will represent polynomials }
 { poly: [a_0,...,a_n] represents the polynomial a_0+a_1q+...+a_nq^n }
@@ -43,8 +44,9 @@ set rec_fun strip_int ([int] v)=[int]:
 if #v=0 then [] else if v~[0]=0 then strip_int(delete(v,#v-1)) else v fi fi
 set strip_int(ratpoly v)=ratpoly:let (num,denom)=%v in strip_int(num)*(1/denom)
 
-{the next 3 definitions were modified to avoid conversions to/from vecs,
+{the next definitions were modified to avoid conversions to/from vecs,
 and work with [int] rather than vec}
+
 set flex_add_int([int] a,[int] b)=[int]:
 if #a<#b then 
 for i:#b-#a do a:=a#0 od else
@@ -86,16 +88,17 @@ set degree (ratpoly P) = int: #P.strip_int-1 { degree, or -1 for the zero ratpol
 
 {this command was modified to preserve bigints (avoid conversion to vec)}
 { evaluate polynomial at integer }
-set evaluate_at_1(ratpoly v) = rat: sum(ratvec:v) { from basic.at; often we need this easy case }
+set evaluate_at_1(ratpoly v) = rat: let rv=rat:0 in for a in v do  rv+:=a od;rv
 
 {. returns polynomials (q,r) where p=q*d+r and r=0 or deg(r)<deg(d) .}
-set divide(poly p,poly d) = (poly,poly):
+{set divide(poly p,poly d) = (poly,poly):
    let rec_fun f(poly q, poly r) = (poly,poly):
       if #r<#d then (q,r)
       else let t=poly: null(#r-#d) # rat_as_int(r~[0]/d~[0]) in
          f(poly_plus(q,t),poly_plus(r,-poly_product(t,d)))
       fi
    in f(poly_0,p)
+}
 
 {this command was modified to preserve bigints (avoid conversion to vec)}
 set ^ = (ratpoly,int->ratpoly): { power of a rational polynomial }

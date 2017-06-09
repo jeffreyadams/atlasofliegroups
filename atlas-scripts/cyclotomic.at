@@ -2,6 +2,7 @@
 <rational_polynomial.at
 <sort.at
 <ratmat.at
+<gaussian.at	
 
 set Cartesian ([int] a, [int] b) = [int]:
     ## for x in a do for y in b do x*y od od
@@ -195,15 +196,22 @@ set inverse_by_matrix (cyclotomicFieldElement(,F):z) = cyclotomicFieldElement:
 set inverse_by_solve (cyclotomicFieldElement(,F):z) = cyclotomicFieldElement:
    (solve(matrix_of_multiplication(z),F.one.v)[0],F)
 
-{ use inverse_by_solve }
+set inverse_by_gauss(cyclotomicFieldElement(,F):z) = cyclotomicFieldElement:
+    let M=matrix_of_multiplication(z) {|ratmat|} then 
+    N=ratmat_to_bigmat(M) then
+    v=[rat]:F.one.v in (times(inverse(N),v),F)
+
+{ use inverse_by_gauss }
 {.inverse of element in cyclotomic field.}
-set inverse = inverse_by_solve@cyclotomicFieldElement
+set inverse = inverse_by_gauss@cyclotomicFieldElement
 
 set / = inverse@cyclotomicFieldElement { unary division is inverse }
 
-set / (cyclotomicFieldElement(v,F), cyclotomicFieldElement z) =
+{set / (cyclotomicFieldElement(v,F), cyclotomicFieldElement z) =
       cyclotomicFieldElement:
-   (solve(matrix_of_multiplication(z),v)[0],F)
+   (solve(matrix_of_multiplication(z),v)[0],F)}
+
+set / (cyclotomicFieldElement z, cyclotomicFieldElement w)=cyclotomicFieldElement:z*inverse(w)
 
 {.convert cyclotomic field element to a string for output.}
 set to_string (cyclotomicFieldElement z) = string:

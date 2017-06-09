@@ -1,8 +1,9 @@
-<cyclotomic.at
-<coxeter.at
 <W_orbit.at
-<representations.at
+<cyclotomic.at
 <finite_dimensional.at
+<representations.at
+<coxeter.at
+
 
 {! Weyl character formula computed at elements of finite order
 

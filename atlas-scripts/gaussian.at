@@ -1,0 +1,62 @@
+<basic.at
+<ratmat.at
+
+{ Gaussian elimination on matrices represented by values of type [[rat]] }
+
+{ matrices by lists of lists of rational numbers, forming their columns }
+
+{multiplication of matrix [[rat]] * vector [rat]}
+set times([[rat]] M,[rat] v)=[rat]:for i:#v do let entry=rat:0 in for j:#v do entry+:=M[j][i]*v[j] od; entry od
+
+{convert ratmat (mat,string,int) to [[rat]]}
+set ratmat_to_bigmat(ratmat M)=[[rat]]:
+let (A,,d)=M in 
+for i:n_columns(A) do [rat]:A[i]/d od
+
+set pivot_step (([(int,rat)]->int) choose_pivot) =
+    ([[rat]] M, int i) (int,[rat],[[rat]]):
+    (  let col=M[0]
+       then k = i + choose_pivot(for e@d in col[i:] do (d,e) od), n=#col
+       then src = { list for each |r| from which index new row |r| is taken }
+          for r:n do if r<i or r>k then r elif r=i then k else r-1 fi od
+       , f = col[k] { value of the pivot entry }
+       then coefs = for r:n do if r=i then /f else -col[src[r]]/f fi od
+       in (k,coefs
+          , for c@j in M[1:]
+            do let ck=c[k] in
+               for r:n do if r=i then ck/f else c[src[r]]+ck*coefs[r] fi od
+            od
+          )
+    )
+
+set greedy ([(int,rat)] choices) = int:
+    let i = for (,r) in choices do r!=0 od.first then (k,)=choices[i] in k
+
+set step = pivot_step(greedy@[(int,rat)])
+
+set get_data ([[rat]] M) = [(int,[rat])]:
+    let i=-1 in
+    while >#M do let (pivot,coefs,M0)=step(M,i+:=1) in M:=M0; (pivot,coefs) od
+
+set apply (int i, int k, [rat] coefs) = ([rat]->[rat]):
+    let n=#coefs
+    then src = { list for each |r| from which index new row |r| is taken }
+          for r:n do if r<i or r>k then r elif r=i then k else r-1 fi od
+    in ([rat] c) [rat]:
+       for r:n do let a=c[k]*coefs[r] in if r=i then a else c[src[r]]+a fi od
+
+set make_inverse ([(int,[rat])] data) = [[rat]]:
+    for c in id_mat(#data)
+    do let c=[rat]: for e in c do e od { convert to [rat] } in
+       for (pivot,coefs)@j in data do c:=apply(j,pivot,coefs)(c) od
+    ;  c
+    od
+
+{ inverse using [[rat]] to allow big rationals }
+{. inverse of matrix [[rat]] .}
+set inverse ([[rat]] M) = [[rat]]: M.get_data.make_inverse
+
+{. solve matrix equation using big rationals .}
+set solve([[rat]] M, [rat] v)=[rat]:times(inverse(M),v)
+
+

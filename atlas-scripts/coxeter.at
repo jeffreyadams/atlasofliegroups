@@ -1,8 +1,15 @@
 <basic.at
 
+{Coxeter number and Coxeter element as a semisimple element}
+
 set highest_root(RootDatum rd)=posroots(rd)~[0]
 
+{. Coxeter number: height of the highest root .}
 set coxeter_number(RootDatum rd)=int:rat_as_int(highest_root(rd)*rho_check(rd)+1)
 
+{. Coxeter element is a unique conjugacy class in W=N(T)/T, the G-conjugacy class
+ of a representative g\in N(T) is also unique. If G is adjoint this is the unique
+ regular conjugacy class of minimal order, and is exp(2\pi i\rho^v)/h
+}
 set coxeter_torus_element(RootDatum rd)=ratvec:(1/coxeter_number(rd))*rho_check(rd)
 
