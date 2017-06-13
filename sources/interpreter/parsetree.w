@@ -1830,9 +1830,14 @@ expr_p make_conditional_node(expr_p c, expr_p t, expr_p e, const YYLTYPE& loc)
       conditional_node { std::move(cnd), std::move(thn), std::move(els) },loc);
 }
 
-@ We follow the usual coding pattern for copying raw pointers.
+@ We follow the usual coding pattern for copying raw pointers.  We include
+some other case labels for expression kinds to be introduced later that have
+isomorphic nodes, and therefore use |if_variant|.
+
 @< Cases for copying... @>=
 case conditional_expr:
+case int_case_expr:
+case union_case_expr:
   if_variant=other.if_variant;
 break;
 
@@ -1840,7 +1845,10 @@ break;
 automatic.
 
 @< Cases for destroying... @>=
-case conditional_expr: delete if_variant; break;
+case conditional_expr:
+case int_case_expr:
+case union_case_expr:
+   delete if_variant; break;
 
 @ To print a conditional expression at parser level, we shall not
 reconstruct \&{elif} constructions.
@@ -1885,38 +1893,32 @@ We define a function for constructing the expression as usual.
 @< Declarations of functions for the parser @>=
 expr_p make_int_case_node(expr_p selector, raw_expr_list ins, const YYLTYPE& loc);
 
-@ This implementation used to be not straightforward, because these case
+@~This implementation used to be not straightforward, because these case
 expressions were converted using a subscription from a list of functions
 without arguments. With a dedicated expression type, the handling has now
-become a lot simpler. There is still an unusual point here in that we move
-from the complete first node of |in_list| into the new |conditional_node|,
-something that is only possible because we still hold the raw pointer |i| to
-that node, passed to us as argument (the type |expr_list| does not allow this).
+become a lot simpler. We separate out an auxiliary function |make_case_node|
+that does the main work, and that will be reused later for construction of an
+isomorphic kind of expression.
+
+There is still an unusual point here in that we move from the complete first
+node of |in_list| into the new |conditional_node|, something that is only
+possible because we still hold the raw pointer |i| to that node, passed to us
+as argument (the type |expr_list| does not allow this).
 
 @< Definitions of functions for the parser @>=
-expr_p make_int_case_node(expr_p s, raw_expr_list i, const YYLTYPE& loc)
+expr_p make_case_node
+  (expr_kind kind,expr_p s, raw_expr_list i, const YYLTYPE& loc)
 {
   expr_ptr sel(s); expr_list in_list(i);
   assert(not in_list.empty());
   expr& selector=*sel;
   containers::sl_node<expr>& ins = *i; // list of \&{in}-expressions
-  return new expr(int_case_expr,new @|
-    conditional_node(std::move(selector),std::move(ins)),loc);
+  return new expr(kind, new @|
+                  conditional_node(std::move(selector),std::move(ins)),loc);
 }
 
-@ We could have done the following by putting a second switch label on the
-|@[case conditional_expr:@]| above, but it does little harm to follow our
-general pattern of one case per variant here.
-
-@< Cases for copying... @>=
-case int_case_expr:
-  if_variant=other.if_variant;
-break;
-
-@~And similarly here.
-
-@< Cases for destroying... @>=
-case int_case_expr: delete if_variant; break;
+expr_p make_int_case_node(expr_p s, raw_expr_list i, const YYLTYPE& loc)
+{@; return make_case_node(int_case_expr,s,i,loc); }
 
 @ To print an integer case expression at parser level, we do the obvious.
 
@@ -1936,9 +1938,54 @@ break;
 %
 Union values can be tested for their actual variant using a multi-way switch
 similar to the case statement. However here branches are not simply
-expressions, they are more like anonymous functions that will be applied to
-the body of the union value being discriminated upon, if it has the
-appropriate variant.
+expressions to be evaluated, they behave like functions that will be applied
+to the body of the union value being discriminated upon, if it has the
+appropriate variant, with argument type matching the type of that variant.
+
+In fact we define two forms of discrimination case statements. A first, more
+primitive form, provides exactly what we just described, a separate function
+for each branch; it has the same syntactic form as an integer case statement,
+except that we write vertical bars instead of commas to make the distinction.
+A second form provides more flexibility to the user, but can only be used if
+the union type has occurred in a type definition where the different variants
+have been given names (tags); these can then be used to identify branches, and
+frees the user from the obligation of writing the branches in the same order
+as the corresponding variants are listed in the union, and also of explicitly
+specifying types (since they can be deduced from the context) for the
+identifiers (function arguments) that are introduced at the beginning of each
+branch.
+
+The tag used for the first form is |union_case_expr|, that for the second form
+|discrimination_expr|.
+
+@< Enumeration tags for |expr_kind| @>=
+union_case_expr, discrimination_expr, @[@]
+
+@~The first case can reuse the |conditional_node| structure, just like the
+integral case expressions, so all we need is a trivial variation of
+|make_int_case_node|.
+
+@< Definitions of functions for the parser @>=
+
+expr_p make_union_case_node(expr_p s, raw_expr_list i, const YYLTYPE& loc)
+{@; return make_case_node(union_case_expr,s,i,loc); }
+
+@ Printing an union case expression at parser level is a very slight variation
+of the same for an integer case expression.
+
+@< Cases for printing... @>=
+case union_case_expr:
+{ const auto& c=*e.if_variant;
+  wel_const_iterator it(&c.branches);
+  out << " case " << c.condition << " in " << *it;
+  for (++it; not it.at_end(); ++it)
+    out  << " | " << *it;
+  out << " esac ";
+}
+break;
+
+@ But for the second kind we need a more elaborate
+parsing structure.
 
 @< Type declarations needed in definition of |struct expr@;| @>=
 typedef struct discrimination_node* disc;
@@ -1990,11 +2037,7 @@ discrimination_node::discrimination_node(expr&& subject, raw_case_list branches)
   , branches((case_list(branches),std::move(*branches)))
   @+{}
 
-@ The tag used for these expressions is |discrimination_expr|.
-
-@< Enumeration tags for |expr_kind| @>= discrimination_expr, @[@]
-
-@~The variant of |expr| values with |disc| as parsing value is tagged
+@ The variant of |expr| values with |disc| as parsing value is tagged
 |disc_variant|.
 
 @< Variants of ... @>=
@@ -2018,6 +2061,8 @@ are similar to what we did for \&{let} lists: create or extend a
 raw_case_list make_case_node(id_type sel, raw_id_pat& pattern, expr_p val);
 raw_case_list append_case_node
   (raw_case_list prev, id_type sel, raw_id_pat& pattern, expr_p val);
+expr_p make_union_case_node
+  (expr_p selector, raw_expr_list ins, const YYLTYPE& loc);
 expr_p make_discrimination_node
   (expr_p s, containers::sl_node<case_variant>* branches, const YYLTYPE& loc);
 
