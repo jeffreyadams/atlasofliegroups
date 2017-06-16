@@ -14,16 +14,17 @@
 - Fix bug occurring when switching the real form when coming from realmode
 - clean up the mess dealing with input (interface/input, io/interactive...)
 
-* Work on the atlas program
+* Work on the axis language
+
+- Clear up confusion around voiding in function argument position
+  Voiding in an argument position should probably never be allowed implicitly
+  (without a cast) but seems allowed for single arguments, and even for
+  multiple arguments in non-overloaded calls (composite function expression).
 
 - Improve output of expressions
   Distinguish one-line (maybe abbreviated) and long forms.
-  Nuance "simply connected" and "adjoint" for non-semisimple root data
 
 - See if cloning of all value types is needed, and remove unnecessary ones
-
-- Make system test for duplicate objects like two equivalent real forms in the
-  same inner class that will test equal; they should be the same object.
 
 - For errors during implict conversion, provide back-tracing as for calls
 
@@ -45,11 +46,26 @@
 - Extend type system to deal with second-order types
 - Allow encapsulation into user-defined types (possibly using 2nd order types)
 
+
+* Work on the atlas program
+
+- Avoid using Smith normal form computations in |invert|, |det| and such;
+  prefer Gaussian elemination methods possibly using big rationals
+
+- Nuance "simply connected" and "adjoint" in printing non-semisimple root data
+
 - Ensure that root data obtained from inner classes or beyond are shared
+
+- Make system test for duplicate objects like two equivalent real forms in the
+  same inner class that will test equal; they should be the same object.
+  Or avoid creating many identical |real_form_value| instances, by storing
+  links to those currently generated within an |inner_class_value| object.
+
 - Avoid creating many identical |real_form_value| instances, by storing links
   to those currently generated within an |inner_class_value| object
 
 * Work on the atlas scripts
+
 - Complete the groups in groups.rx (types G,F); also avoid use of "s" etc.
 - Adapt scripts to use/illustrate the new language features, once implemented.
 
