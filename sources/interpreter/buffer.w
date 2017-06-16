@@ -1,4 +1,4 @@
-% Copyright (C) 2006-2015 Marc van Leeuwen
+% Copyright (C) 2006-2016 Marc van Leeuwen
 % This file is part of the Atlas of Lie Groups and Representations (the Atlas)
 
 % This program is made available under the terms stated in the GNU
@@ -181,10 +181,11 @@ allow working everywhere with sequence numbers to represent identifiers.
 @h<vector>
 @< Class declarations @>=
 
+typedef unsigned short id_type; // type of value representing identifiers
+
 class Hash_table
 {
 public:
-  typedef unsigned short id_type; // type of value representing identifiers
   static const id_type empty; // value (|~0u|) reserved for empty slots
 private: // data members
   String_pool pool;
@@ -234,8 +235,7 @@ also get the desired result, and without provoking any warning message.)
 
 @< Definitions of class members @>=
 
-const Hash_table::id_type Hash_table::empty =
-   ~static_cast<Hash_table::id_type>(0);
+const id_type Hash_table::empty = ~static_cast<id_type>(0);
 
 @ Here is the constructor for a hash table. By nature |hash_tab| is larger
 than the number of entries currently stored; its size is always equal to~|mod|
@@ -283,8 +283,8 @@ to open a file with an empty name).
 
 @< Definitions of class members @>=
 
-Hash_table::id_type Hash_table::hash
-        (const char* s, size_t l) const // |s| a string of length |l>0|
+id_type Hash_table::hash (const char* s, size_t l) const
+  // |s| a string of length |l>0|
 { unsigned long r=static_cast<unsigned char>(*s++)%mod;
   while (l-->1) // one less, because we already read one character
     r=(static_cast<unsigned char>(*s++)+(r<<8))%mod;
@@ -345,8 +345,7 @@ avoid recursion and perform a simplified computation of the new hash code in
 this case.
 
 @< Definitions of class members @>=
-Hash_table::id_type Hash_table::do_match
-	(const char* str, size_t l, bool copy_string)
+id_type Hash_table::do_match (const char* str, size_t l, bool copy_string)
 { id_type i,h=hash(str,l);
   while ((i=hash_tab[h])!=empty)
     if (std::strncmp(name_tab[i],str,l)==0 && name_tab[i][l]=='\0')
@@ -600,7 +599,7 @@ destructed (in exception handling).
 @< Define |struct input_record@;| @>=
 struct input_record
 { std::ifstream f_stream; // the actual stream record
-  Hash_table::id_type name; // identifies the file name for |stream|
+  id_type name; // identifies the file name for |stream|
   unsigned long line_no; // this refers to the older input stream!
 @)
   input_record(BufferedInput&, const char* file_name);
@@ -638,9 +637,9 @@ void BufferedInput::close_includes()
 @ Often we need the number or name of the topmost file on the |input_stack|.
 
 @< Other methods of |BufferedInput| @>=
-Hash_table::id_type current_file() const
+id_type current_file() const
 {@; return input_stack.empty() ? Hash_table::empty : input_stack.back().name; }
-const char* name_of(Hash_table::id_type f) const
+const char* name_of(id_type f) const
 {@; return
    f==Hash_table::empty ? "<standard input>" : input_files_seen.name_of(f); }
 const char* cur_fname() const
@@ -754,7 +753,7 @@ to a good start.
 
 @< In cases where reading from this file should be avoided,... @>=
 { bool skip=false;
-  const Hash_table::id_type file_nr = input_stack.back().name;
+  const id_type file_nr = input_stack.back().name;
   if (file_nr==input_files_completed.capacity()) // it wasn't seen before
     input_files_completed.extend_capacity(false);
        // add new empty slot to bitmap; may set it later

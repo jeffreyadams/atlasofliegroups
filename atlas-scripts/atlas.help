@@ -36,14 +36,14 @@ Once you are set, type 'make' in the atlas/sources/interpreter directory (or
 'make atlas' in the Atlas directory) to build atlas. Normally this will
 automatically invoke the tools to create all the files mentioned above when
 they are needed. (Using the -j (job server) switch to GNU 'make' may speed up
-compilation on multi-procesor machines, but sometimes fails to complete
+compilation on multi-processor machines, but sometimes fails to complete
 correctly; rerunning running make without '-j' should resolve this.)
 
 After the first compilation of 'atlas' it is advised to call 'make install'
 with a BINDIR argument as described in the Atlas installation instructions.
 This will produce in the specified directory (which should be in your $PATH)
 an executable script named 'atlas' that calls the just compiled executable,
-preloads a "standard prelude" of user defined functions, and provides some
+pre-loads a "standard prelude" of user defined functions, and provides some
 additional information enabling it to find other scripts provided with Atlas
 upon request. This also has the advantage that you can then call 'atlas' from
 any directory, without any need to specify a path as in './atlas'.
@@ -133,7 +133,7 @@ Fokko. Note however that the specification [[1,0,0]/2,[0,1,1]/2], of the
 kernel generators is somewhat more liberal than allowed in the Fokko program.
 The kernel generators are needed to describe root data in full generality, but
 are not needed for simply connected or adjoint root data; whereas in Fokko
-this is achieved by recognising 'sc' or 'ad' in lieu of kernel generators, the
+this is achieved by recognizing 'sc' or 'ad' in lieu of kernel generators, the
 'atlas' program provides alternative functions to the above 'inner_class' that
 do not take the kernel generator specification as argument.
 
@@ -178,7 +178,7 @@ When "manually" loading a script, a summary of all its definitions is printed.
 
 
 In the current file we shall document the 'axis' language that the 'atlas'
-program interprets, and its remaining aspects other than primitve functions.
+program interprets, and its remaining aspects other than primitive functions.
 
 
 3 Design principles of the 'axis' language, and current limitations
@@ -188,8 +188,8 @@ serves most often to designate values to be computed rather than actions to be
 performed. Its design is close to that of functional programming languages:
 function values are first class citizens, binding is static with no
 restrictions on lifetime, semantics is value-based for all types (no
-distinction betwen object and value, or between mutable and unmutable values).
-The language does provide assignable variables and loops. All control
+distinction between object and value, or between mutable and unmutable
+values). The language does provide assignable variables and loops. All control
 structures including loops are oriented towards construction of values rather
 than towards sequencing of side-effects, although they do provide the latter.
 Somewhat curiously for a language close to functional languages, ordinary
@@ -335,21 +335,36 @@ ParamPol	virtual module with signature (Param values with Split coefs)
 Constant values of type bool, int and string can be entered as usual (use
 'true' or 'false' (without quotes) for truth values, and a string in
 double-quotes (with any contained double-quote characters doubled) for
-strings. Strings denotations contain newline characters (but a constant
+strings. Strings denotations cannot contain newline characters (but a constant
 'new_line' is provided, containing a string with a single newline character).
 Values of other basic types can only be obtained by using appropriate
 operators and functions (for instance 22/7 has type 'rat' and GL(5) has type
 'RootDatum'), or sometimes via implicit conversions (see below).
 
-Composite types are either array (list) types, tuple types or function types.
-Array and tuple types both construct aggregates by combining a sequence of
-component values; for array types all components must have the same type and
-there could be any number of them (including none at all), while for tuple
-types the type explicitly enumerates the types of the components, so in
-particular the number of components is determined by the type. A function type
-specifies zero or more argument and result types; for either, unless exactly
-one such type is specified the argument or result type is actually a tuple
-type. Thus if t0,t1,t2,t3 are types, one has composite types like:
+Composite types are either function types, array (list) types, tuple types, or
+union types. Array, tuple and union types construct aggregates by combining
+component values, while values of function types are either built-in
+functions, user define functions (defined by a parameter list and function
+body) or special functions called projectors and injectors related to tuple
+respectively union types.All components of an array type must share the same
+type and there could be any number of them (including none at all). For tuple
+types there is a fixed number of components, whose types are individually
+specified, and in particular may differ between components. Like a tuple type
+a unions type specifies a fixed list of component types (called variants in
+the case of a union type), but any value of such a union type assumes only one
+the variants; one can think a union values as a tag indicating which variant
+applies, attached to a component of the corresponding type.
+
+A function type consists of an argument type and a result type; both could be
+any type, but are often tuple types, which corresponds to functions taking
+several arguments and/or delivering several result. Neither tuples nor unions
+can have just a single component (as in that case the type would just be
+identified with its component type) but there is a tuple type with 0 component
+types; this type is written 'void' (and '()' denotes its unique value), which
+type is particularly useful as result or (less commonly) argument type of a
+function type, to indicate there is no actual result respectively argument.
+
+So if t0,t1,t2,t3 are types, one has composite types like:
 
 [t0]		array of elements all of which have type t0
 [[t0]]		array of elements all of which have type [t0] (a list of lists)
@@ -357,6 +372,9 @@ type. Thus if t0,t1,t2,t3 are types, one has composite types like:
 (t0,t1)		2-tuple formed of components of types t0 and t1 respectively
 (t0,t1,t2)	3-tuple, with components of types t0,t1,t2 respectively
 (t0,t1,t2,t3)	4-tuple, with components of types t0,t1,t2,t3 respectively
+...		etc
+(t0|t1)         union type; values are either of t0 or t1 (and know which one)
+(t0|t1|t2|t3)   union type with 4 variants, of respective types t0,t1,t2,t3
 ...		etc
 void		0-tuple (irrelevant value)
 (t0->t1)	function with argument of type t0 and result of type t1
@@ -366,15 +384,69 @@ void		0-tuple (irrelevant value)
 (t0,t1->)	function with argument of type (t0,t1) and no useful result
 (->t0)		function with 0 arguments with result of type t0
 ...		etc
+(void|int)      union type whose values are either nothing at all or integer
+(int|vec->vec)  function taking union (int|vec) argument, always returning vec
+(int->bool|vec) function with integer argument, returning Boolean or vector
+([int]->mat)	function from row of integer to matrix
+...		etc
 
 Often the user does not have to write any types, and the system will take care
 of deriving primitive and composite types as implicitly specified by the
-expression. However when writing user defined functions, the types of the
-arguments must be specified, so that types can be checked for the function
-body; once this check succeeds, a type is attributed to the function, and it
-will henceforth be treated just like a built-in function of that type would be
-(and one can in fact for instance form an array that contains both built-in
-and user-defined functions, provided they all have the same (function) type).
+expression (though this is not true when union types are being used). However
+when writing user defined functions, the types of the arguments must be
+specified, so that types can be checked for the function body; once this check
+succeeds, a type is attributed to the function, and it will henceforth be
+treated just like a built-in function of that type would be (and one can for
+instance mix built-in and user-defined functions in an array, provided they
+all have the same (function) type).
+
+* Syntax of function calls
+
+Function calls can be written in the traditional form f(x), where 'f' is the
+function and 'x' is the argument (and the parentheses are mandatory). For
+functions with more parameters the call can be written as usual f(x,y,z) (and
+similarly f() is a call of the function 'f' with no arguments at all). Here
+again 'f' is the function, but officially there is just one argument, which is
+the tuple display '(x,y,z)'; as a special exemption no additional parentheses
+are required around the tuple display, though writing f((x,y,z)) is valid and
+means the same thing. When t=(x,y,z) is a tuple, calling f(t) has the same
+effect as calling f(x,y,z). The latter can be used for instance if a function
+'f' has multiple arguments which only serve to be passed unchanged to another
+function 'g'; then it is possible (and slightly more efficient) to define 'f'
+as taking a single argument of tuple type, which is then passed to 'g'. This
+manner of implementing 'f' has no effect at all on the way 'f' can be called.
+
+Instead of 'f(x)', the axis language provides the alternative syntax 'x.f', in
+which the function comes after the argument; the two forms are equivalent and
+can be used interchangeably. This syntax was inspired by the case where 'f' is
+a "selector function" from a tuple type to one of its component types, in
+which case the alternative syntax resembles traditional selection of a field
+from a structure type. However its use is not restricted to such cases, and is
+entirely a matter of style. While (x,y).f for calling a function with two
+arguments seems a bit awkward, the alternative syntax can be more readable for
+chains of single-argument functions, as in x.f.g.h as opposed to the
+equivalent h(g(f(x))). Note here that implicit grouping is to the left, so
+x.f.g.h is read as ((x.f).g).h, rather naturally. One can even mix the two
+calling styles, either as in f(x,y).g as alternative for g(f(x,y)), or as in
+x.f(y) which is equivalent to f(x)(y) or more explicitly (f(x))(y) (here f(x)
+must return a function that then is called with y as argument).
+
+A third syntactic form for function calls is the use of operator symbols (of
+which the language has a limited and non-extendable collection) in formulas;
+in x+y*z, which calls the function '+' with arguments x and the result of
+calling '*' with arguments (y,z). Details of formulas, notably rules of
+operator precedence, will be discussed later. Here we just note that formulas
+also have prefix and postfix forms that resemble the two forms of regular
+function calling syntax: instead of 'x+y' one may write '+(x,y)' or '(x,y).+'
+(maybe not the most readable style). These forms can be practical when
+applying an operator to an previously assembled argument pair without having
+to split it for the infix notation. Having this form means that every operator
+symbol can be used with prefix syntax. Indeed often meaning is given to such
+"unary" uses of operator symbols when there is just one argument, even for
+operators where this is unusual: while most language have "unary minus" '-x'
+as short for 0-x, the axis language also allows "unary division" '/x' to be
+defined as short for 1/x, and also '^A' can mean transpose of the matrix A
+(and it can be given other meanings for other types as well).
 
 * Array displays, selection and slicing
 
@@ -383,27 +455,38 @@ component expressions (all of the same type) in brackets, as in [1,-4,3*6],
 which is called a row display (the given one will be printed as [1,-4,18]).
 They are also implicitly constructed by loops, as will be described later.
 
-If 'v' is an identifier, or more generally an expression, whose value is an
-array, then the individual components can of the array can be accessed by
+If 'v' is an array identifier, or more generally an expression evaluating to
+an array, then the individual components can of the array can be accessed by
 subscripting, as in 'v[i]'. Interpretation of the index always starts from 0:
 the first element of v is v[0], and the last is v[#v-1]. However, one can also
 index counting from the end by prefixing the '[' by '~', so the last element
 is also v~[0], and the before-last v~[1] and so on. One can also select
 multiple elements at once (combined into a new array value) using a "slice",
-specifying the a lower and an upper bound separated by ':'. Each should be
-thought of as indicating a separation between two elements, namely between the
-one at the given index and at an index one less; the slice then selects all
-elements between the lower separator and the upper separator. This means that
-in a v[a:b] includes the element v[a] but excludes v[b], and therefore selects
-b-a elements in all. In case a>=b the slice returns an empty array of the same
-type as v (having a=b is normal, having a>b is allowed but rarely useful). It
-is an error if the lower bound is negative, or if the upper bound exceeds the
-size of the array. Individual bounds in a range can also be counted from the
-end by appending a '~', in which case they indicate the separation after (that
-is, closer to the end) then the element the index would reversely select. As a
-convenience a completely omitted lower bound means 0 (from the beginning) and
-an omitted upper bound means 0~ (up to the end). Finally one can (like for
-subscription) select from the reverses array by prefixing the '[' by '~'.
+specifying the a lower and an upper bound separated by ':'. The indices used
+in the slice notation should be thought of as indicating a boundary
+(separation) between two elements in the original row rather than an element
+of that row; the boundary is the one that separates the element with that
+index from the element at index one less. This implies that a slice v[a:b]
+includes the element v[a], v[a+1],...,v[b-1], but excludes v[b] (and the
+selected elements normally appear in their original order in the slice); thus
+the slice contains b-a elements in all whenever a<=b (in particular it is an
+empty array (of the same type as v) when a=b. A slice v[a:b] with a>b (which
+"ends before it starts") is allowed (even is rarely needed) and empty. On the
+other hand the cases where a<0 are b>#v are considered out of bounds and hence
+illegal (the slice would contain elements at non existent index positions).
+
+Like for indexing, a change of interpretation in a slice can be indicated by
+the presence of '~' in various positions. When used after one of the two
+indices in a slice, it indications traversal in the opposite direction to find
+the index, the boundary coming immediately before the indicated position, in
+the sense of the reversed traversal. Thus while 0 indicates the boundary
+before the first element in the array, 0~ indicates the boundary after its
+last element (and v[0:0~] is all of v). One can also (as for indexing) prefix
+the '[' by '~', which means the slice is applied to the reversed array, so
+v~[0:0~] is the reversal of v, and v~[1:0~] leaves out the final element
+v[#v-1]=v~[0] from the reversed array. One can also omit an index entirely
+(but keep the ':' to indicate it is a slice), which for the first index
+position defaults to 0 and for the second index position to 0~.
 
 Here are some examples of various uses of slices
 
@@ -425,8 +508,8 @@ the purpose of selection; the result is respectively an integer, rational
 number, vector (column of the matrix) or a one-character string (the selection
 can also cause an error, if the index is out of bounds). They can also be used
 in slicing, in which case they return a value of the same type as what was
-selected from. For instance "reverse me!"~[:] gives "!em esrever" and
-id_mat(6)[1:2~] returns
+selected from. For instance the expression '"reverse me!"~[:]' returns the
+string "!em esrever", and 'id_mat(6)[1:2~]' returns the matrix
 
     | 0, 0, 0 |
     | 1, 0, 0 |
@@ -437,16 +520,18 @@ id_mat(6)[1:2~] returns
 
 For individual entries of a matrix, one can provide row and column index at
 once (in that order), separated by a comma as in A[i,j] (this actually indexes
-A by a tuple of type (int,int), as in A[(i,j)]). One can apply reverse
+A by a tuple of type (int,int), so A[(i,j)] is equivalent to A[i,j], as is
+A[t] when t equals the tuple (i,j) of integers). One can apply reverse
 indexing provided it applies to both indexes, as in A~[0,0] for the bottom
-right entry. Slicing applies somewhat differently in case of matrices (unless
-it involves a single integer range, in which case a range of columns is
-selected). The general form is A[i:k,j:l] where each of the bounds i,k,j,l may
-be followed by '~' (but not 'A'; this syntax allows no global reversal). This
-selects a block of 'A' with the interpretation above for each of the ranges.
-For more general slicing of matrices (with optional reversal of row and/or
-columns, transposition, and negation of individual entries, atlas provides a
-built-in function swiss_matrix_knife (the A[i:k,j:l] syntax in fact uses it).
+right entry. Slicing on both indices of a matrix at the same time (as opposed
+to just the column index as the example above) is possible but somewhat
+different from other form of slicing. The general form is A[i:k,j:l] where
+each of the bounds i,k,j,l may be followed by '~' (but not 'A'; this syntax
+allows no global reversal). This selects a block of 'A' with the
+interpretation above for each of the ranges. For more general slicing of
+matrices (with optional reversal of row and/or columns, transposition, and
+negation of individual entries, atlas provides a built-in function
+swiss_matrix_knife (which indeed also implements the A[i:k,j:l] syntax).
 
 Finally there is selection if ParamPol values, which can be seen as
 associative arrays mapping certain Param values to Split coefficients, by
@@ -460,51 +545,36 @@ reversal in associative arrays, so the syntax P~[q] is not allowed here.
 
 * Tuple displays and pattern matching
 
-If instead of brackets of a row display one uses parentheses to enclose a
-sequence of expressions, then a tuple rather than an array is formed (except
-in case there is exactly one expression in the sequence: then parentheses just
-imply grouping as used for instance to override operator precedence). Tuples
-differs from array in that there elements are not required to have the same
-type, and (therefore) cannot be selected by position. In fact the type of a
-tuples expression explicitly specifies the type of the component at each
-position, and since the type checker insists that all expressions have a type,
-it is not possible to work with a tuple not having a fixed number of
-components (unlike arrays, which can well be of varying length). Tuple
-displays are frequently used to pack the arguments of a function (officially
-every function takes a single argument, but very often it is of tuple type).
-So for instance 'f(x,y)' applies the function 'f' to a 2-tuple with components
-'x' and 'y'. But one is not obliged to write a tuple display as argument of a
-function expecting a tuple; for instance after 'set z=(3,4)' the variable 'z'
-holds a 2-tuple, and (the same instance of) 'f' may also be called as 'f(z)'.
-One could even for instance multiply the components of 'z' by writing '*z'
-(giving 12 in the example); indeed the expression '3*4' is transformed by the
-parser into '*(3,4)', and (currently) this form is also used in error
-messages, for instance in
+If instead of brackets of a row display [a,b,c] one uses parentheses (a,b,c)
+to enclose a sequence of expressions, then a tuple rather than an array is
+formed; this is called a tuple display. (An exception is a single expression
+in parentheses, where no tuple is formed; here the parentheses just imply
+grouping.) Tuples differs from arrays in that there elements are not required
+to have the same type, and (therefore) cannot be selected by position number.
 
-  atlas> GL(10/2)
-  Error in expression GL(/(10,2)) at <standard input>:...
-    Failed to match 'GL' with argument type rat
-  Type check failed
-
-(The operator '/' on integers produces a rational number; for integer division
-ignoring the remainder one should write 10\2 instead).
+In fact the type of a tuples expression explicitly specifies the type of the
+component at each position, and since the type checker insists that all
+expressions have a type, it is not possible to work with a tuples with an
+unknown number of components (unlike arrays, which can well be of varying
+length). As mentioned above, tuple displays are frequently used to pack the
+arguments of a function, as the tuple display '(x,y)' in 'f(x,y)'.
 
 To decompose tuples, a simple form of pattern matching is provided: wherever
 an identifier can be introduced, one may also specify a tuple of identifiers,
 if the type of the value is appropriate, and the components will be bound to
-the corresponding identifiers. So whereas
+the corresponding identifiers. So whereas, for some expression E,
 
-  atlas> set x=E
+  atlas> set z=E
 
-introduces the identifier 'x' whose value (and type) are set to that of the
-expression 'E', one can alternatively say
+introduces the identifier 'z' whose value (and type) are set to that of E,
+one can alternatively say
 
   atlas> set (x,y)=E
 
-provided that E produces a pair (some value of some 2-tuple type), and the
-variable 'x' will be set to the first component of the pair, and 'y' to the
-second component. In either case, the types of the variables introduced will
-be reported, as in
+provided that E has as type a tuple type of 2 components. This implies that
+evaluation of E produces a pair (or 2-tuple); the variable 'x' will be set to
+the first component of the pair, and 'y' to the second component. In either
+case, the types of the variables introduced will be reported, as in
 
   atlas> set (q,r) = 22 \% 7   { Euclidean division with remainder }
   Identifiers q: int, r: int
@@ -534,11 +604,12 @@ introduced, and their values associated to them, are forgotten. (One can no
 longer refer to the local name outside the expression following 'in'; in some
 cases references to them made from inside that expression may survive though.)
 
-Using a local variable, the initial example could have been given in a form
-that does not permanently bind the identifier 'ic':
+Using a local variable, the initial example above, which defined 'ic' and then
+called block_sizes(ic), could have introduced 'ic' for the inner class for
+this command but without permanently binding it, as follows:
 
   atlas> let ic = inner_class("B5.A3.T1",[[1/2,0,0],[0,1/2,1/2]],"scc")
-  L > in block_sizes(ic)
+  L >    in block_sizes(ic)
   Value:
   | 0,  0,   0,  0,   0,    0,    0,     1 |
   | 0,  0,   0,  0,   0,    0,    0,    11 |
@@ -558,6 +629,10 @@ that does not permanently bind the identifier 'ic':
   | 0,  0,   0, 10, 250, 1300,    0, 13420 |
   | 0,  0,   0,  0,   0,    0, 2430, 17010 |
   | 3, 75, 390, 21, 525, 2730, 4026, 28182 |
+
+  atlas> ic
+  Error during analysis of expression at <standard input>:75:0-2
+    Undefined identifier 'ic'
 
 Note that axis recognized that the let-expression was incomplete after the
 first line, changing the prompt to 'L >' in the second line to indicate this.
@@ -810,6 +885,63 @@ variable it causes; it is also a subexpression in its own right whose value is
 the value assigned (both for ordinary and for component assignments); we
 already used this fact in the examples above.
 
+* Type definitions
+
+While most definitions serve to associate values to identifiers or operator
+symbols, there is another kind of definition whose main purpose is to make an
+identifier into an abbreviation for a (probably composite) type. These
+definitions are called type definitions. They are marked by an initial ':', so
+
+  : int_fun = (int->int)
+
+would define 'int_fun' as an abbreviation for the type (int->int) of functions
+mapping integers to integers. When the defined type is a tuple or a union,
+there is in addition the possibility to attach tags to each of their
+components. For instance
+
+  : Gaussian_int = (int re, int im)
+
+defines 'Gaussian_int' to abbreviate '(int,int)' but also defines 're' and
+'im' to be tags associated with the first and second components of this tuple.
+This means on one hand that 're' and 'im' will be functions that map values of
+type '(int,int)' to their first respectively second component, and are entered
+as such into the overload table; they are called the projectors, or projection
+functions, for this tuple type. Such functions could have been defined
+explicitly by the user as
+
+  set re (int a, int b) = int: a,    im (int a, int b) = int: b
+
+and behave as such when used in a function call (usually such calls will be
+written z.re and z.im for z of type (int,int), reflecting the traditional
+field selection syntax for structured values). However projector functions can
+also be used in a way that functions defined by a user cannot, namely in a
+"field assignment" syntax as in 'z.re:=4', which replaces the pair z by a new
+pair that differs from its previous value only in the first component, which
+has become 4.
+
+For union types tags also define functions which, dually to the tuple
+situation, map from a component type to the union type; these are called
+injectors or injection functions. Contrary to the tuple case, there is no
+alternative way that a user could directly define injection functions, so
+having a type definition for a union type is inevitable before one can do
+anything useful with the type. There is no special form of assignment dealing
+with tags denoting injectors, but they do have a second use in discrimination
+expressions that can be used to inspect values of the union type, and which
+will be discussed below in the description of such expressions.
+
+While an identifier is defined as an abbreviation for a type, its syntactic
+role is changed, which makes it impossible to use the identifier for another
+purpose, even in local definitions. However it is possible to forget the type
+definition altogether, as in
+
+  forget Gaussian_int
+
+This also removes from the overload tables any projectors or injectors
+introduced with the original type definition (but as with with all instances
+where the global variable or overload tables are changed, any functions that
+used the identifiers while they were defined will continue to function using
+the meaning the identifier had at the point of definition of those functions).
+
 7 Defining functions and operators
 
 A main use of the axis language is to allow users to define their own
@@ -883,6 +1015,8 @@ printing 'Value: ()' for them would just be distracting (the output shown above
 is instead printed as a consequence of evaluating the 'print_block' function,
 but it is not accessible for subsequent manipulation in atlas).
 
+* Function and operator overloading
+
 Functions defined by this syntax are overloaded, and stored in a different
 table than variables of non-function type introduced by 'set var = ...'; this
 means an overloaded function can coexist with a value of the same name. This
@@ -941,6 +1075,27 @@ add to the overload table, and there is no such thing as local overloads:
 defining a local identifier as a function instead temporarily hides any
 existing overloads of that name for the duration of that local definition.
 
+* Explicitly resolving overloaded symbols
+
+Values of function types, and notably user defined functions, are first class
+citizens. They can be handled like any other values: stored in variables,
+passed as argument to or as result from other functions, gathered in arrays,
+etc. However, since functions and operator definitions are stored in the
+overload table, with potentially many definitions for the same symbol, one
+cannot use a function name directly as an expression to stand for the function
+it represents. In fact, using a function name in any context other than the
+function position in a call causes it to be looked up in the identifier table
+rather than in the overload table, likely resulting in a somewhat confusing
+error message 'Undefined identifier'. (For operators. one does not even get so
+far: a lone operator symbol is not parsed as an expression, so trying this
+will likely result in a syntax error.) A simple solution to this conundrum is
+provided: to access the actual function stored in the identifier table under
+the name 'f' with associated argument type 'T' (possibly a tuple type), write
+'f@T', which is a valid expression that can be used anywhere. In this case the
+argument type T must match the stored type exactly; unlike for function calls
+no form of implicit type conversion for the argument is attempted. The same
+syntax can also be used with operator symbols, so +@(int,int) designates the
+integer addition function (which is an axis built-in function).
 
 * Overloading versus redefining, and conflicts for potential ambiguities
 
@@ -978,25 +1133,31 @@ instance with a '[rat]' second argument:
 
 gives the somewhat elaborate error message
 
-  Cannot overload `inner_class': previous type (LieType,ratvec,string)
-  is too close to (LieType,[rat],string),
-  making overloading potentially ambiguous. Broadness cannot disambiguate,
-  as either type converts to the other, definition aborted.
+  Cannot overload `inner_class':
+  already overloaded type '(LieType,ratvec,string)' is too close
+  to new argument type '(LieType,[rat],string)',
+  which would make overloading ambiguous for certain arguments. Simultaneous
+  overloading for these types is not possible, forget the other one first.
 
-The "broadness" phrase relates to the fact that one can for instance overload
-with types 'int' and 'rat', even though the former can be implicitly converted
-to the latter: since the opposite is not possible, 'rat' is considered the
-broader of the two types, and overload resolution will proceed by trying the
-broader type only if no matching for the narrower type is possible. But
-between 'ratvec' and '[rat]' conversions in either direction are possible, so
-axis cannot decide which overload would have to be tried first, whence its
-refusal of the overloaded definition. Note that the full argument types here
-are '(LieType,ratvec,string)' respectively '(LieType,[rat],string)', which are
-not directly convertible (just their second components are), but ambiguity may
-still arise in function calls; axis is conservative and prefers to refuse
-potentially ambiguous overloads when the ambiguity is introduced, rather than
-to wait for a usage that actually exposes the ambiguity (at which point it may
-have become hard to hunt down the offending definitions).
+Here the interpreter is saying it refuses to have two definitions overloaded
+for the same name 'inner_class', with argument types so similar that for
+certain argument expressions there would be no way to tell which of them is to
+be called. The language prefers to bar the road to such a pitfall and inform
+the user immediately, rather then to wait with signaling an error until an
+actual ambiguous call occurs, or worse to resolve such ambiguity without any
+warning by some subtle rule that might not correspond to what the user,
+unaware of the ambiguity, had in mind.
+
+In some cases potential ambiguities can be resolved in a reasonable way. For
+instance, although values of type 'int' can be implicitly converted to 'rat',
+it is possible to overload functions for integer and rational arguments: in
+this case the narrower 'int' overload will be preferred when it can apply, and
+otherwise (for an argument of type 'rat') the 'rat' overload applies. This is
+in fact how axis can have integer and rational arithmetic operators coexist.
+The special provision however only holds in asymmetric situations where one
+type can be converted to the other, but not vice versa; where implicit
+conversion is possible in both directions, like between '[int]' and 'vec', one
+cannot simultaneously overload a same function or operator name for both.
 
 If one wants to replace the old definition so that one with a close but
 distinct type can be accepted, a command 'forget' can be used; here
@@ -1154,13 +1315,26 @@ freely used inside those. Whether or not necessary, it can be useful to group
 large sequences of expressions separated by semicolon with the keywords
 'begin' and 'end', as a more readable equivalent alternative to parentheses.
 
-* Conditional expressions and case expressions
+* Choice expressions
+
+There is a family of expressions whose evaluation leads to a choice between
+two or more "branches", expressions that get executed conditionally to perform
+some action and/or produce a value for the entire choice expression. So for
+instance the conditional expression can play in traditional programming terms
+either or both of the roles of an if-statement and conditional-operator. The
+branches of one choice expression must all have the same type (possibly after
+conversion), which may however be void (the branches don't return any value).
+
+* Conditional expressions
 
 Conditional expressions take the form
 
-  if ... then ... else ... fi
+  if condition then ... else ... fi
 
-for a simple 2-way branch, or a more elaborate multi-way branch
+for a simple 2-way branch, the first one being selected if the condition
+holds (i.e., evaluates to truth), and the second one being selected otherwise.
+There is an abbreviated form for when the second branch is again a conditional
+expression, thus obtaining a elaborate multi-way branch, which takes the form
 
   if   ... then ...
   elif ... then ...
@@ -1169,11 +1343,29 @@ for a simple 2-way branch, or a more elaborate multi-way branch
   else ...
   fi
 
-The else branch may be omitted, the implied branch then being void: 'else ()'.
+equivalent to a nested conditional expression obtained by replacing each
+'elif' by 'else if' while adding an additional 'fi' add the end each time. The
+final else branch may be omitted, defaulting to 'else ()'; in this case the
+conditional expression automatically gets void type (does not return a value).
 
-If the selection is determined by an integral expression 'I' with values in the
-range 0,1,...,n-1 (for instance the result of a reduction modulo n), then the
-multi-way branching is better done using a case-expressions, of the form
+The conditions (after 'if' or 'elif') must be expressions of type 'bool' (they
+may also perform actions as side effect, which in composite conditional
+expressions will only be performed for those conditions that actually need
+evaluation in the process of selecting a branch). In conditions (and in
+expressions of type 'bool' in general) one can use logical connectives 'or',
+'and' and 'not'. These behave like operators in a formula, with very low
+precedences (just above that of ':=', and increasing in the order given).
+Unlike operators however, logical connectives are not implemented by calling a
+function, but by being transformed themselves into conditional expressions,
+with for instance 'x and y' becoming 'if x then y else false fi'. This implies
+on one hand that 'or' and 'and' short-circuit (they only evaluate
+their second operand if the first operand is not decisive), and on the other
+hand that these connectives cannot be redefined or overloaded.
+
+** Integer case expressions
+
+A similar selection, but determined by a range of values that may be taken by
+an integral expression 'I', can be performed using an integral case expression
 
   case I
   in E_0
@@ -1182,26 +1374,116 @@ multi-way branching is better done using a case-expressions, of the form
   , E_{n-1}
   esac
 
-In the conditional expression, the branches after 'then' and 'else' should all
-have the same type that will become the type of the conditional expression, or
-they should be implicitly convertible to a common type. Type analysis tries to
-cleverly guess that common type, and in particular if any of the branches has
-void type, then all non-void branches will be voided (any value is ignored).
-Should axis fail to guess the intended type (with type analysis reporting
-"Could not find common type for branches"), then one can always make the type
-desired (possibly void) explicit, by casting the whole conditional expression
-to it. Casting 'T: if .. then E0 elif .. then E1 else E2 fi' is equivalent to
-casting all branches: if .. then T:E0 elif .. then T:E1 else T:e2 fi'.
+The "condition" I should evaluate to an integer i with 0 <= i < n, and then
+the branch E_i is selected. Currently there is no provision for values out of
+bounds; should the value of I not satisfy the inequalities, the evaluation
+stops with an "index out of range" error (like out of bound list selections).
+To have robust code the user should either test that the bound condition is
+met before evaluating the case expression, or ensure in some other way that it
+always holds (for instance using the modulo operation '%n' in I will do this).
 
-The conditions (after 'if' or 'elif') must be expressions of type 'bool'. For
-such expressions one can use logical connectives 'or', 'and' and 'not'. These
-behave like operators with precedences just above that of assignment (and
-increasing in the order given); they are however handled in the parser, which
-will for instance transform 'x and y' into 'if x then y else false fi'. In
-particular 'or' and 'and' short-circuit: they only evaluate their second
-operand if the first operand is not decisive. The user cannot redefine or
-overload these operators. Usage of 'not' in conditions has no runtime cost, as
-axis will rewrite internally to an equivalent expression without 'not'.
+In the conditional or case expression, the branches should all have the same
+type that will become the type of the whole expression. However, all but one
+of the branches may apply implicit conversions to obtain the common type, and
+during type analysis the interpreter tries to find a branch type that the
+others can be converted to in a process names balancing. (Balancing also takes
+place between expressions in a row display.) Since every type can be converted
+to void, the results of all branches will be voided (thrown away) as soon as
+at least one branch has void type (as is the case for an omitted else branch).
+If the context imposes a specific type for the whole expression, then that
+type will be imposed on each branch, without requiring balancing. Thus casting
+the whole expression to type T is equivalent to casting each branch to T.
+
+** Case expressions for discriminating on union values
+
+While case expressions using an integer to make the choice obtains a result
+that could also be obtained (less efficiently) using a nested conditional
+expression, there is another form of case expression that is indispensable
+when working with union values. How to produce values of a union type will be
+described elsewhere, so here we focus just on how to process such values.
+
+The idea is that since a value of a given union type assumes one and only one
+of the variants of the union, but it is not known which, the only type-safe
+way to inspect the value is to do a case distinction on the variants, and to
+provide for each a function to handle the case; these functions must all
+return values of the same type (if any), but each can take an argument whose
+type is that of the variant in question. There are two forms of case
+expressions for union values, a simple one that realizes exactly this idea
+without frills, and a second for intended to be more user friendly. We call
+the first form "union case expression", the other "discrimination expression".
+
+Union case expressions resemble integer case expressions syntactically, only
+differing by the use of vertical bars instead of a commas. So they read
+
+  case U
+  in F_0
+  |  F_1
+  |  ...
+  |  F_{n-1}
+  esac
+
+where U is an expression whose type is a union with n variants, and each F_i
+specifies a function to apply for variant i. Usually the F_i will be anonymous
+functions (lambda expressions) of the form '(T v): body' where 'T' is the
+type of the variant, 'v' is a name given to the value of type T that
+constitutes the component of U in the case it has this variant, and 'body' is
+an expression telling the action to perform and value to yield in this case.
+It is however possible to have for F_i any expression yielding an appropriate
+function value: if evaluation of U yields a component C for variant i of the
+union, then the expression F_i is evaluated to yield a function, which
+function is then called with argument C.
+
+The more elaborate discrimination expressions use tags that are associated to
+the variants of the union. These tags must be introduced in a type definition
+for the union type, and serve as "injector functions", converting "free"
+(non-union) values of type T into a value of the union type for one of its
+variants, which must have type T. For instance if 'int_val' (not a good name)
+is a tag for the first variant of the type (int|vec), then 'int_val(4)' or the
+equivalent '4.int_val' will yield a value of the first variant of the union,
+with as component value 4. The discrimination expression now uses patterns of
+that form to head each of the branches; if t_i denotes the tag for variant i,
+then the discrimination expression takes the general form:
+
+  case U
+  |  t_0(p_0): body_0
+  |  t_1(p_0): body_1
+  |  ...
+  |  t_{n-1}(p_{n-1}): body_{n-1}
+  esac
+
+where the p_i are identifiers or patterns that will be bound to the component
+yielded by U in case it belongs to variant i of the union. In analogy with the
+equivalent forms of function calls, the part 't_i(p_i):' heading each branch
+may also be written as 'p_i.t_i:'. Note that with respect to the simple form,
+the keyword 'in' has been replaced by a vertical bar; this facilitates telling
+the two forms apart. Apart from the presence of a tag, the heading of each
+branch also differs from a function heading (as would be used in a branch of a
+union case expression) by the absence of a type for the identifier(s) that p_i
+introduces: here this type is implicitly determined to be the type of the
+variant of the union type identified by the tag t_i. (Even though the types
+are also determined by the context in the case of a union case expression, the
+language does not allow omitting types in the header of a function, even where
+they could be derived from the context.)
+
+The use of tags allows two additional forms of flexibility for discrimination
+expressions with respect to union case expressions. Firstly, the variants do
+not need to be listed in order in which they occur in the union, since they
+tags can serve to locate their positions (but of course all tags used must be
+associated to this union type, and none must occur in more than one branch).
+Secondly, it is possible to omit certain branches, provided a "default" branch
+is specified; this is a branch that does not introduce any identifiers (so it
+cannot access the component of U) and which has the simple form
+
+  | else body
+
+where 'body' is the expression defining the default action and/or value. If a
+default branch is present there should be just one, and at least one of the
+variants must not have a matching branch listed (so that this variant would
+select the default branch). Default branches are probably most useful for
+variants that have 'void' as component type, so that there is no value to bind
+in the branch anyway. But they could also serve when some computation delivers
+its result in the form of a union value, but the user either knows beforehand
+which variant will occur, or can only handle one or a few variants usefully.
 
 * Loops
 
@@ -1684,7 +1966,7 @@ ident = expr', except that it adds to the identifier table in all cases.
 A command of the form 'ident : type' similarly introduces an identifier
 into the identifier table, with the given type but with an undefined value.
 This allows subsequent function definitions to refer to the identifier as a
-global variable, while not commiting to some initial value for it yet.
+global variable, while not committing to some initial value for it yet.
 
 The 'forget' command removes a global identifier or overload. In the former
 case 'forget' is just followed by the identifier to be removed; in the latter
@@ -1854,7 +2136,13 @@ expression. The different forms are as follows, where '*' is any expression
 if * then * fi		  	which abbreviates: if * then * else () fi)
 if * then * else * fi
 if * then * elif * then ... fi
-while * do * od
+case * in * , * , ... esac     integer case
+case * in * | * | ... esac     union case
+case * | t(p): * | t(p): * ... esac  discrimination expression
+case * | p.t: * | p.t: * ... esac    discrimination expression, alternative
+case * | else  | p.t: *  ... esac    discrimination expression with default
+
+while * do * od                 optionally with ~ before do
 for pattern in * do * od        optionally with ~ before do and/or od
 for pattern @ ident in * do * od idem
 for ident : * do * od            idem (implicit 'from 0')

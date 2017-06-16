@@ -52,6 +52,7 @@
   atlas::interpreter::raw_patlist pl;
   atlas::interpreter::type_p type_pt;
   atlas::interpreter::raw_type_list type_l;
+  atlas::interpreter::raw_case_list case_l;
 }
 
 %locations
@@ -69,7 +70,7 @@
 %token <id_code> IDENT TYPE_ID
 %token TOFILE ADDTOFILE FROMFILE FORCEFROMFILE
 
-%token <type_code> TYPE
+%token <type_code> PRIMTYPE
 %token ARROW "->"
 %token BECOMES ":="
 %token TLSUB "~["
@@ -90,28 +91,30 @@
 %destructor { destroy_expr ($$); } do_expr do_lettail do_iftail iftail
 %destructor { destroy_formula($$); } formula_start
 %destructor { delete $$; } INT STRING
-%type  <expression_list> commalist do_commalist commalist_opt commabarlist
+%type  <expression_list> commalist do_commalist commalist_opt barlist commabarlist
 %destructor { destroy_exprlist($$); } commalist do_commalist commalist_opt
-%destructor { destroy_exprlist($$); } commabarlist
+%destructor { destroy_exprlist($$); } barlist commabarlist
 %type <decls> declarations declaration
 %destructor { destroy_letlist($$); } declarations declaration
 
 %left OPERATOR
 
-%type <ip> pattern pattern_opt
-%destructor { destroy_id_pat($$); } pattern pattern_opt
+%type <ip> pattern pattern_opt closed_pattern
+%destructor { destroy_id_pat($$); } pattern pattern_opt closed_pattern
 %type <pl> pat_list
 %destructor { destroy_pattern($$); } pat_list
 %type <type_pt> nostar_type type
 %destructor { destroy_type($$); } nostar_type type
-%type <type_l> types types_opt
-%destructor { destroy_type_list($$); } types types_opt
-%type <id_sp1> id_spec struct_spec struct_field
+%type <type_l> types union_list union_list_opt
+%destructor { destroy_type_list($$); } types union_list union_list_opt
+%type <id_sp1> id_spec type_spec type_field
 %destructor { destroy_type($$.type_pt);destroy_id_pat($$.ip);
-            } id_spec struct_spec struct_field
-%type <id_sp> id_specs id_specs_opt struct_specs
+            } id_spec type_spec type_field
+%type <id_sp> id_specs id_specs_opt struct_specs union_specs
 %destructor { destroy_type_list($$.typel);destroy_pattern($$.patl);
             } id_specs id_specs_opt
+%type <case_l> caselist
+%destructor { destroy_case_list($$); } caselist
 
 %{
   int yylex (YYSTYPE *, YYLTYPE *);
@@ -121,7 +124,7 @@
 
 input:	'\n'			{ YYABORT; } /* null input, skip evaluator */
 	| END_OF_FILE
-            { YYABORT; } /* ignore end-of-file seen at command level too */
+          { YYABORT; } /* ignore end-of-file seen at command level too */
 	| expr '\n'		{ *parsed_expr=$1; }
 	| SET declarations '\n' { global_set_identifiers($2); YYABORT; }
 	| FORGET IDENT '\n'	{ global_forget_identifier($2); YYABORT; }
@@ -145,19 +148,19 @@ input:	'\n'			{ YYABORT; } /* null input, skip evaluator */
 		{ struct raw_id_pat id; id.kind=0x1; id.name=$1;
 		  global_set_identifier(id,$3,0); YYABORT; }
 	| IDENT ':' type '\n'	{ global_declare_identifier($1,$3); YYABORT; }
-	| ':' IDENT '=' struct_spec '\n'
-	{ type_define_identifier($2,$4.type_pt,$4.ip,@4); YYABORT; }
-	| ':' TYPE_ID '=' struct_spec '\n'
-	{ type_define_identifier($2,$4.type_pt,$4.ip,@4); YYABORT; }
+	| ':' IDENT '=' type_spec '\n'
+	  { type_define_identifier($2,$4.type_pt,$4.ip,@4); YYABORT; }
+	| ':' TYPE_ID '=' type_spec '\n'
+	  { type_define_identifier($2,$4.type_pt,$4.ip,@4); YYABORT; }
 	| QUIT	'\n'		{ *verbosity =-1; } /* causes immediate exit */
 	| SET IDENT '\n' // set an option; option identifiers have lowest codes
-          { unsigned n=$2-lex->first_identifier();
-            if (n<2)
-              *verbosity=n; // |quiet| gives 0, and |verbose| gives 1
-            else
+	  { unsigned n=$2-lex->first_identifier();
+	    if (n<2)
+	      *verbosity=n; // |quiet| gives 0, and |verbose| gives 1
+	    else
 	      std::cerr << '\'' << main_hash_table->name_of($2)
-                        << "' is not something one can set" << std::endl;
-            YYABORT;
+			<< "' is not something one can set" << std::endl;
+	    YYABORT;
 	  }
 	| TOFILE expr '\n'	{ *parsed_expr=$2; *verbosity=2; }
 	| ADDTOFILE expr '\n'	{ *parsed_expr=$2; *verbosity=3; }
@@ -183,13 +186,13 @@ input:	'\n'			{ YYABORT; } /* null input, skip evaluator */
 	    YYABORT;
 	  }
 	| SHOWALL '\n'	{ show_ids(std::cout); YYABORT; } /* print id table */
-        | TOFILE SHOWALL '\n'
+	| TOFILE SHOWALL '\n'
 	  {
 	    if (std::ofstream out{lex->scanned_file_name()}) // success?
 	    { show_ids(out); }
 	    YYABORT;
 	  }
-        | ADDTOFILE SHOWALL '\n'
+	| ADDTOFILE SHOWALL '\n'
 	  {
 	    if (std::ofstream out{lex->scanned_file_name(),std::ios_base::app})
 	    { show_ids(out); }
@@ -208,14 +211,14 @@ expr    : LET lettail { $$=$2; }
 	  { $$=make_lambda_node($2.patl,$2.typel,$5,@$); }
 	| '(' id_specs ')' cast
 	  { $$=make_lambda_node($2.patl,$2.typel,$4,@$); }
-        | REC_FUN IDENT '(' id_specs_opt ')' cast
+	| REC_FUN IDENT '(' id_specs_opt ')' cast
 	  { auto l=make_lambda_node($4.patl,$4.typel,$6,@$);
-            $$ = make_recfun($2,l,@$,@2);
-          }
-        | RETURN expr { $$=make_return($2,@$); }
-        | cast
+	    $$ = make_recfun($2,l,@$,@2);
+	  }
+	| RETURN expr { $$=make_return($2,@$); }
+	| cast
 	| tertiary ';' expr { $$=make_sequence($1,$3,0,@$); }
-        | tertiary NEXT expr { $$=make_sequence($1,$3,1,@$); }
+	| tertiary NEXT expr { $$=make_sequence($1,$3,1,@$); }
 	| tertiary
 ;
 
@@ -226,15 +229,15 @@ lettail : declarations IN expr { $$ = make_let_expr_node($1,$3,@$); }
 ;
 
 declarations: declarations ',' declaration { $$ = append_let_node($1,$3); }
-        | declaration
+	| declaration
 ;
 
 declaration: pattern '=' expr { $$ = make_let_node($1,$3); }
-        | IDENT '(' id_specs_opt ')' '=' expr
+	| IDENT '(' id_specs_opt ')' '=' expr
 	  { struct raw_id_pat p; p.kind=0x1; p.name=$1;
 	    $$ = make_let_node(p,make_lambda_node($3.patl,$3.typel,$6,@$));
 	  }
-        | REC_FUN IDENT '(' id_specs_opt ')' '=' cast
+	| REC_FUN IDENT '(' id_specs_opt ')' '=' cast
 	  { auto l = make_lambda_node($4.patl,$4.typel,$7,@$);
 	    auto f = make_recfun($2,l,@$,@2);
 	    struct raw_id_pat p; p.kind=0x1; p.name=$2; // use $2 again
@@ -255,7 +258,7 @@ tertiary: IDENT BECOMES tertiary { $$ = make_assignment($1,$3,@$); }
 	  { $$ = make_comp_upd_ass($1,$2.id,$3,@$,@2); }
 	| IDENT '.' ident_expr OPERATOR_BECOMES tertiary
 	{ $$ = make_field_upd_ass
-                (make_applied_identifier($1,@1),$3,$4.id,$5,@$,@2); }
+	        (make_applied_identifier($1,@1),$3,$4.id,$5,@$,@2); }
 	| or_expr
 ;
 
@@ -310,20 +313,24 @@ selector : unit	| ident_expr
 
 
 comprim: subscription | slice
-        | primary '(' commalist_opt ')'
+	| primary '(' commalist_opt ')'
 	  { $$=make_application_node($1,reverse_expr_list($3),@$,@2,@4); }
 	| IDENT '.' selector
-          { $$=make_application_node($3,make_applied_identifier($1,@1),@$); }
+	  { $$=make_application_node($3,make_applied_identifier($1,@1),@$); }
 	| comprim '.' selector { $$=make_application_node($3,$1,@$); }
-        | unit;
+	| unit;
 unit    : INT { $$ = make_int_denotation($1,@$); }
 	| TRUE { $$ = make_bool_denotation(true,@$); }
 	| FALSE { $$ = make_bool_denotation(false,@$); }
 	| STRING { $$ = make_string_denotation($1,@$); }
-        | '$' { $$=make_dollar(@$); }
+	| '$' { $$=make_dollar(@$); }
 	| IF iftail { $$=$2; }
 	| CASE expr IN commalist ESAC
 	  { $$=make_int_case_node($2,reverse_expr_list($4),@$); }
+	| CASE expr IN barlist ESAC
+	  { $$=make_union_case_node($2,reverse_expr_list($4),@$); }
+	| CASE expr '|' caselist ESAC
+	  { $$=make_discrimination_node($2,$4,@$); }
 	| WHILE do_expr tilde_opt OD { $$=make_while_node($2,2*$3,@$); }
 	| FOR pattern_opt IN expr tilde_opt DO expr tilde_opt OD
 	  { struct raw_id_pat p,x; p.kind=0x2; x.kind=0x0;
@@ -337,12 +344,12 @@ unit    : INT { $$ = make_int_denotation($1,@$); }
 	  }
 	| FOR IDENT ':' expr tilde_opt DO expr tilde_opt OD
 	  { $$=make_cfor_node($2,$4,wrap_tuple_display(nullptr,@$)
-                             ,$7,$5+2*$8,@$); }
+	                     ,$7,$5+2*$8,@$); }
 	| FOR IDENT ':' expr FROM expr tilde_opt DO expr tilde_opt OD
 	  { $$=make_cfor_node($2,$4,$6,$9,$7+2*$10,@$); }
 	| FOR ':' expr DO expr tilde_opt OD
 	  { $$=make_cfor_node(-1,$3,wrap_tuple_display(nullptr,@$)
-                             ,$5,2*$6+4,@$); }
+	                     ,$5,2*$6+4,@$); }
 	| FOR IDENT ':' expr DOWNTO expr DO expr OD
 	  { $$=make_cfor_node($2,$4,$6,$8,1,@$); }
 	| '(' expr ')'	       { $$=$2; }
@@ -352,8 +359,8 @@ unit    : INT { $$ = make_int_denotation($1,@$); }
 	| '[' commabarlist ']'
 	  { $$=make_unary_call
 		(lookup_identifier("transpose "),
-                 make_cast
-                 (make_prim_type(5) /* |matrix_type| */
+	         make_cast
+	         (make_prim_type(5) /* |matrix_type| */
 		  ,wrap_list_display(reverse_expr_list($2),@$),@$),@$,@1);
 	  }
 	| '(' commalist ',' expr ')'
@@ -372,7 +379,7 @@ do_expr : LET do_lettail { $$=$2; }
 	| tertiary DO expr { $$=make_sequence($1,$3,2,@$); }
 	| DO expr { $$=make_sequence(make_bool_denotation(true,@1),$2,2,@$); }
 	| DONT { $$=
-            make_sequence(make_bool_denotation(false,@1),make_die(@$),2,@$); }
+	    make_sequence(make_bool_denotation(false,@1),make_die(@$),2,@$); }
 	| IF do_iftail { $$=$2; }
 	| CASE expr IN do_commalist ESAC
 	  { $$=make_int_case_node($2,reverse_expr_list($4),@$); }
@@ -383,9 +390,9 @@ do_lettail : declarations IN do_expr { $$ = make_let_expr_node($1,$3,@$); }
 ;
 
 do_iftail : expr THEN do_expr ELSE do_expr FI
-          { $$=make_conditional_node($1,$3,$5,@$); }
+	  { $$=make_conditional_node($1,$3,$5,@$); }
 	| expr THEN do_expr ELIF do_iftail
-          { $$=make_conditional_node($1,$3,$5,@$); }
+	  { $$=make_conditional_node($1,$3,$5,@$); }
 ;
 
 do_commalist: do_expr { $$=make_exprlist_node($1,raw_expr_list(nullptr)); }
@@ -395,7 +402,7 @@ do_commalist: do_expr { $$=make_exprlist_node($1,raw_expr_list(nullptr)); }
 
 
 assignable_subsn:
-          IDENT '[' expr ']'
+	  IDENT '[' expr ']'
 	  { $$ = make_subscription_node
 		  (make_applied_identifier($1,@1),$3,false,@$); }
 	| IDENT TLSUB expr ']'
@@ -405,16 +412,16 @@ assignable_subsn:
 	  { $$=make_subscription_node(make_applied_identifier($1,@1),
 		wrap_tuple_display
 		(make_exprlist_node($3,
-                   make_exprlist_node($5,raw_expr_list(nullptr))),@$)
+		   make_exprlist_node($5,raw_expr_list(nullptr))),@$)
 		,false,@$);
-          }
+	  }
 	| IDENT TLSUB expr ',' expr ']'
 	  { $$=make_subscription_node(make_applied_identifier($1,@1),
 		wrap_tuple_display
 		(make_exprlist_node($3,
-                   make_exprlist_node($5,raw_expr_list(nullptr))),@$)
+		   make_exprlist_node($5,raw_expr_list(nullptr))),@$)
 		,true,@$);
-          }
+	  }
 ;
 
 subscription: assignable_subsn
@@ -426,54 +433,54 @@ subscription: assignable_subsn
 	  { $$=make_subscription_node($1,
 		wrap_tuple_display
 		(make_exprlist_node($3,
-                   make_exprlist_node($5,raw_expr_list(nullptr))),@$)
+		   make_exprlist_node($5,raw_expr_list(nullptr))),@$)
 		,false,@$);
-          }
+	  }
 	| comprim TLSUB expr ',' expr ']'
 	  { $$=make_subscription_node($1,
 		wrap_tuple_display
 		(make_exprlist_node($3,
-                   make_exprlist_node($5,raw_expr_list(nullptr))),@$)
+		   make_exprlist_node($5,raw_expr_list(nullptr))),@$)
 		,true,@$);
-          }
+	  }
 ;
 
 expr_opt : expr | { $$=nullptr; } ;
 
 slice   : IDENT '[' expr_opt tilde_opt ':' expr_opt tilde_opt ']'
 	  { unsigned l_rev = $3==nullptr ? 0x0 : $4*0x2;
-            unsigned u_rev = $6==nullptr ? 0x4 : $7*0x4;
-            $$=make_slice_node(
+	    unsigned u_rev = $6==nullptr ? 0x4 : $7*0x4;
+	    $$=make_slice_node(
 	         make_applied_identifier($1,@1),
-                 $3==nullptr ? make_int_denotation(nullptr,@3) : $3,
+	         $3==nullptr ? make_int_denotation(nullptr,@3) : $3,
 		 $6==nullptr ? make_int_denotation(nullptr,@6) : $6,
 		 l_rev^u_rev,@$);
-          }
-        | comprim '[' expr_opt tilde_opt ':' expr_opt tilde_opt ']'
+	  }
+	| comprim '[' expr_opt tilde_opt ':' expr_opt tilde_opt ']'
 	  { unsigned l_rev = $3==nullptr ? 0x0 : $4*0x2;
-            unsigned u_rev = $6==nullptr ? 0x4 : $7*0x4;
-            $$=make_slice_node( $1,
-                 $3==nullptr ? make_int_denotation(nullptr,@3) : $3,
+	    unsigned u_rev = $6==nullptr ? 0x4 : $7*0x4;
+	    $$=make_slice_node( $1,
+	         $3==nullptr ? make_int_denotation(nullptr,@3) : $3,
 		 $6==nullptr ? make_int_denotation(nullptr,@6) : $6,
 		 l_rev^u_rev,@$);
-          }
+	  }
 	| IDENT TLSUB expr_opt tilde_opt ':' expr_opt tilde_opt ']'
 	  { unsigned l_rev = $3==nullptr ? 0x0 : $4*0x2;
-            unsigned u_rev = $6==nullptr ? 0x4 : $7*0x4;
-            $$=make_slice_node(
+	    unsigned u_rev = $6==nullptr ? 0x4 : $7*0x4;
+	    $$=make_slice_node(
 	         make_applied_identifier($1,@1),
-                 $3==nullptr ? make_int_denotation(nullptr,@3) : $3,
+	         $3==nullptr ? make_int_denotation(nullptr,@3) : $3,
 		 $6==nullptr ? make_int_denotation(nullptr,@6) : $6,
 		 0x1^l_rev^u_rev,@$);
-          }
+	  }
 	| comprim TLSUB expr_opt tilde_opt ':' expr_opt tilde_opt ']'
 	  { unsigned l_rev = $3==nullptr ? 0x0 : $4*0x2;
-            unsigned u_rev = $6==nullptr ? 0x4 : $7*0x4;
-            $$=make_slice_node( $1,
-                 $3==nullptr ? make_int_denotation(nullptr,@3) : $3,
+	    unsigned u_rev = $6==nullptr ? 0x4 : $7*0x4;
+	    $$=make_slice_node( $1,
+	         $3==nullptr ? make_int_denotation(nullptr,@3) : $3,
 		 $6==nullptr ? make_int_denotation(nullptr,@6) : $6,
 		 0x1^l_rev^u_rev,@$);
-          }
+	  }
 	| IDENT '[' expr_opt tilde_opt ':' expr_opt tilde_opt
 	        ',' expr_opt tilde_opt ':' expr_opt tilde_opt ']'
 	  { unsigned r_l_rev =  $3==nullptr ? 0x0  :  $4*0x2;
@@ -532,11 +539,15 @@ iftail	: expr THEN expr ELSE expr FI { $$=make_conditional_node($1,$3,$5,@$); }
 
 pattern : IDENT		    { $$.kind=0x1; $$.name=$1; }
 	| '!' IDENT         { $$.kind=0x5; $$.name=$2; } // IDENT declared const
-	| '(' pat_list ')'  { $$.kind=0x2; $$.sublist=reverse_patlist($2); }
+	| closed_pattern
 	| '(' pat_list ')' ':' IDENT
 	    { $$.kind=0x3; $$.name=$5; $$.sublist=reverse_patlist($2);}
 	| '(' pat_list ')' ':' '!' IDENT
 	    { $$.kind=0x7; $$.name=$6; $$.sublist=reverse_patlist($2);}
+;
+
+closed_pattern: '(' pattern ')' { $$=$2; }
+	| '(' pat_list ')'  { $$.kind=0x2; $$.sublist=reverse_patlist($2); }
 	| '(' ')' { $$.kind=0x2; $$.sublist=0; } /* allow throw-away value */
 ;
 
@@ -550,15 +561,15 @@ pat_list: pattern_opt ',' pattern_opt
 ;
 
 id_spec: nostar_type pattern { $$.type_pt=$1; $$.ip=$2; }
-        | '(' id_specs ')'
+	| '(' id_specs ')'
 	{ $$.type_pt=make_tuple_type($2.typel);
-          $$.ip.kind=0x2; $$.ip.sublist=reverse_patlist($2.patl);
+	  $$.ip.kind=0x2; $$.ip.sublist=reverse_patlist($2.patl);
 	}
 	| nostar_type '.' { $$.type_pt=$1; $$.ip.kind=0x0; }
 ;
 
 id_specs: id_spec
-        { $$.typel=make_type_singleton($1.type_pt);
+	{ $$.typel=make_type_singleton($1.type_pt);
 	  $$.patl=make_pattern_node(nullptr,$1.ip);
 	}
 	| id_specs ',' id_spec
@@ -571,46 +582,69 @@ id_specs_opt: id_specs
 	| /* empty */ { $$.typel=nullptr; $$.patl=nullptr; }
 ;
 
-struct_spec: type { $$.type_pt=$1; $$.ip.kind=0x0; }
-        | '(' struct_specs ')'
-	{ $$.type_pt=make_tuple_type($2.typel);
-          $$.ip.kind=0x2; $$.ip.sublist=reverse_patlist($2.patl);
-	}
+type_spec: type { $$.type_pt=$1; $$.ip.kind=0x0; }
+	| '(' struct_specs ')'
+	  { $$.type_pt=make_tuple_type($2.typel);
+	    $$.ip.kind=0x2; $$.ip.sublist=reverse_patlist($2.patl);
+	  }
+	| '(' union_specs ')'
+	  { $$.type_pt=make_union_type($2.typel);
+	    $$.ip.kind=0x2; $$.ip.sublist=reverse_patlist($2.patl);
+	  }
 ;
 
-struct_specs: struct_field ',' struct_field
-        { auto head_typel=make_type_singleton($1.type_pt);
-	  auto head_pat =make_pattern_node(nullptr,$1.ip);
-          $$.typel=make_type_list(head_typel,$3.type_pt);
-	  $$.patl=make_pattern_node(head_pat,$3.ip);
-	}
-	| struct_specs ',' struct_field
-	{ $$.typel=make_type_list($1.typel,$3.type_pt);
-	  $$.patl=make_pattern_node($1.patl,$3.ip);
-	}
+struct_specs: type_field ',' type_field
+	  { auto head_typel=make_type_singleton($1.type_pt);
+	    auto head_pat =make_pattern_node(nullptr,$1.ip);
+	    $$.typel=make_type_list(head_typel,$3.type_pt);
+	    $$.patl=make_pattern_node(head_pat,$3.ip);
+	  }
+	| struct_specs ',' type_field
+	  { $$.typel=make_type_list($1.typel,$3.type_pt);
+	    $$.patl=make_pattern_node($1.patl,$3.ip);
+	  }
 ;
 
-struct_field : type IDENT { $$.type_pt=$1; $$.ip.kind=0x1; $$.ip.name=$2; }
+union_specs: type_field '|' type_field
+	  { auto head_typel=make_type_singleton($1.type_pt);
+	    auto head_pat =make_pattern_node(nullptr,$1.ip);
+	    $$.typel=make_type_list(head_typel,$3.type_pt);
+	    $$.patl=make_pattern_node(head_pat,$3.ip);
+	  }
+	| union_specs '|' type_field
+	  { $$.typel=make_type_list($1.typel,$3.type_pt);
+	    $$.patl=make_pattern_node($1.patl,$3.ip);
+	  }
+;
+
+type_field : type IDENT { $$.type_pt=$1; $$.ip.kind=0x1; $$.ip.name=$2; }
 	| type '.'{ $$.type_pt=$1; $$.ip.kind=0x0; }
 ;
 
-nostar_type : TYPE	{ $$=make_prim_type($1); }
+nostar_type : PRIMTYPE	{ $$=make_prim_type($1); }
 	| TYPE_ID
 	  { bool c; $$=acquire(global_id_table->type_of($1,c)).release(); }
-        | '(' type ')'	{ $$=$2; }
-	| '(' type ARROW type ')' { $$=make_function_type($2,$4); }
-	| '(' types_opt ARROW type ')'
-			{ $$=make_function_type(make_tuple_type($2),$4); }
-	| '(' type ARROW types_opt ')'
-			{ $$=make_function_type($2,make_tuple_type($4)); }
-	| '(' types_opt ARROW types_opt ')'
-	   { $$=make_function_type(make_tuple_type($2),make_tuple_type($4)); }
-	| '[' type ']'	{ $$=make_row_type($2); }
-	| '(' types ')'	{ $$=make_tuple_type($2); }
+| '[' union_list ']'	{ $$=make_row_type(make_union_type($2)); }
+	| '(' union_list ')'	{ $$=make_union_type($2); }
+	| '(' union_list_opt ARROW union_list_opt ')'
+	  { $$=make_function_type(make_union_type($2),make_union_type($4)); }
 ;
 
 type : nostar_type
 	| '*' { $$=new type_expr;}
+;
+
+union_list_opt :   { $$=make_type_singleton(make_tuple_type(nullptr)); }
+	| union_list
+;
+
+union_list : type { $$ = make_type_singleton($1); }
+	| types { $$ = make_type_singleton(make_tuple_type($1)); }
+	| union_list_opt '|'
+	  { $$ = make_type_list ($1, make_tuple_type(nullptr)); }
+	| union_list_opt '|' type { $$ = make_type_list($1,$3); }
+	| union_list_opt '|' types
+	  { $$ = make_type_list($1,make_tuple_type($3)); }
 ;
 
 types	: type ',' type
@@ -618,9 +652,6 @@ types	: type ',' type
 	| types ',' type { $$=make_type_list($1,$3); }
 ;
 
-types_opt : /* empty */ { $$=nullptr; }
-	| types
-;
 
 commalist_opt: /* empty */	 { $$=raw_expr_list(nullptr); }
 	| commalist
@@ -630,15 +661,34 @@ commalist: expr  { $$=make_exprlist_node($1,raw_expr_list(nullptr)); }
 	| commalist ',' expr { $$=make_exprlist_node($3,$1); }
 ;
 
-commabarlist: commalist_opt '|' commalist_opt
+barlist: expr  '|' expr
+           { $$=make_exprlist_node($3,
+			   make_exprlist_node($1,raw_expr_list(nullptr))); }
+	| barlist '|' expr { $$=make_exprlist_node($3,$1); }
+;
+
+commabarlist: commalist '|' commalist
 	{ $$ = make_exprlist_node(wrap_list_display(reverse_expr_list($3),@$)
 		,make_exprlist_node(wrap_list_display(reverse_expr_list($1),@$)
-				    ,raw_expr_list(nullptr)));
+				   ,raw_expr_list(nullptr)));
 	}
-	| commabarlist '|' commalist_opt
+	| commabarlist '|' commalist
 	{ $$=make_exprlist_node
 	    (wrap_list_display(reverse_expr_list($3),@$),$1); }
 ;
 
+caselist: IDENT closed_pattern  ':' expr { $$=make_case_node($1,$2,$4); }
+	| pattern '.' IDENT ':' expr     { $$=make_case_node($3,$1,$5); }
+	| caselist '|' IDENT closed_pattern ':' expr
+	  { $$=append_case_node($1,$3,$4,$6); }
+	| caselist '|' pattern '.' IDENT ':' expr
+	  { $$=append_case_node($1,$5,$3,$7); }
+	| ELSE expr
+	  { struct raw_id_pat id; id.kind=0x0; $$=make_case_node(-1,id,$2); }
+	| caselist '|' ELSE expr
+	  { struct raw_id_pat id; id.kind=0x0;
+	    $$=append_case_node($1,-1,id,$4);
+	  }
+;
 
 %%

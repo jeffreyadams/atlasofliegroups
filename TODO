@@ -61,8 +61,6 @@
   Or avoid creating many identical |real_form_value| instances, by storing
   links to those currently generated within an |inner_class_value| object.
 
-- Avoid creating many identical |real_form_value| instances, by storing links
-  to those currently generated within an |inner_class_value| object
 
 * Work on the atlas scripts
 

@@ -433,7 +433,7 @@ slot (holding a null pointer) instead.
       code=IDENT;
   }
   else if (id_code>=keyword_limit)
-  {@; valp->type_code=id_code-keyword_limit; code=TYPE; }
+  {@; valp->type_code=id_code-keyword_limit; code=PRIMTYPE; }
   else // we have |id_code<keyword_limit|, so it is a keyword
   { code=QUIT+id_code;
     switch(code)
