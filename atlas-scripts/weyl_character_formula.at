@@ -94,7 +94,7 @@ set wcf_semisimple_simply_connected(RootDatum rd, vec lambda,ratvec v,cyclotomic
    assert(is_integer(result.v),"Character value is not an algebraic integer");
    result
 
-{ Weyl charater formula in general case is obtained by reduction to 
+{ Weyl charater formula in general case is obtained by reduction to
 the semisimple simply connected case}
 {.Weyl character formula for finite dimensional with extremal weight lambda exp_1(v).}
 set wcf(RootDatum rd, vec lambda, ratvec t, cyclotomicField F)=cyclotomicFieldElement:
@@ -102,7 +102,7 @@ let (rd_sc,M)=simply_connected_cover_derived_info(rd) then
 lambda_sc=ratvec_as_vec(M*lambda) then
 t_sc=left_inverse(^M)*t then
 {t and ^M*t_sc=^M*(left_inverse(^M)) differ by something central}
-central_term=lambda*(t-^M*t_sc) in   
+central_term=lambda*(t-^M*t_sc) in
 exp_1(central_term,F)*wcf_semisimple_simply_connected(rd_sc,lambda_sc,t_sc,F)
 
 {mainly for debugging;

@@ -148,7 +148,9 @@ for mu in weights do
  let lambda=M*mu in
   if is_integer(lambda) then
   let p=finite_dimensional(split_form(rd),ratvec_as_vec(lambda)) in
-  prints("fund wt: ", mu, "  lambda:", lambda, " dim:", dimension(p), "   self-dual: ",is_self_dual(p), " FS: ", fs(p),"   trace(x): ",wcf_strong_real(rd,lambda,v)) fi od
+  prints("fund wt: ", mu, "  lambda:", lambda, " dim:", dimension(p)
+        ,"   self-dual: ",is_self_dual(p), " FS: ", fs(p)
+        ,"   trace(x): ",wcf_strong_real(rd,lambda,v)) fi od
 
 {detailed information about K-signature of finite dimensional
  also see print_K_types:print_K_signature_irr (defined for any p)}

@@ -52,7 +52,7 @@ set relative_primes(int n) = [int]:
 
 { a can be negative, N must be positive }
 {. integer a -> representative 0\le b\le N-1 mod N .}
-set mod (int a, int N) = int: assert(N>0,"N<=0");a%N
+set mod (int a, int N) = int: assert(N>0,"N<=0"); a%N
 
 
 { to_denominator(r,N): integer $a$ such that rational $r$ is congruent to
@@ -99,6 +99,7 @@ set one (cyclotomicField F) = cyclotomicFieldElement:  embed_Q(1,F)
 set zero (cyclotomicField F) = cyclotomicFieldElement: embed_Q(0,F)
 
 set primitive_root (cyclotomicField F) = cyclotomic_field_element([0,1],F)
+
 
 {operations on elements of cyclotomic fields}
 

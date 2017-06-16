@@ -116,14 +116,14 @@ set is_relatively_split (RealForm G) = bool: { whether is_split(derived(G))) }
 {Converting rd=(A,B)  (A=simple_roots, B=simple_coroots)
 to  (A_new,B_new), also return  |ratmat| M (or |mat|)
 M  = change of basis matrix from X*(T) to X^*(T_new)
-^M = change of basis matrix from X_*(T_new) to X_*(T) 
+^M = change of basis matrix from X_*(T_new) to X_*(T)
 M satisfies:
 M*A=A_new
 ^M*B_new=B
 Note: ^A*B=C=^A_new*B_new (C is the Cartan matrix)
 the built-in |derived_info| is of this form
 with |mat| in place of |ratmat|
-Similarly |mod_central_torus_info, except that in 
+Similarly |mod_central_torus_info, except that in
 M satisfies the transpose conditions:
 ^M*A=A_new
 M*B_new=B
@@ -135,7 +135,7 @@ M*B_new=B
 set adjoint_info (RootDatum rd) = (RootDatum,mat): { change weight basis to simple roots }
 let A=simple_roots(rd) then
 A_new=id_mat(semisimple_rank(rd)) then
-B_new=Cartan_matrix(rd) in 
+B_new=Cartan_matrix(rd) in
 (root_datum(A_new,B_new), left_inverse(A))
 
 {.simply connected cover of complex group, with change of basis matrix.}
@@ -152,7 +152,7 @@ let (rd_sc,)=simply_connected_cover_info(rd) in rd_sc
 
 {.simply connected cover of derived group, with change of basis matrix.}
 set simply_connected_cover_derived_info(RootDatum rd)=(RootDatum,ratmat):
-let (rd_der,M)=derived_info(rd) then 
+let (rd_der,M)=derived_info(rd) then
 (rd_sc,N)=simply_connected_cover_info(rd_der) in (rd_sc,N*M)
 
 {.simply connected cover of complex group}
