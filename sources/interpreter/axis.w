@@ -37,8 +37,8 @@ module have been relegated to a separate module \.{global.w}.
 
 @( axis.h @>=
 
-#ifndef EVALUATOR_H
-#define EVALUATOR_H
+#ifndef AXIS_H
+#define AXIS_H
 
 #include "axis-types.h"
 
@@ -859,18 +859,26 @@ become broad enough to accommodate them (for instance |void| can accommodate
 every possible type). So we prune |conflict| before possibly reporting an
 error.
 
-In case of success, any branches that were originally found to have a
-different (narrower) type, or whose conversion threw a balancing error inside
-the branch, are converted again, replacing a possible previous result in
-|components|. Branches that threw a |balance_error| are certain to satisfy the
-test |comp_type[i]!=target| below (which in their case means that |target| has
-changed since a copy was taken to initialise |comp_type[i]|), since such an
-error will have contributed to |conflicts| type that were strict
-specialisations of the original |target|, and which cannot have been pruned
-unless |target| was changed to a broader type since. The new conversion may
-insert coercions that were absent in the original conversion (it may also
-throw some other type error if conversion in that context turns out to be
-impossible after all).
+In case of success, the context type |target| that was used as initial goal
+for the conversion of the balanced expressions is set to |common|; the change
+here can only involve specialisation. Then any branches that were originally
+found to have a different type than |common|, but apparently were saved by
+pruning (so their type is narrower than |common|), are converted again in the
+context of |common| (i.e., of the specialised |target|), and the result of
+that conversion replaces the previous result in the |components| vector. The
+new conversion may insert coercions that were absent in the original
+conversion. Alternatively, it may also throw some other type error if
+conversion in the context of |common| turns out to be impossible after all.
+
+The same treatment is given to branches whose conversion threw a balancing
+error when initially converted, but for which all types involved in the
+balancing were later pruned. Such branches leave their |comp_type| at the
+value |target| had for the attempted initial conversion, and the fact that
+pruning removed the balanced types shows that those were strict
+specialisations of the original |target|, and that |target| was since
+specialised to a broader type; this ensures that the test
+|comp_type[i]!=target| applies to them, and |components[i]| gets set by the
+new conversion (it was left unset by the failed initial conversion).
 
 @< Local function definitions @>=
 
@@ -904,16 +912,27 @@ void balance
 
 @ We try to maintain |common| as the maximal type between the branches for the
 |broader_eq| relation. If this fails due to incomparable types we move the
-non-conforming type to |conflicts|. That list also collects types from
-|balance_error| if thrown directly by one of the calls to |convert_expr|.
-Since such type collections have internal incompatibilities, they never
-provide the common type; no comparison with |common| is needed.
+non-conforming type to |conflicts|.
 
-When catching a |balance_error|, we re-|throw| if the error was produced in a
-subexpression of the branch, as this indicates an error independent of out
-balancing. If that branch was a list display, the reported types are somewhat
-laboriously wrapped in a ``row-of'' to produce the component type that
-interests us here.
+That list also collects types from |balance_error| if thrown directly by one
+of the calls to |convert_expr|. The reason is that it might happen that all of
+the conflicting types can be converted to a final |common| type once it gets
+determined by other branches, so we are prudent here to not propagate the
+error. However, when catching a |balance_error| that was produced in a
+subexpression of the branch we do re-|throw|, as a more specialised type
+|common| cannot salvage in this case: the thrown |balance_error| is in fact
+independent of our current balancing. For the case where we do move the types
+from the |balance_error| to |conflicts|, the fact that they apparently have
+internal incompatibilities means that they can never provide the |common|
+type, which justifies making no comparison with that type.
+
+If a branch that produces a maybe salvageable |balance_error| is a list
+display, the type that it will give for our current balancing has an
+additional ``row-of'' with respect to the types balanced in the subexpression.
+Therefore we (somewhat laboriously) wrap the types from the |balance_error| in
+a  ``row-of'' before moving them to |conflicts|. These wrapped types will not
+be the |common| type, but at least they will compare correctly to it for the
+purpose of pruning.
 
 @< Convert each expression in |elist| in the context... @>=
 for (wel_const_iterator it(elist); not it.at_end(); ++it)
@@ -1580,6 +1599,8 @@ struct function_base : public value_base
 {
   function_base() : @[value_base@]() @+{}
   virtual ~@[function_base() nothing_new_here@];
+  static const char* name() @+{@; return "function value"; }
+@)
   virtual void apply(expression_base::level l) const=0;
     // go; arg.\ values on |execution_stack|
   virtual expression_base::level argument_policy() const=0;
@@ -1623,10 +1644,10 @@ The conditions for suppressing parentheses are tested using dynamic casts.
 
 @< Function definitions @>=
 void call_expression::print(std::ostream& out) const
-{ if (dynamic_cast<identifier*>(function.get())!=nullptr)
+{ if (dynamic_cast<const identifier*>(function.get())!=nullptr)
     out << *function;
   else out << '(' << *function << ')';
-  if (dynamic_cast<tuple_expression*>(argument.get())!=nullptr)
+  if (dynamic_cast<const tuple_expression*>(argument.get())!=nullptr)
     out << *argument;
   else out << '(' << *argument << ')';
 }
@@ -1723,7 +1744,7 @@ struct overloaded_call : public call_base
 @< Function definitions @>=
 void overloaded_call::print(std::ostream& out) const
 { out << name;
-  if (dynamic_cast<tuple_expression*>(argument.get())!=nullptr)
+  if (dynamic_cast<const tuple_expression*>(argument.get())!=nullptr)
      out << *argument;
   else out << '(' << *argument << ')';
 }
@@ -1733,7 +1754,7 @@ an |overloaded_builtin_call| rather than a |call_expression|. Here we store a
 shared pointer to the |builtin_value|, which is useful to identify the actual
 function when an error is thrown. However we want to avoid accessing that
 (unchanging) value each time from the |evaluate| method, so we copy the
-function pointer|f_ptr| to be called directly into the
+function pointer |f_ptr| to be called directly into the
 |overloaded_builtin_call|.
 
 When accessed through overloading, the condition whether a built-in function
@@ -1774,7 +1795,7 @@ typedef overloaded_builtin_call<false> builtin_call;
 typedef overloaded_builtin_call<true> variadic_builtin_call;
 
 @ The following function builds a |variadic_builtin_call|, ensuring that the
-argument is wrapped up in a |voiding| if |needs_voiding| holds. The Boolean
+argument is wrapped up in a |voiding| if |needs_voiding| holds. This Boolean
 will be set to hold in the (rare) case that the argument type is |void| but
 the argument expression is not just ``()''.
 
@@ -1889,6 +1910,8 @@ We report the source location of the call expression and the name of the
 function called (both obtained from |call|), and a source location for the
 definition of the called function (obtained from |f|) in case it is
 user-defined; when the called function was built in we just report that.
+
+@h "parsetree.h" // for output of |source_location| value
 
 @< Local fun... @>=
 void extend_message
@@ -2701,8 +2724,7 @@ struct closure_value : public function_base
   virtual void apply(expression_base::level l) const;
   virtual expression_base::level argument_policy() const @+
   {@; return expression_base::single_value; }
-  virtual void report_origin(std::ostream& o) const @+
-  {@; o << "defined " << p->loc; }
+  virtual void report_origin(std::ostream& o) const;
   virtual expression_ptr build_call
     (const shared_function& owner,const std::string& name,
      expression_ptr&& arg, const source_location& loc) const;
@@ -2726,6 +2748,9 @@ be printed. But it's not done yet.
 void closure_value::print(std::ostream& out) const
 {@; out << "Function defined " << p->loc << std::endl << *p;
 }
+
+void closure_value::report_origin(std::ostream& o) const
+ @+ {@; o << "defined " << p->loc; }
 
 @ Evaluating a $\lambda$-expression just forms a closure using the current
 execution context, and returns that.
@@ -3250,7 +3275,7 @@ void subscr_base::print(std::ostream& out,bool reversed) const
 template <bool reversed>
 void matrix_subscription<reversed>::print(std::ostream& out) const
 { out  << *array << (reversed ? "~[" : "[");
-  tuple_expression* p=dynamic_cast<tuple_expression*>(index.get());
+  auto* p=dynamic_cast<const tuple_expression*>(index.get());
   if (p==nullptr) out << *index << ']';
   else
     out << *p->component[0] << ',' << *p->component[1] << ']';
@@ -3334,7 +3359,7 @@ bool subscr_base::assignable(subscr_base::sub_type t)
 of array and of the indexing expression separately, ignoring so far any type
 required by the context. Then we look if the types agree with any of the types
 of subscription expressions that we can convert to, throwing an error if it
-does not. Finally we check if the a priori type |subscr_type| of the
+does not. Finally we check if the \foreign{a priori} type |subscr_type| of the
 subscripted expression equals or specialises to the required |type|, or can be
 converted to it by |coerce|, again throwing an error if nothing works. For the
 indexing expression only equality of types is admitted, since the basic
@@ -3856,6 +3881,107 @@ void projector_call::evaluate(level l) const
 void projector_call::print(std::ostream& out) const
 {@; out << *argument << '.' << main_hash_table->name_of(id); }
 
+@* Injection functions.
+%
+For union types there is notion corresponding to projection functions for
+tuple types, but dual to it: the injection functions map each of the
+constituent types of the union into the union type. Contrary to projection
+functions, the use of these is necessary for union types, as the language does
+not provide any other means of forming values of these types.
+
+@< Type def... @>=
+struct injector_value : public function_base
+{ type_expr type; // used for printing purposes only
+  unsigned position;
+  id_type id;
+  source_location loc;
+@)
+  injector_value
+     (const type_expr& t,unsigned i,id_type id,const source_location& loc)
+  : type(t.copy()),position(i),id(id),loc(loc) @+ {}
+  virtual ~ @[injector_value() nothing_new_here@];
+  virtual void print(std::ostream& out) const;
+  virtual void apply(expression_base::level l) const;
+  virtual expression_base::level argument_policy() const;
+  virtual void report_origin(std::ostream& o) const;
+  virtual expression_ptr build_call
+    (const shared_function& owner,const std::string& name,
+     expression_ptr&& arg, const source_location& loc) const;
+@)
+  virtual injector_value* clone() const @+
+  {@; return new injector_value(*this); }
+  static const char* name() @+{@; return "built-in function"; }
+private:
+  injector_value(const injector_value& v)
+@/:type(v.type.copy()),position(v.position),loc(v.loc)@+{}
+};
+
+@ Here are two virtual methods. We print the position selected and the type
+selected from. The (tuple) operand of a selection is to be computed as a
+|single_value|, since it is unlikely to be given as a tuple display anyway,
+and this makes it easy to replace the value on the stack by one of its
+components.
+
+@< Function def... @>=
+void injector_value::print(std::ostream& out) const
+  {@; out << "{."<< main_hash_table->name_of(id) << ": "
+                 << position << type << '}'; }
+expression_base::level injector_value::argument_policy() const
+  {@; return expression_base::single_value; }
+void injector_value::report_origin(std::ostream& o) const
+ {@; o << "injector defined " << loc; }
+
+@ Applying an injector is quite easy: we pop the value from the stack, attach
+the proper tag (number), and then push that to the stack again.
+
+@< Function def... @>=
+void injector_value::apply(expression_base::level l) const
+{ shared_value component = pop_value();
+  push_value(std::make_shared<union_value>(position,std::move(component),id));
+}
+
+@ Like for projectors, injectors are usually applied in special call
+expressions built at ``compile time''.
+
+@< Type def... @>=
+struct injector_call : public overloaded_call
+{ unsigned position; id_type id;
+@)
+  injector_call @|
+   (const injector_value& f,const std::string& n,expression_ptr&& a
+   ,const source_location& loc)
+  : overloaded_call(n,std::move(a),loc), position(f.position), id(f.id) @+ {}
+  virtual ~@[injector_call() nothing_new_here@];
+  virtual void evaluate(level l) const;
+  virtual void print(std::ostream& out) const;
+};
+
+@ Here is how a |injector_value| can turn itself into an |injector_call| when
+provided with an argument expression, as well as a |name| to call itself and a
+|source_location| for the call. We don't store a (shared) pointer to the
+|injector_value|, so we ignore the initial argument here.
+
+@< Function def... @>=
+expression_ptr injector_value::build_call
+    (const shared_function&,const std::string& name,
+     expression_ptr&& arg, const source_location& loc) const
+{@; return expression_ptr(new injector_call(*this,name,std::move(arg),loc));
+}
+
+@ The virtual methods for |injector_call| are easy. Since nothing can go
+wrong with injection, the method |injector_call::evaluate| does no effort to
+contribute to an error back-trace.
+
+@< Function def... @>=
+void injector_call::evaluate(level l) const
+{
+  argument->eval(); // evaluate arguments as a single value
+  push_value(std::make_shared<union_value>(position,pop_value(),id));
+}
+@)
+void injector_call::print(std::ostream& out) const
+{@; out << *argument << '.' << main_hash_table->name_of(id); }
+
 @* Control structures.
 %
 We shall now introduce conventional control structures, which must of course
@@ -3983,8 +4109,8 @@ void conditional_expression::print(std::ostream& out) const
 { out << " if "; const conditional_expression* cur=this;
   do
   { out << *cur->condition << " then " << *cur->then_branch;
-    conditional_expression* p =
-      dynamic_cast<conditional_expression*>(cur->else_branch.get());
+    auto* p =
+      dynamic_cast<const conditional_expression*>(cur->else_branch.get());
     if (p==nullptr)
       break;
     out << " elif "; cur=p;
@@ -4073,6 +4199,363 @@ case int_case_expr:
   balance(type,&exp.branches,e,"branches of case",conv);
 @/return expression_ptr(new @|
     int_case_expression(std::move(c),std::move(conv)));
+}
+
+@*1 Union-controlled case expressions (discrimination expressions).
+%
+The union-case expression (a multi-way branch controlled by a union value),
+also called discrimination expression, is syntactically similar to the integer
+case expression, but semantically a bit more complicated. The main difference
+is that each branch can bind independently to the value whose tag (variant of
+the union) is being discriminated upon. We define two forms of such
+expressions, a simple one where each branch is a function that (must have
+an argument type matching the variant and) will be applied to the variant
+value, and an elaborated form where each branch introduces an identifier
+pattern that will bind to the variant expression, as in a \&{let} expression
+(and as for those expressions the identifiers types will be deduced from the
+context). The latter form has several other features like allowing a default
+branch, and requires the use of explicitly declared tags for the variants.
+
+The simple form will reuse the |int_case_expression| structure, overriding
+only its evaluation and printing virtual methods. For the elaborated
+discrimination expressions we define a different structure, the
+|discrimination_expression|.
+
+Note that exceptionally we use shared pointers to access the branch
+expressions. This is because the user can define a default branch expression
+(which cannot use the variant of the union value) that will be chosen for all
+variants (tags, though variants with an absent tag are also eligible here) for
+which the user did not otherwise specify a branch; this expression can
+therefore be shared between different branches.
+
+@< Type def... @>=
+struct union_case_expression : public int_case_expression
+{ union_case_expression
+   (expression_ptr&& c,std::vector<expression_ptr>&& b)
+   : int_case_expression(std::move(c),std::move(b))
+  @+{}
+  virtual ~@[union_case_expression() nothing_new_here@];
+  virtual void evaluate(level l) const;
+  virtual void print(std::ostream& out) const;
+};
+
+@)
+typedef std::pair<id_pat,shared_expression> choice_part;
+
+struct discrimination_expression : public expression_base
+{ expression_ptr condition; std::vector<choice_part> branches;
+@)
+  discrimination_expression
+   (expression_ptr&& c,std::vector<choice_part>&& b)
+   : condition(c.release()),branches(std::move(b))
+  @+{}
+  virtual ~@[discrimination_expression() nothing_new_here@];
+  virtual void evaluate(level l) const;
+  virtual void print(std::ostream& out) const;
+};
+
+@ To print a case expression is straightforward.
+
+@< Function definitions @>=
+void union_case_expression::print(std::ostream& out) const
+{ auto it = branches.cbegin();
+  assert(it!=branches.cend());
+  out << " case " << *condition << " in " << **it;
+  while (++it!=branches.cend())
+    out << " | " << **it;
+  out << " esac ";
+}
+@)
+void discrimination_expression::print(std::ostream& out) const
+{ auto it = branches.cbegin();
+  assert(it!=branches.cend());
+  out << " case " << *condition;
+  do out << " | (" << it->first << "):" << *it->second;
+  while (++it!=branches.cend());
+  out << " esac ";
+}
+
+@ Evaluating a union-case or discrimination expression proceeds largely in the
+same manner. We start by evaluating the |condition| (the expression upon which
+to discriminate), pop that value from the stack into |discriminant|, and then
+select a |branch| depending on its |variant()| attribute (the numeric value of
+its tag). Then for the union case expression we evaluate the branch, which
+should return a function, and then |apply| that function to the |contents()|
+attribute of |discriminant| (the value that was tagged). For a discrimination
+expression, each branch is like a $\lambda$~expression and introduces an
+identifier pattern; the evaluation is the same as what a union case expression
+would do for a branch that is a $\lambda$~expression:
+|discriminant->contents()| is bound to the pattern |branch.first|, and in the
+context so established the body |branch.second| is evaluated to produce the
+result of the discrimination expression.
+
+@< Function definitions @>=
+void union_case_expression::evaluate(level l) const
+{ condition->eval();
+  shared_union discriminant = get<union_value>();
+  const auto& branch = branches[discriminant->variant()]; // make selection
+  branch->evaluate(l); // evaluate function value
+  shared_function f = get<function_base>();
+  push_expanded(f->argument_policy(),discriminant->contents());
+  f->apply(l);
+}
+
+@)
+
+void discrimination_expression::evaluate(level l) const
+{ condition->eval();
+  shared_union discriminant = get<union_value>();
+  const auto& branch = branches[discriminant->variant()]; // make selection
+  frame fr(branch.first);
+  fr.bind(discriminant->contents());
+  branch.second->evaluate(l);
+}
+
+
+@ To convert a union case expression, we first convert the |condition|
+expression (checking its type |switch_type| to be a union type); then for each
+branch build a function type from the appropriate variant of the union to the
+expected |type| of the whole expression, and convert the branch with that
+expected type (the vector |choices| collects the resulting expressions);
+finally we build a |case_union_expression| from these pieces.
+
+Thus the branches do not have equal types, but are all function types sharing
+|type| as result type. Balancing as currently realised is not up to the task
+of choosing (based on their \foreign{a priori} types) a branch that determines
+|type| and allowing the result types of the other branches be coerced to it.
+Instead we use the asymmetric method of repeatedly specialising |type| as we
+traverse the branches from left to right.
+
+@< Cases for type-checking and converting... @>=
+case union_case_expr:
+{ auto& exp = *e.if_variant;
+  size_t n_branches=length(&exp.branches);
+  type_expr switch_type;
+  std::ostringstream o; // for use in various error messages
+@)
+  expression_ptr c  =  convert_expr(exp.condition,switch_type);
+  if (switch_type.kind!=union_type)
+    throw type_error(e,std::move(switch_type),
+                       std::move(*unknown_union_type(n_branches)));
+@)
+  size_t n_variants=length(switch_type.tupple);
+  if (n_variants!=n_branches)
+    @< Report mismatching number of branches @>
+@)
+  std::vector<expression_ptr> branches;
+
+  auto variant_type_p = switch_type.tupple;
+  for (auto branch_p=&exp.branches; branch_p!=nullptr;
+       branch_p=branch_p->next.get(), variant_type_p=variant_type_p->next.get())
+  {
+    auto f_type_p =
+      mk_function_type(std::move(variant_type_p->contents),type.copy());
+    auto branch_f = convert_expr(branch_p->contents,*f_type_p);
+    branches.push_back(std::move(branch_f));
+    type.specialise(f_type_p->func->result_type);
+  }
+@/return expression_ptr(new @|
+    union_case_expression(std::move(c),std::move(branches)));
+}
+
+@ Here we produce a union type for use in an error message when a non-union
+type was found. The provided |length| is obtained by counting branches, which
+is not always reliable (in the presence of a default); in any case we ensure
+that at least two unspecified variants are listed so that it will at least be
+clear that some union type was called for.
+
+@< Local fun... @>=
+type_ptr unknown_union_type(size_t length)
+{ type_list l; auto n = std::max<size_t>(2,length);
+  while (n-->0)
+    l.push_front(unknown_type.copy());
+  return mk_union_type(std::move(l));
+}
+
+@ The error message for a wrong number of branches just uses the branch count,
+but does report the full union type for clarity rather than just its number of
+variants.
+
+@< Report mismatching number of branches @>=
+{ o << "Union case expression has " << n_branches @|
+    << "branches,\nwhile the union type " << switch_type @|
+    << " has " << n_variants << " variants";
+  throw expr_error(e,o.str());
+}
+
+@ Type checking of discrimination expressions is rather different from that of
+union case expressions, because we use the tags associated to the variants of
+the union type to identify and possibly reorder branches, and allow for some
+branches to be handled together in a default branch (thus refraining from
+using any information from the condition expression, other than that it
+selects none of the explicitly treated branches).
+So we insist here that the union type used be present in |typedef_table|
+(presumably specifying tags).
+
+@< Cases for type-checking and converting... @>=
+case discrimination_expr:
+{ auto& exp = *e.disc_variant;
+  size_t n_branches=length(&exp.branches);
+  type_expr subject_type;
+  std::ostringstream o; // for use in various error messages
+@)
+  expression_ptr c  =  convert_expr(exp.subject,subject_type);
+  if (subject_type.kind!=union_type)
+    throw type_error(e,std::move(subject_type),
+                       std::move(*unknown_union_type(n_branches)));
+  const wtl_const_iterator types_start(subject_type.tupple);
+@)
+  const auto type_name = typedef_table.find(subject_type);
+  if (type_name==type_table::no_id)
+    @< Report that union type |subject_type| cannot be used in discrimination
+    expression anonymously @>
+  const auto& field_names = typedef_table.fields(type_name);
+@)
+  size_t n_variants=length(subject_type.tupple);
+
+  std::vector<choice_part> choices(n_variants);
+@)
+  @< Process |branches| and assign them to |choices|, possibly reordering them
+    according to the specified variant names and taking into account a
+    possible default branch @>
+@/return expression_ptr(new @|
+    discrimination_expression(std::move(c),std::move(choices)));
+}
+
+@ In order to be able to share the default branch expression among multiple
+branches, we define a shared expression |default_choice| that a default branch
+if present will set.
+
+Contrary to a union case expression, the branches of a discrimination
+expression should have equal types. It would then seem natural to balance
+these types like for an integer case expression, but again our current
+implementation of balancing is not up to the task. This is because it will
+convert, and occasionally re-convert, all expressions to be balanced in the
+same (lexical) context, while the branches of a discrimination clause set up
+different local bindings for each of them. So like union case expressions we
+implement conversion of discrimination expressions without balancing, simply
+using for each branch the type provided by the context as possibly modified by
+the conversion of previous branches.
+
+@< Process |branches| and assign them to |choices|... @>=
+{ shared_expression default_choice;
+  for (auto branch_p=&exp.branches; branch_p!=nullptr;
+       branch_p=branch_p->next.get())
+  { const auto& branch = branch_p->contents;
+    if (branch.label==type_table::no_id)
+      @< Use |branch| to set |default_choice| @>
+    else
+    { size_t k = std::find(field_names.begin(), field_names.end(),branch.label)
+                 -field_names.begin();
+      @< Check that |k| is a valid index into |choices|, and that the slot
+         |choices[k]| has not been filled before @>
+      const auto& variant_type = *std::next(types_start,k);
+      // type of variant for this branch
+    @/@< Type-check branch |branch.branch|, with |branch.pattern| bound to
+         |variant_type|, against result type |type|,  and insert the
+         |choice_part| resulting from the conversion into |choices[k]| @>
+    }
+  }
+  @< Check valid use of default branch, and insert it into the empty slots
+      of |choices| @>
+}
+
+@ Type checking a branch is easy once everything is put in place. We have the
+identifier pattern for the branch in |branch.pattern|, and its type in
+|variant_type|, so the |layer| data type and its |thread_bindings| method will
+take care of setting up the evaluation context, and then |convert_expr| will
+to the actual type checking. We just need to take care to avoid creating a
+|layer| in the case where |branch.pattern| does not bind any identifiers at
+all (the runtime mechanism for getting values bound to identifiers forbids
+them).
+
+@< Type-check branch |branch.branch|, with |branch.pattern|... @>=
+{ auto n=count_identifiers(branch.pattern);
+  expression_ptr result;
+  if (n==0) // we must avoid creating an empty (lexical) |layer|;
+    result=convert_expr(branch.branch,type);
+  else
+  { layer branch_layer(n);
+    thread_bindings(branch.pattern,variant_type,branch_layer,false);
+    result=convert_expr(branch.branch,type);
+  }
+  choices[k] = choice_part(copy_id_pat(branch.pattern),std::move(result));
+}
+
+@ When reporting a mismatched branch or when a pair of identical branch labels
+is found, we print the whole discrimination expression.
+
+@< Check that |k| is a valid index into |choices|, and that the slot... @>=
+{ if (k==field_names.size())
+  { o << "Branch has label " << main_hash_table->name_of(branch.label) @|
+      << " not associated to any variant of the union type "
+      << subject_type;
+    throw expr_error(e,o.str());
+  }
+  if (choices[k].second.get()!=nullptr)
+  { o << "Multiple branches with label "
+      << main_hash_table->name_of(branch.label);
+    throw expr_error(e,o.str());
+  }
+}
+
+@ Here we just observe that using a discrimination expression requires using a
+\emph{named} union type.
+
+@< Report that union type |subject_type| cannot be used in discrimination
+   expression anonymously @>=
+{
+  o << "Discrimination on expression of type " << subject_type @|
+    << " requires naming its variants";
+  throw expr_error(e,o.str());
+}
+
+@ A default branch is just an expression, which we store unless a default
+branch was already defined.
+
+@< Use |branch| to set |default_choice| @>=
+{ if (default_choice.get()!=nullptr)
+    throw expr_error(e,"Multiple default branches present");
+  default_choice = convert_expr(branch.branch,type);
+}
+
+@ A default branch should be present if and only if the number of other
+branches specified is strictly less than the number of variants, which means
+that the number |n_branches| (which includes a possible default) should never
+exceed |n_branches|. And if on the other |n_branches<n_variants|, then a
+default should be among the branches. However, when this fails our error
+message reports a variant of the union for which a branch is actually missing,
+using the tag if it has one, or if it is an anonymous variant just mentioning
+its position among the variants.
+
+when no errors are signalled, we need to implement the default branch
+mechanism, which is easy thanks to our use of |shared_expression|. By having
+the identifier pattern of defaulted branches be empty, the value from the
+|discriminant| expression will not be bound to anything for such branches.
+
+@< Check valid use of default branch, and insert it into the empty slots
+   of |choices| @>=
+{
+  if (n_branches>n_variants)
+    throw expr_error(e,"Spurious default branch present");
+  else if (n_branches<n_variants and default_choice.get()==nullptr)
+  {
+    auto it=choices.begin();
+    while(it->second.get()!=nullptr) ++it;
+    auto variant=field_names[it-choices.begin()];
+    if (variant==type_table::no_id)
+      o << "Missing branch for anonymous variant " << it-choices.begin();
+    else
+      o << "Missing branch for variant " << main_hash_table->name_of(variant);
+    o << " of type " << subject_type << " in discrimination expression";
+    throw expr_error(e,o.str());
+  }
+@)
+  if (default_choice.get()!=nullptr)
+  // if a default was given, insert for omitted branches
+    for (auto it=choices.begin(); it!=choices.end(); ++it)
+      if (it->second.get()==nullptr)
+        *it = choice_part(id_pat(),default_choice); // share |default_choice| here
 }
 
 @*1 While loops.
@@ -5233,20 +5716,15 @@ return the value again.
 @< Cases for type-checking and converting... @>=
 case op_cast_expr:
 { const op_cast& c=e.op_cast_variant;
-  const overload_table::variant_list& variants =
-   global_overload_table->variants(c->oper);
   const type_expr& ctype=c->type;
   std::ostringstream o;
   o << main_hash_table->name_of(c->oper) << '@@' << ctype;
+  const auto* entry = global_overload_table->entry(c->oper,ctype);
 @)
-  size_t i;
-  for (i=0; i<variants.size(); ++i)
-    if (variants[i].type().arg_type==ctype)
-      break;
-  if (i<variants.size()) // something was found
+  if (entry!=nullptr) // something was found
   {
-    expression_ptr p(new capture_expression(variants[i].value(),o.str()));
-    const type_expr& res_t = variants[i].type().result_type;
+    expression_ptr p(new capture_expression(entry->value(),o.str()));
+    const type_expr& res_t = entry->type().result_type;
     if (functype_specialise(type,ctype,res_t) or type==void_type)
       return p;
     throw type_error(e,type_expr(ctype.copy(),res_t.copy()),std::move(type));
@@ -6241,21 +6719,15 @@ case field_ass_stat:
 @.Name is constant @>
 @) // Now get selector function from the overload table; ignore local bindings
   const projector_value* proj;
-  { value selector;
-    const auto& variants = global_overload_table->variants(sel);
-    auto it=variants.begin();
-    for (; it!=variants.end(); ++it)
-      if (it->type().arg_type==*tuple_t)
-      {@; selector=it->value().get();
-        break;
-      }
-    if (it==variants.end())
+  { const auto* entry=global_overload_table->entry(sel,*tuple_t);
+    if (entry==nullptr)
       throw expr_error (e,"Improper selection in field assignment");
-    proj=dynamic_cast<const projector_value*>(selector);
+    proj=dynamic_cast<const projector_value*>(entry->value().get());
     if (proj==nullptr)
       throw expr_error
         (e,"Selector in field assignment is not a projector function");
-    assert(tuple_t->kind==tuple_type and proj->position<length(tuple_t->tupple));
+    assert(tuple_t->kind == tuple_type and
+           proj->position < length(tuple_t->tupple));
   }
 @)
   type_p comp_loc;

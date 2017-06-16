@@ -153,8 +153,9 @@ table, and the above code needs some types defined elsewhere.
 
 @< Includes needed in the header file @>=
 #include <map>
-#include "parsetree.h" // for |id_type|
+#include "buffer.h" // for |id_type|
 #include "axis-types.h" // for |shared_value|
+#include "parse_types.h" // for |expr_p|
 
 @~Overloading is not done in this table, so a simple associative table with
 the identifier as key is used.
@@ -352,7 +353,7 @@ create the table.
 @< Global variable definitions @>=
 Id_table* global_id_table=nullptr; // will never be |nullptr| at run time
 
-@*1 Overload tables.
+@*1 The overload table.
 %
 To implement overloading we use a similar structure as the ordinary global
 identifier table. However the basic table entry for an overloading needs a
@@ -449,6 +450,7 @@ public:
   overload_table() : table() @+{} // the default and only constructor
 @) // accessors
   const variant_list& variants(id_type id) const;
+  const overload_data* entry (id_type id, const type_expr& arg_t) const;
   size_t size() const @+{@; return table.size(); }
    // number of distinct identifiers
   void print(std::ostream&) const;
@@ -457,6 +459,18 @@ public:
    // insertion
   bool remove(id_type id, const type_expr& arg_t); //deletion
 };
+
+@ We introduce a single overload table in the same way as the global
+identifier table.
+
+@< Declarations of global variables @>=
+extern overload_table* global_overload_table;
+
+@~Here we set the pointer to a null value; the main program will actually
+create the table.
+
+@< Global variable definitions @>=
+overload_table* global_overload_table=nullptr;
 
 @ The |variants| method just returns a reference to the found vector of
 overload instances, or else an empty vector. Since it is returned as
@@ -469,13 +483,90 @@ const overload_table::variant_list& overload_table::variants
   auto p=table.find(id);
   return p==table.end() ? empty : p->second;
 }
+const overload_data* overload_table::entry
+  (id_type id, const type_expr& arg_t) const
+{ const variant_list& vars = variants(id);
+  for (auto it=vars.begin(); it!=vars.end(); ++it)
+    if (it->type().arg_type==arg_t)
+      return &*it;
+  return nullptr; // indicate not found
+}
 
-@ The |add| method is what introduces and controls overloading. We first look
-up the identifier; if it is not found we associate a singleton vector with the
-given value and type to the identifier, but if the identifier already had a
-vector associate to it, we must test the new pair against existing elements,
-reject it if there is a conflicting entry present, and otherwise make sure it
-is inserted before any strictly less specific overloaded instances.
+
+@ The local function |locate| compares an argument type against those in a list
+of existing variants, and returns the index where it is to be inserted, and a
+Boolean telling whether a conflict was encountered.
+
+We call |is_close| to do the comparisons; if it returns a nonzero value it
+must be either |0x6|, in which case insertion must be after that entry, or
+|0x5|, in which case insertion must be not before that entry (insertion at
+that spot would push the entry ahead of it). Any place that satisfies these
+restrictions is fine for insertion; we |assert| that such a place is left, and
+in case none of the comparisons came close, we indicate to insert at the end.
+
+Mutually convertible types or close but mutually non convertible types are a
+problem, unless the types are actually equal. The problem cases are reported by
+setting the Boolean return component to |true|, while equality of types found
+is indicated by returning the current index with |false|. In either case the
+return is immediate (in the latter case the presence of an identical type in
+the list shows that the remainder of the scan will return no errors).
+
+@< Local function... @>=
+size_t locate
+  (id_type id,const overload_table::variant_list& slot,const type_expr& arg_type)
+{ size_t lwb=0; size_t upb=slot.size();
+  for (size_t i=0; i<slot.size(); ++i)
+  { unsigned int cmp= is_close(arg_type,slot[i].type().arg_type);
+    switch (cmp)
+    {
+      case 0x6: lwb=i+1; break;
+        // existent type |i| converts to |type|, which must come later
+      case 0x5: @+ if (upb>i) upb=i; @+ break;
+        // |type| converts to type |i|, so it must come before
+      case 0x7: // mutually convertible types, maybe identical ones
+        if (slot[i].type().arg_type==arg_type)
+          // identical ones: overload redefinition case
+            return i;
+      @/// |else| {\bf fall through}
+      case 0x4:
+       @< Throw a |program_error| reporting a conflict of attempted overload
+          for |id| with previous one in |slot[i]| @>
+      default: @+{} // nothing for unrelated argument types
+    }
+  }
+  if (lwb>upb)
+    throw logic_error("Conflicting order of related overload types");
+
+  return upb;
+}
+
+@ When we get here the argument types to be added are either mutually
+convertible but distinct form existing types (the fall through case above), or
+close to existing types without being convertible in any direction (which
+would have given a way to disambiguate), so we must report an error. The error
+message is quite verbose, but tries to precisely pinpoint the kind of problem
+encountered so that the user will hopefully be able to understand.
+
+@< Throw a |program_error| reporting a conflict... @>=
+{ std::ostringstream o;
+  o << "Cannot overload `" << main_hash_table->name_of(id) << "':\n" @|
+       "already overloaded type '" << slot[i].type().arg_type
+ @| << "' is too close to new argument type '"@| << arg_type
+ @| << "',\nwhich would make overloading ambiguous for certain arguments. " @|
+       "Simultaneous\noverloading for these types is not possible, " @|
+       "forget the other one first.";
+  throw program_error(o.str());
+}
+
+
+
+@ The |overload_table::add| method is what introduces and controls
+overloading. We first look up the identifier; if it is not found we associate
+a singleton vector with the given value and type to the identifier, but if the
+identifier already had a vector associate to it, we must test the new pair
+against existing elements, reject it if there is a conflicting entry present,
+and otherwise make sure it is inserted before any strictly less specific
+overloaded instances.
 
 @< Global function def... @>=
 void overload_table::add
@@ -486,110 +577,46 @@ void overload_table::add
   if (its.first==its.second) // a fresh overloaded identifier
   {
 #ifdef incompletecpp11
-    auto it=table.insert
+    auto pos=table.insert
       (its.first,std::make_pair(id, variant_list()));
-#else
-    auto it=table.emplace_hint(its.first,id,variant_list())
-;
-#endif
-    it->second.push_back(
+    pos->second.push_back(
       overload_data( std::move(val), std::move(type)) );
+#else
+    auto pos=table.emplace_hint(its.first,id,variant_list());
+    pos->second.emplace_back(std::move(val), std::move(type) );
+#endif
   }
   else
-  { variant_list& slot=its.first->second; // vector of all variants
-    @< Compare |type| against entries of |slot|, if none are close then add
-    |val| and |type| at the end, if any is close without being one-way
-    convertible to or from it throw an error, and in the remaining case make
-    sure |type| is added after any types that convert to it and before any types
-    it converts to @>
+    @< Insert an overload for function |val| with type |type| into
+     the list of variants at |its->first.second|, or throw an error if
+     there is an incompatibility with a previously existing variant @>
+}
+
+@ By calling |locate|, we find out where to insert our new entry, and whether
+that is forbidden due to a conflict with a previously existing entry. The case
+where it is not forbidden actually covers two cases, the usual one where the
+overload is added to the existing ones, and the case where it will replace an
+overload with the same argument type; although the distinction was clear
+inside |locate|, that information was not passed to us. However in most cases
+the fact that |pos| is at the end of |slot|, so does not point at any entry,
+allows us to avoid testing any types again here.
+
+@< Insert an overload for function |val| with type |type|... @>=
+{ variant_list& slot=its.first->second; // vector of all variants
+  auto pos=locate(id,slot,type.arg_type); // may |throw|
+  if (pos<slot.size() and slot[pos].type().arg_type==type.arg_type)
+     // equality found
+    slot[pos] = overload_data(std::move(val),std::move(type)); // overwrite
+  else
+  {
+#ifdef incompletecpp11
+    slot.insert
+      (slot.begin()+pos,overload_data(std::move(val),std::move(type)));
+#else
+    slot.emplace(slot.begin()+pos,std::move(val),std::move(type));
+#endif
   }
 }
-
-@ We call |is_close| for each existing argument type; if it returns a nonzero
-value it must be either |0x6|, in which case insertion must be after that
-entry, or |0x5|, in which case insertion must be no later than at this
-position, so that the entry in question (after shifting forward) stays ahead.
-The last of the former cases and the first of the latter are recorded, and
-their requirements should be compatible.
-
-Although the module name does not mention it, we allow one case of close and
-mutually convertible types, namely identical types; in this case we simply
-replace the old definition for this type by the new one. This could still
-change the result type, but that does not matter because if any calls that
-were type-checked against the old definition should survive (in a closure),
-they have been also bound to the (function) \emph{value} that was previously
-accessed by that definition, and will continue to use it; their operation is
-in no way altered by the replacement of the definition.
-
-@< Compare |type| against entries of |slot|... @>=
-{ size_t lwb=0; size_t upb=slot.size();
-  for (size_t i=0; i<slot.size(); ++i)
-  { unsigned int cmp= is_close(type.arg_type,slot[i].type().arg_type);
-    switch (cmp)
-    {
-      case 0x6: lwb=i+1; break;
-        // existent type |i| converts to |type|, which must come later
-      case 0x5: @+ if (upb>i) upb=i; @+ break;
-        // |type| converts to type |i|, so it must come before
-      case 0x7: // mutually convertible types, maybe identical ones
-        if (slot[i].type().arg_type==type.arg_type)
-          // identical ones: overload redefinition case
-        @/{@; slot[i] = overload_data(std::move(val),std::move(type));
-            return;
-          }
-      @/// |else| {\bf fall through}
-      case 0x4:
-         @< Report conflict of attempted overload for |id| with previous one
-            in |slot[i]| @>
-      default: @+{} // nothing for unrelated argument types
-    }
-  }
-  @< Insert |val| and |type| after |lwb| and before |upb| @>
-}
-
-@ We get here when the argument types to be added are either mutually
-convertible but distinct form existing types (the fall through case above), or
-close to existing types without being convertible in any direction (which
-would have given a way to disambiguate), so we must report an error. The error
-message is quite verbose, but tries to precisely pinpoint the kind of problem
-encountered so that the user will hopefully able to understand.
-
-@< Report conflict of attempted overload for |id| with previous one in
-  |slot[i]| @>=
-{ std::ostringstream o;
-  o << "Cannot overload `" << main_hash_table->name_of(id) << "': " @|
-       "previous type " << slot[i].type().arg_type
-    << "\nis too close to "@| << type.arg_type
-    << ",\nmaking overloading potentially ambiguous." @|
-       " Broadness cannot disambiguate,\nas "
-    << (cmp==0x4 ? "neither" :"either") @|
-    << " type converts to the other";
-  throw program_error(o.str());
-}
-
-@ Once we arrive here, the value of |lwb| indicates the first position in
-|slot| where we could insert our overload (after any narrower match, and |upb|
-indicates the last possible position (before any broader match). It should not
-be possible (by transitivity of convertibility) that any narrower match comes
-after any broader match, so we insist that |lwb>upb| always, and throw a
-|logic_error| in case it should fail. Having passed this test, we insert
-the new overload into the vector |slot| at position |upb|, the last possible
-one.
-
-Shifting entries during a call of |insert| is done by moving, so it should not
-risk doubling any unique pointers, since moving those immediately nullifies
-the pointer moved from. Similar remarks apply in case of necessary
-reallocation; a properly implemented |insert| (or |emplace|) should provide
-a strong exception guarantee.
-
-@< Insert |val| and |type| after |lwb| and before |upb| @>=
-if (lwb>upb)
-  throw logic_error("Conflicting order of related overload types");
-else
-{ slot.insert // better use |emplace| with gcc 4.8
-  (slot.begin()+upb,overload_data(std::move(val),std::move(type)));
-}
-
 
 @ The |remove| method allows removing an entry from the overload table, for
 instance to make place for another one. It returns a Boolean telling whether
@@ -631,19 +658,82 @@ std::ostream& operator<< (std::ostream& out, const overload_table& p)
 @< Declarations of exported functions @>=
 std::ostream& operator<< (std::ostream& out, const overload_table& p);
 
-@ We introduce a single overload table in the same way as the global
-identifier table.
+@*1 Table of defined types.
+%
+When the user defines an identifier to stand for a type, this fact is
+primarily recorded in the |global_id_table| by calling its |add_type_def|
+method which stores a type but no value at all in that table. While this
+mechanism suffices for identifiers serving simply as abbreviation for a type
+expression, is has become too limited to store the relevant information as
+type definitions were extended with more possibilities. We therefore define
+another table structure here to store additional information about type
+definitions.
 
+Since this table is probably going to be used more often for searching than
+for modification, we for now choose for a simple sorted array rather than for
+an associative container.
+
+@< Type definitions @>=
+
+class type_table
+{ public: @+ typedef std::vector<id_type> field_list;
+  static constexpr id_type no_id = -1; // value to signal absence of field name
+@)
+  private:@+ std::vector<std::pair<id_type,field_list> > assoc;
+public:
+  type_table() : assoc() @+ {}
+  void add (id_type id, field_list&& names);
+  void remove (id_type id);
+@)
+  id_type find (const type_expr& type) const;
+    // identifier defined as |type|, or |no_id|
+  const field_list& fields (id_type type) const;
+};
+
+@ We maintain |assoc| ordered by numeric value of the identifier, so that we
+can use binary search to locate the entry.
+
+@< Global function def... @>=
+static bool compare (const std::pair<id_type,type_table::field_list>& x, @|
+                     id_type y) {@; return x.first<y; }
+@)
+void type_table::add (id_type id, field_list&& names)
+{ auto pos = std::lower_bound(assoc.begin(),assoc.end(), id, compare);
+  if (pos==assoc.end() or pos->first!=id) // new type, insert
+    assoc.emplace(pos,id,std::move(names));
+  else
+    pos->second=std::move(names); // previously defined type, replace
+}
+void type_table::remove (id_type id)
+{ auto pos = std::lower_bound(assoc.begin(),assoc.end(), id, compare);
+  if (pos!=assoc.end() and pos->first==id)
+    assoc.erase(pos);
+}
+@)
+id_type type_table::find (const type_expr& type) const
+{ for (auto it=assoc.begin(); it!=assoc.end(); ++it)
+  { bool dummy; assert(global_id_table->is_defined_type(it->first));
+    if (*global_id_table->type_of(it->first,dummy)==type)
+      return it->first;
+  }
+  return no_id;
+}
+
+const type_table::field_list& type_table::fields (id_type type) const
+{ static field_list empty;
+  auto pos = std::lower_bound(assoc.begin(),assoc.end(), type, compare);
+  return pos==assoc.end() ? empty : pos->second;
+}
+
+@ There will be a table of defined types, usable in other modules.
 @< Declarations of global variables @>=
-extern overload_table* global_overload_table;
+extern type_table typedef_table;
 
-@~Here we set the pointer to a null value; the main program will actually
-create the table.
-
+@~Here we install the unique instance |typedef_table| of |type_table|.
 @< Global variable definitions @>=
-overload_table* global_overload_table=nullptr;
+type_table typedef_table;
 
-@* Global operations.
+@* Operations other than evaluation of expressions.
 %
 We start with several operations at the outer level of the interpreter such as
 initialisations and the initial invocation of the type checker.
@@ -730,24 +820,22 @@ type_expr analyse_types(const expr& e,expression_ptr& p)
 @.Expression analysis failed@>
 }
 
-
-@*1 Operations other than evaluation of expressions.
+@*1 Operations to change the state of user environment.
 %
 This section will be devoted to some interactions between user and program
 that do not consist just of evaluating expressions.
 
-@*2 Defining global identifiers or overloads.
-%X
 The function |global_set_identifier| handles introducing identifiers, either
-normal ones or overloaded instances of functions, using the \&{set} syntax.
-It has a variant for multiple declarations |global_set_identifiers|.
-The function |global_declare_identifier| just introduces an identifier into
-the global (non-overloaded) table with a definite type, but does not provide a
-value (it will then have to be assigned to before it can be validly used).
-Conversely |global_forget_identifier| removes an identifier from the global
-table. The last three functions serve to provide the user with information
-about the state of the global tables (but invoking |type_of_expr| will
-actually go through the full type analysis and conversion process).
+normal ones or overloaded instances of functions, using the \&{set} syntax. It
+has a variant for multiple declarations |global_set_identifiers|. The function
+|global_declare_identifier| just introduces an identifier into the global
+(non-overloaded) table with a definite type, but does not provide a value (it
+will then have to be assigned to before it can be validly used). Conversely
+|global_forget_identifier| removes an identifier from the global table. The
+function |type_define_identifier| will define an identifier as an abbreviation
+of a type expression. The last three functions serve to provide the user with
+information about the state of the global tables (but invoking |type_of_expr|
+will actually go through the full type analysis and conversion process).
 
 @< Declarations of exported functions @>=
 void global_set_identifier(const struct raw_id_pat& id, expr_p e, int overload);
@@ -780,7 +868,7 @@ std::ostream* output_stream= &std::cout;
 possibilities as for local definitions (the \&{let}
 syntax); therefore it takes a |raw_let_list| as argument. Some other syntactic
 forms (operator definition, syntax using |':'|) can only handle one identifier
-at a time, and invokes the |global_set_identifier| function. The latter case
+at a time; these invoke the |global_set_identifier| function. The latter case
 sometimes forbids or requires a definition to the overload table; the argument
 |overload| specifies the options permitted ($0$ means no overloading, $2$
 requires overloading, and $1$ allows both).
@@ -801,7 +889,103 @@ void global_set_identifiers(const raw_let_list& d)
   do_global_set(std::move(pat_expr.first),pat_expr.second,1);
 }
 
-@ The function |do_global_set| takes |id_pat| by rvalue reference just to be
+
+@*2 Grouping identifiers for simultaneous definition.
+%
+While local identifier definitions proceed in nested lexical groupings that
+are implemented using the |layer| class defined in the \.{axis} module, global
+definitions do not occur in a nested fashion. Nevertheless there can be
+definitions of multiple identifiers in the same command, which we want to
+treat as a whole (for instance rejecting the whole command if any of the
+definitions it contains was going to cause a problem). It used to be the case
+that the |layer| class was used to group definitions in some cases, but while
+it worked, this was contrary to the spirit of that class, whose main purpose
+remained unused, namely temporarily altering the context in which
+|convert_expr| takes place. We shall now define an alternative class to use in
+its place, geared directly to the situation of global definitions. This also
+allows us to address specific issues, like forbidding definitions in certain
+cases when their effect on the global state would be undesirable.
+
+@< Type def... @>=
+class definition_group
+{ typedef std::vector<std::pair<id_type,type_expr> > association;
+  association bindings;
+  BitMap constness;
+public:
+  definition_group(unsigned int n_ids);
+@) // manipulators
+  void add(id_type id,type_expr&& t, bool is_const);
+  void thread_bindings (const id_pat& pat,const type_expr& type);
+  association::iterator begin() @+{@; return bindings.begin(); }
+  association::iterator end() @+{@; return bindings.end(); }
+@) // accessors
+  bool is_const (association::const_iterator it) const
+  {@; return constness.isMember(it-bindings.cbegin()); }
+};
+
+@ The methods of |definition_group| are closely related those of |layer|, but
+simplified because since they do not need to maintain |lexical_context| in any
+way (in particular there is no need for a user-defined destructor). We also
+include |thread_bindings| now as a method rather than a free function (which
+``saves'' the destination argument in (recursive) calls), and it also lacks
+the constness-overriding argument that has no use for global definitions.
+
+@< Global function definitions @>=
+definition_group::definition_group(unsigned int n_ids)
+: bindings(), constness(n_ids)
+{@; bindings.reserve(n_ids); }
+@)
+void definition_group::thread_bindings(const id_pat& pat,const type_expr& type)
+{ if ((pat.kind & 0x1)!=0)
+    add(pat.name,type.copy(),(pat.kind & 0x4)!=0);
+  if ((pat.kind & 0x2)!=0)
+    // recursively traverse sub-list for a tuple of identifiers
+  { assert(type.kind==tuple_type);
+    wtl_const_iterator t_it(type.tupple);
+    for (auto p_it=pat.sublist.begin(); not pat.sublist.at_end(p_it);
+         ++p_it,++t_it)
+      thread_bindings(*p_it,*t_it);
+  }
+}
+
+@ For the method |add| we do have some actions absent from or different than
+in |layer::add|, since we have somewhat different conditions to check for
+validity of the definitions. Although there might be cases where several
+overloads for the same identifiers could be validly added in a single group,
+we forbid this as it would complicate the necessary testing considerably for
+little practical gain. Besides this test we check that each identifier of
+function type can be validly added to the overload table.
+
+@< Global function definitions @>=
+
+void definition_group::add(id_type id,type_expr&& t, bool is_const)
+{ for (auto it=bindings.cbegin(); it!=bindings.cend(); ++it)
+  // check repeated identifiers
+    if (it->first==id)
+      @< Throw a |program_error| signalling multiple occurrences of |id| @>
+@)
+  if (t.kind==function_type)
+  { const auto& var=global_overload_table->variants(id);
+    locate(id,var,t.func->arg_type); // may |throw|; otherwise ignore result
+  }
+@)
+  constness.set_to(bindings.size(),is_const);
+  bindings.emplace_back(id,std::move(t));
+}
+
+@ When a double identifier is found, we exit the |add| method by throwing a
+|program_error| detailing the problem.
+
+@< Throw a |program_error| signalling multiple occurrences of |id| @>=
+{ std::ostringstream o;
+  o << "Multiple occurrences of '" << main_hash_table->name_of(id)
+    @| << "' cannot be defined in same definition";
+  throw program_error(o.str());
+}
+
+@*2 Defining global identifiers or overloads.
+%
+The function |do_global_set| takes |id_pat| by rvalue reference just to be
 able to clobber the value prepared by the caller without taking a copy; we do
 not intend to actually move from the argument.
 
@@ -819,7 +1003,8 @@ from such mixing for syntactic reasons). There is an implicit restriction
 though, that any identifier gets at most one binding per call of
 |do_global_set| (in other words, per \&{set} command), because the call to
 |thread_bindings| cannot put multiple bindings of the same identifier into its
-|layer|. This restriction should not cause much inconvenience to users.
+|definition_group|. This restriction should not cause much inconvenience to
+users.
 
 We follow the logic for type-analysis of a let-expression, and for evaluation
 we follow the logic of binding identifiers in a user-defined function (these
@@ -842,9 +1027,8 @@ void do_global_set(id_pat&& pat, const expr& rhs, int overload)
       @< Report that type |t| of |rhs| does not have required structure,
          and |throw| @>
     @< Check that we are not setting an operator to a non-function value @>
-    layer b(n_id);
-    thread_bindings(pat,t,b,false); // match identifiers and their future types
-
+    definition_group b(n_id);
+    b.thread_bindings(pat,t); // match identifiers and their future types
 @)
     phase=1; // evaluation of right hand side
 @/  e->eval();
@@ -854,9 +1038,9 @@ void do_global_set(id_pat&& pat, const expr& rhs, int overload)
     v.reserve(n_id);
     thread_components(pat,pop_value(),std::back_inserter(v));
      // associate values with identifiers
-    auto v_it = v.cbegin();
+    auto v_it = v.begin();
     for (auto it = b.begin(); it!=b.end(); ++it,++v_it)
-    { assert(v_it!=v.cend());
+    { assert(v_it!=v.end());
       @< Emit indentation corresponding to the input level to
          |*output_stream| @>
       if (overload==0 or it->second.kind!=function_type)
@@ -869,7 +1053,6 @@ void do_global_set(id_pat&& pat, const expr& rhs, int overload)
   }
   @< Catch block for errors thrown during a global identifier definition @>
 }
-
 
 @ When |overload>0|, choosing whether the definition enters into the overload
 table or into the global identifier table is determined by the type of the
@@ -915,10 +1098,9 @@ reporting the changes made to the user.
 
 One difference is that here the |add| method may throw because of a
 conflict of a new definition with an existing one; we therefore do not print
-anything before the |add| method has successfully completed. An unfortunate
-consequence of this possibility is that we may end up with a multiple \&{set}
-command that gets partially executed and then aborts. This is quite rare
-though, and not catastrophic, so we don't do any effort here to exclude this.
+anything before the |add| method has successfully completed. This concern has
+been made superfluous by the use of |definition_group| which will ensure that
+such an error will have been signalled before we come here.
 
 @< Define auxiliary functions for |do_global_set| @>=
 void add_overload(id_type id, shared_function&& f, type_expr&& type)
@@ -1019,6 +1201,8 @@ catch (const std::exception& err)
 
 @ Here is the common part for various |catch| clauses.
 
+@h "parsetree.h" // for output of |id_pat| value
+
 @< Define auxiliary functions for |do_global_set| @>=
 void handle
   (const std::exception& err,const id_pat& pat, int phase, int overload)
@@ -1052,59 +1236,243 @@ void global_declare_identifier(id_type id, type_p t)
   global_id_table->add(id,undefined_value,std::move(type),false);
 }
 
-@ Finally the user may wish to forget the value of an identifier, which the
-following function achieves.
+@ Here is a utility function called whenever a type identifier is forgotten or
+redefined. It removes any bindings in |global_overload_table| of field names
+that were introduced together with the type name, if they are still present
+(they could have been overridden or forgotten in the mean time). Then it
+removes the entry |id| from |typedef_table|.
+
+@< Global function definitions @>=
+void clean_out_type_identifier(id_type id)
+{
+  { const auto& fields = typedef_table.fields(id);
+    if (not fields.empty())
+    { bool dummy;
+      auto defined_type = global_id_table->type_of(id,dummy);
+      if (defined_type->kind==tuple_type)
+        @< Remove projector functions for tuple type |id| added when
+           it was defined as |*defined_type| @>
+      else if(defined_type->kind==union_type)
+        @< Remove injector functions for union type |id| added when
+           it was defined as |*defined_type| @>
+      typedef_table.remove(id);
+    }
+  }
+}
+
+@ Removing projector functions is done by looking up the field identifiers in
+the overload table with the tuple type as argument, and removing the entry if
+one is found there, but only if it exactly matches the projector function
+which the definition put there. Since the argument type already matches, the
+latter needs to check the |id| and |position| members of the projector
+function.
+
+Side remark: the braces enclosing this block of code are essential: without
+them the |else| in the parent module above would actually be captured by the
+|if| below, with catastrophic consequences.
+
+@< Remove projector functions for tuple type |id|... @>=
+{ for (unsigned i=0; i<fields.size(); ++i)
+    if (fields[i]!=type_table::no_id)
+    { const auto* entry =
+        global_overload_table->entry(fields[i],*defined_type);
+      if (entry!=nullptr)
+      { auto p = dynamic_cast<const projector_value*>(entry->value().get());
+        if (p!=nullptr and p->id==fields[i] and p->position==i)
+          global_overload_table->remove(fields[i],*defined_type);
+      }
+    }
+}
+
+@ Removing injector functions for a union type is similar, but the argument
+type to be used in the overload table look-up is a component type of the union
+rather than the union type itself. We therefore need to set up a second
+iterator |comp_it| to loop over those components.
+
+@< Remove injector functions for union type |id|... @>=
+{ wtl_const_iterator comp_it (defined_type->tupple);
+  for (unsigned i=0; i<fields.size(); ++i,++comp_it)
+    if (fields[i]!=type_table::no_id)
+    { const auto* entry =
+        global_overload_table->entry(fields[i],*comp_it);
+      if (entry!=nullptr)
+      { auto p = dynamic_cast<const injector_value*>(entry->value().get());
+        if (p!=nullptr and p->id==fields[i] and p->position==i)
+          global_overload_table->remove(fields[i],*comp_it);
+      }
+    }
+}
+
+@ The user may wish to forget the value of an identifier, which calls the
+following function. The parser calls this both for ordinary and type
+identifiers; in the latter case we make a call to |clean_out_type_identifier|.
 
 @< Global function definitions @>=
 void global_forget_identifier(id_type id)
-{ *output_stream << "Identifier '" << main_hash_table->name_of(id)
-       @|   << (global_id_table->remove(id) ? "' forgotten" : "' not known")
+{ if (global_id_table->is_defined_type(id))
+    clean_out_type_identifier(id);
+  bool was_known = global_id_table->remove(id);
+  *output_stream << "Identifier '" << main_hash_table->name_of(id)
+       @|   << (was_known ? "' forgotten" : "' not known")
             << std::endl;
 }
 
 @ Forgetting the binding of an overloaded identifier at a given type is
-similar.
+straightforward.
 
 @< Global function definitions @>=
 void global_forget_overload(id_type id, type_p t)
 { type_ptr saf(t); // ensure clean-up
   const type_expr& type=*t;
+  const bool removed = global_overload_table->remove(id,type);
   *output_stream << "Definition of '" << main_hash_table->name_of(id)
             << '@@' << type @|
-            << (global_overload_table->remove(id,type)
-               ? "' forgotten"
-               : "' not known")
-            << std::endl;
+            << ( removed ? "' forgotten" : "' not known") << std::endl;
 }
 
 @*2 Defining type identifiers.
 %
 The following function is called when an identifier is defined as an
-abbreviation for a type.
+abbreviation for a type. The somewhat mysterious cast in the constructor call
+for |names| avoids passing the |constexpr no_id@;| by reference by building a
+temporary instead), which in turn avoids needing to allocate an actual static
+variable for this constant.
 
 @< Global function definitions @>=
 void type_define_identifier
   (id_type id, type_p t, raw_id_pat ip, const YYLTYPE& loc)
 { type_ptr saf(t); id_pat fields(ip); // ensure clean-up
-  type_expr& type=*t;
-  if (not fields.sublist.empty()) // do this before we move from |type|
-  { assert(type.kind==tuple_type);
-    auto tp_it =wtl_const_iterator(type.tupple);
-    unsigned count=0;
-    for (auto it=fields.sublist.wcbegin(); not it.at_end();
-         ++tp_it,++count,++it)
-      if (it->kind==0x1) // field selector present
-      { type_expr fun_type(type.copy(),tp_it->copy()); // make projector type
-        shared_function projector =
-          std::make_shared<projector_value>(type,count,it->name,loc);
-        add_overload(it->name,std::move(projector),std::move(fun_type));
-      }
+  type_expr& type=*t; const bool is_tuple = type.kind==tuple_type;
+    // save for when |type| is pilfered
+  const auto n=length(fields.sublist);
+  definition_group group(n);
+  std::vector<shared_function> tors; tors.reserve(n);
+  std::vector<id_type> names(n,id_type(type_table::no_id));
+  try
+  {
+    if (not fields.sublist.empty()) // do this before we move from |type|
+      @< Bind in |group| any field identifiers in |field.sublist| to the
+         types of their projector or injector functions, and store the
+         corresponding function values themselves in |tors| @>
+@)
+    @< Add |id| as abbreviation for |type| to |global_id_table|, unless there
+       are conflicts preventing this in which case |throw| a |program_error| @>
+    if (group.begin()!=group.end())
+      // only need the following when there are field names
+      @< Update |typedef_table| with |id| and its associated field names,
+         and for field identifiers bound in |group|, add projector or injector
+         function value from |tors| to |global_overload_table| @>
   }
+  catch (const program_error& err)
+  { std::cerr << "Error in type definition " << loc << "\n  " @|
+                << err.what() << std::endl;
+    throw program_error("Type definition aborted");
+  }
+}
+
+@ A type definition introducing a structure or union type may introduce field
+names for their components, which names will then be associated to projector
+respectively injector functions for the type; these also have uses beyond that
+of mere functions. All field names must be distinct, and it must be possible
+to add the corresponding functions to the overload table, which is what the
+code below tests by passing |fields| through
+|definition_group::thread_bindings|. We make an ephemeral type |combined_type|
+that holds the types that will be bound by |thread_bindings| at the proper
+positions. Not all fields need to have names (although for a union type it
+seems rather pointless to omit any of them), so we fill the space that will
+not be used by undefined type expressions.
+
+@< Bind in |group| any field identifiers in |field.sublist| to the types of
+   their projector or injector functions, and store the corresponding function
+   values themselves in |tors| @>=
+{ assert(type.kind==tuple_type or type.kind==union_type);
+  dressed_type_list tor_types;
+  auto tp_it =wtl_const_iterator(type.tupple);
+  auto id_it=fields.sublist.wcbegin();
+  if (is_tuple)
+    for (unsigned i=0; i<n; ++i,id_it++,tp_it++)
+      if (id_it->kind==0x1) // field selector present
+      { names[i]=id_it->name;
+        tors.push_back
+          (std::make_shared<projector_value>(type,i,names[i],loc));
+        tor_types.emplace_back(type_expr(type.copy(),tp_it->copy()));
+          // projector type
+      }
+      else tor_types.emplace_back(); // filler type
+  else
+    for (unsigned i=0; i<n; ++i,id_it++,tp_it++)
+      if (id_it->kind==0x1) // field selector present
+      { names[i]=id_it->name;
+        tors.push_back
+          (std::make_shared<injector_value>(type,i,names[i],loc));
+        tor_types.emplace_back(type_expr(tp_it->copy(),type.copy()));
+          // injector type
+      }
+      else tor_types.emplace_back(); // filler type
+  type_ptr combined_type=mk_tuple_type(tor_types.undress());
+  group.thread_bindings(fields,*combined_type);
+    // throws if binding |tors| would give an error
+  @< In case we are trying to define a new union type with fields while the
+     same type is already present, throw a |program_error| @>
+}
+
+@ We cannot allow the same union type to be present more than once in the
+table, since that would give ambiguity when trying to do case distinction on a
+union value using ``the'' field names associated to the components. We do
+however allow a new definition to override the same definition, which happens
+when the same identifier is used to name the union type.
+
+@< In case we are trying to define a new union type with fields... @>=
+if (not (is_tuple or tors.empty())) // binding a union type with fields
+{ auto old_id = typedef_table.find(type);
+  if (old_id!=type_table::no_id and old_id!=id)
+  { std::ostringstream o;
+     o << "Cannot define union type '" << main_hash_table->name_of(old_id)
+     @| << "' again under the name '" << main_hash_table->name_of(id)
+     @| << "'.";
+    throw program_error(o.str());
+  }
+}
+
+@  Defining a type name would make any global identifier or overload of the same
+name inaccessible. Since this is probably not intended, we refuse to do this,
+and emit an error message instead when it is attempted.
+
+We start checking if the user deviously hid a \emph{new} definition of the
+same identifier in the field list. Then we emit an error if any previous
+definition is found. The test for this can be skipped is the same identifier
+was already defined as a type, but in that case the old definition will be
+overwritten, so we call |clean_out_type_identifier| in order to remove any
+traces of the old definition in |typedef_table| (this is needed even if the
+new definition is for the same type as the previous one, since the field names
+might differ). Finally we report the new definition; this output may
+be completed by the list of field names that is printed in section~%
+@#field name printing @>.
+
+@< Add |id| as abbreviation for |type| to |global_id_table|, unless...@>=
+{ for (auto it=group.begin(); it!=group.end(); ++it)
+    if (it->first==id)
+    { std::ostringstream o;
+      o << "Type definition of '" << main_hash_table->name_of(id) @|
+                << "' cannot contain a field of the same name";
+      throw program_error(o.str());
+    }
 @)
   bool redefine = global_id_table->is_defined_type(id);
-  if (not redefine)
-    @< Test that |id| has no global definition or overloads;
-       if it does, report problem and |return| @>
+  if (redefine)
+    clean_out_type_identifier(id);
+  else
+// the tests below were previously done if |id| was already a type identifier
+  { const bool p = global_id_table->present(id); // non-overloaded presence
+    if (p or not global_overload_table->variants(id).empty())
+    { std::ostringstream o;
+      o << "Cannot define '" << main_hash_table->name_of(id) @|
+                << "' as a type; it is in use as " @|
+                << (p? "global variable" : "function");
+      throw program_error(o.str());
+    }
+  }
+@)
   @< Emit indentation corresponding to the input level to |*output_stream| @>
   *output_stream << "Type name '" << main_hash_table->name_of(id) @|
             << (redefine ? "' redefined as " : "' defined as ") << type
@@ -1112,21 +1480,24 @@ void type_define_identifier
 @/global_id_table->add_type_def(id,std::move(type));
 }
 
-@ Defining a type name would make any global identifier or overload of the same
-name inaccessible. Since this is probably not intended, we refuse to do this,
-and emit an error message instead when it is attempted..
+@ When tests have been passed successfully, we run the code below to copy the
+projector or injector functions from |tors| to the global overload table.
 
-@< Test that |id| has no global definition or overloads... @>=
-{ const bool p = global_id_table->present(id);
-  if (p or not global_overload_table->variants(id).empty())
-  { *output_stream << "Cannot define '" << main_hash_table->name_of(id) @|
-              << "' as a type; it is in use as " @|
-              << (p? "global variable" : "function") << std::endl;
-    return;
+@:field name printing @>
+@< Update |typedef_table| with |id| and its associated field names... @>=
+{ @< Emit indentation corresponding to the input level to |*output_stream| @>
+  typedef_table.add(id,std::move(names));
+@/*output_stream << "  with " << (is_tuple ? "pro" : "in");
+  for (auto it=group.begin(); it!=group.end(); ++it)
+  { global_overload_table->add
+      (it->first,std::move(tors[it-group.begin()]),std::move(it->second));
+    *output_stream << (it==group.begin() ? "jectors: " : ", ")
+                @| << main_hash_table->name_of(it->first);
   }
+  *output_stream << '.' << std::endl;
 }
 
-@*2 Printing information from internal tables.
+@*1 Printing information from internal tables.
 %
 It is useful to print type information, either for a single expression or
 for all identifiers in the table. The function |type_of_expr| prints the type
