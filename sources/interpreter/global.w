@@ -3700,8 +3700,6 @@ usable with sets of generators that may not form a basis, and to provide
 feedback about expressions both for the normalised basis vectors returned, and
 relations that show the excluded vectors to be dependent on the retained ones.
 
-@h "bitvector.h"
-
 @< Local function definitions @>=
 void subspace_normal_wrapper(expression_base::level l)
 {

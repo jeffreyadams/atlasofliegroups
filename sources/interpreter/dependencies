@@ -60,6 +60,7 @@ $(atlas_dir)/global.o $(atlas_dir)/global.tex: \
  $(sources_dir)/utilities/ratvec.h \
  $(sources_dir)/utilities/matrix.h \
  $(sources_dir)/utilities/arithmetic.h \
+ $(sources_dir)/utilities/bigint.h \
  $(sources_dir)/utilities/matreduc.h \
  $(sources_dir)/utilities/bitmap_fwd.h \
  $(sources_dir)/utilities/bitmap.h \
