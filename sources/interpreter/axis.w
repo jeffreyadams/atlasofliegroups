@@ -4287,7 +4287,11 @@ identifier pattern; the evaluation is the same as what a union case expression
 would do for a branch that is a $\lambda$~expression:
 |discriminant->contents()| is bound to the pattern |branch.first|, and in the
 context so established the body |branch.second| is evaluated to produce the
-result of the discrimination expression.
+result of the discrimination expression. However we be aware that some
+branches bind no identifiers (for instance this is always the case for a
+defaulted branch); we shall make sure that such branches have as their |first|
+field an empty |id_pat|, and test for that before creating a |frame| for
+|branch.first|.
 
 @< Function definitions @>=
 void union_case_expression::evaluate(level l) const
@@ -4306,9 +4310,13 @@ void discrimination_expression::evaluate(level l) const
 { condition->eval();
   shared_union discriminant = get<union_value>();
   const auto& branch = branches[discriminant->variant()]; // make selection
-  frame fr(branch.first);
-  fr.bind(discriminant->contents());
-  branch.second->evaluate(l);
+  if (branch.first.kind==0x0)
+    branch.second->evaluate(l); // avoid creating an empty |frame|
+  else
+  { frame fr(branch.first);
+    fr.bind(discriminant->contents());
+    branch.second->evaluate(l);
+  }
 }
 
 
@@ -4464,22 +4472,27 @@ the conversion of previous branches.
 identifier pattern for the branch in |branch.pattern|, and its type in
 |variant_type|, so the |layer| data type and its |thread_bindings| method will
 take care of setting up the evaluation context, and then |convert_expr| will
-to the actual type checking. We just need to take care to avoid creating a
-|layer| in the case where |branch.pattern| does not bind any identifiers at
-all (the runtime mechanism for getting values bound to identifiers forbids
-them).
+to the actual type checking. We just need to take care to ensure that an
+entirely empty |id_pat| is recorded whenever |branch.pattern| does not bind
+any identifiers at all, which the |evaluate| method then will recognise if
+this branch is chosen, and suppress creating a |frame| for the branch.
 
 @< Type-check branch |branch.branch|, with |branch.pattern|... @>=
-{ auto n=count_identifiers(branch.pattern);
-  expression_ptr result;
-  if (n==0) // we must avoid creating an empty (lexical) |layer|;
-    result=convert_expr(branch.branch,type);
-  else
-  { layer branch_layer(n);
-    thread_bindings(branch.pattern,variant_type,branch_layer,false);
-    result=convert_expr(branch.branch,type);
+{ if (not pattern_type(branch.pattern).specialise(variant_type))
+  { o << "Pattern " << branch.pattern @|
+      << " does not match type " << variant_type @|
+      << " for variant " <<  main_hash_table->name_of(branch.label);
+    throw expr_error(e,o.str());
   }
-  choices[k] = choice_part(copy_id_pat(branch.pattern),std::move(result));
+@)
+  auto n=count_identifiers(branch.pattern);
+  expression_ptr result;
+  layer branch_layer(n);
+  thread_bindings(branch.pattern,variant_type,branch_layer,false);
+  result=convert_expr(branch.branch,type);
+@/choices[k] = choice_part @|
+     (n==0 ? @[id_pat()@] : copy_id_pat(branch.pattern)
+     ,std::move(result));
 }
 
 @ When reporting a mismatched branch or when a pair of identical branch labels
