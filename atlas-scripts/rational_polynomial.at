@@ -24,9 +24,12 @@ set !ratpoly_q = ratpoly: [0,1], !ratpoly_q2 = ratpoly: [0,0,1]
 
 set common(int a,int b)=lcm([a,b])
 
-set flex_add(ratpoly f,ratpoly g)=let (fn,fd)=%f, (gn,gd)=%g in flex_add(gd*fn,fd*gn)/(fd*gd)
-set flex_sub(ratpoly f,ratpoly g)=let (fn,fd)=%f, (gn,gd)=%g in flex_sub(gd*fn,fd*gn)/(fd*gd)
-set convolve(ratpoly f,ratpoly g)=let (fn,fd)=%f, (gn,gd)=%g in convolve(fn,gn)/(fd*gd)
+set flex_add (ratpoly f,ratpoly g) = ratpoly:
+   let (fn,fd)=%f, (gn,gd)=%g in flex_add(gd*fn,fd*gn)/(fd*gd)
+set flex_sub(ratpoly f,ratpoly g) = ratpoly:
+   let (fn,fd)=%f, (gn,gd)=%g in flex_sub(gd*fn,fd*gn)/(fd*gd)
+set convolve (ratpoly f,ratpoly g) = ratpoly:
+   let (fn,fd)=%f, (gn,gd)=%g in convolve(fn,gn)/(fd*gd)
 
 set + = flex_add@(ratpoly,ratpoly)
 set - = flex_sub@(ratpoly,ratpoly)
@@ -37,7 +40,8 @@ set ratpoly_plus = +@(ratpoly,ratpoly) { this binding will remain exported }
 set ratpoly_sub = -@(ratpoly,ratpoly) { this binding will remain exported }
 
 { reduce polynomial by dropping trailing zeros; shouldn't really be needed }
-set strip (ratpoly v) = ratpoly: v + ratpoly_0 { operator + does actual stripping }
+set strip (ratpoly v) = ratpoly: v + ratpoly_0 { operator + does actual work }
+set degree (ratpoly P) = int: #P.strip-1 { degree, or -1 for the zero ratpoly }
 
 { evaluate polynomial at integer }
 set evaluate_at_1 = sum@ratpoly { from basic.at; often we need this easy case }
@@ -63,10 +67,24 @@ set ^ = (ratpoly,int->ratpoly): { power of a rational polynomial }
 set divide(ratpoly p,ratpoly d) = (ratpoly,ratpoly):
    let rec_fun f(ratpoly q, ratpoly r) = (ratpoly,ratpoly):
       if #r<#d then
-{      prints("p=",p, new_line,"  q=",q,new_line,"d=",d,new_line,"r=",r,new_line,"d*q+r=",d*q+r, " "); }assert(strip(d*q+r)=strip(p),"bug in divide");(q,r) 
+{      prints("p=",p, new_line,"  q=",q,new_line,"d=",d,new_line,"r=",r,new_line,"d*q+r=",d*q+r, " "); }assert(strip(d*q+r)=strip(p),"bug in divide");(q,r)
       else let (c,e)=%(r~[0]/d~[0]) then  t=ratpoly: (null(#r-#d) # c)/e  in
         f(q+t,r-d*t) fi
-   in f(ratpoly_0,p) 
+   in f(ratpoly_0,p)
+
+{.Euclidean division of rational polynomial by a monic rational polynomial.}
+{ the result will have exactly |d.degree| entries (maybe with trialing zeros) }
+set monic_divide ([rat] P, ratpoly D) =
+      (ratpoly,ratpoly): { quotient, remainder }
+   assert(#D>0 and D~[0]=1,"Not a monic divisor");
+   let deg_D = D.degree, l_P=#P in
+   if l_P<=deg_D then (ratpoly_0,P##null(deg_D-l_P))
+   else
+      for i: l_P-deg_D { quotient has $\deg P+1-\deg D$ terms }
+      do let c=P~[i] in for j:deg_D from 1 do P~[i+j] -:= c*D~[j] od
+      od
+   ;  (P[deg_D:] {quotient from upper part}, P[:deg_D] {remainder} )
+   fi
 
 { restore normal vector arithmetic }
 forget +@(ratvec,ratvec)

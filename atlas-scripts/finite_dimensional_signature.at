@@ -1,9 +1,8 @@
 <K_types.at  {K_signature_irr}
-{<WeylCharacterFormula.at}
 <weyl_character_formula.at
 
-{some functions related to Frobenius-Schur indicator, 
-real/quaternionic indicator, and sign of Hermitian form 
+{some functions related to Frobenius-Schur indicator,
+real/quaternionic indicator, and sign of Hermitian form
 on finite dimensional representation}
 
 set verbose_fdsig=true
@@ -38,12 +37,12 @@ set rq(Param p)=int:real_quaternionic(fd_only(p))
 
 {signature and index are, by default, (rat,rat) to allow up to 2^63-1
  signature_int and index_int give (int,int), but may lose information
- for output use signature_string and index_string which can output up to 
+ for output use signature_string and index_string which can output up to
  2^63-1 = 9223372036854775807
 }
 
 {.signature (p,q) of Hermitian form on a finite dimensional representation.}
-set signature(Param p)=(rat,rat):  
+set signature(Param p)=(rat,rat):
 let G=real_form(fd_only(p)) then
 height=rat_as_int(2*infinitesimal_character(p)*rho_check(G))  then
 (pos,neg)=K_signature_irr(p,height) in
@@ -52,14 +51,14 @@ sum(for c@p in neg do split_as_int(c)*dimension_rat(K_type(p)) od))
 
 {.signature as a string.}
 set signature_string(Param p)=string:
-if not is_hermitian(fd_only(p)) then "*" else 
+if not is_hermitian(fd_only(p)) then "*" else
 let (pos,neg)=signature(p)  {type (rat,rat)}
 in "(" + long_rat_as_integer_string(pos) + "," + long_rat_as_integer_string(neg) + ")" fi
 
 {. index min(p,q) of Hermitian form on a finite dimensional representation.}
 set index(Param p)=rat:let (pos,neg)=signature(p) in if pos<=neg then pos else neg fi
 
-set index_string(Param p)=string: 
+set index_string(Param p)=string:
 if not is_hermitian(fd_only(p)) then "*" else long_rat_as_integer_string(index(p)) fi
 
 set anisotropic_part(Param p)=rat: let (pos,neg)=signature(p) in abs(pos-neg)
@@ -79,24 +78,24 @@ new_line,"signature:  signature (p,q) of Hermitian form (if Hermitian)",
 new_line,"index: index min(p,q) of Hermitian form (if Hermitian)",
 new_line,"aniso: dimension |p-q| of anisotropic part of Hermitian form (if Hermitian)",
 new_line,"computing directly from the Hermitian form") fi;
-let weights=box(k+1, ss_rank(G)) then  {all [a_1,...,a_rank] with 0\le a_i\le k} 
+let weights=box(k+1, ss_rank(G)) then  {all [a_1,...,a_rank] with 0\le a_i\le k}
 M=ratvecs_as_ratmat(fundamental_weights(G)) in
-for mu in weights do 
- let lambda=M*mu in 
-  if is_integer(lambda) then 
+for mu in weights do
+ let lambda=M*mu in
+  if is_integer(lambda) then
   let p=finite_dimensional(G,ratvec_as_vec(lambda))
-in 
+in
 prints("fund wt: ", mu, "  lambda:", lambda, " dim:", dimension(p), "   FS/RQ: ", fs(p), "/", rq(p), "  signature: ", signature_string(p), "  index: ", index_string(p), "  aniso: ", anisotropic_part_string(p)) fi od
 
 {-------------------------------------------------------------------------}
 
 {alternative (faster) computation of signature and index, in equal
-rank case, using Weyl character formula, 
+rank case, using Weyl character formula,
 evaluated at strong real form (equal rank case only)
 }
 
 set signature_wcf(Param p)=(rat,rat):
-let G=real_form(p) then    
+let G=real_form(p) then
 v=(torus_factor(KGB(G,0))+rho_check(G))/2 then
 (,diff)=wcf_strong_real(fd_only(p),v) then  {special version of wcf}
 dim=dimension_rat(fd_only(p)) in
@@ -107,11 +106,11 @@ let (pos,neg)=signature_wcf(p) in if pos<=neg then pos else neg fi
 
 {.signature as a string.}
 set signature_wcf_string(Param p)=string:
-if not is_hermitian(fd_only(p)) then "*" else 
-let (pos,neg)=signature_wcf(p)  in 
+if not is_hermitian(fd_only(p)) then "*" else
+let (pos,neg)=signature_wcf(p)  in
 "(" + long_rat_as_integer_string(pos) + "," + long_rat_as_integer_string(neg) + ")"  fi
 
-set index_wcf_string(Param p)=string: 
+set index_wcf_string(Param p)=string:
 if not is_hermitian(fd_only(p)) then "*" else long_rat_as_integer_string(index_wcf(p)) fi
 
 set anisotropic_part_wcf(Param p)=rat: let (pos,neg)=signature_wcf(p) in abs(pos-neg)
@@ -134,22 +133,24 @@ new_line,"signature:  signature (p,q) of Hermitian form (if Hermitian)",
 new_line,"index: index min(p,q) of Hermitian form (if Hermitian)",
 new_line,"aniso: dimension |p-q| of anisotropic part of Hermitian form (if Hermitian)",
 new_line,"computing using the Weyl character formula") fi;
-let weights=box(k+1, ss_rank(G)) then  {all [a_1,...,a_rank] with 0\le a_i\le k} 
+let weights=box(k+1, ss_rank(G)) then  {all [a_1,...,a_rank] with 0\le a_i\le k}
 M=ratvecs_as_ratmat(fundamental_weights(G)) in
-for mu in weights do 
- let lambda=M*mu in 
-  if is_integer(lambda) then 
+for mu in weights do
+ let lambda=M*mu in
+  if is_integer(lambda) then
   let p=finite_dimensional(G,ratvec_as_vec(lambda)) in
 prints("fund wt: ", mu, "  lambda:", lambda, " dim:", long_rat_as_integer_string(dimension_rat(p)), "   FS/RQ: ", fs(p), "/", rq(p), "  signature: ", signature_wcf_string(p), "  index: ", index_wcf_string(p), "  aniso: ", anisotropic_part_wcf_string(p)) fi od
 
 set wcf_report(RootDatum rd, ratvec v, int k)=void:
-let weights=box(k+1, ss_rank(rd)) then  {all [a_1,...,a_rank] with 0\le a_i\le k} 
+let weights=box(k+1, ss_rank(rd)) then  {all [a_1,...,a_rank] with 0\le a_i\le k}
 M=ratvecs_as_ratmat(fundamental_weights(rd)) in
-for mu in weights do 
- let lambda=M*mu in 
-  if is_integer(lambda) then 
-  let p=finite_dimensional(split_form(rd),ratvec_as_vec(lambda)) in 
-  prints("fund wt: ", mu, "  lambda:", lambda, " dim:", dimension(p), "   self-dual: ",is_self_dual(p), " FS: ", fs(p),"   trace(x): ",wcf(p,v)) fi od
+for mu in weights do
+ let lambda=M*mu in
+  if is_integer(lambda) then
+  let p=finite_dimensional(split_form(rd),ratvec_as_vec(lambda)) in
+  prints("fund wt: ", mu, "  lambda:", lambda, " dim:", dimension(p)
+        ,"   self-dual: ",is_self_dual(p), " FS: ", fs(p)
+        ,"   trace(x): ",wcf_strong_real(rd,lambda,v)) fi od
 
 {detailed information about K-signature of finite dimensional
  also see print_K_types:print_K_signature_irr (defined for any p)}
