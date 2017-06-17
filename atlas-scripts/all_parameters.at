@@ -69,26 +69,28 @@ set all_parameters (Param p) = [Param]:
 
 { all parameters with given infinitesimal character and attached to given x }
 set all_parameters_x_gamma (KGBElt x,ratvec gamma) = [Param]:
-  let G=real_form(x) in
-  let rho=rho(G), params=[Param]:[] in
-    let th1=1+involution(x) in
-    for lr in vec_solve(th1,th1*(gamma-rho)) { needed for lambda to be found }
-    do let lambda = rho + lr, nu=(2-th1){1-theta}*gamma/2 in
-      params ##:= { concatenate the following list of Param values: }
-        for v in all_lambda_differential_0(x) do parameter(x,lambda+v,nu) od
-  od; reduce(params)  { keep only 1 from each equivalence class }
+   let G=real_form(x)
+   then rho=rho(G), th1=1+involution(x)
+   in
+   case vec_solve(th1,th1*(gamma-rho))
+   | else [Param]: [] { without solution no parameters }
+   | solution(lr):
+      let lambda = rho + lr, nu=(2-th1){1-theta}*gamma/2 in
+      for v in all_lambda_differential_0(x) do parameter(x,lambda+v,nu) od
+   esac.reduce  { keep only 1 from each equivalence class }
 
 { all parameters with given infinitesimal character }
 set all_parameters_gamma (RealForm G,ratvec gamma) = [Param]:
-  let rho=rho(G), params=[Param]:[] in
-  for x in KGB(G) do
-    let th1=1+involution(x) in
-    for lr in vec_solve(th1,th1*(gamma-rho)) { needed for lambda to be found }
-    do let lambda = rho + lr, nu=(2-th1){1-theta}*gamma/2 in
-      params ##:= { concatenate the following list of Param values: }
+   let rho=rho(G) in
+   for x in KGB(G)
+   do let th1=1+involution(x) in
+      case vec_solve(th1,th1*(gamma-rho))
+      | no_solution: [Param]:[]
+      | solution(lr):
+        let lambda = rho + lr, nu=(2-th1){1-theta}*gamma/2 in
         for v in all_lambda_differential_0(x) do parameter(x,lambda+v,nu) od
-    od
-  od; reduce(params)  { keep only 1 from each equivalence class }
+      esac
+   od.##.reduce  { keep only 1 from each equivalence class }
 
 {      all discrete/minimal principal series                  }
 
@@ -142,7 +144,11 @@ set all_dominant_norm_upto (InnerClass ic, ratvec cowt,int N) =
 set lambda_rho_from_dominant_norm_upto (KGBElt x, ratvec v, int N) = mat: {wts}
   let th1=1+involution(x), rho=rho(root_datum(x)), result=[vec]:[] in
   for mu in all_dominant_norm_upto(inner_class(x),v,N)
-  do result ##:= solve(th1,mu-ratvec_as_vec(th1*rho)) od; #rho{rank} # result
+  do case solve(th1,mu-ratvec_as_vec(th1*rho))
+     | no_solution: ()
+     | solution(s): result #:= s
+     esac
+  od; #rho{rank} # result
 
 set K_parameters_norm_upto ((KGBElt,ratvec,int)(x,,):triple) = [K_Type]:
   let lrs = lambda_rho_from_dominant_norm_upto(triple), rho=rho(root_datum(x))

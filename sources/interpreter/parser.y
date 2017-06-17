@@ -318,6 +318,8 @@ comprim: subscription | slice
 	| IDENT '.' selector
 	  { $$=make_application_node($3,make_applied_identifier($1,@1),@$); }
 	| comprim '.' selector { $$=make_application_node($3,$1,@$); }
+        | '(' ')' '.' selector
+	  { $$=make_application_node($4,wrap_tuple_display(nullptr,@$),@$); }
 	| unit;
 unit    : INT { $$ = make_int_denotation($1,@$); }
 	| TRUE { $$ = make_bool_denotation(true,@$); }
@@ -679,12 +681,18 @@ commabarlist: commalist '|' commalist
 
 caselist: IDENT closed_pattern  ':' expr { $$=make_case_node($1,$2,$4); }
 	| pattern '.' IDENT ':' expr     { $$=make_case_node($3,$1,$5); }
+	| IDENT ':' expr
+	  { struct raw_id_pat id; id.kind=0x0; $$=make_case_node($1,id,$3); }
+	| ELSE expr
+	  { struct raw_id_pat id; id.kind=0x0; $$=make_case_node(-1,id,$2); }
 	| caselist '|' IDENT closed_pattern ':' expr
 	  { $$=append_case_node($1,$3,$4,$6); }
 	| caselist '|' pattern '.' IDENT ':' expr
 	  { $$=append_case_node($1,$5,$3,$7); }
-	| ELSE expr
-	  { struct raw_id_pat id; id.kind=0x0; $$=make_case_node(-1,id,$2); }
+	| caselist '|' IDENT ':'  expr
+	  { struct raw_id_pat id; id.kind=0x0;
+	    $$=append_case_node($1,$3,id,$5);
+	  }
 	| caselist '|' ELSE expr
 	  { struct raw_id_pat id; id.kind=0x0;
 	    $$=append_case_node($1,-1,id,$4);

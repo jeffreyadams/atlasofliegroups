@@ -115,11 +115,15 @@ begin let ic = inner_class(x), theta = involution(x) in
   then t   = solve(1-omega,l*(delta-1))
   ,    tau = solve(1-theta,(delta-1)*lambda_E)
   in
-  assert(>#t,@: prints("solve(",1-omega,",",l*(delta-1),")");
-             "t*(1+theta)=l*(delta-1) has no integral solution t")
-; assert(>#tau,@: prints("solve(",1-theta,",",(delta-1)*lambda_E,")");
-               "(1-theta)tau=(delta-1)*lambda has no integral solution tau")
-; (ic,delta,gamma,lambda_E,theta,g,l,omega,tau[0],t[0])
+  assert(t.any
+        ,@: prints("solve(",1-omega,",",l*(delta-1),")")
+            ; "t*(1+theta)=l*(delta-1) has no integral solution t"
+        )
+; assert(tau.any
+        ,@: prints("solve(",1-theta,",",(delta-1)*lambda_E,")")
+            ; "(1-theta)tau=(delta-1)*lambda has no integral solution tau"
+        )
+; (ic,delta,gamma,lambda_E,theta,g,l,omega,tau.requisition,t.requisition)
 end
 
 { version for the nonintegral case, using KGBElt_gen for y, see synthetic.at }
@@ -140,9 +144,9 @@ begin let ic = inner_class(x), theta = involution(x) in
   then t   = solve(1-omega,l*(delta-1))
   ,    tau = solve(1-theta,(delta-1)*lambda)
   in
-  assert(>#t,"(1-^delta)l=(1-omega)t has no integral solution")
-; assert(>#tau,"(1-delta)lambda=(1-theta)tau has no integral solution")
-; (ic,delta,gamma,lambda,theta,g,l,omega,tau[0],t[0])
+  assert(t.any  ,"(1-^delta)l=(1-omega)t has no integral solution")
+; assert(tau.any,"(1-delta)lambda=(1-theta)tau has no integral solution")
+; (ic,delta,gamma,lambda,theta,g,l,omega,tau.requisition,t.requisition)
 end
 
 { in case of an integral parameter, we can deduce gamma, lambda from it }

@@ -442,13 +442,17 @@ slot (holding a null pointer) instead.
       case BEGIN:
       case IF:
       case WHILE:
-      case FOR: ++nesting; input.push_prompt('G'); break;
+      case FOR:
+      case CASE:
+        ++nesting; input.push_prompt('G'); break;
       case IN: if (input.top_prompt()=='L')
       @/{@; --nesting; input.pop_prompt(); prevent_termination='I'; }
       break;
       case END:
       case FI:
-      case OD: --nesting; input.pop_prompt(); break;
+      case OD:
+      case ESAC:
+        --nesting; input.pop_prompt(); break;
       case AND: case OR: case NOT: prevent_termination='~'; break;
       case WHATTYPE: prevent_termination='W'; break;
     }

@@ -356,6 +356,8 @@ set lookup_row (vec v,mat m) = int:
 { sum of columns of a matrix; this is so neat, avoid calling it sum_columns }
 set sum (mat m)= vec: m*ones(n_columns(m))
 
+: maybe_a_vec = (void no_solution | vec solution) { union type for solve }
+
 { solve(mat A,vec b): a list of 0 or 1 solution vec x to the equation A*x=b
   method:
   - write L*A*R = D using diagonalize, with L,R invertible matrices, D diagonal
@@ -367,16 +369,29 @@ set sum (mat m)= vec: m*ones(n_columns(m))
   - the remainder of y is unconstrained, take them to be 0
   - now x = R*y can be computed using only first d columns of R and target/D
 }
-set solve = (mat,vec->[vec]):
-  let divide_factors (vec v, vec ds) = [vec]:
-    { solve x in diagonal(ds)*x=v[:#ds] if possible and only if v[#ds:]=0 }
-    let OK = =v[#ds:] then result = vec:
-      for d@i in ds do let (q,r)=v[i]\%d in q next OK := OK and =r od
-    in if OK then [result] else [] fi
-  in { solve = }
-  (mat A, vec b) [vec]:
-    let (ds,L,R) = diagonalize(A) in
-    for sol in divide_factors(L*b,ds) do columns_with((int j):j<#sol,R)*sol od
+set solve = (mat,vec->maybe_a_vec):
+   let divide_factors (vec v, vec ds) = maybe_a_vec:
+       { solve x in diagonal(ds)*x=v[:#ds] if possible and only if v[#ds:]=0 }
+      if !=v[#ds:] then no_solution() { solution requires zeros beyond |#ds| }
+      else { try to divide each |v[i]| by |ds[i]|, fail if inexact }
+         for d@i in ds
+         do let (q,r)=v[i]\%d in if !=r then return no_solution() fi
+	 ; q
+         od.solution
+      fi
+   in { solve = }
+   (mat A, vec b) maybe_a_vec:
+      let (ds,L,R) = diagonalize(A) in
+      case divide_factors(L*b,ds)
+      | no_solution: no_solution()
+      | solution(sol): solution(columns_with((int j):j<#sol,R)*sol)
+      esac
+
+set any (maybe_a_vec x) = bool:
+   case x  | solution: true | no_solution: false esac
+set requisition (string message) = (maybe_a_vec->vec):
+   (maybe_a_vec x) vec: case x  | solution(s): s | else error(message) esac
+set requisition = requisition("No solution found; having one was required")
 
 { multiplicative order of a matrix, hangs unless finite }
 set order (mat !M) = int:
