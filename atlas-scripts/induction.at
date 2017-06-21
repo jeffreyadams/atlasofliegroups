@@ -793,10 +793,15 @@ set reduce_good_range (Param p) = (Parabolic,Param):
     fi
   )
 
-{. Determine whether p is a (weakly) good unitary Aq(lambda). .}
-set is_good_Aq(Param p)=bool:
+{. Determine whether p is a weakly good unitary Aq(lambda). .}
+set is_weakly_good_Aq(Param p)=bool:
    let (,p_L)=reduce_good_range(p) in
    is_unitary_character(p_L)and not is_zero(p)
+
+{. Determine whether p is a good unitary Aq(lambda). .}
+set is_good_Aq(Param p)=bool:
+   let (,p_L)=reduce_good_range(p) in
+   is_unitary_character(p_L) and is_regular(p) and not is_zero(p)
 
 {. Determine whether p is a proper (weakly) good unitary Aq(lambda). .}
 set is_proper_Aq(Param p)=bool:
