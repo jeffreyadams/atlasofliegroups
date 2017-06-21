@@ -1010,6 +1010,12 @@ set integrality_datum (Param p)= RootDatum:
 set is_regular (Param p) = bool:
   is_regular(root_datum(p),infinitesimal_character(p))
 
+{. Test whether (the infinitesimal character of) a parameter is
+   strongly regular. .}
+set is_strongly_regular (Param p)=bool:
+   let G=real_form(p) in let ic=infinitesimal_character(p)
+   in is_dominant(root_datum(G),ic-rho(G))
+
 { whether irreducible rpn survives translation functor from regular inf.char. }
 set survives (Param p) = bool:
   is_final(p) { was recently defined to mean exactly that }

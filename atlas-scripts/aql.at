@@ -98,7 +98,7 @@ set all_wf_Aq_with_ic_of(Param p)=[Param]:
 set is_weakly_fair_Aq (Param p) = bool:
    if is_zero(p) then prints("Zero Module");false
    elif not is_final(p) then prints("Parameter is not final.");false
-   elif is_good_Aq(p) then
+   elif is_weakly_good_Aq(p) then
      if aql_verbose then prints("This is a (weakly) good Aq.") fi; true
    else
      let G=real_form(p) in
@@ -209,9 +209,9 @@ set wf_aqs_param (ratvec gamma, Parabolic P)=[(Param,Param)]:
    whether it is real or theta induced from a unitary character;
   if not, compute the hermitian form. .}
 set is_unitary_by_cases (Param p)=bool:
-   let G=real_form(p) in let ic=infinitesimal_character(p) in
-   let rd=root_datum(G) in
-   if is_dominant(rd,ic-rho(G))then
+   let G=real_form(p) in let rd=root_datum(G) in
+   let ic=infinitesimal_character(p) in
+   if is_strongly_regular(p) then
    prints("This is strongly regular."); is_good_Aq(p)
     else prints("now checking for real_induced");
       if (is_integral(rd,2*ic) and
@@ -227,9 +227,9 @@ set is_unitary_by_cases (Param p)=bool:
 {. Test whether a representation is unitary, checking first whether
    it is strongly regular. .}
 set is_unitary_sr (Param p)=bool:
-   let G=real_form(p) in let ic=infinitesimal_character(p) in
-   let rd=root_datum(G) in
-   if is_dominant(rd,ic-rho(G))then
+   {let G=real_form(p) in let ic=infinitesimal_character(p) in
+   let rd=root_datum(G) in}
+   if is_strongly_regular(p) then
    prints("This is strongly regular."); is_good_Aq(p)
    else is_unitary(p) fi
 
@@ -238,9 +238,8 @@ set is_unitary_sr (Param p)=bool:
    and inducing the hermitian form of the smaller group. This function
    the hermitian form and a boolian. .}
 set is_unitary_reduced_with_form (Param p)=(ParamPol,bool):
-   let G=real_form(p) in let ic=infinitesimal_character(p) in
-   let rd=root_datum(G) in
-   if is_dominant(rd,ic-rho(G))
+   let G=real_form(p) in
+   if is_strongly_regular(p)
    then if aql_verbose then prints("This is strongly regular.") fi
    ; (null_module(G),is_good_Aq(p))
    elif not is_hermitian(p)
