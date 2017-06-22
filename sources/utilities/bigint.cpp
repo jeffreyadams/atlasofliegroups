@@ -271,7 +271,7 @@ void big_int::sub_from (const big_int& x)
     if (x.d.back()<neg_flag)
       compl_neg(it+1,(*it=~*it+s)<s); // complement or negate (if |<s|) rest
     else if (s==0)
-      *it=~*it,compl_neg(it+1,false); // complement digits from |*it| to end
+      compl_neg(it,false); // complement digits from |*it| to end
     else
       compl_neg(it+1,(*it=~*it+s)>=s);
   }
