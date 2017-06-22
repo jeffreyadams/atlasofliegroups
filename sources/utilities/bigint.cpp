@@ -252,9 +252,9 @@ void big_int::sub_from (const big_int& x)
 {
   auto it=d.begin(); digit c=1; // complemented borrow, either 0 or 1
   for (auto x_it = x.d.begin(); x_it!=x.d.end()-1; ++x_it,++it)
-    if (digit s = ~*it+c) // for once, contextually convert |s| to |bool|
+    if (digit s = ~*it+c) // for twice, contextually convert |s| to |bool|
       c = static_cast<digit>((*it=*x_it+s)<s);
-    // |else| nothing: add |0| to |*it| and keep |c| as is
+    else *it=*x_it; // and keep |c| as is
 
   if (it == d.end()-1) // equal length case
   { if ((*it xor x.d.back())<neg_flag)
@@ -264,7 +264,7 @@ void big_int::sub_from (const big_int& x)
     }
     else
       if (((*it = x.d.back()+~*it+c)xor x.d.back())>=neg_flag) // then overflow
-	d.push_back(*it>=neg_flag ? 0 : -1); // extend to preserve original sign
+	d.push_back(*it>=neg_flag ? 0 : -1); // extend to flip current sign
   }
   else // |x| shorter than |*this|; add signed |x.d.back()| to unsigned |~*it|
   { digit s=x.d.back()+c;
