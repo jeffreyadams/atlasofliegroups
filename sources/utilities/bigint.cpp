@@ -272,8 +272,17 @@ void big_int::sub_from (const big_int& x)
       compl_neg(it+1,(*it=~*it+s)<s); // complement or negate (if |<s|) rest
     else if (s==0)
       compl_neg(it,false); // complement digits from |*it| to end
-    else
-      compl_neg(it+1,(*it=~*it+s)>=s);
+    else // we must do complement or subtract from $-2$
+    { bool borrow = (*it=~*it+s)>=s;
+      for (++it ; it != d.end()-1; ++it)
+      { *it = ~ *it - static_cast<digit>(borrow);
+	borrow = borrow and (*it)==0;
+      }
+      *it = ~ *it - static_cast<digit>(borrow);
+      if (borrow and *it== ~neg_flag)
+	d.push_back(-1); // positive version of this number needs a leading $0$
+      else shrink(); // or else result might shrink in rare cases
+    }
   }
 
 }
