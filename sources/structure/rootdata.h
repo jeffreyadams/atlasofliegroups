@@ -103,7 +103,7 @@ class RootSystem
   };
   struct root_compare; // auxilary type defined here for access reasons
 
-  size_t rk; // rank of root system
+  unsigned rk; // rank of root system
 
   Byte_vector Cmat; // Cartan matrix in compressed format
 
@@ -134,9 +134,10 @@ class RootSystem
 
 // accessors
 
-  size_t rank() const { return rk; } // semisimple rank when part of |RootDatum|
-  unsigned long numPosRoots() const { return ri.size(); }
-  unsigned long numRoots() const { return 2*numPosRoots(); }
+  // |rank| will be renamed |semisimple_rank| when part of |RootDatum|
+  RootNbr rank() const { return rk; }
+  RootNbr numPosRoots() const { return ri.size(); }
+  RootNbr numRoots() const { return 2*numPosRoots(); }
 
   // Cartan matrix by entry and as a whole
   int cartan(weyl::Generator i, weyl::Generator j) const
@@ -171,7 +172,7 @@ class RootSystem
     void toSimpleWeights(I, I, O, const RootNbrList&) const;
 
   bool is_simple_root(RootNbr alpha) const
-  { return alpha-numPosRoots()<rk; } // this uses that |RootNbr| is unsigned
+  { return RootNbr(alpha-numPosRoots())<rk; } // use that |RootNbr| is unsigned
 
   bool is_posroot(RootNbr alpha) const
   { return alpha>=numPosRoots(); } // second half
