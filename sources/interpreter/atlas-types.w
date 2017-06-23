@@ -1075,16 +1075,20 @@ void rd_nposroots_wrapper(expression_base::level l)
 void root_index_wrapper(expression_base::level l)
 { shared_vector alpha = get<vector_value>();
   shared_root_datum rd(get<root_datum_value>());
-  if (l!=expression_base::no_value)
-    push_value(std::make_shared<int_value>
-		(rd->val.root_index(alpha->val)-rd->val.numPosRoots()));
+  if (l==expression_base::no_value)
+    return;
+  int index=rd->val.root_index(alpha->val); // ensure signed type here
+  index -= static_cast<int>(rd->val.numPosRoots()); // and signed subtract here
+  push_value(std::make_shared<int_value>(index));
 }
 void coroot_index_wrapper(expression_base::level l)
 { shared_vector alpha_v = get<vector_value>();
   shared_root_datum rd(get<root_datum_value>());
-  if (l!=expression_base::no_value)
-    push_value(std::make_shared<int_value>
-		(rd->val.coroot_index(alpha_v->val)-rd->val.numPosRoots()));
+  if (l==expression_base::no_value)
+    return;
+  int index=rd->val.coroot_index(alpha_v->val); // ensure signed type here
+  index -= static_cast<int>(rd->val.numPosRoots()); // and signed subtract here
+  push_value(std::make_shared<int_value>(index));
 }
 
 
