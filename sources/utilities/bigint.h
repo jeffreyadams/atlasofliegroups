@@ -236,11 +236,15 @@ public:
     { big_int d0 = gcd(num,x.den), d1=gcd(den,x.num);
       return big_rat((num/d0)*(x.num/d1),(den/d1)*(x.den/d0));
     }
-  big_rat operator/ (const big_rat& x) const
+  big_rat operator/ (big_rat x) const
     { if (x.is_zero())
 	throw std::runtime_error("Division by zero");
+      if (x.num.is_negative())
+      { x.num.negate();
+	x.den.negate(); // it is OK to give moribund |x| negative denominator
+      }
       big_int d0 = gcd(num,x.num), d1=gcd(den,x.den);
-      return big_rat((num/d0)*(x.den/d1),(den/d1)*(x.num/d0));
+      return big_rat((num/d0)*(x.den/=d1),(den/d1)*(x.num/=d0));
     }
 
   big_rat operator- () const { return big_rat(-num,den); }
