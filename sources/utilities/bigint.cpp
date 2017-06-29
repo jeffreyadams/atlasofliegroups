@@ -694,17 +694,17 @@ big_rat big_rat::operator+ (const big_rat& x) const
   big_int q = x.den/d;
   big_int numer = num*q+x.num*(den/d);
   big_int dd = gcd(numer,d); // no prime divisors of |q*(den/d)| divide |numer|
-  return dd.is_one() ? big_rat(numer,den*q) : big_rat(numer/dd,den*q/dd);
+  return dd.is_one() ? big_rat(numer,den*q) : big_rat(numer/=dd,(den*q)/=dd);
 }
 
 big_rat big_rat::operator- (const big_rat& x) const
 { big_int d = gcd(den,x.den);
-  if (d==1)
-    return big_rat::from_fraction(num*x.den-x.num*den, den*x.den);
+  if (d.is_one())
+    return big_rat(num*x.den-x.num*den, den*x.den);
   big_int q = x.den/d;
   big_int numer = num*q-x.num*(den/d);
   big_int dd = gcd(numer,d); // no prime divisors of |q*(den/d)| divide |numer|
-  return dd.is_one() ? big_rat(numer,den*q) : big_rat(numer/dd,den*q/dd);
+  return dd.is_one() ? big_rat(numer,den*q) : big_rat(numer/=dd,(den*q)/=dd);
 }
 
 big_int big_rat::floor () const { return num/den; }
