@@ -20,6 +20,8 @@ set count ((int->bool) filter, int limit) = int:
 
 set all ([bool] p) = bool:
   for x in p do if not x then return false fi od; true
+set any ([bool] p) = bool:
+  for x in p do if x then return true fi od; false
 set none ([bool] p) = bool:
   for x in p do if x then return false fi od; true
 set first ([bool] p) = int:
@@ -29,6 +31,8 @@ set last ([bool] p) = int:
 
 set all (int limit,(int->bool) filter) = bool:
   for i:limit do if not filter(i) then return false fi od; true
+set any (int limit,(int->bool) filter) = bool:
+  for i:limit do if filter(i) then return true fi od; false
 set none (int limit,(int->bool) filter) = bool:
   for i:limit do if filter(i) then return false fi od; true
 set first (int limit,(int->bool) filter) = int:
@@ -39,6 +43,8 @@ set last (int limit,(int->bool) filter) = int:
 { if evaluating conditions is expensive, one can procedure them with '@:'}
 set all ([(->bool)] p) = bool:
   for x in p do if not x() then return false fi od; true
+set none ([(->bool)] p) = bool:
+  for x in p do if x() then return true fi od; false
 set none ([(->bool)] p) = bool:
   for x in p do if x() then return false fi od; true
 set first ([(->bool)] p) = int:
@@ -455,12 +461,26 @@ set sum (ratvec v) = rat: let (n,d)=%v in sum(n)/d
 set <= (ratvec v) = bool: <=numer(v)
 set <  (ratvec v) = bool: < numer(v)
 
+: maybe_a_ratvec =  { another union type for solve }
+   ( void no_rational_solution
+   | ratvec solution
+   )
+
+
 { solve(mat A,ratvec b) finds 0 or 1 ratvec x satisfying the equation A*x=v }
-set solve (mat A, ratvec b) = [ratvec]:
-  let (ds,L,R) = diagonalize(A), (v,denom)=%b then d=#ds, target=L*v in
-  if !=target[d:] then []
-  else [ columns_with((int j):j<d,R) * for d@i in ds*denom do target[i]/d od ]
-  fi
+set solve (mat A, ratvec b) = maybe_a_ratvec:
+   let (ds,L,R) = diagonalize(A), (v,denom)=%b then d=#ds, target=L*v in
+   if !=target[d:] then no_rational_solution()
+   else solution
+      (columns_with((int j):j<d,R) * for d@i in ds*denom do target[i]/d od)
+   fi
+
+set any (maybe_a_ratvec x) = bool:
+   case x  | solution: true | no_rational_solution: false esac
+set rat_requisition (string message) = (maybe_a_ratvec->ratvec):
+   (maybe_a_ratvec x) ratvec:
+    case x  | solution(s): s | else error(message) esac
+set requisition = rat_requisition("No solution found; having one was required")
 
 
 {                           Split integers                              }

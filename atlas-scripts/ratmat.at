@@ -96,7 +96,7 @@ set - ([ratvec] M,ratmat MM) = ratmat: ratvecs_as_ratmat(M)-MM
 set - (ratmat M,[ratvec] MM) = ratmat: M-ratvecs_as_ratmat(MM)
 
 set inverse (ratmat(M,,d)) = ratmat: let (Minv,e)=invert(M) in d*Minv/e
-set solve (ratmat(M,,d), ratvec v) = [ratvec]: solve(M,v*d)
+set solve (ratmat(M,,d), ratvec v) = maybe_a_ratvec: solve(M,v*d)
 
 {also define resulting operations involving a mat}
 set * ([ratvec] M,mat MM)=ratmat: ratvecs_as_ratmat(M)*mat_as_ratmat(MM)

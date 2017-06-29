@@ -192,7 +192,7 @@ set inverse_by_matrix (cyclotomicFieldElement(,F):z) = cyclotomicFieldElement:
    inverse(matrix_of_multiplication(z))*F.one
 
 set inverse_by_solve (cyclotomicFieldElement(,F):z) = cyclotomicFieldElement:
-   (solve(matrix_of_multiplication(z),F.one.v)[0],F)
+   (solve(matrix_of_multiplication(z),F.one.v).requisition,F)
 
 { use inverse_by_solve }
 {.inverse of element in cyclotomic field.}
@@ -202,7 +202,7 @@ set / = inverse@cyclotomicFieldElement { unary division is inverse }
 
 set / (cyclotomicFieldElement(v,F), cyclotomicFieldElement z) =
       cyclotomicFieldElement:
-   (solve(matrix_of_multiplication(z),v)[0],F)
+   (solve(matrix_of_multiplication(z),v).requisition,F)
 
 {.convert cyclotomic field element to a string for output.}
 set to_string (cyclotomicFieldElement z) = string:
