@@ -135,6 +135,10 @@ set ratvec_to_string(ratvec v) = string: { show ratvec as [rat], simplified }
        + " "
       od
 
+{ convert ratmat, i.e. (mat,string,int), to [[rat]] }
+set ratmat_to_bigmat (ratmat(A,,d)) = [[rat]]:
+  for i:n_columns(A) do [rat]: A[i]/d od
+
 set show (ratmat(M,,d)) = void:
    for v in M do prints(ratvec_to_string(v/d)) od
 
