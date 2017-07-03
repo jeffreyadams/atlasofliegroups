@@ -85,8 +85,8 @@ set diagonal(ratvec v) = ratmat: let (w,d)=%v in (diagonal(w),"/", d)
 {convert [ratvec] to ratmat, and define resulting operations involving a ratmat}
 set ratvecs_as_ratmat ([ratvec] A) = ratmat:
    let d=lcm(for v in A do let (,denom)=%v in denom od) in
-(for v in A do ratvec_as_vec(d*v) od,"/",d)
-set det([ratvec] M) = rat: det(ratvecs_as_ratmat(M))
+   (for v in A do ratvec_as_vec(d*v) od,"/",d)
+
 set ^([ratvec] M) = ratmat: { transpose } ^(ratvecs_as_ratmat(M))
 set * ([ratvec] M,ratmat MM) = ratmat: ratvecs_as_ratmat(M)*MM
 set * (ratmat M,[ratvec] MM) = ratmat: M*ratvecs_as_ratmat(MM)
@@ -134,6 +134,10 @@ set ratvec_to_string(ratvec v) = string: { show ratvec as [rat], simplified }
          if d=1 then int_format(n) else int_format(n)+"/"+int_format(d) fi
        + " "
       od
+
+{ convert ratmat, i.e. (mat,string,int), to [[rat]] }
+set ratmat_to_bigmat (ratmat(A,,d)) = [[rat]]:
+  for i:n_columns(A) do [rat]: A[i]/d od
 
 set show (ratmat(M,,d)) = void:
    for v in M do prints(ratvec_to_string(v/d)) od

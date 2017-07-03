@@ -10,7 +10,7 @@
 }
 
 set fix_add = +@(ratvec,ratvec)
-set fix_sub = -@(ratvec,ratvec) { save fixed-length vector addition and subtraction }
+set fix_sub = -@(ratvec,ratvec) { save fixed-length vector additive operations }
 set dot_product = *@(ratvec,ratvec) { and scalar product }
 
 { prepare for binding arithmetic on |poly| values differently inside this file }
@@ -66,19 +66,24 @@ set ^ = (ratpoly,int->ratpoly): { power of a rational polynomial }
 {. returns rational polynomials (q,r) where p=q*d+r and r=0 or deg(r)<deg(d) .}
 set divide(ratpoly p,ratpoly d) = (ratpoly,ratpoly):
    let rec_fun f(ratpoly q, ratpoly r) = (ratpoly,ratpoly):
-      if #r<#d then
-{      prints("p=",p, new_line,"  q=",q,new_line,"d=",d,new_line,"r=",r,new_line,"d*q+r=",d*q+r, " "); }assert(strip(d*q+r)=strip(p),"bug in divide");(q,r)
-      else let (c,e)=%(r~[0]/d~[0]) then  t=ratpoly: (null(#r-#d) # c)/e  in
-        f(q+t,r-d*t) fi
+      if #r<#d
+      then assert(strip(d*q+r)=strip(p),"bug in divide") { check success }
+      ; (q,r) { return accuulated quotient and remainder }
+      else let c=r~[0]/d~[0] then t=ratpoly: for :#r-#d do rat:0 od # c  in
+        f(q+t,r-d*t)
+      fi
    in f(ratpoly_0,p)
 
+{ Euclidean division by a monic polynomial, using [rat] values at interface.
+  This is promted by implementation which handles individual rat values, but
+  also has the advantage of avoiding overflow problems. The remainder is
+  defined to have exactly |d.degree| entries, which may include trialing zeros.
+}
 {.Euclidean division of rational polynomial by a monic rational polynomial.}
-{ the result will have exactly |d.degree| entries (maybe with trialing zeros) }
-set monic_divide ([rat] P, ratpoly D) =
-      (ratpoly,ratpoly): { quotient, remainder }
+set monic_divide ([rat] P, [rat] D) = ([rat],[rat]): { quotient, remainder }
    assert(#D>0 and D~[0]=1,"Not a monic divisor");
    let deg_D = D.degree, l_P=#P in
-   if l_P<=deg_D then (ratpoly_0,P##null(deg_D-l_P))
+   if l_P<=deg_D then (ratpoly_0,P ## for :deg_D-l_P do rat:0 od)
    else
       for i: l_P-deg_D { quotient has $\deg P+1-\deg D$ terms }
       do let c=P~[i] in for j:deg_D from 1 do P~[i+j] -:= c*D~[j] od
