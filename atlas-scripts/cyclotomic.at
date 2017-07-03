@@ -1,5 +1,4 @@
-<polynomial.at { for type |poly| }
-<rational_polynomial.at { for |monic_divide@ratpoly| }
+<rational_polynomial.at { for |monic_divide@([rat],[rat])| }
 <sort.at { we need to sort divisors }
 <Gaussian_elim.at
 
@@ -67,11 +66,14 @@ set to_denominator (rat r, int N) = int:
 
 { cyclotomic Fields and their elements }
 
+{ We store |Phi| as |[rat]| value to match argumnet type of |monic_divide| }
+
 { represent cyclotomic field by order and minpoly of generating root of 1 }
-: cyclotomicField = (int order, poly Phi)
+: cyclotomicField = (int order, [rat] Phi)
 
 {.construct a cyclotomic field.}
-set cyclotomic_field (int n) = cyclotomicField: (n, cyclotomic_polynomial(n))
+set cyclotomic_field (int n) = cyclotomicField:
+   (n, [rat]: ratvec: cyclotomic_polynomial(n))
 set CF = cyclotomic_field@int  {abbreviation}
 
 set degree (cyclotomicField F) = int: #F.Phi-1
