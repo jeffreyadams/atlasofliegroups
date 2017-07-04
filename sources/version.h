@@ -15,7 +15,8 @@ namespace atlas {
 namespace version {
 
 const char* const NAME = "the Atlas of Lie Groups and Representations";
-const char* const VERSION = "1.0.5"; // last advanced June 27, 2017
+const char* const VERSION = "1.0.6"; // last advanced July 4th, 2017
+// version 1.0.6 completes support for cyclotomic polynomials (for Weyl c.f.)
 const char* const COMPILEDATE = __DATE__ " at " __TIME__;
 
 }

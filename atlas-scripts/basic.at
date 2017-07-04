@@ -121,6 +121,32 @@ set ceil  ([rat] v) = vec: for a in v do  ceil(a) od
 set rat_as_int (rat r) = int:
   let (n,d)=%r in if d=1 then n else error("Not an integer") fi
 
+set min (rat k, rat l) = rat: if k<l then k else l fi
+set max (rat k, rat l) = rat: if k<l then l else k fi
+
+set min ([rat] a) = rat: let l=#a in assert(l.>,"Minimum of an empty list");
+  let m=a~[0] in for i:l-1 do if a[i]<m then m:=a[i] fi od; m
+set max ([rat] a) = rat: let l=#a in assert(l.>,"Maximum of an empty list");
+  let m=a~[0] in for i:l-1 do if a[i]>m then m:=a[i] fi od; m
+
+set min_loc ([rat] a) = int: { position of first occurrence of minimum, or -1 }
+  let l=#a in
+  if =l then minus_1
+  else let p=0, m=a[0] in
+    for i:l-1 from 1 do if a[i]<m then set (p,m):=(i,a[i]) fi od; p
+  fi
+set max_loc ([rat] a) = int: { position of first occurrence of maximum, or -1 }
+  let l=#a in
+  if =l then minus_1
+  else let p=0, m=a[0] in
+    for i:l-1 from 1 do if a[i]>m then set (p,m):=(i,a[i]) fi od; p
+  fi
+
+{ versions seeded with a "limit value" to use in case of an empty list }
+set min (rat !seed) = ([rat]->rat):
+  ([rat] l): let m=seed in for a in l do if a<m then m:=a fi od; m
+set max (rat !seed) = ([rat]->rat):
+  ([rat] l): let m=seed in for a in l do if a>m then m:=a fi od; m
 
 {                               Strings                                 }
 
@@ -735,7 +761,14 @@ set fundamental_weights (RootDatum rd) = [ratvec]:
 set fundamental_coweights (RootDatum rd) = [ratvec]:
   for i:semisimple_rank(rd) do fundamental_coweight(rd,i) od
 
-
+{ find a root of maximal level; if |rd| is simple this is the highest root }
+{.highest root.}
+set highest_root (RootDatum rd) = vec:
+{ root data produced by |dual@RootDatum| are not ordered by level, so do work: }
+  let pr=posroots(rd), rho_check=rho_check(rd) in
+  if =pr then error("Empty set of roots, none is highest")
+  else pr[for alpha in pr do rho_check*alpha od.max_loc]
+  fi
 
 {                               Inner classes                           }
 

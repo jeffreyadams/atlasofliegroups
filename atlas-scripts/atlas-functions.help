@@ -314,6 +314,11 @@ coroot_radical: (RootDatum->mat): simple coroots and radical basis.
 fundamental_weight: (RootDatum,int->ratvec): fundamental weight number $i$
 fundamental_coweight: (RootDatum,int->ratvec): fundamental coweight number $i$
 dual: (RootDatum->RootDatum): dual of given root datum.
+  This operation preserves the numbering of the roots, interchanging just what
+  it calls roots and coroots. This implies that the ordering may differ from
+  the one in which a root datum for the dual type would be constructed in
+  isolation: notably the final root of |dual(rd)| may not be its highest one,
+  even if the root datum is of semisimple type.
 derived_info: (RootDatum->RootDatum,mat): information for the derived group
   The first result is the root datum for the derived group itself, the second
   result is a matrix mapping weights from the original to the derived datum.
