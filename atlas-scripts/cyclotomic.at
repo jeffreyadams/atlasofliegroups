@@ -138,7 +138,7 @@ set + (CyclotomicFieldElement (v,F),CyclotomicFieldElement (w,G)) =
    assert(F=G,"cyclotomic fields do not agree"); (for c@i in v do c+w[i] od,F)
 set - (CyclotomicFieldElement (v,F),CyclotomicFieldElement (w,G)) =
       CyclotomicFieldElement:
-   assert(F=G,"cyclotomic fields do not agree"); (for c@i in v do c+w[i] od,F)
+   assert(F=G,"cyclotomic fields do not agree"); (for c@i in v do c-w[i] od,F)
 
 { negation and scalar multiply need nor reduction either }
 set - (CyclotomicFieldElement (v,F)) = CyclotomicFieldElement:
