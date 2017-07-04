@@ -1,105 +1,79 @@
 <basic.at
-<polynomial.at
 
-: ratpoly = ratvec { in this file vectors will represent polynomials }
-{ poly: [a_0,...,a_n] represents the polynomial a_0+a_1q+...+a_nq^n }
-
-{ addition of vectors (overrides definition in basic.at) to allow vectors of
-  possibly different lengths, implicitly extending on the right by zeros as
-  needed. This gives the right thing for coefficient vectors of polynomials.
+{ define a representation type that avoids implicit conversion to |ratvec|:
+  store a list of rational coefficients, and a indeterminate name
 }
+: RatPoly = ([rat] coefficients, string indeterminate )
 
-set fix_add = +@(ratvec,ratvec)
-set fix_sub = -@(ratvec,ratvec) { save fixed-length vector additive operations }
-set dot_product = *@(ratvec,ratvec) { and scalar product }
+set strip ([rat] v) = [rat]: v[ : 1+last(#v,(int i)bool:v[i].!= ) ]
 
-{ prepare for binding arithmetic on |poly| values differently inside this file }
-forget +@(ratvec,ratvec)
-forget -@(ratvec,ratvec)
-forget *@(ratvec,ratvec)
+{ constructors }
+set rat_poly ([rat] c, string X) = (strip(c),X)
+set rat_poly ([rat] c) = (strip(c),"q") { constructor }
+set rat_poly (rat c0, string X) = rat_poly([c0],X)
+set rat_poly (rat c0) = rat_poly([c0])
 
-{ for convenience declare some constants, the ! makes changes to these illegal }
-set !ratpoly_0 = ratpoly:[], !ratpoly_1 = ratpoly:[1], !ratpoly_2 = ratpoly: [2]
-set !ratpoly_q = ratpoly: [0,1], !ratpoly_q2 = ratpoly: [0,0,1]
-
-set common(int a,int b)=lcm([a,b])
-
-set flex_add (ratpoly f,ratpoly g) = ratpoly:
-   let (fn,fd)=%f, (gn,gd)=%g in flex_add(gd*fn,fd*gn)/(fd*gd)
-set flex_sub(ratpoly f,ratpoly g) = ratpoly:
-   let (fn,fd)=%f, (gn,gd)=%g in flex_sub(gd*fn,fd*gn)/(fd*gd)
-set convolve (ratpoly f,ratpoly g) = ratpoly:
-   let (fn,fd)=%f, (gn,gd)=%g in convolve(fn,gn)/(fd*gd)
-
-set + = flex_add@(ratpoly,ratpoly)
-set - = flex_sub@(ratpoly,ratpoly)
-set * = convolve@(ratvec,ratvec)
-
-set ratpoly_product = *@(ratpoly,ratpoly) { this binding will remain exported }
-set ratpoly_plus = +@(ratpoly,ratpoly) { this binding will remain exported }
-set ratpoly_sub = -@(ratpoly,ratpoly) { this binding will remain exported }
-
-{ reduce polynomial by dropping trailing zeros; shouldn't really be needed }
-set strip (ratpoly v) = ratpoly: v + ratpoly_0 { operator + does actual work }
-set degree (ratpoly P) = int: #P.strip-1 { degree, or -1 for the zero ratpoly }
-
-{ evaluate polynomial at integer }
-set evaluate_at_1 = sum@ratpoly { from basic.at; often we need this easy case }
-
-{. returns polynomials (q,r) where p=q*d+r and r=0 or deg(r)<deg(d) .}
-set divide(poly p,poly d) = (poly,poly):
-   let rec_fun f(poly q, poly r) = (poly,poly):
-      if #r<#d then (q,r)
-      else let t=poly: null(#r-#d) # rat_as_int(r~[0]/d~[0]) in
-         f(poly_plus(q,t),poly_plus(r,-poly_product(t,d)))
-      fi
-   in f(poly_0,p)
-
-set ^ = (ratpoly,int->ratpoly): { power of a rational polynomial }
-  let one=ratpoly:[1] { use local constant for efficiency } in
-  (ratpoly p,int n) ratpoly: { the actual powering function }
-    if n=0 then [1]
-    else { no point in trying to do this by repeated squaring: is not faster }
-      let f=p in while (n-:=1)>0 do f *:= p od; f
-    fi
-
-{. returns rational polynomials (q,r) where p=q*d+r and r=0 or deg(r)<deg(d) .}
-set divide(ratpoly p,ratpoly d) = (ratpoly,ratpoly):
-   let rec_fun f(ratpoly q, ratpoly r) = (ratpoly,ratpoly):
-      if #r<#d
-      then assert(strip(d*q+r)=strip(p),"bug in divide") { check success }
-      ; (q,r) { return accuulated quotient and remainder }
-      else let c=r~[0]/d~[0] then t=ratpoly: for :#r-#d do rat:0 od # c  in
-        f(q+t,r-d*t)
-      fi
-   in f(ratpoly_0,p)
-
-{ Euclidean division by a monic polynomial, using [rat] values at interface.
-  This is promted by implementation which handles individual rat values, but
-  also has the advantage of avoiding overflow problems. The remainder is
-  defined to have exactly |d.degree| entries, which may include trialing zeros.
-}
-{.Euclidean division of rational polynomial by a monic rational polynomial.}
-set monic_divide ([rat] P, [rat] D) = ([rat],[rat]): { quotient, remainder }
-   assert(#D>0 and D~[0]=1,"Not a monic divisor");
-   let deg_D = D.degree, l_P=#P in
-   if l_P<=deg_D then (ratpoly_0,P ## for :deg_D-l_P do rat:0 od)
-   else
-      for i: l_P-deg_D { quotient has $\deg P+1-\deg D$ terms }
-      do let c=P~[i] in for j:deg_D from 1 do P~[i+j] -:= c*D~[j] od
+set to_string (RatPoly(cs,X)) = string:
+   if =#cs then "0"
+   else let result="" in
+      for c@k in cs
+      do if c.!=
+         then let (n,d)=%c in
+            result +:= if n.< then "-" next n:=-n else "+" fi
+         ;  result +:=
+            if d>1 then c.to_string elif n>1 or k=0 then n.to_string else "" fi
+           +if k>1 then X+"^"+k.to_string elif k=1 then X else "" fi
+         fi
       od
-   ;  (P[deg_D:] {quotient from upper part}, P[:deg_D] {remainder} )
+   ; result
    fi
 
-{ restore normal vector arithmetic }
-forget +@(ratvec,ratvec)
-forget -@(ratvec,ratvec)
-forget *@(ratvec,ratvec)
-set + = fix_add@(ratvec,ratvec)
-set - = fix_sub@(ratvec,ratvec)
-set * = dot_product@(ratvec,ratvec)
+set prints (RatPoly P) = prints(P.to_string)
 
-{ make a printable string out of a ratpol and name of indeterminate,
-  for use in other print functions, see polynomial.at:stringPoly }
-set stringPoly (ratpoly v, string q)= string:
-  if =v then "0" else "("+stringPoly(numer(v),q)+")/"+int_format(denom(v)) fi
+{ for convenience declare some constants, the ! makes changes to these illegal }
+set !ratpol_0 = 0.rat_poly, !ratpol_1 = 1.rat_poly, !RatPoly2 = 2.rat_poly
+set !ratpol_q = [0,1].rat_poly, !ratpol_q2 = [0,0,1].rat_poly
+
+set + (RatPoly(a,X),RatPoly(b,)) = RatPoly:
+   let na=#a, nb=#b then m=min(na,nb) in
+   rat_poly(for i:m do a[i]+b[i] od ## if na>nb then a else b fi [m:], X)
+set - (RatPoly(c,X)) = RatPoly: (for e in c do -e od,X)
+set - (RatPoly P, RatPoly Q) = RatPoly: P + -Q
+
+set convolve ([rat] a,[rat] b) = [rat]: { auxiliary for nonzero multiplication }
+   let na=#a, nb=#b then c = for :na+nb-1 do rat:0 od in
+   for x@i in a do for y@j in b do c[i+j]+:=x*y od od; c
+
+set * (RatPoly(a,X),RatPoly(b,)) = RatPoly:
+   if =#a or =#b then rat_poly(0,X) else rat_poly(convolve(a,b),X) fi
+
+{ reduce polynomial by dropping trailing zeros; shouldn't really be needed }
+set strip (RatPoly P) = RatPoly: rat_poly(P) { reconstruct }
+set degree (RatPoly(c,)) = int: #c.strip-1 { degree, or -1 for the |RatPoly0| }
+
+{ evaluate polynomial at integer }
+set evaluate_at_1 (RatPoly(cs,)) = rat:
+   let s=rat:0 in for c in cs do s+:=c od; s
+
+{. Euclidean division: find (q,r) where a=q*b+r and deg(r)<deg(b) .}
+set \% (RatPoly(a,X):A,RatPoly(b,):B) = (RatPoly,RatPoly):
+   let l_a=#a, deg_b = degree(B) in assert(deg_b.>=,"Euclidean division by 0");
+   if l_a<=deg_b then (ratpol_0,A)
+   else let factor = / b~[0] { inverse of leading coefficeint of dividend } in
+      for i: l_a-deg_b { quotient has $\deg P+1-\deg D$ terms }
+      do let c=a~[i]*factor in a~[i]:=c { write coefficient of quotient }
+      ;  for j:deg_b from 1 do a~[i+j] -:= c*b~[j] od
+      od
+   ;  (rat_poly(a[deg_b:],X) { quotient, was written in upper part}
+      ,rat_poly(a[:deg_b],X) { remainder}
+      )
+   fi
+
+set \ (RatPoly A, RatPoly B) = RatPoly: let (result,)= A\%B in result
+set % (RatPoly A, RatPoly B) = RatPoly: let (,result)= A\%B in result
+
+set ^ (RatPoly(p,X),int n) = RatPoly: { power of a rational polynomial }
+   if n=0 then ratpol_1 elif =#p then ratpol_0
+   else { no point in trying to do this by repeated squaring: is not faster }
+      let f=p in while (n-:=1)>0 do f := convolve(f,p) od; rat_poly(f,X)
+   fi
