@@ -1032,7 +1032,8 @@ set x (Param p) = KGBElt: let (x,,) =%p in x
 set lambda_minus_rho (Param p) = vec: let (,lambda_rho,) =%p in lambda_rho
 set lambda (Param p) = ratvec: lambda_minus_rho(p)+rho(real_form(p))
 set infinitesimal_character (Param p) = ratvec: let (,,gamma) =%p in gamma
-set nu (Param p) = ratvec: let (x,,gamma) =%p in (1-involution(x))*gamma/2
+set d_lambda (Param p) = ratvec: let (x,,gamma) =%p in (1+involution(x))*gamma/2
+set nu (Param p) = ratvec:       let (x,,gamma) =%p in (1-involution(x))*gamma/2
 set Cartan_class (Param p) = CartanClass: Cartan_class(x(p))
 
 set involution (Param p)=involution(x(p))
@@ -1064,15 +1065,16 @@ set W_cross ([int] w,Param p) = Param:
   lambda without the rho shift; lambda may have denominator 2 or be a vec
 }
 set parameter (RealForm G,int x,ratvec lambda,ratvec nu) = Param:
-  param(KGB(G,x),ratvec_as_vec(lambda-rho(G)),nu)
+  param(KGB(G,x),ratvec_as_vec(lambda-G.rho),nu)
 set parameter (KGBElt x,ratvec lambda,ratvec nu) = Param:
-  param(x,ratvec_as_vec(lambda-rho(real_form(x))),nu)
+  param(x,ratvec_as_vec(lambda-x.real_form.rho),nu)
 
-{ set parameter ensuring (upon sucess) that the inf. char. is gamma }
+{ set parameter ensuring (upon sucess) that the infinitesimal char. is |gamma|;
+  achieve this by ignoring |(1+theta)*lambda|, replace it by |(1+theta)*gamma| }
 set parameter_gamma(KGBElt x, ratvec lambda, ratvec gamma) = Param:
   let (G,nx)=%x, theta=involution(x) in
-  { ((1-theta)*lambda+(1+theta)*gamma)/2 = (1+theta)*(gamma-lambda)/2+lambda }
-  parameter(G,nx,(1+theta)*(gamma-lambda)/2+lambda,gamma)
+  { ((1-theta)*lambda+(1+theta)*gamma)/2 = lambda+(1+theta)*(gamma-lambda)/2 }
+  parameter(G,nx,lambda+(1+theta)*(gamma-lambda)/2,gamma)
 
 { variation of built-in |block@Param| that weeds out non-starred block elts }
 set singular_block (Param p) = ([Param],int):
