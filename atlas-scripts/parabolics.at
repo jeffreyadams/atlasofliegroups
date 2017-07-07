@@ -312,10 +312,12 @@ set theta_stable_Levi (ratvec lambda, KGBElt x) = RealForm:
 set real_Levi (ratvec lambda, KGBElt x) = RealForm:
    Levi(real_parabolic(lambda,x))
 
-{. Positive coroots in nilradical of P defined by weight lambda (if L theta-stable). .}
+{. Positive coroots in nilradical of P defined by weight lambda
+  (if L theta-stable). .}
 set nilrad (ratvec lambda,KGBElt x) = mat: nilrad(parabolic_mute(lambda,x))
 
-{. Positive roots in nilradical of P defined by weight lambda (if L theta-stable). .}
+{. Positive roots in nilradical of P defined by weight lambda
+  (if L theta-stable). .}
 set nilrad_roots (ratvec lambda,KGBElt x) = mat:
   nilrad_roots(parabolic_mute(lambda,x))
 
@@ -343,14 +345,17 @@ set parabolic_alt (ratvec H,KGBElt x) = Parabolic:
 {. Levi factor of parabolic defined by coweight H. .}
 set Levi_alt (ratvec H,KGBElt x) = RealForm: Levi(parabolic_alt(H,x))
 
-{. Positive coroots in nilradical of P defined by coweight H (if L theta-stable). .}
+{. Positive coroots in nilradical of P defined by coweight H
+  (if L theta-stable). .}
 set nilrad_alt (ratvec H,KGBElt x) = mat: nilrad(parabolic_alt(H,x))
 
-{. Positive roots in nilradical of P defined by coweight H (if L theta-stable). .}
+{. Positive roots in nilradical of P defined by coweight H
+  (if L theta-stable). .}
 set nilrad_roots_alt (ratvec H,KGBElt x) = mat:
   nilrad_roots(parabolic_alt(H,x))
 
-{. Half sum of roots in nilradical of P defined by coweight H (if L theta-stable). .}
+{. Half sum of roots in nilradical of P defined by coweight H
+  (if L theta-stable). .}
 set rho_u_alt (ratvec H,KGBElt x)= ratvec: sum(nilrad_roots_alt(H,x)) /2
 
 {. $\rho(L)$ for Levi of P defined by coweight H (if L theta-stable). .}
@@ -378,7 +383,8 @@ set theta_stable_parabolic (KGBElt x) = Parabolic:
   assert(no_Cminus_roots(x),"x has some C- roots");
   parabolic_mute((1+involution(x))*rho(root_datum(x)),x)
 
-{. Levi factor of theta-stable parabolic defined by x (must have no C- roots). .}
+{. Levi factor of theta-stable parabolic defined by x
+  (must have no C- roots). .}
 set theta_stable_Levi (KGBElt x) = RealForm: Levi(theta_stable_parabolic(x))
 
 {. Check whether a Levi subgroup L is standard in G

@@ -50,7 +50,6 @@ void printWGraph(std::ostream& strm, const wgraph::WGraph& wg)
   {
     strm << z << ":";
     prettyprint::printDescentSet(strm,wg.descent_set(z),wg.rank());
-    assert(wg.coefficients.size()==wg.degree(z));
     strm << ":{";
     for (size_t j = 0; j < wg.degree(z); ++j)
     {

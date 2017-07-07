@@ -7,7 +7,7 @@
 
 { lambda\in X^*+rho =>
     one can define a parameter with this lambda, as p=param(x,lambda-rho,0)
-  then infinitesimal_character(p)=(1+theta)*lambda/2
+  then infinitesimal_character(p)=d_lambda(p)
   which is lambda restricted to T-tilde
   apply this with lambda itself returns (1+theta)*lambda/2  (on T-tilde)
   apply this with lambda=rho,   returns (1+theta)*rho/2     (on T-tilde)

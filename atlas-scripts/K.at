@@ -213,33 +213,27 @@ set convert_K_type (RealForm G,(vec two_lambda, vec torus_bits, int cartan)) =
 2. KHighestWeight: (KGBElt x_K,vec mu)
   x_K in distinguised fiber defines K
   recall (see K.at) T_K=H^\delta is abelian subgroup of K_#
-  mu\in X^*, viewed as element of X^*/(1-delta)X^*=X^*(T_K) (T_K can be disconnected)
-    is a highest weight for K_#=T_K.K_0
+  mu\in X^*, viewed as element of X^*/(1-delta)X^*=X^*(T_K)
+    (T_K can be disconnected)  is a highest weight for K_#=T_K.K_0
   equivalence includes modding out by (1-delta)X^*, see function = below
 
 3. K0_Param: ordinary parameter (x_K,lambda,nu=0) for
    irreducible finite dimensional representation of K_0
    its highest weight is a dominant weight of T_K0
 }
-: K_Type = (KGBElt,ratvec)
+: K_Type = (KGBElt x, ratvec lambda)
 : K_Type_Pol = ParamPol { re-use this type, with nu-part of the terms zero }
-: KHighestWeight = (KGBElt,vec)
+: KHighestWeight = (KGBElt x, vec mu)
 
-set x (K_Type p) =      KGBElt: let (x,)=p in x
-set lambda (K_Type p) = ratvec: let (,lambda)=p in lambda
-
-set root_datum (K_Type p) = root_datum(x(p))
-set real_form (K_Type p)  = real_form(x(p))
-set real_form (KHighestWeight (x,mu))  = real_form(x)
-set K_0(KHighestWeight (x,))=K_0(x)
-
-set dlambda (K_Type p) = ratvec: (1+involution(x(p)))*lambda(p)/2
-set dlambda (Param p)  = ratvec: (1+involution(x(p)))*lambda(p)/2
+set root_datum (K_Type p) = root_datum(p.x)
+set real_form (K_Type p)  = real_form(p.x)
+set real_form (KHighestWeight (x,))  = real_form(x)
+set K_0(KHighestWeight (x,)) = RealForm: K_0(x)
 
 set K_type (Param p) = K_Type:
-  assert(=nu(p),"nu(p) is not zero"); (x(p),lambda(p))
-set parameter (K_Type p) = Param:
-  parameter(x(p),lambda(p),null(rank(root_datum(x(p)))))
+  assert(=nu(p),"nu(p) is not zero"); (p.x,p.lambda)
+set parameter (K_Type(x,lambda)) = Param:
+  parameter(x,lambda,null(rank(root_datum(x))))
 
 { equality of K_Types is now taken care of by equality of Param values }
 set = (K_Type p,K_Type q) = bool: parameter(p)=parameter(q)
@@ -253,8 +247,8 @@ set make_no_Cminus(K_Type p)=K_Type:K_type(make_no_Cminus(parameter(p)))
 }
 
 set length(KHighestWeight (x,mu))=rat:
-let rd=root_datum(K_0(x)) then
-shift=2*rho(rd) in nondegenerate_invariant_form(rd,mu+shift,mu+shift)
+  let rd=root_datum(K_0(x)) then shift=2*rho(rd)
+  in nondegenerate_invariant_form(rd,mu+shift,mu+shift)
 
 {----------------norm of K-types------------------}
 
@@ -277,7 +271,7 @@ set K_norm (ratvec v,Split s,Param p)=int:  K_norm(v)(K_type(p))
   K_norm(Kparam->int) is essentially (height@Param)/2
   precisely: K_norm(K_Type kp)=height(parameter(kp))/2
 }
-set K_norm (K_Type p) =int: K_norm(rho_check(real_form(x(p))))(p)
+set K_norm (K_Type p) =int: K_norm(rho_check(real_form(p.x)))(p)
 set K_norm (Param p)  =int: K_norm(K_type(p))
 set K_norm (Split s,K_Type p) = int: K_norm(p)
 
