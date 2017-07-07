@@ -13,13 +13,14 @@ distribution should be used.
 
 The CWEBX home page is at http://www-math.univ-poitiers.fr/~maavl/CWEBx/ but
 may at times be lagging behind the development, for which a git repository is
-maintained at code.google.com/p/cwebx
+maintained at https://github.com/marc-van-leeuwen/cwebx
 
 Here is a listing of the files constituting the release with a brief
 indication of their purpose. The last two files are needed for processing the
 (plain) TeX files produced by cweavex; make sure they are on your TeX input
 path (by setting the TEXINPUTS environment variable) in case you want to
-produce source documentation for the pertinent Atlas files (mostly realex).
+produce source documentation for the pertinent Atlas files (these are
+currently mostly the ones that define the atlas interpreter).
 
 README	        % the file you are currently reading
 Makefile	% control file for POSIX 'make' facility to build CWEB
