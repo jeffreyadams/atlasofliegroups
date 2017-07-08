@@ -717,9 +717,9 @@ big_int big_rat::quotient (const big_rat& r) const
 big_rat big_rat::operator% (const big_rat& r) const
 { big_int d = gcd(den,r.den);
   if (d.is_one())
-    return big_rat((num*r.den)%(den*r.num),den*r.den);
+    return big_rat::from_fraction((num*r.den)%(den*r.num),den*r.den);
   const big_int q = den/d;
-  return big_rat((num*(r.den/d))%(q*r.num),q*r.den);
+  return big_rat::from_fraction((num*(r.den/d))%(q*r.num),q*r.den);
 }
 
 big_rat big_rat::power (unsigned int e) const
