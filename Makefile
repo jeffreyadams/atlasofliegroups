@@ -191,7 +191,7 @@ $(filter-out sources/interface/io.o,$(Fokko_objects)) : %.o : %.cpp
 
 # the $(messagedir) variable is only needed for the compilation of io.cpp
 sources/interface/io.o : sources/interface/io.cpp
-	$(CXX) $(CXXFLAGS) $(Fokko_flags) -DMESSAGE_DIR_MACRO=\"$(messagedir)\" -o $@ $<
+	$(CXX) $(CXXFLAGS) $(Fokko_flags) -DMESSAGE_DIR_MACRO=\""$(messagedir)"\" -o $@ $<
 
 
 # for files proper to atlas, the build is defined inside sources/interpreter
