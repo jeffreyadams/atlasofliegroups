@@ -1,8 +1,6 @@
-* Mathematical work to be done
-- Study what the unequal rank case is about, and how to do it
-
 * Work on the Atlas library
 
+- Make |Split| type use |big_int| fields, at least in the axis language.
 - Fix lack of edge flipping in first (classical) extended block contructor
 - Rewrite block construction using methods inspired by synthetic operations
 - Remove code for storing the Hermitian dual in KGB structures and blocks

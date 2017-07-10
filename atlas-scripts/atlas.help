@@ -315,12 +315,12 @@ These basic types are:
 type		represents
 -----------------------------------
 bool		truth values
-int		machine integers (32 or 64 bits depending on the machine)
-rat		rational numbers (quotient of two machine integers)
+int		unbouded size integers
+rat		rational numbers (reduced quotients of two unbounded integers)
 string		string of characters
-vec		vector of machine integers
+vec		vector of machine integers (32 bits, going from -2^31 to 2^31-1)
 mat		matrix of machine integers
-ratvec          rational vector (vector numerator with common denominator)
+ratvec          rational vector (vector numerator integer denominator; 64 bits)
 LieType		Lie type (such as D4.A2.T1.E8)
 RootDatum	root datum, specifying a connected complex reductive group
 InnerClass      inner class of real forms (based root datum with involution)
@@ -344,9 +344,9 @@ operators and functions (for instance 22/7 has type 'rat' and GL(5) has type
 Composite types are either function types, array (list) types, tuple types, or
 union types. Array, tuple and union types construct aggregates by combining
 component values, while values of function types are either built-in
-functions, user define functions (defined by a parameter list and function
+functions, user defined functions (defined by a parameter list and function
 body) or special functions called projectors and injectors related to tuple
-respectively union types.All components of an array type must share the same
+respectively union types. All components of an array type must share the same
 type and there could be any number of them (including none at all). For tuple
 types there is a fixed number of components, whose types are individually
 specified, and in particular may differ between components. Like a tuple type

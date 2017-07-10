@@ -91,10 +91,32 @@ set min (int !seed) = ([int]->int):
 set max (int !seed) = ([int]->int):
   ([int] l): let m=seed in for a in l do if a>m then m:=a fi od; m
 
-set lcm ([int] list) = let (,d) = %(ratvec: for x in list do {1} /x od) in d
+set gcd (int a,int b) = int:
+   if b.<= then if b.= then return a else b:=-b { force positive result} fi fi;
+   while !=(a%:=b) do if =(b%:=a) then return a fi od; b
+
+set lcm (int a,int b) = int: let d=gcd(a,b) in if d=1 then a*b else a\d*b fi
+
+set gcd ([int] v)= int: let d=0 in for a in v do d:= gcd(a,d) od; d
+
+set lcm ([int] v) = int: let m=1 in for x in v do m:=lcm(m,x) od; m
 
 set =  ((int,int)(x0,y0),(int,int)(x1,y1)) = bool: x0=x1 and y0=y1
 set != ((int,int)(x0,y0),(int,int)(x1,y1)) = bool: x0!=x1 or y0!=y1
+
+{ scalar multiplication of list (note: *@(vec,int) returning vec is built-in) }
+set * (int c,[int] r) = [int]: for a in r do c*a od
+
+{ sum, product of a list of values }
+set sum ([int] r) = int: let s=0 in for a in r do s+:=a od; s
+set product ([int] r) = int: let p=1 in for a in r do p*:=a od; p
+
+set half (int n) = int: let (q,r)=n\%2 in assert(=r,"Inexact halving"); q
+
+set is_member ([int] v) = (int->bool): { linear search; can be improved }
+  (int val)bool: not all(for x in v do x!=val od)
+
+set contains (int val) = ([int]->bool): ([int] v)bool: v.is_member(val)
 
 
 
@@ -203,19 +225,6 @@ set vector (int n,(int->int)f) = vec: for i:n do f(i) od
 
 set ones (int n)= vec: for i:n do 1 od
 
-{ for computing greatest common divisors, inv_fact can do most of the work }
-set gcd ([int] v)= int:
-  let f=inv_fact(stack_rows([v])) in if =#f then 0 else f[0] fi
-
-{ scalar multiplication; is built-in for the preferred order vec*int }
-set * (int c,vec v) = vec: v*c
-
-{ sum, product of entries }
-set sum (vec v) = int: for x in v do 1 od * v { use scalar product for speed }
-set product (vec v) = int: let s=1 in for e in v do s*:=e od; s
-
-set half (int n) = int: let (q,r)=n\%2 in assert(=r,"Inexact halving"); q
-
 set reverse (vec v)= vec: v~[:]
 set lower (int k,vec v)= vec: v[:k]
 set upper (int k,vec v)= vec: v[k~:]
@@ -224,12 +233,6 @@ set drop_upper (int k,vec v)= vec: v[:k~]
 
 set <= (vec v) = bool: >= -v { anti-dominance (in fundamental weight coords) }
 set <  (vec v) = bool: > -v  { strict anti-dominance }
-
-set is_member ([int] v) = (int->bool):
-  let !start = #v-1 { pre-computation might be more efficient }
-  in (int val)bool: let i=start in while >=i and v[i]!=val do i-:=1 od; >=i
-
-set contains (int val) = ([int]->bool): ([int] v)bool: is_member(v)(val)
 
 set rec_fun all_0_1_vecs (int n) = [vec]:
   if n<=0 then [null(0)]
