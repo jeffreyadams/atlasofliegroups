@@ -14,6 +14,7 @@
 #include <cstdint> // for |uint_32_t| and |uint_64_t|
 #include <vector>
 #include <iostream>
+#include <stdexcept>
 
 #include "arithmetic.h"
 
@@ -76,8 +77,6 @@ public:
     { big_int result(*this); return result+=x; }
   big_int operator- (const big_int& x) const
     { big_int result(*this); return result-=x; }
-  big_int operator- () const
-    { big_int result(*this); return result.negate(); }
   big_int operator+ (big_int&& x) const { return x += *this; }
   big_int operator- (big_int&& x) const { return x.subtract_from(*this); }
 #else
