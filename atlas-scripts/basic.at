@@ -138,6 +138,19 @@ set \% ((rat,rat)p) = (int,rat): (\p,%p)
 set floor ([rat] v) = vec: for a in v do floor(a) od
 set ceil  ([rat] v) = vec: for a in v do  ceil(a) od
 
+set sum ([rat] r) = rat: let s=rat:0 in for a in r do s+:=a od; s
+set product ([rat] r) = rat: let p=rat:1 in for a in r do p*:=a od; p
+
+
+{ extend built-in scalar product of vectors to list of rational case }
+set * ([rat] v, [rat] w) = rat:
+   let s=rat:0 in for vi@i in v do s +:= vi*w[i] od; s
+
+set * (vec v, [rat] w) = rat:
+   let s=rat:0 in for vi@i in v do s +:= vi*w[i] od; s
+
+set * ([rat] v, vec w) = rat:
+   let s=rat:0 in for wi@i in w do s +:= wi*v[i] od; s
 
 { make a rational into an integer if possible }
 set rat_as_int (rat r) = int:
@@ -169,6 +182,12 @@ set min (rat !seed) = ([rat]->rat):
   ([rat] l): let m=seed in for a in l do if a<m then m:=a fi od; m
 set max (rat !seed) = ([rat]->rat):
   ([rat] l): let m=seed in for a in l do if a>m then m:=a fi od; m
+
+set with_decimals (int n) = (rat->string): (rat r) string:
+   let sign=if >=r then "+" else r:=-r; "-" fi then i=floor(r), f=frac(r) in
+   sign ## i.to_string ## "." ##
+   ## for :n do let x=10*f in x.floor.to_string next f:=x.frac od
+
 
 {                               Strings                                 }
 
@@ -339,6 +358,8 @@ set char_poly (mat A) = vec: { characteristic polynomial of integer matrix }
   { use Newton's identities $k*e_k=-\sum_{i=1}^k p_i*e_{k-i}$ to compute |es| }
   for k:n from 1 do ps #:= trace(B); B*:=A; es := (es*ps\-k) # es od; es
 
+set main_daigaonal (mat A) = vec:  for i:min(#A) do A[i,i] od
+
 set saturated_span (mat M) = bool: { whether columns span saturated sublattice }
   let inv_f = inv_fact(M) in
   =#inv_f or inv_f~[0]=1 { all invariant factors are 1? test last one, if any }
@@ -444,8 +465,7 @@ set ## (ratvec a,ratvec b) = ratvec: ##([rat]:a,[rat]:b)
 set ## ([ratvec] rs) = ratvec: ## for r in rs do [rat]:r od
 
 set sum ([ratvec] list, int l) = ratvec: { sum of ratvecs of constant length l }
-  let result = ratvec: null(l) in
-  for v in list do result+:=v od; result
+  let result = ratvec: null(l) in for v in list do result+:=v od; result
 
 { multiply rational matrix represented as list of columns by a rational vector
   the m*n matrix M is given as a list of n ratvec values of size m
@@ -459,13 +479,7 @@ set * ([ratvec] M,ratvec v) = ratvec:
 
 set is_integer (ratvec v) = bool: let (,d)=%v in d=1 { equivalently =(v%1) }
 
-{ extend built-in scalar product of vectors to rational vector case }
-set * (ratvec v, ratvec w) = rat: let (nv,dv)=%v,(nw,dw)=%w in nv*nw/(dv*dw)
-
-set * (vec v, ratvec w) = rat: let (nw,dw)=%w in v*nw/dw { more efficient }
-{ one cannot also define: *(ratvec v, vec w) = rat: let (nv,dv)=%v in nv*w/dv }
-
-{ vector floor of quotient operation, makes vector from rational vector }
+{ vector floor of quotient by int operation; makes vector from rational vector }
 set \ (ratvec v, int k) = vec: let (n,d)=%v in n\(k*d)
 
 { do as |v\1| (or |\ %v|) would do, but protest if there would be a remainder }
@@ -478,9 +492,7 @@ set upper (int k,ratvec v)= ratvec: v[k~:]
 set drop_lower (int k,ratvec v)= ratvec: v[k:]
 set drop_upper (int k,ratvec v)= ratvec: v[:k~]
 
-{ summing rational numbers can be done through conversion to ratvec }
-set sum (ratvec v) = rat: let (n,d)=%v in sum(n)/d
-
+{ dominance conditions }
 set <= (ratvec v) = bool: <=numer(v)
 set <  (ratvec v) = bool: < numer(v)
 
