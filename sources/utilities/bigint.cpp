@@ -722,16 +722,20 @@ big_rat big_rat::operator% (const big_rat& r) const
   return big_rat::from_fraction((num*(r.den/d))%(q*r.num),q*r.den);
 }
 
-big_rat big_rat::power (unsigned int e) const
+big_rat big_rat::power (int e) const
 {
-  if (e<=1)
-    return e==0 ? big_rat(Rational{1,1}) : *this;
+  if (e==0)
+    return big_rat(Rational{1,1});
 
   big_rat result(*this); // take a working copy
+  const bool neg_exp = e<0;
+  e = std::abs(e);
 
   // multiply repeatedly; repeated squaring is asymptotically as bad: $O(e^2)$
-  do result.num*=num, result.den*=den;
-  while (--e>1); // repeat |e-1| times
+  while (--e>0) // repeat |e-1| times
+    result.num*=num, result.den*=den;
+  if (neg_exp)
+    result.invert();
   return result;
 }
 
