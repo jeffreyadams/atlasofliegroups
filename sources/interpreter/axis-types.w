@@ -1933,14 +1933,14 @@ void coercion(const type_expr& from,
 
 @ We shall derive a single class |conversion| from |expression_base| to
 represent any expression that is to be converted using one of the various
-conversions. Which conversion is to be applied is determined by |type|, a
-reference to a |conversion_info| structure containing a function pointer
-|convert| that provides the actual conversion routine; this is easier than
-deriving a plethora of classes differing only in their virtual method
-|evaluate|, although it is slightly less efficient. The type |conv_f| of
-conversion function pointer specifies no argument or return value, as we know
-beforehand that the |shared_value| objects serving for this are to be found
-and left on the runtime stack.
+conversions. Which conversion is to be applied is determined by
+|conversion_type|, a reference to a |conversion_info| structure containing a
+function pointer |convert| that provides the actual conversion routine; this
+is easier than deriving a plethora of classes differing only in their virtual
+method |evaluate|, although it is slightly less efficient. The type |conv_f|
+of conversion function pointer specifies no argument or return value, as we
+know beforehand that the |shared_value| objects serving for this are to be
+found and left on the runtime stack.
 
 @< Type definitions @>=
 struct conversion_info
@@ -1951,11 +1951,11 @@ struct conversion_info
 };
 @)
 class conversion : public expression_base
-{ const conversion_info& type;
+{ const conversion_info& conversion_type;
   expression_ptr exp;
 public:
   conversion(const conversion_info& t,expression_ptr e)
-   :type(t),exp(std::move(e)) @+{}
+@/: conversion_type(t),exp(std::move(e)) @+{}
   virtual void evaluate(level l) const;
   virtual void print(std::ostream& out) const;
 };
@@ -1987,14 +1987,14 @@ signalled as an error in such cases.
 
 @< Function def...@>=
 void conversion::evaluate(level l) const
-{@; exp->eval();
-  (*type.convert)();
+{ exp->eval();
+  (*conversion_type.convert)();
   if (l==no_value)
     execution_stack.pop_back();
 }
 @)
 void conversion::print(std::ostream& out) const
-@+{@; out << type.name << ':' << *exp; }
+@+{@; out << conversion_type.name << ':' << *exp; }
 
 @*1 Coercion of types.
 %
@@ -2101,7 +2101,7 @@ void voiding::print(std::ostream& out) const
 
 
 @ The function |coerce| simply traverses the |coerce_table| looking for an
-appropriate entry, and wraps |e| into a corresponding |conversion| it finds
+appropriate entry, and wraps |e| into a corresponding |conversion| if it finds
 one. Ownership of the expression pointed to by |e| is handled implicitly: it
 is released during the construction of the |conversion|, and immediately
 afterwards |reset| reclaims ownership of the pointer to that |conversion|.
@@ -2144,7 +2144,7 @@ one required. The function |conform_types| will facilitate this. The argument
 |d| is a possibly already partially converted expression, which should be
 further wrapped in a conversion call if appropriate, while |e| is the original
 expression that should be mentioned in an error message if both attempts fail.
-A call to |conform_types| will beinto an invariably followed (upon success) by
+A call to |conform_types| will be invariably followed (upon success) by
 returning the expression now held in the argument~|d| from the calling
 function; we can avoid having to repeat that argument in a return statement by
 returning the value in question already from |conform_types|. To indicate that
@@ -2161,7 +2161,7 @@ expression_ptr conform_types
 (const type_expr& found, type_expr& required, expression_ptr&& d, const expr& e)
 { if (not required.specialise(found) and not coerce(found,required,d))
     throw type_error(e,found.copy(),std::move(required));
-  return std::move(d);
+  return std::move(d); // invoking |std::move| is necessary here
 }
 
 @ List displays and loops produce a row of values of arbitrary (but identical)
