@@ -1674,10 +1674,10 @@ struct rat_value : public value_base
   big_int& numerator() @+{@; return val.numerator(); }
   big_int& denominator() @+{@; return val.denominator(); }
 #else
-  big_int numerator() const & @+{@; return val.numerator(); }
-  big_int denominator() const & @+{@; return val.denominator(); }
-  big_int&& numerator() & @+{@; return std::move(val).numerator(); }
-  big_int&& denominator() & @+{@; return std::move(val).denominator(); }
+  big_int numerator() const &@[@] @+{@; return val.numerator(); }
+  big_int denominator() const &@[@] @+{@; return val.denominator(); }
+  big_int&& numerator() &@[@] @+{@; return std::move(val).numerator(); }
+  big_int&& denominator() &@[@] @+{@; return std::move(val).denominator(); }
 #endif
   Rational rat_val() const @+{@; return val.rat_val(); }
 
@@ -1951,6 +1951,15 @@ void vec_ratvec_convert() // convert vector to rational vector
   push_value(std::make_shared<rational_vector_value> (RatWeight(v->val,1)));
 }
 
+@)
+void vec_ratlist_convert() // convert vector to rational vector
+{ shared_vector v = get<vector_value>();
+  own_row result = std::make_shared<row_value>(v->val.size());
+  for (size_t i=0; i<v->val.size(); ++i)
+    result->val[i] = std::make_shared<rat_value>(big_rat(big_int(v->val[i])));
+  push_value(std::move(result)); // here |std::move| avoids ref-count updates
+}
+
 @ The conversions into vectors or matrices use an auxiliary function
 |row_to_weight|, which constructs a new |Weight| from a row of integers,
 leaving the task to clean up that row to their caller.
@@ -2086,6 +2095,7 @@ coercion(int_type,rat_type, "QI", rational_convert); @/
 coercion(row_of_rat_type,ratvec_type, "Qv[Q]", ratlist_ratvec_convert); @/
 coercion(ratvec_type,row_of_rat_type, "[Q]Qv", ratvec_ratlist_convert); @/
 coercion(vec_type,ratvec_type,"QvV", vec_ratvec_convert); @/
+coercion(vec_type,row_of_rat_type,"[Q]V", vec_ratvec_convert); @/
 coercion(row_of_int_type,ratvec_type,"Qv[I]", intlist_ratvec_convert);
 @)
 coercion(row_of_int_type, vec_type, "V[I]", intlist_vector_convert); @/

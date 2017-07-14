@@ -146,11 +146,8 @@ set product ([rat] r) = rat: let p=rat:1 in for a in r do p*:=a od; p
 set * ([rat] v, [rat] w) = rat:
    let s=rat:0 in for vi@i in v do s +:= vi*w[i] od; s
 
-set * (vec v, [rat] w) = rat:
+set * ([int] v, [rat] w) = rat:
    let s=rat:0 in for vi@i in v do s +:= vi*w[i] od; s
-
-set * ([rat] v, vec w) = rat:
-   let s=rat:0 in for wi@i in w do s +:= wi*v[i] od; s
 
 { make a rational into an integer if possible }
 set rat_as_int (rat r) = int:
