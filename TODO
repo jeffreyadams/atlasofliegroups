@@ -14,11 +14,6 @@
 
 * Work on the axis language
 
-- Clear up confusion around voiding in function argument position
-  Voiding in an argument position should probably never be allowed implicitly
-  (without a cast) but seems allowed for arguments in non-overloaded calls
-  (call of a function variable); weird dependence or argument form and type.
-
 - Prevent abuse of type system possible by capturing (in functions) variables
   whose type is unsettled (like |[*]|), which by well timed assignements can
   lead to illegal occurences of |*| (e.g. as type of a concrete value). This

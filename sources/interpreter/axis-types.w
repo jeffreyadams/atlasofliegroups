@@ -2353,6 +2353,8 @@ unsigned int is_close (const type_expr& x, const type_expr& y)
   if (x.kind==undetermined_type or y.kind==undetermined_type)
     return 0x0;
       // undetermined types do not specialise (or coerce), and are not close
+  if (x==void_type or y==void_type)
+    return 0x0; // |void| does not allow coercion for overload, and is not close
   if (x.kind==primitive_type or y.kind==primitive_type)
   { unsigned int flags=0x0;
     if (coerce(x,y,dummy)) flags |= 0x1;
