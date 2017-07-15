@@ -114,12 +114,12 @@ set inverse (ratmat(M,,d)) = ratmat: let (Minv,e)=invert(M) in d*Minv/e
 set solve (ratmat(M,,d), ratvec v) = [ratvec]: solve(M,v*d)
 
 {also define resulting operations involving a mat}
-set * ([ratvec] M,mat MM)=ratmat: ratvecs_as_ratmat(M)*mat_as_ratmat(MM)
-set * (mat M,[ratvec] MM)=ratmat: mat_as_ratmat(M)*ratvecs_as_ratmat(MM)
-set + ([ratvec] M,mat MM)=ratmat: ratvecs_as_ratmat(M)+mat_as_ratmat(MM)
-set + (mat M,[ratvec] MM)=ratmat: mat_as_ratmat(M)+ratvecs_as_ratmat(MM)
-set - ([ratvec] M,mat MM)=ratmat: ratvecs_as_ratmat(M)-mat_as_ratmat(MM)
-set - (mat M,[ratvec] MM)=ratmat: mat_as_ratmat(M)-ratvecs_as_ratmat(MM)
+set * ([ratvec] M,[ratvec] MM)=ratmat:
+  ratvecs_as_ratmat(M)*ratvecs_as_ratmat(MM)
+set + ([ratvec] M,[ratvec] MM)=ratmat:
+  ratvecs_as_ratmat(M)+ratvecs_as_ratmat(MM)
+set - ([ratvec] M,[ratvec] MM)=ratmat:
+  ratvecs_as_ratmat(M)-ratvecs_as_ratmat(MM)
 
 {define inverse of mat as ratmat}
 set rational_inverse(mat M) = ratmat:inverse(mat_as_ratmat(M))

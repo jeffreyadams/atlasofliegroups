@@ -1188,7 +1188,9 @@ extern const type_expr mat_type; // \.{mat}
 extern const type_expr row_of_int_type; // \.{[int]}
 extern const type_expr row_of_rat_type; // \.{[rat]}
 extern const type_expr row_of_vec_type; // \.{[vec]}
+extern const type_expr row_of_ratvec_type; // \.{[ratvec]}
 extern const type_expr row_row_of_int_type; // \.{[[int]]}
+extern const type_expr row_row_of_rat_type; // \.{[[rat]]}
 extern const type_expr pair_type; // \.{(*,*)}
 extern const type_expr int_int_type; // \.{(int,int)}
 extern const type_expr Lie_type_type; // \.{LieType}
@@ -1217,7 +1219,9 @@ const type_expr mat_type(matrix_type);
 const type_expr row_of_int_type(mk_type_expr("[int]"));
 const type_expr row_of_rat_type(mk_type_expr("[rat]"));
 const type_expr row_of_vec_type(mk_type_expr("[vec]"));
+const type_expr row_of_ratvec_type(mk_type_expr("[ratvec]"));
 const type_expr row_row_of_int_type(mk_type_expr("[[int]]"));
+const type_expr row_row_of_rat_type(mk_type_expr("[[rat]]"));
 const type_expr pair_type(mk_type_expr("(*,*)"));
 const type_expr int_int_type(mk_type_expr("(int,int)"));
 const type_expr Lie_type_type(complex_lie_type_type);
@@ -1289,12 +1293,12 @@ value-constructed (i.e., use the no-arguments constructor) the base object
 instead (and indeed this used to be the case), but copy-construct is what the
 default copy-constructor for the derived class does, so not deleting the
 copy-constructor here allows those defaults to be used. Cloning only happens
-in specific contexts (namely the function templates |uniquify| and |get_own|
-defined below) where the actual type will in fact be known, so some derived
-types may choose to never use this and not implement |clone| at all, which is
-why it is not defined pure virtual. In fact this state of affairs suggests one
-could do duplication with a non-virtual (but systematically named) method
-instead.
+in specific contexts (namely the function templates |uniquify|, |get_own| and
+|force_own| defined below) where the actual type will in fact be known, so
+some derived types may choose to never use this and not implement |clone| at
+all, which is why it is not defined pure virtual. In fact this state of
+affairs suggests one could do duplication with a non-virtual (but
+systematically named) method instead.
 
 Values are always handled via pointers. The raw pointer type is |value|, and a
 shared smart pointer-to-constant is |shared_value|. The const-ness of the
@@ -1800,7 +1804,7 @@ will often be the second one that is selected.
 
 @< Template and inline function definitions @>=
 template <typename D> // |D| is a type derived from |value_base|
-  D* force (value_base* v) throw(logic_error)
+  D* force (value_base* v)
 { D* p=dynamic_cast<D*>(v);
   if (p==nullptr) throw
     logic_error(std::string("forced value is no ")+D::name());
@@ -1808,7 +1812,7 @@ template <typename D> // |D| is a type derived from |value_base|
 }
 @)
 template <typename D> // |D| is a type derived from |value_base|
-  const D* force (value v) throw(logic_error)
+  const D* force (value v)
 { const D* p=dynamic_cast<const D*>(v);
   if (p==nullptr) throw
     logic_error(std::string("forced value is no ")+D::name());
@@ -1860,6 +1864,28 @@ inline value_base* uniquify(shared_value& v)
 template <typename D> // |D| is a type derived from |value_base|
   std::shared_ptr<D> get_own()
 { std::shared_ptr<const D> p=get<D>();
+  if (p.unique())
+    return std::const_pointer_cast<D>(p);
+  return std::shared_ptr<D>(p->clone());
+}
+
+@ Finally there is |force_own| that intends to be to |force| what |get_own| is
+to |get|, both requiring its argument to currently hold a pointer to a
+specific type derived from |value_base|, and returning a shared pointer to
+non-|const| version of it, with duplication being applied only if the original
+pointer was not |unique|. In order for this to work, the original copy of the
+pointer must be cleared at the time |unique| is called, so that the call has
+some chance of returning |true|; this is obtained by taking the argument as
+rvalue reference, and making sure a temporary is move-constructed from it
+inside the body of |force_own|.
+
+@< Template and inline function def... @>=
+template <typename D> // |D| is a type derived from |value_base|
+  std::shared_ptr<D> force_own(shared_value&& q)
+{ std::shared_ptr<const D> p=
+     std::dynamic_pointer_cast<const D>(shared_value(std::move(q)));
+  if (p==nullptr) throw
+    logic_error(std::string("forced value is no ")+D::name());
   if (p.unique())
     return std::const_pointer_cast<D>(p);
   return std::shared_ptr<D>(p->clone());
@@ -1933,14 +1959,14 @@ void coercion(const type_expr& from,
 
 @ We shall derive a single class |conversion| from |expression_base| to
 represent any expression that is to be converted using one of the various
-conversions. Which conversion is to be applied is determined by |type|, a
-reference to a |conversion_info| structure containing a function pointer
-|convert| that provides the actual conversion routine; this is easier than
-deriving a plethora of classes differing only in their virtual method
-|evaluate|, although it is slightly less efficient. The type |conv_f| of
-conversion function pointer specifies no argument or return value, as we know
-beforehand that the |shared_value| objects serving for this are to be found
-and left on the runtime stack.
+conversions. Which conversion is to be applied is determined by
+|conversion_type|, a reference to a |conversion_info| structure containing a
+function pointer |convert| that provides the actual conversion routine; this
+is easier than deriving a plethora of classes differing only in their virtual
+method |evaluate|, although it is slightly less efficient. The type |conv_f|
+of conversion function pointer specifies no argument or return value, as we
+know beforehand that the |shared_value| objects serving for this are to be
+found and left on the runtime stack.
 
 @< Type definitions @>=
 struct conversion_info
@@ -1951,11 +1977,11 @@ struct conversion_info
 };
 @)
 class conversion : public expression_base
-{ const conversion_info& type;
+{ const conversion_info& conversion_type;
   expression_ptr exp;
 public:
   conversion(const conversion_info& t,expression_ptr e)
-   :type(t),exp(std::move(e)) @+{}
+@/: conversion_type(t),exp(std::move(e)) @+{}
   virtual void evaluate(level l) const;
   virtual void print(std::ostream& out) const;
 };
@@ -1987,14 +2013,14 @@ signalled as an error in such cases.
 
 @< Function def...@>=
 void conversion::evaluate(level l) const
-{@; exp->eval();
-  (*type.convert)();
+{ exp->eval();
+  (*conversion_type.convert)();
   if (l==no_value)
     execution_stack.pop_back();
 }
 @)
 void conversion::print(std::ostream& out) const
-@+{@; out << type.name << ':' << *exp; }
+@+{@; out << conversion_type.name << ':' << *exp; }
 
 @*1 Coercion of types.
 %
@@ -2101,7 +2127,7 @@ void voiding::print(std::ostream& out) const
 
 
 @ The function |coerce| simply traverses the |coerce_table| looking for an
-appropriate entry, and wraps |e| into a corresponding |conversion| it finds
+appropriate entry, and wraps |e| into a corresponding |conversion| if it finds
 one. Ownership of the expression pointed to by |e| is handled implicitly: it
 is released during the construction of the |conversion|, and immediately
 afterwards |reset| reclaims ownership of the pointer to that |conversion|.
@@ -2144,7 +2170,7 @@ one required. The function |conform_types| will facilitate this. The argument
 |d| is a possibly already partially converted expression, which should be
 further wrapped in a conversion call if appropriate, while |e| is the original
 expression that should be mentioned in an error message if both attempts fail.
-A call to |conform_types| will beinto an invariably followed (upon success) by
+A call to |conform_types| will be invariably followed (upon success) by
 returning the expression now held in the argument~|d| from the calling
 function; we can avoid having to repeat that argument in a return statement by
 returning the value in question already from |conform_types|. To indicate that
@@ -2161,7 +2187,7 @@ expression_ptr conform_types
 (const type_expr& found, type_expr& required, expression_ptr&& d, const expr& e)
 { if (not required.specialise(found) and not coerce(found,required,d))
     throw type_error(e,found.copy(),std::move(required));
-  return std::move(d);
+  return std::move(d); // invoking |std::move| is necessary here
 }
 
 @ List displays and loops produce a row of values of arbitrary (but identical)

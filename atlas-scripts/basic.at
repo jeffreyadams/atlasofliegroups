@@ -149,6 +149,13 @@ set ceil  ([rat] v) = vec: for a in v do  ceil(a) od
 set sum ([rat] r) = rat: let s=rat:0 in for a in r do s+:=a od; s
 set product ([rat] r) = rat: let p=rat:1 in for a in r do p*:=a od; p
 
+{ extend built-in scalar product of vectors to list of rational case }
+set * ([rat] v, [rat] w) = rat:
+   let s=rat:0 in for vi@i in v do s +:= vi*w[i] od; s
+
+set * ([int] v, [rat] w) = rat:
+   let s=rat:0 in for vi@i in v do s +:= vi*w[i] od; s
+
 { make a rational into an integer if possible }
 set rat_as_int (rat r) = int:
   let (n,d)=%r in if d=1 then n else error("Not an integer") fi
@@ -475,12 +482,6 @@ set * ([ratvec] M,ratvec v) = ratvec:
   result
 
 set is_integer (ratvec v) = bool: let (,d)=%v in d=1 { equivalently =(v%1) }
-
-{ extend built-in scalar product of vectors to rational vector case }
-set * (ratvec v, ratvec w) = rat: let (nv,dv)=%v,(nw,dw)=%w in nv*nw/(dv*dw)
-
-set * (vec v, ratvec w) = rat: let (nw,dw)=%w in v*nw/dw { more efficient }
-{ one cannot also define: *(ratvec v, vec w) = rat: let (nv,dv)=%v in nv*w/dv }
 
 { vector floor of quotient by int operation; makes vector from rational vector }
 set \ (ratvec v, int k) = vec: let (n,d)=%v in n\(k*d)
