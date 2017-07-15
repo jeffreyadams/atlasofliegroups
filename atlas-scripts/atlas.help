@@ -681,25 +681,29 @@ producing a correct result even when the row of vectors is empty.
 
 Here is a list of all implicit type conversions
 
-  vec       <-> [int]
-  mat       <-> [vec]    (vectors are columns of the matrix)
-  mat       <-> [[int]]  (inner arrays are columns of the matrix)
   int        -> rat      (denominator 1)
+  vec       <-> [int]    (expansion/compression)
   ratvec    <-> [rat]    (ratvec has least common denominator)
   vec        -> ratvec   (denominator 1)
-  [int]      -> ratvec
-  int	     -> Split
-  string     -> LieType  (applies Lie_type function)
-  InnerClass -> RootDatum
-  RealForm   -> InnerClass
-  RealForm   -> RootDatum
-  Param	     -> ParamPol (parameter is converted to final parameter(s) first)
+  [int]      -> ratvec   (denominator 1, terms must fit in 64 bits)
+  vec        -> [rat]    (same as passing via ratvec)
+  [int]      -> [rat]    (conversion int->rat applied to each entry)
+  mat       <-> [vec]    (vectors are columns of the matrix)
+  mat       <-> [[int]]  (inner arrays are columns of the matrix)
+  [vec]     <-> [[int]]  (convert each vec separately)
+  mat        -> [ratvec] (columns with denominator 1)
+  mat        -> [[rat]]  (entries by columns, with denominator 1)
+  [vec]      -> [ratvec] (conversion vec->ratvec applied to each vector)
+  [vec]      -> [[rat]]  (conversion vec->[rat] applied to each vector)
+  [[int]]    -> [ratvec] (conversion [int]->ratvec applied to each sublist)
+  [[int]]    -> [[rat]]  (conversion int->rat applied to each inner entry)
 
-At most one implicit conversion is applied to a given subexpression, so there
-is for instance no implicit conversion from '[int]' to '[rat]' passing through
-the intermediate type 'ratvec'; should this chain of implicit conversions be
-desired, writing a cast 'ratvec:' will allow it (the first conversion no being
-inside the cast, the second applied to the result of the cast).
+  int	     -> Split    (applies (int k)Split:(k,0))
+  string     -> LieType  (applies Lie_type function)
+  InnerClass -> RootDatum (inheritance)
+  RealForm   -> InnerClass (inheritance)
+  RealForm   -> RootDatum (inheritance)
+  Param	     -> ParamPol (parameter is converted to final parameter(s) first)
 
 The one-directional conversions int->rat and string->LieType are mainly a
 convenience to users, as these conversion could be written out explicitly:

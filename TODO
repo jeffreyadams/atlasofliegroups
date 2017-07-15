@@ -14,10 +14,15 @@
 
 * Work on the axis language
 
-- Clear up confusion around voiding in function argument position
-  Voiding in an argument position should probably never be allowed implicitly
-  (without a cast) but seems allowed for single arguments, and even for
-  multiple arguments in non-overloaded calls (composite function expression).
+- Prevent abuse of type system possible by capturing (in functions) variables
+  whose type is unsettled (like |[*]|), which by well timed assignements can
+  lead to illegal occurences of |*| (e.g. as type of a concrete value). This
+  is quite subtle; maybe forbid binding to names with such type altogether.
+
+- Maybe allow |set a:=b,b:=a+b| as alternative for |set (a,b):=(b,a+b)|
+
+- Allow repeated selection assignment |M[1][3]:=0| or |a[i].re:=5|
+  This could possibly be dome by transformation inside the parser
 
 - Improve output of expressions
   Distinguish one-line (maybe abbreviated) and long forms.
@@ -50,8 +55,6 @@
 - Avoid using Smith normal form computations in |invert|, |det| and such;
   prefer Gaussian elemination methods possibly using big rationals
 
-- Nuance "simply connected" and "adjoint" in printing non-semisimple root data
-
 - Ensure that root data obtained from inner classes or beyond are shared
 
 - Make system test for duplicate objects like two equivalent real forms in the
@@ -62,7 +65,7 @@
 
 * Work on the atlas scripts
 
-- Complete the groups in groups.rx (types G,F); also avoid use of "s" etc.
+- Complete the groups in groups.at (types G,F); also avoid use of "s" etc.
 - Adapt scripts to use/illustrate the new language features, once implemented.
 
 * Work on documentation

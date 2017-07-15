@@ -805,14 +805,20 @@ LieType type_of_datum(const RootDatum& rd)
 
 @ Then this is how we print root data. The mention of |"simply connected"|
 and/or |"adjoint"| is in order to make some use of these flags, which are
-present anyway.
+present anyway. However, we only print something for semisimple root data,
+since that is mathematically required in order for the associated complex
+group to be either simply connected or adjoint. The proper interpretation for
+non-semisimple root data would be ``has semisimple derived group'' for
+|isSemisimple|, and ``has connected center'' for |isAdjoint|, but these are
+quite a mouth full, especially if expressed in a grammatically correct way.
 
 @< Function definitions @>=
 void root_datum_value::print(std::ostream& out) const
 { Lie_type_value type(type_of_datum(val));
-  out << (val.isSimplyConnected() ? "simply connected " : "")
-   @| << (val.isAdjoint() ? "adjoint " : "")
-      << "root datum of " << type;
+  if (val.isSemisimple())
+    out << (val.isSimplyConnected() ? "simply connected " : "")
+     @| << (val.isAdjoint() ? "adjoint " : "");
+  out << "root datum of " << type;
 }
 
 @ We also make the derivation of the type available by a wrapper function.

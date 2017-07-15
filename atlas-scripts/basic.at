@@ -22,6 +22,8 @@ set all ([bool] p) = bool:
   for x in p do if not x then return false fi od; true
 set none ([bool] p) = bool:
   for x in p do if x then return false fi od; true
+set some ([bool] p) = bool:
+  for x in p do if x then return true fi od; false
 set first ([bool] p) = int:
   for x@i in p do if x then return i fi od; minus_1
 set last ([bool] p) = int:
@@ -31,6 +33,8 @@ set all (int limit,(int->bool) filter) = bool:
   for i:limit do if not filter(i) then return false fi od; true
 set none (int limit,(int->bool) filter) = bool:
   for i:limit do if filter(i) then return false fi od; true
+set some (int limit,(int->bool) filter) = bool:
+  for i:limit do if filter(i) then return true fi od; false
 set first (int limit,(int->bool) filter) = int:
   for i:limit do if filter(i) then return i fi od; minus_1
 set last (int limit,(int->bool) filter) = int:
@@ -41,6 +45,8 @@ set all ([(->bool)] p) = bool:
   for x in p do if not x() then return false fi od; true
 set none ([(->bool)] p) = bool:
   for x in p do if x() then return false fi od; true
+set none ([(->bool)] p) = bool:
+  for x in p do if x() then return true fi od; false
 set first ([(->bool)] p) = int:
   for x@i in p do if x() then return i fi od; minus_1
 set last ([(->bool)] p) = int: { this is somewhat more efficient than first }
@@ -93,11 +99,12 @@ set max (int !seed) = ([int]->int):
 
 set gcd (int a,int b) = int:
    if b.<= then if b.= then return a else b:=-b { force positive result} fi fi;
-   while !=(a%:=b) do if =(b%:=a) then return a fi od; b
+   while let r=a%b in r.!= do set (a,b):=(b,r) od; b
 
 set lcm (int a,int b) = int: let d=gcd(a,b) in if d=1 then a*b else a\d*b fi
 
-set gcd ([int] v)= int: let d=0 in for a in v do d:= gcd(a,d) od; d
+set gcd ([int] v)= int:
+  let d=0 in for a in v do if (d:= gcd(a,d))=1 then return 1 fi od; d
 
 set lcm ([int] v) = int: let m=1 in for x in v do m:=lcm(m,x) od; m
 
@@ -114,9 +121,10 @@ set product ([int] r) = int: let p=1 in for a in r do p*:=a od; p
 set half (int n) = int: let (q,r)=n\%2 in assert(=r,"Inexact halving"); q
 
 set is_member ([int] v) = (int->bool): { linear search; can be improved }
-  (int val)bool: not all(for x in v do x!=val od)
+  (int val)bool: some(for x in v do x=val od)
 
-set contains (int val) = ([int]->bool): ([int] v)bool: v.is_member(val)
+set contains (int val) = ([int]->bool): ([int] v)bool:
+  some(#v,(int i)bool:v[i]=val)
 
 
 
@@ -138,6 +146,15 @@ set \% ((rat,rat)p) = (int,rat): (\p,%p)
 set floor ([rat] v) = vec: for a in v do floor(a) od
 set ceil  ([rat] v) = vec: for a in v do  ceil(a) od
 
+set sum ([rat] r) = rat: let s=rat:0 in for a in r do s+:=a od; s
+set product ([rat] r) = rat: let p=rat:1 in for a in r do p*:=a od; p
+
+{ extend built-in scalar product of vectors to list of rational case }
+set * ([rat] v, [rat] w) = rat:
+   let s=rat:0 in for vi@i in v do s +:= vi*w[i] od; s
+
+set * ([int] v, [rat] w) = rat:
+   let s=rat:0 in for vi@i in v do s +:= vi*w[i] od; s
 
 { make a rational into an integer if possible }
 set rat_as_int (rat r) = int:
@@ -169,6 +186,12 @@ set min (rat !seed) = ([rat]->rat):
   ([rat] l): let m=seed in for a in l do if a<m then m:=a fi od; m
 set max (rat !seed) = ([rat]->rat):
   ([rat] l): let m=seed in for a in l do if a>m then m:=a fi od; m
+
+set with_decimals (int n) = (rat->string): (rat r) string:
+   let sign=if >=r then "+" else r:=-r; "-" fi then i=floor(r), f=frac(r) in
+   sign ## i.to_string ## "." ##
+   ## for :n do let x=10*f in x.floor.to_string next f:=x.frac od
+
 
 {                               Strings                                 }
 
@@ -339,6 +362,8 @@ set char_poly (mat A) = vec: { characteristic polynomial of integer matrix }
   { use Newton's identities $k*e_k=-\sum_{i=1}^k p_i*e_{k-i}$ to compute |es| }
   for k:n from 1 do ps #:= trace(B); B*:=A; es := (es*ps\-k) # es od; es
 
+set main_diagonal (mat A) = vec:  for i:min(#A) do A[i,i] od
+
 set saturated_span (mat M) = bool: { whether columns span saturated sublattice }
   let inv_f = inv_fact(M) in
   =#inv_f or inv_f~[0]=1 { all invariant factors are 1? test last one, if any }
@@ -444,8 +469,7 @@ set ## (ratvec a,ratvec b) = ratvec: ##([rat]:a,[rat]:b)
 set ## ([ratvec] rs) = ratvec: ## for r in rs do [rat]:r od
 
 set sum ([ratvec] list, int l) = ratvec: { sum of ratvecs of constant length l }
-  let result = ratvec: null(l) in
-  for v in list do result+:=v od; result
+  let result = ratvec: null(l) in for v in list do result+:=v od; result
 
 { multiply rational matrix represented as list of columns by a rational vector
   the m*n matrix M is given as a list of n ratvec values of size m
@@ -459,13 +483,7 @@ set * ([ratvec] M,ratvec v) = ratvec:
 
 set is_integer (ratvec v) = bool: let (,d)=%v in d=1 { equivalently =(v%1) }
 
-{ extend built-in scalar product of vectors to rational vector case }
-set * (ratvec v, ratvec w) = rat: let (nv,dv)=%v,(nw,dw)=%w in nv*nw/(dv*dw)
-
-set * (vec v, ratvec w) = rat: let (nw,dw)=%w in v*nw/dw { more efficient }
-{ one cannot also define: *(ratvec v, vec w) = rat: let (nv,dv)=%v in nv*w/dv }
-
-{ vector floor of quotient operation, makes vector from rational vector }
+{ vector floor of quotient by int operation; makes vector from rational vector }
 set \ (ratvec v, int k) = vec: let (n,d)=%v in n\(k*d)
 
 { do as |v\1| (or |\ %v|) would do, but protest if there would be a remainder }
@@ -478,9 +496,7 @@ set upper (int k,ratvec v)= ratvec: v[k~:]
 set drop_lower (int k,ratvec v)= ratvec: v[k:]
 set drop_upper (int k,ratvec v)= ratvec: v[:k~]
 
-{ summing rational numbers can be done through conversion to ratvec }
-set sum (ratvec v) = rat: let (n,d)=%v in sum(n)/d
-
+{ dominance conditions }
 set <= (ratvec v) = bool: <=numer(v)
 set <  (ratvec v) = bool: < numer(v)
 
@@ -789,20 +805,19 @@ set print_Cartan_info (CartanClass cc) = void:
   let show (string s) = string: if s="" then "empty" else s fi
   , ((cr,Cr,sr),ww,(orbit_size,fiber_size),(i_tp,r_tp,C_tp)) = Cartan_info(cc)
   in
-  begin
-    prints("compact: ",cr,", complex: ",Cr,", split: ",sr)
-  ; (let str = "canonical twisted involution: " in
-       if =#ww then str +:= "e"
-       else for s@i in ww do if =i then str +:= s+1 else str +:= ","+(s+1) fi od
-       fi
-     ; prints(str)
-    )
-  ; prints("twisted involution orbit size: ",orbit_size,
-           "; fiber size: ",fiber_size,"; strong inv: ",orbit_size*fiber_size)
-  ; prints("imaginary root system: ",show(str(i_tp)))
-  ; prints("real root system: ",show(str(r_tp)))
-  ; prints("complex factor: ",show(str(C_tp)))
-  end
+  ( "compact: ",cr,", complex: ",Cr,", split: ",sr, new_line
+  , "canonical twisted involution: "
+  ,  if =#ww then "e"
+     else to_string(ww[0], ## for s in ww[1:] do to_string(",",s+1) od)
+     fi
+  , new_line
+  , "twisted involution orbit size: ",orbit_size,
+           "; fiber size: ",fiber_size,"; strong inv: ",orbit_size*fiber_size
+  , new_line
+  , "imaginary root system: ",show(str(i_tp)), new_line
+  , "real root system: ",show(str(r_tp)), new_line
+  , "complex factor: ",show(str(C_tp)), new_line
+  ).prints
 
 
 set fundamental_Cartan (InnerClass ic) = CartanClass: Cartan_class(ic,0)
@@ -858,9 +873,14 @@ set quasicompact_form (InnerClass ic) = RealForm: real_form(ic,0)
 { quasisplit_form@InnerClass is built-in }
 
 set is_compatible (RealForm f, RealForm g) = bool:
-  let ic = inner_class(f)
-  then oc = occurrence_matrix(ic)*^dual_occurrence_matrix(ic)
-  in inner_class(g)=dual(ic) and oc[form_number(f),form_number(g)]>0
+  let ic = inner_class(f) in
+  inner_class(g)=dual(ic) and
+  ( { occurrence matrices are "real_forms * Cartan classes", combine rows: }
+    let count =
+      (^occurrence_matrix(ic))[form_number(f)] *
+      (^dual_occurrence_matrix(ic))[form_number(g)]
+    in count>0
+  )
 
 set is_compact (RealForm G) = bool: { real form 0 in equal rank inner class }
   KGB_size(G)=1 and distinguished_involution(G)=1
@@ -893,7 +913,7 @@ set KGB_elt (RootDatum rd, mat theta, ratvec v) = KGBElt:
 set Cartan_class (InnerClass ic, mat theta) = CartanClass:
   KGB_elt(ic,theta,ratvec:null(rank(ic))).Cartan_class
 
-{ use the following as: set <= = Bruhat_order(G) }
+{ use the following as follows: |set <= = Bruhat_order(G)| }
 set Bruhat_order (RealForm G) = (KGBElt,KGBElt->bool):
   let M=inverse(1-KGB_Hasse(G)) in (KGBElt x, KGBElt y) bool: !=M[#x,#y]
 
@@ -1003,12 +1023,12 @@ set no_Cplus_roots (KGBElt x) = bool:
 {                               Blocks                                  }
 
 set blocks (InnerClass ic) = [Block]:
-  let result = [Block]: [] in
-  for rf in real_forms(ic)
-  do for drf in dual_real_forms(ic)
-     do if is_compatible(rf,drf) then result #:= block(rf,drf) fi
-     od
-  od; result
+## for rf in real_forms(ic)
+   do
+   ## for drf in dual_real_forms(ic)
+      do if is_compatible(rf,drf) then [block(rf,drf)] else [] fi
+      od
+  od
 
 set raw_KL  ((RealForm,RealForm) p) = (mat,[vec],vec): raw_KL(block(p))
 set dual_KL ((RealForm,RealForm) p) = (mat,[vec],vec): dual_KL(block(p))

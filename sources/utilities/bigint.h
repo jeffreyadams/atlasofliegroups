@@ -276,7 +276,7 @@ public:
   big_int quotient (const big_rat& r) const; // quotient of integer division
   big_rat operator% (const big_rat& r) const; // remainder modulo |r|
 
-  big_rat power (unsigned int e) const;
+  big_rat power (int e) const;
 private:
   big_rat& normalise()
   { if (den.is_negative())
