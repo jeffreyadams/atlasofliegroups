@@ -24,10 +24,6 @@
   lead to illegal occurences of |*| (e.g. as type of a concrete value). This
   is quite subtle; maybe forbid binding to names with such type altogether.
 
-- Make overloading and implicit conversions work together correctly, with the
-  |is_close| redefined to be true partial orderings (currently |vec| overloads
-  can come _after_ |[rat]| overloads, thus misbinding for |[int]| values).
-
 - Maybe allow |set a:=b,b:=a+b| as alternative for |set (a,b):=(b,a+b)|
 
 - Allow repeated selection assignment |M[1][3]:=0| or |a[i].re:=5|
@@ -61,12 +57,8 @@
 
 * Work on the atlas program
 
-- Correct dangling pointer |pr| (temporary prompt) in |BufferedInput::getline|
-
 - Avoid using Smith normal form computations in |invert|, |det| and such;
   prefer Gaussian elemination methods possibly using big rationals
-
-- Nuance "simply connected" and "adjoint" in printing non-semisimple root data
 
 - Ensure that root data obtained from inner classes or beyond are shared
 
@@ -78,7 +70,7 @@
 
 * Work on the atlas scripts
 
-- Complete the groups in groups.rx (types G,F); also avoid use of "s" etc.
+- Complete the groups in groups.at (types G,F); also avoid use of "s" etc.
 - Adapt scripts to use/illustrate the new language features, once implemented.
 
 * Work on documentation
