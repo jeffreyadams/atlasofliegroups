@@ -98,12 +98,15 @@ string pool is destructed do the character pointers it has given out become
 invalid. A string pool will be incorporated into the |Hash_table| class, and
 their number and lifetimes will be determined by that usage; in particular the
 |String_pool| class will be adapted to manage strings in various pools with
-different lifetimes. A |String_pool| will be implemented as a list of blocks
-containing the individual strings, from newest to oldest. The blocks are
-usually of the size specified when the pool is constructed, but if in rare
-cases a string larger than the block size is requested, a single block of that
-size will be created (but |block_size| will not change). To know how much
-remains in the current block, we keep a separate record, in |chars_left|.
+different lifetimes. A |String_pool| basically holds a pointer |start| to a
+block of characters it currently distributes from (which if non null is
+obtained from a call of |new[]|), a pointer |point| to the first among these
+characters that is free for future distribution, and a count |chars_left| of
+such characters. When a request cannot be served from the current block,
+|start| will be set to fresh memory obtained from |new[]| but only after
+saving the previous value to |prev|, effectively a linked list of old blocks
+that the destructor of the |String_pool| will all free, as well as the current
+block pointed to be |start|.
 
 
 @< Class declarations @>=
@@ -113,7 +116,7 @@ class String_pool
     static const size_t default_block_size=512;
     String_pool(size_t b=default_block_size); // create pool and set block size
     char* store(const char* s, size_t length); // store string of given length
-    ~String_pool();
+    ~String_pool() @+{@; delete start; delete prev; }
   private:
     String_pool(const String_pool&); // copying forbidden
     String_pool& operator=(const String_pool&); // assignment forbidden
@@ -122,8 +125,14 @@ class String_pool
     char* start; // start of block in current usage
     char* point; // first character available
     size_t chars_left; // number of characters left in current block
-    const String_pool* prev;
-      // start of list of previous blocks, for deallocation
+    struct backup
+    { const char* const block_start; @+
+      const backup* const link;
+    public:
+      backup (char* start, backup* prev) : block_start(start), link(prev) @+{}
+      ~backup ();
+    };
+    backup* prev; // list of previous blocks, for deallocation
 };
 
 @ The constructor for a |String_pool| sets the block size, but does not yet
@@ -135,48 +144,48 @@ String_pool::String_pool(size_t b)
 {}
 
 @ Whenever a identifier |str| of length |n| has to be stored in |pool|, we
-shall call |pool.store(str,n)|. It will allocate |n+1| bytes and copy |str|
-including the terminating null byte into it, returning a pointer to the
-allocated string.
+shall call |pool.store(str,n)|. It will allocate reserve |n+1| bytes, either
+previously allocated or by allocating at this point, and copy |str|
+including a terminating null byte into those bytes; it then returns a
+pointer to those bytes.
 
 @< Definitions of class members @>=
 char* String_pool::store(const char* s,size_t len)
-{ size_t n= len>=block_size ? len+1 : block_size;
-            // size of new block if needed
+{ size_t n= std::max(len+1,block_size); // size of new block if needed
   if (len>=chars_left) // then the current block cannot store |s|, so allocate
   { if (start!=nullptr) // initial block needs no backing up
-    { String_pool* p=new String_pool(block_size);
-      p->prev=prev; p->start=start; // only these fields need backing up
-      prev=p; // link to old blocks, needed for destruction
-    }
+      prev=new backup(start,prev); // push pointers to chain, for destruction
     start=point=new char[n]; // now we can copy to where |point| points
     chars_left=n;
   }
-  strncpy(point,s,len); @+ char* result=point;
+  char* result=strncpy(point,s,len);
+  point+=len;  *point++='\0'; // write |'\0'| whether or not present in |s|
   chars_left-=len+1;
-  point+=len;  *point++='\0';
   return result;
 }
 
-@ The destructor for |String_pool| recursively frees all blocks allocated.
-This happens because |delete| calls the destructor for the |String_pool|
-object pointed to by its argument |prev| before freeing its memory.
+@ The destructor for |String_pool::backup| recursively frees all blocks of
+characters it accesses via |block_start| pointers, as well as all the records
+for the |backup| structures themselves. The recursive nature comes from the
+fact that |delete link| calls the destructor |~backup| (an indirect recursion)
+for the object pointed to by |link| before freeing the memory of that object.
 
 @< Definitions of class members @>=
-String_pool::~String_pool() @+{@; delete prev; delete[] start; }
+String_pool::backup::~backup() @+{@; delete[] block_start; delete link; }
 
 @*1 Hash tables.
 %
 Our hash tables will use an instance of |String_pool| for storing its keys.
-Their functionality is quite simple, and hides the actual hashing. Upon
-construction the hash table is empty, and its stores every distinct string
-that is passed to it, never removing one. It matches the string against all
-strings it has seen before, and returns a sequence number: either the number
-that was given to the same string when it was first encountered, or the next
-unused number if the string was never seen before. Methods are also provided
-for the inverse conversion, from a sequence number to the corresponding
-string, and for finding the current number of entries stored. This will
-allow working everywhere with sequence numbers to represent identifiers.
+The functionality of hash tables is quite simple, and hides the actual
+hashing. Upon construction the hash table is empty, and its stores every
+distinct string that is passed to it, never removing any of them. It matches
+the string against all strings it has seen before, and returns a sequence
+number: either the number that was given to the same string when it was first
+encountered, or the next unused number if the string was never seen before.
+Methods are also provided for the inverse conversion, from a sequence number
+to the corresponding string, and for finding the current number of entries
+stored. This will allow working everywhere with sequence numbers to represent
+identifiers.
 
 @h<vector>
 @< Class declarations @>=
