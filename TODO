@@ -47,6 +47,8 @@
 
 * Work on the atlas program
 
+- Correct dangling pointer |pr| (temporary prompt) in |BufferedInput::getline|
+
 - Avoid using Smith normal form computations in |invert|, |det| and such;
   prefer Gaussian elemination methods possibly using big rationals
 
