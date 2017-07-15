@@ -266,15 +266,14 @@ of using a |reinterpret_cast| or (even worse) calling the placement-|new|
 operator (as in |unsigned char* p=new(s) unsigned char@;|). Here we just want
 to assure that we are doing arithmetic on non-negative values, even if some
 characters would classify as negative |char| values (failing to do this could
-cause the program the program to crash). And we cannot help having pointers to
-(possibly) signed characters in the first place, because that is for instance
-what string denotations give us (and what many standard functions require).
-The simplest solution would be to cast |s| to |(const unsigned char*)|, and
-everything would be safe. We dare not do such a conversion for fear of losing
-our job, so instead we convert every character accessed via~|s| laboriously
-into an unsigned value, which can be done by a standard conversion; this
-accounts for two of the three |static_cast|s below (the third is for
-documentation only).
+cause the program to crash). And we cannot help having pointers to (possibly)
+signed characters in the first place, because that is for instance what string
+denotations give us (and what many standard functions require). The simplest
+solution would be to cast |s| to |(const unsigned char*)|, and everything
+would be safe. We dare not do such a conversion for fear of losing our job, so
+instead we convert every character accessed via~|s| laboriously into an
+unsigned value, which can be done by a standard conversion; this accounts for
+two of the three |static_cast|s below (the third is for documentation only).
 
 The code below is safe if either |l>0| (as will always be the case for
 identifiers) or if |l==0| and |*s=='\0'| in which case it will return |0| as
@@ -821,7 +820,7 @@ level of input processing, so that they should really never make a difference.
 bool BufferedInput::getline()
 { line_buffer="";
   line_no+=cur_lines; cur_lines=0;
-  const char* pr=@< Prompt for the next line@>@;@;;
+  std::string pr=@< Prompt for the next line@>@;@;;
   bool go_on, popped=false;
   do
   { std::string line;
@@ -854,7 +853,7 @@ the initial prompt (one not following an escaped newline) will be that
 temporary prompt followed by a space and the secondary prompt.
 
 @< Prompt for the next line@>=
-(temp_prompt.empty() ? prompt : (temp_prompt+" "+prompt2).c_str())
+(temp_prompt.empty() ? prompt : temp_prompt+" "+prompt2)
 
 @ Reading a line might fail, in which case an error condition will be set on
 the input stream |*stream|. If the error condition is set, we don't even try
@@ -918,9 +917,9 @@ error.
 @< Read a line... @>=
 if (input_stack.empty() and prompt!=nullptr)
   // do only at top level, and only if prompt enabled
-{ prompt_length= std::strlen(pr);
+{ prompt_length= pr.length();
   if (readline!=nullptr) // skip calling 'readline' if no function is supplied
-  { char* l=readline(pr);
+  { char* l=readline(pr.c_str());
     if (l==nullptr) // then |readline| failed, flag end of file
     {@; line=""; stream->setstate(std::ios_base::eofbit);
       std::cout << "^D\n";
