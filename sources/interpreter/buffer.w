@@ -862,7 +862,8 @@ the initial prompt (one not following an escaped newline) will be that
 temporary prompt followed by a space and the secondary prompt.
 
 @< Prompt for the next line@>=
-(temp_prompt.empty() ? prompt : temp_prompt+" "+prompt2)
+(temp_prompt.empty() ? std::string(prompt==nullptr?"":prompt)
+                     : temp_prompt+" "+prompt2)
 
 @ Reading a line might fail, in which case an error condition will be set on
 the input stream |*stream|. If the error condition is set, we don't even try
