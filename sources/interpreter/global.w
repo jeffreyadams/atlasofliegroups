@@ -571,8 +571,8 @@ overloaded instances.
 @< Global function def... @>=
 void overload_table::add
   (id_type id, shared_function val, type_expr&& t)
-{ assert (t.kind==function_type);
-  func_type type(std::move(*t.func)); // steal the function type
+{ assert (t.kind()==function_type);
+  func_type type(std::move(*t.func())); // steal the function type
   auto its = table.equal_range(id);
   if (its.first==its.second) // a fresh overloaded identifier
   {
@@ -940,8 +940,8 @@ void definition_group::thread_bindings(const id_pat& pat,const type_expr& type)
     add(pat.name,type.copy(),(pat.kind & 0x4)!=0);
   if ((pat.kind & 0x2)!=0)
     // recursively traverse sub-list for a tuple of identifiers
-  { assert(type.kind==tuple_type);
-    wtl_const_iterator t_it(type.tupple);
+  { assert(type.kind()==tuple_type);
+    wtl_const_iterator t_it(type.tuple());
     for (auto p_it=pat.sublist.begin(); not pat.sublist.at_end(p_it);
          ++p_it,++t_it)
       thread_bindings(*p_it,*t_it);
@@ -964,9 +964,9 @@ void definition_group::add(id_type id,type_expr&& t, bool is_const)
     if (it->first==id)
       @< Throw a |program_error| signalling multiple occurrences of |id| @>
 @)
-  if (t.kind==function_type)
+  if (t.kind()==function_type)
   { const auto& var=global_overload_table->variants(id);
-    locate(id,var,t.func->arg_type); // may |throw|; otherwise ignore result
+    locate(id,var,t.func()->arg_type); // may |throw|; otherwise ignore result
   }
 @)
   constness.set_to(bindings.size(),is_const);
@@ -1043,7 +1043,7 @@ void do_global_set(id_pat&& pat, const expr& rhs, int overload)
     { assert(v_it!=v.end());
       @< Emit indentation corresponding to the input level to
          |*output_stream| @>
-      if (overload==0 or it->second.kind!=function_type)
+      if (overload==0 or it->second.kind()!=function_type)
       @< Add instance of identifier |it->first| with value |*v_it| to
          |global_id_table| @>
       else
@@ -1063,7 +1063,7 @@ Therefore we insist for that case that a value of function type is being
 ascribed to the operator symbol, so that it will go to the overload table.
 
 @< Check that we are not setting an operator... @>=
-{ if (overload==2 and t.kind!=function_type)
+{ if (overload==2 and t.kind()!=function_type)
     throw program_error("Cannot set operator to a non function value");
 }
 
@@ -1249,10 +1249,10 @@ void clean_out_type_identifier(id_type id)
     if (not fields.empty())
     { bool dummy;
       auto defined_type = global_id_table->type_of(id,dummy);
-      if (defined_type->kind==tuple_type)
+      if (defined_type->kind()==tuple_type)
         @< Remove projector functions for tuple type |id| added when
            it was defined as |*defined_type| @>
-      else if(defined_type->kind==union_type)
+      else if(defined_type->kind()==union_type)
         @< Remove injector functions for union type |id| added when
            it was defined as |*defined_type| @>
       typedef_table.remove(id);
@@ -1290,7 +1290,7 @@ rather than the union type itself. We therefore need to set up a second
 iterator |comp_it| to loop over those components.
 
 @< Remove injector functions for union type |id|... @>=
-{ wtl_const_iterator comp_it (defined_type->tupple);
+{ wtl_const_iterator comp_it (defined_type->tuple());
   for (unsigned i=0; i<fields.size(); ++i,++comp_it)
     if (fields[i]!=type_table::no_id)
     { const auto* entry =
@@ -1342,7 +1342,7 @@ variable for this constant.
 void type_define_identifier
   (id_type id, type_p t, raw_id_pat ip, const YYLTYPE& loc)
 { type_ptr saf(t); id_pat fields(ip); // ensure clean-up
-  type_expr& type=*t; const bool is_tuple = type.kind==tuple_type;
+  type_expr& type=*t; const bool is_tuple = type.kind()==tuple_type;
     // save for when |type| is pilfered
   const auto n=length(fields.sublist);
   definition_group group(n);
@@ -1385,9 +1385,9 @@ not be used by undefined type expressions.
 @< Bind in |group| any field identifiers in |field.sublist| to the types of
    their projector or injector functions, and store the corresponding function
    values themselves in |tors| @>=
-{ assert(type.kind==tuple_type or type.kind==union_type);
+{ assert(type.kind()==tuple_type or type.kind()==union_type);
   dressed_type_list tor_types;
-  auto tp_it =wtl_const_iterator(type.tupple);
+  auto tp_it =wtl_const_iterator(type.tuple());
   auto id_it=fields.sublist.wcbegin();
   if (is_tuple)
     for (unsigned i=0; i<n; ++i,id_it++,tp_it++)
@@ -2295,10 +2295,10 @@ void install_function
  (wrapper_function f,const char*name, const char* type_string)
 { type_ptr type = mk_type(type_string);
   std::ostringstream print_name; print_name<<name;
-  if (type->kind!=function_type)
+  if (type->kind()!=function_type)
     throw logic_error
      ("Built-in with non-function type: "+print_name.str());
-  print_name << '@@' << type->func->arg_type;
+  print_name << '@@' << type->func()->arg_type;
   auto val = std::make_shared<builtin_value<false> >(f,print_name.str());
   global_overload_table->add
     (main_hash_table->match_literal(name),std::move(val),std::move(*type));

@@ -711,7 +711,7 @@ case tuple_display:
   comp.reserve(length(e.sublist));
   bool tuple_expected = type.specialise(tup);
   // whether |type| is a tuple of correct size
-  wtl_iterator tl_it (tuple_expected ? type.tupple : tup.tupple);
+  wtl_iterator tl_it (tuple_expected ? type.tuple() : tup.tuple());
   for (wel_const_iterator it(e.sublist); not it.at_end(); ++it,++tl_it)
   { comp.push_back(convert_expr(*it,*tl_it));
     if (*tl_it==void_type and not is_empty(*it))
@@ -1027,8 +1027,8 @@ case list_display:
 @/static const char* const str = "components of list expression";
   if (type.specialise(row_of_type))
   {
-    balance(*type.component_type,e.sublist,e,str,comps);
-    if (*type.component_type==void_type)
+    balance(*type.component_type(),e.sublist,e,str,comps);
+    if (*type.component_type()==void_type)
       @< Insert voiding coercions into members of |comps| that need it @>
     return std::move(result);
   }
@@ -1398,9 +1398,8 @@ expression_ptr resolve_overload
       // exact match, return
     }
     else
-    if ((is_close(a_priori_type,arg_type)&0x1)!=0)
-    {
-// inexact match, so tentatively convert again using |arg_type|, hoping coercion helps
+    if ((is_close(a_priori_type,arg_type)&0x1)!=0) // inexact match, so
+    { // tentatively convert again using |arg_type|, hoping coercion helps
       try
       { expression_ptr arg=convert_expr(args,as_lvalue(arg_type.copy()));
         // redo conversion
@@ -2060,12 +2059,12 @@ case function_call:
     unless it is a local function identifier @>
   type_expr f_type=gen_func_type.copy(); // start with generic function type
   expression_ptr fun = convert_expr(call.fun,f_type);
-  expression_ptr arg = convert_expr(call.arg,f_type.func->arg_type);
-  if (f_type.func->arg_type==void_type and not is_empty(call.arg))
+  expression_ptr arg = convert_expr(call.arg,f_type.func()->arg_type);
+  if (f_type.func()->arg_type==void_type and not is_empty(call.arg))
     arg.reset(new voiding(std::move(arg)));
   expression_ptr result(new @|
      call_expression(std::move(fun),std::move(arg),e.loc));
-  return conform_types(f_type.func->result_type,type,std::move(result),e);
+  return conform_types(f_type.func()->result_type,type,std::move(result),e);
 }
 
 @ When a call expression has an identifier in the place of the function (as is
@@ -2087,7 +2086,7 @@ table.
 { const id_type id =call.fun.identifier_variant;
   size_t i,j; bool b; // dummies; local binding not used here
   auto local_type_p=layer::lookup(id,i,j,b);
-  if (local_type_p==nullptr or local_type_p->kind!=function_type)
+  if (local_type_p==nullptr or local_type_p->kind()!=function_type)
  // not calling by local identifier
   { const overload_table::variant_list& variants
       = global_overload_table->variants(id);
@@ -2169,7 +2168,7 @@ specialising to |pair_type|, this function cannot alter its argument.
 
 @< Local function definitions @>=
 bool is_pair_type(const type_expr& t)
-@+{@; return t.kind==tuple_type and length(t.tupple)==2; }
+@+{@; return t.kind()==tuple_type and length(t.tuple())==2; }
 
 @ The operator `\#' can also be used as infix operator, to extend row value on
 either end by a single element. The corresponding wrapper functions will be
@@ -2193,23 +2192,23 @@ $[[2]]\#[\,]$ will give as result $[[2],[\,]]$, while $[\,]\#[[2]]$ will give
 $[[[2]]]$.
 
 @< Recognise and return versions of `\#'... @>=
-{ if (a_priori_type.kind==row_type)
+{ if (a_priori_type.kind()==row_type)
   { expression_ptr call(new @|
       builtin_call(sizeof_row_builtin,name.str(),std::move(arg),e.loc));
     return conform_types(int_type,type,std::move(call),e);
   }
   else if (is_pair_type(a_priori_type))
   {
-    const type_expr& ap_tp0 = a_priori_type.tupple->contents;
-    const type_expr& ap_tp1 = a_priori_type.tupple->next->contents;
-    if (ap_tp0.kind==row_type and
-        ap_tp0.component_type->specialise(ap_tp1)) // suffix case
+    const type_expr& ap_tp0 = a_priori_type.tuple()->contents;
+    const type_expr& ap_tp1 = a_priori_type.tuple()->next->contents;
+    if (ap_tp0.kind()==row_type and
+        ap_tp0.component_type()->specialise(ap_tp1)) // suffix case
     { expression_ptr call(new @| builtin_call
         (suffix_elt_builtin,std::move(arg),e.loc));
       return conform_types(ap_tp0,type,std::move(call),e);
     }
-    if (ap_tp1.kind==row_type and
-        ap_tp1.component_type->specialise(ap_tp0)) // prefix case
+    if (ap_tp1.kind()==row_type and
+        ap_tp1.component_type()->specialise(ap_tp0)) // prefix case
     { expression_ptr call(new @| builtin_call
         (prefix_elt_builtin,std::move(arg),e.loc));
       return conform_types(ap_tp1,type,std::move(call),e);
@@ -2221,20 +2220,20 @@ $[[[2]]]$.
 and another concatenating two rows of the same type.
 
 @< Recognise and return instances of `\#\#'... @>=
-{ if (a_priori_type.kind==row_type and
-      a_priori_type.component_type->kind==row_type)
+{ if (a_priori_type.kind()==row_type and
+      a_priori_type.component_type()->kind()==row_type)
   { expression_ptr call(new @|
       builtin_call(join_rows_row_builtin,std::move(arg),e.loc));
-    return conform_types(*a_priori_type.component_type,type,std::move(call),e);
+    return conform_types(*a_priori_type.component_type(),type,std::move(call),e);
   }
-  if (a_priori_type.kind==tuple_type and
-    @|length(a_priori_type.tupple)==2 and
-    @|a_priori_type.tupple->contents==a_priori_type.tupple->next->contents and
-    @|a_priori_type.tupple->contents.kind==row_type)
+  if (a_priori_type.kind()==tuple_type and
+    @|length(a_priori_type.tuple())==2 and
+    @|a_priori_type.tuple()->contents==a_priori_type.tuple()->next->contents and
+    @|a_priori_type.tuple()->contents.kind()==row_type)
   { expression_ptr call(new @| builtin_call
         (join_rows_builtin,std::move(arg),e.loc));
     return conform_types
-         (a_priori_type.tupple->contents,type,std::move(call),e);
+         (a_priori_type.tuple()->contents,type,std::move(call),e);
   }
 }
 
@@ -2391,8 +2390,8 @@ void thread_bindings
 { if ((pat.kind & 0x1)!=0)
     dst.add(pat.name,type.copy(),is_const or (pat.kind & 0x4)!=0);
   if ((pat.kind & 0x2)!=0)
-  { assert(type.kind==tuple_type);
-    wtl_const_iterator t_it(type.tupple);
+  { assert(type.kind()==tuple_type);
+    wtl_const_iterator t_it(type.tuple());
     for (auto p_it=pat.sublist.begin(); not pat.sublist.at_end(p_it);
          ++p_it,++t_it)
       thread_bindings(*p_it,*t_it,dst,is_const);
@@ -2669,8 +2668,8 @@ case lambda_expr:
     throw expr_error(e,"Function argument pattern does not match its type");
   type_expr* rt; type_expr dummy;
   if (type.specialise(gen_func_type)
-             and type.func->arg_type.specialise(arg_type))
-    rt = &type.func->result_type; // we can now safely access this
+             and type.func()->arg_type.specialise(arg_type))
+    rt = &type.func()->result_type; // we can now safely access this
   else if (type==void_type)
     rt=&dummy; // in void context there is no return type to set
   else
@@ -3299,8 +3298,8 @@ subscr_base::sub_type subscr_base::index_kind
   (const type_expr& aggr,
    const type_expr& index,
          type_expr& subscr)
-{ if (aggr.kind==primitive_type)
-    switch (aggr.prim)
+{ if (aggr.kind()==primitive_type)
+    switch (aggr.prim())
     {  default:
     break; case vector_type:
       if (index==int_type and subscr.specialise(int_type))
@@ -3320,15 +3319,15 @@ subscr_base::sub_type subscr_base::index_kind
       if (index==param_type and subscr.specialise(split_type))
         return mod_poly_term;
     }
-  else if (aggr.kind==row_type and index==int_type and
-           subscr.specialise(*aggr.component_type))
+  else if (aggr.kind()==row_type and index==int_type and
+           subscr.specialise(*aggr.component_type()))
          return row_entry;
   return not_so;
 }
 @)
 subscr_base::sub_type subscr_base::slice_kind (const type_expr& aggr)
-{ if (aggr.kind==primitive_type)
-    switch (aggr.prim)
+{ if (aggr.kind()==primitive_type)
+    switch (aggr.prim())
     {
     case vector_type: return vector_entry;
     case rational_vector_type: return ratvec_entry;
@@ -3336,7 +3335,7 @@ subscr_base::sub_type subscr_base::slice_kind (const type_expr& aggr)
     case matrix_type: return matrix_column;
     default: return not_so;
     }
-  else if (aggr.kind==row_type)
+  else if (aggr.kind()==row_type)
     return row_entry;
   else return not_so;
 }
@@ -4342,17 +4341,17 @@ case union_case_expr:
   std::ostringstream o; // for use in various error messages
 @)
   expression_ptr c  =  convert_expr(exp.condition,switch_type);
-  if (switch_type.kind!=union_type)
+  if (switch_type.kind()!=union_type)
     throw type_error(e,std::move(switch_type),
                        std::move(*unknown_union_type(n_branches)));
 @)
-  size_t n_variants=length(switch_type.tupple);
+  size_t n_variants=length(switch_type.tuple());
   if (n_variants!=n_branches)
     @< Report mismatching number of branches @>
 @)
   std::vector<expression_ptr> branches;
 
-  auto variant_type_p = switch_type.tupple;
+  auto variant_type_p = switch_type.tuple();
   for (auto branch_p=&exp.branches; branch_p!=nullptr;
        branch_p=branch_p->next.get(), variant_type_p=variant_type_p->next.get())
   {
@@ -4360,7 +4359,7 @@ case union_case_expr:
       mk_function_type(std::move(variant_type_p->contents),type.copy());
     auto branch_f = convert_expr(branch_p->contents,*f_type_p);
     branches.push_back(std::move(branch_f));
-    type.specialise(f_type_p->func->result_type);
+    type.specialise(f_type_p->func()->result_type);
   }
 @/return expression_ptr(new @|
     union_case_expression(std::move(c),std::move(branches)));
@@ -4408,10 +4407,10 @@ case discrimination_expr:
   std::ostringstream o; // for use in various error messages
 @)
   expression_ptr c  =  convert_expr(exp.subject,subject_type);
-  if (subject_type.kind!=union_type)
+  if (subject_type.kind()!=union_type)
     throw type_error(e,std::move(subject_type),
                        std::move(*unknown_union_type(n_branches)));
-  const wtl_const_iterator types_start(subject_type.tupple);
+  const wtl_const_iterator types_start(subject_type.tuple());
 @)
   const auto type_name = typedef_table.find(subject_type);
   if (type_name==type_table::no_id)
@@ -4419,7 +4418,7 @@ case discrimination_expr:
     expression anonymously @>
   const auto& field_names = typedef_table.fields(type_name);
 @)
-  size_t n_variants=length(subject_type.tupple);
+  size_t n_variants=length(subject_type.tuple());
 
   std::vector<choice_part> choices(n_variants);
 @)
@@ -4667,7 +4666,7 @@ case while_expr:
     return expression_ptr(make_while_loop @| (0x8,
        convert_expr(w.body, as_lvalue(void_type.copy()))));
   else if (type.specialise(row_of_type))
-  { auto& comp_type = *type.component_type;
+  { auto& comp_type = *type.component_type();
     expression_ptr b = convert_expr(w.body,comp_type);
     if (comp_type==void_type and not is_empty(w.body))
       b.reset(new voiding(std::move(b)));
@@ -5090,7 +5089,7 @@ the in-part in a neutral type context, which will on success set |in_type| to
 its a priori type. Then after binding the loop variable(s) in a new |layer|,
 we process the loop body either in neutral type context from the fresh and
 subsequently ignored type |body_type| (if the loop occurs in void context), or
-passing |*type.component_type| if |type| is a row type, or else if
+passing |*type.component_type()| if |type| is a row type, or else if
 |row_coercion| finds an applicable coercion, passing again |body_type| but now
 set to the required type (if none of these apply a |type_error| is thrown).
 After converting the loop, we must not forget to maybe apply voiding or a
@@ -5121,7 +5120,7 @@ case for_expr:
   if (type==void_type)
     btp=&type; // we can reuse this type; no risk of specialisation
   else if (type.specialise(row_of_type))
-    btp=type.component_type;
+    btp=type.component_type();
   else if ((conv=row_coercion(type,body_type))!=nullptr)
     btp=&body_type;
   else throw type_error(e,row_of_type.copy(),std::move(type));
@@ -5511,7 +5510,7 @@ case cfor_expr:
   if (type==void_type)
     btp=&type; // we can reuse this type; no risk of specialisation
   else if (type.specialise(row_of_type))
-    btp=type.component_type;
+    btp=type.component_type();
   else if ((conv=row_coercion(type,body_type))==nullptr)
     throw type_error(e,row_of_type.copy(),std::move(type));
 @)
@@ -5562,7 +5561,8 @@ void counted_for_expression<flags>::evaluate(level l) const
     c=0; // no negative size result
 
   if (has_frame(flags)) // then loop uses index
-  { int b=(bound.get()==nullptr ? 0 : (bound->eval(),get<int_value>()->int_val()));
+  { int b=(bound.get()==nullptr
+          ? 0 : (bound->eval(),get<int_value>()->int_val()));
     id_pat pattern(id);
     if (l==no_value)
       @< Perform counted loop that uses an index, without storing result,
@@ -5717,8 +5717,8 @@ simulates specialisation to a function type |from|$\to$|to|.
 inline bool functype_specialise
   (type_expr& t, const type_expr& from, const type_expr& to)
 { return t.specialise(gen_func_type) @|
-  and t.func->arg_type.specialise(from) @|
-  and t.func->result_type.specialise(to);
+  and t.func()->arg_type.specialise(from) @|
+  and t.func()->result_type.specialise(to);
 }
 
 @ Operator casts only access already existing values. In most cases we must
@@ -5789,7 +5789,7 @@ context. If no match is found here, there can still be one in the overload
 table.
 
 @< Select the proper instance of the \.\# operator,... @>=
-{ if (ctype.kind==row_type)
+{ if (ctype.kind()==row_type)
   { if (functype_specialise(type,ctype,int_type))
   @/return expression_ptr(new @|
       capture_expression (sizeof_row_builtin,o.str()));
@@ -5797,15 +5797,15 @@ table.
   }
   else if (is_pair_type(ctype))
   {
-    type_expr& arg_tp0 = ctype.tupple->contents;
-    type_expr& arg_tp1 = ctype.tupple->next->contents;
-    if (arg_tp0.kind==row_type and *arg_tp0.component_type==arg_tp1)
+    type_expr& arg_tp0 = ctype.tuple()->contents;
+    type_expr& arg_tp1 = ctype.tuple()->next->contents;
+    if (arg_tp0.kind()==row_type and *arg_tp0.component_type()==arg_tp1)
     { if (functype_specialise(type,ctype,arg_tp0))
         return expression_ptr(new @|
           capture_expression(suffix_elt_builtin,o.str()));
       throw type_error(e,ctype.copy(),std::move(type));
     }
-    if (arg_tp1.kind==row_type and *arg_tp1.component_type==arg_tp0)
+    if (arg_tp1.kind()==row_type and *arg_tp1.component_type()==arg_tp0)
     { if (functype_specialise(type,ctype,arg_tp1))
       return expression_ptr(new @|
         capture_expression (prefix_elt_builtin,o.str()));
@@ -5818,17 +5818,17 @@ table.
 different wrapper functions.
 
 @< Select the proper instance of the \.{\#\#} operator,... @>=
-{ if (ctype.kind==row_type and ctype.component_type->kind==row_type)
-  { if (functype_specialise(type,ctype,*ctype.component_type))
+{ if (ctype.kind()==row_type and ctype.component_type()->kind()==row_type)
+  { if (functype_specialise(type,ctype,*ctype.component_type()))
   @/return expression_ptr(new @|
       capture_expression (join_rows_row_builtin,o.str()));
     throw type_error(e,ctype.copy(),std::move(type));
   }
   else if (is_pair_type(ctype))
   {
-    type_expr& arg_tp0 = ctype.tupple->contents;
-    type_expr& arg_tp1 = ctype.tupple->next->contents;
-    if (arg_tp0.kind==row_type and arg_tp1==arg_tp0)
+    type_expr& arg_tp0 = ctype.tuple()->contents;
+    type_expr& arg_tp1 = ctype.tuple()->next->contents;
+    if (arg_tp0.kind()==row_type and arg_tp1==arg_tp0)
     { if (functype_specialise(type,ctype,arg_tp0))
         return expression_ptr(new @|
           capture_expression (join_rows_builtin,o.str()));
@@ -6178,8 +6178,8 @@ void threader::thread(const id_pat& pat,type_expr& type)
     @< Throw an error to signal forbidden qualifier \.! before |pat.name| @>
   if ((pat.kind&0x2)!=0) // first treat any sublist
   { type.specialise(unknown_tuple(length(pat.sublist)));
-    assert(type.kind==tuple_type); // this should succeed
-    wtl_iterator t_it(type.tupple);
+    assert(type.kind()==tuple_type); // this should succeed
+    wtl_iterator t_it(type.tuple());
     for (auto it=pat.sublist.begin(); not pat.sublist.at_end(it); ++it,++t_it)
       thread(*it,*t_it);
   }
@@ -6546,7 +6546,8 @@ indices, and there are two bound checks.
   int_Matrix& m=force<matrix_value>(loc)->val;
   size_t k=m.numRows(),l=m.numColumns();
   if (i>=k)
-    throw runtime_error(range_mess(i,m.numRows(),this,"matrix entry assignment"));
+    throw runtime_error
+      (range_mess(i,m.numRows(),this,"matrix entry assignment"));
   if (j>=l)
     throw runtime_error(
       range_mess(j,m.numColumns(),this,"matrix entry assignment"));
@@ -6638,11 +6639,11 @@ distinguish different aggregate types. Most of the code is straightforward,
 but there is a subtle point that in case of a component assignment to a
 variable of previously undetermined row type, the component type must be
 recorded with the variable. This is achieved by the call to the |specialise|
-for the pointer found at |aggr_t->component_type|, which is part of the type
+for the pointer found at |aggr_t->component_type()|, which is part of the type
 for the variable in the local or global table. Here for one time we abuse of
 the fact that, although |aggr_t| is a pointer-to-constant, we are still
 allowed to call a non-|const| method for the |type_expr| that
-|aggr_t->component_type| points to; otherwise we would have to call a
+|aggr_t->component_type()| points to; otherwise we would have to call a
 |specialise| method for the local or global variable table that holds the
 identifier |aggr|, as was done in the case of ordinary assignments.
 
@@ -6673,8 +6674,8 @@ case comp_ass_stat:
     throw expr_error(e,o.str());
   }
   expression_ptr r = convert_expr(rhs,comp_t);
-  if (aggr_t->kind==row_type)
-    aggr_t->component_type->specialise(comp_t); // record type
+  if (aggr_t->kind()==row_type)
+    aggr_t->component_type()->specialise(comp_t); // record type
   if (comp_t==void_type and not is_empty(rhs))
     r.reset(new voiding(std::move(r)));
   expression_ptr p;
@@ -6740,14 +6741,14 @@ case field_ass_stat:
     if (proj==nullptr)
       throw expr_error
         (e,"Selector in field assignment is not a projector function");
-    assert(tuple_t->kind == tuple_type and
-           proj->position < length(tuple_t->tupple));
+    assert(tuple_t->kind() == tuple_type and
+           proj->position < length(tuple_t->tuple()));
   }
 @)
   type_p comp_loc;
     // we shall pass a modifiable reference to component type to |convert_expr|
   { // to get component type from list pointer we need to use a short loop
-    auto p=tuple_t->tupple;
+    auto p=tuple_t->tuple();
     for (auto count=proj->position; count-->0; )
       p=p->next.get();
     comp_loc=&p->contents;
