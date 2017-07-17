@@ -1,18 +1,18 @@
-/*!
-\file
-\brief Implementation for KLSupport.
-
-  This module provides support code for the Kazhdan-Lusztig computation,
-  mostly the management of the list of primitive pairs, and primitivization
-  of arbitrary subsets of the block.
-*/
 /*
   This is klsupport.cpp
 
   Copyright (C) 2004,2005 Fokko du Cloux
+  Copyright (C) 2006-2017 Marc van Leeuwen
   part of the Atlas of Lie Groups and Representations
 
   For license information see the LICENSE file
+*/
+
+/* Implementation for KLSupport.
+
+  This module provides support code for the Kazhdan-Lusztig computation,
+  mostly the management of the list of primitive pairs, and primitivization
+  of arbitrary subsets of the block.
 */
 
 #include "klsupport.h"

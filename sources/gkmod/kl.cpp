@@ -1,6 +1,15 @@
-/*!
-\file
-\brief Implementation of the class KLContext.
+/*
+  This is kl.cpp
+
+  Copyright (C) 2004,2005 Fokko du Cloux
+  Copyright 2012 David Vogan, Marc van Leeuwen
+  part of the Atlas of Lie Groups and Representations
+
+  For license information see the LICENSE file
+*/
+
+/*
+  Implementation of the class KLContext.
 
   This module contains code for the computation of the Kazhdan-Lusztig
   polynomials for a given block of representations. We have taken the radical
@@ -15,15 +24,6 @@
   a fast primitivization algorithm, for instance; there are two main lists,
   d_kl (filled in for all primitive pairs), and d_mu (filled in only for
   non-zero mu coefficients.)
-*/
-/*
-  This is kl.cpp
-
-  Copyright (C) 2004,2005 Fokko du Cloux
-  Copyright 2012 David Vogan, Marc van Leeuwen
-  part of the Atlas of Lie Groups and Representations
-
-  For license information see the LICENSE file
 */
 
 #include "kl.h"

@@ -1,15 +1,14 @@
-/*!
-\file
-\brief Class definition and function declarations for KLSupport.
-*/
 /*
   This is klsupport.h
 
   Copyright (C) 2004,2005 Fokko du Cloux
+  Copyright (C) 2006-2017 Marc van Leeuwen
   part of the Atlas of Lie Groups and Representations
 
   For license information see the LICENSE file
 */
+
+// Class definition and function declarations for |KLSupport|.
 
 #ifndef KLSUPPORT_H  /* guard against multiple inclusions */
 #define KLSUPPORT_H

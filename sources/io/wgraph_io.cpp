@@ -81,7 +81,7 @@ void printWDecomposition(std::ostream& strm, const wgraph::DecomposedWGraph& g)
   for (size_t i = 0; i < g.cellCount(); ++i)
     {
       strm << '#' << i << "=";
-      std::vector<BlockElt> mem=g.cellMembers(i);
+      auto& mem=g.cellMembers(i);
       for (size_t j=0; j<mem.size(); ++j)
 	strm << (j==0 ? '{' : ',') << mem[j];
       strm << "}\n";
@@ -103,7 +103,7 @@ void printWDecomposition(std::ostream& strm, const wgraph::DecomposedWGraph& g)
     {
       strm << "// cell #" << i << ":\n";
       wgraph::WGraph cell=g.cell(i);
-      std::vector<BlockElt> mem=g.cellMembers(i);
+      auto& mem=g.cellMembers(i);
       for (size_t j=0; j<cell.size(); ++j)
       {
 	strm << j << '[' << mem[j] << "]: ";
