@@ -83,10 +83,6 @@ set root_datum (KGPElt(,x)) = RootDatum: root_datum(x)
 {. the RealForm G of a KGP element. .}
 set real_form  (KGPElt(,x)) = RealForm:  real_form(x)
 
-{. complement of subset of simple roots in rank n. .}
-set complement(int n,[int] S) = [int]:
-  list((int i)bool: none(for m in S do i=m od),n)
-
 {. an ascent of x by a generator in S, if any exist. .}
 set find_ascent ([int] S, KGBElt x) = [KGBElt]:
   let f = first(#S,(int i)bool: is_ascent(S[i],x)) in
@@ -98,7 +94,7 @@ set find_ascent ([int] S, KGBElt x) = [KGBElt]:
 {. all descents of x by generators in S; there may be duplicates. .}
 set down_neighbors ([int] S,KGBElt x) = [int]:
   ##
-  for i in list((int i): is_strict_descent(S[i],x),#S)
+  for i in list(#S,(int i): is_strict_descent(S[i],x))
   do let s=S[i] in
     if is_real(s,x)
     then let y=Cayley(s,x) in [#y,#cross(s,y)]

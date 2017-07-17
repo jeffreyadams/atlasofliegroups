@@ -89,15 +89,15 @@ composition_series(Psi(character_formula(P),k))
   (here Psi(p,k) is the translation of the standard module for p)
 }
 
-set pseudo_tau_bitset (Param p)= ((int->bool),int):
+set pseudo_tau_bitset (Param p)= (int,(int->bool)):
   let gamma = infinitesimal_character(p)
   then id=integrality_datum(real_form(p),gamma)
   in
-  ( (int k): let (n,d)=%(fundamental_weight(id,k)*(coroot(id,k)*gamma))
+  ( semisimple_rank(id)
+  , (int k): let (n,d)=%(fundamental_weight(id,k)*(coroot(id,k)*gamma))
     in d=1 and
       (let p0=translate_by(p,-n)
        in is_zero(p0) or x(p0)!=x(first_param(ParamPol:p0)))
-  , semisimple_rank(id)
   )
 
 { set of integers, defining a subset of the simple integral roots }

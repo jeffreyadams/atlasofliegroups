@@ -259,7 +259,7 @@ set centralizer(KGBElt x,ratvec v) = (KGBElt,RootDatum):
 {. (Auxiliary function) .}
 set find_nci_root (KGBElt x,ratvec tau) = int:
   let rd=root_datum(x)
-  then sr=simple_roots(rd), scr=simple_coroots(rd),ssr=ss_rank(rd)
+  then sr=simple_roots(rd), scr=simple_coroots(rd),ssr=semisimple_rank(rd)
   then j= first(ssr, (int i)bool:
                      scr[i]*tau<0 and is_noncompact_imaginary(x)(sr[i]) )
   in if j>=0 then j
@@ -409,7 +409,7 @@ set all_G_spherical_same_differential (Param p) = [K_Type]:
 set parabolic_LKT (KHighestWeight (x,mu)) = Parabolic:
   let rd=root_datum(x), (y,mu_3_orig,lambda) = project_on_dominant_cone(x,mu)
   then diff=lambda-mu_3_orig
-  then S= list( (int i): fundamental_coweight(rd,i)*diff>0, ss_rank(rd))
+  then S= list(semisimple_rank(rd), (int i): fundamental_coweight(rd,i)*diff>0)
   in Parabolic:(S,y)
 
 { go from KHighestWeight mu to K_types [K_Type]  mu -> [p_1,...,p_r]
@@ -557,7 +557,7 @@ set fundamental_weight_coordinates (KHighestWeight (x,mu)) = vec:
 set K_highest_weight_from_fundamental_weights(KGBElt x,vec tau) =
     KHighestWeight:
   let K_0=K_0(x), fw=fundamental_weights_K_H(x)
-  , weight=ratvec:null(ss_rank(real_form(x)))
+  , weight = ratvec: x.real_form.semisimple_rank.null
   in for i:#tau do weight+:=tau[i]*fw[i] od;
   assert(is_integer(weight),"Weight is not integral");
   (x,ratvec_as_vec(weight))

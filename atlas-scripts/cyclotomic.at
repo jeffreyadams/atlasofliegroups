@@ -63,7 +63,7 @@ set cyclotomic_polynomial (int n) = [int]:
 
 {.list of integers relatively prime to n.}
 set relative_primes(int n) = [int]:
-  list ((int i)bool: gcd([i,n])=1 ,n)
+  list (n,(int i)bool: gcd([i,n])=1)
 
 { a can be negative, N must be positive }
 {. integer a -> representative 0\le b\le N-1 mod N .}
