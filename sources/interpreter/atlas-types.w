@@ -3378,17 +3378,20 @@ to them.
 @< Includes... @>=
 
 #include "blocks.h"
+#include "kl.h"
 
 @ Like other data types we have seen, we include shared pointers to
 parent objects to ensure these remain in existence as long as our block does;
 in fact we include two such shared pointers, one for each real form. The |val|
 field contains an actual |Block| instance, which is constructed van the
-|Block_Value| is.
+|Block_Value| is. We also reserve a field in the structure to store KL
+polynomials, though they will only be computed once they are asked for.
 
 @< Type definitions @>=
 struct Block_value : public value_base
 { const own_real_form rf; const own_real_form dual_rf;
   Block val; // cannot be |const|, as Bruhat order may be generated implicitly
+  kl::KLContext klc;
 @)
   Block_value(const own_real_form& form, const own_real_form& dual_form);
   ~Block_value() @+{}
@@ -3398,28 +3401,30 @@ struct Block_value : public value_base
   static const char* name() @+{@; return "KGB element"; }
 private:
   Block_value(const Block_value& v)
-  : rf(v.rf), val(v.val) @+{} // copy constructor
+  : rf(v.rf), val(v.val), klc(val) @+{} // copy constructor, but |klc| is new
 };
 @)
 typedef std::unique_ptr<Block_value> Block_ptr;
 typedef std::shared_ptr<const Block_value> shared_Block;
 typedef std::shared_ptr<Block_value> own_Block;
 
-@ The constructor got |Block_value| is relatively elaborate, so we lift it out
+@ The constructor for |Block_value| is relatively elaborate, so we lift it out
 of the class declaration. One should avoid calling the version of the |build|
 method that takes real form and deal real form numbers (as we originally did
 here), as this will generate small versions of the KGB sets, which changes the
 numbering and causes inconsistencies when KGB elements are extracted from
 block elements. Instead we call the |build| method that accepts a pair of
 |RealReductiveGroup| arguments, so that the generated block will be exactly a
-classical one.
+classical one. Finally we associate the |klc| field with this block, but this
+does not yet do much computation.
 
 @< Function def...@>=
   Block_value::Block_value(const own_real_form& form,
                           const own_real_form& dual_form)
   : rf(form), dual_rf(dual_form)
-  ,
-  val(Block::build(rf->val,dual_rf->val)) {}
+  , val(Block::build(rf->val,dual_rf->val))
+  , klc(val)
+  {}
 
 
 @ When printing a block, we print its size; we shall later provide a separate
@@ -3617,7 +3622,8 @@ void block_inverse_Cayley_wrapper(expression_base::level l)
     push_value(std::make_shared<int_value>(sx));
 }
 
-@ Finally we install everything related to blocks.
+@ Finally we install everything so far related to blocks (some functions
+involving Kazhdan-Lusztig polynomials will be added later).
 
 @< Install wrapper functions @>=
 install_function(Fokko_block_wrapper,"block","(RealForm,RealForm->Block)");
@@ -5510,22 +5516,22 @@ access to the table of Kazhdan-Lusztig polynomials.
 
 @< Local function def...@>=
 void raw_KL_wrapper (expression_base::level l)
-{ shared_Block b = get<Block_value>();
+{ own_Block b = non_const_get<Block_value>();
   const Block& block = b->val;
-  kl::KLContext klc(block); klc.fill();
 @)
   if (l==expression_base::no_value)
     return;
-  own_matrix M = std::make_shared<matrix_value>(int_Matrix(klc.size()));
-  for (size_t y=1; y<klc.size(); ++y)
+  b->klc.fill(false); // this does the actual KL computation
+  own_matrix M = std::make_shared<matrix_value>(int_Matrix(b->klc.size()));
+  for (size_t y=1; y<b->klc.size(); ++y)
     for (size_t x=0; x<y; ++x)
-      M->val(x,y) = klc.KL_pol_index(x,y);
+      M->val(x,y) = b->klc.KL_pol_index(x,y);
 @)
   own_row polys = std::make_shared<row_value>(0);
-  polys->val.reserve(klc.polStore().size());
-  for (size_t i=0; i<klc.polStore().size(); ++i)
+  polys->val.reserve(b->klc.polStore().size());
+  for (size_t i=0; i<b->klc.polStore().size(); ++i)
   {
-    const kl::KLPol& pol = klc.polStore()[i];
+    const kl::KLPol& pol = b->klc.polStore()[i];
     std::vector<int> coeffs(pol.size());
     for (size_t j=pol.size(); j-->0; )
       coeffs[j]=pol[j];
@@ -5544,7 +5550,9 @@ void raw_KL_wrapper (expression_base::level l)
     wrap_tuple<3>();
 }
 
-@ For testing, it is useful to also have the dual Kazhdan-Lusztig tables.
+@ For testing, it is useful to also have the dual Kazhdan-Lusztig tables. In
+this case we cannot of course use the field |b->klc| to store the KL
+polynomials, so we here us a local |kl::KLContext| variable.
 
 @< Local function def...@>=
 void raw_dual_KL_wrapper (expression_base::level l)
@@ -5553,7 +5561,7 @@ void raw_dual_KL_wrapper (expression_base::level l)
   Block dual_block = Block::build(b->dual_rf->val,b->rf->val);
 
   std::vector<BlockElt> dual=blocks::dual_map(block,dual_block);
-  kl::KLContext klc(dual_block); klc.fill();
+  kl::KLContext klc(dual_block); klc.fill(false);
 @)
   if (l==expression_base::no_value)
     return;
@@ -5640,6 +5648,89 @@ void raw_ext_KL_wrapper (expression_base::level l)
   }
   if (l==expression_base::single_value)
     wrap_tuple<3>();
+}
+
+@ For old style blocks, the user may want to get information about the
+$W$-graph without manually extracting it from the KL table. The following
+function provides this information in the form of a value of
+type \.{[[int],[int,int]]}, a list of pairs consisting of a $\tau$-invariant
+(as list of simple root indices) and a list of outgoing edges, each one a pair
+of a destination vertex and a $\mu$-value labelling the edge.
+
+@< Local function def...@>=
+void W_graph_wrapper(expression_base::level l)
+{ own_Block b = non_const_get<Block_value>();
+  if (l=expression_base::no_value)
+    return;
+@)
+  b->klc.fill(false); // this does the actual KL computation
+  wgraph::WGraph wg = kl::wGraph(b->klc);
+@)
+  own_row vertices=std::make_shared<row_value>(0);
+  @< Push to |vertices| a list of pairs for each element of |wg|, each
+     consisting of a descent set and a list of outgoing labelled edges @>
+  push_value(vertices);
+}
+
+@ The following code was isolated so that it can be reused below.
+
+@< Push to |vertices| a list of pairs for each element of |wg|, each
+   consisting of a descent set and a list of outgoing labelled edges @>=
+vertices->val.reserve(wg.size());
+for (size_t i = 0; i < wg.size(); ++i)
+{ auto ds = wg.descent_set(i);
+  own_row descents=std::make_shared<row_value>(0);
+  descents->val.reserve(ds.count());
+  for (auto it=ds.begin(); it(); ++it)
+    descents->val.push_back(std::make_shared<int_value>(*it));
+  own_row out_edges = std::make_shared<row_value>(0);
+  out_edges->val.reserve(wg.degree(i));
+  for (unsigned j=0; j<wg.degree(i); ++j)
+  { auto tup = std::make_shared<tuple_value>(2);
+    tup->val[0] = std::make_shared<int_value>(wg.edge_target(i,j));
+    tup->val[1] = std::make_shared<int_value>(wg.coefficient(i,j));
+  @/out_edges->val.push_back(tup);
+  }
+  auto tup = std::make_shared<tuple_value>(2);
+  tup->val[0] = descents;
+  tup->val[1] = out_edges;
+  vertices->val.push_back(std::move(tup));
+}
+
+@ Outputting |W_cells| as row of vectors; (this function was originally
+contributed by Jeff Adams).
+
+@< Local function def...@>=
+void W_cells_wrapper(expression_base::level l)
+{ own_Block b = non_const_get<Block_value>();
+  if (l=expression_base::no_value)
+    return;
+@)
+  b->klc.fill(false); // this does the actual KL computation
+  wgraph::WGraph wg = kl::wGraph(b->klc);
+  wgraph::DecomposedWGraph dg(wg);
+@)
+
+  own_row cells=std::make_shared<row_value>(0);
+  cells->val.reserve(dg.cellCount());
+  for (size_t c = 0; c < dg.cellCount(); ++c)
+  { auto& wg=dg.cell(c); // local W-graph of cell
+    own_row members =std::make_shared<row_value>(0);
+    { const BlockEltList& mem=dg.cellMembers(c);
+        // list of members of strong component |c|
+      members->val.reserve(mem.size());
+      for (auto it=mem.begin(); it!=mem.end(); ++it)
+        members->val.push_back(std::make_shared<int_value>(*it));
+    }
+    own_row vertices=std::make_shared<row_value>(0);
+    @< Push to |vertices| a list of pairs for each element of |wg|, each
+       consisting of a descent set and a list of outgoing labelled edges @>
+    auto tup = std::make_shared<tuple_value>(2);
+    tup->val[0] = members;
+    tup->val[1] = vertices;
+    cells->val.push_back(std::move(tup));
+  }
+  push_value(cells);
 }
 
 
@@ -5824,11 +5915,11 @@ parametrisation is concerned.
 void print_KL_basis_wrapper(expression_base::level l)
 { own_Block b = non_const_get<Block_value>();
   Block& block = b->val;
-  kl::KLContext klc(block); klc.fill(false);
 @)
+  b->klc.fill(false); // this does the actual KL computation
   *output_stream
     << "Full list of non-zero Kazhdan-Lusztig-Vogan polynomials:\n\n";
-  kl_io::printAllKL(*output_stream,klc,block);
+  kl_io::printAllKL(*output_stream,b->klc,block);
 @)
   if (l==expression_base::single_value)
     wrap_tuple<0>();
@@ -5840,11 +5931,11 @@ void print_KL_basis_wrapper(expression_base::level l)
 void print_prim_KL_wrapper(expression_base::level l)
 { own_Block b = non_const_get<Block_value>();
   Block &block = b->val; // this one must be non-|const|
-  kl::KLContext klc(block); klc.fill(false);
 @)
+  b->klc.fill(false); // this does the actual KL computation
   *output_stream
     << "Non-zero Kazhdan-Lusztig-Vogan polynomials for primitive pairs:\n\n";
-  kl_io::printPrimitiveKL(*output_stream,klc,block);
+  kl_io::printPrimitiveKL(*output_stream,b->klc,block);
 @)
   if (l==expression_base::single_value)
     wrap_tuple<0>();
@@ -5855,11 +5946,10 @@ outputs just a list of all distinct Kazhdan-Lusztig-Vogan polynomials.
 
 @< Local function def...@>=
 void print_KL_list_wrapper(expression_base::level l)
-{ shared_Block b = get<Block_value>();
-  const Block &block = b->val;
-  kl::KLContext klc(block); klc.fill(false);
+{ own_Block b = non_const_get<Block_value>();
 @)
-  kl_io::printKLList(*output_stream,klc);
+  b->klc.fill(false); // this does the actual KL computation
+  kl_io::printKLList(*output_stream,b->klc);
 @)
   if (l==expression_base::single_value)
     wrap_tuple<0>();
@@ -5874,12 +5964,10 @@ after having built the |klc::KLContext|.
 
 @< Local function def...@>=
 void print_W_cells_wrapper(expression_base::level l)
-{ shared_Block b = get<Block_value>();
-  const Block &block = b->val;
-  kl::KLContext klc(block); klc.fill(false);
+{ own_Block b = non_const_get<Block_value>();
 @)
-
-  wgraph::WGraph wg = kl::wGraph(klc);
+  b->klc.fill(false); // this does the actual KL computation
+  wgraph::WGraph wg = kl::wGraph(b->klc);
   wgraph::DecomposedWGraph dg(wg);
 @)
   wgraph_io::printWDecomposition(*output_stream,dg);
@@ -5888,43 +5976,15 @@ void print_W_cells_wrapper(expression_base::level l)
     wrap_tuple<0>();
 }
 
-@ Outputting |W_cells| as row of vectors; (this function was originally
-contributed by Jeff Adams).
-
-@< Local function def...@>=
-void W_cells_wrapper(expression_base::level l)
-{ shared_Block b = get<Block_value>();
-  const Block &block = b->val;
-  kl::KLContext klc(block); klc.fill(false);
-@)
-  wgraph::WGraph wg = kl::wGraph(klc);
-  wgraph::DecomposedWGraph dg(wg);
-@)
-
-  own_row cells=std::make_shared<row_value>(0);
-  cells->val.reserve(dg.cellCount());
-  for (size_t i = 0; i < dg.cellCount(); ++i)
-  { const BlockEltList& mem=dg.cellMembers(i);
-      // list of members of strong component |i|
-    cells->val.emplace_back(std::make_shared<vector_value>@|
-         (std::vector<int>(mem.begin(),mem.end())));
-      // convert from unsigned to signed
-  }
-  push_value(cells);
-}
-
-
 @ And here is |print_W_graph|, which just gives a variation on the output
 routine of |print_W_cells|.
 
 @< Local function def...@>=
 void print_W_graph_wrapper(expression_base::level l)
-{ shared_Block b = get<Block_value>();
-  const Block &block = b->val;
-  kl::KLContext klc(block); klc.fill(false);
+{ own_Block b = non_const_get<Block_value>();
 @)
-
-  wgraph::WGraph wg = kl::wGraph(klc);
+  b->klc.fill(false); // this does the actual KL computation
+  wgraph::WGraph wg = kl::wGraph(b->klc);
 @)
   wgraph_io::printWGraph(*output_stream,wg);
 @)
@@ -5939,6 +5999,10 @@ void print_W_graph_wrapper(expression_base::level l)
 install_function(raw_KL_wrapper,@|"raw_KL","(Block->mat,[vec],vec)");
 install_function(raw_dual_KL_wrapper,@|"dual_KL","(Block->mat,[vec],vec)");
 install_function(raw_ext_KL_wrapper,@|"raw_ext_KL","(Param,mat->mat,[vec],vec)");
+install_function(W_graph_wrapper,@|"W_graph","(Block->[[int],[int,int]])");
+install_function(W_cells_wrapper,@|"W_cells",
+  "(Block->[[int],[[int],[int,int]]])");
+@)
 install_function(print_gradings_wrapper,@|"print_gradings"
 		,"(CartanClass,RealForm->)");
 install_function(print_realweyl_wrapper,@|"print_real_Weyl"
@@ -5958,7 +6022,6 @@ install_function(print_KL_basis_wrapper,@|"print_KL_basis","(Block->)");
 install_function(print_prim_KL_wrapper,@|"print_prim_KL","(Block->)");
 install_function(print_KL_list_wrapper,@|"print_KL_list","(Block->)");
 install_function(print_W_cells_wrapper,@|"print_W_cells","(Block->)");
-install_function(W_cells_wrapper,@|"W_cells","(Block->[vec])");
 install_function(print_W_graph_wrapper,@|"print_W_graph","(Block->)");
 
 @* Installing coercions.

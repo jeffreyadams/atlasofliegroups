@@ -795,6 +795,9 @@ set highest_root (RootDatum rd) = vec:
 set dual_integral (InnerClass ic, ratvec gamma) = InnerClass:
   inner_class(dual(integrality_datum(ic,gamma)),-^distinguished_involution(ic))
 
+set big_block (InnerClass ic) = Block:
+  block(quasisplit_form(ic), dual_quasisplit_form(ic))
+
 
 {                               Cartan classes                          }
 
