@@ -266,7 +266,9 @@ later).
 @< Type definitions @>=
 enum type_tag
  { undetermined_type, primitive_type,
-   function_type, row_type, tuple_type, union_type };
+   function_type, row_type, tuple_type, union_type,
+   type_name
+ };
 
 enum primitive_tag
 { integral_type, rational_type, string_type, boolean_type
@@ -333,7 +335,10 @@ currently the case). This is because anything that would suggest a $1$-tuple
 or $1$-union (for instance a parenthesised expression) is identified with its
 unique component.
 
-@< Definition of |type_expr| @>=
+@< Type definitions @>=
+
+@< Predeclare types that |type_expr| needs to know about @>
+typedef unsigned short type_id_type;
 class type_expr
 { type_tag tag;
   union
@@ -341,7 +346,9 @@ class type_expr
     func_type* func_variant; // when |kind==function_type|
     type_p compon_variant; // when |kind==row_type|
     raw_type_list tuple_variant; // when |kind==tuple_type| or |kind==union_type|
+    type_id_type type_number;
   };
+  static defined_type_mapping type_map;
 @)
 public:
   type_tag kind () const @+{@; return tag; }
@@ -349,6 +356,8 @@ public:
   type_p component_type () const @+{@; return compon_variant; }
   primitive_tag prim() const @+{@; return prim_variant; }
   raw_type_list tuple () const @+{@; return tuple_variant; }
+  id_type type_id () const; // identifier corresponding to |type_number|
+  const type_expr& expansion () const; // type corresponding to |type_number|
 @)
   @< Methods of the |type_expr| structure @>@;
  };
@@ -429,10 +438,9 @@ as a structure before the definition of |type_expr| is seen. For type lists
 this kind of difficulty is taken care of because |simple_list<type_expr>|
 could be used in a |typedef| before |type_expr| was a complete type.
 
-@< Type definitions @>=
+@< Predeclare types that |type_expr| needs to know about @>=
 
-struct func_type; // must be predeclared for |type_expr|
-@< Definition of |type_expr| @>
+struct func_type;
 
 @ The constructor for the |type_list| variant with |tuple_variant| field is a
 move constructor.
@@ -464,15 +472,16 @@ type_expr type_expr::copy() const
   switch (result.tag=tag)
   { case undetermined_type: break;
     case primitive_type: result.prim_variant=prim_variant; break;
+    case function_type: result.func_variant=new
+      func_type(func_variant->copy());
+    break;
     case row_type:
       result.compon_variant=new type_expr(compon_variant->copy());
     break;
     case tuple_type: case union_type:
       @< Assign a deep copy of |tuple_variant| to |result.tuple_variant| @>
     break;
-    case function_type: result.func_variant=new
-    func_type(func_variant->copy());
-    break;
+    case type_name: result.type_number=type_number; break;
   }
   return result;
 }
@@ -514,9 +523,10 @@ call |delete| directly.
 void type_expr::clear() noexcept
 { switch (tag)
   { case undetermined_type: case primitive_type: break;
+    case function_type: delete func_variant; break;
     case row_type: delete compon_variant; break;
     case tuple_type: case union_type: delete tuple_variant; break;
-    case function_type: delete func_variant; break;
+    case type_name: break;
   }
   tag = undetermined_type;
 }
@@ -544,6 +554,7 @@ void type_expr::set_from(type_expr&& p) noexcept
     case function_type: func_variant=p.func_variant; break;
     case row_type: compon_variant=p.compon_variant; break;
     case tuple_type: case union_type: tuple_variant = p.tuple_variant; break;
+    case type_name: type_number=p.type_number;
   }
   p.tag=undetermined_type;
   // detach descendants, so |p.clear()| will destroy top-level only
@@ -557,6 +568,7 @@ type_expr::type_expr(type_expr&& x) noexcept // move constructor
     case function_type: func_variant=x.func_variant; break;
     case row_type: compon_variant=x.compon_variant; break;
     case tuple_type: case union_type: tuple_variant = x.tuple_variant; break;
+    case type_name: type_number=x.type_number; break;
   }
   x.tag=undetermined_type;
   // detach descendants, so destructor of |x| will do nothing
@@ -583,7 +595,9 @@ void type_expr::swap(type_expr& other) noexcept
       case primitive_type: std::swap(prim_variant,other.prim_variant); break;
       case function_type: std::swap(func_variant,other.func_variant); break;
       case row_type: std::swap(compon_variant,other.compon_variant); break;
-      case tuple_type: case union_type: std::swap(tuple_variant,other.tuple_variant); break;
+      case tuple_type: case union_type:
+        std::swap(tuple_variant,other.tuple_variant); break;
+      case type_name: std::swap(type_number,other.type_number); break;
     }
   else
   {
@@ -617,14 +631,37 @@ here any specialisation that brings $t_1$ closer to $t_2$ cannot be harmful
 |can_specialise| that could be tested before calling |specialise| in cases
 where having commit-or-roll-back is important.
 
+This method must pay some nontrivial attention to types with |tag==type_name|,
+whose (possibly recursive) meaning is stored in |type_expr::type_map|. If one
+of the two types concerned is of this kind, it is basically replaced by its
+expansion. When it is |*this| itself that is expanded, we do not want to
+recursively call the manipulator |specialise| for the expansion, but luckily
+there is never anything to substitute into defined types, so we can just call
+the method |can_specialise| instead to determine the Boolean result. When both
+type expressions have |tag==type_name| we must avoid potentially infinite
+recursion when both are expanded; by ensuring (upon entering type definitions)
+that defined types are only equal if they have the same name, the code here is
+reduced to just a test of the type names.
+
 @< Function definitions @>=
 bool type_expr::specialise(const type_expr& pattern)
 { if (pattern.tag==undetermined_type)
     return true; // specialisation to \.* trivially succeeds.
   if (tag==undetermined_type) // specialising \.* also always succeeds,
     {@; set_from(pattern.copy()); return true; }
-     // by setting |*this| to |pattern|
-  if (pattern.tag!=tag) return false; // impossible to refine
+     // by setting |*this| to a copy of  |pattern|
+  if (pattern.tag==type_name)
+  { if (tag==type_name) // both are defined type; see if they are the same
+      return type_number==pattern.type_number;
+      // there are no accidental equalities
+    return specialise(pattern.expansion());
+  }
+  if (tag==type_name)
+    return expansion().can_specialise(pattern);
+    // call |const| method here
+@)
+  if (pattern.tag!=tag) return false;
+    // now it is impossible to refine if tags mismatch
   switch(tag)
   { case primitive_type: return prim_variant==pattern.prim_variant;
     case function_type:
@@ -658,10 +695,17 @@ similar.
 
 @< Function definitions @>=
 bool type_expr::can_specialise(const type_expr& pattern) const
-{ if (pattern.tag==undetermined_type)
-    return true; // specialisation to \.* trivially succeeds.
-  if (tag==undetermined_type)
+{ if (pattern.tag==undetermined_type or tag==undetermined_type)
     return true;
+  if (pattern.tag==type_name)
+  { if (tag==type_name) // both are defined type; see if they are the same
+      return type_number==pattern.type_number;
+      // there are no accidental equalities
+    return can_specialise(pattern.expansion());
+  }
+  if (tag==type_name)
+    return expansion().can_specialise(pattern);
+@)
   if (pattern.tag!=tag) return false; // impossible to refine
   switch(tag)
   { case primitive_type: return prim_variant==pattern.prim_variant;
@@ -748,6 +792,43 @@ struct func_type
 typedef func_type* func_type_p;
 typedef std::unique_ptr<func_type> func_type_ptr;
 
+@ We come to a new part of the |type_expr| type, a static member that allows
+names in types to be used that stand for certain type expressions. The
+mechanism has been around some time, but was previously implemented by just
+replacing the type name by the corresponding type expression after
+having been input.
+
+@< Predeclare types that |type_expr| needs to know about @>=
+class defined_type_mapping;
+
+@~The |defined_type_mapping| is for now thinly veiled vector of type
+expressions paired to an identifier, indexed by a type identifier number. We
+provide a selection operation |defined_type| that returns a non owned
+reference the such a type expression.
+
+@< Type definitions @>=
+typedef std::pair<id_type,type_expr> type_binding;
+class defined_type_mapping : public std::vector<type_binding>
+{ public:
+  defined_type_mapping () : @[std::vector<type_binding>@]() @+{}
+  const type_expr& defined_type(type_id_type i) const @+
+    {@; return operator[](i).second; }
+};
+
+@~We need to define that declared static class member.
+@< Global variable definitions @>=
+defined_type_mapping type_expr::type_map;
+
+@ And here are the accessor methods for the |type_name| variant
+
+@< Function definitions @>=
+id_type type_expr::type_id() const @+
+{@; return type_map[type_number].first; }
+
+const type_expr& type_expr::expansion() const @+
+{@; return type_map.defined_type(type_number); }
+
+
 @ For printing types, we shall pass |type_expr| values to the
 operator~`|<<|' by constant reference, which seems more decent than doing
 so by pointer (which would override the definition that simply prints the
@@ -783,10 +864,10 @@ std::ostream& operator<<(std::ostream& out, const func_type& f)
      // naked tuple or union
   else out << f.arg_type; // other component type
   out << "->";
-  if (f.result_type.kind()==tuple_type or
+  if (f.result_type.kind()==tuple_type or @|
       f.result_type.kind()==union_type and f.result_type.tuple()!=nullptr)
      print(out,f.result_type.tuple(),f.result_type.kind()==tuple_type?',':'|');
-     // naked tuple or union
+     // tuple, union
   else out << f.result_type; // other component type
   out << ')';
   return out;
@@ -816,12 +897,14 @@ std::ostream& operator<<(std::ostream& out, const type_expr& t)
          out << ')';
       }
     break;
+    case type_name:
+      out << main_hash_table->name_of(t.type_id());
+    break;
   }
   return out;
 }
 
-@ Finally we need a comparison for structural equality of type
-declarators.
+@ Finally we need a comparison for structural equality of type expressions.
 
 @< Declarations of exported functions @>=
 bool operator== (const type_expr& x,const type_expr& y);
@@ -834,11 +917,13 @@ operands to be |const|.
 
 @< Function definitions @>=
 bool operator== (const type_expr& x,const type_expr& y)
-{ if (x.kind()!=y.kind()) return false;
+{ if (x.kind()!=y.kind())
+  { if (x.kind()!=type_name and y.kind()!=type_name)
+      return false; // different structures
+    return x.kind()==type_name ? x.expansion()==y  : x==y.expansion();
+  }
   switch (x.kind())
-  { @+ default:
-// all cases are listed below, but compilers want a |default| to |return|
-  @\case undetermined_type: return true;
+  { case undetermined_type: return true;
     case primitive_type: return x.prim()==y.prim();
     case function_type:
       return x.func()->arg_type==y.func()->arg_type
@@ -847,7 +932,11 @@ bool operator== (const type_expr& x,const type_expr& y)
     case tuple_type: case union_type:
        @< Find out and |return| whether all types in |x.tuple()|
           are equal to those in |y.tuple()| @>
+    case type_name:
+      return x.type_id()==y.type_id();
+      // only identical identifiers can have equal types here
   }
+  assert(false); return true; // cannot be reached, but compilers don't trust it
 }
 
 @ This module has a familiar structure.
