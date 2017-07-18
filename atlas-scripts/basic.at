@@ -14,7 +14,7 @@ set list (int limit, (int->bool) predicate) = [int]:
   ## for i:limit do if predicate(i) then [i] else [] fi od
 set complement (int limit,(int->bool) predicate) = [int]:
   ## for i:limit do if predicate(i) then [] else [i] fi od
-set complement (int n, [int] list) = [int]:
+set complement (int n, [int] list) = [int]: { complement of increasing |list| }
   let i=0, v=0, !l=#list in { i next position to inspect, v next value to seek }
   while while i<l and list[i]=v do i+:=1; v+:=1 od; v<n do v next v+:=1 od
 
@@ -792,6 +792,12 @@ set highest_root (RootDatum rd) = vec:
   else pr[for alpha in pr do rho_check*alpha od.max_loc]
   fi
 
+set word_making_dominant (RootDatum rd, ratvec lambda) = [int]:
+   while let i = first(semisimple_rank(rd),(int i): <coroot(rd,i)*lambda) in
+      >=i
+   do i next lambda:=reflect(rd,i,lambda)
+   od
+
 {                               Inner classes                           }
 
 { integrality inner class (dual side) defined by inf. character and involution }
@@ -880,13 +886,7 @@ set quasicompact_form (InnerClass ic) = RealForm: real_form(ic,0)
 
 set is_compatible (RealForm f, RealForm g) = bool:
   let ic = inner_class(f) in
-  inner_class(g)=dual(ic) and
-  ( { occurrence matrices are "real_forms * Cartan classes", combine rows: }
-    let count =
-      (^occurrence_matrix(ic))[form_number(f)] *
-      (^dual_occurrence_matrix(ic))[form_number(g)]
-    in count>0
-  )
+  inner_class(g)=dual(ic) and >block_sizes(ic)[form_number(f),form_number(g)]
 
 set is_compact (RealForm G) = bool: { real form 0 in equal rank inner class }
   KGB_size(G)=1 and distinguished_involution(G)=1
@@ -1028,13 +1028,20 @@ set no_Cplus_roots (KGBElt x) = bool:
 
 {                               Blocks                                  }
 
+set blocks (RealForm rf) = [Block]:
+   let ic=InnerClass:rf then sizes=(^block_sizes(ic))[rf.form_number] in
+## for drf in dual_real_forms(ic)
+   do if >sizes[drf.form_number] then [block(rf,drf)] else [] fi
+   od
+
 set blocks (InnerClass ic) = [Block]:
-## for rf in real_forms(ic)
+   let sizes=block_sizes(ic) in
+## for rf@i in real_forms(ic)
    do
-   ## for drf in dual_real_forms(ic)
-      do if is_compatible(rf,drf) then [block(rf,drf)] else [] fi
+   ## for drf@j in dual_real_forms(ic)
+      do if >sizes[i,j] then [block(rf,drf)] else [] fi
       od
-  od
+   od
 
 set raw_KL  ((RealForm,RealForm) p) = (mat,[vec],vec): raw_KL(block(p))
 set dual_KL ((RealForm,RealForm) p) = (mat,[vec],vec): dual_KL(block(p))
