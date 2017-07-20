@@ -199,13 +199,14 @@ namespace atlas {
   typedef matrix::Vector<int> int_Vector;
   typedef matrix::PID_Matrix<int> int_Matrix;
   typedef std::vector<int_Vector> int_VectorList;
+  typedef ratvec::RationalVector<arithmetic::Numer_t> rat_Vector;
+  typedef matrix::Vector<arithmetic::Numer_t> Ratvec_Numer_t;
 
   // when related to a root system, these alternatives can be used
   typedef int_Vector Weight;
   typedef int_Vector Coweight;
-  typedef ratvec::RationalVector<arithmetic::Numer_t> RatWeight;
-  typedef ratvec::RationalVector<arithmetic::Numer_t> RatCoweight;
-  typedef matrix::Vector<arithmetic::Numer_t> Ratvec_Numer_t;
+  typedef rat_Vector RatWeight;
+  typedef rat_Vector RatCoweight;
   typedef int_Matrix WeightInvolution;
   typedef int_Matrix CoweightInvolution;
 

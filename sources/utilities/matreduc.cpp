@@ -140,10 +140,13 @@ bool row_clear(matrix::PID_Matrix<C>& M, size_t i, size_t j, size_t k,
    and for |j| and |i=result.n_th(j)|: |M(i,j)>0| and |M(ii,j)==0| for |ii>i|
 */
 template<typename C>
-  bitmap::BitMap column_echelon(matrix::PID_Matrix<C>& M)
+  bitmap::BitMap column_echelon(matrix::PID_Matrix<C>& M,
+				matrix::PID_Matrix<C>& col)
 {
+  const size_t n=M.numColumns();
+  col=matrix::PID_Matrix<C>(n); // start with identity matrix
   bitmap::BitMap result(M.numRows()); // set of pivot rows found so far
-  for (size_t j=M.numColumns(); j-->0;)
+  for (size_t j=n; j-->0;)
   { // all columns beyond |j| have pivot, column |j+1+p| in row |result.n_th(p)|
     size_t i=M.numRows();
     while (i-->0)
@@ -152,26 +155,41 @@ template<typename C>
 	if (result.isMember(i)) // there is a previous pivot in row |i|
 	{ // so use it to clear |M(i,j)| (and then continue loop decreasing |i|)
 	  size_t k=j+1+result.position(i); // index of column with pivot at |i|
-	  column_clear(M,i,j,k); // now column |j| is empty in row |i| and below
+	  column_clear(M,i,j,k,col);
+	  // now column |j| is empty in row |i| and below
 	}
 	else // now column |j| will have pivot in row |i|
 	{
           if (M(i,j)<0)
+	  {
 	    M.columnMultiply(j,-1); // ensure positive pivot entry
+	    col.columnMultiply(j,-1);
+	  }
 	  result.insert(i); // mark row |i| as a pivot row
 	  size_t p=result.position(i);
 	  if (p>0) // then move column |j| to the right |p| places
 	  {
 	    matrix::Vector<C> c=M.column(j); // save this column while shifting
+	    matrix::Vector<C> cc=col.column(j); // this column too
 	    for (size_t d=j; d<j+p; ++d)
+	    {
 	      M.set_column(d,M.column(d+1));
+	      col.set_column(d,col.column(d+1));
+	    }
             M.set_column(j+p,c); // re-insert column at its destination place
+            col.set_column(j+p,cc);
 	  }
 	  break; // from |while| loop; done with decreasing |i|
 	}
       } // |if (M(i,j)!=0)| and |while (i-->0)|
     if (i==size_t(-1)) // if no pivot found for column |j|; forget about it
+    {
       M.eraseColumn(j); // and no bit is set in |result| for |j| now
+      matrix::Vector<C> cc=col.column(j); // save this column while shifting
+      for (size_t d=j; d<M.numColumns(); ++d)
+	col.set_column(d,col.column(d+1));
+      col.set_column(M.numColumns(),cc);
+    }
   } // |for(j-->0)|
 
   return result;
@@ -201,7 +219,7 @@ std::vector<C> diagonalise(matrix::PID_Matrix<C> M, // by value
   {
     size_t i=k;
     for (; i<m; ++i)
-      if (M(i,l)!=C(0))
+      if (M(i,l)!=C(0)) // search for candidate for the pivot position
 	break;
     if (i==m)
       continue; // advance in loop on |l|, do not increment |k|
@@ -458,7 +476,8 @@ template
 bool row_clear(matrix::PID_Matrix<int>& M, size_t i, size_t j, size_t k);
 
 template
-bitmap::BitMap column_echelon<int>(matrix::PID_Matrix<int>& M);
+bitmap::BitMap column_echelon<int>(matrix::PID_Matrix<int>& M,
+			           matrix::PID_Matrix<int>& col);
 
 template
 std::vector<int> diagonalise(matrix::PID_Matrix<int> M,

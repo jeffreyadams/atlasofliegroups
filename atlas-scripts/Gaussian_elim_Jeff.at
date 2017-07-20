@@ -1,0 +1,91 @@
+{ Jeff's version of gaussian elimination, not used any longer
+  not actually used, but kept for testing and comparison.
+  However  some commented out functions in cyclotomic.at do call functions
+  from this file: |inverse_by_solve| and |inverse_by_big_solve|
+}
+
+<basic.at
+<ratmat.at
+
+set max ([rat] a) = (int,rat): { index and value of maximum of absolute values }
+   let l=#a in assert(l.>,"Maximum of an empty list");
+   let max=a~[0], index=#a-1 in
+   for i:l-1 do let ai=a[i] in if abs(ai)>abs(max) then index:=i; max:=ai fi od;
+   (index,max)
+
+{ function used to select a pivot; currently chooses maximal absolute value }
+set find_pivot (int k, [rat] v) = int: { seek pivot beyond |k| initial entries }
+   let (m,)=max(v[k:]) in { prints("pivot=", m+k); } m+k
+
+set update_matrix_entry ([[rat]] M, int j, int k, rat x) = [[rat]]:
+   let column=M[j] in column[k]:=x; M[j]:=column; M
+
+
+set swap_rows([[rat]] M, int i, int k) = [[rat]]:
+   for Mj@j in M
+   do let Mji=Mj[i] in
+      M:=update_matrix_entry(M,j,i,Mj[k])
+   ;  M:=update_matrix_entry(M,j,k,Mji)
+   od; M
+
+{ Gaussian elimination to put a non-singular rational matrix [[rat]] in
+  upper triangular form. By using the type [[rat]] (thought of as by columns)
+  we avoid size restriction on rational entries (as using |ratvec| would give)
+  Over $Q$, this is easier than over $Z$ see |echelon|
+  Whe |M\ is of type |[[rat]]|, we have that |M[j]| is a column of |M|, and
+  so M[j][i] is the entry in the column |j| and row |i|
+}
+set gauss ([[rat]] M) = [[rat]]:
+   let n=#M, m=#M[0] in
+   for k:min(m,n)
+   do let Mk=M[k] then i_pivot=find_pivot(k,Mk) in
+      if i_pivot>k then M:=swap_rows(M,k,i_pivot) fi
+   ;  for i:m-1-k from k+1  { i: k+1 to m-1 }
+      do let r=Mk[i]/Mk[k] in
+         for j: n-k-1 from k+1 { j: k+1 to n-1 }
+         do let Mj=M[j] in M:=update_matrix_entry(M,j,i, Mj[i]-Mj[k]*r) od
+      ;  M:=update_matrix_entry(M,k,i,0)
+      od
+   od ;M
+
+
+{ solve Mx=y, y=[rat] of size n, A=upper-triangular, nxn, nonsingular}
+set back_solve([[rat]] M, [rat] y) = [rat]:
+   let n=#M then rv=[rat]: null(n)/1 in
+   for k:n downto 0
+   do
+{     prints(new_line,"doing k:",k);}
+{     prints("rv=",rv);}
+      let sum = rat:0 { compute sum in a |rat|, avoid using |sum@vec| } in
+      for j:n-1-k from k+1 {j: k+1 to n-1}
+      do { prints("doing j:",j); }
+         sum+:=M[j][k]*rv[j]
+      od
+{  ;  prints("k=", k, "  y[k]:=", y[k], " sum=", sum, "  M[k][k]=", M[k][k]);}
+   ;  rv[k] := (y[k] - sum)/M[k][k]
+   od; rv
+
+
+{ multiplication [[rat]]*[rat], using big rationals,
+  requires new definition (and name to avoid disambiguation problem)}
+{ set times([[rat]] M,[rat] v) = [rat]:
+     for i:#v do sum([rat]:for j:#v do M[j][i]*v[j] od) od }
+set times ([[rat]] M,[rat] v) = [rat]:
+   for i: if #M=0 then 0 else #M[0] fi
+   do let entry=rat:0 in for vj@j in v do entry+:=M[j][i]*vj od; entry od
+
+{
+  set id_mat_bigint (int n) = [[rat]]:
+  for j:n do for i:n do #i=j od od
+  set make_mat ([[rat]] M) = mat: for Mj in M do Mj.ratvec_as_vec od
+  set make_ratmat([[rat]] M) = ratmat:
+     ratvecs_as_ratmat(for  Mj in M do ratvec:Mj od)
+}
+
+{ solve Mx=y, M is nxn nonsingular [[rat]], y=[rat] size n }
+{ algorithm: M_aug=[M,y], apply Gaussian elimination,
+  write the result [N,z] where N is upper triangular, then back_solve(N,z)
+}
+set solve([[rat]] M, [rat] y)= [rat]:
+  let A=gauss(M#y) in back_solve(A[:1~], A~[0])
+

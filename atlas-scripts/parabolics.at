@@ -83,10 +83,6 @@ set root_datum (KGPElt(,x)) = RootDatum: root_datum(x)
 {. the RealForm G of a KGP element. .}
 set real_form  (KGPElt(,x)) = RealForm:  real_form(x)
 
-{. complement of subset of simple roots in rank n. .}
-set complement(int n,[int] S) = [int]:
-  list((int i)bool: none(for m in S do i=m od),n)
-
 {. an ascent of x by a generator in S, if any exist. .}
 set find_ascent ([int] S, KGBElt x) = [KGBElt]:
   let f = first(#S,(int i)bool: is_ascent(S[i],x)) in
@@ -98,7 +94,7 @@ set find_ascent ([int] S, KGBElt x) = [KGBElt]:
 {. all descents of x by generators in S; there may be duplicates. .}
 set down_neighbors ([int] S,KGBElt x) = [int]:
   ##
-  for i in list((int i): is_strict_descent(S[i],x),#S)
+  for i in list(#S,(int i): is_strict_descent(S[i],x))
   do let s=S[i] in
     if is_real(s,x)
     then let y=Cayley(s,x) in [#y,#cross(s,y)]
@@ -312,10 +308,12 @@ set theta_stable_Levi (ratvec lambda, KGBElt x) = RealForm:
 set real_Levi (ratvec lambda, KGBElt x) = RealForm:
    Levi(real_parabolic(lambda,x))
 
-{. Positive coroots in nilradical of P defined by weight lambda (if L theta-stable). .}
+{. Positive coroots in nilradical of P defined by weight lambda
+  (if L theta-stable). .}
 set nilrad (ratvec lambda,KGBElt x) = mat: nilrad(parabolic_mute(lambda,x))
 
-{. Positive roots in nilradical of P defined by weight lambda (if L theta-stable). .}
+{. Positive roots in nilradical of P defined by weight lambda
+  (if L theta-stable). .}
 set nilrad_roots (ratvec lambda,KGBElt x) = mat:
   nilrad_roots(parabolic_mute(lambda,x))
 
@@ -343,14 +341,17 @@ set parabolic_alt (ratvec H,KGBElt x) = Parabolic:
 {. Levi factor of parabolic defined by coweight H. .}
 set Levi_alt (ratvec H,KGBElt x) = RealForm: Levi(parabolic_alt(H,x))
 
-{. Positive coroots in nilradical of P defined by coweight H (if L theta-stable). .}
+{. Positive coroots in nilradical of P defined by coweight H
+  (if L theta-stable). .}
 set nilrad_alt (ratvec H,KGBElt x) = mat: nilrad(parabolic_alt(H,x))
 
-{. Positive roots in nilradical of P defined by coweight H (if L theta-stable). .}
+{. Positive roots in nilradical of P defined by coweight H
+  (if L theta-stable). .}
 set nilrad_roots_alt (ratvec H,KGBElt x) = mat:
   nilrad_roots(parabolic_alt(H,x))
 
-{. Half sum of roots in nilradical of P defined by coweight H (if L theta-stable). .}
+{. Half sum of roots in nilradical of P defined by coweight H
+  (if L theta-stable). .}
 set rho_u_alt (ratvec H,KGBElt x)= ratvec: sum(nilrad_roots_alt(H,x)) /2
 
 {. $\rho(L)$ for Levi of P defined by coweight H (if L theta-stable). .}
@@ -378,7 +379,8 @@ set theta_stable_parabolic (KGBElt x) = Parabolic:
   assert(no_Cminus_roots(x),"x has some C- roots");
   parabolic_mute((1+involution(x))*rho(root_datum(x)),x)
 
-{. Levi factor of theta-stable parabolic defined by x (must have no C- roots). .}
+{. Levi factor of theta-stable parabolic defined by x
+  (must have no C- roots). .}
 set theta_stable_Levi (KGBElt x) = RealForm: Levi(theta_stable_parabolic(x))
 
 {. Check whether a Levi subgroup L is standard in G

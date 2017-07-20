@@ -107,18 +107,27 @@ swiss_matrix_knife: (int,mat,int,int,int,int->mat): slice and dice a matrix
   all entries of the resulting matrix are negated (they are multiplied by -1).
 
 echelon: (mat->mat,[int]): make column echelon form, and return pivots as well
-  This applies column operations, and possibly removal of null columns; the
-  number of remaining columns is the rank. The result is a pair (M,s) with s
-  increasing sequence, and M[i,j] is nonzero for i=s[j] and zero for i>s[j]
+  This applies to the argument A, an n*m matrix, column operations and
+  possibly removal of null columns to obtain an n*k matrix M (with k<=m) and
+  an invertible matrix C that records the column operations performed, and
+  an increasing sequence s of k "pivot rows"; the triple (M,C,s) is returned.
+  Here C is the result of applying to an m*m matrix initialized as identity
+  the same column operations that were a applied to A, where column removal is
+  replaced by moving the column to beyond the current width of the modified A;
+  as a consequence A*C equals M extended by m-k zero columns (so the last m-k
+  columns of C are a basis of the kernel of A). For each j with 0<=j<k one the
+  entries M[s[j],j] is nonzero (the pivot entry) and  M[i,j]=0 for i>s[j].
 diagonalize: (mat->vec,mat,mat): partial Smith reduction, without divisibility
   Applies row and column operations to the matrix to obtain diagonal form;
   returns the list of non-zero diagonal entries (all except the first are
   assured to be positive), and the pair of determinant 1 integral matrices
   that have been applied to left and right respectively.
 adapted_basis: (mat->mat,vec): find basis whose integer multiples span image
-  Returns for M a pair (B,c) of a basis (columns of B) and matching list c of
-  positive integers, such that the column span of M is the same as the span of
-  the multiples c_j*B_j of the columns B_j of the matrix B by the scalars c_j
+  Returns for an n*m matrix M a pair (B,c) of an invertible n*n matrix B (so
+  its columns form a basis of Z^n) and matching list c of k<=m positive
+  integers, such that the multiples c_j*B_j of the first k columns of B
+  span the image lattice of M (the lattice spanned by the columns of M).
+
 kernel: (mat->mat): find matrix whose columns span kernel of the given matrix
 eigen_lattice: (mat,int->mat): eigen-lattice of matrix (at integer eigenvalue)
   eigen_lattice(M,lambda) = kernel(M-lambda*id_mat(n)), where #M=(n,n)
@@ -314,6 +323,11 @@ coroot_radical: (RootDatum->mat): simple coroots and radical basis.
 fundamental_weight: (RootDatum,int->ratvec): fundamental weight number $i$
 fundamental_coweight: (RootDatum,int->ratvec): fundamental coweight number $i$
 dual: (RootDatum->RootDatum): dual of given root datum.
+  This operation preserves the numbering of the roots, interchanging just what
+  it calls roots and coroots. This implies that the ordering may differ from
+  the one in which a root datum for the dual type would be constructed in
+  isolation: notably the final root of |dual(rd)| may not be its highest one,
+  even if the root datum is of semisimple type.
 derived_info: (RootDatum->RootDatum,mat): information for the derived group
   The first result is the root datum for the derived group itself, the second
   result is a matrix mapping weights from the original to the derived datum.
@@ -871,6 +885,18 @@ raw_ext_KL: (Param,mat->mat,[vec],vec): extended Kazhdan-Lusztig data
   at position l the block element for which the length function (which is
   monotonically increasing along the block), takes a value at least l for the
   first time.
+
+W_graph: (Block->[[int],[int,int]]): data describing W-graph for this block
+  The data consists of a list with for each element x of the block a pair,
+  consisting of its \tau-invariant (as list of 0-based simple root indices),
+  and a list of outgoing edges, each one as a pair of a destination vertex y
+  and the integer \mu(x,y) that labels to this edge in the W-graph.
+W_cells: (Block->[[int],[[int],[int,int]]])): data describing W-cells for block
+  This decomposes the W-graph into cells, and returns data describing each of
+  those cells. It consists of a list with for each cell a pair consisting of
+  a list of numbers identifying the elements of this cell by the numbers of
+  the block elements the correspond to, and the structure of the restriction
+  of the W-graph restricted to this block, in the same format as W_graph above.
 
 extended_KL_block: (Param,mat->[Param],mat,vec): extended KL data for deform
   This function computes twisted KLV polynomials for (part of) a block, in the

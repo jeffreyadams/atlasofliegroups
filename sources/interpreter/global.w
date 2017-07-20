@@ -1674,10 +1674,10 @@ struct rat_value : public value_base
   big_int& numerator() @+{@; return val.numerator(); }
   big_int& denominator() @+{@; return val.denominator(); }
 #else
-  big_int numerator() const & @+{@; return val.numerator(); }
-  big_int denominator() const & @+{@; return val.denominator(); }
-  big_int&& numerator() & @+{@; return std::move(val).numerator(); }
-  big_int&& denominator() & @+{@; return std::move(val).denominator(); }
+  big_int numerator() const &@[@] @+{@; return val.numerator(); }
+  big_int denominator() const &@[@] @+{@; return val.denominator(); }
+  big_int&& numerator() &@[@] @+{@; return std::move(val).numerator(); }
+  big_int&& denominator() &@[@] @+{@; return std::move(val).denominator(); }
 #endif
   Rational rat_val() const @+{@; return val.rat_val(); }
 
@@ -1809,9 +1809,9 @@ typedef std::shared_ptr<const matrix_value> shared_matrix;
 typedef std::shared_ptr<matrix_value> own_matrix;
 @)
 struct rational_vector_value : public value_base
-{ RatWeight val;
+{ rat_Vector val;
 @)
-  explicit rational_vector_value(const RatWeight& v)
+  explicit rational_vector_value(const rat_Vector& v)
    : val(v) {@; val.normalize();}
   rational_vector_value(const int_Vector& v,int d)
    : val(v,d) @+ {@; val.normalize(); }
@@ -1904,20 +1904,70 @@ types. The conversions defined here are from integers to rationals,
 from lists of rationals to rational vectors and back, from vectors to rational
 vectors, and from (nested) lists of integers to vectors and matrices and back.
 
-@ Here are the first conversions involving rational numbers and rational
-vectors.
+@ Here is the first conversion, from integers to rational numbers. It is not
+essential, as users could easily provide the denominator~$1$ explicitly, but
+it comes in quite handy, and illustrates a typical one-way implicit
+conversion. The implementation is easy, since |big_rat| has a constructor
+(marked |explicit|) from |big_int|.
 
 @< Local function def... @>=
 void rational_convert() // convert integer to rational (with denominator~1)
 { own_int i = get_own<int_value>();
   push_value(std::make_shared<rat_value>(big_rat(std::move(i->val))));
 }
-@)
+
+@ Let us try to proceed in an orderly fashion in presenting the numerous
+conversions related to the packed Atlas types \.{vec}, \.{mat} and \.{ratvec}
+(there is no packed \.{ratmat} type since no built-in function requires it to
+date; if some day it were to be added, it would require the addition of
+several more implicit conversions). We shall first present the ``internalising
+conversions'' that build such values from \axis. lists (these are the most
+essential ones), then ``externalising ones that do the inverse, and finally
+the ``rationalising conversions'' that in analogy to |rational_convert|
+introduce implicit denominators~$1$ for user convenience.
+
+We start with an auxiliary function |row_to_vector|, which constructs a new
+|int_Vector| from a row of integers, leaving the task to clean up that row to
+their caller.
+
+There used to be a long commentary here to the effect that |row_to_vector|
+returns its result by value rather than by assignment to a reference parameter
+as Fokko used to do systematically, but that this is fine due to what is
+called return value optimisation that all modern compilers apply. This
+nowadays seems so obvious, and returning by (large) value ubiquitous in the
+Atlas software, that the comment appeared dated and out of places, so it was
+removed. Nonetheless we mark the fact that this is the place where the change
+of idiom was first applied within the Atlas software.
+
+@< Local function def... @>=
+int_Vector row_to_vector(const row_value& r)
+{ int_Vector result(r.val.size());
+  for(size_t i=0; i<r.val.size(); ++i)
+    result[i]=force<int_value>(r.val[i].get())->int_val();
+  return result;
+}
+
+@ Now we get to the actual conversion from rows of integers to vectors.
+
+@< Local function def... @>=
+void intlist_vector_convert()
+{ shared_row r = get<row_value>();
+  push_value(std::make_shared<vector_value>(row_to_vector(*r)));
+}
+
+@ Another internalising conversion is that of rows of rationals to rational
+vectors. Here there is more work to do, as one needs to find a common
+denominator~|d|, and then re-scale each numerator to express the fraction on
+this denominator.
+
+@< Local function def... @>=
+
 void ratlist_ratvec_convert() // convert list of rationals to rational vector
 { shared_row r = get<row_value>();
-  matrix::Vector<arithmetic::Numer_t> numer(r->val.size());
-  std::vector<arithmetic::Denom_t> denom(r->val.size());
   big_int d(1);
+  Ratvec_Numer_t numer(r->val.size());
+    // type |Ratvec_Numer_t| is needed near end
+  std::vector<arithmetic::Denom_t> denom(r->val.size());
   for (size_t i=0; i<r->val.size(); ++i)
   // collect numerators and denominators separately
   { const auto* frac = force<rat_value>(r->val[i].get());
@@ -1935,82 +1985,113 @@ void ratlist_ratvec_convert() // convert list of rationals to rational vector
   push_value(std::make_shared<rational_vector_value>
      (std::move(numer),d.ulong_val()));
 }
+
+@ For the externalising functions involving vectors, we start, similarly to
+what was done above, with an auxiliary function |vector_to_row| that performs
+more or less the inverse transformation of |row_to_vector|; however rather than
+returning a |row_value| it returns a |own_row| pointing to it. Then we define
+the conversion |vector_intlist_convert| using it.
+
+@< Local function def... @>=
+own_row vector_to_row(const int_Vector& v)
+{ own_row result = std::make_shared<row_value>(v.size());
+  for(size_t i=0; i<v.size(); ++i)
+    result->val[i]=std::make_shared<int_value>(v[i]);
+  return result;
+}
 @)
+void vector_intlist_convert()
+{@; shared_vector v = get<vector_value>();
+  push_value(vector_to_row(v->val));
+}
+
+@ A final purely externalising function at the vector level is
+|ratvec_ratlist_convert|, which is inverse to |ratlist_ratvec_convert|.
+Although the rational numbers we construct are likely to not be normalised, we
+need not worry about it since the |big_rat| constructor from |Rational| will
+call |normalize| before building and storing its numerator and denominator.
+
+@< Local function def... @>=
+
 void ratvec_ratlist_convert() // convert rational vector to list of rationals
 { shared_rational_vector rv = get<rational_vector_value>();
   own_row result = std::make_shared<row_value>(rv->val.size());
   for (size_t i=0; i<rv->val.size(); ++i)
-  { Rational q(rv->val.numerator()[i],rv->val.denominator());
-    result->val[i] = std::make_shared<rat_value>(q.normalize());
-  }
-  push_value(std::move(result)); // here |std::move| avoids ref-count updates
-}
-@)
-void vec_ratvec_convert() // convert vector to rational vector
-{ shared_vector v = get<vector_value>();
-  push_value(std::make_shared<rational_vector_value> (RatWeight(v->val,1)));
+    result->val[i] = std::make_shared<rat_value>@|
+      (Rational(rv->val.numerator()[i],rv->val.denominator()));
+  push_value(result);
 }
 
-@ The conversions into vectors or matrices use an auxiliary function
-|row_to_weight|, which constructs a new |Weight| from a row of integers,
-leaving the task to clean up that row to their caller.
-
-Note that |row_to_weight| returns its result by value (rather than by
-assignment to a reference parameter); in principle this involves making a copy
-of the vector |result| (which includes duplicating its entries). However since
-there is only one |return| statement, the code generated by a decent compiler
-like \.{g++} creates the vector object directly at its destination in this
-case (whose location is passed as a hidden pointer argument), and does not
-call the copy constructor at all. More generally this is avoided if all
-|return| statements return the same variable, or if all of them return
-expressions instead. So we shall not hesitate to use this idiom henceforth; in
-fact, while it was exceptional when this code was first written, it is now
-being used throughout the Atlas library. In fact this is so much true that
-this comment can be considered to be a mere relic to remind where this change
-of idiom was first applied within the Atlas software.
+@ We now come to the rationalising conversions at the vector level. We have
+two ``integral'' types \.{vec} and \.{[int]}, and two ``rational''
+types  \.{ratvec} and \.{[rat]}, which gives us $2\times2=4$ such conversions.
 
 @< Local function def... @>=
-int_Vector row_to_weight(const row_value& r)
-{ int_Vector result(r.val.size());
+rat_Vector introw_to_ratvec(const row_value& r)
+{ Ratvec_Numer_t numer(r.val.size());
   for(size_t i=0; i<r.val.size(); ++i)
-    result[i]=force<int_value>(r.val[i].get())->int_val();
+    numer[i]=force<int_value>(r.val[i].get())->val.long_val();
+  return rat_Vector(numer,1);
+}
+own_row vector_to_ratrow(const int_Vector& v)
+{ own_row result = std::make_shared<row_value>(v.size());
+  for(size_t i=0; i<v.size(); ++i)
+    result->val[i]=std::make_shared<rat_value>(big_rat(big_int(v[i])));
   return result;
 }
-@)
-void intlist_vector_convert()
-{@; shared_row r = get<row_value>();
-  push_value(std::make_shared<vector_value>(row_to_weight(*r)));
+own_row introw_to_ratrow(own_row r)
+{ for (auto it=r->val.begin(); it!=r->val.end(); ++it)
+    *it=std::make_shared<rat_value>(big_rat(force<int_value>(it->get())->val));
+  return r;
 }
 @)
-void intlist_ratvec_convert()
-{@; shared_row r = get<row_value>();
-  push_value(std::make_shared<rational_vector_value>
-    (RatWeight(row_to_weight(*r),1)));
+void vector_ratvec_convert() // convert vector to rational vector
+{ shared_vector v = get<vector_value>();
+  push_value(std::make_shared<rational_vector_value> (rat_Vector(v->val,1)));
 }
 
-@ The conversion |veclist_matrix_convert| interprets a list of vectors as the
-columns of a matrix which it returns. While initially this function was
-written in a tolerant style that would accept varying column lengths,
-zero-filling the shorter ones to the maximal column size present, this
-attitude proved to induce subtle programming errors. This happens notably by
-letting pass the case of no vectors at all, for which the implied column
-length of~$0$ is almost certainly wrong in the context: there usually is a
-obvious size~$n$ that the vectors in the list would have had it there had been
-any, but which can of course not be deduced from the empty list itself; then
-by returning a $0\times0$ matrix rather than an $n\times0$ matrix subsequent
-matrix operations are likely to fail. The proper attitude is instead that
-implicitly called functions should prefer prudence, so the function below will
-insist on vectors of equal lengths, and at least one of them; otherwise an
-error is signalled. The old functionality is more or less retained in the
-explicit function |stack_rows| that will be defined later (but which works by
-rows rather than by columns).
+void intlist_ratvec_convert()
+{ shared_row r = get<row_value>();
+  push_value(std::make_shared<rational_vector_value>
+    (introw_to_ratvec(*r)));
+}
+
+void vector_ratlist_convert()
+{@; shared_vector v = get<vector_value>();
+  push_value(vector_to_ratrow(v->val));
+}
+
+void intlist_ratlist_convert()
+{@; push_value(introw_to_ratrow(get_own<row_value>()));
+}
+
+@ We now come to the conversions that involve matrices. Among these, the main
+internalising conversion is |veclist_matrix_convert|, which interprets a list
+of vectors as the columns of a matrix which it returns.
+
+While initially this function was written in a tolerant style that would
+accept varying column lengths, zero-filling the shorter ones to the maximal
+column size present, this attitude proved to induce subtle programming errors.
+Notably when an empty list of vectors was implicitly converted to a matrix,
+the result had column length of~$0$, while in the context that number was
+probably intended to be the size of vectors that were candidate for being in
+the list. One cannot blame the language for not guessing this number in the
+absence of any vectors, but it was deemed safer to simply forbid this
+particular case as an \emph{implicit} conversion, and instead provide the user
+with a means to be explicit about the number of rows desired (even in the
+absence of columns). Therefore the code below will signal an error when no
+vectors at all are present. The old functionality of automatically adapting
+the size to largest vector present is more or less retained in the function
+|stack_rows| to be defined later (but combines the vectors as rows rather than
+as columns).
 
 @< Local function def... @>=
 void veclist_matrix_convert()
 { shared_row r = get<row_value>();
   if (r->val.size()==0)
-    throw runtime_error("Cannot convert empty list of vectors to matrix");
-@.Cannot convert empty list of vectors@>
+    throw runtime_error
+      ("Implicit conversion to matrix for an empty set of vectors");
+@.Implicit conversion to matrix for an empty set@>
   size_t n = force<vector_value>(r->val[0].get())->val.size();
   own_matrix m = std::make_shared<matrix_value>(int_Matrix(n,r->val.size()));
   for(size_t j=0; j<r->val.size(); ++j)
@@ -2023,8 +2104,10 @@ void veclist_matrix_convert()
   push_value(std::move(m));
 }
 
-@ There remains one ``internalising'' conversion function, from row of row of
-integer to matrix. We also give it prudent characteristics.
+@ Another internalising conversion to matrix is | intlistlist_matrix_convert|,
+which will directly convert a row of rows of integers. It is much less
+frequently used then the previous one, but occasionally can be handy. Again we
+give it prudent characteristics.
 
 @< Local function def... @>=
 void intlistlist_matrix_convert()
@@ -2035,7 +2118,7 @@ void intlistlist_matrix_convert()
   size_t n = force<row_value>(r->val[0].get())->val.size();
   own_matrix m = std::make_shared<matrix_value>(int_Matrix(n,r->val.size()));
   for(size_t j=0; j<r->val.size(); ++j)
-  { int_Vector col = row_to_weight(*force<row_value>(r->val[j].get()));
+  { int_Vector col = row_to_vector(*force<row_value>(r->val[j].get()));
     if (col.size()!=n)
       throw runtime_error("List sizes differ in conversion to matrix");
 @.List sizes differ in conversion@>
@@ -2044,56 +2127,139 @@ void intlistlist_matrix_convert()
   push_value(std::move(m));
 }
 
-@ There remain the ``externalising'' conversions (towards lists of values) of
-the vector and matrix conversions. It will be handy to have a basic function
-|weight_to_row| that performs more or less the inverse transformation of
-|row_to_weight|, but rather than returning a |row_value| it returns a
-|own_row| pointing to it.
+@ To complete the internalising conversions, we allow a row of rows of
+integers to be converted to a row of vectors, without forming an intermediate
+matrix. It is not a very essential conversion, and we do not pretend that
+whenever a type conversion is implicitly possible the same will hold for the
+corresponding row-of types, but it does seem reasonable to have the set of
+implicit conversion closed under composition (here \.{[[int]]} to \.{mat}
+to \.{[vec]}). As for the implementation, we can reuse the same |row_value|
+provided we get unique access to it as our |own_row|.
 
 @< Local function def... @>=
-own_row weight_to_row(const int_Vector& v)
-{ own_row result = std::make_shared<row_value>(v.size());
-  for(size_t i=0; i<v.size(); ++i)
-    result->val[i]=std::make_shared<int_value>(v[i]);
-  return result;
+
+void intlistlist_veclist_convert()
+{ own_row r = get_own<row_value>();
+  for (auto it=r->val.begin(); it!=r->val.end(); ++it)
+    *it = std::make_shared<vector_value> @|
+      (row_to_vector(*force<row_value>(it->get())));
+  push_value(r);
 }
-@)
-void vector_intlist_convert()
-{@; shared_vector v = get<vector_value>();
-  push_value(weight_to_row(v->val));
-}
-@)
+
+@ There are two corresponding externalising conversions for matrices. The
+second one uses the same auxiliary function |vector_to_row| that was used above.
+
+@< Local function def... @>=
+
 void matrix_veclist_convert()
 { shared_matrix m=get<matrix_value>();
   own_row result = std::make_shared<row_value>(m->val.numColumns());
-  for(size_t i=0; i<m->val.numColumns(); ++i)
-    result->val[i]=std::make_shared<vector_value>(m->val.column(i));
-  push_value(std::move(result));
+  for(size_t j=0; j<m->val.numColumns(); ++j)
+    result->val[j]=std::make_shared<vector_value>(m->val.column(j));
+  push_value(result);
 }
 @)
 void matrix_intlistlist_convert()
 { shared_matrix m=get<matrix_value>();
   own_row result = std::make_shared<row_value>(m->val.numColumns());
-  for(size_t i=0; i<m->val.numColumns(); ++i)
-    result->val[i]= weight_to_row(m->val.column(i));
-
-  push_value(std::move(result));
+  for(size_t j=0; j<m->val.numColumns(); ++j)
+    result->val[j]= vector_to_row(m->val.column(j));
+  push_value(result);
 }
+@)
+void veclist_intlistlist_convert()
+{ own_row r=get_own<row_value>();
+  for (auto it=r->val.begin(); it!=r->val.end(); ++it)
+    *it = vector_to_row(force<vector_value>(it->get())->val);
+  push_value(r);
+}
+
+@ We now come to the rationalising conversions at the matrix level. We have
+three ``integral'' types \.{mat}, \.{[vec]}, and \.{[[int]]} and two
+``rational'' types \.{[ratvec]} and \.{[[rat]]}, which gives us $3\times2=6$
+such conversions.
+
+@< Local function def... @>=
+
+void matrix_ratveclist_convert()
+{ shared_matrix m=get<matrix_value>();
+  own_row result = std::make_shared<row_value>(m->val.numColumns());
+  for(size_t j=0; j<m->val.numColumns(); ++j)
+    result->val[j]=std::make_shared<rational_vector_value> @|
+      (rat_Vector(m->val.column(j),1));
+  push_value(result);
+}
+
+void matrix_ratlistlist_convert()
+{ shared_matrix m=get<matrix_value>();
+  own_row result = std::make_shared<row_value>(m->val.numColumns());
+  for(size_t j=0; j<m->val.numColumns(); ++j)
+  result->val[j]= vector_to_ratrow(m->val.column(j));
+  push_value(result);
+}
+@)
+void veclist_ratveclist_convert()
+{ own_row r=get_own<row_value>();
+  for (auto it=r->val.begin(); it!=r->val.end(); ++it)
+    *it=std::make_shared<rational_vector_value> @|
+      (rat_Vector(force<vector_value>(it->get())->val,1));
+  push_value(r);
+}
+
+void veclist_ratlistlist_convert()
+{ own_row r=get_own<row_value>();
+  for (auto it=r->val.begin(); it!=r->val.end(); ++it)
+    *it = vector_to_ratrow(force<vector_value>(it->get())->val);
+  push_value(r);
+}
+
+@)
+void intlistlist_ratveclist_convert()
+{ own_row r=get_own<row_value>();
+  for (auto it=r->val.begin(); it!=r->val.end(); ++it)
+    *it=std::make_shared<rational_vector_value> @|
+       (introw_to_ratvec(*force<row_value>(it->get())));
+  push_value(r);
+}
+
+void intlistlist_ratlistlist_convert()
+{ own_row r=get_own<row_value>();
+  for (auto it=r->val.begin(); it!=r->val.end(); ++it)
+    *it=introw_to_ratrow(force_own<row_value>(std::move(*it)));
+  push_value(r);
+}
+
 
 @ All that remains is to initialise the |coerce_table|.
 @< Initialise evaluator @>=
 coercion(int_type,rat_type, "QI", rational_convert); @/
-coercion(row_of_rat_type,ratvec_type, "Qv[Q]", ratlist_ratvec_convert); @/
-coercion(ratvec_type,row_of_rat_type, "[Q]Qv", ratvec_ratlist_convert); @/
-coercion(vec_type,ratvec_type,"QvV", vec_ratvec_convert); @/
-coercion(row_of_int_type,ratvec_type,"Qv[I]", intlist_ratvec_convert);
-@)
 coercion(row_of_int_type, vec_type, "V[I]", intlist_vector_convert); @/
+coercion(row_of_rat_type,ratvec_type, "Qv[Q]", ratlist_ratvec_convert); @/
+coercion(vec_type,row_of_int_type, "[I]V", vector_intlist_convert); @/
+coercion(ratvec_type,row_of_rat_type, "[Q]Qv", ratvec_ratlist_convert); @/
+coercion(vec_type,ratvec_type,"QvV", vector_ratvec_convert); @/
+coercion(row_of_int_type,ratvec_type,"Qv[I]", intlist_ratvec_convert); @/
+coercion(vec_type,row_of_rat_type,"[Q]V", vector_ratlist_convert); @/
+coercion(row_of_int_type,row_of_rat_type,"[Q][I]", intlist_ratlist_convert);
+@)
 coercion(row_of_vec_type,mat_type, "M[V]", veclist_matrix_convert); @/
 coercion(row_row_of_int_type,mat_type, "M[[I]]", intlistlist_matrix_convert); @/
-coercion(vec_type,row_of_int_type, "[I]V", vector_intlist_convert); @/
+coercion(row_row_of_int_type,row_of_vec_type, "[V][[I]]",
+  intlistlist_veclist_convert); @/
 coercion(mat_type,row_of_vec_type, "[V]M", matrix_veclist_convert); @/
 coercion(mat_type,row_row_of_int_type, "[[I]]M", matrix_intlistlist_convert); @/
+coercion(row_of_vec_type,row_row_of_int_type, "[[I]][V]",
+  veclist_intlistlist_convert); @/
+coercion(mat_type,row_of_ratvec_type, "[Qv]M", matrix_ratveclist_convert); @/
+coercion(mat_type,row_row_of_rat_type, "[[Q]]M", matrix_ratlistlist_convert); @/
+coercion(row_of_vec_type,row_of_ratvec_type, "[Qv][V]",
+   veclist_ratveclist_convert); @/
+coercion(row_of_vec_type,row_row_of_rat_type, "[[Q]][V]",
+   veclist_ratlistlist_convert); @/
+coercion(row_row_of_int_type,row_of_ratvec_type, "[Qv][[I]]",
+   intlistlist_ratveclist_convert); @/
+coercion(row_row_of_int_type,row_row_of_rat_type, "[[Q]][[I]]",
+    intlistlist_ratlistlist_convert);
 
 @* Wrapper functions.
 %
@@ -3908,17 +4074,19 @@ column echelon function.
 @<Local function definitions @>=
 void echelon_wrapper(expression_base::level l)
 { own_matrix M=get_own<matrix_value>();
-  if (l!=expression_base::no_value)
-  { BitMap pivots=matreduc::column_echelon(M->val);
-    push_value(M);
-    own_row p_list = std::make_shared<row_value>(0);
-    p_list->val.reserve(pivots.size());
-    for (BitMap::iterator it=pivots.begin(); it(); ++it)
-      p_list->val.push_back(std::make_shared<int_value>(*it));
-    push_value(std::move(p_list));
-    if (l==expression_base::single_value)
-      wrap_tuple<2>();
-  }
+  if (l==expression_base::no_value)
+    return;
+  own_matrix column = std::make_shared<matrix_value>(int_Matrix());
+  BitMap pivots=matreduc::column_echelon(M->val,column->val);
+  push_value(std::move(M));
+  push_value(std::move(column));
+  own_row p_list = std::make_shared<row_value>(0);
+  p_list->val.reserve(pivots.size());
+  for (BitMap::iterator it=pivots.begin(); it(); ++it)
+    p_list->val.push_back(std::make_shared<int_value>(*it));
+  push_value(std::move(p_list));
+  if (l==expression_base::single_value)
+    wrap_tuple<3>();
 }
 
 @ And here are general functions |diagonalize| and |adapted_basis|, rather
@@ -4204,7 +4372,7 @@ install_function(swiss_matrix_knife_wrapper@|,"swiss_matrix_knife"
 install_function(swiss_matrix_knife_wrapper@|,"matrix slicer"
     ,"(int,mat,int,int,int,int->mat)"); // space make an untouchable copy
 @)
-install_function(echelon_wrapper,"echelon","(mat->mat,[int])");
+install_function(echelon_wrapper,"echelon","(mat->mat,mat,[int])");
 install_function(diagonalize_wrapper,"diagonalize","(mat->vec,mat,mat)");
 install_function(adapted_basis_wrapper,"adapted_basis","(mat->mat,vec)");
 install_function(kernel_wrapper,"kernel","(mat->mat)");
@@ -4220,3 +4388,5 @@ install_function(subspace_normal_wrapper,@|
 @* Index.
 
 % Local IspellDict: british
+
+% LocalWords:  introw

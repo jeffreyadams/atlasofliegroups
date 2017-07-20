@@ -103,8 +103,8 @@ begin let ic = inner_class(x), theta = involution(x) in
 ; assert(is_integer(square(x)-g)
         ,"x is not compatible with infinitesimal cocharacter g")
 ; assert(is_integer(lambda-rho(ic)),"lambda is not in the correct X^*-coset")
-{ let l = ratvec_as_vec( g-torus_factor(x)*(1+theta)*/2-rho_check(real_form(x)) )
-  but this is simplified because torus_factor(x) is ^theta fixed
+{ let l = ratvec_as_vec( g-torus_factor(x)*(1+theta)/2-rho_check(real_form(x)) )
+  but this is simplified because torus_factor(x) is |^theta|-fixed
 }
 ; let l = (g-torus_factor(x)-rho_check(ic))\1 { convert to vec }
 { g-torus_factor(x)*(1+theta)) = l+rho^v =>
@@ -336,7 +336,7 @@ set ext_basic (RealForm G) = (mat,[Param],ratvec):
 { compute <alpha,beta^\vee> in the quotient root system }
 set folded_bracket (RootDatum rd, mat delta, int i, int j) = int:
   let alpha=root(rd,i), beta=root(rd,j), betav_delta1 = coroot(rd,j)*(1+delta)
-  in rat_as_int( 2*betav_delta1*alpha/(betav_delta1*beta) )
+  in rat_as_int(betav_delta1*alpha*2/(betav_delta1*beta) )
 
 set folded_m (RootDatum rd, mat delta, int i, int j) = int:
   folded_bracket(rd,delta,i,j)*folded_bracket(rd,delta,j,i)

@@ -1,5 +1,7 @@
-{! Functions involving K-types (final tempered limit parameters) and K-highest weights.
-   The main reference is Vogan, "Branching to a Maximal Compact Subgroup" [KHatHowe].
+{! Functions involving K-types (final tempered limit parameters) and
+   K-highest weights.
+   The main reference is Vogan, "Branching to a Maximal Compact Subgroup"
+     [KHatHowe].
    See also the notes on "K-types in atlas" in the Dropbox.
 
    The main functions are:
@@ -121,10 +123,13 @@ set = (KHighestWeight (x,mu), KHighestWeight (y,tau)) = bool:
 
 {. List of LKTs (as final tempered limit parameters) of a module given by a
    parameter. .}
-set LKTs (Param p) = [K_Type]: for q in monomials(finalize(p.at_nu_0)) do K_type(q) od
+set LKTs (Param p) = [K_Type]:
+  for q in monomials(finalize(p.at_nu_0)) do K_type(q) od
 
-{. LKT of module given by a parameter, if it is unique (otherwise error message) .}
-set LKT (Param p) = K_Type: let lkts=LKTs(p) in assert(#lkts=1,"More than one LKT; use LKTs"); lkts[0]
+{. LKT of module given by a parameter, if it is unique
+  (otherwise error message) .}
+set LKT (Param p) = K_Type:
+  let lkts=LKTs(p) in assert(#lkts=1,"More than one LKT; use LKTs"); lkts[0]
 
 {---------------- map from K_types to KHighestWeights ----------------}
 
@@ -169,7 +174,8 @@ set highest_weight_split_spherical (K_Type p,KGBElt x_K) = KHighestWeight:
 set highest_weight_split_spherical (Param p,KGBElt x_K) = KHighestWeight:
   let (x,mu)=highest_weight_split_spherical(p) in move_weight((x,mu),x_K)
 
-{. This function returns just ONE KHighestWeight of a K-type (auxiliary function). .}
+{. This function returns just ONE KHighestWeight of a K-type
+  (auxiliary function). .}
 set highest_weight_one (K_Type p) = KHighestWeight:
   assert(is_semifinal(parameter(p)),"parameter has singular real parity roots");
   let p=make_no_Cminus(p)
@@ -223,7 +229,8 @@ set highest_weight (K_Type p,KGBElt x_K) = KHighestWeight:
   assert(#hwts=1,"highest weight it not unique, use highest_weights instead");
   hwts[0]
 
-{. Unique highest weight of (unique) LKT of a parameter (or error if not unique). .}
+{. Unique highest weight of (unique) LKT of a parameter
+  (or error if not unique). .}
 set highest_weight (Param p) = KHighestWeight:
   let hws=highest_weights(p) in
   assert(#hws=1,"highest weight it not unique, use highest_weights instead");
@@ -252,7 +259,7 @@ set centralizer(KGBElt x,ratvec v) = (KGBElt,RootDatum):
 {. (Auxiliary function) .}
 set find_nci_root (KGBElt x,ratvec tau) = int:
   let rd=root_datum(x)
-  then sr=simple_roots(rd), scr=simple_coroots(rd),ssr=ss_rank(rd)
+  then sr=simple_roots(rd), scr=simple_coroots(rd),ssr=semisimple_rank(rd)
   then j= first(ssr, (int i)bool:
                      scr[i]*tau<0 and is_noncompact_imaginary(x)(sr[i]) )
   in if j>=0 then j
@@ -294,53 +301,51 @@ set tworho_K (KGBElt x) = ratvec:
    (x',mu+2rho_K(x)-rho,tau) with tau dominant and x' corresponding to the new
    Weyl chamber. .}
 set project_on_dominant_cone (KGBElt x, ratvec mu) = (KGBElt,ratvec,ratvec):
-{let ()=prints("project_on_dominant_cone with x=", x, " mu=", mu) in}
-let rd=root_datum(x) then
-{make mu zero on the split part of h}
-mu=(1+involution(x))*mu/2 then
-(mu_1,w)=make_dominant(rd,mu) then
-x_1=cross(inverse(w),x) then
-{x_1=x then
-mu_1=mu then}
-{()=prints("mu:", mu);
-prints("x: ", x);
-prints("mu_1:", mu_1);
-prints("x_1: ", x_1) then
+{ let ()=prints("project_on_dominant_cone with x=", x, " mu=", mu) in }
+  let rd=root_datum(x)
+  then (mu_1,w) = make_dominant
+      (rd,mu:=(1+involution(x))*mu/2) { make |mu| zero on the split part of h }
+  then x_1=cross(inverse(w),x)
+{ then ()=prints("mu:", mu); prints("x: ", x); prints("mu_1:", mu_1);
+  prints("x_1: ", x_1)
 }
 { Note: tworho_K (x) (above) is in (\h^*)^theta,
   while rho_K(x) is in \t^*, need the former
 }
-mu_2=mu_1+tworho_K (x_1) in
-{let ()=prints("mu_2:", mu_2) in}
-let (,y)=make_dominant(rd,mu_2) in
-let x_2=cross(inverse(y),x_1) in
-{let ()=prints("y=", y) in
-let ()=prints("x_2=", x_2) in}
-let rho=act(y,rho(rd)) then
-mu_3=mu_2-rho in
-{let ()=prints("mu_3=", mu_3) in}
-let rec_fun f(KGBElt x, ratvec mu_3_orig,ratvec tau)=(KGBElt,ratvec,ratvec):
-let rd_x=root_datum(x) in
-{let ()=prints();prints("f with: ", x, " ", real_form(x), " tau= ", tau) in
-let ()=prints("rd:", rd) in
-let ()=prints("tau=",tau) in
-let ()=prints("x=",x, "on real form:", real_form(x)) in}
-if is_dominant(rd,tau) then
-{return this triple:}
-(cross(inverse(y),x_1),act(inverse(y),mu_3), tau) else
-let j=find_nci_root(x,tau) then
-{()=prints("got root: ", j, ", ", posroots(rd_x)[j]) then}
-{()=prints("beta=", posroots(rd_x)[j]) then}
-new_tau=tau-poscoroots(rd_x)[j]*tau*posroots(rd_x)[j]/2 then
-{()=prints("new_tau=",new_tau) then}
-(sub_x,)=centralizer(x,poscoroots(rd_x)[j]) in
-f(sub_x,mu_3_orig,new_tau) fi in f(x_2,mu_3,act(inverse(y),mu_3))
+  then mu_2=mu_1+tworho_K (x_1)
+{ then ()=prints("mu_2:", mu_2); }
+  then (,y)=make_dominant(rd,mu_2)
+  then rho=act(y,rho(rd))
+  then mu_3=mu_2-rho
+{ then ()=prints("mu_3=", mu_3) }
+  then
+    rec_fun f(KGBElt x, ratvec mu_3_orig,ratvec tau) = (KGBElt,ratvec,ratvec):
+      let rd_x=root_datum(x) in { may differ from |rd| in the recursion }
+{     prints();prints("f with: ", x, " ", real_form(x), " tau= ", tau);
+      prints("rd:", rd);
+      prints("tau=",tau);
+      prints("x=",x, "on real form:", real_form(x))
+}
+      if is_dominant(rd,tau)
+      then {return this triple:}
+        ( cross(inverse(y),x_1), act(inverse(y),mu_3), tau)
+      else
+         let j=find_nci_root(x,tau)
+{        then ()=prints("got root: ", j, ", ", posroots(rd_x)[j]) }
+{        then ()=prints("beta=", posroots(rd_x)[j]) }
+         then new_tau=tau-poscoroots(rd_x)[j]*tau*posroots(rd_x)[j]/2
+{        then ()=prints("new_tau=",new_tau)}
+         then (sub_x,)=centralizer(x,poscoroots(rd_x)[j])
+         in f(sub_x,mu_3_orig,new_tau)
+       fi
+   in f(cross(inverse(y),x_1),mu_3,act(inverse(y),mu_3))
 
-{. Vogan algorithm; previous function in case mu is given as a vec, rather than ratvec. .}
+{. Vogan algorithm; previous function in case mu is given as a vec,
+  rather than ratvec. .}
 set project_on_dominant_cone (KGBElt x, vec mu) = (KGBElt,ratvec,ratvec):
   project_on_dominant_cone(x,ratvec:mu)
 
-{possibly multivalued, coming from G-spherical case}
+{ possibly multivalued, coming from G-spherical case }
 
 { This function is the same as basis_lambda_differential_0 in all_parameters.at
    List of weights representative of a set of generators of the elementary
@@ -404,7 +409,7 @@ set all_G_spherical_same_differential (Param p) = [K_Type]:
 set parabolic_LKT (KHighestWeight (x,mu)) = Parabolic:
   let rd=root_datum(x), (y,mu_3_orig,lambda) = project_on_dominant_cone(x,mu)
   then diff=lambda-mu_3_orig
-  then S= list( (int i): fundamental_coweight(rd,i)*diff>0, ss_rank(rd))
+  then S= list(semisimple_rank(rd), (int i): fundamental_coweight(rd,i)*diff>0)
   in Parabolic:(S,y)
 
 { go from KHighestWeight mu to K_types [K_Type]  mu -> [p_1,...,p_r]
@@ -552,7 +557,7 @@ set fundamental_weight_coordinates (KHighestWeight (x,mu)) = vec:
 set K_highest_weight_from_fundamental_weights(KGBElt x,vec tau) =
     KHighestWeight:
   let K_0=K_0(x), fw=fundamental_weights_K_H(x)
-  , weight=ratvec:null(ss_rank(real_form(x)))
+  , weight = ratvec: x.real_form.semisimple_rank.null
   in for i:#tau do weight+:=tau[i]*fw[i] od;
   assert(is_integer(weight),"Weight is not integral");
   (x,ratvec_as_vec(weight))

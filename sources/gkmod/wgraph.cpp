@@ -75,7 +75,7 @@ DecomposedWGraph::DecomposedWGraph(const WGraph& wg)
     for (Partition::iterator::SubIterator j=it->first; j!=it->second; ++j)
     {
       size_t y = *j; size_t z=relno[y]; // |z==j-it->first|
-      for (size_t k = 0; k < wg.degree(z); ++k)
+      for (size_t k = 0; k < wg.degree(y); ++k)
 	if (d_part[wg.edge_target(y,k)]==n) // ignore edges outside this cell
 	{
 	  graph.edgeList(z).push_back(relno[wg.edge_target(y,k)]);

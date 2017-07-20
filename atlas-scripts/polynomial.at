@@ -34,7 +34,8 @@ set strip (poly v) = poly: v + poly_0 { operator + does actual stripping }
 set degree (poly P) = int: #P.strip-1 { degree, or -1 for the zero polynomial }
 
 { evaluate polynomial at integer }
-set evaluate_at_1 = sum@poly { from basic.at; often we need this easy case }
+set evaluate_at_1 (poly v) = int: { often we need this easy case }
+   dot_product(v,ones(#v)) { use vector dot-product here }
 
 set eval (poly v,int k) = int:
   let sum=0 in  for e in v ~do sum:= e + k*sum od; sum
@@ -46,11 +47,24 @@ set eval (poly v,Split w)= Split:
 set at_s (poly v) = Split: eval(v,Split:(0,1))
 
 set monic_divide (poly P, poly D) = (poly,poly): { quotient, remainder }
-  assert(#D>0 and D~[0]=1,"Not a monic divisor");
-  let deg_D = #D-1 in
-  for i: #P-deg_D { quotient has $\deg P+1-\deg D$ terms }
-  do let c=P~[i] in for j:deg_D from 1 do P~[i+j] -:= c*D~[j] od
-  od; (P[deg_D:],P[:deg_D].strip)
+   assert(#D>0 and D~[0]=1,"Not a monic divisor");
+   let deg_D = D.degree, l_P=#P in
+   if l_P<deg_D then (poly_0,P##null(deg_D-l_P))
+   else
+      for i: l_P-deg_D { quotient has $\deg P+1-\deg D$ terms }
+      do let c=P~[i] in for j:deg_D from 1 do P~[i+j] -:= c*D~[j] od
+      od
+   ;  (P[deg_D:] {quotient from upper part}, P[:deg_D] {remainder} )
+   fi
+
+{division of integer polynomials, d is not required to be monic, but might fail}
+{. division of integer polynomials p=dq+r .}
+set divide(poly p,poly d) = (poly,poly):
+   let rec_fun f(poly q, poly r) = (poly,poly):
+      if #r<#d then (q,r)
+      else let t=poly: null(#r-#d) # rat_as_int(r~[0]/d~[0]) in f( q+t , r-t*d )
+      fi
+   in f(poly_0,p)
 
 
 {			  Polynomial matrices				}
@@ -232,26 +246,3 @@ set is_non_negative = (poly->bool): >=@poly { same condition as "dominance" }
 
 set principal_minor (poly_mat M,int size) = poly_mat:
   for row in M[:size] do row[:size] od
-
-{division of integer polynomials, d is not required to be monic, but might fail}
-{. division of integer polynomials p=dq+r .}
-set divide(poly p,poly d) = (poly,poly):
-   let rec_fun f(poly q, poly r) = (poly,poly):
-      if #r<#d then (q,r)
-      else let t=poly: null(#r-#d) # rat_as_int(r~[0]/d~[0]) in
-         f(poly_plus(q,t),poly_plus(r,-poly_product(t,d)))
-      fi
-   in f(poly_0,p)
-
-{.division of polynomials p=dq+r, d is required to be monic.}
-{ the result will have exactly |d.degree| entries (maybe with trialing zeros) }
-set monic_divide (poly P, poly D) = (poly,poly): { quotient, remainder }
-   assert(#D>0 and D~[0]=1,"Not a monic divisor");
-   let deg_D = D.degree, l_P=#P in
-   if l_P<deg_D then (poly_0,P##null(deg_D-l_P))
-   else
-      for i: l_P-deg_D { quotient has $\deg P+1-\deg D$ terms }
-      do let c=P~[i] in for j:deg_D from 1 do P~[i+j] -:= c*D~[j] od
-      od
-   ;  (P[deg_D:] {quotient from upper part}, P[:deg_D] {remainder} )
-   fi

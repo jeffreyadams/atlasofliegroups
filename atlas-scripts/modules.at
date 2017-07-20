@@ -3,8 +3,8 @@
 <kl.at { for composition_series, character_formula }
 <K_types { for branch_std, branch_irr }
 
-: tag_Param = (Param,string)
-: tag_ParamPol = (ParamPol,string)
+: tag_Param = (Param param, string tag)
+: tag_ParamPol = (ParamPol pol, string tag)
 
 set !std="std"
 set !irr="irr"
@@ -19,7 +19,7 @@ set J(Param p)=tag_Param:
 
 { set kgb_number(KGBElt x)=int: use #@KGBElt from basic.at for this }
 
-set to_str (Param p) =string:
+set to_str (Param p) = string:
   to_string("(x=",#x(p),",lambda=",[rat]:lambda(p),",nu=",[rat]:nu(p),")")
 
 set to_str_std (Param p) = string: "I"+to_str(p)
@@ -43,7 +43,7 @@ set to_str (ParamPol P) = [string]:
 set to_str (ParamPol P,string type) = [string]:
   for c@p in P do to_string(prettyPrint(c),"*",to_str(p,type)) od
 
-set array_prints ([string] A) = void: { pring strings, one per line }
+set array_prints ([string] A) = void: { print strings, one per line }
   for a in A do prints(a) od
 
 { composition series of (p,std,[...]) }
@@ -53,24 +53,24 @@ set composition_series (Param p,string type) = tag_ParamPol:
 
 { composition series of linear combination of standards (ParamPol P,std) }
 set composition_series (tag_ParamPol(P,type))= tag_ParamPol:
-  assert(type=std,"Composition series not defined for irreducible modules");
+  assert(type=std,"Composition series only defined for standard modules");
   (composition_series(P),irr)
 
 { character formula of (p,irr,[...] }
 set character_formula (tag_Param(p,type)) = tag_ParamPol:
-  assert(type = irr,"Character formula not defined for standard modules");
+  assert(type = irr,"Character formula only defined for irreducible modules");
   (character_formula(p),std)
 
 { character formula of linear combination of standards (ParamPol P,irr) }
 set character_formula (tag_ParamPol(P,type)) = tag_ParamPol:
-  assert(type = irr,"Character formula not defined for standard modules");
+  assert(type = irr,"Character formula only defined for irreducible modules");
   (character_formula(P),std)
 
 set show (ParamPol P) = void: array_prints(to_str(P))
 set show (tag_ParamPol(,type):tP) = void:
   assert(type=irr or type=std or type=K_types,"Incorrect type");
   array_prints(to_str(tP))
-set show(tag_Param tp) = void: prints(to_str(tp))
+set show(tag_Param tP) = void: prints(to_str(tP))
 
 { the following supports the type KParam defined in K_parameter.at }
 set show(KGBElt x,ratvec lambda) = void:
@@ -111,14 +111,14 @@ set + (tag_ParamPol(P,type_P),tag_Param(q,typeq)) = tag_ParamPol:
 { cannot also have +@(tag_Param,tag_ParamPol): would create coercion ambiguity }
 
 { unary - }
-set - (tag_ParamPol(P,type)) = tag_ParamPol: ((-1)*P,type)
-set - (tag_Param(p,type))= tag_ParamPol: (-p,type)
+set - (tag_ParamPol(P,type)) = tag_ParamPol: (minus_1*P,type)
+set - (tag_Param(p,type))= tag_ParamPol: (minus_1*p,type)
 
 { binary - }
 set - (tag_ParamPol(P,type_P),tag_ParamPol(Q,type_Q)) = tag_ParamPol:
   (P,type_P)+((-1)*Q,type_Q)
 set -(tag_Param(p,typep),tag_ParamPol(Q,type_Q)) = tag_ParamPol:
-  (ParamPol: p,typep)+((-1)*Q,type_Q)
+  (ParamPol: p,typep)+(minus_1*Q,type_Q)
 set - (tag_Param(p,typep),tag_Param(q,typeq))=tag_ParamPol:
   (ParamPol: p,typep)+(ParamPol: -q,typeq)
 
@@ -128,27 +128,27 @@ set * (Split w,tag_Param(p,type)) = tag_ParamPol: (w*p,type)
 set = (tag_ParamPol(P,type_P),tag_Param(q,typeq)) = bool:
   (P,type_P)=(virtual(q,typeq))
 
-set infinitesimal_character (Param p,string type) = ratvec:
+set infinitesimal_character (tag_Param(p,)) = ratvec:
   infinitesimal_character(p)
 
 set has_infinitesimal_character (ParamPol P) = bool:
   if #P=0 then false
-  else let ic0=infinitesimal_character(first_param(P)), result=true, i=0 in
-    all (for @p in P do infinitesimal_character(p)=ic0 od )
+  else let gamma0=infinitesimal_character(first_param(P)) in
+    all (for @p in P do infinitesimal_character(p)=gamma0 od )
   fi
 
-set infinitesimal_character (ParamPol P, string type) = ratvec:
+set infinitesimal_character (tag_ParamPol (P,)) = ratvec:
   infinitesimal_character(P)
 
-set tau (Param p,string type) = [int]: tau(p)
-set in_tau (int s,tag_Param(p,type)) = bool: let (b,)= tau_bitset(p) in b(s)
+set tau (tag_Param (p,)) = [int]: tau(p)
+set in_tau (int s,tag_Param(p,)) = bool: let (,b)= tau_bitset(p) in b(s)
 
-set in_tau_complement(int s,tag_Param ps)=bool: not(in_tau(s,ps))
-set tau_complement (Param p, string type) = tau_complement(p)
+set in_tau_complement((int,tag_Param) pair) = bool: not(in_tau(pair))
+set tau_complement (tag_Param(p,)) = [int]: tau_complement(p)
 
-set status (int s,tag_Param (p,type)) = int: status(s,p)
+set status (int s,tag_Param (p,)) = int: status(s,p)
 
-set branch ((Param p,string type), int bound) = (ParamPol,string):
+set branch (tag_Param(p,type), int bound) = tag_ParamPol:
 ( if type=std then branch_std(p,bound) elif type=irr then branch_irr(p,bound)
   else error("wrong type")
   fi

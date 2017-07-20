@@ -14,6 +14,7 @@
 #include <cstdint> // for |uint_32_t| and |uint_64_t|
 #include <vector>
 #include <iostream>
+#include <stdexcept>
 
 #include "arithmetic.h"
 
@@ -76,8 +77,6 @@ public:
     { big_int result(*this); return result+=x; }
   big_int operator- (const big_int& x) const
     { big_int result(*this); return result-=x; }
-  big_int operator- () const
-    { big_int result(*this); return result.negate(); }
   big_int operator+ (big_int&& x) const { return x += *this; }
   big_int operator- (big_int&& x) const { return x.subtract_from(*this); }
 #else
@@ -214,16 +213,20 @@ public:
     }
   big_rat operator/ (const big_int& x) const
     { if (x.is_zero())
-        throw std::runtime_error("Division by zero");
+        throw std::runtime_error("Division of rational by integer zero");
       big_int d = gcd(num,x);
+      if (x.is_negative())
+	d.negate(); // so that |x/d| will be positive
       return d.is_one() ? big_rat(num,den*x) : big_rat(num/d, den*(x/d));
     };
   friend big_rat operator/ (const big_int& x, const big_rat& r)
-  { if (r.is_zero())
-      throw std::runtime_error("Division by zero");
-    big_int d = gcd(r.num,x);
-    return d.is_one() ? big_rat(x*r.den,r.num) : big_rat(x/d*r.den,r.num/d);
-  };
+    { if (r.is_zero())
+	throw std::runtime_error("Division by rational zero");
+      big_int d = gcd(r.num,x);
+      if (r.num.is_negative())
+	d.negate(); // so that |r.num/d| will be positive
+      return d.is_one() ? big_rat(x*r.den,r.num) : big_rat(x/d*r.den,r.num/d);
+    };
 
   big_rat& operator+= (const big_int& x) { num+=x*den; return *this; }
   big_rat& operator-= (const big_int& x) { num-=x*den; return *this; }
@@ -232,10 +235,27 @@ public:
 
   big_rat operator+ (const big_rat&) const;
   big_rat operator- (const big_rat&) const;
+  big_rat operator- () const { return big_rat(-num,den); }
+
   big_rat operator* (const big_rat& x) const
-    { big_int d0 = gcd(num,x.den), d1=gcd(den,x.num);
-      return big_rat((num/d0)*(x.num/d1),(den/d1)*(x.den/d0));
+  { big_int d0 = gcd(num,x.den), d1=gcd(den,x.num);
+    return big_rat((num/d0)*(x.num/d1),(den/d1)*(x.den/d0));
+  }
+
+  big_rat& invert ()
+  { if (is_zero())
+      throw std::runtime_error("Inverse of zero");
+    using std::swap;
+    swap(num,den);
+    if (den.is_negative())
+    { den.negate(); // restore positive denominator
+      num.negate();
     }
+    return *this;
+  }
+
+  big_rat inverse () const { return big_rat(*this).invert(); }
+
   big_rat operator/ (big_rat x) const
     { if (x.is_zero())
 	throw std::runtime_error("Division by zero");
@@ -247,13 +267,6 @@ public:
       return big_rat((num/d0)*(x.den/=d1),(den/d1)*(x.num/=d0));
     }
 
-  big_rat operator- () const { return big_rat(-num,den); }
-  big_rat inverse () const
-  { if (is_zero())
-      throw std::runtime_error("Inverse of zero");
-    return big_rat(den,num);
-  }
-
   big_int floor () const; // integer part
   big_int ceil () const; // rounded up integer part
   big_rat frac () const; // fractional part (in $[0,1)$)
@@ -263,7 +276,7 @@ public:
   big_int quotient (const big_rat& r) const; // quotient of integer division
   big_rat operator% (const big_rat& r) const; // remainder modulo |r|
 
-  big_rat power (unsigned int e) const;
+  big_rat power (int e) const;
 private:
   big_rat& normalise()
   { if (den.is_negative())
