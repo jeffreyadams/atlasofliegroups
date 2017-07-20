@@ -581,6 +581,11 @@ set root_datum (LieType t, [ratvec] gens) = RootDatum:
 { allow single kernel generator in root datum construction }
 set root_datum (LieType t, ratvec gen) = RootDatum: root_datum(t,[gen])
 
+set = (RootDatum rd0, RootDatum rd1) = bool:
+   simple_roots(rd0)=simple_roots(rd1) and
+   simple_coroots(rd0)=simple_coroots(rd1)
+set != (RootDatum rd0, RootDatum rd1) = bool: not rd0=rd1
+
 { the following uses that root_index(rd,v)=nr_of_posroots(rd) for a non-root v }
 set is_root ((RootDatum,vec) (rd,):p) = bool:
   root_index(p)<nr_of_posroots(rd)

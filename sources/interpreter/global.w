@@ -4074,17 +4074,19 @@ column echelon function.
 @<Local function definitions @>=
 void echelon_wrapper(expression_base::level l)
 { own_matrix M=get_own<matrix_value>();
-  if (l!=expression_base::no_value)
-  { BitMap pivots=matreduc::column_echelon(M->val);
-    push_value(M);
-    own_row p_list = std::make_shared<row_value>(0);
-    p_list->val.reserve(pivots.size());
-    for (BitMap::iterator it=pivots.begin(); it(); ++it)
-      p_list->val.push_back(std::make_shared<int_value>(*it));
-    push_value(std::move(p_list));
-    if (l==expression_base::single_value)
-      wrap_tuple<2>();
-  }
+  if (l==expression_base::no_value)
+    return;
+  own_matrix column = std::make_shared<matrix_value>(int_Matrix());
+  BitMap pivots=matreduc::column_echelon(M->val,column->val);
+  push_value(std::move(M));
+  push_value(std::move(column));
+  own_row p_list = std::make_shared<row_value>(0);
+  p_list->val.reserve(pivots.size());
+  for (BitMap::iterator it=pivots.begin(); it(); ++it)
+    p_list->val.push_back(std::make_shared<int_value>(*it));
+  push_value(std::move(p_list));
+  if (l==expression_base::single_value)
+    wrap_tuple<3>();
 }
 
 @ And here are general functions |diagonalize| and |adapted_basis|, rather
@@ -4370,7 +4372,7 @@ install_function(swiss_matrix_knife_wrapper@|,"swiss_matrix_knife"
 install_function(swiss_matrix_knife_wrapper@|,"matrix slicer"
     ,"(int,mat,int,int,int,int->mat)"); // space make an untouchable copy
 @)
-install_function(echelon_wrapper,"echelon","(mat->mat,[int])");
+install_function(echelon_wrapper,"echelon","(mat->mat,mat,[int])");
 install_function(diagonalize_wrapper,"diagonalize","(mat->vec,mat,mat)");
 install_function(adapted_basis_wrapper,"adapted_basis","(mat->mat,vec)");
 install_function(kernel_wrapper,"kernel","(mat->mat)");
