@@ -341,6 +341,21 @@ set ^ =
       fi
   end
 
+{ version of invert@mat that uses only echelon@mat, less prone to overflow }
+set invert_ech (mat A) = (mat,int):
+   assert(=#A,"Cannot invert non square matrix");
+   let (M,C,) = echelon(A), (n,)=#A in
+   assert(=#M,to_string("Singular matrix (rank ",M.n_columns,"<",n,")"));
+   let cols = [vec]:for :n do [] od
+   , ech_inv (int k) = [rat]: { solve M[:k+1].x=id_mat(n)[k] }
+        let sol = for :k do rat:0 od # /M[k,k] then b=-M[k][:k+1]*sol[k] in
+        for col@j in M[:k+1,:k] ~do let m=b[j]/col[j] in b-:=col*(sol[j]:=m) od
+      ; sol
+   then (row_nums,common_d) = %(ratvec:
+      for j:n do let(v,d)=%(ratvec:C[:j+1]*ech_inv(j)) in cols[j]:=v; /d od)
+   in (for n@j in row_nums do cols[j]*n od , common_d)
+
+
 set inverse (mat M) = mat:
   let (inv,d)=invert(M) in
   if d=1 then inv else error("Matrix not invertible over the integers") fi
@@ -415,34 +430,27 @@ set sum (mat m)= vec: m*ones(n_columns(m))
 
 : maybe_a_vec = (void no_solution | vec solution) { union type for solve }
 
-{ solve(mat A,vec b): a list of 0 or 1 solution vec x to the equation A*x=b
+{ solve(mat A,vec b): find a solution vec x of A*x=b, or indicate none exists
   method:
-  - write L*A*R = D using diagonalize, with L,R invertible matrices, D diagonal
-    (only the d nonzero diagonal entries of D are actually recorded)
-  - A*x = b is equivalent to L*A*x = L*b; call L*b the |target|
-  - set x = R*y for new unknown y; A*x = b is equivalent to L*A*R*y = target
-  - since L*A*R = D, it is necessary that |target| becomes zero after d entries
-  - the first d entries of y must be those of |target| divided by entries of D
-  - the remainder of y is unconstrained, take them to be 0
-  - now x = R*y can be computed using only first d columns of R and target/D
+  - write A*C = M using echelon, with C an invertible matrix and, M echelon
+  - solve M*y = b (possibly finding none); easy using the echelon form
+  - if a solution is found, return x = C*y
 }
-set solve = (mat,vec->maybe_a_vec):
-   let divide_factors (vec v, vec ds) = maybe_a_vec:
-       { solve x in diagonal(ds)*x=v[:#ds] if possible and only if v[#ds:]=0 }
-      if !=v[#ds:] then no_solution() { solution requires zeros beyond |#ds| }
-      else { try to divide each |v[i]| by |ds[i]|, fail if inexact }
-         for d@i in ds
-         do let (q,r)=v[i]\%d in if !=r then return no_solution() fi
-	 ; q
-         od.solution
-      fi
-   in { solve = }
-   (mat A, vec b) maybe_a_vec:
-      let (ds,L,R) = diagonalize(A) in
-      case divide_factors(L*b,ds)
-      | no_solution: no_solution()
-      | solution(sol): solution(columns_with((int j):j<#sol,R)*sol)
-      esac
+set solve (mat A,vec b) = maybe_a_vec:
+(  let (M,C,s) = echelon(A) then (n,k)=#M
+   then j=0 { runs up to k, used to index backwards }, sol=null(k)
+   in assert(#b=n,"equation mismatch")
+;  for i:n
+  ~do if j<#s and i=s~[j] { then it is a pivot row, with pivot at M[j][i] }
+      then let Mj=M~[j] then (q,r)=b[i]\%Mj[i] in
+         if !=r then return ().no_solution { because inexact division} fi
+       ;  sol~[j]:=q; b-:=Mj*q { correct for contribution from sol[j~] }
+       ;  j+:=1
+       elif !=b[i] then return ().no_solution { because no pivot available }
+       fi
+   od
+;  (C[:#sol]*sol).solution
+)
 
 set any (maybe_a_vec x) = bool:
    case x  | solution: true | no_solution: false esac
@@ -507,13 +515,23 @@ set <  (ratvec v) = bool: < numer(v)
    ( void no_rational_solution | ratvec solution )
 
 
-{ solve(mat A,ratvec b) finds 0 or 1 ratvec x satisfying the equation A*x=v }
+{ solve(mat A,ratvec b): find a solution ratvec x of A*x=b, or indicate that
+  none exists. Solution as in vec case, but exact division requirement is OK.
+}
 set solve (mat A, ratvec b) = maybe_a_ratvec:
-   let (ds,L,R) = diagonalize(A), (v,denom)=%b then d=#ds, target=L*v in
-   if !=target[d:] then no_rational_solution()
-   else solution
-      (columns_with((int j):j<d,R) * for d@i in ds*denom do target[i]/d od)
-   fi
+(  let (M,C,s) = echelon(A) then (n,k)=#M
+   then j=0 { runs up to k, used to index backwards }, sol=for :k do rat:0 od
+   in assert(#b=n,"equation mismatch")
+;  for i:n
+  ~do if j<#s and i=s~[j] { then it is a pivot row, with pivot at M[j][i] }
+      then let Mj=M~[j] then q=b[i]/Mj[i] in
+         sol~[j]:=q; b-:=Mj*q { correct for contribution from sol[j~] }
+      ;  j+:=1
+      elif !=b[i] then return ().no_rational_solution { because no pivot here }
+      fi
+   od
+;  (C[:#sol]*sol).solution
+)
 
 set any (maybe_a_ratvec x) = bool:
    case x  | solution: true | no_rational_solution: false esac
