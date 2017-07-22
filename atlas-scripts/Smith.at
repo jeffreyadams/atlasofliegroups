@@ -1,0 +1,207 @@
+{ experimental versions of some built-in functions using bug integers only }
+
+<basic.at
+
+: Vec = [int]
+: Mat = [[int]] { by columns }
+: RatVec = [rat]
+: RatMat = [[rat]] { by columns }
+
+set minus (Vec col) = Vec: for e in col do -e od { avoid using -@vec }
+set minus (RatVec col) = RatVec: for e in col do -e od { avoid using -@ratvec }
+
+set - (Vec c1, (Vec c0, int f)) = Vec: for e@i in c1 do e - c0[i]*f od
+set - (RatVec c1, (RatVec c0, rat f)) = RatVec: for e@i in c1 do e - c0[i]*f od
+
+{ no-overflow matrix mulitplication }
+set safe_prod (Mat A, Vec B ) = Vec:
+   assert(#A=#B,"size mismatch");
+   let tA = for i:#A[0] do for col in A do col[i] od od in
+   for row@i in tA do
+      let s=0 in for a@j in row do s+:=a*B[j] od; s
+   od
+
+set safe_prod (Mat A, Mat B ) = Mat:
+   assert(#A=#B[0],"size mismatch");
+   let tA = for i:#A[0] do for col in A do col[i] od od in
+   for col@k in B do for row@i in tA do
+      let s=0 in for a@j in row do s+:=a*col[j] od; s
+   od od
+
+set safe_prod (RatMat A, RatVec B ) = RatVec:
+   assert(#A=#B,"size mismatch");
+   let tA = for i:#A[0] do for col in A do col[i] od od in
+   for row@i in tA do
+      let s=rat:0 in for a@j in row do s+:=a*B[j] od; s
+   od
+
+set safe_prod (RatMat A, RatMat B ) = RatMat:
+   assert(#A=#B[0],"size mismatch");
+   let tA = for i:#A[0] do for col in A do col[i] od od in
+   for col@k in B do for row@i in tA do
+      let s=rat:0 in for a@j in row do s+:=a*col[j] od; s
+   od od
+
+{ find position of nonzero entry of minimal absolute value in |M[k:,l:]| }
+set abs_mindex (Mat M, int i0, int j0) = (int,int) :
+   let (k,l)=(i0,j0), m=0, c=#M, r=#M[0] in
+   for j:c-j0 from j0
+   do let col=M[j] in
+      for i:r-i0 from i0
+      do let e=abs(col[i]) in if !=e and(=m or e<m) then set (k,l,m):=(i,j,e) fi
+      od
+   od; (k,l)
+
+set abs_mindex (Vec a) = int:
+   let r=-1, m=0 in
+   for e@i in a do if !=e and (=m or abs(e)<m) then set (r,m):=(i,abs(e)) fi
+   od; r
+
+set column_echelon (Mat M) = (Mat,Mat,[int],bool):
+(  { column echelon matrix, column recording matrix, pivot rows, det flip }
+   let n=#M then m= if >n then #M[0] else return (M,[],[],false) fi
+   then col=id_mat(n), pivots=for :m do true od, flip=false, l=n
+in for i:m
+  ~do let cs = list(l,(int j)bool: !=M[j][i])
+   in if =#cs then pivots[i]:=false { skip row if already zero, clear pivot }
+      else let cc { current column } = cs[abs_mindex(for j in cs do M[j][i] od)]
+      in if <M[cc][i] then M[cc] := -M[cc]; col[cc]:=-col[cc]; flip:=not flip fi
+      ;  let e=M[cc][i] { current minimal entry in partial row, made positive }
+      in while #cs>1 { reduce number of nonzero entries to 1 }
+	 do cs := { traverse still active columns, reduce, mark retained }
+	 ## for j in cs
+	    do if j=cc then [j] { keep current minimum column, don't reduce it }
+	       elif let (q,r)=M[j][i]\%e in M[j]-:=M[cc]*q; col[j]-:=col[cc]*q
+	       ;  =r then [] { when remainder is 0, remove j from actives }
+	       else [j] { otherwise keep j }
+	       fi
+	    od
+         ; cc := cs[abs_mindex(for j in cs do M[j][i] od)] { reposition min }
+         ; e := M[cc][i]
+	 od
+      ;  if cc<(l-:=1) { decrease l, see if pivot needs moving to new column l }
+         then let cM=M[cc], ccol=col[cc]
+         in for j:l-cc from cc do M[j]:=M[j+1]; col[j]:=col[j+1] od
+         ;  M[l]:=cM; col[l]:=ccol; if (l-cc)%2=1 then flip:=not flip fi
+         fi
+      fi
+   od
+;  if =l then (M,col,list(m,(int i):pivots[i]),flip)
+   else { remove/cycle to the right the first l columns }
+      (M[l:]
+      ,col[l:]##col[:l]
+      ,list(m,(int i):pivots[i])
+      ,if =l%2 then flip elif =n%2 then not flip else flip fi
+      )
+   fi
+)
+
+set ech_det (Mat A) = int:
+   let (M,,s,flip)=column_echelon(A) in
+   if #M=#s then M.main_diagonal.product else 0 fi
+
+
+: maybe_a_Vec =  ( void no_Vec_solution | Vec Vec_solution )
+set ech_solve (Mat A, Vec b) = maybe_a_Vec:
+(  let n= assert(#b=#A,"equation mismatch"); #A, (M,C,s,) = column_echelon(A)
+   then k=#M, j=0 { runs up to k, used to index backwards }
+   then sol= for :k do 0 od
+in for i:n
+  ~do if i=s~[j]
+      then let Mj=M~[j] then (q,r)=b[i]\%Mj[i] in
+         if !=r then return ().no_Vec_solution fi
+       ;  sol~[j] := q; b -:= (Mj,q) { correct for contribution from sol[j~] }
+       ;  j+:=1
+       elif !=b[i] then return ().no_Vec_solution
+       fi
+   od
+;  safe_prod(C[:#sol],sol).Vec_solution
+)
+
+: maybe_a_RatVec =  ( void no_RatVec_solution | [rat] RatVec_solution )
+{ ech_solve(mat A,[rat] b) solves A*x=b for the [rat] x, possibly no solution }
+set ech_solve (Mat A, [rat] b) = maybe_a_RatVec:
+(  let n= assert(#b=#A,"equation mismatch"); #A, (M,C,s,) = column_echelon(A)
+   then k=#M, j=0 { runs up to k, used to index backwards }
+   then sol=for :k do rat:0 od
+in for i:n
+  ~do if i=s~[j]
+      then let Mj=M~[j] then q=b[i]/Mj[i] in
+         sol~[j]:=q; b -:= (Mj,q) { correct for contribution from sol[j~] }
+      ;  j+:=1
+      elif !=b[i] then return ().no_RatVec_solution
+      fi
+   od
+;  safe_prod(C[:#sol],sol).RatVec_solution
+)
+
+
+
+set zero_from (Vec col, int k) = bool: all(#col-k, (int i): =col[k+i])
+
+set row_swap (Mat M, int k0, int k1) = Mat:
+   for col in M do for e@i in col do
+      if i=k0 then col[k1] elif i=k1 then col[k0] else e fi
+   od od
+
+set col_swap (Mat M, int l0, int l1) = Mat:
+   for col@j in M do if j=l0 then M[l1] elif j=l1 then M[l0] else col fi od
+
+set row_operation (int k, Vec coefs) = (Vec->Vec): (Vec col) Vec:
+   let a=col[k] in for e@i in col do if i=k then e else e-coefs[i]*a fi od
+
+set row_negate (Mat M, int k) = Mat:
+   for col in M do for e@i in col do if i=k then -e else e fi od od
+
+set diagonalise (Mat M) = (Mat,Vec,Mat) :
+   let c=#M in assert(>c,"No columns");
+   let r=#M[0] then L=Mat:id_mat(r), R=Mat:id_mat(c), min = min(r,c) in
+   for k:min
+   do { first move minimal remaining entry to position (k,k) }
+   (  let (i,j) = abs_mindex(M,k,k)
+      in if =M[j][i] then min:=k; break { no nonzero entries found } fi
+      ;  if j>k then M:=col_swap(M,k,j); R:=col_swap(R,k,j) fi
+      ;  if i>k then M:=row_swap(M,k,i); L:=row_swap(L,k,i) fi
+   ) { forget (i,j) to avoid mistakes }
+   ;  if <M[k][k] then M[k] := M[k].minus; R[k]:=R[k].minus fi
+   ;  let pivot= M[k][k]
+   in while let sweep = { transformation to apply to each column of M and L }
+         row_operation(k,for e@i in M[k] do if i<=k then 0 else e\pivot fi od)
+      in for j:c-k from k do M[j]:=sweep(M[j]) od { no effect on M[:k] }
+      ;  L := for col@k in L do sweep(col) od { here we must do all of L }
+      ;  let r=abs_mindex(M[k][k+1:]) in >=r { while we find a nonzero entry }
+      do r+:=k+1 {to actual row number}; M:=row_swap(M,k,r); L:=row_swap(L,k,r)
+      ; assert(0<M[k][k] and M[k][k]<pivot,"Pivot advance"); pivot:=M[k][k]
+      od
+   ;  while { a leg or arm at |k| is zero, but the other is not }
+         for j:c-(k+1) from k+1
+         do let (q,r)=M[j][k]\%pivot in R[j] -:= (R[k],q)
+         ; let Mj=M[j] in !=(Mj[k]:=r) { Boolean loop value } next M[j]:=Mj
+         od.any
+      do { our arm failed to reduce to 0 at first attempt, now iterate }
+         while let j = k+1+abs_mindex(for j:c-(k+1) from k+1 do M[j][k] od)
+         in M:=col_swap(M,k,j); R:=col_swap(R,k,j); pivot:=M[k][k]
+         ; for j:c-(k+1) from k+1
+           do let (q,r)=M[j][k]\%pivot
+           in R[j] -:= (R[k],q); M[j] -:= (M[k],q); assert(M[j][k]=r)
+           ; !=r
+           od.any
+         do () od { cleared the arm, but now the leg may have become nonzero }
+      ;  let sweep =
+            row_operation(k, let Mk=M[k] in
+               for e@i in Mk
+               do if i<=k then 0 else let (q,r)=e\%pivot in q next Mk[i]:=r fi
+               od next M[k]:=Mk)
+         in  L := for col@k in L do sweep(col) od { here we must do all of L }
+      ;  let r=abs_mindex(M[k][k+1:])
+      in if <r then break { if first sweep clears, be done } fi
+      ;  while r +:= k+1; M:=row_swap(M,k,r); L:=row_swap(L,k,r)
+         ; assert(0<M[k][k] and M[k][k]<pivot,"Pivot advance"); pivot:=M[k][k]
+         ; sweep:= row_operation(k,
+             for e@i in M[k] do if i<=k then 0 else e\pivot fi od)
+         ; for j:c-k from k do M[j]:=sweep(M[j]) od { no effect on M[:k] }
+         ; L := for col@k in L do sweep(col) od { here we must do all of L }
+         ; >=(r:=abs_mindex(M[k][k+1:]))
+         do () od { cleared the leg, but now the arm may have become nonzero }
+      od
+   od; (L, for i:min do M[i][i] od, R)
