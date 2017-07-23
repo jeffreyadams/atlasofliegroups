@@ -23,7 +23,8 @@ namespace matreduc {
 // find reduced basis for span of |vectors| and column operations to get there
 template<typename C>
   bitmap::BitMap column_echelon(matrix::PID_Matrix<C>& vectors,
-				matrix::PID_Matrix<C>& col);
+				matrix::PID_Matrix<C>& col,
+				bool& flip);
 
 template<typename C> // find |row,col| making |row*M*col| (returned) diagonal
   std::vector<C> diagonalise(matrix::PID_Matrix<C> M, // by value

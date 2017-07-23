@@ -80,9 +80,9 @@ in for i:m
          ; e := M[cc][i]
 	 od
       ;  if cc<(l-:=1) { decrease l, see if pivot needs moving to new column l }
-         then let cM=M[cc], ccol=col[cc]
-         in for j:l-cc from cc do M[j]:=M[j+1]; col[j]:=col[j+1] od
-         ;  M[l]:=cM; col[l]:=ccol; if (l-cc)%2=1 then flip:=not flip fi
+         then let tmp=M[cc] in M[cc]:=M[l]; M[l]:=tmp
+         ; tmp:=col[cc]; col[cc]:=col[l]; col[l]:=tmp
+         ; flip:=not flip
          fi
       fi
    od
@@ -98,7 +98,7 @@ in for i:m
 
 set ech_det (Mat A) = int:
    let (M,,s,flip)=column_echelon(A) in
-   if #M=#s then M.main_diagonal.product else 0 fi
+   if #M=#s then minus_1^#flip*M.main_diagonal.product else 0 fi
 
 
 : maybe_a_Vec =  ( void no_Vec_solution | Vec Vec_solution )
