@@ -177,12 +177,11 @@ set highest_weight_split_spherical (Param p,KGBElt x_K) = KHighestWeight:
 {. This function returns just ONE KHighestWeight of a K-type
   (auxiliary function). .}
 set highest_weight_one (K_Type p) = KHighestWeight:
-  assert(is_semifinal(parameter(p)),"parameter has singular real parity roots");
-  let p=make_no_Cminus(p)
-  then (Q,pL)=theta_stable_data(parameter(p))
-  then (x_L,mu_L)=highest_weight_split_spherical(pL)
-  then x_G=canonical_x_K(x(p))
-  then mu_G=mu_L+two_rho_u_cap_s(Q)
+(  assert(is_semifinal(parameter(p)),"parameter has singular real parity roots")
+;  p:=make_no_Cminus(p)
+;  let (Q,pL)=theta_stable_data(parameter(p))
+   then (x_L,mu_L)=highest_weight_split_spherical(pL)
+   then mu_G=mu_L+two_rho_u_cap_s(Q)
 { need version of 2*rho_u_cap_s(Q) which is integral, see thetastable.at}
 { this might be a ratvec, denominator 1/2, by restriction it defines a
   character  of T_{K_0}
@@ -192,7 +191,8 @@ set highest_weight_one (K_Type p) = KHighestWeight:
 { then ()=prints("mu_L:",mu_L,new_line, " mu_G", mu_G, new_line,
      "2*rho_u_cap_s(Q)", 2*rho_u_cap_s(Q), new_line,
      "two_rho_u_cap_s", two_rho_u_cap_s(Q)) }
-in (x_G,mu_G)
+   in (canonical_x_K(x(p)),mu_G)
+)
 
 {. ONE KHighestWeight of a K-type w.r.t. x_K (auxiliary function). .}
 set highest_weight_one (K_Type p,KGBElt x_K) = KHighestWeight:

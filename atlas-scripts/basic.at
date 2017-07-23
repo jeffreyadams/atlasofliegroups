@@ -284,6 +284,8 @@ set n_columns (mat m)= int: let (,c)=#m in c
 set column (vec v) = mat: [v] { interpret v as single column }
 set row (vec v)    = mat: ^v  { interpret v as single row }
 
+set main_diagonal (mat A) = vec:  for i:min(#A) do A[i,i] od
+
 { test matrix against a multiple of the identity }
 set = (mat m,int k) = bool: =(m-k)
 
@@ -357,15 +359,13 @@ set invert_ech (mat A) = (mat,int):
 
 
 set inverse (mat M) = mat:
-  let (inv,d)=invert(M) in
+  let (inv,d)=invert_ech(M) in
   if d=1 then inv else error("Matrix not invertible over the integers") fi
 
-set det (mat M) = int:
-( let (diag,,)=diagonalize(M), (n,):shape = #M in
-  assert(=shape,"Determinant of non-square matrix")
-; if #diag<n then 0 { there is at least one zero on the diagonal }
-  else product(diag) { otherwise multiply out }
-  fi
+set det (mat A) = int:
+( assert(=#A,"Determinant of non-square matrix")
+; let (M,,,flip) = echelon(A) in
+  if =#M then flip*M.main_diagonal.product else 0 fi
 )
 
 set trace (mat A) = int:
@@ -379,8 +379,6 @@ set char_poly (mat A) = vec: { characteristic polynomial of integer matrix }
   in assert(=sh,"Non square matrix");
   { use Newton's identities $k*e_k=-\sum_{i=1}^k p_i*e_{k-i}$ to compute |es| }
   for k:n from 1 do ps #:= trace(B); B*:=A; es := (es*ps\-k) # es od; es
-
-set main_diagonal (mat A) = vec:  for i:min(#A) do A[i,i] od
 
 set saturated_span (mat M) = bool: { whether columns span saturated sublattice }
   let inv_f = inv_fact(M) in
