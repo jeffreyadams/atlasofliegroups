@@ -513,7 +513,8 @@ included before) respectively appending output redirection.
   break; case ')':
          case '}':
          case ']': --nesting; input.pop_prompt(); code=c;
-  break; case ';': code=prevent_termination=c;
+  break; case ',':
+         case ';': code=prevent_termination=c;
   break; case '<':
          case '>':
          if (state==initial)
@@ -627,8 +628,7 @@ break; case '-': prevent_termination=c;
          code = becomes_follows() ? OPERATOR_BECOMES : OPERATOR;
        }
 break; case '*': prevent_termination=c;
-       valp->oper.id =
-          id_table.match_literal(c=='*' ? "*" : c=='%' ? "%" : "/");
+       valp->oper.id = id_table.match_literal("*");
        valp->oper.priority = 6;
        code = becomes_follows() ? OPERATOR_BECOMES : c;
 break; case '%': case '/': prevent_termination=c;
