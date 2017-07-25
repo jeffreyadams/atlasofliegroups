@@ -60,7 +60,7 @@ operators =, != : (mat,mat->bool): matrix equality and inequality
 operator # : (string->int) : length of string
 operator # : (vec->int) : number of components of vector
 operator # : (ratvec->int) : number of components of rational vector
-operator # : (mat->int,int) : dimensions (rows*columns) of a matrix
+operator # : (mat->int) : number of columns of matrix
 operator # : ([T]->int) : number of components of row (T is any type)
 
 operator # : (vec,int->vec) : append element to a vector
@@ -81,7 +81,6 @@ operator ## : ([[T]]->[T]) : concatenation of row of rows (T is any type)
 
 error: (*,...->*) : print values and abort computation; report a runtime error
 
-int_format: (int->string): representation of integer as digit string
 to_string:(*,...->string): string representation of arguments (concatenated)
 print: (T->T): print value, followed by newline; return same value
 prints: (*,...->): print values raw (no quotes or commas) followed by newline
@@ -92,6 +91,7 @@ null: (int->vec): null vector of given length
 null: (int,int->mat): null matrix with given number of rows and columns
 id_mat: (int->mat): identity matrix of given size.
 diagonal: (vec->mat): square diagonal matrix with given diagonal entries.
+shape : (mat->int,int) : dimensions (rows,columns) of a matrix
 
 swiss_matrix_knife: (int,mat,int,int,int,int->mat): slice and dice a matrix
   This function selects a block from a matrix, and depending on the options in

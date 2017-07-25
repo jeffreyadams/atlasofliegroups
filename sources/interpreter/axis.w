@@ -6781,7 +6781,7 @@ static shared_builtin sizeof_string_builtin =
        (sizeof_string_wrapper,"#@@string");
 static shared_builtin matrix_columns_builtin =
     std::make_shared<const builtin_value<false> >
-     (matrix_ncols_wrapper,"ncols@@mat");
+     (matrix_ncols_wrapper,"#@@mat");
 static shared_builtin sizeof_parampol_builtin =
     std::make_shared<const builtin_value<false> >
       (virtual_module_size_wrapper, "#@@ParamPol");

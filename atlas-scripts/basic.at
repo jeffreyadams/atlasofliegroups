@@ -123,6 +123,8 @@ set product ([int] r) = int: let p=1 in for a in r do p*:=a od; p
 
 set half (int n) = int: let (q,r)=n\%2 in assert(=r,"Inexact halving"); q
 
+set int_format = to_string@int
+
 set is_member ([int] v) = (int->bool): { linear search; can be improved }
   (int val)bool: any(for x in v do x=val od)
 
@@ -279,7 +281,7 @@ set matrix ((int,int)(r,c),(int,int->int) f) = mat:
   r#for j:c do for i:r do f(i,j) od od
 
 set n_rows    (mat m) = int: let (r,) = shape(m) in r
-set n_columns (mat m) = int: let (,c) = shape(m) in c
+set n_columns = #@mat { this one is built in as a # operator overload }
 
 set column (vec v) = mat: [v] { interpret v as single column }
 set row (vec v)    = mat: ^v  { interpret v as single row }
@@ -386,43 +388,37 @@ set saturated_span (mat M) = bool: { whether columns span saturated sublattice }
 
 { test all columns }
 set all (mat M,(vec->bool) predicate) = bool:
-  let j=n_columns(M)-1 in while >=j and predicate(M[j]) do j-:=1 od; <j
+  all(#M,(int i)bool:M[i].predicate)
+set any (mat M,(vec->bool) predicate) = bool:
+  any(#M,(int i)bool:M[i].predicate)
 set none (mat M,(vec->bool) predicate) = bool:
-  let j=n_columns(M)-1 in while >=j and not predicate(M[j]) do j-:=1 od; <j
+  none(#M,(int i)bool:M[i].predicate)
 set first (mat M,(vec->bool) predicate) = int:
-  let j=0, n=n_columns(M)
-  in while j<n and not predicate(M[j]) do j+:=1 od;
-  if j=n then minus_1 else j fi
+  first(#M,(int i)bool:M[i].predicate)
 set last (mat M,(vec->bool) predicate) = int:
-  let j=n_columns(M)-1 in while >=j and not predicate(M[j]) do j-:=1 od; j
+  last(#M,(int i)bool:M[i].predicate)
 
 set columns_with ((int,vec->bool) p,mat m) = mat:
-  let res = [vec]: [] in
-  for col@j in m do if p(j,col) then res #:= col fi od; n_rows(m)#res
+  n_rows(m)# ## for col@j in m do if p(j,col) then [col] else [] fi od
 set columns_with ((vec->bool) p,mat m) = mat:
-  columns_with(((int,vec)(,col))bool: p(col),m)
+  n_rows(m)# ## for col in m do if p(col) then [col] else [] fi od
 set columns_with ((int->bool) p,mat m) = mat:
-  columns_with(((int,vec)(j,))bool: p(j),m)
+  n_rows(m)# ## for col@j in m do if p(j) then [col] else [] fi od
 
 set rows_with ((int,vec->bool) p,mat m) = mat:
-  let res = [vec]: [] in
-  for row@i in ^m do if p(i,row) then res #:= row fi od; n_columns(m)^res
+  n_columns(m) ^ ## for row@i in ^m do if p(i,row) then [row] else [] fi od
 set rows_with ((vec->bool) p,mat m) = mat:
-  rows_with(((int,vec)(,row))bool: p(row),m)
+  n_columns(m) ^ ## for row in ^m do if p(row) then [row] else [] fi od
 set rows_with ((int->bool) p,mat m) = mat:
-  rows_with(((int,vec)(i,))bool: p(i),m)
+  n_columns(m) ^ ## for row@i in ^m do if p(i) then [row] else [] fi od
 
-set >=(mat m) = bool: { test for having non-negative entries only }
-  let j=n_columns(m)-1 in while >=j and >=m[j] do j-:=1 od; <j
-set >(mat m) = bool: { all columns are strictly positive }
-  let j=n_columns(m)-1 in while >=j and >m[j] do j-:=1 od; <j
-set <=(mat m) = bool: >= -m
-set <(mat m) = bool: > -m
+set >=(mat m) = bool: { non-negative (dominant) columns only } all(m,>=@vec)
+set >(mat m) = bool: { strictly positive (dominant) columns only } all(m,>@vec)
+set <=(mat m) = bool: all(m,<=@vec)
+set <(mat m) = bool: all(m,<@vec)
 
-set lookup_column (vec v,mat m) = int:
-  let i=n_columns(m)-1 in while >=i and m[i]!=v do i-:=1 od; i
-set lookup_row (vec v,mat m) = int:
-  lookup_column(v,^m)
+set lookup_column (vec v,mat m) = int: last(m,(vec w)bool: w=v)
+set lookup_row (vec v,mat m) = int: last(^m,(vec w)bool: w=v)
 
 { sum of columns of a matrix; this is so neat, avoid calling it sum_columns }
 set sum (mat m)= vec: m*ones(n_columns(m))

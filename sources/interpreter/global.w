@@ -2841,13 +2841,6 @@ void string_geq_wrapper(expression_base::level l)
   if (l!=expression_base::no_value)
     push_value(whether(i->val>=j->val));
 }
-@)
-void int_format_wrapper(expression_base::level l)
-{ shared_int n=get<int_value>();
-  std::ostringstream o; o<<n->val;
-  if (l!=expression_base::no_value)
-    push_value(std::make_shared<string_value>(o.str()));
-}
 
 @ Here are the functions for concatenating two or more strings.
 
@@ -2941,10 +2934,11 @@ void matrix_ncols_wrapper(expression_base::level l)
   push_value(std::make_shared<int_value>(m->val.numColumns()));
 }
 
-@ Giving both matrix bounds is what is bound in the overload table to `\#' for
-matrix arguments. The decision to do so is somewhat dubious (it makes matrices
-require somewhat different user code than other looped-over types), but in any
-case this should be a local function.
+@ Giving both matrix bounds is what used to be bound in the overload table to
+`\#' for matrix arguments, but this has been changed to the function |shape|.
+For consistency with use of matrices in subscription, simple slicing, and in
+looping constructions, `\#' for matrix arguments should (and does) return the
+number of columns, invoking |matrix_ncols_wrapper| above.
 
 @< Local function definitions @>=
 void matrix_shape_wrapper(expression_base::level l)
@@ -3709,12 +3703,12 @@ install_function(string_greater_wrapper,">","(string,string->bool)");
 install_function(string_geq_wrapper,">=","(string,string->bool)");
 install_function(string_concatenate_wrapper,"##","(string,string->string)");
 install_function(concatenate_strings_wrapper,"##","([string]->string)");
-install_function(int_format_wrapper,"int_format","(int->string)");
 install_function(string_to_ascii_wrapper,"ascii","(string->int)");
 install_function(ascii_char_wrapper,"ascii","(int->string)");
 install_function(sizeof_string_wrapper,"#","(string->int)");
 install_function(sizeof_vector_wrapper,"#","(vec->int)");
 install_function(sizeof_ratvec_wrapper,"#","(ratvec->int)");
+install_function(matrix_ncols_wrapper,"#","(mat->int)");
 install_function(vector_suffix_wrapper,"#","(vec,int->vec)");
 install_function(vector_prefix_wrapper,"#","(int,vec->vec)");
 install_function(join_vectors_wrapper,"##","(vec,vec->vec)");
