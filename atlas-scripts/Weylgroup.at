@@ -37,10 +37,10 @@ set inverse (W_word(rd,w)) = W_word: { reverse w component } (rd,w~[:])
 {	--- using W to make weight or coweights dominant ---	}
 
 set non_dominant_index (RootDatum rd, vec v) = int:
-  last(simple_coroots(rd),(vec alpha_v): alpha_v*v>=0)
+  last(simple_coroots(rd),(vec alpha_v): alpha_v*v<0)
 
 set dual_non_dominant_index (RootDatum rd, vec cowt) = int:
-  last(simple_roots(rd),(vec alpha): cowt*alpha>=0)
+  last(simple_roots(rd),(vec alpha): cowt*alpha<0)
 
 { make_dominant(rd,v)
   returns (v_dom,w) where v_dom is dominant and v=act(w,v_dom)

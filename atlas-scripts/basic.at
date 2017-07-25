@@ -391,9 +391,10 @@ set none (mat M,(vec->bool) predicate) = bool:
   let j=n_columns(M)-1 in while >=j and not predicate(M[j]) do j-:=1 od; <j
 set first (mat M,(vec->bool) predicate) = int:
   let j=0, n=n_columns(M)
-  in while j<n and predicate(M[j]) do j+:=1 od; if j=n then minus_1 else j fi
+  in while j<n and not predicate(M[j]) do j+:=1 od;
+  if j=n then minus_1 else j fi
 set last (mat M,(vec->bool) predicate) = int:
-  let j=n_columns(M)-1 in while >=j and predicate(M[j]) do j-:=1 od; j
+  let j=n_columns(M)-1 in while >=j and not predicate(M[j]) do j-:=1 od; j
 
 set columns_with ((int,vec->bool) p,mat m) = mat:
   let res = [vec]: [] in
