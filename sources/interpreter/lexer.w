@@ -94,7 +94,8 @@ class Lexical_analyser
   id_type keyword_limit; // first non-keyword identifier
   id_type type_limit; // first non-type identifier
   int nesting; // number of pending opening symbols
-  char prevent_termination; // either |'\0'| or character requiring more input
+  char prevent_termination, previous_termination;
+    // either |'\0'| or character requiring more input
   int comment_start, comment_end; // characters that start/end a comment
   states state; // to trigger special behaviour
   std::string file_name; // stores a file name for I/O redirection
@@ -111,6 +112,7 @@ public:
 private:
   void skip_space() const;
   bool becomes_follows();
+  void operator_termination (char c);
   std::string scan_quoted_string() const;
 };
 
@@ -149,7 +151,7 @@ Lexical_analyser::Lexical_analyser
   (BufferedInput& source, Hash_table& hash,
    const char** keywords, const char** type_names)
 : input(source),id_table(hash),nesting(0)
- ,prevent_termination('\0'),state(initial)
+ ,prevent_termination('\0'),previous_termination('\0'),state(initial)
 { @< Install |keywords| and |type_names| into |id_table| @>
   comment_start=comment_end=256; // a non-|char| value
 }
@@ -183,15 +185,13 @@ bool Lexical_analyser::reset()
 {@; nesting=0; state=initial; input.reset(); return input.getline(); }
 
 @ Skipping spaces is a rather common activity during scanning; it is performed
-by |skip_space|. When it is called, the first potential space character has
-been shifted in, and when it returns a non-space character is left in
-shifted-in position. Skipping comments is also performed by |skip_space|. In
-spite of its name, this function does not unconditionally skip all spaces, so
-as to be able to catch some runaway constructions. Also the subtle decision
-mechanism to determine which newlines terminate a command kicks in here, in
-the |std::isspace(c)| branch below, although the actual control of this
-decision is distributed in the various pieces of code that maintain of the
-fields |prevent_termination| and |nesting|.
+by |skip_space|, which also skips any comments that might be encountered. The
+subtle decision mechanism to determine which newlines terminate a command
+kicks in here, in that a newline is treated as space only if it cannot
+possibly be the end of a command. This is handled in the ``then'' branch after
+|std::isspace(c)| below, although the actual control of this decision is
+distributed in the various pieces of code that maintain of the fields
+|prevent_termination| and |nesting|.
 
 In case end of input occurs one obtains |shift()=='\0'| from the input buffer,
 and for the end of an included file it passes |shift()=='\f'|, a form-feed. If
@@ -381,7 +381,9 @@ token scanned.
 int Lexical_analyser::get_token(YYSTYPE *valp, YYLTYPE* locp)
 { if (state==ended)
     {@; state=initial; return 0; } // send end of input
-  skip_space(); prevent_termination='\0';
+  skip_space();
+  previous_termination = prevent_termination;
+  prevent_termination='\0';
   input.locate(input.point(),locp->first_line,locp->first_column);
   int code; char c=input.shift();
   if (std::isalpha(c) or c=='_')
@@ -495,6 +497,20 @@ bool Lexical_analyser::becomes_follows ()
   return false;
 }
 
+@ With the extension of the $x.f$ syntactic alternative for $f(x)$ to the case
+where $f$ is an operator symbol, it is no longer true that operator symbols
+cannot terminate a command. We therefore choose the rule to that operator
+symbols cannot terminate a command unless they are preceded by the
+token~|'.'|. The following method facilitates implementation of this rule;
+implementing it required introducing and maintaining the
+|previous_termination| field, since |prevent_termination| as set by the
+token~|'.'| will have been reset to |'\0'| at the start of |get_token| before
+we get here, when a possibly following operator is scanned.
+
+@< Definitions of class members @>=
+void Lexical_analyser::operator_termination (char c)
+{@; prevent_termination = (previous_termination == '.' ? '\0' : c); }
+
 @ After splitting off the alphanumeric characters, the scanner plunges into a
 large switch on the value of the look-ahead character~|c|. We increase and
 decrease nesting on obvious grouping characters, and for certain characters we
@@ -514,7 +530,9 @@ included before) respectively appending output redirection.
          case '}':
          case ']': --nesting; input.pop_prompt(); code=c;
   break; case ',':
-         case ';': code=prevent_termination=c;
+         case ';':
+         case '.':
+         code=prevent_termination=c;
   break; case '<':
          case '>':
          if (state==initial)
@@ -524,7 +542,7 @@ included before) respectively appending output redirection.
 	   @< Read in |file_name| @>
            @+ break;
          }
-         prevent_termination=c;
+         operator_termination(c);
          valp->oper.priority=2;
          if (input.shift()=='=')
            valp->oper.id=id_table.match_literal(c=='<' ? "<=" : ">=");
@@ -538,13 +556,13 @@ included before) respectively appending output redirection.
   break; case '=':
          valp->oper.id = id_table.match_literal("=");
          valp->oper.priority = 2; // in case
-	 prevent_termination=c;
+	 operator_termination(c);
 	 code = becomes_follows() ? OPERATOR_BECOMES : '=';
   break; case '!':
          if (input.shift()=='=')
          { valp->oper.id = id_table.match_literal("!=");
            valp->oper.priority = 2;
-           prevent_termination='=';
+           operator_termination('=');
            code = becomes_follows() ? OPERATOR_BECOMES : OPERATOR;
          }
          else
@@ -614,11 +632,11 @@ else
 getting too long.
 
 @< Cases of arithmetic operators... @>=
-    case '+': prevent_termination=code=c;
+    case '+': operator_termination(c);
        valp->oper.id = id_table.match_literal("+");
        valp->oper.priority = 4;
        code = becomes_follows() ? OPERATOR_BECOMES : OPERATOR;
-break; case '-': prevent_termination=c;
+break; case '-': operator_termination(c);
        if (input.shift()=='>')
           code= ARROW;
        else
@@ -627,17 +645,17 @@ break; case '-': prevent_termination=c;
          valp->oper.priority = 4;
          code = becomes_follows() ? OPERATOR_BECOMES : OPERATOR;
        }
-break; case '*': prevent_termination=c;
+break; case '*': operator_termination(c);
        valp->oper.id = id_table.match_literal("*");
        valp->oper.priority = 6;
        code = becomes_follows() ? OPERATOR_BECOMES : c;
-break; case '%': case '/': prevent_termination=c;
+break; case '%': case '/': operator_termination(c);
        valp->oper.id =
           id_table.match_literal(c=='%' ? "%" : "/");
        valp->oper.priority = 6;
        code = becomes_follows() ? OPERATOR_BECOMES : OPERATOR;
 break; case '\\':
-       prevent_termination=c;
+       operator_termination(c);
        valp->oper.priority = 6;
        if (input.shift()=='%')
        @/{@; prevent_termination='%';
@@ -648,11 +666,11 @@ break; case '\\':
          valp->oper.id = id_table.match_literal("\\");
        }
        code = becomes_follows() ? OPERATOR_BECOMES : OPERATOR;
-break; case '^': prevent_termination=c;
+break; case '^': operator_termination(c);
        valp->oper.id = id_table.match_literal("^");
        valp->oper.priority = 7; // exponentiation is right-associative
        code = becomes_follows() ? OPERATOR_BECOMES : OPERATOR;
-break; case '#': prevent_termination=c;
+break; case '#': operator_termination(c);
        valp->oper.priority = 8;
        if (input.shift()=='#')
          valp->oper.id = id_table.match_literal("##");
