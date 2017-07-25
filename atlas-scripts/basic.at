@@ -278,13 +278,13 @@ set power_set ([int] S) = [[int]]:
 set matrix ((int,int)(r,c),(int,int->int) f) = mat:
   r#for j:c do for i:r do f(i,j) od od
 
-set n_rows (mat m)= int: let (r,)=#m in r
-set n_columns (mat m)= int: let (,c)=#m in c
+set n_rows    (mat m) = int: let (r,) = shape(m) in r
+set n_columns (mat m) = int: let (,c) = shape(m) in c
 
 set column (vec v) = mat: [v] { interpret v as single column }
 set row (vec v)    = mat: ^v  { interpret v as single row }
 
-set main_diagonal (mat A) = vec:  for i:min(#A) do A[i,i] od
+set main_diagonal (mat A) = vec:  for i:shape(A).min do A[i,i] od
 
 { test matrix against a multiple of the identity }
 set = (mat m,int k) = bool: =(m-k)
@@ -333,7 +333,7 @@ set ^ =
       fi
     )
   ; (mat m,int n) mat: { the actual operator ^ :}
-      assert(=#m,"Non square matrix in exponentiation")
+      assert(=shape(m),"Non square matrix in exponentiation")
     ; if n>0 then matrix_power(m,n) elif =n then id_mat(n_rows(m))
       else let (m1,d)=invert(m) in
         if d=1 then matrix_power(m1,-n)
@@ -345,9 +345,9 @@ set ^ =
 
 { version of invert@mat that uses only echelon@mat, less prone to overflow }
 set invert_ech (mat A) = (mat,int):
-   assert(=#A,"Cannot invert non square matrix");
-   let (M,C,,) = echelon(A), (n,)=#A in
-   assert(=#M,to_string("Singular matrix (rank ",M.n_columns,"<",n,")"));
+   assert(=shape(A),"Cannot invert non square matrix");
+   let (M,C,,) = A.echelon, n = A.n_columns in
+   assert(=shape(M),to_string("Singular matrix (rank ",M.n_columns,"<",n,")"));
    let cols = [vec]:for :n do [] od
    , ech_inv (int k) = [rat]: { solve M[:k+1].x=id_mat(n)[k] }
         let sol = for :k do rat:0 od # /M[k,k] then b=-M[k][:k+1]*sol[k] in
@@ -363,18 +363,18 @@ set inverse (mat M) = mat:
   if d=1 then inv else error("Matrix not invertible over the integers") fi
 
 set det (mat A) = int:
-( assert(=#A,"Determinant of non-square matrix")
+( assert(=shape(A),"Determinant of non-square matrix")
 ; let (M,,,flip) = echelon(A) in
-  if =#M then flip*M.main_diagonal.product else 0 fi
+  if =shape(M) then flip*M.main_diagonal.product else 0 fi
 )
 
 set trace (mat A) = int:
-  let (n,):sh=#A in assert(=sh,"Non square matrix"); sum(for i:n do A[i,i] od)
+  let (n,):sh=shape(A) in assert(=sh,"Non square matrix"); A.main_diagonal.sum
 
 set char_poly (mat A) = vec: { characteristic polynomial of integer matrix }
   let ps = vec:[] { power sums of the eigenvalues }
   , es = vec:[1] { elementary sym.fct.s of minus the eigenvalues, reversed }
-  , B=A, (n,):sh=#A
+  , B=A, (n,):sh=shape(A)
   then trace (mat M) = sum(for i:n do M[i,i] od) { a bit faster than the above }
   in assert(=sh,"Non square matrix");
   { use Newton's identities $k*e_k=-\sum_{i=1}^k p_i*e_{k-i}$ to compute |es| }
@@ -435,7 +435,7 @@ set sum (mat m)= vec: m*ones(n_columns(m))
   - if a solution is found, return x = C*y
 }
 set solve (mat A,vec b) = maybe_a_vec:
-(  let (M,C,s,) = echelon(A) then (n,k)=#M
+(  let (M,C,s,) = echelon(A) then (n,k)=shape(M)
    then j=0 { runs up to k, used to index backwards }, sol=null(k)
    in assert(#b=n,"equation mismatch")
 ;  for i:n
@@ -458,7 +458,7 @@ set requisition = requisition("No solution found; having one was required")
 
 { multiplicative order of a matrix, hangs unless finite }
 set order (mat !M) = int:
-  let (n,):p =#M in assert(=p,"Matrix is not square");
+  let (n,):p =shape(M) in assert(=p,"Matrix is not square");
   let N=M, order=1, I=id_mat(n) in
   while N!=I do N *:= M; order+:=1 od; order
 
@@ -517,7 +517,7 @@ set <  (ratvec v) = bool: < numer(v)
   none exists. Solution as in vec case, but exact division requirement is OK.
 }
 set solve (mat A, ratvec b) = maybe_a_ratvec:
-(  let (M,C,s,) = echelon(A) then (n,k)=#M
+(  let (M,C,s,) = echelon(A) then (n,k)=shape(M)
    then j=0 { runs up to k, used to index backwards }, sol=for :k do rat:0 od
    in assert(#b=n,"equation mismatch")
 ;  for i:n
@@ -1240,7 +1240,7 @@ set print_extended_block = (Param,mat->):
   in (Param p, mat delta) void:
   let (block,types,L0,L1) = extended_block(p,delta)
   , G=p.real_form, parent_block=block_of(p)
-  then (l,r)=#types
+  then (l,r)=shape(types)
   , indices =
       let i=0 in for p in block do while parent_block[i]!=p do i+:=1 od; i od
   then wx=width(G.KGB_size-1), wp=width(#parent_block-1)

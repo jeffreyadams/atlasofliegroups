@@ -55,7 +55,7 @@ set cook_KL_block_alt ([Param] B,int entry_elem
 }
 
 set eval (poly_mat M,int k) = mat:
-  matrix (#M, (int i,int j)int: eval(M[i][j], k))
+  matrix (shape(M), (int i,int j)int: eval(M[i][j], k))
 
 { map from index in B1 to matching index in B2, and whether it's well defined }
 set permutation ([Param] B1, [Param] B2) = ([int],bool):
@@ -121,7 +121,7 @@ set KL_block_alt (Param p, mat delta) = { emulate built-in KL_block }
 { let (regular_extblock,,,) = extended_block(p,delta) {this sometimes fails,
   if block has no fixed elements(?), move it later} }
   let (KL_mat,polys,stops) = raw_ext_KL(p,delta) in
-  if #KL_mat=(0,0) then return ([],-1,null(0,0),[],[],[],null(0,0)) fi;
+  if shape(KL_mat)=(0,0) then return ([],-1,null(0,0),[],[],[],null(0,0)) fi;
   let (regular_extblock,,,) = extended_block(p,delta)
   , (KL_mat,polys,stops) = raw_ext_KL(p,delta)
   , survivors = vec: [] then

@@ -76,7 +76,7 @@ set sub_matrix (mat A,mat M) = mat:
   exist, and finally compute C = R*A''*R^{-1}
 }
 set restrict_action (mat A, mat M) = mat:
-  let (ds,L,R) = diagonalize(M), (l,r)=#M { also sizes of L,R; one has l>=r }
+  let (ds,L,R) = diagonalize(M), (l,r)=shape(M) { also sizes of L,R; l>=r }
   then () = if #ds!=r then error("matrix has dependent columns") fi
   then A1 = L * A * inverse(L)
   then A1Dtr = l ^ for d@j in ds do d*A1[j] od { one has #A1Dtr=(r,l) }

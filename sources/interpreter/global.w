@@ -2902,10 +2902,9 @@ void ascii_char_wrapper(expression_base::level l)
 %
 While often used as generic functions, we provide several specific bindings of
 the `\#' operator: for strings, rational vectors, vectors, matrices and
-virtual modules. For the benefit of loops over these values, we define these
-as global functions (the last one actually defined in the \.{atlas-types}
-module); in fact for matrices it is a variant counting the columns that is
-needed there.
+virtual modules. For the benefit of implementing certain loops over these
+values, we define these as exported functions (not local to our \.{global.w}
+module).
 
 @< Declarations of exported functions @>=
 void sizeof_vector_wrapper(expression_base::level l);
@@ -2948,7 +2947,7 @@ require somewhat different user code than other looped-over types), but in any
 case this should be a local function.
 
 @< Local function definitions @>=
-void matrix_bounds_wrapper(expression_base::level l)
+void matrix_shape_wrapper(expression_base::level l)
 { shared_matrix m=get<matrix_value>();
   if (l==expression_base::no_value)
     return;
@@ -3716,11 +3715,11 @@ install_function(ascii_char_wrapper,"ascii","(int->string)");
 install_function(sizeof_string_wrapper,"#","(string->int)");
 install_function(sizeof_vector_wrapper,"#","(vec->int)");
 install_function(sizeof_ratvec_wrapper,"#","(ratvec->int)");
-install_function(matrix_bounds_wrapper,"#","(mat->int,int)");
 install_function(vector_suffix_wrapper,"#","(vec,int->vec)");
 install_function(vector_prefix_wrapper,"#","(int,vec->vec)");
 install_function(join_vectors_wrapper,"##","(vec,vec->vec)");
 install_function(join_vector_row_wrapper,"##","([vec]->vec)");
+install_function(matrix_shape_wrapper,"shape","(mat->int,int)");
 install_function(vec_unary_eq_wrapper,"=","(vec->bool)");
 install_function(vec_unary_neq_wrapper,"!=","(vec->bool)");
 install_function(vec_eq_wrapper,"=","(vec,vec->bool)");

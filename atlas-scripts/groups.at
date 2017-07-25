@@ -27,7 +27,7 @@ set Lie_type ((int,int) p) = LieType:
   let (type,) = Cartan_matrix_type(Cartan_matrix(p)) in type
 
 set block_repeat (mat m, int n) = mat:
-  let (r,c)=#m then result = null(n*r,n*c)
+  let (r,c)=shape(m) then result = null(n*r,n*c)
   then () =
     for k:n do for i:r do for j:c do result[k*r+i,k*c+j]:=m[i,j] od od od
   in result
@@ -49,16 +49,17 @@ set complexification = complex@RootDatum
 { type A root data }
 
 set GL_roots (int n) = mat:
-  if n>0 then matrix((n,n-1),(int i, int j) int: #(i=j)-#(i=j+1))
+  if n>0 then let I=id_mat(n) in I[:1~]-I[1:]
   else error("Positive index required")
   fi
 
-set SL_coroots (int n) = mat:
-  if n>0 then matrix((n-1,n-1),(int i, int j) int: #(i=j)-#(i=j+1))
+set SL_coroots (int n) = mat: { equals |GL_roots(n)| without its final row }
+  if n>1 then matrix((n-1,n-1),(int i, int j) int: #(i=j)-#(i=j+1))
+  elif n=1 then null(0,0)
   else error("Positive index required")
   fi
 
-set SL_roots (int n) = mat:
+set SL_roots (int n) = mat: { like |SL_coroots(n)|, but add 1 in final column }
   matrix((n-1,n-1),(int i, int j) int: #(i=j)-#(i=j+1)+#(j=n-2))
 
 set GL (int n) = RootDatum: let r=GL_roots(n) in root_datum(r,r)
@@ -67,12 +68,12 @@ set PSL (int n)= RootDatum: root_datum(SL_coroots(n),SL_roots(n))
 
 { roots and coroots in nice coordinates for roots in types B,C,D }
 
-set type_B_roots (int n) = mat:
+set type_B_roots (int n) = mat: { same as SL_coroots(n+1) }
   matrix((n,n),(int i, int j) int: #(i=j)-#(i=j+1))
 
 set type_C_roots (int n) = mat:
-  matrix((n,n),((int,int)(i,j):p) int:
-    if p=(n-1,n-1) then 2 else #(i=j)-#(i=j+1) fi)
+  matrix((n,n),(int i, int j) int:
+    if i=n-1 and j=n-1 then 2 else #(i=j)-#(i=j+1) fi)
 
 set type_D_roots (int n) = mat:
   if n<=1 then null(n,0) { type D1 has no roots, it is T1 }

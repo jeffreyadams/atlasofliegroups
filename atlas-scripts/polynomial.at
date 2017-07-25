@@ -17,9 +17,11 @@ forget +@(vec,vec)
 forget -@(vec,vec)
 forget *@(vec,vec)
 
+set constant_poly (int n) = poly: if =n then [] else [n] fi
+
 { for convenience declare some constants, the ! makes changes to these illegal }
-set !poly_0 = poly:[], !poly_1 = poly:[1], !poly_2 = poly: [2]
-set !poly_q = poly: [0,1], !poly_q2 = poly: [0,0,1]
+set !poly_0 = constant_poly(0), !poly_1 = constant_poly(2),
+    !poly_2 = constant_poly(2), !poly_q = poly: [0,1], !poly_q2 = poly: [0,0,1]
 
 set + = flex_add@(poly,poly)
 set - = flex_sub@(poly,poly)
@@ -72,7 +74,9 @@ set divide(poly p,poly d) = (poly,poly):
 { polynomial matrices are grouped by row, unlike mat values, which the axis
   language implicitly (for loops, simple indexing) considers as by columns
 }
-: poly_mat = [[poly]]
+: poly_mat = [[poly]] { by row }
+
+set shape (poly_mat M) = (int,int): if =#M then (0,0) else (#M,#M[0]) fi
 
 set transpose(poly_mat M)=poly_mat: { sublists must be of equal length }
   let n=#M in
@@ -134,22 +138,20 @@ set update_matrix_entry(poly_mat M, int i, int j, poly v)= poly_mat:
 
 
 
-set zero_poly_row(int n) = [poly]: for i:n do poly_0 od
-set zero_poly_matrix(int rows, int columns)=
-  let !row=zero_poly_row(columns) in for i:rows do row od
+set zero_poly_row (int n) = [poly]: for :n do poly_0 od
+set zero_poly_matrix (int rows, int columns) = poly_mat:
+  let !row=zero_poly_row(columns) in for :rows do row od
 set zero_poly_matrix(int n) = poly_mat:zero_poly_matrix(n,n)
-set scalar_poly_matrix(int n, int c)= poly_mat:
+set scalar_poly_matrix (int n, int c) = poly_mat:
   let !row=zero_poly_row(n) { model row, almost equal to each wanted row } in
-  for i:n do let row_i=row in row_i[i]:=[c]; row_i od
-set identity_poly_matrix(int n) = scalar_poly_matrix(n,1)
-set mat_as_poly_mat(mat M)=
- let (r,c)=#M then
- rv=zero_poly_matrix(r,c) in
-  for i:r do for j:c do rv:=update_matrix_entry(rv,i,j,[M[i,j]]) od od;rv
+  for i:n do update_row(row,i,constant_poly(c)) od
+set identity_poly_matrix (int n) = poly_mat: scalar_poly_matrix(n,1)
+set mat_as_poly_mat (mat M) = poly_mat:
+ let (r,c)=shape(M) in for i:r do for j:c do [M[i,j]] od od
 
-set +(poly_mat M, poly p) = poly_mat: { add polynomial scalar matrix }
+set + (poly_mat M, poly p) = poly_mat: { add polynomial scalar matrix }
   for row@i in M  do for e@j in row do if i=j then e+p else e fi od od
-set -(poly_mat M, poly p) = poly_mat: M+-p
+set - (poly_mat M, poly p) = poly_mat: M+-p
 
 set ^ = (poly,int->poly): { power of a polynomial }
   let one=poly:[1] { use local constant for efficiency } in
@@ -160,11 +162,11 @@ set ^ = (poly,int->poly): { power of a polynomial }
     fi
 
 { equality of polynomial matrices }
-set =(poly_mat A,poly_mat B) = bool:
+set = (poly_mat A,poly_mat B) = bool:
   all(#A, (int i): let r=A[i],s=B[i] in #r=#s and all(#r, (int j): r[j]=s[j] ))
 
 { polynomial matrix is 0 if all its entries are zero-length polynomials }
-set is_zero(poly_mat M)= bool:
+set is_zero (poly_mat M) = bool:
   all(#M, (int i): let r=M[i] in all(#r, (int j): =#r[j]) )
 
 set upper_unitriangular_inverse (poly_mat P) = poly_mat:

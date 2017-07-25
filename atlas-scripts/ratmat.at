@@ -43,8 +43,8 @@ set matrix ((int,int)(r,c),(int,int->rat) f) = ratmat:
   then D = lcm(for row in val do lcm(for e in row do denom(e) od) od)
   in simplify(r#for j:c do for i:r do let (n,d)=%val[i][j] in n*(D\d) od od,s,D)
 
-set n_rows (ratmat(M,,))= int: let (r,)=#M in r
-set n_columns (ratmat(M,,))= int: let (,c)=#M in c
+set n_rows (ratmat(M,,))= int: n_rows(M)
+set n_columns (ratmat(M,,))= int: n_columns(M)
 
 set columns (ratmat(M,,d)) = [ratvec]: for c in M do c/d od
 set rows (ratmat(M,,d)) = [ratvec]: for c in ^M do c/d od
@@ -135,7 +135,7 @@ set rational_inverse(mat M) = ratmat:inverse(mat_as_ratmat(M))
 {.right inverse of a rational matrix.}
 set right_inverse(ratmat A) = ratmat:
   let (M,,d)=A in
-  let (diag,L,R) = diagonalize(M), (l,r)=#M { also sizes of L,R } in
+  let (diag,L,R) = diagonalize(M), (l,r)=shape(M) { also sizes of L,R } in
   assert(#diag>=l,"image does not have full rank");
   ratvecs_as_ratmat (for j:l do (1/diag[j])*R[j] od) * mat_as_ratmat(L) *
     (d*id_mat(l))

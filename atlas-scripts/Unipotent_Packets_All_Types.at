@@ -10,7 +10,7 @@
 set get_non_empty_block_indices (RealForm G)=[[int]]:
 let rv=[[int]]:[]
 then M=block_sizes(G)
-then (r,t)=#M
+then (r,t)=shape(M)
 in for i in #r do for j in #t do if M[j][i]!=0 then rv:=rv#[i,j] fi od od;rv
 
 set vec_as_int (vec v)=[int]:

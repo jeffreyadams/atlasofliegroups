@@ -15,7 +15,7 @@ set principal_minor(mat M, int size, int start) = mat: { |start| is offset }
 set principal_minor(mat M,int size) = mat: principal_minor(M,size,0)
 
 set right_inverse(mat A) = mat: { section of a surjective lattice map A }
-  let (diag,L,R) = diagonalize(A), (l,r)=#A { also sizes of L,R }
+  let (diag,L,R) = diagonalize(A), (l,r)=shape(A) { also sizes of L,R }
   then ()=
     if #diag<l then error("image does not have full rank")
     elif abs(product(diag))!=1 then error("image is a proper sublattice")

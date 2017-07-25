@@ -3,7 +3,8 @@
 <dual.at { for KL_P_polynomials@[Param] }
 <ext_deform.at { for KL_P_polynomials@([Param],mat) }
 
-set find_strong ([Param] P,Param p)=int:  first(#P,(int i)bool:real_form(P[i])=real_form(p) and P[i]=p)
+set find_strong ([Param] P,Param p)=int:
+  first(#P,(int i)bool:real_form(P[i])=real_form(p) and P[i]=p)
 
 set done=[Param]:[]
 set pointers=[int]:[]
@@ -34,10 +35,11 @@ for p@i in B do
  each non-fixed pair (i,j_ contributes (i,0))
 }
 set complete_indices([Param] B,mat delta)=[(int,int)]:
-let delta_orbit_reps=delta_orbit_reps(B,delta) then
-rv=[] in
-for i in delta_orbit_reps do let p=B[i] in if is_fixed(delta,p) then rv#:=(i,1);rv#:=(i,-1) else
-   rv#:=(i,0) fi od;rv
+   let delta_orbit_reps=delta_orbit_reps(B,delta) in
+## for i in delta_orbit_reps
+   do let p=B[i] in
+      if is_fixed(delta,p) then [(i,1),(i,-1)] else [(i,0)] fi
+   od
 
 {need to finalize extended_block(p,delta)
 only need the result and index into block_of(p)
@@ -147,37 +149,42 @@ for a:n do
       rv:=update_matrix_entry(rv,a,b,poly_add(P[i][j],P[i][delta_action[j]]))
     fi fi od od ;rv fi
 
-set big_KL_P_polynomials_at_minus_one([Param] B,mat delta)=mat:
-let (I_delta,g,complete_indices,delta_action)=tabulate_indices(B,delta) then
-B_delta=for i in I_delta do B[i] od then
-P=KL_P_polynomials_at_minus_one(B) then
-P_delta=KL_P_polynomials_at_minus_one(B_delta,delta) in
-if #P_delta=0 then prints("Note: block not delta-fixed");KL_P_polynomials_at_minus_one(B) {block is not fixed by delta} else let
-n=#complete_indices then
-rv=null(n,n) in
-for a:n do
-   let (i,epsilon_i)=complete_indices[a] in
- for b:n-a from a do
-   let (j,epsilon_j)=complete_indices[b] in
+set big_KL_P_polynomials_at_minus_one ([Param] B,mat delta) = mat:
+   let (I_delta,g,complete_indices,delta_action)=tabulate_indices(B,delta)
+   then B_delta=for i in I_delta do B[i] od
+   then P=KL_P_polynomials_at_minus_one(B)
+   then P_delta=KL_P_polynomials_at_minus_one(B_delta,delta)
+   in
+   if shape(P_delta)=(0,0)
+   then prints("Note: block not delta-fixed")
+   ; KL_P_polynomials_at_minus_one(B) {block is not fixed by delta}
+   else let n=#complete_indices then rv=null(n,n) in
+      for a:n
+      do let (i,epsilon_i)=complete_indices[a] in
+	 for b:n-a from a
+	 do let (j,epsilon_j)=complete_indices[b] in
 {    let ()=prints("a=",a," b=",b," i=",i," e_i=",epsilon_i," j=",j," e_j=",epsilon_j, " P[i][j]=",P[i][j])  in }
-    if a=b then  rv[a,b]:=1 {diagonal entries} else
-    if (epsilon_i*epsilon_j=1) {both entries plus or both minus: P+P^delta} then
-     let x=g[i] then
-         y=g[j] in
+	    if a=b then rv[a,b]:=1 {diagonal entries}
+	    elif (epsilon_i*epsilon_j=1) { same sign: P+P^delta}
+	    then let x=g[i], y=g[j] in
 {	 let ()=prints("P[i,j]=", P[i,j], " x=", x, " y=", y, " , Pdelta[x,y]=", P_delta[x,y]) in}
-	 rv[a,b]:=rat_as_int((P[i,j]+P_delta[x,y])/2)
-    elif (epsilon_i*epsilon_j=-1) then {(+,-) or (-,+): P-P^delta}
-     let x=g[i] then
-         y=g[j] in
+	       rv[a,b]:=rat_as_int((P[i,j]+P_delta[x,y])/2)
+	    elif (epsilon_i*epsilon_j=-1)
+	    then {(+,-) or (-,+): P-P^delta}
+	       let x=g[i], y=g[j] in
 {	 let ()=prints(" opps: P[i,j]=", P[i,j], " x=", x, " y=", y, " , Pdelta[x][y]=", P_delta[x][y]) in}
-	 rv[a,b]:=rat_as_int((P[i,j]-P_delta[x,y])/2)
-    elif abs(epsilon_i)=1 and epsilon_j=0 {(\pm,ind): P} then
-      rv[a,b]:=P[i][j]
-    elif epsilon_i=0 and abs(epsilon_j)=1  {(ind,\pm): P} then
-      rv[a,b]:=P[i][j]
-    elif epsilon_i=0 and epsilon_j=0 then {(ind,ind): P(gamma,mu)+P(gamma,mu^delta)}
-      rv[a,b]:=P[i][j]+P[i][delta_action[j]]
-    fi fi od od ;rv fi
+	       rv[a,b]:=rat_as_int((P[i,j]-P_delta[x,y])/2)
+	    elif abs(epsilon_i)=1 and epsilon_j=0 {(\pm,ind): P}
+	    then rv[a,b]:=P[i][j]
+	    elif epsilon_i=0 and abs(epsilon_j)=1  {(ind,\pm): P}
+	    then rv[a,b]:=P[i][j]
+	    elif epsilon_i=0 and epsilon_j=0
+	    then {(ind,ind): P(gamma,mu)+P(gamma,mu^delta)}
+		  rv[a,b]:=P[i][j]+P[i][delta_action[j]]
+	    fi
+	 od
+      od ;rv
+   fi
 
 set big_KL_P_signed_polynomials([Param] B,mat delta)=[[vec]]:
 let (I_delta,g,complete_indices,delta_action)=tabulate_indices(B,delta) in
