@@ -123,13 +123,6 @@ set in_lattice (mat M, ratvec u) = bool: { whether v in image lattice of M }
 set vec_solve (mat A, ratvec u) = maybe_a_vec: { integer solution to A*x=b }
   let (b,n)=%u in if n>1 then no_solution() else solve(A,b) fi
 
-{ as |solve_ratvec|, but require a denominator-free solution }
-set solve_vec (mat A, vec v) = vec: { find integer solution to A*x=v }
-  case solve(A,v)
-  | solution(s): s
-  | no_solution: error("linear system has no solution")
-  esac
-
 { express columns of M relative to basis A of a sub-lattice that contains them
   A: nxm matrix, columns are a basis of a Z-module V of rank m
   M: nxr matrix, columns span a submodule of V
@@ -137,7 +130,7 @@ set solve_vec (mat A, vec v) = vec: { find integer solution to A*x=v }
   i.e. A*C=M
 }
 set in_lattice_basis (mat A,mat M) = mat:
-  n_columns(A) { size of solutions } # for v in M do solve_vec(A,v) od
+  n_columns(A) { size of solutions } # for v in M do required_solution(A,v) od
 
 { write v as a linear combination of columns of A }
 set solve_in_lattice ([vec] A, vec v) = maybe_a_vec:

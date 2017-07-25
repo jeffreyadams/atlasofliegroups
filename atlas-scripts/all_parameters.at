@@ -142,13 +142,14 @@ set all_dominant_norm_upto (InnerClass ic, ratvec cowt,int N) =
 
 { filter and transform list of mu's into list of example lambda-rho values }
 set lambda_rho_from_dominant_norm_upto (KGBElt x, ratvec v, int N) = mat: {wts}
-  let th1=1+involution(x), rho=rho(root_datum(x)), result=[vec]:[] in
+  let th1=1+involution(x), rho=rho(root_datum(x)) in
+  #rho { all weights have same size (the rank) as rho } ##
   for mu in all_dominant_norm_upto(inner_class(x),v,N)
   do case solve(th1,mu-ratvec_as_vec(th1*rho))
-     | no_solution: ()
-     | solution(s): result #:= s
+     | no_solution: []
+     | solution(s): [s]
      esac
-  od; #rho{rank} # result
+  od
 
 set K_parameters_norm_upto ((KGBElt,ratvec,int)(x,,):triple) = [K_Type]:
   let lrs = lambda_rho_from_dominant_norm_upto(triple), rho=rho(root_datum(x))

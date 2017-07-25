@@ -456,6 +456,8 @@ set requisition (string message) = (maybe_a_vec->vec):
    (maybe_a_vec x) vec: case x  | solution(s): s | else error(message) esac
 set requisition = requisition("No solution found; having one was required")
 
+set required_solution ((mat,vec) system) = vec: system.solve.requisition
+
 { multiplicative order of a matrix, hangs unless finite }
 set order (mat !M) = int:
   let (n,):p =shape(M) in assert(=p,"Matrix is not square");
@@ -537,6 +539,9 @@ set rat_requisition (string message) = (maybe_a_ratvec->ratvec):
    (maybe_a_ratvec x) ratvec:
     case x  | solution(s): s | else error(message) esac
 set requisition = rat_requisition("No solution found; having one was required")
+
+set required_solution ((mat,ratvec) system) = ratvec: system.solve.requisition
+
 
 
 {                           Split integers                              }
