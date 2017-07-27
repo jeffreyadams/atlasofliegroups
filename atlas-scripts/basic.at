@@ -286,6 +286,16 @@ set n_columns = #@mat { this one is built in as a # operator overload }
 set column (vec v) = mat: [v] { interpret v as single column }
 set row (vec v)    = mat: ^v  { interpret v as single row }
 
+set row (mat A,int i) = vec: (^A)[i]
+set column (mat A,int i) = vec: A[i]
+
+set rows (mat A) = [vec]: ^A
+set columns (mat A) = [vec]: A
+
+set block_matrix (mat A,mat B) = mat:
+  let ra=n_rows(A), rb=n_rows(B) then za=null(ra), zb=null(rb) in
+  (ra+rb)# (for col in A do col##zb od ## for col in B do za##col od)
+
 set main_diagonal (mat A) = vec:  for i:shape(A).min do A[i,i] od
 
 { test matrix against a multiple of the identity }

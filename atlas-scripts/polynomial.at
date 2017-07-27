@@ -246,5 +246,5 @@ set divide_by (int k,poly v) = poly: ratvec_as_vec(v/k)
 {polynomial has only non-negative coefficients}
 set is_non_negative = (poly->bool): >=@poly { same condition as "dominance" }
 
-set principal_minor (poly_mat M,int size) = poly_mat:
+set top_left_square_block (poly_mat M,int size) = poly_mat:
   for row in M[:size] do row[:size] od
