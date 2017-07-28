@@ -1,29 +1,84 @@
 <basic.at
 
+set upper_unitriangular_inverse (mat U) = mat:
+   let n=#U then Q=id_mat(n) { is made to satisfy $Q*U=I_n$ below }
+in for Uj@j in U
+   do Q[j] := for i:j do -sum(for k:j-i from i do Q[i,k]*Uj[k] od) od
+     ## Q[j][j:] { retain the final $n-j$ rows of column $j$ of $Q$ }
+   od; Q
 
-set right_inverse(mat A) = mat: { section of a surjective lattice map A }
-  let (diag,L,R) = diagonalize(A), (l,r)=shape(A) { also sizes of L,R }
-  then ()=
-    if #diag<l then error("image does not have full rank")
-    elif abs(product(diag))!=1 then error("image is a proper sublattice")
-    fi
-  { now since every element of diag is $\pm1$, division is multiplication;
-    so L*A*R has right-inv cols<l(I_r)*D_l; conjugate identity by L^-1, get: }
-  in (r # for j:l do diag[j]*R[j] od) * L
+set make_gcd (vec a) = (int {global gcd |d|}, mat {|M| with |M*a=(d,0,0,..)|} ):
+(  let n=#a then non_0 = list(n,(int i):!=a[i]), M=id_mat(n)
+in if =#non_0 then (0,M) { return gcd=0, no column operations }
+   else let mindex = non_0[for i in non_0 do abs(a[i]) od.min_loc]
+   in if a[mindex].< then a[mindex]:=-a[mindex]; M[mindex,mindex]:=minus_1 fi
+   ;  while #non_0>1
+      do let min=a[mindex] then (!cur_i,!d)=(mindex,min)
+      in non_0 :=
+      ## for i in non_0
+         do if i=cur_i then [i] { keep current minimum index, M unchanged here }
+            else let (q,r)=a[i]\%d in M[i] -:= M[cur_i]*q
+            ;  if r.= then []
+               else a[i]:=r; if r<min then set (mindex,min):=(i,r) fi; [i]
+               fi
+            fi
+         od
+      od
+   ;  if mindex.> then let t=M[0] in M[0]:=M[mindex]; M[mindex]:=t fi
+   ;  (a[mindex],M)
+   fi
+)
+
+{ make result of echelon upper unitriangular, possibly with trailing null rows }
+set ech_up (mat M, [int] pivot) = (mat,mat):
+   let (r,c)=shape(M)
+   then R=id_mat(r) { record row operationns, held in transposed form }
+in for j:#M { loop over columns of M as it is being modified in the loop }
+   do let col=M[j] then (d,C)=make_gcd(col[j:pivot[j]+1]), tM=^M
+   then tM_C=tM[j:pivot[j]+1] * C, R_C = R[j:pivot[j]+1] *C
+   in M := c^ for i:r do if i<j or i>pivot[j] then tM[i] else tM_C[i-j] fi od
+   ;  R := r# for i:r do if i<j or i>pivot[j] then  R[i] else  R_C[i-j] fi od
+   ; assert(M[j,j]=d)
+   od; (M,^R)
+
+{ for instance this allows us to tell whether image of injection is saturated }
+set is_saturated (mat injection) = bool:
+   let (M,,pivots,)=echelon(injection)
+in set (M,):=ech_up(M,pivots); product(M.main_diagonal)=1
 
 set left_inverse(mat A) = mat: { for injective map to saturated sublattice }
-  ^right_inverse(^A)
+(  let (M,C,pivots,)=echelon(A), c=#A
+in if #M<c then error("not injective (rank is ",#M,"<",c,")") fi
+;  let (Tri,R)= ech_up(M,pivots)
+in if product(Tri.main_diagonal)=1
+   then C*upper_unitriangular_inverse(Tri[:c,:])*R[:c,:]
+   else error("image is not saturated")
+   fi
+)
 
-set weak_left_inverse(mat A) = (int,mat): { left inverse after saturation }
-  let (diag,L,R) = diagonalize(A) then r = #diag then less_r = (int j):j<r
-  in ( product(diag), columns_with(less_r,R) * rows_with(less_r,L) )
+set right_inverse(mat A) = mat: { section of a surjective lattice map A }
+(  let (M,C,pivots,)=echelon(^A), c=A.n_rows
+in if M.n_rows<c then error("row rank ",M.n_rows," not full (",c,")") fi
+;  let (Tri,R)= ech_up(M,pivots)
+in if product(Tri.main_diagonal)=1
+   then ^(C*upper_unitriangular_inverse(Tri[:c,:])*R[:c,:])
+   else error("image is not saturated")
+   fi
+)
 
-set reduce (mat M) = { factor out common divisor } mat:
-  let inf=inv_fact(M) in if =#inf then M else M\inf[0] fi
+set weak_left_inverse(mat A) = (mat,int): { left inverse after saturation }
+(  let (M,C,pivots,)=echelon(A), c=#A
+in if #M<c then error("not injective (rank is ",#M,"<",c,")") fi
+;  let (Tri,R)= ech_up(M,pivots) then (T1,d)=invert_ech(Tri[:c,:])
+in ( C*T1*R[:c,:] , d)
+)
+
+set factor_scalar (mat M) = { factor out common divisor } (int,mat):
+  let d=gcd(for col in M do gcd(col) od) in (d,if =d then M else M\d fi)
 
 
 set principal_submatrix(mat M, [int] S)=mat: { choice |S| of rows, columns }
-   let m=#S in matrix((s,s), (int i,int j)int: M[S[i],S[j]] )
+   let m=#S in matrix((m,m), (int i,int j)int: M[S[i],S[j]] )
 
 set main_diagonal_square_block(mat M, int size, int offset) = mat:
   M[ offset:offset+size, offset:offset+size ]

@@ -104,7 +104,7 @@ set gcd (int a,int b) = int:
    if b.<= then if b.= then return a else b:=-b { force positive result} fi fi;
    while let r=a%b in r.!= do set (a,b):=(b,r) od; b
 
-set lcm (int a,int b) = int: let d=gcd(a,b) in if d=1 then a*b else a\d*b fi
+set lcm (int a,int b) = int: let d=gcd(a,b) in if d=1 then a*b else a\d*b fi.abs
 
 set gcd ([int] v)= int:
   let d=0 in for a in v do if (d:= gcd(a,d))=1 then return 1 fi od; d
