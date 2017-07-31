@@ -4568,7 +4568,8 @@ the identifier pattern of defaulted branches be empty, the value from the
   // if a default was given, insert for omitted branches
     for (auto it=choices.begin(); it!=choices.end(); ++it)
       if (it->second.get()==nullptr)
-        *it = choice_part(id_pat(),default_choice); // share |default_choice| here
+        *it = choice_part(id_pat(),default_choice);
+              // share |default_choice| here
 }
 
 @*1 While loops.

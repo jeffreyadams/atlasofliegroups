@@ -1,20 +1,21 @@
-/*!
-\file
-\brief Implementation for namespace lattice.
-
-  This module defines some more general lattice functions.
-*/
 /*
   This is lattice.cpp.
 
   Copyright (C) 2004,2005 Fokko du Cloux
-  Copyright (C) 2007--2011 Marc van Leeuwen
+  Copyright (C) 2007--2017 Marc van Leeuwen
   part of the Atlas of Lie Groups and Representations
 
   For license information see the LICENSE file
 */
 
+/*
+  Implementation for namespace lattice.
+
+  This module defines some more general lattice functions.
+*/
+
 #include "lattice.h"
+#include "bitmap.h" // for (unused) result of |column_echelon|
 
 #include <cassert>
 
@@ -127,16 +128,13 @@ CoweightList perp(const WeightList& b, size_t r)
   return result;
 }
 
-LatticeMatrix kernel(const LatticeMatrix& M)
+LatticeMatrix kernel (LatticeMatrix M)
 {
-  size_t n= M.numColumns(); // dimension of space to which |M| can be applied
-  LatticeMatrix R,C; // |R| is dummy
+  size_t m= M.numColumns(); // dimension of space to which |M| can be applied
+  LatticeMatrix C; bool flip; // flip is dummy
+  matreduc::column_echelon(M,C,flip);
 
-  size_t c=matreduc::diagonalise(M,R,C).size(); // codimension of kernel
-  // now $D=R*M*C$ is diagonal, $c$ initial entries nonzero and rest zero
-  // so $e_c, e_{c+1},..$ spans $\ker(D)$, and $\ker(M)=\ker(R*M)=C.\ker(D)$
-
-  return C.block(0,c,n,n); // last |n-c| columns, which span $C.\ker(D)$
+  return C.block(0,M.numColumns(),m,m); // final columns span $\ker(M)$
 }
 
 LatticeMatrix eigen_lattice (LatticeMatrix M, LatticeCoeff lambda)
