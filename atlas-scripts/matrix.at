@@ -7,7 +7,7 @@ in for Uj@j in U
      ## Q[j][j:] { retain the final $n-j$ rows of column $j$ of $Q$ }
    od; Q
 
-set make_gcd (vec a) = (int {global gcd |d|}, mat {|M| with |M*a=(d,0,0,..)|} ):
+set Bezout (vec a) = (int {global gcd |d|}, mat {|M| with |M*a=(d,0,0,..)|} ):
 (  let n=#a then non_0 = list(n,(int i):!=a[i]), M=id_mat(n)
 in if =#non_0 then (0,M) { return gcd=0, no column operations }
    else let mindex = non_0[for i in non_0 do abs(a[i]) od.min_loc]
@@ -32,19 +32,14 @@ in if =#non_0 then (0,M) { return gcd=0, no column operations }
 { make result of echelon upper unitriangular, possibly with trailing null rows }
 set ech_up (mat M, [int] pivot) = (mat,mat):
    let (r,c)=shape(M)
-   then R=id_mat(r) { record row operationns, held in transposed form }
-in for j:#M { loop over columns of M as it is being modified in the loop }
-   do let col=M[j] then (d,C)=make_gcd(col[j:pivot[j]+1]), tM=^M
+   then R=id_mat(r) { record row operations, held in transposed form }
+in for j:c { loop over columns of M as it is being modified in the loop }
+   do let col=M[j] then (d,C)=Bezout(col[j:pivot[j]+1]), tM=^M
    then tM_C=tM[j:pivot[j]+1] * C, R_C = R[j:pivot[j]+1] *C
    in M := c^ for i:r do if i<j or i>pivot[j] then tM[i] else tM_C[i-j] fi od
    ;  R := r# for i:r do if i<j or i>pivot[j] then  R[i] else  R_C[i-j] fi od
    ; assert(M[j,j]=d)
    od; (M,^R)
-
-{ for instance this allows us to tell whether image of injection is saturated }
-set is_saturated (mat injection) = bool:
-   let (M,,pivots,)=echelon(injection)
-in set (M,):=ech_up(M,pivots); product(M.main_diagonal)=1
 
 set left_inverse(mat A) = mat: { for injective map to saturated sublattice }
 (  let (M,C,pivots,)=echelon(A), c=#A

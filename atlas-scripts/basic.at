@@ -334,27 +334,6 @@ set \ (mat m,int d) = mat: map_on(m)((int e) int: e\d)
 { entrywise modulo }
 set % (mat m,int d) = mat: map_on(m)((int e) int: e%d)
 
-{ matrix exponentiation }
-set ^ =
-  let matrix_power (mat m,int n)= mat: m { dummy for recursion } in
-  begin matrix_power := { assign recursive function body }
-    ( (mat m,int n): { we shall have n>0 }
-      if n=1 then m
-      else let (q,r)=n\%2 then mm=matrix_power(m,q) in
-        mm*if =r then mm else mm*m fi
-      fi
-    )
-  ; (mat m,int n) mat: { the actual operator ^ :}
-      assert(=shape(m),"Non square matrix in exponentiation")
-    ; if n>0 then matrix_power(m,n) elif =n then id_mat(n_rows(m))
-      else let (m1,d)=invert(m) in
-        if d=1 then matrix_power(m1,-n)
-        elif =d then error("Negative power of singular matrix")
-        else error("Negative power of matrix not invertible over Z")
-        fi
-      fi
-  end
-
 { version of invert@mat that uses only echelon@mat, less prone to overflow }
 set invert_ech (mat A) = (mat,int):
    assert(=shape(A),"Cannot invert non square matrix");
@@ -368,6 +347,27 @@ set invert_ech (mat A) = (mat,int):
    then (row_nums,common_d) = %(ratvec:
       for j:n do let(v,d)=%(ratvec:C[:j+1]*ech_inv(j)) in cols[j]:=v; /d od)
    in (n # for n@j in row_nums do cols[j]*n od , common_d)
+
+{ matrix exponentiation }
+set ^ =
+  let matrix_power (mat m,int n)= mat: m { dummy for recursion } in
+  begin matrix_power := { assign recursive function body }
+    ( (mat m,int n): { we shall have n>0 }
+      if n=1 then m
+      else let (q,r)=n\%2 then mm=matrix_power(m,q) in
+        mm*if =r then mm else mm*m fi
+      fi
+    )
+  ; (mat m,int n) mat: { the actual operator ^ :}
+      assert(=shape(m),"Non square matrix in exponentiation")
+    ; if n>0 then matrix_power(m,n) elif =n then id_mat(n_rows(m))
+      else let (m1,d)=invert_ech(m) in
+        if d=1 then matrix_power(m1,-n)
+        elif =d then error("Negative power of singular matrix")
+        else error("Negative power of matrix not invertible over Z")
+        fi
+      fi
+  end
 
 
 set inverse (mat M) = mat:

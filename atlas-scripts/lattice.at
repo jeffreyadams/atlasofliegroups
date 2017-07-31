@@ -1,134 +1,116 @@
 <basic.at
 <matrix.at { for 'top_left_square_block' (this dependency might be eliminated) }
 
-{ M is an nxk matrix, columns of M define a Z-module W=image(M)\subset Z^n }
-set submodule_basis (mat M) = mat:
-  let (B,cs) = adapted_basis(M) in n_rows(B) # for c@j in cs do c*B[j] od
+{ |M| is an $n\times k$ matrix, so columns of |M| span a $\Z$-submodule
+  $ W=image(M)$ of $\Z^n$; get canonical generators for this submodule }
+set image_lattice (mat M) = mat:
+   let (M,,pivots,)=echelon(M) then c=#M
+in for i@j in pivots
+   do let col=M[j] then pivot=col[i]
+   in for l: c-1-j from j+1 do M[l]-:=col*(M[i,l]\pivot) od
+   od; M
 
-{ columns are a Q-basis of image(M) }
-set Q_submodule_basis (mat M) = mat:
-  let (B,cs) = adapted_basis(M) in n_rows(B) # for c@j in cs do B[j] od
+{ whether |image_lattice(M)| is a saturated lattice (direct factor of $\Z^n$) }
+set is_saturated (mat M) = bool:
+   let (M,,pivots,)=echelon(M)
+in set (M,):=ech_up(M,pivots); product(M.main_diagonal)=1
 
-{ a basis representing the quotient by sublattice spanned by columns;
+{ dimension |c| of image, together with a $\Z$-inverible matrix whose first |c|
+  columns span that saturation of the image, the remainder a chosen complement }
+set adapted_direct_sum (mat M) = (int,mat):
+   let (M,,pivot,)=echelon(M) then (r,c)=shape(M), !M0=M
+   then R=id_mat(r) { record row operations, held in inversed form }
+in for j:c { loop over columns of M while it is being modified in the loop }
+   do let col=M[j] then (d,C)=Bezout(col[j:pivot[j]+1]), tM=^M
+   then tM_C=tM[j:pivot[j]+1] * C, R_C = R[j:pivot[j]+1] * ^C.inverse
+   in M := c^ for i:r do if i<j or i>pivot[j] then tM[i] else tM_C[i-j] fi od
+   ;  R := r# for i:r do if i<j or i>pivot[j] then  R[i] else  R_C[i-j] fi od
+   ; assert(M[j,j]=d)
+   od; assert(R*M=M0); (c,R)
+
+set image_subspace (mat M) = mat: { generators for $\Q$-span of image of |M| }
+   let (c,R)=adapted_direct_sum(M) in R[:c]
+
+set image_complement_basis (mat M) = mat:
+   let (c,R)=adapted_direct_sum(M) in R[c:]
+
+{ a basis representing the quotient by sublattice spanned by columns of |M|;
   tests that this sublattice is a direct factor, and throws an error if not }
-set quotient_module_basis (mat M) = mat:
-( let (B,cs) = adapted_basis(M) then l=#cs in
-  assert(cs=ones(l),"sublattice is not a direct factor")
-; columns_with ((int j)bool: j>=l,B)
+set free_quotient_lattice_basis (mat M) = mat:
+( let (E,,,)=echelon(M) in { pre-compute echelon }
+  assert(E.is_saturated,"sublattice is not a direct factor")
+; image_complement_basis(E)
 )
 
 { a basis representing the quotient by saturation of sublattice, so no test }
-set saturation_quotient_module_basis (mat M) = mat:
-  let (B,cs) = adapted_basis(M) then l=#cs
-  in columns_with ((int j)bool: j>=l,B)
-{this is a Q-basis of the quotient}
-set Q_quotient_module_basis (mat M) = mat:saturation_quotient_module_basis(M)
+set saturation_quotient_module_basis = image_complement_basis@mat
 
-{ Projection of v onto V/W parallel to W in basis from adapted_basis
-  Basis of image space: projection of Q_quotient_module_basis(M)
+
+{ |M| is an $n\times k$ matrix; its columns span a submodule $W$ of $\Z^n$.
+  Compute $n\times n$ matrix of projection onto the saturation (or $\Q$-span)
+  of $W$, parallel to its complement from |adapted_sirect_sum(M)|.
 }
-set projection_mod_image (mat M) = mat:
-  let (B,cs) = adapted_basis(M) then d=#cs
-  in rows_with( (int i): i>=d, inverse(B) ) { coordinates on final part basis }
+set projector_to_image (mat M) = mat:
+  let (c,R)=adapted_direct_sum(M) in R[ : , :c] * R.inverse[ :c, : ]
 
 
+{ complementary projector, to chosen complement to |image_subspace(M)| }
+set projector_mod_image (mat M) = mat:
+  let (c,R)=adapted_direct_sum(M) in R[ : ,c: ] * R.inverse[c: , : ]
 
-{ M is an nxk matrix whose columns span a submodule W of V=Z^n
-  Projection to saturation of W, parallel to complement from |adapted_basis(M)|
-  Basis of image space: initial vectors of |adapted_basis(M)|,
-  i.e. Q_submodule_basis(M)
+{ |M| is an $n\times k$ matrix; its columns span a submodule $W$ of $\Z^n$.
+  A complement to |image_subspace(M)| is chosen by |adapted_direct_sum(M)|, and
+  |decompose(M,w)=(u,v)| with |u| in |image_subspace(M)| and |v| in complement.
 }
-set projection_to_image (mat M) = mat:
-  let (B,cs) = adapted_basis(M) then d=#cs
-  in rows_with( (int i): i<d, inverse(B) )
+set decompose (mat M, vec v)= (vec,vec):
+   let (c,R)=adapted_direct_sum(M) then R1=R.inverse
+in (R[:,:c] * (R.inverse[:c,:] * v), R[:,c:] * (R.inverse[c:,:] * v) )
 
-set projection_to_image (mat M, ratvec v) = ratvec:
-Q_submodule_basis(M)*projection_to_image(M)*v
-
-{M is an nxk matrix whose columns span a submodule W of V=Q^n
- V=(V/W)\oplus W
- basis of W = first k columns of adapted_basis(M)
- basis of (V/W)\subset V = saturation_quotient_module_basis(M)
-                         = last n-k columns of adapted_basis(M)
- decompose(M,w)=(u,v) according to this decomposition
-}
-set decompose(mat M,ratvec v)=
-let A=projection_to_image(M) then
-B=projection_mod_image(M) then
-(C,w)=adapted_basis(M) in
-let D=C[0:#w] in (D*A*v,saturation_quotient_module_basis(M)*B*v)
+set decompose (mat M, ratvec w) = (ratvec,ratvec):
+   let (v,d)=%w then (v1,v2)=decompose(M,v) in (v1/d,v2/d)
 
 
-{ M is an n*k matrix whose columns span a rank k submodule W of V=Z^n
-  A is an n*n matrix preserving W
-  sub_matrix(M,W) is the k*k matrix giving the action of A on W,
-  using columns of M as basis
-}
-set sub_matrix (mat A,mat M) = mat:
-  let P = M ## kernel(^M) then (Pinverse,d) = invert(P)
-  then Q = top_left_square_block(Pinverse*A*P,#M) { extract top-left k*k block }
-  in assert(=Q%d,"lattice not fixed"); Q\d
-
-{ assuming M injective and Im(A*M)\subset Im(A), find unique C with A*M=M*C }
-{ using decomposition M = L^{-1} * D * R^{-1} (B,L invertible, D diagonal)
-  first find A' = L*A*L^{-1}, then A'' such that D*A'' = A'*D, which must
-  exist, and finally compute C = R*A''*R^{-1}
-}
+{ assuming M injective and Im(M) is A-stable, find unique B with A*M=M*B }
 set restrict_action (mat A, mat M) = mat:
-  let (ds,L,R) = diagonalize(M), (l,r)=shape(M) { also sizes of L,R; l>=r }
-  then () = if #ds!=r then error("matrix has dependent columns") fi
-  then A1 = L * A * inverse(L)
-  then A1Dtr = l ^ for d@j in ds do d*A1[j] od { one has #A1Dtr=(r,l) }
-  , A2tr= [vec]:[] { collects r vectors of size r } , zero=null(r)
-  then () =
-     for i: l { collect first r rows of A1, scaled; test remaining rows are 0 }
-     do if i<r
-        then
-          if A1Dtr[i]%ds[i]=zero then  A2tr #:=  A1Dtr[i]\ds[i]
-          else error("matrix does not fix lattice")
-	  fi
-        elif A1Dtr[i]!=zero then error("matrix does not fix image")
-        fi
-     od
-  in R * (r^A2tr) * inverse(R)
+   #M # { every solution has size given my number of columns of M }
+   for v in M
+   do case solve(M,A*v)
+      | ().no_solution: error("Image lattice M is not fixed by A")
+      | w.solution: w
+      esac
+   od
 
-set corestrict_action (mat A, mat M) = mat: ^restrict_action(^A,^M)
 
-{ M is an nxk matrix whose columns span a submodule W of V=Z^n
-  A is an nxn matrix preserving W
-  quotient_matrix(M,W) is the matrix of M on V/W,
-  using the basis from quotient_module_basis(M)
+{ assuming M full row rank and ker(M) is A-stable, find unique B with M*A=B*M }
+set corestrict_action (mat A, mat M) = mat: { formal dual to |restrit_action| }
+    ^restrict_action(^A,^M)
+
+{ |M| is an $n\times k$ matrix; its columns span a subspace $W$ of $\Q^n$.
+  Assuming this subspace is |A|-stable, |A| induces an operator in $\Q^n/W$;
+  return its matrix w.r.t the complement chosen by |adapted_direct_sum(M)|.
 }
-set quotient_matrix (mat M,mat A) = mat:
-  let P= submodule_basis(M) ## quotient_module_basis(M)
-  then (Pinverse,d) = invert(P), ncM=#M, ncA=#A
-  in (Pinverse*A*P)[ncM:ncA, ncM:ncA]\d
-
+set quotient_matrix (mat A,mat M) = mat:
+  let (c,R)=adapted_direct_sum(M) in (R.inverse[c: , : ]*A*R[ : ,c: ])
 
 set solve_ratvec (mat A, vec v) = ratvec:
-  let (ds,L,R) = diagonalize(A) then d=#ds, target=L*v
-  in begin
-    for i:#target-d from d do assert(=target[i],"not in span") od
-  ; columns_with((int j):j<d,R) * for i:d do target[i]/ds[i] od end
+  (A,ratvec:v).solve.(rat_requisition("not in span"))
 
 { integer vector (lattice) solutions to linear system }
 
 
-set in_lattice (mat M, ratvec u) = bool: { whether v in image lattice of M }
-  let (ds,L,) = diagonalize(M), (v,n)=%u then target=L*v
-  in n=1 and =target[#ds:] and all(for d@i in ds do =target[i]%d od)
+set in_lattice (mat A, ratvec u) = bool: { whether v in image lattice of A }
+  let (b,n)=%u in n=1 and solve(A,b).any
 
 set vec_solve (mat A, ratvec u) = maybe_a_vec: { integer solution to A*x=b }
   let (b,n)=%u in if n>1 then no_solution() else solve(A,b) fi
 
 { express columns of M relative to basis A of a sub-lattice that contains them
   A: nxm matrix, columns are a basis of a Z-module V of rank m
-  M: nxr matrix, columns span a submodule of V
-  returns mxr matrix C, column i gives column i of M as a sum of columns of A
-  i.e. A*C=M
+  M: nxr matrix, columns span a submodule of V; returns mxr matrix C,
+  column i gives column i of M as a sum of columns of A i.e., A*C=M
 }
 set in_lattice_basis (mat A,mat M) = mat:
-  n_columns(A) { size of solutions } # for v in M do required_solution(A,v) od
+  #A { size m of solutions } # for v in M do required_solution(A,v) od
 
 { write v as a linear combination of columns of A }
 set solve_in_lattice ([vec] A, vec v) = maybe_a_vec:
