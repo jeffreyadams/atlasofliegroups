@@ -1,4 +1,5 @@
 <basic.at { for (at least) radical_basis }
+<lattice.at { for image_subspace@mat }
 
 { center Z and dual Z_hat of complex group or real form }
 {
@@ -41,18 +42,16 @@ set lie_coradical_part (RootDatum rd, ratvec v) = ratvec: v-ss_part(rd,v)
 { Q-basis of Lie algebra of split part of radical; columns are coweights }
 set split_radical_basis (InnerClass G) =  mat:
   kernel( ^(simple_roots(G)##(1+distinguished_involution(G))) )
-{ same: Q-basis of Lie algebra of split part of radical of complex group }
+{ equivalent: Q-basis of LA of split part of radical of the (complex) group }
 set lie_split_radical (InnerClass G) = mat: { columns are coweights }
-  let (A,v)=adapted_basis(^(1-distinguished_involution(G))*lie_radical(G))
-  in A[:#v] { take part of basis spanning saturation of image in X_* }
+  image_subspace((1-^distinguished_involution(G))*lie_radical(G))
 
 { Q-basis of Lie algebra of compact part of radical; columns are coweights }
 set compact_radical_basis (InnerClass G) =  mat:
   kernel( ^(simple_roots(G)##(1-distinguished_involution(G))) )
-{ same: Q-basis of Lie algebra of compact part of radical of complex group }
+{ equivalent: Q-basis of LA of compact part of radical of the (complex) group }
 set lie_compact_radical (InnerClass G) = mat:
-  let (A,v)=adapted_basis((1+^distinguished_involution(G))*lie_radical(G))
-  in A[:#v] { take part of basis spanning saturation of image in X_* }
+  image_subspace((1+^distinguished_involution(G))*lie_radical(G))
 
 { Q-basis of dual of radical of complex group }
 set lie_radical_hat = (RootDatum->mat): { kernel(^simple_coroots(rd)) }
@@ -61,18 +60,16 @@ set lie_radical_hat = (RootDatum->mat): { kernel(^simple_coroots(rd)) }
 { Q-basis of split part of coradical; columns are weights }
 set split_coradical_basis (InnerClass G) =  mat:
   kernel( (^simple_coroots(G)) ^ {stack up} (1+distinguished_involution(G)) )
-{ same: Q-basis of dual of split part of radical of complex group }
+{ equivalent: Q-basis of dual of split part of radical of the (complex) group }
 set lie_split_radical_hat (InnerClass G) = mat:
-  let (A,v)=adapted_basis((1-distinguished_involution(G))*lie_radical_hat(G))
-  in A[:#v] { take part of basis spanning saturation of image in X^* }
+  image_subspace((1-distinguished_involution(G))*lie_radical_hat(G))
 
 { Q-basis of split part of coradical; columns are weights }
 set compact_coradical_basis (InnerClass G) =  mat:
   kernel( (^simple_coroots(G)) ^ {stack up} (1-distinguished_involution(G)) )
-{ Q-basis of dual of compact part of radical of complex group }
+{ equivalent: Q-basis of dual of compact part of radical of (complex) group }
 set lie_compact_radical_hat (InnerClass G) = mat:
-  let (A,v)=adapted_basis((1+distinguished_involution(G))*lie_radical_hat(G))
-  in A[:#v] { take part of basis spanning saturation of image in X^* }
+  image_subspace((1+distinguished_involution(G))*lie_radical_hat(G))
 
 
 {

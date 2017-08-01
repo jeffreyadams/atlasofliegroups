@@ -124,24 +124,25 @@ set - ([ratvec] M,[ratvec] MM)=ratmat:
 {define inverse of mat as ratmat}
 set rational_inverse(mat M) = ratmat:inverse(mat_as_ratmat(M))
 
-{right inverse of rational matrix
- adapted from right_inverse in matrix.at
- (l,r) matrix, l\le r
- diagonalize: LAR=D   D=diag(d_1,...,d_l) # (l-r) columns of 0's
- LARE=I_l  where E = diag(1/d1,...,1/dl) plus (l-r) rows of 0's
- conjugate by L^{-1}
- A(REL)=I
+{ left inverse of injective (full column rank) rational matrix
+  adapted from |weak_left_inverse| in matrix.at
 }
-{.right inverse of a rational matrix.}
-set right_inverse(ratmat A) = ratmat:
-  let (M,,d)=A in
-  let (diag,L,R) = diagonalize(M), (l,r)=shape(M) { also sizes of L,R } in
-  assert(#diag>=l,"image does not have full rank");
-  ratvecs_as_ratmat (for j:l do (1/diag[j])*R[j] od) * mat_as_ratmat(L) *
-    (d*id_mat(l))
+set left_inverse(ratmat(A,,d)) = ratmat:
+(  let (M,C,pivots,)=echelon(A), c=#A
+in if #M<c then error("not injective (rank is ",#M,"<",c,")") fi
+;  let (Tri,R)= ech_up(M,pivots) then (T1,d1)=invert_ech(Tri[:c,:])
+   then (num,den)=%(d/d1) { simplify fraction before combining }
+in ( num*C*T1*R[:c,:] , s, den)
+)
 
-{.left inverse of a rational matrix.}
-set left_inverse(ratmat A) = ratmat:^right_inverse(^A)
+{.right inverse of a rational matrix.}
+set right_inverse(ratmat(A,,d)) = ratmat: { formal dual of left_inverse }
+(  let (M,C,pivots,)=echelon(^A), c=A.n_rows
+in if M.n_rows<c then error("row rank ",M.n_rows," not full (",c,")") fi
+;  let (Tri,R)= ech_up(M,pivots) then  (T1,d1)=invert_ech(Tri[:c,:])
+   then (num,den)=%(d/d1) { simplify fraction before combining }
+in ( ^(num*C*T1*R[:c,:]) , s, den)
+)
 
 set ratvec_to_string(ratvec v) = string: { show ratvec as [rat], simplified }
    ## for a in v
