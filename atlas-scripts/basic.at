@@ -106,9 +106,6 @@ set gcd (int a,int b) = int:
 
 set lcm (int a,int b) = int: let d=gcd(a,b) in if d=1 then a*b else a\d*b fi.abs
 
-set gcd ([int] v)= int:
-  let d=0 in for a in v do if (d:= gcd(a,d))=1 then return 1 fi od; d
-
 set lcm ([int] v) = int: let m=1 in for x in v do m:=lcm(m,x) od; m
 
 set =  ((int,int)(x0,y0),(int,int)(x1,y1)) = bool: x0=x1 and y0=y1

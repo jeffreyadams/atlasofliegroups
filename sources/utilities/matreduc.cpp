@@ -21,6 +21,56 @@ namespace atlas {
 
 namespace matreduc {
 
+template<typename C>
+  C gcd (matrix::Vector<C> row, matrix::PID_Matrix<C>* col)
+{ if (col!=nullptr)
+    *col = matrix::PID_Matrix<C>(row.size());
+  containers::sl_list<size_t> active_entries;
+  C min(0); size_t mindex;
+  for (size_t j=0; j<row.size(); ++j)
+    if (row[j]!=C(0))
+    {
+      active_entries.push_back(j);
+      if (min==C(0) or abs(row[j])<min)
+	min=abs(row[mindex=j]);
+    }
+  if (active_entries.empty())
+    return C(0);
+  if (row[mindex]<C(0))
+  {
+    row[mindex]=-row[mindex];
+    if (col!=nullptr)
+      (*col)(mindex,mindex)=C(-1);
+  }
+
+  while (not active_entries.singleton())
+  { const size_t cur_col = mindex;
+    const C d = row[mindex];
+    for (auto it=active_entries.begin(); not active_entries.at_end(it); )
+      if (*it==cur_col)
+	++it;
+      else
+      { auto j=*it;
+	C q=arithmetic::divide(row[j],d);
+	if (col!=nullptr)
+	  col->columnOperation(j,cur_col,-q);
+	if ((row[j] -= d*q)==C(0))
+	  active_entries.erase(it); // this leaves |it| pointing to next
+	else
+	{ if (row[j]<min)
+	    min=row[mindex=j];
+	  ++it; // don't forget to increment in this case
+	}
+      }
+    assert(active_entries.singleton() or mindex!=cur_col);
+  }
+
+  if (col!=nullptr and mindex>0)
+    col->swapColumns(0,mindex);
+
+  return min;
+}
+
 // make |M(i,j)==0| and |M(i,k)>0| by operations with columns |j| and |k|
 // precondition |M(i,k)>0|. Returns whether determinant -1 operation applied.
 template<typename C>
@@ -489,6 +539,8 @@ matrix::Vector<C> find_solution(const matrix::PID_Matrix<C>& A,
 }
 
  // instantiations
+template
+  int gcd (matrix::Vector<int> row, matrix::PID_Matrix<int>* col);
 template
 bool column_clear(matrix::PID_Matrix<int>& M, size_t i, size_t j, size_t k);
 template

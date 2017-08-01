@@ -4058,10 +4058,37 @@ else
       (rev_flags,A,lwb_r,upb_r,lwb_c,upb_c,result->val);
 }
 
-@ We continue with some more specialised mathematical functions. Here is the
-column echelon function.
+@ We continue with some more specialised mathematical functions. Here are
+functions to compute the greatest common divisor of the entries of a vector,
+and a version that also computes a matrix of ``B\'ezout coefficients'', a
+first column for the $\gcd$, and further columns for every entry~$0$ that was
+also produced by elementary operations among the entries of the vector.
 
 @h "matreduc.h"
+
+@<Local function definitions @>=
+void gcd_wrapper(expression_base::level l)
+{ own_vector v=get_own<vector_value>();
+  if (l==expression_base::no_value)
+    return;
+  int d = matreduc::gcd(std::move(v->val),static_cast<int_Matrix*>(nullptr));
+  push_value(std::make_shared<int_value>(d));
+}
+@)
+void Bezout_wrapper(expression_base::level l)
+{ own_vector v=get_own<vector_value>();
+  if (l==expression_base::no_value)
+    return;
+  own_matrix column = std::make_shared<matrix_value>(int_Matrix());
+  int d = matreduc::gcd(std::move(v->val),&column->val);
+  push_value(std::make_shared<int_value>(d));
+  push_value(std::move(column));
+  if (l==expression_base::single_value)
+    wrap_tuple<2>();
+}
+
+@ Here is the column echelon function.
+
 @h "bitmap.h"
 
 @<Local function definitions @>=
@@ -4367,6 +4394,8 @@ install_function(swiss_matrix_knife_wrapper@|,"swiss_matrix_knife"
 install_function(swiss_matrix_knife_wrapper@|,"matrix slicer"
     ,"(int,mat,int,int,int,int->mat)"); // space make an untouchable copy
 @)
+install_function(gcd_wrapper,"gcd","(vec->int)");
+install_function(Bezout_wrapper,"Bezout","(vec->int,mat)");
 install_function(echelon_wrapper,"echelon","(mat->mat,mat,[int],int)");
 install_function(diagonalize_wrapper,"diagonalize","(mat->vec,mat,mat)");
 install_function(adapted_basis_wrapper,"adapted_basis","(mat->mat,vec)");

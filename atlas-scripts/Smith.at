@@ -1,4 +1,4 @@
-{ experimental versions of some built-in functions using bug integers only }
+{ versions of some built-in functions but using big integers only }
 
 <basic.at
 
@@ -12,6 +12,30 @@ set minus (RatVec col) = RatVec: for e in col do -e od { avoid using -@ratvec }
 
 set - (Vec c1, (Vec c0, int f)) = Vec: for e@i in c1 do e - c0[i]*f od
 set - (RatVec c1, (RatVec c0, rat f)) = RatVec: for e@i in c1 do e - c0[i]*f od
+
+forget Bezout@vec
+set Bezout (Vec a) = (int {global gcd |d|}, Mat {|M| with |M*a=(d,0,0,..)|} ):
+(  let n=#a then non_0 = list(n,(int i):!=a[i]), M=Mat: id_mat(n)
+in if =#non_0 then (0,M) { return gcd=0, no column operations }
+   else let mindex = non_0[for i in non_0 do abs(a[i]) od.min_loc]
+   in if a[mindex].< then a[mindex]:=-a[mindex]; M[mindex]:=minus(M[mindex]) fi
+   ;  while #non_0>1
+      do let min=a[mindex] then (!cur_i,!d)=(mindex,min)
+      in non_0 :=
+      ## for i in non_0
+         do if i=cur_i then [i] { keep current minimum index, M unchanged here }
+            else let (q,r)=a[i]\%d in M[i] -:= M[cur_i]*q
+            ;  if r.= then []
+               else a[i]:=r; if r<min then set (mindex,min):=(i,r) fi; [i]
+               fi
+            fi
+         od
+      od
+   ;  if mindex.> then let t=M[0] in M[0]:=M[mindex]; M[mindex]:=t fi
+   ;  (a[mindex],M)
+   fi
+)
+
 
 { no-overflow matrix mulitplication }
 set safe_prod (Mat A, Vec B ) = Vec:

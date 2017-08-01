@@ -7,28 +7,6 @@ in for Uj@j in U
      ## Q[j][j:] { retain the final $n-j$ rows of column $j$ of $Q$ }
    od; Q
 
-set Bezout (vec a) = (int {global gcd |d|}, mat {|M| with |M*a=(d,0,0,..)|} ):
-(  let n=#a then non_0 = list(n,(int i):!=a[i]), M=id_mat(n)
-in if =#non_0 then (0,M) { return gcd=0, no column operations }
-   else let mindex = non_0[for i in non_0 do abs(a[i]) od.min_loc]
-   in if a[mindex].< then a[mindex]:=-a[mindex]; M[mindex,mindex]:=minus_1 fi
-   ;  while #non_0>1
-      do let min=a[mindex] then (!cur_i,!d)=(mindex,min)
-      in non_0 :=
-      ## for i in non_0
-         do if i=cur_i then [i] { keep current minimum index, M unchanged here }
-            else let (q,r)=a[i]\%d in M[i] -:= M[cur_i]*q
-            ;  if r.= then []
-               else a[i]:=r; if r<min then set (mindex,min):=(i,r) fi; [i]
-               fi
-            fi
-         od
-      od
-   ;  if mindex.> then let t=M[0] in M[0]:=M[mindex]; M[mindex]:=t fi
-   ;  (a[mindex],M)
-   fi
-)
-
 { make result of echelon upper unitriangular, possibly with trailing null rows }
 set ech_up (mat M, [int] pivot) = (mat,mat):
    let (r,c)=shape(M)

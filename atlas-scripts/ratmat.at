@@ -22,8 +22,7 @@ set !s = "/"
 : ratmat = (mat,string,int) { matrix, slash, common denominator }
 { the void component avoids unary/binary conflicts, as for -@(mat,int) }
 
-set gcd(mat M) = int:
-  let invf=inv_fact(M) in if =invf then 1 else invf[0] fi
+set gcd(mat M) = int: gcd(for c in M do gcd(c) od)
 
 set simplify(ratmat(M,,d)) = ratmat:
   let g=gcd([gcd(M),d]) in (M\g,s,d\g)

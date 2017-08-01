@@ -20,6 +20,11 @@ namespace atlas {
 
 namespace matreduc {
 
+// compute |d=gcd| of all entries of |row|
+// also if |col!=nullptr| assign matrix of col operations for |row->[d,0,0,...]|
+template<typename C>
+  C gcd (matrix::Vector<C> row, matrix::PID_Matrix<C>* col);
+
 // find reduced basis for span of |vectors| and column operations to get there
 template<typename C>
   bitmap::BitMap column_echelon(matrix::PID_Matrix<C>& vectors,
