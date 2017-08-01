@@ -358,21 +358,13 @@ are \sum a_i v_i with a_i=0,1 (or [] -> [0,...,0])
 
 {. (Auxiliary function) .}
 set characters_order_2 (KGBElt x) = [vec]:
-  let theta=involution(x)
-  , zero_vector=vec:null(rank(real_form(x))) {default value}
-  then K=kernel(1+theta) then (r,c)=shape(K)
-  in
-  if c=0 then []
-  else let M=in_lattice_basis(K,1-theta) in
-    if shape(M)=(0,0) then []
-    else let (A,v)=adapted_basis(M) then B=K*A in
+   let theta=involution(x) then K=kernel(1+theta)
+   then (A,v)=adapted_basis(in_lattice_basis(K,1-theta)) then B=K*A
 {prints("K=",K);
 prints("A=",A);
 prints("v=",v);
 prints ("B=",B);}
-      ## for i:#v do if v[i]=2 then [B[i]] else [] fi od
-    fi
-  fi
+   in ## for f@i in v do if f=2 then [B[i]] else [] fi od
 
 {. All G-spherical K-types with same differential as given one. .}
 set all_G_spherical_same_differential (K_Type p) = [K_Type]:
