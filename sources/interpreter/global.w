@@ -4071,7 +4071,9 @@ void gcd_wrapper(expression_base::level l)
 { own_vector v=get_own<vector_value>();
   if (l==expression_base::no_value)
     return;
-  int d = matreduc::gcd(std::move(v->val),static_cast<int_Matrix*>(nullptr));
+  bool flip=false;
+  int d =
+    matreduc::gcd(std::move(v->val),static_cast<int_Matrix*>(nullptr),flip);
   push_value(std::make_shared<int_value>(d));
 }
 @)
@@ -4080,7 +4082,8 @@ void Bezout_wrapper(expression_base::level l)
   if (l==expression_base::no_value)
     return;
   own_matrix column = std::make_shared<matrix_value>(int_Matrix());
-  int d = matreduc::gcd(std::move(v->val),&column->val);
+  bool flip=false;
+  int d = matreduc::gcd(std::move(v->val),&column->val,flip);
   push_value(std::make_shared<int_value>(d));
   push_value(std::move(column));
   if (l==expression_base::single_value)

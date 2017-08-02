@@ -1165,9 +1165,7 @@ namespace {
 
 
 /*
-  Synopsis: checks whether the involution |i| is compatible with
-  the weight lattice given by |basis|.
-
+  Whether involution |i| is compatible with the weight lattice given by |basis|.
   This means that |i| can be represented by an integral matrix on |basis|
 */
 bool checkInvolution(const WeightInvolution& i,

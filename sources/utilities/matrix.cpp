@@ -52,7 +52,7 @@ Vector<C>& Vector<C>::operator+= (const Vector<C>& v)
   return *this;
 }
 
-// Subtracts |v| from |*this|
+// Subtract |v| from |*this|
 template<typename C>
 Vector<C>& Vector<C>::operator-= (const Vector<C>& v)
 {
@@ -63,7 +63,7 @@ Vector<C>& Vector<C>::operator-= (const Vector<C>& v)
   return *this;
 }
 
-// Subtracts |*this| from |v|, and sets |*this| to the result
+// Subtract |*this| from |v|, and sets |*this| to the result
 template<typename C>
 Vector<C>& Vector<C>::negate_add (const Vector<C>& v)
 {
@@ -83,7 +83,7 @@ Vector<C>& Vector<C>::add (I b, C c)
   return *this;
 }
 
-//! \brief Scalar multiplies by |c|
+// Scalar multiply our vector by |c|
 template<typename C>
 Vector<C>& Vector<C>::operator*= (C c)
 {
@@ -93,7 +93,7 @@ Vector<C>& Vector<C>::operator*= (C c)
 }
 
 /*
-  Scalar-divide by |c|
+  Scalar-divide our vector by |c|
   All entries must allow exact division, if not a std::runtime_error is thrown
 */
 template<typename C>
@@ -213,14 +213,14 @@ namespace matrix {
 
 /******** constructors *******************************************************/
 
-//! \brief: Construct the identity matrix of size n.
+// Construct the identity matrix of size n.
 template<typename C> Matrix<C>::Matrix(size_t n) : base(n,n,C(0))
 {
   for (size_t i=0; i<n; ++i)
     base::operator()(i,i) = C(1);
 }
 
-/*! \brief
+/*
   This constructor constructs a matrix from a list of vectors, column-wise.
   It is assumed that all elements of |b| (possibly none) have size |n_rows|.
 */
@@ -232,10 +232,10 @@ Matrix_base<C>::Matrix_base(const std::vector<Vector<C> >& b, size_t n_rows)
     set_column(j,b[j]);
 }
 
-/*!
-  Here I is a random access iterator type whose value type should be Vector<C>
-  or some other type that can be subscripted giving a value of type C.
-  We read the columns of the matrix from the iterator.
+/*
+  Here |I| is a random access iterator type whose value type should be
+  |Vector<C>| or some other type that can be subscripted giving a value of
+  type |C|. We read the columns of the matrix from the iterator.
 
   All the vectors obtained from the iterators should have size |n_rows|
 */
@@ -250,9 +250,6 @@ template<typename C>
       (*this)(i,j) = (*p)[i];
 }
 
-/*!
-  Swaps m with the current matrix.
-*/
 template<typename C>
 void Matrix_base<C>::swap(Matrix_base<C>& m)
 {
@@ -263,9 +260,7 @@ void Matrix_base<C>::swap(Matrix_base<C>& m)
 
 /******** accessors **********************************************************/
 
-/*!
-  Puts the i-th row of the matrix in v.
-*/
+// Assign row |i| of the matrix to |v|.
 template<typename C>
 void Matrix_base<C>::get_row(Vector<C>& v, size_t i) const
 {
@@ -274,9 +269,7 @@ void Matrix_base<C>::get_row(Vector<C>& v, size_t i) const
   std::copy(at(i,0),at(i+1,0),&v[0] );
 }
 
-/*
-  Puts the j-th column of the matrix in v.
-*/
+// Assign column |j| of the matrix to |v|.
 template<typename C>
 void Matrix_base<C>::get_column(Vector<C>& v, size_t j) const
 {
@@ -287,9 +280,7 @@ void Matrix_base<C>::get_column(Vector<C>& v, size_t j) const
     v[i] = (*this)(i,j);
 }
 
-/*!
-  Returns the list of row vectors of m.
-*/
+// Return the list of row vectors of m.
 template<typename C>
   std::vector<Vector<C> > Matrix_base<C>::rows() const
 {
@@ -299,9 +290,7 @@ template<typename C>
   return result;
 }
 
-/*!
-  Returns the list of column vectors of m.
-*/
+// Return the list of column vectors of m.
 template<typename C>
   std::vector<Vector<C> > Matrix_base<C>::columns() const
 {
@@ -352,7 +341,7 @@ Vector<C1> Matrix<C>::operator*(const Vector<C1>& w) const
 }
 
 /*
-  Multiplies the matrix to right to the row-vector w, and returns the result.
+  Multiply the matrix to right to the row-vector w, and returns the result.
   It is assumed that the size of w is the number of rows; result size is the
   number of columns. This is the proper sense of application for dual space.
 */
@@ -392,9 +381,7 @@ Matrix<C> Matrix<C>::operator* (const Matrix<C>&  m) const
   return result;
 }
 
-/*!
-  This function constructs expresses our square matrix on the basis b.
-*/
+// Express our square matrix on the basis |b| rather than the standard basis
 template<typename C>
   PID_Matrix<C> PID_Matrix<C>::on_basis(const std::vector<Vector<C> >& b) const
 {
@@ -410,7 +397,7 @@ template<typename C>
 // manipulators
 
 
-//! Puts v in the i-th row of the matrix
+// Puts |v| in the |i|-th row of the matrix
 template<typename C>
   void Matrix_base<C>::set_row(size_t i, const Vector<C>& v)
 {
@@ -418,7 +405,7 @@ template<typename C>
   std::copy(&v[0],&v[d_columns],at(i,0));
 }
 
-//! Puts v in the j-th column of the matrix
+// Put |v| in the |j|-th column of the matrix
 template<typename C>
   void Matrix_base<C>::set_column(size_t j, const Vector<C>& v)
 {
@@ -520,8 +507,8 @@ template<typename C> Matrix<C> Matrix<C>::transposed() const
   return result;
 }
 
-/*!
-  Transposes the matrix. We allow ourselves a temporary vector if the matrix
+/*
+  Transpose the matrix. We allow ourselves a temporary vector if the matrix
   is not square; it could likely be done in-place, but the permutation is
   rather complicated!
 */
@@ -537,7 +524,7 @@ template<typename C> Matrix<C>& Matrix<C>::transpose()
 }
 
 
-/*!
+/*
   Here we invert the matrix without catching the denominator. The intent
   is that it should be used for invertible matrices only.
 */
@@ -548,7 +535,7 @@ template<typename C> PID_Matrix<C>& PID_Matrix<C>::invert()
   return *this;
 }
 
-/*!
+/*
   This function inverts the matrix M. It is assumed that the coefficents
   are in an integral domain. At the conclusion of the process, d will contain
   the denominator for the inverted matrix (so that the true result is M/d).
@@ -592,9 +579,7 @@ PID_Matrix<C>& PID_Matrix<C>::invert(C& d)
   return *this *= row;
 }
 
-/*!
-  Tells if all coefficients of the matrix are divisible by c.
-*/
+// Whether all coefficients of the matrix are divisible by c.
 template<typename C>
 bool PID_Matrix<C>::divisible(C c) const
 {
@@ -606,10 +591,7 @@ bool PID_Matrix<C>::divisible(C c) const
 }
 
 
-/*!
-  Synopsis: constructs the matrix corresponding to the block [i0,i1[ x [j0,j1[
-  of source. This implementation uses that storage is by rows.
-*/
+// Extract the block at indices [i0,i1[ x [j0,j1[ as a |Matrix|
 template<typename C>
   PID_Matrix<C>
     PID_Matrix<C>::block(size_t i0, size_t j0, size_t i1, size_t j1) const
@@ -617,6 +599,7 @@ template<typename C>
   assert(i0<=i1 and i1<=base::numRows());
   assert(j0<=j1 and j1<=base::numColumns());
 
+// The implementation uses that storage is by rows.
   PID_Matrix<C> result(i1-i0,j1-j0);
   C* p = result.at(0,0); // writing pointer
   for (size_t i=i0; i<i1; ++i)
@@ -649,9 +632,6 @@ void Matrix<C>::columnOperation(size_t j, size_t k, const C& c)
 
 
 
-/*!
-  Changes the sign of all the entries in row i.
-*/
 template<typename C>
 void Matrix<C>::rowMultiply(size_t i, C f)
 {
@@ -661,9 +641,6 @@ void Matrix<C>::rowMultiply(size_t i, C f)
       (*this)(i,j) *= f;
 }
 
-/*!
-  Changes the sign of all the entries in column j.
-*/
 template<typename C>
 void Matrix<C>::columnMultiply(size_t j, C f)
 {
@@ -674,7 +651,6 @@ void Matrix<C>::columnMultiply(size_t j, C f)
 }
 
 
-//! Interchanges rows
 template<typename C>
 void Matrix<C>::swapRows(size_t i0, size_t i1)
 {
@@ -683,7 +659,6 @@ void Matrix<C>::swapRows(size_t i0, size_t i1)
     std::swap((*this)(i0,k),(*this)(i1,k));
 }
 
-//! Interchange columns
 template<typename C>
 void Matrix<C>::swapColumns(size_t j0, size_t j1)
 {
@@ -692,9 +667,37 @@ void Matrix<C>::swapColumns(size_t j0, size_t j1)
     std::swap((*this)(k,j0),(*this)(k,j1));
 }
 
-/*!
-  Erases row i from the matrix.
-*/
+template<typename C>
+  void row_apply(Matrix<C>& A, const Matrix<C>& ops, size_t i) // initial row
+{ const auto r=ops.numRows();
+  assert(r==ops.numColumns());
+  assert(i+r <= A.numRows());
+  Vector<C> tmp(r);
+  for (size_t j=0; j<A.numColumns(); ++j)
+  { // |tmp = partial_column(j,i,i+r)|; save values before overwriting
+    for (size_t k=0; k<r; ++k)
+      tmp[k]=A(i+k,j);
+    ops.apply_to(tmp); // do row operations on column vector |tmp|
+    for (size_t k=0; k<r; ++k)
+      A(i+k,j)=tmp[k];
+  }
+}
+
+template<typename C>
+  void column_apply(Matrix<C>& A, const Matrix<C>& ops, size_t j) // initial col
+{ const auto r=ops.numRows();
+  assert(r==ops.numColumns());
+  assert(j+r <= A.numColumns());
+  Vector<C> tmp(r);
+  for (size_t i=0; i<A.numRows(); ++i)
+  { // |tmp = partial_row(i,j,j+r)|; save values before overwriting
+    for (size_t l=0; l<r; ++l)
+      tmp[l]=A(i,j+l);
+    ops.right_mult(tmp); // do column operations on row vector |tmp|
+    for (size_t l=0; l<r; ++l)
+      A(i,j+l)=tmp[l];
+  }
+}
 template<typename C>
 void Matrix_base<C>::eraseRow(size_t i)
 {
@@ -704,9 +707,6 @@ void Matrix_base<C>::eraseRow(size_t i)
   --d_rows;
 }
 
-/*!
-  Removes column |j| altogether, shifting remaining entries to proper place
-*/
 template<typename C>
 void Matrix_base<C>::eraseColumn(size_t j)
 {
@@ -735,9 +735,7 @@ void Matrix_base<C>::eraseColumn(size_t j)
 namespace matrix {
 
 
-/*!
-  Synopsis: sets b to the canonical basis in dimension r.
-*/
+// Set |b| to the canonical basis (as in identity matrix) in dimension |r|
 template<typename C>
   std::vector<Vector<C> > standard_basis(size_t r)
 {
@@ -772,6 +770,8 @@ typedef arithmetic::big_int bigint;
 
 template std::vector<Vector<int> > standard_basis<int>(size_t n);
 template PID_Matrix<int>& operator+=(PID_Matrix<int>&,int);
+template void row_apply(Matrix<int>&,const Matrix<int>&,size_t);
+template void column_apply(Matrix<int>&,const Matrix<int>&,size_t);
 
 template class Vector<int>;           // the main instance used
 template class Vector<signed char>;   // used inside root data
@@ -784,7 +784,6 @@ template class Matrix<int>;           // the main instance used
 template class Matrix<bigint>;
 template class Matrix<arithmetic::Split_integer>; // KL matrices eval'd at |s|
 template class PID_Matrix<int>;
-template class PID_Matrix<bigint>;
 
 // template member instances
 template Vector<int>& Vector<int>::add(Vector<int>::const_iterator b,int c);

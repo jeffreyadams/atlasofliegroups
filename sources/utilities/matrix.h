@@ -37,6 +37,12 @@ template<typename C>
   { v=standard_basis<C>(n); }
 
 template<typename C>
+  void row_apply(Matrix<C>& A, const Matrix<C>& ops, size_t i); // initial row
+
+template<typename C>
+  void column_apply(Matrix<C>& A, const Matrix<C>& ops, size_t j); // initial
+
+template<typename C>
   PID_Matrix<C>& operator+= (PID_Matrix<C>& A, C c); // |A=A+c|, avoiding copy
 
 // non-destructive form takes value parameter, which maybe selects rvalue copy
@@ -177,6 +183,15 @@ template<typename C> class Matrix_base
   Vector<C> column(size_t j) const { Vector<C> c; get_column(c,j); return c; }
   std::vector<Vector<C> > columns() const;
 
+  Vector<C> partial_row(size_t i, size_t j, size_t l) const
+    { return Vector<C>(at(i,j),at(i,l)); }
+  Vector<C> partial_column(size_t j, size_t i, size_t k) const
+  { Vector<C> result(k-i);
+    for (auto it=result.begin(); it!=result.end(); ++it)
+      *it = (*this)(i++,j);
+    return result;
+  }
+
   bool operator== (const Matrix_base<C>&) const;
   bool operator!= (const Matrix_base<C>& m) const {return not(operator==(m)); }
 
@@ -200,7 +215,7 @@ template<typename C> class Matrix_base
   void eraseRow(size_t);
   void reset() { d_data.assign(d_data.size(),C(0)); }
 
- protected:
+ protected: // not |private| because |PID_Matrix<C>::block| uses them
   const C* at (size_t i,size_t j) const { return &operator()(i,j); }
   C* at (size_t i,size_t j)             { return &operator()(i,j); }
 }; // |template<typename C> class Matrix_base|

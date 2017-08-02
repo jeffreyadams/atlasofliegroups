@@ -22,7 +22,8 @@ namespace atlas {
 namespace matreduc {
 
 template<typename C>
-  C gcd (matrix::Vector<C> row, matrix::PID_Matrix<C>* col)
+C gcd (matrix::Vector<C> row, matrix::PID_Matrix<C>* col,bool& flip,
+       size_t dest)
 { if (col!=nullptr)
     *col = matrix::PID_Matrix<C>(row.size());
   containers::sl_list<size_t> active_entries;
@@ -65,8 +66,11 @@ template<typename C>
     assert(active_entries.singleton() or mindex!=cur_col);
   }
 
-  if (col!=nullptr and mindex>0)
-    col->swapColumns(0,mindex);
+  if (col!=nullptr and mindex!=dest)
+  {
+    col->swapColumns(dest,mindex);
+    flip=not flip;
+  }
 
   return min;
 }
@@ -197,58 +201,20 @@ template<typename C>
 { using std::abs;
   const size_t n=M.numColumns();
   col=matrix::PID_Matrix<C>(n); // start with identity matrix
+  matrix::PID_Matrix<C> ops; // working matrix, accumulates column operations
   flip=false;
   bitmap::BitMap result(M.numRows()); // set of pivot rows found so far
   size_t l=n; // limit of columns yet to consider
   for (size_t i=M.numRows(); i-->0; )
-  { containers::sl_list<size_t> active_columns;
-    size_t current_col; C min(0);
-    for (size_t j=0; j<l; ++j)
-      if (M(i,j)!=C(0))
-      {
-	active_columns.push_back(j);
-	if (min==C(0) or abs(M(i,j))<min)
-	  min=abs(M(i,current_col=j));
-      }
-    if (active_columns.empty())
-      continue; // nothing to do here, do not mark a pivot in |result|
-    result.insert(i); --l; // the pivot will be produced at (i,j);
-    if (M(i,current_col)<C(0))
-    {
-      M.columnMultiply(current_col,-1); // ensure positive (future) pivot entry
-      col.columnMultiply(current_col,-1);
-      flip = not flip;
-    }
-    while (not active_columns.singleton())
-    { size_t next_column=-1;
-      for (auto it=active_columns.begin(); not active_columns.at_end(it); )
-	if (*it==current_col)
-	  ++it; // for |current_col| itself, just skip
-        else
-	{ auto j=*it;
-	  C q=arithmetic::divide(M(i,j),M(i,current_col));
-	  M.columnOperation(j,current_col,-q);
-	  col.columnOperation(j,current_col,-q);
-	  if (M(i,j)==C(0))
-	    active_columns.erase(it); // this leaves |it| pointing to next
-	  else
-	  {
-	    if (M(i,j)<min)
-	      min=M(i,j), next_column=j;
-	    ++it; // don't forget to increment in this case
-	  }
-	}
-      assert(active_columns.singleton() or next_column!=-1);
-      current_col = next_column;
-    }
-    current_col=active_columns.front(); // get back value just overwritten
-
-    if (current_col!=l) // then swap columns |current_col| and |l|
-    {
-      M.swapColumns(current_col,l);
-      col.swapColumns(current_col,l);
-      flip = not flip;
-    }
+  { int d=gcd(M.partial_row(i,0,l),&ops,flip,l-1);
+    assert(ops.numRows()==l and ops.numColumns()==l);
+    if (d==0)
+      continue; // if partial row was already zero, just skip over current row
+    matrix::column_apply(M,ops,0);
+    matrix::column_apply(col,ops,0);
+    result.insert(i);
+    --l; // now we have a pivot in column |l-1|
+    assert(M(i,l)==d); // |column_apply| should have achieved this
   } // |for(i)
 
   while (l-->0)
@@ -264,8 +230,10 @@ template<typename C>
   return result;
 }
 
-/* find |row|, |col| of determinant $1$ such that $row*M*col$ is diagonal, and
-   return diagonal entries (positive except maybe first). Result is not unique.
+/*
+  Find |row|, |col| of determinant $1$ such that $row*M*col$ is diagonal, and
+  return diagonal entries (positive except maybe first). Result is not unique.
+  Also coefficient growth in |row| and |col| can be extreme for large matrices.
 */
 template<typename C>
 std::vector<C> diagonalise(matrix::PID_Matrix<C> M, // by value
@@ -273,7 +241,7 @@ std::vector<C> diagonalise(matrix::PID_Matrix<C> M, // by value
 			   matrix::PID_Matrix<C>& col)
 {
   const size_t m=M.numRows();
-  const size_t n=M.numColumns(); // |n| will become: start of known null columns
+  const size_t n=M.numColumns();
 
   row=matrix::PID_Matrix<C>(m); // initialise |row| to identity matrix
   col=matrix::PID_Matrix<C>(n);
@@ -281,67 +249,51 @@ std::vector<C> diagonalise(matrix::PID_Matrix<C> M, // by value
   if (n==0 or m==0) return diagonal; // take out these trivial cases
   diagonal.reserve(std::min(m,n));
 
-  int row_sign = 1, col_sign=1; // determinants of row/column operations
+  bool row_minus=false, col_minus=false; // whether $\det(row//col)=-1$
   bitmap::BitMap pivot_columns(n); // columns of |M| where a pivot was found
+  matrix::PID_Matrix<C> ops;
 
   for (size_t k=0,l=0; l<n; ++l) // |k| may or may not be increased inside loop
   {
-    size_t i=k;
-    for (; i<m; ++i)
-      if (M(i,l)!=C(0)) // search for candidate for the pivot position
-	break;
-    if (i==m)
+    bool flip=false;
+    C d = matreduc::gcd(M.partial_column(l,k,m),&ops,flip,0);
+    if (d==0) // if partial column was already zero
       continue; // advance in loop on |l|, do not increment |k|
 
     pivot_columns.insert(l); // there will be a pivot at |M(k,l)|
 
-    if (i>k) // first non-zero entry below diagonal; add it to 0 on diagonal
+    row_minus=flip;
+    ops.transpose(); // because recorded column operations applied as row ops
+    row_apply(M,ops,k);
+    row_apply(row,ops,k);
+    assert(M(k,l)==d);
+
+    C old_d; // used in final condition of next loop
+
+    do // exit when row and column from |M(k,l)| onwards are zero
     {
-      C u (M(i,l)>C(0) ? 1 : -1);  // ensure diagonal entry becomes positive
-      M.rowOperation(k,i,u);
-      row.rowOperation(k,i,u);
+      old_d=d; flip=false;
+      d=gcd(M.partial_row(k,l,n),&ops,flip,0);
+      col_minus^=flip;
+      column_apply(M,ops,l);
+      column_apply(col,ops,l);
+      assert(M(k,l)==d);
+      if (d==old_d)
+	break; // no improvement to |d| means row was cleared beyond |l|
+
+      old_d=d; flip=false;
+      d=gcd(M.partial_column(l,k,m),&ops,flip,0);
+      row_minus^=flip;
+      ops.transpose(); // because recorded column operations applied as row ops
+      row_apply(M,ops,k);
+      row_apply(row,ops,k);
+      assert(M(k,l)==d);
     }
-    else // we have |i==k|
-    { ++i; // search for (further) nonzero column entries will start here
-      if (M(k,l)<C(0)) // negative pivot entry, make it positive
-      {
-	M.rowMultiply(k,C(-1));
-	row.rowMultiply(k,C(-1));
-	row_sign = -row_sign;
-      }
-    }
-    // Now we have ensured |M(k,l)>0| and |M(ii,l)==0| for $k<ii<i$
+    while(d<old_d);
 
-    // sweep row and column alternatively with |M(k,l)| until both cleared
-    while (true) // exit when row and column from |M(d,d)| onwards are zero
-    {
+    row_minus^=flip;
 
-      // |M(i,l)| is first (potentially) nonzero entry below |M(k,l)|
-      for ( ; i<m; ++i) // ensure column |d| is null below diagonal
-	if (row_clear<C,true>(M,i,l,k,row)) // makes |M(k,l)==gcd>0|,|M(i,l)==0|
-	  row_sign = -row_sign;
-
-      size_t j=l+1; // needs to survive next loop
-      for ( ; j<n; ++j) // check if row |k| is zero beyond diagonal
-	if (M(k,j)!=C(0))
-	  break; // row not zero, work needs to be done
-      if (j==n) // loop just terminated, so arm and leg are zero
-	break; // so terminate outer loop
-
-      // now |M(k,j)| is first nonzero entry right of |M(k,l)|
-      for ( ; j<n; ++j) // ensure row |d| is null beyond diagonal
-	if (column_clear(M,k,j,l,col)) // makes |M(k,l)==gcd>0| and |M(k,j)==0|
-	  col_sign = -col_sign;
-
-      for (i=k+1; i<m; ++i) // check if column |d| is still zero below diagonal
-	if (M(i,l)!=C(0))
-	  break; // column not zero, do not terminate outer loop
-      if (i==m) // then whole column below |M(k,l)| is zero, and done for |k|
-	break; // so terminate outer loop
-    }
-
-    diagonal.push_back(M(k,l)); // record positive gcd that finally remains
-
+    diagonal.push_back(d); // record positive gcd that finally remains
     ++k; // record that this row contains a pivot, so has been dealt with
   } // |for(l)|
 
@@ -352,15 +304,15 @@ std::vector<C> diagonalise(matrix::PID_Matrix<C> M, // by value
       ~pivot_columns; // now get the non-pivot columns, and add them at end
       pi.insert(pi.end(),pivot_columns.begin(),pivot_columns.end());
       permute_columns(col,pi);
-      col_sign *= sign(pi);
+      col_minus ^= (sign(pi)<0);
     }
   }
 
-  if (diagonal.size()>0 and row_sign!=col_sign)
+  if (diagonal.size()>0 and row_minus!=col_minus)
     diagonal[0] = -diagonal[0];
-  if (row_sign<0)
+  if (row_minus)
     row.rowMultiply(0,C(-1)); // ensure determinant of |row| is |1|
-  if (col_sign<0)
+  if (col_minus)
     col.columnMultiply(0,C(-1)); // ensure determinant of |col| is |1|
 
   return diagonal;
@@ -540,7 +492,8 @@ matrix::Vector<C> find_solution(const matrix::PID_Matrix<C>& A,
 
  // instantiations
 template
-  int gcd (matrix::Vector<int> row, matrix::PID_Matrix<int>* col);
+int gcd (matrix::Vector<int> row, matrix::PID_Matrix<int>* col, bool& flip,
+	 size_t dest);
 template
 bool column_clear(matrix::PID_Matrix<int>& M, size_t i, size_t j, size_t k);
 template
@@ -571,10 +524,6 @@ template
 matrix::Vector<int> find_solution(const matrix::PID_Matrix<int>& A,
 				  matrix::Vector<int> b);
 typedef arithmetic::big_int bigint;
-template
-std::vector<bigint> diagonalise(matrix::PID_Matrix<bigint> M,
-			     matrix::PID_Matrix<bigint>& row,
-			     matrix::PID_Matrix<bigint>& col);
 
 } // |namespace matreduc|
 } // |namespace atlas|
