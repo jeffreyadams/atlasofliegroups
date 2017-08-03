@@ -13,6 +13,7 @@
 #include <vector>
 #include "matrix_fwd.h"
 #include "bitmap_fwd.h"
+#include "bigint.h"
 
 #include <stdexcept>
 
@@ -31,6 +32,14 @@ template<typename C>
   bitmap::BitMap column_echelon(matrix::PID_Matrix<C>& vectors,
 				matrix::PID_Matrix<C>& col,
 				bool& flip);
+
+// solve $E*x=b*f$, with $f>0$ minimal where |E| is echelon with |pivots|
+// non-pivot rows may cause solving to fail, then throw |std::runtime_error|
+template<typename C>
+  matrix::Vector<C> echelon_solve(const matrix::PID_Matrix<C>& E,
+				  const bitmap::BitMap& pivots,
+				  matrix::Vector<C> b,
+				  arithmetic::big_int& f);
 
 template<typename C> // find |row,col| making |row*M*col| (returned) diagonal
   std::vector<C> diagonalise(matrix::PID_Matrix<C> M, // by value

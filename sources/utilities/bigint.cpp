@@ -342,8 +342,9 @@ void big_int::mult_add (digit x, digit a)
     d.push_back(0); // ensure positive sign
 }
 
-big_int& big_int::operator*= (digit x)
-{ if (x<neg_flag)
+big_int& big_int::operator*= (int x0)
+{ digit x=x0; // convert type to |digit|, just to be sure
+  if (x<neg_flag)
     mult_add(x,0);
   else
   { negate();

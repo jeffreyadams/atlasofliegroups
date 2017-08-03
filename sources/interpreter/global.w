@@ -4096,13 +4096,13 @@ void Bezout_wrapper(expression_base::level l)
 
 @<Local function definitions @>=
 void echelon_wrapper(expression_base::level l)
-{ own_matrix M=get_own<matrix_value>();
+{ own_matrix A=get_own<matrix_value>();
   if (l==expression_base::no_value)
     return;
   own_matrix column = std::make_shared<matrix_value>(int_Matrix());
   bool flip;
-  BitMap pivots=matreduc::column_echelon(M->val,column->val,flip);
-  push_value(std::move(M));
+  BitMap pivots=matreduc::column_echelon(A->val,column->val,flip);
+  push_value(std::move(A));
   push_value(std::move(column));
   own_row p_list = std::make_shared<row_value>(0);
   p_list->val.reserve(pivots.size());
@@ -4113,6 +4113,62 @@ void echelon_wrapper(expression_base::level l)
   if (l==expression_base::single_value)
     wrap_tuple<4>();
 }
+
+@ The column echelon form can be used to solve linear systems fairly easily.
+In contrast with the row echelon form often taught in linear algebra courses,
+the column operations used to arrive at the echelon form must be recorded to
+transform the solution of the reduced system to a solution of the original
+system, but on the other hand one uses an un-transformed right hand side while
+solving. Thus if the system is inconsistent, this becomes evident only after
+the reduction phase, in the form of non-pivot equations that need to be
+satisfied at the point where they are encountered. Since we are working with
+integer coefficients, pivot equations can also pose a divisibility problem,
+but in that case we can get an integer solution by scaling up the right hand
+side by a necessary factor, and this will also give a rational solution in
+lowest terms. The function |linear_solve| will provide such solving
+capability.
+
+The function is particular in that it is the first occasion where a built-in
+function involves a union type: our result will either be an indication of the
+non-existence of a solution, or data describing a solution. In the former case
+the library function |matreduc::echelon_solve| will throw a
+|std::runtime_error| so we make the distinction using a |catch|-|try| block.
+Also where a user defined function would need to use injector functions, we
+can make the union variants directly here, and supply tags as if there were
+injector functions of these names.
+
+@<Local function definitions @>=
+void linear_solve_wrapper(expression_base::level l)
+{ own_vector b=get_own<vector_value>();
+  own_matrix A=get_own<matrix_value>();
+  if (A->val.numRows()!=b->val.size())
+    throw runtime_error("Linear system size mismatch "
+                        +str(A->val.numRows())+":"+str(b->val.size()));
+  if (l==expression_base::no_value)
+    return;
+  own_matrix column = std::make_shared<matrix_value>(int_Matrix());
+  bool flip; // unused
+  const auto m = A->val.numColumns();
+  BitMap pivots=matreduc::column_echelon(A->val,column->val,flip);
+  try
+  { static id_type affine_name=main_hash_table->match_literal("affine_subspace");
+    const auto k = A->val.numColumns(); // number of pivots
+    arithmetic::big_int factor;
+    int_Vector ini_sol = matreduc::echelon_solve(A->val,pivots,b->val,factor);
+    push_value(std::make_shared<vector_value> @|
+      (column->val.block(0,0,m,k)*ini_sol));
+    push_value(std::make_shared<int_value>(std::move(factor)));
+    push_value(std::make_shared<matrix_value>(column->val.block(0,k,m,m)));
+    wrap_tuple<3>();
+    push_value(std::make_shared<union_value>(1,pop_value(),affine_name));
+  }
+  catch(const std::runtime_error& e)
+  { static id_type empty_name=main_hash_table->match_literal("empty_set");
+    auto empty = std::make_shared<tuple_value>(0);
+    push_value(std::make_shared<union_value>(0,std::move(empty),empty_name));
+  }
+}
+
 
 @ And here are general functions |diagonalize| and |adapted_basis|, rather
 similar to Smith normal form, but without divisibility guarantee on diagonal
@@ -4400,6 +4456,7 @@ install_function(swiss_matrix_knife_wrapper@|,"matrix slicer"
 install_function(gcd_wrapper,"gcd","(vec->int)");
 install_function(Bezout_wrapper,"Bezout","(vec->int,mat)");
 install_function(echelon_wrapper,"echelon","(mat->mat,mat,[int],int)");
+install_function(linear_solve_wrapper,"linear_solve","(mat,vec->|vec,int,mat)");
 install_function(diagonalize_wrapper,"diagonalize","(mat->vec,mat,mat)");
 install_function(adapted_basis_wrapper,"adapted_basis","(mat->mat,vec)");
 install_function(kernel_wrapper,"kernel","(mat->mat)");

@@ -228,6 +228,47 @@ template<typename C>
   }
 
   return result;
+} // |column_echelon|
+
+// when |E| is echolon with |pivots|, the following solves by back-substitution
+template<typename C>
+  matrix::Vector<C> echelon_solve(const matrix::PID_Matrix<C>& E,
+				  const bitmap::BitMap& pivots,
+				  matrix::Vector<C> b,
+				  arithmetic::big_int& f) // needed scale factor
+{ assert(b.size()==E.numRows());
+  using arithmetic::gcd;
+  f=arithmetic::big_int(1);
+  matrix::Vector<C> result(E.numColumns());
+  size_t j=pivots.size();
+  for (size_t i=E.numRows(); i-->0; )
+    if (pivots.isMember(i))
+    {
+      --j;
+      assert(E(i,j)>C(0)); // since it is a pivot
+      C d=gcd(b[i],E(i,j)); // we ensure a positive second argument
+      assert(d>C(0));
+      if (d<E(i,j)) // then division is not exact
+      {
+	C q = E(i,j)/d;
+	f *= q; // need to scale up |b| by an additional factor |q|
+	for (size_t k=0; k<=i; ++k)
+	  b[k]*=q;
+	for (size_t l=j+1; l<result.size(); ++l)
+	  result[l] *= q;
+      }
+      C m = b[i]/d; // factor for column |j| coming subtraction
+      result[j] = m;
+      for (size_t k=0; k<=i; ++k)
+	b[k] -= E(k,j)*m; // subtract off contribution from htis column
+      assert(b[i]==C(0)); // that was the point of the subtraction
+    }
+    else if (b[i]!=C(0))
+      throw std::runtime_error("Inconsistent linear system");
+
+  assert(j==0); // every column had its pivot, and |result| is fully defined
+
+  return result;
 }
 
 /*
@@ -503,6 +544,12 @@ template
 bitmap::BitMap column_echelon<int>(matrix::PID_Matrix<int>& M,
 			           matrix::PID_Matrix<int>& col,
 				   bool& flip);
+template
+matrix::Vector<int> echelon_solve(const matrix::PID_Matrix<int>& E,
+				  const bitmap::BitMap& pivots,
+				  matrix::Vector<int> b,
+				  arithmetic::big_int& f);
+
 
 template
 std::vector<int> diagonalise(matrix::PID_Matrix<int> M,
@@ -523,7 +570,6 @@ bool has_solution(const matrix::PID_Matrix<int>& A, matrix::Vector<int> b);
 template
 matrix::Vector<int> find_solution(const matrix::PID_Matrix<int>& A,
 				  matrix::Vector<int> b);
-typedef arithmetic::big_int bigint;
 
 } // |namespace matreduc|
 } // |namespace atlas|
