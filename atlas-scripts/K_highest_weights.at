@@ -181,7 +181,8 @@ set highest_weight_one (K_Type p) = KHighestWeight:
 ;  p:=make_no_Cminus(p)
 ;  let (Q,pL)=theta_stable_data(parameter(p))
    then (x_L,mu_L)=highest_weight_split_spherical(pL)
-   then mu_G=mu_L+two_rho_u_cap_s(Q)
+   then x_G=canonical_x_K(x(p))
+   then mu_G=mu_L+two_rho_u_cap_s(Q,x_G)
 { need version of 2*rho_u_cap_s(Q) which is integral, see thetastable.at}
 { this might be a ratvec, denominator 1/2, by restriction it defines a
   character  of T_{K_0}
@@ -191,7 +192,7 @@ set highest_weight_one (K_Type p) = KHighestWeight:
 { then ()=prints("mu_L:",mu_L,new_line, " mu_G", mu_G, new_line,
      "2*rho_u_cap_s(Q)", 2*rho_u_cap_s(Q), new_line,
      "two_rho_u_cap_s", two_rho_u_cap_s(Q)) }
-   in (canonical_x_K(x(p)),mu_G)
+   in (x_G,mu_G)
 )
 
 {. ONE KHighestWeight of a K-type w.r.t. x_K (auxiliary function). .}
@@ -425,21 +426,20 @@ set K_types (KHighestWeight mu_in)= [K_Type]:
   in
   assert(is_parabolic_theta_stable(Q), "Q is not theta stable");
   let x_Q=x_min(Q)
-  then mu=make_strongly_dominant(mu,x_Q)
-  then (x,tau)=mu then
-  L=Levi(Q)
+  then (x,tau) = mu:=make_strongly_dominant(mu,x_Q)
+  , L=Levi(Q), y=canonical_x_K(maximal(Q))
   then { L is relatively split }
   ()=if LKT_verbose then
      prints("Q=", Q);
      prints("mu:", mu);
      prints("L=", L);
-     prints("rho_u_cap_s(Q)", rho_u_cap_s(Q));
+     prints("rho_u_cap_s(Q)", rho_u_cap_s(Q,y));
      prints("rho_l(Q)", rho_l(Q));
      prints("tau: ", tau);
-     prints("arg:", tau-2*rho_u_cap_s(Q)+rho_l(Q)) fi then
+     prints("arg:", tau-2*rho_u_cap_s(Q,y)+rho_l(Q)) fi then
   ()=assert(is_relatively_split(L),"L is not relatively split") then
   pL=monomials(finalize(parameter(KGB(L,#KGB(L)-1),
-	                tau-two_rho_u_cap_s(Q)+rho_l(Q), null(rank(L)))))
+	                tau-two_rho_u_cap_s(Q,y)+rho_l(Q), null(rank(L)))))
   then
   ()=if LKT_verbose then
      prints("pL:", pL);
