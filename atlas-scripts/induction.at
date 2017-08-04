@@ -368,8 +368,7 @@ set u (KGBElt x) = mat: nilrad(theta_stable_parabolic(x)) { set of coroots }
   each pair {alpha,theta(alpha)} contributes \alpha/2, so
   rho_u_cx(P)=1/4(sum of complex roots of u) [note the denominator]
 }
-{. Half sum of positive complex roots (on fundamental Cartan) in the nilradical of P;
-  P must be theta-stable. .}
+{. Half sum of positive complex roots (on fundamental Cartan) in the nilradical of P; P must be theta-stable. .}
 set rho_u_cx (Parabolic P) = ratvec:
   assert(is_parabolic_theta_stable(P),"P is not theta-stable");
   {use the most compact Cartan in L}
@@ -392,31 +391,30 @@ set rho_u_cx_T (Parabolic P) = vec:
   then rd=root_datum(x), rd_L=root_datum(Levi(P)), theta=involution(x)
   in ratvec_as_vec(2*rho_S(theta,rd)-2*rho_S(theta,rd_L))
 
-{ \rho_u_ic(P) is in \t^* as a subset of \h^*s
+{ \rho_u_ic(P,x) is in \t^* as a subset of \h^*s
   =1/2 the sum of the imaginary, compact roots in u
 }
-{. Half sum of imaginary compact roots in nilradical of (theta-stable) P. .}
-set rho_u_ic (Parabolic P) = ratvec:
+{. Half sum of imaginary compact roots in nilradical of (theta-stable) P; the KGB element x must be in the distinguished fiber, and in the class of P. .}
+set rho_u_ic (Parabolic P, KGBElt x) = ratvec:
   assert(is_parabolic_theta_stable(P),"P is not theta-stable");
-  let
-{   x=x_min(P) in {???}}
-    x=canonical_x_K(maximal(P))
-  in sum(columns_with(is_compact_imaginary(x),nilrad_roots(P))) / 2
+  assert(some(for y in equivalence_class_of(P) do y=x od),"x does not belong to the class of P");
+  assert(in_distinguished_fiber(x),"x is not in the distinguished fiber");
+ sum(columns_with(is_compact_imaginary(x),nilrad_roots(P))) / 2
 
-{. Sum of compact roots (of $\mathfrak t$) in $\mathfrak u$ for theta-stable parabolic P. .}
-set two_rho_u_cap_k (Parabolic P) = vec:
-  ratvec_as_vec(rho_u_cx_T(P)+2*rho_u_ic(P))
+{. Sum of compact roots (of $\mathfrak t$) in $\mathfrak u$ for theta-stable parabolic P, with respect to (distinguished) x in the class of P. .}
+set two_rho_u_cap_k (Parabolic P,KGBElt x) = vec:
+  ratvec_as_vec(rho_u_cx_T(P)+2*rho_u_ic(P,x))
 
 {. Sum of non-compact roots in $\mathfrak u$ (for theta-stable parabolic). .}
-set two_rho_u_cap_s (Parabolic P) = vec:
-  ratvec_as_vec(2*rho_u(P))-two_rho_u_cap_k(P)
+set two_rho_u_cap_s (Parabolic P,KGBElt x) = vec:
+  ratvec_as_vec(2*rho_u(P))-two_rho_u_cap_k(P,x)
 
 {these give the same restriction to T_K0, but aren't necessarily integral:}
 {. Half sum of compact roots in $\mathfrak u$ (for theta-stable parabolic). .}
-set rho_u_cap_k (Parabolic P) = ratvec: rho_u_cx(P)/2+rho_u_ic(P)
+set rho_u_cap_k (Parabolic P,KGBElt x) = ratvec: rho_u_cx(P)/2+rho_u_ic(P,x)
 
 {. Half sum of non-compact roots in $\mathfrak u$ (for theta-stable parabolic). .}
-set rho_u_cap_s (Parabolic P) = ratvec: rho_u(P)-rho_u_cap_k(P)
+set rho_u_cap_s (Parabolic P,KGBElt x) = ratvec: rho_u(P)-rho_u_cap_k(P,x)
 
 {. Dimension of $\mathfrak u$ (nilrad of theta-stable parabolic). .}
 set dim_u(Parabolic P) = int:n_columns(nilrad(P))
