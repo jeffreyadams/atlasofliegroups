@@ -182,7 +182,8 @@ set highest_weight_one (K_Type p) = KHighestWeight:
 ;  let (Q,pL)=theta_stable_data(parameter(p))
    then (x_L,mu_L)=highest_weight_split_spherical(pL)
    then x_G=canonical_x_K(x(p))
-   then mu_G=mu_L+two_rho_u_cap_s(Q,x_G)
+   then y=canonical_x_K(maximal(Q))
+   then mu_G=mu_L+two_rho_u_cap_s(Q,y)
 { need version of 2*rho_u_cap_s(Q) which is integral, see thetastable.at}
 { this might be a ratvec, denominator 1/2, by restriction it defines a
   character  of T_{K_0}
@@ -190,8 +191,8 @@ set highest_weight_one (K_Type p) = KHighestWeight:
   so that restriction takes mu_G_integral to mu_G restricted to T_{K_0}
 }
 { then ()=prints("mu_L:",mu_L,new_line, " mu_G", mu_G, new_line,
-     "2*rho_u_cap_s(Q)", 2*rho_u_cap_s(Q), new_line,
-     "two_rho_u_cap_s", two_rho_u_cap_s(Q)) }
+     "2*rho_u_cap_s(Q)", 2*rho_u_cap_s(Q,y), new_line,
+     "two_rho_u_cap_s", two_rho_u_cap_s(Q,y)) }
    in (x_G,mu_G)
 )
 
