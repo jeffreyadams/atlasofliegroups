@@ -349,9 +349,6 @@ template<typename C> class PID_Matrix : public Matrix<C>
   PID_Matrix& negate() { base::negate(); return *this; }
   PID_Matrix& transpose() { base::transpose(); return *this; }
 
-  PID_Matrix& invert();
-  PID_Matrix& invert(C& d);
-
 // accessors
 #if __GNUC__ < 4 || \
   __GNUC__ == 4 && ( __GNUC_MINOR__ < 8 || \

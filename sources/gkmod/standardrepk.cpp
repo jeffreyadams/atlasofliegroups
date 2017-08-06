@@ -1818,7 +1818,7 @@ namespace {
 // the projection is parallel to the span of the roots in |gens|
 int_Matrix
 orth_projection(const RootDatum& rd, RankFlags gens,
-		LatticeCoeff& denom)
+		LatticeCoeff& d)
 {
   size_t m=gens.count(), r=rd.rank();
   int_Matrix root_mat(r,m);
@@ -1835,11 +1835,14 @@ orth_projection(const RootDatum& rd, RankFlags gens,
       coroot_mat(ii,j)=rd.simpleCoroot(*i)[j];
     }
   }
-  sub_Cartan.invert(denom); // invert and compute necessary denominator
+
+  arithmetic::big_int denom;
+  auto inv_sub_Cartan = inverse(sub_Cartan,denom);
+  d = denom.convert<LatticeCoeff>();
 
   int_Matrix result(r,r,0); // set to identity scaled |denom|
-  result += denom;
-  result -= root_mat * sub_Cartan * coroot_mat;
+  result += d;
+  result -= root_mat * inv_sub_Cartan * coroot_mat;
   return result;
 }
 

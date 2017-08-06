@@ -99,16 +99,16 @@ PreRootDatum& PreRootDatum::quotient(const LatticeMatrix& sublattice)
   if (sublattice.numRows()!=d_rank or sublattice.numColumns()!=d_rank)
     throw std::runtime_error("Sub-lattice matrix not square of right size");
 
-  LatticeMatrix inv(sublattice);
-  LatticeCoeff d; inv.invert(d);
+  arithmetic::big_int d;
+  LatticeMatrix inv=inverse(sublattice,d);
 
-  if (d==0)
+  if (d.is_zero())
     throw std::runtime_error("Dependent lattice generators");
 
   try {
     for (unsigned int j=0; j<d_roots.size(); ++j)
     {
-      inv.apply_to(d_roots[j]); d_roots[j]/=d;
+      inv.apply_to(d_roots[j]); d_roots[j]/=d.int_val();
       sublattice.right_mult(d_coroots[j]);
     }
     return *this;
