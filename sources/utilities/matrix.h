@@ -17,6 +17,7 @@
 #include "matrix_fwd.h"
 
 #include "tags.h"
+#include "bigint.h"
 
 // extra defs for windows compilation -spc
 #ifdef WIN32
@@ -59,6 +60,8 @@ template<typename C>
 template<typename C>
   PID_Matrix<C> operator- (C c, PID_Matrix<C> A) { return A.negate() += c; }
 
+template<typename C>
+  PID_Matrix<C> inverse (PID_Matrix<C> A, arithmetic::big_int& d);
 }
 
 /******** type definitions ***************************************************/

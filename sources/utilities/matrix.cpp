@@ -536,18 +536,26 @@ template<typename C> PID_Matrix<C>& PID_Matrix<C>::invert()
 }
 
 /*
-  This function inverts the matrix M. It is assumed that the coefficents
-  are in an integral domain. At the conclusion of the process, d will contain
-  the denominator for the inverted matrix (so that the true result is M/d).
+  This function inverts the matrix |M| with integer entries. (While the name
+  |PID_Matrix| suggests possible implementation with entries polynomials over
+  a field, or even more general PIDs, the needed functions from matreduc.cpp
+  currently assume coefficients can be converted to |arithmetic::bigint|.)
 
-  If the matrix is not invertible, the resulting matrix is undefined, and
-  d is set to 0.
+  At the conclusion of the process, |d| will contain the common denominator
+  for all entries, and |M| contains the inverse with |d| factored out. The
+  result returned is a reference to the matrix |M|, in all cases.
 
-  We have chosen here to avoid divisions as much as possible. So in fact we
-  take the matrix to diagonal form through elementary operations; from there
-  we deduce the smallest possible denominator for the inverse, and the inverse
-  matrix. We have to keep track of both row and column operations.
+  If the matrix is not invertible, d is set to 0 and the matrix itself is left
+  in a probably useless echelonated state.
 
+  We want to avoid divisions as much as possible. Therefore we reduce the
+  matrix using integral elementary operations to echelon form first, which
+  should be triangular; the product of diagonal entries is then (up to sign)
+  the determinant of the original matrix. The necessary common denominator is
+  a possibly strict divisor of the determinant, but it can be larger than the
+  least common multiple of the diagonal entries; we determine is by
+  successively calling |echelon solve| for all columns of the identity matrix,
+  and putting together the answers from those calls produces our result.
 */
 template<typename C>
 PID_Matrix<C>& PID_Matrix<C>::invert(C& d)
@@ -557,26 +565,61 @@ PID_Matrix<C>& PID_Matrix<C>::invert(C& d)
   if (n==0) // do nothing to matrix, but set |d=1|
   { d=C(1); return *this; }
 
-  PID_Matrix<C> row,col;    // for recording column operations
-  std::vector<C> diagonal = matreduc::diagonalise(*this,row,col);
+  bool flip=false;
+  PID_Matrix<C> col;    // for recording column operations
+  auto pivots=matreduc::column_echelon(*this,col,flip);
+  if (not pivots.full())
+    { d=C(0); return *this; } // record zero determinant, leave echelon form
 
-  if (diagonal.size()<n) // insufficient rank for inversion
-  { d=C(0); return *this; } // record zero determinant, leave |*this| unchanged
+  std::vector<arithmetic::big_int> denoms(n); // next loop initialises entries
+  auto basis = matrix::standard_basis<C>(n);
+  for (size_t j=0; j<n; ++j) // from easy to harder, but order is not vital
+    basis[j] = matreduc::echelon_solve(*this,pivots,basis[j],denoms[j]);
 
-  using std::abs; // possibly use |std::abs|, or argument dependent |abs|
-  d=abs(diagonal[0]); // guaranteed to exist if we get here
-  for (size_t i=1; i<n; ++i)
-    d=arithmetic::lcm(d,diagonal[i]); // other diagonal entries are positive
+  arithmetic::big_int dd=denoms[0];
+  for (size_t j=1; j<n; ++j)
+    dd=arithmetic::lcm(dd,denoms[j]);
+
+  d = C(dd.int_val()); // for now, just convert back to |int|
 
   // finally for |D| "inverse" diagonal matrix w.r.t. |d|, compute |col*D*row|
   for (size_t j=0; j<n; ++j)
-  {
-    C f = d/diagonal[j];
-    for (size_t i=0; i<n; ++i)
-      (*this)(i,j)=f*col(i,j);
+    this->set_column(j,col*basis[j]*(dd/denoms[j]).int_val());
+
+  return *this;
+}
+
+template<typename C>
+PID_Matrix<C> inverse (PID_Matrix<C> A, arithmetic::big_int& d)
+{
+  assert(A.numRows()==A.numColumns());
+  size_t n=A.numRows();
+  PID_Matrix<C> result(n,n);
+  if (n==0) // do nothing to matrix, but set |d=1|
+  { d=arithmetic::big_int(1); return result; }
+
+  bool flip=false;
+  PID_Matrix<C> col; // for recording column operations
+  auto pivots=matreduc::column_echelon(A,col,flip);
+  if (not pivots.full())
+  { d=arithmetic::big_int(0); // record zero determinant,
+    return result; // return useless value
   }
 
-  return *this *= row;
+  std::vector<arithmetic::big_int> denoms(n); // next loop initialises entries
+  auto basis = matrix::standard_basis<C>(n);
+  for (size_t j=0; j<n; ++j) // from easy to harder, but order is not vital
+    basis[j] = matreduc::echelon_solve(A,pivots,std::move(basis[j]),denoms[j]);
+
+  d=denoms[0];
+  for (size_t j=1; j<n; ++j)
+    d=arithmetic::lcm(d,denoms[j]);
+
+  // finally for |D| "inverse" diagonal matrix w.r.t. |d|, compute |col*D*row|
+  for (size_t j=0; j<n; ++j)
+    result.set_column(j,col*basis[j]*(d/denoms[j]).int_val());
+
+  return result;
 }
 
 // Whether all coefficients of the matrix are divisible by c.
@@ -822,6 +865,8 @@ template Matrix_base<int>::Matrix_base
    Vector<int>*,
    size_t,
    tags::IteratorTag);
+
+template PID_Matrix<int> inverse (PID_Matrix<int> A, arithmetic::big_int& d);
 
 
 template class Vector<Pol>;

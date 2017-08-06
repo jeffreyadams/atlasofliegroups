@@ -34,8 +34,8 @@ static unsigned char_val (char c) // for reading from strings
 public:
 
   // the following is dangerous, and used to be private, but sometimes useful
-  // notably to declare variables to be initialised by reference, or with delay
-  big_int () : d() {} // constructor leaving number in invalid state
+  // notably to declare variables to be initialised (later) by assignment
+  big_int () : d() {} // leaves number in an invalid but destructable state
 
   constexpr static digit neg_flag = 0x80000000;
   explicit big_int (int n) // normal constructor only for single |digit| case

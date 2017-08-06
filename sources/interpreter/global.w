@@ -4285,9 +4285,9 @@ void invert_wrapper(expression_base::level l)
   }
   if (l==expression_base::no_value)
     return;
-  int denom;
-@/push_value(std::make_shared<matrix_value>(m->val.inverse(denom)));
-  push_value(std::make_shared<int_value>(denom));
+  arithmetic::big_int denom;
+@/push_value(std::make_shared<matrix_value>(inverse(m->val,denom)));
+  push_value(std::make_shared<int_value>(std::move(denom)));
   if (l==expression_base::single_value)
     wrap_tuple<2>();
 }

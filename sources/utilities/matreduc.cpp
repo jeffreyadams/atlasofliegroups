@@ -246,18 +246,18 @@ template<typename C>
     {
       --j;
       assert(E(i,j)>C(0)); // since it is a pivot
-      C d=gcd(b[i],E(i,j)); // we ensure a positive second argument
+      const C d=gcd(b[i],E(i,j)); // we ensure a positive second argument
       assert(d>C(0));
+      const C m = b[i]/d; // factor for column |j| coming subtraction
       if (d<E(i,j)) // then division is not exact
       {
-	C q = E(i,j)/d;
+	const C q = E(i,j)/d;
 	f *= q; // need to scale up |b| by an additional factor |q|
 	for (size_t k=0; k<=i; ++k)
 	  b[k]*=q;
 	for (size_t l=j+1; l<result.size(); ++l)
 	  result[l] *= q;
       }
-      C m = b[i]/d; // factor for column |j| coming subtraction
       result[j] = m;
       for (size_t k=0; k<=i; ++k)
 	b[k] -= E(k,j)*m; // subtract off contribution from htis column
