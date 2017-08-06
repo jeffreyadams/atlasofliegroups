@@ -658,10 +658,11 @@ RootDatum::RootDatum(const PreRootDatum& prd)
     d_coroots[rootMinus(alpha)] = -d_coroots[alpha];
   }
 
-
+  arithmetic::big_int denom;
   // the fundamental weights are given by the matrix Q.tC^{-1}, where Q is
   // the matrix of the simple roots, tC the transpose Cartan matrix
-  int_Matrix iC = cartanMatrix().inverse(Cartan_denom);
+  int_Matrix iC = cartanMatrix().inverse(denom);
+  Cartan_denom = denom.int_val();
   weight_numer = (root_mat*iC.transposed()).columns();
 
   // for the fundamental coweights, use coroots and (untransposed) Cartan matrix

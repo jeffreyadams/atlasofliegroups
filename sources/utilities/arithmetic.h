@@ -13,6 +13,7 @@
 #include "arithmetic_fwd.h"
 
 #include <iostream>
+#include <cassert>
 
 /******** function declarations **********************************************/
 

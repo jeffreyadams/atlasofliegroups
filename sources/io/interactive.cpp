@@ -1175,12 +1175,12 @@ bool checkInvolution(const WeightInvolution& i,
 
   // write d.p^{-1}.i.p
 
-  LatticeCoeff d;
+  arithmetic::big_int d;
   WeightInvolution m=p.inverse(d)*i*p;
 
   // now |i| stabilizes the lattice iff |d| divides |m|
 
-  return m.divisible(d);
+  return m.divisible(d.convert<LatticeCoeff>());
 }
 
 } // |namespace|

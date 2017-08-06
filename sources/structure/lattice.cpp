@@ -16,6 +16,7 @@
 
 #include "lattice.h"
 #include "bitmap.h" // for (unused) result of |column_echelon|
+#include "bigint.h" // using a variable of this type
 
 #include <cassert>
 
@@ -72,14 +73,14 @@ namespace lattice {
 template<typename I, typename O>
   void baseChange(I first, I last, O out, I firstb, I lastb)
 {
-  LatticeCoeff d;
+  arithmetic::big_int d;
   LatticeMatrix q =
     LatticeMatrix(firstb,lastb,lastb-firstb,tags::IteratorTag())
     .inverse(d);
 
   while (first!=last)
   {
-    *out = (q*(*first)/d);
+    *out = q*(*first)/d.convert<LatticeCoeff>();
     ++out, ++first;
   }
 }

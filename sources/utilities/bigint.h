@@ -45,8 +45,9 @@ public:
   big_int (const char * p, unsigned char base, // from text in base |base|
 	   unsigned (*convert)(char) = &char_val); // maybe custom conversion
   int int_val() const; // extract 32-bits signed value, or throw an error
-  arithmetic:: Numer_t long_val() const; // extract 64 bits signed value
-  arithmetic:: Denom_t ulong_val() const; // extract 64 bits unsigned value
+  arithmetic::Numer_t long_val() const; // extract 64 bits signed value
+  arithmetic::Denom_t ulong_val() const; // extract 64 bits unsigned value
+  template<typename C> C convert() const; // extract some integer type value
 
   big_int& operator++ () { carry(d.begin()); return *this; }
   big_int& operator-- () { borrow(d.begin()); return *this; }

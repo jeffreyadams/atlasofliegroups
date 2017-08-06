@@ -389,9 +389,9 @@ template<typename C>
   assert (b.size()==base::numRows());
 
   PID_Matrix<C> p(b,b.size()); // square matrix
-  C d;
+  arithmetic::big_int d;
   PID_Matrix<C> result(p.inverse(d)* *this *p);
-  return result /= d;
+  return result /= d.convert<C>();
 }
 
 // manipulators

@@ -38,6 +38,10 @@ big_int big_int::from_unsigned (Denom_t n)
   return result;
 }
 
+template<> int big_int::convert<int> () const { return int_val(); }
+template<> arithmetic::Numer_t big_int::convert<long long int> () const
+ { return long_val(); }
+
 
 /*
   precondition for |carry| and |borrow|: when called with |size()>1|, they
