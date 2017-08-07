@@ -478,7 +478,7 @@ set K_type (KHighestWeight(x,mu)) = K_Type:
 
 {. Parameter for (the RealForm K_0) of the K_0-type with highest weight
    (the restriction of) KHighestWeight mu. .}
-set K0_highest_weight (KHighestWeight(x,mu)) = Param:
+set K0_param_from_highest_weight (KHighestWeight(x,mu)) = Param:
   finite_dimensional(K_0(x),project_K(real_form(x),mu))
 
 { dimension of KHighestWeight=dimension of representation of K_#
@@ -487,8 +487,8 @@ set K0_highest_weight (KHighestWeight(x,mu)) = Param:
 
 { dimension_rat allows for dimension up to 2^63-1}
 {. Dimension of the K_#-type with KHighestWeight mu. .}
-set dimension_rat (KHighestWeight mu) = rat:dimension_rat(K0_highest_weight(mu))
-set dimension (KHighestWeight mu) = int:dimension(K0_highest_weight(mu))
+set dimension_rat (KHighestWeight mu) = rat:dimension_rat(K0_param_from_highest_weight(mu))
+set dimension (KHighestWeight mu) = int:dimension(K0_param_from_highest_weight(mu))
 
 {. Dimension of a K-type. .}
 set dimension_rat (K_Type p) = rat:
