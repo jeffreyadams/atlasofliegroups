@@ -40,6 +40,7 @@ C gcd (matrix::Vector<C> row, matrix::PID_Matrix<C>* col,bool& flip,
   if (row[mindex]<C(0))
   {
     row[mindex]=-row[mindex];
+    flip = not flip;
     if (col!=nullptr)
       (*col)(mindex,mindex)=C(-1);
   }
