@@ -181,9 +181,8 @@ set highest_weight_one (K_Type p) = KHighestWeight:
 ;  p:=make_no_Cminus(p)
 ;  let (Q,pL)=theta_stable_data(parameter(p))
    then (x_L,mu_L)=highest_weight_split_spherical(pL)
-   then x_G=canonical_x_K(x(p))
-   then y=canonical_x_K(maximal(Q))
-   then mu_G=mu_L+two_rho_u_cap_s(Q,y)
+   then x_G=x_min(Q)
+   then mu_G=mu_L+two_rho_u_cap_s(Q,x_G)
 { need version of 2*rho_u_cap_s(Q) which is integral, see thetastable.at}
 { this might be a ratvec, denominator 1/2, by restriction it defines a
   character  of T_{K_0}
@@ -493,8 +492,8 @@ set dimension (K_Type p) = int: rat_as_int(dimension_rat(p))
   giving a KHighestWeight (x,mu) cannot necessarily take mu to be \delta-fixed
 }
 
-{. (Auxiliary function) .}
-set H_weight (KGBElt x,vec mu_K) = KHighestWeight:
+{. Given the highest weight of a K0_type and a KGB element in the distinguished fiber for the corresponding group G, compute the highest weight for K; in the unequal rank case, mu_K will have fewer coordinates than the K-weight). .}
+set K_highest_weight_from_K0_weight (KGBElt x,vec mu_K) = KHighestWeight:
   (x, { vec: } mu_K*left_inverse(injection_from_K_matrix(x)) )
 
 { this may be a ratvec, not vec }
@@ -503,22 +502,17 @@ set fundamental_weights_K_H (KGBElt x) = [ratvec]:
   let M=left_inverse(injection_from_K_matrix(x)) in
   for v in fundamental_weights(K_0(x)) do v*M od
 
-{. ONE K_0-type in the restriction of a K_type to the identity component K_0 of K
-   (auxiliary function). .}
+{. ONE K_0-type in the restriction of a K_type to the identity component K_0 of K; x_K must be in the fundamental fiber. .}
 set K0_param (K_Type p,KGBElt x_K) = Param:
   let (,tau)=highest_weight_one(p,x_K) in
   finite_dimensional(K_0(x_K),project_K(x_K,tau))
 
-{. ONE K_0-type in the restriction of a K_type to the identity component K_0 of K
-   (auxiliary function). .}
+{. ONE K_0-type in the restriction of a K_type to the identity component K_0 of K; x_K is taken to be KGB element #0. .}
 set K0_param (K_Type p) = Param:
   K0_param(p,KGB(real_form(x(p)),0))
 
-{
-set LKTs_K0 (Param p,KGBElt x_K) = [Param]:
-  for (,tau) in highest_weights(p,x_K) do finite_dimensional(K_0(x_K),tau) od
-}
-{. All K_0-types in the restriction of the LKTs of parameter p K_0. .}
+{. All K_0-types in the restriction of the LKTs of parameter p K_0; x_K must
++be in the distinguished fiber. .}
 set K0_params (Param p,KGBElt x_K) = [Param]:
   for (,tau) in highest_weights(p,x_K)
   do finite_dimensional(K_0(x_K),project_K(x_K,tau)) od
@@ -537,9 +531,6 @@ set K0_param (Param p,KGBElt x_K) = Param:
 set K0_param (Param p) = Param:
   K0_param(p,KGB(real_form(x(p)),0))
 
-{ mu is a highest weight for K_0=identity component of K_x
-  returns fundamental weight coordinates
-}
 {. (Auxiliary function) .}
 set fundamental_weight_coordinates (KHighestWeight (x,mu)) = vec:
   mu*simple_coroots(K_0(x))
