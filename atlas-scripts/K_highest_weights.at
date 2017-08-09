@@ -440,19 +440,18 @@ set K_types (KHighestWeight mu_in)= [K_Type]:
   then mu=make_strongly_dominant(mu,x_Q)
   then (x,tau)=mu then
   L=Levi(Q)
-  then y=canonical_x_K(maximal(Q))
   then { L is relatively split }
   ()=if LKT_verbose then
      prints("Q=", Q);
      prints("mu:", mu);
      prints("L=", L);
-     prints("rho_u_cap_s(Q)", rho_u_cap_s(Q,y));
+     prints("rho_u_cap_s(Q)", rho_u_cap_s(Q,x));
      prints("rho_l(Q)", rho_l(Q));
      prints("tau: ", tau);
-     prints("arg:", tau-2*rho_u_cap_s(Q,y)+rho_l(Q)) fi then
+     prints("arg:", tau-2*rho_u_cap_s(Q,x)+rho_l(Q)) fi then
   ()=assert(is_relatively_split(L),"L is not relatively split") then
   pL=monomials(finalize(parameter(KGB(L,#KGB(L)-1),
-	                tau-two_rho_u_cap_s(Q,y)+rho_l(Q), null(rank(L)))))
+	                tau-two_rho_u_cap_s(Q,x)+rho_l(Q), null(rank(L)))))
   then
   ()=if LKT_verbose then
      prints("pL:", pL);
@@ -503,7 +502,9 @@ set dimension (K_Type p) = int: rat_as_int(dimension_rat(p))
   giving a KHighestWeight (x,mu) cannot necessarily take mu to be \delta-fixed
 }
 
-{. Given the highest weight of a K0_type and a KGB element in the distinguished fiber for the corresponding group G, compute the highest weight for K; in the unequal rank case, mu_K will have fewer coordinates than the K-weight). .}
+{. Given the highest weight for K0 and a KGB element in the distinguished fiber
+   for the corresponding group G, compute the highest weight for K; in the
+   unequal rank case, mu_K will have fewer coordinates than the K-weight). .}
 set K_highest_weight_from_K0_weight (KGBElt x,vec mu_K) = KHighestWeight:
   (x, { vec: } mu_K*left_inverse(injection_from_K_matrix(x)) )
 
