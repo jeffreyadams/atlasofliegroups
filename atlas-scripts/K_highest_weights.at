@@ -422,6 +422,7 @@ set make_strongly_dominant (KHighestWeight mu,KGBElt x_Q) = KHighestWeight:
 }
 {. All K_types with the same KHighestWeight. .}
 set K_types (KHighestWeight mu_in)= [K_Type]:
+  let (x,v)=mu_in then G=real_form(x) in
   let mu=move_weight(mu_in,KGB(G,0)) in
   let (mu,,,)=make_strongly_dominant(mu) in
   let  Q=parabolic_LKT(mu)  {Q is theta-stable}
