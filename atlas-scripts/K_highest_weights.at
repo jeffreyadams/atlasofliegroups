@@ -503,8 +503,9 @@ set dimension (K_Type p) = int: rat_as_int(dimension_rat(p))
 }
 
 {. Given the highest weight for K0 and a KGB element in the distinguished fiber
-   for the corresponding group G, compute the highest weight for K; in the
-   unequal rank case, mu_K will have fewer coordinates than the K-weight). .}
+   for the corresponding group G, compute (one of) the highest weight(s) for K
+   (there may be more than one if K# is not equal K_0); in the unequal rank
+   case, mu_K will have fewer coordinates than the K-weight. .}
 set K_highest_weight_from_K0_weight (KGBElt x,vec mu_K) = KHighestWeight:
   (x, { vec: } mu_K*left_inverse(injection_from_K_matrix(x)) )
 
@@ -514,12 +515,14 @@ set fundamental_weights_K_H (KGBElt x) = [ratvec]:
   let M=left_inverse(injection_from_K_matrix(x)) in
   for v in fundamental_weights(K_0(x)) do v*M od
 
-{. ONE K_0-type in the restriction of a K_type to the identity component K_0 of K; x_K must be in the fundamental fiber. .}
+{. ONE K_0-type in the restriction of a K_type to the identity component K_0 of K;
+   x_K must be in the fundamental fiber. .}
 set K0_param (K_Type p,KGBElt x_K) = Param:
   let (,tau)=highest_weight_one(p,x_K) in
   finite_dimensional(K_0(x_K),project_K(x_K,tau))
 
-{. ONE K_0-type in the restriction of a K_type to the identity component K_0 of K; x_K is taken to be KGB element #0. .}
+{. ONE K_0-type in the restriction of a K_type to the identity component K_0 of K;
+   x_K is taken to be KGB element #0. .}
 set K0_param (K_Type p) = Param:
   K0_param(p,KGB(real_form(x(p)),0))
 
@@ -529,7 +532,8 @@ set K0_params (Param p,KGBElt x_K) = [Param]:
   for (,tau) in highest_weights(p,x_K)
   do finite_dimensional(K_0(x_K),project_K(x_K,tau)) od
 
-{. All K_0-types in the restriction of the LKTs of parameter p to K_0; x_K is taken to be KGB element #0. .}
+{. All K_0-types in the restriction of the LKTs of parameter p to K_0; x_K is taken
+   to be KGB element #0. .}
 set K0_params (Param p) = [Param]:
   K0_params(p,KGB(real_form(x(p)),0))
 
