@@ -87,9 +87,9 @@ public:
   }
 
 // accessors
-  bool grading(RankFlags x, unsigned long s) const
+  bool grading(RankFlags x, unsigned int s) const
     { return d_baseGrading[s] != x.scalarProduct(d_alpha[s]); }
-  unsigned long operator() (unsigned long s, unsigned long x) const
+  unsigned long operator() (unsigned int s, unsigned long x) const
   {
     RankFlags b(x); if (grading(b,s))  b ^= d_mAlpha[s];
     return b.to_ulong();

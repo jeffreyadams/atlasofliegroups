@@ -66,8 +66,8 @@ namespace partition {
             if x'=a(j,x) is in B:
               remove x' from B, push x' onto S, and add it to the current orbit
 */
-template<typename F> // class |F| holds a binary function object: |(ul,ul)->ul|
-  Partition orbits(const F& a, size_t c, unsigned long n)
+template<typename F> // class |F| holds a binary function object: |(ui,ul)->ul|
+  Partition orbits(const F& a, unsigned int c, unsigned long n)
 {
   Partition result(n);
 
@@ -85,7 +85,7 @@ template<typename F> // class |F| holds a binary function object: |(ul,ul)->ul|
     {
       unsigned long x = to_do.front(); to_do.pop();
 
-      for (unsigned long i=0; i<c; ++i)
+      for (unsigned int i=0; i<c; ++i)
       {
 	unsigned long y = a(i,x);
 	if (b.isMember(y)) // new element was found
