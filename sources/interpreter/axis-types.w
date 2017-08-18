@@ -419,7 +419,7 @@ void set_from(type_expr&& p) noexcept; // shallow copy
 bool specialise(const type_expr& pattern);
   // try to match pattern, possibly modifying |*this|
 bool can_specialise(const type_expr& pattern) const;
-  // tell whether |specialse| would succeed
+  // tell whether |specialise| would succeed
 
 @ For that definition to be processed properly, we must pay some attention to
 ordering of type definitions, because of the recursions present. The structure
@@ -435,8 +435,7 @@ struct func_type; // must be predeclared for |type_expr|
 @< Definition of |type_expr| @>
 
 @ The constructor for the |type_list| variant with |tuple_variant| field is a
-move constructor, and is easily implemented since |type_expr| has a move
-constructor.
+move constructor.
 
 @< Function definitions @>=
 type_expr::type_expr(type_list&& l,bool is_union) noexcept
@@ -469,8 +468,7 @@ type_expr type_expr::copy() const
       result.compon_variant=new type_expr(compon_variant->copy());
     break;
     case tuple_type: case union_type:
-      @< Placement-construct a deep copy of |tuple_variant| into
-         |result.tuple_variant| @>
+      @< Assign a deep copy of |tuple_variant| to |result.tuple_variant| @>
     break;
     case function_type: result.func_variant=new
     func_type(func_variant->copy());
@@ -479,31 +477,19 @@ type_expr type_expr::copy() const
   return result;
 }
 
-@ First off, as the module name says we must make sure a valid object is
-constructed into the field |result.tuple_variant|, because we default
-constructed |result| with no variant active. We cannot use a copy constructor
-of |type_list| to do this, because although the class template declares such a
-constructor, an attempt to use it will not compile because of a missing
-|type_expr| copy constructor. We must instead create a duplicate list,
-applying the |copy| method for all members of the list accessed from
-|tuple_variant|, and then placement-construct that list into the
-|tuple_variant| field. This is achieved by first default constructing
-|result.tuple_variant|, and then adding fields, keeping an (output) iterator
-|oit| pointing at the end of the list, where |insert| can be used to add node
-(note that the class template |simple_list| defines no method |end|, as this
-would be expensive if used like |end| methods usually are).
+@ We create a duplicate list by applying the |copy| method for all members of
+the list accessed from |tuple_variant|. The code below originally
+placement-constructed that list into the |result.tuple_variant| field,
+initially default constructing the list, and then adding the components using
+|insert| through an output iterator |oit| pointing at the end of the list.
+This had to be modified when |tuple_variant| was made to by a raw pointer,
+from which we cannot create an |type_list::iterator| (this is one of the rare
+places in the code where that matters). So now we instead create an initially
+empty |type_list dst@;| and make an iterator for it; then after creating the
+nodes of the list, the |type_list| is demoted to |raw_type_list| by calling
+its |release| method, which raw pointer is assigned to |result.tuple_variant|.
 
-This is the one place where we need to cater for the fact that we cannot
-create an |type_list::iterator| for the |tuple_variant| field, which is a raw
-pointer. Instead we create an initially empty |type_list dst@;| and make an
-iterator for it; after creating the nodes of the list, the |type_list| is
-demoted to |raw_type_list| by calling its |release| method, which raw
-pointer is assigned to |result.tuple_variant|.
-
-@h <algorithm>
-
-@< Placement-construct a deep copy of |tuple_variant| into
-   |result.tuple_variant| @>=
+@< Assign a deep copy of |tuple_variant| to |result.tuple_variant| @>=
 {
   wtl_const_iterator it(tuple_variant);
   type_list dst;
