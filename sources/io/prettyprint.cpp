@@ -252,7 +252,7 @@ template<typename C>
 std::ostream& printMatrix(std::ostream& strm, const matrix::Matrix_base<C>& m,
 			  unsigned long width)
 {
-  std::vector<unsigned long> widths(m.numColumns(),width);
+  std::vector<unsigned int> widths(m.numColumns(),width);
 
   { std::ostringstream o;
     for (size_t j=0; j<m.numColumns(); ++j)
@@ -398,8 +398,9 @@ template std::ostream& printMatrix
 template std::ostream& printMatrix // in standardreprk coefficients are |long|
   (std::ostream&, const matrix::Matrix_base<long int>&, unsigned long);
 
-template std::ostream& printMatrix // in |printBlockSizes|: |unsigned long|
-  (std::ostream&, const matrix::Matrix_base<unsigned long>&, unsigned long);
+template std::ostream& printMatrix // in |printBlockSizes|: |big_int|
+  (std::ostream&, const matrix::Matrix_base<arithmetic::big_int>&,
+   unsigned long);
 
 template std::ostream& printMatrix
   (std::ostream&,

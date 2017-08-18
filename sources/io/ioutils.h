@@ -2,6 +2,7 @@
   This is ioutils.h
 
   Copyright (C) 2004,2005 Fokko du Cloux
+  Copyright (C) 2017 Marc van Leeuwen
   part of the Atlas of Lie Groups and Representations
 
   For license information see the LICENSE file
@@ -13,7 +14,11 @@
 #include <iosfwd>
 #include <string>
 
+#include "bigint.h"
+
 namespace atlas {
+
+namespace ioutils {
 
   /* The class OutputFile was moved from here to interactive.h
 
@@ -24,18 +29,14 @@ namespace atlas {
 
 /******** constant declarations **********************************************/
 
-namespace ioutils {
-
   const size_t LineSize = 79;
   const size_t IndentSize = 4;
 
-}
 
 /******** function declarations *********************************************/
 
-namespace ioutils {
-
-unsigned long digits(unsigned long, unsigned long);
+unsigned int digits(unsigned long n, unsigned int base);
+ unsigned int digits(arithmetic::big_int n, unsigned int base);
 
 std::ostream& foldLine(std::ostream&, const std::string& line,
 		       const char* preHyphens = " ",

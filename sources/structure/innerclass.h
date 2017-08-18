@@ -378,11 +378,11 @@ class InnerClass
 // Information about a real form or dual real form at a given Cartan class
 
   // size of the block defined by weak real form |rf| and dual real form| drf|
-  unsigned long block_size(RealFormNbr rf, RealFormNbr drf) const
+  arithmetic::big_int block_size(RealFormNbr rf, RealFormNbr drf) const
     { return block_size(rf,drf,Cartan_set(rf)& dual_Cartan_set(drf)); }
   // the same limited to indicated Cartan classes only
-  unsigned long block_size(RealFormNbr rf, RealFormNbr drf,
-			   const BitMap& Cartan_classes) const;
+  arithmetic::big_int block_size(RealFormNbr rf, RealFormNbr drf,
+				 const BitMap& Cartan_classes) const;
 
   // more functions that interrogate the fundametal fiber
   cartanclass::StrongRealFormRep sample_strong_form (RealFormNbr rf) const

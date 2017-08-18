@@ -442,26 +442,29 @@ big_int::digit big_int::shift_modulo(digit base)
 }
 
 // do output for the |number|, assumed non negative (recursive auxiliary)
-void print (std::ostream& out, big_int&& number)
-{ if (number.size()==1)
-    out << number.int_val();
+void print (std::ostream& out, big_int&& number, bool print_minus)
+{ if (number.size()==1) // then number $n$is less than $2^{31}$, print $\pm n$
+    out << // use (up) |out.width()| here, and whatever fill character was set
+      (print_minus ? -number.int_val() : number.int_val());
   else
   {
     auto last = number.shift_modulo(1000000000u); // that is $10^9<2^{32}$
-    print(out,std::move(number));
-    out << std::setw(9) << last; // caller should set fill character to |'0'|
+    auto old_w = out.width(); // see whether a width was specified
+    if (old_w>9) // consider only these widths, as 9 digits are certainly used
+      out.width(old_w-9); // remove 9 from witdth specification in recursion
+    print(out,std::move(number),print_minus);
+    char prev=out.fill('0'); // in these trailing words, we show leading '0's
+    out << std::setw(9) << last; // use exactly 9 digits for final part
+    out.fill(prev); // restore old fill character
   }
 }
 
 std::ostream& operator<< (std::ostream& out, big_int&& number)
 {
-  if (number.is_negative())
-  { out << '-';
+  const bool neg=number.is_negative();
+  if (neg)
     number.negate();
-  }
-  char prev=out.fill('0');
-  print(out,std::move(number));
-  out.fill(prev);
+  print(out,std::move(number),neg);
   return out;
 }
 

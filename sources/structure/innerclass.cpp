@@ -1093,17 +1093,18 @@ TorusPart InnerClass::x0_torus_part(RealFormNbr rf) const
 
 
 
-unsigned long
-InnerClass::block_size(RealFormNbr rf,
-				  RealFormNbr drf,
-				  const BitMap& Cartan_classes) const
+arithmetic::big_int
+InnerClass::block_size(RealFormNbr rf, RealFormNbr drf,
+		       const BitMap& Cartan_classes) const
 {
-  unsigned long result=0;
+  arithmetic::big_int result(0);
   for (BitMap::iterator it = Cartan_classes.begin(); it(); ++it)
   {
-    unsigned long cn=*it;
+    CartanNbr cn=*it;
     result +=
-      cartan(cn).orbitSize() * fiberSize(rf,cn) * dualFiberSize(drf,cn);
+      arithmetic::big_int::from_unsigned(cartan(cn).orbitSize())
+      *arithmetic::big_int::from_unsigned(fiberSize(rf,cn))
+      *arithmetic::big_int::from_unsigned(dualFiberSize(drf,cn));
   }
 
   return result;
