@@ -1,5 +1,4 @@
 <basic.at
-<lattice.at         { for solve@(mat,vec) }
 <representations.at { for trivial_block }
 <synthetic.at       { for is_conjugate, also defines type KGBElt_gen }
 <parameters.at      { for square@KGBElt }

@@ -184,18 +184,13 @@ void Subspace<dim>::swap(Subspace& source)
 
 namespace subquotient {
 
+// construct the subquotient of span of |bsp| by span of |bsub|
 template<unsigned int dim> Subquotient<dim>::
 Subquotient(const BitVectorList<dim>& bsp,
 	    const BitVectorList<dim>& bsub, size_t n)
   : d_space(bsp,n)
   , d_subspace(bsub,n)
   , d_rel_support()
-
-/*!
-  \brief constructs the subquotient where |bsp| generates the space,
-  |bsub| the subspace.
-*/
-
 {
   assert(d_space.contains(bsub)); // check containment of subspaces
   assert(d_space.support().contains(d_subspace.support()));

@@ -63,7 +63,7 @@ set cyclotomic_polynomial (int n) = [int]:
 
 {.list of integers relatively prime to n.}
 set relative_primes(int n) = [int]:
-  list ((int i)bool: gcd([i,n])=1 ,n)
+  list (n,(int i)bool: gcd([i,n])=1)
 
 { a can be negative, N must be positive }
 {. integer a -> representative 0\le b\le N-1 mod N .}
@@ -192,14 +192,19 @@ set inverse_by_norm (CyclotomicFieldElement(v,F):z) = CyclotomicFieldElement:
    let w=F.one in
    for A in galois_matrices(F)[1:] do w*:=F.element(times(A,v)) od; (/norm(z))*w
 
+{ better solutions based on linear system solving from Gaussian-elim.at }
+
 {.inverse of z = inverse of (matrix of multipliciation by z) applied to F.one.}
 set inverse_by_matrix (CyclotomicFieldElement(,F):z) = CyclotomicFieldElement:
    (times(inverse(matrix_of_multiplication(z)),F.one.v),F)
 
-{ inverse in cyclotomic field uses linear system solver from Gaussian-elim.at}
+set inverse_by_solve (CyclotomicFieldElement(,F):z) = CyclotomicFieldElement:
+   (a_solution(matrix_of_multiplication(z),F.one.v),F)
+
+{ the last one is the most straightforward and seems best to use: }
+
 {.inverse of element in cyclotomic field.}
-set inverse (CyclotomicFieldElement(,F):z) = CyclotomicFieldElement:
-   (a_solution([[rat]]: matrix_of_multiplication(z),F.one.v),F)
+set inverse = inverse_by_solve@CyclotomicFieldElement
 
 set / = inverse@CyclotomicFieldElement { unary division is inverse }
 
@@ -215,6 +220,10 @@ set ^ (CyclotomicFieldElement z,int k) = CyclotomicFieldElement:
       for odd in bin_k[1:] do p*:=p { always square }; if odd then p*:=z fi od
    ;  p
    fi
+
+set / (CyclotomicFieldElement(v,F), CyclotomicFieldElement z) =
+      CyclotomicFieldElement:
+   (a_solution(matrix_of_multiplication(z),v),F)
 
 { order of element of F, returns 0 if element not of finite order }
 set order(CyclotomicFieldElement x)= int:

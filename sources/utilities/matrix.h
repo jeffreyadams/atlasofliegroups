@@ -17,6 +17,7 @@
 #include "matrix_fwd.h"
 
 #include "tags.h"
+#include "bigint.h"
 
 // extra defs for windows compilation -spc
 #ifdef WIN32
@@ -24,10 +25,10 @@
 #endif
 
 namespace atlas {
+namespace matrix {
 
 /******** function definitions ***********************************************/
 
-namespace matrix {
 
 template<typename C>
   std::vector<Vector<C> > standard_basis(size_t n);
@@ -35,6 +36,12 @@ template<typename C>
 template<typename C>
   void initBasis(std::vector<Vector<C> >& v, size_t n)
   { v=standard_basis<C>(n); }
+
+template<typename C>
+  void row_apply(Matrix<C>& A, const Matrix<C>& ops, size_t i); // initial row
+
+template<typename C>
+  void column_apply(Matrix<C>& A, const Matrix<C>& ops, size_t j); // initial
 
 template<typename C>
   PID_Matrix<C>& operator+= (PID_Matrix<C>& A, C c); // |A=A+c|, avoiding copy
@@ -53,11 +60,17 @@ template<typename C>
 template<typename C>
   PID_Matrix<C> operator- (C c, PID_Matrix<C> A) { return A.negate() += c; }
 
-}
+template<typename C>
+  PID_Matrix<C> inverse (PID_Matrix<C> A, arithmetic::big_int& d);
+
+template<typename C> PID_Matrix<C> inverse (PID_Matrix<C> A)
+ { arithmetic::big_int d; PID_Matrix<C> result=inverse(std::move(A),d);
+    if (not d.is_one())
+      throw std::runtime_error("Matrix not invertible over the integers");
+    return result;
+  }
 
 /******** type definitions ***************************************************/
-
-namespace matrix {
 
 template <typename C> class Matrix;
 
@@ -177,6 +190,15 @@ template<typename C> class Matrix_base
   Vector<C> column(size_t j) const { Vector<C> c; get_column(c,j); return c; }
   std::vector<Vector<C> > columns() const;
 
+  Vector<C> partial_row(size_t i, size_t j, size_t l) const
+    { return Vector<C>(at(i,j),at(i,l)); }
+  Vector<C> partial_column(size_t j, size_t i, size_t k) const
+  { Vector<C> result(k-i);
+    for (auto it=result.begin(); it!=result.end(); ++it)
+      *it = (*this)(i++,j);
+    return result;
+  }
+
   bool operator== (const Matrix_base<C>&) const;
   bool operator!= (const Matrix_base<C>& m) const {return not(operator==(m)); }
 
@@ -200,7 +222,7 @@ template<typename C> class Matrix_base
   void eraseRow(size_t);
   void reset() { d_data.assign(d_data.size(),C(0)); }
 
- protected:
+ protected: // not |private| because |PID_Matrix<C>::block| uses them
   const C* at (size_t i,size_t j) const { return &operator()(i,j); }
   C* at (size_t i,size_t j)             { return &operator()(i,j); }
 }; // |template<typename C> class Matrix_base|
@@ -327,19 +349,17 @@ template<typename C> class PID_Matrix : public Matrix<C>
   PID_Matrix& negate() { base::negate(); return *this; }
   PID_Matrix& transpose() { base::transpose(); return *this; }
 
-  PID_Matrix& invert();
-  PID_Matrix& invert(C& d);
-
 // accessors
 #if __GNUC__ < 4 || \
   __GNUC__ == 4 && ( __GNUC_MINOR__ < 8 || \
-                     __GNUC_MINOR__ == 8 && _GNUC_PATCHLEVEL__ < 1)
+                     __GNUC_MINOR__ == 8 && __GNUC_PATCHLEVEL__ < 1)
   // that is, if compiler version is too old
   PID_Matrix transposed() const  { return PID_Matrix(base::transposed()); }
   PID_Matrix negative_transposed() const
     { return PID_Matrix(base::negative_transposed()); }
-  PID_Matrix inverse() const     { return PID_Matrix(*this).invert(); }
-  PID_Matrix inverse(C& d) const { return PID_Matrix(*this).invert(d); }
+  PID_Matrix inverse() const     { return matrix::inverse(*this); }
+  PID_Matrix inverse(arithmetic::big_int& d) const
+    { return matrix::inverse(*this,d); }
 #else
   PID_Matrix transposed() const  & { return PID_Matrix(base::transposed()); }
   PID_Matrix transposed() &&
@@ -348,10 +368,12 @@ template<typename C> class PID_Matrix : public Matrix<C>
     { return PID_Matrix(base::negative_transposed()); }
   PID_Matrix negative_transposed() &&
     { return PID_Matrix(std::move(*this)).negate().transpose(); }
-  PID_Matrix inverse() const &     { return PID_Matrix(*this).invert(); }
-  PID_Matrix inverse() &&  { return PID_Matrix(std::move(*this)).invert(); }
-  PID_Matrix inverse(C& d) const & { return PID_Matrix(*this).invert(d); }
-  PID_Matrix inverse(C& d) && { return PID_Matrix(std::move(*this)).invert(d); }
+  PID_Matrix inverse() const & { return matrix::inverse(*this); }
+  PID_Matrix inverse() &&      { return matrix::inverse(std::move(*this)); }
+  PID_Matrix inverse(arithmetic::big_int& d) const &
+    { return matrix::inverse(*this,d); }
+  PID_Matrix inverse(arithmetic::big_int& d) &&
+    { return matrix::inverse(std::move(*this),d); }
 #endif
 
   using base::operator*;

@@ -721,17 +721,18 @@ InnerClass::canonicalize
   Weight rrs=rd.twoRho(id.real_roots()); // real (pos)root sum
   Weight irs=rd.twoRho(id.imaginary_roots()); // imaginary (pos)root sum
 
-/* the code below uses the following fact: if $S$ is a root subsystem of |rd|,
-   and $\alpha$ a simple root that does not lie in $S$, then the sum of
-   positive roots of $s_\alpha(S)$ is the image by $s_\alpha$ of the sum of
-   positive roots of $S$. The reason is that the action of $s_\alpha$ almost
-   preseves the notion of positivity; it only fails for the roots $\pm\alpha$,
-   which do not occur in $S$ or in $s_\alpha(S)$. The code only applies
-   $s_\alpha$ when the sum of positive roots in $S$ is strictly anti-dominant
-   for $\alpha$, where $S$ is first the system of real roots, and later the
-   system of imaginary roots; in both cases $\alpha$ will always be a complex
-   root, and in particular $\alpha$ does never lies in $S$.
- */
+/*
+  the code below uses the following fact: if $S$ is a root subsystem of |rd|,
+  and $\alpha$ a simple root that does not lie in $S$, then the sum of
+  positive roots of $s_\alpha(S)$ is the image by $s_\alpha$ of the sum of
+  positive roots of $S$. The reason is that the action of $s_\alpha$ almost
+  preseves the notion of positivity; it only fails for the roots $\pm\alpha$,
+  which do not occur in $S$ or in $s_\alpha(S)$. The code only applies
+  $s_\alpha$ when the sum of positive roots in $S$ is strictly anti-dominant
+  for $\alpha$, where $S$ is first the system of real roots, and later the
+  system of imaginary roots; in both cases $\alpha$ will always be a complex
+  root, and in particular $\alpha$ does never lies in $S$.
+*/
 
   WeylWord ww; // initialized empty; this will be the result
 
@@ -746,7 +747,7 @@ InnerClass::canonicalize
 	if (c<0 or (c==0 and rd.simpleCoroot(s).dot(irs)<0))
 	{
 	  rd.simple_reflect(s,rrs);   // apply $s_i$ to real-root sum
-	  rd.simple_reflect(s,irs);   // apply $s_i$ to iminary-root sum
+	  rd.simple_reflect(s,irs);   // apply $s_i$ to imaginary-root sum
 	  W.twistedConjugate(sigma,s); // adjust |sigma| accordingly
 	  ww.push_back(s);                 // and add generator to |ww|
 	  break;     // after this change, continue the |do|-|while| loop
@@ -762,8 +763,7 @@ InnerClass::canonicalize
   |gens|, to its members orthogonal to |rrs|, and then after making |irs|
   dominant for the remaining subsystem to its members that are also orthogonal
   to |irs|. The code below sets |gens| to generate the doubly reduced system.
- */
-
+*/
   // clear those simple roots in |gens| not orthogonal to both |rrs| and |irs|
   for (RankFlags::iterator it=gens.begin(); it(); ++it)
     if (rrs.dot(rd.simpleCoroot(*it))>0 or irs.dot(rd.simpleCoroot(*it))>0)
@@ -1093,17 +1093,18 @@ TorusPart InnerClass::x0_torus_part(RealFormNbr rf) const
 
 
 
-unsigned long
-InnerClass::block_size(RealFormNbr rf,
-				  RealFormNbr drf,
-				  const BitMap& Cartan_classes) const
+arithmetic::big_int
+InnerClass::block_size(RealFormNbr rf, RealFormNbr drf,
+		       const BitMap& Cartan_classes) const
 {
-  unsigned long result=0;
+  arithmetic::big_int result(0);
   for (BitMap::iterator it = Cartan_classes.begin(); it(); ++it)
   {
-    unsigned long cn=*it;
+    CartanNbr cn=*it;
     result +=
-      cartan(cn).orbitSize() * fiberSize(rf,cn) * dualFiberSize(drf,cn);
+      arithmetic::big_int::from_unsigned(cartan(cn).orbitSize())
+      *arithmetic::big_int::from_unsigned(fiberSize(rf,cn))
+      *arithmetic::big_int::from_unsigned(dualFiberSize(drf,cn));
   }
 
   return result;

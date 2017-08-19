@@ -154,7 +154,7 @@ let (selection,top) = (vec,int): { stack of choices made, entries 0<=.<729 }
         od
       ; B
   in { update state to reflect the initial grid givein in |M| }
-  assert(#M=(9,9))
+  assert(shape(M)=(9,9))
 ; for i:9 do for j:9 do let m=M[i,j] in if m>0 then
     choose(((m-1)*9+i)*9+j)
   fi od od

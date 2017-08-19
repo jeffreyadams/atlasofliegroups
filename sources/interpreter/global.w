@@ -2841,13 +2841,6 @@ void string_geq_wrapper(expression_base::level l)
   if (l!=expression_base::no_value)
     push_value(whether(i->val>=j->val));
 }
-@)
-void int_format_wrapper(expression_base::level l)
-{ shared_int n=get<int_value>();
-  std::ostringstream o; o<<n->val;
-  if (l!=expression_base::no_value)
-    push_value(std::make_shared<string_value>(o.str()));
-}
 
 @ Here are the functions for concatenating two or more strings.
 
@@ -2902,10 +2895,9 @@ void ascii_char_wrapper(expression_base::level l)
 %
 While often used as generic functions, we provide several specific bindings of
 the `\#' operator: for strings, rational vectors, vectors, matrices and
-virtual modules. For the benefit of loops over these values, we define these
-as global functions (the last one actually defined in the \.{atlas-types}
-module); in fact for matrices it is a variant counting the columns that is
-needed there.
+virtual modules. For the benefit of implementing certain loops over these
+values, we define these as exported functions (not local to our \.{global.w}
+module).
 
 @< Declarations of exported functions @>=
 void sizeof_vector_wrapper(expression_base::level l);
@@ -2942,13 +2934,14 @@ void matrix_ncols_wrapper(expression_base::level l)
   push_value(std::make_shared<int_value>(m->val.numColumns()));
 }
 
-@ Giving both matrix bounds is what is bound in the overload table to `\#' for
-matrix arguments. The decision to do so is somewhat dubious (it makes matrices
-require somewhat different user code than other looped-over types), but in any
-case this should be a local function.
+@ Giving both matrix bounds is what used to be bound in the overload table to
+`\#' for matrix arguments, but this has been changed to the function |shape|.
+For consistency with use of matrices in subscription, simple slicing, and in
+looping constructions, `\#' for matrix arguments should (and does) return the
+number of columns, invoking |matrix_ncols_wrapper| above.
 
 @< Local function definitions @>=
-void matrix_bounds_wrapper(expression_base::level l)
+void matrix_shape_wrapper(expression_base::level l)
 { shared_matrix m=get<matrix_value>();
   if (l==expression_base::no_value)
     return;
@@ -3710,17 +3703,17 @@ install_function(string_greater_wrapper,">","(string,string->bool)");
 install_function(string_geq_wrapper,">=","(string,string->bool)");
 install_function(string_concatenate_wrapper,"##","(string,string->string)");
 install_function(concatenate_strings_wrapper,"##","([string]->string)");
-install_function(int_format_wrapper,"int_format","(int->string)");
 install_function(string_to_ascii_wrapper,"ascii","(string->int)");
 install_function(ascii_char_wrapper,"ascii","(int->string)");
 install_function(sizeof_string_wrapper,"#","(string->int)");
 install_function(sizeof_vector_wrapper,"#","(vec->int)");
 install_function(sizeof_ratvec_wrapper,"#","(ratvec->int)");
-install_function(matrix_bounds_wrapper,"#","(mat->int,int)");
+install_function(matrix_ncols_wrapper,"#","(mat->int)");
 install_function(vector_suffix_wrapper,"#","(vec,int->vec)");
 install_function(vector_prefix_wrapper,"#","(int,vec->vec)");
 install_function(join_vectors_wrapper,"##","(vec,vec->vec)");
 install_function(join_vector_row_wrapper,"##","([vec]->vec)");
+install_function(matrix_shape_wrapper,"shape","(mat->int,int)");
 install_function(vec_unary_eq_wrapper,"=","(vec->bool)");
 install_function(vec_unary_neq_wrapper,"!=","(vec->bool)");
 install_function(vec_eq_wrapper,"=","(vec,vec->bool)");
@@ -4065,27 +4058,117 @@ else
       (rev_flags,A,lwb_r,upb_r,lwb_c,upb_c,result->val);
 }
 
-@ We continue with some more specialised mathematical functions. Here is the
-column echelon function.
+@ We continue with some more specialised mathematical functions. Here are
+functions to compute the greatest common divisor of the entries of a vector,
+and a version that also computes a matrix of ``B\'ezout coefficients'', a
+first column for the $\gcd$, and further columns for every entry~$0$ that was
+also produced by elementary operations among the entries of the vector.
 
 @h "matreduc.h"
+
+@<Local function definitions @>=
+void gcd_wrapper(expression_base::level l)
+{ own_vector v=get_own<vector_value>();
+  if (l==expression_base::no_value)
+    return;
+  bool flip=false;
+  int d =
+    matreduc::gcd(std::move(v->val),static_cast<int_Matrix*>(nullptr),flip);
+  push_value(std::make_shared<int_value>(d));
+}
+@)
+void Bezout_wrapper(expression_base::level l)
+{ own_vector v=get_own<vector_value>();
+  if (l==expression_base::no_value)
+    return;
+  own_matrix column = std::make_shared<matrix_value>(int_Matrix());
+  bool flip=false;
+  int d = matreduc::gcd(std::move(v->val),&column->val,flip);
+  push_value(std::make_shared<int_value>(d));
+  push_value(std::move(column));
+  if (l==expression_base::single_value)
+    wrap_tuple<2>();
+}
+
+@ Here is the column echelon function.
+
 @h "bitmap.h"
 
 @<Local function definitions @>=
 void echelon_wrapper(expression_base::level l)
-{ own_matrix M=get_own<matrix_value>();
-  if (l!=expression_base::no_value)
-  { BitMap pivots=matreduc::column_echelon(M->val);
-    push_value(M);
-    own_row p_list = std::make_shared<row_value>(0);
-    p_list->val.reserve(pivots.size());
-    for (BitMap::iterator it=pivots.begin(); it(); ++it)
-      p_list->val.push_back(std::make_shared<int_value>(*it));
-    push_value(std::move(p_list));
-    if (l==expression_base::single_value)
-      wrap_tuple<2>();
+{ own_matrix A=get_own<matrix_value>();
+  if (l==expression_base::no_value)
+    return;
+  own_matrix column = std::make_shared<matrix_value>(int_Matrix());
+  bool flip;
+  BitMap pivots=matreduc::column_echelon(A->val,column->val,flip);
+  push_value(std::move(A));
+  push_value(std::move(column));
+  own_row p_list = std::make_shared<row_value>(0);
+  p_list->val.reserve(pivots.size());
+  for (BitMap::iterator it=pivots.begin(); it(); ++it)
+    p_list->val.push_back(std::make_shared<int_value>(*it));
+  push_value(std::move(p_list));
+  push_value(std::make_shared<int_value>(flip ? -1 : 1));
+  if (l==expression_base::single_value)
+    wrap_tuple<4>();
+}
+
+@ The column echelon form can be used to solve linear systems fairly easily.
+In contrast with the row echelon form often taught in linear algebra courses,
+the column operations used to arrive at the echelon form must be recorded to
+transform the solution of the reduced system to a solution of the original
+system, but on the other hand one uses an un-transformed right hand side while
+solving. Thus if the system is inconsistent, this becomes evident only after
+the reduction phase, in the form of non-pivot equations that need to be
+satisfied at the point where they are encountered. Since we are working with
+integer coefficients, pivot equations can also pose a divisibility problem,
+but in that case we can get an integer solution by scaling up the right hand
+side by a necessary factor, and this will also give a rational solution in
+lowest terms. The function |linear_solve| will provide such solving
+capability.
+
+The function is particular in that it is the first occasion where a built-in
+function involves a union type: our result will either be an indication of the
+non-existence of a solution, or data describing a solution. In the former case
+the library function |matreduc::echelon_solve| will throw a
+|std::runtime_error| so we make the distinction using a |catch|-|try| block.
+Also where a user defined function would need to use injector functions, we
+can make the union variants directly here, and supply tags as if there were
+injector functions of these names.
+
+@<Local function definitions @>=
+void linear_solve_wrapper(expression_base::level l)
+{ own_vector b=get_own<vector_value>();
+  own_matrix A=get_own<matrix_value>();
+  if (A->val.numRows()!=b->val.size())
+    throw runtime_error("Linear system size mismatch "
+                        +str(A->val.numRows())+":"+str(b->val.size()));
+  if (l==expression_base::no_value)
+    return;
+  own_matrix column = std::make_shared<matrix_value>(int_Matrix());
+  bool flip; // unused
+  const auto m = A->val.numColumns();
+  BitMap pivots=matreduc::column_echelon(A->val,column->val,flip);
+  try
+  { static id_type affine_name=main_hash_table->match_literal("affine_subspace");
+    const auto k = A->val.numColumns(); // number of pivots
+    arithmetic::big_int factor;
+    int_Vector ini_sol = matreduc::echelon_solve(A->val,pivots,b->val,factor);
+    push_value(std::make_shared<vector_value> @|
+      (column->val.block(0,0,m,k)*ini_sol));
+    push_value(std::make_shared<int_value>(std::move(factor)));
+    push_value(std::make_shared<matrix_value>(column->val.block(0,k,m,m)));
+    wrap_tuple<3>();
+    push_value(std::make_shared<union_value>(1,pop_value(),affine_name));
+  }
+  catch(const std::runtime_error& e)
+  { static id_type empty_name=main_hash_table->match_literal("empty_set");
+    auto empty = std::make_shared<tuple_value>(0);
+    push_value(std::make_shared<union_value>(0,std::move(empty),empty_name));
   }
 }
+
 
 @ And here are general functions |diagonalize| and |adapted_basis|, rather
 similar to Smith normal form, but without divisibility guarantee on diagonal
@@ -4202,9 +4285,9 @@ void invert_wrapper(expression_base::level l)
   }
   if (l==expression_base::no_value)
     return;
-  int denom;
-@/push_value(std::make_shared<matrix_value>(m->val.inverse(denom)));
-  push_value(std::make_shared<int_value>(denom));
+  arithmetic::big_int denom;
+@/push_value(std::make_shared<matrix_value>(inverse(m->val,denom)));
+  push_value(std::make_shared<int_value>(std::move(denom)));
   if (l==expression_base::single_value)
     wrap_tuple<2>();
 }
@@ -4370,7 +4453,10 @@ install_function(swiss_matrix_knife_wrapper@|,"swiss_matrix_knife"
 install_function(swiss_matrix_knife_wrapper@|,"matrix slicer"
     ,"(int,mat,int,int,int,int->mat)"); // space make an untouchable copy
 @)
-install_function(echelon_wrapper,"echelon","(mat->mat,[int])");
+install_function(gcd_wrapper,"gcd","(vec->int)");
+install_function(Bezout_wrapper,"Bezout","(vec->int,mat)");
+install_function(echelon_wrapper,"echelon","(mat->mat,mat,[int],int)");
+install_function(linear_solve_wrapper,"linear_solve","(mat,vec->|vec,int,mat)");
 install_function(diagonalize_wrapper,"diagonalize","(mat->vec,mat,mat)");
 install_function(adapted_basis_wrapper,"adapted_basis","(mat->mat,vec)");
 install_function(kernel_wrapper,"kernel","(mat->mat)");

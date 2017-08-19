@@ -22,7 +22,7 @@
 - Maybe allow |set a:=b,b:=a+b| as alternative for |set (a,b):=(b,a+b)|
 
 - Allow repeated selection assignment |M[1][3]:=0| or |a[i].re:=5|
-  This could possibly be dome by transformation inside the parser
+  This could possibly be done by transformation inside the parser
 
 - Improve output of expressions
   Distinguish one-line (maybe abbreviated) and long forms.

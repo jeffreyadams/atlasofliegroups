@@ -1,7 +1,7 @@
 /*
   This is weyl.cpp
   Copyright (C) 2004,2005 Fokko du Cloux
-  Copyright (C) 2007--2011 Marc van Leeuwen
+  Copyright (C) 2007--2017 Marc van Leeuwen
   part of the Atlas of Lie Groups and Representations
 
   For license information see the LICENSE file
@@ -569,12 +569,12 @@ WeylElt WeylGroup::toWeylElt(unsigned long u) const
 }
 
 /*
-  Apply to |w| the generator permutation in |I|, which should be an
+  Apply to |w| the generator permutation in |f|, which should be an
   automorphism of the Dynkin diagram, expressed in terms of outer numbering.
 
   Algorithm: we use the standard reduced decomposition of |w|, and rebuild the
   return value by repeated right-multiplication. We can do the multiplication
-  in the same Weyl group as the decomposition because |I| is supposed to be an
+  in the same Weyl group as the decomposition because |f| is supposed to be an
   automorphism; if it weren't we would need a reference to a second Weyl group.
 */
 WeylElt WeylGroup::translation(const WeylElt& w, const WeylInterface& f) const
@@ -597,7 +597,10 @@ WeylElt WeylGroup::translation(const WeylElt& w, const WeylInterface& f) const
 void WeylGroup::act(const RootDatum& rd, const WeylElt& w, RootNbr& alpha) const
 {
   for (size_t i = d_rank; i-->0; )
-    alpha = rd.permuted_root(wordPiece(w,i),alpha);
+  { const auto& wp = wordPiece(w,i); // this is in internale coding
+    for (unsigned j=wp.size(); j-->0; ) // loop to apply |d_out| to letters
+      rd.simple_reflect_root(d_out[wp[j]],alpha);
+  }
 }
 
 // Let |w| act on |v| according to reflection action in root datum |rd|
@@ -630,7 +633,7 @@ void WeylGroup::act(const RootDatum& rd, const WeylElt& w, LatticeMatrix& M)
 
 template<typename C>
   void WeylGroup::act
-  (const PreRootDatum& prd, const WeylElt& w, matrix::Vector<C>& v) const
+    (const PreRootDatum& prd, const WeylElt& w, matrix::Vector<C>& v) const
 {
   for (size_t i = d_rank; i-->0; )
   {
@@ -640,8 +643,8 @@ template<typename C>
   }
 }
 
-void WeylGroup::act(const PreRootDatum& prd, const WeylElt& w, RatWeight& v)
-  const
+void
+  WeylGroup::act(const PreRootDatum& prd, const WeylElt& w, RatWeight& v) const
 { act(prd,w,v.numerator()); }
 
 void WeylGroup::act(const PreRootDatum& prd, const WeylElt& w, LatticeMatrix& M)
@@ -659,8 +662,8 @@ void WeylGroup::act(const PreRootDatum& prd, const WeylElt& w, LatticeMatrix& M)
   Same as |act(rd,inverse(w),v)|, but avoiding computation of |inverse(w)|.
   Here the leftmost factors act first.
 */
-void WeylGroup::inverse_act(const RootDatum& rd, const WeylElt& w, Weight& v)
-  const
+void
+  WeylGroup::inverse_act(const RootDatum& rd, const WeylElt& w, Weight& v) const
 {
   for (size_t i=0; i<d_rank; ++i )
   {
@@ -680,6 +683,8 @@ WeylElt::WeylElt(const WeylWord& ww, const WeylGroup& W)
 }
 
 
+
+
 /*
                TwistedWeylGroup implementation
 */
@@ -688,8 +693,7 @@ TwistedWeylGroup::TwistedWeylGroup
   (const WeylGroup& d_W, const Twist& twist)
   : W(d_W)
   , d_twist(twist)
-{
-}
+{}
 
 WeylElt TwistedWeylGroup::dual_twisted(const WeylElt& w) const
 {
@@ -726,8 +730,9 @@ Twist TwistedWeylGroup::dual_twist() const
   return twist;
 }
 
-/* the "dual" Weyl group: the only difference with W is that the twist is
-   multiplied by conjugation with the longest element.
+/*
+  the "dual" Weyl group: the only difference with W is that the twist is
+  multiplied by conjugation with the longest element.
 */
 TwistedWeylGroup::TwistedWeylGroup(const TwistedWeylGroup& tW, tags::DualTag)
   : W(tW.W)
@@ -810,8 +815,8 @@ bool TwistedWeylGroup::hasTwistedCommutation
 }
 
 
-/*!
-  Precondition: tw is a twisted involution: $tw^{-1}=\delta(tw)$.
+/*
+  Precondition: |tw| is a twisted involution: $tw^{-1}=\delta(tw)$.
 
   The argument given under |hasTwistedCommutation| shows that for every
   generator |s| exactly one of $s.tw$ and $s.tw.\delta(s)$ is a twisted

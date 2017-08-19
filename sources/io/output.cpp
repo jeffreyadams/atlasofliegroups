@@ -48,8 +48,9 @@ namespace output {
   const FormNumberMap rfi = CI.realFormInterface();
   const FormNumberMap drfi = CI.dualRealFormInterface();
 
-  matrix::Matrix<unsigned long> block(G.numRealForms(),G.numDualRealForms());
-  unsigned long maxEntry = 0;
+  matrix::Matrix<arithmetic::big_int>
+    block(G.numRealForms(),G.numDualRealForms());
+  arithmetic::big_int maxEntry(0);
 
   for (size_t i = 0; i < block.numRows(); ++i)
     for (size_t j = 0; j < block.numColumns(); ++j)

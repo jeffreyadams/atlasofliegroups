@@ -15,7 +15,7 @@ set concatenate = ##@(ratvec,ratvec) { concatenate as lists of rationals }
   upper_right_corner(theta) gives the matrix of w
 }
 set up_right_corner (mat M) = mat:
-  let (,n):p=#M then (h,r)=n\%2 in
+  let (,n):p=shape(M) then (h,r)=n\%2 in
   assert(=p,"matrix is not square"); assert(=r,"odd size matrix"); M[:h,h:]
 
 set left_w (KGBElt x) = mat: { assumes inner_class(x) is complex }

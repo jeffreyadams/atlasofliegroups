@@ -38,16 +38,22 @@ set permutation_matrix([int] S,[int] T)=mat:let rv=null(#S,#S) in for i:#S do rv
 {permutation sigma:[a_1,...,a_n] -> sort([a_1,...,a_n]) a_i are distinct but not necessarily 0,...,n-1}
 set permutation_matrix_sort([int] S)=mat:permutation_matrix(S,sort(S))
 
-set in_tau (int s,Param p) = bool: let (b,)= tau_bitset(p) in b(s)  {s in tau(p)}
-set in_tau([int] S,Param p)=bool:all(for i:#S do in_tau(S[i],p) od) {S\subset tau(p)}
-set in_tau([*] S,Param p)=bool:in_tau([int]:S,p)
+set in_tau (int s,Param p) = bool:  { whether s is in tau(p) }
+   let (,b)= tau_bitset(p) in b(s)
+set in_tau ([int] S,Param p)=bool:  { whether $S\subset\tau(p)$ }
+   all(#S, (int i)bool: in_tau(S[i],p))
+set in_tau([*] S,Param p) = bool: true { whether $\emptyset\subset\tau(p)$ }
 
-set in_tau_complement(int s,Param p)=bool:not in_tau(s,p)    {s not in tau(p)}
-set in_tau_complement([int] S,Param p)=bool:all(for i:#S do in_tau_complement(S[i],p) od)  {S\subset tau(p)-complement, i.e. tau(p)\subset S-complement}
-set in_tau_complement([*] S,Param p)=bool:in_tau_complement([int]:S,p)
+set in_tau_complement (int s,Param p) = bool: { whether s not in tau(p) }
+   not in_tau(s,p)
+set in_tau_complement ([int] S,Param p) = bool: { whether $S\cap\tau(p)$ empty }
+   all(#S, (int i)bool: in_tau_complement(S[i],p))
+set in_tau_complement([*] S,Param p) = bool: true
 
-{translate irreducibles to singular infinitesimal character, only keep those for which tau(p)\subset S-complement}
-set Psi([Param] params,[int] S)=let rv=[Param]:[] in for p in params do if in_tau_complement(S,p) then rv#:=Psi(p,S) fi od;rv
+{ translate irreducibles to singular infinitesimal character,
+  only keep those for which tau(p)\subset S-complement }
+set Psi ([Param] params,[int] S) = [Param]:
+   ## for p in params do if in_tau_complement(S,p) then [Psi(p,S)] else [] fi od
 
 {from now on [int] S is a set of simple roots,
  [Param] B is a block of parameters with regular infinitesimal character
@@ -95,17 +101,17 @@ set lengths_signs([*] S,[Param] B)=[int]: lengths_signs([int]:S,B)
 set lengths_signs_matrix([int] S,[Param] B)=mat:lengths_signs_matrix(for i in parameters(S,B) do B[i] od)
 set lengths_signs_matrix([*] S,[Param] B)=mat: lengths_signs_matrix([int]:S,B)
 
-set dual_parameters_matrix([int] S,[Param] B)=mat:
-let dual_parameters=dual_parameters(S,B) then
-perm=permutation(B) then
-rv=null(#dual_parameters,#B) in
-for i:#dual_parameters do rv[i,perm[i]]:=1 od;rv
-set dual_parameters_matrix([*] S,[Param] B)=mat:dual_parameters_matrix([int]:S,B)
+set dual_parameters_matrix ([int] S,[Param] B) = mat:
+   let dual_parameters = dual_parameters(S,B), perm=permutation(B) in
+   matrix( (#dual_parameters,#B), (int i,int j)int: #(perm[i]=j) )
+set dual_parameters_matrix([*] S,[Param] B) = mat:
+  dual_parameters_matrix([int]:S,B)
 
-set dual_parameters_matrix([Param] B)=mat:dual_parameters_matrix([],B)
+set dual_parameters_matrix ([Param] B) = mat: dual_parameters_matrix([int]:[],B)
 
 {T is a subset of 1,...,n, keep only rows and columns in T}
-set dual_parameters_matrix([Param] B, [int] T)=mat:minor(dual_parameters_matrix(B),T)
+set dual_parameters_matrix([Param] B, [int] T)=mat:
+  principal_submatrix(dual_parameters_matrix(B),T)
 
 {nxn matrix, rows give formula for irreducible as sum of standards}
 set dual_parameters_standard_basis_poly_mat([Param] B)=poly_mat:

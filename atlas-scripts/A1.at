@@ -1,6 +1,7 @@
 <basic.at
 <lietypes.at { for A1="A1" }
 <group_operations.at { for *@(RootDatum,RootDatum) }
+<lattice.at { for |restict_action@(mat,mat)| }
 
 set A1_Lie_type(int n_A1_factors, int n_torus_factors)=LieType:
 let rv=string:"" in for i:n_A1_factors do rv+:="A1." od;
@@ -37,17 +38,29 @@ set A1_inner_class(int n_A1_factors,int n_torus_factors, [ratvec] center, string
 if innerclass="s" then for i:n_A1_factors+n_torus_factors-1 do innerclass+:="s" od fi;
 inner_class(A1_root_datum(n_A1_factors,n_torus_factors,center), innerclass)
 
-set A1_inner_class(int n_A1_factors,int n_torus_factors, [vec] center, string innerclass)=InnerClass:
-A1_inner_class(n_A1_factors,n_torus_factors, central_subgroup_as_ratvec(center),innerclass)
+set A1_inner_class (
+      int n_A1_factors,
+      int n_torus_factors,
+      [vec] center,
+      string innerclass) = InnerClass:
+   A1_inner_class(n_A1_factors,n_torus_factors
+                 ,central_subgroup_as_ratvec(center),innerclass)
 
-{same as previous commands with additional distinguished involution delta, given as
-a permutation of order 2, where [a_1,...a_n] means the permutation i->a_i
-return (inner_class, matrix of permutation)
+{ same as previous commands with additional distinguished involution delta,
+  given as a permutation of order 2, where [a_1,...a_n] means the permutation
+  i->a_i ; return (inner_class, matrix of permutation)
 }
-set A1_inner_class_twisted(int n_A1_factors,int n_torus_factors, [ratvec] center, string innerclass, vec permutation)=(InnerClass,mat):
-assert(#permutation=n_A1_factors+n_torus_factors, "permutation has wrong size");
-let ic=A1_inner_class(n_A1_factors,n_torus_factors,center,innerclass) then
-Q=quotient_basis(Lie_type(ic),center) in (ic,sub_matrix(permutation_matrix(permutation),Q))
+set A1_inner_class_twisted (
+      int n_A1_factors,
+      int n_torus_factors,
+      [ratvec] center,
+      string innerclass,
+      vec permutation) = (InnerClass,mat):
+   assert(#permutation=n_A1_factors+n_torus_factors
+        , "permutation has wrong size");
+   let ic=A1_inner_class(n_A1_factors,n_torus_factors,center,innerclass)
+   then Q=quotient_basis(Lie_type(ic),center), I=id_mat(n_A1_factors)
+in (ic,restrict_action(mat:for pi in permutation do I[pi] od,Q))
 
 set A1_inner_class_twisted(int n_A1_factors,int n_torus_factors, [vec] center, string innerclass, vec permutation)=(InnerClass,mat):
 A1_inner_class_twisted(n_A1_factors,n_torus_factors,central_subgroup_as_ratvec(center),innerclass,permutation)

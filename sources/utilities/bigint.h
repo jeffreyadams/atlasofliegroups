@@ -34,8 +34,8 @@ static unsigned char_val (char c) // for reading from strings
 public:
 
   // the following is dangerous, and used to be private, but sometimes useful
-  // notably to declare variables to be initialised by reference, or with delay
-  big_int () : d() {} // constructor leaving number in invalid state
+  // notably to declare variables to be initialised (later) by assignment
+  big_int () : d() {} // leaves number in an invalid but destructable state
 
   constexpr static digit neg_flag = 0x80000000;
   explicit big_int (int n) // normal constructor only for single |digit| case
@@ -45,8 +45,9 @@ public:
   big_int (const char * p, unsigned char base, // from text in base |base|
 	   unsigned (*convert)(char) = &char_val); // maybe custom conversion
   int int_val() const; // extract 32-bits signed value, or throw an error
-  arithmetic:: Numer_t long_val() const; // extract 64 bits signed value
-  arithmetic:: Denom_t ulong_val() const; // extract 64 bits unsigned value
+  arithmetic::Numer_t long_val() const; // extract 64 bits signed value
+  arithmetic::Denom_t ulong_val() const; // extract 64 bits unsigned value
+  template<typename C> C convert() const; // extract some integer type value
 
   big_int& operator++ () { carry(d.begin()); return *this; }
   big_int& operator-- () { borrow(d.begin()); return *this; }
@@ -62,7 +63,8 @@ public:
   big_int& negate ()     { compl_neg(d.begin(),true); return *this; }
   big_int& complement () { compl_neg(d.begin(),false); return *this; }
 
-  big_int& operator*= (digit x);
+  big_int& operator*= (int x);
+  big_int& operator*= (Numer_t n) { return (*this)*=from_signed(n); }
   big_int operator* (const big_int&) const;
   big_int operator/ (const big_int& div) const { return big_int(*this)/=div; }
   big_int operator% (const big_int& div) const { return big_int(*this)%=div; }

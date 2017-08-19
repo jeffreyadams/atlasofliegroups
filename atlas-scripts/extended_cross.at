@@ -112,11 +112,9 @@ set ext_cross_2( int j
     , new_tau = tau
 {   , new_t = let s = solve(1+omega,alpha_check-beta_check)}
 { see Table 2 in twisted paper, case 2i12crx }
-    , new_t =
-       case solve(1+^theta,alpha_check-beta_check)
-       | solution(s): t-s
-       | else error("failure in cross action of type 2i12, solving for s")
-       esac
+    , new_t = t -
+       requisition("failure in cross action of type 2i12, solving for s")
+       (solve(1+^theta,alpha_check-beta_check))
     then xq=
       (ic,delta,gamma,new_lambda,new_theta,g,new_l,new_omega,new_tau,new_t)
     in { test_ext_cross(p,[j],xq); } xq
@@ -137,11 +135,9 @@ set ext_cross_2( int j
     , new_omega = s_ab_check*omega*s_ab_check
 {    , new_tau = let zeta = solve(1+theta,alpha-beta) }
 { see Table 2 in twisted paper, case 2r21crx }
-    , new_tau =
-       case solve(1+omega,alpha-beta)
-       | solution(s): tau - s
-       | else error("failure in cross action of type 2r21, solving for zeta")
-       esac
+    , new_tau = tau -
+       requisition("failure in cross action of type 2r21, solving for zeta")
+       (solve(1+omega,alpha-beta))
     , new_t = t
     then xq =
       (ic,delta,gamma,new_lambda,new_theta,g,new_l,new_omega,new_tau,new_t)

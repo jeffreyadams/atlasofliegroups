@@ -54,7 +54,7 @@ begin
     , new_t=t
     then new_tau = vec:
       case solve(1-new_theta,alpha)
-      | solution(zeta): tau - zeta*(alpha_check*tau)
+      | solution(zeta): tau - zeta*(int:alpha_check*tau)
       | else error("failure in Cayley of type 1i1, solving for zeta")
       esac
     in [(ic,delta,gamma,new_lambda,new_theta,g,new_l,new_omega,new_tau,new_t)]
@@ -228,15 +228,11 @@ begin
     ; prints("new_theta: ", new_theta)
   }
     then zeta_alpha_check =
-      case solve(1+^new_theta,alpha_check)
-      | solution(s): s | else error(
-      "failure in Cayley of type 2r22, solving for (1+^theta)zeta=alpha_check")
-      esac
+       "failure in Cayley of type 2r22, solving for (1+^theta)zeta=alpha_check"
+       .requisition(solve(1+^new_theta,alpha_check))
     , zeta_beta_check =
-      case solve(1+^new_theta,beta_check)
-      | solution(s): s | else error(
-      "failure in Cayley of type 2r22, solving for (1+^theta)zeta=beta_check")
-      esac
+       "failure in Cayley of type 2r22, solving for (1+^theta)zeta=beta_check"
+       .requisition(solve(1+^new_theta,beta_check))
     then new_t = ratvec_as_vec
       (	t-t*alpha*zeta_alpha_check-t*beta*zeta_beta_check )
     then F=(ic,delta,gamma,new_lambda,new_theta,g,new_l,new_omega,new_tau,new_t)
