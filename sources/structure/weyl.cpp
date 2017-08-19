@@ -594,7 +594,8 @@ WeylElt WeylGroup::translation(const WeylElt& w, const WeylInterface& f) const
   Let |w| act on |alpha| according to reflection action in root datum |rd|
   Note that rightmost factors act first, as in a product of matrices
 */
-void WeylGroup::act(const RootDatum& rd, const WeylElt& w, RootNbr& alpha) const
+void
+  WeylGroup::act(const RootSystem& rd, const WeylElt& w, RootNbr& alpha) const
 {
   for (size_t i = d_rank; i-->0; )
   { const auto& wp = wordPiece(w,i); // this is in internale coding
@@ -997,16 +998,18 @@ unsigned long TwistedWeylGroup::involutionLength
   return length;
 }
 
-RootNbrList TwistedWeylGroup::simple_images
-(const RootSystem& rs, const TwistedInvolution& tw) const
+RootNbrList
+  TwistedWeylGroup::simple_images
+     (const RootSystem& rs, const TwistedInvolution& tw) const
 {
   assert(rank()==rs.rank()); // compatibility of Weyl groups required
+  auto w=tw.w();
   RootNbrList result(rank());
   for (size_t i=0; i<rank(); ++i)
+  {
     result[i]=rs.simpleRootNbr(twisted(i));
-  WeylWord ww=word(tw.w());
-  for (size_t i=ww.size(); i-->0;)
-    rs.simple_root_permutation(ww[i]).renumber(result);
+    W.act(rs,w,result[i]);
+  }
 
   return result;
 }
