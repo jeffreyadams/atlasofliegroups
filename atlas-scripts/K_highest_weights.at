@@ -428,9 +428,8 @@ set K_types (KHighestWeight mu_in)= [K_Type]:
   in
   assert(is_parabolic_theta_stable(Q), "Q is not theta stable");
   let x_Q=x_min(Q)
-  then mu=make_strongly_dominant(mu,x_Q)
-  then (x,tau)=mu then
-  L=Levi(Q)
+  then (x,tau) = mu:=make_strongly_dominant(mu,x_Q)
+  , L=Levi(Q)
   then { L is relatively split }
   ()=if LKT_verbose then
      prints("Q=", Q);
@@ -494,9 +493,9 @@ set dimension (K_Type p) = int: rat_as_int(dimension_rat(p))
 }
 
 {. Given the highest weight for K0 and a KGB element in the distinguished fiber
-   for the corresponding group G, compute (one of) the highest weight(s) for K
+   for the corresponding group G, compute (one of) the highest weight(s) for K;
    (there may be more than one if K# is not equal K_0); in the unequal rank
-   case, mu_K will have fewer coordinates than the K-weight. .}
+   case, mu_K will have fewer coordinates than the K-weight). .}
 set K_highest_weight_from_K0_weight (KGBElt x,vec mu_K) = KHighestWeight:
   (x, { vec: } mu_K*left_inverse(injection_from_K_matrix(x)) )
 

@@ -1,3 +1,4 @@
+
 /*
   This is weyl.cpp
   Copyright (C) 2004,2005 Fokko du Cloux
@@ -55,10 +56,8 @@ namespace atlas {
 
   namespace weyl { // constants needed only in this file
 
-  const WeylElt::EltPiece UndefEltPiece = UndefValue;
-  const Generator UndefGenerator = UndefValue;
-
-}
+const WeylElt::EltPiece UndefEltPiece = UndefValue;
+const Generator UndefGenerator = UndefValue;
 
 //			     auxiliary functions
 namespace {
@@ -77,9 +76,8 @@ namespace {
 					WeylElt::EltPiece,
 					weyl::Generator,
 					weyl::Generator,
-					unsigned long);
-
-}
+					unsigned int);
+} // anonymous |namespace|
 
 /*****************************************************************************
 
@@ -89,18 +87,18 @@ namespace {
   of transducers.
 
   I have tried to make a careful choice of datatype for the group elements in
-  order to strike the right balance between efficiency and generality. This has
-  led me to the choice of _fixed size_ arrays of unsigned chars, representing
-  the "parabolic subquotient" representation of a given element; in other
-  words, in a group of rank n, the first n elements of the array are used
-  (but since it is fixed size, we have to allocate it to some constant value,
-  namely RANK_MAX.) This is not so wasteful as it may sound : of course the
-  representation as a single number is more compact, but will overflow even
-  on 64-bit machines for some groups of rank <= 16, and much sooner of course
-  on 32-bit machines; also it imposes some computational overhead for packing
-  and unpacking. Any variable-size structure like the STL vector uses already
-  three unsigned longs for its control structure (the address of the data, the
-  size and the capacity), and then it still has to allocate. This could
+  order to strike the right balance between efficiency and generality. This
+  has led me to the choice of _fixed size_ arrays of unsigned chars,
+  representing the "parabolic subquotient" representation of a given element;
+  in other words, in a group of rank n, the first n elements of the array are
+  used (but since it is fixed size, we have to allocate it to some constant
+  value, namely RANK_MAX.) This is not so wasteful as it may sound : of course
+  the representation as a single number is more compact, but will overflow
+  even on 64-bit machines for some groups of rank <= 16, and much sooner of
+  course on 32-bit machines; also it imposes some computational overhead for
+  packing and unpacking. Any variable-size structure like the STL vector uses
+  already three pointers for its control structure (the address of the data,
+  the size and the capacity), and then it still has to allocate. This could
   perhaps be simplified to just a pointer (after all the size of the
   allocation is known to the group) but you still have the big overhead of
   allocating and deallocating memory from the heap, and remembering to delete
@@ -121,8 +119,6 @@ namespace {
   external ordering and the internal one.
 
 ******************************************************************************/
-
-namespace weyl {
 
 /*
   Build the Weyl group corresponding to the Cartan matrix |c|,
@@ -150,11 +146,12 @@ WeylGroup::WeylGroup(const int_Matrix& c)
   // find renumbering |a| putting labels in canonical order
   Permutation a= dynkin::normalize(d);
 
-  /* now put appropriate permutations into |d_in| and |d_out|, so that
-     internal number |j| gives external number |d_out[j]|, and of course
-     |d_in[d_out[j]]==j|. By convention of |normalize|, this means |d_out==a|
-   */
-  for (size_t j = 0; j < d_rank; ++j) {
+/*
+  now put appropriate permutations into |d_in| and |d_out|, so that internal
+  number |j| gives external number |d_out[j]|, and of course
+  |d_in[d_out[j]]==j|. By convention of |normalize|, this means |d_out==a|
+*/
+  for (Generator j = 0; j < d_rank; ++j) {
     d_out[j] = a[j];
     d_in[d_out[j]] = j;
   }
@@ -163,24 +160,24 @@ WeylGroup::WeylGroup(const int_Matrix& c)
   fillCoxMatrix(d_coxeterMatrix,c,a);
 
   // now construct the transducer
-  for (size_t j = 0; j < d_rank; ++j)
+  for (Generator j = 0; j < d_rank; ++j)
     d_transducer[j] = Transducer(d_coxeterMatrix,j);
 
   // the longest element has the maximal valid value in each of its pieces
-  for (size_t j = 0; j < d_rank; ++j)
+  for (Generator j = 0; j < d_rank; ++j)
     d_longest[j] = d_transducer[j].size()-1;
 
   // its length is obtained by summing the (maximal) lengths of its pieces
-  for (size_t j = 0; j < d_rank; ++j)
+  for (Generator j = 0; j < d_rank; ++j)
     d_maxlength += d_transducer[j].maxlength();
 
   // and the Weyl group size is the product of the numbers of transducer states
-  for (size_t j = 0; j < d_rank; ++j)
+  for (Generator j = 0; j < d_rank; ++j)
     d_order *= d_transducer[j].size();
 
   // precompute for each |j| the first non-commuting or equal generator |i<=j|
-  for (size_t j = 0; j < d_rank; ++j)
-    for (size_t i=0; i<=j; ++i)
+  for (Generator j = 0; j < d_rank; ++j)
+    for (Generator i=0; i<=j; ++i)
       if (d_coxeterMatrix(i,j)!=2)
       {
 	d_min_star[j]=i; break;
@@ -227,7 +224,7 @@ WeylElt WeylGroup::genIn (Generator i) const
   Fokko's original code was (more or less):
 
   Generator t = s;
-  for (unsigned long j = d_rank; j-->0;) {
+  for (Generator j = d_rank; j-->0;) {
     if (d_transducer[j].out(w[j],t) == UndefGenerator) {
       // no transduction; shift and terminate
       unsigned long l = d_transducer[j].length(w[j]);
@@ -262,7 +259,7 @@ WeylElt WeylGroup::genIn (Generator i) const
 */
 int WeylGroup::multIn(WeylElt& w, Generator s) const
 {
-  unsigned long j = d_rank-1; // current transducer
+  Generator j = d_rank-1; // current transducer
 
   // in the next loop |j| cannot pass |0| since transducer 0 only has shifts
   for (Generator t; (t=d_transducer[j].out(w[j],s))!=UndefGenerator; s=t)
@@ -292,7 +289,7 @@ int WeylGroup::multIn(WeylElt& w, const WeylWord& v) const
 
 {
   int result=0;
-  for (size_t j = 0; j < v.size(); ++j)
+  for (unsigned int j = 0; j < v.size(); ++j)
     if (multIn(w,v[j])<0) result-=2;
 
   return result;
@@ -316,11 +313,11 @@ int WeylGroup::leftMultIn(WeylElt& w, Generator s) const
   int l=1; //
 
   // now compute $sv$ as above, keeping track of any length drop (at most 1)
-  for (size_t j = min_neighbor(s); j <= s; ++j)
+  for (Generator j = min_neighbor(s); j <= s; ++j)
     l+=multIn(sw,wordPiece(w,j));
 
   // and copy its relevant pieces into $w$
-  for (size_t j = min_neighbor(s); j <= s; ++j)
+  for (Generator j = min_neighbor(s); j <= s; ++j)
     w[j] = sw[j];
 
   return l;
@@ -334,7 +331,7 @@ int WeylGroup::leftMultIn(WeylElt& w, Generator s) const
 */
 void WeylGroup::mult(WeylElt& w, const WeylElt& v) const
 {
-  for (size_t j = 0; j < d_rank; ++j)
+  for (Generator j = 0; j < d_rank; ++j)
     multIn(w,wordPiece(v,j));
 }
 
@@ -346,7 +343,7 @@ void WeylGroup::mult(WeylElt& w, const WeylElt& v) const
 */
 void WeylGroup::mult(WeylElt& w, const WeylWord& v) const
 {
-  for (size_t j = 0; j < v.size(); ++j)
+  for (unsigned int j = 0; j < v.size(); ++j)
     mult(w,v[j]);
 }
 
@@ -366,11 +363,10 @@ WeylElt WeylGroup::inverse(const WeylElt& w) const
 {
   WeylElt wi;
 
-  for (size_t j = d_rank; j-->0 ;) {
-    const WeylWord& x_ww = wordPiece(w,j);
-    for (size_t i = x_ww.size(); i-->0;) {
+  for (Generator j = d_rank; j-->0 ;)
+  { const WeylWord& x_ww = wordPiece(w,j);
+    for (Transducer::PieceIndex i = x_ww.size(); i-->0;)
       multIn(wi,x_ww[i]);
-    }
   }
 
   return wi;
@@ -421,10 +417,10 @@ bool WeylGroup::hasDescent(Generator s, const WeylElt& w) const
 
   WeylElt x = genIn(s); // element operated upon, starts out as |s|
 
-  for (size_t j = min_neighbor(s); j <= s; ++j)
+  for (Generator j = min_neighbor(s); j <= s; ++j)
   {
     const WeylWord& piece=wordPiece(w,j);
-    for (size_t i=0; i<piece.size(); ++i)
+    for (Transducer::PieceIndex i=0; i<piece.size(); ++i)
       if (multIn(x,piece[i])<0) // multiply and see if a descent occurs
 	return true;
   }
@@ -472,9 +468,9 @@ Generator WeylGroup::leftDescent(const WeylElt& w) const
 */
 unsigned int WeylGroup::length(const WeylElt& w) const
 {
-  unsigned long l = 0;
+  unsigned int l = 0;
 
-  for (size_t i = 0; i < d_rank; ++i)
+  for (Generator i = 0; i < d_rank; ++i)
     l += d_transducer[i].length(w[i]);
 
   return l;
@@ -482,7 +478,7 @@ unsigned int WeylGroup::length(const WeylElt& w) const
 
 Generator WeylGroup::letter(const WeylElt& w, unsigned int k) const
 {
-  for (size_t i = 0; i<d_rank; ++i)
+  for (Generator i = 0; i<d_rank; ++i)
     if (k>=d_transducer[i].length(w[i]))
       k -= d_transducer[i].length(w[i]);
     else
@@ -494,10 +490,10 @@ Generator WeylGroup::letter(const WeylElt& w, unsigned int k) const
 WeylWord WeylGroup::word(const WeylElt& w) const
 {
   WeylWord result; result.reserve(length(w));
-  for (size_t j = 0; j < d_rank; ++j)
+  for (Generator j = 0; j < d_rank; ++j)
   {
     const WeylWord& xw = wordPiece(w,j);
-    for (size_t i = 0; i < xw.size(); ++i)
+    for (Transducer::PieceIndex i = 0; i < xw.size(); ++i)
       result.push_back(d_out[xw[i]]);
   }
 
@@ -516,12 +512,12 @@ WeylEltList WeylGroup::reflections() const
   WeylEltList simple; simple.reserve(rank());
 
   // put in simple the set of simple reflections, along internal numbering
-  for (size_t j = 0; j < rank(); ++j)
+  for (Generator j = 0; j < rank(); ++j)
     simple.push_back(genIn(j));
 
   std::set<WeylElt> found;
 
-  for (size_t j = 0; j < simple.size(); ++j)
+  for (Generator j = 0; j < simple.size(); ++j)
     if (found.insert(simple[j]).second) // then generator itself still absent
     { // generate conjugacy class of generator and insert its elements
       WeylEltList c; conjugacyClass(c,simple[j]);
@@ -532,20 +528,19 @@ WeylEltList WeylGroup::reflections() const
 }
 
 /*
-  Return the packed form of |w|. This will work only if the order of
-  the group fits into an |unsigned long|, and should therefore not be used.
+  Return the packed form of |w|
 
   This is the mixed-radix interpretation of the sequence of pieces, where
   piece 0 is the least significant one: if $N_i$ is |d_transducer[i].size()|
   and $a_i\in\{0,\ldots,N_i-1\}$ is the value of piece |i|, the value is
   $a_0+N_0*(a_1+N_1*(a_2+... N_{n-2}*(a_{n-1})...))$
 */
-unsigned long WeylGroup::toUlong(const WeylElt& w) const
+arithmetic::big_int WeylGroup::to_big_int(const WeylElt& w) const
 {
-  unsigned long u = 0;
+  arithmetic::big_int u(0);
 
-  for (size_t j=d_rank; j-->0; )
-    u=u*d_transducer[j].size()+w[j];
+  for (Generator j=d_rank; j-->0; )
+    (u*=static_cast<int>(d_transducer[j].size()))+=static_cast<int>(w[j]);
 
   return u;
 }
@@ -556,14 +551,12 @@ unsigned long WeylGroup::toUlong(const WeylElt& w) const
   Its pieces for the mixed-radix representation of |u|, which as usual can be
   found starting at the least significant end by repeated Euclidean divisions
 */
-WeylElt WeylGroup::toWeylElt(unsigned long u) const
+WeylElt WeylGroup::toWeylElt(arithmetic::big_int u) const
 {
   WeylElt w;
 
-  for (size_t j = 0; j < d_rank; ++j) {
-    w[j] = u%d_transducer[j].size();
-    u /= d_transducer[j].size();
-  }
+  for (Generator j = 0; j < d_rank; ++j)
+    w[j] = u.shift_modulo(static_cast<int>(d_transducer[j].size()));
 
   return w;
 }
@@ -581,9 +574,9 @@ WeylElt WeylGroup::translation(const WeylElt& w, const WeylInterface& f) const
 {
   WeylElt result;
 
-  for (size_t j = 0; j < rank(); ++j) {
-    const WeylWord& xw = wordPiece(w,j);
-    for (size_t i = 0; i < xw.size(); ++i)
+  for (Generator j = 0; j < rank(); ++j)
+  { const WeylWord& xw = wordPiece(w,j);
+    for (Transducer::PieceIndex i = 0; i < xw.size(); ++i)
       mult(result,f[d_out[xw[i]]]);
   }
 
@@ -594,12 +587,13 @@ WeylElt WeylGroup::translation(const WeylElt& w, const WeylInterface& f) const
   Let |w| act on |alpha| according to reflection action in root datum |rd|
   Note that rightmost factors act first, as in a product of matrices
 */
-void WeylGroup::act(const RootDatum& rd, const WeylElt& w, RootNbr& alpha) const
+void
+  WeylGroup::act(const RootSystem& rd, const WeylElt& w, RootNbr& alpha) const
 {
-  for (size_t i = d_rank; i-->0; )
-  { const auto& wp = wordPiece(w,i); // this is in internale coding
-    for (unsigned j=wp.size(); j-->0; ) // loop to apply |d_out| to letters
-      rd.simple_reflect_root(d_out[wp[j]],alpha);
+  for (Generator i = d_rank; i-->0; )
+  { const auto& wp = wordPiece(w,i); // this is in internal coding
+    for (Transducer::PieceIndex j=wp.size(); j-->0; ) // loop to apply |d_out|
+      rd.simple_reflect_root(d_out[wp[j]],alpha);     // to individual letters
   }
 }
 
@@ -608,10 +602,10 @@ template<typename C>
   void WeylGroup::act
     (const RootDatum& rd, const WeylElt& w,  matrix::Vector<C>& v) const
 {
-  for (size_t i = d_rank; i-->0; )
+  for (Generator i = d_rank; i-->0; )
   {
     const WeylWord& xw = wordPiece(w,i);
-    for (size_t j = xw.size(); j-->0; )
+    for (Transducer::PieceIndex j = xw.size(); j-->0; )
       rd.simple_reflect(d_out[xw[j]],v);
   }
 }
@@ -622,10 +616,10 @@ void WeylGroup::act(const RootDatum& rd, const WeylElt& w, RatWeight& v) const
 void WeylGroup::act(const RootDatum& rd, const WeylElt& w, LatticeMatrix& M)
   const
 {
-  for (size_t i = d_rank; i-->0; )
+  for (Generator i = d_rank; i-->0; )
   {
     const WeylWord& xw = wordPiece(w,i);
-    for (size_t j = xw.size(); j-->0; )
+    for (Transducer::PieceIndex j = xw.size(); j-->0; )
       rd.simple_reflect(d_out[xw[j]],M); // left-multiply |M| by letters of |w|
   }
 }
@@ -635,10 +629,10 @@ template<typename C>
   void WeylGroup::act
     (const PreRootDatum& prd, const WeylElt& w, matrix::Vector<C>& v) const
 {
-  for (size_t i = d_rank; i-->0; )
+  for (Generator i = d_rank; i-->0; )
   {
     const WeylWord& xw = wordPiece(w,i);
-    for (size_t j = xw.size(); j-->0; )
+    for (Transducer::PieceIndex j = xw.size(); j-->0; )
       prd.simple_reflect(d_out[xw[j]],v);
   }
 }
@@ -650,10 +644,10 @@ void
 void WeylGroup::act(const PreRootDatum& prd, const WeylElt& w, LatticeMatrix& M)
   const
 {
-  for (size_t i = d_rank; i-->0; )
+  for (Generator i = d_rank; i-->0; )
   {
     const WeylWord& xw = wordPiece(w,i);
-    for (size_t j = xw.size(); j-->0; )
+    for (Transducer::PieceIndex j = xw.size(); j-->0; )
       prd.simple_reflect(d_out[xw[j]],M);
   }
 }
@@ -665,10 +659,10 @@ void WeylGroup::act(const PreRootDatum& prd, const WeylElt& w, LatticeMatrix& M)
 void
   WeylGroup::inverse_act(const RootDatum& rd, const WeylElt& w, Weight& v) const
 {
-  for (size_t i=0; i<d_rank; ++i )
+  for (Generator i=0; i<d_rank; ++i )
   {
     const WeylWord& xw = wordPiece(w,i);
-    for (size_t j=0; j<xw.size(); ++j )
+    for (Transducer::PieceIndex j=0; j<xw.size(); ++j )
       rd.simple_reflect(d_out[xw[j]],v);
   }
 }
@@ -745,7 +739,7 @@ void TwistedWeylGroup::twistedConjugate // $tw = w.tw.twist(w)^{-1}$
   WeylElt x=w; W.mult(x,tw.w());
 
   // now multiply $x$ by $\delta(w^{-1})$
-  for (size_t i = W.length(w); i-->0 ;)
+  for (unsigned int i = W.length(w); i-->0 ;)
     mult(x,twisted(W.letter(w,i)));
 
   tw.contents()=x;
@@ -980,33 +974,34 @@ InvolutionWord TwistedWeylGroup::extended_involution_expr(TwistedInvolution tw)
   structures; avoid calling this in sorting routines, since it is inefficient
   in such circumstances; instead do with the stored length information there.
 */
-unsigned long TwistedWeylGroup::involutionLength
+unsigned int TwistedWeylGroup::involutionLength
   (const TwistedInvolution& tw) const
 {
   TwistedInvolution x = tw;
-  unsigned long length = 0;
+  unsigned int length = 0;
 
   for (Generator s = W.leftDescent(x.w()); s != UndefGenerator;
-                 s = W.leftDescent(x.w()),++length) {
+                 s = W.leftDescent(x.w()),++length)
     if (hasTwistedCommutation(s,x))
       leftMult(x,s);
     else
       twistedConjugate(x,s);
-  }
 
   return length;
 }
 
-RootNbrList TwistedWeylGroup::simple_images
-(const RootSystem& rs, const TwistedInvolution& tw) const
+RootNbrList
+  TwistedWeylGroup::simple_images
+     (const RootSystem& rs, const TwistedInvolution& tw) const
 {
   assert(rank()==rs.rank()); // compatibility of Weyl groups required
+  auto w=tw.w();
   RootNbrList result(rank());
-  for (size_t i=0; i<rank(); ++i)
+  for (Generator i=0; i<rank(); ++i)
+  {
     result[i]=rs.simpleRootNbr(twisted(i));
-  WeylWord ww=word(tw.w());
-  for (size_t i=ww.size(); i-->0;)
-    rs.simple_root_permutation(ww[i]).renumber(result);
+    W.act(rs,w,result[i]);
+  }
 
   return result;
 }
@@ -1016,13 +1011,11 @@ WeightInvolution TwistedWeylGroup::involution_matrix
 {
   RootNbrList simple_image = simple_images(rs,tw);
   WeightList b(rank());
-  for (size_t i=0; i<rank(); ++i)
+  for (Generator i=0; i<rank(); ++i)
     b[i] = rs.root_expr(simple_image[i]);
 
   return WeightInvolution(b,b.size());
 }
-
-} // |namespace weyl|
 
 
 /*****************************************************************************
@@ -1040,8 +1033,6 @@ WeightInvolution TwistedWeylGroup::involution_matrix
 
 ******************************************************************************/
 
-namespace weyl {
-
 /*
   Construct subquotient \#r for the Coxeter matrix c.
 
@@ -1054,8 +1045,8 @@ namespace weyl {
 
   Algorithm :
 
-  The algorithm is a version of my favorite bootstrapping procedure for the
-  construction of Weyl groups and parabolic quotients. We start with a
+  The algorithm is a version of my [Fokko] favorite bootstrapping procedure
+  for the construction of Weyl groups and parabolic quotients. We start with a
   partially defined automaton containing only one element, and for which all
   shifts by the final generator $r$ are not yet defined (generators $i<r$ give
   transduction of $i$). At each point in time, all shifts for all elements in
@@ -1100,7 +1091,7 @@ namespace weyl {
       times, or $m-2$ times followed by an upward step; then $xst$ goes up.
 */
 
-Transducer::Transducer(const int_Matrix& c, size_t r)
+Transducer::Transducer(const int_Matrix& c, Generator r)
   : d_shift(1), d_out(1) // start with tables of size 1
   , d_length(1,0), d_piece(1,WeylWord()) // with empty word, length 0.
 
@@ -1111,7 +1102,8 @@ Transducer::Transducer(const int_Matrix& c, size_t r)
   OutRow& firstOut=d_out[0];
 
   // all shifts lower than r should be defined
-  for (size_t j = 0; j < r; ++j) {
+  for (Generator j = 0; j < r; ++j)
+  {
     firstShift[j] = 0; // shift to (current) state 0, i.e., no transition
     firstOut[j] = j;   // but transduction of the same generator
   }
@@ -1148,42 +1140,35 @@ Transducer::Transducer(const int_Matrix& c, size_t r)
 
 	// now define the shifts or transductions that do not take xs up
 
-	for (Generator t = 0; t <= r; ++t) {
-
+	for (Generator t = 0; t <= r; ++t)
+	{
 	  if (t == s)
 	    continue;
 
-	  unsigned long m = c(s,t); // coef from Coxeter matrix
-
 	  WeylElt::EltPiece y  = dihedralMin(*this,xs,s,t);
-	  unsigned long d = d_length[xs] - d_length[y];
-
-	  if (d < m-1)
-	    continue;  // case (3):  $t$ takes $xs$ up, do nothing
-
+	  unsigned int d = d_length[xs] - d_length[y];
+	  unsigned int m = c(s,t); // non negative coef from Coxeter matrix
 	  Generator st[] = {s,t};
 
-	  if (d == m) {
-	    // case (1): there is no transduction
+	  if (d == m)
+	  { // case (1): there is no transduction
 	    // xs.t is computed by shifting up from y the other way around
 	    y = dihedralShift(*this,y,st[m%2],st[(m+1)%2],m-1);
 	    d_shift[xs][t] = y;
 	    d_shift[y][t] = xs;
-	    continue;  // next t
 	  }
+	  else if (d == m-1)
+	  {
+	    Generator u = st[(m+1)%2];
 
-	  // now d == m-1;
-
-	  Generator u = st[(m+1)%2];
-
-	  if (d_shift[y][u] == y) {
-	    // case (2): $xs$ is fixed by $t$, outputs the same $g$ as $y$
-	    d_shift[xs][t] = xs;
-	    d_out[xs][t] = d_out[y][u];
+	    if (d_shift[y][u] == y)
+	    { // case (2): $xs$ is fixed by $t$, outputs the same $g$ as $y$
+	      d_shift[xs][t] = xs;
+	      d_out[xs][t] = d_out[y][u];
+	    }
 	  }
-
-	  // else case (3) : $xs$ moves up, do nothing
-	}
+	  else assert(d<m-1); // case (3):  $t$ takes $xs$ up, do nothing
+	} // |for(t)|
       } // |if (..==UndefEltPiece)|, |for|, |for|
 } // |Transducer::Transducer|
 
@@ -1213,15 +1198,12 @@ size_t TI_Entry::hashCode(size_t modulus) const
   return hash & (modulus-1);
 }
 
-} // |namespace weyl|
 
 /*****************************************************************************
 
         Chapter III -- Functions declared in weyl.h
 
 ******************************************************************************/
-
-namespace weyl {
 
 /*
   Return the twist defined by |d| relative to |rd|.
@@ -1233,21 +1215,19 @@ Twist make_twist(const RootDatum& rd, const WeightInvolution& d)
 {
   RootNbrList simple_image(rd.semisimpleRank());
 
-  for (size_t i = 0; i<simple_image.size(); ++i)
+  for (Generator i = 0; i<simple_image.size(); ++i)
     simple_image[i] = rd.root_index(d*rd.simpleRoot(i));
 
   rootdata::wrt_distinguished(rd,simple_image); // and forget the Weyl element
 
   Twist result;
 
-  for (size_t i = 0; i<simple_image.size(); ++i)
+  for (Generator i = 0; i<simple_image.size(); ++i)
     result[i] = rd.simpleRootIndex(simple_image[i]);
 
   return result;
 }
 
-
-} // |namespace weyl|
 
 /*****************************************************************************
 
@@ -1272,8 +1252,8 @@ WeylElt::EltPiece dihedralMin(const weyl::Transducer& qa,
 
   WeylElt::EltPiece y = x;
 
-  for (;;) {
-    // this is ok even if the shift is still undefined
+  for (;;)
+  { // this is ok even if the shift is still undefined:
     if (qa.shift(y,u) >= y)
       return y;
     else
@@ -1291,14 +1271,15 @@ WeylElt::EltPiece dihedralShift(const weyl::Transducer& qa,
 				      WeylElt::EltPiece x,
 				      weyl::Generator s,
 				      weyl::Generator t,
-				      unsigned long d)
+				      unsigned int d)
 {
   weyl::Generator u = s;
   weyl::Generator v = t;
 
   WeylElt::EltPiece y = x;
 
-  for (unsigned long j = 0; j < d; ++j) {
+  for (unsigned int j = 0; j < d; ++j)
+  {
     y = qa.shift(y,u);
     std::swap(u,v);
   }
@@ -1327,10 +1308,10 @@ void fillCoxMatrix(int_Matrix& cox,
 
   static const int translate[] // from product of cart entries -> cox entry
     = { 2, 3, 4, 6 }; // N.B.  |0<=cart(i,j)*cart(j,i)<=3| always for |i!=j|
-  for (size_t i=0; i<cart.numRows(); ++i)
+  for (Generator i=0; i<cart.numRows(); ++i)
   {
     cox(i,i) = 1;
-    for (size_t j=i+1; j<cart.numRows(); ++j)
+    for (Generator j=i+1; j<cart.numRows(); ++j)
       cox(i,j) = cox(j,i) = translate[cart(i,j)*cart(j,i)];
   }
 
@@ -1339,12 +1320,9 @@ void fillCoxMatrix(int_Matrix& cox,
   a.inv_conjugate(cox);
 }
 
+} // anonymous |namespace|
 
 //				Template instantiation
-
-} // |namespace|
-
-namespace weyl {
 
 template
 void WeylGroup::act

@@ -715,8 +715,9 @@ InnerClass::canonicalize
   const
 {
   const RootDatum& rd=rootDatum();
-  const TwistedWeylGroup& W=twistedWeylGroup();
-  InvolutionData id(rd,W.simple_images(rd,sigma));
+  const TwistedWeylGroup& tW=twistedWeylGroup();
+  const WeylGroup& W=weylGroup();
+  InvolutionData id(rd,tW.simple_images(rd,sigma));
 
   Weight rrs=rd.twoRho(id.real_roots()); // real (pos)root sum
   Weight irs=rd.twoRho(id.imaginary_roots()); // imaginary (pos)root sum
@@ -748,7 +749,7 @@ InnerClass::canonicalize
 	{
 	  rd.simple_reflect(s,rrs);   // apply $s_i$ to real-root sum
 	  rd.simple_reflect(s,irs);   // apply $s_i$ to imaginary-root sum
-	  W.twistedConjugate(sigma,s); // adjust |sigma| accordingly
+	  tW.twistedConjugate(sigma,s); // adjust |sigma| accordingly
 	  ww.push_back(s);                 // and add generator to |ww|
 	  break;     // after this change, continue the |do|-|while| loop
 	}
@@ -789,11 +790,11 @@ InnerClass::canonicalize
       for (it=gens.begin(); it(); ++it)
       {
 	weyl::Generator s=*it;
-	RootNbr beta= // image of |rd.simpleRootNbr(s)| by $\theta$
-	  rd.permuted_root(W.word(sigma.w()),rd.simpleRootNbr(W.twisted(s)));
+	RootNbr beta=rd.simpleRootNbr(tW.twisted(s)); // $\delta(\alpha_s)$
+          W.act(rd,sigma.w(),beta); // now $\beta=\theta(\alpha_s)$
 	if (rd.is_negroot(beta))
 	{
-	  W.twistedConjugate(sigma,s); // adjust |sigma|
+	  tW.twistedConjugate(sigma,s); // adjust |sigma|
 	  ww.push_back(s);             // and add generator to |ww|
 	  break;                       // and continue |do|-|while| loop
 	}

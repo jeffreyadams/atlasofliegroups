@@ -400,7 +400,7 @@ set rho_u_ic (Parabolic P, KGBElt x) = ratvec:
   assert(any(for y in equivalence_class_of(P) do y=x od)
         ,"x does not belong to the class of P");
   assert(in_distinguished_fiber(x),"x is not in the distinguished fiber");
- sum(columns_with(is_compact_imaginary(x),nilrad_roots(P))) / 2
+  sum(columns_with(is_compact_imaginary(x),nilrad_roots(P))) / 2
 
 {. Sum of compact roots (of $\mathfrak t$) in $\mathfrak u$ for theta-stable parabolic P, with respect to (distinguished) x in the class of P. .}
 set two_rho_u_cap_k (Parabolic P,KGBElt x) = vec:
