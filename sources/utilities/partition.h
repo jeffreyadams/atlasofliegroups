@@ -32,7 +32,7 @@ namespace partition {
 /******** function declarations **********************************************/
 
 template<typename F>  // F is the type of a binary function object
-  Partition orbits(const F&, unsigned long, unsigned long);
+  Partition orbits(const F&, unsigned int, unsigned long);
 
 /******** type definitions ***************************************************/
 

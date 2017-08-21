@@ -83,6 +83,6 @@ begin
 end
 
 set regular_KL_matrix (Param p) = poly_mat:
-  let (B,,ind,polys,,,)=KL_block(p) then (r,c)=#ind in
+  let (B,,ind,polys,,,)=KL_block(p) then (r,c)=shape(ind) in
   for i:r do for j:c do polys[ind[i,j]] od od
 

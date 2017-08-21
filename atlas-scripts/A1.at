@@ -1,53 +1,69 @@
 <basic.at
 <lietypes.at { for A1="A1" }
 <group_operations.at { for *@(RootDatum,RootDatum) }
+<lattice.at { for |restict_action@(mat,mat)| }
 
-set A1_Lie_type(int n_A1_factors, int n_torus_factors)=LieType:
-let rv=string:"" in for i:n_A1_factors do rv+:="A1." od;
-Lie_type(rv+:="T"+int_format(n_torus_factors))
+set A1_Lie_type (int n_A1_factors, int n_torus_factors) = LieType:
+   Lie_type("A1"*n_A1_factors + "T"+n_torus_factors)
 
-{simply connected (cross torus)}
+{ simply connected (cross torus) }
 
-set A1_root_datum(int n_A1_factors, int n_torus_factors)=RootDatum:
-let rd=simply_connected(A1)  in
-for i:n_A1_factors-1 do rd*:=simply_connected(A1) od;
- rd*root_datum(torus(n_torus_factors,0,0))
+set A1_root_datum ((int,int)AT_counts) = RootDatum:
+   AT_counts.A1_Lie_type.simply_connected
 
 {quotient of simply connected x torus as in Fokko}
-set A1_root_datum(int n_A1_factors, int n_torus_factors, [ratvec] center)=RootDatum:
-root_datum(A1_Lie_type(n_A1_factors,n_torus_factors),center)
+set A1_root_datum (int n_A1, int n_T, [ratvec] center) =
+       RootDatum:
+   root_datum(A1_Lie_type(n_A1,n_T),center)
 
-{convert product of Z/2's [vec] to [ratvec]: replace 0,1(mod 2) with 0,1/2, respectively}
-set central_subgroup_as_ratvec([vec] center)=[ratvec]:
-for v in center do ratvec:for i:#v do if v[i]%2=0 then 0/2 else 1/2 fi od od
+{ convert product of Z/2's [vec] to [ratvec]:
+  replace 0,1(mod 2) with 0,1/2, respectively }
+set central_subgroup_as_ratvec ([vec] center) = [ratvec]:
+   for v in center do ratvec: v/2%1 od
 
-{give center as [vec]: center -
-list of binary vectors giving element of (Z/2)^rank
-example: A1_root_datum(1,1,[1,1])=GL(2)}
-set A1_root_datum(int n_A1_factors, int n_torus_factors, [vec] center)=RootDatum:
-let center_ratvec=central_subgroup_as_ratvec(center) in
-A1_root_datum(n_A1_factors,n_torus_factors,center_ratvec)
+{ give center as [vec]: center -
+  list of binary vectors giving element of (Z/2)^rank
+  example: A1_root_datum(1,1,[[1,1]])=GL(2) }
+set A1_root_datum (int n_A1, int n_T, [vec] center) =
+       RootDatum:
+   A1_root_datum(n_A1,n_T,central_subgroup_as_ratvec(center))
 
-{same as previous commands but including inner class as string, such as "Cssc" (including quotes)}
-set A1_inner_class(int n_A1_factors,int n_torus_factors, string innerclass)=InnerClass:
-if innerclass="s" then for i:n_A1_factors+n_torus_factors-1 do innerclass+:="s" od fi;
-inner_class(A1_root_datum(n_A1_factors,n_torus_factors), innerclass)
+{ same as previous commands but including inner class as string, like "Cssc" }
+set A1_inner_class (int n_A1,int n_T, string innerclass) = InnerClass:
+   if innerclass="s" then innerclass := "s"*(n_A1+n_T) fi; { abbreviation "s" }
+   inner_class(A1_root_datum(n_A1,n_T),innerclass)
 
-set A1_inner_class(int n_A1_factors,int n_torus_factors, [ratvec] center, string innerclass)=InnerClass:
-if innerclass="s" then for i:n_A1_factors+n_torus_factors-1 do innerclass+:="s" od fi;
-inner_class(A1_root_datum(n_A1_factors,n_torus_factors,center), innerclass)
+set A1_inner_class (int n_A1,int n_T, [ratvec] center, string innerclass) =
+      InnerClass:
+   if innerclass="s" then innerclass := "s"*(n_A1+n_T) fi; { abbreviation "s" }
+   inner_class(A1_root_datum(n_A1,n_T,center), innerclass)
 
-set A1_inner_class(int n_A1_factors,int n_torus_factors, [vec] center, string innerclass)=InnerClass:
-A1_inner_class(n_A1_factors,n_torus_factors, central_subgroup_as_ratvec(center),innerclass)
+set A1_inner_class (int n_A1, int n_T, [vec] center, string innerclass) =
+       InnerClass:
+   A1_inner_class(n_A1,n_T,central_subgroup_as_ratvec(center),innerclass)
 
-{same as previous commands with additional distinguished involution delta, given as
-a permutation of order 2, where [a_1,...a_n] means the permutation i->a_i
-return (inner_class, matrix of permutation)
+{ same as previous commands with additional distinguished involution delta,
+  given as a permutation of order 2, where [a_1,...a_n] means the permutation
+  i->a_i ; return (inner_class, matrix of permutation)
 }
-set A1_inner_class_twisted(int n_A1_factors,int n_torus_factors, [ratvec] center, string innerclass, vec permutation)=(InnerClass,mat):
-assert(#permutation=n_A1_factors+n_torus_factors, "permutation has wrong size");
-let ic=A1_inner_class(n_A1_factors,n_torus_factors,center,innerclass) then
-Q=quotient_basis(Lie_type(ic),center) in (ic,sub_matrix(permutation_matrix(permutation),Q))
+set A1_inner_class_twisted (
+      int n_A1,
+      int n_T,
+      [ratvec] center,
+      string innerclass,
+      vec permutation) = (InnerClass,mat):
+   assert(#permutation=n_A1+n_T, "permutation has wrong size");
+   let ic = A1_inner_class(n_A1,n_T,center,innerclass)
+   then Q = quotient_basis(Lie_type(ic),center) { lattice of simply_connected }
+   , delta_sc = let I=id_mat(n_A1) in mat:
+                for c in permutation do I[c] od { action of there delta there }
+in (ic,restrict_action(delta_sc,Q))
 
-set A1_inner_class_twisted(int n_A1_factors,int n_torus_factors, [vec] center, string innerclass, vec permutation)=(InnerClass,mat):
-A1_inner_class_twisted(n_A1_factors,n_torus_factors,central_subgroup_as_ratvec(center),innerclass,permutation)
+set A1_inner_class_twisted (
+      int n_A1,
+      int n_T,
+      [vec] center,
+      string innerclass,
+      vec permutation) = (InnerClass,mat):
+   A1_inner_class_twisted(
+      n_A1,n_T,central_subgroup_as_ratvec(center),innerclass,permutation)

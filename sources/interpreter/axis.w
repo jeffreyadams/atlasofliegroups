@@ -1864,7 +1864,7 @@ void variadic_builtin_call::evaluate(level l) const
 @)
   try
   {@; (*f_ptr)(l); } // call the built-in function
-  @< Catch-block for exceptions thrown within call of |f| with |arg_string| @>
+  @< Catch block for exceptions thrown within call of |f| with |arg_string| @>
 }
 
 @ To provide back-trace, we catch and re-throw an error after extending the
@@ -1887,7 +1887,7 @@ a call of~|extend_message|.
 
 @:Catch to trace back calls@>
 
-@< Catch-block for exceptions thrown within call of |f| with |arg_string| @>=
+@< Catch block for exceptions thrown within call of |f| with |arg_string| @>=
 catch (error_base& e)
 {@; extend_message(e,this,f,arg_string);
   throw;
@@ -1966,7 +1966,7 @@ void builtin_call::evaluate(level l) const
 @)
   try
   {@; (*f_ptr)(l); } // call the built-in function
-  @< Catch-block for exceptions thrown within call of |f|... @>
+  @< Catch block for exceptions thrown within call of |f|... @>
 }
 
 
@@ -2022,7 +2022,7 @@ void call_expression::evaluate(level l) const
   }
 @)
   try {@; f->apply(l); } // apply the function, handling |l| appropriately
-  @< Catch-block for exceptions thrown within call of |f|... @>
+  @< Catch block for exceptions thrown within call of |f|... @>
 }
 
 
@@ -2539,14 +2539,14 @@ pattern available, but there is a frame |fr| from which is can be obtained.
 @< Catch block for providing a trace-back of local variables @>=
 catch (error_base& e)
 { std::vector<id_type> names = fr.id_list();
-  auto id_it = names.cbegin(); std::ostringstream o; o << "\n  [";
+  auto id_it = names.cbegin(); std::ostringstream o; o << "\n  {";
   for (auto it = frame::current->begin(); it!=frame::current->end();
        ++it,++id_it)
   { if (it!=frame::current->begin())
       o << ", ";
     o << main_hash_table->name_of(*id_it) << '=' << **it;
   }
-  o << ']';
+  o << '}';
   e.message.append(o.str());
   throw;
 }
@@ -2993,7 +2993,7 @@ void closure_call::evaluate(level l) const
     }
   } // restore context upon destruction of |fr|
   @< Catch block for explicit |return| from functions @>
-  @< Catch-block for exceptions thrown within call of |f|... @>
+  @< Catch block for exceptions thrown within call of |f|... @>
 }
 
 @* Sequence expressions.
@@ -4568,7 +4568,8 @@ the identifier pattern of defaulted branches be empty, the value from the
   // if a default was given, insert for omitted branches
     for (auto it=choices.begin(); it!=choices.end(); ++it)
       if (it->second.get()==nullptr)
-        *it = choice_part(id_pat(),default_choice); // share |default_choice| here
+        *it = choice_part(id_pat(),default_choice);
+              // share |default_choice| here
 }
 
 @*1 While loops.
@@ -6781,7 +6782,7 @@ static shared_builtin sizeof_string_builtin =
        (sizeof_string_wrapper,"#@@string");
 static shared_builtin matrix_columns_builtin =
     std::make_shared<const builtin_value<false> >
-     (matrix_ncols_wrapper,"ncols@@mat");
+     (matrix_ncols_wrapper,"#@@mat");
 static shared_builtin sizeof_parampol_builtin =
     std::make_shared<const builtin_value<false> >
       (virtual_module_size_wrapper, "#@@ParamPol");

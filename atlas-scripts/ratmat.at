@@ -22,8 +22,7 @@ set !s = "/"
 : ratmat = (mat,string,int) { matrix, slash, common denominator }
 { the void component avoids unary/binary conflicts, as for -@(mat,int) }
 
-set gcd(mat M) = int:
-  let invf=inv_fact(M) in if =invf then 1 else invf[0] fi
+set gcd(mat M) = int: gcd(for c in M do gcd(c) od)
 
 set simplify(ratmat(M,,d)) = ratmat:
   let g=gcd([gcd(M),d]) in (M\g,s,d\g)
@@ -43,8 +42,8 @@ set matrix ((int,int)(r,c),(int,int->rat) f) = ratmat:
   then D = lcm(for row in val do lcm(for e in row do denom(e) od) od)
   in simplify(r#for j:c do for i:r do let (n,d)=%val[i][j] in n*(D\d) od od,s,D)
 
-set n_rows (ratmat(M,,))= int: let (r,)=#M in r
-set n_columns (ratmat(M,,))= int: let (,c)=#M in c
+set n_rows (ratmat(M,,))= int: n_rows(M)
+set n_columns (ratmat(M,,))= int: n_columns(M)
 
 set columns (ratmat(M,,d)) = [ratvec]: for c in M do c/d od
 set rows (ratmat(M,,d)) = [ratvec]: for c in ^M do c/d od
@@ -111,7 +110,7 @@ set - ([ratvec] M,ratmat MM) = ratmat: ratvecs_as_ratmat(M)-MM
 set - (ratmat M,[ratvec] MM) = ratmat: M-ratvecs_as_ratmat(MM)
 
 set inverse (ratmat(M,,d)) = ratmat: let (Minv,e)=invert(M) in d*Minv/e
-set solve (ratmat(M,,d), ratvec v) = [ratvec]: solve(M,v*d)
+set solve (ratmat(M,,d), ratvec v) = maybe_a_ratvec: solve(M,v*d)
 
 {also define resulting operations involving a mat}
 set * ([ratvec] M,[ratvec] MM)=ratmat:
@@ -124,24 +123,25 @@ set - ([ratvec] M,[ratvec] MM)=ratmat:
 {define inverse of mat as ratmat}
 set rational_inverse(mat M) = ratmat:inverse(mat_as_ratmat(M))
 
-{right inverse of rational matrix
- adapted from right_inverse in matrix.at
- (l,r) matrix, l\le r
- diagonalize: LAR=D   D=diag(d_1,...,d_l) # (l-r) columns of 0's
- LARE=I_l  where E = diag(1/d1,...,1/dl) plus (l-r) rows of 0's
- conjugate by L^{-1}
- A(REL)=I
+{ left inverse of injective (full column rank) rational matrix
+  adapted from |weak_left_inverse| in matrix.at
 }
-{.right inverse of a rational matrix.}
-set right_inverse(ratmat A) = ratmat:
-  let (M,,d)=A in
-  let (diag,L,R) = diagonalize(M), (l,r)=#M { also sizes of L,R } in
-  assert(#diag>=l,"image does not have full rank");
-  ratvecs_as_ratmat (for j:l do (1/diag[j])*R[j] od) * mat_as_ratmat(L) *
-    (d*id_mat(l))
+set left_inverse(ratmat(A,,d)) = ratmat:
+(  let (M,C,pivots,)=echelon(A), c=#A
+in if #M<c then error("not injective (rank is ",#M,"<",c,")") fi
+;  let (Tri,R)= ech_up(M,pivots) then (T1,d1)=invert_ech(Tri[:c,:])
+   then (num,den)=%(d/d1) { simplify fraction before combining }
+in ( num*C*T1*R[:c,:] , s, den)
+)
 
-{.left inverse of a rational matrix.}
-set left_inverse(ratmat A) = ratmat:^right_inverse(^A)
+{.right inverse of a rational matrix.}
+set right_inverse(ratmat(A,,d)) = ratmat: { formal dual of left_inverse }
+(  let (M,C,pivots,)=echelon(^A), c=A.n_rows
+in if M.n_rows<c then error("row rank ",M.n_rows," not full (",c,")") fi
+;  let (Tri,R)= ech_up(M,pivots) then  (T1,d1)=invert_ech(Tri[:c,:])
+   then (num,den)=%(d/d1) { simplify fraction before combining }
+in ( ^(num*C*T1*R[:c,:]) , s, den)
+)
 
 set ratvec_to_string(ratvec v) = string: { show ratvec as [rat], simplified }
    ## for a in v

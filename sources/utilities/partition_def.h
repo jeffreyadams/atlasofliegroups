@@ -66,11 +66,11 @@ namespace partition {
             if x'=a(j,x) is in B:
               remove x' from B, push x' onto S, and add it to the current orbit
 */
-template<typename F> // class |F| holds a binary function object: |(ul,ul)->ul|
-  Partition orbits(const F& a, size_t c, unsigned long n)
+template<typename F> // class |F| holds a binary function object: |(ui,ul)->ul|
+  Partition orbits(const F& a, unsigned int c, unsigned long n)
 {
   Partition result(n);
-
+  std::vector<unsigned long> to_do; to_do.reserve(n);
   bitmap::BitMap b(n); // as yet unclassified elements
   b.fill();            // initially that means everyone
 
@@ -78,21 +78,21 @@ template<typename F> // class |F| holds a binary function object: |(ul,ul)->ul|
   {
     unsigned long root = *it; // starting element for a fresh orbit
     unsigned long thisClass = result.new_class(root);
-    containers::queue<unsigned long> to_do { root };
+    to_do.clear(); to_do.push_back(root);
     b.remove(root); // avoid looping back to |root| later
 
     do
     {
-      unsigned long x = to_do.front(); to_do.pop();
+      unsigned long x = to_do.back(); to_do.pop_back();
 
-      for (unsigned long i=0; i<c; ++i)
+      for (unsigned int i=0; i<c; ++i)
       {
 	unsigned long y = a(i,x);
 	if (b.isMember(y)) // new element was found
 	{
 	  b.remove(y);
 	  result.addToClass(thisClass,y);
-	  to_do.push(y);
+	  to_do.push_back(y);
 	}
       }
     }

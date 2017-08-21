@@ -74,21 +74,24 @@ set show_kernel (RootDatum rd) = void:
   then text= ## ##
     [ [ "{e}" ]
     , for f in invf do if f=1 then "" else ".Z/"+f fi od
-    , for i:rank(rd)-semisimple_rank(rd) do ".Q/Z" od
+    , for :rank(rd)-semisimple_rank(rd) do ".Q/Z" od
     ]
   in prints("Torsion subgroup of kernel of complex group: " ,text)
 
 set common_denominator ([ratvec] list) = int:
-  denom(for v in list do /denom(v)od)
+  denom(ratvec: for v in list do /denom(v) od)
 
 set kernel_sublattice (RootDatum rd, [ratvec] generators) = mat:
-  let all = adapted_basis(simple_roots(rd))
-  then (C,v)=filter_units(all)
-  then () =
-    for gen in generators do for vj@j in v do rat_as_int(vj*gen[j]) od od
-  then d = common_denominator(generators)
-  then M = mat: rank(rd) # for gen in generators do ratvec_as_vec(d*gen) od
-  in replace_gen(all,C*ann_mod(M,d))
+(  let all = adapted_basis(simple_roots(rd))
+   then (C,v)=filter_units(all)
+in for gen in generators
+   do for vj@j in v
+      do assert((vj*gen[j]).is_integer,"Generator not in center") od
+   od
+;  let d = common_denominator(generators)
+   then M = mat: rank(rd) # for gen in generators do ratvec_as_vec(d*gen) od
+in replace_gen(all,C*ann_mod(M,d))
+)
 
 set twist (Param p, mat delta) = Param:
   let (x,lam_rho,gamma)=%p in

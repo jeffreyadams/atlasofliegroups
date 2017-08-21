@@ -2057,9 +2057,10 @@ using the Atlas interface, and that uses more than a root datum. This is the
 \.{blocksizes} command from \.{mainmode.cpp}, which uses
 |innerclass_io::printBlockSizes|, but we have to rewrite it to avoid calling
 an output routine. A subtle difference is that we use a matrix of integers
-rather than of unsigned long integers to collect the block sizes; this avoids
-having to define a new primitive type, and seems to suffice for the cases that
-are currently computationally feasible.
+rather than of |arithmetic::big_int| values to collect the block sizes; this
+avoids having to define a new primitive type, and probably suffices for the
+cases where actual computation of the block feasible. However, we also provide
+a function the computes a single block size as an unbounded integer.
 
 @< Local function def...@>=
 void block_sizes_wrapper(expression_base::level l)
@@ -2071,9 +2072,24 @@ void block_sizes_wrapper(expression_base::level l)
   for (size_t i = 0; i < M->val.numRows(); ++i)
     for (size_t j = 0; j < M->val.numColumns(); ++j)
       M->val(i,j) =
-      G->val.block_size(G->interface.in(i),G->dual_interface.in(j));
+      G->val.block_size(G->interface.in(i),G->dual_interface.in(j)).int_val();
   push_value(std::move(M));
 }
+
+void block_size_wrapper(expression_base::level l)
+{ auto j = get<int_value>()->val.ulong_val();
+  auto i = get<int_value>()->val.ulong_val();
+  shared_inner_class G = get<inner_class_value>();
+  if (i>=G->val.numRealForms())
+    throw runtime_error("Real form number "+str(i)+" out of bounds");
+  if (i>=G->val.numRealForms())
+    throw runtime_error("Real form number "+str(i)+" out of bounds");
+  if (l!=expression_base::no_value)
+  push_value(std::make_shared<int_value> @|
+    (G->val.block_size(G->interface.in(i),G->dual_interface.in(j))));
+}
+
+
 
 @ Next we shall provide a function that displays the occurrence of Cartan
 classes for various real forms. The rows will be indexed by real forms, and
@@ -2146,8 +2162,8 @@ install_function(n_dual_real_forms_wrapper,@|"nr_of_dual_real_forms"
                 ,"(InnerClass->int)");
 install_function(n_Cartan_classes_wrapper,@|"nr_of_Cartan_classes"
                 ,"(InnerClass->int)");
-install_function(block_sizes_wrapper,@|"block_sizes"
-                ,"(InnerClass->mat)");
+install_function(block_sizes_wrapper,"block_sizes","(InnerClass->mat)");
+install_function(block_size_wrapper,"block_size","(InnerClass,int,int->int)");
 install_function(occurrence_matrix_wrapper,@|"occurrence_matrix"
                 ,"(InnerClass->mat)");
 install_function(dual_occurrence_matrix_wrapper,@|"dual_occurrence_matrix"
@@ -3478,7 +3494,7 @@ void decompose_block_wrapper(expression_base::level l)
     wrap_tuple<2>();
 }
 
-void block_size_wrapper(expression_base::level l)
+void size_of_block_wrapper(expression_base::level l)
 { shared_Block b = get<Block_value>();
   if (l!=expression_base::no_value)
     push_value(std::make_shared<int_value>(b->val.size()));
@@ -3628,7 +3644,7 @@ involving Kazhdan-Lusztig polynomials will be added later).
 @< Install wrapper functions @>=
 install_function(Fokko_block_wrapper,"block","(RealForm,RealForm->Block)");
 install_function(decompose_block_wrapper,@|"%","(Block->RealForm,RealForm)");
-install_function(block_size_wrapper,"#","(Block->int)");
+install_function(size_of_block_wrapper,"#","(Block->int)");
 install_function(block_element_wrapper,"element","(Block,int->KGBElt,KGBElt)");
 install_function(block_index_wrapper,"index","(Block,KGBElt,KGBElt->int)");
 install_function(dual_block_wrapper,"dual","(Block->Block)");

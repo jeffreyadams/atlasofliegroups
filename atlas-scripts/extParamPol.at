@@ -50,15 +50,18 @@ set deform_unreduced (Param p, mat delta, int type) = ExtParamPol:
   becomes (1-s)(1+s)I(p)_h=0, so can ignore these
   but for completeness sake leave them in}
 {  if type=0 then null_ext_module(real_form(p)) else }
-  let (B,index)=singular_block(p) then
-  (I_delta,g,complete_indices,delta_action)=tabulate_indices(B,delta) then
-  complete_indices=complete_indices(B,delta) then
-  complete_index=find(complete_indices,(index,type)) then
-  nB=complete_index+1 then
-  length=length(p) then
-{  P_mat=principal_minor(calculate_big_P_signed_polynomials_at_minus_one(B,delta,index),nB) then}
-  P_mat=principal_minor(big_KL_P_signed_polynomials_at_minus_one(B,delta),nB) then
-  remainder=null(nB-1)#1,
+  let (B,index)=singular_block(p)
+  then (I_delta,g,complete_indices,delta_action)=tabulate_indices(B,delta)
+  then complete_indices=complete_indices(B,delta)
+  then complete_index=find(complete_indices,(index,type))
+  then nB=complete_index+1
+  then length=length(p)
+{ then P_mat=
+    top_left_square_block
+     (calculate_big_P_signed_polynomials_at_minus_one(B,delta,index),nB) }
+  then P_mat =
+    top_left_square_block(big_KL_P_signed_polynomials_at_minus_one(B,delta),nB)
+  then remainder=null(nB-1)#1,
   solution=null(nB),
   !opposite_parity=1-length%2, { opposite to that of |length(p)| }
   !on_p = orientation_nr(p)

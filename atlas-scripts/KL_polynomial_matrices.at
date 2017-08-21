@@ -1,5 +1,6 @@
 <basic.at
-<ext_deform.at
+<polynomial.at { for |poly_plus@(vec,vec)| and friends, |poly_mat| type }
+<ext_deform.at { for |cook_KL_block@([Param],,,,,)| }
 
 { recover required length_diff function, now only remaining in old_kl.at }
 set length (int i, vec stops) = int: { compute length=max{k:stops[k]<=i} }
@@ -28,7 +29,8 @@ set cook_KL_block_alt ([Param] B,int entry_elem
   then cooked_P_mat = poly_mat:
      for i:n_surv do for j:n_surv do
        let raw_col_j = raw_P_mat[j], sum=poly_0 in
-       for k:nB do sum:=poly_plus(sum,contrib[i,k]*raw_col_j[k]) od; sum   {addition of polynomials}
+       for k:nB do sum:=poly_plus(sum,contrib[i,k]*raw_col_j[k]) od
+     ; sum { computed using addition of polynomials }
      od od
   , get_index (int z) = int: { least |i| with |surv[i]>=z| }
     let min=0, max=n_surv in
@@ -52,13 +54,13 @@ set cook_KL_block_alt ([Param] B,int entry_elem
   Q(1) is the multiplicity of an irreducible module in a standard module
 }
 
-set eval(poly_mat M,int k)=mat:
-let (r,c)=(#M,#(M[0]))  then
-rv=null(r,c) in
-for i:r do for j:c do rv[i,j]:=eval(M[i][j], k)  od od ;rv
+set eval (poly_mat M,int k) = mat:
+  matrix (shape(M), (int i,int j)int: eval(M[i][j], k))
 
-set permutation ([Param] B1, [Param] B2) =([int],bool):
-let perm=for i:#B2 do find(B2,B1[i]) od in (perm,all(for i:#perm do i !=-1 od))
+{ map from index in B1 to matching index in B2, and whether it's well defined }
+set permutation ([Param] B1, [Param] B2) = ([int],bool):
+  let perm = for P in B1 do find(B2,P) od in
+  (perm,all(for x in perm do x.>= od))
 
 set KL_P_polynomials (Param p) = poly_mat:
   let (,,P,stops)=cook_KL_block(KL_block(p)) then length=from_stops(stops) in
@@ -66,7 +68,8 @@ set KL_P_polynomials (Param p) = poly_mat:
     for entry@j in row do entry*minus_1^(length(j)-len_i) { undo signs } od
   od
 
-set KL_P_polynomials_at_minus_one (Param p) = mat:eval(KL_P_polynomials(p),minus_1)
+set KL_P_polynomials_at_minus_one (Param p) = mat:
+  eval(KL_P_polynomials(p),minus_1)
 
 set KL_P_signed_polynomials(Param p) = poly_mat:
   let (,,P,)=cook_KL_block(KL_block(p)) in P
@@ -74,28 +77,35 @@ set KL_P_signed_polynomials_at_minus_one (Param p) = mat:
   eval(KL_P_signed_polynomials(p),minus_1)
 
 set KL_P_polynomials([Param] B)=poly_mat:
-  let (pseudo_block,,,,,survivors,)=KL_block(B[0]) then
-  block=for i in survivors do pseudo_block[i] od then
-  (perm,valid)=permutation(B,block) then
-  P=assert(valid,"given [Param] B does not agree with block_of B[0]");KL_P_polynomials(B[0])  in
-{  let ()=prints("permutation in KL_P_polynomials:", perm) in}
+  let (pseudo_block,,,,,survivors,)=KL_block(B[0])
+  then block = for i in survivors do pseudo_block[i] od
+  then (perm,valid)=permutation(B,block)
+  then P = assert(valid,"given [Param] B does not agree with block_of B[0]")
+         ; KL_P_polynomials(B[0])
+  in { prints("permutation in KL_P_polynomials:", perm); }
   poly_permute_basis(perm,P)
-set KL_P_polynomials_at_minus_one([Param] B)=mat:
+
+set KL_P_polynomials_at_minus_one ([Param] B) = mat:
   eval(KL_P_polynomials(B),minus_1)
 
-set KL_P_signed_polynomials([Param] B)=poly_mat:
-  let (pseudo_block,,,,,survivors,)=KL_block(B[0]) then
-  block=for i in survivors do pseudo_block[i] od then
-  (perm,valid)=permutation(B,block) then
-  P=assert(valid,"given [Param] B does not agree with block_of B[0]");KL_P_signed_polynomials(B[0])  in
-  poly_permute_basis(perm,P)
-set KL_P_signed_polynomials_at_minus_one([Param] B)=mat:eval(KL_P_signed_polynomials(B),minus_1)
+set KL_P_signed_polynomials ([Param] B) = poly_mat:
+  let (pseudo_block,,,,,survivors,)=KL_block(B[0])
+  then block = for i in survivors do pseudo_block[i] od
+  then (perm,valid)=permutation(B,block)
+  then P= assert(valid,"given [Param] B does not agree with block_of B[0]")
+        ; KL_P_signed_polynomials(B[0])
+  in poly_permute_basis(perm,P)
+
+set KL_P_signed_polynomials_at_minus_one ([Param] B) = mat:
+  eval(KL_P_signed_polynomials(B),minus_1)
 
 {*DEFINE* the Q-polynomials as inverse of the signed P-matrix}
 {see dual.at for a different approach}
 
-set KL_Q_polynomials (Param p)=poly_mat:upper_unitriangular_inverse (KL_P_signed_polynomials(p))
-set KL_Q_polynomials ([Param] B)=poly_mat:upper_unitriangular_inverse (KL_P_signed_polynomials(B))
+set KL_Q_polynomials (Param p) = poly_mat:
+  upper_unitriangular_inverse (KL_P_signed_polynomials(p))
+set KL_Q_polynomials ([Param] B) = poly_mat:
+  upper_unitriangular_inverse (KL_P_signed_polynomials(B))
 
 {                     twisted versions                                   }
 
@@ -108,9 +118,10 @@ set final_subset ([Param] B) = [Param]:
 }
 set KL_block_alt (Param p, mat delta) = { emulate built-in KL_block }
     ([Param],int,mat,[vec],vec,vec,mat):
-{  let (regular_extblock,,,) = extended_block(p,delta) {this sometimes fails, if block has no fixed elements(?), move it later}}
+{ let (regular_extblock,,,) = extended_block(p,delta) {this sometimes fails,
+  if block has no fixed elements(?), move it later} }
   let (KL_mat,polys,stops) = raw_ext_KL(p,delta) in
-   if #KL_mat=(0,0) then ([],-1,null(0,0),[],[],[],null(0,0)) else
+  if shape(KL_mat)=(0,0) then return ([],-1,null(0,0),[],[],[],null(0,0)) fi;
   let (regular_extblock,,,) = extended_block(p,delta)
   , (KL_mat,polys,stops) = raw_ext_KL(p,delta)
   , survivors = vec: [] then
@@ -118,23 +129,26 @@ set KL_block_alt (Param p, mat delta) = { emulate built-in KL_block }
   then columns = [vec]:
     for q@j in regular_extblock
     do let Q = finalize_extended(q,delta) in
-    if #Q=1 then let r=monomials(Q)[0]  in
-     if r.x=q.x and r.lambda=q.lambda and r.nu=q.nu then survivors  #:= j fi fi { gather those expanding to themselves }
-    ; vec: for i in regular_extblock do
-       if find(final_subset,i)!=-1 then Q[i].s_to_minus_1 else 0 fi od
+      if #Q=1 and
+         (let r=monomials(Q)[0] in r.x=q.x and r.lambda=q.lambda and r.nu=q.nu)
+      then survivors #:= j
+      fi { gather those expanding to themselves }
+    ; vec: { value of loop body }
+      for i in regular_extblock
+      do if find(final_subset,i).>= then Q[i].s_to_minus_1 else 0 fi od
     od
   , reg_size = #regular_extblock
   in
 {  let ()=prints("survivors:", survivors, "  reg_size:", reg_size) in
   let ()=prints("columns:", #columns, " ", columns) in }
-(regular_extblock, first(reg_size,(int i):regular_extblock[i]=p)
-     ,KL_mat,polys,stops
-     ,survivors
-     ,matrix((#survivors,reg_size) { slice out the surviving rows: }
-{            ,(int i,int j) int:prints("i,j:", i, ",", j); columns[j][survivors[i]]}
-            ,(int i,int j) int: columns[survivors[i]][j]
-            )
-     ) fi
+  ( regular_extblock, first(reg_size,(int i):regular_extblock[i]=p)
+  , KL_mat,polys,stops
+  , survivors
+  , matrix((#survivors,reg_size) { slice out the surviving rows: }
+{      ,(int i,int j) int:prints("i,j:", i, ",", j); columns[j][survivors[i]] }
+          ,(int i,int j) int: columns[survivors[i]][j]
+          )
+  )
 
 set KL_P_polynomials (Param p,mat delta) = poly_mat:
   let (,,P,stops)=cook_KL_block(KL_block(p,delta))
@@ -143,57 +157,62 @@ set KL_P_polynomials (Param p,mat delta) = poly_mat:
   for row@i in P do let len_i=length(i) in
     for entry@j in row do entry*minus_1^(length(j)-len_i) { undo signs } od
   od
+
 set KL_P_polynomials_at_minus_one (Param p,mat delta) = mat:
   eval(KL_P_polynomials(p,delta),minus_1)
 
 set KL_P_polynomials([Param] B_fixed,mat delta)=poly_mat:
-  assert(all(for p in B_fixed do is_fixed(delta,p) od),"not all parameters in B_fixed are fixed");
-  if #B_fixed=0 then zero_poly_matrix(0) else
-  let (pseudo_block,,,,,survivors,)=KL_block(B_fixed[0],delta) then
-  block=for i in survivors do pseudo_block[i] od then
-  (perm,valid)=permutation(B_fixed,block) then
-  P=assert(valid,"given [Param] B_fixed does not agree with block_of B_fixed[0]");KL_P_polynomials(B_fixed[0],delta)  in
+  assert(all(for p in B_fixed do is_fixed(delta,p) od)
+        ,"not all parameters in B_fixed are fixed");
+  if #B_fixed=0 then return zero_poly_matrix(0) fi;
+  let (pseudo_block,,,,,survivors,) = KL_block(B_fixed[0],delta)
+  then block = for i in survivors do pseudo_block[i] od
+  then (perm,valid)=permutation(B_fixed,block)
+  then P = assert(valid
+               ,"given [Param] B_fixed does not agree with block_of B_fixed[0]")
+       ; KL_P_polynomials(B_fixed[0],delta)
+  in
 {  let ()=prints("permutation in KL_P_polynomials(p,delta):", perm) in}
-  poly_permute_basis(perm,P) fi
-set KL_P_polynomials_at_minus_one([Param] B_fixed,mat delta)=mat:
+  poly_permute_basis(perm,P)
+
+set KL_P_polynomials_at_minus_one ([Param] B_fixed,mat delta) = mat:
   eval(KL_P_polynomials(B_fixed,delta),minus_1)
 
-
-set KL_P_signed_polynomials(Param p, mat delta)=poly_mat:
+set KL_P_signed_polynomials (Param p, mat delta) = poly_mat:
   let (,,P,)=cook_KL_block(KL_block(p,delta)) in P
 
-set KL_P_signed_polynomials_at_minus_one(Param p, mat delta) = mat:
+set KL_P_signed_polynomials_at_minus_one (Param p, mat delta) = mat:
   eval(KL_P_signed_polynomials(p,delta),minus_1)
 
 {basis: fixed parameters in B}
 
-set KL_P_polynomials_alt([Param] B,mat delta)=poly_mat:
-  let (pseudo_block,,,,,survivors,)=KL_block(B[0],delta) then
-  block=for i in survivors do pseudo_block[i] od then
-  (perm,valid)=permutation(B,block) then
-{  ()=prints("valid:", valid, "perm:", perm) then}
-  P=assert(valid,"given [Param] B does not agree with block_of B[0]");KL_P_polynomials(B[0],delta)  in
-  poly_permute_basis(perm,P)
+set KL_P_polynomials_alt ([Param] B,mat delta) = poly_mat:
+  let (pseudo_block,,,,,survivors,) = KL_block(B[0],delta)
+  then block = for i in survivors do pseudo_block[i] od
+  then (perm,valid)=permutation(B,block)
+  then {  ()=prints("valid:", valid, "perm:", perm) then }
+     P = assert(valid,"given [Param] B does not agree with block_of B[0]")
+       ; KL_P_polynomials(B[0],delta)
+  in poly_permute_basis(perm,P)
 
-set KL_P_signed_polynomials([Param] B,mat delta)=poly_mat:
-  let (pseudo_block,,,,,survivors,)=KL_block(B[0]) then
-  block=for i in survivors do pseudo_block[i] od then
-  (perm,valid)=permutation(B,block) then
-  P=assert(valid,"given [Param] B does not agree with block_of B[0]");KL_P_signed_polynomials(B[0],delta)  in
-  poly_permute_basis(perm,P)
+set KL_P_signed_polynomials([Param] B,mat delta) = poly_mat:
+  let (pseudo_block,,,,,survivors,) = KL_block(B[0])
+  then block=for i in survivors do pseudo_block[i] od
+  then (perm,valid)=permutation(B,block)
+  then P = assert(valid,"given [Param] B does not agree with block_of B[0]")
+         ; KL_P_signed_polynomials(B[0],delta)
+  in poly_permute_basis(perm,P)
+
 set KL_P_signed_polynomials_at_minus_one([Param] B,mat delta) = mat:
   eval(KL_P_signed_polynomials(B,delta),minus_1)
 
 {*DEFINE* the Q-polynomials as inverse of the signed P-matrix}
 {see dual.at for a different approach}
 
-set KL_Q_polynomials (Param p)=poly_mat:upper_unitriangular_inverse (KL_P_signed_polynomials(p))
-set KL_Q_polynomials ([Param] B)=poly_mat:upper_unitriangular_inverse (KL_P_signed_polynomials(B))
-
-
-
-
-
+set KL_Q_polynomials (Param p) = poly_mat:
+  upper_unitriangular_inverse (KL_P_signed_polynomials(p))
+set KL_Q_polynomials ([Param] B) = poly_mat:
+  upper_unitriangular_inverse (KL_P_signed_polynomials(B))
 
 
 
@@ -202,20 +221,15 @@ set KL_Q_polynomials ([Param] B)=poly_mat:upper_unitriangular_inverse (KL_P_sign
 
 {    some old versions, not used   }
 
-set KL_P_polynomials_old (Param p)=poly_mat:
-( let (pseudo_block,n,Pmatrix,polynomials,stops,survivors,cumulation_matrix)=KL_block(p) then
-  block=for i in survivors do pseudo_block[i] od then
-  m=#survivors then
-  P=zero_poly_matrix(m) then
-  ()=for i:m do
-     let I=survivors[i] in
-       for j:m do
-        let J=survivors[j] in
-        P:=update_matrix_entry(P,i,j,polynomials[Pmatrix[I,J]])
-       od
-     od in
-   mat_as_poly_mat(cumulation_matrix)*P
-)
+set KL_P_polynomials_old (Param p) = poly_mat:
+  let (pseudo_block,,Pmatrix,polynomials,,survivors,cumulation_matrix)
+    = KL_block(p)
+  then P = poly_mat:
+    for I@i in survivors { poly_mat is encoded by rows }
+    do for J@j in survivors do polynomials[Pmatrix[I,J]] od
+    od
+  in mat_as_poly_mat(cumulation_matrix)*P
+
 set KL_P_polynomials_old ([Param] B_fixed,mat delta) = [[poly]]:
   assert( all(for p in B_fixed do is_fixed(delta,p) od)
 	, "Not every parameter is delta-fixed" );

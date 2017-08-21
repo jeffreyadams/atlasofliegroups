@@ -23,23 +23,23 @@ namespace atlas {
 namespace lattice {
 
 template<typename I, typename O>
-  void baseChange(I, I, O, I, I);
+  void baseChange (I, I, O, I, I);
 
 template<typename I, typename O>
-  void inverseBaseChange(I, I, O, I, I);
+  void inverseBaseChange (I, I, O, I, I);
 
 // find basis in dual lattice of perpendicular to given vectors
-CoweightList perp(const WeightList&, size_t);
+CoweightList perp (const WeightList&, size_t);
 
 // find matrix whose image is the sublattice annihilated by |M|
-LatticeMatrix kernel(const LatticeMatrix& M);
+LatticeMatrix kernel (LatticeMatrix M); // by value
 
 LatticeMatrix eigen_lattice
   (LatticeMatrix M, // by value
    LatticeCoeff lambda);
 
 // find matrix with same kernel, but with rows spanning saturated sublattice
-LatticeMatrix row_saturate(const LatticeMatrix& M);
+LatticeMatrix row_saturate (const LatticeMatrix& M);
 
 } // |namespace lattice|
 

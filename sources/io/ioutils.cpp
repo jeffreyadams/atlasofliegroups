@@ -2,6 +2,7 @@
   This is ioutils.cpp
 
   Copyright (C) 2004,2005 Fokko du Cloux
+  Copyright (C) 2017 Marc van Leeuwen
   part of the Atlas of Lie Groups and Representations
 
   For license information see the LICENSE file
@@ -25,12 +26,9 @@ namespace atlas {
 namespace ioutils {
 
 
-/*
-  Synopsis: returns the number of digits of a in base b.
+// Returns the number of digits of |a| in base |b|. Precondition: |b > 1|
 
-  Precondition: b > 1;
-*/
-unsigned long digits(unsigned long a, unsigned long b)
+unsigned int digits(unsigned long a, unsigned int b)
 {
   size_t d = 1; // starting case, so (in particular) 0 will have 1 digit
 
@@ -42,8 +40,19 @@ unsigned long digits(unsigned long a, unsigned long b)
   return d;
 }
 
+unsigned int digits(arithmetic::big_int a, unsigned int b)
+{
+  size_t d = 0;
+
+  do a.shift_modulo(b),
+     ++d;
+  while (not a.is_zero());
+
+  return d;
+}
+
 /*
-  Synopsis: utility function to fold long lines of output nicely.
+  Utility function to fold long lines of output nicely.
 
   The idea is that when the length of line exceeds |lineSize| characters, we
   print it over several lines, with well-chosen breakpoints. Here |h| is the
@@ -122,16 +131,15 @@ std::ostream& foldLine(std::ostream& strm, const std::string& line,
   return strm;
 }
 
-std::istream& skipSpaces(std::istream& strm)
 
 /*
-  Synopsis: advances stream to the next non-space character.
+  Advance stream |strm| to the next non-space character.
 
   Explanation: spaces are the characters recognized by isspace().
 
   NOTE: this should be a library function, but I couldn't find it!
 */
-
+std::istream& skipSpaces(std::istream& strm)
 {
   while (isspace(strm.peek())) // advance strm by one character
     strm.get();

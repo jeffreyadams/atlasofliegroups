@@ -177,12 +177,12 @@ set highest_weight_split_spherical (Param p,KGBElt x_K) = KHighestWeight:
 {. This function returns just ONE KHighestWeight of a K-type
   (auxiliary function). .}
 set highest_weight_one (K_Type p) = KHighestWeight:
-  assert(is_semifinal(parameter(p)),"parameter has singular real parity roots");
-  let p=make_no_Cminus(p)
-  then (Q,pL)=theta_stable_data(parameter(p))
-  then (x_L,mu_L)=highest_weight_split_spherical(pL)
-  then x_G=x_min(Q)
-  then mu_G=mu_L+two_rho_u_cap_s(Q,x_G)
+(  assert(is_semifinal(parameter(p)),"parameter has singular real parity roots")
+;  p:=make_no_Cminus(p)
+;  let (Q,pL)=theta_stable_data(parameter(p))
+   then (x_L,mu_L)=highest_weight_split_spherical(pL)
+   then x_G=x_min(Q)
+   then mu_G=mu_L+two_rho_u_cap_s(Q,x_G)
 { need version of 2*rho_u_cap_s(Q) which is integral, see thetastable.at}
 { this might be a ratvec, denominator 1/2, by restriction it defines a
   character  of T_{K_0}
@@ -192,7 +192,8 @@ set highest_weight_one (K_Type p) = KHighestWeight:
 { then ()=prints("mu_L:",mu_L,new_line, " mu_G", mu_G, new_line,
      "2*rho_u_cap_s(Q)", 2*rho_u_cap_s(Q,y), new_line,
      "two_rho_u_cap_s", two_rho_u_cap_s(Q,y)) }
-in (x_G,mu_G)
+   in (x_G,mu_G)
+)
 
 {. ONE KHighestWeight of a K-type w.r.t. x_K (auxiliary function). .}
 set highest_weight_one (K_Type p,KGBElt x_K) = KHighestWeight:
@@ -259,7 +260,7 @@ set centralizer(KGBElt x,ratvec v) = (KGBElt,RootDatum):
 {. (Auxiliary function) .}
 set find_nci_root (KGBElt x,ratvec tau) = int:
   let rd=root_datum(x)
-  then sr=simple_roots(rd), scr=simple_coroots(rd),ssr=ss_rank(rd)
+  then sr=simple_roots(rd), scr=simple_coroots(rd),ssr=semisimple_rank(rd)
   then j= first(ssr, (int i)bool:
                      scr[i]*tau<0 and is_noncompact_imaginary(x)(sr[i]) )
   in if j>=0 then j
@@ -358,23 +359,13 @@ are \sum a_i v_i with a_i=0,1 (or [] -> [0,...,0])
 
 {. (Auxiliary function) .}
 set characters_order_2 (KGBElt x) = [vec]:
-let theta=involution(x) then
-zero_vector=vec:null(rank(real_form(x))) {default value} then
-K=kernel(1+theta) then
-(r,c)=#K in
-if c=0 then [vec]:[]  else let
-M=in_lattice_basis(K,1-theta) in
-if #M=0 then [vec]:[] else let
-(A,v)=adapted_basis(M) then
-B=K*A in
+   let theta=involution(x) then K=kernel(1+theta)
+   then (A,v)=adapted_basis(in_lattice_basis(K,1-theta)) then B=K*A
 {prints("K=",K);
 prints("A=",A);
 prints("v=",v);
 prints ("B=",B);}
-let result=[vec]:[]
- in
- for i:#v do if v[i]=2 then result#:=B[i] fi od;
-result fi fi
+   in ## for f@i in v do if f=2 then [B[i]] else [] fi od
 
 {. All G-spherical K-types with same differential as given one. .}
 set all_G_spherical_same_differential (K_Type p) = [K_Type]:
@@ -409,7 +400,7 @@ set all_G_spherical_same_differential (Param p) = [K_Type]:
 set parabolic_LKT (KHighestWeight (x,mu)) = Parabolic:
   let rd=root_datum(x), (y,mu_3_orig,lambda) = project_on_dominant_cone(x,mu)
   then diff=lambda-mu_3_orig
-  then S= list( (int i): fundamental_coweight(rd,i)*diff>0, ss_rank(rd))
+  then S= list(semisimple_rank(rd), (int i): fundamental_coweight(rd,i)*diff>0)
   in Parabolic:(S,y)
 
 { go from KHighestWeight mu to K_types [K_Type]  mu -> [p_1,...,p_r]
@@ -437,9 +428,8 @@ set K_types (KHighestWeight mu_in)= [K_Type]:
   in
   assert(is_parabolic_theta_stable(Q), "Q is not theta stable");
   let x_Q=x_min(Q)
-  then mu=make_strongly_dominant(mu,x_Q)
-  then (x,tau)=mu then
-  L=Levi(Q)
+  then (x,tau) = mu:=make_strongly_dominant(mu,x_Q)
+  , L=Levi(Q)
   then { L is relatively split }
   ()=if LKT_verbose then
      prints("Q=", Q);
@@ -503,9 +493,9 @@ set dimension (K_Type p) = int: rat_as_int(dimension_rat(p))
 }
 
 {. Given the highest weight for K0 and a KGB element in the distinguished fiber
-   for the corresponding group G, compute (one of) the highest weight(s) for K
+   for the corresponding group G, compute (one of) the highest weight(s) for K;
    (there may be more than one if K# is not equal K_0); in the unequal rank
-   case, mu_K will have fewer coordinates than the K-weight. .}
+   case, mu_K will have fewer coordinates than the K-weight). .}
 set K_highest_weight_from_K0_weight (KGBElt x,vec mu_K) = KHighestWeight:
   (x, { vec: } mu_K*left_inverse(injection_from_K_matrix(x)) )
 
@@ -557,7 +547,7 @@ set fundamental_weight_coordinates (KHighestWeight (x,mu)) = vec:
 set K_highest_weight_from_fundamental_weights(KGBElt x,vec tau) =
     KHighestWeight:
   let K_0=K_0(x), fw=fundamental_weights_K_H(x)
-  , weight=ratvec:null(ss_rank(real_form(x)))
+  , weight = ratvec: x.real_form.semisimple_rank.null
   in for i:#tau do weight+:=tau[i]*fw[i] od;
   assert(is_integer(weight),"Weight is not integral");
   (x,ratvec_as_vec(weight))
