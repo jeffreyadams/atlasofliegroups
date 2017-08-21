@@ -70,9 +70,10 @@ set all_parameters (Param p) = [Param]:
 { all parameters with given infinitesimal character and attached to given x }
 set all_parameters_x_gamma (KGBElt x,ratvec gamma) = [Param]:
    let G=real_form(x)
+   then (gamma_d,)=make_dominant(root_datum(G),gamma)
    then rho=rho(G), th1=1+involution(x)
    in
-   case vec_solve(th1,th1*(gamma-rho))
+   case vec_solve(th1,th1*(gamma_d-rho))
    | else [Param]: [] { without solution no parameters }
    | solution(lr):
       let lambda = rho + lr, nu=(2-th1){1-theta}*gamma/2 in
@@ -81,10 +82,11 @@ set all_parameters_x_gamma (KGBElt x,ratvec gamma) = [Param]:
 
 { all parameters with given infinitesimal character }
 set all_parameters_gamma (RealForm G,ratvec gamma) = [Param]:
+   let (v,)=make_dominant(root_datum(G),gamma) in
    let rho=rho(G) in
    for x in KGB(G)
    do let th1=1+involution(x) in
-      case vec_solve(th1,th1*(gamma-rho))
+      case vec_solve(th1,th1*(v-rho))
       | no_solution: [Param]:[]
       | solution(lr):
         let lambda = rho + lr, nu=(2-th1){1-theta}*gamma/2 in
