@@ -262,11 +262,7 @@ set E7_D6A1 = real_form(E7_ic_e,2)
 set E7_s = real_form(E7_ic_e,3)
 set E7_A7 = real_form(E7_ic_e,3)
 
-set E8_ic = let ic=inner_class("T0",[ratvec]:[],""), first=true in @:
-  if first then ic:=inner_class(simply_connected("E8"),"e") next first:=false
-  else ic
-  fi
-
-set E8_c () = real_form(E8_ic(),0)
-set E8_q () = real_form(E8_ic(),1)
-set E8_s () = real_form(E8_ic(),2)
+set E8_ic = inner_class(simply_connected("E8"),"e")
+set E8_c = real_form(E8_ic,0)
+set E8_q = real_form(E8_ic,1)
+set E8_s = real_form(E8_ic,2)
