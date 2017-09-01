@@ -402,14 +402,16 @@ i.e., as rvalue references to smart pointers.
 @< Methods of the |type_expr| structure @>=
 
 type_expr() noexcept : tag(undetermined_type) @+{}
-explicit type_expr(primitive_tag p) noexcept
+explicit type_expr(primitive_tag p)
   : tag(primitive_type), prim_variant(p) @+{}
-inline type_expr(type_expr&& arg, type_expr&& result) noexcept;
+inline type_expr(type_expr&& arg, type_expr&& result);
  // for function types
-explicit type_expr(type_ptr&& c) noexcept
+explicit type_expr(type_ptr&& c)
   : tag(row_type), compon_variant(c.release()) @+{}
-explicit type_expr(type_list&& l,bool is_union=false) noexcept;
+explicit type_expr(type_list&& l,bool is_union=false);
   // tuple and union types
+explicit type_expr(unsigned int type_nr)
+  : tag(type_name), type_number(type_nr) @+{}
 @)
 #ifdef incompletecpp11
 type_expr(const type_expr& t) = @[delete@];
@@ -446,7 +448,7 @@ struct func_type;
 move constructor.
 
 @< Function definitions @>=
-type_expr::type_expr(type_list&& l,bool is_union) noexcept
+type_expr::type_expr(type_list&& l,bool is_union)
   : tag(is_union ? union_type: tuple_type)
   , tuple_variant(l.release())
   @+{}
@@ -744,7 +746,7 @@ definition, since |func_type| is not (and cannot be) a complete type there.
 The constructor for |func_type| used will be defined below.
 
 @< Template and inline function definitions @>=
-type_expr::type_expr(type_expr&& arg, type_expr&& result) noexcept
+type_expr::type_expr(type_expr&& arg, type_expr&& result)
 @/ : tag(function_type)
    , func_variant(new func_type(std::move(arg),std::move(result)))
    @+{}
