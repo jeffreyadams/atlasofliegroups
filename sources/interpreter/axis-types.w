@@ -895,7 +895,7 @@ defined_type_mapping&
   defined_type_mapping::add_typedefs(const defined_type_mapping& defs)
 {
 @/std::vector<type_data> type_array;
-  std::vector<const type_data*> type_nr;
+  std::vector<type_data*> type_nr;
   @< Copy types from |*this| to |type_array|, then add entries for they types
      defined by |defs| and all their anonymous sub-types;
      also make each |type_nr[i]| point to |type_array[i]| @>
@@ -986,16 +986,11 @@ type_expr section_type_to (const type_expr& t, std::vector<type_data>& dst)
 { switch(t.kind())
   {
   case function_type:
-    {
-      const auto arg_num = to_table(t.func()->arg_type,dst);
-      const auto res_num = to_table(t.func()->result_type,dst);
-      return type_expr(type_expr(arg_num),type_expr(res_num));
-    }
+    return type_expr(to_table(t.func()->arg_type,dst),
+                     to_table(t.func()->result_type,dst));
   case row_type:
-    {
-      const auto comp_num = to_table(*t.component_type(),dst);
-      return type_expr(type_ptr(new type_expr(comp_num)));
-    }
+      return type_expr(type_ptr(new @|
+               type_expr(to_table(*t.component_type(),dst))));
   case tuple_type: case union_type:
     { dressed_type_list l;
       for (wtl_const_iterator it(t.tuple()); not it.at_end(); ++it)
@@ -1007,11 +1002,68 @@ type_expr section_type_to (const type_expr& t, std::vector<type_data>& dst)
   }
 }
 
-@
+@ The following is a bit long, but quite straightforward and efficient. The
+ranks implicitly define the buckets when the group below has been left. The
+ranks must be stored in |type_array| rather than in |type_nr|, because they
+will later be looked up from a |type_number| rather than through a pointer in
+|type_nr|.
+
+@h <array>
+@s array vector
+
 @< Bucket-sort the pointers in |type_nr| according to the top level
    structure of the |type| field they point to, and set each
    |type_nr[i]->rank| field to the first index~|i| of a pointer in the same
    bucket @>=
+{ typedef containers::sl_list<type_data *> p_list; // list of type pointers
+  const static p_list empty_list;
+@/std::array<p_list, nr_of_primitive_types> prim_types;
+  prim_types.fill(empty_list);
+  p_list func_types, row_types;
+  std::vector<p_list> tuple_types, union_types;
+  for (auto it=type_nr.begin(); it!=type_nr.end(); ++it)
+  { const auto& t = (*it)->type;
+    switch(t.kind())
+    {
+    case primitive_type: prim_types[t.prim()].push_back(*it); break;
+    case function_type: func_types.push_back(*it); break;
+    case row_type: row_types.push_back(*it); break;
+    case tuple_type:
+      { auto l=length(t.tuple());
+        if (l>=tuple_types.size())
+          tuple_types.resize(l+1,empty_list);
+        tuple_types[l].push_back(*it); break;
+      }
+    case union_type:
+      { auto l=length(t.tuple());
+        if (l>=tuple_types.size())
+          tuple_types.resize(l+1,empty_list);
+        tuple_types[l].push_back(*it); break;
+      }
+    default: assert(false);
+    }
+  }
+@)
+  unsigned int i=0,cur_rank;
+    // we set |cur_rank=i| at start of each inner loop below
+  for (unsigned int l=0; l<prim_types.size(); ++l)
+    for (auto it=(cur_rank=i,prim_types[l].begin()); not it.at_end(); ++it,++i)
+      (type_nr[i]=*it)->rank=cur_rank;
+  for (auto it=(cur_rank=i,func_types.begin()); not func_types.at_end(it);
+       ++it,++i)
+    (type_nr[i]=*it)->rank=cur_rank;
+  for (auto it=(cur_rank=i,row_types.begin()); not row_types.at_end(it);
+       ++it,++i)
+    (type_nr[i]=*it)->rank=cur_rank;
+  for (unsigned int l=0; l<tuple_types.size(); ++l)
+    for (auto it=(cur_rank=i,tuple_types[l].begin()); not it.at_end(); ++it,++i)
+      (type_nr[i]=*it)->rank=cur_rank;
+  for (unsigned int l=0; l<union_types.size(); ++l)
+    for (auto it=(cur_rank=i,union_types[l].begin()); not it.at_end(); ++it,++i)
+      (type_nr[i]=*it)->rank=cur_rank;
+  assert(i==type_nr.size());
+}
+
 @
 @< Repeatedly sort and refine each bucket content, using the |rank| fields
    for their descendent types, until no more refinement takes place;
