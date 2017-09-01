@@ -338,7 +338,7 @@ unique component.
 @< Type definitions @>=
 
 @< Predeclare types that |type_expr| needs to know about @>
-typedef unsigned short type_id_type;
+typedef unsigned int type_id_type;
 class type_expr
 { type_tag tag;
   union
@@ -410,7 +410,7 @@ explicit type_expr(type_ptr&& c)
   : tag(row_type), compon_variant(c.release()) @+{}
 explicit type_expr(type_list&& l,bool is_union=false);
   // tuple and union types
-explicit type_expr(unsigned int type_nr)
+explicit type_expr(type_id_type type_nr)
   : tag(type_name), type_number(type_nr) @+{}
 @)
 #ifdef incompletecpp11
