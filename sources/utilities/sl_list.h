@@ -527,9 +527,12 @@ template<typename T, typename Alloc>
     return result; // copy of original |pos|, at first element inserted if any
   }
 
+  iterator splice (const_iterator pos, simple_list& other)
+  { return splice(pos,other); } // refer to lvalue version that follows
+
   // splice in |other| and return advanced iterator |pos|
   iterator splice (const_iterator pos, simple_list&& other)
-  { link_type tail = *pos.link_loc;
+  { link_type tail = std::move(*pos.link_loc);
     *pos.link_loc = std::move(other.head); // |std::unique_ptr| does the work
     while (not pos.at_end())
       ++pos;
@@ -537,6 +540,28 @@ template<typename T, typename Alloc>
     return pos; // point after inserted elements
   }
 
+  iterator splice (const_iterator pos,
+		   simple_list&& other, const_iterator begin,const_iterator end)
+  { return splice(pos,other,begin,end); } // refer to following lvalue version
+
+  iterator splice (const_iterator pos,
+		   simple_list& other, const_iterator begin, const_iterator end)
+  { if (pos==begin or pos==end) // int these cases with dangerous aliasing
+      return iterator(*pos.link_loc); // splicing is a no-op
+    link_type& final = *end.link_loc;
+    link_type& link = *pos.link_loc;
+    link_type remainder = std::move(final); // save for gluing |other| later
+    final = std::move(link); // attach our remainder to spliced part
+    link = std::move(*begin.link_loc); // and put spliced part after |pos|
+    *begin.link_loc = std::move(remainder); // glue together pieces of |other|
+    return iterator(final);
+  }
+
+  iterator splice (const_iterator pos, simple_list& other, const_iterator node)
+  { return splice(pos,other,node,std::next(node)); }
+
+  iterator splice (const_iterator pos, simple_list&& other, const_iterator node)
+  { return splice(pos,other,node,std::next(node)); }
 
   iterator erase (const_iterator pos)
   { link_type& link = *pos.link_loc;
@@ -1090,6 +1115,9 @@ template<typename T, typename Alloc>
   }
 
   iterator splice (const_iterator pos, sl_list&& other)
+  { return splice(pos,other); } // refer to lvalue version that follows
+
+  iterator splice (const_iterator pos, sl_list& other)
   { if (other.empty())
       return iterator(*pos.link_loc);
     link_type& final = *other.tail;
@@ -1103,6 +1131,39 @@ template<typename T, typename Alloc>
     other.set_empty();
     return iterator(final);
   }
+
+  iterator splice (const_iterator pos,
+		   sl_list&& other, const_iterator begin, const_iterator end)
+  { return splice(pos,other,begin,end); } // refer to following lvalue version
+
+  iterator splice (const_iterator pos,
+		   sl_list& other, const_iterator begin, const_iterator end)
+  { if (begin==end // empty range is a nuisance (avoid |tail=end.link_loc|)
+	or pos==begin or pos==end) // as are cases with dangerous aliasing
+      return iterator(*pos.link_loc); // but splicing is a no-op in these cases
+    link_type& final = *end.link_loc;
+    link_type& link = *pos.link_loc;
+    if (pos==cend()) // if splicing to the end of |*this|
+      tail = &final; // then we must reset |tail| to end of spliced range
+    if (end==other.cend()) // splicing may have cut of tail from |other|
+      other.tail = begin.link_loc; // in which case we must reset |other.tail|
+    link_type remainder = std::move(final); // save for gluing |other| later
+    final = std::move(link); // attach our remainder to spliced part
+    link = std::move(*begin.link_loc); // and put spliced part after |pos|
+    *begin.link_loc = std::move(remainder); // glue together pieces of |other|
+    if (this!=&other)
+    { auto d = std::distance(begin,end);
+      node_count += d;
+      other.node_count -= d;
+    }
+    return iterator(final);
+  }
+
+  iterator splice (const_iterator pos, sl_list& other, const_iterator node)
+  { return splice(pos,other,node,std::next(node)); }
+
+  iterator splice (const_iterator pos, sl_list&& other, const_iterator node)
+  { return splice(pos,other,node,std::next(node)); }
 
   void clear ()
   {
