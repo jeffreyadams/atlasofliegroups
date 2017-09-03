@@ -355,4 +355,18 @@ int main()
   std::cout<< Q.front();
   Q.push('c'); Q.pop();
   std::cout<< Q.front(); Q.pop();std::cout<< Q.front(); Q.pop();
+  std::cout<<std::endl;
+  while (not Q.empty())
+    std::cout<< Q.front(), Q.pop();
+  std::cout<<std::endl;
+  atlas::containers::sl_list<int> L { 3, 5, 26 };
+  auto it=std::next(L.begin());
+  int one = 1;
+  it=L.insert(it,std::move(one));
+  int arr[2] = { 4, 1 };
+  it=L.insert(it,&arr[0],&arr[2]);
+  L.insert(++it,9);
+  for (it=L.begin(); not L.at_end(it); ++it)
+    std::cout<<*it<<',';
+  std::cout<<std::endl;
 }
