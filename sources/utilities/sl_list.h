@@ -490,7 +490,7 @@ template<typename T, typename Alloc>
     node_type* p = allocator_new(node_allocator(),val);
     p->next.reset(link.release()); // link the trailing nodes here
     link.reset(p); // and attach new node to previous ones
-    return iterator(link); // non-const version of |pos|, points to new node
+    return iterator(p->next); // iterator refers to |next| field of the new node
   }
 
   iterator insert (const_iterator pos, T&& val)
@@ -500,14 +500,22 @@ template<typename T, typename Alloc>
     node_type* p = allocator_new(node_allocator(),std::move(val));
     p->next.reset(link.release()); // link the trailing nodes here
     link.reset(p); // and attach new node to previous ones
-    return iterator(link); // non-const version of |pos|, points to new node
+    return iterator(p->next); // iterator refers to |next| field of the new node
   }
 
   iterator insert (const_iterator pos, size_type n, const T& val)
   {
-    while (n-->0)
-      insert(pos,val); // insert copies of |val| in back-to-front sense
-    return iterator(*pos.link_loc);
+    link_type& link = *pos.link_loc;
+    if (n--==0)
+      return iterator(link); // |pos|, promoted to |iterator|
+    auto result = insert(pos,val); // add a node, |result| refers to its |next|
+    while (n-->0) // insert other copies of |val| in back-to-front sense
+    {
+      node_type* p = allocator_new(node_allocator(),val);
+      p->next.reset(link.release()); // link the trailing nodes here
+      link.reset(p); // and attach new node to previous ones
+    }
+    return result;
   }
 
   template<typename InputIt, typename = typename std::enable_if<
@@ -516,7 +524,6 @@ template<typename T, typename Alloc>
   >::value>::type >
     iterator insert (const_iterator pos, InputIt first, InputIt last)
   {
-    const iterator result(*pos.link_loc); // non |const_iterator| copy of |pos|
     for( ; first!=last; ++first,++pos)
     { // |insert(pos++,*first);|
     // construct node value
@@ -524,7 +531,7 @@ template<typename T, typename Alloc>
       p->next.reset(pos.link_loc->release()); // link the trailing nodes here
       pos.link_loc->reset(p); // and attach new node to previous ones
     }
-    return result; // copy of original |pos|, at first element inserted if any
+    return iterator(*pos.link_loc); // non |const_iterator| copy of |pos|
   }
 
   iterator splice (const_iterator pos, simple_list& other)
@@ -758,7 +765,9 @@ template<typename T, typename Alloc>
   // an auxiliary function occasionally called when |head| is released
   void set_empty () { tail=&head; node_count=0; }
 
-  class ensure // a helper class that exists for its destructor only
+  // a helper class that exists for its destructor only, used in methods that
+  // might repeatedly displace |tail|, possibily throwing an error halfway
+  class ensure
   { link_type* &tail; // reference so that it can be assigned to in destructor
     const_iterator &p; // reference to pick up external changes during lifetime
   public:
@@ -1015,7 +1024,7 @@ template<typename T, typename Alloc>
       p->next.reset(link.release()); // link the trailing nodes here
     link.reset(p); // and attach new node to previous ones
     ++node_count;
-    return iterator(link);
+    return iterator(p->next);
   }
 
   iterator insert (const_iterator pos, T&& val)
@@ -1028,24 +1037,23 @@ template<typename T, typename Alloc>
       p->next.reset(link.release()); // link the trailing nodes here
     link.reset(p); // and attach new node to previous ones
     ++node_count;
-    return iterator(link);
+    return iterator(p->next);
   }
 
   iterator insert (const_iterator pos, size_type n, const T& val)
   {
     link_type& link = *pos.link_loc;
-    if (n-->0)
+    if (n--==0)
+      return iterator(link);
+    auto result = insert(pos,val); // also takes care of maybe changing |tail|
+    while (n-->0) // insert other copies of |val| in back-to-front sense
     {
-      insert(pos,val); // this takes care of changing |tail| if necessary
-      while (n-->0)
-      {
-	node_type* p = allocator_new(node_allocator(),val);
-	p->next.reset(link.release()); // link the trailing nodes here
-	link.reset(p); // and attach new node to previous ones
-	++node_count; // exception safe tracking of the size
-      }
+      node_type* p = allocator_new(node_allocator(),val);
+      p->next.reset(link.release()); // link the trailing nodes here
+      link.reset(p); // and attach new node to previous ones
+      ++node_count; // exception safe tracking of the size
     }
-    return iterator(link);
+    return result;
   }
 
   template<typename InputIt, typename = typename std::enable_if<
@@ -1054,7 +1062,6 @@ template<typename T, typename Alloc>
   >::value>::type >
     iterator insert (const_iterator pos, InputIt first, InputIt last)
   {
-    const iterator result(*pos.link_loc); // non |const_iterator| copy of |pos|
     ensure me(tail,pos); // will adapt |tail| if |at_end(pos)| holds throughout
     for( ; first!=last; ++first)
     { // |insert(pos++,*first);|, except we don't update |tail|
@@ -1064,11 +1071,11 @@ template<typename T, typename Alloc>
       pos = iterator(p->next); // or simply |++pos|
       ++node_count;
     }
-    return result;
+    return iterator(*pos.link_loc); // non |const_iterator| copy of |pos|
   }
 
   template<typename InputIt>
-    void move_insert (const_iterator pos, InputIt first, InputIt last)
+    iterator move_insert (const_iterator pos, InputIt first, InputIt last)
   {
     ensure me(tail,pos); // will adapt |tail| if |at_end(pos)| throughout
     for( ; first!=last; ++first)
@@ -1079,6 +1086,7 @@ template<typename T, typename Alloc>
       pos = iterator(p->next); // or simply |++pos|
       ++node_count;
     }
+    return iterator(*pos.link_loc); // non |const_iterator| copy of |pos|
   }
 
   iterator erase (const_iterator pos)
