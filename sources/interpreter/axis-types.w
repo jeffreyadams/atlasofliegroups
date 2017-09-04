@@ -885,14 +885,13 @@ looking at relations among descendent types, and repeat this until no change
 occurs any more; types that still occur in the same part apparently cannot be
 shown to differ in a finite number of steps, so they must be equivalent.
 
-This approach would be most efficient if it could be done once and for all
-when all type definitions are known, but in an interpreter we must be able to
-process commands one by one, so we repeat the operation every time a new set
-of type definitions comes along, which hopefully is not that often. We can
-limit our embarrassment by keeping our |defined_type_mapping| in a form that
-makes restarting the equivalencing relatively easy, namely by ensuring (as
-mentioned above) that all sub-types of types in the table have their own
-entries.
+This approach would be most efficient if it could be done once and for all when
+all type definitions are known, but in an interpreter we must be able to process
+commands one by one, so we repeat the operation every time a new set of type
+definitions comes along, which hopefully is not too often. We can limit our
+embarrassment by keeping our |defined_type_mapping| in a form that makes
+restarting the equivalencing relatively easy, namely by ensuring (as mentioned
+above) that all sub-types of types in the table have their own entries.
 
 @< Function definitions @>=
 defined_type_mapping&
@@ -900,13 +899,16 @@ defined_type_mapping&
 {
 @/std::vector<type_data> type_array;
   std::vector<type_data*> type_perm;
+@)
   @< Copy types from |*this| to |type_array|, then add entries for they types
      defined by |defs| and all their anonymous sub-types;
      also make each |type_perm[i]| point to |type_array[i]| @>
+@)
+  containers::sl_list<std::pair<unsigned int,unsigned int> > groups;
   @< Bucket-sort the pointers in |type_perm| according to the top level
-     structure of the |type| field they point to, and set each
+     structure of the |type| field they point to, then set each
      |type_perm[i]->rank| field to the first index~|i| of a pointer in the same
-     bucket @>
+     bucket, and store in |groups| the boundary pairs for refinable buckets @>
   @< Repeatedly sort and refine each bucket content, using the |rank| fields
      for their descendent types, until no more refinement takes place;
      now each bucket is an equivalence class of types @>
@@ -919,7 +921,7 @@ defined_type_mapping&
 a somewhat elegant solution. We want |type_array| to hold |type_expr| values
 whose descendent sub-types (if any) are also stored in |type_array|, and are
 represented using types with |kind()==type_name|; we shall call types for
-which this holds ``fully sectioned'' for ease of reference. However, we do not
+which this holds ``fully dissected'' for ease of reference. However, we do not
 want any |type_array[i].kind()| to be |type_name| since that would just equate
 one entry to another (or itself) with no indication about its structure. So
 the top level structure of each entry should be explicit, and for types with
@@ -927,17 +929,17 @@ any descendants this means that apart from the |type_expr| present in
 |type_array|, one dynamically allocated node, for instance of type
 |func_type|, should be present.
 
-We may (and do) assume entries from |*this| to be already fully sectioned, but
-for the newly added definitions from |defs| the sectioning has to be done
+We may (and do) assume entries from |*this| to be already fully dissected, but
+for the newly added definitions from |defs| the dissection has to be done
 here. Apart from the entries directly coming from |defs|, this may require
 adding additional ones to |type_array|, but we want the former to get the
 first set of new slots, because they may already be being referred to by
 |type_number| inside the defining type expressions. Therefore we first copy
 the entries from |*this| as-is, and then reserve empty slots for the entries
-from |defs|; only then do we start sectioning the type expressions from
+from |defs|; only then do we start dissecting the type expressions from
 |defs|, which in general extends |type_array|, and once this is done we copy
-the sectioned |type_expr| so produced into the empty slot. The sectioning is
-itself is done by an auxiliary function |section_type_to| to be defined below.
+the dissected |type_expr| so produced into the empty slot. The dissection is
+itself is done by an auxiliary function |dissect_type_to| to be defined below.
 
 @< Copy types from |*this| to |type_array|, then add entries for they types
    defined by |defs| and all their anonymous sub-types;
@@ -951,42 +953,41 @@ itself is done by an auxiliary function |section_type_to| to be defined below.
     type_array.emplace_back(type_expr()); // push empty slots
   for (unsigned int i=0; i!=defs.size(); ++i)
     type_array[size()+i].type
-      .set_from(section_type_to(defs[i].second,type_array));
+      .set_from(dissect_type_to(defs[i].second,type_array));
 @)
   type_perm.reserve(type_array.size());
   for (unsigned int i=0; i!=type_array.size(); ++i)
     type_perm.push_back(&type_array[i]);
 }
 
-@ The function |section_type_to| sections its argument~|t| into |dst|, and
-then returns a a sectioned |type_expr| for~|t|; clearly something for a
-recursive function. But while in the root call a |type_expr| is needed for
-insertion into an empty slot, the |type_expr| is to be added to |dst| in all
-recursive calls, and then replaced by a type with |kind()==type_name|
-referring to it. Therefore we make this into a mutually recursive function
-with a second function |to_table| that wraps the latter stuff only needed in
-the recursive calls.
+@ The function |dissect_type_to| sections its argument~|t| into |dst|, and then
+returns a dissected |type_expr| for~|t|; clearly something for a recursive
+function. But while in the root call a |type_expr| is needed for insertion into
+an empty slot, the |type_expr| is to be added to |dst| in all recursive calls,
+and then replaced by a type with |kind()==type_name| referring to it. Therefore
+we make this into a mutually recursive pair of functions, with a second function
+|to_table| that wraps the latter stuff only needed in the recursive calls.
 
 The recursion stops in |to_table| whenever a type with |kind()==type_name| is
-encountered, which is what ensures termination. Hence if |section_type_to|
+encountered, which is what ensures termination. Hence if |dissect_type_to|
 should find |t.kind()==type_name|, this can only be during the root call, and
-meas the user has been equation one type name directly to another. This seems
-somewhat silly, and is a potential cause of trivially recursive types
-definitions (equating some type directly or indirectly to itself), so rather
-than handling it, we for now decide that the possibility should be ruled out
-syntactically; therefore we |assert(false)| for this case below.
+means the user has been equating one type name directly to another. This seems
+somewhat silly, and is a potential cause of trivially recursive type definitions
+(defining a type directly or indirectly as itself), so rather than handling it,
+we for now decide that the possibility should be ruled out syntactically;
+therefore we |assert(false)| for this case below.
 
 
 @< Local function definitions @>=
-type_expr section_type_to (const type_expr& t, std::vector<type_data>& dst);
+type_expr dissect_type_to (const type_expr& t, std::vector<type_data>& dst);
 type_id_type to_table (const type_expr& t, std::vector<type_data>& dst)
 { if (t.kind()==type_name)
     return t.type_id(); // the buck stops here
-  dst.push_back(section_type_to(t,dst));
+  dst.push_back(dissect_type_to(t,dst));
   return dst.size()-1; // that is the index of the just added |dst.back()|
 }
 @)
-type_expr section_type_to (const type_expr& t, std::vector<type_data>& dst)
+type_expr dissect_type_to (const type_expr& t, std::vector<type_data>& dst)
 { switch(t.kind())
   {
   case function_type:
@@ -1007,18 +1008,15 @@ type_expr section_type_to (const type_expr& t, std::vector<type_data>& dst)
 }
 
 @ The following is a bit long, but quite straightforward and efficient. The
-ranks implicitly define the buckets when the group below has been left. The
 ranks must be stored in |type_array| rather than in |type_perm|, because they
-will later be looked up from a |type_number| rather than through a pointer in
-|type_perm|.
+will later be looked up for a |type_number| inside a |type_expr| rather than
+directly for a pointer found in |type_perm|.
 
 @h <array>
 @s array vector
 
 @< Bucket-sort the pointers in |type_perm| according to the top level
-   structure of the |type| field they point to, and set each
-   |type_perm[i]->rank| field to the first index~|i| of a pointer in the same
-   bucket @>=
+   structure of the |type| field they point to... @>=
 { const static p_list empty_list;
 @/std::array<p_list, nr_of_primitive_types> prim_types;
   prim_types.fill(empty_list);
@@ -1032,51 +1030,69 @@ will later be looked up from a |type_number| rather than through a pointer in
     case function_type: func_types.push_back(*it); break;
     case row_type: row_types.push_back(*it); break;
     case tuple_type:
-      { auto l=length(t.tuple());
-        if (l>=tuple_types.size())
-          tuple_types.resize(l+1,empty_list);
-        tuple_types[l].push_back(*it); break;
-      }
     case union_type:
       { auto l=length(t.tuple());
-        if (l>=tuple_types.size())
-          tuple_types.resize(l+1,empty_list);
-        tuple_types[l].push_back(*it); break;
+        auto& target = t.kind()==tuple_type ? tuple_types : union_types;
+        if (l>=target.size())
+          target.resize(l+1,empty_list);
+        target[l].push_back(*it); break;
       }
     default: assert(false);
     }
   }
 @)
-  unsigned int i=0,cur_rank;
-    // we set |cur_rank=i| at start of each inner loop below
-  for (unsigned int l=0; l<prim_types.size(); ++l)
-    for (auto it=(cur_rank=i,prim_types[l].begin()); not it.at_end(); ++it,++i)
-      (type_perm[i]=*it)->rank=cur_rank;
-  for (auto it=(cur_rank=i,func_types.begin()); not func_types.at_end(it);
-       ++it,++i)
-    (type_perm[i]=*it)->rank=cur_rank;
-  for (auto it=(cur_rank=i,row_types.begin()); not row_types.at_end(it);
-       ++it,++i)
-    (type_perm[i]=*it)->rank=cur_rank;
-  for (unsigned int l=0; l<tuple_types.size(); ++l)
-    for (auto it=(cur_rank=i,tuple_types[l].begin()); not it.at_end(); ++it,++i)
-      (type_perm[i]=*it)->rank=cur_rank;
-  for (unsigned int l=0; l<union_types.size(); ++l)
-    for (auto it=(cur_rank=i,union_types[l].begin()); not it.at_end(); ++it,++i)
-      (type_perm[i]=*it)->rank=cur_rank;
-  assert(i==type_perm.size());
+  @< Copy each of the buckets in order to |type_perm|, setting each
+     |type_perm[i]->rank| field to the first index~|i| of a pointer in the same
+     bucket, and store in |groups| the boundary pairs for refinable buckets @>
 }
 
-@ We now make some preparations for refining the ordering in |type_perm|
-inside the established ``buckets''. This involves comparing types based on
-(the ranks of) their descendent sub-types, which the bucket-sorting ignored.
-Due to our preparations, such sub-types are always represented with
-|kind()==type_name|, which means that we can find the associated rank as
+@ As an auxiliary for the final part above, here is the function that empties a
+single bucket. We need to modify the |type_perm| and |groups| containers, so we
+pass these as reference arguments. Not all buckets are potentially refinable:
+those that are already a singleton (or empty) need no further consideration, and
+primitive types have no descendent types by which they could be further
+distinguished than they already are, so the buckets containing primitive types
+can also henceforth be ignored.
+
+@< Local function definitions @>=
+void empty_bucket (const p_list& bucket, @| unsigned int& count,
+                   std::vector<type_data*>& type_perm,
+                   containers::sl_list<std::pair<unsigned,unsigned> >& groups)
+{ const unsigned int cur_rank=count;
+  for (auto it=bucket.begin(); not bucket.at_end(it); ++it)
+    (type_perm[count++]=*it)->rank=cur_rank;
+  if (count-cur_rank>=2 and type_perm[cur_rank]->type.kind()!=primitive_type)
+    groups.push_back(std::make_pair(cur_rank,count));
+}
+
+@ Emptying all the buckets now amounts to repeatedly calling |empty_bucket|.
+
+@< Copy each of the buckets in order to |type_perm|, setting each
+   |type_perm[i]->rank| field to the first index~|i| of a pointer in the same
+   bucket, and store in |groups| the boundary pairs for refinable buckets @>=
+{ unsigned int count=0; // maintain the index into |type_perm| here
+  for (unsigned int i=0; i<prim_types.size(); ++i)
+    empty_bucket (prim_types[i],count,type_perm,groups);
+  empty_bucket (func_types,count,type_perm,groups);
+  empty_bucket (row_types,count,type_perm,groups);
+  for (unsigned int l=0; l<tuple_types.size(); ++l)
+    empty_bucket (tuple_types[l],count,type_perm,groups);
+  for (unsigned int l=0; l<union_types.size(); ++l)
+    empty_bucket (union_types[l],count,type_perm,groups);
+  assert(count==type_perm.size());
+}
+
+@ We now make some preparations for refining the ordering in |type_perm| inside
+the established ``buckets''. This involves comparing types based on (the ranks
+of) their descendent sub-types, which the bucket-sorting ignored. Due to our
+preparations, such sub-types are always represented with |kind()==type_name|,
+which means that we can find the associated rank as
 |type_arr[t.type_id()].rank|. But we shall need to access that from within
 comparison functions, which do not know about |type_arr|, which forces us to
 pass a reference (called |a|) to |type_arr| around as additional parameter.
-The (hopefully inlined) function |rank_of| does this look-up. Since we only
-need to compare types of the same outer structure, we can write separate
+(Alternatively we might have defined |rank_of| as a \Cpp~macro with just $t$ as
+argument.) The (hopefully inlined) function |rank_of| does this look-up. Since
+we only need to compare types of the same outer structure, we can write separate
 functions for comparing function-, row-, tuple-, and union types; there is no
 need to compare primitive types, since not having descendents, their sorting is
 already as refined as it will get. The comparison functions return an integer
@@ -1084,7 +1100,7 @@ value, but its only relevance is whether it is negative, zero, or positive.
 
 @< Local function definitions @>=
 unsigned int rank_of(const type_expr& t,const std::vector<type_data>& a)
-{ assert(t.kind()==type_name); // since |t| is sub-type of a sectioned type
+{ assert(t.kind()==type_name); // since |t| is sub-type of a dissected type
   return a[t.type_id()].rank;
 }
 @)
@@ -1115,10 +1131,18 @@ template<bool is_union>
 }
 
 @ Now for the actual sorting routine, we opt for merge sorting using linked
-lists, as this will allow us some practice with |containers::sl_list|. Indeed
-we extended the multi-purpose method |splice| with a full (according to
-|std::forward_list::splice_after|) set of instances in order for this to
-compile.
+lists, as this will allow us some practice with |containers::sl_list|. Indeed we
+extended the multi-purpose method |splice| with a full (according to
+|std::forward_list::splice_after|) repertoire of instances, in order to make
+this code compile.
+
+The first instance of |splice| serves to split up a list into two almost equal
+halves (we prefer the first part larger if there is to be a difference), the
+second to move a tail portion from |l1| to |l0| once we get to the end of the
+latter, and the third call is the normal case that copies just one node from
+|l0| into the proper location of~|l0|.
+
+@s forward_list list
 
 @< Local function definitions @>=
 typedef const type_data* val_type;
@@ -1134,7 +1158,8 @@ void merge_sort (p_list l0, cmp_f cmp, const std::vector<type_data>& a)
   merge_sort(l0,cmp,a);
   merge_sort(l1,cmp,a);
   auto it=l0.begin();
-  do // merge |l1| into |l0| at |it|
+  do
+  // merge |l1| into |l0| at using |it| as current insertion position, stop if  either reaches its end
     if (cmp(*it,l1.front(),a)<=0)
     { ++it; // element from |l0| passes before |l1|
       if (l0.at_end(it))
@@ -1152,57 +1177,181 @@ void merge_sort (p_list l0, cmp_f cmp, const std::vector<type_data>& a)
   while(true);
 }
 
-@
+@ The heart of type equivalence testing consists of propagating any
+differences visible in the |rank| fields from descendent types to their
+parents, and updating the rank fields of the latter to reflect the change;
+repeating this until no more refinement occurs anywhere. The propagation is
+done by calling |merge_sort| for each group of previously indistinguishable
+types, which will separate types that can now be distinguished based on the
+|rank| fields of their descendents, while keeping together those that still
+cannot be distinguished. Due to our preparations, within such groups types
+will necessarily have the same top level structure which differs from
+|primitive_type|, so that we can use one of the specific comparison functions
+above for the sorting. Once the sorting is done, we find the new separations
+between now distinguished types, which will introduce new values for |rank|
+that we then associate to the types, thus refining the effect of future calls
+of the comparison function.
+
+It is important that we are only refining a partition here, and that our goal
+is not to sort all of |type_perm| according to some definite ordering. If the
+latter were the case, it would be a problem that changes to |rank| fields may
+invert the relative order of two types under |cmp| (in the scenario where a
+first test in for instance |cmp_tu_types| finds no distinction, then a second
+test does find one, but later the first test changes in the opposite sense).
+However we only care about types being found to be distinct during sorting,
+and such a verdict is definitive; once a distinction is established, the types
+will never again be compared during refinement. These considerations justify
+the fact that we update |rank| fields for some groups, while other groups have
+not been sorted yet; the updates can influence the result of the later
+sorting, but only in the sense to make refinement progress more rapidly, which
+we shall not complain about.
+
 @< Repeatedly sort and refine each bucket content, using the |rank| fields
    for their descendent types, until no more refinement takes place;
    now each bucket is an equivalence class of types @>=
 { bool changes; // must be outside loop, or termination condition cannot use it
   do
   { changes = false;
-    unsigned int i=0;
-    cmp_f cmp;
-    while (i+1<type_perm.size())
-      if (type_perm[i+1]->rank!=i) // then |i| is a singleton bucket
-        ++i;
-      else
-      { auto start = i;
-        auto kind = type_perm[i++]->type.kind();
-        cmp = kind==function_type ? cmp_func_types
-            : kind==row_type ? cmp_row_types
-            : kind==tuple_type ? cmp_tu_types<false>
-            : kind==union_type ? cmp_tu_types<true> : nullptr;
-        @< Advance |i| through the range of values with equal rank, and
-           |break| from the current loop if they all test equal under |cmp| @>
-      @)changes=true; // now we have something to refine
-        p_list l(&type_perm[start],&type_perm[i]);
-        merge_sort(l,cmp,type_array);
-      @/@< Copy elements from |l| back to |type_perm[@[start..i@]]|, and set
-           each corresponding |rank| field to the index of the first element
-           in the sequence of consecutive elements testing equal under |cmp| @>
-      }
+    for (auto it=groups.begin(); not groups.at_end(it); ) // no increment here
+    { auto kind = type_perm[it->first]->type.kind();
+      const cmp_f cmp
+          = kind==function_type ? cmp_func_types
+          : kind==row_type ? cmp_row_types
+          : kind==tuple_type ? cmp_tu_types<false>
+          : kind==union_type ? cmp_tu_types<true>
+          : (assert(false),nullptr);
+      @< Test for range given by |*it| in |type_perm| whether everything tests
+         equal under |cmp|; if so increment |it| and |continue| @>
+@)
+      changes = true; // now we have something to refine
+      p_list l(&type_perm[it->first],&type_perm[it->second]);
+      merge_sort(l,cmp,type_array);
+@)
+    @/@< Copy elements from |l| back to |type_perm| into range given by |*it|,
+         while determining their new partition into groups; set their |rank|
+         fields accordingly, and remove the node after |it| from |groups| after
+         inserting any new refinable groups before it @>
+    }
   }
   while (changes);
 }
 
-@
-@< Advance |i| through the range of values with equal rank... @>=
-{ bool run_out=false;
-  while (cmp(type_perm[i-1],type_perm[i],type_array)==0)
-    if (run_out=(++i>=type_perm.size() or type_perm[i]->rank!=start))
-      break; // run out of bucket
-  if (run_out)
-    break; // we actually wanted a double break
-  do ++i;
-  while (i<type_perm.size() and type_perm[i]->rank==start);
+@ Groups of types among which, with current |rank| values, |cmp| finds no
+distinctions must be skipped. This enables termination (in case they
+turn out to be equivalent); doing |continue| avoids setting |changes|.
+
+@< Test for range given by |*it| in |type_perm| whether everything tests
+   equal under |cmp|; if so increment |it| and |continue| @>=
+{ unsigned int i;
+  for (i=it->first+1; i<it->second; ++i)
+    if (cmp(type_perm[i-1],type_perm[i],type_array)!=0)
+      break;
+  if (i>=it->second) // the above loop ran to completion
+@/{@; ++it; continue; } // so skip group whose refinement would change nothing
 }
 
-@
-@< Copy elements from |l| back to |type_perm[@[start..i@]]|,... @>=
-{}
+@ There is a subtlety below, in that we should not change any |rank| fields
+while we are calling |cmp| to inspect the result of sorting, since such
+changes might alter the results of later calls of |cmp| to no longer
+correspond to the relations as they held during sorting. So instead we set
+aside the new ranks that we want to assign to the types whose pointers are
+being moved here, in a temporary array |new_ranks|, to do the actual
+assignments only later once all refined groups have been established.
 
-@
+@< Copy elements from |l| back to |type_perm|... @>=
+{ auto jt=l.begin(); auto loc=it->first; // index into |type_perm|
+  std::vector<unsigned int> new_ranks;
+  new_ranks.reserve(it->second-it->first);
+  while (not l.at_end(jt)) // traverse list |l|, one new group at a time
+  { const auto first_loc=loc;
+    do // find a new group
+    { type_perm[loc++]=*jt;
+      new_ranks.push_back(first_loc);
+    }
+    while (not l.at_end(++jt) and cmp(type_perm[first_loc],*jt,type_array)==0);
+    if (loc-first_loc>=2) // don't create singleton groups
+      it=groups.insert(it,std::make_pair(first_loc,loc)); // prepend this pair
+  }
+  assert(loc==it->second);
+  groups.erase(it); // remove refined group; |it| should not be incremented
+@)
+  loc=it->first; // restart
+  for (auto p = new_ranks.begin(); p!=new_ranks.end(); ++p)
+    type_perm[loc++]->rank=*p;
+}
+
+@ Now it is time to finally copy entries back to (the
+|std::vector<type_binding>| base object of) |*this|, from |type_array|. All the
+work that was done so far served to set the |rank| fields such that types are
+equivalent if and only if their |rank| fields are the same. The first |size()|
+of them should certainly have distinct |rank| fields, since their were already
+reduced so a list without equivalences by earlier calls of our |add_typedefs|
+method. What we shall do is run over entries of |type_array| in increasing
+order, and each time a previously unseen value of |rank| is found, copy the
+corresponding |type| field from |type_array| to |*this|. We need to combine that
+with the |id_type| component (the name the user chose to associate with the
+newly defined type) which was left behind (by |dissect_type_to|) in the argument
+|defs| to the |add_typedefs| method; fortunately we have not left the method
+yet, so there is no problem in doing so.
+
+The act of moving only the first representative of each equivalence class of
+types can cause a renumbering of |type_number| values to be necessary to
+preserve meaning; this should only be the case for newly defined types, and they
+can only be referred to from other new types. We keep track of the
+correspondence between the |rank| value characterising the equivalence class and
+its new |type_number| value in the array |renumber|, which also serves to record
+which |rank| values have already been seen.
+
 @< For each equivalence class that has no representatives among the types
    already present, add a corresponding entry to |*this| @>=
+{ constexpr unsigned int absent = -1;
+  const auto old_size=size();
+  const auto first_new=type_array.begin()+old_size;
+  unsigned int count = 0;
+  std::vector<unsigned int> renumber(type_perm.size(),absent);
+  for (auto it = type_array.begin(); it!=type_array.end(); ++it)
+    if (renumber[it->rank]==absent)
+    {
+      renumber[it->rank]=count;
+      if (count++ >= old_size)
+        emplace_back(defs[it-first_new].first,std::move(it->type));
+    }
+    else
+      assert(count>=old_size);
+      // only new types can be equivalent to an earlier one
+    @< Update, for types beyond position |old_size|, their descendent types
+       according to |renumber| @>
+}
+
+@ For a given |type_expr t@;|, which should have |t.kind()==type_name|,
+renumbering consists of looking up the rank of element indexed by |t.type_id()|
+in |type_array|, and taking the value from |renumber| indexed by that rank.
+This is needed several times, but rather than define a function (which would
+need additional arguments to access the tables) we define a macro
+|renumber_type_id_from_rank| to do the work. The code for actually doing the
+renumbering just loops over the relevant part of |*this|, does case distinction
+by |kind()|, and invokes |renumber_type_id_from_rank| wherever applicable.
+
+@d renumber_type_id_from_rank(t) assert((t).kind()==type_name),t=type_expr(renumber[type_array[(t).type_id()].rank])
+@< Update, for types beyond position |old_size|, their descendent types
+   according to |renumber| @>=
+{ for (auto it=begin()+old_size; it!=end(); ++it)
+    switch (it->second.kind())
+    { default: break; // nothing for types without descendents
+    case function_type:
+    { auto f = it->second.func();
+    @/renumber_type_id_from_rank(f->arg_type);
+      renumber_type_id_from_rank(f->result_type);
+    }
+      break;
+    case row_type: renumber_type_id_from_rank(*it->second.component_type());
+      break;
+    case tuple_type: case union_type:
+      for (wtl_iterator jt(it->second.tuple()); not jt.at_end(); ++jt)
+        renumber_type_id_from_rank(*jt);
+      break;
+    }
+}
 
 @ Finally we need a comparison for structural equality of type expressions.
 
