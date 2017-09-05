@@ -161,8 +161,6 @@ class Block_base
   BlockEltPair link
     (weyl::Generator alpha,weyl::Generator beta,BlockElt y) const;
 
-  virtual const TwistedInvolution& involution(BlockElt z) const =0;
-
   // print whole block to stream (name chosen to avoid masking by |print|)
   std::ostream& print_to
     (std::ostream& strm,bool as_invol_expr) const; // defined in |block_io|
@@ -182,28 +180,30 @@ class Block_base
 
 }; // |class Block_base|
 
-  /*!
-\brief Represents a block of representations of an inner form of G.
 
-For our fixed inner form, orbits of $K$ on $G/B$ are parametrized by classes
-of elements $x$ in $N_G(H).\delta$ (the normalizer in the non-identity
-component $G.\delta$ of the extended group $G^Gamma=G disju G.\delta$, where
-$\delta$ is (i.e., acts on $G$ as) an involution that itself normalises $H$),
-modulo the \emph{conjugation} action of $H$. (Dangerous bend: this $H$
-conjugacy class of $x$ is a subset, usually proper, of the coset $xH$. The
-collection of all $x$ is therefore NOT a subset of the extended Weyl group
-$N(H)/H$, but something more subtle.) The requirement on $x$ is that it belong
-to the $G$-conjugacy class of strong involutions defining the inner form.
+/*				|class Block|
+  A block constructed from a real form and a dual real form in an inner class.
 
-Each $x$ therefore defines an involution $\theta_x$ of $H$. Data pertaining to
-the subset of $x$ with a fixed $\theta_x$ is stored in the |Fiber| class.
+  [Fokko's original comments; they have little bearing on the class definition]
+  For our fixed inner form, orbits of $K$ on $G/B$ are parametrized by classes
+  of elements $x$ in $N_G(H).\delta$ (the normalizer in the non-identity
+  component $G.\delta$ of the extended group $G^Gamma=G \dot\cup G.\delta$,
+  where $\delta$ is (i.e., acts on $G$ as) an involution that itself normalizes
+  $H$), modulo the \emph{conjugation} action of $H$. (Dangerous bend: this $H$
+  conjugacy class of $x$ is a subset, usually proper, of the coset $xH$. The
+  collection of all $x$ is therefore NOT a subset of the extended Weyl group
+  $N(H)/H$, but something more subtle.) The requirement on $x$ is that it belong
+  to the $G$-conjugacy class of strong involutions defining the inner form.
 
-A block is characterized by specifying also an inner form of the dual
-group $G^vee$. For this inner form, $K^vee$ orbits on $G^vee/B^vee$ are
-parametrized by elements $y$. The basic theorem is that the block of
-representations is parametrized by pairs $(x,y)$ as above, subject to
-the requirement that $theta_y$ is the negative transpose of $theta_x$.
-  */
+  Each $x$ therefore defines an involution $\theta_x$ of $H$. Data pertaining to
+  the subset of $x$ with a fixed $\theta_x$ is stored in the |Fiber| class.
+
+  A block is characterized by specifying also an inner form of the dual group
+  $G^vee$. For this inner form, $K^vee$ orbits on $G^vee/B^vee$ are parametrized
+  by elements $y$. The basic theorem is that the block of representations is
+  parametrized by pairs $(x,y)$ as above, subject to the requirement that
+  $theta_y$ is the negative transpose of $theta_x$.
+*/
 class Block : public Block_base
 {
   const TwistedWeylGroup& tW; // reference is used here only for printing
@@ -262,7 +262,7 @@ class Block : public Block_base
   The twisted involution corresponding to the involution $\theta$ for |z|.
   This is the Weyl group element $w$, such that $\theta=w.\delta$
 */
-  virtual const TwistedInvolution& involution(BlockElt z) const
+  const TwistedInvolution& involution(BlockElt z) const
     { assert(z<size()); return d_involution[z]; }
 
   // flag among simple roots those occurring in reduced expr for |involution(z)|
@@ -356,7 +356,6 @@ class param_block : public Block_base
   // virtual methods
   virtual KGBElt max_x() const { return highest_x; } // might not be final |x|
   virtual KGBElt max_y() const { return highest_y; }
-  virtual const TwistedInvolution& involution(BlockElt z) const; // from |kgb|
 
   virtual std::ostream& print // defined in block_io.cpp
     (std::ostream& strm, BlockElt z,bool as_invol_expr) const;

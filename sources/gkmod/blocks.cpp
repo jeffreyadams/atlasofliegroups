@@ -615,8 +615,6 @@ const InvolutionTable& param_block::involution_table() const
   { return innerClass().involution_table(); }
 const RootDatum& param_block::rootDatum() const
   { return innerClass().rootDatum(); }
-const TwistedInvolution& param_block::involution(BlockElt z) const
-  { return rc.kgb().involution(x(z)); }
 
 StandardRepr param_block::sr(BlockElt z) const
   { return rc.sr_gamma(x(z),lambda_rho(z),gamma()); }
