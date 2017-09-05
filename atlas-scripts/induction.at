@@ -397,8 +397,8 @@ set rho_u_cx_T (Parabolic P) = vec:
 {. Half sum of imaginary compact roots in nilradical of (theta-stable) P; the KGB element x must be in the distinguished fiber, and in the class of P. .}
 set rho_u_ic (Parabolic P, KGBElt x) = ratvec:
   assert(is_parabolic_theta_stable(P),"P is not theta-stable");
-  assert(any(for y in equivalence_class_of(P) do y=x od)
-        ,"x does not belong to the class of P");
+{NO  assert(any(for y in equivalence_class_of(P) do y=x od)
+        ,"x does not belong to the class of P");}
   assert(in_distinguished_fiber(x),"x is not in the distinguished fiber");
   sum(columns_with(is_compact_imaginary(x),nilrad_roots(P))) / 2
 

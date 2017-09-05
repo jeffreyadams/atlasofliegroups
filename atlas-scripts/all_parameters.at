@@ -59,8 +59,9 @@ set all_lambda_differential_0 (KGBElt x) = [vec]:
   for v in all_0_1_vecs(n_columns(basis)) do basis*v od
 
 { all K parameters with same d_lambda as (x,lambda) }
-set all_equal_dlambda_K_parameters (K_Type(x,lambda)) = [K_Type]:
-  for v in all_lambda_differential_0(x) do (x,lambda+v) od
+set all_equal_dlambda_K_parameters (K_Type(x,lambda)) = 
+##(for v in all_lambda_differential_0(x) do if 
+is_final(parameter(x,lambda+v)) then [(x,lambda+v)] else [(KGBElt,ratvec)]:[] fi od)
 
 { all actual parameters with same d_lambda as p, same nu }
 set all_parameters (Param p) = [Param]:
@@ -82,11 +83,11 @@ set all_parameters_x_gamma (KGBElt x,ratvec gamma) = [Param]:
 
 { all parameters with given infinitesimal character }
 set all_parameters_gamma (RealForm G,ratvec gamma) = [Param]:
-   let (v,)=make_dominant(root_datum(G),gamma) in
+   let (gamma_dom,)=make_dominant(root_datum(G),gamma) in
    let rho=rho(G) in
    for x in KGB(G)
    do let th1=1+involution(x) in
-      case vec_solve(th1,th1*(v-rho))
+      case vec_solve(th1,th1*(gamma_dom-rho))
       | no_solution: [Param]:[]
       | solution(lr):
         let lambda = rho + lr, nu=(2-th1){1-theta}*gamma/2 in
@@ -112,50 +113,6 @@ warning: some parameters may fail to be final}
 set all_minimal_principal_series(RealForm G,ratvec gamma)=[Param]:
     assert(is_split(G),"group is not split");
     all_parameters(minimal_spherical_principal_series(G,gamma))
-
-{ all_dominant_norm_less_than(InnerClass ic,ratvec v,int N):
-  returns mu dominant (which will be 2*d*lambda=(1+theta)*lambda) such that
-  1) mu\in X^*
-  2) d*mu restricted to the center is trivial
-  3) <v,mu> = <=N
-  Note: default is v=rho_check(G), so condition is
-  <rho_check,mu> = 2d*<rho_check,lambda> <= N
-  in applications: mu is for L, a subgroup of G, and v=rho_check(G)
-  algorithm:
-  set [lambda_1,...,lambda_{m-1}]=fundamental weights
-  set [lambda_m,...,lambda_{n-1}]=lie_compact_radical_hat(G):
-   this is a Z-basis of compact part of radical (see center.at)
-  [lambda_1,...,lambda_{n-1}] is Z-basis we want
-  set [rat]:c =[c_1,...,c_{n-1}] where c_i=<lambda_i,v>
-  use cone to find all mu=\sum a_i lambda_i such that <v,mu>=sum a_i*c_i<=N
-}
-set all_dominant_norm_upto (InnerClass ic, ratvec cowt,int N) =
-    mat: { columns are weights }
-  let rd=root_datum(ic)
-  then basis = [ratvec]: { rational weights }
-         fundamental_weights(rd) ## { concatenate }
-         for w in compact_coradical_basis(ic) do ratvec: w od
-  , rk=rank(rd), result=[vec]: []
-  in
-  for cs in cone(N,for col in basis do cowt*col od) do
-    let (v,d) = %sum(for col@i in basis do col*cs[i] od,rk) in
-    if d=1 then result #:= v fi
-  od; rk { number of rows of matrix returned } # result
-
-{ filter and transform list of mu's into list of example lambda-rho values }
-set lambda_rho_from_dominant_norm_upto (KGBElt x, ratvec v, int N) = mat: {wts}
-  let th1=1+involution(x), rho=rho(root_datum(x)) in
-  #rho { all weights have same size (the rank) as rho } ##
-  for mu in all_dominant_norm_upto(inner_class(x),v,N)
-  do case solve(th1,mu-ratvec_as_vec(th1*rho))
-     | no_solution: []
-     | solution(s): [s]
-     esac
-  od
-
-set K_parameters_norm_upto ((KGBElt,ratvec,int)(x,,):triple) = [K_Type]:
-  let lrs = lambda_rho_from_dominant_norm_upto(triple), rho=rho(root_datum(x))
-  in ## for lr in lrs do all_equal_dlambda_K_parameters(x,lr+rho) od
 
 { that used to be:
 { mu will be d_lambda=(1+theta)lambda/2 => 2*mu\in X^*

@@ -1,0 +1,83 @@
+{initialize some stuff for knilpotent computation for SL(2,R)}
+
+set G=Sp(4,R)
+set x0=KGB(G,0)
+set x_K=KGB(G,2)
+
+{real nilpotent: (KGBElt x,ratvec cowt)
+L=L_alt(cowt,x)
+}
+set orbits=[
+([0,0],KGB(G,0)), {0-nilpotent}
+([1,0],KGB(G,0)), {minimal orbit, i.e. [2,1,1], +- in first row}
+([1,0],KGB(G,1)), {                             -+ in first row}
+([1,1],KGB(G,0)), {22 orbit, +- real form}
+([1,1],KGB(G,2)), {          ++ real form}
+([1,1],KGB(G,3)), {          -- real form}
+([3,1],KGB(G,0)), {principal orbit, +-+- real form}
+([3,1],KGB(G,2))  {                 -+-+ real form}  {FAKE ORBIT}
+]
+
+
+set closures=[[],[0],[0],[0,1,2],[0,1,2],[0,1,2],[0,1,2,3,4,5],[0,1,2,3,4,5]]
+
+
+set L2=Levi_alt([1,0],KGB(G,2))
+set L3=Levi_alt([1,0],KGB(G,3))
+
+set pl2=parameter(KGB(L2,0),[0,0],[0,0])
+set pl3=parameter(KGB(L3,0),[0,0],[0,0])
+
+{
+set (pl2t,)=twist_by_minus_2rho_u_cap_s (KGB(G,2),x_K,[1,0],0,[0,0])
+set (pl3t,)=twist_by_minus_2rho_u_cap_s (KGB(G,3),x_K,[1,0],0,[0,0])
+
+set P2=parabolic_alt([1,0]/1,KGB(G,2))
+set P3=parabolic_alt([1,0]/1,KGB(G,3))
+
+{              (x,x_K,H, #KGB_L, lambda_L)}
+{orbit is (x,H)}
+
+
+
+set phi1=Phi(x_K,KGB(G,0),[0,0],1,[0,0])
+set phi3=Phi(x_K,KGB(G,0),[1,0],0,[0,0])
+set phi5=Phi(x_K,KGB(G,0),[1,0],1,[2,0])
+
+set phi0=Phi(x_K,KGB(G,0),[0,0],0,[0,0])
+set phi2=Phi(x_K,KGB(G,1),[1,0],0,[0,0])
+set phi6=Phi(x_K,KGB(G,1),[1,0],1,[2,0])
+
+set phi4=Phi(x_K,KGB(G,0),[1,0],1,[0,0])
+
+set phi2=Phi(x_K,KGB(G,1),[1,0],0,[0,0])
+set phi7=Phi(x_K,KGB(G,1),[1,0],1,[4,0])}
+{phi6-phi7+phi1=0}
+
+{phi2-phi7=-phi0-phi1}
+
+{phi3-phi5=-phi1}
+{phi2-phi6=-phi0}
+{phi0+phi2 is norm 6 instead of 10}
+{phi1+phi3 is norm 6 instead of 10}
+
+{set phi(int x_G, vec H, int x_L, ratvec lambda_L)=
+let a=Phi(x_K,KGB(G,x_G),H,x_L,lambda_L) in (a, leading_terms(a))}
+
+
+{
+set pl0=parameter(KGB(L0,0),[1,0],0,[0,0])
+set pl1=parameter(KGB(L1,0),[1,0],0,[0,0])
+
+set pl0t=
+set pl1t=twist_by_minus_2rho_u_cap_s (KGB(G,1),[1,0],0,[0,0])
+
+atlas> pl0
+Value: final parameter(x=0,lambda=[0,0]/1,nu=[0,0]/1)
+atlas> pl0t
+Value: final parameter(x=0,lambda=[-3,1]/1,nu=[0,0]/1)
+atlas> pl1
+Value: final parameter(x=1,lambda=[0,0]/1,nu=[0,0]/1)
+atlas> pl1t
+Value: final parameter(x=2,lambda=[-3,1]/1,nu=[0,0]/1)
+}

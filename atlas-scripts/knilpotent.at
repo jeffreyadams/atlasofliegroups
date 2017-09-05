@@ -1,0 +1,363 @@
+<all_parameters.at
+<K_norm.at
+
+set kn_verbose=false
+set normalize(ratvec v)=vec: ratvec_as_vec(for r in v do r-v~[0] od)
+{implementation of parts of Letter to Atlas II: nilpotent orbits}
+
+{------------------ two new data types -----------------------}
+{RealNilpotentOrbit and KNilpotentData}
+
+{a real nilpotent orbit is a pair ([int] H,KGBElt x)
+ note the order, to distinguish from KHighestWeight (KGBElt x,vec H) (see K.at)
+ x should in the distinguished fiber
+ H\in X_* is the semisimple element of a Lie triple
+ \theta_x(H)=H
+ set \q=parabolic_alt(x,H), then 
+ orbit=induced from trivial orbit of Levi factor, equivalently
+      =associated variety of A_q(lambda)
+ H must satisfy <\alpha,H>\in {0,1,2} for all simple alpha
+ (in particular H is dominant)
+ not all such H are allowed
+ if (H,x) is given, with H non-dominant, replace it with (wx,wH) 
+}
+
+
+: RealNilpotentOrbit = ([int] H,KGBElt x)
+
+set parabolic_of_orbit(RealNilpotentOrbit O)=Parabolic:parabolic_alt(O.H,O.x)
+
+set Levi_of_orbit(RealNilpotentOrbit O)=RealForm:Levi(parabolic_of_orbit(O))
+
+{KNilpotentData: [ (O, [(mu_L,Q)]) ]
+ RealNilpotentOrbit:O is a real nilpotent orbit for G
+ for each O, L=Levi_of_orbit(O) 
+ (KGBElt,ratvec):mu_L is an L\cap K-type
+ ParamPol:Q is the extension defined by mu_L (a ParamPol for G)
+}
+: KNilpotentData = [( RealNilpotentOrbit, [(K_Type,ParamPol)])]
+
+{----------------- some convenient output commands for K-types ------------------}
+
+
+set ParamPol_string(ParamPol P)=string:
+##(for c@p in P do split_as_int(c)+ "*"+to_string(p) + " [" + height(p) +  "]" + new_line od)
+
+set K_Type_string (K_Type p) = string:
+  let (,w)=highest_weight(K0_params(parameter(p))[0]) in 
+  if is_integer(lambda(p))
+  then to_string("(x_",#x(p),",",[int]:ratvec_as_vec(lambda(p)),")", " [", height(parameter(p)),";", K_norm(p),"]  ", to_string(w), " ",dimension(LKT(parameter(p))))
+  else to_string("(x_",#x(p),",",lambda(p),")", " [", height(parameter(p)),";", K_norm(p),"] ", to_string(w), " ",dimension(LKT(parameter(p))))
+  fi
+set K_Type_string (Param p)=K_Type_string(K_type(p)) {error if nu(p)\ne 0}
+
+set K_Type_Pol_string(K_Type_Pol P)=string: let rv=string:"" in 
+for c@p in P do
+ let (,w)=highest_weight(K0_params(p)[0]) in 
+ rv+:=split_as_int(c)+"*"+K_Type_string(p) + new_line od;rv
+
+set K_Type_Pol_string(K_Type_Pol P, KGBElt x_K)=string: let rv=string:"" in 
+let ()=prints("KTPS with: ",real_form(P), " ", real_form(x_K)) in
+for c@p in P do
+{ let (x,v)=highest_weight(LKT(p),x_K) in }
+ let (,w)=highest_weight(K0_params(p,x_K)[0]) in 
+ rv+:=split_as_int(c)+"*"+K_Type_string(p)+"   " {+ to_string(v) }+ "  " + to_string(w) + "  " + dimension(LKT(p)) +  " <"+K_norm(p)+">"+new_line od;rv
+
+set orbit_string(RealNilpotentOrbit O)=string:
+let (H,x)=O in "(" + to_string(H) + ",x_" + to_string(#x) + ")"
+
+set K_Type_string(K_Type mu)=string:
+let (x,v)=mu in "(x_" + to_string(#x) +  "," + to_string(v) + ")"
+{--------- utilities involving nilradicals --------------}
+
+{given x a theta_x-stable set of roots R, return subset of R
+consisting of each imaginary root alpha\in R, and one of each pair
+alpha,theta(alpha)
+if R isn't theta-stable this will fail}
+set extract_roots(KGBElt x, [vec] roots)=[vec]:
+let theta=involution(x) then
+rv=[] in
+while #roots>0 do
+ let alpha=roots[0] in
+ rv#:=alpha;
+ roots:=delete(roots,0);
+  if theta*alpha != alpha then
+   let  index=find(roots,theta*alpha) in if (index=-1) then error("set of roots is not theta-stable") else
+      roots:=delete(roots, find(roots,theta*alpha))  fi fi od;rv
+
+{roots of H in s[1]
+ s = -1 eigenspace of theta_x
+ s[1] = 1 H-eigenspace of H on s
+}
+set s_one_roots(RealNilpotentOrbit O)=[vec]:
+let theta=involution(O.x) then
+()=assert(^theta*O.H = O.H,"H is not ^theta-fixed") then
+P=parabolic_alt(O.H,O.x) then
+x_max=x(P) then
+u=nilrad_roots_alt(O.H,O.x) then
+{u_complex=extract_roots(x,u) then  NO keep complex pairs for now}
+roots=[vec]:[] then
+()=for alpha in u do
+if alpha*O.H=1 and (is_noncompact_imaginary(x_max)(alpha) or is_complex(x_max)(alpha))  then roots#:=alpha fi od
+{then ()=for alpha in u_complex do if alpha*H=1 then roots#:=alpha fi od} 
+in roots
+
+{restriction of s_one_roots to H^{theta_x}
+ each pair (alpha,theta(alpha)) contributes
+ a single root restriction(alpha)=restriction(theta(alpha)),
+ corresponding to the single vector X_\alpha-\theta(X_\alpha) in s[1]
+ characters of H^theta are elements of X^*/(1-theta)X^*
+}
+set s_one_roots_restricted(RealNilpotentOrbit O)=[vec]:
+let (H,x)=O then
+roots=s_one_roots(O) in
+roots:=extract_roots(x,roots)
+
+{generate all subsets of [vec], uses generate_all_subsets@[int] in misc.at}
+set generate_all_subsets([vec] S) = [[vec]]:
+    for A in generate_all_subsets(for i:#S do i od) do for i in A do S[i] od od
+
+{all subsets of the set of restrictions of roots of s[1] to Lie(H)^{\theta_x}
+ see Knilpotent paper, Corollary 7.3(6)}
+set subsets_of_s_one_roots(RealNilpotentOrbit O)=[[vec]]:
+let roots=s_one_roots_restricted(O) in
+delete(generate_all_subsets(roots),0) {don't want empty subset}
+
+{H is in \mathfrak h, not \mathfrak h^*, 
+ so make_dominant is wrt DUAL}
+set rho_shifts(RealNilpotentOrbit O)=[(vec,int)]:
+let (H,x)=O then
+drd=dual(root_datum(x)) then
+(H_dom,w)=make_dominant(drd,H) then
+x_dom=cross(inverse(w),x) then
+O_dom=([int]:H_dom,x_dom) then
+m=w_matrix(w) then
+S=subsets_of_s_one_roots(O_dom) in  [(vec:null(rank(real_form(x))),0)]##for v in S do (sum(m*v),#v) od
+
+{these are in induction.at}
+{
+set rho_u_cx (Parabolic P,KGBElt x_K) = ratvec:
+  assert(is_parabolic_theta_stable(P),"P is not theta-stable");
+  sum(columns_with(is_complex(x_K),nilrad_roots(P))) / 2
+set rho_u_cx_T (Parabolic P,KGBElt x_K) = vec:
+  assert(is_parabolic_theta_stable(P),"P is not theta-stable");
+  let rd=root_datum(x_K), rd_L=root_datum(Levi(P)), theta=involution(x_K)
+  in ratvec_as_vec(2*rho_S(theta,rd)-2*rho_S(theta,rd_L))
+
+set rho_u_ic (Parabolic P,KGBElt x_K) = ratvec:
+  assert(is_parabolic_theta_stable(P),"P is not theta-stable");
+  sum(columns_with(is_compact_imaginary(x_K),nilrad_roots(P))) / 2
+set two_rho_u_cap_k (Parabolic P,KGBElt x_K) = vec:ratvec_as_vec(rho_u_cx_T(P,x_K)+2*rho_u_ic(P,x_K))
+set two_rho_u_cap_s (Parabolic P,KGBElt x_K) = vec:ratvec_as_vec(2*rho_u(P))-two_rho_u_cap_k(P,x_K)
+set rho_u_cap_k (Parabolic P,KGBElt x_K) = ratvec: rho_u_cx(P,x_K)/2+rho_u_ic(P,x_K)
+set rho_u_cap_s (Parabolic P,KGBElt x_K) = ratvec: rho_u(P)-rho_u_cap_k(P,x_K)
+set rho_u_cap_s(KGBElt x,ratvec H,KGBElt x_K)=ratvec:rho_u_cap_s(parabolic_alt(H,x),x_K)
+}
+{need to twist L\cap K type by (one dimensional L\cap K-type) -2rho(u\cap s)
+ an L\cap K type is given by standard,final,limit parameter for L
+ 2rho(u\cap s) is not typically one-dimensional for L (only for L\cap K)
+so you can not simply subtract 2\rho(u\cap s) from lambda_L
+}
+
+set twist_by_minus_2rho_u_cap_s(KGBElt x_K,RealNilpotentOrbit O,int kgb_number_L,ratvec lambda_L)=Param:
+let P=parabolic_of_orbit(O) then
+L=Levi(P) then
+x_L=KGB(L,kgb_number_L) then
+p_L_shifted_pre_standardize=parameter(x_L,lambda_L-two_rho_u_cap_s(P,x_K),null(rank(L))) then
+p_L_shifted=first_param(standardize(p_L_shifted_pre_standardize))*0 in
+if kn_verbose then 
+prints("pre:",p_L_shifted_pre_standardize);
+prints("p_L_shifted:", p_L_shifted) fi ;
+if kn_verbose and not equivalent(p_L_shifted,p_L_shifted) then prints("two versions of twist don't agree") fi;
+{assert(equivalent(p_L_shifted,p_L_shifted),"two versions of twist don't agree");}
+p_L_shifted
+
+{---------------------- Extension Algorithm ----------------------}
+
+{this implements the algorithm of Proposition 7.3(6)
+Phi(x_K,O,kgb_number_L,lambda_L)
+x_K (KGBElt for G) is a basepoint for K
+O is a RealNilpotentOrbit for G
+L=Levi_of_orbit(O)
+mu_L=KGB(L,kgb_number_L,lambda_L) is an L\cap K-type
+Phi is the function \tilde\mathcal E
+}
+
+{returns ((p_L_0,p_L),extension)}
+set Phi(KGBElt x_K,RealNilpotentOrbit O,int kgb_number_L, ratvec lambda_L)=K_Type_Pol:
+let G=real_form(x_K) then
+L=Levi_of_orbit(O) then
+p_L_0=Param:parameter(KGB(L,kgb_number_L),lambda_L) in
+if (is_zero(p_L_0)) then error("p_L_0 is zero")
+elif  not (is_standard(p_L_0)) then error("p_L_0 is not standard")
+elif not (is_final(p_L_0)) then error("p_L_0 is not final")
+else
+let
+p_L=twist_by_minus_2rho_u_cap_s(x_K,O,#x(p_L_0),lambda(p_L_0)) then
+x_L=x(p_L) then
+rv=null_module(G) then
+rhoshifts=rho_shifts(O) then
+P_L=K_type_formula(p_L) in
+ for c@p_L in P_L do 
+  for (shift,j)@k in rhoshifts do
+   let q=parameter(x(p_L),lambda(p_L)-shift,nu(p_L)) then
+   r_1=theta_induce_standard(q,G) then
+   r_3=r_1*0 in
+   rv+:=(-1)^j*c*r_3 od od;rv fi
+
+set Phi(KGBElt x_K,RealNilpotentOrbit O,Param p_L)=K_Type_Pol:Phi(x_K,O,#x(p_L),lambda(p_L))
+set Phi(KGBElt x_K,RealNilpotentOrbit O,K_Type mu_L)=K_Type_Pol:Phi(x_K,O,#x(mu_L),lambda(mu_L))
+
+set Phi_leading(KGBElt x_K,RealNilpotentOrbit O, int kgb_number_L, ratvec lambda_L)=K_Type_Pol:
+leading_terms(Phi(x_K,O,kgb_number_L,lambda_L))
+
+set Phi_leading(KGBElt x_K,RealNilpotentOrbit O,Param p_L)=K_Type_Pol:Phi_leading(x_K,O,#x(p_L),lambda(p_L))
+
+{assume ParamPol has integral (not split) coefficients}
+set vector([Param] basis,ParamPol P)=(bool,vec):
+let sum=null_module(P) then
+v=vec:for p in basis do let c=split_as_int(P[p]) in  sum+:=c*p;c od in
+if sum=P then (true,v) else (false,vec:[]) fi 
+
+{given list=[P_1,...,P_n] of ParamPols
+test if P=\sum a_i P_i
+}
+{given ParamPols Q_1,...,Q_n and P test if
+P=\sum a_i Q_i
+Q_i and P are assumed to have integer coefficients
+return true/false, and [ParamPol] R,[int] S so that
+P=sum S[i]*R[i]
+}
+set in_span([ParamPol] list,ParamPol P)=([Param],mat,vec,bool):
+let basis=monomials(list) {list of distinct Params} then
+M=mat:for Q in list do let (,v)=vector(basis,Q) in v  od then
+(valid,T)=vector(basis,P) in
+if valid then
+let inlattice=in_lattice(M,T) in {prints("solved in_lattice:",inlattice);}(basis,M,T,inlattice)
+else prints("can't find vector at all");(basis,M,T,false) fi
+
+{convenient to define in_span([[ParamPol]] list,ParamPol P)=
+in_span( flatten the list,P)
+}
+set in_span([[ParamPol]] list_of_lists,ParamPol P)=([Param],mat,vec,bool):
+let list=[ParamPol]:[] in
+let ()=for new_list in list_of_lists do list##:=new_list od in
+in_span(list,P)
+
+{returns [ (mu_L,extension) ]}
+set Phi_upto(KGBElt x_K,RealNilpotentOrbit O,int bound, ratvec v)=
+let (H,x)=O then
+G=real_form(x) then
+L=Levi_of_orbit(O) then
+L_cap_K_types=K_parameters_norm_upto(L,G,bound,v) in
+for mu_L in L_cap_K_types do
+ let extension=Phi(x_K,O,mu_L) in
+ (mu_L,extension) od
+
+set Phi_upto(KGBElt x_K,[RealNilpotentOrbit] orbits, int bound, ratvec v)=
+for O in orbits do (O,Phi_upto(x_K,O,bound,v)) od
+
+{compute Phi for all orbits, all mu_L up to (int_bound,v), return KNilpotentData}
+set populate(KGBElt x_K, int bound, [RealNilpotentOrbit] orbits, [[int]] closures, ratvec v)=
+KNilpotentData:for orbit in orbits do  (orbit,Phi_upto(x_K,orbit,bound,v)) od
+
+{assume v=rho_check(G)}
+set populate(KGBElt x_K, int bound, [RealNilpotentOrbit] orbits, [[int]] closures)=
+KNilpotentData:populate(x_K,bound,orbits,closures,rho_check(root_datum(x_K)))
+
+{nice display of various pieces of KNilpotentData}
+set show(KGBElt x_K,KNilpotentData data)=void:
+for (orbit,a) in data do
+ prints(new_line,"--------------------------------------------",new_line,"orbit:", orbit_string(orbit), new_line, "Levi: ",Levi_of_orbit(orbit),new_line);
+ for (mu_L,extension) in a do 
+  let leading=leading_terms(extension) in
+  prints("orbit:", orbit_string(orbit), new_line,"mu_L: ",K_Type_string(mu_L), new_line, "Phi(mu_L):",new_line,K_Type_Pol_string(extension{,x_K}), new_line, "leading terms(Phi(mu_L)) (",#leading,"):",new_line,K_Type_Pol_string(leading{,x_K}), new_line) od od
+
+set show(KGBElt x_K,KNilpotentData data,int orbit)=void:show(x_K,[data[orbit]])
+
+set show(KGBElt x_K,KNilpotentData data,int orbit,int pair)=void:
+let (orbit,pairs)=data[orbit] in show(x_K,[(orbit,[pairs[pair]])])
+
+{test if Q is contained in P: every term in Q occurs in P,
+ with matching coefficients, up to uniform multiple
+ i.e. for some integer c,
+ mult(p in P)=c*mult(p in Q) for all terms p occuring in Q
+ test: #terms(P-cQ) =  #terms(P)-#terms(Q) for some c
+ (c=ratio of mulitplicities of some p)
+ returns the integer c, or -1 if fails
+}
+set term_contained(ParamPol P,ParamPol Q)=int:
+let
+p=first_param(P) then
+k=find(monomials(Q),p) in
+if k=-1 then 0 else
+ let c_q=split_as_int(Q[p]) then
+ c_p=split_as_int(P[p]) then
+ N=c_q/c_p in
+  if not is_integer(N) then 0
+  else let M=rat_as_int(N) in
+ if #(monomials(Q-M*P))=#monomials(Q)-#monomials(P) then M else 0 fi fi fi
+
+{reduce P using a list [ParamPol]:smaller by subtracting off leading terms, returns a single ParamPol}
+set reduce_ParamPol(ParamPol P, [ParamPol] smaller)=ParamPol:
+if #P=0 then P else
+let rec_fun f(ParamPol Q,[ParamPol] smaller_terms)=ParamPol:
+{ prints(new_line,"rec_fun with Q=",Q,new_line,"#params=", #smaller_terms, " #smaller:", #smaller);}
+ if #smaller_terms=0 then Q else
+  let R=smaller_terms[0] in if #R=0 then f(Q,delete(smaller_terms,0)) {iterate, deleting first term of smaller_terms} else
+    let N=term_contained(leading_terms(R),leading_terms(Q)) in
+      if N=0 then f(Q,delete(smaller_terms,0)) else 
+      f(Q-N*R,smaller) fi {if N=0 only delete first term of smaller_terms} {NB: GO BACK TO original smaller}
+  fi                 {if #R=0, already iterated}
+ fi in f(P,smaller)  {if #smaller_terms=0}
+fi   {if #P=0 return null_module}
+
+{data,orbit,pair -> (,P) -> reduce(P, terms from smaller_orbits), returns a single ParamPol}
+set reduce_ParamPol(KNilpotentData data, int orbit, int pair, [int] smaller_orbits)=ParamPol:
+let (mu_L,pairs)=data[orbit] then
+(,Q)=pairs[pair] then
+smaller_terms=[ParamPol]:[] in
+for j in smaller_orbits do 
+ let (,smaller_pairs)=data[j] in
+ for (,P) in smaller_pairs do smaller_terms#:=P od od;
+reduce_ParamPol(Q,smaller_terms)
+
+{data,orbit,pair -> (,P) -> reduce(P, term from single smaller orbit, returns a single ParamPol}
+set reduce_ParamPol(KNilpotentData data, int orbit, int pair, int smaller_orbit)=ParamPol:reduce_ParamPol(data,orbit,pair,[smaller_orbit])
+
+{data,orbit, pair=(mu_L,Q) ; replace pair with new_pair=(mu_L',Q'), returns new KNilpotentData}
+set update(KNilpotentData data, int orbit, int pair, (K_Type,ParamPol) new_pair)=KNilpotentData:
+let (O,pairs)=data[orbit] in
+pairs[pair]:=new_pair;
+data[orbit]:=(O,pairs);data
+
+{data,orbit, pair=(mu_L,Q), reduce Q using smaller_orbit, update data, returns KNilpotentData}
+set reduce(KNilpotentData data, int orbit, int pair, int smaller_orbit)=KNilpotentData:
+let P=reduce_ParamPol(data,orbit,pair,smaller_orbit) then
+(,pairs)=data[orbit] then
+(mu_L,)=pairs[pair] in
+update(data,orbit,pair,(mu_L,P))
+
+{data,orbit, pair=(mu_L,Q), reduce Q using collection of smaller_orbits, update data, returns KNilpotentData}
+set reduce(KNilpotentData data, int orbit, int pair, [int] smaller_orbits)=KNilpotentData:
+for j in smaller_orbits do data:=reduce(data,orbit,pair,j) od;data
+
+{data, orbit -> list of pairs, reduce all of these against smaller_orbits,
+update data, returns KNilpotentData}
+set reduce(KNilpotentData data, int orbit, [int] smaller_orbits)=KNilpotentData:
+let (,pairs)=data[orbit] in 
+for j:#pairs do data:=reduce(data,orbit,j,smaller_orbits) od;data
+
+
+{data, orbit -> list of pairs, reduce all of these against smaller_orbits as given by [[int]] closures,
+update data, returns KNilpotentData}
+set reduce(KNilpotentData data, [int] orbits, [[int]] closures)=KNilpotentData:
+for j in orbits do data:=reduce(data,j,closures[j]) od;data
+
+{primary version
+ run over all orbits, for each orbit run over all pairs (mu_L,Q)
+ reduce each one against smaller orbits as given by [[int]] closures
+ update data, returns KNilpotentData
+}
+set reduce(KNilpotentData data, [[int]] closures)=
+let all_orbits=for i:#data do i od in reduce(data,all_orbits,closures)

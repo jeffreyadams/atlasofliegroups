@@ -1,0 +1,13 @@
+{initialize some stuff for knilpotent computation for SL(2,R)}
+
+set G=SL(2,R)
+set x=KGB(G,0)
+set x_K=KGB(G,0)
+
+set orbits=[
+([0],KGB(G,0)),
+([1],KGB(G,0)),
+([1],KGB(G,1))
+]
+
+set closures=[[],[0],[0]]

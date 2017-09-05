@@ -486,6 +486,10 @@ set ## ([ratvec] rs) = ratvec: ## for r in rs do [rat]:r od
 set sum ([ratvec] list, int l) = ratvec: { sum of ratvecs of constant length l }
   let result = ratvec: null(l) in for v in list do result+:=v od; result
 
+set sum([ratvec] list)=ratvec: 
+assert(all(for v in list do #v=#list[0] od), "not all ratvecs of same length");
+sum(list,#list[0])
+
 { multiply rational matrix represented as list of columns by a rational vector
   the m*n matrix M is given as a list of n ratvec values of size m
   v is a ratvec of size n, the result is a ratvec of size m
@@ -1441,3 +1445,10 @@ set pad(string s,int padding)=string: l_adjust(padding,s)
 }
 set monomials (ParamPol P) = [Param]: for c@p in P do p od
 set monomial  (ParamPol P,int i) = Param: monomials(P)[i]
+
+{list of ParamPols -> list of distinct parameters occuring
+careful: don't let terms cancel!
+}
+set monomials([ParamPol] list)=[Param]:
+let sum=null_module(real_form(list[0])) in
+for P in list do for c@p in P do sum+:=p od od;monomials(sum)
