@@ -47,6 +47,8 @@ set cook_dual_KL_block ([Param] B,int entry_elem
      , for s in stops do get_index(s) od { convert stops to extracted block }
      )
 
+set reverse (poly_mat Q) = poly_mat: for i:#Q ~do for Qj in Q ~do Qj[i] od od
+
 { define the P,P_signed and Q polynomials
   P,P_signed,Q matrices of polynomials in q
   upper triangular if B is in standard (increasing) order
