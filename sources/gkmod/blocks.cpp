@@ -140,15 +140,11 @@ std::vector<Poset::EltList> makeHasse(const Block_base&);
 
 } // |namespace|
 
-} // |namespace blocks|
-
 /*****************************************************************************
 
         Chapter I -- The Block_base class
 
 ******************************************************************************/
-
-namespace blocks {
 
 // an auxiliary function:
 // we often need to fill the first empty slot of a |BlockEltPair|
@@ -179,7 +175,7 @@ Block_base::Block_base(unsigned int rank)
   , klc_ptr(nullptr)
 {}
 
-Block_base::Block_base(const Block_base& b) // copy constructor, unused
+Block_base::Block_base(const Block_base& b) // copy constructor
   : info(b.info), data(b.data), orbits(b.orbits)
   , dd(b.dd)
   , d_bruhat(nullptr) // don't care to copy; is empty in |Block::build| anyway
@@ -435,6 +431,45 @@ void Block_base::fill_klc(BlockElt last_y,bool verbose)
 
 ******************************************************************************/
 
+/*****			     Bare_block					****/
+
+Bare_block Bare_block::dual(const Block_base& block)
+{ auto rank = block.rank();
+  auto size = block.size();
+  auto max_len = block.length(block.size()-1);
+
+  Bare_block result(rank,block.max_y()+1,block.max_x()+1);
+  result.info.reserve(block.size());
+
+  for (BlockElt z=block.size(); z-->0;)
+  { result.info.push_back(EltInfo(block.y(z),block.x(z)));
+    result.info.back().length = max_len-block.length(z);
+    result.info.back().descent = block.descent(z).dual(rank);
+  }
+
+  for (unsigned int i=0; i<rank; ++i)
+  {
+    auto& dst = result.data[i];
+    dst.reserve(block.size());
+    for (BlockElt z=block.size(); z-->0;)
+    {
+      dst.emplace_back();
+      dst.back().cross_image = size-1-block.cross(i,z);
+      const auto& p = block.any_Cayleys(i,z);
+      if (p.first!=UndefBlock)
+      { dst.back().Cayley_image.first = size-1-p.first;
+        if (p.second!=UndefBlock)
+	  dst.back().Cayley_image.second = size-1-p.second;
+      }
+      // don't set Hermitian dual; they cannot be deduced from |block| at all
+    }
+  }
+
+  result.orbits = block.inner_fold_orbits(); // probably not right
+  result.dd = block.Dynkin();
+
+  return result;
+}
 
 
 /*****				Block					****/

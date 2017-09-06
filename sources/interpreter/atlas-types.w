@@ -4205,38 +4205,23 @@ void KL_block_wrapper(expression_base::level l)
   @< Push a list of parameter values for the elements of |block| @>
   push_value(std::make_shared<int_value>(start));
   const kl::KLContext& klc = block.klc(block.size()-1,false);
-
-  own_matrix M = std::make_shared<matrix_value>(int_Matrix(klc.size()));
-  for (size_t y=1; y<klc.size(); ++y)
-    for (size_t x=0; x<y; ++x)
-      M->val(x,y)= klc.KL_pol_index(x,y);
 @)
-  own_row polys = std::make_shared<row_value>(0);
-  polys->val.reserve(klc.polStore().size());
-  for (size_t i=0; i<klc.polStore().size(); ++i)
-  {
-    const kl::KLPol& pol = klc.polStore()[i];
-    std::vector<int> coeffs(pol.size());
-    for (size_t j=pol.size(); j-->0; )
-      coeffs[j]=pol[j];
-    polys->val.emplace_back(std::make_shared<vector_value>(coeffs));
-  }
+  @< Extract from |klc| an |own_matrix M@;| and |own_row polys@;| @>
 @)
   own_vector length_stops = std::make_shared<vector_value>(
      int_Vector(block.length(block.size()-1)+2));
-  length_stops->val[0]=0;
-  for (size_t i=1; i<length_stops->val.size(); ++i)
+  for (size_t i=0; i<length_stops->val.size(); ++i)
     length_stops->val[i]=block.length_first(i);
 @)
   unsigned n_survivors=0;
   for (BlockElt z=0; z<block.size(); ++z)
-    if (block.survives(z))
+  @+ if (block.survives(z))
       ++n_survivors;
   own_vector survivor =
     std::make_shared<vector_value>(int_Vector(n_survivors));
   { unsigned i=0;
     for (BlockElt z=0; z<block.size(); ++z)
-      if (block.survives(z))
+    @+if (block.survives(z))
         survivor->val[i++]=z;
     assert(i==n_survivors);
   }
@@ -4262,6 +4247,96 @@ void KL_block_wrapper(expression_base::level l)
 
   if (l==expression_base::single_value)
     wrap_tuple<7>();
+}
+
+@ The following module should not be enclosed in braces, as it defines two
+variable |M| and |polys|. One reason to extract it is that it can be used
+identically in two wrapper functions.
+
+@< Extract from |klc| an |own_matrix M@;| and |own_row polys@;| @>=
+own_matrix M = std::make_shared<matrix_value>(int_Matrix(klc.size()));
+for (size_t y=1; y<klc.size(); ++y)
+  for (size_t x=0; x<y; ++x)
+    M->val(x,y)= klc.KL_pol_index(x,y);
+@)
+own_row polys = std::make_shared<row_value>(0);
+polys->val.reserve(klc.polStore().size());
+for (size_t i=0; i<klc.polStore().size(); ++i)
+{
+  const kl::KLPol& pol = klc.polStore()[i];
+  std::vector<int> coeffs(pol.begin(),pol.end());
+  polys->val.emplace_back(std::make_shared<vector_value>(coeffs));
+}
+
+@ Here is a dual variation of the previous function. The main difference is
+calling the pseudo constructor |blocks::Bare_block::dual| to transform |block|
+into its dual (represented as just a |blocks::Bare_block| which is sufficient)
+before invoking the KL computations. The block is reversed with respect to
+|block|, so for proper interpretation we reverse the list of
+parameters returned, and this that several other result components have to be
+transformed as well. On the dual side there should be no condensing of the
+polynomial matrix on the ``survivor'' elements, rather just an extraction of a
+submatrix of polynomials at the corresponding indices; therefore we leave out
+the |contributes_to| matrix altogether.
+
+@< Local function def...@>=
+void dual_KL_block_wrapper(expression_base::level l)
+{ shared_module_parameter p = get<module_parameter_value>();
+  test_standard(*p,"Cannot generate block");
+  if (l==expression_base::no_value)
+    return;
+@)
+  BlockElt start; // will hold index in the block of the initial element
+  param_block block(p->rc(),p->val,start);
+  auto size1 = block.size()-1;
+  @< Push a reversed list of parameter values for the elements of |block| @>
+  push_value(std::make_shared<int_value>(size1-start));
+  auto dual_block = blocks::Bare_block::dual(block);
+  const kl::KLContext& klc = dual_block.klc(block.size()-1,false);
+@)
+  @< Extract from |klc| an |own_matrix M@;| and |own_row polys@;| @>
+@)
+  own_vector length_stops = std::make_shared<vector_value>(
+     int_Vector(block.length(size1)+2));
+  for (size_t i=0; i<length_stops->val.size(); ++i)
+    // subtract from |block.size()| here:
+    length_stops->val[i] =
+      block.size()-block.length_first(length_stops->val.size()-1-i);
+@)
+  unsigned n_survivors=0;
+  for (BlockElt z=0; z<block.size(); ++z)
+  @+if (block.survives(z))
+      ++n_survivors;
+  own_vector survivor =
+    std::make_shared<vector_value>(int_Vector(n_survivors));
+  { unsigned i=0;
+    for (BlockElt z=block.size(); z-->0; )
+    @+if (block.survives(z))
+        survivor->val[i++]=size1-z;
+    assert(i==n_survivors);
+  }
+@)
+  push_value(std::move(M));
+  push_value(std::move(polys));
+  push_value(std::move(length_stops));
+  push_value(std::move(survivor));
+
+  if (l==expression_base::single_value)
+    wrap_tuple<6>();
+}
+
+@ Reversing a list after it has been pushed to the stack is somewhat
+cumbersome, so we prefer to redo a previous module with a slight modification
+to reverse the order.
+
+@< Push a reversed list of parameter values for the elements of |block| @>=
+{ own_row param_list = std::make_shared<row_value>(0);
+  param_list->val.reserve(block.size());
+  for (BlockElt z=block.size(); z-->0;)
+    param_list->val.push_back @|
+	(std::make_shared<module_parameter_value>(p->rf,block.sr(z)));
+  push_value(std::move(param_list));
+
 }
 
 @ Here is a version of the |KL_block| that computes just for a partial block
@@ -4483,6 +4558,8 @@ install_function(partial_block_wrapper,@|"partial_block","(Param->[Param])");
 install_function(param_length_wrapper,@|"length","(Param->int)");
 install_function(KL_block_wrapper,@|"KL_block"
                 ,"(Param->[Param],int,mat,[vec],vec,vec,mat)");
+install_function(dual_KL_block_wrapper,@|"dual_KL_block"
+                ,"(Param->[Param],int,mat,[vec],vec,vec)");
 install_function(partial_KL_block_wrapper,@|"partial_KL_block"
                 ,"(Param->[Param],mat,[vec],vec,vec,mat)");
 install_function(extended_block_wrapper,@|"extended_block"

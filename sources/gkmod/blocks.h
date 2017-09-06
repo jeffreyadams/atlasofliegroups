@@ -48,7 +48,7 @@ namespace blocks {
 // The class |BlockBase| serves external functionality, not block construction
 class Block_base
 {
- public: // we need this typedef to be public, though used in derived classes
+public: // we need this |struct| to be public, though used in derived classes
   struct EltInfo // per block element information
   {
     KGBElt x,y; // indices into |KGB| sets (which might no longer exist)
@@ -70,7 +70,7 @@ class Block_base
 
   }; // |struct EltInfo|
 
- protected: // all fields may be set in a derived class contructor
+protected: // all fields may be set in a derived class contructor
   struct block_fields // per block element and simple reflection data
   {
     BlockElt cross_image;
@@ -88,8 +88,7 @@ class Block_base
   BruhatOrder* d_bruhat;
   kl::KLContext* klc_ptr;
 
- public:
-
+public:
 // constructors and destructors
   Block_base(const KGB& kgb,const KGB& dual_kgb);
   Block_base(unsigned int rank); // only dimensions some vectors
@@ -98,10 +97,11 @@ class Block_base
 
 // copy, assignment and swap
 
-  Block_base(const Block_base& b); // implemented but never used (optimized out)
- private:
+protected: // derived classes may need to copy-construct their base
+  Block_base(const Block_base& b);
+private:
   Block_base& operator=(const Block_base& b); // not implemented
- public:
+public:
 
 // accessors
 
@@ -126,6 +126,9 @@ class Block_base
 
   BlockElt cross(weyl::Generator s, BlockElt z) const
   { assert(z<size()); assert(s<rank()); return data[s][z].cross_image; }
+
+  const BlockEltPair& any_Cayleys(weyl::Generator s, BlockElt z) const
+  { assert(z<size()); assert(s<rank()); return data[s][z].Cayley_image; }
 
   BlockEltPair cayley(weyl::Generator s, BlockElt z) const
   { assert(z<size()); assert(s<rank());
@@ -180,6 +183,24 @@ class Block_base
 
 }; // |class Block_base|
 
+
+// a derived class with minimal implementation to be a concrete class
+class Bare_block : public Block_base
+{ KGBElt x_size,y_size;
+public:
+  Bare_block(const Block_base& block)
+  : Block_base(block), x_size(block.max_x()+1), y_size(block.max_y()+1) {}
+  Bare_block(unsigned int rank, KGBElt x_size, KGBElt y_size)
+    : Block_base(rank), x_size(x_size), y_size(y_size) {}
+  virtual KGBElt max_x() const { return x_size-1; }
+  virtual KGBElt max_y() const { return y_size-1; }
+  virtual std::ostream& print
+    (std::ostream& strm, BlockElt z,bool as_invol_expr) const { return strm; }
+
+  // pseudo constructors
+  static Bare_block dual (const Block_base& block);
+
+}; // |class Bare_block|
 
 /*				|class Block|
   A block constructed from a real form and a dual real form in an inner class.
