@@ -725,6 +725,14 @@ KL_block: (Param->[Param],int,mat,[vec],vec,vec,mat): block, raw_KL, and more
   actual block by selecting only the columns whose index is among the
   survivors, and multiplying the resulting matrix on the left by the
   contribution-coefficient matrix (the final component this function returns).
+dual_KL_block: (Param->[Param],int,mat,[vec],vec,vec): KL info for dual block
+  This closely corresponds to KL_block, but computes the KL polynomials for
+  the formally dual block. Here the type of the simple roots are dualised,
+  interchanging for instance imaginary compact and real nonparity and likewise
+  imaginary type 1 and real type 2. To make this valid, the order of the block
+  elements is reversed, and other changes made: adapting the indices of length
+  function changes and of surviving elements. The contribution-coefficient
+  matrix is omitted altogether, as it is not to be used for the dual block.
 partial_KL_block: (Param->[Param],mat,[vec],vec,vec,mat): partial KL_block
   This function relates to KL_block as partial_block relates to block. The
   first component of the result is the Bruhat interval as in partial_block,
