@@ -1,0 +1,171 @@
+<basic.at { for sum@vec }
+<coordinates.at
+<groups.at
+<sort.at {for reverse_sort}
+
+{ (complex) nilpotent orbits for simple classical groups,
+  classical groups: SL(n), GL(n), Sp(2n), SO(n),
+  orbits: partition-type parameterization
+  no attempt is made to handle I/II orbits in type D,
+  so these are really orbits for O(n,C) not SO(n,C)
+  semisimple_element: H\in X^* from Lie triple (H,X,Y),
+  standard (classical group) coordinates
+  (in type A_n lambda has n+1 coordinates, i.e. for GL(n))
+}
+
+{ utility to convert type A-G of a simple root system to a number 0-6
+  we allow and ignore (trailing) torus factors; pure torus classifies as A }
+set get_type(LieType t) = int:
+  let code=ascii(str(t)) { first character }, n=#t in
+  if code=ascii("T") then 0
+  elif n=1 then code-ascii("A")
+  elif { not good, but try dropping central torus factors }
+    let f=%t then ()= while n>0 and str(f[n-1])="T1" do n -:=1 od  in n=1
+  then code-ascii("A")
+  else error("Non-simple Lie type")
+  fi
+
+{ same as previous applied to a RootDatum, or a RealForm }
+set get_type(RootDatum rd) = int: get_type(Lie_type(rd))
+set get_type(RealForm G) = int: get_type(root_datum(G))
+
+{ generate all partitions of n,
+  each partition is written in decreasing order
+  partitions are in lexicographically smallest [1,...,1] to largest [n] order
+  each partition of n-1 gives rise to 1 or 2 partitions of n: the first by
+  appending a part 1, the second by increasing the final part if possible
+}
+set partitions =
+( let part (int n) = [vec]:[]
+  in part :=
+    begin (int n):
+      let rv=[vec]:[] in
+      if n=1 then rv:=[[1]]
+      else
+	for p in part(n-1)
+	do let l=#p-1 then last=p~[0] in
+	  rv #:= p#1 { add partition formed by extending by 1 }
+	; if #p=1 or p~[1]>last then rv #:= (let c=p in c[#p-1]:=last+1; c) fi
+	od
+      fi
+    ; rv
+    end
+; (int n) [vec]: if n>0 then part(n) elif n=0 then [[]] else [] fi
+)
+
+{ write a partition as a sequence of multiplicities
+  including a leading 0 so that rv[i] is the multiplicity of i
+  e.g. [4,3,1,1]->[0,2,0,1,1]}
+set partition_multiplicities (vec p)=vec:
+( let mult=null(max(p)+1) in
+  for k in p do mult[k] +:= 1 od
+; mult[0]:=0  { clear multiplicity of 0 that was possibly set }
+; mult
+)
+
+{ partitions of n with all rows of parity |parity| having even multiplicity }
+set partitions_parity (int n, int parity) =[vec]:
+( let P=partitions(n), result=[vec]: [] in
+  for p in P
+  do
+    if none(for m@i in partition_multiplicities(p) do i%2=parity and m%2=1 od)
+    then result #:= p
+    fi
+  od
+; result
+)
+
+{ (complex) nilpotent orbits, partition-type classification,
+  for simple group of type A-D }
+set nilpotent_orbit_partitions(LieType t)= [vec]:
+  let s = get_type(t), n=semisimple_rank(t) in { only classsical types left }
+  if s=0 then partitions(n+1)
+  elif s=1 then partitions_parity(2*n+1,0) { even in type B }
+  elif s<4 then partitions_parity(2*n,3-s) { odd if s=2 (C), even if s=3 (D) }
+  else error("Exceptional type")
+  fi
+
+{ same as previous applied to RootDatum or RealForm (types A-D only)
+  (list of partitions only depends on complexification of real group) }
+set nilpotent_orbit_partitions(RootDatum rd) = [vec]: nilpotent_orbit_partitions(Lie_type(rd))
+set nilpotent_orbit_partitions(RealForm G)   = [vec]: nilpotent_orbit_partitions(root_datum(G))
+
+{test if partition is valid orbit in type ABCD}
+set is_valid(string type,vec P)=bool:
+if type="A" then true
+elif type="B" or type="D" then
+ if  is_even(sum(P)) then false else
+ all(let m=partition_multiplicities(P) in for i:#m do is_odd(i) {don't care} or is_even(m[i]) od) fi
+elif type="C" then
+ if  is_odd(sum(P)) then false else
+ all(let m=partition_multiplicities(P) in for i:#m do is_even(i) {don't care} or is_even(m[i]) od) fi
+else false fi
+
+set is_valid(LieType t,vec P)=bool:is_valid(["A","B","C","D"][get_type(t)],P)
+
+{ nilpotent orbits of dual group (types A-D only) }
+set dual_nilpotent_orbit_partitions(RootDatum rd)=[vec]: nilpotent_orbit_partitions(dual(rd))
+set dual_nilpotent_orbit_partitions(RealForm G)=[vec]:  dual_nilpotent_orbit_partitions(root_datum(G))
+
+{ tools for computing h(O^\vee): apply to rows of Young diagram }
+set tworho (int n)=vec: for k:n do (n-1)-2*k od { e.g., [2,0,-2] or [3,1,-1,-3]}
+set rho (int n)=[rat]: tworho(n)/2
+
+set String (int n)=vec: for k:n\2 do (n-1)-2*k od { e.g., [4,2] or [5,3,1]  }
+
+{ compute 1/2 h(O^\vee) for G of type |t| (types A-D only)
+  O^\vee assumed to be an orbit of G^\vee, given by a partition |P|
+  only complexification (root_datum) of G plays a role }
+set semisimple_element(LieType t,vec P)=vec:
+  if get_type(t)=0
+  then ## for p in P do tworho(p) od
+  else let strs = ## for k in P do String(k) od in
+    strs ## for i: sum(P)\2-#strs do 0 od
+  fi
+
+{ same as previous applied to (RootDatum,vec P) 
+ in this case apply make_dominant(dual(rd)); 
+ RootDatum must be a classical group with the usual classical coordinates
+}
+set semisimple_element(RootDatum rd,vec p) = vec:
+ let (v,)=make_dominant(dual(rd),semisimple_element(Lie_type(rd),p)) in v
+
+{v,w are partitions of same n: sum(v)=sum(w)
+ v, w written in decreasing order (actually use reverse_sort to assume this)
+ v,w <-> nilpotent orbits in GL(n)
+ return true if orbit(v) contained in closure of orbit(w)
+ algorithm: v=(a_1,...,a_r), w=(b_1,...,b_s);
+ a_1+...+a_k \le b_1+...+b_k for all k\le min(r,s)sawtrset v
+}
+
+set nilpotent_orbit_ss_elements(LieType t)=for P in nilpotent_orbit_partitions(t) do semisimple_element(t,P) od
+set nilpotent_orbit_ss_elements(RootDatum rd)=for P in nilpotent_orbit_partitions(rd) do semisimple_element(rd,P) od
+
+
+
+set lesseq_partition (vec v,vec w)=bool:
+   assert(sum(v)=sum(w),"not comparable");
+   assert(v.>= and w.>= , "negative terms");
+   v:=reverse_sort(v); w:=reverse_sort(w);
+   all(for i:min(#v,#w)+1 do sum(v[0:i]) <= sum(w[0:i]) od)
+
+{same as previous but assume each term is already reverse sorted,
+ and all terms are comparable}
+set lesseq_partition_presorted (vec v,vec w)=bool:
+   for i:min(#v,#w)+1 do if v[i]!=w[i] then return v[i]<w[i] fi od;true
+
+{orbits=[v_1,...,v_n]
+ closures(orbits)[i] is the set of j (not including i itself) such that orbits[j] contained in the closures of orbits[i]
+}
+set closures([vec] orbits)=
+{pre-sort}
+let orbits=for P in orbits do reverse_sort(P) od in
+for P@i in orbits do
+ ##(for j:#orbits do
+  if j !=i and lesseq_partition_presorted(orbits[j],P) then [j] else [] fi od) od
+
+{this only works for simple classical groups, fails for exceptional 
+groups; more general version in nilpotent_orbits_exceptional handles
+the simple exceptional case also}
+set nilpotent_lambdas_classical(RootDatum rd)=[ratvec]:
+    for lambda in nilpotent_orbit_ss_elements(dual(rd)) do lambda/2 od 

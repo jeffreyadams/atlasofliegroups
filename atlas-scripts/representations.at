@@ -1,8 +1,9 @@
 <misc.at { for generate_all_subsets }
 <group_operations.at { for is_split and such }
 <cross_W_orbit.at
-<nilpotent.at
-
+{<nilpotent.at}
+<nilpotent_orbit_partitions.at 
+<nilpotent_orbits_exceptional.at
 { some common representations }
 
 { finite dimensional with highest weight gamma in X^*
