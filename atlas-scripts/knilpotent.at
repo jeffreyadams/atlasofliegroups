@@ -93,8 +93,9 @@ set s_one_roots(RealNilpotentOrbit O)=[vec]:
 let theta=involution(O.x) then
 ()=assert(^theta*O.H = O.H,"H is not ^theta-fixed") then
 P=parabolic_alt(O.H,O.x) then
-x_max=x(P) then
+x_max=maximal(P) then {not x(P): this is P.x}
 u=nilrad_roots_alt(O.H,O.x) then
+()=prints("u:", u) then
 {u_complex=extract_roots(x,u) then  NO keep complex pairs for now}
 roots=[vec]:[] then
 ()=for alpha in u do
@@ -188,12 +189,14 @@ set Phi(KGBElt x_K,RealNilpotentOrbit O,int kgb_number_L, ratvec lambda_L)=K_Typ
 let G=real_form(x_K) then
 L=Levi_of_orbit(O) then
 p_L_0=Param:parameter(KGB(L,kgb_number_L),lambda_L) in
+let ()=prints("P_L_0:",p_L_0) in
 if (is_zero(p_L_0)) then error("p_L_0 is zero")
 elif  not (is_standard(p_L_0)) then error("p_L_0 is not standard")
 elif not (is_final(p_L_0)) then error("p_L_0 is not final")
 else
 let
-p_L=twist_by_minus_2rho_u_cap_s(x_K,O,#x(p_L_0),lambda(p_L_0)) then
+p_L=twist_by_minus_2rho_u_cap_s(x_K,O,#x(p_L_0),lambda(p_L_0)) in
+let ()=prints("P_L:",p_L) then
 x_L=x(p_L) then
 rv=null_module(G) then
 rhoshifts=rho_shifts(O) then
