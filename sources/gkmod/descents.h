@@ -1,16 +1,15 @@
-/*!
-\file
-\brief Class definition for the class DescentStatus.
-*/
-
 /*
   This is descents.h
 
   Copyright (C) 2004,2005 Fokko du Cloux
+  Copyright (C) 2017 Marc van Leeuwen
   part of the Atlas of Lie Groups and Representations
 
   For license information see the LICENSE file
 */
+
+// Class definition for the class |DescentStatus|
+
 
 #ifndef DESCENTS_H  /* guard against multiple inclusions */
 #define DESCENTS_H
@@ -18,77 +17,51 @@
 #include <cstring>
 
 namespace atlas {
-
-/******** constant declarations *********************************************/
-
-namespace descents {}
-
-/******** function declarations *********************************************/
+namespace descents {
 
 /******** type definitions **************************************************/
 
-namespace descents {
 
+/*			     |class DescentStatus|
+   The descent status of each simple root for a single representation.
 
-  /*!
-\brief Describes the descent status of each simple root for a single
-representation.
-
-    There are eight possibilities for the descent status of a representation
-    parameter w.r.t. a simple reflection, so this information could be packed
-    in three bits. However, this would lead to having some packets lie across
-    word boundaries, with the ensuing complications. Four bits is a good
-    choice; here we take the lazy way of using even eight bits, as this makes
-    the reading even a bit easier. We might come back to four at some later
-    change---this should not require a change in user interface.
-  */
-class DescentStatus {
-
-  /*!
-\brief Value of byte \#j specifies the descent status of simple root
-\#j.
-
-Value should be 0 through 7; values 0 through 3 are ascents, and 4
-through 7 are descents.
-  */
-  unsigned char d_data[constants::RANK_MAX];
-  static const unsigned ValMask = constants::charBits - 1;
-
-  /*!
-\brief Bitwise "and" of Value with this is non-zero if Value is one of
-ImaginaryCompact, ComplexDescent, RealTypeII, or RealTypeI (numbers 4--7)
-  */
-  static const unsigned DescentMask = 0x4ul;
-
-  /*!
-\brief Bitwise "and" of Value with this is equal to this if Value is either
-ComplexDescent (5) or RealTypeI (7)
-  */
-  static const unsigned DirectRecursionMask = 0x5ul;
-
+   For each simple root, there are eight possibilities for the corresponding
+   descent status of a representation parameter, so this information could be
+   packed in three bits per Weyl group generator. However, for memory efficiency
+   we have larger fish to fry elsewhere, so we waste five bits per generator,
+   and store each status in an octet (|unsigned char|).
+*/
+class DescentStatus
+{
  public:
-
+  // status for a single simple root; first $4$ are ascents, others descents
   enum Value { ComplexAscent, RealNonparity, ImaginaryTypeI, ImaginaryTypeII,
 	       ImaginaryCompact, ComplexDescent, RealTypeII, RealTypeI };
+ private:
+// |d_data[j]| stores status for simple root |j| as a |Value|
+  unsigned char d_data[constants::RANK_MAX];
 
-  /*!
-\brief Tests whether Value is 4 through 7.  These are the descents.
+// mask for the bit in |Value| characterising descents
+  static constexpr auto DescentMask = 0x4u; // bit 2 set
 
-The simple roots passing this test comprise the tau invariant for the
-representation.
-  */
-  static bool isDescent(Value v) {
-    return (v & DescentMask)!=0;
-  }
+// mask for bits in |Value| characterising |ComplexDescent| or |RealTypeI|
+  static constexpr auto DirectRecursionMask = 0x5u; // bits 0 and 2 set
 
-  /*!
-\brief Tests whether both bits of DirectRecursionMask are set
-
-In the case of a complex descent or a real type I descent there is a simple
-recursion formula for the KL element.
-  */
-  static bool isDirectRecursion(Value v) {
-    return (v & DirectRecursionMask) == DirectRecursionMask;
+ public:
+  static bool isDescent(Value v) { return (v & DescentMask)!=0; }
+  static bool isDirectRecursion(Value v)
+    { return (v & DirectRecursionMask) == DirectRecursionMask; }
+  static Value dual(Value v) // cooresponding status in dual block
+    { static const Value d[] =
+	{ ComplexDescent, ImaginaryCompact, RealTypeII, RealTypeI,
+	  RealNonparity, ComplexAscent, ImaginaryTypeI, ImaginaryTypeII };
+      return d[v];
+    }
+  DescentStatus dual(unsigned int rank) const
+  { DescentStatus result;
+    for (unsigned int i=0; i<rank; ++i)
+      result.d_data[i]=dual(static_cast<Value>(d_data[i]));
+    return result;
   }
 
 // constructors and destructors
@@ -125,7 +98,7 @@ recursion formula for the KL element.
   void set(size_t s, Value v) {
     d_data[s] = v; // no cast needed here; enum value converts to integral type
   }
-};
+}; // |class DescentStatus|
 
 }
 
