@@ -145,6 +145,9 @@ set equivalence_class_of (KGPElt(S,x)) = [KGBElt]:
   od;
   for i in sort(result) do KGB(G,i) od
 
+set is_in_class_of (KGBElt x, Parabolic P) = bool:
+   any(for y in equivalence_class_of(P) do y=x od)
+
 {. a minimal KGB element from an equivalence class defined by S
    (unlike x_max, it is not unique). .}
 set rec_fun x_min (KGPElt P) = KGBElt:

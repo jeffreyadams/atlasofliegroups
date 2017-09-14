@@ -77,10 +77,11 @@ ________________________
 
 <misc.at { for |simple_imaginary_subsystem| }
 <parabolics.at
-<kl.at { for character_formula }
+<kl.at { for |character_formula| }
 <coherent.at
-<synthetic.at {for unnormalized_torus_factor}
+<synthetic.at { for |unnormalized_torus_factor| }
 <K.at
+<W_K.at { for |find_W_cross| }
 <finite_dimensional.at
 
 set ind_verbose=false
@@ -394,28 +395,52 @@ set rho_u_cx_T (Parabolic P) = vec:
 { \rho_u_ic(P,x) is in \t^* as a subset of \h^*s
   =1/2 the sum of the imaginary, compact roots in u
 }
-{. Half sum of imaginary compact roots in nilradical of (theta-stable) P; the KGB element x must be in the distinguished fiber, and in the class of P. .}
+{. Half sum of imaginary compact roots in nilradical of (theta-stable) P; the KGB element x must be in the distinguished fiber; warning message if x is not
+  in the class of P. .}
 set rho_u_ic (Parabolic P, KGBElt x) = ratvec:
   assert(is_parabolic_theta_stable(P),"P is not theta-stable");
-  assert(any(for y in equivalence_class_of(P) do y=x od)
-        ,"x does not belong to the class of P");
   assert(in_distinguished_fiber(x),"x is not in the distinguished fiber");
-  sum(columns_with(is_compact_imaginary(x),nilrad_roots(P))) / 2
+  if is_in_class_of(x,P) then
+  sum(columns_with(is_compact_imaginary(x),nilrad_roots(P))) / 2 else
+  prints("Warning: x does not belong to the class of P");
+  let y=x_min(P) then w=find_W_cross(x,y) then
+  rho1=sum(columns_with(is_compact_imaginary(y),nilrad_roots(P))) / 2 in
+  act(inverse(w),rho1) fi
 
-{. Sum of compact roots (of $\mathfrak t$) in $\mathfrak u$ for theta-stable parabolic P, with respect to (distinguished) x in the class of P. .}
+{. Sum of compact roots (of $\mathfrak t$) in $\mathfrak u$ for theta-stable parabolic P, with respect to (distinguished) x; warning message if x is not
+  in the class of P .}
 set two_rho_u_cap_k (Parabolic P,KGBElt x) = vec:
-  ratvec_as_vec(rho_u_cx_T(P)+2*rho_u_ic(P,x))
+  if is_in_class_of(x,P) then
+  ratvec_as_vec(rho_u_cx_T(P)+2*rho_u_ic(P,x)) else
+  prints("Warning: x does not belong to the class of P.");
+  let y=x_min(P) then w=find_W_cross(x,y) in
+  act(inverse(w),ratvec_as_vec(rho_u_cx_T(P)+2*rho_u_ic(P,y))) fi
 
-{. Sum of non-compact roots in $\mathfrak u$ (for theta-stable parabolic). .}
+{. Sum of non-compact roots in $\mathfrak u$ (for theta-stable parabolic),
+warning message if (distinguished) x is not in the class of P. .}
 set two_rho_u_cap_s (Parabolic P,KGBElt x) = vec:
-  ratvec_as_vec(2*rho_u(P))-two_rho_u_cap_k(P,x)
+  if is_in_class_of(x,P) then
+  ratvec_as_vec(2*rho_u(P))-two_rho_u_cap_k(P,x) else
+  prints("Warning: x does not belong to the class of P.");
+  let y=x_min(P) then w=find_W_cross(x,y) in
+  act(inverse(w),ratvec_as_vec(2*rho_u(P))-two_rho_u_cap_k(P,y)) fi
 
 {these give the same restriction to T_K0, but aren't necessarily integral:}
-{. Half sum of compact roots in $\mathfrak u$ (for theta-stable parabolic). .}
-set rho_u_cap_k (Parabolic P,KGBElt x) = ratvec: rho_u_cx(P)/2+rho_u_ic(P,x)
+{. Half sum of compact roots in $\mathfrak u$ for theta-stable parabolic;
+warning message if (distinguished) x is not in the class of P. .}
+set rho_u_cap_k (Parabolic P,KGBElt x) = ratvec:
+   if is_in_class_of(x,P) then rho_u_cx(P)/2+rho_u_ic(P,x) else
+   prints("Warning: x does not belong to the class of P.");
+  let y=x_min(P) then w=find_W_cross(x,y) in
+   act(inverse(w),rho_u_cx(P)/2+rho_u_ic(P,y)) fi
 
-{. Half sum of non-compact roots in $\mathfrak u$ (for theta-stable parabolic). .}
-set rho_u_cap_s (Parabolic P,KGBElt x) = ratvec: rho_u(P)-rho_u_cap_k(P,x)
+{. Half sum of non-compact roots in $\mathfrak u$ for theta-stable parabolic;
+warning message if (distinguished) x is not in the class of P. .}
+set rho_u_cap_s (Parabolic P,KGBElt x) = ratvec:
+   if is_in_class_of(x,P) then rho_u(P)-rho_u_cap_k(P,x) else
+   prints("Warning: x does not belong to the class of P.");
+   let y=x_min(P) then w=find_W_cross(x,y) in
+   act(inverse(w),rho_u(P)-rho_u_cap_k(P,y)) fi
 
 {. Dimension of $\mathfrak u$ (nilrad of theta-stable parabolic). .}
 set dim_u(Parabolic P) = int:n_columns(nilrad(P))
