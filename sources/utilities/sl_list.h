@@ -1151,6 +1151,8 @@ template<typename T, typename Alloc>
       return iterator(*pos.link_loc); // but splicing is a no-op in these cases
     link_type& final = *end.link_loc;
     link_type& link = *pos.link_loc;
+    auto d = std::distance(begin,end); // compute this before making any changes
+
     if (pos==cend()) // if splicing to the end of |*this|
       tail = &final; // then we must reset |tail| to end of spliced range
     if (end==other.cend()) // splicing may have cut of tail from |other|
@@ -1160,8 +1162,7 @@ template<typename T, typename Alloc>
     link = std::move(*begin.link_loc); // and put spliced part after |pos|
     *begin.link_loc = std::move(remainder); // glue together pieces of |other|
     if (this!=&other)
-    { auto d = std::distance(begin,end);
-      node_count += d;
+    { node_count += d;
       other.node_count -= d;
     }
     return iterator(final);
