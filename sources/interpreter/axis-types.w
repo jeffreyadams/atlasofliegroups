@@ -444,6 +444,9 @@ bool can_specialise(const type_expr& pattern) const;
   // tell whether |specialise| would succeed
 @)
 void print(std::ostream& out) const;
+@)
+static void
+  add_typedefs(const std::vector<std::pair<id_type,const_type_p> >& defs);
 
 @ For that definition to be processed properly, we must pay some attention to
 ordering of type definitions, because of the recursions present. The structure
@@ -828,7 +831,7 @@ index can still be used as |type_number|. We provide a selection operation
 In order to enter newly defined (recursive) types to this class, we declare a
 method |add_typedefs| that will extend the mapping by incorporating a
 potentially recursive collection of type definitions. The argument to this
-method is an(other) list of pairings of a type identifier to a type
+method is another list |defs| of pairings of a type identifier to a type
 expression; in this case the identifiers will always be present. the recursive
 nature of these definitions lies in that they can not only refer, using the
 |type_number| variant, to type already defined in the mapping, but also to the
@@ -841,7 +844,6 @@ typedef std::pair<id_type,type_expr> type_binding;
 class type_expr::defined_type_mapping : public std::vector<type_binding>
 { public:
   defined_type_mapping () : @[std::vector<type_binding>@]() @+{}
-  defined_type_mapping& add_typedefs(const defined_type_mapping& defs);
   const type_expr& defined_type(type_nr_type i) const @+
     {@; return (*this)[i].second; }
   private:
@@ -912,8 +914,8 @@ restarting the equivalencing relatively easy, namely by ensuring (as mentioned
 above) that all sub-types of types in the table have their own entries.
 
 @< Function definitions @>=
-type_expr::defined_type_mapping& @|
-  type_expr::defined_type_mapping::add_typedefs(const defined_type_mapping& defs)
+void type_expr::add_typedefs
+  (const std::vector<std::pair<id_type,const_type_p> >& defs)
 {
 @/std::vector<type_data> type_array;
   std::vector<type_data*> type_perm;
@@ -931,8 +933,7 @@ type_expr::defined_type_mapping& @|
      for their descendent types, until no more refinement takes place;
      now each bucket is an equivalence class of types @>
   @< For each equivalence class that has no representatives among the types
-     already present, add a corresponding entry to |*this| @>
-  return *this;
+     already present, add a corresponding entry to |type_map| @>
 }
 
 @ The following is not conceptually hard, but it took us long thought to find a
@@ -963,15 +964,15 @@ method |dissect_type_to| of |type_expr|, to be defined below.
    defined by |defs| and all their anonymous sub-types;
    also make each |type_perm[i]| point to |type_array[i]| @>=
 {
-  type_array.reserve(size());
+  type_array.reserve(type_map.size());
     // not enough, but at least avoid some initial resizing
-  for (auto it=begin(); it!=end(); ++it)
+  for (auto it=type_map.begin(); it!=type_map.end(); ++it)
     type_array.emplace_back(it->second.copy());
   for (auto it=defs.begin(); it!=defs.end(); ++it)
     type_array.emplace_back(type_expr()); // push empty slots
   for (unsigned int i=0; i!=defs.size(); ++i)
-    type_array[size()+i].type
-      .set_from(defs[i].second.dissect_type_to(type_array));
+    type_array[type_map.size()+i].type
+      .set_from(defs[i].second->dissect_type_to(type_array));
 @)
   type_perm.reserve(type_array.size());
   for (unsigned int i=0; i!=type_array.size(); ++i)
@@ -1333,9 +1334,9 @@ its new |type_number| value in the array |renumber|, which also serves to record
 which |rank| values have already been seen.
 
 @< For each equivalence class that has no representatives among the types
-   already present, add a corresponding entry to |*this| @>=
+   already present, add a corresponding entry to |type_map| @>=
 { constexpr unsigned int absent = -1;
-  const auto old_size=size();
+  const auto old_size=type_map.size();
   const auto first_new=type_array.begin()+old_size;
   unsigned int count = 0;
   std::vector<unsigned int> renumber(type_perm.size(),absent);
@@ -1344,7 +1345,7 @@ which |rank| values have already been seen.
     {
       renumber[it->rank]=count;
       if (count++ >= old_size)
-        emplace_back(defs[it-first_new].first,std::move(it->type));
+        type_map.emplace_back(defs[it-first_new].first,std::move(it->type));
     }
     else
       assert(count>=old_size);
@@ -1365,7 +1366,7 @@ by |tag|, and invokes |renumber_type_nr_from_rank| wherever applicable.
 @d renumber_type_nr_from_rank(t) assert((t).raw_kind()==tabled),t=type_expr(renumber[type_array[(t).type_number].rank])
 @< Update, for types beyond position |old_size|, their descendent types
    according to |renumber| @>=
-{ for (auto it=begin()+old_size; it!=end(); ++it)
+{ for (auto it=type_map.begin()+old_size; it!=type_map.end(); ++it)
     switch (it->second.tag)
     { default: break; // nothing for types without descendents
     case function_type:

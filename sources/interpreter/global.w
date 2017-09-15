@@ -667,11 +667,16 @@ mechanism suffices for identifiers serving simply as abbreviation for a type
 expression, is has become too limited to store the relevant information as
 type definitions were extended with more possibilities. We therefore define
 another table structure here to store additional information about type
-definitions.
+definitions, notably for associated injector and projector functions. Apart
+from this, there is a table of type definitions stored in a static member of
+|type_exp| itself, mainly used to be able to represent recursively defined
+types. (That makes three places where some form of type definition gets
+stored; probably it is best to phase out the original one using
+|global_id_table|.)
 
-Since this table is probably going to be used more often for searching than
-for modification, we for now choose for a simple sorted array rather than for
-an associative container.
+Since our |type_table| is probably going to be used more often for searching
+than for modification, we for now choose for a simple sorted array rather than
+for an associative container.
 
 @< Type definitions @>=
 
@@ -686,12 +691,12 @@ public:
   void remove (id_type id);
 @)
   id_type find (const type_expr& type) const;
-    // identifier defined as |type|, or |no_id|
+    // a type identifier defined as |type|, or |no_id|
   const field_list& fields (id_type type) const;
 };
 
-@ We maintain |assoc| ordered by numeric value of the identifier, so that we
-can use binary search to locate the entry.
+@ We maintain the |assoc| member ordered by numeric value of the identifier,
+so that we can use binary search to locate any entry.
 
 @< Global function def... @>=
 static bool compare (const std::pair<id_type,type_table::field_list>& x, @|
@@ -712,6 +717,7 @@ void type_table::remove (id_type id)
 @)
 id_type type_table::find (const type_expr& type) const
 { for (auto it=assoc.begin(); it!=assoc.end(); ++it)
+    // do linear search through |assoc|
   { bool dummy; assert(global_id_table->is_defined_type(it->first));
     if (*global_id_table->type_of(it->first,dummy)==type)
       return it->first;
@@ -1332,11 +1338,19 @@ void global_forget_overload(id_type id, type_p t)
 
 @*2 Defining type identifiers.
 %
-The following function is called when an identifier is defined as an
-abbreviation for a type. The somewhat mysterious cast in the constructor call
-for |names| avoids passing the |constexpr no_id@;| by reference by building a
-temporary instead), which in turn avoids needing to allocate an actual static
-variable for this constant.
+The following function is called when an identifier~|id| is defined as an
+abbreviation for a type~|t|. A third argument |ip| may provide a list of
+``field names'' that can be useful in the case of a tuple or union type.
+
+Eventually the type is stored in its original form in |global_id_table|. Since
+we actually |move| the type there, we make sure that other actions, notable
+informing |type_expr::type_map| of the type definition, are done while |type|
+has not yet been moved from.
+
+The somewhat mysterious cast in the constructor call for |names| avoids
+passing the |constexpr no_id@;| by reference (by building a temporary
+instead), which in turn avoids needing to allocate an actual static variable
+for this constant.
 
 @< Global function definitions @>=
 void type_define_identifier
@@ -1355,8 +1369,11 @@ void type_define_identifier
          types of their projector or injector functions, and store the
          corresponding function values themselves in |tors| @>
 @)
-    @< Add |id| as abbreviation for |type| to |global_id_table|, unless there
-       are conflicts preventing this in which case |throw| a |program_error| @>
+    @< Test for conflicts in adding |type| to |global_id_table|, in which case
+       |throw| a |program_error| @>
+    @< Add a typedef for |type| with identifier |id| in |type_expr::type_map| @>
+    @/global_id_table->add_type_def(id,std::move(type));
+@)
     if (group.begin()!=group.end())
       // only need the following when there are field names
       @< Update |typedef_table| with |id| and its associated field names,
@@ -1369,6 +1386,16 @@ void type_define_identifier
     throw program_error("Type definition aborted");
   }
 }
+
+@ To add a typedef we build a $1$-element vector of the proper type, and call
+|type_expr::add_typedefs|.
+
+@< Add a typedef for |type| with identifier |id| in |type_expr::type_map| @>=
+{ std::vector<std::pair<id_type,const_type_p> > b;
+  b.emplace_back(id,&type);
+  type_expr::add_typedefs(b);
+}
+
 
 @ A type definition introducing a structure or union type may introduce field
 names for their components, which names will then be associated to projector
@@ -1438,18 +1465,19 @@ if (not (is_tuple or tors.empty())) // binding a union type with fields
 name inaccessible. Since this is probably not intended, we refuse to do this,
 and emit an error message instead when it is attempted.
 
-We start checking if the user deviously hid a \emph{new} definition of the
-same identifier in the field list. Then we emit an error if any previous
-definition is found. The test for this can be skipped is the same identifier
-was already defined as a type, but in that case the old definition will be
-overwritten, so we call |clean_out_type_identifier| in order to remove any
-traces of the old definition in |typedef_table| (this is needed even if the
-new definition is for the same type as the previous one, since the field names
-might differ). Finally we report the new definition; this output may
-be completed by the list of field names that is printed in section~%
-@#field name printing @>.
+We start checking if the user deviously hid a \emph{new} definition of the same
+identifier in the field list. Then we emit an error if any previous definition
+is found. The test for this can be skipped is the same identifier was already
+defined as a type, but in that case the old definition will be overwritten, so
+we call |clean_out_type_identifier| in order to remove any traces of the old
+definition in |typedef_table| (this is needed even if the new definition is for
+the same type as the previous one, since the field names might differ). Finally
+we report the new definition, which output may be completed by the list of field
+names printed in section~@#field name printing @>.
 
-@< Add |id| as abbreviation for |type| to |global_id_table|, unless...@>=
+
+@< Test for conflicts in adding |type| to |global_id_table|, in which case
+   |throw| a |program_error| @>=
 { for (auto it=group.begin(); it!=group.end(); ++it)
     if (it->first==id)
     { std::ostringstream o;
@@ -1472,12 +1500,10 @@ be completed by the list of field names that is printed in section~%
       throw program_error(o.str());
     }
   }
-@)
   @< Emit indentation corresponding to the input level to |*output_stream| @>
   *output_stream << "Type name '" << main_hash_table->name_of(id) @|
             << (redefine ? "' redefined as " : "' defined as ") << type
             << std::endl;
-@/global_id_table->add_type_def(id,std::move(type));
 }
 
 @ When tests have been passed successfully, we run the code below to copy the
@@ -1496,6 +1522,7 @@ projector or injector functions from |tors| to the global overload table.
   }
   *output_stream << '.' << std::endl;
 }
+
 
 @*1 Printing information from internal tables.
 %
