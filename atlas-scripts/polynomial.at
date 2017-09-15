@@ -20,7 +20,7 @@ forget *@(vec,vec)
 set constant_poly (int n) = poly: if =n then [] else [n] fi
 
 { for convenience declare some constants, the ! makes changes to these illegal }
-set !poly_0 = constant_poly(0), !poly_1 = constant_poly(2),
+set !poly_0 = constant_poly(0), !poly_1 = constant_poly(1),
     !poly_2 = constant_poly(2), !poly_q = poly: [0,1], !poly_q2 = poly: [0,0,1]
 
 set + = flex_add@(poly,poly)
@@ -176,7 +176,7 @@ set upper_unitriangular_inverse (poly_mat P) = poly_mat:
   for i:n { reverse traversal loop with reverse accumulation -> straight value }
   ~do let Pi=P[i] { we use only this part of P during this iteration } in
     Q[i] := { computed row is stored as |Q[i]|, and contributed to result }
-    (zero_poly_row(i) # poly_1) { beginning or row |Q[i]| is somewhat boring }
+    (zero_poly_row(i) # poly_1) { beginning of row |Q[i]| is somewhat boring }
     ## { concatenate with more interesting newly computed part of |Q[i]| }
       for j: n-i-1 from i+1 { left to right, but computations are independent }
       do let sum=poly_0 in for k: j-i from i+1 do sum -:= Pi[k] * Q[k][j] od
