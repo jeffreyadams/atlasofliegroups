@@ -887,23 +887,23 @@ struct type_data
 };
 typedef containers::sl_list<type_data *> p_list; // list of type pointers
 
-@~The definition of |add_typedefs| is subtle and requires quite a bit of work,
-due to our requirement that all cases of type equivalence be recognised, and
-each equivalence class reduced to a single entry. Thus we trade off getting a
-more rapid and (more importantly) simpler equivalence test during actual type
-checking against additional time spent in processing type definitions. Type
-equivalence is defined in a conceptually simple way: each recursive type gives
-rise by repeated expansion of the defining relations to a unique, possibly
-infinite, type tree; we use structural equivalence of those trees. This does not
-give a practical algorithm for testing equivalence, so instead we use the
-following ``bottom-up'' technique. We gather all types descending from currently
-given type definitions (which is a finite collection) and partition it according
-to structural differences found (such as: a procedure type is never equivalent
-to a row type, tuple types with different numbers of components are never
-equivalent, etc.). Then we refine that partition by looking at relations among
-descendent types, and repeat this until no change occurs any more; types that
-still occur in the same part apparently cannot be shown to differ in a finite
-number of steps, so they must be equivalent.
+@~The definition of |type_expr::add_typedefs| is subtle and requires quite a bit
+of work, due to our requirement that all cases of type equivalence be
+recognised, and each equivalence class reduced to a single entry. Thus we trade
+off getting a more rapid and (more importantly) simpler equivalence test during
+actual type checking against additional time spent in processing type
+definitions. Type equivalence is defined in a conceptually simple way: each
+recursive type gives rise by repeated expansion of the defining relations to a
+unique, possibly infinite, type tree; we use structural equivalence of those
+trees. This does not give a practical algorithm for testing equivalence, so
+instead we use the following ``bottom-up'' technique. We gather all types
+descending from currently given type definitions (which is a finite collection)
+and partition it according to structural differences found (such as: a procedure
+type is never equivalent to a row type, tuple types with different numbers of
+components are never equivalent, etc.). Then we refine that partition by looking
+at relations among descendent types, and repeat this until no change occurs any
+more; types that still occur in the same part apparently cannot be shown to
+differ in a finite number of steps, so they must be equivalent.
 
 This approach would be most efficient if it could be done once and for all when
 all type definitions are known, but in an interpreter we must be able to process
@@ -1154,8 +1154,9 @@ template<bool is_union>
   (const type_data* p, const type_data* q,const std::vector<type_data>& a)
 { const auto our_type = is_union ? union_type : tuple_type;
   assert(p->type.raw_kind()==our_type and q->type.raw_kind()==our_type);
-  int d=0; wtl_const_iterator p_it(p->type.tuple()), q_it(q->type.tuple());
-  while (not p_it.at_end() and (assert(not q_it.at_end()),true))
+  int d=0;
+  for (wtl_const_iterator p_it(p->type.tuple()), q_it(q->type.tuple()); @|
+       not p_it.at_end() and (assert(not q_it.at_end()),true); ++p_it,++q_it)
     if ((d=rank_of(*p_it,a)-rank_of(*q_it,a))!=0)
       break;
   return d;
@@ -1319,8 +1320,8 @@ of them should certainly have distinct |rank| fields, since they were already
 reduced to a list without equivalences by earlier calls of our |add_typedefs|
 method. What we shall do is run over entries of |type_array| in increasing
 order, and each time a previously unseen value of |rank| is found, copy the
-corresponding |type| field from |type_array| to |*this|. We need to combine that
-with the |id_type| component (the name the user chose to associate with the
+corresponding |type| field from |type_array| to |type_map|. We need to combine
+that with the |id_type| component (the name the user chose to associate with the
 newly defined type) which was left behind (by |dissect_type_to|) in the argument
 |defs| to the |add_typedefs| method; fortunately we have not left the method
 yet, so there is no problem in doing so.
