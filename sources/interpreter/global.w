@@ -1371,8 +1371,10 @@ void type_define_identifier
 @)
     @< Test for conflicts in adding |type| to |global_id_table|, in which case
        |throw| a |program_error| @>
-    @< Add a typedef for |type| with identifier |id| in |type_expr::type_map| @>
-    @/global_id_table->add_type_def(id,std::move(type));
+    type_expr converted_type;
+    @< Add a typedef for |type| with identifier |id| in |type_expr::type_map|,
+       and set |converted_type| to its |tabled| type @>
+    @/global_id_table->add_type_def(id,std::move(converted_type));
 @)
     if (group.begin()!=group.end())
       // only need the following when there are field names
@@ -1390,10 +1392,11 @@ void type_define_identifier
 @ To add a typedef we build a $1$-element vector of the proper type, and call
 |type_expr::add_typedefs|.
 
-@< Add a typedef for |type| with identifier |id| in |type_expr::type_map| @>=
+@< Add a typedef for |type| with identifier |id| in |type_expr::type_map|... @>=
 { std::vector<std::pair<id_type,const_type_p> > b;
   b.emplace_back(id,&type);
-  type_expr::add_typedefs(b);
+  auto types = type_expr::add_typedefs(b);
+  converted_type.set_from(std::move(types[0]));
 }
 
 
