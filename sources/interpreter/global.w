@@ -1394,7 +1394,7 @@ void type_define_identifier
 
 @< Add a typedef for |type| with identifier |id| in |type_expr::type_map|... @>=
 { std::vector<std::pair<id_type,const_type_p> > b;
-  b.emplace_back(id,&type);
+  b.emplace_back(id,&type.untabled());
   auto types = type_expr::add_typedefs(b);
   converted_type.set_from(std::move(types[0]));
 }

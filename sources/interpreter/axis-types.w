@@ -304,19 +304,14 @@ const char* prim_names[]=@/
 
 @*1 Type expressions.
 %
-Type expressions are defined by a tagged union. We intend to always only
-access the variant corresponding to the current tag value, but this is not
-something that can be statically ascertained in \Cpp; therefore the tag and
-the corresponding variants originally had public access. However we have none
-nonetheless made the fields private with public accessor methods, in order to
-be able to hide in our implementation possibilities not visible to clients.
-Notably, while type expressions are implemented as unshared linked structures
-(they are owned by the top level object), we provide a mechanism to represent
-types with a recursive structure; the tag value |type_number| and the static
-member |type_map|, which will be discussed later, serve for this purpose. By
-exposing the tag and type components only through accessor methods, we can
-make this mechanism transparent for clients. For now these methods just return
-the stored fields unchanged: non-owning raw pointers into the type expression.
+Type expressions are defined by a tagged union. We intend to always only access
+the variant corresponding to the current tag value, but this is not something
+that can be statically ascertained in \Cpp; therefore the tag and the
+corresponding variants originally had public access. We have none nonetheless
+made the fields private with public accessor methods, which will automatically
+insert a look-up for any type with |tag=tabled|. That kind of type is necessary
+to represent types with a recursive structure; the look-up uses the static
+member |type_map|, which will be discussed later.
 
 The field |tuple_variant| used to be (after inclusion of the
 |containers::simple_list| class template in Atlas, which coincided with the
@@ -362,14 +357,12 @@ class type_expr
 @)
 public:
   type_tag raw_kind () const @+{@; return tag; } // don't translate |tabled|
-  func_type* func() const
-    @+{@; return tag==tabled ? expansion().func_variant : func_variant; }
-  type_p component_type () const
-    @+{@; return  tag==tabled ? expansion().row_variant : row_variant; }
-  primitive_tag prim() const
-    @+{@; return tag==tabled ? expansion().prim_variant : prim_variant; }
-  raw_type_list tuple () const
-    @+{@; return tag==tabled ? expansion().tuple_variant : tuple_variant; }
+  const type_expr& untabled () const
+    @+{@; return tag==tabled ? expansion() : *this; }
+  func_type* func() const        @+{@; return untabled().func_variant; }
+  type_p component_type () const @+{@; return untabled().row_variant; }
+  primitive_tag prim() const     @+{@; return untabled().prim_variant; }
+  raw_type_list tuple () const   @+{@; return untabled().tuple_variant; }
   type_nr_type type_nr () const @+{@; return type_number; }
   id_type type_name () const; // identifier corresponding to |type_number|
   const type_expr& expansion () const; // type corresponding to |type_number|
@@ -924,7 +917,7 @@ std::vector<type_expr> type_expr::add_typedefs
 @/std::vector<type_data> type_array;
   std::vector<type_data*> type_perm;
 @)
-  @< Copy types from |*this| to |type_array|, then add entries for they types
+  @< Copy types from |type_map| to |type_array|, then add entries for they types
      defined by |defs| and all their anonymous sub-types;
      also make each |type_perm[i]| point to |type_array[i]| @>
 @)
@@ -969,7 +962,7 @@ start dissecting the type expressions from |defs|, which in general extends
 produced into the empty slot. The dissection is itself is done by an auxiliary
 method |dissect_type_to| of |type_expr|, to be defined below.
 
-@< Copy types from |*this| to |type_array|, then add entries for they types
+@< Copy types from |type_map| to |type_array|, then add entries for they types
    defined by |defs| and all their anonymous sub-types;
    also make each |type_perm[i]| point to |type_array[i]| @>=
 {
@@ -1189,7 +1182,7 @@ proper location of~|l0|.
 typedef const type_data* val_type;
 typedef int (*cmp_f)(val_type,val_type,const std::vector<type_data>&);
 
-void merge_sort (p_list l0, cmp_f cmp, const std::vector<type_data>& a)
+void merge_sort (p_list& l0, cmp_f cmp, const std::vector<type_data>& a)
 { const auto len = length(l0);
   if (len<2)
     return;
