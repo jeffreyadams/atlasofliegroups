@@ -353,7 +353,7 @@ class type_expr
   union
   { primitive_tag prim_variant; // when |tag==primitive|
     func_type* func_variant; // when |kind==function_type|
-    type_p compon_variant; // when |kind==row_type|
+    type_p row_variant; // when |kind==row_type|
     raw_type_list tuple_variant; // when |kind==tuple_type| or |kind==union_type|
     type_nr_type type_number;
   };
@@ -362,10 +362,14 @@ class type_expr
 @)
 public:
   type_tag raw_kind () const @+{@; return tag; } // don't translate |tabled|
-  func_type * func() const @+{@; return func_variant; }
-  type_p component_type () const @+{@; return compon_variant; }
-  primitive_tag prim() const @+{@; return prim_variant; }
-  raw_type_list tuple () const @+{@; return tuple_variant; }
+  func_type* func() const
+    @+{@; return tag==tabled ? expansion().func_variant : func_variant; }
+  type_p component_type () const
+    @+{@; return  tag==tabled ? expansion().row_variant : row_variant; }
+  primitive_tag prim() const
+    @+{@; return tag==tabled ? expansion().prim_variant : prim_variant; }
+  raw_type_list tuple () const
+    @+{@; return tag==tabled ? expansion().tuple_variant : tuple_variant; }
   type_nr_type type_nr () const @+{@; return type_number; }
   id_type type_name () const; // identifier corresponding to |type_number|
   const type_expr& expansion () const; // type corresponding to |type_number|
@@ -418,7 +422,7 @@ explicit type_expr(primitive_tag p)
 inline type_expr(type_expr&& arg, type_expr&& result);
  // for function types
 explicit type_expr(type_ptr&& c)
-  : tag(row_type), compon_variant(c.release()) @+{}
+  : tag(row_type), row_variant(c.release()) @+{}
 explicit type_expr(type_list&& l,bool is_union=false);
   // tuple and union types
 explicit type_expr(type_nr_type type_nr)
@@ -445,7 +449,7 @@ bool can_specialise(const type_expr& pattern) const;
 @)
 void print(std::ostream& out) const;
 @)
-static std::vector<type_ptr>
+static std::vector<type_expr>
   add_typedefs(const std::vector<std::pair<id_type,const_type_p> >& defs);
 
 @ For that definition to be processed properly, we must pay some attention to
@@ -494,7 +498,7 @@ type_expr type_expr::copy() const
       func_type(func_variant->copy());
     break;
     case row_type:
-      result.compon_variant=new type_expr(compon_variant->copy());
+      result.row_variant=new type_expr(row_variant->copy());
     break;
     case tuple_type: case union_type:
       @< Assign a deep copy of |tuple_variant| to |result.tuple_variant| @>
@@ -542,7 +546,7 @@ void type_expr::clear() noexcept
 { switch (tag)
   { case undetermined_type: case primitive_type: break;
     case function_type: delete func_variant; break;
-    case row_type: delete compon_variant; break;
+    case row_type: delete row_variant; break;
     case tuple_type: case union_type: delete tuple_variant; break;
     case tabled: break;
   }
@@ -570,7 +574,7 @@ void type_expr::set_from(type_expr&& p) noexcept
   { case undetermined_type: break;
     case primitive_type: prim_variant=p.prim_variant; break;
     case function_type: func_variant=p.func_variant; break;
-    case row_type: compon_variant=p.compon_variant; break;
+    case row_type: row_variant=p.row_variant; break;
     case tuple_type: case union_type: tuple_variant = p.tuple_variant; break;
     case tabled: type_number=p.type_number;
   }
@@ -584,7 +588,7 @@ type_expr::type_expr(type_expr&& x) noexcept // move constructor
   { case undetermined_type: break;
     case primitive_type: prim_variant=x.prim_variant; break;
     case function_type: func_variant=x.func_variant; break;
-    case row_type: compon_variant=x.compon_variant; break;
+    case row_type: row_variant=x.row_variant; break;
     case tuple_type: case union_type: tuple_variant = x.tuple_variant; break;
     case tabled: type_number=x.type_number; break;
   }
@@ -612,7 +616,7 @@ void type_expr::swap(type_expr& other) noexcept
     { case undetermined_type: break; // no need to swap |nothing| fields
       case primitive_type: std::swap(prim_variant,other.prim_variant); break;
       case function_type: std::swap(func_variant,other.func_variant); break;
-      case row_type: std::swap(compon_variant,other.compon_variant); break;
+      case row_type: std::swap(row_variant,other.row_variant); break;
       case tuple_type: case union_type:
         std::swap(tuple_variant,other.tuple_variant); break;
       case tabled: std::swap(type_number,other.type_number); break;
@@ -686,7 +690,7 @@ bool type_expr::specialise(const type_expr& pattern)
       return func_variant->arg_type.specialise(pattern.func_variant->arg_type) @|
          and func_variant->result_type.specialise
                                           (pattern.func_variant->result_type);
-    case row_type: return compon_variant->specialise(*pattern.compon_variant);
+    case row_type: return row_variant->specialise(*pattern.row_variant);
     case tuple_type: case union_type:
      @< Try to specialise types in |tuple_variant| to those in
         |pattern.tuple_variant|,
@@ -733,7 +737,7 @@ bool type_expr::can_specialise(const type_expr& pattern) const
          and func_variant->result_type.can_specialise
                                     (pattern.func_variant->result_type);
     case row_type:
-      return compon_variant->can_specialise(*pattern.compon_variant);
+      return row_variant->can_specialise(*pattern.row_variant);
     case tuple_type: case union_type:
       @< Find out and |return| whether we can specialise the types in
          |tuple_variant|
@@ -914,7 +918,7 @@ restarting the equivalencing relatively easy, namely by ensuring (as mentioned
 above) that all sub-types of types in the table have their own entries.
 
 @< Function definitions @>=
-std::vector<type_ptr> type_expr::add_typedefs
+std::vector<type_expr> type_expr::add_typedefs
   (const std::vector<std::pair<id_type,const_type_p> >& defs)
 {
 @/std::vector<type_data> type_array;
@@ -933,7 +937,7 @@ std::vector<type_ptr> type_expr::add_typedefs
      for their descendent types, until no more refinement takes place;
      now each bucket is an equivalence class of types @>
 @)
-  std::vector<type_ptr> result;
+  std::vector<type_expr> result;
   result.reserve(defs.size());
   @< For each equivalence class that has no representatives among the types
      already present, add a corresponding entry to |type_map|, and push to
@@ -1030,7 +1034,7 @@ type_expr type_expr::dissect_type_to (std::vector<type_data>& dst) const
                      func()->result_type.to_table(dst));
   case row_type:
       return type_expr(type_ptr(new @|
-               type_expr(compon_variant->to_table(dst))));
+               type_expr(row_variant->to_table(dst))));
   case tuple_type: case union_type:
     { dressed_type_list l;
       for (wtl_const_iterator it(tuple_variant); not it.at_end(); ++it)
@@ -1357,7 +1361,7 @@ which |rank| values have already been seen.
     }
     for (unsigned int i=0; i<defs.size(); ++i)
     { type_nr_type nr= renumber[(first_new+i)->rank];
-      result.push_back(type_ptr(new type_expr(nr))); // make |tabled| type
+      result.emplace_back(nr); // make |tabled| type
       if (type_map[nr].first==type_table::no_id)
         // don't overwrite existing type name
         type_map[nr].first=defs[i].first; // but otherwise insert type name
@@ -1525,7 +1529,7 @@ void type_expr::print(std::ostream& out) const
       }
     break;
     case tabled:
-      if (type_number<type_map.size())
+      if (type_map[type_number].first!=type_table::no_id)
         out << main_hash_table->name_of(type_name());
       else out << expansion();
         // expand out when no identifier is attached
@@ -2612,7 +2616,7 @@ was found. The function |conform_types| first tries to specialise the type
 applied conversion function; if both fail an error mentioning the
 expression~|e| is thrown.
 
-The function |row_coercion| specialises if possible |compon_variant| in such a
+The function |row_coercion| specialises if possible |row_variant| in such a
 way that the corresponding row type can be coerced to |final_type|, and
 returns a pointer to the |conversion_record| for the coercion in question. The
 function |coercion| serves for filling the coercion table.
