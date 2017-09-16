@@ -445,7 +445,7 @@ bool can_specialise(const type_expr& pattern) const;
 @)
 void print(std::ostream& out) const;
 @)
-static void
+static std::vector<type_ptr>
   add_typedefs(const std::vector<std::pair<id_type,const_type_p> >& defs);
 
 @ For that definition to be processed properly, we must pay some attention to
@@ -914,7 +914,7 @@ restarting the equivalencing relatively easy, namely by ensuring (as mentioned
 above) that all sub-types of types in the table have their own entries.
 
 @< Function definitions @>=
-void type_expr::add_typedefs
+std::vector<type_ptr> type_expr::add_typedefs
   (const std::vector<std::pair<id_type,const_type_p> >& defs)
 {
 @/std::vector<type_data> type_array;
@@ -932,8 +932,13 @@ void type_expr::add_typedefs
   @< Repeatedly sort and refine each bucket content, using the |rank| fields
      for their descendent types, until no more refinement takes place;
      now each bucket is an equivalence class of types @>
+@)
+  std::vector<type_ptr> result;
+  result.reserve(defs.size());
   @< For each equivalence class that has no representatives among the types
-     already present, add a corresponding entry to |type_map| @>
+     already present, add a corresponding entry to |type_map|, and push to
+     |result| the types for the entries of |defs| in |tabled| form @>
+  return result;
 }
 
 @ The following is not conceptually hard, but it took us long thought to find a
@@ -1335,22 +1340,28 @@ its new |type_number| value in the array |renumber|, which also serves to record
 which |rank| values have already been seen.
 
 @< For each equivalence class that has no representatives among the types
-   already present, add a corresponding entry to |type_map| @>=
-{ constexpr unsigned int absent = -1;
+   already present, add a corresponding entry to |type_map|, and push to
+   |result| the types for the entries of |defs| in |tabled| form @>=
+{ constexpr type_nr_type absent = -1;
   const auto old_size=type_map.size();
   const auto first_new=type_array.begin()+old_size;
   unsigned int count = 0;
-  std::vector<unsigned int> renumber(type_perm.size(),absent);
+  std::vector<type_nr_type> renumber(type_perm.size(),absent);
   for (auto it = type_array.begin(); it!=type_array.end(); ++it)
-    if (renumber[it->rank]==absent)
+    if (it<first_new)
+      assert(renumber[it->rank]==absent),renumber[it->rank]=count++;
+    else if (renumber[it->rank]==absent)
     {
-      renumber[it->rank]=count;
-      if (count++ >= old_size)
-        type_map.emplace_back(defs[it-first_new].first,std::move(it->type));
+      renumber[it->rank]=count++;
+      type_map.emplace_back(id_type(type_table::no_id),std::move(it->type));
     }
-    else
-      assert(count>=old_size);
-      // only new types can be equivalent to an earlier one
+    for (unsigned int i=0; i<defs.size(); ++i)
+    { type_nr_type nr= renumber[(first_new+i)->rank];
+      result.push_back(type_ptr(new type_expr(nr))); // make |tabled| type
+      if (type_map[nr].first==type_table::no_id)
+        // don't overwrite existing type name
+        type_map[nr].first=defs[i].first; // but otherwise insert type name
+    }
     @< Update, for types beyond position |old_size|, their descendent types
        according to |renumber| @>
 }
