@@ -45,7 +45,7 @@ More topics addressed in this file:
 
 <misc.at { for is_simple_root }
 <sort.at { for inv_standardisation }
-<Weylgroup.at
+<Weylgroup.at { for W_word (is also ComplexParabolic); root_datum@W_word }
 <group_operations { for is_relatively_split }
 
 
@@ -168,7 +168,7 @@ set KGP_elt (ratvec lambda,KGBElt x) = KGPElt:
   in for a@i in simple_coroots(rd) do if a*lambda_dom=0 then P#:=i fi od;
   KGPElt:(P,cross(inverse(w),x))
 
-{. Data type for a complex parabolic subrgoup .}
+{. Data type for a complex parabolic subgroup .}
 : ComplexParabolic = (RootDatum,[int])
 
 {. the complex parabolic underlying P=(S,x). .}
