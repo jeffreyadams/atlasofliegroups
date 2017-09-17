@@ -1023,8 +1023,8 @@ type_expr type_expr::dissect_type_to (std::vector<type_data>& dst) const
 { switch(tag)
   {
   case function_type:
-    return type_expr(func()->arg_type.to_table(dst),
-                     func()->result_type.to_table(dst));
+    return type_expr(func_variant->arg_type.to_table(dst),
+                     func_variant->result_type.to_table(dst));
   case row_type:
       return type_expr(type_ptr(new @|
                type_expr(row_variant->to_table(dst))));
@@ -1063,7 +1063,7 @@ directly for a pointer found in |type_perm|.
     case row_type: row_types.push_back(*it); break;
     case tuple_type:
     case union_type:
-      { auto l=length(t.tuple());
+      { auto l=length(t.tuple_variant);
         auto& target = t.tag==tuple_type ? tuple_types : union_types;
         if (l>=target.size())
           target.resize(l+1,empty_list);
@@ -1352,15 +1352,15 @@ which |rank| values have already been seen.
       renumber[it->rank]=count++;
       type_map.emplace_back(id_type(type_table::no_id),std::move(it->type));
     }
-    for (unsigned int i=0; i<defs.size(); ++i)
-    { type_nr_type nr= renumber[(first_new+i)->rank];
-      result.emplace_back(nr); // make |tabled| type
-      if (type_map[nr].first==type_table::no_id)
-        // don't overwrite existing type name
-        type_map[nr].first=defs[i].first; // but otherwise insert type name
-    }
-    @< Update, for types beyond position |old_size|, their descendent types
-       according to |renumber| @>
+  for (unsigned int i=0; i<defs.size(); ++i)
+  { type_nr_type nr= renumber[(first_new+i)->rank];
+    result.emplace_back(nr); // make |tabled| type
+    if (type_map[nr].first==type_table::no_id)
+      // don't overwrite existing type name
+      type_map[nr].first=defs[i].first; // but otherwise insert type name
+  }
+  @< Update, for types beyond position |old_size|, their descendent types
+     according to |renumber| @>
 }
 
 @ For a given |type_expr t@;|, which should have |t.tag==tabled|, renumbering
@@ -1379,15 +1379,15 @@ by |tag|, and invokes |renumber_type_nr_from_rank| wherever applicable.
     switch (it->second.tag)
     { default: break; // nothing for types without descendents
     case function_type:
-    { auto f = it->second.func();
+    { auto f = it->second.func_variant;
     @/renumber_type_nr_from_rank(f->arg_type);
       renumber_type_nr_from_rank(f->result_type);
     }
       break;
-    case row_type: renumber_type_nr_from_rank(*it->second.component_type());
+    case row_type: renumber_type_nr_from_rank(*it->second.row_variant);
       break;
     case tuple_type: case union_type:
-      for (wtl_iterator jt(it->second.tuple()); not jt.at_end(); ++jt)
+      for (wtl_iterator jt(it->second.tuple_variant); not jt.at_end(); ++jt)
         renumber_type_nr_from_rank(*jt);
       break;
     }
@@ -1501,23 +1501,23 @@ void type_expr::print(std::ostream& out) const
 { switch(tag)
   { case undetermined_type: out << '*'; break;
     case primitive_type: out << prim_names[prim()]; break;
-    case function_type: out << *func(); break;
-    case row_type: out << '[' << *component_type() << ']'; break;
+    case function_type: out << *func_variant; break;
+    case row_type: out << '[' << *row_variant << ']'; break;
     case tuple_type:
-      if (tuple()==nullptr)
+      if (tuple_variant==nullptr)
         out << "void";
       else
       {@;
-         interpreter::print(out << '(', tuple(),',');
+         interpreter::print(out << '(', tuple_variant,',');
          out << ')';
       }
     break;
     case union_type:
-      if (tuple()==nullptr)
+      if (tuple_variant==nullptr)
         out << "(*)"; // this should not really occur
       else
       {@;
-         interpreter::print(out << '(', tuple(),'|');
+         interpreter::print(out << '(', tuple_variant,'|');
          out << ')';
       }
     break;
