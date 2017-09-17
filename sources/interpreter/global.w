@@ -853,6 +853,7 @@ void type_define_identifier
   (id_type id, type_p type, raw_id_pat ip, const YYLTYPE& loc);
 void show_ids(std::ostream& out);
 void type_of_expr(expr_p e);
+void type_of_type_name(id_type t);
 void show_overloads(id_type id,std::ostream& out);
 
 @ These functions produce a brief report of what they did, for which they use
@@ -1546,6 +1547,15 @@ void type_of_expr(expr_p raw)
     *output_stream << "type: " << analyse_types(e,p) << std::endl;
   }
   catch (std::exception& err) {@; std::cerr<<err.what()<<std::endl; }
+}
+
+@ The function |type_of_type_name| is even simpler, and just prints the type
+bound to given type identifier.
+
+@< Global function definitions @>=
+void type_of_type_name(id_type id)
+{ bool c; *output_stream
+   << "type: " << global_id_table->type_of(id,c)->untabled() << std::endl;
 }
 
 @ The function |show_overloads| has a similar purpose to |type_of_expr|,

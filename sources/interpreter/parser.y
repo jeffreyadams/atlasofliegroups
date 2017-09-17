@@ -167,6 +167,7 @@ input:	'\n'			{ YYABORT; } /* null input, skip evaluator */
 	| FROMFILE '\n'		{ include_file(1); YYABORT; } /* include file */
 	| FORCEFROMFILE '\n'	{ include_file(0); YYABORT; } // force include
 	| WHATTYPE expr '\n'	{ type_of_expr($2); YYABORT; } // print type
+	| WHATTYPE TYPE_ID '\n'	{ type_of_type_name($2); YYABORT; } // expand
 	| WHATTYPE id_op '?' '\n'
 	  { show_overloads($2,std::cout); YYABORT; } // show types
 	| TOFILE WHATTYPE id_op '?' '\n'
