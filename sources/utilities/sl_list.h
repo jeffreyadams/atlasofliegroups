@@ -329,7 +329,7 @@ template<typename T, typename Alloc>
     assign(first,last);
   }
 
-  simple_list (size_type n, const alloc_type& a=alloc_type())
+  explicit simple_list (size_type n, const alloc_type& a=alloc_type())
   : alloc_type(a), head(nullptr)
   {
     while (n-->0)
@@ -831,7 +831,7 @@ template<typename T, typename Alloc>
     assign(first,last);
   }
 
-  sl_list (size_type n, const alloc_type& a=alloc_type())
+  explicit sl_list (size_type n, const alloc_type& a=alloc_type())
   : alloc_type(a), head(nullptr), tail(&head), node_count(n)
   {
     while (n-->0)
