@@ -999,7 +999,7 @@ recursive calls.
 @< Methods of the |type_expr| class @>=
 private:
   type_expr dissect_type_to (std::vector<type_data>& dst) const;
-  type_nr_type to_table (std::vector<type_data>& dst) const;
+  type_expr to_table (std::vector<type_data>& dst) const;
 
 @ The recursion stops in |to_table| whenever a type with |tag==tabled| is
 encountered, which is what ensures termination. Hence if |dissect_type_to|
@@ -1012,11 +1012,11 @@ therefore we |assert(false)| for this case below.
 
 
 @< Function definitions @>=
-type_nr_type type_expr::to_table (std::vector<type_data>& dst) const
+type_expr type_expr::to_table (std::vector<type_data>& dst) const
 { if (tag==tabled)
-    return type_number; // the buck stops here
+    return copy(); // the buck stops here
   dst.push_back(dissect_type_to(dst));
-  return dst.size()-1; // that is the index of the just added |dst.back()|
+  return type_expr(dst.size()-1); // type that names the just added |dst.back()|
 }
 @)
 type_expr type_expr::dissect_type_to (std::vector<type_data>& dst) const
@@ -1031,7 +1031,7 @@ type_expr type_expr::dissect_type_to (std::vector<type_data>& dst) const
   case tuple_type: case union_type:
     { dressed_type_list l;
       for (wtl_const_iterator it(tuple_variant); not it.at_end(); ++it)
-        l.push_back(type_expr(it->to_table(dst)));
+        l.push_back(it->to_table(dst));
       return type_expr(l.undress(),tag==union_type);
     }
   case tabled: assert(false);
