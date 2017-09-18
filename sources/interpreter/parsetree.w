@@ -3070,7 +3070,7 @@ types. For ordinary type expressions we could do with the types |type_p| and
 we need a list of pairs of a type identifier and its defining type expression.
 
 @< Type declarations for the parser @>=
-typedef std::pair<id_type, const_type_p> typedef_pair;
+typedef std::pair<id_type,type_p> typedef_pair;
 typedef containers::simple_list<typedef_pair> typedef_list;
 typedef atlas::containers::sl_node<typedef_pair>* raw_typedef_list;
 

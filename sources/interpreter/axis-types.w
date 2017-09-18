@@ -442,6 +442,7 @@ bool can_specialise(const type_expr& pattern) const;
 @)
 void print(std::ostream& out) const;
 @)
+static type_nr_type table_size();
 static std::vector<type_expr>
   add_typedefs(const std::vector<std::pair<id_type,const_type_p> >& defs);
 
@@ -851,6 +852,13 @@ class type_expr::defined_type_mapping : public std::vector<type_binding>
 @~We need to define that declared static class member; it starts out empty.
 @< Global variable definitions @>=
 type_expr::defined_type_mapping type_expr::type_map;
+
+@~Although access to |type_map| is private, we do need to have its size be
+public.
+
+@< Function definitions @>=
+
+type_nr_type type_expr::table_size() {@; return type_map.size(); }
 
 @ And here are the accessor methods for the |tabled| variant.
 

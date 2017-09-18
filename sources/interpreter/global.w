@@ -1530,15 +1530,41 @@ projector or injector functions from |tors| to the global overload table.
   *output_stream << '.' << std::endl;
 }
 
-@
+@ The \&{set\_type} command calls |process_type_definitions| with the list of
+type definition clauses as argument. Due to the potential recursion in the
+definitions, these must be treated with more care than the original type
+definitions, which defined just one identifier non-recursively as an
+abbreviation for some type expression. Notably we must collect the list of
+type identifiers to be defined, and after some sanity checks, associate new type
+numbers with each of them, and then make sure that references that were made to
+these identifiers are made to refer to the correct type numbers. Once this
+pre-processing is done, |type_expr::add_typedefs| will do the real work of
+installing the definitions, and afterwards we emit a report summarising the
+definitions that were processed.
+
 @< Global function definitions @>=
 void process_type_definitions (raw_typedef_list l, const YYLTYPE& loc)
 { typedef_list defs(l);
   defs.reverse(); // since the parser collects by prepending new nodes
+  static const type_nr_type absent = -1;
+  std::vector<type_nr_type> translate (main_hash_table->nr_entries(),absent);
+  type_nr_type count = type_expr::table_size();
   for (auto it=defs.begin(); not defs.at_end(it); ++it)
-@/{@; auto id = it->first;
+  { id_type id = it->first;
     @< Protest if |id| is currently used as ordinary identifier @>
+    if (translate[id]==absent)
+      translate[id] = count++;
+    else
+    { std::ostringstream o;
+      o << "Repeated definition of '" << main_hash_table->name_of(id) @|
+        << "' in set_type command";
+      throw program_error(o.str());
+    }
   }
+  @< Replace in type expressions for |defs| in any types with |kind==tabled|
+     the identifier code by the type number associated to it either in
+     |translate| or else (as previous typedef) in |global_id_table|;
+     if neither possibility applies, signal an erroneous type identifier @>
   { std::vector<std::pair<id_type,const_type_p> > b(defs.begin(),end(defs));
     auto types = type_expr::add_typedefs(b);
     auto bit = b.cbegin();
@@ -1552,6 +1578,76 @@ void process_type_definitions (raw_typedef_list l, const YYLTYPE& loc)
   }
 
 }
+
+@ In order to be able to process a set of recursive type definitions where a
+defined type can be referenced before its defining equation is even scanned, the
+scanner and parser play some small tricks. The scanner simply processes all
+identifiers as type identifiers while a \&{set\_type} command is being read. The
+parser also enters a distinct piece of syntax for the right hand side of any
+equation, which closely resembles the productions for a type expression, but (1)
+does not allow a single type identifier at the top level (this make it
+impossible to recursively define a type as itself), and (2) does not look up
+type identifiers in |global_id_table|, but simply stores the identifier code as
+if it were a type number. The trick (2) avoids having to have a special tag
+value in |type_expr| for this transient purpose.
+
+Once the whole list of type equations has been parsed, we know the list of
+type identifiers being defined, and we can set out to replace the
+identifier codes by the type numbers they refer to, which is what we shall do
+here. We already set of the table |translate| to provide the mapping for the
+type identifiers the list of equations is defining.
+We need to traverse all type expressions in the right hand sides of |defs|
+and do the replacement of every |type_number n@;| encountered either by
+|translate[n]| if that is set, or else replace the |type_expr| that contains it
+by |global_id_table->type_of(id)|.
+
+Traversing type expressions is best done recursively, but since we are getting a
+bit bored by defining recursive functions for each little task, we do this one
+iteratively, manually maintaining a stack of types remaining to be visited.
+
+@< Replace in type expressions for |defs| in any types with |kind==tabled|
+   the identifier code by the type number associated to it either in
+   |translate| or else (as previous typedef) in |global_id_table|;
+   if neither possibility applies, signal an erroneous type identifier @>=
+{ containers::stack<type_p> work;
+  for (auto it=defs.begin(); not defs.at_end(it); ++it)
+    work.push(it->second);
+  while (not work.empty())
+  { auto& t = *work.top();
+    work.pop();
+    switch(t.raw_kind())
+    { default: break;
+    case function_type:
+    @/{@; auto f=t.func();
+        work.push(&f->result_type);
+        work.push(&f->arg_type);
+      }
+    break;
+    case row_type: work.push(t.component_type());
+    break;
+    case tuple_type: case union_type:
+      for (wtl_iterator it(t.tuple()); not it.at_end(); ++it)
+        work.push(&*it);
+    break;
+    case tabled: // this case is what it is all about
+      { id_type id = t.type_nr();
+ // narrows the integer, but it was really an identifier code
+        if (translate[id]!=absent)
+          t = type_expr(translate[id]); // replace by future tabled reference
+        else if (global_id_table->is_defined_type(id))
+        @/{@; bool dummy; t = global_id_table->type_of(id,dummy)->copy(); }
+        else
+        { std::ostringstream o;
+          o << "Type identifier '" << main_hash_table->name_of(id) @|
+            << "' in set_type command does not refer to any type";
+          throw program_error(o.str());
+        }
+      }
+    break;
+    }
+  }
+}
+
 
 
 @*1 Printing information from internal tables.
