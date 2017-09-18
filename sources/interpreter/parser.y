@@ -53,6 +53,7 @@
   atlas::interpreter::type_p type_pt;
   atlas::interpreter::raw_type_list type_l;
   atlas::interpreter::raw_case_list case_l;
+  atlas::interpreter::raw_typedef_list typedef_l;
 }
 
 %locations
@@ -103,8 +104,8 @@
 %destructor { destroy_id_pat($$); } pattern pattern_opt closed_pattern
 %type <pl> pat_list
 %destructor { destroy_pattern($$); } pat_list
-%type <type_pt> nostar_type type
-%destructor { destroy_type($$); } nostar_type type
+%type <type_pt> type nostar_type composite_type
+%destructor { destroy_type($$); } type nostar_type composite_type
 %type <type_l> types union_list union_list_opt
 %destructor { destroy_type_list($$); } types union_list union_list_opt
 %type <id_sp1> id_spec type_spec type_field
@@ -115,6 +116,9 @@
             } id_specs id_specs_opt
 %type <case_l> caselist
 %destructor { destroy_case_list($$); } caselist
+%type <typedef_l> type_equation type_equations
+%destructor { destroy_typedef_list($$); } type_equation type_equations
+
 
 %{
   int yylex (YYSTYPE *, YYLTYPE *);
@@ -149,9 +153,12 @@ input:	'\n'			{ YYABORT; } /* null input, skip evaluator */
 		  global_set_identifier(id,$3,0); YYABORT; }
 	| IDENT ':' type '\n'	{ global_declare_identifier($1,$3); YYABORT; }
 	| ':' IDENT '=' type_spec '\n'
-	  { type_define_identifier($2,$4.type_pt,$4.ip,@4); YYABORT; }
+	  { type_define_identifier($2,$4.type_pt,$4.ip,@$); YYABORT; }
 	| ':' TYPE_ID '=' type_spec '\n'
-	  { type_define_identifier($2,$4.type_pt,$4.ip,@4); YYABORT; }
+	  { type_define_identifier($2,$4.type_pt,$4.ip,@$); YYABORT; }
+	| SET_TYPE type_equations '\n'
+	  { process_type_definitions($2,@$); YYABORT; }
+
 	| QUIT	'\n'		{ *verbosity =-1; } /* causes immediate exit */
 	| SET IDENT '\n' // set an option; option identifiers have lowest codes
 	  { unsigned n=$2-lex->first_identifier();
@@ -627,7 +634,10 @@ type_field : type IDENT { $$.type_pt=$1; $$.ip.kind=0x1; $$.ip.name=$2; }
 nostar_type : PRIMTYPE	{ $$=make_prim_type($1); }
 	| TYPE_ID
 	  { bool c; $$=acquire(global_id_table->type_of($1,c)).release(); }
-| '[' union_list ']'	{ $$=make_row_type(make_union_type($2)); }
+	| composite_type
+;
+composite_type :
+	  '[' union_list ']'	{ $$=make_row_type(make_union_type($2)); }
 	| '(' union_list ')'	{ $$=make_union_type($2); }
 	| '(' union_list_opt ARROW union_list_opt ')'
 	  { $$=make_function_type(make_union_type($2),make_union_type($4)); }
@@ -655,6 +665,12 @@ types	: type ',' type
 	| types ',' type { $$=make_type_list($1,$3); }
 ;
 
+type_equations : type_equation
+	| type_equations ',' type_equation { $$=append_typedef_node($1,$3); }
+;
+
+type_equation: TYPE_ID '=' composite_type { $$=make_typedef_singleton($1,$3); }
+;
 
 commalist_opt: /* empty */	 { $$=raw_expr_list(nullptr); }
 	| commalist

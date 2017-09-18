@@ -851,6 +851,7 @@ void global_forget_identifier(id_type id);
 void global_forget_overload(id_type id, type_p type);
 void type_define_identifier
   (id_type id, type_p type, raw_id_pat ip, const YYLTYPE& loc);
+void process_type_definitions (raw_typedef_list l, const YYLTYPE& loc);
 void show_ids(std::ostream& out);
 void type_of_expr(expr_p e);
 void type_of_type_name(id_type t);
@@ -1465,19 +1466,15 @@ if (not (is_tuple or tors.empty())) // binding a union type with fields
   }
 }
 
-@  Defining a type name would make any global identifier or overload of the same
-name inaccessible. Since this is probably not intended, we refuse to do this,
-and emit an error message instead when it is attempted.
-
-We start checking if the user deviously hid a \emph{new} definition of the same
-identifier in the field list. Then we emit an error if any previous definition
-is found. The test for this can be skipped is the same identifier was already
-defined as a type, but in that case the old definition will be overwritten, so
-we call |clean_out_type_identifier| in order to remove any traces of the old
-definition in |typedef_table| (this is needed even if the new definition is for
-the same type as the previous one, since the field names might differ). Finally
-we report the new definition, which output may be completed by the list of field
-names printed in section~@#field name printing @>.
+@ We start checking if the user deviously hid a \emph{new} definition of the
+same identifier in the field list. Then we emit an error if any previous
+definition is found. The test for this can be skipped is the same identifier was
+already defined as a type, but in that case the old definition will be
+overwritten, so we call |clean_out_type_identifier| in order to remove any
+traces of the old definition in |typedef_table| (this is needed even if the new
+definition is for the same type as the previous one, since the field names might
+differ). Finally we report the new definition, which output may be completed by
+the list of field names printed in section~@#field name printing @>.
 
 
 @< Test for conflicts in adding |type| to |global_id_table|, in which case
@@ -1491,23 +1488,29 @@ names printed in section~@#field name printing @>.
     }
 @)
   bool redefine = global_id_table->is_defined_type(id);
-  if (redefine)
+  if (not redefine)
+    @< Protest if |id| is currently used as ordinary identifier @>
+  else // those tests were already done when |id| became a type identifier
     clean_out_type_identifier(id);
-  else
-// the tests below were previously done if |id| was already a type identifier
-  { const bool p = global_id_table->present(id); // non-overloaded presence
-    if (p or not global_overload_table->variants(id).empty())
-    { std::ostringstream o;
-      o << "Cannot define '" << main_hash_table->name_of(id) @|
-                << "' as a type; it is in use as " @|
-                << (p? "global variable" : "function");
-      throw program_error(o.str());
-    }
-  }
   @< Emit indentation corresponding to the input level to |*output_stream| @>
   *output_stream << "Type name '" << main_hash_table->name_of(id) @|
             << (redefine ? "' redefined as " : "' defined as ") << type
             << std::endl;
+}
+
+@ Defining a type name would make any global identifier or overload of the same
+name inaccessible. Since this is probably not intended, we refuse to do this,
+and emit an error message instead when it is attempted.
+
+@< Protest if |id| is currently used as ordinary identifier @>=
+{ const bool p = global_id_table->present(id); // non-overloaded presence
+  if (p or not global_overload_table->variants(id).empty())
+  { std::ostringstream o;
+    o << "Cannot define '" << main_hash_table->name_of(id) @|
+              << "' as a type; it is in use as " @|
+              << (p? "global variable" : "function");
+    throw program_error(o.str());
+  }
 }
 
 @ When tests have been passed successfully, we run the code below to copy the
@@ -1525,6 +1528,29 @@ projector or injector functions from |tors| to the global overload table.
                 @| << main_hash_table->name_of(it->first);
   }
   *output_stream << '.' << std::endl;
+}
+
+@
+@< Global function definitions @>=
+void process_type_definitions (raw_typedef_list l, const YYLTYPE& loc)
+{ typedef_list defs(l);
+  defs.reverse(); // since the parser collects by prepending new nodes
+  for (auto it=defs.begin(); not defs.at_end(it); ++it)
+@/{@; auto id = it->first;
+    @< Protest if |id| is currently used as ordinary identifier @>
+  }
+  { std::vector<std::pair<id_type,const_type_p> > b(defs.begin(),end(defs));
+    auto types = type_expr::add_typedefs(b);
+    auto bit = b.cbegin();
+    for (auto it=types.begin(); it!=types.end(); ++it,++bit)
+    {
+      @< Emit... @>
+      *output_stream << "Type name '" << main_hash_table->name_of(bit->first) @|
+            << "' defined as " << it->untabled() << std::endl;
+      global_id_table->add_type_def(bit->first,std::move(*it));
+    }
+  }
+
 }
 
 

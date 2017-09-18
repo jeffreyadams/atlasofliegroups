@@ -3057,6 +3057,49 @@ case do_expr:
 }
 break;
 
+@* Non-expression syntax.
+%
+It is a sign of the functional inspiration of the \.{axis} programming
+language that nearly all syntax is involve with building expressions. The
+small parts of non-expression syntax there are deal mostly with commands,
+which are directly invoked from the parser actions and do not involve any
+parse tree being built at all. There is however a bit a tree building that
+does not involve expressions, namely the definition of (possibly recursive)
+types. For ordinary type expressions we could do with the types |type_p| and
+|raw_type_list| defined in the \.{axis-types} module, but in type definitions
+we need a list of pairs of a type identifier and its defining type expression.
+
+@< Type declarations for the parser @>=
+typedef std::pair<id_type, const_type_p> typedef_pair;
+typedef containers::simple_list<typedef_pair> typedef_list;
+typedef atlas::containers::sl_node<typedef_pair>* raw_typedef_list;
+
+@ Here are the functions defined for those types.
+
+@< Declarations of functions for the parser @>=
+void destroy_typedef_list(raw_typedef_list l);
+raw_typedef_list append_typedef_node(raw_typedef_list prev,raw_typedef_list last);
+raw_typedef_list make_typedef_singleton (id_type id, type_p t);
+
+@~Like for other type of raw lists, merely reconstructing the non-raw list and
+letting that be destructed suffices to recursively destroy all nodes of the
+|typedef_list|, and anything accessed from them.
+
+@< Definitions of functions for the parser @>=
+void destroy_typedef_list(raw_typedef_list l)
+@+{@; (typedef_list(l)); }
+
+raw_typedef_list append_typedef_node (raw_typedef_list prev,raw_typedef_list last)
+{ typedef_list result(prev), node(last);
+  result.splice(result.begin(),node,node.begin()); // move one node
+@/return result.release();
+}
+
+raw_typedef_list make_typedef_singleton (id_type id, type_p t)
+{@; return typedef_list(1,std::make_pair(id,t)).release(); }
+
+
+
 @* Other functions callable from the parser.
 Here are some functions that are not so much a parsing functions as just
 wrapper functions that used to enable the parser to call \Cpp~functions.
