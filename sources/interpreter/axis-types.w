@@ -3026,23 +3026,24 @@ The expression |dummy| may be prepended to by |coerce|, but is then abandoned
 unsigned int is_close (const type_expr& x, const type_expr& y)
 { expression_ptr dummy(nullptr);
   if (x==y)
-    return 0x7;
-  if (x.kind()==undetermined_type or y.kind()==undetermined_type)
+    return 0x7; // this also makes recursive types equal to themselves
+  auto xk=x.kind(), yk=y.kind();
+  if (xk==undetermined_type or yk==undetermined_type)
     return 0x0;
       // undetermined types do not specialise (or coerce), and are not close
   if (x==void_type or y==void_type)
     return 0x0; // |void| does not allow coercion for overload, and is not close
-  if (x.kind()==primitive_type or y.kind()==primitive_type)
+  if (xk==primitive_type or yk==primitive_type)
   { unsigned int flags=0x0;
     if (coerce(x,y,dummy)) flags |= 0x1;
     if (coerce(y,x,dummy)) flags |= 0x2;
     return flags==0 ? flags : flags|0x4;
   }
-  if (x.kind()!=y.kind())
+  if (xk!=yk)
     return 0x0;
-  if (x.kind()==row_type)
+  if (xk==row_type)
     return is_close(*x.component_type(),*y.component_type());
-  if (x.kind()!=tuple_type)
+  if (xk!=tuple_type)
     return 0x0; // non-aggregate types are only close if equal
   unsigned int flags=0x7; // now we have two tuple types; compare components
   wtl_const_iterator it0(x.tuple());
@@ -3093,18 +3094,22 @@ cater for it here).
 
 @< Function definitions @>=
 bool broader_eq (const type_expr& a, const type_expr& b)
-{ if (a==void_type or b==unknown_type)
+{
+  if (a.raw_kind()==tabled and b.raw_kind()==tabled and a.type_nr()==b.type_nr())
+    return true; // prevent infinite recursion
+  auto ak=a.kind(), bk=b.kind();
+   if (a==void_type or bk==undetermined_type)
     return true;
-  if (a==unknown_type or b==void_type)
+  if (ak==undetermined_type or b==void_type)
     return false;
-  if (a.kind()==primitive_type)
+  if (ak==primitive_type)
     return (is_close(a,b)&0x2)!=0; // whether |b| can be converted to |a|
-  if (a.kind()!=b.kind())
+  if (ak!=bk)
     // includes remaining cases where |b.kind()==primitive_type|
     return false; // no broader between different kinds on non-primitive types
-  if (a.kind()==row_type)
+  if (ak==row_type)
     return broader_eq(*a.component_type(),*b.component_type());
-  if (a.kind()==function_type)
+  if (ak==function_type)
     return a.func()->arg_type==b.func()->arg_type and @|
     broader_eq(a.func()->result_type,b.func()->result_type);
   wtl_const_iterator itb(b.tuple());
