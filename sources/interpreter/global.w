@@ -180,6 +180,8 @@ public:
   bool is_defined_type(id_type id) const; // whether |id| stands for a type
   const_type_p type_of(id_type id,bool& is_const) const;
   // pure lookup, may return |nullptr|
+  const_type_p type_of(id_type id) const; // same without asking for |const|
+
   void specialise(id_type id,const type_expr& type);
   // specialise type stored for identifier
   shared_value value_of(id_type id) const; // look up
@@ -291,6 +293,13 @@ const_type_p Id_table::type_of(id_type id,bool& is_const) const
   is_const=p->second.is_const();
   return &p->second.type();
 }
+const_type_p Id_table::type_of(id_type id) const
+{ map_type::const_iterator p=table.find(id);
+  if (p==table.end())
+    return nullptr;
+  return &p->second.type();
+}
+@)
 void Id_table::specialise(id_type id,const type_expr& type)
 {@; map_type::iterator p=table.find(id);
   p->second.type().specialise(type);
@@ -718,8 +727,8 @@ void type_table::remove (id_type id)
 id_type type_table::find (const type_expr& type) const
 { for (auto it=assoc.begin(); it!=assoc.end(); ++it)
     // do linear search through |assoc|
-  { bool dummy; assert(global_id_table->is_defined_type(it->first));
-    if (*global_id_table->type_of(it->first,dummy)==type)
+  { assert(global_id_table->is_defined_type(it->first));
+    if (*global_id_table->type_of(it->first)==type)
       return it->first;
   }
   return no_id;
@@ -1255,8 +1264,7 @@ void clean_out_type_identifier(id_type id)
 {
   { const auto& fields = typedef_table.fields(id);
     if (not fields.empty())
-    { bool dummy;
-      auto defined_type = global_id_table->type_of(id,dummy);
+    { auto defined_type = global_id_table->type_of(id);
       if (defined_type->kind()==tuple_type)
         @< Remove projector functions for tuple type |id| added when
            it was defined as |*defined_type| @>
@@ -1635,7 +1643,7 @@ iteratively, manually maintaining a stack of types remaining to be visited.
         if (translate[id]!=absent)
           t = type_expr(translate[id]); // replace by future tabled reference
         else if (global_id_table->is_defined_type(id))
-        @/{@; bool dummy; t = global_id_table->type_of(id,dummy)->copy(); }
+          t = global_id_table->type_of(id)->copy();
         else
         { std::ostringstream o;
           o << "Type identifier '" << main_hash_table->name_of(id) @|
@@ -1676,8 +1684,8 @@ bound to given type identifier.
 
 @< Global function definitions @>=
 void type_of_type_name(id_type id)
-{ bool c; *output_stream
-   << "type: " << global_id_table->type_of(id,c)->untabled() << std::endl;
+{ *output_stream <<
+    "type: " << global_id_table->type_of(id)->untabled() << std::endl;
 }
 
 @ The function |show_overloads| has a similar purpose to |type_of_expr|,

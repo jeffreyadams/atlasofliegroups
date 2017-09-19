@@ -280,6 +280,8 @@ public:
   void add(id_type id,type_expr&& t, bool is_const);
   static const_type_p lookup
     (id_type id, size_t& depth, size_t& offset, bool& is_const);
+  static const_type_p lookup (id_type id, size_t& depth, size_t& offset);
+    // if |const| doesn't matter
   static void specialise (size_t depth, size_t offset,const type_expr& t);
 @)
   bool empty() const @+{@; return variable.empty(); }
@@ -363,6 +365,8 @@ a runtime cost for no good at all). The method |lookup| will skip such layers
 without increasing the |depth| it reports.
 
 @< Function def... @>=
+const_type_p layer::lookup (id_type id, size_t& depth, size_t& offset)
+{@; bool dummy; return lookup(id,depth,offset,dummy); }
 const_type_p layer::lookup
   (id_type id, size_t& depth, size_t& offset, bool& is_const)
 { size_t i=0;
@@ -1249,9 +1253,9 @@ get false type predictions.
 @< Cases for type-checking and converting... @>=
 case applied_identifier:
 { const id_type id=e.identifier_variant;
-  const_type_p id_t; size_t i,j; bool is_const;
-  const bool is_local=(id_t=layer::lookup(id,i,j,is_const))!=nullptr;
-  if (not is_local and (id_t=global_id_table->type_of(id,is_const))==nullptr)
+  const_type_p id_t; size_t i,j;
+  const bool is_local=(id_t=layer::lookup(id,i,j))!=nullptr;
+  if (not is_local and (id_t=global_id_table->type_of(id))==nullptr)
   {
     std::ostringstream o;
     o << "Undefined identifier '" << main_hash_table->name_of(id) << '\'';
@@ -2077,15 +2081,15 @@ call is also omitted when the identifier is absent from the overload table
 altogether; in that case it might still be a global identifier with function
 type.
 
-The cases relegated to |resolve_overload| include, due to call to
+The cases relegated to |resolve_overload| include, due to the call to
 |is_special_operator| below, calls of special operators like the size-of
 operator~`\#', even if such an operator should be absent from the overload
 table.
 
 @< Convert and |return| an overloaded function call... @>=
 { const id_type id =call.fun.identifier_variant;
-  size_t i,j; bool b; // dummies; local binding not used here
-  auto local_type_p=layer::lookup(id,i,j,b);
+  size_t i,j; // dummies; local binding not used here
+  auto local_type_p=layer::lookup(id,i,j);
   if (local_type_p==nullptr or local_type_p->kind()!=function_type)
  // not calling by local identifier
   { const overload_table::variant_list& variants
