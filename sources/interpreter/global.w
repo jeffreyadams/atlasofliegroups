@@ -1498,12 +1498,10 @@ and emit an error message instead when it is attempted.
 @< Protest if |id| is currently used as ordinary identifier @>=
 { const bool p = global_id_table->present(id); // non-overloaded presence
   if (p or not global_overload_table->variants(id).empty())
-  { std::ostringstream o;
-    o << "Cannot define '" << main_hash_table->name_of(id) @|
-              << "' as a type; it is in use as " @|
-              << (p? "global variable" : "function");
-    throw program_error(o.str());
-  }
+    throw program_error()
+       << "Cannot define '" << main_hash_table->name_of(id) @|
+       << "' as a type; it is in use as " @|
+       << (p? "global variable" : "function");
 }
 
 @ When tests have been passed successfully, we run the code below to copy the
