@@ -3127,6 +3127,7 @@ can cause runtime errors.
 
 @< Includes needed in \.{axis-types.h} @>=
 #include <stdexcept>
+#include <sstream>
 
 @ We use classes derived from |std::exception| and similar standard ones like
 |std::runtime_error|, but we define our own local hierarchy, with
@@ -3136,14 +3137,31 @@ access, so that it is possible to extend the error message and then re-throw
 the same error object. The simplest way to allow this is to give public access
 to that string member, so we make this a |struct| rather than a |class|.
 
+However, since extending the error message is what is done most often, and it is
+done just using |operator<<|, we provide a templated method of that name to
+write directly to the message inside an error object. (An alternative would have
+been to derive |error_base| from |std::ostringstream| rather than to contain a
+|message| member; however we feel this goes somewhat against the inheritance
+philosophy, since an error object \emph{is not} a string stream.) The templated
+implementation does mean one cannot pass |std::endl| (an unresolved function
+overload) to the error message, but then that is quite useless anyway, and less
+efficient than passing |'\n'|.
+
 @< Type definitions @>=
 struct error_base : public std::exception
 { std::string message;
   explicit error_base(const std::string& s) : message(s) @+{}
+  error_base () : message() @+{}
 #ifdef incompletecpp11
   ~error_base () throw() @+{} // backward compatibility for gcc 4.4
 #endif
   const char* what() const throw() @+{@; return message.c_str(); }
+  template<typename T> error_base& operator<< (const T& x)
+    { std::ostringstream o;
+      o << x;
+      message += o.str();
+    @/return *this;
+    }
 };
 
 @ We classify errors into three classes: those due to inconsistency of our
@@ -3157,6 +3175,7 @@ classes.
 @< Type definitions @>=
 struct logic_error : public error_base
 { explicit logic_error(const std::string& s) : error_base(s) @+{}
+  logic_error () : error_base() @+{}
 #ifdef incompletecpp11
   ~logic_error () throw() @+{} // backward compatibility for gcc 4.4
 #endif
@@ -3164,6 +3183,7 @@ struct logic_error : public error_base
 @)
 struct program_error : public error_base
 { explicit program_error(const std::string& s) : error_base(s) @+{}
+  program_error () : error_base() @+{}
 #ifdef incompletecpp11
   ~program_error () throw() @+{} // backward compatibility for gcc 4.4
 #endif
@@ -3171,6 +3191,7 @@ struct program_error : public error_base
 @)
 struct runtime_error : public error_base
 { explicit runtime_error(const std::string& s) : error_base(s) @+{}
+  runtime_error () : error_base() @+{}
 #ifdef incompletecpp11
   ~runtime_error () throw() @+{} // backward compatibility for gcc 4.4
 #endif
