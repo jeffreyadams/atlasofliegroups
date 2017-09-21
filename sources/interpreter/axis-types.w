@@ -889,6 +889,7 @@ The typedef |p_list| will be of use later, when sorting pointers to these
 struct type_data
 { type_expr type; unsigned int rank;
   type_data(type_expr&& e) : type(std::move(e)) @+{}
+  type_data(): type() @+{}
 };
 typedef containers::sl_list<type_data *> p_list; // list of type pointers
 
@@ -979,7 +980,7 @@ method |dissect_type_to| of |type_expr|, to be defined below.
   for (auto it=type_map.begin(); it!=type_map.end(); ++it)
     type_array.emplace_back(it->second.copy());
   for (auto it=defs.begin(); it!=defs.end(); ++it)
-    type_array.emplace_back(type_expr()); // push empty slots
+    type_array.emplace_back(); // push empty slots
   for (unsigned int i=0; i!=defs.size(); ++i)
     type_array[type_map.size()+i].type
       .set_from(defs[i].second->dissect_type_to(type_array));
