@@ -442,9 +442,7 @@ bool can_specialise(const type_expr& pattern) const;
 @)
 void print(std::ostream& out) const;
 @)
-static type_nr_type table_size();
-static std::vector<type_expr>
-  add_typedefs(const std::vector<std::pair<id_type,const_type_p> >& defs);
+@< Static methods of |type_expr| that will access |type_map| @>
 
 @ For that definition to be processed properly, we must pay some attention to
 ordering of type definitions, because of the recursions present. The structure
@@ -838,33 +836,71 @@ start to count from the size of the mapping for which the |add_typedefs|
 method is called.
 
 @< Type definitions @>=
-typedef std::pair<id_type,type_expr> type_binding;
+struct type_binding
+{ static constexpr id_type no_id = -1;
+  id_type name; type_expr type; std::vector<id_type> fields;
+  type_binding(type_expr&& t) : name(no_id), type(std::move(t)), fields() @+{}
+};
 class type_expr::defined_type_mapping : public std::vector<type_binding>
 { public:
   defined_type_mapping () : @[std::vector<type_binding>@]() @+{}
   const type_expr& defined_type(type_nr_type i) const @+
-    {@; return (*this)[i].second; }
+    {@; return (*this)[i].type; }
   private:
     type_expr dissect_type_to (const type_expr& t, std::vector<type_data>& dst);
-
 };
 
 @~We need to define that declared static class member; it starts out empty.
 @< Global variable definitions @>=
 type_expr::defined_type_mapping type_expr::type_map;
 
-@~Although access to |type_map| is private, we do need to have its size be
-public.
+@ A number of additional methods of |type_expr| are all |static| and just serve
+to regulate access to the static class member |type_map|.
+
+@< Static methods of |type_expr| that will access |type_map| @>=
+static type_nr_type table_size();
+static std::vector<type_expr>
+  add_typedefs(const std::vector<std::pair<id_type,const_type_p> >& defs);
+static void add(id_type type_name, std::vector<id_type>&& fields);
+static id_type find (const type_expr& type);
+static const std::vector<id_type>& fields(id_type type_name);
+
+@ A few of these methods are really easy: |table_size| just returns the current
+|size| of |type_map|, and |add| linearly searches for tabled type having been
+given the passed |type_name|, and sets is its |fields| list.
 
 @< Function definitions @>=
-
 type_nr_type type_expr::table_size() {@; return type_map.size(); }
+@)
+void type_expr::add(id_type type_name, std::vector<id_type>&& fields)
+{ for (auto it=type_map.begin(); it!=type_map.end(); ++it)
+    if (it->name==type_name)
+    {@; it->fields=fields; return; }
+  assert(false); // should not be called for a type not entered into |type_map|
+}
 
-@ And here are the accessor methods for the |tabled| variant.
+@)
+id_type type_expr::find (const type_expr& type)
+{ for (auto it=type_map.begin(); it!=type_map.end(); ++it)
+    if (it->name!=it->no_id)
+    { assert(global_id_table->is_defined_type(it->name));
+      if (*global_id_table->type_of(it->name)==type)
+        return it->name;
+  }
+  return type_binding::no_id;
+}
+const std::vector<id_type>& type_expr::fields(id_type type_name)
+{ for (auto it=type_map.begin(); it!=type_map.end(); ++it)
+    if (it->name==type_name)
+      return it->fields;
+  assert(false); // should not be called for a type not entered into |type_map|
+}
+
+@ And here are the accessor methods for the |tabled| variant of a |type_expr|.
 
 @< Function definitions @>=
 id_type type_expr::type_name() const @+
-{@; return type_map[type_number].first; }
+{@; return type_map[type_number].name; }
 
 const type_expr& type_expr::expansion() const @+
 {@; return type_map.defined_type(type_number); }
@@ -978,7 +1014,7 @@ method |dissect_type_to| of |type_expr|, to be defined below.
   type_array.reserve(type_map.size());
     // not enough, but at least avoid some initial resizing
   for (auto it=type_map.begin(); it!=type_map.end(); ++it)
-    type_array.emplace_back(it->second.copy());
+    type_array.emplace_back(it->type.copy());
   for (auto it=defs.begin(); it!=defs.end(); ++it)
     type_array.emplace_back(); // push empty slots
   for (unsigned int i=0; i!=defs.size(); ++i)
@@ -1359,14 +1395,14 @@ which |rank| values have already been seen.
     else if (renumber[it->rank]==absent)
     {
       renumber[it->rank]=count++;
-      type_map.emplace_back(id_type(type_table::no_id),std::move(it->type));
+      type_map.emplace_back(std::move(it->type));
     }
   for (unsigned int i=0; i<defs.size(); ++i)
   { type_nr_type nr= renumber[(first_new+i)->rank];
     result.emplace_back(nr); // make |tabled| type
-    if (type_map[nr].first==type_table::no_id)
+    if (type_map[nr].name==type_binding::no_id)
       // don't overwrite existing type name
-      type_map[nr].first=defs[i].first; // but otherwise insert type name
+      type_map[nr].name=defs[i].first; // but otherwise insert type name
   }
   @< Update, for types beyond position |old_size|, their descendent types
      according to |renumber| @>
@@ -1385,18 +1421,18 @@ by |tag|, and invokes |renumber_type_nr_from_rank| wherever applicable.
 @< Update, for types beyond position |old_size|, their descendent types
    according to |renumber| @>=
 { for (auto it=type_map.begin()+old_size; it!=type_map.end(); ++it)
-    switch (it->second.tag)
+    switch (it->type.tag)
     { default: break; // nothing for types without descendents
     case function_type:
-    { auto f = it->second.func_variant;
+    { auto f = it->type.func_variant;
     @/renumber_type_nr_from_rank(f->arg_type);
       renumber_type_nr_from_rank(f->result_type);
     }
       break;
-    case row_type: renumber_type_nr_from_rank(*it->second.row_variant);
+    case row_type: renumber_type_nr_from_rank(*it->type.row_variant);
       break;
     case tuple_type: case union_type:
-      for (wtl_iterator jt(it->second.tuple_variant); not jt.at_end(); ++jt)
+      for (wtl_iterator jt(it->type.tuple_variant); not jt.at_end(); ++jt)
         renumber_type_nr_from_rank(*jt);
       break;
     }
@@ -1531,7 +1567,7 @@ void type_expr::print(std::ostream& out) const
       }
     break;
     case tabled:
-      if (type_map[type_number].first!=type_table::no_id)
+      if (type_map[type_number].name!=type_table::no_id)
         out << main_hash_table->name_of(type_name());
       else out << expansion();
         // expand out when no identifier is attached
