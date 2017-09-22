@@ -814,26 +814,25 @@ mechanism has been around some time, but was previously implemented by just
 replacing the type name by the corresponding type expression after
 having been input.
 
-The sub-class |type_expr::defined_type_mapping| is for now thinly veiled vector
-of type expressions possibly paired to a type identifier; the variant
-|type_number| of |type_expr| will record an \emph{index} into this vector (not
-the possibly associated identifier). The possibility to have unnamed types in
-the mapping will turn out to be useful in implementation, since by adding such
-entries we can ensure that all sub-types of types in the table are also present.
-For such unnamed types the type identifier will have the value $-1$, but their
-index can still be used as |type_number|. We provide a selection operation
+The sub-class |type_expr::defined_type_mapping| is basically a vector of type
+expressions possibly paired to a type identifier and maybe a list of field names
+(for tuples or unions, mostly useful for the latter). The variant |type_number|
+of |type_expr| will record an \emph{index} into this vector (not the value of
+the possibly associated identifier). We provide a selection operation
 |defined_type| that returns a non owned reference the such a type expression.
+This class does not hide its data (though it does have one private method
+|dissect+type_to|), but the unique object of this class is a private member
+of |type_expr|, so access is mostly controlled by static methods of that class.
 
-In order to enter newly defined (recursive) types to this class, we declare a
-method |add_typedefs| that will extend the mapping by incorporating a
-potentially recursive collection of type definitions. The argument to this
-method is another list |defs| of pairings of a type identifier to a type
-expression; in this case the identifiers will always be present. the recursive
-nature of these definitions lies in that they can not only refer, using the
-|type_number| variant, to type already defined in the mapping, but also to the
-types they define themselves. For this purpose, those recursive type numbers
-start to count from the size of the mapping for which the |add_typedefs|
-method is called.
+The possibility to have unnamed types in the mapping will turn out to be useful
+in implementation, since by adding such entries we can ensure that all sub-types
+of types in the table are also present. For such unnamed types the type
+identifier will have the value $-1$, but their index can still be used as
+|type_number|. The |fields| component can also be unused (and empty); when set
+it records filed names that usually are also bound to injector or projector
+functions in the overload table, but their presence here serves mostly for
+correctly interpreting |union|-controlled |case| expressions, which need to
+associate tags identifying the variants of a given |union| type.
 
 @< Type definitions @>=
 struct type_binding
@@ -855,22 +854,35 @@ class type_expr::defined_type_mapping : public std::vector<type_binding>
 type_expr::defined_type_mapping type_expr::type_map;
 
 @ A number of additional methods of |type_expr| are all |static| and just serve
-to regulate access to the static class member |type_map|.
+to regulate access to the static class member |type_map|. Most of them simply
+serve as a hatch (dutch: ``doorgeefluik'', no good English equivalent) to pass
+on information, the method |add_typedefs| serving to enter a list of newly
+defined (potentially recursive) types into |type_map| is quite elaborate. Its
+argument is a list |defs| of pairings of a type identifier to a type expression.
+The potentially recursive nature of these definitions lies in that they can not
+only refer, using the |type_number| variant, to type already defined in the
+mapping, but also to the types they define themselves. For this purpose, those
+recursive type numbers start to count from |type_expr::table_size()| as it is
+before |add_typedefs| method is called.
 
 @< Static methods of |type_expr| that will access |type_map| @>=
-static type_nr_type table_size();
 static std::vector<type_expr>
   add_typedefs(const std::vector<std::pair<id_type,const_type_p> >& defs);
+static type_nr_type table_size();
 static void add(id_type type_name, std::vector<id_type>&& fields);
 static id_type find (const type_expr& type);
 static const std::vector<id_type>& fields(id_type type_name);
 
-@ A few of these methods are really easy: |table_size| just returns the current
-|size| of |type_map|, and |add| linearly searches for tabled type having been
-given the passed |type_name|, and sets is its |fields| list.
+@ Here are the easy ones among those methods: |table_size| just returns the
+current |size| of |type_map|; the method |add| linearly searches for tabled
+types having been given the passed |type_name| (one should have been created by
+a previous call to |add_typedefs|, and sets is its |fields| list; |find| locates
+a type given by an expression and returns is associated identifier. There is no
+method to remove the name of a tabled type, as doing so might lead to
+non-termination of printing recursive types.
 
 @< Function definitions @>=
-type_nr_type type_expr::table_size() {@; return type_map.size(); }
+type_nr_type type_expr::table_size() @+{@; return type_map.size(); }
 @)
 void type_expr::add(id_type type_name, std::vector<id_type>&& fields)
 { for (auto it=type_map.begin(); it!=type_map.end(); ++it)
@@ -889,6 +901,7 @@ id_type type_expr::find (const type_expr& type)
   }
   return type_binding::no_id;
 }
+@)
 const std::vector<id_type>& type_expr::fields(id_type type_name)
 { for (auto it=type_map.begin(); it!=type_map.end(); ++it)
     if (it->name==type_name)
@@ -896,7 +909,8 @@ const std::vector<id_type>& type_expr::fields(id_type type_name)
   assert(false); // should not be called for a type not entered into |type_map|
 }
 
-@ And here are the accessor methods for the |tabled| variant of a |type_expr|.
+@ And here are the accessor methods for |type_expr| values that have
+|raw_kind()==tabled|.
 
 @< Function definitions @>=
 id_type type_expr::type_name() const @+
@@ -1567,7 +1581,7 @@ void type_expr::print(std::ostream& out) const
       }
     break;
     case tabled:
-      if (type_map[type_number].name!=type_table::no_id)
+      if (type_map[type_number].name!=type_binding::no_id)
         out << main_hash_table->name_of(type_name());
       else out << expansion();
         // expand out when no identifier is attached

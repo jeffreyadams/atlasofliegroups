@@ -2133,7 +2133,7 @@ case discrimination_expr:
 
   for (containers::weak_sl_list_const_iterator<case_variant> it(l);
     @| not it.at_end(); ++it)
-    if (it->label==type_table::no_id)
+    if (it->label==type_binding::no_id)
       out << " | else " << it->branch;
     else
       out << " |" << main_hash_table->name_of(it->label)

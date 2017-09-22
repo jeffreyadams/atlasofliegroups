@@ -664,87 +664,6 @@ std::ostream& operator<< (std::ostream& out, const overload_table& p)
 @< Declarations of exported functions @>=
 std::ostream& operator<< (std::ostream& out, const overload_table& p);
 
-@*1 Table of defined types.
-%
-When the user defines an identifier to stand for a type, this fact is
-primarily recorded in the |global_id_table| by calling its |add_type_def|
-method which stores a type but no value at all in that table. While this
-mechanism suffices for identifiers serving simply as abbreviation for a type
-expression, is has become too limited to store the relevant information as
-type definitions were extended with more possibilities. We therefore define
-another table structure here to store additional information about type
-definitions, notably for associated injector and projector functions. Apart
-from this, there is a table of type definitions stored in a static member of
-|type_exp| itself, mainly used to be able to represent recursively defined
-types. (That makes three places where some form of type definition gets
-stored; probably it is best to phase out the original one using
-|global_id_table|.)
-
-Since our |type_table| is probably going to be used more often for searching
-than for modification, we for now choose for a simple sorted array rather than
-for an associative container.
-
-@< Type definitions @>=
-
-class type_table
-{ public: @+ typedef std::vector<id_type> field_list;
-  static constexpr id_type no_id = -1; // value to signal absence of field name
-@)
-  private:@+ std::vector<std::pair<id_type,field_list> > assoc;
-public:
-  type_table() : assoc() @+ {}
-  void add (id_type id, field_list&& names);
-  void remove (id_type id);
-@)
-  id_type find (const type_expr& type) const;
-    // a type identifier defined as |type|, or |no_id|
-  const field_list& fields (id_type type) const;
-};
-
-@ We maintain the |assoc| member ordered by numeric value of the identifier,
-so that we can use binary search to locate any entry.
-
-@< Global function def... @>=
-static bool compare (const std::pair<id_type,type_table::field_list>& x, @|
-                     id_type y) {@; return x.first<y; }
-@)
-void type_table::add (id_type id, field_list&& names)
-{ auto pos = std::lower_bound(assoc.begin(),assoc.end(), id, compare);
-  if (pos==assoc.end() or pos->first!=id) // new type, insert
-    assoc.emplace(pos,id,std::move(names));
-  else
-    pos->second=std::move(names); // previously defined type, replace
-}
-void type_table::remove (id_type id)
-{ auto pos = std::lower_bound(assoc.begin(),assoc.end(), id, compare);
-  if (pos!=assoc.end() and pos->first==id)
-    assoc.erase(pos);
-}
-@)
-id_type type_table::find (const type_expr& type) const
-{ for (auto it=assoc.begin(); it!=assoc.end(); ++it)
-    // do linear search through |assoc|
-  { assert(global_id_table->is_defined_type(it->first));
-    if (*global_id_table->type_of(it->first)==type)
-      return it->first;
-  }
-  return no_id;
-}
-
-const type_table::field_list& type_table::fields (id_type type) const
-{ static field_list empty;
-  auto pos = std::lower_bound(assoc.begin(),assoc.end(), type, compare);
-  return pos==assoc.end() ? empty : pos->second;
-}
-
-@ There will be a table of defined types, usable in other modules.
-@< Declarations of global variables @>=
-extern type_table typedef_table;
-
-@~Here we install the unique instance |typedef_table| of |type_table|.
-@< Global variable definitions @>=
-type_table typedef_table;
-
 @* Operations other than evaluation of expressions.
 %
 We start with several operations at the outer level of the interpreter such as
@@ -1263,12 +1182,12 @@ void global_declare_identifier(id_type id, type_p t)
 redefined. It removes any bindings in |global_overload_table| of field names
 that were introduced together with the type name, if they are still present
 (they could have been overridden or forgotten in the mean time). Then it
-removes the entry |id| from |typedef_table|.
+removes the entry |id| from |type_expr::type_map|.
 
 @< Global function definitions @>=
 void clean_out_type_identifier(id_type id)
 {
-  { const auto& fields = typedef_table.fields(id);
+  { const auto& fields = type_expr::fields(id);
     if (not fields.empty())
     { auto defined_type = global_id_table->type_of(id);
       if (defined_type->kind()==tuple_type)
@@ -1277,7 +1196,6 @@ void clean_out_type_identifier(id_type id)
       else if(defined_type->kind()==union_type)
         @< Remove injector functions for union type |id| added when
            it was defined as |*defined_type| @>
-      typedef_table.remove(id);
     }
   }
 }
@@ -1295,7 +1213,7 @@ them the |else| in the parent module above would actually be captured by the
 
 @< Remove projector functions for tuple type |id|... @>=
 { for (unsigned i=0; i<fields.size(); ++i)
-    if (fields[i]!=type_table::no_id)
+    if (fields[i]!=type_binding::no_id)
     { const auto* entry =
         global_overload_table->entry(fields[i],*defined_type);
       if (entry!=nullptr)
@@ -1314,7 +1232,7 @@ iterator |comp_it| to loop over those components.
 @< Remove injector functions for union type |id|... @>=
 { wtl_const_iterator comp_it (defined_type->tuple());
   for (unsigned i=0; i<fields.size(); ++i,++comp_it)
-    if (fields[i]!=type_table::no_id)
+    if (fields[i]!=type_binding::no_id)
     { const auto* entry =
         global_overload_table->entry(fields[i],*comp_it);
       if (entry!=nullptr)
@@ -1377,7 +1295,7 @@ void type_define_identifier
   const auto n=length(fields.sublist);
   definition_group group(n);
   std::vector<shared_function> jectors; jectors.reserve(n);
-  std::vector<id_type> names(n,id_type(type_table::no_id));
+  std::vector<id_type> names(n,id_type(type_binding::no_id));
   try
   {
     if (not fields.sublist.empty()) // do this before we move from |type|
@@ -1394,7 +1312,7 @@ void type_define_identifier
 @)
     if (group.begin()!=group.end())
       // only need the following when there are field names
-      @< Update |typedef_table| with |id| and its associated field names,
+      @< Update |type_expr::type_map| with |id| and its associated field names,
          and for field identifiers bound in |group|, add projector or injector
          function value from |jectors| to |global_overload_table| @>
   }
@@ -1470,8 +1388,8 @@ when the same identifier is used to name the union type.
 
 @< In case we are trying to define a new union type with fields... @>=
 if (not (is_tuple or jectors.empty())) // binding a union type with fields
-{ auto old_id = typedef_table.find(type);
-  if (old_id!=type_table::no_id and old_id!=id)
+{ auto old_id = type_expr::find(type);
+  if (old_id!=type_binding::no_id and old_id!=id)
     throw program_error()
         << "Cannot define union type '" @| << main_hash_table->name_of(old_id)
         << "' again under the name '" @| << main_hash_table->name_of(id)
@@ -1525,9 +1443,9 @@ and emit an error message instead when it is attempted.
 projector or injector functions from |jectors| to the global overload table.
 
 @:field name printing @>
-@< Update |typedef_table| with |id| and its associated field names... @>=
+@< Update |type_expr::type_map| with |id| and its associated field names... @>=
 { @< Emit indentation corresponding to the input level to |*output_stream| @>
-  typedef_table.add(id,std::move(names));
+  type_expr::add(id,std::move(names));
 @/*output_stream << "  with " << (is_tuple ? "pro" : "in");
   for (auto it=group.begin(); it!=group.end(); ++it)
   { global_overload_table->add

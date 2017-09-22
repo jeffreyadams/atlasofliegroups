@@ -4399,9 +4399,9 @@ union case expressions, because we use the tags associated to the variants of
 the union type to identify and possibly reorder branches, and allow for some
 branches to be handled together in a default branch (thus refraining from
 using any information from the condition expression, other than that it
-selects none of the explicitly treated branches).
-So we insist here that the union type used be present in |typedef_table|
-(presumably specifying tags).
+selects none of the explicitly treated branches). So we insist here that the
+union type used be present in |type_expr::type_map| (presumably specifying
+tags).
 
 @< Cases for type-checking and converting... @>=
 case discrimination_expr:
@@ -4416,11 +4416,11 @@ case discrimination_expr:
                        std::move(*unknown_union_type(n_branches)));
   const wtl_const_iterator types_start(subject_type.tuple());
 @)
-  const auto type_name = typedef_table.find(subject_type);
-  if (type_name==type_table::no_id)
+  const auto type_name = type_expr::find(subject_type);
+  if (type_name==type_binding::no_id)
     @< Report that union type |subject_type| cannot be used in discrimination
     expression anonymously @>
-  const auto& field_names = typedef_table.fields(type_name);
+  const auto& field_names = type_expr::fields(type_name);
 @)
   size_t n_variants=length(subject_type.tuple());
 
@@ -4453,7 +4453,7 @@ the conversion of previous branches.
   for (auto branch_p=&exp.branches; branch_p!=nullptr;
        branch_p=branch_p->next.get())
   { const auto& branch = branch_p->contents;
-    if (branch.label==type_table::no_id)
+    if (branch.label==type_binding::no_id)
       @< Use |branch| to set |default_choice| @>
     else
     { size_t k = std::find(field_names.begin(), field_names.end(),branch.label)
@@ -4559,7 +4559,7 @@ the identifier pattern of defaulted branches be empty, the value from the
     auto it=choices.begin();
     while(it->second.get()!=nullptr) ++it;
     auto variant=field_names[it-choices.begin()];
-    if (variant==type_table::no_id)
+    if (variant==type_binding::no_id)
       o << "Missing branch for anonymous variant " << it-choices.begin();
     else
       o << "Missing branch for variant " << main_hash_table->name_of(variant);
