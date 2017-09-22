@@ -133,19 +133,20 @@ input:	'\n'			{ YYABORT; } /* null input, skip evaluator */
 	| END_OF_FILE
           { YYABORT; } /* ignore end-of-file seen at command level too */
 	| expr '\n'		{ *parsed_expr=$1; }
-	| SET declarations '\n' { global_set_identifiers($2); YYABORT; }
+	| SET declarations '\n' { global_set_identifiers($2,@$); YYABORT; }
 	| FORGET IDENT '\n'	{ global_forget_identifier($2); YYABORT; }
 	| FORGET TYPE_ID '\n'	{ global_forget_identifier($2); YYABORT; }
 	| SET operator '(' id_specs ')' '=' expr '\n'
 	  { struct raw_id_pat id; id.kind=0x1; id.name=$2.id;
 	    global_set_identifier(id,
 				  make_lambda_node($4.patl,$4.typel,$7,@$),
-				  2);
+				  2,
+				  @$);
 	    YYABORT;
 	  }
 	| SET operator '=' expr '\n'
 	  { struct raw_id_pat id; id.kind=0x1; id.name=$2.id;
-	    global_set_identifier(id,$4,2); YYABORT;
+	    global_set_identifier(id,$4,2,@$); YYABORT;
 	  }
 	| FORGET IDENT '@' type '\n'
 	  { global_forget_overload($2,$4); YYABORT;  }
@@ -153,7 +154,7 @@ input:	'\n'			{ YYABORT; } /* null input, skip evaluator */
 	  { global_forget_overload($2.id,$4); YYABORT; }
 	| IDENT ':' expr '\n'
 		{ struct raw_id_pat id; id.kind=0x1; id.name=$1;
-		  global_set_identifier(id,$3,0); YYABORT; }
+		  global_set_identifier(id,$3,0,@$); YYABORT; }
 	| IDENT ':' type '\n'	{ global_declare_identifier($1,$3); YYABORT; }
 	| ':' IDENT '=' type_spec '\n'
 	  { type_define_identifier($2,$4.type_pt,$4.ip,@$); YYABORT; }

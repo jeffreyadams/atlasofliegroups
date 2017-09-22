@@ -849,15 +849,23 @@ of a type expression. The last three functions serve to provide the user with
 information about the state of the global tables (but invoking |type_of_expr|
 will actually go through the full type analysis and conversion process).
 
+Some of the functions here take a |const source_location& loc@;| final
+argument, which upon calling gets implicitly converted from an |YYLTYPE| value
+maintained in the parser, and describes where in the source files the command
+given was located. It serves to provide this indication on error messages,
+which is why it is not currently passed to functions like
+|global_declare_identifier| that never can cause error message.
+
 @< Declarations of exported functions @>=
-void global_set_identifier(const struct raw_id_pat& id, expr_p e, int overload);
-void global_set_identifiers(const raw_let_list& d);
+void global_set_identifier (const struct raw_id_pat& id, expr_p e, int overload,
+                           const source_location& loc);
+void global_set_identifiers(const raw_let_list& d,const source_location& loc);
 void global_declare_identifier(id_type id, type_p type);
 void global_forget_identifier(id_type id);
 void global_forget_overload(id_type id, type_p type);
 void type_define_identifier
-  (id_type id, type_p type, raw_id_pat ip, const YYLTYPE& loc);
-void process_type_definitions (raw_typedef_list l, const YYLTYPE& loc);
+  (id_type id, type_p type, raw_id_pat ip, const source_location& loc);
+void process_type_definitions (raw_typedef_list l, const source_location& loc);
 void show_ids(std::ostream& out);
 void type_of_expr(expr_p e);
 void type_of_type_name(id_type t);
@@ -895,12 +903,14 @@ in the module \.{parsetree.w}, which does the same work as for \&{let}
 expressions.
 
 @< Global function definitions @>=
-void global_set_identifier(const raw_id_pat &raw_pat, expr_p raw, int overload)
-{@; do_global_set(id_pat(raw_pat),*expr_ptr(raw),overload); } // ensure clean-up
+void global_set_identifier(const raw_id_pat &raw_pat, expr_p raw, int overload,
+                          const source_location& loc)
+{@; do_global_set(id_pat(raw_pat),*expr_ptr(raw),overload,loc); }
+  // ensure clean-up
 @)
-void global_set_identifiers(const raw_let_list& d)
+void global_set_identifiers(const raw_let_list& d,const source_location& loc)
 { std::pair<id_pat,expr> pat_expr = zip_decls(d);
-  do_global_set(std::move(pat_expr.first),pat_expr.second,1);
+  do_global_set(std::move(pat_expr.first),pat_expr.second,1,loc);
 }
 
 
@@ -938,11 +948,11 @@ public:
 };
 
 @ The methods of |definition_group| are closely related those of |layer|, but
-simplified because since they do not need to maintain |lexical_context| in any
-way (in particular there is no need for a user-defined destructor). We also
-include |thread_bindings| now as a method rather than a free function (which
-``saves'' the destination argument in (recursive) calls), and it also lacks
-the constness-overriding argument that has no use for global definitions.
+simplified because they do not need to maintain |lexical_context| in any way (in
+particular there is no need for a user-defined destructor). We also include
+|thread_bindings| now as a method rather than a free function (which ``saves''
+the destination argument in (recursive) calls), and it also lacks the
+constness-overriding argument that has no use for global definitions.
 
 @< Global function definitions @>=
 definition_group::definition_group(unsigned int n_ids)
@@ -1023,7 +1033,8 @@ values.
 
 @< Local function definitions @>=
 @< Define auxiliary functions for |do_global_set| @>
-void do_global_set(id_pat&& pat, const expr& rhs, int overload)
+void do_global_set(id_pat&& pat, const expr& rhs, int overload,
+                  const source_location& loc)
 { size_t n_id=count_identifiers(pat);
   int phase; // needs to be declared outside the |try|, is used in |catch|
   try
@@ -1071,7 +1082,8 @@ ascribed to the operator symbol, so that it will go to the overload table.
 
 @< Check that we are not setting an operator... @>=
 { if (overload==2 and t.kind()!=function_type)
-    throw program_error("Cannot set operator to a non function value");
+    throw program_error() << "Cannot set operator '" << pat.name @|
+       << "' to a value of non-function type " << t;
 }
 
 @ For identifier definitions we print their name and type, one line for each
@@ -1096,18 +1108,19 @@ pilfer the type |it->second|.
     (it->first,std::move(*v_it),std::move(it->second),b.is_const(it));
 }
 
-@ For overloaded definitions the main difference is calling the |add| method
-of |global_overload_table| instead of that of |global_id_table|, and the
-different wording of the report to the user. But we want to perform some of
-the same operations also from type definitions, which do not pass through
-|do_global_set|, so we define a function that does the main action, including
-reporting the changes made to the user.
+@ For installing overloaded definitions, the main difference with the code above
+is that we shall calling the |add| method of |global_overload_table| instead of
+that of |global_id_table|, and the different wording of the report to the user.
+Another difference is that here the |add| method may throw because of a conflict
+of a new definition with an existing one; we therefore do not print anything
+before the |add| method has successfully completed.
 
-One difference is that here the |add| method may throw because of a
-conflict of a new definition with an existing one; we therefore do not print
-anything before the |add| method has successfully completed. This concern has
-been made superfluous by the use of |definition_group| which will ensure that
-such an error will have been signalled before we come here.
+While the code below is to executed by |do_global_set|, we wrap it in a function
+so that the same actions can be performed while processing type definitions,
+which do not pass through |do_global_set|. Rather exceptionally this utility
+function produces output, namely reporting the changes made to the user, as this
+needs to be done in all cases.
+
 
 @< Define auxiliary functions for |do_global_set| @>=
 void add_overload(id_type id, shared_function&& f, type_expr&& type)
@@ -1130,7 +1143,7 @@ void add_overload(id_type id, shared_function&& f, type_expr&& type)
   *output_stream << std::endl;
 }
 
-@ Since |type| being a function type we a condition for coming to this code,
+@ Since |type| being a function type is a condition for coming to this code,
 the dynamic cast below should always succeed, if our type system is correct.
 
 @< Add instance of identifier |it->first| with function value |*v_it| to
@@ -1174,19 +1187,18 @@ extern bool clean;
 bool clean=true;
 
 @ A |program_error| may be thrown during type check or matching with the
-identifier pattern (|phase==0|), and also when a conflicting overload
-situation is detected (with |phase==2|), while a |runtime_error| can be thrown
-during evaluation (|phase==1|); we catch all those cases here. It is
-convenient to centralise actual error reporting in an auxiliary function
-|handle| defined below. That function uses the value of the variable |phase|
-that our function maintains, but in most cases its values should correspond to
-the type of error thrown, as indicated in the |assert| statements. The final
-|catch| clause will catch any |std::runtime_error| thrown from the library
-(rather than by our wrapper functions), although it hardly seems possible they
-could get through to here without being relabelled as (our) |runtime_error| by
-the back-trace producing code. This clause is in fact defined to catch any
-|std::exception| so that we really should not be letting any unexpected error
-through here.
+identifier pattern (when |phase==0|), and also when a conflicting overload
+situation is detected (|phase==2|), while a |runtime_error| can be thrown during
+evaluation (|phase==1|); we catch all those cases here. It is convenient to
+centralise actual error reporting in an auxiliary function |handle| defined
+below. That function uses the value of the variable |phase| that |do_global_set|
+maintains, but in most cases its values should correspond to the type of error
+thrown, as indicated in the |assert| statements. The final |catch| clause will
+catch any |std::runtime_error| thrown from the library (rather than by our
+wrapper functions), although it hardly seems possible they could get through to
+here without being relabelled as (our) |runtime_error| by the back-trace
+producing code. This clause is in fact defined to catch any |std::exception| so
+that we really should not be letting any unexpected error through here.
 
 Whether or not an error is caught, the pattern
 |pat| and the expression |rhs| should not be destroyed here, since the parser
@@ -1195,25 +1207,30 @@ parsing stack.
 
 @< Catch block for errors thrown during a global identifier definition @>=
 catch (const program_error& err)
-{@; assert(phase!=1); handle(err,pat,phase,overload); }
+{@; assert(phase!=1); handle(err,pat,phase,overload,loc); }
 catch (const runtime_error& err)
-{@; assert(phase==1); handle(err,pat,phase,overload); }
+{@; assert(phase==1); handle(err,pat,phase,overload,loc); }
 catch (const logic_error& err)
-{@; std::cerr << "Unexpected error: ";
-  handle(err,pat,phase,overload);
+@/{@; std::cerr << "Unexpected error: ";
+  handle(err,pat,phase,overload,loc);
 }
 catch (const std::exception& err)
-{@; handle(err,pat,phase,overload); }
+{@; handle(err,pat,phase,overload,loc); }
 
-@ Here is the common part for various |catch| clauses.
+@ Here is the common part for various |catch| clauses. We provide a uniform
+context for error messages to guide the user to the source of the problem;
+this context is not always available at the place where the error message
+proper is assembled, so it is a good thing that it can be added here.
 
 @h "parsetree.h" // for output of |id_pat| value
 
 @< Define auxiliary functions for |do_global_set| @>=
 void handle
-  (const std::exception& err,const id_pat& pat, int phase, int overload)
+  (const std::exception& err,const id_pat& pat, int phase, int overload,
+   const source_location& loc)
 { static const char* message[3] = {"not executed","interrupted","failed"};
-  std::cerr << err.what() << "\n  Command 'set " << pat << "' "
+  std::cerr << "Error in 'set' command " << loc << ":\n" @|
+            << err.what() << "\n  Command 'set " << pat << "' "
             << message[phase];
   if (phase<2)
     std::cerr << ", nothing " << (overload<=1 ? "defin" : "overload") << "ed";
@@ -1236,7 +1253,7 @@ void global_declare_identifier(id_type id, type_p t)
 { type_ptr saf(t); // ensure clean-up
   type_expr& type=*t;
   @< Emit indentation corresponding to the input level to |*output_stream| @>
-  *output_stream << "Declaring identifier '" << main_hash_table->name_of(id)
+  *output_stream << "Declaring identifier '" << main_hash_table->name_of(id) @|
             << "': " << type << std::endl;
   static const shared_value undefined_value; // holds a null pointer
   global_id_table->add(id,undefined_value,std::move(type),false);
@@ -1353,20 +1370,20 @@ for this constant.
 
 @< Global function definitions @>=
 void type_define_identifier
-  (id_type id, type_p t, raw_id_pat ip, const YYLTYPE& loc)
+  (id_type id, type_p t, raw_id_pat ip, const source_location& loc)
 { type_ptr saf(t); id_pat fields(ip); // ensure clean-up
   type_expr& type=*t; const bool is_tuple = type.kind()==tuple_type;
     // save for when |type| is pilfered
   const auto n=length(fields.sublist);
   definition_group group(n);
-  std::vector<shared_function> tors; tors.reserve(n);
+  std::vector<shared_function> jectors; jectors.reserve(n);
   std::vector<id_type> names(n,id_type(type_table::no_id));
   try
   {
     if (not fields.sublist.empty()) // do this before we move from |type|
       @< Bind in |group| any field identifiers in |field.sublist| to the
          types of their projector or injector functions, and store the
-         corresponding function values themselves in |tors| @>
+         corresponding function values themselves in |jectors| @>
 @)
     @< Test for conflicts in adding |type| to |global_id_table|, in which case
        |throw| a |program_error| @>
@@ -1379,12 +1396,12 @@ void type_define_identifier
       // only need the following when there are field names
       @< Update |typedef_table| with |id| and its associated field names,
          and for field identifiers bound in |group|, add projector or injector
-         function value from |tors| to |global_overload_table| @>
+         function value from |jectors| to |global_overload_table| @>
   }
-  catch (const program_error& err)
-  { std::cerr << "Error in type definition " << loc << "\n  " @|
-                << err.what() << std::endl;
-    throw program_error("Type definition aborted");
+  catch (program_error& err)
+  { auto mes = err.what(); err.message="";
+    throw err << "Error in type definition " << loc << ":\n" << mes
+              << "\n  Type definition aborted";
   }
 }
 
@@ -1413,34 +1430,34 @@ not be used by undefined type expressions.
 
 @< Bind in |group| any field identifiers in |field.sublist| to the types of
    their projector or injector functions, and store the corresponding function
-   values themselves in |tors| @>=
+   values themselves in |jectors| @>=
 { assert(type.kind()==tuple_type or type.kind()==union_type);
-  dressed_type_list tor_types;
+  dressed_type_list jector_types;
   auto tp_it =wtl_const_iterator(type.tuple());
   auto id_it=fields.sublist.wcbegin();
   if (is_tuple)
     for (unsigned i=0; i<n; ++i,id_it++,tp_it++)
       if (id_it->kind==0x1) // field selector present
       { names[i]=id_it->name;
-        tors.push_back
+        jectors.push_back
           (std::make_shared<projector_value>(type,i,names[i],loc));
-        tor_types.emplace_back(type_expr(type.copy(),tp_it->copy()));
+        jector_types.emplace_back(type_expr(type.copy(),tp_it->copy()));
           // projector type
       }
-      else tor_types.emplace_back(); // filler type
+      else jector_types.emplace_back(); // filler type
   else
     for (unsigned i=0; i<n; ++i,id_it++,tp_it++)
       if (id_it->kind==0x1) // field selector present
       { names[i]=id_it->name;
-        tors.push_back
+        jectors.push_back
           (std::make_shared<injector_value>(type,i,names[i],loc));
-        tor_types.emplace_back(type_expr(tp_it->copy(),type.copy()));
+        jector_types.emplace_back(type_expr(tp_it->copy(),type.copy()));
           // injector type
       }
-      else tor_types.emplace_back(); // filler type
-  type_ptr combined_type=mk_tuple_type(tor_types.undress());
+      else jector_types.emplace_back(); // filler type
+  type_ptr combined_type=mk_tuple_type(jector_types.undress());
   group.thread_bindings(fields,*combined_type);
-    // throws if binding |tors| would give an error
+    // throws if binding |jectors| would give an error
   @< In case we are trying to define a new union type with fields while the
      same type is already present, throw a |program_error| @>
 }
@@ -1452,7 +1469,7 @@ however allow a new definition to override the same definition, which happens
 when the same identifier is used to name the union type.
 
 @< In case we are trying to define a new union type with fields... @>=
-if (not (is_tuple or tors.empty())) // binding a union type with fields
+if (not (is_tuple or jectors.empty())) // binding a union type with fields
 { auto old_id = typedef_table.find(type);
   if (old_id!=type_table::no_id and old_id!=id)
     throw program_error()
@@ -1461,9 +1478,9 @@ if (not (is_tuple or tors.empty())) // binding a union type with fields
         << "'.";
 }
 
-@ We start checking if the user deviously hid a \emph{new} definition of the
+@ We start checking if the user deviously hid \emph{another} definition of the
 same identifier in the field list. Then we emit an error if any previous
-definition is found. The test for this can be skipped is the same identifier was
+definition is found. The test for this can be skipped if the same identifier was
 already defined as a type, but in that case the old definition will be
 overwritten, so we call |clean_out_type_identifier| in order to remove any
 traces of the old definition in |typedef_table| (this is needed even if the new
@@ -1505,7 +1522,7 @@ and emit an error message instead when it is attempted.
 }
 
 @ When tests have been passed successfully, we run the code below to copy the
-projector or injector functions from |tors| to the global overload table.
+projector or injector functions from |jectors| to the global overload table.
 
 @:field name printing @>
 @< Update |typedef_table| with |id| and its associated field names... @>=
@@ -1514,7 +1531,7 @@ projector or injector functions from |tors| to the global overload table.
 @/*output_stream << "  with " << (is_tuple ? "pro" : "in");
   for (auto it=group.begin(); it!=group.end(); ++it)
   { global_overload_table->add
-      (it->first,std::move(tors[it-group.begin()]),std::move(it->second));
+      (it->first,std::move(jectors[it-group.begin()]),std::move(it->second));
     *output_stream << (it==group.begin() ? "jectors: " : ", ")
                 @| << main_hash_table->name_of(it->first);
   }
@@ -1534,7 +1551,7 @@ installing the definitions, and afterwards we emit a report summarising the
 definitions that were processed.
 
 @< Global function definitions @>=
-void process_type_definitions (raw_typedef_list l, const YYLTYPE& loc)
+void process_type_definitions (raw_typedef_list l, const source_location& loc)
 { typedef_list defs(l);
   defs.reverse(); // since the parser collects by prepending new nodes
   static const type_nr_type absent = -1;
