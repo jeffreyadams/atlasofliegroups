@@ -1021,6 +1021,12 @@ start dissecting the type expressions from |defs|, which in general extends
 produced into the empty slot. The dissection is itself is done by an auxiliary
 method |dissect_type_to| of |type_expr|, to be defined below.
 
+There is a subtle point that calling |dissect_type_to| may invalidate references
+to elements of |type_array|. Therefore we stash away the result of
+|dissect_type_to| into a temporary variable |t|, and only then index
+|type_array| to get the slot where the type should be moved, using the
+|set_from| method.
+
 @< Copy types from |type_map| to |type_array|, then add entries for they types
    defined by |defs| and all their anonymous sub-types;
    also make each |type_perm[i]| point to |type_array[i]| @>=
@@ -1032,8 +1038,10 @@ method |dissect_type_to| of |type_expr|, to be defined below.
   for (auto it=defs.begin(); it!=defs.end(); ++it)
     type_array.emplace_back(); // push empty slots
   for (unsigned int i=0; i!=defs.size(); ++i)
-    type_array[type_map.size()+i].type
-      .set_from(defs[i].second->dissect_type_to(type_array));
+  { auto t = defs[i].second->dissect_type_to(type_array);
+      // hold result before indexing |type_array|
+    type_array[type_map.size()+i].type.set_from(std::move(t));
+  }
 @)
   type_perm.reserve(type_array.size());
   for (unsigned int i=0; i!=type_array.size(); ++i)
