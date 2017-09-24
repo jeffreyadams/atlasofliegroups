@@ -845,8 +845,6 @@ class type_expr::defined_type_mapping : public std::vector<type_binding>
   defined_type_mapping () : @[std::vector<type_binding>@]() @+{}
   const type_expr& defined_type(type_nr_type i) const @+
     {@; return (*this)[i].type; }
-  private:
-    type_expr dissect_type_to (const type_expr& t, std::vector<type_data>& dst);
 };
 
 @~We need to define that declared static class member; it starts out empty.
@@ -1014,45 +1012,43 @@ for the newly added definitions from |defs| the dissection has to be done here.
 Apart from the entries directly coming from |defs|, this may require adding
 additional ones to |type_array|, but we want the former to get the first set of
 new slots, because they may already be being referred to by |type_number| inside
-the defining type expressions. Therefore we first copy the entries from |*this|
-as-is, and then reserve empty slots for the entries from |defs|; only then do we
-start dissecting the type expressions from |defs|, which in general extends
-|type_array|, and once this is done we copy the dissected |type_expr| so
-produced into the empty slot. The dissection is itself is done by an auxiliary
-method |dissect_type_to| of |type_expr|, to be defined below.
-
-There is a subtle point that calling |dissect_type_to| may invalidate references
-to elements of |type_array|. Therefore we stash away the result of
-|dissect_type_to| into a temporary variable |t|, and only then index
-|type_array| to get the slot where the type should be moved, using the
-|set_from| method.
+the defining type expressions. We initially solved this by reserving empty slots
+in |type_array| for the entries from |defs|, then dissecting the type
+expressions from |defs| (possibly extending |type_array| at the end), and
+finally move the |type_expr| produced into the empty slot (using the
+|type_expr::set_from|). However this was error prone, and indeed was done
+incorrectly in a first version, because a reference to an empty slot may become
+invalid (dangling) if during dissection |type_array| needs to be expanded
+(reallocated). But |containers::simple_list| (of which |dressed_type_list| is an
+instance) is perfectly suited to this task, as we can avoid any empty slots by
+inserting the resulting types in the middle of the list being expanded without
+any risk of dangling references; this is the approach used now. It just needs to
+take care of one extra point, namely to precompute the position where numbering
+of addition types produced during dissection will start; this is the purpose of
+|count| being passed to the auxiliary method |dissect_type_to| of |type_expr|,
+to be defined below, that does the actual dissection.
 
 @< Copy types from |type_map| to |type_array|, then add entries for they types
    defined by |defs| and all their anonymous sub-types;
    also make each |type_perm[i]| point to |type_array[i]| @>=
 {
-  type_array.reserve(type_map.size());
-    // not enough, but at least avoid some initial resizing
+  dressed_type_list types;
   for (auto it=type_map.begin(); it!=type_map.end(); ++it)
-    type_array.emplace_back(it->type.copy());
-  for (auto it=defs.begin(); it!=defs.end(); ++it)
-    type_array.emplace_back(); // push empty slots
+    types.push_back(it->type.copy());
+  type_nr_type count=types.size()+defs.size();
+    // start numbering auxiliary types here
+  auto insert_pt = types.end();
   for (unsigned int i=0; i!=defs.size(); ++i)
-  { auto t = defs[i].second->dissect_type_to(type_array);
-      // hold result before indexing |type_array|
-    type_array[type_map.size()+i].type.set_from(std::move(t));
-  }
+    insert_pt = types.insert(insert_pt,defs[i].second->dissect_type_to(types,count));
 @)
-  type_perm.reserve(type_array.size());
-  for (unsigned int i=0; i!=type_array.size(); ++i)
-    type_perm.push_back(&type_array[i]);
+  type_array.reserve(types.size()); // necessary to do the following in one loop
+  for (auto it=types.wbegin(); it!=types.wend(); ++it)
+  {
+    type_array.emplace_back(std::move(*it));
+      // also expands |type_expr| to |type_data|
+    type_perm.push_back(&type_array.back());
+  }
 }
-
-@ We about to introduce methods for |type_expr| whose signature involves
-|type_data|, so we need to pre-declare that class.
-
-@< Predeclare... @>=
-class type_data;
 
 @ The method |dissect_type_to| sections the type expression for which it is
 called into |dst|, and then returns a dissected |type_expr| for~|t|; clearly
@@ -1065,8 +1061,8 @@ recursive calls.
 
 @< Methods of the |type_expr| class @>=
 private:
-  type_expr dissect_type_to (std::vector<type_data>& dst) const;
-  type_expr to_table (std::vector<type_data>& dst) const;
+  type_expr dissect_type_to (dressed_type_list& dst, type_nr_type& count) const;
+  type_expr to_table (dressed_type_list& dst, type_nr_type& count) const;
 
 @ The recursion stops in |to_table| whenever a type with |tag==tabled| is
 encountered, which is what ensures termination. Hence if |dissect_type_to|
@@ -1079,26 +1075,27 @@ therefore we |assert(false)| for this case below.
 
 
 @< Function definitions @>=
-type_expr type_expr::to_table (std::vector<type_data>& dst) const
+type_expr type_expr::to_table (dressed_type_list& dst, type_nr_type& count) const
 { if (tag==tabled)
     return copy(); // the buck stops here
-  dst.push_back(dissect_type_to(dst));
-  return type_expr(dst.size()-1); // type that names the just added |dst.back()|
+  dst.push_back(dissect_type_to(dst,count));
+  return type_expr(count++); // type number that will refer to |dst.back()|
 }
 @)
-type_expr type_expr::dissect_type_to (std::vector<type_data>& dst) const
+type_expr
+  type_expr::dissect_type_to (dressed_type_list& dst, type_nr_type& count) const
 { switch(tag)
   {
   case function_type:
-    return type_expr(func_variant->arg_type.to_table(dst),
-                     func_variant->result_type.to_table(dst));
+    return type_expr(func_variant->arg_type.to_table(dst,count),
+                     func_variant->result_type.to_table(dst,count));
   case row_type:
       return type_expr(type_ptr(new @|
-               type_expr(row_variant->to_table(dst))));
+               type_expr(row_variant->to_table(dst,count))));
   case tuple_type: case union_type:
     { dressed_type_list l;
       for (wtl_const_iterator it(tuple_variant); not it.at_end(); ++it)
-        l.push_back(it->to_table(dst));
+        l.push_back(it->to_table(dst,count));
       return type_expr(l.undress(),tag==union_type);
     }
   case tabled: assert(false);
