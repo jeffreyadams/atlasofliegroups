@@ -867,9 +867,9 @@ before |add_typedefs| method is called.
 static std::vector<type_expr>
   add_typedefs(const std::vector<std::pair<id_type,const_type_p> >& defs);
 static type_nr_type table_size();
-static void add(id_type type_name, std::vector<id_type>&& fields);
-static id_type find (const type_expr& type);
-static const std::vector<id_type>& fields(id_type type_name);
+static type_nr_type find (const type_expr& type);
+static void set_fields (id_type type_number, std::vector<id_type>&& fields);
+static const std::vector<id_type>& fields(type_nr_type type_number);
 
 @ Here are the easy ones among those methods: |table_size| just returns the
 current |size| of |type_map|; the method |add| linearly searches for tabled
@@ -882,27 +882,20 @@ non-termination of printing recursive types.
 @< Function definitions @>=
 type_nr_type type_expr::table_size() @+{@; return type_map.size(); }
 @)
-void type_expr::add(id_type type_name, std::vector<id_type>&& fields)
+type_nr_type type_expr::find (const type_expr& type)
 { for (auto it=type_map.begin(); it!=type_map.end(); ++it)
-    if (it->name==type_name)
-    {@; it->fields=fields; return; }
-  assert(false); // should not be called for a type not entered into |type_map|
-}
-
-@)
-id_type type_expr::find (const type_expr& type)
-{ for (auto it=type_map.begin(); it!=type_map.end(); ++it)
-    if (it->name!=it->no_id and global_id_table->is_defined_type(it->name) and
-        *global_id_table->type_of(it->name)==type)
-      return it->name;
-  return type_binding::no_id;
+    if (it->type==type)
+      return it-type_map.begin();
+  return -1;
 }
 @)
-const std::vector<id_type>& type_expr::fields(id_type type_name)
-{ for (auto it=type_map.begin(); it!=type_map.end(); ++it)
-    if (it->name==type_name)
-      return it->fields;
-  assert(false); // should not be called for a type not entered into |type_map|
+void type_expr::set_fields(id_type type_number, std::vector<id_type>&& fields)
+{@; assert(type_number<type_map.size());
+   type_map[type_number].fields=fields;
+}
+const std::vector<id_type>& type_expr::fields(type_nr_type type_number)
+{@; assert(type_number<type_map.size());
+  return type_map[type_number].fields;
 }
 
 @ And here are the accessor methods for |type_expr| values that have
@@ -1410,7 +1403,7 @@ which |rank| values have already been seen.
     if (it<first_new)
       assert(renumber[it->rank]==absent),renumber[it->rank]=count++;
     else if (renumber[it->rank]==absent)
-    {
+  @/{@;
       renumber[it->rank]=count++;
       type_map.emplace_back(std::move(it->type));
     }
@@ -3283,8 +3276,9 @@ struct expr; // predeclare
 struct expr_error : public program_error
 { const expr& offender; // the subexpression causing a problem
 @)
-  expr_error (const expr& e,const std::string& s) throw()
+  expr_error (const expr& e,const std::string& s) noexcept
     : program_error(s),offender(e) @+{}
+  expr_error (const expr& e) noexcept : program_error(),offender(e) @+{}
 #ifdef incompletecpp11
   ~expr_error() throw() @+{}
 #endif

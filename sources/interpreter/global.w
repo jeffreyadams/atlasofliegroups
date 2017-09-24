@@ -1312,9 +1312,9 @@ void type_define_identifier
 @)
     if (group.begin()!=group.end())
       // only need the following when there are field names
-      @< Update |type_expr::type_map| with |id| and its associated field names,
-         and for field identifiers bound in |group|, add projector or injector
-         function value from |jectors| to |global_overload_table| @>
+      @< Update |type_expr::type_map| by associating field identifiers bound
+         in |group| to type |converted_type|, and add projector or injector
+         function values from |jectors| to |global_overload_table| @>
   }
   catch (program_error& err)
   { auto mes = err.what(); err.message="";
@@ -1376,24 +1376,6 @@ not be used by undefined type expressions.
   type_ptr combined_type=mk_tuple_type(jector_types.undress());
   group.thread_bindings(fields,*combined_type);
     // throws if binding |jectors| would give an error
-  @< In case we are trying to define a new union type with fields while the
-     same type is already present, throw a |program_error| @>
-}
-
-@ We cannot allow the same union type to be present more than once in the
-table, since that would give ambiguity when trying to do case distinction on a
-union value using ``the'' field names associated to the components. We do
-however allow a new definition to override the same definition, which happens
-when the same identifier is used to name the union type.
-
-@< In case we are trying to define a new union type with fields... @>=
-if (not (is_tuple or jectors.empty())) // binding a union type with fields
-{ auto old_id = type_expr::find(type);
-  if (old_id!=type_binding::no_id and old_id!=id)
-    throw program_error()
-        << "Cannot define union type '" @| << main_hash_table->name_of(old_id)
-        << "' again under the name '" @| << main_hash_table->name_of(id)
-        << "'.";
 }
 
 @ We start checking if the user deviously hid \emph{another} definition of the
@@ -1443,9 +1425,11 @@ and emit an error message instead when it is attempted.
 projector or injector functions from |jectors| to the global overload table.
 
 @:field name printing @>
-@< Update |type_expr::type_map| with |id| and its associated field names... @>=
-{ @< Emit indentation corresponding to the input level to |*output_stream| @>
-  type_expr::add(id,std::move(names));
+@< Update |type_expr::type_map| by associating field identifiers bound
+   in |group| to type |converted_type|, and add projector or injector
+   function values from |jectors| to |global_overload_table| @>=
+{ type_expr::set_fields(converted_type.type_nr(),std::move(names));
+  @< Emit indentation corresponding to the input level to |*output_stream| @>
 @/*output_stream << "  with " << (is_tuple ? "pro" : "in");
   for (auto it=group.begin(); it!=group.end(); ++it)
   { global_overload_table->add

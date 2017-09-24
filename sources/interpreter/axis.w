@@ -4316,7 +4316,7 @@ void discrimination_expression::evaluate(level l) const
   if (branch.first.kind==0x0)
     branch.second->evaluate(l); // avoid creating an empty |frame|
   else
-  { frame fr(branch.first);
+  {@;frame fr(branch.first);
     fr.bind(discriminant->contents());
     branch.second->evaluate(l);
   }
@@ -4388,11 +4388,9 @@ but does report the full union type for clarity rather than just its number of
 variants.
 
 @< Report mismatching number of branches @>=
-{ o << "Union case expression has " << n_branches @|
+throw expr_error(e) << "Union case expression has " << n_branches @|
     << "branches,\nwhile the union type " << switch_type @|
     << " has " << n_variants << " variants";
-  throw expr_error(e,o.str());
-}
 
 @ Type checking of discrimination expressions is rather different from that of
 union case expressions, because we use the tags associated to the variants of
@@ -4416,11 +4414,14 @@ case discrimination_expr:
                        std::move(*unknown_union_type(n_branches)));
   const wtl_const_iterator types_start(subject_type.tuple());
 @)
-  const auto type_name = type_expr::find(subject_type);
-  if (type_name==type_binding::no_id)
-    @< Report that union type |subject_type| cannot be used in discrimination
-    expression anonymously @>
-  const auto& field_names = type_expr::fields(type_name);
+  const auto type_number = type_expr::find(subject_type);
+  if (type_number>=type_expr::table_size())
+    @< Report that union type |subject_type| cannot be used in a discrimination
+       expression without having been defined @>
+  const auto& field_names = type_expr::fields(type_number);
+  if (field_names.empty())
+    @< Report that union type |subject_type| needs named injectors to be
+       used in a discrimination expression @>
 @)
   size_t n_variants=length(subject_type.tuple());
 
@@ -4518,13 +4519,20 @@ is found, we print the whole discrimination expression.
 @ Here we just observe that using a discrimination expression requires using a
 \emph{named} union type.
 
-@< Report that union type |subject_type| cannot be used in discrimination
-   expression anonymously @>=
-{
-  o << "Discrimination on expression of type " << subject_type @|
-    << " requires naming its variants";
-  throw expr_error(e,o.str());
-}
+@< Report that union type |subject_type| cannot be used in a discrimination
+   expression without having been defined @>=
+
+throw expr_error(e)
+   << "Discrimination on expression of type " << subject_type @|
+   << " requires using 'set_type' for this type,\n" @|
+       "  and naming injectors for it";
+
+@
+@< Report that union type |subject_type| needs named injectors to be
+   used in a discrimination expression @>=
+throw expr_error(e)
+   << "Discrimination on expression of type " << subject_type @|
+   << " requires naming injectors for it";
 
 @ A default branch is just an expression, which we store unless a default
 branch was already defined.
