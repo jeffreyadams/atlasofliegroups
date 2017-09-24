@@ -892,11 +892,9 @@ void type_expr::add(id_type type_name, std::vector<id_type>&& fields)
 @)
 id_type type_expr::find (const type_expr& type)
 { for (auto it=type_map.begin(); it!=type_map.end(); ++it)
-    if (it->name!=it->no_id)
-    { assert(global_id_table->is_defined_type(it->name));
-      if (*global_id_table->type_of(it->name)==type)
-        return it->name;
-  }
+    if (it->name!=it->no_id and global_id_table->is_defined_type(it->name) and
+        *global_id_table->type_of(it->name)==type)
+      return it->name;
   return type_binding::no_id;
 }
 @)
