@@ -1330,8 +1330,8 @@ void type_define_identifier
 @< Add a typedef for |type| with identifier |id| in |type_expr::type_map|... @>=
 { std::vector<std::pair<id_type,const_type_p> > b;
   b.emplace_back(id,&type.untabled());
-  auto types = type_expr::add_typedefs(b);
-  converted_type.set_from(std::move(types[0]));
+  auto type_nrs = type_expr::add_typedefs(b);
+  converted_type.set_from(type_expr(type_nrs[0]));
 }
 
 
@@ -1475,14 +1475,14 @@ void process_type_definitions (raw_typedef_list l, const source_location& loc)
      |translate| or else (as previous typedef) in |global_id_table|;
      if neither possibility applies, signal an erroneous type identifier @>
   { std::vector<std::pair<id_type,const_type_p> > b(defs.begin(),end(defs));
-    auto types = type_expr::add_typedefs(b);
+    auto type_nrs = type_expr::add_typedefs(b);
     auto bit = b.cbegin();
-    for (auto it=types.begin(); it!=types.end(); ++it,++bit)
+    for (auto it=type_nrs.begin(); it!=type_nrs.end(); ++it,++bit)
     {
+      global_id_table->add_type_def(bit->first,type_expr(*it));
       @< Emit... @>
       *output_stream << "Type name '" << main_hash_table->name_of(bit->first) @|
-            << "' defined as " << it->untabled() << std::endl;
-      global_id_table->add_type_def(bit->first,std::move(*it));
+            << "' defined as " << type_expr(*it).expansion() << std::endl;
     }
   }
 

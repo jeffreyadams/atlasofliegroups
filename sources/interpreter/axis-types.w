@@ -359,6 +359,7 @@ public:
   type_tag raw_kind () const @+{@; return tag; } // don't translate |tabled|
   const type_expr& untabled () const
     @+{@; return tag==tabled ? expansion() : *this; }
+  type_tag kind () const @+{@; return untabled().tag; }
   func_type* func() const        @+{@; return untabled().func_variant; }
   type_p component_type () const @+{@; return untabled().row_variant; }
   primitive_tag prim() const     @+{@; return untabled().prim_variant; }
@@ -366,7 +367,6 @@ public:
   type_nr_type type_nr () const @+{@; return type_number; }
   id_type type_name () const; // identifier corresponding to |type_number|
   const type_expr& expansion () const; // type corresponding to |type_number|
-  type_tag kind () const; // this one will never return |tabled|
 @)
   @< Methods of the |type_expr| class @>@;
  };
@@ -861,10 +861,13 @@ The potentially recursive nature of these definitions lies in that they can not
 only refer, using the |type_number| variant, to type already defined in the
 mapping, but also to the types they define themselves. For this purpose, those
 recursive type numbers start to count from |type_expr::table_size()| as it is
-before |add_typedefs| method is called.
+before |add_typedefs| method is called. The return value is a list of the same
+length giving their type numbers after applying type equivalencing~; usually
+these will be the same numbers used initially, but some may have mapped to
+equivalent previously known types.
 
 @< Static methods of |type_expr| that will access |type_map| @>=
-static std::vector<type_expr>
+static std::vector<type_nr_type>
   add_typedefs(const std::vector<std::pair<id_type,const_type_p> >& defs);
 static type_nr_type table_size();
 static type_nr_type find (const type_expr& type);
@@ -907,14 +910,6 @@ id_type type_expr::type_name() const @+
 
 const type_expr& type_expr::expansion() const @+
 {@; return type_map.defined_type(type_number); }
-
-@ We may in certain occasions want to ask about |tag|, but in the answer have a
-possible |tabled| replaced by the type it is defined as; the |kind| method
-(as opposed to |raw_kind|) does this.
-
-@< Function definitions @>=
-type_tag type_expr::kind () const
-@+{@; return tag!=tabled ? tag: expansion().tag; }
 
 @ Here is a type definition that we shall need presently. The structure
 essentially extends all relevant |type_expr| values (which will be collected
@@ -959,7 +954,7 @@ restarting the equivalencing relatively easy, namely by ensuring (as mentioned
 above) that all sub-types of types in the table have their own entries.
 
 @< Function definitions @>=
-std::vector<type_expr> type_expr::add_typedefs
+std::vector<type_nr_type> type_expr::add_typedefs
   (const std::vector<std::pair<id_type,const_type_p> >& defs)
 {
 @/std::vector<type_data> type_array;
@@ -978,7 +973,7 @@ std::vector<type_expr> type_expr::add_typedefs
      for their descendent types, until no more refinement takes place;
      now each bucket is an equivalence class of types @>
 @)
-  std::vector<type_expr> result;
+  std::vector<type_nr_type> result;
   result.reserve(defs.size());
   @< For each equivalence class that has no representatives among the types
      already present, add a corresponding entry to |type_map|, and push to
@@ -1014,10 +1009,11 @@ invalid (dangling) if during dissection |type_array| needs to be expanded
 instance) is perfectly suited to this task, as we can avoid any empty slots by
 inserting the resulting types in the middle of the list being expanded without
 any risk of dangling references; this is the approach used now. It just needs to
-take care of one extra point, namely to precompute the position where numbering
-of addition types produced during dissection will start; this is the purpose of
-|count| being passed to the auxiliary method |dissect_type_to| of |type_expr|,
-to be defined below, that does the actual dissection.
+take care of one extra point, namely to precompute the position |count| where
+numbering of additional types produced during dissection will start. The
+auxiliary method |dissect_type_to| of |type_expr|, to be defined below, does the
+actual dissection, using the |types| list to append and descendent types to, and
+|count| to keep track of their future |type_number| values.
 
 @< Copy types from |type_map| to |type_array|, then add entries for they types
    defined by |defs| and all their anonymous sub-types;
@@ -1029,8 +1025,9 @@ to be defined below, that does the actual dissection.
   type_nr_type count=types.size()+defs.size();
     // start numbering auxiliary types here
   auto insert_pt = types.end();
-  for (unsigned int i=0; i!=defs.size(); ++i)
-    insert_pt = types.insert(insert_pt,defs[i].second->dissect_type_to(types,count));
+    // place where new types will go; their descendents will come after
+  for (auto it=defs.cbegin(); it!=defs.cend(); ++it)
+    insert_pt = types.insert(insert_pt,it->second->dissect_type_to(types,count));
 @)
   type_array.reserve(types.size()); // necessary to do the following in one loop
   for (auto it=types.wbegin(); it!=types.wend(); ++it)
@@ -1057,12 +1054,13 @@ private:
 
 @ The recursion stops in |to_table| whenever a type with |tag==tabled| is
 encountered, which is what ensures termination. Hence if |dissect_type_to|
-should find |tag==tabled|, this can only be during the root call, and
-means the user has been equating one type name directly to another. This seems
+should find |tag==tabled|, this can only be during the root call, and means the
+user has been equating one type name directly to another. This possibility seems
 somewhat silly, and is a potential cause of trivially recursive type definitions
 (defining a type directly or indirectly as itself), so rather than handling it,
-we for now decide that the possibility should be ruled out syntactically;
-therefore we |assert(false)| for this case below.
+we for now decide that the possibility should be ruled out syntactically (a bare
+type identifiers will not be accepted as right hand side); therefore we
+|assert(false)| for this case below.
 
 
 @< Function definitions @>=
@@ -1090,6 +1088,7 @@ type_expr
       return type_expr(l.undress(),tag==union_type);
     }
   case tabled: assert(false);
+// we don't allow $\&{set\_type}~\&a=\&a$ or $\&{set\_type}~\&a=\&b,\&b=\ldots$
   default: return copy(); // types with no descendants are returned unchanged
   }
 }
@@ -1409,7 +1408,7 @@ which |rank| values have already been seen.
     }
   for (unsigned int i=0; i<defs.size(); ++i)
   { type_nr_type nr= renumber[(first_new+i)->rank];
-    result.emplace_back(nr); // make |tabled| type
+    result.push_back(nr); // to be converted by client to |tabled| type
     if (type_map[nr].name==type_binding::no_id)
       // don't overwrite existing type name
       type_map[nr].name=defs[i].first; // but otherwise insert type name
