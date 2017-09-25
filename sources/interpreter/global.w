@@ -1187,16 +1187,17 @@ removes the entry |id| from |type_expr::type_map|.
 @< Global function definitions @>=
 void clean_out_type_identifier(id_type id)
 {
-  { const auto& fields = type_expr::fields(id);
-    if (not fields.empty())
-    { auto defined_type = global_id_table->type_of(id);
-      if (defined_type->kind()==tuple_type)
-        @< Remove projector functions for tuple type |id| added when
-           it was defined as |*defined_type| @>
-      else if(defined_type->kind()==union_type)
-        @< Remove injector functions for union type |id| added when
-           it was defined as |*defined_type| @>
-    }
+  const auto* defined_type = global_id_table->type_of(id);
+  assert(defined_type->raw_kind()==tabled); // types are always stored this way
+  auto type_number = defined_type->type_nr();
+  const auto& fields = type_expr::fields(type_number);
+  if (not fields.empty())
+  { if (defined_type->kind()==tuple_type)
+      @< Remove projector functions listed in |fields| for tuple type
+         |*defined_type| @>
+    else if(defined_type->kind()==union_type)
+      @< Remove injector functions listed in |fields| for union type
+         |*defined_type| @>
   }
 }
 
@@ -1211,7 +1212,7 @@ Side remark: the braces enclosing this block of code are essential: without
 them the |else| in the parent module above would actually be captured by the
 |if| below, with catastrophic consequences.
 
-@< Remove projector functions for tuple type |id|... @>=
+@< Remove projector functions... @>=
 { for (unsigned i=0; i<fields.size(); ++i)
     if (fields[i]!=type_binding::no_id)
     { const auto* entry =
@@ -1229,7 +1230,7 @@ type to be used in the overload table look-up is a component type of the union
 rather than the union type itself. We therefore need to set up a second
 iterator |comp_it| to loop over those components.
 
-@< Remove injector functions for union type |id|... @>=
+@< Remove injector functions... @>=
 { wtl_const_iterator comp_it (defined_type->tuple());
   for (unsigned i=0; i<fields.size(); ++i,++comp_it)
     if (fields[i]!=type_binding::no_id)
@@ -1318,7 +1319,7 @@ void type_define_identifier
   }
   catch (program_error& err)
   { auto mes = err.what(); err.message="";
-    throw err << "Error in type definition " << loc << ":\n" << mes
+    throw err << "Error in type definition " << loc << ":\n" @| << mes
               << "\n  Type definition aborted";
   }
 }
