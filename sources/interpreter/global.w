@@ -1304,8 +1304,8 @@ void type_define_identifier
          types of their projector or injector functions, and store the
          corresponding function values themselves in |jectors| @>
 @)
-    @< Test for conflicts in adding |type| to |global_id_table|, in which case
-       |throw| a |program_error| @>
+    @< Test for conflicts for adding |id| as type identifier to
+       |global_id_table|, in which case |throw| a |program_error| @>
     type_expr converted_type;
     @< Add a typedef for |type| with identifier |id| in |type_expr::type_map|,
        and set |converted_type| to its |tabled| type @>
@@ -1390,8 +1390,8 @@ differ). Finally we report the new definition, which output may be completed by
 the list of field names printed in section~@#field name printing @>.
 
 
-@< Test for conflicts in adding |type| to |global_id_table|, in which case
-   |throw| a |program_error| @>=
+@< Test for conflicts for adding |id| as type identifier to |global_id_table|,
+   in which case |throw| a |program_error| @>=
 { for (auto it=group.begin(); it!=group.end(); ++it)
     if (it->first==id)
       throw program_error()
@@ -1461,7 +1461,7 @@ void process_type_definitions (raw_typedef_list l, const source_location& loc)
   std::vector<type_nr_type> translate (main_hash_table->nr_entries(),absent);
   type_nr_type count = type_expr::table_size();
   for (auto it=defs.begin(); not defs.at_end(it); ++it)
-  { id_type id = it->first;
+  { id_type id = it->id;
     @< Protest if |id| is currently used as ordinary identifier @>
     if (translate[id]==absent)
       translate[id] = count++;
@@ -1474,7 +1474,9 @@ void process_type_definitions (raw_typedef_list l, const source_location& loc)
      the identifier code by the type number associated to it either in
      |translate| or else (as previous typedef) in |global_id_table|;
      if neither possibility applies, signal an erroneous type identifier @>
-  { std::vector<std::pair<id_type,const_type_p> > b(defs.begin(),end(defs));
+  { std::vector<std::pair<id_type,const_type_p> > b; b.reserve(length(defs));
+    for (auto it=defs.begin(); it!=end(defs); ++it)
+      b.emplace_back(it->id,it->type);
     auto type_nrs = type_expr::add_typedefs(b);
     auto bit = b.cbegin();
     for (auto it=type_nrs.begin(); it!=type_nrs.end(); ++it,++bit)
@@ -1520,7 +1522,7 @@ iteratively, manually maintaining a stack of types remaining to be visited.
    if neither possibility applies, signal an erroneous type identifier @>=
 { containers::stack<type_p> work;
   for (auto it=defs.begin(); not defs.at_end(it); ++it)
-    work.push(it->second);
+    work.push(it->type);
   while (not work.empty())
   { auto& t = *work.top();
     work.pop();

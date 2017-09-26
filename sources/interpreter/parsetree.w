@@ -3060,7 +3060,7 @@ break;
 @* Non-expression syntax.
 %
 It is a sign of the functional inspiration of the \.{axis} programming
-language that nearly all syntax is involve with building expressions. The
+language that nearly all syntax is involved with building expressions. The
 small parts of non-expression syntax there are deal mostly with commands,
 which are directly invoked from the parser actions and do not involve any
 parse tree being built at all. There is however a bit a tree building that
@@ -3070,16 +3070,16 @@ types. For ordinary type expressions we could do with the types |type_p| and
 we need a list of pairs of a type identifier and its defining type expression.
 
 @< Type declarations for the parser @>=
-typedef std::pair<id_type,type_p> typedef_pair;
-typedef containers::simple_list<typedef_pair> typedef_list;
-typedef atlas::containers::sl_node<typedef_pair>* raw_typedef_list;
+typedef struct {@; id_type id; type_p type; patlist fields; } typedef_struct;
+typedef containers::simple_list<typedef_struct> typedef_list;
+typedef atlas::containers::sl_node<typedef_struct>* raw_typedef_list;
 
 @ Here are the functions defined for those types.
 
 @< Declarations of functions for the parser @>=
 void destroy_typedef_list(raw_typedef_list l);
 raw_typedef_list append_typedef_node(raw_typedef_list prev,raw_typedef_list last);
-raw_typedef_list make_typedef_singleton (id_type id, type_p t);
+raw_typedef_list make_typedef_singleton (id_type id, type_p t, raw_id_pat ip);
 
 @~Like for other type of raw lists, merely reconstructing the non-raw list and
 letting that be destructed suffices to recursively destroy all nodes of the
@@ -3095,8 +3095,14 @@ raw_typedef_list append_typedef_node (raw_typedef_list prev,raw_typedef_list las
 @/return result.release();
 }
 
-raw_typedef_list make_typedef_singleton (id_type id, type_p t)
-{@; return typedef_list(1,std::make_pair(id,t)).release(); }
+raw_typedef_list make_typedef_singleton (id_type id, type_p t, raw_id_pat ip)
+{ typedef_list result; patlist l;
+  if (ip.kind==0x2)
+    l = patlist(ip.sublist);
+  typedef_struct node = { id, t, std::move(l) };
+  result.push_front(std::move(node));
+  return result.release();
+}
 
 
 

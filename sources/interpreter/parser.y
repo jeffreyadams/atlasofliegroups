@@ -104,17 +104,18 @@
 %destructor { destroy_id_pat($$); } pattern pattern_opt closed_pattern
 %type <pl> pat_list
 %destructor { destroy_pattern($$); } pat_list
-%type <type_pt> type nostar_type typedef_type typedef_unit
-%destructor { destroy_type($$); } type nostar_type typedef_type typedef_unit
+%type <type_pt> type nostar_type typedef_unit
+%destructor { destroy_type($$); } type nostar_type typedef_unit
 %type <type_l> union_list_opt types union_list
                typedef_list_opt typedef_list typedef_units
 %destructor { destroy_type_list($$); }
             types union_list_opt union_list typedef_list_opt
             typedef_list typedef_units
-%type <id_sp1> id_spec type_spec type_field
+%type <id_sp1> id_spec type_spec typedef_type type_field typedef_type_field
 %destructor { destroy_type($$.type_pt);destroy_id_pat($$.ip); }
-	    id_spec type_spec type_field
+	    id_spec type_spec typedef_type type_field typedef_type_field
 %type <id_sp> id_specs id_specs_opt struct_specs union_specs
+            typedef_struct_specs typedef_union_specs
 %destructor { destroy_type_list($$.typel);destroy_pattern($$.patl); }
 	    id_specs id_specs_opt
 %type <case_l> caselist
@@ -670,14 +671,28 @@ type_equations : type_equation
 	| type_equations ',' type_equation { $$=append_typedef_node($1,$3); }
 ;
 
-type_equation: TYPE_ID '=' typedef_type { $$=make_typedef_singleton($1,$3); }
+type_equation: TYPE_ID '=' typedef_type
+	  { $$=make_typedef_singleton($1,$3.type_pt,$3.ip); }
 ;
 
 typedef_type :
-	  '[' typedef_list ']'	{ $$=make_row_type(make_union_type($2)); }
-	| '(' typedef_list ')'	{ $$=make_union_type($2); }
+	  '[' typedef_list ']'
+	  { $$.type_pt=make_row_type(make_union_type($2)); $$.ip.kind=0x0; }
+	| '(' typedef_list ')'
+	  { $$.type_pt=make_union_type($2); $$.ip.kind=0x0; }
 	| '(' typedef_list_opt ARROW typedef_list_opt ')'
-	  { $$=make_function_type(make_union_type($2),make_union_type($4)); }
+	  { $$.type_pt=
+	      make_function_type(make_union_type($2),make_union_type($4));
+	    $$.ip.kind=0x0;
+	  }
+	| '(' typedef_struct_specs ')'
+	  { $$.type_pt=make_tuple_type($2.typel);
+	    $$.ip.kind=0x2; $$.ip.sublist=reverse_patlist($2.patl);
+	  }
+	| '(' typedef_union_specs ')'
+	  { $$.type_pt=make_union_type($2.typel);
+	    $$.ip.kind=0x2; $$.ip.sublist=reverse_patlist($2.patl);
+	  }
 ;
 
 typedef_list_opt :   { $$=make_type_singleton(make_tuple_type(nullptr)); }
@@ -702,8 +717,38 @@ typedef_units :
 typedef_unit :
 	  PRIMTYPE { $$=make_prim_type($1); }
 	| TYPE_ID { $$=new type_expr($1); }
-	| typedef_type
+	| typedef_type {$$=$1.type_pt;}
 ;
+
+typedef_struct_specs: typedef_type_field ',' typedef_type_field
+	  { auto head_typel=make_type_singleton($1.type_pt);
+	    auto head_pat =make_pattern_node(nullptr,$1.ip);
+	    $$.typel=make_type_list(head_typel,$3.type_pt);
+	    $$.patl=make_pattern_node(head_pat,$3.ip);
+	  }
+	| typedef_struct_specs ',' typedef_type_field
+	  { $$.typel=make_type_list($1.typel,$3.type_pt);
+	    $$.patl=make_pattern_node($1.patl,$3.ip);
+	  }
+;
+
+typedef_union_specs: typedef_type_field '|' typedef_type_field
+	  { auto head_typel=make_type_singleton($1.type_pt);
+	    auto head_pat =make_pattern_node(nullptr,$1.ip);
+	    $$.typel=make_type_list(head_typel,$3.type_pt);
+	    $$.patl=make_pattern_node(head_pat,$3.ip);
+	  }
+	| typedef_union_specs '|' typedef_type_field
+	  { $$.typel=make_type_list($1.typel,$3.type_pt);
+	    $$.patl=make_pattern_node($1.patl,$3.ip);
+	  }
+;
+
+typedef_type_field : typedef_unit TYPE_ID
+	  { $$.type_pt=$1; $$.ip.kind=0x1; $$.ip.name=$2; }
+	| typedef_unit '.'{ $$.type_pt=$1; $$.ip.kind=0x0; }
+;
+
 
 commalist_opt: /* empty */	 { $$=raw_expr_list(nullptr); }
 	| commalist
