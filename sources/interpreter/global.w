@@ -901,7 +901,7 @@ function type can be validly added to the overload table.
 
 @< Global function definitions @>=
 
-void definition_group::add(id_type id,type_expr&& t, bool is_const)
+void definition_group::add(id_type id,type_expr&& t, bool is_const=false)
 { for (auto it=bindings.cbegin(); it!=bindings.cend(); ++it)
   // check repeated identifiers
     if (it->first==id)
@@ -1290,48 +1290,53 @@ for this constant.
 @< Global function definitions @>=
 void type_define_identifier
   (id_type id, type_p t, raw_id_pat ip, const source_location& loc)
-{ type_ptr saf(t); id_pat fields(ip); // ensure clean-up
-  type_expr& type=*t; const bool is_tuple = type.kind()==tuple_type;
-    // save for when |type| is pilfered
-  const auto n=length(fields.sublist);
+{ type_ptr saf(t); id_pat field_pat(ip); // ensure clean-up
+  type_expr& type=*t;
+  const auto& fields = field_pat.sublist;
+  const auto n=length(fields);
   definition_group group(n);
   std::vector<shared_function> jectors; jectors.reserve(n);
   std::vector<id_type> names(n,id_type(type_binding::no_id));
   try
   {
-    if (not fields.sublist.empty()) // do this before we move from |type|
-      @< Bind in |group| any field identifiers in |field.sublist| to the
-         types of their projector or injector functions, and store the
-         corresponding function values themselves in |jectors| @>
+    if (not fields.empty()) // do this before we move from |type|
+      @< Bind in |group| any field identifiers in |fields| to the types of
+         their projector or injector functions, store the identifiers themselves
+         in |names|, and store the corresponding function values in |jectors| @>
 @)
     @< Test for conflicts for adding |id| as type identifier to
        |global_id_table|, in which case |throw| a |program_error| @>
-    type_expr converted_type;
+    type_nr_type type_nr;
     @< Add a typedef for |type| with identifier |id| in |type_expr::type_map|,
-       and set |converted_type| to its |tabled| type @>
-    @/global_id_table->add_type_def(id,std::move(converted_type));
+       and set |type_nr| to its number @>
+    @/global_id_table->add_type_def(id,type_expr(type_nr));
 @)
     if (group.begin()!=group.end())
       // only need the following when there are field names
-      @< Update |type_expr::type_map| by associating field identifiers bound
-         in |group| to type |converted_type|, and add projector or injector
-         function values from |jectors| to |global_overload_table| @>
+      @< Update |type_expr::type_map| by associating the field identifiers in
+         |names| to the tabled type numbered |type_nr|, and add to
+         |global_overload_table| the projector or injector function values
+         from |jectors| @>
   }
   catch (program_error& err)
-  { auto mes = err.what(); err.message="";
+  { std::string mes; mes.swap(err.message);
     throw err << "Error in type definition " << loc << ":\n" @| << mes
               << "\n  Type definition aborted";
   }
 }
 
 @ To add a typedef we build a $1$-element vector of the proper type, and call
-|type_expr::add_typedefs|.
+|type_expr::add_typedefs|. The call to |untabled| is because the old colon-style
+definition of new types allows them to be defined using a previous defined type
+(which is fairly useless, as they are just going to be equivalent types), but
+|add_typedefs| does not want to be confronted with right hand sides with
+|raw_kind()==tabled| at the top level. Note that |add_typedefs| does not pilfer
+any of its argument; it is totally safe to pass it a non-owned pointer.
 
 @< Add a typedef for |type| with identifier |id| in |type_expr::type_map|... @>=
 { std::vector<std::pair<id_type,const_type_p> > b;
   b.emplace_back(id,&type.untabled());
-  auto type_nrs = type_expr::add_typedefs(b);
-  converted_type.set_from(type_expr(type_nrs[0]));
+  type_nr = type_expr::add_typedefs(b)[0];
 }
 
 
@@ -1340,43 +1345,35 @@ names for their components, which names will then be associated to projector
 respectively injector functions for the type; these also have uses beyond that
 of mere functions. All field names must be distinct, and it must be possible
 to add the corresponding functions to the overload table, which is what the
-code below tests by passing |fields| through
-|definition_group::thread_bindings|. We make an ephemeral type |combined_type|
-that holds the types that will be bound by |thread_bindings| at the proper
-positions. Not all fields need to have names (although for a union type it
-seems rather pointless to omit any of them), so we fill the space that will
-not be used by undefined type expressions.
+code below tests by passing declaration of each field and its function type
+through |definition_group::add|. Meanwhile we construct the function values
+themselves and store them in |jectors|.
 
-@< Bind in |group| any field identifiers in |field.sublist| to the types of
-   their projector or injector functions, and store the corresponding function
-   values themselves in |jectors| @>=
+@< Bind in |group| any field identifiers in |fields| to the types of
+   their projector or injector functions... @>=
 { assert(type.kind()==tuple_type or type.kind()==union_type);
-  dressed_type_list jector_types;
   auto tp_it =wtl_const_iterator(type.tuple());
-  auto id_it=fields.sublist.wcbegin();
-  if (is_tuple)
-    for (unsigned i=0; i<n; ++i,id_it++,tp_it++)
+  auto id_it=fields.wcbegin();
+  if (type.kind()==tuple_type)
+  { for (unsigned i=0; i<n; ++i,id_it++,tp_it++)
       if (id_it->kind==0x1) // field selector present
       { names[i]=id_it->name;
         jectors.push_back
           (std::make_shared<projector_value>(type,i,names[i],loc));
-        jector_types.emplace_back(type_expr(type.copy(),tp_it->copy()));
+        group.add(names[i],type_expr(type.copy(),tp_it->copy()));
           // projector type
       }
-      else jector_types.emplace_back(); // filler type
+  }
   else
-    for (unsigned i=0; i<n; ++i,id_it++,tp_it++)
+  { for (unsigned i=0; i<n; ++i,id_it++,tp_it++)
       if (id_it->kind==0x1) // field selector present
       { names[i]=id_it->name;
         jectors.push_back
           (std::make_shared<injector_value>(type,i,names[i],loc));
-        jector_types.emplace_back(type_expr(tp_it->copy(),type.copy()));
+        group.add(names[i],type_expr(tp_it->copy(),type.copy()));
           // injector type
       }
-      else jector_types.emplace_back(); // filler type
-  type_ptr combined_type=mk_tuple_type(jector_types.undress());
-  group.thread_bindings(fields,*combined_type);
-    // throws if binding |jectors| would give an error
+  }
 }
 
 @ We start checking if the user deviously hid \emph{another} definition of the
@@ -1409,29 +1406,14 @@ the list of field names printed in section~@#field name printing @>.
             << std::endl;
 }
 
-@ Defining a type name would make any global identifier or overload of the same
-name inaccessible. Since this is probably not intended, we refuse to do this,
-and emit an error message instead when it is attempted.
-
-@< Protest if |id| is currently used as ordinary identifier @>=
-{ const bool p = global_id_table->present(id); // non-overloaded presence
-  if (p or not global_overload_table->variants(id).empty())
-    throw program_error()
-       << "Cannot define '" << main_hash_table->name_of(id) @|
-       << "' as a type; it is in use as " @|
-       << (p? "global variable" : "function");
-}
-
 @ When tests have been passed successfully, we run the code below to copy the
 projector or injector functions from |jectors| to the global overload table.
 
 @:field name printing @>
-@< Update |type_expr::type_map| by associating field identifiers bound
-   in |group| to type |converted_type|, and add projector or injector
-   function values from |jectors| to |global_overload_table| @>=
-{ type_expr::set_fields(converted_type.type_nr(),std::move(names));
+@< Update |type_expr::type_map| by associating the field identifiers...@>=
+{ type_expr::set_fields(type_nr,std::move(names));
   @< Emit indentation corresponding to the input level to |*output_stream| @>
-@/*output_stream << "  with " << (is_tuple ? "pro" : "in");
+@/*output_stream << "  with " << (type.kind()==tuple_type ? "pro" : "in");
   for (auto it=group.begin(); it!=group.end(); ++it)
   { global_overload_table->add
       (it->first,std::move(jectors[it-group.begin()]),std::move(it->second));
@@ -1459,35 +1441,122 @@ void process_type_definitions (raw_typedef_list l, const source_location& loc)
   defs.reverse(); // since the parser collects by prepending new nodes
   static const type_nr_type absent = -1;
   std::vector<type_nr_type> translate (main_hash_table->nr_entries(),absent);
-  type_nr_type count = type_expr::table_size();
-  for (auto it=defs.begin(); not defs.at_end(it); ++it)
-  { id_type id = it->id;
-    @< Protest if |id| is currently used as ordinary identifier @>
-    if (translate[id]==absent)
-      translate[id] = count++;
-    else
-      throw program_error()
-        << "Repeated definition of '" << main_hash_table->name_of(id) @|
-        << "' in set_type command";
-  }
-  @< Replace in type expressions for |defs| in any types with |kind==tabled|
-     the identifier code by the type number associated to it either in
-     |translate| or else (as previous typedef) in |global_id_table|;
-     if neither possibility applies, signal an erroneous type identifier @>
-  { std::vector<std::pair<id_type,const_type_p> > b; b.reserve(length(defs));
+  try
+  { @< For each equation |i| in |defs| set
+       |translate[id]=type_exp::table_size()+i| for the identifier |id| defined
+       by the equation; |throw| a |program_error| if any identifiers in the
+       equation are problematic @>
+@/  @< Replace in type expressions for |defs|, in any types with |kind==tabled|,
+       the contained identifier code by the type number associated to it, either
+       in |translate| or else in |global_id_table|; in case neither possibility
+       applies, signal an erroneous type identifier @>
+    std::vector<std::pair<id_type,const_type_p> > b; b.reserve(length(defs));
     for (auto it=defs.begin(); it!=end(defs); ++it)
       b.emplace_back(it->id,it->type);
     auto type_nrs = type_expr::add_typedefs(b);
-    auto bit = b.cbegin();
-    for (auto it=type_nrs.begin(); it!=type_nrs.end(); ++it,++bit)
-    {
-      global_id_table->add_type_def(bit->first,type_expr(*it));
-      @< Emit... @>
-      *output_stream << "Type name '" << main_hash_table->name_of(bit->first) @|
-            << "' defined as " << type_expr(*it).expansion() << std::endl;
-    }
+  @/@< Add to |global_id_table| for each equation |i| in |defs| a binding of
+       its identifier to the tabled type with number |type_nrs[i]| @>
+    unsigned int i = 0; // position within |defs|
+    for (auto it=defs.begin(); not defs.at_end(it); ++it,++i)
+      if (not it->fields.empty())
+        @< Define any identifiers in |it->fields| as injector or projector
+           function @>
   }
+  catch (program_error& err)
+  { std::string mes; mes.swap(err.message);
+    throw err << "Error in 'set_type' command " << loc << ":\n" @| << mes
+              << "\n  Type definition aborted";
+  }
+}
 
+@ The following is somewhat transitional, as we try to match the interface of
+modules that we written for the old colon-style type definitions.
+
+The somewhat mysterious cast in the constructor call for |names| avoids
+passing the |constexpr no_id@;| by reference (by building a temporary
+instead), which in turn avoids needing to allocate an actual static variable
+for this constant.
+
+@< Define any identifiers in |it->fields| as injector or projector function @>=
+{ const auto& fields = it->fields;
+  auto n=length(fields); // number of type components, maybe not all named
+  definition_group group(n); // so there are at most |n| identifiers to bind
+  std::vector<id_type> names(n,id_type(type_binding::no_id));
+  std::vector<shared_function> jectors; jectors.reserve(n); // large enough
+  const auto type_nr = type_nrs[i];
+  const auto& type = type_expr(type_nr).expansion();
+  @< Bind in |group| any field identifiers in |fields|... @>
+  @< Update |type_expr::type_map| by associating the field identifiers...@>
+}
+
+@ The main purpose of this module is to record the set of (type) identifiers
+being defined, in a way that makes it easy to map those identifiers to their
+position in the definition; this is done by setting values in the |translate|
+array that is index by the numbers of all identifiers seen so far. This makes it
+easy to detect collisions, identifiers that are being defined more than once. We
+also refuse if any of the identifiers being defined was used as a non-type
+identifier before, as their new status of type identifier would make those
+variables or functions inaccessible.
+
+Once the set of defined type names is recorded, we can easily test for any
+collision between a field name and a type name in our set of type definitions,
+which would case the same kind of trouble, because the type status would make
+the field name unusable.
+
+@< For each equation |i| in |defs|... @>=
+{
+  type_nr_type count = type_expr::table_size();
+  for (auto it=defs.begin(); not defs.at_end(it); ++it,++count)
+  { id_type id = it->id;
+    @< Protest if |id| is currently used as ordinary identifier @>
+    if (translate[id]==absent)
+      translate[id] = count;
+    else
+      throw program_error()
+        << "Repeated definition of '" << main_hash_table->name_of(id);
+  }
+  for (auto it=defs.begin(); not defs.at_end(it); ++it)
+    for (auto jt=it->fields.wcbegin(); not jt.at_end(); ++jt)
+      if ((jt->kind&0x1)!=0 and translate[jt->name]!=absent)
+      throw program_error()
+        << "Used '" << main_hash_table->name_of(jt->name) @|
+        << "' as defined type AND as field name";
+}
+
+@ The method |Id_table::present| will report any presence in the table of an
+identifier, whether as a variable or as a type name. Usually only one of the two
+is possible because the scanner brands the two kinds of identifier as in
+distinct syntactic classes, but during a type definition it consideres
+everything as a type identifier, so we do have both possibilities here. We do in
+fact want to allow redefining a previous type identifier again as a type
+identifier, since this makes it generally possible to reload a script a second
+ime (with modification) without provoking an error for code that was previously
+accepted.
+
+@< Protest if |id| is currently used as ordinary identifier @>=
+{ const bool p = global_id_table->present(id) and
+                 not global_id_table->is_defined_type(id);
+  if (p or not global_overload_table->variants(id).empty())
+    throw program_error()
+       << "Cannot define '" << main_hash_table->name_of(id) @|
+       << "' as a type; it is in use as " @|
+       << (p? "global variable" : "function");
+}
+
+@ The following is straightforward, but just slightly awkward because we must
+traverse a linked list~|defs| and a vector~|type_nrs|, which requires
+maintaining either two iterators of different types, or (as we do here) an
+iterator for the list and an index for the vector.
+
+@< Add to |global_id_table| for each equation |i| in |defs|... @>=
+{ unsigned int i=0;
+  for (auto it=defs.wcbegin(); not defs.at_end(it); ++it,++i)
+  {
+    global_id_table->add_type_def(it->id,type_expr(type_nrs[i]));
+    @< Emit... @>
+    *output_stream << "Type name '" << main_hash_table->name_of(it->id) @|
+      << "' defined as " << type_expr(type_nrs[i]).expansion() << std::endl;
+  }
 }
 
 @ In order to be able to process a set of recursive type definitions where a
@@ -1496,36 +1565,37 @@ scanner and parser play some small tricks. The scanner simply processes all
 identifiers as type identifiers while a \&{set\_type} command is being read. The
 parser also enters a distinct piece of syntax for the right hand side of any
 equation, which closely resembles the productions for a type expression, but (1)
-does not allow a single type identifier at the top level (this make it
+does not allow a single type identifier at the top level (this makes it
 impossible to recursively define a type as itself), and (2) does not look up
 type identifiers in |global_id_table|, but simply stores the identifier code as
 if it were a type number. The trick (2) avoids having to have a special tag
 value in |type_expr| for this transient purpose.
 
-Once the whole list of type equations has been parsed, we know the list of
-type identifiers being defined, and we can set out to replace the
-identifier codes by the type numbers they refer to, which is what we shall do
-here. We already set of the table |translate| to provide the mapping for the
-type identifiers the list of equations is defining.
-We need to traverse all type expressions in the right hand sides of |defs|
-and do the replacement of every |type_number n@;| encountered either by
-|translate[n]| if that is set, or else replace the |type_expr| that contains it
-by |global_id_table->type_of(id)|.
+Once the whole list of type equations has been parsed, we know the list of type
+identifiers being defined, and we can set out to replace the identifier codes by
+the type numbers they refer to, which is what we shall do here. We already set
+of the table |translate| to provide the mapping for the type identifiers the
+list of equations is defining. We need to traverse all type expressions in the
+right hand sides of |defs| and do the replacement, in every type with
+|raw_kind()==tabled|, of the |id==type_nr()| encountered either by
+|translate[id]| if that entry is set, or else by
+|global_id_table->type_of(id)->type_nr()|. Since we cannot just assign to the
+private |type_number| field of a type, we simply replace the whole type by a
+fresh one constructed from the proper type number; for a type from
+|global_id_table| this is most easily achieved by applying |copy| to the stored
+type.
 
 Traversing type expressions is best done recursively, but since we are getting a
 bit bored by defining recursive functions for each little task, we do this one
 iteratively, manually maintaining a stack of types remaining to be visited.
 
-@< Replace in type expressions for |defs| in any types with |kind==tabled|
-   the identifier code by the type number associated to it either in
-   |translate| or else (as previous typedef) in |global_id_table|;
-   if neither possibility applies, signal an erroneous type identifier @>=
+@< Replace in type expressions for |defs|... @>=
 { containers::stack<type_p> work;
   for (auto it=defs.begin(); not defs.at_end(it); ++it)
     work.push(it->type);
   while (not work.empty())
   { auto& t = *work.top();
-    work.pop();
+    work.pop(); // hold pointer as non-owned reference; drop the pointer
     switch(t.raw_kind())
     { default: break;
     case function_type:
@@ -1550,7 +1620,7 @@ iteratively, manually maintaining a stack of types remaining to be visited.
         else
           throw program_error()
             << "Type identifier '" << main_hash_table->name_of(id) @|
-            << "' in set_type command does not refer to any type";
+            << "' does not refer to any type";
       }
     break;
     }
@@ -1585,7 +1655,7 @@ bound to given type identifier.
 
 @< Global function definitions @>=
 void type_of_type_name(id_type id)
-{ *output_stream <<
+{@; *output_stream <<
     "type: " << global_id_table->type_of(id)->untabled() << std::endl;
 }
 
