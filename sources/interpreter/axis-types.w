@@ -3137,15 +3137,20 @@ access, so that it is possible to extend the error message and then re-throw
 the same error object. The simplest way to allow this is to give public access
 to that string member, so we make this a |struct| rather than a |class|.
 
-However, since extending the error message is what is done most often, and it is
-done just using |operator<<|, we provide a templated method of that name to
-write directly to the message inside an error object. (An alternative would have
-been to derive |error_base| from |std::ostringstream| rather than to contain a
-|message| member; however we feel this goes somewhat against the inheritance
-philosophy, since an error object \emph{is not} a string stream.) The templated
-implementation does mean one cannot pass |std::endl| (an unresolved function
-overload) to the error message, but then that is quite useless anyway, and less
-efficient than passing |'\n'|.
+However, since extending the error message is what is done most often, we
+provide a templated method |append_mes| to write directly to the message inside
+an error object. (An alternative would have been to derive |error_base| from
+|std::ostringstream| rather than to contain a |message| member; however we feel
+this goes somewhat against the inheritance philosophy, since an error
+object \emph{is not} a string stream.) The templated implementation does mean
+one cannot pass |std::endl| (an unresolved function overload) to the error
+message, but then that is quite useless anyway, and less efficient than passing
+|'\n'|. The method returns |void|, and it intended to be called from methods
+called |operator<<| defined at the level of derived classes, and returning a
+reference to |*this| of the derived type; the later is essential if one wants to
+be able to extend the error message inside the |throw| expression itself, as
+will be most convenient, since it ensures that this extension does not alter the
+(static) type of the thrown expression.
 
 @< Type definitions @>=
 struct error_base : public std::exception
@@ -3155,13 +3160,12 @@ struct error_base : public std::exception
 #ifdef incompletecpp11
   ~error_base () throw() @+{} // backward compatibility for gcc 4.4
 #endif
-  const char* what() const throw() @+{@; return message.c_str(); }
-  template<typename T> error_base& operator<< (const T& x)
-    { std::ostringstream o;
+  template<typename T> void append_mes (const T& x)
+  @/{@; std::ostringstream o;
       o << x;
       message += o.str();
-    @/return *this;
     }
+  const char* what() const throw() @+{@; return message.c_str(); }
 };
 
 @ We classify errors into three classes: those due to inconsistency of our
@@ -3175,26 +3179,32 @@ classes.
 @< Type definitions @>=
 struct logic_error : public error_base
 { explicit logic_error(const std::string& s) : error_base(s) @+{}
-  logic_error () : error_base() @+{}
+  logic_error () : @[error_base@]() @+{}
 #ifdef incompletecpp11
   ~logic_error () throw() @+{} // backward compatibility for gcc 4.4
 #endif
+  template<typename T> logic_error& operator<< (const T& x)
+  @+{@; append_mes(x); return *this; }
 };
 @)
 struct program_error : public error_base
 { explicit program_error(const std::string& s) : error_base(s) @+{}
-  program_error () : error_base() @+{}
+  program_error () : @[error_base@]() @+{}
 #ifdef incompletecpp11
   ~program_error () throw() @+{} // backward compatibility for gcc 4.4
 #endif
+  template<typename T> program_error& operator<< (const T& x)
+  @+{@; append_mes(x); return *this; }
 };
 @)
 struct runtime_error : public error_base
 { explicit runtime_error(const std::string& s) : error_base(s) @+{}
-  runtime_error () : error_base() @+{}
+  runtime_error () : @[error_base@]() @+{}
 #ifdef incompletecpp11
   ~runtime_error () throw() @+{} // backward compatibility for gcc 4.4
 #endif
+  template<typename T> runtime_error& operator<< (const T& x)
+  @+{@; append_mes(x); return *this; }
 };
 
 @ We derive from |program_error| an exception type |expr_error| that stores in
@@ -3225,6 +3235,8 @@ struct expr_error : public program_error
 #ifdef incompletecpp11
   ~expr_error() throw() @+{}
 #endif
+  template<typename T> expr_error& operator<< (const T& x)
+  @+{@; append_mes(x); return *this; }
 };
 
 @ We derive from |expr_error| an even more specific exception type
@@ -3250,6 +3262,8 @@ struct type_error : public expr_error
 #else
   type_error@[(type_error&& e) = default@];
 #endif
+  template<typename T> type_error& operator<< (const T& x)
+  @+{@; append_mes(x); return *this; }
 };
 
 @ For type balancing, we shall use controlled throwing and catching of errors
@@ -3269,6 +3283,8 @@ struct balance_error : public expr_error
   : expr_error(std::move(o)),variants(std::move(o.variants)) @+{}
   ~balance_error() throw() @+{}
 #endif
+  template<typename T> balance_error& operator<< (const T& x)
+  @+{@; append_mes(x); return *this; }
 };
 
 @ Here is another special purpose error type, throwing of which does not
