@@ -676,6 +676,8 @@ type_equations : type_equation
 
 type_equation: TYPE_ID '=' typedef_type
 	  { $$=make_typedef_singleton($1,$3.type_pt,$3.ip); }
+	| '.' '=' typedef_type
+	  { $$=make_typedef_singleton(-1,$3.type_pt,$3.ip); }
 ;
 
 typedef_type :

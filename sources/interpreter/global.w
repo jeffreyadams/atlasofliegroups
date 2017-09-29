@@ -1506,14 +1506,15 @@ the field name unusable.
 {
   type_nr_type count = type_expr::table_size();
   for (auto it=defs.begin(); not defs.at_end(it); ++it,++count)
-  { id_type id = it->id;
-    @< Protest if |id| is currently used as ordinary identifier @>
-    if (translate[id]==absent)
-      translate[id] = count;
-    else
-      throw program_error()
-        << "Repeated definition of '" << main_hash_table->name_of(id);
-  }
+    if(it->id!=type_binding::no_id)
+    { id_type id = it->id;
+      @< Protest if |id| is currently used as ordinary identifier @>
+      if (translate[id]==absent)
+        translate[id] = count;
+      else
+        throw program_error()
+          << "Repeated definition of '" << main_hash_table->name_of(id);
+    }
   for (auto it=defs.begin(); not defs.at_end(it); ++it)
     for (auto jt=it->fields.wcbegin(); not jt.at_end(); ++jt)
       if ((jt->kind&0x1)!=0 and translate[jt->name]!=absent)
@@ -1551,12 +1552,18 @@ iterator for the list and an index for the vector.
 { unsigned int i=0;
   for (auto it=defs.wcbegin(); not defs.at_end(it); ++it,++i)
   {
-    if (global_id_table->is_defined_type(it->id))
-      clean_out_type_identifier(it->id);
-    global_id_table->add_type_def(it->id,type_expr(type_nrs[i]));
+    if (it->id!=type_binding::no_id)
+    {
+      if (global_id_table->is_defined_type(it->id))
+        clean_out_type_identifier(it->id);
+      global_id_table->add_type_def(it->id,type_expr(type_nrs[i]));
+    }
     @< Emit... @>
-    *output_stream << "Type name '" << main_hash_table->name_of(it->id) @|
-      << "' defined as " << type_expr(type_nrs[i]).expansion() << std::endl;
+    if (it->id==type_binding::no_id)
+      *output_stream << "Anonymous type " << type_expr(type_nrs[i]).expansion();
+    else
+      *output_stream << "Type name '" << main_hash_table->name_of(it->id) @|
+        << "' defined as " << type_expr(type_nrs[i]).expansion() << std::endl;
   }
 }
 
