@@ -2,46 +2,52 @@
 <polynomial.at { for |poly_plus@(vec,vec)| and friends, |poly_mat| type }
 <ext_deform.at { for |cook_KL_block@([Param],,,,,)| }
 
-{ recover required length_diff function, now only remaining in old_kl.at }
-set length (int i, vec stops) = int: { compute length=max{k:stops[k]<=i} }
-( let a=0, b=#stops { use binary search; invariant: a <= length < b } in
-  while a+1<b { when b=a+1, a is our max }
-  do let avg=(a+b)\2 in if stops[avg]<=i then a:=avg else b:=avg fi od
-; a
-)
-set length_diff (int i,int j,vec stops) = int: length(j,stops)-length(i,stops)
-
 {
 process output of KL_block or ext_KL_block to give ([Param],int,poly_mat,vec),
 the third entry is the matrix of polynomials
 }
 
-set cook_KL_block_alt ([Param] B,int entry_elem
+{ use output of |KL_block| to prepare block, signed KL matrix, and stops }
+set cook_KL_block ([Param] B,int entry_elem
                   ,mat KL,[poly] polys,vec stops
-                  ,vec surv, mat contrib) = ([Param],int,poly_mat,vec):
+                  ,vec surv, mat contrib) =
+  ([Param],int,poly_mat,vec): { singular block, z0, signed P matrix, lengths }
   let nB=#B, n_surv=#surv
-  then raw_P_mat = poly_mat: { survivor columns extracted and transposed }
-    for j in surv do let KL_j=KL[j] in
-      for i:nB do
-        let ind=KL_j[i] in if ind<0 then -polys[-ind] else polys[ind] fi
-      od
-    od
+  then inter_mat = poly_mat: { survivor columns extracted, and transposed }
+    for j in surv do for ind in KL[j] do
+      if ind<0 then -polys[-ind] else polys[ind] fi { entries are |poly| now }
+    od od
+  , len = from_stops(stops) { compute length from index into |B| }
   then cooked_P_mat = poly_mat:
-     for i:n_surv do for j:n_surv do
-       let raw_col_j = raw_P_mat[j], sum=poly_0 in
-       for k:nB do sum:=poly_plus(sum,contrib[i,k]*raw_col_j[k]) od
-     ; sum { computed using addition of polynomials }
+     for si@i in surv do let lsi=len(si) in for sj@j in surv do
+       let sum=poly_0 in
+       for Pkj@k in inter_mat[j] do sum:=flex_add(sum,contrib[i,k]*Pkj) od
+     ; sum * minus_1^(len(sj)-lsi)
      od od
-  , get_index (int z) = int: { least |i| with |surv[i]>=z| }
-    let min=0, max=n_surv in
-    while min<max
-    do let avg=(min+max)\2 in if surv[avg]>=z then max:=avg else min:=avg+1 fi
-    od; min
-  in ( for i in surv do B[i] od
-     , get_index(entry_elem)
+  , get_index (int z) = int: binary_search_first((int i):surv[i]>=z,0,n_surv)
+  in ( for i in surv do B[i] od { condensed block }
+     , get_index(entry_elem) { convert index of seeding element }
      , cooked_P_mat
-     , for s in stops do get_index(s) od
+     , for s in stops do get_index(s) od { convert stops to condensed block }
      )
+
+{ use output of |dual_KL_block| to prepare block, KL Q-matrix, and stops }
+set cook_dual_KL_block ([Param] B,int entry_elem
+                  ,mat KL,[poly] polys, vec stops, vec surv) =
+  ([Param],int,poly_mat,vec): { singular block, z0, signed P matrix, lengths }
+  let nB=#B, n_surv=#surv
+  then cooked_Q_mat = poly_mat:
+    for si in surv do for sj in surv do let ind = KL[si,sj] in
+      if ind<0 then -polys[-ind] else polys[ind] fi { |poly| entry }
+    od od
+  , get_index (int z) = int: binary_search_first((int i):surv[i]>=z,0,n_surv)
+  in ( for si in surv do B[si] od { extracted block }
+     , get_index(entry_elem) { convert index of seeding element }
+     , cooked_Q_mat
+     , for s in stops do get_index(s) od { convert stops to extracted block }
+     )
+
+set reverse (poly_mat Q) = poly_mat: for i:#Q ~do for Qj in Q ~do Qj[i] od od
 
 { define the P,P_signed and Q polynomials
   P,P_signed,Q matrices of polynomials in q
@@ -241,6 +247,15 @@ set KL_P_polynomials_old ([Param] B_fixed,mat delta) = [[poly]]:
      *} if >=entry then polys[entry] else -polys[-entry] fi
     od
   od
+
+{ recover required length_diff function, now only remaining in old_kl.at }
+set length (int i, vec stops) = int: { compute length=max{k:stops[k]<=i} }
+( let a=0, b=#stops { use binary search; invariant: a <= length < b } in
+  while a+1<b { when b=a+1, a is our max }
+  do let avg=(a+b)\2 in if stops[avg]<=i then a:=avg else b:=avg fi od
+; a
+)
+set length_diff (int i,int j,vec stops) = int: length(j,stops)-length(i,stops)
 
 set KL_P_signed_polynomials_old ([Param] B_fixed,mat delta) = [[poly]]:
   assert( all(for p in B_fixed do is_fixed(delta,p) od)

@@ -2,6 +2,7 @@
   This is weyl.h
 
   Copyright (C) 2004,2005 Fokko du Cloux
+  Copyright (C) 2017 Marc van Leeuwen
   part of the Atlas of Lie Groups and Representations
 
   For license information see the LICENSE file
@@ -29,10 +30,6 @@ namespace atlas {
 
 namespace weyl {
 
-  class RowBase; // information at one coset element in one transducer table
-  typedef RowBase ShiftRow; // the case of a transition entry
-  typedef RowBase OutRow;   // the case of a transduction entry
-
   class Transducer;
 
 
@@ -44,7 +41,7 @@ namespace weyl {
 
 /******** type definitions **************************************************/
 
-  // A mapping between one interpretation of Generators and another
+  // A mapping between one interpretation of |Generator|s and another
   class Twist // also used under the typedef name |WeylInterface|
   {
     Generator d[constants::RANK_MAX];
@@ -52,8 +49,8 @@ namespace weyl {
     Twist () // assures definite values are always set
     { std::fill_n(&d[0],constants::RANK_MAX,Generator(~0)); }
     Twist(const ext_gens& orbits);
-    Generator& operator[] (size_t i) { return d[i]; }
-    const Generator& operator[] (size_t i) const { return d[i]; }
+    Generator& operator[] (Generator i) { return d[i]; }
+    const Generator& operator[] (Generator i) const { return d[i]; }
 
     bool operator!=(const Twist& y) const
     { for (unsigned i=0; i<constants::RANK_MAX; ++i)
@@ -132,10 +129,10 @@ public:
 protected: // these are for |WeylGroup| and |TI_Entry|'s eyes only
 
   // Get an individual |EltPiece|
-  EltPiece operator[] (size_t j) const { return d_data[j]; }
+  EltPiece operator[] (Generator j) const { return d_data[j]; }
 
 // manipulators
-  EltPiece& operator[] (size_t j) { return d_data[j]; }
+  EltPiece& operator[] (Generator j)      { return d_data[j]; }
 
 public:
 // dummy methods that mark transition of interpretation
@@ -151,44 +148,6 @@ public:
 
 }; // |class WeylElt|
 
-const WeylElt Identity; // default constructor initialises to identity
-
-// One row of a transducer table for a Weyl group.
-class RowBase
-{
-
- private:
-
-  unsigned char d_data[constants::RANK_MAX];
-
- public:
-
-// constructors and destructors
-  RowBase() {
-    std::memset(d_data,UndefValue,sizeof(d_data));
-  }
-
-  ~RowBase() {}
-
-// copy and assignment
-  RowBase(const RowBase& r) {
-    std::memcpy(d_data,r.d_data,sizeof(d_data));
-  }
-
-  RowBase& operator=(const RowBase& r) {
-    std::memcpy(d_data,r.d_data,sizeof(d_data)); return *this;
-  }
-
-// accessors
-  Generator operator[] (size_t j) const {
-    return d_data[j];
-  }
-
-// manipulators
-  Generator& operator[] (size_t j) {
-    return d_data[j];
-  }
-}; // |class RowBase|
 
 /*
   Right multiplication action of simple reflections on a Weyl group modulo (to
@@ -223,8 +182,39 @@ class RowBase
 
 class Transducer
 {
-  // there is one such object for each $r\in\{1,2,\ldots,n\}$
-  // but $r$ is not explicitly stored in the Tranducer object
+  // there will be one such object for each $r\in\{1,2,\ldots,n\}$
+  // but $r$ is not explicitly stored in the |Tranducer| object
+
+  // One row of a transducer table for a Weyl group.
+  class RowBase
+  {
+    unsigned char d_data[constants::RANK_MAX];
+
+   public:
+
+  // constructors and destructors
+    RowBase() { std::memset(d_data,UndefValue,sizeof(d_data)); }
+    ~RowBase() {}
+
+  // copy and assignment
+    RowBase(const RowBase& r) { std::memcpy(d_data,r.d_data,sizeof(d_data)); }
+
+    RowBase& operator=(const RowBase& r)
+      { std::memcpy(d_data,r.d_data,sizeof(d_data)); return *this; }
+
+  // accessors
+    Generator operator[] (Generator j) const { return d_data[j]; }
+
+  // manipulators
+    Generator& operator[] (Generator j)      { return d_data[j]; }
+  }; // |class RowBase|
+
+ public:
+  typedef RowBase ShiftRow; // the case of a transition entry
+  typedef RowBase OutRow;   // the case of a transduction entry
+  typedef unsigned short PieceIndex; // used to index letters inside a piece
+  // as piece length cannot exceed number of states, |unsigned char| would do
+ private:
 
   // Right multiplication by $s_j$ gives transition |i -> d_shift[i][j]|
   std::vector<ShiftRow> d_shift;
@@ -238,17 +228,17 @@ class Transducer
   std::vector<OutRow> d_out;
 
   // Lengths of the minimal coset representatives $x_i$.
-  std::vector<unsigned long> d_length;
+  std::vector<PieceIndex> d_length;
 
   // Reduced expressions of the minimal coset representatives.
-  std::vector<WeylWord> d_piece;
+  std::vector<WeylWord> d_piece; // individual elements indexed by |PieceIndex|
 
  public:
 
 // constructors and destructors
   Transducer() {}
 
-  Transducer(const int_Matrix&, size_t);
+  Transducer(const int_Matrix&, Generator);
 
   ~Transducer() {}
 
@@ -256,7 +246,7 @@ class Transducer
 
 
   // Length of minimal coset representative x.
-  unsigned long length(WeylElt::EltPiece x) const { return d_length[x]; }
+  PieceIndex length(WeylElt::EltPiece x) const { return d_length[x]; }
 
 
 /*
@@ -265,7 +255,7 @@ class Transducer
   This is the number of positive roots for the Levi subgroup L_r, minus
   the number of positive roots for L_{r-1}.
 */
-  unsigned long maxlength() const { return d_length.back(); }
+  PieceIndex maxlength() const { return d_length.back(); }
 
 
 /*
@@ -286,7 +276,7 @@ class Transducer
    { return d_shift[x][s]; }
 
   // Number of cosets W_{r-1}\\W_r.
-  unsigned long size() const { return d_shift.size(); }
+  unsigned int size() const { return d_shift.size(); } // must be at most 256
 
 
   // Reduced decomposition in W (or W_r) of minimal coset representative x.
@@ -391,7 +381,7 @@ class Transducer
 */
 class WeylGroup
 {
-  size_t d_rank;
+  Generator d_rank;
   size::Size d_order;
   unsigned long d_maxlength;
   WeylElt d_longest;
@@ -450,7 +440,7 @@ public:
   int leftMult(WeylElt& w, Generator s) const { return leftMultIn(w,d_in[s]); }
   void leftMult(WeylElt& w, const WeylWord& ww) const
   {
-    for (size_t i=ww.size(); i-->0; ) // use letters from right to left
+    for (unsigned int i=ww.size(); i-->0; ) // use letters from right to left
       leftMult(w,ww[i]);
   }
   void leftMult(WeylElt& w, const WeylElt& x) const; // |w=xw|
@@ -536,18 +526,18 @@ public:
   // the order of the Weyl group
   const size::Size& order() const { return d_order; }
 
-  size_t rank() const { return d_rank; }
+  Generator rank() const { return d_rank; }
 
   WeylWord word(const WeylElt& w) const;
   WeylElt element(const WeylWord& ww) const { return prod(WeylElt(),ww); }
 
   WeylEltList reflections() const; // list all reflections
 
-  /* give representation of |w| as integral number, supposing this fits. */
-  unsigned long toUlong(const WeylElt& w) const;
+  // give representation of |w| as integral number.
+  arithmetic::big_int to_big_int(const WeylElt& w) const;
 
   /* inverse operation of |toUlong| */
-  WeylElt toWeylElt(unsigned long) const;
+  WeylElt toWeylElt(arithmetic::big_int) const;
 
   bool hasDescent(Generator, const WeylElt&) const; // on the left
   bool hasDescent(const WeylElt&, Generator) const; // on the right
@@ -559,7 +549,7 @@ public:
     { w=translation(w,i); }
 
   // reflection action of Weyl group on a root
-  void act(const RootDatum& rd, const WeylElt& w, RootNbr& alpha) const;
+  void act(const RootSystem& rd, const WeylElt& w, RootNbr& alpha) const;
   // standard reflection action of Weyl group using a root datum
   template<typename C>
     void act(const RootDatum& rd, const WeylElt& w, matrix::Vector<C>& v)
@@ -626,7 +616,7 @@ public:
   TwistedWeylGroup(const TwistedWeylGroup&, tags::DualTag);
 
   const WeylGroup& weylGroup() const { return W; }
-  size_t rank() const { return W.rank(); }
+  Generator rank() const { return W.rank(); }
 
   int mult(WeylElt& w, Generator s) const { return W.mult(w,s); }
   void mult(WeylElt& w, const WeylElt& v) const { W.mult(w,v); }
@@ -676,14 +666,14 @@ public:
   int twistedConjugate(const WeylWord& ww,TwistedInvolution& tw) const
   {
     int d=0;
-    for (size_t i=ww.size(); i-->0; )
+    for (unsigned int i=ww.size(); i-->0; )
       d+=twistedConjugate(tw,ww[i]);
     return d;
   }
   int inverseTwistedConjugate(TwistedInvolution& tw, const WeylWord& ww) const
   {
     int d=0;
-    for (size_t i=0; i<ww.size(); ++i )
+    for (unsigned int i=0; i<ww.size(); ++i )
       d+=twistedConjugate(tw,ww[i]);
     return d;
   }
@@ -700,7 +690,7 @@ public:
   bool hasTwistedCommutation(Generator, const TwistedInvolution&) const;
 
   // The length of |tw| as a twisted involution.
-  unsigned long involutionLength(const TwistedInvolution& tw) const;
+  unsigned int involutionLength(const TwistedInvolution& tw) const;
 
 /*
   Return a reduced expression of |tw| as a twisted involution.

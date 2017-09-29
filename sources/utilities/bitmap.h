@@ -1,12 +1,11 @@
-/*!\file
-  \brief Definitions and declarations for the BitMap class.
-*/
 /*
   Copyright (C) 2004,2005 Fokko du Cloux
   part of the Atlas of Lie Groups and Representations
 
   For license information see the LICENSE file
 */
+
+// Definitions and declarations for the BitMap class.
 
 #ifndef BITMAP_H  /* guard against multiple inclusions */
 #define BITMAP_H
@@ -23,9 +22,8 @@
 namespace atlas {
 
 namespace bitmap {
-  /*!
-  \brief Container of a large (more than twice the machine word size)
-  set of bits.
+/*
+  Container of a large (more than twice the machine word size) set of bits.
 
   From the point of view of a user of the class, a BitMap should be
   seen as a container of _unsigned long_, not bits: these unsigned
@@ -48,7 +46,7 @@ namespace bitmap {
   an iterator class, which traverses the _set_ bits of the bitmap; so
   that for instance, b.begin() would be a reference to the first set
   bit. Dereferencing the iterator yields its bit-address.
-  */
+*/
 class BitMap
 {
   size_t d_capacity;
@@ -61,7 +59,7 @@ class BitMap
 
 // type definitions
 
-  /*!
+  /*
   type for a component of the vector d_map holding the BitMap
   */
   typedef unsigned long value_type;
@@ -81,8 +79,8 @@ class BitMap
 // constructors and destructors
  BitMap() : d_capacity(0), d_map() {} // create a bitmap without capacity
 
-  /*! \brief
-    Constructs a zero-initialized bitmap with a capacity of n bits.
+  /*
+    Construct a zero-initialized bitmap with a capacity of n bits.
 
     Note that the size of the vector |d_map| exceeds |n >> baseShift| by
     one, unless |longBits| exactly divides |n|.
@@ -91,7 +89,7 @@ class BitMap
     : d_capacity(n), d_map((d_capacity+posBits)>>baseShift,0)
   {}
 
-  //! \brief Copy constructor
+  // Copy constructor
   BitMap(const BitMap& b) : d_capacity(b.d_capacity), d_map(b.d_map) {}
 
   // convert range defined by iterators into a BitMap
@@ -107,7 +105,7 @@ class BitMap
       insert(v[i]);
   }
 
-  //! Set of offsets into [first,last[ of values (also) found in [fsub,lsub[
+  // Set of offsets into [first,last[ of values (also) found in [fsub,lsub[
   template <typename I, typename J>
     BitMap(const I& first, const I& last, const J& fsub, const J& lsub);
 
@@ -116,7 +114,7 @@ class BitMap
   BitMap& operator= (const BitMap&);
 
 // accessors
-  /*!
+  /*
    Number of bits in use in the bitmap. This is the capacity
    of the BitMap as a standard library container, not d_map.size(), which is
    approximately longBits times smaller.
@@ -131,7 +129,7 @@ class BitMap
   bool empty() const; // whether |size()==0|
   bool full() const; // whether |size()==capacity()|
 
-  /*!
+  /*
     Tests whether bit n in the bitmap is set; that is, whether element n
     is a member of the set.
   */
@@ -148,10 +146,10 @@ class BitMap
   // Whether none of the elements of |b| satisfy |isMember|
   bool disjoint(const BitMap& b) const;
 
-  //! \brief Value at index |n| if viewed as list of |unsigned long| values
+  // Value at index |n| if viewed as list of |unsigned long| values
   unsigned long n_th(unsigned long n) const;
 
-  //! \brief Number of values |<n| present (set) in the bitmap
+  // Number of values |<n| present (set) in the bitmap
   unsigned long position(unsigned long n) const;
 
   unsigned long front() const;
@@ -190,8 +188,8 @@ class BitMap
   BitMap& operator>>= (unsigned long delta); // shift right (decrease)
   BitMap& operator<<= (unsigned long delta); // shift left (increase)
 
-  /*!
-    Set the bit at position n (that is, inserts the value |n| into the set);
+  /*
+    Set the bit at position |n| (that is, inserts the value |n| into the set);
     this makes |isMember(n)| hold.
   */
   void insert(unsigned long n)
@@ -200,8 +198,8 @@ class BitMap
     d_map[n >> baseShift] |= constants::bitMask[n & posBits];
   }
 
-  /*!
-    Clear the bit at position n (that is, removes an element of the set);
+  /*
+    Clear the bit at position |n| (that is, removes that element of the set);
     this makes |isMember(n)| false.
   */
   void remove(unsigned long n)

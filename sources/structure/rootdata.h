@@ -238,14 +238,14 @@ class RootSystem
 
   RootNbr permuted_root(const WeylWord& ww, RootNbr r) const
   {
-    for (weyl::Generator i=ww.size(); i-->0; )
+    for (auto i=ww.size(); i-->0; )
       simple_reflect_root(ww[i],r);
     return r;
   }
 
   RootNbr permuted_root(RootNbr r,const WeylWord& ww) const
   {
-    for (weyl::Generator i=0; i<ww.size(); ++i)
+    for (auto i=0u; i<ww.size(); ++i)
       simple_reflect_root(ww[i],r);
     return r;
   }
@@ -550,13 +550,13 @@ class RootDatum
 
   void act(const WeylWord& ww,Weight& lambda) const
     {
-      for (weyl::Generator i=ww.size(); i-->0; )
+      for (auto i=ww.size(); i-->0; )
 	simple_reflect(ww[i],lambda);
     }
   // action centered at weight $\mu$ with $simpleCoroot(i).dot(mu) == -shift[i]|
   void shifted_act(const WeylWord& ww,Weight& lambda,int_Vector shift) const
     {
-      for (weyl::Generator i=ww.size(); i-->0; )
+      for (auto i=ww.size(); i-->0; )
       { auto s=ww[i];
 	simple_reflect(s,lambda,shift[s]);
       }
@@ -571,7 +571,7 @@ class RootDatum
   // with inverse we invert operands to remind how letters of |ww| are used
   void act_inverse(Weight& lambda,const WeylWord& ww) const
   {
-    for (weyl::Generator i=0; i<ww.size(); ++i)
+    for (auto i=0u; i<ww.size(); ++i)
       simple_reflect(ww[i],lambda);
   }
 
@@ -581,7 +581,7 @@ class RootDatum
 #if 0
   void dual_act_inverse(const WeylWord& ww,Coweight& ell) const
   {
-    for (weyl::Generator i=ww.size(); i-->0; )
+    for (auto i=ww.size(); i-->0; )
       simple_coreflect(ell,ww[i]);
   }
   Weight dual_image_by_inverse(const WeylWord& ww,Weight lambda) const
@@ -591,14 +591,14 @@ class RootDatum
   // here the word |ww| is travered as in |act_inverse|, but coreflection used
   void dual_act(Coweight& ell,const WeylWord& ww) const
     {
-      for (weyl::Generator i=0; i<ww.size(); ++i)
+      for (auto i=0u; i<ww.size(); ++i)
 	simple_coreflect(ell,ww[i]);
     }
   // action centered at coweight $\mu$ with $mu.dot(simpleRoot(i)) == -shift[i]|
   void shifted_dual_act
     (Coweight& ell,const WeylWord& ww,int_Vector shift) const
     {
-      for (weyl::Generator i=0; i<ww.size(); ++i)
+      for (auto i=0u; i<ww.size(); ++i)
       { auto s=ww[i];
 	simple_coreflect(ell,s,shift[s]);
       }
