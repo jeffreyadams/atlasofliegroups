@@ -1551,6 +1551,8 @@ iterator for the list and an index for the vector.
 { unsigned int i=0;
   for (auto it=defs.wcbegin(); not defs.at_end(it); ++it,++i)
   {
+    if (global_id_table->is_defined_type(it->id))
+      clean_out_type_identifier(it->id);
     global_id_table->add_type_def(it->id,type_expr(type_nrs[i]));
     @< Emit... @>
     *output_stream << "Type name '" << main_hash_table->name_of(it->id) @|
