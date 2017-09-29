@@ -364,7 +364,7 @@ public:
   type_p component_type () const @+{@; return untabled().row_variant; }
   primitive_tag prim() const     @+{@; return untabled().prim_variant; }
   raw_type_list tuple () const   @+{@; return untabled().tuple_variant; }
-  type_nr_type type_nr () const @+{@; return type_number; }
+  type_nr_type type_nr () const @+{@; assert(tag==tabled); return type_number; }
   id_type type_name () const; // identifier corresponding to |type_number|
   const type_expr& expansion () const; // type corresponding to |type_number|
 @)
@@ -1186,8 +1186,7 @@ value, but its only relevance is whether it is negative, zero, or positive.
 
 @< Local function definitions @>=
 unsigned int rank_of(const type_expr& t,const std::vector<type_data>& a)
-{ assert(t.raw_kind()==tabled); // since |t| is sub-type of a dissected type
-  return a[t.type_nr()].rank;
+{@; return a[t.type_nr()].rank;
 }
 @)
 int cmp_func_types

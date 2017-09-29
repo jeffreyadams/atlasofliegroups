@@ -1188,7 +1188,6 @@ removes the entry |id| from |type_expr::type_map|.
 void clean_out_type_identifier(id_type id)
 {
   const auto* defined_type = global_id_table->type_of(id);
-  assert(defined_type->raw_kind()==tabled); // types are always stored this way
   auto type_number = defined_type->type_nr();
   const auto& fields = type_expr::fields(type_number);
   if (not fields.empty())
@@ -1645,18 +1644,34 @@ void type_of_expr(expr_p raw)
 { expr_ptr saf(raw); const expr& e=*raw;
   try
   {@; expression_ptr p;
-    *output_stream << "type: " << analyse_types(e,p) << std::endl;
+    *output_stream << "Type: " << analyse_types(e,p) << std::endl;
   }
   catch (std::exception& err) {@; std::cerr<<err.what()<<std::endl; }
 }
 
-@ The function |type_of_type_name| is even simpler, and just prints the type
-bound to given type identifier.
+@ The function |type_of_type_name| prints the type bound to a given type
+identifier. As an extra service, field names are printed when they are
+associated to the defined type.
 
 @< Global function definitions @>=
 void type_of_type_name(id_type id)
-{@; *output_stream <<
-    "type: " << global_id_table->type_of(id)->untabled() << std::endl;
+{ const auto* type = global_id_table->type_of(id);
+  auto type_nr = type->type_nr();
+  const auto& fields = type_expr::fields(type_nr);
+  *output_stream << "Defined type: ";
+  if (fields.empty())
+    *output_stream << type->untabled();
+  else
+  { char sep = type->kind()==tuple_type ? ',' : '|';
+    auto f_it = fields.begin();
+    for (wtl_const_iterator it(type->tuple()); not it.at_end(); ++it,++f_it)
+      *output_stream << (f_it==fields.begin() ? '(' : sep)
+       << ' ' << *it << ' ' @|
+       << (*f_it == type_binding::no_id ? "." : main_hash_table->name_of(*f_it))
+       << ' ';
+    *output_stream << ')';
+  }
+  *output_stream << std::endl;
 }
 
 @ The function |show_overloads| has a similar purpose to |type_of_expr|,
