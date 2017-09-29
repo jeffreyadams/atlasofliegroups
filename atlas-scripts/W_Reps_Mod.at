@@ -3,12 +3,15 @@
 <nilpotent.at
 <complex_nilpotent_orbits.at
 <partitions.at
+
 {in simple groups of type B or C}
 
-: Orbit=[int]   {partition for type C, all odd rows have even multiplicity}
-: Symbol=[[int]]  {must have 2 parts: [f,g], other conditions above}
-: Wrep  =([int],[int])  {pair of partitions; |p|+|q|=n}
-
+set_type
+[ Orbit=[int]   {partition for type C, all odd rows have even multiplicity}
+, Symbol=[[int]]  {must have 2 parts: [f,g], other conditions above}
+, Wrep  =([int],[int])  {pair of partitions; |p|+|q|=n}
+]
+{ this is the same as the type definitions in wreps_type_C.at, not loaded here }
 
 
 {given a cell C, get list of tau invariants from it

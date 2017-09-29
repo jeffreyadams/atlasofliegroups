@@ -2,10 +2,14 @@
 
 <basic.at
 
-: Vec = [int]
-: Mat = [[int]] { by columns }
-: RatVec = [rat]
-: RatMat = [[rat]] { by columns }
+set_type
+[ Vec = [int]
+, Mat = [[int]] { by columns }
+, RatVec = [rat]
+, RatMat = [[rat]] { by columns }
+, maybe_a_Vec =  ( void no_Vec_solution | Vec Vec_solution )
+, maybe_a_RatVec =  ( void no_RatVec_solution | [rat] RatVec_solution )
+]
 
 set minus (Vec col) = Vec: for e in col do -e od { avoid using -@vec }
 set minus (RatVec col) = RatVec: for e in col do -e od { avoid using -@ratvec }
@@ -125,7 +129,6 @@ set ech_det (Mat A) = int:
    if #M=#s then minus_1^#flip*M.main_diagonal.product else 0 fi
 
 
-: maybe_a_Vec =  ( void no_Vec_solution | Vec Vec_solution )
 set ech_solve (Mat A, Vec b) = maybe_a_Vec:
 (  let n= assert(#b=#A,"equation mismatch"); #A, (M,C,s,) = column_echelon(A)
    then k=#M, j=0 { runs up to k, used to index backwards }
@@ -142,7 +145,6 @@ in for i:n
 ;  safe_prod(C[:#sol],sol).Vec_solution
 )
 
-: maybe_a_RatVec =  ( void no_RatVec_solution | [rat] RatVec_solution )
 { ech_solve(mat A,[rat] b) solves A*x=b for the [rat] x, possibly no solution }
 set ech_solve (Mat A, [rat] b) = maybe_a_RatVec:
 (  let n= assert(#b=#A,"equation mismatch"); #A, (M,C,s,) = column_echelon(A)

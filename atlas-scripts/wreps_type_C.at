@@ -20,9 +20,11 @@ equivalence: [f_1,.., f_a] -> [0,f_1+1,..., f_a+1], same on g
 every symbol is equivalent to a unique one with a=b+1 and at most one 0
 }
 
-: Orbit=[int]   {partition for type C, all odd rows have even multiplicity}
-: Symbol=[[int]]  {must have 2 parts: [f,g], other conditions above}
-: Wrep  =([int],[int])  {pair of partitions; |p|+|q|=n}
+set_type
+[ Orbit=[int]   {partition for type C, all odd rows have even multiplicity}
+, Symbol=[[int]]  {must have 2 parts: [f,g], other conditions above}
+, Wrep  =([int],[int])  {pair of partitions; |p|+|q|=n}
+]
 
 {use equivalence relation on symbols to get one with at most one 0}
 set normalize([int] v)=[int]:

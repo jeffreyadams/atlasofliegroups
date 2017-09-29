@@ -3,11 +3,11 @@
 
 { Functions for computing with Weyl words }
 
-: W_word = (RootDatum,[int]) { keep a RootDatum at hand for interpretation }
+set_type
+  W_word = (RootDatum root_datum,[int] word)
+  { keep a RootDatum at hand for interpretation }
 
-set root_datum (W_word(rd,)) = RootDatum: rd
-set word (W_word(,w))        = [int]:  w
-set # (W_word(,w))           = int: #w { non reduced length of word }
+set # (W_word w) = int: #w.word { non reduced length of word }
 
 
 { action of Weyl word on X^* or X^*\otimes Q}

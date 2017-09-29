@@ -2,6 +2,14 @@
 <Gaussian_elim.at
 <rational_polynomial.at { for convolve@([rat],[rat]) }
 
+set_type
+[ CyclotomicField = (int order, [int] Phi)
+{ represent cyclotomic field by order and minpoly of generating root of 1 }
+, CyclotomicFieldElement = ([rat] v,CyclotomicField F)
+{ using [rat] (not ratvec) for elements in a cyclotomic field avoids overflow }
+]
+
+
 set Cartesian ([int] a, [int] b) = [int]:
     ## for x in a do for y in b do x*y od od
 
@@ -82,9 +90,6 @@ set to_denominator (rat r, int N) = int:
 
 { cyclotomic Fields and their elements }
 
-{ represent cyclotomic field by order and minpoly of generating root of 1 }
-: CyclotomicField = (int order, [int] Phi)
-
 {.construct a cyclotomic field.}
 set cyclotomic_field (int n) = CyclotomicField: (n,cyclotomic_polynomial(n))
 set CF = cyclotomic_field@int  {abbreviation}
@@ -92,10 +97,6 @@ set CF = cyclotomic_field@int  {abbreviation}
 set degree (CyclotomicField F) = int: #F.Phi-1
 
 set = (CyclotomicField E,CyclotomicField F) = bool: F.order=E.order
-
-{ using [rat] (not ratvec) for elements in a cyclotomic field avoids overflow }
-{. element in a cyclotomic field.}
-: CyclotomicFieldElement = ([rat] v,CyclotomicField F)
 
 { a utility function like |divide1|, but fixing its dividend first,
   reducing rationals mod integers, and returning a result of fixed length

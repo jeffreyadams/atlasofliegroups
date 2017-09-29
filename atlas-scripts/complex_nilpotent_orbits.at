@@ -6,11 +6,8 @@
 { ComplexNilpotent: (RootDatum rd,vec H)
   where [H,X,Y] is a Lie triple and orbit=G.X
 }
-:ComplexNilpotent=(RootDatum,vec)
-
-{root_datum@ComplexNilpotent is too close to root_datum@(RootDatum,[int]) in Weylgroup.at}
-set root_datum_of (ComplexNilpotent O)= RootDatum: let (rd,)=O in rd
-set semisimple_element (ComplexNilpotent O) = vec: let (,H)=O in H
+set_type ComplexNilpotent = (RootDatum root_datum_of, vec semisimple_element)
+{ field name |root_datum| would conflict with |root_datum@W_word| (too close) }
 
 set dim_nilpotent (RootDatum rd,ratvec H) = int:
 if (#H>0) then let (g_0,g_1)=(rank(rd),0) in

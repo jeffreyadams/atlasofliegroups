@@ -3,7 +3,7 @@
 { define a representation type that avoids implicit conversion to |ratvec|:
   store a list of rational coefficients, and a indeterminate name
 }
-: RatPoly = ([rat] coefficients, string indeterminate )
+set_type RatPoly = ([rat] coefficients, string indeterminate )
 
 set strip ([rat] v) = [rat]: v[ : 1+last(#v,(int i)bool:v[i].!= ) ]
 

@@ -1,7 +1,7 @@
 <basic.at
 <sort.at { for |reverse_sort@[int]| }
 
-: Partition = [int]   {partition a_1\ge a_2\ge ... a_n>0}
+set_type Partition = [int]   {partition a_1\ge a_2\ge ... a_n>0}
 
 set fac (int n) = int: let p=1 in for i:n-1 from 2 do p *:=i od; p
 
