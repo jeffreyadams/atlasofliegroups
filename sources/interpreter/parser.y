@@ -107,10 +107,10 @@
 %type <type_pt> type nostar_type typedef_unit
 %destructor { destroy_type($$); } type nostar_type typedef_unit
 %type <type_l> union_list_opt types union_list
-               typedef_list_opt typedef_list typedef_units
+               typedef_list_opt typedef_list typedef_composite typedef_units
 %destructor { destroy_type_list($$); }
             types union_list_opt union_list typedef_list_opt
-            typedef_list typedef_units
+            typedef_composite typedef_list typedef_units
 %type <id_sp1> id_spec type_spec typedef_type type_field typedef_type_field
 %destructor { destroy_type($$.type_pt);destroy_id_pat($$.ip); }
 	    id_spec type_spec typedef_type type_field typedef_type_field
@@ -163,6 +163,8 @@ input:	'\n'			{ YYABORT; } /* null input, skip evaluator */
 	  { type_define_identifier($2,$4.type_pt,$4.ip,@$); YYABORT; }
 	| SET_TYPE type_equations '\n'
 	  { process_type_definitions($2,@$); YYABORT; }
+	| SET_TYPE '[' type_equations ']' '\n'
+	  { process_type_definitions($3,@$); YYABORT; }
 
 	| QUIT	'\n'		{ *verbosity =-1; } /* causes immediate exit */
 	| SET IDENT '\n' // set an option; option identifiers have lowest codes
@@ -180,8 +182,9 @@ input:	'\n'			{ YYABORT; } /* null input, skip evaluator */
 	| FORCEFROMFILE '\n'	{ include_file(0); YYABORT; } // force include
 	| WHATTYPE expr '\n'	{ type_of_expr($2); YYABORT; } // print type
 	| WHATTYPE TYPE_ID '\n'	{ type_of_type_name($2); YYABORT; } // expand
-	| WHATTYPE id_op '?' '\n'
-	  { show_overloads($2,std::cout); YYABORT; } // show types
+	| WHATTYPE TYPE_ID '?' '\n' { type_of_type_name($2); YYABORT; } // same
+	| WHATTYPE id_op '?' '\n' // show types for which symbol is overloaded
+	  { show_overloads($2,std::cout); YYABORT; }
 	| TOFILE WHATTYPE id_op '?' '\n'
 	  { if (std::ofstream out{lex->scanned_file_name()}) // success?
 	      show_overloads($3,out);
@@ -678,7 +681,7 @@ type_equation: TYPE_ID '=' typedef_type
 typedef_type :
 	  '[' typedef_list ']'
 	  { $$.type_pt=make_row_type(make_union_type($2)); $$.ip.kind=0x0; }
-	| '(' typedef_list ')'
+	| '(' typedef_composite ')'
 	  { $$.type_pt=make_union_type($2); $$.ip.kind=0x0; }
 	| '(' typedef_list_opt ARROW typedef_list_opt ')'
 	  { $$.type_pt=
@@ -693,6 +696,8 @@ typedef_type :
 	  { $$.type_pt=make_union_type($2.typel);
 	    $$.ip.kind=0x2; $$.ip.sublist=reverse_patlist($2.patl);
 	  }
+	| PRIMTYPE // though not very useful, allow a single PRIMITIVE type
+	  { $$.type_pt=make_prim_type($1); $$.ip.kind=0x0; }
 ;
 
 typedef_list_opt :   { $$=make_type_singleton(make_tuple_type(nullptr)); }
@@ -700,7 +705,10 @@ typedef_list_opt :   { $$=make_type_singleton(make_tuple_type(nullptr)); }
 ;
 typedef_list :
 	  typedef_unit { $$ = make_type_singleton($1); }
-	| typedef_units { $$ = make_type_singleton(make_tuple_type($1)); }
+	| typedef_composite
+;
+typedef_composite: typedef_units // tuple type with at least 2 components
+	  { $$ = make_type_singleton(make_tuple_type($1)); }
 	| typedef_list_opt '|'
 	  { $$ = make_type_list ($1, make_tuple_type(nullptr)); }
 	| typedef_list_opt '|' typedef_unit { $$ = make_type_list($1,$3); }
@@ -714,10 +722,9 @@ typedef_units :
 	| typedef_units ',' typedef_unit { $$=make_type_list($1,$3); }
 ;
 
-typedef_unit :
-	  PRIMTYPE { $$=make_prim_type($1); }
-	| TYPE_ID { $$=new type_expr($1); }
+typedef_unit : TYPE_ID { $$=new type_expr($1); }
 	| typedef_type {$$=$1.type_pt;}
+	| '(' typedef_unit ')' { $$=$2; }
 ;
 
 typedef_struct_specs: typedef_type_field ',' typedef_type_field
