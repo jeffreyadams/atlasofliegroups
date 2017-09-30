@@ -870,6 +870,7 @@ equivalent previously known types.
 static std::vector<type_nr_type>
   add_typedefs(const std::vector<std::pair<id_type,const_type_p> >& defs);
 static type_nr_type table_size();
+static void reset_table_size(type_nr_type old_size);
 static type_nr_type find (const type_expr& type);
 static void set_fields (id_type type_number, std::vector<id_type>&& fields);
 static const std::vector<id_type>& fields(type_nr_type type_number);
@@ -884,6 +885,8 @@ non-termination of printing recursive types.
 
 @< Function definitions @>=
 type_nr_type type_expr::table_size() @+{@; return type_map.size(); }
+void type_expr::reset_table_size(type_nr_type old_size)
+{@; type_map.erase(std::next(type_map.begin(),old_size),type_map.end()); }
 @)
 type_nr_type type_expr::find (const type_expr& type)
 { for (auto it=type_map.begin(); it!=type_map.end(); ++it)
