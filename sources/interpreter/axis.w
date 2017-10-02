@@ -3787,11 +3787,12 @@ void matrix_slice<flags>::evaluate(level l) const
 @* Projection functions.
 %
 The axis language does not have an absolute need for operations of selection
-from a tuple, since binding of patters can achieve the same effect; indeed for
-a long time no such operation existed. We introduce it here nonetheless,
-because it can be more practical in certain situations, and also because
+from a tuple, since binding of patterns can achieve the same effect; indeed for
+a long time no such operation existed. We introduce them here nonetheless,
+because they can be more practical in certain situations, and also because
 discriminated unions will have similar injection operations that would be more
-cumbersome to do without.
+cumbersome to do without. These values are also essential for component
+assignments.
 
 @< Type def... @>=
 struct projector_value : public function_base
@@ -3828,8 +3829,8 @@ components.
 
 @< Function def... @>=
 void projector_value::print(std::ostream& out) const
-  {@; out << "{."<< main_hash_table->name_of(id) << ": "
-                 << type << '.' << position << '}'; }
+  {@; out << "{." << main_hash_table->name_of(id) << ": projector_" << position
+          << '('  << type << ") }"; }
 expression_base::level projector_value::argument_policy() const
   {@; return expression_base::single_value; }
 void projector_value::report_origin(std::ostream& o) const
@@ -3927,8 +3928,8 @@ components.
 
 @< Function def... @>=
 void injector_value::print(std::ostream& out) const
-  {@; out << "{."<< main_hash_table->name_of(id) << ": "
-                 << position << type << '}'; }
+  {@; out << "{."<< main_hash_table->name_of(id) << ": injector_" << position
+          << '(' << type << ") }"; }
 expression_base::level injector_value::argument_policy() const
   {@; return expression_base::single_value; }
 void injector_value::report_origin(std::ostream& o) const

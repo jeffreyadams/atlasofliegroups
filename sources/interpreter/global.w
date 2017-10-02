@@ -1483,7 +1483,7 @@ index~|i| into the vector.
   for (auto it=defs.begin(); not defs.at_end(it); ++it,++i)
     if (not it->fields.empty())
     { const auto& fields = it->fields;
-      const auto& type = type_expr(type_nrs[i]).expansion();
+      const auto& type = type_expr(type_nrs[i]);
       @/@< Append to |store| bindings for the identifiers in |fields| as
          injector or projector function for |type| @>
     }
@@ -1493,7 +1493,7 @@ index~|i| into the vector.
   {
     const auto& fields = it->fields;
     const auto type_nr = type_nrs[i];
-    const auto& type = type_expr(type_nr).expansion();
+    const auto& type = type_expr(type_nr);
     if (it->id!=type_binding::no_id)
     {
       if (global_id_table->is_defined_type(it->id))

@@ -1411,8 +1411,9 @@ which |rank| values have already been seen.
   for (unsigned int i=0; i<defs.size(); ++i)
   { type_nr_type nr= renumber[(first_new+i)->rank];
     result.push_back(nr); // to be converted by client to |tabled| type
-    if (type_map[nr].name==type_binding::no_id)
-      // don't overwrite existing type name
+    if (type_map[nr].name==type_binding::no_id
+        // don't overwrite an existing type name
+       @+ and type_map[nr].type.tag!=primitive_type) // nor name a primitive type
       type_map[nr].name=defs[i].first; // but otherwise insert type name
   }
   @< Update, for types beyond position |old_size|, their descendent types
