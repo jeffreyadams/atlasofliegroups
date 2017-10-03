@@ -1440,3 +1440,9 @@ set pad(string s,int padding)=string: l_adjust(padding,s)
 }
 set monomials (ParamPol P) = [Param]: for c@p in P do p od
 set monomial  (ParamPol P,int i) = Param: monomials(P)[i]
+
+{. Convert a list of ParamPols into the list of distinct parameters occuring;
+   careful: don't let terms cancel! .}
+set monomials([ParamPol] list)=[Param]:
+   let sum=null_module(real_form(list[0])) in
+   for P in list do for c@p in P do sum+:=p od od;monomials(sum)
