@@ -470,6 +470,16 @@ set rho_u_cap_s_alt (Parabolic P,KGBElt x) = ratvec:
    let y=x_min(P) then w=find_W_cross(x,y) in
    act(inverse(w),rho_u(P)-rho_u_cap_k(P,y))
 
+{. Twist a K-type for a Levi L by minus the sum of non-compact roots in $\mathfrak u$. .}
+set twist_by_minus_2rho_u_cap_s(Parabolic P,Param p_L)=Param:
+   let G=real_form(P.x) then
+   L=real_form(p_L) then
+   x_L=x(p_L) then
+   x_G=canonical_x_K(embed_KGB(x_L,G)) then
+   p_L_shifted=parameter(x(p_L),lambda(p_L)-two_rho_u_cap_s(P,x_G),null(rank(Levi(P))))
+   in
+   p_L_shifted
+
 {. Dimension of $\mathfrak u$ (nilrad of theta-stable parabolic). .}
 set dim_u(Parabolic P) = int:n_columns(nilrad(P))
 
