@@ -1,0 +1,40 @@
+<basic.at
+<W_orbit.at
+<parabolics.at
+
+set is_W_conjugate (ratvec v, ratvec w, RootDatum rd)=bool:
+   let list=W_orbit(rd,v) in  any(for y in list do y=w od)
+
+set complex_parabolics (RootDatum rd) = [ComplexParabolic]:
+  for S in power_set(semisimple_rank(rd)) do (rd,S) od
+
+set complex_parabolics_S (RootDatum rd)=[[int]]:
+  power_set(semisimple_rank(rd))
+
+set choose_by_size ([[int]] list, int n)=[[int]]:
+  ##for S in list do if #S=n then [S] else [] fi od
+
+set conjugate_rhos (RootDatum rd, [int] S, [[int]] list)=[[int]]:
+  let P=ComplexParabolic:(rd,S) in let rhoP=rho(complex_Levi(P))
+  in ##for T@i in list do let rhoT=rho(complex_Levi((rd,T))) in
+  if is_W_conjugate(rhoT,rhoP,rd) then [list[i]] else [] fi od
+
+set group_by_conjugate_rhos (RootDatum rd, [[int]] list)=[[[int]]]:
+  let n=#list in let result=[] in let counter=[[int]]:[] in for i:n do
+     if none(for S in counter do list[i]=S od) then
+     let new_set=conjugate_rhos(rd,list[i],list) in result#:=new_set;
+     for S in new_set do counter#:=S od fi od;
+  result
+
+set group_by_conjugate_rhos (RootDatum rd, int rank)=[[[int]]]:
+   let list=complex_parabolics_S(rd) then
+   same_size_list=choose_by_size(list,rank) in
+   group_by_conjugate_rhos(rd,same_size_list)
+
+set group_by_conjugate_rhos (RootDatum rd)=[(int,[[[int]]])]:
+   for i:semisimple_rank(rd) do (i,group_by_conjugate_rhos(rd,i)) od
+
+set print_Levis_by_conjugate_rhos (RootDatum rd)=void:
+   prints ("rank  # of classes  classes");
+   for i:semisimple_rank(rd) do let list=group_by_conjugate_rhos(rd,i) in
+     prints(i,"        ",#list,"          ",list) od
