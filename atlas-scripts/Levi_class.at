@@ -29,6 +29,11 @@ set conjugates_by_rho (RootDatum rd, [int] S, [[int]] list)=[[int]]:
   ##for v@i in rhos do if any(for w in orb do v=w od) then [list[i]]
   else [] fi od
 
+set print_conjugate_info (RootDatum rd, [[int]] S_list)=void:
+   prints("Levi","         ","Lie Type");
+   for S in S_list do let L=complex_Levi((rd,S)) in
+   prints(S," ",Lie_type(L)) od
+
 set group_by_conjugate_rhos (RootDatum rd,[[int]] list)=[[[int]]]:
    let result=[] in let sets=list in
    while #sets>0 do let new_set=conjugates_by_rho (rd,sets[0],sets)
