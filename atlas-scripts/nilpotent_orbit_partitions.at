@@ -88,25 +88,32 @@ set nilpotent_orbit_partitions(LieType t)= [vec]:
 
 { same as previous applied to RootDatum or RealForm (types A-D only)
   (list of partitions only depends on complexification of real group) }
-set nilpotent_orbit_partitions(RootDatum rd) = [vec]: nilpotent_orbit_partitions(Lie_type(rd))
-set nilpotent_orbit_partitions(RealForm G)   = [vec]: nilpotent_orbit_partitions(root_datum(G))
+set nilpotent_orbit_partitions(RootDatum rd) = [vec]:
+   nilpotent_orbit_partitions(Lie_type(rd))
+set nilpotent_orbit_partitions(RealForm G)   = [vec]:
+   nilpotent_orbit_partitions(root_datum(G))
 
-{test if partition is valid orbit in type ABCD}
-set is_valid(string type,vec P)=bool:
-if type="A" then true
-elif type="B" or type="D" then
- if  is_even(sum(P)) then false else
- all(let m=partition_multiplicities(P) in for i:#m do is_odd(i) {don't care} or is_even(m[i]) od) fi
-elif type="C" then
- if  is_odd(sum(P)) then false else
- all(let m=partition_multiplicities(P) in for i:#m do is_even(i) {don't care} or is_even(m[i]) od) fi
-else false fi
+{ test if partition is valid orbit in type ABCD }
+set is_valid (string type,vec P) = bool:
+   if type="A" then true
+   elif type="B" or type="D"
+   then is_odd(sum(P)) and { all even parts have even multiplicity: }
+        all(for mi@i in partition_multiplicities(P)
+            do is_odd(i) {don't care} or is_even(mi) od)
+   elif type="C"
+   then is_even(sum(P)) and { all odd parts have even multiplicity: }
+        all(for mi@i in partition_multiplicities(P)
+            do is_even(i) {don't care} or is_even(mi) od)
+   else false
+   fi
 
 set is_valid(LieType t,vec P)=bool:is_valid(["A","B","C","D"][get_type(t)],P)
 
 { nilpotent orbits of dual group (types A-D only) }
-set dual_nilpotent_orbit_partitions(RootDatum rd)=[vec]: nilpotent_orbit_partitions(dual(rd))
-set dual_nilpotent_orbit_partitions(RealForm G)=[vec]:  dual_nilpotent_orbit_partitions(root_datum(G))
+set dual_nilpotent_orbit_partitions(RootDatum rd)=[vec]:
+    nilpotent_orbit_partitions(dual(rd))
+set dual_nilpotent_orbit_partitions(RealForm G)=[vec]:
+    dual_nilpotent_orbit_partitions(root_datum(G))
 
 { tools for computing h(O^\vee): apply to rows of Young diagram }
 set tworho (int n)=vec: for k:n do (n-1)-2*k od { e.g., [2,0,-2] or [3,1,-1,-3]}
@@ -125,8 +132,8 @@ set semisimple_element(LieType t,vec P)=vec:
   fi
 
 { same as previous applied to (RootDatum,vec P)
- in this case apply make_dominant(dual(rd));
- RootDatum must be a classical group with the usual classical coordinates
+  in this case apply make_dominant(dual(rd));
+  RootDatum must be a classical group with the usual classical coordinates
 }
 set semisimple_element(RootDatum rd,vec p) = vec:
  let (v,)=make_dominant(dual(rd),semisimple_element(Lie_type(rd),p)) in v
@@ -139,34 +146,40 @@ set semisimple_element(RootDatum rd,vec p) = vec:
  a_1+...+a_k \le b_1+...+b_k for all k\le min(r,s)sawtrset v
 }
 
-set nilpotent_orbit_ss_elements(LieType t)=for P in nilpotent_orbit_partitions(t) do semisimple_element(t,P) od
-set nilpotent_orbit_ss_elements(RootDatum rd)=for P in nilpotent_orbit_partitions(rd) do semisimple_element(rd,P) od
+set nilpotent_orbit_ss_elements (LieType t) = [vec]:
+  for P in nilpotent_orbit_partitions(t) do semisimple_element(t,P) od
+set nilpotent_orbit_ss_elements (RootDatum rd) = [vec]:
+  for P in nilpotent_orbit_partitions(rd) do semisimple_element(rd,P) od
 
 
 
-set lesseq_partition (vec v,vec w)=bool:
+set lesseq_partition (vec v,vec w) = bool:
    assert(sum(v)=sum(w),"not comparable");
    assert(v.>= and w.>= , "negative terms");
    v:=reverse_sort(v); w:=reverse_sort(w);
    all(for i:min(#v,#w)+1 do sum(v[0:i]) <= sum(w[0:i]) od)
 
-{same as previous but assume each term is already reverse sorted,
- and all terms are comparable}
-set lesseq_partition_presorted (vec v,vec w)=bool:
+{ same as previous but assume each term is already reverse sorted,
+  and all terms are comparable }
+set lesseq_partition_presorted (vec v,vec w) = bool:
    for i:min(#v,#w)+1 do if v[i]!=w[i] then return v[i]<w[i] fi od;true
 
-{orbits=[v_1,...,v_n]
- closures(orbits)[i] is the set of j (not including i itself) such that orbits[j] contained in the closures of orbits[i]
+{ orbits=[v_1,...,v_n]
+  closures(orbits)[i] is the set of j (not including i itself) such that
+  orbits[j] contained in the closures of orbits[i]
 }
-set closures([vec] orbits)=
-{pre-sort}
-let orbits=for P in orbits do reverse_sort(P) od in
-for P@i in orbits do
- ##(for j:#orbits do
-  if j !=i and lesseq_partition_presorted(orbits[j],P) then [j] else [] fi od) od
+set closures([vec] orbits) = [[int]]:
+  {pre-sort}
+   let orbits=for P in orbits do reverse_sort(P) od in
+   for P@i in orbits
+   do
+   ## for j:#orbits
+      do if j!=i and lesseq_partition_presorted(orbits[j],P) then [j] else [] fi
+      od
+   od
 
-{this only works for simple classical groups, fails for exceptional
-groups; more general version in nilpotent_orbits_exceptional handles
-the simple exceptional case also}
-set nilpotent_lambdas_classical(RootDatum rd)=[ratvec]:
+{ this only works for simple classical groups, fails for exceptional groups;
+  the more general version in nilpotent_orbits_exceptional handles the
+  simple exceptional case also }
+set nilpotent_lambdas_classical (RootDatum rd) = [ratvec]:
     for lambda in nilpotent_orbit_ss_elements(dual(rd)) do lambda/2 od

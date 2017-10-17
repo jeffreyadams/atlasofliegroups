@@ -903,7 +903,7 @@ mapping integers to integers. When the defined type is a tuple or a union,
 there is in addition the possibility to attach tags to each of their
 components. For instance
 
-  atlas> set Gaussian_int = (int re, int im)
+  atlas> set_type Gaussian_int = (int re, int im)
 
 defines 'Gaussian_int' to abbreviate '(int,int)' but also defines 're' and
 'im' to be tags associated with the first and second components of this tuple.
