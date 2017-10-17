@@ -1,6 +1,5 @@
 <basic.at
 <sort.at
-<nilpotent.at
 <complex_nilpotent_orbits.at
 <partitions.at
 {type C}
@@ -109,7 +108,7 @@ let rv=[Wrep]:[] in
 for r:n+1 do
  for p in partitions(r) do
   for q in partitions(n-r) do
-   rv#:=(p,q) od od od;rv
+   rv#:=([int]:p,[int]:q) od od od;rv
 
 {a (normalized) symbol is special if f_0<=g_0<= f_1...}
 set is_special(Symbol S)=bool:
@@ -123,8 +122,8 @@ set special_star(Symbol S)=string:if is_special(S) then "*" else "" fi
 set special_star(Orbit P)=string:if is_special(P) then "*" else "" fi
 set special_star(Wrep sigma)=string:if is_special(sigma) then "*" else "" fi
 
-set symbols(RootDatum rd)=[Symbol]:for P in nilpotent_orbits(rd) do symbol(P) od
-set wreps(RootDatum rd)=[Wrep]:for P in nilpotent_orbits(rd) do wrep(P) od
+set symbols(RootDatum rd)=[Symbol]:for P in nilpotent_orbit_partitions(rd) do symbol(P) od
+set wreps(RootDatum rd)=[Wrep]:for P in nilpotent_orbit_partitions(rd) do wrep(P) od
 
 
 {given a cell C, get list of tau invariants from it

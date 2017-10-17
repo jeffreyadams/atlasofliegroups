@@ -2,9 +2,12 @@
 <lattice.at { for in_lattice@(mat,ratvec) }
 <parabolics.at { for Levi@Parabolic }
 <parameters.at { for parameter@(KGBElt,KGBElt,ratvec) }
+<nilpotent_orbit_partitions.at {for nilpotent orbits of classical groups}
 
 { ComplexNilpotent: (RootDatum rd,vec H)
-  where [H,X,Y] is a Lie triple and orbit=G.X
+  where [H,X,Y] is a Lie triple, H\in X_*, and orbit=G.X
+  H must satisfy <alpha,H>=0,1,2 for all simple roots,
+  in particular is_dominant(dual(rd),H)=true
 }
 set_type ComplexNilpotent = (RootDatum root_datum_of, vec semisimple_element)
 { field name |root_datum| would conflict with |root_datum@W_word| (too close) }
@@ -296,3 +299,10 @@ set Aq_reps(Block B,[int] cell)=
 let rv=[int]:[] in for i in cell do if is_Aq(B,i) then rv#:=i fi od ;rv
 
 set Aq_cells(RealForm G,[[int]] cells)=Aq_cells(principal_block(G),cells)
+
+set complex_nilpotent_orbits(RootDatum rd)=
+for P in nilpotent_orbit_ss_elements(rd) do (rd,P) od
+
+set complex_nilpotent_orbit_closures(RootDatum rd)=closures(nilpotent_orbit_ss_elements(rd))
+
+set orbits_closures(RootDatum rd)=(complex_nilpotent_orbits(rd), complex_nilpotent_orbit_closures(rd))
