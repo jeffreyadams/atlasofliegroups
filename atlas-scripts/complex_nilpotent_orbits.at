@@ -21,7 +21,7 @@ for alpha in posroots(rd) do
 {prints("g_0:", g_0, "g_1:" ,g_1);}dimension(rd)-g_0-g_1 else 0 fi
 
 set diagram (ComplexNilpotent O) = [int]:
-let H=semisimple_element(O) in
+let H=O.semisimple_element in
 for v in simple_roots(root_datum_of(O)) do H*v od
 
 set dim_nilpotent(ComplexNilpotent O)=let (rd,H)=O in dim_nilpotent(rd,H)
