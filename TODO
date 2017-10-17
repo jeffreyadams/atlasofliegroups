@@ -15,7 +15,7 @@
 * Work on the axis language
 
 - Prevent abuse of type system possible by capturing (in functions) variables
-  whose type is unsettled (like |[*]|), which by well timed assignements can
+  whose type is unsettled (like |[*]|), which by well timed assignments can
   lead to illegal occurences of |*| (e.g. as type of a concrete value). This
   is quite subtle; maybe forbid binding to names with such type altogether.
 
@@ -45,7 +45,6 @@
   concatenation, but operations on large values, such as vector addition,
   could also profit; indeed also (big) integer arithmetic might used this.
 
-- Extend language with recursive types, as well as disjoint union types.
 - Extend type system to deal with second-order types
 - Allow encapsulation into user-defined types (possibly using 2nd order types)
 

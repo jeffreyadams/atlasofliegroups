@@ -53,6 +53,7 @@
   atlas::interpreter::type_p type_pt;
   atlas::interpreter::raw_type_list type_l;
   atlas::interpreter::raw_case_list case_l;
+  atlas::interpreter::raw_typedef_list typedef_l;
 }
 
 %locations
@@ -63,7 +64,7 @@
 
 %token QUIT SET LET IN BEGIN END IF THEN ELSE ELIF FI AND OR NOT
 %token NEXT DO DONT FROM DOWNTO WHILE FOR OD CASE ESAC REC_FUN
-%token TRUE FALSE DIE BREAK RETURN WHATTYPE SHOWALL FORGET
+%token TRUE FALSE DIE BREAK RETURN SET_TYPE WHATTYPE SHOWALL FORGET
 
 %token <oper> OPERATOR OPERATOR_BECOMES '=' '*'
 %token <str> INT STRING
@@ -103,18 +104,24 @@
 %destructor { destroy_id_pat($$); } pattern pattern_opt closed_pattern
 %type <pl> pat_list
 %destructor { destroy_pattern($$); } pat_list
-%type <type_pt> nostar_type type
-%destructor { destroy_type($$); } nostar_type type
-%type <type_l> types union_list union_list_opt
-%destructor { destroy_type_list($$); } types union_list union_list_opt
-%type <id_sp1> id_spec type_spec type_field
-%destructor { destroy_type($$.type_pt);destroy_id_pat($$.ip);
-            } id_spec type_spec type_field
-%type <id_sp> id_specs id_specs_opt struct_specs union_specs
-%destructor { destroy_type_list($$.typel);destroy_pattern($$.patl);
-            } id_specs id_specs_opt
+%type <type_pt> type nostar_type typedef_unit
+%destructor { destroy_type($$); } type nostar_type typedef_unit
+%type <type_l> union_list_opt types union_list
+               typedef_list_opt typedef_list typedef_composite typedef_units
+%destructor { destroy_type_list($$); }
+            types union_list_opt union_list typedef_list_opt
+            typedef_composite typedef_list typedef_units
+%type <id_sp1> id_spec typedef_type typedef_type_field
+%destructor { destroy_type($$.type_pt);destroy_id_pat($$.ip); }
+	    id_spec typedef_type typedef_type_field
+%type <id_sp> id_specs id_specs_opt typedef_struct_specs typedef_union_specs
+%destructor { destroy_type_list($$.typel);destroy_pattern($$.patl); }
+	    id_specs id_specs_opt
 %type <case_l> caselist
 %destructor { destroy_case_list($$); } caselist
+%type <typedef_l> type_equation type_equations
+%destructor { destroy_typedef_list($$); } type_equation type_equations
+
 
 %{
   int yylex (YYSTYPE *, YYLTYPE *);
@@ -126,19 +133,20 @@ input:	'\n'			{ YYABORT; } /* null input, skip evaluator */
 	| END_OF_FILE
           { YYABORT; } /* ignore end-of-file seen at command level too */
 	| expr '\n'		{ *parsed_expr=$1; }
-	| SET declarations '\n' { global_set_identifiers($2); YYABORT; }
+	| SET declarations '\n' { global_set_identifiers($2,@$); YYABORT; }
 	| FORGET IDENT '\n'	{ global_forget_identifier($2); YYABORT; }
 	| FORGET TYPE_ID '\n'	{ global_forget_identifier($2); YYABORT; }
 	| SET operator '(' id_specs ')' '=' expr '\n'
 	  { struct raw_id_pat id; id.kind=0x1; id.name=$2.id;
 	    global_set_identifier(id,
 				  make_lambda_node($4.patl,$4.typel,$7,@$),
-				  2);
+				  2,
+				  @$);
 	    YYABORT;
 	  }
 	| SET operator '=' expr '\n'
 	  { struct raw_id_pat id; id.kind=0x1; id.name=$2.id;
-	    global_set_identifier(id,$4,2); YYABORT;
+	    global_set_identifier(id,$4,2,@$); YYABORT;
 	  }
 	| FORGET IDENT '@' type '\n'
 	  { global_forget_overload($2,$4); YYABORT;  }
@@ -146,12 +154,13 @@ input:	'\n'			{ YYABORT; } /* null input, skip evaluator */
 	  { global_forget_overload($2.id,$4); YYABORT; }
 	| IDENT ':' expr '\n'
 		{ struct raw_id_pat id; id.kind=0x1; id.name=$1;
-		  global_set_identifier(id,$3,0); YYABORT; }
+		  global_set_identifier(id,$3,0,@$); YYABORT; }
 	| IDENT ':' type '\n'	{ global_declare_identifier($1,$3); YYABORT; }
-	| ':' IDENT '=' type_spec '\n'
-	  { type_define_identifier($2,$4.type_pt,$4.ip,@4); YYABORT; }
-	| ':' TYPE_ID '=' type_spec '\n'
-	  { type_define_identifier($2,$4.type_pt,$4.ip,@4); YYABORT; }
+	| SET_TYPE type_equations '\n'
+	  { process_type_definitions($2,@$); YYABORT; }
+	| SET_TYPE '[' type_equations ']' '\n'
+	  { process_type_definitions($3,@$); YYABORT; }
+
 	| QUIT	'\n'		{ *verbosity =-1; } /* causes immediate exit */
 	| SET IDENT '\n' // set an option; option identifiers have lowest codes
 	  { unsigned n=$2-lex->first_identifier();
@@ -167,8 +176,10 @@ input:	'\n'			{ YYABORT; } /* null input, skip evaluator */
 	| FROMFILE '\n'		{ include_file(1); YYABORT; } /* include file */
 	| FORCEFROMFILE '\n'	{ include_file(0); YYABORT; } // force include
 	| WHATTYPE expr '\n'	{ type_of_expr($2); YYABORT; } // print type
-	| WHATTYPE id_op '?' '\n'
-	  { show_overloads($2,std::cout); YYABORT; } // show types
+	| WHATTYPE TYPE_ID '\n'	{ type_of_type_name($2); YYABORT; } // expand
+	| WHATTYPE TYPE_ID '?' '\n' { type_of_type_name($2); YYABORT; } // same
+	| WHATTYPE id_op '?' '\n' // show types for which symbol is overloaded
+	  { show_overloads($2,std::cout); YYABORT; }
 	| TOFILE WHATTYPE id_op '?' '\n'
 	  { if (std::ofstream out{lex->scanned_file_name()}) // success?
 	      show_overloads($3,out);
@@ -584,49 +595,10 @@ id_specs_opt: id_specs
 	| /* empty */ { $$.typel=nullptr; $$.patl=nullptr; }
 ;
 
-type_spec: type { $$.type_pt=$1; $$.ip.kind=0x0; }
-	| '(' struct_specs ')'
-	  { $$.type_pt=make_tuple_type($2.typel);
-	    $$.ip.kind=0x2; $$.ip.sublist=reverse_patlist($2.patl);
-	  }
-	| '(' union_specs ')'
-	  { $$.type_pt=make_union_type($2.typel);
-	    $$.ip.kind=0x2; $$.ip.sublist=reverse_patlist($2.patl);
-	  }
-;
-
-struct_specs: type_field ',' type_field
-	  { auto head_typel=make_type_singleton($1.type_pt);
-	    auto head_pat =make_pattern_node(nullptr,$1.ip);
-	    $$.typel=make_type_list(head_typel,$3.type_pt);
-	    $$.patl=make_pattern_node(head_pat,$3.ip);
-	  }
-	| struct_specs ',' type_field
-	  { $$.typel=make_type_list($1.typel,$3.type_pt);
-	    $$.patl=make_pattern_node($1.patl,$3.ip);
-	  }
-;
-
-union_specs: type_field '|' type_field
-	  { auto head_typel=make_type_singleton($1.type_pt);
-	    auto head_pat =make_pattern_node(nullptr,$1.ip);
-	    $$.typel=make_type_list(head_typel,$3.type_pt);
-	    $$.patl=make_pattern_node(head_pat,$3.ip);
-	  }
-	| union_specs '|' type_field
-	  { $$.typel=make_type_list($1.typel,$3.type_pt);
-	    $$.patl=make_pattern_node($1.patl,$3.ip);
-	  }
-;
-
-type_field : type IDENT { $$.type_pt=$1; $$.ip.kind=0x1; $$.ip.name=$2; }
-	| type '.'{ $$.type_pt=$1; $$.ip.kind=0x0; }
-;
-
 nostar_type : PRIMTYPE	{ $$=make_prim_type($1); }
 	| TYPE_ID
 	  { bool c; $$=acquire(global_id_table->type_of($1,c)).release(); }
-| '[' union_list ']'	{ $$=make_row_type(make_union_type($2)); }
+	| '[' union_list ']'	{ $$=make_row_type(make_union_type($2)); }
 	| '(' union_list ')'	{ $$=make_union_type($2); }
 	| '(' union_list_opt ARROW union_list_opt ')'
 	  { $$=make_function_type(make_union_type($2),make_union_type($4)); }
@@ -652,6 +624,94 @@ union_list : type { $$ = make_type_singleton($1); }
 types	: type ',' type
 	  { $$=make_type_list(make_type_singleton($1),$3); }
 	| types ',' type { $$=make_type_list($1,$3); }
+;
+
+type_equations : type_equation
+	| type_equations ',' type_equation { $$=append_typedef_node($1,$3); }
+;
+
+type_equation: TYPE_ID '=' typedef_type
+	  { $$=make_typedef_singleton($1,$3.type_pt,$3.ip); }
+	| '.' '=' typedef_type
+	  { $$=make_typedef_singleton(-1,$3.type_pt,$3.ip); }
+;
+
+typedef_type :
+	  '[' typedef_list ']'
+	  { $$.type_pt=make_row_type(make_union_type($2)); $$.ip.kind=0x0; }
+	| '(' typedef_composite ')'
+	  { $$.type_pt=make_union_type($2); $$.ip.kind=0x0; }
+	| '(' typedef_list_opt ARROW typedef_list_opt ')'
+	  { $$.type_pt=
+	      make_function_type(make_union_type($2),make_union_type($4));
+	    $$.ip.kind=0x0;
+	  }
+	| '(' typedef_struct_specs ')'
+	  { $$.type_pt=make_tuple_type($2.typel);
+	    $$.ip.kind=0x2; $$.ip.sublist=reverse_patlist($2.patl);
+	  }
+	| '(' typedef_union_specs ')'
+	  { $$.type_pt=make_union_type($2.typel);
+	    $$.ip.kind=0x2; $$.ip.sublist=reverse_patlist($2.patl);
+	  }
+	| PRIMTYPE // though not very useful, allow a single PRIMITIVE type
+	  { $$.type_pt=make_prim_type($1); $$.ip.kind=0x0; }
+;
+
+typedef_list_opt :   { $$=make_type_singleton(make_tuple_type(nullptr)); }
+	| typedef_list
+;
+typedef_list :
+	  typedef_unit { $$ = make_type_singleton($1); }
+	| typedef_composite
+;
+typedef_composite: typedef_units // tuple type with at least 2 components
+	  { $$ = make_type_singleton(make_tuple_type($1)); }
+	| typedef_list_opt '|'
+	  { $$ = make_type_list ($1, make_tuple_type(nullptr)); }
+	| typedef_list_opt '|' typedef_unit { $$ = make_type_list($1,$3); }
+	| typedef_list_opt '|' typedef_units
+	  { $$ = make_type_list($1,make_tuple_type($3)); }
+;
+
+typedef_units :
+	  typedef_unit ',' typedef_unit
+	  { $$=make_type_list(make_type_singleton($1),$3); }
+	| typedef_units ',' typedef_unit { $$=make_type_list($1,$3); }
+;
+
+typedef_unit : TYPE_ID { $$=new type_expr($1); }
+	| typedef_type {$$=$1.type_pt;}
+	| '(' typedef_unit ')' { $$=$2; }
+;
+
+typedef_struct_specs: typedef_type_field ',' typedef_type_field
+	  { auto head_typel=make_type_singleton($1.type_pt);
+	    auto head_pat =make_pattern_node(nullptr,$1.ip);
+	    $$.typel=make_type_list(head_typel,$3.type_pt);
+	    $$.patl=make_pattern_node(head_pat,$3.ip);
+	  }
+	| typedef_struct_specs ',' typedef_type_field
+	  { $$.typel=make_type_list($1.typel,$3.type_pt);
+	    $$.patl=make_pattern_node($1.patl,$3.ip);
+	  }
+;
+
+typedef_union_specs: typedef_type_field '|' typedef_type_field
+	  { auto head_typel=make_type_singleton($1.type_pt);
+	    auto head_pat =make_pattern_node(nullptr,$1.ip);
+	    $$.typel=make_type_list(head_typel,$3.type_pt);
+	    $$.patl=make_pattern_node(head_pat,$3.ip);
+	  }
+	| typedef_union_specs '|' typedef_type_field
+	  { $$.typel=make_type_list($1.typel,$3.type_pt);
+	    $$.patl=make_pattern_node($1.patl,$3.ip);
+	  }
+;
+
+typedef_type_field : typedef_unit TYPE_ID
+	  { $$.type_pt=$1; $$.ip.kind=0x1; $$.ip.name=$2; }
+	| typedef_unit '.'{ $$.type_pt=$1; $$.ip.kind=0x0; }
 ;
 
 

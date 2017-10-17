@@ -3,6 +3,16 @@
 <parameters.at { for parameter(x,y,gamma), square, square_is_central }
 <Weylgroup.at  { for make_dominant_using_roots }
 
+set_type
+[ x_rep = (ratvec v, mat theta)
+, ExtParam =
+  ( InnerClass ic, mat delta
+  , ratvec gamma, vec lambda_rho, mat theta
+  , ratvec g, vec l, mat omega
+  , vec tau, vec t
+  )
+]
+
 { canonical_g(x) returns a dominant regular element g such that e(g)=x^2
   This only depends on the real_form(x), in fact only on its square class
   the implementation depends on base_grading_vector(G) being dominant.
@@ -68,38 +78,32 @@ set is_fixed (mat delta, KGBElt x) = bool: x=twist(delta,x)
 set is_fixed (mat delta, KGBElt x, KGBElt y) = bool:
   is_fixed(delta,x) and is_fixed(^delta,y)
 
-{ Stuff related to KGB }
-{ x_rep:(v,theta) represents KGB element x is by xi=e(v)\sigma_w\xi_0
-  where e(v)=exp(2i\pi v) for v in X_*\otimes Q, and \theta = w\circ\theta_0
-  in atlas: torus_factor(x)=2*v-rho_check(G) (NB: v is multiplied by 2)
-  Jeff prefers to work with the "actual torus factor" v
-}
 
-: x_rep = (ratvec,mat) { represent x component by v (as above) and theta }
+{ Stuff related to KGB }
+{ |x_rep = (ratvec v, mat theta)| is used to represent a KGB element $x$ by
+  $\xi=exp_1(v)\sigma_w\xi_0$ where $\exp_1: v\mapsto\exp(2i\pi v)$ maps
+  $X_*\otimes\Q$ to the torus, and $\theta = w\circ\delta_0$ is involution.
+  Relation to atlas built-in: |torus_factor(x)=2*v-rho_check(G)|
+  Jeff prefers to work with the (shifted, halved) "actual torus factor" |v|
+  also called "unnormalized torus factor" in parameters.at
+}
 
 { in_A@x_rep: test if e(v) is in A:=(H^{-theta})^0 (validity test)
   concretely: whether rational vector (1+theta)v lies in lattice (1+theta)X_*
 }
 set in_A (x_rep(v,theta)) = bool: let M=1+theta in in_lattice(M,M*v)
 
-{ e(v_1)theta_1 is H-conjugate to e(v_2)theta_2
-  implicit: e(v_i)theta_i=e(v_i)sigma_i*xi_0 (i=1,2) in same extended group
-  for G
-  test: theta_1=theta_2, e(v_1-v_2) is in A=(H^{\theta_1})^0
+{ $H$-conjugation of elements determined by |x_rep| values
+  implicit: $\exp_1(v_i)\theta_i=\exp_1(v_i)\sigma_i*\xi_0$ (for $i=1,2$)
+  in same extended group for $G$
+  test: $\theta_1=\theta_2$, and $\exp_1(v_1-v_2)\in A=(H^{\theta_1})^0$
 }
-set is_equivalent (x_rep(v_1,theta_1),x_rep(v_2,theta_2)) = bool:
-  theta_1=theta_2 and in_A(v_1-v_2,theta_1)
+set is_equivalent (x_rep r1, x_rep r2) = bool:
+  r1.theta=r2.theta and in_A(r1.v-r2.v,r1.theta)
 
 set square_is_central (InnerClass ic,x_rep(v,theta)) = bool:
   square_is_central(ic,theta,v) { use the function defined in parameters.at }
 
-
-: ExtParam =
-  ( InnerClass ic, mat delta
-  , ratvec gamma, vec lambda_rho, mat theta
-  , ratvec g, vec l, mat omega
-  , vec tau, vec t
-  )
 
 set root_datum (ExtParam E) = RootDatum: root_datum(E.ic)
 set rho        (ExtParam E) = ratvec: rho(E.root_datum)

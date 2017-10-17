@@ -1,3 +1,8 @@
+set_type { union types for versions of |solve|, cannot share |void| tag }
+[ maybe_a_vec =    (void no_solution | vec solution)
+, maybe_a_ratvec = (void no_rational_solution | ratvec solution )
+]
+
 set !minus_1 = -1 { using this constant avoids evaluating unary minus }
 
 set # (int n)= [int]: for i:n do i od       { [0,1,...,n-1] }
@@ -430,8 +435,6 @@ set lookup_row (vec v,mat m) = int: last(^m,(vec w)bool: w=v)
 { sum of columns of a matrix; this is so neat, avoid calling it sum_columns }
 set sum (mat m)= vec: m*ones(n_columns(m))
 
-: maybe_a_vec = (void no_solution | vec solution) { union type for solve }
-
 { solve(mat A,vec b): find a solution vec x of A*x=b, or indicate none exists
   method:
   - write A*C = M using echelon, with C an invertible matrix and, M echelon
@@ -514,10 +517,6 @@ set drop_upper (int k,ratvec v)= ratvec: v[:k~]
 { dominance conditions }
 set <= (ratvec v) = bool: <=numer(v)
 set <  (ratvec v) = bool: < numer(v)
-
-: maybe_a_ratvec =  { another union type for solve }
-   ( void no_rational_solution | ratvec solution )
-
 
 { solve(mat A,ratvec b): find a solution ratvec x of A*x=b, or indicate that
   none exists. Solution as in vec case, but exact division requirement is OK.

@@ -5,15 +5,12 @@
 <nonintegral.at { for ext_cross }
 <polynomial.at { for polynomial arithmetic }
 
+set_type KGB_pair = (KGBElt x, KGBElt_gen y)
 { Parameters and extended parameters are parametrized by pairs (x,y)
   x is a KGB element and y is a *generalized* KGB element, y^2 not necessarily
   central. See end of synthetic.at for KGBElt_gen
 }
-: KGB_pair = (KGBElt, KGBElt_gen)
 
-{ given a list_of_pairs [(x_1,y_1),(x_2,y_2)...] we need to do lookups and
-  simple list manipulation
-}
 
 { equality of pairs of KGB elements }
 set = (KGB_pair(x,y), KGB_pair(z,w) ) = bool: x=z and y=w

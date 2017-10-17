@@ -1,11 +1,11 @@
 <complex_nilpotent_orbits.at
 
-set simple_roots_from_coweight(RootDatum rd, ratvec v)=##for alpha@i in simple_roots(rd) do 
+set simple_roots_from_coweight(RootDatum rd, ratvec v)=##for alpha@i in simple_roots(rd) do
 if alpha*v=0 then [i] else [] fi od
 
 set simple_roots_from_coweights(RootDatum rd,[ratvec] list)=for v in list do simple_roots_from_coweight(rd,v) od
 
-{coweights is a list of coweights H, each of which defines a parabolic with simple roots 
+{coweights is a list of coweights H, each of which defines a parabolic with simple roots
 alpha such that alpha*H=0
 }
 

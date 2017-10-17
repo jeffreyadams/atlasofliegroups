@@ -3,6 +3,14 @@
 <parameters.at  { for parity }
 <lattice.at     { for in_lattice }
 
+set_type
+  KGBElt_gen = (InnerClass inner_class, mat involution, ratvec torus_factor)
+  { generalized KGB elements: x^2 not necessarily central }
+
+{ KGBElt_gen:(ic,theta,v) represents $\exp_1(i\pi v)\sigma_w\xi_0$
+  Recall (see extended_misc.at and parameters.at)
+  $\xi=\exp_{-1}(torus_factor)exp(i\pi rho^\vee)\sigma_w\xi_0
+}
 
 set grading_coweight (KGBElt x) = ratvec: torus_factor(x) + rho_check_i(x)
 
@@ -134,19 +142,9 @@ end
 set is_conjugate (ratvec v,ratvec w,mat theta) = bool:
   let t1=1+theta in in_lattice(t1,t1*(v-w))
 
-{  generalized KGB elements: x^2 not necessarily central }
 
-{ KGBElt_gen:(ic,theta,v) represents exp(i\pi v)\sigma_w\xi_0
-  Recall (see parameters.at)
-  xi=exp(\pi i*torus_factor)exp(i\pi rho^\vee)\sigma_w\xi_0
-}
-
-: KGBElt_gen = (InnerClass,mat,ratvec)
-
-set inner_class    (KGBElt_gen(ic,,))    = InnerClass: ic
-set involution     (KGBElt_gen(,theta,)) = mat: theta
-set torus_factor   (KGBElt_gen(,,t))     = ratvec: t
-set unnormalized_torus_factor (KGBElt_gen(ic,,t)) = ratvec: (t+rho_check(ic))/2
+set unnormalized_torus_factor (KGBElt_gen x) = ratvec:
+  (x.torus_factor+rho_check(x.inner_class))/2
 
 { Note: square_is_central(KGB_elt y) gives the correct answer
   =square_is_central(inner_class(y),involution(y), torus_factor(y))

@@ -17,7 +17,8 @@ $(atlas_dir)/parser.tab.o: \
  $(atlas_dir)/parsetree.h \
  $(atlas_dir)/parse_types.h \
  $(atlas_dir)/parser.tab.h \
- $(atlas_dir)/axis-types.h
+ $(atlas_dir)/axis-types.h \
+ $(atlas_dir)/global.h
 
 $(atlas_dir)/buffer.o: $(atlas_dir)/buffer.cpp
 $(atlas_dir)/buffer.o $(atlas_dir)/buffer.tex: $(atlas_dir)/buffer.h

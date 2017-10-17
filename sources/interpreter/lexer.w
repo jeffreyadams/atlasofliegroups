@@ -88,7 +88,7 @@ here, but we do not know if or how this could be arranged).
 
 @< Class declarations @>=
 class Lexical_analyser
-{ enum states @+ { initial, normal, ended };
+{ enum states @+ { initial, normal, type_defining, ended };
 @)BufferedInput& input;
   Hash_table& id_table;
   id_type keyword_limit; // first non-keyword identifier
@@ -364,9 +364,11 @@ The implementation of this two-token termination reporting is by setting
 |state=ended| when the token |'\n'| is returned, and testing this condition as
 the first action in |get_token|, sending the following null token if it holds.
 The |state| variable is also used to allow the scanner to behave differently
-while scanning the very first token of a command, when |state==initial| will
-hold; once a token is scanned, |state| is set to |normal| unless scanning had
-set it to |ended|.
+while scanning the very first token of a command, and in the course of type
+definitions. Before the first token of a command is scanned |state==initial|
+will hold; once a token is scanned, state |state| is set to |normal| or
+possibly to |type_defining| when a |SET_TYPE| token is scanned, and scanning a
+command-terminating newline will set |state=ended|.
 
 Besides returning a token code, each token defines a value for
 |prevent_termination|. Since the previous value is only used in |skip_space|,
@@ -394,7 +396,7 @@ int Lexical_analyser::get_token(YYSTYPE *valp, YYLTYPE* locp)
     @< Scan a token starting with a non alpha-numeric character @>
   input.locate(input.point(),locp->last_line,locp->last_column);
 @/if (state==initial)
-   state=normal;
+    state=normal;
   return code;
 }
 
@@ -403,20 +405,26 @@ type name. In any case we start with looking it up in the |id_table|, and then
 the numeric value of the code returned, which is determined by the order in
 which names were first entered into |id_table|, will allow us to discriminate
 the possibilities. All keywords get distinct code numbers, determined by their
-offset from the first keyword; this implies that we cannot handle multiple
-distinct keywords that scan as the same category because of a similar
-syntactic role. However type names for primitive types all get the same
-category |TYPE|, with the actual name stored in the token value
-|valp->type_code|. While user defined type names (abbreviations) are
-equivalent to primitive ones at the syntactic level, we give them a different
-category |TYPE_ID|, because the nature of the associated token value is
-different: the identifier code is stored, and finding the designated type
-will require looking it up in |global_id_table|. Distinguishing type
-identifiers from other identifiers at lexical analysis is also uses
-|global_id_table|: type identifiers are known in that table, but have a null
-pointer as value (unlike global identifiers that have been declared without
-initial value: there the associated values is a shared pointer to an empty
-slot (holding a null pointer) instead.
+offset from the first keyword; this implies that we cannot handle distinct but
+synonymous keywords (in other words that scan as the same token), but there
+does not seem to be any demand for that anyway. However type names for
+primitive types all get the same category |TYPE|, with the actual name stored
+in the token value |valp->type_code|.
+
+While user defined type names (abbreviations) are equivalent to primitive ones
+at the syntactic level, we give them a different category |TYPE_ID|, because
+the nature of the associated token value is different: the identifier code is
+stored, and finding the designated type will require looking it up in
+|global_id_table|. Distinguishing type identifiers from other identifiers
+during lexical analysis also uses |global_id_table|: the method
+|is_defined_type| can determine from the stored value whether this is a type
+identifier. However between |SET_TYPE| and the end of that command, all
+identifiers are given code |TYPE_ID|, so that (mutually) recursive types can
+be used in type expressions, even before their actual definition has been
+seen. (The syntax needs to account for the fact that any identifiers in a type
+definition, including injector or projector names, will be scanned as
+|TYPE_ID|.)
+
 
 @h "global.h" // need to inspect |global_id_table|
 
@@ -429,13 +437,13 @@ slot (holding a null pointer) instead.
   id_type id_code=id_table.match(p,input.point()-p);
   if (id_code>=type_limit)
   { valp->id_code=id_code;
-    if (global_id_table->is_defined_type(id_code))
+    if (global_id_table->is_defined_type(id_code) or state==type_defining)
       code=TYPE_ID;
     else
       code=IDENT;
   }
   else if (id_code>=keyword_limit)
-  {@; valp->type_code=id_code-keyword_limit; code=PRIMTYPE; }
+  @/{@; valp->type_code=id_code-keyword_limit; code=PRIMTYPE; }
   else // we have |id_code<keyword_limit|, so it is a keyword
   { code=QUIT+id_code;
     switch(code)
@@ -457,6 +465,8 @@ slot (holding a null pointer) instead.
         --nesting; input.pop_prompt(); break;
       case AND: case OR: case NOT: prevent_termination='~'; break;
       case WHATTYPE: prevent_termination='W'; break;
+      case SET: prevent_termination='S'; break;
+      case SET_TYPE: prevent_termination='T'; state=type_defining; break;
     }
   }
 }

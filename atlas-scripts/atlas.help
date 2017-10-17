@@ -892,59 +892,133 @@ already used this fact in the examples above.
 * Type definitions
 
 While most definitions serve to associate values to identifiers or operator
-symbols, there is another kind of definition whose main purpose is to make an
-identifier into an abbreviation for a (probably composite) type. These
+symbols, there is another kind of definition whose main purpose is to make one
+or more identifiers into an abbreviation for a (probably composite) type. These
 definitions are called type definitions. They are marked by an initial ':', so
 
-  : int_fun = (int->int)
+  atlas> set_type int_fun = (int->int)
 
 would define 'int_fun' as an abbreviation for the type (int->int) of functions
 mapping integers to integers. When the defined type is a tuple or a union,
 there is in addition the possibility to attach tags to each of their
 components. For instance
 
-  : Gaussian_int = (int re, int im)
+  atlas> set_type Gaussian_int = (int re, int im)
 
 defines 'Gaussian_int' to abbreviate '(int,int)' but also defines 're' and
 'im' to be tags associated with the first and second components of this tuple.
 This means on one hand that 're' and 'im' will be functions that map values of
 type '(int,int)' to their first respectively second component, and are entered
-as such into the overload table; they are called the projectors, or projection
-functions, for this tuple type. Such functions could have been defined
-explicitly by the user as
+as such into the overload table; on the other hand these field names can be used
+to selectively modify only part of a tuple of this type. The functions are
+called the projectors, or projection functions, for this tuple type. Such
+functions could have been defined explicitly by the user as
 
-  set re (int a, int b) = int: a,    im (int a, int b) = int: b
+  atlas> set re (int a, int b) = int: a,    im (int a, int b) = int: b
 
 and behave as such when used in a function call (usually such calls will be
 written z.re and z.im for z of type (int,int), reflecting the traditional
-field selection syntax for structured values). However projector functions can
-also be used in a way that functions defined by a user cannot, namely in a
-"field assignment" syntax as in 'z.re:=4', which replaces the pair z by a new
-pair that differs from its previous value only in the first component, which
-has become 4.
+field selection syntax for structured values). The other use however would not
+be available for such "manually defined" projector functions, namely in a
+"field assignment" syntax as in 'z.re:=4' when 'z' has type (int,int), in
+other words 'Gaussian_int', the effect of this assignment is to replace the pair
+z by a new pair that differs from its previous value only in the first
+component, which will have become 4.
 
 For union types tags also define functions which, dually to the tuple
 situation, map from a component type to the union type; these are called
-injectors or injection functions. Contrary to the tuple case, there is no
-alternative way that a user could directly define injection functions, so
-having a type definition for a union type is inevitable before one can do
-anything useful with the type. There is no special form of assignment dealing
-with tags denoting injectors, but they do have a second use in discrimination
-expressions that can be used to inspect values of the union type, and which
-will be discussed below in the description of such expressions.
+injectors or injection functions. For instance, basic.at contains a line
+
+  set_type maybe_a_vec = (void no_solution | vec solution)
+
+that defines 'maybe_a_vec' to stand for the type (void|vec}, and also defines
+'no_solution' and 'solution' to be functions of types (void->(void|vec))
+respectively (vec->(void|vec)) that build values of the union type under one of
+its variants. Contrary to the tuple case, there is no alternative way that a
+user could directly define injection functions, so having a type definition for
+a union type is inevitable before one can do anything useful with the type.
+The names denoting the injector functions also serve as tag to identify the
+variants of the union type when used in "discrimination expressions", as will be
+discussed in the description of such expressions in section 8 below.
 
 While an identifier is defined as an abbreviation for a type, its syntactic
 role is changed, which makes it impossible to use the identifier for another
 purpose, even in local definitions. However it is possible to forget the type
 definition altogether, as in
 
-  forget Gaussian_int
+  atlas> forget Gaussian_int
 
 This also removes from the overload tables any projectors or injectors
 introduced with the original type definition (but as with with all instances
 where the global variable or overload tables are changed, any functions that
-used the identifiers while they were defined will continue to function using
+used the identifiers while they were defined will continue to function, using
 the meaning the identifier had at the point of definition of those functions).
+
+The definition of a defined type name with name T can be viewed by typing
+
+  atlas> whattype T
+
+which in the cases where T is 'Gaussian_int' or 'maybe_a_vec' above will write
+
+  Defined type: ( int re , int im )
+
+respectively
+
+  Defined type: ( void no_solution | vec solution )
+
+The 'set_type' command can introduce multiple types at once, and the definitions
+can be (mutually) recursive. For instance one can define a type for a search
+tree of integers by the recursive definitions
+
+  atlas> set_type tree = (void leaf | tree_node node ),
+                  tree_node = (tree left , int key, tree right )
+
+which replies
+
+  Type name 'tree' defined as (void|tree_node)
+    with injectors: leaf, node.
+  Type name 'tree_node' defined as (tree,int,tree)
+    with projectors: left, key, right.
+
+As indicated this defines two mutually recursive types, with two injectors
+respectively three projectors. In case of recursive types, a 'set_type' command
+is indispensable to work with them, since they stand for infinite (but
+repetitive) type expressions. With the above definition one can build a tree:
+
+  atlas>
+    ((().leaf,1,().leaf).node,2,((().leaf,3,().leaf).node,5,().leaf).node).node
+
+which prints as exactly the same expression; asking for its type gives
+
+  atlas> whattype $
+  Type: (void|tree_node)
+
+which is just the same type as 'tree':
+
+  atlas> whattype tree
+  Defined type: ( void leaf | tree_node node )
+  atlas> whattype node ?
+  tree_node->(void|tree_node)
+
+It is allowed to enclose everything after 'set_type' until the end of the
+command in square brackets, as in 'set_type [ tree = ... , node = ...]'; this
+does not alter the meaning in any way, but just makes it more clear that the
+command has multiple clauses (and avoids prematurely considering it complete).
+
+The language allows declaring recursive types that are not useful. For instance
+after 'set_type L=(int,L)' it is impossible to form any values of type L, which
+would in effect be infinitely large (and unlike lazy languages, axis cannot
+handle such values); the user is however not informed of this impossibility.
+
+There is only one restriction to type definitions, in order to rule out
+completely circular definitions like 'set_type X=Y, Y=X': none of the right hand
+sides can be just a single type identifier. Right hand sides are allowed to be
+primitive types like 'int' or 'KGBElt', in which the definition just introduces
+a synonym for the type. In general a defined type name is not any form of an
+abstraction: it is just another name for the type it is defined to stand for,
+even if sometimes these names will be used on output (and this is essential to
+ensure that recursive types print in a terminating way). Also field names are
+just provided for convenience, but are not part of the defined type.
 
 7 Defining functions and operators
 

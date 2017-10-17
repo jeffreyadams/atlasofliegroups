@@ -1,4 +1,4 @@
-<complex_nilpotent_orbits.at
+<nilpotent_orbit_partitions.at { for |get_type@RootDatum| }
 
 {lists of 1/2 h(O^\vee) for exceptional groups}
 
@@ -183,8 +183,8 @@ set nilpotent_lambdas_E(int n)= [ratvec]:
   fi
 
 set nilpotent_lambdas(RootDatum rd)=
-   let N=get_type(rd) {A..G -> 0..6} in 
-    if N<=3 then nilpotent_lambdas_classical(rd) 
-    elif N=4 then nilpotent_lambdas_E(rank(rd)) 
-    elif N=5 then nilpotent_lambdas_F4 
+   let N=get_type(rd) {A..G -> 0..6} in
+    if N<=3 then nilpotent_lambdas_classical(rd)
+    elif N=4 then nilpotent_lambdas_E(rank(rd))
+    elif N=5 then nilpotent_lambdas_F4
     else nilpotent_lambdas_G2  fi
