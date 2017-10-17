@@ -77,10 +77,11 @@ ________________________
 
 <misc.at { for |simple_imaginary_subsystem| }
 <parabolics.at
-<kl.at { for character_formula }
+<kl.at { for |character_formula| }
 <coherent.at
-<synthetic.at {for unnormalized_torus_factor}
+<synthetic.at { for |unnormalized_torus_factor| }
 <K.at
+<W_K.at { for |find_W_cross| }
 <finite_dimensional.at
 
 set ind_verbose=false
