@@ -95,17 +95,16 @@ set nilpotent_orbit_partitions(RealForm G)   = [vec]:
 
 { test if partition is valid orbit in type ABCD }
 set is_valid (string type,vec P) = bool:
-   if type="A" then true
-   elif type="B" or type="D"
-   then is_odd(sum(P)) and { all even parts have even multiplicity: }
-        all(for mi@i in partition_multiplicities(P)
-            do is_odd(i) {don't care} or is_even(mi) od)
-   elif type="C"
-   then is_even(sum(P)) and { all odd parts have even multiplicity: }
-        all(for mi@i in partition_multiplicities(P)
-            do is_even(i) {don't care} or is_even(mi) od)
-   else false
-   fi
+   let n = ascii(type)-ascii("A") in n<4 { only classical types } and
+   case n
+   in { type A } true
+   , { type B } sum(P).is_odd and
+     all(for mi@i in partition_multiplicities(P) do i.is_odd or mi.is_even od)
+   , { type C } sum(P).is_even and
+     all(for mi@i in partition_multiplicities(P) do i.is_even or mi.is_even od)
+   , { type D } sum(P).is_even and
+     all(for mi@i in partition_multiplicities(P) do i.is_odd or mi.is_even od)
+   esac
 
 set is_valid(LieType t,vec P)=bool:is_valid(["A","B","C","D"][get_type(t)],P)
 
