@@ -62,20 +62,20 @@ basis |b|, and in |d_coroots| the list of simple coroots expressed in the
 dual basis.
 */
 PreRootDatum::PreRootDatum(const LieType& lt)
-  : d_roots(lt.semisimple_rank()), d_coroots(d_roots.size())
-  , d_rank(lt.rank())
+  : simple_roots(lt.rank(),lt.semisimple_rank())
+  , simple_coroots(simple_roots.numRows(),simple_roots.numColumns(),0)
 {
-  weyl::Generator s=0; unsigned int r=0; // |r| indexes rows of |Cartan|
-  for (unsigned int k=0; k<lt.size(); ++k)
+  weyl::Generator s=0; // tracks (co)roots, goes up to semisimple rank
+  unsigned int r=0; // |r| indexes rows of |Cartan|, goes up to rank
+  for (unsigned int k=0; k<lt.size(); ++k) // run over "simple" factors
     if (lt[k].type()=='T') // only do non-torus factors;
-      r+=lt[k].rank();  // skip row(s), keep |s| unchanged
+      r+=lt[k].rank();  // skip empty row(s) of Cartan matrix, keep |s|
     else
       for (unsigned int i=lt[k].rank(); i-->0; ++r,++s) // here |s| increases
       { // set simple roots and coroots as for simply connected root datum
-	d_roots[s].resize(lt.rank()); d_coroots[s].resize(lt.rank(),0);
 	for (unsigned int j=0; j<lt.rank(); ++j)
-	  d_roots[s][j] = lt.Cartan_entry(r,j);
-	d_coroots[s][r] = 1;
+	  simple_roots(j,s) = lt.Cartan_entry(r,j); // Cartan row to column
+	simple_coroots(r,s) = 1; // coroot |s| is canonical basis vector |r|
       }
 }
 
@@ -84,11 +84,12 @@ PreRootDatum::PreRootDatum(const LieType& lt)
 
 int_Matrix PreRootDatum::Cartan_matrix() const
 {
-  int_Matrix Cartan(d_roots.size(),d_coroots.size());
+  const auto s = semisimple_rank();
+  int_Matrix Cartan(s,s);
 
-  for (weyl::Generator i = 0; i < d_roots.size(); ++i)
-    for (weyl::Generator j = 0; j < d_coroots.size(); ++j)
-      Cartan(i,j) = d_roots[i].dot(d_coroots[j]);
+  for (weyl::Generator i = 0; i<s; ++i)
+    for (weyl::Generator j = 0; j<s; ++j)
+      Cartan(i,j) = simple_root(i).dot(simple_coroot(j));
 
   return Cartan;
 }
@@ -96,8 +97,9 @@ int_Matrix PreRootDatum::Cartan_matrix() const
 // replace by root datum for a finite central quotient with weight |sublattice|
 PreRootDatum& PreRootDatum::quotient(const LatticeMatrix& sublattice)
 {
-  if (sublattice.numRows()!=d_rank or sublattice.numColumns()!=d_rank)
-    throw std::runtime_error("Sub-lattice matrix not square of right size");
+  const auto r=rank();
+  if (sublattice.numRows()!=r or sublattice.numColumns()!=r)
+    throw std::runtime_error("Sub-lattice matrix not square of the right size");
 
   arithmetic::big_int d;
   LatticeMatrix inv=inverse(sublattice,d);
@@ -105,16 +107,19 @@ PreRootDatum& PreRootDatum::quotient(const LatticeMatrix& sublattice)
   if (d.is_zero())
     throw std::runtime_error("Dependent lattice generators");
 
-  try {
-    for (unsigned int j=0; j<d_roots.size(); ++j)
+  const auto den = d.int_val(); // denominator; if this throws we're out of luck
+
+  try
+  {
+    for (unsigned int j=0; j<semisimple_rank(); ++j)
     {
-      inv.apply_to(d_roots[j]); d_roots[j]/=d.int_val();
-      sublattice.right_mult(d_coroots[j]);
+      simple_roots.set_column(j,inv*simple_root(j)/den);
+      simple_coroots.set_column(j,sublattice.right_prod(simple_coroot(j)));
     }
     return *this;
   }
-  catch (std::runtime_error& e) {
-    // relabel |std::runtime_error("Inexact integer division")| from division
+  catch (std::runtime_error& e)
+  { // relabel |std::runtime_error("Inexact integer division")| from division
     throw std::runtime_error("Sub-lattice does not contain the root lattice");
   }
 }
@@ -122,7 +127,9 @@ PreRootDatum& PreRootDatum::quotient(const LatticeMatrix& sublattice)
 template<typename C>
 void PreRootDatum::simple_reflect(weyl::Generator s,matrix::Vector<C>& v)
   const
-{ v.subtract(d_roots[s].begin(),d_coroots[s].dot(v)); }
+{ const auto alpha = simple_root(s); // temporarily store this simple root
+  v.subtract(alpha.begin(),simple_coroot(s).dot(v));
+}
 
 void PreRootDatum::simple_reflect(weyl::Generator s, LatticeMatrix& M) const
 {
@@ -131,9 +138,9 @@ void PreRootDatum::simple_reflect(weyl::Generator s, LatticeMatrix& M) const
   {
     int c=0;
     for (unsigned int i=0; i<rank(); ++i)
-      c+= d_coroots[s][i]*M(i,j);
+      c+= simple_coroots(i,s)*M(i,j);
     for (unsigned int i=0; i<rank(); ++i)
-      M(i,j) -= d_roots[s][i]*c;
+      M(i,j) -= simple_roots(i,s)*c;
   }
 }
 
@@ -144,9 +151,9 @@ void PreRootDatum::simple_reflect(LatticeMatrix& M,weyl::Generator s) const
   {
     int c=0;
     for (unsigned int j=0; j<rank(); ++j)
-      c+= M(i,j)*d_roots[s][j];
+      c+= M(i,j)*simple_roots(j,s);
     for (unsigned int j=0; j<rank(); ++j)
-      M(i,j) -= c*d_coroots[s][j];
+      M(i,j) -= c*simple_coroots(j,s);
   }
 }
 

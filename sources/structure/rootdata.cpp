@@ -646,8 +646,8 @@ RootDatum::RootDatum(const PreRootDatum& prd)
   , Cartan_denom()
   , d_status()
 {
-  int_Matrix root_mat(prd.simple_roots(),d_rank);
-  int_Matrix coroot_mat(prd.simple_coroots(),d_rank);
+  const int_Matrix& root_mat = prd.simple_roots_mat();
+  const int_Matrix& coroot_mat = prd.simple_coroots_mat();
   for (RootNbr alpha=numPosRoots(); alpha<numRoots(); ++alpha)
   {
     d_roots[alpha]= root_mat*root_expr(alpha);
@@ -671,8 +671,8 @@ RootDatum::RootDatum(const PreRootDatum& prd)
   // get basis of co-radical character lattice, if any (or leave empty list)
   if (semisimpleRank()<d_rank)
   {
-    d_coradicalBasis = lattice::perp(prd.simple_coroots(),d_rank);
-    d_radicalBasis   = lattice::perp(prd.simple_roots(),d_rank);
+    d_coradicalBasis = lattice::perp(prd.simple_coroots_mat());
+    d_radicalBasis   = lattice::perp(prd.simple_roots_mat());
   }
 
   // fill in the status

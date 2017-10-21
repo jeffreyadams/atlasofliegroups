@@ -84,7 +84,7 @@ struct SimpleLieType : public std::pair<TypeLetter,size_t>
   size_t& rank() { return base::second; }
   size_t semisimple_rank() const { return type()=='T' ? 0 : rank(); }
   int Cartan_entry(size_t i,size_t j) const;
-  int_Matrix Cartan_matrix() const;
+  int_Matrix Cartan_matrix() const; // square of size rank; null for type $T_n$
   int_Matrix transpose_Cartan_matrix() const;
 };
 
@@ -97,7 +97,7 @@ struct LieType : public std::vector<SimpleLieType>
   size_t rank() const;
   size_t semisimple_rank() const;
   int Cartan_entry(size_t i,size_t j) const;
-  int_Matrix Cartan_matrix() const;
+  int_Matrix Cartan_matrix() const; // square of sise |rank()| (maybe zero rows)
   int_Matrix transpose_Cartan_matrix() const;
   int_VectorList Smith_basis(CoeffList& invf) const;
 };

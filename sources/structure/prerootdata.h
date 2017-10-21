@@ -1,14 +1,4 @@
 /*
-  Constructing a root datum from user interaction
-
-  The idea is to construct an abstract root datum (a lattice and a
-  subset of "roots," together with the dual lattice and a subset of
-  "coroots") specified interactively as a product of simple Lie types,
-  then dividing by a specified subgroup of the center of a simply
-  connected form.
-*/
-
-/*
   This is prerootdata.h
 
   Copyright (C) 2004,2005 Fokko du Cloux
@@ -18,11 +8,22 @@
   For license information see the LICENSE file
 */
 
+/*
+  A class holding the information necessary for constructin a root datum.
+
+  The idea is to construct an abstract root datum (a lattice and a
+  subset of "roots," together with the dual lattice and a subset of
+  "coroots"). The class provides a manipulator method to later reduce to a
+  sublattice of the original weight lattice ($X^*$), which corresponds to
+  dividing by a specified subgroup of the center.
+*/
+
+
 #ifndef PREROOTDATA_H  /* guard against multiple inclusions */
 #define PREROOTDATA_H
 
 #include "../Atlas.h"
-#include <stdexcept>
+#include "matrix.h"
 
 namespace atlas {
 
@@ -47,20 +48,7 @@ namespace prerootdata {
   */
 class PreRootDatum
 {
-  /*!
-  \brief List of the simple roots as elements of Z^d_rank, expressed in the
-  basis specified by the argument b of the constructor.
-  */
-  WeightList d_roots;
-  /*!
-  List of the simple coroots as elements of Z^d_rank, expressed in the
-  dual of the basis specified by the argument b of the constructor.
-  */
-  CoweightList d_coroots;
-  /*!
-  \brief  Rank of the root datum.
-   */
-  size_t d_rank;
+  int_Matrix simple_roots, simple_coroots; // both of same size
 
  public:
 
@@ -68,27 +56,28 @@ class PreRootDatum
   PreRootDatum(const WeightList& roots,
                const CoweightList& coroots,
 	       size_t rank)
-    : d_roots(roots),d_coroots(coroots), d_rank(rank) {}
+    : simple_roots(roots.begin(),roots.end(),rank,tags::IteratorTag())
+    , simple_coroots(coroots.begin(),coroots.end(),rank,tags::IteratorTag())
+    {}
 
   PreRootDatum(const LieType& lt);
 
-  ~PreRootDatum() {}
-
 // accessors
-  bool operator== (const PreRootDatum& prd) const {
-    return (d_roots == prd.d_roots) and (d_coroots == prd.d_coroots) and
-       (d_rank == prd.d_rank);
+  bool operator== (const PreRootDatum& prd) const
+  { return
+      simple_roots==prd.simple_roots and simple_coroots == prd.simple_coroots;
   }
 
-  /*!
-  \brief Rank of the root datum.
-  */
-  size_t rank() const { return d_rank; }
+  size_t rank() const { return simple_roots.numRows(); }
+  size_t semisimple_rank() const { return simple_roots.numColumns(); }
 
-  // List of the simple roots, in basis that is implicit in constructor.
-  const WeightList& simple_roots() const { return d_roots; }
-  // List of the simple coroots, in basis that is implicit in constructor.
-  const CoweightList& simple_coroots() const { return d_coroots; }
+  const int_Matrix& simple_roots_mat() const { return simple_roots; }
+  const int_Matrix& simple_coroots_mat() const { return simple_coroots; }
+
+  Weight simple_root(unsigned int j) const
+    { return simple_roots.column(j); }
+  Coweight simple_coroot(unsigned int j) const
+    { return simple_coroots.column(j); }
 
   int_Matrix Cartan_matrix() const;
 

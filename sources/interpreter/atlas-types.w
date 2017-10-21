@@ -2549,7 +2549,8 @@ void synthetic_real_form_wrapper(expression_base::level l)
     TorusElement t(torus_factor->val,false);
       // take a copy as |TorusElement|, using $\exp_{-1}$
     const RootDatum& rd = G->val.rootDatum();
-    WeightList alpha(rd.beginSimpleRoot(),rd.endSimpleRoot());
+    LatticeMatrix alpha
+      (rd.beginSimpleRoot(),rd.endSimpleRoot(),rd.rank(),tags::IteratorTag());
     if (not is_central(alpha,t)) // every root should now have even evaluation
       throw runtime_error
          ("Torus factor does not define a valid strong involution");
