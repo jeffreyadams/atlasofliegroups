@@ -52,7 +52,7 @@ namespace interactive {
 
   void getInteractive(LieType&);
 
-  void getInteractive(PreRootDatum&, WeightList&, const LieType&);
+  PreRootDatum get_pre_root_datum(WeightList&, const LieType&);
   WeightInvolution
     getInnerClass(lietype::Layout& lo, const WeightList& basis);
   void getInteractive(InnerClassType&, const LieType&);

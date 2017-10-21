@@ -316,8 +316,6 @@ class CoveringIterator {
   typedef const value_type& reference;
 
 // constructors and destructors
-  CoveringIterator() {}
-
   explicit CoveringIterator(const LieType&);
   ~CoveringIterator();
 

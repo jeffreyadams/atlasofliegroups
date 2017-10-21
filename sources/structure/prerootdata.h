@@ -65,8 +65,6 @@ class PreRootDatum
  public:
 
 // constructors and destructors
-  PreRootDatum() {}
-
   PreRootDatum(const WeightList& roots,
                const CoweightList& coroots,
 	       size_t rank)

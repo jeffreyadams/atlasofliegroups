@@ -264,8 +264,9 @@ void get_group_type
   LieType lt; getInteractive(lt);  // may throw an InputError
 
   // then get kernel generators to define the (pre-) root datum
-  WeightList b; PreRootDatum prd;
-  getInteractive(prd,b,lt); // may throw an InputError
+  WeightList b;
+  PreRootDatum prd =
+    interactive::get_pre_root_datum(b,lt); // may throw an InputError
 
   // complete the Lie type with inner class specification, into a Layout |lo|
   // and also compute the involution matrix |inv| for this inner class
@@ -329,20 +330,18 @@ void getInteractive(LieType& d_lt)
 }
 
 /*
-  Replaces prd with a new PreRootDatum gotten interactively from the user.
-  The Lie type is given in lt.
+  Return a |PreRootDatum| obtained interactively from the user.
+  The Lie type is given in |lt|.
 
-  The list b is used to make a note of the base change from the original
+  The list |d_b| is used to make a note of the base change from the original
   simple weight basis associated to the standard "simply connected times torus"
-  form of lt to the actual lattice basis; this might be necessary for checking
+  form of |lt| to the actual lattice basis; this might be necessary for checking
   if certain real forms are defined for this covering.
 
-  Throws an InputError if the interaction with the user fails. In that case,
-  d_b and d_prd are not touched.
+  This function throws an |InputError| if the interaction with the user fails.
+  In that case |d_b| is not touched.
 */
-void getInteractive(PreRootDatum& d_prd,
-		    WeightList& d_b,
-		    const LieType& lt)
+PreRootDatum get_pre_root_datum(WeightList& d_b, const LieType& lt)
 {
   // get lattice basis
 
@@ -379,10 +378,9 @@ void getInteractive(PreRootDatum& d_prd,
   }
 
   // make new PreRootDatum
-  d_prd = PreRootDatum(lt);
-  d_prd.quotient(LatticeMatrix(d_b,d_b.size()));
+  return PreRootDatum(lt).quotient(LatticeMatrix(d_b,d_b.size()));
 
-} // |getInteractive(PreRootDatum&,...)|
+} // |get_pre_root_datum|
 
 
 /*
