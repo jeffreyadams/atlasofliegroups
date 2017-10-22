@@ -1050,6 +1050,14 @@ void RootDatum::swap(RootDatum& other)
   d_status.swap(other.d_status);
 }
 
+// implicit conversion
+  RootDatum::operator PreRootDatum() const
+  { WeightList simple_roots(beginSimpleRoot(),endSimpleRoot());
+    CoweightList simple_coroots(beginSimpleCoroot(),endSimpleCoroot());
+    return PreRootDatum(simple_roots,simple_coroots,rank());
+  }
+
+
 /******** private member functions ******************************************/
 
 

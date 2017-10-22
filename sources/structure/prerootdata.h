@@ -89,8 +89,9 @@ class PreRootDatum
 // manipulators
   // replace by root datum for finite central quotient with weight |sublattice|
   PreRootDatum& quotient(const LatticeMatrix& sublattice);
+  PreRootDatum& dualise() { simple_roots.swap(simple_coroots); return *this; }
 
-};
+}; // |class PreRootDatum|
 
 } // |namespace prerootdata|
 

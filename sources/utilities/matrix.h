@@ -70,6 +70,9 @@ template<typename C> PID_Matrix<C> inverse (PID_Matrix<C> A)
     return result;
   }
 
+template<typename C>
+  void swap(Matrix_base<C>&,Matrix_base<C>&);
+
 /******** type definitions ***************************************************/
 
 template <typename C> class Matrix;

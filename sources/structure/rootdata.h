@@ -650,6 +650,9 @@ class RootDatum
 
   void swap(RootDatum&);
 
+// implicit conversion
+  operator PreRootDatum() const;
+
 // private methods used during construction
  private:
 

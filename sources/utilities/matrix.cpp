@@ -734,6 +734,9 @@ template<typename C>
   return A;
 }
 
+template<typename C>
+  void swap(Matrix_base<C>& A,Matrix_base<C>& B) { A.swap(B); }
+
 
   /*
 
@@ -748,6 +751,7 @@ typedef arithmetic::big_int bigint;
 
 template std::vector<Vector<int> > standard_basis<int>(size_t n);
 template PID_Matrix<int>& operator+=(PID_Matrix<int>&,int);
+template void swap(Matrix_base<int>&,Matrix_base<int>&);
 template void row_apply(Matrix<int>&,const Matrix<int>&,size_t);
 template void column_apply(Matrix<int>&,const Matrix<int>&,size_t);
 
