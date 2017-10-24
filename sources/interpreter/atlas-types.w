@@ -1,5 +1,4 @@
-
-% Copyright (C) 2006-2015 Marc van Leeuwen
+% Copyright (C) 2006-2017 Marc van Leeuwen
 % This file is part of the Atlas of Lie Groups and Representations (the Atlas)
 
 % This program is made available under the terms stated in the GNU
@@ -1271,8 +1270,8 @@ void derived_info_wrapper(expression_base::level l)
   if (l==expression_base::no_value)
     return;
   int_Matrix projector;
-  RootDatum rd_derived(projector,rd->val,tags::DerivedTag());
-  push_value(root_datum_value::build(rd_derived));
+  PreRootDatum pre(projector,rd->val,tags::DerivedTag());
+  push_value(root_datum_value::build(std::move(pre)));
   push_value(std::make_shared<matrix_value>(projector));
   if (l==expression_base::single_value)
     wrap_tuple<2>();
@@ -1283,8 +1282,8 @@ void mod_central_torus_info_wrapper(expression_base::level l)
   if (l==expression_base::no_value)
     return;
   int_Matrix injector;
-  RootDatum rd_mod_torus(injector,rd->val,tags::AdjointTag());
-  push_value(root_datum_value::build(rd_mod_torus));
+  PreRootDatum pre(injector,rd->val,tags::CoderivedTag());
+  push_value(root_datum_value::build(std::move(pre)));
   push_value(std::make_shared<matrix_value>(injector));
   if (l==expression_base::single_value)
     wrap_tuple<2>();
@@ -1304,7 +1303,7 @@ void integrality_datum_wrapper(expression_base::level l)
 @.Length of rational vector...@>
   if (l!=expression_base::no_value)
   @/push_value(root_datum_value::build @|
-      (rootdata::integrality_datum(rd->val,lambda->val)));
+      (rootdata::integrality_predatum(rd->val,lambda->val)));
 }
 
 @ A related function computes a list of fractions of a line segment where the

@@ -63,6 +63,7 @@ RootNbrSet pos_to_neg (const RootSystem& rs, const WeylWord& w);
 // compute product of reflections in set of orthogonal roots
 WeightInvolution refl_prod(const RootNbrSet&, const RootDatum&);
 
+PreRootDatum integrality_predatum(const RootDatum& rd, const RatWeight& gamma);
 RootDatum integrality_datum(const RootDatum& rd, const RatWeight& gamma);
 RationalList integrality_points(const RootDatum& rd, const RatWeight& gamma);
 unsigned int integrality_rank(const RootDatum& rd, const RatWeight& gamma);
@@ -363,9 +364,9 @@ class RootDatum
 
   RootDatum(int_Matrix& projector, const RootDatum&, tags::DerivedTag);
 
-  RootDatum(int_Matrix& injector, const RootDatum&, tags::AdjointTag);
+  RootDatum(int_Matrix& injector, const RootDatum&, tags::CoderivedTag);
 
-  RootDatum sub_datum(const RootNbrList& generators) const; // pseudo-constructor
+  PreRootDatum sub_predatum(const RootNbrList& generators) const;
 
 // accessors
 

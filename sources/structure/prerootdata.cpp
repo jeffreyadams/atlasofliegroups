@@ -23,8 +23,10 @@
 
 #include "matrix.h"
 #include "lietype.h"
+#include "matreduc.h"
 
 namespace atlas {
+namespace prerootdata {
 
 /*****************************************************************************
 
@@ -37,29 +39,27 @@ namespace atlas {
 
 ******************************************************************************/
 
-namespace prerootdata {
-
-  // constructor
+// constructors
 
 
 /*
   Construct the PreRootDatum whose lattice has basis |b|, expressed in terms
   of the simply connected weight lattice basis for |lt|.
 
-More precisely, we build the unique rootdatum whose Cartan matrix is the
-standard (Bourbaki) Cartan matrix of the semisimple part of the type |lt|
-(i.e., the Cartan matrix of |lt| with any null rows and columns for torus
-factors removed), and such that the the vectors |b| express the basis of the
-weight lattice $X$ in terms of the fundamental weight basis (dual basis to the
-simple coroots mixed with standard basis for the torus factors) of |lt|.
+  More precisely, we build the unique rootdatum whose Cartan matrix is the
+  standard (Bourbaki) Cartan matrix of the semisimple part of the type |lt|
+  (i.e., the Cartan matrix of |lt| with any null rows and columns for torus
+  factors removed), and such that the the vectors |b| express the basis of the
+  weight lattice $X$ in terms of the fundamental weight basis (dual basis to the
+  simple coroots mixed with standard basis for the torus factors) of |lt|.
 
-This somewhat convoluted description comes from the way the lattice $X$ may be
-chosen (via user interaction) as a sublattice of the lattice for a simply
-connected group.
+  This somewhat convoluted description comes from the way the lattice $X$ may be
+  chosen (via user interaction) as a sublattice of the lattice for a simply
+  connected group.
 
-The constructor puts in |d_roots| the list of simple roots expressed in the
-basis |b|, and in |d_coroots| the list of simple coroots expressed in the
-dual basis.
+  The constructor puts in |d_roots| the list of simple roots expressed in the
+  basis |b|, and in |d_coroots| the list of simple coroots expressed in the
+  dual basis.
 */
 PreRootDatum::PreRootDatum(const LieType& lt)
   : simple_roots(lt.rank(),lt.semisimple_rank())
@@ -77,6 +77,36 @@ PreRootDatum::PreRootDatum(const LieType& lt)
 	  simple_roots(j,s) = lt.Cartan_entry(r,j); // Cartan row to column
 	simple_coroots(r,s) = 1; // coroot |s| is canonical basis vector |r|
       }
+}
+
+PreRootDatum::PreRootDatum
+  (int_Matrix& projector, const PreRootDatum& rd,tags::DerivedTag)
+  : simple_roots(), simple_coroots()
+{
+  const auto r = rd.rank();
+  const auto s = rd.semisimple_rank();
+
+  int_Vector factor;
+  int_Matrix M = matreduc::adapted_basis(rd.simple_coroots,factor).transposed();
+  projector = M.block(0,0,s,r); // first |s| rows define projection
+  simple_roots = projector*rd.simple_roots;
+  int_Matrix section = M.inverse().block(0,0,r,s);
+  simple_coroots = rd.simple_coroots*section;
+}
+
+PreRootDatum::PreRootDatum
+  (int_Matrix& injector, const PreRootDatum& rd,tags::CoderivedTag)
+  : simple_roots(), simple_coroots()
+{
+  const auto r = rd.rank();
+  const auto s = rd.semisimple_rank();
+
+  int_Vector factor;
+  int_Matrix M = matreduc::adapted_basis(rd.simple_roots,factor);
+  injector = M.block(0,0,r,s); // first |s| columns define weight back injection
+  simple_coroots = injector.transposed()*rd.simple_coroots;
+  int_Matrix cosection = M.inverse().block(0,0,s,r); // left inverse |injection|
+  simple_coroots = rd.simple_coroots*cosection.transposed();
 }
 
 
@@ -157,11 +187,8 @@ void PreRootDatum::simple_reflect(LatticeMatrix& M,weyl::Generator s) const
   }
 }
 
-} // |namespace prerootdata|
 
 // template instantiation
-
-namespace prerootdata {
 
 template void PreRootDatum::simple_reflect
   (weyl::Generator s,matrix::Vector<arithmetic::Numer_t>& v) const;

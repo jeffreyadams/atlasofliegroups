@@ -61,6 +61,8 @@ class PreRootDatum
     {}
 
   PreRootDatum(const LieType& lt);
+  PreRootDatum(int_Matrix& projector, const PreRootDatum& rd,tags::DerivedTag);
+  PreRootDatum(int_Matrix& injector, const PreRootDatum& rd,tags::CoderivedTag);
 
 // accessors
   bool operator== (const PreRootDatum& prd) const

@@ -766,7 +766,7 @@ RootDatum::RootDatum(int_Matrix& projector, const RootDatum& rd,
 /* Construct the adjoint root datum, and put weight mapping into |injector| */
 
 RootDatum::RootDatum(int_Matrix& injector, const RootDatum& rd,
-		     tags::AdjointTag)
+		     tags::CoderivedTag)
   : RootSystem(rd)
   , d_rank(rd.semisimpleRank())
   , d_roots(rd.numRoots())
@@ -803,22 +803,22 @@ RootDatum::RootDatum(int_Matrix& injector, const RootDatum& rd,
   d_dual_2rho = injector.right_prod(rd.d_dual_2rho);
 
   fillStatus();
-} // |RootDatum::RootDatum(...,AdjointTag)|
+} // |RootDatum::RootDatum(...,CoderivedTag)|
 
 
 
-RootDatum RootDatum::sub_datum(const RootNbrList& generators) const
+PreRootDatum RootDatum::sub_predatum (const RootNbrList& generators) const
 {
-  WeightList roots;     roots.reserve(generators.size());
-  CoweightList coroots; coroots.reserve(generators.size());
+  WeightList simple_roots;     simple_roots.reserve(generators.size());
+  CoweightList simple_coroots; simple_coroots.reserve(generators.size());
   for (RootNbrList::const_iterator it=
 	 generators.begin(); it!=generators.end(); ++it)
   {
-    roots.push_back(d_roots[*it]);
-    coroots.push_back(d_coroots[*it]);
+    simple_roots.push_back(d_roots[*it]);
+    simple_coroots.push_back(d_coroots[*it]);
   }
 
-  return RootDatum(PreRootDatum(roots,coroots,rank()));
+  return PreRootDatum(simple_roots,simple_coroots,rank());
 }
 
 
@@ -1271,7 +1271,7 @@ WeightInvolution refl_prod(const RootNbrSet& rset, const RootDatum& rd)
 }
 
 
-RootDatum integrality_datum(const RootDatum& rd, const RatWeight& gamma)
+PreRootDatum integrality_predatum(const RootDatum& rd, const RatWeight& gamma)
 {
   arithmetic::Numer_t n=gamma.denominator(); // signed type!
   const Ratvec_Numer_t& v=gamma.numerator();
@@ -1280,8 +1280,11 @@ RootDatum integrality_datum(const RootDatum& rd, const RatWeight& gamma)
     if (rd.posCoroot(i).dot(v)%n == 0)
       int_roots.insert(rd.posRootNbr(i));
 
-  return rd.sub_datum(rd.simpleBasis(int_roots));
+  return rd.sub_predatum(rd.simpleBasis(int_roots));
 }
+
+RootDatum integrality_datum(const RootDatum& rd, const RatWeight& gamma)
+{ return RootDatum(integrality_predatum(rd,gamma)); }
 
 unsigned int integrality_rank(const RootDatum& rd, const RatWeight& gamma)
 {
