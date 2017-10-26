@@ -110,8 +110,6 @@ class RootSystem
 
   std::vector<root_info> ri; // information about individual positive roots
 
-  int_Vector two_rho_in_simple_roots;
-
 // Root permutations induced by reflections in all positive roots.
   std::vector<Permutation> root_perm;
 
@@ -271,9 +269,6 @@ class RootSystem
 
 
   WeylWord reflectionWord(RootNbr r) const;
-
-  // express sum of roots positive for |Delta| in fundamental weights
-  matrix::Vector<int> pos_system_vec(const RootNbrList& Delta) const;
 
   // find simple basis for subsystem
   RootNbrList simpleBasis(RootNbrSet rs) const; // by value

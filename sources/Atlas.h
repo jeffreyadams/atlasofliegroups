@@ -278,7 +278,7 @@ namespace atlas {
     class Twist; // diagram automorphism (in practice always an involution)
     typedef Twist WeylInterface; // no automorphism, but same implementation
     typedef unsigned char Generator; // index of simple root / simple reflection
-    struct WeylWord : public std::vector<Generator>  { }; // in weyl namesace
+    struct WeylWord : public std::vector<Generator>  { }; // in weyl namespace
 
     class WeylElt;
     class WeylGroup;

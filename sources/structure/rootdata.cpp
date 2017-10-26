@@ -37,12 +37,15 @@
 #include "rootdata.h"
 
 #include <cassert>
+#include <algorithm>
+#include <iterator>
 #include <set>
 
 #include "arithmetic.h"
 #include "lattice.h"
 #include "bitmap.h"  // for root sets
 #include "matreduc.h"
+#include "sl_list.h"
 #include "ratvec.h"
 
 #include "lietype.h"	// value returned from |LieType| method, |ext_gen|
@@ -58,29 +61,29 @@
 
 /*****************************************************************************
 
-  This module contains the implementation of the RootDatum class. What we
-  call a root datum in this program is what is usually called a based root
-  datum.
+  This module contains the implementation of the RootDatum class. What we call a
+  root datum in this program is what is actually a based root datum: not only
+  are the sets of roots and coroots defined, but also a specific choice of
+  simple roots and coroots.
 
-  The root datum defines the complex reductive group entirely.
+  The root datum defines the complex reductive group with a chose Cartan
+  subgroups entirely, and the choice of positive roots gives a choice of a
+  corresponding Borel subgroup.
 
-  Another non-trivial issue is how to get a group interactively from the
-  user. Actually this is perhaps a bit overstated here; in fact, when the
-  program functions as a library, the interaction with the user will be
-  relegated to some higher-up interface; in practice it is likely that
-  the data will usually be read from a file. The main issue is to define
-  the character lattice of the torus.
+  The related class |PreRootData| stores the necessary information needed in
+  order to generate a root datum, so the user interaction needed to choose a
+  root datum really goes into fixing a |PreRootDatum|. It contains matrices
+  describing the simple roots and coroots relative to some basis of $X^*$
+  (repectively its dual basis of $X_*$); changing that basis will lead to an
+  isomorphic root datum, but which is different for Atlas purposes since weights
+  and coweights will be expressed in coordinates relative to the same basis.
 
-  In the interactive approach, we start from the abstract real lie
-  type, and (implicitly) associate to it the direct product of the
-  simply connected semisimple factor, and the torus as it is
-  given. The user is presented with the torsion subgroup Z_tor of the
-  center, written as a factor of Q/Z for each torus factor, and a
-  finite abelian group for each simple factor.  The user must then
-  choose generators of a finite subgroup of Z_tor; this subgroup
-  corresponds to a sublattice of finite index in the character
-  lattice, containing the root lattice. From this sublattice the
-  actual root datum is constructed.
+  Apart from simple (co)rootsm a |PreRootData| contains one more it of
+  information, telling whether roots or coroots should be preferred when
+  generating a full root system from the simple (co)roots; for instance we can
+  (for simple Lie types) either have the last root be the highest root, or the
+  last coroot be the highest coroot, but in general not both. The information
+  about this preference will be maintained as an attribute of the |RootDatum|.
 
 ******************************************************************************/
 
@@ -91,19 +94,26 @@ namespace rootdata {
 
 /*****************************************************************************
 
-        Chapter I -- The RootDatum class
-
-  The root datum class will be one of the central classes in the program.
-
-  A based root datum is a quadruple (X,X^,D,D^), where X and X^ are lattices
-  dual to each other, and D is a basis for a root system in X, D^ the basis
-  of the dual root system (more precisely, D and D^ will be bases
-  for root systems in the sub-lattices they generate.)
-
-  We always X and X^ to be $\Z^n$, so specifications suffice of the basis D
-  of X constisting of simple roots, and the basis D^ of X^ of simple coroots.
+        Chapter I -- The RootSystem and RootDatum classes
 
 ******************************************************************************/
+
+/*
+  For reasons of most of clarity for clients (which can now state just one what
+  their operations depends), we derive |RootDatum| from a more basic class
+  |RootSystem|, the latter being completely coordinate free (only the roots and
+  coroots themselves are used to express things in). Thus for a |RootSystem|
+  there is no notion rank of $X^*$, and the rank of a root system is what will
+  be called "semisimple rank" in a derived |RootDatum| object, where "rank" will
+  mean that of $X^*$, possibly larger (a somewhat unfortunate circumstance, but
+  the alternative of using "semisimple rank" in root systems where it is the
+  only rank notion around seems somewhat cumbersome).
+
+  Being free of random basis choices, the size of all data stored in a
+  |RootSystem| is under control, and limit the coordinates used to represent
+  roots and coroots will always fit in a $8$-bit value; we use |signed char|.
+
+ */
 
 struct RootSystem::root_compare
 {
@@ -122,7 +132,6 @@ RootSystem::RootSystem(const int_Matrix& Cartan_matrix)
   : rk(Cartan_matrix.numRows())
   , Cmat(rk*rk) // filled below
   , ri()
-  , two_rho_in_simple_roots(rk,0)
   , root_perm()
 {
   if (rk==0)
@@ -156,9 +165,6 @@ RootSystem::RootSystem(const int_Matrix& Cartan_matrix)
 	   it=roots_of_length[l].begin(); it!=roots_of_length[l].end(); ++it)
     {
       const Byte_vector& alpha = *it;
-      for (size_t i=0; i<rk; ++i)
-	two_rho_in_simple_roots[i]+=alpha[i]; // sum positive root expressions
-
       const RootNbr cur = ri.size();
       ri.push_back(root_info(alpha)); // add new positive root to the list
       link.push_back(RootNbrList(rk,RootNbr(~0))); // all links start undefined
@@ -251,7 +257,6 @@ RootSystem::RootSystem(const RootSystem& rs, tags::DualTag)
   : rk(rs.rk)
   , Cmat(rs.Cmat) // transposed below
   , ri(rs.ri)     // entries modified internally in non simply laced case
-  , two_rho_in_simple_roots(rs.two_rho_in_simple_roots) // similar
   , root_perm(rs.root_perm) // unchanged
 {
   bool simply_laced = true;
@@ -261,19 +266,13 @@ RootSystem::RootSystem(const RootSystem& rs, tags::DualTag)
 	simply_laced = false , std::swap(Cartan_entry(i,j),Cartan_entry(j,i));
 
   if (not simply_laced)
-  {
-    two_rho_in_simple_roots.assign(rk,0); // clear before recomputation
     for (RootNbr alpha=0; alpha<numPosRoots(); ++alpha)
-    {
       root(alpha).swap(coroot(alpha)); // |descent|, |ascent| are OK
-      const Byte_vector& a=root(alpha);
-      for (size_t i=0; i<rk; ++i)
-	two_rho_in_simple_roots[i]+=a[i]; // sum positive root expressions
-    }
-  }
+
 } // end of dual constructor
 
 
+// express root in simple root basis
 int_Vector RootSystem::root_expr(RootNbr alpha) const
 {
   RootNbr a=rt_abs(alpha);
@@ -283,6 +282,7 @@ int_Vector RootSystem::root_expr(RootNbr alpha) const
   return expr;
 }
 
+// express coroot in simple coroot basis
 int_Vector RootSystem::coroot_expr(RootNbr alpha) const
 {
   RootNbr a=rt_abs(alpha);
@@ -345,7 +345,8 @@ template <typename I, typename O>
   which amounts to left-multiplication by the inverse of that Cartan matrix.
 */
 template <typename I, typename O>
-  void RootSystem::toRootBasis(I first, I last, O out, const RootNbrList& rb) const
+  void RootSystem::toRootBasis(I first, I last, O out, const RootNbrList& rb)
+  const
 {
   int_VectorList wl; // roots |[first,last[| in weight basis of |rb|
   int_VectorList wb; // (square) Cartan matrix of |rb|
@@ -518,19 +519,6 @@ WeylWord RootSystem::reflectionWord(RootNbr alpha) const
   return result;
 }
 
-
-// |Delta| gives images of simple roots by an automorphism; find image of 2rho
-matrix::Vector<int> RootSystem::pos_system_vec(const RootNbrList& Delta) const
-{
-  assert(Delta.size()==rk); // as many images as simple roots
-  matrix::Vector<int> coef(rk,0); // coefficients of simple roots in result
-  for (weyl::Generator s=0; s<rk; ++s) // compute matrix*vector for image
-    coef += root_expr(Delta[s])*=two_rho_in_simple_roots[s]; // Delta*2rho
-  // now |coef| holds image of $2\rho$ expressed as sum of simple roots
-
-  // multiplication is from the right here because Cartan matrix is unnatural
-  return cartanMatrix().right_prod(coef); // transform to fundamental weights
-}
 
 RootNbrList RootSystem::simpleBasis(RootNbrSet rs) const
 {
@@ -1182,26 +1170,23 @@ void toDistinguished(WeightInvolution& q, const RootDatum& rd)
  */
 WeylWord wrt_distinguished(const RootSystem& rs, RootNbrList& Delta)
 {
-  WeylWord result;
+  containers::sl_list<weyl::Generator> w;
   const size_t rank=rs.rank();
-  matrix::Vector<int> v = rs.pos_system_vec(Delta); // image of $2\rho$
   weyl::Generator s;
   do
     for (s=0; s<rank; ++s)
-      if (v[s]<0)
-      {
-	result.push_back(s);
-	int c=-v[s]; // save scalar factor which is modified halfway in loop
-	for (size_t j=0; j<rank; ++j) // apply reflection |s| to |v|
-	  v[j]+=c*rs.cartan(s,j);
+      if (rs.is_negroot(Delta[s]))
+      { // then we apply reflection with respect to root |Delta[s]| to |Delta|
+	w.push_back(s);
+	const auto& pi=rs.root_permutation(Delta[s]);
+	for (weyl::Generator t=0; t<rank; ++t) // apply |pi| to |Delta[t]|
+	  Delta[t]=pi[Delta[t]];
 	break;
       }
   while (s<rank);
 
-  for (size_t i=0; i<rank; ++i)
-    Delta[i]=rs.permuted_root(Delta[i],result);
-    // should be simple, but don't assert that here, to allow a test for it
-
+  WeylWord result; result.reserve(w.size());
+  std::copy(w.begin(),w.end(),std::back_inserter(result));
   return result;
 }
 
