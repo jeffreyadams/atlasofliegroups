@@ -128,37 +128,44 @@ struct RootSystem::root_compare
   }
 };
 
-RootSystem::RootSystem(const int_Matrix& Cartan_matrix)
+  RootSystem::RootSystem(const int_Matrix& Cartan_matrix, bool prefer_co)
   : rk(Cartan_matrix.numRows())
-  , Cmat(rk*rk) // filled below
+  , Cmat(rk,rk) // filled below
   , ri()
   , root_perm()
 {
   if (rk==0)
     return; // avoid problems in trivial case
 
-  std::vector<Byte_vector> simple_root(rk,Byte_vector(rk));
-  std::vector<Byte_vector> simple_coroot(rk,Byte_vector(rk));
 
   typedef std::set<Byte_vector,root_compare> RootVecSet;
   std::vector<RootVecSet> roots_of_length
     (4*rk); // more than enough if |rk>0|; $E_8$ needs size 31
 
-  for (size_t i=0; i<rk; ++i)
+  for (unsigned int i=0; i<rk; ++i)
   {
-    Byte_vector e_i(rk,0);
-    e_i[i]=1; // set to standard basis for simple roots
+    Byte_vector e_i(rk,0); e_i[i]=1; // set to standard basis for simple roots
     roots_of_length[1].insert(e_i);
-    for (size_t j=0; j<rk; ++j)
-      Cartan_entry(i,j) = simple_root[i][j] = simple_coroot[j][i] =
-	Cartan_matrix(i,j);
+    for (unsigned int j=0; j<rk; ++j)
+      Cmat(i,j) = static_cast<byte>(Cartan_matrix(i,j));
   }
 
-  // construct positive root list, simple reflection links, and descent sets
+  if (prefer_co) // then we generate for the dual system
+    dualise(); // here this just transposes |Cmat|
 
+  // the Cartan matrix sliced into rows respectively into columns
+  std::vector<Byte_vector> simple_root, simple_coroot;
+  simple_root.reserve(rk); simple_coroot.reserve(rk);
+  for (unsigned int i=0; i<rk; ++i)
+  { simple_root.push_back(Cmat.row(i)); // strange convention Cartan matrices
+    simple_coroot.push_back(Cmat.column(i));
+  }
+
+  // now construct positive root list, simple reflection links, and descent sets
   std::vector<RootNbrList> link; // size |numPosRoots*rank|
   RootNbrList first_l(1,0); // where level |l| starts; level 0 is empty
-  for (size_t l=1; not roots_of_length[l].empty(); ++l)// empty level means end
+  for (unsigned int l=1; not roots_of_length[l].empty();// empty level means end
+       ++l)
   {
     first_l.push_back(ri.size()); // set |first_l[l]| to next root to be added
     for (RootVecSet::iterator
@@ -166,11 +173,12 @@ RootSystem::RootSystem(const int_Matrix& Cartan_matrix)
     {
       const Byte_vector& alpha = *it;
       const RootNbr cur = ri.size();
+      assert(link.size()==cur);
       ri.push_back(root_info(alpha)); // add new positive root to the list
       link.push_back(RootNbrList(rk,RootNbr(~0))); // all links start undefined
 
       byte c;
-      for (size_t i=0; i<rk; ++i)
+      for (unsigned int i=0; i<rk; ++i)
 	if ((c=alpha.dot(simple_coroot[i]))==0) // orthogonal
 	  link[cur][i]=cur; // point to root itself
 	else
@@ -214,16 +222,20 @@ RootSystem::RootSystem(const int_Matrix& Cartan_matrix)
   // complete with computation of non-simple positive coroots
   for (RootNbr alpha=rk; alpha<npos; ++alpha)
   {
-    size_t i = ri[alpha].descents.firstBit();
+    unsigned int i = ri[alpha].descents.firstBit();
     RootNbr beta = link[alpha][i];
     assert(beta<alpha); // so |coroot(beta)| is already defined
     coroot(alpha)=coroot(beta); // take a copy
     coroot(alpha)[i]-=coroot(beta).dot(simple_root[i]); // and modify
   }
 
+  // now switch roots and coroots if coroots generation was actually requested
+  if (prefer_co)
+    dualise(); // this restores |Cmat|, and swaps roots and coroots
+
   root_perm.resize(npos,Permutation(2*npos));
   // first fill in the simple root permutations
-  for (size_t i=0; i<rk; ++i)
+  for (unsigned int i=0; i<rk; ++i)
   {
     Permutation& perm=root_perm[i];
     for (RootNbr alpha=0; alpha<npos; ++alpha)
@@ -253,13 +265,8 @@ RootSystem::RootSystem(const int_Matrix& Cartan_matrix)
 
 } // end of basic constructor
 
-RootSystem::RootSystem(const RootSystem& rs, tags::DualTag)
-  : rk(rs.rk)
-  , Cmat(rs.Cmat) // transposed below
-  , ri(rs.ri)     // entries modified internally in non simply laced case
-  , root_perm(rs.root_perm) // unchanged
-{
-  bool simply_laced = true;
+void RootSystem::dualise() // private method to pass to dual
+{ bool simply_laced = true;
   for (size_t i=0; i<rk; ++i)
     for (size_t j=i+1; j<rk; ++j) // do only case $i<j$, upper triangle
       if (Cartan_entry(i,j)!=Cartan_entry(j,i))
@@ -268,8 +275,14 @@ RootSystem::RootSystem(const RootSystem& rs, tags::DualTag)
   if (not simply_laced)
     for (RootNbr alpha=0; alpha<numPosRoots(); ++alpha)
       root(alpha).swap(coroot(alpha)); // |descent|, |ascent| are OK
+} // |RootSystem::dualise|
 
-} // end of dual constructor
+RootSystem::RootSystem(const RootSystem& rs, tags::DualTag)
+  : rk(rs.rk)
+  , Cmat(rs.Cmat) // transposed below
+  , ri(rs.ri)     // entries modified internally in non simply laced case
+  , root_perm(rs.root_perm) // unchanged
+{ dualise(); }
 
 
 // express root in simple root basis
@@ -623,7 +636,7 @@ RootNbrList RootSystem::high_roots() const
 
 
 RootDatum::RootDatum(const PreRootDatum& prd)
-  : RootSystem(prd.Cartan_matrix())
+  : RootSystem(prd.Cartan_matrix(),prd.prefer_coroots())
   , d_rank(prd.rank())
   , d_roots(numRoots())   // dimension only
   , d_coroots(numRoots()) // same for coroots

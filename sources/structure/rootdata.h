@@ -106,7 +106,7 @@ class RootSystem
 
   unsigned rk; // rank of root system
 
-  Byte_vector Cmat; // Cartan matrix in compressed format
+  matrix::Matrix_base<byte> Cmat; // Cartan matrix in compressed format
 
   std::vector<root_info> ri; // information about individual positive roots
 
@@ -114,10 +114,9 @@ class RootSystem
   std::vector<Permutation> root_perm;
 
   // internal access methods
-  byte& Cartan_entry(weyl::Generator i, weyl::Generator j)
-    { return Cmat[i*rk+j]; }
+  byte& Cartan_entry(weyl::Generator i, weyl::Generator j) { return Cmat(i,j); }
   const byte& Cartan_entry(weyl::Generator i, weyl::Generator j) const
-    { return Cmat[i*rk+j]; }
+  { return Cmat(i,j); }
   Byte_vector& root(RootNbr i) { return ri[i].root;}
   Byte_vector& coroot(RootNbr i) { return ri[i].dual;}
   const Byte_vector& root(RootNbr i) const { return ri[i].root;}
@@ -127,7 +126,7 @@ class RootSystem
 
 // constructors and destructors
 
-  explicit RootSystem(const int_Matrix& Cartan_matrix);
+  explicit RootSystem(const int_Matrix& Cartan_matrix, bool prefer_co=false);
 
   RootSystem(const RootSystem& rs, tags::DualTag);
 
@@ -282,7 +281,8 @@ class RootSystem
   RootNbrList high_roots() const;
 
 // manipulators
-
+ private:
+  void dualise();
 
 }; // |class RootSystem|
 
@@ -347,11 +347,6 @@ class RootDatum
  public:
 
 // constructors and destructors
-
- RootDatum()
-   : RootSystem(int_Matrix(0,0))
-   , d_rank(0)
-  {}
 
   explicit RootDatum(const PreRootDatum&);
 

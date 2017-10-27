@@ -759,6 +759,7 @@ template class Vector<int>;           // the main instance used
 template class Vector<signed char>;   // used inside root data
 template class Vector<unsigned long>; // for |abelian::Homomorphism|
 template class Vector<Num>;           // numerators of rational vectors
+template class Matrix_base<signed char>;   // used inside root data
 template class Matrix_base<int>;
 template class Matrix_base<bigint>;
 template class Matrix_base<unsigned long>; // for |abelian::Endomorphism|

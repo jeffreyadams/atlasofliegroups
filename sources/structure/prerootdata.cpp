@@ -61,9 +61,10 @@ namespace prerootdata {
   basis |b|, and in |d_coroots| the list of simple coroots expressed in the
   dual basis.
 */
-PreRootDatum::PreRootDatum(const LieType& lt)
+  PreRootDatum::PreRootDatum(const LieType& lt, bool prefer_co)
   : simple_roots(lt.rank(),lt.semisimple_rank())
   , simple_coroots(simple_roots.numRows(),simple_roots.numColumns(),0)
+  , prefer_co(prefer_co)
 {
   weyl::Generator s=0; // tracks (co)roots, goes up to semisimple rank
   unsigned int r=0; // |r| indexes rows of |Cartan|, goes up to rank
@@ -81,7 +82,7 @@ PreRootDatum::PreRootDatum(const LieType& lt)
 
 PreRootDatum::PreRootDatum
   (int_Matrix& projector, const PreRootDatum& rd,tags::DerivedTag)
-  : simple_roots(), simple_coroots()
+    : simple_roots(), simple_coroots(), prefer_co(rd.prefer_co)
 {
   const auto r = rd.rank();
   const auto s = rd.semisimple_rank();
@@ -96,7 +97,7 @@ PreRootDatum::PreRootDatum
 
 PreRootDatum::PreRootDatum
   (int_Matrix& injector, const PreRootDatum& rd,tags::CoderivedTag)
-  : simple_roots(), simple_coroots()
+  : simple_roots(), simple_coroots(), prefer_co(rd.prefer_co)
 {
   const auto r = rd.rank();
   const auto s = rd.semisimple_rank();

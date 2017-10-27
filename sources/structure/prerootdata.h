@@ -49,18 +49,20 @@ namespace prerootdata {
 class PreRootDatum
 {
   int_Matrix simple_roots, simple_coroots; // both of same size
-
+  bool prefer_co; // flag indicating preference for coroots in generation
  public:
 
 // constructors and destructors
   PreRootDatum(const WeightList& roots,
                const CoweightList& coroots,
-	       size_t rank)
+	       size_t rank,
+	       bool prefer_co=false)
     : simple_roots(roots.begin(),roots.end(),rank,tags::IteratorTag())
     , simple_coroots(coroots.begin(),coroots.end(),rank,tags::IteratorTag())
+    , prefer_co(prefer_co)
     {}
 
-  PreRootDatum(const LieType& lt);
+  PreRootDatum(const LieType& lt, bool prefer_co=false);
   PreRootDatum(int_Matrix& projector, const PreRootDatum& rd,tags::DerivedTag);
   PreRootDatum(int_Matrix& injector, const PreRootDatum& rd,tags::CoderivedTag);
 
@@ -75,6 +77,8 @@ class PreRootDatum
 
   const int_Matrix& simple_roots_mat() const { return simple_roots; }
   const int_Matrix& simple_coroots_mat() const { return simple_coroots; }
+
+  bool prefer_coroots() const { return prefer_co; }
 
   Weight simple_root(unsigned int j) const
     { return simple_roots.column(j); }
