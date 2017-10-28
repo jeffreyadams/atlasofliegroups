@@ -85,12 +85,7 @@ GlobalTitsElement GlobalTitsElement::simple_imaginary_cross
 
 GlobalTitsGroup::GlobalTitsGroup(const InnerClass& G)
   : TwistedWeylGroup(G.twistedWeylGroup())
-  , prd( // |PreRootDatum|, viewed from the dual side
-	CoweightList(G.rootDatum().beginSimpleCoroot(),
-		     G.rootDatum().endSimpleCoroot()),
-	WeightList(G.rootDatum().beginSimpleRoot(),
-		   G.rootDatum().endSimpleRoot()),
-	G.rootDatum().rank())
+  , prd(G.rootDatum(),tags::DualTag()) // viewed from the dual side
   , delta_tr(G.distinguished().transposed())
   , alpha_v()
   , half_rho_v(G.rootDatum().dual_twoRho(),4)

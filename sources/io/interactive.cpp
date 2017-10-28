@@ -378,7 +378,7 @@ PreRootDatum get_pre_root_datum(WeightList& d_b, const LieType& lt)
   }
 
   // make new PreRootDatum
-  return PreRootDatum(lt).quotient(LatticeMatrix(d_b,d_b.size()));
+  return PreRootDatum(lt,false).quotient(LatticeMatrix(d_b,d_b.size()));
 
 } // |get_pre_root_datum|
 

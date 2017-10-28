@@ -1,16 +1,8 @@
 /*
-  Constructing a root datum from user interaction: implementation.
-
-  The idea is to construct an abstract root datum (a lattice and a
-  subset of "roots," together with the dual lattice and a subset of
-  "coroots") specified interactively as a product of simple Lie types,
-  then dividing by a specified subgroup of the center of a simply
-  connected form.
-*/
-/*
   This is prerootdata.cpp.
 
   Copyright (C) 2004,2005 Fokko du Cloux
+  Copyright (C) 2006-2017 Marc van Leeuwen
   part of the Atlas of Lie Groups and Representations
 
   For license information see the LICENSE file

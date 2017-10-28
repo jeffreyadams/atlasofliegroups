@@ -240,22 +240,27 @@ involution: (LieType,mat,string->mat): basic involution on given basis.
   the columns of the matrix specified as second argument; this expression must
   be possible, so the sublattice spanned should be stable under the involution
 
-root_datum: (mat,mat->RootDatum): root datum from simple (co)root systems.
+root_datum: (mat,mat,bool->RootDatum): root datum from simple (co)root systems.
   In root_datum(roots,coroots), matrices roots and coroots must have the same
   dimensions (rank x semisimple rank); their columns give the desired systems
   of simple roots respectively simple coroots. The matrix of pairings of roots
   and coroots should be a valid Cartan matrix. A root datum with those systems
-  of simple roots and simple coroots is returned.
-root_datum: (LieType,mat->RootDatum): root datum for given type and sublattice.
+  of simple roots and simple coroots is returned. The final argument tells
+  whether the coroots rather than the roots should be ordered by increasing
+  level (in all cases corresponding roots ad coroots are at the same index).
+root_datum: (LieType,mat,bool->RootDatum): root datum from type and sublattice.
   The columns of the matrix argument are interpreted as specifying the basis
   of a sublattice of the character lattice of the "simply connected" group G
   of the given Lie type (which is a direct product of a simply connected
   semisimple group G' and a central torus S), expressed in the basis of
   fundamental weights of G' and an arbitrary basis for characters of S). For
   this to be possible, it is required that the sublattice contain the root
-  lattice of G'. The sublattice becomes the standard lattice for working with
-  the root datum, and is identified with Z^n using the given basis, which thus
-  becomes the standard basis of the sublattice, henceforth called lattice.
+  lattice of G'. The sublattice becomes the standard lattice X^* for the root
+  datum, and is identified with Z^n using the given basis. The final argument
+  has the same meaning as when constructing from simple (co)root matrices.
+prefers_coroots: (RootDatum->bool): whether coroots were used for generation
+  This recovers the attribute governing the order of roots and coroots, set
+  during construction from argument or inheriting from an earlier root datum.
 root_datum: (RootDatum,mat->RootDatum): root datum for sublattice in old one
   This is like root_datum@(LieType,mat), but starting from the specified root
   datum rd rather than from the simply connected one for the Lie type. The
@@ -263,6 +268,7 @@ root_datum: (RootDatum,mat->RootDatum): root datum for sublattice in old one
   rational numbers) and the roots of rd must be in its integral column span.
 root_datum: (InnerClass->RootDatum): root datum of inner class.
   Extract the root datum from the InnerClass value
+
 
 quotient_basis: (LieType,[ratvec]->mat): sublattice given by kernel generators.
   Interpret the rational vectors as kernel generators for the given type, as
@@ -279,22 +285,17 @@ quotient_basis: (LieType,[ratvec]->mat): sublattice given by kernel generators.
   and then returning the value replace_gen(S,C*ann_mod(M,d)).
   This function is intended for use in constructing root data; see basic.at
 
-simply_connected: (LieType->RootDatum): simply connected datum for given type.
-  This gives the root datum for the "simply connected" group of the given
-  type (the direct product of a simply connected G' with a central torus):
-    set simply_connected_datum(LieType type) = root_datum(type,id_mat(rank))
+simply_connected: (LieType,bool->RootDatum): "simply connected" datum for type.
+  This gives the root datum for the "simply connected" group of the given type
+  (the direct product of a simply connected G' with a central torus): one has
+    simply_connected_datum(type,b) = root_datum(type,id_mat(rank),b)
+  The final argument has the 'refers_coroots' meaning, as in root_datum versions
 
-adjoint: (LieType->RootDatum): adjoint root datum for given type.
+adjoint: (LieType,bool->RootDatum): "adjoint" root datum for given type.
   Here the sublattice for the semisimple factor is the root lattice, with
   simple roots as basis; for the central torus an arbitrary basis is used.
-  Therefore the this function could be defined as
-    set adjoint_datum(LieType type) =
-    let M= for alpha@j in ^Cartan_matrix(type)
-           do for entry@i in alpha
-              do if i=j and entry=0 then 1 else entry fi
-              od
-           od
-    in root_datum(type,M)
+  Dual to simply_connected: adjoint(type,b) = dual(simply_connected(type,not b))
+  The final argument has the 'refers_coroots' meaning, as in root_datum versions
 
 root, coroot: (RootDatum,int->vec): root/cooroot with given index in root system
   Indexing is from -nr_of_posroots(rd) upto nr_of_posroots(rd)-1, with

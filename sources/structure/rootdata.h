@@ -104,7 +104,8 @@ class RootSystem
   };
   struct root_compare; // auxilary type defined here for access reasons
 
-  unsigned rk; // rank of root system
+  const unsigned char rk; // rank of root system
+  const bool prefer_co;
 
   matrix::Matrix_base<byte> Cmat; // Cartan matrix in compressed format
 
@@ -136,6 +137,7 @@ class RootSystem
   RootNbr rank() const { return rk; }
   RootNbr numPosRoots() const { return ri.size(); }
   RootNbr numRoots() const { return 2*numPosRoots(); }
+  bool prefer_coroots() const { return prefer_co; }
 
   // Cartan matrix by entry and as a whole
   int cartan(weyl::Generator i, weyl::Generator j) const

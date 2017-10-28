@@ -130,6 +130,7 @@ struct RootSystem::root_compare
 
   RootSystem::RootSystem(const int_Matrix& Cartan_matrix, bool prefer_co)
   : rk(Cartan_matrix.numRows())
+  , prefer_co(prefer_co)
   , Cmat(rk,rk) // filled below
   , ri()
   , root_perm()
@@ -279,6 +280,7 @@ void RootSystem::dualise() // private method to pass to dual
 
 RootSystem::RootSystem(const RootSystem& rs, tags::DualTag)
   : rk(rs.rk)
+  , prefer_co(not rs.prefer_co) // switch this
   , Cmat(rs.Cmat) // transposed below
   , ri(rs.ri)     // entries modified internally in non simply laced case
   , root_perm(rs.root_perm) // unchanged
@@ -819,7 +821,7 @@ PreRootDatum RootDatum::sub_predatum (const RootNbrList& generators) const
     simple_coroots.push_back(d_coroots[*it]);
   }
 
-  return PreRootDatum(simple_roots,simple_coroots,rank());
+  return PreRootDatum(simple_roots,simple_coroots,rank(),prefer_coroots());
 }
 
 
@@ -1055,7 +1057,7 @@ void RootDatum::swap(RootDatum& other)
   RootDatum::operator PreRootDatum() const
   { WeightList simple_roots(beginSimpleRoot(),endSimpleRoot());
     CoweightList simple_coroots(beginSimpleCoroot(),endSimpleCoroot());
-    return PreRootDatum(simple_roots,simple_coroots,rank());
+    return PreRootDatum(simple_roots,simple_coroots,rank(),prefer_coroots());
   }
 
 

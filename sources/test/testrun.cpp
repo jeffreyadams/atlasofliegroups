@@ -346,7 +346,7 @@ CoveringIterator::CoveringIterator(const LieType& lt)
   , d_torusMap()
   , d_done(false)
   , d_smithBasis()
-  , d_preRootDatum(lt)
+  , d_preRootDatum(lt,false)
 {
   CoeffList factor;
   int_Matrix Smith = // true Smith form needed here
@@ -465,7 +465,7 @@ finish: // update d_preRootDatum
   WeightList lb;
   makeBasis(lb);
 
-  d_preRootDatum = PreRootDatum(d_lieType);
+  d_preRootDatum = PreRootDatum(d_lieType,false);
   d_preRootDatum.quotient(LatticeMatrix(lb,lb.size()));
 
   return *this;

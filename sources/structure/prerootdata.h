@@ -2,22 +2,16 @@
   This is prerootdata.h
 
   Copyright (C) 2004,2005 Fokko du Cloux
+  Copyright (C) 2014-2017 Marc van Leeuwen
   part of the Atlas of Lie Groups and Representations
-  Copyright (C) 2014 Marc van Leeuwen
 
   For license information see the LICENSE file
 */
 
 /*
-  A class holding the information necessary for constructin a root datum.
-
-  The idea is to construct an abstract root datum (a lattice and a
-  subset of "roots," together with the dual lattice and a subset of
-  "coroots"). The class provides a manipulator method to later reduce to a
-  sublattice of the original weight lattice ($X^*$), which corresponds to
-  dividing by a specified subgroup of the center.
+  A class |PreRootDatum| to store simple rooots and coroots, and perform some
+  tests and operations prior to generating the full root systen and root datum
 */
-
 
 #ifndef PREROOTDATA_H  /* guard against multiple inclusions */
 #define PREROOTDATA_H
@@ -56,20 +50,27 @@ class PreRootDatum
   PreRootDatum(const WeightList& roots,
                const CoweightList& coroots,
 	       size_t rank,
-	       bool prefer_co=false)
+	       bool prefer_co)
     : simple_roots(roots.begin(),roots.end(),rank,tags::IteratorTag())
     , simple_coroots(coroots.begin(),coroots.end(),rank,tags::IteratorTag())
     , prefer_co(prefer_co)
     {}
 
-  PreRootDatum(const LieType& lt, bool prefer_co=false);
+  PreRootDatum(const LieType& lt, bool prefer_co);
   PreRootDatum(int_Matrix& projector, const PreRootDatum& rd,tags::DerivedTag);
   PreRootDatum(int_Matrix& injector, const PreRootDatum& rd,tags::CoderivedTag);
 
+  PreRootDatum(const PreRootDatum& prd, tags::DualTag)
+    : simple_roots(prd.simple_coroots)
+    , simple_coroots(prd.simple_roots)
+    , prefer_co(not prd.prefer_co)
+  {}
+
 // accessors
   bool operator== (const PreRootDatum& prd) const
-  { return
-      simple_roots==prd.simple_roots and simple_coroots == prd.simple_coroots;
+  { return simple_roots==prd.simple_roots
+    and simple_coroots == prd.simple_coroots
+    and prefer_co == prd.prefer_co;
   }
 
   size_t rank() const { return simple_roots.numRows(); }

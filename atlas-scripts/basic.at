@@ -607,9 +607,23 @@ set sum ([Split] list) = Split:
 
 {                               Root data                               }
 
+{ provide default values for coroot preference when building root data }
+
+set root_datum (mat simple_roots, mat simple_coroots) = RootDatum:
+  root_datum(simple_roots,simple_coroots,false) { by default prefer roots }
+
+set root_datum (LieType type, mat lattice) = RootDatum:
+  root_datum(type,lattice,false) { by default prefer roots }
+
+set simply_connected (LieType type) = RootDatum:
+  simply_connected(type,true) { by default prefer coroots here }
+
+set adjoint (LieType type) = RootDatum:
+  adjoint(type,false) { by default prefer roots here }
+
 { backwards compatibility function; used to be the built-in prototype }
 set root_datum ([vec] simple_roots, [vec] simple_coroots, int r) = RootDatum:
-  root_datum(r#simple_roots,r#simple_coroots)
+  root_datum(r#simple_roots,r#simple_coroots,false)
 
 set root_datum (LieType t, [ratvec] gens) = RootDatum:
   root_datum(t,quotient_basis(t,gens))

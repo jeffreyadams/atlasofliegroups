@@ -116,8 +116,8 @@ InnerClass::C_info::C_info
 /*
   Main constructor
 
-  Constructs an |InnerClass| from a pre-rootdatum |rd| and a
-  distinguished involution |d|, which stabilises the set of simple roots
+  Constructs an |InnerClass| from a pre-rootdatum |prd| and a
+  distinguished involution |tmp_d|, which stabilises the set of simple roots
 */
 InnerClass::InnerClass
  (const PreRootDatum& prd, const WeightInvolution& tmp_d)

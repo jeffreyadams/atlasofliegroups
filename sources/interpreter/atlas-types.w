@@ -841,10 +841,10 @@ HashTable<root_datum_entry,unsigned short> root_datum_value::hash
   (root_data_pool);
 std::vector<std::weak_ptr<const root_datum_value> > root_datum_value::store;
 
-@ We have a simple hash function that uses all entries.
+@ We have a simple hash function that uses all information in a |PreRootDatum|.
 @< Function definitions @>=
 size_t root_datum_entry::hashCode(size_t modulus) const
-{ size_t h=5;
+{ size_t h= prefer_coroots() ? 1 : 0;
   for (unsigned int i=0; i<rank(); ++i)
     for (unsigned int j=0; j<semisimple_rank(); ++j)
       h=3*h+simple_root(j)[i];
@@ -919,23 +919,36 @@ void root_datum_value::print(std::ostream& out) const
   out << "root datum of " << type;
 }
 
-@ We also make the derivation of the type available by a wrapper function.
+@ We also make the Lie type of a root datum (computed by |type_of_datum|) and
+whether the coroots rather than roots were used to determine the root numbering
+(from the stored field) available by wrapper functions.
 @< Local fun...@>=
 void type_of_root_datum_wrapper(expression_base::level l)
 { shared_root_datum rd(get<root_datum_value>());
   push_value(std::make_shared<Lie_type_value>(type_of_datum(rd->val)));
 }
 
+void coroot_preference_wrapper(expression_base::level l)
+{ shared_root_datum rd(get<root_datum_value>());
+  push_value(whether(rd->val.prefer_coroots()));
+}
+
 @*2 Building a root datum.
 %
 The most direct way to create a root datum value is to specify bases of simple
 roots and coroots in the form of matrices, which implicitly define a Lie type
-and weight lattice. To make sure the root datum construction will succeed, we
-must test the ``Cartan'' matrix computed from these data to be a valid one.
+and weight lattice. In addition we take a Boolean argument telling whether to
+use roots or coroots when generating the full root system from the simple roots
+or coroots; this is an argument common to all functions building a fresh root
+datum (by contrast those that bases a new root datum on an existing one will
+just inherit the attribute). To make sure the root datum construction will
+succeed, we must test the ``Cartan'' matrix computed from these data to be a
+valid one.
 
 @< Local function definitions @>=
-void raw_root_datum_wrapper(expression_base::level l)
-{ shared_matrix simple_coroots=get<matrix_value>();
+void root_datum_wrapper(expression_base::level l)
+{ bool prefer_coroots = get<bool_value>()->val;
+@/shared_matrix simple_coroots=get<matrix_value>();
   shared_matrix simple_roots=get<matrix_value>();
 
   size_t nr = simple_roots->val.numRows(),
@@ -959,30 +972,30 @@ void raw_root_datum_wrapper(expression_base::level l)
       c.push_back(simple_coroots->val.column(j));
   }
 
-  PreRootDatum prd(s,c,nr);
+  PreRootDatum prd(s,c,nr,prefer_coroots);
   try @/{@; Permutation dummy;
     dynkin::Lie_type(prd.Cartan_matrix(),true,true,dummy);
   }
   catch (error::CartanError)
 @/{@;
-    throw runtime_error("System of (co)roots has invalid Cartan matrix");
+    throw runtime_error("Matrices of (co)roots give invalid Cartan matrix");
 }
 @.System of (co)roots has invalid...@>
   if (l!=expression_base::no_value)
     push_value(root_datum_value::build(std::move(prd)));
 }
 
-@ Alternatively, the user may specify a Lie type and a square
-matrix of the size of the rank of the root datum, which specifies generators
-of the desired weight lattice as a sub-lattice of the lattice of weights
-associated to the simply connected group of the type given. The given weights
-should be independent and span at least the root lattice associated to the
-type. Failure of either condition will cause the |PreRootDatum| constructor to
-throw a |runtime_error|.
+@ Alternatively, the user may specify a Lie type and a square matrix of the size
+of the rank of the root datum, which specifies generators of the desired weight
+lattice as a sub-lattice of the lattice of weights associated to the simply
+connected group of the type given. The given weights should be independent and
+span at least the root lattice associated to the type. Failure of either
+condition will cause |PreRootDatum::quotient| to throw a |std::runtime_error|.
 
 @< Local function definitions @>=
-void root_datum_wrapper(expression_base::level l)
-{ shared_matrix lattice=get<matrix_value>();
+void root_datum_from_type_wrapper(expression_base::level l)
+{ bool prefer_coroots = get<bool_value>()->val;
+@/shared_matrix lattice=get<matrix_value>();
   shared_Lie_type type=get<Lie_type_value>();
   if (lattice->val.numRows()!=lattice->val.numColumns() @| or
       lattice->val.numRows()!=type->val.rank())
@@ -990,11 +1003,11 @@ void root_datum_wrapper(expression_base::level l)
     ("Sub-lattice matrix should have size " @|
 @.Sub-lattice matrix should...@>
       +str(type->val.rank())+'x'+str(type->val.rank()));
-  PreRootDatum prd(type->val);
+  PreRootDatum prd(type->val,prefer_coroots);
   prd.quotient(lattice->val);
-@.Sub-lattice matrix must be square@>
-@.Sub-lattice does not contain...@>
+@.Sub-lattice matrix not square...@>
 @.Dependent lattice generators@>
+@.Sub-lattice does not contain...@>
   if (l!=expression_base::no_value)
     push_value(root_datum_value::build(std::move(prd)));
 }
@@ -1004,8 +1017,7 @@ lattice of the simply connected root datum of the given type, one may more
 generally wish in any existing root datum to reduce to a full-rank sublattice
 of $X^*$ that contains the root lattice. The following variant of root datum
 construction does this. The call to the |quotient| method may throw the same
-errors (\.{Dependent lattice generators}, or \.{Inexact integer division}) as
-the |PreRootDatum| constructor in the previous function.
+errors as in the previous function.
 
 @< Local function definitions @>=
 void sublattice_root_datum_wrapper(expression_base::level l)
@@ -1018,8 +1030,8 @@ void sublattice_root_datum_wrapper(expression_base::level l)
 @.Sub-lattice matrix should...@>
       << r << 'x' << r;
 
-  PreRootDatum prd = rd->val;
-  prd.quotient(lattice->val);
+  PreRootDatum prd = rd->val; // inherits |prefer_coroots| attribute
+  prd.quotient(lattice->val); // this may |throw| a |std::runtime_error|
 @.Sub-lattice does not contain...@>
 @.Dependent lattice generators@>
   if (l!=expression_base::no_value)
@@ -1039,7 +1051,8 @@ come from torus factors) are replaced by ones.
 
 @< Local function definitions @>=
 void simply_connected_datum_wrapper(expression_base::level l)
-{ if (l==expression_base::no_value)
+{ bool prefer_coroots = get<bool_value>()->val;
+  if (l==expression_base::no_value)
 @/{@; execution_stack.pop_back();
     return;
   } // no possibilities of errors, so avoid useless work
@@ -1047,11 +1060,13 @@ void simply_connected_datum_wrapper(expression_base::level l)
     force<Lie_type_value>(execution_stack.back().get())->val.rank();
   push_value(std::make_shared<int_value>(rank));
   id_mat_wrapper(expression_base::single_value);
-@/root_datum_wrapper(expression_base::single_value);
+  push_value(whether(prefer_coroots));
+@/root_datum_from_type_wrapper(expression_base::single_value);
 }
 @)
 void adjoint_datum_wrapper(expression_base::level l)
-{ if (l==expression_base::no_value)
+{ bool prefer_coroots = get<bool_value>()->val;
+  if (l==expression_base::no_value)
 @/{@; execution_stack.pop_back();
     return;
   } // no possibilities of errors, so avoid useless work
@@ -1062,7 +1077,8 @@ void adjoint_datum_wrapper(expression_base::level l)
   for (size_t i=0; i<M->val.numRows(); ++i)
     if (M->val(i,i)==0) M->val(i,i)=1;
   push_value(M);
-@/root_datum_wrapper(expression_base::single_value);
+  push_value(whether(prefer_coroots));
+@/root_datum_from_type_wrapper(expression_base::single_value);
 }
 
 
@@ -1334,14 +1350,18 @@ void integrality_points_wrapper(expression_base::level l)
 @< Install wrapper functions @>=
 install_function(type_of_root_datum_wrapper,@|"Lie_type"
                 ,"(RootDatum->LieType)");
-install_function(raw_root_datum_wrapper,@|"root_datum"
-                ,"(mat,mat->RootDatum)");
-install_function(root_datum_wrapper,@|"root_datum","(LieType,mat->RootDatum)");
+install_function(coroot_preference_wrapper,@|"prefers_coroots"
+                ,"(RootDatum->bool)");
+install_function(root_datum_wrapper,@|"root_datum"
+                ,"(mat,mat,bool->RootDatum)");
+install_function(root_datum_from_type_wrapper,@|"root_datum"
+		,"(LieType,mat,bool->RootDatum)");
 install_function(sublattice_root_datum_wrapper,@|"root_datum"
                 ,"(RootDatum,mat->RootDatum)");
-install_function(simply_connected_datum_wrapper
-		,@|"simply_connected","(LieType->RootDatum)");
-install_function(adjoint_datum_wrapper,@| "adjoint","(LieType->RootDatum)");
+install_function(simply_connected_datum_wrapper,@|"simply_connected"
+                ,"(LieType,bool->RootDatum)");
+install_function(adjoint_datum_wrapper,@| "adjoint"
+                ,"(LieType,bool->RootDatum)");
 install_function(root_wrapper,@|"root","(RootDatum,int->vec)");
 install_function(coroot_wrapper,@|"coroot","(RootDatum,int->vec)");
 install_function(simple_roots_wrapper,@|"simple_roots","(RootDatum->mat)");
@@ -1938,9 +1958,8 @@ void twisted_involution_wrapper(expression_base::level l)
 }
 
 @ To simulate the functioning of the \.{Fokko} program, an overload of the
-function |inner_class| (that used to be called |set_type|, whence the name of
-the wrapper below) takes as argument a Lie type, a list of kernel generators,
-and a string describing the inner class. The evaluation of the call
+function |inner_class| takes as argument a Lie type, a list of kernel
+generators, and a string describing the inner class. The evaluation of the call
 |inner_class(lt,gen,ict)| computes ${\it basis}={\it quotient\_basis(lt,gen)}$,
 ${\it rd}={\it root\_datum (lt,basis)}$, ${\it M}={\it
 based\_involution(lt,basis,ict)}$, and then returns the same value as would
@@ -1953,8 +1972,9 @@ surprises (however inner class letters do change as usual to synonyms when
 passing through |transform_inner_class_type|).
 
 @< Local function def...@>=
-void set_type_wrapper(expression_base::level l)
-{ shared_string ict = get<string_value>();
+void inner_class_from_type_wrapper(expression_base::level l)
+{ bool prefer_coroots = false;
+  shared_string ict = get<string_value>();
     // and leave generators |gen| and type |lt|
   shared_value lt = *(execution_stack.end()-2);
   const LieType& type=force<Lie_type_value>(lt.get())->val;
@@ -1964,7 +1984,8 @@ void set_type_wrapper(expression_base::level l)
   shared_value basis = pop_value();
 @)
   push_value(lt); push_value(basis);
-  root_datum_wrapper(expression_base::single_value);
+  push_value(whether(prefer_coroots));
+  root_datum_from_type_wrapper(expression_base::single_value);
   shared_root_datum rd = get<root_datum_value>();
 @)
   push_value(lt); push_value(basis);
@@ -2238,7 +2259,7 @@ install_function(fix_involution_wrapper,@|"inner_class"
                 ,"(RootDatum,mat->InnerClass)");
 install_function(twisted_involution_wrapper,@|"twisted_involution"
                 ,"(RootDatum,mat->InnerClass,vec)");
-install_function(set_type_wrapper,@|"inner_class"
+install_function(inner_class_from_type_wrapper,@|"inner_class"
                 ,"(LieType,[ratvec],string->InnerClass)");
 install_function(set_inner_class_wrapper,@|"inner_class"
                 ,"(RootDatum,string->InnerClass)");

@@ -25,7 +25,8 @@ namespace subsystem {
 
 SubSystem::SubSystem(const RootDatum& parent,
 		     const RootNbrList& sub_sys)
-  : RootSystem(parent.cartanMatrix(sub_sys).transposed()) // build
+  : RootSystem(parent.cartanMatrix(sub_sys).transposed(), // build
+	       not parent.prefer_coroots()) // flip, since coroots ar now roots
   , rd(parent) // share
   , pos_map(numPosRoots(),~0)
   , inv_map(rd.numRoots()+1,~0) // one spare entry for "unfound root in parent"
@@ -105,7 +106,7 @@ PreRootDatum SubSystem::pre_root_datum() const
     roots[i]  =rd.root  (parent_nr_simple(i));
     coroots[i]=rd.coroot(parent_nr_simple(i));
   }
-  return PreRootDatum(roots,coroots,rd.rank());
+  return PreRootDatum(roots,coroots,rd.rank(),not prefer_coroots());
 }
 
 // compute twist and subsystem twisted involution $ww$ for $-theta^t$
