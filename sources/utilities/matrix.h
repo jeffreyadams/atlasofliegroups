@@ -223,7 +223,7 @@ template<typename C> class Matrix_base
 
   void eraseColumn(size_t);
   void eraseRow(size_t);
-  void reset() { d_data.assign(d_data.size(),C(0)); }
+  void clear() { d_rows=d_columns=0; d_data.clear(); }
 
  protected: // not |private| because |PID_Matrix<C>::block| uses them
   const C* at (size_t i,size_t j) const { return &operator()(i,j); }
@@ -385,8 +385,7 @@ template<typename C> class PID_Matrix : public Matrix<C>
     { return PID_Matrix(base::operator*(Q)); }
 
 
-
-  PID_Matrix on_basis(const std::vector<Vector<C> >& basis) const;
+  PID_Matrix on_basis(const PID_Matrix<C>& basis) const; // change of basis
 
   // secondary accessors (for inversion algorithms)
   bool divisible(C) const;

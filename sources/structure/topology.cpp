@@ -132,21 +132,26 @@ Connectivity::Connectivity(const tori::RealTorus& t,
 {
   // write involution in coroot basis
 
-  CoweightInvolution i = t.involution().transposed(); // coroot latt.
-  CoweightList b(rd.beginSimpleCoroot(),rd.endSimpleCoroot());
-  std::copy(rd.beginRadical(),rd.endRadical(),
-	    std::back_inserter(b)); // coroots+radical
-  int_Matrix i_sw=i.on_basis(b); // matrix of |i| in this basis
+  CoweightInvolution i = t.involution().transposed(); // acts on coroot lattice
+  LatticeMatrix basis(rd.rank(),rd.rank()); // basis in coweight lattice
+  { unsigned int j=0;
+    for (auto it=rd.beginSimpleCoroot(); it!=rd.endSimpleCoroot(); ++it,++j)
+      basis.set_column(j,*it);
+    for (auto it=rd.beginRadical(); it!=rd.endRadical(); ++it,++j)
+      basis.set_column(j,*it);
+  }
+
+  int_Matrix i_sw=i.on_basis(basis); // matrix of |i| in this basis
 
   /* [certainly |i_sw| respects the decomposition into coroot and radical
      subspaces, in other words it is in block form. MvL]  */
 
-  // write involution in simple weight [dual to coroot+radical, MvL] basis
+  // write involution in "simple weight" [dual to coroot+radical, MvL] basis
   i_sw.transpose();
 
   /* I think one might as well have constructed the basis dual to
      coroot+radical first and transformed |i| to that basis. The main problem
-     with is that is that the simple weights need not be integral. MvL */
+     with is that is that the "simple weights" need not be integral. MvL */
 
   tori::RealTorus t_sc(i_sw);
 
@@ -154,12 +159,12 @@ Connectivity::Connectivity(const tori::RealTorus& t,
   // is given by the transpose of the matrix of coroot vectors. To go
   // into t_sc itself we add rows of zeroes.
 
-  for (size_t j = rd.semisimpleRank(); j < rd.rank(); ++j)
-    b[j] = int_Vector(rd.rank(),0); // clear radical part of basis |b|
+  { int_Vector zero_column(rd.rank(),0);
+    for (size_t j = rd.semisimpleRank(); j < rd.rank(); ++j)
+      basis.set_column(j,zero_column); // clear radical part of |basis|
+  }
 
-  int_Matrix m(b,rd.rank()); m.transpose();
-
-  BinaryMap m2 = t.componentMap(m,t_sc);
+  BinaryMap m2 = t.componentMap(basis.transposed(),t_sc);
 
   d_dpi0=m2.kernel();
 }

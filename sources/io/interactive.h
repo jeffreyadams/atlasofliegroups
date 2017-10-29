@@ -48,13 +48,13 @@ namespace interactive {
   size_t get_Cartan_class(const BitMap& cs);
 
   void get_group_type(InnerClass*&, output::Interface*&,
-     lietype::Layout& layout, WeightList& basis);
+     lietype::Layout& layout, LatticeMatrix& basis);
 
   void getInteractive(LieType&);
 
-  PreRootDatum get_pre_root_datum(WeightList&, const LieType&);
+  PreRootDatum get_pre_root_datum(LatticeMatrix& basis, const LieType& lt);
   WeightInvolution
-    getInnerClass(lietype::Layout& lo, const WeightList& basis);
+    getInnerClass(lietype::Layout& lo, const LatticeMatrix& basis);
   void getInteractive(InnerClassType&, const LieType&);
 
   RealFormNbr get_real_form(output::Interface&);
@@ -94,7 +94,7 @@ namespace interactive {
 
 // get second distinguished involution that commutes with the inner class one
   WeightInvolution get_commuting_involution
-    (const lietype::Layout& lo, const WeightList& basis);
+    (const lietype::Layout& lo, const LatticeMatrix& basis);
 
 }
 

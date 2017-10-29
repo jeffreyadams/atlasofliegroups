@@ -713,15 +713,14 @@ involution specified. Therefore we now provide a function that in addition to
 the Lie type takes a matrix specifying a sub-lattice as argument, and finally
 a string specifying the inner class.
 
-The fist two ingredients are also those used to construct a root datum, and
-one might imagine replacing them by a root datum. The function
-$set\_inner\_class$ defined later will do that, but it has to accept some
-ambiguity in recovering Lie type and sub-lattice from a root datum. Also it
-may find a permutation of the simple roots with respect to the standard
-ordering of the diagram, and has to deal with that additional generality. So
-unfortunately it can neither replace nor call the function $based\_involution$
-defined here; it will have to adapt some of the work done here to its
-situation.
+The fist two ingredients are also those used to construct a root datum, and one
+might imagine replacing them by a root datum. The function |set_inner_class|
+defined later will do that, but it has to accept some ambiguity in recovering
+Lie type and sub-lattice from a root datum. Also it may find a permutation of
+the simple roots with respect to the standard ordering of the diagram, and has
+to deal with that additional generality. So unfortunately it can neither replace
+nor call the function |based_involution| defined here; it will have to adapt
+some of the work done here to its situation.
 
 
 @< Local function def... @>=
@@ -739,7 +738,7 @@ void based_involution_wrapper(expression_base::level l)
   WeightInvolution inv=lietype::involution
         (type->val,transform_inner_class_type(s->val.c_str(),type->val));
   try
-  {@; push_value(std::make_shared<matrix_value>(inv.on_basis(basis->val.columns()))); }
+  {@; push_value(std::make_shared<matrix_value>(inv.on_basis(basis->val))); }
   catch (std::runtime_error&) // relabel |"Inexact integer division"|
   {@; throw runtime_error
       ("Inner class is not compatible with given lattice");
@@ -2062,7 +2061,7 @@ void set_inner_class_wrapper(expression_base::level l)
   push_value(rdv);
   try
   {@; push_value(std::make_shared<matrix_value> @|
-       (lietype::involution(lo).on_basis(M->val.columns())));
+       (lietype::involution(lo).on_basis(M->val)));
   }
   catch (std::runtime_error&) // relabel inexact division error
   {@; throw runtime_error @|

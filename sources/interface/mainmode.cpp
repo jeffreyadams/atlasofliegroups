@@ -82,7 +82,7 @@ namespace {
   // most of these have been changed to pointers to avoid swapping of G_C
 
   lietype::Layout layout;
-  WeightList lattice_basis; // allows mapping Lie type info to complex group
+  LatticeMatrix lattice_basis; // allows mapping Lie type info to complex group
   InnerClass* G_C_pointer=nullptr;
   InnerClass* dual_G_C_pointer=nullptr;
   output::Interface* G_I_pointer=nullptr;
@@ -112,7 +112,7 @@ InnerClass& current_dual_group()
 
 
 const lietype::Layout& current_layout() { return layout; }
-const WeightList& current_lattice_basis() { return lattice_basis; }
+const LatticeMatrix& current_lattice_basis() { return lattice_basis; }
 
 output::Interface& currentComplexInterface()
 {

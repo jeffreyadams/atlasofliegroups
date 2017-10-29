@@ -60,7 +60,7 @@ namespace {
   getInnerClass(lietype::Layout& lo, const WeightList& basis);
 
   bool checkInvolution(const WeightInvolution& inv,
-		       const WeightList& basis);
+		       const LatticeMatrix& basis);
 }
 
 /*****************************************************************************
@@ -258,27 +258,27 @@ size_t get_Cartan_class(const BitMap& cs)
 */
 void get_group_type
   (InnerClass*& pG,output::Interface*& pI,
-   lietype::Layout& layout, WeightList& basis) // export these two
+   lietype::Layout& layout, LatticeMatrix& basis_out) // export these two
 {
   // first get the Lie type
   LieType lt; getInteractive(lt);  // may throw an InputError
 
   // then get kernel generators to define the (pre-) root datum
-  WeightList b;
+  LatticeMatrix basis;
   PreRootDatum prd =
-    interactive::get_pre_root_datum(b,lt); // may throw an InputError
+    interactive::get_pre_root_datum(basis,lt); // may throw an InputError
 
   // complete the Lie type with inner class specification, into a Layout |lo|
   // and also compute the involution matrix |inv| for this inner class
   lietype::Layout lo(lt);
   // basis |b| is used to express |inv| on, and may reject some inner classes
-  WeightInvolution inv=getInnerClass(lo,b); // may throw InputError
+  WeightInvolution inv=getInnerClass(lo,basis); // may throw InputError
 
   // commit (unless |RootDatum(prd)| should throw: then nothing is changed)
   pG=new InnerClass(prd,inv);
   pI=new output::Interface(*pG,lo);
   layout = lo;
-  basis = std::move(b);
+  basis_out = std::move(basis);
   // the latter constructor also constructs two realform interfaces in *pI
 }
 
@@ -341,44 +341,42 @@ void getInteractive(LieType& d_lt)
   This function throws an |InputError| if the interaction with the user fails.
   In that case |d_b| is not touched.
 */
-PreRootDatum get_pre_root_datum(WeightList& d_b, const LieType& lt)
+PreRootDatum get_pre_root_datum(LatticeMatrix& basis, const LieType& lt)
 {
   // get lattice basis
 
   CoeffList invf;
   WeightList b = lt.Smith_basis(invf);
-  switch (interactive_lattice::getLattice(invf,b)) // may throw an InputError
+  LatticeMatrix root_lattice_basis
+    (b.begin(),b.end(),b.size(),tags::IteratorTag()); // convert to matrix
+  switch (interactive_lattice::getLattice(invf,root_lattice_basis))
+    // switch expression may throw an |InputError|
   {
   case 1: // simply connected
     {
-      matrix::initBasis(d_b,lt.rank()); // replace with standard basis
+      basis = LatticeMatrix(lt.rank()); // identity matrix
     } break;
   case 2: // adjoint
     { // Take root basis for simple factors, standard basis for torus factors
 
-      matrix::initBasis(d_b,lt.rank()); // initially standard basis
-      WeightList::iterator bp = d_b.begin();
-
+      basis = LatticeMatrix(lt.rank()); // initially identity matrix
+      unsigned int d=0; // index into |basis|, incremented per diagonal block
       for (LieType::const_iterator it=lt.begin(); it!=lt.end(); ++it)
       {
 	size_t r = it->rank();
-	if (it->type() == 'T') // torus type T_r
-	  bp += r; // leave |r| standard basis vectors
-	else
-	{
-	  size_t d=bp-d_b.begin(); // row offset, to start block on diagonal
-	  for (size_t j=0; j<r; ++j,++bp) // row |j|: simple root |j| in |*it|
-	    for (size_t k=0; k<r; ++k)
-	      (*bp)[d+k]=it->Cartan_entry(j,k);
-	}
+	if (it->type() != 'T') // leave |basis| columns for torus type $T_r$
+	  for (size_t j=0; j<r; ++j) // copy simple root |j| into column |d+j|
+	    for (size_t i=0; i<r; ++i)
+	      basis(d+i,d+j)=it->Cartan_entry(j,i); // transpose by convention
+	d += r; // now advance over |r| columns
       }
     } break;
-    default: // user specified lattice basis is now in |b|
-      d_b.swap(b);
+    default: // user specified lattice basis is now in |root_lattice_basis|
+      basis=root_lattice_basis;
   }
 
   // make new PreRootDatum
-  return PreRootDatum(lt,false).quotient(LatticeMatrix(d_b,d_b.size()));
+  return PreRootDatum(lt,false).quotient(basis);
 
 } // |get_pre_root_datum|
 
@@ -407,26 +405,26 @@ PreRootDatum get_pre_root_datum(WeightList& d_b, const LieType& lt)
   Throws an InputError if the interaction is not successful.
 */
 WeightInvolution
-getInnerClass(lietype::Layout& lo, const WeightList& basis)
+getInnerClass(lietype::Layout& lo, const LatticeMatrix& basis)
 {
   const LieType& lt = lo.d_type;
 
   InnerClassType ict;
   getInteractive(ict,lt); // may throw an InputError
 
-  WeightInvolution i = lietype::involution(lt,ict);
+  WeightInvolution inv = lietype::involution(lt,ict);
 
-  while (not checkInvolution(i,basis)) // complain and reget the inner class
+  while (not checkInvolution(inv,basis)) // complain and reget the inner class
   {
     std::cerr
       << "sorry, that inner class is not compatible with the weight lattice"
       << std::endl;
     getInteractive(ict,lt);
-    i = lietype::involution(lt,ict);
+    inv = lietype::involution(lt,ict);
   }
 
   lo.d_inner = ict;
-  return i.on_basis(basis);
+  return inv.on_basis(basis);
 } // |getInnerClass|
 
 
@@ -1005,7 +1003,7 @@ bool has_involution(const SimpleLieType& slt)
 
 // get second distinguished involution that commutes with the inner class one
 WeightInvolution get_commuting_involution
-  (const lietype::Layout& lo, const WeightList& basis)
+  (const lietype::Layout& lo, const LatticeMatrix& basis)
 {
   // here indices, and |RankFlags| bits, identify entries in |lo.d_type|
   // each of which gives rise to an |inner_class_factor|
@@ -1166,15 +1164,11 @@ namespace {
   Whether involution |i| is compatible with the weight lattice given by |basis|.
   This means that |i| can be represented by an integral matrix on |basis|
 */
-bool checkInvolution(const WeightInvolution& i,
-		     const WeightList& basis)
-{
-  LatticeMatrix p(basis,basis.size());
-
-  // write d.p^{-1}.i.p
-
+bool checkInvolution(const WeightInvolution& inv,
+		     const LatticeMatrix& basis)
+{ // basically check whether |inv.on_basis(basis)| would throw and error
   arithmetic::big_int d;
-  WeightInvolution m=p.inverse(d)*i*p;
+  WeightInvolution m=basis.inverse(d)*inv*basis; // change of basis
 
   // now |i| stabilizes the lattice iff |d| divides |m|
 
