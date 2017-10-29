@@ -47,12 +47,11 @@ class PreRootDatum
  public:
 
 // constructors and destructors
-  PreRootDatum(const WeightList& roots,
-               const CoweightList& coroots,
-	       size_t rank,
+  PreRootDatum(const int_Matrix& simple_roots,
+               const int_Matrix& simple_coroots,
 	       bool prefer_co)
-    : simple_roots(roots.begin(),roots.end(),rank,tags::IteratorTag())
-    , simple_coroots(coroots.begin(),coroots.end(),rank,tags::IteratorTag())
+    : simple_roots(simple_roots)
+    , simple_coroots(simple_coroots)
     , prefer_co(prefer_co)
     {}
 
@@ -92,6 +91,8 @@ class PreRootDatum
     void simple_reflect(weyl::Generator i,matrix::Vector<C>& v) const;
   void simple_reflect(weyl::Generator i, LatticeMatrix& M) const;
   void simple_reflect(LatticeMatrix& M,weyl::Generator i) const;
+
+  void test_Cartan_matrix () const; // my throw |error::Cartan_error|
 
 // manipulators
   // replace by root datum for finite central quotient with weight |sublattice|

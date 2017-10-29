@@ -963,26 +963,17 @@ void root_datum_wrapper(expression_base::level l)
       ") of simple (co)root systems differ");
 @.Sizes of simple (co)root systems...@>
 
-  WeightList s; CoweightList c;
-  s.reserve(nc);
-  c.reserve(nc);
-
-  for (size_t j=0; j<nc; ++j)
-@/{@; s.push_back(simple_roots->val.column(j));
-      c.push_back(simple_coroots->val.column(j));
-  }
-
-  PreRootDatum prd(s,c,nr,prefer_coroots);
-  try @/{@; Permutation dummy;
-    dynkin::Lie_type(prd.Cartan_matrix(),true,true,dummy);
-  }
+try @/{
+  PreRootDatum prd(simple_roots->val,simple_coroots->val,prefer_coroots);
+  prd.test_Cartan_matrix();
+  if (l!=expression_base::no_value)
+    push_value(root_datum_value::build(std::move(prd)));
+}
   catch (error::CartanError)
 @/{@;
     throw runtime_error("Matrices of (co)roots give invalid Cartan matrix");
 }
 @.System of (co)roots has invalid...@>
-  if (l!=expression_base::no_value)
-    push_value(root_datum_value::build(std::move(prd)));
 }
 
 @ Alternatively, the user may specify a Lie type and a square matrix of the size

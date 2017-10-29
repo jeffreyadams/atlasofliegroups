@@ -812,16 +812,16 @@ RootDatum::RootDatum(int_Matrix& injector, const RootDatum& rd,
 
 PreRootDatum RootDatum::sub_predatum (const RootNbrList& generators) const
 {
-  WeightList simple_roots;     simple_roots.reserve(generators.size());
-  CoweightList simple_coroots; simple_coroots.reserve(generators.size());
-  for (RootNbrList::const_iterator it=
-	 generators.begin(); it!=generators.end(); ++it)
+  auto sr = generators.size();
+  LatticeMatrix simple_roots(rank(),sr);
+  LatticeMatrix simple_coroots(rank(),sr);
+  for (unsigned int j=0; j<sr; ++j)
   {
-    simple_roots.push_back(d_roots[*it]);
-    simple_coroots.push_back(d_coroots[*it]);
+    simple_roots.set_column(j,d_roots[generators[j]]);
+    simple_coroots.set_column(j,d_coroots[generators[j]]);
   }
 
-  return PreRootDatum(simple_roots,simple_coroots,rank(),prefer_coroots());
+  return PreRootDatum(simple_roots,simple_coroots,prefer_coroots());
 }
 
 
@@ -1055,9 +1055,11 @@ void RootDatum::swap(RootDatum& other)
 
 // implicit conversion
   RootDatum::operator PreRootDatum() const
-  { WeightList simple_roots(beginSimpleRoot(),endSimpleRoot());
-    CoweightList simple_coroots(beginSimpleCoroot(),endSimpleCoroot());
-    return PreRootDatum(simple_roots,simple_coroots,rank(),prefer_coroots());
+  { LatticeMatrix simple_roots
+      (beginSimpleRoot(),endSimpleRoot(),rank(),tags::IteratorTag());
+    LatticeMatrix simple_coroots
+      (beginSimpleCoroot(),endSimpleCoroot(),rank(),tags::IteratorTag());
+    return PreRootDatum(simple_roots,simple_coroots,prefer_coroots());
   }
 
 

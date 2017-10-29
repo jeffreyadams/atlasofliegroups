@@ -15,6 +15,7 @@
 
 #include "matrix.h"
 #include "lietype.h"
+#include "dynkin.h"
 #include "matreduc.h"
 
 namespace atlas {
@@ -115,6 +116,11 @@ int_Matrix PreRootDatum::Cartan_matrix() const
       Cartan(i,j) = simple_root(i).dot(simple_coroot(j));
 
   return Cartan;
+}
+
+void PreRootDatum::test_Cartan_matrix () const
+{ Permutation dummy;
+  dynkin::Lie_type(Cartan_matrix(),true,true,dummy);
 }
 
 // replace by root datum for a finite central quotient with weight |sublattice|

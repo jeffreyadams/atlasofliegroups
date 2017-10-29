@@ -99,14 +99,16 @@ RootNbr SubSystem::to_parent(RootNbr alpha) const
 
 PreRootDatum SubSystem::pre_root_datum() const
 {
-  WeightList roots(rank());  // rank of subsystem
-  CoweightList coroots(rank());
-  for (weyl::Generator i=0; i<rank(); ++i)
+  auto pr = parent_datum().rank(), sr=rank();
+  LatticeMatrix simple_roots(pr,sr);
+  LatticeMatrix simple_coroots(pr,sr);
+
+  for (unsigned int j=0; j<sr; ++j)
   {
-    roots[i]  =rd.root  (parent_nr_simple(i));
-    coroots[i]=rd.coroot(parent_nr_simple(i));
+    simple_roots  .set_column(j,rd.root  (parent_nr_simple(j)));
+    simple_coroots.set_column(j,rd.coroot(parent_nr_simple(j)));
   }
-  return PreRootDatum(roots,coroots,rd.rank(),not prefer_coroots());
+  return PreRootDatum(simple_roots,simple_coroots,not prefer_coroots());
 }
 
 // compute twist and subsystem twisted involution $ww$ for $-theta^t$

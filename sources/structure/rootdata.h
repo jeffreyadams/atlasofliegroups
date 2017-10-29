@@ -363,8 +363,10 @@ class RootDatum
 // accessors
 
   const RootSystem& root_system() const { return *this; } // base object ref
-  size_t rank() const { return d_rank; }
-  size_t semisimpleRank() const { return RootSystem::rank(); }
+
+  // |rank()| does not number roots, but keep type same as |semisimpleRank()|
+  RootNbr rank() const { return d_rank; }
+  RootNbr semisimpleRank() const { return RootSystem::rank(); }
 
 // root list access
 
