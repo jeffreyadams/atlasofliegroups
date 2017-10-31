@@ -154,9 +154,8 @@ bool CartanClass::isMostSplit(adjoint_fiber_orbit wrf) const
 // Fiber constructor for involution |theta| of the root datum |rd|.
 
 
-Fiber::Fiber(const RootDatum& rd,
-	     const WeightInvolution& theta)
-  : d_torus(theta)
+Fiber::Fiber(const RootDatum& rd, const WeightInvolution& theta)
+  : d_involution(theta)
   , d_involutionData(rd,theta)
   , d_fiberGroup(makeFiberGroup())
   , d_adjointFiberGroup(makeAdjointFiberGroup(rd))
@@ -176,7 +175,7 @@ Fiber::Fiber(const RootDatum& rd,
 // Copy and assignment
 
 Fiber::Fiber(const Fiber& other)
-  : d_torus(other.d_torus)
+  : d_involution(other.d_involution)
   , d_involutionData(other.d_involutionData)
   , d_fiberGroup(other.d_fiberGroup)
   , d_adjointFiberGroup(other.d_adjointFiberGroup)
@@ -190,6 +189,8 @@ Fiber::Fiber(const Fiber& other)
   , d_strongReal(other.d_strongReal)
   , d_strongRealFormReps(other.d_strongRealFormReps)
 {}
+
+tori::RealTorus Fiber::torus() const { return tori::RealTorus(d_involution); }
 
 /*       Private accessors of |Fiber| used during construction      */
 
