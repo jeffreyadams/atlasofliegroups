@@ -345,8 +345,6 @@ namespace atlas {
 
   namespace tori { class RealTorus; }
 
-  namespace topology { class Connectivity; }
-
   namespace subsystem {class SubSystem; class SubSystemWithGroup; }
   using subsystem::SubSystem;
   using subsystem::SubSystemWithGroup;

@@ -1,10 +1,7 @@
-/*!
-\file
-\brief Class definition and function declarations for the class RealTorus.
-*/
 /*
   This is tori.h
   Copyright (C) 2004,2005 Fokko du Cloux
+  Copyright (C) 2017 Marc van Leeuwen
   part of the Atlas of Lie Groups and Representations
 
   For license information see the LICENSE file
@@ -20,29 +17,17 @@
 #include "subquotient.h"
 
 namespace atlas {
+namespace tori {
 
 /******** function declarations *********************************************/
 
-namespace tori {
-
   SmallSubquotient dualPi0(const WeightInvolution&);
 
-  WeightInvolution plusMatrix(const WeightInvolution&, const RealTorus&);
-  WeightInvolution minusMatrix(const WeightInvolution&, const RealTorus&);
-
-  void plusBasis(WeightList&, const WeightInvolution&);
-
   WeightList plusBasis(const WeightInvolution&);
-
-  void minusBasis(WeightList&, const WeightInvolution&);
-
   WeightList minusBasis(const WeightInvolution&);
 
-}
 
 /******** type definitions **************************************************/
-
-namespace tori {
 
 /*   Class to represent a torus defined over R.
 
@@ -83,10 +68,10 @@ class RealTorus
   size_t d_rank;                             // rank of torus
   size_t d_complexRank;                      // number of C^x-factors
   WeightInvolution d_involution;            // matrix of the involution
-  WeightList d_plus;                     // basis for +1 eigenlattice
-  WeightList d_minus;                    // basis for -1 eigenlattice
   LatticeMatrix d_toPlus; // transform coordinates of $X_+$ element to |d_plus|
   LatticeMatrix d_toMinus;// transform coordinates to $X_-$ element to |d_minus|
+  WeightList d_plus;                     // basis for +1 eigenlattice
+  WeightList d_minus;                    // basis for -1 eigenlattice
   SmallSubquotient d_topology;  // subquotient $(V_+ + V_-)/V_+$ of $X/2X$
 
  public:
@@ -116,17 +101,12 @@ class RealTorus
   const WeightList& plusLattice() const { return d_plus; }
   const WeightList& minusLattice() const { return d_minus; }
 
-  void toPlus(Weight& dest, const Weight& source) const
-    { dest=d_toPlus*source; }
+  RealTorus dual() const;
 
-  void toMinus(Weight& dest, const Weight& source) const
-    { dest=d_toMinus*source; }
-
-  const SmallSubquotient& topology() const { return d_topology; }
+  const SmallSubquotient& dual_component_group() const { return d_topology; }
 };
 
-}
-
-}
+} // |namespace tori|
+} // |namespace atlas|
 
 #endif

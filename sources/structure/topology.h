@@ -1,8 +1,5 @@
-/*!
-\file
-  This is topology.h
-*/
 /*
+  This is topology.h
   Copyright (C) 2004,2005 Fokko du Cloux
   part of the Atlas of Lie Groups and Representations
 
@@ -21,19 +18,11 @@
 /******** type declarations *************************************************/
 
 namespace atlas {
-
-
-/******** function declarations *********************************************/
-
 namespace topology {
 
-  bool isTrivial(const CoeffList&);
-
-}
 
 /******** type definitions **************************************************/
 
-namespace topology {
 
 /* class of which the constructor computes a basis for the dual of the
    component group of a real reductive group (given its most split torus, and
@@ -55,8 +44,7 @@ class Connectivity
   ~Connectivity() {}
 
 // accessors
-  const SmallBitVectorList& dualComponentReps() const
-  { return d_dpi0; }
+  const SmallBitVectorList& dualComponentReps() const { return d_dpi0; }
 
   const size_t component_rank() const { return d_dpi0.size(); }
 
