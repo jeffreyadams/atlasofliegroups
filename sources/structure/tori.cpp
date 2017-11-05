@@ -9,7 +9,7 @@
 */
 
 
-//			Implementation of the class RealTorus
+// implementation of real torus related functions, and |class RealTorus|
 
 
 #include "tori.h"
@@ -208,7 +208,7 @@ namespace {
   a coordinate transform from the standard basis to the adapted basis; retaining
   only the rows that give the initial coordinates we obtain the matrix |M|.
 */
-  WeightList fullSignBasis(const WeightInvolution& tau,int sign,int_Matrix& M)
+WeightList fullSignBasis(const WeightInvolution& tau,int sign,int_Matrix& M)
 {
   CoeffList factor;
   int_Matrix b = matreduc::adapted_basis(tau+sign,factor);

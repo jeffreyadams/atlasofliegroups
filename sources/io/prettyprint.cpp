@@ -19,7 +19,7 @@
 
 #include "gradings.h"   // |gradings::Status|
 #include "rootdata.h"	// |RootSystem|
-#include "tori.h"       // RealTorus|
+#include "tori.h"       // |RealTorus|
 
 #include "tits.h"
 

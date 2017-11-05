@@ -1,12 +1,15 @@
-/*!
-\file
+/*
   This is topology.cpp
 
-  [I've tried to make more detailed sense of Fokko's initial comments. In case
-  I've goofed up, I've kept the original comments just below. In any case it
-  should be noted that all this class is used for to date (May 2007), is to
-  print (dual) connectivity information about the real group, which might make
-  the functorial description below seem somewhat excessive. MvL]
+  Copyright (C) 2004,2005 Fokko du Cloux
+  Copyright (C) 2007,2017 Marc van Leeuwen
+  part of the Atlas of Lie Groups and Representations
+
+  For license information see the LICENSE file
+*/
+
+/*
+  Computation of the (dual) component group of real reductive groups
 
   The calculation of the component group $\pi_0(G(\R))$ of $G(\R)$ is based on
   the following two facts : (a) for $G$ simply connected semisimple, $G(\R)$
@@ -55,13 +58,6 @@
   the maximally split torus $S$ of $H(\R)$ (in simple weight coordinates).
   The actual computation of components is done by computing an induced map at
   the level of subquotients and then taking its kernel.
-*/
-/*
-  Copyright (C) 2004,2005 Fokko du Cloux
-  Copyright (C) 2017 Marc van Leeuwen
-  part of the Atlas of Lie Groups and Representations
-
-  For license information see the LICENSE file
 */
 
 #include "topology.h"
@@ -193,48 +189,6 @@ SmallBitVectorList
     (tori::dualPi0(theta),tori::dualPi0(i_sw),BinaryMap(basis.transposed()));
 
   return m2.kernel();
-}
-
-Connectivity::Connectivity(const tori::RealTorus& t,
-			   const RootDatum& rd)
-{
-  // write involution in coroot basis
-
-  CoweightInvolution i = t.involution().transposed(); // acts on coroot lattice
-  LatticeMatrix basis(rd.rank(),rd.rank()); // basis in coweight lattice
-  { unsigned int j=0;
-    for (auto it=rd.beginSimpleCoroot(); it!=rd.endSimpleCoroot(); ++it,++j)
-      basis.set_column(j,*it);
-    for (auto it=rd.beginRadical(); it!=rd.endRadical(); ++it,++j)
-      basis.set_column(j,*it);
-  }
-
-  int_Matrix i_sw=i.on_basis(basis); // matrix of |i| in this basis
-
-  /* [certainly |i_sw| respects the decomposition into coroot and radical
-     subspaces, in other words it is in block form. MvL]  */
-
-  // write involution in "simple weight" [dual to coroot+radical, MvL] basis
-  i_sw.transpose();
-
-  /* I think one might as well have constructed the basis dual to
-     coroot+radical first and transformed |i| to that basis. The main problem
-     with is that is that the "simple weights" need not be integral. MvL */
-
-  tori::RealTorus t_sc(i_sw);
-
-  // the map from t's lattice to the lattice of the derived group of t_sc
-  // is given by the transpose of the matrix of coroot vectors. To go
-  // into t_sc itself we add rows of zeroes.
-
-  { int_Vector zero_column(rd.rank(),0);
-    for (size_t j = rd.semisimpleRank(); j < rd.rank(); ++j)
-      basis.set_column(j,zero_column); // clear radical part of |basis|
-  }
-
-  BinaryMap m2 = t.componentMap(basis.transposed(),t_sc);
-
-  d_dpi0=m2.kernel();
 }
 
 } // |namespace topology|

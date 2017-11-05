@@ -1,6 +1,7 @@
 /*
   This is topology.h
   Copyright (C) 2004,2005 Fokko du Cloux
+  Copyright (C) 2017 Marc van Leeuwen
   part of the Atlas of Lie Groups and Representations
 
   For license information see the LICENSE file
@@ -9,49 +10,15 @@
 #ifndef TOPOLOGY_H  /* guard against multiple inclusions */
 #define TOPOLOGY_H
 
-#include <vector>
-
 #include "../Atlas.h"
-
-#include "bitvector.h" // contained in |Connectivity|
-
-/******** type declarations *************************************************/
 
 namespace atlas {
 namespace topology {
 
+// function definition
 
-/******** type definitions **************************************************/
-
-
-/* class of which the constructor computes a basis for the dual of the
-   component group of a real reductive group (given its most split torus, and
-   the root datum that it is related to).
- */
-
-class Connectivity
-{
-
- private:
-  SmallBitVectorList d_dpi0; // basis of dual component group
-
- public:
-// constructors and destructors
-  Connectivity() {}
-
-  Connectivity(const tori::RealTorus& most_split, const RootDatum&);
-
-  ~Connectivity() {}
-
-// accessors
-  const SmallBitVectorList& dualComponentReps() const { return d_dpi0; }
-
-  const size_t component_rank() const { return d_dpi0.size(); }
-
-// manipulators
-  void swap(Connectivity& other) { d_dpi0.swap(other.d_dpi0);}
-
-}; // |class Connectivity|
+SmallBitVectorList
+  dual_component_group_basis(const WeightInvolution theta,const RootDatum& rd);
 
 } // |namespace topology|
 

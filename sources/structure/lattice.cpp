@@ -1,5 +1,5 @@
 /*
-  This is lattice.cpp.
+  This is lattice.cpp
 
   Copyright (C) 2004,2005 Fokko du Cloux
   Copyright (C) 2007--2017 Marc van Leeuwen
