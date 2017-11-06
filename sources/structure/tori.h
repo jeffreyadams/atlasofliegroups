@@ -10,6 +10,8 @@
 #ifndef TORI_H  /* guard against multiple inclusions */
 #define TORI_H
 
+#include <tuple>
+
 #include "bits.h"
 #include "tags.h"
 
@@ -25,6 +27,9 @@ namespace tori {
 
   WeightList plusBasis(const WeightInvolution&);
   WeightList minusBasis(const WeightInvolution&);
+
+  // compute compact, complex, and split ranks
+  std::tuple<unsigned,unsigned,unsigned> classify(const WeightInvolution&);
 
 
 /******** type definitions **************************************************/
@@ -96,7 +101,8 @@ class RealTorus
   bool isCompact() const { return d_plus.size() == d_rank; }
   bool isSplit() const { return d_minus.size() == d_rank; }
 
-  BinaryMap componentMap(const LatticeMatrix&, const RealTorus&) const;
+  // map induced on dual_pi0's (subquotients of $X^*$s) by map |f| to |target|
+  BinaryMap componentMap(const LatticeMatrix& f, const RealTorus& target) const;
 
   const WeightList& plusLattice() const { return d_plus; }
   const WeightList& minusLattice() const { return d_minus; }

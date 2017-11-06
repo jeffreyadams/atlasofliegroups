@@ -225,9 +225,10 @@ std::ostream& printCartanClass(std::ostream& strm,
   const RootSystem& rs = G.rootDatum();
 
   const CartanClass& cc = G.cartan(cn);
+  const auto& tau = cc.involution();
   const Fiber& f = cc.fiber();
 
-  prettyprint::printTorusType(strm,f.torus()) << std::endl;
+  prettyprint::printTorusType(strm,tau) << std::endl;
 
   {
     std::ostringstream os;

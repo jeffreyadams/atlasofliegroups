@@ -1430,12 +1430,11 @@ rank).
 @h "tori.h"
 @f delta nullptr
 @< Local function def...@>=
-std::pair<size_t,size_t> classify_involution
-  (const WeightInvolution& delta)
+std::pair<size_t,size_t> classify_involution (const WeightInvolution& delta)
 { size_t r=delta.numRows();
   @< Check that |delta| is an $r\times{r}$ matrix defining an involution @>
-  tori::RealTorus Tor(delta);
-  return std::make_pair(Tor.compactRank(),Tor.splitRank());
+  const auto ranks = tori::classify(delta);
+  return std::make_pair(std::get<0>(ranks),std::get<2>(ranks));
 }
 
 @ The test below that |delta| is an involution ($\delta^2=\\{Id}$) is certainly
@@ -2893,9 +2892,11 @@ void Cartan_info_wrapper(expression_base::level l)
   if (l==expression_base::no_value)
     return;
 
-  push_value(std::make_shared<int_value>(cc->val.fiber().torus().compactRank()));
-  push_value(std::make_shared<int_value>(cc->val.fiber().torus().complexRank()));
-  push_value(std::make_shared<int_value>(cc->val.fiber().torus().splitRank()));
+  auto ranks = tori::classify(cc->val.involution());
+
+  push_value(std::make_shared<int_value>(std::get<0>(ranks)));
+  push_value(std::make_shared<int_value>(std::get<1>(ranks)));
+  push_value(std::make_shared<int_value>(std::get<2>(ranks)));
   wrap_tuple<3>();
 
   const weyl::TwistedInvolution& tw =

@@ -67,7 +67,7 @@ std::ostream& printStatus(std::ostream&, const gradings::Status&, size_t);
 
 std::ostream& printTitsElt(std::ostream&, const TitsElt&, const TitsGroup&);
 
-std::ostream& printTorusType(std::ostream&, const tori::RealTorus&);
+std::ostream& printTorusType(std::ostream&, const WeightInvolution&);
 
 std::ostream& printWeylElt(std::ostream&, const WeylElt&, const WeylGroup&);
 

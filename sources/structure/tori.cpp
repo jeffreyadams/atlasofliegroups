@@ -18,6 +18,7 @@
 #include <cassert>
 
 #include "matreduc.h"
+#include "bitmap.h" // for destructing the result of |matreduc::column_echelon|
 #include "lattice.h"
 
 namespace atlas {
@@ -185,6 +186,15 @@ WeightList minusBasis(const WeightInvolution& theta)
   return lattice::eigen_lattice(theta,-1).columns();
 }
 
+std::tuple<unsigned,unsigned,unsigned> classify(const WeightInvolution& tau)
+{
+  int_Matrix tau1=tau+1,dummy; bool flip;
+  matreduc::column_echelon(tau1,dummy,flip);
+  const auto r=tau1.numRows(),plus_rank = tau1.numColumns();
+  const auto complex_rank = BinaryMap(tau1).image().size();
+  const auto compact_rank = plus_rank-complex_rank;
+  return std::make_tuple(compact_rank,complex_rank,r-plus_rank-complex_rank);
+}
 
 /*****************************************************************************
 
