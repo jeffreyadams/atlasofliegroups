@@ -17,6 +17,7 @@
 
 #include "arithmetic.h" // |lcm|
 #include "ratvec.h"	// |RatWeight|
+#include "bitset.h"     // we use a |RankFlags| variable
 #include "interactive.h" // |common_input| variable
 
 #include "matreduc.h"	// |diagonalise|
@@ -30,6 +31,7 @@
 ******************************************************************************/
 
 namespace atlas {
+namespace interactive_lattice {
 
 namespace {
 
@@ -57,8 +59,6 @@ namespace {
 
 ******************************************************************************/
 
-namespace interactive_lattice {
-
 /*
   Get the generators of X/Q, where Q is the root lattice, from the user.
 
@@ -66,7 +66,6 @@ namespace interactive_lattice {
   conclude successfully. In that case, d_rwl is not modified.
 */
 int getGenerators(RatWeightList& d_rwl, const CoeffList& u)
-  throw(error::InputError)
 {
   RatWeightList rwl;
 
@@ -157,16 +156,17 @@ int getGenerators(RatWeightList& d_rwl, const CoeffList& u)
   numbers that are transformed into rational coweights; this implicitly
   specifies a full rank (and therefore finite index) sublattice of weights
   taking integral values on all those coweights, and which sublattice contains
-  the root lattice (by limitation of the choice of the generators roots
+  the root lattice (due to limitation of the choice of the generators, roots
   automatically satisfy the integrality condition).
 
   Generators for the nontrivial part of this sublattice are computed by
-  |makeOrthogonal| into |q|. More precisely, extracting the elements of
-  |root_lattice_basis| that are not in the root lattice we obtain a direct
-  factor of the weight lattice with the integrality condition trivially
-  satisfied on the complementary factor; the columns of the square matrix |q|
-  express the linear combinations of the extracted elements that also satisfy
-  the integrality condition. To get from this a real sublattice basis, it
+  |makeOrthogonal| into |q|. More precisely, extracting those elements of
+  |root_lattice_basis| that are not in the root lattice (their invariant factor
+  is not 1), we obtain a direct factor of the weight lattice with the
+  integrality condition trivially satisfied on the complementary factor; the
+  columns of the square matrix |q| obtained from |makeOrthogonal| express the
+  linear combinations of the extracted elements that also satisfy the
+  integrality condition. To get from this an actual sublattice basis, it
   suffices to replace the extracted elements in |root_lattice_basis| by those
   linear combinations.
 
@@ -175,20 +175,27 @@ int getGenerators(RatWeightList& d_rwl, const CoeffList& u)
   prefers answering "ad" or "sc" rather than giving any generators, we pass
   this condition as a return code without modifying anything.
 */
-int getLattice(const CoeffList& root_invf, WeightList& root_lattice_basis)
-  throw(error::InputError)
+int getLattice(const CoeffList& root_invf, LatticeMatrix& root_lattice_basis)
 {
-  size_t r = root_lattice_basis.size(); // full rank of root datum
+  size_t r = root_lattice_basis.numRows(); // full rank of root datum
+  assert(root_lattice_basis.numColumns()==r);
   assert(root_invf.size()==r);
 
-  CoeffList u; // non-unit invariant factors
-  WeightList lb; // "local basis" corresponding to non-units
+  RankFlags non_units;
   for (size_t i=0; i<r; ++i)
     if (root_invf[i] != 1)
+      non_units.set(i);
+
+  CoeffList u; // non-unit invariant factors
+  LatticeMatrix lb(r,non_units.count()); // "local basis", only for non-units
+  u.reserve(lb.numColumns());
+  { unsigned int j=0;
+    for (auto it=non_units.begin(); it(); ++it,++j)
     {
-      u.push_back(root_invf[i]);
-      lb.push_back(root_lattice_basis[i]);
+      u.push_back(root_invf[*it]);
+      lb.set_column(j,root_lattice_basis.column(*it));
     }
+  }
 
   // get generators of character group
   RatWeightList rwl;  // generator list, each of size |u.size()|
@@ -199,23 +206,17 @@ int getLattice(const CoeffList& root_invf, WeightList& root_lattice_basis)
 
   // make basis elements corresponding to those central elements
 
-  LatticeMatrix q = makeOrthogonal(rwl,u.size()); // local function, see below
+  LatticeMatrix q = makeOrthogonal(rwl,u.size()); // function defined below
 
-  // convert |lb| columns to linear combinations of them according to |q|
-  LatticeMatrix lin_comb(lb,r); // matrix with columns |lb|
-  lin_comb *= q; // replace them by linear combinations
+  // update basis, insert linear combinations |lb| into |root_lattice_basis|
+  { unsigned int j=0;
+    for (auto it=non_units.begin(); it(); ++it,++j)
+      root_lattice_basis.set_column(*it,lb*q.column(j)); // lin.comb. |q| coeffs
+  }
 
-  // make actual basis, inserting columns |lin_comb| into |root_lattice_basis|
-  for (size_t i=0,j=0; i<r; ++i)
-    if (root_invf[i] != 1)
-    {
-      lin_comb.get_column(root_lattice_basis[i],j); // |rlb[i] = lc.column(j)|
-      ++j;
-    }
   return 0; // normal exit
 }
 
-} // |namespace interactive_lattice|
 
 /*****************************************************************************
 
@@ -226,7 +227,7 @@ int getLattice(const CoeffList& root_invf, WeightList& root_lattice_basis)
 namespace {
 
 /*
-  Synposis: checks if buf contains data compatible with u.
+  Synposis: checks if buf contains data compatible with denominator list |u|.
 
   Precondition: buf should contain a comma-separated list, with one entry for
   each member of u (extra entries are ignored). The entries should be of the
@@ -302,7 +303,7 @@ GeneratorError checkGenerator(input::InputBuffer& buf, size_t& r,
 
 
 /*
-  Put in |q| a basis for the lattice "orthogonal" to |rwl|.
+  Return a matrix whose columns are a basis for lattice "orthogonal" to |rwl|.
 
   Precondition: each of the elements of |rwl| is a rational weight, size |r|.
 
@@ -397,4 +398,5 @@ RatWeight readGenerator(size_t n_gen, LatticeCoeff d, input::InputBuffer& buf)
 
 } // |namespace|
 
+} // |namespace interactive_lattice|
 } // |namespace atlas|

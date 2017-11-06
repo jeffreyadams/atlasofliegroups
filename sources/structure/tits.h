@@ -207,7 +207,7 @@ class GlobalTitsGroup : public TwistedWeylGroup
 
   // determine status of simple root, if assumed imaginary
   bool compact(weyl::Generator s, const TorusElement& t) const
-  { return t.negative_at(prd.simple_coroots()[s]); }
+  { return t.negative_at(prd.simple_coroot(s)); }
   bool compact(weyl::Generator s, const GlobalTitsElement& a) const
   { return compact(s,a.torus_part()); }
 

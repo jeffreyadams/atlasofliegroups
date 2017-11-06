@@ -1,28 +1,23 @@
 /*
-  Constructing a root datum from user interaction
-
-  The idea is to construct an abstract root datum (a lattice and a
-  subset of "roots," together with the dual lattice and a subset of
-  "coroots") specified interactively as a product of simple Lie types,
-  then dividing by a specified subgroup of the center of a simply
-  connected form.
-*/
-
-/*
   This is prerootdata.h
 
   Copyright (C) 2004,2005 Fokko du Cloux
+  Copyright (C) 2014-2017 Marc van Leeuwen
   part of the Atlas of Lie Groups and Representations
-  Copyright (C) 2014 Marc van Leeuwen
 
   For license information see the LICENSE file
+*/
+
+/*
+  A class |PreRootDatum| to store simple rooots and coroots, and perform some
+  tests and operations prior to generating the full root systen and root datum
 */
 
 #ifndef PREROOTDATA_H  /* guard against multiple inclusions */
 #define PREROOTDATA_H
 
 #include "../Atlas.h"
-#include <stdexcept>
+#include "matrix.h"
 
 namespace atlas {
 
@@ -47,50 +42,48 @@ namespace prerootdata {
   */
 class PreRootDatum
 {
-  /*!
-  \brief List of the simple roots as elements of Z^d_rank, expressed in the
-  basis specified by the argument b of the constructor.
-  */
-  WeightList d_roots;
-  /*!
-  List of the simple coroots as elements of Z^d_rank, expressed in the
-  dual of the basis specified by the argument b of the constructor.
-  */
-  CoweightList d_coroots;
-  /*!
-  \brief  Rank of the root datum.
-   */
-  size_t d_rank;
-
+  int_Matrix simple_roots, simple_coroots; // both of same size
+  bool prefer_co; // flag indicating preference for coroots in generation
  public:
 
 // constructors and destructors
-  PreRootDatum() {}
+  PreRootDatum(const int_Matrix& simple_roots,
+               const int_Matrix& simple_coroots,
+	       bool prefer_co)
+    : simple_roots(simple_roots)
+    , simple_coroots(simple_coroots)
+    , prefer_co(prefer_co)
+    {}
 
-  PreRootDatum(const WeightList& roots,
-               const CoweightList& coroots,
-	       size_t rank)
-    : d_roots(roots),d_coroots(coroots), d_rank(rank) {}
+  PreRootDatum(const LieType& lt, bool prefer_co);
+  PreRootDatum(int_Matrix& projector, const PreRootDatum& rd,tags::DerivedTag);
+  PreRootDatum(int_Matrix& injector, const PreRootDatum& rd,tags::CoderivedTag);
 
-  PreRootDatum(const LieType& lt);
-
-  ~PreRootDatum() {}
+  PreRootDatum(const PreRootDatum& prd, tags::DualTag)
+    : simple_roots(prd.simple_coroots)
+    , simple_coroots(prd.simple_roots)
+    , prefer_co(not prd.prefer_co)
+  {}
 
 // accessors
-  bool operator== (const PreRootDatum& prd) const {
-    return (d_roots == prd.d_roots) and (d_coroots == prd.d_coroots) and
-       (d_rank == prd.d_rank);
+  bool operator== (const PreRootDatum& prd) const
+  { return simple_roots==prd.simple_roots
+    and simple_coroots == prd.simple_coroots
+    and prefer_co == prd.prefer_co;
   }
 
-  /*!
-  \brief Rank of the root datum.
-  */
-  size_t rank() const { return d_rank; }
+  size_t rank() const { return simple_roots.numRows(); }
+  size_t semisimple_rank() const { return simple_roots.numColumns(); }
 
-  // List of the simple roots, in basis that is implicit in constructor.
-  const WeightList& simple_roots() const { return d_roots; }
-  // List of the simple coroots, in basis that is implicit in constructor.
-  const CoweightList& simple_coroots() const { return d_coroots; }
+  const int_Matrix& simple_roots_mat() const { return simple_roots; }
+  const int_Matrix& simple_coroots_mat() const { return simple_coroots; }
+
+  bool prefer_coroots() const { return prefer_co; }
+
+  Weight simple_root(unsigned int j) const
+    { return simple_roots.column(j); }
+  Coweight simple_coroot(unsigned int j) const
+    { return simple_coroots.column(j); }
 
   int_Matrix Cartan_matrix() const;
 
@@ -99,11 +92,14 @@ class PreRootDatum
   void simple_reflect(weyl::Generator i, LatticeMatrix& M) const;
   void simple_reflect(LatticeMatrix& M,weyl::Generator i) const;
 
+  void test_Cartan_matrix () const; // my throw |error::Cartan_error|
+
 // manipulators
   // replace by root datum for finite central quotient with weight |sublattice|
   PreRootDatum& quotient(const LatticeMatrix& sublattice);
+  PreRootDatum& dualise() { simple_roots.swap(simple_coroots); return *this; }
 
-};
+}; // |class PreRootDatum|
 
 } // |namespace prerootdata|
 

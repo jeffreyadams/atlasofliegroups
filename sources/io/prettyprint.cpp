@@ -19,6 +19,7 @@
 
 #include "gradings.h"   // |gradings::Status|
 #include "rootdata.h"	// |RootSystem|
+#include "tori.h"       // |tori::classify|
 
 #include "tits.h"
 
@@ -326,21 +327,18 @@ std::ostream& printTitsElt(std::ostream& strm, const TitsElt& a,
 }
 
 
-/*
-  Synopsis: outputs the type of the real torus.
-
-  Explanation: T(R) is of the form (R^x)^p.(U(1))^q.(C^x)^r.
-*/
-std::ostream& printTorusType(std::ostream& strm, const tori::RealTorus& T)
+// Output the type of the real torus associated to the involution |tau|
+std::ostream& printTorusType(std::ostream& strm, const WeightInvolution& tau)
 {
-  strm << "split: ";
-  strm << T.splitRank();
-
-  strm << "; compact: ";
-  strm << T.compactRank();
+  const auto ranks = tori::classify(tau);
+  strm << "compact: ";
+  strm << std::get<0>(ranks);
 
   strm << "; complex: ";
-  strm << T.complexRank();
+  strm << std::get<1>(ranks);
+
+  strm << "; split: ";
+  strm << std::get<2>(ranks);
 
   return strm;
 }

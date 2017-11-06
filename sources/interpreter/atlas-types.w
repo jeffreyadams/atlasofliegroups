@@ -1,4 +1,4 @@
-% Copyright (C) 2006-2015 Marc van Leeuwen
+% Copyright (C) 2006-2017 Marc van Leeuwen
 % This file is part of the Atlas of Lie Groups and Representations (the Atlas)
 
 % This program is made available under the terms stated in the GNU
@@ -40,6 +40,7 @@ programming language of that name, which is independent of the Atlas library.
 
 @c
 namespace atlas { namespace interpreter {
+@< Global variable definitions @>
 namespace {@; @< Local function definitions @>@; }@;
 @< Function definitions @>@;
 }@; }@;
@@ -712,15 +713,14 @@ involution specified. Therefore we now provide a function that in addition to
 the Lie type takes a matrix specifying a sub-lattice as argument, and finally
 a string specifying the inner class.
 
-The fist two ingredients are also those used to construct a root datum, and
-one might imagine replacing them by a root datum. The function
-$set\_inner\_class$ defined later will do that, but it has to accept some
-ambiguity in recovering Lie type and sub-lattice from a root datum. Also it
-may find a permutation of the simple roots with respect to the standard
-ordering of the diagram, and has to deal with that additional generality. So
-unfortunately it can neither replace nor call the function $based\_involution$
-defined here; it will have to adapt some of the work done here to its
-situation.
+The fist two ingredients are also those used to construct a root datum, and one
+might imagine replacing them by a root datum. The function |set_inner_class|
+defined later will do that, but it has to accept some ambiguity in recovering
+Lie type and sub-lattice from a root datum. Also it may find a permutation of
+the simple roots with respect to the standard ordering of the diagram, and has
+to deal with that additional generality. So unfortunately it can neither replace
+nor call the function |based_involution| defined here; it will have to adapt
+some of the work done here to its situation.
 
 
 @< Local function def... @>=
@@ -738,7 +738,7 @@ void based_involution_wrapper(expression_base::level l)
   WeightInvolution inv=lietype::involution
         (type->val,transform_inner_class_type(s->val.c_str(),type->val));
   try
-  {@; push_value(std::make_shared<matrix_value>(inv.on_basis(basis->val.columns()))); }
+  {@; push_value(std::make_shared<matrix_value>(inv.on_basis(basis->val))); }
   catch (std::runtime_error&) // relabel |"Inexact integer division"|
   {@; throw runtime_error
       ("Inner class is not compatible with given lattice");
@@ -762,28 +762,125 @@ install_function(based_involution_wrapper,"involution",
 		"(LieType,mat,string->mat)");
 
 @*1 Root data.
-Now we are ready to introduce a new primitive type for root data.
+%
+We shall now introduce primitive type for root data. There will be a user type
+to encapsulate a |RootDatum| object defined in the \.{rootdata} compilation
+unit. We also use shared pointers.
 
 @< Includes needed in the header file @>=
-#include <memory> // for |std::unique_ptr|
+#include <memory> // for |std::shared_ptr|
+#include "hashtable.h"
 #include "rootdata.h"
 
-@ The root datum type is laid out just like previous primitive types are.
+
+@ Since root data are the starting point for a hierarchy of more and more
+complicated value types, it will be useful to be able to identify identical root
+data when they are constructed, so that the values can be shared internally, and
+this sharing will also help to similarly recognise when identical values are
+produced further up the hierarchy. To this end we shall keep a hash table of
+bare root data, with just enough information to match identical root data, and
+associate to each such value seen a shared pointer to a |RootDatum| value. We
+can later also attach more information such as a list of inner classes for this
+root datum that have been seen, allowing us to avoid duplication at that level
+higher up. So here is a type compatible with the |Hash_table| class template.
 
 @< Type definitions @>=
-struct root_datum_value : public value_base
-{ RootDatum val;
+struct root_datum_entry : public PreRootDatum
+{ explicit root_datum_entry(PreRootDatum&& pre)
+  : PreRootDatum(std::move(pre)) @+{}
+
+typedef std::vector<root_datum_entry> Pooltype;
+  size_t hashCode(size_t modulus) const;
+  bool operator!=(const root_datum_entry& x) const
+    {@; return not PreRootDatum::operator==(x); }
+};
+
+@ The |root_datum_value| has as main purpose to wrap a |RootDatum| object into a
+value derived from |value_base|. However, we want to make sure that identical
+root data always end up using the \emph{same} |root_datum_value|; this is partly
+to avoid wasting storage, but more importantly to be able to also easily
+identify identical inner classes and other values based on them. In order to
+achieve this, we include static variables with a hash table for all bare root
+data seen, and a vector of pointers to corresponding root data values. The test
+for existing identical root data should be made prior to calling the
+|root_datum_value| constructor, and we should never duplicate such a value, so
+the |clone| method does nothing (and there is no reason it should ever actually
+get called). A static method |build| takes care of creating a |root_datum_value|
+from a |PreRootDatum|; it will either locate an existing one and return a shared
+pointer, or create one using |std::make_shared| and the provided constructor. To
+ensure that testing for duplicates always takes place, we want to ensure that
+clients cannot call the constructor directly. But we cannot make it private,
+because it will be called from |std::make_shared|; instead we give it an
+additional argument of a local type |token| that only methods of our class (like
+|build|) are able to provide. The |val| member is public, but |const|.
+
+@< Type definitions @>=
+class root_datum_value : public value_base
+{ struct token@+{}; // type passed to prove caller has private access;
+public:
+  const RootDatum val;
+  static HashTable<root_datum_entry,unsigned short> hash;
+  static std::vector<std::weak_ptr<const root_datum_value> > store;
 @)
-  root_datum_value(const RootDatum& v) : val(v) @+ {}
+  root_datum_value(const PreRootDatum& v,token) : val(v) @+ {}
+  static std::shared_ptr<const root_datum_value> build(PreRootDatum&& pre);
   virtual void print(std::ostream& out) const;
-  root_datum_value* clone() const @+{@; return new root_datum_value(*this); }
+  root_datum_value* clone() const @+{@; return nullptr; }
+    // we refuse to create duplicates
   static const char* name() @+{@; return "root datum"; }
-private:
-  root_datum_value(const root_datum_value& v) : val(v.val) @+{}
 };
 @)
-typedef std::unique_ptr<root_datum_value> root_datum_ptr;
 typedef std::shared_ptr<const root_datum_value> shared_root_datum;
+
+@ We need to define the static members declared in the class definition.
+
+@< Global variable definitions @>=
+root_datum_entry::Pooltype root_data_pool;
+HashTable<root_datum_entry,unsigned short> root_datum_value::hash
+  (root_data_pool);
+std::vector<std::weak_ptr<const root_datum_value> > root_datum_value::store;
+
+@ We have a simple hash function that uses all information in a |PreRootDatum|.
+@< Function definitions @>=
+size_t root_datum_entry::hashCode(size_t modulus) const
+{ size_t h= prefer_coroots() ? 1 : 0;
+  for (unsigned int i=0; i<rank(); ++i)
+    for (unsigned int j=0; j<semisimple_rank(); ++j)
+      h=3*h+simple_root(j)[i];
+  for (unsigned int i=0; i<rank(); ++i)
+    for (unsigned int j=0; j<semisimple_rank(); ++j)
+      h=3*h+simple_coroot(j)[i];
+  return h&(modulus-1);
+}
+
+@ The static data member |root_datum_entry::store| has weak pointers, since
+otherwise its very presence would prevent any |root_datum_value| to ever be
+cleaned up when inaccessible. So |build| looks up the |PreRootDatum| passed to
+it, and if it finds something (which means and identical |PreRootDatum| was here
+before) and the weak pointer can be locked (which means the corresponding
+|root_datum_value| is still in use) then it returns that locked pointer; if not
+then a shared pointer to a newly created |root_datum_value| is returned, after
+either pushing a weak pointer to |store| or storing it in the old slot in case a
+the weak pointer there had expired.
+
+@< Function definitions @>=
+shared_root_datum root_datum_value::build(PreRootDatum&& pre)
+{ auto loc = hash.match(root_datum_entry(std::move(pre)));
+  if (loc<store.size())
+  { if (auto result=store[loc].lock()) // previous root datum still exists
+      return result; // so return it
+  }
+  auto result =
+    std::make_shared<root_datum_value>(hash[loc],token());
+    // construct |RootDatum|
+  if (loc<store.size()) // happens if identical root datum was cleaned up
+    store[loc]=result; // save a weak pointer version in |store|
+  else // this must be the first time we ever see a copy of this |PreRootDatum|
+  { assert (loc==store.size());
+    store.push_back(result); // save a weak pointer version in |store|
+  }
+  return result;
+}
 
 @*2 Printing root data. We shall not print the complete information contained
 in the root datum. However we do exercise the routines in \.{dynkin.cpp} to
@@ -821,23 +918,36 @@ void root_datum_value::print(std::ostream& out) const
   out << "root datum of " << type;
 }
 
-@ We also make the derivation of the type available by a wrapper function.
+@ We also make the Lie type of a root datum (computed by |type_of_datum|) and
+whether the coroots rather than roots were used to determine the root numbering
+(from the stored field) available by wrapper functions.
 @< Local fun...@>=
 void type_of_root_datum_wrapper(expression_base::level l)
 { shared_root_datum rd(get<root_datum_value>());
   push_value(std::make_shared<Lie_type_value>(type_of_datum(rd->val)));
 }
 
+void coroot_preference_wrapper(expression_base::level l)
+{ shared_root_datum rd(get<root_datum_value>());
+  push_value(whether(rd->val.prefer_coroots()));
+}
+
 @*2 Building a root datum.
 %
 The most direct way to create a root datum value is to specify bases of simple
 roots and coroots in the form of matrices, which implicitly define a Lie type
-and weight lattice. To make sure the root datum construction will succeed, we
-must test the ``Cartan'' matrix computed from these data to be a valid one.
+and weight lattice. In addition we take a Boolean argument telling whether to
+use roots or coroots when generating the full root system from the simple roots
+or coroots; this is an argument common to all functions building a fresh root
+datum (by contrast those that bases a new root datum on an existing one will
+just inherit the attribute). To make sure the root datum construction will
+succeed, we must test the ``Cartan'' matrix computed from these data to be a
+valid one.
 
 @< Local function definitions @>=
-void raw_root_datum_wrapper(expression_base::level l)
-{ shared_matrix simple_coroots=get<matrix_value>();
+void root_datum_wrapper(expression_base::level l)
+{ bool prefer_coroots = get<bool_value>()->val;
+@/shared_matrix simple_coroots=get<matrix_value>();
   shared_matrix simple_roots=get<matrix_value>();
 
   size_t nr = simple_roots->val.numRows(),
@@ -852,39 +962,30 @@ void raw_root_datum_wrapper(expression_base::level l)
       ") of simple (co)root systems differ");
 @.Sizes of simple (co)root systems...@>
 
-  WeightList s; CoweightList c;
-  s.reserve(nc);
-  c.reserve(nc);
-
-  for (size_t j=0; j<nc; ++j)
-@/{@; s.push_back(simple_roots->val.column(j));
-      c.push_back(simple_coroots->val.column(j));
-  }
-
-  PreRootDatum prd(s,c,nr);
-  try @/{@; Permutation dummy;
-    dynkin::Lie_type(prd.Cartan_matrix(),true,true,dummy);
-  }
+try @/{
+  PreRootDatum prd(simple_roots->val,simple_coroots->val,prefer_coroots);
+  prd.test_Cartan_matrix();
+  if (l!=expression_base::no_value)
+    push_value(root_datum_value::build(std::move(prd)));
+}
   catch (error::CartanError)
 @/{@;
-    throw runtime_error("System of (co)roots has invalid Cartan matrix");
+    throw runtime_error("Matrices of (co)roots give invalid Cartan matrix");
 }
 @.System of (co)roots has invalid...@>
-  if (l!=expression_base::no_value)
-    push_value(std::make_shared<root_datum_value> @| (RootDatum(prd)));
 }
 
-@ Alternatively, the user may specify a Lie type and a square
-matrix of the size of the rank of the root datum, which specifies generators
-of the desired weight lattice as a sub-lattice of the lattice of weights
-associated to the simply connected group of the type given. The given weights
-should be independent and span at least the root lattice associated to the
-type. Failure of either condition will cause the |PreRootDatum| constructor to
-throw a |runtime_error|.
+@ Alternatively, the user may specify a Lie type and a square matrix of the size
+of the rank of the root datum, which specifies generators of the desired weight
+lattice as a sub-lattice of the lattice of weights associated to the simply
+connected group of the type given. The given weights should be independent and
+span at least the root lattice associated to the type. Failure of either
+condition will cause |PreRootDatum::quotient| to throw a |std::runtime_error|.
 
 @< Local function definitions @>=
-void root_datum_wrapper(expression_base::level l)
-{ shared_matrix lattice=get<matrix_value>();
+void root_datum_from_type_wrapper(expression_base::level l)
+{ bool prefer_coroots = get<bool_value>()->val;
+@/shared_matrix lattice=get<matrix_value>();
   shared_Lie_type type=get<Lie_type_value>();
   if (lattice->val.numRows()!=lattice->val.numColumns() @| or
       lattice->val.numRows()!=type->val.rank())
@@ -892,13 +993,13 @@ void root_datum_wrapper(expression_base::level l)
     ("Sub-lattice matrix should have size " @|
 @.Sub-lattice matrix should...@>
       +str(type->val.rank())+'x'+str(type->val.rank()));
-  PreRootDatum prd(type->val);
+  PreRootDatum prd(type->val,prefer_coroots);
   prd.quotient(lattice->val);
-@.Sub-lattice matrix must be square@>
-@.Sub-lattice does not contain...@>
+@.Sub-lattice matrix not square...@>
 @.Dependent lattice generators@>
+@.Sub-lattice does not contain...@>
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<root_datum_value> @| (RootDatum(prd)));
+    push_value(root_datum_value::build(std::move(prd)));
 }
 
 @ While the previous function takes the sublattice to live in the weight
@@ -906,62 +1007,59 @@ lattice of the simply connected root datum of the given type, one may more
 generally wish in any existing root datum to reduce to a full-rank sublattice
 of $X^*$ that contains the root lattice. The following variant of root datum
 construction does this. The call to the |quotient| method may throw the same
-errors (\.{Dependent lattice generators}, or \.{Inexact integer division}) as
-the |PreRootDatum| constructor in the previous function.
+errors as in the previous function.
 
 @< Local function definitions @>=
 void sublattice_root_datum_wrapper(expression_base::level l)
 { shared_matrix lattice=get<matrix_value>();
   shared_root_datum rd=get<root_datum_value>();
-  if (lattice->val.numRows()!=lattice->val.numColumns() @| or
-      lattice->val.numRows()!=rd->val.rank())
-    throw runtime_error
-    ("Sub-lattice matrix should have size " @|
+  const auto r = rd->val.rank();
+  if (lattice->val.numRows()!=r or lattice->val.numColumns()!=r)
+    throw runtime_error()
+      << "Sub-lattice matrix should have size " @|
 @.Sub-lattice matrix should...@>
-      +str(rd->val.rank())+'x'+str(rd->val.rank()));
+      << r << 'x' << r;
 
-  WeightList simple_roots(rd->val.beginSimpleRoot(),rd->val.endSimpleRoot());
-  CoweightList simple_coroots
-        (rd->val.beginSimpleCoroot(),rd->val.endSimpleCoroot());
-  PreRootDatum prd(simple_roots,simple_coroots,rd->val.rank());
-  prd.quotient(lattice->val);
-@.Sub-lattice matrix must be square@>
+  PreRootDatum prd = rd->val; // inherits |prefer_coroots| attribute
+  prd.quotient(lattice->val); // this may |throw| a |std::runtime_error|
 @.Sub-lattice does not contain...@>
 @.Dependent lattice generators@>
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<root_datum_value> @| (RootDatum(prd)));
+    push_value(root_datum_value::build(std::move(prd)));
 }
 
-@ We define two more wrappers with only a Lie type as argument, for building
-the simply connected and the adjoint root data. They are similar to the
-previous one in that they mostly call other wrapper functions: the matrices
-that specify the sub-lattices are produced by the wrapper functions for
-|id_mat| respectively for |Cartan_matrix| and |transpose_mat|. In fact the
-call $simply\_connected\_datum(lt)$ is equivalent to
-$root\_datum(lt,id\_mat(Lie\_rank(lt)))$, and $adjoint\_datum(lt)$ is almost
-equivalent to $root\_datum(lt,M)$ where
-$M=transpose\_mat(Cartan\_matrix(lt)))$; the only thing we do ``by hand'' is
-to make sure that all null diagonal entries of~$M$ (which must come from torus
-factors) are replaced by ones.
+@ We define two more wrappers with only a Lie type as argument, for building the
+simply connected and the adjoint root data. They mostly call other wrapper
+functions: the matrices that specify the sub-lattices are produced by the
+wrapper functions for |id_mat| respectively by those for |Cartan_matrix| and
+|transpose_mat|. Thus $simply\_connected\_datum(lt)$ is equivalent to
+$root\_datum(lt,id\_mat(Lie\_rank(lt)))$, while $adjoint\_datum(lt)$ is
+equivalent to the call $root\_datum(lt,M)$ where $M$ essentially the transpose
+matrix of |Cartan_matrix(lt)|; there is one modification that we do here ``by
+hand'', namely making sure that all null diagonal entries of~$M$ (which must
+come from torus factors) are replaced by ones.
 
 @< Local function definitions @>=
 void simply_connected_datum_wrapper(expression_base::level l)
-{ if (l==expression_base::no_value)
-  { execution_stack.pop_back();
-    return; // no possibilities of errors, so avoid useless work
-  }
+{ bool prefer_coroots = get<bool_value>()->val;
+  if (l==expression_base::no_value)
+@/{@; execution_stack.pop_back();
+    return;
+  } // no possibilities of errors, so avoid useless work
   size_t rank =
     force<Lie_type_value>(execution_stack.back().get())->val.rank();
   push_value(std::make_shared<int_value>(rank));
   id_mat_wrapper(expression_base::single_value);
-@/root_datum_wrapper(expression_base::single_value);
+  push_value(whether(prefer_coroots));
+@/root_datum_from_type_wrapper(expression_base::single_value);
 }
 @)
 void adjoint_datum_wrapper(expression_base::level l)
-{ if (l==expression_base::no_value)
-  { execution_stack.pop_back();
-    return; // no possibilities of errors, so avoid useless work
-  }
+{ bool prefer_coroots = get<bool_value>()->val;
+  if (l==expression_base::no_value)
+@/{@; execution_stack.pop_back();
+    return;
+  } // no possibilities of errors, so avoid useless work
   push_value(execution_stack.back()); // duplicate Lie type argument
   Cartan_matrix_wrapper(expression_base::single_value);
   transpose_mat_wrapper(expression_base::single_value);
@@ -969,7 +1067,8 @@ void adjoint_datum_wrapper(expression_base::level l)
   for (size_t i=0; i<M->val.numRows(); ++i)
     if (M->val(i,i)==0) M->val(i,i)=1;
   push_value(M);
-@/root_datum_wrapper(expression_base::single_value);
+  push_value(whether(prefer_coroots));
+@/root_datum_from_type_wrapper(expression_base::single_value);
 }
 
 
@@ -1029,7 +1128,7 @@ void simple_coroots_wrapper(expression_base::level l)
 }
 @)
 void positive_roots_wrapper(expression_base::level l)
-{ shared_root_datum rd(get<root_datum_value>());
+{ shared_root_datum rd = get<root_datum_value>();
   if (l==expression_base::no_value)
     return;
   WeightList rl
@@ -1039,7 +1138,7 @@ void positive_roots_wrapper(expression_base::level l)
 }
 @)
 void positive_coroots_wrapper(expression_base::level l)
-{ shared_root_datum rd(get<root_datum_value>());
+{ shared_root_datum rd = get<root_datum_value>();
   if (l==expression_base::no_value)
     return;
   WeightList crl
@@ -1052,8 +1151,14 @@ void positive_coroots_wrapper(expression_base::level l)
 functions for roots and coroots.
 
 @< Local function definitions @>=
+void root_datum_eq_wrapper (expression_base::level l)
+{ shared_root_datum rd1 = get<root_datum_value>();
+  shared_root_datum rd0 = get<root_datum_value>();
+  if (l!=expression_base::no_value)
+    push_value(whether(rd0.get()==rd1.get())); // compare pointers
+}
 void datum_Cartan_wrapper(expression_base::level l)
-{ shared_root_datum rd(get<root_datum_value>());
+{ shared_root_datum rd = get<root_datum_value>();
   if (l==expression_base::no_value)
     return;
   int_Matrix M = rd->val.cartanMatrix();
@@ -1061,26 +1166,26 @@ void datum_Cartan_wrapper(expression_base::level l)
 }
 @)
 void rd_rank_wrapper(expression_base::level l)
-{ shared_root_datum rd(get<root_datum_value>());
+{ shared_root_datum rd = get<root_datum_value>();
   if (l!=expression_base::no_value)
     push_value(std::make_shared<int_value>(rd->val.rank()));
 }
 @)
 void rd_semisimple_rank_wrapper(expression_base::level l)
-{ shared_root_datum rd(get<root_datum_value>());
+{ shared_root_datum rd = get<root_datum_value>();
   if (l!=expression_base::no_value)
     push_value(std::make_shared<int_value>(rd->val.semisimpleRank()));
 }
 @)
 void rd_nposroots_wrapper(expression_base::level l)
-{ shared_root_datum rd(get<root_datum_value>());
+{ shared_root_datum rd = get<root_datum_value>();
   if (l!=expression_base::no_value)
     push_value(std::make_shared<int_value>(rd->val.numPosRoots()));
 }
 @)
 void root_index_wrapper(expression_base::level l)
 { shared_vector alpha = get<vector_value>();
-  shared_root_datum rd(get<root_datum_value>());
+  shared_root_datum rd = get<root_datum_value>();
   if (l==expression_base::no_value)
     return;
   int index=rd->val.root_index(alpha->val); // ensure signed type here
@@ -1089,7 +1194,7 @@ void root_index_wrapper(expression_base::level l)
 }
 void coroot_index_wrapper(expression_base::level l)
 { shared_vector alpha_v = get<vector_value>();
-  shared_root_datum rd(get<root_datum_value>());
+  shared_root_datum rd = get<root_datum_value>();
   if (l==expression_base::no_value)
     return;
   int index=rd->val.coroot_index(alpha_v->val); // ensure signed type here
@@ -1104,7 +1209,7 @@ will in fact be used later in a function to built inner classes.
 
 @< Local function definitions @>=
 void root_coradical_wrapper(expression_base::level l)
-{ shared_root_datum rd(get<root_datum_value>());
+{ shared_root_datum rd = get<root_datum_value>();
   if (l==expression_base::no_value)
     return;
   WeightList srl
@@ -1114,7 +1219,7 @@ void root_coradical_wrapper(expression_base::level l)
 }
 @)
 void coroot_radical_wrapper(expression_base::level l)
-{ shared_root_datum rd(get<root_datum_value>());
+{ shared_root_datum rd = get<root_datum_value>();
   if (l==expression_base::no_value)
     return;
   WeightList scl
@@ -1129,7 +1234,7 @@ basis, which is easier since they are rational vectors.
 @< Local function definitions @>=
 void fundamental_weight_wrapper(expression_base::level l)
 { int i= get<int_value>()->int_val();
-  shared_root_datum rd(get<root_datum_value>());
+  shared_root_datum rd = get<root_datum_value>();
   if (unsigned(i)>=rd->val.semisimpleRank())
     throw runtime_error("Invalid index "+str(i));
   if (l!=expression_base::no_value)
@@ -1139,7 +1244,7 @@ void fundamental_weight_wrapper(expression_base::level l)
 @)
 void fundamental_coweight_wrapper(expression_base::level l)
 { int i= get<int_value>()->int_val();
-  shared_root_datum rd(get<root_datum_value>());
+  shared_root_datum rd = get<root_datum_value>();
   if (unsigned(i)>=rd->val.semisimpleRank())
     throw runtime_error("Invalid index "+str(i));
   if (l!=expression_base::no_value)
@@ -1158,34 +1263,36 @@ weight coordinates is achieved by pairing with the old coroots.
 @h "tags.h"
 @< Local function definitions @>=
 void dual_datum_wrapper(expression_base::level l)
-{ shared_root_datum rd(get<root_datum_value>());
-  if (l!=expression_base::no_value)
-    push_value(std::make_shared<root_datum_value>@|
-      (RootDatum(rd->val,tags::DualTag())));
+{ shared_root_datum rd = get<root_datum_value>();
+  if (l==expression_base::no_value)
+    return;
+  PreRootDatum pre = rd->val;
+  pre.dualise();
+  push_value(root_datum_value::build(std::move(pre)));
 }
 @)
 void derived_info_wrapper(expression_base::level l)
-{ shared_root_datum rd(get<root_datum_value>());
-  if (l!=expression_base::no_value)
-  { int_Matrix projector;
-    push_value(std::make_shared<root_datum_value>@|
-      (RootDatum(projector,rd->val,tags::DerivedTag())));
-    push_value(std::make_shared<matrix_value>(projector));
-    if (l==expression_base::single_value)
-      wrap_tuple<2>();
-  }
+{ shared_root_datum rd = get<root_datum_value>();
+  if (l==expression_base::no_value)
+    return;
+  int_Matrix projector;
+  PreRootDatum pre(projector,rd->val,tags::DerivedTag());
+  push_value(root_datum_value::build(std::move(pre)));
+  push_value(std::make_shared<matrix_value>(projector));
+  if (l==expression_base::single_value)
+    wrap_tuple<2>();
 }
 @)
 void mod_central_torus_info_wrapper(expression_base::level l)
-{ shared_root_datum rd(get<root_datum_value>());
-  if (l!=expression_base::no_value)
-  { int_Matrix injector;
-    push_value(std::make_shared<root_datum_value>@|
-      (RootDatum(injector,rd->val,tags::AdjointTag())));
-    push_value(std::make_shared<matrix_value>(injector));
-    if (l==expression_base::single_value)
-      wrap_tuple<2>();
-  }
+{ shared_root_datum rd = get<root_datum_value>();
+  if (l==expression_base::no_value)
+    return;
+  int_Matrix injector;
+  PreRootDatum pre(injector,rd->val,tags::CoderivedTag());
+  push_value(root_datum_value::build(std::move(pre)));
+  push_value(std::make_shared<matrix_value>(injector));
+  if (l==expression_base::single_value)
+    wrap_tuple<2>();
 }
 
 @ This function is more recent; it allows constructing a new root (sub-)datum
@@ -1194,17 +1301,15 @@ by selecting coroots taking integral values on a given rational weight vector.
 @< Local function definitions @>=
 void integrality_datum_wrapper(expression_base::level l)
 { shared_rational_vector lambda = get<rational_vector_value>();
-  shared_root_datum rd(get<root_datum_value>());
+  shared_root_datum rd = get<root_datum_value>();
   if (lambda->val.size()!=rd->val.rank())
-  { std::ostringstream o;
-    o << "Length " << lambda->val.size()
+    throw runtime_error()
+      << "Length " << lambda->val.size() @|
       << " of rational vector differs from rank " << rd->val.rank();
-    throw runtime_error(o.str());
 @.Length of rational vector...@>
-  }
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<root_datum_value> @|
-      (rootdata::integrality_datum(rd->val,lambda->val)));
+  @/push_value(root_datum_value::build @|
+      (rootdata::integrality_predatum(rd->val,lambda->val)));
 }
 
 @ A related function computes a list of fractions of a line segment where the
@@ -1213,14 +1318,12 @@ set of roots with integrality is non-empty.
 @< Local function definitions @>=
 void integrality_points_wrapper(expression_base::level l)
 { shared_rational_vector lambda = get<rational_vector_value>();
-  shared_root_datum rd(get<root_datum_value>());
+  shared_root_datum rd = get<root_datum_value>();
   if (lambda->val.size()!=rd->val.rank())
-  { std::ostringstream o;
-    o << "Length " << lambda->val.size()
+    throw runtime_error()
+      << "Length " << lambda->val.size() @|
       << " of rational vector differs from rank " << rd->val.rank();
-    throw runtime_error(o.str());
 @.Length of rational vector...@>
-  }
   if (l==expression_base::no_value)
     return;
 @)
@@ -1237,20 +1340,25 @@ void integrality_points_wrapper(expression_base::level l)
 @< Install wrapper functions @>=
 install_function(type_of_root_datum_wrapper,@|"Lie_type"
                 ,"(RootDatum->LieType)");
-install_function(raw_root_datum_wrapper,@|"root_datum"
-                ,"(mat,mat->RootDatum)");
-install_function(root_datum_wrapper,@|"root_datum","(LieType,mat->RootDatum)");
+install_function(coroot_preference_wrapper,@|"prefers_coroots"
+                ,"(RootDatum->bool)");
+install_function(root_datum_wrapper,@|"root_datum"
+                ,"(mat,mat,bool->RootDatum)");
+install_function(root_datum_from_type_wrapper,@|"root_datum"
+		,"(LieType,mat,bool->RootDatum)");
 install_function(sublattice_root_datum_wrapper,@|"root_datum"
                 ,"(RootDatum,mat->RootDatum)");
-install_function(simply_connected_datum_wrapper
-		,@|"simply_connected","(LieType->RootDatum)");
-install_function(adjoint_datum_wrapper,@| "adjoint","(LieType->RootDatum)");
+install_function(simply_connected_datum_wrapper,@|"simply_connected"
+                ,"(LieType,bool->RootDatum)");
+install_function(adjoint_datum_wrapper,@| "adjoint"
+                ,"(LieType,bool->RootDatum)");
 install_function(root_wrapper,@|"root","(RootDatum,int->vec)");
 install_function(coroot_wrapper,@|"coroot","(RootDatum,int->vec)");
 install_function(simple_roots_wrapper,@|"simple_roots","(RootDatum->mat)");
 install_function(simple_coroots_wrapper,@|"simple_coroots","(RootDatum->mat)");
 install_function(positive_roots_wrapper,@| "posroots","(RootDatum->mat)");
 install_function(positive_coroots_wrapper,@| "poscoroots","(RootDatum->mat)");
+install_function(root_datum_eq_wrapper,@|"=","(RootDatum,RootDatum->bool)");
 install_function(datum_Cartan_wrapper,@|"Cartan_matrix","(RootDatum->mat)");
 install_function(root_coradical_wrapper,@|"root_coradical","(RootDatum->mat)");
 install_function(coroot_radical_wrapper,@|"coroot_radical","(RootDatum->mat)");
@@ -1322,12 +1430,11 @@ rank).
 @h "tori.h"
 @f delta nullptr
 @< Local function def...@>=
-std::pair<size_t,size_t> classify_involution
-  (const WeightInvolution& delta)
+std::pair<size_t,size_t> classify_involution (const WeightInvolution& delta)
 { size_t r=delta.numRows();
   @< Check that |delta| is an $r\times{r}$ matrix defining an involution @>
-  tori::RealTorus Tor(delta);
-  return std::make_pair(Tor.compactRank(),Tor.splitRank());
+  const auto ranks = tori::classify(delta);
+  return std::make_pair(std::get<0>(ranks),std::get<2>(ranks));
 }
 
 @ The test below that |delta| is an involution ($\delta^2=\\{Id}$) is certainly
@@ -1804,7 +1911,7 @@ be cumbersome and even less efficient then copying the existing root datum.
 void fix_involution_wrapper(expression_base::level l)
 { LatticeMatrix M(get<matrix_value>()->val);
     // copy construct, safely using temporary
-  shared_root_datum rd(get<root_datum_value>());
+  shared_root_datum rd = get<root_datum_value>();
   WeylWord ww;
   lietype::Layout lo;
   check_involution(M,rd->val,ww,&lo);
@@ -1823,7 +1930,7 @@ to the given involution matrix.
 @< Local function def...@>=
 void twisted_involution_wrapper(expression_base::level l)
 { LatticeMatrix M(get<matrix_value>()->val);
-  shared_root_datum rd(get<root_datum_value>());
+  shared_root_datum rd = get<root_datum_value>();
   WeylWord ww;
   lietype::Layout lo;
   check_involution(M,rd->val,ww,&lo);
@@ -1840,9 +1947,8 @@ void twisted_involution_wrapper(expression_base::level l)
 }
 
 @ To simulate the functioning of the \.{Fokko} program, an overload of the
-function |inner_class| (that used to be called |set_type|, whence the name of
-the wrapper below) takes as argument a Lie type, a list of kernel generators,
-and a string describing the inner class. The evaluation of the call
+function |inner_class| takes as argument a Lie type, a list of kernel
+generators, and a string describing the inner class. The evaluation of the call
 |inner_class(lt,gen,ict)| computes ${\it basis}={\it quotient\_basis(lt,gen)}$,
 ${\it rd}={\it root\_datum (lt,basis)}$, ${\it M}={\it
 based\_involution(lt,basis,ict)}$, and then returns the same value as would
@@ -1855,8 +1961,9 @@ surprises (however inner class letters do change as usual to synonyms when
 passing through |transform_inner_class_type|).
 
 @< Local function def...@>=
-void set_type_wrapper(expression_base::level l)
-{ shared_string ict = get<string_value>();
+void inner_class_from_type_wrapper(expression_base::level l)
+{ bool prefer_coroots = false;
+  shared_string ict = get<string_value>();
     // and leave generators |gen| and type |lt|
   shared_value lt = *(execution_stack.end()-2);
   const LieType& type=force<Lie_type_value>(lt.get())->val;
@@ -1866,7 +1973,8 @@ void set_type_wrapper(expression_base::level l)
   shared_value basis = pop_value();
 @)
   push_value(lt); push_value(basis);
-  root_datum_wrapper(expression_base::single_value);
+  push_value(whether(prefer_coroots));
+  root_datum_from_type_wrapper(expression_base::single_value);
   shared_root_datum rd = get<root_datum_value>();
 @)
   push_value(lt); push_value(basis);
@@ -1952,7 +2060,7 @@ void set_inner_class_wrapper(expression_base::level l)
   push_value(rdv);
   try
   {@; push_value(std::make_shared<matrix_value> @|
-       (lietype::involution(lo).on_basis(M->val.columns())));
+       (lietype::involution(lo).on_basis(M->val)));
   }
   catch (std::runtime_error&) // relabel inexact division error
   {@; throw runtime_error @|
@@ -1991,7 +2099,7 @@ void distinguished_involution_wrapper(expression_base::level l)
 void root_datum_of_inner_class_wrapper(expression_base::level l)
 { shared_inner_class G = get<inner_class_value>();
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<root_datum_value>(G->val.rootDatum()));
+    push_value(root_datum_value::build(G->val.rootDatum()));
 }
 @)
 void inner_class_to_root_datum_coercion()
@@ -2140,7 +2248,7 @@ install_function(fix_involution_wrapper,@|"inner_class"
                 ,"(RootDatum,mat->InnerClass)");
 install_function(twisted_involution_wrapper,@|"twisted_involution"
                 ,"(RootDatum,mat->InnerClass,vec)");
-install_function(set_type_wrapper,@|"inner_class"
+install_function(inner_class_from_type_wrapper,@|"inner_class"
                 ,"(LieType,[ratvec],string->InnerClass)");
 install_function(set_inner_class_wrapper,@|"inner_class"
                 ,"(RootDatum,string->InnerClass)");
@@ -2315,7 +2423,7 @@ void real_form_to_inner_class_coercion()
 
 void real_form_to_root_datum_coercion()
 { shared_real_form rf= get<real_form_value>();
-  push_value(std::make_shared<root_datum_value>(rf->parent.val.rootDatum()));
+  push_value(root_datum_value::build(rf->parent.val.rootDatum()));
 }
 
 @ Here is a function that gives information about the dual component group
@@ -2549,7 +2657,8 @@ void synthetic_real_form_wrapper(expression_base::level l)
     TorusElement t(torus_factor->val,false);
       // take a copy as |TorusElement|, using $\exp_{-1}$
     const RootDatum& rd = G->val.rootDatum();
-    WeightList alpha(rd.beginSimpleRoot(),rd.endSimpleRoot());
+    LatticeMatrix alpha
+      (rd.beginSimpleRoot(),rd.endSimpleRoot(),rd.rank(),tags::IteratorTag());
     if (not is_central(alpha,t)) // every root should now have even evaluation
       throw runtime_error
          ("Torus factor does not define a valid strong involution");
@@ -2783,9 +2892,11 @@ void Cartan_info_wrapper(expression_base::level l)
   if (l==expression_base::no_value)
     return;
 
-  push_value(std::make_shared<int_value>(cc->val.fiber().torus().compactRank()));
-  push_value(std::make_shared<int_value>(cc->val.fiber().torus().complexRank()));
-  push_value(std::make_shared<int_value>(cc->val.fiber().torus().splitRank()));
+  auto ranks = tori::classify(cc->val.involution());
+
+  push_value(std::make_shared<int_value>(std::get<0>(ranks)));
+  push_value(std::make_shared<int_value>(std::get<1>(ranks)));
+  push_value(std::make_shared<int_value>(std::get<2>(ranks)));
   wrap_tuple<3>();
 
   const weyl::TwistedInvolution& tw =

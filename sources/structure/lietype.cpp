@@ -154,11 +154,11 @@ int LieType::Cartan_entry(size_t i,size_t j) const
   for (base::const_iterator it=begin(); it!=end(); ++it)
   {
     size_t r=it->rank();
-    if (r<=min)
+    if (min>=r)
       min-=r; // the only case that continues the loop
-    else
+    else // |min<r|, so least index belongs to current simple factor
     { TypeLetter tp=it->type();
-      if (r<=min+d or tp=='T') // distinct simple factors or torus
+      if (min+d>=r or tp=='T') // distinct simple factors or torus
 	return 0;
       else return dispatch(tp,r,min,d,i<j);
     }

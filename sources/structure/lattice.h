@@ -1,11 +1,8 @@
-/*!
-\file
-\brief Function declarations for namespace lattice.
-*/
 /*
   This is lattice.h
 
   Copyright (C) 2004,2005 Fokko du Cloux
+  Copyright (C) 2009,2017 Marc van Leeuwen
   part of the Atlas of Lie Groups and Representations
 
   For license information see the LICENSE file
@@ -29,7 +26,7 @@ template<typename I, typename O>
   void inverseBaseChange (I, I, O, I, I);
 
 // find basis in dual lattice of perpendicular to given vectors
-CoweightList perp (const WeightList&, size_t);
+CoweightList perp (const LatticeMatrix&);
 
 // find matrix whose image is the sublattice annihilated by |M|
 LatticeMatrix kernel (LatticeMatrix M); // by value

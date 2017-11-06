@@ -17,8 +17,8 @@
 #include "poset_fwd.h"
 #include "../Atlas.h"
 
-#include "ratvec.h" // containment of |RatCoweight| field
-#include "topology.h"	// containment of |Connectivity| field
+#include "ratvec.h"     // containment of |RatCoweight| field
+#include "bitvector.h"  // containment of |SmallBitVectorList|
 
 
 /******** type definitions **************************************************/
@@ -52,7 +52,7 @@ class RealReductiveGroup
   InnerClass& d_innerClass;
 
   RealFormNbr d_realForm; // our identification number
-  topology::Connectivity d_connectivity; // characters of the component group
+  SmallBitVectorList dual_pi0_gens;
 
   RatCoweight square_class_cocharacter; // a base coweight for square class
   TorusPart torus_part_x0; // initial |TorusPart| relative to square class base

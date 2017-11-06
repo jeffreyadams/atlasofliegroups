@@ -361,8 +361,8 @@ std::vector<C> diagonalise(matrix::PID_Matrix<C> M, // by value
   return diagonal;
 }
 
-// auxiliary function for \adapted_basis|
-// find |k| with |k%row[0]| small buy nonzero, return wether found
+// auxiliary function for |adapted_basis|
+// find |k| with |k%row[0]| small but nonzero, return whether found
 template<typename C>
   bool find_small_remainder (matrix::Vector<C> row, size_t& k)
 {
@@ -439,7 +439,7 @@ matrix::PID_Matrix<C> adapted_basis(matrix::PID_Matrix<C> M, // by value
       assert(M(i,j)==d);
     }
  /* once divisibility by the pivot is attained, we need not actually clear out
-    the remainder of column |j| of |M|: it will subsequently be ignored> But
+    the remainder of column |j| of |M|: it will subsequently be ignored. But
     we do need to adapt |result| corresponding to what would would be done here
  */
     for (k=i+1; k<m; ++k)

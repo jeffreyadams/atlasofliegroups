@@ -28,7 +28,7 @@ namespace commands {
   InnerClass& current_inner_class();
   InnerClass& current_dual_group();
   const lietype::Layout& current_layout();
-  const WeightList& current_lattice_basis();
+  const LatticeMatrix& current_lattice_basis();
   output::Interface& currentComplexInterface();
   void replace_inner_class(InnerClass*,output::Interface*);
 

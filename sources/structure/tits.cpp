@@ -85,12 +85,7 @@ GlobalTitsElement GlobalTitsElement::simple_imaginary_cross
 
 GlobalTitsGroup::GlobalTitsGroup(const InnerClass& G)
   : TwistedWeylGroup(G.twistedWeylGroup())
-  , prd( // |PreRootDatum|, viewed from the dual side
-	CoweightList(G.rootDatum().beginSimpleCoroot(),
-		     G.rootDatum().endSimpleCoroot()),
-	WeightList(G.rootDatum().beginSimpleRoot(),
-		   G.rootDatum().endSimpleRoot()),
-	G.rootDatum().rank())
+  , prd(G.rootDatum(),tags::DualTag()) // viewed from the dual side
   , delta_tr(G.distinguished().transposed())
   , alpha_v()
   , half_rho_v(G.rootDatum().dual_twoRho(),4)
@@ -98,7 +93,7 @@ GlobalTitsGroup::GlobalTitsGroup(const InnerClass& G)
 {
   alpha_v.reserve(G.semisimpleRank());
   for (size_t i=0; i<G.semisimpleRank(); ++i) // reduce vectors mod 2
-    alpha_v.push_back(TorusPart(prd.simple_roots()[i]));
+    alpha_v.push_back(TorusPart(prd.simple_root(i)));
 }
 
 WeightInvolution
@@ -143,16 +138,17 @@ bool GlobalTitsGroup::is_valid(const GlobalTitsElement& a,bool check_tw) const
 {
   if (check_tw and TwistedWeylGroup::prod(twisted(a.tw()),a.tw())!=WeylElt())
     return false;
-  return is_central(prd.simple_coroots(),square_shifted(a));
+  return is_central(prd.simple_coroots_mat(),square_shifted(a));
 }
 
  // weaker condition: square being central in subgroup
 bool GlobalTitsGroup::is_valid(const GlobalTitsElement& a,
 			       const SubSystem& sub) const
 {
-  WeightList alpha; alpha.reserve(sub.rank());
-  for (weyl::Generator s=0; s<sub.rank(); ++s)
-    alpha.push_back(sub.parent_datum().coroot(sub.parent_nr_simple(s)));
+  const auto sr=sub.rank();
+  LatticeMatrix alpha(sub.parent_datum().rank(),sr);
+  for (weyl::Generator s=0; s<sr; ++s)
+    alpha.set_column(s,sub.parent_datum().coroot(sub.parent_nr_simple(s)));
   return is_central(alpha,square_shifted(a));
 }
 
@@ -172,11 +168,11 @@ void
 GlobalTitsGroup::imaginary_cross_act(weyl::Generator s,TorusElement& t) const
 {
   Rational r =
-    t.evaluate_at(prd.simple_coroots()[s])
+    t.evaluate_at(prd.simple_coroot(s))
 		   - Rational(1); // $\rho_{im}$ shift
   if (r.numerator()!=0) // compact imaginary case needs no action
     add(RatWeight // now reflect for |s|, shifted to fix $\rho_{im}$
-	(prd.simple_roots()[s]*-r.numerator(),2*r.denominator()),t);
+	(prd.simple_root(s)*-r.numerator(),2*r.denominator()),t);
 }
 
 /* The code below uses Tits element representation as $t*\sigma_w*\delta_1$
@@ -238,13 +234,13 @@ int GlobalTitsGroup::cross_act(GlobalTitsElement& a,const  WeylWord& w)
 void
 GlobalTitsGroup::do_inverse_Cayley(weyl::Generator s,TorusElement& t) const
 {
-  const Coweight& eval_pt=prd.simple_coroots()[s];
+  const Coweight& eval_pt=prd.simple_coroot(s);
   RatWeight w=t.log_2pi();
   int num = eval_pt.dot(w.numerator()); // should become multiple of denominator
 
   if (num % w.denominator()!=0) // correction needed if alpha compact
   {
-    const Weight& shift_vec= prd.simple_roots()[s];
+    const Weight& shift_vec= prd.simple_root(s);
     // |eval_pt.dot(shift_vec)==2|, so correct numerator by |(num/2d)*shift_vec|
     w -= RatWeight(shift_vec*num,2*w.denominator());
     assert(eval_pt.dot(w.numerator())==0);

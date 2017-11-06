@@ -4291,11 +4291,10 @@ void linear_solve_wrapper(expression_base::level l)
 
 @ And here are general functions |diagonalize| and |adapted_basis|, rather
 similar to Smith normal form, but without divisibility guarantee on diagonal
-entries. While |diagonalize| provides the matrices applied on the left and
-right to obtain diagonal form, |adapted_basis| gives only the left factor (row
-operations applied) and gives it inverted, so that this matrix
-right-multiplied by the diagonal matrix has the same image as the original
-matrix.
+entries. While |diagonalize| provides the matrices applied on the left and right
+to obtain diagonal form, |adapted_basis| gives only the left factor (row
+operations applied) and gives it inverted, so that this matrix right-multiplied
+by the diagonal matrix has the same image as the original matrix.
 
 @<Local function definitions @>=
 void diagonalize_wrapper(expression_base::level l)
@@ -4325,11 +4324,12 @@ void adapted_basis_wrapper(expression_base::level l)
   }
 }
 
-@ There are two particular applications of the |diagonalise| function defined
-in the Atlas library: |kernel| which for any matrix~$M$ will find another
-whose image is precisely the kernel of~$M$, and |eigen_lattice| which is a
-special case for square matrices~$A$, where the kernel of $A-\lambda\id$ is
-computed. We include them here to enable testing these functions.
+@ Here are two related functions, but which are implemented in the \.{lattice}
+compilation unit, and whose implementation avoids using the generality of
+|matreduc::diagonalise|. They are |kernel| which for any matrix~$M$ will find
+another whose image is precisely the kernel of~$M$, and |eigen_lattice| which is
+a special case for square matrices~$A$, where the kernel of $A-\lambda\id$ is
+computed.
 
 @h "lattice.h"
 

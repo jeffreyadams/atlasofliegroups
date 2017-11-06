@@ -116,8 +116,8 @@ InnerClass::C_info::C_info
 /*
   Main constructor
 
-  Constructs an |InnerClass| from a pre-rootdatum |rd| and a
-  distinguished involution |d|, which stabilises the set of simple roots
+  Constructs an |InnerClass| from a pre-rootdatum |prd| and a
+  distinguished involution |tmp_d|, which stabilises the set of simple roots
 */
 InnerClass::InnerClass
  (const PreRootDatum& prd, const WeightInvolution& tmp_d)
@@ -1210,7 +1210,8 @@ RealFormNbr real_form_of // who claims this KGB element?
 
   { // compute value of |coch|
     auto square=gTg.square_shifted(a); // yes it is shifted, we know ;-)
-    CoweightList simple_roots(rd.beginSimpleRoot(),rd.endSimpleRoot());
+    LatticeMatrix simple_roots
+      (rd.beginSimpleRoot(),rd.endSimpleRoot(),rd.rank(),tags::IteratorTag());
     assert(is_central(simple_roots,square)); // otherwise we cannot succeed
 
     coch = stable_log(square,xi.transposed()); // represents elected square root

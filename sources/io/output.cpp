@@ -2,7 +2,7 @@
   This is output.cpp
 
   Copyright (C) 2004,2005 Fokko du Cloux
-  Copyright (C) 2016 Marc van Leeuwen
+  Copyright (C) 2016,2017 Marc van Leeuwen
   part of the Atlas of Lie Groups and Representations
 
   For license information see the LICENSE file
@@ -26,6 +26,7 @@
 #include "gradings.h"
 #include "innerclass.h"
 #include "cartanclass.h"
+#include "tori.h"
 #include "realredgp.h"
 #include "realweyl.h"	// |RealWeyl| class
 #include "realweyl_io.h" // |printBlockStabilizer|
@@ -224,9 +225,10 @@ std::ostream& printCartanClass(std::ostream& strm,
   const RootSystem& rs = G.rootDatum();
 
   const CartanClass& cc = G.cartan(cn);
+  const auto& tau = cc.involution();
   const Fiber& f = cc.fiber();
 
-  prettyprint::printTorusType(strm,f.torus()) << std::endl;
+  prettyprint::printTorusType(strm,tau) << std::endl;
 
   {
     std::ostringstream os;
