@@ -1419,79 +1419,73 @@ We consider first the case of a pure torus. For any involution given by an
 integral matrix, the space can be decomposed into stable rank~$1$ subspaces
 where the involution acts as $+1$ or $-1$ (we call these compact and split
 factors, respectively) and stable rank~$2$ subspaces for which the involution
-exchanges a pair of basis vectors (we call these Complex factors). The number
-of each of these subspaces is uniquely determined by the involution, and
-determining them is a small part of what the constructor for a
-|tori::RealTorus| does. We shall use that class in the function
-|classify_involution|, which returns the number of compact and split factors
-(the number of Complex factors follows from there by subtraction from the
-rank).
+exchanges a pair of basis vectors (we call these Complex factors). The number of
+each of these subspaces is uniquely determined by the involution, and computed
+by |tori::classify|.
 
 @h "tori.h"
 @f delta nullptr
-@< Local function def...@>=
-std::pair<size_t,size_t> classify_involution (const WeightInvolution& delta)
-{ size_t r=delta.numRows();
-  @< Check that |delta| is an $r\times{r}$ matrix defining an involution @>
-  const auto ranks = tori::classify(delta);
-  return std::make_pair(std::get<0>(ranks),std::get<2>(ranks));
-}
-
-@ The test below that |delta| is an involution ($\delta^2=\\{Id}$) is certainly
-necessary when |classify_involution| is called independently. If the code
-below is executed in the context of checking the involution for an inner
-class, it may seem redundant given the fact that we shall also check that |delta|
-induces an involutive permutation of the roots; however even there it is not
-redundant in the presence of a torus part.
-
-@< Check that |delta| is an $r\times{r}$ matrix defining an involution @>=
-{ if (delta.numRows()!=r or delta.numColumns()!=r) throw runtime_error
-    ("Involution should be a "+str(r)+"x"+str(r)+" matrix, got a "
-@.Involution should be...@>
-     +str(delta.numRows())+"x"+str(delta.numColumns())+" matrix");
-  WeightInvolution Id(r),Q(delta*delta);
-  if (Q!=Id) throw runtime_error
-      ("Given transformation is not an involution");
-@.Given transformation...@>
-}
-
-@ The function |classify_involution| might be of use to the user, so let us
-make a wrapper for it. In fact we shall return the compact, Complex, and split
-ranks, in that order.
 
 @< Local function def...@>=
 void classify_wrapper(expression_base::level l)
 { shared_matrix M(get<matrix_value>());
-  std::pair<size_t,size_t> p=classify_involution(M->val);
+  const auto& delta=M->val;
+  const auto r = delta.numRows();
+  @< Check that |delta| is an $r\times{r}$ matrix defining an involution @>
   if (l==expression_base::no_value)
     return;
-  push_value(std::make_shared<int_value>(p.first)); // compact rank
-  push_value(std::make_shared<int_value>(
-   (M->val.numRows()-p.first-p.second)/2)); // C rank
-  push_value(std::make_shared<int_value>(p.second)); // split rank
+  const auto ranks = tori::classify(delta);
+  push_value(std::make_shared<int_value>(std::get<0>(ranks))); // compact rank
+  push_value(std::make_shared<int_value>(std::get<1>(ranks))); // C rank
+  push_value(std::make_shared<int_value>(std::get<2>(ranks))); // split rank
   if (l==expression_base::single_value)
     wrap_tuple<3>();
+}
+
+@ Since |classify_wrapper| can be called with an arbitrary matrix, is certainly
+necessary to test that |delta| is an involution ($\delta^2-I=0$) to protect
+|tori::classify| against abuse. The code below will also be called in the
+context of checking the involution for an inner class, where it may seem
+less essential, given the fact that we shall also check that |delta| induces an
+involutive permutation of the roots. However even there it is not redundant in
+the presence of a central torus part.
+
+@< Check that |delta| is an $r\times{r}$ matrix defining an involution @>=
+{ if (delta.numRows()!=r or delta.numColumns()!=r)
+     throw runtime_error()
+       << "Involution should be a " << r << 'x' << r << " matrix;"@|
+@.Involution should be...@>
+        " received a "  << delta.numRows() << 'x' << delta.numColumns()
+      << " matrix";
+  if (not (delta*delta-1).is_zero()) throw runtime_error
+      ("Given transformation is not an involution");
+@.Given transformation...@>
 }
 
 @ We now come to the part of the analysis that involves the root datum. Since
 the matrix is already expressed on the basis of the weight lattice used by the
 root datum, the question of stabilising that lattice is settled, but we must
-check that the matrix is indeed an involution (for which we reuse a module),
-and that it gives an automorphism of the root datum. In fact we need an
+check that the matrix is indeed an involution (for which we reuse the above
+module), and that it gives an automorphism of the root datum. In fact we need an
 automorphism of the \emph{based} root datum, but we will allow any root datum
-automorphism to be supplied, and will compute from it a conjugate that sends
-all positive roots to positive roots. The following auxiliary function checks
-whether a given operator |delta|, assumed to be an involution, maps root to
-roots and coroots to coroots (throwing an error if it not), and returns a list
-of images of simple roots, which can then be used by the caller to transform
-|delta| into a based root datum involution.
+automorphism to be supplied, and will compute from it a conjugate that sends all
+positive roots to positive roots. The following auxiliary function checks
+whether |delta|, is an involution that maps simple roots to roots and simple
+coroots to coroots (throwing an error if it not), and returns a list of images
+of simple roots that can be used by the caller to transform |delta| into a based
+root datum involution.
 
-That |delta| is a root datum automorphism means that the roots are permuted
-among each other, that the coroots are (under right multiplication) also
-permuted among each other (this is not implied by the first condition if the
-root datum is not semisimple; when it does hold, the permutation is
-necessarily the same). By additivity of linear maps, it suffices to check
-these properties for simple roots and coroots.
+That |delta| is a root datum automorphism means that its action from the left
+permutes roots among each other, that its action on the right permutes coroots
+among each other (this is not implied by the first condition). If, as we do in
+the code below, we only test that left multiplication by~$\delta$
+maps \emph{simple} roots to certain roots, and right multiplication
+by~$\delta^{-1}$ maps \emph{simple} coroots to certain coroots, then the Cartan
+matrix defined for the images will automatically be the same as for the original
+simple system. Thus the image of the simple system is an isomorphic simple
+system contained within the root datum itself, and this can only be the case if
+it is actually obtained from a root datum automorphism; therefore our test is
+sufficient.
 
 @f Delta nullptr
 
@@ -1565,9 +1559,8 @@ weyl::Twist check_involution
   ww = wrt_distinguished(rd,Delta);
   const size_t r=rd.rank(), s=rd.semisimpleRank();
   weyl::Twist p; // result
- @/ @< Left-act on |delta| by the reverse of~|ww|, making it map positive roots
-  to positive roots, and set |p| to the permutation of the simple roots
-  |delta| now achieves. @>
+@/ @< Copy the permutation of the simple roots in |Delta| to |p|, and
+      left-act on |delta| by the reverse of~|ww| to make it match |Delta| @>
   if (lo==nullptr)
     return p; // if no details are asked for, we are done now
 @/LieType& type=lo->d_type;
@@ -1577,12 +1570,17 @@ weyl::Twist check_involution
      permutation |pi| of the simple roots with respect to standard order for
      |type| @>
   if (r>s)
-    @< Add type letters and inner class symbols for the central torus @>
+    @< Add type letters to |type| and inner class symbols to |inner_class|
+       for the central torus @>
   return p;
 }
 
-@
-@< Left-act on |delta|...@>=
+@ The call to |wrt_distinguished| has left in |Delta| the permuted simple roots,
+which information we transfer to~|pi|; then we transform the matrix~|delta| to
+match the transformation that was applied to~|Delta|, so that |delta| becomes a
+distinguished involution.
+
+@< Copy the permutation...@>=
 { for (weyl::Generator i=0; i<s; ++i)
     p[i]=rd.simpleRootIndex(Delta[i]);
     // this |assert|s that |Delta[i]| is simple
@@ -1596,30 +1594,28 @@ weyl::Twist check_involution
 permutation (if not we have the compact inner class) and if so, whether the
 image of that point lies in the same component of the Dynkin diagram. If the
 latter is the case we have an unequal rank inner class, which is actually
-called split unless the simple factor is of type $D_{2n}$, and if the image
+called ``split'' unless the simple factor is of type $D_{2n}$, and if the image
 lies in another component of the diagram we have a Complex inner class.
 
 @h "dynkin.h"
 
 @< Compute the Lie type |type|, the inner class... @>=
-{ int_Matrix Cartan = rd.cartanMatrix();
-  RankFlagsList comp =
-    dynkin::components(dynkin::DynkinDiagram(Cartan));
-
-  type.reserve(comp.size()+r-s);
-  inner_class.reserve(comp.size()+r-s); // certainly enough
-  type = dynkin::Lie_type(Cartan,true,false,pi);
-    // no need to check validity of |Cartan|
+{ DynkinDiagram diagram(rd.cartanMatrix());
+  RankFlagsList comp = dynkin::components(diagram);
+  // partition into connected components
+  type = diagram.normalise_components(pi,true); // according to Bourbaki order
   assert(type.size()==comp.size());
+@)
+  inner_class.reserve(comp.size()+r-s); // certainly enough
   size_t offset=0; // accumulated rank of simple factors seen
 
   for (size_t i=0; i<type.size(); ++i)
   { bool equal_rank=true;
     size_t comp_rank = type[i].rank();
     assert (comp_rank==comp[i].count());
-       // and |pi[j]| runs through |comp[i]| in following loop
-    for (size_t j=offset; j<offset+comp_rank; ++j) // traverse component
-      if (p[pi[j]]!=pi[j]) {@; equal_rank=false; break; }
+       // and |*it| runs through |comp[i]| in following loop
+    for (auto it=&pi[offset]; it!=&pi[offset+comp_rank]; ++it)
+      if (p[*it]!=*it) {@; equal_rank=false; break; }
 @)  if (equal_rank) inner_class.push_back('c');
       // identity on this component: compact component
     else if(comp[i].test(p[pi[offset]]))
@@ -1648,20 +1644,21 @@ the index by |comp_rank| (the kind that |lietype::involution| produces).
 Due to this predetermined order (relative to |p|) in which the matching factor
 is to be arranged, it is not necessary to record the original values of |pi|
 on this factor (which were produced by |dynkin::Lie_type| in increasing order)
-nor the type of the factor, before overwriting then by other factors being
+nor the type of the factor, before overwriting them by other factors being
 shifted up: we can afterwards simply deduce the proper values from the
 matching factor |i|.
 
 @< Gather elements of Complex inner class...@>=
-{ size_t beta = p[pi[offset]];
-  @< Find the component~|k| after |i| that contains |beta|, move |comp[k]| to
-     |comp[i+1]| while shifting any intermediate components correspondingly
-     upwards in |pi|, |type| and |comp| @>
+{ auto beta = p[pi[offset]];
+    // index of simple root, |delta| image of first one in current component
+  @< Find the component~|k| after |i| that contains |beta|, rotate |comp[k]| to
+     position |comp[i+1]| while simply shifting values in |type| and |pi|
+     upwards by |1| respectively |comp_rank| places @>
 @)
   type[i+1]=type[i]; // duplicate factor |i|
   for (size_t j=offset; j<offset+comp_rank; ++j)
     pi[j+comp_rank]=p[pi[j]];
-     // reconstruct matching component in matching order
+     // reconstruct matching component in matching order, applying~|p|
 }
 
 
@@ -1672,35 +1669,35 @@ for the bitset |comp[k]| it is worth while to save the old value and reinsert
 it at its moved-down place.
 
 @< Find the component~|k| after |i| that contains |beta|...@>=
-{ size_t j, k;
-  for (j=offset+comp_rank,k=i+1; k<type.size(); ++k)
+{ auto k=i; // actually start at |i+1|
+  while (++k<type.size())
     if (comp[k].test(beta))
       break;
-    else
-      j+=type[k].second;
   if (k==type.size())
     throw logic_error("Non matching Complex factor");
 @.Non matching Complex factor@>
 
 #ifndef NDEBUG
   assert(type[k]==type[i]); // paired simple types for complex factor
-  for (size_t l=1; l<comp_rank; ++l)
+  for (unsigned int l=1; l<comp_rank; ++l)
     assert(comp[k].test(p[pi[offset+l]]));
         // image by |p| of remainder of |comp[i]| matches |comp[k]|
 #endif
 
   if (k>i+1) // then we need to move component |k| down to |i+1|
   {
-    while (j-->offset+comp_rank) // shift up intermediate components in |pi|
-      pi[j+comp_rank]=pi[j];
-
     RankFlags match_comp=comp[k];
       // save component matching |comp[i]| under |p|
 
-    while(k-->i+1) // shift intermediate simple factors
-    @/{@; type[k+1]=type[k]; comp[k+1]=comp[k]; }
-
+    std::copy_backward(&type[i+1],&type[k],&type[k+1]); // shift up |1|
+    std::copy_backward(&comp[i+1],&comp[k],&comp[k+1]); // shift up |1|
     comp[i+1]=match_comp; // reinsert mathcing component after |comp[i]|
+@)
+    auto j=offset+comp_rank;
+    for (auto it=&type[i+1]; it!=&type[k]; ++it)
+      j += it->rank();
+    std::copy_backward(&pi[offset+comp_rank],&pi[j],&pi[j+comp_rank]);
+    // shift up |comp_rank|
   }
 
 }
@@ -1719,7 +1716,8 @@ first $r$ vectors span the lattice to be divided out), express the involution
 of that basis (which will have zeros in the bottom-left $(r-s)\times{s}$
 block), and extract the bottom-right $(r-s)\times(r-s)$ block.
 
-@< Add type letters and inner class symbols for the central torus @>=
+@< Add type letters to |type| and inner class symbols to |inner_class|
+   for the central torus @>=
 { for (size_t k=0; k<r-s; ++k)
     type.push_back(SimpleLieType('T',1));
   int_Matrix root_lattice
@@ -1730,10 +1728,10 @@ block), and extract the bottom-right $(r-s)\times(r-s)$ block.
 @/WeightInvolution inv =
      basis.inverse().block(s,0,r,r)*delta*basis.block(0,s,r,r);
     // involution on quotient by root lattice
-  std::pair<size_t,size_t> cl=classify_involution(inv);
-@/size_t& compact_rank=cl.first;
-  size_t& split_rank=cl.second;
-  size_t Complex_rank=(r-s-compact_rank-split_rank)/2;
+  const auto ranks=tori::classify(inv);
+@/auto compact_rank=std::get<0>(ranks);
+  auto Complex_rank=std::get<1>(ranks);
+  auto split_rank=std::get<2>(ranks);
 @/while (compact_rank-->0) inner_class.push_back('c');
   while (Complex_rank-->0) inner_class.push_back('C');
   while (split_rank-->0) inner_class.push_back('s');
