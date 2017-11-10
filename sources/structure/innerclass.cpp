@@ -120,9 +120,11 @@ InnerClass::C_info::C_info
   distinguished involution |tmp_d|, which stabilises the set of simple roots
 */
 InnerClass::InnerClass
- (const PreRootDatum& prd, const WeightInvolution& tmp_d)
-  : d_rootDatum(prd)
-  , d_dualRootDatum(d_rootDatum,tags::DualTag())
+  (const PreRootDatum& prd, const WeightInvolution& tmp_d)
+    : own_datum(new RootDatum(prd))
+    , own_dual_datum(new RootDatum(*own_datum,tags::DualTag()))
+    , d_rootDatum(*own_datum)
+    , d_dualRootDatum(*own_dual_datum)
 
   , my_W(new WeylGroup(d_rootDatum.cartanMatrix()))
   , W(*my_W) // owned when this constructor is used
@@ -146,15 +148,15 @@ InnerClass::InnerClass
 }
 
 /*
-  Variant constructor, differs only by using a constructed root datum
+  Variant constructor, differs only by capturing an existing root datum pair
 
-  Constructs an |InnerClass| from a rootdatum |rd| and a
-  distinguished involution |d|, which stabilises the set of simple roots
+  Constructs an |InnerClass| from a rootdatum |rd| and a distinguished
+  involution |d|, which stabilises the set of simple roots
 */
 InnerClass::InnerClass
- (const RootDatum& rd, const WeightInvolution& tmp_d)
-  : d_rootDatum(rd)
-  , d_dualRootDatum(d_rootDatum,tags::DualTag())
+(const RootDatum& rd, const RootDatum& drd, const WeightInvolution& tmp_d)
+  : own_datum(nullptr), own_dual_datum(nullptr) // don't own for this case
+  , d_rootDatum(rd), d_dualRootDatum(drd) // but capture the references instead
 
   , my_W(new WeylGroup(d_rootDatum.cartanMatrix()))
   , W(*my_W) // owned when this constructor is used
@@ -382,9 +384,9 @@ void InnerClass::construct() // common part of two constructors
 } // |InnerClass::construct|
 
 // Construct the complex reductive group dual to G
-InnerClass::InnerClass(const InnerClass& G,
-					     tags::DualTag)
-  : d_rootDatum(G.d_dualRootDatum)
+InnerClass::InnerClass(const InnerClass& G, tags::DualTag)
+  : own_datum(nullptr), own_dual_datum(nullptr) // depend on |G| in all cases
+  , d_rootDatum(G.d_dualRootDatum) // since we are sharing these references
   , d_dualRootDatum(G.d_rootDatum)
 
   , my_W(nullptr), W(G.W) // not owned here, we depend on existence of |G|

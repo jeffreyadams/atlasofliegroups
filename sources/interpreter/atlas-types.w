@@ -774,15 +774,15 @@ unit. We also use shared pointers.
 
 
 @ Since root data are the starting point for a hierarchy of more and more
-complicated value types, it will be useful to be able to identify identical root
-data when they are constructed, so that the values can be shared internally, and
-this sharing will also help to similarly recognise when identical values are
-produced further up the hierarchy. To this end we shall keep a hash table of
-bare root data, with just enough information to match identical root data, and
-associate to each such value seen a shared pointer to a |RootDatum| value. We
-can later also attach more information such as a list of inner classes for this
-root datum that have been seen, allowing us to avoid duplication at that level
-higher up. So here is a type compatible with the |Hash_table| class template.
+complicated value types, we shall identify identical root data when they are
+constructed, so that the values can be shared internally. This sharing will
+also help to similarly recognise when identical values are produced further up
+the hierarchy. To this end we shall keep a hash table of bare root data, with
+just enough information to match identical root data, and associate to each such
+value seen a shared pointer to a |RootDatum| value. We can later also attach
+more information such as a list of inner classes for this root datum that have
+been seen, allowing us to avoid duplication at that level higher up. So here is
+a type compatible with the |Hash_table| class template.
 
 @< Type definitions @>=
 struct root_datum_entry : public PreRootDatum
@@ -815,6 +815,9 @@ additional argument of a local type |token| that only methods of our class (like
 |build|) are able to provide. The |val| member is public, but |const|.
 
 @< Type definitions @>=
+class root_datum_value;
+typedef std::shared_ptr<const root_datum_value> shared_root_datum;
+@)
 class root_datum_value : public value_base
 { struct token@+{}; // type passed to prove caller has private access;
 public:
@@ -823,14 +826,13 @@ public:
   static std::vector<std::weak_ptr<const root_datum_value> > store;
 @)
   root_datum_value(const PreRootDatum& v,token) : val(v) @+ {}
-  static std::shared_ptr<const root_datum_value> build(PreRootDatum&& pre);
+  static shared_root_datum build(PreRootDatum&& pre);
+  shared_root_datum dual() const; // get dual datum through |build|
   virtual void print(std::ostream& out) const;
   root_datum_value* clone() const @+{@; return nullptr; }
     // we refuse to create duplicates
   static const char* name() @+{@; return "root datum"; }
 };
-@)
-typedef std::shared_ptr<const root_datum_value> shared_root_datum;
 
 @ We need to define the static members declared in the class definition.
 
@@ -863,6 +865,10 @@ then a shared pointer to a newly created |root_datum_value| is returned, after
 either pushing a weak pointer to |store| or storing it in the old slot in case a
 the weak pointer there had expired.
 
+The method |dual| facilitates building the dual of a |root_datum_value| while
+passing though |build| to ensure that no unnecessary copies are created, notably
+if one should later compute the dual of the dual.
+
 @< Function definitions @>=
 shared_root_datum root_datum_value::build(PreRootDatum&& pre)
 { auto loc = hash.match(root_datum_entry(std::move(pre)));
@@ -876,11 +882,14 @@ shared_root_datum root_datum_value::build(PreRootDatum&& pre)
   if (loc<store.size()) // happens if identical root datum was cleaned up
     store[loc]=result; // save a weak pointer version in |store|
   else // this must be the first time we ever see a copy of this |PreRootDatum|
-  { assert (loc==store.size());
-    store.push_back(result); // save a weak pointer version in |store|
-  }
+@/{@; assert (loc==store.size());
+    store.push_back(result);
+  } // save a weak pointer version in |store|
   return result;
 }
+@)
+shared_root_datum root_datum_value::dual() const
+{@; PreRootDatum pre(val); pre.dualise(); return build(std::move(pre)); }
 
 @*2 Printing root data. We shall not print the complete information contained
 in the root datum. However we do exercise the routines in \.{dynkin.cpp} to
@@ -1266,9 +1275,7 @@ void dual_datum_wrapper(expression_base::level l)
 { shared_root_datum rd = get<root_datum_value>();
   if (l==expression_base::no_value)
     return;
-  PreRootDatum pre = rd->val;
-  pre.dualise();
-  push_value(root_datum_value::build(std::move(pre)));
+  push_value(rd->dual());
 }
 @)
 void derived_info_wrapper(expression_base::level l)
@@ -1738,12 +1745,13 @@ block), and extract the bottom-right $(r-s)\times(r-s)$ block.
 }
 
 @*2 Storing the inner class values.
-Although abstractly an inner class value is described completely by an object
-of type |InnerClass|, we shall need to record additional
-information in order to be able to present meaningful names for the real forms
-and dual real forms in this inner class. The above analysis of involutions was
-necessary in order to obtain such information; it will be recorded in values
-of type |output::FormNumberMap|.
+%
+Although abstractly an inner class value is described completely by an object of
+type |InnerClass|, we shall need to record additional information in order to be
+able to present meaningful names for the real forms and dual real forms in this
+inner class. The above analysis of involutions was necessary in order to obtain
+such information; the class |output::FormNumberMap| will serve to record the
+necessary renumbering and naming of real form numbers.
 
 @< Includes... @>=
 #include "output.h"
@@ -1751,7 +1759,7 @@ of type |output::FormNumberMap|.
 @~The class |inner_class_value| will be the first Atlas type where we deviate
 from the previously used scheme of holding an Atlas library object with the
 main value in a data member |val|. The reason is that the copy constructor for
-|InnerClass| is private (and nowhere defined), so that the
+|InnerClass| is deleted, so that the
 straightforward definition of a copy constructor for such an Atlas type would
 not work, and the copy constructor is necessary for the |clone| method. (In
 fact, now that normal manipulation of values involves duplicating shared
@@ -1794,13 +1802,17 @@ struct inner_class_value : public value_base
 { InnerClass& val;
   InnerClass& dual;
   size_t& ref_count;
+  shared_root_datum datum, dual_datum; // share if we depend on them
 @)
   lietype::LieType rd_type;
   lietype::InnerClassType ic_type;
   const output::FormNumberMap interface,dual_interface;
 @)
-  inner_class_value  // main constructor
-   (std::unique_ptr<InnerClass> G, const lietype::Layout& lo);
+  inner_class_value(std::unique_ptr<InnerClass> G, const lietype::Layout& lo);
+  // main
+static inner_class_value build
+  (shared_root_datum srd, WeightInvolution& tau, WeylWord* wp=nullptr);
+  // to share
   ~inner_class_value();
 @)
   virtual void print(std::ostream& out) const;
@@ -1819,7 +1831,8 @@ typedef std::shared_ptr<const inner_class_value> shared_inner_class;
 @< Function def...@>=
 inner_class_value::inner_class_value(const inner_class_value& v)
 : val(v.val), dual(v.dual), ref_count(v.ref_count)
-, rd_type(v.rd_type), ic_type(v.ic_type)
+@/, datum(v.datum), dual_datum(v.dual_datum) // possibly double up sharing
+@/, rd_type(v.rd_type), ic_type(v.ic_type)
 , interface(v.interface), dual_interface(v.dual_interface)
 {@; ++ref_count; }
 
@@ -1854,6 +1867,8 @@ inner_class_value::inner_class_value
 @/: val(*g)
 , dual(*new InnerClass(*g,tags::DualTag()))
 @/, ref_count(*new size_t(1))
+@/, datum(nullptr), dual_datum(nullptr)
+    // we use independent |InnerClass| objects
 @/, rd_type(lo.d_type), ic_type(lo.d_inner)
 , interface(*g,lo), dual_interface(*g,lo,tags::DualTag())
  {@; g.release(); } // now that we own |g|, release the unique-pointer
@@ -1870,11 +1885,36 @@ value will behave exactly like a copy of the original inner class.
 inner_class_value::inner_class_value(const inner_class_value& v,tags::DualTag)
 @/: val(v.dual), dual(v.val)
 , ref_count(v.ref_count)
+@/, datum(v.dual_datum), dual_datum(v.datum) // possibly double up sharing
 @/, rd_type(lietype::dual_type(v.rd_type))
 , ic_type(lietype::dual_type(v.ic_type,rd_type))
 , interface(v.dual_interface), dual_interface(v.interface)
 {@; ++ref_count; }
 
+@ We often want an |inner_class_value| to use an |InnerClass| that refers to
+rather than stores a root datum and its dual, if those can be found in an
+existing |root_datum_value| and its dual. To that end we provide a
+pseudo-constructor |build| that will build such an |InnerClass| object, and
+store shared pointed to the root data it depends on in the associated
+|inner_class_value|.
+
+@< Function def...@>=
+inner_class_value inner_class_value::build
+  (shared_root_datum srd, WeightInvolution& tau, WeylWord* wp)
+{ shared_root_datum drd=srd->dual();
+  const auto& rd=srd->val;
+  WeylWord ww;
+  lietype::Layout lo;
+  if (wp==nullptr)
+    wp=&ww; // use |ww| as dummy output unless |p| points somewhere
+  check_involution(tau,rd,*wp,&lo); // may also modify |tau|, and sets |lo|
+  std::unique_ptr<InnerClass> p @| (new InnerClass(rd,drd->val,tau));
+    // depends on |srd| and |drd|
+  inner_class_value result(std::move(p),lo); // use main constructor here
+  result.datum=std::move(srd);
+  result.dual_datum=std::move(drd); // set dependencies
+  return result; // return modified instance of |inner_class_value|
+}
 
 @ One of the most practical informations about an |InnerClass|,
 which is available directly after its construction, is the number of real
@@ -1893,32 +1933,25 @@ void inner_class_value::print(std::ostream& out) const
 }
 
 @ Here is the wrapper function for constructing an inner class using an
-involution, testing its validity in the process. The Weyl word |ww| that was
-needed in the test to make the involution into one of the based root datum
-must be applied to the matrix, since the test does not actually modify its
-matrix argument. (The |weyl::Twist| value returned by |check_involution| is
-only sufficient to determine the desired |M| in the semisimple case, so it
-cannot be used here.) Then the root datum and matrix are passed to a
+involution, testing its validity in the process. The Weyl word |ww| that was set
+by |check_involution| is not used, as it suffices that the call has modified~|M|
+to be a distinguished involution; similarly the |weyl::Twist| value returned by
+by the call is ignored here. Then the root datum and matrix are passed to a
 |InnerClass| constructor that the library provides specifically for this
-purpose, and which makes a copy of the root datum; the \.{Fokko} program
-instead uses a constructor using a |PreRootDatum| that constructs the
-|RootDatum| directly into the |InnerClass|. Using that constructor here would
-be cumbersome and even less efficient then copying the existing root datum.
+purpose, and which makes a copy of the root datum; the \.{Fokko} program instead
+uses a constructor using a |PreRootDatum| that constructs the |RootDatum|
+directly into the |InnerClass|. Using that constructor here would be cumbersome
+and even less efficient then copying the existing root datum.
 
 @< Local function def...@>=
 void fix_involution_wrapper(expression_base::level l)
 { LatticeMatrix M(get<matrix_value>()->val);
     // copy construct, safely using temporary
   shared_root_datum rd = get<root_datum_value>();
-  WeylWord ww;
-  lietype::Layout lo;
-  check_involution(M,rd->val,ww,&lo);
-  if (l==expression_base::no_value)
-    return;
-@)
-  std::unique_ptr<InnerClass>
-    G(new InnerClass(rd->val,M));
-  push_value(std::make_shared<inner_class_value>(std::move(G),lo));
+  auto ic_value = inner_class_value::build(rd,M); // build and check
+  if (l!=expression_base::no_value)
+    push_value(std::make_shared<inner_class_value>(ic_value));
+    // light weight copy
 }
 
 @ Another wrapper |twisted_involution_wrapper| is similar, but also returns a
@@ -1930,33 +1963,31 @@ void twisted_involution_wrapper(expression_base::level l)
 { LatticeMatrix M(get<matrix_value>()->val);
   shared_root_datum rd = get<root_datum_value>();
   WeylWord ww;
-  lietype::Layout lo;
-  check_involution(M,rd->val,ww,&lo);
-  if (l==expression_base::no_value)
-    return;
+  auto ic_value = inner_class_value::build(rd,M,&ww); // build and check
 @)
-  std::unique_ptr<InnerClass>
-    G(new InnerClass(rd->val,M));
-  push_value(std::make_shared<inner_class_value>(std::move(G),lo));
-  push_value(std::make_shared<vector_value>
-    (std::vector<int>(ww.begin(),ww.end())));
-  if (l==expression_base::single_value)
-    wrap_tuple<2>();
+  if (l!=expression_base::no_value)
+  { push_value(std::make_shared<inner_class_value>(ic_value));
+    // light weight copy |ic_value|
+    push_value(std::make_shared<vector_value>
+      (std::vector<int>(ww.begin(),ww.end())));
+    if (l==expression_base::single_value)
+      wrap_tuple<2>();
+  }
 }
 
-@ To simulate the functioning of the \.{Fokko} program, an overload of the
-function |inner_class| takes as argument a Lie type, a list of kernel
-generators, and a string describing the inner class. The evaluation of the call
-|inner_class(lt,gen,ict)| computes ${\it basis}={\it quotient\_basis(lt,gen)}$,
-${\it rd}={\it root\_datum (lt,basis)}$, ${\it M}={\it
-based\_involution(lt,basis,ict)}$, and then returns the same value as would
-|fix_involution(rd,M)|. However we avoid actually calling the function
-|fix_involution_wrapper|, which would reconstruct |lt| and |ict| from |rd| and
-|M|, while performing tests that are useless given the way $M$ was computed;
-rather we store |lt| and |ict| directly in a |Layout| to be stored in the
-|inner_class_value|. This follows most closely \.{altas} behaviour, and avoids
-surprises (however inner class letters do change as usual to synonyms when
-passing through |transform_inner_class_type|).
+@ To simulate the functioning of the \.{Fokko} program, the following overload
+of the function |inner_class| in \.{atlas} takes as argument a Lie type, a list
+of kernel generators, and a string describing the inner class. The evaluation of
+the \.{atlas} call |inner_class(lt,gen,ict)| will successively compute ${\it
+basis}={\it quotient\_basis(lt,gen)}$, ${\it rd}={\it root\_datum (lt,basis)}$,
+and ${\it M}={\it based\_involution(lt,basis,ict)}$, and then returns the same
+value as would |fix_involution(rd,M)|. However we avoid actually calling the
+function |fix_involution_wrapper|, which would reconstruct |lt| and |ict| from
+|rd| and |M|, while performing tests that are useless given the way $M$ was
+computed; rather we store |lt| and |ict| directly in a |Layout| to be stored in
+the |inner_class_value|. This follows most closely \.{altas} behaviour, and
+avoids surprises (however inner class letters do change to synonyms as they
+usual do when passing through |transform_inner_class_type|).
 
 @< Local function def...@>=
 void inner_class_from_type_wrapper(expression_base::level l)
@@ -1974,6 +2005,7 @@ void inner_class_from_type_wrapper(expression_base::level l)
   push_value(whether(prefer_coroots));
   root_datum_from_type_wrapper(expression_base::single_value);
   shared_root_datum rd = get<root_datum_value>();
+  shared_root_datum dual_rd = rd->dual();
 @)
   push_value(lt); push_value(basis);
   push_value(ict);
@@ -1983,8 +2015,11 @@ void inner_class_from_type_wrapper(expression_base::level l)
     return; // bow out now all possible errors are passed
 @)
   std::unique_ptr<InnerClass>@|
-    G(new InnerClass(rd->val,M->val));
-  push_value(std::make_shared<inner_class_value>(std::move(G),lo));
+    G(new InnerClass(rd->val,dual_rd->val,M->val));
+  auto result = std::make_shared<inner_class_value>(std::move(G),lo);
+@/result->datum=std::move(rd);
+  result->dual_datum=std::move(dual_rd); // set dependencies
+  push_value(result);
 }
 
 @ If one already has a root datum at hand, such as one produced by functions

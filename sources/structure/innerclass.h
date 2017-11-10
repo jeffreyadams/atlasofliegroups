@@ -164,11 +164,10 @@ void twisted_act
   */
 class InnerClass
 {
-  // The based root datum. It is stored here (constructed by our constructor)
-  const RootDatum d_rootDatum;
+  std::unique_ptr<const RootDatum> own_datum, own_dual_datum; // we might own
 
-  // The dual based root datum. It is also stored and constructed by us
-  const RootDatum d_dualRootDatum;
+  const RootDatum& d_rootDatum; // we shall always reference through this one
+  const RootDatum& d_dualRootDatum; // or possibly this one for the dual datum
 
   const WeylGroup* my_W; // pointer to |W| in case we own |W|, or |NULL|
   const WeylGroup& W;    // possibly owned (via |my_W|) reference
@@ -225,10 +224,11 @@ class InnerClass
  public:
 // constructors and destructors
   InnerClass(const PreRootDatum&, // constructor builds root datum
-			const WeightInvolution&);
+	     const WeightInvolution&);
 
-  InnerClass(const RootDatum&, // alternative that copies root datum
-			const WeightInvolution&);
+  InnerClass(const RootDatum& rd, // for atlas program; capture references
+	     const RootDatum& prd, // this one must be the dual datum
+	     const WeightInvolution&);
 
   InnerClass(const InnerClass&, tags::DualTag);
 
