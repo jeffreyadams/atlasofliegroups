@@ -1608,45 +1608,47 @@ lies in another component of the diagram we have a Complex inner class.
 
 @< Compute the Lie type |type|, the inner class... @>=
 { DynkinDiagram diagram(rd.cartanMatrix());
-  RankFlagsList comp = dynkin::components(diagram);
-  // partition into connected components
-  type = diagram.normalise_components(pi,true); // according to Bourbaki order
-  assert(type.size()==comp.size());
+  containers::sl_list<RankFlags> comps =
+    diagram.components(); // connected components
+  type = diagram.classify_semisimple(pi,true);
+    // |pi| normalises to Bourbaki order
+  assert(type.size()==comps.size());
 @)
-  inner_class.reserve(comp.size()+r-s); // certainly enough
+  inner_class.reserve(comps.size()+r-s); // certainly enough
   size_t offset=0; // accumulated rank of simple factors seen
 
-  for (size_t i=0; i<type.size(); ++i)
+  unsigned int i=0; // index into |type|
+  for (auto cit=comps.begin(); not comps.at_end(cit); ++cit,++i)
   { bool equal_rank=true;
-    size_t comp_rank = type[i].rank();
-    assert (comp_rank==comp[i].count());
-       // and |*it| runs through |comp[i]| in following loop
+    size_t comp_rank = cit->count();
+    assert (comp_rank==type[i].rank());
+       // and |*it| runs through bits in |*cit| in following loop
     for (auto it=&pi[offset]; it!=&pi[offset+comp_rank]; ++it)
       if (p[*it]!=*it) {@; equal_rank=false; break; }
 @)  if (equal_rank) inner_class.push_back('c');
       // identity on this component: compact component
-    else if(comp[i].test(p[pi[offset]]))
-       // (any) one root stays in |comp[i]|; unequal rank
+    else if (cit->test(p[pi[offset]]))
+       // (any) one root stays in component |*cit|: unequal rank
       inner_class.push_back(type[i].first=='D' and comp_rank%2==0 ? 'u' : 's');
     else
     { inner_class.push_back('C'); // record Complex component
       @< Gather elements of Complex inner class component, adapting the values
-         of |type|, |comp| and |pi| @>
+         of |type|, |comps|, and~|pi| @>
       offset += comp_rank;
-      ++i; // skip over component |i|, loop will skip component |i+1|
+      ++cit,++i; // skip over component |i|, loop will skip component |i+1|
     }
 
     offset += comp_rank;
-  } // |for (i)|
+  } // |for (cit)|
 }
 
-@ Complex factors of the inner class involve two simple factors, which
-requires some additional care. The corresponding components of the Dynkin
-diagram might not be consecutive, in which case we must permute the factors of
-|type| to make that true, permute the |comp| subsets to match, and update |pi|
-as well. Moreover we wish that, as seen through |pi|, the permutation |p|
-interchanges the roots of the two now consecutive factors by a fixed shift in
-the index by |comp_rank| (the kind that |lietype::involution| produces).
+@ Complex factors of the inner class involve two simple factors, which requires
+some additional care. The corresponding components of the Dynkin diagram might
+not be consecutive, in which case we must permute the factors of |type| to make
+that true, permute the |comp| subsets to match, and update |pi| as well.
+Moreover we wish that, as seen through |pi|, the permutation |p| interchanges
+the roots of the two now consecutive factors by a fixed shift in the index by
+|comp_rank| (the kind of permutation that |lietype::involution| produces).
 
 Due to this predetermined order (relative to |p|) in which the matching factor
 is to be arranged, it is not necessary to record the original values of |pi|
@@ -1658,8 +1660,8 @@ matching factor |i|.
 @< Gather elements of Complex inner class...@>=
 { auto beta = p[pi[offset]];
     // index of simple root, |delta| image of first one in current component
-  @< Find the component~|k| after |i| that contains |beta|, rotate |comp[k]| to
-     position |comp[i+1]| while simply shifting values in |type| and |pi|
+  @< Find the component~|k| after |i| that contains |beta|, rotate entry |k| of
+     |comps| to position |i+1|, while shifting values in |type| and |pi|
      upwards by |1| respectively |comp_rank| places @>
 @)
   type[i+1]=type[i]; // duplicate factor |i|
@@ -1669,36 +1671,34 @@ matching factor |i|.
 }
 
 
-@ When the inner class permutation |p| interchanges a component with another,
-we search for that component. Then, as remarked above, we can simply shift up
-any intermediate values of |pi|, |type| and |comp| to their new places; only
-for the bitset |comp[k]| it is worth while to save the old value and reinsert
-it at its moved-down place.
+@ When the inner class permutation |p| interchanges a component with another, we
+use the image~|beta| of one root in the former component to search for the
+latter component. Then, as remarked above, we can simply shift up any
+intermediate values of |pi|, |type| and |comp| to their new places; only for the
+bitset |comp[k]| it is worth while to save the old value and reinsert it at its
+moved-down place.
 
 @< Find the component~|k| after |i| that contains |beta|...@>=
-{ auto k=i; // actually start at |i+1|
-  while (++k<type.size())
-    if (comp[k].test(beta))
+{ auto k=i; auto cit1=cit; // both are to be immediately incremented
+  while (++k, not comps.at_end(++cit1))
+    if (cit1->test(beta))
       break;
-  if (k==type.size())
+  if (comps.at_end(cit1))
     throw logic_error("Non matching Complex factor");
 @.Non matching Complex factor@>
 
 #ifndef NDEBUG
   assert(type[k]==type[i]); // paired simple types for complex factor
   for (unsigned int l=1; l<comp_rank; ++l)
-    assert(comp[k].test(p[pi[offset+l]]));
+    assert(cit1->test(p[pi[offset+l]]));
         // image by |p| of remainder of |comp[i]| matches |comp[k]|
 #endif
 
   if (k>i+1) // then we need to move component |k| down to |i+1|
   {
-    RankFlags match_comp=comp[k];
-      // save component matching |comp[i]| under |p|
-
+    comps.splice(std::next(cit),comps,cit1);
+      // rotate node |*cit1| to position after |cit|
     std::copy_backward(&type[i+1],&type[k],&type[k+1]); // shift up |1|
-    std::copy_backward(&comp[i+1],&comp[k],&comp[k+1]); // shift up |1|
-    comp[i+1]=match_comp; // reinsert mathcing component after |comp[i]|
 @)
     auto j=offset+comp_rank;
     for (auto it=&type[i+1]; it!=&type[k]; ++it)
@@ -2046,7 +2046,7 @@ sub-lattice; we wish to recover the (integral) matrix~$M$ that specified the
 sub-lattice, since it expresses our root datum lattice on~$b$. Unfortunately
 the |PreRootDatum| constructor only expresses roots and coroots on this basis
 and its dual, so we cannot recover~$M$ reliably from the root datum (for
-instance is there are no roots). In fact we shall use the information stored
+instance if there are no roots). In fact we shall use the information stored
 in the coroots, whose coordinates give the entries of~$M$, except for its rows
 of coordinates on the torus factors (cf.\ |prerootdata::corootBasis|). We
 complement this with coordinates of the radical generators stored in the root
