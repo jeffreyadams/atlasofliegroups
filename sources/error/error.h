@@ -1,7 +1,7 @@
 /*
   This is error.h
   Copyright (C) 2004,2005 Fokko du Cloux
-  Copyright (C) 2015 Marc van Leeuwen
+  Copyright (C) 2015,2017 Marc van Leeuwen
   part of the Atlas of Lie Groups and Representations
 
   For license information see the LICENSE file
@@ -12,11 +12,11 @@
 
 #include <stdexcept>
 
+namespace atlas {
+namespace error {
+
 /******** type declarations *************************************************/
 
-namespace atlas {
-
-namespace error {
 
   struct FatalError;
 
@@ -28,15 +28,13 @@ namespace error {
   struct NumericOverflow;
   struct NumericUnderflow;
 
-  struct CartanError {};
+  struct Cartan_error;
+  struct Cayley_error;
 
   typedef FatalError PrimesError;
 
-}
-
 /******** type definitions **************************************************/
 
-namespace error {
 
 struct FatalError {
   void operator() (const char*);
@@ -70,14 +68,18 @@ struct NumericUnderflow {
 
 
 // runtime errors for atlas
+struct Cartan_error : public std::runtime_error
+{
+  Cartan_error() : std::runtime_error("Illegal Cartan matrix") {}
+};
+
 
 struct Cayley_error : public std::runtime_error
 {
   Cayley_error() : std::runtime_error("Undefined Cayley transform") {}
 };
 
-  } // |namespace error|
-
+} // |namespace error|
 } // |namespace atlas|
 
 #endif

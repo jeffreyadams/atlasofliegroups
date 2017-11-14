@@ -966,7 +966,7 @@ try @/{
   if (l!=expression_base::no_value)
     push_value(root_datum_value::build(std::move(prd)));
 }
-  catch (error::CartanError)
+  catch (error::Cartan_error)
 @/{@;
     throw runtime_error("Matrices of (co)roots give invalid Cartan matrix");
 }

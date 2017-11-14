@@ -58,19 +58,19 @@ DynkinDiagram::DynkinDiagram(const int_Matrix& c)
       if (i!=j)
       {
 	if (c(i,j)<-3 or c(i,j)>0)
-	  throw error::CartanError();
+	  throw error::Cartan_error();
 	Multiplicity m = -c(i,j);
 	if (m!=0)
 	{
 	  if (c(j,i)==0) // this test ensures a symmetric adjacency matrix
-	    throw error::CartanError();
+	    throw error::Cartan_error();
 	  d_star[j].set(i); // set |i| as neighbour of |j|
 	  if (m>1) // only label multiple edges
 	    d_downedge.push_back (std::make_pair(Edge(i,j),m));
 	}
       }
       else if (c(i,j)!=2)
-	throw error::CartanError();
+	throw error::Cartan_error();
 }
 
 
@@ -314,7 +314,7 @@ LieType DynkinDiagram::classify_semisimple(Permutation& a,bool Bourbaki) const
   Precondition : the current object is a connected Dynkin diagram;
 
   Postcondition : |pi| holds a permutation which enumerates the vertices of
-  |d| in an order that will induce a normal form of |*this|; a CartanError
+  |d| in an order that will induce a normal form of |*this|; a Cartan_error
   will be thrown (either here or in helper) in case it is not a valid diagram
 
   It is just a dispatching function for the various possible simple types.
@@ -344,7 +344,7 @@ SimpleLieType
     pi = Permutation(); // will provoke the error below
   }
   if (pi.size()!=rank())
-    throw error::CartanError();
+    throw error::Cartan_error();
 
   return SimpleLieType(x,rank());
 } // |classify_simple|
@@ -373,7 +373,7 @@ lietype::TypeLetter DynkinDiagram::component_kind() const
   {
     RankFlags extr = extremities();
     if (extr.count()<2)
-      throw error::CartanError();
+      throw error::Cartan_error();
     unsigned int fork = fork_node();
     if (fork==rank()) // diagram is linear
       switch (edge_label())
@@ -393,7 +393,7 @@ lietype::TypeLetter DynkinDiagram::component_kind() const
 	return short_arms.count() == 1 ? 'E' : 'D';
     }
   }
-  throw error::CartanError();
+  throw error::Cartan_error();
 } // |DynkinDiagram::component_kind|
 
 
@@ -430,7 +430,7 @@ LieType Lie_type(const int_Matrix& cm,
   if (check)
   {
     if (cm.numRows()!=cm.numColumns())
-      throw error::CartanError();
+      throw error::Cartan_error();
     if (cm.numRows()>constants::RANK_MAX) // throw a different error type here
       throw std::runtime_error("Rank of matrix exceeds implementation limit");
   }
@@ -447,12 +447,12 @@ LieType Lie_type(const int_Matrix& cm,
       if ((slt.type()=='E' and slt.rank()>8) or
 	  (slt.type()=='F' and slt.rank()>4) or
 	  (slt.type()=='G' and slt.rank()>2))
-	throw error::CartanError();
+	throw error::Cartan_error();
     }
     for (unsigned int i=0; i<d.rank(); ++i)
       for (unsigned int j=0; j<d.rank(); ++j)
 	if (cm(pi[i],pi[j])!=result.Cartan_entry(i,j))
-	  throw error::CartanError();
+	  throw error::Cartan_error();
    }
   return result;
 
@@ -642,7 +642,7 @@ Permutation typeENormalize(const DynkinDiagram& d)
 
   Permutation a;
   if (r<6 or r>8 or fork_star.count()!=3 or extr.count()!=3)
-    throw error::CartanError();
+    throw error::Cartan_error();
 
   RankFlags short_arms = fork_star & extr;
   assert(short_arms.count()==1); // this was what caused type E classification
@@ -653,7 +653,7 @@ Permutation typeENormalize(const DynkinDiagram& d)
   if (inter.none()) // skip end point long arm
     inter = d.star(*++it) & fork_star;
   if (inter.none()) // still long arm? then something is wrong
-    throw error::CartanError();
+    throw error::Cartan_error();
 
   a.push_back(*it);                   // end middle arm
   a.push_back(short_arms.firstBit()); // short arm
