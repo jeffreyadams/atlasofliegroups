@@ -2,6 +2,7 @@
   This is lietype.h
 
   Copyright (C) 2004,2005 Fokko du Cloux
+  Copyright (C) 2017 Marc van Leeuwen
   part of the Atlas of Lie Groups and Representations
 
   For license information see the LICENSE file
@@ -15,6 +16,7 @@
 
 
 #include <stdexcept>
+#include <vector>
 
 #include "../Atlas.h"
 
@@ -100,6 +102,9 @@ struct LieType : public std::vector<SimpleLieType>
   int_Matrix Cartan_matrix() const; // square of sise |rank()| (maybe zero rows)
   int_Matrix transpose_Cartan_matrix() const;
   int_VectorList Smith_basis(CoeffList& invf) const;
+
+  LieType& append (const LieType& tail)
+  { insert(end(),tail.begin(),tail.end()); return *this; }
 };
 
 // the follwing rather empty definition serves mainly to make |InnerClassType|

@@ -257,20 +257,23 @@ containers::sl_list<RankFlags> DynkinDiagram::components() const
   return result;
 }
 
-LieType DynkinDiagram::Lie_type() const
+// Return the (semisimple) Lie type of the Cartan matrix |cm|
+LieType Lie_type(const int_Matrix& cm)
 {
-  const auto cl = components();
+  DynkinDiagram diagram(cm);
+  const auto cl = diagram.components();
 
   LieType result;
   result.reserve(cl.size());
   for (auto it=cl.begin(); it!=cl.end(); ++it)
   {
-    auto cd = subdiagram(*it);
+    auto cd = diagram.subdiagram(*it);
     result.emplace_back(cd.component_kind(),cd.rank());
   }
 
   return result;
 }
+
 
 /*
   Precondition: any constructed Dynkin diagram is acceptable
@@ -405,12 +408,6 @@ Permutation normalize(const DynkinDiagram& d)
   Permutation result;
   d.classify_semisimple(result,false);
   return result;
-}
-
-// Return the (semisimple) Lie type of the Cartan matrix |cm|
-LieType Lie_type(const int_Matrix& cm)
-{
-  return DynkinDiagram(cm).Lie_type();
 }
 
 

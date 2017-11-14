@@ -430,10 +430,11 @@ int_Matrix RootSystem::cartanMatrix() const
   return result;
 }
 
+
 // The Cartan matrix of the root subsystem with basis |rb|.
 int_Matrix RootSystem::cartanMatrix(const RootNbrList& rb) const
 {
-  size_t r = rb.size();
+  unsigned int r = rb.size();
 
   int_Matrix result(r,r);
 
@@ -444,11 +445,11 @@ int_Matrix RootSystem::cartanMatrix(const RootNbrList& rb) const
   return result;
 }
 
-LieType RootSystem::Lie_type() const
-{ return dynkin::Lie_type(cartanMatrix()); }
-
-LieType RootSystem::Lie_type(RootNbrList sub) const
-{ return dynkin::Lie_type(cartanMatrix(sub)); }
+// type of root subsystem (semisimple)
+LieType RootSystem::subsystem_type(const RootNbrList& rb) const
+{
+  return dynkin::Lie_type(cartanMatrix(rb));
+}
 
 // pairing $\<\alpha,\beta^\vee>$; note that coroot is on the right
 int RootSystem::bracket(RootNbr alpha, RootNbr beta) const
@@ -832,6 +833,16 @@ RatWeight RootDatum::fundamental_coweight(weyl::Generator i) const
 { return RatWeight(coweight_numer[i],Cartan_denom); }
 
 /******** accessors **********************************************************/
+
+LieType RootDatum::type() const
+{
+  LieType result = dynkin::Lie_type(cartanMatrix());
+  result.reserve(result.size()+rank()-semisimpleRank());
+  for (unsigned int i=semisimpleRank(); i<rank(); ++i)
+    result.emplace_back('T',1);
+  return result;
+}
+
 
 void RootDatum::reflect(RootNbr alpha, LatticeMatrix& M) const
 {

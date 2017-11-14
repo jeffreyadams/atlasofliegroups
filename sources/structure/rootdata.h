@@ -145,10 +145,9 @@ class RootSystem
   bool diagram_linked(weyl::Generator i, weyl::Generator j) const
   { return Cartan_entry(i,j)<0; };
   int_Matrix cartanMatrix() const;
-  LieType Lie_type() const;
-  // for subsystem
-  int_Matrix cartanMatrix(const RootNbrList& sub) const;
-  LieType Lie_type(RootNbrList sub) const;
+
+  int_Matrix cartanMatrix(const RootNbrList& sub) const; // for subsystem
+  LieType subsystem_type(const RootNbrList& sub) const;
 
 
 
@@ -456,6 +455,9 @@ class RootDatum
   RatCoweight fundamental_coweight(weyl::Generator i) const;
 
 // other accessors
+
+  LieType type() const; // includes a possible central torus
+
 
 /*
   Whether the rootdatum is the rootdatum of an adjoint group.

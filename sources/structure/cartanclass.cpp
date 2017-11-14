@@ -941,7 +941,7 @@ toMostSplit(const Fiber& fundf, RealFormNbr rf, const RootSystem& rs)
   implicit assumption that the standard positive root system for the $Phi^C$
   is |theta|-stable; this is very false. It would be true for an involution
   of the based root datum (the distinguished involution of the inner class),
-  which would stabilise everyting mentioned here, and in fact it is also true
+  which would stabilise everything mentioned here, and in fact it is also true
   for any involution that is canonical in its (twisted conjugation) class; in
   general however although $Phi^C$ is |theta|-stable (the sum of positive
   imaginary roots is |theta|-fixed, and the sum of positive real roots is
@@ -1008,13 +1008,13 @@ size_t CartanClass::orbit_size(const RootSystem& rs) const
 
   // divide by product of imaginary, real and complex sizes
   result /=
-    weylsize::weylSize(dynkin::Lie_type(rs.cartanMatrix(simpleImaginary())));
+    weylsize::weylSize(rs.subsystem_type(simpleImaginary()));
 
   result /=
-    weylsize::weylSize(dynkin::Lie_type(rs.cartanMatrix(simpleReal())));
+    weylsize::weylSize(rs.subsystem_type(simpleReal()));
 
   result /=
-    weylsize::weylSize(dynkin::Lie_type(rs.cartanMatrix(simpleComplex())));
+    weylsize::weylSize(rs.subsystem_type(simpleComplex()));
 
   return result.toUlong();
 }

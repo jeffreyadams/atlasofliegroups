@@ -87,7 +87,7 @@ class DynkinDiagram
 
   bool isConnected() const;
   bool isSimplyLaced() const { return edge_label()==1; }
-  LieType Lie_type() const;
+
   int Cartan_entry(unsigned int i,unsigned int j) const;
   Multiplicity edge_multiplicity(unsigned int i,unsigned int j) const
     { return Cartan_entry(i,j)*Cartan_entry(j,i); }
@@ -111,6 +111,7 @@ class DynkinDiagram
 
 // manipulators: none (Dynkin diagrams are static objects)
 
+  friend LieType Lie_type(const int_Matrix&); // uses |component_kind()|
 private: // functions that are only meaningful for connected diagrams
 
   Multiplicity edge_label() const; // (maximal) label of edge, or 1 if none

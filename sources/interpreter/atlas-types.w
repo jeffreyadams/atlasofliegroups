@@ -891,49 +891,38 @@ shared_root_datum root_datum_value::build(PreRootDatum&& pre)
 shared_root_datum root_datum_value::dual() const
 {@; PreRootDatum pre(val); pre.dualise(); return build(std::move(pre)); }
 
-@*2 Printing root data. We shall not print the complete information contained
-in the root datum. However we do exercise the routines in \.{dynkin.cpp} to
-determine the type of the root datum from its Cartan matrix, as is done in the
-function |type_of_Cartan_matrix| above. Contrary to |LieType::Cartan_matrix|,
-the function |RootDatum::cartanMatrix| produces nothing for torus factors (in
-fact only their number is well defined); hence we add the necessary number of
-torus factors at the end.
+@*2 Printing root data.
+%
+We shall not print the complete information contained in the root datum. However
+we do exercise some |RootDatum| methods to immediately give some superficial
+information. The method |RootDatum::type| produces a complete type, including
+central torus factors. We abuse conversion to |Lie_type_value| to ensure the
+final part of our output is formatted like the output for a Lie type value.
 
-@< Local fun... @>=
-LieType type_of_datum(const RootDatum& rd)
-{ int_Matrix Cartan = rd.cartanMatrix();
-@/LieType t = dynkin::Lie_type(Cartan);
-  if (!rd.isSemisimple())
-    for (size_t i=rd.semisimpleRank(); i<rd.rank(); ++i)
-      t.push_back(SimpleLieType('T',1));
-  return t;
-}
-
-@ Then this is how we print root data. The mention of |"simply connected"|
-and/or |"adjoint"| is in order to make some use of these flags, which are
-present anyway. However, we only print something for semisimple root data,
-since that is mathematically required in order for the associated complex
-group to be either simply connected or adjoint. The proper interpretation for
-non-semisimple root data would be ``has semisimple derived group'' for
-|isSemisimple|, and ``has connected center'' for |isAdjoint|, but these are
-quite a mouth full, especially if expressed in a grammatically correct way.
+The mention of |"simply connected"| and/or |"adjoint"| is in order to make some
+use of these flags, which are present anyway. However, we only print something
+for semisimple root data, since that is mathematically required in order for the
+associated complex group to be either simply connected or adjoint. The proper
+interpretation for non-semisimple root data would be ``has semisimple derived
+group'' for |isSemisimple|, and ``has connected center'' for |isAdjoint|, but
+these are quite a mouthful, especially if they need to be expressed in a
+grammatically correct way.
 
 @< Function definitions @>=
 void root_datum_value::print(std::ostream& out) const
-{ Lie_type_value type(type_of_datum(val));
-  if (val.isSemisimple())
+{ if (val.isSemisimple())
     out << (val.isSimplyConnected() ? "simply connected " : "")
      @| << (val.isAdjoint() ? "adjoint " : "");
-  out << "root datum of " << type;
+  out << "root datum of " << Lie_type_value(val.type());
 }
 
-@ We also make the Lie type of a root datum (computed by |type_of_datum|) and
+@ We also make the Lie type of a root datum (computed by |RootDatum::type|) and
 whether the coroots rather than roots were used to determine the root numbering
 (from the stored field) available by wrapper functions.
 @< Local fun...@>=
 void type_of_root_datum_wrapper(expression_base::level l)
 { shared_root_datum rd(get<root_datum_value>());
-  push_value(std::make_shared<Lie_type_value>(type_of_datum(rd->val)));
+  push_value(std::make_shared<Lie_type_value>(rd->val.type()));
 }
 
 void coroot_preference_wrapper(expression_base::level l)
@@ -2946,9 +2935,12 @@ void Cartan_info_wrapper(expression_base::level l)
   const RootSystem& rs=cc->parent.val.rootDatum();
 
 @)// print types of imaginary and real root systems and of Complex factor
-  push_value(std::make_shared<Lie_type_value>(rs.Lie_type(cc->val.simpleImaginary())));
-  push_value(std::make_shared<Lie_type_value>(rs.Lie_type(cc->val.simpleReal())));
-  push_value(std::make_shared<Lie_type_value>(rs.Lie_type(cc->val.simpleComplex())));
+  push_value(std::make_shared<Lie_type_value> @|
+    (rs.subsystem_type(cc->val.simpleImaginary())));
+  push_value(std::make_shared<Lie_type_value> @|
+    (rs.subsystem_type(cc->val.simpleReal())));
+  push_value(std::make_shared<Lie_type_value> @|
+    (rs.subsystem_type(cc->val.simpleComplex())));
   wrap_tuple<3>();
 @)
   if (l==expression_base::single_value)

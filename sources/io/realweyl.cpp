@@ -44,16 +44,16 @@ RealWeyl::RealWeyl(const CartanClass& cc,
 
   RootDatum drd(rd,tags::DualTag());
 
-  d_complexType = rd.Lie_type(d_complex);
-  d_imaginaryType = rd.Lie_type(d_imaginary);
-  d_realType = drd.Lie_type(d_real);
+  d_complexType = rd.subsystem_type(d_complex);
+  d_imaginaryType = rd.subsystem_type(d_imaginary);
+  d_realType = drd.subsystem_type(d_real);
 
   const Fiber& f = cc.fiber();
   const Fiber& df = cc.dualFiber();
 
   // construct basis of imaginary compact roots
   d_imaginaryCompact= rd.simpleBasis(f.compactRoots(x));
-  d_imaginaryCompactType = rd.Lie_type(d_imaginaryCompact);
+  d_imaginaryCompactType = rd.subsystem_type(d_imaginaryCompact);
 
   // construct imaginary R-group
   d_imaginaryOrth = orthogonalMAlpha(x,f,rd);
@@ -61,7 +61,7 @@ RealWeyl::RealWeyl(const CartanClass& cc,
 
   // construct basis of real compact roots
   d_realCompact = drd.simpleBasis(df.compactRoots(y));
-  d_realCompactType = drd.Lie_type(d_realCompact);
+  d_realCompactType = drd.subsystem_type(d_realCompact);
 
   // construct real R-group
   d_realOrth = orthogonalMAlpha(y,df,drd);
