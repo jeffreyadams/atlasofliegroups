@@ -1628,14 +1628,14 @@ void check_based_root_datum_involution
 }
 
 @ At a more outer level, the function |check_involution| will do all pertinent
-checks, and when successful both modifies its argument |delta| to a based root
-datum involution, and exports through the |ww| parameter the Weyl group
-element whose conjugation was used; finally the return value is the |Twist| of
-the Dynkin diagram corresponding to the modified~|delta| (this allows also
-using this function easily to test whether an involution is proper for a given
-inner class). After passing the test |check_root_datum_involution|, we are
-sure that |wrt_distinguished| will be able to map the images |Delta| to the
-simple roots by a Weyl group element.
+checks, and when successful both modify its argument |delta| to a based root
+datum involution, and export through the |ww| parameter the Weyl group element
+whose conjugation was used; finally the return value is the |Twist| of the
+Dynkin diagram corresponding to the modified~|delta| (this allows also using
+this function easily to test whether an involution is proper for a given inner
+class). After passing the test |check_root_datum_involution|, we are sure that
+|wrt_distinguished| will be able to map the images |Delta| to the simple roots
+by a Weyl group element.
 
 In addition to this, the function can also determine the Lie type of
 the root datum, the permutation possibly needed to map the standard (Bourbaki)
@@ -2088,7 +2088,7 @@ value as would |fix_involution(rd,M)|. However we avoid actually calling the
 function |fix_involution_wrapper|, which would reconstruct |lt| and |ict| from
 |rd| and |M|, while performing tests that are useless given the way $M$ was
 computed; rather we store |lt| and |ict| directly in a |Layout| to be stored in
-the |inner_class_value|. This follows most closely \.{altas} behaviour, and
+the |inner_class_value|. This follows most closely \.{Fokko} behaviour, and
 avoids surprises (however inner class letters do change to synonyms as they
 usual do when passing through |checked_inner_class_type|).
 
@@ -2123,87 +2123,6 @@ void inner_class_from_type_wrapper(expression_base::level l)
 @/result->datum=std::move(rd);
   result->dual_datum=std::move(dual_rd); // set dependencies
   push_value(result);
-}
-
-@ If one already has a root datum at hand, such as one produced by functions
-like $GL$, it can be awkward to use |inner_class| above, which constructs the
-root datum in its own way. The meaning of an inner class string, in the sense
-of defining an involution of the based root datum, is almost unambiguous, so
-we introduce another overload of |inner_class|, which from a root datum and an
-inner class specification produces an inner class for that datum. A small
-ambiguity can be present for torus factors, in that there is no obvious basis
-of the part of the root lattice orthogonal to the roots on which to interpret
-the inner class specification for torus factors. We shall use the basis
-implicitly defined by the radical generators in the root datum; if that should
-fail to give the desired involution, the use can always take recourse to
-|fix_involution| to explicitly specify one.
-
-The wrapper for |set_inner_class| below expresses the permutation matrix~$P$
-produced by |lietype::involution| on the basis of the lattice of the root
-datum~|rd|. That basis is already the canonical basis of $\Zee^n$ used
-in~|rd|, so the difficulty is to find the basis~$b$ on which $P$ is expressed.
-If~|rd| was entered by the user as in the \.{Fokko} program or in
-|root_datum_wrapper|, this was the canonical basis used until the
-|PreRootDatum| constructor expressed everything on the provided basis of a
-sub-lattice; we wish to recover the (integral) matrix~$M$ that specified the
-sub-lattice, since it expresses our root datum lattice on~$b$. Unfortunately
-the |PreRootDatum| constructor only expresses roots and coroots on this basis
-and its dual, so we cannot recover~$M$ reliably from the root datum (for
-instance if there are no roots). In fact we shall use the information stored
-in the coroots, whose coordinates give the entries of~$M$, except for its rows
-of coordinates on the torus factors (cf.\ |prerootdata::corootBasis|). We
-complement this with coordinates of the radical generators stored in the root
-datum to find a matrix~$M$ that \emph{could have} been used to obtain the root
-datum: using it with the Lie type of~|rd| certainly would give the same
-coroots, while the roots, being determined by their values on coroots and the
-radical, would be identical as well; all other data in |rd| is deduced from
-these.
-
-The |Layout| structure records a Lie type~|lt|, a permutation~|pi| with
-respect to the standard diagram ordering, and an inner class string. The call
-to |dynkin::Lie_type| deduces |lt| and~|pi|, and we record the given inner
-class type~|ict|. Then we find |M=transpose_mat(coroot_radical(rd))|, call
-|lietype::involution| to produce an involution for |lt| and~|pi|, express it
-as~|inv| on the basis~$M$, and finally call |fix_involution(rd,inv)| to
-produce the result. The |on_basis| method may throw a |runtime_error|
-when the involution does not stabilise the sub-lattice; we catch this error
-and re-throw with a more explicit error indication.
-
-@< Local function def...@>=
-void set_inner_class_wrapper(expression_base::level l)
-{ shared_string ict(get<string_value>());
-  shared_root_datum rdv(get<root_datum_value>());
-  const RootDatum& rd=rdv->val;
-@)
-  lietype::Layout lo;
-  lo.d_type = dynkin::Lie_type(rd.cartanMatrix(),true,false,lo.d_perm);
-   // get (permuted) type
-  for (size_t i=rd.semisimpleRank(); i<rd.rank(); ++i) // if not semisimple
-  { lo.d_type.push_back(SimpleLieType('T',1)); // add a torus factor
-    lo.d_perm.push_back(i);
-      // and a fixed point of permutation, needed by |lietype::involution|
-  }
-  lo.d_inner=checked_inner_class_type(ict->val.c_str(),lo.d_type);
-@)
-  push_value(rdv);
-  coroot_radical_wrapper(expression_base::single_value);
-  transpose_mat_wrapper(expression_base::single_value);
-  shared_matrix M(get<matrix_value>());
-  size_t r=lo.d_type.rank();
-  assert(M->val.numRows()==r and M->val.numRows()==r);
-  ndebug_use(r);
-@)
-  push_value(rdv);
-  try
-  {@; push_value(std::make_shared<matrix_value>
-       (lietype::involution(lo).on_basis(M->val)));
-  }
-  catch (std::runtime_error&) // relabel inexact division error
-  {@; throw runtime_error @|
-    ("Inner class is not compatible with root datum");
-@.Inner class is not compatible...@>
-  }
-  fix_involution_wrapper(l); // pops stack if |l==expression_base::no_value|
 }
 
 @*2 Functions operating on inner classes.
@@ -2389,8 +2308,6 @@ install_function(twisted_involution_wrapper,@|"twisted_involution"
                 ,"(RootDatum,mat->InnerClass,vec)");
 install_function(inner_class_from_type_wrapper,@|"inner_class"
                 ,"(LieType,[ratvec],string->InnerClass)");
-install_function(set_inner_class_wrapper,@|"inner_class"
-                ,"(RootDatum,string->InnerClass)");
 install_function(inner_class_eq_wrapper,@|"=","(InnerClass,InnerClass->bool)");
 install_function(inner_class_neq_wrapper,@|"!=","(InnerClass,InnerClass->bool)");
 install_function(distinguished_involution_wrapper,@|"distinguished_involution"
