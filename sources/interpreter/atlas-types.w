@@ -122,7 +122,7 @@ struct Lie_type_value : public value_base
   Lie_type_value* clone() const @+{@; return new Lie_type_value(*this); }
   static const char* name() @+{@; return "Lie type"; }
 @)
-  void add_simple_factor (char,size_t); // grow
+  void add_simple_factor (char,unsigned int); // grow
 private:
   Lie_type_value(const Lie_type_value& v) : val(v.val) @+{}
     // copy constructor, used by |clone|
@@ -131,43 +131,63 @@ private:
 typedef std::shared_ptr<const Lie_type_value> shared_Lie_type;
 typedef std::shared_ptr<Lie_type_value> own_Lie_type;
 
-@ The type |LieType| is publicly derived from |std::vector<SimpleLieType>|,
-and in its turn the type |SimpleLieType| is publicly derived from
-|std::pair<char,size_t>|. Therefore these types could take arbitrary values,
-not necessarily meaningful ones. To remedy this we make the method
-|add_simple_factor|, which is the only proposed way to build up Lie types,
-check for the validity.
+@ Before we do anything more complicated with this primitive type, we must
+ensure that we can print its values. We can use an operator defined in
+\.{basic\_io.cpp}.
 
-Since the tests defined in \.{io/interactive\_lietype.cpp} used in the
-current interface for the Atlas software are clumsy to use, we perform
-our own tests here, emulating |interactive_lietype::checkSimpleLieType|.
-Torus factors of rank $r>1$ should be equivalent to $r$ torus factors of
-rank~$1$, and it simplifies the software if we rewrite the former form to the
-latter on input, so we do that here.
+@h "basic_io.h"
+@< Function definitions @>=
+void Lie_type_value::print(std::ostream& out) const
+{ if (val.empty()) out << "empty Lie type";
+  else
+    out << "Lie type '" << val << '\'';
+}
+
+@ The type |LieType| is publicly derived from |std::vector<SimpleLieType>|, and
+in its turn the type |SimpleLieType| is publicly derived from
+|std::pair<char,size_t>|. Therefore these types could take arbitrary values, not
+necessarily meaningful ones. To remedy this we make the method
+|add_simple_factor|, which is the main way to build up Lie types, checks for the
+validity.
+
+Since the tests defined in \.{io/interactive\_lietype.cpp} used in the current
+interface for the Atlas software are clumsy to use, we perform our own tests
+here, emulating |interactive_lietype::checkSimpleLieType|. Torus factors of rank
+$r>1$ should be equivalent to $r$ torus factors of rank~$1$, and it simplifies
+the software if we rewrite the former form to the latter on input, so we do that
+here.
 
 @h "constants.h"
 
 @< Function definitions @>=
-void Lie_type_value::add_simple_factor (char c,size_t rank)
+void Lie_type_value::add_simple_factor (char c,unsigned int rank)
 { static const std::string types=lietype::typeLetters; // |"ABCDEFGT"|
-  size_t t=types.find(c);
+  auto t=types.find(c);
   if (t==std::string::npos)
-    throw runtime_error(std::string("Invalid type letter '")+c+'\'');
+    throw runtime_error() << "Invalid type letter '" << c << '\'';
 @.Invalid type letter@>
-  const size_t r=constants::RANK_MAX;
-@/static const size_t lwb[]={1,2,2,4,6,4,2,0};
-  static const size_t upb[]={r,r,r,r,8,4,2,r};
+  const unsigned int r=constants::RANK_MAX; // for convenience
+@/static const unsigned int lwb[]={1,2,2,4,6,4,2,0};
+  static const unsigned int upb[]={r,r,r,r,8,4,2,r};
   if (rank<lwb[t])
-    throw runtime_error("Too small rank "+str(rank)+" for Lie type "+c);
+    throw runtime_error()
+    << "Too small rank " << rank << " for Lie type " << c;
 @.Too small rank@>
   if (rank>upb[t])
-    if (upb[t]!=r)
-      throw runtime_error("Too large rank "+str(rank)+" for Lie type "+c);
+  { if (upb[t]!=r)
+      throw runtime_error()
+      << "Too large rank " << rank << " for Lie type " << c;
 @.Too large rank@>
     else
-      throw runtime_error @|
-      ("Rank "+str(rank)+" exceeds implementation limit "+str(r));
+      throw runtime_error() @|
+       << "Rank "+str(rank)+" exceeds implementation limit " << r;
 @.Rank exceeds implementation limit@>
+  }
+@)
+  if ((val.rank() + rank)>r)
+    throw runtime_error() << "Total rank exceeds implementation limit " << r;
+@.Total rank exceeds...@>
+@)
   if (c=='T')
     while (rank-->0) val.push_back(SimpleLieType('T',1));
   else
@@ -194,19 +214,15 @@ inline std::istream& skip_punctuation(std::istream &is)
 void Lie_type_wrapper(expression_base::level l)
 { std::istringstream is(get<string_value>()->val);
   own_Lie_type result = std::make_shared<Lie_type_value>();
-  size_t total_rank=0; char c;
+  char c;
   while (skip_punctuation(is)>>c) // i.e., until |not is.good()|
   { size_t rank;
     if (is.peek()=='-' or not (is>>rank)) // explicitly forbid minus sign
-      throw runtime_error
-       ("Error in type string '"+is.str()+"' for Lie type");
+      throw runtime_error ()
+        << "Error in type string '" << is.str() << "' for Lie type";
 @.Error in type string@>
     result->add_simple_factor(c,rank);
       // this may |throw| a |runtime_error| as well
-    if ((total_rank+=rank)>constants::RANK_MAX)
-      throw runtime_error
-      ("Total rank exceeds implementation limit "+str(constants::RANK_MAX));
-@.Total rank exceeds...@>
   }
   if (l!=expression_base::no_value)
     push_value(std::move(result));
@@ -215,20 +231,45 @@ void Lie_type_wrapper(expression_base::level l)
 void Lie_type_coercion()
 @+{@; Lie_type_wrapper(expression_base::single_value); }
 
-@*2 Auxiliary functions for Lie types.
-Before we do anything more complicated with this primitive type, we must
-ensure that we can print its values. We can use an operator defined in
-\.{basic\_io.cpp}.
+@ Other useful ways of building Lie types is by combining two of them to a
+single one, or in a more incremental fashion by adding a single (type,rank)
+pair, which corresponds directly to |add_simple_factor|.
 
-@h "basic_io.h"
-@< Function definitions @>=
-void Lie_type_value::print(std::ostream& out) const
-{ if (val.empty()) out << "empty Lie type";
-  else
-    out << "Lie type '" << val << '\'';
+The curious |static_cast<unsigned>| below serves to force creating a temporary
+from this constant rather than trying to pass it be reference, as the latter
+would require memory to be reserved for it permanently.
+
+@< Local function definitions @>=
+void compose_Lie_types_wrapper(expression_base::level l)
+{
+  shared_Lie_type t2=get<Lie_type_value>();
+  own_Lie_type t1=get_own<Lie_type_value>();
+  if (t1->val.rank()+t2->val.rank()>constants::RANK_MAX)
+      throw runtime_error() @|
+        << "Combined rank exceeds implementation limit " @|
+        << static_cast<unsigned>(constants::RANK_MAX);
+@.Combined rank exceeds...@>
+  if (l==expression_base::no_value)
+    return;
+  t1->val.append(t2->val); // both factors have been tested, so this is safe
+  push_value(t1);
+}
+@)
+void extend_Lie_type_wrapper(expression_base::level l)
+{
+  auto rank = get<int_value>()->int_val();
+  auto type_string = get<string_value>()->val;
+  char type_letter = type_string.empty() ? 'T' : type_string[0];
+  own_Lie_type t=get_own<Lie_type_value>();
+  t->add_simple_factor(type_letter,rank);
+  if (l!=expression_base::no_value)
+    push_value(t);
 }
 
-@ Here is a function that computes the Cartan matrix for a given Lie type.
+
+@*2 Auxiliary functions for Lie types.
+%
+Here is a function that computes the Cartan matrix for a given Lie type.
 
 @h "prerootdata.h"
 @< Local function definitions @>=
@@ -240,12 +281,20 @@ void Cartan_matrix_wrapper(expression_base::level l)
 }
 
 
-@ And here is a function that tries to do the inverse. We call
-|dynkin::lieType| in its version that also produces a permutation |pi| needed
-to map the standard ordering for the type to the actual ordering, and |true|
-as third argument to request a check that the input was indeed the Cartan
-matrix for that situation (if not a runtime error will be thrown). Without
-this test invalid Lie types could have been formed, for which root datum
+@ And here is a function that tries to do more or less the inverse. However,
+since this is intended for Cartan matrices not directly obtained from a Lie type
+but rather those computed from a root (sub)system, we use a version that
+currently refuses any zero rows and columns, as the |LieType::Cartan_matrix|
+method would produce (since |dynkin::Lie_type| so refuses), but on the other
+hand will recognise ``permuted'' Cartan matrices, not following the Bourbaki
+numbering of nodes in a Dynkin diagram. Indeed the permutation found is
+exported as a value of type \.{[int]}.
+
+We call |dynkin::lieType| in its version that also produces a permutation |pi|
+(the one that maps the standard ordering of the diagram to the actual ordering),
+and |true| as third argument to request a check that the input was indeed the
+Cartan matrix for that situation (if not a runtime error will be thrown).
+Without this test invalid Lie types could have been formed, for which root datum
 construction would most likely crash.
 
 @h "dynkin.h"
@@ -257,7 +306,11 @@ void type_of_Cartan_matrix_wrapper (expression_base::level l)
   if (l==expression_base::no_value)
     return;
   push_value(std::make_shared<Lie_type_value>(lt));
-  push_value(std::make_shared<vector_value>(CoeffList(pi.begin(),pi.end())));
+  own_row perm = std::make_shared<row_value>(0);
+  perm->val.reserve(pi.size());
+  for(auto it=pi.begin(); it!=pi.end(); ++it)
+    perm->val.push_back(std::make_shared<int_value>(*it));
+  push_value(perm);
   if (l==expression_base::single_value)
     wrap_tuple<2>();
 }
@@ -313,9 +366,12 @@ void Lie_factors_wrapper(expression_base::level l)
 
 @< Install wrapper functions @>=
 install_function(Lie_type_wrapper,"Lie_type","(string->LieType)");
+install_function(compose_Lie_types_wrapper,"*","(LieType,LieType->LieType)");
+install_function(extend_Lie_type_wrapper,@|"extend"
+                ,"(LieType,string,int->LieType)");
 install_function(Cartan_matrix_wrapper,"Cartan_matrix","(LieType->mat)");
 install_function(type_of_Cartan_matrix_wrapper
-		,@|"Cartan_matrix_type","(mat->LieType,vec)");
+		,@|"Cartan_matrix_type","(mat->LieType,[int])");
 install_function(Lie_rank_wrapper,"rank","(LieType->int)");
 install_function(semisimple_rank_wrapper,"semisimple_rank","(LieType->int)");
 install_function(Lie_type_string_wrapper,"str","(LieType->string)");
@@ -546,7 +602,7 @@ void quotient_basis_wrapper(expression_base::level l)
   LatticeMatrix M(v->val.size(),L->length());
   arithmetic::Denom_t d=1;
   @< Compute common denominator |d| of entries in~$L$, and place converted
-     denominators into the columns of $M$; also test validity of entries
+     denominators into the columns of~$M$; also test validity of entries
      against |v|, and |throw| a runtime error for invalid ones @>
   push_value(std::make_shared<matrix_value>(annihilator_modulo(M,d)));
 @/mm_prod_wrapper(expression_base::single_value);
@@ -562,66 +618,63 @@ the new denominator~|d|.
 
 @< Compute common denominator |d| of entries in~$L$... @>=
 { std::vector<arithmetic::Numer_t> denom(L->length());
-  for (size_t j=0; j<L->length(); ++j)
+  for (unsigned int j=0; j<L->length(); ++j)
   { const RatWeight& gen =
       force<rational_vector_value>(&*L->val[j])->val;
     denom[j] = gen.denominator();
     d=arithmetic::lcm(d,denom[j]);
 
     if (gen.size()!=v->val.size())
-      throw runtime_error@|
-        ("Length mismatch for generator "+str(j) +": "@|
+      throw runtime_error () @|
+        << "Length mismatch for generator " << j << ": "@|
 @.Length mismatch...@>
-        +str(gen.size()) + ':' + str(v->val.size()));
+        << gen.size() << ':' << v->val.size();
 
-    Weight col(gen.numerator().begin(),gen.numerator().end()); // convert
-    for (size_t i=0; i<v->val.size(); ++i)
+    const auto& col=gen.numerator();
+    for (unsigned int i=0; i<v->val.size(); ++i)
     { if (v->val[i]*col[i]%gen.denominator()!=0) // must use signed arithmetic!!
-	throw runtime_error("Improper generator entry: "
+	throw runtime_error() << "Improper generator entry: "
 @.Improper generator entry@>
-         +str(col[i])+'/'+str(denom[j])+" not a multiple of 1/"
-         +str(v->val[i]));
-      M(i,j) = arithmetic::remainder<arithmetic::Numer_t>(col[i],denom[j]);
+         << col[i] << '/' << denom[j] @|
+         << " not a multiple of 1/" << v->val[i];
+      M(i,j) = @| arithmetic::remainder(col[i],denom[j]);
       // ``mod $\Zee$''; makes |M(i,j)| non-negative
     }
   }
-// loop must end and restart here so that computation of |d| will be complete
+// loop must end here to complete computation of |d|, then restart a new loop
 @)
-  for (size_t j=0; j<L->length(); ++j) // convert to common denominator |d|
+  for (unsigned int j=0; j<L->length(); ++j) // convert to common denominator |d|
   { arithmetic::Denom_t f=d/denom[j];
-    for (size_t i=0; i<v->val.size(); ++i)
+    for (unsigned int i=0; i<v->val.size(); ++i)
       M(i,j) *= f;
   }
 }
 
 @*2 Specifying inner classes. Now we move ahead a bit in the theory, from
-functions that help in building root data to functions that help defining
-(inner classes of) real forms. The first of such functions is
-|lietype::involution|, which takes a Lie type and an |InnerClassType|
-(a vector of characters describing the kind of involution wanted) and produces
-a matrix describing the involution, defined on the weight lattice for the
-simply connected group of the given type. That function supposes its arguments
-have already been checked for validity and undergone some transformation; in
-the existing Atlas interface this was done by
-|interactive_lietype::checkInnerClass| and
-|interactive_lietype::readInnerClass|. This forces us to perform similar
-actions before calling |lietype::involution|. We prefer not to use the
-functions defined in \.{io/interactive\_lietype}, for the same reason we did
-not use |interactive_lietype::checkSimpleLieType| above. Therefore we shall
-first define a testing/transformation routine that takes a string describing
-an inner class, and transforms it into |InnerClassType| that is
-guaranteed to be valid if returned; the routine throws a |runtime_error| in
-case of problems.
+functions that help in building root data to functions that help defining (inner
+classes of) real forms. The first of such functions is |lietype::involution|,
+which takes a Lie type and an |InnerClassType| (a vector of characters
+describing the kind of involution wanted) and produces a matrix describing the
+involution, defined on the weight lattice for the simply connected group of the
+given type. That function supposes its arguments have already been checked for
+validity and undergone some transformation; in \.{Fokko} this is done by
+|checkInnerClass| and |readInnerClass| from the \.{io/interactive\_lietype}
+compilation unit. This forces us to perform similar actions before calling
+|lietype::involution|. We prefer not to use the functions from that compilation
+unit, for the same reason we did not use |checkSimpleLieType| above. Therefore
+we shall first define a function |checked_inner_class_type| that transforming a
+string describing an inner class into |InnerClassType| that is guaranteed to be
+valid if returned; the routine throws a |runtime_error| in case of problems.
 
 @< Local function definitions @>=
-InnerClassType transform_inner_class_type
+InnerClassType checked_inner_class_type
   (const char* s, const LieType& lt)
 { static const std::string types(lietype::innerClassLetters);
     // |"Ccesu"|
   InnerClassType result; // initially empty
   std::istringstream is(s);
   char c;
-  size_t i=0; // position in simple factors of Lie type |lt|
+  unsigned int i=0; // position in simple factors of Lie type |lt|
   while (skip_punctuation(is)>>c)
     @< Test the inner class letter |c|, and either push a corresponding type
        letter onto |result| while advancing~|i| by the appropriate amount, or
@@ -643,7 +696,7 @@ minus identity, which in some cases equals |'c'|, and similarly |'u'| meaning
     (std::string("Unknown inner class symbol `")+c+"'");
   if (i>= lt.size()) throw runtime_error("Too many inner class symbols");
 @.Too many inner class symbols@>
-  lietype::TypeLetter t = lt[i].type(); size_t r=lt[i].rank();
+  lietype::TypeLetter t = lt[i].type(); unsigned int r=lt[i].rank();
   if (c=='C') // complex inner class, which requires two equal simple factors
   { if (i+1>=lt.size() or lt[i+1]!=lt[i]) throw runtime_error @|
       ("Complex inner class needs two identical consecutive types");
@@ -691,17 +744,54 @@ letter |'u'| corresponds to a type of the form~$D_{2n}$.
 @.Unequal rank class is meaningless...@>
 }
 
-@ The wrapper function around |lietype::involution| will take a Lie type and a
-string of type letters and return a matrix describing the involution
-designated by that string, expressed on the fundamental weight basis for the
-simply connected group of that type.
+@ Below we shall also need to pass a permutation argument supplied by the user
+(to initialise a field of a |lietype::Layout| structure). This requires checking
+and conversion from the \.{atlas} type \.{[int]} to a |Permutation| internal
+type, which the following function does.
+
+@< Local function def... @>=
+Permutation checked_permutation(const std::vector<shared_value>& pi)
+{
+  auto n=pi.size();
+  Permutation result(n); BitMap seen(n);
+  auto rit = result.begin();
+  for (auto it=pi.begin(); it!=pi.end(); ++it,++rit)
+  { auto entry = force<int_value>(it->get())->val.ulong_val();
+    if (entry>=pi.size())
+      throw runtime_error() << "Permutation entry " << entry << " too big";
+    if (seen.isMember(entry))
+      throw runtime_error() << "Permutation has repeated entry " << entry;
+    seen.insert(entry);
+    *rit=entry;
+  }
+  return result;
+}
+
+@ The wrapper function around |lietype::involution| will take a Lie type, a
+permutation, and a string of type letters and return a matrix describing the
+involution designated by that string, expressed on the fundamental weight basis
+for the simply connected group of that type and permutation (under the
+correspondence that |type_of_Cartan_matrix| implements). Everything gets packed
+into a |lietype::Layout| first.
 
 @< Local function def... @>=
 void basic_involution_wrapper(expression_base::level l)
 { shared_string str=get<string_value>();
+  shared_row perm = get<row_value>();
   shared_Lie_type t=get<Lie_type_value>();
-@/push_value(std::make_shared<matrix_value> @| (lietype::involution
-           (t->val,transform_inner_class_type(str->val.c_str(),t->val))));
+  if (perm->val.size()!=t->val.rank())
+    throw runtime_error() @|
+    << "Permutation size " << perm->val.size() << @| " does not match rank "
+    << t->val.rank() << " of Lie type";
+@)
+  if (l==expression_base::no_value)
+    return;
+  lietype::Layout lo @|
+    { t->val
+    , checked_inner_class_type(str->val.c_str(),t->val)
+    , checked_permutation(perm->val)
+    } ;
+@/push_value(std::make_shared<matrix_value> (lietype::involution(lo)));
 }
 
 @ The function just defined gives an involution on the basis of fundamental
@@ -729,14 +819,14 @@ void based_involution_wrapper(expression_base::level l)
 @/shared_matrix basis = get<matrix_value>();
 @/shared_Lie_type type = get<Lie_type_value>();
 @)
-  size_t r=type->val.rank();
+  unsigned int r=type->val.rank();
   if (basis->val.numRows()!=r or basis->val.numRows()!=r)
     throw runtime_error @|
     ("Basis should be given by "+str(r)+'x'+str(r)+" matrix");
 @.Basis should be given...@>
 @)
   WeightInvolution inv=lietype::involution
-        (type->val,transform_inner_class_type(s->val.c_str(),type->val));
+        (type->val,checked_inner_class_type(s->val.c_str(),type->val));
   try
   {@; push_value(std::make_shared<matrix_value>(inv.on_basis(basis->val))); }
   catch (std::runtime_error&) // relabel |"Inexact integer division"|
@@ -757,7 +847,7 @@ install_function(replace_gen_wrapper,"replace_gen",
 install_function(quotient_basis_wrapper
 		,@|"quotient_basis","(LieType,[ratvec]->mat)");
 install_function(basic_involution_wrapper,"involution",
-		"(LieType,string->mat)");
+		"(LieType,[int],string->mat)");
 install_function(based_involution_wrapper,"involution",
 		"(LieType,mat,string->mat)");
 
@@ -1976,7 +2066,7 @@ function |fix_involution_wrapper|, which would reconstruct |lt| and |ict| from
 computed; rather we store |lt| and |ict| directly in a |Layout| to be stored in
 the |inner_class_value|. This follows most closely \.{altas} behaviour, and
 avoids surprises (however inner class letters do change to synonyms as they
-usual do when passing through |transform_inner_class_type|).
+usual do when passing through |checked_inner_class_type|).
 
 @< Local function def...@>=
 void inner_class_from_type_wrapper(expression_base::level l)
@@ -1985,7 +2075,7 @@ void inner_class_from_type_wrapper(expression_base::level l)
     // and leave generators |gen| and type |lt|
   shared_value lt = *(execution_stack.end()-2);
   const LieType& type=force<Lie_type_value>(lt.get())->val;
-  lietype::Layout lo(type,transform_inner_class_type(ict->val.c_str(),type));
+  lietype::Layout lo(type,checked_inner_class_type(ict->val.c_str(),type));
 @)
   quotient_basis_wrapper(expression_base::single_value); @+
   shared_value basis = pop_value();
@@ -2069,7 +2159,7 @@ void set_inner_class_wrapper(expression_base::level l)
     lo.d_perm.push_back(i);
       // and a fixed point of permutation, needed by |lietype::involution|
   }
-  lo.d_inner=transform_inner_class_type(ict->val.c_str(),lo.d_type);
+  lo.d_inner=checked_inner_class_type(ict->val.c_str(),lo.d_type);
 @)
   push_value(rdv);
   coroot_radical_wrapper(expression_base::single_value);

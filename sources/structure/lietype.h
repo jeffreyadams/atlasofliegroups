@@ -132,16 +132,21 @@ struct Layout
 
 // constructors and destructors
 
-Layout() : d_type(), d_inner(), d_perm() {} // needed in atlas
+Layout() : d_type(), d_inner(), d_perm() {} // used in both Fokko and atlas
 
-  /* In the old Fokko interface, the Lie type is first provided,
-     and the inner class type is later added; defaults identity permutation */
+/* In the old Fokko interface, the Lie type is first provided, and the inner
+   class type is later added; this constructor defaults permutation to identity
+*/
   Layout(const LieType& lt)
     :d_type(lt),d_inner(),d_perm(lt.rank(),1) {}
 
-  /* The inner class can also be added right away, permutation defaults id */
-  Layout(const LieType& lt, const InnerClassType ict)
+// The inner class can also be added right away; permutation defaults to id
+  Layout(const LieType& lt, const InnerClassType& ict)
     :d_type(lt),d_inner(ict),d_perm(lt.rank(),1) {}
+
+// Finally we can specify all fieds upon construction
+  Layout(const LieType& lt, const InnerClassType& ict, const Permutation& pi)
+    :d_type(lt),d_inner(ict),d_perm(pi) {}
 
 
 }; // |struct Layout|
@@ -181,7 +186,7 @@ struct ext_gen // generator of extended Weyl group
   // permutation matrix for |ict| in simply connected |lt|, Bourbaki order
   WeightInvolution involution(const LieType& lt,
 			      const InnerClassType& ict);
-  // returns |involution(Layout(lt,ict))|; |WeightInvolution| incomplete here
+  // return |involution(Layout(lt,ict))|, but |WeightInvolution| incomplete here
 
   LieType dual_type(LieType lt);
 

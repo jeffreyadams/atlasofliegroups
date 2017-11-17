@@ -178,7 +178,11 @@ subspace_normal: (mat->mat,mat,mat,[int]) normalized modulo-2 basis
 
 Lie_type: (string->LieType): interpret string as Lie type.
   Factors are one of "ABCDEFGT" followed by a number; several factors can be
-  concatenated in a string with optional punctuation. Must have total rank<=16
+  concatenated in a string with optional punctuation. Must have total rank<=32
+extend: (Lie_type,string,int->Lie_type): add a single (type,rank) pair to type
+  In extend(lt,t,r), a factor (type,r) is added to the Lie type lt, where type
+  is given by the first character of t (or is 'T' if t is the empty string).
+operator * : (LieType,LieType->LieType): concatenate Lie types
 Lie_type: (RootDatum->LieType): Lie type of a root datum.
 
 Cartan_matrix: (LieType->mat): Cartan matrix of Lie type (square of size rank).
@@ -187,7 +191,7 @@ Cartan_matrix: (RootDatum->mat): Cartan matrix of root datum.
   This pairs roots and coroots, so it is square, of size the semisimple rank.
   By force of convention, rows correspond to roots and columns to coroots.
 
-Cartan_matrix_type: (mat->LieType,vec): type given by Cartan matrix.
+Cartan_matrix_type: (mat->LieType,[int]): type given by Cartan matrix.
   The input should be a Cartan matrix for a semisimple type (no zero rows or
   columns). The function returns the semisimple type, and the permutation of
   mapping the standard (Bourbaki) ordering of the diagram of that type to the
@@ -227,13 +231,15 @@ replace_gen: ((mat,vec),mat->mat): replace generators of weight lattice.
   from the second matrix. Both matrices must have the same column size; like
   for 'filter_units' the vector may be short, missing entries being not 1.
 
-involution: (LieType,string->mat): diagram involution for inner class.
-  Return an involution matrix corresponding to the diagram involution
-  described symbolically by the string, which is interpreted as the inner
-  class string is in the Atlas, where 'e' or 'c' mean compact (equal rank),
-  'u' means unequal rank (for types A_n with n>1, D_n and E_6), 's' means
-  split and 'C' means Complex. This is essentially a permutation matrix,
-  except that for the split type on torus factors there is a diagonal entry -1
+involution: (LieType,[int],string->mat): diagram involution for inner class.
+  Return an involution matrix for simply connected times central torus datum,
+  given by the Lie type and the permutation (second argument, which maps
+  positions in the diagram to positions in the root list), the involution being
+  described symbolically by the string. It is interpreted as the inner class
+  string is in Fokko, where 'e' or 'c' mean compact (equal rank), 'u' means
+  unequal rank (for types A_n with n>1, D_n and E_6), 's' means split, and
+  'C' means Complex. The result is almost always a permutation matrix, but for
+  the split type on (central) torus factors there is a diagonal entry -1
 involution: (LieType,mat,string->mat): basic involution on given basis.
   This is like previous 'involution' for the same Lie type and inner class
   string, but the involution matrix is now expressed the given basis given by

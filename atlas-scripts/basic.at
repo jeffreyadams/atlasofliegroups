@@ -854,6 +854,8 @@ set word_making_dominant (RootDatum rd, ratvec lambda) = [int]:
 
 {                               Inner classes                           }
 
+set involution (LieType lt, string ict) = mat: involution(lt,#lt.rank,ict)
+
 { integrality inner class (dual side) defined by inf. character and involution }
 set dual_integral (InnerClass ic, ratvec gamma) = InnerClass:
   inner_class(dual(integrality_datum(ic,gamma)),-^distinguished_involution(ic))
