@@ -76,16 +76,16 @@ const char* const innerClassLetters = "Ccesu";
 
 enum class simple_ict { equal_rank, unequal_rank, complex };
 
-struct SimpleLieType : public std::pair<TypeLetter,size_t>
+struct SimpleLieType : public std::pair<TypeLetter,unsigned int>
 { // there are no additional data members
-  typedef std::pair<TypeLetter,size_t> base;
-  SimpleLieType(TypeLetter t,size_t rank) : base(t,rank) {}
+  typedef std::pair<TypeLetter,unsigned int> base;
+  SimpleLieType(TypeLetter t,unsigned int rank) : base(t,rank) {}
   TypeLetter type() const { return base::first; }
   TypeLetter& type() { return base::first; }
-  size_t rank() const { return base::second; }
-  size_t& rank() { return base::second; }
-  size_t semisimple_rank() const { return type()=='T' ? 0 : rank(); }
-  int Cartan_entry(size_t i,size_t j) const;
+  unsigned int rank() const { return base::second; }
+  unsigned int& rank() { return base::second; }
+  unsigned int semisimple_rank() const { return type()=='T' ? 0 : rank(); }
+  int Cartan_entry(unsigned int i,unsigned int j) const;
   int_Matrix Cartan_matrix() const; // square of size rank; null for type $T_n$
   int_Matrix transpose_Cartan_matrix() const;
 };
@@ -96,9 +96,10 @@ struct LieType : public std::vector<SimpleLieType>
   LieType() : base() {}
   LieType(const base& b) : base(b) {}
 
-  size_t rank() const;
-  size_t semisimple_rank() const;
-  int Cartan_entry(size_t i,size_t j) const;
+  unsigned int rank() const;
+  unsigned int semisimple_rank() const;
+  
+  int Cartan_entry(unsigned int i,unsigned int j) const;
   int_Matrix Cartan_matrix() const; // square of sise |rank()| (maybe zero rows)
   int_Matrix transpose_Cartan_matrix() const;
   int_VectorList Smith_basis(CoeffList& invf) const;
@@ -176,7 +177,7 @@ struct ext_gen // generator of extended Weyl group
 
 /******** function declarations **********************************************/
 
-  bool checkRank(const TypeLetter&, size_t);
+  bool checkRank(const TypeLetter&, unsigned int);
 
   WeightInvolution simple_involution(const SimpleLieType& slt, simple_ict tp);
 

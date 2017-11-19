@@ -185,22 +185,18 @@ extend: (Lie_type,string,int->Lie_type): add a single (type,rank) pair to type
 operator * : (LieType,LieType->LieType): concatenate Lie types
 Lie_type: (RootDatum->LieType): Lie type of a root datum.
 
+operators =, != : (LieType,LieType->bool) equality of Lie types (order matters)
+operator % : (LieType->[string,int]) Expand into row of simple factors codes
+  Each simple factor is described by a one-letter string and an integer rank,
+  while factors ("T",1) are contributions to the central torus
+
 Cartan_matrix: (LieType->mat): Cartan matrix of Lie type (square of size rank).
   A block form Cartan matrix, with zeros in rows and columns of torus factors
-Cartan_matrix: (RootDatum->mat): Cartan matrix of root datum.
-  This pairs roots and coroots, so it is square, of size the semisimple rank.
-  By force of convention, rows correspond to roots and columns to coroots.
-
 Cartan_matrix_type: (mat->LieType,[int]): type given by Cartan matrix.
   The input should be a Cartan matrix for a semisimple type (no zero rows or
   columns). The function returns the semisimple type, and the permutation of
   mapping the standard (Bourbaki) ordering of the diagram of that type to the
   ordering of the corresponding simple roots in matrix rows and columns.
-
-rank: (LieType->int) Rank of the weight lattice for this Lie type.
-semisimple_rank: (LieType->int) Rank of the root lattice of this Lie type.
-operator # : (LieType->int) Number of (simple or T1) factors in this Lie type
-operator % : (LieType->[LieType]) Expand into row of simple factors (or T1)
 
 Smith_Cartan: (LieType->mat,vec): generators of weights modulo roots.
   Find a Smith basis for the weight lattice relative to the sublattice of
@@ -264,9 +260,6 @@ root_datum: (LieType,mat,bool->RootDatum): root datum from type and sublattice.
   lattice of G'. The sublattice becomes the standard lattice X^* for the root
   datum, and is identified with Z^n using the given basis. The final argument
   has the same meaning as when constructing from simple (co)root matrices.
-prefers_coroots: (RootDatum->bool): whether coroots were used for generation
-  This recovers the attribute governing the order of roots and coroots, set
-  during construction from argument or inheriting from an earlier root datum.
 root_datum: (RootDatum,mat->RootDatum): root datum for sublattice in old one
   This is like root_datum@(LieType,mat), but starting from the specified root
   datum rd rather than from the simply connected one for the Lie type. The
@@ -275,21 +268,14 @@ root_datum: (RootDatum,mat->RootDatum): root datum for sublattice in old one
 root_datum: (InnerClass->RootDatum): root datum of inner class.
   Extract the root datum from the InnerClass value
 
-
-quotient_basis: (LieType,[ratvec]->mat): sublattice given by kernel generators.
-  Interpret the rational vectors as kernel generators for the given type, as
-  in the Fokko program, and return the corresponding sublattice as a matrix
-  whose column are its generators. More precisely, the rational vectors
-  represent linear combinations of certain coweights in the dual basis to a
-  basis of the weight lattice adapted to the root lattice; for those weights
-  in the latter basis that already lie in the root lattice, the corresponding
-  coweight is omitted, since there are no useful rational multiples of it
-  anyway. Return a basis for the sublattice of X^* of weights on which all
-  kernel generators have integer evaluation. If M is the matrix whose columns
-  are the numerators of the kernel generators, brought to a common denominator
-  d, this amounts to setting S=Smith_Cartan(type) and (C,)=filter_units(S),
-  and then returning the value replace_gen(S,C*ann_mod(M,d)).
-  This function is intended for use in constructing root data; see basic.at
+operators =, != : (RootDatum,RootDatum->bool) equality of Root data
+  Tests identical simple_roots, simple_coroots matrices, and prefers_coroots
+prefers_coroots: (RootDatum->bool): whether coroots were used for generation
+  This recovers the attribute governing the order of roots and coroots, set
+  during construction from argument or inheriting from an earlier root datum.
+Cartan_matrix: (RootDatum->mat): Cartan matrix of root datum.
+  This pairs roots and coroots, so it is square, of size the semisimple rank.
+  By force of convention, rows correspond to roots and columns to coroots.
 
 simply_connected: (LieType,bool->RootDatum): "simply connected" datum for type.
   This gives the root datum for the "simply connected" group of the given type
@@ -361,6 +347,21 @@ integrality_points: (RootDatum,ratvec->[rat]): fractions with integrality
   The call integrality_points(rd,lambda) returns the increasing list of
   positive fractions f<=1 so f*lambda has more integrality than generically:
   for some coroot alphav one has integral and nonzero value <alphav,f*lambda>.
+
+quotient_basis: (LieType,[ratvec]->mat): sublattice given by kernel generators.
+  Interpret the rational vectors as kernel generators for the given type, as
+  in the Fokko program, and return the corresponding sublattice as a matrix
+  whose column are its generators. More precisely, the rational vectors
+  represent linear combinations of certain coweights in the dual basis to a
+  basis of the weight lattice adapted to the root lattice; for those weights
+  in the latter basis that already lie in the root lattice, the corresponding
+  coweight is omitted, since there are no useful rational multiples of it
+  anyway. Return a basis for the sublattice of X^* of weights on which all
+  kernel generators have integer evaluation. If M is the matrix whose columns
+  are the numerators of the kernel generators, brought to a common denominator
+  d, this amounts to setting S=Smith_Cartan(type) and (C,)=filter_units(S),
+  and then returning the value replace_gen(S,C*ann_mod(M,d)).
+  This function is intended for use in constructing root data; see basic.at
 
 classify_involution: (mat->int,int,int): determine type of lattice involution
   For any linear involution of Z^n, there is a basis consisting of certain

@@ -17,14 +17,9 @@
 { utility to convert type A-G of a simple root system to a number 0-6
   we allow and ignore (trailing) torus factors; pure torus classifies as A }
 set get_type(LieType t) = int:
-  let code=ascii(str(t)) { first character }, n=#t in
-  if code=ascii("T") then 0
-  elif n=1 then code-ascii("A")
-  elif { not good, but try dropping central torus factors }
-    let f=%t then ()= while n>0 and str(f[n-1])="T1" do n -:=1 od  in n=1
-  then code-ascii("A")
-  else error("Non-simple Lie type")
-  fi
+  let codes = %t then i=last(#codes,(int i)bool:let (c,)=codes[i] in c!="T") in
+  assert(i.<=,"Non-simple Lie type");
+  if i.< then { pure torus} 0 else let (c,)=codes[i] in ascii(c)-ascii("A") fi
 
 { same as previous applied to a RootDatum, or a RealForm }
 set get_type(RootDatum rd) = int: get_type(Lie_type(rd))

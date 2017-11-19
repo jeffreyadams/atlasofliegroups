@@ -67,8 +67,18 @@ set binary_search_first ((int->bool)pred, int low, int high) = int:
   do let mid=(low+high)\2 in if pred(mid) then high:=mid else low:=mid+1 fi
   od; low
 
+{ transform "stops" representation of weakly increasing function to function }
 set from_stops ([int] stops) = (int->int):
-  stops:=stops[1:]; (int k): binary_search_first((int i):stops[i]>k,0,#stops)
+  stops:=stops[1:]; { ignore the first stop, which should always be 0 }
+  (int k): binary_search_first((int i):stops[i]>k,0,#stops) { first excess }
+
+set inverse_permutation ([int] pi) = [int]:
+   let n=#pi then result=for :n do n od in
+   for v@i in pi
+   do assert(v.>= and v<n and result[v]=n
+            ,to_string("not a permutation (",v,")"))
+   ; result[v]:=i
+   od; result
 
 {                               Integers                                }
 
@@ -605,6 +615,22 @@ set ^ = { exponentiation of split integers }
 set sum ([Split] list) = Split:
   let result=Split:0 in for x in list do result+:=x od; result
 
+{                               Lie types				}
+
+set Lie_type (string code, int rank) = LieType: extend(LieType:"",code,rank)
+
+set rank (LieType t) = int: sum(for (,rank) in %t do rank od)
+
+set semisimple_rank (LieType t) = int:
+  sum(for (code,rank) in %t do if code="T" then 0 else rank fi od)
+
+set semisimple (LieType t) = LieType:
+  let s = LieType: "" in
+  for (code,rank) in %t do if code!="T" then s:=extend(s,code,rank) fi od; s
+
+set str (LieType t) = string:
+  ## for (code,rank) in %t do code ## rank.to_string od
+
 {                               Root data                               }
 
 { provide default values for coroot preference when building root data }
@@ -630,10 +656,6 @@ set root_datum (LieType t, [ratvec] gens) = RootDatum:
 
 { allow single kernel generator in root datum construction }
 set root_datum (LieType t, ratvec gen) = RootDatum: root_datum(t,[gen])
-
-set != (RootDatum rd0, RootDatum rd1) = bool:
-   simple_roots(rd0)!=simple_roots(rd1) or
-   simple_coroots(rd0)!=simple_coroots(rd1)
 
 { the following uses that root_index(rd,v)=nr_of_posroots(rd) for a non-root v }
 set is_root ((RootDatum,vec) (rd,):p) = bool:

@@ -104,10 +104,16 @@ library.
 
 @*2 The primitive type.
 %
-A first new type corresponds to the type |LieType| in the Atlas
-library. We provide a constructor that incorporates a complete
-|LieType| value, but often one will use the default constructor and
-the |add| method. The remaining methods are obligatory for a primitive type.
+A first new type corresponds to the type |LieType| in the Atlas library. We
+provide a constructor that incorporates a complete |LieType| value, but often
+one will use the default constructor and the |add| method. The remaining methods
+are obligatory for a primitive type, though the (private) copy constructor is
+only needed because |clone| uses it, and this in turn is only needed because we
+use |get_own<Lie_type_value>| below; certain other primitive types do not expose
+any functions that are implemented by modifying and existing copy, and can
+implement |clone| that simply returns~|nullptr| (wince these calls come in a
+context where the actual type is known, using a virtual method |clone| here
+probably was a sub-optimal design decision).
 
 @< Type definitions @>=
 struct Lie_type_value : public value_base
@@ -129,7 +135,7 @@ private:
 };
 @)
 typedef std::shared_ptr<const Lie_type_value> shared_Lie_type;
-typedef std::shared_ptr<Lie_type_value> own_Lie_type;
+typedef std::shared_ptr<Lie_type_value> own_Lie_type; // used during construction
 
 @ Before we do anything more complicated with this primitive type, we must
 ensure that we can print its values. We can use an operator defined in
@@ -145,17 +151,17 @@ void Lie_type_value::print(std::ostream& out) const
 
 @ The type |LieType| is publicly derived from |std::vector<SimpleLieType>|, and
 in its turn the type |SimpleLieType| is publicly derived from
-|std::pair<char,size_t>|. Therefore these types could take arbitrary values, not
-necessarily meaningful ones. To remedy this we make the method
-|add_simple_factor|, which is the main way to build up Lie types, checks for the
-validity.
+|std::pair<char,size_t>|. Therefore these types could in principle take
+arbitrary values, not necessarily meaningful ones. To ensure that this cannot
+happen to \.{atlas} users, we make the method |add_simple_factor|, which is
+invoked to build up Lie types, checks for the validity.
 
-Since the tests defined in \.{io/interactive\_lietype.cpp} used in the current
-interface for the Atlas software are clumsy to use, we perform our own tests
-here, emulating |interactive_lietype::checkSimpleLieType|. Torus factors of rank
-$r>1$ should be equivalent to $r$ torus factors of rank~$1$, and it simplifies
-the software if we rewrite the former form to the latter on input, so we do that
-here.
+Since the tests defined in \.{io/interactive\_lietype.cpp} used in \.{Fokko} are
+clumsy to use, we prefer to perform our own tests here, which emulate
+|interactive_lietype::checkSimpleLieType|. One can specify torus factors of
+rank~$r>1$, but they are equivalent to $r$ torus factors of rank~$1$, and it
+simplifies the software if we rewrite the former form to the latter on input, so
+that is what we do here.
 
 @h "constants.h"
 
@@ -194,14 +200,13 @@ void Lie_type_value::add_simple_factor (char c,unsigned int rank)
     val.push_back(SimpleLieType(c,rank));
 }
 
-@ Now we define a wrapper function that really builds a |Lie_type_value|. We
-scan the string looking for sequences of a letter followed by a number. We
-allow and ignore punctuation characters between simple factors, also spaces
-are allowed anywhere except inside the number, since formatted input from
-streams, even of characters, by default skips spaces. Since the correct
-structure of Lie type strings is so obvious to the human eye, our error
-message just cites the entire offending string, rather than trying to point
-out the error exactly.
+@ The function |Lie_type_wrapper| constructs a |Lie_type_value|. We scan the
+string looking for sequences of a letter followed by a number, ignoring
+punctuation characters between simple factors. Also spaces are allowed anywhere
+except inside the number, since formatted input from streams, even of
+characters, by default skips spaces. Since the correct structure of Lie type
+strings is so obvious to the human eye, our error message just cites the entire
+offending string, rather than trying to point out the error exactly.
 
 @h <sstream>
 @h <cctype>
@@ -267,10 +272,31 @@ void extend_Lie_type_wrapper(expression_base::level l)
     push_value(t);
 }
 
+@ We have predicates for testing (in)equality of Lie types. The actual
+comparison is done by generic equality operations defined in the \Cpp\ standard
+library for |std::vector| values (of equal types).
+
+@< Local function definitions @>=
+void Lie_type_eq_wrapper (expression_base::level l)
+{ shared_Lie_type lt1 = get<Lie_type_value>();
+  shared_Lie_type lt0 = get<Lie_type_value>();
+  if (l!=expression_base::no_value)
+    push_value(whether(lt0->val==lt1->val));
+}
+void Lie_type_neq_wrapper (expression_base::level l)
+{ shared_Lie_type lt1 = get<Lie_type_value>();
+  shared_Lie_type lt0 = get<Lie_type_value>();
+  if (l!=expression_base::no_value)
+    push_value(whether(lt0->val!=lt1->val));
+}
+
 
 @*2 Auxiliary functions for Lie types.
 %
-Here is a function that computes the Cartan matrix for a given Lie type.
+Here is a function that computes the Cartan matrix for a given Lie type. Unlike
+Cartan matrices for root data (which just give the pairings of simple roots and
+simple coroots), this one is affected by any central torus factors, which will
+lead to entirely zero rows and columns.
 
 @h "prerootdata.h"
 @< Local function definitions @>=
@@ -288,7 +314,7 @@ currently refuses any zero rows and columns, as the |LieType::Cartan_matrix|
 method would produce (since |dynkin::Lie_type| so refuses), but on the other
 hand will recognise ``permuted'' Cartan matrices, not following the Bourbaki
 numbering of nodes in a Dynkin diagram. Indeed the permutation found is
-exported as a value of type \.{[int]}.
+exported as a second component of the result, of type \.{[int]}.
 
 We call |dynkin::lieType| in its version that also produces a permutation |pi|
 (the one that maps the standard ordering of the diagram to the actual ordering),
@@ -316,41 +342,11 @@ void type_of_Cartan_matrix_wrapper (expression_base::level l)
     wrap_tuple<2>();
 }
 
-@ And some small utilities for finding the (Lie) rank and semisimple rank of
-the Lie type, and the naked type string.
+@ For programming it is important to be able to analyse a Lie type. To this end
+we allow transforming it into a list of $(code,rank)$ pairs, where |code| is a
+one-letter string.
 
 @< Local function definitions @>=
-void Lie_rank_wrapper(expression_base::level l)
-{ shared_Lie_type t=get<Lie_type_value>();
-  if (l!=expression_base::no_value)
-    push_value(std::make_shared<int_value>(t->val.rank()));
-}
-void semisimple_rank_wrapper(expression_base::level l)
-{ shared_Lie_type t=get<Lie_type_value>();
-  if (l!=expression_base::no_value)
-    push_value(std::make_shared<int_value>(t->val.semisimple_rank()));
-}
-void Lie_type_string_wrapper(expression_base::level l)
-{ std::ostringstream s; s << get<Lie_type_value>()->val;
-  if (l!=expression_base::no_value)
-    push_value(std::make_shared<string_value>(s.str()));
-}
-
-@ For programming it is important to know the number of factors in a
-Lie type, so that for instance the correct number of inner class letters can
-be prepared (for this purpose type $T_n$ counts as $n$ factors). Since we
-expanded any $T_n$ into factors $T_1$, we can simply call the |size| method of
-the stored |LieType| value. To allow per-factor treatment of Lie type, we also
-define a function that converts a Lie type into a row of Lie types, one for
-every simple factor or torus factor.
-
-@< Local function definitions @>=
-void nr_factors_wrapper(expression_base::level l)
-{ shared_Lie_type t=get<Lie_type_value>();
-  if (l!=expression_base::no_value)
-    push_value(std::make_shared<int_value>(t->val.size()));
-}
-@)
 void Lie_factors_wrapper(expression_base::level l)
 { shared_Lie_type t=get<Lie_type_value>();
   if (l==expression_base::no_value)
@@ -358,8 +354,11 @@ void Lie_factors_wrapper(expression_base::level l)
 @)
   own_row result = std::make_shared<row_value>(t->val.size());
   for (unsigned i=0; i<t->val.size(); ++i)
-  { std::vector<SimpleLieType> factor(1,t->val[i]);
-    result->val[i]=std::make_shared<Lie_type_value>(LieType(factor));
+  { const auto& src = t->val[i];
+    auto dst=std::make_shared<tuple_value>(2);
+    dst->val[0] = std::make_shared<string_value>(std::string(1,src.first));
+    dst->val[1] = std::make_shared<int_value>(src.second);
+    result->val[i] = std::move(dst);
   }
   push_value(std::move(result));
 }
@@ -371,14 +370,13 @@ install_function(Lie_type_wrapper,"Lie_type","(string->LieType)");
 install_function(compose_Lie_types_wrapper,"*","(LieType,LieType->LieType)");
 install_function(extend_Lie_type_wrapper,@|"extend"
                 ,"(LieType,string,int->LieType)");
+install_function(Lie_type_eq_wrapper,@|"=","(LieType,LieType->bool)");
+install_function(Lie_type_neq_wrapper,@|"!=","(LieType,LieType->bool)");
+@)
 install_function(Cartan_matrix_wrapper,"Cartan_matrix","(LieType->mat)");
 install_function(type_of_Cartan_matrix_wrapper
 		,@|"Cartan_matrix_type","(mat->LieType,[int])");
-install_function(Lie_rank_wrapper,"rank","(LieType->int)");
-install_function(semisimple_rank_wrapper,"semisimple_rank","(LieType->int)");
-install_function(Lie_type_string_wrapper,"str","(LieType->string)");
-install_function(nr_factors_wrapper,"#","(LieType->int)");
-install_function(Lie_factors_wrapper,"%","(LieType->[LieType])");
+install_function(Lie_factors_wrapper,"%","(LieType->[string,int])");
 
 @*2 Finding lattices for a given Lie type.
 %
@@ -1260,6 +1258,12 @@ void root_datum_eq_wrapper (expression_base::level l)
   if (l!=expression_base::no_value)
     push_value(whether(rd0.get()==rd1.get())); // compare pointers
 }
+void root_datum_neq_wrapper (expression_base::level l)
+{ shared_root_datum rd1 = get<root_datum_value>();
+  shared_root_datum rd0 = get<root_datum_value>();
+  if (l!=expression_base::no_value)
+    push_value(whether(rd0.get()!=rd1.get())); // compare pointers
+}
 @)
 void datum_Cartan_wrapper(expression_base::level l)
 { shared_root_datum rd = get<root_datum_value>();
@@ -1468,6 +1472,7 @@ install_function(simple_coroots_wrapper,@|"simple_coroots","(RootDatum->mat)");
 install_function(positive_roots_wrapper,@| "posroots","(RootDatum->mat)");
 install_function(positive_coroots_wrapper,@| "poscoroots","(RootDatum->mat)");
 install_function(root_datum_eq_wrapper,@|"=","(RootDatum,RootDatum->bool)");
+install_function(root_datum_neq_wrapper,@|"!=","(RootDatum,RootDatum->bool)");
 install_function(datum_Cartan_wrapper,@|"Cartan_matrix","(RootDatum->mat)");
 install_function(root_coradical_wrapper,@|"root_coradical","(RootDatum->mat)");
 install_function(coroot_radical_wrapper,@|"coroot_radical","(RootDatum->mat)");
