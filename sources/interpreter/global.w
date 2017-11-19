@@ -2214,7 +2214,7 @@ void veclist_matrix_convert()
   if (r->val.size()==0)
     throw runtime_error
       ("Implicit conversion to matrix for an empty set of vectors");
-@.Implicit conversion to matrix for an empty set@>
+@.Implicit conversion to matrix...@>
   size_t n = force<vector_value>(r->val[0].get())->val.size();
   own_matrix m = std::make_shared<matrix_value>(int_Matrix(n,r->val.size()));
   for(size_t j=0; j<r->val.size(); ++j)

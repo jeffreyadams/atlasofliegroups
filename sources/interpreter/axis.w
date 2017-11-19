@@ -1711,7 +1711,7 @@ private:
 #ifndef incompletecpp11
   builtin_value@[(const builtin_value& v) = default@];
 #else
-  builtin_value@[(const builtin_value& v)
+  builtin_value(const builtin_value& v)
   : val(v.val), print_name(v.print_name) {}
 #endif
 };
@@ -3829,8 +3829,8 @@ components.
 
 @< Function def... @>=
 void projector_value::print(std::ostream& out) const
-  {@; out << "{." << main_hash_table->name_of(id) << ": projector_" << position
-          << '('  << type << ") }"; }
+  { out << "{." << main_hash_table->name_of(id) << ": projector_" << position
+     @| << '('  << type << ") }"; }
 expression_base::level projector_value::argument_policy() const
   {@; return expression_base::single_value; }
 void projector_value::report_origin(std::ostream& o) const
@@ -3928,8 +3928,8 @@ components.
 
 @< Function def... @>=
 void injector_value::print(std::ostream& out) const
-  {@; out << "{."<< main_hash_table->name_of(id) << ": injector_" << position
-          << '(' << type << ") }"; }
+  { out << "{."<< main_hash_table->name_of(id) << ": injector_" << position
+     @| << '(' << type << ") }"; }
 expression_base::level injector_value::argument_policy() const
   {@; return expression_base::single_value; }
 void injector_value::report_origin(std::ostream& o) const
@@ -6541,9 +6541,8 @@ the component assignment expression is not used.
   size_t n=v.size();
   if (i>=n)
     throw runtime_error(range_mess(i,v.size(),this,"component assignment"));
-  v[reversed ? n-1-i : i]=
+  v[reversed ? n-1-i : i]= // assign |int| from un-popped top
     force<int_value>(execution_stack.back().get())->int_val();
-    // assign |int| from un-popped top
   if (lev==no_value)
     execution_stack.pop_back(); // pop it anyway if result not needed
 }
@@ -6565,8 +6564,8 @@ indices, and there are two bound checks.
     throw runtime_error(
       range_mess(j,m.numColumns(),this,"matrix entry assignment"));
   m(reversed ? k-1-i : i,reversed ? l-1-j : j)=
-    force<int_value>(execution_stack.back().get())->int_val();
     // assign |int| from un-popped top
+    force<int_value>(execution_stack.back().get())->int_val();
   if (lev==no_value)
     execution_stack.pop_back(); // pop it anyway if result not needed
 }
