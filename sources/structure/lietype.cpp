@@ -118,7 +118,8 @@ namespace lietype {
 namespace lietype {
 
 // Cartan matrix info, simple type |tp|, distance $d\leq2$ off diagonal
-inline int dispatch(TypeLetter tp, unsigned int r,unsigned int min,unsigned int d, bool lower)
+inline int dispatch
+  (TypeLetter tp, unsigned int r,unsigned int min,unsigned int d, bool lower)
 {
   if (d==0) return 2;
   if (tp=='D') return (min<r-3 ? d==1 : min==r-3) ? -1 : 0;
@@ -238,12 +239,12 @@ unsigned int LieType::semisimple_rank() const
   get to the true Smith normal form (which might involve combining invariant
   factors). It is clearer and more efficient though to do this blockwise.
 */
-int_VectorList
-LieType::Smith_basis(CoeffList& invf) const
+int_Matrix LieType::Smith_basis(CoeffList& invf) const
 {
 
   const auto R=rank();
-  int_VectorList result(R,Weight(R,0));
+  int_Matrix result(R,R,0);
+  invf.reserve(R); // every element of |result| has its invariant factor
 
   // get adapted basis for each simple factor
   unsigned int s=0; //offset
@@ -254,7 +255,7 @@ LieType::Smith_basis(CoeffList& invf) const
     if (it->type() == 'T') // torus type T_r
     {
       for (unsigned int i=s; i<s+r; ++i)
-	result[i][i]=1;
+	result(i,i)=1;
       invf.insert(invf.end(),r,0); // add |r| factors 0
     }
     else
@@ -271,9 +272,9 @@ LieType::Smith_basis(CoeffList& invf) const
       }
 
       // copy matrix |Sb| into block of result
-      for (unsigned int j=0; j<r; ++j) // fill |result[s+j]| from column |j| of |Sb|
+      for (unsigned int j=0; j<r; ++j)
 	for (unsigned int i=0; i<r; ++i)
-	  result[s+j][s+i]=Sb(i,j);
+	  result(s+i,s+j)=Sb(i,j);
 
       invf.insert(invf.end(),new_invf.begin(),new_invf.end()); // append |invf|
     }
@@ -283,8 +284,9 @@ LieType::Smith_basis(CoeffList& invf) const
   return result;
 }
 
-/*! brief Returns the dual Lie type of lt. In fact this applies to ordered
-  Dynkin diagrams, whence the distinction between (B2,C2), (F4,f4) and (G2,g2)
+/*
+  Return the dual Lie type of lt. In fact this applies to ordered Dynkin
+  diagrams, whence the distinction between (B2,C2), (F4,f4) and (G2,g2)
 */
 LieType dual_type(LieType lt)
 {
@@ -314,9 +316,8 @@ LieType dual_type(LieType lt)
 }
 
 
-/*!
-  \brief Returns dual inner class type of |ict| with respect to |lt|
-
+/*
+  Return dual inner class type of |ict| with respect to |lt|
   The result is independent of whether |lt| is the original or dual type
 */
 InnerClassType dual_type(InnerClassType ict, const LieType& lt)

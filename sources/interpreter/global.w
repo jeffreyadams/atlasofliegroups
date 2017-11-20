@@ -36,12 +36,11 @@ This module has three major, largely unrelated, parts. The first part defines
 the structure of the global identifier table, and groups some peripheral
 operations to the main evaluation process: the calling interface to the type
 checking and conversion process, and operations that implement global changes
-such as the introduction of new global identifiers. The second part is
-dedicated to some fundamental types, like integers, Booleans, strings, without
-which the programming language would be an empty shell (but types more
-specialised to the Atlas software are defined in another
-module, \.{atlas-types}). Finally there is a large section with basic
-functions related to these types.
+such as the introduction of new global identifiers. The second part is dedicated
+to some fundamental types, like integers, Booleans, strings, without which the
+programming language would be an empty shell (but types more specialised to the
+Atlas software are defined in another module, \.{atlas-types}). Finally there is
+a large section with basic functions related to these types.
 
 @( global.h @>=
 

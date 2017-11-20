@@ -346,9 +346,8 @@ PreRootDatum get_pre_root_datum(LatticeMatrix& basis, const LieType& lt)
   // get lattice basis
 
   CoeffList invf;
-  WeightList b = lt.Smith_basis(invf);
-  LatticeMatrix root_lattice_basis
-    (b.begin(),b.end(),b.size(),tags::IteratorTag()); // convert to matrix
+  LatticeMatrix root_lattice_basis = lt.Smith_basis(invf);
+
   switch (interactive_lattice::getLattice(invf,root_lattice_basis))
     // switch expression may throw an |InputError|
   {

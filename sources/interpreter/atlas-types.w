@@ -310,11 +310,11 @@ void Cartan_matrix_wrapper(expression_base::level l)
 @ And here is a function that tries to do more or less the inverse. However,
 since this is intended for Cartan matrices not directly obtained from a Lie type
 but rather those computed from a root (sub)system, we use a version that
-currently refuses any zero rows and columns, as the |LieType::Cartan_matrix|
-method would produce (since |dynkin::Lie_type| so refuses), but on the other
-hand will recognise ``permuted'' Cartan matrices, not following the Bourbaki
-numbering of nodes in a Dynkin diagram. Indeed the permutation found is
-exported as a second component of the result, of type \.{[int]}.
+currently refuses any zero rows and columns such as the |LieType::Cartan_matrix|
+method would produce for torus factors (since |dynkin::Lie_type| refuses them),
+but on the other hand will recognise ``permuted'' Cartan matrices, not following
+the Bourbaki numbering of nodes in a Dynkin diagram. Indeed the permutation
+found is exported as a second component of the result, of type \.{[int]}.
 
 We call |dynkin::lieType| in its version that also produces a permutation |pi|
 (the one that maps the standard ordering of the diagram to the actual ordering),
@@ -388,11 +388,12 @@ group (a finite quotient of the simply connected group); that sub-lattice
 should have full rank and contain the root lattice. We shall start with
 considering some auxiliary functions to help facilitate this choice.
 
-Here is a wrapper function around the |LieType::Smith_basis| method, which
-computes a block-wise Smith basis for the transposed Cartan matrix, and the
-corresponding invariant factors. In case of torus factors this description
-should be interpreted in the sense that the Smith basis for those factors is
-the standard basis and the invariant factors are null.
+Here is a wrapper function around the |LieType::Smith_basis| method, provided to
+match the behaviour of \.{Fokko} in \.{atlas}. It computes a block-wise Smith
+basis for the transposed Cartan matrix, and the corresponding ``block invariant
+factors''. In case of torus factors this description should be interpreted in
+the sense that the Smith basis for those factors is the standard basis and the
+invariant factors are null.
 
 @< Local function definitions @>=
 void Smith_Cartan_wrapper(expression_base::level l)
@@ -401,8 +402,8 @@ void Smith_Cartan_wrapper(expression_base::level l)
     return;
 @)
   own_vector inv_factors = std::make_shared<vector_value>(CoeffList());
-  WeightList b = t->val.Smith_basis(inv_factors->val);
-  push_value(std::make_shared<matrix_value>(LatticeMatrix(b,b.size())));
+  push_value(std::make_shared<matrix_value>
+    (t->val.Smith_basis(inv_factors->val)));
   push_value(std::move(inv_factors));
   if (l==expression_base::single_value)
      wrap_tuple<2>();
@@ -449,13 +450,12 @@ which also avoids the need to introduce rational matrices as primitive type.
 
 The function |annihilator_modulo| takes as argument an $m\times{n}$
 matrix~$M$, and an integer |d|. It returns a full rank (so invertible
-over~$\bf Q$) $m\times{m}$ matrix~|A| such that $A^t\cdot{M}$ is divisible
+over~$\Qu$) $m\times{m}$ matrix~|A| such that $A^t\cdot{M}$ is divisible
 by~$d$, and whose column span is maximal subject to this constraint: the
 columns of~$A$ span the full rank sub-lattice of $\Zee^m$ of vectors $v$ such
 that $v^t\cdot{M}\in d\,\Zee^n$. The fact that $d$ is called |denominator|
 below comes from the alternative interpretation that the transpose of~$A$
 times the rational matrix $M/d$ gives an integral matrix as result.
-
 
 The algorithm is quite simple. After finding invertible matrices |row|, |col|
 such that $row*M*col$ is diagonal with non-zero diagonal entries given in
@@ -492,7 +492,7 @@ annihilator_modulo(const LatticeMatrix& M, arithmetic::Denom_t denominator)
   for (size_t i=0; i<lambda.size(); ++i)
     row.rowMultiply(i,arithmetic::div_gcd(denominator,lambda[i]));
 
-  return row.transpose();
+  return row.transposed();
 }
 
 @ The wrapper function is now particularly simple.
@@ -552,24 +552,24 @@ void replace_gen_wrapper (expression_base::level l)
     push_value(generators);
 }
 
-@ To emulate what is done in the Atlas software, we write a function that
-integrates some of the previous ones. It is called as |quotient_basis(lt,L)|
-where $t$ is a Lie type, and $L$ is a list of rational vectors, each giving a
-kernel generator as would be entered in the Atlas software. In this
-interpretation each rational vector implicitly gives a rational coweight,
-where each position either corresponds to a generator of a finite cyclic
-factor of order $d$ of the centre, with the rational entry $1/d$ in that
-position representing that generator, or to a central $1$-parameter subgroup
-(torus factor) of the centre with any rational entry in that position
-(interpreted modulo~$\Zee$) describing an element (of finite order) of that
-subgroup. More precisely one is taking rational linear combinations of certain
-coweights in the dual basis to a basis of the weight lattice adapted to the
-root lattice; for those weights in the latter basis that already lie in the
-root lattice, the corresponding coweight is omitted, since there are no useful
-rational multiples of it anyway. This function computes appropriate integer
-linear combinations of the relevant subset of the adapted basis, corresponding
-to the given choice of kernel generators; it is the sublattice (of the weight
-lattice) that they span that is ultimately of interest.
+@ To emulate what is done in \.{Fokko}, we write a function that integrates some
+of the previous ones. It is called as |quotient_basis(lt,L)| where $t$ is a Lie
+type, and $L$ is a list of rational vectors, each giving a kernel generator as
+would be entered in \.{Fokko}. In this interpretation each rational vector
+implicitly gives a rational coweight, where each position either corresponds to
+a generator of a finite cyclic factor of order $d$ of the centre, with the
+rational entry $1/d$ in that position representing that generator, or to a
+central $1$-parameter subgroup (torus factor) of the centre with any rational
+entry in that position (interpreted modulo~$\Zee$) describing an element (of
+finite order) of that subgroup. More precisely one is taking rational linear
+combinations of certain coweights in the dual basis to a basis of the weight
+lattice adapted to the root lattice; for those weights in the latter basis that
+already lie in the root lattice, the corresponding coweight is omitted, since
+there are no useful rational multiples of it anyway. This function computes
+appropriate integer linear combinations of the relevant subset of the adapted
+basis, corresponding to the given choice of kernel generators; it is the
+sublattice (of the weight lattice) that they span that is ultimately of
+interest.
 
 Let |S==Smith_Cartan(lt)| and $(C,v)=\\{filter\_units}(S)$, then we find a
 basis for the sub-lattice needed to build the root datum as follows. The
@@ -644,7 +644,8 @@ the new denominator~|d|.
   }
 // loop must end here to complete computation of |d|, then restart a new loop
 @)
-  for (unsigned int j=0; j<L->length(); ++j) // convert to common denominator |d|
+  for (unsigned int j=0; j<L->length(); ++j)
+    // convert to common denominator |d|
   { arithmetic::Denom_t f=d/denom[j];
     for (unsigned int i=0; i<v->val.size(); ++i)
       M(i,j) *= f;
@@ -1865,17 +1866,17 @@ necessary renumbering and naming of real form numbers.
 #include "output.h"
 
 @~The class |inner_class_value| will be the first Atlas type where we deviate
-from the previously used scheme of holding an Atlas library object with the
-main value in a data member |val|. The reason is that the copy constructor for
-|InnerClass| is deleted, so that the
-straightforward definition of a copy constructor for such an Atlas type would
-not work, and the copy constructor is necessary for the |clone| method. (In
-fact, now that normal manipulation of values involves duplicating shared
-pointers rather than of values, there is never a need to copy an
-|inner_class_value|, since |get_own<inner_class_value>| is never called;
-however the |clone| method is still defined for possible future use.) So
-instead, we shall share the library object when duplicating our value, and
-maintain a reference count to allow destruction when the last copy disappears.
+from the previously used scheme of holding an Atlas library object with the main
+value in a data member |val|. The reason is that the copy constructor for
+|InnerClass| is deleted, so that the straightforward definition of a copy
+constructor for such an Atlas type would not work, and the copy constructor is
+necessary for the |clone| method. (In fact, now that normal manipulation of
+values involves duplicating shared pointers rather than of values, there is
+never a need to copy an |inner_class_value|, since |get_own<inner_class_value>|
+is never called; however the |clone| method is still defined for possible future
+use.) So instead, we shall share the library object when duplicating our value,
+and maintain a reference count to allow destruction when the last copy
+disappears.
 
 The reference count needs to be shared of course, and since the links between
 the |inner_class_value| and both the library value and the reference count
@@ -2221,14 +2222,14 @@ void n_Cartan_classes_wrapper(expression_base::level l)
 }
 
 @ And now, our first function that really simulates something that can be done
-using the Atlas interface, and that uses more than a root datum. This is the
-\.{blocksizes} command from \.{mainmode.cpp}, which uses
-|innerclass_io::printBlockSizes|, but we have to rewrite it to avoid calling
-an output routine. A subtle difference is that we use a matrix of integers
-rather than of |arithmetic::big_int| values to collect the block sizes; this
-avoids having to define a new primitive type, and probably suffices for the
-cases where actual computation of the block feasible. However, we also provide
-a function the computes a single block size as an unbounded integer.
+with \.{Fokko} using more than just a root datum. This is the \.{blocksizes}
+command from \.{mainmode.cpp}, which uses |innerclass_io::printBlockSizes|, but
+we have to rewrite it to avoid calling an output routine. A subtle difference is
+that we use a matrix of integers rather than of |arithmetic::big_int| values to
+collect the block sizes; this avoids having to define a new primitive type, and
+probably suffices for the cases where actual computation of the block feasible.
+However, we also provide a function the computes a single block size as an
+unbounded integer.
 
 @< Local function def...@>=
 void block_sizes_wrapper(expression_base::level l)
@@ -2986,7 +2987,7 @@ void Cartan_info_wrapper(expression_base::level l)
     wrap_tuple<4>();
 }
 
-@ A functionality that is implicit in the Atlas command \.{cartan} is the
+@ A functionality that is implicit in the \.{Fokko} command \.{cartan} is the
 enumeration of all real forms corresponding to a given Cartan class. While
 |output::printFiber| traverses the real forms in the order corresponding to
 the parts of the partition |f.weakReal()| for the fiber~|f| associated to the
@@ -3096,13 +3097,13 @@ void square_classes_wrapper(expression_base::level l)
   push_value(std::move(result));
 }
 
-@ The function |print_gradings| gives on a per-real-form basis the
-functionality of the Atlas command \.{gradings} that is implemented by
-|output::printGradings| and |output::printGradings|. It therefore
-takes, like |fiber_partition|, a Cartan class and a real form as parameter. Its
-output consist of a list of $\Zee/2\Zee$-gradings of each of the fiber group
-elements in the part corresponding to the real form, where each grading is a
-sequence of bits corresponding to the simple imaginary roots.
+@ The function |print_gradings| gives on a per-real-form basis the functionality
+of the \.{Fokko} command \.{gradings} that is implemented by
+|output::printGradings| and |output::printGradings|. It therefore takes, like
+|fiber_partition|, a Cartan class and a real form as parameter. Its output
+consist of a list of $\Zee/2\Zee$-gradings of each of the fiber group elements
+in the part corresponding to the real form, where each grading is a sequence of
+bits corresponding to the simple imaginary roots.
 
 @f sigma nullptr
 
@@ -3504,11 +3505,11 @@ void torus_bits_wrapper(expression_base::level l)
 @ It is often be more useful to obtain an equivalent value, but in a form that
 takes into account the cocharacter stored for the real form. The following
 function does that, returning the result in the form of a rational vector that
-should be interpreted in $({\bf Q}/2{\bf Z})^n$ representing
+should be interpreted in $(\Qu/2\Zee)^n$ representing
 $(X_*)\otimes_\Zee\Qu/2X_*$. The value has two useful properties: it is
 invariant under right-multiplication by the involution~$\theta$ associated
-to~$x$ (i.e., the ignored part has been projected away), and at the same time
-it lies in the $X_*$-coset of |cocharacter| for the real form.
+to~$x$ (i.e., the ignored part has been projected away), and at the same time it
+lies in the $X_*$-coset of |cocharacter| for the real form.
 
 @< Local function def...@>=
 void torus_factor_wrapper(expression_base::level l)
@@ -5325,6 +5326,7 @@ void scale_0_poly_wrapper(expression_base::level l)
 }
 
 @*2 Computing with $K$-types.
+%
 The ``restriction to $K$'' component of the Atlas library has for a long time
 had an isolated existence, in part because the ``nonzero final standard
 $K$ parameters'' used to designate $K$-types are both hard to decipher and do
@@ -6024,10 +6026,10 @@ void W_cells_wrapper(expression_base::level l)
 Now we shall make available some commands without actually creating new data
 types. This means the values created to perform the computation will be
 discarded after the output is produced; our functions will typically return a
-$0$-tuple. This is probably not a desirable state of affairs, but the current
-Atlas software is functioning like this (the corresponding commands are
-defined in \.{realmode.cpp} and in \.{test.cpp} which hardly has any
-persistent data) so for the moment it should not be so bad.
+$0$-tuple. This is probably not a desirable state of affairs, but in \.{Fokko}
+it is no different (the corresponding commands are defined in \.{realmode.cpp}
+and in \.{test.cpp} which hardly has any persistent data) so for the moment it
+should not be so bad.
 
 @ The \.{realweyl} and \.{strongreal} commands require a real form and a
 compatible Cartan class.
