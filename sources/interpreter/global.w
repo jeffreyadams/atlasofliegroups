@@ -1771,10 +1771,9 @@ struct int_value : public value_base
   void print(std::ostream& out) const @+{@; out << val; }
   int_value* clone() const @+{@; return new int_value(*this); }
   static const char* name() @+{@; return "integer"; }
+  int_value(const int_value& )  = @[default@]; // we use |get_own<int_value>|
 @)
   int int_val () const @+{@; return val.int_val(); }
-private:
-  int_value(const int_value& v) : val(v.val) @+{}
 };
 @)
 typedef std::shared_ptr<const int_value> shared_int;
@@ -1788,7 +1787,8 @@ struct rat_value : public value_base
 @)
   void print(std::ostream& out) const @+{@; out << val; }
   rat_value* clone() const @+{@; return new rat_value(*this); }
-  static const char* name() @+{@; return "integer"; }
+  static const char* name() @+{@; return "rational"; }
+  rat_value(const rat_value& ) = @[default@]; // we use |get_own<rat_value>|
 @)
 #ifdef incompletecpp11
   big_int numerator() const @+{@; return val.numerator(); }
@@ -1802,9 +1802,6 @@ struct rat_value : public value_base
   big_int&& denominator() &@[@] @+{@; return std::move(val).denominator(); }
 #endif
   Rational rat_val() const @+{@; return val.rat_val(); }
-
-private:
-  rat_value(const rat_value& v) : val(v.val) @+{}
 };
 @)
 typedef std::shared_ptr<const rat_value> shared_rat;
@@ -1902,8 +1899,8 @@ struct vector_value : public value_base
   virtual void print(std::ostream& out) const;
   vector_value* clone() const @+{@; return new vector_value(*this); }
   static const char* name() @+{@; return "vector"; }
-private:
-  vector_value(const vector_value& v) : val(v.val) @+{}
+  vector_value(const vector_value& ) = @[default@];
+    // we use |get_own<vector_value>|
 };
 @)
 typedef std::shared_ptr<const vector_value> shared_vector;
@@ -1923,8 +1920,8 @@ struct matrix_value : public value_base
   virtual void print(std::ostream& out) const;
   matrix_value* clone() const @+{@; return new matrix_value(*this); }
   static const char* name() @+{@; return "matrix"; }
-private:
-  matrix_value(const matrix_value& v) : val(v.val) @+{}
+  matrix_value(const matrix_value& ) = @[default@];
+    // we use |get_own<matrix_value>|
 };
 @)
 typedef std::shared_ptr<const matrix_value> shared_matrix;
@@ -1949,8 +1946,8 @@ struct rational_vector_value : public value_base
   rational_vector_value* clone() const
    @+{@; return new rational_vector_value(*this); }
   static const char* name() @+{@; return "rational vector"; }
-private:
-  rational_vector_value(const rational_vector_value& v) : val(v.val) @+{}
+  rational_vector_value(const rational_vector_value& ) = @[default@];
+    // we use |get_own<rational_vector_value>|
 };
 @)
 typedef std::shared_ptr<const rational_vector_value> shared_rational_vector;
@@ -2595,8 +2592,8 @@ void fraction_wrapper(expression_base::level l)
 void unfraction_wrapper(expression_base::level l)
 { own_rat q=get_own<rat_value>();
   if (l!=expression_base::no_value)
-  { push_value(std::make_shared<int_value>(q->numerator()));
-    push_value(std::make_shared<int_value>(q->denominator()));
+  { push_value(std::make_shared<int_value>(std::move(q->numerator())));
+    push_value(std::make_shared<int_value>(std::move(q->denominator())));
     if (l==expression_base::single_value)
       wrap_tuple<2>();
   }

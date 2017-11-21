@@ -111,7 +111,7 @@ are obligatory for a primitive type, though the (private) copy constructor is
 only needed because |clone| uses it, and this in turn is only needed because we
 use |get_own<Lie_type_value>| below; certain other primitive types do not expose
 any functions that are implemented by modifying and existing copy, and can
-implement |clone| that simply returns~|nullptr| (wince these calls come in a
+implement |clone| that simply returns~|nullptr| (since these calls come in a
 context where the actual type is known, using a virtual method |clone| here
 probably was a sub-optimal design decision).
 
@@ -127,11 +127,10 @@ struct Lie_type_value : public value_base
   virtual void print(std::ostream& out) const;
   Lie_type_value* clone() const @+{@; return new Lie_type_value(*this); }
   static const char* name() @+{@; return "Lie type"; }
+  Lie_type_value(const Lie_type_value& v) = @[default@];
+    // we use |get_own<Lie_type_value>|
 @)
   void add_simple_factor (char,unsigned int); // grow
-private:
-  Lie_type_value(const Lie_type_value& v) : val(v.val) @+{}
-    // copy constructor, used by |clone|
 };
 @)
 typedef std::shared_ptr<const Lie_type_value> shared_Lie_type;
@@ -3242,9 +3241,8 @@ struct KGB_elt_value : public value_base
   virtual void print(std::ostream& out) const;
   KGB_elt_value* clone() const @+ {@; return new KGB_elt_value(*this); }
   static const char* name() @+{@; return "KGB element"; }
-private:
-  KGB_elt_value(const KGB_elt_value& v)
-  : rf(v.rf), val(v.val) @+{} // copy constructor
+  KGB_elt_value(const KGB_elt_value& v) = @[default@];
+    // we use |get_own<KGB_elt_value>|
 };
 @)
 typedef std::unique_ptr<KGB_elt_value> KGB_elt_ptr;
@@ -3865,12 +3863,12 @@ struct module_parameter_value : public value_base
   module_parameter_value* clone() const
    @+ {@; return new module_parameter_value(*this); }
   static const char* name() @+{@; return "module parameter"; }
+  module_parameter_value(const module_parameter_value& v) = @[default@];
+    // we use |get_own<module_parameter_value>|
+
 @)
   const Rep_context& rc() const @+{@; return rf->rc(); }
   Rep_table& rt() const @+{@; return rf->rt(); }
-private:
-  module_parameter_value(const module_parameter_value& v)  // copy constructor
-  : rf(v.rf),val(v.val) @+ {}
 };
 @)
 typedef std::unique_ptr<module_parameter_value> module_parameter_ptr;
@@ -4782,8 +4780,8 @@ struct split_int_value : public value_base
   void print(std::ostream& out) const;
   split_int_value* clone() const @+{@; return new split_int_value(*this); }
   static const char* name() @+{@; return "split integer"; }
-private:
-  split_int_value(const split_int_value& v) : val(v.val) @+{}
+  split_int_value(const split_int_value& v) = @[default@];
+    // we use |get_own<split_int_value>|
 };
 @)
 typedef std::unique_ptr<split_int_value> split_int_ptr;
@@ -4923,12 +4921,11 @@ struct virtual_module_value : public value_base
   virtual_module_value* clone() const
    @+ {@; return new virtual_module_value(*this); }
   static const char* name() @+{@; return "module parameter"; }
+  virtual_module_value(const virtual_module_value& v) = @[default@];
+    // we use |get_own<virtual_module_value>|
 @)
   const Rep_context& rc() const @+{@; return rf->rc(); }
   Rep_table& rt() const @+{@; return rf->rt(); }
-private:
-  virtual_module_value(const virtual_module_value& v)
-  @+ : rf(v.rf),val(v.val) @+{} // copy
 };
 @)
 typedef std::unique_ptr<virtual_module_value> virtual_module_ptr;

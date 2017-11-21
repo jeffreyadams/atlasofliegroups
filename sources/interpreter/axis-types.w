@@ -1977,16 +1977,15 @@ type_expr unknown_tuple(size_t n)
 
 @* Run-time values.
 %
-Now we shall consider runtime values. As we mentioned before, the interpreter
+Now we shall consider run-time values. As we mentioned before, the interpreter
 must access values via generic pointers in order to be able to manipulate them
 regardless of their types, which could be arbitrarily complicated. We could
 either use void pointers to represent generic values and cast them when
 necessary, or use inheritance and the dynamic cast feature of \Cpp. We choose
-the second option, which is quite convenient to use, although this means that
-in reality we have dynamic type information stored within the values, even
-though that information had already been determined during type analysis. We
-shall in fact use this information to double-check our type analysis at
-runtime.
+the second option, which is quite convenient to use, although this means that in
+reality we have dynamic type information stored within the values, even though
+that information had already been determined during type analysis. We shall in
+fact use this information to double-check our type analysis at run time.
 
 @< Includes needed in \.{axis-types.h} @>=
 #include <iostream> // needed for specification of |print| method below
@@ -2000,39 +1999,37 @@ classes \emph{must} override the default). The printing function does not have
 a useful default, so we make it pure virtual as well, without providing an
 implementation (in the base class). This |print| method will demonstrate the
 ease of using dynamic typing via inheritance; it will not do any dynamic
-casting, but other operations on values will. Apart from |print| we define
-another virtual method, |clone|, which allows making a copy of a runtime value
-of any type derived from |value_base|.
+casting, but other operations on values will.
 
-The method |name| is useful in reporting logic errors from function templates,
-notably the failure of a value to be of the predicted type. Since the template
-function may know the type (via a template argument) but need not have any
-object of the type at hand, we define |name| as a |static| rather than
-|virtual| method. We disable assignment of |value_base| objects, since they
+Apart from virtual methods, we define other methods that will be redefined in
+all or some derived classes, and which are selected based on the static type at
+hand in the calling code rather than on the dynamic type, as the former will be
+known to match the latter due to our type system. The method |name| is used in
+reporting logic errors from function templates, notably the failure of a value
+to be of the predicted type, where |name| names that predicted type. Since
+callers are functions that know the type (via a template argument) but need not
+have any object of that type at hand, we define |name| to be a |static|. For
+certain derived types there will be operations implemented by making changes to
+an existing value; we use copy-on-write when our reference to the initial value
+is shared, and these derived classes provide a (usually default) copy
+constructor, which will be invoked by the |get_own| function template below. It
+used to call a virtual |clone| method, but that forces \emph{all} derived
+classes to implement copying, while in the current situation those that do not
+use |get_own| may simply not implement copying by deleting the copy constructor.
+
+We disable assignment of |value_base| objects, since they
 should always be handled by reference; the base class is abstract anyway, but
 this ensures us that for no derived class an implicitly defined assignment
-operator is accidentally invoked. Copy constructors will in fact be defined
-for most derived types, as they are needed to implement the |clone| method;
-these will be |private| or |protected| as well, so as to forbid accidental use
-elsewhere, but they do copy-construct their |value_base| base object (which is
-constructor is therefore made |protected|). Those derived classes might have
-value-constructed (i.e., use the no-arguments constructor) the base object
-instead (and indeed this used to be the case), but copy-construct is what the
-default copy-constructor for the derived class does, so not deleting the
-copy-constructor here allows those defaults to be used. Cloning only happens
-in specific contexts (namely the function templates |uniquify|, |get_own| and
-|force_own| defined below) where the actual type will in fact be known, so
-some derived types may choose to never use this and not implement |clone| at
-all, which is why it is not defined pure virtual. In fact this state of
-affairs suggests one could do duplication with a non-virtual (but
-systematically named) method instead.
+operator is accidentally invoked. Though derived copy constructors will be
+|private|, they need to copy the base object, so we provide a |protected| copy
+constructor.
 
 Values are always handled via pointers. The raw pointer type is |value|, and a
 shared smart pointer-to-constant is |shared_value|. The const-ness of the
 latter reflects a copy-on-write policy: we rarely need to modify values
 in-place, but when we do, we ensure our shared pointer is actually unique, and
-then |const_cast| it to |own_value| for modification (this will be hidden in a
-function template defined later).
+then |const_cast| it to a derived version of |own_value| for modification (this
+will be hidden in a function template defined later).
 
 @< Type definitions @>=
 struct value_base
@@ -2040,7 +2037,8 @@ struct value_base
   virtual ~value_base() = 0;
   virtual void print(std::ostream& out) const =0;
   virtual value_base* clone() const @+{@; assert(false); return nullptr; }
-  static const char* name(); // just a model; this instance remains undefined
+// |static const char* name();| just a model; this instance remains undefined
+// |value_base copy() const;| also a model; does |return(*this)| when defined
 protected:
 #ifndef incompletecpp11
   value_base(const value_base& x) = @[default@];
@@ -2112,9 +2110,8 @@ struct row_value : public value_base
   row_value* clone() const @+{@; return new row_value(*this); }
     // copy the outer level vector
   static const char* name() @+{@; return "row value"; }
-protected:
-  row_value(const row_value& v) : val(v.val) @+{}
-    // copy still shares the individual entries
+  row_value(const row_value& ) = @[default@];
+    // we use |get_own<row_value>|
 };
 @)
 typedef std::shared_ptr<const row_value> shared_row;
@@ -2593,7 +2590,7 @@ template <typename D> // |D| is a type derived from |value_base|
 { std::shared_ptr<const D> p=get<D>();
   if (p.unique())
     return std::const_pointer_cast<D>(p);
-  return std::shared_ptr<D>(p->clone());
+  return std::make_shared<D>(*p); // invokes copy constructor; assumes it exists
 }
 
 @ Finally there is |force_own| that intends to be to |force| what |get_own| is
@@ -2615,7 +2612,7 @@ template <typename D> // |D| is a type derived from |value_base|
     logic_error(std::string("forced value is no ")+D::name());
   if (p.unique())
     return std::const_pointer_cast<D>(p);
-  return std::shared_ptr<D>(p->clone());
+  return std::make_shared<D>(*p); // invokes copy constructor; assumes it exists
 }
 
 @ The argument~$n$ to |wrap_tuple| most often is a compile time constant, so
