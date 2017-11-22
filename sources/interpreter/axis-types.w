@@ -2036,16 +2036,9 @@ struct value_base
 { value_base() @+ {}
 @/virtual ~value_base() = 0;
   virtual void print(std::ostream& out) const =0;
-  virtual value_base* clone() const @+{@; assert(false); return nullptr; }
-// |static const char* name();| just a model; this instance remains undefined
-// |value_base copy() const;| also a model; does |return(*this)| when defined
-protected:
-#ifndef incompletecpp11
-  value_base(const value_base& x) = @[default@];
-#else
-  value_base(const value_base& x) {}
-#endif
-public:
+@)
+// |static const char* name();| just a model; defined in derived classes
+@)
   value_base& operator=(const value_base& x) = @[delete@];
 };
 inline value_base::~value_base() @+{} // necessary but empty implementation
@@ -2106,8 +2099,6 @@ struct row_value : public value_base
     @+{} // set from iterator range
   void print(std::ostream& out) const;
   size_t length() const @+{@; return val.size(); }
-  row_value* clone() const @+{@; return new row_value(*this); }
-    // copy the outer level vector
   static const char* name() @+{@; return "row value"; }
   row_value @[(const row_value& ) = default@];
     // we use |get_own<row_value>|
@@ -2142,7 +2133,6 @@ class from |row_value|.
 struct tuple_value : public row_value
 { tuple_value(size_t n) : row_value(n) @+{}
   template <typename I> tuple_value(I begin, I end) : row_value(begin,end) @+{}
-  tuple_value* clone() const @+{@; return new tuple_value(*this); }
   void print(std::ostream& out) const;
   static const char* name() @+{@; return "tuple value"; }
 @/tuple_value @[(const tuple_value& ) = default@];
@@ -2241,12 +2231,9 @@ public:
      comp(std::move(v)),tag(tag),injector_name(name) @+{}
   unsigned int variant() const @+{@; return tag; }
   const shared_value& contents() const @+{@; return comp; }
-  union_value* clone() const @+{@; return new union_value(*this); }
   void print(std::ostream& out) const;
   static const char* name() @+{@; return "union value"; }
-private:
-  union_value @[(const union_value& v) = default@];
- // copy constructor; used by |clone|
+  union_value @[(const union_value& v) = delete@];
 };
 @)
 typedef std::unique_ptr<union_value> union_ptr;
@@ -2378,18 +2365,18 @@ or matrix bound to an identifier, it would be wasteful to duplicate that
 entire structure just so that it can briefly reside on the execution stack),
 whence we use |shared_value| smart pointers in the stack.
 
-This choice will have consequences in many places in the evaluator, since once
-a value is referred to by such a smart pointer, its ownership cannot be
+This choice will have consequences in many places in the evaluator, since once a
+value is referred to by such a smart pointer, its ownership cannot be
 transferred to any other regime; when strict ownership should be needed, the
-only option would be to make a copy by calling |clone|. However, it turns out
-to be convenient to \emph{always} use shared pointers for runtime values, and
-to make the distinction concerning whether one knows this pointer to be unique
-by having its type be pointer-to-non-const in that case. After construction or
-duplication one can start out with such a pointer, use it to store the proper
-value, then convert it pointer-to-const (i.e., |shared_value|), for handing on
-the stack and passing around in general; if destructive access is needed one
-may reconvert to pointer-to-non-const after having checked unique ownership
-(or else having duplicated the value pointed to).
+only option would be to make a copy. However, it turns out to be convenient
+to \emph{always} use shared pointers for runtime values, and to make the
+distinction concerning whether one knows this pointer to be unique by having its
+type be pointer-to-non-const in that case. After construction or duplication one
+can start out with such a pointer, use it to store the proper value, then
+convert it pointer-to-const (i.e., |shared_value|), for handing on the stack and
+passing around in general; if destructive access is needed one may reconvert to
+pointer-to-non-const after having checked unique ownership (or else having
+duplicated the value pointed to).
 
 @< Declarations of global variables @>=
 extern std::vector<shared_value> execution_stack;

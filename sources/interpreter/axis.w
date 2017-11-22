@@ -1705,15 +1705,8 @@ template <bool variadic>
     (const shared_function& owner,const std::string& name,
      expression_ptr&& arg, const source_location& loc) const;
 @)
-  virtual builtin_value* clone() const @+{@; return new builtin_value(*this); }
   static const char* name() @+{@; return "built-in function"; }
-private:
-#ifndef incompletecpp11
-  builtin_value@[(const builtin_value& v) = default@];
-#else
-  builtin_value(const builtin_value& v)
-  : val(v.val), print_name(v.print_name) {}
-#endif
+  builtin_value@[(const builtin_value& v) = delete@];
 };
 typedef std::shared_ptr<const builtin_value<false> > shared_builtin;
 typedef std::shared_ptr<const builtin_value<true> > shared_variadic_builtin;
@@ -2732,9 +2725,8 @@ struct closure_value : public function_base
     (const shared_function& owner,const std::string& name,
      expression_ptr&& arg, const source_location& loc) const;
 @)
-  virtual closure_value* clone() const @+
-  {@; return new closure_value(context,p); }
   static const char* name() @+{@; return "closure"; }
+  closure_value @[(const closure_value& ) = delete@];
 };
 typedef std::unique_ptr<closure_value> closure_ptr;
 typedef std::shared_ptr<const closure_value> shared_closure;
@@ -3813,12 +3805,8 @@ struct projector_value : public function_base
     (const shared_function& owner,const std::string& name,
      expression_ptr&& arg, const source_location& loc) const;
 @)
-  virtual projector_value* clone() const @+
-  {@; return new projector_value(*this); }
   static const char* name() @+{@; return "built-in function"; }
-private:
-  projector_value(const projector_value& v)
-@/:type(v.type.copy()),position(v.position),loc(v.loc)@+{}
+  projector_value @[(const projector_value& ) = delete@];
 };
 
 @ Here are two virtual methods. We print the position selected and the type
@@ -3912,12 +3900,8 @@ struct injector_value : public function_base
     (const shared_function& owner,const std::string& name,
      expression_ptr&& arg, const source_location& loc) const;
 @)
-  virtual injector_value* clone() const @+
-  {@; return new injector_value(*this); }
   static const char* name() @+{@; return "built-in function"; }
-private:
-  injector_value(const injector_value& v)
-@/:type(v.type.copy()),position(v.position),loc(v.loc)@+{}
+  injector_value @[(const injector_value& ) = delete@];
 };
 
 @ Here are two virtual methods. We print the position selected and the type

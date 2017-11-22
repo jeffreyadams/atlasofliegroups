@@ -1769,7 +1769,6 @@ struct int_value : public value_base
     : val(big_int::from_unsigned(v)) @+ {}
   explicit int_value(arithmetic::big_int&& v) : val(std::move(v)) @+ {}
   void print(std::ostream& out) const @+{@; out << val; }
-  int_value* clone() const @+{@; return new int_value(*this); }
   static const char* name() @+{@; return "integer"; }
   int_value @[(const int_value& ) = default@]; // we use |get_own<int_value>|
 @)
@@ -1786,7 +1785,6 @@ struct rat_value : public value_base
   explicit rat_value(big_rat&& r) : val(std::move(r)) @+{}
 @)
   void print(std::ostream& out) const @+{@; out << val; }
-  rat_value* clone() const @+{@; return new rat_value(*this); }
   static const char* name() @+{@; return "rational"; }
   rat_value @[(const rat_value& ) = default@]; // we use |get_own<rat_value>|
 @)
@@ -1819,10 +1817,8 @@ struct string_value : public value_base
   template <typename I> string_value(I begin, I end) : val(begin,end) @+ {}
   ~string_value()@+ {}
   void print(std::ostream& out) const @+{@; out << '"' << val << '"'; }
-  string_value* clone() const @+{@; return new string_value(*this); }
   static const char* name() @+{@; return "string"; }
-private:
-  string_value(const string_value& v) : val(v.val) @+{}
+  string_value @[(const string_value& ) = delete@];
 };
 @)
 typedef std::shared_ptr<const string_value> shared_string;
@@ -1835,10 +1831,8 @@ struct bool_value : public value_base
   explicit bool_value(bool v) : val(v) @+ {}
   ~bool_value()@+ {}
   void print(std::ostream& out) const @+{@; out << std::boolalpha << val; }
-  bool_value* clone() const @+{@; return new bool_value(*this); }
   static const char* name() @+{@; return "Boolean"; }
-private:
-  bool_value(const bool_value& v) : val(v.val) @+{}
+  bool_value @[(const bool_value& ) = delete@];
 };
 @)
 typedef std::shared_ptr<const bool_value> shared_bool;
@@ -1897,7 +1891,6 @@ struct vector_value : public value_base
   template <typename I> vector_value(I begin, I end) : val(begin,end) @+ {}
   ~vector_value()@+ {}
   virtual void print(std::ostream& out) const;
-  vector_value* clone() const @+{@; return new vector_value(*this); }
   static const char* name() @+{@; return "vector"; }
   vector_value @[(const vector_value& ) = default@];
     // we use |get_own<vector_value>|
@@ -1918,7 +1911,6 @@ struct matrix_value : public value_base
   explicit matrix_value(int_Matrix&& v) : val(std::move(v)) @+ {}
   ~matrix_value()@+ {}
   virtual void print(std::ostream& out) const;
-  matrix_value* clone() const @+{@; return new matrix_value(*this); }
   static const char* name() @+{@; return "matrix"; }
   matrix_value @[(const matrix_value& ) = default@];
     // we use |get_own<matrix_value>|
@@ -1943,8 +1935,6 @@ struct rational_vector_value : public value_base
     {@; val.normalize(); }
   ~rational_vector_value()@+ {}
   virtual void print(std::ostream& out) const;
-  rational_vector_value* clone() const
-   @+{@; return new rational_vector_value(*this); }
   static const char* name() @+{@; return "rational vector"; }
   rational_vector_value @[(const rational_vector_value& ) = default@];
     // we use |get_own<rational_vector_value>|

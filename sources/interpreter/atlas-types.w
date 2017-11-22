@@ -107,13 +107,8 @@ library.
 A first new type corresponds to the type |LieType| in the Atlas library. We
 provide a constructor that incorporates a complete |LieType| value, but often
 one will use the default constructor and the |add| method. The remaining methods
-are obligatory for a primitive type, though the (private) copy constructor is
-only needed because |clone| uses it, and this in turn is only needed because we
-use |get_own<Lie_type_value>| below; certain other primitive types do not expose
-any functions that are implemented by modifying and existing copy, and can
-implement |clone| that simply returns~|nullptr| (since these calls come in a
-context where the actual type is known, using a virtual method |clone| here
-probably was a sub-optimal design decision).
+are obligatory for a primitive type, though the copy constructor is only needed
+because we use |get_own<Lie_type_value>| below.
 
 @< Type definitions @>=
 struct Lie_type_value : public value_base
@@ -125,7 +120,6 @@ struct Lie_type_value : public value_base
     // constructor from already validated Lie type
 @)
   virtual void print(std::ostream& out) const;
-  Lie_type_value* clone() const @+{@; return new Lie_type_value(*this); }
   static const char* name() @+{@; return "Lie type"; }
   Lie_type_value @[(const Lie_type_value& v) = default@];
     // we use |get_own<Lie_type_value>|
@@ -898,10 +892,9 @@ identify identical inner classes and other values based on them. In order to
 achieve this, we include static variables with a hash table for all bare root
 data seen, and a vector of pointers to corresponding root data values. The test
 for existing identical root data should be made prior to calling the
-|root_datum_value| constructor, and we should never duplicate such a value, so
-the |clone| method does nothing (and there is no reason it should ever actually
-get called). A static method |build| takes care of creating a |root_datum_value|
-from a |PreRootDatum|; it will either locate an existing one and return a shared
+|root_datum_value| constructor, and we cannot duplicate such a value. A static
+method |build| takes care of creating a |root_datum_value| from a
+|PreRootDatum|; it will either locate an existing one and return a shared
 pointer, or create one using |std::make_shared| and the provided constructor. To
 ensure that testing for duplicates always takes place, we want to ensure that
 clients cannot call the constructor directly. But we cannot make it private,
@@ -924,9 +917,8 @@ public:
   static shared_root_datum build(PreRootDatum&& pre);
   shared_root_datum dual() const; // get dual datum through |build|
   virtual void print(std::ostream& out) const;
-  root_datum_value* clone() const @+{@; return nullptr; }
-    // we refuse to create duplicates
   static const char* name() @+{@; return "root datum"; }
+  root_datum_value @[(const root_datum_value& ) = delete@];
 };
 
 @ We need to define the static members declared in the class definition.
@@ -1868,14 +1860,9 @@ necessary renumbering and naming of real form numbers.
 from the previously used scheme of holding an Atlas library object with the main
 value in a data member |val|. The reason is that the copy constructor for
 |InnerClass| is deleted, so that the straightforward definition of a copy
-constructor for such an Atlas type would not work, and the copy constructor is
-necessary for the |clone| method. (In fact, now that normal manipulation of
-values involves duplicating shared pointers rather than of values, there is
-never a need to copy an |inner_class_value|, since |get_own<inner_class_value>|
-is never called; however the |clone| method is still defined for possible future
-use.) So instead, we shall share the library object when duplicating our value,
-and maintain a reference count to allow destruction when the last copy
-disappears.
+constructor for such an Atlas type would not work. So instead, we shall share
+the library object when duplicating our value, and maintain a reference count to
+allow destruction when the last copy disappears.
 
 The reference count needs to be shared of course, and since the links between
 the |inner_class_value| and both the library value and the reference count
@@ -1888,7 +1875,7 @@ The main constructor takes a unique-pointer to an |InnerClass| as
 argument, as a reminder that the caller gives up ownership of this pointer
 that should come from a call to~|new|; this pointer will henceforth be owned
 by the |inner_class_value| constructed, in shared ownership with any values
-later cloned from it: the last one of them to be destroyed will call |delete|
+later copied from it: the last one of them to be destroyed will call |delete|
 for the pointer. The remaining argument is a |Layout| that must have been
 computed by |check_involution| above, in order to ensure its validity.
 
@@ -1924,11 +1911,9 @@ static inner_class_value build
   ~inner_class_value();
 @)
   virtual void print(std::ostream& out) const;
-  inner_class_value* clone() const @+
-    {@; return new inner_class_value(*this); }
   static const char* name() @+{@; return "inner class"; }
-@)
   inner_class_value(const inner_class_value& v); // copy constructor
+@)
   inner_class_value(const inner_class_value& v,tags::DualTag);
    // constructor of dual
 };
@@ -2386,9 +2371,9 @@ struct real_form_value : public value_base
   virtual ~real_form_value ();
 @)
   virtual void print(std::ostream& out) const;
-  real_form_value* clone() const @+
-    {@; return new real_form_value(*this); }
   static const char* name() @+{@; return "real form"; }
+  real_form_value @[(const real_form_value& ) = delete@];
+@)
   const KGB& kgb () @+{@; return val.kgb(); }
    // generate and return $K\backslash G/B$ set
   KhatContext& khc();
@@ -2836,12 +2821,8 @@ struct Cartan_class_value : public value_base
   ~Cartan_class_value() @+{} // everything is handled by destructor of |parent|
 @)
   virtual void print(std::ostream& out) const;
-  Cartan_class_value* clone() const @+
-    {@; return new Cartan_class_value(*this); }
   static const char* name() @+{@; return "Cartan class"; }
-private:
-  Cartan_class_value(const Cartan_class_value& v)
-  : parent(v.parent), number(v.number), val(v.val) @+{} // copy constructor
+  Cartan_class_value @[(const Cartan_class_value& ) = delete@];
 };
 @)
 typedef std::shared_ptr<const Cartan_class_value> shared_Cartan_class;
@@ -3239,9 +3220,8 @@ struct KGB_elt_value : public value_base
   ~KGB_elt_value() @+{}
 @)
   virtual void print(std::ostream& out) const;
-  KGB_elt_value* clone() const @+ {@; return new KGB_elt_value(*this); }
   static const char* name() @+{@; return "KGB element"; }
-  KGB_elt_value @[(const KGB_elt_value& v) = default@];
+  KGB_elt_value @[(const KGB_elt_value& ) = default@];
     // we use |get_own<KGB_elt_value>|
 };
 @)
@@ -3589,11 +3569,8 @@ struct Block_value : public value_base
   ~Block_value() @+{}
 @)
   virtual void print(std::ostream& out) const;
-  Block_value* clone() const @+ {@; return new Block_value(*this); }
   static const char* name() @+{@; return "KGB element"; }
-private:
-  Block_value(const Block_value& v)
-  : rf(v.rf), val(v.val), klc(val) @+{} // copy constructor, but |klc| is new
+  Block_value @[(const Block_value& ) = delete@];
 };
 @)
 typedef std::unique_ptr<Block_value> Block_ptr;
@@ -3860,8 +3837,6 @@ struct module_parameter_value : public value_base
   ~module_parameter_value() @+{}
 @)
   virtual void print(std::ostream& out) const;
-  module_parameter_value* clone() const
-   @+ {@; return new module_parameter_value(*this); }
   static const char* name() @+{@; return "module parameter"; }
   module_parameter_value @[(const module_parameter_value& ) = default@];
     // we use |get_own<module_parameter_value>|
@@ -4778,7 +4753,6 @@ struct split_int_value : public value_base
   explicit split_int_value(Split_integer v) : val(v) @+ {}
   ~split_int_value()@+ {}
   void print(std::ostream& out) const;
-  split_int_value* clone() const @+{@; return new split_int_value(*this); }
   static const char* name() @+{@; return "split integer"; }
   split_int_value @[(const split_int_value& v) = default@];
     // we use |get_own<split_int_value>|
@@ -4918,8 +4892,6 @@ struct virtual_module_value : public value_base
   ~virtual_module_value() @+{}
 @)
   virtual void print(std::ostream& out) const;
-  virtual_module_value* clone() const
-   @+ {@; return new virtual_module_value(*this); }
   static const char* name() @+{@; return "module parameter"; }
   virtual_module_value @[(const virtual_module_value& v) = default@];
     // we use |get_own<virtual_module_value>|
