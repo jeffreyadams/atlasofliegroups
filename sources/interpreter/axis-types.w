@@ -2146,9 +2146,8 @@ struct tuple_value : public row_value
   tuple_value* clone() const @+{@; return new tuple_value(*this); }
   void print(std::ostream& out) const;
   static const char* name() @+{@; return "tuple value"; }
-private:
-  tuple_value(const tuple_value& v) : row_value(v)@+{}
- // copy constructor; used by |clone|
+  tuple_value(const tuple_value& ) = @[default@];
+    // we use |uniquify<tuple_value>|
 };
 @)
 typedef std::unique_ptr<tuple_value> tuple_ptr;
@@ -2543,34 +2542,33 @@ template <typename D> // |D| is a type derived from |value_base|
   return p;
 }
 
-@ The \.{axis} language allows assignment operations to components of
-aggregates (such as rows, matrices, strings, tuples), which in fact assign a
-new value to the name bound to the aggregate. Since we implement
-copy-on-write, this should in principle make a copy of the aggregate before
-modifying the component, but the copy can be avoided if the aggregate value is
-unshared. The operation |uniquify| implements making a copy if necessary, and
-calling it makes clear our destructive intentions. We make it take a
-modifiable lvalue argument into which a new shared (but currently unique)
-pointer will be stored in case duplication was necessary, and it returns a raw
-pointer-to-non-const version of the new value of that shared pointer, which
-can then be used to make the change to the unique copy. The original pointer
-is of course still a pointer-to-const, so cannot be used for the modification;
-it does however retain ownership. Not surprisingly the implementation of
-|uniquify| uses a |const_cast| operation.
+@ The \.{axis} language allows assignment operations to components of aggregates
+(such as rows, matrices, strings, tuples), which in fact assign a new value to
+the name bound to the aggregate. Since we implement copy-on-write, this should
+in principle make a copy of the aggregate before modifying the component, but
+the copy can be avoided if the aggregate value is unshared. The operation
+|uniquify| implements making a copy if necessary, and calling it makes clear our
+destructive intentions. If copying is necessary we invoke the copy constructor
+via |std::make_shared|, and |uniquify| is templated by the actual derived type
+to specify which copy constructor to use. This also allows us to export a
+pointer to that derived type. We give |uniquify| a modifiable lvalue
+|shared_value| (shared pointer-to-const) argument, to which a new shared (but
+currently unique) pointer will be assigned in case duplication was necessary,
+and it returns a raw pointer-to-non-const, which can then be used to make the
+change to the unique copy. The argument |v| retains ownership. Not surprisingly
+the implementation of |uniquify| uses a |const_cast| operation when no
+duplication takes place.
 
 Similarly some wrapper functions will want to get unique access to an argument
 object, so that they can return a modified version of it as result. This
 requires duplicating the argument value on the stack only if it has
-|use_count()>1|, which is a rare circumstance since most functions that place
-a value on the stack will do so with an unshared pointer. For this we provide
-a variant function template of |get| called |get_own|. It has the same
-prototype as |non_const_get|, but like |uniquify| respects copy-on-write by
-making a copy first in case there are other shareholders. The implementation
-somewhat differs from |uniquify| in that it uses a |std::const_pointer_cast|,
-and only in the case no copy is made (in which case that cast is basically all
-it does); in the case a copy is made, it returns a shared pointer to the copy
-(modifiable), while leaving the original shared pointer unchanged (except that
-its reference count will be decremented).
+|use_count()>1|, which is a rare circumstance since most functions that place a
+value on the stack will do so with an unshared pointer. For this we provide a
+variant function template of |get| called |get_own|. It has the same prototype
+as |non_const_get|, but like |uniquify| respects copy-on-write by making a copy
+first in case there are other shareholders. The implementation differs
+from |uniquify| in that ownership is passed to the result, which therefore is a
+shared pointer; it uses a |std::const_pointer_cast| when no copy is made.
 
 Since these functions return pointers that are guaranteed to be unique, one
 might wonder why no use of |std::unique_ptr| is made. The answer is this is
@@ -2579,10 +2577,16 @@ ownership (as in the |release| method of unique pointers), even if it happens
 to be (or is known to be) the unique owner.
 
 @< Template and inline function def... @>=
-inline value_base* uniquify(shared_value& v)
-{ if (not v.unique())
-     v=shared_value(v->clone());
-  return const_cast<value_base*>(v.get());
+template <typename D> // |D| is a type derived from |value_base|
+  D* uniquify(shared_value& v)
+{ const D* p = force<D>(v.get());
+  if (v.unique())
+    return const_cast<D*>(p); // we can now safely write to |*p|
+  auto result = std::make_shared<D>(*p);
+    // invokes copy constructor; assumes it exists for |D|
+  v = result; // upcast and constify (temporarily duplicates shared pointer)
+  return result.get();
+    // now |v| retains unique shared pointer, but we can modify its target
 }
 @)
 template <typename D> // |D| is a type derived from |value_base|
@@ -2590,7 +2594,8 @@ template <typename D> // |D| is a type derived from |value_base|
 { std::shared_ptr<const D> p=get<D>();
   if (p.unique())
     return std::const_pointer_cast<D>(p);
-  return std::make_shared<D>(*p); // invokes copy constructor; assumes it exists
+  return std::make_shared<D>(*p);
+    // invokes copy constructor; assumes it exists for |D|
 }
 
 @ Finally there is |force_own| that intends to be to |force| what |get_own| is

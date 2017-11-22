@@ -569,7 +569,7 @@ for (auto it=prelude_filenames.begin(); it!=prelude_filenames.end(); ++it )
     }
     destroy_expr(parse_tree);
   }
-  row_value* logs = force<row_value>(uniquify(*prelude_log_pointer));
+  row_value* logs = uniquify<row_value>(*prelude_log_pointer);
   logs->val.emplace_back(std::make_shared<string_value>(log_stream.str()));
   output_stream = &std::cout;
 }

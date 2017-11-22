@@ -6343,7 +6343,7 @@ identifier. The latter requirement means that it will not be able to handle
 something like $a[i][j]:=c$ even when that would seem to make sense (because
 $a[i]$ is not a name); however $m[i,j]:=c$ for matrix values $m$ will be
 supported. The design decision made here is made in the assumption that the
-type of assignments that$a[i][j]:=c$ would represent are rare; when really
+type of assignments that $a[i][j]:=c$ would represent are rare; when really
 needed they can be achieved by temporarily naming the value $a[i]$ and
 assigning to that name before assigning the value of name back to $a[i]$.
 
@@ -6486,8 +6486,6 @@ template <bool reversed>
 void component_assignment<reversed>::assign
   (level lev,shared_value& aggregate, subscr_base::sub_type kind) const
 { rhs->eval();
-  value_base* loc=uniquify(aggregate);
-    // raw pointer to modifiable value from shared pointer
   switch (kind)
   { case subscr_base::row_entry:
   @/@< Replace component at |index| in row |loc| by value on stack @>
@@ -6506,7 +6504,7 @@ void component_assignment<reversed>::assign
 }
 @)
 void field_assignment::assign (level lev,shared_value& tupple) const
-{ shared_value& field=force<tuple_value>(uniquify(tupple))->val[position];
+{ shared_value& field=uniquify<tuple_value>(tupple)->val[position];
   rhs->eval();
   push_expanded(lev,field=pop_value());
 }
@@ -6521,7 +6519,7 @@ the component assignment, possibly expanding a tuple in the process.
 
 @< Replace component at |index| in row |loc|... @>=
 { unsigned int i=(index->eval(),get<int_value>()->int_val());
-  std::vector<shared_value>& a=force<row_value>(loc)->val;
+  auto& a = uniquify<row_value>(aggregate)->val;
   size_t n=a.size();
   if (i>=n)
     throw runtime_error(range_mess(i,a.size(),this,"component assignment"));
@@ -6537,7 +6535,7 @@ the component assignment expression is not used.
 
 @< Replace entry at |index| in vector |loc|... @>=
 { unsigned int i=(index->eval(),get<int_value>()->int_val());
-  std::vector<int>& v=force<vector_value>(loc)->val;
+  auto& v = uniquify<vector_value>(aggregate)->val;
   size_t n=v.size();
   if (i>=n)
     throw runtime_error(range_mess(i,v.size(),this,"component assignment"));
@@ -6555,7 +6553,7 @@ indices, and there are two bound checks.
   unsigned int j=get<int_value>()->int_val();
   unsigned int i=get<int_value>()->int_val();
 @/
-  int_Matrix& m=force<matrix_value>(loc)->val;
+  auto& m = uniquify<matrix_value>(aggregate)->val;
   size_t k=m.numRows(),l=m.numColumns();
   if (i>=k)
     throw runtime_error
@@ -6575,7 +6573,7 @@ for matching column length.
 
 @< Replace column at |index| in matrix |loc|... @>=
 { unsigned int j=(index->eval(),get<int_value>()->int_val());
-  int_Matrix& m=force<matrix_value>(loc)->val;
+  auto& m = uniquify<matrix_value>(aggregate)->val;
 @/const int_Vector& v=force<vector_value>(execution_stack.back().get())->val;
     // don't pop
   size_t l=m.numColumns();
