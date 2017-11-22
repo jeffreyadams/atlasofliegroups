@@ -127,7 +127,7 @@ struct Lie_type_value : public value_base
   virtual void print(std::ostream& out) const;
   Lie_type_value* clone() const @+{@; return new Lie_type_value(*this); }
   static const char* name() @+{@; return "Lie type"; }
-  Lie_type_value(const Lie_type_value& v) = @[default@];
+  Lie_type_value @[(const Lie_type_value& v) = default@];
     // we use |get_own<Lie_type_value>|
 @)
   void add_simple_factor (char,unsigned int); // grow
@@ -3241,7 +3241,7 @@ struct KGB_elt_value : public value_base
   virtual void print(std::ostream& out) const;
   KGB_elt_value* clone() const @+ {@; return new KGB_elt_value(*this); }
   static const char* name() @+{@; return "KGB element"; }
-  KGB_elt_value(const KGB_elt_value& v) = @[default@];
+  KGB_elt_value @[(const KGB_elt_value& v) = default@];
     // we use |get_own<KGB_elt_value>|
 };
 @)
@@ -3863,7 +3863,7 @@ struct module_parameter_value : public value_base
   module_parameter_value* clone() const
    @+ {@; return new module_parameter_value(*this); }
   static const char* name() @+{@; return "module parameter"; }
-  module_parameter_value(const module_parameter_value& v) = @[default@];
+  module_parameter_value @[(const module_parameter_value& ) = default@];
     // we use |get_own<module_parameter_value>|
 
 @)
@@ -4780,7 +4780,7 @@ struct split_int_value : public value_base
   void print(std::ostream& out) const;
   split_int_value* clone() const @+{@; return new split_int_value(*this); }
   static const char* name() @+{@; return "split integer"; }
-  split_int_value(const split_int_value& v) = @[default@];
+  split_int_value @[(const split_int_value& v) = default@];
     // we use |get_own<split_int_value>|
 };
 @)
@@ -4921,7 +4921,7 @@ struct virtual_module_value : public value_base
   virtual_module_value* clone() const
    @+ {@; return new virtual_module_value(*this); }
   static const char* name() @+{@; return "module parameter"; }
-  virtual_module_value(const virtual_module_value& v) = @[default@];
+  virtual_module_value @[(const virtual_module_value& v) = default@];
     // we use |get_own<virtual_module_value>|
 @)
   const Rep_context& rc() const @+{@; return rf->rc(); }

@@ -1771,7 +1771,7 @@ struct int_value : public value_base
   void print(std::ostream& out) const @+{@; out << val; }
   int_value* clone() const @+{@; return new int_value(*this); }
   static const char* name() @+{@; return "integer"; }
-  int_value(const int_value& )  = @[default@]; // we use |get_own<int_value>|
+  int_value @[(const int_value& ) = default@]; // we use |get_own<int_value>|
 @)
   int int_val () const @+{@; return val.int_val(); }
 };
@@ -1788,7 +1788,7 @@ struct rat_value : public value_base
   void print(std::ostream& out) const @+{@; out << val; }
   rat_value* clone() const @+{@; return new rat_value(*this); }
   static const char* name() @+{@; return "rational"; }
-  rat_value(const rat_value& ) = @[default@]; // we use |get_own<rat_value>|
+  rat_value @[(const rat_value& ) = default@]; // we use |get_own<rat_value>|
 @)
 #ifdef incompletecpp11
   big_int numerator() const @+{@; return val.numerator(); }
@@ -1899,7 +1899,7 @@ struct vector_value : public value_base
   virtual void print(std::ostream& out) const;
   vector_value* clone() const @+{@; return new vector_value(*this); }
   static const char* name() @+{@; return "vector"; }
-  vector_value(const vector_value& ) = @[default@];
+  vector_value @[(const vector_value& ) = default@];
     // we use |get_own<vector_value>|
 };
 @)
@@ -1920,7 +1920,7 @@ struct matrix_value : public value_base
   virtual void print(std::ostream& out) const;
   matrix_value* clone() const @+{@; return new matrix_value(*this); }
   static const char* name() @+{@; return "matrix"; }
-  matrix_value(const matrix_value& ) = @[default@];
+  matrix_value @[(const matrix_value& ) = default@];
     // we use |get_own<matrix_value>|
 };
 @)
@@ -1946,7 +1946,7 @@ struct rational_vector_value : public value_base
   rational_vector_value* clone() const
    @+{@; return new rational_vector_value(*this); }
   static const char* name() @+{@; return "rational vector"; }
-  rational_vector_value(const rational_vector_value& ) = @[default@];
+  rational_vector_value @[(const rational_vector_value& ) = default@];
     // we use |get_own<rational_vector_value>|
 };
 @)
@@ -2160,7 +2160,8 @@ own_row vector_to_ratrow(const int_Vector& v)
 }
 own_row introw_to_ratrow(own_row r)
 { for (auto it=r->val.begin(); it!=r->val.end(); ++it)
-    *it=std::make_shared<rat_value>(big_rat(force<int_value>(it->get())->val));
+    *it=std::make_shared<rat_value>@|
+       (big_rat(std::move(force<int_value>(it->get())->val)));
   return r;
 }
 @)
