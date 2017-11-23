@@ -2334,19 +2334,16 @@ connected complex reductive group; the corresponding Atlas class is called
 #include "realredgp.h"
 
 @*2 Class definition.
-The layout of this type of value is different from what we have seen before.
-An Atlas object of class |RealReductiveGroup| is dependent upon another Atlas
-object to which it stores a pointer, which is of type |InnerClass|,
-so we must make sure that the object pointed to cannot disappear before it
-does. The easiest way to do this is to place an |inner_class_value| object
-|parent| inside the |real_form_value| class that we shall now define; the
-reference-counting scheme introduced above then guarantees that the data we
-depend upon will remain in existence sufficiently long. Since that data can be
-accessed from inside the |RealReductiveGroup|, we shall mostly mention the
-|parent| with the purpose of accessing its |interface| and |dual_interface|
-fields. To remind us that the |parent| is not there to be changed by us, we
-declare it |const|. The object referred to may in fact undergo internal change
-however, via manipulators of the |val| field.
+%
+The layout of this type of value is different from what we have seen before. An
+Atlas object of class |RealReductiveGroup| is dependent upon another Atlas
+object to which it stores a pointer, which is of type |InnerClass|, so we must
+make sure that the object pointed to cannot disappear before the
+|RealReductiveGroup| does. The easiest way to do this is to place an
+|shared_inner_class| pointer |our_inner_class| inside the |real_form_value|
+class that we shall now define. Since that data can be accessed from inside the
+|RealReductiveGroup|, we shall mostly mention the |our_inner_class| with the
+purpose of accessing its |interface| and |dual_interface| fields.
 
 This class also serves to store persistent data related to the real form, in
 values of type |KhatContext| and |Rep_table|. In order to avoid overhead at
@@ -2355,17 +2352,18 @@ current header file, we store pointer that will only be assigned on first use.
 
 @< Type definitions @>=
 struct real_form_value : public value_base
-{ const inner_class_value parent;
+{ shared_inner_class our_inner_class;
   RealReductiveGroup val;
 @)
-  real_form_value(const inner_class_value& p,RealFormNbr f) @/
-  : parent(p), val(p.val,f)
+  real_form_value (shared_inner_class icp,RealFormNbr f)
+@/: our_inner_class(icp), val(icp->val,f)
   , khc_p(nullptr)
   , rt_p(nullptr) @+{}
+@)
   real_form_value
-    (const inner_class_value& p,RealFormNbr f
+    (shared_inner_class icp,RealFormNbr f
     ,const RatCoweight& coch, TorusPart tp) @/
-  : parent(p), val(p.val,f,coch,tp)
+  : our_inner_class(icp), val(icp->val,f,coch,tp)
   , khc_p(nullptr)
   , rt_p(nullptr) @+{}
   virtual ~real_form_value ();
@@ -2419,7 +2417,7 @@ void real_form_value::print(std::ostream& out) const
   if (val.isQuasisplit())
     out << (val.isSplit() ? "" : "quasi") << "split ";
   out << "real group with Lie algebra '" @|
-      << parent.interface.type_name(parent.interface.out(val.realForm())) @|
+      << our_inner_class->interface.type_name(our_inner_class->interface.out(val.realForm())) @|
       << '\'' ;
 }
 
@@ -2438,20 +2436,20 @@ void real_form_wrapper(expression_base::level l)
     throw runtime_error ("Illegal real form number: "+str(i));
 @.Illegal real form number@>
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<real_form_value>(*G,G->interface.in(i)));
+    push_value(std::make_shared<real_form_value>(G,G->interface.in(i)));
 }
 @)
 void form_number_wrapper(expression_base::level l)
 { shared_real_form rf= get<real_form_value>();
   if (l!=expression_base::no_value)
     push_value(std::make_shared<int_value>@|
-      (rf->parent.interface.out(rf->val.realForm())));
+      (rf->our_inner_class->interface.out(rf->val.realForm())));
 }
 @)
 void quasisplit_form_wrapper(expression_base::level l)
 { shared_inner_class G = get<inner_class_value>();
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<real_form_value>(*G,G->val.quasisplit()));
+    push_value(std::make_shared<real_form_value>(G,G->val.quasisplit()));
 }
 
 @*2 Functions operating on real reductive groups.
@@ -2461,7 +2459,7 @@ From a real reductive group we can go back to its inner class
 void inner_class_of_real_form_wrapper(expression_base::level l)
 { shared_real_form rf= get<real_form_value>();
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<inner_class_value>(rf->parent));
+    push_value(rf->our_inner_class);
 }
 
 void real_form_to_inner_class_coercion()
@@ -2469,7 +2467,7 @@ void real_form_to_inner_class_coercion()
 
 void real_form_to_root_datum_coercion()
 { shared_real_form rf= get<real_form_value>();
-  push_value(root_datum_value::build(rf->parent.val.rootDatum()));
+  push_value(root_datum_value::build(rf->our_inner_class->val.rootDatum()));
 }
 
 @ Here is a function that gives information about the dual component group
@@ -2641,10 +2639,10 @@ void dual_real_form_wrapper(expression_base::level l)
   if (l==expression_base::no_value)
     return;
 @)
-  inner_class_value G_check(*G,tags::DualTag());
+  auto dicp = std::make_shared<inner_class_value>(*G,tags::DualTag());
    // tailor make an |inner_class_value|
   push_value(std::make_shared<real_form_value>@|
-    (G_check ,G->dual_interface.in(i)));
+    (dicp,G->dual_interface.in(i)));
 }
 @)
 void dual_quasisplit_form_wrapper(expression_base::level l)
@@ -2652,9 +2650,9 @@ void dual_quasisplit_form_wrapper(expression_base::level l)
   if (l==expression_base::no_value)
     return;
 @)
-  inner_class_value G_check(*G,tags::DualTag());
+  auto dicp = std::make_shared<inner_class_value>(*G,tags::DualTag());
    // tailor make an |inner_class_value|
-  push_value(std::make_shared<real_form_value>(G_check,G->dual.quasisplit()));
+  push_value(std::make_shared<real_form_value>(dicp,G->dual.quasisplit()));
 }
 
 @*2 Synthetic real forms.
@@ -2721,7 +2719,7 @@ void synthetic_real_form_wrapper(expression_base::level l)
   TorusPart tp = realredgp::minimal_torus_part @|
    (G->val,rf,coch,std::move(tw),torus_factor->val);
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<real_form_value>(*G,rf,coch,tp));
+    push_value(std::make_shared<real_form_value>(G,rf,coch,tp));
 }
 
 @ The call to |minimal_torus_part| uses the involution table in order to be
@@ -2748,7 +2746,7 @@ void central_fiber_wrapper(expression_base::level l)
   if (l==expression_base::no_value)
     return;
 @)
-  auto cf = rf->parent.val.central_fiber(rf->val.realForm());
+  auto cf = rf->our_inner_class->val.central_fiber(rf->val.realForm());
   own_row result = std::make_shared<row_value>(cf.size());
   unsigned int i=0;
   for (auto it=cf.begin(); it!=cf.end(); ++it, ++i)
@@ -2760,7 +2758,7 @@ void initial_torus_bits_wrapper(expression_base::level l)
 { shared_real_form rf= get<real_form_value>();
   if (l!=expression_base::no_value)
     push_value(std::make_shared<vector_value> @|
-      (int_Vector(rf->parent.val.x0_torus_part(rf->val.realForm()))));
+      (int_Vector(rf->our_inner_class->val.x0_torus_part(rf->val.realForm()))));
 }
 
 
@@ -2813,11 +2811,11 @@ this inner class.
 
 @< Type definitions @>=
 struct Cartan_class_value : public value_base
-{ const inner_class_value parent;
+{ shared_inner_class our_inner_class;
   size_t number;
   const CartanClass& val;
 @)
-  Cartan_class_value(const inner_class_value& p,size_t cn);
+  Cartan_class_value(shared_inner_class icp,size_t cn);
   ~Cartan_class_value() @+{} // everything is handled by destructor of |parent|
 @)
   virtual void print(std::ostream& out) const;
@@ -2834,8 +2832,8 @@ therefore call that method in the initialiser; on return it provides a valid
 reference.
 
 @< Function def...@>=
-Cartan_class_value::Cartan_class_value(const inner_class_value& p,size_t cn)
-: parent(p),number(cn),val(p.val.cartan(cn))
+Cartan_class_value::Cartan_class_value(shared_inner_class icp,size_t cn)
+: our_inner_class(icp), number(cn),val(icp->val.cartan(cn))
 @+{}
 
 @ When printing a Cartan class, we show its number, and for how many real
@@ -2863,7 +2861,7 @@ void ic_Cartan_class_wrapper(expression_base::level l)
     +", this inner class only has "+str(ic->val.numCartanClasses())
     +" of them");
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<Cartan_class_value>(*ic,i));
+    push_value(std::make_shared<Cartan_class_value>(ic,i));
 }
 
 @ Alternatively (and this used to be the only way) one can provide a
@@ -2881,7 +2879,8 @@ void rf_Cartan_class_wrapper(expression_base::level l)
     +", this real form only has "+str(rf->val.numCartan())+" of them");
   BitMap cs=rf->val.Cartan_set();
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<Cartan_class_value>(rf->parent,cs.n_th(i)));
+    push_value(std::make_shared<Cartan_class_value> @|
+      (rf->our_inner_class,cs.n_th(i)));
 }
 
 @ Like the quasisplit real form for inner classes, there is a particular
@@ -2895,8 +2894,8 @@ real form, but we have a direct access to it via the |mostSplit| method for
 void most_split_Cartan_wrapper(expression_base::level l)
 { shared_real_form rf= get<real_form_value>();
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<Cartan_class_value>
-      (rf->parent,rf->val.mostSplit()));
+    push_value(std::make_shared<Cartan_class_value> @|
+      (rf->our_inner_class,rf->val.mostSplit()));
 }
 
 
@@ -2942,8 +2941,8 @@ void Cartan_info_wrapper(expression_base::level l)
   wrap_tuple<3>();
 
   const weyl::TwistedInvolution& tw =
-    cc->parent.val.involution_of_Cartan(cc->number);
-  WeylWord ww = cc->parent.val.weylGroup().word(tw);
+    cc->our_inner_class->val.involution_of_Cartan(cc->number);
+  WeylWord ww = cc->our_inner_class->val.weylGroup().word(tw);
 
   std::vector<int> v(ww.begin(),ww.end());
   push_value(std::make_shared<vector_value>(v));
@@ -2952,7 +2951,7 @@ void Cartan_info_wrapper(expression_base::level l)
   push_value(std::make_shared<int_value>(cc->val.fiber().fiberSize()));
   wrap_tuple<2>();
 
-  const RootSystem& rs=cc->parent.val.rootDatum();
+  const RootSystem& rs=cc->our_inner_class->val.rootDatum();
 
 @)// print types of imaginary and real root systems and of Complex factor
   push_value(std::make_shared<Lie_type_value> @|
@@ -2987,13 +2986,13 @@ void real_forms_of_Cartan_wrapper(expression_base::level l)
   if (l==expression_base::no_value)
     return;
 @)
-  const inner_class_value& ic=cc->parent;
+  shared_inner_class icp=cc->our_inner_class;
   own_row result = std::make_shared<row_value>(cc->val.numRealForms());
-  for (size_t i=0,k=0; i<ic.val.numRealForms(); ++i)
-  { RealFormNbr rf = ic.interface.in(i);
-    BitMap b(ic.val.Cartan_set(rf));
+  for (size_t i=0,k=0; i<icp->val.numRealForms(); ++i)
+  { RealFormNbr rf = icp->interface.in(i);
+    BitMap b(icp->val.Cartan_set(rf));
     if (b.isMember(cc->number))
-      result->val[k++] = std::make_shared<real_form_value>(ic,rf);
+      result->val[k++] = std::make_shared<real_form_value>(icp,rf);
   }
   push_value(std::move(result));
 }
@@ -3003,37 +3002,38 @@ void dual_real_forms_of_Cartan_wrapper(expression_base::level l)
   if (l==expression_base::no_value)
     return;
 @)
-  const inner_class_value dual_ic(cc->parent,tags::DualTag());
+  auto dicp =
+    std::make_shared<inner_class_value>(*cc->our_inner_class,tags::DualTag());
   own_row result = std::make_shared<row_value>(cc->val.numDualRealForms());
-  for (size_t i=0,k=0; i<dual_ic.val.numRealForms(); ++i)
-  { RealFormNbr drf = cc->parent.dual_interface.in(i);
-    BitMap b (cc->parent.val.dual_Cartan_set(drf));
+  for (size_t i=0,k=0; i<dicp->val.numRealForms(); ++i)
+  { RealFormNbr drf = cc->our_inner_class->dual_interface.in(i);
+    BitMap b (cc->our_inner_class->val.dual_Cartan_set(drf));
     if (b.isMember(cc->number))
-      result->val[k++] = std::make_shared<real_form_value>(dual_ic,drf);
+      result->val[k++] = std::make_shared<real_form_value>(dicp,drf);
   }
   push_value(std::move(result));
 }
 
 @ For the fiber group partition information that was not produced by
 |print_Cartan_info|, we use a Cartan class and a real form as parameters. This
-function returns the part of the |weakReal| partition stored in the fiber of
-the Cartan class that corresponds to the given (weak) real form. The numbering
-of the parts of that partition are not the numbering of the real forms
-themselves, so they must be translated through the |realFormLabels| list for
-the Cartan class, which must be obtained from its |parent| inner class. If the
-Cartan class does not exist for the given real form, then it will not occur in
-that |realFormLabels| list, and the part returned here will be empty. The part
-of the partition is returned as a list of integral values.
+function returns the part of the |weakReal| partition stored in the fiber of the
+Cartan class that corresponds to the given (weak) real form. The numbering of
+the parts of that partition are not the numbering of the real forms themselves,
+so they must be translated through the |realFormLabels| list for the Cartan
+class, which must be obtained from its inner class. If the Cartan class does not
+exist for the given real form, then it will not occur in that |realFormLabels|
+list, and the part returned here will be empty. The part of the partition is
+returned as a list of integral values.
 
 @< Local function def...@>=
 void fiber_partition_wrapper(expression_base::level l)
 { shared_real_form rf= get<real_form_value>();
   shared_Cartan_class cc(get<Cartan_class_value>());
-  if (&rf->parent.val!=&cc->parent.val)
+  if (&rf->our_inner_class->val!=&cc->our_inner_class->val)
     throw runtime_error
     ("Inner class mismatch between real form and Cartan class");
 @.Inner class mismatch...@>
-  BitMap b(cc->parent.val.Cartan_set(rf->val.realForm()));
+  BitMap b(cc->our_inner_class->val.Cartan_set(rf->val.realForm()));
   if (!b.isMember(cc->number))
     throw runtime_error
     ("Cartan class not defined for this real form");
@@ -3043,7 +3043,7 @@ void fiber_partition_wrapper(expression_base::level l)
 @)
   const Partition& pi = cc->val.fiber().weakReal();
   const RealFormNbrList rf_nr=
-     cc->parent.val.realFormLabels(cc->number);
+     cc->our_inner_class->val.realFormLabels(cc->number);
      // translate part number of |pi| to real form
   own_row result =
     std::make_shared<row_value>(0); // cannot predict exact size here
@@ -3059,8 +3059,8 @@ the square of any strong involution representing the real form.
 @< Local function def...@>=
 void square_classes_wrapper(expression_base::level l)
 { shared_Cartan_class cc(get<Cartan_class_value>());
-  const output::FormNumberMap rfi = cc->parent.interface;
-  const RealFormNbrList& rfl = cc->parent.val.realFormLabels(cc->number);
+  const output::FormNumberMap rfi = cc->our_inner_class->interface;
+  const RealFormNbrList& rfl = cc->our_inner_class->val.realFormLabels(cc->number);
   if (l==expression_base::no_value)
     return;
 @)
@@ -3091,18 +3091,18 @@ bits corresponding to the simple imaginary roots.
 void print_gradings_wrapper(expression_base::level l)
 { shared_real_form rf= get<real_form_value>();
 @/shared_Cartan_class cc(get<Cartan_class_value>());
-  if (&rf->parent.val!=&cc->parent.val)
+  if (&rf->our_inner_class->val!=&cc->our_inner_class->val)
     throw runtime_error
     ("Inner class mismatch between real form and Cartan class");
 @.Inner class mismatch...@>
-  BitMap b(cc->parent.val.Cartan_set(rf->val.realForm()));
+  BitMap b(cc->our_inner_class->val.Cartan_set(rf->val.realForm()));
   if (!b.isMember(cc->number))
     throw runtime_error ("Cartan class not defined for this real form");
 @.Cartan class not defined...@>
 @)
   const Partition& pi = cc->val.fiber().weakReal();
   const RealFormNbrList rf_nr=
-     cc->parent.val.realFormLabels(cc->number);
+     cc->our_inner_class->val.realFormLabels(cc->number);
      // translate part number of |pi| to real form
 @)
   const RootNbrList& si = cc->val.fiber().simpleImaginary();
@@ -3125,7 +3125,7 @@ void print_gradings_wrapper(expression_base::level l)
 functions from \.{dynkin.cpp}.
 
 @< Compute the Cartan matrix |cm|... @>=
-{ cm=cc->parent.val.rootDatum().cartanMatrix(si);
+{ cm=cc->our_inner_class->val.rootDatum().cartanMatrix(si);
   dynkin::DynkinDiagram d(cm); sigma = dynkin::bourbaki(d);
 }
 
@@ -3274,8 +3274,8 @@ void KGB_Cartan_wrapper(expression_base::level l)
 { shared_KGB_elt x = get<KGB_elt_value>();
   const KGB& kgb=x->rf->kgb();
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<Cartan_class_value>
-      (x->rf->parent,kgb.Cartan_class(x->val)));
+    push_value(std::make_shared<Cartan_class_value> @|
+      (x->rf->our_inner_class,kgb.Cartan_class(x->val)));
 }
 
 void KGB_involution_wrapper(expression_base::level l)
@@ -3418,7 +3418,7 @@ void build_KGB_element_wrapper(expression_base::level l)
 @.Torus factor not in cocharacter...@>
   }
 
-  const InnerClass& G = rf->parent.val;
+  const InnerClass& G = rf->our_inner_class->val;
   TitsElt a
    (G.titsGroup(),TorusPart(num),twisted_from_involution(G,theta->val));
 
@@ -3457,7 +3457,7 @@ void test_compatible (const InnerClass& ic, shared_matrix& delta)
 void KGB_outer_twist_wrapper(expression_base::level l)
 { auto delta = get<matrix_value>();
   own_KGB_elt x = get_own<KGB_elt_value>();
-  test_compatible(x->rf->parent.val,delta);
+  test_compatible(x->rf->our_inner_class->val,delta);
   if (l==expression_base::no_value)
     return;
 @)
@@ -3552,12 +3552,12 @@ to them.
 #include "blocks.h"
 #include "kl.h"
 
-@ Like other data types we have seen, we include shared pointers to
-parent objects to ensure these remain in existence as long as our block does;
-in fact we include two such shared pointers, one for each real form. The |val|
-field contains an actual |Block| instance, which is constructed van the
-|Block_Value| is. We also reserve a field in the structure to store KL
-polynomials, though they will only be computed once they are asked for.
+@ Like other data types we have seen, we include shared pointers to parent
+objects to ensure these remain in existence as long as our block does; in fact
+we include two such shared pointers, one for each real form. The |val| field
+contains an actual |Block| instance, which is constructed van the |Block_Value|
+is. We also reserve a field in the structure to store KL polynomials, though
+they will only be computed once they are asked for.
 
 @< Type definitions @>=
 struct Block_value : public value_base
@@ -3613,11 +3613,11 @@ void Fokko_block_wrapper(expression_base::level l)
 { own_real_form drf=non_const_get<real_form_value>();
   own_real_form rf=non_const_get<real_form_value>();
 @)
-  if (&rf->parent.dual!=&drf->parent.val)
+  if (&rf->our_inner_class->dual!=&drf->our_inner_class->val)
     throw runtime_error @|
     ("Inner class mismatch between real form and dual real form");
 @.Inner class mismatch...@>
-  BitMap b(rf->parent.val.dual_Cartan_set(drf->val.realForm()));
+  BitMap b(rf->our_inner_class->val.dual_Cartan_set(drf->val.realForm()));
   if (not b.isMember(rf->val.mostSplit()))
     throw runtime_error @|
     ("Real form and dual real form are incompatible");
@@ -3665,9 +3665,10 @@ void block_element_wrapper(expression_base::level l)
     return;
 @)
   push_value(std::make_shared<KGB_elt_value>(b->rf,b->val.x(z)));
-  inner_class_value dual_ic(b->rf->parent,tags::DualTag());
+  auto dicp =
+    std::make_shared<inner_class_value>(*b->rf->our_inner_class,tags::DualTag());
   own_real_form drf =
-    std::make_shared<real_form_value>(dual_ic,b->dual_rf->val.realForm());
+    std::make_shared<real_form_value>(dicp,b->dual_rf->val.realForm());
   push_value(std::make_shared<KGB_elt_value>(drf,b->val.y(z)));
   if (l==expression_base::single_value)
     wrap_tuple<2>();
@@ -3687,9 +3688,9 @@ void block_index_wrapper(expression_base::level l)
 { shared_KGB_elt y = get<KGB_elt_value>();
   shared_KGB_elt x = get<KGB_elt_value>();
   shared_Block b = get<Block_value>();
-  if (&b->rf->parent.val!=&x->rf->parent.val)
+  if (&b->rf->our_inner_class->val!=&x->rf->our_inner_class->val)
     throw runtime_error ("Real form not in inner class of block");
-  if (&b->rf->parent.val!=&y->rf->parent.dual)
+  if (&b->rf->our_inner_class->val!=&y->rf->our_inner_class->dual)
     throw runtime_error ("Dual real form not in inner class of block");
   const KGB& kgb = b->rf->kgb(); const KGB& dual_kgb = b->dual_rf->kgb();
   const TwistedWeylGroup& tw = kgb.twistedWeylGroup();
@@ -6009,11 +6010,11 @@ void print_realweyl_wrapper(expression_base::level l)
 { shared_Cartan_class cc(get<Cartan_class_value>());
   own_real_form rf= non_const_get<real_form_value>();
 @)
-  if (&rf->parent.val!=&cc->parent.val)
+  if (&rf->our_inner_class->val!=&cc->our_inner_class->val)
     throw runtime_error @|
     ("Inner class mismatch between arguments");
 @.Inner class mismatch...@>
-  BitMap b(rf->parent.val.Cartan_set(rf->val.realForm()));
+  BitMap b(rf->our_inner_class->val.Cartan_set(rf->val.realForm()));
   if (not b.isMember(cc->number))
     throw runtime_error @|
     ("Cartan class not defined for real form");
@@ -6030,7 +6031,8 @@ void print_strongreal_wrapper(expression_base::level l)
 { shared_Cartan_class cc(get<Cartan_class_value>());
 @)
  output::printStrongReal
-    (*output_stream,cc->parent.val,cc->parent.interface,cc->number);
+    (*output_stream,
+     cc->our_inner_class->val,cc->our_inner_class->interface,cc->number);
 @)
   if (l==expression_base::single_value)
     wrap_tuple<0>();
