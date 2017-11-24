@@ -1893,6 +1893,9 @@ mechanism will then ensure that |val| remains valid while the object of that
 containing class exists.
 
 @< Type definitions @>=
+struct inner_class_value;
+typedef std::shared_ptr<const inner_class_value> shared_inner_class;
+@)
 struct inner_class_value : public value_base
 { InnerClass& val;
   InnerClass& dual;
@@ -1905,7 +1908,7 @@ struct inner_class_value : public value_base
 @)
   inner_class_value(std::unique_ptr<InnerClass> G, const lietype::Layout& lo);
   // main
-static inner_class_value build
+static shared_inner_class build
   (shared_root_datum srd, WeightInvolution& tau, WeylWord* wp=nullptr);
   // to share
   ~inner_class_value();
@@ -1917,8 +1920,6 @@ static inner_class_value build
   inner_class_value(const inner_class_value& v,tags::DualTag);
    // constructor of dual
 };
-@)
-typedef std::shared_ptr<const inner_class_value> shared_inner_class;
 
 @ Here are the copy constructor and the destructor.
 @< Function def...@>=
@@ -1992,7 +1993,7 @@ store shared pointed to the root data it depends on in the associated
 |inner_class_value|.
 
 @< Function def...@>=
-inner_class_value inner_class_value::build
+shared_inner_class inner_class_value::build
   (shared_root_datum srd, WeightInvolution& tau, WeylWord* wp)
 { shared_root_datum drd=srd->dual();
   const auto& rd=srd->val;
@@ -2003,10 +2004,11 @@ inner_class_value inner_class_value::build
   check_involution(tau,rd,*wp,&lo); // may also modify |tau|, and sets |lo|
   std::unique_ptr<InnerClass> p @| (new InnerClass(rd,drd->val,tau));
     // depends on |srd| and |drd|
-  inner_class_value result(std::move(p),lo); // use main constructor here
-  result.datum=std::move(srd);
-  result.dual_datum=std::move(drd); // set dependencies
-  return result; // return modified instance of |inner_class_value|
+  auto result = std::make_shared<inner_class_value>(std::move(p),lo);
+    // uses main constructor
+  result->datum=std::move(srd);
+  result->dual_datum=std::move(drd); // set dependencies
+  return result; // return pointer to modified instance of |inner_class_value|
 }
 
 @ One of the most practical informations about an |InnerClass|,
@@ -2043,8 +2045,7 @@ void fix_involution_wrapper(expression_base::level l)
   shared_root_datum rd = get<root_datum_value>();
   auto ic_value = inner_class_value::build(rd,M); // build and check
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<inner_class_value>(ic_value));
-    // light weight copy
+    push_value(ic_value);
 }
 
 @ Another wrapper |twisted_involution_wrapper| is similar, but also returns a
@@ -2060,8 +2061,7 @@ void twisted_involution_wrapper(expression_base::level l)
   if (l==expression_base::no_value)
     return;
 @)
- push_value(std::make_shared<inner_class_value>(ic_value));
-  // light weight copy |ic_value|
+  push_value(ic_value);
   push_value(std::make_shared<vector_value>
     (std::vector<int>(ww.begin(),ww.end())));
   if (l==expression_base::single_value)
