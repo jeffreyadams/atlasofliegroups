@@ -1856,20 +1856,25 @@ necessary renumbering and naming of real form numbers.
 @< Includes... @>=
 #include "output.h"
 
-@~The class |inner_class_value| will be the first Atlas type where we deviate
-from the previously used scheme of holding an Atlas library object with the main
-value in a data member |val|. The reason is that the copy constructor for
-|InnerClass| is deleted, so that the straightforward definition of a copy
-constructor for such an Atlas type would not work. So instead, we shall share
-the library object when duplicating our value, and maintain a reference count to
-allow destruction when the last copy disappears.
+@~The class |inner_class_value| was the first Atlas type where we deviated from
+the previously used scheme of holding an Atlas library object with the main
+value in a data member |val|; instead we use a reference here. The reason is
+that the copy constructor for |InnerClass| is deleted, so that the default
+definition of a copy constructor for such an Atlas type would not work if we
+stored an |InnerClass|. In fact we have made the copy constructor for
+|inner_class_value| unnecessary altogether, and deleted it altogether, but this
+was done long after the introduction of |inner_class_value|.
 
-The reference count needs to be shared of course, and since the links between
-the |inner_class_value| and both the library value and the reference count
-are indissoluble, we use references for the members |val|, |dual| and
-|ref_count|. The first two references are not |const|, since some methods will
-as a side effect generate |CartanClass| objects in the inner class, whence
-they are technically manipulators rather than accessors.
+We in fact store two references, one for the inner class itself, and one for its
+dual, so that we can construct the dual |inner_class_value| simply by switching
+the two fields. Thus multiple |inner_class_value| objects can be created which
+share the same references, so we implement a separate reference counting scheme
+despite the fact that we mainly handle |shared_inner_class| smart pointers that
+also implement a reference counting scheme (this is not very elegant, and will
+be fixed in the future). An important property that our approach is set up to
+ensure is that we can compare identity of inner class values by comparing
+pointers to their stored |InnerClass|, and that the dual of the dual so tests
+equal to the original inner class value.
 
 The main constructor takes a unique-pointer to an |InnerClass| as
 argument, as a reminder that the caller gives up ownership of this pointer
@@ -1878,19 +1883,6 @@ by the |inner_class_value| constructed, in shared ownership with any values
 later copied from it: the last one of them to be destroyed will call |delete|
 for the pointer. The remaining argument is a |Layout| that must have been
 computed by |check_involution| above, in order to ensure its validity.
-
-Occasionally we shall need to refer to the dual inner class (for the dual
-group); since the construction of an instance takes some work, we do not wish
-to repeat that every time the dual is needed, so we create the dual
-|InnerClass| value upon construction of the
-|inner_class_value| and store it in the |dual| field where it will be
-available as needed.
-
-Unlike for other value types, the copy constructor is public here. Thus a
-class depending on our |val| being valid can simply store a copy of our
-|inner_class_value|; this does not cost much, and the reference counting
-mechanism will then ensure that |val| remains valid while the object of that
-containing class exists.
 
 @< Type definitions @>=
 struct inner_class_value;
@@ -1915,20 +1907,16 @@ static shared_inner_class build
 @)
   virtual void print(std::ostream& out) const;
   static const char* name() @+{@; return "inner class"; }
-  inner_class_value(const inner_class_value& v); // copy constructor
+  inner_class_value @[(const inner_class_value& ) = delete@];
 @)
   inner_class_value(const inner_class_value& v,tags::DualTag);
    // constructor of dual
 };
 
-@ Here are the copy constructor and the destructor.
+@ Here is the destructor, which deletes components only when |ref_count| becomes
+zero.
+
 @< Function def...@>=
-inner_class_value::inner_class_value(const inner_class_value& v)
-: val(v.val), dual(v.dual), ref_count(v.ref_count)
-@/, datum(v.datum), dual_datum(v.dual_datum) // possibly double up sharing
-@/, rd_type(v.rd_type), ic_type(v.ic_type)
-, interface(v.interface), dual_interface(v.dual_interface)
-{@; ++ref_count; }
 
 inner_class_value::~inner_class_value()
 {@; if (--ref_count==0) {@; delete &val; delete &dual; delete &ref_count;} }
@@ -1967,13 +1955,13 @@ inner_class_value::inner_class_value
 , interface(*g,lo), dual_interface(*g,lo,tags::DualTag())
  {@; g.release(); } // now that we own |g|, release the unique-pointer
 
-@ We allow construction of a dual |inner_class_value|. Since it can share the
-two fields referring to objects of type |InnerClass|
-in the opposite order, we can consider it as a member of the same reference
-counted family, and share the |ref_count| field. This means this constructor
-is more like the copy constructor than like the main constructor, and in
-particular the reference count is increased. The dual of the dual inner class
-value will behave exactly like a copy of the original inner class.
+@ Here is how we construct the dual |inner_class_value| to a given one, swapping
+the |val| and |dual| fields. This increases the |ref_count| for those references
+(indeed this is currently the only way in which |ref_count| can be increased).
+This means this constructor is more like the copy constructor than like the main
+constructor. The dual of the dual inner class value will behave exactly like a
+copy of the original inner class, although they are distinct |inner_class_value|
+objects.
 
 @< Function def...@>=
 inner_class_value::inner_class_value(const inner_class_value& v,tags::DualTag)
