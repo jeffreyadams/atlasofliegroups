@@ -889,44 +889,72 @@ value derived from |value_base|. However, we want to make sure that identical
 root data always end up using the \emph{same} |root_datum_value|; this is partly
 to avoid wasting storage, but more importantly to be able to also easily
 identify identical inner classes and other values based on them. In order to
-achieve this, we include static variables with a hash table for all bare root
-data seen, and a vector of pointers to corresponding root data values. The test
-for existing identical root data should be made prior to calling the
-|root_datum_value| constructor, and we cannot duplicate such a value. A static
-method |build| takes care of creating a |root_datum_value| from a
-|PreRootDatum|; it will either locate an existing one and return a shared
-pointer, or create one using |std::make_shared| and the provided constructor. To
-ensure that testing for duplicates always takes place, we want to ensure that
-clients cannot call the constructor directly. But we cannot make it private,
-because it will be called from |std::make_shared|; instead we give it an
-additional argument of a local type |token| that only methods of our class (like
-|build|) are able to provide. The |val| member is public, but |const|.
+achieve this, we include two kinds of special members in |root_datum_value|,
+namely |static| ones to provide a look-up table for existing root data, and a
+non-|static| member to provide a look-up table for inner classes currently built
+upon this |root_datum_value|. In both cases we want to return a copy of an
+existing shared pointer instead of creating a new one when this is possible, and
+for this purpose we shall store weak pointers: storing a shared pointer would
+effectively prevent the objects from ever being reclaimed even if nowhere else
+any references remain, and from a raw pointer to the object pointed to by a
+shared pointer no copy of the shared pointer can be obtained. Weak pointers are
+exactly the right thing for the job here.
 
 @< Type definitions @>=
 class root_datum_value;
 typedef std::shared_ptr<const root_datum_value> shared_root_datum;
-@)
+typedef std::weak_ptr<const root_datum_value> root_datum_weak_ptr;
+class inner_class_value;
+typedef std::shared_ptr<const inner_class_value> shared_inner_class;
+typedef std::weak_ptr<const inner_class_value> inner_class_weak_ptr;
+
+@ Root data are immutable mathematical values, so the |val| member of
+|root_datum_value| is public, but |const|. The copy constructor is deleted, and
+we want all root data construction to take place through the |static| method
+|build| that will try look-up first. In case nothing is found, it will need to
+call a constructor, so we provide one that takes a |PreRootDatum| as ingredient.
+The actual construction is done in the context of |std::make_shared|, not
+directly by |build|, so the constructor needs to be public; however to ensure
+that clients cannot circumvent |build|, we make the constructor require a
+|token| that only methods of our class can supply.
+
+The root datum look-up tables are in the |static| variables |pool|, |hash| and
+|store|. Since few inner classes usually exist for a given root datum, we use a
+simple linked list |classes| to record them, with the corresponding
+distinguished involution.
+
+@s mutable const
+
+@< Type definitions @>=
 class root_datum_value : public value_base
 { struct token@+{}; // type passed to prove caller has private access;
+  static root_datum_entry::Pooltype pool;
+  static HashTable<root_datum_entry,unsigned short> hash;
+  static std::vector<root_datum_weak_ptr> store;
+  mutable containers::simple_list @|
+    <std::pair<const WeightInvolution,inner_class_weak_ptr> > classes;
 public:
   const RootDatum val;
-  static HashTable<root_datum_entry,unsigned short> hash;
-  static std::vector<std::weak_ptr<const root_datum_value> > store;
 @)
   root_datum_value(const PreRootDatum& v,token) : val(v) @+ {}
   static shared_root_datum build(PreRootDatum&& pre);
-  shared_root_datum dual() const; // get dual datum through |build|
   virtual void print(std::ostream& out) const;
   static const char* name() @+{@; return "root datum"; }
   root_datum_value @[(const root_datum_value& ) = delete@];
+@)
+  shared_root_datum dual() const; // get dual datum through |build|
+  inner_class_weak_ptr& lookup (const WeightInvolution& delta) const;
+    // find or create empty
 };
 
-@ We need to define the static members declared in the class definition.
+@ We need to define the static members declared in the class definition. The
+|pool| serves as backing storage for |hash| as usual, and will not be addressed
+directly; |store| starts out empty.
 
 @< Global variable definitions @>=
-root_datum_entry::Pooltype root_data_pool;
-HashTable<root_datum_entry,unsigned short> root_datum_value::hash
-  (root_data_pool);
+root_datum_entry::Pooltype root_datum_value::pool;
+HashTable<root_datum_entry,unsigned short> @| root_datum_value::hash
+  (root_datum_value::pool);
 std::vector<std::weak_ptr<const root_datum_value> > root_datum_value::store;
 
 @ We have a simple hash function that uses all information in a |PreRootDatum|.
@@ -977,6 +1005,26 @@ shared_root_datum root_datum_value::build(PreRootDatum&& pre)
 @)
 shared_root_datum root_datum_value::dual() const
 {@; PreRootDatum pre(val); pre.dualise(); return build(std::move(pre)); }
+
+@ When looking up to see whether an inner class is already known for a given
+involution, we use linear search along the linked list. We return a reference to
+a weak pointer that was either found on the list or added to it (the result of
+applying the |lock| method will tell which case applies, though an expired weak
+pointer will behave like a freshly created one, and this is desired); because of
+the latter possibility the |classes| field is marked |mutable|, and so |it|
+below is a non-|const| iterator.
+
+@< Function definitions @>=
+inner_class_weak_ptr& root_datum_value::lookup(const WeightInvolution& delta)
+  const
+{ auto it = classes.begin();
+  while (not classes.at_end(it))
+    if (it->first==delta)
+      return it->second;
+    else ++it;
+  classes.insert(it,std::make_pair(delta,inner_class_weak_ptr()));
+  return it->second;
+}
 
 @*2 Printing root data.
 %
@@ -1885,7 +1933,6 @@ for the pointer. The remaining argument is a |Layout| that must have been
 computed by |check_involution| above, in order to ensure its validity.
 
 @< Type definitions @>=
-struct inner_class_value;
 typedef std::shared_ptr<const inner_class_value> shared_inner_class;
 @)
 struct inner_class_value : public value_base
@@ -1911,6 +1958,7 @@ static shared_inner_class build
 @)
   inner_class_value(const inner_class_value& v,tags::DualTag);
    // constructor of dual
+  shared_inner_class dualf () const;
 };
 
 @ Here is the destructor, which deletes components only when |ref_count| becomes
@@ -1973,6 +2021,12 @@ inner_class_value::inner_class_value(const inner_class_value& v,tags::DualTag)
 , interface(v.dual_interface), dual_interface(v.interface)
 {@; ++ref_count; }
 
+shared_inner_class inner_class_value::dualf () const
+{ auto delta_for_dual =
+    val.dualDistinguished(); // we need a non-|const| reference
+  return inner_class_value::build(dual_datum,delta_for_dual);
+}
+
 @ We often want an |inner_class_value| to use an |InnerClass| that refers to
 rather than stores a root datum and its dual, if those can be found in an
 existing |root_datum_value| and its dual. To that end we provide a
@@ -1990,12 +2044,17 @@ shared_inner_class inner_class_value::build
   if (wp==nullptr)
     wp=&ww; // use |ww| as dummy output unless |p| points somewhere
   check_involution(tau,rd,*wp,&lo); // may also modify |tau|, and sets |lo|
+@)
+  auto& w_ptr = srd->lookup(tau);
+  if (auto p = w_ptr.lock())
+    return p; // reuse existing inner class, if found in |srd|
   std::unique_ptr<InnerClass> p @| (new InnerClass(rd,drd->val,tau));
     // depends on |srd| and |drd|
   auto result = std::make_shared<inner_class_value>(std::move(p),lo);
-    // uses main constructor
+    // call main constructor
   result->datum=std::move(srd);
   result->dual_datum=std::move(drd); // set dependencies
+  w_ptr = result; // store a weak pointer version inside |srd| table
   return result; // return pointer to modified instance of |inner_class_value|
 }
 
@@ -2123,6 +2182,14 @@ void inner_class_neq_wrapper(expression_base::level l)
     push_value(whether(&G->val!=&H->val));
 }
 @)
+void inner_class_identical_wrapper(expression_base::level l)
+{ shared_inner_class G = get<inner_class_value>();
+  shared_inner_class H = get<inner_class_value>();
+  if (l!=expression_base::no_value)
+    push_value(whether(G.get()==H.get())); // test identical objects
+}
+
+@)
 void distinguished_involution_wrapper(expression_base::level l)
 { shared_inner_class G = get<inner_class_value>();
   if (l!=expression_base::no_value)
@@ -2137,11 +2204,11 @@ void root_datum_of_inner_class_wrapper(expression_base::level l)
 @)
 void inner_class_to_root_datum_coercion()
 {@; root_datum_of_inner_class_wrapper(expression_base::single_value); }
-
+@)
 void dual_inner_class_wrapper(expression_base::level l)
 { shared_inner_class G = get<inner_class_value>();
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<inner_class_value>(*G,tags::DualTag()));
+    push_value(G->dualf());
 }
 
 @ More interestingly, let us extract the list of names of the real forms.
@@ -2195,13 +2262,13 @@ void n_Cartan_classes_wrapper(expression_base::level l)
 
 @ And now, our first function that really simulates something that can be done
 with \.{Fokko} using more than just a root datum. This is the \.{blocksizes}
-command from \.{mainmode.cpp}, which uses |innerclass_io::printBlockSizes|, but
-we have to rewrite it to avoid calling an output routine. A subtle difference is
-that we use a matrix of integers rather than of |arithmetic::big_int| values to
-collect the block sizes; this avoids having to define a new primitive type, and
-probably suffices for the cases where actual computation of the block feasible.
-However, we also provide a function the computes a single block size as an
-unbounded integer.
+command from \.{mainmode.cpp}; that commands uses the function
+|innerclass_io::printBlockSizes|, but we have to rewrite it to avoid calling an
+output routine. A subtle difference is that we use a matrix of integers rather
+than of |arithmetic::big_int| values to collect the block sizes; this avoids
+having to define a new primitive type, and probably suffices for the cases where
+actual computation of the block feasible. However, we also provide a function
+the computes a single block size as an unbounded integer.
 
 @< Local function def...@>=
 void block_sizes_wrapper(expression_base::level l)
@@ -2288,6 +2355,8 @@ install_function(inner_class_from_type_wrapper,@|"inner_class"
                 ,"(LieType,[ratvec],string->InnerClass)");
 install_function(inner_class_eq_wrapper,@|"=","(InnerClass,InnerClass->bool)");
 install_function(inner_class_neq_wrapper,@|"!=","(InnerClass,InnerClass->bool)");
+install_function(inner_class_identical_wrapper,@|
+   "identical","(InnerClass,InnerClass->bool)");
 install_function(distinguished_involution_wrapper,@|"distinguished_involution"
                 ,"(InnerClass->mat)");
 install_function(root_datum_of_inner_class_wrapper,@|"root_datum"
@@ -2627,10 +2696,8 @@ void dual_real_form_wrapper(expression_base::level l)
   if (l==expression_base::no_value)
     return;
 @)
-  auto dicp = std::make_shared<inner_class_value>(*G,tags::DualTag());
-   // tailor make an |inner_class_value|
   push_value(std::make_shared<real_form_value>@|
-    (dicp,G->dual_interface.in(i)));
+    (G->dualf(),G->dual_interface.in(i)));
 }
 @)
 void dual_quasisplit_form_wrapper(expression_base::level l)
@@ -2638,9 +2705,7 @@ void dual_quasisplit_form_wrapper(expression_base::level l)
   if (l==expression_base::no_value)
     return;
 @)
-  auto dicp = std::make_shared<inner_class_value>(*G,tags::DualTag());
-   // tailor make an |inner_class_value|
-  push_value(std::make_shared<real_form_value>(dicp,G->dual.quasisplit()));
+  push_value(std::make_shared<real_form_value>(G->dualf(),G->dual.quasisplit()));
 }
 
 @*2 Synthetic real forms.
@@ -2990,14 +3055,13 @@ void dual_real_forms_of_Cartan_wrapper(expression_base::level l)
   if (l==expression_base::no_value)
     return;
 @)
-  auto dicp =
-    std::make_shared<inner_class_value>(*cc->our_inner_class,tags::DualTag());
+  auto dual_ic = cc->our_inner_class->dualf();
   own_row result = std::make_shared<row_value>(cc->val.numDualRealForms());
-  for (size_t i=0,k=0; i<dicp->val.numRealForms(); ++i)
+  for (size_t i=0,k=0; i<dual_ic->val.numRealForms(); ++i)
   { RealFormNbr drf = cc->our_inner_class->dual_interface.in(i);
     BitMap b (cc->our_inner_class->val.dual_Cartan_set(drf));
     if (b.isMember(cc->number))
-      result->val[k++] = std::make_shared<real_form_value>(dicp,drf);
+      result->val[k++] = std::make_shared<real_form_value>(dual_ic,drf);
   }
   push_value(std::move(result));
 }
@@ -3653,10 +3717,9 @@ void block_element_wrapper(expression_base::level l)
     return;
 @)
   push_value(std::make_shared<KGB_elt_value>(b->rf,b->val.x(z)));
-  auto dicp =
-    std::make_shared<inner_class_value>(*b->rf->our_inner_class,tags::DualTag());
+  auto dic = b->rf->our_inner_class->dualf();
   own_real_form drf =
-    std::make_shared<real_form_value>(dicp,b->dual_rf->val.realForm());
+    std::make_shared<real_form_value>(dic,b->dual_rf->val.realForm());
   push_value(std::make_shared<KGB_elt_value>(drf,b->val.y(z)));
   if (l==expression_base::single_value)
     wrap_tuple<2>();
