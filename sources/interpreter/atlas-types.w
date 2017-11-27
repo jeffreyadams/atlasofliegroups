@@ -1913,16 +1913,11 @@ stored an |InnerClass|. In fact we have made the copy constructor for
 |inner_class_value| unnecessary altogether, and deleted it altogether, but this
 was done long after the introduction of |inner_class_value|.
 
-We in fact store two references, one for the inner class itself, and one for its
-dual, so that we can construct the dual |inner_class_value| simply by switching
-the two fields. Thus multiple |inner_class_value| objects can be created which
-share the same references, so we implement a separate reference counting scheme
-despite the fact that we mainly handle |shared_inner_class| smart pointers that
-also implement a reference counting scheme (this is not very elegant, and will
-be fixed in the future). An important property that our approach is set up to
-ensure is that we can compare identity of inner class values by comparing
-pointers to their stored |InnerClass|, and that the dual of the dual so tests
-equal to the original inner class value.
+An important property that our approach is set up to ensure is that we can
+compare identity of inner class values by comparing their addresses (seeing if
+they are the same object internally), since we ensure there cannot coexist two
+identical copies of an inner class (similarly to what we did for root data, and
+with an implementation depending on that).
 
 The main constructor takes a unique-pointer to an |InnerClass| as
 argument, as a reminder that the caller gives up ownership of this pointer
@@ -1937,12 +1932,10 @@ typedef std::shared_ptr<const inner_class_value> shared_inner_class;
 @)
 struct inner_class_value : public value_base
 { InnerClass& val;
-  InnerClass& dual;
-  size_t& ref_count;
   shared_root_datum datum, dual_datum; // share if we depend on them
 @)
   lietype::LieType rd_type;
-  lietype::InnerClassType ic_type;
+@+lietype::InnerClassType ic_type; // types used for printing only
   const output::FormNumberMap interface,dual_interface;
 @)
   inner_class_value(std::unique_ptr<InnerClass> G, const lietype::Layout& lo);
@@ -1956,76 +1949,36 @@ static shared_inner_class build
   static const char* name() @+{@; return "inner class"; }
   inner_class_value @[(const inner_class_value& ) = delete@];
 @)
-  inner_class_value(const inner_class_value& v,tags::DualTag);
-   // constructor of dual
-  shared_inner_class dualf () const;
+  shared_inner_class dual () const;
 };
 
-@ Here is the destructor, which deletes components only when |ref_count| becomes
-zero.
+@ Here is the destructor, which delete the |InnerClass| component we stored.
 
 @< Function def...@>=
 
-inner_class_value::~inner_class_value()
-{@; if (--ref_count==0) {@; delete &val; delete &dual; delete &ref_count;} }
+inner_class_value::~inner_class_value() @+{@; delete &val; }
 
-@ The main constructor installs the reference to the Atlas value, creates its
-dual value to which a reference is stored, and allocates and initialises the
-reference count. The |Layout| argument is stored for convenience, and is used
-to initialise the |interface| and |dual_interface| fields.
+@ The main constructor installs the reference to the Atlas value used to be
+complicated by the storage of a dual |InnerClass| field and a reference count
+(mainly to ensure the double dual of an inner class would test equal to it), but
+that has been made unnecessary and the constructor is quite simple. The |Layout|
+argument is stored for convenience, and is used to initialise the |interface|
+and |dual_interface| fields.
 
-The current constructor has the defect that the reference to which the |dual|
-field is initialised will not be freed if an exception should be thrown during
-the subsequent initialisations (which is not likely, but not impossible
-either). However, we see no means to correct this defect with the given
-structure, since a member of reference type has to be initialised to its
-definitive value, and no local variables are available during initialisation
-to which we could give temporary ownership of that reference. Even if we
-wrapped a function-try-block around the entire constructor, it would not be
-allowed to access |dual| to free it, nor could it know whether |dual| had been
-successfully initialised. In fact the same problem exists for |ref_count| (if
-construction of either of the interfaces should throw, the reference count
-variable itself will remain dangling), which means the problem cannot be
-solved either by reordering the data members (and therefore their
-initialisations). For |val| the problem does not arise because it is owned by
-a smart pointer until the construction succeeds.
+There is a small subtlety, in that we have |val| as an owned reference field,
+which is initialised from a |std::unique_ptr|; just in case one of the later
+member initialisations would throw an exception, we postpone releasing the
+unique pointer until completion of our constructor.
 
 @< Function def...@>=
 inner_class_value::inner_class_value
-  (std::unique_ptr<InnerClass> g,
-   const lietype::Layout& lo)
+  (std::unique_ptr<InnerClass> g, const lietype::Layout& lo)
 @/: val(*g)
-, dual(*new InnerClass(*g,tags::DualTag()))
-@/, ref_count(*new size_t(1))
 @/, datum(nullptr), dual_datum(nullptr)
-    // we use independent |InnerClass| objects
+    // our |InnerClass| is by default not dependent on existing root data
 @/, rd_type(lo.d_type), ic_type(lo.d_inner)
 , interface(*g,lo), dual_interface(*g,lo,tags::DualTag())
- {@; g.release(); } // now that we own |g|, release the unique-pointer
-
-@ Here is how we construct the dual |inner_class_value| to a given one, swapping
-the |val| and |dual| fields. This increases the |ref_count| for those references
-(indeed this is currently the only way in which |ref_count| can be increased).
-This means this constructor is more like the copy constructor than like the main
-constructor. The dual of the dual inner class value will behave exactly like a
-copy of the original inner class, although they are distinct |inner_class_value|
-objects.
-
-@< Function def...@>=
-inner_class_value::inner_class_value(const inner_class_value& v,tags::DualTag)
-@/: val(v.dual), dual(v.val)
-, ref_count(v.ref_count)
-@/, datum(v.dual_datum), dual_datum(v.datum) // possibly double up sharing
-@/, rd_type(lietype::dual_type(v.rd_type))
-, ic_type(lietype::dual_type(v.ic_type,rd_type))
-, interface(v.dual_interface), dual_interface(v.interface)
-{@; ++ref_count; }
-
-shared_inner_class inner_class_value::dualf () const
-{ auto delta_for_dual =
-    val.dualDistinguished(); // we need a non-|const| reference
-  return inner_class_value::build(dual_datum,delta_for_dual);
-}
+{@; g.release(); } // now that we own |val|, release the unique-pointer to it
 
 @ We often want an |inner_class_value| to use an |InnerClass| that refers to
 rather than stores a root datum and its dual, if those can be found in an
@@ -2056,6 +2009,21 @@ shared_inner_class inner_class_value::build
   result->dual_datum=std::move(drd); // set dependencies
   w_ptr = result; // store a weak pointer version inside |srd| table
   return result; // return pointer to modified instance of |inner_class_value|
+}
+
+@ Constructing a dual |inner_class_value| to a given one, is fairly easy, since
+|build| will do the necessary to ensure identification of isomorphic inner
+classes, notably of the double dual with the inner class itself. The only
+subtlety here is that |build| will potentially modify its involution argument
+to make it distinguished (though it will not actually here), whence we cannot
+pass the constant reference |val.dualDistinguished()| directly here, but need to
+store it in a local variable.
+
+@< Function def...@>=
+shared_inner_class inner_class_value::dual () const
+{ auto delta_for_dual =
+    val.dualDistinguished(); // we need a non-|const| reference
+  return inner_class_value::build(dual_datum,delta_for_dual);
 }
 
 @ One of the most practical informations about an |InnerClass|,
@@ -2208,7 +2176,7 @@ void inner_class_to_root_datum_coercion()
 void dual_inner_class_wrapper(expression_base::level l)
 { shared_inner_class G = get<inner_class_value>();
   if (l!=expression_base::no_value)
-    push_value(G->dualf());
+    push_value(G->dual());
 }
 
 @ More interestingly, let us extract the list of names of the real forms.
@@ -2697,7 +2665,7 @@ void dual_real_form_wrapper(expression_base::level l)
     return;
 @)
   push_value(std::make_shared<real_form_value>@|
-    (G->dualf(),G->dual_interface.in(i)));
+    (G->dual(),G->dual_interface.in(i)));
 }
 @)
 void dual_quasisplit_form_wrapper(expression_base::level l)
@@ -2705,7 +2673,9 @@ void dual_quasisplit_form_wrapper(expression_base::level l)
   if (l==expression_base::no_value)
     return;
 @)
-  push_value(std::make_shared<real_form_value>(G->dualf(),G->dual.quasisplit()));
+  auto dual_ic=G->dual();
+  push_value(std::make_shared<real_form_value> @|
+    (dual_ic,dual_ic->val.quasisplit()));
 }
 
 @*2 Synthetic real forms.
@@ -3055,7 +3025,7 @@ void dual_real_forms_of_Cartan_wrapper(expression_base::level l)
   if (l==expression_base::no_value)
     return;
 @)
-  auto dual_ic = cc->our_inner_class->dualf();
+  auto dual_ic = cc->our_inner_class->dual();
   own_row result = std::make_shared<row_value>(cc->val.numDualRealForms());
   for (size_t i=0,k=0; i<dual_ic->val.numRealForms(); ++i)
   { RealFormNbr drf = cc->our_inner_class->dual_interface.in(i);
@@ -3661,11 +3631,15 @@ This function is named in a tribute to the creator of the Atlas software, and
 of the data structure that is constructed and stored here.
 
 @< Local function def...@>=
+bool is_dual(const shared_inner_class& ic0, const shared_inner_class& ic1)
+{ return ic0->dual_datum.get()==ic1->datum.get() and
+  ic0->val.dualDistinguished()==ic1->val.distinguished();
+}
 void Fokko_block_wrapper(expression_base::level l)
 { own_real_form drf=non_const_get<real_form_value>();
   own_real_form rf=non_const_get<real_form_value>();
 @)
-  if (&rf->our_inner_class->dual!=&drf->our_inner_class->val)
+  if (not is_dual(rf->our_inner_class,drf->our_inner_class))
     throw runtime_error @|
     ("Inner class mismatch between real form and dual real form");
 @.Inner class mismatch...@>
@@ -3717,7 +3691,7 @@ void block_element_wrapper(expression_base::level l)
     return;
 @)
   push_value(std::make_shared<KGB_elt_value>(b->rf,b->val.x(z)));
-  auto dic = b->rf->our_inner_class->dualf();
+  auto dic = b->rf->our_inner_class->dual();
   own_real_form drf =
     std::make_shared<real_form_value>(dic,b->dual_rf->val.realForm());
   push_value(std::make_shared<KGB_elt_value>(drf,b->val.y(z)));
@@ -3741,7 +3715,7 @@ void block_index_wrapper(expression_base::level l)
   shared_Block b = get<Block_value>();
   if (&b->rf->our_inner_class->val!=&x->rf->our_inner_class->val)
     throw runtime_error ("Real form not in inner class of block");
-  if (&b->rf->our_inner_class->val!=&y->rf->our_inner_class->dual)
+  if (not is_dual(b->rf->our_inner_class,y->rf->our_inner_class))
     throw runtime_error ("Dual real form not in inner class of block");
   const KGB& kgb = b->rf->kgb(); const KGB& dual_kgb = b->dual_rf->kgb();
   const TwistedWeylGroup& tw = kgb.twistedWeylGroup();
