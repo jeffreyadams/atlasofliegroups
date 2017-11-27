@@ -65,7 +65,7 @@ namespace cartanclass {
   for translations by each of a set of generators of the grading group.
 
   We fix an involutive automorphism $\tau$ of the complex torus $H$, and
-  consider the collection of all strong involutiond $x$ of $G$ (which are
+  consider the collection of all strong involution $x$ of $G$ (which are
   elements of "G semidirect delta") that induce $\tau$ on $H$; conjuguation
   defines an action of $H$ on the collection, and strong real forms are
   oribits for this action. A strong real form has square equal to some

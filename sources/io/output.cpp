@@ -244,7 +244,7 @@ std::ostream& printCartanClass(std::ostream& strm,
        <<std::endl;
 
   // print type of imaginary root system
-  LieType ilt = rs.Lie_type(cc.simpleImaginary());
+  LieType ilt = rs.subsystem_type(cc.simpleImaginary());
 
   if (ilt.size() == 0)
     strm << "imaginary root system is empty" << std::endl;
@@ -252,7 +252,7 @@ std::ostream& printCartanClass(std::ostream& strm,
     strm << "imaginary root system: " << ilt << std::endl;
 
   // print type of real root system
-  LieType rlt = rs.Lie_type(cc.simpleReal());
+  LieType rlt = rs.subsystem_type(cc.simpleReal());
 
   if (rlt.size() == 0)
     strm << "real root system is empty" << std::endl;
@@ -260,7 +260,7 @@ std::ostream& printCartanClass(std::ostream& strm,
     strm << "real root system: " << rlt << std::endl;
 
   // print type of complex root system
-  LieType clt = rs.Lie_type(cc.simpleComplex());
+  LieType clt = rs.subsystem_type(cc.simpleComplex());
 
   if (clt.size() == 0)
     strm << "complex factor is empty" << std::endl;

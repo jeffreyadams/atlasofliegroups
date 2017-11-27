@@ -1977,16 +1977,15 @@ type_expr unknown_tuple(size_t n)
 
 @* Run-time values.
 %
-Now we shall consider runtime values. As we mentioned before, the interpreter
+Now we shall consider run-time values. As we mentioned before, the interpreter
 must access values via generic pointers in order to be able to manipulate them
 regardless of their types, which could be arbitrarily complicated. We could
 either use void pointers to represent generic values and cast them when
 necessary, or use inheritance and the dynamic cast feature of \Cpp. We choose
-the second option, which is quite convenient to use, although this means that
-in reality we have dynamic type information stored within the values, even
-though that information had already been determined during type analysis. We
-shall in fact use this information to double-check our type analysis at
-runtime.
+the second option, which is quite convenient to use, although this means that in
+reality we have dynamic type information stored within the values, even though
+that information had already been determined during type analysis. We shall in
+fact use this information to double-check our type analysis at run time.
 
 @< Includes needed in \.{axis-types.h} @>=
 #include <iostream> // needed for specification of |print| method below
@@ -2000,54 +1999,46 @@ classes \emph{must} override the default). The printing function does not have
 a useful default, so we make it pure virtual as well, without providing an
 implementation (in the base class). This |print| method will demonstrate the
 ease of using dynamic typing via inheritance; it will not do any dynamic
-casting, but other operations on values will. Apart from |print| we define
-another virtual method, |clone|, which allows making a copy of a runtime value
-of any type derived from |value_base|.
+casting, but other operations on values will.
 
-The method |name| is useful in reporting logic errors from function templates,
-notably the failure of a value to be of the predicted type. Since the template
-function may know the type (via a template argument) but need not have any
-object of the type at hand, we define |name| as a |static| rather than
-|virtual| method. We disable assignment of |value_base| objects, since they
+Apart from virtual methods, we define other methods that will be redefined in
+all or some derived classes, and which are selected based on the static type at
+hand in the calling code rather than on the dynamic type, as the former will be
+known to match the latter due to our type system. The method |name| is used in
+reporting logic errors from function templates, notably the failure of a value
+to be of the predicted type, where |name| names that predicted type. Since
+callers are functions that know the type (via a template argument) but need not
+have any object of that type at hand, we define |name| to be a |static|. For
+certain derived types there will be operations implemented by making changes to
+an existing value; we use copy-on-write when our reference to the initial value
+is shared, and these derived classes provide a (usually default) copy
+constructor, which will be invoked by the |get_own| function template below. It
+used to call a virtual |clone| method, but that forces \emph{all} derived
+classes to implement copying, while in the current situation those that do not
+use |get_own| may simply not implement copying by deleting the copy constructor.
+
+We disable assignment of |value_base| objects, since they
 should always be handled by reference; the base class is abstract anyway, but
 this ensures us that for no derived class an implicitly defined assignment
-operator is accidentally invoked. Copy constructors will in fact be defined
-for most derived types, as they are needed to implement the |clone| method;
-these will be |private| or |protected| as well, so as to forbid accidental use
-elsewhere, but they do copy-construct their |value_base| base object (which is
-constructor is therefore made |protected|). Those derived classes might have
-value-constructed (i.e., use the no-arguments constructor) the base object
-instead (and indeed this used to be the case), but copy-construct is what the
-default copy-constructor for the derived class does, so not deleting the
-copy-constructor here allows those defaults to be used. Cloning only happens
-in specific contexts (namely the function templates |uniquify|, |get_own| and
-|force_own| defined below) where the actual type will in fact be known, so
-some derived types may choose to never use this and not implement |clone| at
-all, which is why it is not defined pure virtual. In fact this state of
-affairs suggests one could do duplication with a non-virtual (but
-systematically named) method instead.
+operator is accidentally invoked. Though derived copy constructors will be
+|private|, they need to copy the base object, so we provide a |protected| copy
+constructor.
 
 Values are always handled via pointers. The raw pointer type is |value|, and a
 shared smart pointer-to-constant is |shared_value|. The const-ness of the
 latter reflects a copy-on-write policy: we rarely need to modify values
 in-place, but when we do, we ensure our shared pointer is actually unique, and
-then |const_cast| it to |own_value| for modification (this will be hidden in a
-function template defined later).
+then |const_cast| it to a derived version of |own_value| for modification (this
+will be hidden in a function template defined later).
 
 @< Type definitions @>=
 struct value_base
-{ value_base() @+ {};
-  virtual ~value_base() = 0;
+{ value_base() @+ {}
+@/virtual ~value_base() = 0;
   virtual void print(std::ostream& out) const =0;
-  virtual value_base* clone() const @+{@; assert(false); return nullptr; }
-  static const char* name(); // just a model; this instance remains undefined
-protected:
-#ifndef incompletecpp11
-  value_base(const value_base& x) = @[default@];
-#else
-  value_base(const value_base& x) {}
-#endif
-public:
+@)
+// |static const char* name();| just a model; defined in derived classes
+@)
   value_base& operator=(const value_base& x) = @[delete@];
 };
 inline value_base::~value_base() @+{} // necessary but empty implementation
@@ -2080,25 +2071,24 @@ template library.
 #include <cassert>
 
 @~Since the actual values accessed will be of types derived from |value_base|,
-we must pass through a level of indirection, so we have a vector of pointers.
-We define these pointers to be |shared_value| pointers, so that the row takes
+we must pass through a level of indirection, so we have a vector of pointers. We
+define these pointers to be |shared_value| pointers, so that the row takes
 (shared) ownership of its components without needing an explicit destructor.
 This has the additional advantage over explicit ownership management that the
-copy constructor, needed for the |clone| method, can safely just
-copy-construct the vector of pointers: a possible exception thrown during the
-copy is guaranteed to clean up any pointers present in the vector (resetting
-their reference counts to their original values). Note also that
-default-constructed shared pointers are set to null pointers, so the first
-constructor below, which just reserves space for |n| shared pointers, has
-set them to exception-safe values while waiting for the slots to be filled.
+copy constructor can safely just copy-construct the vector of pointers: a
+possible exception thrown during the copy is guaranteed to clean up any pointers
+present in the vector (resetting their reference counts to their original
+values). Note also that default-constructed shared pointers are set to null
+pointers, so the first constructor below, which just reserves space for |n|
+shared pointers, has set them to exception-safe values while waiting for the
+slots to be filled.
 
-Of course ownership of pointers to |row_value| objects also needs to be
-managed. The type |own_row| will be used after constructing the row while
-filling in the contents, or after ensuring unique ownership of the row in
-order to perform destructive operations (so although a
-|shared_ptr<value_base>|, it is known to actually be unique); at all other
-times the pointer converted to |shared_row| (and possibly down-cast to
-|shared_value|) will be used.
+Of course ownership of pointers to |row_value| objects also needs to be managed.
+The type |own_row| will be used after constructing the row while filling in the
+contents, or after ensuring unique ownership of the row in order to perform
+destructive operations (so although a |shared_ptr<value_base>|, it is known to
+actually be unique); at all other times the pointer converted to |shared_row|
+(and possibly down-cast to |shared_value|) will be used.
 
 @< Type definitions @>=
 struct row_value : public value_base
@@ -2109,12 +2099,9 @@ struct row_value : public value_base
     @+{} // set from iterator range
   void print(std::ostream& out) const;
   size_t length() const @+{@; return val.size(); }
-  row_value* clone() const @+{@; return new row_value(*this); }
-    // copy the outer level vector
   static const char* name() @+{@; return "row value"; }
-protected:
-  row_value(const row_value& v) : val(v.val) @+{}
-    // copy still shares the individual entries
+  row_value @[(const row_value& ) = default@];
+    // we use |get_own<row_value>|
 };
 @)
 typedef std::shared_ptr<const row_value> shared_row;
@@ -2146,12 +2133,10 @@ class from |row_value|.
 struct tuple_value : public row_value
 { tuple_value(size_t n) : row_value(n) @+{}
   template <typename I> tuple_value(I begin, I end) : row_value(begin,end) @+{}
-  tuple_value* clone() const @+{@; return new tuple_value(*this); }
   void print(std::ostream& out) const;
   static const char* name() @+{@; return "tuple value"; }
-private:
-  tuple_value(const tuple_value& v) : row_value(v)@+{}
- // copy constructor; used by |clone|
+@/tuple_value @[(const tuple_value& ) = default@];
+    // we use |uniquify<tuple_value>|
 };
 @)
 typedef std::unique_ptr<tuple_value> tuple_ptr;
@@ -2246,12 +2231,9 @@ public:
      comp(std::move(v)),tag(tag),injector_name(name) @+{}
   unsigned int variant() const @+{@; return tag; }
   const shared_value& contents() const @+{@; return comp; }
-  union_value* clone() const @+{@; return new union_value(*this); }
   void print(std::ostream& out) const;
   static const char* name() @+{@; return "union value"; }
-private:
-  union_value@[(const union_value& v) = default@];
- // copy constructor; used by |clone|
+  union_value @[(const union_value& v) = delete@];
 };
 @)
 typedef std::unique_ptr<union_value> union_ptr;
@@ -2383,18 +2365,18 @@ or matrix bound to an identifier, it would be wasteful to duplicate that
 entire structure just so that it can briefly reside on the execution stack),
 whence we use |shared_value| smart pointers in the stack.
 
-This choice will have consequences in many places in the evaluator, since once
-a value is referred to by such a smart pointer, its ownership cannot be
+This choice will have consequences in many places in the evaluator, since once a
+value is referred to by such a smart pointer, its ownership cannot be
 transferred to any other regime; when strict ownership should be needed, the
-only option would be to make a copy by calling |clone|. However, it turns out
-to be convenient to \emph{always} use shared pointers for runtime values, and
-to make the distinction concerning whether one knows this pointer to be unique
-by having its type be pointer-to-non-const in that case. After construction or
-duplication one can start out with such a pointer, use it to store the proper
-value, then convert it pointer-to-const (i.e., |shared_value|), for handing on
-the stack and passing around in general; if destructive access is needed one
-may reconvert to pointer-to-non-const after having checked unique ownership
-(or else having duplicated the value pointed to).
+only option would be to make a copy. However, it turns out to be convenient
+to \emph{always} use shared pointers for runtime values, and to make the
+distinction concerning whether one knows this pointer to be unique by having its
+type be pointer-to-non-const in that case. After construction or duplication one
+can start out with such a pointer, use it to store the proper value, then
+convert it pointer-to-const (i.e., |shared_value|), for handing on the stack and
+passing around in general; if destructive access is needed one may reconvert to
+pointer-to-non-const after having checked unique ownership (or else having
+duplicated the value pointed to).
 
 @< Declarations of global variables @>=
 extern std::vector<shared_value> execution_stack;
@@ -2500,17 +2482,17 @@ internal tables that will \emph{benefit} other shareholders), and
 @< Template and inline function definitions @>=
 
 template <typename D> // |D| is a type derived from |value_base|
- inline std::shared_ptr<const D> get() throw(logic_error)
+ inline std::shared_ptr<const D> get()
 { std::shared_ptr<const D> p=std::dynamic_pointer_cast<const D>(pop_value());
   if (p.get()==nullptr)
-    throw logic_error(std::string("Argument is no ")+D::name());
+    throw logic_error() << "Argument is no " << D::name();
   return p;
 }
 @.Argument is no ...@>
 
 @)
 template <typename D> // |D| is a type derived from |value_base|
-  inline std::shared_ptr<D> non_const_get() throw(logic_error)
+  inline std::shared_ptr<D> non_const_get()
 {@; return std::const_pointer_cast<D>(get<D>()); }
 
 @ Here is a function template similar to |get|, that applies in situations
@@ -2534,7 +2516,7 @@ template <typename D> // |D| is a type derived from |value_base|
   D* force (value_base* v)
 { D* p=dynamic_cast<D*>(v);
   if (p==nullptr) throw
-    logic_error(std::string("forced value is no ")+D::name());
+    logic_error() <<"forced value is no " << D::name();
   return p;
 }
 @)
@@ -2542,38 +2524,63 @@ template <typename D> // |D| is a type derived from |value_base|
   const D* force (value v)
 { const D* p=dynamic_cast<const D*>(v);
   if (p==nullptr) throw
-    logic_error(std::string("forced value is no ")+D::name());
+    logic_error() << "forced value is no " << D::name();
   return p;
 }
 
-@ The \.{axis} language allows assignment operations to components of
-aggregates (such as rows, matrices, strings, tuples), which in fact assign a
-new value to the name bound to the aggregate. Since we implement
-copy-on-write, this should in principle make a copy of the aggregate before
-modifying the component, but the copy can be avoided if the aggregate value is
-unshared. The operation |uniquify| implements making a copy if necessary, and
-calling it makes clear our destructive intentions. We make it take a
-modifiable lvalue argument into which a new shared (but currently unique)
-pointer will be stored in case duplication was necessary, and it returns a raw
-pointer-to-non-const version of the new value of that shared pointer, which
-can then be used to make the change to the unique copy. The original pointer
-is of course still a pointer-to-const, so cannot be used for the modification;
-it does however retain ownership. Not surprisingly the implementation of
-|uniquify| uses a |const_cast| operation.
+@ The \.{axis} language allows assignment operations to components of aggregates
+(such as rows, matrices, strings, tuples), which in fact assign a new value to
+the name bound to the aggregate. Since we implement copy-on-write, this should
+in principle make a copy of the aggregate before modifying the component, but
+the copy can be avoided if the aggregate value is unshared. The operation
+|uniquify| implements making a copy if necessary, and calling it makes clear our
+destructive intentions. If copying is necessary we invoke the copy constructor
+via |std::make_shared|, and |uniquify| is templated by the actual derived type
+to specify which copy constructor to use. This also allows us to export a
+pointer to that derived type. We give |uniquify| a modifiable lvalue
+|shared_value| (shared pointer-to-const) argument, to which a new shared (but
+currently unique) pointer will be assigned in case duplication was necessary,
+and it returns a raw pointer-to-non-const, which can then be used to make the
+change to the unique copy. The argument |v| retains ownership. Not surprisingly
+the implementation of |uniquify| uses a |const_cast| operation when no
+duplication takes place.
 
-Similarly some wrapper functions will want to get unique access to an argument
+@< Template and inline function def... @>=
+template <typename D> // |D| is a type derived from |value_base|
+  D* uniquify(shared_value& v)
+{ const D* p = force<D>(v.get());
+  if (v.unique())
+    return const_cast<D*>(p); // we can now safely write to |*p|
+  auto result = std::make_shared<D>(*p);
+    // invokes copy constructor; assumes it exists for |D|
+  v = result; // upcast and constify (temporarily duplicates shared pointer)
+  return result.get();
+    // now |v| retains unique shared pointer, but we can modify its target
+}
+
+@ Similarly some wrapper functions will want to get unique access to an argument
 object, so that they can return a modified version of it as result. This
-requires duplicating the argument value on the stack only if it has
-|use_count()>1|, which is a rare circumstance since most functions that place
-a value on the stack will do so with an unshared pointer. For this we provide
-a variant function template of |get| called |get_own|. It has the same
-prototype as |non_const_get|, but like |uniquify| respects copy-on-write by
-making a copy first in case there are other shareholders. The implementation
-somewhat differs from |uniquify| in that it uses a |std::const_pointer_cast|,
-and only in the case no copy is made (in which case that cast is basically all
-it does); in the case a copy is made, it returns a shared pointer to the copy
-(modifiable), while leaving the original shared pointer unchanged (except that
-its reference count will be decremented).
+requires taking an argument pointer from the stack, and duplicating the argument
+value if the pointer has |use_count()>1| (a rare circumstance, since most
+functions that place a value on the stack will do so with fresh pointer from
+|std::make_shared|). We provide a variant function template of |get| called
+|get_own|, that operates like |uniquify| except that ownership is not retained
+by an external object, but by the result from |get_own| which therefore is a
+shared pointer (but guaranteed to be unique at return). It uses a
+|std::const_pointer_cast| in the case where no copy is made.
+
+Finally there is |force_own|, which is similar to |get_own| but takes its value
+not from the stack but from some other place that will not retain ownership;
+like for |get_own| ownership passes to the result, which is a shared (but
+unique) pointer to non-|const| for the derived type. In order for this to work,
+the original copy of the pointer must be cleared at the time |unique| is called,
+so that this call has some chance of returning |true|. To the end we take the
+argument as rvalue reference, and make sure a temporary is move-constructed from
+it inside the body of |force_own|; the temporary is constructed in the argument
+to |std::dynamic_pointer_cast| (which has no overloads that directly bind to,
+and upon success move from, and rvalue argument; our work-around moves from the
+rvalue even if the dynamic cast fails, but then we throw a |logic_error|
+anyway).
 
 Since these functions return pointers that are guaranteed to be unique, one
 might wonder why no use of |std::unique_ptr| is made. The answer is this is
@@ -2582,40 +2589,24 @@ ownership (as in the |release| method of unique pointers), even if it happens
 to be (or is known to be) the unique owner.
 
 @< Template and inline function def... @>=
-inline value_base* uniquify(shared_value& v)
-{ if (not v.unique())
-     v=shared_value(v->clone());
-  return const_cast<value_base*>(v.get());
-}
-@)
 template <typename D> // |D| is a type derived from |value_base|
   std::shared_ptr<D> get_own()
 { std::shared_ptr<const D> p=get<D>();
   if (p.unique())
     return std::const_pointer_cast<D>(p);
-  return std::shared_ptr<D>(p->clone());
+  return std::make_shared<D>(*p);
+    // invokes copy constructor; assumes it exists for |D|
 }
-
-@ Finally there is |force_own| that intends to be to |force| what |get_own| is
-to |get|, both requiring its argument to currently hold a pointer to a
-specific type derived from |value_base|, and returning a shared pointer to
-non-|const| version of it, with duplication being applied only if the original
-pointer was not |unique|. In order for this to work, the original copy of the
-pointer must be cleared at the time |unique| is called, so that the call has
-some chance of returning |true|; this is obtained by taking the argument as
-rvalue reference, and making sure a temporary is move-constructed from it
-inside the body of |force_own|.
-
-@< Template and inline function def... @>=
+@)
 template <typename D> // |D| is a type derived from |value_base|
   std::shared_ptr<D> force_own(shared_value&& q)
 { std::shared_ptr<const D> p=
      std::dynamic_pointer_cast<const D>(shared_value(std::move(q)));
   if (p==nullptr) throw
-    logic_error(std::string("forced value is no ")+D::name());
+    logic_error() << "forced value is no " << D::name();
   if (p.unique())
     return std::const_pointer_cast<D>(p);
-  return std::shared_ptr<D>(p->clone());
+  return std::make_shared<D>(*p); // invokes copy constructor; assumes it exists
 }
 
 @ The argument~$n$ to |wrap_tuple| most often is a compile time constant, so
@@ -3309,7 +3300,7 @@ struct type_error : public expr_error
   , actual(std::move(e.actual)), required(std::move(e.required)) @+{}
   ~type_error () throw() @+{}
 #else
-  type_error@[(type_error&& e) = default@];
+  type_error @[(type_error&& e) = default@];
 #endif
   template<typename T> type_error& operator<< (const T& x)
   @+{@; append_mes(x); return *this; }

@@ -134,12 +134,13 @@ set special_C_star(Wrep sigma)=string:if is_special_C(sigma) then "*" else "" fi
 
 {this is not correct, the map orbits to symbolsl is not surjective}
 set symbols(RootDatum rd)=[Symbol]:
-    {see nilpotent.at for get_type}
-    assert(#Lie_type(rd)=1,"Only valid for simple root systems");
-    let type=get_type(rd) in
-    assert(type=1 or type=2,"Only valid in types B/C");
-    if type=1 then for P in all_reps_BC(rank(rd)) do symbol(P) od
-    else for P in all_reps_BC(rank(rd)) do symbol(P) od  fi
+   let factors = %rd.Lie_type in
+   assert(#factors=1,"Only valid for simple root systems");
+   let (type,rank)=factors[0] in
+   if   type="B" then for P in all_reps_BC(rank) do symbol(P) od
+   elif type="C" then for P in all_reps_BC(rank) do symbol(P) od
+   else error("Only valid in types B/C")
+   fi
 
 {this is not correct, the map orbits to wreps is not surjective}
 set wreps(RootDatum rd)=[Wrep]:for P in nilpotent_orbit_partitions(rd) do wrep(P) od

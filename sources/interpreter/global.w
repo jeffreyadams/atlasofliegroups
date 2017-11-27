@@ -36,12 +36,11 @@ This module has three major, largely unrelated, parts. The first part defines
 the structure of the global identifier table, and groups some peripheral
 operations to the main evaluation process: the calling interface to the type
 checking and conversion process, and operations that implement global changes
-such as the introduction of new global identifiers. The second part is
-dedicated to some fundamental types, like integers, Booleans, strings, without
-which the programming language would be an empty shell (but types more
-specialised to the Atlas software are defined in another
-module, \.{atlas-types}). Finally there is a large section with basic
-functions related to these types.
+such as the introduction of new global identifiers. The second part is dedicated
+to some fundamental types, like integers, Booleans, strings, without which the
+programming language would be an empty shell (but types more specialised to the
+Atlas software are defined in another module, \.{atlas-types}). Finally there is
+a large section with basic functions related to these types.
 
 @( global.h @>=
 
@@ -1770,12 +1769,10 @@ struct int_value : public value_base
     : val(big_int::from_unsigned(v)) @+ {}
   explicit int_value(arithmetic::big_int&& v) : val(std::move(v)) @+ {}
   void print(std::ostream& out) const @+{@; out << val; }
-  int_value* clone() const @+{@; return new int_value(*this); }
   static const char* name() @+{@; return "integer"; }
+  int_value @[(const int_value& ) = default@]; // we use |get_own<int_value>|
 @)
   int int_val () const @+{@; return val.int_val(); }
-private:
-  int_value(const int_value& v) : val(v.val) @+{}
 };
 @)
 typedef std::shared_ptr<const int_value> shared_int;
@@ -1788,8 +1785,8 @@ struct rat_value : public value_base
   explicit rat_value(big_rat&& r) : val(std::move(r)) @+{}
 @)
   void print(std::ostream& out) const @+{@; out << val; }
-  rat_value* clone() const @+{@; return new rat_value(*this); }
-  static const char* name() @+{@; return "integer"; }
+  static const char* name() @+{@; return "rational"; }
+  rat_value @[(const rat_value& ) = default@]; // we use |get_own<rat_value>|
 @)
 #ifdef incompletecpp11
   big_int numerator() const @+{@; return val.numerator(); }
@@ -1803,9 +1800,6 @@ struct rat_value : public value_base
   big_int&& denominator() &@[@] @+{@; return std::move(val).denominator(); }
 #endif
   Rational rat_val() const @+{@; return val.rat_val(); }
-
-private:
-  rat_value(const rat_value& v) : val(v.val) @+{}
 };
 @)
 typedef std::shared_ptr<const rat_value> shared_rat;
@@ -1823,10 +1817,8 @@ struct string_value : public value_base
   template <typename I> string_value(I begin, I end) : val(begin,end) @+ {}
   ~string_value()@+ {}
   void print(std::ostream& out) const @+{@; out << '"' << val << '"'; }
-  string_value* clone() const @+{@; return new string_value(*this); }
   static const char* name() @+{@; return "string"; }
-private:
-  string_value(const string_value& v) : val(v.val) @+{}
+  string_value @[(const string_value& ) = delete@];
 };
 @)
 typedef std::shared_ptr<const string_value> shared_string;
@@ -1839,10 +1831,8 @@ struct bool_value : public value_base
   explicit bool_value(bool v) : val(v) @+ {}
   ~bool_value()@+ {}
   void print(std::ostream& out) const @+{@; out << std::boolalpha << val; }
-  bool_value* clone() const @+{@; return new bool_value(*this); }
   static const char* name() @+{@; return "Boolean"; }
-private:
-  bool_value(const bool_value& v) : val(v.val) @+{}
+  bool_value @[(const bool_value& ) = delete@];
 };
 @)
 typedef std::shared_ptr<const bool_value> shared_bool;
@@ -1901,10 +1891,9 @@ struct vector_value : public value_base
   template <typename I> vector_value(I begin, I end) : val(begin,end) @+ {}
   ~vector_value()@+ {}
   virtual void print(std::ostream& out) const;
-  vector_value* clone() const @+{@; return new vector_value(*this); }
   static const char* name() @+{@; return "vector"; }
-private:
-  vector_value(const vector_value& v) : val(v.val) @+{}
+  vector_value @[(const vector_value& ) = default@];
+    // we use |get_own<vector_value>|
 };
 @)
 typedef std::shared_ptr<const vector_value> shared_vector;
@@ -1922,10 +1911,9 @@ struct matrix_value : public value_base
   explicit matrix_value(int_Matrix&& v) : val(std::move(v)) @+ {}
   ~matrix_value()@+ {}
   virtual void print(std::ostream& out) const;
-  matrix_value* clone() const @+{@; return new matrix_value(*this); }
   static const char* name() @+{@; return "matrix"; }
-private:
-  matrix_value(const matrix_value& v) : val(v.val) @+{}
+  matrix_value @[(const matrix_value& ) = default@];
+    // we use |get_own<matrix_value>|
 };
 @)
 typedef std::shared_ptr<const matrix_value> shared_matrix;
@@ -1947,11 +1935,9 @@ struct rational_vector_value : public value_base
     {@; val.normalize(); }
   ~rational_vector_value()@+ {}
   virtual void print(std::ostream& out) const;
-  rational_vector_value* clone() const
-   @+{@; return new rational_vector_value(*this); }
   static const char* name() @+{@; return "rational vector"; }
-private:
-  rational_vector_value(const rational_vector_value& v) : val(v.val) @+{}
+  rational_vector_value @[(const rational_vector_value& ) = default@];
+    // we use |get_own<rational_vector_value>|
 };
 @)
 typedef std::shared_ptr<const rational_vector_value> shared_rational_vector;
@@ -2164,7 +2150,8 @@ own_row vector_to_ratrow(const int_Vector& v)
 }
 own_row introw_to_ratrow(own_row r)
 { for (auto it=r->val.begin(); it!=r->val.end(); ++it)
-    *it=std::make_shared<rat_value>(big_rat(force<int_value>(it->get())->val));
+    *it=std::make_shared<rat_value>@|
+       (big_rat(std::move(force<int_value>(it->get())->val)));
   return r;
 }
 @)
@@ -2214,7 +2201,7 @@ void veclist_matrix_convert()
   if (r->val.size()==0)
     throw runtime_error
       ("Implicit conversion to matrix for an empty set of vectors");
-@.Implicit conversion to matrix for an empty set@>
+@.Implicit conversion to matrix...@>
   size_t n = force<vector_value>(r->val[0].get())->val.size();
   own_matrix m = std::make_shared<matrix_value>(int_Matrix(n,r->val.size()));
   for(size_t j=0; j<r->val.size(); ++j)
@@ -2596,8 +2583,8 @@ void fraction_wrapper(expression_base::level l)
 void unfraction_wrapper(expression_base::level l)
 { own_rat q=get_own<rat_value>();
   if (l!=expression_base::no_value)
-  { push_value(std::make_shared<int_value>(q->numerator()));
-    push_value(std::make_shared<int_value>(q->denominator()));
+  { push_value(std::make_shared<int_value>(std::move(q->numerator())));
+    push_value(std::make_shared<int_value>(std::move(q->denominator())));
     if (l==expression_base::single_value)
       wrap_tuple<2>();
   }

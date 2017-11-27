@@ -1705,15 +1705,8 @@ template <bool variadic>
     (const shared_function& owner,const std::string& name,
      expression_ptr&& arg, const source_location& loc) const;
 @)
-  virtual builtin_value* clone() const @+{@; return new builtin_value(*this); }
   static const char* name() @+{@; return "built-in function"; }
-private:
-#ifndef incompletecpp11
-  builtin_value@[(const builtin_value& v) = default@];
-#else
-  builtin_value@[(const builtin_value& v)
-  : val(v.val), print_name(v.print_name) {}
-#endif
+  builtin_value@[(const builtin_value& v) = delete@];
 };
 typedef std::shared_ptr<const builtin_value<false> > shared_builtin;
 typedef std::shared_ptr<const builtin_value<true> > shared_variadic_builtin;
@@ -2732,9 +2725,8 @@ struct closure_value : public function_base
     (const shared_function& owner,const std::string& name,
      expression_ptr&& arg, const source_location& loc) const;
 @)
-  virtual closure_value* clone() const @+
-  {@; return new closure_value(context,p); }
   static const char* name() @+{@; return "closure"; }
+  closure_value @[(const closure_value& ) = delete@];
 };
 typedef std::unique_ptr<closure_value> closure_ptr;
 typedef std::shared_ptr<const closure_value> shared_closure;
@@ -3813,12 +3805,8 @@ struct projector_value : public function_base
     (const shared_function& owner,const std::string& name,
      expression_ptr&& arg, const source_location& loc) const;
 @)
-  virtual projector_value* clone() const @+
-  {@; return new projector_value(*this); }
   static const char* name() @+{@; return "built-in function"; }
-private:
-  projector_value(const projector_value& v)
-@/:type(v.type.copy()),position(v.position),loc(v.loc)@+{}
+  projector_value @[(const projector_value& ) = delete@];
 };
 
 @ Here are two virtual methods. We print the position selected and the type
@@ -3829,8 +3817,8 @@ components.
 
 @< Function def... @>=
 void projector_value::print(std::ostream& out) const
-  {@; out << "{." << main_hash_table->name_of(id) << ": projector_" << position
-          << '('  << type << ") }"; }
+  { out << "{." << main_hash_table->name_of(id) << ": projector_" << position
+     @| << '('  << type << ") }"; }
 expression_base::level projector_value::argument_policy() const
   {@; return expression_base::single_value; }
 void projector_value::report_origin(std::ostream& o) const
@@ -3912,12 +3900,8 @@ struct injector_value : public function_base
     (const shared_function& owner,const std::string& name,
      expression_ptr&& arg, const source_location& loc) const;
 @)
-  virtual injector_value* clone() const @+
-  {@; return new injector_value(*this); }
   static const char* name() @+{@; return "built-in function"; }
-private:
-  injector_value(const injector_value& v)
-@/:type(v.type.copy()),position(v.position),loc(v.loc)@+{}
+  injector_value @[(const injector_value& ) = delete@];
 };
 
 @ Here are two virtual methods. We print the position selected and the type
@@ -3928,8 +3912,8 @@ components.
 
 @< Function def... @>=
 void injector_value::print(std::ostream& out) const
-  {@; out << "{."<< main_hash_table->name_of(id) << ": injector_" << position
-          << '(' << type << ") }"; }
+  { out << "{."<< main_hash_table->name_of(id) << ": injector_" << position
+     @| << '(' << type << ") }"; }
 expression_base::level injector_value::argument_policy() const
   {@; return expression_base::single_value; }
 void injector_value::report_origin(std::ostream& o) const
@@ -6343,7 +6327,7 @@ identifier. The latter requirement means that it will not be able to handle
 something like $a[i][j]:=c$ even when that would seem to make sense (because
 $a[i]$ is not a name); however $m[i,j]:=c$ for matrix values $m$ will be
 supported. The design decision made here is made in the assumption that the
-type of assignments that$a[i][j]:=c$ would represent are rare; when really
+type of assignments that $a[i][j]:=c$ would represent are rare; when really
 needed they can be achieved by temporarily naming the value $a[i]$ and
 assigning to that name before assigning the value of name back to $a[i]$.
 
@@ -6486,8 +6470,6 @@ template <bool reversed>
 void component_assignment<reversed>::assign
   (level lev,shared_value& aggregate, subscr_base::sub_type kind) const
 { rhs->eval();
-  value_base* loc=uniquify(aggregate);
-    // raw pointer to modifiable value from shared pointer
   switch (kind)
   { case subscr_base::row_entry:
   @/@< Replace component at |index| in row |loc| by value on stack @>
@@ -6506,7 +6488,7 @@ void component_assignment<reversed>::assign
 }
 @)
 void field_assignment::assign (level lev,shared_value& tupple) const
-{ shared_value& field=force<tuple_value>(uniquify(tupple))->val[position];
+{ shared_value& field=uniquify<tuple_value>(tupple)->val[position];
   rhs->eval();
   push_expanded(lev,field=pop_value());
 }
@@ -6521,7 +6503,7 @@ the component assignment, possibly expanding a tuple in the process.
 
 @< Replace component at |index| in row |loc|... @>=
 { unsigned int i=(index->eval(),get<int_value>()->int_val());
-  std::vector<shared_value>& a=force<row_value>(loc)->val;
+  auto& a = uniquify<row_value>(aggregate)->val;
   size_t n=a.size();
   if (i>=n)
     throw runtime_error(range_mess(i,a.size(),this,"component assignment"));
@@ -6537,13 +6519,12 @@ the component assignment expression is not used.
 
 @< Replace entry at |index| in vector |loc|... @>=
 { unsigned int i=(index->eval(),get<int_value>()->int_val());
-  std::vector<int>& v=force<vector_value>(loc)->val;
+  auto& v = uniquify<vector_value>(aggregate)->val;
   size_t n=v.size();
   if (i>=n)
     throw runtime_error(range_mess(i,v.size(),this,"component assignment"));
-  v[reversed ? n-1-i : i]=
+  v[reversed ? n-1-i : i]= // assign |int| from un-popped top
     force<int_value>(execution_stack.back().get())->int_val();
-    // assign |int| from un-popped top
   if (lev==no_value)
     execution_stack.pop_back(); // pop it anyway if result not needed
 }
@@ -6556,7 +6537,7 @@ indices, and there are two bound checks.
   unsigned int j=get<int_value>()->int_val();
   unsigned int i=get<int_value>()->int_val();
 @/
-  int_Matrix& m=force<matrix_value>(loc)->val;
+  auto& m = uniquify<matrix_value>(aggregate)->val;
   size_t k=m.numRows(),l=m.numColumns();
   if (i>=k)
     throw runtime_error
@@ -6565,8 +6546,8 @@ indices, and there are two bound checks.
     throw runtime_error(
       range_mess(j,m.numColumns(),this,"matrix entry assignment"));
   m(reversed ? k-1-i : i,reversed ? l-1-j : j)=
-    force<int_value>(execution_stack.back().get())->int_val();
     // assign |int| from un-popped top
+    force<int_value>(execution_stack.back().get())->int_val();
   if (lev==no_value)
     execution_stack.pop_back(); // pop it anyway if result not needed
 }
@@ -6576,7 +6557,7 @@ for matching column length.
 
 @< Replace column at |index| in matrix |loc|... @>=
 { unsigned int j=(index->eval(),get<int_value>()->int_val());
-  int_Matrix& m=force<matrix_value>(loc)->val;
+  auto& m = uniquify<matrix_value>(aggregate)->val;
 @/const int_Vector& v=force<vector_value>(execution_stack.back().get())->val;
     // don't pop
   size_t l=m.numColumns();

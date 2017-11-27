@@ -142,36 +142,41 @@ set test_all_real_induced_one_dimensional(RealForm G) =
   test(all_real_induced_one_dimensional(G))
 set print_test_all_real_induced_one_dimensional(RealForm G) = void:
   print_test(all_real_induced_one_dimensional(G))
-{
+
+{ comment out fixed case tests, though maybe useful for atlas sanity testing
+
 { a series of tests if increasing length }
 { very fast tests }
-set test1()=test(spherical_unipotent_representations(Sp(4,R)))
-set test2()=test(spherical_unipotent_representations(split_form(G2)))
-set test3()=test(spherical_unipotent_representations(Sp(6,R)))
+set unitary_if (bool b) = int: if b then 1 else -1 fi
+set success ((bool,[Param,ParamPol,int,bool]) (b,)) = bool: b
+
+set test1()=test(spherical_unipotent_representations(Sp(4,R))).success
+set test2()=test(spherical_unipotent_representations(split_form(G2))).success
+set test3()=test(spherical_unipotent_representations(Sp(6,R))).success
 set test4()=
   let G2=quasisplit_form(inner_class(adjoint("G2"),"e"))
   then p=trivial(G2) then (B,t)=block(p)
-  in test (for p@i in B do (p,i<5 or i=t) od)
+  in test (for p@i in B do (p,unitary_if(i<5 or i=t)) od,true).success
 
 { slightly longer, up to a few minutes }
-set test5()= test(spherical_unipotent_representations (SO(5,4)))
+set test5()= test(spherical_unipotent_representations (SO(5,4))).success
 set test6()=
   let p=trivial(Sp(4,R)) then (B,t)=block(p) in
-  test(for p@i in B do (p,i<7 or i=t) od)
+  test(for p@i in B do (p,unitary_if(i<7 or i=t)) od,true).success
 
 { first 49 of 59 spherical unitary parameters for F4 }
 set test7()= bool:
   test(for i:49
        do minimal_spherical_principal_series
             (split_form(F4),F4_spherical_unitary[i])
-       od)
+       od).success
 
 { first 100 of spherical unitary for E7
   requires more memory}
 set test8()= bool:
   test(for i:100
   do minimal_spherical_principal_series(split_form(E7),E7_spherical_unitary[i])
-  od)
+  od).success
 
 { trivial of F4 takes up to two hours }
 set test9()=bool:

@@ -1,15 +1,13 @@
-/*!
-\file
-\brief Class definitions and function declarations for DynkinDiagram
-*/
 /*
   This is dynkin.h
   Copyright (C) 2004,2005 Fokko du Cloux
-  Copyright (C) 2014 Marc van Leeuwen
+  Copyright (C) 2014,2017 Marc van Leeuwen
   part of the Atlas of Lie Groups and Representations
 
   For license information see the LICENSE file
 */
+
+// Class definitions and function declarations for DynkinDiagram
 
 #ifndef DYNKIN_H  /* guard against multiple inclusions */
 #define DYNKIN_H
@@ -21,12 +19,12 @@
 
 #include "bitset.h"
 #include "permutations.h"
-
-/******** type declarations *************************************************/
+#include "sl_list.h"
 
 namespace atlas {
-
 namespace dynkin {
+
+/******** type declarations *************************************************/
 
 /*
   Since a Dynkin diagram will be a bitset (a subset of RANK_MAX elements, the
@@ -40,11 +38,7 @@ typedef unsigned char Multiplicity;
 
 class DynkinDiagram;
 
-} // |namespace dynkin|
-
 /******** function declarations *********************************************/
-
-namespace dynkin {
 
   // the following two functions are main entry points to this module
   // find (semisimple) Lie type given by Cartan matrix
@@ -56,17 +50,13 @@ namespace dynkin {
 		   bool check, // if true, be prepared for arbitrary |cm|
 		   Permutation& pi);
 
-  RankFlagsList components(const DynkinDiagram& d);
-
   Permutation normalize(const DynkinDiagram& d);
 
   Permutation bourbaki(const DynkinDiagram& d);
 
-}
 
 /******** type definitions **************************************************/
 
-namespace dynkin {
 /*
   A Dynkin diagram of at most RANK_MAX vertices.
 
@@ -76,11 +66,9 @@ namespace dynkin {
   indices designating vertices. The map d_label attaches to certain Edges an
   unsigned integer Multiplicity.
 */
-class DynkinDiagram {
-
- private:
-
-  // Adjacency relations: d_star[i].test(j): whether i and j are neighbors
+class DynkinDiagram
+{
+  // Adjacency relations: |d_star[i].test(j)|: whether |i| and |j| are neighbors
   std::vector<RankFlags> d_star;
 
   // List of edges from longer to shorter node, with edge label (2 or 3)
@@ -90,31 +78,26 @@ class DynkinDiagram {
 
 // constructors and destructors
 
-  DynkinDiagram() {}
+  DynkinDiagram() {} // allow classes to contain a diagram, and assign it late
   explicit DynkinDiagram(const int_Matrix& Cartan);
-  DynkinDiagram(const RankFlags& selection, const DynkinDiagram& d); // extract
-  DynkinDiagram(const ext_gens& orbits, const DynkinDiagram& d); // folded
-
-  ~DynkinDiagram() {}
 
 // accessors
 
   unsigned int rank() const { return d_star.size(); }
 
   bool isConnected() const;
-
   bool isSimplyLaced() const { return edge_label()==1; }
 
-  LieType Lie_type() const;
-
   int Cartan_entry(unsigned int i,unsigned int j) const;
-
   Multiplicity edge_multiplicity(unsigned int i,unsigned int j) const
     { return Cartan_entry(i,j)*Cartan_entry(j,i); }
+  bool are_adjacent(unsigned int i, unsigned int j) const
+    { return star(i).test(j); }
 
   RankFlags component(unsigned int i) const; // component containing vertex $i$
+  containers::sl_list<RankFlags> components() const;
 
-  LieType normalise_components(Permutation& a, bool Bourbaki)  const;
+  LieType classify_semisimple(Permutation& a, bool Bourbaki)  const;
 
   // these are mostly internal methods, but cannot be private in current setup
   RankFlags extremities() const; // find nodes of degree 1 or 0
@@ -122,15 +105,21 @@ class DynkinDiagram {
   unsigned int fork_node() const; // find node of degree>2, or rank() if none
   RankFlags star(unsigned int j) const { return d_star[j]; } // copies it
 
+  // transformers (return related Dynkin diagrams)
+  DynkinDiagram subdiagram(RankFlags selection) const;
+  DynkinDiagram folded(const ext_gens& orbits) const;
+
 // manipulators: none (Dynkin diagrams are static objects)
- private: // functions that are only meaningful for connected diagrams
+
+  friend LieType Lie_type(const int_Matrix&); // uses |component_kind()|
+private: // functions that are only meaningful for connected diagrams
+
   Multiplicity edge_label() const; // (maximal) label of edge, or 1 if none
-  lietype::TypeLetter type_of_componenent() const;
-  SimpleLieType normalise_component(Permutation& pi, bool Bourbaki) const;
+  lietype::TypeLetter component_kind() const;
+  SimpleLieType classify_simple(Permutation& pi, bool Bourbaki) const;
 }; // |class DynkinDiagram|
 
 } // |namespace dynkin|
-
 } // |namespace atlas|
 
 #endif
