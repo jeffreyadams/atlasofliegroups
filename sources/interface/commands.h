@@ -1,8 +1,8 @@
 /*
   This is commands.h
-  
+
   Copyright (C) 2004,2005 Fokko du Cloux
-  part of the Atlas of Reductive Lie Groups 
+  part of the Atlas of Reductive Lie Groups
 
   See file main.cpp for full copyright notice
 */
@@ -11,6 +11,8 @@
 #define COMMANDS_H
 
 #include "commands_fwd.h"
+
+#include <cstring>
 
 #include <map>
 #include <set>
@@ -55,7 +57,7 @@ namespace commands {
 class StrCmp { // a function object for string comparison
  public:
   bool operator() (const char* a, const char* b) const {
-    return strcmp(a,b) < 0;
+    return std::strcmp(a,b) < 0;
   }
 };
 
@@ -98,7 +100,7 @@ class CommandMode {
 // Constructors and destructors
   CommandMode(const char*,
 	      void (*entry)() = &relax_f,
-	      void (*exit)() = &relax_f, 
+	      void (*exit)() = &relax_f,
 	      void (*error)(const char*) = &defaultError);
 
   virtual ~CommandMode();

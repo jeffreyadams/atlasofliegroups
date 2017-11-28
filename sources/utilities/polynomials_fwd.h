@@ -14,6 +14,8 @@
 #ifndef POLYNOMIALS_FWD_H  /* guard against multiple inclusions */
 #define POLYNOMIALS_FWD_H
 
+#include <cstddef>
+
 namespace atlas {
 
 namespace polynomials {

@@ -75,7 +75,7 @@ endif
 ifeq ($(readline),false)
     cflags += -DNREADLINE
 else
-    rlincludes ?= -lreadline -lcurses
+    rlincludes ?= -lreadline
 # to override this, either define and export a shell variable 'rlincludes'
 # or set it when calling make. For instance for readline on the Mac do:
 # $ make rlincludes="-lreadline.5.1 -lcurses"

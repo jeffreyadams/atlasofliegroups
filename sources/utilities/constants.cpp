@@ -83,7 +83,7 @@ void initConstants()
   lastbit[1] = 1; // this points to bit 0, because of position+1 convention
 
   // find most significant set bit by a simple recurrence
-  for (unsigned int j = 1; j < (1 << charBits-1); ++j) {
+  for (unsigned int j = 1; j < (1 << (charBits-1)); ++j) {
     lastbit[2*j]   = lastbit[j]+1; // for even numbers use recursion
     lastbit[2*j+1] = lastbit[j]+1; // for odd numbers use recursion as well
   }

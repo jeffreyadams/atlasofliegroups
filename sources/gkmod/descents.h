@@ -15,6 +15,8 @@
 #ifndef DESCENTS_H  /* guard against multiple inclusions */
 #define DESCENTS_H
 
+#include <cstring>
+
 #include "descents_fwd.h"
 
 #include "constants.h"
@@ -97,18 +99,18 @@ recursion formula for the KL element.
 
 // constructors and destructors
   DescentStatus() { // sets statuses of all simple roots to 0 (ComplexAscent)
-    memset(d_data,0,constants::RANK_MAX);
+    std::memset(d_data,0,constants::RANK_MAX);
   }
 
   ~DescentStatus() {}
 
 // copy and assignment (these copy statuses of all simple roots)
   DescentStatus(const DescentStatus& ds) {
-    memcpy(d_data,ds.d_data,constants::RANK_MAX);
+    std::memcpy(d_data,ds.d_data,constants::RANK_MAX);
   }
 
   DescentStatus& operator=(const DescentStatus& ds) {
-    memcpy(d_data,ds.d_data,constants::RANK_MAX);
+    std::memcpy(d_data,ds.d_data,constants::RANK_MAX);
     return *this;
   }
 

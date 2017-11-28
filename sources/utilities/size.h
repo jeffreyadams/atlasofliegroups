@@ -4,13 +4,15 @@
 */
 /*
   Copyright (C) 2004,2005 Fokko du Cloux
-  part of the Atlas of Reductive Lie Groups 
+  part of the Atlas of Reductive Lie Groups
 
   See file main.cpp for full copyright notice
 */
 
 #ifndef SIZE_H  /* guard against multiple inclusions */
 #define SIZE_H
+
+#include <cstring>
 
 #include "constants.h"
 
@@ -40,7 +42,7 @@ namespace size {
   The ordinal is recorded in PrimesMax<n>::value, and used to make the
   SizeType class for storing Weyl group orders.  This class should
   be instantiated only for n=RANK_MAX, which for other reasons should
-  be a power of 2. 
+  be a power of 2.
   */
   template<unsigned long n> class PrimesMax {
   public:
@@ -52,7 +54,7 @@ namespace size {
   /*!
   \brief Position on the list of primes of the
   largest possible prime factor of a Weyl group of rank at most 8.
-  
+
   This is the fourth prime 7.
   */
   template<> class PrimesMax<8> {
@@ -63,7 +65,7 @@ namespace size {
   /*!
   \brief Position on the list of primes of the
   largest possible prime factor of a Weyl group of rank at most 16.
-  
+
   This is the seventh prime 17 (appearing only in the Weyl group S_17
   of type A16).
   */
@@ -75,7 +77,7 @@ namespace size {
   /*!
   \brief Position on the list of primes of the
   largest possible prime factor of a Weyl group of rank at most 32.
-  
+
   This is the eleventh prime 31.
   */
 
@@ -87,7 +89,7 @@ namespace size {
   /*!
   \brief Position on the list of primes of the
   largest possible prime factor of a Weyl group of rank at most 64.
-  
+
   This is the eighteenth prime 61.
   */
 
@@ -120,7 +122,7 @@ namespace size {
 namespace size {
   /*!
   \brief Stores a positive integer as product of prime powers, using
-  the first PRIMES_MAX primes.  
+  the first PRIMES_MAX primes.
 
   The exponent of the jth prime is d_data[j].  The reason for using
   this is that the software must occasionally deal with integers too
@@ -191,7 +193,7 @@ template<typename C> class SizeType {
   SizeType& operator/= (const SizeType&);
 
   void reset() {
-    memset(d_data,0,PRIMES_MAX);
+    std::memset(d_data,0,PRIMES_MAX);
   }
 
   void twoShift(C n) { // multiplication by 2^n; prime #0 is 2

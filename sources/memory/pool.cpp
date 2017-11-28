@@ -128,7 +128,7 @@ namespace pool {
 Pool::Pool(size_t a, size_t d)
   :d_atomSize(a), 
    d_defaultRequest(d),
-   d_maxAlloc((1ul << constants::sizeBits - 1ul)/a),
+   d_maxAlloc((1ul << (constants::sizeBits - 1))/a),
    d_alignSize(a > sizeof(MemBlock*) ? a : sizeof(MemBlock*)),
    d_instance(constructions++)
 

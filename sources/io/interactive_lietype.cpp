@@ -11,10 +11,12 @@
 
 #include "interactive_lietype.h"
 
+#include <cstdio>
 #include <cassert>
 
 #include <iostream>
 #include <sstream>
+
 
 /*****************************************************************************
 

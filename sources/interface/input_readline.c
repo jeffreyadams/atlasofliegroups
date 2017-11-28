@@ -1,8 +1,8 @@
 /*
   This is input_readline.c
-  
+
   Copyright (C) 2004,2005 Fokko du Cloux
-  part of the Atlas of Reductive Lie Groups 
+  part of the Atlas of Reductive Lie Groups
 
   See file main.cpp for full copyright notice
 */
@@ -14,14 +14,14 @@
 
 #include "input.h"
 
+#include <cstdio>
+#include <cstdlib>
 #include <iostream>
 
-namespace { // localize to avoid namespace pollution
 
 #include <readline/history.h>
 #include <readline/readline.h>
 
-}
 
 #include "commands.h"
 
@@ -49,7 +49,7 @@ std::istream& InputBuffer::getline(std::istream& is, const char* prompt,
 				   bool toHistory)
 
 /*
-  Synopsis: reads 
+  Synopsis: reads
 */
 
 {
@@ -82,7 +82,7 @@ void InputBuffer::reset(std::streampos pos)
   Clears the flags as well; the idea is to undo a peek-forward operation.
 */
 
-{  
+{
   clear();
   seekg(pos);
 
@@ -90,7 +90,7 @@ void InputBuffer::reset(std::streampos pos)
 }
 
 }
- 	
+
 
 /*****************************************************************************
 
@@ -115,8 +115,8 @@ HistoryBuffer::HistoryBuffer()
 {
   d_history = history_get_history_state();
 
-  HISTORY_STATE* hs = (HISTORY_STATE*)malloc(sizeof(HISTORY_STATE));
-  memset(hs,0,sizeof(HISTORY_STATE));
+  HISTORY_STATE* hs = (HISTORY_STATE*)std::malloc(sizeof(HISTORY_STATE));
+  std::memset(hs,0,sizeof(HISTORY_STATE));
 
   history_set_history_state(hs);
 }
@@ -147,20 +147,20 @@ HistoryBuffer::~HistoryBuffer()
   Resets the history to its original state
 */
 
-{  
+{
   clear_history();
 
   HISTORY_STATE* hs = history_get_history_state();
-  free(hs);
+  std::free(hs);
 
   history_set_history_state((HISTORY_STATE*)d_history);
 }
-  
+
 }
 
 /*****************************************************************************
 
-        Chapter III -- Functions declared in input.h 
+        Chapter III -- Functions declared in input.h
                     -- version _with_ readline
 
   ... explain here when it is stable ...
@@ -250,7 +250,7 @@ char* completionGenerator(const char* text, int state)
 void displayCompletions(char** matches, int num, int)
 
 /*
-  Synopsis: function passed to the readline library for the display of 
+  Synopsis: function passed to the readline library for the display of
   completion lists
 */
 
@@ -288,9 +288,9 @@ char * readLine (const char* prompt, bool toHistory)
   /* If the buffer has already been allocated,
      return the memory to the free pool. */
   if (line_read) {
-      free (line_read);
-      line_read = 0;
-    }
+    std::free (line_read);
+    line_read = 0;
+  }
 
   /* Get a line from the user. */
   line_read = readline (prompt);

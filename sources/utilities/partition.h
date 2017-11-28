@@ -20,6 +20,7 @@ acting on elements of order 2 in a torus.
 
 #include <functional>
 #include <vector>
+#include <cstddef>
 
 #include "tags.h"
 
@@ -208,7 +209,7 @@ class PartitionIterator {
   typedef std::forward_iterator_tag iterator_category;
   typedef std::pair<std::vector<unsigned long>::const_iterator,
     std::vector<unsigned long>::const_iterator> value_type;
-  typedef ptrdiff_t difference_type;
+  typedef std::ptrdiff_t difference_type;
   typedef const value_type* pointer;
   typedef const value_type& reference;
 

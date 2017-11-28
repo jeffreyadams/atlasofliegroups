@@ -9,6 +9,7 @@
 
 #include "interactive_lattice.h"
 
+#include <cstdio>
 #include <iostream>
 #include <sstream>
 

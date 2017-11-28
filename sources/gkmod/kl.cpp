@@ -985,7 +985,7 @@ size_t KLPool::mem_size() const   // net memory footprint
   +pool.size()*sizeof(std::vector<KLCoeff>)
     +pool_size()*sizeof(KLCoeff)
   +index.size()*sizeof(std::vector<IndexType>)
-    +((index.size()-1<<index_block_bits)+index.back().size())
+    +(((index.size()-1)<<index_block_bits)+index.back().size())
      *sizeof(IndexType);
 }
 size_t KLPool::mem_capacity() const   // gross memory footprint
@@ -1041,7 +1041,7 @@ KLPool::const_reference KLPool::operator[] (KLIndex i) const
 	unsigned int val=iq.deg_val[r].valuation();
 
         // now see if we overstepped or will overstep a pool block boundary
-	if (pi+1+deg-val > (pi_block+1<<pool_block_bits))
+	if (pi+1+deg-val > ((pi_block+1)<<pool_block_bits))
 	  {
 	    /* N.B. if a polynomial happens to fit exactly at end of a block
 	       then the _next_ one is considered split (but advances by 0).
@@ -1051,13 +1051,13 @@ KLPool::const_reference KLPool::operator[] (KLIndex i) const
 	    for (unsigned int j=0; j<r; ++j) // redo index adjustment
 	      {
 	        pi+= (1+iq.deg_val[j].degree()-iq.deg_val[j].valuation());
-	        if (pi > pi_block+1<<pool_block_bits) // split was here
+	        if (pi > (pi_block+1)<<pool_block_bits) // split was here
 		  // NEED PARENTHESES IN NEXT LINE!
 		  pi=(++pi_block<<pool_block_bits)    // advance to next block
 		     // but don't forget the length of the "split" polynomial
 		     +(1+iq.deg_val[j].degree()-iq.deg_val[j].valuation());
 	      }
-	    if (pi+1+deg-val>(pi_block+1<<pool_block_bits)) // this one split
+	    if (pi+1+deg-val>((pi_block+1)<<pool_block_bits)) // this one split
 	      pi= ++pi_block<<pool_block_bits;      // advance to next block
 
 	  }
@@ -1070,10 +1070,10 @@ KLPool::const_reference KLPool::operator[] (KLIndex i) const
       {
 	// in this case get base for next index into pool
 	const IndexType* nip; // next index pointer
-        if ((q+1&index_block_mask)!=0)
-          nip= &index[q>>index_block_bits][q+1&index_block_mask];
+        if (((q+1)&index_block_mask)!=0)
+          nip= &index[q>>index_block_bits][(q+1)&index_block_mask];
 	else
-          nip= &index[q+1>>index_block_bits][0];
+          nip= &index[(q+1)>>index_block_bits][0];
 
 	size_t next_pi=size_t(nip->pool_index_low) +
 	  set_high_order(nip->pool_index_high.degree());

@@ -190,9 +190,9 @@ class KLPool
 
     size_t size() const       // number of entries
       { return
-	  ((index.size()-1<<index_block_bits) // for full blocks
-	   +index.back().size()-1   // for full index groups in last block
-	   <<group_bits             // multiply both these by group size
+	  ((((index.size()-1)<<index_block_bits) // for full blocks
+	    +index.back().size()-1   // for full index groups in last block
+	   )<<group_bits             // multiply both these by group size
           )
 	  + last_group_size; // add part of last index group used
       }

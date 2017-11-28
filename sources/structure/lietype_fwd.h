@@ -14,6 +14,7 @@
 #ifndef LIETYPE_FWD_H  /* guard against multiple inclusions */
 #define LIETYPE_FWD_H
 
+#include <cstddef>
 #include <vector>
 
 namespace atlas {
@@ -23,7 +24,7 @@ namespace atlas {
 namespace lietype {
 
   typedef char TypeLetter;
-  typedef std::pair<TypeLetter,size_t> SimpleLieType;
+  typedef std::pair<TypeLetter,std::size_t> SimpleLieType;
   typedef std::vector<SimpleLieType> LieType;
   typedef std::vector<TypeLetter> InnerClassType;
 

@@ -12,6 +12,7 @@
 #ifndef SET_H  /* guard against multiple inclusions */
 #define SET_H
 
+#include <cstddef>
 #include <vector>
 
 /******** forward type declarations *****************************************/

@@ -1,20 +1,17 @@
-/*!
-\file
-  This is bits.h
-*/
 /*
   Copyright (C) 2004,2005 Fokko du Cloux
-  part of the Atlas of Reductive Lie Groups 
+  Copyright (C) 2017 Marc van Leeuwen
+  part of the Atlas of Lie Groups and Representations
 
-  See file main.cpp for full copyright notice
+  For license information see the LICENSE file
 */
+
+// This is bits.h
 
 #ifndef BITS_H  /* guard against multiple inclusions */
 #define BITS_H
 
-#include <vector>
-
-#include "constants.h"
+#include <cstring>
 #include "setutils.h"
 
 /******** function declarations **********************************************/
@@ -23,10 +20,11 @@ namespace atlas {
 
 namespace bits {
 
-  unsigned bitCount(unsigned long);
+  // count number of set bits in the word
+  unsigned int bitCount(unsigned long);
 
   inline void copy(void* dest, const void* source, size_t d) {
-    memcpy(dest,source,d);
+    std::memcpy(dest,source,d);
   }
 
   size_t firstBit(unsigned long);

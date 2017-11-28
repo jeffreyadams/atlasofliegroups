@@ -27,7 +27,6 @@ namespace constants {
    */
   const unsigned long ulongMax = std::numeric_limits<unsigned long>::max();
 
-
   // Fokko: I was surprised by the fact that the digits for char returns 7
   /*!
     Explanation: the constant charBits is in fact 8 everywhere.
