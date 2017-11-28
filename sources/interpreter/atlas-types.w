@@ -1962,8 +1962,9 @@ inner_class_value::~inner_class_value() @+{@; delete &val; }
 complicated by the storage of a dual |InnerClass| field and a reference count
 (mainly to ensure the double dual of an inner class would test equal to it), but
 that has been made unnecessary and the constructor is quite simple. The |Layout|
-argument is stored for convenience, and is used to initialise the |interface|
-and |dual_interface| fields.
+argument is used for convenience (it groups information of various nature
+gathered by |check_involution|), and is used to initialise the |rd_type|,
+|ic_type|, |interface| and |dual_interface| fields.
 
 There is a small subtlety, in that we have |val| as an owned reference field,
 which is initialised from a |std::unique_ptr|; just in case one of the later
@@ -2083,53 +2084,6 @@ void twisted_involution_wrapper(expression_base::level l)
     wrap_tuple<2>();
 }
 
-@ To simulate the functioning of the \.{Fokko} program, the following overload
-of the function |inner_class| in \.{atlas} takes as argument a Lie type, a list
-of kernel generators, and a string describing the inner class. The evaluation of
-the \.{atlas} call |inner_class(lt,gen,ict)| will successively compute ${\it
-basis}={\it quotient\_basis(lt,gen)}$, ${\it rd}={\it root\_datum (lt,basis)}$,
-and ${\it M}={\it based\_involution(lt,basis,ict)}$, and then returns the same
-value as would |fix_involution(rd,M)|. However we avoid actually calling the
-function |fix_involution_wrapper|, which would reconstruct |lt| and |ict| from
-|rd| and |M|, while performing tests that are useless given the way $M$ was
-computed; rather we store |lt| and |ict| directly in a |Layout| to be stored in
-the |inner_class_value|. This follows most closely \.{Fokko} behaviour, and
-avoids surprises (however inner class letters do change to synonyms as they
-usual do when passing through |checked_inner_class_type|).
-
-@< Local function def...@>=
-void inner_class_from_type_wrapper(expression_base::level l)
-{ bool prefer_coroots = false;
-  shared_string ict = get<string_value>();
-    // and leave generators |gen| and type |lt|
-  shared_value lt = *(execution_stack.end()-2);
-  const LieType& type=force<Lie_type_value>(lt.get())->val;
-  lietype::Layout lo(type,checked_inner_class_type(ict->val.c_str(),type));
-@)
-  quotient_basis_wrapper(expression_base::single_value); @+
-  shared_value basis = pop_value();
-@)
-  push_value(lt); push_value(basis);
-  push_value(whether(prefer_coroots));
-  root_datum_from_type_wrapper(expression_base::single_value);
-  shared_root_datum rd = get<root_datum_value>();
-  shared_root_datum dual_rd = rd->dual();
-@)
-  push_value(lt); push_value(basis);
-  push_value(ict);
-  based_involution_wrapper(expression_base::single_value);
-  shared_matrix M = get<matrix_value>();
-  if (l==expression_base::no_value)
-    return; // bow out now all possible errors are passed
-@)
-  std::unique_ptr<InnerClass>@|
-    G(new InnerClass(rd->val,dual_rd->val,M->val));
-  auto result = std::make_shared<inner_class_value>(std::move(G),lo);
-@/result->datum=std::move(rd);
-  result->dual_datum=std::move(dual_rd); // set dependencies
-  push_value(result);
-}
-
 @*2 Functions operating on inner classes.
 %
 Here are our first functions that access a operate on values of type
@@ -2141,20 +2095,13 @@ void inner_class_eq_wrapper(expression_base::level l)
 { shared_inner_class G = get<inner_class_value>();
   shared_inner_class H = get<inner_class_value>();
   if (l!=expression_base::no_value)
-    push_value(whether(&G->val==&H->val));
+    push_value(whether(G.get()==H.get())); // test identical objects
 }
 void inner_class_neq_wrapper(expression_base::level l)
 { shared_inner_class G = get<inner_class_value>();
   shared_inner_class H = get<inner_class_value>();
   if (l!=expression_base::no_value)
-    push_value(whether(&G->val!=&H->val));
-}
-@)
-void inner_class_identical_wrapper(expression_base::level l)
-{ shared_inner_class G = get<inner_class_value>();
-  shared_inner_class H = get<inner_class_value>();
-  if (l!=expression_base::no_value)
-    push_value(whether(G.get()==H.get())); // test identical objects
+    push_value(whether(G.get()!=H.get())); // test identical objects
 }
 
 @)
@@ -2319,12 +2266,8 @@ install_function(fix_involution_wrapper,@|"inner_class"
                 ,"(RootDatum,mat->InnerClass)");
 install_function(twisted_involution_wrapper,@|"twisted_involution"
                 ,"(RootDatum,mat->InnerClass,vec)");
-install_function(inner_class_from_type_wrapper,@|"inner_class"
-                ,"(LieType,[ratvec],string->InnerClass)");
 install_function(inner_class_eq_wrapper,@|"=","(InnerClass,InnerClass->bool)");
 install_function(inner_class_neq_wrapper,@|"!=","(InnerClass,InnerClass->bool)");
-install_function(inner_class_identical_wrapper,@|
-   "identical","(InnerClass,InnerClass->bool)");
 install_function(distinguished_involution_wrapper,@|"distinguished_involution"
                 ,"(InnerClass->mat)");
 install_function(root_datum_of_inner_class_wrapper,@|"root_datum"

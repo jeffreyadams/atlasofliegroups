@@ -384,11 +384,6 @@ twisted_involution (RootDatum,mat->InnerClass,vec): inner_class and Weyl word
   (twisted involution) that expresses the given involution in that inner
   class. The latter is a reduced word (with Weyl group generators numbered
   from 0), to be left-multiplied to the distinguished involution.
-inner_class: (Lie_type,[ratvec],string->InnerClass): inner class as in Fokko
-    set inner_class(Lie_type lt,[ratvec] gens,string ic_string) =
-    let basis=quotient_basis(lt,gens)
-    ; rd=root_datum(lt,basis), inv=based_involution(lt,basis,ic_string)
-    in inner_class(rd,inv).
 
 operators =, != : (InnerClass,InnerClass->bool): (non)identity of inner classes
   Equality holds only when both arguments refer to the same inner class

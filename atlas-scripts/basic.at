@@ -892,6 +892,10 @@ set inner_class (RootDatum rd, string ict) = InnerClass:
    in assert(=(prod%d),"Inner class not compatible with root datum");
    inner_class(rd,prod\d) { construct inner class from explicit involution }
 
+set inner_class (LieType lt, [ratvec] gens, string ict) = InnerClass:
+   let basis = quotient_basis(lt,gens) in
+   inner_class(root_datum(lt,basis),involution(lt,basis,ict))
+
 { integrality inner class (dual side) defined by inf. character and involution }
 set dual_integral (InnerClass ic, ratvec gamma) = InnerClass:
   inner_class(dual(integrality_datum(ic,gamma)),-^distinguished_involution(ic))
