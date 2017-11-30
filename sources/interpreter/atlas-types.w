@@ -5745,7 +5745,7 @@ void raw_KL_wrapper (expression_base::level l)
   if (l==expression_base::no_value)
     return;
 @)
-  b->klc.fill(false); // this does the actual KL computation
+  b->klc.fill(); // this does the actual KL computation
   own_matrix M = std::make_shared<matrix_value>(int_Matrix(b->klc.size()));
   for (size_t y=1; y<b->klc.size(); ++y)
     for (size_t x=0; x<y; ++x)
@@ -5785,7 +5785,7 @@ void raw_dual_KL_wrapper (expression_base::level l)
   Block dual_block = Block::build(b->dual_rf->val,b->rf->val);
 
   std::vector<BlockElt> dual=blocks::dual_map(block,dual_block);
-  kl::KLContext klc(dual_block); klc.fill(false);
+  kl::KLContext klc(dual_block); klc.fill();
   if (l==expression_base::no_value)
     return;
 @)
@@ -5888,7 +5888,7 @@ void W_graph_wrapper(expression_base::level l)
   if (l=expression_base::no_value)
     return;
 @)
-  b->klc.fill(false); // this does the actual KL computation
+  b->klc.fill(); // this does the actual KL computation
   wgraph::WGraph wg = kl::wGraph(b->klc);
 @)
   own_row vertices=std::make_shared<row_value>(0);
@@ -5931,7 +5931,7 @@ void W_cells_wrapper(expression_base::level l)
   if (l=expression_base::no_value)
     return;
 @)
-  b->klc.fill(false); // this does the actual KL computation
+  b->klc.fill(); // this does the actual KL computation
   wgraph::WGraph wg = kl::wGraph(b->klc);
   wgraph::DecomposedWGraph dg(wg);
 @)
@@ -6142,7 +6142,7 @@ void print_KL_basis_wrapper(expression_base::level l)
 { own_Block b = non_const_get<Block_value>();
   Block& block = b->val;
 @)
-  b->klc.fill(false); // this does the actual KL computation
+  b->klc.fill(); // this does the actual KL computation
   *output_stream
     << "Full list of non-zero Kazhdan-Lusztig-Vogan polynomials:\n\n";
   kl_io::printAllKL(*output_stream,b->klc,block);
@@ -6158,7 +6158,7 @@ void print_prim_KL_wrapper(expression_base::level l)
 { own_Block b = non_const_get<Block_value>();
   Block &block = b->val; // this one must be non-|const|
 @)
-  b->klc.fill(false); // this does the actual KL computation
+  b->klc.fill(); // this does the actual KL computation
   *output_stream
     << "Non-zero Kazhdan-Lusztig-Vogan polynomials for primitive pairs:\n\n";
   kl_io::printPrimitiveKL(*output_stream,b->klc,block);
@@ -6174,7 +6174,7 @@ outputs just a list of all distinct Kazhdan-Lusztig-Vogan polynomials.
 void print_KL_list_wrapper(expression_base::level l)
 { own_Block b = non_const_get<Block_value>();
 @)
-  b->klc.fill(false); // this does the actual KL computation
+  b->klc.fill(); // this does the actual KL computation
   kl_io::printKLList(*output_stream,b->klc);
 @)
   if (l==expression_base::single_value)
@@ -6192,7 +6192,7 @@ after having built the |klc::KLContext|.
 void print_W_cells_wrapper(expression_base::level l)
 { own_Block b = non_const_get<Block_value>();
 @)
-  b->klc.fill(false); // this does the actual KL computation
+  b->klc.fill(); // this does the actual KL computation
   wgraph::WGraph wg = kl::wGraph(b->klc);
   wgraph::DecomposedWGraph dg(wg);
 @)
@@ -6209,7 +6209,7 @@ routine of |print_W_cells|.
 void print_W_graph_wrapper(expression_base::level l)
 { own_Block b = non_const_get<Block_value>();
 @)
-  b->klc.fill(false); // this does the actual KL computation
+  b->klc.fill(); // this does the actual KL computation
   wgraph::WGraph wg = kl::wGraph(b->klc);
 @)
   wgraph_io::printWGraph(*output_stream,wg);

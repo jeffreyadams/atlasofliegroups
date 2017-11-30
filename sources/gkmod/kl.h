@@ -1,7 +1,7 @@
 /*
   This is kl.h
 
-  Class definitions and function declarations for the class KLContext.
+  Class definitions and function declarations for the class |KLContext|.
 
 
   Copyright (C) 2004,2005 Fokko du Cloux
@@ -43,16 +43,16 @@ class KLPolEntry; // class definition will given in the implementation file
 /*
   |KLContext| is a class that Calculates and stores the
   Kazhdan-Lusztig-Vogan polynomials for a block of representations of $G$.
-  */
+*/
 class KLContext
   : public klsupport::KLSupport // base is needed for full functionality
 {
 
   BlockElt fill_limit; // all "rows" |y| with |y<fill_limit| have been computed
 
-/*!
-  \brief Entry d_prim[y] is a list of the elements x_i that are primitive
-  with respect to y and have P_{y,x_i} not zero.
+/*
+  Entry |d_prim[y]| is a list of the elements $x_i$ that are primitive with
+  respect to $y$ and have |P_{y,x_i}| not zero.
 */
   std::vector<PrimitiveRow> d_prim;
 
@@ -60,12 +60,10 @@ class KLContext
   $d_kl[y]$ is a list of indices into |d_hashtable| of polynomials
   $P_{x_i,y}$ with $x_i=d_prim[i]$
 */
-  std::vector<KLRow> d_kl;           // list of polynomial pointers
+  std::vector<KLRow> d_kl;       // list of polynomial pointers
 
-/*!
-  \brief Entry d_mu[y] is a MuRow, which has parallel vectors for x and mu(x,y)
-*/
- std::vector<MuRow> d_mu;           // lists of x's and their mu-coefficients
+// Entry |d_mu[y]| is a |MuRow|; it has parallel vectors for $x$ and |mu(x,y)|
+  std::vector<MuRow> d_mu;       // lists of $x$'s and their |mu|-coefficients
 
   KLStore d_store; // the distinct actual polynomials
 
@@ -115,9 +113,9 @@ class KLContext
 // manipulators
 
   // partial fill, up to and including the "row" of |y|
-  void fill(BlockElt y, bool verbose=true);
+  void fill(BlockElt y, bool verbose=false);
 
-  void fill(bool verbose=true)
+  void fill(bool verbose=false)
   { fill(size()-1,verbose); } // simulate forbidden first default argument
 
 
@@ -126,38 +124,38 @@ class KLContext
   typedef HashTable<KLPolEntry,KLIndex> KLHash;
 
   //accessors
-    weyl::Generator firstDirectRecursion(BlockElt y) const;
-    weyl::Generator first_nice_and_real(BlockElt x,BlockElt y) const;
-    std::pair<weyl::Generator,weyl::Generator>
-      first_endgame_pair(BlockElt x, BlockElt y) const;
-    BlockEltPair inverseCayley(size_t s, BlockElt y) const;
-    std::set<BlockElt> down_set(BlockElt y) const;
+  weyl::Generator firstDirectRecursion(BlockElt y) const;
+  weyl::Generator first_nice_and_real(BlockElt x,BlockElt y) const;
+  std::pair<weyl::Generator,weyl::Generator>
+  first_endgame_pair(BlockElt x, BlockElt y) const;
+  BlockEltPair inverseCayley(size_t s, BlockElt y) const;
+  std::set<BlockElt> down_set(BlockElt y) const;
 
-    KLPolRef klPol(BlockElt x, BlockElt y,
+  KLPolRef klPol(BlockElt x, BlockElt y,
 		   KLRow::const_iterator klv,
 		   PrimitiveRow::const_iterator p_begin,
 		   PrimitiveRow::const_iterator p_end) const;
 
-    // manipulators
-    void silent_fill(BlockElt last_y);
-    void verbose_fill(BlockElt last_y);
+  // manipulators
+  void silent_fill(BlockElt last_y); // called by public |fill| when not verbose
+  void verbose_fill(BlockElt last_y); // called by public |fill| when verbose
 
-    // the |size_t| results serve only for statistics; caller may ignore them
-    size_t fillKLRow(BlockElt y, KLHash& hash);
-    void recursionRow(std::vector<KLPol> & klv,
-		      const PrimitiveRow& e, BlockElt y, size_t s);
-    void muCorrection(std::vector<KLPol>& klv,
-		      const PrimitiveRow& e,
-		      BlockElt y, size_t s);
-    size_t writeRow(const std::vector<KLPol>& klv,
-		    const PrimitiveRow& e, BlockElt y, KLHash& hash);
-    size_t remove_zeros(const KLRow& klv,
-			const PrimitiveRow& e, BlockElt y);
-    void newRecursionRow(KLRow & klv,const PrimitiveRow& pr,
-			 BlockElt y, KLHash& hash);
-    KLPol muNewFormula(BlockElt x, BlockElt y, size_t s, const MuRow& muy);
+  // the |size_t| results serve only for statistics; caller may ignore them
+  size_t fillKLRow(BlockElt y, KLHash& hash);
+  void recursionRow(std::vector<KLPol> & klv,
+		    const PrimitiveRow& e, BlockElt y, size_t s);
+  void muCorrection(std::vector<KLPol>& klv,
+		    const PrimitiveRow& e,
+		    BlockElt y, size_t s);
+  size_t writeRow(const std::vector<KLPol>& klv,
+		  const PrimitiveRow& e, BlockElt y, KLHash& hash);
+  size_t remove_zeros(const KLRow& klv,
+		      const PrimitiveRow& e, BlockElt y);
+  void newRecursionRow(KLRow & klv,const PrimitiveRow& pr,
+		       BlockElt y, KLHash& hash);
+  KLPol muNewFormula(BlockElt x, BlockElt y, size_t s, const MuRow& muy);
 
-}; //class KLContext
+}; // |class KLContext|
 
 } // |namespace kl|
 

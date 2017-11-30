@@ -825,7 +825,7 @@ bool KL_table::check_polys(BlockElt y) const
   bool result = true;
 #ifndef NDEBUG
   kl::KLContext untwisted(aux.block.untwisted());
-  untwisted.fill(false);
+  untwisted.fill(); // fill KL table silently
   for (BlockElt x=y; x-->0; )
     if (not check(P(x,y),untwisted.klPol(aux.block.z(x),aux.block.z(y))))
     {
