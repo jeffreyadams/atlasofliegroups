@@ -8,6 +8,8 @@
 */
 
 #include "ext_kl.h"
+#include "kl.h" // for presence of |kl::KLContext| in |check_polys|
+
 #include "basic_io.h"
 #include "wgraph.h"
 
@@ -823,7 +825,7 @@ bool KL_table::check_polys(BlockElt y) const
   bool result = true;
 #ifndef NDEBUG
   kl::KLContext untwisted(aux.block.untwisted());
-  untwisted.fill();
+  untwisted.fill(false);
   for (BlockElt x=y; x-->0; )
     if (not check(P(x,y),untwisted.klPol(aux.block.z(x),aux.block.z(y))))
     {
