@@ -267,6 +267,8 @@ root_datum: (RootDatum,mat->RootDatum): root datum for sublattice in old one
   rational numbers) and the roots of rd must be in its integral column span.
 root_datum: (InnerClass->RootDatum): root datum of inner class.
   Extract the root datum from the InnerClass value
+dual_datum: (InnerClass->RootDatum): dual root datum of inner class.
+  Extract the dual root datum from the InnerClass value
 
 operators =, != : (RootDatum,RootDatum->bool) equality of Root data
   Tests identical simple_roots, simple_coroots matrices, and prefers_coroots

@@ -144,7 +144,7 @@ void Lie_type_value::print(std::ostream& out) const
 
 @ The type |LieType| is publicly derived from |std::vector<SimpleLieType>|, and
 in its turn the type |SimpleLieType| is publicly derived from
-|std::pair<char,size_t>|. Therefore these types could in principle take
+|std::pair<char,unsigned int>|. Therefore these types could in principle take
 arbitrary values, not necessarily meaningful ones. To ensure that this cannot
 happen to \.{atlas} users, we make the method |add_simple_factor|, which is
 invoked to build up Lie types, checks for the validity.
@@ -214,7 +214,7 @@ void Lie_type_wrapper(expression_base::level l)
   own_Lie_type result = std::make_shared<Lie_type_value>();
   char c;
   while (skip_punctuation(is)>>c) // i.e., until |not is.good()|
-  { size_t rank;
+  { unsigned int rank;
     if (is.peek()=='-' or not (is>>rank)) // explicitly forbid minus sign
       throw runtime_error ()
         << "Error in type string '" << is.str() << "' for Lie type";
@@ -251,7 +251,7 @@ void compose_Lie_types_wrapper(expression_base::level l)
     return;
 @)
   t1->val.append(t2->val); // both factors have been tested, so this is safe
-  push_value(t1);
+  push_value(std::move(t1));
 }
 @)
 void extend_Lie_type_wrapper(expression_base::level l)
@@ -262,7 +262,7 @@ void extend_Lie_type_wrapper(expression_base::level l)
   own_Lie_type t=get_own<Lie_type_value>();
   t->add_simple_factor(type_letter,rank);
   if (l!=expression_base::no_value)
-    push_value(t);
+    push_value(std::move(t));
 }
 
 @ We have predicates for testing (in)equality of Lie types. The actual
@@ -330,7 +330,7 @@ void type_of_Cartan_matrix_wrapper (expression_base::level l)
   perm->val.reserve(pi.size());
   for(auto it=pi.begin(); it!=pi.end(); ++it)
     perm->val.push_back(std::make_shared<int_value>(*it));
-  push_value(perm);
+  push_value(std::move(perm));
   if (l==expression_base::single_value)
     wrap_tuple<2>();
 }
@@ -423,7 +423,7 @@ void filter_units_wrapper (expression_base::level l)
   if (l==expression_base::no_value)
     return;
 @)
-  size_t i=0;
+  unsigned int i=0;
   while (i<n)
     if (i>=inv_f->val.size() or inv_f->val[i]!=1)
       ++i; // keep invariant factor and column
@@ -431,7 +431,7 @@ void filter_units_wrapper (expression_base::level l)
     {@; inv_f->val.erase(inv_f->val.begin()+i);
         basis->val.eraseColumn(i);
     }
-  push_value(basis); push_value(inv_f);
+  push_value(std::move(basis)); push_value(std::move(inv_f));
   if (l==expression_base::single_value)
       wrap_tuple<2>();
 }
@@ -482,7 +482,7 @@ annihilator_modulo(const LatticeMatrix& M, arithmetic::Denom_t denominator)
   if (not lambda.empty())
     lambda[0]=std::abs(lambda[0]); // ensure all entries positive, for |div_gcd|
 
-  for (size_t i=0; i<lambda.size(); ++i)
+  for (unsigned int i=0; i<lambda.size(); ++i)
     row.rowMultiply(i,arithmetic::div_gcd(denominator,lambda[i]));
 
   return row.transposed();
@@ -528,8 +528,8 @@ void replace_gen_wrapper (expression_base::level l)
     throw runtime_error("Column lengths do not match");
 @.Column lengths do not match@>
 @)
-  size_t k=0; // index to replacement generators
-  for (size_t j=0; j<n; ++j)
+  unsigned int k=0; // index to replacement generators
+  for (unsigned int j=0; j<n; ++j)
     if (j>=inv_f->val.size() or inv_f->val[j]!=1)
        // replace column |j| by |k| from |new_generators|
     { if (k>=new_generators->val.numColumns())
@@ -542,7 +542,7 @@ void replace_gen_wrapper (expression_base::level l)
         throw runtime_error ("Too many replacement columns");
 @.Too many replacement columns@>
   if (l!=expression_base::no_value)
-    push_value(generators);
+    push_value(std::move(generators));
 }
 
 @ To emulate what is done in \.{Fokko}, we write a function that integrates some
@@ -587,8 +587,8 @@ void quotient_basis_wrapper(expression_base::level l)
   shared_value SC_basis = *(execution_stack.end()-2);
   shared_value invf = *(execution_stack.end()-1);
   wrap_tuple<2>(); // |replace_gen| wants as first argument a tuple
-@/push_value(SC_basis);
-  push_value(invf);
+@/push_value(std::move(SC_basis));
+  push_value(std::move(invf));
   filter_units_wrapper(expression_base::multi_value);
   shared_vector v=get<vector_value>();
   // and leave $C$ for call to $mm\_prod$
@@ -879,7 +879,7 @@ struct root_datum_entry : public PreRootDatum
   : PreRootDatum(std::move(pre)) @+{}
 
 typedef std::vector<root_datum_entry> Pooltype;
-  size_t hashCode(size_t modulus) const;
+  std::size_t hashCode(std::size_t modulus) const;
   bool operator!=(const root_datum_entry& x) const
     {@; return not PreRootDatum::operator==(x); }
 };
@@ -959,8 +959,8 @@ std::vector<std::weak_ptr<const root_datum_value> > root_datum_value::store;
 
 @ We have a simple hash function that uses all information in a |PreRootDatum|.
 @< Function definitions @>=
-size_t root_datum_entry::hashCode(size_t modulus) const
-{ size_t h= prefer_coroots() ? 1 : 0;
+std::size_t root_datum_entry::hashCode(std::size_t modulus) const
+{ std::size_t h= prefer_coroots() ? 1 : 0;
   for (unsigned int i=0; i<rank(); ++i)
     for (unsigned int j=0; j<semisimple_rank(); ++j)
       h=3*h+simple_root(j)[i];
@@ -1085,7 +1085,7 @@ void root_datum_wrapper(expression_base::level l)
 @/shared_matrix simple_coroots=get<matrix_value>();
   shared_matrix simple_roots=get<matrix_value>();
 
-  size_t nr = simple_roots->val.numRows(),
+  unsigned int nr = simple_roots->val.numRows(),
          nc = simple_roots->val.numColumns();
 
   if (simple_coroots->val.numRows()!=nr @| or
@@ -1201,9 +1201,9 @@ void adjoint_datum_wrapper(expression_base::level l)
   Cartan_matrix_wrapper(expression_base::single_value);
   transpose_mat_wrapper(expression_base::single_value);
   own_matrix M=get_own<matrix_value>();
-  for (size_t i=0; i<M->val.numRows(); ++i)
+  for (unsigned int i=0; i<M->val.numRows(); ++i)
     if (M->val(i,i)==0) M->val(i,i)=1;
-  push_value(M);
+  push_value(std::move(M));
   push_value(whether(prefer_coroots));
 @/root_datum_from_type_wrapper(expression_base::single_value);
 }
@@ -1483,7 +1483,7 @@ void integrality_points_wrapper(expression_base::level l)
   RationalList ipl = rootdata::integrality_points(rd->val,lambda->val);
     // method normalises rationals
   own_row result = std::make_shared<row_value>(ipl.size());
-  for (size_t i=0; i<ipl.size(); ++i)
+  for (unsigned int i=0; i<ipl.size(); ++i)
     result->val[i]=std::make_shared<rat_value>(ipl[i]);
   push_value(std::move(result));
 }
@@ -1647,7 +1647,7 @@ sufficient.
 @< Local function def...@>=
 RootNbrList check_root_datum_involution
   (const RootDatum& rd, const WeightInvolution& delta)
-{ const size_t r=rd.rank(), s=rd.semisimpleRank();
+{ const unsigned int r=rd.rank(), s=rd.semisimpleRank();
   @< Check that |delta| is an $r\times{r}$ matrix defining an involution @>
   RootNbrList Delta(s);
   for (weyl::Generator i=0; i<s; ++i)
@@ -1712,7 +1712,7 @@ weyl::Twist check_involution
   WeylWord& ww, @| lietype::Layout* lo=nullptr)
 { RootNbrList Delta = check_root_datum_involution(rd,delta);
   ww = wrt_distinguished(rd,Delta);
-  const size_t r=rd.rank(), s=rd.semisimpleRank();
+  const unsigned int r=rd.rank(), s=rd.semisimpleRank();
   weyl::Twist p; // result
 @/ @< Copy the permutation of the simple roots in |Delta| to |p|, and
       left-act on |delta| by the reverse of~|ww| to make it match |Delta| @>
@@ -1763,12 +1763,12 @@ lies in another component of the diagram we have a Complex inner class.
   assert(type.size()==comps.size());
 @)
   inner_class.reserve(comps.size()+r-s); // certainly enough
-  size_t offset=0; // accumulated rank of simple factors seen
+  unsigned int offset=0; // accumulated rank of simple factors seen
 
   unsigned int i=0; // index into |type|
   for (auto cit=comps.begin(); not comps.at_end(cit); ++cit,++i)
   { bool equal_rank=true;
-    size_t comp_rank = cit->count();
+    unsigned int comp_rank = cit->count();
     assert (comp_rank==type[i].rank());
        // and |*it| runs through bits in |*cit| in following loop
     for (auto it=&pi[offset]; it!=&pi[offset+comp_rank]; ++it)
@@ -1813,7 +1813,7 @@ matching factor |i|.
      upwards by |1| respectively |comp_rank| places @>
 @)
   type[i+1]=type[i]; // duplicate factor |i|
-  for (size_t j=offset; j<offset+comp_rank; ++j)
+  for (unsigned int j=offset; j<offset+comp_rank; ++j)
     pi[j+comp_rank]=p[pi[j]];
      // reconstruct matching component in matching order, applying~|p|
 }
@@ -1873,7 +1873,7 @@ block), and extract the bottom-right $(r-s)\times(r-s)$ block.
 
 @< Add type letters to |type| and inner class symbols to |inner_class|
    for the central torus @>=
-{ for (size_t k=0; k<r-s; ++k)
+{ for (unsigned int k=0; k<r-s; ++k)
     type.push_back(SimpleLieType('T',1));
   int_Matrix root_lattice
     (rd.beginSimpleRoot(),rd.endSimpleRoot(),r,tags::IteratorTag());
@@ -2065,7 +2065,7 @@ void fix_involution_wrapper(expression_base::level l)
   shared_root_datum rd = get<root_datum_value>();
   auto ic_value = inner_class_value::build(rd,M); // build and check
   if (l!=expression_base::no_value)
-    push_value(ic_value);
+    push_value(std::move(ic_value));
 }
 
 @ Another wrapper |twisted_involution_wrapper| is similar, but also returns a
@@ -2081,7 +2081,7 @@ void twisted_involution_wrapper(expression_base::level l)
   if (l==expression_base::no_value)
     return;
 @)
-  push_value(ic_value);
+  push_value(std::move(ic_value));
   push_value(std::make_shared<vector_value>
     (std::vector<int>(ww.begin(),ww.end())));
   if (l==expression_base::single_value)
@@ -2090,8 +2090,9 @@ void twisted_involution_wrapper(expression_base::level l)
 
 @*2 Functions operating on inner classes.
 %
-Here are our first functions that access a operate on values of type
-|inner_class_value|; they recover the ingredients that were used in the
+Here are our first functions that access and operate on values of type
+|inner_class_value|. They test for equality (as mentioned above this can be done
+by simple pointer comparison), recover the ingredients that were used in the
 construction, and the final one constructs the dual inner class.
 
 @< Local function def...@>=
@@ -2118,7 +2119,12 @@ void distinguished_involution_wrapper(expression_base::level l)
 void root_datum_of_inner_class_wrapper(expression_base::level l)
 { shared_inner_class G = get<inner_class_value>();
   if (l!=expression_base::no_value)
-    push_value(root_datum_value::build(G->val.rootDatum()));
+    push_value(G->datum);
+}
+void dual_datum_of_inner_class_wrapper(expression_base::level l)
+{ shared_inner_class G = get<inner_class_value>();
+  if (l!=expression_base::no_value)
+    push_value(G->dual_datum);
 }
 @)
 void inner_class_to_root_datum_coercion()
@@ -2138,7 +2144,8 @@ produces the list, and then use it twice.
 @< Local function def...@>=
 void push_name_list(const output::FormNumberMap& interface)
 { own_row result = std::make_shared<row_value>(0);
-  for (size_t i=0; i<interface.numRealForms(); ++i)
+  result->val.reserve(interface.numRealForms());
+  for (unsigned int i=0; i<interface.numRealForms(); ++i)
     result->val.emplace_back
       (std::make_shared<string_value>(interface.type_name(i)));
   push_value(std::move(result));
@@ -2197,8 +2204,8 @@ void block_sizes_wrapper(expression_base::level l)
 @)
   own_matrix M = std::make_shared<matrix_value> @|
     (int_Matrix(G->val.numRealForms(),G->val.numDualRealForms()));
-  for (size_t i = 0; i < M->val.numRows(); ++i)
-    for (size_t j = 0; j < M->val.numColumns(); ++j)
+  for (unsigned int i = 0; i < M->val.numRows(); ++i)
+    for (unsigned int j = 0; j < M->val.numColumns(); ++j)
       M->val(i,j) =
       G->val.block_size(G->interface.in(i),G->dual_interface.in(j)).int_val();
   push_value(std::move(M));
@@ -2229,20 +2236,19 @@ void occurrence_matrix_wrapper(expression_base::level l)
   if (l==expression_base::no_value)
     return;
 @)
-  size_t nr=G->val.numRealForms();
-  size_t nc=G->val.numCartanClasses();
+  unsigned int nr=G->val.numRealForms();
+  unsigned int nc=G->val.numCartanClasses();
   own_matrix M = std::make_shared<matrix_value>(int_Matrix(nr,nc));
-  for (size_t i=0; i<nr; ++i)
+  for (unsigned int i=0; i<nr; ++i)
   { BitMap b=G->val.Cartan_set(G->interface.in(i));
-    for (size_t j=0; j<nc; ++j)
+    for (unsigned int j=0; j<nc; ++j)
       M->val(i,j)= b.isMember(j) ? 1 : 0;
   }
   push_value(std::move(M));
 }
 
 @ We do the same for dual real forms. Note that we had to introduce the method
-|dualCartanSet| for |InnerClass| in order to be able
-to write this function.
+|dualCartanSet| for |InnerClass| in order to be able to write this function.
 
 @< Local function def...@>=
 void dual_occurrence_matrix_wrapper(expression_base::level l)
@@ -2250,12 +2256,12 @@ void dual_occurrence_matrix_wrapper(expression_base::level l)
   if (l==expression_base::no_value)
     return;
 @)
-  size_t nr=G->val.numDualRealForms();
-  size_t nc=G->val.numCartanClasses();
+  unsigned int nr=G->val.numDualRealForms();
+  unsigned int nc=G->val.numCartanClasses();
   own_matrix M = std::make_shared<matrix_value>(int_Matrix(nr,nc));
-  for (size_t i=0; i<nr; ++i)
+  for (unsigned int i=0; i<nr; ++i)
   { BitMap b=G->val.dual_Cartan_set(G->dual_interface.in(i));
-    for (size_t j=0; j<nc; ++j)
+    for (unsigned int j=0; j<nc; ++j)
       M->val(i,j)= b.isMember(j) ? 1 : 0;
   }
   push_value(std::move(M));
@@ -2275,6 +2281,8 @@ install_function(inner_class_neq_wrapper,@|"!=","(InnerClass,InnerClass->bool)")
 install_function(distinguished_involution_wrapper,@|"distinguished_involution"
                 ,"(InnerClass->mat)");
 install_function(root_datum_of_inner_class_wrapper,@|"root_datum"
+                ,"(InnerClass->RootDatum)");
+install_function(dual_datum_of_inner_class_wrapper,@|"dual_datum"
                 ,"(InnerClass->RootDatum)");
 install_function(dual_inner_class_wrapper,@|"dual"
                 ,"(InnerClass->InnerClass)");
@@ -2404,7 +2412,7 @@ As a special case we also provide the quasisplit form.
 void real_form_wrapper(expression_base::level l)
 { int i = get<int_value>()->int_val();
   shared_inner_class G = get<inner_class_value>();
-  if (size_t(i)>=G->val.numRealForms())
+  if (static_cast<unsigned int>(i)>=G->val.numRealForms())
     throw runtime_error ("Illegal real form number: "+str(i));
 @.Illegal real form number@>
   if (l!=expression_base::no_value)
@@ -2439,7 +2447,7 @@ void real_form_to_inner_class_coercion()
 
 void real_form_to_root_datum_coercion()
 { shared_real_form rf= get<real_form_value>();
-  push_value(root_datum_value::build(rf->our_inner_class->val.rootDatum()));
+  push_value(rf->our_inner_class->datum);
 }
 
 @ Here is a function that gives information about the dual component group
@@ -2510,11 +2518,11 @@ void Cartan_order_wrapper(expression_base::level l)
   if (l==expression_base::no_value)
     return;
 @)
-  size_t n=rf->val.numCartan();
+  unsigned int n=rf->val.numCartan();
   own_matrix M = std::make_shared<matrix_value>(int_Matrix(n,n,0));
   const poset::Poset& p = rf->val.innerClass().Cartan_ordering();
-  for (size_t i=0; i<n; ++i)
-    for (size_t j=i; j<n; ++j)
+  for (unsigned int i=0; i<n; ++i)
+    for (unsigned int j=i; j<n; ++j)
       if (p.lesseq(i,j)) M->val(i,j)=1;
 
   push_value(std::move(M));
@@ -2531,10 +2539,10 @@ void KGB_Hasse_wrapper(expression_base::level l)
   if (l==expression_base::no_value)
     return;
 @)
-  size_t n=rf->val.KGB_size();
+  unsigned int n=rf->val.KGB_size();
   own_matrix M = std::make_shared<matrix_value>(int_Matrix(n,n,0));
   const auto& Bruhat = rf->val.Bruhat_KGB();
-  for (size_t j=0; j<n; ++j)
+  for (unsigned int j=0; j<n; ++j)
   { const auto& col = Bruhat.hasse(j);
     for (auto it=col.begin(); it!=col.end(); ++it)
       M->val(*it,j)=1;
@@ -2605,7 +2613,7 @@ index. We also provide the dual quasisplit form.
 void dual_real_form_wrapper(expression_base::level l)
 { int i =get<int_value>()->int_val();
   shared_inner_class G = get<inner_class_value>();
-  if (size_t(i)>=G->val.numDualRealForms())
+  if (static_cast<unsigned int>(i)>=G->val.numDualRealForms())
     throw runtime_error ("Illegal dual real form number: "+str(i));
 @.Illegal dual real form number@>
   if (l==expression_base::no_value)
@@ -2721,7 +2729,7 @@ void central_fiber_wrapper(expression_base::level l)
   unsigned int i=0;
   for (auto it=cf.begin(); it!=cf.end(); ++it, ++i)
     result->val[i]= std::make_shared<vector_value>(int_Vector(*it));
-  push_value(result);
+  push_value(std::move(result));
 }
 
 void initial_torus_bits_wrapper(expression_base::level l)
@@ -2782,10 +2790,10 @@ this inner class.
 @< Type definitions @>=
 struct Cartan_class_value : public value_base
 { shared_inner_class our_inner_class;
-  size_t number;
+  CartanNbr number;
   const CartanClass& val;
 @)
-  Cartan_class_value(shared_inner_class icp,size_t cn);
+  Cartan_class_value(shared_inner_class icp,CartanNbr cn);
   ~Cartan_class_value() @+{} // everything is handled by destructor of |parent|
 @)
   virtual void print(std::ostream& out) const;
@@ -2802,7 +2810,7 @@ therefore call that method in the initialiser; on return it provides a valid
 reference.
 
 @< Function def...@>=
-Cartan_class_value::Cartan_class_value(shared_inner_class icp,size_t cn)
+Cartan_class_value::Cartan_class_value(shared_inner_class icp,CartanNbr cn)
 : our_inner_class(icp), number(cn),val(icp->val.cartan(cn))
 @+{}
 
@@ -2825,7 +2833,7 @@ a valid index into its list of Cartan classes.
 void ic_Cartan_class_wrapper(expression_base::level l)
 { int i=get<int_value>()->int_val();
   shared_inner_class ic = get<inner_class_value>();
-  if (size_t(i)>=ic->val.numCartanClasses())
+  if (static_cast<unsigned int>(i)>=ic->val.numCartanClasses())
     throw runtime_error ("Illegal Cartan class number: "+str(i)
 @.Illegal Cartan class number@>
     +", this inner class only has "+str(ic->val.numCartanClasses())
@@ -2843,7 +2851,7 @@ containing inner class, and then get the Cartan class from there.
 void rf_Cartan_class_wrapper(expression_base::level l)
 { int i=get<int_value>()->int_val();
   shared_real_form rf= get<real_form_value>();
-  if (size_t(i)>=rf->val.numCartan())
+  if (static_cast<unsigned int>(i)>=rf->val.numCartan())
     throw runtime_error ("Illegal Cartan class number: "+str(i)
 @.Illegal Cartan class number@>
     +", this real form only has "+str(rf->val.numCartan())+" of them");
@@ -2914,8 +2922,8 @@ void Cartan_info_wrapper(expression_base::level l)
     cc->our_inner_class->val.involution_of_Cartan(cc->number);
   WeylWord ww = cc->our_inner_class->val.weylGroup().word(tw);
 
-  std::vector<int> v(ww.begin(),ww.end());
-  push_value(std::make_shared<vector_value>(v));
+  push_value(std::make_shared<vector_value>
+    (std::vector<int>(ww.begin(),ww.end())));
 
   push_value(std::make_shared<int_value>(cc->val.orbitSize()));
   push_value(std::make_shared<int_value>(cc->val.fiber().fiberSize()));
@@ -2958,7 +2966,7 @@ void real_forms_of_Cartan_wrapper(expression_base::level l)
 @)
   shared_inner_class icp=cc->our_inner_class;
   own_row result = std::make_shared<row_value>(cc->val.numRealForms());
-  for (size_t i=0,k=0; i<icp->val.numRealForms(); ++i)
+  for (unsigned int i=0,k=0; i<icp->val.numRealForms(); ++i)
   { RealFormNbr rf = icp->interface.in(i);
     BitMap b(icp->val.Cartan_set(rf));
     if (b.isMember(cc->number))
@@ -2974,7 +2982,7 @@ void dual_real_forms_of_Cartan_wrapper(expression_base::level l)
 @)
   auto dual_ic = cc->our_inner_class->dual();
   own_row result = std::make_shared<row_value>(cc->val.numDualRealForms());
-  for (size_t i=0,k=0; i<dual_ic->val.numRealForms(); ++i)
+  for (unsigned int i=0,k=0; i<dual_ic->val.numRealForms(); ++i)
   { RealFormNbr drf = cc->our_inner_class->dual_interface.in(i);
     BitMap b (cc->our_inner_class->val.dual_Cartan_set(drf));
     if (b.isMember(cc->number))
@@ -3016,7 +3024,7 @@ void fiber_partition_wrapper(expression_base::level l)
      // translate part number of |pi| to real form
   own_row result =
     std::make_shared<row_value>(0); // cannot predict exact size here
-  for (size_t i=0; i<pi.size(); ++i)
+  for (unsigned int i=0; i<pi.size(); ++i)
     if (rf_nr[pi.class_of(i)] == rf->val.realForm())
       result->val.push_back(std::make_shared<int_value>(i));
   push_value(std::move(result));
@@ -3033,7 +3041,7 @@ void square_classes_wrapper(expression_base::level l)
   if (l==expression_base::no_value)
     return;
 @)
-  size_t n_sq_classes = cc->val.numRealFormClasses();
+  unsigned int n_sq_classes = cc->val.numRealFormClasses();
   own_row result = std::make_shared<row_value>(n_sq_classes);
   for (cartanclass::square_class csc=0; csc<n_sq_classes; ++csc)
   { const Partition& pi = cc->val.fiber_partition(csc);
@@ -3109,7 +3117,7 @@ for this case.
 
     *output_stream << "of type " << t << ", with simple root"
               << (si.size()==1 ? " " : "s ");
-    for (size_t i=0; i<si.size(); ++i)
+    for (unsigned int i=0; i<si.size(); ++i)
       *output_stream << si[sigma[i]] << (i<si.size()-1 ? "," : ".\n");
   }
 }
@@ -3129,7 +3137,7 @@ different lines after commas if necessary.
 @h "ioutils.h"
 @< Print the gradings for the part of |pi|... @>=
 { bool first=true; std::ostringstream os;
-  for (size_t i=0; i<pi.size(); ++i)
+  for (unsigned int i=0; i<pi.size(); ++i)
     if ( rf_nr[pi.class_of(i)] == rf->val.realForm())
     { const auto& f= cc->val.fiber();
       cartanclass::AdjointFiberElt afe(RankFlags(i),f.adjointFiberRank());
@@ -3213,7 +3221,7 @@ void KGB_elt_value::print(std::ostream& out) const
 void KGB_elt_wrapper(expression_base::level l)
 { int i = get<int_value>()->int_val();
   own_real_form rf= non_const_get<real_form_value>();
-  if (size_t(i)>=rf->val.KGB_size())
+  if (static_cast<unsigned int>(i)>=rf->val.KGB_size())
     throw runtime_error ("Inexistent KGB element: "+str(i));
 @.Inexistent KGB element@>
   if (l!=expression_base::no_value)
@@ -3294,7 +3302,7 @@ void KGB_cross_wrapper(expression_base::level l)
     x->val= kgb.cross(alpha,x->val);
   else // do non-simple cross action
     x->val = cross(kgb,x->val,npr+alpha);
-  push_value(x);
+  push_value(std::move(x));
 }
 @)
 void KGB_Cayley_wrapper(expression_base::level l)
@@ -3317,7 +3325,7 @@ void KGB_Cayley_wrapper(expression_base::level l)
     catch (std::runtime_error&) {}
       // ignore undefined Cayley error, leave |x| unchanged
   }
-  push_value(x);
+  push_value(std::move(x));
 }
 
 @ One also needs to be able find out the status of roots. Although somewhat
@@ -3413,7 +3421,7 @@ void KGB_twist_wrapper(expression_base::level l)
     return;
 @)
   x->val= kgb.Hermitian_dual(x->val); // do twist
-  push_value(x);
+  push_value(std::move(x));
 }
 @)
 void test_compatible (const InnerClass& ic, shared_matrix& delta)
@@ -3431,7 +3439,7 @@ void KGB_outer_twist_wrapper(expression_base::level l)
     return;
 @)
   x->val= x->rf->kgb().twisted(x->val,delta->val); // do twist
-  push_value(x);
+  push_value(std::move(x));
 }
 
 @ Here is a function that returns the vector of bits that distinguish KGB
@@ -3741,7 +3749,7 @@ void block_Cayley_wrapper(expression_base::level l)
 @)
   BlockElt sx = b->val.cayley(s,ii).first;
   if (sx==UndefBlock) // when undefined, return i to indicate so
-    push_value(i);
+    push_value(std::move(i));
   else
     push_value(std::make_shared<int_value>(sx));
 }
@@ -3761,7 +3769,7 @@ void block_inverse_Cayley_wrapper(expression_base::level l)
 @)
   BlockElt sx = b->val.inverseCayley(s,ii).first;
   if (sx==UndefBlock) // when undefined, return i to indicate so
-    push_value(i);
+    push_value(std::move(i));
   else
     push_value(std::make_shared<int_value>(sx));
 }
@@ -3991,7 +3999,7 @@ void parameter_dominant_wrapper(expression_base::level l)
 { own_module_parameter p = get_own<module_parameter_value>();
   if (l!=expression_base::no_value)
   {@; p->rc().make_dominant(p->val);
-    push_value(p);
+    push_value(std::move(p));
   }
 }
 
@@ -3999,7 +4007,7 @@ void parameter_normal_wrapper(expression_base::level l)
 { own_module_parameter p = get_own<module_parameter_value>();
   if (l!=expression_base::no_value)
   {@; p->rc().normalise(p->val);
-    push_value(p);
+    push_value(std::move(p));
   }
 }
 @)
@@ -4132,7 +4140,7 @@ void root_parameter_Cayley_wrapper(expression_base::level l)
   }
   catch (error::Cayley_error& e) // ignore undefined Cayley transforms
   {@;
-    push_value(p);
+    push_value(std::move(p));
   }
 }
 
@@ -4185,7 +4193,7 @@ void reducibility_points_wrapper(expression_base::level l)
   RationalList rp = p->rc().reducibility_points(p->val);
       // method normalises rationals
   own_row result = std::make_shared<row_value>(rp.size());
-  for (size_t i=0; i<rp.size(); ++i)
+  for (unsigned int i=0; i<rp.size(); ++i)
     result->val[i]=std::make_shared<rat_value>(rp[i]);
   push_value(std::move(result));
 }
@@ -4338,7 +4346,7 @@ void KL_block_wrapper(expression_base::level l)
 @)
   own_vector length_stops = std::make_shared<vector_value>(
      int_Vector(block.length(block.size()-1)+2));
-  for (size_t i=0; i<length_stops->val.size(); ++i)
+  for (unsigned int i=0; i<length_stops->val.size(); ++i)
     length_stops->val[i]=block.length_first(i);
 @)
   unsigned n_survivors=0;
@@ -4383,18 +4391,15 @@ identically in two wrapper functions.
 
 @< Extract from |klc| an |own_matrix M@;| and |own_row polys@;| @>=
 own_matrix M = std::make_shared<matrix_value>(int_Matrix(klc.size()));
-for (size_t y=1; y<klc.size(); ++y)
-  for (size_t x=0; x<y; ++x)
+for (unsigned int y=1; y<klc.size(); ++y)
+  for (unsigned int x=0; x<y; ++x)
     M->val(x,y)= klc.KL_pol_index(x,y);
 @)
 own_row polys = std::make_shared<row_value>(0);
 polys->val.reserve(klc.polStore().size());
-for (size_t i=0; i<klc.polStore().size(); ++i)
-{
-  const kl::KLPol& pol = klc.polStore()[i];
-  std::vector<int> coeffs(pol.begin(),pol.end());
-  polys->val.emplace_back(std::make_shared<vector_value>(coeffs));
-}
+for (auto it=klc.polStore().begin(); it!=klc.polStore().end(); ++it)
+  polys->val.emplace_back(std::make_shared<vector_value> @|
+     (std::vector<int>(it->begin(),it->end())));
 
 @ Here is a dual variation of the previous function. The main difference is
 calling the pseudo constructor |blocks::Bare_block::dual| to transform |block|
@@ -4426,7 +4431,7 @@ void dual_KL_block_wrapper(expression_base::level l)
 @)
   own_vector length_stops = std::make_shared<vector_value>(
      int_Vector(block.length(size1)+2));
-  for (size_t i=0; i<length_stops->val.size(); ++i)
+  for (unsigned int i=0; i<length_stops->val.size(); ++i)
     // subtract from |block.size()| here:
     length_stops->val[i] =
       block.size()-block.length_first(length_stops->val.size()-1-i);
@@ -4491,25 +4496,20 @@ void partial_KL_block_wrapper(expression_base::level l)
   // compute KL polynomials, silently
 
   own_matrix M = std::make_shared<matrix_value>(int_Matrix(klc.size()));
-  for (size_t y=1; y<klc.size(); ++y)
-    for (size_t x=0; x<y; ++x)
+  for (unsigned int y=1; y<klc.size(); ++y)
+    for (unsigned int x=0; x<y; ++x)
       M->val(x,y)= klc.KL_pol_index(x,y);
 @)
   own_row polys = std::make_shared<row_value>(0);
   polys->val.reserve(klc.polStore().size());
-  for (size_t i=0; i<klc.polStore().size(); ++i)
-  {
-    const kl::KLPol& pol = klc.polStore()[i];
-    std::vector<int> coeffs(pol.size());
-    for (size_t j=pol.size(); j-->0; )
-      coeffs[j]=pol[j];
-    polys->val.emplace_back(std::make_shared<vector_value>(coeffs));
-  }
+  for (auto it=klc.polStore().begin(); it!=klc.polStore().end(); ++it)
+    polys->val.emplace_back(std::make_shared<vector_value> @|
+       (std::vector<int>(it->begin(),it->end())));
 @)
   own_vector length_stops = std::make_shared<vector_value>(
      int_Vector(block.length(block.size()-1)+2));
   length_stops->val[0]=0;
-  for (size_t i=1; i<length_stops->val.size(); ++i)
+  for (unsigned int i=1; i<length_stops->val.size(); ++i)
     length_stops->val[i]=block.length_first(i);
 @)
   unsigned n_survivors=0;
@@ -5751,24 +5751,20 @@ void raw_KL_wrapper (expression_base::level l)
 @)
   b->klc.fill(); // this does the actual KL computation
   own_matrix M = std::make_shared<matrix_value>(int_Matrix(b->klc.size()));
-  for (size_t y=1; y<b->klc.size(); ++y)
-    for (size_t x=0; x<y; ++x)
+  for (unsigned int y=1; y<b->klc.size(); ++y)
+    for (unsigned int x=0; x<y; ++x)
       M->val(x,y) = b->klc.KL_pol_index(x,y);
 @)
   own_row polys = std::make_shared<row_value>(0);
-  polys->val.reserve(b->klc.polStore().size());
-  for (size_t i=0; i<b->klc.polStore().size(); ++i)
-  {
-    const kl::KLPol& pol = b->klc.polStore()[i];
-    std::vector<int> coeffs(pol.size());
-    for (size_t j=pol.size(); j-->0; )
-      coeffs[j]=pol[j];
-    polys->val.emplace_back(std::make_shared<vector_value>(coeffs));
-  }
+  const auto& store=b->klc.polStore();
+  polys->val.reserve(store.size());
+  for (auto it=store.begin(); it!=store.end(); ++it)
+    polys->val.emplace_back(std::make_shared<vector_value> @|
+       (std::vector<int>(it->begin(),it->end())));
 @)
   std::vector<int> length_stops(block.length(block.size()-1)+2);
   length_stops[0]=0;
-  for (size_t i=1; i<length_stops.size(); ++i)
+  for (unsigned int i=1; i<length_stops.size(); ++i)
     length_stops[i]=block.length_first(i);
 @)
   push_value(std::move(M));
@@ -5794,24 +5790,19 @@ void raw_dual_KL_wrapper (expression_base::level l)
     return;
 @)
   own_matrix M = std::make_shared<matrix_value>(int_Matrix(klc.size()));
-  for (size_t y=1; y<klc.size(); ++y)
-    for (size_t x=0; x<y; ++x)
+  for (unsigned int y=1; y<klc.size(); ++y)
+    for (unsigned int x=0; x<y; ++x)
       M->val(x,y) = klc.KL_pol_index(dual[y],dual[x]);
 @)
   own_row polys = std::make_shared<row_value>(0);
   polys->val.reserve(klc.polStore().size());
-  for (size_t i=0; i<klc.polStore().size(); ++i)
-  {
-    const kl::KLPol& pol = klc.polStore()[i];
-    std::vector<int> coeffs(pol.size());
-    for (size_t j=pol.size(); j-->0; )
-      coeffs[j]=pol[j];
-    polys->val.emplace_back(std::make_shared<vector_value>(coeffs));
-  }
+  for (auto it=klc.polStore().begin(); it!=klc.polStore().end(); ++it)
+    polys->val.emplace_back(std::make_shared<vector_value> @|
+       (std::vector<int>(it->begin(),it->end())));
 @)
   std::vector<int> length_stops(block.length(block.size()-1)+2);
   length_stops[0]=0;
-  for (size_t i=1; i<length_stops.size(); ++i)
+  for (unsigned int i=1; i<length_stops.size(); ++i)
     length_stops[i]=block.length_first(i);
 @)
   push_value(std::move(M));
@@ -5852,23 +5843,22 @@ void raw_ext_KL_wrapper (expression_base::level l)
     ext_kl::KL_table klt(eb,pool); klt.fill_columns();
   @)
     own_matrix M = std::make_shared<matrix_value>(int_Matrix(klt.size()));
-    for (size_t y=1; y<klt.size(); ++y)
-      for (size_t x=0; x<y; ++x)
+    for (unsigned int y=1; y<klt.size(); ++y)
+      for (unsigned int x=0; x<y; ++x)
       @/{@; auto inx = klt.KL_pol_index(x,y);
         M->val(x,y) = inx.second ? -inx.first : inx.first;
       }
   @)
     own_row polys = std::make_shared<row_value>(0);
     polys->val.reserve(pool.size());
-    for (size_t i=0; i<pool.size(); ++i)
-    {
-      std::vector<int> coeffs(pool[i].begin(),pool[i].end());
-      polys->val.emplace_back(std::make_shared<vector_value>(coeffs));
-    }
+    for (auto it=pool.begin(); it!=pool.end(); ++it)
+      polys->val.emplace_back(std::make_shared<vector_value> @|
+         (std::vector<int>(it->begin(),it->end())));
+
   @)
     std::vector<int> length_stops(block.length(block.size()-1)+2);
     length_stops[0]=0;
-    for (size_t i=1; i<length_stops.size(); ++i)
+    for (unsigned int i=1; i<length_stops.size(); ++i)
       length_stops[i]=eb.length_first(i);
   @)
     push_value(std::move(M));
@@ -5906,7 +5896,7 @@ void W_graph_wrapper(expression_base::level l)
 @< Push to |vertices| a list of pairs for each element of |wg|, each
    consisting of a descent set and a list of outgoing labelled edges @>=
 vertices->val.reserve(wg.size());
-for (size_t i = 0; i < wg.size(); ++i)
+for (unsigned int i = 0; i < wg.size(); ++i)
 { auto ds = wg.descent_set(i);
   own_row descents=std::make_shared<row_value>(0);
   descents->val.reserve(ds.count());
@@ -5942,7 +5932,7 @@ void W_cells_wrapper(expression_base::level l)
 
   own_row cells=std::make_shared<row_value>(0);
   cells->val.reserve(dg.cellCount());
-  for (size_t c = 0; c < dg.cellCount(); ++c)
+  for (unsigned int c = 0; c < dg.cellCount(); ++c)
   { auto& wg=dg.cell(c); // local W-graph of cell
     own_row members =std::make_shared<row_value>(0);
     { const BlockEltList& mem=dg.cellMembers(c);
