@@ -44,7 +44,7 @@ namespace output {
 
 
   std::ostream& printBlockSizes(std::ostream& strm,
-				InnerClass& G,Interface& CI)
+				const InnerClass& G,Interface& CI)
 {
   const FormNumberMap rfi = CI.realFormInterface();
   const FormNumberMap drfi = CI.dualRealFormInterface();
@@ -200,7 +200,7 @@ std::ostream& printRealForms(std::ostream& strm, const FormNumberMap& I)
 
 
 std::ostream& printGradings(std::ostream& strm,
-			    InnerClass& G, size_t cn, Interface& CI)
+			    const InnerClass& G, size_t cn, Interface& CI)
 {
   const CartanClass& cc = G.cartan(cn);
 
@@ -364,7 +364,7 @@ std::ostream& printBlockStabilizer(std::ostream& strm,
 				   size_t cn, RealFormNbr drf)
 
 {
-  InnerClass& G_C = G_R.innerClass();
+  const InnerClass& G_C = G_R.innerClass();
   const RootDatum& rd = G_R.rootDatum();
   const WeylGroup& W = G_R.weylGroup();
 
@@ -447,7 +447,7 @@ std::ostream& printRealWeyl(std::ostream& strm,
 			    RealReductiveGroup& G_R, // modifiable for |cartan|
 			    size_t cn)
 {
-  InnerClass& G_C = G_R.innerClass();
+  const InnerClass& G_C = G_R.innerClass();
 
   RealFormNbr rf = G_R.realForm();
 
@@ -489,7 +489,7 @@ std::ostream& printRealWeyl(std::ostream& strm,
   real forms; we label them with the corresponding weak real form.
 */
 std::ostream& printStrongReal(std::ostream& strm,
-			      InnerClass& G_C,
+			      const InnerClass& G_C,
 			      const output::FormNumberMap& rfi,
 			      size_t cn)
 {

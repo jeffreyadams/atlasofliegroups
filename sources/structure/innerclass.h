@@ -45,7 +45,7 @@ void Cayley_and_cross_part(RootNbrSet& Cayley,
 			   const TwistedWeylGroup& W);
 
 RealFormNbr real_form_of // who claims this KGB element?
-  (InnerClass& G, TwistedInvolution tw, // by value
+  (const InnerClass& G, TwistedInvolution tw, // by value
    const RatCoweight& torus_factor,
    RatCoweight& cocharacter // additional output
    );
@@ -470,14 +470,12 @@ class InnerClass
   { return canonicalize(sigma,RankFlags(constants::lMask[semisimpleRank()])); }
 
 
-// Manipulators
+// pseudo manipulator
 
   void generate_Cartan_orbit (CartanNbr i) { C_orb.add(*this,i); }
 
 // Auxiliary accessors
  private:
-
-  void construct(); // does essential work, common to two constructors
 
   TorusPart grading_shift_repr(Grading diff) const;
 
@@ -492,6 +490,8 @@ class InnerClass
   { return TorusPart(Cartan[cn].dual_rep[drf],semisimpleRank()); }
 
 // Auxiliary manipulators
+
+  void construct(); // does essential work, common to two constructors
 
   void map_real_forms(CartanNbr cn);      // set |Cartan[cn].real_labels|
   void map_dual_real_forms(CartanNbr cn); // set |Cartan[cn].dual_real_labels|

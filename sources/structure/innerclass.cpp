@@ -1197,7 +1197,7 @@ Grading grading_of_simples
 }
 
 RealFormNbr real_form_of // who claims this KGB element?
-  (InnerClass& G, TwistedInvolution tw, // by value, modified
+  (const InnerClass& G, TwistedInvolution tw, // by value, modified
    const RatCoweight& torus_factor,
    RatCoweight& coch // additional output
   )

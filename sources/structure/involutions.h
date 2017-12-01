@@ -235,7 +235,7 @@ struct Cartan_orbit
   unsigned int Cartan_class_nbr;
   InvolutionNbr start,size;
 
-  Cartan_orbit(InvolutionTable& i_tab,InnerClass& G, CartanNbr cn);
+  Cartan_orbit(InvolutionTable& i_tab,const InnerClass& G, CartanNbr cn);
 
   bool contains(InvolutionNbr i) const { return i-start<size; }
   InvolutionNbr end() const { return start+size; }
@@ -259,7 +259,7 @@ public:
 // manipulators
 
   void set_size(CartanNbr n_Cartans); // resize once number of Cartans is known
-  void add(InnerClass& G, CartanNbr cn);
+  void add(const InnerClass& G, CartanNbr cn);
 
 // accessors
 
