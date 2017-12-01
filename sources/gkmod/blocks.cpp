@@ -797,7 +797,7 @@ ext_gens param_block::fold_orbits(const WeightInvolution& delta) const
 
 nblock_help::nblock_help(RealReductiveGroup& GR, const SubSystem& subsys)
   : kgb(GR.kgb()), rd(subsys.parent_datum()), sub(subsys)
-  , i_tab(GR.cinnerClass().involution_table())
+  , i_tab(GR.innerClass().involution_table())
   , dual_m_alpha(), half_alpha()
 {
   assert(kgb.rank()==rd.semisimpleRank());

@@ -1906,44 +1906,53 @@ necessary renumbering and naming of real form numbers.
 
 @~The class |inner_class_value| was the first Atlas type where we deviated from
 the previously used scheme of holding an Atlas library object with the main
-value in a data member |val|; instead we use a reference here. The reason is
-that the copy constructor for |InnerClass| is deleted, so that the default
-definition of a copy constructor for such an Atlas type would not work if we
-stored an |InnerClass|. In fact we have made the copy constructor for
-|inner_class_value| unnecessary altogether, and deleted it altogether, but this
-was done long after the introduction of |inner_class_value|.
+value in a data member |val|. That was adapt to the fact that |InnerClass| is
+not copy-constructible (its copy constructor is deleted), but since we have
+eliminated any need to copy an |inner_class_value| as well, so we return to the
+situation where the main |InnerClass| object is a member of |inner_class_value|.
+Although we handle them using |shared_inner_class|, which is a (smart) pointer
+to constant, we occasionally need non-|const| access to the |InnerClass|, namely
+to expand the contained table of involutions when required. This is just a form
+of lazy initialisation, so does not violate the conceptual constant nature of
+the |inner_class_value|; therefore we declare the |val| member to be |mutable|.
+When |val| was still a reference, the same effect was produced because \Cpp\
+allows a stored non-|const| reference to be exported from a |const| object; the
+|mutable| solution is a bit more explicit.
 
-An important property that our approach is set up to ensure is that we can
+An important property that our approach is set up to ensure, is that we can
 compare identity of inner class values by comparing their addresses (seeing if
-they are the same object internally), since we ensure there cannot coexist two
-identical copies of an inner class (similarly to what we did for root data, and
-with an implementation depending on that).
+they are the same object internally). Namely, we ensure there cannot coexist two
+identical copies of an inner class (similarly to what we did for
+|root_datum_value|, and with an implementation depending on that class).
 
-The main constructor takes a unique-pointer to an |InnerClass| as
-argument, as a reminder that the caller gives up ownership of this pointer
-that should come from a call to~|new|; this pointer will henceforth be owned
-by the |inner_class_value| constructed, in shared ownership with any values
-later copied from it: the last one of them to be destroyed will call |delete|
-for the pointer. The remaining argument is a |Layout| that must have been
-computed by |check_involution| above, in order to ensure its validity.
+The main constructor takes sufficient data to immediately call the |InnerClass|
+constructor, but it will always be invoked indirectly via the |build| static
+method; this allows doing some preparations, possibly exporting a |WeylWord| for
+the transformation to make the given involution distinguished, and returning a
+|shared_inner_class| value ready for use. As in the case of |root_datum_value|,
+we need the constructor to be public because it will be called from within
+|std::make_shared|, but we include a special |token| argument that only methods
+of our |inner_class_value| can supply, so as to make circumventing |build|
+impossible.
 
 @< Type definitions @>=
 typedef std::shared_ptr<const inner_class_value> shared_inner_class;
 @)
 struct inner_class_value : public value_base
-{ InnerClass& val;
-  shared_root_datum datum, dual_datum; // share if we depend on them
-@)
+{ private: @+ struct token@+{}; // serves to control access to the constructor
+public:
+  mutable InnerClass val; // our |InnerClass| proper is stored here
+  shared_root_datum datum, dual_datum;
+    // share, our stored |InnerClass| depends on these
   lietype::LieType rd_type;
 @+lietype::InnerClassType ic_type; // types used for printing only
   const output::FormNumberMap interface,dual_interface;
 @)
-  inner_class_value(std::unique_ptr<InnerClass> G, const lietype::Layout& lo);
-  // main
+  inner_class_value (shared_root_datum rd, shared_root_datum dual_rd, @|
+   const WeightInvolution& tau, @|
+   const lietype::Layout& lo, token);
 static shared_inner_class build
   (shared_root_datum srd, WeightInvolution& tau, WeylWord* wp=nullptr);
-  // to share
-  ~inner_class_value();
 @)
   virtual void print(std::ostream& out) const;
   static const char* name() @+{@; return "inner class"; }
@@ -1952,62 +1961,57 @@ static shared_inner_class build
   shared_inner_class dual () const;
 };
 
-@ Here is the destructor, which delete the |InnerClass| component we stored.
-
-@< Function def...@>=
-
-inner_class_value::~inner_class_value() @+{@; delete &val; }
-
-@ The main constructor installs the reference to the Atlas value used to be
-complicated by the storage of a dual |InnerClass| field and a reference count
-(mainly to ensure the double dual of an inner class would test equal to it), but
-that has been made unnecessary and the constructor is quite simple. The |Layout|
-argument is used for convenience (it groups information of various nature
-gathered by |check_involution|), and is used to initialise the |rd_type|,
-|ic_type|, |interface| and |dual_interface| fields.
-
-There is a small subtlety, in that we have |val| as an owned reference field,
-which is initialised from a |std::unique_ptr|; just in case one of the later
-member initialisations would throw an exception, we postpone releasing the
-unique pointer until completion of our constructor.
+@ The constructor used to be complicated by the storage of a dual |InnerClass|
+field and a reference count (mainly to ensure the double dual of an inner class
+would test equal to it), but that has been made unnecessary and the constructor
+is quite simple. The |Layout| argument is used for convenience (it groups
+information of various nature gathered by |check_involution|), and is used to
+initialise the |rd_type|, |ic_type|, |interface| and |dual_interface| fields.
 
 @< Function def...@>=
 inner_class_value::inner_class_value
-  (std::unique_ptr<InnerClass> g, const lietype::Layout& lo)
-@/: val(*g)
-@/, datum(nullptr), dual_datum(nullptr)
-    // our |InnerClass| is by default not dependent on existing root data
+  (shared_root_datum rd, shared_root_datum dual_rd, const WeightInvolution& tau,
+   const lietype::Layout& lo,
+   token)
+@/: val(rd->val,dual_rd->val,tau)
+   // contain |InnerClass|, referring to |RootDatum| pair
+@/, datum(std::move(rd)), dual_datum(std::move(dual_rd))
+    // keep the passed shared pointers
 @/, rd_type(lo.d_type), ic_type(lo.d_inner)
-, interface(*g,lo), dual_interface(*g,lo,tags::DualTag())
-{@; g.release(); } // now that we own |val|, release the unique-pointer to it
+, interface(val,lo), dual_interface(val,lo,tags::DualTag())
+{}
 
-@ We often want an |inner_class_value| to use an |InnerClass| that refers to
-rather than stores a root datum and its dual, if those can be found in an
-existing |root_datum_value| and its dual. To that end we provide a
-pseudo-constructor |build| that will build such an |InnerClass| object, and
-store shared pointed to the root data it depends on in the associated
-|inner_class_value|.
+@ Since in the \.{atlas} program we always construct inner classes from existing
+root data, we want an |inner_class_value| to use an |InnerClass| that refers to
+rather than stores a root datum and its dual. To that end the |build| method
+prepares two |shared_root_datum| pointers (the logic of that class will ensure
+sharing with existing values is done whenever possible), and passes them to the
+constructor for storage within in our |inner_class_value|; the |InnerClass|
+constructor will capture |RootDatum| references from them.
+
+Matching identical inner classes, namely using the same |root_datum_value| and
+equal (distinguished) |WeightInvolution| values, is done within the
+|root_datum_value::lookup| method. All we need to do here is see if that returns
+a usable pointer to an existing |inner_class_value| (the weak pointer |lock|
+method decides this) and if so return a |shared_inner_class| for it; if not,
+then we construct an |inner_class_value| here, and before returning store a weak
+pointer for it in the location indicated by |lookup|.
 
 @< Function def...@>=
 shared_inner_class inner_class_value::build
   (shared_root_datum srd, WeightInvolution& tau, WeylWord* wp)
-{ shared_root_datum drd=srd->dual();
-  const auto& rd=srd->val;
-  WeylWord ww;
+{ WeylWord ww;
   lietype::Layout lo;
   if (wp==nullptr)
     wp=&ww; // use |ww| as dummy output unless |p| points somewhere
-  check_involution(tau,rd,*wp,&lo); // may also modify |tau|, and sets |lo|
+  check_involution(tau,srd->val,*wp,&lo);
+    // may also modify |tau|, and sets |lo|
 @)
   auto& w_ptr = srd->lookup(tau);
   if (auto p = w_ptr.lock())
     return p; // reuse existing inner class, if found in |srd|
-  std::unique_ptr<InnerClass> p @| (new InnerClass(rd,drd->val,tau));
-    // depends on |srd| and |drd|
-  auto result = std::make_shared<inner_class_value>(std::move(p),lo);
-    // call main constructor
-  result->datum=std::move(srd);
-  result->dual_datum=std::move(drd); // set dependencies
+  auto result =
+    std::make_shared<inner_class_value>(srd,srd->dual(),tau,lo,token());
   w_ptr = result; // store a weak pointer version inside |srd| table
   return result; // return pointer to modified instance of |inner_class_value|
 }

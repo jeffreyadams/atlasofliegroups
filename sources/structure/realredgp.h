@@ -74,7 +74,6 @@ class RealReductiveGroup
 // accessors
   const InnerClass& innerClass() const { return d_innerClass; }
   // following method forces |const| result, compare with |cbegin| methods
-  const InnerClass& cinnerClass() const { return d_innerClass; }
   RealFormNbr realForm() const { return d_realForm; }
   const RootDatum& rootDatum() const;
   const TitsCoset& basedTitsGroup() const { return *d_Tg; }
@@ -123,8 +122,7 @@ class RealReductiveGroup
 // manipulators
   void swap(RealReductiveGroup&);
 
-  InnerClass& innerClass()
-    { return d_innerClass; }
+  InnerClass& innerClass() { return d_innerClass; }
 
   const KGB& kgb();
   const KGB& kgb_as_dual();
