@@ -46,9 +46,11 @@ class RealReductiveGroup
 
   typedef BitSet<NumStatusFlags> Status;
 
-  // we do not own the complex group; a RealReductiveGroup should be seen
-  // as dependent on a complex group; when the complex group changes,
-  // the dependent RealReductiveGroup objects are invalidated
+/*
+  we do not own the inner class; a |RealReductiveGroup| should be seen as
+  dependent on an inner class. In Fokko, when the complex group (and with it the
+  |InnerClass|) changes, the dependent |RealReductiveGroups| are invalidated
+*/
   InnerClass& d_innerClass;
 
   RealFormNbr d_realForm; // our identification number

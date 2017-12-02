@@ -185,7 +185,7 @@ public:
   // specialise type stored for identifier
   shared_value value_of(id_type id) const; // look up
 @)
-  size_t size() const @+{@; return table.size(); }
+  std::size_t size() const @+{@; return table.size(); }
   void print(std::ostream&) const;
 };
 
@@ -458,7 +458,7 @@ public:
 @) // accessors
   const variant_list& variants(id_type id) const;
   const overload_data* entry (id_type id, const type_expr& arg_t) const;
-  size_t size() const @+{@; return table.size(); }
+  std::size_t size() const @+{@; return table.size(); }
    // number of distinct identifiers
   void print(std::ostream&) const;
 @) // manipulators
@@ -521,10 +521,10 @@ return is immediate (in the latter case the presence of an identical type in
 the list shows that the remainder of the scan will return no errors).
 
 @< Local function... @>=
-size_t locate_overload
+std::size_t locate_overload
   (id_type id,const overload_table::variant_list& slot,const type_expr& arg_type)
-{ size_t lwb=0; size_t upb=slot.size();
-  for (size_t i=0; i<slot.size(); ++i)
+{ std::size_t lwb=0; std::size_t upb=slot.size();
+  for (std::size_t i=0; i<slot.size(); ++i)
   { unsigned int cmp= is_close(arg_type,slot[i].type().arg_type);
     switch (cmp)
     {
@@ -635,7 +635,7 @@ bool overload_table::remove(id_type id, const type_expr& arg_t)
 { map_type::iterator p=table.find(id);
   if (p==table.end()) return false; // |id| was not known at all
   variant_list& variants=p->second;
-  for (size_t i=0; i<variants.size(); ++i)
+  for (std::size_t i=0; i<variants.size(); ++i)
     if (variants[i].type().arg_type==arg_t)
     @/{@;
       variants.erase(variants.begin()+i);
@@ -961,7 +961,7 @@ values.
 @< Define auxiliary functions for |do_global_set| @>
 void do_global_set(id_pat&& pat, const expr& rhs, int overload,
                   const source_location& loc)
-{ size_t n_id=count_identifiers(pat);
+{ auto n_id=count_identifiers(pat);
   int phase; // needs to be declared outside the |try|, is used in |catch|
   try
   { phase=0; // type check
@@ -1051,13 +1051,13 @@ needs to be done in all cases.
 @< Define auxiliary functions for |do_global_set| @>=
 void add_overload(id_type id, shared_function&& f, type_expr&& type)
 {
-  size_t old_n=global_overload_table->variants(id).size();
+  auto old_n=global_overload_table->variants(id).size();
 @/std::ostringstream type_string;
   type_string << type;
     // save type |type| as string before moving from it
   global_overload_table->add(id,std::move(f),std::move(type));
     // insert or replace table entry
-  size_t n=global_overload_table->variants(id).size();
+  auto n=global_overload_table->variants(id).size();
   if (n==old_n)
     *output_stream << "Redefined ";
   else if (n==1)
@@ -1652,7 +1652,7 @@ void show_overloads(id_type id,std::ostream& out)
    out
    << (variants.empty() ? "No overloads for '" : "Overloaded instances of '")
 @| << main_hash_table->name_of(id) << '\'' << std::endl;
- for (size_t i=0; i<variants.size(); ++i)
+ for (std::size_t i=0; i<variants.size(); ++i)
    out << "  "
     << variants[i].type().arg_type << "->" << variants[i].type().result_type @|
     << std::endl;
@@ -1878,8 +1878,10 @@ values in ours.
 @ The definition of |vector_value| is much like the preceding ones. In its
 constructor, the argument is a reference to |std::vector<int>|, from which
 |int_Vector| is derived (without adding data members); since a constructor for
-the latter from the former is defined, we can do with just one constructor for
-|vector_value|.
+the latter from the former is defined, we can do with constructors for
+|vector_value| from |std::vector<int>| references (|const| lvalue or rvalue). We
+also add a templated constructor from iterators, for the case where some kind of
+conversion (a different container type and/or integer width) is necessary.
 
 @< Type definitions @>=
 
@@ -1888,8 +1890,8 @@ struct vector_value : public value_base
 @)
   explicit vector_value(const std::vector<int>& v) : val(v) @+ {}
   explicit vector_value(std::vector<int>&& v) : val(std::move(v)) @+ {}
-  template <typename I> vector_value(I begin, I end) : val(begin,end) @+ {}
-  ~vector_value()@+ {}
+  template <typename I> @+ vector_value(I begin, I end) : val(begin,end) @+ {}
+@)
   virtual void print(std::ostream& out) const;
   static const char* name() @+{@; return "vector"; }
   vector_value @[(const vector_value& ) = default@];
@@ -1899,9 +1901,9 @@ struct vector_value : public value_base
 typedef std::shared_ptr<const vector_value> shared_vector;
 typedef std::shared_ptr<vector_value> own_vector;
 
-@ Matrices and rational vectors follow the same pattern, but in this case the
-constructors take a constant reference to a type identical to the one that
-will be stored.
+@ Matrices follow the same pattern, but in this case there is no need for
+constructors that will accept a base type like |matrix::Matrix_base<int>|, so we
+specify |int_Matrix| for simplicity.
 
 @< Type definitions @>=
 struct matrix_value : public value_base
@@ -1909,7 +1911,9 @@ struct matrix_value : public value_base
 @)
   explicit matrix_value(const int_Matrix& v) : val(v) @+ {}
   explicit matrix_value(int_Matrix&& v) : val(std::move(v)) @+ {}
-  ~matrix_value()@+ {}
+  template <typename I> @+ matrix_value(I begin, I end,unsigned int n_rows)
+    : val(begin,end,n_rows,tags::IteratorTag()) @+ {} // fill matrix by columns
+@)
   virtual void print(std::ostream& out) const;
   static const char* name() @+{@; return "matrix"; }
   matrix_value @[(const matrix_value& ) = default@];
@@ -1918,26 +1922,31 @@ struct matrix_value : public value_base
 @)
 typedef std::shared_ptr<const matrix_value> shared_matrix;
 typedef std::shared_ptr<matrix_value> own_matrix;
-@)
+
+@ Rational vectors are anther variation on the same theme. Note that the
+constructors ensure that rational vectors are always normalised.
+
+@< Type definitions @>=
+
 struct rational_vector_value : public value_base
 { rat_Vector val;
 @)
   explicit rational_vector_value(const rat_Vector& v)
-   : val(v) {@; val.normalize();}
+   : val(v) @+{@; val.normalize();}
   rational_vector_value(const int_Vector& v,int d)
    : val(v,d) @+ {@; val.normalize(); }
   rational_vector_value(matrix::Vector<arithmetic::Numer_t>&& v,
                        arithmetic::Denom_t d)
    : val(std::move(v),d) @+ {@; val.normalize(); }
-  template <typename I>
+  template <typename I> @+
      rational_vector_value(I begin, I end, arithmetic::Denom_t d)
     : val(matrix::Vector<arithmetic::Numer_t>(begin,end),d)
-    {@; val.normalize(); }
-  ~rational_vector_value()@+ {}
+    @+ {@; val.normalize(); }
+@)
   virtual void print(std::ostream& out) const;
   static const char* name() @+{@; return "rational vector"; }
   rational_vector_value @[(const rational_vector_value& ) = default@];
-    // we use |get_own<rational_vector_value>|
+    // we use |get_own|
 };
 @)
 typedef std::shared_ptr<const rational_vector_value> shared_rational_vector;
@@ -1953,29 +1962,29 @@ minimum necessary. Rational vectors are a small veriation.
 
 @< Global function def... @>=
 void vector_value::print(std::ostream& out) const
-{ size_t l=val.size(),w=0; std::vector<std::string> tmp(l);
-  for (size_t i=0; i<l; ++i)
+{ auto l=val.size(); std::size_t w=0; std::vector<std::string> tmp(l);
+  for (std::size_t i=0; i<l; ++i)
   { std::ostringstream s; s<<val[i]; tmp[i]=s.str();
     if (tmp[i].length()>w) w=tmp[i].length();
   }
   if (l==0) out << "[ ]";
   else
   { w+=1; out << std::right << '[';
-    for (size_t i=0; i<l; ++i)
+    for (std::size_t i=0; i<l; ++i)
       out << std::setw(w) << tmp[i] << (i<l-1 ? "," : " ]");
   }
 }
 @)
 void rational_vector_value::print(std::ostream& out) const
-{ size_t l=val.size(),w=0; std::vector<std::string> tmp(l);
-  for (size_t i=0; i<l; ++i)
+{ auto l=val.size(); std::size_t w=0; std::vector<std::string> tmp(l);
+  for (std::size_t i=0; i<l; ++i)
   { std::ostringstream s; s<<val.numerator()[i]; tmp[i]=s.str();
     if (tmp[i].length()>w) w=tmp[i].length();
   }
   if (l==0) out << "[ ]";
   else
   { w+=1; out << std::right << '[';
-    for (size_t i=0; i<l; ++i)
+    for (std::size_t i=0; i<l; ++i)
       out << std::setw(w) << tmp[i] << (i<l-1 ? "," : " ]");
   }
   out << '/' << val.denominator();
@@ -1986,19 +1995,19 @@ However if there are no entries, we print the dimensions of the matrix.
 
 @< Global function def... @>=
 void matrix_value::print(std::ostream& out) const
-{ size_t k=val.numRows(),l=val.numColumns();
+{ auto k=val.numRows(),l=val.numColumns();
   if (k==0 or l==0)
   {@;  out << "The " << k << 'x' << l << " matrix"; return; }
-  std::vector<size_t> w(l,0);
-  for (size_t i=0; i<k; ++i)
-    for (size_t j=0; j<l; ++j)
-    { std::ostringstream s; s<<val(i,j); size_t len=s.str().length();
+  std::vector<std::size_t> w(l,0);
+  for (std::size_t i=0; i<k; ++i)
+    for (std::size_t j=0; j<l; ++j)
+    { std::ostringstream s; s<<val(i,j); auto len=s.str().length();
       if (len>w[j]) w[j]=len;
     }
   out << std::endl << std::right;
-  for (size_t i=0; i<k; ++i)
+  for (std::size_t i=0; i<k; ++i)
   { out << '|';
-    for (size_t j=0; j<l; ++j)
+    for (std::size_t j=0; j<l; ++j)
       out << std::setw(w[j]+1) << val(i,j) << (j<l-1 ? ',' : ' ');
     out << '|' << std::endl;
   }
@@ -2051,7 +2060,7 @@ of idiom was first applied within the Atlas software.
 @< Local function def... @>=
 int_Vector row_to_vector(const row_value& r)
 { int_Vector result(r.val.size());
-  for(size_t i=0; i<r.val.size(); ++i)
+  for(std::size_t i=0; i<r.val.size(); ++i)
     result[i]=force<int_value>(r.val[i].get())->int_val();
   return result;
 }
@@ -2077,14 +2086,14 @@ void ratlist_ratvec_convert() // convert list of rationals to rational vector
   Ratvec_Numer_t numer(r->val.size());
     // type |Ratvec_Numer_t| is needed near end
   std::vector<arithmetic::Denom_t> denom(r->val.size());
-  for (size_t i=0; i<r->val.size(); ++i)
+  for (std::size_t i=0; i<r->val.size(); ++i)
   // collect numerators and denominators separately
   { const auto* frac = force<rat_value>(r->val[i].get());
     numer[i]=frac->numerator().long_val();
     denom[i]=frac->denominator().ulong_val();
     d=lcm(d,frac->denominator()); // compute least common denominator safely
   }
-  for (size_t i=0; i<r->val.size(); ++i)
+  for (std::size_t i=0; i<r->val.size(); ++i)
   { big_int n =
       big_int::from_signed(numer[i])*(d/big_int::from_unsigned(denom[i]));
     numer[i] = n.long_val();
@@ -2104,7 +2113,7 @@ the conversion |vector_intlist_convert| using it.
 @< Local function def... @>=
 own_row vector_to_row(const int_Vector& v)
 { own_row result = std::make_shared<row_value>(v.size());
-  for(size_t i=0; i<v.size(); ++i)
+  for(std::size_t i=0; i<v.size(); ++i)
     result->val[i]=std::make_shared<int_value>(v[i]);
   return result;
 }
@@ -2125,7 +2134,7 @@ call |normalize| before building and storing its numerator and denominator.
 void ratvec_ratlist_convert() // convert rational vector to list of rationals
 { shared_rational_vector rv = get<rational_vector_value>();
   own_row result = std::make_shared<row_value>(rv->val.size());
-  for (size_t i=0; i<rv->val.size(); ++i)
+  for (std::size_t i=0; i<rv->val.size(); ++i)
     result->val[i] = std::make_shared<rat_value>@|
       (Rational(rv->val.numerator()[i],rv->val.denominator()));
   push_value(result);
@@ -2138,13 +2147,13 @@ types  \.{ratvec} and \.{[rat]}, which gives us $2\times2=4$ such conversions.
 @< Local function def... @>=
 rat_Vector introw_to_ratvec(const row_value& r)
 { Ratvec_Numer_t numer(r.val.size());
-  for(size_t i=0; i<r.val.size(); ++i)
+  for(std::size_t i=0; i<r.val.size(); ++i)
     numer[i]=force<int_value>(r.val[i].get())->val.long_val();
   return rat_Vector(numer,1);
 }
 own_row vector_to_ratrow(const int_Vector& v)
 { own_row result = std::make_shared<row_value>(v.size());
-  for(size_t i=0; i<v.size(); ++i)
+  for(std::size_t i=0; i<v.size(); ++i)
     result->val[i]=std::make_shared<rat_value>(big_rat(big_int(v[i])));
   return result;
 }
@@ -2202,9 +2211,9 @@ void veclist_matrix_convert()
     throw runtime_error
       ("Implicit conversion to matrix for an empty set of vectors");
 @.Implicit conversion to matrix...@>
-  size_t n = force<vector_value>(r->val[0].get())->val.size();
+  auto n = force<vector_value>(r->val[0].get())->val.size();
   own_matrix m = std::make_shared<matrix_value>(int_Matrix(n,r->val.size()));
-  for(size_t j=0; j<r->val.size(); ++j)
+  for(std::size_t j=0; j<r->val.size(); ++j)
   { const int_Vector& col = force<vector_value>(r->val[j].get())->val;
     if (col.size()!=n)
       throw runtime_error("Vector sizes differ in conversion to matrix");
@@ -2225,9 +2234,9 @@ void intlistlist_matrix_convert()
   if (r->val.size()==0)
     throw runtime_error("Cannot convert empty list of lists to matrix");
 @.Cannot convert empty list of lists@>
-  size_t n = force<row_value>(r->val[0].get())->val.size();
+  auto n = force<row_value>(r->val[0].get())->val.size();
   own_matrix m = std::make_shared<matrix_value>(int_Matrix(n,r->val.size()));
-  for(size_t j=0; j<r->val.size(); ++j)
+  for(std::size_t j=0; j<r->val.size(); ++j)
   { int_Vector col = row_to_vector(*force<row_value>(r->val[j].get()));
     if (col.size()!=n)
       throw runtime_error("List sizes differ in conversion to matrix");
@@ -2264,7 +2273,7 @@ second one uses the same auxiliary function |vector_to_row| that was used above.
 void matrix_veclist_convert()
 { shared_matrix m=get<matrix_value>();
   own_row result = std::make_shared<row_value>(m->val.numColumns());
-  for(size_t j=0; j<m->val.numColumns(); ++j)
+  for(unsigned int j=0; j<m->val.numColumns(); ++j)
     result->val[j]=std::make_shared<vector_value>(m->val.column(j));
   push_value(result);
 }
@@ -2272,7 +2281,7 @@ void matrix_veclist_convert()
 void matrix_intlistlist_convert()
 { shared_matrix m=get<matrix_value>();
   own_row result = std::make_shared<row_value>(m->val.numColumns());
-  for(size_t j=0; j<m->val.numColumns(); ++j)
+  for(unsigned int j=0; j<m->val.numColumns(); ++j)
     result->val[j]= vector_to_row(m->val.column(j));
   push_value(result);
 }
@@ -2294,7 +2303,7 @@ such conversions.
 void matrix_ratveclist_convert()
 { shared_matrix m=get<matrix_value>();
   own_row result = std::make_shared<row_value>(m->val.numColumns());
-  for(size_t j=0; j<m->val.numColumns(); ++j)
+  for(unsigned int j=0; j<m->val.numColumns(); ++j)
     result->val[j]=std::make_shared<rational_vector_value> @|
       (rat_Vector(m->val.column(j),1));
   push_value(result);
@@ -2303,7 +2312,7 @@ void matrix_ratveclist_convert()
 void matrix_ratlistlist_convert()
 { shared_matrix m=get<matrix_value>();
   own_row result = std::make_shared<row_value>(m->val.numColumns());
-  for(size_t j=0; j<m->val.numColumns(); ++j)
+  for(unsigned int j=0; j<m->val.numColumns(); ++j)
   result->val[j]= vector_to_ratrow(m->val.column(j));
   push_value(result);
 }
@@ -2969,7 +2978,7 @@ void concatenate_strings_wrapper(expression_base::level l)
   std::vector<const std::string*> p; p.reserve(x.size());
   for (auto it=x.cbegin(); it!=x.cend(); ++it)
     p.push_back(&force<string_value>(it->get())->val);
-  size_t s=0;
+  std::size_t s=0;
   for (auto it=p.cbegin(); it!=p.cend(); ++it)
     s+=(*it)->size();
   std::string result(s,char()); auto dst=result.begin();
@@ -3020,19 +3029,19 @@ void virtual_module_size_wrapper(expression_base::level l);
 
 @< Global function definitions @>=
 void sizeof_string_wrapper(expression_base::level l)
-{ size_t s=get<string_value>()->val.size();
+{ auto s=get<string_value>()->val.size();
   if (l!=expression_base::no_value)
     push_value(std::make_shared<int_value>(s));
 }
 @)
 void sizeof_vector_wrapper(expression_base::level l)
-{ size_t s=get<vector_value>()->val.size();
+{ auto s=get<vector_value>()->val.size();
   if (l!=expression_base::no_value)
     push_value(std::make_shared<int_value>(s));
 }
 @)
 void sizeof_ratvec_wrapper(expression_base::level l)
-{ size_t s=get<rational_vector_value>()->val.size();
+{ auto s=get<rational_vector_value>()->val.size();
   if (l!=expression_base::no_value)
     push_value(std::make_shared<int_value>(s));
 }
@@ -3103,7 +3112,7 @@ void join_vector_row_wrapper(expression_base::level l)
   std::vector<const int_Vector*> p; p.reserve(x.size());
   for (auto it=x.cbegin(); it!=x.cend(); ++it)
     p.push_back(&force<vector_value>(it->get())->val);
-  size_t s=0;
+  std::size_t s=0;
   for (auto it=p.cbegin(); it!=p.cend(); ++it)
     s+=(*it)->size();
   int_Vector result(s);
@@ -3279,7 +3288,7 @@ products) for a long time, they certainly profit in terms of efficiency from
 being built-in.
 
 @< Local function def... @>=
-void check_size (size_t a, size_t b)
+void check_size (std::size_t a, std::size_t b)
 { if (a!=b)
     throw runtime_error() << "Size mismatch " << a << ":" << b;
 }
@@ -3362,9 +3371,9 @@ void flex_add_wrapper(expression_base::level l)
   if (l==expression_base::no_value)
     return;
   const int_Vector& V0=v0->val;
-  size_t i0=V0.size();
+  auto i0=V0.size();
 @/const int_Vector& V1=v1->val;
-  size_t i1=V1.size();
+  auto i1=V1.size();
   while (i0>0 and V0[i0-1]==0)
     --i0;
   while (i1>0 and V1[i1-1]==0)
@@ -3420,9 +3429,9 @@ void flex_sub_wrapper(expression_base::level l)
   if (l==expression_base::no_value)
     return;
   const int_Vector& V0=v0->val;
-  size_t i0=V0.size();
+  auto i0=V0.size();
 @/const int_Vector& V1=v1->val;
-  size_t i1=V1.size();
+  auto i1=V1.size();
   while (i0>0 and V0[i0-1]==0)
     --i0;
   while (i1>0 and V1[i1-1]==0)
@@ -3480,9 +3489,9 @@ void vector_convolve_wrapper(expression_base::level l)
   if (l==expression_base::no_value)
     return;
   const int_Vector& V0=v0->val;
-  size_t i0=V0.size();
+  auto i0=V0.size();
 @/const int_Vector& V1=v1->val;
-  size_t i1=V1.size();
+  auto i1=V1.size();
   while (i0>0 and V0[i0-1]==0)
     --i0;
   while (i1>0 and V1[i1-1]==0)
@@ -3493,7 +3502,7 @@ void vector_convolve_wrapper(expression_base::level l)
   }
   own_vector result = std::make_shared<vector_value>(int_Vector(i0+i1-1));
   int_Vector& r = result->val;
-  size_t i=i0,j=0; int V1j=V1[0], V0l=V0[i0-1];
+  auto i=i0; std::size_t j=0; int V1j=V1[0], V0l=V0[i0-1];
   while (i-->0)
     r[i] = V0[i]*V1j; // copy |V0|, multiplied by lowest (constant) term of |V1|
   while (++j<i1)
@@ -3909,7 +3918,7 @@ void transpose_vec_wrapper(expression_base::level l)
 { shared_vector v=get<vector_value>();
   if (l!=expression_base::no_value)
   { own_matrix m = std::make_shared<matrix_value>(int_Matrix(1,v->val.size()));
-    for (size_t j=0; j<v->val.size(); ++j)
+    for (std::size_t j=0; j<v->val.size(); ++j)
       m->val(0,j)=v->val[j];
     push_value(std::move(m));
   }
@@ -3947,9 +3956,9 @@ void diagonal_wrapper(expression_base::level l)
 { shared_vector d=get<vector_value>();
   if (l==expression_base::no_value)
     return;
-  size_t n=d->val.size();
+  auto n=d->val.size();
   own_matrix m = std::make_shared<matrix_value>(int_Matrix(n,n,0));
-  for (size_t i=0; i<n; ++i)
+  for (std::size_t i=0; i<n; ++i)
     m->val(i,i)=d->val[i];
   push_value(std::move(m));
 }
@@ -3966,10 +3975,10 @@ not very problematic.
 @< Local function def... @>=
 void stack_rows_wrapper(expression_base::level l)
 { shared_row r = get<row_value>();
-  size_t n = r->val.size();
+  auto n = r->val.size();
   std::vector<const int_Vector*> row(n);
-  size_t width=0; // maximal length of vectors
-  for(size_t i=0; i<n; ++i)
+  std::size_t width=0; // maximal length of vectors
+  for(std::size_t i=0; i<n; ++i)
   { row[i] = & force<vector_value>(r->val[i].get())->val;
     if (row[i]->size()>width)
       width=row[i]->size();
@@ -3979,8 +3988,8 @@ void stack_rows_wrapper(expression_base::level l)
     return;
 
   own_matrix m = std::make_shared<matrix_value>(int_Matrix(n,width,0));
-  for(size_t i=0; i<n; ++i)
-    for (size_t j=0; j<row[i]->size(); ++j)
+  for(std::size_t i=0; i<n; ++i)
+    for (std::size_t j=0; j<row[i]->size(); ++j)
       m->val(i,j)=(*row[i])[j];
   push_value(std::move(m));
 }
@@ -3996,9 +4005,9 @@ void combine_columns_wrapper(expression_base::level l)
     throw runtime_error() << "Negative number " << n <<" of rows requested";
 @.Negative number of rows@>
   own_matrix m = std::make_shared<matrix_value>(int_Matrix(n,r->val.size()));
-  for(size_t j=0; j<r->val.size(); ++j)
+  for(std::size_t j=0; j<r->val.size(); ++j)
   { const int_Vector& col = force<vector_value>(r->val[j].get())->val;
-    if (col.size()!=size_t(n))
+    if (col.size()!=std::size_t(n))
       throw runtime_error() << "Column " << j <<" size " << col.size() @|
          << " does not match specified size " << n;
 @.Column size does not match@>
@@ -4015,9 +4024,9 @@ void combine_rows_wrapper(expression_base::level l)
     throw runtime_error() << "Negative number " << n << " of columns requested";
 @.Negative number of columns@>
   own_matrix m = std::make_shared<matrix_value>(int_Matrix(r->val.size(),n));
-  for(size_t i=0; i<r->val.size(); ++i)
+  for(std::size_t i=0; i<r->val.size(); ++i)
   { const int_Vector& row = force<vector_value>(r->val[i].get())->val;
-    if (row.size()!=size_t(n))
+    if (row.size()!=std::size_t(n))
       throw runtime_error() << "Row " << i << " size " << row.size() @|
         << " does not match specified size " << n;
 @.Row size does not match@>
