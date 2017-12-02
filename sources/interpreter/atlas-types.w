@@ -2319,7 +2319,7 @@ current header file, we store pointer that will only be assigned on first use.
 @< Type definitions @>=
 struct real_form_value : public value_base
 { shared_inner_class ic_ptr;
-  RealReductiveGroup val;
+  mutable RealReductiveGroup val;
 @)
   real_form_value (shared_inner_class icp,RealFormNbr f)
 @/: ic_ptr(icp), val(icp->val,f)
@@ -2338,14 +2338,14 @@ struct real_form_value : public value_base
   static const char* name() @+{@; return "real form"; }
   real_form_value @[(const real_form_value& ) = delete@];
 @)
-  const KGB& kgb () @+{@; return val.kgb(); }
+  const KGB& kgb () const @+{@; return val.kgb(); }
    // generate and return $K\backslash G/B$ set
-  KhatContext& khc();
-  const Rep_context& rc();
-  Rep_table& rt();
+  KhatContext& khc() const;
+  const Rep_context& rc() const;
+  Rep_table& rt() const;
 private:
-  KhatContext* khc_p;
-  Rep_table* rt_p;
+  mutable KhatContext* khc_p;
+  mutable Rep_table* rt_p;
     // owned pointers, initially |nullptr|, assigned at most once
 };
 @)
@@ -2361,11 +2361,11 @@ will be shared between different parameters for the same real form, and that
 it will live as long as those parameter values do.
 
 @< Function def...@>=
-  KhatContext& real_form_value::khc()
+  KhatContext& real_form_value::khc() const
     {@; return *(khc_p==nullptr ? khc_p=new KhatContext(val) : khc_p); }
-  const Rep_context& real_form_value::rc()
+  const Rep_context& real_form_value::rc() const
     {@; return *(rt_p==nullptr ? rt_p=new Rep_table(val) : rt_p); }
-  Rep_table& real_form_value::rt()
+  Rep_table& real_form_value::rt() const
     {@; return *(rt_p==nullptr ? rt_p=new Rep_table(val) : rt_p); }
 @)
   real_form_value::~real_form_value () @+{@; delete khc_p; delete rt_p; }
@@ -2516,13 +2516,18 @@ void Cartan_order_wrapper(expression_base::level l)
 }
 
 @ A similar function is |KGB_Hasse| which encodes the Bruhat order on the KGB
-set as a matrix.
+set as a matrix. This function takes advantage of the fact that
+|real_form_value::val| is marked |mutable|, so that the non-|const| method
+|RealReductiveGroup::Bruhat_KGB| can be called even though we obtained a
+|shared_real_form| (pointer to |const|) from the stack. Originally that field
+was not marked |mutable|, and we had to revert |const|-casting, via the use of
+|non_const_get|, in the code below.
 
 @h "bruhat.h"
 
 @< Local function def...@>=
 void KGB_Hasse_wrapper(expression_base::level l)
-{ own_real_form rf= non_const_get<real_form_value>();
+{ shared_real_form rf= get<real_form_value>();
   if (l==expression_base::no_value)
     return;
 @)
@@ -3178,10 +3183,10 @@ as long as this |KGB_elt_value| does.
 
 @< Type definitions @>=
 struct KGB_elt_value : public value_base
-{ own_real_form rf;
+{ shared_real_form rf;
   KGBElt val;
 @)
-  KGB_elt_value(const own_real_form& form, KGBElt x) : rf(form), val(x) @+{}
+  KGB_elt_value(const shared_real_form& form, KGBElt x) : rf(form), val(x) @+{}
   ~KGB_elt_value() @+{}
 @)
   virtual void print(std::ostream& out) const;
@@ -3208,7 +3213,7 @@ void KGB_elt_value::print(std::ostream& out) const
 @< Local function def...@>=
 void KGB_elt_wrapper(expression_base::level l)
 { int i = get<int_value>()->int_val();
-  own_real_form rf= non_const_get<real_form_value>();
+  shared_real_form rf= get<real_form_value>();
   if (static_cast<unsigned int>(i)>=rf->val.KGB_size())
     throw runtime_error ("Inexistent KGB element: ") << i;
 @.Inexistent KGB element@>
@@ -3368,7 +3373,7 @@ always be right if the real form was itself synthesised from the
 void build_KGB_element_wrapper(expression_base::level l)
 { own_rational_vector torus_factor = get_own<rational_vector_value>();
   shared_matrix theta = get<matrix_value>();
-  own_real_form rf = non_const_get<real_form_value>();
+  shared_real_form rf = get<real_form_value>();
 
   if (torus_factor->val.size()!=rf->val.rank())
     throw runtime_error("Torus factor size mismatch");
@@ -3525,11 +3530,11 @@ they will only be computed once they are asked for.
 
 @< Type definitions @>=
 struct Block_value : public value_base
-{ const own_real_form rf; const own_real_form dual_rf;
-  Block val; // cannot be |const|, as Bruhat order may be generated implicitly
-  kl::KLContext klc;
+{ const shared_real_form rf; const shared_real_form dual_rf;
+  mutable Block val; // Bruhat order may be generated implicitly
+  mutable kl::KLContext klc; // as may KLV polynomials
 @)
-  Block_value(const own_real_form& form, const own_real_form& dual_form);
+  Block_value(const shared_real_form& form, const shared_real_form& dual_form);
   ~Block_value() @+{}
 @)
   virtual void print(std::ostream& out) const;
@@ -3552,8 +3557,8 @@ classical one. Finally we associate the |klc| field with this block, but this
 does not yet do much computation.
 
 @< Function def...@>=
-  Block_value::Block_value(const own_real_form& form,
-                          const own_real_form& dual_form)
+  Block_value::Block_value(const shared_real_form& form,
+                          const shared_real_form& dual_form)
   : rf(form), dual_rf(dual_form)
   , val(Block::build(rf->val,dual_rf->val))
   , klc(val)
@@ -3578,8 +3583,8 @@ bool is_dual(const shared_inner_class& ic0, const shared_inner_class& ic1)
   ic0->val.dualDistinguished()==ic1->val.distinguished();
 }
 void Fokko_block_wrapper(expression_base::level l)
-{ own_real_form drf=non_const_get<real_form_value>();
-  own_real_form rf=non_const_get<real_form_value>();
+{ shared_real_form drf=get<real_form_value>();
+  shared_real_form rf=get<real_form_value>();
 @)
   if (not is_dual(rf->ic_ptr,drf->ic_ptr))
     throw runtime_error @|
@@ -3633,7 +3638,7 @@ void block_element_wrapper(expression_base::level l)
 @)
   push_value(std::make_shared<KGB_elt_value>(b->rf,b->val.x(z)));
   auto dic = b->rf->ic_ptr->dual();
-  own_real_form drf =
+  auto drf =
     std::make_shared<real_form_value>(dic,b->dual_rf->val.realForm());
   push_value(std::make_shared<KGB_elt_value>(drf,b->val.y(z)));
   if (l==expression_base::single_value)
@@ -3796,10 +3801,10 @@ can access notably the |Rep_context| that it provides.
 
 @< Type definitions @>=
 struct module_parameter_value : public value_base
-{ own_real_form rf;
+{ shared_real_form rf;
   StandardRepr val;
 @)
-  module_parameter_value(const own_real_form& form, const StandardRepr& v)
+  module_parameter_value(const shared_real_form& form, const StandardRepr& v)
   : rf(form), val(v) @+{}
   ~module_parameter_value() @+{}
 @)
@@ -4843,10 +4848,10 @@ that it will be assured to survive as long as parameters for it exist.
 
 @< Type definitions @>=
 struct virtual_module_value : public value_base
-{ own_real_form rf;
+{ shared_real_form rf;
   repr::SR_poly val;
 @)
-  virtual_module_value(const own_real_form& form, const repr::SR_poly& v)
+  virtual_module_value(const shared_real_form& form, const repr::SR_poly& v)
   : rf(form), val(v) @+{}
   ~virtual_module_value() @+{}
 @)
@@ -4914,7 +4919,7 @@ is found.
 
 @< Local function def...@>=
 void virtual_module_wrapper(expression_base::level l)
-{ own_real_form rf = non_const_get<real_form_value>();
+{ shared_real_form rf = get<real_form_value>();
   if (l!=expression_base::no_value)
     push_value(std::make_shared<virtual_module_value> @|
       (rf,repr::SR_poly(rf->rc().repr_less())));
@@ -4990,7 +4995,7 @@ can be stored in a |virtual_module_value| (the |expand_final| method calls
 void param_to_poly()
 { shared_module_parameter p = get<module_parameter_value>();
 @/test_standard(*p,"Cannot convert non standard Param to ParamPol");
-  const own_real_form& rf=p->rf;
+  const auto& rf=p->rf;
   push_value(std::make_shared<virtual_module_value> @|
     (rf,rf->rc().expand_final(p->val)));
 }
@@ -5729,7 +5734,7 @@ access to the table of Kazhdan-Lusztig polynomials.
 
 @< Local function def...@>=
 void raw_KL_wrapper (expression_base::level l)
-{ own_Block b = non_const_get<Block_value>();
+{ shared_Block b = get<Block_value>();
   const Block& block = b->val;
   if (l==expression_base::no_value)
     return;
@@ -5863,7 +5868,7 @@ of a destination vertex and a $\mu$-value labelling the edge.
 
 @< Local function def...@>=
 void W_graph_wrapper(expression_base::level l)
-{ own_Block b = non_const_get<Block_value>();
+{ shared_Block b = get<Block_value>();
   if (l=expression_base::no_value)
     return;
 @)
@@ -5906,7 +5911,7 @@ contributed by Jeff Adams).
 
 @< Local function def...@>=
 void W_cells_wrapper(expression_base::level l)
-{ own_Block b = non_const_get<Block_value>();
+{ shared_Block b = get<Block_value>();
   if (l=expression_base::no_value)
     return;
 @)
@@ -5955,7 +5960,7 @@ compatible Cartan class.
 @< Local function def...@>=
 void print_realweyl_wrapper(expression_base::level l)
 { shared_Cartan_class cc(get<Cartan_class_value>());
-  own_real_form rf= non_const_get<real_form_value>();
+  shared_real_form rf= get<real_form_value>();
 @)
   if (rf->ic_ptr.get()!=cc->ic_ptr.get())
     throw runtime_error("Inner class mismatch between arguments");
@@ -6061,7 +6066,7 @@ a real form as argument.
 
 @< Local function def...@>=
 void print_KGB_wrapper(expression_base::level l)
-{ own_real_form rf= non_const_get<real_form_value>();
+{ shared_real_form rf= get<real_form_value>();
 @)
   *output_stream
     << "kgbsize: " << rf->val.KGB_size() << std::endl;
@@ -6073,7 +6078,7 @@ void print_KGB_wrapper(expression_base::level l)
 }
 @)
 void print_KGB_order_wrapper(expression_base::level l)
-{ own_real_form rf= non_const_get<real_form_value>();
+{ shared_real_form rf= get<real_form_value>();
 @)
   *output_stream
     << "kgbsize: " << rf->val.KGB_size() << std::endl;
@@ -6084,7 +6089,7 @@ void print_KGB_order_wrapper(expression_base::level l)
 }
 @)
 void print_KGB_graph_wrapper(expression_base::level l)
-{ own_real_form rf= non_const_get<real_form_value>();
+{ shared_real_form rf= get<real_form_value>();
 @)
   *output_stream
     << "kgbsize: " << rf->val.KGB_size() << std::endl;
@@ -6116,7 +6121,7 @@ parametrisation is concerned.
 @h "kl_io.h"
 @< Local function def...@>=
 void print_KL_basis_wrapper(expression_base::level l)
-{ own_Block b = non_const_get<Block_value>();
+{ shared_Block b = get<Block_value>();
   Block& block = b->val;
 @)
   b->klc.fill(); // this does the actual KL computation
@@ -6132,7 +6137,7 @@ void print_KL_basis_wrapper(expression_base::level l)
 
 @< Local function def...@>=
 void print_prim_KL_wrapper(expression_base::level l)
-{ own_Block b = non_const_get<Block_value>();
+{ shared_Block b = get<Block_value>();
   Block &block = b->val; // this one must be non-|const|
 @)
   b->klc.fill(); // this does the actual KL computation
@@ -6149,7 +6154,7 @@ outputs just a list of all distinct Kazhdan-Lusztig-Vogan polynomials.
 
 @< Local function def...@>=
 void print_KL_list_wrapper(expression_base::level l)
-{ own_Block b = non_const_get<Block_value>();
+{ shared_Block b = get<Block_value>();
 @)
   b->klc.fill(); // this does the actual KL computation
   kl_io::printKLList(*output_stream,b->klc);
@@ -6167,7 +6172,7 @@ after having built the |klc::KLContext|.
 
 @< Local function def...@>=
 void print_W_cells_wrapper(expression_base::level l)
-{ own_Block b = non_const_get<Block_value>();
+{ shared_Block b = get<Block_value>();
 @)
   b->klc.fill(); // this does the actual KL computation
   wgraph::WGraph wg = kl::wGraph(b->klc);
@@ -6184,7 +6189,7 @@ routine of |print_W_cells|.
 
 @< Local function def...@>=
 void print_W_graph_wrapper(expression_base::level l)
-{ own_Block b = non_const_get<Block_value>();
+{ shared_Block b = get<Block_value>();
 @)
   b->klc.fill(); // this does the actual KL computation
   wgraph::WGraph wg = kl::wGraph(b->klc);
