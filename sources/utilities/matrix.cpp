@@ -802,6 +802,12 @@ template Matrix_base<int>::Matrix_base
    size_t,
    tags::IteratorTag);
 
+template Matrix_base<int>::Matrix_base
+  (std::vector<Vector_cref<int> >::iterator,
+   std::vector<Vector_cref<int> >::iterator,
+   size_t,
+   tags::IteratorTag);
+
 template PID_Matrix<int> inverse (PID_Matrix<int> A, arithmetic::big_int& d);
 
 

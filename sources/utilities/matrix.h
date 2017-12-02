@@ -12,6 +12,7 @@
 #define MATRIX_H
 
 #include <vector>
+#include <functional> // for |std::reference_wrapper|
 #include <stdexcept>
 
 #include "matrix_fwd.h"
@@ -392,6 +393,24 @@ template<typename C> class PID_Matrix : public Matrix<C>
   PID_Matrix block(size_t i0, size_t j0, size_t i1, size_t j1) const;
 
 }; // |class PID_Matrix|
+
+// auxiliary class to enable making containers of vector references
+template<typename C> class Vector_cref
+  : public std::reference_wrapper<Vector<C> const>
+{
+  typedef std::reference_wrapper<Vector<C> const>  base;
+ public:
+#if __GNUC__ > 4 || __GNUC__ == 4 && __GNUC_MINOR__ >= 8
+  // that is, if compiler version is sufficiently new
+  using base::base; // inherit all constructors
+#else
+  expicit Vector_cref (const Vector<C>& v) noexcept : base(v) {}
+  Vector_cref (const base& v) noexcept : base(v) {}
+#endif
+  Vector_cref (const Vector_cref& v) = default;
+
+  C operator[] (std::size_t i) const { return base::get()[i]; }
+}; // |class Vector_cref|
 
 } // |namespace matrix|
 

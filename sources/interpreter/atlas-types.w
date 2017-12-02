@@ -1356,7 +1356,7 @@ void root_coradical_wrapper(expression_base::level l)
   if (l==expression_base::no_value)
     return;
 @)
-  WeightList srl
+  std::vector<int_Vector_cref> srl
     (rd->val.beginSimpleRoot(),rd->val.endSimpleRoot());
   srl.insert(srl.end(),rd->val.beginCoradical(),rd->val.endCoradical());
   push_value(std::make_shared<matrix_value> @|
@@ -1368,7 +1368,7 @@ void coroot_radical_wrapper(expression_base::level l)
   if (l==expression_base::no_value)
     return;
 @)
-  WeightList scl
+  std::vector<int_Vector_cref> scl
     (rd->val.beginSimpleCoroot(),rd->val.endSimpleCoroot());
   scl.insert(scl.end(),rd->val.beginRadical(),rd->val.endRadical());
   push_value(std::make_shared<matrix_value> @|
