@@ -140,8 +140,7 @@ class RealReductiveGroup
 
 TorusPart minimal_torus_part
   (const InnerClass& G, RealFormNbr wrf, RatCoweight coch,
-   TwistedInvolution tw, // by value, modified
-   const RatCoweight& torus_factor
+   const TwistedInvolution& tw, const RatCoweight& torus_factor
    );
 
 } // |namespace realredgp|

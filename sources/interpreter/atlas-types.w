@@ -1926,9 +1926,12 @@ impossible.
 
 @< Type definitions @>=
 typedef std::shared_ptr<const inner_class_value> shared_inner_class;
+class real_form_value;
+typedef std::shared_ptr<const real_form_value> shared_real_form;
+typedef std::weak_ptr<const real_form_value> real_form_weak_ptr;
 @)
-struct inner_class_value : public value_base
-{ private: @+ struct token@+{}; // serves to control access to the constructor
+class inner_class_value : public value_base
+{ struct token@+{}; // serves to control access to the constructor
 public:
   mutable InnerClass val; // our |InnerClass| proper is stored here
   shared_root_datum datum, dual_datum;
@@ -1948,6 +1951,8 @@ static shared_inner_class build
   inner_class_value @[(const inner_class_value& ) = delete@];
 @)
   shared_inner_class dual () const;
+@) // tables for |real_form_value| identification:
+  mutable std::vector<real_form_weak_ptr> real_form_wptr;
 };
 
 @ The constructor used to be complicated by the storage of a dual |InnerClass|
@@ -1968,6 +1973,7 @@ inner_class_value::inner_class_value
     // keep the passed shared pointers
 @/, rd_type(lo.d_type), ic_type(lo.d_inner)
 , interface(val,lo), dual_interface(val,lo,tags::DualTag())
+@/,real_form_wptr(val.numRealForms())
 {}
 
 @ Since in the \.{atlas} program we always construct inner classes from existing
@@ -2309,19 +2315,30 @@ cannot disappear before it does. The easiest way to do this is to place an
 |shared_inner_class| pointer |ic_ptr| inside the |real_form_value|.
 Since that data can be accessed from inside the |RealReductiveGroup|, we shall
 mostly mention the |ic_ptr| with the purpose of accessing its
-|interface| and |dual_interface| fields.
+|interface| and |dual_interface| fields. They however also serve for testing
+(by pointer equality) whether two real forms are in the same inner class.
 
 This class also serves to store persistent data related to the real form, in
 values of type |KhatContext| and |Rep_table|. In order to avoid overhead at
-construction, and also to not require including other header files from our
-current header file, we store pointer that will only be assigned on first use.
+construction, we lazily construct these tables, storing only pointer, which will
+only be assigned on first use. These fields are marked mutable, so that we do
+not have to do copy-on-write just to add the table (which would be silly, as
+others might benefit from the addition; anyway we forbid copying of any
+|real_form_value|) or use |non_const_get| to dissimulate our ``destructive''
+intentions. The |val| field itself is |mutable| for similar reasons, notably the
+KGB table gets initialised lazily inside the |RealReductiveGroup|. Another
+advantage of storing pointers to |KhatContext| and |Rep_table| rather than such
+objects, is that it avoids making our header file depend on the header files for
+those objects.
 
 @< Type definitions @>=
-struct real_form_value : public value_base
-{ shared_inner_class ic_ptr;
+class real_form_value : public value_base
+{ struct token@+{}; // serves to control access to the constructor
+public:
+  shared_inner_class ic_ptr;
   mutable RealReductiveGroup val;
 @)
-  real_form_value (shared_inner_class icp,RealFormNbr f)
+  real_form_value (shared_inner_class icp,RealFormNbr f,token)
 @/: ic_ptr(icp), val(icp->val,f)
   , khc_p(nullptr)
   , rt_p(nullptr) @+{}
@@ -2334,6 +2351,9 @@ struct real_form_value : public value_base
   , rt_p(nullptr) @+{}
   virtual ~real_form_value ();
 @)
+  static shared_real_form build(shared_inner_class icp,RealFormNbr f);
+  static shared_real_form build @|
+   (shared_inner_class icp,RealFormNbr f,const RatCoweight& coch, TorusPart tp);
   virtual void print(std::ostream& out) const;
   static const char* name() @+{@; return "real form"; }
   real_form_value @[(const real_form_value& ) = delete@];
@@ -2348,9 +2368,47 @@ private:
   mutable Rep_table* rt_p;
     // owned pointers, initially |nullptr|, assigned at most once
 };
-@)
-typedef std::shared_ptr<const real_form_value> shared_real_form;
-typedef std::shared_ptr<real_form_value> own_real_form;
+
+@ Like |inner_class_value::build|, the static method |real_form_value::build|
+first tests if it can get its result from converting a stored weak pointer to a
+shared pointer, and it that fails constructs a fresh |real_form_value|,
+returning a shared pointer to it while leaving a weak pointer version of it in
+the same location where it had been looked up. In this case looking up is just
+indexing the vector |icp->real_form_wptr| with the real form number~|f|.
+
+@< Function def...@>=
+shared_real_form real_form_value::build(shared_inner_class icp,RealFormNbr f)
+{
+  auto& w_ptr = icp->real_form_wptr[f];
+  if (auto p = w_ptr.lock())
+    return p; // reuse existing real form, if found in inner class
+  auto result =
+    std::make_shared<real_form_value>(icp,f,token()); // build new real form
+  w_ptr = result; // store a weak pointer version inside |srd| table
+  return result; // return pointer to modified instance of |inner_class_value|
+}
+
+@ We have a similar method when constructing a real form with an explicitly
+given cocharacter |coch| and initial torus part (for the $K\backslash G/B$
+construction) |tp|, but in this case we do not guarantee sharing of identically
+generated values (which would require fairly extensive tables in the inner
+class), except if the special values provided happen to be the same as what
+would automatically be chosen if none wore specified, in which case we just drop
+them and call the previous |build|~method. The default values can be found in
+the relevant |RealReductiveGroup| constructor, and are computed by the function
+|some_coch| (defined in the \.{innerclass} compilation unit) and by the
+|InnerClass::x0_torus_part| method.
+
+@< Function def...@>=
+shared_real_form real_form_value::build @|
+   (shared_inner_class icp,RealFormNbr f,const RatCoweight& coch, TorusPart tp)
+{
+  auto default_coch = some_coch(icp->val,icp->val.xi_square(f));
+  if (coch==default_coch and tp==icp->val.x0_torus_part(f))
+    return build(icp,f);
+  return(std::make_shared<real_form_value>(icp,f,coch,tp));
+}
+
 
 @ The method |khc| ensures a |KhatContext| value is constructed at |*khc_p|,
 and similarly |rc| and |rt| ensure a |Rep_table| value is constructed at
@@ -2370,11 +2428,10 @@ it will live as long as those parameter values do.
 @)
   real_form_value::~real_form_value () @+{@; delete khc_p; delete rt_p; }
 
-@ When printing a real form, we give the name by which it is known in the
-parent inner class, and provide some information about its connectivity.
-Since the names of the real forms are indexed by their outer number, but the
-real form itself stores its inner number, we must somewhat laboriously make
-the conversion here.
+@ When printing a real form, we give the name by which it is known in the parent
+inner class, and provide some information about its topology. The names of the
+real forms are indexed by their outer number, but the real form itself stores
+its inner number, so we must somewhat laboriously make the conversion here.
 
 @< Function def...@>=
 void real_form_value::print(std::ostream& out) const
@@ -2388,7 +2445,7 @@ void real_form_value::print(std::ostream& out) const
       << '\'' ;
 }
 
-@ To make a real form is easy, one provides an |inner_class_value| and a valid
+@ To make a real form is easy: one provides an |inner_class_value| and a valid
 index into its list of real forms. Since this number coming from the outside
 is to be interpreted as an outer index, we must convert it to an inner index
 at this point. We also inversely allow finding the index of a real form in its
@@ -2403,7 +2460,7 @@ void real_form_wrapper(expression_base::level l)
     throw runtime_error("Illegal real form number: ") << i;
 @.Illegal real form number@>
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<real_form_value>(G,G->interface.in(i)));
+    push_value(real_form_value::build(G,G->interface.in(i)));
 }
 @)
 void form_number_wrapper(expression_base::level l)
@@ -2416,12 +2473,14 @@ void form_number_wrapper(expression_base::level l)
 void quasisplit_form_wrapper(expression_base::level l)
 { shared_inner_class G = get<inner_class_value>();
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<real_form_value>(G,G->val.quasisplit()));
+    push_value(real_form_value::build(G,G->val.quasisplit()));
 }
 
 @*2 Functions operating on real reductive groups.
 %
-From a real reductive group we can go back to its inner class
+From a real reductive group we can go back to its inner class or root datum;
+the former is obtained by just copying the stored shared pointer |ic_ptr|.
+
 @< Local function def...@>=
 void inner_class_of_real_form_wrapper(expression_base::level l)
 { shared_real_form rf= get<real_form_value>();
@@ -2437,7 +2496,7 @@ void real_form_to_root_datum_coercion()
   push_value(get<real_form_value>()->ic_ptr->datum);
 }
 
-@ Here is a function that gives information about the dual component group
+@ Here is a function that gives information about the (dual) component group
 of a real reductive group: it returns the rank~$r$ such that the component
 group is isomorphic to $(\Zee/2\Zee)^r$.
 
@@ -2473,18 +2532,18 @@ coweight that determines the base grading for the real form, and which is an
 offset that will be added to |torus_bits| values when computing the
 |torus_factor| they represent. It is defined so that a zero value corresponds
 to a quasisplit real form, which proves the most useful base point. This does
-imply that a standard choice for the ``infinitesimal cocharacter'' for the
-real from must differ by ${}^\vee\!\rho$ from the value produced here (and the
-|cocharacter| field that stores it does not really have the right name).
+imply that a standard choice for the ``infinitesimal cocharacter''~$g$ for the
+real from must differ by ${}^\vee\!\rho$ from the value produced here (the
+|RealReductiveGroup| member that stores it is called |g_rho_check()|).
 
-We used to ensure that the coweight returned is dominant, while remaining
-in the coset of $2X_*$ defined by |rf->cocharacter| so that the torus element
-$\exp(\pi\ii t)$ giving the actual base grading is unaffected. There is
-however no obvious best way to do this, and the easy way that used to be
-employed could give coweights rather far from inside the dominant chamber; in
-addition this shift may destroy the ${}^t\xi$-invariance of |rf->cocharacter|
-that is hard to reestablish without risk of leaving the coset. Therefore we
-just return |rf->cocharacter| as it is stored.
+We used to ensure that the coweight returned is dominant, while remaining in the
+coset of $2X_*$ defined by |G.g_rho_check| so as to no affect the torus element
+$\exp(\pi\ii t)$ giving the actual base grading. There is however no obvious
+best way to do this, and the easy way that used to be employed could give
+coweights unnecessarily far inside the dominant chamber; in addition this shift
+may destroy the ${}^t\delta$-invariance of |G.g_rho_check| that is hard to
+reestablish without risk of leaving the coset. Therefore we just return
+|G.g_rho_check| unchanged.
 
 @< Local function def...@>=
 void base_grading_vector_wrapper(expression_base::level l)
@@ -2494,9 +2553,8 @@ void base_grading_vector_wrapper(expression_base::level l)
 }
 
 @ There is a partial ordering on the Cartan classes defined for a real form. A
-matrix for this partial ordering is computed by the function
-|Cartan_order|, which more or less replaces the \.{corder} command in
-\.{Fokko}.
+matrix for this partial ordering is computed by the function |Cartan_order|,
+which substitutes for the \.{Fokko} command \.{corder}.
 
 @h "poset.h"
 @< Local function def...@>=
@@ -2520,8 +2578,8 @@ set as a matrix. This function takes advantage of the fact that
 |real_form_value::val| is marked |mutable|, so that the non-|const| method
 |RealReductiveGroup::Bruhat_KGB| can be called even though we obtained a
 |shared_real_form| (pointer to |const|) from the stack. Originally that field
-was not marked |mutable|, and we had to revert |const|-casting, via the use of
-|non_const_get|, in the code below.
+was not marked |mutable|, and we had to revert |const|-casting in the code
+below, via the use of |non_const_get| when pulling the argument from the stack.
 
 @h "bruhat.h"
 
@@ -2547,15 +2605,14 @@ void KGB_Hasse_wrapper(expression_base::level l)
 be defined in the \.{axis} language itself: two real forms are equal if they
 belong to the same inner class, their base grading vectors are equal, and the
 torus bits of their initial KGB elements are the same (this should imply their
-real form numbers are the same too). However it is useful to define a test
-here; not only can we do the tests more efficiently, the same test will later
-also be used in other equality tests (for KGB elements, or module parameters);
-there one should resist the temptation to test (by pointer equality) for
-identical |RealReductiveGroup| objects, which would be too strict. Except if
-real form generation above were to be defined in such a way that in the
-presence of an equal real form value in its inner class, a newly generated one
-would actually return a reference to the old one, which would in fact be a
-good idea (but would require additional administration).
+real form numbers are the same too). However it is useful to define a test here;
+not only can we do the tests more efficiently, the same test will later also be
+used in other equality tests (for KGB elements, or module parameters). We resist
+the temptation to just test (by pointer equality) for identical
+|real_form_value| objects, which would be too strict; however, since the
+|real_form_value::build| will identify real forms obtained by selecting at equal
+|RealFormNbr| indices from the same |inner_class_value|, we do start with such a
+test for efficiency.
 
 @< Local function def...@>=
 
@@ -2575,14 +2632,14 @@ void real_form_eq_wrapper(expression_base::level l)
 { shared_real_form y = get<real_form_value>();
   shared_real_form x = get<real_form_value>();
   if (l!=expression_base::no_value)
-    push_value(whether(x->val==y->val));
+    push_value(whether(x.get()==y.get() or x->val==y->val));
 }
 
 void real_form_neq_wrapper(expression_base::level l)
 { shared_real_form y = get<real_form_value>();
   shared_real_form x = get<real_form_value>();
   if (l!=expression_base::no_value)
-    push_value(whether(x->val!=y->val));
+    push_value(whether(x.get()!=y.get() and x->val!=y->val));
 }
 
 @*2 Dual real forms.
@@ -2599,7 +2656,10 @@ was emptied of it substance).
 
 To make a dual real form, one provides an |inner_class_value| and a valid
 index into its list of dual real forms, which will be converted to an inner
-index. We also provide the dual quasisplit form.
+index. We also provide the dual quasisplit form. In both cases, the dual
+|inner_calss_value| of~|G| is computed on the fly as |G->dual()|, after which a
+|real_form_value| is obtained trough |real_form_value|, as in
+|real_form_wrapper| above.
 
 @< Local function def...@>=
 void dual_real_form_wrapper(expression_base::level l)
@@ -2611,8 +2671,7 @@ void dual_real_form_wrapper(expression_base::level l)
   if (l==expression_base::no_value)
     return;
 @)
-  push_value(std::make_shared<real_form_value>@|
-    (G->dual(),G->dual_interface.in(i)));
+  push_value(real_form_value::build(G->dual(),G->dual_interface.in(i)));
 }
 @)
 void dual_quasisplit_form_wrapper(expression_base::level l)
@@ -2621,8 +2680,7 @@ void dual_quasisplit_form_wrapper(expression_base::level l)
     return;
 @)
   auto dual_ic=G->dual();
-  push_value(std::make_shared<real_form_value> @|
-    (dual_ic,dual_ic->val.quasisplit()));
+  push_value(real_form_value::build(dual_ic,dual_ic->val.quasisplit()));
 }
 
 @*2 Synthetic real forms.
@@ -2631,26 +2689,26 @@ It is useful to be able to compute a real form based on other information than
 its index within its inner class, namely on a strong involution representative
 (involution and torus element). The synthetic \.{atlas} function |real_form|
 takes an inner class, a matrix giving an involution~$\theta$, and a rational
-coweight~$t$. After projecting $t$ to the $+1$ eigenspace of~$\theta$ to make
-it $\theta$-stable, it describes (through $\exp_{-1}:l\mapsto\exp(\pi\ii l)$)
-a torus element; the square of this element should be central (meaning in
-coordinates that all simple roots have integral evaluation on the projected
-rational vector; in the code below the doubled projection is made first, and
-evaluations must be even). If this test succeeds, the function then returns
-the corresponding real form, but in which a cocharacter value is stored
-(representing the square of any strong involution for the real form) deduced
-from the given torus element, which may differ from the value for the (weak)
-real form selected by the number |rf->val.realForm()| in the inner class. This
-difference notably allows the same strong involution representative to be
-subsequently used to specify a KGB element for this (strong) real form.
+coweight~$t$ that will be projected onto the subspace fixed under (the right
+action of)~$\theta$. If $\theta$ is in the inner class and the projected~$t$
+describes (through $\exp_{-1}:l\mapsto\exp(\pi\ii l)$) a torus element whose
+square is central, the function returns the corresponding real form whose
+|RealReductiveGroup::square_class_character| member (which is the value returned
+by the |g_check_rho| method) will have been computed from~$t$, inside the
+|real_form_of| function (defined in the \.{innerclass} compilation unit). This
+value only depends on the square of the torus element, but may differ from the
+value stored for this (weak) real form selected by the number
+|rf->val.realForm()| in the inner class. This difference notably allows the same
+strong involution representative to be subsequently used to specify a KGB
+element for this (strong) real form.
 
 @:synthetic_real_form@>
+@f theta nullptr
 
 @< Local function def...@>=
 TwistedInvolution twisted_from_involution
-  (const InnerClass& G, const WeightInvolution theta0)
+  (const InnerClass& G, WeightInvolution theta)
 { const RootDatum& rd = G.rootDatum();
-  WeightInvolution theta(theta0); // copy allowing modification
   WeylWord ww;
   if (check_involution(theta,rd,ww)!=G.twistedWeylGroup().twist() @| or
       theta!=G.distinguished())
@@ -2662,41 +2720,53 @@ void synthetic_real_form_wrapper(expression_base::level l)
 { own_rational_vector torus_factor = get_own<rational_vector_value>();
   shared_matrix theta = get<matrix_value>();
   shared_inner_class G = get<inner_class_value>();
-  TwistedInvolution tw = twisted_from_involution(G->val,theta->val);
   if (torus_factor->val.size()!=G->val.rank())
     throw runtime_error ("Torus factor size mismatch");
-  {
-    Ratvec_Numer_t& num = torus_factor->val.numerator();
-    num += theta->val.right_prod(num);
-      // make torus factor $\theta$-fixed, temporarily doubled
-    TorusElement t(torus_factor->val,false);
-      // take a copy as |TorusElement|, using $\exp_{-1}$
-    const RootDatum& rd = G->val.rootDatum();
-    LatticeMatrix alpha
-      (rd.beginSimpleRoot(),rd.endSimpleRoot(),rd.rank(),tags::IteratorTag());
-    if (not is_central(alpha,t)) // every root should now have even evaluation
-      throw runtime_error
-         ("Torus factor does not define a valid strong involution");
-@.Torus factor does not...@>
-    torus_factor->val /= 2; // now $(1+\theta)/2$ is applied to |torus_factor|
-  }
+  TwistedInvolution tw = twisted_from_involution(G->val,theta->val);
+  @< Test that |torus_factor| describes torus element whose square is central,
+     and project to make it stable under the action of |theta| @>
 
-  @< Ensure that the involution table knows about the Cartan class of |tw|
-     and those below it in the Cartan ordering @>
+  @< Make sure the involution table knows about the Cartan class of |tw|
+     below in the Cartan ordering @>
   RatCoweight coch(0); // dummy value to be replaced
   RealFormNbr rf = real_form_of(G->val,tw,torus_factor->val,coch);
    // sets |coch|
   TorusPart tp = realredgp::minimal_torus_part @|
-   (G->val,rf,coch,std::move(tw),torus_factor->val);
+   (G->val,rf,coch,tw,torus_factor->val);
+   // choose base |TorusPart| for $K\backslash G/B$ construction
   if (l!=expression_base::no_value)
-    push_value(std::make_shared<real_form_value>(G,rf,coch,tp));
+    push_value(real_form_value::build(G,rf,coch,tp));
+}
+
+@ The square of the torus element for the projected |torus_factor| is central
+if all simple roots have integral evaluation on |torus_factor|. In the code
+below we compute the doubled projection first, and use |is_central| to test that
+the evaluations are even, before halving to obtain the actual projection.
+
+@< Test that |torus_factor| describes torus element whose square is central,
+   and project to make it stable under the action of |theta| @>=
+{
+  Ratvec_Numer_t& num = torus_factor->val.numerator();
+  num += theta->val.right_prod(num);
+    // make torus factor $\theta$-fixed, temporarily doubled
+  TorusElement t(torus_factor->val,false);
+    // take a copy as |TorusElement|, using $\exp_{-1}$
+  const RootDatum& rd = G->val.rootDatum();
+  LatticeMatrix alpha
+    (rd.beginSimpleRoot(),rd.endSimpleRoot(),rd.rank(),tags::IteratorTag());
+  if (not is_central(alpha,t)) // every root should now have even evaluation
+    throw runtime_error
+       ("Torus factor does not define a valid strong involution");
+@.Torus factor does not...@>
+  torus_factor->val /= 2;
+  // now $(1+\theta)/2$ has been applied to |torus_factor|
 }
 
 @ The call to |minimal_torus_part| uses the involution table in order to be
 able to do downward (inverse) Cayley transforms, so we must ensure that any
 involutions that can be encountered have been entered into the table.
 
-@< Ensure that the involution table knows about the Cartan class of |tw|... @>=
+@< Make sure the involution table knows about the Cartan class of |tw|... @>=
 { CartanNbr cn = G->val.class_number(tw);
   G->val.generate_Cartan_orbit(cn);
   const BitMap& b = G->val.Cartan_ordering().below(cn);
@@ -2963,7 +3033,7 @@ void real_forms_of_Cartan_wrapper(expression_base::level l)
   { RealFormNbr rf = icp->interface.in(i);
     BitMap b(icp->val.Cartan_set(rf));
     if (b.isMember(cc->number))
-      result->val[k++] = std::make_shared<real_form_value>(icp,rf);
+      result->val[k++] = real_form_value::build(icp,rf);
   }
   push_value(std::move(result));
 }
@@ -2979,7 +3049,7 @@ void dual_real_forms_of_Cartan_wrapper(expression_base::level l)
   { RealFormNbr drf = cc->ic_ptr->dual_interface.in(i);
     BitMap b (cc->ic_ptr->val.dual_Cartan_set(drf));
     if (b.isMember(cc->number))
-      result->val[k++] = std::make_shared<real_form_value>(dual_ic,drf);
+      result->val[k++] = real_form_value::build(dual_ic,drf);
   }
   push_value(std::move(result));
 }
@@ -3638,8 +3708,7 @@ void block_element_wrapper(expression_base::level l)
 @)
   push_value(std::make_shared<KGB_elt_value>(b->rf,b->val.x(z)));
   auto dic = b->rf->ic_ptr->dual();
-  auto drf =
-    std::make_shared<real_form_value>(dic,b->dual_rf->val.realForm());
+  auto drf = real_form_value::build(dic,b->dual_rf->val.realForm());
   push_value(std::make_shared<KGB_elt_value>(drf,b->val.y(z)));
   if (l==expression_base::single_value)
     wrap_tuple<2>();
