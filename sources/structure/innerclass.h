@@ -227,7 +227,7 @@ class InnerClass
 	     const WeightInvolution&);
 
   InnerClass(const RootDatum& rd, // for atlas program; capture references
-	     const RootDatum& prd, // this one must be the dual datum
+	     const RootDatum& drd, // this one must be the dual datum
 	     const WeightInvolution&);
 
   InnerClass(const InnerClass&, tags::DualTag);

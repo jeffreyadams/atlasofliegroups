@@ -150,8 +150,8 @@ InnerClass::InnerClass
 /*
   Variant constructor, differs only by capturing an existing root datum pair
 
-  Constructs an |InnerClass| from a rootdatum |rd| and a distinguished
-  involution |d|, which stabilises the set of simple roots
+  Constructs an |InnerClass| from a rootdatum |rd| and its dual datum |drd|,
+  and a distinguished involution |d|, which stabilises the set of simple roots
 */
 InnerClass::InnerClass
 (const RootDatum& rd, const RootDatum& drd, const WeightInvolution& tmp_d)
@@ -383,7 +383,9 @@ void InnerClass::construct() // common part of two constructors
   }
 } // |InnerClass::construct|
 
-// Construct the complex reductive group dual to G
+
+// Construct the complex reductive group dual to G (used in Fokko only)
+// letting the dual be dependent on the main inner class, they can share |W|
 InnerClass::InnerClass(const InnerClass& G, tags::DualTag)
   : own_datum(nullptr), own_dual_datum(nullptr) // depend on |G| in all cases
   , d_rootDatum(G.d_dualRootDatum) // since we are sharing these references

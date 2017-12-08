@@ -79,12 +79,12 @@ namespace {
   void help_f();
 
   // local variables
-  // most of these have been changed to pointers to avoid swapping of G_C
+  // most of these are pointers to avoid swapping of inner classes
 
   lietype::Layout layout;
   LatticeMatrix lattice_basis; // allows mapping Lie type info to complex group
-  InnerClass* G_C_pointer=nullptr;
-  InnerClass* dual_G_C_pointer=nullptr;
+  InnerClass* ic_pointer=nullptr;
+  InnerClass* dual_ic_pointer=nullptr;
   output::Interface* G_I_pointer=nullptr;
 
 } // |namespace|
@@ -99,15 +99,14 @@ namespace {
 InnerClass& current_inner_class()
 
 {
-  return *G_C_pointer;
+  return *ic_pointer;
 }
 
-InnerClass& current_dual_group()
+InnerClass& current_dual_inner_class()
 {
-  if (dual_G_C_pointer==nullptr)
-    dual_G_C_pointer = new InnerClass
-      (current_inner_class(), tags::DualTag());
-  return *dual_G_C_pointer;
+  if (dual_ic_pointer==nullptr)
+    dual_ic_pointer = new InnerClass(current_inner_class(),tags::DualTag());
+  return *dual_ic_pointer;
 }
 
 
@@ -119,14 +118,13 @@ output::Interface& currentComplexInterface()
   return *G_I_pointer;
 }
 
-void replace_inner_class(InnerClass* G
-			,output::Interface* I)
+void replace_inner_class(InnerClass* G,output::Interface* I)
 {
-  delete G_C_pointer;
-  delete dual_G_C_pointer;
+  delete ic_pointer;
+  delete dual_ic_pointer;
   delete G_I_pointer;
-  G_C_pointer=G;
-  dual_G_C_pointer=nullptr;
+  ic_pointer=G;
+  dual_ic_pointer=nullptr;
   G_I_pointer=I;
 }
 
@@ -148,7 +146,8 @@ namespace {
 void main_mode_entry() throw(EntryError)
 {
   try {
-    interactive::get_group_type(G_C_pointer,G_I_pointer,layout,lattice_basis);
+    interactive::get_group_type(ic_pointer,G_I_pointer,layout,lattice_basis);
+    dual_ic_pointer=nullptr; // this one is lazily initialised
   }
   catch(error::InputError& e) {
     e("complex group not set");
@@ -348,15 +347,15 @@ void showdualforms_f()
 // Print the gradings associated to the weak real forms.
 void gradings_f()
 {
-  InnerClass& G_C = current_inner_class();
+  InnerClass& ic = current_inner_class();
 
   // get Cartan class; abort if unvalid
-  size_t cn=interactive::get_Cartan_class(G_C.Cartan_set(G_C.quasisplit()));
+  size_t cn=interactive::get_Cartan_class(ic.Cartan_set(ic.quasisplit()));
 
   ioutils::OutputFile file;
 
   static_cast<std::ostream&>(file) << std::endl;
-  output::printGradings(file,G_C,cn,currentComplexInterface())
+  output::printGradings(file,ic,cn,currentComplexInterface())
       << std::endl;
 
 }
@@ -364,10 +363,10 @@ void gradings_f()
 // Print information about strong real forms.
 void strongreal_f()
 {
-  InnerClass& G_C = current_inner_class();
+  InnerClass& ic = current_inner_class();
 
   // get Cartan class; abort if unvalid
-  size_t cn=interactive::get_Cartan_class(G_C.Cartan_set(G_C.quasisplit()));
+  size_t cn=interactive::get_Cartan_class(ic.Cartan_set(ic.quasisplit()));
 
   ioutils::OutputFile file;
   file << "\n";
@@ -381,14 +380,14 @@ void strongreal_f()
 // Print a kgb table for a dual real form.
 void dualkgb_f()
 {
-  InnerClass& G_C = current_inner_class();
+  InnerClass& ic = current_inner_class();
   output::Interface& G_I = currentComplexInterface();
 
-  RealFormNbr drf = interactive::get_dual_real_form(G_I,G_C,G_C.numRealForms());
+  RealFormNbr drf = interactive::get_dual_real_form(G_I,ic,ic.numRealForms());
 
   // the complex group must be in a variable: is non-const for real group
-  InnerClass dG_C(G_C,tags::DualTag());
-  RealReductiveGroup dG(dG_C,drf);
+  InnerClass dic(ic,tags::DualTag());
+  RealReductiveGroup dG(dic,drf);
 
   std::cout << "dual kgbsize: " << dG.KGB_size() << std::endl;
   ioutils::OutputFile file;
