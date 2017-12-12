@@ -911,7 +911,7 @@ RatCoweight square_class_choice
 
   // initial columns of |col| are coordinate weights of $\xi^t$-stable coweights
   int_Matrix col_inv(col.inverse());
-  const auto d=diagonal.size(), n=col.numRows();
+  const unsigned int d=diagonal.size(), n=col.numRows();
 
   // convert to $\xi^t$-stable coordinates, take mod 1, then convert back
   RatCoweight tr = (coch*col.block(0,0,n,d)%=1)*col_inv.block(0,0,d,n);

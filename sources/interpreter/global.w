@@ -151,6 +151,7 @@ public:
 table, and the above code needs some types defined elsewhere.
 
 @< Includes needed in the header file @>=
+#include <cstddef> // for |std::size_t|
 #include <map>
 #include "buffer.h" // for |id_type|
 #include "axis-types.h" // for |shared_value|

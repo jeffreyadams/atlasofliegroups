@@ -1869,9 +1869,8 @@ block), and extract the bottom-right $(r-s)\times(r-s)$ block.
 @/CoeffList factor; // values will be unused
   int_Matrix basis =
      matreduc::adapted_basis(root_lattice,factor);
-@/WeightInvolution inv =
+@/WeightInvolution inv = // involution on quotient by root lattice
      basis.inverse().block(s,0,r,r)*delta*basis.block(0,s,r,r);
-    // involution on quotient by root lattice
   const auto ranks=tori::classify(inv);
 @/auto compact_rank=std::get<0>(ranks);
   auto Complex_rank=std::get<1>(ranks);

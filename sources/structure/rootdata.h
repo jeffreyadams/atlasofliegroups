@@ -182,13 +182,13 @@ class RootSystem
   RootNbr simpleRootNbr(weyl::Generator i) const
   { assert(i<rk);  return numPosRoots()+i; }
 
-  RootNbr posRootNbr(size_t alpha) const
+  RootNbr posRootNbr(RootNbr alpha) const
   { assert(alpha<numPosRoots()); return numPosRoots()+alpha; }
 
-  RootNbr simpleRootIndex(size_t alpha) const
+  RootNbr simpleRootIndex(RootNbr alpha) const
   { assert(is_simple_root(alpha));  return alpha-numPosRoots(); }
 
-  RootNbr posRootIndex(size_t alpha) const
+  RootNbr posRootIndex(RootNbr alpha) const
   { assert(is_posroot(alpha)); return alpha-numPosRoots(); }
 
   RootNbr rootMinus(RootNbr alpha) const // roots are ordered symmetrically
@@ -220,7 +220,7 @@ class RootSystem
     return is_posroot(alpha) ? ri[a].ascents : ri[a].descents;
   }
 
-  size_t find_descent(RootNbr alpha) const
+  RootNbr find_descent(RootNbr alpha) const
   { return descent_set(alpha).firstBit(); }
 
   bool is_descent(weyl::Generator i, RootNbr alpha) const
@@ -320,7 +320,7 @@ class RootDatum
 
   typedef BitSet<numFlags> Status;
 
-  size_t d_rank; // here rank is that of maximal torus: number of coordinates
+  RootNbr d_rank; // here rank is that of maximal torus: number of coordinates
 
   WeightList d_roots; // Full list of roots.
   CoweightList d_coroots; // Full list of coroots.
@@ -353,9 +353,10 @@ class RootDatum
 
   RootDatum(const RootDatum&, tags::DualTag);
 
+#if 0 // (co)derived constructors no loger used, done at |PreRootData| level now
   RootDatum(int_Matrix& projector, const RootDatum&, tags::DerivedTag);
-
   RootDatum(int_Matrix& injector, const RootDatum&, tags::CoderivedTag);
+#endif
 
   PreRootDatum sub_predatum(const RootNbrList& generators) const;
 
@@ -430,7 +431,7 @@ class RootDatum
   const Weight& simpleRoot(weyl::Generator i) const
     { assert(i<semisimpleRank()); return *(beginSimpleRoot()+i); }
 
-  const Weight& posRoot(size_t i) const
+  const Weight& posRoot(RootNbr i) const
     { assert(i<numPosRoots()); return *(beginPosRoot()+i); }
 
   RootNbr root_index(const Root& r) const
@@ -443,7 +444,7 @@ class RootDatum
   const Coweight& simpleCoroot(weyl::Generator i) const
     { assert(i<semisimpleRank()); return *(beginSimpleCoroot()+i); }
 
-  const Coweight& posCoroot(size_t i) const
+  const Coweight& posCoroot(RootNbr i) const
     { assert(i<numPosRoots()); return  *(beginPosCoroot()+i); }
 
   RootNbr coroot_index(const Root& r) const
