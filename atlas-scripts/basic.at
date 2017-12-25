@@ -361,26 +361,21 @@ set invert_ech (mat A) = (mat,int):
    in (n # for n@j in row_nums do cols[j]*n od , common_d)
 
 { matrix exponentiation }
-set ^ =
-  let matrix_power (mat m,int n)= mat: m { dummy for recursion } in
-  begin matrix_power := { assign recursive function body }
-    ( (mat m,int n): { we shall have n>0 }
-      if n=1 then m
-      else let (q,r)=n\%2 then mm=matrix_power(m,q) in
+set ^ = (mat,int->mat):
+  let rec_fun matrix_power (mat m,int n) = mat:
+    if n=1 then m
+    else let (q,r)=n\%2 then mm=matrix_power(m,q) in
         mm*if =r then mm else mm*m fi
-      fi
-    )
-  ; (mat m,int n) mat: { the actual operator ^ :}
-      assert(=shape(m),"Non square matrix in exponentiation")
-    ; if n>0 then matrix_power(m,n) elif =n then id_mat(n_rows(m))
-      else let (m1,d)=invert_ech(m) in
-        if d=1 then matrix_power(m1,-n)
-        elif =d then error("Negative power of singular matrix")
-        else error("Negative power of matrix not invertible over Z")
-        fi
-      fi
-  end
-
+    fi
+  in { ^@(mat,int) = } (mat m,int n) mat:
+    assert(=shape(m),"Non square matrix in exponentiation");
+  if n>0 then matrix_power(m,n) elif =n then id_mat(n_rows(m))
+  else let (m1,d)=invert_ech(m) in
+     if d=1 then matrix_power(m1,-n)
+     elif =d then error("Negative power of singular matrix")
+     else error("Negative power of matrix not invertible over Z")
+     fi
+  fi
 
 set inverse (mat M) = mat:
   let (inv,d)=invert_ech(M) in
@@ -599,12 +594,12 @@ set split_format (Split w) = string:
   fi
 
 
-set ^ = { exponentiation of split integers }
+set ^ = (Split,int->Split): { exponentiation of split integers }
   let rec_fun split_power (Split x,int n) = Split: { we shall have n>0 }
     if n=1 then x
     else let (q,r)=n\%2 then y=split_power(x,q) in y*if =r then y else x*y fi
     fi
-  in { set ^ = } (Split x,int n): Split:
+  in { ^@(Split,int) = } (Split x,int n): Split:
     if let (a,b)=%x in abs(a)+abs(b)=1 { cases of invertible (unit) Split }
     then if n.is_even then split_1 else x fi { all are square roots of +1 }
     elif n.> then split_power(x,n)
