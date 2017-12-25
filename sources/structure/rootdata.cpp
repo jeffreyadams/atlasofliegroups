@@ -988,6 +988,52 @@ Coweight RootDatum::dual_twoRho(RootNbrSet rs) const
 }
 
 
+// make |lambda| dominant, and return Weyl word that will convert it back
+WeylWord RootDatum::factor_dominant (Weight& v) const
+{
+  containers::sl_list<weyl::Generator> w;
+  weyl::Generator s;
+
+  // greedy approach: find and apply reflections bringing |v| closer to dominant
+  do
+    for (s=0; s<semisimpleRank(); ++s)
+      if (v.dot(simpleCoroot(s)) < 0)
+      {
+	w.push_back(s);
+	simple_reflect(s,v);
+	break;
+      }
+  while (s<semisimpleRank());
+
+  // result is in proper order to transform (right to left) |v| back to original
+  WeylWord result; result.reserve(w.size());
+  std::copy(w.begin(),w.end(),std::back_inserter(result));
+  return result;
+}
+
+// make |lambda| codominant, and return Weyl word that will convert it back
+WeylWord RootDatum::factor_codominant (Coweight& v) const
+{
+  containers::sl_list<weyl::Generator> w;
+  weyl::Generator s;
+
+  // greedy approach: find and apply reflections bringing |v| closer to dominant
+  do
+    for (s=0; s<semisimpleRank(); ++s)
+      if (v.dot(simpleRoot(s)) < 0)
+      {
+	w.push_front(s);
+	simple_coreflect(v,s);
+	break;
+      }
+  while (s<semisimpleRank());
+
+  // result is in proper order to transform (left to right) |v| back to original
+  WeylWord result; result.reserve(w.size());
+  std::copy(w.begin(),w.end(),std::back_inserter(result));
+  return result;
+}
+
 /*
   A reduced expression of the shortest |w| making |w.v| dominant
 
@@ -995,40 +1041,12 @@ Coweight RootDatum::dual_twoRho(RootNbrSet rs) const
   simple coroot alpha^v such that <v,alpha^v> is < 0; then s_alpha.v takes
   v closer to the dominant chamber.
 */
-WeylWord RootDatum::to_dominant(Weight v) const
+WeylWord RootDatum::to_dominant(Weight lambda) const
 {
-  WeylWord result;
-
-  weyl::Generator i;
-  do
-    for (i=0; i<semisimpleRank(); ++i)
-      if (v.dot(simpleCoroot(i)) < 0)
-      {
-	result.push_back(i);
-	simple_reflect(i,v);
-	break;
-      }
-  while (i<semisimpleRank());
-
+  WeylWord result = factor_dominant(lambda);
   // reverse result (action is from right to left)
   std::reverse(result.begin(),result.end());
-  return result;
-}
-
-// the same algorithm, but now modifying |v| in place, forgetting |w|
-Weight& RootDatum::make_dominant(Weight& v) const
-{
-  weyl::Generator i;
-  do
-    for (i=0; i<semisimpleRank(); ++i)
-      if (v.dot(simpleCoroot(i)) < 0)
-      {
-	simple_reflect(i,v);
-	break;
-      }
-  while (i<semisimpleRank());
-
-  return v;
+  return result; // and forget modified |lambda|
 }
 
 /*
@@ -1197,6 +1215,9 @@ void toDistinguished(WeightInvolution& q, const RootDatum& rd)
    Transform, using the Weyl group, the image |Delta| of simple system back to
    that system as a set, possibly permuted by a twist. At return |Delta|
    represents that twist, and return value transforms it to original |Delta|
+
+   Simple reflections are gathered in the opposite order of when a Weyl group
+   element is represented by its image of |rho| rather than of |Delta|
  */
 WeylWord wrt_distinguished(const RootSystem& rs, RootNbrList& Delta)
 {

@@ -597,7 +597,7 @@ void
   }
 }
 
-// Let |w| act on |v| according to reflection action in root datum |rd|
+// Let |w| act on weight |v| according to reflection action in root datum |rd|
 template<typename C>
   void WeylGroup::act
     (const RootDatum& rd, const WeylElt& w,  matrix::Vector<C>& v) const
@@ -607,6 +607,19 @@ template<typename C>
     const WeylWord& xw = wordPiece(w,i);
     for (Transducer::PieceIndex j = xw.size(); j-->0; )
       rd.simple_reflect(d_out[xw[j]],v);
+  }
+}
+
+// Let |w| act on coweight |v| according to reflection action in root datum |rd|
+template<typename C>
+  void WeylGroup::co_act
+    (const RootDatum& rd,  matrix::Vector<C>& v, const WeylElt& w) const
+{
+  for (Generator i = 0; i<d_rank; ++i)
+  {
+    const WeylWord& xw = wordPiece(w,i);
+    for (Transducer::PieceIndex j = 0; j<xw.size(); ++j)
+      rd.simple_coreflect(v,d_out[xw[j]]);
   }
 }
 
@@ -1327,6 +1340,10 @@ void fillCoxMatrix(int_Matrix& cox,
 template
 void WeylGroup::act
   (const RootDatum& rd, const WeylElt& w, matrix::Vector<int>& v) const;
+
+template
+void WeylGroup::co_act
+  (const RootDatum& rd, matrix::Vector<int>& v, const WeylElt& w) const;
 
 
 } // |namespace weyl|

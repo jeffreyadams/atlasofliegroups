@@ -543,8 +543,17 @@ class RootDatum
     simple_coreflection(matrix::Vector<C> ell, weyl::Generator i) const
     { simple_coreflect(ell,i); return ell; }
 
-  WeylWord to_dominant(Weight lambda) const; // call by value
-  Weight& make_dominant(Weight& lambda) const; // transform |lambda| to dominant
+  // make |lambda| dominant, and return Weyl word that will convert it back
+  WeylWord factor_dominant (Weight& lambda) const;
+  WeylWord to_dominant(Weight lambda) const; // by value; reversed result
+  Weight& make_dominant(Weight& lambda) const // modify and return |lambda|
+  { factor_dominant(lambda); return lambda; }
+
+  // make |lambda| codominant, and return Weyl word that will convert it back
+  WeylWord factor_codominant (Coweight& lambda) const;
+  WeylWord to_codominant(Weight lambda) const; // by value; reversed result
+  Weight& make_codominant(Weight& lambda) const // modify and return |lambda|
+  { factor_dominant(lambda); return lambda; }
 
   void act(const WeylWord& ww,Weight& lambda) const
     {

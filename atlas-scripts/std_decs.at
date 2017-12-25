@@ -31,5 +31,4 @@ q:Param
 block:[Param]
 P:ParamPol
 
-
-w:(RootDatum,[int]) { Weyl word }
+w:WeylElt

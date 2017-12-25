@@ -350,6 +350,30 @@ integrality_points: (RootDatum,ratvec->[rat]): fractions with integrality
   positive fractions f<=1 so f*lambda has more integrality than generically:
   for some coroot alphav one has integral and nonzero value <alphav,f*lambda>.
 
+W_elt: (RootDatum,vec->WeylElt): Construct a WeylElt from a word in W-generators
+  The root datum specifies the type of Weyl group, the vector gives the word in
+  terms of simple reflections (indexed from 0) defining the Weyl group element
+word: (WeylElt->[int]): chosen reduced Weyl word for a Weyl group element
+root_datum: (WeylElt->rootDatum): Root datum underling a Weyl group element
+operators =, != : (WeylElt->bool): test Weyl group element against identity
+operators =, != : (WeylElt,WeylElt->bool): comparison of Weyl group elements
+  The elements are required to be from equal or dual root data
+operator * : (WeylElt,WeylElt->WeylElt): Compose Weyl group elements
+operator / : (WeylElt->WeylElt): Inverse of Weyl group element
+operator # : (WeylElt,int->WeylElt): muttiplu Weyl group element and generator
+operator # : (int,WeylElt->WeylElt): multiply generator and Weyl group element
+operator ## : (WeylElt,vec->WeylElt): Compose Weyl group element and Weyl word
+operator ## : (vec,WeylElt->WeylElt): Compose Weyl word and Weyl group element
+operator * : (WeylElt,vec->WeylElt): left-act by Weyl group element on weight
+operator * : (vec,WeylElt->WeylElt): right-act on coweight by Weyl group element
+from_dominant: (RootDatum,vec->WeylElt,vec): write as W image of dominant weight
+  Called for (rd,lambda), find in the oribit of lambda under the Weyl group W
+  of rd the dominant weight v, and minimal w in W with lambda=w*v; return (w,v)
+from_dominant: (vec,RootDatum->vec,WeylElt): write as dominant coweight * W-elt
+  Called for (cowt,rd), find in the oribit of cowt under the Weyl group W of rd
+  the dominant coweight v, and minimal w in W with cowt=v*w; return (v,w), Note
+  that using form_dominant(dual(rd),cowt) instead would rather return (w^{-1},v)
+
 quotient_basis: (LieType,[ratvec]->mat): sublattice given by kernel generators.
   Interpret the rational vectors as kernel generators for the given type, as
   in the Fokko program, and return the corresponding sublattice as a matrix

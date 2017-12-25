@@ -920,9 +920,11 @@ that clients cannot circumvent |build|, we make the constructor require a
 The root datum look-up tables are in the |static| variables |pool|, |hash| and
 |store|. Since few inner classes usually exist for a given root datum, we use a
 simple linked list |classes| to record them, with the corresponding
-distinguished involution.
+distinguished involution. We also include a field for a |WeylGroup|, lazily
+generated for clients that need it.
 
 @s mutable const
+@h "weyl.h"
 
 @< Type definitions @>=
 class root_datum_value : public value_base
@@ -932,10 +934,12 @@ class root_datum_value : public value_base
   static std::vector<root_datum_weak_ptr> store;
   mutable containers::simple_list @|
     <std::pair<const WeightInvolution,inner_class_weak_ptr> > classes;
+  mutable std::shared_ptr<WeylGroup> W_ptr;
 public:
   const RootDatum val;
 @)
-  root_datum_value(const PreRootDatum& v,token) : val(v) @+ {}
+  root_datum_value(const PreRootDatum& v,token)
+  : classes(), W_ptr(), val(v) @+ {}
   static shared_root_datum build(PreRootDatum&& pre);
   virtual void print(std::ostream& out) const;
   static const char* name() @+{@; return "root datum"; }
@@ -944,6 +948,7 @@ public:
   shared_root_datum dual() const; // get dual datum through |build|
   inner_class_weak_ptr& lookup (const WeightInvolution& delta) const;
     // find or create empty
+  const WeylGroup& W () const;
 };
 
 @ We need to define the static members declared in the class definition. The
@@ -979,9 +984,6 @@ then a shared pointer to a newly created |root_datum_value| is returned, after
 either pushing a weak pointer to |store| or storing it in the old slot in case a
 the weak pointer there had expired.
 
-The method |dual| facilitates building the dual of a |root_datum_value| while
-passing though |build| to ensure that no unnecessary copies are created, notably
-if one should later compute the dual of the dual.
 
 @< Function definitions @>=
 shared_root_datum root_datum_value::build(PreRootDatum&& pre)
@@ -1001,9 +1003,32 @@ shared_root_datum root_datum_value::build(PreRootDatum&& pre)
   } // save a weak pointer version in |store|
   return result;
 }
+@ The method |W| constructs a |WeylGroup| object if this is not already done,
+and returns a reference to it.
+%
+The method |dual| facilitates building the dual of a |root_datum_value| while
+passing though |build| to ensure that no unnecessary copies are created, notably
+if one should later compute the dual of the dual. We want a root datum and its
+dual to share their Weyl group, and the only way to ensure this is to generate
+our Weyl group if necessary (by calling |W|) whenever the dual root datum is
+formed.
+
+@< Function definitions @>=
+
+const WeylGroup& root_datum_value::W () const
+{ if (W_ptr.get()==nullptr)
+    W_ptr = std::make_shared<WeylGroup>(val.cartanMatrix());
+  return *W_ptr;
+}
 @)
 shared_root_datum root_datum_value::dual() const
-{@; PreRootDatum pre(val); pre.dualise(); return build(std::move(pre)); }
+{ PreRootDatum pre(val); pre.dualise();
+  auto result = build(std::move(pre));
+  if (result->W_ptr.get()==nullptr)
+    W(),result->W_ptr = W_ptr;
+    // ensure we have a Weyl group, then share pointer
+  return result;
+}
 
 @ When looking up to see whether an inner class is already known for a given
 involution, we use linear search along the linked list. We return a reference to
@@ -1517,15 +1542,302 @@ install_function(derived_info_wrapper,@|
 install_function(mod_central_torus_info_wrapper,@|
 		 "mod_central_torus_info","(RootDatum->RootDatum,mat)");
 install_function(rd_rank_wrapper,@|"rank","(RootDatum->int)");
-install_function(rd_semisimple_rank_wrapper@|
-		,"semisimple_rank","(RootDatum->int)");
+install_function(rd_semisimple_rank_wrapper,@|
+		 "semisimple_rank","(RootDatum->int)");
 install_function(rd_nposroots_wrapper@|,"nr_of_posroots","(RootDatum->int)");
 install_function(root_index_wrapper@|,"root_index","(RootDatum,vec->int)");
 install_function(coroot_index_wrapper@|,"coroot_index","(RootDatum,vec->int)");
-install_function(integrality_datum_wrapper
-                ,@|"integrality_datum","(RootDatum,ratvec->RootDatum)");
-install_function(integrality_points_wrapper
-                ,@|"integrality_points","(RootDatum,ratvec->[rat])");
+install_function(integrality_datum_wrapper,@|
+                 "integrality_datum","(RootDatum,ratvec->RootDatum)");
+install_function(integrality_points_wrapper,@|
+                 "integrality_points","(RootDatum,ratvec->[rat])");
+
+@*1 Weyl group elements.
+%
+Weyl groups were implemented by Fokko du Cloux using the transducer model he
+developed, and have been used since the beginnings of Atlas for the
+representation of involutions. This only exposes the possibilities of the
+implementation in a very limited way, and it is useful for \.{atlas} users to
+have direct access to computations with Weyl group elements.
+
+@<Type definitions @>=
+struct W_elt_value : public value_base
+{ shared_root_datum rd;
+  const WeylGroup& W;
+  WeylElt val;
+@)
+  W_elt_value(const shared_root_datum& rd, const WeylElt& w)
+@/: rd(rd), W(rd->W()), val(w) @+{}
+@)
+  virtual void print(std::ostream& out) const;
+  static const char* name() @+{@; return "Weyl group element"; }
+  W_elt_value @[(const W_elt_value& ) = default@];
+    // we use |get_own<W_elt_value>|
+
+};
+typedef std::shared_ptr<const W_elt_value> shared_W_elt;
+typedef std::shared_ptr<W_elt_value> own_W_elt;
+
+@ To distinguish Weyl group elements from other values, we use a format like
+\.{<3.2.0.1.2.1.0>}.
+@< Function def...@>=
+void W_elt_value::print(std::ostream& out) const
+{ WeylWord ww = W.word(val); out << '<';
+  for (auto it=ww.begin(); it!=ww.end(); ++it)
+    out << (it==ww.begin() ? "" : ".") << static_cast<unsigned int>(*it);
+  out << '>';
+}
+
+@*2 Functions defined for Weyl group elements.
+%
+A first basic way to make a Weyl group element will be to specify a root datum
+and a word in the simple reflections, each represented by the index of a simple
+root. We need to test that the given word is valid for the semisimple rank of
+the root datum, and since there will be more functions that take such a Weyl
+word as an argument, we define a separate function for performing the test.
+
+@< Local function def...@>=
+WeylWord check_Weyl_word(const int_Vector& v, unsigned int rank)
+{ WeylWord result; result.reserve(v.size());
+  for (auto it=v.begin(); it!=v.end(); ++it)
+    if (static_cast<unsigned int>(*it)<rank)
+      result.push_back(*it);
+    else throw runtime_error("Illegal Weyl word entry ") << *it @|
+@.Illegal Weyl word entry@>
+         << " (should be <" << rank << ')';
+  return result;
+}
+@)
+void W_elt_wrapper(expression_base::level l)
+{ shared_vector v = get<vector_value>();
+  shared_root_datum rd = get<root_datum_value>();
+  auto ww=check_Weyl_word(v->val,rd->val.semisimpleRank());
+  if (l!=expression_base::no_value)
+    push_value(std::make_shared<W_elt_value>(rd,rd->W().element(ww)));
+}
+
+@ We also want to be able to convert a Weyl group element back to a word, to
+extract the root datum it was built from, and test for equality.
+@< Local function def... @>=
+void W_word_wrapper(expression_base::level l)
+{ shared_W_elt w = get<W_elt_value>();
+  if (l==expression_base::no_value)
+    return;
+@)
+  auto word = w->W.word(w->val);
+  push_value(std::make_shared<vector_value>(word.begin(),word.end()));
+}
+@)
+void datum_from_W_elt_wrapper(expression_base::level l)
+{ shared_W_elt w = get<W_elt_value>();
+  if (l!=expression_base::no_value)
+    push_value(w->rd);
+}
+@)
+void W_elt_unary_eq_wrapper
+(expression_base::level l)
+{ shared_W_elt w = get<W_elt_value>();
+  if (l!=expression_base::no_value)
+    push_value(whether(w->val==WeylElt()));
+}
+void W_elt_unary_neq_wrapper
+(expression_base::level l)
+{ shared_W_elt w = get<W_elt_value>();
+  if (l!=expression_base::no_value)
+    push_value(whether(w->val!=WeylElt()));
+}
+@)
+void W_elt_eq_wrapper
+(expression_base::level l)
+{ shared_W_elt w1 = get<W_elt_value>();
+  shared_W_elt w0 = get<W_elt_value>();
+  if (&w0->W!=&w1->W)
+    throw runtime_error("Weyl group mismatch");
+@.Weyl group mismatch@>
+  if (l!=expression_base::no_value)
+    push_value(whether(w0->val==w1->val));
+}
+void W_elt_neq_wrapper
+(expression_base::level l)
+{ shared_W_elt w1 = get<W_elt_value>();
+  shared_W_elt w0 = get<W_elt_value>();
+  if (&w0->W!=&w1->W)
+    throw runtime_error("Weyl group mismatch");
+@.Weyl group mismatch@>
+  if (l!=expression_base::no_value)
+    push_value(whether(w0->val!=w1->val));
+}
+
+@ An obvious thing we want to do with Weyl group elements is multiply them, or
+take their inverse.
+
+@< Local function def... @>=
+void W_elt_prod_wrapper(expression_base::level l)
+{ shared_W_elt w1 = get<W_elt_value>();
+  own_W_elt w0 = get_own<W_elt_value>();
+  if (&w0->W!=&w1->W)
+    throw runtime_error("Weyl group mismatch");
+@.Weyl group mismatch@>
+  if (l==expression_base::no_value)
+    return;
+@)
+  w0->W.mult(w0->val,w1->val);
+  push_value(std::move(w0));
+}
+
+void W_elt_invert_wrapper(expression_base::level l)
+{ shared_W_elt w = get<W_elt_value>();
+  if (l==expression_base::no_value)
+    return;
+@)
+  push_value(std::make_shared<W_elt_value>(w->rd,w->W.inverse(w->val)));
+}
+
+@ Since only one argument needs to furnish the Weyl group, we
+also define multiplication on either side by a generator represented by its
+index, or by a complete Weyl word.
+
+@< Local function def... @>=
+void check_Weyl_gen(int s, unsigned int rank)
+{ if (static_cast<unsigned int>(s)>=rank)
+    throw runtime_error("Generator ") << s @|
+       << " out of range for Weyl group (should be <" << rank << ')';
+}
+@)
+void W_elt_gen_prod_wrapper(expression_base::level l)
+{ auto s = get<int_value>()->int_val();
+  own_W_elt w = get_own<W_elt_value>();
+  check_Weyl_gen(s,w->W.rank());
+  if (l==expression_base::no_value)
+    return;
+@)
+  w->W.mult(w->val,s);
+  push_value(std::move(w));
+}
+@)
+void W_gen_elt_prod_wrapper(expression_base::level l)
+{ own_W_elt w = get_own<W_elt_value>();
+  auto s = get<int_value>()->int_val();
+  check_Weyl_gen(s,w->W.rank());
+  if (l==expression_base::no_value)
+    return;
+@)
+  w->W.leftMult(w->val,s);
+  push_value(std::move(w));
+}
+
+void W_elt_word_prod_wrapper(expression_base::level l)
+{ shared_vector v = get<vector_value>();
+  own_W_elt w = get_own<W_elt_value>();
+  auto ww=check_Weyl_word(v->val,w->W.rank());
+  if (l==expression_base::no_value)
+    return;
+@)
+  w->W.mult(w->val,ww);
+  push_value(std::move(w));
+}
+@)
+void W_word_elt_prod_wrapper(expression_base::level l)
+{ own_W_elt w = get_own<W_elt_value>();
+  shared_vector v = get<vector_value>();
+  auto ww=check_Weyl_word(v->val,w->W.rank());
+  if (l==expression_base::no_value)
+    return;
+@)
+  w->W.leftMult(w->val,ww);
+  push_value(std::move(w));
+}
+
+@ Since we have associated the Weyl group to a root datum, we can let Weyl
+group elements act on weights and on coweights, and we can convert between them
+and (appropriate) square matrices.
+
+@< Local function def... @>=
+void W_elt_weight_prod_wrapper(expression_base::level l)
+{ shared_vector v = get<vector_value>();
+  shared_W_elt w = get<W_elt_value>();
+  auto& rd = w->rd->val;
+  if (v->val.size()!=rd.rank())
+    throw runtime_error("Rank and weight size mismatch ") @|
+      << rd.rank() << ':' << v->val.size();
+  if (l!=expression_base::no_value)
+    push_value(std::make_shared<vector_value>(w->W.image_by(rd,w->val,v->val)));
+}
+void coweight_W_elt_prod_wrapper(expression_base::level l)
+{ shared_W_elt w = get<W_elt_value>();
+  shared_vector v = get<vector_value>();
+  auto& rd = w->rd->val;
+  if (v->val.size()!=rd.rank())
+    throw runtime_error("Coweight size and rank mismatch ") @|
+      <<  v->val.size() << ':' << rd.rank();
+  if (l!=expression_base::no_value)
+    push_value(std::make_shared<vector_value>(w->W.image_by(rd,v->val,w->val)));
+}
+
+@ A converse operation is to decompose a weight into a Weyl group element and a
+dominant weight. There being no value to represent the Weyl group as such, this
+function takes a root datum as first argument. We also provide a version for
+coweights, which will return a dominant coweight and a Weyl group element to be
+applied to its right to obtain the original coweight; to remind of the dual
+nature, and that the Weyl word has an opposite interpretation to the first case,
+we inverse argument and result order here.
+
+@< Local function def... @>=
+void W_decompose_wrapper(expression_base::level l)
+{ own_vector v = get_own<vector_value>();
+  shared_root_datum rd = get<root_datum_value>();
+  if (l==expression_base::no_value)
+    return;
+@)
+  auto ww = rd->val.factor_dominant(v->val);
+@/push_value(std::make_shared<W_elt_value>(rd,rd->W().element(ww)));
+  push_value(v);
+  if (l==expression_base::single_value)
+    wrap_tuple<2>();
+}
+@)
+void W_codecompose_wrapper(expression_base::level l)
+{ shared_root_datum rd = get<root_datum_value>();
+  own_vector v = get_own<vector_value>();
+  if (l==expression_base::no_value)
+    return;
+@)
+  auto ww = rd->val.factor_codominant(v->val);
+@/push_value(v);
+  push_value(std::make_shared<W_elt_value>(rd,rd->W().element(ww)));
+  if (l==expression_base::single_value)
+    wrap_tuple<2>();
+}
+
+@ Finally we install everything related to Weyl groups elements. Note that since
+Weyl words and (co)weights have the same \.{atlas} type \&{vec}, we need to make
+a choice whether to associate the wrapper function |W_elt_word_prod_wrapper| or
+|W_elt_weight_prod_wrapper| with the \.* operator name, and similarly for
+|W_word_elt_prod_wrapper| and |coweight_W_elt_prod_wrapper|; we choose the
+latter in both cases, and name the former \.{\#\#} similarly to the
+concatenation operation.
+
+@< Install wrapper functions @>=
+install_function(W_elt_wrapper,"W_elt","(RootDatum,vec->WeylElt)");
+install_function(W_word_wrapper,"word","(WeylElt->vec)");
+install_function(datum_from_W_elt_wrapper,"root_datum","(WeylElt->RootDatum)");
+install_function(W_elt_unary_eq_wrapper,"=","(WeylElt->bool)");
+install_function(W_elt_unary_neq_wrapper,"!=","(WeylElt->bool)");
+install_function(W_elt_eq_wrapper,"=","(WeylElt,WeylElt->bool)");
+install_function(W_elt_neq_wrapper,"!=","(WeylElt,WeylElt->bool)");
+install_function(W_elt_prod_wrapper,"*","(WeylElt,WeylElt->WeylElt)");
+install_function(W_elt_invert_wrapper,"/","(WeylElt->WeylElt)");
+install_function(W_elt_gen_prod_wrapper,"#","(WeylElt,int->WeylElt)");
+install_function(W_gen_elt_prod_wrapper,"#","(int,WeylElt->WeylElt)");
+install_function(W_elt_word_prod_wrapper,"##","(WeylElt,vec->WeylElt)");
+install_function(W_word_elt_prod_wrapper,"##","(vec,WeylElt->WeylElt)");
+install_function(W_elt_weight_prod_wrapper,"*","(WeylElt,vec->vec)");
+install_function(coweight_W_elt_prod_wrapper,"*","(vec,WeylElt->vec)");
+install_function(W_decompose_wrapper,@|
+                 "from_dominant","(RootDatum,vec->WeylElt,vec)");
+install_function(W_codecompose_wrapper,@|
+                 "from_dominant","(vec,RootDatum->vec,WeylElt)");
+
 
 @*1 A type for complex reductive groups equipped with an involution.
 %
@@ -1692,8 +2004,6 @@ We shall not apply the function |classify_involution| defined above to the
 entire matrix describing a (purported) involution of the weight lattice,
 but rather we shall apply it below to a matrix defined for the central torus
 part.
-
-@h "weyl.h"
 
 @< Local function def...@>=
 weyl::Twist check_involution
@@ -3256,7 +3566,6 @@ struct KGB_elt_value : public value_base
   KGBElt val;
 @)
   KGB_elt_value(const shared_real_form& form, KGBElt x) : rf(form), val(x) @+{}
-  ~KGB_elt_value() @+{}
 @)
   virtual void print(std::ostream& out) const;
   static const char* name() @+{@; return "KGB element"; }

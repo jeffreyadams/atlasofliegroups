@@ -381,6 +381,8 @@ set inverse (mat M) = mat:
   let (inv,d)=invert_ech(M) in
   if d=1 then inv else error("Matrix not invertible over the integers") fi
 
+set / = inverse@mat { so |/M| is the same as |M^-1|, but more direct }
+
 set det (mat A) = int:
 ( assert(=shape(A),"Determinant of non-square matrix")
 ; let (M,,,flip) = echelon(A) in
@@ -623,6 +625,8 @@ set semisimple (LieType t) = LieType:
 set str (LieType t) = string:
   ## for (code,rank) in %t do code ## rank.to_string od
 
+
+
 {                               Root data                               }
 
 { provide default values for coroot preference when building root data }
@@ -679,7 +683,7 @@ set rho_check (RootDatum rd) = ratvec: { rho(dual(rd)), but a bit faster }
 
 { see also rho_i@KGBElt and rho_r@KGBElt defined below }
 
-{ these functions assume vec is a root/coroot }
+{ these functions assume the vec alpha or alphav is a root resp. coroot }
 set is_positive_root (RootDatum rd) = (vec->bool):
   let rc = rho_check(rd) in (vec alpha) bool: >rc*alpha
 set is_positive_coroot (RootDatum rd) = (vec->bool):
@@ -689,6 +693,7 @@ set is_negative_root (RootDatum rd) = (vec->bool):
 set is_negative_coroot (RootDatum rd) = (vec->bool):
   let rho = rho(rd) in (vec alphav) bool: <alphav*rho
 
+{ uncurried versions of the previous four; again being root/coroot is assumed }
 set is_positive_root (RootDatum rd,vec alpha) = bool:
   is_positive_root(rd)(alpha)
 set is_positive_coroot (RootDatum rd,vec alphav) = bool:
@@ -698,12 +703,14 @@ set is_negative_root (RootDatum rd,vec alpha) = bool:
 set is_negative_coroot (RootDatum rd,vec alphav) = bool:
   is_negative_coroot(rd)(alphav)
 
-{ the first 2 functions assume roots/coroots, the second pair tests for this }
+{ test whether all colums, being assumed root/coots, are positive }
 set roots_all_positive (RootDatum rd) = (mat->bool): { no negative roots }
   let are_pos = is_positive_root(rd) in (mat roots) bool: all(roots,are_pos)
 set coroots_all_positive (RootDatum rd) = (mat->bool): { no negative coroots }
   let are_pos = is_positive_coroot(rd) in
   (mat coroots) bool: all(coroots,are_pos)
+
+{ the following test rather than assume that columns are roots/cooroots }
 set among_posroots (RootDatum rd) = (mat M)bool: { all colums M posroots? }
   all(M,(vec v)bool: is_posroot(rd,v))
 set among_poscoroots (RootDatum rd) = (mat M)bool: { all colums M poscoroots? }
@@ -727,10 +734,6 @@ set reflection (RootDatum rd, int i) = mat: { i indexes a root/coroot pair }
   1 - column(root(rd,i))*row(coroot(rd,i))
 set reflection ((RootDatum,vec)(rd,):p) = mat: { specify root (not coroot) }
   reflection(rd,root_index(p))
-set coreflection (RootDatum rd, int i) = mat: { i indexes a root/coroot pair }
-  1 - column(coroot(rd,i))*row(root(rd,i))
-set coreflection ((RootDatum,vec)(rd,):p) = mat: { specify root (not coroot) }
-  coreflection(rd,root_index(p))
 set reflect (RootDatum rd, int i, vec v) = vec: { apply reflection(rd,i)*v }
   v -:= root(rd,i) * (coroot(rd,i)*v) { more efficient than matrix multiply }
 set reflect (RootDatum rd, vec alpha, vec v) = vec: { reflection(rd,alpha)*v }
@@ -860,11 +863,41 @@ set highest_root (RootDatum rd) = vec:
   else pr[for alpha in pr do rho_check*alpha od.max_loc]
   fi
 
-set word_making_dominant (RootDatum rd, ratvec lambda) = [int]:
-   while let i = first(semisimple_rank(rd),(int i): <coroot(rd,i)*lambda) in
-      >=i
-   do i next lambda:=reflect(rd,i,lambda)
-   od
+{                               Weyl group				}
+
+set id_W = let e=vec:[] in (RootDatum rd): WeylElt: W_elt(rd,e)
+set W_gen (RootDatum rd, int s) = W_elt (rd,[s])
+set chamber (RootDatum rd, vec lambda) = WeylElt:
+  let (w,)=from_dominant(rd,lambda) in w
+set dominant (RootDatum rd, vec lambda) = vec:
+  let (,dom_wt)=from_dominant(rd,lambda) in dom_wt
+set from_dominant (RootDatum rd, ratvec gamma) = (WeylElt,ratvec):
+  let (n,d)=%gamma then (w,v)=from_dominant(rd,n) in (w,v/d)
+set chamber (RootDatum rd, ratvec gamma) = WeylElt: chamber(rd,gamma.numer)
+set dominant (RootDatum rd, ratvec gamma) = ratvec:
+  let (,dom_wt)=from_dominant(rd,gamma) in dom_wt
+
+set inverse (WeylElt w) = WeylElt: /w
+set ^ = (WeylElt,int->WeylElt):
+  let rec_fun power (WeylElt w,int n) = WeylElt:
+    if n=1 then w
+    else let (q,r)=n\%2 then wq=power(w,q) in wq*if =r then wq else wq*w fi
+    fi
+  in (WeylElt w,int n) WeylElt:
+  if n>0 then power(w,n) elif =n then id_W(root_datum(w)) else /power(w,-n) fi
+
+set word_making_dominant ((RootDatum,ratvec)p) = [int]: p.chamber.inverse.word
+{ equivalent to:
+  (RootDatum rd, ratvec gamma) [int]:
+    while let i = first(semisimple_rank(rd),(int i): <coroot(rd,i)*gamma) in
+       >=i
+    do i next gamma:=reflect(rd,i,gamma)
+    od
+}
+
+set matrix (WeylElt w) = mat: for c in id_mat(w.root_datum.rank) do w*c od
+set W_elt (RootDatum rd, mat M) = WeylElt: chamber(rd,M*rho(rd))
+
 
 {                               Inner classes                           }
 

@@ -47,17 +47,16 @@ set dual_non_dominant_index (RootDatum rd, vec cowt) = int:
 }
 set make_dominant (RootDatum rd, vec v) = (vec,W_word):
   assert(#v=rank(rd),"vector v wrong size for root datum rd");
-  let i=0 { needed to pass value across 'do' }
-  then w = while (i:=non_dominant_index(rd,v)).>= do v:=reflect(rd,i,v); i od
+  let w =
+     while let i=non_dominant_index(rd,v) in i.>= do v:=reflect(rd,i,v); i od
   in (v,(rd,w))
 
 { dual_make_dominant(rd,cowt)
   returns (cowt_dom,w) where cowt_dom dominant and cowt=co_act(cowt_dom,w)
 }
 set dual_make_dominant (RootDatum rd, vec cowt) = (vec,W_word):
-  let i=0 { needed to pass value across 'do' }
-  then w = { filled from right to left }
-    while >=(i:=dual_non_dominant_index(rd,cowt))
+  let w = { filled from right to left }
+    while let i=dual_non_dominant_index(rd,cowt) in i.>=
     do cowt:=coreflect(rd,cowt,i); i ~od
   in (cowt,(rd,w))
 
