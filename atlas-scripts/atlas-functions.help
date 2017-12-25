@@ -357,6 +357,7 @@ W_elt: (RootDatum,[int]->WeylElt): Make a WeylElt from a word in W-generators
   terms of simple reflections (indexed from 0) defining the Weyl group element
 word: (WeylElt->[int]): chosen reduced Weyl word for a Weyl group element
 root_datum: (WeylElt->rootDatum): Root datum underling a Weyl group element
+length: (WeylElt->int): Length in Weyl group of an element
 operators =, != : (WeylElt->bool): test Weyl group element against identity
 operators =, != : (WeylElt,WeylElt->bool): comparison of Weyl group elements
   The elements are required to be from equal or dual root data

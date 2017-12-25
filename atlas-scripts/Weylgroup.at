@@ -8,29 +8,20 @@ set_type
   { keep a RootDatum at hand for interpretation }
 
 set # (W_word w) = int: #w.word { non reduced length of word }
-
+set to_W_word (WeylElt w) = W_word: (w.root_datum,w.word)
 
 { action of Weyl word on X^* or X^*\otimes Q}
-set act (W_word(rd,w), vec v) = vec:
-  let alpha = simple_roots(rd), alphav = simple_coroots(rd) in
-  for s in w ~do v -:= alpha[s]*(alphav[s]*v) od; v
-
+set act (W_word ww, vec v) = vec: W_elt(ww)*v
 set act (W_word ww, ratvec rv) = ratvec:  let (v,den)=%rv in act(ww,v)/den
 
 { action of Weyl word on X_* or X_*\otimes Q }
-set co_act (vec cowt, W_word(rd,w)) = ratvec:
-  let alpha = simple_roots(rd), alphav = simple_coroots(rd) in
-  for s in w do cowt -:= (cowt*alpha[s])*alphav[s] od; cowt
-
+set co_act (vec cowt, W_word ww) = vec: cowt*W_elt(ww)
 set co_act (ratvec rcv, W_word ww) = ratvec:
-  let (cowt,den)=%rcv in co_act(cowt,ww)/den
+   let (cowt,den)=%rcv in co_act(cowt,ww)/den
 
-set w_matrix (W_word(rd,w)) = mat:
-  let M=id_mat(rank(rd))
-  , alpha = simple_roots(rd), alphav = simple_coroots(rd)
-  in for s in w do M -:= M*column(alpha[s])*row(alphav[s]) od; M
+set w_matrix (W_word ww) = mat: ww.W_elt.matrix
 
-set equal (W_word w, W_word u) = bool: w_matrix(w)=w_matrix(u)
+set equal (W_word w, W_word u) = bool: w.W_elt=u.W_elt
 
 set inverse (W_word(rd,w)) = W_word: { reverse w component } (rd,w~[:])
 
@@ -42,88 +33,58 @@ set non_dominant_index (RootDatum rd, vec v) = int:
 set dual_non_dominant_index (RootDatum rd, vec cowt) = int:
   last(simple_roots(rd),(vec alpha): (cowt*alpha).<)
 
-{ make_dominant(rd,v)
-  returns (v_dom,w) where v_dom is dominant and v=act(w,v_dom)
-}
-set make_dominant (RootDatum rd, vec v) = (vec,W_word):
-  assert(#v=rank(rd),"vector v wrong size for root datum rd");
-  let w =
-     while let i=non_dominant_index(rd,v) in i.>= do v:=reflect(rd,i,v); i od
-  in (v,(rd,w))
+{ find (v_dom,w) where v_dom is dominant and lambda=act(w,v_dom) }
+set make_dominant ((RootDatum, vec) rd_lambda) = (vec,W_word):
+  let (w,v)=from_dominant(rd_lambda) in (v,w.to_W_word)
 
-{ dual_make_dominant(rd,cowt)
-  returns (cowt_dom,w) where cowt_dom dominant and cowt=co_act(cowt_dom,w)
-}
+{ find (cowt_dom,w) where cowt_dom dominant and cowt=co_act(cowt_dom,w) }
 set dual_make_dominant (RootDatum rd, vec cowt) = (vec,W_word):
-  let w = { filled from right to left }
-    while let i=dual_non_dominant_index(rd,cowt) in i.>=
-    do cowt:=coreflect(rd,cowt,i); i ~od
-  in (cowt,(rd,w))
+  let (v,w)=from_dominant(cowt,rd) in (v,w.to_W_word)
 
-set make_dominant (RootDatum rd, ratvec v) = (ratvec,W_word):
-  let (v,denom)=%v then (v_dom,w)=make_dominant(rd,v) in (v_dom/denom,w)
+set make_dominant ((RootDatum, ratvec) rd_gamma) = (ratvec,W_word):
+  let (w,v)=from_dominant(rd_gamma) in (v,w.to_W_word)
 
-set dual_make_dominant (RootDatum rd, ratvec cowt) = (ratvec,W_word):
-  let (v,denom)=%cowt then (v_dom,w)=dual_make_dominant(rd,v) in (v_dom/denom,w)
+set dual_make_dominant (RootDatum rd,ratvec cowt) = (ratvec,W_word):
+  let (v,w)=from_dominant(cowt,rd) in (v,w.to_W_word)
 
 { rho@rootDatum from basic.at; rho(rd,v) in its orbit and in chamber of v: }
-set rho (RootDatum rd, ratvec v) = ratvec:
-  let (,w)=make_dominant(rd,v) in act(w,rho(rd))
-set dual_rho (RootDatum rd, ratvec cowt) = ratvec:
-  let (,w)=make_dominant(rd,cowt) in co_act(rho(rd),w)
+set rho (RootDatum rd, ratvec v) = ratvec: chamber(rd,v)*rho(rd)
+set dual_rho (ratvec cowt,RootDatum rd) = ratvec:
+  rho_check(rd)*chamber(cowt,rd)
 
-set w_long (RootDatum rd) = W_word:
-  let (,ww) = make_dominant(rd,-rho(rd)) in ww
-
-{ often one just needs the dominant vector; this can be done more efficiently }
-set dominant (RootDatum rd, vec v) = vec:
-  let i=0 in while (i:=non_dominant_index(rd,v))>=0 do v:=reflect(rd,i,v) od; v
-set dominant (RootDatum rd, ratvec v) = ratvec:
-  let (n,d)=%v in dominant(rd,n)/d
+set w_long (RootDatum rd) = W_word: w0(rd).to_W_word
 
 { find some Weyl word (not lexicographically first) acting by the matrix M }
-set word (RootDatum rd, mat M) = W_word:
-  let (,ww) = make_dominant(rd,M*rho(rd))
-  in assert(w_matrix(ww)=M,"Not the action of any Weyl group element"); ww
+set word ((RootDatum,mat) rd_M) = W_word: W_elt(rd_M).to_W_word
 
-{ find some Weyl word w so that w*delta acts by the matrix M }
-set word (RootDatum rd,mat delta, mat M) = W_word:word(rd,delta*M)
-
-{ rather than length(rd,M) = #word(rd,M), the following is simpler }
-set length (RootDatum rd, mat M) = int: { count positive roots made negative: }
-  n_columns(columns_with(is_negative_root(rd),M*posroots(rd)))
+set length ((RootDatum,mat) rd_M) = int: W_elt(rd_M).length
 
 { contrary to #@W_word, |length| computes the reduced length }
-set length(W_word (rd,):ww) = int: length(rd,w_matrix(ww))
+set length(W_word ww) = int: W_elt(ww).length
 
 { whether multiplication by simple reflection lengthens or shortens M }
 set lengthens (RootDatum rd, mat M, int s) = bool: { for right multiplication }
-  is_positive_root(rd)(M*root(rd,s))
+  rd.is_positive_root(M*root(rd,s))
 set lengthens (RootDatum rd, int s, mat M) = bool: { for left multiplication }
-  is_positive_coroot(rd)(coroot(rd,s)*M)
+  rd.is_positive_coroot(coroot(rd,s)*M)
 
-{ find Weyl group element (W_word) making root simple, and index of simple root
-  with result |(ww,i)| one has |root(rd,i) = act(ww,root)|, a simple root
-  note: |ww| is in inverse position with respect to what |make_dominant| does
-}
-set make_simple_sequence (RootDatum rd, vec !root) = (W_word, int):
-  let r = semisimple_rank(rd), i=0, val=0, alpha=root, w= [int]: [] in
+{ write given root (assumed positive) as |w*alpha| with alpha simple }
+set from_simple (RootDatum rd, vec alpha) = (WeylElt,vec):
+  let r = semisimple_rank(rd), w=id_W(rd) in
   while { first find index that will make alpha shorter, which should exist }
-    i:=0; while i<r and <=(val:=coroot(rd,i)*alpha) do i+:=1 od
-  ; if i=r { nothing found } then error(root," is not a positive root") fi
+    let i = first( r, (int i):(coroot(rd,i)*alpha).> ) in
+    assert(i.>=,"Not a positive root")  { some descent must be found }
   ; alpha != root(rd,i) { this is the condition of the outer while! }
-  do alpha -:= root(rd,i)*val; w := i#w
-  od;
-  ((rd,w),i)
+  do alpha := W_gen(rd,i)*alpha; w := w#i
+  od; (w,alpha)
 
-{ as |make_simple_sequence|, but return Weyl group element in matrix form }
+{ as |make_simple|, but return change form of returned values }
 set make_simple (RootDatum rd, vec root) = (mat, int):
-  let (w,i) = make_simple_sequence(rd,root) in (w_matrix(w),i)
+  let (w,alpha) = from_simple(rd,root) in (matrix(w),root_index(rd,alpha))
 
 {  ---- some more basic functions; reduce needs make_dominant above --- }
 
-set reduce (W_word (rd,):w) = W_word:
-  word(rd, w_matrix(w)) { go to and from matrix form }
+set reduce (W_word w) = W_word: w.W_elt.word
 
 { with W_word distinct from [int], these do no conflict cross@(vec,KGBElt }
 set cross (W_word (,w),KGBElt x) = KGBElt:

@@ -857,15 +857,28 @@ set highest_root (RootDatum rd) = vec:
 
 set id_W = let e=vec:[] in (RootDatum rd): WeylElt: W_elt(rd,e)
 set W_gen (RootDatum rd, int s) = W_elt (rd,[s])
-set chamber (RootDatum rd, vec lambda) = WeylElt:
-  let (w,)=from_dominant(rd,lambda) in w
-set dominant (RootDatum rd, vec lambda) = vec:
-  let (,dom_wt)=from_dominant(rd,lambda) in dom_wt
+set chamber ((RootDatum,vec) rd_lambda) = WeylElt:
+  let (w,)=from_dominant(rd_lambda) in w
+set dominant ((RootDatum,vec) rd_lambda) = vec:
+  let (,dom_wt)=from_dominant(rd_lambda) in dom_wt
+set chamber ((vec,RootDatum) lambda_rd) = WeylElt:
+  let (,w)=from_dominant(lambda_rd) in w
+set dominant ((vec,RootDatum) lambda_rd) = vec:
+  let (dom_cwt,)=from_dominant(lambda_rd) in dom_cwt
+set w0 (RootDatum rd) = chamber(rd,rd.two_rho)
+
+set * (WeylElt w, ratvec gamma) = ratvec: let (n,d)=%gamma in (w*n)/d
+set * (ratvec gamma, WeylElt w) = ratvec: let (n,d)=%gamma in (n*w)/d
 set from_dominant (RootDatum rd, ratvec gamma) = (WeylElt,ratvec):
   let (n,d)=%gamma then (w,v)=from_dominant(rd,n) in (w,v/d)
 set chamber (RootDatum rd, ratvec gamma) = WeylElt: chamber(rd,gamma.numer)
-set dominant (RootDatum rd, ratvec gamma) = ratvec:
-  let (,dom_wt)=from_dominant(rd,gamma) in dom_wt
+set dominant ((RootDatum,ratvec) rd_gamma) = ratvec:
+  let (,dom_wt)=from_dominant(rd_gamma) in dom_wt
+set from_dominant (ratvec gamma,RootDatum rd) = (ratvec,WeylElt):
+  let (n,d)=%gamma then (v,w)=from_dominant(n,rd) in (v/d,w)
+set chamber (ratvec gamma,RootDatum rd) = WeylElt: chamber(gamma.numer,rd)
+set dominant ((ratvec,RootDatum) gamma_rd) = ratvec:
+  let (dom_cwt,)=from_dominant(gamma_rd) in dom_cwt
 
 set inverse (WeylElt w) = WeylElt: /w
 set ^ = (WeylElt,int->WeylElt):
@@ -886,7 +899,9 @@ set word_making_dominant ((RootDatum,ratvec)p) = [int]: p.chamber.inverse.word
 }
 
 set matrix (WeylElt w) = mat: for c in id_mat(w.root_datum.rank) do w*c od
-set W_elt (RootDatum rd, mat M) = WeylElt: chamber(rd,M*two_rho(rd))
+set W_elt (RootDatum rd, mat M) = WeylElt:
+  let w = chamber(rd,M*two_rho(rd))
+  in assert(matrix(w)=M,"Not the matrix of any Weyl group element"); w
 
 
 {                               Inner classes                           }

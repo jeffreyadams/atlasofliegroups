@@ -1636,7 +1636,9 @@ void W_elt_wrapper(expression_base::level l)
 }
 
 @ We also want to be able to convert a Weyl group element back to a word, to
-extract the root datum it was built from, and test for equality.
+extract the root datum it was built from, to find its length, to and test for
+equality.
+
 @< Local function def... @>=
 void W_word_wrapper(expression_base::level l)
 { shared_W_elt w = get<W_elt_value>();
@@ -1652,6 +1654,12 @@ void datum_from_W_elt_wrapper(expression_base::level l)
 { shared_W_elt w = get<W_elt_value>();
   if (l!=expression_base::no_value)
     push_value(w->rd);
+}
+@)
+void W_length_wrapper(expression_base::level l)
+{ shared_W_elt w = get<W_elt_value>();
+  if (l!=expression_base::no_value)
+    push_value(std::make_shared<int_value>(w->W.length(w->val)));
 }
 @)
 void W_elt_unary_eq_wrapper
@@ -1841,6 +1849,7 @@ concatenation operation.
 install_function(W_elt_wrapper,"W_elt","(RootDatum,[int]->WeylElt)");
 install_function(W_word_wrapper,"word","(WeylElt->[int])");
 install_function(datum_from_W_elt_wrapper,"root_datum","(WeylElt->RootDatum)");
+install_function(W_length_wrapper,"length","(WeylElt->int)");
 install_function(W_elt_unary_eq_wrapper,"=","(WeylElt->bool)");
 install_function(W_elt_unary_neq_wrapper,"!=","(WeylElt->bool)");
 install_function(W_elt_eq_wrapper,"=","(WeylElt,WeylElt->bool)");
