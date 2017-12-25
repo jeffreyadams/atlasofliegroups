@@ -560,9 +560,6 @@ set !one_minus_s = Split:(1,-1), !one_plus_s = Split:(1,1)  { near idempotents }
 
 set int_part (Split x) = int: let (r,)=%x in r
 set s_part (Split x) = int: let (,y)=%x in y
-{ the names of the synonym operators are mysterious, but maybe convenient }
-set + = int_part@Split
-set ^ =   s_part@Split
 
 set s_to_1 (Split x) = int: +%x        { let (a,b)=%x in a+b }
 set s_to_minus_1 (Split x) = int: -%x  { let (a,b)=%x in a-b }
