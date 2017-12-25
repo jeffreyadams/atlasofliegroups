@@ -1597,21 +1597,23 @@ the root datum, and since there will be more functions that take such a Weyl
 word as an argument, we define a separate function for performing the test.
 
 @< Local function def...@>=
-WeylWord check_Weyl_word(const int_Vector& v, unsigned int rank)
-{ WeylWord result; result.reserve(v.size());
-  for (auto it=v.begin(); it!=v.end(); ++it)
-    if (static_cast<unsigned int>(*it)<rank)
-      result.push_back(*it);
-    else throw runtime_error("Illegal Weyl word entry ") << *it @|
+WeylWord check_Weyl_word(const row_value& r, unsigned int rank)
+{ WeylWord result; result.reserve(r.val.size());
+  for (auto it=r.val.begin(); it!=r.val.end(); ++it)
+  { auto v=force<int_value>(it->get())->val.ulong_val();
+    if (v<rank)
+      result.push_back(v);
+    else throw runtime_error("Illegal Weyl word entry ") << v @|
 @.Illegal Weyl word entry@>
          << " (should be <" << rank << ')';
+  }
   return result;
 }
 @)
 void W_elt_wrapper(expression_base::level l)
-{ shared_vector v = get<vector_value>();
+{ shared_row r = get<row_value>();
   shared_root_datum rd = get<root_datum_value>();
-  auto ww=check_Weyl_word(v->val,rd->val.semisimpleRank());
+  auto ww=check_Weyl_word(*r,rd->val.semisimpleRank());
   if (l!=expression_base::no_value)
     push_value(std::make_shared<W_elt_value>(rd,rd->W().element(ww)));
 }
@@ -1625,7 +1627,8 @@ void W_word_wrapper(expression_base::level l)
     return;
 @)
   auto word = w->W.word(w->val);
-  push_value(std::make_shared<vector_value>(word.begin(),word.end()));
+  int_Vector wv (word.begin(),word.end()); // convert
+  push_value(vector_to_row(wv));
 }
 @)
 void datum_from_W_elt_wrapper(expression_base::level l)
@@ -1727,9 +1730,9 @@ void W_gen_elt_prod_wrapper(expression_base::level l)
 }
 
 void W_elt_word_prod_wrapper(expression_base::level l)
-{ shared_vector v = get<vector_value>();
+{ shared_row r = get<row_value>();
   own_W_elt w = get_own<W_elt_value>();
-  auto ww=check_Weyl_word(v->val,w->W.rank());
+  auto ww=check_Weyl_word(*r,w->W.rank());
   if (l==expression_base::no_value)
     return;
 @)
@@ -1739,8 +1742,8 @@ void W_elt_word_prod_wrapper(expression_base::level l)
 @)
 void W_word_elt_prod_wrapper(expression_base::level l)
 { own_W_elt w = get_own<W_elt_value>();
-  shared_vector v = get<vector_value>();
-  auto ww=check_Weyl_word(v->val,w->W.rank());
+  shared_row r = get<row_value>();
+  auto ww=check_Weyl_word(*r,w->W.rank());
   if (l==expression_base::no_value)
     return;
 @)
@@ -1818,8 +1821,8 @@ latter in both cases, and name the former \.{\#\#} similarly to the
 concatenation operation.
 
 @< Install wrapper functions @>=
-install_function(W_elt_wrapper,"W_elt","(RootDatum,vec->WeylElt)");
-install_function(W_word_wrapper,"word","(WeylElt->vec)");
+install_function(W_elt_wrapper,"W_elt","(RootDatum,[int]->WeylElt)");
+install_function(W_word_wrapper,"word","(WeylElt->[int])");
 install_function(datum_from_W_elt_wrapper,"root_datum","(WeylElt->RootDatum)");
 install_function(W_elt_unary_eq_wrapper,"=","(WeylElt->bool)");
 install_function(W_elt_unary_neq_wrapper,"!=","(WeylElt->bool)");
@@ -1829,8 +1832,8 @@ install_function(W_elt_prod_wrapper,"*","(WeylElt,WeylElt->WeylElt)");
 install_function(W_elt_invert_wrapper,"/","(WeylElt->WeylElt)");
 install_function(W_elt_gen_prod_wrapper,"#","(WeylElt,int->WeylElt)");
 install_function(W_gen_elt_prod_wrapper,"#","(int,WeylElt->WeylElt)");
-install_function(W_elt_word_prod_wrapper,"##","(WeylElt,vec->WeylElt)");
-install_function(W_word_elt_prod_wrapper,"##","(vec,WeylElt->WeylElt)");
+install_function(W_elt_word_prod_wrapper,"##","(WeylElt,[int]->WeylElt)");
+install_function(W_word_elt_prod_wrapper,"##","([int],WeylElt->WeylElt)");
 install_function(W_elt_weight_prod_wrapper,"*","(WeylElt,vec->vec)");
 install_function(coweight_W_elt_prod_wrapper,"*","(vec,WeylElt->vec)");
 install_function(W_decompose_wrapper,@|

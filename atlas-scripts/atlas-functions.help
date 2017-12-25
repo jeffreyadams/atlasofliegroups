@@ -350,7 +350,7 @@ integrality_points: (RootDatum,ratvec->[rat]): fractions with integrality
   positive fractions f<=1 so f*lambda has more integrality than generically:
   for some coroot alphav one has integral and nonzero value <alphav,f*lambda>.
 
-W_elt: (RootDatum,vec->WeylElt): Construct a WeylElt from a word in W-generators
+W_elt: (RootDatum,[int]->WeylElt): Make a WeylElt from a word in W-generators
   The root datum specifies the type of Weyl group, the vector gives the word in
   terms of simple reflections (indexed from 0) defining the Weyl group element
 word: (WeylElt->[int]): chosen reduced Weyl word for a Weyl group element
@@ -362,8 +362,8 @@ operator * : (WeylElt,WeylElt->WeylElt): Compose Weyl group elements
 operator / : (WeylElt->WeylElt): Inverse of Weyl group element
 operator # : (WeylElt,int->WeylElt): muttiplu Weyl group element and generator
 operator # : (int,WeylElt->WeylElt): multiply generator and Weyl group element
-operator ## : (WeylElt,vec->WeylElt): Compose Weyl group element and Weyl word
-operator ## : (vec,WeylElt->WeylElt): Compose Weyl word and Weyl group element
+operator ## : (WeylElt,[int]->WeylElt): Compose Weyl group element and Weyl word
+operator ## : ([int],WeylElt->WeylElt): Compose Weyl word and Weyl group element
 operator * : (WeylElt,vec->WeylElt): left-act by Weyl group element on weight
 operator * : (vec,WeylElt->WeylElt): right-act on coweight by Weyl group element
 from_dominant: (RootDatum,vec->WeylElt,vec): write as W image of dominant weight

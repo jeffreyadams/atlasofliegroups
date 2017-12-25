@@ -2046,8 +2046,22 @@ the ``rationalising conversions'' that in analogy to |rational_convert|
 introduce implicit denominators~$1$ for user convenience.
 
 We start with an auxiliary function |row_to_vector|, which constructs a new
-|int_Vector| from a row of integers, leaving the task to clean up that row to
-their caller.
+|int_Vector| from a |row_value| whose elements are integers. It will also be
+useful in other compilation units, so we declare it for export. We later also
+need a similar function |vector_to_row| that does the inverse; since the value
+it returns is usually destined to be handled as a |shared_value|, it already
+constructs a shared pointer to it, but in the form of an |own_row| that allows
+the caller to make modifications to it before releasing it to the world.
+
+@< Declarations of exported functions @>=
+int_Vector row_to_vector(const row_value& r);
+own_row vector_to_row(const int_Vector& v);
+
+@ The |row_to_vector| conversion uses the |int_val| method to force the
+|big_int| entries in a list of |int_value| objects ti the |int| size of
+|int_Vector| entries; if too large values are found, the conversion will fail
+and a |runtime_error| thrown. Of course |vector_to_row| knows no such potential
+difficulties.
 
 There used to be a long commentary here to the effect that |row_to_vector|
 returns its result by value rather than by assignment to a reference parameter
@@ -2058,11 +2072,18 @@ Atlas software, that the comment appeared dated and out of places, so it was
 removed. Nonetheless we mark the fact that this is the place where the change
 of idiom was first applied within the Atlas software.
 
-@< Local function def... @>=
+@< Global function def... @>=
 int_Vector row_to_vector(const row_value& r)
 { int_Vector result(r.val.size());
   for(std::size_t i=0; i<r.val.size(); ++i)
     result[i]=force<int_value>(r.val[i].get())->int_val();
+  return result;
+}
+@)
+own_row vector_to_row(const int_Vector& v)
+{ own_row result = std::make_shared<row_value>(v.size());
+  for(std::size_t i=0; i<v.size(); ++i)
+    result->val[i]=std::make_shared<int_value>(v[i]);
   return result;
 }
 
@@ -2105,20 +2126,10 @@ void ratlist_ratvec_convert() // convert list of rationals to rational vector
      (std::move(numer),d.ulong_val()));
 }
 
-@ For the externalising functions involving vectors, we start, similarly to
-what was done above, with an auxiliary function |vector_to_row| that performs
-more or less the inverse transformation of |row_to_vector|; however rather than
-returning a |row_value| it returns a |own_row| pointing to it. Then we define
-the conversion |vector_intlist_convert| using it.
+@ As first externalising conversion involving vectors, we define the function
+|vector_intlist_convert| using |vector_to_row| to do the hard work.
 
 @< Local function def... @>=
-own_row vector_to_row(const int_Vector& v)
-{ own_row result = std::make_shared<row_value>(v.size());
-  for(std::size_t i=0; i<v.size(); ++i)
-    result->val[i]=std::make_shared<int_value>(v[i]);
-  return result;
-}
-@)
 void vector_intlist_convert()
 {@; shared_vector v = get<vector_value>();
   push_value(vector_to_row(v->val));
