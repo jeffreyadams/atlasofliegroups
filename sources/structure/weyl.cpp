@@ -501,33 +501,6 @@ WeylWord WeylGroup::word(const WeylElt& w) const
 }
 
 /*
-  Return the list of all reflections (conjugates of generators).
-
-  NOTE: the ordering of the reflections is the ordering induced by our
-  operator<, which is not very significative mathematically, but has the
-  advantage that the STL search tools may be used.
-*/
-WeylEltList WeylGroup::reflections() const
-{
-  WeylEltList simple; simple.reserve(rank());
-
-  // put in simple the set of simple reflections, along internal numbering
-  for (Generator j = 0; j < rank(); ++j)
-    simple.push_back(genIn(j));
-
-  std::set<WeylElt> found;
-
-  for (Generator j = 0; j < simple.size(); ++j)
-    if (found.insert(simple[j]).second) // then generator itself still absent
-    { // generate conjugacy class of generator and insert its elements
-      WeylEltList c; conjugacyClass(c,simple[j]);
-      found.insert(c.begin(),c.end()); // add new class to result set
-    }
-
-  return WeylEltList(found.begin(),found.end()); // convert set to vector
-}
-
-/*
   Return the packed form of |w|
 
   This is the mixed-radix interpretation of the sequence of pieces, where

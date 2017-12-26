@@ -669,18 +669,8 @@ set poscoroot_index ((RootDatum,vec)p) = int: { fold coroots to positive }
   let i=coroot_index(p) in if <i then minus_1-i else i fi
 
 
-set rho (RootDatum rd) = ratvec:
-  let res= ratvec: null(rank(rd))
-  in for i:semisimple_rank(rd) do res +:= fundamental_weight(rd,i) od; res
-{ this uses fewer additions than computing half sum of the positive roots }
-
-{ make rho as a vector of integers if possible }
-set rho_as_vec (RootDatum r)= vec: ratvec_as_vec(rho(r))
-
-set rho_check (RootDatum rd) = ratvec: { rho(dual(rd)), but a bit faster }
-  let res= ratvec: null(rank(rd))
-  in for i:semisimple_rank(rd) do res +:= fundamental_coweight(rd,i) od; res
-
+set rho (RootDatum rd) = ratvec: rd.two_rho/2
+set rho_check (RootDatum rd) = ratvec: rd.two_rho_check/2
 { see also rho_i@KGBElt and rho_r@KGBElt defined below }
 
 { these functions assume the vec alpha or alphav is a root resp. coroot }
@@ -896,7 +886,7 @@ set word_making_dominant ((RootDatum,ratvec)p) = [int]: p.chamber.inverse.word
 }
 
 set matrix (WeylElt w) = mat: for c in id_mat(w.root_datum.rank) do w*c od
-set W_elt (RootDatum rd, mat M) = WeylElt: chamber(rd,M*rho(rd))
+set W_elt (RootDatum rd, mat M) = WeylElt: chamber(rd,M*two_rho(rd))
 
 
 {                               Inner classes                           }

@@ -1305,8 +1305,7 @@ void positive_coroots_wrapper(expression_base::level l)
     (rd->val.beginPosCoroot(),rd->val.endPosCoroot(),rd->val.rank()));
 }
 
-@ Here are some important attributes of root data, and look-up
-functions for roots and coroots.
+@ Here are some important attributes of root data,
 
 @< Local function definitions @>=
 void root_datum_eq_wrapper (expression_base::level l)
@@ -1348,6 +1347,22 @@ void rd_nposroots_wrapper(expression_base::level l)
     push_value(std::make_shared<int_value>(rd->val.numPosRoots()));
 }
 @)
+void two_rho_wrapper(expression_base::level l)
+{ shared_root_datum rd = get<root_datum_value>();
+  if (l!=expression_base::no_value)
+  if (l!=expression_base::no_value)
+    push_value(std::make_shared<vector_value>(rd->val.twoRho()));
+}
+void two_rho_check_wrapper(expression_base::level l)
+{ shared_root_datum rd = get<root_datum_value>();
+  if (l!=expression_base::no_value)
+  if (l!=expression_base::no_value)
+    push_value(std::make_shared<vector_value>(rd->val.dual_twoRho()));
+}
+
+@ Also important are look-up functions for roots and coroots.
+
+@< Local function definitions @>=
 void root_index_wrapper(expression_base::level l)
 { shared_vector alpha = get<vector_value>();
   shared_root_datum rd = get<root_datum_value>();
@@ -1545,6 +1560,8 @@ install_function(rd_rank_wrapper,@|"rank","(RootDatum->int)");
 install_function(rd_semisimple_rank_wrapper,@|
 		 "semisimple_rank","(RootDatum->int)");
 install_function(rd_nposroots_wrapper@|,"nr_of_posroots","(RootDatum->int)");
+install_function(two_rho_wrapper@|,"two_rho","(RootDatum->vec)");
+install_function(two_rho_check_wrapper@|,"two_rho_check","(RootDatum->vec)");
 install_function(root_index_wrapper@|,"root_index","(RootDatum,vec->int)");
 install_function(coroot_index_wrapper@|,"coroot_index","(RootDatum,vec->int)");
 install_function(integrality_datum_wrapper,@|

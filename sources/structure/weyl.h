@@ -531,12 +531,10 @@ public:
   WeylWord word(const WeylElt& w) const;
   WeylElt element(const WeylWord& ww) const { return prod(WeylElt(),ww); }
 
-  WeylEltList reflections() const; // list all reflections
-
   // give representation of |w| as integral number.
   arithmetic::big_int to_big_int(const WeylElt& w) const;
 
-  /* inverse operation of |toUlong| */
+  // inverse operation of |to_big_int|
   WeylElt toWeylElt(arithmetic::big_int) const;
 
   bool hasDescent(Generator, const WeylElt&) const; // on the left

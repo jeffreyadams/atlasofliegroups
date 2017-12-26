@@ -333,6 +333,8 @@ mod_central_torus_info: (RootDatum->RootDatum,mat): quotient by central torus
 rank: (RootDatum->int) Rank of the weight lattice for this Lie type.
 semisimple_rank: (RootDatum->int) Rank of the root lattice of  this Lie type.
 nr_of_posroots: (RootDatum->int) Number of positive roots in the root datum.
+two_rho: (RootDatum->vec): The sum of all positive roots in the root datum.
+two_rho_check: (RootDatum->vec): The sum of all positive coroots in root datum.
 
 root_index: (RootDatum,vec->int): Index of root with respect to posroots
 coroot_index: (RootDatum,vec->int): Index of coroot with respect to poscoroots
