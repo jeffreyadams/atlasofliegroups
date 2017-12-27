@@ -63,6 +63,7 @@ RootNbrSet pos_to_neg (const RootSystem& rs, const WeylWord& w);
 // compute product of reflections in set of orthogonal roots
 WeightInvolution refl_prod(const RootNbrSet&, const RootDatum&);
 
+PreRootDatum integrality_predatum(const RootDatum& rd, const RatWeight& gamma);
 RootDatum integrality_datum(const RootDatum& rd, const RatWeight& gamma);
 RationalList integrality_points(const RootDatum& rd, const RatWeight& gamma);
 unsigned int integrality_rank(const RootDatum& rd, const RatWeight& gamma);
@@ -103,22 +104,20 @@ class RootSystem
   };
   struct root_compare; // auxilary type defined here for access reasons
 
-  unsigned rk; // rank of root system
+  const unsigned char rk; // rank of root system
+  const bool prefer_co;
 
-  Byte_vector Cmat; // Cartan matrix in compressed format
+  matrix::Matrix_base<byte> Cmat; // Cartan matrix in compressed format
 
   std::vector<root_info> ri; // information about individual positive roots
-
-  int_Vector two_rho_in_simple_roots;
 
 // Root permutations induced by reflections in all positive roots.
   std::vector<Permutation> root_perm;
 
   // internal access methods
-  byte& Cartan_entry(weyl::Generator i, weyl::Generator j)
-    { return Cmat[i*rk+j]; }
+  byte& Cartan_entry(weyl::Generator i, weyl::Generator j) { return Cmat(i,j); }
   const byte& Cartan_entry(weyl::Generator i, weyl::Generator j) const
-    { return Cmat[i*rk+j]; }
+  { return Cmat(i,j); }
   Byte_vector& root(RootNbr i) { return ri[i].root;}
   Byte_vector& coroot(RootNbr i) { return ri[i].dual;}
   const Byte_vector& root(RootNbr i) const { return ri[i].root;}
@@ -128,7 +127,7 @@ class RootSystem
 
 // constructors and destructors
 
-  explicit RootSystem(const int_Matrix& Cartan_matrix);
+  explicit RootSystem(const int_Matrix& Cartan_matrix, bool prefer_co=false);
 
   RootSystem(const RootSystem& rs, tags::DualTag);
 
@@ -138,6 +137,7 @@ class RootSystem
   RootNbr rank() const { return rk; }
   RootNbr numPosRoots() const { return ri.size(); }
   RootNbr numRoots() const { return 2*numPosRoots(); }
+  bool prefer_coroots() const { return prefer_co; }
 
   // Cartan matrix by entry and as a whole
   int cartan(weyl::Generator i, weyl::Generator j) const
@@ -145,10 +145,9 @@ class RootSystem
   bool diagram_linked(weyl::Generator i, weyl::Generator j) const
   { return Cartan_entry(i,j)<0; };
   int_Matrix cartanMatrix() const;
-  LieType Lie_type() const;
-  // for subsystem
-  int_Matrix cartanMatrix(const RootNbrList& sub) const;
-  LieType Lie_type(RootNbrList sub) const;
+
+  int_Matrix cartanMatrix(const RootNbrList& sub) const; // for subsystem
+  LieType subsystem_type(const RootNbrList& sub) const;
 
 
 
@@ -271,9 +270,6 @@ class RootSystem
 
   WeylWord reflectionWord(RootNbr r) const;
 
-  // express sum of roots positive for |Delta| in fundamental weights
-  matrix::Vector<int> pos_system_vec(const RootNbrList& Delta) const;
-
   // find simple basis for subsystem
   RootNbrList simpleBasis(RootNbrSet rs) const; // by value
 
@@ -286,7 +282,8 @@ class RootSystem
   RootNbrList high_roots() const;
 
 // manipulators
-
+ private:
+  void dualise();
 
 }; // |class RootSystem|
 
@@ -352,26 +349,23 @@ class RootDatum
 
 // constructors and destructors
 
- RootDatum()
-   : RootSystem(int_Matrix(0,0))
-   , d_rank(0)
-  {}
-
   explicit RootDatum(const PreRootDatum&);
 
   RootDatum(const RootDatum&, tags::DualTag);
 
   RootDatum(int_Matrix& projector, const RootDatum&, tags::DerivedTag);
 
-  RootDatum(int_Matrix& injector, const RootDatum&, tags::AdjointTag);
+  RootDatum(int_Matrix& injector, const RootDatum&, tags::CoderivedTag);
 
-  RootDatum sub_datum(const RootNbrList& generators) const; // pseudo-constructor
+  PreRootDatum sub_predatum(const RootNbrList& generators) const;
 
 // accessors
 
   const RootSystem& root_system() const { return *this; } // base object ref
-  size_t rank() const { return d_rank; }
-  size_t semisimpleRank() const { return RootSystem::rank(); }
+
+  // |rank()| does not number roots, but keep type same as |semisimpleRank()|
+  RootNbr rank() const { return d_rank; }
+  RootNbr semisimpleRank() const { return RootSystem::rank(); }
 
 // root list access
 
@@ -461,6 +455,9 @@ class RootDatum
   RatCoweight fundamental_coweight(weyl::Generator i) const;
 
 // other accessors
+
+  LieType type() const; // includes a possible central torus
+
 
 /*
   Whether the rootdatum is the rootdatum of an adjoint group.
@@ -649,6 +646,9 @@ class RootDatum
 // manipulators
 
   void swap(RootDatum&);
+
+// implicit conversion
+  operator PreRootDatum() const;
 
 // private methods used during construction
  private:

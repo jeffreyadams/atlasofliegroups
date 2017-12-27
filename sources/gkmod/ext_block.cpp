@@ -1911,7 +1911,7 @@ ext_block::ext_block // for external twist; old style blocks
    const WeightInvolution& delta)
   : parent(block)
   , orbits(fold_orbits(G.rootDatum(),delta))
-  , folded(orbits,block.Dynkin())
+  , folded(block.Dynkin().folded(orbits))
   , d_delta(delta)
   , info()
   , data(orbits.size()) // create that many empty vectors
@@ -1941,7 +1941,7 @@ ext_block::ext_block // for an external twist
    bool verbose)
   : parent(block)
   , orbits(block.fold_orbits(delta))
-  , folded(orbits,block.Dynkin())
+  , folded(block.Dynkin().folded(orbits))
   , d_delta(delta)
   , info()
   , data(orbits.size()) // create that many empty vectors

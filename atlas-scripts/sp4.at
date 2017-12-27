@@ -1,3 +1,5 @@
+<basic.at
+
 { This defines Sp(4,R) in natural coordinates. Diagram is is type C2. }
 
 set simple_roots =   mat: [[1,-1],[0,2]] { vectors defining simple roots }

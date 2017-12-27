@@ -2,6 +2,7 @@
   This is cartanclass.h
 
   Copyright (C) 2004,2005 Fokko du Cloux
+  Copyright (C) 2017 Marc van Leeuwen
   part of the Atlas of Lie Groups and Representations
 
   For license information see the LICENSE file
@@ -19,7 +20,6 @@
 #include "partition.h"	// containment of |Partition|
 
 #include "involutions.h"// containment of |InvolutionData|
-#include "tori.h"       // containment of |RealTorus|
 
 namespace atlas {
 
@@ -65,7 +65,7 @@ namespace cartanclass {
   for translations by each of a set of generators of the grading group.
 
   We fix an involutive automorphism $\tau$ of the complex torus $H$, and
-  consider the collection of all strong involutiond $x$ of $G$ (which are
+  consider the collection of all strong involution $x$ of $G$ (which are
   elements of "G semidirect delta") that induce $\tau$ on $H$; conjuguation
   defines an action of $H$ on the collection, and strong real forms are
   oribits for this action. A strong real form has square equal to some
@@ -95,19 +95,10 @@ namespace cartanclass {
   labelled by a pair of integers: the second labelling the element $z$ (or
   rather its coset modulo $(1+delta)Z$), and the first the fiber group orbit.
 */
-class Fiber {
-
- private:
-
-/* A torus defined over R.
-
-  Represented as the lattice Z^n endowed with an involutive
-  automorphism (represented by its n x n integer matrix).
-*/
-  tori::RealTorus d_torus;
-
-  // some basic data associated to the involution, such as set of real roots
-  InvolutionData d_involutionData;
+class Fiber
+{
+  WeightInvolution d_involution; // Cartan involution on $X^*$
+  InvolutionData d_involutionData;  // associated data, like set of real roots
 
 /* Fiber group.
 
@@ -243,18 +234,8 @@ class Fiber {
 
 // accessors
 
-/* Real torus defined over $\R$.
-
-  Represented as the lattice $\Z^n$ endowed with an involutive
-  automorphism (represented by its $n \times n$ integer matrix).
-*/
-  const tori::RealTorus& torus() const { return d_torus; }
-  const WeightInvolution& involution() const
-    { return d_torus.involution(); }
-  size_t plusRank() const  { return d_torus.plusRank(); }
-  size_t minusRank() const { return d_torus.minusRank(); }
-
-
+  tori::RealTorus torus() const;
+  const WeightInvolution& involution() const { return d_involution; }
   const InvolutionData& involution_data() const { return d_involutionData; }
 
 // RootSet flagging the complex roots.

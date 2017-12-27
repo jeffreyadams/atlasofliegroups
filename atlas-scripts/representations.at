@@ -1,8 +1,9 @@
+<basic.at
 <misc.at { for generate_all_subsets }
 <group_operations.at { for is_split and such }
 <cross_W_orbit.at
 {<nilpotent.at}
-<nilpotent_orbit_partitions.at 
+<nilpotent_orbit_partitions.at
 <nilpotent_orbits_exceptional.at
 { some common representations }
 
@@ -62,6 +63,21 @@ set minimal_spherical_principal_series (RealForm G) = Param:
 }
 set spherical_unipotent_representations (RealForm G) = [Param]:
   assert(is_split(G),"group is not split");
+  let codes = %Lie_type(root_datum(G)) then n_factors=#codes in
+  if n_factors=1 then  { assert(is_split(G),"Group is not split");}
+    for gamma in nilpotent_lambdas(G)
+    do minimal_spherical_principal_series(G,gamma) od
+  elif n_factors=2 then { check that it looks like a simple complex group }
+    let C_type = Lie_type(codes[0]) in
+    assert(Lie_type(codes[1])=C_type,"not a complex group");
+    let lambdas=nilpotent_lambdas(simply_connected(C_type))
+    , x=x(trivial(G)), zero=null(rank(G))
+    in {parameter might not be normal}
+    for lambda in lambdas do dominant(param(x, zero, lambda##lambda)) od
+  else []
+  fi
+
+{
   let lietype=Lie_type(root_datum(G)) in
   if #lietype=1 then  { assert(is_split(G),"Group is not split");}
     for gamma in nilpotent_lambdas(G)
@@ -75,7 +91,7 @@ set spherical_unipotent_representations (RealForm G) = [Param]:
     for lambda in lambdas do dominant(param(x, zero, lambda##lambda)) od
   else []
   fi
-
+}
 
 
 { Harish-Chandra parameter of (relative) discrete series, with respect to

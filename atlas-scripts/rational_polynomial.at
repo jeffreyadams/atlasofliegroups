@@ -3,7 +3,7 @@
 { define a representation type that avoids implicit conversion to |ratvec|:
   store a list of rational coefficients, and a indeterminate name
 }
-: RatPoly = ([rat] coefficients, string indeterminate )
+set_type RatPoly = ([rat] coefficients, string indeterminate )
 
 set strip ([rat] v) = [rat]: v[ : 1+last(#v,(int i)bool:v[i].!= ) ]
 
@@ -34,6 +34,9 @@ set prints (RatPoly P) = prints(P.to_string)
 set !ratpol_0 = 0.rat_poly, !ratpol_1 = 1.rat_poly, !RatPoly2 = 2.rat_poly
 set !ratpol_q = [0,1].rat_poly, !ratpol_q2 = [0,0,1].rat_poly
 
+set  = (RatPoly(a,)) =  =#a
+set != (RatPoly(a,)) = !=#a
+
 set + (RatPoly(a,X),RatPoly(b,)) = RatPoly:
    let na=#a, nb=#b then m=min(na,nb) in
    rat_poly(for i:m do a[i]+b[i] od ## if na>nb then a else b fi [m:], X)
@@ -59,8 +62,8 @@ set evaluate_at_1 (RatPoly(cs,)) = rat:
 set \% (RatPoly(a,X):A,RatPoly(b,):B) = (RatPoly,RatPoly):
    let l_a=#a, deg_b = degree(B) in assert(deg_b.>=,"Euclidean division by 0");
    if l_a<=deg_b then (ratpol_0,A)
-   else let factor = / b~[0] { inverse of leading coefficeint of dividend } in
-      for i: l_a-deg_b { quotient has $\deg P+1-\deg D$ terms }
+   else let factor = / b~[0] { inverse of leading coefficient of dividend } in
+      for i: l_a-deg_b { quotient has $\deg A+1-\deg B$ terms }
       do let c=a~[i]*factor in a~[i]:=c { write coefficient of quotient }
       ;  for j:deg_b from 1 do a~[i+j] -:= c*b~[j] od
       od
@@ -71,6 +74,21 @@ set \% (RatPoly(a,X):A,RatPoly(b,):B) = (RatPoly,RatPoly):
 
 set \ (RatPoly A, RatPoly B) = RatPoly: let (result,)= A\%B in result
 set % (RatPoly A, RatPoly B) = RatPoly: let (,result)= A\%B in result
+{ find $D=\gcd(A,B)$ and $S,T$ such that $D=SA+TB$ }
+
+set Bezout = (RatPoly,RatPoly->RatPoly,RatPoly,RatPoly):
+   let sub ((RatPoly X, RatPoly SX, RatPoly TX)
+           , RatPoly c
+           , (RatPoly Y, RatPoly SY, RatPoly TY)) = (X-c*Y, SX-c*SY, TX-c*TY)
+   in { Bezout = } (RatPoly A,RatPoly B) (RatPoly,RatPoly,RatPoly):
+   let L=[RatPoly,RatPoly,RatPoly]:
+       [(A,ratpol_1,ratpol_0), (B,ratpol_0,ratpol_1)]
+   , (Q,R)=A\%B
+   in
+   while !=R
+   do L#:=sub(L~[1],Q,L~[0])
+   ; let (A,,)=L~[1], (B,,)=L~[0] in set (Q,R):= A\%B
+   od; let ((d,):D,S,T)=L~[0] then c=rat_poly(/d~[0]) in (D*c, S*c, T*c)
 
 set ^ (RatPoly(p,X),int n) = RatPoly: { power of a rational polynomial }
    if n=0 then ratpol_1 elif =#p then ratpol_0

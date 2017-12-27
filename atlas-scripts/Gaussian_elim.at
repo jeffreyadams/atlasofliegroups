@@ -19,6 +19,24 @@
   the most general setting (and in general we do not assume square matrices).
 }
 
+set_type
+[ Pivot_info = ( (int,[rat]) pivot | [rat] no_pivot )
+{ When doing a pivot step, we either find a pivot, or not. In the former case
+  we record the pivot row number, as well as the row operation to be applied
+  after the cyclic row permutation bringing the pivot to the echelon position
+  is done (row number equal to the number of previous pivots). The latter row
+  operation is left multiplication by a matrix differing by only one column
+  from the identity, and that columns is recorded (it has the inverse of the
+  pivot vlaue on the main diagonal). In case no pivot is found (the part of
+  the column where a pivot is searched is zero) we instead record the nonzero
+  initial part ot the column. The union type |Pivot_info| describes these.
+}
+
+, lin_solution = ( void no_rowrat_solution | ([rat],[[rat]]) affine_space )
+{ A solution is either a particular solution and kernel generators, or none }
+
+]
+
 
 { avoid converting to |ratvec| when testing a (partial) column to be zero }
 forget =@ratvec
@@ -31,19 +49,6 @@ set times ([[rat]] M, [rat] v) = [rat]:
     for i:#M[0] do let s=rat:0 in for Mj@j in M do s+:=Mj[i]*v[j] od; s od
 
 set times ([[rat]] M, [[rat]] N) = [[rat]]: for c in N do times(M,c) od
-
-{ When doing a pivot step, we either find a pivot, or not. In the former case
-  we record the pivot row number, as well as the row operation to be applied
-  after the cyclic row permutation bringing the pivot to the echelon position
-  is done (row number equal to the number of previous pivots). The latter row
-  operation is left multiplication by a matrix differing by only one column
-  from the identity, and that columns is recorded (it has the inverse of the
-  pivot vlaue on the main diagonal). In case no pivot is found (the part of
-  the column where a pivot is searched is zero) we instead record the nonzero
-  initial part ot the column. The union type |Pivot_info| describes these.
-}
-
-: Pivot_info = ( (int,[rat]) pivot | [rat] no_pivot )
 
 { the |pivot_step| takes as argument the choice function for the pivot }
 set pivot_step (([rat]->int) choose_pivot) =
@@ -139,9 +144,6 @@ set apply ([int,[rat]] pivots) = ([rat]->[rat]):
        for (k,coefs)@j in pivots do col:=apply(j,k,coefs)(col) od; col
 
 { Put the above together for solving a rational linear system |A*x=b| }
-
-{ A solution is either a particular solution and kernel generators, or none }
-: lin_solution = ( void no_rowrat_solution | ([rat],[[rat]]) affine_space )
 
 set full_solve ([[rat]] A, [rat] b) = lin_solution:
    let (pivots,kernel,spread)= A.get_data.split_data then sol=b.(apply(pivots))

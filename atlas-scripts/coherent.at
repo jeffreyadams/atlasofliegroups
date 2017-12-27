@@ -136,9 +136,11 @@ set coherent_family_irr (ParamPol P, ratvec v)=ParamPol:
        T_irr(coherent_irr(P,u),act(inverse(w),v))
  fi
 
-{
-: term = (Param,string)
-: module = (ParamPol,string)
+{ everything commented out from this point on
+
+set_type
+  term = (Param,string), module = (ParamPol,string)
+
 { ------------phi_alpha: translation of stds/irrs away from one  wall-------- }
 
 set phi(term(p,type), int s, ratvec v) = module:
@@ -189,6 +191,7 @@ set skew_symmetrize_coherent([int] S,term(p,type)) = module:
   skew_symmetrize_coherent(S,(virtual(p),type))
 set skew_symmetrize_coherent(term(p,type)) = module:
   skew_symmetrize_coherent(virtual(p),type)
+
 }
 
 

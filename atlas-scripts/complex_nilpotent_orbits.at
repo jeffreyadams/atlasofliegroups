@@ -5,16 +5,12 @@
 <nilpotent_orbit_partitions.at {for nilpotent orbits of classical groups}
 
 { ComplexNilpotent: (RootDatum rd,vec H)
- where [H,X,Y] is a Lie triple, H\in X_*, and orbit=G.X
- H must satisfy <alpha,H>=0,1,2 for all simple roots,
- in particular is_dominant(dual(rd),H)=true
+  where [H,X,Y] is a Lie triple, H\in X_*, and orbit=G.X
+  H must satisfy <alpha,H>=0,1,2 for all simple roots,
+  in particular is_dominant(dual(rd),H)=true
 }
-:ComplexNilpotent=(RootDatum,vec)
-
-{root_datum@ComplexNilpotent is too close to root_datum@(RootDatum,[int]) in Weylgroup.at}
-set root_datum_of (ComplexNilpotent O)= RootDatum: let (rd,)=O in rd
-{semisimple_element is too close to semisimple_element@(RootDatum,[int]) in nilpotent_orbit_partitions.at}
-set semisimple_element_of (ComplexNilpotent O) = vec: let (,H)=O in H
+set_type ComplexNilpotent = (RootDatum root_datum_of, vec semisimple_element)
+{ field name |root_datum| would conflict with |root_datum@W_word| (too close) }
 
 set dim_nilpotent (RootDatum rd,ratvec H) = int:
 if (#H>0) then let (g_0,g_1)=(rank(rd),0) in
@@ -25,7 +21,7 @@ for alpha in posroots(rd) do
 {prints("g_0:", g_0, "g_1:" ,g_1);}dimension(rd)-g_0-g_1 else 0 fi
 
 set diagram (ComplexNilpotent O) = [int]:
-let H=semisimple_element_of(O) in
+let H=O.semisimple_element in
 for v in simple_roots(root_datum_of(O)) do H*v od
 
 set dim_nilpotent(ComplexNilpotent O)=let (rd,H)=O in dim_nilpotent(rd,H)

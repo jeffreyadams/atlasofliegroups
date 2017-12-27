@@ -38,21 +38,14 @@ sources/utilities/matrix.h
 
 /******** tags for structure theory ******************************************/
 
-  // To distinguish constructor for an adjoint group from copy-constructor
-  struct AdjointTag {};
-
-  // To distinguish constructor for derived group from copy-constructor.
+  // To distinguish constructor for derived group
   struct DerivedTag {};
 
-  // To distinguish constructor for derived group from copy-constructor.
-  struct SimplyConnectedTag {};
+  // To distinguish constructor for group modulo the central torus
+  struct CoderivedTag {};
 
   // To distinguish constructor for dual object from copy-constructor
   struct DualTag {};
-
-  // To distinguish an expermental function (constructor) from one it is
-  // ultimately destined to replace.
-  struct NewTag {};
 
 }
 

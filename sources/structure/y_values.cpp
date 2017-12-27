@@ -151,12 +151,12 @@ bool y_entry::operator !=(const y_entry& y) const
 { return nr!=y.nr or fingerprint!=y.fingerprint; }
 
 // condition |is_central(roots,t)| means $t=\exp(2pi\pi)$ with $<p,roots>$ int
-bool is_central(const WeightList& alpha, const TorusElement& t)
+bool is_central(const LatticeMatrix& alpha, const TorusElement& t)
 {
   const RatWeight& rw = t.as_Qmod2Z(); // using $\exp(i\pi.)$ is faster, but
   arithmetic::Numer_t d = 2*rw.denominator(); // it requires even pairings
-  for (weyl::Generator s=0; s<alpha.size(); ++s)
-    if (rw.numerator().dot(alpha[s])%d != 0) // see if division is exact
+  for (weyl::Generator s=0; s<alpha.numColumns(); ++s)
+    if (rw.numerator().dot(alpha.column(s))%d != 0) // see if division is exact
       return false;
 
   return true;

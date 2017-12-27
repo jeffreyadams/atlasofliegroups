@@ -2,7 +2,7 @@
   This is output.cpp
 
   Copyright (C) 2004,2005 Fokko du Cloux
-  Copyright (C) 2016 Marc van Leeuwen
+  Copyright (C) 2016,2017 Marc van Leeuwen
   part of the Atlas of Lie Groups and Representations
 
   For license information see the LICENSE file
@@ -26,6 +26,7 @@
 #include "gradings.h"
 #include "innerclass.h"
 #include "cartanclass.h"
+#include "tori.h"
 #include "realredgp.h"
 #include "realweyl.h"	// |RealWeyl| class
 #include "realweyl_io.h" // |printBlockStabilizer|
@@ -224,9 +225,10 @@ std::ostream& printCartanClass(std::ostream& strm,
   const RootSystem& rs = G.rootDatum();
 
   const CartanClass& cc = G.cartan(cn);
+  const auto& tau = cc.involution();
   const Fiber& f = cc.fiber();
 
-  prettyprint::printTorusType(strm,f.torus()) << std::endl;
+  prettyprint::printTorusType(strm,tau) << std::endl;
 
   {
     std::ostringstream os;
@@ -242,7 +244,7 @@ std::ostream& printCartanClass(std::ostream& strm,
        <<std::endl;
 
   // print type of imaginary root system
-  LieType ilt = rs.Lie_type(cc.simpleImaginary());
+  LieType ilt = rs.subsystem_type(cc.simpleImaginary());
 
   if (ilt.size() == 0)
     strm << "imaginary root system is empty" << std::endl;
@@ -250,7 +252,7 @@ std::ostream& printCartanClass(std::ostream& strm,
     strm << "imaginary root system: " << ilt << std::endl;
 
   // print type of real root system
-  LieType rlt = rs.Lie_type(cc.simpleReal());
+  LieType rlt = rs.subsystem_type(cc.simpleReal());
 
   if (rlt.size() == 0)
     strm << "real root system is empty" << std::endl;
@@ -258,7 +260,7 @@ std::ostream& printCartanClass(std::ostream& strm,
     strm << "real root system: " << rlt << std::endl;
 
   // print type of complex root system
-  LieType clt = rs.Lie_type(cc.simpleComplex());
+  LieType clt = rs.subsystem_type(cc.simpleComplex());
 
   if (clt.size() == 0)
     strm << "complex factor is empty" << std::endl;

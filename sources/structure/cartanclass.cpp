@@ -154,9 +154,8 @@ bool CartanClass::isMostSplit(adjoint_fiber_orbit wrf) const
 // Fiber constructor for involution |theta| of the root datum |rd|.
 
 
-Fiber::Fiber(const RootDatum& rd,
-	     const WeightInvolution& theta)
-  : d_torus(theta)
+Fiber::Fiber(const RootDatum& rd, const WeightInvolution& theta)
+  : d_involution(theta)
   , d_involutionData(rd,theta)
   , d_fiberGroup(makeFiberGroup())
   , d_adjointFiberGroup(makeAdjointFiberGroup(rd))
@@ -176,7 +175,7 @@ Fiber::Fiber(const RootDatum& rd,
 // Copy and assignment
 
 Fiber::Fiber(const Fiber& other)
-  : d_torus(other.d_torus)
+  : d_involution(other.d_involution)
   , d_involutionData(other.d_involutionData)
   , d_fiberGroup(other.d_fiberGroup)
   , d_adjointFiberGroup(other.d_adjointFiberGroup)
@@ -190,6 +189,8 @@ Fiber::Fiber(const Fiber& other)
   , d_strongReal(other.d_strongReal)
   , d_strongRealFormReps(other.d_strongRealFormReps)
 {}
+
+tori::RealTorus Fiber::torus() const { return tori::RealTorus(d_involution); }
 
 /*       Private accessors of |Fiber| used during construction      */
 
@@ -940,7 +941,7 @@ toMostSplit(const Fiber& fundf, RealFormNbr rf, const RootSystem& rs)
   implicit assumption that the standard positive root system for the $Phi^C$
   is |theta|-stable; this is very false. It would be true for an involution
   of the based root datum (the distinguished involution of the inner class),
-  which would stabilise everyting mentioned here, and in fact it is also true
+  which would stabilise everything mentioned here, and in fact it is also true
   for any involution that is canonical in its (twisted conjugation) class; in
   general however although $Phi^C$ is |theta|-stable (the sum of positive
   imaginary roots is |theta|-fixed, and the sum of positive real roots is
@@ -1007,13 +1008,13 @@ size_t CartanClass::orbit_size(const RootSystem& rs) const
 
   // divide by product of imaginary, real and complex sizes
   result /=
-    weylsize::weylSize(dynkin::Lie_type(rs.cartanMatrix(simpleImaginary())));
+    weylsize::weylSize(rs.subsystem_type(simpleImaginary()));
 
   result /=
-    weylsize::weylSize(dynkin::Lie_type(rs.cartanMatrix(simpleReal())));
+    weylsize::weylSize(rs.subsystem_type(simpleReal()));
 
   result /=
-    weylsize::weylSize(dynkin::Lie_type(rs.cartanMatrix(simpleComplex())));
+    weylsize::weylSize(rs.subsystem_type(simpleComplex()));
 
   return result.toUlong();
 }

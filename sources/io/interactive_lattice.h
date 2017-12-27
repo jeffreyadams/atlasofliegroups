@@ -20,12 +20,9 @@ namespace atlas {
 
 namespace interactive_lattice {
 
-  int getGenerators(RatWeightList&,
-		    const CoeffList&)
-    throw(error::InputError);
+  int getGenerators(RatWeightList&, const CoeffList&);
 
-  int getLattice(const CoeffList&, WeightList&)
-    throw(error::InputError);
+  int getLattice(const CoeffList& root_invf, LatticeMatrix& root_lattice_basis);
 
 }
 

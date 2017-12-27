@@ -1,7 +1,7 @@
 /*
   This is realredgp.cpp
   Copyright (C) 2004,2005 Fokko du Cloux
-  Copyright (C) 2006-2016 Marc van Leeuwen
+  Copyright (C) 2006-2017 Marc van Leeuwen
   part of the Atlas of Lie Groups and Representations
 
   For license information see the LICENSE file
@@ -15,15 +15,16 @@
 #include "matreduc.h" // |adapted_basis|
 
 #include "cartanclass.h"  // |Fiber|, and |toMostSplit| function (assertion)
-#include "innerclass.h" // various methods
+#include "innerclass.h"   // various methods
 #include "rootdata.h"     // |refl_prod| function (assertion)
-#include "tori.h"         // |tori::RealTorus| used
+#include "topology.h"     // |topology::dual_component_group_basis|
 #include "kgb.h"          // |KGB| constructed
 #include "tits.h"         // |TitsGroup| and |TitsElement| access
 
 #include <cassert>
 
 namespace atlas {
+namespace realredgp {
 
 /*****************************************************************************
 
@@ -31,18 +32,10 @@ namespace atlas {
 
 ******************************************************************************/
 
-namespace realredgp {
-
-
-/*!
-  Synopsis : constructs a real reductive group from the datum of a complex
-  reductive group and a real form.
-*/
-RealReductiveGroup::RealReductiveGroup
-  (InnerClass& G_C, RealFormNbr rf)
+RealReductiveGroup::RealReductiveGroup (InnerClass& G_C, RealFormNbr rf)
   : d_innerClass(G_C)
   , d_realForm(rf)
-  , d_connectivity() // wait for most split torus to be constructed below
+  , dual_pi0_gens() // wait for most split torus to be constructed below
 
   , square_class_cocharacter(some_coch(G_C,G_C.xi_square(rf)))
   , torus_part_x0(G_C.x0_torus_part(rf))
@@ -60,7 +53,7 @@ RealReductiveGroup::RealReductiveGroup
    const RatCoweight& coch, TorusPart x0_torus_part)
   : d_innerClass(G_C)
   , d_realForm(rf)
-  , d_connectivity() // wait for most split torus to be constructed below
+  , dual_pi0_gens() // wait for most split torus to be constructed below
 
   , square_class_cocharacter(coch)
   , torus_part_x0(x0_torus_part)
@@ -74,17 +67,18 @@ RealReductiveGroup::RealReductiveGroup
 
 void RealReductiveGroup::construct()
 {
-  InnerClass& G_C=d_innerClass;
-  RealFormNbr rf=d_realForm;
+  const InnerClass& G_C=d_innerClass;
+  const RealFormNbr rf=d_realForm;
+  const RootDatum& rd = G_C.rootDatum();
 
-  tori::RealTorus msT = G_C.cartan(G_C.mostSplit(rf)).fiber().torus();
-  d_connectivity = topology::Connectivity(msT,G_C.rootDatum());
+  const auto ms_tau = G_C.cartan(G_C.mostSplit(rf)).involution();
+  dual_pi0_gens = topology::dual_component_group_basis(ms_tau,rd);
 
-  d_status.set(IsConnected,d_connectivity.component_rank() == 0);
-  d_status.set(IsCompact,msT.isCompact());
+  d_status.set(IsConnected,dual_pi0_gens.empty());
+  d_status.set(IsCompact,(ms_tau-1).is_zero());
 
   d_status.set(IsQuasisplit,rf == G_C.quasisplit());
-  d_status.set(IsSplit,msT.isSplit());
+  d_status.set(IsSplit,(ms_tau+1).is_zero());
   d_status.set(IsSemisimple,G_C.rank() == G_C.semisimpleRank());
 
 #ifndef NDEBUG
@@ -97,12 +91,9 @@ void RealReductiveGroup::construct()
 		       G_C.rootSystem());
 
   // recompute matrix of most split Cartan
-  const RootDatum& rd = G_C.rootDatum();
-  tori::RealTorus T1
-    (rootdata::refl_prod(so,rd) * G_C.distinguished()); // factors commute
-
-  topology::Connectivity c(T1,rd);
-  assert(d_connectivity.component_rank() == c.component_rank());
+  auto tau1 = rootdata::refl_prod(so,rd) * G_C.distinguished();
+  assert(component_rank() ==
+	 topology::dual_component_group_basis(tau1,rd).size());
 #endif
 }
 
@@ -121,7 +112,7 @@ void RealReductiveGroup::swap(RealReductiveGroup& other)
 {
   assert(&d_innerClass==&other.d_innerClass); // cannot swap references
   std::swap(d_realForm,other.d_realForm);
-  d_connectivity.swap(other.d_connectivity);
+  dual_pi0_gens.swap(other.dual_pi0_gens);
   std::swap(d_Tg,other.d_Tg);
   std::swap(kgb_ptr,other.kgb_ptr);
   std::swap(dual_kgb_ptr,other.dual_kgb_ptr);
@@ -189,9 +180,9 @@ Grading RealReductiveGroup::grading_offset()
 
 
 const size_t RealReductiveGroup::component_rank() const
-  { return d_connectivity.component_rank(); }
+{ return dual_pi0_gens.size(); }
 const SmallBitVectorList& RealReductiveGroup::dualComponentReps() const
-  { return d_connectivity.dualComponentReps(); }
+  { return dual_pi0_gens; }
 
 const WeightInvolution& RealReductiveGroup::distinguished() const
   { return d_innerClass.distinguished(); }

@@ -15,12 +15,12 @@
 <basic.at
 <matrix.at
 
+set_type ratmat = (mat,string,int) { matrix, slash, common denominator }
+{ the void component avoids unary/binary conflicts, as for -@(mat,int) }
+
 { a trick to locally rebind |s| (defined in basic.at) to constant string "/" }
 save_s : s
 set !s = "/"
-
-: ratmat = (mat,string,int) { matrix, slash, common denominator }
-{ the void component avoids unary/binary conflicts, as for -@(mat,int) }
 
 set gcd(mat M) = int: gcd(for c in M do gcd(c) od)
 

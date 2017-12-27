@@ -122,7 +122,9 @@ dependency on the readline library.
 @q axis_version "0.9.3" avoid voiding, internals calls, field selectors @>
 @q axis_version "0.9.4" types |int| and |rat| use arbitrary size values @>
 @q axis_version "0.9.5" unions, discrimination expressions @>
-@d axis_version "0.9.6" @q set of implicit conversions closed for composition @>
+@q axis_version "0.9.6" set of implicit conversions closed for composition @>
+@q axis_version "0.9.7" set_type command, possibly recursive, added @>
+@d axis_version "0.9.8" @q fully functional set_type command @>
 
  // numbering from 0.5 (on 27/11/2010); last change Jun 15, 2017
 
@@ -246,6 +248,7 @@ const char* keywords[] =
  ,"next","do","dont","from","downto","while","for","od"
  ,"case","esac", "rec_fun"
  ,"true","false", "die", "break", "return"
+ ,"set_type"
  ,"whattype","showall","forget"
  ,nullptr};
 
@@ -566,7 +569,7 @@ for (auto it=prelude_filenames.begin(); it!=prelude_filenames.end(); ++it )
     }
     destroy_expr(parse_tree);
   }
-  row_value* logs = force<row_value>(uniquify(*prelude_log_pointer));
+  row_value* logs = uniquify<row_value>(*prelude_log_pointer);
   logs->val.emplace_back(std::make_shared<string_value>(log_stream.str()));
   output_stream = &std::cout;
 }

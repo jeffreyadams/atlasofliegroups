@@ -95,16 +95,16 @@ namespace atlas {
 
 namespace lietype {
 
-  void addCompactInvolution(WeightInvolution&, size_t, size_t,
+  void addCompactInvolution(WeightInvolution&, unsigned int, unsigned int,
 			    const Permutation& pi);
 
-  void addDInvolution(WeightInvolution&, size_t, size_t,
+  void addDInvolution(WeightInvolution&, unsigned int, unsigned int,
 		      const Permutation& pi);
 
-  void addMinusIdentity(WeightInvolution&, size_t, size_t,
+  void addMinusIdentity(WeightInvolution&, unsigned int, unsigned int,
 			const Permutation& pi);
 
-  void addSimpleInvolution(WeightInvolution&, size_t,
+  void addSimpleInvolution(WeightInvolution&, unsigned int,
 			   const SimpleLieType&, TypeLetter,
 			   const Permutation& pi);
 }
@@ -118,7 +118,8 @@ namespace lietype {
 namespace lietype {
 
 // Cartan matrix info, simple type |tp|, distance $d\leq2$ off diagonal
-inline int dispatch(TypeLetter tp, size_t r,size_t min,size_t d, bool lower)
+inline int dispatch
+  (TypeLetter tp, unsigned int r,unsigned int min,unsigned int d, bool lower)
 {
   if (d==0) return 2;
   if (tp=='D') return (min<r-3 ? d==1 : min==r-3) ? -1 : 0;
@@ -130,11 +131,11 @@ inline int dispatch(TypeLetter tp, size_t r,size_t min,size_t d, bool lower)
   return lower==(tp=='G') ? -1 : -3;
 }
 
-int SimpleLieType::Cartan_entry(size_t i,size_t j) const
+int SimpleLieType::Cartan_entry(unsigned int i,unsigned int j) const
 {
   if (type()=='T') return 0;
 
-  size_t min,d;
+  unsigned int min,d;
   if (i<j) min=i,d=j-i;
   else     min=j,d=i-j;
 
@@ -142,8 +143,8 @@ int SimpleLieType::Cartan_entry(size_t i,size_t j) const
 }
 
 // implicitly define the Cartan matrix corresponding to the type
-int LieType::Cartan_entry(size_t i,size_t j) const
-{ size_t min,d;
+int LieType::Cartan_entry(unsigned int i,unsigned int j) const
+{ unsigned int min,d;
   if (i<j)
     min=i,d=j-i;
   else
@@ -153,12 +154,12 @@ int LieType::Cartan_entry(size_t i,size_t j) const
 
   for (base::const_iterator it=begin(); it!=end(); ++it)
   {
-    size_t r=it->rank();
-    if (r<=min)
+    auto r=it->rank();
+    if (min>=r)
       min-=r; // the only case that continues the loop
-    else
+    else // |min<r|, so least index belongs to current simple factor
     { TypeLetter tp=it->type();
-      if (r<=min+d or tp=='T') // distinct simple factors or torus
+      if (min+d>=r or tp=='T') // distinct simple factors or torus
 	return 0;
       else return dispatch(tp,r,min,d,i<j);
     }
@@ -168,57 +169,57 @@ int LieType::Cartan_entry(size_t i,size_t j) const
 }
 
 int_Matrix SimpleLieType::Cartan_matrix() const
-{ size_t r=rank();
+{ const auto r=rank();
   int_Matrix result(r,r);
-  for (size_t i=0; i<r; ++i)
-    for (size_t j=0; j<r; ++j)
+  for (unsigned int i=0; i<r; ++i)
+    for (unsigned int j=0; j<r; ++j)
       result(i,j)=Cartan_entry(i,j);
 
   return result;
 }
 
 int_Matrix SimpleLieType::transpose_Cartan_matrix() const
-{ size_t r=rank();
+{ const auto r=rank();
   int_Matrix result(r,r);
-  for (size_t i=0; i<r; ++i)
-    for (size_t j=0; j<r; ++j)
+  for (unsigned int i=0; i<r; ++i)
+    for (unsigned int j=0; j<r; ++j)
       result(i,j)=Cartan_entry(j,i);
 
   return result;
 }
 
 int_Matrix LieType::Cartan_matrix() const
-{ size_t r=rank();
+{ const auto r=rank();
   int_Matrix result(r,r);
-  for (size_t i=0; i<r; ++i)
-    for (size_t j=0; j<r; ++j)
+  for (unsigned int i=0; i<r; ++i)
+    for (unsigned int j=0; j<r; ++j)
       result(i,j)=Cartan_entry(i,j);
 
   return result;
 }
 
 int_Matrix LieType::transpose_Cartan_matrix() const
-{ size_t r=rank();
+{ const auto r=rank();
   int_Matrix result(r,r);
-  for (size_t i=0; i<r; ++i)
-    for (size_t j=0; j<r; ++j)
+  for (unsigned int i=0; i<r; ++i)
+    for (unsigned int j=0; j<r; ++j)
       result(i,j)=Cartan_entry(j,i);
 
   return result;
 }
 
-size_t LieType::rank() const
+unsigned int LieType::rank() const
 {
-  size_t r = 0;
+  unsigned int r = 0;
   for (base::const_iterator it=begin(); it!=end(); ++it)
     r += it->rank();
   return r;
 }
 
 
-size_t LieType::semisimple_rank() const
+unsigned int LieType::semisimple_rank() const
 {
-  size_t r = 0;
+  unsigned int r = 0;
   for (base::const_iterator it=begin(); it!=end(); ++it)
     r += it->semisimple_rank();
   return r;
@@ -238,23 +239,23 @@ size_t LieType::semisimple_rank() const
   get to the true Smith normal form (which might involve combining invariant
   factors). It is clearer and more efficient though to do this blockwise.
 */
-int_VectorList
-LieType::Smith_basis(CoeffList& invf) const
+int_Matrix LieType::Smith_basis(CoeffList& invf) const
 {
 
-  size_t R=rank();
-  int_VectorList result(R,Weight(R,0));
+  const auto R=rank();
+  int_Matrix result(R,R,0);
+  invf.reserve(R); // every element of |result| has its invariant factor
 
   // get adapted basis for each simple factor
-  size_t s=0; //offset
+  unsigned int s=0; //offset
   for (const_iterator it=begin(); it!=end(); ++it)
   {
-    size_t r =it->rank();
+    const auto r =it->rank();
 
     if (it->type() == 'T') // torus type T_r
     {
-      for (size_t i=s; i<s+r; ++i)
-	result[i][i]=1;
+      for (unsigned int i=s; i<s+r; ++i)
+	result(i,i)=1;
       invf.insert(invf.end(),r,0); // add |r| factors 0
     }
     else
@@ -271,9 +272,9 @@ LieType::Smith_basis(CoeffList& invf) const
       }
 
       // copy matrix |Sb| into block of result
-      for (size_t j=0; j<r; ++j) // fill |result[s+j]| from column |j| of |Sb|
-	for (size_t i=0; i<r; ++i)
-	  result[s+j][s+i]=Sb(i,j);
+      for (unsigned int j=0; j<r; ++j)
+	for (unsigned int i=0; i<r; ++i)
+	  result(s+i,s+j)=Sb(i,j);
 
       invf.insert(invf.end(),new_invf.begin(),new_invf.end()); // append |invf|
     }
@@ -283,12 +284,13 @@ LieType::Smith_basis(CoeffList& invf) const
   return result;
 }
 
-/*! brief Returns the dual Lie type of lt. In fact this applies to ordered
-  Dynkin diagrams, whence the distinction between (B2,C2), (F4,f4) and (G2,g2)
+/*
+  Return the dual Lie type of lt. In fact this applies to ordered Dynkin
+  diagrams, whence the distinction between (B2,C2), (F4,f4) and (G2,g2)
 */
 LieType dual_type(LieType lt)
 {
-  for (size_t i=0; i<lt.size(); ++i)
+  for (unsigned int i=0; i<lt.size(); ++i)
     switch (lt[i].first) {
     case 'B':
       lt[i].first = 'C';
@@ -314,17 +316,16 @@ LieType dual_type(LieType lt)
 }
 
 
-/*!
-  \brief Returns dual inner class type of |ict| with respect to |lt|
-
+/*
+  Return dual inner class type of |ict| with respect to |lt|
   The result is independent of whether |lt| is the original or dual type
 */
 InnerClassType dual_type(InnerClassType ict, const LieType& lt)
 {
 
-  size_t ltj = 0;
+  unsigned int ltj = 0;
 
-  for (size_t i=0; i<ict.size(); ++i)
+  for (unsigned int i=0; i<ict.size(); ++i)
   {
     if (ict[i] == 'C') // dual type remains complex
     {
@@ -386,7 +387,7 @@ InnerClassType dual_type(InnerClassType ict, const LieType& lt)
 Layout dual(const Layout& lo)
 {
   Layout result=lo;
-  for (size_t i=0,k=0; i<lo.d_type.size(); k+=lo.d_type[i].rank(),++i)
+  for (unsigned int i=0,k=0; i<lo.d_type.size(); k+=lo.d_type[i].rank(),++i)
     switch(lo.d_type[i].type())
     {
     case 'B': result.d_type[i].type()='C'; break;
@@ -399,8 +400,8 @@ Layout dual(const Layout& lo)
     default: break;
     }
 
-  size_t i=0; // index into |lo.d_type|
-  for (size_t j=0; j<lo.d_inner.size(); ++i,++j)
+  unsigned int i=0; // index into |lo.d_type|
+  for (unsigned int j=0; j<lo.d_inner.size(); ++i,++j)
   {
 
     if (lo.d_inner[j]=='C') // dual type remains complex
@@ -432,7 +433,7 @@ Layout dual(const Layout& lo)
 /*!
   Synopsis: checks if the rank l is in the valid range for x.
 */
-bool checkRank(const TypeLetter& x, size_t l)
+bool checkRank(const TypeLetter& x, unsigned int l)
 {
   if (l>constants::RANK_MAX) return false;
   switch (x)
@@ -509,13 +510,13 @@ WeightInvolution involution(const Layout& lo)
 
   WeightInvolution result(lt.rank(),lt.rank(),0);
 
-  size_t r = 0;   // position in flattened Dynkin diagram; an index into |pi|
-  size_t pos = 0; // position in |lt|
+  unsigned int r = 0;   // position in flattened Dynkin diagram; an index into |pi|
+  unsigned int pos = 0; // position in |lt|
 
-  for (size_t j=0; j<ic.size(); ++j) // |r|,|pos| are also advanced, near end
+  for (unsigned int j=0; j<ic.size(); ++j) // |r|,|pos| are also advanced, near end
   {
     SimpleLieType slt = lt[pos];
-    size_t rs = slt.rank();
+    const auto rs = slt.rank();
 
     switch (ic[j])
     {
@@ -526,7 +527,7 @@ WeightInvolution involution(const Layout& lo)
       switch (slt.type())
       {
       case 'A': // antidiagonal matrix
-	for (size_t i=0; i<rs; ++i)
+	for (unsigned int i=0; i<rs; ++i)
 	  result(pi[r+i],pi[r+rs-1-i]) = 1;
 	break;
       case 'D':
@@ -557,7 +558,7 @@ WeightInvolution involution(const Layout& lo)
       } // |switch (type(slt))|
       break;
     case 'C': // Compact: parallel interchange of |rs| vertices with next |rs|
-      for (size_t i=0; i<rs; ++i)
+      for (unsigned int i=0; i<rs; ++i)
       {
 	result(pi[r+i],pi[r+rs+i]) = 1;
 	result(pi[r+rs+i],pi[r+i]) = 1;
@@ -598,11 +599,11 @@ namespace lietype {
 
   Precondition: the block is set to zero.
 */
-void addCompactInvolution(WeightInvolution& m, size_t r,
-			  size_t rs,
+void addCompactInvolution(WeightInvolution& m, unsigned int r,
+			  unsigned int rs,
 			  const Permutation& pi)
 {
-  for (size_t i=0; i<rs; ++i)
+  for (unsigned int i=0; i<rs; ++i)
     m(pi[r+i],pi[r+i]) = 1;
 }
 
@@ -613,10 +614,10 @@ void addCompactInvolution(WeightInvolution& m, size_t r,
 
   Precondition: the block is set to zero.
 */
-void addDInvolution(WeightInvolution& m, size_t r, size_t rs,
+void addDInvolution(WeightInvolution& m, unsigned int r, unsigned int rs,
 		    const Permutation& pi)
 {
-  for (size_t i=0; i<rs-2; ++i)
+  for (unsigned int i=0; i<rs-2; ++i)
     m(pi[r+i],pi[r+i]) = 1;
 
   m(pi[r+rs-2],pi[r+rs-1]) = 1;
@@ -630,10 +631,10 @@ void addDInvolution(WeightInvolution& m, size_t r, size_t rs,
 
   Precondition: the block is set to zero.
 */
-void addMinusIdentity(WeightInvolution& m, size_t r, size_t rs,
+void addMinusIdentity(WeightInvolution& m, unsigned int r, unsigned int rs,
 		      const Permutation& pi)
 {
-  for (size_t i=0; i<rs; ++i)
+  for (unsigned int i=0; i<rs; ++i)
     m(pi[r+i],pi[r+i]) = -1;
 }
 
@@ -642,11 +643,11 @@ void addMinusIdentity(WeightInvolution& m, size_t r, size_t rs,
   Synopsis: appends to m, from position (r,r), the fundamental involution
   corresponding to x in size rs.
 */
-void addSimpleInvolution(WeightInvolution& m, size_t r,
+void addSimpleInvolution(WeightInvolution& m, unsigned int r,
 			 const SimpleLieType& slt, TypeLetter x,
 			 const Permutation& pi)
 {
-  size_t rs = slt.rank();
+  const auto rs = slt.rank();
 
   switch (x) {
   case 'c': // add the identity
@@ -655,7 +656,7 @@ void addSimpleInvolution(WeightInvolution& m, size_t r,
   case 's': // add split involution
     switch (slt.type()) {
     case 'A': // antidiagonal matrix
-      for (size_t i=0; i<rs; ++i)
+      for (unsigned int i=0; i<rs; ++i)
 	m(pi[r+i],pi[r+rs-1-i]) = 1;
       break;
     case 'D':
@@ -685,7 +686,7 @@ void addSimpleInvolution(WeightInvolution& m, size_t r,
     }
     break;
   case 'C': // rs-dimensional flip
-    for (size_t i=0; i<rs; ++i)
+    for (unsigned int i=0; i<rs; ++i)
     {
       m(pi[r+i],pi[r+rs+i]) = 1;
       m(pi[r+rs+i],pi[r+i]) = 1;

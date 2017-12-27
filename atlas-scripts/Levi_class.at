@@ -1,0 +1,96 @@
+<basic.at
+<W_orbit.at
+<parabolics.at
+
+
+{. Decide whether two weights are conjugate by the Weyl group. .}
+set is_W_conjugate (ratvec v, ratvec w, RootDatum rd)=bool:
+   let list=W_orbit(rd,v) in  any(for y in list do y=w od)
+
+{. Remove a list of integer arrays from a list of integer arrays; this
+   is set difference for sets of integer lists. .}
+set remove_from_set ([[int]] old_set, [[int]] rem_set)=[[int]]:
+   ##for S in old_set do if none(for T in rem_set do T=S od)
+   then [S] else [] fi od
+
+{. Given a root datum, create a list of all complex parabolic subgroups. .}
+set complex_parabolics (RootDatum rd) = [ComplexParabolic]:
+  for S in power_set(semisimple_rank(rd)) do (rd,S) od
+
+{. Given a root datum, create a list of subsets of the set of simple roots. .}
+set complex_parabolics_S (RootDatum rd)=[[int]]:
+  power_set(semisimple_rank(rd))
+
+{. Given a list of integer arrays, create a list of those of size n. .}
+set choose_by_size ([[int]] list, int n)=[[int]]:
+  ##for S in list do if #S=n then [S] else [] fi od
+
+{. Given a list of integer arrays representing sets of simple roots for a
+   given root datum, create the list of corresponding rho(L)'s. .}
+set compute_rhos ([[int]] list, RootDatum rd)=[ratvec]:
+  for S in list do let P=ComplexParabolic:(rd,S) in
+  rho(complex_Levi(P)) od
+
+{. Given a list S of integers representing simple roots in a complex group,
+   and a list of integer arrays, create the list of arrays whose corresponding
+   rho(L) is conjugate to that defined by S. .}
+set conjugates_by_rho (RootDatum rd, [int] S, [[int]] list)=[[int]]:
+  let rhos=compute_rhos(list,rd) in
+  let P=ComplexParabolic:(rd,S) in let rhoP=rho(complex_Levi(P))
+  in let (rho_dom,)=make_dominant(rd,rhoP) in
+  ##for v@i in rhos do let (weight,)=make_dominant(rd,v) in if weight=rho_dom then
+  [list[i]] else [] fi od
+
+{. Given an array of integer lists representing simple roots in a complex
+   group, print the list of Lie types of the corresponding Levi subgroups. .}
+set print_conjugate_info (RootDatum rd, [[int]] S_list)=void:
+   prints("Levi","         ","Lie Type");
+   for S in S_list do let L=complex_Levi((rd,S)) in
+   prints(S," ",Lie_type(L)) od
+
+{. Given a list of integer arrays representing sets of simple roots for a
+   complex group, partition the list into sublists according to W-conjugacy
+   classes for the corresponding rho(L). .}
+set group_by_conjugate_rhos (RootDatum rd,[[int]] list)=[[[int]]]:
+   let result=[] in let sets=list in
+   while #sets>0 do let new_set=conjugates_by_rho (rd,sets[0],sets)
+   in result#:=new_set; sets:=remove_from_set (sets,new_set) od;
+   result
+
+{. Given a list of integer arrays representing sets of simple roots for
+   a complex group, create a list of integer arrays, one for each
+   conjugacy class for the corresponding rho. .}
+set classes_by_rho (RootDatum rd, [[int]] list)=[[int]]:
+   let result=[] in let sets=list in
+   while #sets>0 do let new_set=conjugates_by_rho (rd,sets[0],sets)
+   in result#:=new_set[0]; sets:=remove_from_set (sets,new_set) od;
+   result
+
+{. Given a root datum defining a complex group, create a list of
+   integer arrays, one for each conjugacy class for the corresponding
+   rho(L), L of rank n. .}
+set classes_by_rho (RootDatum rd, int n)=[[int]]:
+   classes_by_rho (rd, choose_by_size(complex_parabolics_S(rd),n))
+
+{. Given a root datum, create a list of integer arrays representing
+   Levi subgroups of fixed rank, grouping together those that
+   have conjugate rho(L). .}
+set group_by_conjugate_rhos (RootDatum rd, int rank)=[[[int]]]:
+   let list=complex_parabolics_S(rd) then
+   same_size_list=choose_by_size(list,rank) in
+   group_by_conjugate_rhos(rd,same_size_list)
+
+{. Perform the previous function for all possible ranks of Levi
+   subgroups. .}
+set group_by_conjugate_rhos (RootDatum rd)=[(int,[[[int]]])]:
+   for i:semisimple_rank(rd) do (i,group_by_conjugate_rhos(rd,i)) od
+
+{. As the previous function, but with only one representative for
+   each conjugacy class of Levis. .}
+set classes_by_rho (RootDatum rd)=[(int,[[int]])]:
+   for i:semisimple_rank(rd) do (i,classes_by_rho(rd,i)) od
+
+set print_Levis_by_conjugate_rhos (RootDatum rd)=void:
+   prints ("rank  # of classes  classes");
+   for i:semisimple_rank(rd) do let list=group_by_conjugate_rhos(rd,i) in
+     prints(i,"        ",#list,"          ",list) od

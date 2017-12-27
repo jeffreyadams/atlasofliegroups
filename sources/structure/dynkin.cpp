@@ -1,7 +1,7 @@
 /*
   This is dynkin.cpp
   Copyright (C) 2004,2005 Fokko du Cloux
-  Copyright (C) 2014 Marc van Leeuwen
+  Copyright (C) 2014,2017 Marc van Leeuwen
   part of the Atlas of Lie Groups and Representations
 
   For license information see the LICENSE file
@@ -31,7 +31,7 @@ namespace dynkin{
 namespace {
 
   Permutation order_by_components
-    (const RankFlagsList& components, unsigned int rank);
+    (const containers::sl_list<RankFlags>& components, unsigned int rank);
 
   Permutation typeANormalize(const DynkinDiagram& d);
   Permutation typeBNormalize(const DynkinDiagram& d, bool Bourbaki);
@@ -43,15 +43,9 @@ namespace {
 
 } // |namespace|
 
-/*****************************************************************************
 
-        Chapter I -- The DynkinDiagram class
 
-  Represents the structure given by a Cartan matrix in graph form
-
-******************************************************************************/
-
-/******** constructors and destructors ***************************************/
+//        |DynkinDiagram|, constructors
 
 // Construct a presumptive Dynkin diagram from a Cartan matrix
 DynkinDiagram::DynkinDiagram(const int_Matrix& c)
@@ -64,93 +58,90 @@ DynkinDiagram::DynkinDiagram(const int_Matrix& c)
       if (i!=j)
       {
 	if (c(i,j)<-3 or c(i,j)>0)
-	  throw error::CartanError();
+	  throw error::Cartan_error();
 	Multiplicity m = -c(i,j);
 	if (m!=0)
 	{
 	  if (c(j,i)==0) // this test ensures a symmetric adjacency matrix
-	    throw error::CartanError();
+	    throw error::Cartan_error();
 	  d_star[j].set(i); // set |i| as neighbour of |j|
 	  if (m>1) // only label multiple edges
 	    d_downedge.push_back (std::make_pair(Edge(i,j),m));
 	}
       }
       else if (c(i,j)!=2)
-	throw error::CartanError();
+	throw error::Cartan_error();
 }
 
-// Constructs restriction of |d| to the subset of the vertices flagged by |c|.
-// Used before |parent| has been classified, so no validity is assumed here
-DynkinDiagram::DynkinDiagram(const RankFlags& c, const DynkinDiagram& parent)
-  : d_star()     // start with empty vector
-  , d_downedge() // start without any downward edges
+
+DynkinDiagram DynkinDiagram::subdiagram(RankFlags selection) const
 {
-  d_star.reserve(c.count()); // vertices selected by |c|, renumbered from 0
-
-  // get the stars of retained vertices by intersection of old star with |c|
-  for (RankFlags::iterator i = c.begin(); i(); ++i)
+  DynkinDiagram result; auto& r_star = result.d_star;
+  r_star.reserve(selection.count());
+  for (auto it = selection.begin(); it(); ++it)
   {
-    RankFlags st = parent.star(*i);
-    st.slice(c); // extract bits set in |c| and repack to size |c.count()|
-    d_star.push_back(st); // pack new stars into vector
+    r_star.push_back(star(*it));
+    r_star.back().slice(selection); // extract bits set in |selection|, repack
   }
-
-  // for the downedges we traverse those of |parent|, and see which apply
-  for (std::vector<std::pair<Edge,Multiplicity> >::const_iterator
-	 it=parent.d_downedge.begin(); it!=parent.d_downedge.end(); ++it)
+  for (auto it=d_downedge.begin(); it!=d_downedge.end(); ++it)
   {
-    unsigned int l = it->first.first;
-    unsigned int s = it->first.second;
-    if (c[l] and c[s]) // both long and short end points retained?
-    d_downedge.push_back
-      (std::make_pair(Edge(c.position(l),c.position(s)),it->second));
+    auto l = it->first.first, s = it->first.second;
+    if (selection[l] and selection[s]) // is the edge retained in |selection|
+    {
+      Edge e(selection.position(l),selection.position(s)); // re-index
+      result.d_downedge.emplace_back(e,it->second); // attach multiplicity
+    }
 
   }
-} // extracting version of |DynkinDiagram::DynkinDiagram|
+  return result;
+}
 
-// folded diagram, computed from orbits of nodes of |d|
-DynkinDiagram::DynkinDiagram(const ext_gens& orbits, const DynkinDiagram& diag)
-: d_star(orbits.size())
-, d_downedge()
+
+DynkinDiagram DynkinDiagram::folded(const ext_gens& orbits) const
 {
+  DynkinDiagram result; auto& r_star = result.d_star;
+  r_star.resize(orbits.size());
+
   for (unsigned int i=0; i<orbits.size(); ++i)
   {
-    RankFlags neighbours = diag.star(orbits[i].s0);
+    RankFlags neighbours = star(orbits[i].s0); // neighbours of first elt
     if (orbits[i].length()>1)
-      neighbours |= diag.star(orbits[i].s1);
+      neighbours |= star(orbits[i].s1); // add neighbours of second elt
     for (unsigned j=orbits.size(); --j > i; )
       if (neighbours[orbits[j].s0])  // run over neigbours |j| with $i<j<n$
       {
 	const unsigned jj = orbits[j].s0;
 	unsigned ii = orbits[i].s0;
-	if (not diag.star(ii)[jj])
-	  ii = orbits[i].s1;
-	assert (diag.star(ii)[jj]);
-	d_star[i].set(j);
-	d_star[j].set(i); // mark |i| and |j| as neighbours in new diagram
+	if (not are_adjacent(ii,jj)) // then we got wrong orbit elements
+	  ii = orbits[i].s1; // fix first one
+	assert (are_adjacent(ii,jj));
+	r_star[i].set(j);
+	r_star[j].set(i); // mark |i| and |j| as neighbours in new diagram
 
 	int diff=orbits[i].length()-orbits[j].length();
 	if (diff==0) // equal length
 	{ // then copy Cartan entries
-	  const Multiplicity m = diag.edge_multiplicity(ii,jj);
+	  const Multiplicity m = edge_multiplicity(ii,jj);
 	  if (m>1)
 	  {
-	    if (diag.Cartan_entry(ii,jj)<-1)
-	      d_downedge.push_back (std::make_pair(Edge(i,j),m));
+	    if (Cartan_entry(ii,jj)<-1)
+	      result.d_downedge.emplace_back(Edge(i,j),m);
 	    else
-	      d_downedge.push_back (std::make_pair(Edge(j,i),m));
+	      result.d_downedge.emplace_back(Edge(j,i),m);
 	  }
 	}
 	else // unequal orbit lengths
 	{ // then mark multiplicity 2 edge from longer to shorter orbit
 	  if (diff<0)
-	    d_downedge.push_back (std::make_pair(Edge(i,j),2));
+	    result.d_downedge.emplace_back(Edge(i,j),2);
 	  else
-	    d_downedge.push_back (std::make_pair(Edge(j,i),2));
+	    result.d_downedge.emplace_back(Edge(j,i),2);
 	}
       }
   }
+  return result;
 }
+
 
 /******** accessors **********************************************************/
 
@@ -158,45 +149,14 @@ DynkinDiagram::DynkinDiagram(const ext_gens& orbits, const DynkinDiagram& diag)
 // recover Cartan matrix entry from Dynkin diagram
 int DynkinDiagram::Cartan_entry(unsigned int i,unsigned int j) const
 {
-  if (not star(i)[j])
+  if (not are_adjacent(i,j))
     return i==j ? 2 : 0;
   for (unsigned int k=0; k<d_downedge.size(); ++k)
     if (d_downedge[k].first.first==i and d_downedge[k].first.second==j)
-      return -int(d_downedge[k].second); // -2 or -3
+      return -static_cast<int>(d_downedge[k].second); // -2 or -3
 
   return -1; // simple edge, or labelled edge in short->long direction
 }
-
-
-/*
-  Returns the connected component containing vertex \#i in the diagram.
-
-  We use the class invariant that the adjacency matrix is symmetric, so that
-  connected components are equivalence classes for reachability
-
-  The algorithm is to start with |i|, and to construct "shells" from there, by
-  taking each new shell to be the elements of the union of the stars of the
-  old shell, that were not already considered. Since bitset iterators copy
-  their bitset at construction, adding to |newElts| in the inner loop will not
-  affect that iteration itself (but the logic would not be broken if it did).
- */
-RankFlags DynkinDiagram::component(unsigned int i) const
-{
-  RankFlags c; // result: the connected component of $i$ computed below
-  RankFlags newElts;
-  newElts.set(i);
-
-  while (newElts.any())
-  {
-    c |= newElts; // transfer to |c|
-    for (RankFlags::iterator it = newElts.begin(); it(); ++it)
-      newElts |= d_star[*it];
-    newElts.andnot(c); // bits that remain are those that were set this loop
-  }
-
-  return c;
-}
-
 
 // Find the set of terminal nodes (degree one or zero) of the graph.
 RankFlags DynkinDiagram::extremities() const
@@ -204,8 +164,7 @@ RankFlags DynkinDiagram::extremities() const
   RankFlags e;
 
   for (unsigned int i = 0; i < d_star.size(); ++i)
-    if (d_star[i].count() <= 1)
-      e.set(i);
+    e.set(i,d_star[i].count() <= 1);
 
   return e;
 }
@@ -254,20 +213,67 @@ unsigned int DynkinDiagram::fork_node() const
   return rank();
 }
 
-LieType DynkinDiagram::Lie_type() const
-{
-  RankFlagsList cl = components(*this);
 
-  LieType result;
-  result.reserve(cl.size());
-  for (unsigned int i = 0; i < cl.size(); ++i)
+/*
+  Return the connected component containing vertex number|i| in the diagram.
+
+  We use the class invariant that the adjacency matrix is symmetric, so that
+  connected components are equivalence classes for reachability
+
+  The algorithm is to start with |i|, and to construct "shells" from there, by
+  taking each new shell to be the elements of the union of the stars of the
+  old shell, that were not already considered. Since bitset iterators copy
+  their bitset at construction, adding to |newElts| in the inner loop will not
+  affect that iteration itself (but the logic would not be broken if it did).
+ */
+RankFlags DynkinDiagram::component(unsigned int i) const
+{
+  RankFlags result, new_elts;
+  new_elts.set(i);
+
+  while (new_elts.any())
   {
-    DynkinDiagram cd(cl[i],*this);
-    result.push_back(SimpleLieType(cd.type_of_componenent(),cd.rank()));
+    result |= new_elts; // transfer
+    for (RankFlags::iterator it = new_elts.begin(); it(); ++it)
+      new_elts |= d_star[*it];
+    new_elts.andnot(result); // remove any bits that were already previouslt set
   }
 
   return result;
 }
+
+// Return our decomposition into connected components, a list of subsets
+containers::sl_list<RankFlags> DynkinDiagram::components() const
+{
+  containers::sl_list<RankFlags> result;
+  RankFlags remainder; remainder.fill(rank());
+  while(remainder.any())
+  {
+    RankFlags c = component(remainder.firstBit());
+    remainder.andnot(c); // remove current component from remainder
+    result.push_back(c);
+  }
+
+  return result;
+}
+
+// Return the (semisimple) Lie type of the Cartan matrix |cm|
+LieType Lie_type(const int_Matrix& cm)
+{
+  DynkinDiagram diagram(cm);
+  const auto cl = diagram.components();
+
+  LieType result;
+  result.reserve(cl.size());
+  for (auto it=cl.begin(); it!=cl.end(); ++it)
+  {
+    auto cd = diagram.subdiagram(*it);
+    result.emplace_back(cd.component_kind(),cd.rank());
+  }
+
+  return result;
+}
+
 
 /*
   Precondition: any constructed Dynkin diagram is acceptable
@@ -278,45 +284,45 @@ LieType DynkinDiagram::Lie_type() const
 
   The detected semisimple Lie type is returned.
 */
-LieType DynkinDiagram::normalise_components(Permutation& a,bool Bourbaki) const
+LieType DynkinDiagram::classify_semisimple(Permutation& a,bool Bourbaki) const
 {
-  const RankFlagsList cl = components(*this);
+  const auto cl = components();
   a = order_by_components(cl,rank());
 
   unsigned int offset = 0;
   LieType result; result.reserve(cl.size());
-  for (unsigned int i = 0; i < cl.size(); ++i)
+  for (auto it=cl.begin(); it!=cl.end(); ++it)
   {
     // make a Dynkin diagram for the connected component
-    DynkinDiagram cd(cl[i],*this);
+    auto cd = subdiagram(*it);
 
     // normalize it
     Permutation b;
-    result.push_back(cd.normalise_component(b,Bourbaki));
+    result.push_back(cd.classify_simple(b,Bourbaki));
 
     // piece together the permutation
     permutations::compose(a,b,offset);
 
     // update offset
-    offset += cl[i].count();
+    offset += it->count();
   }
   return result;
-} // |normalise_components|
+} // |classify_semisimple|
 
 
 /*
   Precondition : the current object is a connected Dynkin diagram;
 
   Postcondition : |pi| holds a permutation which enumerates the vertices of
-  |d| in an order that will induce a normal form of |*this|; a CartanError
+  |d| in an order that will induce a normal form of |*this|; a Cartan_error
   will be thrown (either here or in helper) in case it is not a valid diagram
 
   It is just a dispatching function for the various possible simple types.
 */
 SimpleLieType
-DynkinDiagram::normalise_component(Permutation& pi, bool Bourbaki) const
+  DynkinDiagram::classify_simple(Permutation& pi, bool Bourbaki) const
 {
-  lietype::TypeLetter x = type_of_componenent();
+  lietype::TypeLetter x = component_kind();
 
   switch (x)
   {
@@ -338,10 +344,10 @@ DynkinDiagram::normalise_component(Permutation& pi, bool Bourbaki) const
     pi = Permutation(); // will provoke the error below
   }
   if (pi.size()!=rank())
-    throw error::CartanError();
+    throw error::Cartan_error();
 
   return SimpleLieType(x,rank());
-}
+} // |classify_simple|
 
 
 /*
@@ -351,7 +357,7 @@ DynkinDiagram::normalise_component(Permutation& pi, bool Bourbaki) const
 
   Precondition : |d| is connected (and therefore not empty)
 */
-lietype::TypeLetter DynkinDiagram::type_of_componenent() const
+lietype::TypeLetter DynkinDiagram::component_kind() const
 {
   if (rank()<=2) // types A1,A2,B2,C2,G2 are validly possible
     switch (edge_label())
@@ -367,7 +373,7 @@ lietype::TypeLetter DynkinDiagram::type_of_componenent() const
   {
     RankFlags extr = extremities();
     if (extr.count()<2)
-      throw error::CartanError();
+      throw error::Cartan_error();
     unsigned int fork = fork_node();
     if (fork==rank()) // diagram is linear
       switch (edge_label())
@@ -387,39 +393,9 @@ lietype::TypeLetter DynkinDiagram::type_of_componenent() const
 	return short_arms.count() == 1 ? 'E' : 'D';
     }
   }
-  throw error::CartanError();
-}
+  throw error::Cartan_error();
+} // |DynkinDiagram::component_kind|
 
-
-
-/*****************************************************************************
-
-        Chapter II -- Functions declared in dynkin.h
-
-******************************************************************************/
-
-/*
-  Returns the decomposition of |d| into connected components, a list of subsets
-
-  We use the class invariant that the adjacency matrix is symmetric, so that
-  connected components are equivalence classes for reachability
-*/
-RankFlagsList components(const DynkinDiagram& d)
-{
-  RankFlagsList cl;
-
-  RankFlags remainder; remainder.fill(d.rank());
-
-  while(remainder.any())
-  {
-    unsigned int i = remainder.firstBit();
-    RankFlags c = d.component(i);
-    cl.push_back(c);
-    remainder.andnot(c); // remove current component from remainder
-  }
-
-  return cl;
-}
 
 /*
   Return a permutation such that successive intervals of simple roots form
@@ -430,20 +406,14 @@ RankFlagsList components(const DynkinDiagram& d)
 Permutation normalize(const DynkinDiagram& d)
 {
   Permutation result;
-  d.normalise_components(result,false);
+  d.classify_semisimple(result,false);
   return result;
-}
-
-// Returns the (semisimple) Lie type of the Cartan matrix |cm|
-LieType Lie_type(const int_Matrix& cm)
-{
-  return DynkinDiagram(cm).Lie_type();
 }
 
 
 
 /*
-  Returns the (semisimple) Lie type of the Cartan matrix cm, also sets |pi|
+  Return the (semisimple) Lie type of the Cartan matrix cm, also sets |pi|
   to the permutation from the standard ordering of simple roots for that type.
 
   Standard ordering is taken as Bourbaki ordering if |Bourbaki| holds,
@@ -460,14 +430,14 @@ LieType Lie_type(const int_Matrix& cm,
   if (check)
   {
     if (cm.numRows()!=cm.numColumns())
-      throw error::CartanError();
+      throw error::Cartan_error();
     if (cm.numRows()>constants::RANK_MAX) // throw a different error type here
       throw std::runtime_error("Rank of matrix exceeds implementation limit");
   }
 
   DynkinDiagram d(cm);
 
-  LieType result = d.normalise_components(pi,Bourbaki);
+  LieType result = d.classify_semisimple(pi,Bourbaki);
 
   if (check)
   {
@@ -477,12 +447,12 @@ LieType Lie_type(const int_Matrix& cm,
       if ((slt.type()=='E' and slt.rank()>8) or
 	  (slt.type()=='F' and slt.rank()>4) or
 	  (slt.type()=='G' and slt.rank()>2))
-	throw error::CartanError();
+	throw error::Cartan_error();
     }
     for (unsigned int i=0; i<d.rank(); ++i)
       for (unsigned int j=0; j<d.rank(); ++j)
 	if (cm(pi[i],pi[j])!=result.Cartan_entry(i,j))
-	  throw error::CartanError();
+	  throw error::Cartan_error();
    }
   return result;
 
@@ -498,7 +468,7 @@ Permutation bourbaki(const DynkinDiagram& d)
 {
   // do the normalization as in normalize, but with Bourbaki ordering
   Permutation result;
-  d.normalise_components(result,true);
+  d.classify_semisimple(result,true);
 
   return result;
 }
@@ -518,13 +488,14 @@ namespace {
   are numbered by successive indices. The result maps these indices back
   to their original positions.
 */
-Permutation order_by_components(const RankFlagsList& cl, unsigned int r)
+Permutation order_by_components
+  (const containers::sl_list<RankFlags>& cl, unsigned int r)
 {
   Permutation result; result.reserve(r);
 
   // traverse each component, write down its elements in sequence
-  for (unsigned int i = 0; i<cl.size(); ++i)
-    std::copy(cl[i].begin(),cl[i].end(),std::back_inserter(result));
+  for (auto it=cl.begin(); it!=cl.end(); ++it)
+    std::copy(it->begin(),it->end(),std::back_inserter(result));
 
   assert (result.size()==r); // check that correct rank was passed
   return result;
@@ -671,7 +642,7 @@ Permutation typeENormalize(const DynkinDiagram& d)
 
   Permutation a;
   if (r<6 or r>8 or fork_star.count()!=3 or extr.count()!=3)
-    throw error::CartanError();
+    throw error::Cartan_error();
 
   RankFlags short_arms = fork_star & extr;
   assert(short_arms.count()==1); // this was what caused type E classification
@@ -682,7 +653,7 @@ Permutation typeENormalize(const DynkinDiagram& d)
   if (inter.none()) // skip end point long arm
     inter = d.star(*++it) & fork_star;
   if (inter.none()) // still long arm? then something is wrong
-    throw error::CartanError();
+    throw error::Cartan_error();
 
   a.push_back(*it);                   // end middle arm
   a.push_back(short_arms.firstBit()); // short arm

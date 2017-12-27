@@ -1,7 +1,14 @@
 <basic.at
 
-: poly = vec { in this file vectors will represent polynomials }
+set_type
+[ poly = vec { in this file vectors will represent polynomials }
 { poly: [a_0,...,a_n] represents the polynomial a_0+a_1q+...+a_nq^n }
+
+, poly_mat = [[poly]] { by row }
+{ polynomial matrices are grouped by row, unlike mat values, which the axis
+  language implicitly (for loops, simple indexing) considers as by columns }
+
+]
 
 { addition of vectors (overrides definition in basic.at) to allow vectors of
   possibly different lengths, implicitly extending on the right by zeros as
@@ -71,10 +78,6 @@ set divide(poly p,poly d) = (poly,poly):
 
 {			  Polynomial matrices				}
 
-{ polynomial matrices are grouped by row, unlike mat values, which the axis
-  language implicitly (for loops, simple indexing) considers as by columns
-}
-: poly_mat = [[poly]] { by row }
 
 set shape (poly_mat M) = (int,int): if =#M then (0,0) else (#M,#M[0]) fi
 

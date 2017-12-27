@@ -21,6 +21,26 @@
   square (i,j), and the entries indicate whether (i,j) from the row match that.
 }
 
+
+{ the "class" type, used later to represent manipulalable board positions }
+
+set_type
+  game_interface =
+  ( (int->bool) available { available(choice): whether |choice| is allowed }
+  , (int,int->bool) covered
+    { (g,co)->whether constraint |co| in group|g| is already covered }
+  , (int,int->[int]) options { (g,co)->options for constraint |co|, group|g| }
+  , (int,int->int) opt_count { (g,co)->number of (remaining) options above }
+  , (->int) level  { number of currently active choices }
+  , (->mat) board  { current position, as matrix with entries 0 or 1-9 }
+  , (->vec) moves  { list of choices made so far }
+  , (int->int,int) best { hint for best way to proceed, per group (0-3) }
+    { (c,m)=best(group): constraint |c| with fewest (|m|) options in |group| }
+  , (int->) choose { choose(choice): do choice and update internal data }
+  , (->) unchoose  { backtrack, undo the last choice currently recorded }
+  )
+
+
 { This fixed {0,1} matrix is only present implicitly. Given that each row has
   a single entry 1 in each group, there are 4 functions, one for each group,
   that return the column with this entry. In the transpose direction, each
@@ -71,23 +91,6 @@ set ch_of_co = [(int,int->int)]:
 set name_co = [(int->string)]:
   [ name_constraint0@(int), name_constraint1@(int)
   , name_constraint2@(int), name_constraint3@(int) ]
-
-{ the "class" type, used later to represent manipulalable board positions }
-
-: game_interface =
-  ( (int->bool) available { available(choice): whether |choice| is allowed }
-  , (int,int->bool) covered
-    { (g,co)->whether constraint |co| in group|g| is already covered }
-  , (int,int->[int]) options { (g,co)->options for constraint |co|, group|g| }
-  , (int,int->int) opt_count { (g,co)->number of (remaining) options above }
-  , (->int) level  { number of currently active choices }
-  , (->mat) board  { current position, as matrix with entries 0 or 1-9 }
-  , (->vec) moves  { list of choices made so far }
-  , (int->int,int) best { hint for best way to proceed, per group (0-3) }
-    { (c,m)=best(group): constraint |c| with fewest (|m|) options in |group| }
-  , (int->) choose { choose(choice): do choice and update internal data }
-  , (->) unchoose  { backtrack, undo the last choice currently recorded }
-  )
 
 set setup_grid = ( mat-> game_interface ): { constructor }
 let !e81=[vec]: id_mat(81) { constant, available like a class static value }

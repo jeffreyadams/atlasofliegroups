@@ -178,25 +178,25 @@ subspace_normal: (mat->mat,mat,mat,[int]) normalized modulo-2 basis
 
 Lie_type: (string->LieType): interpret string as Lie type.
   Factors are one of "ABCDEFGT" followed by a number; several factors can be
-  concatenated in a string with optional punctuation. Must have total rank<=16
+  concatenated in a string with optional punctuation. Must have total rank<=32
+extend: (Lie_type,string,int->Lie_type): add a single (type,rank) pair to type
+  In extend(lt,t,r), a factor (type,r) is added to the Lie type lt, where type
+  is given by the first character of t (or is 'T' if t is the empty string).
+operator * : (LieType,LieType->LieType): concatenate Lie types
 Lie_type: (RootDatum->LieType): Lie type of a root datum.
+
+operators =, != : (LieType,LieType->bool) equality of Lie types (order matters)
+operator % : (LieType->[string,int]) Expand into row of simple factors codes
+  Each simple factor is described by a one-letter string and an integer rank,
+  while factors ("T",1) are contributions to the central torus
 
 Cartan_matrix: (LieType->mat): Cartan matrix of Lie type (square of size rank).
   A block form Cartan matrix, with zeros in rows and columns of torus factors
-Cartan_matrix: (RootDatum->mat): Cartan matrix of root datum.
-  This pairs roots and coroots, so it is square, of size the semisimple rank.
-  By force of convention, rows correspond to roots and columns to coroots.
-
-Cartan_matrix_type: (mat->LieType,vec): type given by Cartan matrix.
+Cartan_matrix_type: (mat->LieType,[int]): type given by Cartan matrix.
   The input should be a Cartan matrix for a semisimple type (no zero rows or
   columns). The function returns the semisimple type, and the permutation of
   mapping the standard (Bourbaki) ordering of the diagram of that type to the
   ordering of the corresponding simple roots in matrix rows and columns.
-
-rank: (LieType->int) Rank of the weight lattice for this Lie type.
-semisimple_rank: (LieType->int) Rank of the root lattice of this Lie type.
-operator # : (LieType->int) Number of (simple or T1) factors in this Lie type
-operator % : (LieType->[LieType]) Expand into row of simple factors (or T1)
 
 Smith_Cartan: (LieType->mat,vec): generators of weights modulo roots.
   Find a Smith basis for the weight lattice relative to the sublattice of
@@ -227,35 +227,39 @@ replace_gen: ((mat,vec),mat->mat): replace generators of weight lattice.
   from the second matrix. Both matrices must have the same column size; like
   for 'filter_units' the vector may be short, missing entries being not 1.
 
-involution: (LieType,string->mat): diagram involution for inner class.
-  Return an involution matrix corresponding to the diagram involution
-  described symbolically by the string, which is interpreted as the inner
-  class string is in the Atlas, where 'e' or 'c' mean compact (equal rank),
-  'u' means unequal rank (for types A_n with n>1, D_n and E_6), 's' means
-  split and 'C' means Complex. This is essentially a permutation matrix,
-  except that for the split type on torus factors there is a diagonal entry -1
+involution: (LieType,[int],string->mat): diagram involution for inner class.
+  Return an involution matrix for simply connected times central torus datum,
+  given by the Lie type and the permutation (second argument, which maps
+  positions in the diagram to positions in the root list), the involution being
+  described symbolically by the string. It is interpreted as the inner class
+  string is in Fokko, where 'e' or 'c' mean compact (equal rank), 'u' means
+  unequal rank (for types A_n with n>1, D_n and E_6), 's' means split, and
+  'C' means Complex. The result is almost always a permutation matrix, but for
+  the split type on (central) torus factors there is a diagonal entry -1
 involution: (LieType,mat,string->mat): basic involution on given basis.
   This is like previous 'involution' for the same Lie type and inner class
   string, but the involution matrix is now expressed the given basis given by
   the columns of the matrix specified as second argument; this expression must
   be possible, so the sublattice spanned should be stable under the involution
 
-root_datum: (mat,mat->RootDatum): root datum from simple (co)root systems.
+root_datum: (mat,mat,bool->RootDatum): root datum from simple (co)root systems.
   In root_datum(roots,coroots), matrices roots and coroots must have the same
   dimensions (rank x semisimple rank); their columns give the desired systems
   of simple roots respectively simple coroots. The matrix of pairings of roots
   and coroots should be a valid Cartan matrix. A root datum with those systems
-  of simple roots and simple coroots is returned.
-root_datum: (LieType,mat->RootDatum): root datum for given type and sublattice.
+  of simple roots and simple coroots is returned. The final argument tells
+  whether the coroots rather than the roots should be ordered by increasing
+  level (in all cases corresponding roots ad coroots are at the same index).
+root_datum: (LieType,mat,bool->RootDatum): root datum from type and sublattice.
   The columns of the matrix argument are interpreted as specifying the basis
   of a sublattice of the character lattice of the "simply connected" group G
   of the given Lie type (which is a direct product of a simply connected
   semisimple group G' and a central torus S), expressed in the basis of
   fundamental weights of G' and an arbitrary basis for characters of S). For
   this to be possible, it is required that the sublattice contain the root
-  lattice of G'. The sublattice becomes the standard lattice for working with
-  the root datum, and is identified with Z^n using the given basis, which thus
-  becomes the standard basis of the sublattice, henceforth called lattice.
+  lattice of G'. The sublattice becomes the standard lattice X^* for the root
+  datum, and is identified with Z^n using the given basis. The final argument
+  has the same meaning as when constructing from simple (co)root matrices.
 root_datum: (RootDatum,mat->RootDatum): root datum for sublattice in old one
   This is like root_datum@(LieType,mat), but starting from the specified root
   datum rd rather than from the simply connected one for the Lie type. The
@@ -264,37 +268,26 @@ root_datum: (RootDatum,mat->RootDatum): root datum for sublattice in old one
 root_datum: (InnerClass->RootDatum): root datum of inner class.
   Extract the root datum from the InnerClass value
 
-quotient_basis: (LieType,[ratvec]->mat): sublattice given by kernel generators.
-  Interpret the rational vectors as kernel generators for the given type, as
-  in the atlas program, and return the corresponding sublattice as a matrix
-  whose column are its generators. More precisely, the rational vectors
-  represent linear combinations of certain coweights in the dual basis to a
-  basis of the weight lattice adapted to the root lattice; for those weights
-  in the latter basis that already lie in the root lattice, the corresponding
-  coweight is omitted, since there are no useful rational multiples of it
-  anyway. Return a basis for the sublattice of X^* of weights on which all
-  kernel generators have integer evaluation. If M is the matrix whose columns
-  are the numerators of the kernel generators, brought to a common denominator
-  d, this amounts to setting S=Smith_Cartan(type) and (C,)=filter_units(S),
-  and then returning the value replace_gen(S,C*ann_mod(M,d)).
-  This function is intended for use in constructing root data; see basic.at
+operators =, != : (RootDatum,RootDatum->bool) equality of Root data
+  Tests identical simple_roots, simple_coroots matrices, and prefers_coroots
+prefers_coroots: (RootDatum->bool): whether coroots were used for generation
+  This recovers the attribute governing the order of roots and coroots, set
+  during construction from argument or inheriting from an earlier root datum.
+Cartan_matrix: (RootDatum->mat): Cartan matrix of root datum.
+  This pairs roots and coroots, so it is square, of size the semisimple rank.
+  By force of convention, rows correspond to roots and columns to coroots.
 
-simply_connected: (LieType->RootDatum): simply connected datum for given type.
-  This gives the root datum for the "simply connected" group of the given
-  type (the direct product of a simply connected G' with a central torus):
-    set simply_connected_datum(LieType type) = root_datum(type,id_mat(rank))
+simply_connected: (LieType,bool->RootDatum): "simply connected" datum for type.
+  This gives the root datum for the "simply connected" group of the given type
+  (the direct product of a simply connected G' with a central torus): one has
+    simply_connected_datum(type,b) = root_datum(type,id_mat(rank),b)
+  The final argument has the 'refers_coroots' meaning, as in root_datum versions
 
-adjoint: (LieType->RootDatum): adjoint root datum for given type.
+adjoint: (LieType,bool->RootDatum): "adjoint" root datum for given type.
   Here the sublattice for the semisimple factor is the root lattice, with
   simple roots as basis; for the central torus an arbitrary basis is used.
-  Therefore the this function could be defined as
-    set adjoint_datum(LieType type) =
-    let M= for alpha@j in ^Cartan_matrix(type)
-           do for entry@i in alpha
-              do if i=j and entry=0 then 1 else entry fi
-              od
-           od
-    in root_datum(type,M)
+  Dual to simply_connected: adjoint(type,b) = dual(simply_connected(type,not b))
+  The final argument has the 'refers_coroots' meaning, as in root_datum versions
 
 root, coroot: (RootDatum,int->vec): root/cooroot with given index in root system
   Indexing is from -nr_of_posroots(rd) upto nr_of_posroots(rd)-1, with
@@ -355,6 +348,21 @@ integrality_points: (RootDatum,ratvec->[rat]): fractions with integrality
   positive fractions f<=1 so f*lambda has more integrality than generically:
   for some coroot alphav one has integral and nonzero value <alphav,f*lambda>.
 
+quotient_basis: (LieType,[ratvec]->mat): sublattice given by kernel generators.
+  Interpret the rational vectors as kernel generators for the given type, as
+  in the Fokko program, and return the corresponding sublattice as a matrix
+  whose column are its generators. More precisely, the rational vectors
+  represent linear combinations of certain coweights in the dual basis to a
+  basis of the weight lattice adapted to the root lattice; for those weights
+  in the latter basis that already lie in the root lattice, the corresponding
+  coweight is omitted, since there are no useful rational multiples of it
+  anyway. Return a basis for the sublattice of X^* of weights on which all
+  kernel generators have integer evaluation. If M is the matrix whose columns
+  are the numerators of the kernel generators, brought to a common denominator
+  d, this amounts to setting S=Smith_Cartan(type) and (C,)=filter_units(S),
+  and then returning the value replace_gen(S,C*ann_mod(M,d)).
+  This function is intended for use in constructing root data; see basic.at
+
 classify_involution: (mat->int,int,int): determine type of lattice involution
   For any linear involution of Z^n, there is a basis consisting of certain
   vectors that are eigenvectors with eigenvalues 1 or -1 for the involution,
@@ -376,13 +384,7 @@ twisted_involution (RootDatum,mat->InnerClass,vec): inner_class and Weyl word
   (twisted involution) that expresses the given involution in that inner
   class. The latter is a reduced word (with Weyl group generators numbered
   from 0), to be left-multiplied to the distinguished involution.
-inner_class: (RootDatum,string->InnerClass): get inner class of G symbolically
-  Build a complex reductive group directly from a root datum, but compute
-  the distinguished involution from the string describing it symbolically.
-    set inner_class(RootDatum rd,string type)=
-    let t=Lie_type(rd); basis = ^coroot_radical(rd)
-    in inner_class(rd,involution(t,basis,type))
-inner_class: (Lie_type,[ratvec],string->InnerClass): inner class as in Atlas
+inner_class: (Lie_type,[ratvec],string->InnerClass): inner class as in Fokko
     set inner_class(Lie_type lt,[ratvec] gens,string ic_string) =
     let basis=quotient_basis(lt,gens)
     ; rd=root_datum(lt,basis), inv=based_involution(lt,basis,ic_string)
@@ -401,12 +403,12 @@ nr_of_dual_real_forms: (InnerClass->int): number of dual forms in inner class
 nr_of_Cartan_classes: (InnerClass->int): total number of Cartans in inner class
 
 block_sizes: (InnerClass->mat): matrix giving the block sizes.
-  This is essentially the same as the output of 'blocksizes' in Atlas; the
+  This is essentially the same as the output of 'blocksizes' in Fokko; the
   rows of the matrix correspond to real forms for the inner class, and the
   columns correspond to dual real forms for the inner class
 
 form_names: (InnerClass->[string]): list of names of real forms.
-  These are the same names used in atlas, describing real Lie algebras
+  These are the same names used in Fokko, describing real Lie algebras
 dual_form_names: (InnerClass->[string]): list of names of dual real forms.
   These are the names for the real forms of the dual InnerClass value
 
@@ -623,7 +625,7 @@ operators =, != : (KGBElt,KGBElt): equality of elements of a same KGB set
   Equality of KGB elements implies equality of their real forms, and thereby
   the fact that they have identical (not created separately) inner classes
 
-block: (RealForm,RealForm->Block): construct traditional atlas block
+block: (RealForm,RealForm->Block): construct traditional block as in Fokko
 %: (Block->RealForm,RealForm): decompose block, inverse of 'block'
 #: (Block->int): number of elements of block
 element: (Block,int->KGBElt,KGBElt): KGB and dual KGB values for block element
@@ -927,14 +929,14 @@ extended_KL_block: (Param,mat->[Param],mat,vec): extended KL data for deform
   of the result is meant to be directly usable in the deformation algorithm.
 
 print_gradings: (CartanClass,RealForm->): print gradings defined by real form
-  This more or less gives the output of the 'gradings' command in the Atlas
-  software, for the selected real form. The type of the imaginary root system
-  is printed, with the numbers of the roots that span this root subsystem as
-  simple roots, in the Bourbaki ordering for its type. Then for each element
-  in the list produced by fiber_part for the same arguments, the grading of
-  the imaginary root system is given as a sequence of bits 0 (compact) or 1
-  (non-compact), to be interpreted on the simple roots in the given order, and
-  extended to the whole imaginary root subsystem as a Z/2Z grading.
+  This more or less gives the output of the 'gradings' command in Fokko, for the
+  selected real form. The type of the imaginary root system is printed, with the
+  numbers of the roots that span this root subsystem as simple roots, in the
+  Bourbaki ordering for its type. Then for each element in the list produced by
+  fiber_part for the same arguments, the grading of the imaginary root system is
+  given as a sequence of bits 0 (compact) or 1 (non-compact), to be interpreted
+  on the simple roots in the given order, and extended to the whole imaginary
+  root subsystem as a Z/2Z grading.
 
 print_real_Weyl: (RealForm,CartanClass->)
 print_strong_real: (CartanClass->)
@@ -952,5 +954,5 @@ print_prim_KL: (Block->):
 print_KL_list: (Block->):
 print_W_cells: (Block->):
 print_W_graph: (Block->):
-  These commands give the output of the corresponding commands of 'atlas'.
+  These commands give the output of the corresponding commands of Fokko.
 

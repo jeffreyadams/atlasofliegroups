@@ -383,14 +383,10 @@ Matrix<C> Matrix<C>::operator* (const Matrix<C>&  m) const
 
 // Express our square matrix on the basis |b| rather than the standard basis
 template<typename C>
-  PID_Matrix<C> PID_Matrix<C>::on_basis(const std::vector<Vector<C> >& b) const
-{
-  assert (base::numRows()==base::numColumns());
-  assert (b.size()==base::numRows());
-
-  PID_Matrix<C> p(b,b.size()); // square matrix
+  PID_Matrix<C> PID_Matrix<C>::on_basis(const PID_Matrix<C>& basis) const
+{ // both |*this| and |basis| are square, and of same size; no need to |assert|
   arithmetic::big_int d;
-  PID_Matrix<C> result(p.inverse(d)* *this *p);
+  PID_Matrix<C> result(basis.inverse(d)* *this *basis);
   return result /= d.convert<C>();
 }
 
@@ -734,6 +730,9 @@ template<typename C>
   return A;
 }
 
+template<typename C>
+  void swap(Matrix_base<C>& A,Matrix_base<C>& B) { A.swap(B); }
+
 
   /*
 
@@ -748,6 +747,7 @@ typedef arithmetic::big_int bigint;
 
 template std::vector<Vector<int> > standard_basis<int>(size_t n);
 template PID_Matrix<int>& operator+=(PID_Matrix<int>&,int);
+template void swap(Matrix_base<int>&,Matrix_base<int>&);
 template void row_apply(Matrix<int>&,const Matrix<int>&,size_t);
 template void column_apply(Matrix<int>&,const Matrix<int>&,size_t);
 
@@ -755,6 +755,7 @@ template class Vector<int>;           // the main instance used
 template class Vector<signed char>;   // used inside root data
 template class Vector<unsigned long>; // for |abelian::Homomorphism|
 template class Vector<Num>;           // numerators of rational vectors
+template class Matrix_base<signed char>;   // used inside root data
 template class Matrix_base<int>;
 template class Matrix_base<bigint>;
 template class Matrix_base<unsigned long>; // for |abelian::Endomorphism|

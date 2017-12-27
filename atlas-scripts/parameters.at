@@ -2,16 +2,17 @@
 
 { various ways of defining parameters }
 
-{ torus_factor, aka "normalized torus factor", is theta-fixed,
-  xi=exp(2\pi i*(torus_factor)/2)exp(2\pi i*rho^\vee/2)\sigma_w\xi_0
-  note over 2 in exp terms, Marc writes e_1(x)=exp(\pi ix)
-  xi=exp(2\pi i*(unnormalized_torus_factor))\sigma_w\xi_0
-   =>
-  unnormalized_torus_factor=(torus_factor+rho^\vee)/2
-  NOTE: (unnormalized_torus_factor-rho^vee/2) is theta-fixed
-     (unnormalized_torus_factor is not theta-fixed)
-  torus_factor=2*unnormalized_torus_factor-rho^\vee
-  probably better not to use unnormalized_torus_factor
+{ torus_factor, aka "normalized torus factor", is $\theta$-fixed,
+  $\xi=\exp_1(torus_factor/2)\exp_1(\rho^\vee/2)\sigma_w\xi_0$ where
+  $\exp_1(t)=\exp(2\pi i t)$ is the "base 1 exponential function"; note
+  "over 2" in those $\exp_1$ terms, Marc writes $\exp_{-1}(x)=\exp(\pi ix)$
+  instead, for which $\xi=\exp_{-1}(torus_factor+\rho^\vee)\sigma_w\xi_0$.
+  Jeff prefers $\xi=exp_1(unnormalized_torus_factor)\sigma_w\xi_0$
+  Therefore:
+   |unnormalized_torus_factor=(torus_factor+rho^\vee)/2|
+   |torus_factor=2*unnormalized_torus_factor-rho^\vee|
+  NOTE: result of |unnormalized_torus_factor| is not $\theta-fixed$
+  probably better not to use |unnormalized_torus_factor|
 }
 set unnormalized_torus_factor (KGBElt x) = ratvec:
   (torus_factor(x)+rho_check(real_form(x)))/2

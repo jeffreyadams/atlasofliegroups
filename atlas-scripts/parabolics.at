@@ -45,16 +45,21 @@ More topics addressed in this file:
 
 <misc.at { for is_simple_root }
 <sort.at { for inv_standardisation }
-<Weylgroup.at
+<Weylgroup.at { for W_word (is also ComplexParabolic); root_datum@W_word }
 <group_operations { for is_relatively_split }
 
-
-{. Data type for a K_orbit on G/P_S, equivalently a K-conjugacy class of
-   parabolics of type S. .}
-: KGPElt    = ([int], KGBElt)
-
-{. Data type for a K_orbit on G/P_S (synonym for KGPElt). .}
-: Parabolic = ([int], KGBElt)  { synonym }
+set_type
+[
+  {. Data type for a K_orbit on G/P_S, equivalently a K-conjugacy class of
+    parabolics of type S. .}
+  KGPElt    = ([int], KGBElt)
+,
+  {. Data type for a K_orbit on G/P_S (synonym for KGPElt). .}
+  Parabolic = ([int], KGBElt)  { synonym }
+,
+  {. Data type for a complex parabolic subrgoup .}
+  ComplexParabolic = (RootDatum,[int])
+]
 
 {. given a list of KGB elements and a function f assigning integers to them,
 sort the list by weakly increasing value of f.  .}
@@ -170,9 +175,6 @@ set KGP_elt (ratvec lambda,KGBElt x) = KGPElt:
   then (lambda_dom,w)=make_dominant(rd,lambda), P=[int]:[]
   in for a@i in simple_coroots(rd) do if a*lambda_dom=0 then P#:=i fi od;
   KGPElt:(P,cross(inverse(w),x))
-
-{. Data type for a complex parabolic subrgoup .}
-: ComplexParabolic = (RootDatum,[int])
 
 {. the complex parabolic underlying P=(S,x). .}
 set complex_parabolic (Parabolic(S,x)) = ComplexParabolic: (root_datum(x),S)

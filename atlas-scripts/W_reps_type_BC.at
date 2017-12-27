@@ -2,7 +2,7 @@
 <sort.at
 <complex_nilpotent_orbits.at
 <partitions.at
-<wreps_type_C.at { for symbol@Orbit }
+<wreps_type_C.at { for types Orbit, Symbol, Wrep, and symbol@Orbit }
 
 {in simple groups of type B or C}
 {
@@ -20,10 +20,6 @@ symbol:
 equivalence: [f_1,.., f_a] -> [0,f_1+1,..., f_a+1], same on g
 every symbol is equivalent to a unique one with a=b+1 and at most one 0
 }
-
-: Orbit=[int]   {partition for type C, all odd rows have even multiplicity}
-: Symbol=[[int]]  {must have 2 parts: [f,g], other conditions above}
-: Wrep  =([int],[int])  {pair of partitions; |p|+|q|=n}
 
 {use equivalence relation on symbols to get one with at most one 0}
 set normalize([int] v)=[int]:
@@ -138,12 +134,13 @@ set special_C_star(Wrep sigma)=string:if is_special_C(sigma) then "*" else "" fi
 
 {this is not correct, the map orbits to symbolsl is not surjective}
 set symbols(RootDatum rd)=[Symbol]:
-    {see nilpotent.at for get_type}
-    assert(#Lie_type(rd)=1,"Only valid for simple root systems");
-    let type=get_type(rd) in
-    assert(type=1 or type=2,"Only valid in types B/C");
-    if type=1 then for P in all_reps_BC(rank(rd)) do symbol(P) od
-    else for P in all_reps_BC(rank(rd)) do symbol(P) od  fi
+   let factors = %rd.Lie_type in
+   assert(#factors=1,"Only valid for simple root systems");
+   let (type,rank)=factors[0] in
+   if   type="B" then for P in all_reps_BC(rank) do symbol(P) od
+   elif type="C" then for P in all_reps_BC(rank) do symbol(P) od
+   else error("Only valid in types B/C")
+   fi
 
 {this is not correct, the map orbits to wreps is not surjective}
 set wreps(RootDatum rd)=[Wrep]:for P in nilpotent_orbit_partitions(rd) do wrep(P) od
