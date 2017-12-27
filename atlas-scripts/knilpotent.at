@@ -22,8 +22,7 @@ set normalize(ratvec v)=vec: ratvec_as_vec(for r in v do r-v~[0] od)
  if (H,x) is given, with H non-dominant, replace it with (wx,wH) 
 }
 
-
-: RealNilpotentOrbit = ([int] H,KGBElt x)
+set_type RealNilpotentOrbit = ([int] H,KGBElt x)
 
 set parabolic_of_orbit(RealNilpotentOrbit O)=Parabolic:parabolic_alt(O.H,O.x)
 
@@ -35,7 +34,7 @@ set Levi_of_orbit(RealNilpotentOrbit O)=RealForm:Levi(parabolic_of_orbit(O))
  (KGBElt,ratvec):mu_L is an L\cap K-type
  ParamPol:Q is the extension defined by mu_L (a ParamPol for G)
 }
-: KNilpotentData = [( RealNilpotentOrbit, [(K_Type,ParamPol)])]
+set_type KNilpotentData = [( RealNilpotentOrbit, [(K_Type,ParamPol)])]
 
 {----------------- some convenient output commands for K-types ------------------}
 
