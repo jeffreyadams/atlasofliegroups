@@ -857,6 +857,11 @@ set highest_root (RootDatum rd) = vec:
 
 set id_W = let e=vec:[] in (RootDatum rd): WeylElt: W_elt(rd,e)
 set W_gen (RootDatum rd, int s) = W_elt (rd,[s])
+set * (WeylElt w,mat theta) = mat: theta.n_rows # for col in theta do w*col od
+set * (mat theta,WeylElt w) = mat:
+  theta.n_columns ^ for row in ^theta do row*w od
+set order (WeylElt !w) = int: let x=w in 1+(int:while !=x do x*:=w od)
+
 set chamber ((RootDatum,vec) rd_lambda) = WeylElt:
   let (w,)=from_dominant(rd_lambda) in w
 set dominant ((RootDatum,vec) rd_lambda) = vec:
