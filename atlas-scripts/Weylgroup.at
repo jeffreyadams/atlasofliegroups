@@ -35,20 +35,6 @@ set non_dominant_index (RootDatum rd, vec v) = int:
 set dual_non_dominant_index (RootDatum rd, vec cowt) = int:
   last(simple_roots(rd),(vec alpha): (cowt*alpha).<)
 
-{ find (v_dom,w) where v_dom is dominant and lambda=act(w,v_dom) }
-set make_dominant ((RootDatum, vec) rd_lambda) = (vec,W_word):
-  let (w,v)=from_dominant(rd_lambda) in (v,w.to_W_word)
-
-{ find (cowt_dom,w) where cowt_dom dominant and cowt=co_act(cowt_dom,w) }
-set dual_make_dominant (RootDatum rd, vec cowt) = (vec,W_word):
-  let (v,w)=from_dominant(cowt,rd) in (v,w.to_W_word)
-
-set make_dominant ((RootDatum, ratvec) rd_gamma) = (ratvec,W_word):
-  let (w,v)=from_dominant(rd_gamma) in (v,w.to_W_word)
-
-set dual_make_dominant (RootDatum rd,ratvec cowt) = (ratvec,W_word):
-  let (v,w)=from_dominant(cowt,rd) in (v,w.to_W_word)
-
 { rho@rootDatum from basic.at; rho(rd,v) in its orbit and in chamber of v: }
 set rho (RootDatum rd, ratvec v) = ratvec: chamber(rd,v)*rho(rd)
 set dual_rho (ratvec cowt,RootDatum rd) = ratvec:
@@ -80,10 +66,6 @@ set from_simple (RootDatum rd, vec alpha) = (WeylElt,vec):
   do alpha := W_gen(rd,i)*alpha; w := w#i
   od; (w,alpha)
 
-{ as |make_simple|, but return change form of returned values }
-set make_simple (RootDatum rd, vec root) = (mat, int):
-  let (w,alpha) = from_simple(rd,root) in (matrix(w),root_index(rd,alpha))
-
 set root_reflection (RootDatum rd, vec alpha) = WeylElt:
   let (w,beta) = from_simple(rd,alpha) in w*W_gen(rd,root_index(rd,beta))*/w
 
@@ -96,9 +78,6 @@ set cross (WeylElt w,KGBElt x) = KGBElt:
 set cross (WeylElt w,Param p) = Param:
   assert(w.root_datum=p.root_datum);
   for s in w.word ~do p:=cross(s,p) od; p
-
-set cross (W_word ww,KGBElt x) = KGBElt: cross(ww.W_elt,x)
-set cross (W_word ww,Param p)  = Param:  cross(ww.W_elt,p)
 
 {		--- translating to dominant gamma ---			}
 
@@ -127,12 +106,6 @@ set translate_to_dominant (Param p) = (Param{dom},vec{shift}):
   in (param(x,lambda_rho+shift,new_gamma),shift)
 
 {      ---------- integrally dominant functions -------------		}
-
-{ using integrality datum for given character makes it integrally dominant
-  note that the resulting W_word is for the integrality datum, not |rd|
-}
-set make_integrally_dominant (RootDatum rd,ratvec v) = (ratvec,W_word):
-  make_dominant(integrality_datum(rd,v),v)
 
 set integrally_from_dominant ((RootDatum,ratvec)(,v):rd_v) = (WeylElt,ratvec):
   from_dominant(integrality_datum(rd_v),v)

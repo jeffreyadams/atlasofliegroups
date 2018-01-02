@@ -172,9 +172,9 @@ set is_closed (KGPElt P) = bool: length(x_min(P))=0
 {. parabolic determined by (the stabilizer in W of) a weight lambda. .}
 set KGP_elt (ratvec lambda,KGBElt x) = KGPElt:
   let rd=root_datum(x)
-  then (lambda_dom,w)=make_dominant(rd,lambda), P=[int]:[]
-  in for a@i in simple_coroots(rd) do if a*lambda_dom=0 then P#:=i fi od;
-  KGPElt:(P,cross(inverse(w),x))
+  then (w,lambda_dom)=from_dominant(rd,lambda)
+  then P = list(semisimple_rank(rd),(int i)bool: coroot(rd,i)*lambda_dom=0)
+  in KGPElt:(P,cross(inverse(w),x))
 
 {. the complex parabolic underlying P=(S,x). .}
 set complex_parabolic (Parabolic(S,x)) = ComplexParabolic: (root_datum(x),S)
@@ -278,7 +278,7 @@ set zero_simple_coroots (RootDatum rd, vec lambda) = [int]:
 {. Parabolic defined by weight lambda; message whether parabolic is real
   or theta-stable. .}
 set parabolic (ratvec lambda,KGBElt x) = Parabolic:
-  let rd=root_datum(x) then (lambda_dom,w)=make_dominant(rd,numer(lambda)) in
+  let rd=root_datum(x) then (w,lambda_dom)=from_dominant(rd,numer(lambda)) in
   let P=
   Parabolic:(zero_simple_coroots(rd,lambda_dom), cross(inverse(w),x)) in
   if is_parabolic_theta_stable(P) then prints("Parabolic is theta-stable.")
@@ -289,7 +289,7 @@ set parabolic (ratvec lambda,KGBElt x) = Parabolic:
 {. Parabolic defined by weight lambda; NO message whether parabolic is real
   or theta-stable. .}
 set parabolic_mute (ratvec lambda,KGBElt x) = Parabolic:
-  let rd=root_datum(x) then (lambda_dom,w)=make_dominant(rd,numer(lambda)) in
+  let rd=root_datum(x) then (w,lambda_dom)=from_dominant(rd,numer(lambda)) in
   let P=
   Parabolic:(zero_simple_coroots(rd,lambda_dom), cross(inverse(w),x)) in
   P
@@ -335,9 +335,10 @@ set zero_simple_roots(RootDatum rd, vec cowt) = [int]:
 {. Parabolic defined by coweight H; message whether parabolic is real
    or theta-stable. .}
 set parabolic_alt (ratvec H,KGBElt x) = Parabolic:
-  let rd=root_datum(x) then (H_dom,w)=dual_make_dominant(rd,numer(H)) in
-  let P=
-  Parabolic:(zero_simple_roots(rd,H_dom), cross(inverse(w),x)) in
+  let rd=root_datum(x)
+  then (H_dom,w)=from_dominant(numer(H),rd)
+  then P= Parabolic:(zero_simple_roots(rd,H_dom), cross(w,x))
+  in
   if is_parabolic_theta_stable(P) then prints("Parabolic is theta-stable.")
   else if is_parabolic_real(P) then prints("Parabolic is real.")
   else prints("The parabolic is neither real nor theta-stable.") fi fi;

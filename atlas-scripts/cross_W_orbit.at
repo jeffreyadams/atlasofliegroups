@@ -1,23 +1,29 @@
 <basic.at
 <Weylgroup.at
 
-{ compute orbit of W(S).x: orbit of KGB element x
-  under simple roots of S of root datum rd,
+{ orbit of |x| by cross actions from |gens|, with example transportin w }
+set cross_sub_orbit ([WeylElt] gens, KGBElt x) = ([KGBElt],[WeylElt]):
+  let rd = x.root_datum then orbit= [x], ws = [id_W(rd)], done=0
+  then absent (KGBElt y) = bool: none(#orbit,(int i)bool:orbit[i]=y)
+  in
+  while done<#orbit
+  do
+    let a=orbit[done], w = ws[done] in done+:=1 { pop |(w,a)| from queue }
+  ; for s in gens
+    do let b=cross(s,a) in
+      if absent(b) then ws #:= s*w ;  orbit #:= b fi
+    od
+  od; (orbit,ws)
 
-  algorithm: keep two lists and a counter
-  words: list of elements of W
-  orbit: list of elements of orbit
-  done: number of pairs in the above for which successors have been computed
-  iteratively, set (w,y) = (W_word,KGBElt) pair at index done; advance done
-  apply each simple reflection j from S to y
-  if s_j.y is not in orbit
-    add  s_j.y to orbit and (s_j*w,s_j.y) to arrays
-  continue until done = #orbit
+set cross_orbit (KGBElt x) = ([KGBElt],[WeylElt]):
+  cross_sub_orbit(x.root_datum.W_gens,x)
 
-  returns: (words, orbit) where orbit is list of elements of orbit,
-  and for each i one has cross(words[i],x)=orbit[i]
-}
+{ solve for w in W in y=cross(w,x); at least one solution should exist }
+set cross_divide (KGBElt y,KGBElt x) = WeylElt:
+  let (orbit,ws)=cross_orbit(x) then i=first(#orbit,(int i)bool:orbit[i]=y) in
+  if i<0 then error("Did not find ",y," in orbit of ",x) fi; ws[i]
 
+{
 set cross_W_orbit_extra([int] S,KGBElt x) = ([W_word],[KGBElt]):
   let rd = RootDatum: real_form(x), words = [[int]:[]], orbit= [x], done=0
   then absent (KGBElt y) = bool:
@@ -39,7 +45,7 @@ set cross_W_orbit (([int],KGBElt) pair) = [KGBElt]:
 
 { assume S=all simple roots }
 set cross_W_orbit_extra(KGBElt x) = ([W_word],[KGBElt]):
-  cross_W_orbit_extra(#semisimple_rank(real_form(x)),x)
+  cross_W_orbit_extra(#x.root_datum.semisimple_rank,x)
 set cross_W_orbit(KGBElt x) =
   cross_W_orbit(#semisimple_rank(real_form(x)),x)
 set cross_W_orbit_W_elements(KGBElt x) = [W_word]:
@@ -52,7 +58,6 @@ set find_W_cross(KGBElt x,KGBElt y) = W_word:
   if >=i then wwords[i] else { fail: } (real_form(x),[-1]) fi
 
 { just the subset of W(S) that applied to x gives a bijection to W(S).x }
-{
   set cross_W_orbit_W_elements ([int] S,KGBElt x) = [W_word]:
     let (words,)=cross_W_orbit_extra(S,x) in words
 }

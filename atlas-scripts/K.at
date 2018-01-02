@@ -43,7 +43,7 @@ set_type
 
 2. KHighestWeight: (KGBElt x_K,vec mu)
   x_K in distinguised fiber defines K
-  recall (see K.at) T_K=H^\delta is abelian subgroup of K_#
+  recall that T_K=H^\delta is abelian subgroup of K_#
   mu\in X^*, viewed as element of X^*/(1-delta)X^*=X^*(T_K)
     (T_K can be disconnected)  is a highest weight for K_#=T_K.K_0
   equivalence includes modding out by (1-delta)X^*, see function = below
@@ -58,24 +58,17 @@ set_type
 
 
 set cocharacter_lattice_K (InnerClass ic) = mat:
-  let delta=distinguished_involution(ic) in
-  if delta=1
-    { band-aid: eigen_lattice(identity) is not necessarily the identity;
-      using identity gives nicest coordinates }
-  then delta
-  else eigen_lattice(^distinguished_involution(ic),1) fi
+  eigen_lattice(^distinguished_involution(ic),1) { id_mat in equal rank case }
 
-{ also want this for x from the fundamental Cartan, not just the
+{ condition testing that x is on the fundamental Cartan, not necessarily in the
   distinguished fiber}
-
 set is_fundamental_Cartan (KGBElt x) =
   none(for a in posroots(root_datum(x)) do is_real(a,x) od)
 
 { in the following function x is required to be on the fundamental Cartan}
 set cocharacter_lattice_K (KGBElt x) = mat:
   assert(is_fundamental_Cartan(x), "x is not on the fundamental Cartan");
-  let theta=involution(x) in
-  if theta=1 then theta else eigen_lattice(^theta,1) fi
+  eigen_lattice(^involution(x),1)
 
 { matrix of projection X^*(H)-> X^*(T_K0)=X^*(H)/X^*(H)^{-theta_x}
   project modulo the -1 eigenspace of the distinguished involution (or theta_x)
@@ -130,9 +123,9 @@ set rank_K (InnerClass ic) = int:
     so theta=delta permutes positive complex roots
   Output: ((G_K_roots,G_K_coroots),(injection matrix,pull_back matrix)
 
-  G_K_roots: posroots of K as elements of X^*(H)
+  G_K_roots: posroots of K as elements of X^*(H) (coordinates of G, not K)
     from all compact imaginary posroots, and one of each complex theta-orbit
-  G_K_coroots: poscoroots of K as elements of X_*(H)^{delta}
+  G_K_coroots: poscoroots of K as elements of X_*(H) (and delta-fixed)
      from compact imaginary poscoroots
      and for each complex theta-orbit, the coweight c.(alpha^v)(1+theta)
        c=1 if  <delta(alpha),alpha^\vee>=0

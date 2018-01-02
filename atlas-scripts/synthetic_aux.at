@@ -24,23 +24,21 @@ set Wword_cross(W_word(rd,w),KGBElt x)=KGBElt:
 
 { The following differs from posroot_Cayley by final call of T only?
   No, there was rho_r(id,..) in some places where rho_r(rd,..) was needed.
-  Ans also there is make_simple(rd,beta) here, but make_simple(id,beta) there
-  Why is the call to T necessary?ut make_simple(id,beta) there.
+  And also there is from_simple(rd,beta) here, but from_simple(id,beta) there
+  Why is the call to T necessary?
   Isn't final parameter(x3,..) already defined at infin. character gamma?
 }
 set my_posroot_Cayley (int i, Param p) = Param:
   let x0=x(p), gamma=infinitesimal_character(p)
   then G = real_form(x0), x3=posroot_Cayley(i,x0), theta0=involution(x0)
   then rd=root_datum(G), theta3=involution(x3)
-  then ()= if denom(coroot(rd,i)*gamma)!=1
-           then error("coroot is not integral for parameter")
-           fi
-  , id = integrality_datum(rd,gamma), beta=root(rd,i)
-  then (w,s) = make_simple(rd,beta)
+  in assert(denom(coroot(rd,i)*gamma)=1,"coroot is not integral for parameter");
+  let id = integrality_datum(rd,gamma), beta=root(rd,i)
+  then (w,alpha) = from_simple(rd,beta)
 { then ()=prints("w:", w) }
   then w1=inverse(w)
   then theta1 = w*theta0*w1 { involution before Cayley by root(id,s) }
-  then theta2 = reflection(rd,s)*theta1 { after that simple imaginary Cayley }
+  then theta2 = reflection(rd,alpha)*theta1 { after that simple Cayley }
 { then ()=prints("theta1:", theta1)
         ; prints("theta2:", theta2)
         ; prints("theta3:", theta3)
@@ -63,10 +61,10 @@ set my_posroot_inv_Cayley (int i, Param p) = Param:
            ,"coroot is not integral for parameter"
            )
 ; let id = integrality_datum(rd,gamma), beta=root(rd,i)
-  then (w,s) = make_simple(id,beta)
+  then (w,alpha) = from_simple(id,beta)
   then w1=inverse(w)
   then theta1 = w*theta0*w1 { involution for Cayley by root(id,s) }
-  then theta2 = reflection(rd,s)*theta1 { for simple imaginary Cayley }
+  then theta2 = reflection(rd,alpha)*theta1 { for simple imaginary Cayley }
   then diff1 = w1*rho_r(rd,theta1) - rho_r(rd,theta0)
   ,    diff2 = w1*rho_r(rd,theta2) - rho_r(rd,theta3)
 { then let()=prints("diff1: ", diff1, " diff 2: "

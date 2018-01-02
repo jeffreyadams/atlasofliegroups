@@ -78,8 +78,9 @@ template<typename C>
 template<typename I>
 Vector<C>& Vector<C>::add (I b, C c)
 {
-  for (auto it=base::begin(); it!=base::end(); ++it,++b)
-    *it += *b * c;
+  if (c!=C(0)) // we may be able to avoid doing anything at all
+    for (auto it=base::begin(); it!=base::end(); ++it,++b)
+      *it += *b * c;
   return *this;
 }
 

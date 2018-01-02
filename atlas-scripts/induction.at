@@ -81,7 +81,7 @@ ________________________
 <coherent.at
 <synthetic.at { for |unnormalized_torus_factor| }
 <K.at
-<W_K.at { for |find_W_cross| }
+<W_K.at { for |cross_divide| }
 <finite_dimensional.at
 
 set ind_verbose=false
@@ -103,8 +103,8 @@ set inverse_embed_KGB (KGBElt x_G,RealForm L) = KGBElt:
 set makeS (mat theta,RootDatum rd) = mat:
   columns_with((int j,vec alpha):posroot_index(rd,theta*alpha)>j,posroots(rd))
 
-{. As the previous function, with argument a KGB element x determining the involution
-   and root datum .}
+{. As the previous function, with argument a KGB element x determining the
+   involution and root datum .}
 set makeS (KGBElt x) = mat: makeS(involution(x),root_datum(x))
 
 {. Half sum of roots in chosen set S of complex roots, described above. .}
@@ -227,9 +227,9 @@ set standardize (Param p) = ParamPol:
   else let p=make_no_Cplus(p)
     then i_root_system=root_datum(simple_imaginary_subsystem(x(p)))
     , lambda=lambda(p)
-    then (lambda_dom,w)=make_dominant(i_root_system,lambda)
-    then p_dom=parameter(x(p), act(inverse(w),lambda), nu(p))
-    in coherent_std_imaginary(w,p_dom)
+    then (w,lambda_dom)=from_dominant(i_root_system,lambda)
+    then p_dom=parameter(x(p), lambda_dom, nu(p))
+    in coherent_std_imaginary(w.to_W_word,p_dom)
   fi
 
 {. standardize a formal linear combination of possibly non-standard parameters .}
@@ -400,19 +400,20 @@ set rho_u_cx_T (Parabolic P) = vec:
 set rho_u_ic (Parabolic P, KGBElt x) = ratvec:
   assert(is_parabolic_theta_stable(P),"P is not theta-stable");
   assert(is_fundamental_Cartan(x),"x is not attached to the fundamental Cartan");
-  if is_in_class_of(x,P) then
-  sum(columns_with(is_compact_imaginary(x),nilrad_roots(P))) / 2 else
-  prints("Warning: x does not belong to the class of P");
-  let y=x_min(P) then w=find_W_cross(x,y) then
-  rho1=sum(columns_with(is_compact_imaginary(y),nilrad_roots(P))) / 2 in
-  act(inverse(w),rho1) fi
+  if is_in_class_of(x,P)
+  then sum(columns_with(is_compact_imaginary(x),nilrad_roots(P))) / 2
+  else prints("Warning: x does not belong to the class of P");
+    let y=x_min(P)
+    then rho1=sum(columns_with(is_compact_imaginary(y),nilrad_roots(P))) / 2
+    in inverse(cross_divide(y,x))*rho1
+  fi
 
 {. Test Function .}
 set rho_u_ic_alt (Parabolic P, KGBElt x) = ratvec:
   assert(is_fundamental_Cartan(x),"x is not attached to the fundamental Cartan");
-   let y=x_min(P) then w=find_W_cross(x,y) then
+   let y=x_min(P) then w=cross_divide(y,x) then
   rho1=sum(columns_with(is_compact_imaginary(y),nilrad_roots(P))) / 2 in
-  act(inverse(w),rho1)
+  inverse(w)*rho1
 
 {. Sum of compact roots (of $\mathfrak t$) in $\mathfrak u$ for theta-stable parabolic P, with respect to (fundamental) x; warning message if x is not
   in the class of P .}
@@ -421,14 +422,14 @@ set two_rho_u_cap_k (Parabolic P,KGBElt x) = vec:
   if is_in_class_of(x,P) then
   ratvec_as_vec(rho_u_cx_T(P)+2*rho_u_ic(P,x)) else
   prints("Warning: x does not belong to the class of P.");
-  let y=x_min(P) then w=find_W_cross(x,y) in
-  act(inverse(w),ratvec_as_vec(rho_u_cx_T(P)+2*rho_u_ic(P,y))) fi
+  let y=x_min(P) then w=cross_divide(y,x) in
+  inverse(w)*ratvec_as_vec(rho_u_cx_T(P)+2*rho_u_ic(P,y)) fi
 
 {. Test Function .}
 set two_rho_u_cap_k_alt (Parabolic P,KGBElt x) = vec:
   assert(is_fundamental_Cartan(x),"x is not attached to the fundamental Cartan");
-  let y=x_min(P) then w=find_W_cross(x,y) in
-  act(inverse(w),ratvec_as_vec(rho_u_cx_T(P)+2*rho_u_ic(P,y)))
+  let y=x_min(P) then w=cross_divide(y,x) in
+  inverse(w)*ratvec_as_vec(rho_u_cx_T(P)+2*rho_u_ic(P,y))
 
 {. Sum of non-compact roots in $\mathfrak u$ (for theta-stable parabolic),
 warning message if (fundamental) x is not in the class of P. .}
@@ -437,8 +438,8 @@ set two_rho_u_cap_s (Parabolic P,KGBElt x) = vec:
   if is_in_class_of(x,P) then
   ratvec_as_vec(2*rho_u(P))-two_rho_u_cap_k(P,x) else
   prints("Warning: x does not belong to the class of P.");
-  let y=x_min(P) then w=find_W_cross(x,y) in
-  act(inverse(w),ratvec_as_vec(2*rho_u(P))-two_rho_u_cap_k(P,y)) fi
+  let y=x_min(P) then w=cross_divide(y,x) in
+  inverse(w)*ratvec_as_vec(2*rho_u(P))-two_rho_u_cap_k(P,y) fi
 
 {these give the same restriction to T_K0, but aren't necessarily integral:}
 {. Half sum of compact roots in $\mathfrak u$ for theta-stable parabolic;
@@ -447,14 +448,14 @@ set rho_u_cap_k (Parabolic P,KGBElt x) = ratvec:
   assert(is_fundamental_Cartan(x),"x is not attached to the fundamental Cartan");
    if is_in_class_of(x,P) then rho_u_cx(P)/2+rho_u_ic(P,x) else
    prints("Warning: x does not belong to the class of P.");
-  let y=x_min(P) then w=find_W_cross(x,y) in
-   act(inverse(w),rho_u_cx(P)/2+rho_u_ic(P,y)) fi
+  let y=x_min(P) then w=cross_divide(y,x) in
+   inverse(w)*rho_u_cx(P)/2+rho_u_ic(P,y) fi
 
 {. Test Function .}
 set rho_u_cap_k_alt (Parabolic P,KGBElt x) = ratvec:
   assert(is_fundamental_Cartan(x),"x is not attached to the fundamental Cartan");
-  let y=x_min(P) then w=find_W_cross(x,y) in
-  act(inverse(w),rho_u_cx(P)/2+rho_u_ic(P,y))
+  let y=x_min(P) then w=cross_divide(y,x) in
+  inverse(w)*rho_u_cx(P)/2+rho_u_ic(P,y)
 
 {. Half sum of non-compact roots in $\mathfrak u$ for theta-stable parabolic;
 warning message if (fundamental) x is not in the class of P. .}
@@ -462,14 +463,14 @@ set rho_u_cap_s (Parabolic P,KGBElt x) = ratvec:
   assert(is_fundamental_Cartan(x),"x is not attached to the fundamental Cartan");
    if is_in_class_of(x,P) then rho_u(P)-rho_u_cap_k(P,x) else
    prints("Warning: x does not belong to the class of P.");
-   let y=x_min(P) then w=find_W_cross(x,y) in
-   act(inverse(w),rho_u(P)-rho_u_cap_k(P,y)) fi
+   let y=x_min(P) then w=cross_divide(y,x) in
+   inverse(w)*rho_u(P)-rho_u_cap_k(P,y) fi
 
 {. Test Function .}
 set rho_u_cap_s_alt (Parabolic P,KGBElt x) = ratvec:
   assert(is_fundamental_Cartan(x),"x is not attached to the fundamental Cartan");
-   let y=x_min(P) then w=find_W_cross(x,y) in
-   act(inverse(w),rho_u(P)-rho_u_cap_k(P,y))
+   let y=x_min(P) then w=cross_divide(y,x) in
+   inverse(w)*rho_u(P)-rho_u_cap_k(P,y)
 
 {. Twist a K-type for a Levi L by minus the sum of non-compact roots in $\mathfrak u$. .}
 set twist_by_minus_2rho_u_cap_s(Parabolic P,Param p_L)=Param:
@@ -597,53 +598,49 @@ lambda_q is dominant
 }
 {. Conjugate the triple (x,lambda, lambda_q) to make lambda_q weakly
   dominant (auxiliary function). .}
-set make_dominant(KGBElt x_in,ratvec lambda_in, ratvec lambda_q_in)=(KGBElt,ratvec,ratvec):
-  let (lambda_q,w)=make_dominant(real_form(x_in),lambda_q_in) in
-  (cross(inverse(w),x_in),act(inverse(w),lambda_in),lambda_q)
+set make_dominant (KGBElt x,ratvec lambda, ratvec lambda_q) =
+    (KGBElt,ratvec,ratvec):
+  let (w,lambda_q_dom)=from_dominant(real_form(x),lambda_q) then w1=/w in
+  (cross(w1,x),w1*lambda,lambda_q_dom)
 
 {. A_q(lambda) module; $\mathfrak q$ is defined by the weight lambda_q; x_in
   must be attached to the fundamental Cartan. The module is defined as a ParamPol,
   in case it is reducible. .}
-set Aq_reducible (KGBElt x_in,ratvec lambda_in, ratvec lambda_q) = ParamPol:
-  let G=real_form(x_in)
+set Aq_reducible (KGBElt x,ratvec lambda, ratvec lambda_q) = ParamPol:
+  let G=real_form(x)
 {find w making lambda_q weakly dominant}
-  then (lambda_q_new,w)=make_dominant(G,lambda_q)
-  then x_new=cross(inverse(w),x_in)
-  then lambda_in_new=act(inverse(w),lambda_in)
-  then P_new=parabolic_mute(lambda_q_new,x_new)
-  then L_new=Levi(P_new)
-  then t_L_new=trivial(L_new)
+  then (w,lambda_q_new)=from_dominant(G,lambda_q)
+  then w1=/w
+  then P_new=parabolic_mute(lambda_q_new,cross(w1,x))
+  then t_L_new=trivial(Levi(P_new))
+  , shift = w1*lambda-rho_u(P_new)
   in
   assert(is_parabolic_theta_stable(P_new),"q is not theta-stable");
-  let pi_L= parameter
-    (x(t_L_new)
-    ,lambda(t_L_new)+lambda_in_new-rho_u(parabolic_mute(lambda_q_new,x_new))
-    ,nu(t_L_new)+lambda_in_new-rho_u(parabolic_mute(lambda_q_new,x_new))
-    )
+  let pi_L= parameter( x(t_L_new), lambda(t_L_new)+shift, nu(t_L_new)+shift )
   in
   assert(dimension(pi_L)=1,"pi_L is not one-dimensional");
   theta_induce_irreducible(pi_L,G)
 
 {. A_q(lambda) module defined as above, but as a parameter, assuming it is
   irreducible. .}
-set Aq (KGBElt x_in,ratvec lambda_in, ratvec lambda_q) = Param:
-  let P=%Aq_reducible(x_in,lambda_in,lambda_q)
+set Aq (KGBElt x_in,ratvec lambda, ratvec lambda_q) = Param:
+  let P=%Aq_reducible(x_in,lambda,lambda_q)
   in assert(#P<=1,"Aq is not irreducible. Use Aq_reducible(x,lambda) instead");
   let (c,p)=P[0]
   in assert(c=1,"Aq has multiplicity. Use Aq_reducible(x,lambda) instead");
   p
 
-{. If not provided, assume lambda_q=lambda_in in the definition of A_q. .}
-set Aq (KGBElt x,ratvec lambda_in) = Param:
-  Aq(x,lambda_in,lambda_in)
+{. If not provided, assume lambda_q=lambda in the definition of A_q. .}
+set Aq (KGBElt x,ratvec lambda) = Param:
+  Aq(x,lambda,lambda)
 
 {. A_q(lambda), specify G, not x, to use x=KGB(G,0). .}
-set Aq (RealForm G,ratvec lambda_in, ratvec lambda_q) = Param:
-  Aq(KGB(G)[0],lambda_in,lambda_q)
+set Aq (RealForm G,ratvec lambda, ratvec lambda_q) = Param:
+  Aq(KGB(G)[0],lambda,lambda_q)
 
-{. A_q(lambda), specify G, not x, and use lambda_q=lambda_in. .}
-set Aq(RealForm G,ratvec lambda_in)=Param:
-  Aq(G,lambda_in,lambda_in)
+{. A_q(lambda), specify G, not x, and use lambda_q=lambda. .}
+set Aq(RealForm G,ratvec lambda)=Param:
+  Aq(G,lambda,lambda)
 
 
 {----------------------Good/Fair conditions------------------}
@@ -671,12 +668,12 @@ set is_weakly_good(KGBElt x_in,ratvec lambda_in,ratvec lambda_q_in)=bool:
 
 {. Decide whether A_q(lambda) is fair. .}
 set is_fair(KGBElt x_in,ratvec lambda_in,ratvec lambda_q_in)=bool:
-  let (x,lambda,lambda_q)=make_dominant(x_in,lambda_in,lambda_q_in)  in
+  let (x,lambda,)=make_dominant(x_in,lambda_in,lambda_q_in) in
   is_strictly_dominant(real_form(x),lambda)
 
 {. Decide whether A_q(lambda) is weakly fair. .}
 set is_weakly_fair(KGBElt x_in,ratvec lambda_in,ratvec lambda_q_in)=bool:
-  let (x,lambda,lambda_q)=make_dominant(x_in,lambda_in,lambda_q_in)  in
+  let (x,lambda,)=make_dominant(x_in,lambda_in,lambda_q_in) in
   is_dominant(real_form(x),lambda)
 
 {. Determine the "goodness" of an Aq(lambda); returns "good", "weakly good",

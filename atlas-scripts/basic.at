@@ -848,19 +848,27 @@ set fundamental_coweights (RootDatum rd) = [ratvec]:
 {.highest root.}
 set highest_root (RootDatum rd) = vec:
 { root data produced by |dual@RootDatum| are not ordered by level, so do work: }
-  let pr=posroots(rd), rho_check=rho_check(rd) in
+  let pr=posroots(rd) in
   if =pr then error("Empty set of roots, none is highest")
-  else pr[for alpha in pr do rho_check*alpha od.max_loc]
+  elif not rd.prefers_coroots { when generated in root order, take short cut }
+  then pr~[0] { since the last generated root will be a high root }
+  else let level=rho_check(rd) in pr[for alpha in pr do level*alpha od.max_loc]
   fi
 
 {                               Weyl group				}
 
 set id_W = let e=vec:[] in (RootDatum rd): WeylElt: W_elt(rd,e)
 set W_gen (RootDatum rd, int s) = W_elt (rd,[s])
+set W_gens (RootDatum rd) = [WeylElt]:
+  for s:rd.semisimple_rank do W_elt(rd,[s]) od
 set * (WeylElt w,mat theta) = mat: theta.n_rows # for col in theta do w*col od
 set * (mat theta,WeylElt w) = mat:
   theta.n_columns ^ for row in ^theta do row*w od
+
 set order (WeylElt !w) = int: let x=w in 1+(int:while !=x do x*:=w od)
+set rho_diff (WeylElt w) = vec: let rho2=w.root_datum.two_rho in (rho2-w*rho2)\2
+set rho_check_diff (WeylElt w) = vec:
+  let rho_check2=w.root_datum.two_rho_check in (rho_check2-rho_check2*w)\2
 
 set chamber ((RootDatum,vec) rd_lambda) = WeylElt:
   let (w,)=from_dominant(rd_lambda) in w
@@ -893,15 +901,6 @@ set ^ = (WeylElt,int->WeylElt):
     fi
   in (WeylElt w,int n) WeylElt:
   if n>0 then power(w,n) elif =n then id_W(root_datum(w)) else /power(w,-n) fi
-
-set word_making_dominant ((RootDatum,ratvec)p) = [int]: p.chamber.inverse.word
-{ equivalent to:
-  (RootDatum rd, ratvec gamma) [int]:
-    while let i = first(semisimple_rank(rd),(int i): <coroot(rd,i)*gamma) in
-       >=i
-    do i next gamma:=reflect(rd,i,gamma)
-    od
-}
 
 set matrix (WeylElt w) = mat: for c in id_mat(w.root_datum.rank) do w*c od
 set W_elt (RootDatum rd, mat M) = WeylElt:

@@ -28,8 +28,7 @@ set choose_by_size ([[int]] list, int n)=[[int]]:
 {. Given a list of integer arrays representing sets of simple roots for a
    given root datum, create the list of corresponding rho(L)'s. .}
 set compute_rhos ([[int]] list, RootDatum rd)=[ratvec]:
-  for S in list do let P=ComplexParabolic:(rd,S) in
-  rho(complex_Levi(P)) od
+  for S in list do rho(complex_Levi(ComplexParabolic:(rd,S))) od
 
 {. Given a list S of integers representing simple roots in a complex group,
    and a list of integer arrays, create the list of arrays whose corresponding
@@ -37,9 +36,8 @@ set compute_rhos ([[int]] list, RootDatum rd)=[ratvec]:
 set conjugates_by_rho (RootDatum rd, [int] S, [[int]] list)=[[int]]:
   let rhos=compute_rhos(list,rd) in
   let P=ComplexParabolic:(rd,S) in let rhoP=rho(complex_Levi(P))
-  in let (rho_dom,)=make_dominant(rd,rhoP) in
-  ##for v@i in rhos do let (weight,)=make_dominant(rd,v) in if weight=rho_dom then
-  [list[i]] else [] fi od
+  in let rho_dom=dominant(rd,rhoP) in
+  ##for v@i in rhos do if dominant(rd,v)=rho_dom then [list[i]] else [] fi od
 
 {. Given an array of integer lists representing simple roots in a complex
    group, print the list of Lie types of the corresponding Levi subgroups. .}

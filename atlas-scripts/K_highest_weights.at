@@ -100,26 +100,24 @@ set LKT_verbose=false
 set = (KHighestWeight (x,mu), KHighestWeight (y,tau)) = bool:
   real_form(x)=real_form(y) and
   x=y and
-( let  K_0=K_0(x) then
-  mu_1=project_K(x,mu) then   {element of X^*(T_{K_0})}
-  tau_1=project_K(x,tau) then {element of X^*(T_{K_0})}
-  (mu_2,w_mu2)=make_dominant(K_0,mu_1) then
-  (tau_2,w_tau2)=make_dominant(K_0,tau_1)
-  in mu_2=tau_2 and
-{ lift action of w up to H, and then compare projection of
-  w\mu and \tau to X^*(H^\delta)=X^*/(1-delta)X^* }
-  ( let m=lift_action(x,w_mu2) then
-    mu_3=m*mu then
-    tau_3=m*tau
-    in
- if LKT_verbose then
-   prints("m:", m);
-   prints("mu: ", mu, " tau :", tau);
-   prints("mu_1: ", mu_1, " tau_1 :", tau_1);
-   prints("mu_2: ", mu_2, " tau_2 :", tau_2);
-   prints("mu_3: ", mu_3, " tau_3 :", tau_3) fi;
-   in_lattice((1-involution(cross(m,x))),mu_3-tau_3)
-))
+  ( let  K_0=K_0(x)
+    , mu_1=project_K(x,mu)   {element of X^*(T_{K_0})}
+    , tau_1=project_K(x,tau) {element of X^*(T_{K_0})}
+    then (w_K_0,mu_2)=from_dominant(K_0,mu_1)
+    in mu_2=dominant(K_0,tau_1) and
+  { lift action of w up to H, and then compare projection of
+    w\mu and \tau to X^*(H^\delta)=X^*/(1-delta)X^* }
+    ( let w=lift_action(w_K_0,x) then mu_3=w*mu, tau_3=w*tau in
+      if LKT_verbose
+      then prints("w:", w);
+	   prints("mu: ", mu, " tau :", tau);
+	   prints("mu_1: ", mu_1, " tau_1 :", tau_1);
+	   prints("mu_2: ", mu_2, " tau_2 :", mu_2);
+	   prints("mu_3: ", mu_3, " tau_3 :", tau_3)
+      fi
+    ; in_lattice((1-involution(cross(w,x))),mu_3-tau_3)
+    )
+  )
 
 {. List of LKTs (as final tempered limit parameters) of a module given by a
    parameter. .}
@@ -304,7 +302,7 @@ set tworho_K (KGBElt x) = ratvec:
 set project_on_dominant_cone (KGBElt x, ratvec mu) = (KGBElt,ratvec,ratvec):
 { let ()=prints("project_on_dominant_cone with x=", x, " mu=", mu) in }
   let rd=root_datum(x)
-  then (mu_1,w) = make_dominant
+  then (w,mu_1) = from_dominant
       (rd,mu:=(1+involution(x))*mu/2) { make |mu| zero on the split part of h }
   then x_1=cross(inverse(w),x)
 { then ()=prints("mu:", mu); prints("x: ", x); prints("mu_1:", mu_1);
@@ -315,9 +313,8 @@ set project_on_dominant_cone (KGBElt x, ratvec mu) = (KGBElt,ratvec,ratvec):
 }
   then mu_2=mu_1+tworho_K (x_1)
 { then ()=prints("mu_2:", mu_2); }
-  then (,y)=make_dominant(rd,mu_2)
-  then rho=act(y,rho(rd))
-  then mu_3=mu_2-rho
+  then y=chamber(rd,mu_2)
+  then mu_3=mu_2-y*rho(rd), y1=y.inverse
 { then ()=prints("mu_3=", mu_3) }
   then
     rec_fun f(KGBElt x, ratvec mu_3_orig,ratvec tau) = (KGBElt,ratvec,ratvec):
@@ -329,7 +326,7 @@ set project_on_dominant_cone (KGBElt x, ratvec mu) = (KGBElt,ratvec,ratvec):
 }
       if is_dominant(rd,tau)
       then {return this triple:}
-        ( cross(inverse(y),x_1), act(inverse(y),mu_3), tau)
+        ( cross(y1,x_1), y1*mu_3, tau)
       else
          let j=find_nci_root(x,tau)
 {        then ()=prints("got root: ", j, ", ", posroots(rd_x)[j]) }
@@ -339,7 +336,7 @@ set project_on_dominant_cone (KGBElt x, ratvec mu) = (KGBElt,ratvec,ratvec):
          then (sub_x,)=centralizer(x,poscoroots(rd_x)[j])
          in f(sub_x,mu_3_orig,new_tau)
        fi
-   in f(cross(inverse(y),x_1),mu_3,act(inverse(y),mu_3))
+   in f(cross(y1,x_1),mu_3,y1*mu_3)
 
 {. Vogan algorithm; previous function in case mu is given as a vec,
   rather than ratvec. .}
@@ -413,7 +410,7 @@ See KHatHowe, Section 15
 
 {. (Auxiliary function) .}
 set make_strongly_dominant (KHighestWeight mu,KGBElt x_Q) = KHighestWeight:
-  let (x,tau)=mu then w=find_W_cross(x,x_Q) in (cross(w,x),act(w,tau))
+  let (x,tau)=mu then w=cross_divide(x_Q,x) in (cross(w,x),w*tau)
 
 { this function takes KHighestWeight mu -> |R(K,mu)| K_types,
   see top of this file

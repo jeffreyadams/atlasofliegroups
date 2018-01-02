@@ -91,7 +91,7 @@ set ext_cross(
   prints("ext_cross by w=",w); prints("E:"); display(E);
   let rd=root_datum(ic), x=x(E), w1= inverse(w), gamma1=w*gamma
   then rho=rho(rd), x1=cross(w,x) { call cross@(mat,KGBElt) from synthetic.rx }
-  , (gamma2,) = make_integrally_dominant(rd,gamma1)
+  , gamma2 = integrally_dominant(rd,gamma1)
   then rho_r_shift = w*rho_r(x)-rho_r(x1), theta1=involution(x1)
   then lambda_rho2 =
     let lambda_rho1 = w*lambda_rho + (w*rho-rho-rho_r_shift)\1

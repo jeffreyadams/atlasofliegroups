@@ -130,10 +130,9 @@ set coherent_irr (ParamPol P,[int] w) = ParamPol:
 
 set coherent_family_irr (ParamPol P, ratvec v)=ParamPol:
   if is_dominant(root_datum(P),v) then T_irr(P,v)
-  else let (v_dominant,w)=make_dominant(root_datum(P),v)
-    then (,u)=w
-    in { coherent_irr(u,T_irr(P,v_dominant)) }
-       T_irr(coherent_irr(P,u),act(inverse(w),v))
+  else let (w,v_dominant)=from_dominant(root_datum(P),v) in
+    { coherent_irr(u,T_irr(P,v_dominant)) }
+    T_irr(coherent_irr(P,w.word),v_dominant)
  fi
 
 { everything commented out from this point on

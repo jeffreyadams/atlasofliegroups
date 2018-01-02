@@ -10,7 +10,7 @@
 { check that extended parameter |E| lies over cross image by |kappa| of |p| }
 set test_ext_cross (Param p, {Weyl word} [int] kappa, ExtParam E) = void:
   assert(valid(E),"Invalid extended parameter");
-  let w=W_word:(root_datum(p),kappa) then q=parameter(E), cross=cross(w,p) in
+  let w=W_elt(root_datum(p),kappa) then q=parameter(E), cross=cross(w,p) in
   if q!=cross then error("cross/ext_cross are not consistent: ",q," ",cross) fi
 
 { extended cross action in length 1 }
