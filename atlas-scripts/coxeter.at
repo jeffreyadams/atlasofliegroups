@@ -1,12 +1,14 @@
 <basic.at
 
-{.coxeter element of W.}
-set coxeter(RootDatum rd)=WeylElt:id_W(rd)##for i:ss_rank(rd) do i od
+{. Coxeter element of W .}
+set coxeter_element (RootDatum rd) = WeylElt: W_elt(rd,#semisimple_rank(rd))
 
-{.Coxeter number.}
-set coxeter_number(RootDatum rd)=int:rat_as_int(highest_root(rd)*rho_check(rd)+1)
+{. Coxeter number .}
+set coxeter_number (RootDatum rd) = int:
+  rat_as_int(highest_root(rd)*rho_check(rd)+1)
 
-{.torus element representing the Coxeter Weyl group element.}
-set coxeter_torus_element(RootDatum rd)=ratvec:(1/coxeter_number(rd))*rho_check(rd)
+{. torus element representing the Coxeter Weyl group element .}
+set coxeter_torus_element (RootDatum rd) = ratvec:
+  rho_check(rd)/coxeter_number(rd)
 
 

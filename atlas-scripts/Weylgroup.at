@@ -23,17 +23,6 @@ set from_simple (RootDatum rd, vec alpha) = (WeylElt,vec):
 set root_reflection (RootDatum rd, vec alpha) = WeylElt:
   let (w,beta) = from_simple(rd,alpha) in w*W_gen(rd,root_index(rd,beta))*/w
 
-set matrix (WeylElt w)=
-  let rd=w.root_datum then
-  M=id_mat(rank(rd)) 
-  , alpha = simple_roots(rd), alphav = simple_coroots(rd) 
-  in for s in w.word do M -:= M*column(alpha[s])*row(alphav[s]) od; M
-
-{ find some Weyl word (not lexicographically first) acting by the matrix M }
-set word (RootDatum rd, mat M) = WeylElt:
-  let (ww,) = from_dominant(rd,M*rho(rd))
-  in assert(matrix(ww)=M,"Not the action of any Weyl group element"); ww
-
 {			--- cross action ---				}
 
 
