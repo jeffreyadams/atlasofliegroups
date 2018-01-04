@@ -878,7 +878,7 @@ set chamber ((vec,RootDatum) lambda_rd) = WeylElt:
   let (,w)=from_dominant(lambda_rd) in w
 set dominant ((vec,RootDatum) lambda_rd) = vec:
   let (dom_cwt,)=from_dominant(lambda_rd) in dom_cwt
-set w0 (RootDatum rd) = chamber(rd,rd.two_rho)
+set w0 (RootDatum rd) = chamber(rd,-rd.two_rho)
 
 set * (WeylElt w, ratvec gamma) = ratvec: let (n,d)=%gamma in (w*n)/d
 set * (ratvec gamma, WeylElt w) = ratvec: let (n,d)=%gamma in (n*w)/d
