@@ -51,7 +51,7 @@ namespace commands {
 
 namespace {
 
-  void block_mode_entry() throw(EntryError);
+  void block_mode_entry();
   void block_mode_exit();
 
   // functions for the predefined commands
@@ -198,7 +198,7 @@ namespace {
   Synopsis: attempts to set a real form and dual real form interactively.
   In case of failure, throws an InputError and returns.
 */
-void block_mode_entry() throw(EntryError)
+void block_mode_entry()
 {
   try
   {

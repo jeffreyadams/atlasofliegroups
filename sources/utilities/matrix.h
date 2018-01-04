@@ -352,7 +352,7 @@ template<typename C> class PID_Matrix : public Matrix<C>
   PID_Matrix& leftMult (const Matrix<C>& P)
     { base::leftMult(P); return *this; }
 
-  PID_Matrix& operator/= (const C& c) throw (std::runtime_error)
+  PID_Matrix& operator/= (const C& c)
   { if (c != C(1)) base::base::d_data /= c; return *this; }
 
   PID_Matrix& negate() { base::negate(); return *this; }

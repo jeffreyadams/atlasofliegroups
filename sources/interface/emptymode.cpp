@@ -66,7 +66,7 @@ CommandNode emptyNode()
   result.add("q",std_help,  // in empty mode "q" gives help information,
 	     "exits the current mode",exitMode); // in help mode it exits
 
-  result.add("qq",exitInteractive,"exits the program",std_help);
+  result.add("qq",exitInteractive,"exits the program",exitInteractive);
 
   // the type command needs to be recognized in the empty mode, or else
   // it will trigger activation of the main mode and _then_ execute, which

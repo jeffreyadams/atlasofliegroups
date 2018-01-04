@@ -28,8 +28,8 @@ SubSystem::SubSystem(const RootDatum& parent,
   : RootSystem(parent.cartanMatrix(sub_sys).transposed(), // build
 	       not parent.prefer_coroots()) // flip, since coroots ar now roots
   , rd(parent) // share
-  , pos_map(numPosRoots(),~0)
-  , inv_map(rd.numRoots()+1,~0) // one spare entry for "unfound root in parent"
+  , pos_map(numPosRoots(),-1)
+  , inv_map(rd.numRoots()+1,-1) // one spare entry for "unfound root in parent"
   , sub_root(numPosRoots())
 {
   for (unsigned int i=0; i<numPosRoots(); ++i)

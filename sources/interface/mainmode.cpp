@@ -55,7 +55,7 @@ namespace commands {
 
 namespace {
 
-  void main_mode_entry() throw(EntryError);
+  void main_mode_entry();
   void main_mode_exit();
 
   // functions for the predefined commands
@@ -143,7 +143,7 @@ namespace {
   It attempts to set the group type interactively. Throws an EntryError on
   failure.
 */
-void main_mode_entry() throw(EntryError)
+void main_mode_entry()
 {
   try {
     interactive::get_group_type(ic_pointer,G_I_pointer,layout,lattice_basis);

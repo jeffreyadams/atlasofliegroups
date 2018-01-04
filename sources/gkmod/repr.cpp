@@ -710,7 +710,7 @@ StandardRepr Rep_context::any_Cayley(const Weight& alpha, StandardRepr z) const
 
   // check the root argument, and if OK make the corresponding move to above
   RootNbr rt = subsys.from_parent(rd.root_index(alpha)); // |subsys| numbering
-  if (rt == ~ RootNbr(0)) // either not a root at all or not in subsystem
+  if (rt == RootNbr(-1)) // either not a root at all or not in subsystem
     throw std::runtime_error("Not an integral root");
   // apply the integrally-dominant-making $W$ element |w| (in |subsys|) to |rt|:
   rt = subsys.permuted_root(rt,w); // now we've got the root to do Cayley by

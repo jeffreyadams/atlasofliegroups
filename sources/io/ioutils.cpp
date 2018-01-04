@@ -118,8 +118,8 @@ std::ostream& foldLine(std::ostream& strm, const std::string& line,
     if (point==old_break) // nothing was found
       point += lineSize-indent; // so break brutally
 
-      strm << std::setw(indent) << ""
-	   <<line.substr(old_break,point-old_break) << std::endl;
+    strm << std::setw(indent) << ""
+	 <<line.substr(old_break,point-old_break) << std::endl;
   }
   while (line.length()>point+lineSize-h);
 

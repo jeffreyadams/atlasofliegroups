@@ -81,6 +81,7 @@ class SubSystem : public RootSystem // new system, subsytem of dual
 
   RootNbr to_parent(RootNbr alpha) const; // |pos_map| with some shifting
   RootNbr from_parent(RootNbr alpha) const { return inv_map[alpha]; }
+  // could be |RootNumber(-1)| if absent or if |alpha==rd.numPosRoots|
 
   weyl::Generator simple(unsigned int n) const
   { assert(n<numPosRoots()); // n must be a positive-root index for subsystem

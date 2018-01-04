@@ -386,7 +386,7 @@ Pol KL_table::get_Mp(weyl::Generator s, BlockElt x, BlockElt y,
 	  assert(M[u].degree()==1 and M[u][0]==M[u][1]);
 	  acc -= mu(1,x,u)*M[u][1];
 	}
-      return Pol(acc);
+    return Pol(acc);
   }
 
   assert(k==3); // this case remains

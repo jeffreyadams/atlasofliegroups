@@ -1230,7 +1230,7 @@ RealFormNbr real_form_of // who claims this KGB element?
   for (cn=G.numCartanClasses(); cn-->0;)
     if (tw==G.involution_of_Cartan(cn))
       break;
-  assert(cn!=~0); // every valid twisted involution should be found here
+  assert(cn!=-1); // every valid twisted involution should be found here
 
 
   Grading gr; // will mark noncompact roots among simpl-imaginary ones at |a|
