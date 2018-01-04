@@ -10,7 +10,7 @@
   in particular is_dominant(dual(rd),H)=true
 }
 set_type ComplexNilpotent = (RootDatum root_datum_of, vec semisimple_element)
-{ field name |root_datum| would conflict with |root_datum@W_word| (too close) }
+{ field name |root_datum| would conflict with |ComplexParabolic| (too close) }
 
 set dim_nilpotent (RootDatum rd,ratvec H) = int:
 if (#H>0) then let (g_0,g_1)=(rank(rd),0) in
@@ -70,12 +70,8 @@ dim_u_cap_k_1=dim_u_cap_k_1(x,H) in
 rat_as_int(dim_K-dim_L_K-dim_u_cap_k_1) fi
 }
 
-set support (KGBElt x) = [int]:
-  let G = x.real_form
-  then (,w)=word(G,involution(x)*distinguished_involution(G))
-  in sort_u(w)
-
-set support (Param p) = [int]: support(x(p))
+set support (Param p) = [int]:
+  support(x(p)) { using |support@KGBElt| from parabolics.at }
 
 set blocku(RealForm G)=[Param]:
 let b=block_of(trivial(G)) then

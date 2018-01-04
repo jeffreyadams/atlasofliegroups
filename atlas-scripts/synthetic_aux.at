@@ -1,5 +1,5 @@
 <synthetic.at
-<Weylgroup.at  { for type W_word, make_dominant and friends }
+<Weylgroup.at  { for |make_dominant| and friends }
 <translate.at  { for T@(Param,ratvec) }
 
 { this function differs from posroot_cross@(int,Param) in synthetic.at only
@@ -17,8 +17,9 @@ set my_posroot_cross (int i, Param p) = Param:
 set simpleroot_cross = (int,KGBElt->KGBElt): { we could use builtin cross }
   posroot_cross@(int,KGBElt) { but this uses the "synthetic" version }
 
-set Wword_cross(W_word(rd,w),KGBElt x)=KGBElt:
-  for s in w { reverse: } ~ do x:=simpleroot_cross(s,x) od; x
+set WeylElt_cross(WeylElt w,KGBElt x)=KGBElt: { we could use builtin cross }
+  assert(w.root_datum=x.root_datum);
+  for s in w.word { reverse: } ~ do x:=simpleroot_cross(s,x) od; x
 
 { no need for special code for the simple reflection case }
 

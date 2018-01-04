@@ -177,7 +177,7 @@ set highest_weight_split_spherical (Param p,KGBElt x_K) = KHighestWeight:
   (auxiliary function). .}
 set highest_weight_one (K_Type p) = KHighestWeight:
 (  assert(is_semifinal(parameter(p)),"parameter has singular real parity roots")
-;  p:=make_no_Cminus(p)
+;  p:=p.to_no_Cminus
 ;  let (Q,pL)=theta_stable_data(parameter(p))
    then (x_L,mu_L)=highest_weight_split_spherical(pL)
    then x_G=x_min(Q)

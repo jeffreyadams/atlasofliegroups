@@ -80,6 +80,7 @@ ________________________
 <kl.at { for |character_formula| }
 <coherent.at
 <synthetic.at { for |unnormalized_torus_factor| }
+<Weylgroup.at { for |to_no_Cminus@Param| }
 <K.at
 <W_K.at { for |cross_divide| }
 <finite_dimensional.at
@@ -169,11 +170,9 @@ set real_induce_irreducible (ParamPol P,RealForm G) = ParamPol:
    and parameter p_M for a relative limit of discrete series so that
    Ind(I(p_M))=I(p); uses real_parabolic(x) of parabolics.at .}
 set cuspidal_data (Param p) = (Parabolic,Param):
-  let p=make_no_Cplus(p)
-  then x_G=x(p)
-  then P=real_parabolic(x_G)
-  then M=Levi(P), theta=involution(x_G)
-  then x_M=inverse_embed_KGB(x_G,M)
+  p:=p.to_no_Cminus; { equivalent parameter, but having |x| without C- roots }
+  let x_G=x(p) then P=real_parabolic(x_G)
+  then x_M=inverse_embed_KGB(x_G,Levi(P)), theta=involution(x_G)
   in
   (P
   ,parameter
@@ -190,8 +189,8 @@ set cuspidal_data (Param p) = (Parabolic,Param):
    so that p is obtained by cohomological parabolic induction
    from p_L; uses theta_stable_parabolic(x) of parabolics.at. .}
 set theta_stable_data (Param p) = (Parabolic,Param):
-  let p=make_no_Cminus(p) then x_G=x(p) then P=theta_stable_parabolic(x_G)
-  then L=Levi(P), theta=involution(x_G)
+  p:=p.to_no_Cminus; { equivalent parameter, but having |x| without C- roots }
+  let x_G=x(p) then P=theta_stable_parabolic(x_G) then L=Levi(P)
   then x_L=inverse_embed_KGB(x_G,L)
   in
   (P
@@ -206,7 +205,7 @@ set theta_stable_data (Param p) = (Parabolic,Param):
 {need real parabolic induction to define standardize (uses cuspidal_data)}
 
 {. Auxiliary function .}
-set coherent_std_imaginary (W_word w,Param p) = ParamPol:
+set coherent_std_imaginary (WeylElt w,Param p) = ParamPol:
   let (,p_M)=cuspidal_data(p) in
   real_induce_standard(coherent_std(w,p_M),real_form(p))
 
@@ -224,12 +223,12 @@ set coherent_std_imaginary (ratvec lam, Param p) =  ParamPol:
   standard ones .}
 set standardize (Param p) = ParamPol:
   if is_standard(p) then ParamPol:p
-  else let p=make_no_Cplus(p)
-    then i_root_system=root_datum(simple_imaginary_subsystem(x(p)))
+  else p:=p.to_no_Cplus
+  ; let i_root_system=root_datum(p.x.simple_imaginary_subsystem)
     , lambda=lambda(p)
     then (w,lambda_dom)=from_dominant(i_root_system,lambda)
     then p_dom=parameter(x(p), lambda_dom, nu(p))
-    in coherent_std_imaginary(w.to_W_word,p_dom)
+    in coherent_std_imaginary(w,p_dom)
   fi
 
 {. standardize a formal linear combination of possibly non-standard parameters .}
@@ -347,16 +346,16 @@ set map_into_distinguished_fiber (KGBElt x)=KGBElt:
   ; KGB(G,F[index])
   end
 
-{. Map KGB element x to x_K in the distinguished fiber; if necessary, use complex
-  cross actions first to move x to a fiber with no C- roots. .}
+{. Map KGB element x to x_K in the distinguished fiber; if necessary, use
+   complex cross actions first to move x to a fiber without C- roots. .}
 set strong_map_into_distinguished_fiber (KGBElt x) = KGBElt:
-  let (y,)=make_no_Cminus(x) in map_into_distinguished_fiber(y)
+  map_into_distinguished_fiber(x.to_no_Cminus)
 
-{. Same as previous function. .}
-set canonical_x_K (KGBElt x) = KGBElt: strong_map_into_distinguished_fiber(x)
+{. Another name for strong_map_into_distinguished_fiber .}
+set canonical_x_K = strong_map_into_distinguished_fiber@KGBElt
 
-{. Previous function with input a parameter p; it is applied to x(p). .}
-set canonical_x_K (Param p)  = KGBElt: canonical_x_K(x(p))
+{. canonical_x_K with input a parameter p; it is applied to x(p). .}
+set canonical_x_K (Param p)  = KGBElt: canonical_x_K(p.x)
 
 {. Positive coroots in the nilradical of the theta-stable parabolic determined
 by x. .}

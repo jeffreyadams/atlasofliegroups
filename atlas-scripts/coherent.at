@@ -104,8 +104,8 @@ set coherent_std (ParamPol P,int s) = ParamPol:
 set coherent_std (ParamPol P,[int] w) = ParamPol:
   for s in w do P:=coherent_std(P,s) od; P
 
-set coherent_std (W_word v,Param p)=ParamPol:coherent_std(p,word(v))
-set coherent_std (W_word v,ParamPol P)=ParamPol:coherent_std(P,word(v))
+set coherent_std (WeylElt v,Param p)=ParamPol:coherent_std(p,v.word)
+set coherent_std (WeylElt v,ParamPol P)=ParamPol:coherent_std(P,v.word)
 
 { ------------coherent continuation in basis of irreducibles------------ }
 

@@ -45,7 +45,7 @@ More topics addressed in this file:
 
 <misc.at { for is_simple_root }
 <sort.at { for inv_standardisation }
-<Weylgroup.at { for W_word (is also ComplexParabolic); root_datum@W_word }
+<Weylgroup.at { for |cross@(WeylElt,KGBElt)| }
 <group_operations { for is_relatively_split }
 
 set_type
@@ -58,7 +58,7 @@ set_type
   Parabolic = ([int], KGBElt)  { synonym }
 ,
   {. Data type for a complex parabolic subrgoup .}
-  ComplexParabolic = (RootDatum,[int])
+  ComplexParabolic = (RootDatum root_datum,[int] S)
 ]
 
 {. given a list of KGB elements and a function f assigning integers to them,
@@ -446,19 +446,11 @@ set print_theta_stable_parabolics (RealForm G) = void:  let all = theta_stable_p
 
 {. The smallest list of simple roots such that descents lead to the
   distinguished fiber. .}
-set support(KGBElt x)=[int]:
-  let rd=root_datum(x) in
-  let delta=distinguished_involution(real_form(x)) in
-  let W=word(word(rd,involution(x)*delta)) in
-  let result=[] in for i:semisimple_rank(rd) do
-  if is_member(W)(i) then result#:=i fi od;
-  result
+set support (KGBElt x) = [int]:
+  let rd=root_datum(x), delta=distinguished_involution(real_form(x)) in
+  list(semisimple_rank(rd),W_elt(rd,involution(x)*delta).word.is_member)
 
 {. Auxiliary function. .}
 set support_alt(KGBElt x)=[int]:
-  let rd=root_datum(x) in
-  let delta=distinguished_involution(real_form(x)) in
-  let W=word(word(rd,delta*involution(x))) in
-  let result=[] in for i:semisimple_rank(rd) do
-  if is_member(W)(i) then result#:=i fi od;
-  result
+  let rd=root_datum(x), delta=distinguished_involution(real_form(x)) in
+  list(semisimple_rank(rd),W_elt(rd,delta*involution(x)).word.is_member)

@@ -1,53 +1,8 @@
 <basic.at
 
-{ Functions for computing with Weyl words }
-
-set_type
-  W_word = (RootDatum root_datum,[int] word)
-  { keep a RootDatum at hand for interpretation }
-
-set # (W_word w) = int: #w.word { non reduced length of word }
-set to_W_word (WeylElt w) = W_word: (w.root_datum,w.word)
-set reduce (W_word w) = W_word: w.W_elt.to_W_word
-set length (W_word w) = int: w.W_elt.length
-
-{ action of Weyl word on X^* or X^*\otimes Q}
-set act (W_word ww, vec v) = vec: W_elt(ww)*v
-set act (W_word ww, ratvec rv) = ratvec:  let (v,den)=%rv in act(ww,v)/den
-
-{ action of Weyl word on X_* or X_*\otimes Q }
-set co_act (vec cowt, W_word ww) = vec: cowt*W_elt(ww)
-set co_act (ratvec rcv, W_word ww) = ratvec:
-   let (cowt,den)=%rcv in co_act(cowt,ww)/den
-
-set w_matrix (W_word ww) = mat: ww.W_elt.matrix
-
-set equal (W_word w, W_word u) = bool: w.W_elt=u.W_elt
-
-set inverse (W_word(rd,w)) = W_word: { reverse w component } (rd,w~[:])
-
-{	--- using W to make weight or coweights dominant ---	}
-
-set non_dominant_index (RootDatum rd, vec v) = int:
-  last(simple_coroots(rd),(vec alpha_v): (alpha_v*v).<)
-
-set dual_non_dominant_index (RootDatum rd, vec cowt) = int:
-  last(simple_roots(rd),(vec alpha): (cowt*alpha).<)
-
-{ rho@rootDatum from basic.at; rho(rd,v) in its orbit and in chamber of v: }
-set rho (RootDatum rd, ratvec v) = ratvec: chamber(rd,v)*rho(rd)
-set dual_rho (ratvec cowt,RootDatum rd) = ratvec:
-  rho_check(rd)*chamber(cowt,rd)
-
-set w_long (RootDatum rd) = W_word: w0(rd).to_W_word
-
-{ find some Weyl word (not lexicographically first) acting by the matrix M }
-set word ((RootDatum,mat) rd_M) = W_word: W_elt(rd_M).to_W_word
+{ Functions for computing with Weyl group elements }
 
 set length ((RootDatum,mat) rd_M) = int: W_elt(rd_M).length
-
-{ contrary to #@W_word, |length| computes the reduced length }
-set length(W_word ww) = int: W_elt(ww).length
 
 { whether multiplication by simple reflection lengthens or shortens M }
 set lengthens (RootDatum rd, mat M, int s) = bool: { for right multiplication }
@@ -111,41 +66,6 @@ set integrally_from_dominant ((RootDatum,ratvec)(,v):rd_v) = (WeylElt,ratvec):
 set integrally_dominant ((RootDatum,ratvec)(,v):rd_v) = ratvec:
   dominant(integrality_datum(rd_v),v)
 
-{ act by Weyl group element w, then make result integrally dominant }
-set int_dom_act (W_word(rd,):ww,ratvec v) = ratvec:
-  integrally_dominant(rd,act(ww,v))
-
-{ --------- basic group operations, reduced result ----------------- }
-
-set left_mult (int i,W_word ww)  = W_word: (i#ww.W_elt).to_W_word
-set right_mult (int i,W_word ww) = W_word: (ww.W_elt#i).to_W_word
-set conjugate (int i, W_word ww) = W_word: (i#ww.W_elt#i).to_W_word
-
-set multiply (W_word vw, W_word ww) = W_word: (vw.W_elt*ww.W_elt).to_W_word
-set * = multiply@(W_word,W_word) { overload to the '*' opetrator }
-
-set conjugate (W_word vw, W_word ww) = W_word: let v=vw.W_elt in
-  (v*ww.W_elt*inverse(v)).to_W_word
-
-{ Weyl group element raised to an integer power }
-set ^ (W_word ww, int n) = W_word: (ww.W_elt^n).to_W_word
-
-{ Some basic functions for when a Weyl word represents a twisted involution }
-
-{ compute involution from twisted involution Weyl word }
-set involution (InnerClass ic, W_word ww) = mat:
-  assert (ww.root_datum=ic.root_datum); ww.W_elt*distinguished_involution(ic)
-
-{ these functions do not seem to have much added value }
-set imaginary_roots (InnerClass ic, W_word tw) = mat:
-  imaginary_roots(ic,involution(ic,tw))
-set real_roots (InnerClass ic, W_word tw) = mat:
-  real_roots(ic,involution(ic,tw))
-set imaginary_coroots (InnerClass ic, W_word tw) = mat:
-  imaginary_coroots(ic,involution(ic,tw))
-set real_coroots (InnerClass ic, W_word tw) = mat:
-  real_coroots(ic,involution(ic,tw))
-
 { a W-invariant form on X^* (or its rational span) }
 
 { Each coroot alpha^v defines defines a rank-1 bilinear form on X^* by
@@ -170,19 +90,10 @@ set co_invariant_form_matrix (RootDatum rd) =mat: let M=posroots(rd) in M*^M
 set co_invariant_form (RootDatum rd) = (ratvec,ratvec->rat):
   let A = rd.co_invariant_form_matrix in (ratvec v, ratvec w) rat: v*A*w
 
-{ suppress a W_word at index k from a list, requires 0<=k<#list }
-set delete ([W_word] list, int k) = [W_word]: list[:k]##list[k+1:]
-
-{ order of W_word, uses order@mat from basic.at }
-set order (W_word ww) = int: ww.W_elt.order
-
 set is_elliptic (WeylElt w) = bool: =kernel(1-matrix(w))  { no eigenvalue 1 }
 set is_regular (WeylElt w) = bool:
   { let w0=w.root_datum.w0 in w^(w0.length\w.length)=w0 ? }
   w.length*w.order=2*w.root_datum.nr_of_posroots
-
-set is_elliptic (W_word ww) =bool: ww.W_elt.is_elliptic
-set is_regular  (W_word ww) =bool: ww.W_elt.is_regular
 
 { use complex cross actions to find a KGBElt x0 in a fiber with no C- roots
   by descending through complex descents until none are left
@@ -198,12 +109,6 @@ set from_no_Cplus (KGBElt x) = (WeylElt,KGBElt):
   while let s = last(r, (int i)bool: status(i,x)=4 { complex ascent } ) in s.>=
   do w:=w#s; x:=cross(s,x) od; (w,x)
 
-set make_no_Cminus (KGBElt x) = (KGBElt,W_word): { x' without C-; word applied }
-  let (w,x0)=from_no_Cminus(x) in (x0,w.inverse.to_W_word)
-
-set make_no_Cplus (KGBElt x) = (KGBElt,W_word): { elt without C+; word applied }
-  let (w,x0)=from_no_Cplus(x) in (x0,w.inverse.to_W_word)
-
 { the same for parameters }
 set from_no_Cminus (Param p) = (WeylElt, Param):
   let (w,x0)=from_no_Cminus(p.x) then w1=w.inverse
@@ -213,5 +118,7 @@ set from_no_Cplus (Param p) = (WeylElt, Param):
   let (w,x0)=from_no_Cplus(p.x) then w1=w.inverse
   in (w,parameter(x0,w1*p.lambda,w1*p.nu))
 
-set make_no_Cminus (Param p) = Param: let (,q)=from_no_Cminus(p) in q
-set make_no_Cplus (Param p) = Param:  let (,q)=from_no_Cplus(p) in q
+set to_no_Cminus (KGBElt x) = KGBElt: let (,y)=from_no_Cminus(x) in y
+set to_no_Cplus (KGBElt x) = KGBElt:  let (,y)=from_no_Cplus(x) in y
+set to_no_Cminus (Param p) = Param: let (,q)=from_no_Cminus(p) in q
+set to_no_Cplus (Param p) = Param:  let (,q)=from_no_Cplus(p) in q

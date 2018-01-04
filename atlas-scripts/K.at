@@ -22,7 +22,7 @@
 
 <sort.at
 <matrix.at { for left_inverse }
-<Weylgroup.at { for make_no_Cminus }
+<Weylgroup.at { for from_no_Cminus }
 
 set_type
 [ K_Type = (KGBElt x, ratvec lambda)
@@ -235,7 +235,8 @@ set parameter (K_Type(x,lambda)) = Param:
 { equality of K_Types is now taken care of by equality of Param values }
 set = (K_Type p,K_Type q) = bool: parameter(p)=parameter(q)
 
-set make_no_Cminus(K_Type p)=K_Type:K_type(make_no_Cminus(parameter(p)))
+set to_no_Cminus (K_Type(x,lambda)) = K_Type:
+  let (w,x0)=from_no_Cminus(x) in (x0,w.inverse*lambda)
 
 { --------------length of K-types------------------ }
 
