@@ -50,6 +50,7 @@ Algorithm:
 <W_K.at
 <induction.at
 <representations.at
+<center.at { for |Z_2@RealForm| }
 
 set LKT_verbose=false
 { see K.at: K-types as final tempered limit parameters

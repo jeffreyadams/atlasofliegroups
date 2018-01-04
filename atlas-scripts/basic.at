@@ -511,7 +511,7 @@ set is_integer (ratvec v) = bool: let (,d)=%v in d=1 { equivalently =(v%1) }
 { vector floor of quotient by int operation; makes vector from rational vector }
 set \ (ratvec v, int k) = vec: let (n,d)=%v in n\(k*d)
 
-{ do as |v\1| (or |\ %v|) would do, but protest if there would be a remainder }
+{ do as |v.numer| (or |\ %v|) would do, but check that denominator is 1 }
 set ratvec_as_vec (ratvec v) = vec:
   let (w,d)=%v in assert(d=1,"Not an integer vector"); w
 

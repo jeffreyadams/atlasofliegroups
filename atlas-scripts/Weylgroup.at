@@ -1,5 +1,4 @@
 <basic.at
-<center.at { for lie_coradical_part }
 
 { Functions for computing with Weyl words }
 
@@ -156,18 +155,20 @@ set real_coroots (InnerClass ic, W_word tw) = mat:
   $$
     (\mu,\nu)=\sum_{\alpha^v\in\Delta^{\vee+}} <\alpha^v,\mu><\alpha^v\nu>
   $$
+  The summation is conveniently done by multiplying a wide matrix M by ^M
 }
-set invariant_form (RootDatum rd) = mat: let M=poscoroots(rd) in M*^M
-set invariant_form (RootDatum rd, ratvec v, ratvec w) = rat:
-  let M=invariant_form(rd) in v*M*w
+set invariant_form_matrix (RootDatum rd) = mat: let M=poscoroots(rd) in M*^M
+set invariant_form (RootDatum rd) = (ratvec,ratvec->rat):
+  let A = rd.invariant_form_matrix in (ratvec v, ratvec w) rat: v*A*w
 
-set nondegenerate_invariant_form ((RootDatum,ratvec,ratvec)(rd,v,):args) = rat:
-  invariant_form(args)+(let z=lie_coradical_part(rd,v) in z*z)
+set nondegenerate_invariant_form (RootDatum rd) = (ratvec,ratvec->rat):
+  let A = rd.invariant_form_matrix + (let M=radical_basis(rd) in M*^M)
+  in (ratvec v, ratvec w) rat: v*A*w
 
 { a W-invariant form on X_*\otimes Q; not directly related to invariant_form }
-set co_invariant_form (RootDatum rd) =mat: let M=posroots(rd) in M*^M
-set co_invariant_form (RootDatum rd, ratvec v, ratvec w) = rat:
-  let M=co_invariant_form(rd) in v*M*w
+set co_invariant_form_matrix (RootDatum rd) =mat: let M=posroots(rd) in M*^M
+set co_invariant_form (RootDatum rd) = (ratvec,ratvec->rat):
+  let A = rd.co_invariant_form_matrix in (ratvec v, ratvec w) rat: v*A*w
 
 { suppress a W_word at index k from a list, requires 0<=k<#list }
 set delete ([W_word] list, int k) = [W_word]: list[:k]##list[k+1:]

@@ -243,9 +243,9 @@ set make_no_Cminus(K_Type p)=K_Type:K_type(make_no_Cminus(parameter(p)))
   used in definition of lowest K-types
 }
 
-set length(KHighestWeight (x,mu))=rat:
-  let rd=root_datum(K_0(x)) then shift=2*rho(rd)
-  in nondegenerate_invariant_form(rd,mu+shift,mu+shift)
+set length (KHighestWeight (x,mu))=rat:
+  let rd=root_datum(K_0(x)) then mu_shifted=mu+rd.two_rho
+  in rd.nondegenerate_invariant_form(mu_shifted,mu_shifted)
 
 {----------------norm of K-types------------------}
 
