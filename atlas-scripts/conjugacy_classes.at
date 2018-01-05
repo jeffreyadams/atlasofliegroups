@@ -1,5 +1,70 @@
 <W_orbit.at { for generate_W@RootDatum }
+<elliptic_aux.at
+<Levi_class.at
 
+set_type ConjugacyClass = (ComplexLevi Levi, WeylElt w)
+{ComplexLevi:(rd,rd_L)
+ w is a WeylElt for rd_L
+ the labelling of the roots of rd_L is unrelated to those of rd,
+ the roots of rd_L are labelled 0..,ss_rank(L)-1
+}
+
+set complex_Levi_root_numbers(ComplexLevi L)=[int]:
+let (rd,rd_L)=L in 
+for i:ss_rank(rd_L) do 
+ let j=find(simple_roots(rd), simple_roots(rd_L)[i]) in 
+ let k=find(simple_coroots(rd), simple_coroots(rd_L)[i]) in 
+ assert(j=k and j!=-1,"roots/coroots of L are not a proper subset of those for G");j od
+ 
+
+set root_datum(ConjugacyClass C)=RootDatum: C.Levi.rd
+set root_datum_Levi(ConjugacyClass C)=RootDatum: C.Levi.rd_Levi
+{C.Levi: complexLevi (rd,rd_L)
+ C.root_datum: root datum of G
+ C.root_datum_Levi: root datum of L
+ C.w: WeylElt for L
+}
+
+{promote w\in W_L to w_G}
+set W_elt(ConjugacyClass C)=WeylElt:
+let rd=C.root_datum then
+rd_L=C.root_datum_Levi then
+numbers=complex_Levi_root_numbers(C.Levi) in
+id_W(rd)##replace(numbers,C.w.word)
+
+set conjugacy_classes_by_Levi(RootDatum rd)=
+let levis=Levi_classes(rd) in 
+{##([((rd,rd),id_W(rd))]#}
+##for L in levis do 
+ for w in elliptic(L.rd_Levi) do (L,w) od od
+
+
+set conjugacy_classes(RootDatum rd)=[WeylElt]:
+let levis=Levi_classes(rd) in 
+##for L in levis do 
+ for w in elliptic(L.rd_Levi) do W_elt(L,w) od od
+
+
+{C.Levi: ComplexLevi
+ C.Levi.root_datum=C.root_datum: root datum of ambient group G
+ C.Levi.complex_Levi: root datum of Levi L
+ C.w_Levi: WeylElt for Levi L
+ C.W_elt_Levi: WeylElt for G
+}
+
+
+{
+set G=Sp(10,R)
+set rd=root_datum(G)
+set L=complex_Levi(rd,[0,1,2,5])
+set w_L=W_elt(L.rd_Levi,[0,1,2])
+set C=ConjugacyClass:(L,w_L)
+}
+
+{set W_elt(ConjugacyClass C)=WeylElt:
+id_W(C.Levi.root_datum)##C.w_Levi.word
+}
+{
 { compute conjugacy class of w, inspired by cross_W_orbit.at
 
   conjugacy_class_extra returns (words, class), where class is the conjugacy
@@ -33,11 +98,4 @@ set conjugacy_classes (RootDatum rd) = [[WeylElt]]:
      fi
   od; result
 
-
-
-
-
-
-
-
-
+set shortest_length(WeylElt w)=min(for y in conjugacy_class(w) do length(y) od)}

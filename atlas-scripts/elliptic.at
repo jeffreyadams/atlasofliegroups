@@ -71,8 +71,9 @@ set elliptic_D (int n) = [WeylElt]:
   for P in partitions_even_number_parts(n) do elliptic_D(P) od
 
 {elliptic classes in any simple root datum, classical (above)
-or from a table in ellipticExceptional.at}
-set elliptic (RootDatum rd) = [WeylElt]:
+or from a table in ellipticExceptional.at
+see elliptic.aux for general case}
+set elliptic_simple (RootDatum rd) = [WeylElt]:
 assert(is_simple(rd),"Root Datum is not simple");
 let (type,rank)=(%Lie_type(rd))[0] in
 assert(type="A" or type="B" or type="C" or type="D" or type="G" or
