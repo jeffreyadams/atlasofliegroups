@@ -30,6 +30,11 @@ set choose_by_size ([[int]] list, int n)=[[int]]:
 set compute_rhos ([[int]] list, RootDatum rd)=[ratvec]:
   for S in list do rho(complex_Levi(ComplexParabolic:(rd,S))) od
 
+{. Given two complex parabolics of the same complex group, decide whether
+   the rhos of their Levi factors are conjugate. .}
+set is_conjugate(RootDatum rd,[int] S,[int] T)=bool:
+   dominant(rd,rho(complex_Levi((rd,S))))=dominant(rd,rho(complex_Levi((rd,T))))
+
 {. Given a list S of integers representing simple roots in a complex group,
    and a list of integer arrays, create the list of arrays whose corresponding
    rho(L) is conjugate to that defined by S. .}
@@ -85,8 +90,14 @@ set group_by_conjugate_rhos (RootDatum rd)=[(int,[[[int]]])]:
 
 {. As the previous function, but with only one representative for
    each conjugacy class of Levis. .}
-set classes_by_rho (RootDatum rd)=[(int,[[int]])]:
-   for i:semisimple_rank(rd) do (i,classes_by_rho(rd,i)) od
+set classes_by_rho_int_list (RootDatum rd)=[(int,[[int]])]:
+   for i:semisimple_rank(rd)+1 do (i,classes_by_rho(rd,i)) od
+
+{. Given a root datum, create a list of conjugacy classes of Levi
+   subgroups; the output is an array of root data. .}
+set classes_by_rho (RootDatum rd)=[RootDatum]:
+  for v in ##for i:ss_rank (rd)+1 do classes_by_rho (rd,i) od do
+complex_Levi(rd,v) od
 
 set print_Levis_by_conjugate_rhos (RootDatum rd)=void:
    prints ("rank  # of classes  classes");
