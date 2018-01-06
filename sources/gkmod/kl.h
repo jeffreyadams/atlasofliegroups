@@ -50,15 +50,10 @@ class KLContext
 
   BlockElt fill_limit; // all "rows" |y| with |y<fill_limit| have been computed
 
-/*!
-  \brief Entry d_prim[y] is a list of the elements x_i that are primitive
-  with respect to y and have P_{y,x_i} not zero.
-*/
-  std::vector<PrimitiveRow> d_prim;
-
 /*
-  $d_kl[y]$ is a list of indices into |d_hashtable| of polynomials
-  $P_{x_i,y}$ with $x_i=d_prim[i]$
+  |d_kl[y]| is a list of indices into |d_hashtable| of polynomials
+  $P_{x_i,y}$ with $x_i$ equal to primitive element number $i$ for
+  |descentSet(y)|, for all $i$ such that $l(x_i)<l(y)$.
 */
   std::vector<KLRow> d_kl;           // list of polynomial pointers
 
@@ -95,10 +90,6 @@ class KLContext
   // That polynomial in the form of an index into |polStore()==d_store|
   KLIndex KL_pol_index(BlockElt x, BlockElt y) const;
 
-/*!
-  Returns the list of pointers to the non-zero KL polynomials
-  P_{x_i,y} (with x_i = d_prim[i] primitive with respect to y).
-*/
   const KLRow& klRow(BlockElt y) const { return d_kl[y]; }
 
   MuCoeff mu(BlockElt x, BlockElt y) const; // $\mu(x,y)$
@@ -142,17 +133,15 @@ class KLContext
     void silent_fill(BlockElt last_y);
     void verbose_fill(BlockElt last_y);
 
-    // the |size_t| results serve only for statistics; caller may ignore them
-    size_t fillKLRow(BlockElt y, KLHash& hash);
+    void fillKLRow(BlockElt y, KLHash& hash);
     void recursionRow(std::vector<KLPol> & klv,
 		      const PrimitiveRow& e, BlockElt y, size_t s);
     void muCorrection(std::vector<KLPol>& klv,
 		      const PrimitiveRow& e,
 		      BlockElt y, size_t s);
-    size_t writeRow(const std::vector<KLPol>& klv,
-		    const PrimitiveRow& e, BlockElt y, KLHash& hash);
-    size_t remove_zeros(const KLRow& klv,
-			const PrimitiveRow& e, BlockElt y);
+    void complete_primitives(const std::vector<KLPol>& klv,
+			     const PrimitiveRow& e, BlockElt y,
+			     KLHash& hash);
     void newRecursionRow(KLRow & klv,const PrimitiveRow& pr,
 			 BlockElt y, KLHash& hash);
     KLPol muNewFormula(BlockElt x, BlockElt y, size_t s, const MuRow& muy);

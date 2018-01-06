@@ -29,7 +29,8 @@ namespace klsupport {
 
 class KLSupport
 {
-  enum State { DownsetsFilled, LengthLessFilled, Filled, NumStates};
+  enum State {PrimitivizeFilled, DownsetsFilled, LengthLessFilled, Filled,
+	      NumStates};
 
   BitSet<NumStates> d_state;
 
@@ -40,6 +41,7 @@ class KLSupport
   std::vector<BitMap> d_downset;
   std::vector<BitMap> d_primset;
   std::vector<BlockElt> d_lengthLess;
+  std::vector<std::vector<unsigned int> > d_prim_index;
 
  public:
 
@@ -76,12 +78,22 @@ class KLSupport
   unsigned int ascent_descent(BlockElt x,BlockElt y) const
   { return (descentSet(y)-descentSet(x)).firstBit(); }
 
-  BlockElt primitivize
-    (BlockElt x, const RankFlags& A) const;
-
   // find non-i2 ascent for |x| that is descent for |y| if any; or |longBits|
   unsigned int good_ascent_descent(BlockElt x,BlockElt y) const
   { return (goodAscentSet(x)&descentSet(y)).firstBit(); }
+
+  /* computing KL polynomials used to spend a large amount of time evaluating
+     primitivize and then to binary-search for the resulting primitve element.
+     Since the primitive condition only depends on the descent set, we speed
+     things up by tabulating for each descent set the map from block elements
+     to the index of their primitivized counterparts.
+  */
+  unsigned int prim_index (BlockElt x, const RankFlags& descent_set) const
+  { return d_prim_index[descent_set.to_ulong()][x]; }
+
+  // this is where an element |y| occurs in its "own" primitive row
+  unsigned int self_index (BlockElt y) const
+  { return d_prim_index[descentSet(y).to_ulong()][y]; }
 
   // the following are filters of the bitmap
   void filter_extremal(BitMap&, const RankFlags&) const;
@@ -90,7 +102,7 @@ class KLSupport
 // manipulators
   void fill();
   void fillDownsets();
-
+  void fillPrimitivize();
 };
 
 } // |namespace klsupport|

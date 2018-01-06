@@ -143,6 +143,8 @@ set test_all_real_induced_one_dimensional(RealForm G) =
 set print_test_all_real_induced_one_dimensional(RealForm G) = void:
   print_test(all_real_induced_one_dimensional(G))
 
+{ comment out fixed case tests, though maybe useful for atlas sanity testing
+
 { a series of tests if increasing length }
 { very fast tests }
 set unitary_if (bool b) = int: if b then 1 else -1 fi
@@ -179,3 +181,4 @@ set test8()= bool:
 { trivial of F4 takes up to two hours }
 set test9()=bool:
   prints("Testing trivial of F4"); is_unitary(trivial(split_form(F4)))
+}

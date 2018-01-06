@@ -56,3 +56,4 @@ set principal_submatrix(mat M, [int] S)=mat: { choice |S| of rows, columns }
 set main_diagonal_square_block(mat M, int size, int offset) = mat:
   M[ offset:offset+size, offset:offset+size ]
 set top_left_square_block(mat M,int size) = mat: M[ :size, :size]
+
