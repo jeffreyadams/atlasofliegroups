@@ -32,7 +32,7 @@ rd_L=C.root_datum_Levi then
 numbers=complex_Levi_root_numbers(C.Levi) in
 id_W(rd)##replace(numbers,C.w.word)
 
-set conjugacy_classes_by_Levi(RootDatum rd)=
+set conjugacy_classes_by_Levi(RootDatum rd)=[(ComplexLevi,WeylElt)]:
 let levis=Levi_classes(rd) in 
 {##([((rd,rd),id_W(rd))]#}
 ##for L in levis do 
