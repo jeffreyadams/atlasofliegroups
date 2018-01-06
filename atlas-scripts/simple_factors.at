@@ -13,11 +13,17 @@ for i:#list do for j in list[i] do simple_coroots(rd)[j] od od
 
 
 {find simple factors of rd 
- initialize simple_root_numbers=[[int]]
- algorithm: for each index i of a simple root, find j so that 
- simple_root(rd)[i] is not orthogonal to some simple coroots in simple_root_numbers[j]
- if so, append i to simple_root_numbers[j]
- otherwise append [i] to simple_root_numbers
+ initialize simple_root_numbers=[[int]]:[]
+ inductively, simple_root_numbers=[[a1,a2,...],[b1,b2,...],...]
+ where [a1,a2,...] is connected
+ inductively run over indices of simple roots
+ inductive step
+  simple_root_numbers=[[a1,a2,...],[b1,b2,...],...]
+  previous=simple_root_numbers
+  simple_root_numbers_temp=[[i]]
+  run over each [int] v in simple_root_numbers
+    if coroot(i) is orthogonal to each simple root in v, append v to simple_root numbers
+    if coroot(i) is not orthogonal to some simple root in v, replace first term of simple_root_numbers_temp with itself#v
  when done, convert each [int] v in simple_root numbers to a root datum constructed
  from the simple roots and simple coroots in v
  return simple_root_numbers and [RootDatum] 
@@ -27,9 +33,13 @@ for i:#list do for j in list[i] do simple_coroots(rd)[j] od od
 set simple_factors(RootDatum rd)=([[int]],[RootDatum]):
 let simple_root_numbers=[[int]]:[] in
 for i:ss_rank(rd) do
- let j=find_not_orthogonal(simple_roots(rd)[i], list_of_list_of_coroots(rd,simple_root_numbers)) in
- if j=-1 then simple_root_numbers#:=[i] 
- else simple_root_numbers[j]#:=i fi od;
+ let previous=simple_root_numbers then
+ simple_root_numbers_temp=[[i]] in
+  for S in previous do let T=for j in S do simple_coroots(rd)[j] od in  if is_orthogonal(simple_roots(rd)[i],T)
+    then simple_root_numbers_temp#:=S
+    else  simple_root_numbers_temp[0]##:=S fi od{S};
+    simple_root_numbers:=simple_root_numbers_temp
+   od{i};
  (simple_root_numbers,
  for i:#simple_root_numbers do 
   derived(

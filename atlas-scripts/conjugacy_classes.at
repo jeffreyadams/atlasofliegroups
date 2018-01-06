@@ -1,6 +1,7 @@
 <W_orbit.at { for generate_W@RootDatum }
 <elliptic_aux.at
 <Levi_class.at
+<make_levi.at
 
 set_type ConjugacyClass = (ComplexLevi Levi, WeylElt w)
 {ComplexLevi:(rd,rd_L)
@@ -44,58 +45,22 @@ let levis=Levi_classes(rd) in
 ##for L in levis do 
  for w in elliptic(L.rd_Levi) do W_elt(L,w) od od
 
+set is_elliptic_conjugate(WeylElt x,WeylElt y)=bool:
+assert(x.root_datum=y.root_datum,"Weyl elements are for different root data");
+assert(is_elliptic(x) and is_elliptic(y),"Weyl element is not elliptic");
+char_poly(matrix(x))=char_poly(matrix(y))
 
-{C.Levi: ComplexLevi
- C.Levi.root_datum=C.root_datum: root datum of ambient group G
- C.Levi.complex_Levi: root datum of Levi L
- C.w_Levi: WeylElt for Levi L
- C.W_elt_Levi: WeylElt for G
-}
+set is_conjugate(WeylElt x,WeylElt y)=bool:
+assert(x.root_datum=y.root_datum,"Weyl elements are for different root data");
+let ((,L),(,M))=(Levi_of_w(x),Levi_of_w(y)) in 
+if is_conjugate(x.root_datum, L,M) then 
+char_poly(matrix(x))=char_poly(matrix(y)) else false fi
 
+set conjugacy_class(WeylElt x, [ConjugacyClass] classes)=WeylElt:W_elt(classes[first(for C in classes do is_conjugate(x,C.W_elt) od)])
+set conjugacy_class(WeylElt x, [WeylElt] classes)=WeylElt:classes[first(for w in classes do is_conjugate(x,w) od)]
 
-{
-set G=Sp(10,R)
-set rd=root_datum(G)
-set L=complex_Levi(rd,[0,1,2,5])
-set w_L=W_elt(L.rd_Levi,[0,1,2])
-set C=ConjugacyClass:(L,w_L)
-}
+set conjugacy_class_by_Levi(WeylElt x, [ConjugacyClass] classes)=classes[first(for C in classes do is_conjugate(x,C.W_elt) od)]
 
-{set W_elt(ConjugacyClass C)=WeylElt:
-id_W(C.Levi.root_datum)##C.w_Levi.word
-}
-{
-{ compute conjugacy class of w, inspired by cross_W_orbit.at
+set conjugacy_class(WeylElt w)=conjugacy_class(w,conjugacy_classes(w.root_datum))
 
-  conjugacy_class_extra returns (words, class), where class is the conjugacy
-  class as list of elements, and for each i one has
-  words[i]*x*words[i]^{-1}=class[i]
-}
-set conjugacy_class_extra (WeylElt x) = ([WeylElt]{transport},[WeylElt]{orbit}):
-  let rd=x.root_datum then gens=rd.W_gens
-  then orbit= [x], ws = [id_W(rd)], done=0
-  then absent (WeylElt w) = bool: none(#orbit,(int i)bool:orbit[i]=w)
-  in
-  while done<#orbit
-  do
-    let w = ws[done], a=orbit[done] in done+:=1
-  ; for s in gens
-    do let b= s*a*s in
-      if absent(b) then ws #:= s*w; orbit #:= b fi
-    od
-  od; (ws,orbit)
-
-set conjugacy_class (WeylElt w) = [WeylElt]:
-  let (,orbit)=conjugacy_class_extra(w) in orbit
-
-
-set conjugacy_classes (RootDatum rd) = [[WeylElt]]:
-  let W = generate_W(rd), result =[[WeylElt]]:[] in
-  for w in W
-  do if none(#result,(int i)bool: let ri=result[i] in any(#ri,(int j):ri[j]=w))
-     then result #:= conjugacy_class(w)
-     ; prints("C:", w, " ", #result~[0])
-     fi
-  od; result
-
-set shortest_length(WeylElt w)=min(for y in conjugacy_class(w) do length(y) od)}
+set conjugacy_class_by_Levi(WeylElt w)=conjugacy_class_by_Levi(w,conjugacy_classes_by_Levi(w.root_datum))
