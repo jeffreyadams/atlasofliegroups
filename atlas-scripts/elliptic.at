@@ -8,86 +8,80 @@ set_type Partition = [int]
 
 {elliptic conjugacy classes of Weyl groups, classical and exceptional}
 
-{move to basic.at}
-set block_matrix([mat] m)=mat:
-let M=m[0] in for i:#m-1 from 1 do M:=block_matrix(M,m[i]) od;M
-
 set is_simple(RootDatum rd) = #%Lie_type(rd)=1
 
-{   elliptic conjugacy classes in classical groups }
+{   elliptic conjugacy classes in classical groups  }
 
-{elliptic element in type B_n associated to a partition of n}
-{this is Cox(a_1)x...xCox(a_m)}
+{ elliptic element in type B_n associated to a partition of n}
+{ this is Cox(a_1)x...xCox(a_m) }
 set elliptic_B (Partition P) = WeylElt:
-let M=block_matrix(for part in P do matrix(coxeter_element(SO(2*part+1))) od) in
-{prints(M);}
-W_elt(SO(2*sum(P)+1),M)
+  let M=block_matrix(for part in P do matrix(coxeter_element(SO(2*part+1))) od)
+  in {prints(M);} W_elt(SO(2*sum(P)+1),M)
 
-{elliptic element in type C_n associated to a partition of n}
-{this is Cox(a_1)x...xCox(a_m)}
+{ elliptic element in type C_n associated to a partition of n }
+{ this is Cox(a_1)x...xCox(a_m) }
 set elliptic_C (Partition P) = WeylElt:
-let M=block_matrix(for part in P do matrix(coxeter_element(Sp(2*part))) od) in
-{prints(M);}
-W_elt(Sp(2*sum(P)),M)
+  let M=block_matrix(for part in P do matrix(coxeter_element(Sp(2*part))) od)
+  in {prints(M);} W_elt(Sp(2*sum(P)),M)
 
-{elliptic element in type D_n associated to a partition of n
-with an even number of parts}
-{get it from B_n}
+{ elliptic element in type D_n associated to a partition of n
+  with an even number of parts; get it from B_n
+}
 set elliptic_D (Partition P) = WeylElt:
-assert(is_even(#P),"Partition in type D must have an even # of parts");
-let n=sum(P) in
-W_elt(SO(2*n),matrix(elliptic_B(P)))
+  assert(is_even(#P),"Partition in type D must have an even # of parts");
+  let n=sum(P) in W_elt(SO(2*n),matrix(elliptic_B(P)))
 
 { elliptic class in classical group, given by partition }
-set elliptic(RootDatum rd,Partition P)=WeylElt:
-assert(is_simple(rd), "Root Datum is not simple");
-let (type,rank)=(%Lie_type(rd))[0] in
-assert(type="A" or type="B" or type="C" or type="D","Root Datum is not classical");
-if type = "A" then
-    assert(P=[rank+1],"Invalid element in type A");coxeter_element(rd)
-elif type="B" then
-    assert(rank=sum(P),"rank does not match Partition");elliptic_B(P)
-elif type="C" then
-    assert(rank=sum(P),"rank does not match Partition");elliptic_C(P)
-else
-    assert(rank=sum(P),"rank does not match Partition");elliptic_D(P) fi
+set elliptic (RootDatum rd,Partition P) = WeylElt:
+  assert(is_simple(rd), "Root Datum is not simple");
+  let (type,rank)=(%Lie_type(rd))[0] in
+  if type = "A"
+  then assert(P=[rank+1],"Invalid element in type A"); coxeter_element(rd)
+  elif type="B"
+  then assert(rank=sum(P),"rank does not match Partition"); elliptic_B(P)
+  elif type="C"
+  then assert(rank=sum(P),"rank does not match Partition"); elliptic_C(P)
+  elif type="D"
+  then assert(rank=sum(P),"rank does not match Partition"); elliptic_D(P)
+  else error("Root Datum is not classical")
+  fi
 
-{all elliptic classes in classical case, obtained by running over partitions}
+{ all elliptic classes in classical case, obtained by running over partitions }
 set partitions_even_number_parts (int n) = [[int]]:
 ##for P in partitions(n) do if is_even(#P) then [P] else [] fi od
 
-{representatives of elliptic conjugacy classes in type A
- just the Coxeter element}
+{ representatives of elliptic conjugacy classes in type A
+  just the Coxeter element }
 set elliptic_A (int n) = [WeylElt]: [coxeter_element(SL(n+1))]
 
-{representatives of elliptic conjugacy classes in type B/C
-parametrized by partitions of n}
+{ representatives of elliptic conjugacy classes in type B/C
+  parametrized by partitions of n }
 set elliptic_B (int n) = [WeylElt]: for P in partitions(n) do elliptic_B(P) od
 set elliptic_C (int n) = [WeylElt]: for P in partitions(n) do elliptic_C(P) od
 
-{representatives of elliptic conjugacy classes in type D
- paraemtrized by partitions of n with an even number of parts}
+{ representatives of elliptic conjugacy classes in type D
+  paraemtrized by partitions of n with an even number of parts }
 set elliptic_D (int n) = [WeylElt]:
   for P in partitions_even_number_parts(n) do elliptic_D(P) od
 
 {elliptic classes in any simple root datum, classical (above)
-or from a table in ellipticExceptional.at}
-set elliptic (RootDatum rd) = [WeylElt]:
-assert(is_simple(rd),"Root Datum is not simple");
-let (type,rank)=(%Lie_type(rd))[0] in
-assert(type="A" or type="B" or type="C" or type="D" or type="G" or
-type="F"
-or (type="E" and rank=6 or rank=7 or rank=8),"Invalid Root Datum");
-if type="A" then elliptic_A(rank)
-elif type="B" then elliptic_B(rank)
-elif type="C" then elliptic_C(rank)
-elif type="D" then elliptic_D(rank)
-elif type="G" then elliptic_G2
-elif type="F" then elliptic_F4
-elif type="E" then
-     if rank=6 then elliptic_E6
-     elif rank=7 then elliptic_E7
-     elif rank=8 then elliptic_E8 else [WeylElt]:[] fi
-else
-[WeylElt]:[] fi
-
+ or from a table in ellipticExceptional.at
+ see elliptic_aux.at for general case
+}
+set elliptic_simple (RootDatum rd) = [WeylElt]:
+  assert(is_simple(rd),"Root Datum is not simple");
+  let (type,rank)=(%Lie_type(rd))[0] in
+  if type="A" then elliptic_A(rank)
+  elif type="B" then elliptic_B(rank)
+  elif type="C" then elliptic_C(rank)
+  elif type="D" then elliptic_D(rank)
+  elif type="G" then elliptic_G2
+  elif type="F" then elliptic_F4
+  elif type="E" then
+       if rank=6 then elliptic_E6
+       elif rank=7 then elliptic_E7
+       elif rank=8 then elliptic_E8
+       else error("Invalid Root Datum")
+       fi
+  else error("Invalid Root Datum")
+  fi
