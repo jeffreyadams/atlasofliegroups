@@ -406,13 +406,12 @@ inner_class: (RootDatum,mat->InnerClass): inner_class of G from involution
   This is the basic function for building a complex reductive group equipped
   with an involution from the root datum and that involution; the latter is
   given on the lattice basis of the root datum, and must describe an
-  involutive automorphism of the root datum. The involution is converted to a
-  based root datum involution if necessary, using the Weyl group.
-twisted_involution (RootDatum,mat->InnerClass,vec): inner_class and Weyl word
-  Build an inner class as the above function, and also return a Weyl word
-  (twisted involution) that expresses the given involution in that inner
-  class. The latter is a reduced word (with Weyl group generators numbered
-  from 0), to be left-multiplied to the distinguished involution.
+  involutive automorphism theta of the root datum. If theta is not a based root
+  datum involution, it is replaced by some w*theta that is, with w in W
+twisted_involution (RootDatum,mat->WeylElt,InnerClass): extra info inner_class
+  Build an inner class as the above function, by also return the Weyl element w
+  (twisted involution) for which w*theta gives the distinguished involution
+  (the element w is first component of result to remind us it acts on the left)
 
 operators =, != : (InnerClass,InnerClass->bool): (non)identity of inner classes
   Equality holds only when both arguments refer to the same inner class

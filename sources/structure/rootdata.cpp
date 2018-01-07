@@ -1217,7 +1217,14 @@ void toDistinguished(WeightInvolution& q, const RootDatum& rd)
    represents that twist, and return value transforms it to original |Delta|
 
    Simple reflections are gathered in the opposite order of when a Weyl group
-   element is represented by its image of |rho| rather than of |Delta|
+   element is represented by its image of $\rho$ rather than of |Delta|. In
+   other words we find the simple reflections in the same order they need to be
+   applied to the simple system to get back |Delta|. That is the right-to-left
+   order in our result, so we push in front of a list; finally wrap to |vector|.
+
+   (This inversion woud have been avoided if we had recorded the images not of
+   the simple roots but of the coroots: positivity of $\check\alpha_i*\theta$
+   tells whether $\theta\rho$ is positive for simple reflection hyperplane $i$.)
  */
 WeylWord wrt_distinguished(const RootSystem& rs, RootNbrList& Delta)
 {
@@ -1228,7 +1235,7 @@ WeylWord wrt_distinguished(const RootSystem& rs, RootNbrList& Delta)
     for (s=0; s<rank; ++s)
       if (rs.is_negroot(Delta[s]))
       { // then we apply reflection with respect to root |Delta[s]| to |Delta|
-	w.push_back(s);
+	w.push_back(s); // but we record the simple refelction index |s|
 	const auto& pi=rs.root_permutation(Delta[s]);
 	for (weyl::Generator t=0; t<rank; ++t) // apply |pi| to |Delta[t]|
 	  Delta[t]=pi[Delta[t]];

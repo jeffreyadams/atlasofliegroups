@@ -2233,9 +2233,9 @@ necessary renumbering and naming of real form numbers.
 
 @~The class |inner_class_value| was the first Atlas type where we deviated from
 the previously used scheme of holding an Atlas library object with the main
-value in a data member |val|. That was adapt to the fact that |InnerClass| is
+value in a data member |val|. That was to adapt to the fact that |InnerClass| is
 not copy-constructible (its copy constructor is deleted), but since we have
-eliminated any need to copy an |inner_class_value| as well, so we return to the
+eliminated any need to copy an |inner_class_value| as well, we return to the
 situation where the main |InnerClass| object is a member of |inner_class_value|.
 Although we handle them using |shared_inner_class|, which is a (smart) pointer
 to constant, we occasionally need non-|const| access to the |InnerClass|, namely
@@ -2247,7 +2247,7 @@ allows a stored non-|const| reference to be exported from a |const| object; the
 |mutable| solution is a bit more explicit.
 
 An important property that our approach is set up to ensure, is that we can
-compare identity of inner class values by comparing their addresses (seeing if
+compare identity of inner class values by comparing their addresses (checking if
 they are the same object internally). Namely, we ensure there cannot coexist two
 identical copies of an inner class (similarly to what we did for
 |root_datum_value|, and with an implementation depending on that class).
@@ -2414,9 +2414,8 @@ void twisted_involution_wrapper(expression_base::level l)
   if (l==expression_base::no_value)
     return;
 @)
+  push_value(std::make_shared<W_elt_value>(rd,rd->W().element(ww)));
   push_value(std::move(ic_value));
-  push_value(std::make_shared<vector_value>
-    (std::vector<int>(ww.begin(),ww.end())));
   if (l==expression_base::single_value)
     wrap_tuple<2>();
 }
@@ -2606,7 +2605,7 @@ install_function(classify_wrapper,@|"classify_involution"
 install_function(fix_involution_wrapper,@|"inner_class"
                 ,"(RootDatum,mat->InnerClass)");
 install_function(twisted_involution_wrapper,@|"twisted_involution"
-                ,"(RootDatum,mat->InnerClass,vec)");
+                ,"(RootDatum,mat->WeylElt,InnerClass)");
 install_function(inner_class_eq_wrapper,@|"=","(InnerClass,InnerClass->bool)");
 install_function(inner_class_neq_wrapper,@|"!=","(InnerClass,InnerClass->bool)");
 install_function(distinguished_involution_wrapper,@|"distinguished_involution"
