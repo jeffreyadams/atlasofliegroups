@@ -59,7 +59,14 @@ set_type
 ,
   {. Data type for a complex parabolic subrgoup .}
   ComplexParabolic = (RootDatum root_datum,[int] S)
+,
+  {. Data type for a complex Levi=pair of root data.}
+  ComplexLevi  = (RootDatum rd,RootDatum rd_Levi)
+  { assumption:
+    the set of simple roots/coroots of rd_Levi is a subset of those of rd_G }
 ]
+
+set rho(ComplexLevi L)=ratvec:rho(L.rd_Levi)
 
 {. given a list of KGB elements and a function f assigning integers to them,
 sort the list by weakly increasing value of f.  .}
@@ -180,12 +187,12 @@ set KGP_elt (ratvec lambda,KGBElt x) = KGPElt:
 set complex_parabolic (Parabolic(S,x)) = ComplexParabolic: (root_datum(x),S)
 
 {. auxiliary function .}
-set complex_Levi (RootDatum rd, (int->bool) select) = RootDatum:
-  root_datum(columns_with(select,  simple_roots(rd))
-            ,columns_with(select,simple_coroots(rd)))
+set complex_Levi (RootDatum rd, (int->bool) select) = ComplexLevi:
+  (rd,root_datum(columns_with(select,  simple_roots(rd))
+            ,columns_with(select,simple_coroots(rd))))
 
 {. Root datum of the Levi factor of a complex parabolic. .}
-set complex_Levi (RootDatum rd,[int] S) = complex_Levi(rd,is_member(S))
+set complex_Levi (RootDatum rd,[int] S) =ComplexLevi: complex_Levi(rd,is_member(S))
 
 {. Test if a complex Levi defined by a set of simple roots S is $\theta_x$-stable;
   algorithm: H=sum of fundamental coweights with index not in S,
@@ -205,7 +212,7 @@ be theta-stable. .}
 set Levi (Parabolic(S,x):P) = RealForm:
   assert(is_Levi_theta_stable(P),"Levi factor is not theta-stable");
   let x_min=x_min(P) then theta=involution(x_min)
-  then ic_Levi=inner_class(complex_Levi(root_datum(x),S),theta)
+  then ic_Levi=inner_class(complex_Levi(root_datum(x),S).rd_Levi,theta)
   in { synthetic } real_form(ic_Levi,theta,torus_factor(x_min))
 
 {. Test if parabolic P=(S,x) is theta-stable: <=>
@@ -243,7 +250,8 @@ set is_parabolic_real(Parabolic (S,x):P) = bool:
   Cartan and then find w so that w*x=x_0
 }
 {. Half sum of positive roots not in the Levi (L must be theta-stable). .}
-set rho_u(ComplexParabolic P)=ratvec: rho(root_datum(P))-rho(complex_Levi(P))
+set rho_u (ComplexParabolic P) = ratvec:
+  rho(root_datum(P))-rho(complex_Levi(P).rd_Levi)
 
 {. Half sum of positive roots not in the Levi (L must be theta-stable). .}
 set rho_u (Parabolic P) = ratvec: rho(real_form(P)) - rho(Levi(P))
@@ -440,7 +448,8 @@ for S in subsets do
 for P in parabolics(G,(G,S)) do if is_parabolic_real(P) then rv#:=P fi od od;rv
 
 {. For each theta-stable parabolic of G, print S, Levi factor, and maximal x. .}
-set print_theta_stable_parabolics (RealForm G) = void:  let all = theta_stable_parabolics(G) in
+set print_theta_stable_parabolics (RealForm G) = void:
+  let all = theta_stable_parabolics(G) in
   for (S,x):P in all do prints("S=", S, " L= ", Levi(P), "  x=",x) od;
   prints("Total: ",#all)
 

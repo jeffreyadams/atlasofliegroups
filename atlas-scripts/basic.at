@@ -308,6 +308,14 @@ set block_matrix (mat A,mat B) = mat:
   let ra=n_rows(A), rb=n_rows(B) then za=null(ra), zb=null(rb) in
   (ra+rb)# (for col in A do col##zb od ## for col in B do za##col od)
 
+set block_matrix ([mat] list) = mat:
+  let m = sum(for A in list do n_rows(A) od), pos=0
+  in m #
+  ##for A in list
+    do let pre=null(pos) then {sequential!} post=null(m-(pos+:=n_rows(A))) in
+       for col in A do pre##col##post od
+    od
+
 set main_diagonal (mat A) = vec:  for i:shape(A).min do A[i,i] od
 
 { test matrix against a multiple of the identity }
