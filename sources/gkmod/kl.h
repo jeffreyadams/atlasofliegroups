@@ -43,7 +43,7 @@ class KLPolEntry; // class definition will given in the implementation file
 /*
   |KLContext| is a class that Calculates and stores the
   Kazhdan-Lusztig-Vogan polynomials for a block of representations of $G$.
-  */
+*/
 class KLContext
   : public klsupport::KLSupport // base is needed for full functionality
 {
@@ -57,10 +57,8 @@ class KLContext
 */
   std::vector<KLRow> d_kl;           // list of polynomial pointers
 
-/*!
-  \brief Entry d_mu[y] is a MuRow, which has parallel vectors for x and mu(x,y)
-*/
- std::vector<MuRow> d_mu;           // lists of x's and their mu-coefficients
+// Entry |d_mu[y]| is a |MuRow|; it has parallel vectors for $x$ and |mu(x,y)|
+  std::vector<MuRow> d_mu;       // lists of $x$'s and their |mu|-coefficients
 
   KLStore d_store; // the distinct actual polynomials
 
@@ -117,36 +115,36 @@ class KLContext
   typedef HashTable<KLPolEntry,KLIndex> KLHash;
 
   //accessors
-    weyl::Generator firstDirectRecursion(BlockElt y) const;
-    weyl::Generator first_nice_and_real(BlockElt x,BlockElt y) const;
-    std::pair<weyl::Generator,weyl::Generator>
-      first_endgame_pair(BlockElt x, BlockElt y) const;
-    BlockEltPair inverseCayley(size_t s, BlockElt y) const;
-    std::set<BlockElt> down_set(BlockElt y) const;
+  weyl::Generator firstDirectRecursion(BlockElt y) const;
+  weyl::Generator first_nice_and_real(BlockElt x,BlockElt y) const;
+  std::pair<weyl::Generator,weyl::Generator>
+  first_endgame_pair(BlockElt x, BlockElt y) const;
+  BlockEltPair inverseCayley(size_t s, BlockElt y) const;
+  std::set<BlockElt> down_set(BlockElt y) const;
 
-    KLPolRef klPol(BlockElt x, BlockElt y,
-		   KLRow::const_iterator klv,
-		   PrimitiveRow::const_iterator p_begin,
-		   PrimitiveRow::const_iterator p_end) const;
+  KLPolRef klPol(BlockElt x, BlockElt y,
+		 KLRow::const_iterator klv,
+		 PrimitiveRow::const_iterator p_begin,
+		 PrimitiveRow::const_iterator p_end) const;
 
-    // manipulators
-    void silent_fill(BlockElt last_y);
-    void verbose_fill(BlockElt last_y);
+  // manipulators
+  void silent_fill(BlockElt last_y); // called by public |fill| when not verbose
+  void verbose_fill(BlockElt last_y); // called by public |fill| when verbose
 
-    void fillKLRow(BlockElt y, KLHash& hash);
-    void recursionRow(std::vector<KLPol> & klv,
-		      const PrimitiveRow& e, BlockElt y, size_t s);
-    void muCorrection(std::vector<KLPol>& klv,
-		      const PrimitiveRow& e,
-		      BlockElt y, size_t s);
-    void complete_primitives(const std::vector<KLPol>& klv,
-			     const PrimitiveRow& e, BlockElt y,
-			     KLHash& hash);
-    void newRecursionRow(KLRow & klv,const PrimitiveRow& pr,
-			 BlockElt y, KLHash& hash);
-    KLPol muNewFormula(BlockElt x, BlockElt y, size_t s, const MuRow& muy);
+  void fillKLRow(BlockElt y, KLHash& hash);
+  void recursionRow(std::vector<KLPol> & klv,
+		    const PrimitiveRow& e, BlockElt y, size_t s);
+  void muCorrection(std::vector<KLPol>& klv,
+		    const PrimitiveRow& e,
+		    BlockElt y, size_t s);
+  void complete_primitives(const std::vector<KLPol>& klv,
+			   const PrimitiveRow& e, BlockElt y,
+			   KLHash& hash);
+  void newRecursionRow(KLRow & klv,const PrimitiveRow& pr,
+		       BlockElt y, KLHash& hash);
+  KLPol muNewFormula(BlockElt x, BlockElt y, size_t s, const MuRow& muy);
 
-}; //class KLContext
+}; // |class KLContext|
 
 } // |namespace kl|
 

@@ -77,13 +77,11 @@ namespace atlas {
 
 namespace kl {
 
-  /*!
-\brief Polynomial 0, which is stored as a vector of size 0.
-  */
+// Polynomial 0, which is stored as a vector of size 0.
   const KLPol Zero;
 
-  /*! \brief Polynomial 1.q^0. */
-  const KLPol One(0,KLCoeff(1)); // Polynomial(d,1) gives 1.q^d.
+// Polynomial $1.q^0$.
+  const KLPol One(0,KLCoeff(1)); // since |Polynomial(d,1)| gives |1.q^d|.
 
 // we wrap |KLPol| into a class |KLPolEntry| that can be used in a |HashTable|
 
@@ -117,16 +115,14 @@ public:
 /* methods of KLPolEntry */
 
 
-/*!
-  \brief calculate a hash value in [0,modulus[, where modulus is a power of 2
+/*
+  Calculate a hash value in [0,modulus[, where modulus is a power of 2
 
   The function is in fact evaluation of the polynomial (with coefficients
-  interpreted in Z) at the point 2^21+2^13+2^8+2^5+1=2105633, which can be
-  calculated quickly (without multiplications) and which gives a good spread
-  (which is not the case if 2105633 is replaced by a small number, because
-  the evaluation values will not grow fast enough for low degree
-  polynomials!).
-
+  interpreted in $\Z$) at the point $2^{21}+2^{13}+2^8+2^5+1=2105633$, which can
+  be calculated quickly (without multiplications) and which gives a good spread
+  (which is not the case if 2105633 is replaced by a small number, because the
+  evaluation values will not grow fast enough for low degree polynomials!).
 */
 inline size_t KLPolEntry::hashCode(size_t modulus) const
 { const KLPol& P=*this;
@@ -169,8 +165,8 @@ KLContext::KLContext(const Block_base& b)
 /******** accessors **********************************************************/
 
 
-/*!
-  \brief Returns the Kazhdan-Lusztig-Vogan polynomial $P_{x,y}$
+/*
+  Return the Kazhdan-Lusztig-Vogan polynomial $P_{x,y}$
 
   Precondition: row $y$ is completely computed, stored in |d_kl[y]|.
 
@@ -203,8 +199,8 @@ KLIndex KLContext::KL_pol_index(BlockElt x, BlockElt y) const
   return inx<klr.size() ? klr[inx] : inx==self_index(y) ? d_one : d_zero;
 }
 
-/*!
-  \brief Returns mu(x,y).
+/*
+  Return $\mu(x,y)$.
 
   This function is not used internally. So we prefer do just use the table of
   KL polynomials.
@@ -219,11 +215,11 @@ MuCoeff KLContext::mu(BlockElt x, BlockElt y) const
 }
 
 /*
-  Returns the list of all x extremal w.r.t. y.
+  Return the list of all |x| extremal w.r.t. |y|.
 
-  Explanation: this means that length(x) < length(y), and every descent
-  for y is either a descent for x.  Or:  asc(x)\cap desc(y)=\emptyset
-  Here descent means "in the tau invariant" (possibilities C-, ic, r1, r2).
+  Explanation: this means that |length(x) < length(y)|, and every descent
+  for |y| is either a descent for |x|.  or  $asc(x)\cap desc(y)=\emptyset$.
+  Here descent means "in the $\tau$ invariant" (possibilities C-, ic, r1, r2).
 */
 PrimitiveRow KLContext::extremalRow(BlockElt y)
   const
@@ -239,8 +235,8 @@ PrimitiveRow KLContext::extremalRow(BlockElt y)
 /*
   Returns the list of all x primitive w.r.t. y.
 
-  Explanation: this means that length(x) < length(y), and every descent
-  for y is either a descent, or an imaginary type II ascent for x.
+  Explanation: this means that |length(x) < length(y)|, and every descent
+  for |y| is either a descent, or an imaginary type II ascent for |x|.
 */
 PrimitiveRow KLContext::primitiveRow(BlockElt y) const
 {
@@ -254,9 +250,7 @@ PrimitiveRow KLContext::primitiveRow(BlockElt y) const
 
 /******** manipulators *******************************************************/
 
-/*!
-  \brief Fills (or extends) the KL- and mu-lists.
-*/
+// Fill (or extend) the KL- and mu-lists.
 void KLContext::fill(BlockElt y, bool verbose)
 {
   if (y<fill_limit)
@@ -323,8 +317,8 @@ BitMap KLContext::primMap (BlockElt y) const
 
  *****************************************************************************/
 
-/*!
-  \brief Returns the first descent generator that is not real type II
+/*
+  Return the first descent generator that is not real type II
 
   Explanation: these are the ones that give a direct recursion formula for the
   K-L basis element. Explicitly, we search for a generator |s| such that
@@ -344,7 +338,7 @@ weyl::Generator KLContext::firstDirectRecursion(BlockElt y) const
 } // |KLContext::firstDirectRecursion|
 
 /*
-  Returns the first real nonparity ascent for y that is a complex ascent, or
+  Return the first real nonparity ascent for y that is a complex ascent, or
   imaginary type 2, or compact imaginary for x.
 
   Explanation: those are the ones that give a nice new recursion formula for
@@ -377,7 +371,7 @@ weyl::Generator KLContext::first_nice_and_real(BlockElt x,BlockElt y) const
   * none of the rn ascents for y is C+, ic or i2 for x (so
     |first_nice_and_real| failed to find anything)
 
-  Returns the first pair (s,t) such that
+  Return the first pair (s,t) such that
   1) (s,t) is (rn,r2) for y;
   2) (s,t) is (i1,ic) for x;
   3) (s,t) is (i1,i1/2) for s.x.
@@ -457,8 +451,8 @@ std::set<BlockElt> KLContext::down_set(BlockElt y) const
 
 // private manipulators
 
-/*!
-  \brief Fills in the row for y in the KL-table.
+/*
+  Fill the row for |y| in the KL-table.
 
   Precondition: all lower rows have been filled
 
@@ -486,11 +480,11 @@ void KLContext::fillKLRow(BlockElt y, KLHash& hash)
   }
 }
 
-/*!
-  \brief Puts into klv the right-hand side of the recursion formula for y
-  corresponding to the descent s.
+/*
+  Put into |klv| the right-hand side of the recursion formula for |y|
+  corresponding to the descent |s|.
 
-  Precondition: s is either a complex, or a real type I descent for y.
+  Precondition: |s| is either a complex, or a real type I descent for |y|.
 
   Explanation: the shape of the formula is:
 
@@ -568,8 +562,8 @@ void KLContext::recursionRow(std::vector<KLPol>& klv,
 
 } // |KLContext::recursionRow|
 
-/*!
-  \brief Subtracts from all polynomials in |klv| the correcting terms in the
+/*
+  Subtract from all polynomials in |klv| the correcting terms in the
   K-L recursion.
 
   Precondtion: |klv| already contains, for all $x$ that are primitive w.r.t.
@@ -939,8 +933,8 @@ void KLContext::newRecursionRow
 
 } // |KLContext::newRecursionRow|
 
-/*!
-  \brief Stores into |klv[j]| the $\mu$-sum appearing a new K-L recursion.
+/*
+  Store into |klv[j]| the $\mu$-sum appearing a new K-L recursion.
 
   Precondition: |pr| is the primitive row for |y|, $s$ is real nonparity for
   $y$ and either C+ or imaginary for $x=pr[j]$ (those are the cases for which
