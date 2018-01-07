@@ -8,6 +8,8 @@
 */
 
 #include "ext_kl.h"
+#include "kl.h" // for presence of |kl::KLContext| in |check_polys|
+
 #include "basic_io.h"
 #include "wgraph.h"
 
@@ -384,7 +386,7 @@ Pol KL_table::get_Mp(weyl::Generator s, BlockElt x, BlockElt y,
 	  assert(M[u].degree()==1 and M[u][0]==M[u][1]);
 	  acc -= mu(1,x,u)*M[u][1];
 	}
-      return Pol(acc);
+    return Pol(acc);
   }
 
   assert(k==3); // this case remains
@@ -823,7 +825,7 @@ bool KL_table::check_polys(BlockElt y) const
   bool result = true;
 #ifndef NDEBUG
   kl::KLContext untwisted(aux.block.untwisted());
-  untwisted.fill();
+  untwisted.fill(); // fill KL table silently
   for (BlockElt x=y; x-->0; )
     if (not check(P(x,y),untwisted.klPol(aux.block.z(x),aux.block.z(y))))
     {

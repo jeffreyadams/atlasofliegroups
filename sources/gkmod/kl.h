@@ -1,7 +1,7 @@
 /*
   This is kl.h
 
-  Class definitions and function declarations for the class KLContext.
+  Class definitions and function declarations for the class |KLContext|.
 
 
   Copyright (C) 2004,2005 Fokko du Cloux
@@ -55,7 +55,7 @@ class KLContext
   $P_{x_i,y}$ with $x_i$ equal to primitive element number $i$ for
   |descentSet(y)|, for all $i$ such that $l(x_i)<l(y)$.
 */
-  std::vector<KLRow> d_kl;           // list of polynomial pointers
+  std::vector<KLRow> d_kl;       // list of polynomial pointers
 
 // Entry |d_mu[y]| is a |MuRow|; it has parallel vectors for $x$ and |mu(x,y)|
   std::vector<MuRow> d_mu;       // lists of $x$'s and their |mu|-coefficients
@@ -104,9 +104,9 @@ class KLContext
 // manipulators
 
   // partial fill, up to and including the "row" of |y|
-  void fill(BlockElt y, bool verbose=true);
+  void fill(BlockElt y, bool verbose=false);
 
-  void fill(bool verbose=true)
+  void fill(bool verbose=false)
   { fill(size()-1,verbose); } // simulate forbidden first default argument
 
 
@@ -140,6 +140,10 @@ class KLContext
   void complete_primitives(const std::vector<KLPol>& klv,
 			   const PrimitiveRow& e, BlockElt y,
 			   KLHash& hash);
+  size_t writeRow(const std::vector<KLPol>& klv,
+		  const PrimitiveRow& e, BlockElt y, KLHash& hash);
+  size_t remove_zeros(const KLRow& klv,
+		      const PrimitiveRow& e, BlockElt y);
   void newRecursionRow(KLRow & klv,const PrimitiveRow& pr,
 		       BlockElt y, KLHash& hash);
   KLPol muNewFormula(BlockElt x, BlockElt y, size_t s, const MuRow& muy);

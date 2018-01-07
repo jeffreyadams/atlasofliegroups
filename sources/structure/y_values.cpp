@@ -171,7 +171,7 @@ RatCoweight stable_log(const TorusElement& t, CoweightInvolution xi)
   CoeffList diagonal;
   const int_Matrix B = matreduc::adapted_basis(xi,diagonal);
   const int_Matrix B_inv = B.inverse();
-  const auto d=diagonal.size(), n=B.numRows();
+  const unsigned int d=diagonal.size(), n=B.numRows();
 
   // Get coordinates on $\xi$-stable part of $B$, and convert back to original
   // By doing reduction modulo 1 half-way, ensure elected result is produced

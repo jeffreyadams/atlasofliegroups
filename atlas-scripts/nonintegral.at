@@ -91,7 +91,7 @@ set ext_cross(
   prints("ext_cross by w=",w); prints("E:"); display(E);
   let rd=root_datum(ic), x=x(E), w1= inverse(w), gamma1=w*gamma
   then rho=rho(rd), x1=cross(w,x) { call cross@(mat,KGBElt) from synthetic.rx }
-  , (gamma2,) = make_integrally_dominant(rd,gamma1)
+  , gamma2 = integrally_dominant(rd,gamma1)
   then rho_r_shift = w*rho_r(x)-rho_r(x1), theta1=involution(x1)
   then lambda_rho2 =
     let lambda_rho1 = w*lambda_rho + (w*rho-rho-rho_r_shift)\1
@@ -121,30 +121,28 @@ set posroot_ext_cross (int i, ExtParam E) = ExtParam:
 { cross action of product of strongly simple reflections,
   must give w\in W^{\delta_0}
 }
-set ext_cross ([int] w, ExtParam E) = ExtParam:
-  ext_cross(w_matrix(root_datum(E),w),E)
+set ext_cross (WeylElt w, ExtParam E) = ExtParam: ext_cross(w.matrix,E)
 
 set ext_cross_special (int i, ExtParam E, bool show) = ExtParam:
 ( if show then prints("ext_cross_special with ", i); display(E) fi
 ; let special_types=["2i12","2i22", "2r21","2r22"]
   , type=ext_type(i,E)
   in if not in_string_list(type,special_types)
-    then prints("type: ",type)
-    ; error("Looks like wrong type in ext_cross_special")
-    fi
+     then error("type: ",type,new_line
+               ,"Looks like wrong type in ext_cross_special")
+     fi
 ; let rd=root_datum(E)
   , alpha=root(integrality_datum(E),i) { a simple root in integral system }
   in
   if show then prints("in ext_cross_special with i=", i, "root=", alpha) fi
 ; if is_simple_root(rd,alpha)
-  then { call  ext_cross_simple@(int,ExtParam) from extended_cross.at}
+  then { call |ext_cross_simple@(int,ExtParam)|, defined in extended_cross.at }
      ext_cross_simple(i,E)
   else let j=root_index(root_datum(E),alpha) in
     if show then prints("j=", j) fi;
-    let ((,w),beta) =
-      conjugate_to_simple_by_Wdelta(root_datum(E), delta(E), j) in
+    let (w,beta) = Wdelta_conjugate(root_datum(E), delta(E), j) in
     if show then prints("w=", w, " beta=", beta) fi;
-    let E1=ext_cross(w,E) { use the function defined above to move to simple }
+    let E1=ext_cross(w,E) { use function defined above to move to simple }
     then (E2,shift)=translate_to_dominant(E1) { from extended_misc.rx }
     then i=root_index(integrality_datum(E2),beta) in
     if show
@@ -156,7 +154,7 @@ set ext_cross_special (int i, ExtParam E, bool show) = ExtParam:
     then E4 = { undo shift from translate_to_dominant }
        (E3.ic,E3.delta, E3.gamma-shift, E3.lambda_rho-shift, E3.theta
                       , E3.g, E3.l, E3.omega, E3.tau, E3.t)
-    in ext_cross(w~[:],E4)
+    in ext_cross(/w,E4)
   fi
 )
 
@@ -199,7 +197,7 @@ set ext_cross(int i, ExtParam E)= ExtParam: ext_cross(i,E,false)
 }
 set posroot_ext_Cayley (int i,ExtParam E, bool show) = [ExtParam]:
 ( if show then prints("posroot_ext_Cayley i=", i);display(E) fi
-; let ((,w),alpha) = conjugate_to_simple_by_Wdelta(root_datum(E), delta(E), i)
+; let (w,alpha) = Wdelta_conjugate(root_datum(E), delta(E), i)
 { w*root(G,i)=alpha is simple for G, w is in W^\delta }
   then E1=ext_cross(w,E)
   then (E2,shift) = translate_to_dominant(E1)
@@ -215,7 +213,7 @@ set posroot_ext_Cayley (int i,ExtParam E, bool show) = [ExtParam]:
   do let E4 = (E3.ic,E3.delta, E3.gamma-shift, E3.lambda_rho-shift, E3.theta
                              , E3.g, E3.l, E3.omega, E3.tau, E3.t)
 
-     in ext_cross(w~[:],E4)
+     in ext_cross(/w,E4)
   od
 )
 

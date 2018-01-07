@@ -231,6 +231,7 @@ global_KGB::global_KGB(InnerClass& G_C,
 
   const RootDatum& rd = ic.rootDatum();
 
+  // fill the entire involution table of |G_C|:
   for (CartanNbr i=0; i<G_C.numCartanClasses(); ++i)
     G_C.generate_Cartan_orbit(i);
 

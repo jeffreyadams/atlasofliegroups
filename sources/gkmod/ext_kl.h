@@ -13,7 +13,6 @@
 #include "ext_block.h"
 #include "../Atlas.h"
 #include "polynomials.h"
-#include "kl.h" // for (temporary) inclusion of |kl::KLContext| in |KL_table|
 
 namespace atlas {
 

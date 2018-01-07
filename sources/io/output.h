@@ -26,21 +26,19 @@ namespace output {
   class FormNumberMap;
   class Interface;
 
-std::ostream& printBlockSizes
-  (std::ostream&, InnerClass&, Interface&);
+std::ostream& printBlockSizes (std::ostream&, const InnerClass&, Interface&);
 
 
 std::ostream& printRealForms(std::ostream& strm, const FormNumberMap& m);
 
 std::ostream&
-printCartanClass(std::ostream&,
-		 const InnerClass&, size_t, output::Interface&);
+printCartanClass(std::ostream&, const InnerClass&, size_t, output::Interface&);
 
 std::ostream& printFiber(std::ostream&, const Fiber&,
 			 const RealFormNbrList&);
 
 std::ostream& printGradings
-  (std::ostream&, InnerClass&, size_t, Interface&);
+  (std::ostream&, const InnerClass&, size_t, Interface&);
 
 std::ostream& printGradings(std::ostream&, const Fiber&,
 			    const RealFormNbrList&,
@@ -64,7 +62,7 @@ std::ostream& printRealWeyl(std::ostream& strm,
 			    size_t cn);
 
 std::ostream& printStrongReal(std::ostream& strm,
-			      InnerClass& G_C,
+			      const InnerClass& G_C,
 			      const output::FormNumberMap& rfi,
 			      size_t cn);
 
@@ -105,7 +103,7 @@ class Interface : public std::pair<FormNumberMap,FormNumberMap>
  public:
 
 // constructors and destructors
-  Interface(InnerClass& G, const lietype::Layout& lo)
+  Interface(const InnerClass& G, const lietype::Layout& lo)
   : base(FormNumberMap(G,lo),FormNumberMap(G,lo,tags::DualTag()))
   {}
 

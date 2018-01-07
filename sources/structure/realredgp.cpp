@@ -219,8 +219,7 @@ const BruhatOrder& RealReductiveGroup::Bruhat_KGB()
 
 TorusPart minimal_torus_part
   (const InnerClass& G, RealFormNbr wrf, RatCoweight coch,
-   TwistedInvolution tw, // by value, modified
-   const RatCoweight& torus_factor
+   const TwistedInvolution& tw, const RatCoweight& torus_factor
   )
 {
   assert(torus_factor==torus_factor*G.matrix(tw)); // assuming already projected
@@ -228,8 +227,7 @@ TorusPart minimal_torus_part
   RatCoweight diff = (torus_factor-coch).normalize();
   assert (diff.denominator()==1); // since $\exp(2i\pi diff)=1$
 
-  Grading gr = innerclass::grading_of_simples(G,coch);
-  TitsCoset Tc(G,gr);
+  TitsCoset Tc(G,innerclass::grading_of_simples(G,coch));
   const auto& Tg = Tc.titsGroup();
   const auto& W = Tg.weylGroup();
   const auto& i_tab = G.involution_table();

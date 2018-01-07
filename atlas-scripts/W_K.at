@@ -2,7 +2,8 @@
 <misc.at { for |in_distinguished_fiber| }
 <K.at
 <parabolics.at
-<W_orbit.at
+<Weylgroup.at { for |root_reflection| }
+<W_orbit.at { for |generate_W| }
 <cross_W_orbit.at
 
 {full Weyl group W_K of disconnected maximal compact subgroup
@@ -28,26 +29,24 @@ R(K)_dom=W(K,H^delta)\cap W_c^perp   (Proposition 4.4)
  P*lift_action(x,w)=w_matrix(w)*P
  where P is projection X^*(H)->X^*(H_{K_0})
  need this to define equality of K-highest weights (see below)
-lift_action(x,w) assumes x is in the distinguished fiber, and
-w is a W_word for K_0(x)
+ lift_action(x,w) assumes x is in the distinguished fiber, and
+ w is a WeylElt for K_0(x) { only its Weyl word is used, not its root datum }
 }
-set lift_action (KGBElt x, W_word w) = mat:
-let   (rd_K,w_K)=w, rd=root_datum(x)
-  , ((roots,coroots),(inj,pullback))=G_K_roots_and_coroots_raw(x)
-  then result=id_mat(rank(rd)) in
-  for i in w_K
-  do let alpha=roots[i] in
-    let beta=involution(x)*alpha in
-    let beta_vee=coroot(rd,beta) in
-    if is_imaginary(alpha,x) then result*:=reflection(rd,alpha)
-    elif alpha*beta_vee=0
-    then result*:=reflection(rd,alpha)*reflection(rd,involution(x)*alpha)
-    elif alpha*beta_vee=-1 then result*:=reflection(rd,alpha+beta) else
-     error("error in lift_action")
+set lift_action (WeylElt w, KGBElt x) = WeylElt:
+let rd=root_datum(x)
+  , ((roots,coroots),)=G_K_roots_and_coroots_raw(x) { using |rd| coordinates }
+  then result=id_W(rd) in
+  for s in w.word { s is a generator for root datum of K }
+  do let alpha=roots[s] { simple root for K in |rd| coordinates } in
+    if is_imaginary(alpha,x) then result*:=root_reflection(rd,alpha)
+    else let beta=involution(x)*alpha then eval= coroot(rd,beta)*alpha in
+      if =eval then result*:=root_reflection(rd,alpha)*root_reflection(rd,beta)
+      elif eval=-1 then result*:=root_reflection(rd,alpha+beta)
+      else error("error in lift_action")
+      fi
     fi
   od;
   result
-
 
 { given G,x in distinguished fiber, K_0=K_0(x), Weyl group element w for W(K,H),
   w acts on X^*(H)
@@ -57,9 +56,9 @@ let   (rd_K,w_K)=w, rd=root_datum(x)
   set proj=left_inverse(inj)  {NOT projection_to_K_matrix(x)}
   w -> proj*matrix(w)*inj
 }
-set factor_action (KGBElt x,W_word w) = mat:
+set factor_action (KGBElt x,WeylElt w) = mat:
   let inj=cocharacter_lattice_K(x) then proj=left_inverse(inj) in
-  proj*w_matrix(w)*inj
+  proj*matrix(w)*inj
 
 {this is the small Levi factor related to disconnectedness of K
 See khatHowe Proposition 4.4
@@ -97,18 +96,13 @@ set nice_choice_x (RealForm G) = KGBElt: nice_choices_x(G)[0]
 
 { W_c_perp, see khatHowe Propsition 4.4 }
 { requirement: x makes 2rho_c G-dominant }
-set W_c_perp(KGBElt x) = [(RootDatum,[int])]:
+set W_c_perp(KGBElt x) = [WeylElt]:
   generate_W(small_Levi(x))
 
-{ write a word for L as a word for G
-  L is small_Levi() of type A_1^n
-  every simple (in fact positive) root of L is simple for G, but with a
-  different number; establish the mapping, and apply to the letters of w
-}
-set convert_W_word ((RootDatum rd_L,[int] w),RootDatum rd_G) = W_word:
-  let map = [int]: let sr_G=[vec]:rd_G.simple_roots in
-    for alpha in rd_L.simple_roots do find(sr_G,alpha) od
-  in (rd_G, for i in w do map[i] od)
+{ convert |WeylElt| for Levi to one for full |G| }
+set convert (WeylElt w,RootDatum rd_G) = WeylElt: { for |rd_G| }
+  let result = id_W(rd_G), L=w.root_datum in
+  for s in w.word do result *:= root_reflection(rd_G,root(L,s)) od; result
 
 { R_K_dom is W(K,T_K)\cap W_c_perp
   W(K,T_K)=R_K_dom \ltimes W(K_0,T_{K_0}) (KHatHowe Proposition 4.2)
@@ -118,37 +112,36 @@ set convert_W_word ((RootDatum rd_L,[int] w),RootDatum rd_G) = W_word:
   See KHatHow Proposition 4.4 (3)
   requirement: x makes 2rho_c G-dominant
 }
-set R_K_dom(KGBElt x) = [W_word]:  {these are elements of W(G,H)}
-  let W_c_perp=W_c_perp(x), result=[(RootDatum,[int])]:[] in
-{ need to change to numbering for G }
-  for w in W_c_perp
-  do if cross(convert_W_word(w,root_datum(x)),x)=x then result#:=w fi od;
- result
+set R_K_dom (KGBElt x) = [WeylElt]:  {these are elements of W(G,H)}
+  let W_c_perp=W_c_perp(x), result=[WeylElt]:[] in
+{ need to convert from L to G }
+##for w in W_c_perp
+  do if x=cross(convert(w,x.root_datum),x) then [w] else [] fi od
+
 { W_K(x)=(W_K(K_0,T_{K_0}), R_K_dom(x)) }
 
-{requirement: x makes 2rho_c G-dominant}
-set W_K(KGBElt x)=(RootDatum,[(RootDatum,[int])]):(K_root_datum(x),R_K_dom(x))
+{ requirement: x makes 2rho_c G-dominant }
+set W_K (KGBElt x) = (RootDatum,[WeylElt]): (K_root_datum(x),R_K_dom(x))
 
 set move_weight ((KGBElt x,vec mu),KGBElt y) = KHighestWeight:
   assert(real_form(x)=real_form(y),"Real form mismatch");
-  let w=find_W_cross(x,y) in (y,act(w,mu))
+  let w=cross_divide(y,x) in (y,w*mu)
 
 { first replace (x,mu) with an equivalent ("nice") one such that x makes
   2rho_c G-dominant }
 set R_K_dom_mu_orbit (KHighestWeight (x,mu)) = [KHighestWeight]:
- let (x,mu) =
-   if is_dominant(real_form(x),tworho_c(x)) then (x,mu)
-   else move_weight((x,mu), nice_choice_x(real_form(x)))
-   fi
+  let (x,mu) =
+    if is_dominant(real_form(x),tworho_c(x)) then (x,mu)
+    else move_weight((x,mu), nice_choice_x(real_form(x)))
+    fi
  then (K_0,R_K_dom)=W_K(x)
- then proj = ^cocharacter_lattice_K(x) { X^*->X^*(T_K0)=X^*/(X^*)^{-delta}}
- then (mu_0,v)=make_dominant(K_0,proj*mu)
- then mu_1=lift_action(x,v)*mu then
+ , proj = ^cocharacter_lattice_K(x) { X^*->X^*(T_K0)=X^*/(X^*)^{-delta}}
+ then mu_1=lift_action(chamber(K_0,proj*mu),x)*mu then
  result=[KHighestWeight]:[]
  in
    for w in R_K_dom
-     do let mu_2=act(w,mu_1) in
-     if first(#result, (int i)bool: let (,phi)=result[i] in mu_2=phi)=-1
+     do let mu_2=w*mu_1 in
+     if none(#result, (int i)bool: let (,phi)=result[i] in mu_2=phi)
      then result#:=(x,mu_2)
      fi
    od;
@@ -166,12 +159,12 @@ set R_K_dom_mu_orbit (KHighestWeight (x,mu)) = [KHighestWeight]:
 S is an element of R_K_dom\subset W(G,H)
 beta^\vee\in X_* is a coroot for G (not for K_0)
 }
-set P_positive_test_coweight (KGBElt x,W_word S) = vec:
-  let  sum=null(rank(real_form(x))), (small_rd,w)=S
+set P_positive_test_coweight (KGBElt x,WeylElt S) = vec:
+  let  sum=null(rank(real_form(x)))
 {  , M=left_inverse(injection_from_K_matrix(x))
   in for i in w do sum+:=M*simple_coroots(rd_K)[i] od;
   {M*simple_coroots(...) is in X_*}}
-  in for i in w do sum+:=simple_coroots(small_rd)[i] od;
+  in for i in S.word do sum +:= simple_coroots(S.root_datum)[i] od;
   sum
 
 { utility function }
@@ -179,9 +172,8 @@ set P_positive_test_coweights (KGBElt x) = [vec]:
   for w in R_K_dom(x) do P_positive_test_coweight(x,w) od
 
 {S is an element of R_K_dom \subset W(G,H)}
-set is_P_positive (KGBElt x,vec mu,[W_word] S) = bool:
-  let (rd,)=S[0] in
-{  then M=left_inverse(injection_from_K_matrix(x)) in }
+set is_P_positive (KGBElt x,vec mu,[WeylElt] S) = bool:
+{  let M=left_inverse(injection_from_K_matrix(x)) in }
 {  in  prints("M=",M); }
     all(for w in S do let v=P_positive_test_coweight(x,w) in v*mu>=0 od)
 
@@ -193,16 +185,16 @@ set is_P_positive (KGBElt x,vec mu,[W_word] S) = bool:
   x must be in distinguished fiber, and make 2rho_c G-dominant
 }
 set make_strongly_dominant (KGBElt x,vec mu) =
-  ((KGBElt,vec),W_word,W_word,bool):
+  ((KGBElt,vec),WeylElt,WeylElt,bool):
   let (K_0,R_K_dom)=W_K(x)
   then proj = ^cocharacter_lattice_K(x) { X^*->X^*(T_K0)=X^*/(X^*)^{-delta}}
-  then (mu_0,w_1)=make_dominant(K_0,proj*mu)   {w_1 is in W(K_0,T_{K_0})}
-  then mu_1=lift_action(x,w_1)*mu
+  then w_1=chamber(K_0,proj*mu)   {w_1 is in W(K_0,T_{K_0})}
+  then mu_1=lift_action(w_1,x)*mu
              {use lift_action so w_1 acts in mu\in X^*, mu_1\in X^*}
-  then L=small_Levi(x), done=false, i=0, j=-1, mu=mu_1, w=w_1
+  then L=small_Levi(x), done=false, i=0, j=-1, mu=mu_1
   in
     while not done and i<#R_K_dom
-    do let mu_2=act(R_K_dom[i],mu_1) in
+    do let mu_2=R_K_dom[i]*mu_1 in
 {      let mu_2=factor_action(x,R_K_dom[i])*mu_1 in  ???}
 {       let mu_2=lift_action(x,R_K_dom[i])*mu_1 in   ???}
 {       prints("mu_1=", mu_1, " mu_2:", mu_2, " x=", x); }
@@ -228,15 +220,13 @@ set make_strongly_dominant (KGBElt x,vec mu) =
  make it K_0-dominant, and compute stabilizer in R_K_dom
  requirement: x makes 2rho_c G-dominant
 }
-set R_K_dom_mu (KGBElt x,vec mu)  =[W_word]: let (K_0,R_K_dom)=W_K(x)
- then proj = ^cocharacter_lattice_K(x) { X^*->X^*(T_K0)=X^*/(X^*)^{-delta}}
- then (mu_0,v)=make_dominant(K_0,proj*mu)
- then mu_1=lift_action(x,v)*mu
- then result=[W_word]:[]
+set R_K_dom_mu (KGBElt x,vec mu)  =[WeylElt]:
+  let (K_0,R_K_dom)=W_K(x)
+  then proj = ^cocharacter_lattice_K(x) { X^*->X^*(T_K0)=X^*/(X^*)^{-delta}}
+  then mu_1=lift_action(chamber(K_0,proj*mu),x)*mu
   in
 {    for w in R_K_dom do if lift_action(x,w)*mu_1=mu_1 then result#:=w fi od;}
-    for w in R_K_dom do if act(w,mu_1)=mu_1 then result#:=w fi od;
-    result
+##for w in R_K_dom do if w*mu_1=mu_1 then [w] else [] fi od
 
 
 

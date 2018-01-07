@@ -26,7 +26,7 @@ namespace commands {
   commands::CommandNode mainNode();
   extern commands::CommandTree& main_mode; // defined in commands.cpp
   InnerClass& current_inner_class();
-  InnerClass& current_dual_group();
+  InnerClass& current_dual_inner_class();
   const lietype::Layout& current_layout();
   const LatticeMatrix& current_lattice_basis();
   output::Interface& currentComplexInterface();

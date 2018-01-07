@@ -233,7 +233,7 @@ PrimitiveRow KLContext::extremalRow(BlockElt y)
 
 
 /*
-  Returns the list of all x primitive w.r.t. y.
+  Return the list of all |x| primitive w.r.t. |y|.
 
   Explanation: this means that |length(x) < length(y)|, and every descent
   for |y| is either a descent, or an imaginary type II ascent for |x|.

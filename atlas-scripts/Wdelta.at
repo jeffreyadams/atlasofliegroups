@@ -1,6 +1,6 @@
 <basic.at
 <K.at          { for K_root_datum, K_0 }
-<Weylgroup.at  { for make_simple_sequence }
+<Weylgroup.at  { for |from_simple@(RootDatum.vec)| }
 
 { functions related to W^\delta }
 
@@ -9,58 +9,38 @@
 set delta_fixed_root_datum (InnerClass ic) = RootDatum:
   K_root_datum(KGB(quasicompact_form(ic),0))
 
-set delta_fixed_root_datum ((RootDatum,mat) pair) = RootDatum:
-  delta_fixed_root_datum(inner_class(pair))
-
-{ Given root |alpha| in R^delta, find (short) Weyl word describing
-  corresponding reflection; tabulate for all simple reflections of R^delta
-}
-set translate_Wdelta_generators (InnerClass ic) = [[int]]:
+{ express generators for $W^\delta$ as elements of $W$ }
+set Wdelta_generators (InnerClass ic) = [WeylElt]:
   let P = projection_to_K_matrix(ic)
   , rd_delta=delta_fixed_root_datum(ic), rd = RootDatum: ic
-  then word =[[int]]: for i:semisimple_rank(rd_delta) do [] od
+  then gens = let e=id_W(rd) in for :rd.semisimple_rank do e od
   in
   for beta@i in simple_roots(rd)
-  do let j = root_index(rd_delta,P*beta) then wj = word[j] in
-    word[j] :=
-    if =#wj then [i]
-    else assert(#wj=1,"more than two roots mapping to "+j)
-    ; let i0=wj[0] in
-      if =coroot(rd,i0)*root(rd,i) then [i0,i] else [i0,i,i0] fi
+  do let j = root_index(rd_delta,P*beta) then gen_j=gens[j] in
+    gens[j] :=
+    if =gen_j then gen_j # i { or equivalently |W_gen(rd,i)| }
+    elif { now |gen_j| should be simple reflection forming a pair with i }
+      assert(length(gen_j)=1,"more than two roots mapping to "+j)
+    ; gen_j*beta=beta
+    then gen_j # i { commuting product with |W_gen(rd,i)| }
+    else i # gen_j # i { non-commuting; conjugate |gen_j|  by |W_gen(rd,i)| }
     fi
-  od; word
+  od; gens
 
-set translate_Wdelta_generators ((RootDatum,mat) pair) = [[int]]:
-  translate_Wdelta_generators(inner_class(pair))
+set convert_from_W_K (InnerClass ic, WeylElt w) = WeylElt:
+  let gens = Wdelta_generators(ic), result=id_W(root_datum(ic)) in
+  for s in w.word do result *:= gens[s] od; result
 
-{ length of a single simple root or pair of simple roots
-  length(rd,alpha)=1
-  length {rd,alpha,beta}=2 if <alpha,beta^vee>=0 or 3 otherwise
+{ find $w\in W^\delta$ taking |alpha=root(rd,j)| to simple root for |rd_delta|
+  returns |(w1,v)| where |v = w1 * alpha|; |P*v= root(rd_delta,k)|
+  and where |P| projects weight lattice from |rd| to that of |rd_delta|,
+  and |k| is the index of a simple root in |rd_delta|
 }
-set length (RootDatum rd, int i) = 1 { is this really useful? }
-set length (RootDatum rd, int i,int j) = int:
-  if =coroot(rd,j)*root(rd,i) then 2 else 3 fi
-
-set rewrite_word_Wdelta_to_W (InnerClass ic, W_word({rd_delta},w)) = W_word:
-  let table= translate_Wdelta_generators(ic)
-  in (RootDatum:ic, ## for s in w do table[s] od)
-
-set rewrite_word_Wdelta_to_W (RootDatum rd,mat delta,W_word ww) = W_word:
-  rewrite_word_Wdelta_to_W(inner_class(rd,delta), ww)
-
-{ find W_word:w \in W^\delta taking any positive root to a simple root for |rd|
-  root in question is |root(rd,j)|
-  returns (W_word:w1,vec: v) where v = w1 * root(rd,j); P*v= root(rd_delta,k)
-  and where P projects weight lattice from rd to that of rd_delta, and k is
-  the index of a simple root in rd_delta
-}
-set conjugate_to_simple_by_Wdelta (RootDatum rd, mat delta, int j) =
-  (W_word{ for rd },vec{ image of root(rd,j) }):
+set Wdelta_conjugate (RootDatum rd, mat delta, int j) = (WeylElt, vec):
   let alpha = root(rd,j), ic = inner_class(rd,delta)
-  then rd_delta = delta_fixed_root_datum(ic)
-  , P = projection_to_K_matrix(ic)
-  then beta = P*alpha { a root for rd_delta }
-  then (conjugator,k) = make_simple_sequence(rd_delta,beta)
-  then ww = rewrite_word_Wdelta_to_W(ic,conjugator)
-  then image_root = act(ww,alpha)
-  in assert(root(rd_delta,k)=P*image_root); (ww, image_root)
+  then rd_delta = delta_fixed_root_datum(ic), P = projection_to_K_matrix(ic)
+  then beta = P*alpha { a root for |rd_delta| }
+  then (w_K,beta_simple)= from_simple(rd_delta,beta)
+  then w= convert_from_W_K(ic,w_K.inverse) { a Weyl element for full $W$ }
+  then beta_simple_upstairs = w*alpha { a root for |rd| }
+  in assert(P*beta_simple_upstairs=beta_simple); (w,beta_simple_upstairs)

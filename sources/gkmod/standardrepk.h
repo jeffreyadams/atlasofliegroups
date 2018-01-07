@@ -263,8 +263,7 @@ class SRK_context
   SRK_context(RealReductiveGroup &G);
 
   // accessors
-  InnerClass& innerClass() const
-    { return G.innerClass(); }
+  const InnerClass& innerClass() const { return G.innerClass(); }
   const RootDatum& rootDatum() const { return G.rootDatum(); }
   const WeylGroup& weylGroup() const { return G.weylGroup(); }
   const TwistedWeylGroup& twistedWeylGroup() const

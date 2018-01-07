@@ -54,7 +54,7 @@ namespace atlas {
 
 namespace commands {
 
-  void repr_mode_entry() throw(EntryError);
+  void repr_mode_entry();
   void repr_mode_exit();
 
   // functions for the predefined commands
@@ -161,7 +161,7 @@ kl::KLContext& current_param_KL()
   Synopsis: attempts to set a real form and dual real form interactively.
   In case of failure, throws an InputError and returns.
 */
-void repr_mode_entry() throw(EntryError)
+void repr_mode_entry()
 {
   try
   {

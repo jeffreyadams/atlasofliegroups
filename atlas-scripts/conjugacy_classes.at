@@ -6,41 +6,31 @@
   class as list of elements, and for each i one has
   words[i]*x*words[i]^{-1}=class[i]
 }
-set conjugacy_class_extra (W_word x) = ([W_word],[W_word]):
-  let rd=root_datum(x)
-  then S=for i:semisimple_rank(rd) do i od
-  then words = [[int]:[]], orbit= [x], done=0
-  then absent (W_word y) = <first(#orbit, (int i)bool:equal(y,orbit[i]))
+set conjugacy_class_extra (WeylElt x) = ([WeylElt]{transport},[WeylElt]{orbit}):
+  let rd=x.root_datum then gens=rd.W_gens
+  then orbit= [x], ws = [id_W(rd)], done=0
+  then absent (WeylElt w) = bool: none(#orbit,(int i)bool:orbit[i]=w)
   in
   while done<#orbit
   do
-    let w = words[done], a=orbit[done] in
-    done+:=1
-  ; for i in S
-    do let b=reduce(conjugate(i,a)) in
-      if absent(b) then ( words #:= i#w, orbit #:= b ) fi
+    let w = ws[done], a=orbit[done] in done+:=1
+  ; for s in gens
+    do let b= s*a*s in
+      if absent(b) then ws #:= s*w; orbit #:= b fi
     od
-  od; (for w in words do (rd,w) od,orbit)
+  od; (ws,orbit)
 
-set conjugacy_class (W_word x) = [W_word]:
-  let (,b)=conjugacy_class_extra(x) in b
-set size_of_conjugacy_class (W_word x) = int: #conjugacy_class(x)
+set conjugacy_class (WeylElt w) = [WeylElt]:
+  let (,orbit)=conjugacy_class_extra(w) in orbit
 
-set order([W_word] class)=order(class[0])
 
-set delete(W_word w, [W_word] W)=[W_word]:
-  let j=first(#W, (int i)bool:equal(w,W[i])) in
-  if j=-1 then W else delete(W,j) fi
-
-set conjugacy_classes (RootDatum rd) = [[W_word]]:
-  let result=[[W_word]]:[]
-  then W=generate_W(rd)
-  then order_W=#W
-  then total([[W_word]] classes)=int: sum(for class in classes do #class od)
-  in
-  while total(result)<order_W
-  do let w=W[0] then C=conjugacy_class(w) then ()=prints("C:", w, " ", #C) in
-    result#:=C; for y in C do W:=delete(y,W) od
+set conjugacy_classes (RootDatum rd) = [[WeylElt]]:
+  let W = generate_W(rd), result =[[WeylElt]]:[] in
+  for w in W
+  do if none(#result,(int i)bool: let ri=result[i] in any(#ri,(int j):ri[j]=w))
+     then result #:= conjugacy_class(w)
+     ; prints("C:", w, " ", #result~[0])
+     fi
   od; result
 
 

@@ -118,26 +118,26 @@ set String (int n)=vec: for k:n\2 do (n-1)-2*k od { e.g., [4,2] or [5,3,1]  }
 { compute 1/2 h(O^\vee) for G of type |t| (types A-D only)
   O^\vee assumed to be an orbit of G^\vee, given by a partition |P|
   only complexification (root_datum) of G plays a role }
-set semisimple_element(LieType t,vec P)=vec:
+set semisimple_element (LieType t,vec P) = vec: { a coweight }
   if get_type(t)=0
   then ## for p in P do tworho(p) od
   else let strs = ## for k in P do String(k) od in
     strs ## for i: sum(P)\2-#strs do 0 od
   fi
 
-{ same as previous applied to (RootDatum,vec P)
-  in this case apply make_dominant(dual(rd));
-  RootDatum must be a classical group with the usual classical coordinates
+{ same as previous applied to (RootDatum,vec p)
+  in this case apply dominant(.,rd) to resulting coweight; this only works if
+  RootDatum is a classical group with the usual classical coordinates
 }
-set semisimple_element(RootDatum rd,vec p) = vec:
- let (v,)=make_dominant(dual(rd),semisimple_element(Lie_type(rd),p)) in v
+set semisimple_element (RootDatum rd,vec p) = vec: { a dominant coweight }
+  dominant(semisimple_element(Lie_type(rd),p),rd)
 
-{v,w are partitions of same n: sum(v)=sum(w)
- v, w written in decreasing order (actually use reverse_sort to assume this)
- v,w <-> nilpotent orbits in GL(n)
- return true if orbit(v) contained in closure of orbit(w)
- algorithm: v=(a_1,...,a_r), w=(b_1,...,b_s);
- a_1+...+a_k \le b_1+...+b_k for all k\le min(r,s)sawtrset v
+{ v,w are partitions of same n: sum(v)=sum(w)
+  v, w written in decreasing order (actually use reverse_sort to assume this)
+  v,w <-> nilpotent orbits in GL(n)
+  return true if orbit(v) contained in closure of orbit(w)
+  algorithm: v=(a_1,...,a_r), w=(b_1,...,b_s);
+  a_1+...+a_k \le b_1+...+b_k for all k\le min(r,s)sawtrset v
 }
 
 set nilpotent_orbit_ss_elements (LieType t) = [vec]:

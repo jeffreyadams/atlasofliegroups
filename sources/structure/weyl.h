@@ -531,12 +531,10 @@ public:
   WeylWord word(const WeylElt& w) const;
   WeylElt element(const WeylWord& ww) const { return prod(WeylElt(),ww); }
 
-  WeylEltList reflections() const; // list all reflections
-
   // give representation of |w| as integral number.
   arithmetic::big_int to_big_int(const WeylElt& w) const;
 
-  /* inverse operation of |toUlong| */
+  // inverse operation of |to_big_int|
   WeylElt toWeylElt(arithmetic::big_int) const;
 
   bool hasDescent(Generator, const WeylElt&) const; // on the left
@@ -550,9 +548,13 @@ public:
 
   // reflection action of Weyl group on a root
   void act(const RootSystem& rd, const WeylElt& w, RootNbr& alpha) const;
-  // standard reflection action of Weyl group using a root datum
+  // standard reflection action of Weyl group on weights for a root datum
   template<typename C>
     void act(const RootDatum& rd, const WeylElt& w, matrix::Vector<C>& v)
+    const;
+  // standard reflection action of Weyl group on coweights for a root datum
+  template<typename C>
+    void co_act(const RootDatum& rd, matrix::Vector<C>& v, const WeylElt& w)
     const;
   // standard reflection action of Weyl group using a root datum
   void act(const RootDatum& rd, const WeylElt& w, RatWeight& v) const;
@@ -577,6 +579,9 @@ public:
     image_by_inverse(const RootDatum& rd, const WeylElt& w, Weight v) const
     { inverse_act(rd,w,v); return v; }
 
+  Coweight
+    image_by(const RootDatum& rd, Coweight v, const WeylElt& w) const
+    { co_act(rd,v,w); return v; }
 
 // manipulators
 
