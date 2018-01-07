@@ -3,22 +3,21 @@
 {v is orthogonal to all vectors in [vec] vecs}
 set is_orthogonal (vec v,[vec] vecs) = bool: =v*vecs { whether a row of zeros }
 
-{find first index j where v is not orthogonal to [vec]:list[j]}
-set find_not_orthogonal (vec v,[[vec]] list) = int:
-  first(#list,(int i)bool: not is_orthogonal(v,list[i]))
-
-{ convert list of lists of integers to list of lists of coroots }
-set list_of_list_of_coroots (RootDatum rd, [[int]] lists) = [[vec]]:
-  let scr=simple_coroots(rd) in
-  for list in lists do for j in list do scr[j] od od
-
-
 {find simple factors of rd
- initialize simple_root_numbers=[[int]]
- algorithm: for each index i of a simple root, find j so that
- simple_root(rd)[i] is not orthogonal to some simple coroots in
- simple_root_numbers[j]; if so, append i to simple_root_numbers[j]
- otherwise append [i] to simple_root_numbers
+ initialize simple_root_numbers=[[int]]:[]
+ inductively, simple_root_numbers=[[a1,a2,...],[b1,b2,...],...]
+ where [a1,a2,...] is connected
+ inductively run over indices of simple roots
+ inductive step
+  simple_root_numbers=[[a1,a2,...],[b1,b2,...],...]
+  previous=simple_root_numbers
+  simple_root_numbers_temp=[[i]]
+  run over each [int] v in simple_root_numbers
+    if coroot(i) is orthogonal to each simple root in v,
+      append v to simple_root numbers
+    if coroot(i) is not orthogonal to some simple root in v,
+      replace first term of simple_root_numbers_temp with itself#v
+
  when done, convert each [int] v in simple_root numbers to a root datum
  constructed from the simple roots and simple coroots in v
  return simple_root_numbers and [RootDatum]
@@ -27,20 +26,20 @@ set list_of_list_of_coroots (RootDatum rd, [[int]] lists) = [[vec]]:
 }
 set simple_factors (RootDatum rd) = ([[int]] , [RootDatum]):
 begin
-  let simple_root_numbers= [[int]]: [] in
+  let sr=simple_roots(rd), scr=simple_coroots(rd), blocks= [[int]]: [] in
   for alpha@i in simple_roots(rd)
-  do let j=find_not_orthogonal(alpha
-                              ,list_of_list_of_coroots(rd,simple_root_numbers))
+  do let orthogonal_indices = list(#blocks,(int i)bool:
+         is_orthogonal(alpha,for j in blocks[i] do scr[j] od))
      in
-     if j<0 then simple_root_numbers #:= [i]
-     else simple_root_numbers[j] #:= i
-     fi
+     blocks :=
+       for k in orthogonal_indices do blocks[k] od #
+       ( ##for k in complement(#blocks,orthogonal_indices) do blocks[k] od # i)
   od
-  ; (simple_root_numbers
-    , for srn in simple_root_numbers { list of generators for one factor }
+  ; (blocks
+    , for block in blocks { list of generators for one factor }
       do
-        root_datum(for j in srn do simple_roots(rd)[j] od,
-                   for j in srn do simple_coroots(rd)[j] od
+        root_datum(for j in block do sr[j] od,
+                   for j in block do scr[j] od
                   ).derived
       od
     )
