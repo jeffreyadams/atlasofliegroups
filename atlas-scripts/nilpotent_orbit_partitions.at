@@ -3,6 +3,7 @@
 <groups.at
 <sort.at {for reverse_sort}
 <Weylgroup.at
+<partitions.at
 
 { (complex) nilpotent orbits for simple classical groups,
   classical groups: SL(n), GL(n), Sp(2n), SO(n),
@@ -25,51 +26,8 @@ set get_type(LieType t) = int:
 set get_type(RootDatum rd) = int: get_type(Lie_type(rd))
 set get_type(RealForm G) = int: get_type(root_datum(G))
 
-{ generate all partitions of n,
-  each partition is written in decreasing order
-  partitions are in lexicographically smallest [1,...,1] to largest [n] order
-  each partition of n-1 gives rise to 1 or 2 partitions of n: the first by
-  appending a part 1, the second by increasing the final part if possible
-}
-set partitions =
-( let part (int n) = [vec]:[]
-  in part :=
-    begin (int n):
-      let rv=[vec]:[] in
-      if n=1 then rv:=[[1]]
-      else
-	for p in part(n-1)
-	do let l=#p-1 then last=p~[0] in
-	  rv #:= p#1 { add partition formed by extending by 1 }
-	; if #p=1 or p~[1]>last then rv #:= (let c=p in c[#p-1]:=last+1; c) fi
-	od
-      fi
-    ; rv
-    end
-; (int n) [vec]: if n>0 then part(n) elif n=0 then [[]] else [] fi
-)
+{general partitions stuff moved to partitions.at}
 
-{ write a partition as a sequence of multiplicities
-  including a leading 0 so that rv[i] is the multiplicity of i
-  e.g. [4,3,1,1]->[0,2,0,1,1]}
-set partition_multiplicities (vec p)=vec:
-( let mult=null(max(p)+1) in
-  for k in p do mult[k] +:= 1 od
-; mult[0]:=0  { clear multiplicity of 0 that was possibly set }
-; mult
-)
-
-{ partitions of n with all rows of parity |parity| having even multiplicity }
-set partitions_parity (int n, int parity) =[vec]:
-( let P=partitions(n), result=[vec]: [] in
-  for p in P
-  do
-    if none(for m@i in partition_multiplicities(p) do i%2=parity and m%2=1 od)
-    then result #:= p
-    fi
-  od
-; result
-)
 
 { (complex) nilpotent orbits, partition-type classification,
   for simple group of type A-D }
