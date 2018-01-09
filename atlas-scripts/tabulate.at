@@ -1,29 +1,24 @@
+<basic.at
+
+{enhancements of commands in basic.at to include pad_char instead of " "}
 set l_adjust (int w, string s, string pad_char) = string:
   let d=w-#s in if <=d then s else s##(pad_char*d) fi
 set r_adjust (int w, string s, string pad_char) = string:
   let d=w-#s in if <=d then s else (pad_char*d)##s fi
 set c_adjust (int w, string s,string pad_char) = string:
   let d=w-#s in if <=d then s else let h=d\2 in (pad_char*h) ## s ## (pad_char*(d-h)) fi
-
-set width (int n) = int: #int_format(n)
-
-{ pad string with blanks (for lining up columns in tables) }
-set pad(string s,string alignment,int padding,string pad_char)=string: 
+set pad(string s,string alignment,int padding,string pad_char)=string:
 if alignment[0]="l" then l_adjust(padding,s,pad_char)
 elif alignment[0]="r" then r_adjust(padding,s,pad_char)
 else c_adjust(padding,s,pad_char) fi
 
 set tabulate([[string]] data, string alignment, int cell_padding, string pad_char )=
 let first_line=data[0] then
-n=#first_line then 
-max=for i:n do 
+n=#first_line then
+max=for i:n do
  let m=max(for j:#data do #data[j][i] od) in m od
-in 
-for i:#data do 
- let y="" in 
+in
+for i:#data do
+ let y="" in
  for x@j in data[i] do let p=max[j]+cell_padding in  y##:=pad(x,alignment,p,pad_char)  od; prints(y) od
 
-set test=[
-["A","bb","ttt","uuu"],
-["AAAAAA","b","Z","xyzzzzzzzzz"],
-["A","bbbbbbbbb","W","x"]]

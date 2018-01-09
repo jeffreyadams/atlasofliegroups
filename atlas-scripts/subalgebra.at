@@ -1,3 +1,5 @@
+<basic.at
+
 {subalgebra(rd,roots):
 roots are assumed to be the set of roots of a reductive subalgebra containing H
 (otherwise an error)
@@ -30,7 +32,7 @@ set Levi_of_dual_subspace(RootDatum rd, mat k)=
 let levi_roots=
 ##for a in roots(rd) do if coroot(rd,a)*k=null(n_columns(k)) then [a] else [] fi od in subalgebra(rd,levi_roots)
 
-{Levi subgroup defined by a group element: Levi of the dual subspace 
+{Levi subgroup defined by a group element: Levi of the dual subspace
  w acts on X^*, U=kernel(w-1) \subset X^*, want roots alpha such that alpha^v vanishes on U
  this is the Cartan if and only if w is elliptic}
 set Levi_of_w(WeylElt w)=(bool,RootDatum):Levi_of_dual_subspace(w.root_datum,kernel(matrix(w)-1))
