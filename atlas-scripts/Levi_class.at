@@ -91,7 +91,7 @@ set group_by_conjugate_rhos (RootDatum rd, int rank)=[[[int]]]:
 {. Perform the previous function for all possible ranks of Levi
    subgroups. .}
 set group_by_conjugate_rhos (RootDatum rd)=[(int,[[[int]]])]:
-   for i:semisimple_rank(rd) do (i,group_by_conjugate_rhos(rd,i)) od
+   for i:semisimple_rank(rd)+1 do (i,group_by_conjugate_rhos(rd,i)) od
 
 {. As the previous function, but with only one representative for
    each conjugacy class of Levis. .}
@@ -110,5 +110,5 @@ set Levi_classes(RootDatum rd)=[ComplexLevi]:classes_by_rho(rd)
 
 set print_Levis_by_conjugate_rhos (RootDatum rd)=void:
    prints ("rank  # of classes  classes");
-   for i:semisimple_rank(rd) do let list=group_by_conjugate_rhos(rd,i) in
+   for i:semisimple_rank(rd)+1 do let list=group_by_conjugate_rhos(rd,i) in
      prints(i,"        ",#list,"          ",list) od
