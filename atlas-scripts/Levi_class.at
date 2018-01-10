@@ -35,8 +35,7 @@ set compute_rhos ([[int]] list, RootDatum rd)=[ratvec]:
 set is_conjugate(RootDatum rd,[int] S,[int] T)=bool:
    dominant(rd,rho(complex_Levi((rd,S))))=dominant(rd,rho(complex_Levi((rd,T))))
 
-{The Levi factors in the previous command are standard (given by subset of simple roots)
- the following test applies to any Levi subgroup containing the fixed H}
+{. The Levi factors in the previous command are standard (given by subset of simple roots); the following test applies to any Levi subgroup containing the fixed H. .}
 set is_conjugate(RootDatum rd, RootDatum rd_L1, RootDatum rd_L2)=bool:
    dominant(rd, rho(rd_L1))=dominant(rd,rho(rd_L2))
 
