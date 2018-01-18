@@ -247,3 +247,16 @@ set is_real (CyclotomicFieldElement z) = bool: z=z.bar
 
 set absolute_value_squared (CyclotomicFieldElement z) = CyclotomicFieldElement:
    z*z.bar
+
+
+{ write a rational polynomial as a product of cyclotomic polynomials (if possible)
+  return value [a_1,...] means Phi_{a_1}*Phi_{a_2}*...}
+set product_of_cyclotomic(RatPoly f)=[int]:
+(rec_fun divide(RatPoly f, [RatPoly] cyclotomics, [int] degrees,int degree)[int]:
+{ let ()=prints("f=",f, "cyclotomics=", cyclotomics, "degree=", degree) in}
+ if degree(f)=0 then degrees else
+ let Phi=rat_poly(cyclotomic_polynomial(degree+1)) then
+ (g,R)=f\%Phi in
+  let (R1,)=R in if #R1=0 then divide(g,cyclotomics#Phi,degrees#(degree+1),degree) else
+divide(f,cyclotomics,degrees,degree+1) fi fi) (f,[RatPoly]:[],[int]:[],0)
+

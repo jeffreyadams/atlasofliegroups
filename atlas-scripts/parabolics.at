@@ -1,3 +1,5 @@
+<W_orbit.at
+
 {! See "Parabolic Subgroups and Induction", in dropbox, ultimately on atlas web site.
 
   Fix a subset S of the simple roots, defining the complex standard
@@ -463,3 +465,28 @@ set support (KGBElt x) = [int]:
 set support_alt(KGBElt x)=[int]:
   let rd=root_datum(x), delta=distinguished_involution(real_form(x)) in
   list(semisimple_rank(rd),W_elt(rd,delta*involution(x)).word.is_member)
+
+{for use in find_lambda}
+set random=[2345,234098,23,94038,584932,392043,3950384,3920,0445047,23987596,8374616,4736164,956384,3871646]
+
+{.find lambda so L=L(lambda)={alpha| <lambda,alpha^vee>=0}.}
+set findlambda(RootDatum rd, RootDatum L)=
+let A=simple_coroots(L) then
+k=kernel(^A) in 
+k* random[:n_columns(k)]
+
+{coset representative for W(rd)/W(rd_L) 
+ if L=L(lambda) the W-orbit of lambda is in bijection with this quotient}
+set coset_reps(RootDatum rd,RootDatum rd_L)=
+let lambda=findlambda(rd,rd_L) in let (elts,)=generate_from(rd,lambda) in elts
+
+{test the coset_reps function}
+{set test_coset_reps(RootDatum rd,RootDatum rd_L)=
+let co=coset_reps(rd,rd_L) then
+WL=generate_W(rd_L) then
+prods=##for w@i in co do for x@j in WL do (i,j,w*promote(x,rd)) od od then
+failures=##for i:#prods do for j:#prods do
+  let (,,w)=prods[i] then
+  (,,x)=prods[j] in
+  if i!=j  and x=w then [(i,j)] else [] fi od od in (prods,##failures)
+}

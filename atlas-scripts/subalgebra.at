@@ -1,4 +1,5 @@
 <basic.at
+<W_orbit.at
 
 {subalgebra(rd,roots):
 roots are assumed to be the set of roots of a reductive subalgebra containing H
@@ -42,3 +43,28 @@ set Levi_of_weight(RootDatum rd,ratvec v)=Levi_of_dual_subspace(rd,mat:[numer(v)
 
 {Levi subalgebra defined by weight in QX_*}
 set Levi_of_coweight(RootDatum rd,ratvec v)=Levi_of_subspace(rd,mat:[numer(v)])
+
+{  normalizer of a set of roots }
+
+{w in subgroup of W such that w permutes set_of_roots}
+set normalizer([WeylElt] subset_of_W,[vec] set_of_roots)=
+##for w in subset_of_W do
+if all(for v in set_of_roots do find(set_of_roots,w*v)!=-1 od) then [w] else [] fi od
+
+{w in W such that w permutes set_of_roots}
+set normalizer(RootDatum rd,[vec] set_of_roots)=[WeylElt]:
+normalizer(W(rd),set_of_roots)
+{for testing}
+set stabilizer_elementary(RootDatum rd, ratvec gamma)= 
+##(for w in W(rd) do if w*gamma=gamma then [w] else  [] fi od)
+
+{ subalgebra orthgonal to a set of roots}
+set orthogonal_subalgebra(RootDatum rd, [vec] S)=(bool,RootDatum):
+if #S=0 then (true,rd) else
+let roots=##(for i:#coroots(rd) do if coroots(rd)[i]*S=null(#S) then
+[roots(rd)[i]] else [] fi od) in subalgebra(rd,roots) fi
+
+{ subalgebra orthogonal to a Levi }
+set orthogonal_subalgebra(RootDatum rd, RootDatum rd_L)=(bool,RootDatum):
+let S=simple_roots(rd_L) in orthogonal_subalgebra(rd,S)
+

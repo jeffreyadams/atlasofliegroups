@@ -102,3 +102,4 @@ set rec_fun box([int] heights) = [[int]]:
   if #heights=0 then [[]] else smash(#heights[0],box(heights[1:])) fi
 
 set flatten = ## @ [[int]]
+
