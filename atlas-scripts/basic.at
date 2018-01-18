@@ -143,7 +143,7 @@ set is_member ([int] v) = (int->bool): { linear search; can be improved }
 set contains (int val) = ([int]->bool): ([int] v)bool:
   any(#v,(int i)bool:v[i]=val)
 
-
+set fac (int n) = int: let p=1 in for i:n-1 from 2 do p *:=i od; p
 
 {                           Rational numbers                            }
 

@@ -1,6 +1,6 @@
 <basic.at
 <simple_factors.at
-<partitions.at {for fac}
+
 { Functions for computing with Weyl group elements }
 
 set length ((RootDatum,mat) rd_M) = int: W_elt(rd_M).length
@@ -161,3 +161,16 @@ for k:#factors do
   in id_W(factors[k])##x  od
 
 set char_poly(WeylElt w)=char_poly(matrix(w))
+
+{    Coxeter element    }
+
+{. Coxeter element of W .}
+set coxeter_element (RootDatum rd) = WeylElt: W_elt(rd,#semisimple_rank(rd))
+
+{. Coxeter number .}
+set coxeter_number (RootDatum rd) = int:
+  rat_as_int(highest_root(rd)*rho_check(rd)+1)
+
+{. torus element representing the Coxeter Weyl group element .}
+set coxeter_torus_element (RootDatum rd) = ratvec:
+  rho_check(rd)/coxeter_number(rd)

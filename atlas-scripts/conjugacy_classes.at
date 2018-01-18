@@ -1,12 +1,7 @@
-<W_orbit.at { for W@RootDatum }
-<elliptic.at
-<parabolics.at { for |ComplexLevi| type }
+<elliptic_exceptional_table.at
 <Levi_class.at
 <subalgebra.at
 <tabulate.at
-<elliptic_exceptional_table.at
-<simple_factors.at
-
 
 set_type ConjugacyClass = (ComplexLevi Levi, WeylElt w)
 {ComplexLevi:(rd,rd_L)
