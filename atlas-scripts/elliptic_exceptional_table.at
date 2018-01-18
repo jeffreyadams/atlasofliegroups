@@ -11,7 +11,7 @@
 set f([int] v)=
 rat_as_int(696729600/(2^v[0]*3^v[1]*5^v[2]*7^v[3]))
 
-set elliptic_exceptional_table=
+set elliptic_exceptional_table=[(string,[int],int,int,string,int)]:
 [(G2,[  1, -1,  1 ],6,2,"name",6),
 (G2,[ 1, 1, 1 ],3,4,"name",6),
 (G2,[ 1, 2, 1 ],2,6,"name",12),
@@ -75,8 +75,8 @@ set elliptic_exceptional_table=
 (E8,[  1,  4, 10, 16, 19, 16, 10,  4,  1 ],3,80,"name",f([7,0,1,1])),
 (E8,[  1,  8, 28, 56, 70, 56, 28,  8,  1 ],2,120,"name",f([0,0,0,0]))]
 
-set lookup_elliptic_order(string lietype,vec P)=
+set lookup_elliptic_order(string lietype,vec P)=int:
 let index=first(for (name,char_poly,,,,) in elliptic_exceptional_table do name=lietype and P=char_poly od) then
 (,,,,,order)=elliptic_exceptional_table[index] in order
 
-set lookup_elliptic_order(LieType lt,vec P)=lookup_elliptic_order(to_string(lt),P)
+set lookup_elliptic_order(LieType lt,vec P)=int:lookup_elliptic_order(to_string(lt),P)
