@@ -1,0 +1,56 @@
+<conjugacy_classes.at
+{ class functions and characters }
+
+{ ClassFunction:
+ (list of conjugacy class representatives,
+ list of sizes of conjugacy classes,
+ list of function values)
+
+when defining a class function for RootDatum rd,
+compute conjugacy_classes(rd) and size_of_conjugacy_classes(*)
+once these are computed, one should try not to compute them again
+we may change this implementation of class function to be
+more robust and less clumsy}
+
+set_type ClassFunction=([WeylElt] classes, [int] sizes, [rat] values)
+
+{. products of two class functions .}
+set *(ClassFunction f,ClassFunction g)=rat:
+let (elts,sizes,f_values)=f then
+(,,g_values)=g in
+sum(for i:#sizes do sizes[i]*f_values[i]*g_values[i] od)/order_W(elts[0].root_datum)
+
+{. character of the trivial representation of W .}
+set trivial_character(RootDatum rd)=ClassFunction:
+let classes=conjugacy_classes(rd) then
+sizes=for w in classes do size_of_conjugacy_class(w) od in
+(classes,sizes, for i:#classes do 1 od)
+
+{. character of the trivial representation of W: assuming classes and sizes already defined .}
+set trivial_character([WeylElt] classes, [int] sizes)=ClassFunction:(classes,sizes,for i:#classes do 1 od)
+
+{.character of the sgn representation of W .}
+set sgn_character(RootDatum rd)=ClassFunction:
+let classes=conjugacy_classes(rd) then
+sizes=for w in classes do size_of_conjugacy_class(w) od in
+(classes,sizes, for i:#classes do det(matrix(classes[i])) od)
+
+{. character of the sgn representation of W: assuming classes and sizes already defined .}
+set sgn_character([WeylElt] classes, [int] sizes)=
+ClassFunction:(classes,sizes, for i:#classes do det(matrix(classes[i])) od)
+
+{. character of the reflection (tautological) representation of W .}
+set reflection_character(RootDatum rd)=ClassFunction:
+let classes=conjugacy_classes(rd) then
+sizes=for w in classes do size_of_conjugacy_class(w) od in
+(classes,sizes, for w in classes do trace(matrix(w)) od)
+
+{. character of the reflection (tautological) representation of W, classes and sizes already defined .}
+set reflection_character([WeylElt] classes, [int] sizes)=ClassFunction:
+(classes,sizes, for w in classes do trace(matrix(w)) od)
+
+{. character of n^th tensor power of a class function .}
+set tensor(int n, ClassFunction f)=ClassFunction:
+(f.classes,f.sizes, for r in f.values do r^n od)
+
+set dimension(ClassFunction f)=f.values[0]
