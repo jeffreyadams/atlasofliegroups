@@ -3,6 +3,8 @@
 <groups.at
 <partitions.at
 <Weylgroup.at
+<rational_polynomial.at
+<cyclotomic.at
 <ellipticExceptional.at {tables of elliptic classes}
 
 set elliptic_debug=true
@@ -150,3 +152,63 @@ for i:#factors do
      let w_new=id_W(root_datum)##r in
 {     prints("w_new=",w_new, " ", length(w_new)," ", order(w_new));}     r od od)
 do   id_W(root_datum)##v  od fi
+
+{    convert from WeylElt to partition in type BCD   }
+
+{find partition giving rise to WeylElt w in type BCD
+ w is a product of Coxeter elements of smalller
+ Sp(2k) (type C) or SO(2k+1) (type B)
+ type D is obtained by embedding SO(2n) in SO(2n+1);
+ computing the element in SO(2n+1) which lives in SO(2n)
+
+ algorithm: compute the characteristic polynomial f of w,
+ write it as a product of cyclotomic polynomials
+ of degree [a_1,a_2,...,a_r], increasing order
+ inductively: take last term n (which is even)
+ add n/2 to partition
+ divide f by characteristic polynomial of the Coxeter element
+ of SO(n+1) or Sp(n)
+}
+set partition_of_w_BCD(WeylElt w)=
+let lt=%Lie_type(w.root_datum) in
+assert(#lt=1,"root_datum is not simple");
+let (type,rank)=lt[0] in
+assert(type="B" or type="C" or type="D", "type is not BCD");
+let f=rat_poly(char_poly(matrix(w))) in
+(rec_fun reduce(RatPoly f, Partition P)Partition:
+ let (a,)=f in if a=[1] then P else
+ let Q=product_of_cyclotomic(f) then
+ n=Q[#Q-1] in
+ let G=if type="B" then SO(n+1) elif type="C" then Sp(n) else {type D treated as type B} SO(n+1) fi then
+ h=rat_poly(char_poly(matrix(coxeter_element(SO(n+1))))) then
+ (y,)=f\%h in
+ reduce(y, P#rat_as_int(n/2)) fi) (rat_poly(char_poly(matrix(w))),Partition:[])
+
+{if S=[a_1^m_1,...,a_r^{m_r}] then return (m_1!)...(m_r!)}
+set factorial_terms([int] S)=
+let v=for a in sort_u(S) do multiplicity(a,S) od in
+product(for b in v do fac(b) od)
+
+{P is a partition of n -> elliptic element w in (simple)
+ type BCD (#parts is even in type D)
+ the centralizer of w is determined by P
+ w is a product of Coxeter elements in smaller type B or C
+ each term contributes the order of this Coxeter element
+ (the centralizer of a Coxeter element is the cyclic group it generates)
+ in addition if a part of the partition has multiplicity k then
+ there is a factor of k!
+}
+set order_of_centralizer_elliptic_BCD(WeylElt w)=
+assert(is_elliptic(w), "w is not elliptic");
+let lt=%Lie_type(w.root_datum) in
+assert(#lt=1,"root_datum is not simple");
+let (type,rank)=lt[0] in
+assert(type="B" or type="C" or type="D", "type is not BCD");
+let P=partition_of_w_BCD(w) {the partition giving rise to w} then
+order=1 in
+for a in P do  order*:=2*a od;
+{factor of 2 in type D: Coxeter in D_n is (n-1,n) of order 2*(n-1),
+ not 2*(n-1) * 2*1
+}
+if type="D" then order:=order\2 fi;
+order*factorial_terms(P)

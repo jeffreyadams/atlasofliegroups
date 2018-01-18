@@ -288,6 +288,8 @@ set rec_fun power_set (int n) = [[int]]: { indices where 0_1_vecs have 1 }
 set power_set ([int] S) = [[int]]:
   for inx in power_set(#S) do for i in inx do S[i] od od
 
+{. number of times n occurs in [int] S .}
+set multiplicity(int n, [int] S)=int:#(##(for i:#S do if S[i]=n then [1] else [] fi od))
 
 {                               Matrices                                }
 
@@ -641,6 +643,8 @@ set str (LieType t) = string:
 {                               Root data                               }
 
 { provide default values for coroot preference when building root data }
+
+set is_simple(RootDatum rd) = #%Lie_type(rd)=1
 
 set root_datum (mat simple_roots, mat simple_coroots) = RootDatum:
   root_datum(simple_roots,simple_coroots,false) { by default prefer roots }

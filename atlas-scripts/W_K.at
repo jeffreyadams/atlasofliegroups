@@ -3,7 +3,7 @@
 <K.at
 <parabolics.at
 <Weylgroup.at { for |root_reflection| }
-<W_orbit.at { for |generate_W| }
+<W_orbit.at { for W@RootDatum }
 <cross_W_orbit.at
 
 {full Weyl group W_K of disconnected maximal compact subgroup
@@ -95,7 +95,7 @@ set nice_choice_x (RealForm G) = KGBElt: nice_choices_x(G)[0]
 { W_c_perp, see khatHowe Propsition 4.4 }
 { requirement: x makes 2rho_c G-dominant }
 set W_c_perp(KGBElt x) = [WeylElt]:
-  generate_W(small_Levi(x))
+  W(small_Levi(x))
 
 { convert |WeylElt| for Levi to one for full |G| }
 set convert (WeylElt w,RootDatum rd_G) = WeylElt: { for |rd_G| }

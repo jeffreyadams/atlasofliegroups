@@ -1,5 +1,6 @@
 <basic.at
-
+<simple_factors.at
+<partitions.at {for fac}
 { Functions for computing with Weyl group elements }
 
 set length ((RootDatum,mat) rd_M) = int: W_elt(rd_M).length
@@ -122,3 +123,41 @@ set to_no_Cminus (KGBElt x) = KGBElt: let (,y)=from_no_Cminus(x) in y
 set to_no_Cplus (KGBElt x) = KGBElt:  let (,y)=from_no_Cplus(x) in y
 set to_no_Cminus (Param p) = Param: let (,q)=from_no_Cminus(p) in q
 set to_no_Cplus (Param p) = Param:  let (,q)=from_no_Cplus(p) in q
+
+{action of invertible matrix on RootDatum}
+set *(mat M,RootDatum rd)=RootDatum:
+root_datum(M*simple_roots(rd), ^inverse(M)*simple_coroots(rd))
+
+set *(WeylElt w,RootDatum rd)=RootDatum:matrix(w)*rd
+
+{  order of the Weyl group }
+
+set labels_simple(RootDatum rd)=[int]:
+assert(is_simple(derived(rd)),"Derived Root Datum is not simple");
+highest_root(adjoint(rd))
+
+set labels(RootDatum rd)=[int]:
+let (,factors)=simple_factors(rd) in 
+##for f in factors do labels_simple(f) od
+
+set order_W_simple(RootDatum rd)=int:
+assert(is_simple(derived(rd)),"Derived Root Datum is not simple");
+fac(ss_rank(rd))*product(labels(rd))*det(Cartan_matrix(rd))
+
+set order_W_simple(LieType lt)=int:order_W_simple(simply_connected(lt))
+
+set order_W(RootDatum rd)=let (,factors)=simple_factors(rd) in product(for f in factors do order_W_simple(f) od)
+set order_W(LieType lt)=order_W(simply_connected(lt))
+
+{ factor  WeylElt of rd according to simple factors of rd }
+
+set factorize_w(WeylElt w)=[WeylElt]:
+let (indices,factors)=simple_factors(w.root_datum) then
+v=w.word in
+for k:#factors do
+ let x=##for i in v do
+  let j=find(indices[k],i) in
+   if j!=-1 then [j] else [] fi od
+  in id_W(factors[k])##x  od
+
+set char_poly(WeylElt w)=char_poly(matrix(w))

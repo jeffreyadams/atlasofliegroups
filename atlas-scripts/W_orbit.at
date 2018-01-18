@@ -35,6 +35,7 @@ set generate_from_dom ([(ratvec->ratvec)] S,ratvec v) = ([[int]],[ratvec]):
 
 { same as previous, but add supplied |rd| to make words into |WeylElt| values }
 set generate_from_dom (RootDatum rd,[(ratvec->ratvec)] S,ratvec v) =
+  assert(is_dominant(rd,v),"vector is not dominant");
      ([WeylElt],[ratvec]):
   let (words,orbit)=generate_from_dom(S,v) in
   (for w in words do W_elt(rd,w) od,orbit)
@@ -43,32 +44,51 @@ set generate_from_dom (RootDatum rd,[(ratvec->ratvec)] S,ratvec v) =
   also ensure |v| is made dominant for |rd|, which is what generators require
 }
 set generate_from_dom (RootDatum rd,[int] S,ratvec v) = ([WeylElt],[ratvec]):
+  assert(is_dominant(rd,v),"vector is not dominant");
   let gs = for i in S
            do let s=W_gen(rd,i), av=coroot(rd,i), !zero=ratvec:null(0)
               in (ratvec x)ratvec: if (av*x).> then s*x else zero fi
            od
   in generate_from_dom(rd, gs, dominant(rd,v))
 
-{ just the W(S)-orbit W.v }
-set W_orbit((RootDatum,[int],ratvec) triple) = [ratvec]:
-  let (,orbit) = generate_from_dom(triple) in orbit
-
-{ just the coset representatives for the stabilizer of v }
-set W_orbit_W_elements((RootDatum,[int],ratvec) triple) = [WeylElt]:
-  let (W_elements,)=generate_from_dom(triple) in W_elements
-
 { assume S=all simple roots }
 set generate_from_dom(RootDatum rd,ratvec v) = ([WeylElt],[ratvec]):
+  assert(is_dominant(rd,v),"vector is not dominant");
   generate_from_dom(rd,#semisimple_rank(rd),v)
 set W_orbit((RootDatum,ratvec) pair) = [ratvec]:
   let (,orbit) = generate_from_dom(pair) in orbit
 
 
-set W_orbit_W_elements((RootDatum,ratvec) pair) = [WeylElt]:
-  let (W_elements,) = generate_from_dom(pair) in W_elements
+{ same as generate_from_dom(rd,v) except that v is not required to be dominant }
+set generate_from(RootDatum rd, ratvec v)=
+let (w,vdom)=from_dominant(rd,v) then
+(elts,vecs)=generate_from_dom(rd,vdom) in 
+(for i:#elts do elts[i]*inverse(w) od, vecs)
 
-{ all Weyl group elements of W(rd) or W(G), in no particular order }
-set generate_W (RootDatum rd) = [WeylElt]:
+{ just the W(S)-orbit W.v; assumes v is dominant }
+set W_orbit((RootDatum,[int],ratvec) triple) = [ratvec]:
+let (rd,,v)=triple in assert(is_dominant(rd,v),"vector is not dominant");
+let (,orbit) = generate_from_dom(triple) in orbit
+
+{ just the coset representatives for the stabilizer of v }
+{ assuming v is dominant}
+set W_orbit_W_elements((RootDatum,[int],ratvec) triple) = [WeylElt]:
+let (rd,,v)=triple in assert(is_dominant(rd,v),"vector is not dominant");
+  let (W_elements,)=generate_from_dom(triple) in W_elements
+
+{ just the W-orbit W.v; v not necessarily dominant}
+set W_orbit(RootDatum rd,ratvec v)  = [ratvec]:
+let (,orbit) = generate_from(rd,v) in orbit
+
+{ W-orbit plus an element of w for each element gamma
+of orbit such that w.lambda=gamma
+ lambda not necessarily dominant
+}
+set W_orbit_W_elements((RootDatum,ratvec) pair) = [WeylElt]:
+  let (W_elements,) = generate_from(pair) in W_elements
+
+{ all elements of Weyl group of RootDatum, in no particular order }
+set W (RootDatum rd) = [WeylElt]:
   W_orbit_W_elements(rd,numer(rho(rd)))
 
 { orbit of <w_1,..,w_n> acting on v where w_i is an element of W (WeylElt),
@@ -108,3 +128,10 @@ set generate ([WeylElt] S,ratvec v) = ([[int]],[ratvec]):
 set conjugate_to ([WeylElt] S, ratvec v,ratvec w) = (bool,[int]):
   let (words,orbit) = generate(S,v) then k=first(#orbit,(int i):orbit[i]=w) in
   if k.>= then (true,words[k]) else (false,[]) fi
+
+
+{find WeylElt w satisfying w*v=u}
+set conjugate_to(RootDatum rd,ratvec u,ratvec v)=(bool,WeylElt):
+let S=for i:ss_rank(rd) do id_W(rd)#i od then
+(valid,roots)=conjugate_to(S,u,v) in
+ if not valid then (false,id_W(rd)) else (true,id_W(rd)##roots) fi
