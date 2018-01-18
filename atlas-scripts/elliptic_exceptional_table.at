@@ -1,5 +1,6 @@
 <basic.at
 <lietypes.at
+<elliptic.at
 
 {tables of elliptic conjugacy classes for exceptional groups, from Geck-Pfeiffer
  Root Datum, characteristic polynomial, order, length, name, size of centralizer
