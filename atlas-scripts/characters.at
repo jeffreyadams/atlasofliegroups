@@ -1,5 +1,5 @@
 <conjugacy_classes.at
-{ class functions and characters }
+{ class functions and characters for the Weyl group}
 
 { ClassFunction:
  (list of conjugacy class representatives,
@@ -8,10 +8,15 @@
 
 when defining a class function for RootDatum rd,
 compute conjugacy_classes(rd) and size_of_conjugacy_classes(*)
+ClassFunction data type:
+([WeylElt] conjugacy class representatives
+ [int]: sizes of the classes
+ [rat]: value of the function on the classes)
 once these are computed, one should try not to compute them again
 we may change this implementation of class function to be
 more robust and less clumsy}
 
+{. data type for class functions .}
 set_type ClassFunction=([WeylElt] classes, [int] sizes, [rat] values)
 
 {. products of two class functions .}
@@ -53,4 +58,7 @@ set reflection_character([WeylElt] classes, [int] sizes)=ClassFunction:
 set tensor(int n, ClassFunction f)=ClassFunction:
 (f.classes,f.sizes, for r in f.values do r^n od)
 
-set dimension(ClassFunction f)=f.values[0]
+set dimension(ClassFunction f)=int:rat_as_int(f.values[0])
+
+set matrix_of_inner_products([ClassFunction] S)=mat:
+for i:#S do for j:#S do rat_as_int(S[i]*S[j]) od od

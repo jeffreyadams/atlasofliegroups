@@ -52,15 +52,54 @@ set conjugacy_classes_by_Levi (RootDatum rd) = [(ComplexLevi,WeylElt)]:
 set conjugacy_classes (RootDatum rd) = [WeylElt]:
 ##for L in Levi_classes(rd) do for w in elliptic(L.rd_Levi) do promote(L,w) od od
 
+{is_long(rd,alpha) returns true if and only if 
+the irreducible component of rd containing alpha has two root lengths and alpha is long
+}
+
+set is_long(RootDatum rd,vec alpha)=bool: first(for beta in posroots(rd)  do beta!=alpha and alpha*coroot(rd,beta)>1 od)>-1
+set is_short(RootDatum rd,vec alpha)=bool:not is_long(rd,alpha)
+
+set is_elliptic_conjugate_F4_special_case(WeylElt x,WeylElt y)=bool:
+{assuming type=F4 (simple) and same char_poly:}
+if (order(x)=6 and length(x)=10) {x is either D4 or C3+A1; => y is also } then
+ let rd=x.root_datum then
+ alpha=kernel(1+matrix(x))[0] then
+ beta=kernel(1+matrix(y))[0] in  
+ ((is_long(rd,alpha) and is_long(rd,beta)) or (is_short(rd,alpha) and is_short(rd,beta))) else true fi
+
 set is_elliptic_conjugate (WeylElt x,WeylElt y) = bool:
   assert(x.root_datum=y.root_datum,"Weyl elements are for different root data");
   assert(is_elliptic(x) and is_elliptic(y),"Weyl element is not elliptic");
-  char_poly(matrix(x))=char_poly(matrix(y))
+  let rd=x.root_datum then
+  (type,)=(%Lie_type(rd))[0] in
+  if not char_poly(matrix(x))=char_poly(matrix(y)) then false 
+  elif type !="F" then true  else
+     assert(is_simple(rd), "Sorry can't handle non-simple groups of type F4");
+     is_elliptic_conjugate_F4_special_case(x,y) fi
 
 set is_conjugate(WeylElt x,WeylElt y) = bool:
-  assert(x.root_datum=y.root_datum,"Weyl elements are for different root data");
-  let ((,L),(,M))=(Levi_of_w(x),Levi_of_w(y)) in
-  is_conjugate(x.root_datum, L,M) and char_poly(matrix(x))=char_poly(matrix(y))
+   if (is_elliptic(x) and is_elliptic(y)) then
+   is_elliptic_conjugate(x,y) {takes care of F4 special case} else 
+   let ((,L),(,M))=(Levi_of_w(x),Levi_of_w(y)) in 
+   is_conjugate(x.root_datum, L,M) and  char_poly(matrix(x))=char_poly(matrix(y)) fi
+{
+
+assert(x.root_datum=y.root_datum,"Weyl elements are for different root data");
+  (type,)=(%Lie_type(L)[0] {for F4 case} in
+  if is_conjugate(x.root_datum, L,M) then
+    if is_simple(x.root_datum) and type="F" and 
+       is_elliptic(x) and is_elliptic(y) then is_elliptic_conjugate(
+  (type,)=
+  if 
+   is_simple(L) and is_simple
+  if is_simple(s.root_datum) then 
+
+}
+
+   
+
+
+
 
 set conjugacy_class (WeylElt x, [ConjugacyClass] classes) = WeylElt:
   promote(classes[first(for C in classes do is_conjugate(x,C.promote) od)])
@@ -182,6 +221,8 @@ prints("order of W: ", order_W(rd));}
 order_W(P)*#norm*order_of_centralizer_elliptic(derived(w_L)) fi
 
 set size_of_conjugacy_class(WeylElt w)=int:order_W(w.root_datum)\order_of_centralizer(w)
+set sizes_of_conjugacy_classes([WeylElt] S)=[int]: for w in S do size_of_conjugacy_class(w) od
+set sizes_of_conjugacy_classes(RootDatum rd)=[int]: sizes_of_conjugacy_classes(conjugacy_classes(rd))
 
 set test_size_of_conjugacy_classes(RootDatum rd)=(int,int):
 let c=conjugacy_classes(rd) in
