@@ -27,21 +27,21 @@ set root_datum_Levi (ConjugacyClass C) = RootDatum: C.Levi.rd_Levi
   C.w: WeylElt for L
 }
 
-{promote w in W(Levi) to W(G)}
-set promote(WeylElt w, RootDatum rd)=WeylElt:W_elt(rd,matrix(w))
+{ promote w in W(Levi) to W(G) }
+set promote (WeylElt w, RootDatum rd) = WeylElt: W_elt(rd,matrix(w))
 
-{promote pair (L,w_L) to element of W}
-set promote(ConjugacyClass C)=WeylElt:promote(C.w,C.root_datum)
+{ promote pair (L,w_L) to element of W }
+set promote(ConjugacyClass C) = WeylElt: promote(C.w,C.root_datum)
 
-{other direction: if w\in W_G preserves L write it
-as a Weyl group element in W_L}
-{assuming w comes from W_L}
-set restrict(WeylElt w,ComplexLevi L)=WeylElt:W_elt(L.rd_Levi,matrix(w))
+{ other direction: if w\in W_G preserves L write it
+  as a Weyl group element in W_L, assuming w comes from W_L
+}
+set restrict (WeylElt w,ComplexLevi L) = WeylElt:
+  W_elt(L.rd_Levi,matrix(w))
 
-{apply this to the Levi defined by w}
-set restrict(WeylElt w)=(ComplexLevi,WeylElt):
-let (,L)=Levi_of_w(w) in
- ((w.root_datum,L),restrict(w,(w.root_datum,L)))
+{ apply this to the Levi defined by w }
+set restrict (WeylElt w) = (ComplexLevi,WeylElt):
+  let (,L)=Levi_of_w(w)then rd_L=(w.root_datum,L) in (rd_L,restrict(w,rd_L))
 
 set order(ConjugacyClass C)=int:order(C.w)
 
@@ -50,53 +50,60 @@ set conjugacy_classes_by_Levi (RootDatum rd) = [(ComplexLevi,WeylElt)]:
 
 
 set conjugacy_classes (RootDatum rd) = [WeylElt]:
-##for L in Levi_classes(rd) do for w in elliptic(L.rd_Levi) do promote(L,w) od od
+##for L in Levi_classes(rd)
+  do for w in elliptic(L.rd_Levi) do promote(L,w) od
+  od
 
-{is_long(rd,alpha) returns true if and only if 
-the irreducible component of rd containing alpha has two root lengths and alpha is long
+{ is_long(rd,alpha) returns true if and only if the irreducible component of
+  rd containing alpha has two root lengths and alpha is long
 }
 
-set is_long(RootDatum rd,vec alpha)=bool: first(for beta in posroots(rd)  do beta!=alpha and alpha*coroot(rd,beta)>1 od)>-1
-set is_short(RootDatum rd,vec alpha)=bool:not is_long(rd,alpha)
+set is_long (RootDatum rd,vec alpha) =bool:
+  any(for beta in posroots(rd) do coroot(rd,beta)*alpha>1 and beta!=alpha od)
 
-set is_elliptic_conjugate_F4_special_case(WeylElt x,WeylElt y)=bool:
-{assuming type=F4 (simple) and same char_poly:}
-if (order(x)=6 and length(x)=10) {x is either D4 or C3+A1; => y is also } then
- let rd=x.root_datum then
- alpha=kernel(1+matrix(x))[0] then
- beta=kernel(1+matrix(y))[0] in  
- ((is_long(rd,alpha) and is_long(rd,beta)) or (is_short(rd,alpha) and is_short(rd,beta))) else true fi
+set is_short(RootDatum rd,vec alpha)=bool: not is_long(rd,alpha)
+
+set is_elliptic_conjugate_F4_special_case (WeylElt x,WeylElt y) = bool:
+{ assuming type=F4 (simple) and same char_poly: }
+  if order(x)=6 and length(x)=10 {x is either D4 or C3+A1; => y is also }
+  else true
+  then
+    let rd=x.root_datum
+    , alpha=kernel(1+matrix(x))[0], beta=kernel(1+matrix(y))[0]
+    in is_long(rd,alpha)=is_long(rd,beta)
+  fi
 
 set is_elliptic_conjugate (WeylElt x,WeylElt y) = bool:
   assert(x.root_datum=y.root_datum,"Weyl elements are for different root data");
   assert(is_elliptic(x) and is_elliptic(y),"Weyl element is not elliptic");
   let rd=x.root_datum then
   (type,)=(%Lie_type(rd))[0] in
-  if not char_poly(matrix(x))=char_poly(matrix(y)) then false 
+  if not char_poly(matrix(x))=char_poly(matrix(y)) then false
   elif type !="F" then true  else
      assert(is_simple(rd), "Sorry can't handle non-simple groups of type F4");
      is_elliptic_conjugate_F4_special_case(x,y) fi
 
 set is_conjugate(WeylElt x,WeylElt y) = bool:
-   if (is_elliptic(x) and is_elliptic(y)) then
-   is_elliptic_conjugate(x,y) {takes care of F4 special case} else 
-   let ((,L),(,M))=(Levi_of_w(x),Levi_of_w(y)) in 
-   is_conjugate(x.root_datum, L,M) and  char_poly(matrix(x))=char_poly(matrix(y)) fi
+   if is_elliptic(x) and is_elliptic(y)
+   then is_elliptic_conjugate(x,y) {takes care of F4 special case}
+   else let ((,L),(,M))=(Levi_of_w(x),Levi_of_w(y)) in
+     is_conjugate(x.root_datum, L,M) and
+     char_poly(matrix(x))=char_poly(matrix(y))
+   fi
 {
-
 assert(x.root_datum=y.root_datum,"Weyl elements are for different root data");
   (type,)=(%Lie_type(L)[0] {for F4 case} in
   if is_conjugate(x.root_datum, L,M) then
-    if is_simple(x.root_datum) and type="F" and 
+    if is_simple(x.root_datum) and type="F" and
        is_elliptic(x) and is_elliptic(y) then is_elliptic_conjugate(
   (type,)=
-  if 
+  if
    is_simple(L) and is_simple
-  if is_simple(s.root_datum) then 
+  if is_simple(s.root_datum) then
 
 }
 
-   
+
 
 
 
