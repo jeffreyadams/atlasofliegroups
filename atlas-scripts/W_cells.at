@@ -52,10 +52,24 @@ set cell_characters([([int],[([int],[(int,int)])])] cells, ([WeylElt],[int]) dat
 for cell in cells do cell_character(cell,data) od
 
 {. matrix of inner products of characters of cell representations .}
-set cells_table([([int],[([int],[(int,int)])])] cells,([WeylElt],[int]) data)=mat:
-let characters=for cell in cells do cell_character(cell,data) od in 
+set matrix_of_innerproducts([ClassFunction] characters,([WeylElt],[int]) data)=mat:
   for i:#characters do for j:#characters do 
   rat_as_int(characters[i]*characters[j]) od od
+
+set cells_table([([int],[([int],[(int,int)])])] cells,([WeylElt],[int]) data)=mat:
+let characters=for cell in cells do cell_character(cell,data) od in 
+matrix_of_inner_products(characters)
+
+set cells_table_augmented([([int],[([int],[(int,int)])])] cells,([WeylElt] classes,[int] sizes))=mat:
+let rd=classes[0].root_datum then
+characters=
+for cell in cells do cell_character(cell,(classes,sizes)) od
+#trivial_character(rd) # sgn_character(rd) # reflection_character(rd)  
+in matrix_of_inner_products(characters)
+
+
+
+
 
 { Description of the cell representation taken from messages/wcells.help}
 {
