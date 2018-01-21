@@ -124,7 +124,8 @@ dependency on the readline library.
 @q axis_version "0.9.5" unions, discrimination expressions @>
 @q axis_version "0.9.6" set of implicit conversions closed for composition @>
 @q axis_version "0.9.7" set_type command, possibly recursive, added @>
-@d axis_version "0.9.8" @q fully functional set_type command @>
+@q axis_version "0.9.8" fully functional set_type command @>
+@d axis_version "0.9.9" @q integer 'case': optional out-of-bounds clause(s) @>
 
  // numbering from 0.5 (on 27/11/2010); last change Jun 15, 2017
 

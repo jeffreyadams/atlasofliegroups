@@ -1443,7 +1443,8 @@ hand that these connectives cannot be redefined or overloaded.
 ** Integer case expressions
 
 A similar selection, but determined by a range of values that may be taken by
-an integral expression 'I', can be performed using an integral case expression
+an integral expression 'I', can be performed using an integral case expression,
+whose most simple form is
 
   case I
   in E_0
@@ -1452,13 +1453,45 @@ an integral expression 'I', can be performed using an integral case expression
   , E_{n-1}
   esac
 
-The "condition" I should evaluate to an integer i with 0 <= i < n, and then
-the branch E_i is selected. Currently there is no provision for values out of
-bounds; should the value of I not satisfy the inequalities, the evaluation
-stops with an "index out of range" error (like out of bound list selections).
-To have robust code the user should either test that the bound condition is
-met before evaluating the case expression, or ensure in some other way that it
-always holds (for instance using the modulo operation '%n' in I will do this).
+The "condition" I should evaluate to an integer i, and if 0 <= i < n then
+the branch E_i is selected. As in a conditional expression, only the selected
+branch is evaluated, and its value becomes the value of the entire expression.
+
+The behaviour when i<0 or i>=n depends on the optional presence of one or two
+additional clauses; in itself this out of bounds condition never causes an
+error. One may however call 'error' in one or both of the additional clauses if
+one wishes an out of bounds value to be treated as invalid.
+
+In the basic form above, the value i will be replaced if it lies outside the
+given range by its remainder r=i%n modulo n, which then selects the branch E_r.
+
+If one additional clause introduced by 'else' is provided, as in the form
+
+  case I
+  in E_0
+  , E_1
+  , ...
+  , E_{n-1}
+  else F
+  esac
+
+then F is the branch selected when i<0 or i>=n. If two additional clauses
+are provided, the first is introduced by 'then' and the second by 'else':
+
+  case I
+  then F
+  in E_0
+  , E_1
+  , ...
+  , E_{n-1}
+  else G
+  esac
+
+here F is the branch selected when i<0, while G is selected when i>=n.
+
+The number n of 'in' branches is only requred to be nonzero. As a consequence,
+one can test whether an integer I is negative, zero, or positive using an
+integer case expression of the form 'case I then F in E else G esac'.
 
 In the conditional or case expression, the branches should all have the same
 type that will become the type of the whole expression. However, all but one

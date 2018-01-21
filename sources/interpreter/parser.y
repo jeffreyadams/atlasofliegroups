@@ -340,6 +340,10 @@ unit    : INT { $$ = make_int_denotation($1,@$); }
 	| IF iftail { $$=$2; }
 	| CASE expr IN commalist ESAC
 	  { $$=make_int_case_node($2,reverse_expr_list($4),@$); }
+	| CASE expr IN commalist ELSE expr ESAC
+	  { $$=make_int_case_node($2,reverse_expr_list($4),$6,@$); }
+	| CASE expr THEN expr IN commalist ELSE expr ESAC
+	  { $$=make_int_case_node($2,reverse_expr_list($6),$4,$8,@$); }
 	| CASE expr IN barlist ESAC
 	  { $$=make_union_case_node($2,reverse_expr_list($4),@$); }
 	| CASE expr '|' caselist ESAC

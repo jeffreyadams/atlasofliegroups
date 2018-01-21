@@ -4138,7 +4138,10 @@ case conditional_expr:
 %
 The integer case expression (multi-way branch controlled by an integer value)
 is quite similar to a conditional, but contains a list of branches rather than
-two of them.
+two of them. It used to have just that, but it turns out to be useful to give
+the user control of how to handle out of range selection values; for that
+purpose $0$, $1$, or $2$ additional expressions can be provided as an
+alternative for the listed branches.
 
 @< Type def... @>=
 struct int_case_expression : public expression_base
@@ -4149,6 +4152,36 @@ struct int_case_expression : public expression_base
    : condition(c.release()),branches(std::move(b))
   @+{}
   virtual ~@[int_case_expression() nothing_new_here@];
+  virtual void evaluate(level l) const;
+  virtual void print(std::ostream& out) const;
+};
+struct int_case_else_expression : public expression_base
+{ expression_ptr condition;
+  expression_ptr out_branch;
+  std::vector<expression_ptr> branches;
+@)
+  int_case_else_expression
+   (expression_ptr&& c,expression_ptr&& o,std::vector<expression_ptr>&& b)
+   : condition(c.release()),out_branch(std::move(o)),branches(std::move(b))
+  @+{}
+  virtual ~@[int_case_else_expression() nothing_new_here@];
+  virtual void evaluate(level l) const;
+  virtual void print(std::ostream& out) const;
+};
+struct int_case_then_else_expression : public expression_base
+{ expression_ptr condition;
+  expression_ptr pre_branch, post_branch;
+  std::vector<expression_ptr> branches;
+@)
+  int_case_then_else_expression
+   (expression_ptr&& c,expression_ptr&& t,expression_ptr&& e,
+    std::vector<expression_ptr>&& b)
+   : condition(c.release())
+   , pre_branch(std::move(t))
+   , post_branch(std::move(e))
+   , branches(std::move(b))
+  @+{}
+  virtual ~@[int_case_then_else_expression() nothing_new_here@];
   virtual void evaluate(level l) const;
   virtual void print(std::ostream& out) const;
 };
@@ -4164,29 +4197,94 @@ void int_case_expression::print(std::ostream& out) const
     out << ", " << **it;
   out << " esac ";
 }
+void int_case_else_expression::print(std::ostream& out) const
+{ auto it = branches.cbegin();
+  assert(it!=branches.cend());
+  out << " case " << *condition << " in " << **it;
+  while (++it!=branches.cend())
+    out << ", " << **it;
+  out << " else " << *out_branch << " esac ";
+}
+void int_case_then_else_expression::print(std::ostream& out) const
+{ auto it = branches.cbegin();
+  assert(it!=branches.cend());
+  out << " case " << *condition << " then " << *pre_branch << " in " << **it;
+  while (++it!=branches.cend())
+    out << ", " << **it;
+  out << " else " << *post_branch << " esac ";
+}
 
-@ Evaluating a case expression ends up evaluating one of the |branches|.
+@ Evaluating a case expression ends up evaluating one of the |branches|. In all
+cases a condition that indexes one of the \&{in} branches selects that branch.
+After conversion to an unsigned type, a single comparison suffices to detect
+this case. For an out-of-bounds condition, if no clause is provided for that
+case, we apply |arithmetic::remainder| and select the corresponding \&{in}
+branch. Otherwise we select the \&{else} branch, or in case of a negative
+condition the \&{then} branch if one was provided.
 
 @< Function definitions @>=
 void int_case_expression::evaluate(level l) const
 { condition->eval();
-  int i = get<int_value>()->int_val();
-  if (static_cast<unsigned>(i)>=branches.size())
-    throw runtime_error(range_mess(i,branches.size(),this,"case expression"));
-  branches[i]->evaluate(l);
+  auto i = get<int_value>();
+  if (i->val.size()==1) // in normal cases avoid using |shift_modulo|
+  { auto ii = static_cast<unsigned>(i->int_val());
+    if (ii < branches.size())
+      branches[ii]->evaluate(l);
+    else
+      branches
+       [arithmetic::remainder(i->int_val(),static_cast<int>(branches.size()))]
+      ->evaluate(l);
+  }
+  else
+    branches[big_int(i->val).shift_modulo(branches.size())]->evaluate(l);
+}
+void int_case_else_expression::evaluate(level l) const
+{ condition->eval();
+  auto i = get<int_value>();
+  if (i->val.size()==1) // necessary condition for selecting an \&{in} branch
+  { auto ii = static_cast<unsigned>(i->int_val());
+    if (ii < branches.size()) // exclude negative and too large values
+      return branches[ii]->evaluate(l);
+  }
+  out_branch->evaluate(l);
+}
+void int_case_then_else_expression::evaluate(level l) const
+{ condition->eval();
+  auto i = get<int_value>();
+  if (i->val.is_negative())
+    return pre_branch->evaluate(l);
+  if (i->val.size()==1) // necessary condition for selecting an \&{in} branch
+  { auto ii = static_cast<unsigned>(i->int_val());
+    if (ii < branches.size())
+      return branches[ii]->evaluate(l);
+  }
+  post_branch->evaluate(l);
 }
 
 @ With the function |balance| defined above, conversion of case expressions
 has become easy.
 
 @< Cases for type-checking and converting... @>=
-case int_case_expr:
+case int_case_expr0:
+case int_case_expr1:
+case int_case_expr2:
 { auto& exp = *e.if_variant;
   expression_ptr c  =  convert_expr(exp.condition,as_lvalue(int_type.copy()));
   std::vector<expression_ptr> conv;
   balance(type,&exp.branches,e,"branches of case",conv);
+  if (e.kind==int_case_expr0)
+    return expression_ptr(new @|
+      int_case_expression(std::move(c),std::move(conv)));
+  expression_ptr p0(std::move(conv[0]));
+  conv.erase(conv.begin());
+  if (e.kind==int_case_expr1)
+    return expression_ptr(new @|
+      int_case_else_expression(std::move(c),std::move(p0),std::move(conv)));
+  expression_ptr p1(std::move(conv[0]));
+  conv.erase(conv.begin());
 @/return expression_ptr(new @|
-    int_case_expression(std::move(c),std::move(conv)));
+    int_case_then_else_expression(std::move(c),std::move(p0),std::move(p1),
+                                 std::move(conv)));
 }
 
 @*1 Union-controlled case expressions (discrimination expressions).
