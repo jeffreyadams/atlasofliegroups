@@ -26,27 +26,24 @@ set rho_diff_integral (RootDatum rd, ratvec z) = ratvec:
   occurring in the move (it is replaced by its opposite in the computed rho).
 }
 set theta_stable_diff ((KGBElt, ratvec)(x,z):xz) = ratvec:
-( let rd = RootDatum: real_form(x)
-  then ssr1 = semisimple_rank(rd)-1
-  , tsd (KGBElt x,ratvec z) = ratvec:[] { recursive stub }
-  in assert(denom(z*real_posroots(x))=1,"Coroot not integral on real roots")
-  ; tsd :=
-    (
-      (KGBElt x,ratvec z) ratvec:
-        let s=ssr1 { test simple reflections of being complex descents }
-        in while s>=0 and status(s,x)>0 do s-:=1 od
-      ; if s<0 then let res=rho_diff_integral(rd,z) { found x0, get diff }
-        in assert (res*involution(x)=res,"unstable"); res
+( assert(denom(z*real_posroots(x))=1,"Coroot not integral on real roots")
+; let rd = RootDatum: real_form(x) then ssr = semisimple_rank(rd) in
+  xz. { apply to original argument pair the following recursive function: }
+  (rec_fun tsd (KGBElt x,ratvec z) ratvec:
+     let s = { search complex descent }
+        first(semisimple_rank(rd),(int i):status(i,x).=)
+     in if s<0 { no complex descents }
+        then let res=rho_diff_integral(rd,z) in { found x0, get diff }
+           assert (res*involution(x)=res,"unstable"); res
         else let rs=reflection(rd,s) in tsd(cross(s,x),z*rs)*rs
-        fi
-      )
-    )    (xz) { finally apply recursive function to original argument pair }
-
+     fi
+   )
+)
   end of commented-out section
 }
 
 { Instead, we now exploit the fact that z is $\theta$-stable modulo 1
-  initially, and then find a $\theta$-stable left here, given that it exists,
+  initially, and then find a $\theta$-stable lift here, given that it exists,
   essentially by applying a section of theta-1 to the vector z*(theta-1)%1
 
   Since the decomposition (d,L,R) of |theta-1| will also serve for the function

@@ -9,9 +9,9 @@ set strip ([rat] v) = [rat]: v[ : 1+last(#v,(int i)bool:v[i].!= ) ]
 
 { constructors }
 set rat_poly ([rat] c, string X) = (strip(c),X)
-set rat_poly ([rat] c) = (strip(c),"q") { constructor }
 set rat_poly (rat c0, string X) = rat_poly([c0],X)
-set rat_poly (rat c0) = rat_poly([c0])
+set rat_poly ([rat] l) = rat_poly(l,"q") { default to "q", unused in this file }
+set rat_poly (rat c0) =  rat_poly([c0])  { default to "q", unused in this file }
 
 set to_string (RatPoly(cs,X)) = string:
    if =#cs then "0"
@@ -31,8 +31,8 @@ set to_string (RatPoly(cs,X)) = string:
 set prints (RatPoly P) = prints(P.to_string)
 
 { for convenience declare some constants, the ! makes changes to these illegal }
-set !ratpol_0 = 0.rat_poly, !ratpol_1 = 1.rat_poly, !RatPoly2 = 2.rat_poly
-set !ratpol_q = [0,1].rat_poly, !ratpol_q2 = [0,0,1].rat_poly
+set !ratpol_0 = rat_poly(0,"q"), !ratpol_1 = rat_poly(1,"q")
+set !ratpol_q = rat_poly([0,1],"q"), !ratpol_q2 = rat_poly([0,0,1],"q")
 
 set  = (RatPoly(a,)) =  =#a
 set != (RatPoly(a,)) = !=#a
@@ -61,7 +61,7 @@ set evaluate_at_1 (RatPoly(cs,)) = rat:
 {. Euclidean division: find (q,r) where a=q*b+r and deg(r)<deg(b) .}
 set \% (RatPoly(a,X):A,RatPoly(b,):B) = (RatPoly,RatPoly):
    let l_a=#a, deg_b = degree(B) in assert(deg_b.>=,"Euclidean division by 0");
-   if l_a<=deg_b then (ratpol_0,A)
+   if l_a<=deg_b then (rat_poly(0,X),A)
    else let factor = / b~[0] { inverse of leading coefficient of dividend } in
       for i: l_a-deg_b { quotient has $\deg A+1-\deg B$ terms }
       do let c=a~[i]*factor in a~[i]:=c { write coefficient of quotient }
@@ -80,18 +80,18 @@ set Bezout = (RatPoly,RatPoly->RatPoly,RatPoly,RatPoly):
    let sub ((RatPoly X, RatPoly SX, RatPoly TX)
            , RatPoly c
            , (RatPoly Y, RatPoly SY, RatPoly TY)) = (X-c*Y, SX-c*SY, TX-c*TY)
-   in { Bezout = } (RatPoly A,RatPoly B) (RatPoly,RatPoly,RatPoly):
+   in { Bezout = } (RatPoly(,X):A,RatPoly B) (RatPoly,RatPoly,RatPoly):
    let L=[RatPoly,RatPoly,RatPoly]:
-       [(A,ratpol_1,ratpol_0), (B,ratpol_0,ratpol_1)]
+       let X0=rat_poly(0,X),X1=rat_poly(1,X) in [(A,X1,X0), (B,X0,X1)]
    , (Q,R)=A\%B
    in
    while !=R
    do L#:=sub(L~[1],Q,L~[0])
    ; let (A,,)=L~[1], (B,,)=L~[0] in set (Q,R):= A\%B
-   od; let ((d,):D,S,T)=L~[0] then c=rat_poly(/d~[0]) in (D*c, S*c, T*c)
+   od; let ((d,):D,S,T)=L~[0] then c=rat_poly(/d~[0],X) in (D*c, S*c, T*c)
 
 set ^ (RatPoly(p,X),int n) = RatPoly: { power of a rational polynomial }
-   if n=0 then ratpol_1 elif =#p then ratpol_0
+   if n=0 then rat_poly(1,X) elif =#p then rat_poly(0,X)
    else { no point in trying to do this by repeated squaring: is not faster }
       let f=p in while (n-:=1)>0 do f := convolve(f,p) od; rat_poly(f,X)
    fi

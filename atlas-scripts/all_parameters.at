@@ -71,7 +71,7 @@ set all_parameters (Param p) = [Param]:
 { all parameters with given infinitesimal character and attached to given x }
 set all_parameters_x_gamma (KGBElt x,ratvec gamma) = [Param]:
    let G=real_form(x)
-   then (gamma_d,)=make_dominant(root_datum(G),gamma)
+   then gamma_d=dominant(root_datum(G),gamma)
    then rho=rho(G), th1=1+involution(x)
    in
    case vec_solve(th1,th1*(gamma_d-rho))
@@ -83,7 +83,7 @@ set all_parameters_x_gamma (KGBElt x,ratvec gamma) = [Param]:
 
 { all parameters with given infinitesimal character }
 set all_parameters_gamma (RealForm G,ratvec gamma) = [Param]:
-   let (gamma_dom,)=make_dominant(root_datum(G),gamma) in
+   let v=dominant(root_datum(G),gamma) in
    let rho=rho(G) in
    for x in KGB(G)
    do let th1=1+involution(x) in
@@ -101,8 +101,8 @@ set all_discrete_series(RealForm G, ratvec gamma)=[Param]:
    assert(is_equal_rank(G),"group is not equal rank");
    assert(is_regular(G,gamma),"gamma is not regular");
    assert(is_integer(gamma+rho(G)),"gamma is not in X^*+rho");
-   let (gamma_dom,)=make_dominant(G,gamma) in
-   for i in distinguished_fiber(G) do parameter(KGB(G,i),gamma_dom,null(rank(G))) od
+   let gamma_dom=dominant(G,gamma), zero_nu=ratvec: null(G.rank) in
+   for i in distinguished_fiber(G) do parameter(KGB(G,i),gamma_dom,zero_nu) od
 
 
 {there are 2^rank minimal principal series of a split group

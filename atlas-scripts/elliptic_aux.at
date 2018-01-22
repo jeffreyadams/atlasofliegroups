@@ -1,0 +1,50 @@
+<simple_factors.at
+<elliptic.at
+
+{ replace each entry j of list_in with new_numbers[j]
+  example: replace([5,8,3],[0,1,2,0,0,2]) = [5,8,3,5,5,3] }
+
+set replace ([int] values, [int] indices) = [int]:
+  for index in indices do values[index] od
+
+set replace ([int] values, [[int]] list_of_indices) = [[int]]:
+  for indices in list_of_indices do replace(values,indices) od
+
+
+{ all cross concatenations, example:
+  product_of_two_lists ([[1,2],[3,4]],[[5,6],[1,1]])=
+  [[ 1, 2, 5, 6 ],[ 1, 2, 1, 1 ],[ 3, 4, 5, 6 ],[ 3, 4, 1, 1 ]]
+}
+set product_of_two_lists ([[int]] a,[[int]] b) = [[int]]:
+##for x in a do for y in b do x##y od od
+
+
+{example:
+a=[[1,2],[3,4]]
+b=[[5],[6,7]]
+c=[[8,9,10],[11]]
+product_of_lists ([a,b,c])=
+[  1,  2,  5,  8,  9, 10 ]
+[  1,  2,  5, 11 ]
+[  1,  2,  6,  7,  8,  9, 10 ]
+[  1,  2,  6,  7, 11 ]
+[  3,  4,  5,  8,  9, 10 ]
+[  3,  4,  5, 11 ]
+[  3,  4,  6,  7,  8,  9, 10 ]
+[  3,  4,  6,  7, 11 ]
+}
+set product_of_lists ([ [[int]] ] lists) = [[int]]:
+  let result = [[int]] : [ [] ] in
+  for list in lists do result:=product_of_two_lists(result,list) od; result
+
+{elliptic elements of a RootDatum, not necessarily simple}
+set elliptic (RootDatum root_datum) = [WeylElt]:
+  if semisimple_rank(root_datum)=0 then [id_W(root_datum)]
+  else let (root_numbering,root_data)=simple_factors(root_datum) in
+    for v in product_of_lists
+      (for rd@i in root_data
+       do for w in elliptic_simple(rd) do replace(root_numbering[i],w.word) od
+       od)
+    do W_elt(root_datum,v)
+    od
+  fi

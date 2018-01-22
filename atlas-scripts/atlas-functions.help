@@ -267,6 +267,8 @@ root_datum: (RootDatum,mat->RootDatum): root datum for sublattice in old one
   rational numbers) and the roots of rd must be in its integral column span.
 root_datum: (InnerClass->RootDatum): root datum of inner class.
   Extract the root datum from the InnerClass value
+dual_datum: (InnerClass->RootDatum): dual root datum of inner class.
+  Extract the dual root datum from the InnerClass value
 
 operators =, != : (RootDatum,RootDatum->bool) equality of Root data
   Tests identical simple_roots, simple_coroots matrices, and prefers_coroots
@@ -331,6 +333,8 @@ mod_central_torus_info: (RootDatum->RootDatum,mat): quotient by central torus
 rank: (RootDatum->int) Rank of the weight lattice for this Lie type.
 semisimple_rank: (RootDatum->int) Rank of the root lattice of  this Lie type.
 nr_of_posroots: (RootDatum->int) Number of positive roots in the root datum.
+two_rho: (RootDatum->vec): The sum of all positive roots in the root datum.
+two_rho_check: (RootDatum->vec): The sum of all positive coroots in root datum.
 
 root_index: (RootDatum,vec->int): Index of root with respect to posroots
 coroot_index: (RootDatum,vec->int): Index of coroot with respect to poscoroots
@@ -347,6 +351,31 @@ integrality_points: (RootDatum,ratvec->[rat]): fractions with integrality
   The call integrality_points(rd,lambda) returns the increasing list of
   positive fractions f<=1 so f*lambda has more integrality than generically:
   for some coroot alphav one has integral and nonzero value <alphav,f*lambda>.
+
+W_elt: (RootDatum,[int]->WeylElt): Make a WeylElt from a word in W-generators
+  The root datum specifies the type of Weyl group, the vector gives the word in
+  terms of simple reflections (indexed from 0) defining the Weyl group element
+word: (WeylElt->[int]): chosen reduced Weyl word for a Weyl group element
+root_datum: (WeylElt->rootDatum): Root datum underling a Weyl group element
+length: (WeylElt->int): Length in Weyl group of an element
+operators =, != : (WeylElt->bool): test Weyl group element against identity
+operators =, != : (WeylElt,WeylElt->bool): comparison of Weyl group elements
+  The elements are required to be from equal or dual root data
+operator * : (WeylElt,WeylElt->WeylElt): Compose Weyl group elements
+operator / : (WeylElt->WeylElt): Inverse of Weyl group element
+operator # : (WeylElt,int->WeylElt): muttiplu Weyl group element and generator
+operator # : (int,WeylElt->WeylElt): multiply generator and Weyl group element
+operator ## : (WeylElt,[int]->WeylElt): Compose Weyl group element and Weyl word
+operator ## : ([int],WeylElt->WeylElt): Compose Weyl word and Weyl group element
+operator * : (WeylElt,vec->WeylElt): left-act by Weyl group element on weight
+operator * : (vec,WeylElt->WeylElt): right-act on coweight by Weyl group element
+from_dominant: (RootDatum,vec->WeylElt,vec): write as W image of dominant weight
+  Called for (rd,lambda), find in the oribit of lambda under the Weyl group W
+  of rd the dominant weight v, and minimal w in W with lambda=w*v; return (w,v)
+from_dominant: (vec,RootDatum->vec,WeylElt): write as dominant coweight * W-elt
+  Called for (cowt,rd), find in the oribit of cowt under the Weyl group W of rd
+  the dominant coweight v, and minimal w in W with cowt=v*w; return (v,w), Note
+  that using form_dominant(dual(rd),cowt) instead would rather return (w^{-1},v)
 
 quotient_basis: (LieType,[ratvec]->mat): sublattice given by kernel generators.
   Interpret the rational vectors as kernel generators for the given type, as
@@ -377,18 +406,12 @@ inner_class: (RootDatum,mat->InnerClass): inner_class of G from involution
   This is the basic function for building a complex reductive group equipped
   with an involution from the root datum and that involution; the latter is
   given on the lattice basis of the root datum, and must describe an
-  involutive automorphism of the root datum. The involution is converted to a
-  based root datum involution if necessary, using the Weyl group.
-twisted_involution (RootDatum,mat->InnerClass,vec): inner_class and Weyl word
-  Build an inner class as the above function, and also return a Weyl word
-  (twisted involution) that expresses the given involution in that inner
-  class. The latter is a reduced word (with Weyl group generators numbered
-  from 0), to be left-multiplied to the distinguished involution.
-inner_class: (Lie_type,[ratvec],string->InnerClass): inner class as in Fokko
-    set inner_class(Lie_type lt,[ratvec] gens,string ic_string) =
-    let basis=quotient_basis(lt,gens)
-    ; rd=root_datum(lt,basis), inv=based_involution(lt,basis,ic_string)
-    in inner_class(rd,inv).
+  involutive automorphism theta of the root datum. If theta is not a based root
+  datum involution, it is replaced by some w*theta that is, with w in W
+twisted_involution (RootDatum,mat->WeylElt,InnerClass): extra info inner_class
+  Build an inner class as the above function, by also return the Weyl element w
+  (twisted involution) for which w*theta gives the distinguished involution
+  (the element w is first component of result to remind us it acts on the left)
 
 operators =, != : (InnerClass,InnerClass->bool): (non)identity of inner classes
   Equality holds only when both arguments refer to the same inner class

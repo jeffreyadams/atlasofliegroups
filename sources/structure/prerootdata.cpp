@@ -81,11 +81,11 @@ PreRootDatum::PreRootDatum
   const auto s = rd.semisimple_rank();
 
   int_Vector factor;
-  int_Matrix M = matreduc::adapted_basis(rd.simple_coroots,factor).transposed();
-  projector = M.block(0,0,s,r); // first |s| rows define projection
+  int_Matrix M = matreduc::adapted_basis(rd.simple_coroots,factor);
+  projector = M.transposed_block(0,0,s,r); // first |s| rows define projection
   simple_roots = projector*rd.simple_roots;
-  int_Matrix section = M.inverse().block(0,0,r,s);
-  simple_coroots = rd.simple_coroots*section;
+  int_Matrix section = M.inverse().block(0,0,s,r); // of transposed projector
+  simple_coroots = section*rd.simple_coroots;
 }
 
 PreRootDatum::PreRootDatum
@@ -97,10 +97,10 @@ PreRootDatum::PreRootDatum
 
   int_Vector factor;
   int_Matrix M = matreduc::adapted_basis(rd.simple_roots,factor);
-  injector = M.block(0,0,r,s); // first |s| columns define weight back injection
-  simple_coroots = injector.transposed()*rd.simple_coroots;
+  injector = M.transposed_block(0,0,s,r); // first |s| rows: back injection
+  simple_coroots = injector*rd.simple_coroots; // base change
   int_Matrix cosection = M.inverse().block(0,0,s,r); // left inverse |injection|
-  simple_coroots = rd.simple_coroots*cosection.transposed();
+  simple_roots = cosection*rd.simple_roots;
 }
 
 

@@ -1,0 +1,215 @@
+<groups.at
+<partitions.at
+<Weylgroup.at
+<cyclotomic.at
+<ellipticExceptional.at {tables of elliptic classes}
+
+set elliptic_debug=true
+
+{ all cross concatenations, example:
+  product_of_two_lists ([[1,2],[3,4]],[[5,6],[1,1]])=
+  [[ 1, 2, 5, 6 ],[ 1, 2, 1, 1 ],[ 3, 4, 5, 6 ],[ 3, 4, 1, 1 ]]
+}
+set product_of_two_lists ([[int]] a,[[int]] b) = [[int]]:
+##for x in a do for y in b do x##y od od
+
+{example:
+a=[[1,2],[3,4]]
+b=[[5],[6,7]]
+c=[[8,9,10],[11]]
+product_of_lists ([a,b,c])=
+[  1,  2,  5,  8,  9, 10 ]
+[  1,  2,  5, 11 ]
+[  1,  2,  6,  7,  8,  9, 10 ]
+[  1,  2,  6,  7, 11 ]
+[  3,  4,  5,  8,  9, 10 ]
+[  3,  4,  5, 11 ]
+[  3,  4,  6,  7,  8,  9, 10 ]
+[  3,  4,  6,  7, 11 ]
+}
+set product_of_lists ([ [[int]] ] lists) = [[int]]:
+  let result = [[int]] : [ [] ] in
+  for list in lists do result:=product_of_two_lists(result,list) od; result
+
+{set_type Partition = [int]}
+
+{ replace each entry j of list_in with new_numbers[j]
+  example: replace([5,8,3],[0,1,2,0,0,2]) = [5,8,3,5,5,3] }
+set replace ([int] values, [int] indices) = [int]:
+  for index in indices do values[index] od
+set replace ([int] values, [[int]] list_of_indices) = [[int]]:
+  for indices in list_of_indices do replace(values,indices) od
+
+{elliptic conjugacy classes of Weyl groups, classical and exceptional}
+
+set is_simple(RootDatum rd) = #%Lie_type(rd)=1
+
+{   elliptic conjugacy classes in classical groups  }
+
+{ elliptic element in type B_n associated to a partition of n}
+{ this is Cox(a_1)x...xCox(a_m) }
+set elliptic_B (Partition P) = WeylElt:
+  let M=block_matrix(for part in P do matrix(coxeter_element(SO(2*part+1))) od)
+  in {prints(M);} W_elt(SO(2*sum(P)+1),M)
+
+{ elliptic element in type C_n associated to a partition of n }
+{ this is Cox(a_1)x...xCox(a_m) }
+set elliptic_C (Partition P) = WeylElt:
+  let M=block_matrix(for part in P do matrix(coxeter_element(Sp(2*part))) od)
+  in {prints(M);} W_elt(Sp(2*sum(P)),M)
+
+{ elliptic element in type D_n associated to a partition of n
+  with an even number of parts; get it from B_n
+}
+set elliptic_D (Partition P) = WeylElt:
+  assert(is_even(#P),"Partition in type D must have an even # of parts");
+  let n=sum(P) in W_elt(SO(2*n),matrix(elliptic_B(P)))
+
+{ elliptic class in classical group, given by partition }
+set elliptic (RootDatum rd,Partition P) = WeylElt:
+  assert(is_simple(rd), "Root Datum is not simple");
+  let (type,rank)=(%Lie_type(rd))[0] in
+  if type = "A"
+  then assert(P=[rank+1],"Invalid element in type A"); coxeter_element(rd)
+  elif type="B"
+  then assert(rank=sum(P),"rank does not match Partition"); elliptic_B(P)
+  elif type="C"
+  then assert(rank=sum(P),"rank does not match Partition"); elliptic_C(P)
+  elif type="D"
+  then assert(rank=sum(P),"rank does not match Partition"); elliptic_D(P)
+  else error("Root Datum is not classical")
+  fi
+
+{ all elliptic classes in classical case, obtained by running over partitions }
+set partitions_even_number_parts (int n) = [[int]]:
+##for P in partitions(n) do if is_even(#P) then [P] else [] fi od
+
+{ representatives of elliptic conjugacy classes in type A
+  just the Coxeter element }
+set elliptic_A (int n) = [WeylElt]: [coxeter_element(SL(n+1))]
+
+{ representatives of elliptic conjugacy classes in type B/C
+  parametrized by partitions of n }
+set elliptic_B (int n) = [WeylElt]: for P in partitions(n) do elliptic_B(P) od
+set elliptic_C (int n) = [WeylElt]: for P in partitions(n) do elliptic_C(P) od
+
+{ representatives of elliptic conjugacy classes in type D
+  paraemtrized by partitions of n with an even number of parts }
+set elliptic_D (int n) = [WeylElt]:
+  for P in partitions_even_number_parts(n) do elliptic_D(P) od
+
+{elliptic classes in any simple root datum, classical (above)
+ or from a table in ellipticExceptional.at
+}
+set elliptic_simple_bourbaki (RootDatum rd) = [WeylElt]:
+  assert(is_simple(rd),"Root Datum is not simple");
+  let (type,rank)=(%Lie_type(rd))[0] in
+  if type="A" then elliptic_A(rank)
+  elif type="B" then elliptic_B(rank)
+  elif type="C" then elliptic_C(rank)
+  elif type="D" then elliptic_D(rank)
+  elif type="G" then elliptic_G2
+  elif type="F" then elliptic_F4
+  elif type="E" then
+       if rank=6 then elliptic_E6
+       elif rank=7 then elliptic_E7
+       elif rank=8 then elliptic_E8
+       else error("Invalid Root Datum")
+       fi
+  else error("Invalid Root Datum")
+  fi
+
+{elliptic classes in any simple root datum
+ use Cartan_matrix_type to convert numbering to Bourbaki}
+set elliptic_simple(RootDatum rd)=[WeylElt]:
+let ell_bourbaki=elliptic_simple_bourbaki(rd) then
+(,perm)=Cartan_matrix_type(Cartan_matrix(rd)) in 
+for w in ell_bourbaki do let 
+w_new=id_W(rd)##replace(perm,w.word) in 
+if elliptic_debug then is_elliptic(w_new) fi;w_new od
+
+
+{elliptic elements of a RootDatum, not necessarily simple
+ use simple_factors to construct simple factors
+ (root_numbering,factors)=simple_factors(rd)
+ construct elliptic elements of each simple factor using elliptic_simple
+ use root_numbering to convert from numbering for simple factor (starting at 0) 
+  to actual numbering the RootDatum
+}
+set elliptic(RootDatum root_datum)=[WeylElt]:
+if ss_rank(root_datum)=0 then [WeylElt]:[id_W(root_datum)] else
+let (root_numbering,factors)=simple_factors(root_datum) in
+for v in product_of_lists(
+for i:#factors do
+  let  rd=factors[i] then
+  new_numbers=root_numbering[i] in
+  {new_numbers gives change of numbering from each simple factor of rd to rd}
+   for w in elliptic_simple(rd) do
+     let r=replace(new_numbers,w.word) in  
+     let w_new=id_W(root_datum)##r in  
+{     prints("w_new=",w_new, " ", length(w_new)," ", order(w_new));}     r od od)
+do   id_W(root_datum)##v  od fi
+
+{    convert from WeylElt to partition in type BCD   }
+
+{find partition giving rise to WeylElt w in type BCD
+ w is a product of Coxeter elements of smalller 
+ Sp(2k) (type C) or SO(2k+1) (type B)
+ type D is obtained by embedding SO(2n) in SO(2n+1); 
+ computing the element in SO(2n+1) which lives in SO(2n)
+
+ algorithm: compute the characteristic polynomial f of w,
+ write it as a product of cyclotomic polynomials
+ of degree [a_1,a_2,...,a_r], increasing order
+ inductively: take last term n (which is even)
+ add n/2 to partition
+ divide f by characteristic polynomial of the Coxeter element 
+ of SO(n+1) or Sp(n) 
+}
+set partition_of_w_BCD(WeylElt w)=
+let lt=%Lie_type(w.root_datum) in
+assert(#lt=1,"root_datum is not simple");
+let (type,rank)=lt[0] in
+assert(type="B" or type="C" or type="D", "type is not BCD");
+let f=rat_poly(char_poly(matrix(w))) in
+(rec_fun reduce(RatPoly f, Partition P)Partition:
+ let (a,)=f in if a=[1] then P else
+ let Q=product_of_cyclotomic(f) then
+ n=Q[#Q-1] in
+ let G=if type="B" then SO(n+1) elif type="C" then Sp(n) else {type D treated as type B} SO(n+1) fi then
+ h=rat_poly(char_poly(matrix(coxeter_element(SO(n+1))))) then
+ (y,)=f\%h in 
+ reduce(y, P#rat_as_int(n/2)) fi) (rat_poly(char_poly(matrix(w))),Partition:[])
+
+{if S=[a_1^m_1,...,a_r^{m_r}] then return (m_1!)...(m_r!)}
+set factorial_terms([int] S)=
+let v=for a in sort_u(S) do multiplicity(a,S) od in
+product(for b in v do fac(b) od)
+
+{P is a partition of n -> elliptic element w in (simple) 
+ type BCD (#parts is even in type D)
+ the centralizer of w is determined by P
+ w is a product of Coxeter elements in smaller type B or C
+ each term contributes the order of this Coxeter element 
+ (the centralizer of a Coxeter element is the cyclic group it generates)
+ in addition if a part of the partition has multiplicity k then
+ there is a factor of k!
+} 
+set order_of_centralizer_elliptic_BCD(WeylElt w)=
+assert(is_elliptic(w), "w is not elliptic");
+let lt=%Lie_type(w.root_datum) in
+assert(#lt=1,"root_datum is not simple");
+let (type,rank)=lt[0] in
+assert(type="B" or type="C" or type="D", "type is not BCD");
+let P=partition_of_w_BCD(w) {the partition giving rise to w} then
+order=1 in
+for a in P do  order*:=2*a od;
+{factor of 2 in type D: Coxeter in D_n is (n-1,n) of order 2*(n-1),
+ not 2*(n-1) * 2*1
+}
+if type="D" then order:=order\2 fi;
+order*factorial_terms(P)
+
+
+
+

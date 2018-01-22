@@ -1547,7 +1547,7 @@ std::ostream& operator<<(std::ostream& out, const func_type& f)
   return out << ')';
 }
 
-@ And here is the | type_expr::print| method. Note that when |tag==tabled| we
+@ And here is the |type_expr::print| method. Note that when |tag==tabled| we
 print its |type_name()| if one is provided; if not then we expand this (unnamed,
 yet present in |type_map|) type. Any recursion must pass through a named type,
 so infinite recursion should not be possible.
@@ -3376,7 +3376,8 @@ enumeration value |nr_of_primitive_types|).
 
 @< Other primitive type tags @>=
 vector_type, matrix_type, rational_vector_type,
-complex_lie_type_type , root_datum_type, inner_class_type, real_form_type,
+complex_lie_type_type , root_datum_type, Weyl_element_type,
+inner_class_type, real_form_type,
 Cartan_class_type, KGB_element_type, block_type,
 module_parameter_type, split_integer_type, virtual_module_type, @[@]
 
@@ -3386,7 +3387,7 @@ functioning of I/O.
 
 @< Other primitive type names @>=
 "vec", "mat", "ratvec",
-"LieType","RootDatum", "InnerClass", "RealForm",
+"LieType","RootDatum", "WeylElt", "InnerClass", "RealForm",
 "CartanClass", "KGBElt", "Block", "Param", "Split", "ParamPol", @[@]
 
 @* Index.

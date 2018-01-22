@@ -11,13 +11,9 @@ set is_nonnegative (ratvec v)= bool: is_nonnegative(numer(v))
 { transform ParamPol into a list of (Split,Param) pairs; previously built-in }
 set % (ParamPol P) = [(Split,Param)]: for c@p in P do (c,p) od
 
-{ integer_part and s_part of a ParamPol, s.t. P=integer_part(P)+s*s_part(P) }
-set integer_part (ParamPol P) = ParamPol:
-  0*P + for c@p in P do (+c,p) od { dubioulsy named conversion +:(Split->int) }
-set s_part (ParamPol P) = ParamPol:
-  0*P + for c@p in P do (^c,p) od { dubioulsy named conversion ^:(Split->int) }
-
-set parts (ParamPol P)=(integer_part(P),s_part(P))
+{ int_part and s_part of a ParamPol, s.t. P=int_part(P)+s*s_part(P) }
+set int_part (ParamPol P) = ParamPol: 0*P + for c@p in P do (c.int_part,p) od
+set s_part (ParamPol P) = ParamPol: 0*P + for c@p in P do (c.s_part,p) od
 
 { simpler syntax for param command: param(G,3,...) for param(KGB(G,3),...)  }
 set param(RealForm G,int k, vec lambda_rho,ratvec nu) = Param:

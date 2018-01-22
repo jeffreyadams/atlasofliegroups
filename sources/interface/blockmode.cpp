@@ -51,7 +51,7 @@ namespace commands {
 
 namespace {
 
-  void block_mode_entry() throw(EntryError);
+  void block_mode_entry();
   void block_mode_exit();
 
   // functions for the predefined commands
@@ -83,7 +83,6 @@ namespace {
 
   // local variables
 
-  InnerClass* dual_G_C_pointer=nullptr;
   RealReductiveGroup* dual_G_R_pointer=nullptr;
   Block* block_pointer=nullptr;
   wgraph::WGraph* WGr_pointer=nullptr;
@@ -150,11 +149,6 @@ CommandNode blockNode()
   return result;
 }
 
-InnerClass& current_dual_inner_class()
-{
-  return *dual_G_C_pointer;
-}
-
 RealReductiveGroup& currentDualRealGroup()
 {
   return *dual_G_R_pointer;
@@ -204,20 +198,18 @@ namespace {
   Synopsis: attempts to set a real form and dual real form interactively.
   In case of failure, throws an InputError and returns.
 */
-void block_mode_entry() throw(EntryError)
+void block_mode_entry()
 {
   try
   {
     RealReductiveGroup& G_R = currentRealGroup();
-
-    InnerClass& G_C = G_R.innerClass();
+    const InnerClass& G_C = current_inner_class(); // equals |G_R.innerClass()|
     output::Interface& G_I = currentComplexInterface();
 
-    // get dual real form
+    // get dual real form number
     RealFormNbr drf = interactive::get_dual_real_form(G_I,G_C,G_R.realForm());
-
-    dual_G_C_pointer=new InnerClass(G_C,tags::DualTag());
-    dual_G_R_pointer=new RealReductiveGroup(*dual_G_C_pointer,drf);
+    // and set dual real form
+    dual_G_R_pointer=new RealReductiveGroup(current_dual_inner_class(),drf);
   }
   catch(error::InputError& e)
   {
@@ -236,14 +228,14 @@ void dualrealform_f()
   try
   {
     RealReductiveGroup& G_R = currentRealGroup();
-    InnerClass& G_C = G_R.innerClass();
+    const InnerClass& G_C = G_R.innerClass();
     output::Interface& G_I = currentComplexInterface();
 
     // get dual real form
     RealFormNbr drf = interactive::get_dual_real_form(G_I,G_C,G_R.realForm());
 
-    // we can call the swap method for rvalues, but not with and rvalue arg
-    RealReductiveGroup(*dual_G_C_pointer,drf).swap(*dual_G_R_pointer);
+    // we can call the swap method for rvalues, but not with an rvalue arg
+    RealReductiveGroup(current_dual_inner_class(),drf).swap(*dual_G_R_pointer);
 
     delete block_pointer; block_pointer=nullptr;
     delete WGr_pointer; WGr_pointer=nullptr;
@@ -261,7 +253,6 @@ void dualrealform_f()
 */
 void block_mode_exit()
 {
-  delete dual_G_C_pointer; dual_G_C_pointer=nullptr;
   delete dual_G_R_pointer; dual_G_R_pointer=nullptr;
   delete block_pointer; block_pointer=nullptr;
   delete WGr_pointer; WGr_pointer=nullptr;

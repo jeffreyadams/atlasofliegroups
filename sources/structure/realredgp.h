@@ -46,9 +46,11 @@ class RealReductiveGroup
 
   typedef BitSet<NumStatusFlags> Status;
 
-  // we do not own the complex group; a RealReductiveGroup should be seen
-  // as dependent on a complex group; when the complex group changes,
-  // the dependent RealReductiveGroup objects are invalidated
+/*
+  we do not own the inner class; a |RealReductiveGroup| should be seen as
+  dependent on an inner class. In Fokko, when the complex group (and with it the
+  |InnerClass|) changes, the dependent |RealReductiveGroups| are invalidated
+*/
   InnerClass& d_innerClass;
 
   RealFormNbr d_realForm; // our identification number
@@ -74,7 +76,6 @@ class RealReductiveGroup
 // accessors
   const InnerClass& innerClass() const { return d_innerClass; }
   // following method forces |const| result, compare with |cbegin| methods
-  const InnerClass& cinnerClass() const { return d_innerClass; }
   RealFormNbr realForm() const { return d_realForm; }
   const RootDatum& rootDatum() const;
   const TitsCoset& basedTitsGroup() const { return *d_Tg; }
@@ -123,8 +124,7 @@ class RealReductiveGroup
 // manipulators
   void swap(RealReductiveGroup&);
 
-  InnerClass& innerClass()
-    { return d_innerClass; }
+  InnerClass& innerClass() { return d_innerClass; }
 
   const KGB& kgb();
   const KGB& kgb_as_dual();
@@ -140,8 +140,7 @@ class RealReductiveGroup
 
 TorusPart minimal_torus_part
   (const InnerClass& G, RealFormNbr wrf, RatCoweight coch,
-   TwistedInvolution tw, // by value, modified
-   const RatCoweight& torus_factor
+   const TwistedInvolution& tw, const RatCoweight& torus_factor
    );
 
 } // |namespace realredgp|

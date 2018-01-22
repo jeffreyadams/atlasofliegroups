@@ -1,8 +1,0 @@
-<basic.at
-
-{.Coxeter number.}
-set coxeter_number(RootDatum rd)=int:rat_as_int(highest_root(rd)*rho_check(rd)+1)
-
-{.torus element representing the Coxeter Weyl group element.}
-set coxeter_torus_element(RootDatum rd)=ratvec:(1/coxeter_number(rd))*rho_check(rd)
-

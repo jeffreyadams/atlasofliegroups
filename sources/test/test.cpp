@@ -127,9 +127,6 @@ namespace {
 		 numTestMode};
   const TestMode testMode = EmptyMode; // currently does nothing, so empty mode
 
-  // utilities
-  const RootDatum& currentRootDatum();
-
 } // |namespace|
 
 /*****************************************************************************
@@ -252,8 +249,6 @@ void addTestCommands<commands::ReprmodeTag> (commands::CommandNode& mode)
 ******************************************************************************/
 
 namespace {
-
-  std::ostream& print(std::ostream& strm);
 
 
 

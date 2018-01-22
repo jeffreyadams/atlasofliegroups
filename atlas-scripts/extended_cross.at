@@ -10,7 +10,7 @@
 { check that extended parameter |E| lies over cross image by |kappa| of |p| }
 set test_ext_cross (Param p, {Weyl word} [int] kappa, ExtParam E) = void:
   assert(valid(E),"Invalid extended parameter");
-  let w=W_word:(root_datum(p),kappa) then q=parameter(E), cross=cross(w,p) in
+  let w=W_elt(root_datum(p),kappa) then q=parameter(E), cross=cross(w,p) in
   if q!=cross then error("cross/ext_cross are not consistent: ",q," ",cross) fi
 
 { extended cross action in length 1 }
@@ -60,14 +60,14 @@ set ext_cross_2( int j
 {  then ()=prints("ext_cross_2 type is:", type) }
   then alpha=root(rd,j) , alpha_check=coroot(rd,j)
   , s_alpha       = reflection(rd,j)
-  , s_alpha_check = coreflection(rd,j) { = ^s_alpha }
-  then (k,beta,beta_check) = { avoid staggering 3 more let-levels }
+  then
+    s_alpha_check = ^s_alpha
+  , (k,beta,beta_check) = { avoid staggering 3 more let-levels }
     let b = delta*alpha then k=root_index(rd,b) in (k,b,coroot(rd,k))
   then s_beta    = reflection(rd,k)
-  , s_beta_check = coreflection(rd,k) { = ^s_beta }
-  then s_ab = s_alpha*s_beta { = s_beta*s_alpha }
-  then s_ab_check = { s_beta_check*s_alpha_check=s_alpha_check*s_beta_check }
-     ^s_ab
+  then s_beta_check = ^s_beta
+  , s_ab = s_alpha*s_beta { = s_beta*s_alpha }
+  then s_ab_check = ^s_ab
   in
   if ((type="2C+") or (type="2C-")) then
     let new_lambda = { alpha_check*gamma = beta_check*gamma by delta-symmetry }

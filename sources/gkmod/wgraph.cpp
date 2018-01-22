@@ -142,18 +142,18 @@ WGraph wGraph
   , std::ifstream& matrix_file
   , std::ifstream& KL_file)
 {
-  typedef std::auto_ptr<filekl::polynomial_info> pol_aptr;
+  typedef std::unique_ptr<filekl::polynomial_info> pol_uptr;
 
   filekl::matrix_info mi(block_file,matrix_file);
-  pol_aptr pol_p(nullptr);
+  pol_uptr pol_p(nullptr);
 
   try
-  { pol_p=pol_aptr(new filekl::cached_pol_info(KL_file));
+  { pol_p=pol_uptr(new filekl::cached_pol_info(KL_file));
   }
   catch (std::exception& e)
   {
     std::cerr << "Failed to use cached polynomials: " << e.what() << std::endl;
-    pol_p=pol_aptr(new filekl::polynomial_info(KL_file));
+    pol_p=pol_uptr(new filekl::polynomial_info(KL_file));
   }
 
   filekl::polynomial_info& poli=*pol_p;

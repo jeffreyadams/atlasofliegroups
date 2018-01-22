@@ -38,8 +38,6 @@ namespace {
 
   // help commands
 
-  void help_h();
-  void qq_h();
   void questionMark_h();
 
   // command tags for the help facility
@@ -80,20 +78,6 @@ void help_exit()
   the various commands defined in this mode.
 
 ******************************************************************************/
-
-void help_h()
-
-{
-  io::printFile(std::cerr,"help.help",io::MESSAGE_DIR);
-  return;
-}
-
-void qq_h()
-
-{
-  io::printFile(std::cerr,"qq.help",io::MESSAGE_DIR);
-  return;
-}
 
 void questionMark_h()
 

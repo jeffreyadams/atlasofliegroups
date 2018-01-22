@@ -56,9 +56,6 @@ namespace {
   input::HistoryBuffer delta_input_buffer; // for external dist. involutions
   input::HistoryBuffer inputBuf; // buffer shared by all other input functions
 
-  WeightInvolution
-  getInnerClass(lietype::Layout& lo, const WeightList& basis);
-
   bool checkInvolution(const WeightInvolution& inv,
 		       const LatticeMatrix& basis);
 }

@@ -56,7 +56,7 @@
   in the local variable modeStack, the top of which is the currently active
   mode, with below it its ancestors (the code in the current module does not
   quite enforce the latter relation, but the action functions that may
-  changethe state of the stack are defined so as to respect it). Some commands
+  change the state of the stack are defined so as to respect it). Some commands
   will lead to pushing a new mode on the stack; the entry function of the mode
   is then executed. Similarly, some commands (typically the "q" command) pop
   the mode stack; this results in executing the exit function of the mode.

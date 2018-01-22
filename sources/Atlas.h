@@ -131,6 +131,7 @@ namespace atlas {
     template<typename C> class Matrix_base;
     template<typename C> class Matrix;
     template<typename C> class PID_Matrix;
+    template<typename C> class Vector_cref;
   }
   namespace ratvec { template<typename C> class RationalVector; }
 
@@ -199,6 +200,7 @@ namespace atlas {
   typedef matrix::Vector<int> int_Vector;
   typedef matrix::PID_Matrix<int> int_Matrix;
   typedef std::vector<int_Vector> int_VectorList;
+  typedef matrix::Vector_cref<int> int_Vector_cref;
   typedef ratvec::RationalVector<arithmetic::Numer_t> rat_Vector;
   typedef matrix::Vector<arithmetic::Numer_t> Ratvec_Numer_t;
 

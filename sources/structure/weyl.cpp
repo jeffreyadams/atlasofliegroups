@@ -501,33 +501,6 @@ WeylWord WeylGroup::word(const WeylElt& w) const
 }
 
 /*
-  Return the list of all reflections (conjugates of generators).
-
-  NOTE: the ordering of the reflections is the ordering induced by our
-  operator<, which is not very significative mathematically, but has the
-  advantage that the STL search tools may be used.
-*/
-WeylEltList WeylGroup::reflections() const
-{
-  WeylEltList simple; simple.reserve(rank());
-
-  // put in simple the set of simple reflections, along internal numbering
-  for (Generator j = 0; j < rank(); ++j)
-    simple.push_back(genIn(j));
-
-  std::set<WeylElt> found;
-
-  for (Generator j = 0; j < simple.size(); ++j)
-    if (found.insert(simple[j]).second) // then generator itself still absent
-    { // generate conjugacy class of generator and insert its elements
-      WeylEltList c; conjugacyClass(c,simple[j]);
-      found.insert(c.begin(),c.end()); // add new class to result set
-    }
-
-  return WeylEltList(found.begin(),found.end()); // convert set to vector
-}
-
-/*
   Return the packed form of |w|
 
   This is the mixed-radix interpretation of the sequence of pieces, where
@@ -597,7 +570,7 @@ void
   }
 }
 
-// Let |w| act on |v| according to reflection action in root datum |rd|
+// Let |w| act on weight |v| according to reflection action in root datum |rd|
 template<typename C>
   void WeylGroup::act
     (const RootDatum& rd, const WeylElt& w,  matrix::Vector<C>& v) const
@@ -607,6 +580,19 @@ template<typename C>
     const WeylWord& xw = wordPiece(w,i);
     for (Transducer::PieceIndex j = xw.size(); j-->0; )
       rd.simple_reflect(d_out[xw[j]],v);
+  }
+}
+
+// Let |w| act on coweight |v| according to reflection action in root datum |rd|
+template<typename C>
+  void WeylGroup::co_act
+    (const RootDatum& rd,  matrix::Vector<C>& v, const WeylElt& w) const
+{
+  for (Generator i = 0; i<d_rank; ++i)
+  {
+    const WeylWord& xw = wordPiece(w,i);
+    for (Transducer::PieceIndex j = 0; j<xw.size(); ++j)
+      rd.simple_coreflect(v,d_out[xw[j]]);
   }
 }
 
@@ -1327,6 +1313,10 @@ void fillCoxMatrix(int_Matrix& cox,
 template
 void WeylGroup::act
   (const RootDatum& rd, const WeylElt& w, matrix::Vector<int>& v) const;
+
+template
+void WeylGroup::co_act
+  (const RootDatum& rd, matrix::Vector<int>& v, const WeylElt& w) const;
 
 
 } // |namespace weyl|

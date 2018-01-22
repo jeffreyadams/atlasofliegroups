@@ -3,8 +3,6 @@
 
 set_type Partition = [int]   {partition a_1\ge a_2\ge ... a_n>0}
 
-set fac (int n) = int: let p=1 in for i:n-1 from 2 do p *:=i od; p
-
 { transpose of a partition (maybe passed with nonstandard order of parts) }
 set transpose (Partition P) = Partition:
   if #P=0 then []
@@ -30,3 +28,49 @@ set rec_fun compositions_le (int limit, int n) = [[int]]:
       for rest in compositions_le(limit-last,n-1) do result #:= rest#last od
     od; result
   fi
+
+{ generate all partitions of n,
+  each partition is written in decreasing order
+  partitions are in lexicographically smallest [1,...,1] to largest [n] order
+  each partition of n-1 gives rise to 1 or 2 partitions of n: the first by
+  appending a part 1, the second by increasing the final part if possible
+}
+set partitions =
+( let part (int n) = [vec]:[]
+  in part :=
+    begin (int n):
+      let rv=[vec]:[] in
+      if n=1 then rv:=[[1]]
+      else
+	for p in part(n-1)
+	do let l=#p-1 then last=p~[0] in
+	  rv #:= p#1 { add partition formed by extending by 1 }
+	; if #p=1 or p~[1]>last then rv #:= (let c=p in c[#p-1]:=last+1; c) fi
+	od
+      fi
+    ; rv
+    end
+; (int n) [vec]: if n>0 then part(n) elif n=0 then [[]] else [] fi
+)
+
+{ write a partition as a sequence of multiplicities
+  including a leading 0 so that rv[i] is the multiplicity of i
+  e.g. [4,3,1,1]->[0,2,0,1,1]}
+set partition_multiplicities (vec p)=vec:
+( let mult=null(max(p)+1) in
+  for k in p do mult[k] +:= 1 od
+; mult[0]:=0  { clear multiplicity of 0 that was possibly set }
+; mult
+)
+
+{ partitions of n with all rows of parity |parity| having even multiplicity }
+set partitions_parity (int n, int parity) =[vec]:
+( let P=partitions(n), result=[vec]: [] in
+  for p in P
+  do
+    if none(for m@i in partition_multiplicities(p) do i%2=parity and m%2=1 od)
+    then result #:= p
+    fi
+  od
+; result
+)

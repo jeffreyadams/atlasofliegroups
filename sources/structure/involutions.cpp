@@ -404,7 +404,7 @@ TorusPart InvolutionTable::y_unlift(InvolutionNbr inv, const Weight& lift) const
 
 
 Cartan_orbit::Cartan_orbit(InvolutionTable& i_tab,
-			   InnerClass& G,
+			   const InnerClass& G,
 			   CartanNbr cn)
   : Cartan_class_nbr(cn)
   , start(i_tab.size())
@@ -431,7 +431,7 @@ const CartanNbr undefined = ~0;
 void Cartan_orbits::set_size(CartanNbr n_Cartans)
 { Cartan_index.resize(n_Cartans,undefined); orbit.reserve(n_Cartans); }
 
-void Cartan_orbits::add(InnerClass& G, CartanNbr cn)
+void Cartan_orbits::add(const InnerClass& G, CartanNbr cn)
 {
   assert(cn<Cartan_index.size());
   if (Cartan_index[cn]!=undefined)

@@ -150,8 +150,8 @@ InnerClass::InnerClass
 /*
   Variant constructor, differs only by capturing an existing root datum pair
 
-  Constructs an |InnerClass| from a rootdatum |rd| and a distinguished
-  involution |d|, which stabilises the set of simple roots
+  Constructs an |InnerClass| from a rootdatum |rd| and its dual datum |drd|,
+  and a distinguished involution |d|, which stabilises the set of simple roots
 */
 InnerClass::InnerClass
 (const RootDatum& rd, const RootDatum& drd, const WeightInvolution& tmp_d)
@@ -383,7 +383,9 @@ void InnerClass::construct() // common part of two constructors
   }
 } // |InnerClass::construct|
 
-// Construct the complex reductive group dual to G
+
+// Construct the complex reductive group dual to G (used in Fokko only)
+// letting the dual be dependent on the main inner class, they can share |W|
 InnerClass::InnerClass(const InnerClass& G, tags::DualTag)
   : own_datum(nullptr), own_dual_datum(nullptr) // depend on |G| in all cases
   , d_rootDatum(G.d_dualRootDatum) // since we are sharing these references
@@ -909,7 +911,7 @@ RatCoweight square_class_choice
 
   // initial columns of |col| are coordinate weights of $\xi^t$-stable coweights
   int_Matrix col_inv(col.inverse());
-  const auto d=diagonal.size(), n=col.numRows();
+  const unsigned int d=diagonal.size(), n=col.numRows();
 
   // convert to $\xi^t$-stable coordinates, take mod 1, then convert back
   RatCoweight tr = (coch*col.block(0,0,n,d)%=1)*col_inv.block(0,0,d,n);
@@ -1197,7 +1199,7 @@ Grading grading_of_simples
 }
 
 RealFormNbr real_form_of // who claims this KGB element?
-  (InnerClass& G, TwistedInvolution tw, // by value, modified
+  (const InnerClass& G, TwistedInvolution tw, // by value, modified
    const RatCoweight& torus_factor,
    RatCoweight& coch // additional output
   )
@@ -1228,7 +1230,7 @@ RealFormNbr real_form_of // who claims this KGB element?
   for (cn=G.numCartanClasses(); cn-->0;)
     if (tw==G.involution_of_Cartan(cn))
       break;
-  assert(cn!=~0); // every valid twisted involution should be found here
+  assert(cn!=-1); // every valid twisted involution should be found here
 
 
   Grading gr; // will mark noncompact roots among simpl-imaginary ones at |a|

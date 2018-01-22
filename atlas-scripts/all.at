@@ -1,19 +1,13 @@
 {Load this file to load all recommended .at files}
 <extParamPol.at
-<K_types.at
 <complex_nilpotent_orbits.at
-{<wreps_type_C.at}
 <complex.at
 <test_unitarity.at
-<conjugacy_classes.at
 <modules.at
-<elliptic_elements.at
-<tits.at
-<dual.at
-<all_parameters.at
-<coordinates.at
 <print_K_types.at
+<tits.at
 <galois.at
 <jantzen.at
 <finite_dimensional_signature.at
+<W_cells.at
 

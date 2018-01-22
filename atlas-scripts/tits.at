@@ -51,12 +51,14 @@ set right (Tits_elt(rd,v,theta), int s) = Tits_elt:
   , right_reflect(rd,theta,s)
   )
 
-{ multiplication by canonical lift of W_word }
-set left (W_word({rd assumed that of xi},w),Tits_elt xi) = Tits_elt:
-  for s in w ~ do xi:=left(s,xi) od; xi
+{ multiplication by canonical lift of WeylElt }
+set left (WeylElt w,Tits_elt xi) = Tits_elt:
+  assert(w.root_datum=xi.root_datum);
+  for s in w.word ~ do xi:=left(s,xi) od; xi
 
-set right (Tits_elt xi, W_word({rd assumed that of xi},w)) = Tits_elt:
-  for s in w do xi:=right(xi,s) od; xi
+set right (Tits_elt xi, WeylElt w) = Tits_elt:
+  assert(w.root_datum=xi.root_datum);
+  for s in w.word do xi:=right(xi,s) od; xi
 
 { left multiply by torus factor \exp(2i\pi v)\sigma_s }
 set left ((ratvec,int)(v,s), Tits_elt xi) = Tits_elt:
@@ -71,8 +73,8 @@ set conjugate (int s, Tits_elt xi) = Tits_elt:
   let sigma_s_inv = (ratvec,int): (coroot(xi.root_datum,s)/2 {=m_s},s) in
   right(left(s,xi),sigma_s_inv)
 
-set conjugate (W_word(,w), Tits_elt xi) = Tits_elt:
-  for s in w ~ do xi:=conjugate(s,xi) od; xi
+set conjugate (WeylElt w, Tits_elt xi) = Tits_elt:
+  for s in w.word ~ do xi:=conjugate(s,xi) od; xi
 
 {
   for general multiplication, we allow theta and eta to be in either of the
@@ -111,12 +113,12 @@ set inverse (Tits_elt(rd,v,theta)) = Tits_elt:
   (rd, (rho_check(rd)*(1-theta)/2 - v*theta) % 1, theta.inverse)
 
 { canonical lift of Weyl group element, assumed reduced, to Tits group }
-set lift (W_word w) = Tits_elt: left(w,tits_identity(w.root_datum))
+set lift (WeylElt w) = Tits_elt: left(w,tits_identity(w.root_datum))
 
 { canonical lift of Weyl group element to \delta-twisted Tits group }
-set lift (mat delta, W_word w) = Tits_elt:
+set lift (mat delta, WeylElt w) = Tits_elt:
   left(w,tits_delta(w.root_datum,delta))
-set lift (RealForm G, W_word w) = Tits_elt: left(w,tits_delta(G))
+set lift (RealForm G, WeylElt w) = Tits_elt: left(w,tits_delta(G))
 
 
 { Tits element raised to an integer power }

@@ -234,8 +234,8 @@ while i<#P
 
 
 set induced_from_closed_parabolics_B(RealForm G, [int] P)=[Param]:
-let (H,)=make_dominant(G, orbit_H_Bn(G, P))
-then V=closed_real_parabolics_associated_to_a_lambda(G, H)
+let H=dominant(G, orbit_H_Bn(G, P))
+then V=closed_real_parabolics_associated_to_a_lambda(G,H)
 in for v in V do first_param(real_induce_irreducible(trivial(Levi(v)), G)) od
 
 
@@ -269,7 +269,7 @@ let Bd=dual(B)
 then Gd=real_form(Bd)
 then W_Cells=vecs_as_int(for (cell,) in W_cells(Bd) do cell od)
 then T=real_forms_of_complex_orbit_as_Reps_B (B, P)
-then (H,)=make_dominant(Gd, orbit_H_Bn(Gd, P))
+then H=dominant(Gd, orbit_H_Bn(Gd, P))
 then R= for t in T do parabolic(H/1, x(t)) od
 then S= for r in R do ind_one_dim_from_parabolic(r) od
 then rv=[int]:[]
@@ -282,7 +282,7 @@ let Bd=dual(B)
 then Gd=real_form(Bd)
 then AV_Cells=AV_for_given_block_B(Bd)
 then T=real_forms_of_complex_orbit_as_Reps_B (B, P)
-then (H,)=make_dominant(Gd, orbit_H_Bn(Gd, P))
+then H=dominant(Gd, orbit_H_Bn(Gd, P))
 then R= for t in T do parabolic(H/1, x(t)) od
 then S= for r in R do ind_one_dim_from_parabolic(r) od
 then rv=[int]:[]
@@ -313,7 +313,7 @@ then Gd=real_form(Bd)
 then G=real_form(B)
 then W_Cells_G=vecs_as_int(for (cell,) in W_cells(B) do cell od)
 then b=for i:#B do element(B,i) od
-then (H,)=make_dominant(Gd, orbit_H_Bn(Gd, P))
+then H=dominant(Gd, orbit_H_Bn(Gd, P))
 then S=singular_simple_indices(G, H)
 then V=all_Cells_with_Aq_Lambda_as_Real_forms_B(B, P)
 in for v in V do
@@ -334,7 +334,7 @@ then G=real_form(B)
 then W_Cells_G=vecs_as_int(for (cell,) in W_cells(B) do cell od)
 then b=for i:#B do element(B,i) od
 then AV_Cells_Gd=AV_for_given_block_B(Bd)
-then (H,)=make_dominant(Gd, orbit_H_Bn(Gd, P))
+then H=dominant(Gd, orbit_H_Bn(Gd, P))
 then S=singular_simple_indices(G, H)
 then (,W)=cells_with_given_AV (P, AV_Cells_Gd)
 then Q=sort(all_Cells_with_Aq_Lambda_B (B, P))
@@ -422,7 +422,7 @@ in for i:#A do
 
 
 set induced_from_closed_parabolics_C(RealForm G, [int] P)=[Param]:
-let (H,)=make_dominant(G, orbit_H_Cn(G, P))
+let H=dominant(G, orbit_H_Cn(G, P))
 then V=closed_real_parabolics_associated_to_a_lambda(G, H)
 in for v in V do first_param(real_induce_irreducible(trivial(Levi(v)), G)) od
 
@@ -462,7 +462,7 @@ let Bd=dual(B)
 then Gd=real_form(Bd)
 then W_Cells=vecs_as_int(for (cell,) in W_cells(Bd) do cell od)
 then T=real_forms_of_complex_orbit_as_Reps_C (B, P)
-then (H,)=make_dominant(Gd, orbit_H_Cn(Gd, P))
+then H=dominant(Gd, orbit_H_Cn(Gd, P))
 then R= for t in T do parabolic(H/1, x(t)) od
 then S= for r in R do ind_one_dim_from_parabolic(r) od
 then rv=[int]:[]
@@ -475,7 +475,7 @@ let Bd=dual(B)
 then Gd=real_form(Bd)
 then AV_Cells=AV_for_given_block_C(Bd)
 then T=real_forms_of_complex_orbit_as_Reps_C(B, P)
-then (H,)=make_dominant(Gd, orbit_H_Cn(Gd, P))
+then H=dominant(Gd, orbit_H_Cn(Gd, P))
 then R= for t in T do parabolic(H/1, x(t)) od
 then S= for r in R do ind_one_dim_from_parabolic(r) od
 then rv=[int]:[]
@@ -506,7 +506,7 @@ then Gd=real_form(Bd)
 then G=real_form(B)
 then W_Cells_G=vecs_as_int(for (cell,) in W_cells(B) do cell od)
 then b=for i:#B do element(B,i) od
-then (H,)=make_dominant(Gd, orbit_H_Cn(Gd, P))
+then H=dominant(Gd, orbit_H_Cn(Gd, P))
 then S=singular_simple_indices(G, H)
 then V=all_Cells_with_Aq_Lambda_as_Real_forms_C(B, P)
 in for v in V do
@@ -527,7 +527,7 @@ then G=real_form(B)
 then W_Cells_G=vecs_as_int(for (cell,) in W_cells(B) do cell od)
 then b=for i:#B do element(B,i) od
 then AV_Cells_Gd=AV_for_given_block_C(Bd)
-then (H,)=make_dominant(Gd, orbit_H_Cn(Gd, P))
+then H=dominant(Gd, orbit_H_Cn(Gd, P))
 then S=singular_simple_indices(G, H)
 then (,W)=cells_with_given_AV (P, AV_Cells_Gd)
 then Q=sort(all_Cells_with_Aq_Lambda_C (B, P))

@@ -143,7 +143,7 @@ set is_member ([int] v) = (int->bool): { linear search; can be improved }
 set contains (int val) = ([int]->bool): ([int] v)bool:
   any(#v,(int i)bool:v[i]=val)
 
-
+set fac (int n) = int: let p=1 in for i:n-1 from 2 do p *:=i od; p
 
 {                           Rational numbers                            }
 
@@ -285,6 +285,8 @@ set rec_fun power_set (int n) = [[int]]: { indices where 0_1_vecs have 1 }
 set power_set ([int] S) = [[int]]:
   for inx in power_set(#S) do for i in inx do S[i] od od
 
+{. number of times n occurs in [int] S .}
+set multiplicity(int n, [int] S)=int:#(##(for i:#S do if S[i]=n then [1] else [] fi od))
 
 {                               Matrices                                }
 
@@ -307,6 +309,14 @@ set columns (mat A) = [vec]: A
 set block_matrix (mat A,mat B) = mat:
   let ra=n_rows(A), rb=n_rows(B) then za=null(ra), zb=null(rb) in
   (ra+rb)# (for col in A do col##zb od ## for col in B do za##col od)
+
+set block_matrix ([mat] list) = mat:
+  let m = sum(for A in list do n_rows(A) od), pos=0
+  in m #
+  ##for A in list
+    do let pre=null(pos) then {sequential!} post=null(m-(pos+:=n_rows(A))) in
+       for col in A do pre##col##post od
+    od
 
 set main_diagonal (mat A) = vec:  for i:shape(A).min do A[i,i] od
 
@@ -361,30 +371,27 @@ set invert_ech (mat A) = (mat,int):
    in (n # for n@j in row_nums do cols[j]*n od , common_d)
 
 { matrix exponentiation }
-set ^ =
-  let matrix_power (mat m,int n)= mat: m { dummy for recursion } in
-  begin matrix_power := { assign recursive function body }
-    ( (mat m,int n): { we shall have n>0 }
-      if n=1 then m
-      else let (q,r)=n\%2 then mm=matrix_power(m,q) in
+set ^ = (mat,int->mat):
+  let rec_fun matrix_power (mat m,int n) = mat:
+    if n=1 then m
+    else let (q,r)=n\%2 then mm=matrix_power(m,q) in
         mm*if =r then mm else mm*m fi
-      fi
-    )
-  ; (mat m,int n) mat: { the actual operator ^ :}
-      assert(=shape(m),"Non square matrix in exponentiation")
-    ; if n>0 then matrix_power(m,n) elif =n then id_mat(n_rows(m))
-      else let (m1,d)=invert_ech(m) in
-        if d=1 then matrix_power(m1,-n)
-        elif =d then error("Negative power of singular matrix")
-        else error("Negative power of matrix not invertible over Z")
-        fi
-      fi
-  end
-
+    fi
+  in { ^@(mat,int) = } (mat m,int n) mat:
+    assert(=shape(m),"Non square matrix in exponentiation");
+  if n>0 then matrix_power(m,n) elif =n then id_mat(n_rows(m))
+  else let (m1,d)=invert_ech(m) in
+     if d=1 then matrix_power(m1,-n)
+     elif =d then error("Negative power of singular matrix")
+     else error("Negative power of matrix not invertible over Z")
+     fi
+  fi
 
 set inverse (mat M) = mat:
   let (inv,d)=invert_ech(M) in
   if d=1 then inv else error("Matrix not invertible over the integers") fi
+
+set / = inverse@mat { so |/M| is the same as |M^-1|, but more direct }
 
 set det (mat A) = int:
 ( assert(=shape(A),"Determinant of non-square matrix")
@@ -518,7 +525,7 @@ set is_integer (ratvec v) = bool: let (,d)=%v in d=1 { equivalently =(v%1) }
 { vector floor of quotient by int operation; makes vector from rational vector }
 set \ (ratvec v, int k) = vec: let (n,d)=%v in n\(k*d)
 
-{ do as |v\1| (or |\ %v|) would do, but protest if there would be a remainder }
+{ do as |v.numer| (or |\ %v|) would do, but check that denominator is 1 }
 set ratvec_as_vec (ratvec v) = vec:
   let (w,d)=%v in assert(d=1,"Not an integer vector"); w
 
@@ -569,9 +576,6 @@ set !one_minus_s = Split:(1,-1), !one_plus_s = Split:(1,1)  { near idempotents }
 
 set int_part (Split x) = int: let (r,)=%x in r
 set s_part (Split x) = int: let (,y)=%x in y
-{ the names of the synonym operators are mysterious, but maybe convenient }
-set + = int_part@Split
-set ^ =   s_part@Split
 
 set s_to_1 (Split x) = int: +%x        { let (a,b)=%x in a+b }
 set s_to_minus_1 (Split x) = int: -%x  { let (a,b)=%x in a-b }
@@ -603,12 +607,12 @@ set split_format (Split w) = string:
   fi
 
 
-set ^ = { exponentiation of split integers }
+set ^ = (Split,int->Split): { exponentiation of split integers }
   let rec_fun split_power (Split x,int n) = Split: { we shall have n>0 }
     if n=1 then x
     else let (q,r)=n\%2 then y=split_power(x,q) in y*if =r then y else x*y fi
     fi
-  in { set ^ = } (Split x,int n): Split:
+  in { ^@(Split,int) = } (Split x,int n): Split:
     if let (a,b)=%x in abs(a)+abs(b)=1 { cases of invertible (unit) Split }
     then if n.is_even then split_1 else x fi { all are square roots of +1 }
     elif n.> then split_power(x,n)
@@ -635,9 +639,13 @@ set semisimple (LieType t) = LieType:
 set str (LieType t) = string:
   ## for (code,rank) in %t do code ## rank.to_string od
 
+
+
 {                               Root data                               }
 
 { provide default values for coroot preference when building root data }
+
+set is_simple(RootDatum rd) = #%Lie_type(rd)=1
 
 set root_datum (mat simple_roots, mat simple_coroots) = RootDatum:
   root_datum(simple_roots,simple_coroots,false) { by default prefer roots }
@@ -677,21 +685,11 @@ set poscoroot_index ((RootDatum,vec)p) = int: { fold coroots to positive }
   let i=coroot_index(p) in if <i then minus_1-i else i fi
 
 
-set rho (RootDatum rd) = ratvec:
-  let res= ratvec: null(rank(rd))
-  in for i:semisimple_rank(rd) do res +:= fundamental_weight(rd,i) od; res
-{ this uses fewer additions than computing half sum of the positive roots }
-
-{ make rho as a vector of integers if possible }
-set rho_as_vec (RootDatum r)= vec: ratvec_as_vec(rho(r))
-
-set rho_check (RootDatum rd) = ratvec: { rho(dual(rd)), but a bit faster }
-  let res= ratvec: null(rank(rd))
-  in for i:semisimple_rank(rd) do res +:= fundamental_coweight(rd,i) od; res
-
+set rho (RootDatum rd) = ratvec: rd.two_rho/2
+set rho_check (RootDatum rd) = ratvec: rd.two_rho_check/2
 { see also rho_i@KGBElt and rho_r@KGBElt defined below }
 
-{ these functions assume vec is a root/coroot }
+{ these functions assume the vec alpha or alphav is a root resp. coroot }
 set is_positive_root (RootDatum rd) = (vec->bool):
   let rc = rho_check(rd) in (vec alpha) bool: >rc*alpha
 set is_positive_coroot (RootDatum rd) = (vec->bool):
@@ -701,6 +699,7 @@ set is_negative_root (RootDatum rd) = (vec->bool):
 set is_negative_coroot (RootDatum rd) = (vec->bool):
   let rho = rho(rd) in (vec alphav) bool: <alphav*rho
 
+{ uncurried versions of the previous four; again being root/coroot is assumed }
 set is_positive_root (RootDatum rd,vec alpha) = bool:
   is_positive_root(rd)(alpha)
 set is_positive_coroot (RootDatum rd,vec alphav) = bool:
@@ -710,12 +709,14 @@ set is_negative_root (RootDatum rd,vec alpha) = bool:
 set is_negative_coroot (RootDatum rd,vec alphav) = bool:
   is_negative_coroot(rd)(alphav)
 
-{ the first 2 functions assume roots/coroots, the second pair tests for this }
+{ test whether all colums, being assumed root/coots, are positive }
 set roots_all_positive (RootDatum rd) = (mat->bool): { no negative roots }
   let are_pos = is_positive_root(rd) in (mat roots) bool: all(roots,are_pos)
 set coroots_all_positive (RootDatum rd) = (mat->bool): { no negative coroots }
   let are_pos = is_positive_coroot(rd) in
   (mat coroots) bool: all(coroots,are_pos)
+
+{ the following test rather than assume that columns are roots/cooroots }
 set among_posroots (RootDatum rd) = (mat M)bool: { all colums M posroots? }
   all(M,(vec v)bool: is_posroot(rd,v))
 set among_poscoroots (RootDatum rd) = (mat M)bool: { all colums M poscoroots? }
@@ -739,10 +740,6 @@ set reflection (RootDatum rd, int i) = mat: { i indexes a root/coroot pair }
   1 - column(root(rd,i))*row(coroot(rd,i))
 set reflection ((RootDatum,vec)(rd,):p) = mat: { specify root (not coroot) }
   reflection(rd,root_index(p))
-set coreflection (RootDatum rd, int i) = mat: { i indexes a root/coroot pair }
-  1 - column(coroot(rd,i))*row(root(rd,i))
-set coreflection ((RootDatum,vec)(rd,):p) = mat: { specify root (not coroot) }
-  coreflection(rd,root_index(p))
 set reflect (RootDatum rd, int i, vec v) = vec: { apply reflection(rd,i)*v }
   v -:= root(rd,i) * (coroot(rd,i)*v) { more efficient than matrix multiply }
 set reflect (RootDatum rd, vec alpha, vec v) = vec: { reflection(rd,alpha)*v }
@@ -867,16 +864,65 @@ set fundamental_coweights (RootDatum rd) = [ratvec]:
 {.highest root.}
 set highest_root (RootDatum rd) = vec:
 { root data produced by |dual@RootDatum| are not ordered by level, so do work: }
-  let pr=posroots(rd), rho_check=rho_check(rd) in
+  let pr=posroots(rd) in
   if =pr then error("Empty set of roots, none is highest")
-  else pr[for alpha in pr do rho_check*alpha od.max_loc]
+  elif not rd.prefers_coroots { when generated in root order, take short cut }
+  then pr~[0] { since the last generated root will be a high root }
+  else let level=rho_check(rd) in pr[for alpha in pr do level*alpha od.max_loc]
   fi
 
-set word_making_dominant (RootDatum rd, ratvec lambda) = [int]:
-   while let i = first(semisimple_rank(rd),(int i): <coroot(rd,i)*lambda) in
-      >=i
-   do i next lambda:=reflect(rd,i,lambda)
-   od
+{                               Weyl group				}
+
+set id_W = let e=vec:[] in (RootDatum rd): WeylElt: W_elt(rd,e)
+set W_gen (RootDatum rd, int s) = W_elt (rd,[s])
+set W_gens (RootDatum rd) = [WeylElt]:
+  for s:rd.semisimple_rank do W_elt(rd,[s]) od
+set * (WeylElt w,mat theta) = mat: theta.n_rows # for col in theta do w*col od
+set * (mat theta,WeylElt w) = mat:
+  theta.n_columns ^ for row in ^theta do row*w od
+
+set order (WeylElt !w) = int: let x=w in 1+(int:while !=x do x*:=w od)
+set rho_diff (WeylElt w) = vec: let rho2=w.root_datum.two_rho in (rho2-w*rho2)\2
+set rho_check_diff (WeylElt w) = vec:
+  let rho_check2=w.root_datum.two_rho_check in (rho_check2-rho_check2*w)\2
+
+set chamber ((RootDatum,vec) rd_lambda) = WeylElt:
+  let (w,)=from_dominant(rd_lambda) in w
+set dominant ((RootDatum,vec) rd_lambda) = vec:
+  let (,dom_wt)=from_dominant(rd_lambda) in dom_wt
+set chamber ((vec,RootDatum) lambda_rd) = WeylElt:
+  let (,w)=from_dominant(lambda_rd) in w
+set dominant ((vec,RootDatum) lambda_rd) = vec:
+  let (dom_cwt,)=from_dominant(lambda_rd) in dom_cwt
+set w0 (RootDatum rd) = chamber(rd,-rd.two_rho)
+
+set * (WeylElt w, ratvec gamma) = ratvec: let (n,d)=%gamma in (w*n)/d
+set * (ratvec gamma, WeylElt w) = ratvec: let (n,d)=%gamma in (n*w)/d
+set from_dominant (RootDatum rd, ratvec gamma) = (WeylElt,ratvec):
+  let (n,d)=%gamma then (w,v)=from_dominant(rd,n) in (w,v/d)
+set chamber (RootDatum rd, ratvec gamma) = WeylElt: chamber(rd,gamma.numer)
+set dominant ((RootDatum,ratvec) rd_gamma) = ratvec:
+  let (,dom_wt)=from_dominant(rd_gamma) in dom_wt
+set from_dominant (ratvec gamma,RootDatum rd) = (ratvec,WeylElt):
+  let (n,d)=%gamma then (v,w)=from_dominant(n,rd) in (v/d,w)
+set chamber (ratvec gamma,RootDatum rd) = WeylElt: chamber(gamma.numer,rd)
+set dominant ((ratvec,RootDatum) gamma_rd) = ratvec:
+  let (dom_cwt,)=from_dominant(gamma_rd) in dom_cwt
+
+set inverse (WeylElt w) = WeylElt: /w
+set ^ = (WeylElt,int->WeylElt):
+  let rec_fun power (WeylElt w,int n) = WeylElt:
+    if n=1 then w
+    else let (q,r)=n\%2 then wq=power(w,q) in wq*if =r then wq else wq*w fi
+    fi
+  in (WeylElt w,int n) WeylElt:
+  if n>0 then power(w,n) elif =n then id_W(root_datum(w)) else /power(w,-n) fi
+
+set matrix (WeylElt w) = mat: for c in id_mat(w.root_datum.rank) do w*c od
+set W_elt (RootDatum rd, mat M) = WeylElt:
+  let w = chamber(rd,M*two_rho(rd))
+  in assert(matrix(w)=M,"Not the matrix of any Weyl group element"); w
+
 
 {                               Inner classes                           }
 
@@ -895,6 +941,10 @@ set inner_class (RootDatum rd, string ict) = InnerClass:
    then (P1,d)=invert(P) then prod=P1*inv0*P { base change from |P|, times |d| }
    in assert(=(prod%d),"Inner class not compatible with root datum");
    inner_class(rd,prod\d) { construct inner class from explicit involution }
+
+set inner_class (LieType lt, [ratvec] gens, string ict) = InnerClass:
+   let basis = quotient_basis(lt,gens) in
+   inner_class(root_datum(lt,basis),involution(lt,basis,ict))
 
 { integrality inner class (dual side) defined by inf. character and involution }
 set dual_integral (InnerClass ic, ratvec gamma) = InnerClass:

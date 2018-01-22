@@ -26,7 +26,6 @@ namespace commands {
 
   CommandNode blockNode(); // create a node with new commands
   extern CommandTree& block_mode; // defined in commands.cpp
-  InnerClass& current_dual_inner_class();
   RealReductiveGroup& currentDualRealGroup();
   RealFormNbr currentDualRealForm();
   Block& currentBlock();

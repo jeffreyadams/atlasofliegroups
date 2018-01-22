@@ -13,8 +13,8 @@ set long_rat_as_integer_string(rat r)=
 assert(denom(r)=1,"r is not an integer");to_string(r)[:2~] {cut off /1}
 
 set is_self_dual(Param p)=bool:
-let lambda=highest_weight_finite_dimensional(fd_only(p)) in
--act(w_long(root_datum(p)),lambda)=lambda
+  let lambda=highest_weight_finite_dimensional(fd_only(p)) in
+  -w0(p.root_datum)*lambda=lambda
 
 set Frobenius_Schur(Param p)=int:
 if is_self_dual(fd_only(p)) then
@@ -25,8 +25,7 @@ set fs(Param p)=int:Frobenius_Schur(fd_only(p))
 
 set is_self_conjugate(Param p)=bool:
 let lambda=highest_weight_finite_dimensional(fd_only(p)) in
-let G=real_form(p) in
--distinguished_involution(G)*act(w_long(G),lambda)=lambda
+let G=inner_class(p) in -distinguished_involution(G)*(w0(G)*lambda)=lambda
 
 set real_quaternionic(Param p)=int:
 if is_self_conjugate(fd_only(p)) then

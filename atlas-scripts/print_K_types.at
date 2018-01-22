@@ -88,9 +88,7 @@ set print_branch_std_long (Param p, int bound) = void:
 
 
 set print_K_signature_irr (Param p,KGBElt x,int bound) = void:
-( let form=hermitian_form_irreducible(p)
-  then P=integer_part(form),Q=s_part(form)
-  in
+( let form=hermitian_form_irreducible(p) then P=int_part(form),Q=s_part(form) in
   if =P then prints("Positive part is empty")
   else prints("Positive part:"); print_branch_std_long(P,x,bound)
   fi
