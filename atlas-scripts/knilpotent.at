@@ -128,10 +128,10 @@ delete(generate_all_subsets(roots),0) {don't want empty subset}
 set rho_shifts(RealNilpotentOrbit O)=[(vec,int)]:
 let (H,x)=O then
 drd=dual(root_datum(x)) then
-(H_dom,w)=make_dominant(drd,H) then
+(w,H_dom)=from_dominant(drd,H) then
 x_dom=cross(inverse(w),x) then
 O_dom=([int]:H_dom,x_dom) then
-m=w_matrix(w) then
+m=matrix(w) then
 S=subsets_of_s_one_roots(O_dom) in  [(vec:null(rank(real_form(x))),0)]##for v in S do (sum(m*v),#v) od
 
 {these are in induction.at}

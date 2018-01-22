@@ -17,7 +17,7 @@ and K_norm of an L\cap K type is with respect to v=rho_check(G)
 }
 
 set K_norm (RootDatum rd) = (K_Type->int): (K_Type(x,lambda)):
-  let (mu,)=make_dominant(rd,(1+involution(x))*lambda)
+  let (,mu)=from_dominant(rd,(1+involution(x))*lambda)
   in rat_as_int(mu*rho_check(rd) + rho_r(x)*rho_check_r(x)*2) {MODIFIED}
 
 set K_norm (RootDatum rd,K_Type p) = int: K_norm(rd)(p)
@@ -128,9 +128,9 @@ W_orbit_W_elements(rd_G,tworho_u)
  to the list if new
 }
 set L_dominant_conjugates(RootDatum rd_L, RootDatum rd_G, vec gamma)=
-{let (gamma,)=make_dominant(rd_G,gamma) in} 
+{let (,gamma)=from_dominant(rd_G,gamma) in} 
 let rv=[vec]:[] in
-for w in W_mod_W_L(rd_L,rd_G) do let (tau,)=make_dominant(rd_L,act(inverse(w),gamma)) in 
+for w in W_mod_W_L(rd_L,rd_G) do let (,tau)=from_dominant(rd_L,inverse(w)*gamma) in 
 if find(rv,tau)=-1 then rv#:=tau fi  od;rv
 
 { filter and transform list of mu's into list of example lambda-rho values }
