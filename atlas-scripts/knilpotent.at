@@ -50,6 +50,23 @@ set K_Type_string (K_Type p) = string:
   fi
 set K_Type_string (Param p)=K_Type_string(K_type(p)) {error if nu(p)\ne 0}
 
+
+set K_Type_strings (K_Type p) = [string]:
+let (,w)=highest_weight(K0_params(parameter(p))[0]) in 
+if is_integer(lambda(p))
+ then [to_string("(x_",#x(p),",",[int]:ratvec_as_vec(lambda(p)),")"),
+{       to_string("[", height(parameter(p)),";", K_norm(p),"]"),}
+{       to_string((w),"X",dimension(LKT(parameter(p))))]}
+       to_string((w))]
+  else 
+      [to_string("(x_",#x(p),",",lambda(p),")"),
+{       to_string("[", height(parameter(p)),";", K_norm(p),"]"),}
+       to_string((w),dimension(LKT(parameter(p))))]
+  fi
+
+set K_Type_strings (Param p)=K_Type_strings(K_type(p)) {error if nu(p)\ne 0}
+
+
 set K_Type_Pol_string(K_Type_Pol P)=string: let rv=string:"" in 
 for c@p in P do
  let (,w)=highest_weight(K0_params(p)[0]) in 
@@ -61,7 +78,20 @@ for c@p in P do
  let (,w)=highest_weight(K0_params(p,x_K)[0]) in 
  rv+:=split_as_int(c)+"*"+K_Type_string(p)+"   " {+ to_string(v) }+ "  " + to_string(w) + "  " + dimension(LKT(p)) +  " <"+K_norm(p)+">"+new_line od;rv
 
-set kshow(ParamPol P)=void:prints(K_Type_Pol_string(P))
+set K_Type_Pol_strings(K_Type_Pol P, KGBElt x_K)=[[string]]:
+let rv=[[string]]:[["c","K-type","hwt","Khwt","dim","ht","Knorm"]] in
+for c@p in P do let
+(,w)=highest_weight(K0_params(p,x_K)[0])  in
+rv#:=
+[to_string(split_as_int(c))]##
+K_Type_strings(p)##[
+to_string(w),
+to_string(dimension(LKT(p))),
+to_string(height(p)),
+"<"+K_norm(p)+">"] od;rv
+
+set kshowold(ParamPol P)=void:prints(K_Type_Pol_string(P))
+set kshow(ParamPol P,KGBElt x_K)=void:tabulate(K_Type_Pol_strings(P,x_K),"l",1," ")
 
 set orbit_string(RealNilpotentOrbit O)=string:
 let (H,x)=O in "(" + to_string(H) + ",x_" + to_string(#x) + ")"
@@ -123,12 +153,12 @@ set subsets_of_s_one_roots(RealNilpotentOrbit O)=[[vec]]:
 let roots=s_one_roots_restricted(O) in
 delete(generate_all_subsets(roots),0) {don't want empty subset}
 
-{H is in \mathfrak h, not \mathfrak h^*, 
- so make_dominant is wrt DUAL}
+{H is in \mathfrak h, not \mathfrak h^*}
 set rho_shifts(RealNilpotentOrbit O)=[(vec,int)]:
 let (H,x)=O then
-drd=dual(root_datum(x)) then
-(w,H_dom)=from_dominant(drd,H) then
+{drd=dual(root_datum(x)) then
+(w,H_dom)=from_dominant(drd,H) then}
+(H_dom,w)=from_dominant(H,root_datum(x)) then
 x_dom=cross(inverse(w),x) then
 O_dom=([int]:H_dom,x_dom) then
 m=matrix(w) then
@@ -264,12 +294,18 @@ for p in monomials(b) do prints(highest_weight(LKT(p),KGB(L,0))) od fi fi then}
 rv=null_module(G) then
 rhoshifts=rho_shifts(O) in
 if kn_verbose and #rhoshifts>1 then prints("orbit is odd",new_line,"rho shifts:", rhoshifts) fi;
- if kn_verbose then prints(new_line,"p_L_0:",p_L_0,new_line,"K_type_formula:", K_type_formula, new_line, "K_type_formula_twisted:",K_type_formula_twisted) fi;
+if kn_verbose then 
+prints(
+new_line,"p_L_0:",p_L_0,
+new_line,"K_type_formula:", K_type_formula, 
+new_line, "K_type_formula_twisted:",K_type_formula_twisted) fi;
  for c@p_L in K_type_formula_twisted do
   if kn_verbose then prints(new_line,"term in (twisted) K-type formula:",new_line, p_L) fi;
   for (shift,j)@k in rhoshifts do
    let q=parameter(x(p_L),lambda(p_L)-shift,nu(p_L)) then
+   ()=prints("q=",q) then
    r_1=theta_induce_standard(q,G) then
+   ()=prints("B") then
    r_3=r_1*0 in
    if kn_verbose then prints("induced term: ", r_3) fi;
    rv+:=(-1)^j*c*r_3 od od; if kn_verbose then prints(new_line,"Result:");kshow(rv) fi;rv fi
@@ -341,6 +377,27 @@ for (orbit,a)@i in data do
  for (mu_L,extension)@j in a do 
   let leading=leading_terms(extension) in
   prints("orbit:", orbit_string(orbit), new_line,"#",j,") "," mu_L: ",K_Type_string(mu_L), new_line, "Phi(mu_L):",new_line,K_Type_Pol_string(extension{,x_K}), new_line, "leading terms(Phi(mu_L)) (",#leading,"):",new_line,K_Type_Pol_string(leading{,x_K}), new_line) od od
+
+set shownew(KGBElt x_K,KNilpotentData data)=void:
+for (orbit,a)@i in data do
+prints(
+new_line,"--------------------------------------------",
+new_line,"orbit #",i,
+new_line, orbit_string(orbit), 
+new_line, "Levi: ",Levi_of_orbit(orbit),
+new_line);
+
+for (mu_L,extension)@j in a do 
+ let leading=leading_terms(extension) in
+prints("orbit:", orbit_string(orbit), 
+new_line,"#",j,") "," mu_L: ",K_Type_strings(mu_L), 
+new_line, "Phi(mu_L):");
+kshow(extension,x_K);
+prints(new_line, "leading terms(Phi(mu_L)) (",#leading,"):");
+kshow(leading,x_K)
+od od
+
+
 
 set show(KGBElt x_K,KNilpotentData data,int orbit)=void:show(x_K,[data[orbit]])
 

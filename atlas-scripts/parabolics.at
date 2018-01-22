@@ -291,9 +291,9 @@ set parabolic (ratvec lambda,KGBElt x) = Parabolic:
   let rd=root_datum(x) then (w,lambda_dom)=from_dominant(rd,numer(lambda)) in
   let P=
   Parabolic:(zero_simple_coroots(rd,lambda_dom), cross(inverse(w),x)) in
-  if is_parabolic_theta_stable(P) then prints("Parabolic is theta-stable.")
+{  if is_parabolic_theta_stable(P) then prints("Parabolic is theta-stable.")
   else if is_parabolic_real(P) then prints("Parabolic is real.")
-  else prints("The parabolic is neither real nor theta-stable.") fi fi;
+  else prints("The parabolic is neither real nor theta-stable.") fi fi;}
   P
 
 {. Parabolic defined by weight lambda; NO message whether parabolic is real
@@ -349,9 +349,9 @@ set parabolic_alt (ratvec H,KGBElt x) = Parabolic:
   then (H_dom,w)=from_dominant(numer(H),rd)
   then P= Parabolic:(zero_simple_roots(rd,H_dom), cross(w,x))
   in
-  if is_parabolic_theta_stable(P) then prints("Parabolic is theta-stable.")
+{  if is_parabolic_theta_stable(P) then prints("Parabolic is theta-stable.")
   else if is_parabolic_real(P) then prints("Parabolic is real.")
-  else prints("The parabolic is neither real nor theta-stable.") fi fi;
+  else prints("The parabolic is neither real nor theta-stable.") fi fi;}
   P
 
 {. Levi factor of parabolic defined by coweight H. .}
