@@ -2994,7 +2994,7 @@ void closure_call::evaluate(level l) const
 @* Sequence expressions.
 %
 Sequence expressions are used to evaluate two expressions one after the other,
-discarding any value from on of them (although it is possible that the other
+discarding any value from one of them (although it is possible that the other
 value also gets discarded by voiding). In most cases it is the first
 expression whose value is discarded (as for the comma-operator in \Cee/\Cpp),
 and the semicolon is used to indicate this; occasionally however it is useful
@@ -3002,14 +3002,12 @@ to retain the first value and evaluate a second expression for its side
 effects \emph{afterwards}, and the \.{next} keyword is used instead of a
 semicolon for this purpose.
 
-In practice it turns out that long sequences of expressions chained by
-semicolons are rare, since often the need to introduce new local variables
-will interrupt the chain. Therefore we see no need to use a |std::vector|
-representation for such sequences of expressions, and prefer to use a chained
-representation instead, just like before type analysis. In other words, we
-use an expression node with two descendents each time. The forward and
-reverse variants are implemented by similar but distinct types derived from
-|expression_base|.
+Long sequences of expressions chained by semicolons are rare, since often the
+need to introduce new local variables interrupts the chain. Therefore we see no
+need for a single expression representing an arbitrarily long sequence (using a
+|std::vector| internally), and prefer to use an expression node with just two
+descendent expressions. The semicolon and \&{next} variants are implemented by
+similar but distinct types derived from |expression_base|.
 
 @< Type def... @>=
 struct seq_expression : public expression_base
@@ -4695,12 +4693,14 @@ constexpr bool yields_count(unsigned flags) @+{@; return (flags&0x8)!=0; }
 %
 Although they contain two parts, a condition before |do| and a body after it,
 the two are present in the following structure as a single |body|. The reason
-for this is that we want to allow declarations in the condition to remain
-valid in the body, which can be realised by having both contained in a
-|do_expression| structure that does not have to be a direct descendent of the
-|while_expression|, but can involve a number of intermediate |let_expression|
-and |seq_expression| nodes. The grammar guarantees that eventually such a
-|do_expression| will be reached.
+for this is that we want to allow declarations in the condition to remain valid
+in the body, which can be realised by having both contained in a |do_expression|
+structure. That expression does not have to be a direct descendent of the
+|while_expression|, but its relation can involve descending to the right child
+of a |let_expression| or |seq_expression| nodes any number of times, or passing
+into a branch of a choice expression. The grammar guarantees that eventually
+such a |do_expression| will be reached, and the same for each branch in the case
+of choice expressions.
 
 @< Type def... @>=
 template<unsigned flags>
@@ -4712,8 +4712,8 @@ struct while_expression : public expression_base
   virtual void print(std::ostream& out) const;
 };
 
-@ In printing of while loops, the symbol \.{do} or \.{\char\~do} will appear
-in the output for |*body|.
+@ In printing of while loops, the symbol \.{do} will appear in the output for
+|*body| (possibly more than once, if a choice expression is involved).
 
 @< Function definitions @>=
 template<unsigned flags>
