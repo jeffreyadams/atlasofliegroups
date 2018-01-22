@@ -1,16 +1,9 @@
 <basic.at
-<sort.at { for |reverse_sort@[int]| }
+<combinatorics.at
 
-set_type Partition = [int]   {partition a_1\ge a_2\ge ... a_n>0}
+set_type Partition = [int]   { list of decreasing parts, no trailing zeros }
 
 set fac (int n) = int: let p=1 in for i:n-1 from 2 do p *:=i od; p
-
-{ transpose of a partition (maybe passed with nonstandard order of parts) }
-set transpose (Partition P) = Partition:
-  if #P=0 then []
-  else P:=reverse_sort(P) { ensure parts are in weakly decreasing order }
-  ; for i:P[0] do binary_search_first((int j)bool:P[j]<=i,0,#P) od
-  fi
 
 set size (Partition P) =int: sum(vec: P)
 
@@ -29,4 +22,21 @@ set rec_fun compositions_le (int limit, int n) = [[int]]:
     do
       for rest in compositions_le(limit-last,n-1) do result #:= rest#last od
     od; result
+  fi
+
+
+set partitions = let p1 = [Partition]: [[1]] in (int n) [Partition]:
+  if n<2
+  then if n.< then [] elif n.= then [[]] else p1 fi
+  else let parts=p1 { working copy, partitions of |k<=n|, now |k=1| } in
+    for :n-1
+    do parts := ## { concatenate 2 or 1 contributions from each next loop body }
+      for p in parts
+      do let last=p~[0] in
+         if #p=1 or p~[1]>last { then we can increase the final part |last| }
+         then [p#1,let pp=p in pp~[0]:=last+1; pp]
+         else [p#1]
+         fi
+      od
+    od; parts
   fi

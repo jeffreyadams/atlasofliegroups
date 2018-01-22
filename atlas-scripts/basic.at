@@ -13,13 +13,14 @@ set ^ = !=@(bool,bool) { exclusive or }
 set assert (bool b,string message) = void: if not b then error(message) fi
 set assert (bool b) = void: assert(b,"assertion failed") { default message }
 
-{ bitsets encoded as functions (int->bool) and upper bound limit }
+{ bitsets encoded as functions (int->bool) together with upper bound |limit| }
 
 set list (int limit, (int->bool) predicate) = [int]:
   ## for i:limit do if predicate(i) then [i] else [] fi od
 set complement (int limit,(int->bool) predicate) = [int]:
   ## for i:limit do if predicate(i) then [] else [i] fi od
-set complement (int n, [int] list) = [int]: { complement of increasing |list| }
+{ complement of strictly increasing |list| of values |v| with |0<=v<n| }
+set complement (int n, [int] list) = [int]:
   let i=0, v=0, !l=#list in { i next position to inspect, v next value to seek }
   while while i<l and list[i]=v do i+:=1; v+:=1 od; v<n do v next v+:=1 od
 
@@ -117,7 +118,7 @@ set max (int !seed) = ([int]->int):
 
 set gcd (int a,int b) = int:
    if b.<= then if b.= then return a else b:=-b { force positive result} fi fi;
-   while let r=a%b in r.!= do set (a,b):=(b,r) od; b
+   while let r=a%b in r.!= do a:=b; b:=r od; b
 
 set lcm (int a,int b) = int: let d=gcd(a,b) in if d=1 then a*b else a\d*b fi.abs
 
@@ -801,7 +802,7 @@ set imaginary_sys ((RootDatum,mat)p) = (mat,mat):
 set real_sys ((RootDatum,mat)p) = (mat,mat):
   (real_posroots(p),real_poscoroots(p))
 
-{ returns whether v is a weakly dominant weight for rd }
+{ whether v is a weakly dominant weight for rd }
 set is_dominant (RootDatum rd, ratvec v) = bool:
   >=(numer(v)*simple_coroots(rd))
 set is_strictly_dominant (RootDatum rd, ratvec v) = bool:
@@ -810,6 +811,16 @@ set is_regular (RootDatum rd,ratvec v)= bool: { tests all positive coroots }
   all(for x in numer(v)*poscoroots(rd) do !=x od)
 set is_integral (RootDatum rd, ratvec v) = bool: { integral on all coroots }
   =(v*simple_coroots(rd)%1)
+
+{ reversing order, simplilar questions about coweight v }
+set is_dominant (ratvec v, RootDatum rd) = bool:
+  >=(numer(v)*simple_roots(rd))
+set is_strictly_dominant (ratvec v,RootDatum rd) = bool:
+  >(numer(v)*simple_coroots(rd))
+set is_regular (ratvec v, RootDatum rd)= bool: { tests all positive roots }
+  all(for x in numer(v)*posroots(rd) do !=x od)
+set is_integral (ratvec v, RootDatum rd) = bool: { integral on all roots }
+  =(v*simple_roots(rd)%1)
 
 { the following should replace the needlessly complicacted built-ins they use }
 set radical_basis (RootDatum rd) = mat: { columns are coweights }
@@ -1291,7 +1302,9 @@ set status (int s,Param p) = int: { this is NOT related to status(s,x(p)) }
   status(root(integrality_datum(p),s),p)
 
 set block_status_text (int i) = string:
-  case i in "C-","ic","r1","r2","C+","rn","i1","i2" esac
+  case i in "C-","ic","r1","r2","C+","rn","i1","i2"
+  else error("Out of range status ",i)
+  esac
 
 set status_text (int s,Param p) = string: block_status_text(status(s,p))
 set status_texts (Param p) = [string]:
@@ -1325,7 +1338,7 @@ set orientation_nr_term = (int,Param->Split):
   let err()=
     error("computing orientation number for odd difference of lengths")
   in (int ori_nr_p,Param q) Split:
-  case (ori_nr_p-orientation_nr(q))%4 in 1, err(), s, err() esac
+  case ori_nr_p-orientation_nr(q) in 1, err(), s, err() esac
 
 
 {                       Extended blocks                                 }

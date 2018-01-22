@@ -6,6 +6,7 @@
 <finite_dimensional { for |is_finite_dimensional }
 <induction.at { for |induce_irreducible| }
 <stable.at { for |print_stable| }
+<combinatorics.at
 
 set get_non_empty_block_indices (RealForm G)=[[int]]:
 let rv=[[int]]:[]
@@ -74,14 +75,6 @@ set closed_real_parabolics_associated_to_a_lambda( RealForm G, [int] H)=[Parabol
 let V=x_min_parabolic_in_dis_fiber(G, H)
 then rv=[Parabolic]:[]
 in for x in V do rv#:=parabolic(H/1, x) od; rv
-
-{given Partition multiplicities, construct the partition}
-set partition_from_multiplicity ([int] p) = [int]:
-let rv=[int]:[]
-in for i:#p do
-					while p[i]>0 do rv#:=i; p[i]:=p[i]-1 od
-				od; rv
-
 
 set H_GL( int n) = [int]:
 let v=2*rho(GL(n,R)) in (ratvec_as_vec(v))
@@ -196,7 +189,7 @@ in for i:#W_Cells do orbit_from_W_rep_B (wrep(B, W_Cells[i]))od
 {Given a nilpotent orbit of type Bn compute the H(O)}
 
 set orbit_H_Bn_Step1(RealForm G, [int] p)=([int], [int]):
-let A=partition_multiplicities(p)
+let A=frequencies(p)
 then p=rank(G)
 then rv=[int]:[]
 in for i:#A do
@@ -214,14 +207,14 @@ in for i:#A do
 					A[i]:=A[i]-2 od
 				fi
 		fi
-		od;(rv,partition_from_multiplicity(A))
+		od;(rv,repeat_parts(A))
 
 
 set orbit_H_Bn (RealForm G, [int] r) = [int]:
 let (rv,)=orbit_H_Bn_Step1(G, r)
 then (,P)=orbit_H_Bn_Step1(G, r)
-then A=partition_multiplicities(P)%2 {get rid of all the 1's in the partition}
-then P=sort(partition_from_multiplicity(A)) {now partition has parts with multiplicity 1}
+then A=frequencies(P)%2 {get rid of all the 1's in the partition}
+then P=sort(repeat_parts(A)) {now partition has parts with multiplicity 1}
 then p=rank(G)
 then i=1
 then rv=rv##H_Sp(P[0]-1)
@@ -401,7 +394,7 @@ in for i:#W_Cells do orbit_from_W_rep_C(wrep(B, W_Cells[i]))od
 
 {Compute the H in the Sl2 triple associated to the orbit P}
 set orbit_H_Cn( RealForm G, [int] P)=[int]:
-let A=partition_multiplicities(P)
+let A=frequencies(P)
 then p=rank(G)
 then rv=[int]:[]
 then k=0
@@ -572,7 +565,7 @@ if Unipotent_Algo_test_C(B,P) then prints("This is the complete set of Unipotent
 
 set is_valid_pair(Block B, [int] P)=bool:
 let G=real_form(B)
-then k=get_type(G)
+then k=type_number(G)
 then rv=bool:false
 in if k=1 then if is_valid("C",P) then rv:=true fi elif k=2 then if is_valid("B",P) then rv:=true fi fi;rv
 
@@ -582,7 +575,7 @@ in if k=1 then if is_valid("C",P) then rv:=true fi elif k=2 then if is_valid("B"
 set Unipotent_Packets(Block B, [int] P)=[[Param]]:
 assert(is_valid_pair(B,P),"The block and the complex orbit are not compatible");
 let G=real_form(B)
-then k=get_type(G)
+then k=type_number(G)
 then rv=[[Param]]:[]
 in if k=1 then rv:=Unipotent_Packet_C(B,P) elif k=2 then rv:=Unipotent_Packet_B(B,P) fi;rv
 
@@ -590,7 +583,7 @@ in if k=1 then rv:=Unipotent_Packet_C(B,P) elif k=2 then rv:=Unipotent_Packet_B(
 set Unipotent_information (Block B, [int] P)=
 assert(is_valid_pair(B,P),"The block and the complex orbit are not compatible");
 let G=real_form(B)
-then k=get_type(G)
+then k=type_number(G)
 in if k=1 then Unipotent_information_C(B,P) elif k=2 then Unipotent_information_B(B,P) fi
 
 

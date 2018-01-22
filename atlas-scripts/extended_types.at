@@ -87,6 +87,7 @@ set ext_type (mat delta,int j,Param p) = string:
     in ext_type_1(delta,j,p)
     ,  ext_type_2(delta,j,p)
     ,  ext_type_3(delta,j,p)
+    else error("wrong ext_length")
     esac
   else "" { fail quietly }
   fi

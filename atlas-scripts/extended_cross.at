@@ -166,5 +166,6 @@ set ext_cross_simple (int j, ExtParam (ic,delta,,,,,,,,):E) =
   in ext_cross_1(j,E)
   ,  ext_cross_2(j,E)
   ,  ext_cross_3(j,E)
+  else error("wrong ext_length")
   esac
 )

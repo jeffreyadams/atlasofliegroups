@@ -1,4 +1,5 @@
-<basic.at { for sum@vec }
+<basic.at
+<combinatorics.at { for |Partition| type ans partition generators }
 <coordinates.at
 <groups.at
 <sort.at {for reverse_sort}
@@ -16,98 +17,57 @@
 
 { utility to convert type A-G of a simple root system to a number 0-6
   we allow and ignore (trailing) torus factors; pure torus classifies as A }
-set get_type(LieType t) = int:
-  let codes = %t then i=last(#codes,(int i)bool:let (c,)=codes[i] in c!="T") in
-  assert(i.<=,"Non-simple Lie type");
-  if i.< then { pure torus} 0 else let (c,)=codes[i] in ascii(c)-ascii("A") fi
-
-{ same as previous applied to a RootDatum, or a RealForm }
-set get_type(RootDatum rd) = int: get_type(Lie_type(rd))
-set get_type(RealForm G) = int: get_type(root_datum(G))
-
-{ generate all partitions of n,
-  each partition is written in decreasing order
-  partitions are in lexicographically smallest [1,...,1] to largest [n] order
-  each partition of n-1 gives rise to 1 or 2 partitions of n: the first by
-  appending a part 1, the second by increasing the final part if possible
-}
-set partitions =
-( let part (int n) = [vec]:[]
-  in part :=
-    begin (int n):
-      let rv=[vec]:[] in
-      if n=1 then rv:=[[1]]
-      else
-	for p in part(n-1)
-	do let l=#p-1 then last=p~[0] in
-	  rv #:= p#1 { add partition formed by extending by 1 }
-	; if #p=1 or p~[1]>last then rv #:= (let c=p in c[#p-1]:=last+1; c) fi
-	od
-      fi
-    ; rv
-    end
-; (int n) [vec]: if n>0 then part(n) elif n=0 then [[]] else [] fi
-)
-
-{ write a partition as a sequence of multiplicities
-  including a leading 0 so that rv[i] is the multiplicity of i
-  e.g. [4,3,1,1]->[0,2,0,1,1]}
-set partition_multiplicities (vec p)=vec:
-( let mult=null(max(p)+1) in
-  for k in p do mult[k] +:= 1 od
-; mult[0]:=0  { clear multiplicity of 0 that was possibly set }
-; mult
-)
-
-{ partitions of n with all rows of parity |parity| having even multiplicity }
-set partitions_parity (int n, int parity) =[vec]:
-( let P=partitions(n), result=[vec]: [] in
-  for p in P
-  do
-    if none(for m@i in partition_multiplicities(p) do i%2=parity and m%2=1 od)
-    then result #:= p
-    fi
-  od
-; result
-)
-
-{ (complex) nilpotent orbits, partition-type classification,
-  for simple group of type A-D }
-set nilpotent_orbit_partitions(LieType t)= [vec]:
-  let s = get_type(t), n=semisimple_rank(t) in { only classsical types left }
-  if s=0 then partitions(n+1)
-  elif s=1 then partitions_parity(2*n+1,0) { even in type B }
-  elif s<4 then partitions_parity(2*n,3-s) { odd if s=2 (C), even if s=3 (D) }
-  else error("Exceptional type")
+set type_number (LieType t) = int:
+  let codes = %t.semisimple in
+  assert(#codes<=1,"Non-simple Lie type");
+  if =#codes then { pure torus} 7
+  else let (c,)=codes[0] in ascii(c)-ascii("A")
   fi
 
-{ same as previous applied to RootDatum or RealForm (types A-D only)
-  (list of partitions only depends on complexification of real group) }
+{ same as previous applied to a RootDatum }
+set type_number (RootDatum rd) = int: type_number(Lie_type(rd))
+
+{ (complex) nilpotent orbits, partition-type classification,
+  for simple group of type A-D
+}
+set nilpotent_orbit_partitions (LieType t)= [Partition]:
+  let n=semisimple_rank(t) in
+  case type_number(t) { this only lets simple types through }
+  in partitions(n+1) { all partitions in type A }
+  , parity_restricted_partitions(2*n+1,false) { even restricted in type B }
+  , parity_restricted_partitions(2*n,true) { odd restricted in type C }
+  , parity_restricted_partitions(2*n,false) { even restricted in type D }
+  else error("Exceptional type")
+  esac
+
+{ insert conversion to LieType from (type converting to RootDatum)
+  (types A-D only; this only depends on complexification of real group)
+}
 set nilpotent_orbit_partitions(RootDatum rd) = [vec]:
    nilpotent_orbit_partitions(Lie_type(rd))
-set nilpotent_orbit_partitions(RealForm G)   = [vec]:
-   nilpotent_orbit_partitions(root_datum(G))
 
 { test if partition is valid orbit in type ABCD }
-set is_valid (string type,vec P) = bool:
-   let n = ascii(type)-ascii("A") in n<4 { only classical types } and
-   case n
-   in { type A } true
-   , { type B } sum(P).is_odd and
-     all(for mi@i in partition_multiplicities(P) do i.is_odd or mi.is_even od)
-   , { type C } sum(P).is_even and
-     all(for mi@i in partition_multiplicities(P) do i.is_even or mi.is_even od)
-   , { type D } sum(P).is_even and
-     all(for mi@i in partition_multiplicities(P) do i.is_odd or mi.is_even od)
-   esac
+set is_valid (LieType t,vec P) = bool:
+  case type_number(t)
+  in { type A } true
+  , { type B } sum(P).is_odd and
+    all(for mult in P.frequencies.even_places do mult.is_even od)
+  , { type C } sum(P).is_even and
+    all(for mult in P.frequencies.odd_places do mult.is_even od)
+  , { type D } sum(P).is_even and
+    all(for mult in P.frequencies.even_places do mult.is_even od)
+  else false { exceptional types are not valid }
+  esac
 
-set is_valid(LieType t,vec P)=bool:is_valid(["A","B","C","D"][get_type(t)],P)
+set is_valid (string type,vec P) = bool:
+  let letter = type[0] then n= if letter="A" then sum(P)-1 else sum(P)\2 fi in
+  is_valid(Lie_type(type[0]+n),P)
 
 { nilpotent orbits of dual group (types A-D only) }
 set dual_nilpotent_orbit_partitions(RootDatum rd)=[vec]:
-    nilpotent_orbit_partitions(dual(rd))
+  nilpotent_orbit_partitions(dual(rd))
 set dual_nilpotent_orbit_partitions(RealForm G)=[vec]:
-    dual_nilpotent_orbit_partitions(root_datum(G))
+  dual_nilpotent_orbit_partitions(root_datum(G))
 
 { tools for computing h(O^\vee): apply to rows of Young diagram }
 set tworho (int n)=vec: for k:n do (n-1)-2*k od { e.g., [2,0,-2] or [3,1,-1,-3]}
@@ -117,9 +77,9 @@ set String (int n)=vec: for k:n\2 do (n-1)-2*k od { e.g., [4,2] or [5,3,1]  }
 
 { compute 1/2 h(O^\vee) for G of type |t| (types A-D only)
   O^\vee assumed to be an orbit of G^\vee, given by a partition |P|
-  only complexification (root_datum) of G plays a role }
+  only Lie type (of complexification) of G plays a role }
 set semisimple_element (LieType t,vec P) = vec: { a coweight }
-  if get_type(t)=0
+  if type_number(t)=0
   then ## for p in P do tworho(p) od
   else let strs = ## for k in P do String(k) od in
     strs ## for i: sum(P)\2-#strs do 0 od
