@@ -206,7 +206,7 @@ set max (rat !seed) = ([rat]->rat):
   ([rat] l): let m=seed in for a in l do if a>m then m:=a fi od; m
 
 set with_decimals (int n) = (rat->string): (rat r) string:
-   let sign=if >=r then "+" else r:=-r; "-" fi then i=floor(r), f=frac(r) in
+   let sign=if >=r then "+" else r:=-r; "-" fi, i=floor(r), f=frac(r) in
    sign ## i.to_string ## "." ##
    ## for :n do let x=10*f in x.floor.to_string next f:=x.frac od
 
@@ -214,6 +214,8 @@ set with_decimals (int n) = (rat->string): (rat r) string:
 {                               Strings                                 }
 
 set !new_line = ascii(10) { including this in a string passes to a new line }
+
+set char_index (string c, string s) = int: first(#s,(int i)bool: c=s[i])
 
 set + = ##@(string,string) { + aliases string concatenation "ax" ## "is" }
 set * = (string,int->string): { repeat string; use recursive doubling }

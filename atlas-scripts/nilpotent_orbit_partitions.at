@@ -4,6 +4,7 @@
 <groups.at
 <sort.at {for reverse_sort}
 <Weylgroup.at
+<partitions.at
 
 { (complex) nilpotent orbits for simple classical groups,
   classical groups: SL(n), GL(n), Sp(2n), SO(n),
@@ -16,7 +17,7 @@
 }
 
 { utility to convert type A-G of a simple root system to a number 0-6
-  we allow and ignore (trailing) torus factors; pure torus classifies as A }
+  we allow and ignore (trailing) torus factors; a pure torus classifies as 7 }
 set type_number (LieType t) = int:
   let codes = %t.semisimple in
   assert(#codes<=1,"Non-simple Lie type");

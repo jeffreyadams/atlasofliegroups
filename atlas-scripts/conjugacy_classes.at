@@ -1,8 +1,9 @@
 <W_orbit.at { for generate_W@RootDatum }
-<elliptic_aux.at
+<elliptic.at
 <parabolics.at { for |ComplexLevi| type }
 <Levi_class.at
-{<make_levi.at} Levi_of_w : (WeylElt->*,[int]) { guessing the type here }
+<subalgebra.at
+<tabulate.at
 
 set_type ConjugacyClass = (ComplexLevi Levi, WeylElt w)
 {ComplexLevi:(rd,rd_L)
@@ -67,3 +68,20 @@ set conjugacy_class (WeylElt w) =
 set conjugacy_class_by_Levi (WeylElt w) =
   conjugacy_class_by_Levi(w,conjugacy_classes_by_Levi(w.root_datum))
 
+set test_conjugacy_class([WeylElt] C, int j)=
+for i:#C do if is_conjugate(C[i],C[j]) then prints(i, " ", C[i]) fi od
+
+set test_conjugacy_classes([WeylElt] C)=
+let test=for i:#C do
+    let sum=sum(for j:#C do if is_conjugate(C[i],C[j]) then 1 else 0 fi od) in 
+    if sum !=1 then prints("i ", i, " ", sum) fi;
+sum od in test=for i:#test do 1 od
+
+set chop_string(int n,string s)=string:
+let S=for i:#s do s[i] od in ##S[n:]
+
+set print_conjugacy_classes([WeylElt] C)=void:
+let data=["order","length","Levi"]#for w in C do let (,L)=Levi_of_w(w)  in [int_format(order(w)), int_format(length(w)),chop_string(9,to_string(Lie_type(L)))] od
+in tabulate(data,"right",2," ")
+
+set print_conjugacy_classes(RootDatum rd)=void:print_conjugacy_classes(conjugacy_classes(rd))
