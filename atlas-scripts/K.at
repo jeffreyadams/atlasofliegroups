@@ -176,7 +176,7 @@ set G_K_roots_and_coroots (KGBElt x) = (mat,mat):
 
 { extract simple roots, coroots by computing pairing with rho,rho^v }
 set G_K_simple_roots_and_coroots (KGBElt x) = (mat,mat):
-  let pos_sys=G_K_roots_and_coroots(x) in simple_from_positive(pos_sys)
+  x.G_K_roots_and_coroots.simple_system_from_positive
 
 set rank_K (RealForm G) = int: compact_rank(Cartan_class(G,0))
 

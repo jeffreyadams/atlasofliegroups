@@ -1,61 +1,28 @@
 {Given a block and a partition of the dual group, find all Unipotent packets corresponding to that orbit in the block}
 
+<basic.at
 <W_Reps_Mod.at
 <Vogan-dual.at { for |dual_KGB| }
 <groups.at { for |GL| }
-<finite_dimensional { for |is_finite_dimensional }
+<finite_dimensional { for |is_finite_dimensional| }
 <induction.at { for |induce_irreducible| }
 <stable.at { for |print_stable| }
 <combinatorics.at
 
-set get_non_empty_block_indices (RealForm G)=[[int]]:
-let rv=[[int]]:[]
-then M=block_sizes(G)
-then (r,t)=shape(M)
-in for i in #r do for j in #t do if M[j][i]!=0 then rv:=rv#[i,j] fi od od;rv
+set dual_integral (Param p) = InnerClass:
+  dual_integral(p.inner_class,p.infinitesimal_character)
 
-set vec_as_int (vec v)=[int]:
-let rv=[int]:[]
-in for i:#v do rv#:=v[i] od; rv
+set find (Block B, (KGBElt x, KGBElt y)) = int:
+  first(#B,(int i) bool: let (r,s)=element(B,i) in x=r and y=s)
 
-set vecs_as_int ([vec] V)=[[int]]:
-let rv=[[int]]:[]
-in for i:#V do rv#:=vec_as_int(V[i]) od;rv
-
-
-set find([(KGBElt, KGBElt)] K, (KGBElt, KGBElt) k)=int:
-let rv=-1
-then (x,y)=k
-in for i:#K do let (r,s)=K[i] in if x=r and y=s then rv:=i fi
-			od; rv
-
-set find_reps_in_Cells ([[int]] W_Cells, Param t)=int:
-let G=real_form(t)
-then Gd=dual_quasisplit_form(G)
-then B=block(G,Gd)
-then b=for i:#B do element(B,i)od
-then w=(x(t), dual_KGB(t,Gd)) {WE ARE USING THE DUAL KGB COMMAND HERE ... BE CAREFUL ABOUT INTEGRAL INFINITESIMAL CHARACTER}
-then rv=-1
-in for  i:#W_Cells do
-					for v in W_Cells[i] do
-						if v=find(b, w)
-							then rv:=i
-						fi
-						od
-					od; rv
-
-set vec_as_int (vec v) = [int]: v { an implicit conversion can do this }
-
-set vecs_as_int ([vec] V) = [[int]]: V { since axis 0.9.6 this is implicit too }
+set find_reps_in_Cells ([[int]] W_cells, Param t) = int:
+  let y = dual_KGB(t,dual_integral(t))
+  then index = find(block(real_form(t),real_form(y)) ,(x(t),y))
+  in last(#W_cells,(int i)bool: any(for v in W_cells[i] do v=index od))
 
 {Compute minimal elements of parabolics having equivalent KGB elements in the distinguished fiber}
 set x_min_parabolic_in_dis_fiber_Step1 (RealForm G,[int] H)=([KGBElt]):
-let n=#distinguished_fiber(G)
-then rv=[KGBElt]:[]
-then B=KGB(G)
-in for i:n do
-			rv#:=x_min(parabolic(H/1,B[i]))
-			od; sort(rv)
+  sort(for x in distinguished_fiber(G) do x_min(parabolic(ratvec:H,x)) od)
 
 
 {Step 2 of above}
@@ -125,14 +92,12 @@ set dual_Cell( Block B, int Cell)= int:
 let Bd=dual(B)
 then G=real_form(B)
 then Gd=real_form(Bd)
-then W_Cells_Gd=vecs_as_int(for (cell,) in W_cells(Bd) do cell od)
-then W_Cells_G=vecs_as_int(for (cell,) in W_cells(B) do cell od)
-then b=for i:#B do element(B,i)od
+then W_Cells_Gd=[[int]]: for (cell,) in W_cells(Bd) do cell od
+then W_Cells_G=[[int]]:  for (cell,) in W_cells(B) do cell od
 then (x,y)=element(Bd, W_Cells_Gd[Cell][0])
 then w=(y,x)
-then k=find(b, w)
-then rv=-1
-in for i:#W_Cells_G do if find(W_Cells_G[i], k)!=-1 then rv:=i fi od; rv
+then k=find(B, w)
+in last(#W_Cells_G,(int i)bool: find(W_Cells_G[i], k)<0)
 
 
 set cells_with_given_AV ([int] O, [[int]] AV_Cells)=(int, [int]):
@@ -142,16 +107,11 @@ in for i:#AV_Cells do if AV_Cells[i]=O then rv:=rv+1; rv1#:=i fi od; (rv, rv1)
 
 
 set subset([int] V, [int] W)=bool:
-let V=sort(V)
-then W=sort(W)
-then rv=[int]:[]
-in for v in V do if find(W,v)!=-1 then rv#:=v fi od; rv=V
+  all(#V,(int i) bool: find(W,V[i])>=0)
 
-set delete_sub_vector( [int] Q, [int] W)=[int]:
-let Q=sort(Q)
-then W=sort(W)
-then rv=[int]:[]
-in for w in W do if find (Q,w)=-1 then rv#:=w fi od; rv
+set delete_sub_vector( [int] Q, [int] W) = [int]:
+  let predicate = is_member(Q) in
+  ## for w in W do if predicate(w) then [] else [w] fi od
 
 
 
@@ -159,12 +119,13 @@ in for w in W do if find (Q,w)=-1 then rv#:=w fi od; rv
 {%%%%%%%%%%%%%%%%%%%% For Dual Group of type Bn %%%%%%%%%%%%%%%%%%%%%%%%%}
 {%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%}
 
-set good_KGB_C(RealForm G)=[KGBElt]:
-let rv=[KGBElt]:[]
-then k=rank(G)
-in if is_equal_rank(G) then
-for i:#distinguished_fiber(G) do if rho(GL(k,R))=rho_K(KGB(G,i)) then rv:=rv#KGB(G,i) fi od fi; rv
-
+set good_KGB_C (RealForm G) = [KGBElt]:
+let rho_GL = rho(GL(rank(G))) in
+if G.is_equal_rank
+then ##
+  for x in distinguished_fiber(G) do if rho_GL=rho_K(x) then [x] else [] fi od
+else []
+fi
 
 
 set if_same_len_B([int] R, [int] S)=([int], [int]):
@@ -183,7 +144,7 @@ in for i:#rv do rv[i]:=rv[i]-i od; reverse(rv)
 
 
 set AV_for_given_block_B (Block B)=[[int]]:
-let W_Cells=vecs_as_int(for (cell,) in W_cells(B) do cell od)
+let W_Cells=[[int]]:(for (cell,) in W_cells(B) do cell od)
 in for i:#W_Cells do orbit_from_W_rep_B (wrep(B, W_Cells[i]))od
 
 {Given a nilpotent orbit of type Bn compute the H(O)}
@@ -236,7 +197,7 @@ set real_forms_of_complex_orbit_as_Reps_B (Block B, [int] P)=[Param]:
 let Gd=real_form(dual(B))
 then T=induced_from_closed_parabolics_B(Gd,P)
 then Bd=dual(B)
-then W_Cells=vecs_as_int(for (cell,) in W_cells(Bd) do cell od)
+then W_Cells=[[int]]:(for (cell,) in W_cells(Bd) do cell od)
 then AV_Cells=AV_for_given_block_B(Bd)
 then rv=[Param]:[]
 in for t in T do
@@ -248,7 +209,7 @@ set real_forms_of_complex_orbit_as_Cells_B (Block B, [int] P)=[int]:
 let Bd=dual(B)
 then Gd=real_form(Bd)
 then T=induced_from_closed_parabolics_B(Gd,P)
-then W_Cells=vecs_as_int(for (cell,) in W_cells(Bd) do cell od)
+then W_Cells=[[int]]:(for (cell,) in W_cells(Bd) do cell od)
 then AV_Cells=AV_for_given_block_B(Bd)
 then rv=[int]:[]
 in for t in T do
@@ -260,7 +221,7 @@ in for t in T do
 set all_Cells_with_Aq_Lambda_B(Block B, [int] P)=[int]:
 let Bd=dual(B)
 then Gd=real_form(Bd)
-then W_Cells=vecs_as_int(for (cell,) in W_cells(Bd) do cell od)
+then W_Cells=[[int]]:(for (cell,) in W_cells(Bd) do cell od)
 then T=real_forms_of_complex_orbit_as_Reps_B (B, P)
 then H=dominant(Gd, orbit_H_Bn(Gd, P))
 then R= for t in T do parabolic(H/1, x(t)) od
@@ -280,7 +241,7 @@ then R= for t in T do parabolic(H/1, x(t)) od
 then S= for r in R do ind_one_dim_from_parabolic(r) od
 then rv=[int]:[]
 then rv1=[[int]]:[]
-then W_Cells=vecs_as_int(for (cell,) in W_cells(Bd) do cell od)
+then W_Cells=[[int]]:(for (cell,) in W_cells(Bd) do cell od)
 in for s in S do
 				for i:# s do
 				if find(rv, find_reps_in_Cells(W_Cells, s[i])) = -1 then if find_reps_in_Cells(W_Cells, s[i]) !=-1 then rv#:=find_reps_in_Cells(W_Cells, s[i]) fi fi
@@ -304,7 +265,7 @@ then rv1=[[Param]]:[]
 then Bd=dual(B)
 then Gd=real_form(Bd)
 then G=real_form(B)
-then W_Cells_G=vecs_as_int(for (cell,) in W_cells(B) do cell od)
+then W_Cells_G=[[int]]:(for (cell,) in W_cells(B) do cell od)
 then b=for i:#B do element(B,i) od
 then H=dominant(Gd, orbit_H_Bn(Gd, P))
 then S=singular_simple_indices(G, H)
@@ -324,7 +285,7 @@ then rv1=[[Param]]:[]
 then Bd=dual(B)
 then Gd=real_form(Bd)
 then G=real_form(B)
-then W_Cells_G=vecs_as_int(for (cell,) in W_cells(B) do cell od)
+then W_Cells_G=[[int]]:(for (cell,) in W_cells(B) do cell od)
 then b=for i:#B do element(B,i) od
 then AV_Cells_Gd=AV_for_given_block_B(Bd)
 then H=dominant(Gd, orbit_H_Bn(Gd, P))
@@ -387,7 +348,7 @@ in for i:#rv1 do if rv1[i]-i!=0 then rv#:=rv1[i]-i fi od; reverse(rv)
 
 
 set AV_for_given_block_C (Block B)=[[int]]:
-let W_Cells=vecs_as_int(for (cell,) in W_cells(B) do cell od)
+let W_Cells=[[int]]:(for (cell,) in W_cells(B) do cell od)
 in for i:#W_Cells do orbit_from_W_rep_C(wrep(B, W_Cells[i]))od
 
 
@@ -425,7 +386,7 @@ set real_forms_of_complex_orbit_as_Reps_C (Block B, [int] P)=[Param]:
 let Gd=real_form(dual(B))
 then T=induced_from_closed_parabolics_C(Gd,P)
 then Bd=dual(B)
-then W_Cells=vecs_as_int(for (cell,) in W_cells(Bd) do cell od)
+then W_Cells=[[int]]:(for (cell,) in W_cells(Bd) do cell od)
 then AV_Cells=AV_for_given_block_C(Bd)
 then rv=[Param]:[]
 in for t in T do
@@ -437,7 +398,7 @@ set real_forms_of_complex_orbit_as_Cells_C (Block B, [int] P)=[int]:
 let Bd=dual(B)
 then Gd=real_form(Bd)
 then T=induced_from_closed_parabolics_C(Gd,P)
-then W_Cells=vecs_as_int(for (cell,) in W_cells(Bd) do cell od)
+then W_Cells=[[int]]:(for (cell,) in W_cells(Bd) do cell od)
 then AV_Cells=AV_for_given_block_C(Bd)
 then rv=[int]:[]
 in for t in T do
@@ -453,7 +414,7 @@ in for t in T do
 set all_Cells_with_Aq_Lambda_C(Block B, [int] P)=[int]:
 let Bd=dual(B)
 then Gd=real_form(Bd)
-then W_Cells=vecs_as_int(for (cell,) in W_cells(Bd) do cell od)
+then W_Cells=[[int]]:(for (cell,) in W_cells(Bd) do cell od)
 then T=real_forms_of_complex_orbit_as_Reps_C (B, P)
 then H=dominant(Gd, orbit_H_Cn(Gd, P))
 then R= for t in T do parabolic(H/1, x(t)) od
@@ -473,7 +434,7 @@ then R= for t in T do parabolic(H/1, x(t)) od
 then S= for r in R do ind_one_dim_from_parabolic(r) od
 then rv=[int]:[]
 then rv1=[[int]]:[]
-then W_Cells=vecs_as_int(for (cell,) in W_cells(Bd) do cell od)
+then W_Cells=[[int]]:(for (cell,) in W_cells(Bd) do cell od)
 in for s in S do
 				for i:# s do
 				if find(rv, find_reps_in_Cells(W_Cells, s[i])) = -1 then if find_reps_in_Cells(W_Cells, s[i]) !=-1 then rv#:=find_reps_in_Cells(W_Cells, s[i]) fi fi
@@ -497,7 +458,7 @@ then rv1=[[Param]]:[]
 then Bd=dual(B)
 then Gd=real_form(Bd)
 then G=real_form(B)
-then W_Cells_G=vecs_as_int(for (cell,) in W_cells(B) do cell od)
+then W_Cells_G=[[int]]:(for (cell,) in W_cells(B) do cell od)
 then b=for i:#B do element(B,i) od
 then H=dominant(Gd, orbit_H_Cn(Gd, P))
 then S=singular_simple_indices(G, H)
@@ -517,7 +478,7 @@ then rv1=[[Param]]:[]
 then Bd=dual(B)
 then Gd=real_form(Bd)
 then G=real_form(B)
-then W_Cells_G=vecs_as_int(for (cell,) in W_cells(B) do cell od)
+then W_Cells_G=[[int]]:(for (cell,) in W_cells(B) do cell od)
 then b=for i:#B do element(B,i) od
 then AV_Cells_Gd=AV_for_given_block_C(Bd)
 then H=dominant(Gd, orbit_H_Cn(Gd, P))
@@ -585,57 +546,3 @@ assert(is_valid_pair(B,P),"The block and the complex orbit are not compatible");
 let G=real_form(B)
 then k=type_number(G)
 in if k=1 then Unipotent_information_C(B,P) elif k=2 then Unipotent_information_B(B,P) fi
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

@@ -50,7 +50,7 @@ set W_orbit_torus_element(RootDatum rd,ratvec v)=[ratvec]:
 set centralizer(RootDatum rd,ratvec v) = RootDatum:
    let roots = columns_with((vec alpha): is_integer(alpha*v), posroots(rd))
    then coroots = rank(rd) # for alpha in roots do coroot(rd,alpha) od
-   in root_datum(simple_from_positive(roots,coroots))
+   in root_datum_from_positive(roots,coroots)
 
 {. order of element of Q/Z.}
 set QmodZ_order(ratvec v)=int:denom(v)

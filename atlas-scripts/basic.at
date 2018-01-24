@@ -853,10 +853,13 @@ set is_simple_for (vec dual_two_rho) = (vec->bool):
   (vec alpha): dual_two_rho*alpha=2
 
 { get generating simple system from set of matching posroots and poscoroots }
-set simple_from_positive (mat posroots,mat poscoroots) = (mat,mat):
+set simple_system_from_positive (mat posroots,mat poscoroots) = (mat,mat):
   ( columns_with(is_simple_for(sum(poscoroots)),posroots)
   , columns_with(is_simple_for(sum(posroots)),poscoroots)
   )
+
+set root_datum_from_positive((mat,mat)pair) = RootDatum:
+  pair.simple_system_from_positive.root_datum
 
 set fundamental_weights (RootDatum rd) = [ratvec]:
   for i:semisimple_rank(rd) do fundamental_weight(rd,i) od

@@ -402,7 +402,7 @@ set theta_stable_Levi (KGBElt x) = RealForm: Levi(theta_stable_parabolic(x))
 set is_standard_Levi (RealForm L,RealForm G)=bool:
    let rd=root_datum(G) in let lroots=posroots(L) in
    let lcoroots=poscoroots(L) in
-   let (lsimple,)=simple_from_positive(lroots,lcoroots) in
+   let (lsimple,)=simple_system_from_positive(lroots,lcoroots) in
    all(for alpha in lsimple do is_simple_root(rd,alpha) od)
 
 { -------------- auxiliary routines------------------}
