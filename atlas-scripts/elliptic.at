@@ -120,13 +120,13 @@ set elliptic_simple_bourbaki (RootDatum rd) = [WeylElt]:
   else error("Invalid Root Datum")
   fi
 
-{elliptic classes in any simple root datum
- use Cartan_matrix_type to convert numbering to Bourbaki}
+{ elliptic classes in any simple root datum
+  use |Cartan_matrix_type| to convert numbering to Bourbaki }
 set elliptic_simple(RootDatum rd)=[WeylElt]:
 let ell_bourbaki=elliptic_simple_bourbaki(rd) then
-(,perm)=Cartan_matrix_type(Cartan_matrix(rd)) in 
-for w in ell_bourbaki do let 
-w_new=id_W(rd)##replace(perm,w.word) in 
+(,perm)=Cartan_matrix_type(Cartan_matrix(rd)) in
+for w in ell_bourbaki do let
+w_new=id_W(rd)##replace(perm,w.word) in
 if elliptic_debug then is_elliptic(w_new) fi;w_new od
 
 
@@ -134,7 +134,7 @@ if elliptic_debug then is_elliptic(w_new) fi;w_new od
  use simple_factors to construct simple factors
  (root_numbering,factors)=simple_factors(rd)
  construct elliptic elements of each simple factor using elliptic_simple
- use root_numbering to convert from numbering for simple factor (starting at 0) 
+ use root_numbering to convert from numbering for simple factor (starting at 0)
   to actual numbering the RootDatum
 }
 set elliptic(RootDatum root_datum)=[WeylElt]:
@@ -146,7 +146,7 @@ for i:#factors do
   new_numbers=root_numbering[i] in
   {new_numbers gives change of numbering from each simple factor of rd to rd}
    for w in elliptic_simple(rd) do
-     let r=replace(new_numbers,w.word) in  
-     let w_new=id_W(root_datum)##r in  
+     let r=replace(new_numbers,w.word) in
+     let w_new=id_W(root_datum)##r in
 {     prints("w_new=",w_new, " ", length(w_new)," ", order(w_new));}     r od od)
 do   id_W(root_datum)##v  od fi

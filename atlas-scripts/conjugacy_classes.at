@@ -24,10 +24,10 @@ set complex_Levi_root_numbers (ComplexLevi L) = [int]:
 
 set root_datum (ConjugacyClass C) = RootDatum: C.Levi.rd
 set root_datum_Levi (ConjugacyClass C) = RootDatum: C.Levi.rd_Levi
-{C.Levi: complexLevi (rd,rd_L)
- C.root_datum: root datum of G
- C.root_datum_Levi: root datum of L
- C.w: WeylElt for L
+{ C.Levi: complexLevi (rd,rd_L)
+  C.root_datum: root datum of G
+  C.root_datum_Levi: root datum of L
+  C.w: WeylElt for L
 }
 
 {promote w\in W_L to w_G}
@@ -72,16 +72,21 @@ set test_conjugacy_class([WeylElt] C, int j)=
 for i:#C do if is_conjugate(C[i],C[j]) then prints(i, " ", C[i]) fi od
 
 set test_conjugacy_classes([WeylElt] C)=
-let test=for i:#C do
-    let sum=sum(for j:#C do if is_conjugate(C[i],C[j]) then 1 else 0 fi od) in 
-    if sum !=1 then prints("i ", i, " ", sum) fi;
-sum od in test=for i:#test do 1 od
+let test =
+  for Ci@i in C
+  do let sum=sum(for j:#C do #is_conjugate(Ci,C[j]) od) in
+    if sum!=1 then prints("i ", i, " ", sum) fi
+  ; sum
+  od
+  in all(#test,(int i)bool: test[i]=1)
 
-set chop_string(int n,string s)=string:
-let S=for i:#s do s[i] od in ##S[n:]
+set print_conjugacy_classes ([WeylElt] C) = void:
+  let data=["order","length","Levi"] { column headers }
+  # for w in C
+    do let (,L)=Levi_of_w(w) in
+    [ w.order.to_string, w.length.to_string, L.Lie_type.to_string[9:] ]
+    od
+  in tabulate(data,"rrr",2," ")
 
-set print_conjugacy_classes([WeylElt] C)=void:
-let data=["order","length","Levi"]#for w in C do let (,L)=Levi_of_w(w)  in [int_format(order(w)), int_format(length(w)),chop_string(9,to_string(Lie_type(L)))] od
-in tabulate(data,"right",2," ")
-
-set print_conjugacy_classes(RootDatum rd)=void:print_conjugacy_classes(conjugacy_classes(rd))
+set print_conjugacy_classes (RootDatum rd) = void:
+  print_conjugacy_classes(conjugacy_classes(rd))

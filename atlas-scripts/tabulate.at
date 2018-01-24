@@ -22,16 +22,14 @@ set pad (string s,string alignment,int padding,string pad_char) = string:
   plus |cell_padding|, while padding uniformly with |pad_char| (of size 1)
 }
 set tabulate ([[string]] data,
-    string alignment, int cell_padding, string pad_char) = void:
-  let max_per_column = for j:#data[0] do max(for d in data do #d[j] od) od in
+    string alignments, int cell_padding, string pad_char) = void:
+  let n_cols = #alignments { string length should match number of columns }
+  then max_per_column = for j:n_cols do max(for d in data do #d[j] od) od in
   for d in data
-  do
+  do assert(#d=n_cols,"number of columns should match length alignment string");
     for x@j in d
-    do pad(x,alignment,max_per_column[j]+cell_padding,pad_char)
+    do let c = pad_char[j % #pad_char] { use padding chars cyclically } in
+      (c*if =j then 0 else cell_padding fi) ##
+      pad(x,alignments[j],max_per_column[j],c)
     od.##.prints
   od
-
-set test=[
-["A","bb","ttt","uuu"],
-["AAAAAA","b","Z","xyzzzzzzzzz"],
-["A","bbbbbbbbb","W","x"]]
