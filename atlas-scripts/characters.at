@@ -17,17 +17,17 @@ we may change this implementation of class function to be
 more robust and less clumsy}
 
 {. data type for class functions .}
-set_type ClassFunction=([WeylElt] classes, [int] sizes, [rat] values)
+set_type ClassFunction=([WeylElt] classes, [int] sizes, [int] values)
 
 {. products of two class functions .}
-set *(ClassFunction f,ClassFunction g)=rat:
+set *(ClassFunction f,ClassFunction g)=int:
 let (elts,sizes,f_values)=f then
 (,,g_values)=g in
-sum(for i:#sizes do sizes[i]*f_values[i]*g_values[i] od)/order_W(elts[0].root_datum)
+rat_as_int(sum(for i:#sizes do sizes[i]*f_values[i]*g_values[i] od)/order_W(elts[0].root_datum))
 
 {. character of the trivial representation of W .}
 set trivial_character(RootDatum rd)=ClassFunction:
-let classes=conjugacy_classes(rd) then
+let classes=conjugacy_class_reps(rd) then
 sizes=for w in classes do size_of_conjugacy_class(w) od in
 (classes,sizes, for i:#classes do 1 od)
 
@@ -36,7 +36,7 @@ set trivial_character([WeylElt] classes, [int] sizes)=ClassFunction:(classes,siz
 
 {.character of the sgn representation of W .}
 set sgn_character(RootDatum rd)=ClassFunction:
-let classes=conjugacy_classes(rd) then
+let classes=conjugacy_class_reps(rd) then
 sizes=for w in classes do size_of_conjugacy_class(w) od in
 (classes,sizes, for i:#classes do det(matrix(classes[i])) od)
 
@@ -46,7 +46,7 @@ ClassFunction:(classes,sizes, for i:#classes do det(matrix(classes[i])) od)
 
 {. character of the reflection (tautological) representation of W .}
 set reflection_character(RootDatum rd)=ClassFunction:
-let classes=conjugacy_classes(rd) then
+let classes=conjugacy_class_reps(rd) then
 sizes=for w in classes do size_of_conjugacy_class(w) od in
 (classes,sizes, for w in classes do trace(matrix(w)) od)
 
@@ -58,7 +58,7 @@ set reflection_character([WeylElt] classes, [int] sizes)=ClassFunction:
 set tensor(int n, ClassFunction f)=ClassFunction:
 (f.classes,f.sizes, for r in f.values do r^n od)
 
-set dimension(ClassFunction f)=int:rat_as_int(f.values[0])
+set dimension(ClassFunction f)=int:f.values[0]
 
 set matrix_of_inner_products([ClassFunction] S)=mat:
-for i:#S do for j:#S do rat_as_int(S[i]*S[j]) od od
+for i:#S do for j:#S do S[i]*S[j] od od
