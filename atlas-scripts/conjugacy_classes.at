@@ -185,14 +185,15 @@ set order_of_centralizer_elliptic_simple (WeylElt w) = int:
     let lt=Lie_type(rd) then (type,rank)=(%lt)[0] in
     if length(w)=ss_rank(rd) then {Coxeter} coxeter_number(rd)
     elif matrix(derived(w))=-id_mat(ss_rank(rd)) then order_W(rd)
-    elif (type="B" or type="C" or type="D")
+    elif type="B" or type="C" or type="D"
     then order_of_centralizer_elliptic_BCD(w)
     else {type+int_format(rank)="G2" rather than "Lie type 'G2'}
-    lookup_elliptic_order(type+int_format(rank),char_poly(w)) fi
+      lookup_elliptic_order(type+rank,char_poly(w))
+    fi
   fi
 
-set order_of_centralizer_elliptic(WeylElt w)=int:
-product(for x in factorize_w(w) do order_of_centralizer_elliptic_simple(x) od)
+set order_of_centralizer_elliptic (WeylElt w) = int:
+  for x in factorize_w(w) do order_of_centralizer_elliptic_simple(x) od.product
 
 {L,M are Levis, w_L in W(L) (usually elliptic), W(M) normalizes L,
  compute order of Cent_{W(M)}(w_L)
@@ -227,26 +228,31 @@ prints("order_W(P)*cosets*cent_W(L): ", order_W(P)*#norm*order_cent);
 prints("order of W: ", order_W(rd));}
 order_W(P)*#norm*order_of_centralizer_elliptic(derived(w_L)) fi
 
-set size_of_conjugacy_class(WeylElt w)=int:order_W(w.root_datum)\order_of_centralizer(w)
-set sizes_of_conjugacy_classes([WeylElt] S)=[int]: for w in S do size_of_conjugacy_class(w) od
-set sizes_of_conjugacy_classes(RootDatum rd)=[int]: sizes_of_conjugacy_classes(conjugacy_classes(rd))
+set size_of_conjugacy_class (WeylElt w) = int:
+  order_W(w.root_datum)\order_of_centralizer(w)
+set sizes_of_conjugacy_classes ([WeylElt] S) = [int]:
+  for w in S do size_of_conjugacy_class(w) od
+set sizes_of_conjugacy_classes(RootDatum rd) = [int]:
+  sizes_of_conjugacy_classes(conjugacy_classes(rd))
 
-set test_size_of_conjugacy_classes(RootDatum rd)=(int,int):
-let c=conjugacy_classes(rd) in
-(sum(for w in c do  size_of_conjugacy_class(w)  od), order_W(rd))
+set test_size_of_conjugacy_classes(RootDatum rd) = (int,int):
+  let c=conjugacy_classes(rd) in
+  (sum(for w in c do  size_of_conjugacy_class(w)  od), order_W(rd))
 
-set check_size_of_conjugate_classes(RootDatum rd)=void:
-let c=conjugacy_classes(rd) in
-for w@i in c do prints(new_line,i, " ", w, " ", order(w), " ", length(w), " ", size_of_conjugacy_class(w), " ", size_of_conjugacy_class_elementary(w)) od
+set check_size_of_conjugate_classes(RootDatum rd) = void:
+  let c=conjugacy_classes(rd) in
+  for w@i in c
+  do prints(new_line,i, " ", w, " ", order(w), " ", length(w), " "
+           , size_of_conjugacy_class(w), " "
+           , size_of_conjugacy_class_elementary(w))
+  od
 
-
-set sort_by(  (ConjugacyClass -> int) f)=
-  ([ConjugacyClass] v) [ConjugacyClass]:
+set sort_by( (ConjugacyClass -> int) f) = ([ConjugacyClass] v) [ConjugacyClass]:
     for index in inv_standardisation(for x in v do f(x) od) do v[index] od
-set sort_by(  (WeylElt -> int) f)=
-  ([WeylElt] v) [WeylElt]:
+set sort_by( (WeylElt -> int) f)= ([WeylElt] v) [WeylElt]:
     for index in inv_standardisation(for x in v do f(x) od) do v[index] od
-set sort_by_order = ([ConjugacyClass] -> [ConjugacyClass]): sort_by(order@ConjugacyClass)
+set sort_by_order = ([ConjugacyClass] -> [ConjugacyClass]):
+  sort_by(order@ConjugacyClass)
 set sort_by_order = ([WeylElt] -> [WeylElt]): sort_by(order@WeylElt)
 
 set print_conjugacy_classes ([WeylElt] C) = void:
