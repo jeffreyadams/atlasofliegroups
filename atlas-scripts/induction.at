@@ -170,7 +170,7 @@ set real_induce_irreducible (ParamPol P,RealForm G) = ParamPol:
    and parameter p_M for a relative limit of discrete series so that
    Ind(I(p_M))=I(p); uses real_parabolic(x) of parabolics.at .}
 set cuspidal_data (Param p) = (Parabolic,Param):
-  p:=p.to_no_Cminus; { equivalent parameter, but having |x| without C- roots }
+  p:=p.to_no_Cplus; { equivalent parameter, but having |x| without C- roots }
   let x_G=x(p) then P=real_parabolic(x_G)
   then x_M=inverse_embed_KGB(x_G,Levi(P)), theta=involution(x_G)
   in
