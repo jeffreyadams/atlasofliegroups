@@ -1,18 +1,24 @@
 <basic.at
-<parameters.at { for dual_inner_class }
+<parameters.at { for |dual_inner_class| }
+
+{ A first main objective of this script is to define a function |dual_KGB| that
+  associates to a |Param| value a KGB element for a computed dual real form.
+  Even just determining the proper dual real form is a surprisingly delicate
+  problem, especially for parameters with non integeral infinitesimal character.
+}
 
 {
-  This starts with some technical functions that are no longer used, so they
-  are commented out. They are still useful as a contruction of an element
-  proving why the function |fixed_lift| below is guaranteed to succeed
+  We start with with some technical functions that are no longer used, so they
+  are commented out. The code are still useful as a contruction of an element
+  proving why the function |fixed_lift| below is guaranteed to succeed.
 
   It will be important to apply a shift to dual torus_factor values that are
-  also stable under the dual involution. The function rho_diff_integral would
-  compute the shift, and theta_stable_diff would call it at the bottom of a
-  recurrence, at a KGB element x0 without complex descents where the result is
-  automatically $\theta$-stable, and move it stably back to the original x.
+  also stable under the dual involution. The function |rho_diff_integral| would
+  compute the shift, and |theta_stable_diff| would call it at the bottom of a
+  recurrence, at a KGB element |x0| without complex descents where the result is
+  automatically $\theta$-stable, and move it stably back to the original |x|.
 
-{ half sum of positive coroots for roots not integral on (torus element of) z }
+{ half sum of poscoroots for roots not integral on (torus element of) |z| }
 set rho_diff_integral (RootDatum rd, ratvec z) = ratvec:
   rho_check(rd)-rho(integrality_datum(dual(rd),z))
 
@@ -20,18 +26,18 @@ set rho_diff_integral (RootDatum rd, ratvec z) = ratvec:
   Here |x| just serves to record |theta=involution(x)|: such |x| is easy to
   build from |theta|, and |cross| is more efficient than matrix conjugation.
 
-  Moving to different elements x is done by the cross action and reflections
-  *rs before and after the recurrence. With respect to a hypothetical direct
-  call of rho_diff_integral, this introduces a shift by the complex coroot
-  occurring in the move (it is replaced by its opposite in the computed rho).
+  Moving to different elements |x| is done by the cross action and reflections
+  (applied at the right multiplied to rational coweights) before and after the
+  recursion. With respect to a hypothetical direct call of |rho_diff_integral|,
+  this introduces a shift by the complex coroot occurring in the move (due to
+  the term |rho_check| above, which the reflection applied afterwards shifts).
 }
 set theta_stable_diff ((KGBElt, ratvec)(x,z):xz) = ratvec:
 ( assert(denom(z*real_posroots(x))=1,"Coroot not integral on real roots")
 ; let rd = RootDatum: real_form(x) then ssr = semisimple_rank(rd) in
   xz. { apply to original argument pair the following recursive function: }
   (rec_fun tsd (KGBElt x,ratvec z) ratvec:
-     let s = { search complex descent }
-        first(semisimple_rank(rd),(int i):status(i,x).=)
+     let s = first(ssr,(int i):status(i,x).=) { search complex descent }
      in if s<0 { no complex descents }
         then let res=rho_diff_integral(rd,z) in { found x0, get diff }
            assert (res*involution(x)=res,"unstable"); res
@@ -86,12 +92,19 @@ set integral_shift (ratvec v, mat simples,(vec d,mat L,mat R)) = vec:
   then sol = vals*mod2_section(L1s)
   in assert ((sol*L1s)%2 = vals,"no solution mod 2"); sol * L1
 
+{ Find for |p| the KGB element (|y|) in an appropriate dual real form.
+  The |dual_int_ic| argumnet should be |dual_integral(p.inner_class,gamma)| for
+  |gamma=p.infinitesimal_character|; the reason it is not computed here is that
+  historically doing so would not identify it with the an inner class computed
+  elsewhere identically (for instance for another parameter in the same block).
+  The atlas program currently would make such an identification; however
+  precomputing and passing it around is still more efficient, so we leave this.
+}
 set dual_KGB (Param p, InnerClass dual_int_ic) = KGBElt:
-  let x=x(p)
-  then dual_tf=infinitesimal_character(p) - lambda(p)
+  let x=x(p), dual_tf=infinitesimal_character(p) - lambda(p)
   then dual_theta = -^involution(x)  { |dual_tf| is |dual_theta|-stable }
   then (simple_ims,) =
-    simple_from_positive(imaginary_sys(dual_int_ic,dual_theta))
+    simple_system_from_positive(imaginary_sys(dual_int_ic,dual_theta))
   then (rho_corr,dLR) { correct the change of rho_check implicit in dual_tf }
     = fixed_lift(dual_theta-1,rho(root_datum(p))-rho(integrality_datum(p)))
   then integral_shift=integral_shift(rho_corr-rho_r(x),simple_ims,dLR)
@@ -108,7 +121,8 @@ set dual_KGB (Param p, InnerClass dual_int_ic) = KGBElt:
   then dual_theta = -^involution(x)  { |dual_tf| is |dual_theta|-stable }
   then (rho_corr,dLR) { correct the change of rho_check implicit in dual_tf }
     = fixed_lift(dual_theta-1,rho(root_datum(p))-rho(integrality_datum(p)))
-  , (simple_ims,)= simple_from_positive(imaginary_sys(dual_int_ic,dual_theta))
+  , (simple_ims,)=
+       simple_system_from_positive(imaginary_sys(dual_int_ic,dual_theta))
   then phi = dual_tf + rho_corr { dual_theta stable rep.tive of dual square }
   in KGB_elt(dual_int_ic,dual_theta
             ,phi+integral_shift(rho_corr-rho_r(x),simple_ims,dLR))

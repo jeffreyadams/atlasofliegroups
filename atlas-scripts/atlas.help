@@ -1,5 +1,5 @@
-Brief introduction to 'atlas', the new interface to the Atlas software
-
+Introduction to 'atlas', the (new) interface to the Atlas software
+Also (for now) the axis language reference
 
 1 Introduction
 
@@ -1426,6 +1426,22 @@ equivalent to a nested conditional expression obtained by replacing each
 final else branch may be omitted, defaulting to 'else ()'; in this case the
 conditional expression automatically gets void type (does not return a value).
 
+In a conditional expression without any 'elif' one may interchange the two
+branches if one prefers:
+
+  if condition else B then A fi
+
+means exactly the same as
+
+  if condition then A else B fi
+
+but might be more readable when B is a simple or unimportant case that one likes
+to get over with right away, while the also equivalent alternative
+
+  if not(condition) then B else A fi
+
+has to negate the condition from what is required to hold for the main case A.
+
 The conditions (after 'if' or 'elif') must be expressions of type 'bool' (they
 may also perform actions as side effect, which in composite conditional
 expressions will only be performed for those conditions that actually need
@@ -1443,7 +1459,8 @@ hand that these connectives cannot be redefined or overloaded.
 ** Integer case expressions
 
 A similar selection, but determined by a range of values that may be taken by
-an integral expression 'I', can be performed using an integral case expression
+an integral expression 'I', can be performed using an integral case expression,
+whose most simple form is
 
   case I
   in E_0
@@ -1452,13 +1469,51 @@ an integral expression 'I', can be performed using an integral case expression
   , E_{n-1}
   esac
 
-The "condition" I should evaluate to an integer i with 0 <= i < n, and then
-the branch E_i is selected. Currently there is no provision for values out of
-bounds; should the value of I not satisfy the inequalities, the evaluation
-stops with an "index out of range" error (like out of bound list selections).
-To have robust code the user should either test that the bound condition is
-met before evaluating the case expression, or ensure in some other way that it
-always holds (for instance using the modulo operation '%n' in I will do this).
+The "condition" I should evaluate to an integer i, and if 0 <= i < n then
+the branch E_i is selected. As in a conditional expression, only the selected
+branch is evaluated, and its value becomes the value of the entire expression.
+
+The behaviour when i<0 or i>=n depends on the optional presence of one or two
+additional clauses; in itself this out of bounds condition never causes an
+error. One may however call 'error' in one or both of the additional clauses if
+one wishes an out of bounds value to be treated as invalid.
+
+In the basic form above, the value i will be replaced if it lies outside the
+given range by its remainder r=i%n modulo n, which then selects the branch E_r.
+
+If one additional clause introduced by 'else' is provided, as in the form
+
+  case I
+  in E_0
+  , E_1
+  , ...
+  , E_{n-1}
+  else F
+  esac
+
+then F is the branch selected when i<0 or i>=n. If two additional clauses
+are provided, the first is introduced by 'then' and the second by 'else':
+
+  case I
+  then F
+  in E_0
+  , E_1
+  , ...
+  , E_{n-1}
+  else G
+  esac
+
+here F is the branch selected when i<0, while G is selected when i>=n.
+
+The placement of the 'else' branch, and if present the 'then' branch, with
+respect to the comma-separated list of 'in' branches is fairly flexible (but
+does not affect the meaning in any way): they may be mentioned before, after, or
+(as above) on both sides of that list. The only restriction is that when both
+are present, the 'then' branch should occur before the 'else' branch.
+
+The number n of 'in' branches is only requred to be nonzero. As a consequence,
+one can test whether an integer I is negative, zero, or positive using an
+integer case expression of the form 'case I then F in E else G esac'.
 
 In the conditional or case expression, the branches should all have the same
 type that will become the type of the whole expression. However, all but one
@@ -1568,30 +1623,115 @@ which variant will occur, or can only handle one or a few variants usefully.
 ** While loops
 
 Loops come in various flavors, each one returning a row value with one
-component for each iteration of the loop (however for loops in voided context,
-no result is constructed). There are simple while loops
+component for each iteration of the loop. However, when the result of the loop
+will be unused, it is not constructed at all; therefore loops can be used as
+traditionally simply to repeat execution statement, with no lost efficiency.
+
+There are while loops, whose simplest form is
 
   while ... do ... od
 
 with as usual a continuation condition after 'while'. This condition is
-evaluated before each iteration, but if some action must be performed each
-time before the condition is tested, it suffices to use a sequenced expression
-as condition. The other expression is the loop body; it is evaluated as long
-as the condition evaluated to 'true', and the values (all of the same type) of
-the evaluations of the loop body for, in order, the components of the row
-value returned by the loop. Obviously evaluating the loop body (or maybe of the
-condition itself) must potentially involve a a side effect susceptible of
-changing the loop condition, if the loop is ever to terminate. So the loop in
+evaluated before each iteration, and if it eveluates to false, there is no
+further iteration and the evaluation of the loop is completed. The loop body is
+the expression between 'do' and 'od', and it is evaluated once after each time
+the condition evaluates to 'true'. The value of the loop is the list of the
+values (all of the same type) returned by the evaluation of the loop body, in
+order; their number is the number of times the condition evaluated true, which
+may be 0. Obviously evaluating the loop body (or maybe of the condition itself)
+must potentially involve a a side effect susceptible of changing the loop
+condition, if the loop is ever to terminate. If some action must be performed
+each time before the condition is tested, it suffices to use a sequenced
+expression after 'while', with as final component the actual condition.
+
+So the loop in
 
   let i=0 in while i<=n do i+:=1 od
 
-will produce a row [1,2,...,n]. Often the side effect is required to
-take place after a component to the row result is contributed; to that end and
-expression sequenced by 'next' can be used. So for instance the variation
+will produce a row [1,2,...,n] (since the body 'i+:=1', which stands for
+'i:=i+1', returns the assigned value 'i+1'). Often the side effect is required
+to take place after a component to the row result is contributed; to that end
+and expression sequenced by 'next' can be used. So for instance the variation
 
   let i=0 in while i<=n do i next i+:=i od
 
-produces the row [0,1,...,n-1].
+produces the row [0,1,...,n-1]. It can also be useful to use 'next' in the
+condition of the loop, to program an action that is to be performed whether or
+not the loop will terminate, but after the evaluation of the condition proper;
+this is possible, provided the condition is parenthesized (without which there
+could be ambiguity, in view of the possibilities discussed below).
+
+While the above form of the while-loop suffices in many cases, the axis language
+allows for more flexible uses, in which the condition and loop body are
+considered together rather than as two completely separate expressions. A first
+manifestation of this is that local variables introduced by 'let' in the
+condition (for which a separate instance is created each time the condition is
+eavluated) remain in scope in the loop body. For instance, in Euclids algorithm
+for the greatest common divisor of two integers a,b, one needs to repeatedly
+compute the remainder r=a%b, stopping when r=0, but when r>0 also using r to
+replace a. Rather than recomputing r, or keeping it in a variable not local to
+the loop, this can be conveniently written (assuming 0<b<=a initially) as
+
+  while let r=a%b in r!=0 do a:=b; b:=r od; b
+
+Syntactically, the 'do' behaves like ';' rather than as part of the 'while'
+construction: the above expression would be implicitly parenthesised as
+
+  while let r=a%b in (r!=0 do a:=b; b:=r) od; b
+
+which in fact may be written explicitly like that if one likes to.
+
+The condition and following loop body thus become like a single expression,
+which returns a value that either signals termination of the loop or else
+signals continuation while producing a component added to the value of the loop.
+This "expression" can only occur inside a while-loop, and has more limited way
+of composition than ordinary expressions: descending from the loop, it can be
+the body of a 'let' declaration, the second part in a sequence expression using
+a semicolon, and as we saw it can be parenthesized. It can also be the branch of
+a choice expression, in which case all branches must have a separate 'do', each
+providing both a termination condition and their own loop body. This may seem
+odd, but can be useful when the way to proceed in a loop depends on some
+possibly elaborate case distinction, where the decision whether or not to
+terminate the loop is not taken right at the beginning.
+
+Here is an example to illustrate such a construct, even though one could do
+without in this case. Suppose from a positive integer variable n one wishes to
+construct a list of numbers, each obtained by dividing the previous one by 2 if
+the division is exact, or else multiplying it by 3 and adding 1, except that
+when n=1 the iteration terminates. The following loop achieves this (with the
+value of the entire loop clause being the list of numbers we wanted to build):
+
+  while n>1 do n:=if n%2=0 then n\2 else 3*n+1 fi od
+
+Here we make the termination test right away. Instead we could make the even/odd
+distinction first, and do the termination test only in the odd case, giving:
+
+  while if n%2=0 then true do n:=n\2 else n>1 do n:=3*n+1 fi od
+
+Note that in the 'then' branch 'true do' means that termination never occurs
+when n%2=0, while in the 'else' branch, 'n>1 do' indicates that the loop should
+terminate (without contributing to the list) when 'n>1' fails (i.e., when n=1).
+
+We see that in combination with a choice clause, a condition 'true' before 'do'
+can be quite normal; the axis language allows 'true' to be omitted in this case.
+Similarly some branch could have a condition 'false', and in this case the
+following "loop body" would be irrelevant as it can never be executed anyway;
+here the axis language allows just writing 'dont' for the branch, meaning
+terminate in this case without further ado (it is equivalent to 'false do die',
+where 'die' is a placeholder for an expression that should never be executed
+(and will give an error if it is) and has type '*' which adapts to any required
+type). With these conventions the above code can be written equivalently as
+
+  while
+    if n%2=0 then do n:=n\2
+    elif n>1 then do n:=3*n+1
+    else dont
+    fi
+  od
+
+Note that unlike the initial form given, we cannot combine the two assignments
+to n here by writing 'n:= if .... fi', since a combined condition-and-body
+expression does not deliver an ordinary value, and so cannot be assigned to n.
 
 ** Counted for loops
 

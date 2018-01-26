@@ -1,0 +1,121 @@
+{ The purpose of this module is to collect basic combinatorial functions,
+  like factorials, binomial coefficients, generators of partitions and so on
+}
+
+<basic.at
+
+set fac (int n) = int:
+   if n<2 then assert(n.>=,"Factorial of negative integer"); 1
+   else let p=n in for i:n-2 from 2 do p*:=i od; p
+   fi
+
+set binom (int n, int k) = int:
+   if n.>= and k+k>n then k:=n-k fi; { use symmetry to limit |k| }
+   case k then 0 in 1, n
+   else let p=n*(n-1) in for i:k-2 from 2 do p:=p\i*(n-i) od; p\k
+   esac
+
+set binom (rat n, int k) = rat:
+   if n.denom=1 and n.>= and k+k>n then k:=n.numer-k fi; { try for efficiency }
+   case k then 0 in 1, n
+   else let p=n*(n-1) in for i:k-2 from 2 do p:=p/i*(n-i) od; p/k
+   esac
+
+set multi_choose (int n,int k) = int: binom(n+k-1,k)
+
+set falling_power (int n, int k) = int: assert(>=0,"Negative exponent");
+   let p=1 in for i:k from n-k+1 do p*:=i od; p
+
+set rising_power (int n, int k) = int: assert(>=0,"Negative exponent");
+   let p=1 in for i:k from n do p*:=i od; p
+
+
+{ extract components at even or odd positions }
+set even_places ([int] v) = for i:ceil(#v/2) do v[2*i] od
+set odd_places  ([int] v) = for i:floor(#v/2) do v[2*i+1] od
+
+{ Matrix whose left-mulitplication to a column vector permutes it by |pi|.
+  It has nonzero entries at each (pi(j),j), it could have been defined (using
+  |matrix| from basic.at) as |matrix((#pi,#pi),(int i,int j): #(i=pi[j]) )|.
+}
+set permutation_matrix ([int] pi) = mat:
+   let n=#pi then I=n.id_mat in n# for v in pi do I[v] od
+
+set permutation_cycles ([int] pi) = [[int]]:
+  let n=#pi then todo = for :n do true od in
+  while let i=first(todo) in i.>=
+  do
+    while todo[i] do todo[i]:=false; i next i:=pi[i] od
+  od
+
+set_type Partition = [int]   { list of decreasing parts, no trailing zeros }
+
+set is_decreasing ([int] v) = bool: all(for i:#v-1 do v[i]>=v[i+1] od)
+
+set frequencies (Partition lambda) = vec:
+  let v=null(0) in
+  for l in lambda
+  do if l>=#v then v ##:= null(l-#v)#1 else v[l]+:=1 fi
+  od; v
+
+set repeat_parts (vec frequencies) = Partition:
+  ## for f@i in frequencies ~ do if =i then [] else for :f do i od fi od
+
+set sort_to_partition ([int] parts) = Partition:
+  parts.frequencies.repeat_parts
+
+{ transpose of a partition (parts assumed already in decreasing order) }
+set transpose (Partition lambda) = Partition:
+  if #lambda=0 then []
+  else let l=#lambda in
+    for i:lambda[0] { value |lambda[0]| is sentinel ensuring |l>0| below }
+    do while lambda[l-1]<=i do l-:=1 od; l
+    od
+  fi
+
+set partitions = (int n) [Partition]:
+  if n.< then []
+  else
+    let table = [[ [Partition] ]]: { partitions by sum, then by largest part }
+      for m:n+1
+      do if =m then [ [[]] ] { empty partition of 0 } else [] { nothing yet } fi
+      od
+    in
+    for m:n from 1
+    do table[m] := ([Partition]: []) { no partitions with largest part 0 } #
+      for k: if m=n then n else min(m,n-m) { truncate to need } fi from 1
+	 { form list of partitions of |m| with largest part |k| }
+      do let rem = m-k { amount remaining after using one part |k| of |m| } in
+        { traverse all partitions of |rem| with parts at most |min(k,rem)|: }
+	for lambda in ##table[rem][:min(k,rem)+1] do k#lambda od
+      od
+    od
+  ; ##table~[0] { concatenate entries of final table row }
+  fi
+
+{ partitions with even multiplicity of parts of one parity (odd or even) }
+set parity_restricted_partitions (int n, bool restrict_odd_parts) = [Partition]:
+  if n.< or restrict_odd_parts and n.is_odd then [] { imposiible, so nothing }
+  else
+    let table = [[ [Partition] ]]: { partitions by sum, then by largest part }
+      for m:n+1
+      do if =m then [ [[]] ] { empty partition of 0 } else [] { nothing yet } fi
+      od
+    in
+    for m:n from 1
+    do table[m] := ([Partition]: []) { no partitions with largest part 0 } #
+      for k: if m=n then n else min(m,n-m) { truncate to need } fi from 1
+	 { form list of partitions of |m| with largest part |k| }
+      do { traverse all partitions |m-k| with parts at most |min(k,m-k)|: }
+        if if restrict_odd_parts then k.is_odd else k.is_even fi
+        then { restrict use of k to using it twice } let rem=m-k-k in
+          if rem.< then []  { if a negative remainder, then no solutions here }
+          else for lambda in ##table[rem][:min(k,rem)+1] do [k,k]##lambda od
+          fi
+	else let rem = m-k in
+          for lambda in ##table[rem][:min(k,rem)+1] do k#lambda od
+        fi
+      od
+    od
+  ; ##table~[0] { concatenate entries of final table row }
+  fi

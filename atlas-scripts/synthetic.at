@@ -129,7 +129,7 @@ begin let p=B[i]
   [ concat(for st in stats do block_status_text(st) od ,"[",",","]")
   , ## for alpha in i_simple    do "  " + find(B,posroot_cross(alpha,p)) od
   , ## for alpha@i in i_simple
-       do "  " + case stats[i] in v0,v0,vr1,vr2,v0,v0,vi1,vi2 esac(alpha) od
+       do "  " + alpha.case stats[i] in v0,v0,vr1,vr2,v0,v0,vi1,vi2 esac od
   ]
 end
 

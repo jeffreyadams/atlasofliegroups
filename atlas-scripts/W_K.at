@@ -86,11 +86,9 @@ set small_Levi_coroots_K (KGBElt x) = mat:
 
 { all choices of x in distinguished fiber making 2rho_c dominant }
 set nice_choices_x (RealForm G) = [KGBElt]:
-  let result=[KGBElt]:[] in
-  for i in distinguished_fiber(G)
-  do let x=KGB(G,i) in if is_dominant(G,tworho_c(x)) then result#:=x fi
-  od;
-  result
+##for x in distinguished_fiber(G)
+  do if is_dominant(G,tworho_c(x)) then [x] else [] fi
+  od
 
 set nice_choice_x (RealForm G) = KGBElt: nice_choices_x(G)[0]
 

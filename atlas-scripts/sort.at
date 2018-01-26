@@ -11,13 +11,11 @@ set merge ([int] a, [int] b) = [int]: { merge weakly increasing lists }
   fi
 
 set sort = ([int]->[int]): { merge sort }
-( let ms ([int] v, int l) = v { stub } in
-  ms := (([int] v, int l): { invariant includes l=#v }
+  let rec_fun ms ([int] v, int l) = [int]: { invariant includes l=#v }
     if l<3 then if l=2 and v[0]>v[1] then v~[:] { swap } else v fi
     else let half=l\2 in merge( ms(v[:half],half), ms(v[half:],l-half) )
-    fi)
-; ([int] v) [int]: ms(v,#v) { the actual body of sort }
-)
+    fi
+  in { sort = } ([int] v) [int]: ms(v,#v)
 
 set reverse_sort ([int] v) = [int]: sort(v)~[:]
 
@@ -32,33 +30,29 @@ set sort_u ([int] v) = [int]:
   permutation of #v whose inverse is the standardisation of v (combinatorics)
 }
 set inv_standardisation = ([int]->[int]):
-( let merge([(int,int)] a, [(int,int)] b) = { merge based on first component }
-    let na=#a in
-    if na=0 then b
-    else let i=0, j=0, nb=#b { original length of b }
-    in b #:= a~[0] { sentinel; when this elt becomes b[j], then a is emptied }
-    ; while i<na or j<nb { run until i=na and j=nb=#b-1 }
-      do
-        if i=na then b[j] next j+:=1
-        else
-          let (x,):ai=a[i], (y,):bj=b[j] { x,y are sort keys, ai,bj elements }
-          in if x<=y then ai next i+:=1 else bj next j+:=1 fi
-        fi
-      od
-    fi
-  , ms ([(int,int)] v, int l) = v { recusive stub }
-  in ms:=                    { merge sort based on first component }
-  begin
-    ([(int,int)] v, int l) [(int,int)]:
-    if l>=3 then let h=l\2 in merge(ms(v[:h],h),ms(v[h:],l-h))
-    elif l=2 and (let (x,)=v[0], (y,)=v[1] in x>y) then v~[:] { swap }
-    else v { either l=1 or v sorted }
-    fi
-  end
-; ([int] v) [int]: { actual body of inv_standardisation }
+  let merge([(int,int)] a, [(int,int)] b) = { merge based on first component }
+      let na=#a in
+      if na=0 then b
+      else let i=0, j=0, nb=#b { original length of b }
+      in b #:= a~[0] { sentinel; when this elt becomes b[j], then a is emptied }
+      ; while i<na or j<nb { run until i=na and j=nb=#b-1 }
+	do
+	  if i=na then b[j] next j+:=1
+	  else
+	    let (x,):ai=a[i], (y,):bj=b[j] { x,y are sort keys, ai,bj elements }
+	    in if x<=y then ai next i+:=1 else bj next j+:=1 fi
+	  fi
+	od
+      fi
+  then
+    rec_fun ms ([(int,int)] v, int l) = [(int,int)]:
+      if l>=3 then let h=l\2 in merge(ms(v[:h],h),ms(v[h:],l-h))
+      elif l=2 and (let (x,)=v[0], (y,)=v[1] in x>y) then v~[:] { swap }
+      else v { either l=1 or v sorted }
+      fi
+  in ([int] v) [int]: { actual body of inv_standardisation }
     for (,org_i) in ms(for a@i in v do (a,i) od,#v) { attach index to entries }
     do org_i od { afterward just recover the permuted original indices }
-)
 
 { inv_standardisation -> order of indices to select from original for sorting }
 set sort_by ((Param->int) f) = ([Param] v) [Param]:

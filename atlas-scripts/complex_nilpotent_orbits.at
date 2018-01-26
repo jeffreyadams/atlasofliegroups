@@ -7,26 +7,20 @@
 { ComplexNilpotent: (RootDatum rd,vec H)
   where [H,X,Y] is a Lie triple, H\in X_*, and orbit=G.X
   H must satisfy <alpha,H>=0,1,2 for all simple roots,
-  in particular is_dominant(dual(rd),H)=true
+  in particular is_dominant(H,rd) should hold
 }
 set_type ComplexNilpotent = (RootDatum root_datum_of, vec semisimple_element)
 { field name |root_datum| would conflict with |ComplexParabolic| (too close) }
 
 set dim_nilpotent (RootDatum rd,ratvec H) = int:
-if (#H>0) then let (g_0,g_1)=(rank(rd),0) in
-for alpha in posroots(rd) do
- let c=alpha*H in
-   if c=0 then g_0+:=2
-   elif c=1 then g_1+:=1 fi od;
-{prints("g_0:", g_0, "g_1:" ,g_1);}dimension(rd)-g_0-g_1 else 0 fi
+  sum(for alpha in posroots(rd) do case alpha*H\1 in 0, 1 else 2 esac od)
 
-set diagram (ComplexNilpotent O) = [int]:
-let H=O.semisimple_element in
-for v in simple_roots(root_datum_of(O)) do H*v od
+set diagram (ComplexNilpotent(rd,H)) = [int]:
+  H*simple_roots(rd) { or: for v in simple_roots(rd) do H*v od }
 
-set dim_nilpotent(ComplexNilpotent O)=let (rd,H)=O in dim_nilpotent(rd,H)
+set dim_nilpotent (ComplexNilpotent(rd,H)) = dim_nilpotent(rd,ratvec:H)
 
-set dim_eigenspace(RootDatum rd, ratvec H, int k)=int:
+set dim_eigenspace (RootDatum rd, ratvec H, int k) = int:
 let rv=0 in
 if k=0 then rv:=rank(rd);
 for alpha in posroots(rd) do {prints("alpha:", alpha, "  ", rv);}if alpha*H=0 then rv+:=2 fi od
@@ -39,7 +33,7 @@ set max_eigenspace(RootDatum rd, ratvec H)=int:
 let rv=rat:0 in
 for alpha in posroots(rd) do if alpha*H>rv then rv:=alpha*H fi od; rat_as_int(rv)
 
-set all_eigenspaces(RootDatum rd, ratvec H)=[int]:
+set all_eigenspaces (RootDatum rd, ratvec H)=[int]:
 assert(is_dominant(dual(rd),H),"H is not dominant");
 let sum=0 in
 let rv=[int]:[] in
@@ -49,14 +43,10 @@ rv#:=d;if k=0 then sum+:=d  else sum+:=2*d fi od ;
 {prints("sum=", sum, " dimension(G)=", dimension(rd));}
 rv
 
-set extract_even([int] v)=for i:(#v+1)\2 do v[2*i] od
-set extract_odd([int] v)=for i:#v\2 do v[2*i+1] od
-
-set is_decreasing([int] v)=let rv=true in
-for i:#v-1 do if v[i]<v[i+1] then rv:=false fi od ;rv
-
-set even_eigenspaces(RootDatum rd, ratvec H)=[int]:extract_even(all_eigenspaces(rd,H))
-set odd_eigenspaces(RootDatum rd, ratvec H)=[int]:extract_odd(all_eigenspaces(rd,H))
+set even_eigenspaces (RootDatum rd, ratvec H) = [int]:
+  even_places(all_eigenspaces(rd,H))
+set odd_eigenspaces(RootDatum rd, ratvec H)=[int]:
+  odd_places(all_eigenspaces(rd,H))
 
 {set dim_nilpotent(KGBElt x,ratvec H)=
 let G=real_form(x) in

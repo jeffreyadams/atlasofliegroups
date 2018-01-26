@@ -332,19 +332,13 @@ set theta_induce_irreducible (ParamPol P,RealForm G) = ParamPol:
 }
 {. (Auxiliary function) .}
 set map_into_distinguished_fiber (KGBElt x)=KGBElt:
-  begin assert(no_Cminus_roots(x),"Only defined if no C- roots")
-  ; let G=real_form(x) then F=distinguished_fiber(G)
-  then index=#F-1, t=torus_factor(x), tb=torus_bits(x)
-  in
-{  while index>=0 and t!=torus_factor(KGB(G,F[index])) do index-:=1 od}
-  while  index>=0 and tb!= torus_bits(KGB(G,F[index])) do index-:=1 od
-  ; if index<0
-  then prints("x:", x)
-  ; error("the torus parts for the fiber over x" +
-          " do not embed in those for the distinguished fiber")
-  fi
-  ; KGB(G,F[index])
-  end
+begin assert(no_Cminus_roots(x),"Only defined if no C- roots")
+; let G=real_form(x), tb=torus_bits(x) in
+  for x0 in distinguished_fiber(G) do if torus_bits(x0)=tb then return x0 fi od
+; { if we get here, no suitable |x0| was found }
+   error("the torus parts for the fiber over ",x
+        ," do not embed in those for the distinguished fiber")
+end
 
 {. Map KGB element x to x_K in the distinguished fiber; if necessary, use
    complex cross actions first to move x to a fiber without C- roots. .}

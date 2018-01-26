@@ -1791,7 +1791,7 @@ struct conditional_node
   {@; branches.next.reset(new
       containers::sl_node<expr>(std::move(else_branch)));
   }
-  @< Other constructor for |conditional_node| @>@;
+  @< Other constructors for |conditional_node| @>@;
 };
 
 @ The tag used for these expressions is |conditional_expr|.
@@ -1836,7 +1836,9 @@ isomorphic nodes, and therefore use |if_variant|.
 
 @< Cases for copying... @>=
 case conditional_expr:
-case int_case_expr:
+case int_case_expr0:
+case int_case_expr1:
+case int_case_expr2:
 case union_case_expr:
   if_variant=other.if_variant;
 break;
@@ -1846,7 +1848,9 @@ automatic.
 
 @< Cases for destroying... @>=
 case conditional_expr:
-case int_case_expr:
+case int_case_expr0:
+case int_case_expr1:
+case int_case_expr2:
 case union_case_expr:
    delete if_variant; break;
 
@@ -1866,32 +1870,42 @@ break;
 For a long time the language had no multi-way branching expression at all.
 Currently we implement a \&{case} expression selecting based on an integer
 value, explicit branches being given for a finite segment of the possible
-values. With the later introduction of distinguished union type there will be
-a richer set of \&{case} expressions.
+values. We also allow for the user to provide one or two clauses specifying what
+to do for a value outside the range determined by the branches.
 
 As a by-effect of representing the branches of a conditional expression as a
 non-empty list, the integer case expression becomes structurally
 \emph{equivalent} to the conditional expression (this time the
 branches can form a non-empty list of any length). So for the parse we just
-need a tag value to discriminate the two, but not a new variant in the union.
+need new tag values (three of them, to accommodate $0$, $1$, or $2$
+out-of-bounds clauses) to discriminate these case expressions from conditional
+expressions, but not a new variant in the union.
 
-@< Enumeration tags for |expr_kind| @>= int_case_expr, @[@]
+@< Enumeration tags for |expr_kind| @>=
+int_case_expr0, int_case_expr1, int_case_expr2, @[@]
 
 @~On the other hand, we do need a different constructor for
 |conditional_node| to handle the more general list. It is in fact more
 straightforward than the previous one.
 
-@< Other constructor for |conditional_node| @>=
+@< Other constructors for |conditional_node| @>=
 conditional_node(expr&& condition, containers::sl_node<expr>&& branches)
 @/: condition(std::move(condition))
   , branches(std::move(branches))
   @+{}
 
 @
-We define a function for constructing the expression as usual.
+We define functions for constructing the expression as usual, for once using the
+same name and argument-based overloading to distinguish between them.
 
 @< Declarations of functions for the parser @>=
 expr_p make_int_case_node(expr_p selector, raw_expr_list ins, const YYLTYPE& loc);
+expr_p make_int_case_node
+  (expr_p selector, raw_expr_list ins, expr_p out, const YYLTYPE& loc);
+expr_p make_int_case_node
+  (expr_p selector, raw_expr_list ins, expr_p pre, expr_p post,
+   const YYLTYPE& loc);
+
 
 @~This implementation used to be not straightforward, because these case
 expressions were converted using a subscription from a list of functions
@@ -1916,17 +1930,41 @@ expr_p make_case_node
   return new expr(kind, new @|
                   conditional_node(std::move(selector),std::move(ins)),loc);
 }
-
+@)
 expr_p make_int_case_node(expr_p s, raw_expr_list i, const YYLTYPE& loc)
-{@; return make_case_node(int_case_expr,s,i,loc); }
+{@; return make_case_node(int_case_expr0,s,i,loc); }
+expr_p make_int_case_node
+  (expr_p selector, raw_expr_list ins, expr_p out, const YYLTYPE& loc)
+{ expr_ptr sel(selector); expr_list in_list(ins);
+  expr_ptr out_expr(out); // take ownership
+  in_list.push_front(std::move(*out_expr)); // no need to |release| empty shell
+  return make_case_node(int_case_expr1,sel.release(),in_list.release(),loc);
+}
+expr_p make_int_case_node
+  (expr_p selector, raw_expr_list ins, expr_p pre, expr_p post,
+   const YYLTYPE& loc)
+{ expr_ptr sel(selector); expr_list in_list(ins);
+  expr_ptr pre_expr(pre); expr_ptr post_expr(post);
+   // take ownership
+  in_list.push_front(std::move(*post_expr));
+  in_list.push_front(std::move(*pre_expr));
+  return make_case_node(int_case_expr2,sel.release(),in_list.release(),loc);
+}
 
 @ To print an integer case expression at parser level, we do the obvious.
 
 @< Cases for printing... @>=
-case int_case_expr:
+case int_case_expr0:
+case int_case_expr1:
+case int_case_expr2:
 { const auto& c=*e.if_variant;
   wel_const_iterator it(&c.branches);
-  out << " case " << c.condition << " in " << *it;
+  out << " case " << c.condition;
+  if (e.kind==int_case_expr2)
+    out << " then " << *it++;
+  if (e.kind!=int_case_expr0)
+    out << " else " << *it++;
+  out << " in " << *it;
   for (++it; not it.at_end(); ++it)
     out  << ", " << *it;
   out << " esac ";

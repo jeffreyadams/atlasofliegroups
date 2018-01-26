@@ -1,24 +1,35 @@
 <basic.at
 
-{enhancements of commands in basic.at to include pad_char instead of " "}
+{ generalise adjustment functions from basic.at to handle non-space padding }
 set l_adjust (int w, string s, string pad_char) = string:
   let d=w-#s in if <=d then s else s##(pad_char*d) fi
 set r_adjust (int w, string s, string pad_char) = string:
   let d=w-#s in if <=d then s else (pad_char*d)##s fi
 set c_adjust (int w, string s,string pad_char) = string:
-  let d=w-#s in if <=d then s else let h=d\2 in (pad_char*h) ## s ## (pad_char*(d-h)) fi
-set pad(string s,string alignment,int padding,string pad_char)=string:
-if alignment[0]="l" then l_adjust(padding,s,pad_char)
-elif alignment[0]="r" then r_adjust(padding,s,pad_char)
-else c_adjust(padding,s,pad_char) fi
+  let d=w-#s in
+  if d.<= then s { no room for padding, so don't try }
+  else let h=d\2 in (pad_char*h) ## s ## (pad_char*(d-h))
+  fi
 
-set tabulate([[string]] data, string alignment, int cell_padding, string pad_char )=
-let first_line=data[0] then
-n=#first_line then
-max=for i:n do
- let m=max(for j:#data do #data[j][i] od) in m od
-in
-for i:#data do
- let y="" in
- for x@j in data[i] do let p=max[j]+cell_padding in  y##:=pad(x,alignment,p,pad_char)  od; prints(y) od
+{ pad string with copies of |pad_char| (for lining up columns in tables) }
+set pad (string s,string alignment,int padding,string pad_char) = string:
+  case char_index(alignment,"lr")
+  in l_adjust(padding,s,pad_char), r_adjust(padding,s,pad_char)
+  else c_adjust(padding,s,pad_char)
+  esac
 
+{ print string matrix (by rows) |data|, aligining each column to largest width
+  plus |cell_padding|, while padding uniformly with |pad_char| (of size 1)
+}
+set tabulate ([[string]] data,
+    string alignments, int cell_padding, string pad_char) = void:
+  let n_cols = #alignments { string length should match number of columns }
+  then max_per_column = for j:n_cols do max(for d in data do #d[j] od) od in
+  for d in data
+  do assert(#d=n_cols,"number of columns should match length alignment string");
+    for x@j in d
+    do let c = pad_char[j % #pad_char] { use padding chars cyclically } in
+      (c*if =j then 0 else cell_padding fi) ##
+      pad(x,alignments[j],max_per_column[j],c)
+    od.##.prints
+  od

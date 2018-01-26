@@ -92,9 +92,10 @@
 %destructor { destroy_expr ($$); } do_expr do_lettail do_iftail iftail
 %destructor { destroy_formula($$); } formula_start
 %destructor { delete $$; } INT STRING
-%type  <expression_list> commalist do_commalist commalist_opt barlist commabarlist
+%type <expression_list> commalist do_commalist commalist_opt
+%type <expression_list> barlist do_barlist commabarlist
 %destructor { destroy_exprlist($$); } commalist do_commalist commalist_opt
-%destructor { destroy_exprlist($$); } barlist commabarlist
+%destructor { destroy_exprlist($$); } barlist do_barlist commabarlist
 %type <decls> declarations declaration
 %destructor { destroy_letlist($$); } declarations declaration
 
@@ -117,8 +118,8 @@
 %type <id_sp> id_specs id_specs_opt typedef_struct_specs typedef_union_specs
 %destructor { destroy_type_list($$.typel);destroy_pattern($$.patl); }
 	    id_specs id_specs_opt
-%type <case_l> caselist
-%destructor { destroy_case_list($$); } caselist
+%type <case_l> caselist do_caselist
+%destructor { destroy_case_list($$); } caselist do_caselist
 %type <typedef_l> type_equation type_equations
 %destructor { destroy_typedef_list($$); } type_equation type_equations
 
@@ -338,12 +339,25 @@ unit    : INT { $$ = make_int_denotation($1,@$); }
 	| STRING { $$ = make_string_denotation($1,@$); }
 	| '$' { $$=make_dollar(@$); }
 	| IF iftail { $$=$2; }
+	| IF expr ELSE expr THEN expr FI
+	  { $$=make_conditional_node($2,$6,$4,@$); }
 	| CASE expr IN commalist ESAC
 	  { $$=make_int_case_node($2,reverse_expr_list($4),@$); }
+	| CASE expr IN commalist ELSE expr ESAC
+	  { $$=make_int_case_node($2,reverse_expr_list($4),$6,@$); }
+	| CASE expr ELSE expr IN commalist ESAC
+	  { $$=make_int_case_node($2,reverse_expr_list($6),$4,@$); }
+	| CASE expr IN commalist THEN expr ELSE expr ESAC
+	  { $$=make_int_case_node($2,reverse_expr_list($4),$6,$8,@$); }
+	| CASE expr THEN expr IN commalist ELSE expr ESAC
+	  { $$=make_int_case_node($2,reverse_expr_list($6),$4,$8,@$); }
+	| CASE expr THEN expr ELSE expr IN commalist ESAC
+	  { $$=make_int_case_node($2,reverse_expr_list($8),$4,$6,@$); }
 	| CASE expr IN barlist ESAC
 	  { $$=make_union_case_node($2,reverse_expr_list($4),@$); }
 	| CASE expr '|' caselist ESAC
 	  { $$=make_discrimination_node($2,$4,@$); }
+
 	| WHILE do_expr tilde_opt OD { $$=make_while_node($2,2*$3,@$); }
 	| FOR pattern_opt IN expr tilde_opt DO expr tilde_opt OD
 	  { struct raw_id_pat p,x; p.kind=0x2; x.kind=0x0;
@@ -365,7 +379,7 @@ unit    : INT { $$ = make_int_denotation($1,@$); }
 	                     ,$5,2*$6+4,@$); }
 	| FOR IDENT ':' expr DOWNTO expr DO expr OD
 	  { $$=make_cfor_node($2,$4,$6,$8,1,@$); }
-	| '(' expr ')'	       { $$=$2; }
+	| '(' expr ')'		       { $$=$2; }
 	| BEGIN expr END	       { $$=$2; }
 	| '[' commalist_opt ']'
 		{ $$=wrap_list_display(reverse_expr_list($2),@$); }
@@ -387,6 +401,50 @@ unit    : INT { $$ = make_int_denotation($1,@$); }
 	| BREAK INT { $$= make_break(std::stoi(*$2),@$); }
 ;
 
+commalist_opt: /* empty */	 { $$=raw_expr_list(nullptr); }
+	| commalist
+;
+
+commalist: expr  { $$=make_exprlist_node($1,raw_expr_list(nullptr)); }
+	| commalist ',' expr { $$=make_exprlist_node($3,$1); }
+;
+
+barlist: expr  '|' expr
+           { $$=make_exprlist_node($3,
+			   make_exprlist_node($1,raw_expr_list(nullptr))); }
+	| barlist '|' expr { $$=make_exprlist_node($3,$1); }
+;
+
+commabarlist: commalist '|' commalist
+	{ $$ = make_exprlist_node(wrap_list_display(reverse_expr_list($3),@$)
+		,make_exprlist_node(wrap_list_display(reverse_expr_list($1),@$)
+				   ,raw_expr_list(nullptr)));
+	}
+	| commabarlist '|' commalist
+	{ $$=make_exprlist_node
+	    (wrap_list_display(reverse_expr_list($3),@$),$1); }
+;
+
+caselist: IDENT closed_pattern  ':' expr { $$=make_case_node($1,$2,$4); }
+	| pattern '.' IDENT ':' expr     { $$=make_case_node($3,$1,$5); }
+	| IDENT ':' expr
+	  { struct raw_id_pat id; id.kind=0x0; $$=make_case_node($1,id,$3); }
+	| ELSE expr
+	  { struct raw_id_pat id; id.kind=0x0; $$=make_case_node(-1,id,$2); }
+	| caselist '|' IDENT closed_pattern ':' expr
+	  { $$=append_case_node($1,$3,$4,$6); }
+	| caselist '|' pattern '.' IDENT ':' expr
+	  { $$=append_case_node($1,$5,$3,$7); }
+	| caselist '|' IDENT ':'  expr
+	  { struct raw_id_pat id; id.kind=0x0;
+	    $$=append_case_node($1,$3,id,$5);
+	  }
+	| caselist '|' ELSE expr
+	  { struct raw_id_pat id; id.kind=0x0;
+	    $$=append_case_node($1,-1,id,$4);
+	  }
+;
+
 do_expr : LET do_lettail { $$=$2; }
 	| tertiary ';' do_expr { $$=make_sequence($1,$3,0,@$); }
 	| tertiary DO expr { $$=make_sequence($1,$3,2,@$); }
@@ -394,8 +452,25 @@ do_expr : LET do_lettail { $$=$2; }
 	| DONT { $$=
 	    make_sequence(make_bool_denotation(false,@1),make_die(@$),2,@$); }
 	| IF do_iftail { $$=$2; }
+        | IF expr ELSE do_expr THEN do_expr FI
+	  { $$=make_conditional_node($2,$6,$4,@$); }
 	| CASE expr IN do_commalist ESAC
 	  { $$=make_int_case_node($2,reverse_expr_list($4),@$); }
+	| CASE expr IN do_commalist ELSE do_expr ESAC
+	  { $$=make_int_case_node($2,reverse_expr_list($4),$6,@$); }
+	| CASE expr ELSE do_expr IN do_commalist ESAC
+	  { $$=make_int_case_node($2,reverse_expr_list($6),$4,@$); }
+	| CASE expr IN do_commalist THEN do_expr ELSE do_expr ESAC
+	  { $$=make_int_case_node($2,reverse_expr_list($4),$6,$8,@$); }
+	| CASE expr THEN do_expr IN do_commalist ELSE do_expr ESAC
+	  { $$=make_int_case_node($2,reverse_expr_list($6),$4,$8,@$); }
+	| CASE expr THEN do_expr ELSE do_expr IN do_commalist ESAC
+	  { $$=make_int_case_node($2,reverse_expr_list($8),$4,$6,@$); }
+	| CASE expr IN do_barlist ESAC
+	  { $$=make_union_case_node($2,reverse_expr_list($4),@$); }
+	| CASE expr '|' do_caselist ESAC
+	  { $$=make_discrimination_node($2,$4,@$); }
+        | '(' do_expr ')' { $$=$2; }
 ;
 
 do_lettail : declarations IN do_expr { $$ = make_let_expr_node($1,$3,@$); }
@@ -410,6 +485,32 @@ do_iftail : expr THEN do_expr ELSE do_expr FI
 
 do_commalist: do_expr { $$=make_exprlist_node($1,raw_expr_list(nullptr)); }
 	| do_commalist ',' do_expr { $$=make_exprlist_node($3,$1); }
+;
+
+do_barlist: do_expr  '|' do_expr
+           { $$=make_exprlist_node($3,
+			   make_exprlist_node($1,raw_expr_list(nullptr))); }
+	| do_barlist '|' do_expr { $$=make_exprlist_node($3,$1); }
+;
+
+do_caselist: IDENT closed_pattern  ':' do_expr { $$=make_case_node($1,$2,$4); }
+	| pattern '.' IDENT ':' do_expr     { $$=make_case_node($3,$1,$5); }
+	| IDENT ':' do_expr
+	  { struct raw_id_pat id; id.kind=0x0; $$=make_case_node($1,id,$3); }
+	| ELSE do_expr
+	  { struct raw_id_pat id; id.kind=0x0; $$=make_case_node(-1,id,$2); }
+	| do_caselist '|' IDENT closed_pattern ':' do_expr
+	  { $$=append_case_node($1,$3,$4,$6); }
+	| do_caselist '|' pattern '.' IDENT ':' do_expr
+	  { $$=append_case_node($1,$5,$3,$7); }
+	| do_caselist '|' IDENT ':'  do_expr
+	  { struct raw_id_pat id; id.kind=0x0;
+	    $$=append_case_node($1,$3,id,$5);
+	  }
+	| do_caselist '|' ELSE do_expr
+	  { struct raw_id_pat id; id.kind=0x0;
+	    $$=append_case_node($1,-1,id,$4);
+	  }
 ;
 
 
@@ -714,49 +815,5 @@ typedef_type_field : typedef_unit TYPE_ID
 	| typedef_unit '.'{ $$.type_pt=$1; $$.ip.kind=0x0; }
 ;
 
-
-commalist_opt: /* empty */	 { $$=raw_expr_list(nullptr); }
-	| commalist
-;
-
-commalist: expr  { $$=make_exprlist_node($1,raw_expr_list(nullptr)); }
-	| commalist ',' expr { $$=make_exprlist_node($3,$1); }
-;
-
-barlist: expr  '|' expr
-           { $$=make_exprlist_node($3,
-			   make_exprlist_node($1,raw_expr_list(nullptr))); }
-	| barlist '|' expr { $$=make_exprlist_node($3,$1); }
-;
-
-commabarlist: commalist '|' commalist
-	{ $$ = make_exprlist_node(wrap_list_display(reverse_expr_list($3),@$)
-		,make_exprlist_node(wrap_list_display(reverse_expr_list($1),@$)
-				   ,raw_expr_list(nullptr)));
-	}
-	| commabarlist '|' commalist
-	{ $$=make_exprlist_node
-	    (wrap_list_display(reverse_expr_list($3),@$),$1); }
-;
-
-caselist: IDENT closed_pattern  ':' expr { $$=make_case_node($1,$2,$4); }
-	| pattern '.' IDENT ':' expr     { $$=make_case_node($3,$1,$5); }
-	| IDENT ':' expr
-	  { struct raw_id_pat id; id.kind=0x0; $$=make_case_node($1,id,$3); }
-	| ELSE expr
-	  { struct raw_id_pat id; id.kind=0x0; $$=make_case_node(-1,id,$2); }
-	| caselist '|' IDENT closed_pattern ':' expr
-	  { $$=append_case_node($1,$3,$4,$6); }
-	| caselist '|' pattern '.' IDENT ':' expr
-	  { $$=append_case_node($1,$5,$3,$7); }
-	| caselist '|' IDENT ':'  expr
-	  { struct raw_id_pat id; id.kind=0x0;
-	    $$=append_case_node($1,$3,id,$5);
-	  }
-	| caselist '|' ELSE expr
-	  { struct raw_id_pat id; id.kind=0x0;
-	    $$=append_case_node($1,-1,id,$4);
-	  }
-;
 
 %%

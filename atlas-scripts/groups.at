@@ -1,45 +1,10 @@
 <basic.at
 
-{ Cartan matrix information for positions at distance d(<=2) off diagonal }
-set Cartan_dispatch (int type, int r, int min, int d, bool lower) = int:
-  if d=0 then 2    { diagonal entry }
-  elif type=4 then { Dn }
-   if if min<r-3 then d=1 else min=r-3 fi then -1 else 0 fi
-  elif type=5 then { En }
-   if d=if min<2 then 2 else 1 fi then -1 else 0 fi
-  elif d=2 then 0  { nodes far apart in liear diagrams }
-  elif type<4 then { classical linear diagrams }
-   if type = if lower then 2 else 3 fi and min=r-2 then -2 else -1 fi
-  elif type=6 then if lower and min=1 then -2 else -1 fi { F4 }
-  elif lower then -1 else -3 { G2 }
-  fi
-
-set Cartan_entry (int type, int r,int i, int j) = int:
-  if type=0 then 0 { null Cartan entries for torus factors }
-  else let (min,d) = if i<j then (i,j-i) else (j,i-j) fi
-       in  if d>2 then 0 else Cartan_dispatch(type,r,min,d,i<j) fi
-  fi
-
-set Cartan_matrix (int type, int r) = mat:
-  r#for j:r do for i:r do Cartan_entry(type,r,i,j) od od
-
-set Lie_type ((int,int) p) = LieType:
-  let (type,) = Cartan_matrix_type(Cartan_matrix(p)) in type
-
-set block_repeat (mat m, int n) = mat:
-  let (r,c)=shape(m) then result = null(n*r,n*c)
-  then () =
-    for k:n do for i:r do for j:c do result[k*r+i,k*c+j]:=m[i,j] od od od
-  in result
-
 { complex group for |rd| (the group viewed as a real form of doubled type) }
 set complex (RootDatum rd) = RealForm:
-  let r = rank(rd)
-  then C_inv=null(2*r,2*r)
-  then rd_C = root_datum(block_repeat(simple_roots(rd),2)
-                        ,block_repeat(simple_coroots(rd),2))
-  , () = for i:r do C_inv[i,i+r]:=1; C_inv[i+r,i]:=1 od
-  in quasisplit_form(inner_class(rd_C,C_inv))
+  let r = rank(rd) then id_2r=id_mat(r+r), twice (mat m) = block_matrix(m,m)
+  then rd_C = root_datum(twice(rd.simple_roots),twice(rd.simple_coroots))
+  in quasisplit_form(inner_class(rd_C, id_2r[r:] ## id_2r[:r] ))
 
 { complexification of a real group, another name for the same }
 set complexification = complex@RootDatum
@@ -103,20 +68,18 @@ set GSp (int n) = RootDatum:
 set SO (int n)= RootDatum:
   let (m,r)=n\%2 in
   if r=1 then root_datum(type_B_roots(m),type_C_roots(m))
-  else let r=type_D_roots(m) in root_datum(r,r)
+  else let roots=type_D_roots(m) in root_datum(roots,roots)
   fi
 
-set SO_Lie_type (int n) = LieType: { same as Lie_type(SO(n)) }
-  if n>6 then let (m,r)=n\%2 in if r=0 then "D" else "B" fi + int_format(m)
-  elif n=1 then ""
-  elif n=2 then "T1"
-  elif n=3 then "A1"
-  elif n=4 then "A1.A1"
-  elif n=6 then "A3" else "B2"
-  fi
-
-set Spin (int n) = RootDatum: simply_connected(SO_Lie_type(n))
-set PSO (int n)  = RootDatum: adjoint(SO_Lie_type(n))
+set (Spin,PSO) { two functions that share a local definition } =
+  let SO_Lie_type (int n) = LieType: { same as Lie_type(SO(n)) }
+    case n-1 then error("Rank too small")
+    in "",  "T1", "A1", "A1.A1", "B2", "A3"
+    else let (m,r)=n\%2 in if =r then "D" else "B" fi + m
+    esac
+  in ( { Spin = } (int n) RootDatum: SO_Lie_type(n).simply_connected
+     , { PSO  = } (int n) RootDatum: SO_Lie_type(n).adjoint
+     )
 
 { real forms }
 

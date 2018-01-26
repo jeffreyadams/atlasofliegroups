@@ -3,6 +3,8 @@
 <subalgebra.at
 <tabulate.at
 
+{ The purpose of this file is computing the conjugacy classes of W }
+
 set_type ConjugacyClass = (ComplexLevi Levi, WeylElt w)
 {ComplexLevi:(rd,rd_L)
  w is a WeylElt for rd_L
@@ -11,89 +13,95 @@ set_type ConjugacyClass = (ComplexLevi Levi, WeylElt w)
 }
 
 set complex_Levi_root_numbers (ComplexLevi L) = [int]:
-  let (rd,rd_L)=L in
-  for i:semisimple_rank(rd_L)
-  do let j=find(simple_roots(rd),simple_roots(rd_L)[i])
-     in assert(j.>= and j=find(simple_coroots(rd), simple_coroots(rd_L)[i])
-              ,"roots/coroots of L are not a proper subset of those for G")
+  let (rd,rd_L)=L then scr=simple_coroots(rd) in
+  for alpha@i in simple_roots(rd_L)
+  do let j=root_index(rd,alpha) in
+     assert(j.>= and j<semisimple_rank(rd) and scr[j]=coroot(rd_L,i)
+           ,"roots/coroots of L are not a proper subset of those for G")
   ;  j
   od
 
-set root_datum (ConjugacyClass C) = RootDatum: C.Levi.rd
-set root_datum_Levi (ConjugacyClass C) = RootDatum: C.Levi.rd_Levi
-{C.Levi: complexLevi (rd,rd_L)
- C.root_datum: root datum of G
- C.root_datum_Levi: root datum of L
- C.w: WeylElt for L
+set root_datum (ConjugacyClass (L,)) = RootDatum: L.rd
+set root_datum_Levi (ConjugacyClass (L,)) = RootDatum: L.rd_Levi
+{ C.Levi: complexLevi (rd,rd_L)
+  C.root_datum: root datum of G
+  C.root_datum_Levi: root datum of L
+  C.w: WeylElt for L
 }
 
-{promote w in W(Levi) to W(G)}
-set promote(WeylElt w, RootDatum rd)=WeylElt:W_elt(rd,matrix(w))
+{ promote w in W(Levi) to W(G) }
+set promote (WeylElt w, RootDatum rd) = WeylElt: W_elt(rd,matrix(w))
 
-{promote pair (L,w_L) to element of W}
-set promote(ConjugacyClass C)=WeylElt:promote(C.w,C.root_datum)
+{ promote pair (L,w_L) to element of W }
+set promote (ConjugacyClass C) = WeylElt: promote(C.w,C.root_datum)
 
-{other direction: if w\in W_G preserves L write it
-as a Weyl group element in W_L}
-{assuming w comes from W_L}
-set restrict(WeylElt w,ComplexLevi L)=WeylElt:W_elt(L.rd_Levi,matrix(w))
+{ other direction: if w\in W_G preserves L write it
+  as a Weyl group element in W_L, assuming w comes from W_L
+}
+set restrict (WeylElt w,ComplexLevi L) = WeylElt:
+  W_elt(L.rd_Levi,matrix(w))
 
-{apply this to the Levi defined by w}
-set restrict(WeylElt w)=(ComplexLevi,WeylElt):
-let (,L)=Levi_of_w(w) in
- ((w.root_datum,L),restrict(w,(w.root_datum,L)))
+{ apply this to the Levi defined by w }
+set restrict (WeylElt w) = (ComplexLevi,WeylElt):
+  let (,L)=Levi_of_w(w)then rd_L=(w.root_datum,L) in (rd_L,restrict(w,rd_L))
 
-set order(ConjugacyClass C)=int:order(C.w)
-
+set order (ConjugacyClass C) = int: order(C.w)
 
 
-{is_long(rd,alpha) returns true if and only if 
-the irreducible component of rd containing alpha has two root lengths and alpha is long
+
+{ is_long(rd,alpha) returns true if and only if the irreducible component of
+  rd containing alpha has two root lengths and alpha is long
 }
 
-set is_long(RootDatum rd,vec alpha)=bool: first(for beta in posroots(rd)  do beta!=alpha and alpha*coroot(rd,beta)>1 od)>-1
-set is_short(RootDatum rd,vec alpha)=bool:not is_long(rd,alpha)
+set is_long (RootDatum rd,vec alpha) =bool:
+  any(for beta in posroots(rd) do coroot(rd,beta)*alpha>1 and beta!=alpha od)
 
-set is_elliptic_conjugate_F4_special_case(WeylElt x,WeylElt y)=bool:
-{assuming type=F4 (simple) and same char_poly:}
-if (order(x)=6 and length(x)=10) {x is either D4 or C3+A1; => y is also } then
- let rd=x.root_datum then
- alpha=kernel(1+matrix(x))[0] then
- beta=kernel(1+matrix(y))[0] in  
- ((is_long(rd,alpha) and is_long(rd,beta)) or (is_short(rd,alpha) and is_short(rd,beta))) else true fi
+set is_short(RootDatum rd,vec alpha)=bool: not is_long(rd,alpha)
+
+set is_elliptic_conjugate_F4_special_case (WeylElt x,WeylElt y) = bool:
+{ assuming type=F4 (simple) and same char_poly: }
+  if order(x)=6 and length(x)=10 {x is either D4 or C3+A1; => y is also }
+  else true
+  then
+    let rd=x.root_datum
+    , alpha=kernel(1+matrix(x))[0], beta=kernel(1+matrix(y))[0]
+    in is_long(rd,alpha)=is_long(rd,beta)
+  fi
 
 set is_elliptic_conjugate (WeylElt x,WeylElt y) = bool:
   assert(x.root_datum=y.root_datum,"Weyl elements are for different root data");
   assert(is_elliptic(x) and is_elliptic(y),"Weyl element is not elliptic");
   let rd=x.root_datum then
   (type,)=(%Lie_type(rd))[0] in
-  if not char_poly(matrix(x))=char_poly(matrix(y)) then false 
+  if not char_poly(matrix(x))=char_poly(matrix(y)) then false
   elif type !="F" then true  else
      assert(is_simple(rd), "Sorry can't handle non-simple groups of type F4");
      is_elliptic_conjugate_F4_special_case(x,y) fi
 
 set is_conjugate(WeylElt x,WeylElt y) = bool:
-   if (is_elliptic(x) and is_elliptic(y)) then
-   is_elliptic_conjugate(x,y) {takes care of F4 special case} else 
-   let ((,L),(,M))=(Levi_of_w(x),Levi_of_w(y)) in 
-   is_conjugate(x.root_datum, L,M) and  char_poly(matrix(x))=char_poly(matrix(y)) fi
+   if is_elliptic(x) and is_elliptic(y)
+   then is_elliptic_conjugate(x,y) {takes care of F4 special case}
+   else let ((,L),(,M))=(Levi_of_w(x),Levi_of_w(y)) in
+     is_conjugate(x.root_datum, L,M) and
+     char_poly(matrix(x))=char_poly(matrix(y))
+   fi
 {
-
 assert(x.root_datum=y.root_datum,"Weyl elements are for different root data");
   (type,)=(%Lie_type(L)[0] {for F4 case} in
   if is_conjugate(x.root_datum, L,M) then
-    if is_simple(x.root_datum) and type="F" and 
+    if is_simple(x.root_datum) and type="F" and
        is_elliptic(x) and is_elliptic(y) then is_elliptic_conjugate(
   (type,)=
-  if 
+  if
    is_simple(L) and is_simple
-  if is_simple(s.root_datum) then 
+  if is_simple(s.root_datum) then
 
 }
 
-{. list of conjugacy classes of rd .}
 set conjugacy_classes (RootDatum rd) = [ConjugacyClass]:
-##for L in Levi_classes(rd) do for w in elliptic(L.rd_Levi) do (L,w) od od
+##for L in Levi_classes(rd)
+  do for w in elliptic(L.rd_Levi) do (L,w) od
+  od
 
 {. list of conjugacy class representatives of rd .}
 set conjugacy_class_reps (RootDatum rd) = [WeylElt]:
@@ -124,19 +132,22 @@ set conjugacy_class_rep (WeylElt w) =WeylElt:
 
 { test: if j^th conjugacy class is only conjugate to itself }
 set test_conjugacy_class([WeylElt] C, int j)= void:
-for i:#C do if is_conjugate(C[i],C[j]) then prints(i, " ", C[i]) fi od
+  for Ci@i in C do if is_conjugate(Ci,C[j]) then prints(i, " ", C[i]) fi od
 
-{ test: class i =class j <=> i=j }
+{ test whether all representatives are conjugate to just themselves }
 set test_conjugacy_classes([WeylElt] C)= bool:
-let test=for i:#C do
-    let sum=sum(for j:#C do if is_conjugate(C[i],C[j]) then 1 else 0 fi od) in
-    if sum !=1 then prints("i ", i, " ", sum) fi;
-sum od in test=for i:#test do 1 od
+let test =
+  for Ci@i in C
+  do let count=sum(for Cj in C do #is_conjugate(Ci,Cj) od) in
+    if count!=1 then prints("i ", i, " ", count) fi
+  ; count
+  od
+  in all(#test,(int i)bool: test[i]=1)
 
 { compute conjugacy class of x as a list of Weyl group elements
   conjugacy_class_extra returns ([WeylElt] conjugators, [WeylElt] class),
-  where class is the conjugacy  class as list of elements, and for each i one has
-  conjugators[i]*x*conjugators[i]^{-1}=class[i]
+  where class is the conjugacy  class as list of elements, and for each i one
+  has conjugators[i]*x*conjugators[i]^{-1}=class[i]
 }
 set conjugacy_class_elements_extra (WeylElt x) = ([WeylElt],[WeylElt]):
   let rd=x.root_datum
@@ -157,14 +168,17 @@ set conjugacy_class_elements_extra (WeylElt x) = ([WeylElt],[WeylElt]):
 set conjugacy_class_elements (WeylElt w) = [WeylElt]:
   let (,b)=conjugacy_class_elements_extra(w) in b
 
-{brute force calculation of size of conjugacy class}
+{ brute force calculation of size of conjugacy class }
 set size_of_conjugacy_class_elementary (WeylElt w) = int:
-{prints("brute force calculation size of conjugacy class  for ", w.root_datum, " ", w);}
-#conjugacy_class_elements (w)
-set order_of_centralizer_elementary (WeylElt w) = int: order_W(w.root_datum)\size_of_conjugacy_class_elementary(w)
+{ prints("brute force calculation size of conjugacy class  for ", w.root_datum
+        , " ", w); }
+  #conjugacy_class_elements (w)
+
+set order_of_centralizer_elementary (WeylElt w) = int:
+  order_W(w.root_datum)\size_of_conjugacy_class_elementary(w)
 
 {brute force calculation of centralizer of w}
-set centralizer_elementary(WeylElt w)=[WeylElt]:
+set centralizer_elementary (WeylElt w) = [WeylElt]:
 ##for x in W(w.root_datum) do if x*w=w*x then [x] else [] fi od
 
 set is_empty(RootDatum rd)=bool:#%Lie_type(rd)=0
@@ -172,22 +186,23 @@ set is_torus(RootDatum rd)=bool:is_empty(derived(rd))
 set derived(WeylElt w)=WeylElt:id_W(derived(w.root_datum))##w.word
 
 {. order of Cent_W(w) assuming w.root_datum is simple and w is elliptic.}
-set order_of_centralizer_elliptic_simple(WeylElt w)=int:
-let rd=w.root_datum in
-if is_torus(rd) then 1 else
-assert(is_simple(derived(rd)),"Root Datum is not simple");
-let lt=Lie_type(rd) then
-(type,rank)=(%lt)[0] in
-if length(w)=ss_rank(rd) then {Coxeter} coxeter_number(rd)
-elif matrix(derived(w))=-id_mat(ss_rank(rd)) then order_W(rd)
-elif (type="B" or type="C" or type="D") then order_of_centralizer_elliptic_BCD(w)
-else
-{type+int_format(rank)="G2" rather than "Lie type 'G2'}
-lookup_elliptic_order(type+int_format(rank),char_poly(w)) fi fi
+set order_of_centralizer_elliptic_simple (WeylElt w) = int:
+  let rd=w.root_datum in
+  if is_torus(rd) then 1
+  else assert(is_simple(derived(rd)),"Root Datum is not simple");
+    let lt=Lie_type(rd) then (type,rank)=(%lt)[0] in
+    if length(w)=semisimple_rank(rd) then {Coxeter} coxeter_number(rd)
+    elif matrix(derived(w))=-id_mat(semisimple_rank(rd)) then order_W(rd)
+    elif type="B" or type="C" or type="D"
+    then order_of_centralizer_elliptic_BCD(w)
+    else {type+int_format(rank)="G2" rather than "Lie type 'G2'}
+      lookup_elliptic_order(type+rank,char_poly(w))
+    fi
+  fi
 
 {. order of Cent_W(w) for w elliptic .}
-set order_of_centralizer_elliptic(WeylElt w)=int:
-product(for x in factorize_w(w) do order_of_centralizer_elliptic_simple(x) od)
+set order_of_centralizer_elliptic (WeylElt w) = int:
+  for x in factorize_w(w) do order_of_centralizer_elliptic_simple(x) od.product
 
 {L,M are Levis, w_L in W(L) (usually elliptic), W(M) normalizes L,
  compute order of Cent_{W(M)}(w_L)
@@ -221,62 +236,80 @@ prints("#normalizing cosets: ",  #norm);
 prints("#Cent_W(L): ", order_cent);
 prints("order_W(P)*cosets*cent_W(L): ", order_W(P)*#norm*order_cent);
 prints("order of W: ", order_W(rd));}
-order_W(P)*#norm*order_of_centralizer_elliptic(derived(w_L)) fi 
+order_W(P)*#norm*order_of_centralizer_elliptic(derived(w_L)) fi
 
 {. number of elements of a conjugacy class .}
-set size_of_conjugacy_class(WeylElt w)=int:order_W(w.root_datum)\order_of_centralizer(w)
-set size_of_conjugacy_class(ConjugacyClass C)=int:size_of_conjugacy_class(conjugacy_class_rep(C))
-set sizes_of_conjugacy_classes([WeylElt] S)=[int]: for w in S do size_of_conjugacy_class(w) od
-set sizes_of_conjugacy_classes([ConjugacyClass] classes)=[int]: for C in classes do size_of_conjugacy_class(C) od
-set sizes_of_conjugacy_classes(RootDatum rd)=[int]: sizes_of_conjugacy_classes(conjugacy_classes(rd))
+set size_of_conjugacy_class (WeylElt w) = int:
+  order_W(w.root_datum)\order_of_centralizer(w)
+set size_of_conjugacy_class (ConjugacyClass C) = int:
+  size_of_conjugacy_class(conjugacy_class_rep(C))
+set sizes_of_conjugacy_classes ([WeylElt] S) = [int]:
+  for w in S do size_of_conjugacy_class(w) od
+set sizes_of_conjugacy_classes ([ConjugacyClass] classes) = [int]:
+  for C in classes do size_of_conjugacy_class(C) od
+set sizes_of_conjugacy_classes(RootDatum rd) = [int]:
+  sizes_of_conjugacy_classes(conjugacy_classes(rd))
 
 {test: sum of sizes of conjugacy class = |W| }
-set test_size_of_conjugacy_classes(RootDatum rd)=(int,int):
-let c=conjugacy_classes(rd) in
-(sum(for w in c do  size_of_conjugacy_class(w)  od), order_W(rd))
+
+set test_size_of_conjugacy_classes(RootDatum rd) = (int,int):
+  let c=conjugacy_classes(rd) in
+  (sum(for w in c do  size_of_conjugacy_class(w)  od), order_W(rd))
 
 {test: sizes of conjugacy class as computed by the algorithm
  agrees with sizes computed by brute force .}
-set check_size_of_conjugacy_classes(RootDatum rd)=void:
-let classes=conjugacy_classes(rd) in
-for C@i in classes do let w=promote(C) in prints(new_line,i, " ", w, " ", order(w), " ", length(w), " ", size_of_conjugacy_class(w), " ", size_of_conjugacy_class_elementary(w)) od
-
-{. chop off first n characters of string .}
-set chop_string(int n,string s)=string:
-let S=for i:#s do s[i] od in ##S[n:]
+set check_size_of_conjugacy_classes (RootDatum rd) = void:
+  let classes=conjugacy_classes(rd) in
+  for C@i in classes
+  do let w=promote(C) in
+     prints(new_line,i, " ", w, " ", order(w), " ", length(w), " "
+           , size_of_conjugacy_class(w), " "
+           , size_of_conjugacy_class_elementary(w))
+  od
 
 {. sorting routines for conjugacy classes .}
-set sort_by(  (ConjugacyClass -> int) f)=
-  ([ConjugacyClass] v) [ConjugacyClass]:
+set sort_by( (ConjugacyClass -> int) f) = ([ConjugacyClass] v) [ConjugacyClass]:
     for index in inv_standardisation(for x in v do f(x) od) do v[index] od
-set sort_by(  (WeylElt -> int) f)=
-  ([WeylElt] v) [WeylElt]:
+set sort_by( (WeylElt -> int) f)= ([WeylElt] v) [WeylElt]:
     for index in inv_standardisation(for x in v do f(x) od) do v[index] od
-set sort_by_order = ([ConjugacyClass] -> [ConjugacyClass]): sort_by(order@ConjugacyClass)
+set sort_by_order = ([ConjugacyClass] -> [ConjugacyClass]):
+  sort_by(order@ConjugacyClass)
 set sort_by_order = ([WeylElt] -> [WeylElt]): sort_by(order@WeylElt)
 
 {. print order, length, Levi.}
-set print_conjugacy_classes([WeylElt] C)=void:
-let data=["order","length","Levi"]#for w in C do let (,L)=Levi_of_w(w)  in [int_format(order(w)), int_format(length(w)),chop_string(9,to_string(Lie_type(L)))] od
-in tabulate(data,"right",2," ")
+set print_conjugacy_classes ([WeylElt] C) = void:
+  let data=["order","length","Levi"] { column headers }
+  # for w in C
+    do let (,L)=Levi_of_w(w) in
+    [ w.order.to_string, w.length.to_string, L.Lie_type.to_string[9:] ]
+    od
+  in tabulate(data,"rrr",2," ")
 
 {. print order, length, Levi, size_of_class, cyclotomic polynomial.}
 set print_conjugacy_classes_long([WeylElt] C)=void:
-let count=0 then
-data=["order","length","Levi","size","cyclotomic"]#for w in sort_by_order(C) do let (,L)=Levi_of_w(w)  then
-size=size_of_conjugacy_class(w) then
-cyclotomics=product_of_cyclotomic(rat_poly(char_poly(w))) in
-count+:=size ;
-[int_format(order(w)), int_format(length(w)),chop_string(9,to_string(Lie_type(L))),int_format(size), to_string(cyclotomics)] od
-in tabulate(data,"right",2," ");
-prints(new_line,"sum of sizes of conjugacy classes:", count,new_line, "Order of W: ",order_W(C[0].root_datum))
+  let count=0
+  then data=["order","length","Levi","size","cyclotomic"]#
+    for w in sort_by_order(C)
+    do let (,L)=Levi_of_w(w), size=size_of_conjugacy_class(w)
+       , cyclotomics=product_of_cyclotomic(rat_poly(char_poly(w)))
+       in count+:=size;
+    [int_format(order(w)), int_format(length(w)),to_string(Lie_type(L))[9:]
+    ,int_format(size), to_string(cyclotomics)]
+    od
+  in tabulate(data,"rrrrr",2," ");
+  prints(new_line,"sum of sizes of conjugacy classes:", count,new_line
+        ,"Order of W: ",order_W(C[0].root_datum))
 
-set print_conjugacy_classes(RootDatum rd)=void:print_conjugacy_classes(conjugacy_class_reps(rd))
-set print_conjugacy_classes_long(RootDatum rd)=void:print_conjugacy_classes_long(conjugacy_class_reps(rd))
+set print_conjugacy_classes (RootDatum rd) = void:
+  print_conjugacy_classes(conjugacy_class_reps(rd))
+set print_conjugacy_classes_long (RootDatum rd) = void:
+  print_conjugacy_classes_long(conjugacy_class_reps(rd))
 
 {. print elliptic classes only .}
-set print_elliptic_conjugacy_classes(RootDatum rd)=void:print_conjugacy_classes(sort_by_order(elliptic(rd)))
-set print_elliptic_conjugacy_classes_long(RootDatum rd)=void:print_conjugacy_classes_long(sort_by_order(elliptic(rd)))
+set print_elliptic_conjugacy_classes (RootDatum rd) = void:
+  print_conjugacy_classes(sort_by_order(elliptic(rd)))
+set print_elliptic_conjugacy_classes_long (RootDatum rd) = void:
+  print_conjugacy_classes_long(sort_by_order(elliptic(rd)))
 
 {for debugging}
 set debug_data_short(WeylElt w)=(RootDatum,RootDatum,RootDatum):
@@ -297,11 +330,20 @@ norm=normalizer(coset_reps,simple_roots(L)) in
 {for debugging}
 set debug_data_long(WeylElt w)=void:
 let (L,M,P,coset_reps,order_cent,norm)=debug_data(w) in
-prints("L=",L," ", order_W(L), new_line, "M=", M," ", order_W(M), new_line, "P=",P," ", order_W(P),new_line,"coset reps=",coset_reps,new_line,"order_cent:",order_cent,new_line,"norm:",norm,new_line,"W(P)*#normalizing_cosets*cent_W(L): ", order_W(P)*#norm*order_cent,new_line, order_W(w.root_datum)/(order_W(P)*#norm*order_cent))
+prints("L=",L," ", order_W(L), new_line
+      ,"M=", M," ", order_W(M), new_line
+      ,"P=",P," ", order_W(P),new_line
+      ,"coset reps=",coset_reps,new_line
+      ,"order_cent:",order_cent,new_line
+      ,"norm:",norm,new_line
+      ,"W(P)*#normalizing_cosets*cent_W(L): "
+      , order_W(P)*#norm*order_cent,new_line
+      , order_W(w.root_datum)/(order_W(P)*#norm*order_cent))
 
 {. w\in W is conjugate to classes[i] .}
-set number(WeylElt w,[WeylElt] classes)=int:first(#classes,(int i)bool:is_conjugate(w,classes[i]))
+set number (WeylElt w,[WeylElt] classes) = int:
+  first(#classes,(int i)bool:is_conjugate(w,classes[i]))
 
 {. w\in W is in conjugate class classes[i] .}
-set number(WeylElt w,[ConjugacyClass] classes)=int:
+set number(WeylElt w,[ConjugacyClass] classes) = int:
  first(#classes,(int i)bool:is_conjugate(w,conjugacy_class_rep(classes[i])))

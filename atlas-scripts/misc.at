@@ -37,14 +37,13 @@ set  #(ParamPol P,int t)= ParamPol: { with integer coefficiens }
 
 set fiber_partition(RealForm G) = [int]: fiber_partition(Cartan_class(G,0),G)
 
-set in_distinguished_fiber(KGBElt x) = bool:
+set in_distinguished_fiber (KGBElt x) = bool:
   involution(x)=distinguished_involution(real_form(x))
 
-set distinguished_fiber (RealForm G) = [int]:
-  let i=0 in
-  while i<KGB_size(G) and in_distinguished_fiber(KGB(G,i)) do i next i:=i+1 od
+set distinguished_fiber (RealForm G) = [KGBElt]:
+  for x in KGB(G) do if x.in_distinguished_fiber then x else break fi od
 
-set ss_rank (RootDatum rd)= semisimple_rank(rd)
+set ss_rank (RootDatum rd) = semisimple_rank(rd)
 
 set dimension (RootDatum rd) = 2*nr_of_posroots(rd)+rank(rd)
 
@@ -52,10 +51,10 @@ set root_length(RootDatum rd,vec alpha) = int: rat_as_int(alpha*rho_check(rd))
 set is_simple_root(RootDatum rd,[int] alpha) = bool: root_length(rd,alpha)=1
 
 set simple_imaginary_subsystem (KGBElt x) = (mat,mat): { simple (co)roots }
-  simple_from_positive(imaginary_sys(x))
+  x.imaginary_sys.simple_system_from_positive
 
 set simple_real_subsystem (KGBElt x) = (mat,mat): { simple (co)roots }
-  simple_from_positive(real_sys(x))
+  x.real_sys.simple_system_from_positive
 
 set to_binary (int length, int n) = vec:
   let v=null(length) in

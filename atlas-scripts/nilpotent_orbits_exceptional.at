@@ -175,16 +175,16 @@ set nilpotent_lambdas_E8=[ratvec]:
 ,[1,1,1,1,1,1,1,1]
 ]
 
-set nilpotent_lambdas_E(int n)= [ratvec]:
-  if   n=6 then nilpotent_lambdas_E6
-  elif n=7 then nilpotent_lambdas_E7
-  elif n=8 then nilpotent_lambdas_E8
+set nilpotent_lambdas_E (int n) = [ratvec]:
+  case n-6 { case index counts from 0 }
+  in nilpotent_lambdas_E6, nilpotent_lambdas_E7, nilpotent_lambdas_E8
   else error("wrong rank for type E")
-  fi
+  esac
 
-set nilpotent_lambdas(RootDatum rd)=
-   let N=get_type(rd) {A..G -> 0..6} in
-    if N<=3 then nilpotent_lambdas_classical(rd)
-    elif N=4 then nilpotent_lambdas_E(rank(rd))
-    elif N=5 then nilpotent_lambdas_F4
-    else nilpotent_lambdas_G2  fi
+set nilpotent_lambdas (RootDatum rd) = [ratvec]:
+  case type_number(rd)-4
+  then nilpotent_lambdas_classical(rd)
+  in { exceptional numbers 4..6 for E,F,G }
+    nilpotent_lambdas_E(rank(rd)), nilpotent_lambdas_F4, nilpotent_lambdas_G2
+  else error("Pure torus") { type_number=7 }
+  esac
