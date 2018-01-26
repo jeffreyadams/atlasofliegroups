@@ -3,6 +3,8 @@
 <subalgebra.at
 <tabulate.at
 
+{ The purpose of this file is computing the conjugacy classes of W }
+
 set_type ConjugacyClass = (ComplexLevi Levi, WeylElt w)
 {ComplexLevi:(rd,rd_L)
  w is a WeylElt for rd_L
@@ -11,16 +13,16 @@ set_type ConjugacyClass = (ComplexLevi Levi, WeylElt w)
 }
 
 set complex_Levi_root_numbers (ComplexLevi L) = [int]:
-  let (rd,rd_L)=L in
-  for i:semisimple_rank(rd_L)
-  do let j=find(simple_roots(rd),simple_roots(rd_L)[i])
-     in assert(j.>= and j=find(simple_coroots(rd), simple_coroots(rd_L)[i])
-              ,"roots/coroots of L are not a proper subset of those for G")
+  let (rd,rd_L)=L then scr=simple_coroots(rd) in
+  for alpha@i in simple_roots(rd_L)
+  do let j=root_index(rd,alpha) in
+     assert(j.>= and j<semisimple_rank(rd) and scr[j]=coroot(rd_L,i)
+           ,"roots/coroots of L are not a proper subset of those for G")
   ;  j
   od
 
-set root_datum (ConjugacyClass C) = RootDatum: C.Levi.rd
-set root_datum_Levi (ConjugacyClass C) = RootDatum: C.Levi.rd_Levi
+set root_datum (ConjugacyClass (L,)) = RootDatum: L.rd
+set root_datum_Levi (ConjugacyClass (L,)) = RootDatum: L.rd_Levi
 { C.Levi: complexLevi (rd,rd_L)
   C.root_datum: root datum of G
   C.root_datum_Levi: root datum of L
@@ -31,7 +33,7 @@ set root_datum_Levi (ConjugacyClass C) = RootDatum: C.Levi.rd_Levi
 set promote (WeylElt w, RootDatum rd) = WeylElt: W_elt(rd,matrix(w))
 
 { promote pair (L,w_L) to element of W }
-set promote(ConjugacyClass C) = WeylElt: promote(C.w,C.root_datum)
+set promote (ConjugacyClass C) = WeylElt: promote(C.w,C.root_datum)
 
 { other direction: if w\in W_G preserves L write it
   as a Weyl group element in W_L, assuming w comes from W_L
@@ -43,7 +45,7 @@ set restrict (WeylElt w,ComplexLevi L) = WeylElt:
 set restrict (WeylElt w) = (ComplexLevi,WeylElt):
   let (,L)=Levi_of_w(w)then rd_L=(w.root_datum,L) in (rd_L,restrict(w,rd_L))
 
-set order(ConjugacyClass C)=int:order(C.w)
+set order (ConjugacyClass C) = int: order(C.w)
 
 set conjugacy_classes_by_Levi (RootDatum rd) = [(ComplexLevi,WeylElt)]:
 ##for L in Levi_classes(rd) do for w in elliptic(L.rd_Levi) do (L,w) od od

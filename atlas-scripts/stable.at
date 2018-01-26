@@ -1,3 +1,4 @@
+<basic.at
 <dual.at
 <modules.at
 
@@ -26,16 +27,12 @@ let rv=null_module(real_form(params[0])) in for i:#coefficients do rv+:=coeffici
 {S=[a_0,a_1,...] <-> permutation sigma(i)=a_i}
 
 {inverse permutation}
-set inverse_permutation([int] S)=for i:#S do find(S,i) od
+set inverse_permutation ([int] sigma) = [int]:
+  let result =for:#sigma do 0 od in
+  for a@i in sigma do result[a]:=i od; result
 
-{Matrix of a permutation: P*e_i=e_{sigma(i)} where e_i is the standard basis}
-set permutation_matrix([int] S)=mat:let rv=null(#S,#S) in for i:#S do rv[S[i],i]:=1 od;rv
-
-{S=[a_1,...,a_n] T=[b_1,...,b_n], permutation sigma(a_i)=b_i}
-set permutation_matrix([int] S,[int] T)=mat:let rv=null(#S,#S) in for i:#S do rv[find(T,S[i]),find(S,S[i])]:=1 od ;rv
-
-{permutation sigma:[a_1,...,a_n] -> sort([a_1,...,a_n]) a_i are distinct but not necessarily 0,...,n-1}
-set permutation_matrix_sort([int] S)=mat:permutation_matrix(S,sort(S))
+set permutation_matrix_sort([int] S) = mat:
+  let n=#S, sorted=sort(S) in matrix((n,n),(int i,int j)int: #(sorted[i]=S[j]) )
 
 set in_tau (int s,Param p) = bool:  { whether s is in tau(p) }
    let (,b)= tau_bitset(p) in b(s)

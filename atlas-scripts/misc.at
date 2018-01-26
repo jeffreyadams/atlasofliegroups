@@ -43,7 +43,7 @@ set in_distinguished_fiber (KGBElt x) = bool:
 set distinguished_fiber (RealForm G) = [KGBElt]:
   for x in KGB(G) do if x.in_distinguished_fiber then x else break fi od
 
-set ss_rank (RootDatum rd)= semisimple_rank(rd)
+set ss_rank (RootDatum rd) = semisimple_rank(rd)
 
 set dimension (RootDatum rd) = 2*nr_of_posroots(rd)+rank(rd)
 

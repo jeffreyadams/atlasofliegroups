@@ -2,6 +2,16 @@
 <Gaussian_elim.at
 <rational_polynomial.at { for convolve@([rat],[rat]) }
 
+{ This file implements arithmetic in cyclotomic fields
+
+  While much of the computation (notably cyclotomic polynomials themselves) is
+  integer-based, the field elements will be represented as lists of rationals.
+
+  We avoid using |polynomial.at| as it implements its |poly| type as |vec|,
+  which has inherent overflow problems; coefficients of elements of a cyclotomic
+  field can get large rapidly when inverses are taken.
+}
+
 set_type
 [ CyclotomicField = (int order, [int] Phi)
 { represent cyclotomic field by order and minpoly of generating root of 1 }
@@ -30,17 +40,17 @@ set divisors (int n) = [int]:
 
 {. Euler totient function .}
 set phi (int n) = int:
-(  assert(n>0);
+   assert(n>0);
    let p=1, b=2 in
    while not (b*b>n)
    do let (q,r)=n\%b in
       if !=r then b+:=1 { |b| is not a divisor, raise it }
-      else p*:=b-1
-      ;  while =q%b do q\:=b; p*:=b od { move factors |b| from |q| to |p| }
-      ;  n:=q
+      else p*:=b-1 { first factor |b| of |n| contributes |b-1| }
+      ; while set (q,r):=(n:=q)\%b { move quotient to |n|, and try another |b| }
+        ; =r { whether trial division succeeded }
+        do p*:=b od { move any remaining factors |b| from |n| to |p| }
       fi
-   od; if n=1 then p else p*(n-1) fi
-)
+   od; if n=1 then p else p*(n-1) { if |n>1| remains, it must be prime } fi
 
 
 {.Euclidean division of polynomial encoded [int] by a monic such polynomial.}
@@ -55,13 +65,16 @@ set divide1 ([int] P, [int] D) = ([int],[int]): { quotient, remainder }
    ;  (P[deg_D:] {quotient from upper part}, P[:deg_D] {remainder} )
    fi
 
+
 {. n^th Cyclotomic Polynomial .}
 set cyclotomic_polynomial (int n) = [int]:
-   let Phis=[[int]]:[], divs=divisors(n)
+{ implementation computes and stores inductively |Phi(d)| for all divisors |d|
+  of |n|, dividing then out for all strict divisors from initial $X^n-1$ }
+   let Phis=[[int]]:[], !divs=divisors(n)
    then locate (int d) = binary_search_first((int i)bool: divs[i]>=d,0,#divs)
    in
    for d in divs
-   do let P=[int]: (-1) # for :d-1 do 0 od # 1 in { X^d - 1 }
+   do let P=[int]: (-1) # for :d-1 do 0 od # 1 in { $X^d - 1$ }
       for dd in divisors(d)[:1~] { traverse strict divisors of |d| }
       do let (Q,R)=divide1(P,Phis[locate(dd)]) in P:=Q
       ; assert(all(for c in R do =c od),"inexact polynomial division")
@@ -248,15 +261,19 @@ set is_real (CyclotomicFieldElement z) = bool: z=z.bar
 set absolute_value_squared (CyclotomicFieldElement z) = CyclotomicFieldElement:
    z*z.bar
 
-
 { write a rational polynomial as a product of cyclotomic polynomials (if possible)
   return value [a_1,...] means Phi_{a_1}*Phi_{a_2}*...}
-set product_of_cyclotomic(RatPoly f)=[int]:
-(rec_fun divide(RatPoly f, [RatPoly] cyclotomics, [int] degrees,int degree)[int]:
+set product_of_cyclotomic (RatPoly f) = [int]:
+   (f,[RatPoly]:[],[int]:[],0).
+   (rec_fun divide(RatPoly f, [RatPoly] cyclotomics, [int] degrees,int degree)
+           [int]:
 { let ()=prints("f=",f, "cyclotomics=", cyclotomics, "degree=", degree) in}
- if degree(f)=0 then degrees else
- let Phi=rat_poly(cyclotomic_polynomial(degree+1)) then
- (g,R)=f\%Phi in
-  let (R1,)=R in if #R1=0 then divide(g,cyclotomics#Phi,degrees#(degree+1),degree) else
-divide(f,cyclotomics,degrees,degree+1) fi fi) (f,[RatPoly]:[],[int]:[],0)
+  if degree(f)=0 then degrees
+  else let Phi=rat_poly(cyclotomic_polynomial(degree+1))
+       then (g,(R1,))=f\%Phi
+       in
+    if #R1=0 then divide(g,cyclotomics#Phi,degrees#(degree+1),degree)
+    else divide(f,cyclotomics,degrees,degree+1)
+    fi
+  fi)
 
