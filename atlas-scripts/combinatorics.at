@@ -34,6 +34,20 @@ set rising_power (int n, int k) = int: assert(>=0,"Negative exponent");
 set even_places ([int] v) = for i:ceil(#v/2) do v[2*i] od
 set odd_places  ([int] v) = for i:floor(#v/2) do v[2*i+1] od
 
+{ Matrix whose left-mulitplication to a column vector permutes it by |pi|.
+  It has nonzero entries at each (pi(j),j), it could have been defined (using
+  |matrix| from basic.at) as |matrix((#pi,#pi),(int i,int j): #(i=pi[j]) )|.
+}
+set permutation_matrix ([int] pi) = mat:
+   let n=#pi then I=n.id_mat in n# for v in pi do I[v] od
+
+set permutation_cycles ([int] pi) = [[int]]:
+  let n=#pi then todo = for :n do true od in
+  while let i=first(todo) in i.>=
+  do
+    while todo[i] do todo[i]:=false; i next i:=pi[i] od
+  od
+
 set_type Partition = [int]   { list of decreasing parts, no trailing zeros }
 
 set is_decreasing ([int] v) = bool: all(for i:#v-1 do v[i]>=v[i+1] od)
