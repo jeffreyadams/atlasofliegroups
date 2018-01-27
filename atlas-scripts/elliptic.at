@@ -76,6 +76,7 @@ set ! E7_elliptic_words = [[int]]:
   ]
 set ! E8_elliptic_words = [[int]]:
   [ #8 { Coxeter element }
+  , [0,1,2,3,1,4,3,5,6,7]
   , [0,1,2,3,1,4,3,5,4,3,6,7]
   , [0,1,2,0,3,1,2,3,4,3,5,4,6,7]
   , [0,1,2,0,3,1,2,3,4,3,5,4,6,5,4,7]
@@ -171,6 +172,11 @@ set elliptic_simple = (string,int->[[int]]):
   else error("unknown type "+type)
   esac
 
+{ Form "Cartesian product" of non-empty sequence of lists of elements of W:
+  multiply together one element chosen from each list, in all possible ways
+
+  The sequence must be non-empty, since we cannot take identity in unknown |W|.
+}
 set combine_W_lists ([[WeylElt]] lists) = [WeylElt]:
   let lengths = for l in lists do #l od, len=#lists in
   for p: product(lengths)
@@ -180,13 +186,16 @@ set combine_W_lists ([[WeylElt]] lists) = [WeylElt]:
 
 set elliptic (RootDatum rd) = [WeylElt]:
   let (lt,map_to_rd) = Cartan_matrix_type(rd.Cartan_matrix), offset=0 in
-  for (,rank):type_rank in %lt
-  do for word in elliptic_simple(type_rank)
-     do W_elt(rd,for s in word do map_to_rd[offset+s] od)
+  if =#%lt then [id_W(rd)] { avoid passing empty list to |combine_W_lists| }
+  else
+     for (,rank):type_rank in %lt
+     do for word in elliptic_simple(type_rank)
+	do W_elt(rd,for s in word do map_to_rd[offset+s] od)
+	od
+     next offset+:=rank
      od
-  next offset+:=rank
-  od. combine_W_lists
-
+   . combine_W_lists
+   fi
 
 { Find classical (permutation or signed permutation) description of Weyl group
   elements in classical types. The associated root datum must have one simple
