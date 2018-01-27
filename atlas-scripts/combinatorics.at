@@ -3,6 +3,8 @@
 }
 
 <basic.at
+<sort.at
+<groups.at { for root data computed by |GL|, |Sp|, |SO| }
 
 set fac (int n) = int:
    if n<2 then assert(n.>=,"Factorial of negative integer"); 1
@@ -34,19 +36,8 @@ set rising_power (int n, int k) = int: assert(>=0,"Negative exponent");
 set even_places ([int] v) = for i:ceil(#v/2) do v[2*i] od
 set odd_places  ([int] v) = for i:floor(#v/2) do v[2*i+1] od
 
-{ Matrix whose left-mulitplication to a column vector permutes it by |pi|.
-  It has nonzero entries at each (pi(j),j), it could have been defined (using
-  |matrix| from basic.at) as |matrix((#pi,#pi),(int i,int j): #(i=pi[j]) )|.
-}
-set permutation_matrix ([int] pi) = mat:
-   let n=#pi then I=n.id_mat in n# for v in pi do I[v] od
 
-set permutation_cycles ([int] pi) = [[int]]:
-  let n=#pi then todo = for :n do true od in
-  while let i=first(todo) in i.>=
-  do
-    while todo[i] do todo[i]:=false; i next i:=pi[i] od
-  od
+{				Partitions				}
 
 set_type Partition = [int]   { list of decreasing parts, no trailing zeros }
 
@@ -119,3 +110,71 @@ set parity_restricted_partitions (int n, bool restrict_odd_parts) = [Partition]:
     od
   ; ##table~[0] { concatenate entries of final table row }
   fi
+
+
+
+{				Permutations				}
+
+{ Matrix whose left-mulitplication to a column vector permutes it by |pi|.
+  It has nonzero entries at each (pi(j),j), it could have been defined (using
+  |matrix| from basic.at) as |matrix((#pi,#pi),(int i,int j): #(i=pi[j]) )|.
+}
+set permutation_matrix ([int] pi) = mat:
+   let n=#pi then I=n.id_mat in n# for v in pi do I[v] od
+
+set permutation (mat P) { assumed a permutation matrix} = [int]:
+  (vec: #P.n_rows)*P { right-act on row [0,1,...,n-1] for one-line form }
+
+set compose_permutations ([int] sigma, [int] pi) = [int]:
+  for i in pi do sigma[i] od
+
+set inverse ([int] pi) = [int]: { hope that name causes no conflict }
+  let result=null(#pi) in for i@j in pi do result[i]:=j od; result
+
+set permute ([int] pi,vec v) = vec: { replaces |v[i]| by |v[pi.inverse[i]]| }
+  assert(#pi=#v { and |pi| is a permutation },"length mismatch");
+  let result=null(#v) in for i@j in pi do result[i]:=v[j] od; result
+
+set permutation_cycles ([int] pi) = [[int]]:
+  let n=#pi then todo = for :n do true od in
+  while let i=first(todo) in i.>=
+  do
+    while todo[i] do todo[i]:=false; i next i:=pi[i] od
+  od
+
+{ Find classical (permutation or signed permutation) description of Weyl group
+  elements in classical types. The associated root datum must have one simple
+  factor of type A-D, with standard (Bourbaki) numbering of the Dynkin diagram.
+  Such a root datum can be obtained from classical factors in the Lie type from
+  |Cartan_matrix_type|, by taking Levi subdatum of the corresponding simple
+  roots/coroots, following the mapping that |Cartan_matrix_type| also supplies.
+
+  The output is a (signed) permutation in one-line format. For type $A_n$ this
+  is just a permutation of $n+1$ (hence 0-based), for types $B_n$, $C_n$, $D_n$
+  this is a permutation of the $2n$ elements $-n, ,..., -2 -1, 1, 2, ..., n$,
+  commuting with $x \mapsto -x$, and the one-line format consists of a list of
+  the images of $1, 2, ..., n$ (1-based); it determines the signed permutation.
+}
+set classic_permutation (WeylElt w) = [int]:
+  let rd=w.root_datum then (lt,map)=Cartan_matrix_type(rd.Cartan_matrix)
+  then factors=%lt then nf=#factors
+  in assert(nf=1,"Root datum diagram is not connected ("+ nf +" components");
+  let (type,rank)=factors[0] in
+  assert(map=#rank,"Dynkin diagram is not in standard order");
+  case char_index(type,"ABCD")
+  else error("Root datum of exceptional type "+type)
+  in let n=rank+1 in (vec:#n)*W_elt(GL(n),w.word) { right act on [0,1,...,n-1] }
+  , (vec:for i:rank from 1 do i od)*W_elt(Sp(rank+rank),w.word)
+  , (vec:for i:rank from 1 do i od)*W_elt(Sp(rank+rank),w.word)
+  , (vec:for i:rank from 1 do i od)*W_elt(SO(rank+rank),w.word)
+  esac
+
+set cycle_type ([int] pi) = Partition: { cycle sizes in decreasing order }
+  for cycle in permutation_cycles(pi) do #cycle od.reverse_sort
+
+set signed_cycle_type ([int] sigma) = [int,bool]: { pairs of cycle and sign }
+  let cycles = for a in sigma do abs(a)-1 od.permutation_cycles
+  ,   flip   = for a in sigma do a.< od { whether negative, per position }
+  then size = for cycle in cycles do #cycle od
+  ,    sign = for cycle in cycles do for i in cycle do #flip[i] od.sum.is_odd od
+  in for i in inv_standardisation(size) do (size[i],sign[i]) od
