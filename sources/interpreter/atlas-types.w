@@ -1814,6 +1814,9 @@ we inverse argument and result order here.
 void W_decompose_wrapper(expression_base::level l)
 { own_vector v = get_own<vector_value>();
   shared_root_datum rd = get<root_datum_value>();
+  if (v->val.size()!=rd->val.rank())
+    throw runtime_error("Rank and weight size mismatch ") @|
+      << rd->val.rank() << ':' << v->val.size();
   if (l==expression_base::no_value)
     return;
 @)
@@ -1827,6 +1830,9 @@ void W_decompose_wrapper(expression_base::level l)
 void W_codecompose_wrapper(expression_base::level l)
 { shared_root_datum rd = get<root_datum_value>();
   own_vector v = get_own<vector_value>();
+  if (v->val.size()!=rd->val.rank())
+    throw runtime_error("Coweight size and rank mismatch ") @|
+      <<  v->val.size() << ':' << rd->val.rank();
   if (l==expression_base::no_value)
     return;
 @)
