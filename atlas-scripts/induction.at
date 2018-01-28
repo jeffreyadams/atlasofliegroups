@@ -488,7 +488,7 @@ set dim_u(Parabolic P) = int:n_columns(nilrad(P))
 set dim_u(KGBElt x) = int:dim_u(theta_stable_parabolic(x))
 
 {. Dimension of the nilradical of the parabolic determined by a weight H. .}
-set dim_u (ratvec H,KGBElt x) = n_columns(nilrad(H,x))
+set dim_u (ratvec H,KGBElt x) = n_columns(nilrad_by_wt(H,x))
 
 {. Dimension of $\mathfrak u\cap\mathfrak k$ for theta-stable parabolic. .}
 set dim_u_cap_k (Parabolic (,x):P) = int:
@@ -507,7 +507,7 @@ set dim_u_cap_k (KGBElt x) = int:dim_u_cap_k(theta_stable_parabolic(x))
 {. Dimension of $\mathfrak u\cap\mathfrak k$ for theta-stable parabolic determined by
   weight lambda. .}
 set dim_u_cap_k(ratvec lambda,KGBElt x) =  int:
-  let P=parabolic_mute(lambda,x) in
+  let P=parabolic_by_wt(lambda,x) in
   assert(is_parabolic_theta_stable(P),"Parabolic is not theta-stable");dim_u_cap_k(P)
 
 {. Dimension of $\mathfrak u\cap\mathfrak p$ for theta-stable parabolic. .}
@@ -527,7 +527,7 @@ set dim_u_cap_p (KGBElt x) = int: dim_u_cap_p(theta_stable_parabolic(x))
 {. Dimension of $\mathfrak u\cap\mathfrak p$ for theta-stable parabolic determined by
   weight lambda. .}
 set dim_u_cap_p (ratvec lambda,KGBElt x) = int:
-  let P=parabolic_mute(lambda,x) in
+  let P=parabolic_by_wt(lambda,x) in
   assert(is_parabolic_theta_stable(P),"Parabolic is not theta-stable");dim_u_cap_p(P)
 
 {. (Auxiliary function) .}
@@ -610,7 +610,7 @@ set Aq_reducible (KGBElt x,ratvec lambda, ratvec lambda_q) = ParamPol:
 {find w making lambda_q weakly dominant}
   then (w,lambda_q_new)=from_dominant(G,lambda_q)
   then w1=/w
-  then P_new=parabolic_mute(lambda_q_new,cross(w1,x))
+  then P_new=parabolic_by_wt(lambda_q_new,cross(w1,x))
   then t_L_new=trivial(Levi(P_new))
   , shift = w1*lambda-rho_u(P_new)
   in
@@ -658,12 +658,12 @@ set is_unitary_character(Param p)=bool:
 {. Decide whether A_q(lambda) is good. .}
 set is_good(KGBElt x_in,ratvec lambda_in,ratvec lambda_q_in)=bool:
   let (x,lambda,lambda_q)=make_dominant(x_in,lambda_in,lambda_q_in)  in
-  is_strictly_dominant(real_form(x),lambda+rho(Levi(lambda_q,x)))
+  is_strictly_dominant(real_form(x),lambda+rho(Levi_by_wt(lambda_q,x)))
 
 {. Decide whether A_q(lambda) is weakly good. .}
 set is_weakly_good(KGBElt x_in,ratvec lambda_in,ratvec lambda_q_in)=bool:
   let (x,lambda,lambda_q)=make_dominant(x_in,lambda_in,lambda_q_in) in
-  is_dominant(real_form(x),lambda+rho(Levi(lambda_q,x)))
+  is_dominant(real_form(x),lambda+rho(Levi_by_wt(lambda_q,x)))
 
 {. Decide whether A_q(lambda) is fair. .}
 set is_fair(KGBElt x_in,ratvec lambda_in,ratvec lambda_q_in)=bool:
@@ -678,7 +678,7 @@ set is_weakly_fair(KGBElt x_in,ratvec lambda_in,ratvec lambda_q_in)=bool:
 {. Determine the "goodness" of an Aq(lambda); returns "good", "weakly good",
   "fair", "weakly fair", or "none". .}
 set goodness(KGBElt x,ratvec lambda_in,ratvec lambda_q) = string:
-  let G=real_form(x), P=parabolic_mute(lambda_q,x)
+  let G=real_form(x), P=parabolic_by_wt(lambda_q,x)
   then L=Levi(P) then rho_l=rho(L)
   then rho_u=rho(G)-rho_l, infchar_l=lambda_in+rho_l in
 {   prints("infinitesimal character(l)=", infchar_l);

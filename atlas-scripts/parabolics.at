@@ -287,7 +287,7 @@ set zero_simple_coroots (RootDatum rd, vec lambda) = [int]:
 
 {. Parabolic defined by weight lambda; message whether parabolic is real
   or theta-stable. .}
-set parabolic (ratvec lambda,KGBElt x) = Parabolic:
+set parabolic_by_wt_verbose (ratvec lambda,KGBElt x) = Parabolic:
   let rd=root_datum(x) then (w,lambda_dom)=from_dominant(rd,numer(lambda)) in
   let P=
   Parabolic:(zero_simple_coroots(rd,lambda_dom), cross(inverse(w),x)) in
@@ -298,43 +298,46 @@ set parabolic (ratvec lambda,KGBElt x) = Parabolic:
 
 {. Parabolic defined by weight lambda; NO message whether parabolic is real
   or theta-stable. .}
-set parabolic_mute (ratvec lambda,KGBElt x) = Parabolic:
+set parabolic_by_wt (ratvec lambda,KGBElt x) = Parabolic:
   let rd=root_datum(x) then (w,lambda_dom)=from_dominant(rd,numer(lambda)) in
   let P=
   Parabolic:(zero_simple_coroots(rd,lambda_dom), cross(inverse(w),x)) in
   P
 
 {. Theta-stable parabolic defined by weight lambda. .}
-set theta_stable_parabolic (ratvec lambda,KGBElt x) = Parabolic:
-   let theta=involution(x) in parabolic_mute((1+theta)*lambda,x)
+set theta_stable_parabolic_by_wt (ratvec lambda,KGBElt x) = Parabolic:
+   let theta=involution(x) in parabolic_by_wt((1+theta)*lambda,x)
 
 {. Real parabolic defined by weight lambda. .}
-set real_parabolic (ratvec lambda,KGBElt x) = Parabolic:
-   let theta=involution(x) in parabolic_mute((1-theta)*lambda,x)
+set real_parabolic_by_wt (ratvec lambda,KGBElt x) = Parabolic:
+   let theta=involution(x) in parabolic_by_wt((1-theta)*lambda,x)
 
 {. Levi factor of parabolic defined by weight lambda. .}
-set Levi (ratvec lambda,KGBElt x) = RealForm: Levi(parabolic_mute(lambda,x))
+set Levi_by_wt (ratvec lambda,KGBElt x) = RealForm:
+   Levi(parabolic_by_wt(lambda,x))
 
 {. Levi factor of theta-stable parabolic defined by weight lambda. .}
-set theta_stable_Levi (ratvec lambda, KGBElt x) = RealForm:
-   Levi(theta_stable_parabolic(lambda,x))
+set theta_stable_Levi_by_wt (ratvec lambda, KGBElt x) = RealForm:
+   Levi(theta_stable_parabolic_by_wt(lambda,x))
 
 {. Levi factor of real parabolic defined by weight lambda. .}
-set real_Levi (ratvec lambda, KGBElt x) = RealForm:
-   Levi(real_parabolic(lambda,x))
+set real_Levi_by_wt (ratvec lambda, KGBElt x) = RealForm:
+   Levi(real_parabolic_by_wt(lambda,x))
 
 {. Positive coroots in nilradical of P defined by weight lambda
   (if L theta-stable). .}
-set nilrad (ratvec lambda,KGBElt x) = mat: nilrad(parabolic_mute(lambda,x))
+set nilrad_by_wt (ratvec lambda,KGBElt x) = mat:
+   nilrad(parabolic_by_wt(lambda,x))
 
 {. Positive roots in nilradical of P defined by weight lambda
   (if L theta-stable). .}
-set nilrad_roots (ratvec lambda,KGBElt x) = mat:
-  nilrad_roots(parabolic_mute(lambda,x))
+set nilrad_roots_by_wt (ratvec lambda,KGBElt x) = mat:
+  nilrad_roots(parabolic_by_wt(lambda,x))
 
 {. Half sum of positive roots in nilradical of P defined by weight lambda (if L
 theta-stable). .}
-set rho_u (ratvec lambda,KGBElt x) = ratvec: sum(nilrad_roots(lambda,x)) / 2
+set rho_u_by_wt (ratvec lambda,KGBElt x) = ratvec:
+   sum(nilrad_roots_by_wt(lambda,x)) / 2
 
 {. Simple roots which are zero on coweight H (in $\mathfrak h$). .}
 set zero_simple_roots(RootDatum rd, vec cowt) = [int]:
@@ -344,7 +347,7 @@ set zero_simple_roots(RootDatum rd, vec cowt) = [int]:
 
 {. Parabolic defined by coweight H; message whether parabolic is real
    or theta-stable. .}
-set parabolic_alt (ratvec H,KGBElt x) = Parabolic:
+set parabolic_by_cwt_verbose (ratvec H,KGBElt x) = Parabolic:
   let rd=root_datum(x)
   then (H_dom,w)=from_dominant(numer(H),rd)
   then P= Parabolic:(zero_simple_roots(rd,H_dom), cross(w,x))
@@ -354,24 +357,32 @@ set parabolic_alt (ratvec H,KGBElt x) = Parabolic:
   else prints("The parabolic is neither real nor theta-stable.") fi fi;
   P
 
+{. Parabolic defined by coweight H; no message .}
+set parabolic_by_cwt (ratvec H,KGBElt x) = Parabolic:
+  let rd=root_datum(x)
+  then (H_dom,w)=from_dominant(numer(H),rd)
+  then P= Parabolic:(zero_simple_roots(rd,H_dom), cross(w,x))
+  in P
+
 {. Levi factor of parabolic defined by coweight H. .}
-set Levi_alt (ratvec H,KGBElt x) = RealForm: Levi(parabolic_alt(H,x))
+set Levi_by_cwt (ratvec H,KGBElt x) = RealForm: Levi(parabolic_by_cwt(H,x))
 
 {. Positive coroots in nilradical of P defined by coweight H
   (if L theta-stable). .}
-set nilrad_alt (ratvec H,KGBElt x) = mat: nilrad(parabolic_alt(H,x))
+set nilrad_by_cwt (ratvec H,KGBElt x) = mat: nilrad(parabolic_by_cwt(H,x))
 
 {. Positive roots in nilradical of P defined by coweight H
   (if L theta-stable). .}
-set nilrad_roots_alt (ratvec H,KGBElt x) = mat:
-  nilrad_roots(parabolic_alt(H,x))
+set nilrad_roots_by_cwt (ratvec H,KGBElt x) = mat:
+  nilrad_roots(parabolic_by_cwt(H,x))
 
 {. Half sum of roots in nilradical of P defined by coweight H
   (if L theta-stable). .}
-set rho_u_alt (ratvec H,KGBElt x)= ratvec: sum(nilrad_roots_alt(H,x)) /2
+set rho_u_by_cwt (ratvec H,KGBElt x)= ratvec:
+  sum(nilrad_roots_by_cwt(H,x)) /2
 
 {. $\rho(L)$ for Levi of P defined by coweight H (if L theta-stable). .}
-set rho_Levi_alt (ratvec H,KGBElt x) = ratvec: rho(Levi_alt(H,x))
+set rho_Levi_by_cwt (ratvec H,KGBElt x) = ratvec: rho(Levi_by_cwt(H,x))
 
 
 { ----------------------(real) cuspidal parabolics------------------- }
@@ -381,7 +392,7 @@ set rho_Levi_alt (ratvec H,KGBElt x) = ratvec: rho(Levi_alt(H,x))
   for M to be stable: x must have no C+ roots. .}
 set real_parabolic (KGBElt x) = Parabolic:
   assert(no_Cplus_roots(x),"x has some C+ roots");
-  parabolic_mute((1-involution(x))*rho(root_datum(x)),x)
+  parabolic_by_wt((1-involution(x))*rho(root_datum(x)),x)
 
 {. Levi factor of real parabolic defined by x (must have no C+ roots). .}
 set real_Levi (KGBElt x) = RealForm: Levi(real_parabolic(x))
@@ -393,7 +404,7 @@ set real_Levi (KGBElt x) = RealForm: Levi(real_parabolic(x))
   for this to be stable: no C- roots. .}
 set theta_stable_parabolic (KGBElt x) = Parabolic:
   assert(no_Cminus_roots(x),"x has some C- roots");
-  parabolic_mute((1+involution(x))*rho(root_datum(x)),x)
+  parabolic_by_wt((1+involution(x))*rho(root_datum(x)),x)
 
 {. Levi factor of theta-stable parabolic defined by x
   (must have no C- roots). .}
@@ -472,10 +483,10 @@ set random=[31220,11647,37379,76487,42281,99983,92672,35013,50289,79830,47810,82
 {.find lambda so L=L(lambda)={alpha| <lambda,alpha^vee>=0}.}
 set findlambda(RootDatum rd, RootDatum L)=
 let A=simple_coroots(L) then
-k=kernel(^A) in 
+k=kernel(^A) in
 k* random[:n_columns(k)]
 
-{coset representative for W(rd)/W(rd_L) 
+{coset representative for W(rd)/W(rd_L)
  if L=L(lambda) the W-orbit of lambda is in bijection with this quotient}
 set coset_reps(RootDatum rd,RootDatum rd_L)=
 let lambda=findlambda(rd,rd_L) in let (elts,)=generate_from(rd,lambda) in elts

@@ -53,7 +53,7 @@ let n=#distinguished_fiber(G)
 then rv=[KGBElt]:[]
 then B=KGB(G)
 in for i:n do
-			rv#:=x_min(parabolic(H/1,B[i]))
+			rv#:=x_min(parabolic_by_wt_verbose(H/1,B[i]))
 			od; sort(rv)
 
 
@@ -73,7 +73,7 @@ in while i<#V do
 set closed_real_parabolics_associated_to_a_lambda( RealForm G, [int] H)=[Parabolic]:
 let V=x_min_parabolic_in_dis_fiber(G, H)
 then rv=[Parabolic]:[]
-in for x in V do rv#:=parabolic(H/1, x) od; rv
+in for x in V do rv#:=parabolic_by_wt_verbose(H/1, x) od; rv
 
 {given Partition multiplicities, construct the partition}
 set partition_from_multiplicity ([int] p) = [int]:
@@ -125,7 +125,7 @@ in for t in B do first_param(theta_induce_irreducible(t, real_form(Q))) od
 set closed_real_parabolics_associated_to_a_lambda( RealForm G, [int] H)=[Parabolic]:
 let V=x_min_parabolic_in_dis_fiber(G, H)
 then rv=[Parabolic]:[]
-in for x in V do rv#:=parabolic(H/1, x) od; rv
+in for x in V do rv#:=parabolic_by_wt_verbose(H/1, x) od; rv
 
 
 set dual_Cell( Block B, int Cell)= int:
@@ -270,7 +270,7 @@ then Gd=real_form(Bd)
 then W_Cells=vecs_as_int(for (cell,) in W_cells(Bd) do cell od)
 then T=real_forms_of_complex_orbit_as_Reps_B (B, P)
 then H=dominant(Gd, orbit_H_Bn(Gd, P))
-then R= for t in T do parabolic(H/1, x(t)) od
+then R= for t in T do parabolic_by_wt_verbose(H/1, x(t)) od
 then S= for r in R do ind_one_dim_from_parabolic(r) od
 then rv=[int]:[]
 in for s in S do for i:# s do if find(rv, find_reps_in_Cells(W_Cells, s[i])) = -1 then if find_reps_in_Cells(W_Cells, s[i]) !=-1 then rv#:=find_reps_in_Cells(W_Cells, s[i]) fi fi od od; rv
@@ -463,7 +463,7 @@ then Gd=real_form(Bd)
 then W_Cells=vecs_as_int(for (cell,) in W_cells(Bd) do cell od)
 then T=real_forms_of_complex_orbit_as_Reps_C (B, P)
 then H=dominant(Gd, orbit_H_Cn(Gd, P))
-then R= for t in T do parabolic(H/1, x(t)) od
+then R= for t in T do parabolic_by_wt_verbose(H/1, x(t)) od
 then S= for r in R do ind_one_dim_from_parabolic(r) od
 then rv=[int]:[]
 in for s in S do for i:# s do if find(rv, find_reps_in_Cells(W_Cells, s[i])) = -1 then if find_reps_in_Cells(W_Cells, s[i]) !=-1 then rv#:=find_reps_in_Cells(W_Cells, s[i]) fi fi od od; rv
@@ -476,7 +476,7 @@ then Gd=real_form(Bd)
 then AV_Cells=AV_for_given_block_C(Bd)
 then T=real_forms_of_complex_orbit_as_Reps_C(B, P)
 then H=dominant(Gd, orbit_H_Cn(Gd, P))
-then R= for t in T do parabolic(H/1, x(t)) od
+then R= for t in T do parabolic_by_wt_verbose(H/1, x(t)) od
 then S= for r in R do ind_one_dim_from_parabolic(r) od
 then rv=[int]:[]
 then rv1=[[int]]:[]
