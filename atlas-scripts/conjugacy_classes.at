@@ -1,19 +1,22 @@
+<basic.at
+<parabolics.at { for type |ComplexLevi| }
+
 <elliptic_exceptional_table.at
 <Levi_class.at
-<subalgebra.at
+<subalgebra.at { for |Levi_of_w| }
 <tabulate.at
 
 { The purpose of this file is computing the conjugacy classes of W }
 
 set_type ConjugacyClass = (ComplexLevi Levi, WeylElt w)
-{ComplexLevi:(rd,rd_L)
- w is a WeylElt for rd_L
- the labelling of the roots of rd_L is unrelated to those of rd,
- the roots of rd_L are labelled 0..,semisimple_rank(L)-1
+{ ComplexLevi:(rd,rd_L)
+  w is a WeylElt for rd_L (so Levi serves mostly to record full root datum!)
+  the simple (co)roots of rd_L are simple (co)roots for rd but of course
+  renumbered consecutively starting from 0
 }
 
-set complex_Levi_root_numbers (ComplexLevi L) = [int]:
-  let (rd,rd_L)=L then scr=simple_coroots(rd) in
+set embed_simple_indices (ComplexLevi(rd,rd_L)) = [int]:
+  let scr=simple_coroots(rd) in
   for alpha@i in simple_roots(rd_L)
   do let j=root_index(rd,alpha) in
      assert(j.>= and j<semisimple_rank(rd) and scr[j]=coroot(rd_L,i)
@@ -22,15 +25,13 @@ set complex_Levi_root_numbers (ComplexLevi L) = [int]:
   od
 
 set root_datum (ConjugacyClass (L,)) = RootDatum: L.rd
-set root_datum_Levi (ConjugacyClass (L,)) = RootDatum: L.rd_Levi
-{ C.Levi: complexLevi (rd,rd_L)
-  C.root_datum: root datum of G
-  C.root_datum_Levi: root datum of L
-  C.w: WeylElt for L
-}
 
-{ promote w in W(Levi) to W(G) }
+set root_datum_Levi (ConjugacyClass (L,)) = RootDatum: L.rd_Levi
+
+{ promote w from W(Levi) to W(G) }
 set promote (WeylElt w, RootDatum rd) = WeylElt: W_elt(rd,matrix(w))
+{ alternatively |let map=embed_simple_indices(w.root_datum,rd)
+                 in W_elt(rd,for i in w.word od map[i] od)| }
 
 { promote pair (L,w_L) to element of W }
 set promote (ConjugacyClass C) = WeylElt: promote(C.w,C.root_datum)
@@ -43,7 +44,7 @@ set restrict (WeylElt w,ComplexLevi L) = WeylElt:
 
 { apply this to the Levi defined by w }
 set restrict (WeylElt w) = (ComplexLevi,WeylElt):
-  let (,L)=Levi_of_w(w)then rd_L=(w.root_datum,L) in (rd_L,restrict(w,rd_L))
+  let (,L)=Levi_of_w(w) then rd_L=(w.root_datum,L) in (rd_L,restrict(w,rd_L))
 
 set order (ConjugacyClass C) = int: order(C.w)
 
@@ -71,12 +72,11 @@ set is_elliptic_conjugate_F4_special_case (WeylElt x,WeylElt y) = bool:
 set is_elliptic_conjugate (WeylElt x,WeylElt y) = bool:
   assert(x.root_datum=y.root_datum,"Weyl elements are for different root data");
   assert(is_elliptic(x) and is_elliptic(y),"Weyl element is not elliptic");
-  let rd=x.root_datum then
-  (type,)=(%Lie_type(rd))[0] in
-  if not char_poly(matrix(x))=char_poly(matrix(y)) then false
-  elif type !="F" then true  else
-     assert(is_simple(rd), "Sorry can't handle non-simple groups of type F4");
-     is_elliptic_conjugate_F4_special_case(x,y) fi
+  char_poly(matrix(x))=char_poly(matrix(y)) and
+  (let rd=x.root_datum then (type,)=(%Lie_type(rd))[0] in type !="F" or
+   (assert(is_simple(rd), "Sorry can't handle non-simple groups of type F4");
+    is_elliptic_conjugate_F4_special_case(x,y)
+  ))
 
 set is_conjugate(WeylElt x,WeylElt y) = bool:
    if is_elliptic(x) and is_elliptic(y)

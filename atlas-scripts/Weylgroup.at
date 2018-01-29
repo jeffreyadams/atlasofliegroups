@@ -91,10 +91,8 @@ set co_invariant_form_matrix (RootDatum rd) =mat: let M=posroots(rd) in M*^M
 set co_invariant_form (RootDatum rd) = (ratvec,ratvec->rat):
   let A = rd.co_invariant_form_matrix in (ratvec v, ratvec w) rat: v*A*w
 
-set is_elliptic (WeylElt w) = bool: =kernel(1-matrix(w))  { no eigenvalue 1 }
-set is_regular (WeylElt w) = bool:
-  { let w0=w.root_datum.w0 in w^(w0.length\w.length)=w0 ? }
-  w.length*w.order=2*w.root_datum.nr_of_posroots
+set is_elliptic (WeylElt w) = bool:
+  =eigen_lattice(matrix(w),1)  { |eigen_lattice| empty means no eigenvalue 1 }
 
 { use complex cross actions to find a KGBElt x0 in a fiber with no C- roots
   by descending through complex descents until none are left
@@ -165,7 +163,7 @@ set char_poly(WeylElt w)=char_poly(matrix(w))
 {    Coxeter element    }
 
 {. Coxeter element of W .}
-set coxeter_element (RootDatum rd) = WeylElt: W_elt(rd,#semisimple_rank(rd))
+set coxeter_element (RootDatum rd) = WeylElt: W_elt(rd,all_simples(rd))
 
 {. Coxeter number .}
 set coxeter_number (RootDatum rd) = int:
