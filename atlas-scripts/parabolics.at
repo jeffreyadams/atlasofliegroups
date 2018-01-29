@@ -53,13 +53,13 @@ More topics addressed in this file:
 set_type
 [
   {. Data type for a K_orbit on G/P_S, equivalently a K-conjugacy class of
-    parabolics of type S. .}
-  KGPElt    = ([int], KGBElt)
+    parabolics of type S, where S is a list of simple root indices. .}
+  KGPElt    = ([int] S, KGBElt x)
 ,
   {. Data type for a K_orbit on G/P_S (synonym for KGPElt). .}
   Parabolic = ([int], KGBElt)  { synonym }
 ,
-  {. Data type for a complex parabolic subrgoup .}
+  {. Data type for a complex standard parabolic subgroup .}
   ComplexParabolic = (RootDatum root_datum,[int] S)
 ,
   {. Data type for a complex Levi=pair of root data.}
@@ -68,28 +68,13 @@ set_type
     the set of simple roots/coroots of rd_Levi is a subset of those of rd_G }
 ]
 
-set rho(ComplexLevi L)=ratvec:rho(L.rd_Levi)
+{. choose from a list of KGB elements one with the smallest index number. .}
+set min ([KGBElt] list)= KGBElt:
+  let m=list[0] in for x in list do if #x<#m then m:=x fi od; m
 
-{. given a list of KGB elements and a function f assigning integers to them,
-sort the list by weakly increasing value of f.  .}
-set sort_by((KGBElt -> int) f)= ([KGBElt] v) [KGBElt]:
-  for index in inv_standardisation(for x in v do f(x) od) do v[index] od
-
-{. sort a list of KGB elements by their index numbers, in increasing order.  .}
-set sort = ([KGBElt] -> [KGBElt]): sort_by((KGBElt x) int: #x)
-
-{. choose from a list of KGB elements the one (only unique if all associated
-to the same RealForm) with the smallest index number. .}
-set min ([KGBElt] list)=sort(list)[0]
-
-{. choose from a list of KGB elements one with greatest index number.  .}
-set max ([KGBElt] list)=sort(list)~[0]
-
-
-set KGP_elt (KGPElt pair) = KGPElt: pair { identity; prefer cast KGPElt:(S,x) }
-
-{. the list S of simple roots of a KGP element. .}
-set S (KGPElt(S,)) = [int]: S
+{. choose from a list of KGB elements one with the greatest index number. .}
+set max ([KGBElt] list) = KGBElt:
+  let m=list[0] in for x in list do if #x>#m then m:=x fi od; m
 
 {. the root datum of the RealForm G of a KGP element. .}
 set root_datum (KGPElt(,x)) = RootDatum: root_datum(x)
@@ -186,17 +171,24 @@ set KGP_elt (ratvec lambda,KGBElt x) = KGPElt:
   in KGPElt:(P,cross(inverse(w),x))
 
 {. the complex parabolic underlying P=(S,x). .}
-set complex_parabolic (Parabolic(S,x)) = ComplexParabolic: (root_datum(x),S)
+set complex_parabolic (KGPElt(S,x)) = ComplexParabolic: (root_datum(x),S)
+
+
+{			Complex Levi subgroups				}
+
+set rho (ComplexLevi L) = ratvec: rho(L.rd_Levi)
 
 {. auxiliary function .}
 set complex_Levi (RootDatum rd, (int->bool) select) = ComplexLevi:
-  (rd,root_datum(columns_with(select,  simple_roots(rd))
-            ,columns_with(select,simple_coroots(rd))))
+  (rd,root_datum(columns_with(select,simple_roots(rd))
+                ,columns_with(select,simple_coroots(rd))))
 
 {. Root datum of the Levi factor of a complex parabolic. .}
-set complex_Levi (RootDatum rd,[int] S) =ComplexLevi: complex_Levi(rd,is_member(S))
+set complex_Levi (RootDatum rd,[int] S) =ComplexLevi:
+  complex_Levi(rd,is_member(S))
 
-{. Test if a complex Levi defined by a set of simple roots S is $\theta_x$-stable;
+{. Test if a complex Levi defined by a set of simple roots $S$ is
+  $\theta_x$-stable;
   algorithm: H=sum of fundamental coweights with index not in S,
   test whether $<\theta_x(\alpha),H>=0$ for all $\alpha$ in S. .}
 set is_Levi_theta_stable (Parabolic (S,x)) = bool:

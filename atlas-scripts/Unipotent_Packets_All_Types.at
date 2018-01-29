@@ -1,6 +1,7 @@
 {Given a block and a partition of the dual group, find all Unipotent packets corresponding to that orbit in the block}
 
 <basic.at
+<sort.at
 <W_Reps_Mod.at
 <Vogan-dual.at { for |dual_KGB| }
 <groups.at { for |GL| }
@@ -22,7 +23,8 @@ set find_reps_in_Cells ([[int]] W_cells, Param t) = int:
 
 {Compute minimal elements of parabolics having equivalent KGB elements in the distinguished fiber}
 set x_min_parabolic_in_dis_fiber_Step1 (RealForm G,[int] H)=([KGBElt]):
-  sort(for x in distinguished_fiber(G) do x_min(parabolic(ratvec:H,x)) od)
+  for x in distinguished_fiber(G) do x_min(parabolic(ratvec:H,x)) od.
+  (sort_by(#@KGBElt))
 
 
 {Step 2 of above}

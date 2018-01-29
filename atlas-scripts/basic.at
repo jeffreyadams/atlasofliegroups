@@ -668,6 +668,9 @@ set root_datum (LieType t, [ratvec] gens) = RootDatum:
 { allow single kernel generator in root datum construction }
 set root_datum (LieType t, ratvec gen) = RootDatum: root_datum(t,[gen])
 
+{ list of indices of all simple roots or coroots }
+set all_simples (RootDatum rd) = [int]: #semisimple_rank(rd)
+
 { the following uses that root_index(rd,v)=nr_of_posroots(rd) for a non-root v }
 set is_root ((RootDatum,vec) (rd,):p) = bool:
   root_index(p)<nr_of_posroots(rd)
@@ -1092,7 +1095,8 @@ set Cayley (vec alpha,KGBElt x) = KGBElt:
 set W_cross ([int] w,KGBElt x) = KGBElt:
   for s in w ~ do x:=cross(s,x) od; x
 
-set KGB_status_text (int i) = string: ["C-","ic","r ","nc","C+"][i]
+set KGB_status_text (int i) = string:
+  case i in "C-","ic","r ","nc","C+" else error("Illegal KGB status") esac
 
 set status_text ((int,KGBElt)p) = string: KGB_status_text(status(p))
 set status_text ((vec,KGBElt)p) = string: KGB_status_text(status(p))
@@ -1106,7 +1110,8 @@ set is_noncompact ((int,KGBElt)p) = status(p)=3
 set is_compact ((int,KGBElt)p) = status(p)=1
 set is_descent ((int,KGBElt)p) = status(p)<3
 set is_ascent ((int,KGBElt)p) = status(p)>=3
-set is_strict_descent ((int,KGBElt)p) = is_descent(p) and not is_compact(p)
+set is_strict_descent ((int,KGBElt)p) = { is_descent(p) and not is_compact(p) }
+  case status(p) in true,false,true,false,false esac
 
 { status of general roots for a KGBElt (which here just represents its fiber) }
 

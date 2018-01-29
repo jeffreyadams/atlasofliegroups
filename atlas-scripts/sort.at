@@ -57,6 +57,8 @@ set inv_standardisation = ([int]->[int]):
     do org_i od { afterward just recover the permuted original indices }
 
 { inv_standardisation -> order of indices to select from original for sorting }
+set sort_by ((KGBElt -> int) f)= ([KGBElt] v) [KGBElt]:
+  for index in inv_standardisation(for x in v do f(x) od) do v[index] od
 set sort_by ((Param->int) f) = ([Param] v) [Param]:
   for index in inv_standardisation(for x in v do f(x) od) do v[index] od
 
