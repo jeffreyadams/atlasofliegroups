@@ -131,7 +131,7 @@ adapted_basis: (mat->mat,vec): find basis whose integer multiples span image
 
 kernel: (mat->mat): find matrix whose columns span kernel of the given matrix
 eigen_lattice: (mat,int->mat): eigen-lattice of matrix (at integer eigenvalue)
-  eigen_lattice(M,lambda) = kernel(M-lambda*id_mat(n)), where #M=(n,n)
+  eigen_lattice(M,lambda) = kernel(M-lambda), where M is square matrix
 row_saturate: (mat->mat): keep same kernel, but row-span saturated sublattice
   Interpreting rows of the matrix as linear forms, this transforms the system
   into an equivalent one, and whose Z-linear map is made to be surjective.
@@ -360,7 +360,7 @@ root_datum: (WeylElt->rootDatum): Root datum underling a Weyl group element
 length: (WeylElt->int): Length in Weyl group of an element
 operators =, != : (WeylElt->bool): test Weyl group element against identity
 operators =, != : (WeylElt,WeylElt->bool): comparison of Weyl group elements
-  The elements are required to be from equal or dual root data
+  The elements must be from equal or dual root data; if not, reports an error
 operator * : (WeylElt,WeylElt->WeylElt): Compose Weyl group elements
 operator / : (WeylElt->WeylElt): Inverse of Weyl group element
 operator # : (WeylElt,int->WeylElt): muttiplu Weyl group element and generator
@@ -414,9 +414,8 @@ twisted_involution (RootDatum,mat->WeylElt,InnerClass): extra info inner_class
   (the element w is first component of result to remind us it acts on the left)
 
 operators =, != : (InnerClass,InnerClass->bool): (non)identity of inner classes
-  Equality holds only when both arguments refer to the same inner class
-  creation, in other words it will recognize ic=inner_class(real_form(ic,0)) as
-  true, but any freshly built inner class tests unequal to anything preexisting
+  Equality holds only when both inner classes are built on identical root data,
+  and have the same distinguished involution (based root datum automorphism)
 distinguished_involution: (InnerClass->mat): involution of the inner class.
   Extract the distinguished involution of X^* that defines the inner class
 dual: (InnerClass->InnerClass): dual inner class for dual complex group
@@ -645,8 +644,7 @@ KGB_elt: (RealForm,mat,ratvec): KGB element defined by rational coweight
   returned by this function (if no such x is found, an error is signaled).
 
 operators =, != : (KGBElt,KGBElt): equality of elements of a same KGB set
-  Equality of KGB elements implies equality of their real forms, and thereby
-  the fact that they have identical (not created separately) inner classes
+  Equality of KGB elements implies equality of their real forms
 
 block: (RealForm,RealForm->Block): construct traditional block as in Fokko
 %: (Block->RealForm,RealForm): decompose block, inverse of 'block'
@@ -978,4 +976,3 @@ print_KL_list: (Block->):
 print_W_cells: (Block->):
 print_W_graph: (Block->):
   These commands give the output of the corresponding commands of Fokko.
-
