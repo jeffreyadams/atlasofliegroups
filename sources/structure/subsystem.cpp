@@ -111,10 +111,9 @@ PreRootDatum SubSystem::pre_root_datum() const
   return PreRootDatum(simple_roots,simple_coroots,not prefer_coroots());
 }
 
-// compute twist and subsystem twisted involution $ww$ for $-theta^t$
-// used in |GlobalTitsGroup| constructor and in |iblock|, |test| cmds
-weyl::Twist SubSystem::twist(const WeightInvolution& theta,
-			     WeylWord& ww) const
+#if 0 // method is unused
+// compute (dual side) twist and subsystem twisted involution |ww| for |theta|
+weyl::Twist SubSystem::twist(const WeightInvolution& theta, WeylWord& ww) const
 {
   RootNbrList Delta(rank()); // list of subsystem simple images by theta
   for (weyl::Generator i=0; i<rank(); ++i)
@@ -125,10 +124,10 @@ weyl::Twist SubSystem::twist(const WeightInvolution& theta,
     Delta[i] = rootMinus(image); // |-theta| image of |root(i)|
   }
 
-  WeylWord wrt = // this is ordered according to parent perspective
+  WeylWord wrt = // rightmost letter |wrt| applies first to disinguished |Delta|
     rootdata::wrt_distinguished(*this,Delta); // make |Delta| distinguished
 
-  // |Delta| now describes the |sub|-side fundamental involution, a twist
+  // |Delta| now describes a twist of the subsystem Dynkin diagram
 
   weyl::Twist result; // the subsystem twist that |Delta| has been reduced to
   for (weyl::Generator i=0; i<rank(); ++i)
@@ -142,13 +141,14 @@ weyl::Twist SubSystem::twist(const WeightInvolution& theta,
   // However, we want |ww| such that $-theta^t=ww.Delta$ (on subsystem side),
   // therefore |ww=twist(wrt^{-1})|. Nonetheless if |theta| is an involution,
   // it is the same to say $-theta^t=ww.Delta$ or $-theta^t=Delta.ww^{-1}$,
-  // so following inversion and twist do nothing (|ww| is twisted involution).
+  // so following reversal and twist do nothing (|ww| is twisted involution).
   ww.resize(wrt.size()); // we must reverse and twist, to express on our side
   for (size_t i=0; i<wrt.size(); ++i)
     ww[wrt.size()-1-i] = result[wrt[i]];
 
   return result; // the result returned is the subsystem twist, not |ww|
 }
+#endif
 
 // Here we seek twist and |ww| on parent side (dual with respect to |sub|)
 // used in |blocks::param_block::compute_duals| (just for the induced |Twist|)
@@ -165,9 +165,9 @@ weyl::Twist SubSystem::parent_twist(const WeightInvolution& theta,
     Delta[i] = image; // PLUS |theta| image of |root(i)|
   }
 
-  // set |ww| to parent-side word, omitting inversion and twist done above
+  // set |ww| to sub-W-word relating |theta| to parent-side distinguished inv.
   ww = rootdata::wrt_distinguished(*this,Delta);
-  // the above call has made |Delta| sub-distinguished from parent side
+  // rightmost letter |ww| applies first to now disinguished |Delta|
 
   weyl::Twist result;
   for (weyl::Generator i=0; i<rank(); ++i)

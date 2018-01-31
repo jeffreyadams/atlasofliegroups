@@ -1959,14 +1959,14 @@ the presence of a central torus part.
 the matrix is already expressed on the basis of the weight lattice used by the
 root datum, the question of stabilising that lattice is settled, but we must
 check that the matrix is indeed an involution (for which we reuse the above
-module), and that it gives an automorphism of the root datum. In fact we need an
-automorphism of the \emph{based} root datum, but we will allow any root datum
-automorphism to be supplied, and will compute from it a conjugate that sends all
-positive roots to positive roots. The following auxiliary function checks
-whether |delta|, is an involution that maps simple roots to roots and simple
-coroots to coroots (throwing an error if it not), and returns a list of images
-of simple roots that can be used by the caller to transform |delta| into a based
-root datum involution.
+module), and that it gives an automorphism of the root datum. Although we need
+an automorphism of the \emph{based} root datum, we allow any root datum
+automorphism to be supplied; by composing with an element of $W$ we can then
+ensure that all positive roots map to positive roots. The following auxiliary
+function checks whether |delta| is an involution mapping simple roots to roots
+and simple coroots to coroots (throwing an error if it not), and returns a list
+of images of simple roots (useful for transforming |delta| into a based root
+datum involution).
 
 That |delta| is a root datum automorphism means that its action from the left
 permutes roots among each other, that its action on the right permutes coroots
@@ -2075,7 +2075,8 @@ distinguished involution.
     // this |assert|s that |Delta[i]| is simple
 @)
 // now adapt |delta| so that it becomes the inner class distinguished involution
-  for (unsigned int i=0; i<ww.size(); ++i) // apply elements in generation order
+  for (unsigned int i=0; i<ww.size(); ++i)
+    // apply generators in (original) |theta| towards |delta| order
     rd.simple_reflect(ww[i],delta);
 }
 

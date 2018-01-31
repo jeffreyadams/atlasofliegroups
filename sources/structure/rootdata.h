@@ -279,7 +279,7 @@ class RootSystem
 
   RootNbrSet long_orthogonalize(const RootNbrSet& rest) const;
 
-  RootNbrList high_roots() const;
+  RootNbrList high_roots() const; // list of roots with an empty ascent set
 
 // manipulators
  private:

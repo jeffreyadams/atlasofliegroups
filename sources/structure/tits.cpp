@@ -61,7 +61,7 @@ std::vector<Grading> compute_square_classes
 
 /****************************************************************************
 
-  Chapter I -- Classes |TorusElement|, |GlobalTitsGroup|, |GlobalTitsGroup|
+	  Chapter I -- Classes |GlobalTitsElement|, |GlobalTitsGroup|
 
 *****************************************************************************/
 
