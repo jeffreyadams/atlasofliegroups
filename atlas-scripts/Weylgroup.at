@@ -135,7 +135,7 @@ assert(is_simple(derived(rd)),"Derived Root Datum is not simple");
 highest_root(adjoint(rd))
 
 set labels(RootDatum rd)=[int]:
-let (,factors)=simple_factors(rd) in 
+let (,factors)=simple_factors(rd) in
 ##for f in factors do labels_simple(f) od
 
 set order_W_simple(RootDatum rd)=int:

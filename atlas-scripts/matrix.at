@@ -7,7 +7,9 @@ in for Uj@j in U
      ## Q[j][j:] { retain the final $n-j$ rows of column $j$ of $Q$ }
    od; Q
 
-{ make result of echelon upper unitriangular, possibly with trailing null rows }
+{ make result of echelon upper triangular using row operations, possibly with
+  trailing null rows; return that triangular matrix and row operations matrix
+}
 set ech_up (mat M, [int] pivot) = (mat,mat):
    let (r,c)=shape(M)
    then R=id_mat(r) { record row operations, held in transposed form }

@@ -1,5 +1,5 @@
 <basic.at
-<matrix.at { for 'top_left_square_block' (this dependency might be eliminated) }
+<matrix.at { for |ech_up@(mat,[int])| }
 
 { General linear algebra over $\Z$. In so far as saturation of lattices is
   done, this actually relates to vector spaces over $\Q$, but all computations

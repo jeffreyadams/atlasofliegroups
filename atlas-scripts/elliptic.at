@@ -206,7 +206,7 @@ set elliptic (RootDatum rd) = [WeylElt]:
   the same lengths among each other (the normal factor, a product of symmetric
   groups). In type D this centraliser contains in particular any one (negative
   signed) cycle which is in the complement of the type D Weyl group, so for the
-  centraliser in W this case requires one less factor 2. This argumnet also
+  centraliser in W this case requires one less factor 2. This argument also
   shows that n the $D_n$ case any conjugacy class in the full group of an
   elliptic element of $W$ remains a conjugacy class for $W$ (does not split).
 }

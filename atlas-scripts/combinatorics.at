@@ -177,4 +177,4 @@ set signed_cycle_type ([int] sigma) = [int,bool]: { pairs of cycle and sign }
   ,   flip   = for a in sigma do a.< od { whether negative, per position }
   then size = for cycle in cycles do #cycle od
   ,    sign = for cycle in cycles do for i in cycle do #flip[i] od.sum.is_odd od
-  in for i in inv_standardisation(size) do (size[i],sign[i]) od
+  in for i in inv_standardisation(size) do (size[i],sign[i]) ~od
