@@ -1,11 +1,10 @@
-<groups.at
-<combinatorics.at { for type |Partition| nd related fucntions }
-<Weylgroup.at
-<cyclotomic.at
-<ellipticExceptional.at { tabulates elliptic classes for exceptional types }
+<basic.at
+<combinatorics.at { for type |Partition| and related functions }
 
 { The purpose of this file is listing conjugacy classes of elliptic elements of
-  the Weyl group for root data of simple type
+  the Weyl group for arbitrary root data (the main application will be to
+  standard Levi subsystems, which can have any type). We shall proceed by
+  reduction to the simple case, whence we start by handling simple root data.
 
   Elliptic Weyl group elements are those whose reflection action does not have
   any eigenvalue 1. Every Weyl group element is elliptic for a Levi subgroup
@@ -195,6 +194,25 @@ set elliptic (RootDatum rd) = [WeylElt]:
      next offset+:=rank
      od
    . combine_W_lists
+   fi
+
+{ Our main application is enumerating elliptic elements for standard Levi
+  subssystems. We make and adapted version of the previous function which on the
+  fly also ensures embedding into the full (non Levi) Weyl group
+}
+set elliptics_for_Levi (RootDatum rd, [int] subset) = [WeylElt]:
+   let M = rd.Cartan_matrix, s=#subset
+   then (lt,map_to_Levi) =
+      matrix((s,s),(int i,int j)int: M[subset[i],subset[j]]).Cartan_matrix_type
+in if =s then [id_W(rd)] { avoid passing empty list to |combine_W_lists| }
+   else let offset=0, map_to_rd = for i in map_to_Levi do subset[i] od in
+      for (,rank):type_rank in %lt
+      do for word in elliptic_simple(type_rank)
+         do W_elt(rd,for s in word do map_to_rd[offset+s] od)
+	 od
+      next offset+:=rank
+      od
+      .combine_W_lists
    fi
 
 { Order of an elliptic element of a Weyl group of type B, C, or D.

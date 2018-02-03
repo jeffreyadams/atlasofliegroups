@@ -9,7 +9,7 @@ let twochocheck=compute sum of positive coroots
 simple roots are those with inner product 2 with this
 then construct a RootDatum: root_datum(simple_roots,simple_coroots)
 }
-set subalgebra (RootDatum rd, [vec] roots) = (bool,RootDatum):
+set subalgebra (RootDatum rd, mat roots) = (bool,RootDatum):
   let rk = rank(rd), posroots = columns_with(is_positive_root(rd),roots)
   in
   if 2*#posroots != #roots {should be same number of positive, negative roots}
@@ -21,7 +21,7 @@ set subalgebra (RootDatum rd, [vec] roots) = (bool,RootDatum):
     in
     if #roots>0 and #simple_roots=0 then (false,rd)
     else let simple_coroots = { corresponding coroots }
-             for v in simple_roots do coroot(rd,v) od
+             rk # for v in simple_roots do coroot(rd,v) od
       then subrd = root_datum(simple_roots,simple_coroots)
       in ( { whether } nr_of_posroots(subrd) = #posroots, subrd)
     fi
@@ -62,14 +62,14 @@ if all(for v in set_of_roots do find(set_of_roots,w*v)!=-1 od) then [w] else [] 
 set normalizer(RootDatum rd,[vec] set_of_roots)=[WeylElt]:
 normalizer(W(rd),set_of_roots)
 {for testing}
-set stabilizer_elementary(RootDatum rd, ratvec gamma)= 
+set stabilizer_elementary(RootDatum rd, ratvec gamma)=
 ##(for w in W(rd) do if w*gamma=gamma then [w] else  [] fi od)
 
 { subalgebra orthgonal to a set of roots}
-set orthogonal_subalgebra(RootDatum rd, [vec] S)=(bool,RootDatum):
-if #S=0 then (true,rd) else
-let roots=##(for i:#coroots(rd) do if coroots(rd)[i]*S=null(#S) then
-[roots(rd)[i]] else [] fi od) in subalgebra(rd,roots) fi
+set orthogonal_subalgebra (RootDatum rd, [vec] S) = (bool,RootDatum):
+   let roots= rd.rank { size of all roots produced in following loop } #
+   ## for a_v@i in coroots(rd) do if =a_v*S then [root(rd,i)] else [] fi od
+   in subalgebra(rd,roots)
 
 { subalgebra orthogonal to a Levi }
 set orthogonal_subalgebra(RootDatum rd, RootDatum rd_L)=(bool,RootDatum):

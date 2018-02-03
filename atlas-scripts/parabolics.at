@@ -455,11 +455,10 @@ set random=[31220,11647,37379,76487,42281,99983,92672,35013,50289,79830,47810,82
 
 {.find lambda so L=L(lambda)={alpha| <lambda,alpha^vee>=0}.}
 set findlambda(RootDatum rd, RootDatum L)=
-let A=simple_coroots(L) then
-k=kernel(^A) in 
-k* random[:n_columns(k)]
+   let k=kernel(^simple_coroots(L)) { generators intersection hyperplanes of L }
+   in k* random[:n_columns(k)] { weight hopefully not on any other hyperplanes }
 
-{coset representative for W(rd)/W(rd_L) 
+{coset representative for W(rd)/W(rd_L)
  if L=L(lambda) the W-orbit of lambda is in bijection with this quotient}
 set coset_reps(RootDatum rd,RootDatum rd_L)=
 let lambda=findlambda(rd,rd_L) in let (elts,)=generate_from(rd,lambda) in elts

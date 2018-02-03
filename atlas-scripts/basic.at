@@ -138,8 +138,8 @@ set half (int n) = int: let (q,r)=n\%2 in assert(=r,"Inexact halving"); q
 
 set int_format = to_string@int
 
-set is_member ([int] v) = (int->bool): { linear search; can be improved }
-  (int val)bool: any(for x in v do x=val od)
+set is_member ([int] v) = (int->bool):
+  (int val)bool: any(#v,(int i)bool: v[i]=val)
 
 set contains (int val) = ([int]->bool): ([int] v)bool:
   any(#v,(int i)bool:v[i]=val)
