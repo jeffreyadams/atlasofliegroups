@@ -121,6 +121,25 @@ set ! E8_elliptic_words = [[int]]:
     ,2,3,4,5,6,7]
   ]
 
+set !exceptional_elliptic_char_polys = [[vec]]:
+  let word_lists=[G2_elliptic_words,F4_elliptic_words
+                 ,E6_elliptic_words,E7_elliptic_words,E8_elliptic_words]
+  , types=[LieType]: ["G2","F4","E6","E7","E8"]
+  in for i:5
+     do let rd=types[i].adjoint in
+        for w in word_lists[i] do W_elt(rd,w).matrix.char_poly od
+     od
+
+set !exceptional_elliptic_conjugacy_class_orders = [[int]]:
+[[2,2,1]
+,[96,144,16,32,32,12,36,16,1]
+,[4320,5760,720,1440,80]
+,[161280,207360,120960,96768,48384,90720,2240,13440,20160,672,3780,1]
+,[23224320,29030400,34836480,12902400,23224320,6451200,24883200,2419200,9676800
+ ,2419200,1161216,4838400,2419200,11612160,12902400,3628800,580608,5443200,4480
+ ,89600,268800,403200,806400,1209600,1161216,15120,2240,37800,4480,1]
+]
+
 { Weyl words (since we have no root datum here) for elliptic classes in Weyl
   group of a simple Lie type, using usual (Bourbaki) numbering of generators }
 set elliptic_simple = (string,int->[[int]]):
@@ -235,3 +254,24 @@ set order_of_centralizer_elliptic_BCD (WeylElt w) = int:
   , is_D = let (type,)=(%w.root_datum.Lie_type)[0] in type="D"
   in product(lambda) * 2^if is_D then #lambda-1 else #lambda fi *
     product(for m in frequencies(lambda) do fac(m) od)
+
+set exceptional_elliptic_class_order (string type, int rank, vec chi) =
+      int:
+   while #chi>rank+1 { remove factors $X-1$ for allowed central torus }
+   do chi := (let s=0 in for c in chi[:1~] do s-:=c od next assert(s=chi~[0]))
+   od; { that was exact Euclidean division by $-1+X$, by increasing degree }
+   let pos = case rank-2 in 0, die, 1, die, 2, 3, 4 esac
+   then i =
+      first(for P in exceptional_elliptic_char_polys[pos] do P=chi od)
+   in exceptional_elliptic_conjugacy_class_orders[pos][i]
+
+set exceptional_elliptic_centr_order (string type, int rank, vec chi) =
+      int:
+   while #chi>rank+1 { remove factors $X-1$ for allowed central torus }
+   do chi := (let s=0 in for c in chi[:1~] do s-:=c od next assert(s=chi~[0]))
+   od; { that was exact Euclidean division by $-1+X$, by increasing degree }
+   let pos = case rank-2 in 0, die, 1, die, 2, 3, 4 esac
+   then i =
+      first(for P in exceptional_elliptic_char_polys[pos] do P=chi od)
+   , W_size= case pos in 12,1152,51840,2903040,696729600 else die esac
+   in W_size\exceptional_elliptic_conjugacy_class_orders[pos][i]

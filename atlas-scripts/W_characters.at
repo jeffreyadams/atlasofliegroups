@@ -25,7 +25,7 @@
 }
 
 { $2\rho$ for standard Levi, from predicate to |select| simple root indices }
-set two_rho(RootDatum rd, (int->bool) select {from simples}) = vec:
+set two_rho(RootDatum rd, (int->bool) select {from simple indices}) = vec:
   root_datum(columns_with(select,rd.simple_roots)
             ,columns_with(select,rd.simple_coroots)
             ).two_rho
@@ -62,12 +62,12 @@ set conjugacy_class_reps (RootDatum rd) = [WeylElt]:
 set conjugacy_classes = conjugacy_class_reps@RootDatum
 
 { A third task is to test for conjugacy in $W$. For the moment, lacking a method
-  to effectively conjugate a general Levi subsystm to a standard one, we use a
-  method that basically compares characteristic polynomials, but adds a special
-  test to discriminate between two classes of elliptic elements for F4 that
-  share a characteristic polynomial (an outer automorphism switches them). This
-  method does not work when the implied Levi subsystem is composite and contains
-  a factor F4.
+  to effectively conjugate a general Levi subsystm toward a standard one, we use
+  a method that basically compares characteristic polynomials, but adds a
+  special test to discriminate between two classes of elliptic elements for F4
+  that share a characteristic polynomial (an outer automorphism switches them).
+  This method does not work when the implied Levi subsystem is composite and
+  contains a factor F4.
 }
 
 set Levi_datum (RootDatum rd, (int->bool) select {from posroot indices}) =
@@ -81,23 +81,27 @@ set subsystem_2rho (RootDatum rd, (int->bool) select {from posroot indices}) =
    sum(rd.rank #
        ##for alpha@i in rd.posroots do if select(i) then [alpha] else [] fi od)
 
-{ the |select| predicate for the above functions to use for a given |w| }
-set is_Levi_posroot_index (WeylElt w) = (int->bool):
-   let fix=eigen_lattice(matrix(w),1), rd=w.root_datum in
-   (int i) bool: =coroot(rd,i)*fix { whether coroot vanishes on eigenspace }
+{ select posroots indices for (non standard) Levi, given by its simple system }
+set Levi_info (RootDatum rd, [int] Levi) = (RootDatum,(int->bool)):
+   let orth=kernel(rd.rank ^ for i in Levi do coroot(rd,i) od) in
+   (rd,(int j) bool: =coroot(rd,j)*orth)
 
-{ in some cases we shall actully need the Levi datum itself associated to |w| }
-set Levi_datum (WeylElt w) = RootDatum:
-   Levi_datum(w.root_datum,is_Levi_posroot_index(w))
+{ the |select| predicate for the above functions to use for a given |w| }
+set Levi_info (WeylElt w) = (RootDatum,(int->bool)):
+   let orth=eigen_lattice(matrix(w),1), rd=w.root_datum in
+   (rd,(int i) bool: =coroot(rd,i)*orth)
+
+set Levi_datum ((RootDatum,[int])pair) = RootDatum: pair.Levi_info.Levi_datum
+set Levi_datum (WeylElt w) = RootDatum: w.Levi_info.Levi_datum
 
 { conjugacy test; not complete for composite types with a F4 factor }
 set is_conjugate (WeylElt x,WeylElt y) = bool:
    { there follows a rather complicated and/or expression: }
    let rd=x.root_datum in y.root_datum=rd { easy and necessary } and
    char_poly(matrix(x))=char_poly(matrix(y)) { easy and necessary } and
-(  let L_x = is_Levi_posroot_index(x), L_y = is_Levi_posroot_index(y)
-in dominant(rd,subsystem_2rho(rd,L_x))=dominant(rd,subsystem_2rho(rd,L_y)) and
-(  let Levi_x = Levi_datum(x) then type_codes = %Lie_type(Levi_x).semisimple
+(  let L_x = x.Levi_info, L_y = y.Levi_info
+in dominant(rd,subsystem_2rho(L_x))=dominant(rd,subsystem_2rho(L_y)) and
+(  let Levi_x = Levi_datum(L_x) then type_codes = %Lie_type(Levi_x).semisimple
 in none(for (code,) in type_codes do code="F" od) { done unless F4 factors } or
 (  assert(#type_codes=1,"Can't handle composite Levi subgroups with F4 factor")
 ;  if order(x)=6 and length(x)=10 { the hard case } else true
@@ -116,7 +120,7 @@ set conjugacy_class_rep (WeylElt w, [WeylElt] classes) = WeylElt:
    error("missing class")
 
 set conjugacy_class_rep (WeylElt w) = WeylElt:
-   conjugacy_class_rep(w,conjugacy_class_reps(w.root_datum))
+  conjugacy_class_rep(w,conjugacy_class_reps(w.root_datum))
 
 
 { explicitly enumerate the conjugacy class of |w|, with conjugacy witnesses }
@@ -206,13 +210,9 @@ in while current<#orbit
   for orbit membership, provided we sort our lists of indices to be increasing.
 }
 
-set Levi_orbit_size (RootDatum rd, [int] Levi { posroot indices } ) = int:
-   let w_Levi=W_elt(rd,Levi) { Levi Coxeter element }
-   then Levi_select = is_Levi_posroot_index(w_Levi) { selects Levi posroots }
-   then rho_L = subsystem_2rho(rd,Levi_select)
-   then rho_L_stabiliser = Levi_datum(rd,(int i)bool: =coroot(rd,i)*rho_L)
-   then gens =
-      for alpha in rho_L_stabiliser.simple_roots do root_reflection(rd,alpha) od
+set Levi_normalizer_index ((RootDatum,(int->bool))(rd,select):Levi_info) = int:
+   let rho2_L = subsystem_2rho(Levi_info)
+   then rho_L_stabiliser = Levi_datum(rd,(int i)bool: =coroot(rd,i)*rho2_L)
    then stab_orbit = [[int]]:
       begin
       let root_perm =
@@ -222,32 +222,76 @@ set Levi_orbit_size (RootDatum rd, [int] Levi { posroot indices } ) = int:
                do root_index(rd,reflect(rd,beta,alpha)).ab
                od
             od
+      , Levi = { indices in |rd| for simple system of Levi }
+         list(rd.nr_of_posroots,(int i): select(i) and coroot(rd,i)*rho2_L=2)
       then act(int i,[int] roots) = [int] :
          let map = root_perm[i] in for j in roots do map[j] od.sort
-      , orbit = [Levi], current=0
+      , orbit = [Levi]
+      , current=0
       in while current<#orbit
          do let L=orbit[current] in current+:=1
-         ;  for k:#gens
+         ;  for k:#root_perm
             do let M=act(k,L) in
                if none(#orbit,(int i):orbit[i]=M) then orbit #:= M fi
             od
          od
       ; { stab_orbit = } orbit
       end
-   in ( rd.order_W
-      \ ( Levi_datum(rd,Levi_select).order_W { the order of $W_L$ }
-        * (rho_L_stabiliser.order_W \ #stab_orbit) { index of $W_L$ in $N_L$ }
-        ) { dividing the size of $W$ by that of $N_L$ }
-      )   { finally gives the size of the orbit of Levi systems }
+   in rho_L_stabiliser.order_W \ #stab_orbit { index of $W_L$ in $N_L$ }
+
+set Levi_orbit_size ((RootDatum,(int->bool))(rd,):Levi_info) = int:
+  rd.order_W \ (Levi_info.Levi_normalizer_index * Levi_info.Levi_datum.order_W)
+
+{ Now onward to the task of getting the size of the conjugacy class of |w| in
+  for |Levi_datum(w)|, where ignoring the central torus it is elliptic. This
+  root datum can have multiple simple factors, and we can decompose |w| as
+  commuting product of elements of the Weyl groups of the simple factors, and
+  its conjugacy class will be the Cartesian product of the conjugacy classes of
+  the factors (the same goes for the centraliser). The following function
+  determines this decomposition, where each |WeylElt| in the result is
+  associated to a different root datum, which is simple up to a central torus.
+}
+
+set elliptic_simple_decomposition (WeylElt w) = [WeylElt,(string,int)]:
+   let rd_L = Levi_datum(w)
+   then (type,map)=Cartan_matrix_type(rd_L.Cartan_matrix)
+   then codes = %type.semisimple, w_L=W_elt(rd_L,w.matrix) { convert }
+   , offset=0 { rank within |type| already seen in loop below }
+   , !r = rd_L.rank { full rank, needed when gathering roots/coroots }
+in for (,rank):code in codes { traverse the simple factors }
+   do let sub_map = map[offset:offset+rank] { index mapping for this factor }
+      then factor_word =
+	 ## for s in w_L.word
+	    do let i=find(sub_map,s) in if i.>= then [i] else [] fi
+	    od
+      , simple_datum = root_datum
+	( r # for i in sub_map do rd_L.simple_roots[i]   od
+	, r # for i in sub_map do rd_L.simple_coroots[i] od
+	)
+   in ( W_elt(simple_datum,factor_word), code )
+   next offset +:= rank
+   od
+
+set centralizer_order = (WeylElt->int):
+  let elliptic_simple_order(WeylElt w,(string type, int rank)) = int:
+     { here |w| is elliptic, with simple associated datum of given type,rank }
+     case char_index(type,"ABCD")
+     in rank+1 { type $A_n$ has unique elliptic, an $n+1$ cycle permutation }
+     , order_of_centralizer_elliptic_BCD(w)
+     , order_of_centralizer_elliptic_BCD(w)
+     , order_of_centralizer_elliptic_BCD(w)
+     else exceptional_elliptic_centr_order(type,rank,w.matrix.char_poly)
+     esac
+  in { centralizer_order = }
+  (WeylElt w) int:
+    for (w_i,type_rank) in elliptic_simple_decomposition(w)
+    do elliptic_simple_order(w_i,type_rank)
+    od . product * Levi_normalizer_index(w.Levi_info)
+
+set conjugacy_class_size (WeylElt w) = int:
+    w.root_datum.order_W \ w.centralizer_order
 
 {
-
-set centralizer_order =
-  let elliptic_order(WeylElt w,[int] gens,(type,rank)) = int:
-     case char_index(type,"ABCD")
-     in rank+1
-
-
 set is_empty(RootDatum rd)=bool:#%Lie_type(rd)=0
 set is_torus(RootDatum rd)=bool:is_empty(derived(rd))
 set derived(WeylElt w)=WeylElt:id_W(derived(w.root_datum))##w.word
@@ -278,6 +322,7 @@ set order_of_centralizer_elementary(RootDatum M,WeylElt w_L)=int:
 let A=matrix(w_L) in
 sum(for x in W(M) do let B=matrix(x) in
 if A*B=B*A then 1 else 0 fi od)
+
 
 {w\in W such that w:set of roots to itself
  application: roots=simple roots of Levi
