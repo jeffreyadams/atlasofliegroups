@@ -119,26 +119,26 @@ sort_by((ratvec H,[vec] v) int:#v)
 set find_H (Parabolic P) = [(vec,[vec])]: { should be [(vec,mat)] really }
 {set find_H((KGBElt x,RealForm L,[vec] u))=[(vec,[vec])]:}
 begin
-  let x=x(P), L=Levi(P) then rd=root_datum(x)
-  , u_p=columns_with(is_noncompact(x),nilrad_roots(P))
-  , result = [(vec,[vec])]: []
+  let x=maximal(P)
+  then u_p=columns_with(is_noncompact(x),nilrad_roots(P))
+  , rho_L = rho(P.Levi)
+  , theta_1 = involution(x)-1
   in
 { prints("u_p:", u_p); }
-  for (H,) in all_H(real_form(x))
+##for (H,) in all_H(P.real_form)
   do
-  { prints("H=", H, ", ", rho(L), ", ", H*rho(L)); }
-    if H*involution(x)=H and H*rho(L)=0 and all(for alpha in u_p do >H*alpha od)
+  { prints("H=", H, ", ", rho_L, ", ", H*rho_L); }
+    if =H*theta_1 and =H*rho_L and >H*u_p { all its entries >0 } else []
     then let level_two_roots = columns_with((vec alpha): H*alpha=2, u_p ) in
-      result #:= (H,[vec]:level_two_roots)
+      [ (H,[vec]:level_two_roots) ]
     fi
   od
-; result
 end
 
 set max_only([(vec,[vec])] arg)=[(vec,[vec])]:
   if #arg>0
   then
-    let (H_last,vectors_last)=arg[#arg-1] then max=#vectors_last 
+    let (H_last,vectors_last)=arg[#arg-1] then max=#vectors_last
     then rv= [(vec,[vec])]: []
     in for (H,vectors) in arg do if #vectors=max then rv#:=(H,vectors) fi od
   ; rv

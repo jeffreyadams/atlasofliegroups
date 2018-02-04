@@ -67,12 +67,15 @@ class SubSystem : public RootSystem // new system, subsytem of dual
 
   const RootDatum& parent_datum() const { return rd; }
 
+#if 0 // unused; differs from |parent_twist| by using dual distinguished invol.
   weyl::Twist twist(const WeightInvolution& theta, WeylWord& ww) const;
   // output value |ww| gives |-^theta| as twisted involution for |sub|
+  // and return the twist of the sub-diagram for dual distinguished involution
+#endif
 
   weyl::Twist parent_twist(const WeightInvolution& theta, WeylWord& ww) const;
-  // similar, but |ww| is (for subsystem) on parent side, and anchored at its
-  // distinguished involution |delta|: one has |theta=parent(ww).delta|.
+  // make |theta=sub_W_action(ww).delta| for parent-side sub-distinguished
+  // |delta|, and return the twist of the sub-diagram for that |delta|
 
   PreRootDatum pre_root_datum() const; // viewed from parent side
 

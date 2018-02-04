@@ -26,19 +26,21 @@ set sort_u ([int] v) = [int]:
 
 { the following helps stable-sorting of anything according to a statistic }
 
-{ stable-sorting permutation of a list of integers (analogous, but independent)
-  permutation of #v whose inverse is the standardisation of v (combinatorics)
+{ Inverse (since used for permuting) of the permutation that stable-sorts a list
+  $v$ of (integer) values into increasing order: at $i$, it has the index of the
+  value ranked $i$ in $v$, where equal values are ranked from left to right.
+  That permutation itself is just the standardisation (stable ranking) of $v$.
 }
 set inv_standardisation = ([int]->[int]):
   let merge([(int,int)] a, [(int,int)] b) = { merge based on first component }
       let na=#a in
       if na=0 then b
       else let i=0, j=0, nb=#b { original length of b }
-      in b #:= a~[0] { sentinel; when this elt becomes b[j], then a is emptied }
+      in b #:= a~[0] { sentinel; when this becomes b[j], then $a$ is emptied }
       ; while i<na or j<nb { run until i=na and j=nb=#b-1 }
 	do
 	  if i=na then b[j] next j+:=1
-	  else
+	  else { compare only first components, as second one always increase }
 	    let (x,):ai=a[i], (y,):bj=b[j] { x,y are sort keys, ai,bj elements }
 	    in if x<=y then ai next i+:=1 else bj next j+:=1 fi
 	  fi
@@ -55,6 +57,8 @@ set inv_standardisation = ([int]->[int]):
     do org_i od { afterward just recover the permuted original indices }
 
 { inv_standardisation -> order of indices to select from original for sorting }
+set sort_by ((KGBElt -> int) f)= ([KGBElt] v) [KGBElt]:
+  for index in inv_standardisation(for x in v do f(x) od) do v[index] od
 set sort_by ((Param->int) f) = ([Param] v) [Param]:
   for index in inv_standardisation(for x in v do f(x) od) do v[index] od
 

@@ -999,7 +999,7 @@ WeylWord RootDatum::factor_dominant (Weight& v) const
     for (s=0; s<semisimpleRank(); ++s)
       if (v.dot(simpleCoroot(s)) < 0)
       {
-	w.push_back(s);
+	w.push_back(s); // actually at front when applying list right-to-left
 	simple_reflect(s,v);
 	break;
       }
@@ -1212,30 +1212,43 @@ void toDistinguished(WeightInvolution& q, const RootDatum& rd)
 }
 
 /*
-   Transform, using the Weyl group, the image |Delta| of simple system back to
-   that system as a set, possibly permuted by a twist. At return |Delta|
-   represents that twist, and return value transforms it to original |Delta|
+   Transform, using some $w\in W$, the image |Delta| of the simple system by a
+   (here not accessible) root datum automorphism |theta|, so that it consists of
+   simple roots. The resulting permutation (twist) left in |Delta| defines a
+   based root datum automorphism |delta|, and the return value is a Weyl word
+   for the twisted involution for |theta|, i.e., $w\in W$ with |theta=w*delta|.
 
-   Simple reflections are gathered in the opposite order of when a Weyl group
-   element is represented by its image of $\rho$ rather than of |Delta|. In
-   other words we find the simple reflections in the same order they need to be
-   applied to the simple system to get back |Delta|. That is the right-to-left
-   order in our result, so we push in front of a list; finally wrap to |vector|.
+   In spite of superficial similarity, we proceed rather differently than in
+   |factor_dominant|. Each time we find a negative root among |Delta|, we apply
+   the reflection in that root to all images, which effectively replaces the
+   images by $\theta$ by those by $\theta*s_i$ where $s_i$ is the simple
+   reflection at the index $i$ where the negative root was found. Ultimately
+   |Delta| becomes the images by $\theta*s_{i_1,...i_l}$ where $i_1,...i_l$ are
+   the indices in the order they were found. But the corresponding Weyl group
+   element $w'$ is not our result; rather it satisfies $\delta=\theta*w'$ where
+   we want $w$ with $\theta=w*\delta$. Solving this we see that $w'$ needs
+   reversal and $\delta$-twist: $w$ has Weyl word $\delta(i_l),...,\delta(i_1)$
+   where $\delta(\alpha_i)=\alpha_{\delta(i)}$. The code below achieves revesal
+   of the indices by pushing in front of a |simple_list|; at the end |Delta|
+   gives the twist and we apply it while transferring the list to a |WeylWord|.
 
-   (This inversion woud have been avoided if we had recorded the images not of
+   (This reversal would have been avoided if we had recorded the images not of
    the simple roots but of the coroots: positivity of $\check\alpha_i*\theta$
-   tells whether $\theta\rho$ is positive for simple reflection hyperplane $i$.)
+   tells whether $\theta\rho$ is positive for simple reflection hyperplane $i$.
+   Note also that in our main application |theta| is an involution, the result
+   will be a twisted involution, and the reversal-twist combination has no net
+   effect. But it is needed when handling general root datum automorphisms.)
  */
 WeylWord wrt_distinguished(const RootSystem& rs, RootNbrList& Delta)
 {
-  containers::sl_list<weyl::Generator> w;
+  containers::simple_list<weyl::Generator> w;
   const RootNbr rank=rs.rank();
   weyl::Generator s;
   do
     for (s=0; s<rank; ++s)
       if (rs.is_negroot(Delta[s]))
       { // then we apply reflection with respect to root |Delta[s]| to |Delta|
-	w.push_back(s); // but we record the simple refelction index |s|
+	w.push_front(s); // but we record the simple reflection index |s|
 	const auto& pi=rs.root_permutation(Delta[s]);
 	for (weyl::Generator t=0; t<rank; ++t) // apply |pi| to |Delta[t]|
 	  Delta[t]=pi[Delta[t]];
@@ -1243,8 +1256,9 @@ WeylWord wrt_distinguished(const RootSystem& rs, RootNbrList& Delta)
       }
   while (s<rank);
 
-  WeylWord result; result.reserve(w.size());
-  std::copy(w.begin(),w.end(),std::back_inserter(result));
+  WeylWord result; result.reserve(length(w));
+  for (auto it=w.begin(); not w.at_end(it); ++it)
+    result.push_back(rs.simpleRootIndex(Delta[*it]));
   return result;
 }
 

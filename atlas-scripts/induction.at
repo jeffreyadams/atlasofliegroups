@@ -467,7 +467,7 @@ set rho_u_cap_s_alt (Parabolic P,KGBElt x) = ratvec:
 
 {. Twist a K-type for a Levi L by minus the sum of non-compact roots in $\mathfrak u$. .}
 set twist_by_minus_2rho_u_cap_s(Parabolic P,Param p_L)=Param:
-   let G=real_form(P.x) then
+   let G=real_form(P) then
    L=real_form(p_L) then
    x_L=x(p_L) then
    x_G=canonical_x_K(embed_KGB(x_L,G)) then

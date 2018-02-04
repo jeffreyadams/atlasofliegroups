@@ -1195,7 +1195,8 @@ size_t TI_Entry::hashCode(size_t modulus) const
   Return the twist defined by |d| relative to |rd|.
 
   Precondition: |d| is an involution of the root datum |rd|. If not an
-  involution of the based datum, an appropriate Weyl group action is applied
+  involution of the based datum, an appropriate (but not recorded) Weyl group
+  action is applied to make simple roots map to simple roots.
  */
 Twist make_twist(const RootDatum& rd, const WeightInvolution& d)
 {
