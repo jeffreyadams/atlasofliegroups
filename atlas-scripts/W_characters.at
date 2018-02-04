@@ -327,3 +327,29 @@ set print_elliptic_conjugacy_classes (RootDatum rd) = void:
 set conjugacy_class_number (WeylElt w) = int:
   let classes=w.root_datum.conjugacy_class_reps in
   first(#classes, (int i)bool: is_conjugate(w,classes[i]))
+
+{   some long print commands   }
+
+{. print order, length, Levi, size_of_class, cyclotomic polynomial.}
+set print_conjugacy_classes_long([WeylElt] C)=void:
+  let count=0
+  then data=["order","length","Levi","size","cyclotomic"]#
+    for w in sort_by_order(C)
+    do let (L,)=Levi_info(w), size=size_of_conjugacy_class(w)
+       , cyclotomics=product_of_cyclotomic(rat_poly(char_poly(w)))
+       in count+:=size;
+    [int_format(order(w)), int_format(length(w)),to_string(Lie_type(L))[9:]
+    ,int_format(size), to_string(cyclotomics)]
+    od
+  in tabulate(data,"rrrrr",2," ");
+  prints(new_line,"sum of sizes of conjugacy classes:", count,new_line
+        ,"Order of W: ",order_W(C[0].root_datum))
+
+set print_conjugacy_classes_long (RootDatum rd) = void:
+  print_conjugacy_classes_long(conjugacy_class_reps(rd))
+
+{. print elliptic classes only .}
+set print_elliptic_conjugacy_classes (RootDatum rd) = void:
+  print_conjugacy_classes(sort_by_order(elliptic(rd)))
+set print_elliptic_conjugacy_classes_long (RootDatum rd) = void:
+  print_conjugacy_classes_long(sort_by_order(elliptic(rd)))
