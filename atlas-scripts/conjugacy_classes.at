@@ -267,9 +267,9 @@ set check_size_of_conjugacy_classes (RootDatum rd) = void:
 
 {. sorting routines for conjugacy classes .}
 set sort_by( (ConjugacyClass -> int) f) = ([ConjugacyClass] v) [ConjugacyClass]:
-    for index in inv_standardisation(for x in v do f(x) od) do v[index] od
+  for index in inv_standardisation(for x in v do f(x) od) do v[index] od
 set sort_by( (WeylElt -> int) f)= ([WeylElt] v) [WeylElt]:
-    for index in inv_standardisation(for x in v do f(x) od) do v[index] od
+  for index in inv_standardisation(for x in v do f(x) od) do v[index] od
 set sort_by_order = ([ConjugacyClass] -> [ConjugacyClass]):
   sort_by(order@ConjugacyClass)
 set sort_by_order = ([WeylElt] -> [WeylElt]): sort_by(order@WeylElt)
