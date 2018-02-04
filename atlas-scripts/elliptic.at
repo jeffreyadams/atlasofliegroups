@@ -216,7 +216,7 @@ set elliptic (RootDatum rd) = [WeylElt]:
    fi
 
 { Our main application is enumerating elliptic elements for standard Levi
-  subssystems. We make and adapted version of the previous function which on the
+  subssystems. We make an adapted version of the previous function which on the
   fly also ensures embedding into the full (non Levi) Weyl group
 }
 set elliptics_for_Levi (RootDatum rd, [int] subset) = [WeylElt]:
