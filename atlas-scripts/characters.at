@@ -1,4 +1,10 @@
-<conjugacy_classes.at
+<basic.at
+<elliptic.at { for |elliptics_for_Levi@(RootDatum,[int])| }
+<sort.at { for sorting lists of posroot indices }
+<Weylgroup.at { for |order_W@RootDatum| }
+<tabulate.at { for |tabulate| }
+<W_characters.at
+
 { class functions and characters for the Weyl group}
 
 { ClassFunction:

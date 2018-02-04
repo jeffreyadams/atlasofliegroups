@@ -10,5 +10,5 @@
 <jantzen.at
 <finite_dimensional_signature.at
 <W_characters.at
-{<W_cells.at}
+<W_cells.at  {loads characters.at}
 
