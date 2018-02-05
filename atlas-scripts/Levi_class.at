@@ -89,7 +89,7 @@ set group_by_conjugate_rhos (RootDatum rd, int rank) = [[[int]]]:
 
 {. Perform the previous function for all possible ranks of Levi
    subgroups. .}
-set group_by_conjugate_rhos (RootDatum rd) = [int,[[[int]]]]:
+set group_by_conjugate_rhos (RootDatum rd)=[(int,[[[int]]])]:
    for i:semisimple_rank(rd)+1 do (i,group_by_conjugate_rhos(rd,i)) od
 
 {. As the previous function, but with only one representative for
