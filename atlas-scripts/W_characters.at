@@ -340,28 +340,30 @@ set_type WeylClassTable =
 , ([int]->int) dimension
 , ([int]->int) norm2
 , ([int],[int]->int) inner
+, ([int],[int]->[int]) direct_sum
+, ([int],int->[int]) Cartesian_power
 , ([int],[int]->[int]) tensor
 , ([int],int->[int]) tensor_power
 )
 
 set W_class_table (RootDatum rd) = WeylClassTable:
-   let reps  = [WeylElt]: conjugacy_class_reps(rd)
-   then sizes = [int]:     for w in reps do w.size_of_conjugacy_class od
-   , ncc = #reps { number of conjugacy classes }
+   let !reps  = [WeylElt]: conjugacy_class_reps(rd)
+   then !sizes = [int]:     for w in reps do w.size_of_conjugacy_class od
+   , !ncc = #reps { number of conjugacy classes }
    , class_of (WeylElt w)= int: first(#reps,(int i): is_conjugate(reps[i],w))
-   , nW = rd.order_W
+   , !nW = rd.order_W
    then inner ([int] x, [int] y) = int:
      let s = for size@i in sizes do size*x[i]*y[i] od.sum then (q,r)=s \% nW in
      if =r then q else error("Non integer inner product ",s/nW) fi
 in
 ( {print_classes} @:
-  let data = for w in reps
-    do [ w.order.to_string
-       , w.length.to_string
-       , w.Levi_datum.Lie_type.semisimple.str
-       ]
-    od
-  in tabulate(data,"rrl",2," ")
+   let data = for w in reps
+     do [ w.order.to_string
+        , w.length.to_string
+        , w.Levi_datum.Lie_type.semisimple.str
+        ]
+     od
+   in tabulate(data,"rrl",2," ")
 
 , {class_representatives} @: reps
 , {class_sizes} @: sizes
@@ -373,9 +375,50 @@ in
 , {dimension}   ([int] val) int: val[class_of(id_W(rd))]
 , {norm2} ([int] x) int: inner(x,x)
 , {inner} inner
-, {tensor}
+, {direct_sum}
   ([int] x, [int] y) [int]:
+  assert(#x=ncc and #y=ncc,"Wrong sizes"); for xi@i in x do xi+y[i] od
+, {Cartesian_power}
+  ([int] x,int n) [int]: assert(#x=ncc,"Wrong size"); for v in x do n*v od
+, {tensor}
+   ([int] x, [int] y) [int]:
   assert(#x=ncc and #y=ncc,"Wrong sizes"); for xi@i in x do xi*y[i] od
 , {tensor_power}
-  ([int] x, int n) [int]: assert(#x=ncc,"Wrong size"); for xi in x do xi^n od
+   ([int] x, int n) [int]: assert(#x=ncc,"Wrong size"); for xi in x do xi^n od
 )
+
+{ Adams' operatorion (not Jeff's): evaluate character at class of $w^n$ }
+set Adams (WeylClassTable tab) = ([int]char, int n) [int]:
+   for w in tab.class_representatives() do char[tab.class_of(w^n)] od
+
+{ symmetric power of a character }
+set sym_power (WeylClassTable tab) = ([int]char, int n) [int]:
+{ with $h_k$ symmetric, $p_k$ Adams, use $kh_k=\sum_{i=0}{k-1} h_ip_{k-i}$ }
+   let { define two local tables of characters, to be expanded in loop }
+     p = { "power sum polynomials", results of Adams operations } [[int]]: [ ]
+         { since there is no $p_0$, the $k$-the Adams operation gives the entry
+           |p[k-1|, but never mind since we will always reverse-index |p| }
+   , h = { "complete homogeneous polynomials", symmetric powers } [tab.trivial]
+   , Adams = tab.Adams { shorthand }
+in for k:n from 1
+   do p #:= Adams(char,k) { expand }
+   ;  let sum=p~[0]
+   in for i:k-1 from 1 do sum:=tab.direct_sum(sum,tab.tensor(h[i],p~[i])) od
+   ; h #:= for s in sum do s\k od { expand table by |sum\k| }
+   od; h[n] { last symmetric power is the one we want }
+
+{ exterior power of a character }
+set ext_power (WeylClassTable tab) = ([int]char, int n) [int]:
+{ with $e_k$ ext, $p_k$, use $ke_k=\sum_{i=0}{k-1}(-1)^{k-i-1} e_ip_{k-i}$ }
+   let { define two local tables of characters, to be expanded in loop }
+    sp = { "signed power sum polynomials", $(-1)^{i-1}p_i$ } [[int]]: [ ]
+         { since there is no $p_0$, the $k$-the Adams operation gives the entry
+           |p[k-1|, but never mind since we will always reverse-index |p| }
+   , e = { "elementary symmetric polynomials", exterior powers } [tab.trivial]
+   , Adams = tab.Adams { shorthand }
+in for k:n from 1
+   do sp #:= tab.Cartesian_power(Adams(char,k),minus_1^(k-1)) { expand }
+   ;  let sum=sp~[0]
+   in for i:k-1 from 1 do sum:=tab.direct_sum(sum,tab.tensor(e[i],sp~[i])) od
+   ; e #:= for s in sum do s\k od { expand table by |sum\k| }
+   od; e[n] { last symmetric power is the one we want }
