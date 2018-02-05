@@ -1,6 +1,8 @@
-<characters.at
+<parabolics.at
+<W_characters.at
 
-{ Character of W-representations on cells }
+{ Character of W-representations on cells,
+ also induced characters and the Steinberg character }
 
 {. given lists of pairs (int,int) and n find (n,m) and return m .}
 set find_mate([(int,int)] pairs,int n)=int:
@@ -44,32 +46,79 @@ cell_action(cell,w.word)
  pass this to avoid recomputing it }
 
 {. character of representation of W on cell .}
-set cell_character(([int],[([int],[(int,int)])]) cell, ([WeylElt],[int]) data)=
-ClassFunction:let (classes,sizes) =data in (classes,sizes,for w in classes do trace(cell_action(cell,w)) od)
+set cell_character(WeylClassTable ct,([int],[([int],[(int,int)])]) cell)=[int]:
+for w in ct.class_representatives() do trace(cell_action(cell,w)) od
 
 {. list of characters of representation on list of cells .}
-set cell_characters([([int],[([int],[(int,int)])])] cells, ([WeylElt],[int]) data)=
-for cell in cells do cell_character(cell,data) od
+set cell_characters(WeylClassTable ct,[([int],[([int],[(int,int)])])] cells)=[[int]]:
+for cell in cells do cell_character(ct, cell) od
 
 {. matrix of inner products of characters of cell representations .}
-set matrix_of_innerproducts([ClassFunction] characters,([WeylElt],[int]) data)=mat:
+set matrix_of_inner_products(WeylClassTable ct,[[int]] characters)=mat:
   for i:#characters do for j:#characters do
-  rat_as_int(characters[i]*characters[j]) od od
+  ct.inner(characters[i],characters[j]) od od
 
-set cells_table([([int],[([int],[(int,int)])])] cells,([WeylElt],[int]) data)=mat:
-let characters=for cell in cells do cell_character(cell,data) od in
-matrix_of_inner_products(characters)
+set cells_table(WeylClassTable ct,[([int],[([int],[(int,int)])])] cells)=mat:
+let characters=cell_characters(ct,cells) in 
+matrix_of_inner_products(ct,characters)
 
-set cells_table_augmented([([int],[([int],[(int,int)])])] cells,([WeylElt] classes,[int] sizes))=mat:
-let rd=classes[0].root_datum then
-characters=
-for cell in cells do cell_character(cell,(classes,sizes)) od
-#trivial_character(rd) # sgn_character(rd) # reflection_character(rd)
-in matrix_of_inner_products(characters)
+set cells_table_augmented(WeylClassTable ct,[([int],[([int],[(int,int)])])] cells)=mat:
+let aug=[int]:ct.trivial##ct.sign##ct.reflection then
+characters=cell_characters(ct,cells)#aug in 
+matrix_of_inner_products(ct,characters)
 
+{. promote w in W(Levi) to W(G) }
+set promote(WeylClassTable ct, WeylElt w_L)=
+W_elt(ct.class_representatives()[0].root_datum, matrix(w_L))
 
+{ induction from a Levi factor }
+{L is a Levi in G, pi_L is a class function on L
+ pi_G=ind_L^G(pi_L)
+ formula: if C is a conjugacy class for G
+ trace(pi_G)(C) = |W(G)/W(L)|/ |C|\sum |C_j| trace(pi_L(C_j))
+ where the sum runs over the W(L)-conjugacy classes in C\cap W(L)
 
+ algorithm: initialize the result to be the 0-character
+ run over conjugacy class representatives in L
+ for each conjugacy class representative w_L compute
+   w=conjugacy_class_map(w_L,class_reps_G),
+  and add (rational): index*|conjugacy class of w_L|/|conjugacy class of w|
+  finally convert to [int]
+}
+set induce_character(WeylClassTable ct_G,WeylClassTable ct_L,vec pi_L)=
+let rd_G=(ct_G.class_representatives())[0].root_datum then
+rd_L=(ct_L.class_representatives())[0].root_datum then
+index=rat_as_int(order_W(rd_G)/order_W(rd_L)) then
+classes_G=ct_G.class_representatives()  {[WeylElt]} then
+classes_L=ct_L.class_representatives()  {[WeylElt]} then
+values_G=[rat]:null(#classes_G) in
+for w_L@i in classes_L do 
+ let w_G=conjugacy_class_rep(promote(ct_G,w_L)) then
+{ j=number(w_G,classes_G) in}
+ j=ct_G.class_of(w_G) in
+ values_G[j]+:=pi_L[i]*index*(ct_L.class_sizes())[i]/ct_G.class_sizes()[j] od;
+ ratvec_as_vec(values_G)
 
+set find ([int] v, int k) = int:      first(#v,(int i)bool:v[i]=k)
+
+{. smallest k so that pi occurs in S^k(reflection) .}
+set first_occurence(WeylClassTable ct, vec character)=
+let ref=ct.reflection in
+first(100,(int k) bool: ct.inner(character,ct.sym_power(ref,k))!=0)
+
+{ the Steinberg character (mainly for testing)}
+
+{all 2^n standard Levis }
+set standard_Levis(RootDatum rd)=[RootDatum]:
+for S in generate_all_subsets(#semisimple_rank(rd)) do let (,L)=complex_Levi(rd, S) in L od
+
+{alternating sum, over all standard Levis, of induced from trivial
+ should equal the sign character }
+set Steinberg_character(RootDatum rd)=
+let ct_G=W_class_table(rd) then
+rv = sum(for L in standard_Levis(rd) do
+ let ct_L=W_class_table(L) in
+ (-1)^(ss_rank(L))*induce_character(ct_G,ct_L,ct_L.trivial) od ) in assert(rv=ct_G.sign);rv
 
 { Description of the cell representation taken from messages/wcells.help}
 {
