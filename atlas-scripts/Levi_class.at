@@ -50,7 +50,7 @@ set conjugates_by_rho (RootDatum rd, [int] S, [[int]] list) = [[int]]:
 
 {. Given an array of integer lists representing simple roots in a complex
    group, print the list of Lie types of the corresponding Levi subgroups. .}
-set print_conjugate_info (RootDatum rd, [[int]] S_list) = void:
+set print_Levi_info (RootDatum rd, [[int]] S_list)=void:
    prints("Levi","         ","Lie Type");
    for S in S_list do let L=complex_Levi((rd,S)) in
    prints(S," ",Lie_type(L.rd_Levi)) od
