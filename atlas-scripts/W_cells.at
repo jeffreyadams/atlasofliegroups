@@ -99,12 +99,12 @@ for w_L@i in classes_L do
  values_G[j]+:=pi_L[i]*index*(ct_L.class_sizes())[i]/ct_G.class_sizes()[j] od;
  ratvec_as_vec(values_G)
 
-set find ([int] v, int k) = int:      first(#v,(int i)bool:v[i]=k)
-
+{the sign representation occurs in S^(nr_of_posroots)(reflection),
+and this is the maximum}
 {. smallest k so that pi occurs in S^k(reflection) .}
 set first_occurence(WeylClassTable ct, vec character)=
 let ref=ct.reflection in
-first(100,(int k) bool: ct.inner(character,ct.sym_power(ref,k))!=0)
+first(nr_of_posroots(ct.class_representatives()[0].root_datum)+1,(int k) bool: ct.inner(character,ct.sym_power(ref,k))!=0)
 
 { the Steinberg character (mainly for testing)}
 
