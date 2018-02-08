@@ -21,8 +21,8 @@
 }
 
 <basic.at
-<conjugacy_classes.at
-
+<Weylgroup.at { for |order_W@RootDatum| }
+<W_characters.at { for |conjugacy_class_reps| }
 
 {. data type for class functions .}
 set_type ClassFunction=([WeylElt] classes, [int] sizes, [int] values)

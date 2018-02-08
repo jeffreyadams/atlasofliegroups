@@ -927,7 +927,7 @@ W_cells: (Block->[[int],[[int],[int,int]]])): data describing W-cells for block
   This decomposes the W-graph into cells, and returns data describing each of
   those cells. It consists of a list with for each cell a pair consisting of
   a list of numbers identifying the elements of this cell by the numbers of
-  the block elements the correspond to, and the structure of the restriction
+  the block elements they correspond to, and the structure of the restriction
   of the W-graph restricted to this block, in the same format as W_graph above.
 
 extended_KL_block: (Param,mat->[Param],mat,vec): extended KL data for deform

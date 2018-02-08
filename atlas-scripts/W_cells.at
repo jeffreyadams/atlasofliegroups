@@ -5,34 +5,32 @@
  also induced characters and the Steinberg character }
 
 {. given lists of pairs (int,int) and n find (n,m) and return m .}
-set find_mate([(int,int)] pairs,int n)=int:
-let index=first(#pairs,(int k)bool: let (a,)=pairs[k] in a=n) in
-if index!=-1 then let (,b)=pairs[index] in b else 0 fi
+set lookup_mu([(int,int)] pairs,int n) = int:
+  let index=first(#pairs,(int k)bool: let (a,)=pairs[k] in a=n) in
+  if index>=0 then let (,b)=pairs[index] in b else 0 fi
 
 { matrix of action of of i^th simple reflection on a cell
   a cell is: ([int],[([int],[(int,int)])]) cell,int i)
   as described in the W_cells command in atlas-functions.help}
 
 {. matrix of action of i^th simple reflection on a cell .}
-set cell_action(([int],[([int],[(int,int)])]) cell,int i)=mat:
-let (params,graph)=cell then
-n=#params then
-taus=for j:n do let (tau,)=graph[j] in tau od then
-arrows=for j:n do let (,arrow)=graph[j] in arrow od in
-for j:n do
- let col = null(n) in
-  if (find(taus[j],i)) !=-1 then col[j]:=-1
-   else col[j]:=1;
-   for k:n do
-    if find(taus[k],i) !=-1 then
-     col[k]:=find_mate(arrows[k],j)
-    fi
+set cell_action (([int] ., [[int],[int,int]] W_graph),int s) = mat:
+   let n=#W_graph then I=id_mat(n), tau=for (t,) in W_graph do t od
+in n ^ { matrix is given by rows of length n }
+   for (tau_i,out_list)@i in W_graph
+   do let row = I[i] { row value for the case that s not in tau invariant } in
+      if is_member(tau_i)(s)
+      then row[i]:=-1
+      ; for (j,mu) in out_list
+        do if not is_member(tau[j])(s) then row[j]:=mu fi
+        od
+      fi
+   ;  row
    od
-  fi;col
-od
+
 
 {. matrix of action of product of simple reflections on a cell .}
-set cell_action(([int],[([int],[(int,int)])]) cell,[int] w)=mat:
+set cell_action (([int],[[int],[int,int]]) cell,[int] w) = mat:
 let (elements,)=cell then
 n=#elements then
 rv=id_mat(n) in
@@ -59,12 +57,12 @@ set matrix_of_inner_products(WeylClassTable ct,[[int]] characters)=mat:
   ct.inner(characters[i],characters[j]) od od
 
 set cells_table(WeylClassTable ct,[([int],[([int],[(int,int)])])] cells)=mat:
-let characters=cell_characters(ct,cells) in 
+let characters=cell_characters(ct,cells) in
 matrix_of_inner_products(ct,characters)
 
 set cells_table_augmented(WeylClassTable ct,[([int],[([int],[(int,int)])])] cells)=mat:
 let aug=[int]:ct.trivial##ct.sign##ct.reflection then
-characters=cell_characters(ct,cells)#aug in 
+characters=cell_characters(ct,cells)#aug in
 matrix_of_inner_products(ct,characters)
 
 {. promote w in W(Levi) to W(G) }
@@ -92,7 +90,7 @@ index=rat_as_int(order_W(rd_G)/order_W(rd_L)) then
 classes_G=ct_G.class_representatives()  {[WeylElt]} then
 classes_L=ct_L.class_representatives()  {[WeylElt]} then
 values_G=[rat]:null(#classes_G) in
-for w_L@i in classes_L do 
+for w_L@i in classes_L do
  let w_G=conjugacy_class_rep(promote(ct_G,w_L)) then
 { j=number(w_G,classes_G) in}
  j=ct_G.class_of(w_G) in
