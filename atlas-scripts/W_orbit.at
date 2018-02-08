@@ -62,7 +62,7 @@ set W_orbit((RootDatum,ratvec) pair) = [ratvec]:
 { same as generate_from_dom(rd,v) except that v is not required to be dominant }
 set generate_from(RootDatum rd, ratvec v)=
 let (w,vdom)=from_dominant(rd,v) then
-(elts,vecs)=generate_from_dom(rd,vdom) in 
+(elts,vecs)=generate_from_dom(rd,vdom) in
 (for i:#elts do elts[i]*inverse(w) od, vecs)
 
 { just the W(S)-orbit W.v; assumes v is dominant }
@@ -129,9 +129,6 @@ set conjugate_to ([WeylElt] S, ratvec v,ratvec w) = (bool,[int]):
   let (words,orbit) = generate(S,v) then k=first(#orbit,(int i):orbit[i]=w) in
   if k.>= then (true,words[k]) else (false,[]) fi
 
-
-{find WeylElt w satisfying w*v=u}
-set conjugate_to(RootDatum rd,ratvec u,ratvec v)=(bool,WeylElt):
-let S=for i:ss_rank(rd) do id_W(rd)#i od then
-(valid,roots)=conjugate_to(S,u,v) in
- if not valid then (false,id_W(rd)) else (true,id_W(rd)##roots) fi
+{ find WeylElt w satisfying w*v=u in a most inefficient way }
+set conjugate_to (RootDatum rd, ratvec u, ratvec v) = (bool,WeylElt):
+  let (valid,word)=conjugate_to(W_gens(rd),u,v) in (valid,W_elt(rd,word))

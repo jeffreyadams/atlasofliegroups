@@ -261,6 +261,15 @@ set is_real (CyclotomicFieldElement z) = bool: z=z.bar
 set absolute_value_squared (CyclotomicFieldElement z) = CyclotomicFieldElement:
    z*z.bar
 
+{. all cyclotomic factors of polynomial P, as list of positive integers .}
+set cyclotomic_factors ([int] P) = [int]:
+  let n=1 in
+##while let l=#P in l>0
+    and n<7*l { condition to force termination, without missing out much cases }
+  do let (Q,R)=divide1(P,cyclotomic_polynomial(n)) in
+     if =R then P:=Q; [n] else n+:=1; [] fi
+  od
+
 { write a rational polynomial as a product of cyclotomic polynomials (if possible)
   return value [a_1,...] means Phi_{a_1}*Phi_{a_2}*...}
 set product_of_cyclotomic (RatPoly f) = [int]:

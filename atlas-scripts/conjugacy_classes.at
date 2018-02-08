@@ -1,3 +1,57 @@
+{ This contents of this file has been almost entirely incoprorated into
+  W_characters.at and elliptics.at; the file will disappear from Atlas soon
+
+  Status of the types and functions defined below
+
+  type ConjugacyClass: no longer used, just a representative |w| is used
+  embed_simple_indices: no longer needed (done in elliptics_for_Levi)
+  root_datum@ConjugacyClass: use w.root_datum (full root datum)
+  root_datum_Levi@ConjugacyClass: use w.Levi_datum
+  promote: no longer needed
+  restict: no longer needed
+  order@@ConjugacyClass: no longer needed
+  is_long: done inside is_conjugate (one can use dominant(rd,alpha))=high_root)
+  is_short: not needed
+  is_elliptic_conjugate_F4_special_case: auxiciliary now part of is_conjugate
+  is_elliptic_conjugate: auxiciliary now part of is_conjugate
+  is_conjugate: present in W_character.at (rewritten)
+  conjugacy_classes@RootDatum: present in W_character.at, same as next one
+  conjugacy_class_reps@RootDatum: present in W_character.at
+  conjugacy_class@(WeylElt,[ConjugacyClass]): now named conjugacy_class_rep
+  conjugacy_class@WeylElt: present in W_character.at
+  test_conjugacy_class@([WeylElt], int): no longer needed
+  test_conjugacy_class@[WeylElt]: no longer needed
+  test_conjugacy_classes@[WeylElt]: no longer needed
+  conjugacy_class_elements_extra: renamed conjugators_and_conjugacy_class
+  conjugacy_class_elements: renamed full_conjugacy_class
+  size_of_conjugacy_class_elementary: take #full_conjugacy_class(w)
+  order_of_centralizer_elementary: write order_W(rd)\#full_conjugacy_class(w)
+  centralizer_elementary: renamed full_centraliser
+  is_empty@RootDatum, is_torus@RootDatum, derived@WeylElt: no longer needed
+  order_of_centralizer_elliptic_simple: now local function to centralizer_order
+  order_of_centralizer_elliptic: now part of centralizer_order
+  order_of_centralizer_elementary@(RootDatum,WeylElt): no longer needed
+  normalizer@(RootDatum,[vec]): dropped
+  order_of_centralizer@WeylElt: renamed centralizer_order
+  size_of_conjugacy_class@WeylElt: present in W_character.at
+  size_of_conjugacy_class@ConjugacyClass: no longer needed
+  sizes_of_conjugacy_classes@[WeylElt]: no longer needed
+  sizes_of_conjugacy_classes@RootDatum: present in W_character.at
+  test_size_of_conjugacy_classes: present in W_character.at
+  check_size_of_conjugacy_classes: dropped
+  sort_by: moved to sort.at
+  sort_by_order: write (sort_by(order@WeylElt))
+  print_conjugacy_classes@[WeylElt]: present in W_character.at
+  print_conjugacy_classes@RootDatum: present in W_character.at
+  print_conjugacy_classes_long@[WeylElt]: present in W_character.at
+  print_conjugacy_classes_long@RootDatum: present in W_character.at
+  print_elliptic_conjugacy_classes@RootDatum: present in W_character.at
+  print_elliptic_conjugacy_classes_long@RootDatum: present in W_character.at
+  debug_data_short, debug_data, debug_data_long: dropped
+  number@(WeylElt,[WeylElt]): replaced by conjugacy_class_number@WeylElt
+  number@(WeylElt,[ConjugcyClass]): no longer needed
+}
+
 <basic.at
 <parabolics.at { for type |ComplexLevi| }
 <cyclotomic.at { for |product_of_cyclotomic@RatPoly| }
