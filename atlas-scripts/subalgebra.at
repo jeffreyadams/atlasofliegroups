@@ -1,3 +1,13 @@
+{ This file was an auxiliary to conjugacy_classes.at, which is superseded by
+  W_characters.at; therefore it will be soon removed.
+
+  The functions deal with constructing Levi systems cut out by various linear
+  conditions (being orthogonal to a given set of coroots), and their root data.
+  W_character.at handles Levi systems by specifying a RootDatum and a predicate
+  that selects among its positive root indices those for the Levi factor. For
+  the conditions considered here, such predicates are readily written down.
+}
+
 <basic.at
 <W_orbit.at
 

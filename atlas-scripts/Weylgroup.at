@@ -1,5 +1,4 @@
 <basic.at
-<simple_factors.at
 
 { Functions for computing with Weyl group elements }
 
@@ -129,36 +128,46 @@ root_datum(M*simple_roots(rd), ^inverse(M)*simple_coroots(rd))
 set *(WeylElt w,RootDatum rd)=RootDatum:matrix(w)*rd
 
 {  order of the Weyl group }
+set labels_simple (LieType lt) = [int]:
+  lt:=lt.semisimple;
+  assert(#%lt=1,"Derived Root Datum is not simple");
+  highest_root(lt.adjoint)
 
-set labels_simple(RootDatum rd)=[int]:
-assert(is_simple(derived(rd)),"Derived Root Datum is not simple");
-highest_root(adjoint(rd))
+set labels (RootDatum rd) = [int]:
+  let (lt,map)= rd.Cartan_matrix.Cartan_matrix_type
+  , label = for :rd.semisimple_rank do 0 od, offset=0
+  in for (type,rank) in %lt
+     do let lab = labels_simple(Lie_type(type+rank)) in
+        for l@i in lab do label[map[i+offset]]:=l od
+     next offset +:=rank
+     od; label
 
-set labels(RootDatum rd)=[int]:
-let (,factors)=simple_factors(rd) in
-##for f in factors do labels_simple(f) od
+set order_W_simple (LieType lt) = int:
+  lt:=lt.semisimple;
+  assert(#%lt=1,"Derived Root Datum is not simple");
+{ magic formula for the order of the Weyl group for a simple Lie type: }
+  fac(lt.rank)*product(lt.labels_simple)*det(lt.Cartan_matrix)
 
-set order_W_simple(RootDatum rd)=int:
-assert(is_simple(derived(rd)),"Derived Root Datum is not simple");
-fac(ss_rank(rd))*product(labels(rd))*det(Cartan_matrix(rd))
+set order_W (LieType lt) = int:
+  product(for (type,rank) in %lt do order_W_simple(Lie_type(type+rank)) od)
+set order_W (RootDatum rd) = int: order_W(Lie_type(rd))
 
-set order_W_simple(LieType lt)=int:order_W_simple(simply_connected(lt))
+{ factor w into commuting factors according to simple factors of rd }
+set factorize_w (WeylElt w) = [WeylElt]:
+  let rd=w.root_datum then (type,map)=Cartan_matrix_type(rd.Cartan_matrix)
+  then codes = %type.semisimple
+   , offset=0 { rank within |type| already seen in loop below }
+in for (,rank):code in codes { traverse the simple factors }
+   do let sub_map = map[offset:offset+rank] { index mapping for this factor }
+      then factor_word =
+       ##for s in w.word
+	 do let i=find(sub_map,s) in if i.>= then [i] else [] fi
+	 od
+   in W_elt(rd,factor_word)
+   next offset +:= rank
+   od
 
-set order_W(RootDatum rd)=let (,factors)=simple_factors(rd) in product(for f in factors do order_W_simple(f) od)
-set order_W(LieType lt)=order_W(simply_connected(lt))
-
-{ factor  WeylElt of rd according to simple factors of rd }
-
-set factorize_w(WeylElt w)=[WeylElt]:
-let (indices,factors)=simple_factors(w.root_datum) then
-v=w.word in
-for k:#factors do
- let x=##for i in v do
-  let j=find(indices[k],i) in
-   if j!=-1 then [j] else [] fi od
-  in id_W(factors[k])##x  od
-
-set char_poly(WeylElt w)=char_poly(matrix(w))
+set char_poly (WeylElt w) = vec: char_poly(matrix(w))
 
 {    Coxeter element    }
 
