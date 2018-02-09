@@ -1,0 +1,252 @@
+<W_characters.at
+
+{ representations of W }
+
+set rank(mat A)=let (B,,pivots,)=A.echelon in #pivots
+
+{ data type for representation of W 
+ operators[i] is the matrix of the action of simple generator #i
+}
+set_type W_rep = (WeylClassTable ct,[mat] operators) 
+set root_datum(W_rep pi)=RootDatum:pi.ct.root_datum
+set dimension(W_rep pi)=int:#pi.operators[0]
+
+{matrix of pi(w)}
+set operator(W_rep pi,WeylElt w)=mat:
+let rv=id_mat(pi.dimension) in
+for i in reverse(w.word) do rv*:=pi.operators[i] od;rv
+
+set operator(W_rep pi)=(WeylElt -> mat):
+(WeylElt w):operator(pi,w)
+
+{trivial representation of W}
+set trivial_W(RootDatum rd)=W_rep:
+(W_class_table(rd),for i:ss_rank(rd) do id_mat(1) od)
+
+{pi.character=(WeylClassTable,[int]}
+{character of pi}
+set character(W_rep pi)=(WeylClassTable,[int]):
+(pi.ct, for w in pi.ct.class_representatives()  do trace(pi.operator(w)) od)
+
+{isomorphism test using the character}
+set is_isomorphic(W_rep pi,W_rep sigma)=bool:character(pi)=character(sigma)
+
+{pi.character_values=[int]}
+set character_values(W_rep pi)=[int]:let (,v)=character(pi) in v
+
+{. matrix of inner products of characters }
+set matrix_of_inner_products(WeylClassTable ct,[[int]] characters)=mat:
+  for i:#characters do for j:#characters do
+  ct.inner(characters[i],characters[j]) od od
+
+set matrix_of_inner_products([(WeylClassTable,[int])] pairs)=
+let (ct,)=pairs[0] in
+matrix_of_inner_products(ct,for (,v) in pairs do v od)
+
+{sort list of representations, uniquely as determined
+by the character}
+set sort_u([W_rep] list)=[W_rep]:
+if #list=0 then [] elif
+ #list=1 then list else
+ let chars=for pi in list do character_values(pi) od then
+ indices=[0] in
+  for i:#chars-1 from 1 do
+   let char=chars[i] then
+   j=first(#indices,(int k)bool: chars[indices[k]]=char) in
+    if j=-1 then indices#:=i fi od; for i in indices do list[i] od fi
+
+{ ----------- cell representations --------------}
+
+{. given lists of pairs (int,int) and n find (n,m) and return m .}
+set find_mate([(int,int)] pairs,int n)=int:
+let index=first(#pairs,(int k)bool: let (a,)=pairs[k] in a=n) in
+if index!=-1 then let (,b)=pairs[index] in b else 0 fi
+
+{ matrix of action of of i^th simple reflection on a cell
+  a cell is: ([int],[([int],[(int,int)])]) cell,int i)
+  as described in the W_cells command in atlas-functions.help}
+
+{. matrix of action of i^th simple reflection on a cell .}
+set cell_operator(([int],[([int],[(int,int)])]) cell,int i)=mat:
+let (params,graph)=cell then
+n=#params then
+taus=for j:n do let (tau,)=graph[j] in tau od then
+arrows=for j:n do let (,arrow)=graph[j] in arrow od in
+for j:n do
+ let col = null(n) in
+  if (find(taus[j],i)) !=-1 then col[j]:=-1
+   else col[j]:=1;
+   for k:n do
+    if find(taus[k],i) !=-1 then
+     col[k]:=find_mate(arrows[k],j)
+    fi
+   od
+  fi;col
+od
+
+{ representation defined by a cell }
+set cell_representation(WeylClassTable ct,([int],[([int],[(int,int)])]) cell)=W_rep:
+(ct,for i:ss_rank(ct.root_datum) do cell_operator(cell,i) od)
+
+{list of representations defined by an array of cells}
+set cell_representations(WeylClassTable ct,[([int],[([int],[(int,int)])])] cells)=[W_rep]:
+for cell in cells do cell_representation(ct,cell) od
+
+{character of a cell representation}
+set cell_character(WeylClassTable ct,([int],[([int],[(int,int)])]) cell)=(WeylClassTable,[int]):
+character(cell_representation(ct,cell))
+
+{characters of an array of cell representations}
+set cell_characters(WeylClassTable ct,[([int],[([int],[(int,int)])])] cells)=(WeylClassTable,[[int]]):
+(ct,for cell in cells do character_values(cell_representation(ct,cell)) od)
+
+{just the character values of a cell representation}
+set cell_character_values(WeylClassTable ct,([int],[([int],[(int,int)])]) cell)=[int]:
+let (,v)=cell_character(ct,cell) in v
+
+{[character values] of a set of cells}
+set cell_characters_values(WeylClassTable ct,[([int],[([int],[(int,int)])])] cells)=[[int]]:
+for cell in cells do cell_character_values(ct,cell) od
+
+{matrix of inner products of cell representations}
+set cells_table(WeylClassTable ct,[([int],[([int],[(int,int)])])] cells)=mat:
+let characters=cell_characters(ct,cells) in 
+matrix_of_inner_products(characters)
+
+{matrix of inner products of cell_representataion ## trivial## sign##reflection}
+set cells_table_augmented(WeylClassTable ct,[([int],[([int],[(int,int)])])] cells)=mat:
+let aug=[int]:ct.trivial##ct.sign##ct.reflection then
+characters_values=cell_characters_values(ct,cells)#aug in 
+matrix_of_inner_products(ct,characters_values)
+
+{ Description of the cell representation taken from messages/wcells.help}
+{
+The Weyl group representation attached to the cell may be described as
+follows. It has a Z basis {L_j} indexed by the cell elements j. If
+root i is in the tau invariant for element j, then
+
+s_i(L_j) = -L_j.
+
+If i is not in the tau invariant, then
+
+s_i(L_j) = L_j + sum_{elements k, i in tau(k)} m_{kj} * L_k.
+
+where m_{kj} denotes the multiplicity of the edge from k to j.
+That is, m*L_k appears in the sum here if i is in the tau-invariant of
+L_k, and the pair (j,m) appears in the list for row k.
+
+([224,247,250,253,256],
+[([0,1,2],[(1,1)]),
+([0,1,3],[(0,1),(3,1),(4,1)]),
+([1,2,3],[(3,1)]),([0,2,3],
+[(1,1),(2,1)]),([0,1,2],[(1,1)])])
+
+0[224]: {1,2,3} --> 1
+1[247]: {1,2,4} --> 0,3,4
+2[250]: {2,3,4} --> 3
+3[253]: {1,3,4} --> 1,2
+4[256]: {1,2,3} --> 1
+}  
+
+{ ------------------- induction ------------------- }
+
+{. promote w in W(Levi) to W(G) }
+set promote(WeylClassTable ct, WeylElt w_L)=
+W_elt(ct.class_representatives()[0].root_datum, matrix(w_L))
+
+{all 2^n standard Levis }
+set standard_Levis(RootDatum rd)=[RootDatum]:
+for S in generate_all_subsets(#semisimple_rank(rd)) do let (,L)=complex_Levi(rd, S) in L od
+
+{ induction from a Levi factor }
+{L is a Levi in G, pi_L is a class function on L
+ pi_G=ind_L^G(pi_L)
+ formula: if C is a conjugacy class for G
+ trace(pi_G)(C) = |W(G)/W(L)|/ |C|\sum |C_j| trace(pi_L(C_j))
+ where the sum runs over the W(L)-conjugacy classes in C\cap W(L)
+
+ algorithm: initialize the result to be the 0-character
+ run over conjugacy class representatives in L
+ for each conjugacy class representative w_L compute
+   w=conjugacy_class_map(w_L,class_reps_G),
+  and add (rational): index*|conjugacy class of w_L|/|conjugacy class of w|
+  finally convert to [int]
+}
+set induce_character(WeylClassTable ct_G,WeylClassTable ct_L,vec pi_L)=
+let rd_G=(ct_G.class_representatives())[0].root_datum then
+rd_L=(ct_L.class_representatives())[0].root_datum then
+index=rat_as_int(order_W(rd_G)/order_W(rd_L)) then
+classes_G=ct_G.class_representatives()  {[WeylElt]} then
+classes_L=ct_L.class_representatives()  {[WeylElt]} then
+values_G=[rat]:null(#classes_G) in
+for w_L@i in classes_L do 
+ let w_G=conjugacy_class_rep(promote(ct_G,w_L)) then
+{ j=number(w_G,classes_G) in}
+ j=ct_G.class_of(w_G) in
+ values_G[j]+:=pi_L[i]*index*(ct_L.class_sizes())[i]/ct_G.class_sizes()[j] od;
+ ratvec_as_vec(values_G)
+
+{the sign representation occurs in S^(nr_of_posroots)(reflection),
+and this is the maximum}
+{. smallest k so that pi occurs in S^k(reflection) .}
+set smallest_degree(WeylClassTable ct, [int] character)=int:
+let ref=ct.reflection in
+first(nr_of_posroots(ct.class_representatives()[0].root_datum)+1,(int k) bool: ct.inner(character,ct.sym_power(ref,k))!=0)
+
+set smallest_degree(WeylClassTable ct, (WeylClassTable ct1,[int] character))=int:
+let ref=ct.reflection in
+first(nr_of_posroots(ct.class_representatives()[0].root_datum)+1,(int k) bool: ct.inner(character,ct.sym_power(ref,k))!=0)
+
+{ the Steinberg character (mainly for testing)}
+
+{alternating sum, over all standard Levis, of induced from trivial
+ should equal the sign character }
+set Steinberg_character(RootDatum rd)=
+let ct_G=W_class_table(rd) then
+rv = sum(for L in standard_Levis(rd) do
+ let ct_L=W_class_table(L) in
+ (-1)^(ss_rank(L))*induce_character(ct_G,ct_L,ct_L.trivial) od ) in assert(rv=ct_G.sign);rv
+
+{ ------------ projection on isotypic subspace  ----------- }
+
+{projection of representation pi on isotoypic subspace defined by char_values}
+set projector(WeylClassTable ct,W_rep  pi, vec char_values)=
+let rd=ct.root_datum then
+Q=null(dimension(pi),dimension(pi)) in
+for w in W(rd) do
+    Q+:=character_value(ct,w,char_values)*pi.operator(w) od;Q
+
+{using the projector, restrict representation pi to isotypic subspace}
+set restrict_representation_isotypic(WeylClassTable ct, W_rep pi, vec char_values)=W_rep:
+let A=projector(ct,pi,char_values) then
+(B,)=Smith(A) then
+P=B[0:rank(A)] in 
+(ct, for T in pi.operators do restrict_action(T,P) od)
+
+{projector for a cell representation}
+set projector(WeylClassTable ct, ([int],[([int],[(int,int)])]) cell, vec char_values)=
+projector(ct,cell_representation(ct,cell),char_values)
+
+{given a cell, compute the cell represetation pi, 
+find the smallest k so that <pi,sym^k(reflection)>!=0
+then this inner product is 1, and the unique irreducible
+in common is special
+use the character of sym^k(reflection) to compute the 
+projection operator onto the special
+}
+set special_projector(WeylClassTable ct, ([int],[([int],[(int,int)])]) cell)=mat:
+let n=smallest_degree(ct,cell_character_values(ct,cell)) then
+char=ct.sym_power(ct.reflection,n) in 
+projector(ct,cell,char)
+
+{given a cell, compute the special_projector, and use this
+to construct the special representation itself
+}
+set special_representation_cell(WeylClassTable ct, ([int],[([int],[(int,int)])]) cell)=W_rep:
+let n=smallest_degree(ct,cell_character_values(ct,cell)) then
+char=ct.sym_power(ct.reflection,n) in 
+restrict_representation_isotypic(ct,cell_representation(ct,cell),char)
+
+
+
+

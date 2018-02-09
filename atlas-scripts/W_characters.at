@@ -387,7 +387,24 @@ in
    ([int] x, int n) [int]: assert(#x=ncc,"Wrong size"); for xi in x do xi^n od
 )
 
-{ Adams' operatorion (not Jeff's): evaluate character at class of $w^n$ }
+{. root datum of WeylClassTable .}
+set root_datum(WeylClassTable ct)=RootDatum:
+ct.class_representatives()[0].root_datum
+
+set =((WeylClassTable ct,[int] char_values),(WeylClassTable ct2,[int] char_values2))=bool:
+ct.root_datum=ct2.root_datum and char_values=char_values2
+
+{don't recompute conjugacy classes if WeylClassTable is given}
+{. w\in W is conjugate to classes[i], WeylClassTable is given .}
+set conjugacy_class_number (WeylClassTable ct,WeylElt w) = int:
+  let classes=ct.class_representatives()  in 
+  first(#classes, (int i)bool: is_conjugate(w,classes[i]))
+
+{. value of character at w\in W .}
+set character_value(WeylClassTable ct, WeylElt w,vec char)=
+char[conjugacy_class_number(ct,w)]
+
+{ Adams's operation (not Jeff's): evaluate character at class of $w^n$ }
 set Adams (WeylClassTable tab) = ([int]char, int n) [int]:
    for w in tab.class_representatives() do char[tab.class_of(w^n)] od
 
