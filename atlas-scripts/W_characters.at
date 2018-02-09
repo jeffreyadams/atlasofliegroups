@@ -369,6 +369,7 @@ set W_class_table (RootDatum rd) = WeylClassTable:
    , class_of (WeylElt w)= int: first(#reps,(int i): is_conjugate(reps[i],w))
    , !nW = rd.order_W
    then inner ([int] x, [int] y) = int:
+     assert(#x=ncc and #y=ncc,"Wrong sizes");
      let s = for size@i in sizes do size*x[i]*y[i] od.sum then (q,r)=s \% nW in
      if =r then q else error("Non integer inner product ",s/nW) fi
 in
@@ -402,6 +403,9 @@ in
 , {tensor_power}
    ([int] x, int n) [int]: assert(#x=ncc,"Wrong size"); for xi in x do xi^n od
 )
+
+set root_datum (WeylClassTable tab) = RootDatum:
+    tab.class_representatives()[0].root_datum { at least one class exists }
 
 { Adams' operatorion (not Jeff's): evaluate character at class of $w^n$ }
 set Adams (WeylClassTable tab) = ([int]char, int n) [int]:
