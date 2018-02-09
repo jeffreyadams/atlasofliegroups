@@ -2,6 +2,8 @@
 <elliptic.at { for |elliptics_for_Levi@(RootDatum,[int])| }
 <sort.at { for sorting lists of posroot indices }
 <Weylgroup.at { for |order_W@RootDatum| }
+<W_orbit.at { for |W@RootDatum| }
+<cyclotomic.at { for |cyclotomic_factors| }
 <tabulate.at { for |tabulate| }
 
 { The purpose of this file is working with Weyl group characters }
@@ -139,6 +141,9 @@ in while current<#class
 
 set full_conjugacy_class (WeylElt w) = [WeylElt]:
    let (,class)=conjugators_and_conjugacy_class(w) in class
+
+set full_centraliser (WeylElt w) = [WeylElt]:
+   ##for x in W(w.root_datum) do if x*w=w*x then [x] else [] fi od
 
 set conjugator (WeylElt x, WeylElt w) = WeylElt:
    assert(is_conjugate(x,w),"Weyl group elements are not conjugate");
@@ -300,15 +305,10 @@ set test_size_of_conjugacy_classes (RootDatum rd) = (int,int):
   let c=conjugacy_classes(rd) in
   (sum(for w in c do  size_of_conjugacy_class(w)  od), order_W(rd))
 
-{. sorting routines for conjugacy classes .}
-set sort_by( (WeylElt -> int) f)= ([WeylElt] v) [WeylElt]:
-    for index in inv_standardisation(for x in v do f(x) od) do v[index] od
-set sort_by_order = ([WeylElt] -> [WeylElt]): sort_by(order@WeylElt)
-
 {. print order, length, Levi.}
 set print_conjugacy_classes ([WeylElt] C) = void:
   let data=["order","length","Levi"] { column headers }
-  # for w in C.(sort_by(length@WeylElt))
+  # for w in C
     do [ w.order.to_string
        , w.length.to_string
        , w.Levi_datum.Lie_type.semisimple.str
@@ -316,12 +316,28 @@ set print_conjugacy_classes ([WeylElt] C) = void:
     od
   in tabulate(data,"rrl",2," ")
 
+set print_conjugacy_classes_long ([WeylElt] C) = void:
+  let data=["order","length","Levi","size","cyclotomics"] { column headers }
+  # for w in C
+    do [ w.order.to_string
+       , w.length.to_string
+       , w.Levi_datum.Lie_type.semisimple.str
+       , w.size_of_conjugacy_class.to_string
+       , w.matrix.char_poly.cyclotomic_factors.to_string
+       ]
+    od
+  in tabulate(data,"rrl",2," ")
+
 set print_conjugacy_classes (RootDatum rd) = void:
   print_conjugacy_classes(conjugacy_class_reps(rd))
+set print_conjugacy_classes_long (RootDatum rd) = void:
+  rd.conjugacy_class_reps.(sort_by(order@WeylElt)).print_conjugacy_classes_long
 
 {. print elliptic classes only .}
 set print_elliptic_conjugacy_classes (RootDatum rd) = void:
-  print_conjugacy_classes(sort_by_order(elliptic(rd)))
+  print_conjugacy_classes(sort_by(order@WeylElt)(elliptic(rd)))
+set print_elliptic_conjugacy_classes_long (RootDatum rd) = void:
+  rd.elliptic.(sort_by(order@WeylElt)).print_conjugacy_classes_long
 
 {. w\in W is conjugate to classes[i] .}
 set conjugacy_class_number (WeylElt w) = int:
@@ -353,6 +369,7 @@ set W_class_table (RootDatum rd) = WeylClassTable:
    , class_of (WeylElt w)= int: first(#reps,(int i): is_conjugate(reps[i],w))
    , !nW = rd.order_W
    then inner ([int] x, [int] y) = int:
+     assert(#x=ncc and #y=ncc,"Wrong sizes");
      let s = for size@i in sizes do size*x[i]*y[i] od.sum then (q,r)=s \% nW in
      if =r then q else error("Non integer inner product ",s/nW) fi
 in
@@ -403,6 +420,9 @@ set conjugacy_class_number (WeylClassTable ct,WeylElt w) = int:
 {. value of character at w\in W .}
 set character_value(WeylClassTable ct, WeylElt w,vec char)=
 char[conjugacy_class_number(ct,w)]
+
+set root_datum (WeylClassTable tab) = RootDatum:
+    tab.class_representatives()[0].root_datum { at least one class exists }
 
 { Adams's operation (not Jeff's): evaluate character at class of $w^n$ }
 set Adams (WeylClassTable tab) = ([int]char, int n) [int]:

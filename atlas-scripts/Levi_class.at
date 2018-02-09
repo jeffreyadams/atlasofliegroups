@@ -1,3 +1,13 @@
+{ This file was an auxiliary to conjugacy_classes.at, which is superseded by
+  W_characters.at; therefore it will be soon removed.
+
+  The script deals with the genaration of all conjugacy classes of Levi systems
+  for a given root datum, the funtion Levi_classes below. In W_characters.at
+  this is done inside the function standard_Levi_conjugacy_representatives
+
+  The final function print_Levis_by_conjugate_rhos has no counterpart elsewhere.
+}
+
 <basic.at
 <parabolics.at
 
@@ -89,7 +99,7 @@ set group_by_conjugate_rhos (RootDatum rd, int rank) = [[[int]]]:
 
 {. Perform the previous function for all possible ranks of Levi
    subgroups. .}
-set group_by_conjugate_rhos (RootDatum rd) = [int,[[[int]]]]:
+set group_by_conjugate_rhos (RootDatum rd)=[(int,[[[int]]])]:
    for i:semisimple_rank(rd)+1 do (i,group_by_conjugate_rhos(rd,i)) od
 
 {. As the previous function, but with only one representative for

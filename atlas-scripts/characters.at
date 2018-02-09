@@ -1,20 +1,28 @@
-<conjugacy_classes.at
-{ class functions and characters for the Weyl group}
+{ This contents of this file has been incoprorated into W_characters.at and
+  the file will therefore disappear from Atlas soon
 
-{ ClassFunction:
- (list of conjugacy class representatives,
- list of sizes of conjugacy classes,
- list of function values)
+  The interface has changed as follows:
 
-when defining a class function for RootDatum rd,
-compute conjugacy_classes(rd) and size_of_conjugacy_classes(*)
-ClassFunction data type:
-([WeylElt] conjugacy class representatives
- [int]: sizes of the classes
- [rat]: value of the function on the classes)
-once these are computed, one should try not to compute them again
-we may change this implementation of class function to be
-more robust and less clumsy}
+  Rather than having variants of functions that generate the conjugacy classes
+  of and W and their sizes, or use such values if passed as arguments, all
+  functions in W_characters assume this done during construction of a
+  |WeylClassTable| value; some functions are in fact part of such a value,
+  others are produced by functions taking a |WeylClassTable| as argument; the
+  calling syntax is the same in foth cases: |ct.function(arguments)| where |ct|
+  holds the |WeylClassTable| value.
+  The function names are as follows (with |ct| as above referring to the table)
+
+  operator * -> |ct.inner|
+  |trivial_character| -> |ct.trivial|
+  |sgn_character| -> |ct.sign|
+  |reflection_character| -> |ct.reflection|
+  |tensor| -> |ct.tensor_power|
+  |dimension| -> |ct.dimension|
+}
+
+<basic.at
+<Weylgroup.at { for |order_W@RootDatum| }
+<W_characters.at { for |conjugacy_class_reps| }
 
 {. data type for class functions .}
 set_type ClassFunction=([WeylElt] classes, [int] sizes, [int] values)
