@@ -1,3 +1,4 @@
+<parabolics.at
 <W_characters.at
 
 { representations of W }
@@ -310,8 +311,7 @@ let grouping=group_vectors_up_to_scalar(projector) then
 (parameters,)=cell in 
 for v in grouping do  for w in v do parameters[w] od od
 
-{nice output of primitive ideal information for a cell}
-set print_primitive_ideal_info([WCell] cells,[mat] projectors)=void:
+{nice output of primitive ideal information for a cell}set print_primitive_ideal_info([WCell] cells,[mat] projectors)=void:
 let data=for i:#cells do 
  let cell=cells[i], P=projectors[i] then
   g=group_parameters_by_primitive_ideal(cell,P) in
