@@ -636,7 +636,7 @@ set semisimple (LieType t) = LieType:
   for (code,rank) in %t do if code!="T" then s:=extend(s,code,rank) fi od; s
 
 set str (LieType t) = string:
-  ## for (code,rank) in %t do code ## rank.to_string od
+  (## for (code,rank) in %t do code ## rank.to_string ## "." od)[:1~]
 
 
 
