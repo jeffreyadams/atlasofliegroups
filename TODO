@@ -51,15 +51,21 @@
 
 * Work on the atlas program
 
-- Avoid using Smith normal form computations in |invert|, |det| and such;
-  prefer Gaussian elemination methods possibly using big rationals
+- Change interface to LieType so that torus factors do not pollute list of
+  simple factors.
 
-- Ensure that root data obtained from inner classes or beyond are shared
+- Fix bug that allows components of defined types to be overwritten (make
+  internal access methods return reference to constant).
 
-- Make system test for duplicate objects like two equivalent real forms in the
-  same inner class that will test equal; they should be the same object.
-  Or avoid creating many identical |real_form_value| instances, by storing
-  links to those currently generated within an |inner_class_value| object.
+- Find out and fix erratic behaviour in |partition_of_w_BCD| revised version
+
+- Figure out internal type error ct.tensor(ct.reflection,3)
+
+- Make system test for duplicate real forms in the same inner class that will
+  test equal; they should be the same object. Or avoid creating duplicate
+  |real_form_value| instances, by storing links to those currently generated
+  within an |inner_class_value| object (check current state of affairs first).
+
 
 
 * Work on the atlas scripts

@@ -149,7 +149,8 @@ set order_W_simple (LieType lt) = int:
   fac(lt.rank)*product(lt.labels_simple)*det(lt.Cartan_matrix)
 
 set order_W (LieType lt) = int:
-  product(for (type,rank) in %lt do order_W_simple(Lie_type(type+rank)) od)
+  product(for (type,rank) in %lt.semisimple
+          do order_W_simple(Lie_type(type+rank)) od)
 set order_W (RootDatum rd) = int: order_W(Lie_type(rd))
 
 { factor w into commuting factors according to simple factors of rd }
