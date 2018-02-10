@@ -1,14 +1,45 @@
-<parabolics.at
+<basic.at
 <W_characters.at
 
-{ Character of W-representations on cells,
- also induced characters and the Steinberg character }
+{ Compute characters of W-representations on cells, as obtained from W_cells
+  also induced characters from Levi subgroups, and the Steinberg character
+}
 
+{ Type definitions that facilitate handling output from W_cells }
 set_type
-[ WNode = ([int] tau,[int,int] out_list)
+[ WCell = ([int] labels, WGraph graph)
 , WGraph = [WNode]
-, WCell = ([int] labels, WGraph graph)
+, WNode = ([int] tau,[int,int] out_list)
 ]
+
+{ Description of the cell representation taken from messages/wcells.help
+
+  The Weyl group representation attached to the cell may be described as
+  follows. It has a Z basis {L_j} indexed by the cell elements j. If
+  root i is in the tau invariant for element j, then
+
+  s_i(L_j) = -L_j.
+
+  If i is not in the tau invariant, then
+
+  s_i(L_j) = L_j + sum_{elements k, i in tau(k)} m_{kj} * L_k.
+
+  where m_{kj} denotes the multiplicity of the edge from k to j.
+  That is, m*L_k appears in the sum here if i is in the tau-invariant of
+  L_k, and the pair (j,m) appears in the list for row k.
+
+  ([224,247,250,253,256],
+  [([0,1,2],[(1,1)]),
+  ([0,1,3],[(0,1),(3,1),(4,1)]),
+  ([1,2,3],[(3,1)]),([0,2,3],
+  [(1,1),(2,1)]),([0,1,2],[(1,1)])])
+
+  0[224]: {1,2,3} --> 1
+  1[247]: {1,2,4} --> 0,3,4
+  2[250]: {2,3,4} --> 3
+  3[253]: {1,3,4} --> 1,2
+  4[256]: {1,2,3} --> 1
+}
 
 { matrix of action of of i^th simple reflection on a cell
   a cell is: ([int],[([int],[(int,int)])]) cell,int i)
@@ -71,19 +102,25 @@ set promote (WeylClassTable ct, WeylElt w_L) = WeylElt:
 
 { induction from a Levi factor
 
-  L is a Levi in G, |pi_L| is a class function on L
-  we want to compite pi_G=ind_L^G(pi_L)
+  L is a Levi in G, |pi_L| is a class function on W(L)
+  we want to compute the class function pi_G=ind_L^G(pi_L) on W(G)
 
   formula: if C is a conjugacy class for G
-  trace(pi_G)(C) = |W(G)/W(L)|/ |C|\sum |C_j| trace(pi_L(C_j))
-  where the sum runs over the W(L)-conjugacy classes in C\cap W(L)
+  pi_G(C) = |W(G)| / (|W(L)|*|C|)) * \sum |C_j| pi_L(C_j)
+  where the sum runs over the W(L)-conjugacy classes in C\cap W(L) (this follows
+  from Frobenius reciprocity, pairing pi_L with the indicator function for C)
+
+  In other words the value of |pi_L| on each class C_j in W(L) contributes to
+  the induced character value only at the class C of W(G) containing it, and for
+  this contribution its character value is multiplied by [W(G):W(L)] * |C|/|C_j|
 
   algorithm: initialize the result to be the 0-character
   run over conjugacy class representatives in L
-  for each conjugacy class representative w_L compute
-    w=conjugacy_class_map(w_L,class_reps_G),
-  and add (rational): index*|conjugacy class of w_L|/|conjugacy class of w|
-  finally convert to rationals [int]
+  for each conjugacy class representative w_L compute  w_G = class_of (w_L,G)
+  and add to the character value at (the class) w_G the  value:
+  pi_L(w_L) * index(W(G):W(L))*|conjugacy class of w_L|/|conjugacy class of w|
+  The factor by which pi_L(w_L) is mulitplied is integer, as it is the index of
+  the centraliser subgroup of w_L in W_L inside its centraliser subgroup of w_G
 }
 
 set induce_character(WeylClassTable ct_G,WeylClassTable ct_L,[int] pi_L)= [int]:
@@ -91,61 +128,38 @@ set induce_character(WeylClassTable ct_G,WeylClassTable ct_L,[int] pi_L)= [int]:
    then index = rat_as_int(order_W(rd_G)/order_W(rd_L))
    , classes_G=ct_G.class_representatives()  {[WeylElt]}
    , classes_L=ct_L.class_representatives()  {[WeylElt]}
-   then values_G= [rat]: for c in classes_G do 0 od
+   then values_G= [int]: for c in classes_G do 0 od
+   , sizes_G = ct_G.class_sizes()
+   , sizes_L = ct_L.class_sizes()
 in for w_L@i in classes_L
    do let w_G=conjugacy_class_rep(promote(ct_G,w_L))
       then { j=number(w_G,classes_G) in}
            j=ct_G.class_of(w_G)
-   in  values_G[j] +:= pi_L[i]*index*
-                       (ct_L.class_sizes())[i]/ct_G.class_sizes()[j]
+   in  values_G[j] +:= pi_L[i] * (index * sizes_L[i]/sizes_G[j]).rat_as_int
    od; for v in values_G do v.rat_as_int od
 
 {the sign representation occurs in S^(nr_of_posroots)(reflection),
 and this is the maximum}
 {. smallest k so that pi occurs in S^k(reflection) .}
-set first_occurence(WeylClassTable ct, vec character)=
-let ref=ct.reflection in
-first(nr_of_posroots(ct.class_representatives()[0].root_datum)+1,(int k) bool: ct.inner(character,ct.sym_power(ref,k))!=0)
+set first_occurrence (WeylClassTable ct, vec character) = int:
+  let ref=ct.reflection, rd=ct.root_datum in
+  first(nr_of_posroots(rd)+1,
+        (int k) bool: ct.inner(character,ct.sym_power(ref,k))!=0 )
 
 { the Steinberg character (mainly for testing)}
 
 {all 2^n standard Levis }
-set standard_Levis(RootDatum rd)=[RootDatum]:
-for S in generate_all_subsets(#semisimple_rank(rd)) do let (,L)=complex_Levi(rd, S) in L od
+set standard_Levis (RootDatum rd) = [RootDatum]:
+  for S in power_set(rd.all_simples) do Levi_datum(rd,S) od
 
 {alternating sum, over all standard Levis, of induced from trivial
- should equal the sign character }
+ should equal the sign character (it it does not, this function fails) }
 set Steinberg_character(RootDatum rd)=
-let ct_G=W_class_table(rd)
-  then rv = sum(for L in standard_Levis(rd) do
- let ct_L=W_class_table(L) in
- (-1)^(ss_rank(L))*induce_character(ct_G,ct_L,ct_L.trivial) od ) in assert(rv=ct_G.sign);rv
-
-{ Description of the cell representation taken from messages/wcells.help}
-{
-The Weyl group representation attached to the cell may be described as
-follows. It has a Z basis {L_j} indexed by the cell elements j. If
-root i is in the tau invariant for element j, then
-
-s_i(L_j) = -L_j.
-
-If i is not in the tau invariant, then
-
-s_i(L_j) = L_j + sum_{elements k, i in tau(k)} m_{kj} * L_k.
-
-where m_{kj} denotes the multiplicity of the edge from k to j.
-That is, m*L_k appears in the sum here if i is in the tau-invariant of
-L_k, and the pair (j,m) appears in the list for row k.
-
-([224,247,250,253,256],
-[([0,1,2],[(1,1)]),
-([0,1,3],[(0,1),(3,1),(4,1)]),
-([1,2,3],[(3,1)]),([0,2,3],
-[(1,1),(2,1)]),([0,1,2],[(1,1)])])
-
-0[224]: {1,2,3} --> 1
-1[247]: {1,2,4} --> 0,3,4
-2[250]: {2,3,4} --> 3
-3[253]: {1,3,4} --> 1,2
-4[256]: {1,2,3} --> 1
-}
+  let ct_G=W_class_table(rd)
+  then result =
+     for L in standard_Levis(rd)
+     do let ct_L=W_class_table(L) in
+        minus_1^semisimple_rank(L) * induce_character(ct_G,ct_L,ct_L.trivial)
+     od
+     .sum
+  in assert(result=ct_G.sign); result
