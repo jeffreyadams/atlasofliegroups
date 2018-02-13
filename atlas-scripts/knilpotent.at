@@ -105,7 +105,7 @@ for orbit@i in data.orbits do
  prints(new_line,i,") orbit:", orbit, new_line,"Levi:", Levi_of_orbit(orbit), new_line,"#L\cap K-types:", #terms,new_line);
 tabulate(["#","mu_L","dim","#P","K_norms(P)"]#
 for (mu_L,P)@j in terms do [to_string(j)+")",K_Type_string_short(mu_L),to_string(dimension(mu_L)),  to_string(#P),to_string(K_norms(P))] od
-,"l",1," ")
+,"lllll",1," ")
 od
 
 set show_medium(KNilpotentData orig,KNilpotentData reduced)=void:
@@ -116,7 +116,7 @@ for orbit@i in orig.orbits do
  prints(new_line,i,") orbit:", orbit, new_line,"Levi:", Levi_of_orbit(orbit), new_line,"#L\cap K-types:", #terms_orig,new_line);
 tabulate(["#","mu_L","dim","#P","K_norms(P)","#Q","#K_norms(Q)"]#
 for (mu_L,P)@j in terms_orig do let (,Q)=terms_reduced[j] in [to_string(j)+")",K_Type_string_short(mu_L),to_string(dimension(mu_L)),  to_string(#P),to_string(K_norms(P)), to_string(#Q), to_string(K_norms(Q))] od
-,"l",1," ")
+,"lllllll",1," ")
 od
 
 {--------- utilities involving nilradicals --------------}

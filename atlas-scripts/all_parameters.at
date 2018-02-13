@@ -153,9 +153,10 @@ set lambda_rho_from_dominant_norm_upto (KGBElt x, ratvec v, int N) = mat: {wts}
      esac
   od
 
-set K_parameters_norm_upto ((KGBElt,ratvec,int)(x,,):triple) = [K_Type]:
-  let lrs = lambda_rho_from_dominant_norm_upto(triple), rho=rho(root_datum(x))
-  in ## for lr in lrs do all_equal_dlambda_K_parameters(x,lr+rho) od
+set all_equal_dlambda_K_parameters (K_Type(x,lambda)) = [K_Type]:
+##(for v in all_lambda_differential_0(x) do if
+is_final(parameter(x,lambda+v)) then [(x,lambda+v)] else
+[(KGBElt,ratvec)]:[] fi od)
 
 { that used to be:
 { mu will be d_lambda=(1+theta)lambda/2 => 2*mu\in X^*
