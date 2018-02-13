@@ -198,6 +198,7 @@ after enriching the repertoire of methods of the container type.
 @< Type definitions @>=
 typedef containers::simple_list<type_expr> type_list;
 typedef atlas::containers::sl_node<type_expr>* raw_type_list;
+typedef atlas::containers::sl_node<type_expr>const * const_raw_type_list;
 typedef containers::sl_list<type_expr> dressed_type_list;
 typedef containers::weak_sl_list_const_iterator<type_expr> wtl_const_iterator;
 typedef containers::weak_sl_list_iterator<type_expr> wtl_iterator;
@@ -313,22 +314,39 @@ insert a look-up for any type with |tag=tabled|. That kind of type is necessary
 to represent types with a recursive structure; the look-up uses the static
 member |type_map|, which will be discussed later.
 
-The field |tuple_variant| used to be (after inclusion of the
-|containers::simple_list| class template in Atlas, which coincided with the
-migration to the \Cpp11 standard) of type |type_list|. Having variant members
-of a |union| with nontrivial special member functions is allowed in \Cpp11,
-although it remains the programmer's responsibility to explicitly call
-constructors and destructors as those variants come and go. Currently this is
-changed to |raw_type_list|; the main difference is that the variant can now be
-initiated by simple assignment rather than placement |new|, and at termination
-requires a call of |delete| for the raw pointer rather than an explicit
-destructor call for the |type_list| object. This step backwards to raw
-pointers is therefore mostly a simplification, but there is one real drawback
-of not having a true |type_list| object: it is now impossible to create a
-|type_list::iterator| (or its |const| relative) to iterate over the type lists
-in tuple types. It turns out however that most of the time weak iterators
-(which do not allow for insertion of deletion of nodes) are sufficient, which
-is why the |raw_type_list| solution is now chosen.
+The field |tuple_variant| used to be (after the |containers::simple_list| class
+template was introduced into Atlas, which coincided with the migration to
+the \Cpp11 standard) of type |type_list|. Having variant members of a |union|
+with nontrivial special member functions is allowed in \Cpp11, although it
+remains the programmer's responsibility to explicitly call constructors and
+destructors as those variants come and go. Currently this is changed to
+|raw_type_list|; the main difference is that the variant can now be initiated by
+simple assignment rather than placement |new|, and at termination requires a
+call of |delete| for the raw pointer rather than an explicit destructor call for
+the |type_list| object. This step backwards to raw pointers is therefore mostly
+a simplification, but there is one real drawback of not having a true
+|type_list| object: it is now impossible to create a |type_list::iterator| (or
+its |const| relative) to iterate over the type lists in tuple types. It turns
+out however that most of the time weak iterators (which do not allow for
+insertion of deletion of nodes) are sufficient, which is why the |raw_type_list|
+solution is now chosen.
+
+Since the introduction of |tabled| types, the variants are private and accessed
+through the public methods |prim|, |func|, |component_type| and |tuple|, which
+expand a tabled type if necessary. This makes the handling of tabled types
+transparent in most places, but there is a subtlety to be mentioned. The type
+definitions in the table should of course not be overwritten, but while
+|expansion| returns a reference to constant, so that the |type_expr| values in
+the table are protected, the methods |func|, |component_type| and |tuple| return
+pointers to non-|const|; this exposes nodes one level down to modification,
+which would effectively also alter the defined types. This is dangerous, and
+indeed there has been a bug that allowed corruption of types under certain
+circumstances. However it is fundamental to the implementation of our type
+checker that it can specialise initially undetermined parts of a type
+expressions, which requires such pointers to be returned by those methods. The
+protection of the values of tabled types lies in the convention that the only
+way type expressions can be modified is by specialisation, while the type table
+contains only types without any undetermined parts.
 
 There is one restriction on types that is not visible in the definition below,
 namely that the list of types referred to by the |tuple_variant| field cannot
@@ -360,9 +378,9 @@ public:
   const type_expr& untabled () const
     @+{@; return tag==tabled ? expansion() : *this; }
   type_tag kind () const @+{@; return untabled().tag; }
+  primitive_tag prim () const     @+{@; return untabled().prim_variant; }
   func_type* func() const        @+{@; return untabled().func_variant; }
   type_p component_type () const @+{@; return untabled().row_variant; }
-  primitive_tag prim() const     @+{@; return untabled().prim_variant; }
   raw_type_list tuple () const   @+{@; return untabled().tuple_variant; }
   type_nr_type type_nr () const @+{@; assert(tag==tabled); return type_number; }
   id_type type_name () const; // identifier corresponding to |type_number|
@@ -1523,7 +1541,7 @@ tuple or union types.
 std::ostream& operator<<(std::ostream& out, const type_expr& t)
 {@; t.print(out); return out; }
 @)
-void print(std::ostream& out, const raw_type_list& l,char sep)
+void print(std::ostream& out, const_raw_type_list l,char sep)
 { wtl_const_iterator it(l);
   if (not it.at_end())
     while (out << *it, not (++it).at_end())

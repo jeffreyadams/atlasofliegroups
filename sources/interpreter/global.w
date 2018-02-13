@@ -780,7 +780,7 @@ which is why it is not currently passed to functions like
 @< Declarations of exported functions @>=
 void global_set_identifier (const struct raw_id_pat& id, expr_p e, int overload,
                            const source_location& loc);
-void global_set_identifiers(const raw_let_list& d,const source_location& loc);
+void global_set_identifiers(raw_let_list d,const source_location& loc);
 void global_declare_identifier(id_type id, type_p type);
 void global_forget_identifier(id_type id);
 void global_forget_overload(id_type id, type_p type);
@@ -816,12 +816,12 @@ sometimes forbids or requires a definition to the overload table; the argument
 |overload| specifies the options permitted ($0$ means no overloading, $2$
 requires overloading, and $1$ allows both).
 
-The local function |do_global_set| defined below does most of the work for
-the ``global set'' twins, for all the syntactic variations allowed. All that
-happens here is preparing an |id_pat| and an |expr|, either by wrapping the
-given arguments in non-raw types, or by calling |zip_decls| defined
-in the module \.{parsetree.w}, which does the same work as for \&{let}
-expressions.
+The local function |do_global_set| defined below does most of the work for the
+``global set'' twins, for all the syntactic variations allowed. All that happens
+here is preparing an |id_pat| and an |expr|, either by wrapping the given
+arguments in non-raw types, or by calling |zip_decls| (defined in the
+module \.{parsetree.w}) to split a list of declarations into a pattern part and
+an expression part, the same work that it does for \&{let} expressions.
 
 @< Global function definitions @>=
 void global_set_identifier(const raw_id_pat &raw_pat, expr_p raw, int overload,
@@ -829,7 +829,7 @@ void global_set_identifier(const raw_id_pat &raw_pat, expr_p raw, int overload,
 {@; do_global_set(id_pat(raw_pat),*expr_ptr(raw),overload,loc); }
   // ensure clean-up
 @)
-void global_set_identifiers(const raw_let_list& d,const source_location& loc)
+void global_set_identifiers(raw_let_list d,const source_location& loc)
 { std::pair<id_pat,expr> pat_expr = zip_decls(d);
   do_global_set(std::move(pat_expr.first),pat_expr.second,1,loc);
 }
