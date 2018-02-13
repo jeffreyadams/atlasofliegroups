@@ -1,5 +1,29 @@
 <complex_nilpotent_orbits.at
 
+{a real nilpotent orbit is a pair ([int] H,KGBElt x)
+ note the order, to distinguish from KHighestWeight (KGBElt x,vec H) (see K.at)
+ x should in the distinguished fiber
+ H\in X_* is the semisimple element of a Lie triple
+ \theta_x(H)=H
+ set \q=parabolic_by_cwt(x,H), then 
+ orbit=induced from trivial orbit of Levi factor, equivalently
+      =associated variety of A_q(lambda)
+ H must satisfy <\alpha,H>\in {0,1,2} for all simple alpha
+ (in particular H is dominant)
+ not all such H are allowed
+ if (H,x) is given, with H non-dominant, replace it with (wx,wH) 
+}
+
+set_type RealNilpotentOrbit = ([int] H,KGBElt x)
+
+set parabolic_of_orbit(RealNilpotentOrbit O)=Parabolic:parabolic_by_cwt(O.H,O.x)
+{caution: O.Levi gives the wrong answer due to conflict with KGPElt}
+set Levi_of_orbit(RealNilpotentOrbit O)=RealForm:Levi(parabolic_of_orbit(O))
+set root_datum(RealNilpotentOrbit O)=RootDatum:O.x.root_datum
+set real_form(RealNilpotentOrbit O)=RealForm:O.x.real_form
+set complex_orbit(RealNilpotentOrbit O)=ComplexNilpotent:(O.root_datum,O.H)
+set dimension(RealNilpotentOrbit O)=int:dim_nilpotent(O.complex_orbit)
+
 set simple_roots_from_coweight(RootDatum rd, ratvec v)=##for alpha@i in simple_roots(rd) do
 if alpha*v=0 then [i] else [] fi od
 
