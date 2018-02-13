@@ -176,7 +176,7 @@ set G_K_roots_and_coroots (KGBElt x) = (mat,mat):
 
 { extract simple roots, coroots by computing pairing with rho,rho^v }
 set G_K_simple_roots_and_coroots (KGBElt x) = (mat,mat):
-  let pos_sys=G_K_roots_and_coroots(x) in simple_from_positive(pos_sys)
+  x.G_K_roots_and_coroots.simple_system_from_positive
 
 set rank_K (RealForm G) = int: compact_rank(Cartan_class(G,0))
 
@@ -324,3 +324,8 @@ set print_by_K_norm (K_Type_Pol P) = void:
 
 set leading_terms (K_Type_Pol P) = K_Type_Pol:
   leading_terms(rho_check(real_form(P)))(P)
+
+{the built-in K_Type_formula@Param can be applied to a K_Type 
+(now that K_Type has been defined}
+{. write K-type as linear combination of standard final limit parameters for G.}
+set K_type_formula(K_Type mu)=ParamPol: K_type_formula(parameter(mu))
