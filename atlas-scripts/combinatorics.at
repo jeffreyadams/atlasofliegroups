@@ -86,7 +86,7 @@ set partitions = (int n) [Partition]:
 
 { partitions with even multiplicity of parts of one parity (odd or even) }
 set parity_restricted_partitions (int n, bool restrict_odd_parts) = [Partition]:
-  if n.< or restrict_odd_parts and n.is_odd then [] { imposiible, so nothing }
+  if n.< or restrict_odd_parts and n.is_odd then [] { impossible, so nothing }
   else
     let table = [[ [Partition] ]]: { partitions by sum, then by largest part }
       for m:n+1
