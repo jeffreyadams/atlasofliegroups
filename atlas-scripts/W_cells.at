@@ -111,7 +111,7 @@ first(nr_of_posroots(ct.class_representatives()[0].root_datum)+1,(int k) bool: c
 
 {all 2^n standard Levis }
 set standard_Levis(RootDatum rd)=[RootDatum]:
-for S in generate_all_subsets(#semisimple_rank(rd)) do let (,L)=complex_Levi(rd, S) in L od
+for S in generate_all_subsets(#semisimple_rank(rd)) do complex_Levi(rd, S) od
 
 {alternating sum, over all standard Levis, of induced from trivial
  should equal the sign character }

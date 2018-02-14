@@ -60,7 +60,10 @@ set all_lambda_differential_0 (KGBElt x) = [vec]:
 
 { all K parameters with same d_lambda as (x,lambda) }
 set all_equal_dlambda_K_parameters (K_Type(x,lambda)) = [K_Type]:
-  for v in all_lambda_differential_0(x) do (x,lambda+v) od
+##(for v in all_lambda_differential_0(x) do if
+is_final(parameter(x,lambda+v)) then [(x,lambda+v)] else
+[(KGBElt,ratvec)]:[] fi od)
+{  for v in all_lambda_differential_0(x) do (x,lambda+v) od}
 
 { all actual parameters with same d_lambda as p, same nu }
 set all_parameters (Param p) = [Param]:
