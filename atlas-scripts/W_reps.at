@@ -8,48 +8,40 @@ set rank(mat A)=let (B,,pivots,)=A.echelon in #pivots
 { data type for representation of W 
  operators[i] is the matrix of the action of simple generator #i
 }
-set_type W_rep = (WeylClassTable ct,[mat] operators) 
-set root_datum(W_rep pi)=RootDatum:pi.ct.root_datum
-set dimension(W_rep pi)=int:#pi.operators[0]
+set_type W_rep = [mat]
+set dimension(W_rep pi)=int:#pi[0]
 
 {matrix of pi(w)}
 set operator(W_rep pi,WeylElt w)=mat:
 let rv=id_mat(pi.dimension) in
-for i in reverse(w.word) do rv*:=pi.operators[i] od;rv
+for i in reverse(w.word) do rv*:=pi[i] od;rv
 
 set operator(W_rep pi)=(WeylElt -> mat):
 (WeylElt w):operator(pi,w)
 
 {trivial representation of W}
 set trivial_W(RootDatum rd)=W_rep:
-(W_class_table(rd),for i:ss_rank(rd) do id_mat(1) od)
+for i:ss_rank(rd) do id_mat(1) od
 
 {pi.character=(WeylClassTable,[int]}
 {character of pi}
-set character(W_rep pi)=(WeylClassTable,[int]):
-(pi.ct, for w in pi.ct.class_representatives()  do trace(pi.operator(w)) od)
+set character(WeylClassTable ct,W_rep pi)=[int]:
+for w in ct.class_representatives() do trace(pi.operator(w)) od
 
 {isomorphism test using the character}
-set is_isomorphic(W_rep pi,W_rep sigma)=bool:character(pi)=character(sigma)
-
-{pi.character_values=[int]}
-set character_values(W_rep pi)=[int]:let (,v)=character(pi) in v
+set is_isomorphic(WeylClassTable ct,W_rep pi,W_rep sigma)=bool:character(ct,pi)=character(ct,sigma)
 
 {. matrix of inner products of characters }
 set matrix_of_inner_products(WeylClassTable ct,[[int]] characters)=mat:
   for i:#characters do for j:#characters do
   ct.inner(characters[i],characters[j]) od od
 
-set matrix_of_inner_products([(WeylClassTable,[int])] pairs)=
-let (ct,)=pairs[0] in
-matrix_of_inner_products(ct,for (,v) in pairs do v od)
-
-{sort list of representations, uniquely as determined
+{sort list of representations uniquely, as determined
 by the character}
-set sort_u([W_rep] list)=[W_rep]:
+set sort_u(WeylClassTable ct,[W_rep] list)=[W_rep]:
 if #list=0 then [] elif
  #list=1 then list else
- let chars=for pi in list do character_values(pi) od then
+ let chars=for pi in list do character(ct,pi) od then
  indices=[0] in
   for i:#chars-1 from 1 do
    let char=chars[i] then
@@ -124,7 +116,7 @@ set cells_table_augmented (WeylClassTable ct, [WCell] cells) = mat:
 
 {list of representations defined by an array of cells}
 set cell_representation(WeylClassTable ct,WCell cell)=W_rep:
-(ct,for i:ss_rank(ct.root_datum) do cell_action(cell,i) od)
+for i:ss_rank(ct.root_datum) do cell_action(cell,i) od
 
 set cell_representations(WeylClassTable ct,[WCell] cells)=[W_rep]:
 for cell in cells do cell_representation(ct,cell) od
@@ -232,7 +224,7 @@ set restrict_representation_isotypic(WeylClassTable ct, W_rep pi, vec char_value
 let A=projector(ct,pi,char_values) then
 (B,)=Smith(A) then
 P=B[0:rank(A)] in 
-(ct, for T in pi.operators do restrict_action(T,P) od)
+for T in pi do restrict_action(T,P) od
 
 {projector for a cell representation}
 set projector(WeylClassTable ct, ([int],[([int],[(int,int)])]) cell, vec char_values)=
@@ -311,13 +303,25 @@ let grouping=group_vectors_up_to_scalar(projector) then
 (parameters,)=cell in 
 for v in grouping do  for w in v do parameters[w] od od
 
-{nice output of primitive ideal information for a cell}set print_primitive_ideal_info([WCell] cells,[mat] projectors)=void:
+{nice output of primitive ideal information for a cell}
+set print_primitive_ideal_info([WCell] cells,[mat] projectors)=void:
 let data=for i:#cells do 
  let cell=cells[i], P=projectors[i] then
   g=group_parameters_by_primitive_ideal(cell,P) in
  [i.to_string,  (#P).to_string,(#g).to_string,g.to_string] od in 
  prints("Each line has 4 terms:",new_line,"# of cell",new_line,"size of cell", new_line, "dimension of special representation of cell",new_line, "grouping of parameters in cell by primitive ideal"); tabulate(data, "llll",2," ")
 
+{nice output of primitive ideal information for a cell, better suited 
+to large cells
+the final string argument is ignored, its only purpose is to call this function 
+instead of the previous one
+}
+set print_primitive_ideal_info([WCell] cells,[mat] projectors,string junk)=void:
+for i:#cells do 
+ let cell=cells[i], P=projectors[i] then
+ g=group_parameters_by_primitive_ideal(cell,P) in
+ prints(new_line,"#",i,new_line, "size of cell: ", #P, new_line, "dimension of special: ", #g);
+ for a in g do prints(a) od od 
 
 
 
