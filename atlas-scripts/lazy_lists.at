@@ -1,0 +1,71 @@
+<basic.at
+
+{ This file demonstrates how axis can handle lazy infinite lists (of |int|) }
+
+set_type
+[ inf_list = (->inf_node) { defers creating of |inf_node| until called with () }
+, inf_node=(int,inf_list) { intiial term, and "thunk" for remaining terms }
+, maybe_a_node =(void no_node | inf_node stored) { needed to |memoize| below }
+]
+
+{ One may for innstance define, to get an infinite list of entries 1:
+
+  set rec_fun ones () = inf_node: (1,ones)
+
+  and then refer to it as |ones@void|, since |set| stores this function in the
+  overload table. The following defines a variable instead, by avoiding |set|
+}
+ones : rec_fun me () inf_node: (1,me)
+
+
+{ get initial |n| terms of the list, and return them as ordinary list }
+set initial (int n) = (inf_list->[int]):
+  (inf_list f) [int]: for :n do let (head,tail)=f() in head next f:=tail od
+
+{ drop |n| initial terms, and return remaining infinite list }
+set shift (int n) = (inf_list->inf_list):
+  (inf_list L) inf_list: for :n do set(,L):=L() od; L
+
+{ more general then |ones|, we can define aritmetic and geometric progressions }
+set arithmetic_progression (int stride) = rec_fun f (int start) inf_list:
+  @: (start,f(start+stride))
+
+set geometric_progression (int lambda) = rec_fun f (int start) inf_list:
+  @: (start,f(start*lambda))
+
+{ lazy sum of two infinite lists }
+set rec_fun sum (inf_list f, inf_list g) = inf_list:
+  @: let (x,ff)=f(), (y,gg)=g() in (x+y,sum(ff,gg))
+
+{ it can be important, especially in recursive definitions, to avoid evaluating
+  the thunk defining an infinite list mora than once, but instead store the
+  values that have already been computed. The function |memoize| adds the
+  necessary storage on top of an infinite list: before actually calling the
+  thunk, it defines a variable that can store the node produced, but initially
+  stores nothing. The first time the memoized function is called, the thunk is
+  called and the result stored, from which further calls will retrieve it. The
+  magic comes from applying |memoize| recursively to the tail, before storage.
+}
+set rec_fun memoize (inf_list L) = inf_list:
+  let store = no_node() in
+  @: case store
+     | no_node(): let (head,tail)=L() then result=(head,memoize(tail)) in
+                  store:=stored(result); result
+     | stored(node): node
+     esac
+
+{ Using |memoize| remains delicate, since it is most useful in recursion, but
+  the |rec_fun| syntax does not allow anything coming before the arguments, as
+  |rec_fun signs = inf_list: memoize(@:(1,@:(-1,signs)))| (NOT SYNTACTIC)
+  while calling |memoize| inside the function body creates separate memo tables
+  each time a call is done (even if it has the same arguments). The solution is
+  to tie the recursive knot by hand, rather than have |rec_fun| do it for us:
+}
+set fibonacci = inf_list:
+  let fibo () = inf_node:die { stub, which next |memoize| doesn't call yet }
+  in fibo := memoize(@:(0,@:(1,sum(fibo,shift(1)(fibo)))))
+{ Note that leaving out |memoize| woudl be possible here, but makes the runtime
+  increase exponentially with the list length because of repeated evaluations of
+  the same list elements. That inefficient version would also be obtained by
+  | set rec_fun fibonacci () = inf_node:(0,@:(1,sum(fibo,shift(1)(fibo))))) |
+}
