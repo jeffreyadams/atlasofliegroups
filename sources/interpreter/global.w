@@ -580,7 +580,7 @@ overloaded instances.
 void overload_table::add
   (id_type id, shared_function val, type_expr&& t)
 { assert (t.kind()==function_type);
-  func_type type(std::move(*t.func())); // steal the function type
+  func_type ftype(t.func()->copy()); // locally copy the function type
   auto its = table.equal_range(id);
   if (its.first==its.second) // a fresh overloaded identifier
   {
@@ -588,14 +588,14 @@ void overload_table::add
     auto pos=table.insert
       (its.first,std::make_pair(id, variant_list()));
     pos->second.push_back(
-      overload_data( std::move(val), std::move(type)) );
+      overload_data( std::move(val), std::move(ftype)) );
 #else
     auto pos=table.emplace_hint(its.first,id,variant_list());
-    pos->second.emplace_back(std::move(val), std::move(type) );
+    pos->second.emplace_back(std::move(val), std::move(ftype) );
 #endif
   }
   else
-    @< Insert an overload for function |val| with type |type| into
+    @< Insert an overload for function |val| with function type |ftype| into
      the list of variants at |its->first.second|, or throw an error if
      there is an incompatibility with a previously existing variant @>
 }
@@ -609,19 +609,19 @@ clear inside |locate_overload|, that information was not passed to us. However
 in most cases the fact that |pos| is at the end of |slot|, so does not point at
 any entry, allows us to avoid testing any types again here.
 
-@< Insert an overload for function |val| with type |type|... @>=
+@< Insert an overload for function |val| with function type |ftype|... @>=
 { variant_list& slot=its.first->second; // vector of all variants
-  auto pos=locate_overload(id,slot,type.arg_type); // may |throw|
-  if (pos<slot.size() and slot[pos].type().arg_type==type.arg_type)
+  auto pos=locate_overload(id,slot,ftype.arg_type); // may |throw|
+  if (pos<slot.size() and slot[pos].type().arg_type==ftype.arg_type)
      // equality found
-    slot[pos] = overload_data(std::move(val),std::move(type)); // overwrite
+    slot[pos] = overload_data(std::move(val),std::move(ftype)); // overwrite
   else
   {
 #ifdef incompletecpp11
     slot.insert
-      (slot.begin()+pos,overload_data(std::move(val),std::move(type)));
+      (slot.begin()+pos,overload_data(std::move(val),std::move(ftype)));
 #else
-    slot.emplace(slot.begin()+pos,std::move(val),std::move(type));
+    slot.emplace(slot.begin()+pos,std::move(val),std::move(ftype));
 #endif
   }
 }
