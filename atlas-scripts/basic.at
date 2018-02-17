@@ -37,6 +37,8 @@ set first ([bool] p) = int:
   for x@i in p do if x then return i fi od; minus_1
 set last ([bool] p) = int:
   let i=#p-1 in while >=i and not p[i] do i-:=1 od; i
+set # ([bool] p) = int: { count (sum) number of truths in list }
+  let c=0 in for b in p do if b then c+:=1 fi od; c
 
 set all (int limit,(int->bool) predicate) = bool:
   for i:limit do if not predicate(i) then return false fi od; true
@@ -287,9 +289,22 @@ set rec_fun power_set (int n) = [[int]]: { indices where 0_1_vecs have 1 }
   if =n then [[]] else let p=power_set(n-:=1) in p ## for S in p do S#n od fi
 set power_set ([int] S) = [[int]]:
   for inx in power_set(#S) do for i in inx do S[i] od od
+set choices_from ([int] S, int k) = [[int]]: { all $k$-subsets of $S$ }
+  if k>#S then []
+  else { now we will assume $n\geq k$ }
+    let rec_fun from_first(int n,int k) = [[int]]: { $k$ from first $n$ of $S$ }
+      if k=0 then [[]] { unique choice of 0 }
+      else ## { generate by final element, and concatenate }
+        for i:n-k+1 from k-1
+        do let Si=S[i] in for l in from_first(i,k-1) do l#Si od
+        od
+      fi
+    in from_first(#S,k)
+  fi
+
 
 {. number of times n occurs in [int] S .}
-set multiplicity(int n, [int] S)=int:#(##(for i:#S do if S[i]=n then [1] else [] fi od))
+set multiplicity (int n, [int] S) = int: #for x in S do x=n od
 
 {                               Matrices                                }
 
@@ -436,6 +451,8 @@ set columns_with ((vec->bool) p,mat m) = mat:
   n_rows(m)# ## for col in m do if p(col) then [col] else [] fi od
 set columns_with ((int->bool) p,mat m) = mat:
   n_rows(m)# ## for col@j in m do if p(j) then [col] else [] fi od
+set a_column_with ((vec->bool) p,mat m) = maybe_a_vec:
+  for col in m do if p(col) then return solution(col) fi od; no_solution()
 
 set rows_with ((int,vec->bool) p,mat m) = mat:
   n_columns(m) ^ ## for row@i in ^m do if p(i,row) then [row] else [] fi od
@@ -443,6 +460,8 @@ set rows_with ((vec->bool) p,mat m) = mat:
   n_columns(m) ^ ## for row in ^m do if p(row) then [row] else [] fi od
 set rows_with ((int->bool) p,mat m) = mat:
   n_columns(m) ^ ## for row@i in ^m do if p(i) then [row] else [] fi od
+set a_row_with ((vec->bool) p,mat m) = maybe_a_vec:
+  for row in ^m do if p(row) then return solution(row) fi od; no_solution()
 
 set >=(mat m) = bool: { non-negative (dominant) columns only } all(m,>=@vec)
 set >(mat m) = bool: { strictly positive (dominant) columns only } all(m,>@vec)
@@ -777,8 +796,7 @@ set conjugate (RootDatum rd, vec alpha, mat M) = mat:
 
 
 set singular_simple_indices (RootDatum rd,ratvec v) = [int]:
-  let rv=[int]:[] { cannot use columns_with: must find _indices_ of columns }
-  in for a@j in simple_coroots(rd) do if =a*v then rv:=rv#j fi od; rv
+  ## for a@j in simple_coroots(rd) do if =a*v then [j] else [] fi od
 
 set is_imaginary (mat theta) = (vec->bool): (vec alpha): theta*alpha=alpha
 set is_real      (mat theta) = (vec->bool): (vec alpha): theta*alpha=-alpha

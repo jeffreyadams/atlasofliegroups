@@ -173,26 +173,29 @@ among the many definitions of that method in derived classes, and this
 definition is only implicitly (mutually) recursive through calls to the
 |expression_base::evaluate| method.
 
-@ During type checking, it may happen for certain subexpressions that a
-definite type is required for them, while for others nothing is known
-beforehand about their type (for instance this is the case for the complete
-expression entered by the user for evaluation). The difference is important,
-as in the former case it is possible to insert implicit conversions to make
-the types match, for instance between a list of integers (built using the
-facilities of the interpreter) and a vector value (one that can be directly
-used by the Atlas library); this is in fact the only way the user can
-construct such vector values. However, both cases (with known or unknown
-result type), and some intermediate cases (where the result type is partially
-known) are handled by a single function |convert_expr|. In addition to doing
-types analysis, it builds (upon success) an |expression| value. As arguments
-|convert_expr| takes an |const expr& e@;| referring to a value produced by the
-parser, and a type in the form of a modifiable reference |type_expr& type@;|.
-If |type| is undefined initially, then it will be set to the type derived for
-the expression; if it is defined then it may guide the conversion process, and
-the type eventually found will have to match it. It could also be that |type|
-is initially partially defined (such as `\.{(int,*)}', meaning ``pair on an
-integer and something''), in which case derivation and testing functionality
-are combined; this gives flexibility to |convert_expr|.
+@ During type checking, it may happen for certain subexpressions that a definite
+type is required for them, while for others nothing is known beforehand about
+their type (for instance this is the case for the complete expression entered by
+the user for evaluation). The difference is important, as in the former case it
+is possible to insert implicit conversions to make the types match, for instance
+between a list of integers (built using the facilities of the interpreter) and a
+vector value (one that can be directly used by the Atlas library); this is in
+fact the only way the user can construct such vector values. However, both cases
+(with known or unknown result type), and some intermediate cases (where the
+result type is partially known) are handled by a single function |convert_expr|.
+In addition to doing types analysis, it builds (upon success) an |expression|
+value. As arguments |convert_expr| takes an |const expr& e@;| referring to a
+value produced by the parser, and a type in the form of a modifiable reference
+|type_expr& type@;|. If |type| is undefined initially, then it will be set to
+the type derived for the expression; if it is defined then it may guide the
+conversion process, and the type eventually found will have to match it. It
+could also be that |type| is initially partially defined (such as `\.{(int,*)}',
+meaning ``pair on an integer and something''), in which case derivation and
+testing functionality are combined; this gives flexibility to |convert_expr|.
+However, |convert_expr| must only use its modifiable reference to |type| for
+calling |specialise| on it, or on its contained type expressions, not for other
+kinds of alteration (notably it should not |std::move| from |type| or its
+components).
 
 Upon successful completion, |type| will usually have become completely
 defined. The object |type| should be owned by the caller, who will
@@ -205,24 +208,22 @@ that changes to the |type| argument remain local until successful completion,
 so that when the function instead terminates by throwing an exception no
 modifications to |type| will leave permanent traces (any updating of tables
 should be explicitly done using the value of |type| after return from
-|convert_expr|). Consequently |convert_expr| is free to move from |type| in
-case it throws: the stealing will not leave any noticeable effects.
+|convert_expr|).
 
 In some cases |type| will remain partly undefined, like for an emtpy list
-display with an unknown type, which gets specialised only to~`\.{[*]}'.
-However if |type| remains completely undefined `\.*' (as will happen for an
-expression that selects a value from an empty list, or that calls |error|),
-then this means that evaluation cannot possibly complete without error (since
-no resulting value could have all possible types at once). This situation
-would also happen for a function defined recursively without any terminating
-case, if it were possible to specify such a function in \.{axis} (in reality
-the somewhat tedious method that currently is the only way to define recursive
-functions in \.{axis} requires the type of the function to be fixed
-beforehand, so this case does not occur). Therefore we might treat the case
-where |convert_expr| leaves |type| completely undetermined as a type error;
-currently this is not signalled as such, but occasionally we do choose to
-ignore certain scenarios in which the type derived for a subexpression is
-`\.*', if this allows us to simplify our code.
+display with an unknown type, which gets specialised only to~`\.{[*]}'. However
+if |type| remains completely undefined `\.*' (as will happen for an expression
+that selects a value from an empty list, or that calls |error|), then this means
+that evaluation cannot possibly complete without error (since no resulting value
+could have all possible types at once). (If one would try to deduce the return
+type of a recursive function from its body, this situation would also happen is
+such a function were to have no terminating case; in reality, the syntax insists
+that recursive functions declare their return type explicitly, avoiding this
+situation.) Therefore we might treat the case where |convert_expr| leaves |type|
+completely undetermined as a type error; currently this is not signalled as
+such, but occasionally we do choose to ignore certain scenarios in which the
+type derived for a subexpression is `\.*', if this allows us to simplify our
+code.
 
 @< Declarations of exported functions @>=
 expression_ptr convert_expr(const expr& e, type_expr& type);
@@ -390,8 +391,8 @@ used to be) handled by having |lookup| return |type_p| rather than
 |const_type_p|. This is the possibility that a caller will afterwards need to
 specialise the type found for an identifier from its uses, if the type
 initially had an unknown component as in `\.{[*]}'. Rather than modifying the
-look-up type, one achieves this by calling |specialise| with the |depth| and
-|offset| returned by |lookup|.
+looked-up type (which is now forbidden), one achieves this by calling
+|layer::specialise| with the |depth| and |offset| returned by |lookup|.
 
 This method must find non-empty layer number |depth|, so it must skip depth
 non-empty layers, and any empty layers separated by them, until reaching the
@@ -724,7 +725,7 @@ case tuple_display:
   expression_ptr result(std::move(tup_exp));
   if (tuple_expected or coerce(tup,type,result))
     return result;
-  throw type_error(e,std::move(tup),std::move(type));
+  throw type_error(e,std::move(tup),type.copy());
 }
 
 @*1 Evaluating tuple displays.
@@ -1051,7 +1052,7 @@ case list_display:
       conversion(*conv,expression_ptr(std::move(result))));
   }
 @)
-  throw type_error(e,row_of_type.copy(),std::move(type));
+  throw type_error(e,row_of_type.copy(),type.copy());
   // |type| incompatible with any list
 }
 
@@ -1280,7 +1281,7 @@ case applied_identifier:
     }
   else if (coerce(*id_t,type,id_expr))
     return id_expr;
-  throw type_error(e,id_t->copy(),std::move(type));
+  throw type_error(e,id_t->copy(),type.copy());
 }
 
 @*1 Resolution of operator and function overloading.
@@ -2672,7 +2673,7 @@ case lambda_expr:
   else
     @/throw type_error(e,
                        type_expr(arg_type.copy(),unknown_type.copy()),
-                       std::move(type));
+                       type.copy());
 @/layer new_layer(count_identifiers(pat),rt);
   thread_bindings(pat,arg_type,new_layer,false);
 @/return expression_ptr(new @|
@@ -4010,7 +4011,7 @@ case negation_expr:
 { type_expr b=bool_type.copy();
    expression_ptr arg = convert_expr(*e.negation_variant,b);
   if (not type.specialise(b)) // |not| preserves the |bool| type
-    throw type_error(e,std::move(b),std::move(type));
+    throw type_error(e,std::move(b),type.copy());
   return expression_ptr(new @| builtin_call
      (boolean_negate_builtin,std::move(arg),e.loc));
 }
@@ -4784,7 +4785,7 @@ component type as for list displays, in section@#list display conversion@>.
 { type_expr comp_type;
   const conversion_record* conv = row_coercion(type,comp_type);
   if (conv==nullptr)
-    throw type_error(e,row_of_type.copy(),std::move(type));
+    throw type_error(e,row_of_type.copy(),type.copy());
 @)
   return expression_ptr(new conversion(*conv, expression_ptr(make_while_loop @|
        (w.flags.to_ulong(),convert_expr(w.body,comp_type)))));
@@ -5218,7 +5219,7 @@ case for_expr:
     btp=type.component_type();
   else if ((conv=row_coercion(type,body_type))!=nullptr)
     btp=&body_type;
-  else throw type_error(e,row_of_type.copy(),std::move(type));
+  else throw type_error(e,row_of_type.copy(),type.copy());
 @)
   expression_ptr body(convert_expr (f.body,*btp));
   if (type!=void_type and *btp==void_type and not is_empty(f.body))
@@ -5607,7 +5608,7 @@ case cfor_expr:
   else if (type.specialise(row_of_type))
     btp=type.component_type();
   else if ((conv=row_coercion(type,body_type))==nullptr)
-    throw type_error(e,row_of_type.copy(),std::move(type));
+    throw type_error(e,row_of_type.copy(),type.copy());
 @)
   if (c.flags[2]) // case of absent loop variable
   { layer bind(0,nullptr);  // no local variables for loop, but allow |break|
@@ -5836,7 +5837,7 @@ case op_cast_expr:
     const type_expr& res_t = entry->type().result_type;
     if (functype_specialise(type,ctype,res_t) or type==void_type)
       return p;
-    throw type_error(e,type_expr(ctype.copy(),res_t.copy()),std::move(type));
+    throw type_error(e,type_expr(ctype.copy(),res_t.copy()),type.copy());
   }
 @)// now we have no match from the overload table, try generic operations
   if (is_special_operator(c->oper))
@@ -5888,7 +5889,7 @@ table.
   { if (functype_specialise(type,ctype,int_type))
   @/return expression_ptr(new @|
       capture_expression (sizeof_row_builtin,o.str()));
-    throw type_error(e,ctype.copy(),std::move(type));
+    throw type_error(e,ctype.copy(),type.copy());
   }
   else if (is_pair_type(ctype))
   {
@@ -5898,13 +5899,13 @@ table.
     { if (functype_specialise(type,ctype,arg_tp0))
         return expression_ptr(new @|
           capture_expression(suffix_elt_builtin,o.str()));
-      throw type_error(e,ctype.copy(),std::move(type));
+      throw type_error(e,ctype.copy(),type.copy());
     }
     if (arg_tp1.kind()==row_type and *arg_tp1.component_type()==arg_tp0)
     { if (functype_specialise(type,ctype,arg_tp1))
       return expression_ptr(new @|
         capture_expression (prefix_elt_builtin,o.str()));
-      throw type_error(e,ctype.copy(),std::move(type));
+      throw type_error(e,ctype.copy(),type.copy());
     }
   }
 }
@@ -5917,7 +5918,7 @@ different wrapper functions.
   { if (functype_specialise(type,ctype,*ctype.component_type()))
   @/return expression_ptr(new @|
       capture_expression (join_rows_row_builtin,o.str()));
-    throw type_error(e,ctype.copy(),std::move(type));
+    throw type_error(e,ctype.copy(),type.copy());
   }
   else if (is_pair_type(ctype))
   {
@@ -5927,7 +5928,7 @@ different wrapper functions.
     { if (functype_specialise(type,ctype,arg_tp0))
         return expression_ptr(new @|
           capture_expression (join_rows_builtin,o.str()));
-      throw type_error(e,ctype.copy(),std::move(type));
+      throw type_error(e,ctype.copy(),type.copy());
     }
   }
 }

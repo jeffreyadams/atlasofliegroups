@@ -27,8 +27,6 @@
 - Improve output of expressions
   Distinguish one-line (maybe abbreviated) and long forms.
 
-- See if cloning of all value types is needed, and remove unnecessary ones
-
 - For errors during implict conversion, provide back-tracing as for calls
 
 - Implement operate-and-assign directly. While 'v #:= x' (with vec v, int x)
@@ -43,7 +41,7 @@
   they have no means of indicating how the return value might reuse the memory
   from the argument. The combined operator would be most useful for
   concatenation, but operations on large values, such as vector addition,
-  could also profit; indeed also (big) integer arithmetic might used this.
+  could also profit; indeed also (big) integer arithmetic might use this.
 
 - Extend type system to deal with second-order types
 - Allow encapsulation into user-defined types (possibly using 2nd order types)
@@ -53,19 +51,6 @@
 
 - Change interface to LieType so that torus factors do not pollute list of
   simple factors.
-
-- Fix bug that allows components of defined types to be overwritten (make
-  internal access methods return reference to constant).
-
-- Find out and fix erratic behaviour in |partition_of_w_BCD| revised version
-
-- Figure out internal type error ct.tensor(ct.reflection,3)
-
-- Make system test for duplicate real forms in the same inner class that will
-  test equal; they should be the same object. Or avoid creating duplicate
-  |real_form_value| instances, by storing links to those currently generated
-  within an |inner_class_value| object (check current state of affairs first).
-
 
 
 * Work on the atlas scripts

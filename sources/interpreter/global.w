@@ -580,7 +580,7 @@ overloaded instances.
 void overload_table::add
   (id_type id, shared_function val, type_expr&& t)
 { assert (t.kind()==function_type);
-  func_type type(std::move(*t.func())); // steal the function type
+  func_type ftype(t.func()->copy()); // locally copy the function type
   auto its = table.equal_range(id);
   if (its.first==its.second) // a fresh overloaded identifier
   {
@@ -588,14 +588,14 @@ void overload_table::add
     auto pos=table.insert
       (its.first,std::make_pair(id, variant_list()));
     pos->second.push_back(
-      overload_data( std::move(val), std::move(type)) );
+      overload_data( std::move(val), std::move(ftype)) );
 #else
     auto pos=table.emplace_hint(its.first,id,variant_list());
-    pos->second.emplace_back(std::move(val), std::move(type) );
+    pos->second.emplace_back(std::move(val), std::move(ftype) );
 #endif
   }
   else
-    @< Insert an overload for function |val| with type |type| into
+    @< Insert an overload for function |val| with function type |ftype| into
      the list of variants at |its->first.second|, or throw an error if
      there is an incompatibility with a previously existing variant @>
 }
@@ -609,19 +609,19 @@ clear inside |locate_overload|, that information was not passed to us. However
 in most cases the fact that |pos| is at the end of |slot|, so does not point at
 any entry, allows us to avoid testing any types again here.
 
-@< Insert an overload for function |val| with type |type|... @>=
+@< Insert an overload for function |val| with function type |ftype|... @>=
 { variant_list& slot=its.first->second; // vector of all variants
-  auto pos=locate_overload(id,slot,type.arg_type); // may |throw|
-  if (pos<slot.size() and slot[pos].type().arg_type==type.arg_type)
+  auto pos=locate_overload(id,slot,ftype.arg_type); // may |throw|
+  if (pos<slot.size() and slot[pos].type().arg_type==ftype.arg_type)
      // equality found
-    slot[pos] = overload_data(std::move(val),std::move(type)); // overwrite
+    slot[pos] = overload_data(std::move(val),std::move(ftype)); // overwrite
   else
   {
 #ifdef incompletecpp11
     slot.insert
-      (slot.begin()+pos,overload_data(std::move(val),std::move(type)));
+      (slot.begin()+pos,overload_data(std::move(val),std::move(ftype)));
 #else
-    slot.emplace(slot.begin()+pos,std::move(val),std::move(type));
+    slot.emplace(slot.begin()+pos,std::move(val),std::move(ftype));
 #endif
   }
 }
@@ -780,7 +780,7 @@ which is why it is not currently passed to functions like
 @< Declarations of exported functions @>=
 void global_set_identifier (const struct raw_id_pat& id, expr_p e, int overload,
                            const source_location& loc);
-void global_set_identifiers(const raw_let_list& d,const source_location& loc);
+void global_set_identifiers(raw_let_list d,const source_location& loc);
 void global_declare_identifier(id_type id, type_p type);
 void global_forget_identifier(id_type id);
 void global_forget_overload(id_type id, type_p type);
@@ -816,12 +816,12 @@ sometimes forbids or requires a definition to the overload table; the argument
 |overload| specifies the options permitted ($0$ means no overloading, $2$
 requires overloading, and $1$ allows both).
 
-The local function |do_global_set| defined below does most of the work for
-the ``global set'' twins, for all the syntactic variations allowed. All that
-happens here is preparing an |id_pat| and an |expr|, either by wrapping the
-given arguments in non-raw types, or by calling |zip_decls| defined
-in the module \.{parsetree.w}, which does the same work as for \&{let}
-expressions.
+The local function |do_global_set| defined below does most of the work for the
+``global set'' twins, for all the syntactic variations allowed. All that happens
+here is preparing an |id_pat| and an |expr|, either by wrapping the given
+arguments in non-raw types, or by calling |zip_decls| (defined in the
+module \.{parsetree.w}) to split a list of declarations into a pattern part and
+an expression part, the same work that it does for \&{let} expressions.
 
 @< Global function definitions @>=
 void global_set_identifier(const raw_id_pat &raw_pat, expr_p raw, int overload,
@@ -829,7 +829,7 @@ void global_set_identifier(const raw_id_pat &raw_pat, expr_p raw, int overload,
 {@; do_global_set(id_pat(raw_pat),*expr_ptr(raw),overload,loc); }
   // ensure clean-up
 @)
-void global_set_identifiers(const raw_let_list& d,const source_location& loc)
+void global_set_identifiers(raw_let_list d,const source_location& loc)
 { std::pair<id_pat,expr> pat_expr = zip_decls(d);
   do_global_set(std::move(pat_expr.first),pat_expr.second,1,loc);
 }

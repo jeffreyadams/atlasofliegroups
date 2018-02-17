@@ -1,3 +1,4 @@
+<basic.at
 <parabolics.at
 <W_characters.at
 
@@ -5,10 +6,11 @@
 
 set rank(mat A)=let (B,,pivots,)=A.echelon in #pivots
 
-{ data type for representation of W 
+{ data type for representation of W
  operators[i] is the matrix of the action of simple generator #i
 }
-set_type W_rep = (WeylClassTable ct,[mat] operators) 
+set_type W_rep = (WeylClassTable ct,[mat] operators)
+
 set root_datum(W_rep pi)=RootDatum:pi.ct.root_datum
 set dimension(W_rep pi)=int:#pi.operators[0]
 
@@ -24,6 +26,10 @@ set operator(W_rep pi)=(WeylElt -> mat):
 set trivial_W(RootDatum rd)=W_rep:
 (W_class_table(rd),for i:ss_rank(rd) do id_mat(1) od)
 
+{ Compute characters of W-representations on cells, as obtained from W_cells
+  also induced characters from Levi subgroups, and the Steinberg character
+}
+
 {pi.character=(WeylClassTable,[int]}
 {character of pi}
 set character(W_rep pi)=(WeylClassTable,[int]):
@@ -35,10 +41,10 @@ set is_isomorphic(W_rep pi,W_rep sigma)=bool:character(pi)=character(sigma)
 {pi.character_values=[int]}
 set character_values(W_rep pi)=[int]:let (,v)=character(pi) in v
 
-{. matrix of inner products of characters }
-set matrix_of_inner_products(WeylClassTable ct,[[int]] characters)=mat:
-  for i:#characters do for j:#characters do
-  ct.inner(characters[i],characters[j]) od od
+{. matrix of inner products of characters of representations .}
+set matrix_of_inner_products (WeylClassTable ct,[[int]] characters) = mat:
+  let n=#characters
+  in matrix((n,n),(int i,int j): ct.inner(characters[i],characters[j]))
 
 set matrix_of_inner_products([(WeylClassTable,[int])] pairs)=
 let (ct,)=pairs[0] in
@@ -58,14 +64,41 @@ if #list=0 then [] elif
 
 { ----------- cell representations --------------}
 
-{ Character of W-representations on cells,
- also induced characters and the Steinberg character }
-
+{ Type definitions that facilitate handling output from W_cells }
 set_type
-[ WNode = ([int] tau,[int,int] out_list)
+[ WCell = ([int] labels, WGraph graph)
 , WGraph = [WNode]
-, WCell = ([int] labels, WGraph graph)
+, WNode = ([int] tau,[int,int] out_list)
 ]
+
+{ Description of the cell representation taken from messages/wcells.help
+
+  The Weyl group representation attached to the cell may be described as
+  follows. It has a Z basis {L_j} indexed by the cell elements j. If
+  root i is in the tau invariant for element j, then
+
+  s_i(L_j) = -L_j.
+
+  If i is not in the tau invariant, then
+
+  s_i(L_j) = L_j + sum_{elements k, i in tau(k)} m_{kj} * L_k.
+
+  where m_{kj} denotes the multiplicity of the edge from k to j.
+  That is, m*L_k appears in the sum here if i is in the tau-invariant of
+  L_k, and the pair (j,m) appears in the list for row k.
+
+  ([224,247,250,253,256],
+  [([0,1,2],[(1,1)]),
+  ([0,1,3],[(0,1),(3,1),(4,1)]),
+  ([1,2,3],[(3,1)]),([0,2,3],
+  [(1,1),(2,1)]),([0,1,2],[(1,1)])])
+
+  0[224]: {1,2,3} --> 1
+  1[247]: {1,2,4} --> 0,3,4
+  2[250]: {2,3,4} --> 3
+  3[253]: {1,3,4} --> 1,2
+  4[256]: {1,2,3} --> 1
+}
 
 { matrix of action of of i^th simple reflection on a cell
   a cell is: ([int],[([int],[(int,int)])]) cell,int i)
@@ -109,11 +142,6 @@ set cell_character (WeylClassTable ct,WCell cell) = [int]:
 set cell_characters (WeylClassTable ct,[WCell] cells) = [[int]]:
   for cell in cells do cell_character(ct, cell) od
 
-{. matrix of inner products of characters of cell representations .}
-set matrix_of_inner_products (WeylClassTable ct,[[int]] characters) = mat:
-  let n=#characters
-  in matrix((n,n),(int i,int j): ct.inner(characters[i],characters[j]))
-
 set cells_table (WeylClassTable ct,[WCell] cells) = mat:
   matrix_of_inner_products(ct,cell_characters(ct,cells))
 
@@ -130,79 +158,60 @@ set cell_representations(WeylClassTable ct,[WCell] cells)=[W_rep]:
 for cell in cells do cell_representation(ct,cell) od
 
 
-{ Description of the cell representation taken from messages/wcells.help}
-{
-The Weyl group representation attached to the cell may be described as
-follows. It has a Z basis {L_j} indexed by the cell elements j. If
-root i is in the tau invariant for element j, then
-
-s_i(L_j) = -L_j.
-
-If i is not in the tau invariant, then
-
-s_i(L_j) = L_j + sum_{elements k, i in tau(k)} m_{kj} * L_k.
-
-where m_{kj} denotes the multiplicity of the edge from k to j.
-That is, m*L_k appears in the sum here if i is in the tau-invariant of
-L_k, and the pair (j,m) appears in the list for row k.
-
-([224,247,250,253,256],
-[([0,1,2],[(1,1)]),
-([0,1,3],[(0,1),(3,1),(4,1)]),
-([1,2,3],[(3,1)]),([0,2,3],
-[(1,1),(2,1)]),([0,1,2],[(1,1)])])
-
-0[224]: {1,2,3} --> 1
-1[247]: {1,2,4} --> 0,3,4
-2[250]: {2,3,4} --> 3
-3[253]: {1,3,4} --> 1,2
-4[256]: {1,2,3} --> 1
-}  
-
 { ------------------- induction ------------------- }
 
 {. promote w in W(Levi) to W(G) }
-set promote(WeylClassTable ct, WeylElt w_L)=
-W_elt(ct.class_representatives()[0].root_datum, matrix(w_L))
+set promote (WeylClassTable ct, WeylElt w_L) = WeylElt:
+  W_elt(ct.root_datum, matrix(w_L))
 
 {all 2^n standard Levis }
-set standard_Levis(RootDatum rd)=[RootDatum]:
-for S in generate_all_subsets(#semisimple_rank(rd)) do let (,L)=complex_Levi(rd, S) in L od
+set standard_Levis (RootDatum rd) = [RootDatum]:
+  for S in power_set(rd.all_simples) do Levi_datum(rd,S) od
 
-{ induction from a Levi factor }
-{L is a Levi in G, pi_L is a class function on L
- pi_G=ind_L^G(pi_L)
- formula: if C is a conjugacy class for G
- trace(pi_G)(C) = |W(G)/W(L)|/ |C|\sum |C_j| trace(pi_L(C_j))
- where the sum runs over the W(L)-conjugacy classes in C\cap W(L)
+{ induction from a Levi factor
 
- algorithm: initialize the result to be the 0-character
- run over conjugacy class representatives in L
- for each conjugacy class representative w_L compute
-   w=conjugacy_class_map(w_L,class_reps_G),
-  and add (rational): index*|conjugacy class of w_L|/|conjugacy class of w|
-  finally convert to [int]
+  L is a Levi in G, |pi_L| is a class function on W(L)
+  we want to compute the class function pi_G=ind_L^G(pi_L) on W(G)
+
+  formula: if C is a conjugacy class for G
+  pi_G(C) = |W(G)| / (|W(L)|*|C|)) * \sum |C_j| pi_L(C_j)
+  where the sum runs over the W(L)-conjugacy classes in C\cap W(L) (this follows
+  from Frobenius reciprocity, pairing pi_L with the indicator function for C)
+
+  In other words the value of |pi_L| on each class C_j in W(L) contributes to
+  the induced character value only at the class C of W(G) containing it, and for
+  this contribution its character value is multiplied by [W(G):W(L)] * |C|/|C_j|
+
+  algorithm: initialize the result to be the 0-character
+  run over conjugacy class representatives in L
+  for each conjugacy class representative w_L compute  w_G = class_of (w_L,G)
+  and add to the character value at (the class) w_G the  value:
+  pi_L(w_L) * index(W(G):W(L))*|conjugacy class of w_L|/|conjugacy class of w|
+  The factor by which pi_L(w_L) is mulitplied is integer, as it is the index of
+  the centraliser subgroup of w_L in W_L inside its centraliser subgroup of w_G
 }
 set induce_character(WeylClassTable ct_G,WeylClassTable ct_L,[int] pi_L)= [int]:
    let rd_G= ct_G.root_datum, rd_L=ct_L.root_datum
    then index = rat_as_int(order_W(rd_G)/order_W(rd_L))
    , classes_G=ct_G.class_representatives()  {[WeylElt]}
    , classes_L=ct_L.class_representatives()  {[WeylElt]}
-   then values_G= [rat]: for c in classes_G do 0 od
+   then values_G= [int]: for c in classes_G do 0 od
+   , sizes_G = ct_G.class_sizes()
+   , sizes_L = ct_L.class_sizes()
 in for w_L@i in classes_L
    do let w_G=conjugacy_class_rep(promote(ct_G,w_L))
       then { j=number(w_G,classes_G) in}
            j=ct_G.class_of(w_G)
-   in  values_G[j] +:= pi_L[i]*index*
-                       (ct_L.class_sizes())[i]/ct_G.class_sizes()[j]
+   in  values_G[j] +:= pi_L[i] * (index * sizes_L[i]/sizes_G[j]).rat_as_int
    od; for v in values_G do v.rat_as_int od
 
 {the sign representation occurs in S^(nr_of_posroots)(reflection),
 and this is the maximum}
 {. smallest k so that pi occurs in S^k(reflection) .}
-set smallest_degree(WeylClassTable ct, [int] character)=int:
-let ref=ct.reflection in
-first(nr_of_posroots(ct.class_representatives()[0].root_datum)+1,(int k) bool: ct.inner(character,ct.sym_power(ref,k))!=0)
+set smallest_degree (WeylClassTable ct, vec character) = int:
+  let ref=ct.reflection, rd=ct.root_datum in
+  first(nr_of_posroots(rd)+1,
+        (int k) bool: ct.inner(character,ct.sym_power(ref,k))!=0 )
 
 set smallest_degree(WeylClassTable ct, (WeylClassTable ct1,[int] character))=int:
 let ref=ct.reflection in
@@ -211,16 +220,21 @@ first(nr_of_posroots(ct.class_representatives()[0].root_datum)+1,(int k) bool: c
 { the Steinberg character (mainly for testing)}
 
 {alternating sum, over all standard Levis, of induced from trivial
- should equal the sign character }
-set Steinberg_character(RootDatum rd)=
-let ct_G=W_class_table(rd)
-  then rv = sum(for L in standard_Levis(rd) do
- let ct_L=W_class_table(L) in
- (-1)^(ss_rank(L))*induce_character(ct_G,ct_L,ct_L.trivial) od ) in assert(rv=ct_G.sign);rv
+ should equal the sign character (it it does not, this function fails) }
+set Steinberg_character (RootDatum rd) = [int]:
+  let ct_G=W_class_table(rd)
+  then result =
+     for L in standard_Levis(rd)
+     do let ct_L=W_class_table(L) in
+        minus_1^semisimple_rank(L) * induce_character(ct_G,ct_L,ct_L.trivial)
+     od
+     .sum
+  in assert(result=ct_G.sign); result
 
 { ------------ projection on isotypic subspace  ----------- }
 
-{projection of representation pi on isotoypic subspace defined by char_values}
+{ scalar multiple of projection of representation pi on isotoypic subspace
+  defined by character |char_values| of an irreducible representation }
 set projector(WeylClassTable ct,W_rep  pi, vec char_values)=
 let rd=ct.root_datum then
 Q=null(dimension(pi),dimension(pi)) in
@@ -231,23 +245,23 @@ for w in W(rd) do
 set restrict_representation_isotypic(WeylClassTable ct, W_rep pi, vec char_values)=W_rep:
 let A=projector(ct,pi,char_values) then
 (B,)=Smith(A) then
-P=B[0:rank(A)] in 
+P=B[0:rank(A)] in
 (ct, for T in pi.operators do restrict_action(T,P) od)
 
 {projector for a cell representation}
-set projector(WeylClassTable ct, ([int],[([int],[(int,int)])]) cell, vec char_values)=
+set projector(WeylClassTable ct, WCell cell, vec char_values)=
 projector(ct,cell_representation(ct,cell),char_values)
 
-{given a cell, compute the cell represetation pi, 
+{given a cell, compute the cell represetation pi,
 find the smallest k so that <pi,sym^k(reflection)>!=0
 then this inner product is 1, and the unique irreducible
 in common is special
-use the character of sym^k(reflection) to compute the 
+use the character of sym^k(reflection) to compute the
 projection operator onto the special
 }
 set special_projector(WeylClassTable ct, WCell cell)=mat:
 let n=smallest_degree(ct,cell_character(ct,cell)) then
-char=ct.sym_power(ct.reflection,n) in 
+char=ct.sym_power(ct.reflection,n) in
 projector(ct,cell,char)
 
 {given a cell, compute the special_projector, and use this
@@ -255,35 +269,8 @@ to construct the special representation itself
 }
 set special_representation_cell(WeylClassTable ct, WCell cell)=W_rep:
 let n=smallest_degree(ct,cell_character(ct,cell)) then
-char=ct.sym_power(ct.reflection,n) in 
+char=ct.sym_power(ct.reflection,n) in
 restrict_representation_isotypic(ct,cell_representation(ct,cell),char)
-
-{  projection operator from cell to special rep in the cell }
-
-{. w\in W is conjugate to classes[i] .}
-set conjugacy_class_number (WeylClassTable ct,WeylElt w) = int:
-  let classes=ct.class_representatives()  in 
-  first(#classes, (int i)bool: is_conjugate(w,classes[i]))
-
-{value of character given by (ct,vec) on w}
-set character_value(WeylClassTable ct, WeylElt w,vec v)=
-v[conjugacy_class_number(ct,w)]
-
-{matrix of projection of cell representation using character sigma }
-set projector(WeylClassTable ct, WCell cell, vec sigma)=mat:
-let rd=ct.root_datum then 
-dim_cell_rep=let (params,)=cell in #params then
-rv=null(dim_cell_rep,dim_cell_rep) in 
-for w in W(rd) do 
-    rv+:=character_value(ct,w,sigma)*cell_representation(ct,cell).operator(w) od ;rv
-
-{matrix of projection of cell representation  using the special 
-representation from the cell 
-}
-set special_projector(WeylClassTable ct, WCell cell)=
-let n=smallest_degree(ct,cell_character(ct,cell)) then
-char=ct.sym_power(ct.reflection,n) in 
-projector(ct,cell,char)
 
 {special_projectors for a list of cells}
 set special_projectors(WeylClassTable ct, [WCell] cells)=
@@ -293,31 +280,27 @@ for cell in cells do special_projector(ct,cell) od
 set is_rational_multiple(vec v,vec w)=bool:any(solve([v]/1,w))
 
 { given list of vectors return [[int]]
-  where each [int] is the indices of the vectors 
+  where each [int] is the indices of the vectors
   which are the same up to multiple
   example: [[1,2],[2,3],[2,4]] -> [[0,2],[1]]}
 set group_vectors_up_to_scalar([vec] list)=[[int]]:
 let rv=[[int]]:[] in
- for v@i in list do 
-  let j=first(#rv,(int k)bool: is_rational_multiple(list[rv[k][0]],v)) in 
+ for v@i in list do
+  let j=first(#rv,(int k)bool: is_rational_multiple(list[rv[k][0]],v)) in
    if j=-1 then rv#:=[i] else rv[j]#:=i fi od;rv
 
 {given a cell, compute the projector onto the special representation
-then two parameters give the same primitive ideal iff they map 
+then two parameters give the same primitive ideal iff they map
 to scalar multiples of the same vector in the special representation,
 i.e. the two corresponding columns of the matrix are the same up to rational multiple}
 set group_parameters_by_primitive_ideal(WCell cell,mat projector)=[[int]]:
 let grouping=group_vectors_up_to_scalar(projector) then
-(parameters,)=cell in 
+(parameters,)=cell in
 for v in grouping do  for w in v do parameters[w] od od
 
 {nice output of primitive ideal information for a cell}set print_primitive_ideal_info([WCell] cells,[mat] projectors)=void:
-let data=for i:#cells do 
+let data=for i:#cells do
  let cell=cells[i], P=projectors[i] then
   g=group_parameters_by_primitive_ideal(cell,P) in
- [i.to_string,  (#P).to_string,(#g).to_string,g.to_string] od in 
+ [i.to_string,  (#P).to_string,(#g).to_string,g.to_string] od in
  prints("Each line has 4 terms:",new_line,"# of cell",new_line,"size of cell", new_line, "dimension of special representation of cell",new_line, "grouping of parameters in cell by primitive ideal"); tabulate(data, "llll",2," ")
-
-
-
-
