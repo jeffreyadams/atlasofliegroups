@@ -407,16 +407,16 @@ set print_conjugacy_classes ([WeylElt] C) = void:
   in tabulate(data,"rrl",2," ")
 
 set print_conjugacy_classes_long ([WeylElt] C) = void:
-  let data=["order","length","Levi","size","cyclotomics"] { column headers }
+  let data=["order","length","Levi","size","word"] { column headers }
   # for w in C
     do [ w.order.to_string
        , w.length.to_string
        , w.Levi_datum.Lie_type.semisimple.str
        , w.size_of_conjugacy_class.to_string
-       , w.matrix.char_poly.cyclotomic_factors.to_string
+       , w.word.to_string
        ]
     od
-  in tabulate(data,"rrl",2," ")
+  in tabulate(data,"rrlll",2," ")
 
 set print_conjugacy_classes (RootDatum rd) = void:
   print_conjugacy_classes(conjugacy_class_reps(rd))
@@ -494,6 +494,7 @@ in
    ([int] x, int n) [int]: assert(#x=ncc,"Wrong size"); for xi in x do xi^n od
 )
 
+{. root datum of WeylClassTable .}
 set root_datum (WeylClassTable tab) = RootDatum:
     tab.class_representatives()[0].root_datum { at least one class exists }
 

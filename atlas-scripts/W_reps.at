@@ -10,6 +10,7 @@ set rank(mat A)=let (B,,pivots,)=A.echelon in #pivots
  operators[i] is the matrix of the action of simple generator #i
 }
 set_type W_rep = (WeylClassTable ct,[mat] operators)
+
 set root_datum(W_rep pi)=RootDatum:pi.ct.root_datum
 set dimension(W_rep pi)=int:#pi.operators[0]
 
