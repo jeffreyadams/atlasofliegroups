@@ -46,9 +46,11 @@ RationalVector<C>::RationalVector(V&& v, C d)
 template<typename C>
   bool RationalVector<C>::operator==(const RationalVector<C>& v) const
 { typedef arithmetic::big_int bigint;
+  if (size()!=v.size())
+    return false;
   bigint dv = bigint::from_unsigned(v.d_denom),
     dthis = bigint::from_unsigned(d_denom);
-  for (size_t i=0; i<d_num.size(); ++i)
+  for (size_t i=0; i<size(); ++i)
     if (bigint::from_signed(d_num[i])*dv !=
 	bigint::from_signed(v.d_num[i])*dthis)
       return false;
@@ -59,6 +61,8 @@ template<typename C>
   bool RationalVector<C>::operator<(const RationalVector<C>& v) const
 { // cross multiply component-wise, and compare
   typedef arithmetic::big_int bigint;
+  if (size()!=v.size())
+    return size()<v.size(); // compare sizes first
   bigint dv = bigint::from_unsigned(v.d_denom),
     dthis = bigint::from_unsigned(d_denom);
   for (size_t i=0; i<d_num.size(); ++i)

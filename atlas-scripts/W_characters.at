@@ -45,10 +45,8 @@ begin
           fi
        od
    , r = rd.semisimple_rank
-   then subsets_by_size = [[[int]]]: for :r+1 do [] od
-in for subset in power_set(r) do subsets_by_size[#subset] #:= subset od
-;  { now apply |reps_by_rho| to each size class, and concatenate the results }
-   for list in subsets_by_size do reps_by_rho(list) od.##
+in { now apply |reps_by_rho| to each size class, and concatenate the results }
+   for k:r+1 do reps_by_rho(choices_from(#r,k)) od.##
 end
 
 { A second task is to enumerate elliptic conjugacy classes for each standard
@@ -64,25 +62,17 @@ set conjugacy_class_reps (RootDatum rd) = [WeylElt]:
 
 set conjugacy_classes = conjugacy_class_reps@RootDatum
 
-{ A third task is to test for conjugacy in $W$. For the moment, lacking a method
-  to effectively conjugate a general Levi subsystm toward a standard one, we use
-  a method that basically compares characteristic polynomials, but adds a
-  special test to discriminate between two classes of elliptic elements for F4
-  that share a characteristic polynomial (an outer automorphism switches them).
-  This method does not work when the implied Levi subsystem is composite and
-  contains a factor F4.
+{ Intermezzo: some transformations of presentation of a Levi system
+
+  A Levi system, not necessarily standard, can be defined either by the roots
+  forming a simple system for it (represented by their indices, usually within
+  |posroots(rd)|, tough the code can handle negative indices of negative roots),
+  or by a predicate selecting the indices of positive roots in the system.
+
+  The function |Levi_info| deduces the predicate from the simple system, or from
+  a Weyl group element $w$ (selecting coroots vanishing on $w$-fixed weights),
+  and |Levi_datum| builds the root datum for the subsystem, given the predicate.
 }
-
-set Levi_datum (RootDatum rd, (int->bool) select {from posroot indices}) =
-      RootDatum:
-   root_datum(simple_system_from_positive
-      (columns_with(select,rd.posroots),columns_with(select,rd.poscoroots)) )
-
-{ value of $2\rho$ for not necessarily standard Levi; for conjugacy testing }
-set subsystem_2rho (RootDatum rd, (int->bool) select {from posroot indices}) =
-      vec: { two_rho(Levi_datum(rd,select)), but we can compute it directly: }
-   sum(rd.rank #
-       ##for alpha@i in rd.posroots do if select(i) then [alpha] else [] fi od)
 
 { select posroots indices for (non standard) Levi, given by its simple system }
 set Levi_info (RootDatum rd, [int] Levi) = (RootDatum,(int->bool)):
@@ -94,8 +84,108 @@ set Levi_info (WeylElt w) = (RootDatum,(int->bool)):
    let orth=eigen_lattice(matrix(w),1), rd=w.root_datum in
    (rd,(int i) bool: =coroot(rd,i)*orth)
 
+set Levi_datum (RootDatum rd, (int->bool) select {from posroot indices}) =
+      RootDatum:
+   root_datum(simple_system_from_positive
+      (columns_with(select,rd.posroots),columns_with(select,rd.poscoroots)) )
+
 set Levi_datum ((RootDatum,[int])pair) = RootDatum: pair.Levi_info.Levi_datum
 set Levi_datum (WeylElt w) = RootDatum: w.Levi_info.Levi_datum
+
+{
+  From $w$ we find the associated non-standard Levi subsystem, the minimal one
+  in whose Weyl group $w$ occurs. Our next task, surprisingly difficult, is to
+  find a standard Levi system conjugate to it, and a conjugating element of $W$.
+
+  For the case where the Levi subsystem contains all roots but is given a non
+  standard set of simple generators (not all positive), there is an easy
+  algorithm to find $w$ that maps the simple roots of |rd| to those generators,
+  namely as long as the system contains a negative root, select one (recording
+  it position) and apply the corresponding (non simple) root reflection to all
+  roots; when all roots have become positive, we should have a permutation of
+  the simple roots, and we can take as letters of $w$ from right to left, for
+  each reflection applied the simple generator that ended up at the recorded
+  position.
+
+  Our approach is then to extend the Levi system one root at a time to a maximal
+  system, and then apply this algorithm. To find a root by which we can extend
+  the Levi system to a larger one, we first locate using |minima_extenders| a
+  set of candidates (root indices, not necessaril positive ones), whose roots
+  are minimally positive for some some linear form vanishing on |Levi|. From
+  these, |extend_Levi| will then select a minimal one for |Levi| root addition.
+}
+
+{ list of posroot indices, minimal>0 for some linear form vanishing on |Levi| }
+set minimal_extenders (RootDatum rd,[int] Levi) = [int]:
+   let orth = { columns: generators in $X_*$ of annihilator subspace of |Levi| }
+      kernel(rd.rank ^ for i in Levi do root(rd,i) od)
+in case a_column_with((vec alpha)bool: !=orth*alpha, rd.posroots)
+   | no_solution: [] { |Levi| already spans subspace containing all roots }
+   | solution(alpha):
+      { find a coweight |f| witnessing that |orth*alpha| is nonzero }
+      let f = requisition(a_column_with((vec cowt)bool: !=cowt*alpha, orth))
+      , min=0 { minimal positive coroot evaluation on |wt| so far; 0 if none }
+      , result = [int]: [] { list of root indices with minimal positive eval }
+      in for beta@i in rd.posroots
+         do let eval=f*beta then abs_eval=eval.abs in
+            if =eval then () { ignore roots on which |f| vanishes }
+            elif min=0 or abs_eval<min { cases where |result| is replaced }
+            then min:=abs_eval; result:=[if eval<0 then -1-i else i fi]
+            elif abs_eval=min { ex aequo case, now |result| is extended }
+            then result #:= if eval<0 then -1-i else i fi
+            fi
+         od
+      ; result
+   esac
+
+set extend_Levi (RootDatum rd,[int] Levi) = [int]:
+   let mins = minimal_extenders(rd,Levi) in
+   for m in mins
+   do let alpha=root(rd,m) in
+      if none(#Levi,(int i): is_root(rd,alpha-root(rd,Levi[i])) )
+      then return Levi#m { found a valid |m|, add it to Levi and return }
+      fi
+   od; assert(#mins=0); { if there were any candidates, one should work }
+   [] { return indication that |Levi| was already maximal }
+
+{ return maximal Levi containing |Levi|, ordered in the way they were found }
+set maximise (RootDatum rd,[int] !Levi) = [int]:
+   let ssr = rd.semisimple_rank, max=Levi in
+   while #max<ssr do max:=extend_Levi(rd,max); assert(!=#max) od; max
+
+{ find chamber defined by a maximal system, and its simple root permutation }
+set chamber_max_system (RootDatum rd, [int] sys) = (WeylElt,[int]):
+   let roots= rd.rank # for index in sys do root(rd,index) od
+   , ssr=rd.semisimple_rank
+   then positions = { a list of positions in |roots| (rather than a Weyl word) }
+      assert(#sys=ssr) { first check that |sys| has enough roots };
+      while let i=first(ssr,(int i)bool: not is_posroot(rd,roots[i])) in i.>=
+      do roots := left_reflect(rd,roots[i],roots); i { record position }
+     ~od
+   then perm= for alpha in roots do root_index(rd,alpha) od
+   in assert(all(ssr,is_member(perm)),"Not a complete system");
+   (W_elt(rd,for pos in positions do perm[pos] od),perm)
+
+{ A third task is to test for conjugacy in $W$.
+
+  The above allows us to conjugate any $w$ a Weyl group element to one that is
+  elliptic (up to a torus part) for a standard Levi system. However, although we
+  can test conjugacy of standard Levi systems, we currently have no method
+  producing a witness, so we cannot yet reduce to the conjugacy problem of
+  elliptic elements in the Weyl group of a standard Levi subgroup.
+
+  Therefore, we use for the moment a method that basically compares
+  characteristic polynomials, but adds a special test to discriminate between
+  two classes of elliptic elements for F4 that share a characteristic polynomial
+  (an outer automorphism switches them). This method does not work when the
+  implied Levi subsystem is composite and contains a factor F4.
+}
+
+{ value of $2\rho$ for not necessarily standard Levi; for conjugacy testing }
+set subsystem_2rho (RootDatum rd, (int->bool) select {from posroot indices}) =
+      vec: { two_rho(Levi_datum(rd,select)), but we can compute it directly: }
+   sum(rd.rank #
+       ##for alpha@i in rd.posroots do if select(i) then [alpha] else [] fi od)
 
 { conjugacy test; not complete for composite types with a F4 factor }
 set is_conjugate (WeylElt x,WeylElt y) = bool:
@@ -405,24 +495,20 @@ in
 )
 
 {. root datum of WeylClassTable .}
-set root_datum(WeylClassTable ct)=RootDatum:
-ct.class_representatives()[0].root_datum
-
-set =((WeylClassTable ct,[int] char_values),(WeylClassTable ct2,[int] char_values2))=bool:
-ct.root_datum=ct2.root_datum and char_values=char_values2
-
-{don't recompute conjugacy classes if WeylClassTable is given}
-{. w\in W is conjugate to classes[i], WeylClassTable is given .}
-set conjugacy_class_number (WeylClassTable ct,WeylElt w) = int:
-  let classes=ct.class_representatives()  in 
-  first(#classes, (int i)bool: is_conjugate(w,classes[i]))
-
-{. value of character at w\in W .}
-set character_value(WeylClassTable ct, WeylElt w,vec char)=
-char[conjugacy_class_number(ct,w)]
-
 set root_datum (WeylClassTable tab) = RootDatum:
     tab.class_representatives()[0].root_datum { at least one class exists }
+
+{ compare characters when paired up with a |WeylClassTable| }
+set =((WeylClassTable ct,[int] char_values)
+     ,(WeylClassTable ct2,[int] char_values2)) = bool:
+     ct.root_datum=ct2.root_datum and char_values=char_values2
+
+{. index i for which w is conjugate to classes[i], in given WeylClassTable .}
+set conjugacy_class_number (WeylClassTable ct,WeylElt w) = int: ct.class_of(w)
+
+{. value of character at w\in W .}
+set character_value (WeylClassTable ct, WeylElt w,[int] char) = int:
+  char[ct.class_of(w)]
 
 { Adams's operation (not Jeff's): evaluate character at class of $w^n$ }
 set Adams (WeylClassTable tab) = ([int]char, int n) [int]:

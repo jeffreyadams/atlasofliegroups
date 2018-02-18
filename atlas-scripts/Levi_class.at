@@ -1,7 +1,7 @@
 { This file was an auxiliary to conjugacy_classes.at, which is superseded by
   W_characters.at; therefore it will be soon removed.
 
-  The script deals with the genaration of all conjugacy classes of Levi systems
+  The script deals with the generation of all conjugacy classes of Levi systems
   for a given root datum, the funtion Levi_classes below. In W_characters.at
   this is done inside the function standard_Levi_conjugacy_representatives
 
