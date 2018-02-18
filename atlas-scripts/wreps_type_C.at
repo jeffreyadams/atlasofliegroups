@@ -1,3 +1,4 @@
+
 <basic.at
 <sort.at
 <complex_nilpotent_orbits.at
@@ -46,8 +47,9 @@ else [expand(f,#g-#f+1),g] fi
 of equivalence classes of f and g
 rank(f)=sum f_i -n(n-1)/2
 }
-set rank([int] f)=int:let n=#f in sum(f)-n*(n-1)\2
-set rank(Symbol S)=int:rank(S[0])
+{this notion of rank conflicts with rank@mat, and is not used}
+{set rank([int] f)=int:let n=#f in sum(f)-n*(n-1)\2
+set rank(Symbol S)=int:rank(S[0])}
 
 {maps between Orbits, Symbols and Wreps}
 {Orbit -> Symbol <--> Wrep}

@@ -411,6 +411,8 @@ set inverse (mat M) = mat:
 
 set / = inverse@mat { so |/M| is the same as |M^-1|, but more direct }
 
+set rank (mat A) = int: let (,,pivots,)=A.echelon in #pivots
+
 set det (mat A) = int:
 ( assert(=shape(A),"Determinant of non-square matrix")
 ; let (M,,,flip) = echelon(A) in
@@ -428,6 +430,8 @@ set char_poly (mat A) = vec: { characteristic polynomial of integer matrix }
   in assert(=sh,"Non square matrix");
   { use Newton's identities $k*e_k=-\sum_{i=1}^k p_i*e_{k-i}$ to compute |es| }
   for k:n from 1 do ps #:= trace(B); B*:=A; es := (es*ps\-k) # es od; es
+
+set cokernel (mat M) = ^kernel(^M) { minimal matrix wose kernel is our image }
 
 set saturated_span (mat M) = bool: { whether columns span saturated sublattice }
   let inv_f = inv_fact(M) in
