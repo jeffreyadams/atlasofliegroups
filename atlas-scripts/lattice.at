@@ -77,27 +77,19 @@ set decompose (mat M, ratvec w) = (ratvec,ratvec):
    let (v,d)=%w then (v1,v2)=decompose(M,v) in (v1/d,v2/d)
 
 
-{ assuming M injective and Im(M) is A-stable, find unique B with A*M=M*B }
-set restrict_action (mat A, mat M) = mat:
-   #M # { every solution has size given my number of columns of M }
-   for v in M
-   do case solve(M,A*v)
-      | ().no_solution: error("Image lattice M is not fixed by A")
-      | w.solution: w
-      esac
-   od
-
+{ assuming M injective and Im(M) is A-stable, return unique B with A*M=M*B,
+  which is action of A restricted to that sublattice $\Z^m$, embedded via M
+}
+set restrict_action (mat A, mat M) = mat: { shapes A: n by n, M: n by m }
+   case solve(M,A*M) | B.solution: B
+   | else error("Image lattice M is not fixed by A")
+   esac
 
 { assuming M full row rank and ker(M) is A-stable, find unique B with M*A=B*M }
-set corestrict_action (mat A, mat M) = mat: { formal dual to |restrit_action| }
-   let tM=^M in
-   #tM ^ { every solution has size given my number of rows of M }
-   for v in tM
-   do case solve(tM,v*A)
-      | ().no_solution: error("Kernel of M is not fixed by A")
-      | w.solution: w
-      esac
-   od
+set corestrict_action (mat M,mat A) = mat:  { shapes M: m by n, A: n by n }
+   case solve(^M,^(M*A)) | tB.solution: ^tB
+   | else error("Kernel of M is not fixed by A")
+   esac
 
 { |M| is an $n\times k$ matrix; its columns span a subspace $W$ of $\Q^n$.
   Assuming this subspace is |A|-stable, |A| induces an operator in $\Q^n/W$;
@@ -116,7 +108,7 @@ set in_lattice (mat A, ratvec u) = bool: { whether v in image lattice of A }
   let (b,n)=%u in n=1 and solve(A,b).any
 
 set vec_solve (mat A, ratvec u) = maybe_a_vec: { integer solution to A*x=b }
-  let (b,n)=%u in if n>1 then no_solution() else solve(A,b) fi
+  let (b,n)=%u in if n>1 then no_vec() else solve(A,b) fi
 
 { express columns of M relative to basis A of a sub-lattice that contains them
   A: nxm matrix, columns are a basis of a Z-module V of rank m

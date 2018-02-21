@@ -69,3 +69,14 @@ set fibonacci = inf_list:
   the same list elements. That inefficient version would also be obtained by
   | set rec_fun fibonacci () = inf_node:(0,@:(1,sum(fibo,shift(1)(fibo))))) |
 }
+
+primes : inf_list:
+   let odd_primes () = inf_node:die
+   , p=0 {temporary to hold prime number, so we can use multiple assignment:}
+   then composite (int n) = bool:
+      let rem=odd_primes { think of rem as pointer into |odd_primes|} in
+      while set(p,rem):=rem(); p*p<=n do if =n%p then return true fi od; false
+in odd_primes:= (let m=3 {we always start adding 2, so effectively from 5} in
+     @: (3,rec_fun gen() inf_node: while composite(m+:=2) do () od; (m,gen))
+     ).memoize;
+(@:(2,odd_primes)) { finally prefix the unique even prime }

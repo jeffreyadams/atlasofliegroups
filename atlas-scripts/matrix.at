@@ -44,7 +44,7 @@ in if product(Tri.main_diagonal)=1
 set weak_left_inverse(mat A) = (mat,int): { left inverse after saturation }
 (  let (M,C,pivots,)=echelon(A), c=#A
 in if #M<c then error("not injective (rank is ",#M,"<",c,")") fi
-;  let (Tri,R)= ech_up(M,pivots) then (T1,d)=invert_ech(Tri[:c,:])
+;  let (Tri,R)= ech_up(M,pivots) then (T1,d)=invert(Tri[:c,:])
 in ( C*T1*R[:c,:] , d)
 )
 
