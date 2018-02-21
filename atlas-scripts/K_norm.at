@@ -12,8 +12,8 @@ or equivalently
 b)  <rho_check,from_dominant((1+theta_x)*lambda)> =
 b') <2*rho_check,from_dominant((1+theta_x)*lambda/2)>
 
-height can be modified by replacing rho_check with an arbitrary 
-ratvec v. For example: for defining height of L\cap K-types 
+height can be modified by replacing rho_check with an arbitrary
+ratvec v. For example: for defining height of L\cap K-types
 for a Levi L, using v=rho_check(G).
 
 By default K_norm is equal to height (using rho or some other v).
@@ -131,7 +131,7 @@ set lambda_rho_from_dominant_height_upto (KGBElt x, ratvec v, int N) = mat: {wts
   let th1=1+involution(x), rho=rho(root_datum(x)), result=[vec]:[] in
   for mu in all_dominant_height_upto(inner_class(x),v,N)
   do case solve(th1,mu-ratvec_as_vec(th1*rho))   {solution v is lambda-rho \in X^*}
-     | no_solution: ()
+     | no_vec: ()
      | solution(s): result #:= s
      esac
   od; #rho{rank} # result
@@ -163,7 +163,7 @@ set lambda_rho_from_dominant_height_upto (KGBElt x_L, RootDatum rd, ratvec v, in
   for mu_G in all_dominant_height_upto(rd,v,N) do
    for mu_L in L_dominant_conjugates(root_datum(x_L), rd, mu_G)
   do case solve(th1,mu_L-ratvec_as_vec(th1*rho_L))   {solution v is lambda-rho_L \in X^*}
-     | no_solution: ()
+     | no_vec: ()
      | solution(s): result #:= s
      esac
 od od; #rho_L{rank} # result
@@ -174,14 +174,14 @@ od od; #rho_L{rank} # result
   more generally: no compact central torus}
 {. All K-parameters for G with given x, height up to N.}
 set K_parameters_height_upto(KGBElt x, int N)=[K_Type]:
-  let rd=x.root_datum in 
+  let rd=x.root_datum in
   let lrs = lambda_rho_from_dominant_height_upto(x,rho_check(rd),N) in
   ## for lr in lrs do all_equal_dlambda_K_parameters(x,lr+rho(rd))  od
 
 { G allowed to be reductive }
 {. All K-parameters for G with given x, height up to N.}
 set K_parameters_height_upto(KGBElt x, int N, ratvec v)=[K_Type]:
-  let rd=x.root_datum in 
+  let rd=x.root_datum in
   let lrs = lambda_rho_from_dominant_height_upto(x,v,N) in
   ## for lr in lrs do all_equal_dlambda_K_parameters(x,lr+rho(rd))  od
 

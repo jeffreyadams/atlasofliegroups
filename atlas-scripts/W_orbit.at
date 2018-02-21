@@ -1,102 +1,94 @@
 <basic.at  { for assert, #@int,... }
-<Weylgroup.at
 
 {
   An optimised orbit generation procedure, which assumes that generators can
-  detect and eliminate (by returning a null vector instead) backwards or
-  stationary steps (in practice "forward" here means subtracting posroots)
-  and that the poset structure on the orbit is graded (as is true for the weak
-  order on W or on W/P for a parabolic subgroup P). This allows the orbit to
-  be partitioned into levels, with equality testing only within current level.
+  detect and eliminate (by returning |no_vec|) backwards or stationary steps
+  (in the main application we generate the orbit of a dominant weight, whence
+  the function name, and "forward" will then mean subtracting posroots) and that
+  the poset structure on the orbit is graded (as is true for the weak order on
+  $W$ or on $W/P$ for a parabolic subgroup $P$). This allows the orbit to be
+  partitioned into levels, with equality testing only within current level.
 
-  Arguments are a row S of generating maps (a null vector result means nothing
-  new generated; orbit generation never actually needs null vectors) and a
-  starting vector v, which is assumed dominant (whence the function name).
+  Arguments are a row |S| of generating maps and a starting dominant weight |v|.
 
-  The algoritm is to generate parallel arrays of [int] and vec values, with a
-  counter |done| saying how many have been considered for successors, and a
-  marker |stop| saying where the newest level (where duplicates must be
+  The algoritm is to generate parallel arrays of |[int]| and |vec| values,
+  with a counter |done| saying how many have been considered for successors, and
+  a marker |stop| saying where the newest level (where duplicates must be
   avoided) starts.
 }
-set generate_from_dom ([(ratvec->ratvec)] S,ratvec v) = ([[int]],[ratvec]):
+set generate_from_dom ([(vec->maybe_a_vec)] S,vec v) =
+    ([[int]],[vec]):
   let words=[[int]]:[[]], orbit=[v], done=0, stop=1
-  then absent (ratvec y) = bool: { check down to last level marker }
+  then absent (vec y) = bool: { check down to last level marker }
          none(#orbit-stop,(int i)bool:orbit~[i]=y)
   in
   while done<#orbit
-  do  if done=stop then stop:=#orbit fi { hit end of level, define new level }
+  do if done=stop then stop:=#orbit fi { hit end of level, define new level }
   ; let w = words[done], a=orbit[done] in done+:=1
   ; for f@i in S
-    do let b= f(a) in
-      if !=b and absent(b) then ( words #:= i#w, orbit #:= b ) fi
+    do case f(a) | else () { skip when no new vector is returned }
+       | solution(b): if absent(b) then ( words #:= i#w, orbit #:= b ) fi
+       esac
     od
   od; (words,orbit)
 
 
-{ same as previous, but add supplied |rd| to make words into |WeylElt| values }
-set generate_from_dom (RootDatum rd,[(ratvec->ratvec)] S,ratvec v) =
-  assert(is_dominant(rd,v),"vector is not dominant");
-     ([WeylElt],[ratvec]):
-  let (words,orbit)=generate_from_dom(S,v) in
-  (for w in words do W_elt(rd,w) od,orbit)
+{ same as previous, but add supplied |rd| to make words into |WeylElt| values,
+  and use it to make |v| dominant before doing the actual work }
+set generate_from (RootDatum rd,[(vec->maybe_a_vec)] S,vec v) =
+     ([WeylElt],[vec]):
+  let (chamber,dom_wt)=from_dominant(rd,v)
+  then (words,orbit)=generate_from_dom(S,dom_wt), to_dom= inverse(chamber)
+  in (for w in words do W_elt(rd,w)*to_dom od,orbit)
 
-{ for a root datum |rd|, we can build generators from set |S| of root indices
-  also ensure |v| is made dominant for |rd|, which is what generators require
-}
-set generate_from_dom (RootDatum rd,[int] S,ratvec v) = ([WeylElt],[ratvec]):
-  assert(is_dominant(rd,v),"vector is not dominant");
-  let gs = for i in S
-           do let s=W_gen(rd,i), av=coroot(rd,i), !zero=ratvec:null(0)
-              in (ratvec x)ratvec: if (av*x).> then s*x else zero fi
-           od
-  in generate_from_dom(rd, gs, dominant(rd,v))
+{ when no |WeylElt| elemnts are needed in the end, we can simplify a bit }
+set W_orbit (RootDatum rd,[(vec->maybe_a_vec)] S,vec v) = [vec]:
+  let (,orbit)=generate_from_dom(S,dominant(rd,v)) in orbit
 
-{ assume S=all simple roots }
-set generate_from_dom(RootDatum rd,ratvec v) = ([WeylElt],[ratvec]):
-  assert(is_dominant(rd,v),"vector is not dominant");
-  generate_from_dom(rd,#semisimple_rank(rd),v)
-set W_orbit((RootDatum,ratvec) pair) = [ratvec]:
-  let (,orbit) = generate_from_dom(pair) in orbit
+set simple_actor (RootDatum rd, int i) = (vec->maybe_a_vec):
+  let s=W_gen(rd,i), av=coroot(rd,i) in
+  (vec x)maybe_a_vec: if (av*x).> then solution(s*x) else no_vec() fi
 
-
-{ same as generate_from_dom(rd,v) except that v is not required to be dominant }
-set generate_from(RootDatum rd, ratvec v)=
-let (w,vdom)=from_dominant(rd,v) then
-(elts,vecs)=generate_from_dom(rd,vdom) in
-(for i:#elts do elts[i]*inverse(w) od, vecs)
+{ build generators for a root datum |rd| from set |S| of simple root indices }
+set generate_from (RootDatum rd,[int] S,vec v) = ([WeylElt],[vec]):
+  generate_from(rd,for i in S do simple_actor(rd,i) od,v)
 
 { just the W(S)-orbit W.v; assumes v is dominant }
-set W_orbit((RootDatum,[int],ratvec) triple) = [ratvec]:
-let (rd,,v)=triple in assert(is_dominant(rd,v),"vector is not dominant");
-let (,orbit) = generate_from_dom(triple) in orbit
+set W_orbit (RootDatum rd,[int] S, vec v) = [vec]:
+  W_orbit(rd,for i in S do simple_actor(rd,i) od,v)
 
-{ just the coset representatives for the stabilizer of v }
-{ assuming v is dominant}
-set W_orbit_W_elements((RootDatum,[int],ratvec) triple) = [WeylElt]:
-let (rd,,v)=triple in assert(is_dominant(rd,v),"vector is not dominant");
-  let (W_elements,)=generate_from_dom(triple) in W_elements
+{ just the coset representatives for the stabilizer of |v| }
+set W_orbit_W_elements((RootDatum,[int],vec) triple) = [WeylElt]:
+  let (W_elements,)=generate_from(triple) in W_elements
 
-{ just the W-orbit W.v; v not necessarily dominant}
-set W_orbit(RootDatum rd,ratvec v)  = [ratvec]:
-let (,orbit) = generate_from(rd,v) in orbit
-
-{ W-orbit plus an element of w for each element gamma
-of orbit such that w.lambda=gamma
- lambda not necessarily dominant
-}
-set W_orbit_W_elements((RootDatum,ratvec) pair) = [WeylElt]:
-  let (W_elements,) = generate_from(pair) in W_elements
+{ default S to full set of simple roots }
+set generate_from (RootDatum rd,vec v) = ([WeylElt],[vec]):
+  generate_from(rd,all_simples(rd),v)
+set W_orbit (RootDatum rd, vec v) = [vec]:
+  W_orbit(rd,all_simples(rd),v)
+set W_orbit_W_elements(RootDatum rd,vec v) = [WeylElt]:
+  W_orbit_W_elements(rd,all_simples(rd),v)
 
 { all elements of Weyl group of RootDatum, in no particular order }
-set W (RootDatum rd) = [WeylElt]:
-  W_orbit_W_elements(rd,numer(rho(rd)))
+set W (RootDatum rd) = [WeylElt]: W_orbit_W_elements(rd,rd.two_rho)
+
+{ variants of the above for |vec| instead of |vec|; reduce to |vec| case }
+set generate_from (RootDatum rd,[int] S,ratvec rv) = ([WeylElt],[ratvec]):
+  let (v,d) = %rv then (W_elements,orbit) = generate_from(rd,S,v) in
+  (W_elements,for x in orbit do v/d od)
+set W_orbit (RootDatum rd,[int] S, ratvec rv) = [ratvec]:
+  let (v,d) = %rv then orbit = W_orbit(rd,S,v) in for x in orbit do v/d od
+set generate_from (RootDatum rd,ratvec rv) = ([WeylElt],[ratvec]):
+  generate_from(rd,all_simples(rd),rv)
+set W_orbit (RootDatum rd, ratvec rv) = [ratvec]: W_orbit(rd,all_simples(rd),rv)
 
 { orbit of <w_1,..,w_n> acting on v where w_i is an element of W (WeylElt),
-  (not always a simple reflection). Use: for W^{\delta}-orbit of a root
+  (not always a simple reflection). Example use: for W^{\delta}-orbit of a root
 
-  here we must use a simplified version of generate_from_dom, using linear
-  search over the full orbit generated so for, because nothing is known about
-  how generators relate to dominance, or even that the generated DAG is graded
+  Here we must use instead of |generate_from_dom| a simplified but less
+  efficient method, using linear search over the full orbit generated so for,
+  because nothing is known about how generators relate to dominance, or even
+  that the generated directed acyclic graph is graded
 }
 set generate ([(ratvec->ratvec)] S,ratvec v) = ([[int]],[ratvec]):
   let words=[[int]]:[[]], orbit=[v], done=0
@@ -119,16 +111,19 @@ set generate ([(ratvec->ratvec)] S,ratvec v) = ([[int]],[ratvec]):
   The root datum in the supplied WeylElt values is NOT such a root datum
 }
 
-set generate ([WeylElt] S,ratvec v) = ([[int]],[ratvec]):
-  generate(for s in S do (ratvec x) ratvec: s*x od, v)
+set generate (RootDatum rd,[WeylElt] S,ratvec v) = ([WeylElt],[ratvec]):
+  let (words,orbit) = generate(for s in S do (ratvec x) ratvec: s*x od, v) in
+  (for word in words do product(rd,for i in word do S[i] od) od,orbit)
 
-{ find a word w over <S> (not a WeylElt) whose action sends v to w
-  returns either (true,w) or (false,[])
+{ find a |WeylElt| in the generated group <S> whose action sends |v| to |w|
+  returns either (true,w) or (false,id)
 }
-set conjugate_to ([WeylElt] S, ratvec v,ratvec w) = (bool,[int]):
-  let (words,orbit) = generate(S,v) then k=first(#orbit,(int i):orbit[i]=w) in
-  if k.>= then (true,words[k]) else (false,[]) fi
+set conjugate_to (RootDatum rd, [WeylElt] S, ratvec v,ratvec w) =
+     (bool,WeylElt):
+  let (ws,orbit) = generate(rd,S,v) then k=first(#orbit,(int i):orbit[i]=w)
+  in if k.>= then (true,ws[k]) else (false,id_W(rd)) fi
 
-{ find WeylElt w satisfying w*v=u in a most inefficient way }
+{ find WeylElt |w| satisfying |w*v=u| }
 set conjugate_to (RootDatum rd, ratvec u, ratvec v) = (bool,WeylElt):
-  let (valid,word)=conjugate_to(W_gens(rd),u,v) in (valid,W_elt(rd,word))
+  let (wu,u_dom)=from_dominant(rd,u), (wv,v_dom)=from_dominant(rd,u) in
+  (u_dom=v_dom, wu*/wv)
