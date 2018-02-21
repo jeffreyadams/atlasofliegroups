@@ -540,7 +540,7 @@ PID_Matrix<C> inverse (PID_Matrix<C> A, arithmetic::big_int& d)
 
   std::vector<arithmetic::big_int> denoms(n); // next loop initialises entries
   auto basis = matrix::standard_basis<C>(n);
-  for (unsigned int j=0; j<n; ++j) // from easy to harder, but order is not vital
+  for (unsigned int j=0; j<n; ++j) // from easy to harder, but order isn't vital
     basis[j] = matreduc::echelon_solve(A,pivots,std::move(basis[j]),denoms[j]);
 
   d=denoms[0];

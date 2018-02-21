@@ -4362,29 +4362,11 @@ void row_saturate_wrapper(expression_base::level l)
     push_value(std::make_shared<matrix_value>(lattice::row_saturate(M->val)));
 }
 
-@ As a last example, here is the Smith normal form algorithm. We provide both
-the invariant factors and the rewritten basis on which the normal for is
-assumed, as separate functions, and the two combined into a single function.
+@ As a last example, here is the Smith normal form algorithm. The function
+|Smith| provides both the invariant factors and the rewritten basis on which the
+normal for is assumed.
 
 @< Local function definitions @>=
-void invfact_wrapper(expression_base::level l)
-{ shared_matrix m=get<matrix_value>();
-  if (l==expression_base::no_value)
-    return;
-  own_vector inv_factors = std::make_shared<vector_value>(std::vector<int>());
-@/matreduc::Smith_basis(m->val,inv_factors->val);
-  push_value(std::move(inv_factors));
-}
-@)
-void Smith_basis_wrapper(expression_base::level l)
-{ shared_matrix m=get<matrix_value>();
-  if (l==expression_base::no_value)
-    return;
-  own_vector inv_factors = std::make_shared<vector_value>(std::vector<int>());
-@/push_value(std::make_shared<matrix_value>
-    (matreduc::Smith_basis(m->val,inv_factors->val)));
-}
-@)
 void Smith_wrapper(expression_base::level l)
 { shared_matrix m=get<matrix_value>();
   if (l==expression_base::no_value)
@@ -4587,8 +4569,6 @@ install_function(adapted_basis_wrapper,"adapted_basis","(mat->mat,vec)");
 install_function(kernel_wrapper,"kernel","(mat->mat)");
 install_function(eigen_lattice_wrapper,"eigen_lattice","(mat,int->mat)");
 install_function(row_saturate_wrapper,"row_saturate","(mat->mat)");
-install_function(invfact_wrapper,"inv_fact","(mat->vec)");
-install_function(Smith_basis_wrapper,"Smith_basis","(mat->mat)");
 install_function(Smith_wrapper,"Smith","(mat->mat,vec)");
 install_function(invert_wrapper,"invert","(mat->mat,int)");
 install_function(section_wrapper,"mod2_section","(mat->mat)");

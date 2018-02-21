@@ -138,18 +138,13 @@ row_saturate: (mat->mat): keep same kernel, but row-span saturated sublattice
   In other words, the rows are made linearly independent, and the sublattice
   they generate saturated: if an integer multiple of v is in it, then so is v.
 
-inv_fact: (mat->vec): invariant factors in Smith normal form (no zeros).
-Smith_basis: (mat->mat): a basis on which the Smith normal form is assumed.
-Smith: (mat->mat,vec): Smith(M)= ( Smith_basis(M), inv_fact(M) ).
-  Smith(M) describes explicitly the sublattice spanned by the columns of M.
-  The first component is an invertible matrix, whose columns, multiplied by
-  the corresponding entries of the second component, span that sublattice.
-  inv_fact(M) is the list of the invariant factors of M, which are like the
-  second component of adapted_basis(M), but with additional requirement that
-  each entry divides the next; this may involve using a different basis.
-  Smith_basis(M) is that basis corresponding to inv_fact(M), an invertible
-  (over Z) square matrix equal in height to M, whose columns, each multiplied
-  by the corresponding invariant factor (or 0), span the same as those of M
+Smith: (mat->mat,vec): Smith normal form basis and invariant factors (no zeros).
+  The result classifies precisely the sublattice spanned by the columns of M.
+  The first component is an invertible matrix, whose initial columns, multiplied
+  by the corresponding entries of the second component, span that sublattice.
+  That second component is the list of the invariant factors of M, which are
+  like the second component of adapted_basis(M), but with additional requirement
+  that each entry divides the next; this may involve using a different basis.
 
 invert: (mat->mat,int): invert(M)=inv,d such that M*inv=d*Id, with d minimal.
   The inverse matrix, represented as an integral numerator matrix inv, and a
