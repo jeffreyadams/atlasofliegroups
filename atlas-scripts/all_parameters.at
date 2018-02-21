@@ -87,7 +87,7 @@ set all_parameters_gamma (RealForm G,ratvec gamma) = [Param]:
    for x in KGB(G)
    do let th1=1+involution(x) in
       case vec_solve(th1,th1*(v-rho))
-      | no_solution: [Param]:[]
+      | no_vec: [Param]:[]
       | solution(lr):
         let lambda = rho + lr, nu=(2-th1){1-theta}*gamma/2 in
         for v in all_lambda_differential_0(x) do parameter(x,lambda+v,nu) od
@@ -144,14 +144,12 @@ set all_dominant_norm_upto (InnerClass ic, ratvec cowt,int N) =
 
 { filter and transform list of mu's into list of example lambda-rho values }
 set lambda_rho_from_dominant_norm_upto (KGBElt x, ratvec v, int N) = mat: {wts}
-  let th1=1+involution(x), rho=rho(root_datum(x)) in
-  #rho { all weights have same size (the rank) as rho } ##
-  for mu in all_dominant_norm_upto(inner_class(x),v,N)
-  do case solve(th1,mu-ratvec_as_vec(th1*rho))
-     | no_solution: []
-     | solution(s): [s]
-     esac
-  od
+   let th1=1+involution(x), rho=rho(root_datum(x))
+   then th1_rho = ratvec_as_vec(th1*rho)
+in #rho { all weights have same size (the rank) as |rho| } ##
+   for mu in all_dominant_norm_upto(inner_class(x),v,N)
+   do case solve(th1,mu-th1_rho) | no_vec: [] | solution(s): [s] esac
+   od
 
 set all_equal_dlambda_K_parameters (K_Type(x,lambda)) = [K_Type]:
 ##(for v in all_lambda_differential_0(x) do if

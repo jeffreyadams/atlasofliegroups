@@ -7,8 +7,8 @@ set_type
 , Mat = [[int]] { by columns }
 , RatVec = [rat]
 , RatMat = [[rat]] { by columns }
-, maybe_a_Vec =  ( void no_Vec_solution | Vec Vec_solution )
-, maybe_a_RatVec =  ( void no_RatVec_solution | [rat] RatVec_solution )
+, maybe_a_Vec =  ( void no_Vec | Vec Vec_solution )
+, maybe_a_RatVec =  ( void no_RatVec | [rat] RatVec_solution )
 ]
 
 set minus (Vec col) = Vec: for e in col do -e od { avoid using -@vec }
@@ -136,10 +136,10 @@ set ech_solve (Mat A, Vec b) = maybe_a_Vec:
 in for i:n
   ~do if i=s~[j]
       then let Mj=M~[j] then (q,r)=b[i]\%Mj[i] in
-         if !=r then return ().no_Vec_solution fi
+         if !=r then return ().no_Vec fi
        ;  sol~[j] := q; b -:= (Mj,q) { correct for contribution from sol[j~] }
        ;  j+:=1
-       elif !=b[i] then return ().no_Vec_solution
+       elif !=b[i] then return ().no_Vec
        fi
    od
 ;  safe_prod(C[:#sol],sol).Vec_solution
@@ -155,7 +155,7 @@ in for i:n
       then let Mj=M~[j] then q=b[i]/Mj[i] in
          sol~[j]:=q; b -:= (Mj,q) { correct for contribution from sol[j~] }
       ;  j+:=1
-      elif !=b[i] then return ().no_RatVec_solution
+      elif !=b[i] then return ().no_RatVec
       fi
    od
 ;  safe_prod(C[:#sol],sol).RatVec_solution

@@ -129,7 +129,7 @@ set rational_inverse(mat M) = ratmat:inverse(mat_as_ratmat(M))
 set left_inverse(ratmat(A,,d)) = ratmat:
 (  let (M,C,pivots,)=echelon(A), c=#A
 in if #M<c then error("not injective (rank is ",#M,"<",c,")") fi
-;  let (Tri,R)= ech_up(M,pivots) then (T1,d1)=invert_ech(Tri[:c,:])
+;  let (Tri,R)= ech_up(M,pivots) then (T1,d1)=invert(Tri[:c,:])
    then (num,den)=%(d/d1) { simplify fraction before combining }
 in ( num*C*T1*R[:c,:] , s, den)
 )
@@ -138,7 +138,7 @@ in ( num*C*T1*R[:c,:] , s, den)
 set right_inverse(ratmat(A,,d)) = ratmat: { formal dual of left_inverse }
 (  let (M,C,pivots,)=echelon(^A), c=A.n_rows
 in if M.n_rows<c then error("row rank ",M.n_rows," not full (",c,")") fi
-;  let (Tri,R)= ech_up(M,pivots) then  (T1,d1)=invert_ech(Tri[:c,:])
+;  let (Tri,R)= ech_up(M,pivots) then  (T1,d1)=invert(Tri[:c,:])
    then (num,den)=%(d/d1) { simplify fraction before combining }
 in ( ^(num*C*T1*R[:c,:]) , s, den)
 )

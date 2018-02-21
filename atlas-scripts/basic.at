@@ -1,6 +1,7 @@
 set_type { union types for versions of |solve|, cannot share |void| tag }
-[ maybe_a_vec =    (void no_solution | vec solution)
-, maybe_a_ratvec = (void no_rational_solution | ratvec solution )
+[ maybe_a_vec =    ( void no_vec | vec solution)
+, maybe_a_ratvec = ( void no_ratvec | ratvec solution )
+, maybe_a_mat =    ( void no_mat | mat solution )
 ]
 
 set !minus_1 = -1 { using this constant avoids evaluating unary minus }
@@ -368,25 +369,30 @@ set * (int c,mat m) = mat: map_on(m)((int e) int: c*e)
 set - (mat m)= mat: { transform 36+128=164: 128 means negate entries }
   swiss_matrix_knife(164,m,0,0,0,0)
 
+{ sum of list of matrices, with given shape for when list is empty }
+set sum ((int,int) shape, [mat] L) = mat:
+  let len=#L in
+  if =len then null(shape)
+  else let s=L~[0] in assert(shape(s)=shape); for i:len-1 ~do s +:= L[i] od; s
+  fi
+{ square matrices are frequent, so there is a spacial case of |sum| for them }
+set sum (int n,[mat] L) = mat: sum((n,n),L)
+
+{ product of list of square matrices, with given size for when list is empty }
+set product (int n, [mat] L) = mat:
+  let len=#L in
+  if =len then id_mat(n)
+  else let p=L~[0] in assert(shape(p)=(n,n)); for i:len-1 ~do p *:= L[i] od; p
+  fi
+
 { integer division }
 set \ (mat m,int d) = mat: map_on(m)((int e) int: e\d)
 
 { entrywise modulo }
 set % (mat m,int d) = mat: map_on(m)((int e) int: e%d)
 
-{ version of invert@mat that uses only echelon@mat, less prone to overflow }
-set invert_ech (mat A) = (mat,int):
-   assert(=shape(A),"Cannot invert non square matrix");
-   let (M,C,,) = A.echelon, n = A.n_columns in
-   assert(=shape(M),to_string("Singular matrix (rank ",M.n_columns,"<",n,")"));
-   let cols = [vec]:for :n do [] od
-   , ech_inv (int k) = [rat]: { solve M[:k+1].x=id_mat(n)[k] }
-        let sol = for :k do rat:0 od # /M[k,k] then b=-M[k][:k+1]*sol[k] in
-        for col@j in M[:k+1,:k] ~do let m=b[j]/col[j] in b-:=col*(sol[j]:=m) od
-      ; sol
-   then (row_nums,common_d) = %(ratvec:
-      for j:n do let(v,d)=%(ratvec:C[:j+1]*ech_inv(j)) in cols[j]:=v; /d od)
-   in (n # for n@j in row_nums do cols[j]*n od , common_d)
+set Smith_basis (mat M) = mat: let (basis,)=Smith(M) in basis
+set inv_fact (mat M) = vec: let (,invf)=Smith(M) in invf
 
 { matrix exponentiation }
 set ^ = (mat,int->mat):
@@ -398,7 +404,7 @@ set ^ = (mat,int->mat):
   in { ^@(mat,int) = } (mat m,int n) mat:
     assert(=shape(m),"Non square matrix in exponentiation");
   if n>0 then matrix_power(m,n) elif =n then id_mat(n_rows(m))
-  else let (m1,d)=invert_ech(m) in
+  else let (m1,d)=invert(m) in
      if d=1 then matrix_power(m1,-n)
      elif =d then error("Negative power of singular matrix")
      else error("Negative power of matrix not invertible over Z")
@@ -406,7 +412,7 @@ set ^ = (mat,int->mat):
   fi
 
 set inverse (mat M) = mat:
-  let (inv,d)=invert_ech(M) in
+  let (inv,d)=invert(M) in
   if d=1 then inv else error("Matrix not invertible over the integers") fi
 
 set / = inverse@mat { so |/M| is the same as |M^-1|, but more direct }
@@ -456,7 +462,7 @@ set columns_with ((vec->bool) p,mat m) = mat:
 set columns_with ((int->bool) p,mat m) = mat:
   n_rows(m)# ## for col@j in m do if p(j) then [col] else [] fi od
 set a_column_with ((vec->bool) p,mat m) = maybe_a_vec:
-  for col in m do if p(col) then return solution(col) fi od; no_solution()
+  for col in m do if p(col) then return solution(col) fi od; no_vec()
 
 set rows_with ((int,vec->bool) p,mat m) = mat:
   n_columns(m) ^ ## for row@i in ^m do if p(i,row) then [row] else [] fi od
@@ -465,7 +471,7 @@ set rows_with ((vec->bool) p,mat m) = mat:
 set rows_with ((int->bool) p,mat m) = mat:
   n_columns(m) ^ ## for row@i in ^m do if p(i) then [row] else [] fi od
 set a_row_with ((vec->bool) p,mat m) = maybe_a_vec:
-  for row in ^m do if p(row) then return solution(row) fi od; no_solution()
+  for row in ^m do if p(row) then return solution(row) fi od; no_vec()
 
 set >=(mat m) = bool: { non-negative (dominant) columns only } all(m,>=@vec)
 set >(mat m) = bool: { strictly positive (dominant) columns only } all(m,>@vec)
@@ -478,10 +484,10 @@ set lookup_row (vec v,mat m) = int: last(^m,(vec w)bool: w=v)
 { sum of columns of a matrix; this is so neat, avoid calling it sum_columns }
 set sum (mat m)= vec: m*ones(n_columns(m))
 
-{ solve(mat A,vec b): find a solution vec x of A*x=b, or indicate none exists
-  method:
+{ solve(mat A,vec b): find a |vec| solution x of A*x=b, or indicate none exists
+  Method:
   - write A*C = M using echelon, with C an invertible matrix and, M echelon
-  - solve M*y = b (possibly finding none); easy using the echelon form
+  - solve M*y = b (possibly finding none); this is easy using the echelon form
   - if a solution is found, return x = C*y
 }
 set solve (mat A,vec b) = maybe_a_vec:
@@ -491,17 +497,38 @@ set solve (mat A,vec b) = maybe_a_vec:
 ;  for i:n
   ~do if j<#s and i=s~[j] { then it is a pivot row, with pivot at M[j][i] }
       then let Mj=M~[j] then (q,r)=b[i]\%Mj[i] in
-         if !=r then return ().no_solution { because inexact division} fi
+         if !=r then return ().no_vec { because inexact division} fi
        ;  sol~[j]:=q; b-:=Mj*q { correct for contribution from sol[j~] }
        ;  j+:=1
-       elif !=b[i] then return ().no_solution { because no pivot available }
+       elif !=b[i] then return ().no_vec { because no pivot available }
        fi
    od
-;  (C[:#sol]*sol).solution
+;  (C[:k]*sol).solution
 )
 
-set any (maybe_a_vec x) = bool:
-   case x  | solution: true | no_solution: false esac
+set solve (mat A,mat B) = maybe_a_mat: { matrix |X| satifying |A*X=B|, if any }
+(  let (M,C,s,) = echelon(A) then (n,k)=shape(M)
+   then sols = mat: { column |j| is solutions of |M*y=B[j]| }
+      assert(n_rows(B)=n,"equation mismatch");
+      k { size of each solution column} #
+      for b in B
+      do let j=0 { runs up to |k|, used to index |s|, |M| backwards }
+	 , sol=null(k), rem=b { remaining RHS, gets modified }
+      in for i:n
+	~do if j<#s and i=s~[j] { a pivot row, with pivot at |M~[j][i]| }
+	    then let Mj=M~[j] then (q,r)=rem[i]\%Mj[i]
+	    in if !=r then return ().no_mat { because inexact division} fi
+	    ;  sol~[j]:=q; rem-:=Mj*q { correct for contribution from sol[j~] }
+	    ;  j+:=1
+	    elif !=rem[i] then return ().no_mat { because no pivot available }
+	    fi
+	 od
+      ;  sol
+      od
+   in (C[:k]*sols).solution
+)
+
+set any (maybe_a_vec x) = bool: case x  | solution: true | no_vec: false esac
 set requisition (string message) = (maybe_a_vec->vec):
    (maybe_a_vec x) vec: case x  | solution(s): s | else error(message) esac
 set requisition = requisition("No solution found; having one was required")
@@ -573,14 +600,14 @@ set solve (mat A, ratvec b) = maybe_a_ratvec:
       then let Mj=M~[j] then q=b[i]/Mj[i] in
          sol~[j]:=q; b-:=Mj*q { correct for contribution from sol[j~] }
       ;  j+:=1
-      elif !=b[i] then return ().no_rational_solution { because no pivot here }
+      elif !=b[i] then return ().no_ratvec { because no pivot here }
       fi
    od
 ;  (C[:#sol]*sol).solution
 )
 
 set any (maybe_a_ratvec x) = bool:
-   case x  | solution: true | no_rational_solution: false esac
+   case x  | solution: true | no_ratvec: false esac
 set rat_requisition (string message) = (maybe_a_ratvec->ratvec):
    (maybe_a_ratvec x) ratvec:
     case x  | solution(s): s | else error(message) esac
@@ -917,6 +944,12 @@ set W_gens (RootDatum rd) = [WeylElt]:
 set * (WeylElt w,mat theta) = mat: theta.n_rows # for col in theta do w*col od
 set * (mat theta,WeylElt w) = mat:
   theta.n_columns ^ for row in ^theta do row*w od
+
+set product (RootDatum rd, [WeylElt] L) = WeylElt:
+  let len=#L in
+  if =len then id_W(rd)
+  else let w=L~[0] in assert(w.root_datum=rd); for i:len-1 ~do w *:= L[i] od; w
+  fi
 
 set order (WeylElt !w) = int: let x=w in 1+(int:while !=x do x*:=w od)
 set rho_diff (WeylElt w) = vec: let rho2=w.root_datum.two_rho in (rho2-w*rho2)\2

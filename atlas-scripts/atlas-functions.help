@@ -111,7 +111,7 @@ echelon: (mat->mat,mat,[int],int): column echelon form, with extra information
   null columns to obtain an n*k matrix M (with k<=m) and an invertible matrix
   C that records the column operations performed; an increasing sequence s of
   k "pivot rows" and the a sign eps equal to the determinant of C are also
-  recorded for convenience: the qudruple (M,C,s,eps) is returned. Here C is the
+  recorded for convenience: the quadruple (M,C,s,eps) is returned. Here C is the
   result of applying to an m*m matrix initialized as identity the same column
   operations that were a applied to A, except that column removal is replaced
   in C by moving the column to the right end; as a consequence A*C equals M
@@ -140,7 +140,7 @@ row_saturate: (mat->mat): keep same kernel, but row-span saturated sublattice
 
 inv_fact: (mat->vec): invariant factors in Smith normal form (no zeros).
 Smith_basis: (mat->mat): a basis on which the Smith normal form is assumed.
-Smith: (mat->mat,vec): Smith(M)= ( Smith_basis(M), inv_fact(M) ) (almost).
+Smith: (mat->mat,vec): Smith(M)= ( Smith_basis(M), inv_fact(M) ).
   Smith(M) describes explicitly the sublattice spanned by the columns of M.
   The first component is an invertible matrix, whose columns, multiplied by
   the corresponding entries of the second component, span that sublattice.

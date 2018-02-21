@@ -120,7 +120,7 @@ set minimal_extenders (RootDatum rd,[int] Levi) = [int]:
    let orth = { columns: generators in $X_*$ of annihilator subspace of |Levi| }
       kernel(rd.rank ^ for i in Levi do root(rd,i) od)
 in case a_column_with((vec alpha)bool: !=orth*alpha, rd.posroots)
-   | no_solution: [] { |Levi| already spans subspace containing all roots }
+   | no_vec: [] { |Levi| already spans subspace containing all roots }
    | solution(alpha):
       { find a coweight |f| witnessing that |orth*alpha| is nonzero }
       let f = requisition(a_column_with((vec cowt)bool: !=cowt*alpha, orth))
@@ -285,16 +285,16 @@ in while current<#orbit
   than generating it, though it requires a some preliminary computation. The
   idea is to use the stabiliser subgroup $M$ in $W$ of $\rho_L$; though it does
   not contain $N_L$, the intersection $M\cap N_L$ has known index in $N_L$,
-  namely the size of $W_L$ (every coset by $W_L$ meets the instersection
-  uniquely). So we generate the hopefully small orbit under $M$ of images of the
-  Levi system, then by dividing the size of $M$ by that of the orbit find the
-  size of the intersection, which multiplied by that of $W_L$ gives the size
+  namely the size of $W_L$ (every coset by $W_L$ meets the intersection
+  uniquely). So we generate the (hopefully small) orbit under $M$ of images of
+  the Levi system, then by dividing the size of $M$ by that of the orbit find
+  the size of the intersection, which multiplied by that of $W_L$ gives the size
   of $N_L$, and dividing the size of $W$ by that gives our Levi orbit size.
 
   The orbit generation here is taylored to the specific situation, whence we do
   it using local code (the |begin|-|end| block below) rather than writing or
   using a more general orbit generation. The special circumstance is that we
-  know that all elements of the acting subsgroup fix $\rho_L$, so the only way
+  know that all elements of the acting subgroup fix $\rho_L$, so the only way
   they can map all simple generators of $L$ to roots of $L$ is by permuting them
   among each other. We can then ignore the distinction between a root and its
   opposite (working only with positive root indices) and not worry about
@@ -436,10 +436,11 @@ set conjugacy_class_number (WeylElt w) = int:
 
 set_type WeylClassTable =
 ( (->) print_classes
+, int n_classes
 , (->[WeylElt]) class_representatives
-, (->[int]) class_sizes
 , (WeylElt->int) class_of
-, (WeylElt->int) class_size
+, (->[int]) class_sizes
+, (int,int->int) class_power
 , [int] trivial
 , [int] sign
 , [int] reflection
@@ -462,6 +463,7 @@ set W_class_table (RootDatum rd) = WeylClassTable:
      assert(#x=ncc and #y=ncc,"Wrong sizes");
      let s = for size@i in sizes do size*x[i]*y[i] od.sum then (q,r)=s \% nW in
      if =r then q else error("Non integer inner product ",s/nW) fi
+   , power_map = [vec]: for w in reps do for i:w.order do class_of(w^i) od od
 in
 ( {print_classes} @:
    let data = for w in reps
@@ -472,10 +474,11 @@ in
      od
    in tabulate(data,"rrl",2," ")
 
+, {n_classes} ncc
 , {class_representatives} @: reps
-, {class_sizes} @: sizes
 , {class_of} class_of
-, {class_size} (WeylElt w) int: sizes[class_of(w)]
+, {class_sizes} @: sizes
+, {class_power} (int i,int n) int: let v=power_map[i] in v[n % #v]
 , {trivial}     for :ncc do 1 od
 , {sign}        for w in reps do minus_1^w.length od
 , {reflection}  for w in reps do w.matrix.trace od
@@ -512,7 +515,7 @@ set character_value (WeylClassTable ct, WeylElt w,[int] char) = int:
 
 { Adams's operation (not Jeff's): evaluate character at class of $w^n$ }
 set Adams (WeylClassTable tab) = ([int]char, int n) [int]:
-   for w in tab.class_representatives() do char[tab.class_of(w^n)] od
+   for i:tab.n_classes do char[tab.class_power(i,n)] od
 
 { symmetric power of a character }
 set sym_power (WeylClassTable tab) = ([int]char, int n) [int]:
