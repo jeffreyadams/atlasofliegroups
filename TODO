@@ -8,6 +8,7 @@
 
 * Work on the Fokko program
 
+- make wcells command work correctly in reprmode (currently segfaults)
 - correct bug with mysterious typeahead after bailing out with ? (done?)
 - Fix bug occurring when switching the real form when coming from realmode
 - clean up the mess dealing with input (interface/input, io/interactive...)
@@ -51,7 +52,6 @@
 
 - Change interface to LieType so that torus factors do not pollute list of
   simple factors.
-
 
 * Work on the atlas scripts
 
