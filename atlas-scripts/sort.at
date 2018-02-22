@@ -1,12 +1,15 @@
 <basic.at
 
+{ sorting integers }
 set merge ([int] a, [int] b) = [int]: { merge weakly increasing lists }
   let na=#a in
   if na=0 then b
   else let i=0, j=0, nb=#b { original length of b }
   in b #:= a~[0] { sentinel; when this elt becomes b[j], then a is emptied }
-  ; while i<na or j<nb { run until i=na and j=nb=#b-1 }
-    do if i<na and a[i]<=b[j] then a[i] next i+:=1 else b[j] next j+:=1 fi
+  ; while { run until i=na and j=nb=#b-1 }
+      if i=na then j<nb do b[j] next j+:=1
+      else do if a[i]<=b[j] then a[i] next i+:=1 else b[j] next j+:=1 fi
+      fi
     od
   fi
 
@@ -19,10 +22,30 @@ set sort = ([int]->[int]): { merge sort }
 
 set reverse_sort ([int] v) = [int]: sort(v)~[:]
 
-{sort unique}
-set sort_u ([int] v) = [int]:
-  let result = [int]:[] in
-  for a@i in sort(v) do if =i or a!=result~[0] then result #:= a fi od; result
+{ sort unique }
+set merge_u ([int] a, [int] b) = [int]: { merge unique weakly increasing lists }
+  let na=#a in
+  if na=0 then b
+  else let i=0, j=0, nb=#b { original length of b }
+  in b #:= a~[0] { sentinel; when this elt becomes b[j], then a is emptied }
+  ; while { run until i=na and j=nb=#b-1 }
+      if i=na then j<nb do b[j] next j+:=1
+      else do
+        case a[i]-b[j] { three way test }
+        then { a[i]<b[j]: } a[i] next i+:=1
+        in   { a[i]=b[j]: } a[i] next i+:=1; j+:=1 { take one, skip both }
+        else { a[i]>b[j]: } b[j] next j+:=1
+        esac
+      fi
+    od
+  fi
+
+set sort_u = ([int]->[int]): { sort, keeping unique copy of duplicates }
+  let rec_fun ms ([int] v, int l) = [int]: { invariant includes l=#v }
+    if l<2 then v { for l=2 let |merge_u| do the three way choice }
+    else let half=l\2 in merge_u( ms(v[:half],half), ms(v[half:],l-half) )
+    fi
+  in { sort_u = } ([int] v) [int]: ms(v,#v)
 
 { the following helps stable-sorting of anything according to a statistic }
 
@@ -112,3 +135,103 @@ set sort_by_height = ([Param] -> [Param]): sort_by( height@Param )
 { Same for a list of parameters with a Split attached (ignored for sorting) }
 set sort_by_height = ([(Split,Param)] -> [(Split,Param)]):
  sort_by( (Split s,Param p) int: height(p) )
+
+{ sorting vectors lexicographically }
+set lex_lesseq (vec v,vec w) = bool: { assert(#v=#w); }
+   for x@i in v do if x!=w[i] then return x<w[i] fi od; true
+
+set merge ([vec] a, [vec] b) = [vec]: { merge weakly increasing lists }
+  let na=#a in
+  if na=0 then b
+  else let i=0, j=0, nb=#b { original length of b }
+  in b #:= a~[0] { sentinel; when this elt becomes b[j], then a is emptied }
+  ; while { run until i=na and j=nb=#b-1 }
+      if i=na then j<nb do b[j] next j+:=1
+      else do
+        if lex_lesseq(a[i],b[j]) then a[i] next i+:=1 else b[j] next j+:=1 fi
+      fi
+    od
+  fi
+
+set sort = ([vec]->[vec]): { merge sort }
+  let rec_fun ms ([vec] v, int l) = [vec]: { invariant includes l=#v }
+    if l<3 then if l<2 or lex_lesseq(v[0],v[1]) then v else v~[:] { swap } fi
+    else let half=l\2 in merge( ms(v[:half],half), ms(v[half:],l-half) )
+    fi
+  in { sort = } ([vec] v) [vec]: ms(v,#v)
+
+set reverse_sort ([vec] v) = [vec]: sort(v)~[:]
+
+{ sort unique }
+set merge_u ([vec] a, [vec] b) = [vec]: { merge unique weakly increasing lists }
+  let na=#a in
+  if na=0 then b
+  else let i=0, j=0, nb=#b { original length of b }
+  in b #:= a~[0] { sentinel; when this elt becomes b[j], then a is emptied }
+  ; while { run until i=na and j=nb=#b-1 }
+      if i=na then j<nb do b[j] next j+:=1
+      else do
+        if lex_lesseq(a[i],b[j])
+        then a[i] next if a[i]=b[j] then j+:=1 fi; i+:=1
+        else b[j] next j+:=1
+        fi
+      fi
+    od
+  fi
+
+set sort_u = ([vec]->[vec]): { sort, keeping unique copy of duplicates }
+  let rec_fun ms ([vec] v, int l) = [vec]: { invariant includes l=#v }
+    if l<2 then v { for l=2 let |merge_u| do the three way choice }
+    else let half=l\2 in merge_u( ms(v[:half],half), ms(v[half:],l-half) )
+    fi
+  in { sort_u = } ([vec] v) [vec]: ms(v,#v)
+
+{ sorting rational ratvectors lexicographically }
+set lex_lesseq (ratvec v,ratvec w) = bool: { assert(#v=#w); }
+   for x@i in v do if x!=w[i] then return x<w[i] fi od; true
+
+set merge ([ratvec] a, [ratvec] b) = [ratvec]: { merge weakly increasing lists }
+  let na=#a in
+  if na=0 then b
+  else let i=0, j=0, nb=#b { original length of b }
+  in b #:= a~[0] { sentinel; when this elt becomes b[j], then a is emptied }
+  ; while { run until i=na and j=nb=#b-1 }
+      if i=na then j<nb do b[j] next j+:=1
+      else do
+        if lex_lesseq(a[i],b[j]) then a[i] next i+:=1 else b[j] next j+:=1 fi
+      fi
+    od
+  fi
+
+set sort = ([ratvec]->[ratvec]): { merge sort }
+  let rec_fun ms ([ratvec] v, int l) = [ratvec]: { invariant includes l=#v }
+    if l<3 then if l<2 or lex_lesseq(v[0],v[1]) then v else v~[:] { swap } fi
+    else let half=l\2 in merge( ms(v[:half],half), ms(v[half:],l-half) )
+    fi
+  in { sort = } ([ratvec] v) [ratvec]: ms(v,#v)
+
+set reverse_sort ([ratvec] v) = [ratvec]: sort(v)~[:]
+
+{ sort unique }
+set merge_u ([ratvec] a, [ratvec] b) = [ratvec]: { merge }
+  let na=#a in
+  if na=0 then b
+  else let i=0, j=0, nb=#b { original length of b }
+  in b #:= a~[0] { sentinel; when this elt becomes b[j], then a is emptied }
+  ; while { run until i=na and j=nb=#b-1 }
+      if i=na then j<nb do b[j] next j+:=1
+      else do
+        if lex_lesseq(a[i],b[j])
+        then a[i] next if a[i]=b[j] then j+:=1 fi; i+:=1
+        else b[j] next j+:=1
+        fi
+      fi
+    od
+  fi
+
+set sort_u = ([ratvec]->[ratvec]):  { sort, keeping unique copy of duplicates }
+  let rec_fun ms ([ratvec] v, int l) = [ratvec]: { invariant includes l=#v }
+    if l<2 then v { for l=2 let |merge_u| do the three way choice }
+    else let half=l\2 in merge_u( ms(v[:half],half), ms(v[half:],l-half) )
+    fi
+  in { sort_u = } ([ratvec] v) [ratvec]: ms(v,#v)
