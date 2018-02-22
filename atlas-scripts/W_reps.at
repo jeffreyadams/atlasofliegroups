@@ -24,12 +24,11 @@ set trivial_W (RootDatum rd) = W_rep:
   also induced characters from Levi subgroups, and the Steinberg character
 }
 
-{ pi.character=(WeylClassTable,[int]}
 {character of pi}
 set character (WeylClassTable tab, W_rep pi) = [int]:
   for w in tab.class_representatives() do trace(pi.operator(w)) od
 
-{isomorphism test using the character}
+{ isomorphism test using the character }
 set is_isomorphic (WeylClassTable tab, W_rep pi, W_rep sigma) = bool:
   all(tab.n_classes
      ,(int i): let w = tab.class_representatives()[i] in
@@ -125,9 +124,6 @@ set cell_action (WCell cell,[int] w) = mat:
 {. matrix of action of WeylElt on a cell .}
 set cell_action(WCell cell,WeylElt w) = mat: cell_action(cell,w.word)
 
-{set data=([WeylElt],[int]):(conjugacy_classes(rd),sizes_of_conjugacy_classes(*))
- pass this to avoid recomputing it }
-
 {. character of representation of W on cell .}
 set cell_character (WeylClassTable ct,WCell cell) = [int]:
   for w in ct.class_representatives() do trace(cell_action(cell,w)) od
@@ -144,10 +140,10 @@ set cells_table_augmented (WeylClassTable ct, [WCell] cells) = mat:
     cell_characters(ct,cells) ## [ ct.trivial, ct.sign, ct.reflection ]
   in matrix_of_inner_products(ct,characters)
 
-{list of representations defined by an array of cells}
 set cell_representation (WeylClassTable ct,WCell cell) = W_rep:
   (#cell.graph,for i:ct.root_datum.semisimple_rank do cell_action(cell,i) od)
 
+{ list of representations defined by an array of cells }
 set cell_representations(WeylClassTable ct,[WCell] cells)=[W_rep]:
   for cell in cells do cell_representation(ct,cell) od
 
@@ -158,7 +154,7 @@ set cell_representations(WeylClassTable ct,[WCell] cells)=[W_rep]:
 set promote (WeylClassTable ct, WeylElt w_L) = WeylElt:
   W_elt(ct.root_datum, matrix(w_L))
 
-{all 2^n standard Levis }
+{ all 2^n standard Levis }
 set standard_Levis (RootDatum rd) = [RootDatum]:
   for S in power_set(rd.all_simples) do Levi_datum(rd,S) od
 
@@ -184,7 +180,8 @@ set standard_Levis (RootDatum rd) = [RootDatum]:
   The factor by which pi_L(w_L) is mulitplied is integer, as it is the index of
   the centraliser subgroup of w_L in W_L inside its centraliser subgroup of w_G
 }
-set induce_character(WeylClassTable ct_G,WeylClassTable ct_L,[int] pi_L)= [int]:
+set induce_character (WeylClassTable ct_G,WeylClassTable ct_L,[int] pi_L) =
+       [int]:
    let rd_G= ct_G.root_datum, rd_L=ct_L.root_datum
    then index = rat_as_int(order_W(rd_G)/order_W(rd_L))
    , classes_G=ct_G.class_representatives()  {[WeylElt] for |G|}
@@ -197,8 +194,8 @@ in for w_L@i in classes_L
    in  values_G[j] +:= pi_L[i] * (index * sizes_L[i]/sizes_G[j]).rat_as_int
    od; values_G
 
-{the sign representation occurs in S^(nr_of_posroots)(reflection),
-and this is the maximum}
+{ the sign representation occurs in S^(nr_of_posroots)(reflection), and
+  this is the maximum necessary exponent to get all irreducibles }
 {. smallest k so that pi occurs in S^k(reflection) .}
 set smallest_degree (WeylClassTable ct, [int] character) = int:
   let ref=ct.reflection, rd=ct.root_datum in
@@ -253,11 +250,10 @@ set restrict_representation_isotypic (
 set projector (WeylClassTable ct, WCell cell, vec char_values) = mat:
   projector(ct,cell_representation(ct,cell),char_values)
 
-{ given a cell, compute the cell represetation pi,
-  find the smallest k so that <pi,sym^k(reflection)>!=0
-  then this inner product is 1, and the unique irreducible in common is special
-  use the character of sym^k(reflection) to compute the projection operator
-  onto the special
+{ given a cell, compute the cell represetation pi, find the smallest k so that
+  <pi,sym^k(reflection)>!=0, then this inner product is 1, and the unique
+  irreducible in common is special; use the character of sym^k(reflection)
+  to compute the projection operator onto the special
 }
 set special_projector (WeylClassTable ct, WCell cell) = mat:
   let cell_rep = cell_representation(ct,cell)
