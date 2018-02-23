@@ -652,7 +652,7 @@ index (Block,KGBElt,KGBElt->int): index in block, from KGB, dual KGB components
   function requires the containing block to be supplied as first argument; if
   needed, block(real_form(x),dual_real_form(real_form(y))) computes the block
 dual: (Block->Block): dual block, with real form and dual real form swapped
-status: (int,Block,int->): status at a block element of a simple reflection
+status: (int,Block,int->int): status at a block element of a simple reflection
   For s the index of a reflection, and i the index of an element of block b,
   status(s,b,i) gives according to the codes 0:C-, 1:ic, 2:r1, 3:r2,  4:C+,
   5: rn, 6:i1, 7:i2. Note that the descents s have status(b,i,s)<4
@@ -757,7 +757,9 @@ partial_KL_block: (Param->[Param],mat,[vec],vec,vec,mat): partial KL_block
   and all other components are the same is in KL_block (except that the now
   superfluous second component of KL_block is omitted), but with the two vec
   components filtered so as to be indexed by the Bruhat interval indices only.
-extended_block: (Param,mat->[Param],mat,mat,mat) extended block with graph data
+W_cells: (Param->[[int],[[int],[int,int]]]): compute W-cell for parameter block
+  The structure of the cell data returned is the same as for W_cells@Block below
+extended_block: (Param,mat->[Param],mat,mat,mat): extended block with graph data
   The arguments are a parameter p and an external distinguished involution delta
   (which should commute with the inner class distinguished involution). The
   block of p is constructed as in block@Param, and the (possibly empty) list of

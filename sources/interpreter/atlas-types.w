@@ -4951,6 +4951,72 @@ void partial_KL_block_wrapper(expression_base::level l)
     wrap_tuple<6>();
 }
 
+@ Rather than exporting the detailed KL data, the following function computes
+the $W$-cells from the block of the parameter, and exports that.
+
+@< Local function def...@>=
+void param_W_cells_wrapper(expression_base::level l)
+{ shared_module_parameter p = get<module_parameter_value>();
+  test_standard(*p,"Cannot generate block");
+  if (l==expression_base::no_value)
+    return;
+@)
+  BlockElt start; // will hold index in the block of the initial element
+  param_block block(p->rc(),p->val,start);
+@)
+  const kl::KLContext& klc = block.klc(block.size()-1,false);
+   // this does the actual KL computation
+  wgraph::WGraph wg = kl::wGraph(klc);
+  wgraph::DecomposedWGraph dg(wg);
+@)
+  own_row cells=std::make_shared<row_value>(0);
+  cells->val.reserve(dg.cellCount());
+  for (unsigned int c = 0; c < dg.cellCount(); ++c)
+  { auto& wg=dg.cell(c); // local W-graph of cell
+    own_row members =std::make_shared<row_value>(0);
+    { const BlockEltList& mem=dg.cellMembers(c);
+        // list of members of strong component |c|
+      members->val.reserve(mem.size());
+      for (auto it=mem.begin(); it!=mem.end(); ++it)
+        members->val.push_back(std::make_shared<int_value>(*it));
+    }
+    own_row vertices=std::make_shared<row_value>(0);
+    @< Push to |vertices| a list of pairs for each element of |wg|, each
+       consisting of a descent set and a list of outgoing labelled edges @>
+    auto tup = std::make_shared<tuple_value>(2);
+    tup->val[0] = members;
+    tup->val[1] = vertices;
+    cells->val.push_back(std::move(tup));
+  }
+  push_value(std::move(cells));
+}
+
+@ The following code was isolated so that it can be reused below.
+
+@< Push to |vertices| a list of pairs for each element of |wg|, each
+   consisting of a descent set and a list of outgoing labelled edges @>=
+vertices->val.reserve(wg.size());
+for (unsigned int i = 0; i < wg.size(); ++i)
+{ auto ds = wg.descent_set(i);
+  own_row descents=std::make_shared<row_value>(0);
+  descents->val.reserve(ds.count());
+  for (auto it=ds.begin(); it(); ++it)
+    descents->val.push_back(std::make_shared<int_value>(*it));
+  own_row out_edges = std::make_shared<row_value>(0);
+  out_edges->val.reserve(wg.degree(i));
+  for (unsigned j=0; j<wg.degree(i); ++j)
+  { auto tup = std::make_shared<tuple_value>(2);
+    tup->val[0] = std::make_shared<int_value>(wg.edge_target(i,j));
+    tup->val[1] = std::make_shared<int_value>(wg.coefficient(i,j));
+  @/out_edges->val.push_back(tup);
+  }
+  auto tup = std::make_shared<tuple_value>(2);
+  tup->val[0] = descents;
+  tup->val[1] = out_edges;
+  vertices->val.push_back(std::move(tup));
+}
+
+
 @ The function |extended_block| intends to make computation of extended
 blocks available in \.{atlas}.
 
@@ -5097,6 +5163,8 @@ install_function(dual_KL_block_wrapper,@|"dual_KL_block"
                 ,"(Param->[Param],int,mat,[vec],vec,vec)");
 install_function(partial_KL_block_wrapper,@|"partial_KL_block"
                 ,"(Param->[Param],mat,[vec],vec,vec,mat)");
+install_function(param_W_cells_wrapper,@|"W_cells"
+                ,"(Param->[[int],[[int],[int,int]]])");
 install_function(extended_block_wrapper,@|"extended_block"
                 ,"(Param,mat->[Param],mat,mat,mat)");
 install_function(extended_KL_block_wrapper,@|"extended_KL_block"
@@ -6293,33 +6361,8 @@ void W_graph_wrapper(expression_base::level l)
   push_value(std::move(vertices));
 }
 
-@ The following code was isolated so that it can be reused below.
-
-@< Push to |vertices| a list of pairs for each element of |wg|, each
-   consisting of a descent set and a list of outgoing labelled edges @>=
-vertices->val.reserve(wg.size());
-for (unsigned int i = 0; i < wg.size(); ++i)
-{ auto ds = wg.descent_set(i);
-  own_row descents=std::make_shared<row_value>(0);
-  descents->val.reserve(ds.count());
-  for (auto it=ds.begin(); it(); ++it)
-    descents->val.push_back(std::make_shared<int_value>(*it));
-  own_row out_edges = std::make_shared<row_value>(0);
-  out_edges->val.reserve(wg.degree(i));
-  for (unsigned j=0; j<wg.degree(i); ++j)
-  { auto tup = std::make_shared<tuple_value>(2);
-    tup->val[0] = std::make_shared<int_value>(wg.edge_target(i,j));
-    tup->val[1] = std::make_shared<int_value>(wg.coefficient(i,j));
-  @/out_edges->val.push_back(tup);
-  }
-  auto tup = std::make_shared<tuple_value>(2);
-  tup->val[0] = descents;
-  tup->val[1] = out_edges;
-  vertices->val.push_back(std::move(tup));
-}
-
-@ Outputting |W_cells| as row of vectors; (this function was originally
-contributed by Jeff Adams).
+@ This function computes |W_cells| for a block, as list of nested integer
+structures.
 
 @< Local function def...@>=
 void W_cells_wrapper(expression_base::level l)
