@@ -159,7 +159,7 @@ inline BlockElt& first_free_slot(BlockEltPair& p)
   }
 }
 
-Block_base::Block_base(const KGB& kgb,const KGB& dual_kgb)
+Block_base::Block_base(const KGB& kgb)
   : info(), data(kgb.rank()), orbits()
   , dd(kgb.innerClass().rootDatum().cartanMatrix())
   , d_bruhat(nullptr)
@@ -487,7 +487,7 @@ Block::Block(const Block& b) // obligatory but in practice unused contruction
 // Complete the |Block_base| construction, setting |Block|-specific fields
 // The real work is done by |Block_base|, |kgb| methods, and |compute_supports|
 Block::Block(const KGB& kgb,const KGB& dual_kgb)
-  : Block_base(kgb,dual_kgb)
+  : Block_base(kgb)
   , tW(kgb.twistedWeylGroup())
   , xrange(kgb.size()), yrange(dual_kgb.size())
   , d_Cartan(), d_involution(), d_first_z_of_x(), d_involutionSupport()

@@ -90,7 +90,7 @@ protected: // all fields may be set in a derived class contructor
 
 public:
 // constructors and destructors
-  Block_base(const KGB& kgb,const KGB& dual_kgb);
+  Block_base(const KGB& kgb);
   Block_base(unsigned int rank); // only dimensions some vectors
 
   virtual ~Block_base(); // deletes |d_bruhat| and |klc_ptr| (if non-NULL)
