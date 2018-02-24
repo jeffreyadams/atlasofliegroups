@@ -80,8 +80,8 @@ to_string(height(p)),
 set K_Type_Pol_strings(K_Type_Pol P)=[[string]]:
 K_Type_Pol_strings(P,KGB(P.real_form,0))
 
-set kshow(ParamPol P,KGBElt x_K)=void:tabulate(K_Type_Pol_strings(P,x_K),"l",1," ")
-set kshow(ParamPol P)=void:tabulate(K_Type_Pol_strings(P),"l",1," ")
+set kshow(ParamPol P,KGBElt x_K)=void:tabulate(K_Type_Pol_strings(P,x_K),"lllllll",1," ")
+set kshow(ParamPol P)=void:tabulate(K_Type_Pol_strings(P),"lllllll",1," ")
 
 set orbit_string(RealNilpotentOrbit O)=string:
 let (H,x)=O in "(" + to_string(H) + ",x_" + to_string(#x) + ")"
@@ -351,12 +351,13 @@ return true/false, and [ParamPol] R,[int] S so that
 P=sum S[i]*R[i]
 }
 set in_span([ParamPol] list,ParamPol P)=([Param],mat,vec,bool):
+if #list=0 then ([],null(0,0),null(0),false) else
 let basis=monomials(list) {list of distinct Params} then
 M=mat:for Q in list do let (,v)=vector(basis,Q) in v  od then
 (valid,T)=vector(basis,P) in
 if valid then
-let inlattice=in_lattice(M,T) in prints("solved in_lattice:",inlattice);(basis,M,T,inlattice)
-else prints("can't find vector at all");(basis,M,T,false) fi
+let inlattice=in_lattice(M,T) in (basis,M,T,inlattice)
+else prints("can't find vector at all");(basis,M,T,false) fi fi
 
 {convenient to define in_span([[ParamPol]] list,ParamPol P)=
 in_span( flatten the list,P)
@@ -550,4 +551,5 @@ set matrix(KNilpotentData data,[K_Type] basis)=mat:
 matrix(leading_terms(data),for mu in basis do parameter(mu) od)
 
 set rank(mat A)=let (B,,pivots,)=A.echelon in #pivots
+
 

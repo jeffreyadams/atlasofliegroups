@@ -1,0 +1,318 @@
+<knilpotent.at
+{ ([RealNilpotentOrbit],[[int]] closures, [[(K_type,ParamPol)]])}
+set compute_verbose=true
+
+{convert list of ParamPols to matrix, in terms of basis of Params}
+set matrix([ParamPol] list,[Param] basis)=mat:
+ for P in list do for Q in basis do split_as_int(P[Q]) od od
+
+{same as previous, using monomials(list) as the basis}
+set matrix([ParamPol] list)=mat:matrix(list,monomials(list))
+
+{list of K-types coming from given orbit}
+set K_basis_orbit(KNilpotentData data, int orbitNumber)=[Param]:
+monomials(for (,P) in data.pairs[orbitNumber] do P od)
+
+{list of K-types coming from boundary of given orbit}
+set K_basis_orbit_boundary(KNilpotentData data, int orbitNumber)=[Param]:
+monomials(##for i in data.closures[orbitNumber]
+  do for (,P) in data.pairs[i] do P od od)
+
+{list of K-types coming from closure of given orbit}
+set K_basis_orbit_closure(KNilpotentData data, int orbitNumber)=[Param]:
+monomials(##for i in data.closures[orbitNumber]#orbitNumber
+  do for (,P) in data.pairs[i] do P od od)
+
+{K-types from all orbits
+this should be the same as K_parameter_norm_upto(G,n) where n 
+ is the integer used in defining data
+}
+set K_basis(KNilpotentData data)=[Param]:
+monomials(##for i:#data.orbits do for (,P) in data.pairs[i] do P od od)
+
+{list of L\cap K-types from data for given orbit}
+set L_cap_K_basis_orbit(KNilpotentData d,int orbit_number)=[K_Type]:
+for (mu_L,) in d.pairs[orbit_number] do mu_L od
+
+{list of L\cap K-types from data for boundary of given orbit}
+set L_cap_K_basis_orbit_boundary(KNilpotentData d,int orbit_number)=[K_Type]:
+##for i in d.closures[orbit_number] do L_cap_K_basis_orbit(d,i) od
+
+{list of L\cap K-types from data for closure of given orbit}
+set L_cap_K_basis_orbit_closure(KNilpotentData d,int orbit_number)=[K_Type]:
+##for i in d.closures[orbit_number]#orbit_number do L_cap_K_basis_orbit(d,i) od
+
+{run over all orbits, and for each orbit the 
+list of L\cap K-types from that orbit}
+set L_cap_K_basis(KNilpotentData d)=
+##(for i:#d.orbits do L_cap_K_basis_orbit(d,i) od)
+
+{image of Phi(data,given orbit)}
+set image_Phi(KNilpotentData data, int orbitNumber)=[ParamPol]:
+for (,P) in data.pairs[orbitNumber] do P od
+
+{image of Phi(data,boundary of given orbit)}
+set image_Phi_boundary(KNilpotentData d, int orbitNumber)=[ParamPol]:
+if #d.closures[orbitNumber]=0 then [] else
+##for i in d.closures[orbitNumber] do image_Phi(d,i) od fi
+
+{image of Phi(data,closure of given orbit)}
+set image_Phi_closure(KNilpotentData d, int orbitNumber)=[ParamPol]:
+##for i in d.closures[orbitNumber]#orbitNumber do image_Phi(d,i) od
+
+{find K_type mu in list of K_types}
+set find([K_Type] list,K_Type mu)=int: first(#list,(int i)bool:list[i]=mu)
+
+{matrix defining a map from L\cap K-types to K-types
+rows <-> K-types: from closure of orbit
+columns <-> L\cap K-types from orbit itself
+each column gives Phi(L\cap K-type)
+}
+set matrix_of_Phi(KNilpotentData d,int orbit_number)=
+let 
+L_cap_K_basis=L_cap_K_basis_orbit(d,orbit_number) then
+K_basis=K_basis_orbit_closure(d,orbit_number) then
+{L_cap_K_basis=L_cap_K_basis(d) then
+K_basis=K_basis(d) then}
+pairs=d.pairs[orbit_number] then
+()=prints("PAIRS:", #pairs) then
+rv=null(#K_basis,#L_cap_K_basis) in
+if #pairs=0 then (K_basis,L_cap_K_basis, null(#L_cap_K_basis,#K_basis)) else
+for (mu_L,Phi) in pairs do
+   let (valid,col)=vector(K_basis,Phi) in
+   assert(valid,"could not construct column of matrix");
+   rv[find(L_cap_K_basis,mu_L)]:=col od ;(K_basis,L_cap_K_basis,rv) fi
+
+{matrix describing a sublattice of K_types
+ each column is Phi(O_smaller,mu_L') for some O_smaller in closure of O,
+ L'=L(O_smaller) and mu_L' a K-type for L'
+ the order of the columns does not matter (unlike in matrix_of_Phi)
+}
+set matrix_of_Phi_boundary(KNilpotentData d,int orbit_number)=
+let 
+L_cap_K_basis=L_cap_K_basis_orbit(d,orbit_number) then
+K_basis=K_basis_orbit_closure(d,orbit_number) in
+{L_cap_K_basis=L_cap_K_basis(d) then
+K_basis=K_basis(d) in}
+if #d.closures[orbit_number]=0 then null(#K_basis,#L_cap_K_basis) else
+let rv=
+##for i in d.closures[orbit_number] do
+ let pairs=d.pairs[i] in
+ for (mu_L,Phi) in pairs do
+   let (valid,col)=vector(K_basis,Phi) in
+   assert(valid,"could not construct column of matrix");
+   col od od in 
+if #rv=0 then null(#K_basis,#L_cap_K_basis) else rv fi
+fi 
+
+{Phi matrix for all orbits}
+set matrix_of_Phi(KNilpotentData d)=
+let L_cap_K_basis=L_cap_K_basis(d) then
+K_basis=K_basis(d) then
+rv=null(#K_basis,#L_cap_K_basis) in
+for i:#d.pairs do
+let pairs=d.pairs[i]  in 
+for (mu_L,Phi) in pairs do
+   let (valid,col)=vector(K_basis,Phi) in
+   assert(valid,"could not construct column of matrix");
+   rv[find(L_cap_K_basis,mu_L)]:=col od od;(K_basis,L_cap_K_basis,rv)
+
+{
+ T: V --> W
+    U     U
+    X --> Y
+
+ T: V=Z^m --> W=Z^n  T=nxm matrix
+ M=nxk matrix, columns span a sublattice Y of W
+ Set X=T^{-1}(Y), a sublattice of V
+ Fact: X is saturated
+ Compute matrix A of size rxm, 
+  X = span(columns of A)
+
+algorithm:  
+X_Q is spanned by columns of kernel(cokernel(M)*T)
+X is the saturation of X_Q
+application is below
+}
+set pullback_sublattice(mat T, mat M)=
+saturation(kernel(cokernel(M)*T))
+
+{application of pullback_sublattice}
+{
+Given list of K_types (all those of norm <=N)
+W=W(N) = Z-span of these K_types
+O=real orbit -> L ->
+V=V(O,N)= Z<L\cap K-types, s.t. Norm(Phi(mu_L))<= N>
+Phi: V(O,N) -> W(N)
+T: matrix of this map 
+V=Z^m, W=Z^n,  T=n\times m matrix
+Y=Y(O,N) = Z<Phi(O',mu_{L'}| O' in boundary of O, s.t. norm <= N>\subset W
+X(O,N) = Phi^{-1}(Y)
+       = Z<virtual L\cap K-types, norm(Phi(*))<= N>
+V(O,N)/X(O,N) = a certain space of virtual (L\cap K)^X-modules
+(note: this implies V/X is free, i.e. X is saturated)
+choose a set of representatives {v}\subset V(O,N) of V(O,N)/X(O,N)
+T({v}) is a sublattice of W(O,N)
+note: dimension(V(O,N)/X(O,N)) = dimension of image of Phi applied to this orbit
+}
+{returns: 
+K_basis: basis of K_types (up to norm N) (span is W)
+L_cap_K_basis: basis of L\cap K-types coming from the orbit
+T: matrix of Phi
+Y: matrix whose columns span Y=Y(O,N)
+X: matrix whose columns span X=X(O,N)
+V_mod_X: representatives in V of V/X
+then T*V_mod_X gives a subspace of W
+T*V_mod_X only well defined modulo Y
+dim(T*V_mod_X) =dim(image of Phi applied to this orbit)
+}
+set compute_L_cap_K_X(KNilpotentData d, int orbit_number)=([Param],[K_Type],mat,mat,mat,mat):
+if compute_verbose then prints("compute_L_cap_K_X of orbit", orbit_number) fi;
+let (K_basis,L_cap_K_basis,T)=matrix_of_Phi(d,orbit_number) then
+()=if compute_verbose then prints("T:", shape(T)) fi then
+Y=matrix_of_Phi_boundary(d,orbit_number) then 
+X=pullback_sublattice(T,Y) then 
+V_mod_X=free_quotient_lattice_basis(X) in (K_basis,L_cap_K_basis,T,Y,X,V_mod_X)
+
+{same as previous with some printing}
+set compute_L_cap_K_X_long(KNilpotentData d, int orbit_number)=([Param],[K_Type],mat,mat,mat,mat):
+let  (K_basis,L_cap_K_basis,T,Y,X,V_mod_X)=compute_L_cap_K_X(d,orbit_number) then
+Y_plus_V_mod_X=Y##(T*V_mod_X) in
+prints(new_line,"dim(V):", n_columns(T),
+new_line,
+"dim(W): ", n_rows(T),
+new_line,
+"Y: ", shape(Y),  "  dim(Y): ", rank(Y),
+new_line,
+"X: ", shape(X),  "  dim(X): ", rank(X),
+new_line,
+"dim(V/X): ", n_columns(V_mod_X),new_line,
+"dim(Y+V/X):", rank(Y_plus_V_mod_X));(K_basis,L_cap_K_basis,T,Y,X,V_mod_X)
+
+{run over all orbits, compute_L_cap_K_X(d,orbit)}
+set compute_L_cap_K_X(KNilpotentData d)=[([Param],[K_Type],mat,mat,mat,mat)]:for i:#d.orbits do compute_L_cap_K_X(d,i) od
+{
+set compute_L_cap_K_X_all_long_old(KNilpotentData d)=
+let all=compute_L_cap_K_X_all(d) in 
+let (Kbasis,LKbasis,W,,,)=all[0] then
+n=n_rows(W) then 
+span=null(n,0) in
+for i:#all do 
+ let (,,T,,,V_mod_X)=all[i] then 
+  TV=T*V_mod_X in
+  span:=span##TV;prints(i, " ", rank(TV), " ", rank(span)) od;(Kbasis,LKbasis,span)
+}
+
+{display result of compute_L_cap_K_X(d)}
+set display(KNilpotentData d,[([Param],[K_Type],mat,mat,mat,mat)] all) =void:
+let data=["#","closure","V/X","Y","Y+T(V/X)"]#
+for i:#all do 
+ let (,,T,Y,,V_mod_X)=all[i] then 
+Y_plus_V_mod_X=Y##(T*V_mod_X) in
+[i.to_string,
+ d.closures[i].to_string,
+ rank(T*V_mod_X).to_string,
+ rank(Y).to_string,
+ rank(Y##(T*V_mod_X)).to_string] od in 
+prints(new_line,"dimension of space of K-types:", #K_basis(d));
+let (,,A)=matrix_of_Phi(d) in prints("dimension of image(Phi): ", rank(A));
+prints("Sum of dimensions of V/X:", sum(for (,,,,,V_mod_X) in all do rank(V_mod_X) od ),new_line);
+tabulate(data,"lllll",1, " ")
+
+{compute_L_cap_K_X with more output}
+{set compute_L_cap_K_X_long(KNilpotentData d,[int] orbits)=void:display(d,compute_L_cap_K_X(d,orbits))}
+set compute_L_cap_K_X_long(KNilpotentData d)=void:display(d,compute_L_cap_K_X(d))
+
+{[int] v is coefficients of [Param] params, return [v[i]*params[i]] (only non-zero terms)}
+set express([int] v,[Param] params)=
+assert(#v=#params,"size mismatch");
+##for i:#v do if v[i]!=0 then [v[i]*params[i]] else [] fi od 
+
+{auxiliary routine, given closure relations [[closures]] for a 
+set of orbits, and a subset of the orbits, return the closure relation
+restricted to the subset}
+set recalculate_closures([int] orbits,[[int]] closures)=
+for i in orbits do 
+##for j in closures[i] do 
+  let f=find(orbits,j) in 
+   if f !=-1 then [f] else [] fi od od 
+
+
+
+
+
+set actual_real_nilpotent_orbits([RealNilpotentOrbit] p_orbits,[[int]] p_closures, int bound, ratvec v)=
+let d=populate(bound,p_orbits,p_closures,v) then
+rv =
+if compute_verbose then prints("computed Knilpotent data") fi;
+for i:#p_orbits do let (,,,valid)=in_span(image_Phi_boundary(d,i),functions_on_real_orbit(p_orbits[i])) in valid od then
+actual_orbit_numbers=##for a@i in rv {#[bool] is #trues, not length of array}
+do if  not rv[i] then [i] else [] fi od then
+closures=
+{for i in actual_orbit_numbers do 
+ ##for j in p_closures[i] do 
+  let f=find(actual_orbit_numbers,j) in 
+   if f !=-1 then [f] else [] fi od od in }
+recalculate_closures(actual_orbit_numbers,p_closures) in
+prints(new_line,"Orbits:");
+for i in actual_orbit_numbers do prints(p_orbits[i]) od;
+prints("Closure relations:");
+for a in closures do prints(a) od;
+(for i in actual_orbit_numbers do  p_orbits[i] od,closures)
+
+set actual_real_nilpotent_orbits(RealForm G, int bound, ratvec v)=
+let (p_orbits,p_closures)=potential_real_nilpotent_orbits_and_closures(G) in
+if compute_verbose then
+  prints("potential _orbits:");
+  for O in p_orbits do prints(O) od;
+  prints("closures:");
+  for a in p_closures do prints(a) od fi;
+  actual_real_nilpotent_orbits(p_orbits,p_closures,bound,v)
+
+set actual_real_nilpotent_orbits(RealForm G, int bound)=
+actual_real_nilpotent_orbits(G,bound,rho_check(G))
+
+{for testing only}
+{set fake=[false,true,false,false,true,true,false,true,false,false,false,false,true,true,true,false,false,false,true]
+set test_actual_real_nilpotent_orbits([RealNilpotentOrbit] p_orbits,[[int]] p_closures, int bound, ratvec v)=
+let d=populate(bound,p_orbits,p_closures,v) then
+rv =
+if compute_verbose then prints("computed Knilpotent data") fi;
+{
+for i:#p_orbits do let (,,,valid)=in_span(image_Phi_boundary(d,i),functions_on_real_orbit(p_orbits[i])) in valid od
+}
+for i:#p_orbits do fake[i] od 
+then
+()=prints("rv=",rv) then
+actual_orbit_numbers=##for a@i in rv {#[bool] is #trues, not length of array}
+do if  not rv[i] then [i] else [] fi od
+then
+closures=
+for i in actual_orbit_numbers do 
+ ##for j in p_closures[i] do 
+  let f=find(actual_orbit_numbers,j) in 
+   if f !=-1 then [f] else [] fi od od in 
+prints(new_line,"Orbits:");
+for i in actual_orbit_numbers do prints(p_orbits[i]) od;
+prints("Closure relations:");
+for a in closures do prints(a) od;
+(for i in actual_orbit_numbers do  p_orbits[i] od,closures)
+}
+set subset(KNilpotentData d, [int] orbits)=KNilpotentData:
+let (all_orbits,closures,pairs)=d then
+new_orbits=for i in orbits do all_orbits[i] od then
+new_pairs =for i in orbits do pairs[i] od then
+{recalculate closures}
+new_closures = recalculate_closures(orbits,closures) 
+in (new_orbits,new_closures,new_pairs)
+
+
+
+{run over a subset of the orbits and compute_L_cap_K_X(d,orbit)}
+{useful if running over all orbits is slow, but information from
+some of the orbits is desired
+[int] orbits should be closed under the closure operation, and 
+almost certainly should be of the form [0,1,...,k]
+}
+set compute_L_cap_K_X(KNilpotentData d,[int] orbits)=compute_L_cap_K_X(subset(d,orbits))
+set compute_L_cap_K_X_long(KNilpotentData d,[int] orbits)=compute_L_cap_K_X_long(subset(d,orbits))
