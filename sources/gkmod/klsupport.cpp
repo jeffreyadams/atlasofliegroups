@@ -70,9 +70,9 @@ void KLSupport::swap(KLSupport& other)
 
 /******** accessors **********************************************************/
 
-/*!
-  \brief: Flags in b those block elements which are extremal w.r.t. the
-  simple reflections in d.
+/*
+  Flag in b those block elements which are extremal w.r.t. the simple
+  reflections in d.
 
   Preconditions: the capacity of b is the size(); d contains rank() flags;
 
@@ -92,8 +92,8 @@ void KLSupport::filter_extremal(BitMap& b, const RankFlags& d)
 
 
 /*
-  \brief Primitivizes b w.r.t. the values whose descent set is d, i.e.,
-  throws out from b the non-primitive elements with respect to d
+  Primitivize b w.r.t. the values whose descent set is d, i.e.,
+  throw out from b the non-primitive elements with respect to d
 
   Preconditions: the capacity of b is the size(); d contains rank() flags;
 
@@ -144,9 +144,7 @@ BlockElt
 
 /******** manipulators *******************************************************/
 
-/*
-  \brief Fills the lengthLess table, and the downsets
-*/
+// Fill the |lengthLess| table, and the downsets
 void KLSupport::fill()
 {
   if (d_state.test(Filled)) // do nothing
@@ -167,8 +165,8 @@ void KLSupport::fill()
 }
 
 
-/*!\brief
-  Fills in the |downset|, |primset|, |descents| and |goodAscent| bitmap/set
+/*
+  Fill in the |downset|, |primset|, |descents| and |goodAscent| bitmap/set
   vectors. Here |downset| and |primset| are vectors indexed by a simple
   reflection |s|, and giving a bitmap over all block elements, while
   |descents| and |goodAscent| are vectors indexed by a block element |z| and
@@ -240,7 +238,7 @@ void KLSupport::fillDownsets()
 namespace {
 
 /*
-  \brief Makes ll into a vector of size max(lengths(b))+2 such that for
+  Make ll into a vector of size max(lengths(b))+2 such that for
   0<=l<=max(lengths(b))+1, the element ll[l] is the first BlockElt of length
   at least l in b (or b.size() if there are none, as for l=max(lengths(b))+1)
   In other words, as a number ll[l] counts the elements in b of length < l.
@@ -250,7 +248,7 @@ namespace {
 void fillLengthLess
   (std::vector<BlockElt>& ll, const Block_base& b)
 {
-  ll.clear(); ll.resize(b.length(b.size()-1)+2);
+  ll.clear(); ll.resize(b.size()==0 ? 2 : b.length(b.size()-1)+2);
 
   ll[0]=0; // no elements of length<0
   size_t l=0;

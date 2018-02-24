@@ -116,7 +116,9 @@ class KLContext
   void fill(BlockElt y, bool verbose=false);
 
   void fill(bool verbose=false)
-  { fill(size()-1,verbose); } // simulate forbidden first default argument
+  { if (size()>0)
+     fill(size()-1,verbose); // simulate forbidden first default argument
+  }
 
 
   // private methods used during construction

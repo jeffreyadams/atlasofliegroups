@@ -46,10 +46,10 @@ std::ostream& Block_base::print_to(std::ostream& strm,
 				   bool as_invol_expr) const
 {
   // compute maximal width of entry
-  int width = ioutils::digits(size()-1,10ul);
+  int width = ioutils::digits(size()==0 ? 0 : size()-1,10ul);
   int xwidth = ioutils::digits(max_x(),10ul);
   int ywidth = ioutils::digits(max_y(),10ul);
-  int lwidth = ioutils::digits(length(size()-1),10ul);
+  int lwidth = ioutils::digits(size()==0 ? 0 : length(size()-1),10ul);
 
   const int pad = 2;
 
@@ -278,11 +278,13 @@ std::ostream& printBlockU(std::ostream& strm, const Block& block)
   using namespace prettyprint;
 
   // compute maximal width of entry
-  int width = ioutils::digits(block.size()-1,10ul);
+  int width = ioutils::digits(block.size()==0 ? 0 : block.size()-1,10ul);
   int xwidth = ioutils::digits(block.max_x(),10ul);
   int ywidth = ioutils::digits(block.max_y(),10ul);
-  int lwidth = ioutils::digits(block.length(block.size()-1),10ul);
-  int cwidth = ioutils::digits(block.Cartan_class(block.size()-1),10ul);
+  int lwidth = ioutils::digits(
+        block.size()==0 ? 0 : block.length(block.size()-1),10ul);
+  int cwidth = ioutils::digits(
+        block.size()==0 ? 0 : block.Cartan_class(block.size()-1),10ul);
   const int pad = 2;
 
   for (size_t j = 0; j < block.size(); ++j)
