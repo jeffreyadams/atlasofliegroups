@@ -38,6 +38,7 @@ namespace commands {
   const StandardRepr& currentStandardRepr();
   void ensure_full_block();
   kl::KLContext& current_param_KL();
+  const wgraph::WGraph& current_param_WGraph();
 } // |namespace reprmode|
 
 } // |namespace atlas|

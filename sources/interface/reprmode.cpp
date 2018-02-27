@@ -83,8 +83,8 @@ namespace commands {
   BlockElt entry_z = UndefBlock;
   SubSystemWithGroup* sub=nullptr;
   StandardRepr* sr=nullptr;
-  param_block* block_pointer=nullptr; // block contains |KLContext| pointer
-  wgraph::WGraph* WGr_pointer=nullptr;
+  param_block* param_block_pointer=nullptr; // block gives access to |KLContext|
+  wgraph::WGraph* param_WGr_pointer=nullptr;
 
 
 /*****************************************************************************
@@ -131,12 +131,12 @@ param_block& current_param_block()
 {
   if (state==noblock) // we have entered reprmode without setting block
   {
-    block_pointer = // partial block default
+    param_block_pointer = // partial block default
       new param_block(currentRepTable(),*sr);
     state=partial_block;
-    entry_z = block_pointer->size()-1;
+    entry_z = param_block_pointer->size()-1;
   }
-  return *block_pointer;
+  return *param_block_pointer;
 }
 
 const SubSystemWithGroup& currentSubSystem() { return *sub; }
@@ -146,6 +146,26 @@ const StandardRepr& currentStandardRepr() { return *sr; }
 kl::KLContext& current_param_KL()
 {
   return current_param_block().klc(current_param_block().size()-1,true);
+}
+
+void ensure_full_block()
+{
+  if (state!=nblock)
+  {
+    delete param_block_pointer; // destroy installed block first
+    param_block_pointer =
+      new param_block(currentRepContext(),currentStandardRepr(),entry_z);
+    state=nblock;
+  }
+}
+
+const wgraph::WGraph& current_param_WGraph()
+{ if (param_WGr_pointer==nullptr)
+  { ensure_full_block();
+    const kl::KLContext& c=current_param_KL();
+    param_WGr_pointer=new wgraph::WGraph(kl::wGraph(c));
+  }
+  return *param_WGr_pointer;
 }
 
 /****************************************************************************
@@ -235,8 +255,8 @@ void repr_f()
     sr = new
       StandardRepr(currentRepContext().sr(x,lambda_rho,gamma));
     state = noblock;
-    delete block_pointer; block_pointer=nullptr;
-    delete WGr_pointer; WGr_pointer=nullptr;
+    delete param_block_pointer; param_block_pointer=nullptr;
+    delete param_WGr_pointer; param_WGr_pointer=nullptr;
     drop_to(repr_mode); // exit from (hypothetical) descendant modes
   }
   catch (error::InputError& e)
@@ -251,8 +271,8 @@ void repr_mode_exit()
 {
   state=noblock;
   delete sr; sr=nullptr;
-  delete block_pointer; block_pointer=nullptr;
-  delete WGr_pointer; WGr_pointer=nullptr;
+  delete param_block_pointer; param_block_pointer=nullptr;
+  delete param_WGr_pointer; param_WGr_pointer=nullptr;
 }
 
 
@@ -267,36 +287,17 @@ void repr_mode_exit()
 
 void nblock_f()
 {
-  if (state!=nblock)
-  {
-    delete WGr_pointer; WGr_pointer=nullptr;
-    delete block_pointer; // destroy installed block first
-    block_pointer =
-      new param_block(currentRepContext(),currentStandardRepr(),entry_z);
-    state=nblock;
-  }
+  ensure_full_block();
   block_f();
 } // |nblock_f|
-
-void ensure_full_block()
-{
-  if (state!=nblock)
-  {
-    delete WGr_pointer; WGr_pointer=nullptr;
-    delete block_pointer; // destroy installed block first
-    block_pointer =
-      new param_block(currentRepContext(),currentStandardRepr(),entry_z);
-    state=nblock;
-  }
-}
 
 void partial_block_f()
 {
   if (state!=partial_block)
   {
-    delete WGr_pointer; WGr_pointer=nullptr;
-    delete block_pointer; // destroy installed block first
-    block_pointer =
+    delete param_WGr_pointer; param_WGr_pointer=nullptr;
+    delete param_block_pointer; // destroy installed block first
+    param_block_pointer =
       new param_block(currentRepContext(),currentStandardRepr());
     state=partial_block;
     entry_z = current_param_block().size()-1;
@@ -517,14 +518,14 @@ void klwrite_f()
 // Print the W-graph corresponding to a block.
 void wgraph_f()
 {
-  const wgraph::WGraph& wg = currentWGraph();
+  const wgraph::WGraph& wg = current_param_WGraph();
   ioutils::OutputFile file; wgraph_io::printWGraph(file,wg);
 }
 
 // Print the cells of the W-graph of the block.
 void wcells_f()
 {
-  const wgraph::WGraph& wg = currentWGraph();
+  const wgraph::WGraph& wg = current_param_WGraph();
   wgraph::DecomposedWGraph dg(wg);
 
   ioutils::OutputFile file; wgraph_io::printWDecomposition(file,dg);
