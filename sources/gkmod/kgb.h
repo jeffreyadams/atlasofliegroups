@@ -1,8 +1,3 @@
-/*!
-\file
-\brief Class definition and function declarations for the class KGB
-representing orbits of K on G/B.
-*/
 /*
   This is kgb.h
 
@@ -11,6 +6,11 @@ representing orbits of K on G/B.
   part of the Atlas of Lie Groups and Representations
 
   For license information see the LICENSE file
+*/
+
+/*
+  Class definition and function declarations for the class KGB representing
+  orbits of K on G/B.
 */
 
 #ifndef KGB_H  /* guard against multiple inclusions */
@@ -89,7 +89,7 @@ class KGB_base
   std::vector<InvolutionNbr> inv_nrs; // |inv_index| means index into |inv_nrs|
   std::vector<inv_index> inv_loc; // parital inverse, indexed |InvolutionNbr|
 
-  //!\brief to help find range of elements with fixed twisted involution
+  // to help find range of elements with fixed twisted involution
   std::vector<KGBElt> first_of_tau; // size: |numInvolutions()+1|
 
 
@@ -300,14 +300,14 @@ class KGB : public KGB_base
   std::vector<TorusPart> left_torus_part; // of size |size()|
   BitSet<NumStates> d_state;
 
-/*! \brief Owned pointer to the Bruhat order on KGB (or NULL).
+/* Owned pointer to the Bruhat order on KGB (or NULL).
 
-The class BruhatOrder contains a Poset describing the full partial order,
-and in addition the Hasse diagram (set of all covering relations).
+   The class BruhatOrder contains a Poset describing the full partial order,
+   and in addition the Hasse diagram (set of all covering relations).
 */
   BruhatOrder* d_bruhat;
 
-  //! \brief Owned pointer to the based Tits group.
+  // Owned pointer to the based Tits group.
   TitsCoset* d_base; // pointer, because constructed late by constructor
 
  public:

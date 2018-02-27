@@ -503,7 +503,7 @@ KGB::KGB(RealReductiveGroup& G,
   const Cartan_orbits& i_tab = ic.involution_table();
 
   for (auto it=Cartan_classes.begin(); it(); ++it)
-    G.innerClass().generate_Cartan_orbit(*it);
+    G.innerClass().generate_Cartan_orbit(*it); // cannot use |ic|: it is |const|
 
   tits::TE_Entry::Pooltype elt_pool; // of size |size()|
   HashTable<tits::TE_Entry,KGBElt> elt_hash(elt_pool);
@@ -707,7 +707,7 @@ bool KGB::is_dual_twist_stable
     rw += rd.fundamental_coweight(weylGroup().Chevalley_dual(*it));
   }
   // before requiring integrality, we need to mod out by equivalence
-  int_Matrix A = G.innerClass().distinguished();
+  int_Matrix A = G.innerClass().distinguished(); // |G.innerClass()| is not |ic|
   A.transpose() += 1;
   int_Matrix projector = lattice::row_saturate(A);
   projector.apply_to(rw.numerator()); // this may change the size of |rw|

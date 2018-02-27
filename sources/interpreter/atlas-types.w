@@ -3937,9 +3937,17 @@ to them.
 @ Like other data types we have seen, we include shared pointers to parent
 objects to ensure these remain in existence as long as our block does; in fact
 we include two such shared pointers, one for each real form. The |val| field
-contains an actual |Block| instance, which is constructed van the |Block_Value|
-is. We also reserve a field in the structure to store KL polynomials, though
-they will only be computed once they are asked for.
+contains an actual |Block| instance, which is constructed when the |Block_value|
+is. We also reserve a field |klc| in the structure to store KL polynomials,
+though they will only be computed once they are asked for.
+
+The constructor for |Block_value| should avoid calling the version of the
+|Block::build| method that takes real form and deal real form numbers (as we
+originally did here), as this will generate small versions of the KGB sets,
+which changes the numbering and causes inconsistencies when KGB elements are
+extracted from block elements. Instead we call the |build| method that accepts a
+pair of |RealReductiveGroup| arguments, so that the generated block will be
+exactly a classical one.
 
 @< Type definitions @>=
 struct Block_value : public value_base
@@ -3947,7 +3955,12 @@ struct Block_value : public value_base
   mutable Block val; // Bruhat order may be generated implicitly
   mutable kl::KLContext klc; // as may KLV polynomials
 @)
-  Block_value(const shared_real_form& form, const shared_real_form& dual_form);
+  Block_value(const shared_real_form& form,
+              const shared_real_form& dual_form)
+  : rf(form), dual_rf(dual_form)
+  , val(Block::build(rf->val,dual_rf->val))
+  , klc(val)
+  {}
   ~Block_value() @+{}
 @)
   virtual void print(std::ostream& out) const;
@@ -3959,32 +3972,12 @@ typedef std::unique_ptr<Block_value> Block_ptr;
 typedef std::shared_ptr<const Block_value> shared_Block;
 typedef std::shared_ptr<Block_value> own_Block;
 
-@ The constructor for |Block_value| is relatively elaborate, so we lift it out
-of the class declaration. One should avoid calling the version of the |build|
-method that takes real form and deal real form numbers (as we originally did
-here), as this will generate small versions of the KGB sets, which changes the
-numbering and causes inconsistencies when KGB elements are extracted from
-block elements. Instead we call the |build| method that accepts a pair of
-|RealReductiveGroup| arguments, so that the generated block will be exactly a
-classical one. Finally we associate the |klc| field with this block, but this
-does not yet do much computation.
-
-@< Function def...@>=
-  Block_value::Block_value(const shared_real_form& form,
-                          const shared_real_form& dual_form)
-  : rf(form), dual_rf(dual_form)
-  , val(Block::build(rf->val,dual_rf->val))
-  , klc(val)
-  {}
-
-
 @ When printing a block, we print its size; we shall later provide a separate
 print function that tabulates its individual elements.
 
 @< Function def...@>=
 void Block_value::print(std::ostream& out) const
-@+{@; out << "Block of " << val.size() << " elements";
-}
+{@; out << "Block of " << val.size() << " elements"; }
 
 @ To make a block, one provides a |real_form_value| and a |dual_real_form|.
 This function is named in a tribute to the creator of the Atlas software, and
@@ -4003,10 +3996,6 @@ void Fokko_block_wrapper(expression_base::level l)
     throw runtime_error @|
     ("Inner class mismatch between real form and dual real form");
 @.Inner class mismatch...@>
-  BitMap b(rf->val.innerClass().dual_Cartan_set(drf->val.realForm()));
-  if (not b.isMember(rf->val.mostSplit()))
-    throw runtime_error("Real form and dual real form are incompatible");
-@.Real form and dual...@>
   if (l!=expression_base::no_value)
     push_value(std::make_shared<Block_value>(rf,drf));
 }
@@ -4808,8 +4797,8 @@ for (auto it=klc.polStore().begin(); it!=klc.polStore().end(); ++it)
 calling the pseudo constructor |blocks::Bare_block::dual| to transform |block|
 into its dual (represented as just a |blocks::Bare_block| which is sufficient)
 before invoking the KL computations. The block is reversed with respect to
-|block|, so for proper interpretation we reverse the list of
-parameters returned, and this that several other result components have to be
+|block|, so for proper interpretation we reverse the list of parameters
+returned, and this means that several other result components have to be
 transformed as well. On the dual side there should be no condensing of the
 polynomial matrix on the ``survivor'' elements, rather just an extraction of a
 submatrix of polynomials at the corresponding indices; therefore we leave out
@@ -4824,11 +4813,11 @@ void dual_KL_block_wrapper(expression_base::level l)
 @)
   BlockElt start; // will hold index in the block of the initial element
   param_block block(p->rc(),p->val,start);
-  auto size1 = block.size()-1;
+  const auto size1 = block.size()-1;
   @< Push a reversed list of parameter values for the elements of |block| @>
   push_value(std::make_shared<int_value>(size1-start));
   auto dual_block = blocks::Bare_block::dual(block);
-  const kl::KLContext& klc = dual_block.klc(block.size()-1,false);
+  const kl::KLContext& klc = dual_block.klc(size1,false);
 @)
   @< Extract from |klc| an |own_matrix M@;| and |own_row polys@;| @>
 @)
@@ -4950,6 +4939,72 @@ void partial_KL_block_wrapper(expression_base::level l)
   if (l==expression_base::single_value)
     wrap_tuple<6>();
 }
+
+@ Rather than exporting the detailed KL data, the following function computes
+the $W$-cells from the block of the parameter, and exports that.
+
+@< Local function def...@>=
+void param_W_cells_wrapper(expression_base::level l)
+{ shared_module_parameter p = get<module_parameter_value>();
+  test_standard(*p,"Cannot generate block");
+  if (l==expression_base::no_value)
+    return;
+@)
+  BlockElt start; // will hold index in the block of the initial element
+  param_block block(p->rc(),p->val,start);
+@)
+  const kl::KLContext& klc = block.klc(block.size()-1,false);
+   // this does the actual KL computation
+  wgraph::WGraph wg = kl::wGraph(klc);
+  wgraph::DecomposedWGraph dg(wg);
+@)
+  own_row cells=std::make_shared<row_value>(0);
+  cells->val.reserve(dg.cellCount());
+  for (unsigned int c = 0; c < dg.cellCount(); ++c)
+  { auto& wg=dg.cell(c); // local W-graph of cell
+    own_row members =std::make_shared<row_value>(0);
+    { const BlockEltList& mem=dg.cellMembers(c);
+        // list of members of strong component |c|
+      members->val.reserve(mem.size());
+      for (auto it=mem.begin(); it!=mem.end(); ++it)
+        members->val.push_back(std::make_shared<int_value>(*it));
+    }
+    own_row vertices=std::make_shared<row_value>(0);
+    @< Push to |vertices| a list of pairs for each element of |wg|, each
+       consisting of a descent set and a list of outgoing labelled edges @>
+    auto tup = std::make_shared<tuple_value>(2);
+    tup->val[0] = members;
+    tup->val[1] = vertices;
+    cells->val.push_back(std::move(tup));
+  }
+  push_value(std::move(cells));
+}
+
+@ The following code was isolated so that it can be reused below.
+
+@< Push to |vertices| a list of pairs for each element of |wg|, each
+   consisting of a descent set and a list of outgoing labelled edges @>=
+vertices->val.reserve(wg.size());
+for (unsigned int i = 0; i < wg.size(); ++i)
+{ auto ds = wg.descent_set(i);
+  own_row descents=std::make_shared<row_value>(0);
+  descents->val.reserve(ds.count());
+  for (auto it=ds.begin(); it(); ++it)
+    descents->val.push_back(std::make_shared<int_value>(*it));
+  own_row out_edges = std::make_shared<row_value>(0);
+  out_edges->val.reserve(wg.degree(i));
+  for (unsigned j=0; j<wg.degree(i); ++j)
+  { auto tup = std::make_shared<tuple_value>(2);
+    tup->val[0] = std::make_shared<int_value>(wg.edge_target(i,j));
+    tup->val[1] = std::make_shared<int_value>(wg.coefficient(i,j));
+  @/out_edges->val.push_back(tup);
+  }
+  auto tup = std::make_shared<tuple_value>(2);
+  tup->val[0] = descents;
+  tup->val[1] = out_edges;
+  vertices->val.push_back(std::move(tup));
+}
+
 
 @ The function |extended_block| intends to make computation of extended
 blocks available in \.{atlas}.
@@ -5097,6 +5152,8 @@ install_function(dual_KL_block_wrapper,@|"dual_KL_block"
                 ,"(Param->[Param],int,mat,[vec],vec,vec)");
 install_function(partial_KL_block_wrapper,@|"partial_KL_block"
                 ,"(Param->[Param],mat,[vec],vec,vec,mat)");
+install_function(param_W_cells_wrapper,@|"W_cells"
+                ,"(Param->[[int],[[int],[int,int]]])");
 install_function(extended_block_wrapper,@|"extended_block"
                 ,"(Param,mat->[Param],mat,mat,mat)");
 install_function(extended_KL_block_wrapper,@|"extended_KL_block"
@@ -6164,7 +6221,8 @@ void raw_KL_wrapper (expression_base::level l)
     polys->val.emplace_back(std::make_shared<vector_value> @|
        (std::vector<int>(it->begin(),it->end())));
 @)
-  std::vector<int> length_stops(block.length(block.size()-1)+2);
+  std::vector<int> length_stops
+    (block.size()==0 ? 2 :block.length(block.size()-1)+2);
   length_stops[0]=0;
   for (unsigned int i=1; i<length_stops.size(); ++i)
     length_stops[i]=block.length_first(i);
@@ -6202,7 +6260,8 @@ void raw_dual_KL_wrapper (expression_base::level l)
     polys->val.emplace_back(std::make_shared<vector_value> @|
        (std::vector<int>(it->begin(),it->end())));
 @)
-  std::vector<int> length_stops(block.length(block.size()-1)+2);
+  std::vector<int> length_stops
+    (block.size()==0 ? 2 :block.length(block.size()-1)+2);
   length_stops[0]=0;
   for (unsigned int i=1; i<length_stops.size(); ++i)
     length_stops[i]=block.length_first(i);
@@ -6293,33 +6352,8 @@ void W_graph_wrapper(expression_base::level l)
   push_value(std::move(vertices));
 }
 
-@ The following code was isolated so that it can be reused below.
-
-@< Push to |vertices| a list of pairs for each element of |wg|, each
-   consisting of a descent set and a list of outgoing labelled edges @>=
-vertices->val.reserve(wg.size());
-for (unsigned int i = 0; i < wg.size(); ++i)
-{ auto ds = wg.descent_set(i);
-  own_row descents=std::make_shared<row_value>(0);
-  descents->val.reserve(ds.count());
-  for (auto it=ds.begin(); it(); ++it)
-    descents->val.push_back(std::make_shared<int_value>(*it));
-  own_row out_edges = std::make_shared<row_value>(0);
-  out_edges->val.reserve(wg.degree(i));
-  for (unsigned j=0; j<wg.degree(i); ++j)
-  { auto tup = std::make_shared<tuple_value>(2);
-    tup->val[0] = std::make_shared<int_value>(wg.edge_target(i,j));
-    tup->val[1] = std::make_shared<int_value>(wg.coefficient(i,j));
-  @/out_edges->val.push_back(tup);
-  }
-  auto tup = std::make_shared<tuple_value>(2);
-  tup->val[0] = descents;
-  tup->val[1] = out_edges;
-  vertices->val.push_back(std::move(tup));
-}
-
-@ Outputting |W_cells| as row of vectors; (this function was originally
-contributed by Jeff Adams).
+@ This function computes |W_cells| for a block, as list of nested integer
+structures.
 
 @< Local function def...@>=
 void W_cells_wrapper(expression_base::level l)

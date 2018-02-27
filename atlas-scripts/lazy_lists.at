@@ -64,7 +64,7 @@ set rec_fun memoize (inf_list L) = inf_list:
 set fibonacci = inf_list:
   let fibo () = inf_node:die { stub, which next |memoize| doesn't call yet }
   in fibo := memoize(@:(0,@:(1,sum(fibo,shift(1)(fibo)))))
-{ Note that leaving out |memoize| woudl be possible here, but makes the runtime
+{ Note that leaving out |memoize| would be possible here, but makes the runtime
   increase exponentially with the list length because of repeated evaluations of
   the same list elements. That inefficient version would also be obtained by
   | set rec_fun fibonacci () = inf_node:(0,@:(1,sum(fibo,shift(1)(fibo))))) |

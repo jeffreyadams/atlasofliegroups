@@ -38,7 +38,7 @@ set first ([bool] p) = int:
   for x@i in p do if x then return i fi od; minus_1
 set last ([bool] p) = int:
   let i=#p-1 in while >=i and not p[i] do i-:=1 od; i
-set # ([bool] p) = int: { count (sum) number of truths in list }
+set count ([bool] p) = int: { count (sum) number of truths in list }
   let c=0 in for b in p do if b then c+:=1 fi od; c
 
 set all (int limit,(int->bool) predicate) = bool:
@@ -1087,6 +1087,9 @@ set real_forms (InnerClass ic)= [RealForm]:
   real_forms(fundamental_Cartan(ic))
 set dual_real_forms (InnerClass ic) = [RealForm]:
   dual_real_forms(most_split_Cartan(ic))
+
+set dual_real_forms (RealForm G) = [RealForm]:
+  dual_real_forms(most_split_Cartan(G))
 
 set is_quasisplit (RealForm G) = bool: form_number(G)=nr_of_real_forms(G)-1
 set is_quasicompact (RealForm G) = bool: form_number(G)=0

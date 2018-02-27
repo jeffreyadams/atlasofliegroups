@@ -459,14 +459,14 @@ set support_alt(KGBElt x)=[int]:
 set random=[31220,11647,37379,76487,42281,99983,92672,35013,50289,79830,47810,82416,92150,84570,70610,35366,44981,21161,42049,94355,96801,10070,71505,21696,42096,7832,75988,26509,62156,67549,67781,54376,72296,43134,4383,66728,64236,65212,24116,12466,13033,85636,71449,80515,11480,88335,39381,66618,35975,10896,5825,95823,18001,63961,14564,44737,3903,51896,99125,74288,88299,14793,26802,44113]
 
 {.find lambda so L=L(lambda)={alpha| <lambda,alpha^vee>=0}.}
-set findlambda(RootDatum rd, RootDatum L)=
+set findlambda (RootDatum rd, RootDatum L) = vec:
    let k=kernel(^simple_coroots(L)) { generators intersection hyperplanes of L }
    in k* random[:n_columns(k)] { weight hopefully not on any other hyperplanes }
 
-{coset representative for W(rd)/W(rd_L)
- if L=L(lambda) the W-orbit of lambda is in bijection with this quotient}
-set coset_reps(RootDatum rd,RootDatum rd_L)=
-let lambda=findlambda(rd,rd_L) in let (elts,)=generate_from(rd,lambda) in elts
+{ coset representatives for W(rd)/W(rd_L); with L non standard Levi subsystem.
+  If L=L(lambda) the W-orbit of lambda is in bijection with this quotient}
+set coset_reps (RootDatum rd, RootDatum rd_L) = [WeylElt]:
+  let lambda=findlambda(rd,rd_L) in let (,elts)=generate_from(rd,lambda) in elts
 
 {test the coset_reps function}
 {set test_coset_reps(RootDatum rd,RootDatum rd_L)=
