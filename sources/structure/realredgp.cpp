@@ -113,6 +113,10 @@ void RealReductiveGroup::swap(RealReductiveGroup& other)
   assert(&d_innerClass==&other.d_innerClass); // cannot swap references
   std::swap(d_realForm,other.d_realForm);
   dual_pi0_gens.swap(other.dual_pi0_gens);
+
+  std::swap(square_class_cocharacter,other.square_class_cocharacter);
+  std::swap(torus_part_x0,other.torus_part_x0);
+
   std::swap(d_Tg,other.d_Tg);
   std::swap(kgb_ptr,other.kgb_ptr);
   std::swap(dual_kgb_ptr,other.dual_kgb_ptr);
