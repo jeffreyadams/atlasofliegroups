@@ -22,6 +22,12 @@ ones : rec_fun me () inf_node: (1,me)
 set initial (int n) = (inf_list->[int]):
   (inf_list f) [int]: for :n do let (head,tail)=f() in head next f:=tail od
 
+
+set rec_fun extend_0 ([int] pol) = inf_list:
+  @: (if =#pol then 0 else pol[0] fi,extend_0(pol[1:]))
+
+one : inf_list: [1].extend_0
+
 { drop |n| initial terms, and return remaining infinite list }
 set shift (int n) = (inf_list->inf_list):
   (inf_list L) inf_list: for :n do set(,L):=L() od; L
@@ -32,10 +38,6 @@ set arithmetic_progression (int stride) = rec_fun f (int start) inf_list:
 
 set geometric_progression (int lambda) = rec_fun f (int start) inf_list:
   @: (start,f(start*lambda))
-
-{ lazy sum of two infinite lists }
-set rec_fun sum (inf_list f, inf_list g) = inf_list:
-  @: let (x,ff)=f(), (y,gg)=g() in (x+y,sum(ff,gg))
 
 { it can be important, especially in recursive definitions, to avoid evaluating
   the thunk defining an infinite list mora than once, but instead store the
@@ -54,13 +56,46 @@ set rec_fun memoize (inf_list L) = inf_list:
      | stored(node): node
      esac
 
+{ lazy sum of two infinite lists }
+set rec_fun sum (inf_list f, inf_list g) = inf_list:
+  @: let (x,ff)=f(), (y,gg)=g() in (x+y,sum(ff,gg))
+
+set scale_list_by (int a) = (inf_list->inf_list):
+  rec_fun a_times (inf_list f) inf_list: @: let (x,ff)=f() in (a*x,a_times(ff))
+
+set multiply (inf_list f) = (inf_list->inf_list):
+  let (x,tail)=f() then ff=memoize(tail) in
+  rec_fun f_times (inf_list g) inf_list:
+  @: let (y,gg)=g() in (x*y, sum(scale_list_by(y)(ff),f_times(gg)))
+
+set divide_by ([int] pol) = (inf_list->inf_list): assert(#pol>1 and pol[0]=1);
+  pol:=pol[1:]; { forget leading coefficient 1 }
+  let !d=#pol { degree } in
+  (inf_list g) inf_list:
+  (for :d+1 do 0 od,g).
+  (rec_fun f ([int] carry,inf_list g) inf_list:
+   @: let (y,gg)=g() then lc= y+carry[0] in
+      (lc,f(for c@i in pol do carry[i+1]-lc*c od # 0,gg))
+  )
+
+set divide_by (inf_list f) = (inf_list->inf_list):
+  let (head,tail)=f() then ff=memoize(tail) in
+  assert(head=1,"Can only invert series with constant term 1");
+  rec_fun divide (inf_list remainder) inf_list:
+  @: let (y,gg)=remainder() in (y, divide(sum(scale_list_by(-y)(ff),gg)))
+
+set inverse (inf_list f) = inf_list: divide_by(f)([1].extend_0)
+
 { Using |memoize| remains delicate, since it is most useful in recursion, but
   the |rec_fun| syntax does not allow anything coming before the arguments, as
   |rec_fun signs = inf_list: memoize(@:(1,@:(-1,signs)))| (NOT SYNTACTIC)
   while calling |memoize| inside the function body creates separate memo tables
   each time a call is done (even if it has the same arguments). The solution is
-  to tie the recursive knot by hand, rather than have |rec_fun| do it for us:
+  to tie the recursive knot by hand, rather than have |rec_fun| do it for us.
 }
+
+{ the Fibonacci sequence can be defined |divide_by([1,-1,-1],extend_0([0,1]))|,
+  however we now show how it can be defined in a directly recursive fashion }
 set fibonacci = inf_list:
   let fibo () = inf_node:die { stub, which next |memoize| doesn't call yet }
   in fibo := memoize(@:(0,@:(1,sum(fibo,shift(1)(fibo)))))
