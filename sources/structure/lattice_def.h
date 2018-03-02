@@ -13,6 +13,7 @@
 
 #include "matrix.h"
 #include "tags.h"
+#include "latticetypes.h"
 
 /*****************************************************************************
 
