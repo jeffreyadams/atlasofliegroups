@@ -1,12 +1,42 @@
 <basic.at
 <elliptic.at { for |elliptics_for_Levi@(RootDatum,[int])| }
 <sort.at { for sorting lists of posroot indices }
-<Weylgroup.at { for |order_W@RootDatum| }
+<Weylgroup.at { for |order_W@RootDatum|, |root_reflection@(RootDatum,vec)| }
 <W_orbit.at { for |W@RootDatum| }
 <cyclotomic.at { for |cyclotomic_factors| }
 <tabulate.at { for |tabulate| }
 
 { The purpose of this file is working with Weyl group characters }
+
+{ Preliminary: some transformations of presentation of a Levi system
+
+  A Levi system, not necessarily standard, can be defined either by the roots
+  forming a simple system for it (represented by their indices, usually within
+  |posroots(rd)|, tough the code can handle negative indices of negative roots),
+  or by a predicate selecting the indices of positive roots in the system.
+
+  The function |Levi_info| deduces the predicate from the simple system, or from
+  a Weyl group element $w$ (selecting coroots vanishing on $w$-fixed weights),
+  and |Levi_datum| builds the root datum for the subsystem, given the predicate.
+}
+
+{ select posroots indices for (non standard) Levi, given by its simple system }
+set Levi_info (RootDatum rd, [int] Levi) = (RootDatum,(int->bool)):
+   let orth=kernel(rd.rank ^ for i in Levi do coroot(rd,i) od) in
+   (rd,(int j) bool: =coroot(rd,j)*orth)
+
+{ the |select| predicate for the above functions to use for a given |w| }
+set Levi_info (WeylElt w) = (RootDatum,(int->bool)):
+   let orth=eigen_lattice(matrix(w),1), rd=w.root_datum in
+   (rd,(int i) bool: =coroot(rd,i)*orth)
+
+set Levi_datum (RootDatum rd, (int->bool) select {from posroot indices}) =
+      RootDatum:
+   root_datum(simple_system_from_positive
+      (columns_with(select,rd.posroots),columns_with(select,rd.poscoroots)) )
+
+set Levi_datum ((RootDatum,[int])pair) = RootDatum: pair.Levi_info.Levi_datum
+set Levi_datum (WeylElt w) = RootDatum: w.Levi_info.Levi_datum
 
 { A first task is to list the $W$ conjugacy classes.
 
@@ -32,6 +62,53 @@ set two_rho(RootDatum rd, (int->bool) select {from simple indices}) = vec:
   root_datum(columns_with(select,rd.simple_roots)
             ,columns_with(select,rd.simple_coroots)
             ).two_rho
+
+{ list of (w,L) where 2rho(L)=dominant(2rho(Levi)) and w*L = Levi }
+set rho_stabiliser_orbit (RootDatum rd, [int] Levi) = [WeylElt,[int]]:
+   let (w0,rho2_dom) = from_dominant(rd,two_rho(rd,is_member(Levi)))
+   then rho_stabiliser = Levi_datum(rd,(int i)bool: =coroot(rd,i)*rho2_dom)
+   then root_perm =
+      let ab (int i) = int: if i.< then -1-i else i fi { to positive index } in
+      for beta in rho_stabiliser.simple_roots
+      do for alpha in rd.posroots do root_index(rd,reflect(rd,beta,alpha)).ab od
+      od
+   then act(int i,[int] roots) = [int]:
+      let map = root_perm[i] in for j in roots do map[j] od.sort
+   , orbit = [(w0, for i in Levi do coroot_index(rd,coroot(rd,i)*w0) od)]
+   , current=0
+   in while current<#orbit
+      do let (w,L)=orbit[current] next current+:=1 in
+         for k:rho_stabiliser.semisimple_rank
+         do let M=act(k,L) in
+            if none(#orbit,(int i): let (,x)=orbit[i] in x=M)
+            then orbit #:=
+              (w*root_reflection(rd,rho_stabiliser.simple_roots[k]),M)
+            fi
+         od
+      od; orbit
+
+set_type standard_Levi_data = (vec two_rho, [WeylElt,[int]] stab_orbit)
+
+{ group together conjugate standard Levis, with witness conjugating to first }
+set classify_standard_Levis (RootDatum rd) = [[ WeylElt,[int] ]]:
+   let classify_group ([[int]] list) = [[ WeylElt,[int] ]]:
+      let table=[standard_Levi_data]: [], result=[[ WeylElt,[int] ]]: [] in
+      for Levi in list
+      do let (w0,rho2_dom)=from_dominant(rd,two_rho(rd,is_member(Levi)))
+         then i = first(#table,(int i)bool: table[i].two_rho=rho2_dom)
+      in if i.< { is this a previously unseen |rho2_dom| value }
+         then table #:= (rho2_dom,rho_stabiliser_orbit(rd,Levi))
+         ;  result #:= [(id_W(rd),Levi)]
+         else { |rho2_dom| value already seen, and tabulated in |table[i]| }
+            let orbit=table[i].stab_orbit
+            , L = for gen in Levi do coroot_index(rd,coroot(rd,gen)*w0) od.sort
+            then pos = first(#orbit,(int i)bool: let (,x)=orbit[i] in x=L)
+            in assert(pos.>=,"conjugate with dominant rho not found in orbit");
+               result[i] #:= (let(w,)=orbit[pos] in w*/w0,Levi)
+         fi
+     od; result
+  ,  r = rd.semisimple_rank
+  in for k:r+1 do classify_group(choices_from(#r,k)) od.##
 
 set standard_Levi_conjugacy_representatives (RootDatum rd) = [ [int] ]:
 begin
@@ -61,36 +138,6 @@ set conjugacy_class_reps (RootDatum rd) = [WeylElt]:
   od
 
 set conjugacy_classes = conjugacy_class_reps@RootDatum
-
-{ Intermezzo: some transformations of presentation of a Levi system
-
-  A Levi system, not necessarily standard, can be defined either by the roots
-  forming a simple system for it (represented by their indices, usually within
-  |posroots(rd)|, tough the code can handle negative indices of negative roots),
-  or by a predicate selecting the indices of positive roots in the system.
-
-  The function |Levi_info| deduces the predicate from the simple system, or from
-  a Weyl group element $w$ (selecting coroots vanishing on $w$-fixed weights),
-  and |Levi_datum| builds the root datum for the subsystem, given the predicate.
-}
-
-{ select posroots indices for (non standard) Levi, given by its simple system }
-set Levi_info (RootDatum rd, [int] Levi) = (RootDatum,(int->bool)):
-   let orth=kernel(rd.rank ^ for i in Levi do coroot(rd,i) od) in
-   (rd,(int j) bool: =coroot(rd,j)*orth)
-
-{ the |select| predicate for the above functions to use for a given |w| }
-set Levi_info (WeylElt w) = (RootDatum,(int->bool)):
-   let orth=eigen_lattice(matrix(w),1), rd=w.root_datum in
-   (rd,(int i) bool: =coroot(rd,i)*orth)
-
-set Levi_datum (RootDatum rd, (int->bool) select {from posroot indices}) =
-      RootDatum:
-   root_datum(simple_system_from_positive
-      (columns_with(select,rd.posroots),columns_with(select,rd.poscoroots)) )
-
-set Levi_datum ((RootDatum,[int])pair) = RootDatum: pair.Levi_info.Levi_datum
-set Levi_datum (WeylElt w) = RootDatum: w.Levi_info.Levi_datum
 
 {
   From $w$ we find the associated non-standard Levi subsystem, the minimal one

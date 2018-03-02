@@ -39,7 +39,7 @@ set image_subspace (mat M) = mat: { generators for $\Q$-span of image of |M| }
 set image_complement_basis (mat M) = mat:
    let (c,R)=adapted_direct_sum(M) in R[c:]
 
-set saturation = image_subspace@mat { intersetion of $\Z^n$ with $\Q$-span }
+set saturation = image_subspace@mat { intersection of $\Z^n$ with $\Q$-span }
 
 { a basis representing the quotient by sublattice spanned by columns of |M|;
   tests that this sublattice is a direct factor, and throws an error if not }
