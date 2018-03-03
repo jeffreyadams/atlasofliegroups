@@ -369,7 +369,7 @@ in_span(list,P)
 
 {returns [ (mu_L,extension) ], such that all terms in extension have K_norm <= bound }
 set Phi_upto(RealNilpotentOrbit O,int bound, ratvec v)=[(K_Type,ParamPol)]:
-let bound_L=2*bound {heuristic: seems to be big enough } then
+let bound_L=bound {heuristic: seems to be big enough } then
 (H,x)=O then
 G=real_form(x) then
 L=Levi_of_orbit(O) then

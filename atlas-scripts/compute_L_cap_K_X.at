@@ -359,9 +359,25 @@ let rv=null(#K_basis,0) in
 for v in M do 
  if K_norm(expand(v,K_basis,K_basis[0].real_form))<=bound then rv#:=v fi od;rv
 
-set run(KNilpotentData d,[int] orbitNumbers,[Param] K_basis, int bound)=
+{For i=0,...,bound, compute rank of kernel of ...: this gives the 
+dimension of the overlaps, which should be 0. Things are working if
+this returns many 0's, a few non-zeros at the end are ok}
+set test(KNilpotentData d,[int] orbitNumbers,[Param] K_basis, int bound)=
 let M=TVX_matrix(d,orbitNumbers,K_basis) in
 for i:bound do rank(kernel(truncate(M,K_basis,i))) od
+
+{same as previous, with pre-compute TVX_matrices for efficiency}
+{typical usage:
+ set d=populate(10,orbits,closures)
+ set basis=K_basis(d)
+ set t=TVX_matrices(d,#(#d.orbits),basis)
+ test(t,[0,1,2,3] {orbits you want to test}, basis, 10)
+}
+set test([mat] TVX_matrices,[int] orbitNumbers,[Param] K_basis, int bound)=
+let M=null(#K_basis,0) in
+ for i in orbitNumbers do M##:=TVX_matrices[i] od;
+for i:bound do rank(kernel(truncate(M,K_basis,i))) od
+
 
 
 {display result of compute_L_cap_K_X(d)}
