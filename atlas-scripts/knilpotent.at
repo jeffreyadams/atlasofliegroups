@@ -341,6 +341,9 @@ let sum=null_module(P) then
 v=vec:for p in basis do let c=split_as_int(P[p]) in  sum+:=c*p;c od in
 if sum=P then (true,v) else (false,vec:[]) fi 
 
+set vector([K_Type] basis,ParamPol P)=(bool,vec):
+vector(for mu in basis do parameter(mu) od,P)
+
 {given list=[P_1,...,P_n] of ParamPols
 test if P=\sum a_i P_i
 }

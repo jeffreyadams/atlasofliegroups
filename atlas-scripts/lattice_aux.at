@@ -1,0 +1,17 @@
+
+set intersection(mat A,mat B)=mat:
+assert(n_rows(A)=n_rows(B),"A and B must have same number of rows");
+let A1=image_lattice(A), B1=image_lattice(B) then
+N=kernel(A1##B1) then
+M=^((^N)[0:n_columns(A1)])  {first n rows of N, where n=#columns of A1}
+in A1*M
+
+set intersection([mat] A)=mat:let rv=A[0] in 
+for i:#A-1 do rv:=intersection(rv, A[i]) od;rv
+
+{basis of L/M, assuming free}
+set free_quotient_lattice_basis (mat L,mat M) = mat:
+let (J,)=weak_left_inverse(image_lattice(L)) in image_lattice(L)*free_quotient_lattice_basis(J*M)
+
+set saturation_quotient_basis(mat L,mat M)=mat:
+let (J,)=weak_left_inverse(image_lattice(L)) in image_lattice(L)*saturation_quotient_basis(J*M)
