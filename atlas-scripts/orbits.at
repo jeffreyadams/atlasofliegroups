@@ -1,0 +1,33 @@
+<W_characters.at
+
+set int_list (int n)=[int]: for i:n do i od
+
+set S_weight ([int] S, RootDatum rd)=ratvec: if ss_rank(rd)=0 then
+   for i:rank(rd) do 0 od
+   else let r=#simple_roots(rd)[0]
+   in let vecs=[ratvec]: for k in S do 2*fundamental_coweights(rd)[k] od
+   in sum(vecs,r) fi
+
+set H_candidates (RootDatum rd)=[ratvec]:
+   let result=[ratvec]:[] in for S in power_set(int_list(ss_rank(rd))) do
+   S_weight (S,rd) od
+
+set two_eigenspace (ratvec H, RootDatum rd)=[vec]: ##for alpha in
+   posroots(rd) do if H*(alpha/1) =2 then [alpha] else [] fi od
+
+set zero_eigenspace_dim (ratvec H,RootDatum rd)=int: let zrts=[vec]:
+   ##for alpha in posroots(rd) do if H*alpha=0 then [alpha] else [] fi od
+   in 2*#zrts+ss_rank(rd)
+
+set distinguished_H (RootDatum rd)=[ratvec]:
+   ##for H in H_candidates(rd) do
+   if #(two_eigenspace(H,rd))=zero_eigenspace_dim(H,rd) then [H] else [] fi od
+
+set distinguished_H_dominant(RootDatum rd, RootDatum rd_L)=[ratvec]:
+   ##for H in H_candidates(rd_L) do
+   if #(two_eigenspace(H,rd_L))=zero_eigenspace_dim(H,rd_L) then [dominant(rd,H)]
+      else [] fi od
+
+set all_H (RootDatum rd)=[ratvec]:
+   let Levis=[RootDatum]: for S in standard_Levi_conjugacy_representatives(rd) do
+   Levi_datum(rd,S) od in ##for L in Levis do distinguished_H_dominant(rd,L) od
