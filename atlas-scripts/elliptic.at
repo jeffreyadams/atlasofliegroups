@@ -159,7 +159,8 @@ set elliptic_simple = (string,int->[[int]]):
     fi
   in
 
-  { elliptic_simple = } (string type,int rank) [[int]]:
+  { elliptic_simple = }
+(string type,int rank) [[int]]:
 
   { local functions that use the |rank| argument: }
   let cycle_product (Partition lambda) { where |sum(lambda)=rank| } = [int]:
@@ -219,13 +220,14 @@ set elliptic (RootDatum rd) = [WeylElt]:
   subssystems. We make an adapted version of the previous function which on the
   fly also ensures embedding into the full (non Levi) Weyl group
 }
-set elliptics_for_Levi (RootDatum rd, [int] subset) = [WeylElt]:
+set elliptics_for_standard_Levi (RootDatum rd, [int] subset) = [WeylElt]:
    let M = rd.Cartan_matrix, s=#subset
-   then (lt,map_to_Levi) =
-      matrix((s,s),(int i,int j)int: M[subset[i],subset[j]]).Cartan_matrix_type
 in if =s then [id_W(rd)] { avoid passing empty list to |combine_W_lists| }
-   else let offset=0, map_to_rd = for i in map_to_Levi do subset[i] od in
-      for (,rank):type_rank in %lt
+   else
+      let (lt,map_to_Levi) = Cartan_matrix_type
+               (matrix((s,s),(int i,int j)int: M[subset[i],subset[j]]))
+      then offset=0, map_to_rd = for i in map_to_Levi do subset[i] od
+   in for (,rank):type_rank in %lt
       do for word in elliptic_simple(type_rank)
          do W_elt(rd,for s in word do map_to_rd[offset+s] od)
 	 od
