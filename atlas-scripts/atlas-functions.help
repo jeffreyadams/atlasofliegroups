@@ -108,16 +108,19 @@ swiss_matrix_knife: (int,mat,int,int,int,int->mat): slice and dice a matrix
 
 echelon: (mat->mat,mat,[int],int): column echelon form, with extra information
   This applies to the n*m matrix A column operations and possibly removal of
-  null columns to obtain an n*k matrix M (with k<=m) and an invertible matrix
-  C that records the column operations performed; an increasing sequence s of
-  k "pivot rows" and the a sign eps equal to the determinant of C are also
-  recorded for convenience: the quadruple (M,C,s,eps) is returned. Here C is the
-  result of applying to an m*m matrix initialized as identity the same column
-  operations that were a applied to A, except that column removal is replaced
-  in C by moving the column to the right end; as a consequence A*C equals M
-  extended by m-k zero columns (so the last m-k columns of C are a basis of
-  the kernel of A). For each j with 0<=j<k one the entries M[s[j],j] is
-  nonzero (the pivot entry) and M[i,j]=0 for i>s[j].
+  null columns to obtain an n*k matrix M (with k<=m) and an unimodular matrix C
+  that records the column operations performed; an increasing sequence s of k
+  "pivot rows" and the a sign eps equal to the determinant of C are also
+  recorded for convenience: the quadruple (M,C,s,eps) is returned. The column
+  echelon form is a reverse one both horizontally and vertically: each column
+  has a "pivot entry" which has a positive value, is the last nonzero entry of
+  its column and the first nonzero entry of its row. The matrix C is the result
+  of applying to an m*m matrix initialized as identity the same column
+  operations that were a applied to A, except that column removal is replaced in
+  C by moving the column to the right end; as a consequence A*C equals M
+  extended by m-k zero columns (so the last m-k columns of C are a basis of the
+  kernel of A). For each j with 0<=j<k one the entries M[s[j],j] is nonzero (the
+  pivot entry) and M[i,j]=0 for i>s[j].
 diagonalize: (mat->vec,mat,mat): partial Smith reduction, without divisibility
   Applies row and column operations to the matrix to obtain diagonal form;
   returns the list of non-zero diagonal entries (all except the first are
