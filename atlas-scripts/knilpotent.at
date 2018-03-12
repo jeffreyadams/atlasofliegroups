@@ -281,11 +281,11 @@ rhoshifts=rho_shifts(O) in
 for c@p_L in K_type_formula_twisted do
      if kn_verbose then prints(new_line,"term in (twisted) K-type formula:",new_line, p_L) fi;
  for (shift,j)@k in rhoshifts do
-  let q=parameter(x(p_L),lambda(p_L)-shift,nu(p_L)) then
-  r_1=theta_induce_standard(q,G) then
-  r_3=r_1*0 in
-      if kn_verbose then prints(new_line, "shift: ", shift, new_line,"inducing: ", q, new_line,"induced term: ", r_3) fi;
-  rv+:=(-1)^j*c*r_3 
+  let q=parameter(x(p_L),lambda(p_L)-shift,nu(p_L)) {shifted parameter on L} then
+  r_1=theta_induce_standard(q,G) {theta-induce up to G} then
+  r_2=r_1*0 {restrict to K} in
+      if kn_verbose then prints(new_line, "shift: ", shift, new_line,"inducing: ", q, new_line,"induced term: ", r_2) fi;
+  rv+:=(-1)^j*c*r_2 
  od 
 od;
       if kn_verbose then prints(new_line,"Result:");kshow(rv) fi;
@@ -294,7 +294,6 @@ set Phi(RealNilpotentOrbit O,Param p_L)=K_Type_Pol:Phi(O,#x(p_L),lambda(p_L))
 set Phi(RealNilpotentOrbit O,K_Type mu_L)=K_Type_Pol:Phi(O,#x(mu_L),lambda(mu_L))
 
 {  unnormalized version of Phi }
-
 {same algorithm but without the twist by -2\rho(u\cap s)}
 
 set Phi_unnormalized(RealNilpotentOrbit O,int kgb_number_L, ratvec lambda_L)=K_Type_Pol:
@@ -313,8 +312,8 @@ for c@p_L in K_type_formula do
  for (shift,j)@k in rhoshifts do
   let q=parameter(x(p_L),lambda(p_L)-shift,nu(p_L)) then
   r_1=theta_induce_standard(q,G) then
-  r_3=r_1*0 in
-  rv+:=(-1)^j*c*r_3 
+  r_2=r_1*0 in
+  rv+:=(-1)^j*c*r_2 
  od 
 od;
       if kn_verbose then prints(new_line,"Result:");kshow(rv) fi;
@@ -372,7 +371,7 @@ in_span(list,P)
 
 {returns [ (mu_L,extension) ], such that all terms in extension have K_norm <= bound }
 set Phi_upto(RealNilpotentOrbit O,int bound, ratvec v)=[(K_Type,ParamPol)]:
-let bound_L=bound {heuristic: seems to be big enough } then
+let bound_L=2*bound {heuristic: seems to be big enough } then
 (H,x)=O then
 G=real_form(x) then
 L=Levi_of_orbit(O) then

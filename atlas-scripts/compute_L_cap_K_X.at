@@ -3,40 +3,69 @@
 
 set compute_verbose=false
 
-{need to define *, this should be moved elsewhere}
-set *(int c,K_Type mu)=K_Type_Pol:c*parameter(mu)
+{basis vector e_i in Z^n}
+set e(int i,int n)=vec:id_mat(n)[i]
 
-{find K_type mu in list of K_types, move this also}
-set find([K_Type] list,K_Type mu)=int: first(#list,(int i)bool:list[i]=mu)
-
-
-{sort K_Types uniquely, not used}
+{sort K_Types uniquely}
 set sort_u([K_Type] K_types)=[K_Type]:
 if #K_types=0 then [] else
 let P=null_module(K_types[0].real_form) in 
 for mu in K_types do P+:=parameter(mu) od; 
 for p in monomials(P) do K_type(p) od fi
 
+set_type PhiMatrix = ([K_Type],[K_Type],mat)
+
+set K_basis([PhiMatrix] phi_matrices,[int] orbit_numbers)=[K_Type]:
+if #orbit_numbers=0 then [] else
+sort_u(##for i in orbit_numbers do let (P,,)=phi_matrices[i] in  P od) fi
+
+{all orbits}
+set K_basis([PhiMatrix] phi_matrices)=[K_Type]:K_basis(phi_matrices,#(#phi_matrices))
+
+{need to define *, this should be moved elsewhere}
+set *(int c,K_Type mu)=K_Type_Pol:c*parameter(mu)
+
+{find K_type mu in list of K_types, move this also}
+set find([K_Type] list,K_Type mu)=int: first(#list,(int i)bool:list[i]=mu)
+
 {[int] v is coefficients of [K_Type] K_types, return sum v[i]*K_types[i]}
+{need G only in the even of no K_types}
 set expand([int] v,[K_Type] K_types, RealForm G)=K_Type_Pol:
 if #K_types=0 then null_module(G) else
 let rv=null_module(parameter(K_types[0])) in 
 for i:#v do rv+:=v[i]*K_types[i] od;rv fi
 
+{fails if #K_types=0}
+set expand([int] v,[K_Type] K_types)=K_Type_Pol:
+expand(v,K_types,K_types[0].real_form)
+
 {given a matrix M, whose rows correspond to elements of K_basis,
 and each column gives a sum of elements of K_basis,
 only keep the columns whose K_norm is <=bound}
-set truncate(mat M,[K_Type] K_basis, int bound)=mat:
+set truncate_elementary(mat M,[K_Type] K_basis, int bound)=mat:
 let rv=null(#K_basis,0) in
 for v in M do 
  if K_norm(expand(v,K_basis,K_basis[0].real_form))<=bound then rv#:=v fi od;rv
 
+{given a matrix T, whose rows correspond to elements of K_basis,
+and each column gives a sum of elements of K_basis,
+give basis whose columns span elements of image(T) of K_norm <= bound
+i.e. image(T)\cap (lattices of K_Types of norm <=bound)
+this is bigger than truncate_elementary, since it can contain
+a linear combinations of rows, each of which has K_norm >bound, 
+whose K_norm is <=bound}
+
+set truncate(mat T,[K_Type] K_basis, int bound)=mat:
+let L= {sublattice of Z^#K_basis spanned by small terms}
+##for i:#K_basis do if K_norm(K_basis[i])<=bound then [e(i,#K_basis)] else [] fi od
+in intersection(T,L)
 
 {list of K_Types coming from given orbit}
 set K_basis(KNilpotentData data, int orbitNumber)=
+if #data.pairs[orbitNumber]=0 then [] else
 for Q in
 monomials(for (,P) in data.pairs[orbitNumber] do P od)
-do K_type(Q) od
+do K_type(Q) od fi
 
 {list of K_Types coming from given orbits}
 set K_basis(KNilpotentData data, [int] orbitNumbers)=
@@ -87,55 +116,43 @@ for orbit_number in orbit_numbers do Phi_matrix(d,orbit_number) od
 set Phi_matrices(KNilpotentData d)=[([K_Type],[K_Type],mat)]:
 Phi_matrices(d,#(#d.orbits))
 
-{basis of K_Types coming from triples, from given orbits}
-set K_basis([([K_Type],[K_Type],mat)] triples,[int] orbit_numbers)=[K_Type]:
-if #orbit_numbers=0 then [] else
-sort_u(##for i in orbit_numbers do let (P,,)=triples[i] in  P od) fi
+set Phi_matrix([PhiMatrix] phi_matrices,int i)=let (,,T)=phi_matrices[i] in T
 
 {L\cap K basis coming from triples, from given orbits}
-set L_cap_K_basis([([K_Type],[K_Type],mat)] triples,[int] orbit_numbers)=[K_Type]:
+set L_cap_K_basis([PhiMatrix] phi_matrices,[int] orbit_numbers)=[K_Type]:
 if #orbit_numbers=0 then [] else
-##for i in orbit_numbers do let (,P,)=triples[i] in  P od fi
+##for i in orbit_numbers do let (,P,)=phi_matrices[i] in  P od fi
+
+set merge_matrices([K_Type] K_basis,[([K_Type],mat)] pairs) =([K_Type],mat):
+if #pairs=0 then (K_basis,null(#K_basis,0)) elif
+#K_basis=0 then (K_basis,null(0,0)) else 
+let M=
+##for (basis,T)@j in pairs do
+ for v@i in T do
+  let (valid,w)=vector(K_basis,expand(v,basis)) in   
+  assert(valid,"merge_matrices: can't find vector");w od od
+in if #M=0 then (K_basis,null(#K_basis,0)) else (K_basis, M) fi fi
 
 {each orbit gives a matrix, with different bases
  combine these into 1 matrix, using a common K_basis
 }
-set combine_Phi_matrices([([K_Type],[K_Type],mat)] triples,[int] orbit_numbers,RealForm G)=mat:
-let
-K_basis=K_basis(triples,orbit_numbers) then
-L_cap_K_basis=L_cap_K_basis(triples,orbit_numbers) in
-if #orbit_numbers=0 then null(#K_basis,0) else
-##for i in orbit_numbers do {prints("i=",i);}
-let (K_basis_orbit,,T)=triples[i] in 
- for col in T do 
-{let ()= prints("col=",col) in}
-{let ()=prints("expand:",expand(col,K_basis,G)) in}
-let (valid,v)=vector(K_basis,expand(col,K_basis_orbit,G)) in 
-{ prints("v=",v);}
- assert(valid,"can't find vector");v od od fi
+set merge_Phi_matrices([K_Type] K_basis,[PhiMatrix] phi_matrices,[int] orbit_numbers)=([K_Type],mat):
+if #orbit_numbers=0 then (K_basis,null(#K_basis,0)) else 
+merge_matrices(K_basis,for i in orbit_numbers do let (kbasis,,T) = phi_matrices[i] in (kbasis,T)  od) fi
+
+{merge_matrices(K_basis,for (kbasis,,T) in phi_matrices do (kbasis,T) od) fi}
 
 {same as previous, except only keep terms whose K_norm is <= smaller_bound}
-set combine_Phi_matrices([([K_Type],[K_Type],mat)] triples,[int] orbit_numbers,RealForm G,int smaller_bound)=mat:
-let
-K_basis=K_basis(triples,orbit_numbers) then
-L_cap_K_basis=L_cap_K_basis(triples,orbit_numbers) in
-if #orbit_numbers=0 then null(#K_basis,0) else
-let rv=
-##for i in orbit_numbers do {prints("i=",i);}
-let (K_basis_orbit,,T0)=triples[i] then
- T=truncate(T0,K_basis_orbit,smaller_bound)  in
- for col in T do 
-{let ()= prints("col=",col) in}
-{let ()=prints("expand:",expand(col,K_basis,G)) in}
-let (valid,v)=vector(K_basis,expand(col,K_basis_orbit,G)) in 
-{ prints("v=",v);}
- assert(valid,"can't find vector");v od od  in 
-{let ()=prints("rv=",rv) in}
-if #rv=0 then null(#K_basis,0) else rv fi fi
+set merge_Phi_matrices([K_Type] K_basis,[PhiMatrix] phi_matrices,[int] orbit_numbers, int smaller_bound)=([K_Type],mat):
+merge_matrices(K_basis,for i in orbit_numbers do let (kbasis,,T)=phi_matrices[i] in (kbasis,truncate(T,kbasis,smaller_bound)) od)
 
-{matrix of map obtained by running over all orbits, with smaller_bound cutoff}
-set image([([K_Type],[K_Type],mat)] triples,RealForm G,int smaller_bound)=mat:
-combine_Phi_matrices(triples,#(#triples),G,smaller_bound)
+{matrix coming from all orbits}
+set image([PhiMatrix] phi_matrices)=
+merge_Phi_matrices(K_basis(phi_matrices),phi_matrices,#(#phi_matrices))
+
+{matrix coming from all orbits, with smaller bound}
+set image([PhiMatrix] phi_matrices, int smaller_bound)=
+merge_Phi_matrices(K_basis(phi_matrices),phi_matrices,#(#phi_matrices),smaller_bound)
 
 
 {given matrix whose rows correspond to K_basis, change basis 
@@ -149,42 +166,97 @@ assert(valid,"change_basis failed");v od fi
 {assume Phi_matrices(d) has been computed
 this is of type [([K_Type],[K_Type],mat)] which is the second argument  
 }
-set compute_L_cap_K_X(KNilpotentData d, [([K_Type],[K_Type],mat)] triples,int orbit_number)=
+set compute_L_cap_K_X(KNilpotentData d, [PhiMatrix] phi_matrices,int orbit_number)=
 if compute_verbose then prints("compute_L_cap_K_X of orbit ", orbit_number) fi;
-let (,,T0)=triples[orbit_number] {matrix of T, K_basis from orbit} then
-Y0=combine_Phi_matrices(triples,d.closures[orbit_number],d.real_form) {matrix of Y, K_basis from boundary only} then
-K_basis=K_basis(triples,d.closures[orbit_number]#orbit_number) {the basis I want to use} then
-T=change_basis(K_basis(triples,[orbit_number]),K_basis,T0) then
-Y=change_basis(K_basis(triples,d.closures[orbit_number]),K_basis,Y0) then
-TV_cap_Y=intersection(T,Y) in 
+let K_basis=K_basis(phi_matrices,d.closures[orbit_number]#orbit_number) {the basis I want to use} then
+(,,T0)=phi_matrices[orbit_number] {matrix of T, K_basis from orbit} then
+T=change_basis(K_basis(phi_matrices,[orbit_number]),K_basis,T0) then
+(,Y)=merge_Phi_matrices(K_basis,phi_matrices,d.closures[orbit_number]) then
+Z=intersection(T,Y) in 
 {free_quotient_lattice_basis(T,TV_cap_Y)}
-(T,Y,TV_cap_Y,saturation_quotient_basis(T,TV_cap_Y))
-
-{run over all orbits and compute the previous}
-set compute_L_cap_K_X(KNilpotentData d, [([K_Type],[K_Type],mat)] triples)=
-for i:#d.orbits do compute_L_cap_K_X(d,triples,i) od
+(K_basis,T,Y,Z,saturation_quotient_basis(T,Z))
 
 {same as previous but with smaller_bound cutoff}
-set compute_L_cap_K_X(KNilpotentData d, [([K_Type],[K_Type],mat)] triples,int orbit_number, int smaller_bound)=
+set compute_L_cap_K_X(KNilpotentData d, [PhiMatrix] phi_matrices,int orbit_number, int smaller_bound)=
 if compute_verbose then prints("compute_L_cap_K_X of orbit ", orbit_number) fi;
-let (,,T0)=triples[orbit_number] {matrix of T, K_basis from orbit} then
-Y0=combine_Phi_matrices(triples,d.closures[orbit_number],d.real_form) {matrix of Y, K_basis from boundary only} then
-K_basis=K_basis(triples,d.closures[orbit_number]#orbit_number) {the basis I want to use} then
-T=change_basis(K_basis(triples,[orbit_number]),K_basis,T0) then
-T1=truncate(T,K_basis,smaller_bound) then
-Y=change_basis(K_basis(triples,d.closures[orbit_number]),K_basis,Y0) then
-T1_V_cap_Y=intersection(T1,Y) in 
+let K_basis=K_basis(phi_matrices,d.closures[orbit_number]#orbit_number) {the basis I want to use} then
+(,,T0)=phi_matrices[orbit_number] {matrix of T, K_basis from orbit} then
+T0=change_basis(K_basis(phi_matrices,[orbit_number]),K_basis,T0) then
+T=truncate(T0,K_basis,smaller_bound) then
+(,Y)=merge_Phi_matrices(K_basis,phi_matrices,d.closures[orbit_number]) then
+Z=intersection(T,Y) in 
 {free_quotient_lattice_basis(T,TV_cap_Y)}
-(T1,Y,T1_V_cap_Y,saturation_quotient_basis(T1,T1_V_cap_Y))
+(K_basis,T,Y,Z,saturation_quotient_basis(T,Z))
+
+
+
+{run over all orbits and compute_L_cap_K_X(d,phi_matrices,orbit)}
+set compute_L_cap_K_X(KNilpotentData d, [PhiMatrix] phi_matrices)=
+for i:#d.orbits do compute_L_cap_K_X(d,phi_matrices,i) od
 
 {same as previous but with smaller_bound cutoff}
-set compute_L_cap_K_X(KNilpotentData d, [([K_Type],[K_Type],mat)] triples, int smaller_bound)=
-for i:#d.orbits do compute_L_cap_K_X(d,triples,i,smaller_bound) od
+set compute_L_cap_K_X_smaller(KNilpotentData d, [PhiMatrix] phi_matrices, int smaller_bound)=
+for i:#d.orbits do compute_L_cap_K_X(d,phi_matrices,i,smaller_bound) od
 
 {sum of dimension of the T(V/X) spaces
  goal: choose smaller_bound small enough so that 
  the sum of these dimensions is 
- dimension of image(triples,G,smaller_bound)
+ dimension of image(phi_matrices,G,smaller_bound)
 }
-set sum_of_dimensions(KNilpotentData d, [([K_Type],[K_Type],mat)] triples, int smaller_bound)=
-sum(for (,,,Q) in compute_L_cap_K_X(d,triples,smaller_bound) do rank(Q) od)
+set sum_of_dimensions(KNilpotentData d, [PhiMatrix] phi_matrices, int smaller_bound)=
+sum(for (,,,,Q) in compute_L_cap_K_X_smaller(d,phi_matrices,smaller_bound) do rank(Q) od)
+
+set test(KNilpotentData d, [PhiMatrix] phi_matrices, int bound)=void:
+let sums=for i:bound do sum_of_dimensions(d,phi_matrices,i) od then
+dimensions=for i:bound do let (,M)=image(phi_matrices,i) in rank(M) od in
+prints("bound:", bound,new_line,
+"each line displays:",new_line,
+"smaller_bound  sum_of_dimensions  actual_dimension",new_line,
+"if sum_of_dimensions=actual_dimension there are no overlaps");
+for i:bound do prints(i, " ", sums[i], " ", dimensions[i]) od
+
+set run_all(int bound, [RealNilpotentOrbit] orbits, [[int]] closures, int smaller_bound)=
+let d=populate(bound,orbits,closures) then
+Phi_matrices=Phi_matrices(d) then
+all=compute_L_cap_K_X_smaller(d, Phi_matrices,smaller_bound) in
+(d,Phi_matrices,all)
+
+
+set group_orbits([RealNilpotentOrbit] orbits, int n)=[int]:
+##for O@i in orbits do if O.H=orbits[n].H then [i] else [] fi od
+
+set complex_orbit_Phi_matrix([K_Type] K_basis,[RealNilpotentOrbit] orbits, [PhiMatrix] phi_matrices, int n)=
+merge_Phi_matrices(K_basis,phi_matrices,group_orbits(orbits,n))
+
+set test_complex_orbit([K_Type] K_basis,[RealNilpotentOrbit] orbits, [PhiMatrix] phi_matrices, 
+[([K_Type],mat,mat,mat,mat)] lattices,int n)=
+let (,A)=complex_orbit_Phi_matrix(K_basis,orbits,phi_matrices,n) then
+(Kbasis,,Y0,,)=lattices[n] then 
+Y=change_basis(Kbasis,K_basis,Y0) in
+prints("A: ", shape(A), " ", rank(A), new_line, "Y: ", shape(Y), " ", rank(Y));
+(Y,A,is_sublattice(Y,A))
+
+set test_complex_orbit([K_Type] K_basis,[RealNilpotentOrbit] orbits, [PhiMatrix] phi_matrices, 
+[([K_Type],mat,mat,mat,mat)] lattices,int n, int smaller_bound)=
+let (,A)=complex_orbit_Phi_matrix(K_basis,orbits,phi_matrices,n) then
+(Kbasis,,Y0,,)=lattices[n] then 
+Y1=truncate(Y0,Kbasis,smaller_bound) then
+Y=change_basis(Kbasis,K_basis,Y1) in
+prints("A: ", shape(A), " ", rank(A), new_line, "Y: ", shape(Y), " ", rank(Y));
+(Y,A,is_sublattice(Y,A))
+
+set merge_Q_matrices([K_Type] K_basis,[([K_Type],mat,mat,mat,mat)] lattices,[int] terms)=
+let pairs=for i in terms do let (kbasis,,,,Q)=lattices[i] in (kbasis,Q) od in
+merge_matrices(K_basis,pairs)
+
+set merge_T_matrices([K_Type] K_basis,[([K_Type],mat,mat,mat,mat)] lattices,[int] terms)=
+let pairs=for i in terms do let (kbasis,T,,,)=lattices[i] in (kbasis,T) od in
+merge_matrices(K_basis,pairs)
+
+set merge_Y_matrices([K_Type] K_basis,[([K_Type],mat,mat,mat,mat)] lattices,[int] terms)=
+let pairs=for i in terms do let (kbasis,,Y,,)=lattices[i] in (kbasis,Y) od in
+merge_matrices(K_basis,pairs)
+
+set merge_Z_matrices([K_Type] K_basis,[([K_Type],mat,mat,mat,mat)] lattices,[int] terms)=
+let pairs=for i in terms do let (kbasis,,,Z,)=lattices[i] in (kbasis,Z) od in
+merge_matrices(K_basis,pairs)

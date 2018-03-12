@@ -1,10 +1,16 @@
+set select_columns([int] columns, mat M)=mat:for i in columns do M[i] od
+set select_rows([int] rows, mat M)=mat:^(select_columns(rows,^M))
+set first_columns(int n,mat M)=mat:select_columns(#n,M)
+set first_rows(int n,mat M)=mat:select_rows(#n,M)
 
 set intersection(mat A,mat B)=mat:
 assert(n_rows(A)=n_rows(B),"A and B must have same number of rows");
+if n_columns(A)=0 or n_columns(B)=0 then null(n_rows(A),0) else
 let A1=image_lattice(A), B1=image_lattice(B) then
 N=kernel(A1##B1) then
-M=^((^N)[0:n_columns(A1)])  {first n rows of N, where n=#columns of A1}
-in A1*M
+M=first_rows(n_columns(A1),N) {first n rows of N, where n=#columns of A1}
+{M=^((^N)[0:n_columns(A1)])  }
+in A1*M fi
 
 set intersection([mat] A)=mat:let rv=A[0] in 
 for i:#A-1 do rv:=intersection(rv, A[i]) od;rv
@@ -13,5 +19,30 @@ for i:#A-1 do rv:=intersection(rv, A[i]) od;rv
 set free_quotient_lattice_basis (mat L,mat M) = mat:
 let (J,)=weak_left_inverse(image_lattice(L)) in image_lattice(L)*free_quotient_lattice_basis(J*M)
 
-set saturation_quotient_basis(mat L,mat M)=mat:
-let (J,)=weak_left_inverse(image_lattice(L)) in image_lattice(L)*saturation_quotient_basis(J*M)
+set saturation_quotient_basis(mat M,mat L)=mat:
+let (J,)=weak_left_inverse(image_lattice(M)) in {right_inverse(J)*}image_lattice(M)*saturation_quotient_basis(J*L)
+
+set is_sublattice(mat L,mat M)=bool:
+all(for v in L do any(solve(M,v)) od)
+
+set is_lattice_equal(mat L,mat M)=bool:is_sublattice(L,M) and is_sublattice(M,L)
+
+set is_subspace(mat L,mat M)=bool:
+all(for v in L do any(solve(M,ratvec:v)) od)
+
+{columns of B must span a sublattice of span of columns of A
+ then test if B is saturated in A}
+set is_saturated(mat A,mat B)=
+assert(is_sublattice(B,A),"not a sublattice");
+let A1=image_lattice(A), B1=image_lattice(B) then
+N=kernel(A1##B1) then 
+M=^((^N)[0:n_columns(A1)]) then 
+w=inv_fact(M) in 
+w=for i:#w do 1 od {test if inv_fact=[1,1,...,1]}
+
+{assuming is_sublattice(a,B)}
+set quotient(mat A,mat B)=
+assert(is_sublattice(A,B),"A is not a sublattice of B");
+let A1=image_lattice(A), B1=image_lattice(B) then
+N=kernel(B1##A1) then
+M=first_rows(n_columns(A1),N) in inv_fact(M)
