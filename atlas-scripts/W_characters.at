@@ -541,6 +541,7 @@ set_type WeylClassTable =
 , ([int],int->[int]) Cartesian_power
 , ([int],[int]->[int]) tensor
 , ([int],int->[int]) tensor_power
+, (int->[int]) sym_power_refl
 )
 
 set W_class_table (RootDatum rd) = WeylClassTable:
@@ -553,7 +554,14 @@ set W_class_table (RootDatum rd) = WeylClassTable:
      assert(#x=ncc and #y=ncc,"Wrong sizes");
      let s = for size@i in sizes do size*x[i]*y[i] od.sum then (q,r)=s \% nW in
      if =r then q else error("Non integer inner product ",s/nW) fi
+   , sum ([int] x, [int] y) = [int]: for xi@i in x do xi+y[i] od
+   , product ([int] x, [int] y) = [int]: for xi@i in x do xi*y[i] od
    , power_map = [vec]: for w in reps do for i:w.order do class_of(w^i) od od
+   , refl_char = for w in reps do w.matrix.trace od
+   then reflection_sympowers =
+        for :ncc do 1 od # for :rd.nr_of_posroots do [int]:[] od
+   , k=0 { last symmetric power computed}
+   , Adams_refl(int n) = [int]: for v in power_map do refl_char[v[n % #v]] od
 in
 ( {print_classes} @:
    let data = for w in reps
@@ -576,15 +584,25 @@ in
 , {norm2} ([int] x) int: inner(x,x)
 , {inner} inner
 , {direct_sum}
-  ([int] x, [int] y) [int]:
-  assert(#x=ncc and #y=ncc,"Wrong sizes"); for xi@i in x do xi+y[i] od
+  (([int],[int])(x,y):pair) [int]:
+  assert(#x=ncc and #y=ncc,"Wrong sizes"); sum(pair)
 , {Cartesian_power}
   ([int] x,int n) [int]: assert(#x=ncc,"Wrong size"); for v in x do n*v od
 , {tensor}
-   ([int] x, [int] y) [int]:
-  assert(#x=ncc and #y=ncc,"Wrong sizes"); for xi@i in x do xi*y[i] od
+  (([int],[int])(x,y):pair) [int]:
+  assert(#x=ncc and #y=ncc,"Wrong sizes");  product(pair)
 , {tensor_power}
    ([int] x, int n) [int]: assert(#x=ncc,"Wrong size"); for xi in x do xi^n od
+, {sym_power_refl}
+  (int n) [int]: assert(n<=rd.nr_of_posroots,"Bounded symmetric power table");
+     while k<n
+     do let acc = Adams_refl(k+:=1)
+     in for i:k-1 from 1
+        do acc := sum(acc,product(reflection_sympowers[i],Adams_refl(k-i)))
+        od
+     ;  reflection_sympowers[k] := for s in acc do s\k od
+     od
+  ;  reflection_sympowers[n]
 )
 
 {. root datum of WeylClassTable .}

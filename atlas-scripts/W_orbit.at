@@ -31,6 +31,27 @@ set generate_from_dom ([(vec->maybe_a_vec)] S,vec v) = ([vec],[[int]]):
     od
   od; (orbit,words)
 
+{ same as above, but also compose |gens_rep| matrices for applied generators }
+set generate_action_from_dom ([(vec->maybe_a_vec)] S,vec v
+                             ,int dim,[mat] gens_rep) =
+     ([vec],[[int]],[mat]):
+  let orbit=[v], words=[[int]]:[[]], actions=[id_mat(dim)], done=0, stop=1
+  then absent (vec y) = bool: { check down to last level marker }
+         none(#orbit-stop,(int i)bool:orbit~[i]=y)
+  in
+  while done<#orbit
+  do if done=stop then stop:=#orbit fi { hit end of level, define new level }
+  ; let a=orbit[done], w = words[done], act=actions[done] in done+:=1
+  ; for f@i in S
+    do case f(a) | else () { skip when no new vector is returned }
+       | solution(b):
+         if absent(b)
+         then orbit #:= b; words #:= i#w; actions #:= gens_rep[i]*act
+         fi
+       esac
+    od
+  od; (orbit,words,actions)
+
 
 set simple_actor (RootDatum rd, int i) = (vec->maybe_a_vec):
   let s=W_gen(rd,i), av=coroot(rd,i) in
@@ -44,6 +65,13 @@ set generate_from (RootDatum rd,[int] S,vec v) = ([vec],[WeylElt]):
     generate_from_dom(for s in S do simple_actor(rd,s) od,dom_wt)
   , to_dom= inverse(chamber)
   in (orbit,for w in words do W_elt(rd,for i in w do S[i] od)*to_dom od)
+
+{ like previous, but assuming |v| is dominant, and incorporating action }
+set generate_action_from_dom (RootDatum rd,[int] S,vec v
+                             ,int dim,[mat] gens_rep) = ([vec],[WeylElt],[mat]):
+  let (orbit,words,action)= generate_action_from_dom
+      (for s in S do simple_actor(rd,s) od,v, dim,for s in S do gens_rep[s] od)
+  in (orbit,for w in words do W_elt(rd,for i in w do S[i] od) od,action)
 
 { when no |WeylElt| elements are needed in the end, we can simplify a bit }
 set W_orbit (RootDatum rd,[int] S, vec v) = [vec]:
@@ -61,12 +89,24 @@ set W_orbit (RootDatum rd, vec v) = [vec]:
 set W_orbit_W_elements(RootDatum rd,vec v) = [WeylElt]:
   W_orbit_W_elements(rd,all_simples(rd),v)
 
+{ enumerate parabolic subgroup of W }
 set W_parabolic (RootDatum rd, [int] gens) = [WeylElt]:
    let result=[id_W(rd)] in
    for s@i in gens
    do let coset =
      W_orbit_W_elements(rd,gens[:i+1],fundamental_weight(rd,s).numer)
    in result := ## for x in coset do for y in result do x*y od od
+   od; result
+
+{ enumerate parabolic subgroup of W, with their action defined by |gens_rep| }
+set W_parabolic_act (RootDatum rd, [int] gens, int dim, [mat] gens_rep) =
+      [WeylElt,mat]:
+   let result=[(id_W(rd),id_mat(dim))] in
+   for s@i in gens
+   do let (,coset,action) = generate_action_from_dom
+     (rd,gens[:i+1],fundamental_weight(rd,s).numer,dim,gens_rep)
+   in result := ##
+     for x@k in coset do for (y,act) in result do (x*y,action[k]*act) od od
    od; result
 
 { all elements of Weyl group of RootDatum, in parabolic	quotient lex order }
