@@ -25,9 +25,15 @@ set distinguished_H (RootDatum rd)=[ratvec]:
 
 set distinguished_H_dominant(RootDatum rd, RootDatum rd_L)=[ratvec]:
    ##for H in H_candidates(rd_L) do
-   if #(two_eigenspace(H,rd_L))=zero_eigenspace_dim(H,rd_L) then [dominant(rd,H)]
+   if #(two_eigenspace(H,rd_L))=zero_eigenspace_dim(H,rd_L)
+   then [dominant(H,rd)]
       else [] fi od
 
 set all_H (RootDatum rd)=[ratvec]:
    let Levis=[RootDatum]: for S in standard_Levi_conjugacy_representatives(rd) do
    Levi_datum(rd,S) od in ##for L in Levis do distinguished_H_dominant(rd,L) od
+
+set all_H_with_L (RootDatum rd)=[([int],[ratvec])]:
+   let Levis=standard_Levi_conjugacy_representatives(rd) in
+   for S in Levis do let list=distinguished_H_dominant(rd,Levi_datum(rd,S)) in
+   (S,list) od
