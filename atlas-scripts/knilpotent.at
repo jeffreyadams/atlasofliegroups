@@ -335,12 +335,20 @@ leading_terms(Phi(O,kgb_number_L,lambda_L))
 set Phi_leading(RealNilpotentOrbit O,Param p_L)=K_Type_Pol:Phi_leading(O,#x(p_L),lambda(p_L))
 
 {assume ParamPol has integral (not split) coefficients}
-set vector([Param] basis,ParamPol P)=(bool,vec):
+set vector_old([Param] basis,ParamPol P)=(bool,vec):
 let sum=null_module(P) then
 v=vec:for p in basis do let c=split_as_int(P[p]) in  sum+:=c*p;c od in
 if sum=P then (true,v) else (false,vec:[]) fi 
 
-set vector([K_Type] basis,ParamPol P)=(bool,vec):
+set vector([Param] basis,ParamPol P)=maybe_a_vec:
+let sum=null_module(P) then
+v=vec:for p in basis do let c=split_as_int(P[p]) in  sum+:=c*p;c od in
+if sum=P then v.solution else ().no_vec fi
+
+set vector_old([K_Type] basis,ParamPol P)=(bool,vec):
+vector_old(for mu in basis do parameter(mu) od,P)
+
+set vector([K_Type] basis,ParamPol P)=maybe_a_vec:
 vector(for mu in basis do parameter(mu) od,P)
 
 {given list=[P_1,...,P_n] of ParamPols
@@ -355,11 +363,12 @@ P=sum S[i]*R[i]
 set in_span([ParamPol] list,ParamPol P)=([Param],mat,vec,bool):
 if #list=0 then ([],null(0,0),null(0),false) else
 let basis=monomials(list) {list of distinct Params} then
-M=mat:for Q in list do let (,v)=vector(basis,Q) in v  od then
-(valid,T)=vector(basis,P) in
-if valid then
-let inlattice=in_lattice(M,T) in (basis,M,T,inlattice)
-else prints("can't find vector at all");(basis,M,T,false) fi fi
+M=mat:for Q in list do let v=vector(basis,Q) in 
+assert(any(v),"failure in in_span");requisition(v)  od then
+T=vector(basis,P) in
+assert(any(T),"can't find vector at all");
+let T=requisition(T) then
+inlattice=in_lattice(M,T) in (basis,M,T,inlattice) fi
 
 {convenient to define in_span([[ParamPol]] list,ParamPol P)=
 in_span( flatten the list,P)

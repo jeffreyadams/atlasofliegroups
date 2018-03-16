@@ -3,14 +3,22 @@ set select_rows([int] rows, mat M)=mat:^(select_columns(rows,^M))
 set first_columns(int n,mat M)=mat:select_columns(#n,M)
 set first_rows(int n,mat M)=mat:select_rows(#n,M)
 
-set intersection(mat A,mat B)=mat:
+{A: mxn
+ B: mxr
+ returns (C,D)
+ C: 
+}
+set intersection_plus(mat A,mat B)=(mat,mat):
 assert(n_rows(A)=n_rows(B),"A and B must have same number of rows");
-if n_columns(A)=0 or n_columns(B)=0 then null(n_rows(A),0) else
-let A1=image_lattice(A), B1=image_lattice(B) then
-N=kernel(A1##B1) then
-M=first_rows(n_columns(A1),N) {first n rows of N, where n=#columns of A1}
+if n_columns(A)=0 or n_columns(B)=0 then (null(n_rows(A),0),null(n_rows(A),0)) else
+let A1=image_lattice(A) {mxn'}, B1=image_lattice(B) {mxr'} then
+N=kernel(A1##B1) then   {n'+r' x t, t=dimension(kernel)}
+M=first_rows(n_columns(A1),N) {first n' rows of N, where n'=#columns of A1, so n'xt}
 {M=^((^N)[0:n_columns(A1)])  }
-in A1*M fi
+in (A1*M,M) {(mxt, n'xt)} fi
+
+set intersection(mat A,mat B)=mat:
+let (X,)=intersection_plus(A,B) in X
 
 set intersection([mat] A)=mat:let rv=A[0] in 
 for i:#A-1 do rv:=intersection(rv, A[i]) od;rv
@@ -46,3 +54,76 @@ assert(is_sublattice(A,B),"A is not a sublattice of B");
 let A1=image_lattice(A), B1=image_lattice(B) then
 N=kernel(B1##A1) then
 M=first_rows(n_columns(A1),N) in inv_fact(M)
+
+set image_lattice (mat M) = mat:
+   let (M,,pivots,)=echelon(M) then c=#M
+in for i@j in pivots
+   do let col=M[j] then pivot=col[i]
+   in for l: c-1-j from j+1 do M[l]-:=col*(M[i,l]\pivot) od
+   od; M
+
+{ (M,C)=image_lattice_plus(A)
+  A*C=M
+}
+set image_lattice_plus (mat M) = 
+let (M,C0,pivots,)=echelon(M) then c=#M 
+then 
+C=C0[:c] 
+   in for i@j in pivots
+   do let colM=M[j],colC=C[j] then pivot=colM[i]
+   in for l: c-1-j from j+1 
+    do let q = M[i,l]\pivot in
+       M[l]-:=colM*q; C[l]-:=colC*q od
+   od; (M,C)
+
+{
+set image_lattice_combinations (mat A) = mat:
+let (M,C,pivots,)=echelon(A) then c=#M
+in C:=C[:c] { only this part interests us here }
+   for i@j in pivots
+   do let colM=M[j], colC=C[j] then pivot=colM[i]
+   in for l: c-1-j from j+1
+      do let q = M[i,l]\pivot in
+         M[l]-:=colM*q; C[l]-:=colC*q;
+      od
+   od; C
+}
+{
+set image_lattice_plus (mat A) = 
+   let (M,C,pivots,)=echelon(A) then c=#M
+in C:=C[:c] { only this part interests us here }
+   for i@j in pivots
+   do let colM=M[j], colC=C[j] then pivot=colM[i]
+   in for l: c-1-j from j+1
+      do let q = M[i,l]\pivot in
+         M[l]-:=colM*q; C[l]-:=colC*q;
+      od
+   od; (M,C)}
+
+
+{ dimension |c| of image, together with a $\Z$-inverible matrix whose first |c|
+  columns span that saturation of the image, the remainder a chosen complement }
+{A: (r,n)
+ echelon(A)-> M (r,c), C (c,c) invertible, Z (r,n-c) zero matrix, AC=M##Z   (r,n)
+ n-c=dimension(kernel(A))
+ c=#columns of echelon form of A
+ ->
+ M,N (r,c)
+ R (r,r) invertible
+ (RN)##Z=M##Z=AC
+ AC=RN##Z
+}
+set adapted_direct_sum_plus (mat A) = (int,mat,mat,mat,mat,mat):
+   let (M,C,pivot,)=echelon(A) then (r,c)=shape(M), N=M
+   then R=id_mat(r) { record row operations, held in inversed form }
+in for j:c { loop over columns of N while it is being modified in the loop }
+   do let col=N[j] then (d,C)=Bezout(col[j:pivot[j]+1]), tN=^N
+   then tN_C=tN[j:pivot[j]+1] * C, R_C = R[j:pivot[j]+1] * ^C.inverse
+   in N := c^ for i:r do if i<j or i>pivot[j] then tN[i] else tN_C[i-j] fi od
+   ;  R := r# for i:r do if i<j or i>pivot[j] then  R[i] else  R_C[i-j] fi od
+   ; assert(N[j,j]=d)
+   od; assert(R*N=M); (c,R,N,C,M,null(r,n_columns(A)-n_columns(N)))
+
+
+set image_complement_basis_plus (mat A) = mat:
+   let (c,R,N,C,M,Z)=adapted_direct_sum_plus(A) in R[c:]  {last n-c columns of R}

@@ -1,0 +1,94 @@
+
+{list of L\cap K-types from data for given orbit}
+set L_cap_K_basis(KNilpotentData d,int orbit_number)=[K_Type]:
+for (mu_L,) in d.pairs[orbit_number] do mu_L od
+
+{list of L\cap K-types from data for given orbits}
+set L_cap_K_basis(KNilpotentData d,[int] orbit_numbers)=[K_Type]:
+##for i in orbit_numbers do L_cap_K_basis(d,i) od 
+
+{matrix defining a map from L\cap K-types to K-types
+rows <-> K-types: from orbit itself (NOT closure)
+columns <-> L\cap K-types from orbit itself
+each column gives Phi(L\cap K-type)
+}
+set Phi_matrix(KNilpotentData d,int orbit_number)=([K_Type],[K_Type],mat):
+let 
+L_cap_K_basis=L_cap_K_basis(d,orbit_number) then
+{K_basis=K_basis_closure(d,orbit_number) then}
+K_basis=K_basis(d,orbit_number) then
+pairs=d.pairs[orbit_number] then
+{()=prints("PAIRS:", #pairs) then}
+rv=null(#K_basis,#L_cap_K_basis) in
+if #pairs=0 then (K_basis,L_cap_K_basis, null(#L_cap_K_basis,#K_basis)) else
+for (mu_L,Phi) in pairs do
+   let col=vector(K_basis,Phi) in
+   assert(any(col),"could not construct column of matrix");
+   rv[find(L_cap_K_basis,mu_L)]:=requisition(col) od ;(K_basis,L_cap_K_basis,rv) fi
+
+{set of matrices, on for each orbit_number}
+set Phi_matrices(KNilpotentData d,[int] orbit_numbers)=[([K_Type],[K_Type],mat)]:
+for orbit_number in orbit_numbers do Phi_matrix(d,orbit_number) od
+
+{set of matrices, running over all orbits}
+set Phi_matrices(KNilpotentData d)=[([K_Type],[K_Type],mat)]:
+Phi_matrices(d,#(#d.orbits))
+
+
+
+set Phi_matrix([K_Type] K_basis,KNilpotentData d,[int] orbit_numbers)=([K_Type],[int],mat):
+let phi_matrices=Phi_matrices(d,orbit_numbers) then 
+T=null(#K_basis,0) then
+LcapK_Basis=[] then
+orbit_pointers=[] in
+for j:#orbit_numbers do let
+  (kbasis,lcapkbasis,T0)=phi_matrices[j] in 
+ T##:=change_basis(kbasis,K_basis,T0);
+ for mu in lcapkbasis do 
+  LcapK_Basis#:=mu;
+  orbit_pointers#:=orbit_numbers[j] od od;(LcapK_Basis,orbit_pointers,T)
+ 
+
+{L\cap K basis coming from triples, from given orbits}
+set L_cap_K_basis([PhiMatrix] phi_matrices,[int] orbit_numbers)=[K_Type]:
+if #orbit_numbers=0 then [] else
+##for i in orbit_numbers do let (,P,)=phi_matrices[i] in  P od fi
+
+
+
+{each orbit gives a matrix, with different bases
+ combine these into 1 matrix, using a common K_basis
+}
+set merge_Phi_matrices([K_Type] K_basis,[PhiMatrix] phi_matrices,[int] orbit_numbers)=([K_Type],mat):
+if #orbit_numbers=0 then (K_basis,null(#K_basis,0)) else 
+merge_matrices(K_basis,for i in orbit_numbers do let (kbasis,,T) = phi_matrices[i] in (kbasis,T)  od) fi
+
+{merge_matrices(K_basis,for (kbasis,,T) in phi_matrices do (kbasis,T) od) fi}
+
+{same as previous, except only keep terms whose K_norm is <= smaller_bound}
+set merge_Phi_matrices([K_Type] K_basis,[PhiMatrix] phi_matrices,[int] orbit_numbers, int smaller_bound)=([K_Type],mat):
+merge_matrices(K_basis,for i in orbit_numbers do let (kbasis,,T)=phi_matrices[i] in (kbasis,truncate(T,kbasis,smaller_bound)) od)
+
+
+
+
+set av([K_Type] K_basis, KNilpotentData d,[int] orbit_numbers, ParamPol P) = 
+let (lkbasis,orbit_pointers,T)=Phi_matrix(K_basis,d,orbit_numbers) then
+w0=vector(K_basis,P) then
+()=if not any(w0) then prints("Cannot find vector representing P"); return(lkbasis,orbit_pointers,null(0,0),null(0),null(0)) fi then
+w=requisition(w0) then 
+v0=solve(T,w) then
+()=if not any(v0) then prints("cannot solve Tv=w");return(lkbasis,orbit_pointers,null(0,0),null(0),null(0)) fi then
+v=requisition(v0) then
+header=["#","c","orbit","K_norm"] then 
+values=[] in
+for i:#v do 
+if v[i]!=0 then 
+values#:=[i.to_string,v[i].to_string,orbit_pointers[i].to_string,K_norm(expand(T[i],K_basis)).to_string] fi od;
+prints();
+tabulate(header#values,"llll",1," ");prints(new_line);
+(lkbasis,orbit_pointers,T,w,v) 
+
+set av([K_Type] K_basis, KNilpotentData d,[int] orbit_numbers, Param p)=
+let P=character_formula(p)*0 in 
+prints("P=",P); av(K_basis,d,orbit_numbers,P)
