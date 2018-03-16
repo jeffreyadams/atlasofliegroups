@@ -3,6 +3,7 @@
 <parabolics.at { for Levi@Parabolic }
 <parameters.at { for parameter@(KGBElt,KGBElt,ratvec) }
 <nilpotent_orbit_partitions.at {for nilpotent orbits of classical groups}
+<W_characters.at
 
 { ComplexNilpotent: (RootDatum rd,vec H)
   where [H,X,Y] is a Lie triple, H\in X_*, and orbit=G.X
@@ -74,26 +75,36 @@ set sort_by (((vec, rat)-> rat) f)=([(vec,rat)] v) [(vec,rat)]:
 
 set sort_by_length =([(vec,rat)]->[(vec,rat)]): sort_by((vec v,rat c) rat: c)
 
+set int_list (int n)=[int]: for i:n do i od
 
-{ these form a superset of the possible H in a Lie triple [H,E,F] }
-set all_H (RootDatum rd) = [(vec,rat)]:
-  let n=semisimple_rank(rd) then v=box(3,n) { $\{0,1,2\}^n$ as |[[int]]| }
-  , coweights=fundamental_coweights(rd), simple_coroots=simple_coroots(rd)
-  , dual_inv_form = rd.co_invariant_form
-  in
-  for w in v
-  do let u= sum(for wi@i in w do wi*coweights[i] od,rd.rank) in
-     if is_even(dim_nilpotent(rd,u)) and in_lattice(simple_coroots,u) and
-                is_decreasing(even_eigenspaces(rd,u)) and
-                is_decreasing(odd_eigenspaces(rd,u))
-     then [(u.numer {in_lattice succeeded, so u.denom=1}, dual_inv_form(u,u))]
-     else []
-     fi
-  od.##.sort_by_length
+set S_weight ([int] S, RootDatum rd)=ratvec: if ss_rank(rd)=0 then
+   for i:rank(rd) do 0 od
+   else let r=#simple_roots(rd)[0]
+   in let vecs=[ratvec]: for k in S do 2*fundamental_coweights(rd)[k] od
+   in sum(vecs,r) fi
+
+set H_candidates (RootDatum rd)=[ratvec]:
+   let result=[ratvec]:[] in for S in power_set(int_list(ss_rank(rd))) do
+   S_weight (S,rd) od
+
+set distinguished_H(RootDatum rd, RootDatum rd_L)=[ratvec]:
+   ##for H in H_candidates(rd_L) do
+   if dim_eigenspace(rd_L,H,2)=dim_eigenspace(rd_L,H,0)+ss_rank(rd_L)-rank(rd_L)
+   then [dominant(H,rd)]
+      else [] fi od
+
+set all_H (RootDatum rd)=[ratvec]:
+   let Levis=[RootDatum]: for S in standard_Levi_conjugacy_representatives(rd) do
+   Levi_datum(rd,S) od in ##for L in Levis do distinguished_H(rd,L) od
+
+set all_H_with_L (RootDatum rd)=[([int],[ratvec])]:
+   let Levis=standard_Levi_conjugacy_representatives(rd) in
+   for S in Levis do let list=distinguished_H(rd,Levi_datum(rd,S)) in
+   (S,list) od
 
 set all_H_dimensions(RootDatum rd)=[int]:
 let all=all_H(rd) in
-let dims=for (v,)@i in all do let d=dim_nilpotent(rd,v) in prints(i, " ", v, ", ", v*simple_roots(rd), even_eigenspaces(rd,v), " ", odd_eigenspaces(rd,v),  " ", d);d od in
+let dims=for v@i in all do let d=dim_nilpotent(rd,v) in prints(i, " ", v, ", ", v*simple_roots(rd), even_eigenspaces(rd,v), " ", odd_eigenspaces(rd,v),  " ", d);d od in
 sort(dims)
 
 set sort_by (((ratvec, [vec])-> int) f)=([(ratvec,[vec])] v) [(ratvec,[vec])]:
@@ -116,7 +127,7 @@ sort_by((ratvec H,[vec] v) int:#v)
 
 
 {find H which work for given q=q(x,H)=(L,u)}
-set find_H (Parabolic P) = [(vec,[vec])]: { should be [(vec,mat)] really }
+set find_H (Parabolic P) = [(ratvec,[vec])]: { should be [(vec,mat)] really }
 {set find_H((KGBElt x,RealForm L,[vec] u))=[(vec,[vec])]:}
 begin
   let x=maximal(P)
@@ -125,7 +136,7 @@ begin
   , theta_1 = involution(x)-1
   in
 { prints("u_p:", u_p); }
-##for (H,) in all_H(P.real_form)
+##for H in all_H(P.real_form)
   do
   { prints("H=", H, ", ", rho_L, ", ", H*rho_L); }
     if =H*theta_1 and =H*rho_L and >H*u_p { all its entries >0 } else []
