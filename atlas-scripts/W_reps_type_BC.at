@@ -2,6 +2,7 @@
 <sort.at
 <complex_nilpotent_orbits.at
 <partitions.at
+<nilpotent_orbit_partitions.at
 <wreps_type_C.at { for types Orbit, Symbol, Wrep, and symbol@Orbit }
 
 {in simple groups of type B or C}
