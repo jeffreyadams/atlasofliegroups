@@ -1,9 +1,6 @@
-<misc.at { for dimension@RootDatum }
-<lattice.at { for in_lattice@(mat,ratvec) }
 <parabolics.at { for Levi@Parabolic }
 <parameters.at { for parameter@(KGBElt,KGBElt,ratvec) }
-<nilpotent_orbit_partitions.at {for nilpotent orbits of classical groups}
-<W_characters.at
+<W_characters.at {for is_dominant}
 
 { ComplexNilpotent: (RootDatum rd,vec H)
   where [H,X,Y] is a Lie triple, H\in X_*, and orbit=G.X
@@ -13,13 +10,17 @@
 set_type ComplexNilpotent = (RootDatum root_datum_of, vec H_of_triple)
 { field name |root_datum| would conflict with |ComplexParabolic| (too close) }
 
-set dim_nilpotent (RootDatum rd,ratvec H) = int:
-  sum(for alpha in posroots(rd) do case alpha*H\1 in 0, 1 else 2 esac od)
+set dim_nilpotent (ComplexNilpotent(rd,H)) = int:
+  sum(for alpha in posroots(rd) do case 2*alpha*H\1 in 0, 1 else 2 esac od)
 
 set diagram (ComplexNilpotent(rd,H)) = [int]:
-  H*simple_roots(rd) { or: for v in simple_roots(rd) do H*v od }
+  ratvec_as_vec(2*H)*simple_roots(rd) { or: for v in simple_roots(rd) do H*v od }
 
-set dim_nilpotent (ComplexNilpotent(rd,H)) = dim_nilpotent(rd,ratvec:H)
+set sort_by(  (ComplexNilpotent->int) f)=([ComplexNilpotent] v) [ComplexNilpotent]:
+  for index in inv_standardisation(for x in v do f(x) od) do v[index] od
+
+set sort_by_dimension = ([ComplexNilpotent]->[ComplexNilpotent]):
+sort_by((ComplexNilpotent O) int: dim_nilpotent(O))
 
 set dim_eigenspace (RootDatum rd, ratvec H, int k) = int:
    if k=0
@@ -27,12 +28,11 @@ set dim_eigenspace (RootDatum rd, ratvec H, int k) = int:
    else count(for alpha in posroots(rd) do alpha*H=k od)
    fi
 
-
-set max_eigenspace(RootDatum rd, ratvec H)=int:
+set max_eigenspace(RootDatum rd, vec H)=int:
 let rv=rat:0 in
 for alpha in posroots(rd) do if alpha*H>rv then rv:=alpha*H fi od; rat_as_int(rv)
 
-set all_eigenspaces (RootDatum rd, ratvec H)=[int]:
+set all_eigenspaces (RootDatum rd, vec H)=[int]:
 assert(is_dominant(dual(rd),H),"H is not dominant");
 let sum=0 in
 let rv=[int]:[] in
@@ -42,22 +42,10 @@ rv#:=d;if k=0 then sum+:=d  else sum+:=2*d fi od ;
 {prints("sum=", sum, " dimension(G)=", dimension(rd));}
 rv
 
-set even_eigenspaces (RootDatum rd, ratvec H) = [int]:
+set even_eigenspaces (RootDatum rd, vec H) = [int]:
   even_places(all_eigenspaces(rd,H))
-set odd_eigenspaces(RootDatum rd, ratvec H)=[int]:
+set odd_eigenspaces(RootDatum rd, vec H)=[int]:
   odd_places(all_eigenspaces(rd,H))
-
-{set dim_nilpotent(KGBElt x,ratvec H)=
-let G=real_form(x) in
-if (#H=0 or H=null(rank(G))) then 0 else
-let K=K_0(KGB(G,0)) then
-dim_K=dimension(K) then
-L=L(x,H) then
-L_K=K_0(KGB(L,0)) then
-dim_L_K=dimension(L_K) then
-dim_u_cap_k_1=dim_u_cap_k_1(x,H) in
-rat_as_int(dim_K-dim_L_K-dim_u_cap_k_1) fi
-}
 
 set support (Param p) = [int]:
   support(x(p)) { using |support@KGBElt| from parabolics.at }
@@ -78,48 +66,41 @@ set S_weight ([int] S, RootDatum rd)=ratvec: if ss_rank(rd)=0 then
    in let vecs=[ratvec]: for k in S do 2*fundamental_coweights(rd)[k] od
    in sum(vecs,r) fi
 
+{these are candidates for 2*H where H is the semisimple element of an SL(2) triple
+ not necessarily a vec, for example in SL(3)}
 set H_candidates (RootDatum rd)=[ratvec]:
-   let result=[ratvec]:[] in for S in power_set(int_list(ss_rank(rd))) do
+   let result=[vec]:[] in for S in power_set(int_list(ss_rank(rd))) do
    S_weight (S,rd) od
 
-set distinguished_H(RootDatum rd, RootDatum rd_L)=[ratvec]:
+set distinguished_H(RootDatum rd, RootDatum rd_L)=[vec]:
    ##for H in H_candidates(rd_L) do
    if dim_eigenspace(rd_L,H,2)=dim_eigenspace(rd_L,H,0)+ss_rank(rd_L)-rank(rd_L)
-   then [dominant(H,rd)]
+   then [ratvec_as_vec(dominant(H,rd))]
       else [] fi od
 
-set all_H (RootDatum rd)=[ratvec]:
+set all_H (RootDatum rd)=[vec]:
    let Levis=[RootDatum]: for S in standard_Levi_conjugacy_representatives(rd) do
    Levi_datum(rd,S) od in ##for L in Levis do distinguished_H(rd,L) od
+
+set complex_nilpotent_orbits(RootDatum rd)=[ComplexNilpotent]:
+for H in all_H(rd) do (rd,H) od
 
 set all_H_with_L (RootDatum rd)=[([int],[ratvec])]:
    let Levis=standard_Levi_conjugacy_representatives(rd) in
    for S in Levis do let list=distinguished_H(rd,Levi_datum(rd,S)) in
    (S,list) od
-
+{
 set all_H_dimensions(RootDatum rd)=[int]:
 let all=all_H(rd) in
-let dims=for v@i in all do let d=dim_nilpotent(rd,v) in prints(i, " ", v, ", ", v*simple_roots(rd), even_eigenspaces(rd,v), " ", odd_eigenspaces(rd,v),  " ", d);d od in
+let dims=for v@i in all do let d=dim_nilpotent(rd,ratvec_as_vec(2*v)) in prints(i, " ", v, ", ", v*simple_roots(rd), even_eigenspaces(rd,v), " ", odd_eigenspaces(rd,v),  " ", d);d od in
 sort(dims)
+}
 
 set sort_by_dimension_of_2_eigenspace  = ([ratvec,[vec]]->[ratvec,[vec]]):
   sort_by((ratvec z,[vec] v) int:#v)
 
-{
-=([(ratvec,[vec])] -> [(ratvec,[vec])]):
-sort_by((ratvec H,[vec] v) int:#v)
-
-
-}
-
-
-
-
-
-
-
 {find H which work for given q=q(x,H)=(L,u)}
-set find_H (Parabolic P) = [(ratvec,[vec])]: { should be [(vec,mat)] really }
+set find_H (Parabolic P) = [(vec,[vec])]: { should be [(vec,mat)] really }
 {set find_H((KGBElt x,RealForm L,[vec] u))=[(vec,[vec])]:}
 begin
   let x=maximal(P)
@@ -211,7 +192,6 @@ parse_even_nilpotents.pl wcells
 in atlas:
 <wcells_out {to define variable [[int]]:Wcells}}
 
-
 {convert Block to [param]
 Block: returned by block(G,Gd), is a list of pairs (x,y)
 }
@@ -289,9 +269,3 @@ let rv=[int]:[] in for i in cell do if is_Aq(B,i) then rv#:=i fi od ;rv
 
 set Aq_cells(RealForm G,[[int]] cells)=Aq_cells(principal_block(G),cells)
 
-set complex_nilpotent_orbits(RootDatum rd)=
-for P in nilpotent_orbit_ss_elements(rd) do (rd,P) od
-
-set complex_nilpotent_orbit_closures(RootDatum rd)=closures(nilpotent_orbit_ss_elements(rd))
-
-set orbits_closures(RootDatum rd)=(complex_nilpotent_orbits(rd), complex_nilpotent_orbit_closures(rd))

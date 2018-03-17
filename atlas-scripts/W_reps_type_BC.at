@@ -4,6 +4,7 @@
 <nilpotent_orbit_partitions.at { for eponymous function, |is_valid| }
 <combinatorics.at
 <W_reps.at { for types |W_rep|, |WCell| }
+
 { types C and B }
 { in ths file we handle three kinds of objects
   Orbit P: partition for nilpotent orbit of type C_n

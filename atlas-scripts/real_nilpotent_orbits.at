@@ -46,14 +46,14 @@ for (rd,H)@i in complex_orbits do
   P_complex= (rd,roots_of_Levi) then
   theta_stable_parabolics=theta_stable_parabolics(G,P_complex) in
   for P in theta_stable_parabolics
-  do orbits#:=([int]:H,x_min(P));closures#:=complex_orbit_closures[i]
+  do orbits#:=(H,x_min(P));closures#:=complex_orbit_closures[i]
   od
 od ;(orbits,closures)
 
-set potential_real_nilpotent_orbits (RealForm G) =
+{set potential_real_nilpotent_orbits (RealForm G) =
   let (orbits,closures)=orbits_closures(G)
   in potential_real_nilpotent_orbits(G,orbits,closures)
-
+}
 {
   let semisimple_elements_of_orbits=for (,H) in O do H od
   then
