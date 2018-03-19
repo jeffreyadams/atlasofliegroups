@@ -22,7 +22,7 @@ set sort_by(  (ComplexNilpotent->int) f)=([ComplexNilpotent] v) [ComplexNilpoten
 set sort_by_dimension = ([ComplexNilpotent]->[ComplexNilpotent]):
 sort_by((ComplexNilpotent O) int: dim_nilpotent(O)) 
 
-set dim_eigenspace (RootDatum rd, vec H, int k) = int:
+set dim_eigenspace (RootDatum rd, ratvec H, int k) = int:
 let rv=0 in
 if k=0 then rv:=rank(rd);
 for alpha in posroots(rd) do {prints("alpha:", alpha, "  ", rv);}if alpha*H=0 then rv+:=2 fi od
@@ -65,20 +65,22 @@ set sort_by_length =([(vec,rat)]->[(vec,rat)]): sort_by((vec v,rat c) rat: c)
 
 set int_list (int n)=[int]: for i:n do i od
 
-set S_weight ([int] S, RootDatum rd)=vec: if ss_rank(rd)=0 then
+set S_weight ([int] S, RootDatum rd)=ratvec: if ss_rank(rd)=0 then
    for i:rank(rd) do 0 od
    else let r=#simple_roots(rd)[0]
-   in let vecs=[ratvec]: for k in S do ratvec_as_vec(2*fundamental_coweights(rd)[k]) od
-   in ratvec_as_vec(sum(vecs,r)) fi
+   in let vecs=[ratvec]: for k in S do 2*fundamental_coweights(rd)[k] od
+   in sum(vecs,r) fi
 
-set H_candidates (RootDatum rd)=[vec]:
+{these are candidates for 2*H where H is the semisimple element of an SL(2) triple
+ not necessarily a vec, for example in SL(3)}
+set H_candidates (RootDatum rd)=[ratvec]:
    let result=[vec]:[] in for S in power_set(int_list(ss_rank(rd))) do
    S_weight (S,rd) od
 
 set distinguished_H(RootDatum rd, RootDatum rd_L)=[vec]:
    ##for H in H_candidates(rd_L) do
    if dim_eigenspace(rd_L,H,2)=dim_eigenspace(rd_L,H,0)+ss_rank(rd_L)-rank(rd_L)
-   then [dominant(H,rd)]
+   then [ratvec_as_vec(dominant(H,rd))]
       else [] fi od
 
 set all_H (RootDatum rd)=[vec]:
@@ -86,17 +88,18 @@ set all_H (RootDatum rd)=[vec]:
    Levi_datum(rd,S) od in ##for L in Levis do distinguished_H(rd,L) od
 
 set complex_nilpotent_orbits(RootDatum rd)=[ComplexNilpotent]:
-for H in all_H(rd) do (rd,ratvec_as_vec(2*H)) od
+for H in all_H(rd) do (rd,H) od
 
-set all_H_with_L (RootDatum rd)=[([int],[vec])]:
+set all_H_with_L (RootDatum rd)=[([int],[ratvec])]:
    let Levis=standard_Levi_conjugacy_representatives(rd) in
    for S in Levis do let list=distinguished_H(rd,Levi_datum(rd,S)) in
    (S,list) od
-
+{
 set all_H_dimensions(RootDatum rd)=[int]:
 let all=all_H(rd) in
-let dims=for v@i in all do let d=dim_nilpotent(rd,v) in prints(i, " ", v, ", ", v*simple_roots(rd), even_eigenspaces(rd,v), " ", odd_eigenspaces(rd,v),  " ", d);d od in
+let dims=for v@i in all do let d=dim_nilpotent(rd,ratvec_as_vec(2*v)) in prints(i, " ", v, ", ", v*simple_roots(rd), even_eigenspaces(rd,v), " ", odd_eigenspaces(rd,v),  " ", d);d od in
 sort(dims)
+}
 
 set sort_by (((ratvec, [vec])-> int) f)=([(ratvec,[vec])] v) [(ratvec,[vec])]:
   for index in inv_standardisation(for x in v do f(x) od) do v[index] od
