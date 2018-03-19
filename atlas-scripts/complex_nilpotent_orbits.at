@@ -7,7 +7,8 @@
   H must satisfy <alpha,H>=0,1,2 for all simple roots,
   in particular is_dominant(H,rd) should hold
 }
-set_type ComplexNilpotent = (RootDatum root_datum, ratvec semisimple_element)
+set_type ComplexNilpotent = (RootDatum root_datum_of, vec semisimple_element)
+{ field name |root_datum| would conflict with |ComplexParabolic| (too close) }
 
 set dim_nilpotent (ComplexNilpotent(rd,H)) = int:
   sum(for alpha in posroots(rd) do case 2*alpha*H\1 in 0, 1 else 2 esac od)
@@ -29,11 +30,11 @@ else
 for alpha in posroots(rd) do if alpha*H=k then rv+:=1 fi od
 fi ;rv
 
-set max_eigenspace(RootDatum rd, ratvec H)=int:
+set max_eigenspace(RootDatum rd, vec H)=int:
 let rv=rat:0 in
 for alpha in posroots(rd) do if alpha*H>rv then rv:=alpha*H fi od; rat_as_int(rv)
 
-set all_eigenspaces (RootDatum rd, ratvec H)=[int]:
+set all_eigenspaces (RootDatum rd, vec H)=[int]:
 assert(is_dominant(dual(rd),H),"H is not dominant");
 let sum=0 in
 let rv=[int]:[] in
@@ -43,9 +44,9 @@ rv#:=d;if k=0 then sum+:=d  else sum+:=2*d fi od ;
 {prints("sum=", sum, " dimension(G)=", dimension(rd));}
 rv
 
-set even_eigenspaces (RootDatum rd, ratvec H) = [int]:
+set even_eigenspaces (RootDatum rd, vec H) = [int]:
   even_places(all_eigenspaces(rd,H))
-set odd_eigenspaces(RootDatum rd, ratvec H)=[int]:
+set odd_eigenspaces(RootDatum rd, vec H)=[int]:
   odd_places(all_eigenspaces(rd,H))
 
 set support (Param p) = [int]:
@@ -70,29 +71,35 @@ set S_weight ([int] S, RootDatum rd)=ratvec: if ss_rank(rd)=0 then
    in let vecs=[ratvec]: for k in S do 2*fundamental_coweights(rd)[k] od
    in sum(vecs,r) fi
 
+{these are candidates for 2*H where H is the semisimple element of an SL(2) triple
+ not necessarily a vec, for example in SL(3)}
 set H_candidates (RootDatum rd)=[ratvec]:
-   let result=[ratvec]:[] in for S in power_set(int_list(ss_rank(rd))) do
+   let result=[vec]:[] in for S in power_set(int_list(ss_rank(rd))) do
    S_weight (S,rd) od
 
-set distinguished_H(RootDatum rd, RootDatum rd_L)=[ratvec]:
+set distinguished_H(RootDatum rd, RootDatum rd_L)=[vec]:
    ##for H in H_candidates(rd_L) do
    if dim_eigenspace(rd_L,H,2)=dim_eigenspace(rd_L,H,0)+ss_rank(rd_L)-rank(rd_L)
-   then [dominant(H,rd)]
+   then [ratvec_as_vec(dominant(H,rd))]
       else [] fi od
 
-set all_H (RootDatum rd)=[ratvec]:
+set all_H (RootDatum rd)=[vec]:
    let Levis=[RootDatum]: for S in standard_Levi_conjugacy_representatives(rd) do
    Levi_datum(rd,S) od in ##for L in Levis do distinguished_H(rd,L) od
+
+set complex_nilpotent_orbits(RootDatum rd)=[ComplexNilpotent]:
+for H in all_H(rd) do (rd,H) od
 
 set all_H_with_L (RootDatum rd)=[([int],[ratvec])]:
    let Levis=standard_Levi_conjugacy_representatives(rd) in
    for S in Levis do let list=distinguished_H(rd,Levi_datum(rd,S)) in
    (S,list) od
-
+{
 set all_H_dimensions(RootDatum rd)=[int]:
 let all=all_H(rd) in
-let dims=for v@i in all do let d=dim_nilpotent(rd,v) in prints(i, " ", v, ", ", v*simple_roots(rd), even_eigenspaces(rd,v), " ", odd_eigenspaces(rd,v),  " ", d);d od in
+let dims=for v@i in all do let d=dim_nilpotent(rd,ratvec_as_vec(2*v)) in prints(i, " ", v, ", ", v*simple_roots(rd), even_eigenspaces(rd,v), " ", odd_eigenspaces(rd,v),  " ", d);d od in
 sort(dims)
+}
 
 set sort_by (((ratvec, [vec])-> int) f)=([(ratvec,[vec])] v) [(ratvec,[vec])]:
   for index in inv_standardisation(for x in v do f(x) od) do v[index] od
@@ -101,7 +108,7 @@ set sort_by_dimension_of_2_eigenspace =([(ratvec,[vec])]->[(ratvec,[vec])]):
 sort_by((ratvec z,[vec] v) int:#v)
 
 {find H which work for given q=q(x,H)=(L,u)}
-set find_H (Parabolic P) = [(ratvec,[vec])]: { should be [(vec,mat)] really }
+set find_H (Parabolic P) = [(vec,[vec])]: { should be [(vec,mat)] really }
 {set find_H((KGBElt x,RealForm L,[vec] u))=[(vec,[vec])]:}
 begin
   let x=maximal(P)
