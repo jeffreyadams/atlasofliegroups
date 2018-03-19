@@ -35,12 +35,12 @@ set simple_roots_from_coweights (RootDatum rd,[ratvec] list) = [[int]]:
   simple roots alpha such that alpha*H=0
 }
 
-set potential_real_nilpotent_orbits(RealForm G,[ComplexNilpotent] complex_orbits)=[[RealNilpotentOrbit]]:
-for (rd,H)@i in complex_orbits do
+set potential_real_nilpotent_orbits(RealForm G,[ComplexNilpotent] complex_orbits)=[RealNilpotentOrbit]:
+##for (rd,H)@i in complex_orbits do
   let roots_of_Levi=simple_roots_from_coweight(rd,H) then
   P_complex= (rd,roots_of_Levi) then
   theta_stable_parabolics=theta_stable_parabolics(G,P_complex) in
-  for P in theta_stable_parabolics do (H,x_min(P)) od od 
+  for P in theta_stable_parabolics do RealNilpotentOrbit:(H,x_min(P)) od od 
 
-set potential_real_nilpotent_orbits(RealForm G)=[[RealNilpotentOrbit]]:
+set potential_real_nilpotent_orbits(RealForm G)=[RealNilpotentOrbit]:
 potential_real_nilpotent_orbits(G,complex_nilpotent_orbits(G))

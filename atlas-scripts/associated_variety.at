@@ -1,3 +1,4 @@
+<compute_L_cap_K_X.at
 
 {list of L\cap K-types from data for given orbit}
 set L_cap_K_basis(KNilpotentData d,int orbit_number)=[K_Type]:

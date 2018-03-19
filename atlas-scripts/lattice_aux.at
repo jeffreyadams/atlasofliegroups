@@ -1,3 +1,5 @@
+<lattice.at
+
 set select_columns([int] columns, mat M)=mat:for i in columns do M[i] od
 set select_rows([int] rows, mat M)=mat:^(select_columns(rows,^M))
 set first_columns(int n,mat M)=mat:select_columns(#n,M)
