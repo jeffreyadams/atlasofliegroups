@@ -4,6 +4,7 @@
 
 <basic.at
 <sort.at
+<lazy_lists.at { for |inf_list| type and related stuff }
 <groups.at { for root data computed by |GL|, |Sp|, |SO| }
 
 set fac (int n) = int:
@@ -178,3 +179,19 @@ set signed_cycle_type ([int] sigma) = [int,bool]: { pairs of cycle and sign }
   then size = for cycle in cycles do #cycle od
   ,    sign = for cycle in cycles do for i in cycle do #flip[i] od.sum.is_odd od
   in for i in inv_standardisation(size) do (size[i],sign[i]) ~od
+
+{			    Formal power series				}
+pentagonal_series : inf_list:
+@:(1
+  , (1,false,1).
+    (rec_fun f (int k, bool upper, int i) inf_list:
+     @: if i+i= if upper else k*(3*k-1) then k*(3*k+1) fi
+        then (minus_1^k, f(k+#upper,not upper,i+1))
+        else (0,f(k,upper,i+1))
+        fi
+    )
+  )
+
+set n_parts = memoize(inverse(pentagonal_series))
+set n_partitions (int n) = int:
+  let (x,ff)=n_parts() in for :n do set(x,ff):=ff() od; x

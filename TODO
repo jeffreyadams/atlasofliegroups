@@ -26,6 +26,7 @@
 - Improve output of expressions
   Distinguish one-line (maybe abbreviated) and long forms.
 
+- For layers produced by loops, provide printing of the indentifier value
 - For errors during implict conversion, provide back-tracing as for calls
 
 - Implement operate-and-assign directly. While 'v #:= x' (with vec v, int x)
