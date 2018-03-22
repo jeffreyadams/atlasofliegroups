@@ -159,20 +159,20 @@ mod2_section (mat->mat): find section (left/right/inverse) of binary matrix
 
 subspace_normal: (mat->mat,mat,mat,[int]) normalized modulo-2 basis
   Given a sequence of binary vectors, namely the reduction modulo 2 of the
-  columns of the argument matrix, find a normalized basis for the subspace
-  they span (a matrix in reduced column echelon form without zero columns),
-  and also expressions for the basis vectors in terms of the given list, a
-  basis for the relations between the vectors, and a list of pivot values
-  (each list given as a matrix with the specified vectors as its columns).
-  The argument is a list of n generators of size r whose components are
-  interpreted modulo 2, the first output component is a reduced echelon basis,
-  consisting of d binary vectors of size r where d is the dimension of the
-  subspace, the next component has d binary vectors of size n, giving the
-  combination of generators that produced this basis vector, the next
-  component has n-d binary vectors of size n, each giving basis of the linear
-  dependency relations among the generators, and the final component is an
-  increasing sequence of non-negative d integers less than r giving the pivot
-  positions, the first nonzero positions in each of the basis vectors.
+  columns of the argument matrix, find a normalized basis for the subspace they
+  span (a matrix in reduced column form without zero columns), and also
+  expressions for the basis vectors in terms of the given list, a basis for the
+  relations between the vectors, and a list of pivot values (each list given as
+  a matrix with the specified vectors as its columns). The argument is a list of
+  n generators of size r whose components are interpreted modulo 2, the first
+  output component is a reduced echelon basis, consisting of d binary vectors of
+  size r where d is the dimension of the subspace, the next component has d
+  binary vectors of size n, giving the combination of generators that produced
+  this basis vector, the next component has n-d binary vectors of size n, each
+  giving basis of the linear dependency relations among the generators, and the
+  final component is an increasing sequence of non-negative d integers less than
+  r giving the pivot positions, the first nonzero positions in each of the basis
+  vectors.
 
 Lie_type: (string->LieType): interpret string as Lie type.
   Factors are one of "ABCDEFGT" followed by a number; several factors can be

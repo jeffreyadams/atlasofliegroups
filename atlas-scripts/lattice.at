@@ -8,8 +8,8 @@
 
 { |M| is an $n\times k$ matrix, so columns of |M| span a $\Z$-submodule
   $ W=image(M)$ of $\Z^n$; get canonical generators for this submodule }
-set image_lattice (mat M) = mat:
-   let (M,,pivots,)=echelon(M) then c=#M
+set image_lattice (mat A) = mat:
+   let (M,,pivots,)=echelon(A) then c=#M
 in for i@j in pivots
    do let col=M[j] then pivot=col[i]
    in for l: c-1-j from j+1 do M[l]-:=col*(M[i,l]\pivot) od
