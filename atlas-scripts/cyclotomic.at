@@ -1,3 +1,5 @@
+<basic.at
+<number_theory.at { factorization, totient function |phi@int| and such }
 <sort.at { we need to sort divisors }
 <Gaussian_elim.at
 <rational_polynomial.at { for convolve@([rat],[rat]) }
@@ -37,21 +39,6 @@ set divisors (int n) = [int]:
          fi
       fi
     ).sort)
-
-{. Euler totient function .}
-set phi (int n) = int:
-   assert(n>0);
-   let p=1, b=2 in
-   while not (b*b>n)
-   do let (q,r)=n\%b in
-      if !=r then b+:=1 { |b| is not a divisor, raise it }
-      else p*:=b-1 { first factor |b| of |n| contributes |b-1| }
-      ; while set (q,r):=(n:=q)\%b { move quotient to |n|, and try another |b| }
-        ; =r { whether trial division succeeded }
-        do p*:=b od { move any remaining factors |b| from |n| to |p| }
-      fi
-   od; if n=1 then p else p*(n-1) { if |n>1| remains, it must be prime } fi
-
 
 {.Euclidean division of polynomial encoded [int] by a monic such polynomial.}
 set divide1 ([int] P, [int] D) = ([int],[int]): { quotient, remainder }

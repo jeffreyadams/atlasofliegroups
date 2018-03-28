@@ -76,14 +76,6 @@ set from_stops ([int] stops) = (int->int):
   stops:=stops[1:]; { ignore the first stop, which should always be 0 }
   (int k): binary_search_first((int i):stops[i]>k,0,#stops) { first excess }
 
-set inverse_permutation ([int] pi) = [int]:
-   let n=#pi then result=for :n do n od in
-   for v@i in pi
-   do assert(v.>= and v<n and result[v]=n
-            ,to_string("not a permutation (",v,")"))
-   ; result[v]:=i
-   od; result
-
 {                               Integers                                }
 
 set abs (int k)= int: if <k then -k else k fi
@@ -1228,6 +1220,14 @@ set compact_posroots (KGBElt x) = mat:
 set noncompact_posroots (KGBElt x) = mat:
   columns_with(is_noncompact(x),imaginary_posroots(x))
 
+set dimension (KGBElt x) = int: { dimension as $K$-orbit on $G/B$ }
+  let G=x.real_form then x0=KGB(G,0), posroots=G.posroots in
+( x.length
++ #columns_with(is_compact_imaginary(x0),posroots)
++ #columns_with(is_complex(x0.involution),posroots)\2
+)
+
+
 set rho_ci (KGBElt x)  = ratvec: sum(compact_posroots(x))/2
 set rho_nci (KGBElt x) = ratvec: sum(noncompact_posroots(x))/2
 
@@ -1474,6 +1474,8 @@ set print_extended_block = (Param,mat->):
 
 set null_module (ParamPol P) = ParamPol: 0*P { built-in does this efficiently }
 set -(ParamPol P) = ParamPol: minus_1*P
+
+set + (ParamPol P, [Param] ps) = ParamPol: P+for p in ps do (1,p) od
 
 set first_param (ParamPol P) = Param: let (,p)=first_term(P) in p
 set last_param (ParamPol P)  = Param: let (,p)=last_term(P) in p

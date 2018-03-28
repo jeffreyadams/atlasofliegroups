@@ -1,8 +1,8 @@
 <basic.at
 <parameters.at { for parameter@(KGBElt,KGBElt,ratvec) }
 <synthetic.at { for type KGBElt_gen }
-<Vogan-dual.at { for y_alt@(Param,InnerClass) }
-<polynomial.at { type poly, update_matrix_entry@(poly_mat,int,int,poly) }
+<Vogan-dual.at { for |dual@(Param,InnerClass)| }
+<polynomial.at { type i_poly,update_matrix_entry@(i_poly_mat,int,int,i_poly) }
 <extended.at { for type ExtParam }
 <KL_polynomial_matrices.at
 
@@ -16,7 +16,7 @@
    B1[i]=B2[perm[i]]
 }
 set permutation ([Param] B1, [Param] B2) = [int]:
-assert(#B1=#B2,"B1 and B2 not the same size");for i:#B1 do find(B2,B1[i]) od
+  assert(#B1=#B2,"B1 and B2 not the same size"); for b in B1 do find(B2,b) od
 
 { various functions for constructing dual block:
   dual(B), dual(B,g), dual(B,g,dual_inner_class), dual(B,dual_inner_class)
@@ -25,21 +25,21 @@ assert(#B1=#B2,"B1 and B2 not the same size");for i:#B1 do find(B2,B1[i]) od
   Vogan duality is B[i] -> B_vee(permutation[i])
 }
 set dual_block ([Param] B, InnerClass dual_inner_class) = ([Param],[int]):
-  let q=dual(B[0],dual_inner_class) in
-  let B_vee=block_of(q) in
-  let B_dual=for p in B do dual(p,dual_inner_class) od in
-  { B_dual is in length *decreasing* order; B[i]->B_dual[i] is Vogan duality }
-  let B_vee=block_of(q) in
+  let B_vee=block_of(dual(B[0],dual_inner_class))
+  then B_dual=for p in B do dual(p,dual_inner_class) od
+  in
   { B_vee is in length *increasing* order
+    B_dual is in length *decreasing* order; B[i]->B_dual[i] is Vogan duality
     B_vee=B_dual up to permutation, roughly reversing order
   }
   (B_vee,permutation(B_dual,B_vee))
 
 {don't specify the inner class and/or the dual infinitesimal character}
-set dual_block ([Param] B) = ([Param],[int]):dual_block(B,dual_inner_class(B[0]))
+set dual_block ([Param] B) = ([Param],[int]):
+  dual_block(B,dual_inner_class(B[0]))
 
-set dual_ExtParameter ( ExtParam
-    (ic,delta,gamma,lambda,theta,g,l,omega,tau,t)) = ExtParam:
+set dual_ExtParameter (
+       ExtParam(ic,delta,gamma,lambda,theta,g,l,omega,tau,t)) = ExtParam:
     (dual(ic),^delta,g,l,omega,gamma,lambda,theta,t,tau)
 
 { matrix of P-polynomials for B, with signs if second argument is true
@@ -56,21 +56,20 @@ set dual_ExtParameter ( ExtParam
   assuming B is in standard length increasing order:
   P and Q are  both upper triangular
 }
-set KL_Q_polynomials ([Param] B)=
-  let (B_vee,perm)=dual_block(B) in
-  let Q_0=KL_P_polynomials(B_vee) in  { Q_0 is upper triangular }
+set KL_Q_polynomials ([Param] B) = i_poly_mat:
+  let (B_vee,perm)=dual_block(B)
+  then Q_0=KL_P_polynomials(B_vee) in  { Q_0 is upper triangular }
   let Q_1=poly_permute_basis(perm,Q_0) in  { Q_1 (usually) lower triangular }
   transpose(Q_1) { (usually) upper triangular }
 
-{individual Q polynomials
- given B to make sure have the right basis in the right order
- given Q so don't need to recompute it
+{ individual Q polynomials
+  given B to make sure we have the right basis in the right order
+  given Q so don't need to recompute it
 }
-set KL_Q_polynomial([Param] B, poly_mat Q,Param irr,Param std)=poly:
-let index_irr=find(B,irr) then
-index_std=find(B,std) in
-assert(index_irr>=0 and index_std>=0,"irr and/or std not found in block");
-Q[index_irr][index_std]
+set KL_Q_polynomial ([Param] B, i_poly_mat Q,Param irr,Param std) = i_poly:
+  let index_irr=find(B,irr) then index_std=find(B,std) in
+  assert(index_irr>=0 and index_std>=0,"irr and/or std not found in block");
+  Q[index_irr][index_std]
 
 { in some cases this test fails because it is off by a permutation which
   I don't understand
@@ -78,16 +77,15 @@ Q[index_irr][index_std]
 { for example G=Sp(6,R), test_duality(spherical_principal_series(G,rho(G))) }
 { returns P,Q, and true/false;
   P*Q should be the identity}
-set test_duality (Param p)=
-( let B=block_of(p) in
-  let P_signed=KL_P_signed_polynomials(B) in
-  let Q=KL_Q_polynomials(B) in
-  prints("P_signed="); printPolyMatrix(P_signed)
-; prints("Q="); printPolyMatrix(Q)
-; let R=P_signed*Q in
-  let rv= R=identity_poly_matrix(#P_signed) in
-  if rv then prints("passed: P*Q=I")
-  else prints("failed: P*Q=I");printPolyMatrix(R)
-  fi
-; (P_signed,Q,rv)
+set test_duality (Param p) = (i_poly_mat,i_poly_mat,bool):
+(  let B=block_of(p)
+   then P_signed=KL_P_signed_polynomials(B), Q=KL_Q_polynomials(B)
+in prints("P_signed="); printPolyMatrix(P_signed)
+;  prints("Q="); printPolyMatrix(Q)
+;  let R=P_signed*Q
+   then success = R=identity_poly_matrix(#P_signed)
+in if success then prints("passed: P*Q=I")
+   else prints("failed: P*Q=I"); printPolyMatrix(R)
+   fi
+;  (P_signed,Q,success)
 )
