@@ -130,6 +130,15 @@ set compose_permutations ([int] sigma, [int] pi) = [int]:
   for i in pi do sigma[i] od
 
 set inverse ([int] pi) = [int]: { hope that name causes no conflict }
+  let n=#pi then result=for :n do n od { sentinel values} in
+  for i@j in pi
+  do assert(i.>= and i<n and result[i]=n { in range, and no seen before }
+           ,to_string("not a permutation (",i,")"));
+     result[i]:=j
+  od; result
+
+{ longer name for non-checking (so faster) version of the above }
+set permutation_inverse ([int] pi) = [int]:
   let result=null(#pi) in for i@j in pi do result[i]:=j od; result
 
 set permute ([int] pi,vec v) = vec: { replaces |v[i]| by |v[pi.inverse[i]]| }

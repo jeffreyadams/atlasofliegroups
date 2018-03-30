@@ -1,5 +1,5 @@
 <basic.at
-<polynomial.at { for type |poly| and function |eval| }
+<polynomial.at { for type |i_poly| and function |eval| }
 
 { this file defines commands that are equivalent to the |full_deform| command
   that is now built-in; it therefore serves mainly documentation (and
@@ -11,7 +11,7 @@
 }
 
 set compress { output from |partial_KL_block| to a more useful form } (
-    [Param] B, mat KL_mat, [poly] polys, vec stops, vec survivors, mat map) =
+    [Param] B, mat KL_mat, [i_poly] polys, vec stops, vec survivors, mat map) =
   ([Param], mat, [int]): { $(block,((-1)^l(y/s)*P_{x,y}[q:=-1],lengths)$ }
   let polys_at_minus_1 = for p in polys do eval(p,minus_1) od
   then KL_mat_at_minus_1 = mat: { matrix of polynomial evaluations at -1 }
