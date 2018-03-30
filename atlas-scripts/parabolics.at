@@ -438,6 +438,17 @@ rv=[] in
 for S in subsets do
 for P in parabolics(G,(G,S)) do if is_parabolic_real(P) then rv#:=P fi od od;rv
 
+set parabolics_with_theta_stable_Levi(RealForm G,[int] S)=[Parabolic]:
+   let rv=[] in for P in parabolics(G,(G,S)) do
+   if has_theta_stable_Levi(P) then rv#:=P fi od; rv
+
+set all_parabolics_with_theta_stable_Levi(RealForm G)=[KGPElt]:
+   let subsets=generate_all_subsets(for i:semisimple_rank(G) do i od) then
+   rv=[] in
+   for S in subsets do
+   for P in parabolics(G,(G,S)) do if has_theta_stable_Levi(P) then rv#:=P fi od od;rv
+
+
 {. For each theta-stable parabolic of G, print S, Levi factor, and maximal x. .}
 set print_theta_stable_parabolics (RealForm G) = void:
   let all = theta_stable_parabolics(G) in
