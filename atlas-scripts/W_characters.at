@@ -3,7 +3,6 @@
 <sort.at { for sorting lists of posroot indices }
 <Weylgroup.at { for |order_W@RootDatum|, |root_reflection@(RootDatum,vec)| }
 <W_orbit.at { for |W@RootDatum| }
-<cyclotomic.at { for |cyclotomic_factors| }
 <tabulate.at { for |tabulate| }
 
 { The purpose of this file is working with Weyl group characters }

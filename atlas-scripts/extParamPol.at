@@ -31,7 +31,7 @@ set extParamPol (Param p,int type) = ExtParamPol:
   else (N,N,N+p)
   fi
 
-set *(Split s,ExtParam E) = s*extParamPol(E)
+set * (Split s,ExtParam E) = ExtParamPol: s*extParamPol(E)
 
 set + (ExtParamPol(P_plus_1,P_minus_1,P_ind_1)
       ,ExtParamPol (P_plus_2,P_minus_2,P_ind_2)
@@ -268,7 +268,7 @@ set print_extended_composition_series (Param p,[Param] B,mat delta) = void:
    then Q=big_KL_Q_polynomials(B,delta)
 in for i:#complete_indices
    do let f=Q[i][index] in
-      if #f>0 then prints(complete_indices[i], ": ", stringPoly(f,"q")) fi
+      if #f>0 then prints(complete_indices[i], ": ", poly_format(f,"q")) fi
    od
 
 set print_extended_composition_series (Param p,mat delta) = void:

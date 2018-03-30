@@ -130,6 +130,8 @@ set sum ([int] r) = int: let s=0 in for a in r do s+:=a od; s
 set product ([int] r) = int: let p=1 in for a in r do p*:=a od; p
 
 set half (int n) = int: let (q,r)=n\%2 in assert(=r,"Inexact halving"); q
+set exact_divide (int a, int b) = int:
+    let (q,r)=a\%b in assert(=r,"Inexact division"); q
 
 set int_format = to_string@int
 
