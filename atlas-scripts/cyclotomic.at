@@ -104,22 +104,28 @@ set is_integer(CyclotomicFieldElement z) = bool:
    z.is_rational and z.to_rational.is_integer
 set to_integer(CyclotomicFieldElement z) = int: z.to_rational.rat_as_int
 
-{ embed roots of unity in F }
+{ embed $\Q$ as roots of unity in F via $t\mapsto\exp(2\pi i t)$ }
 set exp_1 (rat r,CyclotomicField F) = CyclotomicFieldElement:
    let k=to_denominator(r,F.order) in F.element(for :k do rat:0 od # /1)
 
 set zeta_power (int k, CyclotomicField F) = CyclotomicFieldElement:
-   { first reduce modulo $X^n-1$, then modulo $\Phi(n)$ }
-   F.element(for :k%F.order do rat:0 od # /1 )
+   { first reduce $X^k$ odulo $X^n-1$, then modulo $\Phi(n)$ }
+   F.element(for :k%F.order do rat:0 od # (rat:1) )
+   { equivalent to |F.element([rat]:id_mat(F.order)[k%F.order]| if you prefer }
 
-set galois_matrix (int k,CyclotomicField F) = [[rat]]:
+{ the Galois group over $\Q$ of |F| is the mulitplicative group mod |F.order|
+  the function |Galois_matrix| gives the matrix on the standard basis (the
+  initial powers of |zeta|) of the action of the Galois group element for |k|
+}
+set Galois_matrix (int k,CyclotomicField F) = [[rat]]: { |gcd(k,F.order)=1| }
    for i:degree(F) do zeta_power(k*i,F).v od
 
-set galois_action (int k, CyclotomicFieldElement(v,F)) = CyclotomicFieldElement:
-   (times(galois_matrix(k,F),v),F) { |times| from Gaussian_elim.at: matrix * }
+set Galois_matrices(CyclotomicField F) = [[[rat]]]:
+   for i in invertibles_modulo(F.order) do Galois_matrix(i,F) od
 
-set galois_matrices(CyclotomicField F) = [[[rat]]]:
-   for i in invertibles_modulo(F.order) do galois_matrix(i,F) od
+set Galois_action (int k, CyclotomicFieldElement(v,F)) = CyclotomicFieldElement:
+{ action on field element: use matrix multiplication |times@([[rat]],[rat]| }
+   (times(Galois_matrix(k,F),v),F)
 
 set matrix_of_multiplication (CyclotomicFieldElement (,F):z) = [[rat]]:
    for i:degree(F) do v(z*zeta_power(i,F)) od
@@ -132,10 +138,10 @@ set norm (CyclotomicFieldElement z) = rat: det(matrix_of_multiplication(z))
   and best) inverting by solving the "multiplication gives 1" linear system
 }
 
-{.inverse of z=products of nontrivial galois conjugates/norm.}
+{.inverse of z=products of nontrivial Galois conjugates/norm.}
 set inverse_by_norm (CyclotomicFieldElement(v,F):z) = CyclotomicFieldElement:
    let w=F.one in
-   for A in galois_matrices(F)[1:] do w*:=F.element(times(A,v)) od; (/norm(z))*w
+   for A in Galois_matrices(F)[1:] do w*:=F.element(times(A,v)) od; (/norm(z))*w
 
 { better solutions based on linear system solving from Gaussian-elim.at }
 
