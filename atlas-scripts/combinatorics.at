@@ -42,6 +42,10 @@ set odd_places  ([int] v) = for i:floor(#v/2) do v[2*i+1] od
 
 set_type Partition = [int]   { list of decreasing parts, no trailing zeros }
 
+set strip_to_partition ([int] list) = Partition:
+   let i=0, nl=#list in while i<nl and =list~[i] do i+:=1 od; list[:i~]
+{ alternatively: |for x in list do if =x then break fi od| }
+
 set is_decreasing ([int] v) = bool: all(for i:#v-1 do v[i]>=v[i+1] od)
 
 set frequencies (Partition lambda) = vec:
@@ -112,7 +116,64 @@ set parity_restricted_partitions (int n, bool restrict_odd_parts) = [Partition]:
   ; ##table~[0] { concatenate entries of final table row }
   fi
 
+{
+  Core and quotient operations can be defined in terms of associating to any
+  partition $\lambda$ the subset $\{ lambda[i]-i-1 | i\in\N \}$ of $\Z$. This
+  set represents the set of vertical edges terminating the rows of the Young
+  diagram, recorded by their diagonal positions (the main diagonal separating
+  positions in $\N$ from its complement, i.e., its splits between -1 and 0).
 
+  This set is bounded above while its complement is bounded below; more
+  specifically the set meets $\N$, and its complement the complement of $\N$, in
+  equal size finite sets. An ordered pair of partitions can be "spliced
+  together" as follows: take there associated sets, transform the former by
+  $i\mapsto 2i$ and the latter by $i\mapsto 2i+1$, merge the results and find
+  the partition corresponding to the set. If the Young diagrams original
+  partitions together have $n$, the spliced partition can be covered by $n$
+  dominos. More generally we could add a fixed integer $d$ in the first
+  transformation and subtract it in the second; then $d$ will be the unbalance
+  of black and white squares in the diagram of the resulting partition, and
+  after removing $n$ dominos from it we are left with a "2-core" still having
+  the same unbalance. It is a staircase diagram with |core_length(d)| parts.
+  The pair of original partitions is the "2-quotient" of the spliced partition.
+}
+
+set core_length (int n) = int: if n.<= then 2*-n else 2*n-1 fi
+set core_number (int k) = int: assert(k.>=); case k in -k\2, -k\-2 esac
+
+{ splicing two partitions |mu|, |nu|, with 2-core with (unbalance) number |d| }
+set from_core_quotient_2 (int d,Partition mu,Partition nu) = Partition:
+
+{ Implementation is delicate, as we must represent infinite sets finitely.
+   Initially take just one number for each (nonzero) part of each partition, and
+   record the first numbers |k|, |l| that are omitted in this representation.
+   Also reverse the order to increasing, since this is what |merge@([int,[int])|
+   defined in sort.at assumes. Before merging, we need to "even out" the
+   (negative) heads of the lists by adding omitted terms to one of them, those
+   whose absent would produce gaps in the merged result. The first such term to
+   be added (if any) is 3 more than the first omitted term in the other list.
+}
+(  let evens = for m@i in mu do 2*(m-i-1+d) ~od { space out and reverse }
+   ,   odds = for n@i in nu do 2*(n-i-1-d)+1 ~od { likewise }
+   ,   k = 2*(-#mu-1+d), l = 2*(-#nu-1-d)+1 { last omitted values before lists }
+in if k>l
+   then evens := for i:(k-l)\2 from l\2+2 do i+i od ## evens
+   else odds := for i:(l-k)\2 from k\2+1 do i+i+1 od ## odds
+   fi
+;  for d@i in merge(evens,odds)~[:] do d+i+1 od.strip_to_partition
+)
+
+set core_quotient_2 (Partition lambda) =(int,Partition,Partition):
+   let l=#lambda
+   then (prev_even,prev_odd) = case l in (-l-2,-l-1), (-l-1,-l-2) esac
+   , mu=[int]:[0], nu=[int]:[0] { partitions in reverse (increasing) order }
+in for a@i in lambda
+  ~do let d=a-i-1 in
+      case d
+      in mu #:= mu~[0]-1+(d-prev_even)\2; prev_even:=d
+      ,  nu #:= nu~[0]-1+(d-prev_odd )\2; prev_odd :=d
+      esac
+   od; ( -(#nu-#mu)\2, mu~[:].strip_to_partition, nu~[:].strip_to_partition )
 
 {				Permutations				}
 

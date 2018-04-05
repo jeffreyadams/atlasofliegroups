@@ -1,13 +1,13 @@
-
 <basic.at
 <sort.at
 <complex_nilpotent_orbits.at
-<partitions.at
+<nilpotent_orbit_partitions.at { for eponymous function }
+<combinatorics.at
 {type C}
 {
 three kinds of objects
-[int] P: permutation for nilpotent orbit of type C_n
-         (odd rows have even multiplicity)
+[int] P: partition for nilpotent orbit of type C_n
+         (odd parts have even multiplicity)
 [[int] f,[int] g]: symbol as defined by Lusztig
 ([int] p,[int] q):
   pair of partitions, |p|+|q|=n, corresponding to a Weyl group representation
@@ -21,175 +21,180 @@ every symbol is equivalent to a unique one with a=b+1 and at most one 0
 }
 
 set_type
-[ Orbit=[int]   {partition for type C, all odd rows have even multiplicity}
+[ Orbit=[int]   { |Partition| for type C, all odd rows have even multiplicity}
 , Symbol=[[int]]  {must have 2 parts: [f,g], other conditions above}
 , Wrep  =([int],[int])  {pair of partitions; |p|+|q|=n}
 ]
 
 {use equivalence relation on symbols to get one with at most one 0}
-set normalize([int] v)=[int]:
-let rec_fun f([int] v)=[int]:
-  if #v=0 then v elif v[0]>0 then v else f(for k in delete(v,0) do k-1 od) fi
-in f(v)
+set normalize ([int] v) = [int]:
+   let nv=#v, i=0 in while i<nv and v[i]<=i do i+:=1 od;
+   for e in v[i:] do e-i od
 
 { other direction: replace [a1,,,.ak] with [0,1,...,r-1,a1+r,...,ak+r] }
-set expand([int] v, int r)=[int]: #r ## for c in v do c+r od
+set expand([int] v, int r) = [int]: #r ## for c in v do c+r od
 
 {normalize symbol: |f|=|g|+1 and at most 1 zero}
-set normalize(Symbol S)=Symbol:
-let f=S[0], g=S[1] in
-let f=normalize(f), g=normalize(g) in
-if (#f=#g+1) then [f,g] elif
-(#f>#g+1) then  [f,expand(g,#f-#g-1)]
-else [expand(f,#g-#f+1),g] fi
+set normalize (Symbol S) = Symbol:
+  let f=S[0].normalize, g=S[1].normalize then d=#f-(#g+1) in
+  case d in [f,g] then [expand(f,-d),g] else [f,expand(g,d)] esac
 
-{if S=(f,g) is a symbol for C_n then rank(f)=rank(g)=n, independent
-of equivalence classes of f and g
-rank(f)=sum f_i -n(n-1)/2
+{ if S=(f,g) is a symbol for C_n then rank(f)=rank(g)=n,
+  independently of equivalence classes of f and g rank(f)=sum f_i -n(n-1)/2
 }
-{this notion of rank conflicts with rank@mat, and is not used}
-{set rank([int] f)=int:let n=#f in sum(f)-n*(n-1)\2
-set rank(Symbol S)=int:rank(S[0])}
+set symbol_ranks (Symbol S) = (int,int):
+   let f=S[0],g=S[1] in (sum(f)-binom(#f,2), sum(g)-binom(#g,2))
 
-{maps between Orbits, Symbols and Wreps}
-{Orbit -> Symbol <--> Wrep}
+{ maps between Orbits, Symbols and Wreps: Orbit -> Symbol <--> Wrep }
 
-{Orbit -> Symbol (injective map)}
-set symbol(Orbit P)=Symbol:
-let ()=if is_even(#P) then P#:=0 fi then
-{()=prints("P:",P)  then}
-e=for i:#P do P[#P-1-i]+i od then
-{()=prints("e:",e)  then}
-f=[int]:[],g=[int]:[]  in
-for j in e do if is_even(j) then f#:=j\2 else g#:=j\2 fi od;[f,g]
+{ Orbit -> Symbol (injective map) }
+set symbol (Orbit P) = Symbol:
+   if is_even(#P) then P#:=0 { extend for odd length } fi;
+   let e = { transform partition into strictly increasing sequence }
+           for i:#P do P~[i]+i od
+   then split = [bool,int]: for x in e do (x.is_even,x\2) od
+in [ ## for (b,n) in split do if b then [n] else [] fi od
+   , ## for (b,n) in split do if b then [] else [n] fi od
+   ]
 
-{Symbol to Wrep (bijection)}
-set wrep(Symbol S)=Wrep:
-let f=S[0], g=S[1] in
-let p=[int]:[], q=[int]:[] in let
-()=for i:#f do if f[i]-i>0 then p#:=f[i]-i fi od then
-()=for i:#g do if g[i]-i>0 then q#:=g[i]-i fi od in
-(reverse(p),reverse(q))
+{ Symbol -> Orbit, partial map }
+set orbit (Symbol S) = Orbit:
+   let S=normalize(S)
+   then f=S[0],g=S[1]
+   then F=for c in f do 2*c od, G=for c in g do 2*c+1 od
+   then F_G=merge(F,G)
+   then H= F_G - # #F_G
+in ## for c in H ~do if c.> then [c] else [] fi od
 
-{Orbit -> Wrep}
-set wrep(Orbit P)=Wrep:wrep(symbol(P))
+{ Symbol to Wrep (bijection) }
+set wrep (Symbol S) = Wrep:
+( for f_i@i in S[0] do f_i-i ~od.strip_to_partition
+, for g_i@i in S[1] do g_i-i ~od.strip_to_partition
+)
 
-{Symbol -> Orbit}
-set orbit(Symbol S)=Orbit:
-let S=normalize(S) then
-f=S[0],g=S[1] then
-F=for c in f do 2*c od then
-G=for c in g do 2*c+1 od then
-F_G=sort(F##G)  then
-H=F_G - for i:#F_G  do i od in let K=reverse(H) then
-rv=[int]:[] in  for c in K do if c>0 then rv#:=c fi od;rv
+{ Orbit -> Wrep
+  Use |core_quotient_2|, but swap quotient to match |P.symbol.wrep|
+  The reason is that |symbol@Orbit| uses |P~[i]+i| without |-1|, flipping parity
+}
+set wrep (Orbit P) = Wrep:
+   let (d,mu,nu) = core_quotient_2(P) in assert(=d,"Illegal partition"); (nu,mu)
 
 {Wrep to Symbol}
-set symbol(Wrep sigma)=Symbol:
-let (p,q)=sigma then
-()=if #p<#q+1 then p##:=null(#q+1-#p)
-elif #q+1<#p then q##:=null(#p-#q-1) fi
-in [sort(p+for i:#p ~ do i od),sort(q+for j:#q ~ do j od)]
+set symbol (Wrep(p,q)) = Symbol:
+   let d=#p-(#q+1) in
+   case d then p##:= for : -d do 0 od in () else q##:=for : d do 0 od esac;
+   [for i:#p do p~[i]+i od,for j:#q do q~[j]+j od]
 
 {Wrep -> Orbit}
-set orbit(Wrep sigma)=Orbit:orbit(symbol(sigma))
+set orbit (Wrep(nu,mu)) = Orbit: from_core_quotient_2(0,mu,nu)
 
-{equality of Wreps}
-set =(Wrep  a,Wrep b)=bool: let (a1,a2)=a then (b1,b2)=b in a1=b1 and a2=b2
+{ equality of Wreps }
+set = (Wrep(a1,a2),Wrep(b1,b2)) = bool: a1=b1 and a2=b2
 
-{equality of symbols (not equivalence)}
-set symbols_equal(Symbol a,Symbol b)=bool:a[0]=b[0] and a[1]=b[1]
+{ equality of symbols (not equivalence) }
+set symbols_equal(Symbol a,Symbol b) = bool: a[0]=b[0] and a[1]=b[1]
 
-set dimension(Wrep sigma)=int:
-let (p,q)=sigma in
- dim_rep(p)*dim_rep(q)* { binom(size(p),size(q)) }
-   rat_as_int(fac(size(p)+size(q))/(fac(size(p))*fac(size(q))))
+set dimension (Wrep(p,q)) = int: { using hook length formula twice: }
+   dim_rep(p)*dim_rep(q)* binom(sum(p),sum(q))
 
-set all_reps_C(int n)=
-let rv=[Wrep]:[] in
-for r:n+1 do
- for p in partitions(r) do
-  for q in partitions(n-r) do
-   rv#:=([int]:p,[int]:q) od od od;rv
+set all_reps_C (int n) = [Wrep]:
+   let ps = for r: n+1 do partitions(r) od in
+   for pr@r in ps { every list |pr| of |ps| will be paired with another one: }
+   do for p in pr { traverse partitions of |r| }
+      do for q in ps[n-r] { and of |n-r| } do (p,q) od
+      od.## { and everything gets concatenated to a single list }
+   od.##
 
-{a (normalized) symbol is special if f_0<=g_0<= f_1...}
-set is_special(Symbol S)=bool:
-let f=S[0], g=S[1] in
-all(for i:#g do f[i]<=g[i] and g[i]<=f[i+1] od)
+{ a (normalized) symbol is special if f_0<=g_0<= f_1...;
+  this is the "raison d'etre" of |Symbol|
+}
+set is_special (Symbol S) = bool:
+   let f=S[0], g=S[1] in all(for gi@i in g do f[i]<=gi and gi<=f[i+1] od)
 
-set is_special(Orbit P)=bool:is_special(symbol(P))
-set is_special(Wrep sigma)=bool:is_special(symbol(sigma))
+set is_special (Wrep(nu,mu)) =bool:
+(  let d=#(mu:=mu.strip_to_partition)+1-#(nu:=nu.strip_to_partition)
+in case d then return false in () else nu ##:= for :d do 0 od esac
+;  all(for mu_i@i in mu do nu[i]+1>=mu_i and mu_i>=nu[i+1] od)
+)
 
-set special_star(Symbol S)=string:if is_special(S) then "*" else "" fi
-set special_star(Orbit P)=string:if is_special(P) then "*" else "" fi
-set special_star(Wrep sigma)=string:if is_special(sigma) then "*" else "" fi
+set is_special (Orbit P) =bool: is_special(wrep(P))
 
-set symbols(RootDatum rd)=[Symbol]:for P in nilpotent_orbit_partitions(rd) do symbol(P) od
-set wreps(RootDatum rd)=[Wrep]:for P in nilpotent_orbit_partitions(rd) do wrep(P) od
+set special_star (Symbol S)  = string: if is_special(S) then "*" else "" fi
+set special_star (Orbit P)   = string: if is_special(P) then "*" else "" fi
+set special_star (Wrep sigma)= string: if is_special(sigma) then "*" else "" fi
+
+set symbols (RootDatum rd) = [Symbol]:
+   for P in nilpotent_orbit_partitions(rd) do symbol(P) od
+set wreps (RootDatum rd)=[Wrep]:
+   for P in nilpotent_orbit_partitions(rd) do wrep(P) od
 
 
-{given a cell C, get list of tau invariants from it
- then construct the Levi set of C:
- ( [P_0,...,P_r], [Q_0,...,Q_s] )
- P_i: partition of n
- Q_i: labelled partition of n, i.e. partition of n with one term specified
- Q_i=([b0,...,bs],c) where c=bj for some j (not necessarily unique)
-P_i=[a0,...,ar] -> Levi factor of type GL(a1)x...xGL(ar), with Weyl group
- S_{a0}x...xS_{ar}  (a1+...ar=n)
-Q_i=([b0,...,bs],c) -> Levi factor GL(a1)x...xSp(2bj)x...xGL(bs)
- with Weyl group S_{b0}x...x W(C_{bj}) x ... S_{bs} (b1+...+bs=n)
+{ given a cell C, get list of tau invariants from it,
+  then construct the Levi set of C:
+  ( [P_0,...,P_r], [Q_0,...,Q_s] )
+  P_i: partition of n
+  Q_i: labelled partition of n, i.e. partition of n with one part specified:
+       Q_i=([b0,...,bs],c) where c=bj for some j (not necessarily unique)
+  P_i=[a0,...,ar] -> Levi factor of type GL(a1)x...xGL(ar), with Weyl group
+  S_{a0}x...xS_{ar}  (a1+...ar=n)
+  Q_i=([b0,...,bs],c) -> Levi factor GL(a1)x...xSp(2bj)x...xGL(bs)
+  with Weyl group S_{b0}x...x W(C_{bj}) x ... S_{bs} (b1+...+bs=n)
 
-roots are labelled 0,...,n-1
-If tau=[c_0,...,c_k] occurs in C, then this contributes to the Levi set of C:
-c_k<n-1: type A Levi factor
-c_k=n-1: type AC Levi factor
+  roots are labelled 0,...,n-1
+  If tau=[c_0,...,c_k] occurs in C, then this contributes to the Levi set of C:
+  c_k<n-1: type A Levi factor
+  c_k=n-1: type AC Levi factor
 
-the Levi factor is obtained by grouping strings of adjacent c_j
-each string of length t not including n gives GL(t+1), S_{t+1} factor in P
-a string of length t including n gives Sp(2t), W(C_t)
+  the Levi factor is obtained by grouping strings of adjacent c_j
+  each string of length t not including n gives GL(t+1), S_{t+1} factor in P
+  a string of length t including n gives Sp(2t), W(C_t)
 
-for example in C_8 (roots labelled 0-7)
-tau=[0,2,3,4] -> P=[4,2,1,1] (always add 1's at the end to add up to n)
-tau=[1,2,3,5,6,7] -> Q=([4,3,1],3) -> GL(4)xSp(6)xGL(1)
+  for example in C_8 (roots labelled 0-7)
+  tau=[0,2,3,4] -> P=[4,2,1,1] (always add 1's at the end to add up to n)
+  tau=[1,2,3,5,6,7] -> Q=([4,3,1],3) -> GL(4)xSp(6)xGL(1)
 }
 
 
-{given v=[a_0,...,a_n] increasing, returns (j,[a_{j},...,a_n])
-where [a_0,...,a_{j-1}] is the longest string (of length j)
+{ given v=[a_0,...,a_n] increasing, returns (j,[a_{j},...,a_n])
+  where [a_0,...,a_{j-1}] is the longest string (of length j)
   increasing by 1 at each step
 }
-set cut_off_string([int] v)=(int,[int]):let i=last(#v, (int i)bool:
-  v[i]=v[0]+i) in (i+1,v[i+1:~])
+set cut_off_string ([int] v) = (int,[int]):
+   if =#v then (0,v)
+   else let v01=v[0]+1 then i=1+first(#v-1,(int i)bool: v[i+1]>v01+i)
+   in if =i then (#v,[]) else (i,v[i:]) fi
+   fi
 
-{given v=[a_0,...,a_n] increasing, returns (k,[a_0,...,a_{n-k}]) where
-[a_{n-k+1},..,a_n] is the longest string (of length k)
- increasing by 1 at each step
-where [a_0,...,a_{j-1}] is the longest string (of length j)
+{ given v=[a_0,...,a_n] increasing, returns (k,[a_0,...,a_{n-k}]) where
+  [a_{n-k+1},..,a_n] is the longest string (of length k)
+  increasing by 1 at each step
+  where [a_0,...,a_{j-1}] is the longest string (of length j)
  increasing by 1 at each step
 }
 
+set cut_off_last_string ([int] v) = (int,[int]):
+   if =#v then (0,v)
+   else let v01=v~[0]-1 then k=1+first(#v-1, (int k)bool: v~[k+1]<v01-k)
+   in if =k then (#v,[]) else (k,v[:k~]) fi
+   fi
 
-set cut_off_last_string([int] v)=(int,[int]):
-let n=#v in let k=last(#v, (int k)bool: v[n-1-k]=v[n-1]-k) in (k+1,v[0:n-k-1])
-
-{recursive function: given v=[a1,...,am] (increasing) return
-[c1,...,cr]: length of strings in v
-for example [0,1,4,5,7,9,10,11,12] -> [4,2,2,1]
+{ recursive function: given v=[a1,...,am] (increasing) return
+ [c1,...,cr]: length of strings in v
+ for example [0,1,4,5,7,9,10,11,12] -> [4,2,2,1]
 }
-set extract_strings([int] v)=[int]:let
-rec_fun f([int] w,[int] strings)=[int]:if #w=0 then strings else
-let (j,u)=cut_off_string(w) in f(u,strings#j) fi in reverse(sort(f(v,[])))
+set extract_strings ([int] v) = Partition:
+   let j=0 in while >#v do set (j,v):=cut_off_string(v); j od.sort_to_partition
 
-{A Levi factor(tau invariant): strings, padded with ones to make rank=n}
-set A_Levi_factor(int rank, [int] tau)=[int]:
-let tau=sort(tau) in
-assert(tau[#tau-1] < rank,"last entry of tau is great than rank-1");
-assert(tau[#tau-1] != rank-1,"Levi factor is of type AC not A");
-let strings= for a in extract_strings(tau) do a+1 od
-in strings##(for i:rank-sum(strings) do 1 od)
+{ type A Levi factor(tau invariant): strings, padded with ones to make rank=n }
+set A_Levi_factor (int rank, [int] tau) = [int]:
+   let tau=sort(tau) in
+   assert(tau~[0]< rank,"last entry of tau is great than rank-1");
+   assert(tau~[0] != rank-1,"Levi factor is of type AC not A");
+   let strings = for a in extract_strings(tau) do a+1 od in
+   strings##(for i:rank-sum(strings) do 1 od)
 
-{AC Levi factor(tau invariant): same as (A_Levi_factor,c) where c gives the size of
-the type C factor
+{ AC Levi factor(tau invariant): same as (c,A_Levi_factor) where c gives the
+  size of the type C factor
 }
 set AC_Levi_factor(int rank, [int] tau)=(int,[int]):
 assert(tau~[0] = rank-1,"Levi factor is type A not AC");

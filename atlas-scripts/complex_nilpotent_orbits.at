@@ -9,7 +9,7 @@
   H must satisfy <alpha,H>=0,1,2 for all simple roots,
   in particular is_dominant(H,rd) should hold
 }
-set_type ComplexNilpotent = (RootDatum root_datum_of, vec semisimple_element)
+set_type ComplexNilpotent = (RootDatum root_datum_of, vec H_of_triple)
 { field name |root_datum| would conflict with |ComplexParabolic| (too close) }
 
 set dim_nilpotent (RootDatum rd,ratvec H) = int:
@@ -21,12 +21,10 @@ set diagram (ComplexNilpotent(rd,H)) = [int]:
 set dim_nilpotent (ComplexNilpotent(rd,H)) = dim_nilpotent(rd,ratvec:H)
 
 set dim_eigenspace (RootDatum rd, ratvec H, int k) = int:
-let rv=0 in
-if k=0 then rv:=rank(rd);
-for alpha in posroots(rd) do {prints("alpha:", alpha, "  ", rv);}if alpha*H=0 then rv+:=2 fi od
-else
-for alpha in posroots(rd) do if alpha*H=k then rv+:=1 fi od
-fi ;rv
+   if k=0
+   then rank(rd) + 2*count(for alpha in posroots(rd) do =alpha*H od)
+   else count(for alpha in posroots(rd) do alpha*H=k od)
+   fi
 
 
 set max_eigenspace(RootDatum rd, ratvec H)=int:
