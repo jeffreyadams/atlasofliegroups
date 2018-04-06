@@ -55,8 +55,6 @@
 
 * Work on the atlas program
 
-- Change interface to LieType so that torus factors do not pollute list of
-  simple factors.
 
 * Work on the atlas scripts
 

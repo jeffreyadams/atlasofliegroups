@@ -135,7 +135,7 @@ set special_C_star(Wrep sigma)=string:if is_special_C(sigma) then "*" else "" fi
 
 {this is not correct, the map orbits to symbolsl is not surjective}
 set symbols(RootDatum rd)=[Symbol]:
-   let factors = %rd.Lie_type in
+   let factors = rd.Lie_type.simple_factors in
    assert(#factors=1,"Only valid for simple root systems");
    let (type,rank)=factors[0] in
    if   type="B" then for P in all_reps_BC(rank) do symbol(P) od

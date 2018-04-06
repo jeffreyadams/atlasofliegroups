@@ -228,7 +228,7 @@ set permutation_cycles ([int] pi) = [[int]]:
 }
 set classic_permutation (WeylElt w) = [int]:
   let rd=w.root_datum then (lt,map)=Cartan_matrix_type(rd.Cartan_matrix)
-  then factors=%lt then nf=#factors
+  then factors=simple_factors(lt) then nf=#factors
   in assert(nf=1,"Root datum diagram is not connected ("+ nf +" components");
   let (type,rank)=factors[0] in
   assert(map=#rank,"Dynkin diagram is not in standard order");
