@@ -9,6 +9,8 @@ set_type
 [ Orbit=[int]   {partition for type C, all odd rows have even multiplicity}
 , Symbol=[[int]]  {must have 2 parts: [f,g], other conditions above}
 , Wrep  =([int],[int])  {pair of partitions; |p|+|q|=n}
+, Wrep_A=[int]   {partition of n}
+,int_vec_pair=(int,[int])
 ]
 { this is the same as the type definitions in wreps_type_C.at, not loaded here }
 
@@ -147,18 +149,21 @@ these Levis
 Note: tau_invariants=[[int]]:[] (in the inductive step signals done)
 is different from [[int]]:[[]] (gives the trivial rep, principal orbit
 }
+
+
+
 set wrep(int rank,[[int]] tau_invariants)=Wrep:
   let rec_fun f
     (int rank,[[int]] A_Levis,[(int,[int])] AC_Levis, [int] p,[int] q) =
     ([int],[int]):
-{let ()=prints("rank=", rank, new_line, "A_Levis=", A_Levis, new_line, "AC_Levis=", AC_Levis, new_line , "p=", p, " q=", q) in}
+let ()=prints("rank=", rank, new_line, "A_Levis=", A_Levis, new_line, "AC_Levis=", AC_Levis, new_line , "p=", p, " q=", q) in
 if #A_Levis=0 and #AC_Levis=0 then
-{let ()=prints("Done with p=",p, "q=",q) in}
+let ()=prints("Done with p=",p, "q=",q) in
 assert(sum(p)+sum(q)=rank,"Error: |p|+|q| != rank");
 (transpose(q),transpose(p))
 elif #A_Levis=1 and #A_Levis[0]=0 and #AC_Levis=0 then ([rank],[]) else let
-{()=prints();prints("p=",p," q=",q) then
-()=prints("A_Levis: ", A_Levis, " AC_Levis: ", AC_Levis) then}
+()=prints();prints("p=",p," q=",q) then
+()=prints("A_Levis: ", A_Levis, " AC_Levis: ", AC_Levis) then
 {algorithm:
  x+y=a
    x=b => y=a-b
@@ -184,6 +189,136 @@ set wreps(Block B,[[int]] cells)=[Wrep]:for cell in cells do wrep(B,cell) od
 
 
 
+
+{%%%%%%%%%%%%%%%%%%%%%%%%%% Wreps  for type An %%%%%%%%%%%%%%%%%%%%%%%%%%%%}
+
+{A Levi factor(tau invariant): strings, padded with ones to make rank=n}
+set A_Levi_factor_A(int rank, [int] tau)=[int]:
+let tau=sort(tau) in
+assert(tau[#tau-1] < rank,"last entry of tau is great than rank-1");
+let strings= for a in extract_strings(tau) do a+1 od
+in strings##(for i:rank-sum(strings) do 1 od)
+{in if tau[#tau-1]= rank-1 then strings##(for i:(rank-sum(strings)-1) do 1 od) else strings##(for i:(rank-sum(strings)+1) do 1 od)fi}
+
+set Levi_signature_A(int rank,[[int]] tau_invariants)=([[int]]):
+if #tau_invariants=0 then ([[int]]:[])
+elif #tau_invariants[0]=0 then ([[int]]:[[]]) else
+let
+tau_invariants=max_only(tau_invariants) then
+A_Levis=[[int]]:[] then
+AC_Levis=[(int,[int])]:[] in
+for tau in tau_invariants do
+let tau=sort(tau) in
+A_Levis#:=A_Levi_factor_A(rank,tau)  od;(A_Levis) fi
+
+
+set wrep_A(int rank,[[int]] tau_invariants)=Wrep_A:
+  let rec_fun f
+    (int rank,[[int]] A_Levis, [int] p) =
+    ([int]):
+if #A_Levis=0 then
+assert(sum(p)=rank,"Error: |p| != rank");
+(transpose(p))
+elif #A_Levis=1 and #A_Levis[0]=0 then ([rank]) else 
+let a=max_first_entry(A_Levis)
+in if a>0 then p:=p#a fi;
+f(rank,keep_by_first_entry_and_truncate(A_Levis,a),p)  fi in
+let A_Levis=Levi_signature_A(rank,tau_invariants) in
+  f(rank,A_Levis,[])
+
+
+
+set wrep_A (Block B,[int] cell)=Wrep_A:
+wrep_A(rank(real_form(B)), tau_invariants_of_cell_raw(B,cell))
+
+set wreps_A(Block B,[[int]] cells)=[Wrep_A]:for cell in cells do wrep_A(B,cell) od
+
+
+
+
+
+
+
+
+{%%%%%%%%%%%%%%%%%%%%%%%% Wreps for SL %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%}
+
+{A Levi factor(tau invariant): strings, padded with ones to make rank=n}
+
+{set A_Levi_factor_A(int rank, [int] tau)=[int]:
+let tau=sort(tau) in
+assert(tau[#tau-1] < rank,"last entry of tau is great than rank-1");
+let strings= for a in extract_strings(tau) do a+1 od
+in strings##(for i:rank-sum(strings) do 1 od)
+{in if tau[#tau-1]= rank-1 then strings##(for i:(rank-sum(strings)-1) do 1 od) else strings##(for i:(rank-sum(strings)+1) do 1 od)fi}
+
+set Levi_signature_A(int rank,[[int]] tau_invariants)=([[int]]): 
+if #tau_invariants=0 then ([[int]]:[])
+elif #tau_invariants[0]=0 then ([[int]]:[[]]) else
+let
+tau_invariants=max_only(tau_invariants) then
+A_Levis=[[int]]:[] then
+AC_Levis=[(int,[int])]:[] in
+for tau in tau_invariants do
+let tau=sort(tau) in
+A_Levis#:=A_Levi_factor_SL(rank,tau)  od;(A_Levis) fi
+}
+
+
+
+set wrep_A(int rank,[[int]] tau_invariants)=Wrep_A:
+  let rec_fun f
+    (int rank,[[int]] A_Levis, [int] p) =
+    ([int]):
+if #A_Levis=0 then
+assert(sum(p)=rank,"Error: |p| != rank");
+(transpose(p))
+elif #A_Levis=1 and #A_Levis[0]=0 then ([rank]) else 
+let a=max_first_entry(A_Levis)
+in if a>0 then p:=p#a fi;
+f(rank,keep_by_first_entry_and_truncate(A_Levis,a),p)  fi in
+let A_Levis=Levi_signature_A(rank,tau_invariants) in
+  f(rank,A_Levis,[])
+
+
+
+set wrep_SL (Block B,[int] cell)=Wrep_A:
+wrep_A(rank(real_form(B))+1, tau_invariants_of_cell_raw(B,cell))
+
+set wreps_SL(Block B,[[int]] cells)=[Wrep_A]:for cell in cells do wrep_SL(B,cell) od
+
+
+
+{%%%%%%%%%%%%%%%%%%%%%%%% Wreps for Complex Groups %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%}
+
+
+{This function finds the tau invariants for the representation in the cell, and, 
+keeps only one set of tau invariants corresponding to the one copy of the complex group}
+
+set taus_of_complex_group_cell(Block B, [int] cell)=[(int,[int])]:
+let T=tau_invariants_of_cell(B, cell)
+then K=[int_vec_pair]:[]
+then G=real_form(B)
+then s=rat_as_int(rank(G)/2)
+in for t in T do let v=[int]:[] then (r,w)=t in for i:s do let k=find(w,i) in if k!=-1 then v#:=i fi od; K#:=(r,v) od;K
+
+set taus_of_complex_group_cell_raw( Block B, [int] cell)=[[int]]:
+let T=taus_of_complex_group_cell(B, cell)
+then rv=[[int]]:[]
+in for (,t) in T do rv#:=t od; rv
+
+
+{set taus_from_complex_group(RealForm G)=[[int]]:
+let Gd=dual_quasisplit_form(G)
+then T=tau_invariants(block(G,Gd))
+then B=[[int]]:[]
+in 
+for t in T do let v=[int]:[] in for i:2 do let k=find(t,i) in if k!=-1 then v#:=i fi od; B#:=v od;B
+}
+
+set wrep_complex_group (Block B,[int] cell)=Wrep:
+wrep( rat_as_int(rank(real_form(B))/2), taus_of_complex_group_cell_raw(B,cell))
+
+set wreps_complex_group(Block B,[[int]] cells)=[Wrep]:for cell in cells do wrep_complex_group(B,cell) od
 
 
 
@@ -214,6 +349,4 @@ for i:#cells do  prints("Cell ",i);print_wrep(B,cells[i]);prints() od
 
 set wreps(Block B,[[int]] cells)=[([int],[int])]:for C in cells do wrep(B,C) od
 }
-
-
 

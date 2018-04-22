@@ -1,12 +1,87 @@
 <compute_L_cap_K_X.at
 
+set av_verbose=true
+set debug(bool verbose,string message)=void:if verbose then prints(message) fi
+set db(string message)=debug(av_verbose,message)
+
+{need to define *, this should be moved elsewhere}
+set *(int c,K_Type mu)=K_Type_Pol:c*parameter(mu)
+
+{[int] v is coefficients of [K_Type] K_types, return sum v[i]*K_types[i]}
+{need G only in the even of no K_types}
+set expand([int] v,[K_Type] K_types, RealForm G)=K_Type_Pol:
+if #K_types=0 then null_module(G) else
+let rv=null_module(parameter(K_types[0])) in 
+for i:#v do rv+:=v[i]*K_types[i] od;rv fi
+
+{fails if #K_types=0}
+set expand([int] v,[K_Type] K_types)=K_Type_Pol:
+expand(v,K_types,K_types[0].real_form)
+
+
+set other_real_forms([RealNilpotentOrbit] orbits,int orbit_number)=
+let rv=[int]:[] then
+(H,)=orbits[orbit_number] in
+for O@i in orbits do if O.H=H then rv#:=i fi od;rv
+
+set real_forms_of([RealNilpotentOrbit] orbits, ComplexNilpotent(rd,H))=[int]:
+##for O@i in orbits do if O.H=H then [i] else [] fi od
+
+
+
+set smaller_dimension_orbits([RealNilpotentOrbit] orbits, int orbit_number)=[int]:
+let d=dimension(orbits[orbit_number]) in
+##for O@i in orbits do if dimension(O)<d then [i] else [] fi od
+
+set change_basis([K_Type] K_basis, [K_Type] K_basis_new,mat M)=mat:
+if n_columns(M)=0 then null(#K_basis_new,0) else
+for col in M do let 
+v=vector(K_basis_new, expand(col,K_basis,K_basis[0].real_form)) in 
+assert(any(v),"change_basis failed");requisition(v) od fi
+
+
+
+{list of K_Types coming from given orbit}
+set K_basis(KNilpotentData data, int orbitNumber)=
+if #data.pairs[orbitNumber]=0 then [] else
+for Q in
+monomials(for (,P) in data.pairs[orbitNumber] do P od)
+do K_type(Q) od fi
+
+{list of K_Types coming from given orbits}
+set K_basis(KNilpotentData data, [int] orbitNumbers)=
+if #orbitNumbers=0 then [] else
+let parampols=##for i in orbitNumbers do for (,P) in data.pairs[i] do P od od in 
+if #parampols=0 then [] else
+for  Q in  monomials(parampols)  do K_type(Q) od
+fi fi
+
+{K-types from all orbits
+this should be the same as K_parameter_norm_upto(G,n) where n 
+ is the integer used in defining data
+}
+set K_basis(KNilpotentData data)=[K_Type]:
+K_basis(data, #(#data.orbits))
+
+
+
+
+
 {list of L\cap K-types from data for given orbit}
-set L_cap_K_basis(KNilpotentData d,int orbit_number)=[K_Type]:
-for (mu_L,) in d.pairs[orbit_number] do mu_L od
+set L_cap_K_basis(KNilpotentData d,int orbit_number)=([K_Type],[int]):
+let lktypes=[], orbits=[] in
+for (mu_L,) in d.pairs[orbit_number] do lktypes#:=mu_L; orbits#:=orbit_number od;
+(lktypes,orbits)
 
 {list of L\cap K-types from data for given orbits}
-set L_cap_K_basis(KNilpotentData d,[int] orbit_numbers)=[K_Type]:
-##for i in orbit_numbers do L_cap_K_basis(d,i) od 
+set L_cap_K_basis(KNilpotentData d,[int] orbit_numbers)=([K_Type],[int]):
+let lktypes=[K_Type]:[], orbits=[int]:[] in
+for i in orbit_numbers do let (orbit_lktypes,orbit_orbits)=L_cap_K_basis(d,i) in 
+lktypes##:=orbit_lktypes;orbits##:=orbit_orbits od ;(lktypes,orbits)
+
+
+{find K_type mu in list of K_types, move this also}
+set find([K_Type] list,K_Type mu)=int: first(#list,(int i)bool:list[i]=mu)
 
 {matrix defining a map from L\cap K-types to K-types
 rows <-> K-types: from orbit itself (NOT closure)
@@ -14,12 +89,9 @@ columns <-> L\cap K-types from orbit itself
 each column gives Phi(L\cap K-type)
 }
 set Phi_matrix(KNilpotentData d,int orbit_number)=([K_Type],[K_Type],mat):
-let 
-L_cap_K_basis=L_cap_K_basis(d,orbit_number) then
-{K_basis=K_basis_closure(d,orbit_number) then}
+let  (L_cap_K_basis,)=L_cap_K_basis(d,orbit_number) then
 K_basis=K_basis(d,orbit_number) then
 pairs=d.pairs[orbit_number] then
-{()=prints("PAIRS:", #pairs) then}
 rv=null(#K_basis,#L_cap_K_basis) in
 if #pairs=0 then (K_basis,L_cap_K_basis, null(#L_cap_K_basis,#K_basis)) else
 for (mu_L,Phi) in pairs do
@@ -27,69 +99,271 @@ for (mu_L,Phi) in pairs do
    assert(any(col),"could not construct column of matrix");
    rv[find(L_cap_K_basis,mu_L)]:=requisition(col) od ;(K_basis,L_cap_K_basis,rv) fi
 
-{set of matrices, on for each orbit_number}
+{set of matrices, one for each orbit_number}
 set Phi_matrices(KNilpotentData d,[int] orbit_numbers)=[([K_Type],[K_Type],mat)]:
 for orbit_number in orbit_numbers do Phi_matrix(d,orbit_number) od
 
-{set of matrices, running over all orbits}
-set Phi_matrices(KNilpotentData d)=[([K_Type],[K_Type],mat)]:
-Phi_matrices(d,#(#d.orbits))
-
-
-
-set Phi_matrix([K_Type] K_basis,KNilpotentData d,[int] orbit_numbers)=([K_Type],[int],mat):
-let phi_matrices=Phi_matrices(d,orbit_numbers) then 
-T=null(#K_basis,0) then
-LcapK_Basis=[] then
-orbit_pointers=[] in
-for j:#orbit_numbers do let
-  (kbasis,lcapkbasis,T0)=phi_matrices[j] in 
- T##:=change_basis(kbasis,K_basis,T0);
- for mu in lcapkbasis do 
-  LcapK_Basis#:=mu;
-  orbit_pointers#:=orbit_numbers[j] od od;(LcapK_Basis,orbit_pointers,T)
- 
-
-{L\cap K basis coming from triples, from given orbits}
-set L_cap_K_basis([PhiMatrix] phi_matrices,[int] orbit_numbers)=[K_Type]:
-if #orbit_numbers=0 then [] else
-##for i in orbit_numbers do let (,P,)=phi_matrices[i] in  P od fi
-
-
-
-{each orbit gives a matrix, with different bases
- combine these into 1 matrix, using a common K_basis
-}
-set merge_Phi_matrices([K_Type] K_basis,[PhiMatrix] phi_matrices,[int] orbit_numbers)=([K_Type],mat):
-if #orbit_numbers=0 then (K_basis,null(#K_basis,0)) else 
-merge_matrices(K_basis,for i in orbit_numbers do let (kbasis,,T) = phi_matrices[i] in (kbasis,T)  od) fi
-
-{merge_matrices(K_basis,for (kbasis,,T) in phi_matrices do (kbasis,T) od) fi}
-
-{same as previous, except only keep terms whose K_norm is <= smaller_bound}
-set merge_Phi_matrices([K_Type] K_basis,[PhiMatrix] phi_matrices,[int] orbit_numbers, int smaller_bound)=([K_Type],mat):
-merge_matrices(K_basis,for i in orbit_numbers do let (kbasis,,T)=phi_matrices[i] in (kbasis,truncate(T,kbasis,smaller_bound)) od)
-
-
-
-
-set av([K_Type] K_basis, KNilpotentData d,[int] orbit_numbers, ParamPol P) = 
-let (lkbasis,orbit_pointers,T)=Phi_matrix(K_basis,d,orbit_numbers) then
+{valued to be returned in failure}
+set failed=([K_Type]:[],[K_Type]:[],[int]:[],null(0,0),null(0),null(0),false)
+{
+set search(KNilpotentData d,int orbit_number,ParamPol P)=([K_Type], [K_Type],mat,vec,vec,bool):
+let (K_basis,LK_basis,T)=Phi_matrix(d,orbit_number) then 
 w0=vector(K_basis,P) then
-()=if not any(w0) then prints("Cannot find vector representing P"); return(lkbasis,orbit_pointers,null(0,0),null(0),null(0)) fi then
+()=if not any(w0) then return(failed) fi then
 w=requisition(w0) then 
 v0=solve(T,w) then
-()=if not any(v0) then prints("cannot solve Tv=w");return(lkbasis,orbit_pointers,null(0,0),null(0),null(0)) fi then
-v=requisition(v0) then
-header=["#","c","orbit","K_norm"] then 
+()=if not any(v0) then return(failed) fi then
+v=requisition(v0) in
+(K_basis,LK_basis,T,w,v,true) 
+}
+
+set search(KNilpotentData d,int orbit_number,ParamPol P)=([K_Type], [K_Type],[int],mat,vec,vec,bool):
+let (K_basis,LK_basis,T)=Phi_matrix(d,orbit_number) then 
+w0=vector(K_basis,P) then
+()=if not any(w0) then {db("Cannot find vector representing P");} return(failed) fi then
+w=requisition(w0) then 
+v0=solve(T,w) then
+()=if not any(v0) then {prints("cannot solve Tv=w");}return(failed) fi then
+v=requisition(v0) in
+{header=["#","c","K_norm"] then 
 values=[] in
 for i:#v do 
 if v[i]!=0 then 
-values#:=[i.to_string,v[i].to_string,orbit_pointers[i].to_string,K_norm(expand(T[i],K_basis)).to_string] fi od;
-prints();
-tabulate(header#values,"llll",1," ");prints(new_line);
-(lkbasis,orbit_pointers,T,w,v) 
+values#:=[i.to_string,v[i].to_string,K_norm(expand(T[i],K_basis)).to_string] fi od;
+prints(new_line,"orbit:", d.orbits[orbit_number]);
+tabulate(header#values,"lll",1," ");prints(new_line);
+}
+(K_basis,LK_basis,for i:#LK_basis do orbit_number od, T,v,w,true) 
 
-set av([K_Type] K_basis, KNilpotentData d,[int] orbit_numbers, Param p)=
-let P=character_formula(p)*0 in 
-prints("P=",P); av(K_basis,d,orbit_numbers,P)
+
+
+set search_one_at_a_time(KNilpotentData d,[int] orbit_numbers,ParamPol P)=([K_Type],[K_Type],mat,vec,vec,bool):
+let K_basis=K_basis(d,orbit_numbers) in
+for i:#orbit_numbers do 
+ let (K_basis,LK_basis,orbits,T,v,w,success)=search(d,orbit_numbers[i],P) in 
+if success then return(K_basis,LK_basis,T,v,w,success) fi od;
+([K_Type]:[],[K_Type]:[],null(0,0),null(0),null(0),false) 
+
+set merge_Phi_matrices(KNilpotentData d,[int] orbit_numbers)=([K_Type],[K_Type],[int],mat):
+let K_basis=K_basis(d,orbit_numbers) then
+mats=Phi_matrices(d,orbit_numbers) then
+rv=null(#K_basis,0) in
+for (kbasis,,T) in mats do 
+ rv##:=change_basis(kbasis,K_basis,T) od;
+ let (lkbasis,orbits)=L_cap_K_basis(d,orbit_numbers) in 
+(K_basis,lkbasis,orbits,rv)
+
+set search(KNilpotentData d,[int] orbit_numbers,ParamPol P)=([K_Type],[K_Type],[int],mat,vec,vec,bool):
+let (K_basis,LK_basis,orbits,T)=merge_Phi_matrices(d,orbit_numbers) then
+w0=vector(K_basis,P) then
+()=if not any(w0) then {db("Cannot find vector representing P");} return(failed) fi then
+w=requisition(w0) then
+v0=solve(T,w) then
+()=if not any(v0) then return(failed) fi then
+v=requisition(v0) in
+(K_basis,LK_basis,orbits,T,v,w,true) 
+{
+set search_long(KNilpotentData d,[int] orbit_numbers,ParamPol P)=([K_Type],[K_Type],mat,vec,vec,bool):
+let (K_basis,LK_basis,T)=merge_Phi_matrices(d,orbit_numbers) then
+w0=vector(K_basis,P) then
+()=if not any(w0) then {db("Cannot find vector representing P");} return(K_basis,LK_basis,null(0,0),null(0),null(0), false) fi then
+w=requisition(w0) then
+v0=solve(T,w) then
+()=if not any(v0) then {prints("cannot solve Tv=w");}return(failed) fi then
+v=requisition(v0) then
+header=["#","c","K_norm"] then 
+values=[] in
+for i:#v do 
+if v[i]!=0 then 
+values#:=[i.to_string,v[i].to_string,K_norm(expand(T[i],K_basis)).to_string] fi od;
+prints(new_line,"orbits:", orbit_numbers);
+tabulate(header#values,"lll",1," ");prints(new_line);
+(K_basis,LK_basis,T,w,v,true) 
+}
+set search_smaller_orbits(KNilpotentData d,int orbit_number,ParamPol P)=([K_Type],[K_Type],[int],mat,vec,vec,bool):
+search(d,smaller_dimension_orbits(d.orbits,orbit_number),P)
+
+set search_complex_orbit(KNilpotentData d,[RealNilpotentOrbit] orbits,int orbit_number,ParamPol P)=([K_Type],[K_Type],[int],mat,vec,vec,bool):
+let orbit_numbers=other_real_forms(orbits,orbit_number) in 
+search(d,orbit_numbers,P)
+
+set search_complex_orbit_closure(KNilpotentData d,int orbit_number,ParamPol P)=([K_Type],[K_Type],[int],mat,vec,vec,bool):
+let other_real_forms=other_real_forms(d.orbits,orbit_number) then
+smaller_orbits=smaller_dimension_orbits(d.orbits,orbit_number) in
+search(d,other_real_forms##smaller_orbits,P)
+
+set search_complex_orbit_closure(KNilpotentData d,ComplexNilpotent OC,ParamPol P)=([K_Type],[K_Type],[int],mat,vec,vec,bool):
+let real_forms=real_forms_of(d.orbits,OC) in if 
+#real_forms=0 then (failed) else
+search_complex_orbit_closure(d,real_forms[0],P) fi
+
+set search(KNilpotentData d,ParamPol P)=([K_Type],[K_Type],[int],mat,vec,vec,bool):
+ for O@i in d.orbits do let (K_basis,LK_basis,orbits,T,v,w,success)=search(d,i,P)  in 
+ if success then 
+ return(K_basis,LK_basis,orbits,T,v,w,success) fi od ;
+for OC in complex_nilpotent_orbits(d.real_form) do 
+ let (K_basis,LK_basis,orbits,T,v,w,success)=search(d,real_forms_of(d.orbits,OC),P)  in 
+ if success then return(K_basis,LK_basis,orbits,T,v,w,success) fi od;
+for OC in complex_nilpotent_orbits(d.real_form) do 
+ let (K_basis,LK_basis,orbits,T,v,w,success)=search_complex_orbit_closure(d,OC,P) in 
+ if success then return(K_basis,LK_basis,orbits,T,v,w,success) fi od;
+ return(failed)
+
+set search_real_forms_of_complex(KNilpotentData d,ComplexNilpotent OC,ParamPol P)=([K_Type],[K_Type],[int],mat,vec,vec,bool):
+ let ()=db("Checking all 2^k subsets of given complex orbit "+OC.to_string) in
+ let real_orbits=real_forms_of(d.orbits,OC) then
+  S=delete(generate_all_subsets(real_orbits),0) {ignore empty subset}  then
+  i=S[0][0] then  {number of a real orbit}
+  smaller=smaller_dimension_orbits(d.orbits,i) in
+  for A in S do 
+  let B=A##smaller then
+  ()=db("Smaller orbits: "+ smaller.to_string);
+  db("Real forms of complex orbit:"+ A.to_string) in
+ let (K_basis,LK_basis,orbits,T,v,w,success)=search(d,B,P) in
+ if success then
+ let  ()=db("AV(p)= "+ A.to_string) in return(K_basis,LK_basis,orbits,T,v,w,success) fi  od;return(failed)
+
+
+set av_output([K_Type] K_basis,[K_Type] LK_basis,[int] orbits,mat T, vec v, vec w, bool success)=void:
+let header=["#","c","orbit","K_norm"] then 
+values=[] in
+for i:#v do 
+if v[i]!=0 then 
+values#:=[i.to_string,v[i].to_string,orbits[i].to_string,K_norm(expand(T[i],K_basis)).to_string] fi od;
+tabulate(header#values,"llll",1," ")
+{
+set search_old(KNilpotentData d,ParamPol P)=([K_Type],[K_Type],mat,vec,vec,bool):
+let ()=db("Trying individual real orbits") in 
+ for O@i in d.orbits do let (K_basis,LK_basis,T,v,w,success)=search(d,i,P)  in 
+ if success then  db("success using orbit #"+i+" "+O.to_string);
+ av_output(K_basis,LK_basis,T,v,w,success);
+ return(K_basis,LK_basis,T,v,w,success) fi od ;
+let ()=db("Trying individual complex orbits") in 
+for OC in complex_nilpotent_orbits(d.real_form) do 
+ let (K_basis,LK_basis,T,v,w,success)=search(d,real_forms_of(d.orbits,OC),P)  in 
+ if success then db("Success using complex orbit "+"  "+OC.to_string);
+ let (K_basis, LK_basis,T,v,w,success)=search_real_forms_of_complex(d,OC,P) in 
+ av_output(K_basis,LK_basis,T,v,w,success);
+ return(K_basis,LK_basis,T,v,w,success) fi od;
+ let ()=db("Trying closures of complex orbits") in
+for OC in complex_nilpotent_orbits(d.real_form) do 
+ let (K_basis,LK_basis,T,v,w,success)=search_complex_orbit_closure(d,OC,P) in 
+ if success then db("success with: "+ OC.to_string);
+ let (K_basis, LK_basis,T,v,w,success)=search_real_forms_of_complex(d,OC,P) in 
+ av_output(K_basis,LK_basis,T,v,w,success);
+ return(K_basis,LK_basis,T,v,w,success) fi od;
+ db("search failed");return(K_basis(d),[K_Type]:[],null(0,0),null(0),null(0),false) 
+}
+set search(KNilpotentData d,ParamPol P)=([K_Type],[K_Type],[int],mat,vec,vec,bool):
+let ()=db("Trying closures of complex orbits (computing AV(Ann(p))") in
+for OC in complex_nilpotent_orbits(d.real_form) do 
+ let (K_basis,LK_basis,orbits,T,v,w,success)=search_complex_orbit_closure(d,OC,P) in 
+ if success then db("AV(Ann(p)): H="+ OC.semisimple_element.to_string);
+prints( "Real forms of complex orbit: ",real_forms_of(d.orbits,OC).to_string);
+ let (K_basis, LK_basis,orbits,T,v,w,success)=search_real_forms_of_complex(d,OC,P) in 
+ av_output(K_basis,LK_basis,orbits,T,v,w,success);
+ return(K_basis,LK_basis,orbits,T,v,w,success) fi od;
+ db("search failed");return(failed) 
+
+
+set av(KNilpotentData d,Param p)=([K_Type],[K_Type],[int],mat,vec,vec,bool):
+search(d,character_formula(p)*0)
+{
+set av_long(KNilpotentData d,Param p)=([K_Type],[K_Type],mat,vec,vec,bool):
+let (K_basis,LK_basis,T,v,w,success)=search_long(d,character_formula(p)*0) in 
+if success then 
+let header=["#","c","K_norm"] then 
+values=[] in
+for i:#v do 
+if v[i]!=0 then 
+values#:=[i.to_string,v[i].to_string,K_norm(expand(T[i],K_basis)).to_string] fi od;
+tabulate(header#values,"lll",1," ");prints(new_line); (K_basis,LK_basis,T,w,v,success)  else 
+(K_basis,LK_basis,null(0,0),v,w,success) fi
+}
+
+set run(KNilpotentData d, [Param] params)=void:
+prints("Computing AV for ",#params," parameters");
+for p in params do 
+ prints(new_line, "p=", p);av(d,p) od
+
+set Y_projector(KNilpotentData d,[PhiLattice] lattices,ComplexNilpotent OC)=mat:
+let K_basis=K_basis(d) then
+real_orbit=real_forms_of(d.orbits,OC)[0] in
+Y_projector(K_basis,lattices,real_orbit)
+
+set Y_projectors(KNilpotentData d,[PhiLattice] lattices)=[(ComplexNilpotent,mat)]:
+for OC in d.complex_nilpotent_orbits do (OC,Y_projector(d,lattices,OC)) od
+
+set Y_projector([(ComplexNilpotent,mat)] projectors, ComplexNilpotent OC)=mat:
+let j=first(#projectors, (int i)bool: let (O,)=projectors[i] in O.semisimple_element=OC.semisimple_element) then
+(,T)=projectors[j] in T
+
+{assume [int] orbit are real forms of complex orbit, so same Y}
+set search_Q(KNilpotentData d,[PhiLattice] lattices,[(ComplexNilpotent,mat)] Y_projectors,[int] orbits,ParamPol P)=([K_Type],[K_Type],[int],mat,vec,vec,bool):
+let K_basis=K_basis(d) then
+(LK_basis,)=L_cap_K_basis(d,orbits) then
+{Y_proj=Y_projector(K_basis,lattices,orbits[0]) then}
+OC=complexify(d.orbits[orbits[0]]) then
+Y_proj=Y_projector(Y_projectors,OC) then
+Q=Q_matrix(K_basis,lattices,orbits) then
+w0=vector(K_basis,P) then
+()=if not any(w0) then return(failed) fi then
+w=requisition(w0) then
+v0=solve(Q,Y_proj*w) then
+()=if not any(v0) then return(failed) fi then
+v=requisition(v0) in 
+(K_basis,LK_basis,null(0),Q,v,w,true)
+
+set search_complex_orbit_closure_Q(KNilpotentData d,[PhiLattice] lattices,[(ComplexNilpotent,mat)] Y_projectors,int orbit_number,ParamPol P)=([K_Type],[K_Type],[int],mat,vec,vec,bool):
+let other_real_forms=other_real_forms(d.orbits,orbit_number) in 
+search_Q(d,lattices,Y_projectors,other_real_forms,P)
+
+set search_complex_orbit_closure_Q(KNilpotentData d,[PhiLattice] lattices,[(ComplexNilpotent,mat)] Y_projectors,ComplexNilpotent OC,ParamPol P)=
+([K_Type],[K_Type],[int],mat,vec,vec,bool):
+let i=real_forms_of(d.orbits,OC)[0] in search_complex_orbit_closure_Q(d,lattices,Y_projectors,i,P)
+
+set search_real_forms_of_complex_Q(KNilpotentData d,[PhiLattice] lattices,[(ComplexNilpotent,mat)] Y_projectors,ComplexNilpotent OC,ParamPol P)=([K_Type],[K_Type],[int],mat,vec,vec,bool):
+ let ()=db("Checking all 2^k subsets of given complex orbit "+OC.to_string) in
+ let real_orbits=real_forms_of(d.orbits,OC) then
+  S=delete(generate_all_subsets(real_orbits),0) {ignore empty subset}  then
+  i=S[0][0]   {number of a real orbit} in
+  for A in S do let
+  ()=db("Real forms of complex orbit:"+ A.to_string) then
+  (K_basis,LK_basis,orbits,T,v,w,success)=search_Q(d,lattices,Y_projectors,A,P)  in
+ if success then
+ let  ()=db("AV(p)= "+ A.to_string) in return(K_basis,LK_basis,orbits,T,v,w,success) fi  od;return(failed)
+
+set search_Q(KNilpotentData d,[PhiLattice] lattices,[(ComplexNilpotent,mat)] Y_projectors,ParamPol P)=([K_Type],[K_Type],[int],mat,vec,vec,bool):
+let ()=db("Trying closures of complex orbits (computing AV(Ann(p))") in
+for OC in complex_nilpotent_orbits(d.real_form) do 
+ let (K_basis,LK_basis,orbits,T,v,w,success)=search_complex_orbit_closure_Q(d,lattices,Y_projectors,OC,P) in
+ if success then db("AV(Ann(p)): H="+ OC.semisimple_element.to_string);
+prints( "Real forms of complex orbit: ",real_forms_of(d.orbits,OC).to_string);
+ let (K_basis, LK_basis,orbits,T,v,w,success)=search_real_forms_of_complex(d,OC,P) in 
+ av_output(K_basis,LK_basis,orbits,T,v,w,success);
+ return(K_basis,LK_basis,orbits,T,v,w,success) fi od;
+ db("search failed");return(failed) 
+
+set av_Q(KNilpotentData d,[PhiLattice] lattices,[(ComplexNilpotent,mat)] Y_projectors,Param p)=
+([K_Type],[K_Type],[int],mat,vec,vec,bool):
+search_Q(d,lattices,Y_projectors,character_formula(p)*0)
+
+
+
+forget db@string
+
+{
+set search_real_forms_of_complex(KNilpotentData d,ComplexNilpotent OC,ParamPol P)=([K_Type],[K_Type],[int],mat,vec,vec,bool):
+ let ()=db("Checking all 2^k subsets of given complex orbit "+OC.to_string) in
+ let real_orbits=real_forms_of(d.orbits,OC) then
+  S=delete(generate_all_subsets(real_orbits),0) {ignore empty subset}  then
+  i=S[0][0] then  {number of a real orbit}
+  smaller=smaller_dimension_orbits(d.orbits,i) in
+  for A in S do 
+  let B=A##smaller then
+  ()=db("Smaller orbits: "+ smaller.to_string);
+  db("Real forms of complex orbit:"+ A.to_string) in
+ let (K_basis,LK_basis,orbits,T,v,w,success)=search(d,B,P) in
+ if success then
+ let  ()=db("AV(p)= "+ A.to_string) in return(K_basis,LK_basis,orbits,T,v,w,success) fi  od;return(failed)
+}

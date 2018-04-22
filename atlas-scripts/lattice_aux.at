@@ -29,8 +29,17 @@ for i:#A-1 do rv:=intersection(rv, A[i]) od;rv
 set free_quotient_lattice_basis (mat L,mat M) = mat:
 let (J,)=weak_left_inverse(image_lattice(L)) in image_lattice(L)*free_quotient_lattice_basis(J*M)
 
-set saturation_quotient_basis(mat M,mat L)=mat:
+{set saturation_quotient_basis(mat M,mat L)=mat:
 let (J,)=weak_left_inverse(image_lattice(M)) in {right_inverse(J)*}image_lattice(M)*saturation_quotient_basis(J*L)
+}
+set saturation_quotient_basis(mat M,mat L)=mat:
+let Q=saturation_quotient_basis(L) in image_lattice(Q*^Q*image_lattice(M))
+
+set projector_mod_image (mat M) = mat:
+  let (c,R)=adapted_direct_sum(M) in R[ : ,c: ] * R.inverse[c: , : ]
+
+set mod_image_projector(mat M)= mat:
+  let (c,R)=adapted_direct_sum(M) in R.inverse[c: , : ]
 
 set is_sublattice(mat L,mat M)=bool:
 all(for v in L do any(solve(M,v)) od)
@@ -103,17 +112,20 @@ in C:=C[:c] { only this part interests us here }
    od; (M,C)}
 
 
-{ dimension |c| of image, together with a $\Z$-inverible matrix whose first |c|
-  columns span that saturation of the image, the remainder a chosen complement }
-{A: (r,n)
- echelon(A)-> M (r,c), C (c,c) invertible, Z (r,n-c) zero matrix, AC=M##Z   (r,n)
+{adapted_direct_sum_plus(mat A)
+A: (r,n) matrix
+ E: echelon form of A is an (r,n) matrix
+ E= M##Z where M (r,c) matrix (nonzero columns) and Z=(r,n-c) zero matrix
+ echelon(A)=(mat M,mat C,vec s,int eps)  (see atlas-functions.help)
+ M: (r,c) matrix, C (n,n) invertible  (s: pivot rows, eps is a sign)
+ c=#columns of M
  n-c=dimension(kernel(A))
- c=#columns of echelon form of A
- ->
- M,N (r,c)
- R (r,r) invertible
- (RN)##Z=M##Z=AC
+ Then AC=E=M##Z 
+ Furthermore M -> (mat N,mat R) 
+ E: (r,c)  N:(r,c)  R: (r,r) invertible
+ (RN)##Z=E##Z=AC
  AC=RN##Z
+ Note: image_complement_basis is the last n-c columns of R
 }
 set adapted_direct_sum_plus (mat A) = (int,mat,mat,mat,mat,mat):
    let (M,C,pivot,)=echelon(A) then (r,c)=shape(M), N=M
@@ -129,3 +141,18 @@ in for j:c { loop over columns of N while it is being modified in the loop }
 
 set image_complement_basis_plus (mat A) = mat:
    let (c,R,N,C,M,Z)=adapted_direct_sum_plus(A) in R[c:]  {last n-c columns of R}
+{
+
+set f(mat A, mat B, mat Y,[K_Type] K_basis, int n)=
+let AB=intersection(A,B) 
+then num=truncate(AB,K_basis,n) then
+denom=truncate(intersection(AB,Y),K_basis,n) then 
+a=rank(num) then 
+b=rank(denom) in (a,b,a-b)
+
+set f(mat A, mat Y,[K_Type] K_basis, int n)=
+let num=truncate(A,K_basis,n) then
+denom=truncate(intersection(A,Y),K_basis,n) then 
+a=rank(num) then 
+b=rank(denom) in (a,b,a-b)
+}
