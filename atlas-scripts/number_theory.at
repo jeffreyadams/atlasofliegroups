@@ -1,0 +1,29 @@
+<basic.at
+<lazy_lists.at
+
+primes : inf_list:
+   let odd_primes () = inf_node:die
+   then composite = {predicate to be used when (re)defining |odd_primes|}
+     let p=0 {scratch variable to use in multiple assignment:} in
+     (int n) bool: { actual |compoite| predicate }
+       let rem=odd_primes { think of rem as pointer into |odd_primes|} in
+       while set(p,rem):=rem(); p*p<=n do if =n%p then return true fi od; false
+in odd_primes :=
+   ( let m=3 {we always start adding 2, so effectively from 5} in
+     @: (3,rec_fun gen() inf_node: while composite(m+:=2) do () od; (m,gen))
+   ).memoize; (@:(2,odd_primes)) { finally prefix the unique even prime }
+
+set factorization (int n) = [int,int]: { (prime,exponent) }
+   let (p,prs)=primes()
+   then factors =
+     while p*p<=n
+     do let (q,r)=n\%p,count=0 in
+       while =r do n:=q; count+:=1; set (q,r):=n\%p od
+     ; (p,count) next set(p,prs):=prs()
+     od
+   in if n>1 then factors#:=(n,1) fi;
+   ## for (,c):pair in factors do if =c then [] else [pair] fi od
+
+{ Euler totient function }
+set phi (int n) = int:
+   assert(n>0); for (p,c) in factorization(n) do (p-1)*p^(c-1) od.product

@@ -83,7 +83,6 @@ set H_candidates (RootDatum rd)=[ratvec]:
 set distinguished_H(RootDatum rd, RootDatum rd_L)=[vec]:
    ##for H in H_candidates(rd_L) do
    if dim_eigenspace(rd_L,H,2)=dim_eigenspace(rd_L,H,0)+ss_rank(rd_L)-rank(rd_L)
-{   then {[ratvec_as_vec(dominant(H,rd))]} [ratvec_as_vec(H)]}
    then [ratvec_as_vec(dominant(H,rd))]
       else [] fi od
 

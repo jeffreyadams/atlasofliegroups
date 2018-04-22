@@ -1,27 +1,40 @@
 <basic.at
-<dual.at
-<modules.at
+<polynomial.at
+<dual.at { for |dual_block@[Param]| }
+<translate.at { for |Psi@(Param,[int])| }
+<modules.at { for |has_infinitesimal_character@ParamPol| }
+<combinatorics.at { for |pemutation_inverse@[int]| }
 
 {stable virtual characters}
 {some elementary operations needed, these should be moved elsewhere}
 
-set indices([Param] B,[Param] subset)=for p in subset do find(B,p) od
-set evaluate_at_1([vec] v)=vec:for w in v do evaluate_at_1(w)  od
-set evaluate_at_1(poly_mat M)=mat:^for v in M do evaluate_at_1(v) od
-set number(KGBElt x)=let (,n)=%x in n
-set left_kernel(mat M)=mat:^kernel(^M)  {M: mxn, left_kernel: sxm, left_kernel(M)*M=0}
-set column([[vec]] M,int i)=for j:#M do M[j][i] od
-set null_poly_mat(int r,int c)=poly_mat:for j:r do for i:c do [] od od
-set mat_as_poly_mat(mat A)=poly_mat:
-for i:n_rows(A) do
- let v=row(A,i) in
-  for j:#v do vec:[v[j]] od od
-set *(mat A,poly_mat B)=mat_as_poly_mat(A)*B
-set has_infinitesimal_character([Param] params)=bool:let P=null_module(real_form(params[0])) in for p in params do P+:=p od;has_infinitesimal_character(P)
-set make_regular(Param p)=let gamma=infinitesimal_character(p) in if is_regular(root_datum(p),gamma) then p else let gamma_reg=make_regular(root_datum(p),gamma) in T(p,gamma_reg) fi
+set indices ([Param] B,[Param] subset) = [int]: for p in subset do find(B,p) od
+set evaluate_at_1 ([i_poly] v)= vec: for w in v do evaluate_at_1(w)  od
+set evaluate_at_1 (i_poly_mat M) = mat: ^for v in M do evaluate_at_1(v) od
+set number = #@KGBElt { defined as |#| in basic.at }
+set left_kernel = cokernel@mat { defined as |cokernel| in basic.at }
 
-set make_param_pol([int] coefficients,[Param] params)=
-let rv=null_module(real_form(params[0])) in for i:#coefficients do rv+:=coefficients[i]*params[i] od ;rv
+set column (i_poly_mat M,int j) = [i_poly]: for row in M do row[j] od
+set null_poly_mat (int r,int c) = i_poly_mat:
+  let row = [i_poly]: for i:c do poly_0 od in for j:r do row od
+set mat_as_poly_mat (mat A) = i_poly_mat:
+  for row in ^A do for entry in row do constant_poly(entry) od od
+
+set * (mat A,i_poly_mat B) = i_poly_mat: mat_as_poly_mat(A)*B
+
+set has_infinitesimal_character ([Param] params) = bool:
+  >#params { no parameters, no infinitesimal_character } and
+  (params[0].real_form.null_module+params).has_infinitesimal_character
+
+set make_regular (Param p) = Param:
+  let gamma=infinitesimal_character(p) in
+  if is_regular(root_datum(p),gamma) then p
+  else T(p,make_regular(root_datum(p),gamma))
+  fi
+
+set make_param_pol (RealForm G,[int] coefficients,[Param] params) = ParamPol:
+  assert(#coefficients=#params,"mismatch");
+  G.null_module + for c@i in coefficients do (c,params[i]) od
 
 {permutations}
 {S=[a_0,a_1,...] <-> permutation sigma(i)=a_i}
@@ -36,7 +49,7 @@ set permutation_matrix_sort([int] S) = mat:
 
 set in_tau (int s,Param p) = bool:  { whether s is in tau(p) }
    let (,b)= tau_bitset(p) in b(s)
-set in_tau ([int] S,Param p)=bool:  { whether $S\subset\tau(p)$ }
+set in_tau ([int] S,Param p) = bool:  { whether $S\subset\tau(p)$ }
    all(#S, (int i)bool: in_tau(S[i],p))
 set in_tau([*] S,Param p) = bool: true { whether $\emptyset\subset\tau(p)$ }
 
@@ -57,170 +70,206 @@ set Psi ([Param] params,[int] S) = [Param]:
  [Param] params is a list of parameters
 }
 
-set parameters_tau_containing([int] S,[Param] params)=[int]: let   { {p| S\subset tau(p)}}
-rv=[int]:[] in for p@i in params do if in_tau(S,p) then rv#:=i fi od;rv
-set parameters_tau_containing([*] S,[Param] params)=[int]: parameters_tau_containing([int]:S,params)
+{ select indices of parameters whose |tau| contains |S| }
+set parameters_tau_containing ([int] S,[Param] params) = [int]:
+  ## for p@i in params do if in_tau(S,p) then [i] else [] fi od
+set parameters_tau_containing([*] S,[Param] params) = [int]: # #params
 
-set parameters_tau_contained_in_complement([int] S,[Param] params)=[int]: let   {p| tau(p)\subset S-complement}
-rv=[int]:[] in for p@i in params do if in_tau_complement(S,p) then rv#:=i fi od;rv
-set parameters_tau_contained_in_complement([*] S,[Param] params)=[int]: parameters_tau_contained_in_complement([int]:S,params)
+{ select indices of parameters whose |tau| is disjoint from |S| }
+set parameters_tau_contained_in_complement ([int] S,[Param] params) = [int]:
+  ## for p@i in params do if in_tau_complement(S,p) then [i] else [] fi od
+set parameters_tau_contained_in_complement ([*] S,[Param] params) = [int]:
+  # #params
 
 {recover permutation related to Vogan duality for given block}
-set permutation([Param] B)=[int]:let (,perm)=dual_block(B) in perm
+set duality_permutation ([Param] B) = [int]: let (,perm)=dual_block(B) in perm
 
 {subset of parameters p^\vee on dual side satisfying: S^\vee\subset tau(p^\vee)}
-set dual_parameters([int] S,[Param] B)=[int]:let (B_dual,perm)=dual_block(B) in parameters_tau_containing(S,B_dual)
-set dual_parameters([*] S,[Param] B)=[int]:dual_parameters([int]:S,B)
+set dual_parameters ([int] S,[Param] B) = [int]:
+  let (B_dual,perm)=dual_block(B) in parameters_tau_containing(S,B_dual)
+set dual_parameters ([*] S,[Param] B)=[int]: dual_parameters([int]:S,B)
 
-{parameters dual to the previous ones, i.e. satisfying tau(p)\subset S-complement
-in the order so that:
+{parameters dual to the previous ones, i.e. satisfying
+ tau(p)\subset S-complement in the order so that:
  parameters=[a1,a2,...]
  dual_parameters=[b1,b2,...]
  then duality permutation takes a_i to b_j
 }
-set parameters([int] S,[Param] B)=[int]:
-let dual_params=dual_parameters(S,B) then
-P=permutation(B) then
-Q=inverse_permutation(P) in
-for j in dual_params do Q[j] od
-set parameters([*] S,[Param] B)=parameters([int]:S,B)
+set parameters ([int] S,[Param] B) = [int]:
+  let dual_params=dual_parameters(S,B)
+  then P=duality_permutation(B)
+  then Q=permutation_inverse(P)
+  in for j in dual_params do Q[j] od
 
-set parameters_singular([int] S,[Param] B)=[Param]:for i in parameters(S,B) do Psi(B[i],S) od
-set parameters_singular([*] S,[Param] B)=[Param]:parameters_singular([int]: S,B)
+set parameters ([*] S,[Param] B) = [int]: parameters([int]:S,B)
 
+set parameters_singular ([int] S,[Param] B) = [Param]:
+  for i in parameters(S,B) do Psi(B[i],S) od
+set parameters_singular ([*] S,[Param] B)=[Param]:
+  parameters_singular([int]: S,B)
 
 {vector of (-1)^{length(p)}, and corresponding diagonal matrix}
-set lengths_signs([Param] params)=[int]: for p in params  do (-1)^length(p) od
-set lengths_signs_matrix([Param] params)=mat: diagonal(lengths_signs(params))
-set lengths_signs([int] S,[Param] B)=[int]: lengths_signs(for i in parameters(S,B) do B[i] od)
-set lengths_signs([*] S,[Param] B)=[int]: lengths_signs([int]:S,B)
-set lengths_signs_matrix([int] S,[Param] B)=mat:lengths_signs_matrix(for i in parameters(S,B) do B[i] od)
-set lengths_signs_matrix([*] S,[Param] B)=mat: lengths_signs_matrix([int]:S,B)
+set lengths_signs ([Param] params) = [int]:
+  for p in params  do (-1)^length(p) od
+set lengths_signs_matrix ([Param] params) = mat:
+  diagonal(lengths_signs(params))
+set lengths_signs ([int] S,[Param] B) = [int]:
+  lengths_signs(for i in parameters(S,B) do B[i] od)
+set lengths_signs ([*] S,[Param] B) = [int]: lengths_signs([int]:S,B)
+set lengths_signs_matrix ([int] S,[Param] B) = mat:
+  lengths_signs_matrix(for i in parameters(S,B) do B[i] od)
+set lengths_signs_matrix ([*] S,[Param] B) = mat:
+  lengths_signs_matrix([int]:S,B)
 
 set dual_parameters_matrix ([int] S,[Param] B) = mat:
-   let dual_parameters = dual_parameters(S,B), perm=permutation(B) in
-   matrix( (#dual_parameters,#B), (int i,int j)int: #(perm[i]=j) )
+  let dual_parameters = dual_parameters(S,B), perm=duality_permutation(B) in
+  matrix( (#dual_parameters,#B), (int i,int j)int: #(perm[i]=j) )
 set dual_parameters_matrix([*] S,[Param] B) = mat:
   dual_parameters_matrix([int]:S,B)
 
 set dual_parameters_matrix ([Param] B) = mat: dual_parameters_matrix([int]:[],B)
 
 {T is a subset of 1,...,n, keep only rows and columns in T}
-set dual_parameters_matrix([Param] B, [int] T)=mat:
+set dual_parameters_matrix ([Param] B, [int] T) = mat:
   principal_submatrix(dual_parameters_matrix(B),T)
 
 {nxn matrix, rows give formula for irreducible as sum of standards}
-set dual_parameters_standard_basis_poly_mat([Param] B)=poly_mat:
-let (B_dual,)=dual_block(B) in transpose(KL_P_polynomials(B_dual))
-set dual_parameters_standard_basis([Param] B)=mat:evaluate_at_1(dual_parameters_standard_basis_poly_mat(B))
+set dual_parameters_standard_basis_poly_mat ([Param] B) = i_poly_mat:
+  let (B_dual,)=dual_block(B) in transpose(KL_P_polynomials(B_dual))
+set dual_parameters_standard_basis ([Param] B) = mat:
+  evaluate_at_1(dual_parameters_standard_basis_poly_mat(B))
 
 {r x n matrix, subset of rows of the previous, corresponding to rows in dual_parameter(S,B)}
-set dual_parameters_standard_basis([int] S,[Param] B)=mat:
-let M=dual_parameters_standard_basis(B) in ^(for i in dual_parameters(S,B) do row(M,i) od)
-set dual_parameters_standard_basis([*] S,[Param] B)=mat:dual_parameters_standard_basis([int]:S,B)
+set dual_parameters_standard_basis ([int] S,[Param] B) = mat:
+  let M=dual_parameters_standard_basis(B) in
+  ^(for i in dual_parameters(S,B) do row(M,i) od)
+set dual_parameters_standard_basis ([*] S,[Param] B) = mat:
+  dual_parameters_standard_basis([int]:S,B)
 
-set get_y([Param] B)=[int]:
-let dual_inner_class=dual_inner_class(B[0]) in let rv= for p in B do number(dual_KGB(p,dual_inner_class)) od
-in sort_u(rv)
+set get_y ([Param] B) = [int]:
+  let dual_inner_class=dual_inner_class(B[0]) in
+  for p in B do number(dual_KGB(p,dual_inner_class)) od.sort_u
 
-set stable_at_regular([Param] B)=
-let dual_KGB_elements=get_y(B) then
-dual_inner_class=dual_inner_class(B[0]) then
-rv=null(#B,#dual_KGB_elements) in
-for p@i in B do rv[i,number(dual_KGB(p,dual_inner_class))]:=1 od ;
-{prints("dimension of stable at regular:", n_columns(rv));}
-rv
+set stable_at_regular ([Param] B) = mat:
+  let dual_KGB_elements=get_y(B)
+  then dual_inner_class=dual_inner_class(B[0])
+  then rv=null(#B,#dual_KGB_elements)
+  in
+  for p@i in B do rv[i,number(dual_KGB(p,dual_inner_class))]:=1 od ;
+  {prints("dimension of stable at regular:", n_columns(rv));}
+  rv
 
 {r\times m matrix, r=#parameters, m=number of stable sums at regular}
-set vanishing([int] S,[Param] B)=mat:
-dual_parameters_standard_basis(S,B)*^dual_parameters_matrix(B)*stable_at_regular(B)
+set vanishing ([int] S,[Param] B) = mat:
+  dual_parameters_standard_basis(S,B)*
+  ^dual_parameters_matrix(B)*stable_at_regular(B)
 {^(^dual_parameters_standard_basis(S,B)*^dual_parameters_matrix(B)*stable_at_regular(B))}
-set vanishing([*] S,[Param] B)=vanishing([int]:S,B)
+set vanishing ([*] S,[Param] B) = mat: vanishing([int]:S,B)
 
 {r\times\ell  matrix, r=#parameters, \ell=dimension of (left) kernel of vanishing}
-set kernel_vanishing([int] S,[Param] B)=mat:kernel(^vanishing(S,B))
-set kernel_vanishing([*] S,[Param] B)=mat:kernel_vanishing([int]:S,B)
+set kernel_vanishing ([int] S,[Param] B) = mat: kernel(^vanishing(S,B))
+set kernel_vanishing ([*] S,[Param] B)   = mat: kernel_vanishing([int]:S,B)
 
 {t\times r matrix, t=dimension of kernel of kernel_vanishing}
 {unsorted version, shouldn't be used except for testing}
-set stable_at_singular_unsorted([int] S,[Param] B)=(mat,[Param]):
-let Y=left_kernel(kernel_vanishing(S,B)) then
-signs=lengths_signs_matrix(S,B) in prints("signs:", signs);
-(Y*signs,parameters_singular(S,B))
+set stable_at_singular_unsorted ([int] S,[Param] B) = (mat,[Param]):
+  let Y=left_kernel(kernel_vanishing(S,B))
+  then signs=lengths_signs_matrix(S,B)
+  in prints("signs:", signs); (Y*signs,parameters_singular(S,B))
 {(^kernel(^kernel_vanishing(S,B))*lengths_signs_matrix(S,B),parameters_singular(S,B))}
-set stable_at_singular_unsorted([*] S,[Param] B)=(mat,[Param]):stable_at_singular_unsorted([int]:S,B)
+
+set stable_at_singular_unsorted ([*] S,[Param] B) = (mat,[Param]):
+ stable_at_singular_unsorted([int]:S,B)
 
 {same as stable_at_singular_unsorted, except that it is sorted}
-set stable_at_singular([int] S,[Param] B)=(mat,[Param]):
-let params=parameters(S,B) then
-(M,)=stable_at_singular_unsorted(S,B) then
-P=permutation_matrix_sort(params) in (M*^P,for i in sort(params) do Psi(B[i],S) od)
-set stable_at_singular([*] S,[Param] B)=(mat,[Param]):stable_at_singular([int]:S,B)
+set stable_at_singular ([int] S,[Param] B) = (mat,[Param]):
+  let params=parameters(S,B)
+  then (M,)=stable_at_singular_unsorted(S,B)
+  then P=permutation_matrix_sort(params)
+  in (M*^P,for i in sort(params) do Psi(B[i],S) od)
 
-set print_stable_at_singular_unsorted([int] S,[Param] B)=void:let (M,)=stable_at_singular_unsorted(S,B) in
-let params=parameters(S,B) in
-prints("dimension of block:", n_rows(M), new_line,
-"parameters=", params, new_line,
-"dimension space of stable characters:", n_rows(M), new_line,M)
-set print_stable_at_singular_unsorted([*] S,[Param] B)=void:print_stable_at_singular_unsorted([int]:S,B)
+set stable_at_singular ([*] S,[Param] B) = (mat,[Param]):
+  stable_at_singular([int]:S,B)
 
-set print_stable_at_singular([int] S,[Param] B)=void:let (M,)=stable_at_singular(S,B) in
-let params=sort(parameters(S,B)) in
-prints("dimension of block:", n_rows(M), new_line,
-"parameters=", params, new_line,
-"dimension space of stable characters:", n_rows(M), new_line,M)
-set print_stable_at_singular([*] S,[Param] B)=void:print_stable_at_singular([int]:S,B)
+set print_stable_at_singular_unsorted ([int] S,[Param] B) = void:
+  let (M,)=stable_at_singular_unsorted(S,B)
+  then params=parameters(S,B)
+  in prints("dimension of block:", n_rows(M), new_line,
+            "parameters=", params, new_line,
+            "dimension space of stable characters:", n_rows(M), new_line,M)
 
-set indices([Param] B,[Param] subset)=for p in subset do find(B,p) od
+set print_stable_at_singular_unsorted ([*] S,[Param] B) = void:
+  print_stable_at_singular_unsorted([int]:S,B)
+
+set print_stable_at_singular ([int] S,[Param] B) = void:
+  let (M,)=stable_at_singular(S,B)
+  then params=sort(parameters(S,B))
+  in prints("dimension of block:", n_rows(M), new_line,
+            "parameters=", params, new_line,
+            "dimension space of stable characters:", n_rows(M), new_line,M)
+
+set print_stable_at_singular ([*] S,[Param] B) = void:
+  print_stable_at_singular([int]:S,B)
+
+set indices ([Param] B,[Param] subset) = [int]: for p in subset do find(B,p) od
 
 {#subset x #B matrix}
-set subspace_injection_matrix([Param] B,[Param] subset)=mat:
-let rv=null(#subset,#B) in
-let indices=indices(B,subset) in
-for i:#indices do rv[i,indices[i]]:=1 od;rv
+set subspace_injection_matrix ([Param] B,[Param] subset) = mat:
+  let rv=null(#subset,#B), indices=indices(B,subset) in
+  for i:#indices do rv[i,indices[i]]:=1 od;rv
 
-set stable_at_singular([int] S,[Param] B,[Param] subset_in)=(mat,[Param]):
-{first replace subset with those so that tau(p)\in S-complement}
-let parameters=for i in parameters(S,B) do B[i] od then
-()=prints("number of parameters in block:", #B) then
-()=prints("number of given parameters:", #subset_in) then
-subset=[Param]:[] in
- let ()= for p in subset_in do if find(parameters,p)>=0 then subset#:=p fi od then
-()=prints("number of parameters at singular inf char:", #subset) then
-indices=indices(B,subset) then
-B_singular=for i in parameters(S,B) do B[i] od then
-subset_singular=[Param]:[] then
-()= for p in subset do if find(B_singular,p)>=0 then subset_singular#:=p fi od  then
-A=^(^kernel_vanishing(S,B)*^subspace_injection_matrix(B_singular,subset)) then
-Y=left_kernel(subspace_injection_matrix(B_singular,subset)*kernel_vanishing(S,B)) then
-signs=lengths_signs_matrix(subset_singular) in
-(Y*signs,subset_singular)
-set stable_at_singular([*] S,[Param] B,[Param] subset)=(mat,[Param]):stable_at_singular([int]:S,B,subset)
+set stable_at_singular ([int] S,[Param] B,[Param] subset_in) = (mat,[Param]):
+  {first replace subset with those so that tau(p)\in S-complement}
+  let parameters = for i in parameters(S,B) do B[i] od in
+  prints("number of parameters in block:", #B);
+  prints("number of given parameters:", #subset_in);
+  let subset=[Param]:[] in
+  for p in subset_in do if find(parameters,p)>=0 then subset#:=p fi od;
+  prints("number of parameters at singular inf char:", #subset);
+  let B_singular=for i in parameters(S,B) do B[i] od
+  then subset_singular=[Param]:[]
+  in for p in subset do if find(B_singular,p)>=0 then subset_singular#:=p fi od;
+  let A=^(^kernel_vanishing(S,B)*^subspace_injection_matrix(B_singular,subset))
+  then Y=left_kernel(subspace_injection_matrix(B_singular,subset)*
+                     kernel_vanishing(S,B))
+  then signs=lengths_signs_matrix(subset_singular)
+  in (Y*signs,subset_singular)
 
-set print_stable_at_singular([int] S,[Param] B,[Param] subset)=void:
-let (rv,params)=stable_at_singular(S,B,subset)  in
-prints("input parameters:",indices(B,subset));
-prints("surviving parameters:",indices(B,params));
-prints("dimension space of stable characters: ", n_rows(rv), new_line,rv)
-set print_stable_at_singular([*] S,[Param] B,[Param] subset)=void:print_stable_at_singular([int]:S,B,subset)
+set stable_at_singular ([*] S,[Param] B,[Param] subset) = (mat,[Param]):
+  stable_at_singular([int]:S,B,subset)
 
-set stable([Param] params)=(mat,[Param]):
-assert(has_infinitesimal_character(params),"terms do not all have same infinitesimal character");
-let G=real_form(params[0]) then
-p=params[0] then
-gamma=infinitesimal_character(p) then
-gamma_reg=make_regular(root_datum(p),gamma) then
-S=singular_simple_indices(G,infinitesimal_character(p)) then
-params_reg=for p in params do T(p,gamma_reg) od then
-B=block_of(params_reg[0]) in
-stable_at_singular(S,B,params_reg)
+set print_stable_at_singular ([int] S,[Param] B,[Param] subset) = void:
+  let (rv,params)=stable_at_singular(S,B,subset) in
+  prints("input parameters:",indices(B,subset));
+  prints("surviving parameters:",indices(B,params));
+  prints("dimension space of stable characters: ", n_rows(rv), new_line,rv)
 
-set print_stable([Param] params)=void:
-let (M,params)=stable(params) then
-()=prints("dimension space of stable sums:", n_rows(M)) in
-for i:n_rows(M) do prints(make_param_pol(row(M,i),params)) od
+set print_stable_at_singular ([*] S,[Param] B,[Param] subset) = void:
+  print_stable_at_singular([int]:S,B,subset)
 
-set stable_test_Aq_packet(RealForm G,ComplexParabolic P)=let A=Aq_packet(G,P) in print_stable(A)
+set stable ([Param] params) = (mat,[Param]):
+  assert(has_infinitesimal_character(params)
+        ,"terms do not all have same infinitesimal character");
+  let G=real_form(params[0])
+  then p=params[0]
+  then gamma=infinitesimal_character(p)
+  then gamma_reg=make_regular(root_datum(p),gamma)
+  then S=singular_simple_indices(G,infinitesimal_character(p))
+  then params_reg=for p in params do T(p,gamma_reg) od
+  then B=block_of(params_reg[0])
+  in stable_at_singular(S,B,params_reg)
 
-set stable_test_Aq_packet(RealForm G,[int] complex_parabolic)=stable_test_Aq_packet(G,ComplexParabolic:(G,complex_parabolic))
-set stable_test_Aq_packet(RealForm G,[*] complex_parabolic)=stable_test_Aq_packet(G,[int]:complex_parabolic)
+set print_stable([Param] params) = void:
+  if >#params
+  then let G=params[0].real_form, (M,params)=stable(params) in
+    prints("dimension space of stable sums:", n_rows(M));
+    for i:n_rows(M) do prints(make_param_pol(G,row(M,i),params)) od
+  fi
+
+set stable_test_Aq_packet (RealForm G,ComplexParabolic P) = void:
+  let A=Aq_packet(G,P) in print_stable(A)
+
+set stable_test_Aq_packet (RealForm G,[int] complex_parabolic) = void:
+  stable_test_Aq_packet(G,ComplexParabolic:(G,complex_parabolic))
+set stable_test_Aq_packet (RealForm G,[*] complex_parabolic) = void:
+  stable_test_Aq_packet(G,[int]:complex_parabolic)

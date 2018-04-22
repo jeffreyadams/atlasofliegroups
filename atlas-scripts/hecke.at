@@ -374,7 +374,7 @@ set * = convolve@(vec,vec)
 }
 set hecke_row (
     int j, mat delta, ratvec gamma, ratvec g, KGB_pair pair, [KGB_pair] basis
-  ) = [poly]:
+  ) = [i_poly]:
 begin
   let i=index(pair,basis), n=#basis in
   let R=zero_poly_row(n), (x,y)=pair in
@@ -544,14 +544,14 @@ set * = dot_product@(vec,vec)
 }
 set hecke_row (
     int j, ExtParam(,delta,gamma,,,g,,,,):E, [KGB_pair] basis
- ) = [poly]:
+ ) = [i_poly]:
  hecke_row(j,delta,gamma,g,(x(E),y_gen(E)),basis)
 
 { hecke_matrix(j,delta,gamma,g,basis)
   compute matrix of T_j acting on basis
 }
 set hecke_matrix (
-  int j, mat delta, ratvec gamma, ratvec g,[KGB_pair] basis) = poly_mat:
+  int j, mat delta, ratvec gamma, ratvec g,[KGB_pair] basis) = i_poly_mat:
   for i:#basis
   do let (x,y)=basis[i] then E=E(delta,gamma,x,g,y) in
     { row i of result: } hecke_row(j,E,basis)
@@ -561,7 +561,7 @@ set hecke_matrix (
   quadratic relation for matrix M, of length j=1,2,3;
   quadrati(M,j,true) to see the resulting matrix, which should be 0
 }
-set quadratic (poly_mat M, int length, bool show) = bool:
+set quadratic (i_poly_mat M, int length, bool show) = bool:
 begin
   let value=(M+poly_1)*(M-poly_q^length) in
   if show
@@ -570,23 +570,24 @@ begin
 ; is_zero(value)
 end
 
-set quadratic(poly_mat M, int length)=quadratic(M,length,false)
+set quadratic(i_poly_mat M, int length)=quadratic(M,length,false)
 
 { braid(M,N,j) or braid(M,N,j,1) tests braid relation for M,N
   j=number of factors on each side =1,2,3,4,6
   final argument to see the resulting matrix, which should be 0
 }
-set braid(poly_mat M,poly_mat N, int length,bool show) = bool:
+set braid(i_poly_mat M,i_poly_mat N, int length,bool show) = bool:
 begin
   assert(if length<=4 then length>0 else length=6 fi,"wrong length")
 ; let pair = (M,N) { naming components here would make things difficult }
   in for i:length-1 do pair := (let (X,Y)=pair in (Y*M,X*N)) od
-; let A = -pair { that is dyadic -@(poly_mat,polly_mat): take the difference }
+; let A = -pair { that is dyadic -@(i_poly_mat,polly_mat): take the difference }
   in if show then prints("difference: "); printPolyMatrix(A) fi
 ; is_zero(A)
 end
 
-set braid (poly_mat M,poly_mat N, int length) = bool: braid(M,N,length,false)
+set braid (i_poly_mat M,i_poly_mat N, int length) = bool:
+  braid(M,N,length,false)
 
 { utility function modify(E,lambda,l,tau,t) replaces these terms in E }
 set modify(

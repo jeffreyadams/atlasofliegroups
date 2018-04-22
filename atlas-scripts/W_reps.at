@@ -198,16 +198,8 @@ in for w_L@i in classes_L
   this is the maximum necessary exponent to get all irreducibles }
 {. smallest k so that pi occurs in S^k(reflection) .}
 set smallest_degree (WeylClassTable ct, [int] character) = int:
-  let ref=ct.reflection, rd=ct.root_datum in
-  first(nr_of_posroots(rd)+1
-       ,(int k) bool: !=ct.inner(character,ct.sym_power(ref,k))
-       )
-
-set smallest_degree (WeylClassTable ct, (WeylClassTable. , [int] character)) =
-    int:
-  let ref=ct.reflection in
-  first(nr_of_posroots(ct.root_datum)+1
-       ,(int k) bool: !=ct.inner(character,ct.sym_power(ref,k))
+  first(ct.root_datum.nr_of_posroots+1
+       ,(int k) bool: !=ct.inner(character,ct.sym_power_refl(k))
        )
 
 { the Steinberg character (mainly for testing)}
@@ -226,17 +218,20 @@ set Steinberg_character (RootDatum rd) = [int]:
 
 { ------------ projection on isotypic subspace  ----------- }
 
-{ scalar multiple of projection of representation space of |pi| on isotoypic
+{ scalar multiple of projection of representation space of |ops| on isotoypic
   subspace defined by character |char_values| of an irreducible representation
 
-  If |char_values| does not occur in |pi| this gives the null matrix, and since
+  If and irreducible character |char_values| is not a constituent of the
+  representation defined by |ops|, this gives the null matrix; then since
   the result depends linearly on |char_values|, we can even use this when the
   character is reducible, but has a unique irreducible constituent in common
-  with |pi|, giving (a multiple of) the projection for that isotypic subspace
+  with |ops|, giving (a multiple of) the projection for that isotypic subspace
 }
-set projector (WeylClassTable tab,W_rep (dim,):pi, [int] char_values) = mat:
+set projector (WeylClassTable tab, W_rep (dim,ops), [int] char_values) = mat:
   let rd=tab.root_datum, Q=null(dim,dim) in
-  for w in W(rd) do Q+:=character_value(tab,w,char_values)*pi.operator(w) od; Q
+  for (w,action) in W_parabolic_act(rd,all_simples(rd),dim,ops)
+  do Q+:=character_value(tab,w,char_values)*action
+  od; Q
 
 { restrict representation pi to isotypic subspace (image space of projector) }
 set restrict_representation_isotypic (
@@ -257,8 +252,7 @@ set projector (WeylClassTable ct, WCell cell, vec char_values) = mat:
 }
 set special_projector (WeylClassTable ct, WCell cell) = mat:
   let cell_rep = cell_representation(ct,cell)
-  then cell_char = character(ct,cell_rep)
-  then char = ct.sym_power(ct.reflection,smallest_degree(ct,cell_char))
+  then char = ct.sym_power_refl(smallest_degree(ct,character(ct,cell_rep)))
   in projector(ct,cell_rep,char)
 
 { given a cell, compute the special_projector, and use this to construct
@@ -266,8 +260,7 @@ set special_projector (WeylClassTable ct, WCell cell) = mat:
 }
 set special_representation_of_cell (WeylClassTable ct, WCell cell) = W_rep:
   let cell_rep = cell_representation(ct,cell)
-  then cell_char = character(ct,cell_rep)
-  then char = ct.sym_power(ct.reflection,smallest_degree(ct,cell_char))
+  then char = ct.sym_power_refl(smallest_degree(ct,character(ct,cell_rep)))
   in restrict_representation_isotypic(ct,cell_rep,char)
 
 {special_projectors for a list of cells}
