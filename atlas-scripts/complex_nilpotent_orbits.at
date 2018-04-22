@@ -4,7 +4,7 @@
 <center.at
 
 { ComplexNilpotent: (RootDatum rd,vec H)
-  where [H,X,Y] is a Lie triple, H\in X_*, and orbit=G.X
+
   H must satisfy <alpha,H>=0,1,2 for all simple roots,
   in particular is_dominant(H,rd) should hold
 }
@@ -522,7 +522,14 @@ set real_nilpotent_orbit_KGBs (RealForm G,vec H)=[KGBElt]:
    none(for y in result do is_conjugate_orbit((H,x),(H,y)) od) then
    result#:=x fi od; result
 
-set real_nilpotent_orbits(RealForm G)=[(vec,KGBElt)]:
+set real_nilpotent_orbits(RealForm G)=[RealNilpotent]:
    let list=all_H_nd(G) in
    ##for H in list do let kgbs=real_nilpotent_orbit_KGBs(G,H) in
-   for x in kgbs do (H,x) od od
+   for x in kgbs do RealNilpotent:(H,x) od od
+
+set sort_by(  (RealNilpotent->int) f)=([RealNilpotent] v) [RealNilpotent]:
+  for index in inv_standardisation(for x in v do f(x) od) do v[index] od
+
+set sort_by_dimension = ([RealNilpotent]->[RealNilpotent]):
+sort_by((RealNilpotent O) int: dimension(O))
+
