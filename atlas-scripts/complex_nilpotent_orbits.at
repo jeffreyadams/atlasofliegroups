@@ -2,6 +2,8 @@
 <parameters.at { for parameter@(KGBElt,KGBElt,ratvec) }
 <W_characters.at {for is_dominant}
 <center.at
+<induction.at
+
 
 { ComplexNilpotent: (RootDatum rd,vec H)
 
