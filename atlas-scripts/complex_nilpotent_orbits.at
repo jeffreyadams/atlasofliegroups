@@ -13,6 +13,9 @@
 set_type ComplexNilpotent = (RootDatum root_datum_of, vec semisimple_element)
 { field name |root_datum| would conflict with |ComplexParabolic| (too close) }
 
+set =(ComplexNilpotent O1,ComplexNilpotent O2)=bool:
+ O1.root_datum_of=O2.root_datum_of and  O1.semisimple_element=O2.semisimple_element
+
 set dim_nilpotent (ComplexNilpotent(rd,H)) = int:
   sum(for alpha in posroots(rd) do case {2*}alpha*H\1 in 0, 1 else 2 esac od)
 
@@ -341,7 +344,7 @@ set parabolic_of_orbit (RealNilpotent O) = Parabolic:
 set Levi_of_orbit (RealNilpotent O) = RealForm: Levi(parabolic_of_orbit(O))
 set root_datum (RealNilpotent O) = RootDatum: O.x.root_datum
 set real_form (RealNilpotent O) = RealForm: O.x.real_form
-set complex_orbit (RealNilpotent O) = ComplexNilpotent: (O.root_datum,O.H)
+set complex_orbit(RealNilpotent O)=ComplexNilpotent:let rd=O.x.root_datum in (rd,dominant(rd,O.H))
 set dimension (RealNilpotent O) = int: dim_nilpotent(O.complex_orbit)
 
 set simple_roots_from_coweight (RootDatum rd, ratvec v) = [int]:
@@ -488,7 +491,7 @@ set viable_Levis (RealForm G,[int] S)=[RealForm]:
      {if first (for M in result do rho_K(M)=rho_K(L) od)=-1 then}
      result#:=L {fi} od; result
 
-set test_real (RealForm G,[int] H, RealForm M, [int] S)= [KGBElt]:
+set test_real_orbit (RealForm G,[int] H, RealForm M, [int] S)= [KGBElt]:
    ##for x_M in KGB(M) do
    let roots_of_L=simple_roots_from_coweight(root_datum(M),H) then
    P_L=Parabolic:(roots_of_L,x_M) in
@@ -508,7 +511,7 @@ set test_real (RealForm G,[int] H, RealForm M, [int] S)= [KGBElt]:
 set possible_real_nilpotent_orbit_KGBs (RealForm G,[int] H)=[KGBElt]:
    let (S,K)=Levi_of_H(H,G) then
    Levis=viable_Levis(G,S) in
-   ##for M in Levis do test_real(G,K,M,S) od
+   ##for M in Levis do test_real_orbit(G,K,M,S) od
 
 set is_conjugate_orbit(RealNilpotent O,RealNilpotent P)=bool:
    let (H,x)=move_to_distinguished_fiber(O) then
@@ -528,6 +531,9 @@ set real_nilpotent_orbits(RealForm G)=[RealNilpotent]:
    let list=all_H_nd(G) in
    ##for H in list do let kgbs=real_nilpotent_orbit_KGBs(G,H) in
    for x in kgbs do RealNilpotent:(H,x) od od
+
+set real_nilpotent_orbits(ComplexNilpotent OC,RealForm G)=[RealNilpotent]:
+ ##for O in real_nilpotent_orbits(G) do if complex_orbit(O)=OC then [O] else [] fi od
 
 set sort_by(  (RealNilpotent->int) f)=([RealNilpotent] v) [RealNilpotent]:
   for index in inv_standardisation(for x in v do f(x) od) do v[index] od
