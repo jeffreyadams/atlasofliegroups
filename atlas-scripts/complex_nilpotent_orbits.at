@@ -13,6 +13,10 @@
 set_type ComplexNilpotent = (RootDatum root_datum_of, vec H_of_triple)
 { field name |root_datum| would conflict with |ComplexParabolic| (too close) }
 
+set =(ComplexNilpotent O1,ComplexNilpotent O2)=bool:
+   let rd=O1.root_datum_of in rd=O2.root_datum_of and
+   dominant(O1.H_of_triple,rd)=dominant(O2.H_of_triple,rd)
+
 set dim_nilpotent (ComplexNilpotent(rd,H)) = int:
   sum(for alpha in posroots(rd) do case {2*}alpha*H\1 in 0, 1 else 2 esac od)
 
@@ -326,15 +330,21 @@ sort_by((ComplexNilpotent O) int: dim_nilpotent(O))
  if (H,x) is given, with H non-dominant, replace it with (wx,wH)
 }
 
-set_type RealNilpotent = ([int] H,KGBElt x)
+set_type RealNilpotent = (vec H,KGBElt x,void .)
+
+set real_nilpotent(vec H,KGBElt x)=RealNilpotent:(H,x,[])
+
+set printable_real_nilpotent(RealNilpotent O)=(vec,KGBElt):
+    let (H,x,)=O in (H,x)
 
 set parabolic_of_orbit (RealNilpotent O) = Parabolic:
   parabolic_by_cwt(O.H,O.x)
-{caution: O.Levi gives the wrong answer due to conflict with KGPElt}
+
 set Levi_of_orbit (RealNilpotent O) = RealForm: Levi(parabolic_of_orbit(O))
 set root_datum (RealNilpotent O) = RootDatum: O.x.root_datum
 set real_form (RealNilpotent O) = RealForm: O.x.real_form
-set complex_orbit (RealNilpotent O) = ComplexNilpotent: (O.root_datum,O.H)
+set complex_orbit (RealNilpotent O) = ComplexNilpotent:
+   let rd=O.x.root_datum in (rd,dominant(O.H,rd))
 set dimension (RealNilpotent O) = int: dim_nilpotent(O.complex_orbit)
 
 set simple_roots_from_coweight (RootDatum rd, ratvec v) = [int]:
@@ -370,8 +380,11 @@ let rec_fun f(KGBElt x,WeylElt w)=(KGBElt,WeylElt):
    if j=-1 then f(y,inverse(w1)*w) else
    f(choose_Cayley(j,y),inverse(w1)*w) fi fi in f(x,id_W(x.root_datum))
 
-set move_to_distinguished_fiber(([int] H,KGBElt x))=RealNilpotent:
+set move_to_distinguished_fiber(([int] H,KGBElt x))=(vec,KGBElt):
    let (y,w)=move_to_distinguished_fiber(x) in (H*inverse(w),y)
+
+set move_to_distinguished_fiber(RealNilpotent O)=RealNilpotent:
+   let (H,x,)=O in real_nilpotent(move_to_distinguished_fiber((H,x)))
 
 set test_canonical_x_K(RealForm G)=bool:
    all(for x in KGB(G) do let (y,)=move_to_distinguished_fiber(x) in
@@ -393,7 +406,7 @@ set test_real_orbit (RealForm G,[int] H, RealForm M, [int] S)= [KGBElt]:
    let roots_of_L=simple_roots_from_coweight(root_datum(M),H) then
    P_L=Parabolic:(roots_of_L,x_M) in
    if not is_parabolic_theta_stable(P_L) or not x_M=x_min(P_L) then [] else
-   let L=Levi_of_orbit(H,x_M) then
+   let L=Levi_of_orbit(real_nilpotent(H,x_M)) then
    d=dimension(K_0(L)) then
    MC=complex_Levi(G,S) then
    S=## for a@i in simple_roots(MC) do if a*H=2 then [i] else [] fi od then
@@ -412,8 +425,8 @@ set possible_real_nilpotent_orbit_KGBs (RealForm G,[int] H)=[KGBElt]:
    ##for M in Levis do test_real_orbit(G,K,M,S) od
 
 set is_conjugate_orbit(RealNilpotent O,RealNilpotent P)=bool:
-   let (H,x)=move_to_distinguished_fiber(O) then
-   (K,y)=move_to_distinguished_fiber(P) then
+   let (H,x,)=move_to_distinguished_fiber(O) then
+   (K,y,)=move_to_distinguished_fiber(P) then
    (,L)=move_coweight((y,K),x) then
    W=stabilizer_of_x(x) in
    any(for w in W do L*w=H od)
@@ -422,10 +435,20 @@ set real_nilpotent_orbit_KGBs (RealForm G,vec H)=[KGBElt]:
    let list=possible_real_nilpotent_orbit_KGBs(G,H) then
    result=[KGBElt]:[] in
    for x in list do if
-   none(for y in result do is_conjugate_orbit((H,x),(H,y)) od) then
+   none(for y in result
+   do is_conjugate_orbit(real_nilpotent(H,x),real_nilpotent(H,y)) od) then
    result#:=x fi od; result
 
-set real_nilpotent_orbits(RealForm G)=[(vec,KGBElt)]:
+set real_nilpotent_orbits(RealForm G)=[RealNilpotent]:
    let list=all_H_nd(G) in
    ##for H in list do let kgbs=real_nilpotent_orbit_KGBs(G,H) in
-   for x in kgbs do (H,x) od od
+   for x in kgbs do real_nilpotent(H,x) od od
+
+set real_nilpotent_orbits(ComplexNilpotent OC,RealForm G)=[RealNilpotent]:
+ ##for O in real_nilpotent_orbits(G) do if complex_orbit(O)=OC then [O] else [] fi od
+
+set sort_by(  (RealNilpotent->int) f)=([RealNilpotent] v) [RealNilpotent]:
+  for index in inv_standardisation(for x in v do f(x) od) do v[index] od
+
+set sort_by_dimension = ([RealNilpotent]->[RealNilpotent]):
+sort_by((RealNilpotent O) int: dimension(O))
