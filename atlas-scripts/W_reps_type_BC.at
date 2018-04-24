@@ -38,13 +38,13 @@ if (#f=#g+1) then [f,g] elif
 (#f>#g+1) then  [f,expand(g,#f-#g-1)]
 else [expand(f,#g-#f+1),g] fi
 
-{if S=(f,g) is a symbol for C_n then rank(f)=rank(g)=n, independent
-of equivalence classes of f and g
-rank(f)=sum f_i -n(n-1)/2
+{ if S=(f,g) is a symbol for C_n then rank(f)=rank(g)=n, independent
+  of equivalence classes of f and g
+  rank(f)=sum f_i -n(n-1)/2
 }
 {this notion of rank conflicts with rank@mat, and is not used}
-{set rank([int] f)=int:let n=#f in sum(f)-n*(n-1)\2
-set rank(Symbol S)=int:rank(S[0])}
+{ set rank([int] f)=int:let n=#f in sum(f)-n*(n-1)\2
+  set rank(Symbol S)=int:rank(S[0]) }
 
 {maps between Orbits, Symbols and Wreps}
 {Orbit -> Symbol <--> Wrep}
@@ -65,15 +65,15 @@ f=[int]:[],g=[int]:[]  in
 for j in e do if is_even(j) then f#:=j\2 else g#:=j\2 fi od;[f,g]
 
 {Symbol to Wrep (bijection)}
-set wrep(Symbol S)=Wrep:
+set wrep(Symbol S)=Hn_rep:
 let f=S[0], g=S[1] in
 let p=[int]:[], q=[int]:[] in let
 ()=for i:#f do if f[i]-i>0 then p#:=f[i]-i fi od then
 ()=for i:#g do if g[i]-i>0 then q#:=g[i]-i fi od in
 (reverse(p),reverse(q))
 
-{Orbit -> Wrep}
-set wrep(Orbit P)=Wrep:wrep(symbol(P))
+{Orbit -> Hn_rep}
+set wrep(Orbit P)=Hn_rep:wrep(symbol(P))
 
 {Symbol -> Orbit}
 {set orbit_B(Symbol S)=Orbit:
@@ -90,32 +90,32 @@ F_G=sort(F##G)  then
 H=F_G - for i:#F_G  do i od in let K=reverse(H) then
 rv=[int]:[] in  for c in K do if c>0 then rv#:=c fi od;rv
 
-{Wrep to Symbol}
-set symbol(Wrep sigma)=Symbol:
+{Hn_rep to Symbol}
+set symbol(Hn_rep sigma)=Symbol:
 let (p,q)=sigma then
 ()=if #p<#q+1 then p##:=null(#q+1-#p)
 elif #q+1<#p then q##:=null(#p-#q-1) fi
 in [sort(p+for i:#p ~ do i od),sort(q+for j:#q ~ do j od)]
 
-{Wrep -> Orbit}
+{Hn_rep -> Orbit}
 {not sure about this yet
-set orbit_(Wrep sigma)=Orbit:orbit_C(symbol(sigma))
+set orbit_(Hn_rep sigma)=Orbit:orbit_C(symbol(sigma))
 }
-set orbit_C(Wrep sigma)=Orbit:orbit_C(symbol(sigma))
+set orbit_C(Hn_rep sigma)=Orbit:orbit_C(symbol(sigma))
 
-{equality of Wreps}
-set =(Wrep  a,Wrep b)=bool: let (a1,a2)=a then (b1,b2)=b in a1=b1 and a2=b2
+{equality of Hn_reps}
+set =(Hn_rep  a,Hn_rep b)=bool: let (a1,a2)=a then (b1,b2)=b in a1=b1 and a2=b2
 
 {equality of symbols (not equivalence)}
 set symbols_equal(Symbol a,Symbol b)=bool:a[0]=b[0] and a[1]=b[1]
 
-set dimension(Wrep sigma)=int:
+set dimension(Hn_rep sigma)=int:
 let (p,q)=sigma in
  dim_rep(p)*dim_rep(q)* { binom(size(p),size(q)) }
    rat_as_int(fac(size(p)+size(q))/(fac(size(p))*fac(size(q))))
 
 set all_reps_BC(int n)=
-let rv=[Wrep]:[] in
+let rv=[Hn_rep]:[] in
 for r:n+1 do
  for p in partitions(r) do
   for q in partitions(n-r) do
@@ -127,11 +127,11 @@ let f=S[0], g=S[1] in
 all(for i:#g do f[i]<=g[i] and g[i]<=f[i+1] od)
 
 set is_special_C(Orbit P)=bool:is_special_C(symbol(P))
-set is_special_C(Wrep sigma)=bool:is_special_C(symbol(sigma))
+set is_special_C(Hn_rep sigma)=bool:is_special_C(symbol(sigma))
 
 set special_C_star(Symbol S)=string:if is_special_C(S) then "*" else "" fi
 set special_C_star(Orbit P)=string:if is_special_C(P) then "*" else "" fi
-set special_C_star(Wrep sigma)=string:if is_special_C(sigma) then "*" else "" fi
+set special_C_star(Hn_rep sigma)=string:if is_special_C(sigma) then "*" else "" fi
 
 {this is not correct, the map orbits to symbolsl is not surjective}
 set symbols(RootDatum rd)=[Symbol]:
@@ -144,7 +144,7 @@ set symbols(RootDatum rd)=[Symbol]:
    fi
 
 {this is not correct, the map orbits to wreps is not surjective}
-set wreps(RootDatum rd)=[Wrep]:for P in nilpotent_orbit_partitions(rd) do wrep(P) od
+set wreps(RootDatum rd)=[Hn_rep]:for P in nilpotent_orbit_partitions(rd) do wrep(P) od
 
 {given a cell C, get list of tau invariants from it
  then construct the Levi set of C:
@@ -280,7 +280,7 @@ these Levis
 Note: tau_invariants=[[int]]:[] (in the inductive step signals done)
 is different from [[int]]:[[]] (gives the trivial rep, principal orbit
 }
-set wrep(int rank,[[int]] tau_invariants)=Wrep:
+set wrep(int rank,[[int]] tau_invariants)=Hn_rep:
   let rec_fun f
     (int rank,[[int]] A_Levis,[(int,[int])] AC_Levis, [int] p,[int] q) =
     ([int],[int]):
@@ -309,10 +309,10 @@ f(rank,keep_by_first_entry_and_truncate(A_Levis,a)
 let (A_Levis,AC_Levis)=Levi_signature(rank,tau_invariants) in
   f(rank,A_Levis,AC_Levis,[],[])
 
-set wrep(Block B,[int] cell)=Wrep:
+set wrep(Block B,[int] cell)=Hn_rep:
 wrep(rank(real_form(B)), tau_invariants_of_cell_raw(B,cell))
 
-set wreps(Block B,[[int]] cells)=[Wrep]:for cell in cells do wrep(B,cell) od
+set wreps(Block B,[[int]] cells)=[Hn_rep]:for cell in cells do wrep(B,cell) od
 
 set print_wrep_cpt(Block B, [int] cell)=
 let rep=wrep(B,cell) in
@@ -340,7 +340,3 @@ set print_wreps(Block B,[[int]] cells)=void:
 for i:#cells do  prints("Cell ",i);print_wrep(B,cells[i]);prints() od
 
 set wreps(Block B,[[int]] cells)=[([int],[int])]:for C in cells do wrep(B,C) od
-
-
-
-

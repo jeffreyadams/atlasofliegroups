@@ -55,7 +55,7 @@ set sort_u = ([int]->[int]): { sort, keeping unique copy of duplicates }
   That permutation itself is just the standardisation (stable ranking) of $v$.
 }
 set inv_standardisation = ([int]->[int]):
-  let merge([(int,int)] a, [(int,int)] b) = { merge based on first component }
+  let merge([int,int] a, [int,int] b) = { merge based on first component }
       let na=#a in
       if na=0 then b
       else let i=0, j=0, nb=#b { original length of b }
@@ -70,12 +70,37 @@ set inv_standardisation = ([int]->[int]):
 	od
       fi
   then
-    rec_fun ms ([(int,int)] v, int l) = [(int,int)]:
+    rec_fun ms ([int,int] v, int l) = [int,int]:
       if l>=3 then let h=l\2 in merge(ms(v[:h],h),ms(v[h:],l-h))
       elif l=2 and (let (x,)=v[0], (y,)=v[1] in x>y) then v~[:] { swap }
       else v { either l=1 or v sorted }
       fi
   in ([int] v) [int]: { actual body of inv_standardisation }
+    for (,org_i) in ms(for a@i in v do (a,i) od,#v) { attach index to entries }
+    do org_i od { afterward just recover the permuted original indices }
+
+{ the same for a list of rationals; the result is still a list of integers }
+set inv_standardisation = ([rat]->[int]):
+  let merge([rat,int] a, [rat,int] b) = { merge based on first component }
+      let i=0, j=0, na=#a { |na>=1| }, nb=#b { original length |nb>=2| }
+      in b #:= a~[0] { sentinel; when this becomes b[j], then |a| is emptied }
+      ; while i<na or j<nb { run until |i=na=#a-1| and |j=nb| }
+	do
+	  if i=na then b[j] next j+:=1
+	  else { compare only first components, as second one always increase }
+	    let (x,):ai=a[i], (y,):bj=b[j] { |x|, |y| are the sort keys }
+            { when |j=nb| then |y| is sentinel, so |x<=y| for all |x| in |a| }
+	    in if x<=y then ai next i+:=1 else bj next j+:=1 fi
+	  fi
+	od
+  then
+    rec_fun ms ([rat,int] v, int l) = [rat,int]:
+      case l-1
+      in v
+      , let (x,)=v[0], (y,)=v[1] in if x>y then v~[:] else v fi
+      else { |l>=3| } let h=l\2 in merge(ms(v[:h],h),ms(v[h:],l-h))
+      esac
+  in ([rat] v) [int]: { actual body of inv_standardisation }
     for (,org_i) in ms(for a@i in v do (a,i) od,#v) { attach index to entries }
     do org_i od { afterward just recover the permuted original indices }
 
@@ -86,6 +111,20 @@ set sort_by ((Param->int) f) = ([Param] v) [Param]:
   for index in inv_standardisation(for x in v do f(x) od) do v[index] od
 set sort_by( (WeylElt -> int) f)= ([WeylElt] v) [WeylElt]:
     for index in inv_standardisation(for x in v do f(x) od) do v[index] od
+
+set sort_by (([int]->int) f) = ([[int]] v) [[int]]:
+  for index in inv_standardisation(for x in v do f(x) od) do v[index] od
+
+{ also need sorting by rationals; take easily written but roundabout approach }
+set sort ([rat] v) = [rat]: for index in inv_standardisation(v) do v[index] od
+
+{ the following two are used in complex_nilpotent_orbits }
+set sort_by ((vec,rat-> rat) f) = ([vec,rat] v) [vec,rat]:
+  for index in inv_standardisation(for x in v do f(x) od) do v[index] od
+set sort_by ((ratvec,[vec]->int) f) = ([ratvec,[vec]] v) [ratvec,[vec]]:
+  for index in inv_standardisation(for x in v do f(x) od) do v[index] od
+
+
 
 {for use in K_norm.at: sorting of KParams}
 set sort_by ( ( (KGBElt,ratvec) -> int) f ) =
@@ -102,10 +141,6 @@ set sort_by ( (Split,Param->int) f) = ([(Split,Param)] v) [(Split,Param)]:
 set sort_by ( (Split,(KGBElt,ratvec)->int) f) =
   ([(Split,(KGBElt,ratvec))] v) [(Split,(KGBElt,ratvec))]:
     for index in inv_standardisation(for x in v do f(x) od) do v[index] od
-
-{ also need sorting by rationals; this uses conversion to/from ratvec }
-set sort ([rat] v) = [rat]: let (num,denom)=%v in sort(num)/denom
-set inv_standardisation ([rat] v) = let (num,)=%v in inv_standardisation(num)
 
 { and so forth for any type; this really should be second-order typed }
 

@@ -67,10 +67,7 @@ rv=[Param]:[] in
 for p in b do
  if all (for k in support(x(p)) do is_descent(k,p) od) then rv#:=p fi  od;rv
 
-set sort_by (((vec, rat)-> rat) f)=([(vec,rat)] v) [(vec,rat)]:
-  for index in inv_standardisation(for x in v do f(x) od) do v[index] od
-
-set sort_by_length =([(vec,rat)]->[(vec,rat)]): sort_by((vec v,rat c) rat: c)
+set sort_by_length = ([vec,rat]->[vec,rat]): sort_by((vec v,rat c)rat: c)
 
 
 { these form a superset of the possible H in a Lie triple [H,E,F] }
@@ -94,11 +91,8 @@ let all=all_H(rd) in
 let dims=for (v,)@i in all do let d=dim_nilpotent(rd,v) in prints(i, " ", v, ", ", v*simple_roots(rd), even_eigenspaces(rd,v), " ", odd_eigenspaces(rd,v),  " ", d);d od in
 sort(dims)
 
-set sort_by (((ratvec, [vec])-> int) f)=([(ratvec,[vec])] v) [(ratvec,[vec])]:
-  for index in inv_standardisation(for x in v do f(x) od) do v[index] od
-
-set sort_by_dimension_of_2_eigenspace =([(ratvec,[vec])]->[(ratvec,[vec])]):
-sort_by((ratvec z,[vec] v) int:#v)
+set sort_by_dimension_of_2_eigenspace  = ([ratvec,[vec]]->[ratvec,[vec]]):
+  sort_by((ratvec z,[vec] v) int:#v)
 
 {
 =([(ratvec,[vec])] -> [(ratvec,[vec])]):
@@ -194,8 +188,8 @@ let allq=[all_q(G)[i]] then
 answer=for q in allq do (q,max_only(find_H(q)))  od in  output(answer);answer
 }
 {containment order}
-set <= ([int] a,[int] b)=all(for i:#a do find(b,a[i])!=-1 od)
-set <([int] a,[int] b)=sort(a) != sort(b) and a<=b
+set <= ([int] a,[int] b) = bool: all(#a,(int i)bool: find(b,a[i]).>=)
+set <  ([int] a,[int] b) = bool: sort(a) != sort(b) and a<=b
 
 set  principal_block(RealForm G)=Block:block(G,dual_quasisplit_form(G))
 
