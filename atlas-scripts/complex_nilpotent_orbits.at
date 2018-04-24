@@ -450,10 +450,24 @@ set real_nilpotent_orbits(RealForm G)=[RealNilpotent]:
    for x in kgbs do real_nilpotent(H,x) od od
 
 set real_nilpotent_orbits(ComplexNilpotent OC,RealForm G)=[RealNilpotent]:
- ##for O in real_nilpotent_orbits(G) do if complex_orbit(O)=OC then [O] else [] fi od
+   ##for O in real_nilpotent_orbits(G) do if complex_orbit(O)=OC then [O]
+   else [] fi od
 
 set sort_by(  (RealNilpotent->int) f)=([RealNilpotent] v) [RealNilpotent]:
-  for index in inv_standardisation(for x in v do f(x) od) do v[index] od
+   for index in inv_standardisation(for x in v do f(x) od) do v[index] od
 
 set sort_by_dimension = ([RealNilpotent]->[RealNilpotent]):
-sort_by((RealNilpotent O) int: dimension(O))
+   sort_by((RealNilpotent O) int: dimension(O))
+
+set make_dominant_H (RealNilpotent O)=RealNilpotent:
+   let (H,x,)=O then P=parabolic_of_orbit(O) then y=x_min(P)
+   then rd=root_datum(x) in real_nilpotent(dominant(H,rd),y)
+
+set dominant_nilpotents (RealForm G)=[RealNilpotent]:
+   for O in real_nilpotent_orbits(G) do make_dominant_H(O) od
+
+set test_conjecture (RealForm G)=[bool]:
+   let list1=real_nilpotent_orbits(G)
+   then list2=[RealNilpotent]: for orb in list1 do make_dominant_H(orb) od
+   in for i:#list1 do is_conjugate_orbit (list1[i],list2[i]) od
+
