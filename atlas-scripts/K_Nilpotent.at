@@ -1,4 +1,4 @@
-<complex_nilpotent_orbits.at
+<nilpotent_orbits.at
 <K_norm.at
 
 set kn_verbose=true
@@ -421,7 +421,7 @@ let ()=prints("L=",L) in
 let ()=prints("default shifts:", rho_shifts(O)) in
 let ()=prints("new shifts:", rhoshifts) in
  for (shift,j)@k in rhoshifts do
-  let q=parameter(x(p_L),lambda(p_L)-shift,nu(p_L)) {shifted parameter on L}{NOTE: +shift not -shift} then
+  let q=parameter(x(p_L),lambda(p_L)+shift,nu(p_L)) {shifted parameter on L}{NOTE: +shift not -shift} then
   r_1=theta_induce_standard(q,G) {theta-induce up to G} then
   r_2=r_1*0 {restrict to K} in
       if kn_verbose then prints(new_line, "shift: ", shift, new_line,"inducing: ", q, new_line,"induced term: ", r_2)
@@ -466,7 +466,7 @@ rhoshifts=rho_shifts(O) in
 for c@p_L in K_type_formula do
      if kn_verbose then prints(new_line,"Term in K-type formula:",new_line, p_L) fi;
  for (shift,j)@k in rhoshifts do
-  let q=parameter(x(p_L),lambda(p_L)-shift,nu(p_L)) {shifted parameter on L}{NOTE: +shift not -shift} then
+  let q=parameter(x(p_L),lambda(p_L)+shift,nu(p_L)) {shifted parameter on L}{NOTE: +shift not -shift} then
   r_1=theta_induce_standard(q,G) then
   r_2=r_1*0 in
       if kn_verbose then prints(new_line, "shiftSHIFT: ", shift, new_line,"inducing: ", q, new_line,"induced term: ", r_2) fi;
@@ -485,14 +485,13 @@ for c@p in mu_L do rv+:=c*Phi_unnormalized(O,p) od;rv
 
 set dominant(RealNilpotent O)=RealNilpotent:
 let (H,x,)=O then
-(w,H_dom)=from_dominant(O.root_datum,H) then
+(H_dom,w)=from_dominant(H,O.root_datum) then
 O_dom=(H_dom,cross(inverse(w),x),()) in 
 assert(is_conjugate_orbit(O_dom,O),"dominant(orbit) failed");O_dom
 
 { functions on real orbit as K-representation }
 set functions_on_real_orbit(RealNilpotent O_in)=K_Type_Pol:
-{let O=dominant(O_in) {seems to matter} then}
-let O=O_in then
+let O=dominant(O_in) {seems to matter} then
 L=O.Levi_of_orbit then
 p_L=finalize(trivial(L)*0) {in SU(2,1) trivial(G)*0 is not final}  in
 Phi(O,p_L)
