@@ -332,6 +332,12 @@ sort_by((ComplexNilpotent O) int: dim_nilpotent(O))
 
 set_type RealNilpotent = (vec H,KGBElt x,void .)
 
+set =(RealNilpotent O1,RealNilpotent O2)=bool:
+   let (H,x,)=O1 then (K,y,)=O2 in if not real_form(x)=real_form(y)
+   then false else
+   let rd=x.root_datum in dominant(H,rd)=dominant(K,rd) and
+   parabolic_of_orbit(O1)=parabolic_of_orbit(O2) fi
+
 set real_nilpotent(vec H,KGBElt x)=RealNilpotent:(H,x,[])
 
 set printable_real_nilpotent(RealNilpotent O)=(vec,KGBElt):
