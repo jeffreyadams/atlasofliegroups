@@ -471,3 +471,16 @@ set test_conjecture (RealForm G)=[bool]:
    then list2=[RealNilpotent]: for orb in list1 do make_dominant_H(orb) od
    in for i:#list1 do is_conjugate_orbit (list1[i],list2[i]) od
 
+set real_nilpotent_orbit_KGPs (RealForm G,vec H)=[KGPElt]:
+   let list=possible_real_nilpotent_orbit_KGBs(G,H) then
+   result=[KGPElt]:[] in
+   for x in list do let orb=real_nilpotent(H,x) then
+   P=parabolic_of_orbit(orb) in
+   if none(for Q in result do P=Q od) then result#:=P fi od;
+   result
+
+set real_nilpotent_orbits_alt(RealForm G)=[RealNilpotent]:
+   let list=all_H_nd(G) in
+   ##for H in list do let K=dominant(H,root_datum(G)) then
+   kgps=real_nilpotent_orbit_KGPs(G,H) in
+   for P in kgps do real_nilpotent(K,x_min(P)) od od
