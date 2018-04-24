@@ -332,19 +332,18 @@ sort_by((ComplexNilpotent O) int: dim_nilpotent(O))
 
 set_type RealNilpotent = (vec H,KGBElt x,void .)
 
-set =(RealNilpotent O1,RealNilpotent O2)=bool:
-   let (H,x,)=O1 then (K,y,)=O2 in if not real_form(x)=real_form(y)
-   then false else
-   let rd=x.root_datum in dominant(H,rd)=dominant(K,rd) and
-   parabolic_of_orbit(O1)=parabolic_of_orbit(O2) fi
-
-set real_nilpotent(vec H,KGBElt x)=RealNilpotent:(H,x,[])
-
-set printable_real_nilpotent(RealNilpotent O)=(vec,KGBElt):
-    let (H,x,)=O in (H,x)
+set real_nilpotent(vec H,KGBElt x)=RealNilpotent:(H,x,())
 
 set parabolic_of_orbit (RealNilpotent O) = Parabolic:
   parabolic_by_cwt(O.H,O.x)
+
+set =(RealNilpotent (H,x,):O1,RealNilpotent (K,y,):O2)=bool:
+   real_form(x)=real_form(y) and
+   dominant(H,x.root_datum)=dominant(K,y.root_datum) and
+   parabolic_of_orbit(O1)=parabolic_of_orbit(O2)
+
+set printable_real_nilpotent(RealNilpotent O)=(vec,KGBElt):
+    let (H,x,)=O in (H,x)
 
 set Levi_of_orbit (RealNilpotent O) = RealForm: Levi(parabolic_of_orbit(O))
 set root_datum (RealNilpotent O) = RootDatum: O.x.root_datum
@@ -354,20 +353,20 @@ set complex_orbit (RealNilpotent O) = ComplexNilpotent:
 set dimension (RealNilpotent O) = int: dim_nilpotent(O.complex_orbit)
 
 set simple_roots_from_coweight (RootDatum rd, ratvec v) = [int]:
-##for alpha@i in simple_roots(rd) do if =alpha*v then [i] else [] fi od
+   ##for alpha@i in simple_roots(rd) do if =alpha*v then [i] else [] fi od
 
 set simple_roots_from_coweights (RootDatum rd,[ratvec] list) = [[int]]:
-  for v in list do simple_roots_from_coweight(rd,v) od
+   for v in list do simple_roots_from_coweight(rd,v) od
 
 set find ([RealNilpotent] list,RealNilpotent O)=int:
-first(#list,(int i)bool:list[i].root_datum=O.root_datum and list[i].H=O.H)
+   first(#list,(int i)bool:list[i].root_datum=O.root_datum and list[i].H=O.H)
 
 
 set in_distinguished_fiber(KGBElt x)=bool:
-let j=find(distinguished_fiber(x.real_form),x) in j!=-1
+   let j=find(distinguished_fiber(x.real_form),x) in j!=-1
 
 set find_cayley(KGBElt x)=int:
-first(#simple_roots(x.root_datum), (int i)bool: status(i,x)=2 {real root})
+   first(#simple_roots(x.root_datum), (int i)bool: status(i,x)=2 {real root})
 
 set find ([int] v, int k) = int:      first(#v,(int i)bool:v[i]=k)
 
@@ -379,8 +378,8 @@ let y=Cayley(i,x) in
    assert(torus_bits(z)=torus_bits(x),"failure in choose_cayley");z fi
 
 set move_to_distinguished_fiber(KGBElt x)=
-let rec_fun f(KGBElt x,WeylElt w)=(KGBElt,WeylElt):
-  if in_distinguished_fiber(x) then (x,w) else
+   let rec_fun f(KGBElt x,WeylElt w)=(KGBElt,WeylElt):
+   if in_distinguished_fiber(x) then (x,w) else
    let (w1,y)=from_no_Cminus(x) then
    j=find_cayley(y)  in
    if j=-1 then f(y,inverse(w1)*w) else
@@ -401,29 +400,38 @@ set stabilizer_of_x (KGBElt x)=[WeylElt]:
    ##for w in W(G) do if cross(w,x)=x then [w] else [] fi od
 
 set viable_Levis (RealForm G,[int] S)=[RealForm]:
-   let list=parabolics_with_theta_stable_Levi(G,S) then
-   result=[RealForm]:[] in
-   for P in list do let L=Levi(P) in
-     {if first (for M in result do rho_K(M)=rho_K(L) od)=-1 then}
-     result#:=L {fi} od; result
+   for P in parabolics_with_theta_stable_Levi(G,S) do Levi(P) od
 
 set test_real_orbit (RealForm G,[int] H, RealForm M, [int] S)= [KGBElt]:
-   ##for x_M in KGB(M) do
-   let roots_of_L=simple_roots_from_coweight(root_datum(M),H) then
-   P_L=Parabolic:(roots_of_L,x_M) in
-   if not is_parabolic_theta_stable(P_L) or not x_M=x_min(P_L) then [] else
-   let L=Levi_of_orbit(real_nilpotent(H,x_M)) then
-   d=dimension(K_0(L)) then
-   MC=complex_Levi(G,S) then
-   S=## for a@i in simple_roots(MC) do if a*H=2 then [i] else [] fi od then
-   theta=involution(x_M) then
-   ic=inner_class(MC,theta) then
-   dim_center=rank(lie_compact_radical(ic)) then
-   roots=##for alpha in posroots(M) do if is_noncompact_imaginary(alpha,x_M)
-   and H*alpha=2 then [alpha,alpha]
-     elif is_complex(alpha,x_M) and H*alpha=2 then [alpha] else [] fi od then
-   number_roots=#roots/2 in
-   if d=dim_center+number_roots then [embed_KGB(x_M,G)] else [] fi fi od
+   ##for x_M in KGB(M)
+    do
+    let roots_of_L=simple_roots_from_coweight(root_datum(M),H) then
+    P_L=Parabolic:(roots_of_L,x_M) in
+      if not is_parabolic_theta_stable(P_L) or not x_M=x_min(P_L) then []
+      else let L=Levi_of_orbit(real_nilpotent(H,x_M)) then
+        d=dimension(K_0(L)) then
+        MC=complex_Levi(G,S) then
+        S=## for a@i in simple_roots(MC)
+        do if a*H=2 then [i]
+           else []
+           fi
+        od then
+      theta=involution(x_M) then
+      ic=inner_class(MC,theta) then
+      dim_center=rank(lie_compact_radical(ic)) then
+      roots=##for alpha in posroots(M)
+      do if is_noncompact_imaginary(alpha,x_M)
+            and H*alpha=2 then [alpha,alpha]
+         elif is_complex(alpha,x_M) and H*alpha=2 then [alpha]
+         else []
+         fi
+      od then
+      number_roots=#roots/2 in
+        if d=dim_center+number_roots then [embed_KGB(x_M,G)]
+        else []
+        fi
+      fi
+    od
 
 set possible_real_nilpotent_orbit_KGBs (RealForm G,[int] H)=[KGBElt]:
    let (S,K)=Levi_of_H(H,G) then

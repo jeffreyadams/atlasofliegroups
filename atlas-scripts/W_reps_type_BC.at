@@ -1,6 +1,6 @@
 <basic.at
 <sort.at
-<complex_nilpotent_orbits.at { for <@([int],[int]) (subset), $\tau$ invariants }
+<nilpotent_orbits.at { for <@([int],[int]) (subset), $\tau$ invariants }
 <nilpotent_orbit_partitions.at { for eponymous function, |is_valid| }
 <combinatorics.at
 <W_reps.at { for types |W_rep|, |WCell| }
