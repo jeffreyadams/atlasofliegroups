@@ -1,7 +1,7 @@
 <nilpotent_orbits.at
 <K_norm.at
 
-set kn_verbose=true
+set kn_verbose=false
 
 {KN algorithm requires using defining parabolic by -H}
 set -(RealNilpotent O)=RealNilpotent:
@@ -287,7 +287,6 @@ delete(generate_all_subsets(roots),0) {don't want empty subset}
 
 {H is in \mathfrak h, not \mathfrak h^*}
 set rho_shifts(RealNilpotent O)=[(vec,int)]:
-let ()=prints("rho_shifts with ", O) in
 let (H,x,)=O then
 (H_dom,w)=from_dominant(H,root_datum(x))  then
 {wH_dom=H so
@@ -307,22 +306,16 @@ match=find(orbit,y) in w_elements[match]
  if w*O.x=canonical_x_K(embed_KGB(x_L))
  then replace each shift by w*shift}
 set rho_shifts(RealNilpotent O, KGBElt x_L)=[(vec,int)]:
-let ()=prints("rho_shifts2 with ", O, " and ", x_L, " ", x_L.real_form, new_line, "simple:", x_L.real_form.simple_roots) in
+{let ()=prints("rho_shifts2 with ", O, " and ", x_L, " ", x_L.real_form, new_line, "simple:", x_L.real_form.simple_roots) in}
 let rhoshifts=rho_shifts(O) then
 {x_can_L=canonical_x_K(x_L) then
 x_can_G=embed_KGB(x_can_L,O.real_form) then}
-()=prints("KGB(L):");print_KGB(x_L.real_form) then
 x_G=canonical_x_K(embed_KGB(x_L,O.real_form)) then
 x_O=x_min(parabolic_of_orbit(O)) then
-()=prints("x_G=",x_G) then
-()=prints("x_O=",x_O) then
 w=cross_divide(x_O,x_G) in
-let ()=prints("GOT w=",w) in
-let ()=prints("x_G=",x_G, " x_O=", x_O) in
 {w^{-1}(O.x)=x_can_G so
 replace v with }
 for (v,k) in rhoshifts do 
-let ()=prints("v=",v, "inverse(w)*v=", inverse(w)*v) in
 (inverse(w)*v,k) od
 
 { P is a theta-stable parabolic
@@ -384,7 +377,6 @@ set Phi(RealNilpotent O,int kgb_number_L, ratvec lambda_L)=K_Type_Pol:
 let G=real_form(O.x) then
 P=parabolic_of_orbit(O) {NOTE: parabolic defined by -O.H} then
 L=Levi(P) then
-()=prints("HERE IS L:");print_KGB(L) then
 p_L_0=Param:parameter(KGB(L,kgb_number_L),lambda_L) in
       if kn_verbose then prints(new_line,"Computing Phi:", new_line, "O=", O, new_line,
       " L=", L,new_line, "x_L=", kgb_number_L, " lambda_L=", lambda_L, new_line,"p_L_0:", p_L_0) fi;
@@ -413,13 +405,7 @@ rv=null_module(G) in
      fi;
 for c@p_L in K_type_formula_twisted do
      if kn_verbose then prints(new_line,"term in (twisted) K-type formula:",new_line, p_L) fi;
-let ()=prints("x_L=",x(p_L)) in
-let ()=prints("KGB(L)=");print_KGB(x(p_L).real_form) in
-let ()=prints("O=",O) in
 let rhoshifts=rho_shifts(O,x(p_L)) in
-let ()=prints("L=",L) in
-let ()=prints("default shifts:", rho_shifts(O)) in
-let ()=prints("new shifts:", rhoshifts) in
  for (shift,j)@k in rhoshifts do
   let q=parameter(x(p_L),lambda(p_L)+shift,nu(p_L)) {shifted parameter on L}{NOTE: +shift not -shift} then
   r_1=theta_induce_standard(q,G) {theta-induce up to G} then
@@ -486,7 +472,8 @@ for c@p in mu_L do rv+:=c*Phi_unnormalized(O,p) od;rv
 set dominant(RealNilpotent O)=RealNilpotent:
 let (H,x,)=O then
 (H_dom,w)=from_dominant(H,O.root_datum) then
-O_dom=(H_dom,cross(inverse(w),x),()) in 
+O_dom=(H_dom,cross(w,x),()) in
+{=(H*inverse(w), cross(w,x))}
 assert(is_conjugate_orbit(O_dom,O),"dominant(orbit) failed");O_dom
 
 { functions on real orbit as K-representation }
@@ -871,9 +858,19 @@ set KNilpotent_real_orbits(RealForm G)=KNilpotent_real_orbits(G,K_norm(trivial(G
 forget db@string
 
 
+set test_minimal_orbits(RealForm G, int bound)=void:
+prints("functions on minimal orbits in ",G);
+for O in minimal_real_nilpotent_orbits(G) do
+prints(new_line,"O=",O);
+let f=functions_on_real_orbit(O) in 
+print_branch_std_long(f,bound) od
 
-
-
+set test_all_orbits(RealForm G, int bound)=void:
+prints("functions all real orbits in ",G);
+for O in real_nilpotent_orbits(G) do
+prints(new_line,"O=",O);
+let f=functions_on_real_orbit(O) in 
+print_branch_std_long(f,bound) od
 
 
 

@@ -334,10 +334,13 @@ set Aq_cells(RealForm G,[[int]] cells)=Aq_cells(principal_block(G),cells)
  set \q=parabolic_by_cwt(x,H), then
  orbit=induced from trivial orbit of Levi factor, equivalently
       =associated variety of A_q(lambda)
+
+ If H is dominant it must satisfy:
  H must satisfy <\alpha,H>\in {0,1,2} for all simple alpha
- (in particular H is dominant)
  not all such H are allowed
- if (H,x) is given, with H non-dominant, replace it with (wx,wH)
+ (H,x) is equivalent to (H*inverse(w), cross(w,x))
+ in particular if H is not dominant it can be replaced by
+ an  equivalent one with H dominant
 }
 
 set_type RealNilpotent = (vec H,KGBElt x,void .)
@@ -356,6 +359,13 @@ set =(RealNilpotent O1,RealNilpotent O2)=bool:
    let rd=x.root_datum in dominant(H,rd)=dominant(K,rd) and
    parabolic_of_orbit(O1)=parabolic_of_orbit(O2) fi
 
+{replace (H,x) with equivalent (H',x') with H' dominant}
+set dominant(RealNilpotent O)=RealNilpotent:
+let (H,x,)=O then
+(H_dom,w)=from_dominant(H,O.root_datum) then
+O_dom=(H_dom,cross(w,x),()) in
+{=(H*inverse(w), cross(w,x))}
+assert(is_conjugate_orbit(O_dom,O),"dominant(orbit) failed");O_dom
 
 set Levi_of_orbit (RealNilpotent O) = RealForm: Levi(parabolic_of_orbit(O))
 
