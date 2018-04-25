@@ -25,7 +25,8 @@ set sort_by(  (ComplexNilpotent->int) f)=([ComplexNilpotent] v) [ComplexNilpoten
   for index in inv_standardisation(for x in v do f(x) od) do v[index] od
 
 set find ([ComplexNilpotent] list,ComplexNilpotent O)=int:
-first(#list,(int i)bool:list[i].root_datum_of=O.root_datum_of and list[i].semisimple_element=O.semisimple_element)
+   first(#list,(int i)bool:list[i].root_datum_of=O.root_datum_of and
+   list[i].semisimple_element=O.semisimple_element)
 
 set sort_by_dimension = ([ComplexNilpotent]->[ComplexNilpotent]):
 sort_by((ComplexNilpotent O) int: dim_nilpotent(O))
@@ -321,20 +322,6 @@ set sort_by(  (ComplexNilpotent->int) f)=([ComplexNilpotent] v) [ComplexNilpoten
 set sort_by_dimension = ([ComplexNilpotent]->[ComplexNilpotent]):
 sort_by((ComplexNilpotent O) int: dim_nilpotent(O))
 
-{a real nilpotent orbit is a pair ([int] H,KGBElt x)
- note the order, to distinguish from KHighestWeight (KGBElt x,vec H) (see K.at)
- x should in the distinguished fiber
- H\in X_* is the semisimple element of a Lie triple
- \theta_x(H)=H
- set \q=parabolic_by_cwt(x,H), then
- orbit=induced from trivial orbit of Levi factor, equivalently
-      =associated variety of A_q(lambda)
- H must satisfy <\alpha,H>\in {0,1,2} for all simple alpha
- (in particular H is dominant)
- not all such H are allowed
- if (H,x) is given, with H non-dominant, replace it with (wx,wH)
-}
-
 set_type RealNilpotent = (vec H,KGBElt x,void .)
 
 set real_nilpotent(vec H,KGBElt x)=RealNilpotent:(H,x,[])
@@ -350,7 +337,6 @@ set =(RealNilpotent O1,RealNilpotent O2)=bool:
    then false else
    let rd=x.root_datum in dominant(H,rd)=dominant(K,rd) and
    parabolic_of_orbit(O1)=parabolic_of_orbit(O2) fi
-
 
 set Levi_of_orbit (RealNilpotent O) = RealForm: Levi(parabolic_of_orbit(O))
 
@@ -414,7 +400,7 @@ set viable_Levis (RealForm G,[int] S)=[RealForm]:
    let list=parabolics_with_theta_stable_Levi(G,S) then
    result=[RealForm]:[] in
    for P in list do let L=Levi(P) in
-   result#:=L {fi} od; result
+   result#:=L od; result
 
 set test_real_orbit (RealForm G,[int] H, RealForm M, [int] S)= [KGBElt]:
    ##for x_M in KGB(M)
