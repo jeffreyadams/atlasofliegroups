@@ -104,7 +104,10 @@ set all_H_nd (RootDatum rd)=[vec]:
 
 {. List all complex nilpotent orbits (with H dominant) for a complex group. .}
 set complex_nilpotent_orbits(RootDatum rd)=[ComplexNilpotent]:
-    for H in all_H(rd) do (rd,H) od
+    sort_by_dimension(for H in all_H(rd) do (rd,H) od)
+
+{. (one) complex nilpotent orbit of minimal dimension>0 .}
+set minimal_nilpotent_orbit(RootDatum rd)=ComplexNilpotent:complex_nilpotent_orbits(rd)[1]
 
 {. For a complex group, for each standard Levi M given by a list of simple roots,
    list the corresponding neutral elements H (dominant for M, not G) giving
@@ -311,11 +314,24 @@ set Aq_cells(RealForm G,[[int]] cells)=Aq_cells(principal_block(G),cells)
 
 
 
-set sort_by(  (ComplexNilpotent->int) f)=([ComplexNilpotent] v) [ComplexNilpotent]:
-  for index in inv_standardisation(for x in v do f(x) od) do v[index] od
 
-set sort_by_dimension = ([ComplexNilpotent]->[ComplexNilpotent]):
-sort_by((ComplexNilpotent O) int: dim_nilpotent(O))
+
+{a real nilpotent orbit is a pair ([int] H,KGBElt x)
+ note the order, to distinguish from KHighestWeight (KGBElt x,vec H) (see K.at)
+ x should in the distinguished fiber
+ H\in X_* is the semisimple element of a Lie triple
+ \theta_x(H)=H
+ set \q=parabolic_by_cwt(x,H), then
+ orbit=induced from trivial orbit of Levi factor, equivalently
+      =associated variety of A_q(lambda)
+
+ If H is dominant it must satisfy:
+ H must satisfy <\alpha,H>\in {0,1,2} for all simple alpha
+ not all such H are allowed
+ (H,x) is equivalent to (H*inverse(w), cross(w,x))
+ in particular if H is not dominant it can be replaced by
+ an  equivalent one with H dominant
+}
 
 set_type RealNilpotent = (vec H,KGBElt x,void .)
 
@@ -332,12 +348,19 @@ set =(RealNilpotent (H,x,):O1,RealNilpotent (K,y,):O2)=bool:
    dominant(H,x.root_datum)=dominant(K,y.root_datum) and
    parabolic_of_orbit(O1)=parabolic_of_orbit(O2)
 
-set Levi_of_orbit (RealNilpotent O) = RealForm: Levi(parabolic_of_orbit(O))
 set root_datum (RealNilpotent O) = RootDatum: O.x.root_datum
 set real_form (RealNilpotent O) = RealForm: O.x.real_form
+set Levi_of_orbit (RealNilpotent O) = RealForm: Levi(parabolic_of_orbit(O))
 set complex_orbit (RealNilpotent O) = ComplexNilpotent:
    let rd=O.x.root_datum in (rd,dominant(O.H,rd))
 set dimension (RealNilpotent O) = int: dim_nilpotent(O.complex_orbit)
+
+set sort_by((RealNilpotent->int) f) =
+  ([RealNilpotent] v) [RealNilpotent]:
+     for index in inv_standardisation(for x in v do f(x) od) do v[index] od
+
+set sort_by_dimension = ([RealNilpotent]->[RealNilpotent]):
+   sort_by((RealNilpotent O) int: dimension(O))
 
 set simple_roots_from_coweight (RootDatum rd, ratvec v) = [int]:
    ##for alpha@i in simple_roots(rd) do if =alpha*v then [i] else [] fi od
@@ -432,6 +455,18 @@ set is_conjugate_orbit(RealNilpotent O,RealNilpotent P)=bool:
    W=stabilizer_of_x(x) in
    any(for w in W do L*w=H od)
 
+{replace (H,x) with equivalent (H',x') with H' dominant}
+set dominant(RealNilpotent O)=RealNilpotent:
+let (H,x,)=O then
+(H_dom,w)=from_dominant(H,O.real_form) then
+O_dom=(H_dom,cross(w,x),()) in
+{=(H*inverse(w), cross(w,x))}
+assert(is_conjugate_orbit(O_dom,O),"dominant(orbit) failed");O_dom
+
+set find ([RealNilpotent] list,RealNilpotent O)=int:
+first(#list,(int i)bool:list[i].root_datum=O.root_datum
+and is_conjugate_orbit(list[i],O))
+
 set real_nilpotent_orbit_KGBs (RealForm G,vec H)=[KGBElt]:
    let list=possible_real_nilpotent_orbit_KGBs(G,H) then
    result=[KGBElt]:[] in
@@ -440,32 +475,11 @@ set real_nilpotent_orbit_KGBs (RealForm G,vec H)=[KGBElt]:
    do is_conjugate_orbit(real_nilpotent(H,x),real_nilpotent(H,y)) od) then
    result#:=x fi od; result
 
-set real_nilpotent_orbits(RealForm G)=[RealNilpotent]:
+set real_nilpotent_orbits_alt(RealForm G)=[RealNilpotent]:
    let list=all_H_nd(G) in
-   ##for H in list do let kgbs=real_nilpotent_orbit_KGBs(G,H) in
-   for x in kgbs do real_nilpotent(H,x) od od
-
-set real_nilpotent_orbits(ComplexNilpotent OC,RealForm G)=[RealNilpotent]:
-   ##for O in real_nilpotent_orbits(G) do if complex_orbit(O)=OC then [O]
-   else [] fi od
-
-set sort_by(  (RealNilpotent->int) f)=([RealNilpotent] v) [RealNilpotent]:
-   for index in inv_standardisation(for x in v do f(x) od) do v[index] od
-
-set sort_by_dimension = ([RealNilpotent]->[RealNilpotent]):
-   sort_by((RealNilpotent O) int: dimension(O))
-
-set make_dominant_H (RealNilpotent O)=RealNilpotent:
-   let (H,x,)=O then P=parabolic_of_orbit(O) then y=x_min(P)
-   then rd=root_datum(x) in real_nilpotent(dominant(H,rd),y)
-
-set dominant_nilpotents (RealForm G)=[RealNilpotent]:
-   for O in real_nilpotent_orbits(G) do make_dominant_H(O) od
-
-set test_conjecture (RealForm G)=[bool]:
-   let list1=real_nilpotent_orbits(G)
-   then list2=[RealNilpotent]: for orb in list1 do make_dominant_H(orb) od
-   in for i:#list1 do is_conjugate_orbit (list1[i],list2[i]) od
+   sort_by_dimension(##for H in list do
+     let kgbs=real_nilpotent_orbit_KGBs(G,H) in
+     for x in kgbs do real_nilpotent(H,x) od od)
 
 set real_nilpotent_orbit_KGPs (RealForm G,vec H)=[KGPElt]:
    let list=possible_real_nilpotent_orbit_KGBs(G,H) then
@@ -475,8 +489,20 @@ set real_nilpotent_orbit_KGPs (RealForm G,vec H)=[KGPElt]:
    if none(for Q in result do P=Q od) then result#:=P fi od;
    result
 
-set real_nilpotent_orbits_alt(RealForm G)=[RealNilpotent]:
+set real_nilpotent_orbits(RealForm G)=[RealNilpotent]:
    let list=all_H_nd(G) in
-   ##for H in list do let K=dominant(H,root_datum(G)) then
+   sort_by_dimension(##for H in list do let K=dominant(H,root_datum(G)) then
    kgps=real_nilpotent_orbit_KGPs(G,H) in
-   for P in kgps do real_nilpotent(K,x_min(P)) od od
+   for P in kgps do real_nilpotent(K,x_min(P)) od od)
+
+set real_nilpotent_orbits(ComplexNilpotent OC,RealForm G)=[RealNilpotent]:
+   let (rd,H)=OC then (,K)=Levi_of_H(H,rd) then
+   kgps=real_nilpotent_orbit_KGPs(G,K) in
+   for P in kgps do real_nilpotent(dominant(K,rd),x_min(P)) od
+
+set minimal_real_nilpotent_orbits(RealForm G)=[RealNilpotent]:
+   real_nilpotent_orbits(minimal_nilpotent_orbit(G.root_datum),G)
+
+set make_dominant_H (RealNilpotent O)=RealNilpotent:
+   let (H,x,)=O then P=parabolic_of_orbit(O) then y=x_min(P)
+   then rd=root_datum(x) in real_nilpotent(dominant(H,rd),y)
