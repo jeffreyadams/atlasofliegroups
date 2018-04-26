@@ -128,14 +128,14 @@ set first_rows(int n,mat M)=mat:select_rows(#n,M)
 {similar to projector_mod_image
 suppose M is an mxn matrix of rank r, whose columns span an r-dimensional
  subspace of U=Z^r in V=Z^m
-projector_mod_image(M) is mxm, of rank m-r, whose image is 
+projector_mod_image(M) is mxm, of rank m-r, whose image is
  a complement to U in V
-mod_image_projector(M) is mx(m-r), describing the map from V 
+mod_image_projector(M) is mx(m-r), describing the map from V
  to an (m-r)-dimensional space }
 set mod_image_projector(mat M)= mat:
   let (c,R)=adapted_direct_sum(M) in R.inverse[c: , : ]
 
-{basis of intersection of two matrices 
+{basis of intersection of two matrices
  returns (X,Y) where the columns of X span the intersection
  Y is the first rows of kernel A##B
 }
