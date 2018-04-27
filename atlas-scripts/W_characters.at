@@ -3,7 +3,6 @@
 <sort.at { for sorting lists of posroot indices }
 <Weylgroup.at { for |order_W@RootDatum|, |root_reflection@(RootDatum,vec)| }
 <W_orbit.at { for |W@RootDatum| }
-<cyclotomic.at { for |cyclotomic_factors| }
 <tabulate.at { for |tabulate| }
 
 { The purpose of this file is working with Weyl group characters }
@@ -283,9 +282,9 @@ set is_conjugate (WeylElt x,WeylElt y) = bool:
    char_poly(matrix(x))=char_poly(matrix(y)) { easy and necessary } and
 (  let L_x = x.Levi_info, L_y = y.Levi_info
 in dominant(rd,subsystem_2rho(L_x))=dominant(rd,subsystem_2rho(L_y)) and
-(  let Levi_x = Levi_datum(L_x) then type_codes = %Lie_type(Levi_x).semisimple
-in none(for (code,) in type_codes do code="F" od) { done unless F4 factors } or
-(  assert(#type_codes=1,"Can't handle composite Levi subgroups with F4 factor")
+(  let Levi_x = Levi_datum(L_x) then factors = Levi_x.Lie_type.simple_factors
+in none(for (code,) in factors do code="F" od) { done unless F4 factors } or
+(  assert(#factors=1,"Can't handle composite Levi subgroups with F4 factor")
 ;  if order(x)=6 and length(x)=10 { the hard case } else true
    then let is_negated(WeylElt w,RootDatum rd) = (int->bool):
       let M = w.matrix+1 in (int i)bool: =M*root(rd,i) { root in -1 eigenspace }
@@ -441,7 +440,7 @@ set Levi_orbit_size ((RootDatum,(int->bool))(rd,):Levi_info) = int:
 set elliptic_simple_decomposition (WeylElt w) = [WeylElt,(string,int)]:
    let rd_L = Levi_datum(w)
    then (type,map)=Cartan_matrix_type(rd_L.Cartan_matrix)
-   then codes = %type.semisimple, w_L=W_elt(rd_L,w.matrix) { convert }
+   then codes = type.simple_factors, w_L=W_elt(rd_L,w.matrix) { convert }
    , offset=0 { rank within |type| already seen in loop below }
    , !r = rd_L.rank { full rank, needed when gathering roots/coroots }
 in for (,rank):code in codes { traverse the simple factors }

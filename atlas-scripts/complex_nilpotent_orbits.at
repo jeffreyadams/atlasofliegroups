@@ -7,7 +7,7 @@
   H must satisfy <alpha,H>=0,1,2 for all simple roots,
   in particular is_dominant(H,rd) should hold
 }
-set_type ComplexNilpotent = (RootDatum root_datum_of, vec semisimple_element)
+set_type ComplexNilpotent = (RootDatum root_datum_of, vec H_of_triple)
 { field name |root_datum| would conflict with |ComplexParabolic| (too close) }
 
 set dim_nilpotent (ComplexNilpotent(rd,H)) = int:
@@ -23,12 +23,10 @@ set sort_by_dimension = ([ComplexNilpotent]->[ComplexNilpotent]):
 sort_by((ComplexNilpotent O) int: dim_nilpotent(O)) 
 
 set dim_eigenspace (RootDatum rd, ratvec H, int k) = int:
-let rv=0 in
-if k=0 then rv:=rank(rd);
-for alpha in posroots(rd) do {prints("alpha:", alpha, "  ", rv);}if alpha*H=0 then rv+:=2 fi od
-else
-for alpha in posroots(rd) do if alpha*H=k then rv+:=1 fi od
-fi ;rv
+   if k=0
+   then rank(rd) + 2*count(for alpha in posroots(rd) do =alpha*H od)
+   else count(for alpha in posroots(rd) do alpha*H=k od)
+   fi
 
 set max_eigenspace(RootDatum rd, vec H)=int:
 let rv=rat:0 in
@@ -58,10 +56,7 @@ rv=[Param]:[] in
 for p in b do
  if all (for k in support(x(p)) do is_descent(k,p) od) then rv#:=p fi  od;rv
 
-set sort_by (((vec, rat)-> rat) f)=([(vec,rat)] v) [(vec,rat)]:
-  for index in inv_standardisation(for x in v do f(x) od) do v[index] od
-
-set sort_by_length =([(vec,rat)]->[(vec,rat)]): sort_by((vec v,rat c) rat: c)
+set sort_by_length = ([vec,rat]->[vec,rat]): sort_by((vec v,rat c)rat: c)
 
 set int_list (int n)=[int]: for i:n do i od
 
@@ -101,11 +96,8 @@ let dims=for v@i in all do let d=dim_nilpotent(rd,ratvec_as_vec(2*v)) in prints(
 sort(dims)
 }
 
-set sort_by (((ratvec, [vec])-> int) f)=([(ratvec,[vec])] v) [(ratvec,[vec])]:
-  for index in inv_standardisation(for x in v do f(x) od) do v[index] od
-
-set sort_by_dimension_of_2_eigenspace =([(ratvec,[vec])]->[(ratvec,[vec])]):
-sort_by((ratvec z,[vec] v) int:#v)
+set sort_by_dimension_of_2_eigenspace  = ([ratvec,[vec]]->[ratvec,[vec]]):
+  sort_by((ratvec z,[vec] v) int:#v)
 
 {find H which work for given q=q(x,H)=(L,u)}
 set find_H (Parabolic P) = [(vec,[vec])]: { should be [(vec,mat)] really }
@@ -188,8 +180,8 @@ let allq=[all_q(G)[i]] then
 answer=for q in allq do (q,max_only(find_H(q)))  od in  output(answer);answer
 }
 {containment order}
-set <= ([int] a,[int] b)=all(for i:#a do find(b,a[i])!=-1 od)
-set <([int] a,[int] b)=sort(a) != sort(b) and a<=b
+set <= ([int] a,[int] b) = bool: all(#a,(int i)bool: find(b,a[i]).>=)
+set <  ([int] a,[int] b) = bool: sort(a) != sort(b) and a<=b
 
 set  principal_block(RealForm G)=Block:block(G,dual_quasisplit_form(G))
 

@@ -18,6 +18,12 @@
   lead to illegal occurences of |*| (e.g. as type of a concrete value). This
   is quite subtle; maybe forbid binding to names with such type altogether.
 
+- give better type error message about "needed type" when a let expression
+  pattern does not match the type of the defining expression. What appear to
+  happen is that if if a tuple type is provided but the number of components
+  mismatches the pattern, the "needed" components are taken from that tuple, and
+  the user must figure out that their number was in fact too few (or too much).
+
 - Maybe allow |set a:=b,b:=a+b| as alternative for |set (a,b):=(b,a+b)|
 
 - Allow repeated selection assignment |M[1][3]:=0| or |a[i].re:=5|
@@ -49,8 +55,6 @@
 
 * Work on the atlas program
 
-- Change interface to LieType so that torus factors do not pollute list of
-  simple factors.
 
 * Work on the atlas scripts
 

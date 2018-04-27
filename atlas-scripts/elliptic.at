@@ -204,10 +204,12 @@ set combine_W_lists ([[WeylElt]] lists) = [WeylElt]:
   od
 
 set elliptic (RootDatum rd) = [WeylElt]:
-  let (lt,map_to_rd) = Cartan_matrix_type(rd.Cartan_matrix), offset=0 in
-  if =#%lt then [id_W(rd)] { avoid passing empty list to |combine_W_lists| }
+  let (lt,map_to_rd) = Cartan_matrix_type(rd.Cartan_matrix), offset=0
+  then factors=simple_factors(lt)
+  in
+  if =#factors then [id_W(rd)] { avoid passing empty list to |combine_W_lists| }
   else
-     for (,rank):type_rank in %lt
+     for (,rank):type_rank in factors
      do for word in elliptic_simple(type_rank)
 	do W_elt(rd,for s in word do map_to_rd[offset+s] od)
 	od
@@ -227,7 +229,7 @@ in if =s then [id_W(rd)] { avoid passing empty list to |combine_W_lists| }
       let (lt,map_to_Levi) = Cartan_matrix_type
                (matrix((s,s),(int i,int j)int: M[subset[i],subset[j]]))
       then offset=0, map_to_rd = for i in map_to_Levi do subset[i] od
-   in for (,rank):type_rank in %lt
+   in for (,rank):type_rank in simple_factors(lt)
       do for word in elliptic_simple(type_rank)
          do W_elt(rd,for s in word do map_to_rd[offset+s] od)
 	 od
@@ -253,7 +255,7 @@ set order_of_centralizer_elliptic_BCD (WeylElt w) = int:
   let signed_type = w.classic_permutation.signed_cycle_type in
   assert(for (,sign) in signed_type do sign od.all,"Not an elliptic element");
   let lambda = for (size,) in signed_type do size od
-  , is_D = let (type,)=(%w.root_datum.Lie_type)[0] in type="D"
+  , is_D = let (type,)=(w.root_datum.Lie_type.simple_factors)[0] in type="D"
   in product(lambda) * 2^if is_D then #lambda-1 else #lambda fi *
     product(for m in frequencies(lambda) do fac(m) od)
 
