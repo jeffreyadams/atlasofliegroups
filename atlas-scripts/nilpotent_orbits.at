@@ -103,6 +103,9 @@ set all_H (RootDatum rd)=[vec]:
    Levi_datum(rd,S) od in ##for L in Levis do
    for H in distinguished_H(rd,L) do dominant(H,rd) od od
 
+{. As previous function, except the coweights H are given as sums of fundamental
+   weights for the standard (Bala-Carter) Levi M in which the orbit is
+   distinguished. .}
 set all_H_nd (RootDatum rd)=[vec]:
    let Levis=[RootDatum]: for S in standard_Levi_conjugacy_representatives(rd) do
    Levi_datum(rd,S) od in ##for L in Levis do
@@ -113,7 +116,8 @@ set complex_nilpotent_orbits(RootDatum rd)=[ComplexNilpotent]:
     sort_by_dimension(for H in all_H(rd) do (rd,H) od)
 
 {. (one) complex nilpotent orbit of minimal dimension>0 .}
-set minimal_nilpotent_orbit(RootDatum rd)=ComplexNilpotent:complex_nilpotent_orbits(rd)[1]
+set minimal_nilpotent_orbit(RootDatum rd)=ComplexNilpotent:
+   complex_nilpotent_orbits(rd)[1]
 
 {. For a complex group, for each standard Levi M given by a list of simple roots,
    list the corresponding neutral elements H (dominant for M, not G) giving
@@ -325,7 +329,7 @@ set Aq_cells(RealForm G,[[int]] cells)=Aq_cells(principal_block(G),cells)
 
 
 
-{a real nilpotent orbit is a pair ([int] H,KGBElt x)
+{a real nilpotent orbit is a triple (vec H,KGBElt x, void)
  note the order, to distinguish from KHighestWeight (KGBElt x,vec H) (see K.at)
  x should in the distinguished fiber
  H\in X_* is the semisimple element of a Lie triple
@@ -383,7 +387,6 @@ set simple_roots_from_coweights (RootDatum rd,[ratvec] list) = [[int]]:
 set find ([RealNilpotent] list,RealNilpotent O)=int:
    first(#list,(int i)bool:list[i].root_datum=O.root_datum and list[i].H=O.H)
 
-
 set in_distinguished_fiber(KGBElt x)=bool:
    let j=find(distinguished_fiber(x.real_form),x) in j!=-1
 
@@ -421,12 +424,18 @@ set stabilizer_of_x (KGBElt x)=[WeylElt]:
    let G=real_form(x) in
    ##for w in W(G) do if cross(w,x)=x then [w] else [] fi od
 
+{. Given a real group G and a list of simple roots determining a standard
+   complex Levi MC, make a list of real forms of MC in G. .}
 set viable_Levis (RealForm G,[int] S)=[RealForm]:
    let list=parabolics_with_theta_stable_Levi(G,S) then
    result=[RealForm]:[] in
    for P in list do let L=Levi(P) in
-   result#:=L {fi} od; result
+   result#:=L od; result
 
+{. Given a real form G, a coweight H which determines a complex nilpotent
+   orbit OC, distinguished in the Levi MC, find all KGB elements x so that
+   (H,x,) is a real form of OC. M is a real form of MC in G, and MC is
+   determined by the simple roots S. .}
 set test_real_orbit (RealForm G,[int] H, RealForm M, [int] S)= [KGBElt]:
    ##for x_M in KGB(M)
     do
@@ -457,6 +466,7 @@ set test_real_orbit (RealForm G,[int] H, RealForm M, [int] S)= [KGBElt]:
         fi
       fi
     od
+
 
 set possible_real_nilpotent_orbit_KGBs (RealForm G,[int] H)=[KGBElt]:
    let (S,K)=Levi_of_H(H,G) then
@@ -497,16 +507,17 @@ set real_nilpotent_orbits_alt(RealForm G)=[RealNilpotent]:
      for x in kgbs do real_nilpotent(H,x) od od)
 
 set real_nilpotent_orbit_KGPs (RealForm G,vec H)=[KGPElt]:
+   let n=#H in if H=null(n) then [parabolic_by_cwt(H,KGB(G,0))] else
    let list=possible_real_nilpotent_orbit_KGBs(G,H) then
    result=[KGPElt]:[] in
    for x in list do let orb=real_nilpotent(H,x) then
    P=parabolic_of_orbit(orb) in
    if none(for Q in result do P=Q od) then result#:=P fi od;
-   result
+   result fi
 
 set real_nilpotent_orbits(RealForm G)=[RealNilpotent]:
    let list=all_H_nd(G) in
-   sort_by_dimension(##for H in list do let K=dominant(H,root_datum(G)) then
+   sort_by_dimension(##for H in list do prints(H); let K=dominant(H,root_datum(G)) then
    kgps=real_nilpotent_orbit_KGPs(G,H) in
    for P in kgps do real_nilpotent(K,x_min(P)) od od)
 
