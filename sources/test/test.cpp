@@ -855,7 +855,7 @@ bool examine(RealReductiveGroup& G)
 {
   const KGB& kgb=G.kgb();
   TorusPart t0 = kgb.torus_part(0);
-  TorusPart t1 = G.innerClass().x0_torus_part(G.realForm());
+  TorusPart t1 = G.x0_torus_part();
   return t0==t1;
 }
 
@@ -866,7 +866,7 @@ void exam_f()
     std::cout << "x0 torus bits constistent with traditional ones";
   else
     std::cout << "x0 torus bits changed from " << G.kgb().torus_part(0)
-	      << " to " << G.innerClass().x0_torus_part(G.realForm());
+	      << " to " << G.x0_torus_part();
   std::cout << std::endl;
 }
 

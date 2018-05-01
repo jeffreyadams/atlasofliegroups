@@ -1061,14 +1061,16 @@ InnerClass::central_fiber(RealFormNbr rf) const
 
 
 /*
-  We need |central_fiber| in |x0_torus_part| only to standardise the choice,
-  which the function |minimum| defined below actually accomplishes.
+  Find a |TorusPart| value that will determine the initial |KGBElt|, and thereby
+  (together with the base grading for the square class) determine the real form
+
+  We need |central_fiber| in |x0_torus_part| only to standardise the choice;
+  this is achieved by taking the minimum over that fiber, after adding |bits|.
 
   What preceeds that is straightforward: start with the reference compacts for
   the square class; compare with the desired compacts at |x0| obtained from
   |simple_roots_x0_compact(rf)| to find the grading shift needed, and using
-  |grading_shift_repr| find a |TorusPart| that will do this. This is the
-  candidate to be standardised; torus element |coch| is needed for |minimum|.
+  |grading_shift_repr| find a |TorusPart| that will do this.
   */
 TorusPart InnerClass::x0_torus_part(RealFormNbr rf) const
 {
@@ -1088,10 +1090,11 @@ TorusPart InnerClass::x0_torus_part(RealFormNbr rf) const
   while (not (++it).at_end())
     if (bits+*it<bits+min) // offset |bits| does not cancel from this relation!
       min = *it;
-  bits+=min;
 
-  assert(tits::compact_simples(rootDatum(),t += bits,simple_roots_imaginary())
-	 ==rf_cpt);
+  bits += min;
+  t += bits;
+
+  assert(tits::compact_simples(rootDatum(),t,simple_roots_imaginary())==rf_cpt);
 
   return bits;
 } // |x0_torus_part|

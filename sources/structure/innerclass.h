@@ -370,6 +370,7 @@ class InnerClass
   cartanclass::square_class xi_square(RealFormNbr rf) const;
   RealFormNbr square_class_repr(cartanclass::square_class csc) const;
 
+  // determine seed that defines the real form |rf| within its square class
   TorusPart x0_torus_part(RealFormNbr rf) const;
 
   // torus parts that remain in the fiber and do not affect any grading
