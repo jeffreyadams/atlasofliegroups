@@ -1,18 +1,10 @@
-<induction.at
+<induction.new.at
 <nilpotent_orbits.at
 <K_norm.at
 <print_K_types.at
 
-set kn_verbose=false
-
-{KN algorithm requires using defining parabolic by -H}
-set -(RealNilpotent O)=RealNilpotent:
-let (H,x,)=O in RealNilpotent:(-H,x,[])
-
-{assume solve is valid}
-set Solve(mat A,vec v)=requisition(solve(A,v))
-
 {debugging commands just for this file}
+set kn_verbose=false
 set debug(bool verbose,string message)=void:if verbose then prints(message) fi
 set db(string message)=debug(kn_verbose,message)
 
@@ -75,68 +67,79 @@ bool precompute_real_orbits, {flag to use the Vogan algorithm to compute real or
 )
 
 set root_datum(KNilpotentData d)=RootDatum: d.real_form.root_datum
-set Q_matrices(KNilpotentData d)=for (,,Q,) in d.Q_and_P_Y_matrices do Q od
-set P_Y_matrices(KNilpotentData d)=for (,,,P_Y) in d.Q_and_P_Y_matrices do P_Y od
+set Q_matrices(KNilpotentData d)=[mat]:for (,,Q,) in d.Q_and_P_Y_matrices do Q od
+set P_Y_matrices(KNilpotentData d)=[mat]:for (,,,P_Y) in d.Q_and_P_Y_matrices do P_Y od
 
-{----- real and complex nilpotent orbits -------}
+{----- real and complex nilpotent orbits in setting of KNilpotentData -------}
 
-{complex_orbit@RealNilpotent->ComplexNilpotent see real_nilpotent_orbits.at}
+{complex_orbit@RealNilpotent->ComplexNilpotent: see nilpotent_orbits.at}
 
 set complex_orbit_number(KNilpotentData d,ComplexNilpotent OC)=int:find(d.complex_orbits,OC)
 set real_orbit_number(KNilpotentData d,RealNilpotent O)=int:find(d.real_orbits,O)
 set complex_orbit_number(KNilpotentData d,RealNilpotent O) =int:complex_orbit_number(d,complex_orbit(O))
 set complex_orbit_number(KNilpotentData d,int real_orbit) =int:complex_orbit_number(d,d.real_orbits[real_orbit])
 
+{all real forms of given complex orbit}
 set real_forms_of(KNilpotentData d,int complex_orbit)=[int]:
 ##for O@i in d.real_orbits do if
 complex_orbit(O)=d.complex_orbits[complex_orbit] then [i] else [] fi od
 
+{given a real orbit O, all of the other real forms of complexification OC of O}
 set other_real_forms(KNilpotentData d,int real_orbit)=[int]:real_forms_of(d,complex_orbit_number(d,real_orbit))
 
-{complex nilpotent -> set of complex nilpotents}
+{"closure" means: smaller dimension}
+{complex nilpotent -> orbit itself and all complex nilpotents of smaller dimension}
 set closure(KNilpotentData d,int complex_nilpotent)=[int]:
 let dim=dim_nilpotent(d.complex_orbits[complex_nilpotent]) in
 ##for  OC@i in d.complex_orbits do if dim_nilpotent(OC)<dim then [i] else [] fi od##[complex_nilpotent]
 
-{complex orbits -> set of real nilpotents}
+{all real forms of given complex orbit, and all real 
+forms of smaller orbits}
 set closure_real(KNilpotentData d,int complex_orbit)=[int]:
 ##for a in closure(d,complex_orbit) do real_forms_of(d,a) od
 
-{real orbit -> itself plus all real orbits of smaller dimension}
+{real orbit and all real orbits of smaller dimension}
 set closure_of_real_orbit(KNilpotentData d,int real_nilpotent)=[int]:
 let complex_nilpotent=complex_orbit_number(d,real_nilpotent) then
 dim=dim_nilpotent(d.complex_orbits[complex_nilpotent]) in
 ##for  OC@i in d.complex_orbits do if dim_nilpotent(OC)<dim then real_forms_of(d,i) else [] fi od##[real_nilpotent]
 
-
+{real orbit -> all orbits of strictly smaller dimension}
 set smaller_orbits(KNilpotentData d,int real_orbit)=[int]:
 let O=d.real_orbits[real_orbit] then
 dim_O=dimension(O) in
 ##for o@i in d.real_orbits do if dimension(o)<dim_O then [i] else [] fi od
 
-{---------------bases of K_types and L_cap_K_types----------}
-{list of K_Types coming from given orbit}
+{---------------bases of K-types and L_cap_K-types----------}
 
+{these sets of K-types serve as basis of matrix operations}
+
+{K-types occuring in given K_TypePol}
 set K_basis(K_Type_Pol P)=[K_Type]:for Q in monomials(P) do K_type(Q) od
 
+{K-types occuring in given K_TypePols}
 set K_basis([K_Type_Pol] pols)=[K_Type]:
 if #pols=0 then [] else
 for Q in monomials(pols) do  K_type(Q) od fi
 
+{all K-types coming from given KNilpotentData}
 set K_basis(KNilpotentData data, int real_orbit)=
 if #data.pairs=0 or #data.pairs[real_orbit]=0 then [] else
 K_basis(for (,P) in data.pairs[real_orbit] do P od) fi
 
-{list of K_Types coming from given orbits}
+{K-Types coming from given orbits}
 set K_basis(KNilpotentData data, [int] real_orbits)=
 if #data.pairs=0 or #real_orbits=0 then [] else
 K_basis(##for i in real_orbits do
 for (,P) in data.pairs[i] do P od od)
 fi
 
+{K-types coming from all real forms of complex orbit, 
+ and all real forms of smaller orbits}
 set K_basis_closure(KNilpotentData data,int complex_orbit)=
 K_basis(data,closure_real(data,complex_orbit))
 
+{K-types coming from real orbit, and all real orbits of smaller dimension}
 set K_basis_closure_of_real_orbit(KNilpotentData data,int real_orbit)=
 K_basis(data,closure_of_real_orbit(data,real_orbit))
 
@@ -154,11 +157,11 @@ for col in M do let v=vector(K_basis_new, expand(col,K_basis,K_basis[0].real_for
 assert(any(v),"change_basis failed");
 requisition(v) od fi
 
-{list of L\cap K-types from data for given orbit}
+{L\cap K-types coming from given orbit}
 set L_cap_K_basis(KNilpotentData d,int real_orbit)=[K_Type]:
 for (mu_L,) in d.pairs[real_orbit] do mu_L od
 
-{list of L\cap K-types from data for given orbits}
+{L\cap K-types coming from given orbits}
 set L_cap_K_basis(KNilpotentData d,[int] real_orbits)=[K_Type]:
 if #d.pairs=0 or #real_orbits=0 then [] else
 ##for i in real_orbits do L_cap_K_basis(d,i) od  fi
@@ -180,8 +183,6 @@ for (mu_L,P) in pairs do
    assert(any(col),"could not construct column of matrix");
    rv[find(L_cap_K_basis,mu_L)]:=requisition(col) od ;
 (K_basis,L_cap_K_basis,rv) fi
-
-
 
 set merge_matrices([ ([K_Type],[K_Type],mat) ] matrices)=([K_Type],[K_Type],mat):
 if #matrices=0 then ([],[],null(0,0)) else
@@ -230,19 +231,21 @@ while #roots>0 do
    let  index=find(roots,theta*alpha) in if (index=-1) then error("set of roots is not theta-stable") else
       roots:=delete(roots, find(roots,theta*alpha))  fi fi od;rv
 
+{versions of commands in induction.at, but here involving the 1-eigenspace
+\mathfrak s[1] of \mathfrak s
+}
+
 {roots of H in s[1]
  s = -1 eigenspace of theta_x
  s[1] = 1 H-eigenspace of H on s
 }
-set s_one_roots(RealNilpotent O)=[vec]:
-let theta=involution(O.x) then
-()=assert(^theta*O.H = O.H,"H is not ^theta-fixed") then
+set s_one_roots(RealNilpotent O,KGBElt x)=[vec]:
+let theta=involution(x) then
+()=assert(O.H*theta = O.H,"H is not theta-fixed") then
 P=parabolic_by_cwt(O.H,O.x) then
-x_max=maximal(P) then {not x(P): this is P.x}
-u=nilrad_roots_by_cwt(O.H,O.x) then
-{u_complex=extract_roots(x,u) then  NO keep complex pairs for now}
+u=nilrad_roots(P) then
 roots=[vec]:[] then
-()=for alpha in u do if alpha*O.H=1 and (is_noncompact_imaginary(x_max)(alpha) or is_complex(x_max)(alpha))  then roots#:=alpha fi od
+()=for alpha in u do if alpha*O.H=1 and (is_noncompact_imaginary(x)(alpha) or is_complex(x)(alpha))  then roots#:=alpha fi od
 in roots
 
 {restriction of s_one_roots to H^{theta_x}
@@ -251,94 +254,53 @@ in roots
  corresponding to the single vector X_\alpha-\theta(X_\alpha) in s[1]
  characters of H^theta are elements of X^*/(1-theta)X^*
 }
-set s_one_roots_restricted(RealNilpotent O)=[vec]:
-let (H,x,)=O then
-roots=s_one_roots(O) in roots:=extract_roots(x,roots)
+set s_one_roots_restricted(RealNilpotent O,KGBElt x)=[vec]:
+let roots=s_one_roots(O,x) in roots:=extract_roots(x,roots)
 
 {only want the non-compact imaginary roots after restriction
 these are the nci roots, and one of each pair of complex roots
 }
-set s_one_nc_cx_roots_restricted(RealNilpotent O)=[vec]:
+set s_one_cpt_cx_roots_restricted(RealNilpotent O,KGBElt x)=[vec]:
 let rv=[] then
-(H,x,)=O then
-roots=s_one_roots(O) in
-for alpha in roots do
- if is_noncompact_imaginary(alpha,x) then rv#:=alpha
- elif is_complex(alpha,x) then
-  if find(rv,involution(x)*alpha)=-1 then rv#:=alpha fi fi od;rv
-
-set s_one_cpt_cx_roots_restricted(RealNilpotent O)=[vec]:
-let rv=[] then
-(H,x,)=O then
-roots=s_one_roots(O) in
+roots=s_one_roots(O,x) in
 for alpha in roots do
  if is_compact_imaginary(alpha,x) then rv#:=alpha
  elif is_complex(alpha,x) then
   if find(rv,involution(x)*alpha)=-1 then rv#:=alpha fi fi od;rv
 
-set rho_one_cpt(RealNilpotent O)=vec:
-let roots=s_one_cpt_cx_roots_restricted(O) in
-if #roots=0 then null(rank(O.root_datum)) else sum(s_one_cpt_cx_roots_restricted(O)) fi
+set s_one_nc_cx_roots_restricted(RealNilpotent O,KGBElt x)=[vec]:
+let rv=[] then
+(H,,)=O then
+roots=s_one_roots(O,x) in
+for alpha in roots do
+ if is_noncompact_imaginary(alpha,x) then rv#:=alpha
+ elif is_complex(alpha,x) then
+  if find(rv,involution(x)*alpha)=-1 then rv#:=alpha fi fi od;rv
 
 {all subsets of the set of restrictions of roots of s[1] to Lie(H)^{\theta_x}
  see KNilpotent paper, Corollary 7.3(6)}
-set subsets_of_s_one_roots(RealNilpotent O)=[[vec]]:
-let roots=s_one_nc_cx_roots_restricted(O) in
-{let roots=s_one_roots_restricted(O) in}
+set subsets_of_s_one_nc_cx_roots_restricted(RealNilpotent O,KGBElt x)=[[vec]]:
+let roots=s_one_nc_cx_roots_restricted(O,x) in
 delete(generate_all_subsets(roots),0) {don't want empty subset}
 
 {H is in \mathfrak h, not \mathfrak h^*}
-set rho_shifts(RealNilpotent O)=[(vec,int)]:
-let (H,x,)=O then
-(H_dom,w)=from_dominant(H,root_datum(x))  then
-{wH_dom=H so
-replace (H,x) with (H_dom,w^{-1}x)=w^{-1}(H,x)
-compute rho_shifts, then apply w}
-O_dom=RealNilpotent:(H_dom,cross(inverse(w),x),[]) then
+set rho_shifts(RealNilpotent O,KGBElt x_G)=[(vec,int)]:
+let O_dom=dominant(O) then
+(,w)=from_dominant(O.H,O.root_datum) then
 m=matrix(w) then
-S=subsets_of_s_one_roots(O_dom) in  [(vec:null(rank(real_form(x))),0)]##for A in S do (sum(m*A),#A) od
-
-{find w so that wx=y (cross action)}
-set find_cross_action(KGBElt x,KGBElt y)=WeylElt:
-let (orbit,w_elements)=cross_orbit(x) then
-match=find(orbit,y) in w_elements[match]
-
-{appropriate rho_shifts for given x_L
- rho_shifts(O) are computed with respect to O.x (in distinguished fiber)
- if w*O.x=canonical_x_K(embed_KGB(x_L))
- then replace each shift by w*shift}
-set rho_shifts(RealNilpotent O, KGBElt x_L)=[(vec,int)]:
-{let ()=prints("rho_shifts2 with ", O, " and ", x_L, " ", x_L.real_form, new_line, "simple:", x_L.real_form.simple_roots) in}
-let rhoshifts=rho_shifts(O) then
-{x_can_L=canonical_x_K(x_L) then
-x_can_G=embed_KGB(x_can_L,O.real_form) then}
-x_G=canonical_x_K(embed_KGB(x_L,O.real_form)) then
-x_O=x_min(parabolic_of_orbit(O)) then
-w=cross_divide(x_O,x_G) in
-{w^{-1}(O.x)=x_can_G so
-replace v with }
-for (v,k) in rhoshifts do 
-(inverse(w)*v,k) od
-
-{ P is a theta-stable parabolic
-  p_L is a STFL for L
-  construct a new, possibly non-standard parameter for L
-  by subtracting the appropriate 2\rho(u\cap s) from lambda(p_L)
-  NB: the resulting term might not be standard
+{replaced O with (O.H*inverse(w), cross(w,O.x))
+so replace x_G with cross(w,x_G)
 }
-set twist_by_minus_2rho_u_cap_s(Parabolic P,Param p_L)=Param:
-assert(nu(p_L)=null(rank(Levi(P))),"nu(p_L)\ne 0");
-let G=real_form(P.x) then
-L=real_form(p_L) then
-x_L=x(p_L) then
-x_G=canonical_x_K(embed_KGB(x_L,G)) in
-parameter(x_L,lambda(p_L)-two_rho_u_cap_s(P,x_G),null(rank(Levi(P))))
+S=subsets_of_s_one_nc_cx_roots_restricted(O_dom,x_G) in
+[(vec:null(rank(O.root_datum)),0)]##
+for A in S do (sum(m*A),#A) od
 
 {given Q theta-stable, and the K-type formula P for a K-type mu_L of L=Levi(Q),
  return the K-type formula for mu_L twisted by -2rho(u\cap s)
- algorithm: apply previous function twist_by_minus_2rho_u_cap_s to P term by term,
- each individual term in the result may be a non-standard parameter for L,
- apply standardize to each term, to give a sum of STFL parameters for L:
+ algorithm: apply  twist_by_minus_2rho_u_cap_s to P (see induction.at)
+ term by term,  each individual term in the result may
+ be a non-standard parameter for L, apply standardize to each term, 
+ to give a sum of STFL parameters for L:
  this is the K-type formula for a single L\cap K-type
 }
 set twist_by_minus_2rho_u_cap_s(Parabolic P,K_Type_Pol K_type_formula)=K_Type_Pol:
@@ -346,9 +308,12 @@ let K_type_formula_twisted=null_module(K_type_formula) then
  L=real_form(K_type_formula) in
  for c@p in K_type_formula do K_type_formula_twisted+:=c*standardize(twist_by_minus_2rho_u_cap_s(P,p))*0 od;
 {debugging}
-if kn_verbose then  let
- b=branch_std(K_type_formula,20) then
- b_twisted=branch_std(K_type_formula_twisted,20) in
+ let b=branch_std(K_type_formula,20) then
+ b_twisted=branch_std(K_type_formula_twisted,50) then
+ b=branch_std(K_type_formula,50) in
+ assert(#b=1,"More than one K-type");
+ assert(#b_twisted=1,"More than one K-type after twist");
+ if kn_verbose then  
  if #b >1 then prints("WARNING: more than one K-type (before twist)");
  for p in monomials(b) do prints(highest_weight(LKT(p),KGB(L,0))) od fi;
 { prints(new_line,"K_type_formula:", new_line, "highest weight is:", highest_weight(LKT(first_param(b)),KGB(L,0)));}
@@ -356,7 +321,7 @@ if kn_verbose then  let
  for p in monomials(b_twisted) do prints(highest_weight(LKT(p),KGB(L,0))) od fi
  {prints(new_line,"K_type_formula after twist:", new_line, "highest weight is:", highest_weight(LKT(first_param(b_twisted)),KGB(L,0)))} fi;
 {end debugging}
-assert(#branch_std(K_type_formula_twisted,20)<=1,"error in twist_by_minus_2rho_u_cap_s");
+{assert(#branch_std(K_type_formula_twisted,20)<=1,"error in twist_by_minus_2rho_u_cap_s");}
 K_type_formula_twisted
 
 { replace K-type mu with mu\otimes (-2\rho(u\cap s))}
@@ -369,7 +334,7 @@ LKT(first_param(twist_by_minus_2rho_u_cap_s(P,K_type_formula(mu))))
 Phi(x_K,O,kgb_number_L,lambda_L)
 x_K (KGBElt for G) is a basepoint for K
 O is a RealNilpotent for G
-L=Levi_of_orbit(O)
+L=Levi(O)
 mu_L=(KGB(L,kgb_number_L),lambda_L) is an L\cap K-type
 Phi is the function \tilde\mathcal E
 }
@@ -377,7 +342,7 @@ Phi is the function \tilde\mathcal E
 {returns K_Type_Pol (i.e. K_Type_Pol of STFL parameters) for G}
 set Phi(RealNilpotent O,int kgb_number_L, ratvec lambda_L)=K_Type_Pol:
 let G=real_form(O.x) then
-P=parabolic_of_orbit(O) {NOTE: parabolic defined by -O.H} then
+P=parabolic(O) {NOTE: parabolic defined by -O.H} then
 L=Levi(P) then
 p_L_0=Param:parameter(KGB(L,kgb_number_L),lambda_L) in
       if kn_verbose then prints(new_line,"Computing Phi:", new_line, "O=", O, new_line,
@@ -390,29 +355,29 @@ K_type_formula=K_type_formula(p_L_0) then
 K_type_formula_twisted=twist_by_minus_2rho_u_cap_s(P,K_type_formula) then
      b=branch_std(K_type_formula,50) then
      ()=assert(#b<=1,"More than one K-type (before twist)")  then
-     {()=if kn_verbose then let b=branch_std(K_type_formula,20) in
+     ()=if kn_verbose then let b=branch_std(K_type_formula,20) in
      prints(new_line,"testing K_type_formula:", new_line, "highest weight is:", highest_weight(LKT(first_param(b)),KGB(L,0)));
      if #b >1 then prints("WARNING: more than one K-type");
      for p in monomials(b) do prints(highest_weight(LKT(p),KGB(L,0))) od fi fi then
      ()=if kn_verbose then let b=branch_std(K_type_formula_twisted,20) in
      prints(new_line,"testing twisted K_type_formula:", new_line, "highest weight is:", highest_weight(LKT(first_param(b)),KGB(L,0)));
      if #b >1 then prints("WARNING: more than one K-type");
-     for p in monomials(b) do prints(highest_weight(LKT(p),KGB(L,0))) od fi fi then}
-rv=null_module(G) in
+     for p in monomials(b) do prints(highest_weight(LKT(p),KGB(L,0))) od fi fi then
+     rv=null_module(G) in
      if kn_verbose then
        prints(
        new_line,"p_L_0:",p_L_0,
        new_line,"K_type_formula on L:", K_type_formula,
        new_line, "K_type_formula on L twisted:",K_type_formula_twisted)
      fi;
-for c@p_L in K_type_formula_twisted do
+     for c@p_L in K_type_formula_twisted do
      if kn_verbose then prints(new_line,"term in (twisted) K-type formula:",new_line, p_L) fi;
-let rhoshifts=rho_shifts(O,x(p_L)) in
- for (shift,j)@k in rhoshifts do
-  let q=parameter(x(p_L),lambda(p_L)+shift,nu(p_L)) {shifted parameter on L}{NOTE: +shift not -shift} then
-  r_1=theta_induce_standard(q,G) {theta-induce up to G} then
-  r_2=r_1*0 {restrict to K} in
-      if kn_verbose then prints(new_line, "shift: ", shift, new_line,"inducing: ", q, new_line,"induced term: ", r_2)
+     let rhoshifts=rho_shifts(O,embed_KGB(x(p_L),G)) in
+     for (shift,j)@k in rhoshifts do
+     let q=parameter(x(p_L),lambda(p_L)+shift,nu(p_L)) {shifted parameter on L}{NOTE: +shift not -shift} then
+     r_1=theta_induce_standard(q,G) {theta-induce up to G} then
+     r_2=r_1*0 {restrict to K} in
+     if kn_verbose then prints(new_line, "shift: ", shift, new_line,"inducing: ", q, new_line,"induced term: ", r_2, " c=", c , " j=", j," constant=", (-1)^j*c)
  fi;
   rv+:=(-1)^j*c*r_2
  od
@@ -426,57 +391,10 @@ set Phi(RealNilpotent O,K_Type_Pol mu_L)=K_Type_Pol:
 let rv=null_module(O.real_form) in
 for c@p in mu_L do rv+:=c*Phi(O,p) od;rv
 
-{  unnormalized version of Phi }
-{same algorithm but without the twist by -2\rho(u\cap s)}
-
-set Phi_unnormalized(RealNilpotent O,int kgb_number_L, ratvec lambda_L)=K_Type_Pol:
-let G=real_form(O.x) then
-P=parabolic_of_orbit(O) then
-L=Levi(P) then
-p_L_0=Param:parameter(KGB(L,kgb_number_L),lambda_L) in
-let ()=prints(p_L_0) in
-assert(not is_zero(p_L_0),"p_L_0 is zero");
-assert(is_standard(p_L_0),"p_L_0 is not standard");
-{assert(is_final(p_L_0),"p_L_0 is not final");}
-let
-()=prints("OK") then
-K_type_formula=K_type_formula(p_L_0) then
-()=prints("OK") then
-rv=null_module(G) then
-rhoshifts=rho_shifts(O) in
-{rhoshifts=rho_shifts_odd(O) in}
-     if kn_verbose then if #rhoshifts>1 then prints("UNNORMALIZED orbit is dd",new_line,"rho shifts:", rhoshifts) else prints("orbit is even") fi fi;
-     if kn_verbose then
-       prints(
-       new_line,"p_L_0:",p_L_0,
-       new_line,"K_type_formula on L:", K_type_formula)
-     fi;
-for c@p_L in K_type_formula do
-     if kn_verbose then prints(new_line,"Term in K-type formula:",new_line, p_L) fi;
- for (shift,j)@k in rhoshifts do
-  let q=parameter(x(p_L),lambda(p_L)+shift,nu(p_L)) {shifted parameter on L}{NOTE: +shift not -shift} then
-  r_1=theta_induce_standard(q,G) then
-  r_2=r_1*0 in
-      if kn_verbose then prints(new_line, "shiftSHIFT: ", shift, new_line,"inducing: ", q, new_line,"induced term: ", r_2) fi;
-{  rv+:=(-1)^j*c*r_2 }
-  rv+:=(-1)^j*c*r_2
- od
-od;
-      if kn_verbose then prints(new_line,"Result:"){;kshow(rv)} fi;
-rv
-set Phi_unnormalized(RealNilpotent O,Param p_L)=K_Type_Pol:Phi_unnormalized(O,#x(p_L),lambda(p_L))
-set Phi_unnormalized(RealNilpotent O,K_Type mu_L)=K_Type_Pol:Phi_unnormalized(O,#x(mu_L),lambda(mu_L))
-
-set Phi_unnormalized(RealNilpotent O,K_Type_Pol mu_L)=K_Type_Pol:
-let rv=null_module(O.real_form) in
-for c@p in mu_L do rv+:=c*Phi_unnormalized(O,p) od;rv
-
-
-
 { functions on real orbit as K-representation }
 set functions_on_real_orbit(RealNilpotent O_in)=K_Type_Pol:
 let O=dominant(O_in) {seems to matter} then
-L=O.Levi_of_orbit then
+L=O.Levi then
 p_L=finalize(trivial(L)*0) {in SU(2,1) trivial(G)*0 is not final}  in
 Phi(O,p_L)
 
@@ -521,7 +439,7 @@ set Phi_upto(RealNilpotent O,int bound, ratvec v)=[(K_Type,K_Type_Pol)]:
 let bound_L=2*bound {heuristic: 2 seems to be big enough } then
 (H,x,)=O then
 G=real_form(x) then
-L=Levi_of_orbit(O) then
+L=Levi(O) then
 L_cap_K_types=K_parameters_norm_upto(L,G,bound_L,v) in
 {for a in L_cap_K_types do prints(a, " ", height(parameter(a)), " ",K_norm(a)) od;}
 ##for mu_L in L_cap_K_types do
@@ -532,7 +450,7 @@ set Phi_upto(KGBElt x_K,[RealNilpotent] orbits, int bound, ratvec v)=[(RealNilpo
 for O in orbits do (O,Phi_upto(O,bound,v)) od
 
 {initialize KNilpotentData for G, with given bound, optional ratvec, optional
-flag to compute nilpotent orbits using Vogan's algorithm}
+"compute" flag to compute nilpotent orbits using Vogan's algorithm}
 set initialize_KNilpotent(RealForm G, int bound,ratvec v, bool compute_real_orbits)=KNilpotentData:
 let complex_orbits= sort_by_dimension(complex_nilpotent_orbits(G.root_datum)) then
 real_orbits = [] in
@@ -570,8 +488,10 @@ let delta=distinguished_involution(G) in
 set potential_real_nilpotent_orbits(RealForm G)=[RealNilpotent]:
 potential_real_nilpotent_orbits(G,complex_nilpotent_orbits(G))
 
-{assume everything computed up to complex orbit i-1}
-{not including Q and P_Y}
+{assume everything computed up to complex orbit i-1
+not including Q and P_Y
+fill up to complex orbit i
+}
 set fill_one_step(KNilpotentData d, int complex_orbit)={KNilpotentData:}
 let G=d.real_form then
 OC=d.complex_orbits[complex_orbit] then
@@ -637,11 +557,14 @@ set fill_upto(KNilpotentData d,int n)=KNilpotentData:
 for i:n+1 do
   d:=fill_one_step(d,i) od;d
 
+{completely fill KNilpotentData, inductively starting at orbit 0}
 set fill(KNilpotentData d)=KNilpotentData:
 fill_upto(d,#d.complex_orbits-1)
 
+{default failed value}
 set failed=([K_Type]:[],[K_Type]:[],null(0,0),null(0),null(0),false)
 
+{find P in terms coming from given list of real orbits}
 set search(KNilpotentData d,[int] real_orbits,K_Type_Pol P)=([K_Type],[K_Type],mat,vec,vec,bool):
 let (K_basis,LK_basis,T)=merge_T_matrices(d,real_orbits) then
 w0=vector(K_basis,P) then
@@ -656,9 +579,13 @@ set search(KNilpotentData d,int real_orbit,[int] real_orbits,K_Type mu_L)=([K_Ty
 let O=d.real_orbits[real_orbit] in
 search(d,real_orbits,Phi(O,parameter(mu_L)))
 
+{default failed values}
 set failed_av_ann=([K_Type]:[],[K_Type]:[],-1,null(0,0),null(0),null(0),false)
 set failed_av=([K_Type]:[],[K_Type]:[],[int]:[],null(0,0),null(0),null(0),false)
 
+{associated variety of annihlator of P}
+{computed using all smaller orbits, not
+ filtered, see Q versions below}
 set av_ann(KNilpotentData d,K_Type_Pol P)=([K_Type],[K_Type],int,mat,vec,vec,bool):
 for OC@i in d.complex_orbits do
  let real_orbits=closure_real(d,i) then
@@ -666,9 +593,11 @@ for OC@i in d.complex_orbits do
  if success then prints("AV(Ann(p)):");prints("Complex orbit #",i,": H=", OC.semisimple_element);
  return(K_basis,L_cap_K_basis,i,T,v,w,success) fi od;failed_av_ann
 
+{associated variety of annihlator of p}
 set av_ann(KNilpotentData d,Param p)=([K_Type],[K_Type],int,mat,vec,vec,bool):
 av_ann(d,character_formula(p)*0)
 
+{associated variety of P, assuming OC=av_ann(P) is known}
 set av_from_av_ann(KNilpotentData d,int complex_orbit,K_Type_Pol P)=
 let OC=d.complex_orbits[complex_orbit] then
 real_orbits=real_forms_of(d,complex_orbit) then
@@ -680,6 +609,7 @@ for A in S do let
  let  ()=prints("AV(p)");for i in A do prints("real orbit #",i,": ",d.real_orbits[i]) od in return(K_basis,L_cap_K_basis,[int]:A,T,v,w,success) fi  od;
 return(failed_av)
 
+{associated variety of p, assuming OC=av_ann(P) is known}
 set av_from_av_ann(KNilpotentData d,int complex_orbit,Param p)=
 av_from_av_ann(d,complex_orbit,character_formula(p)*0)
 
@@ -687,11 +617,15 @@ set av(KNilpotentData d,K_Type_Pol P)=
 let (,,complex_orbit,,,,)=av_ann(d,P) in
 av_from_av_ann(d,complex_orbit,P)
 
+{associated variety of p from scratch, by computing
+OC=av_ann(p) first}
 set av(KNilpotentData d,Param p)=
 av(d,character_formula(p)*0)
 
 {  -------------------Q versions ------------}
 
+{computing associated varieties inductively by
+taking filtration/associated graded at each step}
 {given v=[a_1,a_2,...,a_n]
 return [0^{a+1},...,1^{a_i},...0^{a_n}]
 }
@@ -700,20 +634,6 @@ diagonal(##for j:i do null(v[j]) od ##
 ones(v[i])##
 ##for j:#v-i-1 from i+1 do null(v[j]) od)
 
-
-{given subspaces [V_1,V_2,...,V_n]
- if w is in V_{i_1}\oplus V_{i_r}
- return [i_1,..,i_r]
- returns either ().no_vec or [i_1,...,i_r].solution
-}
-set summands(vec w, [mat] subspaces)=maybe_a_vec:
-let M=merge_matrices(subspaces) then
-v=solve(M,w) in
-if not any(v) then  no_vec() else
-let v=requisition(v) then
-sizes=for M in subspaces do n_columns(M) od in
-solution(##for i:#subspaces do
- if !=projector(sizes,i)*v then [i] else [] fi od) fi
 
 set search_Q(KNilpotentData d,int complex_orbit,K_Type_Pol P)=
 let K_basis=K_basis(d,real_forms_of(d,complex_orbit)) then
@@ -773,25 +693,6 @@ for S in subsets do
  let Z=merge_matrices(for i in S do d.Z_matrices[i] od) then
  v=solve(Z,P_Y*w) in
  if any(v) then return(S) fi od;null(0)  fi
-
-
-set av_from_av_ann_Q_old(KNilpotentData d,int complex_orbit,K_Type_Pol P)=
-let K_basis=K_basis_closure(d,complex_orbit) then
-w0=vector(K_basis,P) in
-if not any(w0) then return(().no_vec) else
-let w=requisition(w0) then
-(,,Q,P_Y)=d.Q_and_P_Y_matrices[complex_orbit] then
-{L=left_inverse(Q) then
-v=L*P_Y*w then}
-v=P_Y*w then
-real_orbits=real_forms_of(d,complex_orbit) then
-subspaces=for i in real_orbits do
-d.Z_matrices[i] od then
-S=summands(v,subspaces) in
-if not any(S) then return(().no_vec) else
-let rv=for i in requisition(S) do real_orbits[i] od in
-prints("AV(p)=real orbits: ",rv);
-rv.solution fi fi
 
 set av_from_av_ann_Q(KNilpotentData d,int complex_orbit,Param p)=
 av_from_av_ann_Q(d,complex_orbit,character_formula(p)*0)
@@ -854,19 +755,56 @@ set KNilpotent_real_orbits(RealForm G)=KNilpotent_real_orbits(G,K_norm(trivial(G
 
 forget db@string
 
+set print_branch_K_std_long(ParamPol P, int bound)=void:
+( for (mult,q) in sort_by_height(branch_std(P,bound))
+  do let hw=highest_weight(K0_param(LKT(q))) in
+    prints(mult, "*", hw, " ", dimensions(q)[0]
+          ,  "    ", height(q))
+  od
+)
 
+{display K-types as highest weights for K_0}
 set test_minimal_orbits(RealForm G, int bound)=void:
 prints("functions on minimal orbits in ",G);
 for O in minimal_real_nilpotent_orbits(G) do
 prints(new_line,"O=",O);
-let f=functions_on_real_orbit(O) in 
+prints("K-types given as highest weights for K_0");
+let f=functions_on_real_orbit(O) then
+b=branch_std(f,bound) in
+assert(all(for c@p in b do split_as_int(c)>0 od),"negative coefficient");
+print_branch_K_std_long(f,bound) od
+
+{print K-types as KHighestWeights}
+set test_minimal_orbits(RealForm G, int bound, void flag)=void:
+prints("functions on minimal orbits in ",G);
+for O in minimal_real_nilpotent_orbits(G) do
+prints(new_line,"O=",O);
+prints("K-types given as KHighestWeights");
+let f=functions_on_real_orbit(O) then
+b=branch_std(f,bound) in
+assert(all(for c@p in b do split_as_int(c)>0 od),"negative coefficient");
 print_branch_std_long(f,bound) od
 
+{display K-types as highest weights for K_0}
 set test_all_orbits(RealForm G, int bound)=void:
-prints("functions all real orbits in ",G);
+prints("functions on all orbits in ",G);
 for O in real_nilpotent_orbits(G) do
 prints(new_line,"O=",O);
-let f=functions_on_real_orbit(O) in 
+prints("K-types given as highest weights for K_0");
+let f=functions_on_real_orbit(O) then
+b=branch_std(f,bound) in
+assert(all(for c@p in b do split_as_int(c)>0 od),"negative coefficient");
+print_branch_K_std_long(f,bound) od
+
+{print K-types as KHighestWeights}
+set test_all_orbits(RealForm G, int bound, void flag)=void:
+prints("functions on all orbits in ",G);
+for O in real_nilpotent_orbits(G) do
+prints(new_line,"O=",O);
+prints("K-types given as KHighestWeights");
+let f=functions_on_real_orbit(O) then
+b=branch_std(f,bound) in
+assert(all(for c@p in b do split_as_int(c)>0 od),"negative coefficient");
 print_branch_std_long(f,bound) od
 
 
