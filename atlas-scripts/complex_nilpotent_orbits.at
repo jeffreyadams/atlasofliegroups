@@ -1,0 +1,270 @@
+<parabolics.at { for Levi@Parabolic }
+<parameters.at { for parameter@(KGBElt,KGBElt,ratvec) }
+<W_characters.at {for is_dominant}
+
+{ ComplexNilpotent: (RootDatum rd,vec H)
+  where [H,X,Y] is a Lie triple, H\in X_*, and orbit=G.X
+  H must satisfy <alpha,H>=0,1,2 for all simple roots,
+  in particular is_dominant(H,rd) should hold
+}
+set_type ComplexNilpotent = (RootDatum root_datum_of, vec H_of_triple)
+{ field name |root_datum| would conflict with |ComplexParabolic| (too close) }
+
+set dim_nilpotent (ComplexNilpotent(rd,H)) = int:
+  sum(for alpha in posroots(rd) do case 2*alpha*H\1 in 0, 1 else 2 esac od)
+
+set diagram (ComplexNilpotent(rd,H)) = [int]:
+  ratvec_as_vec(2*H)*simple_roots(rd) { or: for v in simple_roots(rd) do H*v od }
+
+set sort_by(  (ComplexNilpotent->int) f)=([ComplexNilpotent] v) [ComplexNilpotent]:
+  for index in inv_standardisation(for x in v do f(x) od) do v[index] od
+
+set sort_by_dimension = ([ComplexNilpotent]->[ComplexNilpotent]):
+sort_by((ComplexNilpotent O) int: dim_nilpotent(O)) 
+
+set dim_eigenspace (RootDatum rd, ratvec H, int k) = int:
+   if k=0
+   then rank(rd) + 2*count(for alpha in posroots(rd) do =alpha*H od)
+   else count(for alpha in posroots(rd) do alpha*H=k od)
+   fi
+
+set max_eigenspace(RootDatum rd, vec H)=int:
+let rv=rat:0 in
+for alpha in posroots(rd) do if alpha*H>rv then rv:=alpha*H fi od; rat_as_int(rv)
+
+set all_eigenspaces (RootDatum rd, vec H)=[int]:
+assert(is_dominant(dual(rd),H),"H is not dominant");
+let sum=0 in
+let rv=[int]:[] in
+for k:max_eigenspace(rd,H)+1 do
+let d=dim_eigenspace(rd,H,k) in
+rv#:=d;if k=0 then sum+:=d  else sum+:=2*d fi od ;
+{prints("sum=", sum, " dimension(G)=", dimension(rd));}
+rv
+
+set even_eigenspaces (RootDatum rd, vec H) = [int]:
+  even_places(all_eigenspaces(rd,H))
+set odd_eigenspaces(RootDatum rd, vec H)=[int]:
+  odd_places(all_eigenspaces(rd,H))
+
+set support (Param p) = [int]:
+  support(x(p)) { using |support@KGBElt| from parabolics.at }
+
+set blocku(RealForm G)=[Param]:
+let b=block_of(trivial(G)) then
+rv=[Param]:[] in
+for p in b do
+ if all (for k in support(x(p)) do is_descent(k,p) od) then rv#:=p fi  od;rv
+
+set sort_by_length = ([vec,rat]->[vec,rat]): sort_by((vec v,rat c)rat: c)
+
+set int_list (int n)=[int]: for i:n do i od
+
+set S_weight ([int] S, RootDatum rd)=ratvec: if ss_rank(rd)=0 then
+   for i:rank(rd) do 0 od
+   else let r=#simple_roots(rd)[0]
+   in let vecs=[ratvec]: for k in S do 2*fundamental_coweights(rd)[k] od
+   in sum(vecs,r) fi
+
+{these are candidates for 2*H where H is the semisimple element of an SL(2) triple
+ not necessarily a vec, for example in SL(3)}
+set H_candidates (RootDatum rd)=[ratvec]:
+   let result=[vec]:[] in for S in power_set(int_list(ss_rank(rd))) do
+   S_weight (S,rd) od
+
+set distinguished_H(RootDatum rd, RootDatum rd_L)=[vec]:
+   ##for H in H_candidates(rd_L) do
+   if dim_eigenspace(rd_L,H,2)=dim_eigenspace(rd_L,H,0)+ss_rank(rd_L)-rank(rd_L)
+   then [ratvec_as_vec(dominant(H,rd))]
+      else [] fi od
+
+set all_H (RootDatum rd)=[vec]:
+   let Levis=[RootDatum]: for S in standard_Levi_conjugacy_representatives(rd) do
+   Levi_datum(rd,S) od in ##for L in Levis do distinguished_H(rd,L) od
+
+set complex_nilpotent_orbits(RootDatum rd)=[ComplexNilpotent]:
+for H in all_H(rd) do (rd,H) od
+
+set all_H_with_L (RootDatum rd)=[([int],[ratvec])]:
+   let Levis=standard_Levi_conjugacy_representatives(rd) in
+   for S in Levis do let list=distinguished_H(rd,Levi_datum(rd,S)) in
+   (S,list) od
+{
+set all_H_dimensions(RootDatum rd)=[int]:
+let all=all_H(rd) in
+let dims=for v@i in all do let d=dim_nilpotent(rd,ratvec_as_vec(2*v)) in prints(i, " ", v, ", ", v*simple_roots(rd), even_eigenspaces(rd,v), " ", odd_eigenspaces(rd,v),  " ", d);d od in
+sort(dims)
+}
+
+set sort_by_dimension_of_2_eigenspace  = ([ratvec,[vec]]->[ratvec,[vec]]):
+  sort_by((ratvec z,[vec] v) int:#v)
+
+{find H which work for given q=q(x,H)=(L,u)}
+set find_H (Parabolic P) = [(vec,[vec])]: { should be [(vec,mat)] really }
+{set find_H((KGBElt x,RealForm L,[vec] u))=[(vec,[vec])]:}
+begin
+  let x=maximal(P)
+  then u_p=columns_with(is_noncompact(x),nilrad_roots(P))
+  , rho_L = rho(P.Levi)
+  , theta_1 = involution(x)-1
+  in
+{ prints("u_p:", u_p); }
+##for H in all_H(P.real_form)
+  do
+  { prints("H=", H, ", ", rho_L, ", ", H*rho_L); }
+    if =H*theta_1 and =H*rho_L and >H*u_p { all its entries >0 } else []
+    then let level_two_roots = columns_with((vec alpha): H*alpha=2, u_p ) in
+      [ (H,[vec]:level_two_roots) ]
+    fi
+  od
+end
+
+set max_only([(vec,[vec])] arg)=[(vec,[vec])]:
+  if #arg>0
+  then
+    let (H_last,vectors_last)=arg[#arg-1] then max=#vectors_last
+    then rv= [(vec,[vec])]: []
+    in for (H,vectors) in arg do if #vectors=max then rv#:=(H,vectors) fi od
+  ; rv
+  else [(vec:null(0),[])]
+  fi
+
+{
+
+    let done=false,i=0 in
+      while not done and i<#u_p do if H*u[i]=2 then done:=true;rv#:=(H,u_p[i]) else i:=i+1 fi od fi od ;rv
+}
+{
+set output([(Parabolic,[(vec,[vec])])] answer)=
+let rv=[] in
+let rv_summary=[] in
+let (P,) =answer[0] in
+let rd=root_datum(P) in
+for (Q,pairs) in answer do
+let (S,x)=Q in let ()=prints();prints("Q: x=", x);prints("L=",Levi(Q));prints("u=",u(Q)) in
+{let ()=for (H,vectors) in pairs do prints("H:", H, " dimension: ", dim_nilpotent(rd,H));prints("vectors: ", vectors);rv#:=(H,vectors) od}
+rv_summary#:=(Q,#pairs)  od
+;prints("summary:");
+{for ((x,L,u),s)@i in rv_summary do }
+for ((x,L,u),pairs)@i in answer do
+prints();prints("parabolic #", i);prints(x);prints(L);prints("u=", u, "  dim(u): ", #u);prints("Number of H:",#pairs);
+for (H,u) in pairs do
+ prints("H: ", H);prints("u\cap p:", u, "  dim u\cap p:", #u);prints("dimension: ",dim_nilpotent(rd,H)) od od;
+prints();prints("number of parabolics:", #answer);
+prints("number of orbits:", #rv);
+prints("dimensions of orbits:");
+ let orbits= for (q,pairs)  in answer do
+  let (x,,)=q in
+ for (H,) in pairs do  dim_nilpotent(rd,H) od od in print(orbits);
+prints("all dimensions:", flatten(orbits));
+prints("dimensions with multiplicity:", sort(flatten(orbits)));
+prints("distinct dimensions:", sort_u(flatten(orbits))); orbits
+
+set output_H([((KGBElt,RealForm,[vec]),[(vec,[vec])])] answer)=
+let ((x,,),) =answer[0] in
+let rd=root_datum(x) in
+for (q,pairs) in answer do
+let (x,L,u)=q in prints();prints("x=", x);prints("L=",L);prints("u=",u);
+for (H,vectors) in pairs do prints("H:", H, " dimension: ", dim_nilpotent(rd,H)) od od
+
+
+set run(RealForm G)=
+let allq=theta_stable_parabolics(G) then answer=for q in allq do (q,find_H(q))  od in  output(answer);answer
+
+set run_max_only(RealForm G)=
+let allq=all_q(G) then
+answer=for q in allq do (q,max_only(find_H(q)))  od in  output(answer);answer
+
+set run_max_only(RealForm G,int i)=
+let allq=[all_q(G)[i]] then
+answer=for q in allq do (q,max_only(find_H(q)))  od in  output(answer);answer
+}
+{containment order}
+set <= ([int] a,[int] b) = bool: all(#a,(int i)bool: find(b,a[i]).>=)
+set <  ([int] a,[int] b) = bool: sort(a) != sort(b) and a<=b
+
+set  principal_block(RealForm G)=Block:block(G,dual_quasisplit_form(G))
+
+{do:
+>wcells print_W_cells(G,Gd)
+in shell:
+parse_even_nilpotents.pl wcells
+in atlas:
+<wcells_out {to define variable [[int]]:Wcells}}
+
+{convert Block to [param]
+Block: returned by block(G,Gd), is a list of pairs (x,y)
+}
+set convert(Block B,ratvec gamma)=
+for i:#B do  let (x,y)=element(B,i) in parameter(x,y,gamma) od
+
+{just subset of block}
+set convert(Block B, [int] S,ratvec gamma)=
+for i in S do  let (x,y)=element(B,i) in parameter(x,y,gamma) od
+
+set real_form(Block B)=RealForm:let (x,)=element(B,0) in real_form(x)
+set rho(Block B)=ratvec:rho(real_form(B))
+
+{choose appropriate infinitesimal character for (x,y)}
+set choose_gamma(KGBElt x,KGBElt y)=ratvec:choose_g(y,x)
+
+{choose appropriate infinitesimal character for B}
+set choose_gamma(Block B)=ratvec:choose_gamma(element(B,0))
+
+set convert(Block B)=convert(B,choose_gamma(B))
+set convert(Block B,[int] S)=convert(B,S,choose_gamma(B))
+
+{convert list of wcells [[int]] to [[Param]]}
+set convert_list_W_cells(Block B,ratvec gamma,[[int]] Wcells)=[[Param]]:
+let converted_block=convert(B,gamma) in
+for cell in Wcells do
+ for k in cell do converted_block[cell[k]] od od
+
+{return list of tau-invariants for B
+tau_invariants(B)[i]=tau-invariant of block element i
+}
+set tau_invariants(Block B)=[[int]]:
+let gamma=choose_gamma(B) in
+for i:#B do let (x,y)=element(B,i) in tau(parameter(x,y,gamma)) od
+
+set tau_invariants_of_cell(Block B, [int] cell)=[(int,[int])]:
+let gamma=choose_gamma(B) in
+for i in cell do let (x,y)=element(B,i) in (i,tau(parameter(x,y,gamma))) od
+
+set tau_invariants_of_cell_raw(Block B, [int] cell)=[[int]]:
+let gamma=choose_gamma(B) in
+for i in cell do let (x,y)=element(B,i) in tau(parameter(x,y,gamma)) od
+
+set tau_containing(Block B,[int] P)=[int]:
+let t=tau_invariants(B),rv=[int]:[] in
+for i:#t do if P<=t[i] then rv#:=i fi od;rv
+
+{test if p is an Aq}
+set is_Aq(Param p)=bool:
+all(for i in support(p) do is_descent(i,p) od)
+
+{test if (x,y) -> Aq parameter}
+{the first version isn't necessary, just use the second}
+{because element(B,i) returns (x,y), so this makes is_Aq(element(B,i)) work:}
+{set is_Aq(KGBElt x,KGBElt y)=is_Aq(parameter(x,y,choose_gamma(x,y)))}
+set is_Aq((KGBElt x,KGBElt y))=is_Aq(parameter(x,y,choose_gamma(x,y)))
+
+{compute all Aq's for G as [int], (coming from principal block)}
+set Blocku(RealForm G)=[int]:
+let B=principal_block(G) then
+rv=[int]:[] in
+for i:#B do if is_Aq(element(B,i)) then rv#:=i fi od;rv
+
+set is_Aq_cell(Block B,[int] C)=bool:
+let i=first(#C,(int i)bool:is_Aq(element(B,C[i]))) in i!=-1
+
+set is_Aq(Block B,int i)=bool:is_Aq(element(B,i))
+
+set Aq_cells(Block B,[[int]] cells)=
+  let rv=[[int]]:[] in
+  for C in cells do if is_Aq_cell(B,C) then rv#:=C fi od; rv
+
+set Aq_reps(Block B,[int] cell)=
+let rv=[int]:[] in for i in cell do if is_Aq(B,i) then rv#:=i fi od ;rv
+
+set Aq_cells(RealForm G,[[int]] cells)=Aq_cells(principal_block(G),cells)

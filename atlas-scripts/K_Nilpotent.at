@@ -617,7 +617,7 @@ set av_ann(KNilpotentData d,K_Type_Pol P)=([K_Type],[K_Type],int,mat,vec,vec,boo
 for OC@i in d.complex_orbits do
  let (K_basis,L_cap_K_basis,T,v,w,success)=search(d,i,P)  in
  if success then
-   if kn_verbose then prints("AV(Ann(p)):");prints("Complex orbit #",i,": H=", OC.semisimple_element) fi;
+   if kn_verbose then prints("AV(Ann(p)):");prints("Complex orbit #",i,": H=", OC.H_of_triple) fi;
       return(K_basis,L_cap_K_basis,i,T,v,w,success)
  fi
 od;
@@ -674,7 +674,7 @@ for OC@i in d.complex_orbits do
  let real_orbits=closure_real(d,i) then
  (K_basis,L_cap_K_basis,T,v,w,success)=search(d,real_orbits,P) in
  if success then
-  prints("AV(Ann(p)):");prints("Complex orbit #",i,": H=", OC.semisimple_element);
+  prints("AV(Ann(p)):");prints("Complex orbit #",i,": H=", OC.H_of_triple);
   return(K_basis,L_cap_K_basis,i,T,v,w,success)
  fi
 od;

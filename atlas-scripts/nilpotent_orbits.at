@@ -7,12 +7,13 @@
   H must satisfy <alpha,H>=0,1,2 for all simple roots,
   in particular is_dominant(H,rd) should hold
 }
-set_type ComplexNilpotent = (RootDatum root_datum_of, vec semisimple_element)
+
+set_type ComplexNilpotent = (RootDatum root_datum_of, vec H_of_triple)
 { field name |root_datum| would conflict with |ComplexParabolic| (too close) }
 
 set =(ComplexNilpotent O1,ComplexNilpotent O2)=bool:
    let rd=O1.root_datum_of in rd=O2.root_datum_of and
-   dominant(O1.semisimple_element,rd)=dominant(O2.semisimple_element,rd)
+   dominant(O1.H_of_triple,rd)=dominant(O2.H_of_triple,rd)
 
 set dim_nilpotent (ComplexNilpotent(rd,H)) = int:
   sum(for alpha in posroots(rd) do case {2*}alpha*H\1 in 0, 1 else 2 esac od)
@@ -30,7 +31,7 @@ set sort_by(  (ComplexNilpotent->int) f)=([ComplexNilpotent] v) [ComplexNilpoten
   for index in inv_standardisation(for x in v do f(x) od) do v[index] od
 
 set find ([ComplexNilpotent] list,ComplexNilpotent O)=int:
-first(#list,(int i)bool:list[i].root_datum_of=O.root_datum_of and list[i].semisimple_element=O.semisimple_element)
+first(#list,(int i)bool:list[i].root_datum_of=O.root_datum_of and list[i].H_of_triple=O.H_of_triple)
 
 set sort_by_dimension = ([ComplexNilpotent]->[ComplexNilpotent]):
 sort_by((ComplexNilpotent O) int: dim_nilpotent(O))

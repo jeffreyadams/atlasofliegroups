@@ -341,20 +341,36 @@ we allow transforming it into a list of $(code,rank)$ pairs, where |code| is a
 one-letter string.
 
 @< Local function definitions @>=
-void Lie_factors_wrapper(expression_base::level l)
+void simple_factors_wrapper(expression_base::level l)
 { shared_Lie_type t=get<Lie_type_value>();
   if (l==expression_base::no_value)
     return;
 @)
-  own_row result = std::make_shared<row_value>(t->val.size());
+  own_row result = std::make_shared<row_value>(0);
+  result->val.reserve(t->val.size());
   for (unsigned i=0; i<t->val.size(); ++i)
   { const auto& src = t->val[i];
     auto dst=std::make_shared<tuple_value>(2);
-    dst->val[0] = std::make_shared<string_value>(std::string(1,src.first));
-    dst->val[1] = std::make_shared<int_value>(src.second);
-    result->val[i] = std::move(dst);
+    if (src.first!='T') // skip torus factors
+    { dst->val[0] = std::make_shared<string_value>(std::string(1,src.first));
+      dst->val[1] = std::make_shared<int_value>(src.second);
+      result->val.push_back(std::move(dst));
+    }
   }
   push_value(std::move(result));
+}
+
+void rank_of_Lie_type_wrapper
+(expression_base::level l)
+{ shared_Lie_type t=get<Lie_type_value>();
+  if (l==expression_base::no_value)
+    return;
+
+  unsigned result;
+  for (auto it = t->val.begin(); it!=t->val.end(); ++it)
+    result += it->second;
+
+  push_value(std::make_shared<int_value>(result));
 }
 
 @ We now install all wrapper functions directly associated to Lie types.
@@ -370,7 +386,9 @@ install_function(Lie_type_neq_wrapper,@|"!=","(LieType,LieType->bool)");
 install_function(Cartan_matrix_wrapper,"Cartan_matrix","(LieType->mat)");
 install_function(type_of_Cartan_matrix_wrapper
 		,@|"Cartan_matrix_type","(mat->LieType,[int])");
-install_function(Lie_factors_wrapper,"%","(LieType->[string,int])");
+install_function(simple_factors_wrapper
+                ,@|"simple_factors","(LieType->[string,int])");
+install_function(rank_of_Lie_type_wrapper,"rank","(LieType->int)");
 
 @*2 Finding lattices for a given Lie type.
 %
