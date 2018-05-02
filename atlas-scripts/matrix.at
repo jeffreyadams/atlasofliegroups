@@ -61,3 +61,10 @@ set top_left_square_block(mat M,int size) = mat: M[ :size, :size]
 
 set cokernel(mat M)=^kernel(^M)
 set rank(mat A)=let (B,,pivots,)=A.echelon in #pivots
+
+{concatenate matrices with same number of rows}
+set merge_matrices([mat] matrices)=mat:
+if #matrices=0 then id_mat(0) else
+let rv=null(n_columns(matrices[0]),0) in
+for M in matrices do rv##:=M od;rv  fi
+

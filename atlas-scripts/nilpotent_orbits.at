@@ -439,7 +439,7 @@ set real_nilpotent_orbit_KGPs (RealForm G,vec H)=[KGPElt]:
 
 set real_nilpotent_orbits(RealForm G)=[RealNilpotent]:
    let list=all_H_nd(G) in
-   sort_by_dimension(##for H in list do prints(H); let K=dominant(H,root_datum(G)) then
+   sort_by_dimension(##for H in list do let K=dominant(H,root_datum(G)) then
    kgps=real_nilpotent_orbit_KGPs(G,H) in
    for P in kgps do real_nilpotent(K,x_min(P)) od od)
 
