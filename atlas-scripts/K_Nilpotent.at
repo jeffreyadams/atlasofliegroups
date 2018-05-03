@@ -39,7 +39,22 @@ bool precompute_real_orbits, {flag to use the Vogan algorithm to compute real or
    T=mxn matrix given the operator Phi in these bases}
 [([K_Type],[K_Type],mat)] Y_matrices,
   {one matrix for each complex orbit OC
-   OC->(K_basis,L_cap_K_basis Z=L_Q*image_lattice(P_Y*Tbar)
+   OC->(K_basis,L_cap_K_basis
+,Y)
+   K_basis,L_cap_K_basis: coming from all
+    (real forms of complex) orbits of smaller dimension
+   Y is the matrix giving the image of Phi in these bases}
+[([K_Type],[K_Type],mat,mat)] Q_and_P_Y_matrices,
+  {one pair of matrices for each complex orbit OC
+   (K_basis,L_cap_K_basis,Q,P_Y):
+   K_basis and L_cap_K_basis: closure of OC,
+    i.e. all real forms of OC and all orbits of smaller dimension
+   Q=matrix of T/T\cap Y
+   P_Y=projector_mod_image(Y)
+}
+[mat] Z_matrices
+{one matrix for each real orbit O
+ Z=L_Q*image_lattice(P_Y*Tbar)
  where Tbar is the T for O and all smaller orbits
 }
 )
