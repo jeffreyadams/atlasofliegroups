@@ -427,14 +427,19 @@ for O in orbits do (O,Phi_upto(O,bound,v)) od
 {initialize KNilpotentData for G, with given bound, optional ratvec, optional
 "compute" flag to compute nilpotent orbits using Vogan's algorithm}
 set initialize_KNilpotent(RealForm G, int bound,ratvec v, bool compute_real_orbits)=KNilpotentData:
-let complex_orbits= sort_by_dimension(complex_nilpotent_orbits(G.root_datum)) then
-real_orbits = [] in
+let complex_orbits= sort_by_dimension
+(
+##for O in complex_nilpotent_orbits(G.root_datum) 
+{only keep a complex orbit if H*delta=H}
+  do if O.H_of_triple*G.distinguished_involution=O.H_of_triple then [O] else [] fi od
+)
+in
 (G,
- bound,
- v,
- complex_orbits,
- compute_real_orbits,
- real_orbits, {real orbits}
+ bound,  {int}
+ v,   {ratvec, default=rho_check(G)}
+ complex_orbits,   {[ComplexNilpotent]}
+ compute_real_orbits,  {bool}
+ [], {real orbits}
  [], {pairs}
  [], {T_matrices}
  [], {Y_matrices}
@@ -601,7 +606,8 @@ returns (failed or):
  bool: success
 }
 set search(KNilpotentData d,int complex_orbit,K_Type_Pol P)=([K_Type],[K_Type],mat,vec,vec,bool):
-let K_basis=K_basis(d,real_forms_of(d,complex_orbit)) then
+{let K_basis=K_basis(d,real_forms_of(d,complex_orbit)) then}
+let K_basis=K_basis_closure(d,complex_orbit) then
 L_cap_K_basis=L_cap_K_basis(d,real_forms_of(d,complex_orbit)) then
 Y=d.Y_matrices[complex_orbit] then
 Q=d.Q_matrices[complex_orbit] then

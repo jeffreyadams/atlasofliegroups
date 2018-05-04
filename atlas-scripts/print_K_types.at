@@ -49,6 +49,13 @@ set print_branch_K_irr_long(ParamPol P, int bound)=void:
           ,  "    ", height(q))
   od
 
+set print_branch_K_irr_long(ParamPol P, int bound, KGBElt x)=void:
+ for (mult,q) in sort_by_height(branch_irr(P,bound))
+  do let hw=highest_weight(K0_param(LKT(q),x)) in
+    prints(mult, "*", hw, " ", dimensions(q)[0]
+          ,  "    ", height(q))
+  od
+
 { these definitions promote Param->ParamPol without relying on coercion }
 set print_branch_irr (Param p,KGBElt x, int bound) = void:
   print_branch_irr(ParamPol:p,x,bound)

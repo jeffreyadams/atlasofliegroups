@@ -290,7 +290,7 @@ set =(RealNilpotent O1,RealNilpotent O2)=bool:
 
 {used by KNilpotent algorithm}
 set -(RealNilpotent O)=RealNilpotent:
-let (H,x,)=O in RealNilpotent:(-H,x,[])
+let (H,x,)=O in RealNilpotent:(-H,x,())
 
 set root_datum (RealNilpotent O) = RootDatum: O.x.root_datum
 set real_form (RealNilpotent O) = RealForm: O.x.real_form
