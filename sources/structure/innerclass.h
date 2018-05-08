@@ -403,8 +403,9 @@ class InnerClass
 
   // list torus parts mapping to strong form of |y| and further to |image|
   containers::sl_list<TorusPart> torus_parts_for_grading_shift
-    (const cartanclass::square_class csc,
-     const cartanclass::FiberElt y, const cartanclass::AdjointFiberElt image)
+    (cartanclass::square_class csc,
+     const cartanclass::FiberElt& y,
+     const cartanclass::AdjointFiberElt& image)
   const;
 
   const Partition& weak_real_partition() const

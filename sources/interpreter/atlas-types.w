@@ -2713,9 +2713,10 @@ public:
   , rt_p(nullptr) @+{}
   virtual ~real_form_value ();
 @)
-  static shared_real_form build(shared_inner_class icp,RealFormNbr f);
+  static shared_real_form build(const shared_inner_class& icp,RealFormNbr f);
   static shared_real_form build @|
-   (shared_inner_class icp,RealFormNbr f,const RatCoweight& coch, TorusPart tp);
+   (const shared_inner_class& icp,RealFormNbr f,
+    const RatCoweight& coch, const TorusPart& tp);
   virtual void print(std::ostream& out) const;
   static const char* name() @+{@; return "real form"; }
   real_form_value @[(const real_form_value& ) = delete@];
@@ -2739,7 +2740,8 @@ the same location where it had been looked up. In this case looking up is just
 indexing the vector |icp->real_form_wptr| with the real form number~|f|.
 
 @< Function def...@>=
-shared_real_form real_form_value::build(shared_inner_class icp,RealFormNbr f)
+shared_real_form real_form_value::build
+  (const shared_inner_class& icp,RealFormNbr f)
 {
   auto& w_ptr = icp->real_form_wptr[f];
   if (auto p = w_ptr.lock())
@@ -2763,7 +2765,8 @@ the relevant |RealReductiveGroup| constructor, and are computed by the function
 
 @< Function def...@>=
 shared_real_form real_form_value::build @|
-   (shared_inner_class icp,RealFormNbr f,const RatCoweight& coch, TorusPart tp)
+   (const shared_inner_class& icp, RealFormNbr f,
+    const RatCoweight& coch, const TorusPart& tp)
 {
   auto default_coch = some_coch(icp->val,icp->val.xi_square(f));
   if (coch==default_coch and tp==icp->val.x0_torus_part(f))

@@ -222,7 +222,7 @@ const BruhatOrder& RealReductiveGroup::Bruhat_KGB()
 //				Functions
 
 TorusPart minimal_torus_part
-  (const InnerClass& G, RealFormNbr wrf, RatCoweight coch,
+  (const InnerClass& G, RealFormNbr wrf, const RatCoweight& coch,
    const TwistedInvolution& tw, const RatCoweight& torus_factor
   )
 {
