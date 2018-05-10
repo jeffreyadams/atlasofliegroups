@@ -33,14 +33,13 @@ bool precompute_real_orbits, {flag to use the Vogan algorithm to compute real or
   where P=Phi(mu_L)}
 [([K_Type],[K_Type],mat) ] T_matrices,
   {one matrix for each real orbit O
-   O->(K_basis,L_cap_K_basis,T), (#=m)
-   K_basis: K_types (for G) coming from O (#=n)
-   L_cap_K_basis: K_type for L coming from O 
+   O->(K_basis,L_cap_K_basis,T)
+   K_basis: K_types (for G) coming from O (#=m)
+   L_cap_K_basis: K_type for L coming from O (#=n)
    T=mxn matrix given the operator Phi in these bases}
 [([K_Type],[K_Type],mat)] Y_matrices,
   {one matrix for each complex orbit OC
-   OC->(K_basis,L_cap_K_basis
-,Y)
+   OC->(K_basis,L_cap_K_basis,Y)
    K_basis,L_cap_K_basis: coming from all
     (real forms of complex) orbits of smaller dimension
    Y is the matrix giving the image of Phi in these bases}
@@ -185,10 +184,6 @@ L_cap_K_basis=##for (,mu_L,) in matrices do mu_L od in
 
 set merge_T_matrices(KNilpotentData d,[int] real_orbits)=([K_Type],[K_Type],mat):
 merge_matrices(for i in real_orbits do d.T_matrices[i] od)
-
-set merge_Q_matrices(KNilpotentData d,[int] real_orbits)=([K_Type],[K_Type],mat):
-merge_matrices(for i in real_orbits do
-let (K_basis,L_cap_K_basis,,)=d.Q_and_P_Y_matrices[i] in (K_basis,L_cap_K_basis, d.Q_matrices[i]) od)
 
 set merge_P_Y_matrices(KNilpotentData d,[int] real_orbits)=([K_Type],[K_Type],mat):
 merge_matrices(for i in real_orbits do
