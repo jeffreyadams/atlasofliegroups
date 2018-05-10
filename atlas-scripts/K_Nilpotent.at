@@ -732,8 +732,11 @@ let (H,x,)=O then
 set show(KNilpotentData d)=void:
 prints("G=",d.real_form,new_line,"N=",d.N,new_line,"v=",d.v);
 prints("complex orbits:");
+let header=["#","H", "dim"] then
+values=
 for OC@i in d.complex_orbits do
-prints("#",i," ",OC, " ", dim_nilpotent(OC)) od;
+[i.to_string, OC.H_of_triple.to_string,dim_nilpotent(OC).to_string] od in 
+tabulate(header#values,"lll",2," ");
 prints("matrices attached to complex orbits:");
 let header=["#","Y","Q","P_X"] then
 values=
@@ -746,15 +749,20 @@ P_X=d.P_X_matrices[i] in
 [i.to_string,shape(Y).stringify,shape(Q).stringify,shape(P_X).stringify] od in
 tabulate(header#values,"llll",1," ");
 prints("real orbits:");
-for O@i in d.real_orbits do prints("#",i, " ", display_string(O), " ", dimension(O)) od;
+let header=["#","H","x","dim"] then
+values=
+for O@i in d.real_orbits do
+[i.to_string,O.H.to_string,let (,n)=%O.x in n.to_string,dimension(O).to_string] od in 
+tabulate(header#values,"llll",1," ");
 prints("matrices attached to real orbits:");
-let header=["#","pairs","T"] then
+let header=["#","#pairs","T"] then
 values=
 for i:#d.real_orbits do
 let shapeT= let (,,T)=d.T_matrices[i] in shape(T) then
 pairs=#d.pairs[i] in
 [i.to_string,pairs.to_string, shapeT.stringify] od in
 tabulate(header#values,"lll",1," ");
+prints("Sum of ranks of Q matrices: ", sum(for Q in d.Q_matrices do rank(Q) od));
 prints("#K_basis: ", #K_basis(d))
 
 {display K-types as highest weights for K_0}
