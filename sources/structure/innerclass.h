@@ -261,9 +261,11 @@ class InnerClass
   const TitsGroup& titsGroup() const { return d_titsGroup; }
   const TitsGroup& dualTitsGroup() const { return d_dualTitsGroup; }
 
+  const Fiber& fundamental_fiber () const { return d_fundamental; }
+  const Fiber& fundamental_dual_fiber () const { return d_dualFundamental; }
+
   // a general repository for involutions, organised by conjugacy class
   const Cartan_orbits& involution_table () const { return C_orb; }
-
 
 // Attributes of the inner class as a whole
 
@@ -400,13 +402,6 @@ class InnerClass
   }
   cartanclass::FiberElt to_fundamental_fiber(TorusPart t) const
   { return d_fundamental.fiberGroup().toBasis(t); }
-
-  // list torus parts mapping to strong form of |y| and further to |image|
-  containers::sl_list<TorusPart> torus_parts_for_grading_shift
-    (cartanclass::square_class csc,
-     const cartanclass::FiberElt& y,
-     const cartanclass::AdjointFiberElt& image)
-  const;
 
   const Partition& weak_real_partition() const
   { return d_fundamental.weakReal(); }

@@ -983,40 +983,6 @@ TorusPart InnerClass::grading_shift_repr (Grading diff) const
 } // |grading_shift_repr|
 
 /*
-  |torus_parts_for_grading_shift| is a somewhat technical function to aid
-  |central_fiber|, listing what is essentially the automorphism group of a
-  (future) set K\G/B, in the form of an orbit inside the fundamental fiber
-
-  Given an element |y| of the fundamental fiber, find all those that (1) map
-  under |toAdjoint| to the adjoint fiber element |image| (so that they will
-  induce the corresponding shift in grading), and (2) lie in the "same strong
-  real form" as |y|, this being an orbit in the fiber group under the action
-  of the imaginary Weyl group, the action depending on the square class |csc|;
-  return list of |TorusPart| values that represent their differences with |y|.
-*/
-containers::sl_list<TorusPart>
-  InnerClass::torus_parts_for_grading_shift
-    (cartanclass::square_class csc,
-     const cartanclass::FiberElt& y,
-     const cartanclass::AdjointFiberElt& image)
-  const
-{
-  const auto& fund_f = d_fundamental;
-  const SmallSubquotient& fg = fund_f.fiberGroup();
-  const unsigned int f_rk = fund_f.fiberRank();
-  const Partition& pi = fund_f.fiber_partition(csc);
-  const cartanclass::fiber_orbit srf = pi.class_of(y.data().to_ulong());
-  containers::sl_list<TorusPart> result;
-  for (unsigned i=pi.classRep(srf); i<pi.size(); ++i) // only start is optimised
-    if (pi.class_of(i)==srf) // beyond that, just test for the right class
-    { cartanclass::FiberElt fe(RankFlags(i),f_rk);
-      if (fund_f.toAdjoint(fe)==image)
-	result.push_back(fg.fromBasis(fe-y));
-    }
-  return result;
-} // |torus_parts_for_grading_shift|
-
-/*
   |preimage| is a somewhat technical function to aid |central_fiber|, listing
   what is essentially the automorphism group of a (future) set K\G/B
 

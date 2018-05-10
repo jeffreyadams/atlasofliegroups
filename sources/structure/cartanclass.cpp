@@ -45,10 +45,10 @@ namespace atlas {
   A function object defining the action of the simple-imaginary reflections on
   a fiber.
 
-  The function object this class provides, and that can be used by
-  |partition::makeOrbits|, takes the index |s| of a simple-imaginary root and
-  a number |x| encoding an element of the fiber; it returns a number |y|
-  similarly encoding the image of that element under the action of |s|.
+  The function object this class provides, intended for use by
+  |partition::orbits|, takes the index |s| of a simple-imaginary root and a
+  number |x| encoding an element of the fiber; it returns a number |y| similarly
+  encoding the image of that element under the action of |s|.
 
   In fact the number |x| describes (in binary form) the element of the fiber
   group that translates the base point to fiber element in question, and the
@@ -169,7 +169,7 @@ Fiber::Fiber(const RootDatum& rd, const WeightInvolution& theta)
   , d_strongReal(makeStrongReal(rd))
   , d_strongRealFormReps(makeStrongRepresentatives())
 {
-  assert(gradingGroup(rd).dimension()==0);
+  assert(grading_kernel(rd).dimension()==0);
 }
 
 // Copy and assignment
@@ -261,7 +261,7 @@ SmallSubquotient Fiber::makeAdjointFiberGroup(const RootSystem& rs) const
   whence the constructor for |Fiber| just calls this function to |assert| that
   the result is trivial.
 */
-SmallSubspace Fiber::gradingGroup (const RootSystem& rs) const
+SmallSubspace Fiber::grading_kernel (const RootSystem& rs) const
 {
   // define map
   const SmallBitVectorList& baf =
