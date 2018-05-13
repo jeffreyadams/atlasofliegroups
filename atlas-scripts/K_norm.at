@@ -24,13 +24,14 @@ K_norm(x,lambda) + 2*<rho_r(x),rho^v_r(x)>
 (the precise form of the final term is not set in stone)
 }
 
-{K-norm, using rho_check, modified}
+{modified K-norm}
 set K_norm (RootDatum rd) = (K_Type->int): (K_Type(x,lambda)):
   let (,mu)=from_dominant(rd,(1+involution(x))*lambda)
-  in
-    {use modified or unmodified by commenting out the wrong one}
-    {unmodified:} rat_as_int(mu*rho_check(rd) ) 
-    {modified:}   {rat_as_int(mu*rho_check(rd) + rho_r(x)*rho_check_r(x)*2)}
+  in rat_as_int(mu*rho_check(rd) + rho_r(x)*rho_check_r(x)*2)
+
+{the next commands sets the K-norm back to the unmodified one}
+{comment out this line to use the modified K-norm}
+set K_norm (RootDatum rd) = (K_Type->int): (K_Type mu):height(parameter(mu))
 
 set K_norm (RootDatum rd,K_Type p) = int: K_norm(rd)(p)
 set K_norm (RootDatum rd,Param p) =  int: K_norm(rd)(K_type(p))
