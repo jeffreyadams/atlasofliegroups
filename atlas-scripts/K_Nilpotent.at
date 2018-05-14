@@ -4,6 +4,7 @@
 <print_K_types.at
 
 set kn_verbose=false
+set include_Q_and_P_X_matrices=false
 
 {given basis [Param] convert ParamPol to a vector in this basis
  assuming ParamPol has integer coefficients
@@ -506,19 +507,22 @@ if kn_verbose then for O in real_forms_of_OC do prints("doing orbit ",O) od fi;
   fi
 od) {for O in real_forms_of_OC};
 {now fill in Q and P_X}
-prints(new_line,"Computing Q and P_X");
-let (K_basis_T,L_cap_K_basis_T,T0)=merge_T_matrices(d,closure_real(d,complex_orbit)) then
-K_basis=K_basis_closure(d,complex_orbit) then
-{K_basis: from closure of complex orbit}
-(K_basis_Y,L_cap_K_basis_Y,Y0)=d.Y_matrices[complex_orbit] then
-{K_basis_Y: from orbits of smaller dimension}
-Y=change_basis(K_basis_Y,K_basis,Y0) then
-T=change_basis(K_basis_T,K_basis,T0) then
-T_cap_Y=intersection(T,Y) then
-P_X=mod_image_projector(T_cap_Y) then
-Q=P_X*T in
-d.Q_and_P_X_matrices#:=(K_basis_T,L_cap_K_basis_T,Q,P_X);
-prints("Done computing Q and P_X");
+if include_Q_and_P_X_matrices=true then
+ prints(new_line,"Computing Q and P_X");
+ let (K_basis_T,L_cap_K_basis_T,T0)=merge_T_matrices(d,closure_real(d,complex_orbit)) then
+ K_basis=K_basis_closure(d,complex_orbit) then
+ {K_basis: from closure of complex orbit}
+ (K_basis_Y,L_cap_K_basis_Y,Y0)=d.Y_matrices[complex_orbit] then
+ {K_basis_Y: from orbits of smaller dimension}
+ Y=change_basis(K_basis_Y,K_basis,Y0) then
+ T=change_basis(K_basis_T,K_basis,T0) then
+ T_cap_Y=intersection(T,Y) then
+ P_X=mod_image_projector(T_cap_Y) then
+ Q=P_X*T in
+ d.Q_and_P_X_matrices#:=(K_basis_T,L_cap_K_basis_T,Q,P_X);
+ prints("Done computing Q and P_X") 
+else
+ d.Q_and_P_X_matrices#:=([K_Type]:[],[K_Type]:[],null(0,0),null(0,0)) fi;
 d
 
 {fill orbits 0,1,...,n-1}
@@ -599,13 +603,17 @@ set search(KNilpotentData d,int complex_orbit,K_Type_Pol P)=([K_Type],[K_Type],m
 let K_basis=K_basis_closure(d,complex_orbit) then
 L_cap_K_basis=L_cap_K_basis(d,real_forms_of(d,complex_orbit)) then
 Y=d.Y_matrices[complex_orbit] then
-Q=d.Q_matrices[complex_orbit] then
-P_X=d.P_X_matrices[complex_orbit] then
+Q=d.Q_matrices[complex_orbit] in
+if Q=null(0,0) then 
+ prints("Q matrix is 0. Probably you should set include_Q_and_P_X_matrices=true and run set d=fill(d0) again.");return(failed) 
+else let
+P_X=
+d.P_X_matrices[complex_orbit] then
 w0=vector(K_basis,P) in
  if not any(w0) then return(failed) fi;
 let w=requisition(w0) then v0=solve(Q,P_X*w) in
  if not any(v0) then return(failed) fi;
-let v=requisition(v0) in (K_basis,L_cap_K_basis,Q,v,w,true)
+let v=requisition(v0) in (K_basis,L_cap_K_basis,Q,v,w,true) fi
 
 {same as previous where the complex orbit OC isn't specified, return values
 include an int giving OC}
@@ -642,25 +650,27 @@ ones(v[i])##
  [v_k,...,v_{k+n}] on given orbit
  the associated variety is those O_i such that v_{k_i}\ne 0
 }
-set av_from_av_ann(KNilpotentData d,int complex_orbit,K_Type_Pol P)=
+set av_from_av_ann(KNilpotentData d,int complex_orbit,K_Type_Pol P)=vec:
 let K_basis=K_basis_closure(d,complex_orbit) then
 w0=vector(K_basis,P) in
 if not any(w0) then return(null(0))  else
 let w=requisition(w0) then
-(,,Q,P_X)=d.Q_and_P_X_matrices[complex_orbit] then
+(,,Q,P_X)=d.Q_and_P_X_matrices[complex_orbit] in
+if Q=null(0,0) then 
+ prints("Q matrix is 0. Probably you should set include_Q_and_P_X_matrices=true and run set d=fill(d0) again."); return(null(0)) else let
 v=requisition(solve(Q,P_X*w)) then
 real_orbits=real_forms_of(d,complex_orbit) then
 dim_subspaces=for i in closure_real(d,complex_orbit) do let (,,T)=d.T_matrices[i] in n_columns(T) od then
 rv=##for i in real_orbits {only look at real forms of given orbit} do
  let proj=projector(dim_subspaces,i) in if !=(proj*v) then [i] else [] fi od in
-if kn_verbose then prints("AV(p): ", rv) fi; rv fi
+if kn_verbose then prints("AV(p): ", rv) fi; rv fi fi
 
 set av_from_av_ann(KNilpotentData d,int complex_orbit,Param p)=
 av_from_av_ann(d,complex_orbit,character_formula(p)*0)
 
-set av(KNilpotentData d, K_Type_Pol P)=
+set av(KNilpotentData d, K_Type_Pol P)=vec:
 let (,,j,,,,)=av_ann(d,P) in
-av_from_av_ann(d,j,P)
+if j=-1 then null(0) else av_from_av_ann(d,j,P) fi
 
 {compute associated variety of irreducible J(p)}
 set av(KNilpotentData d, Param p)=
