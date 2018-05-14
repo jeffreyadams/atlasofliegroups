@@ -4,7 +4,7 @@
 <print_K_types.at
 
 set kn_verbose=false
-set include_Q_and_P_X_matrices=false
+set include_Q_and_P_X_matrices=true
 
 {given basis [Param] convert ParamPol to a vector in this basis
  assuming ParamPol has integer coefficients
