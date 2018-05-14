@@ -19,6 +19,10 @@ if sum=P then v.solution else ().no_vec fi
 set vector([K_Type] basis,K_Type_Pol P)=maybe_a_vec:
 vector(for mu in basis do parameter(mu) od,P)
 
+{will fail is P not in span of basis}
+set Vector([K_Type] basis,K_Type_Pol P)=vec:requisition(vector(basis,P))
+set Vector([Param] basis,ParamPol P)=vec:requisition(vector(basis,P))
+
 {principal data structure for KNilpotent calculation}
 set_type KNilpotentData = (
 RealForm real_form,
@@ -152,6 +156,9 @@ for (mu_L,) in d.pairs[real_orbit] do mu_L od
 set L_cap_K_basis(KNilpotentData d,[int] real_orbits)=[K_Type]:
 if #d.pairs=0 or #real_orbits=0 then [] else
 ##for i in real_orbits do L_cap_K_basis(d,i) od  fi
+
+set L_cap_K_basis(KNilpotentData d)=[K_Type]:L_cap_K_basis(d,#(#d.real_orbits))
+set L_cap_K_basis_opp(KNilpotentData d)=[K_Type]:L_cap_K_basis(d,reverse(#(#d.real_orbits)))
 
 {matrix constructed from list of pairs [(K_Type,K_Type_Pol)]
  defining a map from L\cap K-types to K-types
@@ -668,25 +675,25 @@ for p@i in params do let av=av(d,p) in (p,av) od
 for testing purposes
 solving Tv=w directly (not using quotients)}
 
-set av_ann_elem(KNilpotentData d,K_Type_Pol P)=([K_Type],[K_Type],int,mat,vec,vec,bool):
+set av_ann_elem_long(KNilpotentData d,K_Type_Pol P)=([K_Type],[K_Type],int,mat,vec,vec,bool):
 for OC@i in d.complex_orbits do
  let real_orbits=closure_real(d,i) then
  (K_basis,L_cap_K_basis,T,v,w,success)=search(d,real_orbits,P) in
  if success then
-  prints("AV(Ann(p)):");prints("Complex orbit #",i,": H=", OC.H_of_triple);
+  if kn_verbose then prints("AV(Ann(p)):");prints("Complex orbit #",i,": H=", OC.H_of_triple) fi;
   return(K_basis,L_cap_K_basis,i,T,v,w,success)
  fi
 od;
 failed_av_ann  {if not found}
 
-set av_ann_elem(KNilpotentData d,Param p)=([K_Type],[K_Type],int,mat,vec,vec,bool):
-av_ann_elem(d,character_formula(p)*0)
+set av_ann_elem_long(KNilpotentData d,Param p)=([K_Type],[K_Type],int,mat,vec,vec,bool):
+av_ann_elem_long(d,character_formula(p)*0)
 
 {associated variety of P, assuming associatevariety OC of ann(P) is known}
 {algorithm: run over subsets of real forms of OC
  and try to solve Tv=w
 }
-set av_from_av_ann_elem(KNilpotentData d,int complex_orbit,K_Type_Pol P)=
+set av_from_av_ann_elem_long(KNilpotentData d,int complex_orbit,K_Type_Pol P)=([K_Type],[K_Type],[int],mat,vec,vec,bool):
 let OC=d.complex_orbits[complex_orbit] then
 real_orbits=real_forms_of(d,complex_orbit) then
 S=delete(generate_all_subsets(real_orbits),0) {ignore empty subset}  then
@@ -694,22 +701,30 @@ smaller_orbits=smaller_orbits(d,real_orbits[0]) in
 for A in S do let
  (K_basis,L_cap_K_basis,T,v,w,success)=search(d,A##smaller_orbits,P) in
  if success then
- let  ()=prints("AV(p)");for i in A do prints("real orbit #",i,": ",d.real_orbits[i]) od in return(K_basis,L_cap_K_basis,[int]:A,T,v,w,success) fi  od;
+{ let  ()=prints("AV(p)");for i in A do prints("real orbit #",i,": ",d.real_orbits[i]) od in }return(K_basis,L_cap_K_basis,[int]:A,T,v,w,success) fi  od;
 return(failed_av)
 
 {associated variety of p, assuming OC=associated variety of ann(p) is known}
-set av_from_av_ann_elem(KNilpotentData d,int complex_orbit,Param p)=
-av_from_av_ann_elem(d,complex_orbit,character_formula(p)*0)
+set av_from_av_ann_elem_long(KNilpotentData d,int complex_orbit,Param p)=([K_Type],[K_Type],[int],mat,vec,vec,bool):
+av_from_av_ann_elem_long(d,complex_orbit,character_formula(p)*0)
 
 {same as previous but computed av_ann_elem(P)}
-set av_elem(KNilpotentData d,K_Type_Pol P)=
-let (,,complex_orbit,,,,)=av_ann_elem(d,P) in
-av_from_av_ann_elem(d,complex_orbit,P)
+set av_elem_long(KNilpotentData d,K_Type_Pol P)=([K_Type],[K_Type],[int],mat,vec,vec,bool):
+let (,,complex_orbit,,,,)=av_ann_elem_long(d,P) in
+av_from_av_ann_elem_long(d,complex_orbit,P)
 
 {associated variety of p from scratch, by computing
 OC=av_ann_elem(p) first}
-set av_elem(KNilpotentData d,Param p)=
-av_elem(d,character_formula(p)*0)
+set av_elem_long(KNilpotentData d,Param p)=([K_Type],[K_Type],[int],mat,vec,vec,bool):
+av_elem_long(d,character_formula(p)*0)
+
+{shorter versions}
+set av_ann_elem(KNilpotentData d,K_Type_Pol P)=int:let (,,av,,,,)=av_ann_elem_long(d,P) in av
+set av_ann_elem(KNilpotentData d,Param p)=int:let (,,av,,,,)=av_ann_elem_long(d,p) in av
+set av_from_av_ann_elem(KNilpotentData d,int complex_orbit,K_Type_Pol P)=[int]:let (,,av,,,,)=av_from_av_ann_elem_long(d,complex_orbit,P) in av
+set av_from_av_ann_elem(KNilpotentData d,int complex_orbit,Param p)=[int]:let (,,av,,,,)=av_from_av_ann_elem_long(d,complex_orbit,p) in av
+set av_elem(KNilpotentData d,K_Type_Pol P)=[int]:let (,,av,,,,)=av_elem_long(d,P) in av
+set av_elem(KNilpotentData d,Param p)=[int]:let (,,av,,,,)=av_elem_long(d,p) in av
 
 {real orbits as computed by KNilpotent algorithm
  should agree with result of Vogan's algorithm}

@@ -68,3 +68,17 @@ if #matrices=0 then id_mat(0) else
 let rv=null(n_columns(matrices[0]),0) in
 for M in matrices do rv##:=M od;rv  fi
 
+{k^th principal minor: upper left hand corner of size k}
+set minor(mat M,int k)=mat:
+for i:k do lower(k,M[i]) od
+
+set string_compact(mat M)=
+let A=^M then
+size=max(##for col in M do for x:#col do #(col[x].to_string) od od) in 
+let ()=prints("size:",size) in
+##for row in A do 
+ let row_string=new_line 
+  in  for x in row do row_string+:=pad(x.to_string,size+1) od;row_string od
+
+set print_matrix_compact(mat M)=prints(string_compact(M))
+
