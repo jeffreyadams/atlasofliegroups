@@ -13,6 +13,9 @@
 
 * Work on the axis language
 
+- Reintroduce simple type abbreviations whose name will be ignored in general
+  type equivalencing, so the won't be used to name accidentally equivalent
+  (sub)types after those they go through the type equivalencing algorithm
 - Prevent abuse of type system possible by capturing (in functions) variables
   whose type is unsettled (like |[*]|), which by well timed assignments can
   lead to illegal occurences of |*| (e.g. as type of a concrete value). This
@@ -32,7 +35,7 @@
 - Improve output of expressions
   Distinguish one-line (maybe abbreviated) and long forms.
 
-- For layers produced by loops, provide printing of the indentifier value
+- For layers produced by loops, provide printing of the identifier value
 - For errors during implict conversion, provide back-tracing as for calls
 
 - Implement operate-and-assign directly. While 'v #:= x' (with vec v, int x)

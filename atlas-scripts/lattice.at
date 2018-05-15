@@ -6,8 +6,11 @@
   are done with integers only, distinguishing this script from Gaussian-elim.at
 }
 
-{ |M| is an $n\times k$ matrix, so columns of |M| span a $\Z$-submodule
-  $ W=image(M)$ of $\Z^n$; get canonical generators for this submodule }
+{ Compute what appears to be called the Hermite form of an integral matrix.
+
+  |M| is an $n\times k$ matrix, so columns of |M| span a $\Z$-submodule
+  $ W=image(M)$ of $\Z^n$; get canonical generators for this submodule
+}
 set image_lattice (mat A) = mat:
    let (M,,pivots,)=echelon(A) then c=#M
 in for i@j in pivots

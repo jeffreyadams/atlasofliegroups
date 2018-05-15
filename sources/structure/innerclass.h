@@ -138,7 +138,7 @@ void twisted_act
   this information is generated for all Cartan classes upon construction of
   the |InnerClass|. The remaining fields of |C_info| reflect an
   old and now reverted design decision, in which only a pointer to a
-  |CartanClass| was held, which was intially null and "filled" on demand. This
+  |CartanClass| was held, which was initially null and "filled" on demand. This
   meant that real forms, which are identified as orbits in the adjoint fiber
   group, were generated without access to the |CartanClass| information. In
   fact, although that information is now available right away, the real forms
