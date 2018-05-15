@@ -51,13 +51,18 @@ in ( C*T1*R[:c,:] , d)
 set factor_scalar (mat M) = { factor out common divisor } (int,mat):
   let d=gcd(for col in M do gcd(col) od) in (d,if =d then M else M\d fi)
 
-
 set principal_submatrix(mat M, [int] S)=mat: { choice |S| of rows, columns }
    let m=#S in matrix((m,m), (int i,int j)int: M[S[i],S[j]] )
 
 set main_diagonal_square_block(mat M, int size, int offset) = mat:
   M[ offset:offset+size, offset:offset+size ]
 set top_left_square_block(mat M,int size) = mat: M[ :size, :size]
+set leading_principal_minor(mat M,int size)=mat:top_left_square_block(M,size)
+
+{select/first_rows/columns are defined in lattice.at}
+
+{row echelon form, just the mat itself, see builtin |echelon|}
+set row_echelon(mat M)=mat:let (E,,,)=echelon(^M) in ^E
 
 set cokernel(mat M)=^kernel(^M)
 set rank(mat A)=let (B,,pivots,)=A.echelon in #pivots
@@ -68,14 +73,9 @@ if #matrices=0 then id_mat(0) else
 let rv=null(n_columns(matrices[0]),0) in
 for M in matrices do rv##:=M od;rv  fi
 
-{k^th principal minor: upper left hand corner of size k}
-set minor(mat M,int k)=mat:
-for i:k do lower(k,M[i]) od
-
 set string_compact(mat M)=
 let A=^M then
 size=max(##for col in M do for x:#col do #(col[x].to_string) od od) in 
-let ()=prints("size:",size) in
 ##for row in A do 
  let row_string=new_line 
   in  for x in row do row_string+:=pad(x.to_string,size+1) od;row_string od

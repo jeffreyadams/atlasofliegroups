@@ -444,9 +444,14 @@ set real_nilpotent_orbits(RealForm G)=[RealNilpotent]:
    kgps=real_nilpotent_orbit_KGPs(G,H) in
    for P in kgps do real_nilpotent(K,x_min(P)) od od)
 
+{assuming real nilpotents have been computed, just keep the real forms of given OC}
+set real_nilpotent_orbits([RealNilpotent] real_nilpotents, ComplexNilpotent OC)=[RealNilpotent]:
+   ##for O in real_nilpotents do if complex_orbit(O)=OC then [O] else [] fi od
+
+{this is inefficient: it computes all real orbits, and then specializes to real forms of OC
+ use the previous command to avoid doing this more than once}
 set real_nilpotent_orbits(ComplexNilpotent OC,RealForm G)=[RealNilpotent]:
-   ##for O in real_nilpotent_orbits(G) do if complex_orbit(O)=OC then [O]
-   else [] fi od
+real_nilpotent_orbits(real_nilpotent_orbits(G),OC)
 
 {real forms of minimal complex orbit}
 set minimal_real_nilpotent_orbits(RealForm G)=[RealNilpotent]:

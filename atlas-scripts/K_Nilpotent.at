@@ -4,7 +4,6 @@
 <print_K_types.at
 
 set kn_verbose=false
-set include_Q_and_P_X_matrices=true
 
 {given basis [Param] convert ParamPol to a vector in this basis
  assuming ParamPol has integer coefficients
@@ -30,7 +29,8 @@ RealForm real_form,
 int N,  {K_norm bound}
 ratvec v,   {for use in K_norm in reductive case, default is rho_check(G)}
 [ComplexNilpotent] complex_orbits, {complex nilpotent orbits, sorted by increasing dimension}
-bool precompute_real_orbits, {flag to use the Vogan algorithm to compute real orbits}
+{bool precompute_real_orbits, {flag to use the Vogan algorithm to compute real orbits} DISABLED}
+bool  include_Q_and_P_X_matrices,
 [RealNilpotent] real_orbits, {real forms of each complex orbit}
 [[(K_Type,K_Type_Pol)]] pairs,
   {one pair for each real orbit O
@@ -422,24 +422,29 @@ for O in orbits do (O,Phi_upto(O,N,v)) od
 
 {initialize KNilpotentData for G, with given bound, optional ratvec, optional
 "compute" flag to compute nilpotent orbits using Vogan's algorithm}
-set initialize_KNilpotent(RealForm G, int N,ratvec v, bool compute_real_orbits)=KNilpotentData:
+set initialize_KNilpotent(RealForm G, int N,ratvec v, bool include_Q_and_P_X_matrices)=KNilpotentData:
 let complex_orbits= sort_by_dimension
 (
 ##for O in complex_nilpotent_orbits(G.root_datum) 
 {only keep a complex orbit if H*delta=H}
   do if O.H_of_triple*G.distinguished_involution=O.H_of_triple then [O] else [] fi od
-)
-in
+) then
+real_orbits=real_nilpotent_orbits(G) then
+default_Q_and_P_X_matrices=for i:#complex_orbits do ([K_Type]:[],[K_Type]:[],null(0,0),null(0,0)) od then
+default_T_matrices=for i:#real_orbits do ([K_Type]:[],[K_Type]:[],null(0,0)) od then
+default_Y_matrices=for i:#complex_orbits do ([K_Type]:[],[K_Type]:[],null(0,0)) od then
+default_pairs=for i:#real_orbits do [(K_Type,K_Type_Pol)]:[] od in
 (G,
  N,  {int}
  v,   {ratvec, default=rho_check(G)}
  complex_orbits,   {[ComplexNilpotent]}
- compute_real_orbits,  {bool}
- [], {real orbits}
- [], {pairs}
- [], {T_matrices}
- [], {Y_matrices}
- [([K_Type],[K_Type],mat,mat)]:[] {Q_and_P_X_matrices}
+{ compute_real_orbits,  {bool} disabled}
+ include_Q_and_P_X_matrices, {bool}
+ real_orbits,
+ default_pairs,      {initialized: [[]]}
+ default_T_matrices, {initialized: [([],[],null(0,0))]}
+ default_Y_matrices, {initialized: [([],[],null(0,0))]}
+ default_Q_and_P_X_matrices {initialized: [([],[],null(0,0),null(0,0))]}
 )
 
 set initialize_KNilpotent(RealForm G, int N,bool compute)=KNilpotentData:initialize_KNilpotent(G,N,rho_check(G),compute)
@@ -466,6 +471,19 @@ let delta=distinguished_involution(G) in
 set potential_real_nilpotent_orbits(RealForm G)=[RealNilpotent]:
 potential_real_nilpotent_orbits(G,complex_nilpotent_orbits(G))
 
+{are these necessary? there must be a more elegant way to do this}
+set update_pairs([[(K_Type,K_Type_Pol)]] pairs,int j,[(K_Type,K_Type_Pol)] new_pairs)=[[(K_Type,K_Type_Pol)]]:
+for i:#pairs do if i=j then new_pairs else pairs[i] fi od
+
+set update_T_matrices([([K_Type],[K_Type],mat) ] T_matrices,int j, ([K_Type],[K_Type],mat) new_matrices)=[([K_Type],[K_Type],mat) ]:
+for i:#T_matrices do if i=j then new_matrices else T_matrices[i] fi od
+
+set update_Y_matrices([([K_Type],[K_Type],mat) ] Y_matrices,int j, ([K_Type],[K_Type],mat) new_matrices)=[([K_Type],[K_Type],mat) ]:
+for i:#Y_matrices do if i=j then new_matrices else Y_matrices[i] fi od
+
+set update_Q_and_P_X_matrices([([K_Type],[K_Type],mat,mat) ] Q_and_P_X__matrices,int j, ([K_Type],[K_Type],mat,mat) new_matrices)=[([K_Type],[K_Type],mat,mat) ]:
+for i:#Q_and_P_X__matrices do if i=j then new_matrices else Q_and_P_X__matrices[i] fi od
+
 {assume things computed up to complex orbit i-1
 (not including Q and P_X)
 fill data up to complex orbit i
@@ -475,39 +493,19 @@ let G=d.real_form then
 OC=d.complex_orbits[complex_orbit] then
 Y_matrix=compute_Y_matrix(d,complex_orbit) then
 (K_basis,L_cap_K_basis,Y)=Y_matrix then
-real_forms_of_OC=
-if d.precompute_real_orbits  then real_nilpotent_orbits(OC,G)  else
-  potential_real_nilpotent_orbits(G,[OC]) {use the crude guess} fi in
-d.Y_matrices#:=Y_matrix;
+real_forms_of_OC=real_nilpotent_orbits(d.real_orbits,OC) in
+d.Y_matrices:=(update_Y_matrices(d.Y_matrices,complex_orbit,Y_matrix));
 if kn_verbose then for O in real_forms_of_OC do prints("doing orbit ",O) od fi;
-(for O in real_forms_of_OC do
-  let orbit_valid=false in
-  if d.precompute_real_orbits then orbit_valid:=true else
-   {only do this if precompute_real_orbits is false (through END)}
-   {add orbit to list only if it passes the test: functions_on_real_orbit(O)
-    does not come from smaller orbits}
-   let f=functions_on_real_orbit(O) then
-   w0=vector(K_basis,f) in
-   if not any(w0) then orbit_valid:=true
-    else let w=requisition(w0) then
-    v0=solve(Y,w) in
-    if not any(v0) then orbit_valid:=true fi
-   fi
-  fi;
-  {END}
-  if orbit_valid then let
+for O in real_forms_of_OC do let
    pairs=Phi_upto(O,d.N,d.v) then
    T_matrix=T_matrix(pairs) then
-   (K_basis_T,L_cap_K_basis_T,T)=T_matrix in
-   (
-   d.real_orbits#:=O,
-   d.pairs#:=pairs,
-   d.T_matrices#:=T_matrix
-   )
-  fi
-od) {for O in real_forms_of_OC};
+   (K_basis_T,L_cap_K_basis_T,T)=T_matrix then
+   real_orbit_number=find(d.real_orbits,O) in
+   d.pairs:=update_pairs(d.pairs,real_orbit_number,pairs);
+   d.T_matrices:=update_T_matrices(d.T_matrices,real_orbit_number,T_matrix)
+od {for O in real_forms_of_OC};
 {now fill in Q and P_X}
-if include_Q_and_P_X_matrices=true then
+if d.include_Q_and_P_X_matrices=true then
  prints(new_line,"Computing Q and P_X");
  let (K_basis_T,L_cap_K_basis_T,T0)=merge_T_matrices(d,closure_real(d,complex_orbit)) then
  K_basis=K_basis_closure(d,complex_orbit) then
@@ -517,23 +515,21 @@ if include_Q_and_P_X_matrices=true then
  Y=change_basis(K_basis_Y,K_basis,Y0) then
  T=change_basis(K_basis_T,K_basis,T0) then
  T_cap_Y=intersection(T,Y) then
- P_X=mod_image_projector(T_cap_Y) then
- Q=P_X*T in
- d.Q_and_P_X_matrices#:=(K_basis_T,L_cap_K_basis_T,Q,P_X);
- prints("Done computing Q and P_X") 
-else
- d.Q_and_P_X_matrices#:=([K_Type]:[],[K_Type]:[],null(0,0),null(0,0)) fi;
+ P_X=mod_image_projector(T_cap_Y) then 
+ Q=P_X*T in 
+ d.Q_and_P_X_matrices:=update_Q_and_P_X_matrices(d.Q_and_P_X_matrices,complex_orbit,(K_basis_T,L_cap_K_basis_T,Q,P_X))
+fi;
 d
 
 {fill orbits 0,1,...,n-1}
-set fill_upto(KNilpotentData d,int n)=KNilpotentData:
+set fill(KNilpotentData d,int n)=KNilpotentData:
 for i:n+1 do
   prints("filling data for complex orbit #",i);
   d:=fill_one_step(d,i) od;d
 
 {completely fill KNilpotentData, inductively starting at orbit 0}
 set fill(KNilpotentData d)=KNilpotentData:
-fill_upto(d,#d.complex_orbits-1)
+fill(d,#d.complex_orbits-1)
 
 {default failed values}
 {could use unions instead}
@@ -605,7 +601,7 @@ L_cap_K_basis=L_cap_K_basis(d,real_forms_of(d,complex_orbit)) then
 Y=d.Y_matrices[complex_orbit] then
 Q=d.Q_matrices[complex_orbit] in
 if Q=null(0,0) then 
- prints("Q matrix is 0. Probably you should set include_Q_and_P_X_matrices=true and run set d=fill(d0) again.");return(failed) 
+ prints("Q matrix is 0. Need to fill data further?");return(failed) 
 else let
 P_X=
 d.P_X_matrices[complex_orbit] then
@@ -657,7 +653,7 @@ if not any(w0) then return(null(0))  else
 let w=requisition(w0) then
 (,,Q,P_X)=d.Q_and_P_X_matrices[complex_orbit] in
 if Q=null(0,0) then 
- prints("Q matrix is 0. Probably you should set include_Q_and_P_X_matrices=true and run set d=fill(d0) again."); return(null(0)) else let
+ prints("Q matrix is 0. Need to fill data further?"); return(null(0)) else let
 v=requisition(solve(Q,P_X*w)) then
 real_orbits=real_forms_of(d,complex_orbit) then
 dim_subspaces=for i in closure_real(d,complex_orbit) do let (,,T)=d.T_matrices[i] in n_columns(T) od then
@@ -721,7 +717,8 @@ av_from_av_ann_elem_long(d,complex_orbit,character_formula(p)*0)
 {same as previous but computed av_ann_elem(P)}
 set av_elem_long(KNilpotentData d,K_Type_Pol P)=([K_Type],[K_Type],[int],mat,vec,vec,bool):
 let (,,complex_orbit,,,,)=av_ann_elem_long(d,P) in
-av_from_av_ann_elem_long(d,complex_orbit,P)
+if complex_orbit=-1 then return([],[],[],null(0,0),null(0),null(0),false) else
+av_from_av_ann_elem_long(d,complex_orbit,P) fi
 
 {associated variety of p from scratch, by computing
 OC=av_ann_elem(p) first}
@@ -738,12 +735,13 @@ set av_elem(KNilpotentData d,Param p)=[int]:let (,,av,,,,)=av_elem_long(d,p) in 
 
 {real orbits as computed by KNilpotent algorithm
  should agree with result of Vogan's algorithm}
+{disabled
 set KNilpotent_real_orbits(RealForm G,int N, ratvec v)=
 let d0=initialize_KNilpotent(G,N,v,false) then d=fill(d0) in d.real_orbits
 
 set KNilpotent_real_orbits(RealForm G,int N)=KNilpotent_real_orbits(G,N,rho_check(G))
 set KNilpotent_real_orbits(RealForm G)=KNilpotent_real_orbits(G,K_norm(trivial(G)*0)+3)  {in SU(2,1) need +3}
-
+}
 
 {----------some display functions--------------}
 
