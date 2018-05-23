@@ -523,25 +523,27 @@ set conjugacy_class_number (WeylElt w) = int:
   let classes=w.root_datum.conjugacy_class_reps in
   first(#classes, (int i)bool: is_conjugate(w,classes[i]))
 
-set_type WeylClassTable =
-( (->) print_classes
-, int n_classes
-, (->[WeylElt]) class_representatives
-, (WeylElt->int) class_of
-, (->[int]) class_sizes
-, (int,int->int) class_power
-, [int] trivial
-, [int] sign
-, [int] reflection
-, ([int]->int) dimension
-, ([int]->int) norm2
-, ([int],[int]->int) inner
-, ([int],[int]->[int]) direct_sum
-, ([int],int->[int]) Cartesian_power
-, ([int],[int]->[int]) tensor
-, ([int],int->[int]) tensor_power
-, (int->[int]) sym_power_refl
-)
+set_type
+[ WeylClassTable =
+  ( (->) print_classes
+  , int n_classes
+  , (->[WeylElt]) class_representatives
+  , (WeylElt->int) class_of
+  , (->[int]) class_sizes
+  , (int,int->int) class_power
+  , [int] trivial
+  , [int] sign
+  , [int] reflection
+  , ([int]->int) dimension
+  , ([int]->int) norm2
+  , ([int],[int]->int) inner
+  , ([int],[int]->[int]) direct_sum
+  , ([int],int->[int]) Cartesian_power
+  , ([int],[int]->[int]) tensor
+  , ([int],int->[int]) tensor_power
+  , (int->[int]) sym_power_refl
+  )
+]
 
 set W_class_table (RootDatum rd) = WeylClassTable:
    let !reps  = [WeylElt]: conjugacy_class_reps(rd)

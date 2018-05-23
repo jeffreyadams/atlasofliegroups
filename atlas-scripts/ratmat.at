@@ -15,7 +15,7 @@
 <basic.at
 <matrix.at
 
-set_type ratmat = (mat,string,int) { matrix, slash, common denominator }
+set_type [ ratmat = (mat,string,int) ] { matrix, slash, common denominator }
 { the void component avoids unary/binary conflicts, as for -@(mat,int) }
 
 { a trick to locally rebind |s| (defined in basic.at) to constant string "/" }

@@ -137,8 +137,7 @@ set coherent_family_irr (ParamPol P, ratvec v)=ParamPol:
 
 { everything commented out from this point on
 
-set_type
-  term = (Param,string), module = (ParamPol,string)
+set_type [ term = (Param,string), module = (ParamPol,string) ]
 
 { ------------phi_alpha: translation of stds/irrs away from one  wall-------- }
 

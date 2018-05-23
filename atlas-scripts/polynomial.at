@@ -7,9 +7,10 @@
 set_type i_poly = vec { compact storage, machine integers as coefficients }
 set_type i_poly_mat = [[i_poly]] { sublists are matrix rows, not columns! }
 
-{ a more expensive format, but unbounded coefficients; dummy final part }
-set_type int_poly = (string indeterminate, [int] coefficients, void .)
-set_type rat_poly = (string indeterminate, [rat] coefficients, void .)
+set_type { more expensive formats, unbounded coefficients; dummy final part }
+[ int_poly = (string indeterminate, [int] coefficients, void .)
+, rat_poly = (string indeterminate, [rat] coefficients, void .)
+]
 
 { addition of vectors (overrides definition in basic.at) to allow vectors of
   possibly different lengths, implicitly extending on the right by zeros as

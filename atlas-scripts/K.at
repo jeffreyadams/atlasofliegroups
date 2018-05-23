@@ -25,10 +25,10 @@
 <Weylgroup.at { for from_no_Cminus }
 
 set_type
-[ K_Type = (KGBElt x, ratvec lambda)
-, K_Type_Pol = ParamPol { re-use this type, with nu-part of the terms zero }
-, KHighestWeight = (KGBElt x, vec mu)
-]
+[ K_Type = (KGBElt x, ratvec lambda) , KHighestWeight = (KGBElt x, vec mu) ]
+
+{ the following is just an alternative name }
+set_type K_Type_Pol = ParamPol { usage should imply nu-part of terms are zero }
 
 { Three ways of parametrizing K-types:
 

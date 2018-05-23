@@ -8,7 +8,7 @@
 
 ed_verbose:=false
 
-set_type ExtParamPol=(ParamPol P_plus, ParamPol P_minus, ParamPol P_ind)
+set_type [ ExtParamPol = (ParamPol P_plus, ParamPol P_minus, ParamPol P_ind) ]
 { (P_plus,P_minus,P_ind)=(\sum_i s_ip_i, \sum_j t_jq_j, \sum_k u_kr_k) <->
   \sum_i s_iE(p_i,+) + \sum_j t_j E(q_j,-) + \sum_k u_k E(r_k,ind)
 }
