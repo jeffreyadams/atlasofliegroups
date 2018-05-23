@@ -1,4 +1,4 @@
-% Copyright (C) 2006-2015 Marc van Leeuwen
+% Copyright (C) 2006-2018 Marc van Leeuwen
 % This file is part of the Atlas of Lie Groups and Representations (the Atlas)
 
 % This program is made available under the terms stated in the GNU
@@ -418,11 +418,11 @@ stored, and finding the designated type will require looking it up in
 |global_id_table|. Distinguishing type identifiers from other identifiers
 during lexical analysis also uses |global_id_table|: the method
 |is_defined_type| can determine from the stored value whether this is a type
-identifier. However between |SET_TYPE| and the end of that command, all
-identifiers are given code |TYPE_ID|, so that (mutually) recursive types can
-be used in type expressions, even before their actual definition has been
-seen. (The syntax needs to account for the fact that any identifiers in a type
-definition, including injector or projector names, will be scanned as
+identifier. However between |SET_TYPE| followed by `[' and the end of that
+command, all identifiers are given code |TYPE_ID|, so that (mutually) recursive
+types can be used in type expressions, even before their actual definition has
+been seen. (The syntax takes into account the fact that any identifiers in such
+a type definition, including injector or projector names, will be scanned as
 |TYPE_ID|.)
 
 
@@ -466,7 +466,11 @@ definition, including injector or projector names, will be scanned as
       case AND: case OR: case NOT: prevent_termination='~'; break;
       case WHATTYPE: prevent_termination='W'; break;
       case SET: prevent_termination='S'; break;
-      case SET_TYPE: prevent_termination='T'; state=type_defining; break;
+      case SET_TYPE: prevent_termination='T'; skip_space();
+        if (*input.point()=='[')
+          state=type_defining;
+        // |type_defining| only for ``\&{set\_type} [ \dots ]''
+      break;
     }
   }
 }
