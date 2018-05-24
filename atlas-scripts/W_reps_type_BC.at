@@ -116,7 +116,7 @@ set all_reps_BC (int n) = [Hn_rep]:
 set is_special (Symbol S) = bool:
    let f=S[0], g=S[1] in all(for gi@i in g do f[i]<=gi and gi<=f[i+1] od)
 
-set is_special (Hn_rep(nu,mu)) =bool:
+set is_special (Hn_rep(nu,mu)) = bool:
 (  let d=#(mu:=mu.strip_to_partition)+1-#(nu:=nu.strip_to_partition)
 in case d then return false in () else nu ##:= for :d do 0 od esac
 ;  all(for mu_i@i in mu do nu[i]+1>=mu_i and mu_i>=nu[i+1] od)

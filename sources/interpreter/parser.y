@@ -105,8 +105,8 @@
 %destructor { destroy_id_pat($$); } pattern pattern_opt closed_pattern
 %type <pl> pat_list
 %destructor { destroy_pattern($$); } pat_list
-%type <type_pt> type nostar_type typedef_unit
-%destructor { destroy_type($$); } type nostar_type typedef_unit
+%type <type_pt> type typedef_unit
+%destructor { destroy_type($$); } type typedef_unit
 %type <type_l> union_list_opt types union_list
                typedef_list_opt typedef_list typedef_composite typedef_units
 %destructor { destroy_type_list($$); }
@@ -677,12 +677,12 @@ pat_list: pattern_opt ',' pattern_opt
 	| pat_list ',' pattern_opt { $$=make_pattern_node($1,$3); }
 ;
 
-id_spec: nostar_type pattern { $$.type_pt=$1; $$.ip=$2; }
+id_spec: type pattern { $$.type_pt=$1; $$.ip=$2; }
 	| '(' id_specs ')'
 	{ $$.type_pt=make_tuple_type($2.typel);
 	  $$.ip.kind=0x2; $$.ip.sublist=reverse_patlist($2.patl);
 	}
-	| nostar_type '.' { $$.type_pt=$1; $$.ip.kind=0x0; }
+	| type '.' { $$.type_pt=$1; $$.ip.kind=0x0; }
 ;
 
 id_specs: id_spec
@@ -699,7 +699,7 @@ id_specs_opt: id_specs
 	| /* empty */ { $$.typel=nullptr; $$.patl=nullptr; }
 ;
 
-type_spec: nostar_type { $$.type_pt=$1; $$.ip.kind=0x0; }
+type_spec: type { $$.type_pt=$1; $$.ip.kind=0x0; }
 	| '(' struct_specs ')'
 	  { $$.type_pt=make_tuple_type($2.typel);
 	    $$.ip.kind=0x2; $$.ip.sublist=reverse_patlist($2.patl);
@@ -735,20 +735,17 @@ union_specs: type_field '|' type_field
 ;
 
 type_field : type IDENT { $$.type_pt=$1; $$.ip.kind=0x1; $$.ip.name=$2; }
-	| nostar_type'.'{ $$.type_pt=$1; $$.ip.kind=0x0; }
+	| type'.'{ $$.type_pt=$1; $$.ip.kind=0x0; }
 ;
 
-nostar_type : PRIMTYPE	{ $$=make_prim_type($1); }
+type	: PRIMTYPE	{ $$=make_prim_type($1); }
 	| TYPE_ID
 	  { bool c; $$=acquire(global_id_table->type_of($1,c)).release(); }
-	| '[' union_list ']'	{ $$=make_row_type(make_union_type($2)); }
 	| '(' union_list ')'	{ $$=make_union_type($2); }
 	| '(' union_list_opt ARROW union_list_opt ')'
 	  { $$=make_function_type(make_union_type($2),make_union_type($4)); }
-;
-
-type : nostar_type
-	| '*' { $$=new type_expr;}
+	| '[' union_list ']'	{ $$=make_row_type(make_union_type($2)); }
+	| '[' '*' ']'	        { $$=make_row_type(new type_expr{}); }
 ;
 
 union_list_opt :   { $$=make_type_singleton(make_tuple_type(nullptr)); }
