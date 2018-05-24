@@ -1650,7 +1650,7 @@ index~|i| into the vector.
                      << type << std::endl;
     else
       *output_stream << "Type name '" << main_hash_table->name_of(it->id) @|
-        << "' defined as " << type << std::endl;
+        << "' defined as " << type.untabled() << std::endl;
     if (not fields.empty())
     { auto& group = *store_it;
       @< Add functions for |fields| with types taken from |group| to

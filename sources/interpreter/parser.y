@@ -699,7 +699,7 @@ id_specs_opt: id_specs
 	| /* empty */ { $$.typel=nullptr; $$.patl=nullptr; }
 ;
 
-type_spec: type { $$.type_pt=$1; $$.ip.kind=0x0; }
+type_spec: nostar_type { $$.type_pt=$1; $$.ip.kind=0x0; }
 	| '(' struct_specs ')'
 	  { $$.type_pt=make_tuple_type($2.typel);
 	    $$.ip.kind=0x2; $$.ip.sublist=reverse_patlist($2.patl);
@@ -735,7 +735,7 @@ union_specs: type_field '|' type_field
 ;
 
 type_field : type IDENT { $$.type_pt=$1; $$.ip.kind=0x1; $$.ip.name=$2; }
-	| type '.'{ $$.type_pt=$1; $$.ip.kind=0x0; }
+	| nostar_type'.'{ $$.type_pt=$1; $$.ip.kind=0x0; }
 ;
 
 nostar_type : PRIMTYPE	{ $$=make_prim_type($1); }
