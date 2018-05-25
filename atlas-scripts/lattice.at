@@ -7,7 +7,7 @@
 }
 
 { |M| is an $n\times k$ matrix, so columns of |M| span a $\Z$-submodule
-  $ W=image(M)$ of $\Z^n$; get canonical generators for this submodule }
+  $ W=image(M)$ of $\Z^n$; get canonical    generators for this submodule }
 set image_lattice (mat A) = mat:
    let (M,,pivots,)=echelon(A) then c=#M
 in for i@j in pivots
@@ -60,10 +60,18 @@ set saturation_quotient_basis = image_complement_basis@mat
 set projector_to_image (mat M) = mat:
   let (c,R)=adapted_direct_sum(M) in R[ : , :c] * R.inverse[ :c, : ]
 
+{alternate form: an mxc matrix, giving projection to Im(M) in the basis image_subspace(M)}
+set image_projector(mat M)= mat:
+  let (c,R)=adapted_direct_sum(M) in R.inverse[:c , : ]
 
-{ complementary projector, to chosen complement to |image_subspace(M)| }
+{complementary projector, to chosen complement to |image_subspace(M)| }
 set projector_mod_image (mat M) = mat:
   let (c,R)=adapted_direct_sum(M) in R[ : ,c: ] * R.inverse[c: , : ]
+
+{alternate form: an mx(m-c) matrix, giving projection to the complement of Im(M), 
+ in the basis image_complement_basis(M)}
+set mod_image_projector(mat M)= mat:
+  let (c,R)=adapted_direct_sum(M) in R.inverse[c: , : ]
 
 { |M| is an $n\times k$ matrix; its columns span a submodule $W$ of $\Z^n$.
   A complement to |image_subspace(M)| is chosen by |adapted_direct_sum(M)|, and
@@ -125,15 +133,7 @@ set select_rows([int] rows, mat M)=mat:^(select_columns(rows,^M))
 set first_columns(int n,mat M)=mat:select_columns(#n,M)
 set first_rows(int n,mat M)=mat:select_rows(#n,M)
 
-{similar to projector_mod_image
-suppose M is an mxn matrix of rank r, whose columns span an r-dimensional
- subspace of U=Z^r in V=Z^m
-projector_mod_image(M) is mxm, of rank m-r, whose image is
- a complement to U in V
-mod_image_projector(M) is mx(m-r), describing the map from V
- to an (m-r)-dimensional space }
-set mod_image_projector(mat M)= mat:
-  let (c,R)=adapted_direct_sum(M) in R.inverse[c: , : ]
+
 
 {basis of intersection of two matrices
  returns (X,Y) where the columns of X span the intersection
@@ -169,7 +169,8 @@ A: (r,n) matrix
  Note: image_complement_basis is the last n-c columns of R
 }
 set adapted_direct_sum_plus (mat A) = (int,mat,mat,mat,mat,mat):
-   let (M,C,pivot,)=echelon(A) then (r,c)=shape(M), N=M
+   let (M,C,pivot,)=echelon(A) then (r,c)=shape(M), N=M 
+   then Z=null(r,n_columns(A)-c) 
    then R=id_mat(r) { record row operations, held in inversed form }
 in for j:c { loop over columns of N while it is being modified in the loop }
    do let col=N[j] then (d,C)=Bezout(col[j:pivot[j]+1]), tN=^N
@@ -177,5 +178,5 @@ in for j:c { loop over columns of N while it is being modified in the loop }
    in N := c^ for i:r do if i<j or i>pivot[j] then tN[i] else tN_C[i-j] fi od
    ;  R := r# for i:r do if i<j or i>pivot[j] then  R[i] else  R_C[i-j] fi od
    ; assert(N[j,j]=d)
-   od; assert(R*N=M); (c,R,N,C,M,null(r,n_columns(A)-n_columns(N)))
+   od; assert(R*N=M);assert(A*C=R*(N##Z));(c,R,N,C,M,Z)
 
