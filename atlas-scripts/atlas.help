@@ -899,14 +899,17 @@ already used this fact in the examples above.
 While most definitions serve to associate values to identifiers or operator
 symbols, there is another kind of definition whose main purpose is to make one
 or more identifiers into an abbreviation for a (probably composite) type. These
-definitions are called type definitions. They are marked by an initial ':', so
+definitions are called type definitions, which are introduced by the 'set_type'
+keyword. There are two forms of type definitions, simple ones and general ones.
+Simple type definitions equate a new identifier to a type expression, as in
 
   atlas> set_type int_fun = (int->int)
 
-would define 'int_fun' as an abbreviation for the type (int->int) of functions
-mapping integers to integers. When the defined type is a tuple or a union,
-there is in addition the possibility to attach tags to each of their
-components. For instance
+which defines 'int_fun' as an abbreviation for the type (int->int) of functions
+mapping integers to integers. The type expression must be valid in the context,
+and the type name will serve as a shorthand for that expression. When the
+defined type is a tuple or a union, there is in addition the possibility to
+also attach tags to each of their components. For instance
 
   atlas> set_type Gaussian_int = (int re, int im)
 
@@ -932,11 +935,11 @@ component, which will have become 4.
 
 For union types tags also define functions which, dually to the tuple
 situation, map from a component type to the union type; these are called
-injectors or injection functions. For instance, basic.at contains a line
+injectors or injection functions. For instance, basic.at defines a type
 
-  set_type maybe_a_vec = (void no_solution | vec solution)
+   maybe_a_vec =    ( void no_vec | vec solution)
 
-that defines 'maybe_a_vec' to stand for the type (void|vec}, and also defines
+that defines 'maybe_a_vec' to stand for the type (void|vec), and also defines
 'no_solution' and 'solution' to be functions of types (void->(void|vec))
 respectively (vec->(void|vec)) that build values of the union type under one of
 its variants. Contrary to the tuple case, there is no alternative way that a
@@ -946,18 +949,67 @@ The names denoting the injector functions also serve as tag to identify the
 variants of the union type when used in "discrimination expressions", as will be
 discussed in the description of such expressions in section 8 below.
 
+The general type definition also starts with 'set_type', but it is followed by a
+list of type definitions (possibly of length one) enclosed in square brackets
+(the definition cited above of 'maybe_a_vec' actually occurs in such a list).
+The main difference with the simple type definition is that the right hand sides
+of these definitions can use not only existing types, but also the names
+introduced in the left hand sides, which allows them to introduce (mutually)
+recursive types. A right hand side cannot be a single type name though; there is
+little point to this at it would only allow the same type to be designated by
+more than one name, and this interdiction makes circular definitions impossible.
+A recursive type represents an infinite (but repetitive) type expression, but in
+many cases such types do admit values, because values of function, union or row
+type can be constructed without requiring to first have values of each component
+type. A typical recursive type definition is the following
+
+  atlas> set_type [ tree=(void nil|tree_node node)
+                  , tree_node=(tree left,int key, tree right)
+                  ]
+
+where the 'nil' injection function allows creating an empty tree from nothing,
+while 'node' allows constructing a tree from two sub-trees and an integer key.
+
+Another difference with simple type definitions is that type identifiers
+introduced in general type definitions will be retained in output of types.
+However, this is purely cosmetic, and so introducing a type name does not create
+an entity separate form the type expression it was equated to in its definition,
+which will be equivalent to it for all purposes to that type name. Indeed, the
+system determines (structural) equivalence of any (sub-)types that occur in the
+context of general type definitions, and uses a unique representation for each
+of them. Therefore setting two or more type names to the same type expression is
+pointless: the type names used on input will be synonymous, and just one of the
+names (the first defined) will be used systematically on output. For this reason
+general type definitions are best reserved to introduce elaborate tuple or union
+types (with field names) that are unlikely to accidentally be equivalent to a
+type occurring independently; it should be noted that any field names are not
+part of the type, so they cannot be used to distinguish tuple or union types
+among each other that are otherwise structurally identical.
+
+Nonetheless, the system will store the association between a type name defined
+using a general type definition and field names introduced in the same
+definition. This can be seen using the 'whattype' command; for instance
+
+  atlas> whattype tree
+  Defined type: ( void nil | tree_node node )
+  atlas> whattype tree_node
+  Defined type: ( tree left , int key , tree right )
+
 While an identifier is defined as an abbreviation for a type, its syntactic
 role is changed, which makes it impossible to use the identifier for another
 purpose, even in local definitions. However it is possible to forget the type
 definition altogether, as in
 
-  atlas> forget Gaussian_int
+  atlas> forget tree
+  atlas> forget tree_node
 
-This also removes from the overload tables any projectors or injectors
-introduced with the original type definition (but as with with all instances
-where the global variable or overload tables are changed, any functions that
-used the identifiers while they were defined will continue to function, using
-the meaning the identifier had at the point of definition of those functions).
+For types introduced in a general type definition, this also removes from the
+overload tables any projection or injection function introduced there. This
+operation of forgetting will not break and functions that were defined using the
+type name and/or associated field names; in particular the type name may occur
+in the type of such functions (or other values), and they will be continued to
+be output using the "forgotten" type name (because in the case of recursive
+types no other finite representation of the type is available).
 
 The definition of a defined type name with name T can be viewed by typing
 

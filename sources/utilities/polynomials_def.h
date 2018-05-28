@@ -344,7 +344,7 @@ std::ostream& Polynomial<C>::print(std::ostream& strm, const char* x) const
 */
 template<typename C> void safeAdd(C& a, C b)
 {
-  assert(a>=C(0)); // we're try to conserve this; it'd better be true intially
+  assert(a>=C(0)); // we're try to conserve this; it'd better be true initially
   assert(b>=C(0)); // so the we only need to check for overflow
   if (b > std::numeric_limits<C>::max() - a)
     throw error::NumericOverflow();
@@ -373,7 +373,7 @@ template<typename C> void safeDivide(C& a, C b)
 */
 template<typename C> void safeProd(C& a, C b)
 {
-  assert(a>=C(0)); // we're try to conserve this; it'd better be true intially
+  assert(a>=C(0)); // we're try to conserve this; it'd better be true initially
   assert(b>=C(0)); // so the we only need to check for overflow
   if (a == 0) // do nothing
     return;
@@ -392,7 +392,7 @@ template<typename C> void safeProd(C& a, C b)
 */
 template<typename C> void safeSubtract(C& a, C b)
 {
-  assert(a>=C(0)); // we're try to conserve this; it'd better be true intially
+  assert(a>=C(0)); // we're try to conserve this; it'd better be true initially
   assert(b>=C(0)); // so the we only need to check for underflow
   if (b > a)
     throw error::NumericUnderflow();

@@ -2713,9 +2713,10 @@ public:
   , rt_p(nullptr) @+{}
   virtual ~real_form_value ();
 @)
-  static shared_real_form build(shared_inner_class icp,RealFormNbr f);
+  static shared_real_form build(const shared_inner_class& icp,RealFormNbr f);
   static shared_real_form build @|
-   (shared_inner_class icp,RealFormNbr f,const RatCoweight& coch, TorusPart tp);
+   (const shared_inner_class& icp,RealFormNbr f,
+    const RatCoweight& coch, const TorusPart& tp);
   virtual void print(std::ostream& out) const;
   static const char* name() @+{@; return "real form"; }
   real_form_value @[(const real_form_value& ) = delete@];
@@ -2739,7 +2740,8 @@ the same location where it had been looked up. In this case looking up is just
 indexing the vector |icp->real_form_wptr| with the real form number~|f|.
 
 @< Function def...@>=
-shared_real_form real_form_value::build(shared_inner_class icp,RealFormNbr f)
+shared_real_form real_form_value::build
+  (const shared_inner_class& icp,RealFormNbr f)
 {
   auto& w_ptr = icp->real_form_wptr[f];
   if (auto p = w_ptr.lock())
@@ -2763,7 +2765,8 @@ the relevant |RealReductiveGroup| constructor, and are computed by the function
 
 @< Function def...@>=
 shared_real_form real_form_value::build @|
-   (shared_inner_class icp,RealFormNbr f,const RatCoweight& coch, TorusPart tp)
+   (const shared_inner_class& icp, RealFormNbr f,
+    const RatCoweight& coch, const TorusPart& tp)
 {
   auto default_coch = some_coch(icp->val,icp->val.xi_square(f));
   if (coch==default_coch and tp==icp->val.x0_torus_part(f))
@@ -2913,6 +2916,14 @@ void base_grading_vector_wrapper(expression_base::level l)
   if (l!=expression_base::no_value)
     push_value(std::make_shared<rational_vector_value>(rf->val.g_rho_check()));
 }
+
+void initial_torus_bits_wrapper(expression_base::level l)
+{ shared_real_form rf= get<real_form_value>();
+  if (l!=expression_base::no_value)
+    push_value(std::make_shared<vector_value> @|
+      (int_Vector(rf->val.x0_torus_part())));
+}
+
 
 @ There is a partial ordering on the Cartan classes defined for a real form. A
 matrix for this partial ordering is computed by the function |Cartan_order|,
@@ -3136,11 +3147,10 @@ involutions that can be encountered have been entered into the table.
     G->val.generate_Cartan_orbit(*it);
 }
 
-@ The methods |central_fiber| and |x0_torus_part| of |InnerClass|
-can be accessed using following functions. The function |central_fiber|
-computes those torus parts in the fiber at the distinguished involution that
-both remain in the strong real form orbit and are central (do not affect any
-gradings).
+@ The method |central_fiber| of |InnerClass| can be accessed using following
+function. The method computes those torus parts in the fiber at the
+distinguished involution that both remain in the strong real form orbit and are
+central (do not affect any gradings).
 
 @< Local function def...@>=
 void central_fiber_wrapper(expression_base::level l)
@@ -3155,14 +3165,6 @@ void central_fiber_wrapper(expression_base::level l)
     result->val[i]= std::make_shared<vector_value>(int_Vector(*it));
   push_value(std::move(result));
 }
-
-void initial_torus_bits_wrapper(expression_base::level l)
-{ shared_real_form rf= get<real_form_value>();
-  if (l!=expression_base::no_value)
-    push_value(std::make_shared<vector_value> @|
-      (int_Vector(rf->val.innerClass().x0_torus_part(rf->val.realForm()))));
-}
-
 
 @ Finally we install everything related to real forms.
 @< Install wrapper functions @>=

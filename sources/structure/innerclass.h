@@ -138,7 +138,7 @@ void twisted_act
   this information is generated for all Cartan classes upon construction of
   the |InnerClass|. The remaining fields of |C_info| reflect an
   old and now reverted design decision, in which only a pointer to a
-  |CartanClass| was held, which was intially null and "filled" on demand. This
+  |CartanClass| was held, which was initially null and "filled" on demand. This
   meant that real forms, which are identified as orbits in the adjoint fiber
   group, were generated without access to the |CartanClass| information. In
   fact, although that information is now available right away, the real forms
@@ -261,9 +261,11 @@ class InnerClass
   const TitsGroup& titsGroup() const { return d_titsGroup; }
   const TitsGroup& dualTitsGroup() const { return d_dualTitsGroup; }
 
+  const Fiber& fundamental_fiber () const { return d_fundamental; }
+  const Fiber& fundamental_dual_fiber () const { return d_dualFundamental; }
+
   // a general repository for involutions, organised by conjugacy class
   const Cartan_orbits& involution_table () const { return C_orb; }
-
 
 // Attributes of the inner class as a whole
 
@@ -370,6 +372,7 @@ class InnerClass
   cartanclass::square_class xi_square(RealFormNbr rf) const;
   RealFormNbr square_class_repr(cartanclass::square_class csc) const;
 
+  // determine seed that defines the real form |rf| within its square class
   TorusPart x0_torus_part(RealFormNbr rf) const;
 
   // torus parts that remain in the fiber and do not affect any grading
@@ -399,12 +402,6 @@ class InnerClass
   }
   cartanclass::FiberElt to_fundamental_fiber(TorusPart t) const
   { return d_fundamental.fiberGroup().toBasis(t); }
-
-  // list torus parts mapping to strong form of |y| and further to |image|
-  containers::sl_list<TorusPart> torus_parts_for_grading_shift
-    (const cartanclass::square_class csc,
-     const cartanclass::FiberElt y, const cartanclass::AdjointFiberElt image)
-  const;
 
   const Partition& weak_real_partition() const
   { return d_fundamental.weakReal(); }

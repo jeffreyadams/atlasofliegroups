@@ -105,17 +105,18 @@
 %destructor { destroy_id_pat($$); } pattern pattern_opt closed_pattern
 %type <pl> pat_list
 %destructor { destroy_pattern($$); } pat_list
-%type <type_pt> type nostar_type typedef_unit
-%destructor { destroy_type($$); } type nostar_type typedef_unit
+%type <type_pt> type typedef_unit
+%destructor { destroy_type($$); } type typedef_unit
 %type <type_l> union_list_opt types union_list
                typedef_list_opt typedef_list typedef_composite typedef_units
 %destructor { destroy_type_list($$); }
             types union_list_opt union_list typedef_list_opt
             typedef_composite typedef_list typedef_units
-%type <id_sp1> id_spec typedef_type typedef_type_field
+%type <id_sp1> id_spec type_spec typedef_type type_field typedef_type_field
 %destructor { destroy_type($$.type_pt);destroy_id_pat($$.ip); }
-	    id_spec typedef_type typedef_type_field
-%type <id_sp> id_specs id_specs_opt typedef_struct_specs typedef_union_specs
+	    id_spec type_spec typedef_type type_field typedef_type_field
+%type <id_sp> id_specs id_specs_opt struct_specs union_specs
+            typedef_struct_specs typedef_union_specs
 %destructor { destroy_type_list($$.typel);destroy_pattern($$.patl); }
 	    id_specs id_specs_opt
 %type <case_l> caselist do_caselist
@@ -157,8 +158,10 @@ input:	'\n'			{ YYABORT; } /* null input, skip evaluator */
 		{ struct raw_id_pat id; id.kind=0x1; id.name=$1;
 		  global_set_identifier(id,$3,0,@$); YYABORT; }
 	| IDENT ':' type '\n'	{ global_declare_identifier($1,$3); YYABORT; }
-	| SET_TYPE type_equations '\n'
-	  { process_type_definitions($2,@$); YYABORT; }
+	| SET_TYPE IDENT '=' type_spec '\n'
+	  { type_define_identifier($2,$4.type_pt,$4.ip,@$); YYABORT; }
+	| SET_TYPE TYPE_ID '=' type_spec '\n'
+	  { type_define_identifier($2,$4.type_pt,$4.ip,@$); YYABORT; }
 	| SET_TYPE '[' type_equations ']' '\n'
 	  { process_type_definitions($3,@$); YYABORT; }
 
@@ -674,12 +677,12 @@ pat_list: pattern_opt ',' pattern_opt
 	| pat_list ',' pattern_opt { $$=make_pattern_node($1,$3); }
 ;
 
-id_spec: nostar_type pattern { $$.type_pt=$1; $$.ip=$2; }
+id_spec: type pattern { $$.type_pt=$1; $$.ip=$2; }
 	| '(' id_specs ')'
 	{ $$.type_pt=make_tuple_type($2.typel);
 	  $$.ip.kind=0x2; $$.ip.sublist=reverse_patlist($2.patl);
 	}
-	| nostar_type '.' { $$.type_pt=$1; $$.ip.kind=0x0; }
+	| type '.' { $$.type_pt=$1; $$.ip.kind=0x0; }
 ;
 
 id_specs: id_spec
@@ -696,17 +699,53 @@ id_specs_opt: id_specs
 	| /* empty */ { $$.typel=nullptr; $$.patl=nullptr; }
 ;
 
-nostar_type : PRIMTYPE	{ $$=make_prim_type($1); }
+type_spec: type { $$.type_pt=$1; $$.ip.kind=0x0; }
+	| '(' struct_specs ')'
+	  { $$.type_pt=make_tuple_type($2.typel);
+	    $$.ip.kind=0x2; $$.ip.sublist=reverse_patlist($2.patl);
+	  }
+	| '(' union_specs ')'
+	  { $$.type_pt=make_union_type($2.typel);
+	    $$.ip.kind=0x2; $$.ip.sublist=reverse_patlist($2.patl);
+	  }
+;
+
+struct_specs: type_field ',' type_field
+	  { auto head_typel=make_type_singleton($1.type_pt);
+	    auto head_pat =make_pattern_node(nullptr,$1.ip);
+	    $$.typel=make_type_list(head_typel,$3.type_pt);
+	    $$.patl=make_pattern_node(head_pat,$3.ip);
+	  }
+	| struct_specs ',' type_field
+	  { $$.typel=make_type_list($1.typel,$3.type_pt);
+	    $$.patl=make_pattern_node($1.patl,$3.ip);
+	  }
+;
+
+union_specs: type_field '|' type_field
+	  { auto head_typel=make_type_singleton($1.type_pt);
+	    auto head_pat =make_pattern_node(nullptr,$1.ip);
+	    $$.typel=make_type_list(head_typel,$3.type_pt);
+	    $$.patl=make_pattern_node(head_pat,$3.ip);
+	  }
+	| union_specs '|' type_field
+	  { $$.typel=make_type_list($1.typel,$3.type_pt);
+	    $$.patl=make_pattern_node($1.patl,$3.ip);
+	  }
+;
+
+type_field : type IDENT { $$.type_pt=$1; $$.ip.kind=0x1; $$.ip.name=$2; }
+	| type'.'{ $$.type_pt=$1; $$.ip.kind=0x0; }
+;
+
+type	: PRIMTYPE	{ $$=make_prim_type($1); }
 	| TYPE_ID
 	  { bool c; $$=acquire(global_id_table->type_of($1,c)).release(); }
-	| '[' union_list ']'	{ $$=make_row_type(make_union_type($2)); }
 	| '(' union_list ')'	{ $$=make_union_type($2); }
 	| '(' union_list_opt ARROW union_list_opt ')'
 	  { $$=make_function_type(make_union_type($2),make_union_type($4)); }
-;
-
-type : nostar_type
-	| '*' { $$=new type_expr;}
+	| '[' union_list ']'	{ $$=make_row_type(make_union_type($2)); }
+	| '[' '*' ']'	        { $$=make_row_type(new type_expr{}); }
 ;
 
 union_list_opt :   { $$=make_type_singleton(make_tuple_type(nullptr)); }

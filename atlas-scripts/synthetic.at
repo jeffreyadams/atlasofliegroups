@@ -4,7 +4,7 @@
 <lattice.at     { for in_lattice }
 
 set_type
-  KGBElt_gen = (InnerClass inner_class, mat involution, ratvec torus_factor)
+[ KGBElt_gen = (InnerClass inner_class, mat involution, ratvec torus_factor) ]
   { generalized KGB elements: x^2 not necessarily central }
 
 { KGBElt_gen:(ic,theta,v) represents $\exp_1(i\pi v)\sigma_w\xi_0$

@@ -85,7 +85,7 @@ template<unsigned int dim> class Subspace
   BitSet<dim> support_perp () const // complement of |d_support|
   { return BitSet<dim>(d_support).complement(rank()); } // copy and complement
 
-  //! \brief Expresses |v| in the subspace basis.
+  // Express |v| in the subspace basis.
   BitVector<dim> toBasis(BitVector<dim> v) // by-value
     const
   {
@@ -96,9 +96,7 @@ template<unsigned int dim> class Subspace
     return v;
   }
 
-  /*!
-  \brief Interprets |v| in the subspace basis and returns external form
-  */
+  // Interpret |v| in the subspace basis and returns external form
   BitVector<dim> fromBasis(const BitVector<dim>& v) const
   {
     assert(v.size()==dimension());

@@ -20,13 +20,11 @@
   every symbol is equivalent to a unique one with a=b+1 and at most one 0
 }
 
-set_type
-[ Orbit=[int] { really |Partition|, but cannot define one type as another }
+set_type Orbit = Partition
   { all odd(C) or even(B) parts must have even multiplicity }
-, Symbol=[[int]]  { must have 2 parts: [f,g], other conditions above }
-, Hn_rep  =(Partition,Partition)
+set_type Symbol = [[int]]  { must have 2 parts: [f,g], other conditions above }
+set_type Hn_rep  =(Partition,Partition)
   { hyperoctahedral representation: pair (triv,sign) of partitions; |p|+|q|=n }
-]
 
 { use equivalence relation on symbols to get one with at most one 0 }
 set normalize ([int] v) = [int]:
@@ -118,7 +116,7 @@ set all_reps_BC (int n) = [Hn_rep]:
 set is_special (Symbol S) = bool:
    let f=S[0], g=S[1] in all(for gi@i in g do f[i]<=gi and gi<=f[i+1] od)
 
-set is_special (Hn_rep(nu,mu)) =bool:
+set is_special (Hn_rep(nu,mu)) = bool:
 (  let d=#(mu:=mu.strip_to_partition)+1-#(nu:=nu.strip_to_partition)
 in case d then return false in () else nu ##:= for :d do 0 od esac
 ;  all(for mu_i@i in mu do nu[i]+1>=mu_i and mu_i>=nu[i+1] od)

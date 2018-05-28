@@ -853,8 +853,8 @@ InnerClass::global_KGB_size() const
 
 }
 
-// weak real forms are grouped by square class, whose index |xi_square| finds
-// such forms share a central value for the square of their strong involutions
+// Weak real forms are grouped by square class, whose index |xi_square| finds.
+// Such forms share a central value for the square of their strong involutions.
 cartanclass::square_class InnerClass::xi_square // class for square
   (RealFormNbr rf) const
 { return d_fundamental.central_square_class(rf); }
@@ -866,7 +866,7 @@ RealFormNbr InnerClass::square_class_repr // class elected real form
 // the basic information stored for a real form is a grading of the simple roots
 Grading InnerClass::simple_roots_x0_compact(RealFormNbr rf) const
 {
-#if 1 // exploit that adjoint fiber group structure is rather transparent
+#if 1 // exploit that adjoint fund. fiber group structure is rather transparent
   // Weak real forms are constructed as orbits in the adjoint fiber group. The
   // basis used for adjoint X_* is that of the fundamental coweights, on which
   // the distinguished involution acts as a permutation; the adjoint fiber
@@ -932,16 +932,19 @@ Grading compacts_for(const InnerClass& G, TorusElement coch)
   return result;
 }
 
-// The function |some_coch| defines an elected cocharacter for the square class
-
-// some coweight $t$ with real form of $\exp(i\pi t)\delta_1$ in class |csc|
-// this becomes |g_rho_check()| value for all non-synthetic real forms in |csc|
+/*
+  The function |some_coch| defines an elected cocharacter for the square class
+  it returns some coweight $t$ for which the real form defined by $\exp(i\pi
+  t)\delta_1$ is in square class |csc|. This used to define the coweight
+  |g_rho_check()| for all non-synthetic real forms in |csc|, but no longer does
+  as this mismatches |G.square_class_base_grading(csc)|. See below.
+*/
 RatCoweight some_coch (const InnerClass& G,cartanclass::square_class csc)
 {
   const RootDatum& rd=G.rootDatum();
   auto compacts = G.simple_roots_x0_compact(G.square_class_repr(csc));
   // got some grading associated to |csc|; get representative cocharacter for it
-  RatWeight coch_rep (rd.rank());
+  RatCoweight coch_rep (rd.rank());
   for (RankFlags::iterator it=compacts.begin(); it(); ++it)
     coch_rep += rd.fundamental_coweight(*it);
   assert(compacts_for(G,y_values::exp_pi(coch_rep))==compacts);
@@ -978,38 +981,6 @@ TorusPart InnerClass::grading_shift_repr (Grading diff) const
   assert((fg2grading*v).data()==diff); // check that we solved the equation
   return fg.fromBasis(v);
 } // |grading_shift_repr|
-
-/*
-  |preimage| is a somewhat technical function to aid |central_fiber|, listing
-  what is essentially the automorphism group of a (future) set K\G/B
-
-  Given an element |y| of the fundamental fiber, find all those that (1) map
-  under |toAdjoint| to the adjoint fiber element |image| (so that they will
-  induce the corresponding shift in grading), and (2) lie in the "same strong
-  real form" as |y|, this being an orbit in the fiber group under the action
-  of the imaginary Weyl group, the action depending on the square class |csc|;
-  return list of |TorusPart| values that represent their differences with |y|.
-*/
-containers::sl_list<TorusPart>
-  InnerClass::torus_parts_for_grading_shift
-    (const cartanclass::square_class csc,
-     const cartanclass::FiberElt y, const cartanclass::AdjointFiberElt image)
-  const
-{
-  const auto& fund_f = d_fundamental;
-  const SmallSubquotient& fg = fund_f.fiberGroup();
-  const unsigned int f_rk = fund_f.fiberRank();
-  const Partition& pi = fund_f.fiber_partition(csc);
-  const cartanclass::fiber_orbit srf = pi.class_of(y.data().to_ulong());
-  containers::sl_list<TorusPart> result;
-  for (unsigned i=pi.classRep(srf); i<pi.size(); ++i) // only start is optimised
-    if (pi.class_of(i)==srf) // beyond that, just test for the right class
-    { cartanclass::FiberElt fe(RankFlags(i),f_rk);
-      if (fund_f.toAdjoint(fe)==image)
-	result.push_back(fg.fromBasis(fe-y));
-    }
-  return result;
-} // |torus_parts_for_grading_shift|
 
 /*
   |preimage| is a somewhat technical function to aid |central_fiber|, listing
@@ -1061,14 +1032,16 @@ InnerClass::central_fiber(RealFormNbr rf) const
 
 
 /*
-  We need |central_fiber| in |x0_torus_part| only to standardise the choice,
-  which the function |minimum| defined below actually accomplishes.
+  Find a |TorusPart| value that will determine the initial |KGBElt|, and thereby
+  (together with the base grading for the square class) determine the real form
+
+  We need |central_fiber| in |x0_torus_part| only to standardise the choice;
+  this is achieved by taking the minimum over that fiber, after adding |bits|.
 
   What preceeds that is straightforward: start with the reference compacts for
   the square class; compare with the desired compacts at |x0| obtained from
   |simple_roots_x0_compact(rf)| to find the grading shift needed, and using
-  |grading_shift_repr| find a |TorusPart| that will do this. This is the
-  candidate to be standardised; torus element |coch| is needed for |minimum|.
+  |grading_shift_repr| find a |TorusPart| that will do this.
   */
 TorusPart InnerClass::x0_torus_part(RealFormNbr rf) const
 {
@@ -1088,10 +1061,11 @@ TorusPart InnerClass::x0_torus_part(RealFormNbr rf) const
   while (not (++it).at_end())
     if (bits+*it<bits+min) // offset |bits| does not cancel from this relation!
       min = *it;
-  bits+=min;
 
-  assert(tits::compact_simples(rootDatum(),t += bits,simple_roots_imaginary())
-	 ==rf_cpt);
+  bits += min;
+  t += bits;
+
+  assert(tits::compact_simples(rootDatum(),t,simple_roots_imaginary())==rf_cpt);
 
   return bits;
 } // |x0_torus_part|

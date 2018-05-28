@@ -40,7 +40,6 @@ namespace {
 
   LieType first_type(Category, size_t, bool& done);
   bool is_last(const SimpleLieType& slt, Category c);
-  bool is_last_of_rank(const SimpleLieType&);
   bool advance_type(LieType&, Category);
   void advance_type(SimpleLieType&, Category);
 

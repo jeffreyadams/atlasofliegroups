@@ -870,9 +870,9 @@ class type_expr::defined_type_mapping : public std::vector<type_binding>
 type_expr::defined_type_mapping type_expr::type_map;
 
 @ A number of additional methods of |type_expr| are all |static| and just serve
-to regulate access to the static class member |type_map|. Most of them simply
-serve as a hatch (dutch: ``doorgeefluik'', no good English equivalent) to pass
-on information, the method |add_typedefs| serving to enter a list of newly
+to regulate access to the static class member |type_map|. While most of them
+simply serve as a hatch (dutch: ``doorgeefluik'', no good English equivalent) to
+pass on information, the method |add_typedefs| used to enter a list of newly
 defined (potentially recursive) types into |type_map| is quite elaborate. Its
 argument is a list |defs| of pairings of a type identifier to a type expression.
 The potentially recursive nature of these definitions lies in that they can not
