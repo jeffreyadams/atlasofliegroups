@@ -4477,12 +4477,16 @@ void adapted_basis_wrapper(expression_base::level l)
   }
 }
 
-@ Here are two related functions, but which are implemented in the \.{lattice}
+@ Here are three related functions, but which are implemented in the \.{lattice}
 compilation unit, and whose implementation avoids using the generality of
 |matreduc::diagonalise|. They are |kernel| which for any matrix~$M$ will find
-another whose image is precisely the kernel of~$M$, and |eigen_lattice| which is
-a special case for square matrices~$A$, where the kernel of $A-\lambda\id$ is
-computed.
+another whose image is precisely the kernel of~$M$, then |eigen_lattice| which
+is a special case for square matrices~$A$, where the kernel of $A-\lambda\id$ is
+computed, and finally |row_saturate| which replaces a matrix by one with the
+same row space, but made such that the rows span, over $\Zee$, the intersection
+of that space with~$\Zee^n$ (currently this function actually calls
+|matreduc::adapted_basis| internally, so it does not really belong in this
+group).
 
 @h "lattice.h"
 
