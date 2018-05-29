@@ -136,12 +136,6 @@ set Levi_of_H (vec H,RootDatum rd)=([int],vec):
    if i=-1 then [] else [(M,Hs[i])] fi od
    in temp[0]
 
-{
-set all_H_dimensions(RootDatum rd)=[int]:
-let all=all_H(rd) in
-let dims=for v@i in all do let d=dim_nilpotent(rd,ratvec_as_vec(2*v)) in prints(i, " ", v, ", ", v*simple_roots(rd), even_eigenspaces(rd,v), " ", odd_eigenspaces(rd,v),  " ", d);d od in
-sort(dims)
-}
 
 set sort_by_dimension_of_2_eigenspace  = ([ratvec,[vec]]->[ratvec,[vec]]):
   sort_by((ratvec z,[vec] v) int:#v)
@@ -176,68 +170,12 @@ set max_only([(vec,[vec])] arg)=[(vec,[vec])]:
   else [(vec:null(0),[])]
   fi
 
-{
 
-    let done=false,i=0 in
-      while not done and i<#u_p do if H*u[i]=2 then done:=true;rv#:=(H,u_p[i]) else i:=i+1 fi od fi od ;rv
-}
-{
-set output([(Parabolic,[(vec,[vec])])] answer)=
-let rv=[] in
-let rv_summary=[] in
-let (P,) =answer[0] in
-let rd=root_datum(P) in
-for (Q,pairs) in answer do
-let (S,x)=Q in let ()=prints();prints("Q: x=", x);prints("L=",Levi(Q));prints("u=",u(Q)) in
-{let ()=for (H,vectors) in pairs do prints("H:", H, " dimension: ", dim_nilpotent(rd,H));prints("vectors: ", vectors);rv#:=(H,vectors) od}
-rv_summary#:=(Q,#pairs)  od
-;prints("summary:");
-{for ((x,L,u),s)@i in rv_summary do }
-for ((x,L,u),pairs)@i in answer do
-prints();prints("parabolic #", i);prints(x);prints(L);prints("u=", u, "  dim(u): ", #u);prints("Number of H:",#pairs);
-for (H,u) in pairs do
- prints("H: ", H);prints("u\cap p:", u, "  dim u\cap p:", #u);prints("dimension: ",dim_nilpotent(rd,H)) od od;
-prints();prints("number of parabolics:", #answer);
-prints("number of orbits:", #rv);
-prints("dimensions of orbits:");
- let orbits= for (q,pairs)  in answer do
-  let (x,,)=q in
- for (H,) in pairs do  dim_nilpotent(rd,H) od od in print(orbits);
-prints("all dimensions:", flatten(orbits));
-prints("dimensions with multiplicity:", sort(flatten(orbits)));
-prints("distinct dimensions:", sort_u(flatten(orbits))); orbits
-
-set output_H([((KGBElt,RealForm,[vec]),[(vec,[vec])])] answer)=
-let ((x,,),) =answer[0] in
-let rd=root_datum(x) in
-for (q,pairs) in answer do
-let (x,L,u)=q in prints();prints("x=", x);prints("L=",L);prints("u=",u);
-for (H,vectors) in pairs do prints("H:", H, " dimension: ", dim_nilpotent(rd,H)) od od
-
-
-set run(RealForm G)=
-let allq=theta_stable_parabolics(G) then answer=for q in allq do (q,find_H(q))  od in  output(answer);answer
-
-set run_max_only(RealForm G)=
-let allq=all_q(G) then
-answer=for q in allq do (q,max_only(find_H(q)))  od in  output(answer);answer
-
-set run_max_only(RealForm G,int i)=
-let allq=[all_q(G)[i]] then
-answer=for q in allq do (q,max_only(find_H(q)))  od in  output(answer);answer
-}
 {containment order}
 set <= ([int] a,[int] b) = bool: all(#a,(int i)bool: find(b,a[i]).>=)
 set <  ([int] a,[int] b) = bool: sort(a) != sort(b) and a<=b
 
 set  principal_block(RealForm G)=Block:block(G,dual_quasisplit_form(G))
-
-{do:
->wcells print_W_cells(G,Gd)
-in shell:
-parse_even_nilpotents.pl wcells
-in atlas:
-<wcells_out {to define variable [[int]]:Wcells}}
 
 {convert Block to [param]
 
@@ -403,10 +341,6 @@ set move_to_distinguished_fiber(([int] H,KGBElt x))=(vec,KGBElt):
 
 set move_to_distinguished_fiber(RealNilpotent O)=RealNilpotent:
    let (H,x,)=O in real_nilpotent(move_to_distinguished_fiber((H,x)))
-
-set test_canonical_x_K(RealForm G)=bool:
-   all(for x in KGB(G) do let (y,)=move_to_distinguished_fiber(x) in
-   y=canonical_x_K(x) od)
 
 set stabilizer_of_x (KGBElt x)=[WeylElt]:
    let G=real_form(x) in
