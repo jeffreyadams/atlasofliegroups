@@ -63,7 +63,7 @@ set minimal_spherical_principal_series (RealForm G) = Param:
 }
 set spherical_unipotent_representations (RealForm G) = [Param]:
   assert(is_split(G),"group is not split");
-  let codes = %Lie_type(root_datum(G)) then n_factors=#codes in
+  let codes = simple_factors(Lie_type(root_datum(G))) then n_factors=#codes in
   if n_factors=1 then  { assert(is_split(G),"Group is not split");}
     for gamma in nilpotent_lambdas(G)
     do minimal_spherical_principal_series(G,gamma) od
