@@ -662,13 +662,12 @@ class TitsCoset
   const TitsGroup& Tg;
 
   /*
-    Offset used to define conjugation action of $\delta$ on root vectors
-    $X_\alpha$ which must be an element of the root space for
-    $\beta=twist(\alpha)$. In fact we insist that $X_\alpha$ is set to plus or
+    Offset used to define conjugation action of $\delta$ on root vectors in
+    $X_\alpha$, whose images must be an element of the root space for
+    $\beta=twist(\alpha)$. In fact we insist that $X_\alpha$ is sent to plus or
     minus $X_\beta$, the sign being given by |grading_offset[s]| where
     $\alpha=\alpha_s$. The fact that $\delta$ is a strong involution implies
-    that the grading offset must always the same for $\alpha$ as for
-    $twist(\alpha)$.
+    that the grading offsets for $\alpha$ and $twist(\alpha)$ are equal.
 
     In term of |TitsElement|s, this relation implies the "commutation relation"
     $\sigma_\alpha.\delta=m_\alpha^grading_offset[s].\delta.\sigma_\beta$

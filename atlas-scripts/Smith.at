@@ -2,13 +2,13 @@
 
 <basic.at
 
+set_type Vec = [int]
+set_type Mat = [[int]] { by columns }
+set_type RatVec = [rat]
+set_type RatMat = [[rat]] { by columns }
 set_type
-[ Vec = [int]
-, Mat = [[int]] { by columns }
-, RatVec = [rat]
-, RatMat = [[rat]] { by columns }
-, maybe_a_Vec =  ( void no_Vec | Vec Vec_solution )
-, maybe_a_RatVec =  ( void no_RatVec | [rat] RatVec_solution )
+[ maybe_a_Vec =     ( void no_Vec | Vec Vec_solution )
+, maybe_a_RatVec =  ( void no_RatVec | RatVec RatVec_solution )
 ]
 
 set minus (Vec col) = Vec: for e in col do -e od { avoid using -@vec }
