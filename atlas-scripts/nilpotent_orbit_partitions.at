@@ -19,9 +19,8 @@
 { utility to convert type A-G of a simple root system to a number 0-6
   we allow and ignore (trailing) torus factors; a pure torus classifies as 7 }
 set type_number (LieType t) = int:
-  let codes = %t.semisimple in
-  assert(#codes<=1,"Non-simple Lie type");
-  if =#codes then { pure torus} 7
+  let codes = simple_factors(t) in assert(#codes<=1,"Non-simple Lie type");
+  if =#codes then { pure torus } 7
   else let (c,)=codes[0] in ascii(c)-ascii("A")
   fi
 
@@ -44,13 +43,14 @@ set nilpotent_orbit_partitions (LieType t)= [Partition]:
 { insert conversion to LieType from (type converting to RootDatum)
   (types A-D only; this only depends on complexification of real group)
 }
-set nilpotent_orbit_partitions(RootDatum rd) = [vec]:
+set nilpotent_orbit_partitions(RootDatum rd) = [Partition]:
    nilpotent_orbit_partitions(Lie_type(rd))
 
 { test if partition is valid orbit in type ABCD }
-set is_valid (LieType t,vec P) = bool:
-  case type_number(t)
-  in { type A } true
+set is_valid (string type,vec P) = bool:
+{ avoid constructing |Lie_type(type[0]+n|, to no choke on "B1" and such }
+  case ascii(type)-ascii("A")
+  in true
   , { type B } sum(P).is_odd and
     all(for mult in P.frequencies.even_places do mult.is_even od)
   , { type C } sum(P).is_even and
@@ -60,26 +60,27 @@ set is_valid (LieType t,vec P) = bool:
   else false { exceptional types are not valid }
   esac
 
-set is_valid (string type,vec P) = bool:
-  let letter = type[0] then n= if letter="A" then sum(P)-1 else sum(P)\2 fi in
-  is_valid(Lie_type(type[0]+n),P)
+set is_valid (LieType t,vec P) = bool:
+  let tn=type_number(t), r=t.rank in
+  #P = case tn in r+1, r+r+1, r+r, r+r esac and is_valid("ABCD"[tn],P)
 
 { nilpotent orbits of dual group (types A-D only) }
-set dual_nilpotent_orbit_partitions(RootDatum rd)=[vec]:
+set dual_nilpotent_orbit_partitions(RootDatum rd)=[Partition]:
   nilpotent_orbit_partitions(dual(rd))
-set dual_nilpotent_orbit_partitions(RealForm G)=[vec]:
+set dual_nilpotent_orbit_partitions(RealForm G)=[Partition]:
   dual_nilpotent_orbit_partitions(root_datum(G))
 
 { tools for computing h(O^\vee): apply to rows of Young diagram }
 set tworho (int n)=vec: for k:n do (n-1)-2*k od { e.g., [2,0,-2] or [3,1,-1,-3]}
 set rho (int n)=[rat]: tworho(n)/2
 
-set String (int n)=vec: for k:n\2 do (n-1)-2*k od { e.g., [4,2] or [5,3,1]  }
+set String (int n) = Partition:
+  for k:n\2 do (n-1)-2*k od { e.g., [4,2] or [5,3,1]  }
 
 { compute 1/2 h(O^\vee) for G of type |t| (types A-D only)
   O^\vee assumed to be an orbit of G^\vee, given by a partition |P|
   only Lie type (of complexification) of G plays a role }
-set semisimple_element (LieType t,vec P) = vec: { a coweight }
+set semisimple_element (LieType t,Partition P) = vec: { a coweight }
   if type_number(t)=0
   then ## for p in P do tworho(p) od
   else let strs = ## for k in P do String(k) od in
@@ -90,7 +91,7 @@ set semisimple_element (LieType t,vec P) = vec: { a coweight }
   in this case apply dominant(.,rd) to resulting coweight; this only works if
   RootDatum is a classical group with the usual classical coordinates
 }
-set semisimple_element (RootDatum rd,vec p) = vec: { a dominant coweight }
+set semisimple_element (RootDatum rd,Partition p) = vec: { a dominant coweight }
   dominant(semisimple_element(Lie_type(rd),p),rd)
 
 { v,w are partitions of same n: sum(v)=sum(w)
@@ -108,7 +109,7 @@ set nilpotent_orbit_ss_elements (RootDatum rd) = [vec]:
 
 
 
-set lesseq_partition (vec v,vec w) = bool:
+set lesseq_partition (Partition v,Partition w) = bool:
    assert(sum(v)=sum(w),"not comparable");
    assert(v.>= and w.>= , "negative terms");
    v:=reverse_sort(v); w:=reverse_sort(w);
@@ -116,14 +117,14 @@ set lesseq_partition (vec v,vec w) = bool:
 
 { same as previous but assume each term is already reverse sorted,
   and all terms are comparable }
-set lesseq_partition_presorted (vec v,vec w) = bool:
+set lesseq_partition_presorted (Partition v,Partition w) = bool:
    for i:min(#v,#w)+1 do if v[i]!=w[i] then return v[i]<w[i] fi od;true
 
 { orbits=[v_1,...,v_n]
   closures(orbits)[i] is the set of j (not including i itself) such that
   orbits[j] contained in the closures of orbits[i]
 }
-set closures([vec] orbits) = [[int]]:
+set closures([Partition] orbits) = [[int]]:
   {pre-sort}
    let orbits=for P in orbits do reverse_sort(P) od in
    for P@i in orbits

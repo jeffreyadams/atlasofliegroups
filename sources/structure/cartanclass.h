@@ -256,11 +256,11 @@ class Fiber
   These are simple for the positive imaginary roots given by the (based)
   RootDatum. They need not be simple in the entire root system.
 */
-  const RootNbrList& simpleImaginary() const
+  const RootNbrList& simpleImaginary () const
     { return d_involutionData.imaginary_basis(); }
-  const RootNbr simpleImaginary(size_t i) const
+  const RootNbr simpleImaginary (size_t i) const
     { return d_involutionData.imaginary_basis(i); }
-  size_t imaginaryRank() const { return d_involutionData.imaginary_rank(); }
+  size_t imaginaryRank () const { return d_involutionData.imaginary_rank(); }
 
 /*
   RootList holding the numbers of the simple-real roots.
@@ -268,14 +268,14 @@ class Fiber
   These are simple for the positive real roots given by the (based) RootDatum.
   They need not be simple in the entire root system.
 */
-  const RootNbrList& simpleReal() const
+  const RootNbrList& simpleReal () const
     { return d_involutionData.real_basis(); }
-  const RootNbr simpleReal(size_t i) const
+  const RootNbr simpleReal (size_t i) const
     { return d_involutionData.real_basis()[i]; }
-  size_t realRank() const { return d_involutionData.real_rank(); }
+  size_t realRank () const { return d_involutionData.real_rank(); }
 
   // Action of the Cartan involution on root |j|.
-  RootNbr involution_image_of_root(RootNbr j) const
+  RootNbr involution_image_of_root (RootNbr j) const
     { return d_involutionData.root_involution()[j]; }
 
 
@@ -286,10 +286,10 @@ class Fiber
     { return d_fiberGroup; }
 
   // Dimension of the fiber group as a $Z/2Z$ vector space.
-  size_t fiberRank() const { return d_fiberGroup.dimension(); }
+  size_t fiberRank () const { return d_fiberGroup.dimension(); }
 
   // Cardinality of the fiber group: 2^dimension.
-  size_t fiberSize() const { return d_fiberGroup.size(); }
+  size_t fiberSize () const { return d_fiberGroup.size(); }
 
 /*
   Fiber group for the adjoint group of G.
@@ -304,36 +304,36 @@ class Fiber
   of one-parameter subgroups Y_ad just as the fiber group is computed. The
   lattice Y_ad has as basis the fundamental coweights.
 */
-  const SmallSubquotient& adjointFiberGroup() const
+  const SmallSubquotient& adjointFiberGroup () const
     { return d_adjointFiberGroup; }
 
 // Dimension of the adjoint fiber group as a $Z/2Z$ vector space.
-  size_t adjointFiberRank() const { return d_adjointFiberGroup.dimension(); }
+  size_t adjointFiberRank () const { return d_adjointFiberGroup.dimension(); }
 
 // Cardinality of the adjoint fiber group.
-  size_t adjointFiberSize() const { return d_adjointFiberGroup.size(); }
+  size_t adjointFiberSize () const { return d_adjointFiberGroup.size(); }
 
 
-  RootNbrSet compactRoots(AdjointFiberElt x) const;
+  RootNbrSet compactRoots (AdjointFiberElt x) const;
 
-  RootNbrSet noncompactRoots(AdjointFiberElt x) const;
+  RootNbrSet noncompactRoots (AdjointFiberElt x) const;
 
   // grading of simple-imaginary roots associated to an adjoint fiber element
-  Grading grading(AdjointFiberElt x) const;
+  Grading grading (AdjointFiberElt x) const;
 
   // An inverse of |grading|, assuming |g| is valid in this fiber
-  AdjointFiberElt gradingRep(const Grading& g) const;
+  AdjointFiberElt gradingRep (const Grading& g) const;
 
   // Image of a coroot (expressed in weight basis) in the fiber group
 
-  SmallBitVector mAlpha(const rootdata::Root&) const;
+  SmallBitVector mAlpha (const rootdata::Root&) const;
 
 /* Number of weak real forms containing this Cartan.
 
   This is the number of orbits of the imaginary Weyl group on the adjoint
   fiber group.
 */
-  size_t numRealForms() const { return d_weakReal.classCount(); }
+  size_t numRealForms () const { return d_weakReal.classCount(); }
 
 /*
   Partition of the weak real forms according to the corresponding central
@@ -342,7 +342,7 @@ class Fiber
   A weak real form (always containing our fixed real torus) is an orbit of
   $W_{im}$ on the adjoint fiber group.
 */
-  const Partition& realFormPartition() const { return d_realFormPartition; }
+  const Partition& realFormPartition () const { return d_realFormPartition; }
 
   // The central square class to which a weak real form belongs.
   square_class central_square_class (adjoint_fiber_orbit wrf) const
@@ -351,7 +351,7 @@ class Fiber
   }
 
   // The base element for a central square class
-  AdjointFiberElt class_base(square_class c) const
+  AdjointFiberElt class_base (square_class c) const
     { return wrf_rep(d_realFormPartition.classRep(c)); }
 
 /*
@@ -367,7 +367,7 @@ class Fiber
   these $n$ spaces is partitioned into $W_{im}$ orbits; these partitions are
   stored in |d_strongReal|.
 */
-  const Partition& fiber_partition(square_class c) const
+  const Partition& fiber_partition (square_class c) const
     { return d_strongReal[c]; }
 
 /*
@@ -380,14 +380,14 @@ class Fiber
   the corresponding coset of the fiber group, as (a |short| integer
   identifying) a part of the partition |fiber_partition(c)|
 */
-  const StrongRealFormRep& strongRealForm(adjoint_fiber_orbit wrf) const
+  const StrongRealFormRep& strongRealForm (adjoint_fiber_orbit wrf) const
     { return d_strongRealFormReps[wrf]; }
 
 /*
   Natural linear map from fiber group to adjoint fiber group, induced by the
   inclusion of the root lattice in the character lattice
 */
-  BinaryMap toAdjoint() const { return d_toAdjoint; }
+  BinaryMap toAdjoint () const { return d_toAdjoint; }
   AdjointFiberElt toAdjoint(FiberElt) const;
 
 /* The class number in the weak real form partition of the strong real form
@@ -400,7 +400,7 @@ class Fiber
    correspond to weak real forms, but numbering is specific to this fiber;
    conversion to |RealFormNbr| is done in complex group via |real_labels|
 */
-  const Partition& weakReal() const { return d_weakReal; }
+  const Partition& weakReal () const { return d_weakReal; }
   AdjointFiberElt wrf_rep (adjoint_fiber_orbit wrf) const
   { return AdjointFiberElt(RankFlags(d_weakReal.classRep(wrf)),
 			   adjointFiberRank()); }
@@ -411,12 +411,12 @@ class Fiber
 
 private:
 
-  SmallSubquotient makeFiberGroup() const;
+  SmallSubquotient makeFiberGroup () const;
 
   SmallSubquotient makeAdjointFiberGroup
     (const RootSystem&) const;
 
-  SmallSubspace gradingGroup(const RootSystem&) const;
+  SmallSubspace grading_kernel (const RootSystem&) const;
 
   Grading makeBaseGrading
     (RootNbrSet& flagged_roots,const RootSystem&) const;
@@ -426,13 +426,13 @@ private:
 
   RankFlagsList adjointMAlphas (const RootSystem&) const;
 
-  RankFlagsList mAlphas(const RootDatum&) const;
+  RankFlagsList mAlphas (const RootDatum&) const;
 
-  BinaryMap makeFiberMap(const RootDatum&) const;
+  BinaryMap makeFiberMap (const RootDatum&) const;
 
-  Partition makeWeakReal(const RootSystem&) const;
+  Partition makeWeakReal (const RootSystem&) const;
 
-  Partition makeRealFormPartition() const;
+  Partition makeRealFormPartition () const;
 
   std::vector<Partition> makeStrongReal
     (const RootDatum& rd) const;

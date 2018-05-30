@@ -25,7 +25,7 @@
 <W_characters.at { for |conjugacy_class_reps| }
 
 {. data type for class functions .}
-set_type ClassFunction=([WeylElt] classes, [int] sizes, [int] values)
+set_type [ ClassFunction=([WeylElt] classes, [int] sizes, [int] values) ]
 
 {. products of two class functions .}
 set *(ClassFunction f,ClassFunction g)=int:

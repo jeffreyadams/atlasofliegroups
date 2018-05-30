@@ -130,6 +130,8 @@ set sum ([int] r) = int: let s=0 in for a in r do s+:=a od; s
 set product ([int] r) = int: let p=1 in for a in r do p*:=a od; p
 
 set half (int n) = int: let (q,r)=n\%2 in assert(=r,"Inexact halving"); q
+set exact_divide (int a, int b) = int:
+    let (q,r)=a\%b in assert(=r,"Inexact division"); q
 
 set int_format = to_string@int
 
@@ -668,17 +670,24 @@ set sum ([Split] list) = Split:
 
 set Lie_type (string code, int rank) = LieType: extend(LieType:"",code,rank)
 
-set rank (LieType t) = int: sum(for (,rank) in %t do rank od)
-
 set semisimple_rank (LieType t) = int:
-  sum(for (code,rank) in %t do if code="T" then 0 else rank fi od)
+  for (,rank) in simple_factors(t) do rank od.sum
+
+set central_torus_rank (LieType t) = int: t.rank-t.semisimple_rank
+
+set factors (LieType t) = [string,int]:
+  let tr = central_torus_rank(t) in
+  if =tr then  t.simple_factors else t.simple_factors#("T",tr) fi
 
 set semisimple (LieType t) = LieType:
   let s = LieType: "" in
-  for (code,rank) in %t do if code!="T" then s:=extend(s,code,rank) fi od; s
+  for (code,rank) in simple_factors(t) do s:=extend(s,code,rank) od; s
+
+set derived_is_simple (LieType t) = bool: #simple_factors(t)=1
+set is_simple (LieType t) = bool: t.derived_is_simple and =t.central_torus_rank
 
 set str (LieType t) = string:
-  (## for (code,rank) in %t do code ## rank.to_string ## "." od)[:1~]
+  (## for (code,rank) in factors(t) do code ## rank.to_string ## "." od)[:1~]
 
 
 
@@ -686,7 +695,8 @@ set str (LieType t) = string:
 
 { provide default values for coroot preference when building root data }
 
-set is_simple(RootDatum rd) = #%Lie_type(rd)=1
+set derived_is_simple(RootDatum rd) = bool: Lie_type(rd).derived_is_simple
+set is_simple(RootDatum rd) = bool: Lie_type(rd).is_simple
 
 set root_datum (mat simple_roots, mat simple_coroots) = RootDatum:
   root_datum(simple_roots,simple_coroots,false) { by default prefer roots }

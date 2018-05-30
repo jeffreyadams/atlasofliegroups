@@ -2,7 +2,7 @@
 
 <basic.at
 <sort.at
-<W_Reps_Mod.at
+<W_reps_type_BC.at
 <Vogan-dual.at { for |dual_KGB| }
 <groups.at { for |GL| }
 <finite_dimensional { for |is_finite_dimensional| }
@@ -135,7 +135,7 @@ then S=sort(S)
 in if #R<=#S then R:=null(#S-#R+1)##R fi; (sort(R),sort(S))
 
 
-set orbit_from_W_rep_B (Wrep W)=[int]:
+set orbit_from_W_rep_B (Hn_rep W)=[int]:
 let (R,S)=W
 then (R,S)=if_same_len_B(R,S)
 then R1=for i:#R do 2*(R[i]+i)+1 od
@@ -338,7 +338,7 @@ then S=sort(S)
 in if #R<#S then R:=null(#S-#R)##R  elif #R>#S then S:=null(#R-#S)##S fi; (sort(R),sort(S))
 
 
-set orbit_from_W_rep_C (Wrep W)=[int]:
+set orbit_from_W_rep_C (Hn_rep W)=[int]:
 let (R,S)=W
 then (R,S)=if_same_len_C(R,S)
 then R1=for i:#R do 2*(R[i]+i)+1 od

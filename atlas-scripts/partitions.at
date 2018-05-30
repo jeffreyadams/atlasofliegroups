@@ -1,12 +1,12 @@
 <basic.at
 <combinatorics.at
 
-set size (Partition P) =int: sum(vec: P)
+set size = sum@Partition
 
 set hook_length (Partition P, int i, int j) =int:
   let arm = P[i]-j, leg = transpose(P)[j]-i in arm + leg -1
 
-set dim_rep (Partition P) = int: { don't try this for large parititions }
+set dim_rep (Partition P) = int:
   let dim=fac(size(P)) in
   for i:#P do for j:P[i] do dim \:= hook_length(P,i,j) od od; dim
 

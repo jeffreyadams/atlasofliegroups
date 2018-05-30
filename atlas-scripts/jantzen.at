@@ -83,7 +83,7 @@ in prints("G=", real_form(std));
    ,    max_1=max(for (p,) in gcs do #to_string(length(p)) od)
    ,    max_2=max(for (p,) in gcs do #to_string(length(std)-length(p)) od)
    ,    max_3=max(for (p,) in gcs
-                  do #to_string(stringPoly(KL_Q_polynomial(B,Q,p,std),"q"))
+                  do #to_string(poly_format(KL_Q_polynomial(B,Q,p,std),"q"))
                   od)
 in prints(pad("parameter",max_0), "  ",pad("l",max_1),"  "
          ,pad("ld",max_2),"  ", pad("Q",max_3));
@@ -96,7 +96,7 @@ in prints(pad("parameter",max_0), "  ",pad("l",max_1),"  "
    ;  prints(pad(to_string(p),max_0), "  "
             ,pad(to_string(length(p)),max_1),"  "
             ,pad(to_string(length(std)-length(p)),max_2), "  "
-            ,pad(stringPoly(KL_Q_polynomial(B,Q,p,std),"q"),max_3)
+            ,pad(poly_format(KL_Q_polynomial(B,Q,p,std),"q"),max_3)
             , "  [", string_m,"]"
             )
    od

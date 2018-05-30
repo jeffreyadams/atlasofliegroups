@@ -1,8 +1,8 @@
 <basic.at
 <number_theory.at { factorization, totient function |phi@int| and such }
 <sort.at { we need to sort divisors }
-<Gaussian_elim.at
-<rational_polynomial.at { for convolve@([rat],[rat]) }
+<Gaussian_elim.at { rational matrix operations, linear system solving }
+<polynomial.at { for all polynomial operations }
 
 { This file implements arithmetic in cyclotomic fields
 
@@ -21,85 +21,29 @@ set_type
 { using [rat] (not ratvec) for elements in a cyclotomic field avoids overflow }
 ]
 
-
-set Cartesian ([int] a, [int] b) = [int]:
-    ## for x in a do for y in b do x*y od od
-
-{. divisors of an integer .}
-set divisors (int n) = [int]:
-   if =n then return [] fi;
-   ((2,abs(n)).
-    (rec_fun d(int b, int n) [int]:
-      if b*b>n then if n=1 then [1] else [1,n] fi
-      else let (q,r)=n\%b in
-         if !=r then d(b+1,n)
-         else let l=[1,b] in
-            while =q%b do q\:=b; l:= 1 # (l*b) od
-         ;  Cartesian(l,d(b+1,q))
-         fi
-      fi
-    ).sort)
-
-{.Euclidean division of polynomial encoded [int] by a monic such polynomial.}
-set divide1 ([int] P, [int] D) = ([int],[int]): { quotient, remainder }
-   assert(#D>0 and D~[0]=1,"Not a monic divisor");
-   let deg_D = #D-1, l_P=#P in
-   if l_P<=deg_D then ([],P) { null quotient case }
-   else
-      for i: l_P-deg_D { quotient has $\deg P+1-\deg D$ terms }
-      do let c=P~[i] in for j:deg_D from 1 do P~[i+j] -:= c*D~[j] od
-      od
-   ;  (P[deg_D:] {quotient from upper part}, P[:deg_D] {remainder} )
-   fi
-
-
-{. n^th Cyclotomic Polynomial .}
-set cyclotomic_polynomial (int n) = [int]:
-{ implementation computes and stores inductively |Phi(d)| for all divisors |d|
-  of |n|, dividing then out for all strict divisors from initial $X^n-1$ }
-   let Phis=[[int]]:[], !divs=divisors(n)
-   then locate (int d) = binary_search_first((int i)bool: divs[i]>=d,0,#divs)
-   in
-   for d in divs
-   do let P=[int]: (-1) # for :d-1 do 0 od # 1 in { $X^d - 1$ }
-      for dd in divisors(d)[:1~] { traverse strict divisors of |d| }
-      do let (Q,R)=divide1(P,Phis[locate(dd)]) in P:=Q
-      ; assert(all(for c in R do =c od),"inexact polynomial division")
-      od
-   ;  Phis#:=P
-   od; Phis~[0]
-
-{.list of integers relatively prime to n.}
-set relative_primes(int n) = [int]:
-  list (n,(int i)bool: gcd([i,n])=1)
-
-{ a can be negative, N must be positive }
-{. integer a -> representative 0\le b\le N-1 mod N .}
-set mod (int a, int N) = int: assert(N>0,"N<=0"); a%N
-
-
 { to_denominator(r,N): integer $a$ such that rational $r$ is congruent to
   $a/N$ modulo 1; it is a precondition that |denom(r)| divides |N|.
-  The application is that $\exp(2\pi i r)=\zeta^a$ where $\zeta=\exp(2\pi i/n)$
+  The application is that $\exp(2\pi i r)=\zeta^a$ where $\zeta=\exp(2\pi i/N)$
 }
 set to_denominator (rat r, int N) = int:
    let (numer,denom)=%(r%1) { reduce modulo 1, then split }
    then (q,r)=N\%denom
-   in assert(r=0,"root of unity is not in the specified cyclotomic field");
+   in assert(=r,"root of unity is not in the specified cyclotomic field");
    q*numer
 
 { cyclotomic Fields and their elements }
 
 {.construct a cyclotomic field.}
-set cyclotomic_field (int n) = CyclotomicField: (n,cyclotomic_polynomial(n))
+set cyclotomic_field (int n) = CyclotomicField:
+   (n,cyclotomic_polynomial(n).coefficients)
 set CF = cyclotomic_field@int  {abbreviation}
 
 set degree (CyclotomicField F) = int: #F.Phi-1
 
 set = (CyclotomicField E,CyclotomicField F) = bool: F.order=E.order
 
-{ a utility function like |divide1|, but fixing its dividend first,
-  reducing rationals mod integers, and returning a result of fixed length
+{ a utility function like |%@(rat_poly,rat_poly)|, but fixing dividend first,
+  reducing |rat_poly| mod |int_poly|, and returning a remainder of fixed length
 }
 set reduce_mod ([int] Phi) = ([rat]->[rat]):
    assert(Phi~[0]=1,"Non monic cyclotomic polynomial?"); let n=#Phi-1 in
@@ -120,8 +64,8 @@ set cyclotomic_field_element ([rat] v, CyclotomicField F) =
 set = (CyclotomicFieldElement(v,F),CyclotomicFieldElement(w,G)) = bool:
    assert(F=G,"cyclotomic fieds differ in comparison");
    assert(#v=#w and #F.Phi=#v+1,"unnormalized cyclotimic field element(s)");
-   all(for c@i in v do c=w[i] od)
-
+   all(for c@i in v do c=w[i] od) { compare without converting to |ratvec| }
+set != (CyclotomicFieldElement x,CyclotomicFieldElement y) = bool: not x=y
 
 {.embed Q in cyclotomic field as (images of) constant polynomials.}
 set embed_Q (rat r,CyclotomicField F) = CyclotomicFieldElement: F.element([r])
@@ -141,7 +85,7 @@ set - (CyclotomicFieldElement (v,F),CyclotomicFieldElement (w,G)) =
       CyclotomicFieldElement:
    assert(F=G,"cyclotomic fields do not agree"); (for c@i in v do c-w[i] od,F)
 
-{ negation and scalar multiply need nor reduction either }
+{ negation and scalar multiplication need no reduction either }
 set - (CyclotomicFieldElement (v,F)) = CyclotomicFieldElement:
    (for c in v do -c od,F)
 set * (rat r, CyclotomicFieldElement (v,F)) = CyclotomicFieldElement:
@@ -160,22 +104,28 @@ set is_integer(CyclotomicFieldElement z) = bool:
    z.is_rational and z.to_rational.is_integer
 set to_integer(CyclotomicFieldElement z) = int: z.to_rational.rat_as_int
 
-{ embed roots of unity in F }
+{ embed $\Q$ as roots of unity in F via $t\mapsto\exp(2\pi i t)$ }
 set exp_1 (rat r,CyclotomicField F) = CyclotomicFieldElement:
    let k=to_denominator(r,F.order) in F.element(for :k do rat:0 od # /1)
 
 set zeta_power (int k, CyclotomicField F) = CyclotomicFieldElement:
-   { first reduce modulo $X^n-1$, then modulo $\Phi(n)$ }
-   F.element(for :k%F.order do rat:0 od # /1 )
+   { first reduce $X^k$ odulo $X^n-1$, then modulo $\Phi(n)$ }
+   F.element(for :k%F.order do rat:0 od # (rat:1) )
+   { equivalent to |F.element([rat]:id_mat(F.order)[k%F.order]| if you prefer }
 
-set galois_matrix (int k,CyclotomicField F) = [[rat]]:
+{ the Galois group over $\Q$ of |F| is the mulitplicative group mod |F.order|
+  the function |Galois_matrix| gives the matrix on the standard basis (the
+  initial powers of |zeta|) of the action of the Galois group element for |k|
+}
+set Galois_matrix (int k,CyclotomicField F) = [[rat]]: { |gcd(k,F.order)=1| }
    for i:degree(F) do zeta_power(k*i,F).v od
 
-set galois_action (int k, CyclotomicFieldElement(v,F)) = CyclotomicFieldElement:
-   (times(galois_matrix(k,F),v),F) { |times| from Gaussian_elim.at: matrix * }
+set Galois_matrices(CyclotomicField F) = [[[rat]]]:
+   for i in invertibles_modulo(F.order) do Galois_matrix(i,F) od
 
-set galois_matrices(CyclotomicField F) = [[[rat]]]:
-   for i in relative_primes(F.order) do galois_matrix(i,F) od
+set Galois_action (int k, CyclotomicFieldElement(v,F)) = CyclotomicFieldElement:
+{ action on field element: use matrix multiplication |times@([[rat]],[rat]| }
+   (times(Galois_matrix(k,F),v),F)
 
 set matrix_of_multiplication (CyclotomicFieldElement (,F):z) = [[rat]]:
    for i:degree(F) do v(z*zeta_power(i,F)) od
@@ -188,10 +138,10 @@ set norm (CyclotomicFieldElement z) = rat: det(matrix_of_multiplication(z))
   and best) inverting by solving the "multiplication gives 1" linear system
 }
 
-{.inverse of z=products of nontrivial galois conjugates/norm.}
+{.inverse of z=products of nontrivial Galois conjugates/norm.}
 set inverse_by_norm (CyclotomicFieldElement(v,F):z) = CyclotomicFieldElement:
    let w=F.one in
-   for A in galois_matrices(F)[1:] do w*:=F.element(times(A,v)) od; (/norm(z))*w
+   for A in Galois_matrices(F)[1:] do w*:=F.element(times(A,v)) od; (/norm(z))*w
 
 { better solutions based on linear system solving from Gaussian-elim.at }
 
@@ -234,7 +184,7 @@ set order(CyclotomicFieldElement x)= int:
 
 {.convert cyclotomic field element to a string for output.}
 set to_string (CyclotomicFieldElement(v,F)) = string:
-   rat_poly(v,"x").to_string +" in F("+ F.order+ ")"
+   to_rat_poly(v,"x").to_string +" in F("+ F.order+ ")"
 
 {.display cyclotomic field element as polynomial in x.}
 set show (CyclotomicFieldElement z) = void: prints(to_string(z))
@@ -249,27 +199,29 @@ set absolute_value_squared (CyclotomicFieldElement z) = CyclotomicFieldElement:
    z*z.bar
 
 {. all cyclotomic factors of polynomial P, as list of positive integers .}
-set cyclotomic_factors ([int] P) = [int]:
+set cyclotomic_factors (int_poly P) = [int]:
   let n=1 in
-##while let l=#P in l>0
+##while let l=#P.coefficients in l>0
     and n<7*l { condition to force termination, without missing out much cases }
-  do let (Q,R)=divide1(P,cyclotomic_polynomial(n)) in
+  do let (Q,R)=monic_divide(P,cyclotomic_polynomial(n)) in
      if =R then P:=Q; [n] else n+:=1; [] fi
   od
 
-{ write a rational polynomial as a product of cyclotomic polynomials (if possible)
-  return value [a_1,...] means Phi_{a_1}*Phi_{a_2}*...}
-set product_of_cyclotomic (RatPoly f) = [int]:
-   (f,[RatPoly]:[],[int]:[],0).
-   (rec_fun divide(RatPoly f, [RatPoly] cyclotomics, [int] degrees,int degree)
-           [int]:
-{ let ()=prints("f=",f, "cyclotomics=", cyclotomics, "degree=", degree) in}
-  if degree(f)=0 then degrees
-  else let Phi=rat_poly(cyclotomic_polynomial(degree+1))
-       then (g,(R1,))=f\%Phi
-       in
-    if #R1=0 then divide(g,cyclotomics#Phi,degrees#(degree+1),degree)
-    else divide(f,cyclotomics,degrees,degree+1)
-    fi
-  fi)
+{ write a rational polynomial as a product of cyclotomic polynomials, assumed to
+  be possible (if not we hang because it is hard to tell when to give up trying)
+  return value [a_1,...] means Phi_{a_1}*Phi_{a_2}*..
+}
+set product_of_cyclotomic (rat_poly(X,f,)) = [int]:
+   (to_int_poly(for c in f do c.rat_as_int od,X),1,[int]:[]).
+   (rec_fun divide(int_poly f, int cur_degree, [int] degrees) [int]:
+      if degree(f).= then degrees { terminating case }
+      else let Phi = cyclotomic_polynomial(cur_degree)
+	   then (g,R1)=monic_divide(f,Phi)
+	   in
+	if =R1
+	then divide(g,cur_degree,degrees#(cur_degree))
+	else divide(f,cur_degree+1,degrees)
+	fi
+      fi
+   )
 

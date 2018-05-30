@@ -15,7 +15,7 @@
   theta on v, use the transpose inverse (right-multiply v by inverse(theta)).
 }
 
-set_type Tits_elt = (RootDatum root_datum,ratvec torus_part,mat theta)
+set_type [ Tits_elt = (RootDatum root_datum,ratvec torus_part,mat theta) ]
 
 { equality test assumes the root data agree, without check (though it could) }
 set = (Tits_elt(,v,theta),Tits_elt(,u,eta)) = bool: =(v-u)%1 and theta=eta

@@ -1,5 +1,6 @@
 <basic.at
 <lazy_lists.at
+<polynomial.at
 
 primes : inf_list:
    let odd_primes () = inf_node:die
@@ -14,6 +15,7 @@ in odd_primes :=
    ).memoize; (@:(2,odd_primes)) { finally prefix the unique even prime }
 
 set factorization (int n) = [int,int]: { (prime,exponent) }
+   case n then n:=-n in error("Cannot factorize 0") else () esac;
    let (p,prs)=primes()
    then factors =
      while p*p<=n
@@ -24,6 +26,28 @@ set factorization (int n) = [int,int]: { (prime,exponent) }
    in if n>1 then factors#:=(n,1) fi;
    ## for (,c):pair in factors do if =c then [] else [pair] fi od
 
+ { all divisors, unsorted but in order compatible with divisibility relation }
+set divisors (int n) = [int]:
+   let result=[int]:[1] in
+   for (p,c) in factorization(n)
+   do result := ## for i:c+1 do let pow=p^i in for f in result do pow*f od od
+   od; result
+
+set invertibles_modulo (int n) = [int]:
+   list (abs(n),(int i)bool: gcd([i,n])=1)
+
 { Euler totient function }
 set phi (int n) = int:
    assert(n>0); for (p,c) in factorization(n) do (p-1)*p^(c-1) od.product
+
+set expand (int_poly(X,a,), int k) = int_poly: { substitute X^k for X }
+   ((## for i:#a-1 do a[i] # for :k-1 do int:0 od od) # a~[0],X).to_int_poly
+
+set cyclotomic_polynomial (int n) = int_poly:
+(  let result = to_int_poly([-1,1],"X"), f = factorization(n), prod=1 in
+   for (p,c) in f
+   do set (result,) := monic_divide(expand(result,p),result)
+   ; prod *:= p^(c-1)
+   od
+;  expand(result,prod)
+)
