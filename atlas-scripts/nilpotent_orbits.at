@@ -177,9 +177,8 @@ set <  ([int] a,[int] b) = bool: sort(a) != sort(b) and a<=b
 
 set  principal_block(RealForm G)=Block:block(G,dual_quasisplit_form(G))
 
-{convert Block to [param]
+{convert Block to [param]}
 
-}
 set convert(Block B,ratvec gamma)=
 for i:#B do  let (x,y)=element(B,i) in parameter(x,y,gamma) od
 
@@ -451,3 +450,15 @@ set minimal_real_nilpotent_orbits(RealForm G)=[RealNilpotent]:
 set make_dominant_H (RealNilpotent O)=RealNilpotent:
    let (H,x,)=O then P=parabolic_of_orbit(O) then y=x_min(P)
    then rd=root_datum(x) in real_nilpotent(dominant(H,rd),y)
+
+set Levis_with_distinguished_orbit (RealNilpotent O)=[((vec,KGBElt),RealForm)]:
+   let H=H(O) then x=x(O) then G=real_form(x) then rd=root_datum(G)
+   then (S,K)=Levi_of_H(H,rd) then
+   list=viable_Levis(G,S) then
+   pairs=[(RealForm,[KGBElt])]:
+   for M in list do (M,test_real_orbit(G,K,M,S)) od in
+   {for pair in pairs do prints(pair) od;}
+   ##for pair in pairs do let (M,xes)=pair in
+   ## for y in xes do
+   if not is_conjugate_orbit(O,real_nilpotent(K,y)) then []
+      else [((K,y),M)] fi od od
