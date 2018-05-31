@@ -1466,7 +1466,7 @@ will still be accepted.
       id==equals_name() and
       v.type().result_type!=void_type)
   { std::ostringstream o;
-    o << "Use op equality operator '=' in void context; " @|
+    o << "Use of equality operator '=' in void context; " @|
       << "did you mean ':=' instead?\n  If you really want " @|
       << "the result of '=' to be voided, use a cast to " @|
       << v.type().result_type << '.';

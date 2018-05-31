@@ -20,7 +20,7 @@ set sort_by(  (ComplexNilpotent->int) f)=([ComplexNilpotent] v) [ComplexNilpoten
   for index in inv_standardisation(for x in v do f(x) od) do v[index] od
 
 set sort_by_dimension = ([ComplexNilpotent]->[ComplexNilpotent]):
-sort_by((ComplexNilpotent O) int: dim_nilpotent(O)) 
+sort_by((ComplexNilpotent O) int: dim_nilpotent(O))
 
 set dim_eigenspace (RootDatum rd, ratvec H, int k) = int:
    if k=0

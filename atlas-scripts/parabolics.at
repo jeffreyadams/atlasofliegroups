@@ -64,10 +64,6 @@ set_type
 {. Data type for a K_orbit on G/P_S (synonym for KGPElt). .}
 set_type Parabolic = KGPElt
 {. Data type for a complex Levi=pair of root data.}
-set_type ComplexLevi  = (RootDatum rd,RootDatum rd_Levi)
-{ assumption:
-  the set of simple roots/coroots of rd_Levi is a subset of those of rd_G }
-
 
 {. choose from a list of KGB elements one with the smallest index number. .}
 set min ([KGBElt] list)= KGBElt:
