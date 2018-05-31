@@ -125,6 +125,10 @@ set move_weight ((KGBElt x,vec mu),KGBElt y) = KHighestWeight:
   assert(real_form(x)=real_form(y),"Real form mismatch");
   let w=cross_divide(y,x) in (y,w*mu)
 
+set move_coweight((KGBElt x,vec mu),KGBElt y)=(KGBElt,vec):
+  assert(real_form(x)=real_form(y),"Real form mismatch");
+  let w=cross_divide(y,x) in (y,mu*inverse(w))
+
 { first replace (x,mu) with an equivalent ("nice") one such that x makes
   2rho_c G-dominant }
 set R_K_dom_mu_orbit (KHighestWeight (x,mu)) = [KHighestWeight]:

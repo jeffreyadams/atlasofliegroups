@@ -433,10 +433,10 @@ set K_types (KHighestWeight mu_in)= [K_Type]:
      prints("Q=", Q);
      prints("mu:", mu);
      prints("L=", L);
-     prints("rho_u_cap_s(Q)", rho_u_cap_s(Q,x));
+     prints("two_rho_u_cap_s(Q)", two_rho_u_cap_s(Q,x));
      prints("rho_l(Q)", rho_l(Q));
      prints("tau: ", tau);
-     prints("arg:", tau-2*rho_u_cap_s(Q,x)+rho_l(Q)) fi then
+     prints("arg:", tau-two_rho_u_cap_s(Q,x)+rho_l(Q)) fi then
   ()=assert(is_relatively_split(L),"L is not relatively split") then
   pL=monomials(finalize(parameter(KGB(L,#KGB(L)-1),
 	                tau-two_rho_u_cap_s(Q,x)+rho_l(Q), null(rank(L)))))
