@@ -311,45 +311,19 @@ set theta_induce_irreducible (ParamPol P,RealForm G) = ParamPol:
 { |theta_induce_irreducible@(Param,RealForm)| not defined, as the |ParamPol|
   version suffices: implicit conversion |Param->ParamPol| will apply }
 
-{ if all complex roots for x are of type C+, then conjecturally the torus
-  parts (torus_factor) of all elements in the fiber are a subset of those for
-  the distinguished fiber:
-  KGB_elt(G,theta(x),torus_bits(x))=KGB_elt(G,theta(x),torus_bits(x_f)) for
-  some x_f in the fundamental fiber
-
-  Mapping x to x_K in the distinguished fiber
-  gives the version of K=K_{x_K} appropriate to y
-  aborts with an error if the conjecture is false for x
-
-  Note: this is false, but may be true with torus_bits in place of
-  torus_factor:
-  KGB_elt(G,theta(x),torus_bits(x))=KGB_elt(G,theta(x),torus_bits(x_f)) for
-  some x_f in the fundamental fiber this differs from the same identity for
-  torus_factor because
-  torus_factor(x)=(1+^theta(x))(torus_bits(x)+base_grading_vector) the
-  (1+^theta(x)) terms messes this up. An example is G=SO(6,2), x=KGB(G,11),
-  which should map to KGB(G,5)
-}
-{. (Auxiliary function) .}
 set map_into_distinguished_fiber (KGBElt x)=KGBElt:
-begin assert(no_Cminus_roots(x),"Only defined if no C- roots")
-; let G=real_form(x), tb=torus_bits(x) in
-  for x0 in distinguished_fiber(G) do if torus_bits(x0)=tb then return x0 fi od
-; { if we get here, no suitable |x0| was found }
-   error("the torus parts for the fiber over ",x
-        ," do not embed in those for the distinguished fiber")
-end
+  begin assert(no_Cminus_roots(x),"Only defined if no C- roots")
+  ; let G=real_form(x), tb=torus_bits(x) in
+    for x0 in distinguished_fiber(G) do if torus_bits(x0)=tb then return x0 fi od
+  ; { if we get here, no suitable |x0| was found }
+     error("the torus parts for the fiber over ",x
+          ," do not embed in those for the distinguished fiber")
+  end
 
 {. Map KGB element x to x_K in the distinguished fiber; if necessary, use
    complex cross actions first to move x to a fiber without C- roots. .}
-set strong_map_into_distinguished_fiber (KGBElt x) = KGBElt:
-  map_into_distinguished_fiber(x.to_no_Cminus)
-
-{. Another name for strong_map_into_distinguished_fiber .}
-set canonical_x_K = strong_map_into_distinguished_fiber@KGBElt
-
-{. canonical_x_K with input a parameter p; it is applied to x(p). .}
-set canonical_x_K (Param p)  = KGBElt: canonical_x_K(p.x)
+set canonical_x_K (KGBElt x) = KGBElt:
+   map_into_distinguished_fiber(x.to_no_Cminus)
 
 {. Positive coroots in the nilradical of the theta-stable parabolic determined
 by x. .}
@@ -470,6 +444,7 @@ set dim_u_cap_p_1(Parabolic P, ratvec H)=
 Aq(x,lambda,lambda_q)=Aq(wx,wlambda,wlambda_q) so we can assume
 lambda_q is dominant
 }
+
 {. Conjugate the triple (x,lambda, lambda_q) to make lambda_q weakly
   dominant (auxiliary function). .}
 set make_dominant (KGBElt x,ratvec lambda, ratvec lambda_q) =
@@ -751,8 +726,11 @@ set all_real_induced_one_dimensional (RealForm G) = [Param]:
 {------------- some rho-shifts involving theta ----------------}
 
 {define "two" versions which are vecs}
+
 set two_rho_S(KGBElt x)=vec: sum(makeS(x))
+
 set two_rho_S ((mat,RootDatum) pair) = sum(makeS(pair))
+
 set two_rho_u(Parabolic P)=vec:ratvec_as_vec(2*rho_u(P))
 
 { recall rho_S(x)=sum \alpha,
@@ -830,8 +808,8 @@ set two_rho_u_cap_s (Parabolic P,KGBElt x) = vec:
   the resulting term might not be standard
 }
 set twist_by_minus_2rho_u_cap_s(Parabolic P,Param p_L)=Param:
-assert(nu(p_L)=null(rank(Levi(P))),"nu(p_L)\ne 0");
-let G=real_form(P.x) then
-x_L=x(p_L) then
-x_G=embed_KGB(x_L,G) in
-parameter(x_L,lambda(p_L)-two_rho_u_cap_s(P,x_G),null(rank(Levi(P))))
+  assert(nu(p_L)=null(rank(Levi(P))),"nu(p_L)\ne 0");
+  let G=real_form(P.x) then
+  x_L=x(p_L) then
+  x_G=embed_KGB(x_L,G) in
+  parameter(x_L,lambda(p_L)-two_rho_u_cap_s(P,x_G),null(rank(Levi(P))))
