@@ -150,7 +150,9 @@ set is_split_spherical(K_Type p)=bool:
 {. Highest weight of a G-spherical K-type (necessarily unique). .}
 set highest_weight_split_spherical(K_Type p)=KHighestWeight:
   assert(is_split_spherical(p), "p is not a spherical rep of a split group");
-  let x=x(p) then x_K=canonical_x_K(x)
+  let x=x(p) then x_K=
+   assert(strong_map_into_distinguished_fiber(x)=KGB(p.real_form,0),
+   "Wrong result of strong_map_into_distinguished_fiber"); KGB(p.real_form,0)
   then rd=root_datum(p)
   then i_rd=root_datum_from_positive(imaginary_sys(x_K))
   then fw=fundamental_weights(i_rd), mu=ratvec:lambda(p)-rho(rd)

@@ -2,7 +2,8 @@
 <parabolics.at { for |Levi@Parabolic| }
 <parameters.at { for |parameter@(KGBElt,KGBElt,ratvec)| }
 <W_characters.at {for |standard_Levi_conjugacy_representatives@RootDatum| }
-<induction.at { for |canonical_x_K@KGBElt| }
+<K.at { for |K_0@RealForm| }
+<induction.at { for |embed_KGB@(KGBElt,RealForm)| }
 <center.at
 
 { ComplexNilpotent: (RootDatum rd,vec H)

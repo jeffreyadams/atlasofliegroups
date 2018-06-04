@@ -322,7 +322,7 @@ set map_into_distinguished_fiber (KGBElt x)=KGBElt:
 
 {. Map KGB element x to x_K in the distinguished fiber; if necessary, use
    complex cross actions first to move x to a fiber without C- roots. .}
-set canonical_x_K (KGBElt x) = KGBElt:
+set strong_map_into_distinguished_fiber(KGBElt x) = KGBElt:
    map_into_distinguished_fiber(x.to_no_Cminus)
 
 {. Positive coroots in the nilradical of the theta-stable parabolic determined
