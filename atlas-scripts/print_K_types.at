@@ -67,7 +67,7 @@ set print_branch_std_long (ParamPol P,KGBElt x,int bound) = void:
 ( prints("rho_K=", rho_K(x))
 ; for (mult,q) in sort_by_height(branch_std(P,bound))
   do let hw=highest_weights(q,x)[0] in
-    prints(mult, "*", hw, " ", dimensions(q)[0]
+    prints(mult, "*", hw, " ", dimension(LKT(q))
           ,  "    ", height(q))
   od
 )
