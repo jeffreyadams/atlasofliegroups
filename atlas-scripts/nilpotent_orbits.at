@@ -11,7 +11,7 @@
   H must satisfy <alpha,H>=0,1,2 for all simple roots,
   in particular is_dominant(H,rd) should hold
 }
-set_type ComplexNilpotent = (RootDatum root_datum_of, vec H_of_triple)
+set_type [ ComplexNilpotent = (RootDatum root_datum_of, vec H_of_triple) ]
 { field name |root_datum| would conflict with |ComplexParabolic| (too close) }
 
 {. Two complex nilpotent orbits are equal if the root data are, and
@@ -20,8 +20,9 @@ set =(ComplexNilpotent O1,ComplexNilpotent O2)=bool:
    let rd=O1.root_datum_of in rd=O2.root_datum_of and
    dominant(O1.H_of_triple,rd)=dominant(O2.H_of_triple,rd)
 
+{ dimension of the orbit of nilpotents described by a |ComplexNilpotent| }
 set dim_nilpotent (ComplexNilpotent(rd,H)) = int:
-  sum(for alpha in posroots(rd) do case {2*}alpha*H\1 in 0, 1 else 2 esac od)
+  sum(for alpha in posroots(rd) do case alpha*H in 0, 1 else 2 esac od)
 
 set diagram (ComplexNilpotent(rd,H)) = [int]:
   dominant(ratvec_as_vec(H),rd)*simple_roots(rd)
