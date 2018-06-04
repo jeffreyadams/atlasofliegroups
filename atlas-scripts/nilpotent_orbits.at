@@ -1,5 +1,8 @@
-<induction.at
-<W_characters.at {for is_dominant}
+<combinatorics.at { for |even_places@[int] }
+<parabolics.at { for |Levi@Parabolic| }
+<parameters.at { for |parameter@(KGBElt,KGBElt,ratvec)| }
+<W_characters.at {for |standard_Levi_conjugacy_representatives@RootDatum| }
+<induction.at { for |canonical_x_K@KGBElt| }
 <center.at
 
 { ComplexNilpotent: (RootDatum rd,vec H)
@@ -17,29 +20,25 @@ set =(ComplexNilpotent O1,ComplexNilpotent O2)=bool:
 set dim_nilpotent (ComplexNilpotent(rd,H)) = int:
   sum(for alpha in posroots(rd) do case {2*}alpha*H\1 in 0, 1 else 2 esac od)
 
+set diagram (ComplexNilpotent(rd,H)) = [int]:
+  dominant(ratvec_as_vec(H),rd)*simple_roots(rd)
+
 set sort_by((ComplexNilpotent->int) f) =
   ([ComplexNilpotent] v) [ComplexNilpotent]:
     for index in inv_standardisation(for x in v do f(x) od) do v[index] od
 
-set sort_by_dimension = ([ComplexNilpotent]->[ComplexNilpotent]):
-  sort_by((ComplexNilpotent O) int: dim_nilpotent(O))
-
-set diagram (ComplexNilpotent(rd,H)) = [int]:
-  dominant(ratvec_as_vec(H),rd)*simple_roots(rd)
-
 set find ([ComplexNilpotent] list,ComplexNilpotent O)=int:
-  first(#list,(int i)bool:list[i]=O)
+   first(#list,(int i)bool:list[i].root_datum_of=O.root_datum_of and
+                           list[i].H_of_triple=O.H_of_triple)
 
 set sort_by_dimension = ([ComplexNilpotent]->[ComplexNilpotent]):
 sort_by((ComplexNilpotent O) int: dim_nilpotent(O))
 
 set dim_eigenspace (RootDatum rd, ratvec H, int k) = int:
-let rv=0 in
-if k=0 then rv:=rank(rd);
-for alpha in posroots(rd) do {prints("alpha:", alpha, "  ", rv);}if alpha*H=0 then rv+:=2 fi od
-else
-for alpha in posroots(rd) do if alpha*H=k then rv+:=1 fi od
-fi ;rv
+   if k=0
+   then rank(rd) + 2*count(for alpha in posroots(rd) do =alpha*H od)
+   else count(for alpha in posroots(rd) do alpha*H=k od)
+   fi
 
 set max_eigenspace(RootDatum rd, vec H)=int:
 let rv=rat:0 in
@@ -69,10 +68,7 @@ rv=[Param]:[] in
 for p in b do
  if all (for k in support(x(p)) do is_descent(k,p) od) then rv#:=p fi  od;rv
 
-set sort_by (((vec, rat)-> rat) f)=([(vec,rat)] v) [(vec,rat)]:
-  for index in inv_standardisation(for x in v do f(x) od) do v[index] od
-
-set sort_by_length =([(vec,rat)]->[(vec,rat)]): sort_by((vec v,rat c) rat: c)
+set sort_by_length = ([vec,rat]->[vec,rat]): sort_by((vec v,rat c)rat: c)
 
 set int_list (int n)=[int]: for i:n do i od
 
@@ -141,11 +137,8 @@ set Levi_of_H (vec H,RootDatum rd)=([int],vec):
    in temp[0]
 
 
-set sort_by (((ratvec, [vec])-> int) f)=([(ratvec,[vec])] v) [(ratvec,[vec])]:
-  for index in inv_standardisation(for x in v do f(x) od) do v[index] od
-
-set sort_by_dimension_of_2_eigenspace =([(ratvec,[vec])]->[(ratvec,[vec])]):
-sort_by((ratvec z,[vec] v) int:#v)
+set sort_by_dimension_of_2_eigenspace  = ([ratvec,[vec]]->[ratvec,[vec]]):
+  sort_by((ratvec z,[vec] v) int:#v)
 
 {find H which work for given q=q(x,H)=(L,u)}
 set find_H (Parabolic P) = [(vec,[vec])]: { should be [(vec,mat)] really }
@@ -179,8 +172,8 @@ set max_only([(vec,[vec])] arg)=[(vec,[vec])]:
 
 
 {containment order}
-set <= ([int] a,[int] b)=all(for i:#a do find(b,a[i])!=-1 od)
-set <([int] a,[int] b)=sort(a) != sort(b) and a<=b
+set <= ([int] a,[int] b) = bool: all(#a,(int i)bool: find(b,a[i]).>=)
+set <  ([int] a,[int] b) = bool: sort(a) != sort(b) and a<=b
 
 set  principal_block(RealForm G)=Block:block(G,dual_quasisplit_form(G))
 
@@ -283,7 +276,7 @@ set Aq_cells(RealForm G,[[int]] cells)=Aq_cells(principal_block(G),cells)
 
 set_type RealNilpotent = (vec H,KGBElt x,void .)
 
-set real_nilpotent(vec H,KGBElt x)=RealNilpotent:(H,x,[])
+set real_nilpotent(vec H,KGBElt x)=RealNilpotent:(H,x,())
 
 set printable_real_nilpotent(RealNilpotent O)=(vec,KGBElt):
     let (H,x,)=O in (H,x)
@@ -291,24 +284,21 @@ set printable_real_nilpotent(RealNilpotent O)=(vec,KGBElt):
 set parabolic_of_orbit (RealNilpotent O) = Parabolic:
   parabolic_by_cwt(O.H,O.x)
 
-set =(RealNilpotent O1,RealNilpotent O2)=bool:
-   let (H,x,)=O1 then (K,y,)=O2 in if not real_form(x)=real_form(y)
-   then false else
-   let rd=x.root_datum in dominant(H,rd)=dominant(K,rd) and
-   parabolic_of_orbit(O1)=parabolic_of_orbit(O2) fi
+set =(RealNilpotent (H,x,):O1,RealNilpotent (K,y,):O2)=bool:
+   real_form(x)=real_form(y) and
+   dominant(H,x.root_datum)=dominant(K,y.root_datum) and
+   parabolic_of_orbit(O1)=parabolic_of_orbit(O2)
 
 set root_datum (RealNilpotent O) = RootDatum: O.x.root_datum
 set real_form (RealNilpotent O) = RealForm: O.x.real_form
-
 set Levi_of_orbit (RealNilpotent O) = RealForm: Levi(parabolic_of_orbit(O))
-
 set complex_orbit (RealNilpotent O) = ComplexNilpotent:
    let rd=O.x.root_datum in (rd,dominant(O.H,rd))
-
 set dimension (RealNilpotent O) = int: dim_nilpotent(O.complex_orbit)
 
-set sort_by(  (RealNilpotent->int) f)=([RealNilpotent] v) [RealNilpotent]:
-   for index in inv_standardisation(for x in v do f(x) od) do v[index] od
+set sort_by((RealNilpotent->int) f) =
+  ([RealNilpotent] v) [RealNilpotent]:
+     for index in inv_standardisation(for x in v do f(x) od) do v[index] od
 
 set sort_by_dimension = ([RealNilpotent]->[RealNilpotent]):
    sort_by((RealNilpotent O) int: dimension(O))
@@ -358,10 +348,7 @@ set stabilizer_of_x (KGBElt x)=[WeylElt]:
 {. Given a real group G and a list of simple roots determining a standard
    complex Levi MC, make a list of real forms of MC in G. .}
 set viable_Levis (RealForm G,[int] S)=[RealForm]:
-   let list=parabolics_with_theta_stable_Levi(G,S) then
-   result=[RealForm]:[] in
-   for P in list do let L=Levi(P) in
-   result#:=L od; result
+   for P in parabolics_with_theta_stable_Levi(G,S) do Levi(P) od
 
 {. Given a real form G, a coweight H which determines a complex nilpotent
    orbit OC, distinguished in the Levi MC, find all KGB elements x so that
@@ -475,4 +462,3 @@ set Levis_with_distinguished_orbit (RealNilpotent O)=[((vec,KGBElt),RealForm)]:
    ## for y in xes do
    if not is_conjugate_orbit(O,real_nilpotent(K,y)) then []
       else [((K,y),M)] fi od od
-
