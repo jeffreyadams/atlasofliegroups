@@ -25,18 +25,18 @@ set dim_nilpotent (ComplexNilpotent(rd,H)) = int:
   sum(for alpha in posroots(rd) do case alpha*H in 0, 1 else 2 esac od)
 
 set diagram (ComplexNilpotent(rd,H)) = [int]:
-   dominant(ratvec_as_vec(H),rd)*simple_roots(rd)
+   dominant(H,rd){action on coweight} * simple_roots(rd)
 
 set sort_by((ComplexNilpotent->int) f) =
    ([ComplexNilpotent] v) [ComplexNilpotent]:
       for index in inv_standardisation(for x in v do f(x) od) do v[index] od
 
+set sort_by_dimension = ([ComplexNilpotent]->[ComplexNilpotent]):
+   sort_by(dim_nilpotent@ComplexNilpotent)
+
 set find ([ComplexNilpotent] list,ComplexNilpotent O) = int:
    first(#list,(int i)bool:list[i].root_datum_of=O.root_datum_of and
                            list[i].H_of_triple=O.H_of_triple)
-
-set sort_by_dimension = ([ComplexNilpotent]->[ComplexNilpotent]):
-   sort_by((ComplexNilpotent O) int: dim_nilpotent(O))
 
 set dim_eigenspace (RootDatum rd, ratvec H, int k) = int:
    if k=0
@@ -45,9 +45,7 @@ set dim_eigenspace (RootDatum rd, ratvec H, int k) = int:
    fi
 
 set max_eigenspace (RootDatum rd, vec H) = int:
-   let rv=rat:0 in
-   for alpha in posroots(rd) do if alpha*H>rv then rv:=alpha*H fi od;
-   rat_as_int(rv)
+   max(for alpha in posroots(rd) in H*alpha od)
 
 set all_eigenspaces (RootDatum rd, vec H) = [int]:
    assert(is_dominant(dual(rd),H),"H is not dominant");
