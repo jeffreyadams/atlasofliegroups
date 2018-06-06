@@ -43,7 +43,7 @@ set c_form_irreducible (Param p) = ParamPol:
     J(y)_c=sum_x (-1)^{on(x,y)}(-1)^{ell(x)-ell(y)}P(x,y)(q=s)I(x)_c
   where
     P(x,y) is a cumulated KL polynomial
-    (-1)^{ell(x)-ell(y)}P(x,y) is given by signed_KL_col(y)[i] with
+    minus_1^{ell(x)-ell(y)}P(x,y) is given by signed_KL_col(y)[i] with
     indices[i]=x on(x,y)=orientation number given by orientation_nr_term()
     I(x)_c given as combination of standards x' with nu(x')=0 by c_form_std(x)
   algorithm: compute the sum for J(y)_c, using signed_KL_col and c_form_std

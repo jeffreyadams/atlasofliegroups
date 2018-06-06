@@ -265,7 +265,7 @@ set KL_P_signed_polynomials_old ([Param] B_fixed,mat delta) = i_poly_mat:
   for row@i in ^P
   do
     for entry@j in row
-    do (-1)^length_diff(i,j,jumps)
+    do minus_1^length_diff(i,j,jumps)
      * if >=entry then polys[entry] else -polys[-entry] fi
     od
   od
