@@ -111,9 +111,8 @@ set convert (WeylElt w,RootDatum rd_G) = WeylElt: { for |rd_G| }
   requirement: x makes 2rho_c G-dominant
 }
 set R_K_dom (KGBElt x) = [WeylElt]:  {these are elements of W(G,H)}
-  let W_c_perp=W_c_perp(x), result=[WeylElt]:[] in
 { need to convert from L to G }
-##for w in W_c_perp
+##for w in W_c_perp(x)
   do if x=cross(convert(w,x.root_datum),x) then [w] else [] fi od
 
 { W_K(x)=(W_K(K_0,T_{K_0}), R_K_dom(x)) }
@@ -222,7 +221,7 @@ set make_strongly_dominant (KGBElt x,vec mu) =
  make it K_0-dominant, and compute stabilizer in R_K_dom
  requirement: x makes 2rho_c G-dominant
 }
-set R_K_dom_mu (KGBElt x,vec mu)  =[WeylElt]:
+set R_K_dom_mu (KGBElt x,vec mu) = [WeylElt]:
   let (K_0,R_K_dom)=W_K(x)
   then proj = ^cocharacter_lattice_K(x) { X^*->X^*(T_K0)=X^*/(X^*)^{-delta}}
   then mu_1=lift_action(chamber(K_0,proj*mu),x)*mu
