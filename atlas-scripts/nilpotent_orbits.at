@@ -11,8 +11,11 @@
   H must satisfy <alpha,H>=0,1,2 for all simple roots,
   in particular is_dominant(H,rd) should hold
 }
-set_type [ ComplexNilpotent = (RootDatum root_datum_of, vec H_of_triple) ]
+set_type
+[ ComplexNilpotent = (RootDatum root_datum_of, void ., vec H_of_triple) ]
 { field name |root_datum| would conflict with |ComplexParabolic| (too close) }
+
+set complex_nilpotent (RootDatum rd, vec H) = ComplexNilpotent: (rd,(),H)
 
 {. Two complex nilpotent orbits are equal if the root data are, and
    the H's are conjugate by the Weyl group. .}
@@ -21,10 +24,10 @@ set = (ComplexNilpotent O1,ComplexNilpotent O2) = bool:
    dominant(O1.H_of_triple,rd)=dominant(O2.H_of_triple,rd)
 
 { dimension of the orbit of nilpotents described by a |ComplexNilpotent| }
-set dim_nilpotent (ComplexNilpotent(rd,H)) = int:
+set dim_nilpotent (ComplexNilpotent(rd,,H)) = int:
   sum(for alpha in posroots(rd) do case alpha*H in 0, 1 else 2 esac od)
 
-set diagram (ComplexNilpotent(rd,H)) = [int]:
+set diagram (ComplexNilpotent(rd,,H)) = [int]:
    dominant(H,rd){action on coweight} * simple_roots(rd)
 
 set sort_by((ComplexNilpotent->int) f) =
@@ -44,17 +47,17 @@ set dim_eigenspace (RootDatum rd, ratvec H, int k) = int:
    else count(for alpha in posroots(rd) do alpha*H=k od)
    fi
 
-set max_eigenspace (RootDatum rd, vec H) = int:
+set max_eigenvalue (RootDatum rd, vec H) = int:
    max(for alpha in posroots(rd) do H*alpha od)
 
-set all_eigenspaces (RootDatum rd, vec H) = [int]:
+set eigenspace_dimensions (RootDatum rd, vec H) = [int]:
    assert(is_dominant(dual(rd),H),"H is not dominant");
-   for k:max_eigenspace(rd,H)+1 do dim_eigenspace(rd,H,k) od
+   for k:max_eigenvalue(rd,H)+1 do dim_eigenspace(rd,H,k) od
 
 set even_eigenspaces (RootDatum rd, vec H) = [int]:
-   even_places(all_eigenspaces(rd,H))
+   even_places(eigenspace_dimensions(rd,H))
 set odd_eigenspaces(RootDatum rd, vec H)=[int]:
-   odd_places(all_eigenspaces(rd,H))
+   odd_places(eigenspace_dimensions(rd,H))
 
 set support (Param p) = [int]:
    support(x(p)) { using |support@KGBElt| from parabolics.at }
@@ -104,11 +107,12 @@ set all_H_nd (RootDatum rd) = [vec]:
 
 {. List all complex nilpotent orbits (with H dominant) for a complex group. .}
 set complex_nilpotent_orbits (RootDatum rd) = [ComplexNilpotent]:
-   for H in all_H(rd) do (rd,H) od.sort_by_dimension
+   for H in all_H(rd) do complex_nilpotent(rd,H) od.sort_by_dimension
 
 {. (one) complex nilpotent orbit of minimal dimension>0 .}
 set minimal_nilpotent_orbit (RootDatum rd) = ComplexNilpotent:
-   complex_nilpotent_orbits(rd)[1]
+   let orbits=complex_nilpotent_orbits(rd) in
+   assert(#orbits>=2,"No minimal orbit present"); orbits[1]
 
 {. For a complex group, for each standard Levi M given by a list of simple
    roots, list the corresponding neutral elements H (dominant for M, not G)
@@ -277,7 +281,7 @@ set root_datum (RealNilpotent O) = RootDatum: O.x.root_datum
 set real_form (RealNilpotent O) = RealForm: O.x.real_form
 set Levi_of_orbit (RealNilpotent O) = RealForm: Levi(parabolic_of_orbit(O))
 set complex_orbit (RealNilpotent O) = ComplexNilpotent:
-   let rd=O.x.root_datum in (rd,dominant(O.H,rd))
+   let rd=O.x.root_datum in complex_nilpotent(rd,dominant(O.H,rd))
 set dimension (RealNilpotent O) = int: dim_nilpotent(O.complex_orbit)
 
 set sort_by ((RealNilpotent->int) f) =
@@ -433,8 +437,9 @@ set real_nilpotent_orbits (RealForm G) = [RealNilpotent]:
    od.##.sort_by_dimension
 
 {. Make a list of the real forms of a given complex nilpotent orbit. .}
-set real_nilpotent_orbits (ComplexNilpotent OC,RealForm G) = [RealNilpotent]:
-   let (rd,H)=OC then (,K)=Levi_of_H(H,rd) in
+set real_nilpotent_orbits (ComplexNilpotent (rd,,H):OC,RealForm G) =
+      [RealNilpotent]:
+   let (,K)=Levi_of_H(H,rd) in
    for P in real_nilpotent_orbit_KGPs(G,K)
    do real_nilpotent(dominant(K,rd),x_min(P))
    od
