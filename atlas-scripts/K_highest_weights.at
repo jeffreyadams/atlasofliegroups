@@ -47,7 +47,7 @@ Algorithm:
    (relatively split) L is obtained from xi by a $\rho$-shift.
 !}
 
-<W_K.at
+<W_K.at { |R_K_dom|, |R_K_dom_mu| }
 <induction.at
 <representations.at
 <center.at { for |Z_2@RealForm| }
@@ -152,7 +152,7 @@ set highest_weight_split_spherical(K_Type p)=KHighestWeight:
   assert(is_split_spherical(p), "p is not a spherical rep of a split group");
   let x=x(p) then x_K=
    assert(strong_map_into_distinguished_fiber(x)=KGB(p.real_form,0),
-   "Error in canonical_x_K"); KGB(p.real_form,0)
+   "Wrong result of strong_map_into_distinguished_fiber"); KGB(p.real_form,0)
   then rd=root_datum(p)
   then i_rd=root_datum_from_positive(imaginary_sys(x_K))
   then fw=fundamental_weights(i_rd), mu=ratvec:lambda(p)-rho(rd)
@@ -475,18 +475,14 @@ set K0_param_from_highest_weight (KHighestWeight(x,mu)) = Param:
                              =dimension of representation of K_0,
 			        given by Weyl dimension formula }
 
-{ dimension_rat allows for dimension up to 2^63-1}
 {. Dimension of the K_#-type with KHighestWeight mu. .}
-set dimension_rat (KHighestWeight mu) = rat:dimension_rat(K0_param_from_highest_weight(mu))
-set dimension (KHighestWeight mu) = int:dimension(K0_param_from_highest_weight(mu))
+set dimension (KHighestWeight mu) = int:
+  dimension(K0_param_from_highest_weight(mu))
 
 {. Dimension of a K-type. .}
-set dimension_rat (K_Type p) = rat:
-let hw=highest_weights(p) then
-mu=hw[0] then
-(x,)=mu in dimension_rat(mu)*#R_K_dom(x)/#R_K_dom_mu(mu)
-
-set dimension (K_Type p) = int: rat_as_int(dimension_rat(p))
+set dimension (K_Type p) = int:
+  let (x,):mu=highest_weights(p)[0] in
+  dimension(mu)*#R_K_dom(x)\#R_K_dom_mu(mu)
 
 { given mu in X^*(T_K)=X^*(H)/(1-delta)X^*(H), choose representative in X^*(H)
   giving a KHighestWeight (x,mu) cannot necessarily take mu to be \delta-fixed

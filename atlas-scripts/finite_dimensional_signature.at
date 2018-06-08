@@ -1,5 +1,7 @@
-<K_types.at  {K_signature_irr}
-<weyl_character_formula.at
+<finite_dimensional.at { for |highest_weight_finite_dimensional| }
+<representations.at { for |finite_dimensional@(RealForm,vec)| }
+<K_types.at  { for |K_signature_irr| }
+<weyl_character_formula.at { for |trace_strong_real@(Param,ratvec)| }
 
 {some functions related to Frobenius-Schur indicator,
 real/quaternionic indicator, and sign of Hermitian form
@@ -9,164 +11,191 @@ set verbose_fdsig=true
 
 {assuming a rational is an integer, replace it with a string,
 to allow output of integers up to 2^63-1}
-set long_rat_as_integer_string(rat r)=
+set long_rat_as_integer_string (rat r) =
 assert(denom(r)=1,"r is not an integer");to_string(r)[:2~] {cut off /1}
 
-set is_self_dual(Param p)=bool:
-  let lambda=highest_weight_finite_dimensional(fd_only(p)) in
-  -w0(p.root_datum)*lambda=lambda
+set is_self_dual ({finite dimensional}Param p) = bool:
+  let lambda=highest_weight_finite_dimensional(p) in
+  =lambda+w0(p.root_datum)*lambda
 
-set Frobenius_Schur(Param p)=int:
-if is_self_dual(fd_only(p)) then
-let lambda=highest_weight_finite_dimensional(p) in
-(-1)^(rat_as_int(2*lambda*rho_check(real_form(p)))) else 0 fi
+set Frobenius_Schur ({finite dimensional}Param p) = int:
+  if is_self_dual(p) else 0
+  then minus_1^
+   (2*highest_weight_finite_dimensional(p)*rho_check(p.real_form)).rat_as_int
+  fi
 
-set fs(Param p)=int:Frobenius_Schur(fd_only(p))
+set fs = Frobenius_Schur@{finite dimensional}Param
 
-set is_self_conjugate(Param p)=bool:
-let lambda=highest_weight_finite_dimensional(fd_only(p)) in
-let G=inner_class(p) in -distinguished_involution(G)*(w0(G)*lambda)=lambda
+set is_self_conjugate ({finite dimensional}Param p) = bool:
+  let lambda=highest_weight_finite_dimensional(p), G=inner_class(p) in
+  lambda = -distinguished_involution(G)*(w0(G)*lambda)
 
-set real_quaternionic(Param p)=int:
-if is_self_conjugate(fd_only(p)) then
-let lambda=highest_weight_finite_dimensional(p) then
-x_squared=square(x(p)) in (-1)^(rat_as_int(2*x_squared*lambda*fs(p))) else 0 fi
+set real_quaternionic ({finite dimensional}Param p) = int:
+  if is_self_conjugate(fd_only(p)) else 0
+  then let lambda=highest_weight_finite_dimensional(p) in
+     minus_1^(2*square(x(p))*lambda*Frobenius_Schur(p)).rat_as_int
+  fi
 
-set rq(Param p)=int:real_quaternionic(fd_only(p))
-
-{signature and index are, by default, (rat,rat) to allow up to 2^63-1
- signature_int and index_int give (int,int), but may lose information
- for output use signature_string and index_string which can output up to
- 2^63-1 = 9223372036854775807
-}
+set rq = real_quaternionic@{finite dimensional}Param
 
 {.signature (p,q) of Hermitian form on a finite dimensional representation.}
-set signature(Param p)=(rat,rat):
-let G=real_form(fd_only(p)) then
-height=rat_as_int(2*infinitesimal_character(p)*rho_check(G))  then
-(pos,neg)=K_signature_irr(p,height) in
-(  sum(for c@p in pos do split_as_int(c)*dimension_rat(K_type(p)) od),
-sum(for c@p in neg do split_as_int(c)*dimension_rat(K_type(p)) od))
+set signature ({finite dimensional}Param p) = (int,int):
+  let G=real_form(p.fd_only)
+  then height=rat_as_int(2*infinitesimal_character(p)*rho_check(G))
+  then (pos,neg)=K_signature_irr(p,height)
+  in
+( sum(for c@p in pos do split_as_int(c)*dimension(K_type(p)) od)
+, sum(for c@p in neg do split_as_int(c)*dimension(K_type(p)) od)
+)
 
 {.signature as a string.}
-set signature_string(Param p)=string:
-if not is_hermitian(fd_only(p)) then "*" else
-let (pos,neg)=signature(p)  {type (rat,rat)}
-in "(" + long_rat_as_integer_string(pos) + "," + long_rat_as_integer_string(neg) + ")" fi
+set signature_string ({finite dimensional}Param p) = string:
+  if is_hermitian(p) else "*" then signature(p).to_string fi
 
 {. index min(p,q) of Hermitian form on a finite dimensional representation.}
-set index(Param p)=rat:let (pos,neg)=signature(p) in if pos<=neg then pos else neg fi
+set index ({finite dimensional}Param p) = int: min(signature(p))
 
-set index_string(Param p)=string:
-if not is_hermitian(fd_only(p)) then "*" else long_rat_as_integer_string(index(p)) fi
+set index_string ({finite dimensional}Param p) = string:
+  if is_hermitian(p) else "*" then index(p).to_string fi
 
-set anisotropic_part(Param p)=rat: let (pos,neg)=signature(p) in abs(pos-neg)
+set anisotropic_part ({finite dimensional}Param p) = int:
+  abs(-{subtract components}signature(p))
 
-set anisotropic_part_string(Param p)=
-if not is_hermitian(fd_only(p)) then "*" else long_rat_as_integer_string(anisotropic_part(p)) fi
+set anisotropic_part_string ({finite dimensional}Param p) = string:
+  if is_hermitian(p) else "*" then anisotropic_part(p).to_string fi
 
-{report using direct computation of Hermitian form}
-set fd_report(RealForm G, int k)=void:
-if verbose_fdsig then
-prints(new_line,"fund wt: highest weight in fundamental weight coordinates",
-new_line,"lambda: highest weight in X^* coordinates",
-new_line,"dim: dimension",
-new_line,"FS: Frobenius-Schur indicator: 1:orthogonal, -1: symplectic, 0: not self-dual",
-new_line,"RQ: Real-Quaternionic indicator: 1:real, -1: quaternionic, 0: not self-conjugate",
-new_line,"signature:  signature (p,q) of Hermitian form (if Hermitian)",
-new_line,"index: index min(p,q) of Hermitian form (if Hermitian)",
-new_line,"aniso: dimension |p-q| of anisotropic part of Hermitian form (if Hermitian)",
-new_line,"computing directly from the Hermitian form") fi;
-let weights=box(k+1, ss_rank(G)) then  {all [a_1,...,a_rank] with 0\le a_i\le k}
-M=ratvecs_as_ratmat(fundamental_weights(G)) in
-for mu in weights do
- let lambda=M*mu in
-  if is_integer(lambda) then
-  let p=finite_dimensional(G,ratvec_as_vec(lambda))
-in
-prints("fund wt: ", mu, "  lambda:", lambda, " dim:", dimension(p), "   FS/RQ: ", fs(p), "/", rq(p), "  signature: ", signature_string(p), "  index: ", index_string(p), "  aniso: ", anisotropic_part_string(p)) fi od
+{ report using direct computation of Hermitian form }
+set fd_report (RealForm G, int k) = void:
+  if verbose_fdsig
+  then prints
+    (new_line
+    ,"fund wt: highest weight in fundamental weight coordinates",new_line
+    ,"lambda: highest weight in X^* coordinates",new_line
+    ,"dim: dimension",new_line
+    ,"FS: Frobenius-Schur indicator: "
+    ,"1:orthogonal, -1: symplectic, 0: not self-dual",new_line
+    ,"RQ: Real-Quaternionic indicator: "
+    ,"1:real, -1: quaternionic, 0: not self-conjugate",new_line
+    ,"signature:  signature (p,q) of Hermitian form (if Hermitian)",new_line
+    ,"index: index min(p,q) of Hermitian form (if Hermitian)",new_line
+    ,"aniso: dimension |p-q| of anisotropic part of Hermitian form "
+    ,"(if Hermitian)",new_line
+    ,"computing directly from the Hermitian form")
+  fi; let rd=G.root_datum in
+  for mu in box(k+1,rd.semisimple_rank) {all [a_1,...,a_s] with 0\le a_i\le k}
+  do let l_rat=sum(for c@i in mu do fundamental_weight(rd,i)*c od,rd.rank) in
+     if is_integer(l_rat)
+     then let lambda=l_rat\1 then p=finite_dimensional(G,lambda) in
+     ("fund wt: ", mu
+     , "  lambda:", lambda
+     , "  dim:", dimension(p)
+     , "  FS/RQ: ", fs(p), "/", rq(p)
+     , "  signature: ", signature_string(p)
+     , "  index: ", index_string(p)
+     , "  aniso: ", anisotropic_part_string(p)
+     ).prints
+     fi
+  od
 
-{-------------------------------------------------------------------------}
-
-{alternative (faster) computation of signature and index, in equal
-rank case, using Weyl character formula,
-evaluated at strong real form (equal rank case only)
+{ Now all that same stuff using an alternative (faster) computation of
+  signature and index, in equal rank case, using Weyl character formula,
+  evaluated at strong real form (equal rank case only)
 }
 
-set signature_trace(Param p)=(rat,rat):
-let G=real_form(p) then
-v=(torus_factor(KGB(G,0))+rho_check(G))/2 then
-(,diff)=trace_strong_real(fd_only(p),v) then  {special version of trace}
-dim=dimension_rat(fd_only(p)) in
-((dim+diff)/2, (dim-diff)/2)
-
-set index_trace(Param p)=rat:
-let (pos,neg)=signature_trace(p) in if pos<=neg then pos else neg fi
+set signature_trace ({equal rank finite dimensional}Param p) = (int,int):
+  let G=real_form(p)
+  then v=(torus_factor(KGB(G,0))+rho_check(G))/2
+  then (,diff)=trace_strong_real(p,v) {special version of trace}
+  ,    dim=dimension(p)
+  in ((dim+diff)\2, (dim-diff)\2)
 
 {.signature as a string.}
-set signature_trace_string(Param p)=string:
-if not is_hermitian(fd_only(p)) then "*" else
-let (pos,neg)=signature_trace(p)  in
-"(" + long_rat_as_integer_string(pos) + "," + long_rat_as_integer_string(neg) + ")"  fi
+set signature_trace_string ({equal rank finite dimensional}Param p) = string:
+  if is_hermitian(p) else "*" then signature_trace(p).to_string fi
 
-set index_trace_string(Param p)=string:
-if not is_hermitian(fd_only(p)) then "*" else long_rat_as_integer_string(index_trace(p)) fi
+set index_trace ({equal rank finite dimensional}Param p) = int:
+   min(signature_trace(p))
 
-set anisotropic_part_trace(Param p)=rat: let (pos,neg)=signature_trace(p) in abs(pos-neg)
+set index_trace_string ({equal rank finite dimensional}Param p) = string:
+  if is_hermitian(p) else "*" then index_trace(p).to_string fi
 
-set anisotropic_part_trace_string(Param p)=
-if not is_hermitian(fd_only(p)) then "*" else long_rat_as_integer_string(anisotropic_part_trace(p)) fi
+set anisotropic_part_trace ({equal rank finite dimensional}Param p) = int:
+  abs(-{subtract components}signature_trace(p))
 
+set anisotropic_part_trace_string({equal rank finite dimensional}Param p) =
+     string:
+  if is_hermitian(p) else "*" then anisotropic_part_trace(p).to_string fi
 
 {report using computation of Hermitian form via the Weyl character formula}
-{report using direct computation of Hermitian form}
-set fd_report_trace(RealForm G, int k)=void:
-assert(is_equal_rank(G),"G is not equal rank");
-if verbose_fdsig then
-prints(new_line,"fund wt: highest weight in fundamental weight coordinates",
-new_line,"lambda: highest weight in X^* coordinates",
-new_line,"dim: dimension",
-new_line,"FS: Frobenius-Schur indicator: 1:orthogonal, -1: symplectic, 0: not self-dual",
-new_line,"RQ: Real-Quaternionic indicator: 1:real, -1: quaternionic, 0: not self-conjugate",
-new_line,"signature:  signature (p,q) of Hermitian form (if Hermitian)",
-new_line,"index: index min(p,q) of Hermitian form (if Hermitian)",
-new_line,"aniso: dimension |p-q| of anisotropic part of Hermitian form (if Hermitian)",
-new_line,"computing using the Weyl character formula") fi;
-let weights=box(k+1, ss_rank(G)) then  {all [a_1,...,a_rank] with 0\le a_i\le k}
-M=ratvecs_as_ratmat(fundamental_weights(G)) in
-for mu in weights do
- let lambda=M*mu in
-  if is_integer(lambda) then
-  let p=finite_dimensional(G,ratvec_as_vec(lambda)) in
-prints("fund wt: ", mu, "  lambda:", lambda, " dim:", long_rat_as_integer_string(dimension_rat(p)), "   FS/RQ: ", fs(p), "/", rq(p), "  signature: ", signature_trace_string(p), "  index: ", index_trace_string(p), "  aniso: ", anisotropic_part_trace_string(p)) fi od
+set fd_report_trace (RealForm G, int k) = void:
+  assert(is_equal_rank(G),"G is not equal rank");
+  if verbose_fdsig
+  then prints
+    (new_line
+    ,"fund wt: highest weight in fundamental weight coordinates",new_line
+    ,"lambda: highest weight in X^* coordinates",new_line
+    ,"dim: dimension",new_line
+    ,"FS: Frobenius-Schur indicator: "
+    ,"1:orthogonal, -1: symplectic, 0: not self-dual",new_line
+    ,"RQ: Real-Quaternionic indicator: "
+    ,"1:real, -1: quaternionic, 0: not self-conjugate",new_line
+    ,"signature:  signature (p,q) of Hermitian form (if Hermitian)",new_line
+    ,"index: index min(p,q) of Hermitian form (if Hermitian)",new_line
+    ,"aniso: dimension |p-q| of anisotropic part of Hermitian form "
+    ,"(if Hermitian)",new_line
+    ,"computing directly from the Hermitian form")
+  fi; let rd=G.root_datum in
+  for mu in box(k+1,rd.semisimple_rank) {all [a_1,...,a_s] with 0\le a_i\le k}
+  do let l_rat=sum(for c@i in mu do fundamental_weight(rd,i)*c od,rd.rank) in
+     if is_integer(l_rat)
+     then let lambda=l_rat\1 then p=finite_dimensional(G,lambda) in
+     ("fund wt: ", mu
+     ,"  lambda:", lambda
+     ,"  dim:", dimension(p)
+     ,"  FS/RQ: ", fs(p), "/", rq(p)
+     ,"  signature: ", signature_trace_string(p)
+     ,"  index: ", index_trace_string(p)
+     ,"  aniso: ", anisotropic_part_trace_string(p)
+     ).prints
+     fi
+  od
 
-set trace_report(RootDatum rd, ratvec v, int k)=void:
-let weights=box(k+1, ss_rank(rd)) then  {all [a_1,...,a_rank] with 0\le a_i\le k}
-M=ratvecs_as_ratmat(fundamental_weights(rd)) in
-for mu in weights do
- let lambda=M*mu in
-  if is_integer(lambda) then
-  let p=finite_dimensional(split_form(rd),ratvec_as_vec(lambda)) in
-  prints("fund wt: ", mu, "  lambda:", lambda, " dim:", dimension(p)
-        ,"   self-dual: ",is_self_dual(p), " FS: ", fs(p)
-        ,"   trace(x): ",trace_strong_real(rd,lambda,v)) fi od
+set trace_report (RootDatum rd, ratvec v, int k) = void:
+  let M=ratvecs_as_ratmat(fundamental_weights(rd)) in
+  for mu in box(k+1,rd.semisimple_rank) {all [a_1,...,a_s] with 0\le a_i\le k}
+  do let l_rat=sum(for c@i in mu do fundamental_weight(rd,i)*c od,rd.rank) in
+     if is_integer(l_rat)
+     then let lambda=l_rat\1 then p=finite_dimensional(split_form(rd),lambda) in
+     ("fund wt: ", mu
+     ,"  lambda:", lambda
+     ,"  dim:", dimension(p)
+     ,"  self-dual: ",is_self_dual(p), " FS: ", fs(p)
+     ,"  trace(x): ",trace_strong_real(rd,lambda,v)).prints
+     fi
+  od
 
-{detailed information about K-signature of finite dimensional
- also see print_K_types:print_K_signature_irr (defined for any p)}
+{ detailed information about K-signature of finite dimensional
+  also see print_K_types:print_K_signature_irr (defined for any p) }
 
-set show_signature(Param p)=
-let G=real_form(fd_only(p)) then
-height=rat_as_int(2*infinitesimal_character(p)*rho_check(G))  then
-(pos,neg)=K_signature_irr(p,height) then
-(dim_pos,dim_neg)=(0,0) in
-prints("positive part:");
-
-for c@p in pos do
-  let hw=highest_weights(p,KGB(G,0))[0] in
-     dim_pos+:=split_as_int(c)*dimension(hw);prints("  ", split_as_int(c), " ", p, " ", hw, " ", dimension(hw), " ", split_as_int(c)*dimension(hw)) od;
-prints("negative part:");
-for c@p in neg do
-  let hw=highest_weights(p,KGB(G,0))[0] in
-     dim_neg+:=split_as_int(c)*dimension(hw);prints("  ", split_as_int(c), " ", p, " ", hw, " ", dimension(hw), " ", split_as_int(c)*dimension(hw)) od;
-prints( "signature: (" + dim_pos +"," + dim_neg + ")");()
+set show_signature ({finite dimensional}Param p) = void:
+  let G=real_form(fd_only(p))
+  then height=rat_as_int(2*infinitesimal_character(p)*rho_check(G))
+  then (pos,neg)=K_signature_irr(p,height)
+  then
+    dim_pos = prints("positive part:")
+    ; for c_split@p in pos
+      do let c=c_split.split_as_int, hw=highest_weights(p,KGB(G,0))[0] in
+	prints("  ", c, " ", p, " ", hw, " ", dimension(hw)
+              , " ", c*dimension(hw))
+      ; c*dimension(hw)
+      od.sum
+  then
+    dim_neg = prints("negative part:")
+    ; for c_split@p in neg
+      do let c=c_split.split_as_int, hw=highest_weights(p,KGB(G,0))[0] in
+        prints("  ", c, " ", p, " ", hw, " ", dimension(hw)
+              , " ", c*dimension(hw))
+      ; c*dimension(hw)
+      od.sum
+  in prints( "signature: (" + dim_pos +"," + dim_neg + ")")
 
