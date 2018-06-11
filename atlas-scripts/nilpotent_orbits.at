@@ -12,15 +12,16 @@
   in particular is_dominant(H,rd) should hold
 }
 set_type
-[ ComplexNilpotent = (RootDatum root_datum_of, void ., vec H_of_triple) ]
-{ field name |root_datum| would conflict with |ComplexParabolic| (too close) }
+[ ComplexNilpotent = (RootDatum root_datum, void ., vec H_of_triple)
+, RealNilpotent    = (vec H, KGBElt x, void .)
+]
 
 set complex_nilpotent (RootDatum rd, vec H) = ComplexNilpotent: (rd,(),H)
 
 {. Two complex nilpotent orbits are equal if the root data are, and
    the H's are conjugate by the Weyl group. .}
 set = (ComplexNilpotent O1,ComplexNilpotent O2) = bool:
-   let rd=O1.root_datum_of in rd=O2.root_datum_of and
+   let rd=O1.root_datum in rd=O2.root_datum and
    dominant(O1.H_of_triple,rd)=dominant(O2.H_of_triple,rd)
 
 { dimension of the orbit of nilpotents described by a |ComplexNilpotent| }
@@ -38,7 +39,7 @@ set sort_by_dimension = ([ComplexNilpotent]->[ComplexNilpotent]):
    sort_by(dim_nilpotent@ComplexNilpotent)
 
 set find ([ComplexNilpotent] list,ComplexNilpotent O) = int:
-   first(#list,(int i)bool:list[i].root_datum_of=O.root_datum_of and
+   first(#list,(int i)bool:list[i].root_datum=O.root_datum and
                            list[i].H_of_triple=O.H_of_triple)
 
 set dim_eigenspace (RootDatum rd, ratvec H, int k) = int:
@@ -178,7 +179,7 @@ set convert (Block B,ratvec gamma) = [Param]:
 set convert (Block B, [int] S,ratvec gamma) = [Param]:
    for i in S do  let (x,y)=element(B,i) in parameter(x,y,gamma) od
 
-set real_form (Block B) = RealForm: let (x,)=element(B,0) in real_form(x)
+set real_form (Block B) = RealForm: let (G,)=%B in G
 set rho (Block B) = ratvec: rho(real_form(B))
 
 { choose appropriate infinitesimal character for (x,y) }
@@ -230,15 +231,15 @@ set Blocku (RealForm G) = [int]:
  ##for i:#B do if is_Aq(element(B,i)) then [i] else [] fi od
 
 set is_Aq_cell (Block B,[int] C) = bool:
-   >=first(#C,(int i)bool: is_Aq(element(B,C[i])))
+   any(#C,(int i)bool: is_Aq(element(B,C[i])))
 
 set is_Aq (Block B,int i) = bool: is_Aq(element(B,i))
 
 set Aq_cells (Block B,[[int]] cells) = [[int]]:
  ##for C in cells do if is_Aq_cell(B,C) then [C] else [] fi od
 
-set Aq_reps (Block B,[int] cell) =
-   let rv=[int]:[] in for i in cell do if is_Aq(B,i) then rv#:=i fi od; rv
+set Aq_reps (Block B,[int] cell) = [int]:
+ ##for i in cell do if is_Aq(B,i) then [i] else [] fi od
 
 set Aq_cells (RealForm G,[[int]] cells) = [[int]]:
    Aq_cells(principal_block(G),cells)
@@ -262,20 +263,21 @@ set Aq_cells (RealForm G,[[int]] cells) = [[int]]:
 }
 
 
-set_type RealNilpotent = (vec H,KGBElt x,void .)
 
 set real_nilpotent (vec H,KGBElt x) = RealNilpotent:(H,x,())
 
-set printable_real_nilpotent (RealNilpotent O) = (vec,KGBElt):
-   let (H,x,)=O in (H,x)
+set printable_real_nilpotent (RealNilpotent (H,x,)) = (vec,KGBElt): (H,x)
 
-set parabolic_of_orbit (RealNilpotent O) = Parabolic:
-   parabolic_by_cwt(O.H,O.x)
+set parabolic_of_orbit (RealNilpotent (H,x,)) = Parabolic: parabolic_by_cwt(H,x)
 
 set =(RealNilpotent (H,x,):O1, RealNilpotent (K,y,):O2) = bool:
    real_form(x)=real_form(y) and
    dominant(H,x.root_datum)=dominant(K,y.root_datum) and
    parabolic_of_orbit(O1)=parabolic_of_orbit(O2)
+
+set sort_by ((RealNilpotent->int) f) =
+   ([RealNilpotent] v) [RealNilpotent]:
+      for index in inv_standardisation(for x in v do f(x) od) do v[index] od
 
 set root_datum (RealNilpotent O) = RootDatum: O.x.root_datum
 set real_form (RealNilpotent O) = RealForm: O.x.real_form
@@ -283,10 +285,6 @@ set Levi_of_orbit (RealNilpotent O) = RealForm: Levi(parabolic_of_orbit(O))
 set complex_orbit (RealNilpotent O) = ComplexNilpotent:
    let rd=O.x.root_datum in complex_nilpotent(rd,dominant(O.H,rd))
 set dimension (RealNilpotent O) = int: dim_nilpotent(O.complex_orbit)
-
-set sort_by ((RealNilpotent->int) f) =
-   ([RealNilpotent] v) [RealNilpotent]:
-      for index in inv_standardisation(for x in v do f(x) od) do v[index] od
 
 set sort_by_dimension = ([RealNilpotent]->[RealNilpotent]):
    sort_by(dimension@RealNilpotent)
@@ -297,16 +295,8 @@ set simple_roots_from_coweight (RootDatum rd, ratvec v) = [int]:
 set simple_roots_from_coweights (RootDatum rd,[ratvec] list) = [[int]]:
    for v in list do simple_roots_from_coweight(rd,v) od
 
-set find ([RealNilpotent] list,RealNilpotent O) = int:
-   first(#list,(int i)bool:list[i].root_datum=O.root_datum and list[i].H=O.H)
-
-set in_distinguished_fiber (KGBElt x) = bool:
-   >=find(distinguished_fiber(x.real_form),x)
-
 set find_cayley (KGBElt x) = int:
    first(#simple_roots(x.root_datum), (int i)bool: status(i,x)=2 {real root})
-
-set find ([int] v, int k) = int: first(#v,(int i)bool: v[i]=k)
 
 set choose_Cayley (int i,KGBElt x) = KGBElt:
    let y=Cayley(i,x) in
@@ -391,7 +381,7 @@ in {=(H*inverse(w), cross(w,x))}
    assert(is_conjugate_orbit(O_dom,O),"dominant(orbit) failed");
    O_dom
 
-set find ([RealNilpotent] list,RealNilpotent O) = int:
+set find_conjugate ([RealNilpotent] list,RealNilpotent O) = int:
    first(#list,(int i)bool: list[i].root_datum=O.root_datum and
                             is_conjugate_orbit(list[i],O))
 
