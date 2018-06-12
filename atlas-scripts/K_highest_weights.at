@@ -130,6 +130,15 @@ set LKTs (Param p) = [K_Type]:
 set LKT (Param p) = K_Type:
   let lkts=LKTs(p) in assert(#lkts=1,"More than one LKT; use LKTs"); lkts[0]
 
+
+{. Replace a K-type mu by its unique standard, final, nonzero parameter .}
+set k_type(K_Type mu) = LKT(parameter(mu))
+
+{. Equivalence (actually: equality) of K-types. .}
+set equivalent (K_Type mu,K_Type tau)=bool:
+   equivalent(parameter(mu),parameter(tau))
+
+
 {---------------- map from K_types to KHighestWeights ----------------}
 
 
