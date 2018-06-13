@@ -24,12 +24,12 @@
 
 @* Outline.
 %
-This file describes a fundamental central part of the interpreter for the
-(new) command language of the Atlas of Lie Groups and Representation software.
-This part describes the fundamental type declarations used throughout the
+This file describes a central part of the interpreter for Axis, the (new)
+command language of the Atlas of Lie Groups and Representation software. This
+part describes the fundamental type declarations used throughout the
 interpreter, as well as some functions that operate on types, for instance to
-see if one con be converted into another. This compilation unit is
-called \.{types}, which refers both to user types as to meta-types of the
+see if one can be converted into another. This compilation unit is
+called \.{axis-types}, which refers both to user types and to meta-types of the
 interpreter used to represent user types and other fundamental notions.
 
 @( axis-types.h @>=
@@ -49,7 +49,7 @@ namespace atlas { namespace interpreter {
 @ Each compilation unit follows a similar global pattern. While some modules
 are absent in each case, the order in the implementation files is local type
 definitions, global variables, local variables, local functions, global
-functions (the last point being is the main goal of the implementation unit).
+functions (the last point being the main goal of the implementation unit).
 
 @h "axis-types.h"
 @h <cstdlib>
@@ -66,11 +66,12 @@ namespace {@;
 
 
 @ The parser produces a parse tree, in the form of a value of type |expr|
-defined in the unit \.{parsetree}. Our task is to take such an expression,
-analyse it and then evaluate it to obtain a value. At various points errors
-can occur, which we shall have to handle gracefully: during the analysis
-static ``type'' errors may prevent us from undertaking any meaningful action,
-and in absence of such errors there still can be dynamic ``runtime'' errors.
+defined in the unit \.{parsetree}. The task of the evaluator (defined largely in
+the \.{axis} compilation unit) is to take such an expression, analyse it and
+then evaluate it to obtain a value. At various points errors can occur, which we
+shall have to handle gracefully: during the analysis static ``type'' errors may
+prevent us from undertaking any meaningful action, and in absence of such errors
+there still can be dynamic ``runtime'' errors.
 
 We first define some data types used by the evaluator. First of all we shall
 consider ``type'' values, represented by the structure |type_expr|, in terms
@@ -99,7 +100,7 @@ linked lists or binary trees: at each level they represent various alternative
 possibilities, each of which might recursively refer to the original type one
 or more times. Such recursion is represented by linked structures that cannot
 easily be hidden in a (template) class with a simple interface, such as
-happens in the contained classes of the Standard Template Library. For this
+happens in the container classes of the Standard Template Library. For this
 reason the code using these types is to some extent exposed to the linked
 nature of the data, and some concern for proper memory management will be
 necessary. We shall however provide functions to facilitate safe and
@@ -110,7 +111,7 @@ of a quite different nature than that of the main mathematical library.
 
 @< Includes needed in \.{axis-types.h} @>=
 #include <memory> // for |std::unique_ptr|, |std::shared_ptr|
-#include "../Atlas.h" // for utilities (like |sl_list|); must come first
+#include "../Atlas.h" // for utilities (like |sl_list|); this include must come first
 #include "buffer.h" // for |id_type|
 
 
@@ -118,35 +119,35 @@ of a quite different nature than that of the main mathematical library.
 %
 We make a fundamental choice to check types before attempting to execute any
 expression entered by the user; thus type errors can be signalled earlier and
-expressed more understandably than if one would wait until an accident is
-about to happen at runtime. This means that types are to be represented
-independently of runtime values. Types will have an effect on the
-transformation of expressions into executable internal form (for example in
-selecting the instance of an overloaded function to use), but once that is
-done, types will no longer be represented at all: the internal code executes
-without being ``aware'' of the types of the values it manipulates. This is
-only possible because those values are then accessed via generic pointers
-(i.e., pointers that, as far as \Cpp\ is concerned, could point to any kind of
-value). Currently runtime values also contain an indication of their type,
-which will allow us to do some dynamic testing to trap possible errors in the
-logic of our interpreter, but the user should never notice this; in an
-optimised version of the \.{atlas} program, this runtime type information and
-corresponding tests could be dropped altogether.
+expressed more understandably than if one would wait until an accident is about
+to happen at runtime. Therefore types will be represented independently of any
+runtime value representation. Types will have an effect on the transformation of
+expressions into executable internal form (for example in selecting the instance
+of an overloaded function to use), but once that is done, types will no longer
+be represented at all: the internal code executes without being ``aware'' of the
+types of the values it manipulates. This is only possible because those values
+are then accessed via generic pointers (i.e., pointers that, as far as \Cpp\ is
+concerned, could point to any kind of value). Currently runtime values also
+contain an indication of their type, which will allow us to do some dynamic
+testing to trap possible errors in the logic of our interpreter, but the user
+should never notice this; in an optimised version of the \.{atlas} program, this
+runtime type information and corresponding tests could be dropped altogether.
 
-Types are represented by small tree structures, with nodes of types
-|type_expr| that will be detailed later. For now we provide no user-defined
-encapsulation (as \Cpp~classes do), so a type expression basically describes
-the structure of the corresponding values, and allows all operations
+In the simplest case, types are represented by small tree structures, with nodes
+of types |type_expr| that will be detailed later. For now we provide no
+user-defined encapsulation (as \Cpp~classes do), so a type expression basically
+describes the structure of the corresponding values, and allows all operations
 compatible with that structure to be performed. For instance the type printed
 as \.{(int->[(bool,mat)])} specifies a function mapping integers to lists of
-pairs of a Boolean value and a matrix, and allow operations compatible with
-that such as calling it with an integer argument and then selecting the second
-component of the final element of the result. However, classes defined in the
-Atlas software library itself will be presented to the user as (opaque)
-primitive types; only built-in operations declared for that primitive type can
-be applied to such values, so we do provide abstraction from internal
-representation there. One kind of type is a function type, which specifies the
-types of the individual function arguments and of the values it returns.
+pairs of a Boolean value and a matrix; it allows operations compatible with that
+such as calling it with an integer argument and then subscripting it with an
+integer index, and finally selecting the second component of the result.
+However, classes defined in the Atlas software library itself will be presented
+to the user as (opaque) primitive types; only built-in operations declared for
+that primitive type can be applied to such values, so we do provide abstraction
+from internal representation there. One important kind of type is a function
+type, which specifies the types of the individual function arguments and of the
+values it returns; there are also array-, tuple-, and discriminated union types.
 
 Trees representing different type expressions will not share any sub-trees
 among each other, so they have strict (unshared) ownership of their parts,
@@ -157,19 +158,19 @@ avoid doing so more than absolutely necessary.
 
 Usually types are built from the bottom up (from leaves to the root), although
 during type checking the reverse also occurs. This means that nodes of the
-structure are held in local variables before being moved to dynamically
-managed storage; it is important to be able to do this while transferring
-ownership of data linked to, which requires resetting the original node so
-that it can be cleaned up without destroying dependent data. This is called
-move semantics, and was originally realised using auto-pointers for individual
-pointers, and by a special method on the level of complete nodes. With the
-advent of \Cpp11, special syntactic support was added, so that one can
+structure are held in local variables before being moved to dynamically managed
+storage; it is important to be able to do this while transferring ownership of
+the data linked to, which requires resetting the original node so that it can be
+cleaned up without destroying dependent data. This is called move semantics, and
+was originally realised using auto-pointers for individual pointers, and by a
+special method on the level of complete nodes. With the advent of \Cpp11,
+special syntactic support for move semantics was added, so that one can
 distinguish calls that should be realised with shallow copies and ownership
-transfer from the occasionally needed deep copy. At the same time
-auto-pointers were replaced by unique-pointers, with essentially the same
-functionality, but better adapted to the syntactic facilities. The structure
-also uses ordinary pointers of type~|type_p| when ownership is managed by the
-containing structure.
+transfer from the occasionally needed deep copy. At the same time auto-pointers
+were replaced by unique-pointers, with essentially the same functionality, but
+better adapted to the syntactic facilities. The structure also uses ordinary
+pointers of type~|type_p| in places where ownership is managed by the containing
+structure rather than by the pointer itself.
 
 @< Type definitions @>=
 class type_expr;
@@ -188,21 +189,30 @@ library, these were used to replace the implementation of type lists.
 @< Includes needed in \.{axis-types.h} @>=
 #include "sl_list.h" // for internals of the |sl_list| class template
 
-@ The class template |simple_list| is built into the structure itself, while
-|sl_list|, which is more flexible but requires more space at the head of the
-list (the class |sl_list<type_expr>| itself), is occasionally used for
-temporary variables. This provides a good test for the usability of the new
-container type; so far it has passed them gracefully, though occasionally
-after enriching the repertoire of methods of the container type.
+@ When incorporating type lists into the |type_expr| structure, the class
+template |simple_list| will be used; the more flexible but less compact
+|sl_list| template will be occasionally used for temporary variables, whose type
+is then |dressed_type_list|. This usage provides a good test for the usability
+of our new container types; so far they have passed them gracefully, though
+occasionally after enriching the repertoire of methods of the container type.
+Also, it turns out to be useful to sometimes not use the provided container
+types directly; for instance, for a component of a \Cpp\ |union| type, there is
+little advantage of using a smart pointer (it still needs to be managed manually
+by the containing union type), so we use a raw pointer to a node
+(|raw_type_list| or |const_raw_type_list|) in such occasions. We shall also have
+occasions where instead of normal iterators over type lists we use weak
+iterators (ones that cannot be used to insert or delete nodes), and the types
+|wtl_iterator| and |wtl_const_iterator| are defined for that purpose.
 
 @< Type definitions @>=
 typedef containers::simple_list<type_expr> type_list;
+typedef containers::sl_list<type_expr> dressed_type_list;
+@)
 typedef atlas::containers::sl_node<type_expr>* raw_type_list;
 typedef atlas::containers::sl_node<type_expr>const * const_raw_type_list;
-typedef containers::sl_list<type_expr> dressed_type_list;
-typedef containers::weak_sl_list_const_iterator<type_expr> wtl_const_iterator;
 typedef containers::weak_sl_list_iterator<type_expr> wtl_iterator;
   // wtl = weak type list
+typedef containers::weak_sl_list_const_iterator<type_expr> wtl_const_iterator;
 
 @ Since types and type lists own their trees, their copy constructors must
 make a deep copy. The class |type_expr| will provide no copy constructor but
@@ -263,7 +273,7 @@ sequence of types, and disjoint unions (co-products in the category of sets)
 of some sequence of types.
 
 In addition to these, we allow for two more possibilities, that do not
-correspond to way in which values can be built up. The final possibility
+correspond to the way in which values can be built up. The final possibility
 |tabled| provides a way to reference a type indirectly (its details are to be
 found after looking up the reference), which is essential for being able to
 specify recursive types. We also allow for an undetermined type, which can
@@ -308,54 +318,41 @@ const char* prim_names[]=@/
 Type expressions are defined by a tagged union. We intend to always only access
 the variant corresponding to the current tag value, but this is not something
 that can be statically ascertained in \Cpp; therefore the tag and the
-corresponding variants originally had public access. We have none nonetheless
-made the fields private with public accessor methods, which will automatically
-insert a look-up for any type with |tag=tabled|. That kind of type is necessary
-to represent types with a recursive structure; the look-up uses the static
-member |type_map|, which will be discussed later.
+corresponding variants originally had public access. The fields were however
+made private with public accessor methods the introduction of |tabled| types, a
+kind of type necessary to represent types with a recursive structure. This is
+not to ensure access according to the tag, but rather to automatically insert a
+test for |tag==tabled| possibly followed by expansion. This makes the handling
+of tabled types transparent in most places, but there is a subtlety to be
+mentioned. The type definitions in the table should of course not be
+overwritten, but while |expansion| returns a reference to constant so that the
+|type_expr| values in the table are protected, the methods |func|,
+|component_type| and |tuple| return pointers to non-|const|; this exposes nodes
+one level down to modifications that effectively also alter the defined types.
+This is dangerous, and indeed has been a source of a bug in the past. However it
+is fundamental to the implementation of our type checker that it can specialise
+initially undetermined parts of a type expressions, which requires such pointers
+to be returned by those methods. The protection of the values of tabled types
+lies in the convention that the only way type expressions should be modified is
+by specialisation; as the type table contains only types without any
+undetermined parts, it cannot be altered.
 
-The field |tuple_variant| used to be (after the |containers::simple_list| class
-template was introduced into Atlas, which coincided with the migration to
-the \Cpp11 standard) of type |type_list|. Having variant members of a |union|
-with nontrivial special member functions is allowed in \Cpp11, although it
-remains the programmer's responsibility to explicitly call constructors and
-destructors as those variants come and go. Currently this is changed to
-|raw_type_list|; the main difference is that the variant can now be initiated by
-simple assignment rather than placement |new|, and at termination requires a
-call of |delete| for the raw pointer rather than an explicit destructor call for
-the |type_list| object. This step backwards to raw pointers is therefore mostly
-a simplification, but there is one real drawback of not having a true
-|type_list| object: it is now impossible to create a |type_list::iterator| (or
-its |const| relative) to iterate over the type lists in tuple types. It turns
-out however that most of the time weak iterators (which do not allow for
-insertion of deletion of nodes) are sufficient, which is why the |raw_type_list|
-solution is now chosen.
-
-Since the introduction of |tabled| types, the variants are private and accessed
-through the public methods |prim|, |func|, |component_type| and |tuple|, which
-expand a tabled type if necessary. This makes the handling of tabled types
-transparent in most places, but there is a subtlety to be mentioned. The type
-definitions in the table should of course not be overwritten, but while
-|expansion| returns a reference to constant, so that the |type_expr| values in
-the table are protected, the methods |func|, |component_type| and |tuple| return
-pointers to non-|const|; this exposes nodes one level down to modification,
-which would effectively also alter the defined types. This is dangerous, and
-indeed there has been a bug that allowed corruption of types under certain
-circumstances. However it is fundamental to the implementation of our type
-checker that it can specialise initially undetermined parts of a type
-expressions, which requires such pointers to be returned by those methods. The
-protection of the values of tabled types lies in the convention that the only
-way type expressions can be modified is by specialisation, while the type table
-contains only types without any undetermined parts.
+Although variant members of a |union| with nontrivial special member functions
+is allowed in \Cpp11, it then remains the programmer's responsibility to
+explicitly call constructors and destructors as those variants come and go.
+Using smart pointers there would hardly have any advantages, and require using
+placement |new| rather than assignment for setting their values. So here we use
+raw pointers instead, and in particular |raw_type_list| rather than
+|type_list| for the |tuple_variant|. One drawback of that is that we will not be
+able to create a |type_list::iterator| for traversal of the list, but in
+practice weak iterators will always suffice.
 
 There is one restriction on types that is not visible in the definition below,
 namely that the list of types referred to by the |tuple_variant| field cannot
-have length~$1$ (but length~$0$ is allowed, the $0$-tuple being the |void|
-type; we might also take the $0$-union to be the uninhabited type \.* that is
-for instance the ``return type'' of the |error| function, but this is not
-currently the case). This is because anything that would suggest a $1$-tuple
-or $1$-union (for instance a parenthesised expression) is identified with its
-unique component.
+have length~$1$ (nor can it have length~$0$ when |tag==union_type|, but a
+$0$-tuple defines the |void| type, as we saw above). This is because anything
+that would suggest a $1$-tuple or $1$-union (for instance a parenthesised
+expression) is identified with its unique component.
 
 @< Type definitions @>=
 
