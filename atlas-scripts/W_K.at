@@ -120,9 +120,12 @@ set R_K_dom (KGBElt x) = [WeylElt]:  {these are elements of W(G,H)}
 { requirement: x makes 2rho_c G-dominant }
 set W_K (KGBElt x) = (RootDatum,[WeylElt]): (K_root_datum(x),R_K_dom(x))
 
-set move_weight ((KGBElt x,vec mu),KGBElt y) = KHighestWeight:
+set move_weight ((KGBElt x,vec mu),KGBElt y) = (KGBElt,vec):
   assert(real_form(x)=real_form(y),"Real form mismatch");
   let w=cross_divide(y,x) in (y,w*mu)
+
+set move_weight (KHighestWeight (,x,mu),KGBElt y)=
+   k_highest_weight(move_weight((x,mu),y))
 
 set move_coweight((KGBElt x,vec mu),KGBElt y)=(KGBElt,vec):
   assert(real_form(x)=real_form(y),"Real form mismatch");
@@ -130,21 +133,20 @@ set move_coweight((KGBElt x,vec mu),KGBElt y)=(KGBElt,vec):
 
 { first replace (x,mu) with an equivalent ("nice") one such that x makes
   2rho_c G-dominant }
-set R_K_dom_mu_orbit (KHighestWeight (x,mu)) = [KHighestWeight]:
-  let (x,mu) =
-    if is_dominant(real_form(x),tworho_c(x)) then (x,mu)
-    else move_weight((x,mu), nice_choice_x(real_form(x)))
-    fi
- then (K_0,R_K_dom)=W_K(x)
- , proj = ^cocharacter_lattice_K(x) { X^*->X^*(T_K0)=X^*/(X^*)^{-delta}}
- then mu_1=lift_action(chamber(K_0,proj*mu),x)*mu then
- result=[KHighestWeight]:[]
- in
-   for w in R_K_dom
+set R_K_dom_mu_orbit (KHighestWeight(,x,mu)) = [KHighestWeight]:
+  if not is_dominant(real_form(x),tworho_c(x))
+  then set (x,mu) := move_weight((x,mu), nice_choice_x(real_form(x)))
+  fi;
+  let (K_0,R_K_dom)=W_K(x)
+  , proj = ^cocharacter_lattice_K(x) { X^*->X^*(T_K0)=X^*/(X^*)^{-delta}}
+  then mu_1=lift_action(chamber(K_0,proj*mu),x)*mu
+  then result=[KHighestWeight]:[] { we use the partial result during the loop }
+  in
+     for w in R_K_dom
      do let mu_2=w*mu_1 in
-     if none(#result, (int i)bool: let (,phi)=result[i] in mu_2=phi)
-     then result#:=(x,mu_2)
-     fi
+       if none(#result, (int i)bool: let (,,phi)=result[i] in mu_2=phi)
+       then result#:=k_highest_weight(x,mu_2)
+       fi
    od;
    result
 
@@ -229,8 +231,7 @@ set R_K_dom_mu (KGBElt x,vec mu) = [WeylElt]:
 {    for w in R_K_dom do if lift_action(x,w)*mu_1=mu_1 then result#:=w fi od;}
 ##for w in R_K_dom do if w*mu_1=mu_1 then [w] else [] fi od
 
-
-
+set R_K_dom_mu (KHighestWeight(,x,mu)) =  [WeylElt]: R_K_dom_mu(x,mu)
 
 
 
