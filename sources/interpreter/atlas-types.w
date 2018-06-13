@@ -5837,7 +5837,7 @@ void branch_wrapper(expression_base::level l)
 @)
   khc.normalize(srk);
   standardrepk::combination combo=khc.standardize(srk);
-  RatWeight zero_nu(G.rank());
+  const RatWeight zero_nu(G.rank());
 @/own_virtual_module acc @|
     (new virtual_module_value(p->rf, repr::SR_poly(rc.repr_less())));
   for (auto it=combo.begin(); it!=combo.end(); ++it)
@@ -5889,6 +5889,56 @@ void branch_pol_wrapper(expression_base::level l)
     }
   }
   push_value(std::move(acc));
+}
+
+@ Here is a variant of branch that keeps branch of an additional statistic, and
+therefore returns a linear combination of parameters with polynomial rather than
+integer coefficients. Mostly, this amounts to replacing the call to
+|KhatContext::branch| by one to |qKhatContext::branch| which results from
+constructing a |qHatContext| rather than a |KhatContext|. The type returned by
+the called method is now |q_combin|, which is a linear combination with
+|Polynomial<int>| coefficients; these polynomials are converted to \&{vec}
+values for the \.{atlas} user.
+
+@< Local function def...@>=
+void q_branch_wrapper(expression_base::level l)
+{ int bound = get<int_value>()->int_val();
+  // not ``branch and bound'' but ``branch up to bound''
+  shared_module_parameter p = get<module_parameter_value>();
+  test_standard(*p,"Branching of non-standard parameter is not allowed");
+  const Rep_context rc = p->rc();
+  RealReductiveGroup& G=p->rf->val;
+  standardrepk::qKhatContext khc(G);
+  StandardRepK srk=
+    khc.std_rep_rho_plus (rc.lambda_rho(p->val),G.kgb().titsElt(p->val.x()));
+  assert(khc.isStandard(srk)); // should be ensured by |test_standard|
+  if (l==expression_base::no_value)
+    return;
+@)
+  khc.normalize(srk);
+  standardrepk::q_combin input=khc.standardize(srk);
+  const RatWeight zero_nu(G.rank());
+  standardrepk::q_combin sum(khc.height_order());
+  for (auto it=input.begin(); it!=input.end(); ++it)
+    // loop over finals from |srk|
+  {
+    standardrepk::q_combin chunk = khc.branch(it->first,bound);
+    sum.add_multiple(chunk,it->second);
+  }
+
+@/own_row result = std::make_shared<row_value>(sum.size());
+  auto res_p=result->val.begin();
+  for (auto it=sum.begin(); it!=sum.end(); ++it)
+  {
+    own_vector coef = // convert polynomial to |vector_value|
+      std::make_shared<vector_value>(it->second.begin(),it->second.end());
+    auto tup = std::make_shared<tuple_value>(2);
+    StandardRepr term = rc.sr(khc.rep_no(it->first),khc,zero_nu);
+    tup->val[0] = std::move(coef);
+    tup->val[1] = std::make_shared<module_parameter_value> (p->rf,term);
+    *res_p++ = std::move(tup);
+  }
+  push_value(std::move(result));
 }
 
 @ In the K-type code, standard representations restricted to $K$ are always
@@ -6200,6 +6250,7 @@ install_function(scale_0_poly_wrapper,"at_nu_0", "(ParamPol->ParamPol)");
 install_function(K_type_formula_wrapper,@|"K_type_formula" ,"(Param->ParamPol)");
 install_function(branch_wrapper,@|"branch" ,"(Param,int->ParamPol)");
 install_function(branch_pol_wrapper,@|"branch" ,"(ParamPol,int->ParamPol)");
+install_function(q_branch_wrapper,@|"q_branch" ,"(Param,int->[vec,Param])");
 install_function(to_canonical_wrapper,@|"to_canonical" ,"(Param->Param)");
 install_function(srk_height_wrapper,@|"height" ,"(Param->int)");
 install_function(deform_wrapper,@|"deform" ,"(Param->ParamPol)");
