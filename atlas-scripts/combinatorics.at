@@ -116,6 +116,51 @@ set parity_restricted_partitions (int n, bool restrict_odd_parts) = [Partition]:
   ; ##table~[0] { concatenate entries of final table row }
   fi
 
+set hook_lengths (Partition lambda) = [int]:
+   let lambda_tr=lambda.transpose in
+   for part@i in lambda
+   do for j:part do (part-j) + (lambda_tr[j]-i) - 1 od
+   od.##.reverse_sort
+
+set Sn_representation_dimension (Partition lambda) = int:
+   let hl=lambda.hook_lengths in hl.#.fac\hl.product
+
+set hook_lengths ([bool] edges) = [int]:
+   let last=#edges-1 in
+ ##for edge@i in edges
+   do if edge then []
+      else ##for j:last-i from i+1 do if edges[j] then [j-i] else [] fi od
+      fi
+   od
+
+{ character of irreducible Sn representation lambda at give cycle type }
+set Murnaghan_Nakayama (Partition lambda, [int] cycle_type) = int:
+if let n=sum(lambda) in assert(sum(cycle_type)=n,"Size mismatch"); n=0 then 0
+else
+   let edge = { edge sequence for |lambda|, starting one across initial column }
+     let d = lambda.transpose[0] { offset, index of edge above main diagonal }
+     , edge_val=is_member(for part@i in lambda do part-i-1 od)
+     in for i:lambda[0]+d from -d do edge_val(i) od
+   , mu=cycle_type.sort
+in (#mu-1).
+   (rec_fun MN (int j) int:
+    if j.< then 1 { the unique character value for the trivial group S0 }
+    else let k=mu[j] { size of cycle in cycle type, and hence of rim hooks } in
+       if k=1 { this case will be handled separately for efficiency }
+       else { traverse candidate positions for removal of a |k| rim hook: }
+	  for i in list(#edge-k,(int i)bool: not edge[i] and edge[i+k])
+	  do edge[i+k]:=false; edge[i]:=true { remove our chosen |k| rim hook }
+	  ; minus_1^count(edge[i+1:i+k])*MN(j-1) { recursive value, hook sign }
+	  next edge[i]:=false; edge[i+k]:=true { restore: add rim hook back }
+	  od
+	 .sum { add up value from all candidate positions }
+       then { |k=1| case, used the hook length formula for remaining partition }
+          let hl=edge.hook_lengths in hl.#.fac\hl.product
+       fi
+    fi
+   )
+fi
+
 {
   Core and quotient operations can be defined in terms of associating to any
   partition $\lambda$ the subset $\{ lambda[i]-i-1 | i\in\N \}$ of $\Z$. This
@@ -249,6 +294,20 @@ set signed_cycle_type ([int] sigma) = [int,bool]: { pairs of cycle and sign }
   then size = for cycle in cycles do #cycle od
   ,    sign = for cycle in cycles do for i in cycle do #flip[i] od.sum.is_odd od
   in for i in inv_standardisation(size) do (size[i],sign[i]) ~od
+
+set cycle_type_order = lcm@[int]
+set cycle_type_order ([int,bool] cycles) = int:
+  for (cycle,sign) in cycles do if sign else cycle then cycle+cycle fi od.lcm
+
+set cycle_centralizer_order ([int] cycles) = int:
+  product(cycles)*product(for m in cycles.frequencies do m.fac od)
+set cycle_centralizer_order ([int,bool] cycles) = int:
+  let plus_cycles = ## for (c,s) in cycles do if s then [] else [c] fi od
+  ,  minus_cycles = ## for (c,s) in cycles do if s then [c] else [] fi od
+  in product(for (cycle,) in cycles do cycle+cycle od)*
+     product(for m in plus_cycles.frequencies do m.fac od)*
+     product(for m in minus_cycles.frequencies do m.fac od)
+
 
 {			    Formal power series				}
 pentagonal_series : inf_list:
