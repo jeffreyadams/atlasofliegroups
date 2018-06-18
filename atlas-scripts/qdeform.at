@@ -1,0 +1,72 @@
+<qParamPol.at
+<deform.at
+
+set nullqParamPol(RealForm G)=qParamPol:[null_module(G)]
+
+set q_deformation_terms (Param p) = qParamPol:
+  let (B,KL_mat,length) = compress(partial_KL_block(p)) then nB=#B in
+  if =nB or B~[0]!=p
+  then [null_module(p)] { if |p| itself is not among survivors, return 0 }
+  else { compute final column |acc| of |Q| matrix by solving linear system
+         $P'*acc=e_p$ with $P'$ a matrix of Split, columns from |KL_sum_at_s| }
+    let remainder = null(nB-1)#1 { start with standard basis vector for |p| }
+    , solution=null(nB)
+    , !opposite_parity=1-length~[0]%2 { opposite to that of |length(p)| }
+    , !on_p = orientation_nr(p)
+    in
+    for q_ind : nB
+    ~do let contrib=remainder[q_ind]*KL_mat[q_ind] in
+      remainder -:= contrib
+    ; if length[q_ind]%2=opposite_parity
+      then solution +:= contrib
+      fi
+    od
+
+  ; {prints("solution:",solution);}let rv=nullqParamPol(p.real_form) in 
+    for c@i in solution
+    do { twist (1-s)*soalution according to orientation numbers of its terms }  
+      let x=B[i] then (q,r)=(on_p-orientation_nr(x))\%2 in
+      assert(=r,"odd orientation");
+      rv:=rv+(minus_1^q*c*one_minus_q)*[x]
+    od;rv
+  fi
+
+set q_recursive_deform (Param p) = qParamPol:
+  if d_verbose then prints("recursive_deform with:", p) fi;
+  if not is_final(p) then error("improper parameter") fi;
+  let empty=nullqParamPol(real_form(p)) in
+  if d_verbose { choose verbose or non-verbose version of the function }
+  then rec_fun full_def (i_poly sc,Param p) qParamPol:
+			 { |sc| will simply scale the resulting ParamPol }
+    begin
+      prints("full_def with: sc=", sc, ", p=", p);
+      assert(is_standard(p)
+	    ,"non standard parameter encountered in deformation");
+      let acc=empty, at_nu0=qParamPol: sc*[p.at_nu_0] { fully deformed |p| } in
+      for factor in reducibility_points(p)
+      ~do
+	let p_def=p*factor { next deformation of |p| }
+	then def=q_deformation_terms(p_def) { bypass built-in |deform| here }
+        in
+	  prints("adding deformation term: p=", p_def, new_line,"adding:", def)
+      ; acc+:=def
+      od
+    ; for (f,q) in rearrange(acc) { traverse the sum of the deformation terms spun off }
+      do { apply |full_def| recursively to all those terms }
+        at_nu0 +:= full_def(convolve(sc,f),q) { gather harvest from those deformations }
+      od
+    ; at_nu0
+    end
+  else rec_fun full_def (i_poly sc,Param p) qParamPol:
+			 { |sc| will simply scale the resulting ParamPol }
+    begin
+      assert(is_standard(p),"non standard parameter in deformation");
+      let acc=empty, at_nu0=qParamPol: sc*[p.at_nu_0] { fully deformed |p| } in
+      for factor in reducibility_points(p)
+      ~ { direction of deformation is down, towards 0; this is not essential }
+      do acc+:=q_deformation_terms(p*factor) od
+    ; for (f,q) in rearrange(acc) { traverse the sum of the deformation terms spun off }
+      do at_nu0 +:= full_def(convolve(sc,f),q) od
+    ; at_nu0
+    end
+  fi { apply that recursive function to the initial argument: } ([1],p)

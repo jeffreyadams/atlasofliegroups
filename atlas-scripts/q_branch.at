@@ -1,0 +1,11 @@
+<basic.at
+<K_highest_weights.at
+<tabulate.at
+
+set print_q_branch(Param p, int N)=void:
+let header=["c","x","lambda","weight","dim"] then
+values=for (c,p) in q_branch(p,N) do
+let (,x)=%p.x then
+(,wt)=highest_weights(p)[0] in
+[poly_format(c,"q"),x.to_string,p.lambda.to_string,wt.to_string,LKT(p).dimension.to_string]
+od in tabulate(header#values,"lllll",2," ")

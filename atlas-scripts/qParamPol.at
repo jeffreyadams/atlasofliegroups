@@ -1,0 +1,64 @@
+<polynomial.at
+
+
+{\sum a_i(q)p_i where a_i(q) is a polynomial}
+
+{the data type qParamPol is [ParamPol]
+[P_0,P_1,..,P_n] <-> P_0+P_1*q^2+...+P_n*q^n
+The advantage of the non-obvious convention is that we can use the
+features of ParamPol to take care of combining terms.
+See the functions rearrange and dearrange.
+}
+set_type qParamPol=[ParamPol]
+
+{equality is term by term}
+set =(qParamPol P,qParamPol Q)=bool:
+ (#P=#Q) and all(for i:#P do P[i]=Q[i] od)
+
+
+{rearrange:
+ takes qParamPol:[P_0,P_1,..,P_n] <-> P_0+P_1*q+...+P_n*q^{n-1}
+ to
+ (a_0+a_1q+...a_kq^k)*p_0 + (b_0+...+b_rq^r)*p_1 + ... (...)p_m
+ represented by [([a_0,...,a_k],p_0),...,([...],p_m)]
+ where {p_i} are the monomials of all of the {P_j}
+ the coefficients are i_pols
+This is a more natural way to think of a qParamPol, but less convenient
+computationally.
+}
+set rearrange(qParamPol pols)=[(i_poly,Param)]:
+for p in monomials(pols) do
+ (for i:#pols do split_as_int(pols[i][p]) od,p) od
+
+{go other way:
+ given f_0(q)p_0 + ... + f_n(q) p_n, take it to [P_0,...,P_m]
+[a_0+a_1q+...a_kq^k]*p_0 + [b_0+...+b_rq^r]*p_1 + ... [...]*p_n
+ <->  by [([a_0,...,a_k],p_0),...,([...],p_n)] goes to 
+ P_0+P_1*q^2+...+P_m*q^m, represented by
+ [P_0,P_1,..,P_n]
+}
+set dearrange([([int],Param)] f,RealForm G)=qParamPol:
+let n=max(for (v,) in f do #v od) in
+for i:n do
+ sum(G,for j:#f do let (v,p)=f[j] then w=v##null(n-#v) in w[i]*p od)
+od
+
+set dearrange([([int],Param)] f)=qParamPol:dearrange(f,let (,p)=f[0] in p.real_form)
+
+{nice output}
+set show(qParamPol pols)=void:
+for (f,p) in rearrange(pols) do prints("(",poly_format(f,"q"),")","*",p) od
+
+{polynomial  in q, or constant, times qParamPol}
+set *(i_poly f,qParamPol P)=qParamPol:
+let r=rearrange(P) in dearrange(for (g,p) in r do (convolve(f,g),p) od)
+set *(int c,qParamPol P)=qParamPol:[c]*P
+
+set +(qParamPol P,qParamPol Q)=qParamPol:
+if #P<=#Q then
+ for i:#Q do if i<=#P-1 then P[i]+Q[i] else Q[i] fi od
+else
+ for i:#P do if i<=#Q-1 then P[i]+Q[i] else P[i] fi od
+fi
+set one_minus_q=[1,-1]
+set -(qParamPol P,qParamPol Q)=qParamPol:P+(-1)*Q
