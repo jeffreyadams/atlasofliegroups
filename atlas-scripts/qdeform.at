@@ -4,12 +4,12 @@
 {q version of deformation algorithm}
 
 {need to compute final column of an upper unitriangular polynomial matrix}
+
 {difference of two vectors of polynomials of the same length}
 set poly_rows_minus([i_poly] f,[i_poly] g)=[i_poly]:([f]-[g])[0]
 
-{compute last column of the inverse of an 
-upper unitriangular polynomial matrix
-}
+{compute last column of the inverse of an
+upper unitriangular polynomial matrix}
 set last_column_mat_poly_inverse(i_poly_mat A)=[i_poly]:
 {check poly_1's on the diagonal}
 assert(all(for i:#A do A[i][i]=poly_1 od), "A is not upper unitriangular");
@@ -27,12 +27,12 @@ caution: mat is by columns, i_poly_mat is by rows
 }
 set mat_as_poly_mat(mat A)=i_poly_mat:
 let B=^A then
-(n,m)=shape(B) in 
+(n,m)=shape(B) in
 for i:m do for j:n do vec:[B[i][j]] od od
 
 {modified version of compress from deform.at}
 set q_compress ([Param] B, mat KL_mat, [i_poly] polys, vec stops, vec survivors, mat map) =
-  ([Param], i_poly_mat, [int]): 
+  ([Param], i_poly_mat, [int]):
   let KL_poly_mat = i_poly_mat: transpose(for col in KL_mat do for inx in col do polys[inx] od od)
   then reduced_KL_poly_mat = i_poly_mat: mat_as_poly_mat(map)*(for j in survivors do KL_poly_mat[j] od)
   , survivor_lengths = let l=0 in
@@ -40,25 +40,23 @@ set q_compress ([Param] B, mat KL_mat, [i_poly] polys, vec stops, vec survivors,
   in
   ( for i in survivors do B[i] od { block restricted to survivors }
   , { matrix of associated P polynomials}
-    for col@j in reduced_KL_poly_mat 
+    for col@j in reduced_KL_poly_mat
     do (for e@i in col do minus_1^survivor_lengths[i]*minus_1^survivor_lengths[j]*e od)
     od
   , survivor_lengths { length mapping }
   )
 
-{q version of deformation of one term. This is not currently correct:
-the "compute final column of |acc|" step needs to be done over Z[q], not
-just over Z[s], or even with s=-1 as was done in deform.at}
+{use last_column_mat_poly_inverse(KL_mat) to compute column
+of inverse as polynomial in q}
 set q_deformation_terms (Param p) = qParamPol:
   let (B,KL_mat,length) = q_compress(partial_KL_block(p)) then nB=#B in
   if =nB or B~[0]!=p
   then [null_module(p)] { if |p| itself is not among survivors, return 0 }
-  else { compute final column |acc| of |Q| matrix by solving linear system
-         $P'*acc=e_p$ with $P'$ a matrix of Split, columns from |KL_sum_at_s| }
+  else
     let solution=last_column_mat_poly_inverse(KL_mat)  then
     rv=nullqParamPol(p.real_form) in
     for i:#solution-1 do  {skip diagonal entry}
-    { twist (1-s)*solution according to orientation numbers of its terms } 
+    { twist (1-s)*solution according to orientation numbers of its terms }
       let c=solution[i] then
       x=B[i] then (q,r)=(orientation_nr(p)-orientation_nr(x))\%2 in
       assert(=r,"odd orientation");
@@ -66,7 +64,7 @@ set q_deformation_terms (Param p) = qParamPol:
     od;rv
   fi
 
-{q version of recursive deform, depends on q_deformation_terms, so not working correctly}
+{q version of recursive deform}
 set q_recursive_deform (Param p) = qParamPol:
   if d_verbose then prints("recursive_deform with:", p) fi;
   if not is_final(p) then error("improper parameter") fi;
