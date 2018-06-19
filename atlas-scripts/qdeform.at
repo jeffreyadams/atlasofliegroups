@@ -33,7 +33,7 @@ for i:m do for j:n do vec:[B[i][j]] od od
 {modified version of compress from deform.at}
 set q_compress ([Param] B, mat KL_mat, [i_poly] polys, vec stops, vec survivors, mat map) =
   ([Param], i_poly_mat, [int]): 
-  let KL_poly_mat = i_poly_mat: for col in KL_mat do for inx in col do polys[inx] od od
+  let KL_poly_mat = i_poly_mat: transpose(for col in KL_mat do for inx in col do polys[inx] od od)
   then reduced_KL_poly_mat = i_poly_mat: mat_as_poly_mat(map)*(for j in survivors do KL_poly_mat[j] od)
   , survivor_lengths = let l=0 in
     for s in survivors do while stops[l+1]<=s do l+:=1 od; l od
@@ -57,11 +57,12 @@ set q_deformation_terms (Param p) = qParamPol:
          $P'*acc=e_p$ with $P'$ a matrix of Split, columns from |KL_sum_at_s| }
     let solution=last_column_mat_poly_inverse(KL_mat)  then
     rv=nullqParamPol(p.real_form) in
-    for c@i in solution
-    do { twist (1-s)*solution according to orientation numbers of its terms } 
-      let x=B[i] then (q,r)=(orientation_nr(p)-orientation_nr(x))\%2 in
+    for i:#solution-1 do  {skip diagonal entry}
+    { twist (1-s)*solution according to orientation numbers of its terms } 
+      let c=solution[i] then
+      x=B[i] then (q,r)=(orientation_nr(p)-orientation_nr(x))\%2 in
       assert(=r,"odd orientation");
-      rv:=rv+(minus_1^q*c*one_minus_q)*[x]
+      rv:=rv+(minus_1^q*convolve(c,one_minus_q))*[x]
     od;rv
   fi
 
