@@ -116,10 +116,22 @@ set parity_restricted_partitions (int n, bool restrict_odd_parts) = [Partition]:
   ; ##table~[0] { concatenate entries of final table row }
   fi
 
+set partition_pairs (int n) = [Partition,Partition]:
+  let list = for i:n+1 do partitions(i) od in
+##for parts_i@i in list
+  do ##for lambda in parts_i do for mu in list[n-i] do (lambda,mu) od od
+  od
+
+{ compute cycle type of power of a permutation, given its cycle type }
+set cycle_power ([int] cycles, int k) = [int]:
+   for l in cycles
+   do let d=gcd(l,k) then q=l\d in for :d do q od { splitting of one cycle }
+   od.##.reverse_sort
+
 set hook_lengths (Partition lambda) = [int]:
    let lambda_tr=lambda.transpose in
    for part@i in lambda
-   do for j:part do (part-j) + (lambda_tr[j]-i) - 1 od
+   do for j:part do (part-j) + (lambda_tr[j]-i) - 1 od { arm + leg - 1 }
    od.##.reverse_sort
 
 set Sn_representation_dimension (Partition lambda) = int:
@@ -133,19 +145,24 @@ set hook_lengths ([bool] edges) = [int]:
       fi
    od
 
+{ edge sequence from first horizontal (false) to last horizontal, and shift }
+set edge_sequence (Partition lambda) = ([bool],int):
+   if =#lambda or =lambda[0] then ([],0)
+   else
+      let d = lambda.transpose[0] { offset, index of edge above main diagonal }
+      , edge_val=is_member(for part@i in lambda do part-i-1 od)
+      in (for i:lambda[0]+d from -d do edge_val(i) od, d)
+   fi
+
 { character of irreducible Sn representation lambda at give cycle type }
 set Murnaghan_Nakayama (Partition lambda, [int] cycle_type) = int:
-if let n=sum(lambda) in assert(sum(cycle_type)=n,"Size mismatch"); n=0 then 0
-else
-   let edge = { edge sequence for |lambda|, starting one across initial column }
-     let d = lambda.transpose[0] { offset, index of edge above main diagonal }
-     , edge_val=is_member(for part@i in lambda do part-i-1 od)
-     in for i:lambda[0]+d from -d do edge_val(i) od
-   , mu=cycle_type.sort
-in (#mu-1).
+   assert(sum(lambda)=sum(cycle_type),"Size mismatch");
+   let (edge,) = edge_sequence(lambda), alpha=cycle_type.sort in
+   (#alpha-1).
    (rec_fun MN (int j) int:
     if j.< then 1 { the unique character value for the trivial group S0 }
-    else let k=mu[j] { size of cycle in cycle type, and hence of rim hooks } in
+    else
+       let k=alpha[j] { size of cycle in cycle type, and hence of rim hooks } in
        if k=1 { this case will be handled separately for efficiency }
        else { traverse candidate positions for removal of a |k| rim hook: }
 	  for i in list(#edge-k,(int i)bool: not edge[i] and edge[i+k])
@@ -159,7 +176,51 @@ in (#mu-1).
        fi
     fi
    )
-fi
+
+{ counterpart of the Murnaghan-Nakayama rule for hyperocthedral groups }
+set hyperoctahedral_character (
+      ((Partition lambda, Partition mu){irreducible: (trivial,sign) for {1,-1}}
+      ,[int,bool] signed_cycle_type{describes a conjugacy class}
+      )) = int:
+   assert(sum(lambda)+sum(mu)
+         =sum(for (c,) in signed_cycle_type do c od),"Size mismatch");
+   let (edge0,)=edge_sequence(lambda), (edge1,)=edge_sequence(mu)
+   , alpha = signed_cycle_type.(sort_by((int c,bool.)int: c))
+   in (#alpha-1).
+   (rec_fun f (int j) int:
+    if j.< then 1 { the unique character value for the trivial group S0 }
+    else let (k,sign)=alpha[j] { size of cycle type, and hence of rim hook } in
+       if k=1 { this case will be handled separately for efficiency }
+       else { traverse candidate positions for removal of a |k| rim hook: }
+       (  for i in list(#edge0-k,(int i)bool: not edge0[i] and edge0[i+k])
+	  do edge0[i+k]:=false; edge0[i]:=true { remove chosen |k| rim hook }
+	  ; minus_1^count(edge0[i+1:i+k])*f(j-1) { recursive value, hook sign }
+	  next edge0[i]:=false; edge0[i+k]:=true { restore: add rim hook back }
+	  od
+	 .sum { add up value from all candidate positions }
+       ,  for i in list(#edge1-k,(int i)bool: not edge1[i] and edge1[i+k])
+	  do edge1[i+k]:=false; edge1[i]:=true { remove chosen |k| rim hook }
+	  ; minus_1^count(edge1[i+1:i+k])*f(j-1) { recursive value, hook sign }
+	  next edge1[i]:=false; edge1[i+k]:=true { restore: add rim hook back }
+	  od
+	 .sum { add up value from all candidate positions }
+       )
+       . if sign else +@(int,int) then -@(int,int) fi { add or subtract sums }
+       then { |k=1| case, used the hook length formula for remaining partition
+              We need to keep track of the number |l| of negative sign 1-cycles
+              the get distrubuted to |edge1|, the sign-character partition }
+          let hl0=edge0.hook_lengths, hl1=edge1.hook_lengths
+          then { get fixed row sums and column sums for $\N$-matrix [.,.|.,l] }
+            (a,b) = (#hl0,#hl1) { partition sizes to be filled }
+          , (c,d) = for (,sign) in alpha[:j+1] do s^#sign{use |Split|} od.sum.%
+          then lwb = max(0,d-a{=c-b}), upb=min(d,b) { bounds for l }
+          in assert(a+b=c+d);
+          for l:upb-lwb+1 from lwb do minus_1^l*binom(c,b-l)*binom(d,l)od.sum
+          * (a.fac\hl0.product)*(b.fac\hl1.product) { factor independent of l }
+       fi
+    fi
+   )
+
 
 {
   Core and quotient operations can be defined in terms of associating to any
@@ -307,6 +368,20 @@ set cycle_centralizer_order ([int,bool] cycles) = int:
   in product(for (cycle,) in cycles do cycle+cycle od)*
      product(for m in plus_cycles.frequencies do m.fac od)*
      product(for m in minus_cycles.frequencies do m.fac od)
+
+{ compute cycle type of power of a permutation, given its cycle type }
+set cycle_power ([int,bool] cycles, int k) = [int,bool]:
+   let m = for (c,) in cycles do c od.(max(0))
+   then n_cycles = { multiplicities by cycle length and sign }
+     mat: null(m,2) { row index offset by 1, column index is sign }
+in for (l,sign) in cycles
+   do let d=gcd(l,k) in n_cycles[l\d-1,#sign*(k\d)%2]+:=d
+   od;
+ ##for b:2
+   do let kind = b.is_odd in
+    ##for l:m from 1 do for :n_cycles[l-1,b] do (l,kind) od od
+   od
+
 
 
 {			    Formal power series				}

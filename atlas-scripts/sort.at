@@ -128,7 +128,7 @@ set sort_by ((ratvec,[vec]->int) f) = ([ratvec,[vec]] v) [ratvec,[vec]]:
 
 {for use in K_norm.at: sorting of KParams}
 set sort_by ( ( (KGBElt,ratvec) -> int) f ) =
-  ([(KGBElt,ratvec)] v) [(KGBElt,ratvec)]:
+  ([KGBElt,ratvec] v) [KGBElt,ratvec]:
     for index in inv_standardisation(for x in v do f(x) od) do v[index] od
 
 set sort_by (((Param,bool)->int) f) = ([(Param,bool)] v) [(Param,bool)]:
@@ -140,6 +140,11 @@ set sort_by ( (Split,Param->int) f) = ([(Split,Param)] v) [(Split,Param)]:
 { for use in K_norm.at, sorting of KParamPol }
 set sort_by ( (Split,(KGBElt,ratvec)->int) f) =
   ([(Split,(KGBElt,ratvec))] v) [(Split,(KGBElt,ratvec))]:
+    for index in inv_standardisation(for x in v do f(x) od) do v[index] od
+
+{ one more, used in combinatorics.at }
+set sort_by ( (int,bool->int) f) =
+  ([int,bool] v) [int,bool]:
     for index in inv_standardisation(for x in v do f(x) od) do v[index] od
 
 { and so forth for any type; this really should be second-order typed }
