@@ -1,0 +1,110 @@
+<basic.at
+
+set labels(RootDatum rd)=vec:
+for i:rank(rd) do rat_as_int(highest_root(rd)*fundamental_coweights(rd)[i]) od
+
+set affine_labels(RootDatum rd)=vec:labels(rd)##[1]
+
+set affine_root(RootDatum rd)=-highest_root(rd)
+{affine_coroot(rd)=affine_root(dual(rd))
+                  =-highest_root(dual(rd))  
+                  =-(long root of dual(rd))
+not the same as
+                   (affine_root(rd))^vee
+                  =-(highest root of rd)^vee
+		  =-(highest short root of dual(rd))
+}
+set affine_coroot(RootDatum rd)=affine_root(dual(rd))
+
+{v\in X^*_Q
+alpha = -(dual of highest root of dual(rd))
+      = coroot(dual(rd), affine_root(dual(rd))
+      = coroot(dual(rd),affine_coroot(rd))
+      = -(highest short root of rd)
+v -> v - (<v,alpha^vee>+1)alpha
+     =[v-(<v,alpha^vee>)alpha]-alpha
+     =reflect(rd,alpha,v)-alpha
+}
+set affine_reflection(RootDatum rd,ratvec v)=
+let alpha=coroot(dual(rd),affine_coroot(rd)) in reflect(rd,alpha,v)-alpha
+
+{v\in X_*_Q}
+set co_affine_reflection(RootDatum rd,ratvec v)=
+let alpha_v=coroot(rd,affine_root(rd)) in reflect(dual(rd),alpha_v,v)-alpha_v
+
+{let beta=affine_coroot(rd) in coreflection(rd,beta)*v-coroot(dual(rd),affine_coroot(rd))}
+
+{v\in X^*_Q}
+set reflect_or_affine_reflect(RootDatum rd,int i, ratvec v)=ratvec:
+if i<rank(rd) then reflect(rd,i,v) else affine_reflection(rd,v) fi
+
+{v\in X^*_Q}
+set co_reflect_or_affine_reflect(RootDatum rd,int i, ratvec v)=ratvec:
+if i<rank(rd) then coreflect(rd,v,i) else co_affine_reflection(rd,v) fi
+
+{v\in X^*, in usual coordinates}
+set affine_coordinates(RootDatum rd, vec v)=[int]:
+(for alpha_v in simple_coroots(rd) do alpha_v*v od)#(affine_coroot(rd)*v+1)    
+
+{v\in X^*_Q}
+set affine_coordinates(RootDatum rd, ratvec v)=ratvec:
+(for alpha_v in simple_coroots(rd) do alpha_v*v od)#(affine_coroot(rd)*v+1)
+
+set confirm(RootDatum rd,ratvec v)=void:
+assert(v*affine_labels(dual(rd))=1,"confirm failed")
+
+{v\in X^*_Q, in affine coordinates}
+set usual_coordinates(RootDatum rd, ratvec v)=
+let rv=ratvec:null(rank(rd)) in
+for i:rank(rd) do rv+:=v[i]*fundamental_weights(rd)[i] od;rv
+
+{v\in X^*_Q}
+set affine_non_dominant_index (RootDatum rd, ratvec v) = int:
+let w=affine_coordinates(rd,v) in 
+first(for a in w do a<0 od)
+
+{v\in X_*}
+set co_affine_coordinates(RootDatum rd, vec v)=[int]:
+(for alpha in simple_roots(rd) do alpha*v od)#(affine_root(rd)*v+1)
+
+{v\in X_*_Q}
+set co_affine_coordinates(RootDatum rd, ratvec v)=[rat]:
+(for alpha in simple_roots(rd) do alpha*v od)#(affine_root(rd)*v+1)
+
+{v\in X^*_Q, in co_affine coordinates}
+set co_usual_coordinates(RootDatum rd, ratvec v)=
+let rv=ratvec:null(rank(rd)) in
+for i:rank(rd) do rv+:=v[i]*fundamental_coweights(rd)[i] od;rv
+
+{v\in X_*_Q}
+set co_affine_non_dominant_index (RootDatum rd, ratvec v) = int:
+let w=co_affine_coordinates(rd,v) in 
+first(for a in w do a<0 od)
+
+{v\in X^*_Q}
+set affine_make_dominant (RootDatum rd, ratvec v) = (ratvec,WeylElt):
+  assert(#v=rank(rd),"vector v wrong size for (affine) root system");
+{  prints("v=", v,  "   w=", affine_coordinates(rd,v),new_line);}
+  let count=0 in 
+  let i=0 { needed to pass value across 'do' }
+  then w = while (count <=1000) and >=(i:=affine_non_dominant_index(rd,v)) 
+    do count+:=1;
+       v:=reflect_or_affine_reflect(rd,i,v);
+       let root= if i<rank(rd) then simple_roots(rd)[i] else affine_root(rd) fi in
+       {prints(count, "  i:",i," root:", root ,"   ",v, "  ", affine_coordinates(rd,v));confirm(rd,affine_coordinates(rd,v));} i 
+    od
+  in   {prints(new_line,"v=", v,  "   w=", 
+       affine_coordinates(rd,v),new_line);}(v,W_elt(rd,w))
+
+{v\in X_*_Q}
+set co_affine_make_dominant (RootDatum rd, ratvec v) = (ratvec,WeylElt):
+  assert(#v=rank(rd),"vector v wrong size for (affine) root system");
+{  prints("v=", v,  "   w=", co_affine_coordinates(rd,v));}
+  let count=0 in
+  let i=0 { needed to pass value across 'do' }
+  then w = while (count <=1000) and >=(i:=co_affine_non_dominant_index(rd,v))
+  do count+:=1;
+{  prints(count," ","i:",i,"  ",v, " ", co_affine_coordinates(rd,v));}
+  v:=co_reflect_or_affine_reflect(rd,i,v); i od
+  in   {prints("v=", v,  "   w=", co_affine_coordinates(rd,v));}(v,W_elt(rd,w))
+

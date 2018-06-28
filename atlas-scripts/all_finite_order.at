@@ -1,0 +1,127 @@
+<misc.at
+<groups.at
+<sort.at
+<affine.at
+
+set get_labels(RootDatum rd)=vec:
+for i:rank(rd) do rat_as_int(highest_root(rd)*fundamental_coweights(rd)[i]) od
+
+set get_subsets_given_order(RootDatum rd, int order)=[[int]]:
+let labels=get_labels(rd) then
+labels_plus_one=for a in labels do a+1 od in
+let S=[] in 
+for v in box(labels_plus_one) do 
+ let extra=order-v*labels in
+  if extra>=0 then let   w=v#(extra) in 
+ if gcd(w)=1 then S#:=w fi fi  od;S
+
+set get_subsets(RootDatum rd, int max_order)=[[[int]]]:
+let labels=get_labels(rd) then
+labels_plus_one=for a in labels do a+1 od 
+then S=for i:max_order+1 do [[int]]:[] od in
+ for order:max_order+1 do 
+ for v in box(labels_plus_one) do 
+ let extra=order-v*labels in
+  if extra>=0 then let   w=v#(extra) in 
+ if gcd(w)=1 then S[order]#:=w fi fi  od od;S
+
+set null(RootDatum rd)=([int],RootDatum,int):([],GL(1),0)
+
+set get_raw_data(RootDatum rd,[[[int]]] S)=[[([int],RootDatum,int)]]:
+[null(rd)]#for order:#S-1 from 1 do
+ let row=[([int],RootDatum,int)]:[] in
+ for v_affine in S[order] do  
+    let v=co_usual_coordinates(rd,v_affine) in
+    {v\in (X_*)_Q
+     integrality_datum(rd,w): roots alpha such that h <w,alpha^v>\in Z (not what we want)
+     integrality_datum(dual(rd),v): coroots alpha^v such that <v,alpha>\in Z (closer)
+     dual(integrality_datum(dual(rd),v)): roots alpha such that <v,alpha>\in Z (what we want)}
+    let rdi=dual(integrality_datum(dual(rd),v/order)) in 
+   row#:=(v_affine,rdi, dimension(rdi)) od ;row
+od
+
+set sort_by(([int],RootDatum,int->int) f)=([([int],RootDatum,int)] v) [([int],RootDatum,int)]:
+  for index in inv_standardisation(for x in v do f(x) od) do v[index] od
+
+set mysort = ([([int],RootDatum,int)] -> [([int],RootDatum,int)]):
+ sort_by(([int] v,RootDatum rd,int k) int:k)
+
+set refine_raw_data([[([int],RootDatum,int)]] data)=[[([int],RootDatum,int)]]:for a in data do mysort(a) od
+
+set get_data(RootDatum rd,[[[int]]] S)=[[([int],RootDatum,int)]]:refine_raw_data(get_raw_data(rd,S))
+
+{main function}
+set get_data(RootDatum rd,int n)=[[([int],RootDatum,int)]]:refine_raw_data(get_raw_data(rd,get_subsets(rd,n)))
+
+set nice_classes(RootDatum rd, int n)=
+ let data=get_data(rd,n) in
+ for i:#data do 
+  let entries=data[i] then
+  (v,rd,dim)=entries[0] in 
+   if #entries =1 then [(v,rd,dim)]
+   else let (,,dim1)=entries[1] in if dim<dim1 then [(v,rd,dim)] else [] fi fi od
+
+set info([[([int],RootDatum,int)]] data, int j)=void:
+prints(new_line,"order=",j);
+for (v,rdi,n) in data[j] do prints("Kac:", v, " ", Lie_type(rdi), " ", "  dim:",n) od
+
+{don't include empty terms}
+set info_reduced([[([int],RootDatum,int)]] data, int j)=void:
+if #data[j]>0 then 
+prints(new_line,"order=",j);
+for (v,rdi,n) in data[j] do prints("Kac:", v, " ", Lie_type(rdi), " ", "  dim:",n) od fi
+
+set info([[([int],RootDatum,int)]] data, int j, int bound)=void:
+prints(new_line,"order=",j);
+for i:min(bound,#data[j]) do let (v,rdi,n)=data[j][i] in prints("Kac:", v, " ", Lie_type(rdi), " ", "  dim:",n) od
+
+set cox(RootDatum rd,int n)=void:let v=rho(rd)/n then
+rdi=integrality_datum(rd,v) in 
+prints(v, " ", Lie_type(rdi), " ", dimension(rdi)) 
+
+set test([[([int],RootDatum,int)]] data, int n)=void:
+let (,rd,)=data[0][0] in  cox(rd,n); info(data,n)
+
+set find([[([int],RootDatum,int)]] data, int n)=void:
+let (,rd,)=data[0][0] in 
+let labels=for i:rank(rd) do rat_as_int(highest_root(rd)*fundamental_coweights(rd)[i]) od in 
+for i:#data do for b in data[i] do let (v,rdi,k)=b in if k=n then prints(i, " ", v, " ", Lie_type(rdi), " ", v*labels, " ", k) fi od od
+
+set find_short([[([int],RootDatum,int)]] data, int n)=void:
+let (,rd,)=data[0][0] in 
+let labels=for i:rank(rd) do rat_as_int(highest_root(rd)*fundamental_coweights(rd)[i]) od in 
+for i:#data do for j: min(10,#(data[i]))  do let (v,rdi,k)=data[i][j] in if k=n then prints(i, " ", v, " ", Lie_type(rdi), " ", v*labels, " ", k) fi od od
+
+set table([[([int],RootDatum,int)]] data)=void:
+let n=#data in
+prints("All conjugacy classes of E8 up to order", n);
+prints("The elements of order m are parametrized by", new_line, 
+"their Kac diagrams",new_line,
+"labels=[2,3,4,6,5,4,3,2;1] are the labels on the extended",new_line,
+"Dynkin diagram (Bourbaki numbering)",new_line,
+"    3",new_line,
+"    |",new_line,
+"2-4-6-5-4-3-2-1",new_line,
+"Kac diagram: v=[a_1,...,a_8,a_0]",new_line,
+"satisfying:",new_line,
+"* the a_i are relatively prime",new_line,
+"* v\dot labels=m",new_line,
+new_line,
+"The root system is the centralizer.",new_line,new_line,
+"For example the Coxeter element is ",new_line,
+"Kac:[1,1,1,1,1,1,1,1,1] Lie type 'T1.T1.T1.T1.T1.T1.T1.T1'   dim:0",new_line,
+new_line,
+"The elements of order 2 are:",new_line,
+"order=2",new_line,
+"Kac:[1,0,0,0,0,0,0,0,0] Lie type 'D8'   dim:56",new_line,
+"Kac:[0,0,0,0,0,0,0,1,0] Lie type 'E7.A1'   dim:64",new_line);
+prints("---------------------------------------------------");
+
+for i:n-1 from 1 do info(data,i) od
+
+
+set table([[([int],RootDatum,int)]] data,int bound)=void:
+for i:#data-1 from 1 do info(data,i,bound) od
+
+set table_reduced([[([int],RootDatum,int)]] data)=void:
+for i:#data-1 from 1 do info_reduced(data,i) od
