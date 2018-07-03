@@ -143,6 +143,23 @@ set contains (int val) = ([int]->bool): ([int] v)bool:
 
 set fac (int n) = int: let p=1 in for i:n-1 from 2 do p *:=i od; p
 
+{ convert to base n as polynomial: small coef polynomial evaluating to k at n }
+set to_base_poly (int n) = (int->vec): (int k) vec: assert(k.>=);
+  let r=0{dummy for mulit-assign} in while !=k do set (k,r):=k\%n; r od
+
+set to_base (int n, (int->string) digit) = (int->string):
+  let tbp=to_base_poly(n) in
+  (int k) string: assert(k.>=); ##for c in tbp(k) ~do c.digit od
+
+set binary = (int->string):
+  let f=to_base(2,to_string@int) in
+  (int n)string: if n.< then "-"##f(-n) else f(n) fi
+
+set hexadecimal = (int->string):
+  let !shift = "A".ascii-10
+  then f=to_base(16,(int k): if k<=9 then k.to_string else ascii(k+shift) fi)
+  in (int n)string: if n.< then "-"##f(-n) else f(n) fi
+
 {                           Rational numbers                            }
 
 set numer (rat a) = let (n,)=%a in n
