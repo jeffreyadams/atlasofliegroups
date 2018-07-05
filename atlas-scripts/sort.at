@@ -176,7 +176,7 @@ set sort_by_height = ([Param] -> [Param]): sort_by( height@Param )
 set sort_by_height = ([(Split,Param)] -> [(Split,Param)]):
  sort_by( (Split s,Param p) int: height(p) )
 
-{ sorting vectors lexicographically }
+{ sorting fixed size vectors lexicographically }
 set lex_lesseq (vec v,vec w) = bool: { assert(#v=#w); }
    for x@i in v do if x!=w[i] then return x<w[i] fi od; true
 

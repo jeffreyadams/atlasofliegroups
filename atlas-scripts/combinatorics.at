@@ -48,6 +48,17 @@ set strip_to_partition ([int] list) = Partition:
 
 set is_decreasing ([int] v) = bool: all(for i:#v-1 do v[i]>=v[i+1] od)
 
+{ comparing partitions by sum then lexicographically; implicitly 0-extend }
+set leq_Partitions (Partition lambda, Partition mu) = bool:
+  let sl=lambda.sum, sm=mu.sum in
+  if sl=sm else sl<sm
+  then let m=#mu in
+     for l@i in lambda
+     do if i>=m then return l.<= elif l!=mu[i] then return l<mu[i] fi
+     od
+  ; true { any remaining entries of |mu| are necessarily 0 }
+  fi
+
 set frequencies (Partition lambda) = vec:
   let v=null(0) in
   for l in lambda
@@ -121,6 +132,13 @@ set partition_pairs (int n) = [Partition,Partition]:
 ##for parts_i@i in list
   do ##for lambda in parts_i do for mu in list[n-i] do (lambda,mu) od od
   od
+
+{ converting partition pairs to signed cycle types, first means flipped cycles }
+set cycles (Partition lambda,Partition mu) = [int,bool]:
+  for part in lambda do (part,true) od ## for part in mu do (part,false) od
+
+set order (Partition lambda,Partition mu) = int: lambda.sum+mu.sum
+set order ([int,bool] cycles) = int: for (c,) in cycles do c od.sum
 
 { compute cycle type of power of a permutation, given its cycle type }
 set cycle_power ([int] cycles, int k) = [int]:
@@ -381,6 +399,77 @@ in for (l,sign) in cycles
    do let kind = b.is_odd in
     ##for l:m from 1 do for :n_cycles[l-1,b] do (l,kind) od od
    od
+
+
+{ adaptation to the above to deal with Weyl groups of type Dn }
+
+set_type
+[ Dn_irrep = { from folding pairs of partitions under swapping }
+   ( (Partition,Partition) unsplit_irr { unequal partitions, larger first }
+   | (Partition,bool) split_irr { for pair of equal partitions, with sign }
+   )
+, Dn_class = { cycle types restricted to Dn subgroup }
+   ( [int,bool] unsplit_class { the XOR of all |bool| values is |false| }
+   | (Partition,bool) split_class { "all false" even cycles, and a single sign }
+   )
+]
+
+{ recover the value of |n| }
+set order (Dn_irrep chi) = int:
+   case chi | pair.unsplit_irr: pair.order | (mu,).split_irr: 2*mu.sum esac
+
+set order (Dn_class C) = int:
+   case C
+   | cycles.unsplit_class: cycles.order
+   | (alpha,).split_class: alpha.sum
+   esac
+
+set Dn_irreducibles (int n) = [Dn_irrep]:
+ ##for (lambda,mu) in partition_pairs(n)
+   do if leq_Partitions(lambda,mu) then [] else [(lambda,mu).unsplit_irr] fi
+   od ##
+  (let (s,r)=n\%2 in
+   if =r else []
+   then
+    ##for lambda in partitions(s)
+      do [(lambda,false).split_irr,(lambda,true).split_irr]
+      od
+   fi
+  )
+
+set Dn_classes (int n) = [Dn_class]:
+ ##for (alpha,beta):pair in partition_pairs(n)
+   do if (#alpha).is_odd then [] { must have even number of cycles in alpha }
+      elif != alpha or for l in beta do l.is_odd od.any
+      then [pair.cycles.unsplit_class]
+      else { alpha is empty, beta has all even parts }
+         [(beta,false).split_class, (beta,true).split_class ]
+      fi
+   od
+
+set Dn_character (Dn_irrep chi, Dn_class C) = int:
+   assert(chi.order = C.order,"Size mismatch");
+   case chi
+   | pair.unsplit_irr:
+     case C
+     | class.unsplit_class: hyperoctahedral_character(pair,class)
+     | (alpha,).split_class:
+        hyperoctahedral_character(pair,for l in alpha do (l,false) od)
+     esac
+   | (lambda,epsilon).split_irr:
+     case C
+     | class.unsplit_class:
+       let (q,r) = hyperoctahedral_character((lambda,lambda),class)\%2 in
+       assert(=r,"Odd character value at unsplit class"); q
+     | (alpha,delta).split_class:
+       let Hn_char = hyperoctahedral_character
+                     ( (lambda,lambda), for l in alpha do (l,false) od )
+       ,   Sn_char = assert(=alpha%2,"Split class with odd cycle(s)")
+                   ; Murnaghan_Nakayama(lambda, alpha\2)
+       then (q,r) = (Hn_char+minus_1^(#epsilon+#delta)*2^#alpha*Sn_char)\%2
+       in assert(=r,"Parity problem for split-split case"); q
+     esac
+   esac
 
 
 
