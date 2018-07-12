@@ -48,16 +48,29 @@ set strip_to_partition ([int] list) = Partition:
 
 set is_decreasing ([int] v) = bool: all(for i:#v-1 do v[i]>=v[i+1] od)
 
+{ comparing partitions of same |n| lexicographically; implicitly 0-extend }
+set leq_equal_sum_partitions(Partition lambda, Partition mu) = bool:
+   let m=#mu in
+   for l@i in lambda
+   do if i>=m then return l.<= elif l!=mu[i] then return l<mu[i] fi
+   od; true { any remaining entries of |mu| are necessarily 0 }
+
 { comparing partitions by sum then lexicographically; implicitly 0-extend }
-set leq_Partitions (Partition lambda, Partition mu) = bool:
+set leq_Partitions ((Partition,Partition) (lambda,mu):pair) = bool:
   let sl=lambda.sum, sm=mu.sum in
-  if sl=sm else sl<sm
-  then let m=#mu in
-     for l@i in lambda
-     do if i>=m then return l.<= elif l!=mu[i] then return l<mu[i] fi
-     od
-  ; true { any remaining entries of |mu| are necessarily 0 }
-  fi
+  if sl=sm else sl<sm then leq_equal_sum_partitions(pair) fi
+
+{ compare lists of signed cycle lengths, ordered minus first then decreasing }
+set leq_signed_cycle_types ([int,bool] x, [int,bool]y) = bool:
+(  let m=min(#x,#y) in
+   for i:m
+   do let (xi,si)=x[i], (yi,ti)=y[i] in
+      if si!=ti then return ti { have (a,+)<(b,-): in this case LHS has + only }
+      elif xi!=yi then return xi<yi
+      fi
+   od
+;  #x <= #y { if one is prefix of the other, compare as their lengths do }
+)
 
 set frequencies (Partition lambda) = vec:
   let v=null(0) in
@@ -133,12 +146,47 @@ set partition_pairs (int n) = [Partition,Partition]:
   do ##for lambda in parts_i do for mu in list[n-i] do (lambda,mu) od od
   od
 
+{ look up partition in list of partitions, all of them assumed of same sum }
+set index_partition([Partition] list) = (Partition->int):
+   let l=#list in
+   (Partition lambda) int:
+   binary_search_first((int i)bool:leq_equal_sum_partitions(lambda,list[i]),0,l)
+
+{ look up partition in list of partitions, all of them assumed of same sum }
+set index_partition_pair([Partition,Partition] list) =
+      (Partition,Partition->int):
+(  let l=#list in
+   ((Partition lambda,Partition mu)) int: let n0=lambda.sum in
+      binary_search_first
+      ( (int i)bool: { whether list[i] equals or comes after (lambda,mu) }
+         let (nu,pi)=list[i] in
+         case n0-nu.sum then false else true
+         in if lambda=nu else leq_equal_sum_partitions(lambda,nu)
+            then leq_equal_sum_partitions(mu,pi)
+            fi
+         esac
+      ,0,l
+      )
+)
+
+{ look up partition in list of partitions, all of them assumed of same sum }
+set index_signed_cycles([[int,bool]] list) = ([int,bool]->int):
+(  let l=#list in
+   ([int,bool] cycle_type) int:
+      binary_search_first
+      ( (int i)bool: { whether list[i] equals or comes after cycle_type }
+         leq_signed_cycle_types(cycle_type,list[i])
+      ,0,l
+      )
+)
+
+
 { converting partition pairs to signed cycle types, first means flipped cycles }
 set cycles (Partition lambda,Partition mu) = [int,bool]:
   for part in lambda do (part,true) od ## for part in mu do (part,false) od
 
-set order (Partition lambda,Partition mu) = int: lambda.sum+mu.sum
-set order ([int,bool] cycles) = int: for (c,) in cycles do c od.sum
+set rank (Partition lambda,Partition mu) = int: lambda.sum+mu.sum
+set rank ([int,bool] cycles) = int: for (c,) in cycles do c od.sum
 
 { compute cycle type of power of a permutation, given its cycle type }
 set cycle_power ([int] cycles, int k) = [int]:
@@ -387,17 +435,17 @@ set cycle_centralizer_order ([int,bool] cycles) = int:
      product(for m in plus_cycles.frequencies do m.fac od)*
      product(for m in minus_cycles.frequencies do m.fac od)
 
-{ compute cycle type of power of a permutation, given its cycle type }
+{ compute cycle type of power of a signed permutation, given its cycle type }
 set cycle_power ([int,bool] cycles, int k) = [int,bool]:
    let m = for (c,) in cycles do c od.(max(0))
    then n_cycles = { multiplicities by cycle length and sign }
-     mat: null(m,2) { row index offset by 1, column index is sign }
+     mat: null(m,2) { row index offset by 1, minus_1^(column index) is sign }
 in for (l,sign) in cycles
-   do let d=gcd(l,k) in n_cycles[l\d-1,#sign*(k\d)%2]+:=d
+   do let d=gcd(l,k) in n_cycles[l\d-1,#sign*(k\d)%2] +:= d
    od;
  ##for b:2
    do let kind = b.is_odd in
-    ##for l:m from 1 do for :n_cycles[l-1,b] do (l,kind) od od
+    ##for l:m from 1 ~do for :n_cycles[l-1,b] do (l,kind) od od
    od
 
 
@@ -415,13 +463,36 @@ set_type
 ]
 
 { recover the value of |n| }
-set order (Dn_irrep chi) = int:
-   case chi | pair.unsplit_irr: pair.order | (mu,).split_irr: 2*mu.sum esac
+set rank (Dn_irrep chi) = int:
+   case chi | pair.unsplit_irr: pair.rank | (mu,).split_irr: 2*mu.sum esac
 
-set order (Dn_class C) = int:
+set rank (Dn_class C) = int:
    case C
-   | cycles.unsplit_class: cycles.order
+   | cycles.unsplit_class: cycles.rank
    | (alpha,).split_class: alpha.sum
+   esac
+
+set cycle_type_order (Dn_class C) = int:
+   case C
+   | cycles.unsplit_class: cycles.cycle_type_order
+   | (alpha,).split_class: alpha.cycle_type_order { first cycle type suffices }
+   esac
+
+{ compute cycle type of power of a signed permutation, given its cycle type }
+set cycle_power (Dn_class C, int k) = Dn_class:
+   case C
+   | cycles.unsplit_class: cycle_power(cycles,k).unsplit_class
+   | (alpha,sign).split_class: let beta=cycle_power(alpha,k) in
+     if for c in beta do c%2=0 od.all { whether class remains split }
+     then (beta,sign).split_class { keep sign when class remains split }
+     else for c in beta do (c,false) od.unsplit_class
+     fi
+   esac
+
+set centralizer_order (Dn_class C) = int:
+   case C
+   | cycles.unsplit_class: cycles.cycle_centralizer_order\2
+   | (alpha,).split_class: alpha.cycle_centralizer_order*2^#alpha
    esac
 
 set Dn_irreducibles (int n) = [Dn_irrep]:
@@ -448,7 +519,7 @@ set Dn_classes (int n) = [Dn_class]:
    od
 
 set Dn_character (Dn_irrep chi, Dn_class C) = int:
-   assert(chi.order = C.order,"Size mismatch");
+   assert(chi.rank = C.rank,"Size mismatch");
    case chi
    | pair.unsplit_irr:
      case C
@@ -466,8 +537,8 @@ set Dn_character (Dn_irrep chi, Dn_class C) = int:
                      ( (lambda,lambda), for l in alpha do (l,false) od )
        ,   Sn_char = assert(=alpha%2,"Split class with odd cycle(s)")
                    ; Murnaghan_Nakayama(lambda, alpha\2)
-       then (q,r) = (Hn_char+minus_1^(#epsilon+#delta)*2^#alpha*Sn_char)\%2
-       in assert(=r,"Parity problem for split-split case"); q
+       then (q,r) = (Hn_char+sign(epsilon!=delta)*2^#alpha*Sn_char)\%2
+       in assert(=r,"Parity problem for split-split character value"); q
      esac
    esac
 
