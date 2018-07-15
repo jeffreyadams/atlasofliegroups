@@ -6,6 +6,7 @@
 <induction.at { for |embed_KGB@(KGBElt,RealForm)| }
 <center.at { for |lie_compact_radical)@InnerClass| }
 
+
 { ComplexNilpotent: (RootDatum rd,vec H)
   where [H,X,Y] is a Lie triple, H\in X_*, and orbit=G.X
   H must satisfy <alpha,H>=0,1,2 for all simple roots,
@@ -86,10 +87,31 @@ set distinguished_H (RootDatum rd, RootDatum rd_L) = [vec]:
  ##for H in H_candidates(rd_L)
    do if dim_eigenspace(rd_L,H,2) =
          dim_eigenspace(rd_L,H,0)+semisimple_rank(rd_L)-rank(rd_L)
-      then {[ratvec_as_vec(dominant(H,rd))]} [ratvec_as_vec(H)]
+      then [ratvec_as_vec(H)]
       else []
       fi
    od
+
+set distinguished_H_diagrams (RootDatum rd, RootDatum rd_L) = [vec]:
+ ##for H in H_candidates(rd_L)
+   do if dim_eigenspace(rd_L,H,2) =
+         dim_eigenspace(rd_L,H,0)+semisimple_rank(rd_L)-rank(rd_L)
+      then [diagram(rd,(),ratvec_as_vec(H))]
+      else []
+      fi
+   od
+
+
+{. As previous function, with H dominant. .}
+set distinguished_H_dom (RootDatum rd, RootDatum rd_L) = [vec]:
+ ##for H in H_candidates(rd_L)
+   do if dim_eigenspace(rd_L,H,2) =
+         dim_eigenspace(rd_L,H,0)+semisimple_rank(rd_L)-rank(rd_L)
+      then [ratvec_as_vec(dominant(H,rd))]
+      else []
+      fi
+   od
+
 
 {. Given a Root Datum rd for a complex group G, list the neutral elements
    (dominant for G) corresponding to the complex nilpotent orbits. .}
@@ -249,7 +271,7 @@ set Aq_cells (RealForm G,[[int]] cells) = [[int]]:
 
   A real nilpotent orbit is determined by a coweight H and a KGBElt x
   where x should be in the distinguished fiber, and H\in X_* is the semisimple
-  element of a Lie triple.
+v  element of a Lie triple.
   It is required that \theta_x(H)=H
   set q=parabolic_by_cwt(x,H), then
   orbit=induced from trivial orbit of Levi factor, equivalently
@@ -454,3 +476,82 @@ set Levis_with_distinguished_orbit (RealNilpotent (H,x,):O) =
          fi
       od
    od
+
+set find_vec (vec H, [vec] m) = int:
+   first(#m, (int i)bool: m[i]=H)
+
+set is_w_conjugate ([vec] r1, [vec] r2, WeylElt w)=bool:
+   #r1=#r2 and all(for H in r1 do find_vec(w*H,r2)>=0 od)
+
+set is_W_conjugate ([vec] r1, [vec] r2, RootDatum rd)=bool:
+   any (for w in W(rd) do is_w_conjugate (r1,r2,w) od)
+
+set is_conjugate ([vec] r1, [vec] r2, [WeylElt] W)=bool:
+   any (for w in W do is_w_conjugate (r1,r2,w) od )
+
+set pseudo_roots ([int] S, RootDatum rd)=[vec]:
+   for i in S do if i<ss_rank(rd) then simple_roots(rd)[i]
+   else -highest_root(rd) fi od
+
+set roots ([int] S, RootDatum rd) = [vec]: for i in S
+   do simple_roots(rd)[i] od
+
+set add_element ([int] S,int s)=[int]:
+   let result=[s] in for i in S do result#:=i od;
+   result
+
+set complex_pseudo_Levi(RootDatum rd, [int] S)= RootDatum:
+   if #S=0 then Levi_datum(rd,[int]:[]) else
+   let roots=mat:for i in S do
+     if i<semisimple_rank(rd) then simple_roots(rd)[i]
+     else -highest_root(rd)
+     fi od then
+   coroots=mat:for i in S do
+     if i<semisimple_rank(rd)
+       then simple_coroots(rd)[i]
+       else -coroot(rd,highest_root(rd))
+     fi od in
+   root_datum(roots,coroots) fi
+
+set two_rho_of_pseudo_Levi (RootDatum rd,[int] list)=vec:
+   dominant(rd,ratvec_as_vec(2*rho(complex_pseudo_Levi(rd,list))))
+
+set pseudo_Levis (RootDatum rd)=[[int]]: let W=W(rd) then
+   r=semisimple_rank(rd) then
+   levis=standard_Levi_conjugacy_representatives(rd) then
+   triples=[([int],vec,[vec])]:
+   for L in levis
+   do (L,two_rho_of_pseudo_Levi(rd,L),pseudo_roots(L,rd)) od
+   in for S in power_set(#r)
+     do let T=add_element(S,r) in
+        if #S<r then let rhoT=two_rho_of_pseudo_Levi(rd,T) then
+                pr=pseudo_roots(T,rd) then
+                temp=[([int],vec,[vec])]:
+                ##for (a,v,c) in triples
+                    do if v=rhoT then [(a,v,c)] else []
+                       fi
+                    od in
+                      if none(for (,,m) in temp do is_conjugate(pr,m,W) od)
+                         then triples#:=(T,rhoT,pr)
+                      fi
+         fi
+     od;
+     for (T,,) in triples do T od
+
+set d_L (RootDatum rd, [int] L)= int: let r=semisimple_rank(rd)
+   in if #L=0 then 0 else
+         if max(L)<r then 1
+         else let fcw=fundamental_coweights(rd)
+           then alpha=highest_root(rd)
+        then list=[int]:for i in complement(r+1,sort(L))
+        do numer (fcw[i]*alpha)
+        od
+          in gcd (list)
+      fi fi
+
+set print_pseudo_Levi_orbit_info (RootDatum rd)=void:
+   for L in pseudo_Levis(rd)
+    do prints(L," d_L= ",d_L(rd,L)," ",
+          distinguished_H_diagrams(rd,complex_pseudo_Levi (rd,L)))
+    od
+

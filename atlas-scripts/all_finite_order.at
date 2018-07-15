@@ -3,42 +3,45 @@
 <sort.at
 <affine.at
 
+{. The labels m_i on the Dynkin diagram representing the coefficient of the
+   simple roots in the highest root. The label of the lowest root is 1 (not
+   in the list of these labels). .}
 set get_labels(RootDatum rd)=vec:
 for i:rank(rd) do rat_as_int(highest_root(rd)*fundamental_coweights(rd)[i]) od
 
 set get_subsets_given_order(RootDatum rd, int order)=[[int]]:
-let labels=get_labels(rd) then
-labels_plus_one=for a in labels do a+1 od in
-let S=[] in 
-for v in box(labels_plus_one) do 
- let extra=order-v*labels in
-  if extra>=0 then let   w=v#(extra) in 
- if gcd(w)=1 then S#:=w fi fi  od;S
+   let labels=get_labels(rd) then
+   labels_plus_one=for a in labels do a+1 od in
+   let S=[] in
+   for v in box(labels_plus_one) do
+    let extra=order-v*labels in
+     if extra>=0 then let   w=v#(extra) in
+    if gcd(w)=1 then S#:=w fi fi  od;S
 
 set get_subsets(RootDatum rd, int max_order)=[[[int]]]:
-let labels=get_labels(rd) then
-labels_plus_one=for a in labels do a+1 od 
-then S=for i:max_order+1 do [[int]]:[] od in
- for order:max_order+1 do 
- for v in box(labels_plus_one) do 
- let extra=order-v*labels in
-  if extra>=0 then let   w=v#(extra) in 
- if gcd(w)=1 then S[order]#:=w fi fi  od od;S
+   let labels=get_labels(rd) then
+   labels_plus_one=for a in labels do a+1 od
+   then S=for i:max_order+1 do [[int]]:[] od in
+    for order:max_order+1 do
+    for v in box(labels_plus_one) do
+    let extra=order-v*labels in
+     if extra>=0 then let   w=v#(extra) in
+    if gcd(w)=1 then S[order]#:=w fi fi  od od;S
 
 set null(RootDatum rd)=([int],RootDatum,int):([],GL(1),0)
 
 set get_raw_data(RootDatum rd,[[[int]]] S)=[[([int],RootDatum,int)]]:
-[null(rd)]#for order:#S-1 from 1 do
- let row=[([int],RootDatum,int)]:[] in
- for v_affine in S[order] do  
-    let v=co_usual_coordinates(rd,v_affine) in
-    {v\in (X_*)_Q
-     integrality_datum(rd,w): roots alpha such that h <w,alpha^v>\in Z (not what we want)
-     integrality_datum(dual(rd),v): coroots alpha^v such that <v,alpha>\in Z (closer)
-     dual(integrality_datum(dual(rd),v)): roots alpha such that <v,alpha>\in Z (what we want)}
-    let rdi=dual(integrality_datum(dual(rd),v/order)) in 
-   row#:=(v_affine,rdi, dimension(rdi)) od ;row
-od
+   [null(rd)]#for order:#S-1 from 1 do
+    let row=[([int],RootDatum,int)]:[] in
+    for v_affine in S[order] do
+       let v=co_usual_coordinates(rd,v_affine) in
+       {v\in (X_*)_Q
+        integrality_datum(rd,w): roots alpha such that h <w,alpha^v>\in Z (not what we want)
+        integrality_datum(dual(rd),v): coroots alpha^v such that <v,alpha>\in Z (closer)
+        dual(integrality_datum(dual(rd),v)): roots alpha such that <v,alpha>\in Z (what we want)}
+       let rdi=dual(integrality_datum(dual(rd),v/order)) in
+      row#:=(v_affine,rdi, dimension(rdi)) od ;row
+   od
 
 set sort_by(([int],RootDatum,int->int) f)=([([int],RootDatum,int)] v) [([int],RootDatum,int)]:
   for index in inv_standardisation(for x in v do f(x) od) do v[index] od
@@ -55,9 +58,9 @@ set get_data(RootDatum rd,int n)=[[([int],RootDatum,int)]]:refine_raw_data(get_r
 
 set nice_classes(RootDatum rd, int n)=
  let data=get_data(rd,n) in
- for i:#data do 
+ for i:#data do
   let entries=data[i] then
-  (v,rd,dim)=entries[0] in 
+  (v,rd,dim)=entries[0] in
    if #entries =1 then [(v,rd,dim)]
    else let (,,dim1)=entries[1] in if dim<dim1 then [(v,rd,dim)] else [] fi fi od
 
@@ -67,7 +70,7 @@ for (v,rdi,n) in data[j] do prints("Kac:", v, " ", Lie_type(rdi), " ", "  dim:",
 
 {don't include empty terms}
 set info_reduced([[([int],RootDatum,int)]] data, int j)=void:
-if #data[j]>0 then 
+if #data[j]>0 then
 prints(new_line,"order=",j);
 for (v,rdi,n) in data[j] do prints("Kac:", v, " ", Lie_type(rdi), " ", "  dim:",n) od fi
 
@@ -76,26 +79,26 @@ prints(new_line,"order=",j);
 for i:min(bound,#data[j]) do let (v,rdi,n)=data[j][i] in prints("Kac:", v, " ", Lie_type(rdi), " ", "  dim:",n) od
 
 set cox(RootDatum rd,int n)=void:let v=rho(rd)/n then
-rdi=integrality_datum(rd,v) in 
-prints(v, " ", Lie_type(rdi), " ", dimension(rdi)) 
+rdi=integrality_datum(rd,v) in
+prints(v, " ", Lie_type(rdi), " ", dimension(rdi))
 
 set test([[([int],RootDatum,int)]] data, int n)=void:
 let (,rd,)=data[0][0] in  cox(rd,n); info(data,n)
 
 set find([[([int],RootDatum,int)]] data, int n)=void:
-let (,rd,)=data[0][0] in 
-let labels=for i:rank(rd) do rat_as_int(highest_root(rd)*fundamental_coweights(rd)[i]) od in 
+let (,rd,)=data[0][0] in
+let labels=for i:rank(rd) do rat_as_int(highest_root(rd)*fundamental_coweights(rd)[i]) od in
 for i:#data do for b in data[i] do let (v,rdi,k)=b in if k=n then prints(i, " ", v, " ", Lie_type(rdi), " ", v*labels, " ", k) fi od od
 
 set find_short([[([int],RootDatum,int)]] data, int n)=void:
-let (,rd,)=data[0][0] in 
-let labels=for i:rank(rd) do rat_as_int(highest_root(rd)*fundamental_coweights(rd)[i]) od in 
+let (,rd,)=data[0][0] in
+let labels=for i:rank(rd) do rat_as_int(highest_root(rd)*fundamental_coweights(rd)[i]) od in
 for i:#data do for j: min(10,#(data[i]))  do let (v,rdi,k)=data[i][j] in if k=n then prints(i, " ", v, " ", Lie_type(rdi), " ", v*labels, " ", k) fi od od
 
 set table([[([int],RootDatum,int)]] data)=void:
 let n=#data in
 prints("All conjugacy classes of E8 up to order", n);
-prints("The elements of order m are parametrized by", new_line, 
+prints("The elements of order m are parametrized by", new_line,
 "their Kac diagrams",new_line,
 "labels=[2,3,4,6,5,4,3,2;1] are the labels on the extended",new_line,
 "Dynkin diagram (Bourbaki numbering)",new_line,
@@ -125,3 +128,43 @@ for i:#data-1 from 1 do info(data,i,bound) od
 
 set table_reduced([[([int],RootDatum,int)]] data)=void:
 for i:#data-1 from 1 do info_reduced(data,i) od
+
+{. Given a positive integer m, (r+1)-tuples of integers a_i so that
+   sum_i(a_i m_i)=m, with a_i's relatively prime. The last entry
+   corresponds to the lowest root. These are essentially Kac diagrams. .}
+{set Kac_diags_given_order(RootDatum rd, int order)=[[int]]:
+   let labels=get_labels(rd) then
+   limits=for a in labels do if order=a then 2 else ceil(order/a)
+                             fi
+                          od in
+   let S=[] in
+   for v in box(limits) do
+    let extra=order-v*labels in
+     if extra>=0 then let   w=v#(extra) in
+    if gcd(w)=1 then S#:=w fi fi  od;S
+}
+set Kac_diags_up_to_order(RootDatum rd, int max_order)=[[[int]]]:
+   let labels=get_labels(rd)
+   then S=for i:max_order+1 do [[int]]:[] od in
+    for order:max_order+1 do
+      let limits=for a in labels do if order=a then 2
+                                     else ceil(order/a)
+                                    fi
+                                 od in
+    for v in box(limits) do
+    let extra=order-v*labels in
+     if extra>=0 then let   w=v#(extra) in
+    if gcd(w)=1 then S[order]#:=w fi fi  od od;S
+
+
+{. Given a Kac diagram, compute the corresponding element of the Lie algebra. .}
+set Kac_x (RootDatum rd, vec v)=ratvec: let labels=get_labels(rd)#1
+   then r=semisimple_rank(rd),m=v*labels, fcw=fundamental_coweights(rd)
+   then result=ratvec: for i:r do 0/1 od in
+     for i:r do result+:=v[i]/m*fcw[i] od; result
+
+{. Given the Kac diagram, compute the order of the corresponding element
+   of G. .}
+set order (RootDatum rd, vec v)=int: let labels=get_labels(rd)#1
+   then m=v*labels then w=move_to_fundamental_domain(rd,m*Kac_x(rd,v))
+   in m*denom(w)

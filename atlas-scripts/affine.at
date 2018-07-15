@@ -7,7 +7,7 @@ set affine_labels(RootDatum rd)=vec:labels(rd)##[1]
 
 set affine_root(RootDatum rd)=-highest_root(rd)
 {affine_coroot(rd)=affine_root(dual(rd))
-                  =-highest_root(dual(rd))  
+                  =-highest_root(dual(rd))
                   =-(long root of dual(rd))
 not the same as
                    (affine_root(rd))^vee
@@ -108,3 +108,15 @@ set co_affine_make_dominant (RootDatum rd, ratvec v) = (ratvec,WeylElt):
   v:=co_reflect_or_affine_reflect(rd,i,v); i od
   in   {prints("v=", v,  "   w=", co_affine_coordinates(rd,v));}(v,W_elt(rd,w))
 
+set co_affine_root (RootDatum rd)=vec:
+   let l=find_posroot(rd,highest_root(rd)) in
+   -poscoroots(rd)[l]
+
+set affine_reflection_alt(RootDatum rd, ratvec v)=ratvec:
+   let alpha=affine_root(rd) in
+   v-(v*alpha+1)*co_affine_root(rd)
+
+set move_to_fundamental_domain(RootDatum rd, ratvec v)=ratvec:
+   let alpha=affine_root(rd), w=v then q=w*alpha+1 in
+   while q<0 do w:=dominant(affine_reflection_alt(rd,w),rd);
+     q:=w*alpha+1 od; w
