@@ -132,7 +132,7 @@ for i:#data-1 from 1 do info_reduced(data,i) od
 {. Given a positive integer m, (r+1)-tuples of integers a_i so that
    sum_i(a_i m_i)=m, with a_i's relatively prime. The last entry
    corresponds to the lowest root. These are essentially Kac diagrams. .}
-{set Kac_diags_given_order(RootDatum rd, int order)=[[int]]:
+set Kac_diags_given_order(RootDatum rd, int order)=[[int]]:
    let labels=get_labels(rd) then
    limits=for a in labels do if order=a then 2 else ceil(order/a)
                              fi
@@ -142,7 +142,7 @@ for i:#data-1 from 1 do info_reduced(data,i) od
     let extra=order-v*labels in
      if extra>=0 then let   w=v#(extra) in
     if gcd(w)=1 then S#:=w fi fi  od;S
-}
+
 set Kac_diags_up_to_order(RootDatum rd, int max_order)=[[[int]]]:
    let labels=get_labels(rd)
    then S=for i:max_order+1 do [[int]]:[] od in
@@ -163,8 +163,29 @@ set Kac_x (RootDatum rd, vec v)=ratvec: let labels=get_labels(rd)#1
    then result=ratvec: for i:r do 0/1 od in
      for i:r do result+:=v[i]/m*fcw[i] od; result
 
-{. Given the Kac diagram, compute the order of the corresponding element
+{. Given a Kac diagram, compute the order of the corresponding element
    of G. .}
 set order (RootDatum rd, vec v)=int: let labels=get_labels(rd)#1
    then m=v*labels then w=move_to_fundamental_domain(rd,m*Kac_x(rd,v))
    in m*denom(w)
+
+{. Given two ratvecs representing elements of T, decide whether they are
+   conjugate in G. .}
+set is_conjugate (ratvec v,ratvec w,RootDatum rd)=bool:
+   let W=W(rd) in any(for x in W do is_integer(v*x-w) od)
+
+set is_conjugate_Kac ([int] v,[int] w,RootDatum rd)=bool:
+   is_conjugate (Kac_x(rd,v),Kac_x(rd,w),rd)
+
+set non_conjugate_Kac_given_order (RootDatum rd,int order)=[[int]]:
+   let labels=get_labels(rd) then
+   limits=for a in labels do if order=a then 2 else ceil(order/a)
+                             fi
+                          od in
+   let S=[[int]]:[] in
+   for v in box(limits) do
+    let extra=order-v*labels in
+     if extra>=0 then let   w=v#(extra) in
+    if gcd(w)=1 and (is_simply_connected(rd) or
+      none(for d in S do is_conjugate_Kac(d,w,rd) od))
+     then S#:=w fi fi  od;S
