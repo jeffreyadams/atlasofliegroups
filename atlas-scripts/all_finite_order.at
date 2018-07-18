@@ -2,6 +2,7 @@
 <groups.at
 <sort.at
 <affine.at
+<nilpotent_orbits.at
 
 {. The labels m_i on the Dynkin diagram representing the coefficient of the
    simple roots in the highest root. The label of the lowest root is 1 (not
@@ -165,19 +166,33 @@ set Kac_x (RootDatum rd, vec v)=ratvec: let labels=get_labels(rd)#1
 
 {. Given a Kac diagram, compute the order of the corresponding element
    of G. .}
-set order (RootDatum rd, vec v)=int: let labels=get_labels(rd)#1
-   then m=v*labels then w=move_to_fundamental_domain(rd,m*Kac_x(rd,v))
-   in m*denom(w)
+set order (RootDatum rd, vec v)=int: denom(Kac_x(rd,v))
+
+{. List the Kac diagrams for the identity element of a complex group G
+  (unique if G is simply connected). .}
+set Kac_diags_of_identity (RootDatum rd)=[[int]]:
+  let list=Kac_diags_given_order (rd,1) in
+  ##for diag in list do if order(rd,diag)=1 then [diag] else [] fi od
+
+{. List the elements in the fundamental domain for the affine Weyl Group
+   that exponentiate to the identity element. .}
+set identity_in_fund_domain (RootDatum rd)=[ratvec]:
+  for diag in Kac_diags_of_identity (rd) do Kac_x(rd,diag) od
 
 {. Given two ratvecs representing elements of T, decide whether they are
    conjugate in G. .}
 set is_conjugate (ratvec v,ratvec w,RootDatum rd)=bool:
    let W=W(rd) in any(for x in W do is_integer(v*x-w) od)
 
-set is_conjugate_Kac ([int] v,[int] w,RootDatum rd)=bool:
-   is_conjugate (Kac_x(rd,v),Kac_x(rd,w),rd)
+{. Decide whether two Kac diagrams represent conjugate group elements. .}
+set is_conjugate_Kac ([int] v,[int] w, RootDatum rd)=bool:
+   let list=identity_in_fund_domain(rd) in
+   any(for x in list
+      do move_to_fundamental_domain(rd,Kac_x(rd,v)+x)=Kac_x(rd,w) od)
 
-set non_conjugate_Kac_given_order (RootDatum rd,int order)=[[int]]:
+{. List all Kac elements of a given order, up to conjugacy of the
+   corresponding group element. .}
+set Kac_classes_given_order (RootDatum rd,int order)=[[int]]:
    let labels=get_labels(rd) then
    limits=for a in labels do if order=a then 2 else ceil(order/a)
                              fi
@@ -189,3 +204,8 @@ set non_conjugate_Kac_given_order (RootDatum rd,int order)=[[int]]:
     if gcd(w)=1 and (is_simply_connected(rd) or
       none(for d in S do is_conjugate_Kac(d,w,rd) od))
      then S#:=w fi fi  od;S
+
+set centralizer_of_Kac ([int] Kac, RootDatum rd)=RootDatum:
+   let roots=[int]:
+   ##for k@i in Kac do if k=0 then [i] else [] fi od in
+   complex_pseudo_Levi(rd,roots)
