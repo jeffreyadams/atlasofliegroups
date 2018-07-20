@@ -3,13 +3,13 @@
 { sorting integers }
 set merge ([int] a, [int] b) = [int]: { merge weakly increasing lists }
   let na=#a in
-  if na=0 then b
-  else let i=0, j=0, nb=#b { original length of b }
-  in b #:= a~[0] { sentinel; when this elt becomes b[j], then a is emptied }
-  ; while { run until i=na and j=nb=#b-1 }
-      if i=na then j<nb do b[j] next j+:=1
-      else do if a[i]<=b[j] then a[i] next i+:=1 else b[j] next j+:=1 fi
-      fi
+  if =na then b
+  else let i=0, j=0, nb=#b in
+    for :na+nb { predictable result size; ensures lists won't both run empty }
+    do if i<na and (j<nb or a[i]<=b[j])
+       then a[i] next i+:=1
+       else b[j] next j+:=1
+       fi
     od
   fi
 
@@ -22,22 +22,45 @@ set sort = ([int]->[int]): { merge sort }
 
 set reverse_sort ([int] v) = [int]: sort(v)~[:]
 
-{ sort unique }
+{ sort for a general type: in order to remain type agnostic here, we have the
+  caller pass just the array size and comparison function. For |a| of type
+  [string] (so <=@(string,string) is lexicographic comparison), sort it using:
+  |a:=for i in sort(#a,(int i,int j)bool: a[i]<=a[j]) do a[i] od|
+}
+set sort (int n, (int,int->bool)leq) = [int]:
+   let merge ([int] a, int na, [int] b, int nb) = [int]:
+     let i=0, j=0 in
+     for :na+nb
+     do if i<na and (j=nb or leq(a[i],b[j]))
+        then a[i] next i+:=1
+        else b[j] next j+:=1
+        fi
+     od
+   in (0,n). { describes range of consecutive numbers to sort via |leq| }
+   (rec_fun ms(int b,int size) [int]:
+      case size-1
+      in [b], let e=b+1 in if leq(e,b) then [e,b] else [b,e] fi
+      else let half=size\2 then chalf=size-half in
+         merge( ms(b,half),half, ms(b+half,chalf),chalf )
+      esac
+   )
+
+{ sort unique of row of integers }
 set merge_u ([int] a, [int] b) = [int]: { merge unique weakly increasing lists }
   let na=#a in
-  if na=0 then b
-  else let i=0, j=0, nb=#b { original length of b }
-  in b #:= a~[0] { sentinel; when this elt becomes b[j], then a is emptied }
-  ; while { run until i=na and j=nb=#b-1 }
-      if i=na then j<nb do b[j] next j+:=1
-      else do
-        case a[i]-b[j] { three way test }
-        then { a[i]<b[j]: } a[i] next i+:=1
-        in   { a[i]=b[j]: } a[i] next i+:=1; j+:=1 { take one, skip both }
-        else { a[i]>b[j]: } b[j] next j+:=1
-        esac
-      fi
-    od
+  if =na then b
+  else let i=0, j=0, nb=#b
+  in while { run until i=na and j=nb }
+        if i=na then j<nb do b[j] next j+:=1
+	elif j=nb then do a[i] next i+:=1
+        else do
+	  case a[i]-b[j] { three way test }
+	  then { a[i]<b[j]: } a[i] next i+:=1
+	  in   { a[i]=b[j]: } a[i] next i+:=1; j+:=1 { take one, skip both }
+	  else { a[i]>b[j]: } b[j] next j+:=1
+	  esac
+	fi
+     od
   fi
 
 set sort_u = ([int]->[int]): { sort, keeping unique copy of duplicates }
