@@ -61,7 +61,7 @@ set leq_Partitions ((Partition,Partition) (lambda,mu):pair) = bool:
   if sl=sm else sl<sm then leq_equal_sum_partitions(pair) fi
 
 { compare lists of signed cycle lengths, ordered minus first then decreasing }
-set leq_signed_cycle_types ([int,bool] x, [int,bool]y) = bool:
+set leq_signed_cycles ([int,bool] x, [int,bool]y) = bool:
 (  let m=min(#x,#y) in
    for i:m
    do let (xi,si)=x[i], (yi,ti)=y[i] in
@@ -71,6 +71,9 @@ set leq_signed_cycle_types ([int,bool] x, [int,bool]y) = bool:
    od
 ;  #x <= #y { if one is prefix of the other, compare as their lengths do }
 )
+
+set sort_cycle_types([[int,bool]] a) = [[int,bool]]:
+   for k in sort(#a,(int i,int j)bool: leq_signed_cycles(a[i],a[j])) do a[k] od
 
 set frequencies (Partition lambda) = vec:
   let v=null(0) in
@@ -146,21 +149,26 @@ set partition_pairs (int n) = [Partition,Partition]:
   do ##for lambda in parts_i do for mu in list[n-i] do (lambda,mu) od od
   od
 
-{ look up partition in list of partitions, all of them assumed of same sum }
-set index_partition([Partition] list) = (Partition->int):
-   let l=#list in
+{ look up partition in sorted list of partitions, all assumed of same sum }
+set index_partition([Partition] sorted_list) = (Partition->int):
+(  let l=#sorted_list in
    (Partition lambda) int:
-   binary_search_first((int i)bool:leq_equal_sum_partitions(lambda,list[i]),0,l)
+      binary_search_first
+      ((int i)bool:leq_equal_sum_partitions(lambda,sorted_list[i])
+      ,0,l
+      )
+)
 
-{ look up partition in list of partitions, all of them assumed of same sum }
-set index_partition_pair([Partition,Partition] list) =
+{ look up pair in sorted list of partition pairs, all assumed of same sum }
+set index_partition_pair([Partition,Partition] sorted_list) =
       (Partition,Partition->int):
-(  let l=#list in
+(  let l=#sorted_list in
    ((Partition lambda,Partition mu)) int: let n0=lambda.sum in
       binary_search_first
       ( (int i)bool: { whether list[i] equals or comes after (lambda,mu) }
-         let (nu,pi)=list[i] in
-         case n0-nu.sum then false else true
+         let (nu,pi)=sorted_list[i] in
+         case n0-nu.sum { three-way branch on left partitions size comparison }
+         then true else false { whether nu.sum exceeds lambda.sum }
          in if lambda=nu else leq_equal_sum_partitions(lambda,nu)
             then leq_equal_sum_partitions(mu,pi)
             fi
@@ -169,15 +177,23 @@ set index_partition_pair([Partition,Partition] list) =
       )
 )
 
-{ look up partition in list of partitions, all of them assumed of same sum }
-set index_signed_cycles([[int,bool]] list) = ([int,bool]->int):
+{ look up in list of signed cycle types, and translate index found by |map|;
+  contrary to previous index functions, the |list| is not assumed ordered
+}
+set index_signed_cycles([[int,bool]] list,[int] map) = ([int,bool]->int):
 (  let l=#list in
-   ([int,bool] cycle_type) int:
-      binary_search_first
-      ( (int i)bool: { whether list[i] equals or comes after cycle_type }
-         leq_signed_cycle_types(cycle_type,list[i])
-      ,0,l
-      )
+{ first ensure that |list| is sorted, and that |map| is permuted accordingly }
+   ( let perm = sort(l,(int i,int j):leq_signed_cycles(list[i],list[j])) in
+     list := for i in perm do list[i] od; map := for i in perm do map[i] od
+   )
+;  ([int,bool] cycle_type) int:
+      map
+      [ binary_search_first
+        ( (int i)bool: { whether list[i] equals or comes after cycle_type }
+             leq_signed_cycles(cycle_type,list[i])
+        ,0,l
+        )
+      ]
 )
 
 
@@ -443,7 +459,7 @@ set cycle_power ([int,bool] cycles, int k) = [int,bool]:
 in for (l,sign) in cycles
    do let d=gcd(l,k) in n_cycles[l\d-1,#sign*(k\d)%2] +:= d
    od;
- ##for b:2
+ ##for b:2 ~ { true (negative) before false (positive) }
    do let kind = b.is_odd in
     ##for l:m from 1 ~do for :n_cycles[l-1,b] do (l,kind) od od
    od
@@ -511,7 +527,7 @@ set Dn_irreducibles (int n) = [Dn_irrep]:
 set Dn_classes (int n) = [Dn_class]:
  ##for (alpha,beta):pair in partition_pairs(n)
    do if (#alpha).is_odd then [] { must have even number of cycles in alpha }
-      elif != alpha or for l in beta do l.is_odd od.any
+      elif != alpha or for l in beta do l.is_odd od.any { whether unsplit }
       then [pair.cycles.unsplit_class]
       else { alpha is empty, beta has all even parts }
          [(beta,false).split_class, (beta,true).split_class ]

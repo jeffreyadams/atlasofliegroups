@@ -1751,8 +1751,8 @@ odd, but can be useful when the way to proceed in a loop depends on some
 possibly elaborate case distinction, where the decision whether or not to
 terminate the loop is not taken right at the beginning.
 
-Here is an example to illustrate such a construct, even though one could do
-without in this case. Suppose from a positive integer variable n one wishes to
+Here is an example to illustrate such a construct (even though one could do
+without in this case). Suppose from a positive integer variable n one wishes to
 construct a list of numbers, each obtained by dividing the previous one by 2 if
 the division is exact, or else multiplying it by 3 and adding 1, except that
 when n=1 the iteration terminates. The following loop achieves this (with the
@@ -1770,14 +1770,16 @@ when n%2=0, while in the 'else' branch, 'n>1 do' indicates that the loop should
 terminate (without contributing to the list) when 'n>1' fails (i.e., when n=1).
 
 We see that in combination with a choice clause, a condition 'true' before 'do'
-can be quite normal; the axis language allows 'true' to be omitted in this case.
-Similarly some branch could have a condition 'false', and in this case the
-following "loop body" would be irrelevant as it can never be executed anyway;
-here the axis language allows just writing 'dont' for the branch, meaning
-terminate in this case without further ado (it is equivalent to 'false do die',
-where 'die' is a placeholder for an expression that should never be executed
-(and will give an error if it is) and has type '*' which adapts to any required
-type). With these conventions the above code can be written equivalently as
+can be quite normal. The axis language allows 'true' to be omitted when (as in
+the last example) it is the full expression preceding 'do' (not when a semicolon
+precedes 'true'). Similarly some branch could have a condition 'false', and in
+this case the following "loop body" would be irrelevant as it can never be
+executed anyway; here the axis language allows just writing 'dont' for the
+branch, meaning terminate in this case without further ado. It is equivalent to
+'false do die'; 'die' is a special expression indicating a branch that should
+never be executed (it has type '*' that will adapt to any type required by other
+branches; if by accident it should get executed, that will cause an error stop).
+With these conventions the above code can be written equivalently as
 
   while
     if n%2=0 then do n:=n\2
@@ -1786,9 +1788,38 @@ type). With these conventions the above code can be written equivalently as
     fi
   od
 
-Note that unlike the initial form given, we cannot combine the two assignments
+(Note that unlike the initial form given, we cannot combine the two assignments
 to n here by writing 'n:= if .... fi', since a combined condition-and-body
-expression does not deliver an ordinary value, and so cannot be assigned to n.
+expression does not deliver an ordinary value, and so cannot be assigned to n.)
+
+Here is another example of using several branches with 'do'. Suppose we have two
+streams a,b of elements of some type T for which comparison <=@(T,T) is defined,
+both weakly increasing, and we want to merge them into one row. Assume one does
+not have direct access to the length of the stream, but just to a test whether
+the stream is depleted, and if not to an operation that produces a next element
+of the stream. For concreteness let them be of type |list| recursively defined:
+
+  set_type [ linked_list = (void nil | node cons), node = (T,linked_list) ]
+
+At any point in the merge, we need to take into account 4 possibilities, as
+either stream could have ended. We want to terminate only when both have, but
+using a traditional while loop one would have to first do case distinctions to
+determine termination, and then again to see whether we have elements from both
+streams to compare, or else to let the non-empty stream produce its value. With
+the extended form of while loop we can formulate a solution without redundant
+case distinctions, as follows (note both |do| instances have omitted |true|):
+
+  while
+    case a
+    | nil:
+      case b | nil: dont {terminate} | cons(h,t): do b:=t; h esac
+    | cons(ha,ta):
+      do case b
+         | nil: a:=ta; ha
+         | cons(hb,tb): if ha<=hb then a:=ta; ha else b:=tb; hb fi
+         esac
+    esac
+  od
 
 ** Counted for loops
 

@@ -65,7 +65,7 @@ set cycles_string ([int,bool] cycles) = string:
 set character_table_H(int n) = character_table:
   let order=n.fac*2^n, irred = partition_pairs(n)
   then class = for pair in irred do pair.cycles od
-  then index = index_signed_cycles(class)
+  then index = index_signed_cycles(class,#(#class))
   , c_orders = for type in class do type.cycle_centralizer_order od
   , sign(bool s) = string: if s then "-" else "+" fi
 in
@@ -85,7 +85,7 @@ in
   )
 
 set character_table_D(int n) = character_table:
-  let order=n.fac*2^(n-1)
+( let order=n.fac*2^(n-1)
   , irred = Dn_irreducibles(n)
   , class = Dn_classes(n)
   , unsplits = [[int,bool]]:[], splits = [Partition]: []
@@ -100,12 +100,11 @@ set character_table_D(int n) = character_table:
         | else []
         esac
      od
-  then { needed here so that |unsplits| and |splits| are complete when used }
-    index_unsplit = index_signed_cycles(unsplits)
-  , index_split = index_partition(splits)
+  then index_unsplit = index_signed_cycles(unsplits,unsplit_indices)
+  , index_split = index_partition(splits) { |splits| is born in sorted order }
   then index(Dn_class C) = int:
      case C
-     | cycles.unsplit_class: unsplit_indices[cycles.index_unsplit]
+     | cycles.unsplit_class: cycles.index_unsplit
      | (alpha,neg).split_class: split_indices[alpha.index_split]+#neg
      esac
   , c_orders = for C in class do C.centralizer_order od
@@ -131,3 +130,4 @@ in
   , #class ^ { gather rows of this size: }
     for chi in irred do for C in class do Dn_character(chi,C) od od
   )
+)
