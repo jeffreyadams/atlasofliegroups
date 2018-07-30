@@ -1,4 +1,9 @@
-<polynomial.at
+<K_highest_weights.at
+<tabulate.at
+
+set codim(KGBElt x)=int:nr_of_posroots(root_datum(x))-dimension(x)
+set codim(Param p)=int:codim(x(p))
+set *(Split c,[ParamPol] pols)=for f in pols do c*f od
 
 {\sum a_i(q)p_i where a_i(q) is a polynomial}
 
@@ -11,6 +16,10 @@ See the functions rearrange and dearrange.
 set_type qParamPol=[ParamPol]
 
 set nullqParamPol(RealForm G)=qParamPol:[null_module(G)]
+set q_param_pol(Param p)=qParamPol:[p]
+
+set coefficient(qParamPol P,Param p)=i_poly:
+for i:#P do split_as_int(P[i][p]) od
 
 {equality is term by term}
 set =(qParamPol P,qParamPol Q)=bool:
@@ -42,11 +51,13 @@ for p in monomials(pols) do
  [P_0,P_1,..,P_n]
 }
 set dearrange([(vec,Param)] f,RealForm G)=qParamPol:
+if #f=0 then nullqParamPol(G) else
 let n=max(for (v,) in f do #v od) in
 for i:n do
  sum(G,for j:#f do let (v,p)=f[j] then w=v##null(n-#v) in w[i]*p od)
-od
+od fi
 
+{this fails with an error if #f=0}
 set dearrange([(vec,Param)] f)=qParamPol:dearrange(f,let (,p)=f[0] in p.real_form)
 
 {polynomial  in q, or constant, times qParamPol}
@@ -66,11 +77,27 @@ set -(qParamPol P,qParamPol Q)=qParamPol:P+(-1)*Q
 set evaluate_at_s(qParamPol P)=ParamPol:
 null_module(P.real_form) + sum(P.real_form,for i:#P do s^i*P[i] od)
 
+set evaluate_at_1(qParamPol P)=ParamPol:
+null_module(P.real_form) + sum(P.real_form,for i:#P do P[i] od)
+
 {really should call this q_branch, but that would override a built-in, which 
 is not a good idea}
 set branch_q(Param p, int N)=qParamPol:
-if p.real_form.nr_of_Cartan_classes>1 then prints("Warning: G has more than one conjugacy class of Cartan subgroups.") fi;
-dearrange(q_branch(p,N))  {q_branch is built-in}
+if p.real_form.count_Cartans>1 then prints("Warning: G has more than one conjugacy class of Cartan subgroups.") fi;
+dearrange(q_branch(p,N),p.real_form)  {q_branch is built-in}
+
+set branch_q(ParamPol P, int N)=qParamPol:
+let rv=nullqParamPol(P.real_form) in
+for c@p in P do rv+:=c*branch_q(p,N) od;rv
+
+{multiply qParamPol by q^k (k\ge 0)}
+set shift(qParamPol P, int k)=qParamPol:
+let null=nullqParamPol(P.real_form) in
+(qParamPol:##for i:k do null od)##P
+
+set branch_q(qParamPol P, int N)=qParamPol:
+let rv=nullqParamPol(P.real_form) in
+for i:#P do rv+:=shift(branch_q(P[i],N),i) od;rv
 
 {nice output}
 set show(qParamPol P)=void:
@@ -78,15 +105,14 @@ for (f,p) in rearrange(P) do prints("(",poly_format(f,"q"),")","*",p) od
 
 {alternative output version}
 set print(qParamPol P)=void:
-let header=["c","x","lambda","weight","dim"] then
+let header=["c","x","lambda","nu","codim_O","LKT","dim_K"] then
 values=for (c,p) in rearrange(P) do
 let (,x)=%p.x then
 (,wt)=highest_weights(p)[0] in
-[poly_format(c,"q"),x.to_string,p.lambda.to_string,wt.to_string,LKT(p).dimension.to_string]
-od in tabulate(header#values,"lllll",2," ")
+[poly_format(c,"v"),x.to_string,p.lambda.to_string,p.nu.to_string,codim(x(p)).to_string,wt.to_string,LKTs(p)[0].dimension.to_string]
+od in tabulate(header#values,"lllllll",2," ")
 
 set print_branch_q(Param p,int N)=void:print(branch_q(p,N))
-
 
 
 
