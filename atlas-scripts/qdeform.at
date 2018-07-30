@@ -1,0 +1,106 @@
+<qParamPol.at
+<deform.at
+
+{q version of deformation algorithm}
+
+{need to compute final column of an upper unitriangular polynomial matrix}
+
+{difference of two vectors of polynomials of the same length}
+set poly_rows_minus([i_poly] f,[i_poly] g)=[i_poly]:([f]-[g])[0]
+
+{compute last column of the inverse of an
+upper unitriangular polynomial matrix}
+set last_column_mat_poly_inverse(i_poly_mat A)=[i_poly]:
+{check poly_1's on the diagonal}
+assert(all(for i:#A do A[i][i]=poly_1 od), "A is not upper unitriangular");
+let B=transpose(A) {since i_poly_mat is given by rows, not columns}
+then n=#B then
+remainder=zero_poly_row(n-1)#poly_1
+,solution=zero_poly_row(n) in
+for j:n
+~do let contrib=for i:n do convolve(remainder[j],B[j][i]) od  in
+remainder :=poly_rows_minus(remainder,contrib);
+solution[j]:=contrib[j] od;solution
+
+{convert mat to i_poly_mat
+caution: mat is by columns, i_poly_mat is by rows
+}
+set mat_as_poly_mat(mat A)=i_poly_mat:
+let B=^A then
+(n,m)=shape(B) in
+for i:m do for j:n do vec:[B[i][j]] od od
+
+{modified version of compress from deform.at}
+set q_compress ([Param] B, mat KL_mat, [i_poly] polys, vec stops, vec survivors, mat map) =
+  ([Param], i_poly_mat, [int]):
+  let KL_poly_mat = i_poly_mat: transpose(for col in KL_mat do for inx in col do polys[inx] od od)
+  then reduced_KL_poly_mat = i_poly_mat: mat_as_poly_mat(map)*(for j in survivors do KL_poly_mat[j] od)
+  , survivor_lengths = let l=0 in
+    for s in survivors do while stops[l+1]<=s do l+:=1 od; l od
+  in
+  ( for i in survivors do B[i] od { block restricted to survivors }
+  , { matrix of associated P polynomials}
+    for col@j in reduced_KL_poly_mat
+    do (for e@i in col do minus_1^survivor_lengths[i]*minus_1^survivor_lengths[j]*e od)
+    od
+  , survivor_lengths { length mapping }
+  )
+
+{use last_column_mat_poly_inverse(KL_mat) to compute column
+of inverse as polynomial in q}
+set q_deformation_terms (Param p) = qParamPol:
+  let (B,KL_mat,length) = q_compress(partial_KL_block(p)) then nB=#B in
+  if =nB or B~[0]!=p
+  then [null_module(p)] { if |p| itself is not among survivors, return 0 }
+  else
+    let solution=last_column_mat_poly_inverse(KL_mat)  then
+    rv=nullqParamPol(p.real_form) in
+    for i:#solution-1 do  {skip diagonal entry}
+    { twist (1-s)*solution according to orientation numbers of its terms }
+      let c=solution[i] then
+      x=B[i] then (q,r)=(orientation_nr(p)-orientation_nr(x))\%2 in
+      assert(=r,"odd orientation");
+      rv:=rv+(minus_1^q*convolve(c,one_minus_q))*[x]
+    od;rv
+  fi
+
+{q version of recursive deform}
+set q_recursive_deform (Param p) = qParamPol:
+  if d_verbose then prints("recursive_deform with:", p) fi;
+  if not is_final(p) then error("improper parameter") fi;
+  let empty=nullqParamPol(real_form(p)) in
+  if d_verbose { choose verbose or non-verbose version of the function }
+  then rec_fun full_def (i_poly sc,Param p) qParamPol:
+			 { |sc| will simply scale the resulting ParamPol }
+    begin
+      prints("full_def with: sc=", sc, ", p=", p);
+      assert(is_standard(p)
+	    ,"non standard parameter encountered in deformation");
+      let acc=empty, at_nu0=qParamPol: sc*[p.at_nu_0] { fully deformed |p| } in
+      for factor in reducibility_points(p)
+      ~do
+	let p_def=p*factor { next deformation of |p| }
+	then def=q_deformation_terms(p_def) { bypass built-in |deform| here }
+        in
+	  prints("adding deformation term: p=", p_def, new_line,"adding:", def)
+      ; acc+:=def
+      od
+    ; for (f,q) in rearrange(acc) { traverse the sum of the deformation terms spun off }
+      do { apply |full_def| recursively to all those terms }
+        at_nu0 +:= full_def(convolve(sc,f),q) { gather harvest from those deformations }
+      od
+    ; at_nu0
+    end
+  else rec_fun full_def (i_poly sc,Param p) qParamPol:
+			 { |sc| will simply scale the resulting ParamPol }
+    begin
+      assert(is_standard(p),"non standard parameter in deformation");
+      let acc=empty, at_nu0=qParamPol: sc*[p.at_nu_0] { fully deformed |p| } in
+      for factor in reducibility_points(p)
+      ~ { direction of deformation is down, towards 0; this is not essential }
+      do acc+:=q_deformation_terms(p*factor) od
+    ; for (f,q) in rearrange(acc) { traverse the sum of the deformation terms spun off }
+      do at_nu0 +:= full_def(convolve(sc,f),q) od
+    ; at_nu0
+    end
+  fi { apply that recursive function to the initial argument: } ([1],p)
