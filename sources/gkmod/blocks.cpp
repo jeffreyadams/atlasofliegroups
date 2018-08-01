@@ -1455,7 +1455,7 @@ param_block::param_block // partial block constructor, for interval below |sr|
 
   const KGB& kgb = rc.kgb();
 
-  rc.make_dominant(sr); // make dominant before computing subsystem
+  rc.normalise(sr); // normalise before computing subsystem
   infin_char=sr.gamma(); // now we can set the infinitesimal character
   { const RatWeight gamma_rho = (gamma() - rho(rootDatum())).normalize();
     gr_numer=Weight(gamma_rho.numerator().begin(),gamma_rho.numerator().end());
