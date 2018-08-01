@@ -48,7 +48,6 @@ More topics addressed in this file:
 <Weylgroup.at { for |cross@(WeylElt,KGBElt)| }
 <group_operations { for is_relatively_split }
 
-
 set_type
 [
   {. Data type for a K_orbit on G/P_S, equivalently a K-conjugacy class of

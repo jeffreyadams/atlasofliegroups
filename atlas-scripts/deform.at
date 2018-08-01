@@ -30,7 +30,7 @@ set compress { output from |partial_KL_block| to a more useful form } (
   )
 
 set deformation_terms (Param p) = ParamPol:
-  let (B,KL_mat,length) = compress(partial_KL_block(p)) then nB=#B in
+  let (B,KL_mat,length) = compress(partial_KL_block(p:=normal(p))) then nB=#B in
   if =nB or B~[0]!=p
   then null_module(p) { if |p| itself is not among survivors, return 0 }
   else { compute final column |acc| of |Q| matrix by solving linear system

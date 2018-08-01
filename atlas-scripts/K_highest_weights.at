@@ -98,7 +98,7 @@ set LKT_verbose=false
 
 {. Equality of KHighestWeights; (,x,mu)=(,x',mu') iff x=x', and mu and mu'
    differ by (1-theta)X^* or compact Weyl group action. .}
-set = (KHighestWeight ((),x,mu), KHighestWeight ((),y,tau)) = bool:
+set = (KHighestWeight(,x,mu), KHighestWeight(,y,tau)) = bool:
   real_form(x)=real_form(y) and
   x=y and
   ( let  K_0=K_0(x)
@@ -131,9 +131,8 @@ set LKT (Param p) = K_Type:
   let lkts=LKTs(p) in assert(#lkts=1,"More than one LKT; use LKTs"); lkts[0]
 
 
-{. Replace a pair (x,v) defining a K-type by the unique standard, final,
-   nonzero parameter for this K-type. .}
-set k_type(KGBElt x,ratvec v) = LKT(parameter(x,v))
+{. Replace a K-type mu by its unique standard, final, nonzero parameter .}
+set k_type(K_Type mu) = K_Type: LKT(parameter(mu))
 
 {. Equivalence (actually: equality) of K-types. .}
 set equivalent (K_Type mu,K_Type tau)=bool:
@@ -184,8 +183,7 @@ set highest_weight_split_spherical (K_Type p,KGBElt x_K) = KHighestWeight:
 
 {. Highest weight of LKT of a G-spherical parameter w.r.t. x_K (is unique). .}
 set highest_weight_split_spherical (Param p,KGBElt x_K) = KHighestWeight:
-  let (,x,mu)=highest_weight_split_spherical(p) in
-  move_weight(((),x,mu),x_K)
+  move_weight(highest_weight_split_spherical(p),x_K)
 
 {. This function returns just ONE KHighestWeight of a K-type
   (auxiliary function). .}
@@ -205,7 +203,7 @@ set highest_weight_one (K_Type p) = KHighestWeight:
 { then ()=prints("mu_L:",mu_L,new_line, " mu_G", mu_G, new_line,
      "2*rho_u_cap_s(Q)", 2*rho_u_cap_s(Q,x_G), new_line,
      "two_rho_u_cap_s", two_rho_u_cap_s(Q,x_G)) }
-   in ((),x_G,mu_G)
+   in k_highest_weight(x_G,mu_G)
 )
 
 {. ONE KHighestWeight of a K-type w.r.t. x_K (auxiliary function). .}
@@ -229,7 +227,7 @@ set highest_weights (Param p) = [KHighestWeight]:
 
 {. List of all highest weights of all LKTs of a parameter w.r.t. x_K. .}
 set highest_weights (Param p,KGBElt x_K) = [KHighestWeight]:
-  for (,x,mu) in highest_weights(p) do move_weight(((),x,mu),x_K) od
+  for khwt in highest_weights(p) do move_weight(khwt,x_K) od
 
 {. Unique highest weight of a K-type (or error if not unique). .}
 set highest_weight (K_Type p) = KHighestWeight:
@@ -311,7 +309,7 @@ set tworho_K (KGBElt x) = ratvec:
 ; let G=real_form(x) in sum(compact_posroots(x)) + sum(complex_posroots(x))/2
 )
 
-{. Vogan algorithm to project KHighestWeight ((),x,mu) on dominant cone; returns
+{. Vogan algorithm to project k_highest_weight(x,mu) on dominant cone; returns
    (x',mu+2rho_K(x)-rho,tau) with tau dominant and x' corresponding to the new
    Weyl chamber. .}
 set project_on_dominant_cone (KGBElt x, ratvec mu) = (KGBElt,ratvec,ratvec):
@@ -409,7 +407,7 @@ set all_G_spherical_same_differential (Param p) = [K_Type]:
 }
 
 {. Parabolic attached to KHighestWeight by Vogan algorithm. .}
-set parabolic_LKT (KHighestWeight ((),x,mu)) = Parabolic:
+set parabolic_LKT (KHighestWeight(,x,mu)) = Parabolic:
   let rd=root_datum(x), (y,mu_3_orig,lambda) = project_on_dominant_cone(x,mu)
   then diff=lambda-mu_3_orig
   then S= list(semisimple_rank(rd), (int i): fundamental_coweight(rd,i)*diff>0)
@@ -425,10 +423,11 @@ See KHatHowe, Section 15
 
 {. (Auxiliary function) .}
 set make_strongly_dominant (KHighestWeight mu,KGBElt x_Q) = KHighestWeight:
-  let (,x,tau)=mu then w=cross_divide(x_Q,x) in ((),cross(w,x),w*tau)
+  let (,x,tau)=mu then w=cross_divide(x_Q,x) in
+  k_highest_weight(cross(w,x),w*tau)
 
-set make_strongly_dominant (KHighestWeight ((),x,v))=
-   let (mu,w,y,b)=make_strongly_dominant (x,v) in
+set make_strongly_dominant (KHighestWeight(,x,v))=
+   let (mu,w,y,b)=make_strongly_dominant(x,v) in
    (k_highest_weight(mu),w,y,b)
 
 { this function takes KHighestWeight mu -> |R(K,mu)| K_types,
@@ -436,15 +435,15 @@ set make_strongly_dominant (KHighestWeight ((),x,v))=
   first replace mu with strongly dominant mu in same R_K_dom_mu orbit
 }
 {. All K_types with the same KHighestWeight. .}
-set K_types (KHighestWeight mu_in)= [K_Type]:
-  let (,x,v)=mu_in then G=real_form(x) in
+set K_types (KHighestWeight(,x,v):mu_in)= [K_Type]:
+  let G=real_form(x) in
   let mu=move_weight(mu_in,KGB(G,0)) in
   let (mu,,,)=make_strongly_dominant(mu) in
   let  Q=parabolic_LKT(mu)  {Q is theta-stable}
   in
   assert(is_parabolic_theta_stable(Q), "Q is not theta stable");
   let x_Q=x_min(Q)
-  then ((),x,tau) = mu:=make_strongly_dominant(mu,x_Q)
+  then (,x,tau) = mu:=make_strongly_dominant(mu,x_Q)
   , L=Levi(Q)
   then { L is relatively split }
   ()=if LKT_verbose then
@@ -474,17 +473,18 @@ set K_types (KHighestWeight mu_in)= [K_Type]:
   od; result
 
 {. K_type with given KHighestWeight if unique (otherwise error). .}
-set K_type (KHighestWeight((),x,mu)) = K_Type:
-  let ktypes=K_types((),x,mu) in
+set K_type (KHighestWeight khwt) = K_Type:
+  let ktypes=K_types(khwt) in
   assert(#ktypes=1,
       ##["more than one K-type maps to this KHighestWeight;", new_line,
-       "use K_types to get them all"]); ktypes[0]
+       "use K_types to get them all"]);
+  ktypes[0]
 
 {-----------------KHighestWeight to K0_param --------------------------}
 
 {. Parameter for (the RealForm K_0) of the K_0-type with highest weight
    (the restriction of) KHighestWeight mu. .}
-set K0_param_from_highest_weight (KHighestWeight((),x,mu)) = Param:
+set K0_param_from_highest_weight (KHighestWeight(,x,mu)) = Param:
   finite_dimensional(K_0(x),project_K(real_form(x),mu))
 
 { dimension of KHighestWeight=dimension of representation of K_#
@@ -497,7 +497,7 @@ set dimension (KHighestWeight mu) = int:
 
 {. Dimension of a K-type. .}
 set dimension (K_Type p) = int:
-  let ((),x,):mu=highest_weights(p)[0] in
+  let (,x,):mu=highest_weights(p)[0] in
   dimension(mu)*#R_K_dom(x)\#R_K_dom_mu(mu)
 
 { given mu in X^*(T_K)=X^*(H)/(1-delta)X^*(H), choose representative in X^*(H)
@@ -509,7 +509,7 @@ set dimension (K_Type p) = int:
    (there may be more than one if K# is not equal K_0); in the unequal rank
    case, mu_K will have fewer coordinates than the K-weight). .}
 set K_highest_weight_from_K0_weight (KGBElt x,vec mu_K) = KHighestWeight:
-  ((),x, { vec: } mu_K*left_inverse(injection_from_K_matrix(x)) )
+  k_highest_weight( x, mu_K*left_inverse(injection_from_K_matrix(x)) )
 
 { this may be a ratvec, not vec }
 {. (Auxiliary function) .}
@@ -550,11 +550,11 @@ set K0_param (Param p) = Param:
   K0_param(p,KGB(real_form(x(p)),0))
 
 {. (Auxiliary function) .}
-set fundamental_weight_coordinates (KHighestWeight ((),x,mu)) = vec:
+set fundamental_weight_coordinates (KHighestWeight(,x,mu)) = vec:
   mu*simple_coroots(K_0(x))
 
 { if possible, take weight of K_0, in fundamental weight coordinates, to
-  KHighestWeight ((),x,mu) }
+  k_highest_weight(x,mu) }
 {. (Auxiliary function) .}
 set K_highest_weight_from_fundamental_weights(KGBElt x,vec tau) =
     KHighestWeight:
@@ -562,7 +562,7 @@ set K_highest_weight_from_fundamental_weights(KGBElt x,vec tau) =
   , weight = ratvec: x.real_form.semisimple_rank.null
   in for i:#tau do weight+:=tau[i]*fw[i] od;
   assert(is_integer(weight),"Weight is not integral");
-  ((),x,ratvec_as_vec(weight))
+  k_highest_weight(x,ratvec_as_vec(weight))
 
 {. List of the dimensions of the K_0-types in the restriction of the LKTs of parameter p. .}
 set dimensions (Param p, KGBElt x_K) = [int]:
