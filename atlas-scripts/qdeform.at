@@ -1,5 +1,6 @@
 <qParamPol.at
 <deform.at
+<hermitian.at
 set qd_verbose=false
 
 {q version of deformation algorithm
@@ -60,7 +61,7 @@ set v_to_the_k_times_Q_v_inverse(int N,i_poly f)=null(N-degree(f))##reverse(f)
 to compute column of inverse as polynomial in q}
 set q_deformation_terms (Param Gamma) = qParamPol:
  let ()=if qd_verbose then prints("Computing q_deformation of ", Gamma) fi in
- let (B,P,length) = q_compress(partial_KL_block(Gamma)) in  {P is the *signed* P-matrix}
+ let (B,P,length) = q_compress(partial_KL_block(Gamma:=normal(Gamma))) in  {P is the *signed* P-matrix}
  if #B=0 or B~[0]!=Gamma then [null_module(Gamma)] { if |Gamma| itself is not among survivors, return 0 }
   else
    let rv=nullqParamPol(Gamma.real_form) then
@@ -214,3 +215,31 @@ let groups=
 (Sp(4,C),20),
 (complexification(G2_s),50)]
 in for (G,N) in groups do qtest(G,N) od
+
+set q_signed_P_matrix(Param Gamma)=i_poly_mat:
+let (,P,) = q_compress(partial_KL_block(Gamma)) in P
+
+set q_P_matrix(Param Gamma)=i_poly_mat:
+let (,P_signed,lengths) = q_compress(partial_KL_block(Gamma)) in
+for i:#P_signed do for j:#P_signed[i] do (-1)^(lengths[i]-lengths[j])*P_signed[i][j] od od
+
+set hodge_irreducible(Param p)=
+let (B,P_signed,lengths)=q_compress(partial_KL_block(p)) then
+rv=nullqParamPol(p.real_form) then 
+!on_p = orientation_nr(p) then
+n=#B in
+for i:n do 
+ let   (q,r)=(on_p-orientation_nr(B[i]))\%2 then
+ coeff= assert(=r,"odd orientation");poly_product(vee^q,P_signed[i][n-1]) in 
+ let ()=prints(new_line,i, " ", B[i], new_line,"coeff=",coeff);print(evaluate_at_s(q_recursive_deform(B[i]))) in
+rv+:=coeff*q_recursive_deform(B[i]) od;rv
+
+
+set c_form_irreducible (Param p) = ParamPol:
+( let ori_nr_p = orientation_nr(p), P = null_module(real_form(p)) in
+  for c@q in KL_sum_at_s(p)
+  do 
+  let ()=prints(new_line, q, new_line, "c=",c);print(c_form_std(q)) in
+P +:= c*orientation_nr_term(ori_nr_p,q)*c_form_std(q) od
+; P
+)

@@ -83,7 +83,7 @@ null_module(P.real_form) + sum(P.real_form,for i:#P do P[i] od)
 {really should call this q_branch, but that would override a built-in, which 
 is not a good idea}
 set branch_q(Param p, int N)=qParamPol:
-if p.real_form.count_Cartans>1 then prints("Warning: G has more than one conjugacy class of Cartan subgroups.") fi;
+if p.real_form.nr_of_Cartan_classes>1 then prints("Warning: G has more than one conjugacy class of Cartan subgroups.") fi;
 dearrange(q_branch(p,N),p.real_form)  {q_branch is built-in}
 
 set branch_q(ParamPol P, int N)=qParamPol:
@@ -108,7 +108,7 @@ set print(qParamPol P)=void:
 let header=["c","x","lambda","nu","codim_O","LKT","dim_K"] then
 values=for (c,p) in rearrange(P) do
 let (,x)=%p.x then
-(,wt)=highest_weights(p)[0] in
+(,,wt)=highest_weights(p)[0] in
 [poly_format(c,"v"),x.to_string,p.lambda.to_string,p.nu.to_string,codim(x(p)).to_string,wt.to_string,LKTs(p)[0].dimension.to_string]
 od in tabulate(header#values,"lllllll",2," ")
 
