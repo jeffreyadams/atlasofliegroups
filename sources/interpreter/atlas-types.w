@@ -3175,7 +3175,8 @@ install_function(quasisplit_form_wrapper,@|"quasisplit_form"
 install_function(inner_class_of_real_form_wrapper
                 ,@|"inner_class","(RealForm->InnerClass)");
 install_function(components_rank_wrapper,@|"components_rank","(RealForm->int)");
-install_function(count_Cartans_wrapper,@|"count_Cartans","(RealForm->int)");
+install_function(count_Cartans_wrapper
+                ,@|"nr_of_Cartan_classes","(RealForm->int)");
 install_function(KGB_size_wrapper,@|"KGB_size","(RealForm->int)");
 install_function(base_grading_vector_wrapper
                 ,@|"base_grading_vector","(RealForm->ratvec)");

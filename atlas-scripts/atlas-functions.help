@@ -466,9 +466,7 @@ components_rank: (RealForm->int): rank of the component group
   form is an elementary 2-group (Z/2Z vector space); this function gives its
   rank, so the number of connected components is 2^components_rank(rf)
 
-count_Cartans: (RealForm->int): number of Cartan classes for this real form
-  The Cartan classes are actually constructed, and remembered, by this command
-  whence its first execution for some real form may take some time
+nr_of_Cartan_classes: (RealForm->int): number of Cartan classes for real form
 
 operators =, !=: (RealForm,RealForm->bool): (in)equality of real forms
   It means they belong to an identical inner class (not two inner classes
