@@ -531,11 +531,11 @@ template<typename T, typename Alloc>
     return iterator(*pos.link_loc); // non |const_iterator| copy of |pos|
   }
 
-  iterator splice (const_iterator pos, simple_list& other)
+  iterator splice (const_iterator pos, simple_list&& other)
   { return splice(pos,other); } // refer to lvalue version that follows
 
   // splice in |other| and return advanced iterator |pos|
-  iterator splice (const_iterator pos, simple_list&& other)
+  iterator splice (const_iterator pos, simple_list& other)
   { link_type tail = std::move(*pos.link_loc);
     *pos.link_loc = std::move(other.head); // |std::unique_ptr| does the work
     while (not pos.at_end())
