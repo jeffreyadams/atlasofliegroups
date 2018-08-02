@@ -155,9 +155,6 @@ public:
 template<typename T,typename Alloc>
 class sl_list_iterator : public sl_list_const_iterator<T,Alloc>
 {
-  friend class simple_list<T,Alloc>;
-  friend class sl_list<T,Alloc>;
-
   typedef sl_list_const_iterator<T,Alloc> Base;
   typedef sl_list_iterator<T,Alloc> self;
 
