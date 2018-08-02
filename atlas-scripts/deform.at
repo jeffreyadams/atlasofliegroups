@@ -16,7 +16,8 @@ set compress { output from |partial_KL_block| to a more useful form } (
   let polys_at_minus_1 = for p in polys do eval(p,minus_1) od
   then KL_mat_at_minus_1 = mat: { matrix of polynomial evaluations at -1 }
     for col in KL_mat do for inx in col do polys_at_minus_1[inx] od od
-  then reduced_KL_mat = mat: for j in survivors do map*KL_mat_at_minus_1[j] od
+  then 
+  reduced_KL_mat = mat: for j in survivors do map*KL_mat_at_minus_1[j] od
   , survivor_lengths = let l=0 in
     for s in survivors do while stops[l+1]<=s do l+:=1 od; l od
   in

@@ -34,9 +34,12 @@ for i:m do for j:n do vec:[B[i][j]] od od
 set q_compress ([Param] B, mat KL_mat, [i_poly] polys, vec stops, vec survivors, mat map) =
   ([Param], i_poly_mat, [int]):
   let KL_poly_mat = i_poly_mat: transpose(for col in KL_mat do for inx in col do polys[inx] od od) then
-   S=for j in survivors do KL_poly_mat[j] od then
+{   ()=prints("KL_poly_mat:");printPolyMatrix(KL_poly_mat) then}
+   S=for j in survivors do transpose(KL_poly_mat)[j] od then
    M=mat_as_poly_mat(map) then
-   reduced_KL_poly_mat =  i_poly_mat:S*transpose(M) then
+{   reduced_KL_poly_mat =  i_poly_mat:S*transpose(M) then}
+   reduced_KL_poly_mat =  i_poly_mat:M*transpose(S) then
+{   ()=prints("reduced_KL_poly_mat:");printPolyMatrix(reduced_KL_poly_mat) then}
    survivor_lengths = let l=0 in
     for s in survivors do while stops[l+1]<=s do l+:=1 od; l od
   in
@@ -65,6 +68,7 @@ set q_deformation_terms (Param Gamma) = qParamPol:
  if #B=0 or B~[0]!=Gamma then [null_module(Gamma)] { if |Gamma| itself is not among survivors, return 0 }
   else
    let rv=nullqParamPol(Gamma.real_form) then
+   (,P0,)=compress(partial_KL_block(Gamma:=normal(Gamma))) then 
    Q_col=last_column_mat_poly_inverse(P)  {last column of Q matrix} in
    for i:#Q_col-1 do  {i <-> Phi}
     for j: #Q_col-i from i do { j <-> Xi}
@@ -190,7 +194,7 @@ set q_recursive_deform_reverse (Param p) = qParamPol:
 set print(qParamPol P, int n)=void:prints("lead term: v^",n);print(P)
 
 {------------------ some test functions--------------------}
-set qtest(Param p,int N)=void:
+set qtest(Param p,int N)=bool:
 let qdef=q_recursive_deform(p) then
 rv=branch_q(qdef,N) then
 positive=all(##for i:#rv do for c@p in rv[i] do split_as_int(c)>0 od od) then
@@ -199,10 +203,11 @@ valid_evaluation_at_1=evaluate_at_1(qdef)=p*0 in
 prints(p.real_form,new_line,"N:",N,new_line,p,new_line,"q_deformation to 0: ");print(rv);prints(new_line,
 "correct evaluation at v=1:",valid_evaluation_at_1,new_line,
 "correct evaluation at v=s:",valid_evaluation_at_s,new_line,
-"positive coefficients: ",positive,new_line);()
-{(qdef,rv,valid_evaluation_at_1,valid_evaluation_at_s,positive)}
+"positive coefficients: ",positive,new_line);valid_evaluation_at_1 and valid_evaluation_at_s and positive
 
-set qtest(RealForm G,int N)=void:qtest(trivial(G),N)
+set qtest(RealForm G,int N)=bool:qtest(trivial(G),N)
+
+set qtest([Param] params,int N)=bool:all(for p in params do qtest(p,N) od)
 
 set runqtests()=
 let groups=
@@ -223,6 +228,7 @@ set q_P_matrix(Param Gamma)=i_poly_mat:
 let (,P_signed,lengths) = q_compress(partial_KL_block(Gamma)) in
 for i:#P_signed do for j:#P_signed[i] do (-1)^(lengths[i]-lengths[j])*P_signed[i][j] od od
 
+{write hodge(J(Gamma)) in terms of hodge(I(Xi))}
 set hodge_irreducible(Param p)=
 let (B,P_signed,lengths)=q_compress(partial_KL_block(p)) then
 rv=nullqParamPol(p.real_form) then 
