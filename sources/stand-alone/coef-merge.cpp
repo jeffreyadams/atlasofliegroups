@@ -246,7 +246,6 @@ inline void write_bytes(file_pos val, ulong n, std::ostream& out)
 
 void read_renumbering_table
   (ulong nr_pols, std::ifstream& in, std::vector<unsigned int>& table)
-  throw (std::length_error,std::bad_alloc)
 { table.resize(nr_pols);
   for (ulong i=0; i<nr_pols; ++i) table[i]=read_bytes(4,in);
 }

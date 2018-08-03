@@ -1106,8 +1106,8 @@ int main(int argc,char** argv)
     else @+{@; std::cerr << "Non-numeric argument following -l\n"; exit(1); }
   }
 @)
-  std::auto_ptr<matrix_info> mi; // auto-pointer guarantees clean-up at end
-  std::auto_ptr<progress_info> row_info;
+  std::unique_ptr<matrix_info> mi; // unique pointer guarantees clean-up at end
+  std::unique_ptr<progress_info> row_info;
   std::ifstream coef_file;
 @)
   @< Scan arguments and do initial processing of input files @>
@@ -1180,7 +1180,7 @@ necessary).
   { matrix_info::mode format; @< Determine the |format| of the matrix file @>
     if (format==matrix_info::transform)
       @< Reopen the |matrix_file| for reading and writing @>
-    mi=std::auto_ptr<matrix_info> @|
+    mi=std::unique_ptr<matrix_info> @|
        (new matrix_info(block_file,matrix_file,format==matrix_info::revised));
     if (format==matrix_info::transform)
       @< Modify matrix file to be in revised format @>
@@ -1281,7 +1281,7 @@ later reading. At the end of a successful conversion, we replace the
 { std::ifstream row_file(*argv++,binary_in);
   if (row_file.is_open())
   {
-    row_info=std::auto_ptr<progress_info>(new progress_info(row_file));
+    row_info=std::unique_ptr<progress_info>(new progress_info(row_file));
     if (row_info->block_size()!=mi->block_size())
       throw std::runtime_error("Block size mismatch for row file");
   }

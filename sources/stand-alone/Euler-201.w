@@ -157,7 +157,7 @@ computing their sum using the STL algorithm |std::accumulate|.
 
 @h <iostream>
 @h <iterator>
-@h <algorithm>
+@h <numeric>
 
 @< Main function @>=
 int main()
