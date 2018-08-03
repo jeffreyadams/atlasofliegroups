@@ -279,8 +279,12 @@ template<typename T, typename Alloc>
  private:
   link_type head; // owns the first (if any), and recursively all nodes
 
-  // constructors
  public:
+  // access to the allocator, which is our base object
+  const alloc_type& get_node_allocator () const { return *this; }
+  alloc_type& node_allocator () { return *this; }
+
+  // constructors
   explicit simple_list () // empty list
   : alloc_type(), head(nullptr) {}
 
@@ -354,23 +358,25 @@ template<typename T, typename Alloc>
 
   simple_list& operator= (const simple_list& x)
   {
-    if (this!=&x) // self-assign is useless, though it would be safe
-    { // reuse existing nodes when possible
-      iterator p = begin();
-      node_type* q=x.head.get(); // maybe more efficient than an iterator
-      if (get_node_allocator() != x.get_node_allocator())
-      { // our old nodes need to be destroyed by our old allocator
-	clear(); // so we cannot reuse any of them: destroy them now
-	node_allocator() = x.get_node_allocator(); // now transfer allocator
-      }
-      else // now copy contents for as many nodes as possible
-	for ( ; not at_end(p) and q!=nullptr; ++p, q=q->next.get())
-	  *p = q->contents;
+    if (this!=&x) // self-assign is a waste, though it would be safe
+    { if (get_node_allocator() != x.get_node_allocator() and
+          std::allocator_traits<Alloc>::propagate_on_container_copy_assignment
+          ::value)
+       { // now we must change allocator, but old nodes require old allocator
+	 clear(); // so we cannot reuse any of them: destroy them now
+	 node_allocator() = x.get_node_allocator(); // now transfer allocator
+       }
 
-      if (at_end(p)) // certainly true if previous condition was
-	for ( ; q!=nullptr; ++p, q=q->next.get()) // |insert(p,q->contents)|
-	  p.link_loc->reset(allocator_new(node_allocator(),q->contents));
-      else // |q| was exhausted before |p|; we need to truncate after |p|
+      // simulate |assign(x.begin(),x.end())|, but do so without |x.end()|
+      iterator p = begin();
+      const_iterator q=x.begin();
+      for ( ; not this->at_end(p) and not x.at_end(q); ++p, ++q)
+	*p = *q;
+
+      if (at_end(p))
+	for ( ; not x.at_end(q); ++p, ++q) // copy nodes from |q| after |p|
+	  p.link_loc->reset(allocator_new(node_allocator(),*q));
+      else // |q| was exhausted before |p|; truncate after |p|
 	p.link_loc->reset();
     }
     return *this;
@@ -378,24 +384,27 @@ template<typename T, typename Alloc>
 
   simple_list& operator= (simple_list&& x)
   { // self-assignment is safe, because safe for |std::unique_ptr| instances
-    if (get_node_allocator() == x.get_node_allocator() )
-    { // it is safe to just move the head pointer
+    const bool alloc_match = get_node_allocator() == x.get_node_allocator();
+    if (alloc_match or
+	std::allocator_traits<Alloc>::propagate_on_container_move_assignment
+	::value) // whether we can move the list itself from |x| to |*this|
+    { // do move assignment on list first, using our allocator for destructions
       // the next call starts clearing |*this|, except when |get()==x.get()|
       head = std::move(x.head); // unique_ptr move assignment
-      if (false) // correct condition cannot be formulated with gcc 4.6
+      // finally move the allocator, unless it already matched ours
+      if (not alloc_match)  // then we must also move allocator
 	node_allocator() = std::move(x.node_allocator());
     }
-    else // allocators differ and cannot be moved; so move node contents
-    { // effectively |move_assign(x.begin(),end(x));|
-      iterator p = begin();
-      node_type* q=x.head.get(); // maybe more efficient than an iterator
-      for ( ; not at_end(p) and q!=nullptr; ++p, q=q->next.get())
-	*p = std::move(q->contents);
+    else // allocators differ and remain in place; we can only move contents
+    { // simulate |move_assign(x.begin(),end(x))|, but do so without |x.end()|
+      iterator p = begin(), q=x.begin(); // no |const_iterator| here
+      for ( ; not this->at_end(p) and not x.at_end(q); ++p, ++q)
+	*p = std::move(*q);
+
       if (at_end(p))
-	for ( ; q!=nullptr; ++p, q=q->next.get()) // |insert(p,q->contents)|
-	  p.link_loc->reset
-	    (allocator_new(node_allocator(),std::move(q->contents)));
-      else // |q| was exhausted before |p|; we need to truncate after |p|
+	for ( ; not x.at_end(q); ++p, ++q) // copy nodes from |q| after |p|
+	  p.link_loc->reset(allocator_new(node_allocator(),std::move(*q)));
+      else // |q| was exhausted before |p|; truncate after |p|
 	p.link_loc->reset();
     }
     return *this;
@@ -431,10 +440,6 @@ template<typename T, typename Alloc>
   }
 
   node_type* release() { return head.release(); } // convert to raw pointer
-
-  // access to the allocator
-  const alloc_type& get_node_allocator () const { return *this; }
-  alloc_type& node_allocator () { return *this; }
 
   //iterators
   iterator begin() { return iterator(head); }
@@ -776,8 +781,12 @@ template<typename T, typename Alloc>
     }
   };
 
-  // constructors
  public:
+  // access to the allocator, which is our base object
+  const alloc_type& get_node_allocator () const { return *this; }
+  alloc_type& node_allocator () { return *this; }
+
+  // constructors
   explicit sl_list () // empty list
     : alloc_type(), head(nullptr), tail(&head), node_count(0) {}
 
@@ -856,35 +865,39 @@ template<typename T, typename Alloc>
 
   sl_list& operator= (const sl_list& x)
   {
-    if (this!=&x) // self-assign is useless, though it would be safe
-    { // reuse existing nodes when possible
-      if (get_node_allocator() != x.get_node_allocator())
-      { // our old nodes need to be destroyed by our old allocator
+    if (this!=&x) // self-assignment is a waste, though it would be safe
+    { if (get_node_allocator() != x.get_node_allocator() and
+          std::allocator_traits<Alloc>::propagate_on_container_copy_assignment
+          ::value)
+      { // now we must change allocator, but old nodes require old allocator
 	clear(); // so we cannot reuse any of them: destroy them now
 	node_allocator() = x.get_node_allocator(); // now transfer allocator
       }
-      assign(x.begin(),x.end());
+      assign(x.begin(),x.end()); // copy contents, maybe reusing some nodes
     }
     return *this;
   }
 
   sl_list& operator= (sl_list&& x)
   { // self-assignment is safe, because safe for |std::unique_ptr| instances
-    if (get_node_allocator() == x.get_node_allocator() )
-    { // it is safe to just move the head pointer
-      // the next call starts clearing |*this|, except when |get()==x.get()|
+    const bool alloc_match = get_node_allocator() == x.get_node_allocator();
+    if (alloc_match or
+	std::allocator_traits<Alloc>::propagate_on_container_move_assignment
+	::value) // whether we can move the list itself from |x| to |*this|
+    { // do move assignment on list first, using our allocator for destructions
       if (x.head.get()==nullptr)
-        clear(); // this modifies |tail|
+	clear(); // this sets |tail| correctly, rather than to |x.tail|
       else
-      {
+      { // now we can just move all fields
 	head = std::move(x.head); // unique_ptr move assignment
-	tail = x.tail;
+	tail = x.tail; // copy raw pointer
 	node_count = x.node_count;
       }
-      if (false)
-	node_allocator() = std::move(x.node_allocator());
+      // finally move the allocator, unless it already matched ours
+      if (not alloc_match)  // then we must also move allocator
+	node_allocator() = std::move(x.get_node_allocator());
     }
-    else
+    else // allocators differ and remain in place; we can only move contents
       move_assign(x.begin(),x.end());
     return *this;
   }
@@ -916,10 +929,6 @@ template<typename T, typename Alloc>
 	other.insert(q,p,end());
     }
   }
-
-  // access to the allocator
-  const alloc_type& get_node_allocator () const { return *this; }
-  alloc_type& node_allocator () { return *this; }
 
   //iterators
   iterator begin () { return iterator(head); }
