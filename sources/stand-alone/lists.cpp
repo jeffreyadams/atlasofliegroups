@@ -172,7 +172,7 @@ std::ostream& operator << (std::ostream& os,
   os << '[';
   for (auto it = l.begin(); it!=l.end(); ++it)
     os << (it==l.begin() ? "" : ",") << *it;
-  return os << ']';
+  return os << '(' << l.size() <<")]";
 }
 
 void tester() // test all methods at least once
@@ -366,7 +366,12 @@ int main()
   int arr[2] = { 4, 1 };
   it=L.insert(it,&arr[0],&arr[2]);
   L.insert(++it,9);
-  for (it=L.begin(); not L.at_end(it); ++it)
-    std::cout<<*it<<',';
-  std::cout<<std::endl;
+  std::cout << L << std::endl;
+  L.remove(26);
+  L.remove(1);
+  std::cout << L << std::endl;
+  L.assign ({ 0, 0, 1, 1, 3, 3, 4, 4, 7, 4, 4 });
+  std::cout << L << std::endl;
+  L.unique();
+  std::cout << L << std::endl;
 }
