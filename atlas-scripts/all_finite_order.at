@@ -205,7 +205,7 @@ set Kac_classes_given_order (RootDatum rd,int order)=[[int]]:
       none(for d in S do is_conjugate_Kac(d,w,rd) od))
      then S#:=w fi fi  od;S
 
-set centralizer_of_Kac ([int] Kac, RootDatum rd)=RootDatum:
+set centralizer_of_Kac (RootDatum rd, [int] Kac)=RootDatum:
    let roots=[int]:
    ##for k@i in Kac do if k=0 then [i] else [] fi od in
    complex_pseudo_Levi(rd,roots)
