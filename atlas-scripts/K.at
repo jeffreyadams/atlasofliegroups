@@ -25,11 +25,13 @@
 <Weylgroup.at { for from_no_Cminus }
 
 set_type
-[ K_Type = (KGBElt x, ratvec lambda) , KHighestWeight = (void .,KGBElt x, vec mu) ]
+[ K_Type = (KGBElt x, ratvec lambda)
+, KHighestWeight = (void .,KGBElt x, vec mu)
+]
 
 set k_highest_weight (KGBElt x, vec mu) = KHighestWeight: ((),x,mu)
 
-set highest_weight_plain (KHighestWeight ((),x,v)) = (x,v)
+set highest_weight_plain (KHighestWeight(,x,v)) = (KGBElt,vec): (x,v)
 
 { the following is just an alternative name }
 set_type K_Type_Pol = ParamPol { usage should imply nu-part of terms are zero }

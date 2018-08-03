@@ -1,0 +1,133 @@
+<basic.at
+<combinatorics.at
+
+{ Character table structure for Weyl groups (integer valued characters) }
+
+{ The structure below was inspired by the way GAP represents character tables }
+
+set_type
+[ character_table =
+  ( int order { of the finite group }
+  , (int->string) class_label
+  , (int->int) class_element_order
+  , (int,int->int) class_power
+  , [int] centralizer_orders
+  , [int] class_sizes
+  , (int->string) irreducible_label
+  , mat table { by row=character }
+  )
+]
+
+set n_classes (character_table t) = int: #t.class_sizes
+set irrep_dimension (character_table t) = (int i) int: t.table[i,0]
+
+set scalar_product (character_table t) = (int i0, int i1) rat:
+   let tab=t.table in
+   for j: t.n_classes do tab[i0,j]*tab[i1,j]*t.class_sizes[j] od.sum/t.order
+
+set check_orthogonality (character_table t) = bool:
+   let n=t.n_classes, dot=t.scalar_product in
+   for i:n do for j:n do dot(i,j) = #(i=j) od.all od.all
+
+set character_table_S(int n) = character_table:
+  let order=n.fac, partitions_n = partitions(n)
+  then index = index_partition(partitions_n)
+  , c_orders=for lambda in partitions_n do cycle_centralizer_order(lambda) od
+  , class_or_irrep_string (int j) = string: partitions_n[j].to_string
+in
+  ( order
+  , class_or_irrep_string
+  , (int j) int: partitions_n[j].cycle_type_order
+  , (int j, int p) int: cycle_power(partitions_n[j],p).index
+  , c_orders
+  , for co in c_orders do order\co od
+  , class_or_irrep_string
+  , #partitions_n ^ { gather rows of this size: }
+    for lambda in partitions_n
+    do for cycles in partitions_n do Murnaghan_Nakayama(lambda,cycles) od
+    od
+  )
+
+set sign_string (bool s) = string: if s then "-" else "+" fi
+set parts_string (Partition lambda) = string: lambda.to_string[1:1~]
+set cycles_string ([int,bool] cycles) = string:
+(  "["
+   ##
+ ##for (l,s)@pos in cycles
+   do if =pos then l.to_string##s.sign_string
+      else "," ##  l.to_string##s.sign_string
+      fi
+   od
+ ##
+   "]"
+)
+
+set character_table_H(int n) = character_table:
+  let order=n.fac*2^n, irred = partition_pairs(n)
+  then class = for pair in irred do pair.cycles od
+  then index = index_signed_cycles(class,#(#class))
+  , c_orders = for type in class do type.cycle_centralizer_order od
+  , sign(bool s) = string: if s then "-" else "+" fi
+in
+  ( order
+  , (int j) string: { class_label } class[j].cycles_string
+  , (int j) int: class[j].cycle_type_order
+  , (int j, int p) int: cycle_power(class[j],p).index
+  , c_orders
+  , for co in c_orders do order\co od
+  , (int i) string: { irreducible representation label }
+    let (mu,lambda)=irred[i] { mu for the sign character} in
+       "{" ## lambda.parts_string ## " | " ## mu.parts_string ## "}"
+  , #class ^ { gather rows of this size: }
+    for pair in irred
+    do for cycle_type in class do hyperoctahedral_character(pair,cycle_type) od
+    od
+  )
+
+set character_table_D(int n) = character_table:
+( let order=n.fac*2^(n-1)
+  , irred = Dn_irreducibles(n)
+  , class = Dn_classes(n)
+  , unsplits = [[int,bool]]:[], splits = [Partition]: []
+  then unsplit_indices =
+   ##for c@i in class
+     do case c | cycles.unsplit_class: unsplits #:= cycles; [i] | else [] esac
+     od
+  , split_indices =
+   ##for c@i in class
+     do case c
+        | (alpha,neg).split_class: if neg then [] else splits #:= alpha; [i] fi
+        | else []
+        esac
+     od
+  then index_unsplit = index_signed_cycles(unsplits,unsplit_indices)
+  , index_split = index_partition(splits) { |splits| is born in sorted order }
+  then index(Dn_class C) = int:
+     case C
+     | cycles.unsplit_class: cycles.index_unsplit
+     | (alpha,neg).split_class: split_indices[alpha.index_split]+#neg
+     esac
+  , c_orders = for C in class do C.centralizer_order od
+  , sign(bool s) = string: if s then "-" else "+" fi
+in
+  ( order
+  , (int j) string: { class_label }
+    case class[j]
+    | cycles.unsplit_class: cycles.cycles_string
+    | (alpha,s).split_class: alpha.to_string ## sign(s)
+    esac
+  , (int j) int: class[j].cycle_type_order
+  , (int j, int p) int: cycle_power(class[j],p).index
+  , c_orders
+  , for co in c_orders do order\co od
+  , (int i) string: { irreducible representation label }
+    case irred[i]
+    | (lambda,mu).unsplit_irr: { here we keep the stored order of partitions }
+      "{" ## lambda.parts_string ## " | " ## mu.parts_string ## "}"
+    | (mu,s).split_irr:
+      "{" ## mu.parts_string ## " | " ## mu.parts_string ## "}" ## s.sign_string
+    esac
+  , #class ^ { gather rows of this size: }
+    for chi in irred do for C in class do Dn_character(chi,C) od od
+  )
+)

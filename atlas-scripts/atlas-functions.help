@@ -466,9 +466,7 @@ components_rank: (RealForm->int): rank of the component group
   form is an elementary 2-group (Z/2Z vector space); this function gives its
   rank, so the number of connected components is 2^components_rank(rf)
 
-count_Cartans: (RealForm->int): number of Cartan classes for this real form
-  The Cartan classes are actually constructed, and remembered, by this command
-  whence its first execution for some real form may take some time
+nr_of_Cartan_classes: (RealForm->int): number of Cartan classes for real form
 
 operators =, !=: (RealForm,RealForm->bool): (in)equality of real forms
   It means they belong to an identical inner class (not two inner classes
@@ -830,6 +828,13 @@ branch: (Param,int->ParamPol) Find K-types of standardrepn up to given limit
 branch: (ParamPol,int->ParamPol) Find K-types of polynomial up to given limit
   This is just forming the Split-linear combination for all terms of the
   results of branch on the standard representations for those terms
+q_branch: (Param,int->[vec,Param]) q-analgue of branch@(Param,int)
+  The result ought to be a |ParamPol| with integer polynomials as coefficients,
+  but since that type does not exist, it is represented as a list of pairs,
+  each giving a (polynomial) coefficient and a (paramter) term. The same
+  interpretation of arguments as for branch@(Param,int) applies; the statistic
+  used replace integer coefficients in the result by polynomials is the one
+  used in the Fokko command qbranch (and qKtypeform and qKtypemat as well)
 to_canonical: (Param->Param) Move parameter to canonical fiber (making nu=0)
 height: (Param->int) W-invariant height measure standardrepn restricted to K
   This is the sum of absolute values of the scalar products of (1+theta)lambda
