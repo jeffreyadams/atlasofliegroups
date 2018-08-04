@@ -896,9 +896,10 @@ template<typename T, typename Alloc>
 	clear(); // this sets |tail| correctly, rather than to |x.tail|
       else
       { // now we can just move all fields
-	head = std::move(x.head); // unique_ptr move assignment
+	head = std::move(x.head); // |std::unique_ptr| move assignment
 	tail = x.tail; // copy raw pointer
 	node_count = x.node_count;
+	x.set_empty();
       }
       // finally move the allocator, unless it already matched ours
       if (not alloc_match)  // then we must also move allocator
@@ -1335,6 +1336,58 @@ template<typename T, typename Alloc>
 	  p=p->next.get();
       tail = &p->next;
     }
+  }
+
+  void merge (sl_list&& other) { merge(other); }
+  void merge (sl_list& other)
+  {
+    if (other.empty())
+      return;
+    if (empty())
+    {
+      head = std::move(other.head); // |std::unique_ptr| move assignment
+      tail = other.tail; // copy raw pointer
+      node_count = other.node_count;
+      other.set_empty();
+      return;
+    }
+
+    const_iterator p = cbegin();
+    link_type& qq = other.head;
+    node_count += other.node_count; // this will hold at end
+    const auto other_tail = other.tail; // save pointer value; maybe needed
+    other.set_empty(); // already prepare |tal| and |node_count| for emptying
+
+    do // invariant: neither |*p.link_loc| nor |qq| hold null pointers
+    {
+      const T& t=*p; // put aside contents of our current node
+      if (qq->contents<t)
+      {
+	// gather a range of elements of |other| to splice before our current
+	const_iterator r(qq->next);
+	while (not at_end(r) and *r<t)
+	  ++r;
+
+	// give symbolic name to link locations
+	link_type& pp = *p.link_loc;
+	link_type& rr = *r.link_loc;
+
+	// splice the range from |qq| to |rr| towards |pp|
+	link_type remainder = std::move(rr); // unlink tail of |other|
+	rr = std::move(pp); // attach our remainder to spliced part
+	pp = std::move(qq); // and put spliced part at our front
+	qq = std::move(remainder); // hold remaining part ot |other.head|
+
+	if (qq.get()==nullptr)
+	  return; // now |other.empty()|, and nothing left to do
+
+	p = const_iterator(rr); // skip over spliced-in part before incrementing
+      }
+    }
+    while(not at_end(++p)); // advance one node in our list, stop when last
+
+    (*p.link_loc) = std::move(qq); // attach nonempty remainder of |other|
+    tail = other_tail; // and in this case we must redirect our |tail|
   }
 
   void reverse () { reverse(cbegin(),cend()); }

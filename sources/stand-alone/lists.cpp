@@ -172,7 +172,7 @@ std::ostream& operator << (std::ostream& os,
   os << '[';
   for (auto it = l.begin(); it!=l.end(); ++it)
     os << (it==l.begin() ? "" : ",") << *it;
-  return os << '(' << l.size() <<")]";
+  return os << " (" << l.size() <<")]";
 }
 
 void tester() // test all methods at least once
@@ -371,7 +371,11 @@ int main()
   L.remove(1);
   std::cout << L << std::endl;
   L.assign ({ 0, 0, 1, 1, 3, 3, 4, 4, 7, 4, 4 });
+  std::cout << L << std::endl << (L.unique(),L) << std::endl;
+  L.remove(4);
   std::cout << L << std::endl;
-  L.unique();
-  std::cout << L << std::endl;
+  atlas::containers::sl_list<int> M { -3, -3, 0, 0, 2, 4, 5, 9, 12 };
+  std::cout << M << std::endl;
+  L.merge(M);
+  std::cout << L << std::endl << M << std::endl;
 }
