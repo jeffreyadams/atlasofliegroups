@@ -483,6 +483,8 @@ template<typename T, typename Alloc>
       p.link_loc->reset();
   }
 
+  void assign (std::initializer_list<T> l) { assign(l.begin(), l.end()); }
+
   template<typename InputIt>
     void move_assign (InputIt first, InputIt last)
   {
@@ -563,6 +565,17 @@ template<typename T, typename Alloc>
     return iterator(p->next); // iterator refers to |next| field of the new node
   }
 
+  template<typename... Args>
+    iterator emplace_insert (const_iterator pos, Args&&... args)
+  {
+    link_type& link = *pos.link_loc;
+    node_type* p =
+      allocator_new(node_allocator(),std::forward<Args>(args)...);
+    p->next.reset(link.release()); // link the trailing nodes here
+    link.reset(p); // and attach new node to previous ones
+    return iterator(p->next); // iterator refers to |next| field of the new node
+  }
+
   iterator insert (const_iterator pos, size_type n, const T& val)
   {
     link_type& link = *pos.link_loc;
@@ -586,49 +599,24 @@ template<typename T, typename Alloc>
   {
     for( ; first!=last; ++first,++pos)
     { // |insert(pos++,*first);|
-    // construct node value
       node_type* p = allocator_new(node_allocator(),*first);
       p->next.reset(pos.link_loc->release()); // link the trailing nodes here
       pos.link_loc->reset(p); // and attach new node to previous ones
-    }
+    } // loop heading advances |pos|
     return iterator(*pos.link_loc); // non |const_iterator| copy of |pos|
   }
 
-  iterator splice (const_iterator pos, simple_list&& other)
-  { return splice(pos,other); } // refer to lvalue version that follows
-
-  // splice in |other| and return advanced iterator |pos|
-  iterator splice (const_iterator pos, simple_list& other)
-  { link_type tail = std::move(*pos.link_loc);
-    *pos.link_loc = std::move(other.head); // |std::unique_ptr| does the work
-    while (not pos.at_end())
-      ++pos;
-    *pos.link_loc = std::move(tail);
-    return pos; // point after inserted elements
+  template<typename InputIt>
+    iterator move_insert (const_iterator pos, InputIt first, InputIt last)
+  {
+    for( ; first!=last; ++first,++pos)
+    { // |insert(pos++,std::move(*first));|
+      node_type* p = allocator_new(node_allocator(),std::move(*first));
+      p->next.reset(pos.link_loc->release()); // link the trailing nodes here
+      pos.link_loc->reset(p); // and attach new node to previous ones
+    } // loop heading advances |pos|
+    return iterator(*pos.link_loc); // non |const_iterator| copy of |pos|
   }
-
-  iterator splice (const_iterator pos,
-		   simple_list&& other, const_iterator begin,const_iterator end)
-  { return splice(pos,other,begin,end); } // refer to following lvalue version
-
-  iterator splice (const_iterator pos,
-		   simple_list& other, const_iterator begin, const_iterator end)
-  { if (pos==begin or pos==end) // int these cases with dangerous aliasing
-      return iterator(*pos.link_loc); // splicing is a no-op
-    link_type& final = *end.link_loc;
-    link_type& link = *pos.link_loc;
-    link_type remainder = std::move(final); // save for gluing |other| later
-    final = std::move(link); // attach our remainder to spliced part
-    link = std::move(*begin.link_loc); // and put spliced part after |pos|
-    *begin.link_loc = std::move(remainder); // glue together pieces of |other|
-    return iterator(final);
-  }
-
-  iterator splice (const_iterator pos, simple_list& other, const_iterator node)
-  { return splice(pos,other,node,std::next(node)); }
-
-  iterator splice (const_iterator pos, simple_list&& other, const_iterator node)
-  { return splice(pos,other,node,std::next(node)); }
 
   iterator erase (const_iterator pos)
   { link_type& link = *pos.link_loc;
@@ -644,11 +632,60 @@ template<typename T, typename Alloc>
     return iterator(link);
   }
 
+  // push fixed list to front, return iterator to end of that insertion
+  iterator prepend (std::initializer_list<T> l)
+  { return insert(begin(),l.begin(), l.end()); }
+
+  // prepend contents of another list, return iterator to end of prepended part
+  iterator prepend (simple_list&& other)
+  { return splice(begin(),std::move(other)); }
+
+
+  iterator splice (const_iterator pos, simple_list& other)
+  { return splice(pos,std::move(other)); } // defer to rvalue version, follows
+
+  // splice in |other| and return advanced iterator |pos|
+  iterator splice (const_iterator pos, simple_list&& other)
+  { link_type tail = std::move(*pos.link_loc);
+    *pos.link_loc = std::move(other.head); // |std::unique_ptr| does the work
+    while (not pos.at_end())
+      ++pos;
+    *pos.link_loc = std::move(tail);
+    return pos; // point after inserted elements
+  }
+
+  iterator splice (const_iterator pos, simple_list& other,
+		   const_iterator begin,const_iterator end)
+  { return splice(pos,std::move(other),begin,end); } // defer to rvalue version
+
+  iterator splice (const_iterator pos, simple_list&& other,
+		   const_iterator begin, const_iterator end)
+  { if (pos==begin or pos==end) // int these cases with dangerous aliasing
+      return iterator(*pos.link_loc); // splicing is a no-op
+    link_type& from = *begin.link_loc;
+    link_type& to = *end.link_loc;
+    link_type& here = *pos.link_loc;
+    // now cycle forward |(from,here,to)|
+    link_type remainder = std::move(to); // save for gluing |other| later
+    to = std::move(here); // attach our remainder to spliced part
+    here = std::move(from); // and put spliced part after |pos|
+    from = std::move(remainder); // glue together pieces of |other|
+    return iterator(to);
+  }
+
+  iterator splice (const_iterator pos, simple_list& other, const_iterator node)
+  { return splice(pos,std::move(other),node,std::next(node)); }
+
+  iterator splice (const_iterator pos, simple_list&& other, const_iterator node)
+  { return splice(pos,other,node,std::next(node)); }
+
   void reverse ()
   {
     link_type result(nullptr);
     while (head!=nullptr)
-    { // cycle forward |(result,p->next,p|)
+    { // cycle forward |(result,head->next,head|)
+      // prefer 2 swaps over 4 moves: this avoids any deleter stuff
+      // compilers that optimise away deleters can also optimise the 3-cycle
       result.swap(head->next); // attach result to next node
       result.swap(head); // now |result| is extended, |head| shortened
     }
@@ -658,13 +695,215 @@ template<typename T, typename Alloc>
   void reverse (const_iterator from, const_iterator to)
   {
     link_type remainder((*to.link_loc).release());
-    link_type p((*from.link_loc).release());
+    link_type p((*from.link_loc).release()); // put in local variable for speed
     while (p.get()!=nullptr)
     { // cycle forward |(remainder,p->next,p|)
       remainder.swap(p->next); // attach remainder to next node
       remainder.swap(p); // now |remainder| is extended and |p| shortened
     }
     from.link_loc->reset(remainder.release()); // attach remainder at |from|
+  }
+
+  void remove(const T& value)
+  {
+    link_type* p = &head;
+    while ((*p).get()!=nullptr)
+      if ((*p)->contents==value) // whether contents matches
+ 	p->reset((*p)->next.release()); // if so, link out the node
+      else
+	p = &((*p)->next); // (only) otherwise advance |p|
+  }
+
+
+  template<typename Predicate>
+    void remove_if(Predicate pred)
+  {
+    link_type* p = &head;
+    while ((*p).get()!=nullptr)
+      if (pred((*p)->contents))
+	p->reset((*p)->next.release());
+      else
+	p = &((*p)->next);
+  }
+
+  void unique()
+  {
+    node_type* p = head.get();
+    if (p!=nullptr) // following loop has |p!=nullptr| as invariant
+      while (p->next.get()!=nullptr)
+      {
+	link_type& link = p->next;
+	if (p->contents==link->contents)
+	  link.reset(link->next.release());
+	else
+	  p=p->next.get();
+      }
+  }
+
+  template<typename BinaryPredicate>
+    void unique(BinaryPredicate relation)
+  {
+    node_type* p = head.get();
+    if (p!=nullptr) // following loop has |p!=nullptr| as invariant
+      while (p->next.get()!=nullptr)
+      {
+	link_type& link = p->next;
+	if (pred(p->contents,link->contents))
+	  link.reset(link->next.release());
+	else
+	  p=p->next.get();
+      }
+  }
+
+  void merge (simple_list& other) { merge(std::move(other)); }
+  void merge (simple_list&& other) { merge(std::move(other),std::less<T>()); }
+
+  template<typename Compare>
+    void merge (simple_list& other, Compare less)
+  { merge(std::move(other),less); }
+
+  template<typename Compare>
+    void merge (simple_list&& other, Compare less)
+  {
+    if (other.empty())
+      return;
+    if (empty())
+    {
+      head = std::move(other.head); // |std::unique_ptr| move assignment
+      return;
+    }
+
+    const_iterator p = cbegin();
+    link_type& qq = other.head;
+
+    do // invariant: neither |*p.link_loc| nor |qq| hold null pointers
+    {
+      const T& t=*p; // put aside contents of our current node
+      if (less(qq->contents,t))
+      {
+	// gather a range of elements of |other| to splice before our current
+	const_iterator r(qq->next);
+	while (not at_end(r) and less(*r,t))
+	  ++r;
+
+	// give symbolic name to link locations
+	link_type& pp = *p.link_loc;
+	link_type& rr = *r.link_loc;
+
+	// splice the range from |qq| to |rr| towards |pp| (do a 4-cycle)
+	link_type remainder = std::move(rr); // unlink tail of |other|
+	rr = std::move(pp); // attach our remainder to spliced part
+	pp = std::move(qq); // and put spliced part at our front
+	qq = std::move(remainder); // hold remaining part ot |other.head|
+
+	if (qq.get()==nullptr)
+	  return; // now |other.empty()|, and nothing left to do
+
+	p = const_iterator(rr); // skip over spliced-in part before incrementing
+      }
+    }
+    while(not at_end(++p)); // advance one node in our list, stop when last
+
+    *p.link_loc = std::move(qq); // attach nonempty remainder of |other|
+  }
+
+  iterator merge (const_iterator b0, const_iterator e0,
+		  const_iterator b1, const_iterator e1)
+  { return merge(b0,e0,b1,e1,std::less<T>()); }
+
+  // internal merge non-overlapping increasing ranges, return end of merged
+  // the merged range will be accessed from the original value of |b0|
+  // except in the case |b0==e1| where the first range directly _follows_ the
+  // second range; in that case the merged rang is accesss from |b1| instead
+  template<typename Compare>
+  iterator merge (const_iterator b0, const_iterator e0,
+		  const_iterator b1, const_iterator e1,
+		  Compare less)
+  {
+    if (b1==e1) // whether second range empty
+      return iterator(*e0.link_loc); // then nothing to do
+
+    if (b0==e1) // whether first range immediately after second range
+      return merge(b1,e1,b0,e0,less); // swap to avoid dangerous aliasing
+
+    link_type& qq = *b1.link_loc;
+    node_type* const end = e1.link_loc->get(); // save link value that marks end
+
+    for ( ; b0!=e0; ++b0) // neither range is empty
+    {
+      const T& t=*b0; // put aside contents of our current node
+      if (less(qq->contents,t))
+      {
+	// gather a range of elements of |other| to splice before our current
+	const_iterator r(qq->next);
+	while (r!=e1 and less(*r,t))
+	  ++r;
+
+	// give symbolic name to link locations
+	link_type& pp = *b0.link_loc;
+	link_type& rr = *r.link_loc;
+
+	// splice the range from |qq| to |rr| towards |pp|
+	link_type remainder = std::move(rr); // unlink tail of |other|
+	rr = std::move(pp); // attach our remainder to spliced part
+	pp = std::move(qq); // and put spliced part at our front
+	qq = std::move(remainder); // hold remaining part ot |other.head|
+
+	if (qq.get()==end)
+	  return iterator(qq);
+
+	b0 = const_iterator(rr); // skip over spliced in part, before |++b0|
+      }
+    }
+
+    // give symbolic name to link locations
+    link_type& pp = *b0.link_loc;
+    link_type& rr = *e1.link_loc;
+
+    if (&pp==&qq) // equivalently whether |e0==b1|
+      return iterator(rr); // nothing to do, and code below would fail
+
+    // splice the range from |qq| to |rr| towards |pp|
+    link_type remainder = std::move(rr); // unlink tail of |other|
+    rr = std::move(pp); // attach our remainder to spliced part
+    pp = std::move(qq); // and put spliced part at our front
+    qq = std::move(remainder); // hold remaining part ot |other.head|
+
+    return iterator(qq);
+  }
+
+  // sort range |[its[from],to)| of size |n|, setting |to| to new final iterator
+  // it is supposed that |its[from+i]==std::next(it[from],i)| for |0<=i<n|
+  template<typename Compare>
+    void sort_aux (size_type from, size_type n, const_iterator& to,
+		   const std::vector<const_iterator>& its,
+		   Compare less)
+  { if (n<2)
+      return;
+    const size_type half=n/2;
+    const_iterator mid = its[from+half]; // to be used and modified below
+
+    // the order below between the two recursive calls is obligatory, since
+    // in our first call |its[from+half| must be an unshuffled iterator
+    sort_aux(from+half,n-half,to,its,less);
+    sort_aux(from,half,mid,its,less);
+
+    to = merge(its[from],mid,mid,to,less);
+  }
+
+  void sort () { sort(std::less<T>()); }
+  template<typename Compare> void sort (Compare less)
+  {
+    std::vector<const_iterator>its;
+    const auto n=length(*this);
+    its.reserve(n);
+
+    const_iterator it=cbegin();
+    for (size_type i=0; i<n; ++i,++it)
+      its.push_back(it);
+
+    // now |it==cend()|
+    sort_aux(0,n,it,its,less);
   }
 
   // accessors
@@ -1225,14 +1464,19 @@ template<typename T, typename Alloc>
   iterator append (std::initializer_list<T> l)
   { return append(sl_list(l)); } // construct other list and append from it
 
+  // prepend contents of another list, return iterator to end of prepended part
+  iterator prepend (sl_list&& other)
+  { return splice(begin(),std::move(other)); }
+
   // push fixed list to front, return iterator to end of that insertion
   iterator prepend (std::initializer_list<T> l)
   { return insert(begin(),l.begin(), l.end()); }
 
-  iterator splice (const_iterator pos, sl_list&& other)
-  { return splice(pos,other); } // refer to lvalue version that follows
 
   iterator splice (const_iterator pos, sl_list& other)
+  { return splice(pos,std::move(other)); } // defer to rvalue version; follows
+
+  iterator splice (const_iterator pos, sl_list&& other)
   { if (other.empty())
       return iterator(*pos.link_loc);
     link_type& final = *other.tail;
@@ -1247,56 +1491,62 @@ template<typename T, typename Alloc>
     return iterator(final);
   }
 
-  iterator splice (const_iterator pos,
-		   sl_list&& other, const_iterator begin, const_iterator end)
-  { return splice(pos,other,begin,end); } // refer to following lvalue version
+  iterator splice (const_iterator pos, sl_list& other,
+		   const_iterator begin, const_iterator end)
+  { return splice(pos,std::move(other),begin,end); } // defer to rvalue version
 
-  iterator splice (const_iterator pos,
-		   sl_list& other, const_iterator begin, const_iterator end)
+  iterator splice (const_iterator pos, sl_list&& other,
+		   const_iterator begin, const_iterator end)
   { if (begin==end // empty range is a nuisance (avoid |tail=end.link_loc|)
 	or pos==begin or pos==end) // as are cases with dangerous aliasing
       return iterator(*pos.link_loc); // but splicing is a no-op in these cases
-    link_type& final = *end.link_loc;
-    link_type& link = *pos.link_loc;
+    link_type& from = *begin.link_loc;
+    link_type& to = *end.link_loc;
+    link_type& here = *pos.link_loc;
     auto d = // correction to node counts; compute before making any changes
       this==&other ? 0 : std::distance(begin,end);
 
+    // the following adjustments are needed independently; they cannot conflict
     if (pos==cend()) // if splicing to the end of |*this|
-      tail = &final; // then we must reset |tail| to end of spliced range
-    if (end==other.cend()) // splicing may have cut of tail from |other|
-      other.tail = begin.link_loc; // in which case we must reset |other.tail|
-    link_type remainder = std::move(final); // save for gluing |other| later
-    final = std::move(link); // attach our remainder to spliced part
-    link = std::move(*begin.link_loc); // and put spliced part after |pos|
-    *begin.link_loc = std::move(remainder); // glue together pieces of |other|
+      tail = &to; // then we must reset |tail| to end of spliced range
+    if (end==other.cend()) // splicing may cut of tail from |other|
+      other.tail = &from; // in which case we must reset |other.tail|
+
+    // now cycle forward |(from,here,to)|
+    link_type remainder = std::move(to); // save for gluing |other| later
+    to = std::move(here); // attach our remainder to spliced part
+    here = std::move(from); // and put spliced part after |pos|
+    from = std::move(remainder); // glue together pieces of |other|
 
     // adjust |node_count| fields
     node_count += d;
     other.node_count -= d;
 
-    return iterator(final);
+    return iterator(to);
   }
 
   iterator splice (const_iterator pos, sl_list& other, const_iterator node)
-  { return splice(pos,other,node,std::next(node)); }
+  { return splice(pos,std::move(other),node,std::next(node)); }
 
   iterator splice (const_iterator pos, sl_list&& other, const_iterator node)
-  { return splice(pos,other,node,std::next(node)); }
+  { return splice(pos,std::move(other),node,std::next(node)); }
 
   void reverse () { reverse(cbegin(),cend()); }
 
   void reverse (const_iterator from, const_iterator to)
   {
-    if (to==end() and from!=to)
-      tail = &(*from.link_loc)->next;
-    link_type result((*to.link_loc).release());
+    if (to==end() and from!=to) // if reversing a non-empty range at the back
+      tail = &(*from.link_loc)->next; // node now after |from| will become final
+
+    // otherwise do the same as |simple_list<T>::reverse| does:
+    link_type remainder((*to.link_loc).release());
     link_type p((*from.link_loc).release());
     while (p.get()!=nullptr)
-    { // cycle forward |(result,p->next,p|)
-      result.swap(p->next);
-      result.swap(p);
+    { // cycle forward |(remainder,p->next,p|)
+      remainder.swap(p->next);
+      remainder.swap(p);
     }
-    from.link_loc->reset(result.release());
+    from.link_loc->reset(remainder.release());
   }
 
 
@@ -1420,9 +1670,13 @@ template<typename T, typename Alloc>
     }
     while(not at_end(++p)); // advance one node in our list, stop when last
 
-    (*p.link_loc) = std::move(qq); // attach nonempty remainder of |other|
+    *p.link_loc = std::move(qq); // attach nonempty remainder of |other|
     tail = other_tail; // and in this case we must redirect our |tail|
   }
+
+  iterator merge (const_iterator b0, const_iterator e0,
+		  const_iterator b1, const_iterator e1)
+  { return merge(b0,e0,b1,e1,std::less<T>()); }
 
   // internal merge non-overlapping increasing ranges, return end of merged
   // the merged range will be accessed from the original value of |b0|
@@ -1493,6 +1747,8 @@ template<typename T, typename Alloc>
     return iterator(qq);
   }
 
+  // sort range |[its[from],to)| of size |n|, setting |to| to new final iterator
+  // it is supposed that |its[from+i]==std::next(it[from],i)| for |0<=i<n|
   template<typename Compare>
     void sort_aux (size_type from, size_type n, const_iterator& to,
 		   const std::vector<const_iterator>& its,

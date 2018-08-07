@@ -376,7 +376,9 @@ int main()
   std::cout << L << std::endl;
   atlas::containers::sl_list<int> M { -3, -3, 0, 0, 2, 4, 5, 9, 12 };
   std::cout << M << std::endl;
-  L.merge(M);
+  it = L.end(); L.append(std::move(M));
+  std::cout << L << std::endl;
+  L.merge(it,L.end(),L.begin(),it,std::less<int>());
   std::cout << L << std::endl;
   L.prepend ({ 3,8,17,3675,4,1,234,2343,-34,0,1024,34,532,39,22,236,23,39,49,39,46,-39,25});
   std::cout << L << std::endl;
