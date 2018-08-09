@@ -1,0 +1,97 @@
+<K_types_plus.at
+<qdeform.at
+<K_norm.at
+
+{first: implement the built-in K_type_formula@K_Type in scripts
+ this is K_type_formula_plus
+ then: modify it to work on the level of Hodge filtrations}
+
+{formula for K-type as alternating sum of standard representations restricted to K
+Based on KHatHowe Theorem 16.6
+This is based in turn on Theorem 16.5 (Zuckerman's theorem)
+Theorem 16.5 writes a one-dimensional as linear combination of standards
+ use character_formula_one_dimensional for this
+ (for testing: can use character_formula instead, which uses KLV polynomials)
+Given a K-type mu, find (P,mu_L) as in Theorem 16.6
+ Guess: (P,p_L)=reduce_good_range(parameter(mu)) (see induction.at)
+Take this formula on L, with shifts from u\cap s, and cohomologically induce
+The resulting parameter for G might not be standard (negative on imaginary root),
+or final (negative on a complex root)
+and atlas automatically standardizes/finalizes it.
+For application to Hodge filtrations, print a warning when this happens
+}
+
+{this is copied from knilpotent.at}
+{generate all subsets of [vec], uses generate_all_subsets@[int] in misc.at}
+set generate_all_subsets([vec] S) = [[vec]]:
+    for A in generate_all_subsets(for i:#S do i od) do for i in A do S[i] od od
+
+set u_cap_s_roots(Parabolic P,KGBElt x)=[vec]: let S=[] in for alpha
+in nilrad_roots(P) do if is_noncompact_imaginary(alpha,x) then
+S#:=alpha elif is_complex(alpha,x) and find(S,involution(x)*alpha)=-1
+then S#:=alpha fi od;S
+
+{each subset S of u\cap s roots -> (sum of roots in S, cardinality(S))}
+set u_cap_s_rho_shifts_and_cardinalities(Parabolic P,KGBElt x)=[(vec,int)]:
+(null(P.root_datum.rank),0)#for A in delete(generate_all_subsets(u_cap_s_roots(P,x)),0) do (sum(A),#A) od
+
+set r(RealForm G)=int:nr_of_posroots(G)-nr_of_posroots(K_0(G))
+
+{Zuckerman's character formula for the trivial representation}
+set character_formula_trivial(RealForm G)=
+let B=block(G,dual_quasisplit_form(G)) in
+(-1)^r(G)*sum(G,##
+for i:#B do let (x,y)=element(B,i) in
+ if =torus_factor(y) then
+  let p=parameter(x,y) in [(-1)^length(p)*p]
+ else []
+ fi
+od)
+
+{Zuckerman's character formula, adapted to any one-dimensional representation}
+set character_formula_one_dimensional(Param p)=
+assert(dimension(p)=1,"p is not one-dimensional");
+let G=p.real_form then
+v=ratvec_as_vec(lambda(p)-rho(G)) then
+w=(1+involution(x(p)))*lie_coradical_part(G,v)/2 then   {need to keep term on compact central torus}
+cf=character_formula_trivial(G) in
+sum(G,for c@p in cf do c*parameter(x(p),lambda(p)+w+(1-involution(x(p)))*v/2,nu(p)) od)
+
+{copied from induction.at and modified to warn when standardization/finalization occurs}
+set theta_induce_standard_warning (Param p_L,RealForm G) = ParamPol:
+  let L=real_form(x(p_L)), x_G=embed_KGB(x(p_L),G)
+  then shift=rho(G)-rho(L)
+  in assert(is_parabolic_theta_stable(make_parabolic(L,G)),"L is not Levi of theta_stable parabolic");
+  let p_G=parameter(x_G,lambda(p_L)+shift,nu(p_L)) in
+  if not is_standard(p_G) then
+    let result = prints(new_line,"warning 1: ", p_G, "->", standardize(p_G)) in standardize(p_G)
+  elif not is_final(p_G) then
+    let result = prints(new_line,"warning 2: ", p_G, "->", finalize(p_G)) in finalize(p_G)
+  else p_G fi
+
+{K_Type mu ->  mu=\sum_i a_i q_i  (q_i final tempered, restricted to K)
+same as built-in K_type_formula, done in atlas to allow
+hodge generalization}
+set K_type_formula_plus(K_Type mu)=ParamPol:
+let (P,mu_L)=tau_q(mu) then
+ ()=assert(dimension(mu_L)=1,"mu_L is not one-dimensional");
+ assert(let ind=theta_induce_standard(mu_L*0,mu.real_form) in
+ #ind=1 and first_param(ind)=parameter(mu),"mu_L does not induce to mu") then
+ ()=assert(theta_induce_standard(mu_L,mu.real_form)*0=theta_induce_standard(mu_L*0,mu.real_form), "mismatch") then
+rv=null_module(P.real_form) then
+cf=character_formula_one_dimensional(mu_L) in  {mu_L is 1-dimensional, not mu_L*0 here}
+{for testing do this instead:}
+{cf=character_formula(mu_L) in}
+{let ()=prints("L:", mu_L.real_form,"mu_L:",mu_L,new_line,"cf=",cf) in}
+for c@q in cf do
+{ let ()=prints(new_line,"doing q=",q) in}
+ let shifts=u_cap_s_rho_shifts_and_cardinalities(P,embed_KGB(x(q),mu.real_form)) in
+ for (v,k) in shifts do
+{  let ()=prints(new_line,"doing shift: ", v, " ", k) in}
+  let  ind_G=theta_induce_standard_warning(parameter(x(q),lambda(q)+v,nu(q)),P.real_form)*0 in
+  for coeff@p_G in ind_G do
+{   let ()=prints("added: ", c*(-1)^k*p_G, " ", length(first_param(p_G))) in}
+  rv+:=c*(-1)^k*split_as_int(coeff)*p_G   {don't need (-1)^r(L) in this version}
+  od 
+ od
+od;rv
