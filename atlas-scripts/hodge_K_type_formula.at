@@ -1,0 +1,68 @@
+<K_type_formula.at
+
+{hodge version of K_type_formula,
+works only if there is not standardization/finalization required}
+set hodge_K_type_formula_plus(K_Type mu)=qParamPol:
+let (P,mu_L)=tau_q(mu) then
+ ()=assert(dimension(mu_L)=1,"mu_L is not one-dimensional");
+ assert(let ind=theta_induce_standard(mu_L*0,mu.real_form) in
+ #ind=1 and first_param(ind)=parameter(mu),"mu_L does not induce to mu") then
+ ()=assert(theta_induce_standard(mu_L,mu.real_form)*0=theta_induce_standard(mu_L*0,mu.real_form), "mismatch") then
+{shifts=u_cap_s_rho_shifts_and_cardinalities(P) then}
+temp=[(vec,Param)]:[] then
+cf=character_formula(mu_L) in  {mu_L is 1-dimensional, not mu_L*0 here}
+let ()=prints("cf=",cf) in
+for c@q in cf do
+ let ()=prints("doing q=",q) in
+ let shifts=u_cap_s_rho_shifts_and_cardinalities(P,embed_KGB(x(q),mu.real_form)) in
+ for (v,k) in shifts do
+  let coeff=vec:split_as_int(c)*(-1)^k*vee^(codim(x(q))+k) in 
+   let ()=prints(new_line,"doing shift: ", v, " ", k) in
+   let ()=prints("codim: ", codim(x(q))) in
+   let ()=prints("coeff: ", coeff) in
+  let  p_G=first_param(theta_induce_standard_warning(parameter(x(q),lambda(q)+v,nu(q)),P.real_form)*0) in
+  let ()=prints("added: ", coeff, " ", p_G, " " ,length(p_G)) in 
+  temp#:=(coeff,p_G)
+ od
+od;dearrange(temp)
+
+{move this to basic.at}
+set find ([K_Type] ktypes,K_Type mu) = int:first(#ktypes,(int i)bool:ktypes[i]=mu)
+
+set hodge_K_type_mat(K_Type mu, int N,ratvec v)=
+let ktypes=sort_by_height(K_parameters_norm_upto(mu.real_form,N,v)) then
+pairs=for mu in ktypes do (mu,hodge_K_type_formula_plus(mu)) od  then
+M=zero_poly_matrix(#ktypes) in
+for tau in ktypes do
+ let index=find(ktypes,tau) then
+ row=zero_poly_row(#ktypes) then
+ rf=rearrange(hodge_K_type_formula_plus(tau)) in
+ for (g,kappa) in rf do
+  let j=find(ktypes,LKT(kappa)) in
+   if j!=-1 then row[j]:=g fi
+ od;M[index]:=row
+od;(find(ktypes,mu),ktypes,transpose(M))  {transpose(M) is lower triangular}
+
+{move to polynomial.at}
+set lower_unitriangular_inverse(i_poly_mat M)=transpose(upper_unitriangular_inverse(transpose(M)))
+
+{graded version of branching_formula
+ in the 1 Cartan case should give same result as branch_q (last argument returned)
+ hope to modify it to work for all G
+}
+set hodge_branching_formula(K_Type mu, int N, ratvec v)=(int,[K_Type],[[vec]],[vec],[ParamPol]):
+let (index,ktypes,M)=hodge_K_type_mat(mu,N,v) then
+B=lower_unitriangular_inverse(M) then
+vector=transpose(B)[index] then
+temp=[(vec,Param)]:[] in
+ for i:#vector do if vector[i]!=null(0) then  temp#:=(vector[i],parameter(ktypes[i])) fi od;
+(index,ktypes,B,vector,dearrange(temp))
+
+set hodge_branching_formula(K_Type mu,int N)=(int,[K_Type],[[vec]],[vec],[ParamPol]):
+hodge_branching_formula(mu,N,mu.real_form.rho_check)
+
+set hodge_branching_formula(Param p, int N, ratvec v)=(int,[K_Type],[[vec]],[vec],[ParamPol]):
+assert(=p.nu,"nu!=0");hodge_branching_formula(LKT(p),N,v)
+
+set hodge_branching_formula(Param p, int N)=(int,[K_Type],[[vec]],[vec],[ParamPol]):
+assert(=p.nu,"nu!=0");hodge_branching_formula(LKT(p),N)
