@@ -384,4 +384,5 @@ int main()
   std::cout << L << std::endl;
   L.sort();
   std::cout << L << std::endl;
+  tester();
 }

@@ -602,25 +602,48 @@ template<typename T, typename Alloc>
   >::value>::type >
     iterator insert (const_iterator pos, InputIt first, InputIt last)
   {
-    for( ; first!=last; ++first,++pos)
-    { // |insert(pos++,*first);|
-      node_type* p = allocator_new(node_allocator(),*first);
-      p->next.reset(pos.link_loc->release()); // link the trailing nodes here
-      pos.link_loc->reset(p); // and attach new node to previous ones
-    } // loop heading advances |pos|
-    return iterator(*pos.link_loc); // non |const_iterator| copy of |pos|
+    if (at_end(pos))
+    {
+      for( ; first!=last; ++first,++pos)
+	(*pos.link_loc).reset(allocator_new(node_allocator(),*first));
+      return iterator(*pos.link_loc);
+    }
+
+    // otherwise do insertion at end of initially empty list, then splice it
+    simple_list insertion(get_node_allocator()); // build range to insert
+    auto p = insertion.cbegin();
+    for( ; first!=last; ++first,++p)
+      (*p.link_loc).reset(allocator_new(node_allocator(),*first));
+
+    // finally splice |insertion| into our list at |pos|
+    link_type& link = *pos.link_loc;
+    *p.link_loc = std::move(link);
+    link = std::move(insertion.head);
+    return iterator(*p.link_loc); // now points at a link field in our list
   }
 
   template<typename InputIt>
     iterator move_insert (const_iterator pos, InputIt first, InputIt last)
   {
-    for( ; first!=last; ++first,++pos)
-    { // |insert(pos++,std::move(*first));|
-      node_type* p = allocator_new(node_allocator(),std::move(*first));
-      p->next.reset(pos.link_loc->release()); // link the trailing nodes here
-      pos.link_loc->reset(p); // and attach new node to previous ones
-    } // loop heading advances |pos|
-    return iterator(*pos.link_loc); // non |const_iterator| copy of |pos|
+    if (at_end(pos))
+    {
+      for( ; first!=last; ++first,++pos)
+	(*pos.link_loc).reset
+	  (allocator_new(node_allocator(),std::move(*first)));
+      return iterator(*pos.link_loc);
+    }
+
+    // otherwise do insertion at end of inia=tially empty list, then splice it
+    simple_list insertion(get_node_allocator()); // build range to insert
+    auto p = insertion.cbegin();
+    for( ; first!=last; ++first,++p)
+      (*p.link_loc).reset(allocator_new(node_allocator(),std::move(*first)));
+
+    // finally splice |insertion| into our list at |pos|
+    link_type& link = *pos.link_loc;
+    *p.link_loc = std::move(link);
+    link = std::move(insertion.head);
+    return iterator(*p.link_loc); // now points at a link field in our list
   }
 
   iterator erase (const_iterator pos)
