@@ -330,7 +330,9 @@ template<typename T, typename Alloc>
   simple_list (InputIt first, InputIt last, const alloc_type& a=alloc_type())
   : alloc_type(a), head(nullptr)
   {
-    assign(first,last);
+    iterator p = begin();
+    for ( ; first!=last; ++p,++first) // |insert(p,*first)|, realised as:
+      p.link_loc->reset(allocator_new(node_allocator(),*first));
   }
 
   explicit simple_list (size_type n, const alloc_type& a=alloc_type())
@@ -354,7 +356,10 @@ template<typename T, typename Alloc>
   simple_list (std::initializer_list<T> l, const alloc_type& a=alloc_type())
   : alloc_type(a), head(nullptr)
   {
-    assign(l.begin(),l.end());
+    iterator p = begin();
+    auto first = l.begin(), last = l.end();
+    for ( ; first!=last; ++p,++first) // |insert(p,*first)|, realised as:
+      p.link_loc->reset(allocator_new(node_allocator(),*first));
   }
 
   ~simple_list() {} // when called, |head| is already destructed/cleaned up
@@ -1010,22 +1015,8 @@ template<typename T, typename Alloc>
   link_type* tail;
   size_type node_count;
 
-  // an auxiliary function occasionally called when |head| is released
+  // an auxiliary function occasionally called when |head| has been released
   void set_empty () { tail=&head; node_count=0; }
-
-  // a helper class that exists for its destructor only, used in methods that
-  // might repeatedly displace |tail|, possibily throwing an error halfway
-  class ensure
-  { link_type* &tail; // reference so that it can be assigned to in destructor
-    const_iterator &p; // reference to pick up external changes during lifetime
-  public:
-    ensure(link_type*& tail, const_iterator& p) // maybe makes |tail=p.link_loc|
-      : tail(tail),  p(p) {}
-    ~ensure()
-    { if (p.at_end()) // if at destruction time |p| is at end
-	tail = p.link_loc; // then make |tail| point to it
-    }
-  };
 
  public:
   // access to the allocator, which is our base object
@@ -1081,7 +1072,7 @@ template<typename T, typename Alloc>
   sl_list (InputIt first, InputIt last, const alloc_type& a=alloc_type())
   : alloc_type(a), head(nullptr), tail(&head), node_count(0)
   {
-    assign(first,last);
+    append(first,last);
   }
 
   explicit sl_list (size_type n, const alloc_type& a=alloc_type())
@@ -1105,7 +1096,7 @@ template<typename T, typename Alloc>
   sl_list (std::initializer_list<T> l, const alloc_type& a=alloc_type())
   : alloc_type(a), head(nullptr), tail(&head), node_count(0)
   {
-    assign(l.begin(),l.end()); // this increases |node_count| to |l.size()|
+    append(l.begin(),l.end()); // increases |node_count| to |l.size()|
   }
 
   ~sl_list () {} // when called, |head| is already destructed/cleaned up
@@ -1218,7 +1209,7 @@ template<typename T, typename Alloc>
       *p = *first;
 
     if (p==end())
-      insert(p,first,last); // this also increases |node_count|
+      append(first,last); // this also advances |taiL| and |node_count|
     else // we have exhausted input before |p|, and need to truncate after |p|
     {
       (tail = p.link_loc)->reset();
@@ -1398,31 +1389,64 @@ template<typename T, typename Alloc>
   >::value>::type >
     iterator insert (const_iterator pos, InputIt first, InputIt last)
   {
-    ensure me(tail,pos); // will adapt |tail| if |at_end(pos)| holds throughout
+    if (at_end(pos))
+      return append(first,last); // this will adapt |tail| and |node_count|
+
+    // create extra range separately first: more efficient and ensures roll-back
+    sl_list insertion(first,last,get_node_allocator()); // build range to insert
+
+    // finally splice |insertion| into our list at |pos|
+    link_type& link = *pos.link_loc;
+    *insertion.tail = std::move(link);
+    link = std::move(insertion.head);
+    node_count += insertion.node_count;
+    return iterator(*insertion.tail); // now points at a link field in our list
+    // destruct now empty |insertion|; having wrong |tail|, |node_count| is OK
+  }
+
+  template<typename InputIt, typename = typename std::enable_if<
+  std::is_base_of<std::input_iterator_tag,
+		  typename std::iterator_traits<InputIt>::iterator_category
+  >::value>::type >
+    iterator append (InputIt first, InputIt last)
+  {
     for( ; first!=last; ++first)
-    { // |insert(pos++,*first);|, except we don't update |tail|
-      node_type* p = allocator_new(node_allocator(),*first);
-      p->next.reset(pos.link_loc->release()); // link the trailing nodes here
-      pos.link_loc->reset(p); // and attach new node to previous ones
-      pos = iterator(p->next); // or simply |++pos|
+    {
+      tail->reset(allocator_new(node_allocator(),*first));
+      tail = &(*tail)->next;
       ++node_count;
     }
-    return iterator(*pos.link_loc); // non |const_iterator| copy of |pos|
+    return end();
   }
 
   template<typename InputIt>
     iterator move_insert (const_iterator pos, InputIt first, InputIt last)
   {
-    ensure me(tail,pos); // will adapt |tail| if |at_end(pos)| throughout
-    for( ; first!=last; ++first)
-    { // |insert(pos++,std::move(*first));|, except we don't update |tail|
-      node_type* p = allocator_new(node_allocator(),std::move(*first));
-      p->next.reset(pos.link_loc->release()); // link the trailing nodes here
-      pos.link_loc->reset(p); // and attach new node to previous ones
-      pos = iterator(p->next); // or simply |++pos|
-      ++node_count;
+    if (at_end(pos))
+    {
+      for( ; first!=last; ++first)
+      {
+	tail->reset(allocator_new(node_allocator(),std::move(*first)));
+	tail = &(*tail)->next;
+	++node_count;
+      }
+      return end();
     }
-    return iterator(*pos.link_loc); // non |const_iterator| copy of |pos|
+
+    sl_list aux(get_node_allocator()); // prepare range to insert
+    // emulate non-existing nove-construct from iterator range:
+    for( ; first!=last; ++first)
+    {
+      aux.tail->reset(allocator_new(node_allocator(),std::move(*first)));
+      aux.tail = &(*aux.tail)->next;
+      ++node_count; // directly update OUR node count
+    }
+
+    // now splice |aux| in place at |pos|
+    link_type& link = *pos.link_loc;
+    *aux.tail = std::move(link);
+    link = std::move(aux.head);
+    return iterator(*aux.tail); // end of inserted range
   }
 
   iterator erase (const_iterator pos)
