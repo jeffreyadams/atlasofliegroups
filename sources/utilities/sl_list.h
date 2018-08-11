@@ -660,6 +660,13 @@ template<typename T, typename Alloc>
     return iterator(link);
   }
 
+  template<typename InputIt, typename = typename std::enable_if<
+  std::is_base_of<std::input_iterator_tag,
+		  typename std::iterator_traits<InputIt>::iterator_category
+  >::value>::type >
+    iterator prepend (InputIt first, InputIt last)
+  { return insert(begin(),first,last); }
+
   // push fixed list to front, return iterator to end of that insertion
   iterator prepend (std::initializer_list<T> l)
   { return insert(begin(),l.begin(), l.end()); }
@@ -1312,37 +1319,30 @@ template<typename T, typename Alloc>
     ++node_count;
   }
 
-  iterator push_back (const T& val)
+  void push_back (const T& val)
   {
     link_type& last = *tail; // hold this link field for |return| statement
-    node_type* p = allocator_new(node_allocator(),val); // construct node value
-    tail = &p->next; // then move |tail| to point to null link again
-    last.reset(p); // append new node to previous ones
+    last.reset(allocator_new(node_allocator(),val));
+    tail = &last->next; // then move |tail| to point to null smart ptr agin
     ++node_count;
-    return iterator(last);
   }
 
-  iterator push_back(T&& val)
+  void push_back(T&& val)
   {
     link_type& last = *tail; // hold this link field for |return| statement
-    node_type* p = allocator_new(node_allocator(),std::move(val));
-    tail = &p->next; // then move |tail| to point to null smart ptr agin
-    last.reset(p); // append new node to previous ones
+    last.reset(allocator_new(node_allocator(),std::move(val)));
+    tail = &last->next; // then move |tail| to point to null smart ptr agin
     ++node_count;
-    return iterator(last);
   }
 
   template<typename... Args>
-    iterator emplace_back (Args&&... args)
+    void emplace_back (Args&&... args)
   {
     link_type& last = *tail; // hold this link field for |return| statement
     // construct node value
-    node_type* p =
-      allocator_new(node_allocator(),std::forward<Args>(args)...);
-    tail = &p->next; // then move |tail| to point to null smart ptr agin
-    last.reset(p); // append new node to previous ones
+    last.reset(allocator_new(node_allocator(),std::forward<Args>(args)...));
+    tail = &last->next; // then move |tail| to point to null smart ptr agin
     ++node_count;
-    return iterator(last);
   }
 
   bool empty () const { return tail==&head; } // or |node_count==0|
@@ -1510,6 +1510,13 @@ template<typename T, typename Alloc>
 
   iterator append (std::initializer_list<T> l)
   { return append(sl_list(l)); } // construct other list and append from it
+
+  template<typename InputIt, typename = typename std::enable_if<
+  std::is_base_of<std::input_iterator_tag,
+		  typename std::iterator_traits<InputIt>::iterator_category
+  >::value>::type >
+    iterator prepend (InputIt first, InputIt last)
+  { return insert(begin(),first,last); }
 
   // prepend contents of another list, return iterator to end of prepended part
   iterator prepend (sl_list&& other)
@@ -1825,6 +1832,20 @@ template<typename T, typename Alloc>
 
     // now |it==cend()|
     sort_aux(0,size(),it,its,less);
+  }
+
+  // sort a range, and set |to| to new final iterator for range
+  void sort (const_iterator from, const_iterator& to)
+  { sort(from,to,std::less<T>()); }
+  template<typename Compare>
+    void sort (const_iterator from, const_iterator& to, Compare less)
+  {
+    std::vector<const_iterator>its;
+    const size_type n=std::distance(from,to);
+    its.reserve(n);
+    for (const_iterator it=from; it!=to; ++it)
+      its.push_back(it);
+    sort_aux(0,n,to,its,less);
   }
 
   simple_list<T,Alloc> undress() // return only |head|, amputating other fields

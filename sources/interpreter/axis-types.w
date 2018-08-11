@@ -836,7 +836,7 @@ of |type_expr| will record an \emph{index} into this vector (not the value of
 the possibly associated identifier). We provide a selection operation
 |defined_type| that returns a non owned reference the such a type expression.
 This class does not hide its data (though it does have one private method
-|dissect+type_to|), but the unique object of this class is a private member
+|dissect_type_to|), but the unique object of this class is a private member
 of |type_expr|, so access is mostly controlled by static methods of that class.
 
 The possibility to have unnamed types in the mapping will turn out to be useful
@@ -844,7 +844,7 @@ in implementation, since by adding such entries we can ensure that all sub-types
 of types in the table are also present. For such unnamed types the type
 identifier will have the value $-1$, but their index can still be used as
 |type_number|. The |fields| component can also be unused (and empty); when set
-it records filed names that usually are also bound to injector or projector
+it records field names that usually are also bound to injector or projector
 functions in the overload table, but their presence here serves mostly for
 correctly interpreting |union|-controlled |case| expressions, which need to
 associate tags identifying the variants of a given |union| type.
@@ -1030,7 +1030,7 @@ any risk of dangling references; this is the approach used now. It just needs to
 take care of one extra point, namely to precompute the position |count| where
 numbering of additional types produced during dissection will start. The
 auxiliary method |dissect_type_to| of |type_expr|, to be defined below, does the
-actual dissection, using the |types| list to append and descendent types to, and
+actual dissection, using the |types| list to append the descendent types to, and
 |count| to keep track of their future |type_number| values.
 
 @< Copy types from |type_map| to |type_array|, then add entries for they types
