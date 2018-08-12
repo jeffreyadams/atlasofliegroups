@@ -382,7 +382,6 @@ int main()
   std::cout << L << std::endl;
   L.prepend ({ 3,8,17,3675,4,1,234,2343,-34,0,1024,34,532,39,22,236,23,39,49,39,46,-39,25});
   std::cout << L << std::endl;
-  L.sort();
+  L.sort(++L.begin(), std::next(L.begin(),L.size()-2));
   std::cout << L << std::endl;
-  tester();
 }
