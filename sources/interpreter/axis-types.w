@@ -1257,51 +1257,6 @@ struct rank_comparer
 };
 
 
-@ Now for the actual sorting routine, we opt for merge sorting using linked
-lists, as this will allow us some practice with |containers::sl_list|. Indeed we
-extended the multi-purpose method |splice| with a full (according to
-|std::forward_list::splice_after|) repertoire of instances, in order to make
-this code compile.
-
-The first instance of |splice| serves to split up a list into two almost equal
-halves (we prefer the first part larger in the odd length case), the second to
-move a tail portion from |l1| to |l0| once we get to the end of the latter, and
-the third call is the normal case that copies just one node from |l1| into the
-proper location of~|l0|.
-
-@s forward_list list
-
-@< Local function definitions @>=
-
-void merge_sort (p_list& l0, const rank_comparer& cmp)
-{ const auto len = length(l0);
-  if (len<2)
-    return;
-  p_list l1; // will hold the second half of |l0|
-  l1.splice(l1.begin(),l0,std::next(l0.begin(),(len+1)/2),l0.end());
-   // split halfway, or just after
-  merge_sort(l0,std::ref(cmp));
-  merge_sort(l1,std::ref(cmp));
-  auto it=l0.begin();
-  do
-  // merge |l1| into |l0| using |it| as current insertion position, stop if either reaches its end
-    if (cmp(*it,l1.front())<=0)
-    { ++it; // element from |l0| passes before |l1|
-      if (l0.at_end(it))
-      {@;
-        l0.splice(it,l1);
-        return;
-      }
-    }
-    else
-    { l0.splice(it,l1,l1.begin());
-      // element from |l1| passes before rest of |l0|
-      if (l1.empty())
-        return;
-    }
-  while(assert(not(l0.at_end(it) or l1.empty())),true);
-}
-
 @ The heart of type equivalence testing consists of propagating any
 differences visible in the |rank| fields from descendent types to their
 parents, and updating the rank fields of the latter to reflect the change;
@@ -1344,7 +1299,7 @@ more rapidly, which we shall not complain about.
 @)
       changes = true; // now we have something to refine
       p_list l(&type_perm[it->first],&type_perm[it->second]);
-      merge_sort(l,cmp);
+      l.sort(cmp);
 @)
     @/@< Copy elements from |l| back to |type_perm| into range given by |*it|,
          while determining their new partition into groups; set their |rank|
