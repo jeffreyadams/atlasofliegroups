@@ -936,9 +936,9 @@ in an array) temporarily with a |rank| field. The provided constructor
 initially leaves it unset, as it will be explicitly set later.
 
 The typedef |p_list| will be of use later, when sorting pointers to these
-|type_data|. Finally we shall delimit ranges in our list of types by pairs of
-iterators in what is currently a vector (but which should later become a linked
-list); we name the type of such iterators |tracer|.
+|type_data|. Finally, we shall delimit ranges (after sorting) in our list of
+types by pairs of iterators into a list of the same type; we name the type of
+such iterators |tracker|.
 
 @< Local type definitions @>=
 
@@ -948,7 +948,7 @@ struct type_data
   type_data(): type() @+{}
 };
 typedef containers::sl_list<type_data *> p_list; // list of type pointers
-typedef std::vector<type_data*>::iterator tracer;
+typedef p_list::iterator tracker;
 
 @ The definition of |type_expr::add_typedefs| is subtle and requires quite a bit
 of work, due to our requirement that all cases of type equivalence be
@@ -981,13 +981,13 @@ std::vector<type_nr_type> type_expr::add_typedefs
   (const std::vector<std::pair<id_type,const_type_p> >& defs)
 {
 @/std::vector<type_data> type_array;
-  std::vector<type_data*> type_perm;
+  p_list type_perm; // list of pointers into |type_array|
 @)
   @< Copy types from |type_map| to |type_array|, then add entries for they types
      defined by |defs| and all their anonymous sub-types;
      also make each |type_perm[i]| point to |type_array[i]| @>
 @)
-  containers::sl_list<std::pair<tracer,tracer> > groups;
+  containers::sl_list<std::pair<tracker,tracker> > groups;
   @< Bucket-sort the pointers in |type_perm| according to the top level
      structure of the |type| field they point to, then set each
      |type_perm[i]->rank| field to the first index~|i0| into |type_perm| of an
@@ -1057,7 +1057,7 @@ actual dissection, using the |types| list to append the descendent types to, and
   for (auto it=types.wbegin(); it!=types.wend(); ++it)
   {
     type_array.emplace_back(std::move(*it));
-      // also expands |type_expr| to |type_data|
+      // also expands |type_expr| to |type_data| structure
     type_perm.push_back(&type_array.back());
   }
 }
@@ -1170,12 +1170,14 @@ can also henceforth be ignored.
 
 @< Local function definitions @>=
 void empty_bucket (const p_list& bucket, @|
-                   std::vector<type_data*>& type_perm,
-                   containers::sl_list<std::pair<tracer,tracer> >& groups)
+                   p_list& type_perm,
+                   containers::sl_list<std::pair<tracker,tracker> >& groups)
 { const unsigned int cur_rank=type_perm.size();
-  const tracer lwb = type_perm.end();
+  const tracker lwb = type_perm.end();
   for (auto it=bucket.wcbegin(); not bucket.at_end(it); ++it)
-    (type_perm.push_back(*it),type_perm.back())->rank=cur_rank;
+@/{@; type_perm.push_back(*it);
+    (*it)->rank=cur_rank;
+  }
   if (type_perm.size()-cur_rank>=2 and
       bucket.front()->type.raw_kind()!=primitive_type)
     groups.push_back(std::make_pair(lwb,type_perm.end()));
@@ -1322,7 +1324,7 @@ turn out to be equivalent); doing |continue| avoids setting |changes|.
 
 @< Test for range given by |*it| in |type_perm| whether everything tests
    equal under |cmp|; if so increment |it| and |continue| @>=
-{ tracer jt0=it->first, jt1=std::next(jt0);
+{ tracker jt0=it->first, jt1=std::next(jt0);
   for ( ; jt1!=it->second; jt0=jt1,++jt1)
     if (cmp.differ(*jt0,*jt1))
       break;
