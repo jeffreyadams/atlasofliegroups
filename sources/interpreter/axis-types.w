@@ -1244,7 +1244,7 @@ this code compile.
 The first instance of |splice| serves to split up a list into two almost equal
 halves (we prefer the first part larger in the odd length case), the second to
 move a tail portion from |l1| to |l0| once we get to the end of the latter, and
-the third call is the normal case that copies just one node from |l0| into the
+the third call is the normal case that copies just one node from |l1| into the
 proper location of~|l0|.
 
 @s forward_list list
@@ -1264,7 +1264,7 @@ void merge_sort (p_list& l0, cmp_f cmp, const std::vector<type_data>& a)
   merge_sort(l1,cmp,a);
   auto it=l0.begin();
   do
-  // merge |l1| into |l0| at using |it| as current insertion position, stop if  either reaches its end
+  // merge |l1| into |l0| using |it| as current insertion position, stop if either reaches its end
     if (cmp(*it,l1.front(),a)<=0)
     { ++it; // element from |l0| passes before |l1|
       if (l0.at_end(it))
