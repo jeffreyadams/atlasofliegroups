@@ -538,16 +538,12 @@ set pseudo_Levis (RootDatum rd)=[[int]]: let W=W(rd) then
      od;
      for (T,,) in triples do T od
 
-set d_L (RootDatum rd, [int] L)= int: let r=semisimple_rank(rd)
+
+set d_L (RootDatum rd,[int] L)=int: let r=semisimple_rank(rd)
    in if #L=0 then 0 else
-         if max(L)<r then 1
-         else let fcw=fundamental_coweights(rd)
-           then alpha=highest_root(rd)
-        then list=[int]:for i in complement(r+1,sort(L))
-        do numer (fcw[i]*alpha)
-        od
-          in gcd (list)
-      fi fi
+   if max(L)<r then 1 else
+    let list= for i in complement(r+1,sort(L)) do labels(rd)[i] od
+    in gcd(list) fi fi
 
 set print_pseudo_Levi_orbit_info (RootDatum rd)=void:
    for L in pseudo_Levis(rd)
@@ -555,3 +551,14 @@ set print_pseudo_Levi_orbit_info (RootDatum rd)=void:
           distinguished_H_diagrams(rd,complex_pseudo_Levi (rd,L)))
     od
 
+set is_conjugate_pseudo_Levi ([int] L, [int] M, RootDatum rd)=bool:
+   let W=W(rd) in if #L!=#M then false
+   else let prl=pseudo_roots(L,rd),prm=pseudo_roots(M,rd) in
+   is_conjugate(prl,prm,W) fi
+
+set pseudo_Levis_of_orbit (ComplexNilpotent (rd,(),H))=[[int]]:
+   let ps=pseudo_Levis(rd) in let r=semisimple_rank(rd) in
+   ##for levi in ps do if #levi>0 and levi[0]=r and
+   any (for K in distinguished_H(rd,complex_pseudo_Levi(rd,levi)) do
+    dominant(K,rd)=dominant(H,rd) od)
+   then [levi] else [] fi od
