@@ -2,11 +2,14 @@
 <qdeform.at
 <K_norm.at
 
+set K_type_formula_verbose=true
+
 {first: implement the built-in K_type_formula@K_Type in scripts
  this is K_type_formula_plus
  then: modify it to work on the level of Hodge filtrations}
 
-{formula for K-type as alternating sum of standard representations restricted to K
+{formula for K-type as alternating sum of representations restricted to K
+ each term is standard, final, normal, nonzero, tempered (see standardrepk.h)
 Based on KHatHowe Theorem 16.6
 This is based in turn on Theorem 16.5 (Zuckerman's theorem)
 Theorem 16.5 writes a one-dimensional as linear combination of standards
@@ -57,17 +60,17 @@ w=(1+involution(x(p)))*lie_coradical_part(G,v)/2 then   {need to keep term on co
 cf=character_formula_trivial(G) in
 sum(G,for c@p in cf do c*parameter(x(p),lambda(p)+w+(1-involution(x(p)))*v/2,nu(p)) od)
 
-{copied from induction.at and modified to warn when standardization/finalization occurs}
-set theta_induce_standard_warning (Param p_L,RealForm G) = ParamPol:
-  let L=real_form(x(p_L)), x_G=embed_KGB(x(p_L),G)
-  then shift=rho(G)-rho(L)
-  in assert(is_parabolic_theta_stable(make_parabolic(L,G)),"L is not Levi of theta_stable parabolic");
-  let p_G=parameter(x_G,lambda(p_L)+shift,nu(p_L)) in
-  if not is_standard(p_G) then
-    let result = prints(new_line,"warning 1: ", p_G, "->", standardize(p_G)) in standardize(p_G)
-  elif not is_final(p_G) then
-    let result = prints(new_line,"warning 2: ", p_G, "->", finalize(p_G)) in finalize(p_G)
-  else p_G fi
+{copied from induction.at and modified to *not* do the standardization/finalization step}
+set theta_induce_standard_warning (Param p_L,RealForm G,bool warnings_on) = Param:
+let L=real_form(x(p_L)), x_G=embed_KGB(x(p_L),G)
+then shift=rho(G)-rho(L)
+in assert(is_parabolic_theta_stable(make_parabolic(L,G)),"L is not Levi of theta_stable parabolic");
+let p_G=parameter(x_G,lambda(p_L)+shift,nu(p_L)) in
+if warnings_on then 
+ if not is_standard(p_G) then prints(new_line,"warning:", p_G, " is not standard") fi;
+ if let (normal,)=is_normal(p_G) in not normal then prints(new_line,"warning:  ", p_G, " is not normal") fi
+fi;
+p_G
 
 {K_Type mu ->  mu=\sum_i a_i q_i  (q_i final tempered, restricted to K)
 same as built-in K_type_formula, done in atlas to allow
@@ -88,7 +91,8 @@ for c@q in cf do
  let shifts=u_cap_s_rho_shifts_and_cardinalities(P,embed_KGB(x(q),mu.real_form)) in
  for (v,k) in shifts do
 {  let ()=prints(new_line,"doing shift: ", v, " ", k) in}
-  let  ind_G=theta_induce_standard_warning(parameter(x(q),lambda(q)+v,nu(q)),P.real_form)*0 in
+{  put standardization here }
+  let  ind_G=standardize(theta_induce_standard_warning(parameter(x(q),lambda(q)+v,nu(q)),P.real_form,K_type_formula_verbose))*0 in
   for coeff@p_G in ind_G do
 {   let ()=prints("added: ", c*(-1)^k*p_G, " ", length(first_param(p_G))) in}
   rv+:=c*(-1)^k*split_as_int(coeff)*p_G   {don't need (-1)^r(L) in this version}

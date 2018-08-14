@@ -1,8 +1,31 @@
-{see K_parameters.at}
-
 <basic.at     { for *@(Param,rat) }
 <hermitian.at { for hermitian_form_irreducible }
 <K_highest_weights.at
+
+{Recall from standardrepk.h:
+Normal: $\<\alpha^\vee(1+\theta),\lambda>\geq0$ when $\alpha$ simple,
+complex, and orthogonal to sums of positive imaginary resp. real roots.
+}
+set RC_simple(KGBElt x)=[int]:
+##for alpha@i in x.root_datum.simple_roots do
+let alpha_check=x.root_datum.simple_coroots[i] in
+  if is_complex(i,x) 
+   and =alpha_check*rho_i(x) 
+   and =alpha_check*rho_r(x)
+ then [i] 
+ else [] 
+ fi 
+od 
+
+{return (true,-1) if normal, otherwise (false,j) where
+ j is in RC_simple(x) and 
+ <p.lambda,simple_coroots[j]><0
+}
+set is_normal(Param p)=(bool,int):
+assert(=p.nu,"nu\ne 0");
+let rd=p.root_datum then
+RC_simple=RC_simple(x(p)) then
+index=first(#RC_simple,(int i)bool:rd.simple_roots[RC_simple[i]]*p.lambda<0) in (index = -1,index)
 
 set sort_by_height (ParamPol P) = [(Split,Param)]:
   sort_by_height(for c@p in P do (c,p) od)

@@ -1,4 +1,8 @@
 <K_highest_weights.at
+<K_types.at
+
+{move this to basic.at}
+set find ([K_Type] ktypes,K_Type mu) = int:first(#ktypes,(int i)bool:ktypes[i]=mu)
 
 {Enhanced version of K_types@KHighestWeight (in K_highest_weights.at)
  Also the algorithm \tau->tau_q in KHatHowe Theorem 11.9}
@@ -73,6 +77,18 @@ set K_types_plus (KHighestWeight(,x,v):mu_in)= (Parabolic,[(Param,K_Type)]):
 set K_types_plus (K_Type mu)= (Parabolic,[(Param,K_Type)]):
 K_types_plus(highest_weights(mu)[0])
 
+set test_K_types_plus(KHighestWeight lambda)=bool:
+let (,pairs)=K_types_plus(lambda) then
+ktypes_plus= for (,mu) in pairs do mu od then
+ktypes=K_types(lambda)
+in
+ #ktypes_plus=#ktypes and
+ all(for a in ktypes_plus do find(ktypes,a) !=-1 od)
+
+set test_K_types_plus([KHighestWeight] lambdas)=bool:
+all(for lambda in lambdas do test_K_types_plus(lambda) od)
+
+
 {K_type p -> (Q,p_L) such that
  p=theta_induce_standard(p_L*0,G)
  Note: p_L*0 not p_L
@@ -87,3 +103,4 @@ assert(is_one_dimensional(mu_L),"mu_L is not one-dimensional");
 assert(let ind=theta_induce_standard(mu_L*0,mu.real_form) in
 #ind=1 and first_param(ind)=parameter(mu),"mu_L does not induce to mu");
 (Q,mu_L)
+

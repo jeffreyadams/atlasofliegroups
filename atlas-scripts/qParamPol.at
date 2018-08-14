@@ -3,7 +3,6 @@
 
 set codim(KGBElt x)=int:nr_of_posroots(root_datum(x))-dimension(x)
 set codim(Param p)=int:codim(x(p))
-set *(Split c,[ParamPol] pols)=for f in pols do c*f od
 
 {\sum a_i(q)p_i where a_i(q) is a polynomial}
 
@@ -14,6 +13,9 @@ features of ParamPol to take care of combining terms.
 See the functions rearrange and dearrange.
 }
 set_type qParamPol=[ParamPol]
+
+set *(Split c,[ParamPol] pols)=for f in pols do c*f od
+{Note: error if #pols=0}
 
 set nullqParamPol(RealForm G)=qParamPol:[null_module(G)]
 set q_param_pol(Param p)=qParamPol:[p]
@@ -60,9 +62,13 @@ od fi
 {this fails with an error if #f=0}
 set dearrange([(vec,Param)] f)=qParamPol:dearrange(f,let (,p)=f[0] in p.real_form)
 
+{dearrange an array [(vec,K_Type)], simply replace each K_type mu with parameter(mu)}
+set dearrange([(vec,K_Type)] f,RealForm G)=dearrange(for (v,mu) in f do (v,parameter(mu)) od,G)
+set dearrange([(vec,K_Type)] f)=dearrange(for (v,mu) in f do (v,parameter(mu)) od)
+
 {polynomial  in q, or constant, times qParamPol}
 set *(i_poly f,qParamPol P)=qParamPol:
-let r=rearrange(P) in dearrange(for (g,p) in r do (convolve(f,g),p) od)
+let r=rearrange(P) in dearrange(for (g,p) in r do (convolve(f,g),p) od,P.real_form)
 set *(int c,qParamPol P)=qParamPol:[c]*P
 
 set +(qParamPol P,qParamPol Q)=qParamPol:
@@ -74,11 +80,15 @@ fi
 set one_minus_q=[1,-1]
 set -(qParamPol P,qParamPol Q)=qParamPol:P+(-1)*Q
 
-set evaluate_at_s(qParamPol P)=ParamPol:
-null_module(P.real_form) + sum(P.real_form,for i:#P do s^i*P[i] od)
+set evaluate_at_s(qParamPol Q)=ParamPol:
+null_module(Q.real_form) + sum(Q.real_form,for i:#Q do s^i*Q[i] od)
 
-set evaluate_at_1(qParamPol P)=ParamPol:
-null_module(P.real_form) + sum(P.real_form,for i:#P do P[i] od)
+set evaluate_at_1(qParamPol Q)=ParamPol:
+null_module(Q.real_form) + sum(Q.real_form,for i:#Q do Q[i] od)
+
+set v_to_s(qParamPol Q)=ParamPol:evaluate_at_s(Q)
+set v_to_1(qParamPol Q)=ParamPol:evaluate_at_1(Q)
+
 
 {really should call this q_branch, but that would override a built-in, which 
 is not a good idea}
@@ -105,12 +115,12 @@ for (f,p) in rearrange(P) do prints("(",poly_format(f,"q"),")","*",p) od
 
 {alternative output version}
 set print(qParamPol P)=void:
-let header=["c","x","lambda","nu","codim_O","LKT","dim_K"] then
+let header=["c","x","lambda","nu","codim_O","LKT","dim_K","height"] then
 values=for (c,p) in rearrange(P) do
 let (,x)=%p.x then
 (,,wt)=highest_weights(p)[0] in
-[poly_format(c,"v"),x.to_string,p.lambda.to_string,p.nu.to_string,codim(x(p)).to_string,wt.to_string,LKTs(p)[0].dimension.to_string]
-od in tabulate(header#values,"lllllll",2," ")
+[poly_format(c,"v"),x.to_string,p.lambda.to_string,p.nu.to_string,codim(x(p)).to_string,let (,v)=LKTs(p)[0] in v.to_string,LKTs(p)[0].dimension.to_string,
+height(p).to_string] od in tabulate(header#values,"llllllll",2," ")
 
 set print_branch_q(Param p,int N)=void:print(branch_q(p,N))
 
