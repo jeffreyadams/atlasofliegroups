@@ -938,7 +938,19 @@ initially leaves it unset, as it will be explicitly set later.
 The typedef |p_list| will be of use later, when sorting pointers to these
 |type_data|. Finally, we shall delimit ranges (after sorting) in our list of
 types by pairs of iterators into a list of the same type; we name the type of
-such iterators |tracker|.
+such iterators |tracker|. There is a subtlety though with keeping track of
+ranges in a list when the ranges themselves may get permuted: this permutation
+may make the delimiter that designated the end of the range no longer designate
+the end of the permuted range, but rather an earlier point (since the iterator
+is attached to the final node of the range). The methods like |merge| that
+perform the permutation take their ending iterator by variable reference and
+take care to update it to the new final position, but this does not handle the
+situation where another copy of that iterator occurs as starting iterator of
+another range. The solution adopted here is to accompany the starting iterator
+by its dereferenced value (the |first| field in the |type_range| struct below),
+which permits detecting that the iterator has been moved backwards in the list,
+and correcting it by advancing it; the |type_range::realign| method takes care
+of this and returns the possibly updated starting iterator of the range.
 
 @< Local type definitions @>=
 
@@ -949,6 +961,17 @@ struct type_data
 };
 typedef containers::sl_list<type_data *> p_list; // list of type pointers
 typedef p_list::iterator tracker;
+struct type_range
+{ tracker begin, end; @+
+  type_data* first; // usually equal to |*begin|, but sometimes ahead
+@)
+  type_range(tracker b, tracker e) : begin(b), end(e), first(*begin) @+ {}
+  tracker realign ()@+
+  {@;while (*begin!=first)
+       ++begin;
+    return begin;
+  }
+};
 
 @ The definition of |type_expr::add_typedefs| is subtle and requires quite a bit
 of work, due to our requirement that all cases of type equivalence be
@@ -987,7 +1010,7 @@ std::vector<type_nr_type> type_expr::add_typedefs
      defined by |defs| and all their anonymous sub-types;
      also make each |type_perm[i]| point to |type_array[i]| @>
 @)
-  containers::sl_list<std::pair<tracker,tracker> > groups;
+  containers::sl_list<type_range> groups;
   @< Bucket-sort the pointers in |type_perm| according to the top level
      structure of the |type| field they point to, then set each
      |type_perm[i]->rank| field to the first index~|i0| into |type_perm| of an
@@ -1171,7 +1194,7 @@ can also henceforth be ignored.
 @< Local function definitions @>=
 void empty_bucket (const p_list& bucket, @|
                    p_list& type_perm,
-                   containers::sl_list<std::pair<tracker,tracker> >& groups)
+                   containers::sl_list<type_range>& groups)
 { const unsigned int cur_rank=type_perm.size();
   const tracker lwb = type_perm.end();
   for (auto it=bucket.wcbegin(); not bucket.at_end(it); ++it)
@@ -1180,7 +1203,7 @@ void empty_bucket (const p_list& bucket, @|
   }
   if (type_perm.size()-cur_rank>=2 and
       bucket.front()->type.raw_kind()!=primitive_type)
-    groups.push_back(std::make_pair(lwb,type_perm.end()));
+    groups.push_back(type_range(lwb,type_perm.end()));
 }
 
 @ Emptying all the buckets now amounts to repeatedly calling |empty_bucket|, in
@@ -1301,18 +1324,17 @@ more rapidly, which we shall not complain about.
   do
   { changes = false;
     for (auto it=groups.begin(); not groups.at_end(it); ) // no increment here
-    { const rank_comparer cmp((*it->first)->type.tag,type_array);
+    { const rank_comparer cmp((*it->realign())->type.tag,type_array);
       @< Test for range given by |*it| in |type_perm| whether everything tests
          equal under |cmp|; if so increment |it| and |continue| @>
 @)
       changes = true; // now we have something to refine
-      p_list l(it->first,it->second);
-      l.sort(cmp);
+      type_perm.sort(it->begin,it->end,cmp);
 @)
-    @/@< Copy elements from |l| back to |type_perm| into range given by |*it|,
-         while determining their new partition into groups; set their |rank|
-         fields accordingly, and remove the node after |it| from |groups| after
-         inserting any new refinable groups before it @>
+    @/@< Partition range of |type_perm| given by |*it| into sub-ranges that
+         separated by places where |cmp.differ| holds; update |rank| fields
+         of pointed-to elements accordingly, and in |groups| replace |it| by any
+         refinable groups thus formed, leaving |it| after those groups @>
     }
   }
   while (changes);
@@ -1324,11 +1346,11 @@ turn out to be equivalent); doing |continue| avoids setting |changes|.
 
 @< Test for range given by |*it| in |type_perm| whether everything tests
    equal under |cmp|; if so increment |it| and |continue| @>=
-{ tracker jt0=it->first, jt1=std::next(jt0);
-  for ( ; jt1!=it->second; jt0=jt1,++jt1)
+{ tracker jt0=it->begin, jt1=std::next(jt0);
+  for ( ; jt1!=it->end; jt0=jt1,++jt1)
     if (cmp.differ(*jt0,*jt1))
       break;
-  if (jt1==it->second) // the above loop ran to completion
+  if (jt1==it->end) // the above loop ran to completion
 @/{@; ++it; continue; } // so skip group whose refinement would change nothing
 }
 
@@ -1340,12 +1362,43 @@ aside the new ranks that we want to assign to the types whose pointers are
 being moved here, in a temporary array |new_ranks|, to do the actual
 assignments only later once all refined groups have been established.
 
-@< Copy elements from |l| back to |type_perm|... @>=
+@< Partition range of |type_perm| given by |*it| into sub-ranges... @>=
+#if 1
+{
+  unsigned int cur_rank = (*it->begin)->rank;
+    // start at rank for the whole (non-empty) range
+  for (auto jt=it->begin; jt!=it->end; )
+    // traverse range by groups, increment is inside loop
+  { const auto first_jt=jt;
+    unsigned int count=0; type_data* prev;
+
+    do
+    {@;
+      prev=*jt;
+      ++jt,++count;
+    }
+  @/while (jt!=it->end and not cmp.differ(prev,*jt));
+    // find a new group
+@)
+    for (auto p=first_jt; p!=jt; ++p)
+      (*p)->rank=cur_rank;
+      // (only) now replace old ranks by the one for the refined group
+
+    if (count>=2) // don't create singleton groups
+      it=groups.insert(it,type_range(first_jt,jt));
+      // prepend a new pair and move across it
+@)
+    cur_rank += count; // next group will have a new, larger, rank
+  }
+  groups.erase(it);
+  // finally remove refined group; |it| should not be incremented
+}
+#else
 { auto loc=it->first; // iterator into |type_perm|
   std::vector<unsigned int> new_ranks;
   new_ranks.reserve(std::distance(it->first,it->second));
   unsigned int cur_rank=l.front()->rank;
-   // start at old rank for the whole (non-empty) range
+    // start at old rank for the whole (non-empty) range
   for (auto jt=l.begin(); not l.at_end(jt); )
     // traverse list |l| by groups, increment is inside loop
   { const auto first_loc=loc;
@@ -1372,6 +1425,7 @@ assignments only later once all refined groups have been established.
     (*loc)->rank=*p;
   groups.erase(it); // remove refined group; |it| should not be incremented
 }
+#endif
 
 @ Now it is time to finally copy entries back to (the
 |std::vector<type_binding>| base object of) |*this|, from |type_array|. All the
