@@ -88,8 +88,9 @@ template <typename Alloc, typename... Args>
 template<typename T,typename Alloc = std::allocator<T> >
 struct sl_node
 {
-  typedef typename Alloc::template rebind<sl_node>::other alloc_type;
-  typedef std::unique_ptr<sl_node, allocator_deleter<alloc_type> > link_type;
+  typedef typename Alloc::template rebind<sl_node>::other node_alloc_type;
+  typedef std::unique_ptr<sl_node, allocator_deleter<node_alloc_type> >
+   link_type;
 
   link_type next;
   T contents;
@@ -256,11 +257,10 @@ template<typename T, typename Alloc>
   friend class sl_list<T, Alloc>;
 
   typedef sl_node<T, Alloc> node_type;
-  typedef typename Alloc::template rebind<node_type>::other alloc_type;
+  typedef typename Alloc::template rebind<node_type>::other node_alloc_type;
   typedef typename Alloc::pointer node_ptr; // returned from |allocate|
-  typedef std::unique_ptr<node_type, allocator_deleter<alloc_type> > link_type;
-
-
+  typedef std::unique_ptr<node_type, allocator_deleter<node_alloc_type> >
+    link_type;
 
  public:
   typedef T value_type;
@@ -284,30 +284,30 @@ template<typename T, typename Alloc>
  public:
   // access to the allocator, which is our base object
   Alloc get_allocator () const { return *this; } // convert back to |Alloc|
-  const alloc_type& get_node_allocator () const { return *this; }
-  alloc_type& node_allocator () { return *this; }
+  const node_alloc_type& get_node_allocator () const { return *this; }
+  node_alloc_type& node_allocator () { return *this; }
 
   // constructors
   explicit simple_list () // empty list
-  : alloc_type(), head(nullptr) {}
+  : node_alloc_type(), head(nullptr) {}
 
-  explicit simple_list (const alloc_type& a) // empty list, explicit allocator
-  : alloc_type(a), head(nullptr) {}
+  explicit simple_list (const Alloc& a) // empty list, explicit allocator
+  : node_alloc_type(a), head(nullptr) {}
 
-  explicit simple_list (alloc_type&& a) // empty list, explicit moved allocator
-  : alloc_type(std::move(a)), head(nullptr) {}
+  explicit simple_list (Alloc&& a) // empty list, explicit moved allocator
+  : node_alloc_type(std::move(a)), head(nullptr) {}
 
   explicit simple_list (node_type* raw) // convert from raw pointer
-  : alloc_type(), head(raw) {}
+  : node_alloc_type(), head(raw) {}
 
-  explicit simple_list (node_type* raw,const alloc_type& a)
-  : alloc_type(a), head(raw) {}
+  explicit simple_list (node_type* raw,const Alloc& a)
+  : node_alloc_type(a), head(raw) {}
 
-  explicit simple_list (node_type* raw, alloc_type&& a)
-    : alloc_type(std::move(a)), head(raw) {}
+  explicit simple_list (node_type* raw, Alloc&& a)
+    : node_alloc_type(std::move(a)), head(raw) {}
 
   simple_list (const simple_list& x) // copy contructor
-    : alloc_type(x) // nothing better available with gcc 4.6
+    : node_alloc_type(x) // nothing better available with gcc 4.6
   , head(nullptr)
   {
     link_type* tail = &head;
@@ -320,23 +320,23 @@ template<typename T, typename Alloc>
   }
 
   simple_list (simple_list&& x) // move contructor
-  : alloc_type(std::move(x)), head(x.head.release())
+  : node_alloc_type(std::move(x)), head(x.head.release())
   { }
 
   template<typename InputIt, typename = typename std::enable_if<
   std::is_base_of<std::input_iterator_tag,
 		  typename std::iterator_traits<InputIt>::iterator_category
   >::value>::type >
-  simple_list (InputIt first, InputIt last, const alloc_type& a=alloc_type())
-  : alloc_type(a), head(nullptr)
+  simple_list (InputIt first, InputIt last, const Alloc& a=Alloc())
+  : node_alloc_type(a), head(nullptr)
   {
     iterator p = begin();
     for ( ; first!=last; ++p,++first) // |insert(p,*first)|, realised as:
       p.link_loc->reset(allocator_new(node_allocator(),*first));
   }
 
-  explicit simple_list (size_type n, const alloc_type& a=alloc_type())
-  : alloc_type(a), head(nullptr)
+  explicit simple_list (size_type n, const Alloc& a=Alloc())
+  : node_alloc_type(a), head(nullptr)
   {
     while (n-->0)
     {
@@ -347,14 +347,14 @@ template<typename T, typename Alloc>
     }
   }
 
-  simple_list (size_type n, const T& x, const alloc_type& a=alloc_type())
-  : alloc_type(a), head(nullptr)
+  simple_list (size_type n, const T& x, const Alloc& a=Alloc())
+  : node_alloc_type(a), head(nullptr)
   {
     insert(begin(),n,x);
   }
 
-  simple_list (std::initializer_list<T> l, const alloc_type& a=alloc_type())
-  : alloc_type(a), head(nullptr)
+  simple_list (std::initializer_list<T> l, const Alloc& a=Alloc())
+  : node_alloc_type(a), head(nullptr)
   {
     iterator p = begin();
     auto first = l.begin(), last = l.end();
@@ -549,6 +549,27 @@ template<typename T, typename Alloc>
 
   bool empty () const { return head.get()==nullptr; }
   bool singleton () const { return not empty() and head->next.get()==nullptr; }
+  void resize (size_type n)
+  {
+    const_iterator it=cbegin();
+    while (not at_end(it) and n-->0)
+      ++it;
+    if (at_end(it)) // whether |n>=length(*this)| initially
+      splice(it,simple_list(n,get_allocator())); // extend
+    else
+      *it.link_loc = nullptr; // truncate
+  }
+  void resize (size_type n, const T& val)
+  {
+    const_iterator it=cbegin();
+    while (not at_end(it) and n-->0)
+      ++it;
+    if (at_end(it)) // whether |n>=length(*this)| initially
+      splice(it,simple_list(n,val,get_allocator())); // extend
+    else
+      *it.link_loc = nullptr; // truncate
+  }
+
 
   iterator insert (const_iterator pos, const T& val)
   {
@@ -653,11 +674,9 @@ template<typename T, typename Alloc>
   }
 
   iterator erase (const_iterator first, const_iterator last)
-  { node_type* end = last.link_loc->get(); // copy because |last| gets invalid
-    link_type& link = *first.link_loc;
-    while (link.get()!=end)
-      link.reset(link->next.release()); // same as |erase(first);|
-    return iterator(link);
+  {
+    first.link_loc->reset(last.link_loc->release());
+    return iterator(*first.link_loc);
   }
 
   template<typename InputIt, typename = typename std::enable_if<
@@ -1020,9 +1039,10 @@ template<typename T, typename Alloc>
   : private Alloc::template rebind<sl_node<T, Alloc> >::other
 {
   typedef sl_node<T, Alloc> node_type;
-  typedef typename Alloc::template rebind<node_type>::other alloc_type;
+  typedef typename Alloc::template rebind<node_type>::other node_alloc_type;
   typedef typename Alloc::pointer node_ptr; // returned from |allocate|
-  typedef std::unique_ptr<node_type, allocator_deleter<alloc_type> > link_type;
+  typedef std::unique_ptr<node_type, allocator_deleter<node_alloc_type> >
+    link_type;
 
  public:
   typedef T value_type;
@@ -1051,21 +1071,21 @@ template<typename T, typename Alloc>
  public:
   // access to the allocator, which is our base object
   Alloc get_allocator () const { return *this; } // convert back to |Alloc|
-  const alloc_type& get_node_allocator () const { return *this; }
-  alloc_type& node_allocator () { return *this; }
+  const node_alloc_type& get_node_allocator () const { return *this; }
+  node_alloc_type& node_allocator () { return *this; }
 
   // constructors
   explicit sl_list () // empty list
-    : alloc_type(), head(nullptr), tail(&head), node_count(0) {}
+    : node_alloc_type(), head(nullptr), tail(&head), node_count(0) {}
 
-  explicit sl_list (const alloc_type& a) // empty list, explicit allocator
-    : alloc_type(a), head(nullptr), tail(&head), node_count(0) {}
+  explicit sl_list (const Alloc& a) // empty list, explicit allocator
+    : node_alloc_type(a), head(nullptr), tail(&head), node_count(0) {}
 
-  explicit sl_list (alloc_type&& a) // empty list, explicit moved allocator
-    : alloc_type(a), head(nullptr), tail(&head), node_count(0) {}
+  explicit sl_list (Alloc&& a) // empty list, explicit moved allocator
+    : node_alloc_type(a), head(nullptr), tail(&head), node_count(0) {}
 
   sl_list (const sl_list& x) // copy contructor
-  : alloc_type(x)
+  : node_alloc_type(x)
   , head(nullptr)
   , tail(&head)
   , node_count(x.node_count)
@@ -1079,14 +1099,14 @@ template<typename T, typename Alloc>
   }
 
   sl_list (sl_list&& x) // move contructor
-  : alloc_type(std::move(x))
+  : node_alloc_type(std::move(x))
   , head(x.head.release())
   , tail(x.empty() ? &head : x.tail)
   , node_count(x.node_count)
   { x.set_empty(); }
 
   explicit sl_list (simple_list<T,Alloc>&& x) // move and dress constructor
-  : alloc_type(std::move(x))
+  : node_alloc_type(std::move(x))
   , head(x.head.release())
   , tail(&head)
   , node_count(0)
@@ -1099,14 +1119,14 @@ template<typename T, typename Alloc>
   std::is_base_of<std::input_iterator_tag,
 		  typename std::iterator_traits<InputIt>::iterator_category
   >::value>::type >
-  sl_list (InputIt first, InputIt last, const alloc_type& a=alloc_type())
-  : alloc_type(a), head(nullptr), tail(&head), node_count(0)
+  sl_list (InputIt first, InputIt last, const Alloc& a=Alloc())
+  : node_alloc_type(a), head(nullptr), tail(&head), node_count(0)
   {
     append(first,last);
   }
 
-  explicit sl_list (size_type n, const alloc_type& a=alloc_type())
-  : alloc_type(a), head(nullptr), tail(&head), node_count(n)
+  explicit sl_list (size_type n, const Alloc& a=Alloc())
+  : node_alloc_type(a), head(nullptr), tail(&head), node_count(n)
   {
     while (n-->0)
     {
@@ -1117,14 +1137,14 @@ template<typename T, typename Alloc>
     }
   }
 
-  sl_list (size_type n, const T& x, const alloc_type& a=alloc_type())
-  : alloc_type(a), head(nullptr), tail(&head), node_count(0)
+  sl_list (size_type n, const T& x, const Alloc& a=Alloc())
+  : node_alloc_type(a), head(nullptr), tail(&head), node_count(0)
   {
     insert(begin(),n,x); // this increases |node_count| to |n|
   }
 
-  sl_list (std::initializer_list<T> l, const alloc_type& a=alloc_type())
-  : alloc_type(a), head(nullptr), tail(&head), node_count(0)
+  sl_list (std::initializer_list<T> l, const Alloc& a=Alloc())
+  : node_alloc_type(a), head(nullptr), tail(&head), node_count(0)
   {
     append(l.begin(),l.end()); // increases |node_count| to |l.size()|
   }
@@ -1348,6 +1368,20 @@ template<typename T, typename Alloc>
   bool empty () const { return tail==&head; } // or |node_count==0|
   bool singleton () const { return node_count==1; }
   size_type size () const { return node_count; }
+  void resize (size_type n)
+  {
+    if (n>size())
+      append(sl_list(n-size(),get_allocator()));
+    else if (n<size)
+      erase(std::next(begin(),n),end());
+  }
+  void resize (size_type n, const T& val)
+  {
+    if (n>size())
+      insert(end(),n-size(),val);
+    else if (n<size())
+      erase(std::next(begin(),n),end());
+  }
 
   iterator insert (const_iterator pos, const T& val)
   {
@@ -1427,21 +1461,6 @@ template<typename T, typename Alloc>
     // destruct now empty |insertion|; having wrong |tail|, |node_count| is OK
   }
 
-  template<typename InputIt, typename = typename std::enable_if<
-  std::is_base_of<std::input_iterator_tag,
-		  typename std::iterator_traits<InputIt>::iterator_category
-  >::value>::type >
-    iterator append (InputIt first, InputIt last)
-  {
-    for( ; first!=last; ++first)
-    {
-      tail->reset(allocator_new(node_allocator(),*first));
-      tail = &(*tail)->next;
-      ++node_count;
-    }
-    return end();
-  }
-
   template<typename InputIt>
     iterator move_insert (const_iterator pos, InputIt first, InputIt last)
   {
@@ -1483,17 +1502,27 @@ template<typename T, typename Alloc>
   }
 
   iterator erase (const_iterator first, const_iterator last)
-  { const node_type* end_ptr =  // we must store this pointer value
-      last.link_loc->get();     // because |last| will get invalidated
-    link_type& link = *first.link_loc;
-    while (link.get()!=end_ptr)
+  {
+    node_count -= std::distance(first,last);
+    first.link_loc->reset(last.link_loc->release());
+    if (at_end(first)) // whether we had |last==end()| initially
+      tail = first.link_loc; // we need to reestablish validity of |tail|
+    return iterator(*first.link_loc);
+  }
+
+  template<typename InputIt, typename = typename std::enable_if<
+  std::is_base_of<std::input_iterator_tag,
+		  typename std::iterator_traits<InputIt>::iterator_category
+  >::value>::type >
+    iterator append (InputIt first, InputIt last)
+  {
+    for( ; first!=last; ++first)
     {
-      link.reset(link->next.release()); // |erase(first);|
-      --node_count;
+      tail->reset(allocator_new(node_allocator(),*first));
+      tail = &(*tail)->next;
+      ++node_count;
     }
-    if (end_ptr==nullptr) // if we had |last==end()| initially, then
-      tail = &link; // we need to reestablish validity of |tail|
-    return iterator(link);
+    return end();
   }
 
   // append contents of another list, return iterator to start of appended part
@@ -1509,7 +1538,7 @@ template<typename T, typename Alloc>
   }
 
   iterator append (std::initializer_list<T> l)
-  { return append(sl_list(l)); } // construct other list and append from it
+  { return append(l.begin(),l.end()); }
 
   template<typename InputIt, typename = typename std::enable_if<
   std::is_base_of<std::input_iterator_tag,
@@ -1900,7 +1929,7 @@ template<typename T,typename Alloc>
 {
   typedef simple_list<T,Alloc> Base;
   typedef sl_node<T, Alloc> node_type;
-  typedef typename Alloc::template rebind<node_type>::other alloc_type;
+  typedef typename Alloc::template rebind<node_type>::other node_alloc_type;
 
   public:
   // forward most constructors, but reverse order for initialised ones
@@ -1921,8 +1950,7 @@ template<typename T,typename Alloc>
   std::is_base_of<std::input_iterator_tag,
 		  typename std::iterator_traits<InputIt>::iterator_category
   >::value>::type >
-    mirrored_simple_list (InputIt first, InputIt last,
-			  const alloc_type& a=alloc_type())
+    mirrored_simple_list (InputIt first, InputIt last, const Alloc& a=Alloc())
     : Base(a)
     {
       for ( ; first!=last; ++first)
@@ -1930,7 +1958,7 @@ template<typename T,typename Alloc>
     }
 
   mirrored_simple_list (typename Base::size_type n, const T& x,
-			const alloc_type& a=alloc_type())
+			const Alloc& a=Alloc())
     : Base(n,x,a) {}
 
   // forward |push_front| method from |Base|, and its likes, as ...|back|
@@ -1954,7 +1982,7 @@ template<typename T,typename Alloc>
 {
   typedef sl_list<T,Alloc> Base;
   typedef sl_node<T, Alloc> node_type;
-  typedef typename Alloc::template rebind<node_type>::other alloc_type;
+  typedef typename Alloc::template rebind<node_type>::other node_alloc_type;
 
   // forward most constructors, but reverse order for initialised ones
   public:
@@ -1973,8 +2001,7 @@ template<typename T,typename Alloc>
   std::is_base_of<std::input_iterator_tag,
 		  typename std::iterator_traits<InputIt>::iterator_category
   >::value>::type >
-    mirrored_sl_list (InputIt first, InputIt last,
-		      const alloc_type& a=alloc_type())
+    mirrored_sl_list (InputIt first, InputIt last, const Alloc& a=Alloc())
     : Base(a)
     {
       for ( ; first!=last; ++first)
@@ -1982,7 +2009,7 @@ template<typename T,typename Alloc>
     }
 
   mirrored_sl_list (typename Base::size_type n, const T& x,
-		    const alloc_type& a=alloc_type())
+		    const Alloc& a=Alloc())
     : Base(n,x,a) {}
 
   // forward |push_front| method from |Base|, and its likes, as ...|back|
