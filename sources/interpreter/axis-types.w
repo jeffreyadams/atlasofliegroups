@@ -1156,7 +1156,7 @@ rather than for a pointer found in |type_perm|.
 @/std::array<p_list, nr_of_primitive_types> prim_types;
   prim_types.fill(empty_list);
   p_list func_types, row_types;
-  std::vector<p_list> tuple_types, union_types;
+  containers::sl_list<p_list> tuple_types, union_types;
 @)
   while (not type_perm.empty())
   { const auto& t = type_perm.front()->type; p_list* dst;
@@ -1169,9 +1169,16 @@ rather than for a pointer found in |type_perm|.
     case union_type:
       { auto l=length(t.tuple_variant);
         auto& target = t.tag==tuple_type ? tuple_types : union_types;
-        if (l>=target.size())
-          target.resize(l+1,empty_list);
-        dst = &target[l]; break;
+        if (l<target.size())
+          dst = &*std::next(target.begin(),l);
+        else
+        {
+          target.resize(l,empty_list);
+          const auto it = target.end();
+          target.push_back(empty_list);
+          dst = &*it;
+        }
+        break;
       }
     default: assert(false);
     }
@@ -1205,7 +1212,7 @@ void empty_bucket (p_list&& bucket, @|
   for (auto it=bucket.wcbegin(); not bucket.at_end(it); ++it)
     (*it)->rank=cur_rank;
 
-  type_perm.splice(lwb,std::move(bucket));
+  type_perm.append(std::move(bucket));
 
   if (new_group)
     groups.push_back(type_range(lwb,type_perm.end()));
@@ -1220,10 +1227,10 @@ the proper order.
     empty_bucket (std::move(prim_types[i]),type_perm,groups);
   empty_bucket (std::move(func_types),type_perm,groups);
   empty_bucket (std::move(row_types),type_perm,groups);
-  for (unsigned int l=0; l<tuple_types.size(); ++l)
-    empty_bucket (std::move(tuple_types[l]),type_perm,groups);
-  for (unsigned int l=0; l<union_types.size(); ++l)
-    empty_bucket (std::move(union_types[l]),type_perm,groups);
+  for (auto it=tuple_types.wbegin(); not tuple_types.at_end(it); ++it)
+    empty_bucket (std::move(*it),type_perm,groups);
+  for (auto it=union_types.wbegin(); not union_types.at_end(it); ++it)
+    empty_bucket (std::move(*it),type_perm,groups);
 }
 
 @ We now make some preparations for refining the ordering in |type_perm| inside
