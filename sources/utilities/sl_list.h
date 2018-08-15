@@ -1874,7 +1874,8 @@ template<typename T, typename Alloc>
 
 // external functions for |sl_list<T,Alloc>|
 template<typename T,typename Alloc>
-size_t length (const sl_list<T,Alloc>& l) { return l.size(); }
+typename sl_list<T,Alloc>::size_type length (const sl_list<T,Alloc>& l)
+{ return l.size(); }
 
 template<typename T,typename Alloc>
 typename sl_list<T,Alloc>::const_iterator end (const sl_list<T,Alloc>& l)

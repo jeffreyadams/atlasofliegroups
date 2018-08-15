@@ -1157,27 +1157,29 @@ rather than for a pointer found in |type_perm|.
   prim_types.fill(empty_list);
   p_list func_types, row_types;
   std::vector<p_list> tuple_types, union_types;
-  for (auto it=type_perm.begin(); it!=type_perm.end(); ++it)
-  { const auto& t = (*it)->type;
+@)
+  while (not type_perm.empty())
+  { const auto& t = type_perm.front()->type; p_list* dst;
     switch(t.tag)
     {
-    case primitive_type: prim_types[t.prim()].push_back(*it); break;
-    case function_type: func_types.push_back(*it); break;
-    case row_type: row_types.push_back(*it); break;
+    case primitive_type: dst = &prim_types[t.prim()]; break;
+    case function_type: dst = &func_types; break;
+    case row_type: dst = &row_types; break;
     case tuple_type:
     case union_type:
       { auto l=length(t.tuple_variant);
         auto& target = t.tag==tuple_type ? tuple_types : union_types;
         if (l>=target.size())
           target.resize(l+1,empty_list);
-        target[l].push_back(*it); break;
+        dst = &target[l]; break;
       }
     default: assert(false);
     }
+    dst->splice(dst->end(),type_perm,type_perm.begin());
+    // also erases |type_perm.front()|
   }
-  type_perm.clear(); // prepare for re-filling with permuted elements
 @)
-  @< Copy each of the buckets in order to |type_perm|, setting each
+  @< Empty each of the buckets in order to |type_perm|, setting each
      |type_perm[i]->rank| field to the first index~|i0| into |type_perm| of a
      type in the same bucket, and store in |groups| the boundary pairs for
      refinable buckets @>
@@ -1192,32 +1194,36 @@ distinguished than they already are, so the buckets containing primitive types
 can also henceforth be ignored.
 
 @< Local function definitions @>=
-void empty_bucket (const p_list& bucket, @|
+void empty_bucket (p_list&& bucket, @|
                    p_list& type_perm,
                    containers::sl_list<type_range>& groups)
 { const unsigned int cur_rank=type_perm.size();
   const tracker lwb = type_perm.end();
+  bool new_group =
+    bucket.size()>=2 and bucket.front()->type.raw_kind()!=primitive_type;
+
   for (auto it=bucket.wcbegin(); not bucket.at_end(it); ++it)
-@/{@; type_perm.push_back(*it);
     (*it)->rank=cur_rank;
-  }
-  if (type_perm.size()-cur_rank>=2 and
-      bucket.front()->type.raw_kind()!=primitive_type)
+
+  type_perm.splice(lwb,std::move(bucket));
+
+  if (new_group)
     groups.push_back(type_range(lwb,type_perm.end()));
+
 }
 
 @ Emptying all the buckets now amounts to repeatedly calling |empty_bucket|, in
 the proper order.
 
-@< Copy each of the buckets in order to |type_perm|, setting each... @>=
+@< Empty each of the buckets in order to |type_perm|, setting each... @>=
 { for (unsigned int i=0; i<prim_types.size(); ++i)
-    empty_bucket (prim_types[i],type_perm,groups);
-  empty_bucket (func_types,type_perm,groups);
-  empty_bucket (row_types,type_perm,groups);
+    empty_bucket (std::move(prim_types[i]),type_perm,groups);
+  empty_bucket (std::move(func_types),type_perm,groups);
+  empty_bucket (std::move(row_types),type_perm,groups);
   for (unsigned int l=0; l<tuple_types.size(); ++l)
-    empty_bucket (tuple_types[l],type_perm,groups);
+    empty_bucket (std::move(tuple_types[l]),type_perm,groups);
   for (unsigned int l=0; l<union_types.size(); ++l)
-    empty_bucket (union_types[l],type_perm,groups);
+    empty_bucket (std::move(union_types[l]),type_perm,groups);
 }
 
 @ We now make some preparations for refining the ordering in |type_perm| inside
@@ -1292,7 +1298,7 @@ struct rank_comparer
 differences visible in the |rank| fields from descendent types to their
 parents, and updating the rank fields of the latter to reflect the change;
 repeating this until no more refinement occurs anywhere. The propagation is
-done by calling |merge_sort| for each group of previously indistinguishable
+done by calling |sort| for each group of previously indistinguishable
 types, which will separate types that can now be distinguished based on the
 |rank| fields of their descendents, while keeping together those that still
 cannot be distinguished. Due to our preparations, within such groups types
@@ -1334,7 +1340,8 @@ more rapidly, which we shall not complain about.
     @/@< Partition range of |type_perm| given by |*it| into sub-ranges that
          separated by places where |cmp.differ| holds; update |rank| fields
          of pointed-to elements accordingly, and in |groups| replace |it| by any
-         refinable groups thus formed, leaving |it| after those groups @>
+         refinable groups thus formed, leaving |it| pointing after those groups
+      @>
     }
   }
   while (changes);
@@ -1354,78 +1361,49 @@ turn out to be equivalent); doing |continue| avoids setting |changes|.
 @/{@; ++it; continue; } // so skip group whose refinement would change nothing
 }
 
-@ There is a subtlety below, in that we should not change any |rank| fields
-while we are calling |cmp| to inspect the result of sorting, since such
-changes might alter the results of later calls of |cmp| to no longer
-correspond to the relations as they held during sorting. So instead we set
-aside the new ranks that we want to assign to the types whose pointers are
-being moved here, in a temporary array |new_ranks|, to do the actual
-assignments only later once all refined groups have been established.
+@ Here we take a range of types previously not found to be distinguishable, but
+which the most recent call of |sort| has separated into at least two non-empty
+sub-ranges; our task is to update |groups| to reflect the refinement. There is a
+subtlety in doing so, in that we should not change any |rank| fields while we
+are calling |cmp.differ| to partition the result of sorting the |type_range|
+pointed to by |it|, since we want the result of these calls to correspond
+exactly to the relations as they held during sorting (if the relations are
+refined prematurely, we can get too much parts in the partition). So instead we
+do a separate pass to detect the places where successive elements in the sorted
+range verify |cmp.differ|, placing iterators for this places in |bars|, and then
+do a second pass to update the |rank| fields to the index of the first element
+in the so formed groups, and also put the refined groups (excluding the
+singletons) onto |groups| where they take the place of the group originally
+pointed to by |it|.
 
 @< Partition range of |type_perm| given by |*it| into sub-ranges... @>=
-#if 1
 {
-  unsigned int cur_rank = (*it->begin)->rank;
-    // start at rank for the whole (non-empty) range
-  for (auto jt=it->begin; jt!=it->end; )
-    // traverse range by groups, increment is inside loop
-  { const auto first_jt=jt;
-    unsigned int count=0; type_data* prev;
+  const auto start=it->begin, stop=it->end;
+  groups.erase(it); // fix and drop old range
 
+  containers::sl_list<tracker> bars; // places where new changes are detected
+  tracker prev = start;
+  for (auto jt=std::next(start); jt!=stop; ++jt)
+    if (cmp.differ(*prev,*jt))
+      bars.push_back(prev=jt);
+  bars.push_back(stop);
+@)
+  unsigned int cur_rank = (*start)->rank;
+    // start with old rank for the whole (non-empty) range
+  prev=start;
+  for (auto @[bar:bars@]@;@;)
+  { unsigned int count=0;
+    tracker t=prev;
     do
-    {@;
-      prev=*jt;
-      ++jt,++count;
-    }
-  @/while (jt!=it->end and not cmp.differ(prev,*jt));
-    // find a new group
-@)
-    for (auto p=first_jt; p!=jt; ++p)
-      (*p)->rank=cur_rank;
-      // (only) now replace old ranks by the one for the refined group
+      (*t)->rank=cur_rank;
+    while(++count, ++t!=bar);
 
-    if (count>=2) // don't create singleton groups
-      it=groups.insert(it,type_range(first_jt,jt));
-      // prepend a new pair and move across it
-@)
-    cur_rank += count; // next group will have a new, larger, rank
+    if (count>1) // non-singleton groups may need refining
+      it=groups.insert(it,type_range(prev,t)); // push to |groups|, and hop over
+    prev=t;
+    cur_rank += count; // next sub-range will have a new, larger, rank
   }
-  groups.erase(it);
-  // finally remove refined group; |it| should not be incremented
 }
-#else
-{ auto loc=it->first; // iterator into |type_perm|
-  std::vector<unsigned int> new_ranks;
-  new_ranks.reserve(std::distance(it->first,it->second));
-  unsigned int cur_rank=l.front()->rank;
-    // start at old rank for the whole (non-empty) range
-  for (auto jt=l.begin(); not l.at_end(jt); )
-    // traverse list |l| by groups, increment is inside loop
-  { const auto first_loc=loc;
-    unsigned int count=0; type_data* last;
-
-    do // find a new group
-    {@;
-      *loc=last=*jt;
-      new_ranks.push_back(cur_rank);
-      ++loc,++jt,++count;
-    }
-  @/while (not (l.at_end(jt) or cmp.differ(last,*jt)));
-
-    if (count>=2) // don't create singleton groups
-      it=groups.insert(it,std::make_pair(first_loc,loc)); // prepend this pair
-
-    cur_rank += count; // next group will have a new, larger, rank
-  }
-@)
-  assert(loc==it->second);
-
-  loc=it->first; // restart
-  for (auto p = new_ranks.begin(); p!=new_ranks.end(); ++p,++loc)
-    (*loc)->rank=*p;
-  groups.erase(it); // remove refined group; |it| should not be incremented
-}
-#endif
 
 @ Now it is time to finally copy entries back to (the
 |std::vector<type_binding>| base object of) |*this|, from |type_array|. All the
