@@ -9,7 +9,9 @@
 #include <stack> // for comparison
 #include "sl_list.h"
 
+#include <forward_list>
 
+// a "loud" but otherwise normal class
 class A
 {
   unsigned int a;
@@ -22,31 +24,35 @@ public:
   operator unsigned int () const { return a; }
 };
 
+// test std::unique_ptr<A> below
 typedef std::unique_ptr<A> uA;
 uA p;
 
 A::~A()  { std::cout << "destruct " << a << std::endl; }
 
+// structure holding a reference to A, so copy constructible but not assignable
 struct refA { A& a; };
 
+// build and return uniaque pointer value
 uA ff()
 { uA p (new A(4));
   return p;
 }
 
-
+// convert A implicitly to int
 unsigned int g(A& x) { return x; }
 
+// type for a list of non assignable items
 typedef atlas::containers::simple_list<refA> reflist;
 
 unsigned int tri (unsigned int n)
-{ static reflist list;
+{ static reflist list; // |static|, so all recursive instances share |list|
   A a = n;
   list.push_front(refA{a});
   unsigned int sum;
-  if (n>0)
+  if (n>0) // build up stack frames, with |list| holding references to each one
     sum = tri(n-1);
-  else
+  else // when |n| hits 0, print and add constents of list items
   { sum=0;
     for (auto it=list.begin(); not list.at_end(it); ++it)
     { std::cout << unsigned(it->a) << ',';
@@ -54,68 +60,103 @@ unsigned int tri (unsigned int n)
     }
     std::cout << std::endl;
   }
-  list.pop_front();
+  list.pop_front(); // remove reference that would become dangling soon
   return sum;
 }
 
+template<typename T> unsigned length (const std::forward_list<T>& l)
+{ return std::distance(l.begin(),l.end()); }
 
+// compare behaviour of different container classes
 void gg()
 {
   typedef atlas::containers::sl_list<unsigned> List;
-  typedef atlas::containers::mirrored_sl_list<unsigned> rev_List;
   typedef std::list<unsigned> STList;
+  typedef std::forward_list<unsigned> frwl;
   typedef std::vector<unsigned> vec;
 
   List a,b,c;
   STList sa,sb,sc;
+  frwl fa,fb,fc;
   vec va,vb,vc;
 
+  // make a = [2,4,1]
   a.insert(a.begin(),4);
   a.insert(a.end(),1);
   a.insert(a.begin(),2);
 
-  sa = STList(a.begin(),a.end());
-  va = vec(a.begin(),a.end());
+  // copy to the other containers
+  sa.assign(a.begin(),a.end());
+  fa.assign(a.begin(),a.end());
+  va.assign(a.begin(),a.end());
 
   b=a;
   sb=sa;
+  fb=fa;
   vb=va;
 
+  // insert 7,8 between 2 and 4 in copy of a, giving [2,7,8,4,1] in b's
   b.insert(b.insert(++b.begin(),7),8);
   sb.insert(sb.insert(++sb.begin(),7),8);
+  fb.insert_after(fb.insert_after(fb.begin(),7),8);
   vb.insert(vb.insert(++vb.begin(),7),8);
 
-  c=List(4,17);
+  // make c = [4,11,16,23,2,7,8,4,1]
+  c.assign({4,11,16,23});
+  sc.assign({4,11,16,23});
+  fc.assign({4,11,16,23});
+  vc.assign({4,11,16,23});
   c.insert(c.end(),b.begin(),b.end());
-  sc=sb;
-  vc=vb;
+  sc.insert(sc.end(),sb.begin(),sb.end());
+  fc.insert_after(std::next(fc.before_begin(),length(fc)),fb.begin(),fb.end());
+  vc.insert(vc.end(),vb.begin(),vb.end());
 
+  // erase initial '4', co c=[11,16,23,2,7,8,4,1]
   c.erase(c.begin());
   sc.erase(sc.begin());
+  fc.erase_after(fc.before_begin());
   vc.erase(vc.begin());
 
-  List::iterator p=++ ++c.begin();
-  STList::iterator sp=++ ++sc.begin();
+  // fix iterators at the start of c and friends
+  auto  p= c.begin();
+  auto sp=sc.begin();
+  auto fp=fc.before_begin();
+  // auto vp=vc.begin(); // would be invalidated
 
+  // now make a = [5, 2, 4, 1]
   a.insert(a.begin(),5);
   sa.insert(sa.begin(),5);
+  fa.insert_after(fa.before_begin(),5);
   va.insert(va.begin(),5);
 
-  for (List::const_iterator it=a.begin(); it!=a.end(); ++it)
+  // insert elements of a one at a time at start of c
+  // c=[1,4,2,5,11,16,23,2,7,8,4,1]
+  for (auto it=a.cbegin(); it!=a.end(); ++it)
     c.insert(c.begin(),*it);
-  for (STList::const_iterator it=sa.begin(); it!=sa.end(); ++it)
+  for (auto it=sa.cbegin(); it!=sa.end(); ++it)
     sc.insert(sc.begin(),*it);
-  for (vec::const_iterator it=va.begin(); it!=va.end(); ++it)
+  for (auto it=fa.cbegin(); it!=fa.end(); ++it)
+    fc.insert_after(fc.before_begin(),*it);
+  for (auto it=va.cbegin(); it!=va.end(); ++it)
     vc.insert(vc.begin(),*it);
 
-  c.erase(p);
-  sc.erase(sp);
+  // erase element in front of the iterator we stored (
+  c.erase(p); // removes initial '1'
+  sc.erase(sp); // removes '11'
+  fc.erase_after(fp); // removes initial '1'
   // vc.erase(vp); // UB
+  vc.erase(std::next(vc.begin(),va.size())); // removes '11'
 
+  // double up b by self-appending, b=[2,7,8,4,1,2,7,8,4,1]
   b.insert(b.end(),b.begin(),b.end());
   sb.insert(sb.end(),sb.begin(),sb.end());
+  fb.insert_after(std::next(fb.before_begin(),length(fb)),fb.begin(),fb.end());
+  vb.insert(vb.end(),vb.begin(),vb.end());
 
+  // test if forward list splice to adjecent position works:
+  fb.splice_after(fb.before_begin(),fb,fb.before_begin(),fb.end());
 
+  // now write all those containers to |std::cout|
   std::ostream_iterator<unsigned long> lister(std::cout,",");
   std::copy (a.begin(), a.end(), lister);
   std::cout << std::endl;
@@ -131,25 +172,19 @@ void gg()
   std::copy (sc.begin(), sc.end(), lister);
   std::cout << std::endl << std::endl;
 
+  std::copy (fa.begin(), fa.end(), lister);
+  std::cout << std::endl;
+  std::copy (fb.begin(), fb.end(), lister);
+  std::cout << std::endl;
+  std::copy (fc.begin(), fc.end(), lister);
+  std::cout << std::endl << std::endl;
+
   std::copy (va.begin(), va.end(), lister);
   std::cout << std::endl;
   std::copy (vb.begin(), vb.end(), lister);
   std::cout << std::endl;
   std::copy (vc.begin(), vc.end(), lister);
   std::cout << std::endl << std::endl;
-
-  typedef std::stack<unsigned,rev_List> Q;
-  Q q;
-  for (unsigned int i=0; i<8; ++i)
-  {
-    q.push(i); q.push(i*i); q.pop();
-  }
-  while (not q.empty())
-  {
-    std::cout << q.top() << ", ";
-     q.pop();
-  }
-  std::cout << std::endl;
 }
 
 typedef atlas::containers::simple_list<int> intlist;
@@ -380,10 +415,18 @@ int main()
   std::cout << L << std::endl;
   L.merge(it,L.end(),L.begin(),it,std::less<int>());
   std::cout << L << std::endl;
-  L.prepend ({ 3,8,17,3675,4,1,234,2343,-34,0,1024,34,532,39,22,236,23,39,49,39,46,-39,25});
+  L.prepend (
+  { 3,8,17,365,4,1,234,2343,-34,0,1024,34,532,39,22,236,23,39,49,39,46,-39,25}
+	     );
   std::cout << L << std::endl;
   auto fin = std::next(L.begin(),L.size()-2);
   L.sort(++L.begin(), fin);
+  std::cout << L << std::endl;
+  auto const begin=std::next(L.begin(),3);
+  auto end=std::next(begin,19);
+  end = L.reverse(begin,end);
+  std::cout << L << std::endl;
+  end = L.reverse(begin,end);
   std::cout << L << std::endl;
   tester();
 }
