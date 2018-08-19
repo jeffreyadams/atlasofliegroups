@@ -1,8 +1,7 @@
+// This is sl_list.h, defining a singly linked list container type
+
 /*
-  This is sl_list.h, a revolutionary singly linked list container type
-*/
-/*
-  Copyright (C) 2014 Marc van Leeuwen
+  Copyright (C) 2014,2018 Marc van Leeuwen
   part of the Atlas of Lie Groups and Representations
 
   For license information see the LICENSE file
@@ -714,17 +713,13 @@ template<typename T, typename Alloc>
 
   iterator splice (const_iterator pos, simple_list&& other,
 		   const_iterator begin, const_iterator end)
-  { if (pos==begin or pos==end) // int these cases with dangerous aliasing
+  { if (begin==end or pos==begin) // in these cases with dangerous aliasing
       return iterator(*pos.link_loc); // splicing is a no-op
-    link_type& from = *begin.link_loc;
-    link_type& to = *end.link_loc;
-    link_type& here = *pos.link_loc;
-    // now cycle forward |(from,here,to)|
-    link_type remainder = std::move(to); // save for gluing |other| later
-    to = std::move(here); // attach our remainder to spliced part
-    here = std::move(from); // and put spliced part after |pos|
-    from = std::move(remainder); // glue together pieces of |other|
-    return iterator(to);
+    // |pos==end| is a no-op too, but less likely and ends up properly handled
+    // cycle backward |(*pos.link_loc, *begin.link_loc, *end.link_loc)|:
+    pos.link_loc->swap(*begin.link_loc);
+    begin.link_loc->swap(*end.link_loc);
+    return iterator(*end.link_loc);
   }
 
   iterator splice (const_iterator pos, simple_list& other, const_iterator node)
@@ -840,20 +835,14 @@ template<typename T, typename Alloc>
 	while (not at_end(r) and less(*r,t))
 	  ++r;
 
-	// give symbolic name to link locations
-	link_type& pp = *p.link_loc;
-	link_type& rr = *r.link_loc;
-
-	// splice the range from |qq| to |rr| towards |pp| (do a 4-cycle)
-	link_type remainder = std::move(rr); // unlink tail of |other|
-	rr = std::move(pp); // attach our remainder to spliced part
-	pp = std::move(qq); // and put spliced part at our front
-	qq = std::move(remainder); // hold remaining part ot |other.head|
+	// cycle backward |(*p.link_loc, qq, *r.link_loc)|:
+	qq.swap(*p.link_loc);
+        qq.swap(*r.link_loc);
 
 	if (qq.get()==nullptr)
 	  return; // now |other.empty()|, and nothing left to do
 
-	p = const_iterator(rr); // skip over spliced-in part before incrementing
+	p = r; // skip over spliced-in part before incrementing
       }
     }
     while(not at_end(++p)); // advance one node in our list, stop when last
@@ -865,7 +854,7 @@ template<typename T, typename Alloc>
 		  const_iterator b1, const_iterator e1)
   { return merge(b0,e0,b1,e1,std::less<T>()); }
 
-  // internal merge non-overlapping increasing ranges, return end of merged
+  // merge non-overlapping increasing ranges, return end of merged range;
   // the merged range will be accessed from the original value of |b0|
   // except in the case |b0==e1| where the first range directly _follows_ the
   // second range; in that case the merged rang is accesss from |b1| instead
@@ -893,35 +882,23 @@ template<typename T, typename Alloc>
 	while (r!=e1 and less(*r,t))
 	  ++r;
 
-	// give symbolic name to link locations
-	link_type& pp = *b0.link_loc;
-	link_type& rr = *r.link_loc;
-
-	// splice the range from |qq| to |rr| towards |pp|
-	link_type remainder = std::move(rr); // unlink tail of |other|
-	rr = std::move(pp); // attach our remainder to spliced part
-	pp = std::move(qq); // and put spliced part at our front
-	qq = std::move(remainder); // hold remaining part ot |other.head|
+	// cycle backward |(*b0.link_loc, qq, *r.link_loc)|:
+	qq.swap(*b0.link_loc);
+        qq.swap(*r.link_loc);
 
 	if (qq.get()==end)
 	  return iterator(qq);
 
-	b0 = const_iterator(rr); // skip over spliced in part, before |++b0|
+	b0 = r; // skip over spliced in part, before |++b0|
       }
     }
 
-    // give symbolic name to link locations
-    link_type& pp = *b0.link_loc;
-    link_type& rr = *e1.link_loc;
+    if (e0==b1)
+      return iterator(*e1.link_loc); // nothing to do, and code below would fail
 
-    if (&pp==&qq) // equivalently whether |e0==b1|
-      return iterator(rr); // nothing to do, and code below would fail
-
-    // splice the range from |qq| to |rr| towards |pp|
-    link_type remainder = std::move(rr); // unlink tail of |other|
-    rr = std::move(pp); // attach our remainder to spliced part
-    pp = std::move(qq); // and put spliced part at our front
-    qq = std::move(remainder); // hold remaining part ot |other.head|
+    // cycle backward |(*b0.link_loc, qq, *e1.link_loc)|:
+    qq.swap(*b0.link_loc);
+    qq.swap(*e1.link_loc);
 
     return iterator(qq);
   }
@@ -985,7 +962,7 @@ template<typename T,typename Alloc>
 size_t length (const simple_list<T,Alloc>& l)
 {
   size_t result=0;
-  for (auto it=l.begin(); not l.at_end(it); ++it)
+  for (auto it=l.wbegin(); not l.at_end(it); ++it)
     ++result;
   return result;
 }
@@ -1001,8 +978,8 @@ size_t length (const sl_node<T,Alloc>* l)
 }
 
 template<typename T,typename Alloc>
-typename simple_list<T,Alloc>::const_iterator end
-  (const simple_list<T,Alloc>& l)
+typename simple_list<T,Alloc>::const_iterator
+  cend (const simple_list<T,Alloc>& l)
 {
   auto it=l.cbegin();
   while (not l.at_end(it))
@@ -1011,12 +988,13 @@ typename simple_list<T,Alloc>::const_iterator end
 }
 
 template<typename T,typename Alloc>
-typename simple_list<T,Alloc>::const_iterator cend
-  (const simple_list<T,Alloc>& l)
-{ return end(l); }
+typename simple_list<T,Alloc>::const_iterator
+  end (const simple_list<T,Alloc>& l)
+{ return cend(l); }
 
 template<typename T,typename Alloc>
-typename simple_list<T,Alloc>::iterator end (simple_list<T,Alloc>& l)
+typename simple_list<T,Alloc>::iterator
+  end (simple_list<T,Alloc>& l)
 {
   auto it=l.begin();
   while (not l.at_end(it))
@@ -1450,22 +1428,22 @@ template<typename T, typename Alloc>
       return append(first,last); // this will adapt |tail| and |node_count|
 
     // create extra range separately first: more efficient and ensures roll-back
-    sl_list insertion(first,last,get_node_allocator()); // build range to insert
+    sl_list aux(first,last,get_node_allocator()); // build range to insert
 
-    // finally splice |insertion| into our list at |pos|
+    // finally splice |aux| into our list at |pos|
     link_type& link = *pos.link_loc;
-    *insertion.tail = std::move(link);
-    link = std::move(insertion.head);
-    node_count += insertion.node_count;
-    return iterator(*insertion.tail); // now points at a link field in our list
-    // destruct now empty |insertion|; having wrong |tail|, |node_count| is OK
+    *aux.tail = std::move(link);
+    link = std::move(aux.head);
+    node_count += aux.node_count;
+    return iterator(*aux.tail); // end of inserted range
+    // destruct now empty |aux|; having wrong |tail|, |node_count| is OK
   }
 
   template<typename InputIt>
     iterator move_insert (const_iterator pos, InputIt first, InputIt last)
   {
     if (at_end(pos))
-    {
+    { // emulate non-existing "move" variation of |append(first,last)|
       for( ; first!=last; ++first)
       {
 	tail->reset(allocator_new(node_allocator(),std::move(*first)));
@@ -1476,7 +1454,7 @@ template<typename T, typename Alloc>
     }
 
     sl_list aux(get_node_allocator()); // prepare range to insert
-    // emulate non-existing nove-construct from iterator range:
+    // emulate non-existing "move construct from iterator range":
     for( ; first!=last; ++first)
     {
       aux.tail->reset(allocator_new(node_allocator(),std::move(*first)));
@@ -1484,11 +1462,12 @@ template<typename T, typename Alloc>
       ++node_count; // directly update OUR node count
     }
 
-    // now splice |aux| in place at |pos|
+    // finally splice |aux| into our list at |pos|
     link_type& link = *pos.link_loc;
     *aux.tail = std::move(link);
     link = std::move(aux.head);
     return iterator(*aux.tail); // end of inserted range
+    // destruct now empty |aux|; having wrong |tail| is OK
   }
 
   iterator erase (const_iterator pos)
@@ -1506,7 +1485,7 @@ template<typename T, typename Alloc>
     node_count -= std::distance(first,last);
     first.link_loc->reset(last.link_loc->release());
     if (at_end(first)) // whether we had |last==end()| initially
-      tail = first.link_loc; // we need to reestablish validity of |tail|
+      tail = first.link_loc; // reestablish validity of |tail|
     return iterator(*first.link_loc);
   }
 
@@ -1580,32 +1559,29 @@ template<typename T, typename Alloc>
 
   iterator splice (const_iterator pos, sl_list&& other,
 		   const_iterator begin, const_iterator end)
-  { if (begin==end // empty range is a nuisance (avoid |tail=end.link_loc|)
-	or pos==begin or pos==end) // as are cases with dangerous aliasing
-      return iterator(*pos.link_loc); // but splicing is a no-op in these cases
-    link_type& from = *begin.link_loc;
-    link_type& to = *end.link_loc;
-    link_type& here = *pos.link_loc;
+  { if (begin==end or pos==begin) // in these cases with dangerous aliasing
+      return iterator(*pos.link_loc); // splicing is a no-op
+    // |pos==end| is a no-op too, but less likely and ends up properly handled
+
     auto d = // correction to node counts; compute before making any changes
       this==&other ? 0 : std::distance(begin,end);
 
-    // the following adjustments are needed independently; they cannot conflict
-    if (pos==cend()) // if splicing to the end of |*this|
-      tail = &to; // then we must reset |tail| to end of spliced range
+    // the following adjustments are needed independently; they can only both
+    // apply when |this==&other| and |pos==end|; then the final effect is no-op
     if (end==other.cend()) // splicing may cut of tail from |other|
-      other.tail = &from; // in which case we must reset |other.tail|
+      other.tail = begin.link_loc; // in which case we must reset |other.tail|
+    if (pos==cend()) // if splicing to the end of |*this|
+      tail = end.link_loc; // then we must reset |tail| to end of spliced range
 
-    // now cycle forward |(from,here,to)|
-    link_type remainder = std::move(to); // save for gluing |other| later
-    to = std::move(here); // attach our remainder to spliced part
-    here = std::move(from); // and put spliced part after |pos|
-    from = std::move(remainder); // glue together pieces of |other|
+    // cycle backward |(*pos.link_loc, *begin.link_loc, *end.link_loc)|:
+    pos.link_loc->swap(*begin.link_loc);
+    begin.link_loc->swap(*end.link_loc);
 
     // adjust |node_count| fields
     node_count += d;
     other.node_count -= d;
 
-    return iterator(to);
+    return iterator(*end.link_loc);
   }
 
   iterator splice (const_iterator pos, sl_list& other, const_iterator node)
@@ -1622,8 +1598,8 @@ template<typename T, typename Alloc>
       tail = &(*from.link_loc)->next; // node now after |from| will become final
 
     // otherwise do the same as |simple_list<T>::reverse| does:
-    link_type remainder((*to.link_loc).release());
-    link_type p((*from.link_loc).release());
+    link_type remainder(to.link_loc->release());
+    link_type p(from.link_loc->release());
     while (p.get()!=nullptr)
     { // cycle forward |(remainder,p->next,p|)
       remainder.swap(p->next);
@@ -1722,7 +1698,7 @@ template<typename T, typename Alloc>
     const_iterator p = cbegin();
     link_type& qq = other.head;
     node_count += other.node_count; // this will hold at end
-    const auto other_tail = other.tail; // save pointer value; maybe needed
+    const auto other_tail = other.tail; // final link location; maybe needed
     other.set_empty(); // already prepare |tal| and |node_count| for emptying
 
     do // invariant: neither |*p.link_loc| nor |qq| hold null pointers
@@ -1735,20 +1711,14 @@ template<typename T, typename Alloc>
 	while (not at_end(r) and less(*r,t))
 	  ++r;
 
-	// give symbolic name to link locations
-	link_type& pp = *p.link_loc;
-	link_type& rr = *r.link_loc;
-
-	// splice the range from |qq| to |rr| towards |pp|
-	link_type remainder = std::move(rr); // unlink tail of |other|
-	rr = std::move(pp); // attach our remainder to spliced part
-	pp = std::move(qq); // and put spliced part at our front
-	qq = std::move(remainder); // hold remaining part ot |other.head|
+	// cycle backward |(*p.link_loc, qq, *r.link_loc)|:
+	qq.swap(*p.link_loc);
+        qq.swap(*r.link_loc);
 
 	if (qq.get()==nullptr)
 	  return; // now |other.empty()|, and nothing left to do
 
-	p = const_iterator(rr); // skip over spliced-in part before incrementing
+	p = r; // skip over spliced-in part before incrementing
       }
     }
     while(not at_end(++p)); // advance one node in our list, stop when last
@@ -1789,15 +1759,9 @@ template<typename T, typename Alloc>
 	while (r!=e1 and less(*r,t))
 	  ++r;
 
-	// give symbolic name to link locations
-	link_type& pp = *b0.link_loc;
-	link_type& rr = *r.link_loc;
-
-	// splice the range from |qq| to |rr| towards |pp|
-	link_type remainder = std::move(rr); // unlink tail of |other|
-	rr = std::move(pp); // attach our remainder to spliced part
-	pp = std::move(qq); // and put spliced part at our front
-	qq = std::move(remainder); // hold remaining part ot |other.head|
+	// cycle backward |(*b0.link_loc, qq, *r.link_loc)|:
+	qq.swap(*b0.link_loc);
+        qq.swap(*r.link_loc);
 
 	if (qq.get()==end)
 	{
@@ -1806,27 +1770,21 @@ template<typename T, typename Alloc>
 	  return iterator(qq);
 	}
 
-	b0 = const_iterator(rr); // skip over spliced in part, before |++b0|
+	b0 = r; // skip over spliced in part, before |++b0|
       }
     }
 
-    // give symbolic name to link locations
-    link_type& pp = *b0.link_loc;
-    link_type& rr = *e1.link_loc;
+     if (e0==b1)
+      return iterator(*e1.link_loc); // nothing to do, and code below would fail
 
-    if (&pp==&qq) // equivalently whether |e0==b1|
-      return iterator(rr); // nothing to do, and code below would fail
-
-    // splice the range from |qq| to |rr| towards |pp|
-    link_type remainder = std::move(rr); // unlink tail of |other|
-    rr = std::move(pp); // attach our remainder to spliced part
-    pp = std::move(qq); // and put spliced part at our front
-    qq = std::move(remainder); // hold remaining part ot |other.head|
+    // cycle backward |(*b0.link_loc, qq, *e1.link_loc)|:
+    qq.swap(*b0.link_loc);
+    qq.swap(*e1.link_loc);
 
     if (end==nullptr) // here |qq.get()==end| always
       tail = &qq;
-    else if (rr.get()==nullptr) // if merge was at the tail of the list
-      tail = &rr; // set |tail| to point to final link of merged part
+    else if (at_end(e1)) // if merge was at the tail of the list
+      tail = e1.link_loc; // set |tail| to point to final link of merged part
     return iterator(qq);
   }
 
@@ -1907,12 +1865,12 @@ typename sl_list<T,Alloc>::size_type length (const sl_list<T,Alloc>& l)
 { return l.size(); }
 
 template<typename T,typename Alloc>
-typename sl_list<T,Alloc>::const_iterator end (const sl_list<T,Alloc>& l)
-{ return l.end(); }
+typename sl_list<T,Alloc>::const_iterator cend (const sl_list<T,Alloc>& l)
+{ return l.cend(); }
 
 template<typename T,typename Alloc>
-typename sl_list<T,Alloc>::const_iterator cend (const sl_list<T,Alloc>& l)
-{ return end(l); }
+typename sl_list<T,Alloc>::const_iterator end (const sl_list<T,Alloc>& l)
+{ return cend(l); }
 
 template<typename T,typename Alloc>
 typename sl_list<T,Alloc>::iterator end (sl_list<T,Alloc>& l)
