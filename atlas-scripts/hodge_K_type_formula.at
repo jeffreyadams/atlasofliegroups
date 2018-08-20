@@ -1,6 +1,9 @@
 <K_type_formula.at
 <hodge_normalize.at
 
+{move to polynomial.at}
+set lower_unitriangular_inverse(i_poly_mat M)=transpose(upper_unitriangular_inverse(transpose(M)))
+
 set hodge_K_type_formula_verbose=false
 
 {hodge version of K_type_formula
@@ -61,8 +64,21 @@ fi;
  od
 od;(warnings,rv)
 
-set hodge_K_type_mat(K_Type mu, int N,ratvec v)=
-let ktypes=sort_by_height(K_parameters_norm_upto(mu.real_form,N,v)) then
+set fill_out([K_Type] ktypes, int N)=[K_Type]:
+let new_ktypes=ktypes in
+for mu in ktypes do
+ for tau in monomials(branch(parameter(mu),N)) do
+  if find(new_ktypes,LKT(tau))=-1 then new_ktypes#:=LKT(tau) fi
+ od
+od;new_ktypes
+
+set fill_out_recursively([K_Type] ktypes, int N)=
+let rec_fun f([K_Type] ktypes_in)=[K_Type]: 
+ let new=fill_out(ktypes_in,N) in 
+ if #new=#ktypes_in then new else f(new) fi in f(ktypes)
+
+set hodge_K_type_mat_long(K_Type mu, int N)=
+let ktypes=fill_out_recursively([mu],N) then
 {pairs=for mu in ktypes do (mu,hodge_K_type_formula(mu)) od  then}
 warnings=[Param]:[] then
 M=zero_poly_matrix(#ktypes) in
@@ -77,43 +93,33 @@ for tau in ktypes do
  od;
  M[index]:=row;
  warnings##:=new_warnings
-od;(find(ktypes,mu),ktypes,warnings,transpose(M))  {transpose(M) is lower triangular}
+od;
+let tM=transpose(M) in  {tM is lower triangular}
+(find(ktypes,mu),ktypes,warnings,tM, lower_unitriangular_inverse(tM))
 
-{move to polynomial.at}
-set lower_unitriangular_inverse(i_poly_mat M)=transpose(upper_unitriangular_inverse(transpose(M)))
+set hodge_K_type_mat(K_Type mu, int N)=(i_poly_mat,i_poly_mat):let(,,,A,B)=hodge_K_type_mat_long(mu,N)
+in (A,B)
 
-set test_hodge_K_type_mat(K_Type mu,int bound,ratvec v)=(i_poly_mat,[bool],bool):
-let (index,ktypes,params,M)=hodge_K_type_mat(mu,bound,v) then
-N=lower_unitriangular_inverse(M) then
-results=for i:#N do is_non_negative(transpose(N)[i]) od in (N,results,all(results))
+set test_hodge_K_type_mat(K_Type mu,int N)=(i_poly_mat,[bool],bool):
+let (A,B)=hodge_K_type_mat(mu,N) in let 
+results=for i:#B do is_non_negative(transpose(B)[i]) od in (B,results,all(results))
 
-set test_hodge_K_type_mat(K_Type mu,int bound)=(i_poly_mat,[bool],bool):
-test_hodge_K_type_mat(mu,bound,mu.root_datum.rho_check)
-
-set test_hodge_K_type_mat([K_Type] mus,int bound,ratvec v)=([([[vec]],bool)],bool):
-let pairs=for mu@i in mus do let (N,,r)=test_hodge_K_type_mat(mu,bound,v) in (N,r) od in
+set test_hodge_K_type_mat([K_Type] mus,int N)=([([[vec]],bool)],bool):
+let pairs=for mu@i in mus do let (N,,r)=test_hodge_K_type_mat(mu,N) in (N,r) od in
 (pairs, all( for (,r) in pairs do r od))
-
-set test_hodge_K_type_mat([K_Type] mus,int bound)=([([[vec]],bool)],bool):
-test_hodge_K_type_mat(mus,bound,mus[0].root_datum.rho_check)
 
 {graded version of branching_formula
  in the 1 Cartan case should give same result as branch_q (last argument returned)
  hope to modify it to work for all G
 }
-set hodge_branching_formula(K_Type mu, int N, ratvec v)=(int,[K_Type],[[vec]],[vec],[Param],[ParamPol]):
-let (index,ktypes,warnings,M)=hodge_K_type_mat(mu,N,v) then
-B=lower_unitriangular_inverse(M) then
+
+set hodge_branching_formula(K_Type mu, int N)=[ParamPol]:
+let (index,ktypes,,A,B)=hodge_K_type_mat_long(mu,N) then
 vector=transpose(B)[index] then
 temp=[(vec,Param)]:[] in
  for i:#vector do if vector[i]!=null(0) then  temp#:=(vector[i],parameter(ktypes[i])) fi od;
-(index,ktypes,B,vector,warnings,dearrange(temp))
+dearrange(temp)
 
-set hodge_branching_formula(K_Type mu,int N)=(int,[K_Type],[[vec]],[vec],[Param],[ParamPol]):
-hodge_branching_formula(mu,N,mu.real_form.rho_check)
-
-set hodge_branching_formula(Param p, int N, ratvec v)=(int,[K_Type],[[vec]],[vec],[Param],[ParamPol]):
-assert(=p.nu,"nu!=0");hodge_branching_formula(LKT(p),N,v)
-
-set hodge_branching_formula(Param p, int N)=(int,[K_Type],[[vec]],[vec],[Param],[ParamPol]):
+set hodge_branching_formula(Param p, int N)=
 assert(=p.nu,"nu!=0");hodge_branching_formula(LKT(p),N)
+
