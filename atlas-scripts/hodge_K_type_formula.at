@@ -14,7 +14,7 @@ where hodge HS identities are needed
 this should give the same result as qKtypeform in Fokko
 first returned argument is for debugging
 }
-set hodge_K_type_formula(K_Type mu)=([Param],qParamPol):
+set hodge_K_type_formula_long(K_Type mu)=([Param],qParamPol):
 let (P,mu_L)=tau_q(mu) then
  ()=assert(dimension(mu_L)=1,"mu_L is not one-dimensional");
  assert(let ind=theta_induce_standard(mu_L*0,mu.real_form) in
@@ -64,6 +64,8 @@ fi;
  od
 od;(warnings,rv)
 
+set hodge_K_type_formula(K_Type mu)=qParamPol:let (,f)=hodge_K_type_formula_long(mu) in f
+
 set fill_out([K_Type] ktypes, int N)=[K_Type]:
 let new_ktypes=ktypes in
 for mu in ktypes do
@@ -85,7 +87,7 @@ M=zero_poly_matrix(#ktypes) in
 for tau in ktypes do
  let index=find(ktypes,tau) then
  row=zero_poly_row(#ktypes) then
- (new_warnings,hktf)=hodge_K_type_formula(tau) then
+ (new_warnings,hktf)=hodge_K_type_formula_long(tau) then
  rf=rearrange(hktf) in
  for (g,kappa) in rf do
   let j=find(ktypes,LKT(kappa)) in
