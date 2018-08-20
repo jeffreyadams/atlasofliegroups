@@ -1,0 +1,108 @@
+<qdeform.at
+<is_normal.at
+
+set hodge_normalize_verbose=false
+
+{hodge version of normalizing a parameter}
+
+{NOTE: the type qParamPol is equal to [ParamPol]
+however we cannot use any ParamPols here, because atlas
+automatically finalizes parameters when put in a ParamPol
+recall (see qParamPol.at) if Q is a ParamPol,
+dearrange(Q)=[(vec,Param)]:[(f1,p1),...,(fn,pn)] <-> f1(v)*p_1 + ... + fn(v)*p_n
+we work entirely with these objects
+the downside is there is no collection of terms
+at the end, once all p_i are normal, do rearrange to get a qParamPol (and collect terms)
+}
+
+{
+I(x,lambda,nu) is a parameter
+gamma=infinitesimal character
+alpha: simple complex root in RC
+beta=theta_x(alpha)
+<gamma,alpha^v><0 alpha simple complex in RC
+I(x,lambda,nu) is equivalent to I(x,s_alpha\lambda,s_alpha\nu)
+graded version:
+let n=-2*<gamma,alpha^v> >0
+ so s_alpha(lambda)=lambda+n\alpha
+if beta<0 (i.e. descent) OR <gamma,beta^v> is not an integer
+ the formula is simple:
+I(x,lambda,nu) -> I(s_alpha x,s_alpha\lambda,s_\alpha\nu)
+if beta>0 (i.e. ascent) and <gamma,beta^v>\in Z then it is complicated:
+I(x,lambda,nu) -> vI(s_alpha x,s_alpha\lambda,s_\alpha\nu)+
+\sum_{k=1}^{k=[n/2]}v^{k-1}(v^2-1)I(x,s_alpha\lambda-k\alpha,s_alpha\nu-k\alpha)
+with one special case: if k=n/2 then replace (v^2-1) with (v-1)
+}
+set hodge_reflection_complex(Param p, int i)=[(vec,Param)]:
+{i=simple root number of complex root}
+assert(is_complex(i,p.x),"root is not complex");
+if hodge_normalize_verbose then
+prints("reflecting:", p, ", root #", i)
+fi;
+let G=p.real_form then
+x=p.x then
+theta=involution(x) then
+lambda=p.lambda then
+gamma=p.infinitesimal_character then
+alpha=G.simple_roots[i] then
+alpha_check=G.simple_coroots[i] then
+{magic term 2 here:}
+n=-2*gamma*alpha_check {in Z_{>0}} then
+ref=reflection(G,i) then
+q=parameter(cross(i,x),ref*lambda,ref*p.nu) in
+if hodge_normalize_verbose then
+ prints("n=",n,new_line,"lambda=",lambda,new_line,"alpha=",alpha,new_line,"lambda+n\alpha:", lambda+n*alpha,new_line,"q=",q)
+fi;
+ let rv=assert(n>=0,",alpha^v>>=0");
+{if descent then start with v*q, otherwise 1*q}
+if is_ascent(i,p.x) then [(vee,q)] else [(vec:[1],q)] fi in
+{if descent, subtract off multiples of alpha from q.lambda}
+if is_ascent(i,p.x) then
+ for k:n\2 from 1 do
+  let exp=if n=2*k then 1 else 2 fi then
+  f=poly_plus(vee^exp,[-1])  in {f=(v^2-1) except in special case k=n/2: f=(v-1)}
+  if hodge_normalize_verbose then 
+    prints("k=",k, " f=");printPoly(f)
+  fi;
+{ rv#:=(poly_product(vee^(k-1),f), parameter(q.x,q.lambda-k*alpha,q.nu-k*alpha)) od}
+{Do not add alpha to nu}
+ rv#:=(poly_product(vee^(k-1),f), parameter(q.x,q.lambda-k*alpha,q.nu)) od
+fi;
+rv
+
+{apply reflection #root_number to term #index}
+set hodge_reflection_complex(([vec,Param]) Q,int index,int root_number)=
+let rv=[] in
+ for (f,p)@i in Q do
+  if i=index then
+   let R=hodge_reflection_complex(p,root_number) in
+{   for (g,q) in R do rv#:=(poly_product(f,g),q) od}
+   for (g,q) in R do
+    rv#:=(poly_product(f,g),q) od;rv
+  else
+   rv#:=(f,p)
+  fi
+  od;
+rv
+
+{recursively hodge_normalize
+first version: return [(vec,ParamPol)]}
+set hodge_normalize_0([(vec,Param)] Q)=[(vec,Param)]:
+let rec_fun f ([(vec,Param)] R)=[(vec,Param)]:
+{ let ()=prints("R=",R) in}
+ let (normal,index,root_number)=is_normal(R) in
+{  let ()=prints("normal:", normal, " index=",index," root_number=",root_number) in}
+  if normal then R else
+  {prints("changing to:" ,hodge_reflection_complex(R,index), "with R:", R, "index: ", index);}
+  f(hodge_reflection_complex(R,index,root_number))
+  fi
+ in f(Q)
+
+{main version: return QParamPol}
+set hodge_normalize([(vec,Param)] Q)=qParamPol:
+let R=hodge_normalize_0(Q) in
+assert(let (normal,,)=is_normal(R) in normal,"R is not normal");
+dearrange(R)
+
+set hodge_normalize_0(Param p)=[(vec,Param)]:hodge_normalize_0([([1],p)])
+set hodge_normalize(Param p)=qParamPol:hodge_normalize([([1],p)])

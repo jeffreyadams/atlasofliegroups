@@ -1,11 +1,12 @@
 <K_type_formula.at
 <hodge_normalize.at
 
-set hodge_K_type_formula_verbose=true
+set hodge_K_type_formula_verbose=false
 
 {hodge version of K_type_formula
+ only using s_alpha s_beta
 this does handle non-normal parameters
-however it does not correctly handle non-standard parameters 
+however it does not correctly handle non-standard parameters
 where hodge HS identities are needed
 this should give the same result as qKtypeform in Fokko
 first returned argument is for debugging
@@ -18,26 +19,44 @@ let (P,mu_L)=tau_q(mu) then
  ()=assert(theta_induce_standard(mu_L,mu.real_form)*0=theta_induce_standard(mu_L*0,mu.real_form), "mismatch") then
 rv=qParamPol:[] then
 warnings=[Param]:[] then
-cf=character_formula(mu_L) in  {mu_L is 1-dimensional, not mu_L*0 here}
-{let ()=prints("cf=",cf) in}
+{for testing:
+cf=character_formula(mu_L) in  {mu_L is 1-dimensional}
+}
+cf=character_formula_one_dimensional(mu_L) in  {mu_L is 1-dimensional}
+if hodge_K_type_formula_verbose then
+prints("cf=",cf)
+fi;
 for c@q in cf do
-{ let ()=prints("doing q=",q," ", q.real_form) in}
+if hodge_K_type_formula_verbose then
+prints("doing q=",q," ",new_line, "Levi=",q.real_form)
+fi;
  let shifts=u_cap_s_rho_shifts_and_cardinalities(P,embed_KGB(x(q),mu.real_form)) in
+if hodge_K_type_formula_verbose then
+prints("#shifts:", #shifts,new_line);for (v,k) in shifts do prints(v, " ", k) od
+fi;
  for (v,k) in shifts do
   let coeff=vec:split_as_int(c)*(-1)^k*vee^(codim(x(q))+k) in
-{   let ()=prints(new_line,"doing shift: ", v, " ", k) in
-   let ()=prints("codim: ", codim(x(q))) in
-   let ()=prints("coeff: ", coeff) in}
+   if hodge_K_type_formula_verbose then
+    prints(new_line,"=============================================",new_line,"applying shift: ", v, " ", k);
+    prints("codim: ", codim(x(q)));
+    prints("coeff: ", coeff)
+   fi;
    let  new=
     let q_G=theta_induce_standard_warning(parameter(x(q),lambda(q)+v,nu(q)),P.real_form,hodge_K_type_formula_verbose) in
-{           let ()=prints("q_G:",q_G) in}
-     if is_zero(q_G) then nullqParamPol(mu.real_form) 
-     elif let (normal,)=is_normal(q_G) in not normal then  
+      if hodge_K_type_formula_verbose then
+       prints("q_G:",q_G, " [",height(q_G),"]")
+      fi;
+     if is_zero(q_G) then nullqParamPol(mu.real_form)
+     elif let (normal,)=is_normal(q_G) in not normal then
        warnings#:=q_G;
-       hodge_normalize(q_G) 
-     elif not is_standard(q_G) then [q_G] {need to implement handling this case also} 
+       if hodge_K_type_formula_verbose=true then
+       prints("normalizing: ", q_G) fi;
+       hodge_normalize(q_G)
+     elif not is_standard(q_G) then [q_G] {need to implement handling this case also}
      else [q_G] fi in
-{let     ()=prints("new:",new, "coeff:", coeff) in}
+     if hodge_K_type_formula_verbose then
+       prints("added:");print(coeff*new)
+     fi;
   rv+:=coeff*new
  od
 od;(warnings,rv)
@@ -64,8 +83,8 @@ od;(find(ktypes,mu),ktypes,warnings,transpose(M))  {transpose(M) is lower triang
 set lower_unitriangular_inverse(i_poly_mat M)=transpose(upper_unitriangular_inverse(transpose(M)))
 
 set test_hodge_K_type_mat(K_Type mu,int bound,ratvec v)=(i_poly_mat,[bool],bool):
-let (index,ktypes,params,M)=hodge_K_type_mat(mu,bound,v) then 
-N=lower_unitriangular_inverse(M) then 
+let (index,ktypes,params,M)=hodge_K_type_mat(mu,bound,v) then
+N=lower_unitriangular_inverse(M) then
 results=for i:#N do is_non_negative(transpose(N)[i]) od in (N,results,all(results))
 
 set test_hodge_K_type_mat(K_Type mu,int bound)=(i_poly_mat,[bool],bool):
@@ -77,11 +96,6 @@ let pairs=for mu@i in mus do let (N,,r)=test_hodge_K_type_mat(mu,bound,v) in (N,
 
 set test_hodge_K_type_mat([K_Type] mus,int bound)=([([[vec]],bool)],bool):
 test_hodge_K_type_mat(mus,bound,mus[0].root_datum.rho_check)
-
-
-
-
-
 
 {graded version of branching_formula
  in the 1 Cartan case should give same result as branch_q (last argument returned)

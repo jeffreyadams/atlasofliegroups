@@ -191,7 +191,16 @@ set q_recursive_deform_reverse (Param p) = qParamPol:
     end
   fi { apply that recursive function to the initial argument: } ([1],p)
 
-set print(qParamPol P, int n)=void:prints("lead term: v^",n);print(P)
+set q_recursive_deform(ParamPol P)=qParamPol:
+let rv=nullqParamPol(P.real_form) in
+for c@p in P do rv+:=c*q_recursive_deform(p) od;rv
+
+set q_recursive_deform(qParamPol Q)=
+let rQ=rearrange(Q) { =[(f1,p1),...,(fn,pn)] }in
+ dearrange(##for (c,p) in rQ do let qrd_p=rearrange(q_recursive_deform(p)) in
+  for (d,q) in qrd_p do (poly_product(c,d),q) od od)
+
+
 
 {------------------ some test functions--------------------}
 set qtest(Param p,int N)=bool:
