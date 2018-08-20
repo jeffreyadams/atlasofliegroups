@@ -5,6 +5,7 @@
 <K.at { for |K_0@RealForm| }
 <induction.at { for |embed_KGB@(KGBElt,RealForm)| }
 <center.at { for |lie_compact_radical)@InnerClass| }
+<all_finite_order.at
 
 
 { ComplexNilpotent: (RootDatum rd,vec H)
@@ -500,19 +501,6 @@ set add_element ([int] S,int s)=[int]:
    let result=[s] in for i in S do result#:=i od;
    result
 
-set complex_pseudo_Levi(RootDatum rd, [int] S)= RootDatum:
-   if #S=0 then Levi_datum(rd,[int]:[]) else
-   let roots=mat:for i in S do
-     if i<semisimple_rank(rd) then simple_roots(rd)[i]
-     else -highest_root(rd)
-     fi od then
-   coroots=mat:for i in S do
-     if i<semisimple_rank(rd)
-       then simple_coroots(rd)[i]
-       else -coroot(rd,highest_root(rd))
-     fi od in
-   root_datum(roots,coroots) fi
-
 set two_rho_of_pseudo_Levi (RootDatum rd,[int] list)=vec:
    dominant(rd,ratvec_as_vec(2*rho(complex_pseudo_Levi(rd,list))))
 
@@ -556,9 +544,47 @@ set is_conjugate_pseudo_Levi ([int] L, [int] M, RootDatum rd)=bool:
    else let prl=pseudo_roots(L,rd),prm=pseudo_roots(M,rd) in
    is_conjugate(prl,prm,W) fi
 
+{. Find all (true) pseudo-Levis in which a complex nilpotent orbit is
+   distinguished. .}
 set pseudo_Levis_of_orbit (ComplexNilpotent (rd,(),H))=[[int]]:
-   let ps=pseudo_Levis(rd) in let r=semisimple_rank(rd) in
-   ##for levi in ps do if #levi>0 and levi[0]=r and
-   any (for K in distinguished_H(rd,complex_pseudo_Levi(rd,levi)) do
-    dominant(K,rd)=dominant(H,rd) od)
-   then [levi] else [] fi od
+   let ps=pseudo_Levis(rd) then
+   r=semisimple_rank(rd) in
+   ##for levi in ps
+    do if #levi>0 and levi[0]=r and
+        any (for K in distinguished_H(rd,complex_pseudo_Levi(rd,levi))
+               do dominant(K,rd)=dominant(H,rd)
+               od) then [levi]
+       else [] fi
+    od
+
+{. Given a pseudo-Levi L, find all Kac diagrams of order m and whose
+   centralizer is conjugate to L. .}
+set Kac_diagrams_with_centralizer (RootDatum rd, [int] L,int m)=[[int]]:
+   let diags=Kac_classes_given_order(rd,m) in
+   ##for d in diags do
+         if is_conjugate_pseudo_Levi(zero_roots(rd,d),L,rd)
+         then [d] else []
+         fi od
+
+set order_of_center (RootDatum rd)=#Kac_classes_given_order(rd,1)
+
+set Kac_triples_simple (RootDatum rd, [int] L, int c)=[(int,[int],ratvec)]:
+   let d=d_L(rd,L) in
+     let list=Kac_diagrams_with_centralizer (rd,L,c*d) in
+        for diag in list do (c*d,diag,Kac_x(rd,diag)) od
+
+set Kac_triples (RootDatum rd, [int] L)=[(int,[int],ratvec)]:
+   let c=order_of_center (rd) in
+   ##for i:c+1 from 1 do Kac_triples_simple(rd,L,i) od
+
+set print_component_info (ComplexNilpotent (rd,(),H))=void:
+   let levis=pseudo_Levis_of_orbit (rd,(),H) in
+   if #levis=0 then prints("There are no pseudo-Levis for this orbit.")
+   else
+   for L in levis do prints("Pseudo-Levi:",L);
+   let triples=Kac_triples(rd,L) in
+   for (i,d,v) in triples do prints("Kac-Diagram=",d,"; order=",i,"; element of t:",v) od od fi
+
+set print_component_info (RootDatum rd)=void:
+   for orb in complex_nilpotent_orbits (rd) do prints();prints("Orbit:",orb);
+   print_component_info (orb) od

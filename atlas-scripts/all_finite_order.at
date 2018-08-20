@@ -1,8 +1,10 @@
 <misc.at
 <groups.at
 <sort.at
+<synthetic.at
 <affine.at
-<nilpotent_orbits.at
+<W_orbit.at
+<W_characters.at
 
 {. The labels m_i on the Dynkin diagram representing the coefficient of the
    simple roots in the highest root. The label of the lowest root is 1 (not
@@ -207,6 +209,19 @@ set Kac_classes_given_order (RootDatum rd,int order)=[[int]]:
 
 set zero_roots(RootDatum rd,[int] Kac)=[int]:
    ##for k@i in Kac do if k=0 then [i] else [] fi od
+
+set complex_pseudo_Levi(RootDatum rd, [int] S)= RootDatum:
+   if #S=0 then Levi_datum(rd,[int]:[]) else
+   let roots=mat:for i in S do
+     if i<semisimple_rank(rd) then simple_roots(rd)[i]
+     else -highest_root(rd)
+     fi od then
+   coroots=mat:for i in S do
+     if i<semisimple_rank(rd)
+       then simple_coroots(rd)[i]
+       else -coroot(rd,highest_root(rd))
+     fi od in
+   root_datum(roots,coroots) fi
 
 set centralizer_of_Kac (RootDatum rd, [int] Kac)=RootDatum:
    let roots=[int]:
