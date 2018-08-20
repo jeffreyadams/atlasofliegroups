@@ -591,7 +591,7 @@ template<typename T, typename Alloc>
   }
 
   template<typename... Args>
-    iterator emplace_insert (const_iterator pos, Args&&... args)
+    iterator emplace (const_iterator pos, Args&&... args)
   {
     link_type& link = *pos.link_loc;
     node_type* p =
@@ -1388,7 +1388,7 @@ template<typename T, typename Alloc>
   }
 
   template<typename... Args>
-    iterator emplace_insert (const_iterator pos, Args&&... args)
+    iterator emplace (const_iterator pos, Args&&... args)
   {
     link_type& link = *pos.link_loc;
     node_type* p =
