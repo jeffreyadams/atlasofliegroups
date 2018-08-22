@@ -569,6 +569,8 @@ template<typename T, typename Alloc>
       *it.link_loc = nullptr; // truncate
   }
 
+  size_type max_size() const noexcept
+  { return std::allocator_traits<Alloc>::max_size(get_allocator()); }
 
   iterator insert (const_iterator pos, const T& val)
   {
@@ -641,6 +643,14 @@ template<typename T, typename Alloc>
     link = std::move(insertion.head);
     return iterator(*p.link_loc); // now points at a link field in our list
   }
+
+  iterator insert (const_iterator pos, simple_list&& other)
+  { auto begin=other.cbegin(), end=begin;
+    while (not other.at_end(end))
+      ++end;
+    return splice(pos,other,begin,end);
+  }
+
 
   template<typename InputIt>
     iterator move_insert (const_iterator pos, InputIt first, InputIt last)
@@ -730,27 +740,38 @@ template<typename T, typename Alloc>
 
   void reverse ()
   {
+    if (empty() or singleton())
+      return;
     link_type result(nullptr);
-    while (head!=nullptr)
+    do
     { // cycle forward |(result,head->next,head|)
       // prefer 2 swaps over 4 moves: this avoids any deleter stuff
       // compilers that optimise away deleters can also optimise the 3-cycle
       result.swap(head->next); // attach result to next node
       result.swap(head); // now |result| is extended, |head| shortened
     }
-    head=std::move(result); // attach result at |head|
+    while (head->next.get()!=nullptr);
+    head->next.reset(result.release()); // attach result after |head|
   }
 
-  void reverse (const_iterator from, const_iterator to)
+  // reverse range and return new ending iterator
+  iterator reverse (const_iterator from, const_iterator to)
   {
-    link_type remainder((*to.link_loc).release());
-    link_type p((*from.link_loc).release()); // put in local variable for speed
-    while (p.get()!=nullptr)
+    if (from==to)
+      return iterator(*to.link_loc);
+    link_type remainder(std::move(*to.link_loc));
+    link_type p(std::move(*from.link_loc)); // put in local variable for speed
+    iterator result(p->next); // will become final iterator of reversed range
+
+    while (&p->next!=to.link_loc) // stop when at final node of original range
     { // cycle forward |(remainder,p->next,p|)
       remainder.swap(p->next); // attach remainder to next node
       remainder.swap(p); // now |remainder| is extended and |p| shortened
     }
-    from.link_loc->reset(remainder.release()); // attach remainder at |from|
+
+    to.link_loc->reset(remainder.release()); // link remainder to final node
+    from.link_loc->reset(p.release()); // and link that node after |from|
+    return result;
   }
 
   void remove(const T& value)
@@ -903,6 +924,7 @@ template<typename T, typename Alloc>
     return iterator(qq);
   }
 
+private:
   // sort range |[its[from],to)| of size |n|, setting |to| to new final iterator
   // it is supposed that |its[from+i]==std::next(it[from],i)| for |0<=i<n|
   template<typename Compare>
@@ -921,6 +943,7 @@ template<typename T, typename Alloc>
 
     to = merge(its[from],mid,mid,to,less);
   }
+public:
 
   void sort () { sort(std::less<T>()); }
   template<typename Compare> void sort (Compare less)
@@ -1439,6 +1462,9 @@ template<typename T, typename Alloc>
     // destruct now empty |aux|; having wrong |tail|, |node_count| is OK
   }
 
+  iterator insert (const_iterator pos, sl_list&& other)
+  { return splice(pos,other,other.begin(),other.end()); }
+
   template<typename InputIt>
     iterator move_insert (const_iterator pos, InputIt first, InputIt last)
   {
@@ -1592,20 +1618,28 @@ template<typename T, typename Alloc>
 
   void reverse () { reverse(cbegin(),cend()); }
 
-  void reverse (const_iterator from, const_iterator to)
+  // reverse range and return new ending iterator
+  iterator reverse (const_iterator from, const_iterator to)
   {
-    if (to==end() and from!=to) // if reversing a non-empty range at the back
+    if (from==to or std::next(from)==to) // avoid work when |length<=1|
+      return iterator(*to.link_loc);
+    if (to==end()) // if reversing a non-empty range at the back
       tail = &(*from.link_loc)->next; // node now after |from| will become final
 
-    // otherwise do the same as |simple_list<T>::reverse| does:
-    link_type remainder(to.link_loc->release());
-    link_type p(from.link_loc->release());
-    while (p.get()!=nullptr)
+    link_type remainder(std::move(*to.link_loc));
+    link_type p(std::move(*from.link_loc)); // put in local variable for speed
+    iterator result(p->next); // will become final iterator of reversed range
+
+    do
     { // cycle forward |(remainder,p->next,p|)
-      remainder.swap(p->next);
-      remainder.swap(p);
+      remainder.swap(p->next); // attach remainder to next node
+      remainder.swap(p); // now |remainder| is extended and |p| shortened
     }
-    from.link_loc->reset(remainder.release());
+    while (&p->next!=to.link_loc); // stop when at final node of original range
+
+    to.link_loc->reset(remainder.release()); // link remainder to final node
+    from.link_loc->reset(p.release()); // and link that node after |from|
+    return result;
   }
 
 
@@ -1788,6 +1822,7 @@ template<typename T, typename Alloc>
     return iterator(qq);
   }
 
+private:
   // sort range |[its[from],to)| of size |n|, setting |to| to new final iterator
   // it is supposed that |its[from+i]==std::next(it[from],i)| for |0<=i<n|
   template<typename Compare>
@@ -1806,6 +1841,7 @@ template<typename T, typename Alloc>
 
     to = merge(its[from],mid,mid,to,less);
   }
+public:
 
   void sort () { sort(std::less<T>()); }
   template<typename Compare> void sort (Compare less)
