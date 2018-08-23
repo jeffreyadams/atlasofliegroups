@@ -18,9 +18,8 @@
 #include <iterator>
 #include <type_traits>
 #include <initializer_list>
+#include <algorithm>
 #include <vector>
-
-#include "tags.h"
 
 namespace atlas {
 
@@ -31,7 +30,7 @@ template<typename T,typename Alloc>
 template<typename T,typename Alloc>
   class sl_list;
 
-// when Alloc is not std::allocator, we need a deleter class for |unique_ptr|
+// when Alloc is not |std::allocator|, we need a deleter class for |unique_ptr|
 // that calls the Alloc destroyer and then deallocator, rather than |::delete|
 
 template <typename Alloc> struct allocator_deleter
@@ -41,18 +40,10 @@ template <typename Alloc> struct allocator_deleter
 
   constexpr allocator_deleter ()  = default;
   allocator_deleter (const allocator_deleter&) = default;
-  void operator() (pointer p)
+  void operator() (pointer p) noexcept
   {
-#ifdef incompletecpp11
-    if (p!=pointer())
-    {
-      this->destroy(&*p);
-      this->deallocate(p,1);
-    }
-#else
     this->destroy(std::addressof(*p));
     this->deallocate(p,1);
-#endif
   }
 };
 
@@ -67,11 +58,7 @@ template <typename Alloc, typename... Args>
   pointer qq = a.allocate(1);
   try
   {
-#ifdef incompletecpp11
-    value_type* q=&*qq; // this ought not throw
-#else
     value_type* q=std::addressof(*qq); // this ought not throw
-#endif
     a.construct(q,std::forward<Args>(args)...);
     return q;
   }
@@ -81,8 +68,10 @@ template <typename Alloc, typename... Args>
     throw;
   }
 }
+
+
 /* The basic node type used by |simple_list| and |sl_list|
-   It needs the Alloc template parameter to paramaterise |std::unique_ptr|
+   It needs the |Alloc| template parameter to paramaterise |std::unique_ptr|
  */
 template<typename T,typename Alloc = std::allocator<T> >
 struct sl_node
@@ -100,15 +89,11 @@ struct sl_node
   : next(nullptr), contents(std::forward<Args>(args)...) {}
 
   sl_node(const sl_node&) = delete;
-#ifndef incompletecpp11
   sl_node(sl_node&&) = default;
-#else
-  sl_node(sl_node&& o)
-  : next(std::move(o.next)), contents(std::move(o.contents)) {}
-#endif
-  ~sl_node() // dtor could be empty, but would imply recursive destruction
-  { while (next.get()!=nullptr) // this loop bounds recursion depth to 2
-      next.reset(next->next.release()); // destroys just the following node
+  ~sl_node() // could be empty, but would imply recursive destruction
+  { // so to avoid potential excessive stack build-up, we control the process
+    while (next.get()!=nullptr) // this loop bounds recursion depth to 2
+      next.reset(next->next.release()); // this destroys just the following node
   }
 }; // |class sl_node| template
 
@@ -282,15 +267,12 @@ template<typename T, typename Alloc>
 
  public:
   // access to the allocator, which is our base object
-  Alloc get_allocator () const { return *this; } // convert back to |Alloc|
-  const node_alloc_type& get_node_allocator () const { return *this; }
-  node_alloc_type& node_allocator () { return *this; }
+  Alloc get_allocator () const noexcept { return *this; } // convert to |Alloc|
+  const node_alloc_type& get_node_allocator () const noexcept { return *this; }
+  node_alloc_type& node_allocator () noexcept { return *this; }
 
   // constructors
-  explicit simple_list () // empty list
-  : node_alloc_type(), head(nullptr) {}
-
-  explicit simple_list (const Alloc& a) // empty list, explicit allocator
+  explicit simple_list (const Alloc& a=Alloc()) // empty list
   : node_alloc_type(a), head(nullptr) {}
 
   explicit simple_list (Alloc&& a) // empty list, explicit moved allocator
@@ -299,14 +281,14 @@ template<typename T, typename Alloc>
   explicit simple_list (node_type* raw) // convert from raw pointer
   : node_alloc_type(), head(raw) {}
 
-  explicit simple_list (node_type* raw,const Alloc& a)
+  explicit simple_list (node_type* raw, const Alloc& a)
   : node_alloc_type(a), head(raw) {}
 
   explicit simple_list (node_type* raw, Alloc&& a)
-    : node_alloc_type(std::move(a)), head(raw) {}
+  : node_alloc_type(std::move(a)), head(raw) {}
 
-  simple_list (const simple_list& x) // copy contructor
-    : node_alloc_type(x) // nothing better available with gcc 4.6
+  simple_list (const simple_list& x, const Alloc& a) // copy ctor with allocator
+  : node_alloc_type(a)
   , head(nullptr)
   {
     link_type* tail = &head;
@@ -318,7 +300,21 @@ template<typename T, typename Alloc>
     }
   }
 
-  simple_list (simple_list&& x) // move contructor
+  simple_list (const simple_list& x)
+  : node_alloc_type(std::allocator_traits<Alloc>::
+		    select_on_container_copy_construction(x.get_allocator()))
+  , head(nullptr)
+  {
+    link_type* tail = &head;
+    for (node_type* p=x.head.get(); p!=nullptr; p=p->next.get())
+    {
+      node_type* q = allocator_new(node_allocator(),p->contents);
+      tail->reset(q); // link in new final node
+      tail=&q->next;  // point |tail| to its link field, to append there next
+    }
+  }
+
+  simple_list (simple_list&& x) noexcept // move constructor
   : node_alloc_type(std::move(x)), head(x.head.release())
   { }
 
@@ -449,7 +445,7 @@ template<typename T, typename Alloc>
     }
   }
 
-  void clear ()
+  void clear () noexcept
   {
     head.reset(); // smart pointer magic destroys all nodes
   }
@@ -506,15 +502,15 @@ template<typename T, typename Alloc>
   node_type* release() { return head.release(); } // convert to raw pointer
 
   //iterators
-  iterator begin() { return iterator(head); }
-  weak_iterator wbegin() { return weak_iterator(head.get()); }
+  iterator begin() noexcept { return iterator(head); }
+  weak_iterator wbegin() noexcept { return weak_iterator(head.get()); }
 
   // instead of |end()| we provide the |at_end| condition
   static bool at_end (iterator p) { return p.at_end(); }
   static bool at_end (weak_iterator p) { return p.at_end(); }
 
   // for weak pointers getting the end is efficient, so we supply a method
-  weak_iterator wend () { return weak_iterator(nullptr); }
+  weak_iterator wend () noexcept { return weak_iterator(nullptr); }
 
   T& front () { return head->contents; }
   void pop_front ()
@@ -546,7 +542,7 @@ template<typename T, typename Alloc>
     head.reset(p); // make new node the first one in the list
   }
 
-  bool empty () const { return head.get()==nullptr; }
+  bool empty () const noexcept { return head.get()==nullptr; }
   bool singleton () const { return not empty() and head->next.get()==nullptr; }
   void resize (size_type n)
   {
@@ -738,7 +734,7 @@ template<typename T, typename Alloc>
   iterator splice (const_iterator pos, simple_list&& other, const_iterator node)
   { return splice(pos,other,node,std::next(node)); }
 
-  void reverse ()
+  void reverse () noexcept
   {
     if (empty() or singleton())
       return;
@@ -747,7 +743,7 @@ template<typename T, typename Alloc>
     { // cycle forward |(result,head->next,head|)
       // prefer 2 swaps over 4 moves: this avoids any deleter stuff
       // compilers that optimise away deleters can also optimise the 3-cycle
-      result.swap(head->next); // attach result to next node
+      result.swap(head->next); // attach current |result| to next node
       result.swap(head); // now |result| is extended, |head| shortened
     }
     while (head->next.get()!=nullptr);
@@ -755,19 +751,21 @@ template<typename T, typename Alloc>
   }
 
   // reverse range and return new ending iterator
-  iterator reverse (const_iterator from, const_iterator to)
+  iterator reverse (const_iterator from, const_iterator to) noexcept
   {
-    if (from==to)
+    if (from==to or std::next(from)==to)
       return iterator(*to.link_loc);
+
     link_type remainder(std::move(*to.link_loc));
     link_type p(std::move(*from.link_loc)); // put in local variable for speed
     iterator result(p->next); // will become final iterator of reversed range
 
-    while (&p->next!=to.link_loc) // stop when at final node of original range
+    do
     { // cycle forward |(remainder,p->next,p|)
       remainder.swap(p->next); // attach remainder to next node
       remainder.swap(p); // now |remainder| is extended and |p| shortened
     }
+    while (&p->next!=to.link_loc); // stop when at final node of original range
 
     to.link_loc->reset(remainder.release()); // link remainder to final node
     from.link_loc->reset(p.release()); // and link that node after |from|
@@ -962,19 +960,21 @@ public:
 
   // accessors
   const T& front () const { return head->contents; }
-  const_iterator begin () const { return const_iterator(head); }
-  const_iterator cbegin () const { return const_iterator(head); }
+  const_iterator begin () const noexcept { return const_iterator(head); }
+  const_iterator cbegin () const noexcept { return const_iterator(head); }
   // instead of |end()| we provide the |at_end| condition
   static bool at_end (const_iterator p) { return p.at_end(); }
   static bool at_end (weak_const_iterator p) { return p.at_end(); }
 
   // for weak pointers getting the end is efficient, so we supply methods
-  weak_const_iterator wbegin () const
-    { return weak_const_iterator(head.get()); }
-  weak_const_iterator wcbegin () const
-    { return weak_const_iterator(head.get()); }
-  weak_const_iterator wend ()  const { return weak_const_iterator(nullptr); }
-  weak_const_iterator wcend () const { return weak_const_iterator(nullptr); }
+  weak_const_iterator wbegin () const noexcept
+  { return weak_const_iterator(head.get()); }
+  weak_const_iterator wcbegin () const noexcept
+  { return weak_const_iterator(head.get()); }
+  weak_const_iterator wend ()  const noexcept
+  { return weak_const_iterator(nullptr); }
+  weak_const_iterator wcend () const noexcept
+  { return weak_const_iterator(nullptr); }
 
 }; // |class simple_list<T,Alloc>|
 
@@ -1002,7 +1002,7 @@ size_t length (const sl_node<T,Alloc>* l)
 
 template<typename T,typename Alloc>
 typename simple_list<T,Alloc>::const_iterator
-  cend (const simple_list<T,Alloc>& l)
+  cend (const simple_list<T,Alloc>& l) noexcept
 {
   auto it=l.cbegin();
   while (not l.at_end(it))
@@ -1012,12 +1012,12 @@ typename simple_list<T,Alloc>::const_iterator
 
 template<typename T,typename Alloc>
 typename simple_list<T,Alloc>::const_iterator
-  end (const simple_list<T,Alloc>& l)
+  end (const simple_list<T,Alloc>& l) noexcept
 { return cend(l); }
 
 template<typename T,typename Alloc>
 typename simple_list<T,Alloc>::iterator
-  end (simple_list<T,Alloc>& l)
+  end (simple_list<T,Alloc>& l) noexcept
 {
   auto it=l.begin();
   while (not l.at_end(it))
@@ -1067,26 +1067,20 @@ template<typename T, typename Alloc>
   size_type node_count;
 
   // an auxiliary function occasionally called when |head| has been released
-  void set_empty () { tail=&head; node_count=0; }
+  void set_empty () noexcept { tail=&head; node_count=0; }
 
  public:
   // access to the allocator, which is our base object
-  Alloc get_allocator () const { return *this; } // convert back to |Alloc|
-  const node_alloc_type& get_node_allocator () const { return *this; }
-  node_alloc_type& node_allocator () { return *this; }
+  Alloc get_allocator () const noexcept { return *this; } // convert to |Alloc|
+  const node_alloc_type& get_node_allocator () const noexcept { return *this; }
+  node_alloc_type& node_allocator () noexcept { return *this; }
 
   // constructors
-  explicit sl_list () // empty list
-    : node_alloc_type(), head(nullptr), tail(&head), node_count(0) {}
-
-  explicit sl_list (const Alloc& a) // empty list, explicit allocator
+  explicit sl_list (const Alloc& a=Alloc()) // empty list
     : node_alloc_type(a), head(nullptr), tail(&head), node_count(0) {}
 
-  explicit sl_list (Alloc&& a) // empty list, explicit moved allocator
-    : node_alloc_type(a), head(nullptr), tail(&head), node_count(0) {}
-
-  sl_list (const sl_list& x) // copy contructor
-  : node_alloc_type(x)
+  sl_list (const sl_list& x, const Alloc& a) // copy constructor with allocator
+  : node_alloc_type(a)
   , head(nullptr)
   , tail(&head)
   , node_count(x.node_count)
@@ -1099,7 +1093,42 @@ template<typename T, typename Alloc>
     }
   }
 
-  sl_list (sl_list&& x) // move contructor
+  sl_list (sl_list&& x, const Alloc& a) // move constructor with allocator
+  : node_alloc_type(a)
+  , head(nullptr)
+  , tail()
+  , node_count()
+  {
+    if (x.get_allocator()==a) // if allocators are equal, proceed as "move"
+    {
+      head.reset(x.head.release());
+      tail = x.empty() ? &head : x.tail;
+      node_count = x.node_count;
+    }
+    else // unequal allocators, so proceed as "copy, but moving elements"
+    {
+      set_empty(); // start out properly empty
+      move_insert(begin(),x.wbegin(),x.wend());
+      x.clear();
+    }
+  }
+
+  sl_list (const sl_list& x) // copy constructor
+    : node_alloc_type(std::allocator_traits<Alloc>::
+		      select_on_container_copy_construction(x.get_allocator()))
+  , head(nullptr)
+  , tail(&head)
+  , node_count(x.node_count)
+  {
+    for (node_type* p=x.head.get(); p!=nullptr; p=p->next.get())
+    {
+      node_type* q = allocator_new(node_allocator(),p->contents);
+      tail->reset(q); // link in new final node
+      tail=&q->next;  // point |tail| to its link field, to append there next
+    }
+  }
+
+  sl_list (sl_list&& x) noexcept // move constructor
   : node_alloc_type(std::move(x))
   , head(x.head.release())
   , tail(x.empty() ? &head : x.tail)
@@ -1223,7 +1252,7 @@ template<typename T, typename Alloc>
     }
   }
 
-  void clear ()
+  void clear () noexcept
   {
     head.reset(); // smart pointer magic destroys all nodes
     set_empty();
@@ -1288,10 +1317,10 @@ template<typename T, typename Alloc>
   }
 
   //iterators
-  iterator begin () { return iterator(head); }
-  iterator end ()   { return iterator(*tail); }
-  weak_iterator wbegin () { return weak_iterator(head.get()); }
-  weak_iterator wend ()   { return weak_iterator(nullptr); }
+  iterator begin () noexcept { return iterator(head); }
+  iterator end ()   noexcept { return iterator(*tail); }
+  weak_iterator wbegin () noexcept { return weak_iterator(head.get()); }
+  weak_iterator wend ()   noexcept { return weak_iterator(nullptr); }
 
   T& front () { return head->contents; }
   void pop_front ()
@@ -1366,7 +1395,7 @@ template<typename T, typename Alloc>
     ++node_count;
   }
 
-  bool empty () const { return tail==&head; } // or |node_count==0|
+  bool empty () const noexcept { return tail==&head; } // or |node_count==0|
   bool singleton () const { return node_count==1; }
   size_type size () const { return node_count; }
   void resize (size_type n)
@@ -1383,6 +1412,9 @@ template<typename T, typename Alloc>
     else if (n<size())
       erase(std::next(begin(),n),end());
   }
+
+  size_type max_size() const noexcept
+  { return std::allocator_traits<Alloc>::max_size(get_allocator()); }
 
   iterator insert (const_iterator pos, const T& val)
   {
@@ -1616,10 +1648,10 @@ template<typename T, typename Alloc>
   iterator splice (const_iterator pos, sl_list&& other, const_iterator node)
   { return splice(pos,std::move(other),node,std::next(node)); }
 
-  void reverse () { reverse(cbegin(),cend()); }
+  void reverse () noexcept { reverse(cbegin(),cend()); }
 
   // reverse range and return new ending iterator
-  iterator reverse (const_iterator from, const_iterator to)
+  iterator reverse (const_iterator from, const_iterator to) noexcept
   {
     if (from==to or std::next(from)==to) // avoid work when |length<=1|
       return iterator(*to.link_loc);
@@ -1878,16 +1910,18 @@ public:
 
   // accessors
   const T& front () const { return head->contents; }
-  const_iterator begin () const { return const_iterator(head); }
-  const_iterator end ()   const { return const_iterator(*tail); }
-  const_iterator cbegin () const { return const_iterator(head); }
-  const_iterator cend ()   const { return const_iterator(*tail); }
-  weak_const_iterator wbegin () const
-    { return weak_const_iterator(head.get()); }
-  weak_const_iterator wcbegin () const
-    { return weak_const_iterator(head.get()); }
-  weak_const_iterator wend () const   { return weak_const_iterator(nullptr); }
-  weak_const_iterator wcend () const  { return weak_const_iterator(nullptr); }
+  const_iterator begin () const noexcept { return const_iterator(head); }
+  const_iterator end ()   const noexcept { return const_iterator(*tail); }
+  const_iterator cbegin () const noexcept { return const_iterator(head); }
+  const_iterator cend ()   const noexcept { return const_iterator(*tail); }
+  weak_const_iterator wbegin () const noexcept
+  { return weak_const_iterator(head.get()); }
+  weak_const_iterator wcbegin () const noexcept
+  { return weak_const_iterator(head.get()); }
+  weak_const_iterator wend () const noexcept
+  { return weak_const_iterator(nullptr); }
+  weak_const_iterator wcend () const noexcept
+  { return weak_const_iterator(nullptr); }
 
   // in addition to |end()| we provide the |at_end| condition
   static bool at_end (const_iterator p) { return p.link_loc->get()==nullptr; }
@@ -1897,25 +1931,49 @@ public:
 
 // external functions for |sl_list<T,Alloc>|
 template<typename T,typename Alloc>
-typename sl_list<T,Alloc>::size_type length (const sl_list<T,Alloc>& l)
-{ return l.size(); }
+typename sl_list<T,Alloc>::size_type
+length (const sl_list<T,Alloc>& l) { return l.size(); }
 
 template<typename T,typename Alloc>
-typename sl_list<T,Alloc>::const_iterator cend (const sl_list<T,Alloc>& l)
-{ return l.cend(); }
+typename sl_list<T,Alloc>::const_iterator
+cend (const sl_list<T,Alloc>& l) noexcept { return l.cend(); }
 
 template<typename T,typename Alloc>
-typename sl_list<T,Alloc>::const_iterator end (const sl_list<T,Alloc>& l)
-{ return cend(l); }
+typename sl_list<T,Alloc>::const_iterator
+end (const sl_list<T,Alloc>& l) noexcept { return cend(l); }
 
 template<typename T,typename Alloc>
-typename sl_list<T,Alloc>::iterator end (sl_list<T,Alloc>& l)
-{ return l.end(); }
+typename sl_list<T,Alloc>::iterator
+end (sl_list<T,Alloc>& l) noexcept { return l.end(); }
 
 // overload non-member |swap|, so argument dependent lookup will find it
 template<typename T,typename Alloc>
   void swap(sl_list<T,Alloc>& x, sl_list<T,Alloc>& y) { x.swap(y); }
 
+template<typename T,typename Alloc>
+  bool operator==(const sl_list<T,Alloc>& x, const sl_list<T,Alloc>& y)
+{ return std::equal(x.wbegin(),x.wend(),y.wbegin(),y.wend()); }
+
+template<typename T,typename Alloc>
+  bool operator!=(const sl_list<T,Alloc>& x, const sl_list<T,Alloc>& y)
+{ return not(x==y); }
+
+template<typename T,typename Alloc>
+  bool operator<(const sl_list<T,Alloc>& x, const sl_list<T,Alloc>& y)
+{ return std::lexicographical_compare(x.wbegin(),x.wend(),
+				      y.wbegin(),y.wend()); }
+
+template<typename T,typename Alloc>
+  bool operator>(const sl_list<T,Alloc>& x, const sl_list<T,Alloc>& y)
+{ return y<x; }
+
+template<typename T,typename Alloc>
+  bool operator<=(const sl_list<T,Alloc>& x, const sl_list<T,Alloc>& y)
+{ return not(y<x); }
+
+template<typename T,typename Alloc>
+  bool operator>=(const sl_list<T,Alloc>& x, const sl_list<T,Alloc>& y)
+{ return not(x<y); }
 
 template<typename T,typename Alloc>
   class mirrored_simple_list // trivial adapter, to allow use with |std::stack|

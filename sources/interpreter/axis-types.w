@@ -1363,6 +1363,7 @@ template<bool is_union>
   int cmp_tu_types
   (const type_data* p, const type_data* q,const std::vector<type_data>& a)
 { const auto our_type = is_union ? union_type : tuple_type;
+  ndebug_use(our_type);
   assert(p->type.raw_kind()==our_type and q->type.raw_kind()==our_type);
   int d=0;
   for (wtl_const_iterator p_it(p->type.tuple()), q_it(q->type.tuple()); @|
