@@ -366,7 +366,7 @@ void rank_of_Lie_type_wrapper
   if (l==expression_base::no_value)
     return;
 
-  unsigned result;
+  unsigned result=0;
   for (auto it = t->val.begin(); it!=t->val.end(); ++it)
     result += it->second;
 

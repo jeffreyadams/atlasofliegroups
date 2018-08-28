@@ -6,7 +6,7 @@ set merge ([int] a, [int] b) = [int]: { merge weakly increasing lists }
   if =na then b
   else let i=0, j=0, nb=#b in
     for :na+nb { predictable result size; ensures lists won't both run empty }
-    do if i<na and (j<nb or a[i]<=b[j])
+    do if i<na and (j=nb or a[i]<=b[j])
        then a[i] next i+:=1
        else b[j] next j+:=1
        fi

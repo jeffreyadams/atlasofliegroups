@@ -34,7 +34,6 @@
 #include <ctime>
 #include <sstream>
 #include <string>
-#include <algorithm> // for |std::lower_bound|
 
 #include <sys/time.h>
 #include <sys/resource.h> // for getrusage in verbose
@@ -149,7 +148,6 @@ bool KLPolEntry::operator!=(KLPolEntry::Pooltype::const_reference e) const
 KLContext::KLContext(const Block_base& b)
   : klsupport::KLSupport(b) // construct unfilled support object from block
   , fill_limit(0)
-  , d_prim()
   , d_kl()
   , d_mu()
   , d_store(2)
@@ -172,66 +170,48 @@ KLContext::KLContext(const Block_base& b)
 
   Precondition: row $y$ is completely computed, stored in |d_kl[y]|.
 
-  Since |d_kl| holds all polynomials for primitive pairs $(x,y)$, this is
-  basically a lookup function. While |x| is not primitive for |y|, move |x| up
-  (done in |primitivize|). If this has made |x>y| (in particular if it has
-  made |x==UndefBlock|, which might even be its initial value) return a zero
-  polynomial. Otherwise look up $x$ in the primitive list for $y$; if found,
-  use offset of result to find polynomial in |d_store|, if not found, the
-  polynomial is zero. Always returns a value from |d_store|, maybe |d_zero|.
+  Since |d_kl| holds all polynomials for primitive pairs $(x,y)$, this is just
+  a lookup function. Find the index |inx| of the primitivisation of |x| in the
+  row |klr==d_kl[y]| (done in using quick lookup in |prim_index|). If this has
+  made |inx| out of bounds (in particular if |inx==UndefBlock|) return a zero
+  polynomial. Otherwise fetch from |klr| and |d_store|.
   */
 KLPolRef KLContext::klPol(BlockElt x, BlockElt y) const
 {
+  if (x==UndefBlock) // partial blocks can cause this in many ways
+    return d_store[d_zero];
   const KLRow& klr = d_kl[y];
-  x=primitivize(x,descentSet(y));
-  if (x>=y) return d_store[x==y ? d_one : d_zero];
+  unsigned int inx=prim_index(x,descentSet(y));
 
-  const PrimitiveRow& pr = d_prim[y];
-  PrimitiveRow::const_iterator xptr =
-    std::lower_bound(pr.begin(),pr.end(),x);
-  return d_store[xptr == pr.end() or *xptr != x ? d_zero
-		 : klr[xptr - pr.begin()]];
+  if (inx>=klr.size()) // l(x)>=l(y), includes case x==~0: no primitivization
+    return d_store[inx==self_index(y) ? d_one : d_zero];
+  return d_store[klr[inx]];
 }
 
 // The same, but just return the index into |d_store| that gives $P_{x,y}$
 KLIndex KLContext::KL_pol_index(BlockElt x, BlockElt y) const
 {
+  if (x==UndefBlock) // partial blocks can cause this in many ways
+    return d_zero;
   const KLRow& klr = d_kl[y];
-  x=primitivize(x,descentSet(y));
-  if (x>=y) return x==y ? d_one : d_zero;
-
-  const PrimitiveRow& pr = d_prim[y];
-  PrimitiveRow::const_iterator xptr =
-    std::lower_bound(pr.begin(),pr.end(),x);
-  return xptr == pr.end() or *xptr != x ? d_zero : klr[xptr - pr.begin()];
+  unsigned int inx=prim_index(x,descentSet(y));
+  // if |inx>=klr.size()| then |l(primitive(x))>=l(y)|, maybe |primitive(x)==~0|
+  return inx<klr.size() ? klr[inx] : inx==self_index(y) ? d_one : d_zero;
 }
-
-// an auxiliary needed to be passed in a call of |std::lower_bound|
-bool mu_entry_compare(const std::pair<BlockElt,MuCoeff>& x,
-		      const std::pair<BlockElt,MuCoeff>& y)
-{ return x.first<y.first; }
 
 /*
   Return $\mu(x,y)$.
 
-  Explanation: it is guaranteed that all the $x$'es such that $\mu(x,y)\neq 0$
-  occur in |d_mu[y]| (and in fact, that only those occur.) So it is a simple
-  matter of looking up $x$. We can say 0 without lookup in some easy cases.
-*/
+  This function is not used internally. So we prefer do just use the table of
+  KL polynomials.
+ */
 MuCoeff KLContext::mu(BlockElt x, BlockElt y) const
 {
   unsigned int lx=length(x),ly=length(y);
   if (ly<=lx or (ly-lx)%2==0)
     return MuCoeff(0);
-  const MuRow& mr = d_mu[y];
-  std::pair<BlockElt,MuCoeff> x0(x,0); // second component is unused
-  MuRow::const_iterator xloc=
-    std::lower_bound(mr.begin(),mr.end(),x0,&mu_entry_compare);
-
-  if (xloc==mr.end() or xloc->first!=x)
-    return MuCoeff(0); // x not found in mr
-
-  return mr[xloc-mr.begin()].second;
+  KLPolRef p = klPol(x,y);
+  return p.degree()<(ly-lx)/2 ? MuCoeff(0) : MuCoeff(p[p.degree()]);
 }
 
 /*
@@ -282,7 +262,6 @@ void KLContext::fill(BlockElt y, bool verbose)
 
   try
   {
-    d_prim.resize(y+1);
     d_kl.resize(y+1);
     d_mu.resize(y+1);
     if (verbose)
@@ -299,7 +278,6 @@ void KLContext::fill(BlockElt y, bool verbose)
   catch (std::bad_alloc)
   { // roll back, and transform failed allocation into MemoryOverflow
     std::cerr << "\n memory full, KL computation abondoned." << std::endl;
-    d_prim.resize(fill_limit);
     d_kl.resize(fill_limit);
     d_mu.resize(fill_limit); // truncate to previous contents
     throw error::MemoryOverflow();
@@ -322,18 +300,12 @@ BitMap KLContext::primMap (BlockElt y) const
   // our result will be a bitmap of that capacity
   BitMap result (b.size()); // initiallly all bits are cleared
 
- // the list of primitive elements with nonzero polynomials at y
-  const PrimitiveRow& row=d_prim[y];
-
-  // traverse |b|, and for elements that occur in |row|, set bits in |result|
+  // traverse |b|, for elements that have nonzero KL poly, set bits in |result|
 
   size_t position=0; // position among set bits in b (avoids using b.position)
-  size_t j=0; // index into row;
-  for (BitMap::iterator it=b.begin(); j<row.size() and it(); ++position,++it)
-    if (*it==row[j]) // look if |*it| occurs in |row| (indexes nonzero element)
-    {
-      result.insert(position); ++j; // record its position and advance in row
-    }
+  for (BitMap::iterator it=b.begin(); it(); ++position,++it)
+    if (not klPol(*it,y).isZero()) // look if |*it| indexes nonzero element
+      result.insert(position);     // record its position and advance in row
 
   return result;
 }
@@ -476,32 +448,6 @@ std::set<BlockElt> KLContext::down_set(BlockElt y) const
 
 } // |KLContext::down_set|
 
-/*
-  Return the Kazhdan-Lusztig polynomial for x corresponding to the given row.
-
-  Precondition: |klv| holds the tail of the set of primitive Kazhdan-Lusztig
-  polynomials for |y|, enough to find the required one by elementary lookup;
-  |[p_begin,p_end[| is the corresponding range of primitive elements.
-
-  Algorithm: primitivize |x| with respect to the descents in |y|; if a real
-  nonparity situation is encountered, return |Zero|; otherwise look up the
-  primitive |x| in the range and return the corresponding element from |klv|.
-
-  Like the basic |klPol|, this will return zero when |x==UndefBlock|.
-*/
-KLPolRef KLContext::klPol(BlockElt x, BlockElt y,
-			  KLRow::const_iterator klv,
-			  PrimitiveRow::const_iterator p_begin,
-			  PrimitiveRow::const_iterator p_end) const
-{
-  x = primitivize(x,descentSet(y));
-
-  if (x>=y) return d_store[x==y ? d_one : d_zero];
-  PrimitiveRow::const_iterator xptr =
-    std::lower_bound(p_begin,p_end,x);
-  return d_store[xptr == p_end or *xptr != x ? d_zero : klv[xptr-p_begin]];
-}
-
 
 // private manipulators
 
@@ -512,11 +458,10 @@ KLPolRef KLContext::klPol(BlockElt x, BlockElt y,
 
   Row of $y$ is the set of all $P_{x,y}$ for $x<y$; actually more like a column
 */
-size_t KLContext::fillKLRow(BlockElt y, KLHash& hash)
+void KLContext::fillKLRow(BlockElt y, KLHash& hash)
 {
-  size_t sparseness=0; // number of entries saved by suppressing zero polys
   if (d_kl[y].size()>0)
-    return 0; // row has already been filled
+    return; // row has already been filled
   weyl::Generator s = firstDirectRecursion(y);
   if (s<rank())  // a direct recursion was found, use it for |y|, for all |x|
   {
@@ -524,19 +469,15 @@ size_t KLContext::fillKLRow(BlockElt y, KLHash& hash)
     PrimitiveRow e = extremalRow(y); // we compute for |x| extremal only
 
     recursionRow(klv,e,y,s); // compute all polynomials for these |x|
-    // write result
-    sparseness += writeRow(klv,e,y,hash);
+    complete_primitives(klv,e,y,hash); // add primitives; store in |d_kl|
   }
   else // we must use an approach that distinguishes on |x| values
   {
-    KLRow klv;
-    PrimitiveRow pr = primitiveRow(y); // here we do all |x| primitive for |y|
+    KLRow& klv = d_kl[y]; // here we write directly into |d_kl| and
+    PrimitiveRow pr=primitiveRow(y); // and use all |x| primitive for |y|
     // (any ascents for x that are descents for y must be imaginary type II)
     newRecursionRow(klv,pr,y,hash); // put result of recursion formula in klv
-    sparseness +=
-      remove_zeros(klv,pr,y); // write |d_prim[y]|, |d_kl[y]|, suppressing zeros
   }
-  return sparseness;
 }
 
 /*
@@ -723,87 +664,68 @@ void KLContext::muCorrection(std::vector<KLPol>& klv,
 
 } // |KLContext::muCorrection|
 
-/*
-  Write down row |y| in |d_kl| and |d_prim|.
+/* A method that takes a row |klv| of completed KL polynomials, computed by
+   |recursionRow| at |y| and extremal elements |x| listed in |er|, and
+   transfers them to the main storage structures. Its tasks are
 
-  Precondition: The parallel pair (klv,er) records the polynomials for at
-  least all the extremal values $x$ for $y$, and at most for all primitive
-  values $x$ for $y$. So when $x=er[i]$ then $P_{x,y}=klv[i]$. In practice
-  |er| will contain either all extremal elements (when called from
-  |recursionRow|) or all primitive elements (for |newRecursionRow|).
+   - generate the list of all primitve elements for |y|, which contains |er|
+   - for each primitive element |x|, if it is extremal just look up $P_{x,y}$
+     from |klv| in |d_hashtable; if |x| is primitive but not extramal, compute
+     that polynomial (as sum of two $P_{x',y}$ in the same row) and similarly
+     store the result
+   - record those |x| which have nonzero $\mu(x,y)$, and write |d_mu[y]|
 
-  This function writes out these data to |d_prim[y]| and |d_kl[y]|,
-  transformed as follows: (1) rather than storing polynomials from |klv| (or
-  others computed here), these are looked up in |d_hashtable| and the index is
-  stored; (2) when a polynomial turns out to be 0, nothing is recorded either
-  in |d_prim[y]| or in |d_kl[y]|; (3) for primitive elements not present in
-  |er|, the polynomial is computed here on-the-fly (using an imaginary type II
-  ascent that exists in this case) and then stored along with those from |er|.
-
-  Case (3) will not apply if |er| already contains all primitive elements, and
-  for that case this function could be considerably simplified, but it works
-  well as is, so we didn't write a simplified version.
+   For the latter point there are two categories of |x|: the extremal ones
+   (which can conveniently be handled in the loop over |x|), and those found
+   by a (complex or real) descent from |y| itself (they have $\mu(x,y)=1$).
+   The latter are of length one less than |y| (but there can be extremal |x|
+   of that length as well with nonzero mu), and are primitive only in the real
+   type 2 case; we must treat them outside the loop over primitive elements.
  */
-size_t KLContext::writeRow(const std::vector<KLPol>& klv,
-			   const PrimitiveRow& er, BlockElt y,
-			   KLHash& hash)
+void KLContext::complete_primitives(const std::vector<KLPol>& klv,
+				    const PrimitiveRow& er, BlockElt y,
+				    KLHash& hash)
 {
   PrimitiveRow pr = primitiveRow(y);
 
-  PrimitiveRow nzpr(pr.size()); // columns of the nonzero primimitive entries
-  KLRow KL(pr.size()); // nonzero primitive entries (indexes into d_store)
-
-  PrimitiveRow::iterator nzpr_p=nzpr.end();
-  KLRow::iterator KL_p=KL.end();
+  KLRow& KL = d_kl[y];
+  KL.resize(pr.size());
 
   BitMap mu_elements(pr.size()); // flags |i| with |mu(pr[i],y)>0|
 
   unsigned int ly = length(y);
+  if (ly==0)
+    return; // nothing to do at minimal length
 
-  size_t j= er.size()-1; // points to current extremal element
+  size_t j= er.size()-1; // points to last extremal element (not |y|)
 
-  for (size_t i = pr.size(); i-->0; )
-    if (j<er.size() and pr[i]==er[j]) // must test for underflow |j|
-    { // extremal element; use stored polynomial
-      const KLPol& Pxy=klv[j--];
-      if (not Pxy.isZero())
-      {
-	*--nzpr_p = pr[i];
-        *--KL_p = hash.match(Pxy);
-	unsigned int lx=length(pr[i]);
-	if ((ly-lx)%2>0 and Pxy.degree()==(ly-lx)/2) // in fact |(ly-lx-1)/2|
-	  mu_elements.insert(i);
-      }
+  for (size_t i = pr.size(); i-->0;)
+    if (j<er.size() and pr[i]==er[j]) // |j| may underflow, whence first test
+    { // extremal element $e=er[j]$
+      unsigned int lx=length(er[j]);
+      const KLPol& Pxy=klv[j--]; // use KL polynomial and advance downwards
+      KL[i]=hash.match(Pxy);
+      if ((ly-lx)%2>0 and Pxy.degree()==(ly-lx)/2) // in fact |(ly-lx-1)/2|
+	mu_elements.insert(i);
     }
-    else // insert a polynomial for primitive non-extremal pr[i] if nonzero
+    else // must insert a polynomial for primitive non-extramal |pr[i]|
     {
       unsigned int s = ascent_descent(pr[i],y);
       assert(descentValue(s,pr[i])==DescentStatus::ImaginaryTypeII);
       BlockEltPair xs = cayley(s,pr[i]);
-      KLPol Pxy = klPol(xs.first,y,KL_p,nzpr_p,nzpr.end()); // look up using KL
-      Pxy.safeAdd(klPol(xs.second,y,KL_p,nzpr_p,nzpr.end()));
-      if (not Pxy.isZero())
-      {
-	*--nzpr_p = pr[i];
-        *--KL_p = hash.match(Pxy);
-      } // no need to check for |mu| here; |down_set| covers possible cases
+      KLPol pol = klPol(xs.first,y); // look up P_{x',y} in current row, above
+      pol.safeAdd(klPol(xs.second,y)); // current point, and P_{x'',y} as well
+      KL[i]=hash.match(pol); // add poly at primitive non-extremal x
     }
 
-  if (ly==0)
-    return 0; // nothing left to do at minimal length
 
   std::set<BlockElt> downs = down_set(y);
 
-  // commit
-  d_prim[y] = PrimitiveRow(nzpr_p,nzpr.end()); // copy shifting, from |nzpr_p|
-  d_kl[y] = KLRow(KL_p,KL.end());
-
   d_mu[y].reserve(mu_elements.size()+downs.size());
-
   for (BitMap::iterator it=mu_elements.begin(); it(); ++it)
   {
     BlockElt x=pr[*it];
-    KLPolRef Pxy = klPol(x,y,KL_p,nzpr_p,nzpr.end());
+    KLPolRef Pxy=hash[KL[*it]];
     assert(not Pxy.isZero());
     d_mu[y].push_back(std::make_pair(x,Pxy[Pxy.degree()]));
   }
@@ -814,35 +736,7 @@ size_t KLContext::writeRow(const std::vector<KLPol>& klv,
       std::swap(d_mu[y][i-1],d_mu[y][i]); // insertion-sort
   }
 
-  return nzpr_p  -nzpr.begin(); // measure unused space
-
-} // |KLContext::writeRow|
-
-// this method is called instead of |writeRow| in cases involving new recursion
-size_t KLContext::remove_zeros(const KLRow& klv,
-			       const PrimitiveRow& pr, BlockElt y)
-{
-  PrimitiveRow nzpr(pr.size()); // columns of the nonzero primimitive entries
-  KLRow KL(pr.size()); // nonzero primitive entries (indexes into d_store)
-
-  PrimitiveRow::iterator nzpr_p=nzpr.end();
-  KLRow::iterator KL_p=KL.end();
-
-  for (size_t i = pr.size(); i-->0; )
-    if (not isZero(klv[i]))
-    {
-      *--nzpr_p = pr[i];
-      *--KL_p = klv[i];
-    }
-
-
-  // commit
-  d_prim[y] = PrimitiveRow(nzpr_p,nzpr.end()); // copy shifting, from |nzpr_p|
-  d_kl[y] = KLRow(KL_p,KL.end());
-
-  return nzpr_p  -nzpr.begin(); // measure unused space
-
-} // |KLContext::remove_zeros|
+} // |KLContext::complete_primitives|
 
 /*
   Puts in klv[i] the polynomial P_{e[i],y} for every primtitve x=pr[i],
@@ -894,8 +788,6 @@ void KLContext::newRecursionRow
   KLHash& hash)
 {
   klv.resize(pr.size());
-  KLRow::iterator kl_p=klv.end();
-  PrimitiveRow::const_iterator pr_p=pr.end();
 
   unsigned int l_y = length(y);
 
@@ -908,7 +800,7 @@ void KLContext::newRecursionRow
 
   size_t j = klv.size(); // declare outside try block for error reporting
   try {
-    while (--kl_p,--pr_p, j-->0) // |*kl_p=klv[j]|, |*pr_p=pr[j]|
+    while (j-->0)
     {
       BlockElt x = pr[j];
 
@@ -917,8 +809,8 @@ void KLContext::newRecursionRow
       { // equation (1.9) in recursion.pdf
 	assert(descentValue(s,x)==DescentStatus::ImaginaryTypeII);
 	BlockEltPair p = cayley(s,x);
-	KLPol pol = klPol(p.first,y,kl_p,pr_p,pr.end());
-	pol.safeAdd(klPol(p.second,y,kl_p,pr_p,pr.end()));
+	KLPol pol = klPol(p.first,y); // present since |klv| is |d_kl[y]|
+	pol.safeAdd(klPol(p.second,y));
 	klv[j] = hash.match(pol);
 	continue; // done with |x|, go on to the next
       }
@@ -942,7 +834,7 @@ void KLContext::newRecursionRow
 	case DescentStatus::ComplexAscent:
 	{ // use equations (3.3a)=(3.4)
 	  BlockElt sx = cross(s,x);
-	  pol.safeSubtract(klPol(sx,y,kl_p,pr_p,pr.end()),1);
+	  pol.safeSubtract(klPol(sx,y),1);
 	  // subtract qP_{sx,y} from mu terms
 	} // ComplexAscent case
 	break;
@@ -950,8 +842,8 @@ void KLContext::newRecursionRow
 	case DescentStatus::ImaginaryTypeII:
 	{ // use equations (3.3a)=(3.5)
 	  BlockEltPair p = cayley(s,x);
-	  KLPol sum = klPol(p.first,y,kl_p,pr_p,pr.end());
-	  sum.safeAdd(klPol(p.second,y,kl_p,pr_p,pr.end()));
+	  KLPol sum = klPol(p.first,y);
+	  sum.safeAdd(klPol(p.second,y));
 	  pol.safeAdd(sum);
 	  pol.safeSubtract(sum,1); //now we've added (1-q)(P_{x',y}+P_{x'',y})
 	  pol.safeDivide(2);   //this may throw
@@ -997,7 +889,7 @@ void KLContext::newRecursionRow
 
 	  //subtract (q-1)P_{xprime,y} from terms of expression (3.4)
 	  BlockElt xprime = cayley(s,x).first;
-	  const KLPol& P_xprime_y =  klPol(xprime,y,kl_p,pr_p,pr.end());
+	  const KLPol& P_xprime_y =  klPol(xprime,y);
 	  pol.safeAdd(P_xprime_y);
 	  pol.safeSubtract(P_xprime_y,1);
 
@@ -1011,8 +903,8 @@ void KLContext::newRecursionRow
 	    BlockEltPair sx_up_t = cayley(t,cross(s,x));
 
 	    // any |UndefBlock| component of |sx_up_t| will contribute $0$
-	    pol.safeSubtract(klPol(sx_up_t.first,y,kl_p,pr_p,pr.end()));
-	    pol.safeSubtract(klPol(sx_up_t.second,y,kl_p,pr_p,pr.end()));
+	    pol.safeSubtract(klPol(sx_up_t.first,y));
+	    pol.safeSubtract(klPol(sx_up_t.second,y));
 
 	  }
 
@@ -1142,7 +1034,7 @@ void KLContext::verbose_fill(BlockElt last_y)
     size_t storesize = 0; // previous size of d_store
     size_t polsize = 0; // running total of sum of (polynomial degrees+1)
 
-    size_t nr_of_prim_nulls = 0, prim_size = 0;
+    size_t kl_size = 0;
 
     for (size_t l=minLength; l<=maxLength; ++l) // by length for progress report
     {
@@ -1152,8 +1044,8 @@ void KLContext::verbose_fill(BlockElt last_y)
       {
 	std::cerr << y << "\r";
 
-	nr_of_prim_nulls += fillKLRow(y,hash);
-	prim_size += d_prim[y].size();
+	fillKLRow(y,hash);
+	kl_size += d_kl[y].size();
       }
 
       // now length |l| is completed
@@ -1169,7 +1061,7 @@ void KLContext::verbose_fill(BlockElt last_y)
 	<< ", y="  << std::setw(6)
 	<< lengthLess(l+1)-1 // last y value done
 	<< ", polys:"  << std::setw(11) << d_store.size()
-	<< ", mat:"  << std::setw(11) << prim_size
+	<< ", mat:"  << std::setw(11) << kl_size
 	<<  std::endl;
       unsigned cputime, resident; //memory usage in megabytes
       if(getrusage(RUSAGE_SELF, &usage) != 0)
@@ -1183,7 +1075,7 @@ void KLContext::verbose_fill(BlockElt last_y)
 		<< " secs, Max res size="
 		<< std::setw(5) << resident << "MB, pmem="
 		<< std::setw(6) << p_capacity/1048576 << "MB, matmem="
-		<< std::setw(6) << prim_size*sizeof(KLIndex)/1048576
+		<< std::setw(6) << kl_size*sizeof(KLIndex)/1048576
 		<< "MB \n";
 
     } // for (l=min_length+1; l<=max_Length; ++l)
@@ -1193,10 +1085,8 @@ void KLContext::verbose_fill(BlockElt last_y)
     std::cerr << std::endl;
     std::cerr << "Total elapsed time = " << deltaTime << "s." << std::endl;
     std::cerr << d_store.size() << " polynomials, "
-	      << prim_size << " matrix entries."<< std::endl;
+	      << kl_size << " matrix entries."<< std::endl;
 
-    std::cerr << "Number of unrecorded primitive pairs: "
-	      << nr_of_prim_nulls << '.' << std::endl;
     std::cerr << std::endl;
 
   }
