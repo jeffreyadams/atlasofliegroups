@@ -73,11 +73,7 @@ set print_by_K_norm_short (RootDatum rd) = let norm=K_norm(rd) in (K_Type_Pol P)
 
 set print_by_K_norm (RootDatum rd) = let norm=K_norm(rd) in (K_Type_Pol P) void:
   let result=sort_K_Type_Pol_by_K_norm(rd)(for c@p in P do (c,K_type(p)) od)
-<<<<<<< HEAD
-  in for (c,p) in result do let (,x_hw,lambda_hw)=highest_weight(p) in
-=======
   in for (c,p) in result do let ((),x_hw,lambda_hw)=highest_weight(p) in
->>>>>>> master
 prints(split_as_int(c),"*(",#x(p),",",lambda(p),") ", " (", #x_hw, ",", lambda_hw, ")   ",  K_norm(rd)(p), "   [", dimension(p),"]") od
 
 set print_by_K_norm (RootDatum rd,K_Type_Pol P) = void: print_by_K_norm(rd)(P)
@@ -178,22 +174,14 @@ od od; #rho_L{rank} # result
   more generally: no compact central torus}
 {. All K-parameters for G with given x, height up to N.}
 set K_parameters_height_upto(KGBElt x, int N)=[K_Type]:
-<<<<<<< HEAD
-  let rd=x.root_datum in 
-=======
   let rd=x.root_datum in
->>>>>>> master
   let lrs = lambda_rho_from_dominant_height_upto(x,rho_check(rd),N) in
   ## for lr in lrs do all_equal_dlambda_K_parameters(x,lr+rho(rd))  od
 
 { G allowed to be reductive }
 {. All K-parameters for G with given x, height up to N.}
 set K_parameters_height_upto(KGBElt x, int N, ratvec v)=[K_Type]:
-<<<<<<< HEAD
-  let rd=x.root_datum in 
-=======
   let rd=x.root_datum in
->>>>>>> master
   let lrs = lambda_rho_from_dominant_height_upto(x,v,N) in
   ## for lr in lrs do all_equal_dlambda_K_parameters(x,lr+rho(rd))  od
 
@@ -261,11 +249,7 @@ set print_K_parameters(KGBElt x_K_in,[K_Type] ktypes,([K_Type]->[K_Type]) f)=voi
 let strings=[["x","lambda","x_K","lambda_K","dim","ht","Knorm"]] in
 prints("(x,lambda):  K-type",new_line, "(x_K,lambda_K): K-highest weight");
 for p in f(ktypes) do
-<<<<<<< HEAD
-let (,x_K,lambda_K)=highest_weight(p,x_K_in) in
-=======
 let ((),x_K,lambda_K)=highest_weight(p,x_K_in) in
->>>>>>> master
 strings#:=[to_string(#x(p)),shorten(lambda(p)), to_string(#x_K), shorten(lambda_K),to_string(dimension(p)),
 to_string(height(parameter(p))),to_string(K_norm(p))] od;
 tabulate(strings,"l",2," ")
