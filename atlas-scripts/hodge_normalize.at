@@ -1,7 +1,12 @@
 <qdeform.at
 <is_normal.at
 
-set hodge_normalize_verbose=false
+{move to basic.at}
+set imaginary_type (int s, KGBElt x) = int: if cross(s,x)=x then 2 else 1 fi
+
+set hodge_normalize_verbose=true
+
+set tau(int n,int k)=if k=n/2 then 1 else 2 fi
 
 {hodge version of normalizing a parameter}
 
@@ -13,31 +18,42 @@ dearrange(Q)=[(vec,Param)]:[(f1,p1),...,(fn,pn)] <-> f1(v)*p_1 + ... + fn(v)*p_n
 we work entirely with these objects
 the downside is there is no collection of terms
 at the end, once all p_i are normal, do rearrange to get a qParamPol (and collect terms)
-}
+n}
 
 {
-I(x,lambda,nu) is a parameter
+I(x,lambda,nu=0) is a parameter
 gamma=infinitesimal character
-alpha: simple complex root in RC
+alpha: simple complex root
 beta=theta_x(alpha)
-<gamma,alpha^v><0 alpha simple complex in RC
-I(x,lambda,nu) is equivalent to I(x,s_alpha\lambda,s_alpha\nu)
-graded version:
-let n=-2*<gamma,alpha^v> >0
- so s_alpha(lambda)=lambda+n\alpha
-if beta<0 (i.e. descent) OR <gamma,beta^v> is not an integer
- the formula is simple:
-I(x,lambda,nu) -> I(s_alpha x,s_alpha\lambda,s_\alpha\nu)
-if beta>0 (i.e. ascent) and <gamma,beta^v>\in Z then it is complicated:
-I(x,lambda,nu) -> vI(s_alpha x,s_alpha\lambda,s_\alpha\nu)+
-\sum_{k=1}^{k=[n/2]}v^{k-1}(v^2-1)I(x,s_alpha\lambda-k\alpha,s_alpha\nu-k\alpha)
-with one special case: if k=n/2 then replace (v^2-1) with (v-1)
+nu=0 => <gamma,beta^v>=<gamma,alpha^v>
+Suppose: <gamma,alpha^v><=0 
+  alpha simple, complex root (not necessarily integral)
+
+a) If theta_x(alpha)<0 (alpha is a complex descent) then
+
+I(x,lambda,0) -> I(s_alpha x,s_alpha\lambda,0)
+
+b) If theta_x(alpha)>0 (\alpha is a complex ascent)
+   AND <gamma,alpha^v>=0  then return I(x,lambda,0)
+
+c) If theta_x(alpha)>0 (\alpha is a complex ascent)
+   AND <gamma,alpha^v> < 0  (strict inequality)
+let x'=s_alpha x,lambda'=s_alpha\lambda
+
+I(x,lambda,0) -> qI(x',lambda,0) +
+                 \sum_{k=1}^{k=[n/2]-1}v^{k-1}(v^2-1)I(x',lambda'-k\alpha,0) +
+                 [v^{n/2}(v-1)I(x',lambda'-(n/2)\alpha,0)
+
+The last term is the same as the general one except (v^2-1) is
+replaced by (v-1), and it only occurs if n is even.
 }
+
 set hodge_reflection_complex(Param p, int i)=[(vec,Param)]:
 {i=simple root number of complex root}
 assert(is_complex(i,p.x),"root is not complex");
+assert(=p.nu,"nu\ne 0");
 if hodge_normalize_verbose then
-prints("reflecting:", p, ", root #", i)
+prints(new_line,"reflecting:", p, ", root #", i)
 fi;
 let G=p.real_form then
 x=p.x then
@@ -46,36 +62,95 @@ lambda=p.lambda then
 gamma=p.infinitesimal_character then
 alpha=G.simple_roots[i] then
 alpha_check=G.simple_coroots[i] then
-{magic term 2 here:}
-n=-2*gamma*alpha_check {in Z_{>0}} then
+n=rat_as_int(-2*gamma*alpha_check) {in Z_{>=0}} then
 ref=reflection(G,i) then
 q=parameter(cross(i,x),ref*lambda,ref*p.nu) in
 if hodge_normalize_verbose then
- prints("n=",n,new_line,"lambda=",lambda,new_line,"alpha=",alpha,new_line,"lambda+n\alpha:", lambda+n*alpha,new_line,"q=",q)
+{ prints("n=",n,new_line,"lambda=",lambda,new_line,"alpha=",alpha,new_line,"lambda+n\alpha:", lambda+n*alpha,new_line,"q=",q)} ()
 fi;
- let rv=assert(n>=0,",alpha^v>>=0");
-{if descent then start with v*q, otherwise 1*q}
-if is_ascent(i,p.x) then [(vee,q)] else [(vec:[1],q)] fi in
-{if descent, subtract off multiples of alpha from q.lambda}
-if is_ascent(i,p.x) then
- for k:n\2 from 1 do
-  let exp=if n=2*k then 1 else 2 fi then
-  f=poly_plus(vee^exp,[-1])  in {f=(v^2-1) except in special case k=n/2: f=(v-1)}
-  if hodge_normalize_verbose then 
+if hodge_normalize_verbose then
+ prints("gamma*alpha^v= ",gamma*alpha_check, "  n=", n, if is_ascent(i,p.x) then " type:ascent" else " type:descent" fi)
+fi;
+if is_descent(i,p.x)
+  then [([1],q)]
+elif is_ascent(i,p.x) and n=0
+  then [([1],p)]
+else {is_ascent(i,p.x) and n>0, the complicated formula}
+let rv=[(vee,q)] in 
+  for k:n\2 from 1 do let
+   f=poly_plus(vee^tau(n,k),[-1])  in {f=(v^2-1) except in special case k=n/2: f=(v-1)}
+   if hodge_normalize_verbose then
+    prints("q.x=",q.x, new_line, "q.lambda=",q.lambda, new_line, "alpha=",alpha);
     prints("k=",k, " f=");printPoly(f)
-  fi;
-{ rv#:=(poly_product(vee^(k-1),f), parameter(q.x,q.lambda-k*alpha,q.nu-k*alpha)) od}
-{Do not add alpha to nu}
- rv#:=(poly_product(vee^(k-1),f), parameter(q.x,q.lambda-k*alpha,q.nu)) od
+   fi;
+   rv#:=(poly_product(vee^(k-1),f), parameter(q.x,q.lambda-k*alpha,q.nu)) 
+  od;
+ rv
+fi
+
+set hodge_reflection_imaginary(Param p, int i)=[(vec,Param)]:
+{i=simple root number of complex root}
+assert(is_imaginary(i,p.x),"root is not imaginary");
+assert(=p.nu,"nu\ne 0");
+if hodge_normalize_verbose then
+prints(new_line,"imaginary reflecting:", p, ", root #", i)
 fi;
-rv
+let G=p.real_form then
+x=p.x then
+theta=involution(x) then
+zero=p.nu then
+lambda=p.lambda then
+gamma=p.infinitesimal_character then
+alpha=G.simple_roots[i] then
+alpha_check=G.simple_coroots[i] then
+n=rat_as_int(-gamma*alpha_check) {in Z_{>=0}} then
+ref=reflection(G,i) in
+if is_compact(i,p.x) then [([-1],parameter(p.x, ref*lambda,zero))] 
+else
+ let cayley=
+  if imaginary_type(i,x)=1 then  {construct Cayley transform by hand}
+   let y=Cayley(i,x) then
+   nu=(1-involution(y))*ref*gamma/2 in  {new value of nu, not necessarily 0}
+   if !=nu and hodge_normalize_verbose then prints("warning:  non-zero nu:", "p=", p, " i=", i, " nu=", nu) fi;
+   [(vee^(n\2),parameter(y,lambda,nu))]
+   {may need to q_recursive_deform to make nu=0?}
+   {rearrange(q_recursive_deform(dearrange([(vee^(n\2),parameter(y,lambda,nu))])))}
+  else
+   let y=Cayley(i,x) then
+    nu=(1-involution(y))*ref*gamma/2 in  {new value of nu, not necessarily 0}
+    [(vee^(n\2),parameter(y,lambda,nu)),(vee^(n\2),parameter(y,lambda+alpha,nu))]
+{    rearrange(q_recursive_deform(dearrange([(vee^(n\2),parameter(y,lambda,nu)),(vee^(n\2),parameter(y,lambda+alpha,nu))])))}
+  fi then
+ cross=[(-vee,parameter(cross(i,x),ref*lambda,zero))] in
+ if hodge_normalize_verbose then
+  prints("gamma*alpha^v= ",gamma*alpha_check, "  n=", n)
+ fi;
+ let rv=cayley##cross in
+  for k:n\2 from 1 do let
+   f=poly_plus(vee^tau(n,k),[-1])  in {f=(v^2-1) except in special case k=n/2: f=(v-1)}
+   if hodge_normalize_verbose then
+    prints("cayley:", cayley);
+    prints("cross:", cross);
+    prints("k=",k, " f=");printPoly(f);
+    prints("new x:", cross(i,x), new_line, "lambda=",lambda, new_line,"alpha=",alpha)
+   fi;
+   rv#:=(poly_product(vee^(k-1),f), parameter(cross(i,x),lambda+(n-k)*alpha,zero))
+  od;
+ rv
+fi
+
+set hodge_reflection(Param p, int i)=
+assert(is_complex(i,p.x) or is_imaginary(p.root_datum.simple_roots[i],p.x),
+"root is not complex or imaginary");
+if is_complex(i,p.x) then  hodge_reflection_complex(p,i) 
+else hodge_reflection_imaginary(p,i) fi
 
 {apply reflection #root_number to term #index}
-set hodge_reflection_complex(([vec,Param]) Q,int index,int root_number)=
+set hodge_reflection(([vec,Param]) Q,int index,int root_number)=
 let rv=[] in
  for (f,p)@i in Q do
   if i=index then
-   let R=hodge_reflection_complex(p,root_number) in
+   let R=hodge_reflection(p,root_number) in
 {   for (g,q) in R do rv#:=(poly_product(f,g),q) od}
    for (g,q) in R do
     rv#:=(poly_product(f,g),q) od;rv
@@ -84,6 +159,8 @@ let rv=[] in
   fi
   od;
 rv
+
+
 
 {recursively hodge_normalize
 first version: return [(vec,ParamPol)]}
@@ -94,7 +171,7 @@ let rec_fun f ([(vec,Param)] R)=[(vec,Param)]:
 {  let ()=prints("normal:", normal, " index=",index," root_number=",root_number) in}
   if normal then R else
   {prints("changing to:" ,hodge_reflection_complex(R,index), "with R:", R, "index: ", index);}
-  f(hodge_reflection_complex(R,index,root_number))
+  f(hodge_reflection(R,index,root_number))
   fi
  in f(Q)
 
@@ -106,3 +183,11 @@ dearrange(R)
 
 set hodge_normalize_0(Param p)=[(vec,Param)]:hodge_normalize_0([([1],p)])
 set hodge_normalize(Param p)=qParamPol:hodge_normalize([([1],p)])
+
+
+
+
+
+
+
+

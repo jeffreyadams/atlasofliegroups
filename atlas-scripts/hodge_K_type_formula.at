@@ -4,7 +4,16 @@
 {move to polynomial.at}
 set lower_unitriangular_inverse(i_poly_mat M)=transpose(upper_unitriangular_inverse(transpose(M)))
 
-set hodge_K_type_formula_verbose=false
+set hodgePrintPolyMatrix(i_poly_mat M,int space_size)= void:
+  let space= " "*space_size, wd = max(for v in ##M do #poly_format(v,"v") od)
+  in
+    for row in M
+    do prints(##for v in row do space+l_adjust(wd,poly_format(v,"v")) od)
+    od
+set hodgePrintPolyMatrix (i_poly_mat M) = void: hodgePrintPolyMatrix(M,3)
+
+
+set hodge_K_type_formula_verbose=true
 
 {hodge version of K_type_formula
  only using s_alpha s_beta
@@ -25,11 +34,14 @@ warnings=[Param]:[] then
 {for testing:
 cf=character_formula(mu_L) in  {mu_L is 1-dimensional}
 }
-cf=character_formula_one_dimensional(mu_L) in  {mu_L is 1-dimensional}
+{compute character_formula of mu_L, and apply q_recursive_deform to it, this is on L}
+cf=character_formula_one_dimensional(mu_L)   {mu_L is 1-dimensional} then
+cf_0=rearrange(q_recursive_deform(cf)) in  {[(vec,Param)]}
 if hodge_K_type_formula_verbose then
-prints("cf=",cf)
+prints("cf=",cf);
+prints("cf deformed=",cf_0)  
 fi;
-for c@q in cf do
+for (c,q) in cf_0 do
 if hodge_K_type_formula_verbose then
 prints("doing q=",q," ",new_line, "Levi=",q.real_form)
 fi;
@@ -38,14 +50,20 @@ if hodge_K_type_formula_verbose then
 prints("#shifts:", #shifts,new_line);for (v,k) in shifts do prints(v, " ", k) od
 fi;
  for (v,k) in shifts do
-  let coeff=vec:split_as_int(c)*(-1)^k*vee^(codim(x(q))+k) in
+{ let coeff=vec:split_as_int(c)*(-1)^k*vee^(codim(x(q))+k) in}
+  let coeff=poly_product(c,(-1)^k*vee^({codim(x(q))+}k)) in
+{  let coeff=poly_product(c,(-1)^k*vee^(codim(x(q))+k)) in}
    if hodge_K_type_formula_verbose then
     prints(new_line,"=============================================",new_line,"applying shift: ", v, " ", k);
     prints("codim: ", codim(x(q)));
-    prints("coeff: ", coeff)
+    prints("k=: ", k);
+    prints("c=: ", c);
+    prints("coeff is: ", coeff)
    fi;
    let  new=
-    let q_G=theta_induce_standard_warning(parameter(x(q),lambda(q)+v,nu(q)),P.real_form,hodge_K_type_formula_verbose) in
+    {only add shift v to lambda, not nu, all nu's are 0}
+    let q_G=assert(=nu(q),"nu(q)\ne 0");
+            theta_induce_standard_warning(parameter(x(q),lambda(q)+v,null(q.root_datum.rank)),P.real_form,hodge_K_type_formula_verbose) in
       if hodge_K_type_formula_verbose then
        prints("q_G:",q_G, " [",height(q_G),"]")
       fi;
@@ -77,12 +95,11 @@ od;new_ktypes
 set fill_out_recursively([K_Type] ktypes, int N)=
 let rec_fun f([K_Type] ktypes_in)=[K_Type]: 
  let new=fill_out(ktypes_in,N) in 
- if #new=#ktypes_in then new else f(new) fi in f(ktypes)
+ if #new=#ktypes_in then sort_by_height(new) else f(new) fi in  f(ktypes)
 
-set hodge_K_type_mat_long(K_Type mu, int N)=
-let ktypes=fill_out_recursively([mu],N) then
-{pairs=for mu in ktypes do (mu,hodge_K_type_formula(mu)) od  then}
-warnings=[Param]:[] then
+{matrix with rows/columns indexed by [K_Type]:ktypes,  long output}
+set hodge_K_type_mat_long(K_Type mu, int N,[K_Type] ktypes)=(int,[K_Type],[Param],i_poly_mat,i_poly_mat):
+let warnings=[Param]:[] then
 M=zero_poly_matrix(#ktypes) in
 for tau in ktypes do
  let index=find(ktypes,tau) then
@@ -99,9 +116,15 @@ od;
 let tM=transpose(M) in  {tM is lower triangular}
 (find(ktypes,mu),ktypes,warnings,tM, lower_unitriangular_inverse(tM))
 
-set hodge_K_type_mat(K_Type mu, int N)=(i_poly_mat,i_poly_mat):let(,,,A,B)=hodge_K_type_mat_long(mu,N)
+{default: use fill_out_recursively to generate ktypes}
+set hodge_K_type_mat_long(K_Type mu, int N)=(int,[K_Type],[Param],i_poly_mat,i_poly_mat):
+hodge_K_type_mat_long(mu,N,fill_out_recursively([mu],N))
+
+{short versions, only return i_poly_mats}
+set hodge_K_type_mat(K_Type mu, int N,[K_Type] ktypes)=(i_poly_mat,i_poly_mat):let(,,,A,B)=hodge_K_type_mat_long(mu,N,ktypes)
 in (A,B)
 
+set hodge_K_type_mat(K_Type mu, int N)=(i_poly_mat,i_poly_mat):hodge_K_type_mat(mu,N,fill_out_recursively([mu],N))
 
 set test_hodge_K_type_mat(K_Type mu,int N)=(i_poly_mat,[bool],bool):
 let (A,B)=hodge_K_type_mat(mu,N) in let
@@ -115,14 +138,47 @@ let pairs=for mu@i in mus do let (N,,r)=test_hodge_K_type_mat(mu,N) in (N,r) od 
  in the 1 Cartan case should give same result as branch_q (last argument returned)
  hope to modify it to work for all G
 }
-
-set hodge_branching_formula(K_Type mu, int N)=[ParamPol]:
+{hodge branching formula for standard module with nu=0}
+set hodge_branch_std(K_Type mu, int N)=qParamPol:
 let (index,ktypes,,A,B)=hodge_K_type_mat_long(mu,N) then
 vector=transpose(B)[index] then
 temp=[(vec,Param)]:[] in
- for i:#vector do if vector[i]!=null(0) then  temp#:=(vector[i],parameter(ktypes[i])) fi od;
+ for i:#vector do if vector[i]!=null(0) then
+ temp#:=(vector[i],parameter(ktypes[i])) fi od;
 dearrange(temp)
 
-set hodge_branching_formula(Param p, int N)=
-assert(=p.nu,"nu!=0");hodge_branching_formula(LKT(p),N)
+{hodge branching formula for standard module with nu=0}
+set hodge_branch_std_temp(Param p, int N)=qParamPol:
+hodge_branch_std(LKT(p),N)
 
+{hodge branching formula for ParamPol of modules with nu=0}
+set hodge_branch_std_temp(ParamPol P, int N)=qParamPol:
+let rv=nullqParamPol(P.real_form) in
+ for c@p in P do rv+:=c*hodge_branch_std_temp(p,N) od;rv
+
+{hodge branching formula for qParamPol of modules with nu=0}
+set hodge_branch_std_temp(qParamPol P, int N)=qParamPol:
+let Q=rearrange(P) then
+rv=nullqParamPol(P.real_form) in
+ for (c,p) in Q do rv+:=c*hodge_branch_std_temp(p,N) od;
+rv
+
+{hodge branching formula for arbitrary standard module p
+ algorithm: hodge_branch_std_temp of the q_recursive deform
+ of p
+}
+set hodge_branch_std(Param p, int N)=qParamPol:
+hodge_branch_std_temp(q_recursive_deform(p),N)
+
+{hodge branching formula for arbitrary ParamPol of 
+standard modules}
+set hodge_branch_std(ParamPol P, int N)=qParamPol:
+hodge_branch_std_temp(q_recursive_deform(P),N)
+
+{hodge branching formula for arbitrary irreducible}
+{need: hodge_character_formula(Param p)}
+{set hodge_branch_irr(Param p,int N)=qParamPol:}
+
+set column([K_Type] ktypes,i_poly_mat M,int i)=
+let col=transpose(M)[i] in 
+dearrange(for j:#col do (col[j],ktypes[j]) od )

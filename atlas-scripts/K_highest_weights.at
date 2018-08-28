@@ -283,7 +283,7 @@ set find_nci_root (KGBElt x,ratvec tau) = int:
             scr[i]*involution(x)*sr[i] = -1 and
             is_noncompact(x)( (1+involution(x))*sr[i] ) { this is a root because alpha and theta(alpha) generate a subsystem of type A_2, so their sum is a root }
          )
-  ; prints("j=",j);assert(>=j,"error in find_nci_root")
+  ; {prints("j=",j);}assert(>=j,"error in find_nci_root")
   ; root_index(rd,sr[j]+involution(x)*sr[j])
   fi
 
