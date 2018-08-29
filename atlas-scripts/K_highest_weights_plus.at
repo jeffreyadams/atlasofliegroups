@@ -1,0 +1,117 @@
+<K_highest_weights.at
+<K_types.at
+
+{move this to basic.at}
+set find ([K_Type] ktypes,K_Type mu) = int:first(#ktypes,(int i)bool:ktypes[i]=mu)
+
+{Enhanced version of K_types@KHighestWeight (in K_highest_weights.at)
+ Also the algorithm \tau->tau_q in KHatHowe Theorem 11.9}
+
+{algorithm
+ given K_type p (STFL for G)
+ find (Q,p_L),
+   Q=theta-stable parabolic
+   p_L=parameter for Q (NOT STFL)
+ AND p_L is the parameter of a one-dimensional representation of L
+ such that p=theta_induce_standard(p_L*0,G)
+ Q is the "strongly compatible parabolic" of KHatHowe 11.6
+ p_L is a minimal principal series of L,
+  J(p_L) is one-dimensional of L, whose restriction to L\cap K
+  is denoted tau_K in KHatHowe Theorem 16.6
+The algorithm here is crazily roundabout, using
+stuff from K_highest_weights.at
+Algorithm:
+given a K_Type mu
+compute a single highest weight lambda of mu
+then K_types(lambda) returns a set of K-types of G
+with this highest weight, among them mu itself
+furthermore it realizes each of these K-types
+as induced from Q
+so K_types_plus@KHighestWeight is the same as
+K_types@KHighestWeight  (see K_highest_weights.at)
+except it keeps around extra information: Q
+and an array [(p_L_i,mu_i)]
+then run through the p_L's and pick the one which
+actually gives mu_i=mu
+}
+
+{same as K_types@KHighestWeight), but return more information}
+set K_types_plus (KHighestWeight(,x,v):mu_in)= (Parabolic,[(Param,K_Type)]):
+  let G=real_form(x) in
+  let mu=move_weight(mu_in,KGB(G,0)) in
+  let (mu,,,)=make_strongly_dominant(mu) in
+  let  Q=parabolic_LKT(mu)  {Q is theta-stable}
+  in
+  assert(is_parabolic_theta_stable(Q), "Q is not theta stable");
+  let x_Q=x_min(Q)
+  then (,x,tau) = mu:=make_strongly_dominant(mu,x_Q)
+  , L=Levi(Q)
+  then { L is relatively split }
+     ()=if LKT_verbose then
+     prints("Q=", Q);
+     prints("mu:", mu);
+     prints("L=", L);
+     prints("two_rho_u_cap_s(Q)", two_rho_u_cap_s(Q,x));
+     prints("rho_l(Q)", rho_l(Q));
+     prints("tau: ", tau);
+     prints("arg:", tau-two_rho_u_cap_s(Q,x)+rho_l(Q)) fi then
+  ()=assert(is_relatively_split(L),"L is not relatively split") then
+  pL=monomials(finalize(parameter(KGB(L,#KGB(L)-1),
+	                tau-two_rho_u_cap_s(Q,x)+rho_l(Q), null(rank(L)))))
+  then
+  ()=if LKT_verbose then
+     prints("pL:", pL);
+     prints("Q=:", Q) fi then
+     pairs=[(Param,K_Type)]:[]
+  in  assert(#pL=1,"finalized parameter has more than one term");
+  let all_pL=all_G_spherical_same_differential(pL[0]) in
+  for qL in all_pL
+  do  let ()=if LKT_verbose then prints("qL:", qL) fi then
+     ind=monomials(theta_induce_standard(parameter(qL),real_form(x))) in
+    assert(#ind=1,"induced has more than one term");
+    pairs#:=(parameter(x(qL),lambda(qL),rho(qL.root_datum)),K_type(ind[0]))
+    {NOTE: nu=rho(L) not 0, so this is a parameter for a one-dimensional
+     representation of L, although not the corresponding STFL which has nu=0}
+  od; (Q,pairs)
+
+set K_types_plus (K_Type mu)= (Parabolic,[(Param,K_Type)]):
+K_types_plus(highest_weights(mu)[0])
+
+set test_K_types_plus(KHighestWeight lambda)=bool:
+let (,pairs)=K_types_plus(lambda) then
+ktypes_plus= for (,mu) in pairs do mu od then
+ktypes=K_types(lambda)
+in
+ #ktypes_plus=#ktypes and
+ all(for a in ktypes_plus do find(ktypes,a) !=-1 od)
+
+set test_K_types_plus([KHighestWeight] lambdas)=bool:
+all(for lambda in lambdas do test_K_types_plus(lambda) od)
+
+
+{K_type p -> (Q,p_L) such that
+ p=theta_induce_standard(p_L*0,G)
+ Note: p_L*0 not p_L
+ and J(p_L) is one-dimensional
+See KHatHowe Theorems 11.9 and 16.6
+}
+set tau_q(K_Type mu)=(Parabolic,Param):
+let (Q,pairs)=K_types_plus(mu) then
+j=first(for (,tau) in pairs do tau=mu od) in
+let (mu_L,)=pairs[j] in
+assert(is_one_dimensional(mu_L),"mu_L is not one-dimensional");
+assert(let ind=theta_induce_standard(mu_L*0,mu.real_form) in
+#ind=1 and first_param(ind)=parameter(mu),"mu_L does not induce to mu");
+(Q,mu_L)
+
+set is_strongly_compatible (Param p,Parabolic P) = bool:
+   if not is_parabolic_theta_stable(P) then
+   prints("The parabolic is not theta-stable."); false
+   else
+     let (S,x)=P, G=real_form(x(p)), ic=infinitesimal_character(p*0)
+     then rr=[int]:##for i:semisimple_rank(G)
+       do if is_real(simple_roots(G)[i],x) then [i] else [] fi
+       od
+         then (,y)=parabolic_by_wt(ic,x(p)) in
+         P=(S,y) and S=rr
+   fi
