@@ -416,7 +416,7 @@ in more detail later.
 
 @h <iostream>
 
-@< Class declarations @>=
+@< Includes needed... @>=
 #include <iosfwd>
 
 @~Here is the main part of the class definition, giving the principal user
@@ -436,6 +436,7 @@ class BufferedInput
      // |typedef| avoids inclusion of \.{readline} headers
   typedef void (*add_hist_type) (const char* );  // this one too
   @< Define |struct input_record@;| @> // a local class
+  @< Define |struct file_stack@;| @> // another one, using the previous
 
 @)
   @< Data members of |BufferedInput| @>@;
@@ -485,29 +486,29 @@ BufferedInput* main_input_buffer=nullptr;
 #include "bitmap.h" // so that the type |BitMap| is complete
 #include "sl_list.h" // used for stack of input files
 
-@~At construction a |BufferedInput| object will fix a reference |base_stream|
-to the input stream to be used when no additional input files are open.
-Furthermore it stores the last line read in its |line_buffer| field, and the
-pointer~|p| points to the next character to be produced by |shift()|. In case
-this buffer is used for terminal input, a prompt string is stored and will be
-printed every time the program requests more input; this is the |prompt|
-pointer so the lifetime of the value provided at construction should contain
-that of the |BufferedInput| object created. We also store a secondary prompt
-|prompt2| and provide a dynamic string |temp_prompt| that together can be used
-to temporarily change the prompt to indicate that some input needs completion.
-In case of terminal input, the input may be pre-processed by the function
-|readline|, which is typically going to be the function of that name from the
-GNU~\.{readline} library; then one may also want to use another function
-stored in |add_hist| to store lines for interactive retrieval, typically the
-|add_history| function from the history library. The member |line_no| holds
-the number of the current line, or more precisely of the first of |cur_lines|
-lines that are currently read into |line_buffer| (if more than one, they were
-joined by escaped newlines). We record the length of the last prompt printed
-in |prompt_length| for the purpose of pointing to tokens. Finally there is a
-stack |input_stack| of active input files (which are accessed by pointers
-since |std::ifstream| objects cannot be put in a stack themselves) together
-with their file names, and a pointer |stream| that always points to the
-current input stream.
+@~At construction a |BufferedInput| object will fix a reference |base_stream| to
+the input stream to be used when no additional input files are open. Furthermore
+it stores the last line read in its |line_buffer| field, and the pointer~|p|
+points to the next character to be produced by |shift()|. In case this buffer is
+used for terminal input, a prompt string is stored and will be printed every
+time the program requests more input; this is the |prompt| pointer so the
+lifetime of the value provided at construction should contain that of the
+|BufferedInput| object created. We also store a secondary prompt |prompt2| and
+provide a dynamic string |temp_prompt| that together can be used to temporarily
+change the prompt to indicate that some input needs completion. In case of
+terminal input, the input may be pre-processed by the function |readline|, which
+is typically going to be the function of that name from the GNU~\.{readline}
+library; then one may also want to use another function stored in |add_hist| to
+store lines for interactive retrieval, typically the |add_history| function from
+the history library. The member |line_no| holds the number of the current line,
+or more precisely of the first of |cur_lines| lines that are currently read into
+|line_buffer| (if more than one, they were joined by escaped newlines). We
+record the length of the last prompt printed in |prompt_length| for the purpose
+of pointing to tokens. Finally there is a stack |input_stack| of active input
+files together with their file names, tables |input_files_seen| and
+|input_files_completed| that together record the status (unread, partially read,
+fully read) of all file names, and a pointer |stream| that tracks the current
+input stream.
 
 @< Data members... @>=
 std::istream& base_stream;
@@ -520,7 +521,7 @@ const rl_type readline; // readline function
 const add_hist_type add_hist; // history function
 unsigned long line_no; // current line number
 int cur_lines,prompt_length; // local variables
-containers::mirrored_sl_list<input_record> input_stack;
+file_stack input_stack;
  // active input streams
 Hash_table input_files_seen; // files successfully opened at least once
 BitMap input_files_completed; // marks those files that were read without error
@@ -615,6 +616,29 @@ struct input_record
   input_record& operator=@[(const input_record& rec) = delete@]; // or assign
 };
 
+@ Our file stack is essentially a |std::stack| of |input_record| using
+|containers::mirrored_sl_list| as container (which allows for the element type
+|input_record| the is not copy-assignable). Using |containers::mirrored_sl_list|
+rather than |containers::mirrored_simple_list| allows us to directly call |size|
+for our file stack, which will end up calling |containers::sl_list::size|.
+However in one place we also need to iterate over the input stack (to check for
+files currently being read), for which we add |ctop| and |cbottom| methods to
+produce (int that order) a range to traverse for visiting all active
+|input_record|s.
+
+@< Define |struct file_stack@;| @>=
+struct file_stack
+: public std::stack<input_record,containers::mirrored_sl_list<input_record> >
+{ typedef containers::simple_list<input_record>::weak_const_iterator
+  const_iterator;
+@)
+  file_stack () :
+  @[ std::stack<input_record,containers::mirrored_sl_list<input_record> >() @]
+  @+{}
+  const_iterator ctop() const @+{@; return c.wcbegin(); }
+  const_iterator cbottom() const @+{@; return c.wcend(); }
+};
+
 @ When an input file is exhausted, the stored line number is restored, the
 |stream| pointer deleted (which also closes the file) and the record popped
 from the stack; then the |stream| is set to the previous input stream. When
@@ -624,20 +648,20 @@ from the stack; then the |stream| is set to the previous input stream. When
 
 @< Definitions of class members @>=
 void BufferedInput::pop_file()
-{ line_no = input_stack.back().line_no;
+{ line_no = input_stack.top().line_no;
   *output_stream << "Completely read file '" << cur_fname() << "'."
                  << std::endl;
-  input_files_completed.insert (input_stack.back().name); // reading succeeded
-  input_stack.pop_back(); // also closes the current file
-  stream= input_stack.empty() ? &base_stream : &input_stack.back().f_stream;
+  input_files_completed.insert (input_stack.top().name); // reading succeeded
+  input_stack.pop(); // also closes the current file
+  stream= input_stack.empty() ? &base_stream : &input_stack.top().f_stream;
 }
 @)
 void BufferedInput::close_includes()
 { while (not input_stack.empty())
   { std::cerr << "Abandoning reading of file '" << cur_fname() @|
               << "' at line " << line_no << std::endl;
-  @/line_no = input_stack.back().line_no;
-    input_stack.pop_back();
+  @/line_no = input_stack.top().line_no;
+    input_stack.pop();
   }
   stream= &base_stream;
 }
@@ -646,7 +670,7 @@ void BufferedInput::close_includes()
 
 @< Other methods of |BufferedInput| @>=
 id_type current_file() const
-{@; return input_stack.empty() ? Hash_table::empty : input_stack.back().name; }
+{@; return input_stack.empty() ? Hash_table::empty : input_stack.top().name; }
 const char* name_of(id_type f) const
 {@; return
    f==Hash_table::empty ? "<standard input>" : input_files_seen.name_of(f); }
@@ -730,16 +754,16 @@ bool BufferedInput::push_file(const char* name, bool skip_seen)
   if (skip_seen and input_files_seen.knows(name) @|
       and input_files_completed.isMember(input_files_seen.match_literal(name)))
     return true;
-  input_stack.emplace_back(*this,name); // this tries to open the file
+  input_stack.emplace(*this,name); // this tries to open the file
 @)
-  if (input_stack.back().f_stream.is_open())
+  if (input_stack.top().f_stream.is_open())
   { @< In cases where reading from this file should be avoided,
        pop its record from the |input_stack|;
        otherwise prepare for reading from the new file @>
     return true; // succeed whether or not a file was actually pushed
   }
   else // opening file failed
-  { input_stack.pop_back();
+  { input_stack.pop();
     // don't call |pop_file|: |stream| and |line_no| were not updated
     std::cerr << "failed to open input file '" << name << "'." << std::endl;
     return false;
@@ -755,29 +779,29 @@ is set to the logical ``or'' of both conditions in all cases.
 
 When the file is really going to be read from, this is reported to
 |*output_stream|, and the member variable |stream| made to point to
-|input_stack.back().f_stream| so that the next reading operation will be from
+|input_stack.top().f_stream| so that the next reading operation will be from
 the new file. We also take care to get the line numbering for the new file off
 to a good start.
 
 @< In cases where reading from this file should be avoided,... @>=
 { bool skip=false;
-  const id_type file_nr = input_stack.back().name;
+  const id_type file_nr = input_stack.top().name;
   if (file_nr==input_files_completed.capacity()) // it wasn't seen before
     input_files_completed.extend_capacity(false);
        // add new empty slot to bitmap; may set it later
   else // old name; need to do some checks
   { skip = skip_seen and input_files_completed.isMember(file_nr);
-    auto it=input_stack.cbegin();
-    while (not skip and not input_stack.at_end(++it))
+    auto it=input_stack.ctop();
+    while (not skip and ++it!=input_stack.cbottom())
       if (file_nr==it->name)
         skip=true; // avoid recursive inclusion of active file
   }
   if (skip)
-    input_stack.pop_back(); // silently skip including the file
+    input_stack.pop(); // silently skip including the file
   else
   { *output_stream << "Starting to read from file '" << cur_fname()
                    << "'." << std::endl;
-  @/stream= &input_stack.back().f_stream;
+  @/stream= &input_stack.top().f_stream;
     line_no=1; // prepare to read from pushed file
     cur_lines=0;
       // so we won't advance |line_no| when getting first line of new file
