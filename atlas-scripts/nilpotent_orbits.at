@@ -575,15 +575,15 @@ set Kac_triples_simple (RootDatum rd, [int] L, int c)=[(int,[int],ratvec)]:
 
 set Kac_triples (RootDatum rd, [int] L)=[(int,[int],ratvec)]:
    let c=order_of_center (rd) in
-   ##for i:c+1 from 1 do Kac_triples_simple(rd,L,i) od
+   ##for i:5*c from 1 do Kac_triples_simple(rd,L,i) od
 
 set print_component_info (ComplexNilpotent (rd,(),H))=void:
    let levis=pseudo_Levis_of_orbit (rd,(),H) in
    if #levis=0 then prints("There are no pseudo-Levis for this orbit.")
    else
-   for L in levis do prints("Pseudo-Levi:",L);
+   for L in levis do prints("Pseudo-Levi:",L," d_J=",d_L(rd,L));
    let triples=Kac_triples(rd,L) in
-   for (i,d,v) in triples do prints("Kac-Diagram=",d,"; order=",i,"; element of t:",v) od od fi
+   for (i,diag,v) in triples do prints("Kac-Diagram=",diag," order=",i,"; element of t:",v) od od fi
 
 set print_component_info (RootDatum rd)=void:
    for orb in complex_nilpotent_orbits (rd) do prints();prints("Orbit:",orb);
