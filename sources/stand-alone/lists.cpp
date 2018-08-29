@@ -7,6 +7,7 @@
 #include <memory> // for |std::unique_ptr|
 #include <list> // for comparison
 #include <stack> // for comparison
+#include "sl_list_fwd.h"
 #include "sl_list.h"
 
 #include <forward_list>
@@ -428,5 +429,13 @@ int main()
   std::cout << L << std::endl;
   end = L.reverse(begin,end);
   std::cout << L << std::endl;
-  tester();
+  atlas::containers::stack<int> st(std::move(L.undress()));
+  atlas::containers::stack<int> st2 = st;
+  while (not st.empty())
+    std::cout << st.top() << ',', st.pop();
+  std::cout << '\n';
+  st.swap(st2);
+  while (not st.empty())
+    std::cout << st.top() << ',', st.pop();
+  std::cout << '\n';
 }

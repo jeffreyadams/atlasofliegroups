@@ -275,17 +275,11 @@ template<typename T, typename Alloc>
   explicit simple_list (const Alloc& a=Alloc()) // empty list
   : node_alloc_type(a), head(nullptr) {}
 
-  explicit simple_list (Alloc&& a) // empty list, explicit moved allocator
-  : node_alloc_type(std::move(a)), head(nullptr) {}
-
   explicit simple_list (node_type* raw) // convert from raw pointer
   : node_alloc_type(), head(raw) {}
 
   explicit simple_list (node_type* raw, const Alloc& a)
   : node_alloc_type(a), head(raw) {}
-
-  explicit simple_list (node_type* raw, Alloc&& a)
-  : node_alloc_type(std::move(a)), head(raw) {}
 
   simple_list (const simple_list& x, const Alloc& a) // copy ctor with allocator
   : node_alloc_type(a)
@@ -300,7 +294,17 @@ template<typename T, typename Alloc>
     }
   }
 
-  simple_list (const simple_list& x)
+  simple_list (simple_list&& x, const Alloc& a) // move ctor with allocator
+  : node_alloc_type(a)
+  , head(nullptr)
+  {
+    if (x.get_allocator()==a) // if allocators are equal, proceed as "move"
+      head.reset(x.head.release());
+    else // unequal allocators, so proceed as "copy, but moving elements"
+      move_insert(begin(),x.wbegin(),x.wend());
+  }
+
+  simple_list (const simple_list& x) // copy constructor
   : node_alloc_type(std::allocator_traits<Alloc>::
 		    select_on_container_copy_construction(x.get_allocator()))
   , head(nullptr)
@@ -659,7 +663,7 @@ template<typename T, typename Alloc>
       return iterator(*pos.link_loc);
     }
 
-    // otherwise do insertion at end of inia=tially empty list, then splice it
+    // otherwise do insertion at end of initially empty list, then splice it
     simple_list insertion(get_node_allocator()); // build range to insert
     auto p = insertion.cbegin();
     for( ; first!=last; ++first,++p)
@@ -876,7 +880,7 @@ template<typename T, typename Alloc>
   // merge non-overlapping increasing ranges, return end of merged range;
   // the merged range will be accessed from the original value of |b0|
   // except in the case |b0==e1| where the first range directly _follows_ the
-  // second range; in that case the merged rang is accesss from |b1| instead
+  // second range; in that case the merged range is accessed from |b1| instead
   template<typename Compare>
   iterator merge (const_iterator b0, const_iterator e0,
 		  const_iterator b1, const_iterator e1,
@@ -1541,10 +1545,10 @@ template<typename T, typename Alloc>
   iterator erase (const_iterator first, const_iterator last)
   {
     node_count -= std::distance(first,last);
-    first.link_loc->reset(last.link_loc->release());
+    first.link_loc->reset(last.link_loc->release()); // link out range
     if (at_end(first)) // whether we had |last==end()| initially
       tail = first.link_loc; // reestablish validity of |tail|
-    return iterator(*first.link_loc);
+    return iterator(*first.link_loc); // transform |first| into |iterator|
   }
 
   template<typename InputIt, typename = typename std::enable_if<
@@ -1800,7 +1804,7 @@ template<typename T, typename Alloc>
   // internal merge non-overlapping increasing ranges, return end of merged
   // the merged range will be accessed from the original value of |b0|
   // except in the case |b0==e1| where the first range directly _follows_ the
-  // second range; in that case the merged rang is accesss from |b1| instead
+  // second range; in that case the merged range is accessed from |b1| instead
   template<typename Compare>
   iterator merge (const_iterator b0, const_iterator e0,
 		  const_iterator b1, const_iterator e1,
@@ -1984,34 +1988,19 @@ template<typename T,typename Alloc>
   typedef typename Alloc::template rebind<node_type>::other node_alloc_type;
 
   public:
-  // forward most constructors, but reverse order for initialised ones
-  // for this reason we cannot use perfect forwarding for the constructor
+  // to get started, one can lift base object to derived class
+  mirrored_simple_list (Base&& x) noexcept : Base(std::move(x)) {}
+
+  // otherwise we define only those constructors that |std::stack| will ever call
   mirrored_simple_list () : Base() {}
   explicit mirrored_simple_list (const Alloc& a) : Base(a) {}
-  explicit mirrored_simple_list (Alloc&& a) : Base(std::move(a)) {}
 
-  mirrored_simple_list (const Base& x) // lift base object to derived class
-    : Base(x) {}
-  mirrored_simple_list (Base&& x) // lift base object to derived class
-  : Base(std::move(x)) {}
-  mirrored_simple_list (sl_node<T, Alloc>* raw_list) // acquire from raw pointer
-  : Base(raw_list) {}
-  // compiler-generated copy constructor and assignment should be OK
-
-  template<typename InputIt, typename = typename std::enable_if<
-  std::is_base_of<std::input_iterator_tag,
-		  typename std::iterator_traits<InputIt>::iterator_category
-  >::value>::type >
-    mirrored_simple_list (InputIt first, InputIt last, const Alloc& a=Alloc())
-    : Base(a)
-    {
-      for ( ; first!=last; ++first)
-	Base::push_front(*first); // this reverses the order
-    }
-
-  mirrored_simple_list (typename Base::size_type n, const T& x,
-			const Alloc& a=Alloc())
-    : Base(n,x,a) {}
+  mirrored_simple_list (const mirrored_simple_list&) = default;
+  mirrored_simple_list (mirrored_simple_list&&) = default;
+  mirrored_simple_list (const mirrored_simple_list& x,const Alloc& a)
+    : Base(x,a) {}
+  mirrored_simple_list (mirrored_simple_list&& x,const Alloc& a)
+    : Base(std::move(x),a) {}
 
   // forward |push_front| method from |Base|, and its likes, as ...|back|
   template<typename... Args> void push_back(Args&&... args)
@@ -2038,31 +2027,20 @@ template<typename T,typename Alloc>
 
   // forward most constructors, but reverse order for initialised ones
   public:
+  // to get started, one can lift base object to derived class
+  mirrored_sl_list (Base&& x) noexcept // lift base object to derived class
+  : Base(std::move(x)) {}
+
+  // otherwise we define only those constructors that |std::stack| will ever call
   mirrored_sl_list () : Base() {}
   explicit mirrored_sl_list (const Alloc& a) : Base(a) {}
-  explicit mirrored_sl_list (Alloc&& a) : Base(std::move(a)) {}
-  mirrored_sl_list (const Base& x) // lift base object to derived class
-    : Base(x) {}
-  mirrored_sl_list (Base&& x) // lift base object to derived class
-  : Base(std::move(x)) {}
-  mirrored_sl_list (sl_node<T, Alloc>* raw_list) // acquire from raw pointer
-  : Base(raw_list) {}
-  // compiler-generated copy constructor and assignment should be OK
 
-  template<typename InputIt, typename = typename std::enable_if<
-  std::is_base_of<std::input_iterator_tag,
-		  typename std::iterator_traits<InputIt>::iterator_category
-  >::value>::type >
-    mirrored_sl_list (InputIt first, InputIt last, const Alloc& a=Alloc())
-    : Base(a)
-    {
-      for ( ; first!=last; ++first)
-	Base::insert(Base::begin(),*first); // this reverses the order
-    }
-
-  mirrored_sl_list (typename Base::size_type n, const T& x,
-		    const Alloc& a=Alloc())
-    : Base(n,x,a) {}
+  mirrored_sl_list (const mirrored_sl_list&) = default;
+  mirrored_sl_list (mirrored_sl_list&&) = default;
+  mirrored_sl_list (const mirrored_sl_list& x,const Alloc& a)
+    : Base(x,a) {}
+  mirrored_sl_list (mirrored_sl_list&& x,const Alloc& a)
+    : Base(std::move(x),a) {}
 
   // forward |push_front| method from |Base|, and its likes, as ...|back|
   template<typename... Args> void push_back(Args&&... args)
