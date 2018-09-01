@@ -35,15 +35,17 @@ template<typename T,typename Alloc>
 
 template <typename Alloc> struct allocator_deleter
 : private Alloc
-{ typedef typename Alloc::value_type value_type;
-  typedef typename Alloc::pointer pointer;
+{
+  using AT = std::allocator_traits<Alloc>;
+  using value_type = typename AT::value_type;
+  using pointer    =  typename Alloc::pointer;
 
   constexpr allocator_deleter ()  = default;
   allocator_deleter (const allocator_deleter&) = default;
   void operator() (pointer p) noexcept
   {
-    this->destroy(std::addressof(*p));
-    this->deallocate(p,1);
+    AT::destroy(*this,std::addressof(*p));
+    AT::deallocate(*this,p,1);
   }
 };
 
@@ -52,19 +54,20 @@ template <typename Alloc, typename... Args>
   typename Alloc::value_type *
   allocator_new(Alloc& a, Args&&... args)
 {
-  typedef typename Alloc::value_type value_type;
-  typedef typename Alloc::pointer pointer;
+  using AT = std::allocator_traits<Alloc>;
+  using value_type = typename AT::value_type;
+  using pointer    = typename AT::pointer;
 
-  pointer qq = a.allocate(1);
+  pointer qq = AT::allocate(a,1);
   try
   {
     value_type* q=std::addressof(*qq); // this ought not throw
-    a.construct(q,std::forward<Args>(args)...);
+    AT::construct(a,q,std::forward<Args>(args)...);
     return q;
   }
   catch(...) // exception safety for throwing |construct|, as |::new| does
   {
-    a.deallocate(qq,1);
+    AT::deallocate(a,qq,1);
     throw;
   }
 }
@@ -76,13 +79,16 @@ template <typename Alloc, typename... Args>
 template<typename T,typename Alloc = std::allocator<T> >
 struct sl_node
 {
-  typedef typename Alloc::template rebind<sl_node>::other node_alloc_type;
-  typedef std::unique_ptr<sl_node, allocator_deleter<node_alloc_type> >
-   link_type;
+  using node_alloc_type =
+    typename std::allocator_traits<Alloc>::template rebind_alloc<sl_node>;
+  using link_type =
+    std::unique_ptr<sl_node, allocator_deleter<node_alloc_type> >;
 
+  // data
   link_type next;
   T contents;
 
+  // constructors and destructor
   sl_node(const T& contents) : next(nullptr), contents(contents) {}
   sl_node(T&& contents) : next(nullptr), contents(std::move(contents)) {}
   template<typename... Args> sl_node(Args&&... args)
@@ -106,10 +112,10 @@ template<typename T, typename Alloc >
   friend class sl_list<T,Alloc>;
   friend class sl_list_iterator<T,Alloc>; // lest |link_loc| needs |protected|
 
-  typedef typename sl_node<T,Alloc>::link_type link_type;
+  using link_type = typename sl_node<T,Alloc>::link_type;
 
 private:
-  typedef sl_list_const_iterator<T,Alloc> self;
+  using self = sl_list_const_iterator<T,Alloc>;
 
   // data
   link_type* link_loc; // pointer to link field
@@ -141,8 +147,8 @@ public:
 template<typename T,typename Alloc>
 class sl_list_iterator : public sl_list_const_iterator<T,Alloc>
 {
-  typedef sl_list_const_iterator<T,Alloc> Base;
-  typedef sl_list_iterator<T,Alloc> self;
+  using Base = sl_list_const_iterator<T,Alloc>;
+  using self = sl_list_iterator<T,Alloc>;
 
   // no extra data
 
@@ -168,14 +174,14 @@ template<typename T, typename Alloc = std::allocator<T> >
   : public std::iterator<std::forward_iterator_tag, T>
 {
   friend class weak_sl_list_iterator<T,Alloc>;
-  typedef sl_node<T,Alloc>* link_type; // here: a raw pointer
-  typedef const sl_node<T,Alloc>* const_link_type;
+  using link_type       =       sl_node<T,Alloc>*; // here: a raw pointer
+  using const_link_type = const sl_node<T,Alloc>*;
 
 private:
-  typedef weak_sl_list_const_iterator<T,Alloc> self;
+  using self = weak_sl_list_const_iterator<T,Alloc>;
 
   // data
-  link_type link; // pointer to non-const, but only expoilitable by derived
+  link_type link; // pointer to non-const, but only exploitable by derived
 
 public:
   // constructors
@@ -208,8 +214,8 @@ template<typename T,typename Alloc = std::allocator<T> >
 class weak_sl_list_iterator
   : public weak_sl_list_const_iterator<T,Alloc>
 {
-  typedef weak_sl_list_const_iterator<T,Alloc> Base;
-  typedef weak_sl_list_iterator<T,Alloc> self;
+  using Base = weak_sl_list_const_iterator<T,Alloc>;
+  using self = weak_sl_list_iterator<T,Alloc>;
 
   // no extra data
 
@@ -236,35 +242,39 @@ public:
 
 template<typename T, typename Alloc>
   class simple_list
-  : private Alloc::template rebind<sl_node<T, Alloc> >::other
+  : private std::allocator_traits<Alloc>::
+            template rebind_alloc<sl_node<T, Alloc> >
 {
   friend class sl_list<T, Alloc>;
 
-  typedef sl_node<T, Alloc> node_type;
-  typedef typename Alloc::template rebind<node_type>::other node_alloc_type;
-  typedef typename Alloc::pointer node_ptr; // returned from |allocate|
-  typedef std::unique_ptr<node_type, allocator_deleter<node_alloc_type> >
-    link_type;
+  using AT =  std::allocator_traits<Alloc>;
+
+  using node_type = sl_node<T, Alloc>;
+  using node_alloc_type = typename AT::template rebind_alloc<node_type>;
+  using node_ptr        = typename AT::pointer; // returned from |allocate|
+  using link_type       =
+    std::unique_ptr<node_type,allocator_deleter<node_alloc_type> >;
 
  public:
-  typedef T value_type;
-  typedef Alloc allocator_type;
-  typedef std::size_t size_type;
-  typedef std::ptrdiff_t difference_type;
-  typedef value_type& reference;
-  typedef const value_type& const_reference;
-  typedef value_type* pointer;
-  typedef const value_type* const_pointer;
+  using value_type      = T;
+  using allocator_type  = Alloc;
+  using size_type       = std::size_t;
+  using difference_type = std::ptrdiff_t;
+  using reference       = value_type&;
+  using const_reference = value_type const&;
+  using pointer         = value_type*;
+  using const_pointer   = value_type const*;
 
-  typedef sl_list_const_iterator<T, Alloc> const_iterator;
-  typedef sl_list_iterator<T, Alloc> iterator;
-  typedef weak_sl_list_const_iterator<T, Alloc> weak_const_iterator;
-  typedef weak_sl_list_iterator<T, Alloc> weak_iterator;
+  using const_iterator      = sl_list_const_iterator<T, Alloc>;
+  using iterator            = sl_list_iterator<T, Alloc>;
+  using weak_const_iterator = weak_sl_list_const_iterator<T, Alloc>;
+  using weak_iterator       = weak_sl_list_iterator<T, Alloc>;
 
   // data
  private:
   link_type head; // owns the first (if any), and recursively all nodes
 
+  // methods
  public:
   // access to the allocator, which is our base object
   Alloc get_allocator () const noexcept { return *this; } // convert to |Alloc|
@@ -1041,28 +1051,30 @@ template<typename T,typename Alloc>
 
 template<typename T, typename Alloc>
   class sl_list
-  : private Alloc::template rebind<sl_node<T, Alloc> >::other
+  : private std::allocator_traits<Alloc>::
+            template rebind_alloc<sl_node<T, Alloc> >
 {
-  typedef sl_node<T, Alloc> node_type;
-  typedef typename Alloc::template rebind<node_type>::other node_alloc_type;
-  typedef typename Alloc::pointer node_ptr; // returned from |allocate|
-  typedef std::unique_ptr<node_type, allocator_deleter<node_alloc_type> >
-    link_type;
+  using AT = std::allocator_traits<Alloc>;
+  using node_type       = sl_node<T, Alloc>;
+  using node_alloc_type = typename AT::template rebind_alloc<node_type>;
+  using node_ptr        = typename AT::pointer; // returned from |allocate|
+  using link_type       =
+    std::unique_ptr<node_type, allocator_deleter<node_alloc_type> >;
 
  public:
-  typedef T value_type;
-  typedef Alloc allocator_type;
-  typedef std::size_t size_type;
-  typedef std::ptrdiff_t difference_type;
-  typedef value_type& reference;
-  typedef const value_type& const_reference;
-  typedef value_type* pointer;
-  typedef const value_type* const_pointer;
+  using value_type      = T;
+  using allocator_type  = Alloc;
+  using size_type       = std::size_t;
+  using difference_type = std::ptrdiff_t;
+  using reference       = value_type&;
+  using const_reference = value_type const&;
+  using pointer         = value_type*;
+  using const_pointer   = value_type const*;
 
-  typedef sl_list_const_iterator<T,Alloc> const_iterator;
-  typedef sl_list_iterator<T,Alloc> iterator;
-  typedef weak_sl_list_const_iterator<T, Alloc> weak_const_iterator;
-  typedef weak_sl_list_iterator<T, Alloc> weak_iterator;
+  using const_iterator      = sl_list_const_iterator<T, Alloc>;
+  using iterator            = sl_list_iterator<T, Alloc>;
+  using weak_const_iterator = weak_sl_list_const_iterator<T, Alloc>;
+  using weak_iterator       = weak_sl_list_iterator<T, Alloc>;
 
   // data
  private:
@@ -1070,6 +1082,7 @@ template<typename T, typename Alloc>
   link_type* tail;
   size_type node_count;
 
+  // methods
   // an auxiliary function occasionally called when |head| has been released
   void set_empty () noexcept { tail=&head; node_count=0; }
 
@@ -1983,9 +1996,11 @@ template<typename T,typename Alloc>
   class mirrored_simple_list // trivial adapter, to allow use with |std::stack|
   : public simple_list<T,Alloc>
 {
-  typedef simple_list<T,Alloc> Base;
-  typedef sl_node<T, Alloc> node_type;
-  typedef typename Alloc::template rebind<node_type>::other node_alloc_type;
+  using AT =  std::allocator_traits<Alloc>;
+
+  using Base            = simple_list<T,Alloc>;
+  using node_type       = sl_node<T,Alloc>;
+  using node_alloc_type = typename AT::template rebind_alloc<node_type>;
 
   public:
   // to get started, one can lift base object to derived class
@@ -2021,9 +2036,11 @@ template<typename T,typename Alloc>
   class mirrored_sl_list // trivial adapter, to allow use with |std::stack|
   : public sl_list<T,Alloc>
 {
-  typedef sl_list<T,Alloc> Base;
-  typedef sl_node<T, Alloc> node_type;
-  typedef typename Alloc::template rebind<node_type>::other node_alloc_type;
+  using AT =  std::allocator_traits<Alloc>;
+
+  using Base            = sl_list<T,Alloc>;
+  using node_type       = sl_node<T,Alloc>;
+  using node_alloc_type = typename AT::template rebind_alloc<node_type>;
 
   // forward most constructors, but reverse order for initialised ones
   public:
@@ -2065,10 +2082,9 @@ template<typename T,typename Alloc>
 
 }; // |class mirrored_sl_list<T,Alloc>|
 
-} // |namespace cantainers|
+} // |namespace containers|
 
 } // |namespace atlas|
 
 
 #endif
-
