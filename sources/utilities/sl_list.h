@@ -38,7 +38,7 @@ template <typename Alloc> struct allocator_deleter
 {
   using AT = std::allocator_traits<Alloc>;
   using value_type = typename AT::value_type;
-  using pointer    =  typename Alloc::pointer;
+  using pointer    = typename AT::pointer;
 
   constexpr allocator_deleter ()  = default;
   allocator_deleter (const allocator_deleter&) = default;
@@ -51,7 +51,7 @@ template <typename Alloc> struct allocator_deleter
 
 // exception safe replacement of (non-placement) |::new| for use with |Alloc|
 template <typename Alloc, typename... Args>
-  typename Alloc::value_type *
+typename std::allocator_traits<Alloc>::pointer
   allocator_new(Alloc& a, Args&&... args)
 {
   using AT = std::allocator_traits<Alloc>;
@@ -124,8 +124,8 @@ public:
   // constructors
   sl_list_const_iterator() : link_loc(nullptr) {} // default iterator is invalid
   explicit sl_list_const_iterator(const link_type& link)
-  /* the following const_cast is safe because not exploitable using a mere
-     |const_iterator|; only used for |insert| and |erase| manipulators */
+  /* the |const| in the argument is there so observer methods can call us, but
+     needs to be |const_cast| away to enable |insert|, |erase|, and |splice| */
     : link_loc(const_cast<link_type*>(&link)) {}
 
   // contents access methods; return |const| ref/ptr for |const_iterator|
@@ -174,36 +174,37 @@ template<typename T, typename Alloc = std::allocator<T> >
   : public std::iterator<std::forward_iterator_tag, T>
 {
   friend class weak_sl_list_iterator<T,Alloc>;
-  using link_type       =       sl_node<T,Alloc>*; // here: a raw pointer
-  using const_link_type = const sl_node<T,Alloc>*;
+
+  using pointer = typename sl_node<T,Alloc>::link_type::pointer;
+  using const_pointer = const sl_node<T,Alloc>*; // hard to describe this otherwise
 
 private:
   using self = weak_sl_list_const_iterator<T,Alloc>;
 
   // data
-  link_type link; // pointer to non-const, but only exploitable by derived
+  pointer ptr; // pointer to non-const, but only exploitable by derived type
 
 public:
   // constructors
-  weak_sl_list_const_iterator() : link(nullptr) {} // default iterator: end
-  explicit weak_sl_list_const_iterator(const_link_type p)
+  weak_sl_list_const_iterator() : ptr(nullptr) {} // default iterator: |end()|
+  explicit weak_sl_list_const_iterator(const_pointer p)
   /* the following const_cast is safe because not exploitable using a mere
      |const_iterator|; only used to allow weak_iterator to be derived */
-  : link(const_cast<link_type>(p)) {}
+  : ptr(const_cast<pointer>(p)) {}
 
-  // contents access methods; return |const| ref/ptr for |const_iterator|
-  const T& operator*() const { return link->contents; }
-  const T* operator->() const { return &link->contents; }
+  // contents access; return |const| ref/ptr only: we are a |const_iterator|
+  const T& operator*() const { return ptr->contents; }
+  const T* operator->() const { return &ptr->contents; }
 
-  self operator++() { link = link->next.get(); return *this; }
+  self operator++() { ptr = ptr->next.get(); return *this; }
   self operator++(int) // post-increment
-  { self tmp=*this; link = link->next.get(); return tmp; }
+  { self tmp=*this; ptr = ptr->next.get(); return tmp; }
 
   // equality testing methods
-  bool operator==(const self& x) const { return link == x.link; }
-  bool operator!=(const self& x) const { return link != x.link; }
+  bool operator==(const self& x) const { return ptr == x.ptr; }
+  bool operator!=(const self& x) const { return ptr != x.ptr; }
 
-  bool at_end () const { return link==nullptr; }
+  bool at_end () const { return ptr==nullptr; }
 }; // |struct weak_sl_list_const_iterator| template
 
 
@@ -222,15 +223,15 @@ class weak_sl_list_iterator
 public:
   // constructors
   weak_sl_list_iterator() : Base() {} // default iterator: end
-  explicit weak_sl_list_iterator(typename Base::link_type p): Base(p) {}
+  explicit weak_sl_list_iterator(typename Base::pointer p): Base(p) {}
 
   // contents access methods;  return non-const ref/ptr
-  T& operator*() const { return Base::link->contents; }
-  T* operator->() const { return &Base::link->contents; }
+  T& operator*() const { return Base::ptr->contents; }
+  T* operator->() const { return &Base::ptr->contents; }
 
-  self operator++() { Base::link = Base::link->next.get(); return *this; }
+  self operator++() { Base::ptr = Base::ptr->next.get(); return *this; }
   self operator++(int) // post-increment
-  { self tmp=*this; Base::link = Base::link->next.get(); return tmp; }
+  { self tmp=*this; Base::ptr = Base::ptr->next.get(); return tmp; }
   // for other methods, including equality tests, use the Base methods
 }; // |struct weak_sl_list_iterator| template
 
@@ -251,7 +252,7 @@ template<typename T, typename Alloc>
 
   using node_type = sl_node<T, Alloc>;
   using node_alloc_type = typename AT::template rebind_alloc<node_type>;
-  using node_ptr        = typename AT::pointer; // returned from |allocate|
+  using node_ptr = typename std::allocator_traits<node_alloc_type>::pointer;
   using link_type       =
     std::unique_ptr<node_type,allocator_deleter<node_alloc_type> >;
 
@@ -285,10 +286,10 @@ template<typename T, typename Alloc>
   explicit simple_list (const Alloc& a=Alloc()) // empty list
   : node_alloc_type(a), head(nullptr) {}
 
-  explicit simple_list (node_type* raw) // convert from raw pointer
+  explicit simple_list (node_ptr raw) // convert from raw pointer
   : node_alloc_type(), head(raw) {}
 
-  explicit simple_list (node_type* raw, const Alloc& a)
+  explicit simple_list (node_ptr raw, const Alloc& a)
   : node_alloc_type(a), head(raw) {}
 
   simple_list (const simple_list& x, const Alloc& a) // copy ctor with allocator
@@ -296,9 +297,9 @@ template<typename T, typename Alloc>
   , head(nullptr)
   {
     link_type* tail = &head;
-    for (node_type* p=x.head.get(); p!=nullptr; p=p->next.get())
+    for (node_ptr p=x.head.get(); p!=nullptr; p=p->next.get())
     {
-      node_type* q = allocator_new(node_allocator(),p->contents);
+      node_ptr q = allocator_new(node_allocator(),p->contents);
       tail->reset(q); // link in new final node
       tail=&q->next;  // point |tail| to its link field, to append there next
     }
@@ -320,9 +321,9 @@ template<typename T, typename Alloc>
   , head(nullptr)
   {
     link_type* tail = &head;
-    for (node_type* p=x.head.get(); p!=nullptr; p=p->next.get())
+    for (node_ptr p=x.head.get(); p!=nullptr; p=p->next.get())
     {
-      node_type* q = allocator_new(node_allocator(),p->contents);
+      node_ptr q = allocator_new(node_allocator(),p->contents);
       tail->reset(q); // link in new final node
       tail=&q->next;  // point |tail| to its link field, to append there next
     }
@@ -350,7 +351,7 @@ template<typename T, typename Alloc>
     while (n-->0)
     {
       // construct new node with default constructed value
-      node_type* p = allocator_new(node_allocator());
+      node_ptr p = allocator_new(node_allocator());
       p->next = std::move(head);
       head.reset(p); // splice in new node
     }
@@ -513,7 +514,7 @@ template<typename T, typename Alloc>
       p.link_loc->reset();
   }
 
-  node_type* release() { return head.release(); } // convert to raw pointer
+  node_ptr release() { return head.release(); } // convert to raw pointer
 
   //iterators
   iterator begin() noexcept { return iterator(head); }
@@ -533,7 +534,7 @@ template<typename T, typename Alloc>
   void push_front (const T& val)
   {
     // construct node value
-    node_type* p = allocator_new(node_allocator(),val);
+    node_ptr p = allocator_new(node_allocator(),val);
     p->next.reset(head.release()); // link trailing nodes here
     head.reset(p); // make new node the first one in the list
   }
@@ -541,7 +542,7 @@ template<typename T, typename Alloc>
   void push_front (T&& val)
   {
     // construct node value
-    node_type* p = allocator_new(node_allocator(),std::move(val));
+    node_ptr p = allocator_new(node_allocator(),std::move(val));
     p->next.reset(head.release()); // link trailing nodes here
     head.reset(p); // make new node the first one in the list
   }
@@ -550,7 +551,7 @@ template<typename T, typename Alloc>
     void emplace_front (Args&&... args)
   {
     // construct node value
-    node_type* p =
+    node_ptr p =
       allocator_new(node_allocator(),std::forward<Args>(args)...);
     p->next.reset(head.release()); // link trailing nodes here
     head.reset(p); // make new node the first one in the list
@@ -586,7 +587,7 @@ template<typename T, typename Alloc>
   {
     link_type& link = *pos.link_loc;
     // construct node value
-    node_type* p = allocator_new(node_allocator(),val);
+    node_ptr p = allocator_new(node_allocator(),val);
     p->next.reset(link.release()); // link the trailing nodes here
     link.reset(p); // and attach new node to previous ones
     return iterator(p->next); // iterator refers to |next| field of the new node
@@ -596,7 +597,7 @@ template<typename T, typename Alloc>
   {
     link_type& link = *pos.link_loc;
     // construct node value
-    node_type* p = allocator_new(node_allocator(),std::move(val));
+    node_ptr p = allocator_new(node_allocator(),std::move(val));
     p->next.reset(link.release()); // link the trailing nodes here
     link.reset(p); // and attach new node to previous ones
     return iterator(p->next); // iterator refers to |next| field of the new node
@@ -606,8 +607,7 @@ template<typename T, typename Alloc>
     iterator emplace (const_iterator pos, Args&&... args)
   {
     link_type& link = *pos.link_loc;
-    node_type* p =
-      allocator_new(node_allocator(),std::forward<Args>(args)...);
+    node_ptr p = allocator_new(node_allocator(),std::forward<Args>(args)...);
     p->next.reset(link.release()); // link the trailing nodes here
     link.reset(p); // and attach new node to previous ones
     return iterator(p->next); // iterator refers to |next| field of the new node
@@ -621,7 +621,7 @@ template<typename T, typename Alloc>
     auto result = insert(pos,val); // add a node, |result| refers to its |next|
     while (n-->0) // insert other copies of |val| in back-to-front sense
     {
-      node_type* p = allocator_new(node_allocator(),val);
+      node_ptr p = allocator_new(node_allocator(),val);
       p->next.reset(link.release()); // link the trailing nodes here
       link.reset(p); // and attach new node to previous ones
     }
@@ -810,7 +810,7 @@ template<typename T, typename Alloc>
 
   void unique()
   {
-    node_type* p = head.get();
+    node_ptr p = head.get();
     if (p!=nullptr) // following loop has |p!=nullptr| as invariant
       while (p->next.get()!=nullptr)
       {
@@ -825,7 +825,7 @@ template<typename T, typename Alloc>
   template<typename BinaryPredicate>
     void unique(BinaryPredicate relation)
   {
-    node_type* p = head.get();
+    node_ptr p = head.get();
     if (p!=nullptr) // following loop has |p!=nullptr| as invariant
       while (p->next.get()!=nullptr)
       {
@@ -903,7 +903,7 @@ template<typename T, typename Alloc>
       return merge(b1,e1,b0,e0,less); // swap to avoid dangerous aliasing
 
     link_type& qq = *b1.link_loc;
-    node_type* const end = e1.link_loc->get(); // save link value that marks end
+    node_ptr const end = e1.link_loc->get(); // save link value that marks end
 
     for ( ; b0!=e0; ++b0) // neither range is empty
     {
@@ -1057,7 +1057,7 @@ template<typename T, typename Alloc>
   using AT = std::allocator_traits<Alloc>;
   using node_type       = sl_node<T, Alloc>;
   using node_alloc_type = typename AT::template rebind_alloc<node_type>;
-  using node_ptr        = typename AT::pointer; // returned from |allocate|
+  using node_ptr = typename std::allocator_traits<node_alloc_type>::pointer;
   using link_type       =
     std::unique_ptr<node_type, allocator_deleter<node_alloc_type> >;
 
@@ -1102,9 +1102,9 @@ template<typename T, typename Alloc>
   , tail(&head)
   , node_count(x.node_count)
   {
-    for (node_type* p=x.head.get(); p!=nullptr; p=p->next.get())
+    for (node_ptr p=x.head.get(); p!=nullptr; p=p->next.get())
     {
-      node_type* q = allocator_new(node_allocator(),p->contents);
+      node_ptr q = allocator_new(node_allocator(),p->contents);
       tail->reset(q); // link in new final node
       tail=&q->next;  // point |tail| to its link field, to append there next
     }
@@ -1137,9 +1137,9 @@ template<typename T, typename Alloc>
   , tail(&head)
   , node_count(x.node_count)
   {
-    for (node_type* p=x.head.get(); p!=nullptr; p=p->next.get())
+    for (node_ptr p=x.head.get(); p!=nullptr; p=p->next.get())
     {
-      node_type* q = allocator_new(node_allocator(),p->contents);
+      node_ptr q = allocator_new(node_allocator(),p->contents);
       tail->reset(q); // link in new final node
       tail=&q->next;  // point |tail| to its link field, to append there next
     }
@@ -1178,7 +1178,7 @@ template<typename T, typename Alloc>
     while (n-->0)
     {
       // construct new node with default constructed value
-      node_type* p = allocator_new(node_allocator());
+      node_ptr p = allocator_new(node_allocator());
       tail->reset(p); // splice in new node
       tail = &p->next; // then move |tail| to point to null smart ptr agin
     }
@@ -1351,7 +1351,7 @@ template<typename T, typename Alloc>
   void push_front (const T& val)
   {
     // construct node value
-    node_type* p = allocator_new(node_allocator(),val);
+    node_ptr p = allocator_new(node_allocator(),val);
     if (head.get()==nullptr)
       tail=&p->next; // adjusts |tail| if list was empty
     else
@@ -1363,7 +1363,7 @@ template<typename T, typename Alloc>
   void push_front (T&& val)
   {
    // construct node value
-    node_type* p = allocator_new(node_allocator(),std::move(val));
+    node_ptr p = allocator_new(node_allocator(),std::move(val));
     if (head.get()==nullptr)
       tail=&p->next; // adjusts |tail| if list was empty
     else
@@ -1376,8 +1376,7 @@ template<typename T, typename Alloc>
     void emplace_front (Args&&... args)
   {
     // construct node value
-    node_type* p =
-      allocator_new(node_allocator(),std::forward<Args>(args)...);
+    node_ptr p = allocator_new(node_allocator(),std::forward<Args>(args)...);
     if (head.get()==nullptr)
       tail=&p->next; // adjusts |tail| if list was empty
     else
@@ -1436,7 +1435,7 @@ template<typename T, typename Alloc>
   iterator insert (const_iterator pos, const T& val)
   {
     link_type& link = *pos.link_loc;
-    node_type* p = allocator_new(node_allocator(),val);
+    node_ptr p = allocator_new(node_allocator(),val);
     if (at_end(pos))
       tail=&p->next;
     else
@@ -1449,7 +1448,7 @@ template<typename T, typename Alloc>
   iterator insert (const_iterator pos, T&& val)
   {
     link_type& link = *pos.link_loc;
-    node_type* p = allocator_new(node_allocator(),std::move(val));
+    node_ptr p = allocator_new(node_allocator(),std::move(val));
     if (at_end(pos))
       tail=&p->next;
     else
@@ -1463,8 +1462,7 @@ template<typename T, typename Alloc>
     iterator emplace (const_iterator pos, Args&&... args)
   {
     link_type& link = *pos.link_loc;
-    node_type* p =
-      allocator_new(node_allocator(),std::forward<Args>(args)...);
+    node_ptr p = allocator_new(node_allocator(),std::forward<Args>(args)...);
     if (at_end(pos))
       tail=&p->next;
     else
@@ -1482,7 +1480,7 @@ template<typename T, typename Alloc>
     auto result = insert(pos,val); // also takes care of maybe changing |tail|
     while (n-->0) // insert other copies of |val| in back-to-front sense
     {
-      node_type* p = allocator_new(node_allocator(),val);
+      node_ptr p = allocator_new(node_allocator(),val);
       p->next.reset(link.release()); // link the trailing nodes here
       link.reset(p); // and attach new node to previous ones
       ++node_count; // exception safe tracking of the size
@@ -1723,7 +1721,7 @@ template<typename T, typename Alloc>
 
   void unique()
   {
-    node_type* p = head.get();
+    node_ptr p = head.get();
     if (p!=nullptr)
     {
       while (p->next.get()!=nullptr)
@@ -1742,7 +1740,7 @@ template<typename T, typename Alloc>
   template<typename BinaryPredicate>
     void unique(BinaryPredicate relation)
   {
-    node_type* p = head.get();
+    node_ptr p = head.get();
     if (p!=nullptr)
     {
       while (p->next.get()!=nullptr)
@@ -1830,7 +1828,7 @@ template<typename T, typename Alloc>
       return merge(b1,e1,b0,e0,less); // swap to avoid dangerous aliasing
 
     link_type& qq = *b1.link_loc;
-    node_type* const end = e1.link_loc->get(); // save link value that marks end
+    node_ptr const end = e1.link_loc->get(); // save link value that marks end
 
     for ( ; b0!=e0; ++b0) // neither range is empty
     {
@@ -1996,11 +1994,7 @@ template<typename T,typename Alloc>
   class mirrored_simple_list // trivial adapter, to allow use with |std::stack|
   : public simple_list<T,Alloc>
 {
-  using AT =  std::allocator_traits<Alloc>;
-
-  using Base            = simple_list<T,Alloc>;
-  using node_type       = sl_node<T,Alloc>;
-  using node_alloc_type = typename AT::template rebind_alloc<node_type>;
+  using Base = simple_list<T,Alloc>;
 
   public:
   // to get started, one can lift base object to derived class
@@ -2036,11 +2030,7 @@ template<typename T,typename Alloc>
   class mirrored_sl_list // trivial adapter, to allow use with |std::stack|
   : public sl_list<T,Alloc>
 {
-  using AT =  std::allocator_traits<Alloc>;
-
-  using Base            = sl_list<T,Alloc>;
-  using node_type       = sl_node<T,Alloc>;
-  using node_alloc_type = typename AT::template rebind_alloc<node_type>;
+  using Base = sl_list<T,Alloc>;
 
   // forward most constructors, but reverse order for initialised ones
   public:

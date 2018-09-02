@@ -1964,7 +1964,7 @@ expr_p make_int_case_node
 case int_case_expr0:
 case int_case_expr1:
 case int_case_expr2:
-{ const auto& c=*e.if_variant;
+{ auto& c=*e.if_variant;
   wel_const_iterator it(&c.branches);
   out << " case " << c.condition;
   if (e.kind==int_case_expr2)
@@ -2020,7 +2020,7 @@ of the same for an integer case expression.
 
 @< Cases for printing... @>=
 case union_case_expr:
-{ const auto& c=*e.if_variant;
+{ auto& c=*e.if_variant;
   wel_const_iterator it(&c.branches);
   out << " case " << c.condition << " in " << *it;
   for (++it; not it.at_end(); ++it)
