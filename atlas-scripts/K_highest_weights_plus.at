@@ -124,11 +124,13 @@ set is_strongly_compatible (Param p,Parabolic P) = bool:
           else []
 	  fi
        od in
-     if not rr=S then false
-     else let (b,w)=cross_divide (y,x(p)) in if b=false then b
-     else let lam_new=w*ic in
-     is_dominant (lam_new,G) fi fi fi
-
+       if not rr=S then false
+       else let (b,w)=cross_divide (y,x(p)) in
+          if b=false then b
+          else let lam_new=w*ic in is_dominant (G,lam_new)
+	  fi
+       fi
+  fi
 
 set make_strongly_compatible_parabolic (Param p) = Parabolic:
    let x=x(p) then theta=involution(x), ic=infinitesimal_character(p*0)
