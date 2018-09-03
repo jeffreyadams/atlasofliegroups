@@ -104,14 +104,33 @@ assert(let ind=theta_induce_standard(mu_L*0,mu.real_form) in
 #ind=1 and first_param(ind)=parameter(mu),"mu_L does not induce to mu");
 (Q,mu_L)
 
+set cross_divide (KGBElt x,KGBElt y)=(bool,WeylElt):
+   let W=W(root_datum(y)) in let done=false, n=0, w=W[0], b=false in
+   while not done do if n=#W then prints("The elements are not related by cross-action.");
+                     done:=true
+                     elif cross(W[n],y)=x then done:=true; b:=true; w:=W[n]
+		     else n+:=1
+		     fi
+		  od; (b,w)
+
 set is_strongly_compatible (Param p,Parabolic P) = bool:
-   if not is_parabolic_theta_stable(P) then
+  assert(is_final(p),"p is not final");
+  if not is_parabolic_theta_stable(P) then
    prints("The parabolic is not theta-stable."); false
-   else
+  else
      let (S,x)=P, G=real_form(x(p)), ic=infinitesimal_character(p*0)
-     then rr=[int]:##for i:semisimple_rank(G)
-       do if is_real(simple_roots(G)[i],x) then [i] else [] fi
-       od
-         then (,y)=parabolic_by_wt(ic,x(p)) in
-         P=(S,y) and S=rr
-   fi
+     then y=maximal(S,x) then rr=[int]:##for i:semisimple_rank(G)
+       do if is_real(simple_roots(G)[i],y) then [i]
+          else []
+	  fi
+       od in
+     if not rr=S then false
+     else let (b,w)=cross_divide (y,x(p)) in if b=false then b
+     else let lam_new=w*ic in
+     is_dominant (lam_new,G) fi fi fi
+
+
+set make_strongly_compatible_parabolic (Param p) = Parabolic:
+   let x=x(p) then theta=involution(x), ic=infinitesimal_character(p*0)
+   then wt=ic+(rho_i(x)+(rho_S(x)+theta*rho_S(x))/20)/10 in
+   parabolic_by_wt(wt,x)
