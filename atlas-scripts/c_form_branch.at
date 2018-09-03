@@ -1,0 +1,39 @@
+<hodge_K_type_formula.at
+
+set h_form_branch_std(Param p, int N)=branch_std(hermitian_form_std(p),N)
+set h_form_branch_irreducible(Param p, int N)=branch_irr(hermitian_form_irreducible(p),N)
+
+set c_form_branch_std(Param p,int N)=ParamPol:
+assert(is_equal_rank(p.real_form),"G is not equal rank");
+let hf_branch_std=h_form_branch_std(p,N) in
+if #hf_branch_std=0 then null_module(p.real_form) else let
+lkt=first_param(hf_branch_std) then
+a=mu(lkt) then
+rv=null_module(p.real_form) in
+for c@q in hf_branch_std do rv+:=c*s^(rat_as_int(a-mu(q)))*q od ;rv fi
+
+set c_form_branch_irreducible(Param p,int N)=ParamPol:
+assert(is_equal_rank(p.real_form),"group is not equal rank");
+let hf_branch_irr=h_form_branch_irreducible(p,N) in
+if #hf_branch_irr=0 then null_module(p.real_form) else
+let lkt=first_param(hf_branch_irr) then
+a=mu(lkt) then
+rv=null_module(p.real_form) in
+for c@q in hf_branch_irr do rv+:=c*s^(rat_as_int(a-mu(q)))*q od;rv fi
+
+set c_form_branch_std(ParamPol P,int N,RealForm G)=ParamPol:
+let rv=null_module(G) in
+ for c@q in P do prints("q=",q);rv+:=c*c_form_branch_std(q,N) od;rv
+
+{error if #P=0}
+set c_form_branch_std(ParamPol P,int N)=ParamPol:c_form_branch_std(P,N,P.real_form)
+
+set test_hodge_K_type_formula_c_form(K_Type mu, int N)=
+let f=hodge_K_type_formula(mu).v_to_s then
+g=c_form_branch_std(f,N)  in (#g=1, g)
+
+set test_hodge_K_type_formula_c_form([K_Type] ktypes, int N)=
+for mu in ktypes do test_hodge_K_type_formula_c_form(mu,N) od
+
+set test_hodge_K_type_formula_c_form_short([K_Type] ktypes, int N)=
+(sum(for (r,) in test_hodge_K_type_formula_c_form(ktypes,N) do if r then 1 else 0 fi od),#ktypes)

@@ -1,10 +1,12 @@
-<qParamPol.at
+<hodgeParamPol.at
 <deform.at
 <hermitian.at
-set qd_verbose=false
+set hodge_verbose=false
 
-{q version of deformation algorithm
- actually "q" is "v" in the algorithm}
+{hodge version of deformation algorithm
+ used to be called the "q" version, although 
+ it is really "v"
+}
 
 {difference of two vectors of polynomials of the same length}
 set poly_rows_minus([i_poly] f,[i_poly] g)=[i_poly]:([f]-[g])[0]
@@ -30,8 +32,8 @@ let B=^A then
 (n,m)=shape(B) in
 for i:m do for j:n do vec:[B[i][j]] od od
 
-{q-version of compress from deform.at}
-set q_compress ([Param] B, mat KL_mat, [i_poly] polys, vec stops, vec survivors, mat map) =
+{hodge-version of compress from deform.at}
+set hodge_compress ([Param] B, mat KL_mat, [i_poly] polys, vec stops, vec survivors, mat map) =
   ([Param], i_poly_mat, [int]):
   let KL_poly_mat = i_poly_mat: transpose(for col in KL_mat do for inx in col do polys[inx] od od) then
 {   ()=prints("KL_poly_mat:");printPolyMatrix(KL_poly_mat) then}
@@ -60,14 +62,15 @@ set Q_v_inverse(i_poly f)=reverse(f)
 {v^k*Q(v^{-1}), k should be large enough so this is a polynomial}
 set v_to_the_k_times_Q_v_inverse(int N,i_poly f)=null(N-degree(f))##reverse(f)
 
-{q-version of deformation_terms, using last_column_mat_poly_inverse(KL_mat)
-to compute column of inverse as polynomial in q}
-set q_deformation_terms (Param Gamma) = qParamPol:
- let ()=if qd_verbose then prints("Computing q_deformation of ", Gamma) fi in
- let (B,P,length) = q_compress(partial_KL_block(Gamma:=normal(Gamma))) in  {P is the *signed* P-matrix}
+{hodge-version of deformation_terms, using last_column_mat_poly_inverse(KL_mat)
+to compute column of inverse as polynomial in v
+}
+set hodge_deformation_terms (Param Gamma) = hodgeParamPol:
+ let ()=if hodge_verbose then prints("Computing hodge_deformation of ", Gamma) fi in
+ let (B,P,length) = hodge_compress(partial_KL_block(Gamma:=normal(Gamma))) in  {P is the *signed* P-matrix}
  if #B=0 or B~[0]!=Gamma then [null_module(Gamma)] { if |Gamma| itself is not among survivors, return 0 }
   else
-   let rv=nullqParamPol(Gamma.real_form) then
+   let rv=nullHodgeParamPol(Gamma.real_form) then
    (,P0,)=compress(partial_KL_block(Gamma:=normal(Gamma))) then
    Q_col=last_column_mat_poly_inverse(P)  {last column of Q matrix} in
    for i:#Q_col-1 do  {i <-> Phi}
@@ -85,7 +88,7 @@ set q_deformation_terms (Param Gamma) = qParamPol:
      sign=(-1)  { P is the signed matrix, so don't need (-1)^length_diff} then
      contrib=sign*poly_product(poly_product(vee^on_over_2,P_Phi_Xi_v),v_power_Q_Xi_Gamma_v_inverse) in
      {debugging only}
-     if qd_verbose=true then
+     if hodge_verbose=true then
         prints(new_line,"(i,j)=(",i,",",j,")",new_line,
 	"Xi: ", Xi, new_line,
         "Gamma: ", Gamma, new_line,
@@ -104,121 +107,149 @@ set q_deformation_terms (Param Gamma) = qParamPol:
    od;rv
  fi
 
-{q version of recursive deform}
-set q_recursive_deform (Param p) = qParamPol:
-  if qd_verbose then prints("q_recursive_deform with:", p) fi;
+{hodge version of recursive deform}
+set hodge_recursive_deform (Param p) = hodgeParamPol:
+  if hodge_verbose then prints("hodge_recursive_deform with:", p) fi;
   if not is_final(p) then error("improper parameter") fi;
-  let empty=nullqParamPol(real_form(p)) in
-  if  qd_verbose { choose verbose or non-verbose version of the function }
-  then rec_fun q_full_def (i_poly sc,Param p) qParamPol:
+  let empty=nullHodgeParamPol(real_form(p)) in
+  if  hodge_verbose { choose verbose or non-verbose version of the function }
+  then rec_fun hodge_full_def (i_poly sc,Param p) hodgeParamPol:
 			 { |sc| will simply scale the resulting ParamPol }
     begin
-      prints("q_full_def with: sc=", sc, ", p=", p);
+{      prints("hodge_full_def with: sc=", sc, ", p=", p);}
       assert(is_standard(p)
 	    ,"non standard parameter encountered in deformation");
-      let acc=empty, at_nu0=qParamPol: sc*[p.at_nu_0] { fully deformed |p| } in
+      let acc=empty, at_nu0=hodgeParamPol: sc*[p.at_nu_0] { fully deformed |p| } in
       for factor in reducibility_points(p)
       ~do
 	let p_def=p*factor { next deformation of |p| } then
-        def=q_deformation_terms(p_def) { bypass built-in |deform| here }
+        def=hodge_deformation_terms(p_def) { bypass built-in |deform| here }
         in
-	  prints("adding deformation term: p=", def, new_line,"adding:", def)
-      ; acc+:=def
+{	  prints("adding deformation term: p=", def, new_line,"adding:", def);}
+       acc+:=def
       od
     ; for (f,q) in rearrange(acc) { traverse the sum of the deformation terms spun off }
-      do { apply |q_full_def| recursively to all those terms }
-        at_nu0 +:= q_full_def(convolve(sc,f),q) { gather harvest from those deformations }
+      do { apply |hodge_full_def| recursively to all those terms }
+        at_nu0 +:= hodge_full_def(convolve(sc,f),q) { gather harvest from those deformations }
       od
     ; at_nu0
     end
-  else rec_fun q_full_def (i_poly sc,Param p) qParamPol:
+  else rec_fun hodge_full_def (i_poly sc,Param p) hodgeParamPol:
 			 { |sc| will simply scale the resulting ParamPol }
     begin
       assert(is_standard(p),"non standard parameter in deformation");
-      let acc=empty, at_nu0=qParamPol: sc*[p.at_nu_0] { fully deformed |p| } in
+      let acc=empty, at_nu0=hodgeParamPol: sc*[p.at_nu_0] { fully deformed |p| } in
       for factor in reducibility_points(p)
       ~ { direction of deformation is down, towards 0; this is not essential }
       do
-      let qd=q_deformation_terms(p*factor) in
-       acc+:=qd od
+      let hodge_d=hodge_deformation_terms(p*factor) in
+       acc+:=hodge_d od
     ; for (f,q) in rearrange(acc) { traverse the sum of the deformation terms spun off }
-      do at_nu0 +:= q_full_def(convolve(sc,f),q) od
+      do at_nu0 +:= hodge_full_def(convolve(sc,f),q) od
     ; at_nu0
     end
   fi { apply that recursive function to the initial argument: } ([1],p)
 
 
-{another identical copy of the q_recursive_deform *except* that
+{another identical copy of the hodge_recursive_deform *except* that
 the deformation is outward, which is useful for debugging}
-set q_recursive_deform_reverse (Param p) = qParamPol:
-  if qd_verbose then prints("q_recursive_deform with:", p) fi;
+set hodge_recursive_deform_reverse (Param p) = hodgeParamPol:
+  if hodge_verbose then prints("hodge_recursive_deform with:", p) fi;
   if not is_final(p) then error("improper parameter") fi;
-  let empty=nullqParamPol(real_form(p)) in
-  if  qd_verbose { choose verbose or non-verbose version of the function }
-  then rec_fun q_full_def (i_poly sc,Param p) qParamPol:
+  let empty=nullHodgeParamPol(real_form(p)) in
+  if  hodge_verbose { choose verbose or non-verbose version of the function }
+  then rec_fun hodge_full_def (i_poly sc,Param p) hodgeParamPol:
 			 { |sc| will simply scale the resulting ParamPol }
     begin
-      prints("q_full_def with: sc=", sc, ", p=", p);
+{      prints("hodge_full_def with: sc=", sc, ", p=", p);}
       assert(is_standard(p)
 	    ,"non standard parameter encountered in deformation");
-      let acc=empty, at_nu0=qParamPol: sc*[p.at_nu_0] { fully deformed |p| } in
+      let acc=empty, at_nu0=hodgeParamPol: sc*[p.at_nu_0] { fully deformed |p| } in
       for factor in reducibility_points(p)
-      do  {ONLY change from q_recursive_deform is missing ~ here}
+      do  {ONLY change from hodge_recursive_deform is missing ~ here}
 	let p_def=p*factor { next deformation of |p| } then
-        def=q_deformation_terms(p_def) { bypass built-in |deform| here }
+        def=hodge_deformation_terms(p_def) { bypass built-in |deform| here }
         in
-	  prints("adding deformation term: p=", def, new_line,"adding:", def)
-      ; acc+:=def
+{	  prints("adding deformation term: p=", def, new_line,"adding:", def);}
+       acc+:=def
       od
     ; for (f,q) in rearrange(acc) { traverse the sum of the deformation terms spun off }
-      do { apply |q_full_def| recursively to all those terms }
-        at_nu0 +:= q_full_def(convolve(sc,f),q) { gather harvest from those deformations }
+      do { apply |hodge_full_def| recursively to all those terms }
+        at_nu0 +:= hodge_full_def(convolve(sc,f),q) { gather harvest from those deformations }
       od
     ; at_nu0
     end
-  else rec_fun q_full_def (i_poly sc,Param p) qParamPol:
+  else rec_fun hodge_full_def (i_poly sc,Param p) hodgeParamPol:
 			 { |sc| will simply scale the resulting ParamPol }
     begin
       assert(is_standard(p),"non standard parameter in deformation");
-      let acc=empty, at_nu0=qParamPol: sc*[p.at_nu_0] { fully deformed |p| } in
+      let acc=empty, at_nu0=hodgeParamPol: sc*[p.at_nu_0] { fully deformed |p| } in
       for factor in reducibility_points(p)
-      do  {ONLY change from q_recursive_deform is missing ~ here}
-      let qd=q_deformation_terms(p*factor) in
-       acc+:=qd od
+      do  {ONLY change from hodge_recursive_deform is missing ~ here}
+      let hodge_d=hodge_deformation_terms(p*factor) in
+       acc+:=hodge_d od
     ; for (f,q) in rearrange(acc) { traverse the sum of the deformation terms spun off }
-      do at_nu0 +:= q_full_def(convolve(sc,f),q) od
+      do at_nu0 +:= hodge_full_def(convolve(sc,f),q) od
     ; at_nu0
     end
   fi { apply that recursive function to the initial argument: } ([1],p)
 
-set q_recursive_deform(ParamPol P)=qParamPol:
-let rv=nullqParamPol(P.real_form) in
-for c@p in P do rv+:=c*q_recursive_deform(p) od;rv
+set hodge_recursive_deform(ParamPol P)=hodgeParamPol:
+let rv=nullHodgeParamPol(P.real_form) in
+for c@p in P do rv+:=c*hodge_recursive_deform(p) od;rv
 
-set q_recursive_deform(qParamPol Q)=
+set hodge_recursive_deform(hodgeParamPol Q)=
 let rQ=rearrange(Q) { =[(f1,p1),...,(fn,pn)] }in
- dearrange(##for (c,p) in rQ do let qrd_p=rearrange(q_recursive_deform(p)) in
-  for (d,q) in qrd_p do (poly_product(c,d),q) od od)
+ dearrange(##for (c,p) in rQ do let hodge_rd_p=rearrange(hodge_recursive_deform(p)) in
+  for (d,q) in hodge_rd_p do (poly_product(c,d),q) od od)
 
+set hodge_grading_std(Param p)=hodgeParamPol:hodge_recursive_deform(p)
+set hodge_grading_std(ParamPol P)=hodgeParamPol:hodge_recursive_deform(P)
 
+set hodge_signed_P_matrix(Param Gamma)=i_poly_mat:
+let (,P,) = hodge_compress(partial_KL_block(Gamma)) in P
+
+set hodge_P_matrix(Param Gamma)=i_poly_mat:
+let (,P_signed,lengths) = hodge_compress(partial_KL_block(Gamma)) in
+for i:#P_signed do for j:#P_signed[i] do (-1)^(lengths[i]-lengths[j])*P_signed[i][j] od od
+
+{write hodge(J(Gamma)) in terms of hodge(I(x,lambda,0))}
+set hodge_grading_irreducible(Param p)=
+let (B,P_signed,lengths)=hodge_compress(partial_KL_block(p)) then
+rv=nullHodgeParamPol(p.real_form) then
+!on_p = orientation_nr(p) then
+n=#B in
+for i:n do
+ let   (q,r)=(on_p-orientation_nr(B[i]))\%2 then
+ coeff= assert(=r,"odd orientation");poly_product(vee^q,P_signed[i][n-1]) in
+{ let ()=prints(new_line,i, " ", B[i], new_line,"coeff=",coeff);print(evaluate_at_s(hodge_recursive_deform(B[i]))) in}
+rv+:=coeff*hodge_recursive_deform(B[i]) od;rv
+
+set hodge_branch_irr(Param p,int N)=hodgeParamPol:hodge_branch_std(hodge_grading_irreducible(p),N)
 
 {------------------ some test functions--------------------}
-set qtest(Param p,int N)=bool:
-let qdef=q_recursive_deform(p) then
-rv=branch_q(qdef,N) then
+
+{hodge_grading_irreducible(p) evaluted at v=s should equal c_form_irreducible(p)}
+set hodgeTestIrreducible(Param p)=bool:hodge_grading_irreducible(p).v_to_s=c_form_irreducible(p)
+set hodgeTestIrreducible([Param] params)=(bool,[bool]):
+let results=for p in params do hodgeTestIrreducible(p) od in (all(results),results)
+
+set hodgetest(Param p,int N)=bool:
+let hodgedef=hodge_recursive_deform(p) then
+rv=hodge_branch_std(hodgedef,N) then
 positive=all(##for i:#rv do for c@p in rv[i] do split_as_int(c)>0 od od) then
-valid_evaluation_at_s=evaluate_at_s(qdef)=recursive_deform(p) then
-valid_evaluation_at_1=evaluate_at_1(qdef)=p*0 in
-prints(p.real_form,new_line,"N:",N,new_line,p,new_line,"q_deformation to 0: ");print(rv);prints(new_line,
+valid_evaluation_at_s=evaluate_at_s(hodgedef)=recursive_deform(p) then
+valid_evaluation_at_1=evaluate_at_1(hodgedef)=p*0 in
+prints(p.real_form,new_line,"N:",N,new_line,p,new_line,"hodge_deformation to 0: ");print(rv);prints(new_line,
 "correct evaluation at v=1:",valid_evaluation_at_1,new_line,
 "correct evaluation at v=s:",valid_evaluation_at_s,new_line,
 "positive coefficients: ",positive,new_line);valid_evaluation_at_1 and valid_evaluation_at_s and positive
 
-set qtest(RealForm G,int N)=bool:qtest(trivial(G),N)
+set hodgeTest(RealForm G,int N)=bool:hodgetest(trivial(G),N)
 
-set qtest([Param] params,int N)=bool:all(for p in params do qtest(p,N) od)
+set hodgeTest([Param] params,int N)=(bool,[bool]):let result=for p in params do hodgetest(p,N) od in (all(result),result)
 
-set runqtests()=
+set runHodgeTests()=
 let groups=
 [(SL(2,C),10),
 (SL(3,C),15),
@@ -228,32 +259,4 @@ let groups=
 (SO(7,1),80),
 (Sp(4,C),20),
 (complexification(G2_s),50)]
-in for (G,N) in groups do qtest(G,N) od
-
-set q_signed_P_matrix(Param Gamma)=i_poly_mat:
-let (,P,) = q_compress(partial_KL_block(Gamma)) in P
-
-set q_P_matrix(Param Gamma)=i_poly_mat:
-let (,P_signed,lengths) = q_compress(partial_KL_block(Gamma)) in
-for i:#P_signed do for j:#P_signed[i] do (-1)^(lengths[i]-lengths[j])*P_signed[i][j] od od
-
-{write hodge(J(Gamma)) in terms of hodge(I(x,lambda,0))}
-set hodge_irreducible(Param p)=
-let (B,P_signed,lengths)=q_compress(partial_KL_block(p)) then
-rv=nullqParamPol(p.real_form) then
-!on_p = orientation_nr(p) then
-n=#B in
-for i:n do
- let   (q,r)=(on_p-orientation_nr(B[i]))\%2 then
- coeff= assert(=r,"odd orientation");poly_product(vee^q,P_signed[i][n-1]) in
- let ()=prints(new_line,i, " ", B[i], new_line,"coeff=",coeff);print(evaluate_at_s(q_recursive_deform(B[i]))) in
-rv+:=coeff*q_recursive_deform(B[i]) od;rv
-
-set c_form_irreducible (Param p) = ParamPol:
-( let ori_nr_p = orientation_nr(p), P = null_module(real_form(p)) in
-  for c@q in KL_sum_at_s(p)
-  do
-  let ()=prints(new_line, q, new_line, "c=",c);print(c_form_std(q)) in
-P +:= c*orientation_nr_term(ori_nr_p,q)*c_form_std(q) od
-; P
-)
+in for (G,N) in groups do hodgeTest(G,N) od

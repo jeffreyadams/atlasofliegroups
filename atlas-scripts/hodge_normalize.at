@@ -1,4 +1,4 @@
-<qdeform.at
+<hodge_deform.at
 <is_normal.at
 
 {move to basic.at}
@@ -10,14 +10,14 @@ set tau(int n,int k)=if k=n/2 then 1 else 2 fi
 
 {hodge version of normalizing a parameter}
 
-{NOTE: the type qParamPol is equal to [ParamPol]
+{NOTE: the type hodgeParamPol is equal to [ParamPol]
 however we cannot use any ParamPols here, because atlas
 automatically finalizes parameters when put in a ParamPol
-recall (see qParamPol.at) if Q is a ParamPol,
+recall (see hodgeParamPol.at) if Q is a ParamPol,
 dearrange(Q)=[(vec,Param)]:[(f1,p1),...,(fn,pn)] <-> f1(v)*p_1 + ... + fn(v)*p_n
 we work entirely with these objects
 the downside is there is no collection of terms
-at the end, once all p_i are normal, do rearrange to get a qParamPol (and collect terms)
+at the end, once all p_i are normal, do rearrange to get a hodgeParamPol (and collect terms)
 n}
 
 {
@@ -40,7 +40,7 @@ c) If theta_x(alpha)>0 (\alpha is a complex ascent)
    AND <gamma,alpha^v> < 0  (strict inequality)
 let x'=s_alpha x,lambda'=s_alpha\lambda
 
-I(x,lambda,0) -> qI(x',lambda,0) +
+I(x,lambda,0) -> vI(x',lambda,0) +
                  \sum_{k=1}^{k=[n/2]-1}v^{k-1}(v^2-1)I(x',lambda'-k\alpha,0) +
                  [v^{n/2}(v-1)I(x',lambda'-(n/2)\alpha,0)
 
@@ -110,16 +110,13 @@ else
  let cayley=
   if imaginary_type(i,x)=1 then  {construct Cayley transform by hand}
    let y=Cayley(i,x) then
-   nu=(1-involution(y))*ref*gamma/2 in  {new value of nu, not necessarily 0}
+   nu=(1-involution(y))*ref*gamma/2*0 in  {new value of nu, not necessarily 0}
    if !=nu and hodge_normalize_verbose then prints("warning:  non-zero nu:", "p=", p, " i=", i, " nu=", nu) fi;
    [(vee^(n\2),parameter(y,lambda,nu))]
-   {may need to q_recursive_deform to make nu=0?}
-   {rearrange(q_recursive_deform(dearrange([(vee^(n\2),parameter(y,lambda,nu))])))}
   else
    let y=Cayley(i,x) then
-    nu=(1-involution(y))*ref*gamma/2 in  {new value of nu, not necessarily 0}
+    nu=(1-involution(y))*ref*gamma/2*0 in  {new value of nu, not necessarily 0}
     [(vee^(n\2),parameter(y,lambda,nu)),(vee^(n\2),parameter(y,lambda+alpha,nu))]
-{    rearrange(q_recursive_deform(dearrange([(vee^(n\2),parameter(y,lambda,nu)),(vee^(n\2),parameter(y,lambda+alpha,nu))])))}
   fi then
  cross=[(-vee,parameter(cross(i,x),ref*lambda,zero))] in
  if hodge_normalize_verbose then
@@ -175,14 +172,14 @@ let rec_fun f ([(vec,Param)] R)=[(vec,Param)]:
   fi
  in f(Q)
 
-{main version: return QParamPol}
-set hodge_normalize([(vec,Param)] Q)=qParamPol:
+{main version: return hodgeParamPol}
+set hodge_normalize([(vec,Param)] Q)=hodgeParamPol:
 let R=hodge_normalize_0(Q) in
 assert(let (normal,,)=is_normal(R) in normal,"R is not normal");
 dearrange(R)
 
 set hodge_normalize_0(Param p)=[(vec,Param)]:hodge_normalize_0([([1],p)])
-set hodge_normalize(Param p)=qParamPol:hodge_normalize([([1],p)])
+set hodge_normalize(Param p)=hodgeParamPol:hodge_normalize([([1],p)])
 
 
 

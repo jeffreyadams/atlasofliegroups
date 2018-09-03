@@ -1,5 +1,5 @@
 <K_types_plus.at
-<qdeform.at
+<hodge_deform.at
 <K_norm.at
 
 set K_type_formula_verbose=true
@@ -34,9 +34,16 @@ in nilrad_roots(P) do if is_noncompact_imaginary(alpha,x) then
 S#:=alpha elif is_complex(alpha,x) and find(S,involution(x)*alpha)=-1
 then S#:=alpha fi od;S
 
+{cardinality of set of roots, except that if alpha is complex and
+<theta_x(alpha),alpha^v>=1 then counts twice}
+set modified_cardinality(KGBElt x,[vec] roots)=
+sum(for alpha in roots do 
+ if is_complex(alpha,x) and abs(coroot(x.root_datum,alpha)*involution(x)*alpha)=1 then 2 else 1 fi od)
+
 {each subset S of u\cap s roots -> (sum of roots in S, cardinality(S))}
 set u_cap_s_rho_shifts_and_cardinalities(Parabolic P,KGBElt x)=[(vec,int)]:
-(null(P.root_datum.rank),0)#for A in delete(generate_all_subsets(u_cap_s_roots(P,x)),0) do (sum(A),#A) od
+(null(P.root_datum.rank),0)#for A in delete(generate_all_subsets(u_cap_s_roots(P,x)),0) do (sum(A),modified_cardinality(x,A)) od
+{(null(P.root_datum.rank),0)#for A in delete(generate_all_subsets(u_cap_s_roots(P,x)),0) do (sum(A),#A) od}
 
 set r(RealForm G)=int:nr_of_posroots(G)-nr_of_posroots(K_0(G))
 
