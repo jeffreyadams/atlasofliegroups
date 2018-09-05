@@ -9,6 +9,7 @@
 #include <stack> // for comparison
 #include "sl_list_fwd.h"
 #include "sl_list.h"
+#include "node_allocator.h"
 
 #include <forward_list>
 
@@ -191,9 +192,9 @@ void gg()
 typedef atlas::containers::simple_list<int> intlist;
 typedef atlas::containers::sl_list<int> int_list;
 
-template <typename T>
+template <typename T, typename A>
 std::ostream& operator << (std::ostream& os,
-			   const atlas::containers::simple_list<T> & l)
+			   const atlas::containers::simple_list<T,A> & l)
 {
   os << '[';
   for (auto it = l.begin(); not l.at_end(it); ++it)
@@ -201,9 +202,9 @@ std::ostream& operator << (std::ostream& os,
   return os << ']';
 }
 
-template <typename T>
+template <typename T,typename A>
 std::ostream& operator << (std::ostream& os,
-			   const atlas::containers::sl_list<T> & l)
+			   const atlas::containers::sl_list<T,A> & l)
 {
   os << '[';
   for (auto it = l.begin(); it!=l.end(); ++it)
@@ -395,7 +396,9 @@ int main()
   while (not Q.empty())
     std::cout<< Q.front(), Q.pop();
   std::cout<<std::endl;
-  atlas::containers::sl_list<int> L { 3, 5, 26 };
+  using alloc_type = atlas::containers::node_allocator<int>;
+  using list_type = atlas::containers::sl_list<int,alloc_type>;
+  list_type L { 3, 5, 26 };
   auto it=std::next(L.begin());
   int one = 1;
   it=L.insert(it,std::move(one));
@@ -410,7 +413,7 @@ int main()
   std::cout << L << std::endl << (L.unique(),L) << std::endl;
   L.remove(4);
   std::cout << L << std::endl;
-  atlas::containers::sl_list<int> M { -3, -3, 0, 0, 2, 4, 5, 9, 12 };
+  list_type M { -3, -3, 0, 0, 2, 4, 5, 9, 12 };
   std::cout << M << std::endl;
   it = L.end(); L.append(std::move(M));
   std::cout << L << std::endl;
@@ -429,8 +432,9 @@ int main()
   std::cout << L << std::endl;
   end = L.reverse(begin,end);
   std::cout << L << std::endl;
-  atlas::containers::stack<int> st(std::move(L.undress()));
-  atlas::containers::stack<int> st2 = st;
+  using stack_type = atlas::containers::stack<int,alloc_type>;
+  stack_type st(std::move(L.undress()));
+  stack_type st2 = st; // copy construct
   while (not st.empty())
     std::cout << st.top() << ',', st.pop();
   std::cout << '\n';

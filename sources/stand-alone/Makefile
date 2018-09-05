@@ -116,7 +116,7 @@ lights-off: lights-off.cpp $(lights-off_objects)
 
 Euler-201: Euler-201.cpp $(Euler_objects)
 
-lists: lists.cpp ../utilities/sl_list.h $(lists_objects)
+lists: lists.cpp ../utilities/sl_list.h ../utilities/node_allocator.h $(lists_objects)
 
 # a static pattern rule giving the usual C++ single-module compilation
 $(executables): %: %.cpp
