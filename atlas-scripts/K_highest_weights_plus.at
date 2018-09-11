@@ -104,7 +104,7 @@ assert(let ind=theta_induce_standard(mu_L*0,mu.real_form) in
 #ind=1 and first_param(ind)=parameter(mu),"mu_L does not induce to mu");
 (Q,mu_L)
 
-set cross_divide (KGBElt x,KGBElt y)=(bool,WeylElt):
+set cross_divide_alt (KGBElt x,KGBElt y)=(bool,WeylElt):
    let W=W(root_datum(y)) in let done=false, n=0, w=W[0], b=false in
    while not done do if n=#W then prints("The elements are not related by cross-action.");
                      done:=true
@@ -125,7 +125,7 @@ set is_strongly_compatible (Param p,Parabolic P) = bool:
 	  fi
        od in
        if not rr=S then false
-       else let (b,w)=cross_divide (y,x(p)) in
+       else let (b,w)=is_in_cross_orbit (x(p),y) in
           if b=false then b
           else let lam_new=w*ic in is_dominant (G,lam_new)
 	  fi
@@ -133,6 +133,20 @@ set is_strongly_compatible (Param p,Parabolic P) = bool:
   fi
 
 set make_strongly_compatible_parabolic (Param p) = Parabolic:
-   let x=x(p) then theta=involution(x), ic=infinitesimal_character(p*0)
-   then wt=ic+(rho_i(x)+(rho_S(x)+theta*rho_S(x))/20)/10 in
+   let x=x(p),rd=root_datum(p)
+   then r=#posroots(rd),theta=involution(x), ic=infinitesimal_character(p*0)
+   then wt=ic+(rho_i(x)+(rho_S(x)+theta*rho_S(x))/r)/r in
    parabolic_by_wt(wt,x)
+
+set test_parabolics (RealForm G)=bool: let bl=block_of(trivial(G))
+   then kt=for p in bl do LKTs(p)[0] od
+   then Ps1=for mu in kt do make_strongly_compatible_parabolic(parameter(mu)) od
+   then Ps2=for mu in kt do let (P,)=tau_q(mu) in P od in
+     all(for P@i in Ps1 do P=Ps2[i] od)
+
+set test_strong_map (RealForm G)=bool:
+   all(for x in KGB(G) do strong_map_into_distinguished_fiber(x) = KGB(G,0) od)
+
+set test_highest_weights (RealForm G)=bool:
+   let bl=block_of(trivial(G)) in all(for p@i in bl do let kt=LKTs(p)[0] in
+      highest_weights(kt)[0]=highest_weights_alt(kt)[0] od)
