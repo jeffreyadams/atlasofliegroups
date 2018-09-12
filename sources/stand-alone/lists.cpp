@@ -385,9 +385,60 @@ void tester() // test all methods at least once
   }
 }
 
+
+template<typename stack>
+void Hanoi(unsigned int d, stack& a, stack& b, stack&c) // |a| to |c|, using |b|
+{ if (d==0) //termination condition
+    return;
+  Hanoi(d-1,a,c,b);
+  { auto a_id = a.top(), c_id = c.top(); a.pop(); c.pop();
+    c.push(std::move(a.top()));
+    a.pop();
+    {
+      static constexpr int modulus=300000;
+      static int count=modulus;
+      if (--count==0)
+      {
+	count=modulus;
+	auto b_id = b.top(); b.pop();
+	std::cout << a_id << ": " << (a.empty() ? "empty" : a.top()) << ", "
+		  << b_id << ": " << (b.empty() ? "empty" : b.top()) << ", "
+		  << c_id << ": " << (c.empty() ? "empty" : c.top()) << ", "
+		  << '\n';
+	b.push(b_id);
+      }
+    }
+    a.push(a_id); c.push(c_id);
+  }
+  Hanoi(d-1,b,a,c);
+}
+
+
+void do_Hanoi()
+{
+  using alloc = std::allocator<std::string>;
+  // using ssub = atlas::containers::simple_list<std::string,alloc>;
+  // using container = atlas::containers::mirrored_simple_list<std::string,alloc>;
+  // using st = atlas::containers::stack<std::string,container>;
+  using dst = std::stack<std::string,std::vector<std::string,alloc>>;
+  using sub = typename dst::container_type;
+
+  dst a (sub { "Blue",
+	"zero", "one", "two", "three", "four",
+	"five", "six", "seven", "eight", "nine",
+	"ten", "eleven", "twelve", "thirteen", "fourteen",
+	"fifteen", "sixteen", "seventeen", "eightteen", "nineteen",
+	"twenty", "tentyone", "twentytwo", "ttwentythree", "twentyfour",
+	"twentyfive", "twentysix", "twentyseven", "twentyeight", "twentynine"});
+  dst b (sub { "White" });
+  dst c (sub { "Red" });
+  Hanoi(22,a,b,c);
+}
+
 int main()
 {
-  atlas::containers::queue<char> Q { 'a', 'r', 't' };
+  using ssub = atlas::containers::sl_list<char>;
+  atlas::containers::queue<char> Q (ssub { 'a', 'r', 't' });
   Q.push ('a'); Q.push('b');
   std::cout<< Q.front();
   Q.push('c'); Q.pop();
@@ -432,9 +483,10 @@ int main()
   std::cout << L << std::endl;
   end = L.reverse(begin,end);
   std::cout << L << std::endl;
-  using stack_type = atlas::containers::stack<int,alloc_type>;
+  using msl = atlas::containers::mirrored_simple_list<int,alloc_type>;
+  using stack_type = atlas::containers::stack<int,msl>;
   stack_type st(std::move(L.undress()));
-  stack_type st2 = st; // copy construct
+  stack_type st2 (atlas::containers::simple_list<int,alloc_type> { 2,3,5,7,11 } ) ;
   while (not st.empty())
     std::cout << st.top() << ',', st.pop();
   std::cout << '\n';
@@ -442,4 +494,5 @@ int main()
   while (not st.empty())
     std::cout << st.top() << ',', st.pop();
   std::cout << '\n';
+  do_Hanoi();
 }
