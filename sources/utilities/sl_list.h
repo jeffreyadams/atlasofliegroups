@@ -2011,6 +2011,14 @@ template<typename T,typename Alloc>
   mirrored_simple_list (mirrored_simple_list&& x,const Alloc& a)
     : Base(std::move(x),a) {}
 
+  // except, do allow initialiser list with (as for |std::stack|) front at end
+  mirrored_simple_list (std::initializer_list<T> l, const Alloc& a=Alloc())
+    : Base(a)
+    {
+      for (auto it = l.begin(), last=l.end(); it!=last; ++it)
+	Base::push_front(*it); // this reverses the order
+    }
+
   // forward |push_front| method from |Base|, and its likes, as ...|back|
   template<typename... Args> void push_back(Args&&... args)
   { Base::push_front(std::forward<Args>(args)...); }
@@ -2049,6 +2057,14 @@ template<typename T,typename Alloc>
   mirrored_sl_list (mirrored_sl_list&& x,const Alloc& a)
     : Base(std::move(x),a) {}
 
+  // except, do allow initialiser list with (as for |std::stack|) front at end
+  mirrored_sl_list (std::initializer_list<T> l, const Alloc& a=Alloc())
+    : Base(a)
+    {
+      for (auto it = l.begin(), last=l.end(); it!=last; ++it)
+	Base::push_front(*it); // this reverses the order
+    }
+
   // forward |push_front| method from |Base|, and its likes, as ...|back|
   template<typename... Args> void push_back(Args&&... args)
   { Base::push_front(std::forward<Args>(args)...); }
@@ -2071,6 +2087,28 @@ template<typename T,typename Alloc>
   { return Base::emplace_back(std::forward<Args>(args)...); }
 
 }; // |class mirrored_sl_list<T,Alloc>|
+
+template<typename T, typename Container> struct stack
+  : public std::stack<T,Container>
+{
+  using std::stack<T,Container>::stack;
+
+  typedef typename Container::allocator_type allocator_type;
+  // unlike |std::queue|, we also provide initialisation by initializer list
+  stack(std::initializer_list<T> l, const allocator_type& a=allocator_type())
+    : std::stack<T,Container> { Container(l,a) } {}
+}; // |struct stack|
+
+template<typename T, typename Container> struct queue
+  : public std::queue<T,Container>
+{
+  using std::queue<T,Container>::queue;
+
+  typedef typename Container::allocator_type allocator_type;
+  // unlike |std::queue|, we also provide initialisation by initializer list
+  queue(std::initializer_list<T> l, const allocator_type& a=allocator_type())
+    : std::queue<T,Container> { Container(l,a) } {}
+}; // |struct queue|
 
 } // |namespace containers|
 

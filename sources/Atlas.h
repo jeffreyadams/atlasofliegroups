@@ -23,6 +23,7 @@
 
 #include <vector>
 #include <functional> // for |std::less|
+#include <memory> // for |std::allocator|
 #include <stack> // for our specialisation below
 #include <queue> // for our specialisation below
 
@@ -75,40 +76,17 @@ namespace atlas {
     class sl_list_iterator;
 
   template<typename T,typename Alloc = std::allocator<T> >
-    class mirrored_simple_list; // adapter, to allow use with |std::stack|
+    class mirrored_simple_list; // trivial adapter, to allow use with |std::stack|
 
   template<typename T,typename Alloc = std::allocator<T> >
-    class mirrored_sl_list; // adapter, to allow use with |std::stack|
+    class mirrored_sl_list; // trivial adapter, to allow use with |std::stack|
 
-  template<typename T,typename Alloc = std::allocator<T> >
-  struct stack : public std::stack<T, mirrored_simple_list<T,Alloc> >
-  {
-#ifndef incompletecpp11
-    using std::stack<T, mirrored_simple_list<T,Alloc> >::stack;
-#else
-    template <typename... Args>
-      stack(Args&&... args)
-      : std::stack<T, mirrored_simple_list<T,Alloc> >
-	(std::forward<Args>(args)...)
-    {}
-#endif
-  }; // |struct stack|
+  template<typename T,
+	   typename Container = mirrored_simple_list<T,std::allocator<T> > >
+  struct stack;
 
-  template<typename T,typename Alloc = std::allocator<T> >
-  struct queue : public std::queue<T, sl_list<T,Alloc> >
-  {
-#ifndef incompletecpp11
-    using std::queue<T, sl_list<T,Alloc> >::queue;
-#else
-    template <typename... Args>
-      queue(Args&&... args)
-      : std::queue<T, sl_list<T,Alloc> > (std::forward<Args>(args)...)
-    {}
-#endif
-    queue() : std::queue<T, sl_list<T,Alloc> > ( sl_list<T,Alloc> {} ) {}
-    queue(std::initializer_list<T> l)
-      : std::queue<T, sl_list<T,Alloc> > ( sl_list<T,Alloc>(l) ) {}
-  }; // |struct queue|
+  template<typename T, typename Container = sl_list<T,std::allocator<T> > >
+  struct queue;
 
   } // |namespace containers|
 

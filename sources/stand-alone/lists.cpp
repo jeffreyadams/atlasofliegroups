@@ -485,8 +485,8 @@ int main()
   std::cout << L << std::endl;
   using msl = atlas::containers::mirrored_simple_list<int,alloc_type>;
   using stack_type = atlas::containers::stack<int,msl>;
-  stack_type st(std::move(L.undress()));
-  stack_type st2 (atlas::containers::simple_list<int,alloc_type> { 2,3,5,7,11 } ) ;
+  stack_type st(std::move(L.undress())); // do not reverse here
+  stack_type st2 { 2,3,5,7,11 } ; // here 11 is top
   while (not st.empty())
     std::cout << st.top() << ',', st.pop();
   std::cout << '\n';
