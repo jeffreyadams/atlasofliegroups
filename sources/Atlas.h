@@ -15,11 +15,28 @@
  This module defines types in the (global) atlas namespace that can be
  therefore used in short form by all modules that include this file.
 
- It is just a forward-declaration file, and is intended to replace several
- such files. One still needs to include the related header files for these
- types to be complete.
+ It is mostly just a forward-declaration file, and is intended to replace
+ several such files. We also make system-wide |typedef|s here. One still needs
+ to include the related ordinary header files for these types to be complete.
 
  */
+
+// exclude forward files from utilities subdirectory whose contents are copied here
+#define ARITHMETIC_FWD_H
+#define BITMAP_FWD_H
+#define BITSET_FWD_H
+#define FREE_ABELIAN_FWD_H
+#define GRAPH_FWD_H
+#define HASHTABLE_FWD_H
+#define MATRIX_FWD_H
+#define PARTITION_FWD_H
+#define PERMUTATIONS_FWD_H
+#define POLYNOMIALS_FWD_H
+#define POSET_FWD_H
+#define RATVEC_FWD_H
+#define SIZE_FWD_H
+#define SL_LIST_FWD_H
+
 
 #include <vector>
 #include <functional> // for |std::less|
