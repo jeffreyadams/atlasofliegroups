@@ -1608,6 +1608,7 @@ tuple and union types) and function types. For the latter we suppress
 additional parentheses around argument and result types in case these are
 tuple or union types.
 
+@h "sl_list.h"
 @< Function definitions @>=
 
 std::ostream& operator<<(std::ostream& out, const type_expr& t)
