@@ -20,11 +20,11 @@ namespace kgb {
 
 class KGP_orbit
 {
-  std::vector<KGBElt> members;
+  bitmap::BitMap members;
 
 public:
   // Constructor
-  KGP_orbit() {};
+  KGP_orbit(KGBElt size) : members(size) {};
 
   // print function
   std::ostream& print(std::ostream& strm) const;
@@ -33,14 +33,20 @@ public:
   bool operator< (const KGP_orbit &elt) const  { return (open() < elt.open()); }
 
   // accessors
-  KGBElt open() const { return members.back(); }
+  KGBElt open() const
+  { unsigned long last=members.capacity();
+    bool success = members.back_up(last); // set |last| to final member
+    assert(success); ndebug_use(success);
+    return static_cast<KGBElt>(last); // return result as |KGBElt|
+  }
+
   size_t size() const { return members.size(); }
 
-  std::vector<KGBElt>::const_iterator begin() const { return members.begin(); }
-  std::vector<KGBElt>::const_iterator end() const   { return members.end(); }
+  bitmap::BitMap::iterator begin() const { return members.begin(); }
+  bitmap::BitMap::iterator end() const   { return members.end(); }
 
   // manipulators
-  void insert (KGBElt x) { members.push_back(x); }
+  void insert (KGBElt x) { members.insert(x); }
 
 };
 

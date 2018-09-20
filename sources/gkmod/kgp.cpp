@@ -26,13 +26,10 @@ namespace atlas {
 
 std::ostream& KGP_orbit::print(std::ostream& strm) const
 {
-  size_t size = members.size();
-
   // print the orbit elements
-  strm << "{";
-  for (size_t i=0; i<size-1; i++)
-    strm << members[i] << ",";
-  strm << members[size-1] << "}";
+  for (auto it=members.begin(); it(); ++it)
+    strm << (it==members.begin() ? '{' : ',') << *it;
+  strm << '}';
 
   return strm;
 }
@@ -46,6 +43,7 @@ KGP::KGP(realredgp::RealReductiveGroup& G_R, RankFlags generators)
 : kgb(G_R.kgb())
 , kgborder(G_R.Bruhat_KGB())
 , kgptable(kgb.size(),KGPElt(~0))
+, data()
 , bruhat(nullptr)
 , msize(0)
 {
@@ -104,7 +102,9 @@ KGP::KGP(realredgp::RealReductiveGroup& G_R, RankFlags generators)
   } // |for(i)|
 
   // allocate enough memory to hold the orbits
-  data.resize(count);
+  data.reserve(count);
+  for (unsigned i=0; i<count; ++i)
+    data.emplace_back(kgbsize);
 
   // fill the orbits
   for (KGBElt i=0; i<kgbsize; i++)
@@ -139,7 +139,7 @@ void KGP::fillClosure()
   std::vector<bool> closure(kgp_size,0);
   for (KGPElt i=0; i<kgp_size; ++i)
   { // for each KGB orbit in this KGP orbit, examine closure edges of degree one
-    KGP_orbit kgp_orbit = data[i];
+    const KGP_orbit& kgp_orbit = data[i];
     size_t min_elt = kgp_size;
     for (auto elt : kgp_orbit)
     { // get closure edges
