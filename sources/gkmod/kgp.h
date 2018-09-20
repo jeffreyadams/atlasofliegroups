@@ -12,6 +12,7 @@
 
 #include "kgb.h"
 #include "bruhat.h"
+#include "bitmap.h"
 #include "sl_list.h"
 
 namespace atlas {
@@ -19,12 +20,9 @@ namespace kgb {
 
 class KGP_orbit
 {
-  std::vector<KGBElt> data;
+  std::vector<KGBElt> members;
 
 public:
-  // allow KGP class to build orbits
-  friend class KGP;
-
   // Constructor
   KGP_orbit() {};
 
@@ -35,8 +33,14 @@ public:
   bool operator< (const KGP_orbit &elt) const  { return (open() < elt.open()); }
 
   // accessors
-  KGBElt open() const { return data.back(); }
-  size_t size() const { return data.size(); }
+  KGBElt open() const { return members.back(); }
+  size_t size() const { return members.size(); }
+
+  std::vector<KGBElt>::const_iterator begin() const { return members.begin(); }
+  std::vector<KGBElt>::const_iterator end() const   { return members.end(); }
+
+  // manipulators
+  void insert (KGBElt x) { members.push_back(x); }
 
 };
 

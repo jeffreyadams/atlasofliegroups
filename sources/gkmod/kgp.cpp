@@ -26,13 +26,13 @@ namespace atlas {
 
 std::ostream& KGP_orbit::print(std::ostream& strm) const
 {
-  size_t size = data.size();
+  size_t size = members.size();
 
   // print the orbit elements
   strm << "{";
   for (size_t i=0; i<size-1; i++)
-    strm << data[i] << ",";
-  strm << data[size-1] << "}";
+    strm << members[i] << ",";
+  strm << members[size-1] << "}";
 
   return strm;
 }
@@ -55,9 +55,9 @@ KGP::KGP(realredgp::RealReductiveGroup& G_R, RankFlags generators)
 
   // determine the KGP orbit for each KGB orbit
   size_t count = 0;
-  KGP_queue q;
   for (KGBElt i=0; i<kgbsize; i++)
   { // see if we found a new orbit
+    KGP_queue q;
     if (kgptable[i] == unassigned)
     { // new orbit
       kgptable[i] = count++;
@@ -109,7 +109,7 @@ KGP::KGP(realredgp::RealReductiveGroup& G_R, RankFlags generators)
   // fill the orbits
   for (KGBElt i=0; i<kgbsize; i++)
   {
-    data[kgptable[i]].data.push_back(i);
+    data[kgptable[i]].insert(i);
     if (data[kgptable[i]].size() > msize)
       msize = data[kgptable[i]].size();
   }
@@ -119,12 +119,9 @@ KGP::KGP(realredgp::RealReductiveGroup& G_R, RankFlags generators)
 
   // the above sort undoubtedly messed up the mapping, so we need to fix it
   for (KGPElt i=0; i<count; i++)
-  {
-    KGP_orbit kgporbit = data[i];
-    size_t osize = kgporbit.size();
-    for (size_t j=0; j<osize; j++)
-      kgptable[kgporbit.data[j]] = i;
-  }
+    for (auto elt : data[i])
+      kgptable[elt] = i;
+
 }  // |KGP::KGP|
 
 
@@ -134,29 +131,28 @@ void KGP::fillClosure()
   if (bruhat!= nullptr)
     return;
 
-  size_t kgpsize = data.size();
+  size_t kgp_size = data.size();
 
   // build the Hasse diagram
   // use a bit vector to keep track of closure relations
-  std::vector<Poset::EltList> hasse(kgpsize);
-  std::vector<bool> closure(kgpsize,0);
-  for (KGPElt i=0; i<kgpsize; i++)
-  { // for each kgb orbit in this kgp orbit, examine closure edges of degree one
-    KGP_orbit kgporbit = data[i];
-    size_t osize = kgporbit.size();
-    size_t minelt = kgpsize;
-    for (size_t j=0; j<osize; j++)
+  std::vector<Poset::EltList> hasse(kgp_size);
+  std::vector<bool> closure(kgp_size,0);
+  for (KGPElt i=0; i<kgp_size; ++i)
+  { // for each KGB orbit in this KGP orbit, examine closure edges of degree one
+    KGP_orbit kgp_orbit = data[i];
+    size_t min_elt = kgp_size;
+    for (auto elt : kgp_orbit)
     { // get closure edges
-      const Poset::EltList& clist = kgborder.hasse(kgporbit.data[j]);
+      const Poset::EltList& clist = kgborder.hasse(elt);
       size_t lsize = clist.size();
 
-      // fill the kgp closure list
-      for (size_t k=0; k<lsize; k++)
+      // fill the KGP closure list
+      for (size_t k=0; k<lsize; ++k)
       {
-	KGPElt currorbit = kgptable[clist[k]];
-	closure[currorbit]=1;
-	if (currorbit < minelt)
-	  minelt = currorbit;
+	KGPElt cur_orbit = kgptable[clist[k]];
+	closure[cur_orbit]=1;
+	if (cur_orbit < min_elt)
+	  min_elt = cur_orbit;
       }
     }
 
@@ -164,12 +160,12 @@ void KGP::fillClosure()
     // the closure relation. We now reduce this set to a minimal
     // generating set
     KGP_queue q;
-    for (KGPElt j=i; j-->minelt;)
+    for (KGPElt j=i; j-->min_elt;)
       if (closure[j]==1)
       {
 	hasse[i].push_back(j);
 	q.push(j);
-	reduce(q, closure, hasse, minelt);
+	reduce(q, closure, hasse, min_elt);
       }
 
 
@@ -185,22 +181,22 @@ void KGP::fillClosure()
 void KGP::reduce(KGP_queue& q,
 		 std::vector<bool>& closure,
 		 std::vector<Poset::EltList>& hasse,
-		 KGPElt minelt)
+		 KGPElt min_elt)
 {
   // while the queue is not empty, recursively remove edges
   while(!q.empty())
   {
     // get the next element
-    KGPElt currelt = q.front();
+    KGPElt cur_elt = q.front();
 
     // remove it from the list
-    closure[currelt]=0;
+    closure[cur_elt]=0;
 
     // walk the list of lower edges
-    Poset::EltList& clist = hasse[currelt];
+    Poset::EltList& clist = hasse[cur_elt];
     size_t lsize = clist.size();
     for (size_t i=0; i<lsize; i++)
-      if (clist[i] >= minelt)
+      if (clist[i] >= min_elt)
 	q.push(clist[i]);
 
     // remove the element
@@ -211,15 +207,15 @@ void KGP::reduce(KGP_queue& q,
 // print functions
 std::ostream& KGP::print(std::ostream& strm) const
 {
-  size_t kgbsize = kgb.size();
-  size_t kgpsize = data.size();
-  size_t kgbwidth = ioutils::digits(kgbsize-1,10);
-  size_t kgpwidth = ioutils::digits(kgpsize-1,10);
-  size_t lwidth = ioutils::digits(kgb.length(kgbsize-1)-1,10);
+  size_t kgb_size = kgb.size();
+  size_t kgp_size = data.size();
+  size_t kgbwidth = ioutils::digits(kgb_size-1,10);
+  size_t kgpwidth = ioutils::digits(kgp_size-1,10);
+  size_t lwidth = ioutils::digits(kgb.length(kgb_size-1)-1,10);
   size_t cwidth = ioutils::digits(msize,10);
 
   // print orbits
-  for (size_t i=0; i<kgpsize; i++)
+  for (size_t i=0; i<kgp_size; i++)
   {
     strm << std::setw(kgpwidth) << i << ":[" << std::setw(kgbwidth)
 	 << data[i].open() << "*] ";
@@ -234,10 +230,10 @@ std::ostream& KGP::print(std::ostream& strm) const
 
 std::ostream& KGP::printClosure(std::ostream& strm) const
 {
-  size_t kgpsize = data.size();
-  size_t kgpwidth = ioutils::digits(kgpsize-1,10);
+  size_t kgp_size = data.size();
+  size_t kgpwidth = ioutils::digits(kgp_size-1,10);
 
-  for (KGPElt i=0; i<kgpsize; i++)
+  for (KGPElt i=0; i<kgp_size; i++)
   {
     // print the orbit
     strm << std::setw(kgpwidth) << i << ": ";
@@ -264,18 +260,18 @@ void KGP::makeDotFile(std::ostream& strm)
   // make sure the closure order has been computed
   fillClosure();
 
-  size_t kgpsize = data.size();
+  size_t kgp_size = data.size();
 
   // write header
   strm << "digraph G {" << std::endl << "ratio=\"1.5\"" << std::endl
        << "size=\"7.5,10.0\"" << std::endl;
 
   // create vertices
-  for (size_t i=0; i<kgpsize; i++)
+  for (size_t i=0; i<kgp_size; i++)
     strm << "v" << i << std::endl; // create the vertex
 
   // add edges
-  for (size_t i=0; i<kgpsize; i++)
+  for (size_t i=0; i<kgp_size; i++)
   {
     const Poset::EltList& clist = bruhat->hasse(i);
     size_t clsize = clist.size();
