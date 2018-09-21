@@ -14,6 +14,7 @@
 #include "realredgp.h"
 #include "ioutils.h"
 
+#include <cassert>
 #include <vector>
 #include <bitset>
 #include <algorithm>
@@ -21,6 +22,8 @@
 
 namespace atlas {
   namespace kgb {
+
+    typedef containers::queue<KGPElt> KGP_queue;
 
     // Methods of |KGP_orbit|
 
@@ -53,19 +56,21 @@ KGP::KGP(realredgp::RealReductiveGroup& G_R, RankFlags generators)
 
   // determine the KGP orbit for each KGB orbit
   size_t count = 0;
-  for (KGBElt i=0; i<kgbsize; i++)
+  for (KGBElt i=0; i<kgbsize; i++) // increasing order, necessitated by Cayleys
   { // see if we found a new orbit
     KGP_queue q;
-    if (kgptable[i] == unassigned)
-    { // new orbit
-      kgptable[i] = count++;
-      q.push(i);
-    }
+    if (kgptable[i] != unassigned)
+      continue; // skip elements previously attributed to an orbit
+
+    auto cur_orbit =  count++; // start a new orbit
+    kgptable[i] = cur_orbit;
+    q.push(i); // all of whose elements are queued for further processing
 
     // for each element of the queue, explore each of its edges
     while (not q.empty())
     { // get the orbit
       KGBElt kgbelt = q.front();
+      q.pop();
 
       // for each simple root, determine the other elements
       // look for other elements in the orbit
@@ -77,10 +82,12 @@ KGP::KGP(realredgp::RealReductiveGroup& G_R, RankFlags generators)
 
 	// see if we found a new element
 	if (kgptable[ca] == unassigned)
-	{ // new element - add it to the queue
-	  kgptable[ca] = kgptable[kgbelt];
+	{
+	  kgptable[ca] = cur_orbit;
 	  q.push(ca);
 	}
+	else
+	  assert(kgptable[ca]==cur_orbit); // we don't expect fusion with old orbit
 
 	// if the root is noncompact, also check the Cayley transform
 	gradings::Status::Value rt = kgb.status(j,kgbelt);
@@ -88,17 +95,17 @@ KGP::KGP(realredgp::RealReductiveGroup& G_R, RankFlags generators)
 	{ // see if the cayley transform gives a new element
 	  KGBElt ct = kgb.cayley(j,kgbelt);
 	  if (kgptable[ct] == unassigned)
-	  { // new element - add it to the queue
-	    kgptable[ct] = kgptable[kgbelt];
+	  {
+	    kgptable[ct] = cur_orbit;
 	    q.push(ct);
 	  }
+	  else
+	    assert(kgptable[ca]==cur_orbit); // don't expect fusion with old orbit
 	}
       } // |for(it)|
 
-      // at this point we have processed the orbit
-      // so remove it from the queue
-      q.pop();
     }  // |while (not q.empty())|
+
   } // |for(i)|
 
   // allocate enough memory to hold the orbits
@@ -134,74 +141,67 @@ void KGP::fillClosure()
   size_t kgp_size = data.size();
 
   // build the Hasse diagram
-  // use a bit vector to keep track of closure relations
+  // use a bitmap to keep track of closure relations
   std::vector<Poset::EltList> hasse(kgp_size);
-  std::vector<bool> closure(kgp_size,0);
   for (KGPElt i=0; i<kgp_size; ++i)
   { // for each KGB orbit in this KGP orbit, examine closure edges of degree one
     const KGP_orbit& kgp_orbit = data[i];
-    size_t min_elt = kgp_size;
-    for (auto elt : kgp_orbit)
-    { // get closure edges
-      const Poset::EltList& clist = kgborder.hasse(elt);
-      size_t lsize = clist.size();
+    bitmap::BitMap closure(kgp_size);
+    for (auto rep : kgp_orbit)
+    { // get KGB elements covered by our current |kgp_orbit| representative |rep|
+      const Poset::EltList& covered_list = kgborder.hasse(rep);
 
       // fill the KGP closure list
-      for (size_t k=0; k<lsize; ++k)
-      {
-	KGPElt cur_orbit = kgptable[clist[k]];
-	closure[cur_orbit]=1;
-	if (cur_orbit < min_elt)
-	  min_elt = cur_orbit;
-      }
-    }
+      for (auto covered : covered_list)
+	closure.insert(kgptable[covered]); // add orbit containing covered element
 
-    // at this point, closure contains a generating set of edges for
-    // the closure relation. We now reduce this set to a minimal
-    // generating set
-    KGP_queue q;
-    for (KGPElt j=i; j-->min_elt;)
-      if (closure[j]==1)
-      {
-	hasse[i].push_back(j);
-	q.push(j);
-	reduce(q, closure, hasse, min_elt);
-      }
+    } // |for (auto rep : kgp_orbit)|
 
+    // filter |closure|, removing redundancies from earlier |hasse|
+    hasse[i] = reduce(i, std::move(closure), hasse);
 
-    closure[i]=0;
-    std::sort(hasse[i].begin(), hasse[i].end());
-  }
+  } // |for (KGPElt i)|
 
   // store the hasse diagram
   bruhat = new bruhat::BruhatOrder(hasse);
 } // |KGP::fillClosure|
 
 // helper function - removes redundant edges from a closure relation
-void KGP::reduce(KGP_queue& q,
-		 std::vector<bool>& closure,
-		 std::vector<Poset::EltList>& hasse,
-		 KGPElt min_elt)
+Poset::EltList KGP::reduce
+  (KGPElt i, // element for which |closure| was computed
+   bitmap::BitMap closure, // elements in topological closure of |i|
+   std::vector<Poset::EltList>& hasse) // earlier covered lists
 {
-  // while the queue is not empty, recursively remove edges
-  while(!q.empty())
+  if (closure.empty())
+    return Poset::EltList();
+  const KGPElt min_covered = *closure.begin(); // lower bound for result
+  containers::simple_list<KGPElt> result; // truly covered elements, decreasing
+
+  unsigned long j=i; // the |unsigned long| type is imposed by |BitMap::back_up|
+  while (closure.back_up(j)) // closure is filtered while we are descending it
   {
-    // get the next element
-    KGPElt cur_elt = q.front();
+    result.push_front(j);
+    KGP_queue q { KGPElt(j) };
 
-    // remove it from the list
-    closure[cur_elt]=0;
+    // find and remove from |closure| elements reachable from |j| via |hasse|
+    while(not q.empty())
+    {
+      // get the next element, and remove it from the queue, and from |closure|
+      KGPElt cur_elt = q.front();
+      q.pop();
+      closure.remove(cur_elt); // filter what we encounter (need not be present)
 
-    // walk the list of lower edges
-    Poset::EltList& clist = hasse[cur_elt];
-    size_t lsize = clist.size();
-    for (size_t i=0; i<lsize; i++)
-      if (clist[i] >= min_elt)
-	q.push(clist[i]);
+      // propagate work to consider elements reachable downwards from |cur_elt|
+      Poset::EltList& covered_list = hasse[cur_elt];
+      for (auto covered : covered_list)
+	if (covered >= min_covered) // don't bother pushing too small elements
+	  q.push(covered);
 
-    // remove the element
-    q.pop();
-  }
+    } // |while(not q.empty())|
+  } // |while closure.back_up(j)|
+
+  return Poset::EltList(result.wbegin(),result.wend()); // convert to vector
+
 } // |KGP::reduce|
 
 // print functions
@@ -239,12 +239,12 @@ std::ostream& KGP::printClosure(std::ostream& strm) const
     strm << std::setw(kgpwidth) << i << ": ";
 
     // print the list
-    const Poset::EltList& clist = bruhat->hasse(i);
-    size_t lsize = clist.size();
+    const Poset::EltList& covered_list = bruhat->hasse(i);
+    size_t lsize = covered_list.size();
 
     for (size_t j=0; j<lsize; j++)
     {
-      strm << clist[j];
+      strm << covered_list[j];
       if (j!=lsize-1) strm << ",";
     }
     strm << std::endl;
@@ -273,10 +273,10 @@ void KGP::makeDotFile(std::ostream& strm)
   // add edges
   for (size_t i=0; i<kgp_size; i++)
   {
-    const Poset::EltList& clist = bruhat->hasse(i);
-    size_t clsize = clist.size();
+    const Poset::EltList& covered_list = bruhat->hasse(i);
+    size_t clsize = covered_list.size();
     for (size_t j=0; j<clsize; j++) // add an edge in the graph
-      strm << "v" << i << " -> v" << clist[j]
+      strm << "v" << i << " -> v" << covered_list[j]
 	   << "[color=gray] [arrowhead=none] [style=bold]" << std::endl;
   }
 
