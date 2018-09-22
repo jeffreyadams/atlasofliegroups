@@ -943,7 +943,7 @@ void Rep_table::add_block(param_block& block, BlockEltList& survivors)
 
   for (BlockElt x=0; x<=new_survivors.back(); ++x)
   {
-    BlockEltList xs=block.finals_for(x);
+    auto xs=block.finals_for(x);
     if (xs.empty())
       continue; // no point doing work for |x|'s that don't contribute anywhere
 
@@ -967,8 +967,8 @@ void Rep_table::add_block(param_block& block, BlockEltList& survivors)
 	SR_poly& dest = KLV_list[z_index]; // a poly to which |x| contributes
 	if (lengths[z_index]%2!=parity)
 	  eval.negate(); // incorporate sign for length difference
-	for (unsigned int i=0; i<xs.size(); ++i) // from |finals_for(x)|
-	  dest.add_term(block.sr(xs[i]),eval); // contribute each with |eval|
+	for (BlockElt x : xs) // from |finals_for(x)|
+	  dest.add_term(block.sr(x),eval); // contribute each with |eval|
       }
     } // |for(it)|
   } // |for(x)|

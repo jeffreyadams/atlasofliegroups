@@ -4777,11 +4777,11 @@ void KL_block_wrapper(expression_base::level l)
   own_matrix contributes_to = std::make_shared<matrix_value>(
     int_Matrix(n_survivors,block.size(),0));
   for (BlockElt z=0; z<block.size(); ++z)
-  { BlockEltList sb = block.finals_for(z);
-    for (BlockEltList::const_iterator it=sb.begin(); it!=sb.end(); ++it)
-    { BlockElt x= permutations::find_index<int>(survivor->val,*it);
+  { auto finals = block.finals_for(z);
+    for (BlockElt final : finals)
+    { BlockElt x= permutations::find_index<int>(survivor->val,final);
         // a row index
-      if ((block.length(z)-block.length(*it))%2==0)
+      if ((block.length(z)-block.length(final))%2==0)
         ++contributes_to->val(x,z);
       else
         --contributes_to->val(x,z);
@@ -4940,11 +4940,11 @@ void partial_KL_block_wrapper(expression_base::level l)
   own_matrix contributes_to = std::make_shared<matrix_value>(
     int_Matrix(n_survivors,block.size(),0));
   for (BlockElt z=0; z<block.size(); ++z)
-  { BlockEltList sb = block.finals_for(z);
-    for (BlockEltList::const_iterator it=sb.begin(); it!=sb.end(); ++it)
-    { BlockElt x= permutations::find_index<int>(survivor->val,*it);
+  { auto finals = block.finals_for(z);
+    for (BlockElt final : finals)
+    { BlockElt x= permutations::find_index<int>(survivor->val,final);
         // a row index
-      if ((block.length(z)-block.length(*it))%2==0)
+      if ((block.length(z)-block.length(final))%2==0)
         ++contributes_to->val(x,z);
       else
         --contributes_to->val(x,z);
