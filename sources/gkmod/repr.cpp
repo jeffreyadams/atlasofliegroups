@@ -822,9 +822,9 @@ SR_poly Rep_context::scale(const poly& P, const Rational& f) const
   poly result(repr_less());
   for (auto it=P.begin(); it!=P.end(); ++it)
   { auto z=it->first; // take a copy for modification
-    auto zs = finals_for(scale(z,f));
-    for (auto jt=zs.begin(); not zs.at_end(jt); ++jt)
-      result.add_term(*jt,it->second);
+    auto finals = finals_for(scale(z,f));
+    for (const StandardRepr& final : finals)
+      result.add_term(final,it->second);
   }
   return result;
 }
@@ -834,9 +834,9 @@ SR_poly Rep_context::scale_0(const poly& P) const
   poly result(repr_less());
   for (auto it=P.begin(); it!=P.end(); ++it)
   { auto z=it->first; // take a copy for modification
-    auto zs = finals_for(scale_0(z));
-    for (auto jt=zs.begin(); not zs.at_end(jt); ++jt)
-      result.add_term(*jt,it->second);
+    auto finals = finals_for(scale_0(z));
+    for (const StandardRepr& final : finals)
+      result.add_term(final,it->second);
   }
   return result;
 }
@@ -881,7 +881,7 @@ containers::sl_list<StandardRepr>
 	  const KGBEltPair p = kgb().inverseCayley(s,x);
 	  Weight lr = lambda_rho(*rit);
 	  assert(rd.simpleCoroot(s).dot(lr)%2!=0); // parity says this
-	  *rit = sr_gamma(p.first,lr,gamma); // |*rit| by first inverse Cayley
+	  *rit = sr_gamma(p.first,lr,gamma); // replace by first inverse Cayley
 	  if (p.second!=UndefKGB) // insert second inverse Cayley after first
 	    result.insert(std::next(rit),sr_gamma(p.second,lr,gamma));
 	  break;
@@ -1134,9 +1134,9 @@ SR_poly twisted_KL_sum
   // finally transcribe from |P_at_s| result
   SR_poly result(rc.repr_less());
   unsigned int parity = eblock.length(y)%2;
-  for (auto it=survivors.begin(); not survivors.at_end(it); ++it)
+  for (auto x : survivors)
   {
-    auto x = *it; auto factor = P_at_s(x,0);
+    auto factor = P_at_s(x,0);
     if (eblock.length(x)%2!=parity) // flip sign at odd length difference
       factor = -factor;
     result.add_term(parent.sr(eblock.z(x)),factor);
