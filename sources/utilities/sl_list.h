@@ -1923,6 +1923,20 @@ public:
     return simple_list<T,Alloc>(head.release(),std::move(node_allocator()));
   }
 
+  std::vector<T> to_vector() const &
+  { std::vector<T>result; result.reserve(node_count); // avoid recounting length
+    for (auto it=wbegin(); not at_end(it); ++it) // non-counting fill
+      result.emplace_back(*it);
+    return result;
+  }
+
+  std::vector<T> to_vector() const &&
+  { std::vector<T>result; result.reserve(node_count); // avoid recounting length
+    for (auto it=wbegin(); not at_end(it); ++it) // non-counting fill
+      result.emplace_back(std::move(*it));
+    return result;
+  }
+
   // accessors
   const T& front () const { return head->contents; }
   const_iterator begin () const noexcept { return const_iterator(head); }

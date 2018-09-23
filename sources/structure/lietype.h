@@ -21,6 +21,7 @@
 #include "../Atlas.h"
 
 #include "permutations.h" // needed in the |Layout| structure
+#include "weyl.h" // containment of |WeylWord|
 
 namespace atlas {
 
