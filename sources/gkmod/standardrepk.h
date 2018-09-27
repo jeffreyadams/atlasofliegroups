@@ -577,7 +577,7 @@ class HechtSchmid
 
   void add_lh(const StandardRepK& s) { lh2=new StandardRepK(s); }
   void add_rh(const StandardRepK& s)
-    { *(rh1==NULL ? &rh1 : &rh2) = new StandardRepK(s); }
+    { (rh1==NULL ? rh1 : rh2) = new StandardRepK(s); }
 
   int n_lhs() const { return lh2==NULL ? 1 : 2; }
   int n_rhs() const { return rh1==NULL ? 0 : rh2==NULL ? 1 : 2; }

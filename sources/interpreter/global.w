@@ -1671,7 +1671,8 @@ through |definition_group::add|.
 
 @< Append to |store| bindings for the identifiers in |fields|... @>=
 { assert(type.kind()==tuple_type or type.kind()==union_type);
-  auto& record = *store.emplace_back(definition_group(length(fields)));
+  auto record = store.end(); // iterator that will point to next pushed item
+  store.emplace_back(definition_group(length(fields)));
 @/
   auto tp_it =wtl_const_iterator(type.tuple());
   if (type.kind()==tuple_type)
@@ -1679,7 +1680,7 @@ through |definition_group::add|.
     for (auto id_it=fields.wcbegin(); not fields.at_end(id_it);
          ++id_it,++tp_it)
       if (id_it->kind==0x1) // field selector present
-        record.add(id_it->name,type_expr(type.copy(),tp_it->copy()));
+        record->add(id_it->name,type_expr(type.copy(),tp_it->copy()));
           // projector type
   }
   else
@@ -1687,7 +1688,7 @@ through |definition_group::add|.
     for (auto id_it=fields.wcbegin(); not fields.at_end(id_it);
          ++id_it,++tp_it)
       if (id_it->kind==0x1) // field selector present
-        record.add(id_it->name,type_expr(tp_it->copy(),type.copy()));
+        record->add(id_it->name,type_expr(tp_it->copy(),type.copy()));
           // injector type
   }
 }

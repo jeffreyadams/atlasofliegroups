@@ -77,6 +77,26 @@ $(atlas_dir)/global.o $(atlas_dir)/global.tex: \
  $(sources_dir)/utilities/permutations_def.h \
  $(sources_dir)/utilities/bitmap.h
 
+$(atlas_dir)/axis-types.o: $(atlas_dir)/axis-types.cpp
+$(atlas_dir)/axis-types.o $(atlas_dir)/axis-types.tex : \
+ $(atlas_dir)/axis-types.h \
+ $(atlas_dir)/buffer.h \
+ $(atlas_dir)/parsetree.h \
+ $(atlas_dir)/parse_types.h \
+ $(atlas_dir)/parser.tab.h \
+ $(atlas_dir)/lexer.h \
+ $(atlas_dir)/global.h \
+ $(sources_dir)/Atlas.h \
+ $(sources_dir)/utilities/arithmetic.h \
+ $(sources_dir)/utilities/bigint.h \
+ $(sources_dir)/utilities/bitmap.h \
+ $(sources_dir)/utilities/bitset.h \
+ $(sources_dir)/utilities/bits.h \
+ $(sources_dir)/utilities/constants.h \
+ $(sources_dir)/utilities/matrix.h \
+ $(sources_dir)/utilities/ratvec.h \
+ $(sources_dir)/utilities/sl_list.h
+
 $(atlas_dir)/axis.o: $(atlas_dir)/axis.cpp
 $(atlas_dir)/axis.o $(atlas_dir)/axis.tex : \
  $(atlas_dir)/axis.h \

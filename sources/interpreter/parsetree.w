@@ -1167,18 +1167,16 @@ surprise that \.{x\pow-y\pow2} parses as $x^{(-y)^2}$.
 
 @ The data type necessary to store these intermediate data during priority
 resolutions is a dynamic list of triples subtree-operator-priority. We use a
-|mirrored_simple_list|, which is a list re-looked so that its head appears at
-|back|, like for |std::stack|. That head represents the rightmost part of the
-formula seen do far. To implement the above solution for unary operators, we
-allow for the very first pending operator (at the tail of the list) to not
-have any left subtree; the expression is left of type |no_expr|, which can be
-tested to detect the end of the list.
+|containers::stack| instance, which is (trivially derived from) a |std::stack|
+using an appropriately adapted |simple_list| as container. That stack top
+represents the rightmost part of the formula seen do far. To implement the above
+solution for unary operators, we allow for the very first pending operator (at
+the tail of the list) to not have any left subtree; the expression is left of
+type |no_expr|, which can be tested to detect the end of the list.
 
-All nodes will be directly constructed in place, through |emplace_back|, so we
-declare a simple moving constructor. For compilers with incomplete \Cpp11
-support we explicitly delete the copy constructor assignment to prevent bad
-surprises (though the current code would not be affected by their presence).
-Even a moving constructor is not needed.
+All nodes, of type |formula_node|, will be directly constructed in place,
+through |emplace_back|, so we declare a single constructor for this type, moving
+from each component. Even copy or move constructors are never needed.
 
 Postfix operators are quite rare in mathematics (the factorial exclamation
 mark is the clearest example, though certain exponential notations like the
@@ -1188,17 +1186,26 @@ handled in the parser without dynamic priority comparisons. So here is that
 structure:
 
 @< Structure and typedef declarations... @>=
-struct formula_node @/{@; expr left_subtree; expr op_exp; int prio;
-formula_node(expr&& l,expr&& o, int prio)
- : left_subtree(std::move(l)), op_exp(std::move(o)), prio(prio) @+{}
-#ifdef incompletecpp11
-@/formula_node(const formula_node& x) = @[delete@];
-@/formula_node operator=(const formula_node& x) = @[delete@];
-#endif
+struct formula_node
+@/{ expr left_subtree; @+ expr op_exp; @+ int prio;
+@/  formula_node(expr&& l,expr&& o, int prio)
+    : left_subtree(std::move(l)), op_exp(std::move(o)), prio(prio) @+{}
+@/  formula_node@[(const formula_node& x) = delete@];
+@/  formula_node@[(formula_node&& x) = delete@];
 };
-
-typedef containers::mirrored_simple_list<formula_node> form_stack;
+@)
 typedef containers::sl_node<formula_node>* raw_form_stack;
+struct form_stack : public containers::stack<formula_node>
+{ typedef containers::stack<formula_node> base;
+  typedef containers::simple_list<formula_node> ssub_base;
+    // sub-sub base; skip ``mirrored''
+@)
+  form_stack() : @[base()@] @+{}
+  form_stack(raw_form_stack s) : @[base(ssub_base(s))@] @+{}
+    // resuscitate stack from raw pointer
+  raw_form_stack release() @+{@; return c.release(); }
+    // inanimate the stack to a raw pointer
+};
 
 @ We define the following functions operating on partial formulae: two to
 start them out with a binary or unary operator, the principal one to extend
@@ -1220,21 +1227,21 @@ the case of a binary formula.
 raw_form_stack start_formula
    (expr_p e, id_type op, int prio, const YYLTYPE& op_loc)
 { form_stack result;
-  result.emplace_back (
+  result.emplace (
    std::move(*expr_ptr(e)), expr(op,op_loc,expr::identifier_tag()), prio );
   return result.release();
 }
 @)
 raw_form_stack start_unary_formula (id_type op, int prio, const YYLTYPE& op_loc)
 { form_stack result;    // leave |left_subtree| empty
-  result.emplace_back (expr(), expr(op,op_loc,expr::identifier_tag()), prio );
+  result.emplace (expr(), expr(op,op_loc,expr::identifier_tag()), prio );
 @/  return result.release();
 }
 
 @ Extending a formula involves the priority comparisons and manipulations
 indicated above. It turns out |start_formula| could have been replaced by a
 call to |extend_formula| with |pre==nullptr|. The second part of the condition
-in the while loop is short for |s.front().prio>prio or (s.front().prio==prio
+in the while loop is short for |s.top().prio>prio or (s.top().prio==prio
 and prio%2==0)|.
 
 @< Definitions of functions for the parser @>=
@@ -1242,23 +1249,23 @@ and prio%2==0)|.
 raw_form_stack extend_formula
   (raw_form_stack pre, expr_p ep,id_type op, int prio, const YYLTYPE& op_loc)
 { expr e(std::move(*expr_ptr (ep))); form_stack s(pre);
-  while (not s.empty() and s.front().prio>=prio+prio%2)
+  while (not s.empty() and s.top().prio>=prio+prio%2)
     @< Replace |e| by |oper(left_subtree,e)| where |oper| and |left_subtree|
-       come from popped |s.front()| @>
-  s.emplace_back(std::move(e),expr(op,op_loc,expr::identifier_tag()),prio);
+       come from popped |s.top()| @>
+  s.emplace(std::move(e),expr(op,op_loc,expr::identifier_tag()),prio);
   return s.release();
 }
 
 @ Here we make either a unary or a binary operator call. The unary case only
 applies for the last node of the stack (since only |start_unary_formula| can
 create a node without left operand), but that fact is not used here. Only once
-the node is emptied do we pop it with |s.pop_back()|.
+the node is emptied do we pop it with |s.pop()|.
 
 @< Replace |e| by |oper(left_subtree,e)|...@>=
-{ expr& lt = s.front().left_subtree;
+{ expr& lt = s.top().left_subtree;
   if (lt.kind==no_expr) // apply initial unary operator
   {
-    expr& oper = s.front().op_exp;
+    expr& oper = s.top().op_exp;
     const source_location range(oper.loc,e.loc); // extent of operands
     e = expr(new application_node(std::move(oper),std::move(e)),range);
   }
@@ -1270,10 +1277,10 @@ the node is emptied do we pop it with |s.pop_back()|.
     args.push_front(std::move(lt));
     expr arg_pack(std::move(args),expr::tuple_display_tag(),range);
     app a(new application_node @|
-      ( std::move(s.front().op_exp), std::move(arg_pack) ));
+      ( std::move(s.top().op_exp), std::move(arg_pack) ));
     e= expr(std::move(a),range); // move construct application expression
   }
-  s.pop_back();
+  s.pop();
 }
 
 @ Wrapping up a formula is similar to the initial part of |extend_formula|,
@@ -1957,7 +1964,7 @@ expr_p make_int_case_node
 case int_case_expr0:
 case int_case_expr1:
 case int_case_expr2:
-{ const auto& c=*e.if_variant;
+{ auto& c=*e.if_variant;
   wel_const_iterator it(&c.branches);
   out << " case " << c.condition;
   if (e.kind==int_case_expr2)
@@ -2013,7 +2020,7 @@ of the same for an integer case expression.
 
 @< Cases for printing... @>=
 case union_case_expr:
-{ const auto& c=*e.if_variant;
+{ auto& c=*e.if_variant;
   wel_const_iterator it(&c.branches);
   out << " case " << c.condition << " in " << *it;
   for (++it; not it.at_end(); ++it)
