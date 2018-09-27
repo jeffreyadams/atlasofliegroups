@@ -59,8 +59,8 @@ let x_L=q.x then
 x_G=embed_KGB(x_L,G) then
 q_G_0=theta_induce_standard_warning(parameter(x_L,q.lambda,null(q.root_datum.rank)),G,hodge_K_type_formula_verbose) in
  if hodge_K_type_formula_verbose then
-  prints("q_G_0=",q_G_0);
-  prints("====================",new_line,"doing q=",q," ",new_line, "Levi=",L)
+  prints("====================",new_line,"doing q=",q," ",new_line, "Levi=",L);
+  prints("q_G_0=",q_G_0)
  fi;
 let shifts=u_cap_s_rho_shifts_and_cardinalities(P,x_G) in
  if hodge_K_type_formula_verbose then
@@ -72,14 +72,16 @@ let shifts=u_cap_s_rho_shifts_and_cardinalities(P,x_G) in
   let q_G=assert(=nu(q),"nu(q)\ne 0");
   theta_induce_standard_warning(parameter(x_L,q.lambda+v,null(q.root_datum.rank)),G,hodge_K_type_formula_verbose) then
    m_0=mu(q_G)-mu(q_G_0) then
-   m=floor(m_0) {should be an integer?} in
+   m_floor=floor(m_0) in
+{   m=floor(m_0) {should be an integer?} in}
 {   m_0=mu(first_param(hodge_normalize(q_G)[0]))-mu(q_G) then}
    if hodge_K_type_formula_verbose then
     prints("----------------",new_line,"q_G:",q_G, " [",height(q_G),"]");
+    prints("c=", c);
     prints("k=: ", k);
     prints("m_0=: ", m_0);
-    prints("m=: ", m);
-    if not is_integer(m-m_0) then prints("Warning: m-m_0=", m-m_0, "  is not an integer") fi;
+    prints("m_floor=: ", m_floor);
+    if not is_integer(m_0) then prints("Warning: m_0=", m_0, "  is not an integer") fi;
     prints("mu(q_G_0)=", mu(q_G_0));
     prints("mu(q_G)=", mu(q_G))
    fi;
@@ -93,7 +95,8 @@ let shifts=u_cap_s_rho_shifts_and_cardinalities(P,x_G) in
     prints("hrd=", hrd, new_line, "k=", k)
    fi;
 {  (hrd,let m=rat_as_int(mu(first_param(hrd[0]))-mu(q_G_0)) in prints("now m=",m);poly_product(c,(-1)^k*vee^m)) }
-  (hrd,poly_product(c,(-1)^k*vee^m))
+{  (hrd,poly_product(c,(-1)^k*vee^m_floor))}
+  (hrd,poly_product(c,(-1)^k*vee^k))
   fi in
   {/CASES}
      if hodge_K_type_formula_verbose then

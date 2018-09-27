@@ -105,7 +105,7 @@ alpha=G.simple_roots[i] then
 alpha_check=G.simple_coroots[i] then
 n=rat_as_int(-gamma*alpha_check) {in Z_{>=0}} then
 ref=reflection(G,i) in
-if is_compact(i,p.x) then [([-1],parameter(p.x, ref*lambda,zero))] 
+if is_compact(i,p.x) then [([-1],parameter(p.x, ref*lambda,zero))]
 else
  let cayley=
   if imaginary_type(i,x)=1 then  {construct Cayley transform by hand}

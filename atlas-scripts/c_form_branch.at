@@ -23,7 +23,7 @@ for c@q in hf_branch_irr do rv+:=c*s^(rat_as_int(a-mu(q)))*q od;rv fi
 
 set c_form_branch_std(ParamPol P,int N,RealForm G)=ParamPol:
 let rv=null_module(G) in
- for c@q in P do prints("q=",q);rv+:=c*c_form_branch_std(q,N) od;rv
+ for c@q in P do {prints("q=",q);}rv+:=c*c_form_branch_std(q,N) od;rv
 
 {error if #P=0}
 set c_form_branch_std(ParamPol P,int N)=ParamPol:c_form_branch_std(P,N,P.real_form)
