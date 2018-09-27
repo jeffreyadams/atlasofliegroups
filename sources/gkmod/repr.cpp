@@ -967,8 +967,8 @@ void Rep_table::add_block(param_block& block, BlockEltList& survivors)
 	SR_poly& dest = KLV_list[z_index]; // a poly to which |x| contributes
 	if (lengths[z_index]%2!=parity)
 	  eval.negate(); // incorporate sign for length difference
-	for (BlockElt x : xs) // from |finals_for(x)|
-	  dest.add_term(block.sr(x),eval); // contribute each with |eval|
+	for (BlockElt x : xs) // add from |klPol(x,z)| for all |finals_for(x)|
+	  dest.add_term(block.sr(x),eval); // contribute term |eval| for each
       }
     } // |for(it)|
   } // |for(x)|
@@ -1160,7 +1160,7 @@ SR_poly twisted_KL_column_at_s
   return twisted_KL_sum(rc,eblock,eblock.element(entry),block);
 } // |twisted_KL_column_at_s|
 
-void Rep_table::add_block(ext_block::ext_block& block,
+void Rep_table::add_block(ext_block::ext_block& block, // a full extended block
 			  param_block& parent, // its complete unextended block
 			  BlockElt top_elt, BlockEltList& extended_finals)
 {
@@ -1208,13 +1208,13 @@ void Rep_table::add_block(ext_block::ext_block& block,
   // condense |P_mat| to the extended block elements without singular descents
   containers::simple_list<BlockElt> finals = block.condense(P_at_s,parent);
 
-  BlockElt count=0; unsigned y_index=-1;
+  BlockElt count=0; unsigned top_index=-1;
   // finally transcribe columns from |P_at_s| into |twisted_KLV_list|
   for (auto it=finals.begin(); not finals.at_end(it); ++it,++count)
   { assert(block.first_descent_among(singular_orbits,*it)==block.rank());
     auto y = *it; // block element, index into (extended) |block|
     if (block.z(y)==top_elt)
-      y_index=count;
+      top_index=count;
     auto y_index = hash.find(block.sr(y,parent));
     assert (y_index!=hash.empty); // since we looked up everything above
     assert (y_index<twisted_KLV_list.size());
@@ -1232,13 +1232,13 @@ void Rep_table::add_block(ext_block::ext_block& block,
       }
       // since |dest| is a reference, the sum is stored at its destination
     } // |if (y_index>=old_size)|
-  } // |for (it)|
-  assert(y_index<block.size()); // we must have crossed it on our way
-  extended_finals.reserve(y_index+1);
+  } // |for (y : finals)|
+  assert(top_index<block.size()); // we must have crossed it on our way
+  extended_finals.reserve(top_index+1);
   for (auto it=finals.begin(); block.z(*it)!=top_elt; ++it)
     extended_finals.push_back(*it);
   extended_finals.push_back(block.element(top_elt)); // push the final |*it|
-  assert(extended_finals.size()==y_index+1);
+  assert(extended_finals.size()==top_index+1);
 } // |Rep_table::add_block| (extended block)
 
 // look up or compute and return the alternating sum of twisted KL polynomials
