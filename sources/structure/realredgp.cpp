@@ -234,7 +234,7 @@ TorusPart minimal_torus_part
   assert (diff.denominator()==1); // since $\exp(2i\pi diff)=1$
 
   TorusPart tp(diff.numerator());
-  { // move to fundqmental fiber
+  { // move to fundamental fiber
     TitsCoset Tc(G,innerclass::grading_of_simples(G,coch));
     const auto& Tg = Tc.titsGroup();
     TitsElt a (Tg,tp,tw);
@@ -295,7 +295,7 @@ TorusPart minimal_torus_part
     do
     { const auto tp=to_do.top().first; const auto gr=to_do.top().second;
       to_do.pop();
-      if ((gr&mask)==target) // record those that are cadidate for being x0
+      if ((gr&mask)==target) // record those that are candidate for being x0
 	candidates.push_front(tp);
       for(auto it=gr.begin(); it(); ++it)
       { const auto new_tp = tp + m_alpha[*it];
@@ -314,7 +314,7 @@ TorusPart minimal_torus_part
   auto it = candidates.begin();
   auto min = *it;
   while (not (++it).at_end())
-    if (*it<min) // offset |t| does not cancel from this relation!
+    if (*it<min)
       min = *it;
 
   return min;
