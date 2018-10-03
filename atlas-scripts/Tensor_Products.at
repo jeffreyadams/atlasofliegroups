@@ -1,0 +1,13 @@
+<nilpotent_orbits.at
+
+set add_weight (Param p, KGBElt x, vec H)=Param:
+   let y=x(p), lam=lambda(p) then (,,new_H)=move_weight(((),x,H),y) in
+   parameter(y,lam+new_H,nu(p))
+
+set add_weight (ParamPol P, KGBElt x, vec H)=ParamPol:
+   let result=null_module(real_form(x)) in
+   for coeff@p in P do result+:=coeff*(standardize(add_weight (p,x,H)))*0 od;
+   result
+
+set add_weight (K_Type mu, KGBElt x, vec H)=ParamPol:
+   let P=K_type_formula(mu) in add_weight(P,x,H)
