@@ -1,0 +1,45 @@
+<nilpotent_orbits.at
+
+{tensor product of K-representations for GL(2,R)}
+
+set N=100
+
+{simply use p.x}
+set add_weight_gl2 (Param p, vec H)=Param:parameter(p.x,p.lambda+H,nu(p))
+
+set add_weight_gl2 (ParamPol P, vec H)=ParamPol:
+   let result=null_module(P.real_form) in
+   for coeff@p in P do result+:=coeff*(standardize(add_weight_gl2 (p,H)))*0 od;
+   result
+
+set add_weight_gl2 (K_Type mu, vec H)=ParamPol:
+   let P=K_type_formula(mu) in add_weight_gl2(P,H)
+
+
+set K_display(K_Type_Pol P)=void:
+let header=["c", "x", "lambda", "dim", "highest weight"] then
+values=for c@p in P do 
+let mu=LKT(p) then
+(,,hw)=highest_weights(mu)[0] in
+[c.split_as_int.to_string,mu.x.to_string,mu.lambda.to_string,dimension(mu).to_string,hw.to_string] od
+in tabulate(header#values,"lllll",2," ") 
+
+set tensor_gl2(K_Type mu,K_Type tau)=K_Type_Pol:
+let rv=null_module(mu.real_form) in
+for (,,v) in highest_weights(tau) do rv+:=add_weight_gl2(mu,v) od;
+prints("hw_0=", let (,,v)=highest_weights(mu)[0] in v, " dim=", dimension(mu));
+prints("hw_1=", let (,,v)=highest_weights(tau)[0] in v, " dim=", dimension(mu));
+prints("result:", new_line);
+let P=branch_std(rv,N) in
+K_display(P);P
+
+set G=GL(2,R)
+set all=sort_by_K_norm(K_parameters_norm_upto(G,N))
+
+set triv=LKT(trivial(G))
+set sgn=K_Type:(KGB(G,1),[3,1]/2)
+
+set fd(int k)=K_Type:(KGB(G,0),[2*k-1,-1]/2)
+
+
+
