@@ -159,9 +159,22 @@ set is_split_spherical(K_Type p)=bool:
 {. Highest weight of a G-spherical K-type (necessarily unique). .}
 set highest_weight_split_spherical(K_Type p)=KHighestWeight:
   assert(is_split_spherical(p), "p is not a spherical rep of a split group");
-  let x=x(p) then x_K=
-   assert(strong_map_into_distinguished_fiber(x)=KGB(p.real_form,0),
-   "Wrong result of strong_map_into_distinguished_fiber"); KGB(p.real_form,0)
+  let x=x(p) in
+   if not strong_map_into_distinguished_fiber(x)=KGB(p.real_form,0) then prints
+  ( "Wrong result of strong_map_into_distinguished_fiber") fi; let x_K=KGB(p.real_form,0)
+  then rd=root_datum(p)
+  then i_rd=root_datum_from_positive(imaginary_sys(x_K))
+  then fw=fundamental_weights(i_rd), mu=ratvec:lambda(p)-rho(rd)
+  in { prints("mu=", mu); }
+  for alpha_check@i in simple_coroots(i_rd) do mu-:=mu*alpha_check*fw[i] od;
+{ prints("mu modified=", mu); }
+  assert(all(for alpha_check in simple_coroots(i_rd) do mu*alpha_check=0 od)
+        ,"error, mu isn't orthogonal to all roots");
+  k_highest_weight(KGB(real_form(x),0),ratvec_as_vec(mu))
+
+set highest_weight_split_spherical_alt(K_Type p)=KHighestWeight:
+  assert(is_split_spherical(p), "p is not a spherical rep of a split group");
+  let x=x(p) then x_K=strong_map_into_distinguished_fiber(x)
   then rd=root_datum(p)
   then i_rd=root_datum_from_positive(imaginary_sys(x_K))
   then fw=fundamental_weights(i_rd), mu=ratvec:lambda(p)-rho(rd)
@@ -176,14 +189,24 @@ set highest_weight_split_spherical(K_Type p)=KHighestWeight:
 set highest_weight_split_spherical (Param p) = KHighestWeight:
   highest_weight_split_spherical(K_type(p.at_nu_0))
 
+set highest_weight_split_spherical_alt (Param p) = KHighestWeight:
+  highest_weight_split_spherical_alt(K_type(p.at_nu_0))
+
 {. Highest weight of LKT of G-spherical K-type w.r.t. x_K (is unique). .}
 set highest_weight_split_spherical (K_Type p,KGBElt x_K) = KHighestWeight:
   let (,x,mu)=highest_weight_split_spherical(p) in
   k_highest_weight(move_weight((x,mu),x_K))
 
+set highest_weight_split_spherical_alt (K_Type p,KGBElt x_K) = KHighestWeight:
+  let (,x,mu)=highest_weight_split_spherical_alt(p) in
+  k_highest_weight(move_weight((x,mu),x_K))
+
 {. Highest weight of LKT of a G-spherical parameter w.r.t. x_K (is unique). .}
 set highest_weight_split_spherical (Param p,KGBElt x_K) = KHighestWeight:
   move_weight(highest_weight_split_spherical(p),x_K)
+
+set highest_weight_split_spherical_alt (Param p,KGBElt x_K) = KHighestWeight:
+  move_weight(highest_weight_split_spherical_alt(p),x_K)
 
 {. This function returns just ONE KHighestWeight of a K-type
   (auxiliary function). .}
@@ -206,18 +229,46 @@ set highest_weight_one (K_Type p) = KHighestWeight:
    in k_highest_weight(x_G,mu_G)
 )
 
+set highest_weight_one_alt (K_Type p) = KHighestWeight:
+(  assert(is_semifinal(parameter(p)),"parameter has singular real parity roots")
+;  p:=p.to_no_Cminus
+;  let (Q,pL)=theta_stable_data(parameter(p))
+   then (,x_L,mu_L)=highest_weight_split_spherical_alt(pL)
+   then x_G=x_min(Q)
+   then mu_G=mu_L+two_rho_u_cap_s(Q,x_G)
+{ need version of 2*rho_u_cap_s(Q) which is integral, see thetastable.at}
+{ this might be a ratvec, denominator 1/2, by restriction it defines a
+  character  of T_{K_0}
+  need to replace mu_G\in 1/2X^*theta with mu_G_integral\in X^*
+  so that restriction takes mu_G_integral to mu_G restricted to T_{K_0}
+}
+{ then ()=prints("mu_L:",mu_L,new_line, " mu_G", mu_G, new_line,
+     "2*rho_u_cap_s(Q)", 2*rho_u_cap_s(Q,x_G), new_line,
+     "two_rho_u_cap_s", two_rho_u_cap_s(Q,x_G)) }
+   in k_highest_weight(x_G,mu_G)
+)
+
 {. ONE KHighestWeight of a K-type w.r.t. x_K (auxiliary function). .}
 set highest_weight_one (K_Type p,KGBElt x_K) = KHighestWeight:
   move_weight(highest_weight_one(p),x_K)
+
+set highest_weight_one_alt (K_Type p,KGBElt x_K) = KHighestWeight:
+  move_weight(highest_weight_one_alt(p),x_K)
 
 {. All highest weights of a K-type; R-group acts on one KHighestWeight of
    previous function (number of terms is |R(K)/R(K,mu)|). .}
 set highest_weights (K_Type p) = [KHighestWeight]:
   R_K_dom_mu_orbit(highest_weight_one(p))
 
+set highest_weights_alt (K_Type p) = [KHighestWeight]:
+  R_K_dom_mu_orbit(highest_weight_one_alt(p))
+
 {. All highest weights of a K-type w.r.t. x_K. .}
 set highest_weights (K_Type p,KGBElt x_K) = [KHighestWeight]:
   for mu in highest_weights(p) do move_weight(mu,x_K) od
+
+set highest_weights_alt (K_Type p,KGBElt x_K) = [KHighestWeight]:
+  for mu in highest_weights_alt(p) do move_weight(mu,x_K) od
 
 {. List of all highest weights of all LKTs of a parameter. .}
 set highest_weights (Param p) = [KHighestWeight]:
@@ -225,13 +276,26 @@ set highest_weights (Param p) = [KHighestWeight]:
   for q in LKTs(p) do result##:=highest_weights(q) od;
   result
 
+set highest_weights_alt (Param p) = [KHighestWeight]:
+  let result=[KHighestWeight]: [] in
+  for q in LKTs(p) do result##:=highest_weights_alt(q) od;
+  result
+
 {. List of all highest weights of all LKTs of a parameter w.r.t. x_K. .}
 set highest_weights (Param p,KGBElt x_K) = [KHighestWeight]:
   for khwt in highest_weights(p) do move_weight(khwt,x_K) od
 
+set highest_weights_alt (Param p,KGBElt x_K) = [KHighestWeight]:
+  for khwt in highest_weights_alt(p) do move_weight(khwt,x_K) od
+
 {. Unique highest weight of a K-type (or error if not unique). .}
 set highest_weight (K_Type p) = KHighestWeight:
   let hwts=highest_weights(p) in
+  assert(#hwts=1,"highest weight it not unique, use highest_weights instead");
+  hwts[0]
+
+set highest_weight_alt (K_Type p) = KHighestWeight:
+  let hwts=highest_weights_alt(p) in
   assert(#hwts=1,"highest weight it not unique, use highest_weights instead");
   hwts[0]
 
@@ -241,10 +305,20 @@ set highest_weight (K_Type p,KGBElt x_K) = KHighestWeight:
   assert(#hwts=1,"highest weight it not unique, use highest_weights instead");
   hwts[0]
 
+set highest_weight_alt (K_Type p,KGBElt x_K) = KHighestWeight:
+  let hwts=highest_weights_alt(p,x_K) in
+  assert(#hwts=1,"highest weight it not unique, use highest_weights instead");
+  hwts[0]
+
 {. Unique highest weight of (unique) LKT of a parameter
   (or error if not unique). .}
 set highest_weight (Param p) = KHighestWeight:
   let hws=highest_weights(p) in
+  assert(#hws=1,"highest weight it not unique, use highest_weights instead");
+  hws[0]
+
+set highest_weight_alt (Param p) = KHighestWeight:
+  let hws=highest_weights_alt(p) in
   assert(#hws=1,"highest weight it not unique, use highest_weights instead");
   hws[0]
 
@@ -421,56 +495,57 @@ set parabolic_LKT (KHighestWeight(,x,mu)) = Parabolic:
 See KHatHowe, Section 15
 }
 
-{. (Auxiliary function) .}
-set make_strongly_dominant (KHighestWeight mu,KGBElt x_Q) = KHighestWeight:
-  let (,x,tau)=mu then w=cross_divide(x_Q,x) in
-  k_highest_weight(cross(w,x),w*tau)
-
 set make_strongly_dominant (KHighestWeight(,x,v))=
    let (mu,w,y,b)=make_strongly_dominant(x,v) in
    (k_highest_weight(mu),w,y,b)
 
-{ this function takes KHighestWeight mu -> |R(K,mu)| K_types,
-  see top of this file
-  first replace mu with strongly dominant mu in same R_K_dom_mu orbit
-}
-{. All K_types with the same KHighestWeight. .}
-set K_types (KHighestWeight(,x,v):mu_in)= [K_Type]:
-  let G=real_form(x) in
-  let mu=move_weight(mu_in,KGB(G,0)) in
-  let (mu,,,)=make_strongly_dominant(mu) in
-  let  Q=parabolic_LKT(mu)  {Q is theta-stable}
-  in
-  assert(is_parabolic_theta_stable(Q), "Q is not theta stable");
-  let x_Q=x_min(Q)
-  then (,x,tau) = mu:=make_strongly_dominant(mu,x_Q)
-  , L=Levi(Q)
-  then { L is relatively split }
-  ()=if LKT_verbose then
-     prints("Q=", Q);
-     prints("mu:", mu);
-     prints("L=", L);
-     prints("two_rho_u_cap_s(Q)", two_rho_u_cap_s(Q,x));
-     prints("rho_l(Q)", rho_l(Q));
-     prints("tau: ", tau);
-     prints("arg:", tau-two_rho_u_cap_s(Q,x)+rho_l(Q)) fi then
-  ()=assert(is_relatively_split(L),"L is not relatively split") then
-  pL=monomials(finalize(parameter(KGB(L,#KGB(L)-1),
+set find_x_with_dominant_rho_c (RealForm G)=KGBElt:
+   let i=0, done=false in let x=KGB(G,0) in
+   while not done do
+     if is_dominant(G,rho_c(x)) then done:=true
+        else i+:=1; x:=KGB(G,i)
+     fi od; assert(x=KGB(G,0), "x_0 does not have dominant rho_c");
+     x
+
+set find_x_with_dominant_rho_c (KGPElt Q)=(KGBElt,bool):
+   assert(is_parabolic_theta_stable(Q), "Q is not theta stable");
+   let G=real_form(Q),
+   C=equivalence_class_of(Q) in let n=#C, done=false in
+   let i=0 in let x=C[0] in
+   while not done and i<n do
+      if (is_fundamental_Cartan(x) and is_dominant(real_form(Q),rho_c(x)))
+      then done:=true
+      else i+:=1; x:=KGB(G,i)
+      fi od;
+      (x,done)
+
+{. Auxiliary function. .}
+set inds (KHighestWeight mu, RealForm G, Parabolic Q)=[[Param]]:
+   let result=[] then (,x,tau)=mu, L=Levi(Q) then
+    pL=monomials(finalize(parameter(KGB(L,#KGB(L)-1),
 	                tau-two_rho_u_cap_s(Q,x)+rho_l(Q), null(rank(L)))))
-  then
-  ()=if LKT_verbose then
-     prints("pL:", pL);
-     prints("Q=:", Q) fi then
-     result=[K_Type]:[]
-  in  assert(#pL=1,"finalized parameter has more than one term");
-  let all_pL=all_G_spherical_same_differential(pL[0]) in
-  for qL in all_pL
-  do  let ()=if LKT_verbose then prints("qL:", qL) fi then
-     ind=monomials(theta_induce_standard(parameter(qL),real_form(x))) in
-{    let ()=prints("induced:", ind) in}
-    assert(#ind=1,"induced has more than one term");
-    result#:=K_type(ind[0])
-  od; result
+     in assert(#pL=1,"finalized parameter has more than one term");
+     let all_pL=all_G_spherical_same_differential(pL[0]) in
+       for qL in all_pL do let
+        ind=monomials(theta_induce_standard(parameter(qL),real_form(x))) in
+      result#:=ind od; result
+
+{. This function takes KHighestWeight mu -> |R(K,mu)| K_types,
+  see top of this file. .}
+set K_types (KHighestWeight(,x,v):mu_in)= [K_Type]:
+  let G=real_form(x) then
+  Q=parabolic_LKT(mu_in)
+  in assert(is_parabolic_theta_stable(Q), "Q is not theta stable");
+  let x_Q=x_min(Q)
+  then list=for wt in R_K_dom_mu_orbit(mu_in) do move_weight(wt,x_Q) od
+  then n=#list, done=false
+  then i=1 then mu=list[0] in let cand=inds(mu,G,Q) in
+  if all(for ind in cand do #ind=1 and =nu(ind[0]) od) then done:=true else
+  while not done and i<n do cand:=inds(list[i],G,Q);
+  if all(for ind in cand do #ind=1 and =nu(ind[0]) od) then done:=true
+  else i+:=1 fi od fi;
+  for p in cand do K_type(p[0]) od
+
 
 {. K_type with given KHighestWeight if unique (otherwise error). .}
 set K_type (KHighestWeight khwt) = K_Type:
