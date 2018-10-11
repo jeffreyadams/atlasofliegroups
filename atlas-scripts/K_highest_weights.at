@@ -544,7 +544,7 @@ set K_types (KHighestWeight(,x,v):mu_in)= [K_Type]:
   while not done and i<n do cand:=inds(list[i],G,Q);
   if all(for ind in cand do #ind=1 {and =nu(ind[0])} od) then done:=true
   else i+:=1 fi od fi;
-  assert(i<n,"There is no suitable weight in the R-group orbit.");
+  assert(done,"There is no suitable weight in the R-group orbit.");
   for p in cand do K_type(p[0]) od
 
 
