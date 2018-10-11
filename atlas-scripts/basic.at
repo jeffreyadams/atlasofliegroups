@@ -1606,6 +1606,7 @@ set find ([Param] P,Param p) = int:   first(#P,(int i)bool:P[i]=p)
 set find ([KGBElt] S,KGBElt x) = int: first(#S,(int i)bool:S[i]=x)
 set find ([vec] S,vec v) = int:       first(#S,(int i)bool:S[i]=v)
 
+
 { No version for finding [int] due to potential ambiguity with vec version.
   Note that |find(L,x)| has alternative |first(for y in L do x=y od)| which
   can be used for all types having =, without separate definition of |find|

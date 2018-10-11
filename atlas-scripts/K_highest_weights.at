@@ -540,10 +540,11 @@ set K_types (KHighestWeight(,x,v):mu_in)= [K_Type]:
   then list=for wt in R_K_dom_mu_orbit(mu_in) do move_weight(wt,x_Q) od
   then n=#list, done=false
   then i=1 then mu=list[0] in let cand=inds(mu,G,Q) in
-  if all(for ind in cand do #ind=1 and =nu(ind[0]) od) then done:=true else
+  if all(for ind in cand do #ind=1 {and =nu(ind[0])} od) then done:=true else
   while not done and i<n do cand:=inds(list[i],G,Q);
-  if all(for ind in cand do #ind=1 and =nu(ind[0]) od) then done:=true
+  if all(for ind in cand do #ind=1 {and =nu(ind[0])} od) then done:=true
   else i+:=1 fi od fi;
+  assert(i<n,"There is no suitable weight in the R-group orbit.");
   for p in cand do K_type(p[0]) od
 
 

@@ -11,3 +11,7 @@ set add_weight (ParamPol P, KGBElt x, vec H)=ParamPol:
 
 set add_weight (K_Type mu, KGBElt x, vec H)=ParamPol:
    let P=K_type_formula(mu) in add_weight(P,x,H)
+
+set tensor_product_K(K_Type mu,KGBElt x,vec v)=
+    let hw=move_weight(highest_weight(mu),x) in
+    K_type((),hw.x,hw.mu+v)

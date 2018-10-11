@@ -443,8 +443,8 @@ set real_nilpotent_orbit_KGPs (RealForm G,vec H) = [KGPElt]:
    H dominant and x in the distinguished fiber. .}
 set real_nilpotent_orbits (RealForm G) = [RealNilpotent]:
    for H in all_H_nd(G)
-   do prints(H)
-   ;  let K=dominant(H,root_datum(G))
+   do {prints(H)
+   ; } let K=dominant(H,root_datum(G))
       then kgps=real_nilpotent_orbit_KGPs(G,H)
    in for P in kgps do real_nilpotent(K,x_min(P)) od
    od.##.sort_by_dimension
@@ -583,7 +583,8 @@ set print_component_info (ComplexNilpotent (rd,(),H))=void:
    else
    for L in levis do prints("Pseudo-Levi:",L," d_J=",d_L(rd,L));
    let triples=Kac_triples(rd,L) in
-   for (i,diag,v) in triples do prints("Kac-Diagram=",diag," order=",i,"; element of t:",v) od od fi
+   for (i,diag,v) in triples
+       do prints("Kac-Diagram=",diag," order=",i,"; element of t:",v) od od fi
 
 set print_component_info (RootDatum rd)=void:
    for orb in complex_nilpotent_orbits (rd) do prints();prints("Orbit:",orb);
