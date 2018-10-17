@@ -357,7 +357,7 @@ set find_nci_root (KGBElt x,ratvec tau) = int:
             scr[i]*involution(x)*sr[i] = -1 and
             is_noncompact(x)( (1+involution(x))*sr[i] ) { this is a root because alpha and theta(alpha) generate a subsystem of type A_2, so their sum is a root }
          )
-  ; prints("j=",j);assert(>=j,"error in find_nci_root")
+  ;{prints("j=",j);} assert(>=j,"error in find_nci_root")
   ; root_index(rd,sr[j]+involution(x)*sr[j])
   fi
 
@@ -530,6 +530,11 @@ set inds (KHighestWeight mu, RealForm G, Parabolic Q)=[[Param]]:
         ind=monomials(theta_induce_standard(parameter(qL),real_form(x))) in
       result#:=ind od; result
 
+set choose_irred_inds ([[[Param]]] list)=[[[Param]]]:
+  ##for item in list do if
+    all(for params in item do #params=1 od)
+     then [item] else [] fi od
+
 {. This function takes KHighestWeight mu -> |R(K,mu)| K_types,
   see top of this file. .}
 set K_types (KHighestWeight(,x,v):mu_in)= [K_Type]:
@@ -538,14 +543,19 @@ set K_types (KHighestWeight(,x,v):mu_in)= [K_Type]:
   in assert(is_parabolic_theta_stable(Q), "Q is not theta stable");
   let x_Q=x_min(Q)
   then list=for wt in R_K_dom_mu_orbit(mu_in) do move_weight(wt,x_Q) od
-  then n=#list, done=false
+  {then n=#list,done=false
   then i=1 then mu=list[0] in let cand=inds(mu,G,Q) in
   if all(for ind in cand do #ind=1 {and =nu(ind[0])} od) then done:=true else
   while not done and i<n do cand:=inds(list[i],G,Q);
   if all(for ind in cand do #ind=1 {and =nu(ind[0])} od) then done:=true
   else i+:=1 fi od fi;
   assert(done,"There is no suitable weight in the R-group orbit.");
-  for p in cand do K_type(p[0]) od
+  for p in cand do K_type(p[0]) od}
+  then test=for weight in list do inds(weight,G,Q) od in
+    let good_mu_list=choose_irred_inds(test) then k=#good_mu_list in
+    assert (k>0,"There is no suitable weight in the R-group orbit.");
+    assert (k=1,"There is more than one suitable highest weight.");
+   for p in good_mu_list[0] do K_type(p[0]) od
 
 
 {. K_type with given KHighestWeight if unique (otherwise error). .}
