@@ -178,7 +178,7 @@ $(c++objects) $(Atlas_objects): %.o: %.cpp
 
 # for running ctanglex we cannot use a static pattern rule, since there are
 # multiple targets: the C++ source and the corresponding header file(s) are
-# made from CWEBx files (.w) by a single run of ctangles (with the ++ switch)
+# made from CWEBx files (.w) by a single run of ctanglex (with the ++ switch)
 
 # For a long time we added manipulations here to preserve the date of existing
 # and unchanged targets, to prevent remaking nearly everything whenever any .w

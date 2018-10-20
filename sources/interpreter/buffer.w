@@ -406,13 +406,11 @@ that is done.
 
 Input will be collected from one or more streams (a terminal input stream and
 one or more files), and these will be accessed through |std::istream| values.
-The copy constructor for that class is private, so there is no question of
-actually containing data members of that type; they will always be handled by
-reference or by pointer. As a consequence it should suffice in the header file
-to know that |std::istream| is a class, which is done by including \.{iosfwd},
-and include \.{iostream} in the implementation. The actual pointer to input
-streams will be contained in an |input_record| structure that we shall discuss
-in more detail later.
+The |BufferedInput| class will not contain any such value directly, but only a
+reference, a pointer, and instances contained in a (stack) container class.
+Therefore our class can be declared even when |std::istream| is an incomplete
+type. So in our header file it suffices to include \.{iosfwd}; while the
+implementation file needs to include \.{iostream}.
 
 @h <iostream>
 
@@ -591,10 +589,10 @@ header file.
 #include <fstream>
 
 @~For every currently open \emph{auxiliary} input stream (necessarily a file
-stream), we store a pointer to the |ifstream| object, the file name (for error
-reporting) and the line number of \emph{the stream that was interrupted} by
-opening this auxiliary file (the line number in the file itself will be held
-in the input buffer, as long as it is not interrupted).
+stream), we store its |ifstream|, the file name (for error reporting) and the
+line number of \emph{the stream that was interrupted} by opening this auxiliary
+file (the line number in the file itself will be held in the input buffer, as
+long as it is not interrupted).
 
 It used to be the case that |input_record| stored a pointer to |ifstream|
 rather than such a structure itself, which was necessary because the
@@ -617,20 +615,22 @@ struct input_record
 };
 
 @ Our file stack is essentially a |std::stack| of |input_record| using
-|containers::mirrored_sl_list| as container (which allows for the element type
-|input_record| the is not copy-assignable). Using |containers::mirrored_sl_list|
-rather than |containers::mirrored_simple_list| allows us to directly call |size|
-for our file stack, which will end up calling |containers::sl_list::size|.
-However in one place we also need to iterate over the input stack (to check for
-files currently being read), for which we add |ctop| and |cbottom| methods to
-produce (int that order) a range to traverse for visiting all active
-|input_record|s.
+|containers::mirrored_sl_list| as container. Using the somewhat larger type
+|containers::mirrored_sl_list| rather than |containers::mirrored_simple_list|
+allows us to directly call |size| for our file stack, which will end up calling
+|containers::sl_list::size|. However this still is not quite sufficient, as in
+one place we also need to iterate over the input stack (to check for files
+currently being read), which |std::stack| does not allow. Therefore we derive
+from the |std::stack| instance, adding |ctop| and |cbottom| methods to produce
+(in that order) a range to traverse for visiting all active |input_record|s;
+this is possible because |std::stack| gives |protected| access to the underlying
+container through its member~|c|.
 
 @< Define |struct file_stack@;| @>=
 struct file_stack
 : public std::stack<input_record,containers::mirrored_sl_list<input_record> >
-{ typedef containers::simple_list<input_record>::weak_const_iterator
-  const_iterator;
+{ using const_iterator =
+    containers::simple_list<input_record>::weak_const_iterator;
 @)
   file_stack () :
   @[ std::stack<input_record,containers::mirrored_sl_list<input_record> >() @]
@@ -640,9 +640,12 @@ struct file_stack
 };
 
 @ When an input file is exhausted, the stored line number is restored, the
-|stream| pointer deleted (which also closes the file) and the record popped
-from the stack; then the |stream| is set to the previous input stream. When
-|close_includes| is called all auxiliary input files are closed.
+|input_record| for the file popped from the stack (which also closes the file);
+then the |stream| is set to point to the previous input stream. We also report
+successful completion to the user, and record the file name on
+|input_files_completed| as not to be normally read again during this session.
+
+When |close_includes| is called all auxiliary input files are closed.
 
 @h "global.h" // for |output_stream|
 
@@ -707,7 +710,7 @@ of |name|).
 @< Definitions of class members @>=
 BufferedInput::input_record::input_record
 (BufferedInput& parent, const char* file_name)
-@/: f_stream() // this tries to open the file
+@/: f_stream()
   , name(~0)
   , line_no(parent.line_no+parent.cur_lines) // record where reading will resume
 
@@ -1083,27 +1086,24 @@ and pop them off.
 
 @< Other methods of |BufferedInput| @>=
 void push_prompt(char c);
-char top_prompt() const;
+char top_prompt() const; // inspect most recently added prompt character
 void pop_prompt();
 void reset();
 
-@ When popping we silently ignore the case of an empty
-prompt,since it is up to the parser to issue an error message, which it cannot
-do if we already throw an exception here. One can clear the temporary prompt
-by calling the |reset| method.
+@ There functions deal only with the temporary prompt. In particular, the |reset|
+method just clears it.
 
-@h <stdexcept>
 @< Definitions of class members @>=
 void BufferedInput::push_prompt(char c) @+
 {@; temp_prompt.push_back(c); }
 @)
 char BufferedInput::top_prompt() const
-{@; size_t l=temp_prompt.length();
+{@; auto l=temp_prompt.length();
   return l==0 ? '\0' : temp_prompt[l-1];
 }
 @)
 void BufferedInput::pop_prompt()
-{@; size_t l=temp_prompt.length();
+{@; auto l=temp_prompt.length();
   if (l>0)
     temp_prompt.erase(l-1);
 }
