@@ -12,10 +12,6 @@
 
 #include <memory> // for |std::allocator|
 
-// include to access the adapter templates, so we can replace default container
-#include <stack>
-#include <queue>
-
 namespace atlas {
 
 namespace containers {
@@ -40,7 +36,7 @@ template<typename T,typename Alloc = std::allocator<T> > struct stack;
 
 template<typename T,typename Alloc = std::allocator<T> > struct queue;
 
-} // |namespace cantainers|
+} // |namespace containers|
 
 } // |namespace atlas|
 
