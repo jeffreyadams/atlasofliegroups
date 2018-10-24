@@ -2019,6 +2019,8 @@ template<typename T,typename Alloc>
 	Base::push_front(*it); // this reverses the order
     }
 
+  mirrored_simple_list& operator=(mirrored_simple_list&& x)
+  { Base::operator=(static_cast<Base&&>(x)); return *this; }
   // forward |push_front| method from |Base|, and its likes, as ...|back|
   template<typename... Args> void push_back(Args&&... args)
   { Base::push_front(std::forward<Args>(args)...); }
@@ -2091,7 +2093,13 @@ template<typename T,typename Alloc>
 template<typename T, typename Container> struct stack
   : public std::stack<T,Container>
 {
-  using std::stack<T,Container>::stack;
+  using Base = std::stack<T,Container>;
+  using Base::stack; // inherit constructors
+
+  // until recently default, copy and move constructors were heritage-excluded
+  stack() = default; // so defeat this discrimination
+  stack(const Base& b) : Base(b) {}
+  stack(Base&& b) : Base(std::move(b)) {}
 
   typedef typename Container::allocator_type allocator_type;
   // unlike |std::queue|, we also provide initialisation by initializer list
@@ -2102,7 +2110,13 @@ template<typename T, typename Container> struct stack
 template<typename T, typename Container> struct queue
   : public std::queue<T,Container>
 {
-  using std::queue<T,Container>::queue;
+  using Base = std::queue<T,Container>;
+  using Base::queue; // inherit constructors
+
+  // until recently default, copy and move constructors were heritage-excluded
+  queue() = default; // so defeat this discrimination
+  queue(const Base& b) : Base(b) {}
+  queue(Base&& b) : Base(std::move(b)) {}
 
   typedef typename Container::allocator_type allocator_type;
   // unlike |std::queue|, we also provide initialisation by initializer list
