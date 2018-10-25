@@ -1,6 +1,7 @@
 <basic.at     { for *@(Param,rat) }
 <hermitian.at { for hermitian_form_irreducible }
-<K_highest_weights.at
+<center.at    {for compact_coradical_basis}
+{<K_highest_weights.at}
 
 {Recall from standardrepk.h:
 Normal: $\<\alpha^\vee(1+\theta),\lambda>\geq0$ when $\alpha$ simple,
@@ -63,19 +64,3 @@ set signed_mult (Param p_K,Param p) = (int,int):
    , split_as_int(branch_std(Q,height(p_K))[p_K])
    )
 
-{ this should be modified to print all LKTs }
-set print_K_types (ParamPol P) = void:
-  let Q=sort_by_height(P) in
-  for (c,p) in Q
-  do let mu=highest_weight_one(LKT(p)) in
-    prints(split_as_int(c), " ", fundamental_weight_coordinates (mu)
-          , " ", dimension(mu), " ", length(mu))
-  od
-
-set print_K_types (ParamPol P, KGBElt x_K) = void:
-  let Q=sort_by_height(P) in
-  for (c,p) in Q
-  do let mu=highest_weight_one(LKT(p),x_K) in
-    prints(split_as_int(c), " ", fundamental_weight_coordinates (mu)
-          , " ", dimension(mu), " ", length(mu))
-  od

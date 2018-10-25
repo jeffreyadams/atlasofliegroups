@@ -1,4 +1,4 @@
-<K_types.at
+<K_highest_weights.at
 {
 this used to be called K_types.at
 now consists almost exclusively of printing functions
@@ -99,4 +99,22 @@ set print_K_signature_irr (Param p,KGBElt x,int bound) = void:
 
 set print_K_signature_irr (Param p,int bound) = void:
   print_K_signature_irr(p,KGB(real_form(p),0),bound)
+
+{ this should be modified to print all LKTs }
+set print_K_types (ParamPol P) = void:
+  let Q=sort_by_height(P) in
+  for (c,p) in Q
+  do let mu=highest_weight_one(LKT(p)) in
+    prints(split_as_int(c), " ", fundamental_weight_coordinates (mu)
+          , " ", dimension(mu), " ", length(mu))
+  od
+
+set print_K_types (ParamPol P, KGBElt x_K) = void:
+  let Q=sort_by_height(P) in
+  for (c,p) in Q
+  do let mu=highest_weight_one(LKT(p),x_K) in
+    prints(split_as_int(c), " ", fundamental_weight_coordinates (mu)
+          , " ", dimension(mu), " ", length(mu))
+  od
+
 

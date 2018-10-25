@@ -1,4 +1,5 @@
-<K_types.at
+<K_highest_weights.at
+
 set tensor_sl2(K_Type mu,K_Type tau)=K_Type:
 let x=KGB(mu.real_form,0) in K_type((),x,highest_weight(mu,x).mu+highest_weight(tau,x).mu)
 

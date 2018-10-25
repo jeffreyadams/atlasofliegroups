@@ -1,3 +1,5 @@
+<all_parameters.at
+
 {! Functions involving K-types (final tempered limit parameters) and
    K-highest weights.
    The main reference is Vogan, "Branching to a Maximal Compact Subgroup"
@@ -452,7 +454,7 @@ prints ("B=",B);}
    in ## for f@i in v do if f=2 then [B[i]] else [] fi od
 
 {. All G-spherical K-types with same differential as given one. .}
-set all_G_spherical_same_differential (K_Type p) = [K_Type]:
+set all_G_spherical_same_differential_not_working (K_Type p) = [K_Type]:
 { assert(is_split_spherical(p),
          "parameter is not spherical for a (relatively) split group"); }
 let chars=characters_order_2(x(p)) then
@@ -463,10 +465,16 @@ result=[K_Type]:[] in
  for v in coeffs do
  let mu=vec:null(rank(root_datum(x(p)))) in
   for j:#v do mu+:=v[j]*chars[j] od;
+  let ()=prints("testing mu:",mu) in
   if all(for alpha_check in scr do is_even(alpha_check*mu) od) and
   all(for h in Z_2 do is_even(mu*h) od)
-  then result#:=(x(p),lambda(p)+mu)
+  then prints("yes");result#:=(x(p),lambda(p)+mu)
   fi od;result
+
+set all_G_spherical_same_differential(K_Type mu)=[K_Type]:
+let p=parameter(mu) in 
+##for q in all_parameters_x_gamma(p.x,p.infinitesimal_character) do 
+ if is_split_spherical(q) then [LKT(q)] else [] fi od 
 
 {. All G-spherical K-types with same differential as the LKT of parameter p. .}
 set all_G_spherical_same_differential (Param p) = [K_Type]:
@@ -520,7 +528,18 @@ set find_x_with_dominant_rho_c (KGPElt Q)=(KGBElt,bool):
       (x,done)
 
 {. Auxiliary function. .}
-set inds (KHighestWeight mu, RealForm G, Parabolic Q)=[[Param]]:
+set inds (KHighestWeight mu_in, Parabolic Q)=[[Param]]:
+  let result=[] then (,x,tau)=mu_in, L=Levi(Q) then
+  mu=tau-two_rho_u_cap_s(Q,x)+rho_l(Q) then
+  L=Levi(Q) then
+  pL=parameter(KGB(L,#KGB(L)-1),mu,null(rank(L))) then
+     all_pL=all_G_spherical_same_differential(pL) in
+       for qL in all_pL do let
+        ind=theta_induce_standard(parameter(qL),x.real_form) then
+        ind=monomials(theta_induce_standard(parameter(qL),real_form(x))) in
+      result#:=ind od; result
+
+set inds_old (KHighestWeight mu, RealForm G, Parabolic Q)=[[Param]]:
    let result=[] then (,x,tau)=mu, L=Levi(Q) then
     pL=monomials(finalize(parameter(KGB(L,#KGB(L)-1),
 	                tau-two_rho_u_cap_s(Q,x)+rho_l(Q), null(rank(L)))))
@@ -539,13 +558,13 @@ set K_types (KHighestWeight(,x,v):mu_in)= [K_Type]:
   let x_Q=x_min(Q)
   then list=for wt in R_K_dom_mu_orbit(mu_in) do move_weight(wt,x_Q) od
   then n=#list, done=false
-  then i=1 then mu=list[0] in let cand=inds(mu,G,Q) in
+  then i=1 then mu=list[0] in let cand=inds(mu,Q) in
   if all(for ind in cand do #ind=1 {and =nu(ind[0])} od) then done:=true else
-  while not done and i<n do cand:=inds(list[i],G,Q);
+  while not done and i<n do cand:=inds(list[i],Q);
   if all(for ind in cand do #ind=1 {and =nu(ind[0])} od) then done:=true
   else i+:=1 fi od fi;
   assert(done,"There is no suitable weight in the R-group orbit.");
-  for p in cand do K_type(p[0]) od
+  ##for p in cand do if highest_weight(K_type(p[0]))=mu_in then [K_type(p[0])] else [] fi od
 
 
 {. K_type with given KHighestWeight if unique (otherwise error). .}

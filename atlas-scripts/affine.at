@@ -1,4 +1,4 @@
-<basic.at
+<synthetic.at
 
 set labels(RootDatum rd)=vec:
 for i:rank(rd) do rat_as_int(highest_root(rd)*fundamental_coweights(rd)[i]) od

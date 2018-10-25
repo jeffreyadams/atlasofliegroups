@@ -13,7 +13,7 @@ set hodgePrintPolyMatrix(i_poly_mat M,int space_size)= void:
 set hodgePrintPolyMatrix (i_poly_mat M) = void: hodgePrintPolyMatrix(M,3)
 
 
-set hodge_K_type_formula_verbose=true
+set hodge_K_type_formula_verbose=false
 {
 set mu (Param p) = rat:
   (p.x.torus_factor+p.real_form.rho_check) * lambda_plus_rho_res_T(p.x,p.lambda)
