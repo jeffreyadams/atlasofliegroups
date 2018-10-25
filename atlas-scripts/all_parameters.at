@@ -1,6 +1,9 @@
 <basic.at
 <lattice.at { for in_lattice_basis }
-<K_types.at
+<K_highest_weights.at
+
+{These functions are now in K_highest_weights.at}
+{
 { reduce [Param] by combining equivalent parameters;
   returns a list of inequivalent parameters }
 set reduce ([Param] parameters) = [Param]:
@@ -96,7 +99,7 @@ set all_parameters_gamma (RealForm G,ratvec gamma) = [Param]:
         for v in all_lambda_differential_0(x) do parameter(x,lambda+v,nu) od
       esac
    od.##.reduce  { keep only 1 from each equivalence class }
-
+}
 {      all discrete/minimal principal series                  }
 
 set all_discrete_series(RealForm G, ratvec gamma)=[Param]:

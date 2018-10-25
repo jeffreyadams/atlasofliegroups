@@ -451,8 +451,105 @@ prints("v=",v);
 prints ("B=",B);}
    in ## for f@i in v do if f=2 then [B[i]] else [] fi od
 
+{ reduce [Param] by combining equivalent parameters;
+  returns a list of inequivalent parameters }
+set reduce ([Param] parameters) = [Param]:
+  if #parameters=0 then [Param]:[]
+  else monomials(virtual(real_form(parameters[0]),parameters))
+  fi
+
+{ to reduce a list of KParams, convert to list of parameters, reduce,
+  then convert back }
+set reduce ([K_Type] Kparameters) = [K_Type]:
+  let parameters = for kp in Kparameters do parameter(kp) od in
+  for p in reduce(parameters) do K_type(p) od
+
+{ all nonnegative |vec:a| with $\sum_i(cs[i]*a[i]) \leq limit$
+  intended application: c_i = <rho_check,i^th fundamental weight>, which finds
+  all dominant weights at level <= limit, where simple roots have level 1
+}
+set cone (rat limit, [rat] cs { all >0 } ) = mat: { columns are weights }
+  let n=#cs
+  then rec_fun cn (rat limit, int k) { from this index on } = mat:
+    if k=n { 0 parts } then null(0,1) { one column of size 0; don't miss it! }
+    else
+      let c=cs[k] in mat: { conversion safe, there is at least one vector }
+        [vec]: ##
+        for first: limit\c+1
+        do let rec=cn(limit-c*first,k+1) in
+          [vec]: (ones(n_columns(rec))*first)^rec
+        od
+    fi
+  in cn(limit,0)
+
+{this file used to be called all_Kparameters.at;
+it includes functions for constructing both Kparameters and parameters}
+
+{
+  matrix whose columns are weights representative of a set of generators
+  of the elementary 2-group ker(1+theta(x))/im(1-theta(x)). Might do as well:
+  let (A,v) = adapted_basis(1-involution(x))
+  then (B,)=filter_units(A[:,:#v],v) in B
+}
+set basis_lambda_differential_0 (KGBElt x) = mat: { columns are weights }
+  let theta=involution(x) then E=eigen_lattice(theta,-1)
+  then { express im(1-theta) in basis E, and find E-basis adapted to it }
+    (A,v)=adapted_basis(in_lattice_basis(E,1-theta))
+  in { prints("K=",E); prints("A=",A); prints("v=",v); prints ("B=",E*A); }
+  E * { transform to original coordinates } columns_with((int j):v[j]=2,A)
+{ }
+
+{ all 2^k vectors in X^* representing the characters of H^theta with
+  differential 0
+  k= number of R^* factors in H
+  if H^theta is connected, returns [[0,...,0]]
+}
+set all_lambda_differential_0 (KGBElt x) = [vec]:
+  let basis=basis_lambda_differential_0(x) in
+  for v in all_0_1_vecs(n_columns(basis)) do basis*v od
+
+{ all K parameters with same d_lambda as (x,lambda) }
+set all_equal_dlambda_K_parameters (K_Type(x,lambda)) = [K_Type]:
+##(for v in all_lambda_differential_0(x) do if
+is_final(parameter(x,lambda+v)) then [(x,lambda+v)] else
+[(KGBElt,ratvec)]:[] fi od)
+{  for v in all_lambda_differential_0(x) do (x,lambda+v) od}
+
+{ all actual parameters with same d_lambda as p, same nu }
+set all_parameters (Param p) = [Param]:
+  let x=x(p),lambda=lambda(p),nu=nu(p) in
+  for v in all_lambda_differential_0(x) do  parameter(x,lambda+v,nu) od
+
+{ all parameters with given infinitesimal character and attached to given x }
+set all_parameters_x_gamma (KGBElt x,ratvec gamma) = [Param]:
+   let G=real_form(x)
+   then gamma_d=dominant(root_datum(G),gamma)
+   then rho=rho(G), th1=1+involution(x)
+   in
+   case vec_solve(th1,th1*(gamma_d-rho))
+   | else [Param]: [] { without solution no parameters }
+   | solution(lr):
+      let lambda = rho + lr, nu=(2-th1){1-theta}*gamma/2 in
+      for v in all_lambda_differential_0(x) do parameter(x,lambda+v,nu) od
+   esac.reduce  { keep only 1 from each equivalence class }
+
+{ all parameters with given infinitesimal character }
+set all_parameters_gamma (RealForm G,ratvec gamma) = [Param]:
+   let v=dominant(root_datum(G),gamma) in
+   let rho=rho(G) in
+   for x in KGB(G)
+   do let th1=1+involution(x) in
+      case vec_solve(th1,th1*(v-rho))
+      | no_vec: [Param]:[]
+      | solution(lr):
+        let lambda = rho + lr, nu=(2-th1){1-theta}*gamma/2 in
+        for v in all_lambda_differential_0(x) do parameter(x,lambda+v,nu) od
+      esac
+   od.##.reduce  { keep only 1 from each equivalence class }
+
+
 {. All G-spherical K-types with same differential as given one. .}
-set all_G_spherical_same_differential (K_Type p) = [K_Type]:
+{set all_G_spherical_same_differential (K_Type p) = [K_Type]:
 { assert(is_split_spherical(p),
          "parameter is not spherical for a (relatively) split group"); }
 let chars=characters_order_2(x(p)) then
@@ -466,7 +563,11 @@ result=[K_Type]:[] in
   if all(for alpha_check in scr do is_even(alpha_check*mu) od) and
   all(for h in Z_2 do is_even(mu*h) od)
   then result#:=(x(p),lambda(p)+mu)
-  fi od;result
+  fi od;result}
+set all_G_spherical_same_differential(K_Type mu)=[K_Type]:
+  let p=parameter(mu) in
+  ##for q in all_parameters_x_gamma(p.x,p.infinitesimal_character) do
+  if is_split_spherical(q) then [LKT(q)] else [] fi od
 
 {. All G-spherical K-types with same differential as the LKT of parameter p. .}
 set all_G_spherical_same_differential (Param p) = [K_Type]:
@@ -520,13 +621,12 @@ set find_x_with_dominant_rho_c (KGPElt Q)=(KGBElt,bool):
       (x,done)
 
 {. Auxiliary function. .}
-set inds (KHighestWeight mu, RealForm G, Parabolic Q)=[[Param]]:
-   let result=[] then (,x,tau)=mu, L=Levi(Q) then
-    pL=monomials(finalize(parameter(KGB(L,#KGB(L)-1),
-	                tau-two_rho_u_cap_s(Q,x)+rho_l(Q), null(rank(L)))))
-     in assert(#pL=1,"finalized parameter has more than one term");
-     let all_pL=all_G_spherical_same_differential(pL[0]) in
-       for qL in all_pL do let
+set inds (KHighestWeight mu_in, RealForm G, Parabolic Q)=[[Param]]:
+   let result=[] then (,x,tau)=mu_in, L=Levi(Q) then
+   mu=tau-two_rho_u_cap_s(Q,x)+rho_l(Q) then
+   pL=parameter(KGB(L,#KGB(L)-1),mu,null(rank(L))) then
+   all_pL=all_G_spherical_same_differential(pL) in
+     for qL in all_pL do let
         ind=monomials(theta_induce_standard(parameter(qL),real_form(x))) in
       result#:=ind od; result
 
@@ -547,7 +647,9 @@ set K_types (KHighestWeight(,x,v):mu_in)= [K_Type]:
     let good_mu_list=choose_irred_inds(test) then k=#good_mu_list in
     assert (k>0,"There is no suitable weight in the R-group orbit.");
     assert (k=1,"There is more than one suitable highest weight.");
-   for p in good_mu_list[0] do K_type(p[0]) od
+   ##for p in good_mu_list[0] do
+   if any(for wt in highest_weights(K_type(p[0])) do wt=mu_in od)
+   then [K_type(p[0])] else [] fi od
 
 
 {. K_type with given KHighestWeight if unique (otherwise error). .}
