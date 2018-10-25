@@ -1,3 +1,5 @@
+<K_types.at
+<K_highest_weights.at
 <nilpotent_orbits.at
 
 set move_weight ((KGBElt x,ratvec mu),KGBElt y) = (KGBElt,ratvec):
