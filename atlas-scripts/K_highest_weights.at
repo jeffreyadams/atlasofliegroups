@@ -160,9 +160,9 @@ set is_split_spherical(K_Type p)=bool:
 set highest_weight_split_spherical(K_Type p)=KHighestWeight:
   assert(is_split_spherical(p), "p is not a spherical rep of a split group");
   let x=x(p) in
-   if not strong_map_into_distinguished_fiber(x)=KGB(p.real_form,0) then prints
-  ( "Wrong result of strong_map_into_distinguished_fiber") fi; let x_K=KGB(p.real_form,0)
-  then rd=root_datum(p)
+   if not strong_map_into_distinguished_fiber(x)=KGB(p.real_form,0)
+  then prints ( "Wrong result of strong_map_into_distinguished_fiber") fi;
+  let x_K=KGB(p.real_form,0) then rd=root_datum(p)
   then i_rd=root_datum_from_positive(imaginary_sys(x_K))
   then fw=fundamental_weights(i_rd), mu=ratvec:lambda(p)-rho(rd)
   in { prints("mu=", mu); }
@@ -543,14 +543,6 @@ set K_types (KHighestWeight(,x,v):mu_in)= [K_Type]:
   in assert(is_parabolic_theta_stable(Q), "Q is not theta stable");
   let x_Q=x_min(Q)
   then list=for wt in R_K_dom_mu_orbit(mu_in) do move_weight(wt,x_Q) od
-  {then n=#list,done=false
-  then i=1 then mu=list[0] in let cand=inds(mu,G,Q) in
-  if all(for ind in cand do #ind=1 {and =nu(ind[0])} od) then done:=true else
-  while not done and i<n do cand:=inds(list[i],G,Q);
-  if all(for ind in cand do #ind=1 {and =nu(ind[0])} od) then done:=true
-  else i+:=1 fi od fi;
-  assert(done,"There is no suitable weight in the R-group orbit.");
-  for p in cand do K_type(p[0]) od}
   then test=for weight in list do inds(weight,G,Q) od in
     let good_mu_list=choose_irred_inds(test) then k=#good_mu_list in
     assert (k>0,"There is no suitable weight in the R-group orbit.");
