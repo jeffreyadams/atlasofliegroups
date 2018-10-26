@@ -137,9 +137,3 @@ set test_parabolics (RealForm G)=bool: let bl=block_of(trivial(G))
    then Ps2=for mu in kt do let (P,)=tau_q(mu) in P od in
      all(for P@i in Ps1 do P=Ps2[i] od)
 
-set test_strong_map (RealForm G)=bool:
-   all(for x in KGB(G) do strong_map_into_distinguished_fiber(x) = KGB(G,0) od)
-
-set test_highest_weights (RealForm G)=bool:
-   let bl=block_of(trivial(G)) in all(for p@i in bl do let kt=LKTs(p)[0] in
-      highest_weights(kt)[0]=highest_weights_alt(kt)[0] od)
