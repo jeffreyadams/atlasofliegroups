@@ -5,6 +5,7 @@
 {<nilpotent.at}
 <nilpotent_orbit_partitions.at
 <nilpotent_orbits_exceptional.at
+
 { some common representations }
 
 { finite dimensional with highest weight gamma in X^*
@@ -121,4 +122,3 @@ set discrete_series (KGBElt x,ratvec lambda) = Param:
 set discrete_series (RealForm G,ratvec lambda) = Param:
   discrete_series(KGB(G,0),lambda)
 
-{ for lists of multiple representations see all_parameters.at }
