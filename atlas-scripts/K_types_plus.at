@@ -34,38 +34,42 @@ then run through the p_L's and pick the one which
 actually gives mu_i=mu
 }
 
-{. Auxiliary function. .}
-set inds_plus (KHighestWeight mu, RealForm G, Parabolic Q)=[(K_Type,[Param])]:
-   let result=[] then (,x,tau)=mu, L=Levi(Q) then
-    pL=monomials(finalize(parameter(KGB(L,#KGB(L)-1),
-	                tau-two_rho_u_cap_s(Q,x)+rho_l(Q), null(rank(L)))))
-     in assert(#pL=1,"finalized parameter has more than one term");
-     let all_pL=all_G_spherical_same_differential(pL[0]) in
-       for qL in all_pL do let
+{. Auxiliary function (see inds in K_highest_weights.at for some details). .}
+set inds_plus (KHighestWeight mu_in)=[(K_Type,[Param])]:
+   let Q=parabolic_LKT(mu_in) then G=real_form(Q) then
+   result=[] then (,x,tau)=mu_in, L=Levi(Q) then
+   mu=tau-two_rho_u_cap_s(Q,x)+rho_l(Q) then
+   pL=parameter(KGB(L,#KGB(L)-1),mu,null(rank(L))) then
+   all_pL=all_G_spherical_same_differential(pL) in
+     for qL in all_pL do let
         ind=monomials(theta_induce_standard(parameter(qL),real_form(x))) in
       result#:=(qL,ind) od; result
 
+set choose_irred_inds_plus ([[(K_Type,[Param])]] list)=[[(K_Type,[Param])]]:
+  ##for item in list do if
+    all(for (,params) in item do #params=1 od) and #item>0
+     then [item] else [] fi od
 
-{same as K_types@KHighestWeight), but return more information}
+
+{. The same as K_types@KHighestWeight, but return more information:
+the associated theta-stable parabolic, and for each K_type, also the
+L-spherical parameter on L .}
 set K_types_plus (KHighestWeight(,x,v):mu_in)= (Parabolic,[(Param,K_Type)]):
   let G=real_form(x) then
   Q=parabolic_LKT(mu_in)
   in assert(is_parabolic_theta_stable(Q), "Q is not theta stable");
-  let x_Q=x_min(Q) then
-  pairs=[(Param,K_Type)]:[]
+  let x_Q=x_min(Q)
   then list=for wt in R_K_dom_mu_orbit(mu_in) do move_weight(wt,x_Q) od
-  then n=#list, done=false
-  then i=1 then mu=list[0] in let cand=inds_plus(mu,G,Q) in
-  if all(for (,ind) in cand do #ind=1 and =nu(ind[0]) od) then done:=true else
-  while not done and i<n do cand:=inds_plus(list[i],G,Q);
-  if all(for (,ind) in cand do #ind=1 and =nu(ind[0]) od) then done:=true
-  else i+:=1 fi od fi;
-  assert(done,"There is no suitable weight in the R-group orbit.");
-  for (qL,ind) in cand do
-    pairs#:=(parameter(x(qL),lambda(qL),rho(qL.root_datum)),K_type(ind[0]))
-    {NOTE: nu=rho(L) not 0, so this is a parameter for a one-dimensional
-     representation of L, although not the corresponding STFL which has nu=0}
-  od; (Q,pairs)
+  then test=for weight in list do inds_plus(weight) od in
+    let good_mu_list=choose_irred_inds_plus(test) then k=#good_mu_list in
+    assert (k>0,"There is no suitable weight in the R-group orbit.");
+    assert (k=1,"There is more than one suitable highest weight.");
+   let pairs=
+   ##for (qL,ind) in good_mu_list[0] do
+   if any(for wt in highest_weights(K_type(ind[0])) do wt=mu_in od) then
+   [(parameter(x(qL),lambda(qL),rho(qL.root_datum)),K_type(ind[0]))]
+   else [] fi
+   od in (Q,pairs)
 
 set K_types_plus (K_Type mu)= (Parabolic,[(Param,K_Type)]):
 K_types_plus(highest_weights(mu)[0])
@@ -137,9 +141,3 @@ set test_parabolics (RealForm G)=bool: let bl=block_of(trivial(G))
    then Ps2=for mu in kt do let (P,)=tau_q(mu) in P od in
      all(for P@i in Ps1 do P=Ps2[i] od)
 
-set test_strong_map (RealForm G)=bool:
-   all(for x in KGB(G) do strong_map_into_distinguished_fiber(x) = KGB(G,0) od)
-
-set test_highest_weights (RealForm G)=bool:
-   let bl=block_of(trivial(G)) in all(for p@i in bl do let kt=LKTs(p)[0] in
-      highest_weights(kt)[0]=highest_weights_alt(kt)[0] od)
