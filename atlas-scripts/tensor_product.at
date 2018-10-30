@@ -2,38 +2,88 @@
 <K_highest_weights.at
 <nilpotent_orbits.at
 
+{see K_type_formula.at}
+set generate_all_subsets([ratvec] S) = [[ratvec]]:
+    for A in generate_all_subsets(for i:#S do i od) do for i in A do S[i] od od
+
+{each ratvec should have the same length}
+set all_sums([ratvec] ratvecs)=[ratvec]: 
+let l=#ratvecs[0] in for S in generate_all_subsets(ratvecs)  do sum(S,l) od
+
+
+set N=100 {cutoff for branching}
+set makeS(Parabolic P)=
+let rho_u=rho_u(P), nilrad_roots=nilrad_roots(P) in
+##for root in makeS(x_min(P)) do if find(nilrad_roots,root)>=0 then [root] else [] fi od
+
+{x is a KGB element of L -> H^{theta_x} ->
+set of roots of H <-> x, whose restrictions to H^{theta_x} are the weights
+of H^theta on u\cap s
+}
+set nilrad_roots_restricted_to_H_theta(KGBElt x_L,Parabolic P)=[ratvec]:
+assert(is_parabolic_theta_stable(P),"P is not theta-stable");
+let complex_roots=for root in makeS(P) do root od in
+##for root in nilrad_roots(P) do if is_imaginary(root,x_L) then [root] else [] fi od##complex_roots
+
+set nilrad_roots_restricted_to_H_theta(Parabolic P)=
+(KGBElt->[ratvec]): (KGBElt x): nilrad_roots_restricted_to_H_theta(x,P)
+
+set sums_nilrad_roots_restricted_to_H_theta(Parabolic P)=
+(KGBElt->[ratvec]): (KGBElt x): 
+all_sums(nilrad_roots_restricted_to_H_theta(x,P))
+
 set move_weight ((KGBElt x,ratvec mu),KGBElt y) = (KGBElt,ratvec):
   assert(real_form(x)=real_form(y),"Real form mismatch");
   let w=cross_divide(y,x) in (y,w*mu)
-
 
 set add_weight (Param p, KGBElt x, ratvec H)=Param:
    let y=x(p), lam=lambda(p) then (z,w)=move_to_distinguished_fiber(y)
    then (,new_H)=move_weight((x,H),z) in
    parameter(y,lam+inverse(w)*new_H,nu(p))
 
-set add_weight (ParamPol P, KGBElt x, ratvec H)=ParamPol:
-   let result=null_module(real_form(x)) in
-   for coeff@p in P do result+:=coeff*(standardize(add_weight (p,x,H)))*0 od;
+set add_weight (ParamPol P,ratvec H)=ParamPol:
+   let result=null_module(P.real_form) in
+   for coeff@p in P do result+:=coeff*(standardize(add_weight (p,p.x,H)))*0 od;
    result
 
-set add_weight (K_Type mu, KGBElt x, ratvec H)=ParamPol:
-   let P=K_type_formula(mu) in add_weight(P,x,H)
+set add_weight (ParamPol P,(KGBElt->ratvec) f)=ParamPol:
+   let result=null_module(P.real_form) in
+   for coeff@p in P do result+:=coeff*(standardize(add_weight (p,p.x,f(p.x))))*0 od;
+   result
 
-set tensor_product(K_Type mu,KGBElt x,[vec] weights)=K_Type_Pol:
-   let rv=null_module(mu.real_form) in 
-   for wt in weights do rv+:=add_weight(mu,x,wt) od;
-   branch_std(rv,100)
+set add_weights (ParamPol P,(KGBElt ->[ratvec]) f)=ParamPol:
+   let result=null_module(P.real_form) in
+   for coeff@p in P do 
+    for H in f(p.x) do 
+     result+:=coeff*(standardize(add_weight (p,p.x,H)))*0 
+    od
+   od;
+   result
 
+set add_weight (K_Type mu, ratvec H)=ParamPol:
+   let P=K_type_formula(mu) in add_weight(P,H)
+
+set add_weight (K_Type mu,(KGBElt->ratvec) f)=ParamPol:
+   let P=K_type_formula(mu) in add_weight(P,f)
+
+set add_weights (K_Type mu,(KGBElt->[ratvec]) f)=ParamPol:
+   let P=K_type_formula(mu) in add_weights(P,f)
+
+set tensor_product(K_Type mu,(KGBElt -> [ratvec]) weights)=K_Type_Pol:
+   let rv=add_weights(mu,weights) in
+   branch_std(rv,N)
+
+set tensor_product_u_cap_s(K_Type mu_L,Parabolic P)=
+tensor_product(mu_L,sums_nilrad_roots_restricted_to_H_theta(P))
+
+{
 set tensor_product_Sp4 (K_Type mu, K_Type tau)=K_Type_Pol:
    let (,x,H)=highest_weight(tau) in
-    tensor_product(mu,x,for i:dimension(tau) do ratvec_as_vec(H-2*i*rho_c(x)) od)
+    tensor_product(mu,for i:dimension(tau) do H-2*i*rho_c(x) od)
 
 set tensor_product_Sp4_old (K_Type mu, K_Type tau)=K_Type_Pol:
    let (,x,H)=highest_weight(tau),n=dimension(tau) then root=2*rho_c(x)
    then result=null_module(real_form(x)) in
-   for i:n do result+:=add_weight(mu,x,H-i*root) od;
+   for i:n do result+:=add_weight(mu,H-i*root) od;
    branch_std(result,100)
-
-
-
+}
