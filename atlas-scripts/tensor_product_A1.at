@@ -44,6 +44,8 @@ K_display(P);P
 set tensor_sl2(K_Type mu,K_Type tau)=K_Type_Pol:
 let x=KGB(mu.real_form,0) in K_Type_Pol:parameter(K_Type:(x,highest_weight(mu,x).mu+highest_weight(tau,x).mu))
 
+
+
 {only works for relatively split groups}
 set tensor_A1(K_Type mu,K_Type tau)=K_Type_Pol:
 if sl2_or_pgl2(mu.real_form)=0 then tensor_sl2(mu,tau) else tensor_gl2(mu,tau) fi
