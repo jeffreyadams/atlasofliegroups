@@ -24,11 +24,6 @@ and atlas automatically standardizes/finalizes it.
 For application to Hodge filtrations, print a warning when this happens
 }
 
-{this is copied from knilpotent.at}
-{generate all subsets of [vec], uses generate_all_subsets@[int] in misc.at}
-set generate_all_subsets([vec] S) = [[vec]]:
-    for A in generate_all_subsets(for i:#S do i od) do for i in A do S[i] od od
-
 set u_cap_s_roots(Parabolic P,KGBElt x)=[vec]: let S=[] in for alpha
 in nilrad_roots(P) do if is_noncompact_imaginary(alpha,x) then
 S#:=alpha elif is_complex(alpha,x) and find(S,involution(x)*alpha)=-1

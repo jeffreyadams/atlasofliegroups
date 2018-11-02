@@ -627,8 +627,6 @@ set requisition = rat_requisition("No solution found; having one was required")
 
 set required_solution ((mat,ratvec) system) = ratvec: system.solve.requisition
 
-
-
 {                           Split integers                              }
 
 set !s = Split:(0,1) { ! means it is a constant }
