@@ -98,12 +98,9 @@ namespace atlas {
   template<typename T,typename Alloc = std::allocator<T> >
     class mirrored_sl_list; // trivial adapter, to allow use with |std::stack|
 
-  template<typename T,
-	   typename Container = mirrored_simple_list<T,std::allocator<T> > >
-  struct stack;
+  template<typename T> struct stack;
 
-  template<typename T, typename Container = sl_list<T,std::allocator<T> > >
-  struct queue;
+  template<typename T> struct queue;
 
   } // |namespace containers|
 

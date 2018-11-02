@@ -2090,10 +2090,12 @@ template<typename T,typename Alloc>
 
 }; // |class mirrored_sl_list<T,Alloc>|
 
-template<typename T, typename Container> struct stack
-  : public std::stack<T,Container>
+template<typename T> struct stack
+  : public std::stack<T,mirrored_simple_list<T,std::allocator<T> > >
 {
-  using Base = std::stack<T,Container>;
+  using msl = mirrored_simple_list<T,std::allocator<T> >;
+  using Base = std::stack<T,msl>;
+
   using Base::stack; // inherit constructors
 
   // until recently default, copy and move constructors were heritage-excluded
@@ -2101,16 +2103,16 @@ template<typename T, typename Container> struct stack
   stack(const Base& b) : Base(b) {}
   stack(Base&& b) : Base(std::move(b)) {}
 
-  typedef typename Container::allocator_type allocator_type;
-  // unlike |std::queue|, we also provide initialisation by initializer list
-  stack(std::initializer_list<T> l, const allocator_type& a=allocator_type())
-    : std::stack<T,Container> { Container(l,a) } {}
+  // unlike |std::stack|, we also provide initialisation by initializer list
+  stack(std::initializer_list<T> l) : Base(msl(l)) {}
 }; // |struct stack|
 
-template<typename T, typename Container> struct queue
-  : public std::queue<T,Container>
+template<typename T> struct queue
+  : public std::queue<T,sl_list<T,std::allocator<T> > >
 {
-  using Base = std::queue<T,Container>;
+  using sl = sl_list<T,std::allocator<T> >;
+  using Base = std::queue<T,sl>;
+
   using Base::queue; // inherit constructors
 
   // until recently default, copy and move constructors were heritage-excluded
@@ -2118,10 +2120,8 @@ template<typename T, typename Container> struct queue
   queue(const Base& b) : Base(b) {}
   queue(Base&& b) : Base(std::move(b)) {}
 
-  typedef typename Container::allocator_type allocator_type;
   // unlike |std::queue|, we also provide initialisation by initializer list
-  queue(std::initializer_list<T> l, const allocator_type& a=allocator_type())
-    : std::queue<T,Container> { Container(l,a) } {}
+  queue(std::initializer_list<T> l) : Base(sl(l)) {}
 }; // |struct queue|
 
 } // |namespace containers|
