@@ -115,5 +115,13 @@ od;
 if #failed=0 then true else prints("failed: ",failed);false fi
 
 set test(int bound,Parabolic P)=bool:
-
 test(K_parameters_norm_upto(Levi(P),bound,rho_check(P.root_datum)),P)
+
+set test_long([K_Type] lktypes,Parabolic P)=void:
+for mu in lktypes do
+ let tp=tensor_product_u_cap_s(mu,P) in
+ prints("-----------------",new_line,"mu: ", mu, new_line, "dimension(mu): ", dimension(mu),new_line, "dimension wedge(u\cap s):", dimension_wedge_u_cap_s(P), 
+new_line,"dim(u)*dim(wedge):", dimension(mu)*dimension_wedge_u_cap_s(P),new_line, "tensor product: ", tp,new_line,"dimension of tensor product: ",dimension(tp),
+new_line,"dim(mu)*dim(wedge)=dim(tp):",dimension(mu)*dimension_wedge_u_cap_s(P)=dimension(tp)) od
+
+
