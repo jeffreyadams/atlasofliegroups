@@ -486,7 +486,7 @@ BufferedInput* main_input_buffer=nullptr;
 
 @~At construction a |BufferedInput| object will fix a reference |base_stream| to
 the input stream to be used when no additional input files are open. Furthermore
-it stores the last line read in its |line_buffer| field, and the pointer~|p|
+it stores the last line read in its |line_buffer| field, and the pointer~|pos|
 points to the next character to be produced by |shift()|. In case this buffer is
 used for terminal input, a prompt string is stored and will be printed every
 time the program requests more input; this is the |prompt| pointer so the
@@ -511,7 +511,7 @@ input stream.
 @< Data members... @>=
 std::istream& base_stream;
 std::string line_buffer; // current line
-const char* p; // buffer pointer
+char* pos; // buffer pointer
 const char *const prompt, *const prompt2; // primary and secondary prompt
 const char* def_ext; // default file extension
 std::string temp_prompt; // varying addition to secondary prompt
@@ -525,12 +525,12 @@ Hash_table input_files_seen; // files successfully opened at least once
 BitMap input_files_completed; // marks those files that were read without error
 std::istream* stream; // points to the current input stream
 
-@ A line is ended if |p| is either null (indicating an absence of any line
+@ A line is ended if |pos| is either null (indicating an absence of any line
 buffered, as is initially the case), or points to a null character (the one
 terminating the line buffer, which always follows a newline character).
 
 @< Inline fun... @>=
-inline bool BufferedInput::eol() const @+{@; return p==nullptr or *p=='\0'; }
+inline bool BufferedInput::eol() const @+{@; return pos==nullptr or *pos=='\0'; }
 
 @ There are two constructors, one for associating an input buffer to some
 (raw) |istream| object (which may represent a disk file or pipe), another for
@@ -544,7 +544,7 @@ disabling. Constructing the class does not yet fetch a line.
 BufferedInput::BufferedInput (std::istream& s)
 @/:base_stream(s)
 @/,line_buffer()
-@/,p(nullptr)
+@/,pos(nullptr)
 @/,prompt(nullptr)
 @/,prompt2(nullptr)
 @/,def_ext(nullptr)
@@ -563,7 +563,7 @@ BufferedInput::BufferedInput
 (const char* pr, rl_type rl, add_hist_type ah,const char* pr2,const char* de)
 @/:base_stream(std::cin)
 @/,line_buffer()
-@/,p(nullptr)
+@/,pos(nullptr)
 @/,prompt(pr)
 @/,prompt2(pr2)
 @/,def_ext(de)
@@ -614,26 +614,27 @@ struct input_record
   input_record& operator=@[(const input_record& rec) = delete@]; // or assign
 };
 
-@ Our file stack is essentially a |std::stack| of |input_record| using
-|containers::mirrored_sl_list| as container. Using the somewhat larger type
-|containers::mirrored_sl_list| rather than |containers::mirrored_simple_list|
-allows us to directly call |size| for our file stack, which will end up calling
-|containers::sl_list::size|. However this still is not quite sufficient, as in
-one place we also need to iterate over the input stack (to check for files
-currently being read), which |std::stack| does not allow. Therefore we derive
-from the |std::stack| instance, adding |ctop| and |cbottom| methods to produce
-(in that order) a range to traverse for visiting all active |input_record|s;
-this is possible because |std::stack| gives |protected| access to the underlying
-container through its member~|c|.
+@ Our file stack is essentially a |std::stack| of |input_record| that uses
+|containers::mirrored_sl_list| as underlying container. Using that type rather
+than the simpler |containers::mirrored_simple_list| that would be used by
+|containers::stack| allows us to directly call |size| for our file stack, which
+will end up calling |containers::sl_list::size|. However this still is not quite
+sufficient, as in one place we also need to iterate over the input stack (to
+check for files currently being read), which |std::stack| does not allow.
+Therefore we derive from the |std::stack| instance, adding |ctop| and |cbottom|
+methods to produce (in that order) a range to traverse for visiting all active
+|input_record|s; this is possible because |std::stack| gives |protected| access
+to the underlying container through its member~|c|.
 
+@s file_stack_t stack
 @< Define |struct file_stack@;| @>=
-struct file_stack
-: public std::stack<input_record,containers::mirrored_sl_list<input_record> >
+using file_stack_t =
+  std::stack<input_record,containers::mirrored_sl_list<input_record> >;
+struct file_stack : public file_stack_t
 { using const_iterator =
     containers::simple_list<input_record>::weak_const_iterator;
 @)
-  file_stack () :
-  @[ std::stack<input_record,containers::mirrored_sl_list<input_record> >() @]
+  file_stack () : @[ file_stack_t() @]
   @+{}
   const_iterator ctop() const @+{@; return c.wcbegin(); }
   const_iterator cbottom() const @+{@; return c.wcend(); }
@@ -857,28 +858,29 @@ bool BufferedInput::getline()
 { line_buffer="";
   line_no+=cur_lines; cur_lines=0;
   std::string pr=@< Prompt for the next line@>@;@;;
-  bool go_on, popped=false;
+  bool go_on, popped=false; unsigned int size=0;
+  containers::simple_list<std::string> lines;
   do
-  { std::string line;
+  { lines.emplace_front(); // allocate a new empty |std::string|
+    auto& line = lines.front();
   @/@< Get |line| without newline from |stream| if there is one; if none can be
        obtained then |break| if |cur_lines>0|, otherwise pop |input_stack|,
        set |popped=true| and |break|; if nothing works, |return false| @>
     ++cur_lines;
-    std::string::size_type l=line.length();
+    auto l=line.length();
     while (l>0 and std::isspace(line[l-1]))
+      --l; // back up over trailing space
+    go_on=(l>0 and line[l-1]=='\\'); // keep going only if final backslash present
+    if (go_on)
+    {@; pr= "\\ ";
       --l;
-    if (l<line.length())
-      line.erase(l); // remove trailing space
-    pr= "\\ "; // continuation prompt
-    if (go_on=(l>0 and line[l-1]=='\\'))
-      // keep going only if final backslash present
-      line.erase(l-1); // in which case it is chopped off
-    line_buffer+=line; // append |line| to buffer in all cases
+    } // set prompt and chop off blackslash
+    size+=l;
+    line.erase(l); // truncate line
   }
   while(go_on);
-  line_buffer.push_back(popped ? '\f' :'\n');
-     // add suppressed newline, or end-of-file indication
-  p=line_buffer.data();
+  @< Copy |lines| in reverse order to |line_buffer|
+     and set |pos=line_buffer.data()| @>
 @/return true;
   // delay reporting end of input if anything was read at all
 }
@@ -976,11 +978,31 @@ if (input_stack.empty() and prompt!=nullptr)
 else
    std::getline(*stream,line,'\n');
 
+@ Since we used the list |lines| as a stack, their reverse order must be undone
+when copying their contents to |line_buffer|. Finding the places where each
+copied line should start will be automatic if in addition we copy each line from
+right to left, and although that function is usually employed for shifting a
+string forward in its own memory, |std::copy_backward| will do this neatly for
+us. Using the buffer pointer |pos| for this operation of writing backwards into
+|line_buffer|, it ends up in the proper starting position for subsequent reading.
+
+@h <algorithm> // for |std::copy_backward|
+@h <cassert> // for |assert|
+
+@< Copy |lines| in reverse order to |line_buffer|... @>=
+{ line_buffer.resize(size+1);
+  pos=&*line_buffer.end();
+  *--pos = popped ? '\f' :'\n'; // terminate with newline or end-of-file
+  for (auto it=lines.begin(); not lines.at_end(it); ++it)
+    // concatenate |lines|, reversing order
+    pos=std::copy_backward(it->begin(),it->end(),pos);
+  assert(pos==line_buffer.data()); // we should have come to the start
+}
 
 @ We have seen that |shift| should call |getline| when necessary. It does so
 at most once, since there is at least a newline character to return from the
 line fetched. If |getline| is called and returns failure, then we return a
-null character to signal end of input, while setting |p| to a null pointer to
+null character to signal end of input, while setting |pos| to a null pointer to
 ensure that the |eol()| condition holds, and that subsequent calls to |shift|
 will continue to fail. Using a null character to signal file end makes this
 buffer unsuited for reading binary files, but that is not our purpose here,
@@ -988,19 +1010,19 @@ and it is more practical than returning a non-|char| value (which would
 require a different signature). We want behaviour to be well defined when
 |unshift| is called after |shift| returned a null character or in other
 strange ways (before calling |shift| for instance), so we perform
-simple test before decrementing |p|.
+simple test before decrementing |pos|.
 
 @< Inline fun... @>=
 inline char BufferedInput::shift()
 { if (eol())
     if (not getline())
-      {@; p=nullptr; return '\0'; } // signals file end
-  return *p++;
+      {@; pos=nullptr; return '\0'; } // signals file end
+  return *pos++;
 }
 @)
 inline void BufferedInput::unshift()
-{@; if (p!=nullptr and p>line_buffer.data())
-      --p;
+{@; if (pos!=nullptr and pos>line_buffer.data())
+      --pos;
 }
 
 
@@ -1020,7 +1042,7 @@ it provides the line and column number of a pointer~|p| into |line_buffer|.
 
 @< Other methods of |BufferedInput| @>=
 unsigned int include_depth() const @+{@; return input_stack.size(); }
-const char* point() const @+ {@;return p==nullptr ? line_buffer.c_str(): p;}
+const char* point() const @+ {@;return pos==nullptr ? line_buffer.c_str(): pos;}
 void set_line_no (unsigned long l) @+
 {@; line_no=l; }
 void locate (const char* p, int& line, int& column) const;
