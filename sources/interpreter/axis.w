@@ -1599,8 +1599,9 @@ in case of errors during execution of the function.
 // \.{global.h} predeclares |function_base|, and defines:
 // |typedef std::shared_ptr<const function_base> shared_function;|
 @)
-struct function_base : public value_base
+class function_base : public value_base
 {
+public:
   function_base() : @[value_base@]() @+{}
   virtual ~@[function_base() nothing_new_here@];
   static const char* name() @+{@; return "function value"; }

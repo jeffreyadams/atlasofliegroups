@@ -36,13 +36,14 @@ template<typename T,typename Alloc>
 // when Alloc is not |std::allocator|, we need a deleter class for |unique_ptr|
 // that calls the Alloc destroyer and then deallocator, rather than |::delete|
 
-template <typename Alloc> struct allocator_deleter
+template <typename Alloc> class allocator_deleter
 : private Alloc
 {
   using AT = std::allocator_traits<Alloc>;
   using value_type = typename AT::value_type;
   using pointer    = typename AT::pointer;
 
+public:
   constexpr allocator_deleter ()  = default;
   allocator_deleter (const allocator_deleter&) = default;
   void operator() (pointer p) noexcept
@@ -108,7 +109,7 @@ struct sl_node
 
 template<typename T,typename Alloc> class sl_list_iterator;
 template<typename T, typename Alloc >
-  struct sl_list_const_iterator
+  class sl_list_const_iterator
   : public std::iterator<std::forward_iterator_tag, T>
 {
   friend class simple_list<T,Alloc>;
@@ -144,7 +145,7 @@ public:
   bool operator!=(const self& x) const { return link_loc != x.link_loc; }
 
   bool at_end () const { return link_loc->get()==nullptr; }
-}; // |struct sl_list_const_iterator| template
+}; // |class sl_list_const_iterator| template
 
 
 template<typename T,typename Alloc>
@@ -169,15 +170,15 @@ public:
   // post-increment not defined, using it would almost certainly be a coding
   // error, notably erasing nodes should use |l.erase(it)| without any |++|
 
-}; // |struct sl_list_iterator| template
+}; // |class sl_list_iterator| template
 
-template<typename T, typename Alloc> struct weak_sl_list_iterator;
+template<typename T, typename Alloc> class weak_sl_list_iterator;
 template<typename T, typename Alloc = std::allocator<T> >
-  struct weak_sl_list_const_iterator
+  class weak_sl_list_const_iterator
   : public std::iterator<std::forward_iterator_tag, T>
 {
   friend class weak_sl_list_iterator<T,Alloc>;
-
+public:
   using pointer = typename sl_node<T,Alloc>::link_type::pointer;
   using const_pointer = const sl_node<T,Alloc>*; // hard to describe this otherwise
 
@@ -208,7 +209,7 @@ public:
   bool operator!=(const self& x) const { return ptr != x.ptr; }
 
   bool at_end () const { return ptr==nullptr; }
-}; // |struct weak_sl_list_const_iterator| template
+}; // |class weak_sl_list_const_iterator| template
 
 
 // weak iterators allow acces to list elements but not to the list structure
@@ -236,7 +237,7 @@ public:
   self operator++(int) // post-increment
   { self tmp=*this; Base::ptr = Base::ptr->next.get(); return tmp; }
   // for other methods, including equality tests, use the Base methods
-}; // |struct weak_sl_list_iterator| template
+}; // |class weak_sl_list_iterator| template
 
 
 
@@ -2107,12 +2108,13 @@ template<typename T,typename Alloc>
 
 }; // |class mirrored_sl_list<T,Alloc>|
 
-template<typename T,typename Alloc> struct stack
+template<typename T,typename Alloc> class stack
   : public std::stack<T,mirrored_simple_list<T,Alloc> >
 {
   using msl = mirrored_simple_list<T,Alloc>;
   using Base = std::stack<T,msl>;
 
+public:
   using Base::stack; // inherit constructors
 
   // until recently default, copy and move constructors were heritage-excluded
@@ -2122,14 +2124,15 @@ template<typename T,typename Alloc> struct stack
 
   // unlike |std::stack|, we also provide initialisation by initializer list
   stack(std::initializer_list<T> l) : Base(msl(l)) {}
-}; // |struct stack|
+}; // |class stack|
 
-template<typename T,typename Alloc> struct queue
+template<typename T,typename Alloc> class queue
   : public std::queue<T,sl_list<T,Alloc> >
 {
   using sl = sl_list<T,Alloc>;
   using Base = std::queue<T,sl>;
 
+public:
   using Base::queue; // inherit constructors
 
   // until recently default, copy and move constructors were heritage-excluded
@@ -2139,7 +2142,7 @@ template<typename T,typename Alloc> struct queue
 
   // unlike |std::queue|, we also provide initialisation by initializer list
   queue(std::initializer_list<T> l) : Base(sl(l)) {}
-}; // |struct queue|
+}; // |class queue|
 
 } // |namespace containers|
 

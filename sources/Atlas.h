@@ -88,7 +88,7 @@ namespace atlas {
     class sl_list;
 
   template<typename T, typename Alloc = std::allocator<T> >
-    struct sl_list_const_iterator;
+    class sl_list_const_iterator;
   template<typename T,typename Alloc = std::allocator<T> >
     class sl_list_iterator;
 
@@ -98,9 +98,9 @@ namespace atlas {
   template<typename T,typename Alloc = std::allocator<T> >
     class mirrored_sl_list; // trivial adapter, to allow use with |std::stack|
 
-  template<typename T,typename Alloc = std::allocator<T> > struct stack;
+  template<typename T,typename Alloc = std::allocator<T> > class stack;
 
-  template<typename T,typename Alloc = std::allocator<T> > struct queue;
+  template<typename T,typename Alloc = std::allocator<T> > class queue;
 
   } // |namespace containers|
 
@@ -242,7 +242,7 @@ namespace atlas {
     struct InnerClassType;
     struct Layout;
     typedef char TypeLetter;
-    class ext_gen;
+    struct ext_gen;
   }
   using lietype::SimpleLieType;
   using lietype::LieType;
@@ -321,7 +321,7 @@ namespace atlas {
   namespace involutions {
     class InvolutionData;
     class InvolutionTable;
-    class Cartan_orbit;
+    struct Cartan_orbit;
     class Cartan_orbits;
   }
   using involutions::InvolutionData;
