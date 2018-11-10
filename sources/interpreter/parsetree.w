@@ -139,12 +139,11 @@ it is not declared.
 struct expr;
 
 @ To represent identifiers efficiently, and also file names, we shall use the
-type |Hash_table::id_type| (a small integer type) of indices into the table of
-identifier or of files names, which we lift out of that class by using a
-|typedef|.
+type |id_type| (a small integer type) of indices into the table of identifier or
+of files names, which we lift out of that class by using a |typedef|.
 
 @< Includes needed... @>=
-#include "buffer.h" // for |Hash_table|
+#include "buffer.h" // for |id_type|
 
 @ In order to be able to track in which file a given user-defined function was
 defined, we shall include a record including the location of definition into
@@ -1631,11 +1630,11 @@ program. When defining function one does have to specify parameter types,
 since in this case there is no way to know those types with certainty: in an
 interactive program we cannot wait for \emph{usage} of the function to deduce
 the types of its parameters, and such things as type coercion and function
-overloading would make such type deduction doubtful even if it could be done).
-Types are also an essential ingredient of casts. Types have an elaborate
-(though straightforward) internal structure, and the necessary constructing
-functions like |make_tuple_type| are defined in the module \.{axis-types.w}
-rather than here.
+overloading would make such type deduction doubtful even if it could be done.
+Type expressions are also an essential ingredient of casts. Types can have an
+elaborate (though straightforward) internal structure, and the necessary
+constructing functions like |make_tuple_type| are defined in the
+module \.{axis-types.w} rather than here.
 
 When the parser was compiled as \Cee~code, we were forced to use void pointers
 in the parser, to masquerade for the actual pointers to \Cpp~types; numerous
