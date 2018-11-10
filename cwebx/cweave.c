@@ -1086,6 +1086,7 @@ int main (int argc,char** argv)
     id_lookup("extern", NULL, C_plus_plus ? extern_like : int_like);
     id_lookup("for", NULL, while_like);
     id_lookup("if", NULL, if_like);
+    id_lookup("mutable", NULL, const_like);
     id_lookup("noexcept", NULL, const_like);
     id_lookup("sizeof", NULL, sizeof_like);
     id_lookup("struct", NULL, struct_like);
