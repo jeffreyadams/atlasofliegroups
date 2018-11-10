@@ -2090,10 +2090,10 @@ template<typename T,typename Alloc>
 
 }; // |class mirrored_sl_list<T,Alloc>|
 
-template<typename T> struct stack
-  : public std::stack<T,mirrored_simple_list<T,std::allocator<T> > >
+template<typename T,typename Alloc> struct stack
+  : public std::stack<T,mirrored_simple_list<T,Alloc> >
 {
-  using msl = mirrored_simple_list<T,std::allocator<T> >;
+  using msl = mirrored_simple_list<T,Alloc>;
   using Base = std::stack<T,msl>;
 
   using Base::stack; // inherit constructors
@@ -2107,10 +2107,10 @@ template<typename T> struct stack
   stack(std::initializer_list<T> l) : Base(msl(l)) {}
 }; // |struct stack|
 
-template<typename T> struct queue
-  : public std::queue<T,sl_list<T,std::allocator<T> > >
+template<typename T,typename Alloc> struct queue
+  : public std::queue<T,sl_list<T,Alloc> >
 {
-  using sl = sl_list<T,std::allocator<T> >;
+  using sl = sl_list<T,Alloc>;
   using Base = std::queue<T,sl>;
 
   using Base::queue; // inherit constructors
