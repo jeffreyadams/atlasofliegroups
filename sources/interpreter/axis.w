@@ -133,9 +133,6 @@ data is associated.
 
 struct user_interrupt : public error_base {
   user_interrupt() : error_base("User interrupt") @+{}
-#ifdef incompletecpp11
-  ~user_interrupt() throw() @+{}
-#endif
 };
 
 @ At several points in the interpreter we shall check wither a user interrupt
@@ -665,16 +662,7 @@ component expressions. After type-checking, they are given by a
 struct tuple_expression : public expression_base
 { std::vector<expression_ptr> component;
 @)
-#ifdef incompletecpp11
-  explicit tuple_expression(size_t n) : component()
-    // avoid copying result of single |expression_ptr()|
-  { component.reserve(n);
-    while (n-->0)
-      component.push_back(expression_ptr());
-  }
-#else
   explicit tuple_expression(size_t n) : component(n) @+{}
-#endif
    // always start out with null pointers
   virtual void evaluate(level l) const;
   virtual void print(std::ostream& out) const;
@@ -1101,11 +1089,7 @@ an intermediate structure from |expression_base| that will serve as base for
 both kinds of applied identifier expressions.
 
 @< Type definitions @>=
-#ifdef incompletecpp11
-#define nothing_new_here {} // patch for gcc 4.6
-#else
 #define nothing_new_here @[@[@]=@[default@]
-#endif
 
 struct identifier : public expression_base
 { id_type code;

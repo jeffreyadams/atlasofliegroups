@@ -107,18 +107,6 @@ public:
   template<typename C1> C1 dot (const Vector<C1>& v) const;
   bool isZero() const;
 
-#if __GNUC__ < 4 || \
-  __GNUC__ == 4 && ( __GNUC_MINOR__ < 8 || \
-                     __GNUC_MINOR__ == 8 && __GNUC_PATCHLEVEL__ < 1)
-  Vector operator+ (const Vector& v) const
-    { Vector result(*this); return result +=v; }
-  Vector operator- (const Vector&v) const
-    { Vector result(*this); return result -=v; }
-  Vector operator* (C c) const
-    { Vector result(*this); return result *=c; }
-  Vector operator- () const
-    { Vector result(*this); return result.negate(); }
-#else
   Vector operator+ (const Vector& v) const &
     { Vector result(*this); return result +=v; }
   Vector operator- (const Vector&v) const &
@@ -127,16 +115,6 @@ public:
     { Vector result(*this); return result *=c; }
   Vector operator- () const &
     { Vector result(*this); return result.negate(); }
-
-  Vector operator+ (const Vector& v) &&
-  { Vector result(std::move(*this)); return result +=v; }
-  Vector operator- (const Vector&v)  &&
-    { Vector result(std::move(*this)); return result -=v; }
-  Vector operator* (C c) &&
-    { Vector result(std::move(*this)); return result *=c; }
-  Vector operator- () &&
-    { Vector result(std::move(*this)); return result.negate(); }
-#endif
 
   template<typename C1>
     Vector<C1> scaled (C1 c) const; // like operator*, but forces type to C1
@@ -247,39 +225,18 @@ template<typename C> class Matrix : public Matrix_base<C>
   Matrix(const base& M) : base(M) {}
   Matrix(base&& M) : base(std::move(M)) {}
 
-#if __GNUC__ > 4 || __GNUC__ == 4 && __GNUC_MINOR__ >= 8
-  // that is, if compiler version is sufficiently new
   using base::base; // inherit all constructors
-#else
-  Matrix(unsigned int m, unsigned int n) : base(m,n) {}
-  Matrix(unsigned int m, unsigned int n, const C& c) : base(m,n,c) {}
-
-  Matrix(const std::vector<Vector<C> >&cols, unsigned int n_rows)
-    : base(cols,n_rows) {}
-
-  template<typename I> // from sequence of columns obtained via iterator
-    Matrix(I begin, I end, unsigned int n_rows, tags::IteratorTag)
-    : base(begin,end,n_rows,tags::IteratorTag()) {}
-#endif
   explicit Matrix(unsigned int n); // square identity matrix
 
 // accessors
   // no non-destructive additive matrix operations; no need for them (yet?)
 
-#if __GNUC__ < 4 || \
-  __GNUC__ == 4 && ( __GNUC_MINOR__ < 8 || \
-                     __GNUC_MINOR__ == 8 && __GNUC_PATCHLEVEL__ < 1)
-  // that is, if compiler version is too old
-  Matrix transposed() const;
-  Matrix negative_transposed() const { return transposed().negate(); }
-#else
   Matrix transposed() const &;
   Matrix transposed() &&
     { return Matrix(std::move(*this)).transpose(); }
   Matrix negative_transposed() const & { return transposed().negate(); }
   Matrix negative_transposed() &&
     { return Matrix(std::move(*this)).negate().transpose(); }
-#endif
 
   // there is no point in trying to do these matrix multiplications in-place
   template<typename C1> Vector<C1> operator* (const Vector<C1>&) const;
@@ -325,22 +282,8 @@ template<typename C> class PID_Matrix : public Matrix<C>
   PID_Matrix(const base& M) : base(M) {}
   PID_Matrix(base&& M) : base(std::move(M)) {}
 
-// forward constructors to Matrix
-#if __GNUC__ > 4 || __GNUC__ == 4 && __GNUC_MINOR__ >= 8
-  // that is, if compiler version is sufficiently new
+  // forward constructors to Matrix
   using base::base; // inherit all constructors
-#else
-  PID_Matrix(unsigned int m, unsigned int n) : base(m,n) {}
-  PID_Matrix(unsigned int m, unsigned int n, const C& c) : base(m,n,c) {}
-
-  explicit PID_Matrix(unsigned int n) : base(n) {} // square identity matrix
-  PID_Matrix(const std::vector<Vector<C> >&cols, unsigned int n_rows)
-    : base(cols,n_rows) {}
-
-  template<typename I> // from sequence of columns obtained via iterator
-    PID_Matrix(I begin, I end, unsigned int n_rows, tags::IteratorTag)
-    : base(begin,end,n_rows,tags::IteratorTag()) {}
-#endif
 
 // manipulators
   PID_Matrix& operator+= (const Matrix<C>& M)
@@ -359,17 +302,6 @@ template<typename C> class PID_Matrix : public Matrix<C>
   PID_Matrix& transpose() { base::transpose(); return *this; }
 
 // accessors
-#if __GNUC__ < 4 || \
-  __GNUC__ == 4 && ( __GNUC_MINOR__ < 8 || \
-                     __GNUC_MINOR__ == 8 && __GNUC_PATCHLEVEL__ < 1)
-  // that is, if compiler version is too old
-  PID_Matrix transposed() const  { return PID_Matrix(base::transposed()); }
-  PID_Matrix negative_transposed() const
-    { return PID_Matrix(base::negative_transposed()); }
-  PID_Matrix inverse() const     { return matrix::inverse(*this); }
-  PID_Matrix inverse(arithmetic::big_int& d) const
-    { return matrix::inverse(*this,d); }
-#else
   PID_Matrix transposed() const  & { return PID_Matrix(base::transposed()); }
   PID_Matrix transposed() &&
     { return PID_Matrix(std::move(*this)).transpose(); }
@@ -383,7 +315,6 @@ template<typename C> class PID_Matrix : public Matrix<C>
     { return matrix::inverse(*this,d); }
   PID_Matrix inverse(arithmetic::big_int& d) &&
     { return matrix::inverse(std::move(*this),d); }
-#endif
 
   using base::operator*;
 
@@ -410,14 +341,8 @@ template<typename C> class Vector_cref
   : public std::reference_wrapper<Vector<C> const>
 {
   typedef std::reference_wrapper<Vector<C> const>  base;
- public:
-#if __GNUC__ > 4 || __GNUC__ == 4 && __GNUC_MINOR__ >= 8
-  // that is, if compiler version is sufficiently new
+public:
   using base::base; // inherit all constructors
-#else
-  explicit Vector_cref (const Vector<C>& v) noexcept : base(v) {}
-  Vector_cref (const base& v) noexcept : base(v) {}
-#endif
   Vector_cref (const Vector_cref& v) = default;
 
   C operator[] (std::size_t i) const { return base::get()[i]; }
