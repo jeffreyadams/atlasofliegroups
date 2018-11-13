@@ -2,6 +2,7 @@
 #include  "blocks.h"
 #include  "basic_io.h"
 #include  "kl.h"
+#include  <iostream>
 
 namespace atlas {
   namespace filekl {

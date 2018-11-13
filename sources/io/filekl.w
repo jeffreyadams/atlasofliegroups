@@ -330,11 +330,11 @@ block_info::block_info(std::ifstream& in)
 }
 
 
-// The code below does not belong here: utilities should not depend on gkmod!
 @* Writing a matrix file.
 Here is how a matrix file is written.
 
 @h "kl.h"
+@h <iostream> // to have |std::streamoff| defined
 
 @< Functions for writing binary files @>=
 
