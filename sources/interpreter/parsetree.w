@@ -1169,12 +1169,12 @@ struct formula_node
 @)
 typedef containers::sl_node<formula_node>* raw_form_stack;
 struct form_stack : public containers::stack<formula_node>
-{ typedef containers::stack<formula_node> base;
-  typedef containers::simple_list<formula_node> ssub_base;
-    // sub-sub base; skip ``mirrored''
+{ using base = containers::stack<formula_node>;
+  using sub_base = containers::mirrored_simple_list<formula_node>;
+  using ssub_base = containers::simple_list<formula_node>; // sub-sub base
 @)
   form_stack() : @[base()@] @+{}
-  form_stack(raw_form_stack s) : @[base(ssub_base(s))@] @+{}
+  form_stack(raw_form_stack s) : @[base{sub_base{ssub_base{s}}}@] @+{}
     // resuscitate stack from raw pointer
   raw_form_stack release() @+{@; return c.release(); }
     // inanimate the stack to a raw pointer

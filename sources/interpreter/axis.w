@@ -3095,6 +3095,7 @@ struct subscr_base : public expression_base
   @+{}
   virtual ~@[subscr_base() nothing_new_here@] ;
 @)
+  virtual void print(std::ostream&out) const@+{} // never used; avoid warning
   void print (std::ostream& out, bool reversed) const; // non |virtual|
   static sub_type index_kind
   (const type_expr& aggr,
@@ -3114,6 +3115,7 @@ struct slice_base : public expression_base
   @+{}
   virtual ~@[slice_base() nothing_new_here@] ;
 @)
+  virtual void print(std::ostream&out) const@+{} // never used; avoid warning
   void print(std::ostream& out, unsigned flags) const; // non |virtual|
 };
 

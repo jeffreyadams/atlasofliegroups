@@ -188,7 +188,7 @@ namespace atlas {
 #define POLYNOMIALS_FWD_H
 #define SIZE_FWD_H
 
-  // interpetationless terminology
+  // interpretationless terminology
   typedef matrix::Vector<int> int_Vector;
   typedef matrix::PID_Matrix<int> int_Matrix;
   typedef std::vector<int_Vector> int_VectorList;

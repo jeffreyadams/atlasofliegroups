@@ -1147,8 +1147,9 @@ SR_poly twisted_KL_sum
   // finally transcribe from |P_at_s| result
   SR_poly result(rc.repr_less());
   unsigned int parity = eblock.length(y)%2;
-  for (auto x : survivors)
+  for (auto it = survivors.begin(); not survivors.at_end(it); ++it)
   {
+    BlockElt x = *it;
     auto factor = P_at_s(x,0);
     if (eblock.length(x)%2!=parity) // flip sign at odd length difference
       factor = -factor;

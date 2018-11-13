@@ -1422,7 +1422,7 @@ template<typename T, typename Alloc>
   {
     if (n>size())
       append(sl_list(n-size(),get_allocator()));
-    else if (n<size)
+    else if (n<size())
       erase(std::next(begin(),n),end());
   }
   void resize (size_type n, const T& val)
@@ -2115,7 +2115,7 @@ template<typename T,typename Alloc> class stack
   using Base = std::stack<T,msl>;
 
 public:
-  using Base::stack; // inherit constructors
+  using Base::Base; // inherit constructors
 
   // until recently default, copy and move constructors were heritage-excluded
   stack() = default; // so defeat this discrimination
@@ -2133,7 +2133,7 @@ template<typename T,typename Alloc> class queue
   using Base = std::queue<T,sl>;
 
 public:
-  using Base::queue; // inherit constructors
+  using Base::Base; // inherit constructors
 
   // until recently default, copy and move constructors were heritage-excluded
   queue() = default; // so defeat this discrimination
