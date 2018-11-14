@@ -569,7 +569,8 @@ set K_types (KHighestWeight(,x,v):mu_in)= [K_Type]:
     assert (k>0,"There is no suitable weight in the R-group orbit.");
     assert (k=1,"There is more than one suitable highest weight.");
    ##for p in good_mu_list[0] do
-   if any(for wt in highest_weights(K_type(p[0])) do wt=move_weight(mu_in,x_Q) od)
+   if any(for wt in highest_weights(K_type(p[0]))
+              do move_weight(wt,x_Q)=move_weight(mu_in,x_Q) od)
    then [K_type(p[0])] else [] fi od
 
 
