@@ -553,7 +553,7 @@ Choosing singletons corresponds to choosing the (unique) strongly dominant
 weight in the orbit. .}
 set choose_irred_inds ([[[Param]]] list)=[[[Param]]]:
   ##for item in list do if
-    all(for params in item do #params=1 od) {and #item>0}
+    all(for params in item do #params=1 od) and #item>0
      then [item] else [] fi od
 
 {. This function takes KHighestWeight mu -> |R(K,mu)| K_types,
