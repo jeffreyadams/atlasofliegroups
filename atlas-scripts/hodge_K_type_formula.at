@@ -160,45 +160,45 @@ let pairs=for mu@i in mus do let (N,,r)=test_hodge_K_type_mat(mu,N) in (N,r) od 
 (pairs, all( for (,r) in pairs do r od))
 
 {graded version of branching_formula
- in the 1 Cartan case should give same result as branch_hodge (last argument returned)
+ in the 1 Cartan case should give same result as hodge_branch_std_builtin
  hope to modify it to work for all G
 }
 {hodge branching formula for standard module with nu=0}
-set hodge_branch_std(K_Type mu, int N)=hodgeParamPol:
-let (index,ktypes,,A,B)=hodge_K_type_mat_long(mu,N) then
+set hodge_branch_std_tempered(Param p, int N)=KHodgeParamPol:
+let (index,ktypes,,A,B)=hodge_K_type_mat_long(LKT(p),N) then
 vector=transpose(B)[index] then
 temp=[(vec,Param)]:[] in
  for i:#vector do if vector[i]!=null(0) then
  temp#:=(vector[i],parameter(ktypes[i])) fi od;
-dearrange(temp)
-
-{hodge branching formula for standard module with nu=0}
-set hodge_branch_std_temp(Param p, int N)=hodgeParamPol:
-hodge_branch_std(LKT(p),N)
+dearrange(temp,())
 
 {hodge branching formula for ParamPol of modules with nu=0}
-set hodge_branch_std_temp(ParamPol P, int N)=hodgeParamPol:
-let rv=nullHodgeParamPol(P.real_form) in
- for c@p in P do rv+:=c*hodge_branch_std_temp(p,N) od;rv
+set hodge_branch_std_tempered(ParamPol P, int N)=KHodgeParamPol:
+let rv=nullKHodgeParamPol(P.real_form) in
+ for c@p in P do rv+:=c*hodge_branch_std_tempered(p,N) od;rv
 
 {hodge branching formula for hodgeParamPol of modules with nu=0}
-set hodge_branch_std_temp(hodgeParamPol P, int N)=hodgeParamPol:
+set hodge_branch_std_tempered(hodgeParamPol P, int N)=KHodgeParamPol:
 let Q=rearrange(P) then
-rv=nullHodgeParamPol(P.real_form) in
- for (c,p) in Q do rv+:=c*hodge_branch_std_temp(p,N) od;
+rv=nullKHodgeParamPol(P.real_form) in
+ for (c,p) in Q do rv+:=c*hodge_branch_std_tempered(p,N) od;
 rv
 
 {hodge branching formula for arbitrary standard module p
- algorithm: hodge_branch_std_temp of the hodge_recursive deform
+ algorithm: hodge_branch_std_tempered of the hodge_recursive deform
  of p
 }
-set hodge_branch_std(Param p, int N)=hodgeParamPol:
-hodge_branch_std_temp(hodge_recursive_deform(p),N)
+set hodge_branch_std(Param p, int N)=KHodgeParamPol:
+hodge_branch_std_tempered(hodge_recursive_deform(p),N)
 
 {hodge branching formula for arbitrary ParamPol of 
 standard modules}
-set hodge_branch_std(ParamPol P, int N)=hodgeParamPol:
-hodge_branch_std_temp(hodge_recursive_deform(P),N)
+set hodge_branch_std(ParamPol P, int N)=KHodgeParamPol:
+hodge_branch_std_tempered(hodge_recursive_deform(P),N)
+
+set hodge_branch_std(hodgeParamPol P, int N)=KHodgeParamPol:
+let rv=nullKHodgeParamPol(P.real_form) in
+for i:#P do rv+:=shift(hodge_branch_std(P[i],N),i) od;rv
 
 
 {hodge branching formula for arbitrary irreducible}

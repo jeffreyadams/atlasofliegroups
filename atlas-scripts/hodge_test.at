@@ -1,0 +1,38 @@
+
+{set hodge_branch_irr(Param p,int N)=KHodgeParamPol:hodge_branch_std(hodge_grading_irreducible(p),N)}
+
+{------------------ some test functions--------------------}
+
+{hodge_grading_irreducible(p) evaluted at v=s should equal c_form_irreducible(p)}
+set hodgeTestIrreducible(Param p)=bool:hodge_grading_irreducible(p).v_to_s=c_form_irreducible(p)
+set hodgeTestIrreducible([Param] params)=(bool,[bool]):
+let results=for p in params do hodgeTestIrreducible(p) od in (all(results),results)
+
+set hodgetest(Param p,int N)=bool:
+let hodgedef=hodge_recursive_deform(p) then
+(rv,)=hodge_branch_std(hodgedef,N) then
+positive=all(##for i:#rv do for c@p in rv[i] do split_as_int(c)>0 od od) then
+valid_evaluation_at_s=evaluate_at_s(hodgedef)=recursive_deform(p) then
+valid_evaluation_at_1=evaluate_at_1(hodgedef)=p*0 in
+prints(p.real_form,new_line,"N:",N,new_line,p,new_line,"hodge_deformation to 0: ");print(rv);prints(new_line,
+"correct evaluation at v=1:",valid_evaluation_at_1,new_line,
+"correct evaluation at v=s:",valid_evaluation_at_s,new_line,
+"positive coefficients: ",positive,new_line);valid_evaluation_at_1 and valid_evaluation_at_s and positive
+
+set hodgeTest(RealForm G,int N)=bool:hodgetest(trivial(G),N)
+
+set hodgeTest([Param] params,int N)=(bool,[bool]):let result=for p in params do hodgetest(p,N) od in (all(result),result)
+
+set runHodgeTests(int k)=
+let groups=
+[(SL(2,C),10),
+(SL(3,C),15),
+(SL(4,C),20),
+(SO(3,1),40),
+(SO(5,1),50),
+(SO(7,1),80),
+(Sp(4,C),20),
+(complexification(G2_s),50)]
+in for i:k do let (G,N)=groups[i] in hodgeTest(G,N) od 
+
+set runHodgeTests()=runHodgeTests(6)

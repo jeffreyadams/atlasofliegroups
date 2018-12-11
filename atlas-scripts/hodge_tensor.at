@@ -1,0 +1,67 @@
+<hodge_K_type_formula.at
+<tensor_product.at
+
+set_type multiplicity_function=(K_Type -> int)
+set_type signature_function=(K_Type -> Split)
+set_type hodge_function= (K_Type->i_poly)
+
+{compute hodge function f\otimes F
+ f is an arbitrary Hodge function
+ F is a finite dimensional representation of K,
+  given as a function from KGB to [ratvec] (should be [vec]?)
+   see tensor_product.at
+ formula is:
+ (f\otimes F)(mu)=
+}
+
+
+set branch_function_std(Param p)=multiplicity_function:
+(K_Type mu):split_as_int(branch_std(p,K_norm(mu))[parameter(mu)])
+
+{set branch_std(Param p)=(Param->int):
+(Param q):branch_std(p)(LKT(q))
+}
+
+set hodge_function_std(Param p)=hodge_function:
+(K_Type mu):coefficient(hodge_branch_std(p,K_norm(mu)),parameter(mu))
+
+
+set shift(vec v,hodge_function f)=hodge_function:
+(K_Type mu): f(K_Type:(mu.x,mu.lambda+v))
+
+set hodge_polynomial(hodge_function f,[K_Type] ktypes)=
+for mu in ktypes do (f(mu),mu) od
+
+set hodge_print(hodgeParamPol P)=void:print(P)
+set hodge_print([(vec,Param)] P)=void:print(dearrange(P))
+set hodge_print([(vec,K_Type)] P)=void:print(dearrange(P))
+
+set * (i_poly P, hodge_function f)=hodge_function:
+(K_Type mu):convolve(P,f(mu))
+
+set hodge_tensor(hodge_function f, (KGBElt -> [ratvec]) weights,K_Type tau,int bound)=
+let rv=poly_0 in
+for c@p in tensor_product(tau,weights,bound) {K_Type_Pol} 
+do let mu=LKT(p) in  rv+:=split_as_int(c)*f(mu) od;rv
+
+set hodge_tensor(hodge_function f, (KGBElt -> [ratvec]) weights,int bound)=hodge_function:
+(K_Type mu):hodge_tensor(f,weights,mu,bound)
+
+{
+set convert(hodge_function f, int bound)=hodgeParamPol:
+}
+
+
+
+{
+set subtract_term(hodgeParamPol P, K_Type mu)=hodgeParamPol:
+P-
+}
+{
+set hodge_std(Param p,K_Type mu)=i_poly:hodge_std(p)(mu)
+}
+
+{
+set hodge_spherical_tensor_A1(int k, int N)=
+let p=trivial(G)*0 then
+hp=hodge_branch_std(p,N)}

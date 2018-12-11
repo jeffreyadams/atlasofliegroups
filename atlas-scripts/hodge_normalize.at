@@ -4,7 +4,7 @@
 {move to basic.at}
 set imaginary_type (int s, KGBElt x) = int: if cross(s,x)=x then 2 else 1 fi
 
-set hodge_normalize_verbose=true
+set hodge_normalize_verbose=false
 
 set tau(int n,int k)=if k=n/2 then 1 else 2 fi
 
@@ -89,7 +89,7 @@ let rv=[(vee,q)] in
 fi
 
 set hodge_reflection_imaginary(Param p, int i)=[(vec,Param)]:
-{i=simple root number of complex root}
+{i=simple root number of imaginary root}
 assert(is_imaginary(i,p.x),"root is not imaginary");
 assert(=p.nu,"nu\ne 0");
 if hodge_normalize_verbose then

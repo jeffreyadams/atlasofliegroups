@@ -225,9 +225,11 @@ for i:n do
 { let ()=prints(new_line,i, " ", B[i], new_line,"coeff=",coeff);print(evaluate_at_s(hodge_recursive_deform(B[i]))) in}
 rv+:=coeff*hodge_recursive_deform(B[i]) od;rv
 
-set hodge_branch_irr(Param p,int N)=hodgeParamPol:hodge_branch_std(hodge_grading_irreducible(p),N)
+{set hodge_branch_irr(Param p,int N)=KHodgeParamPol:hodge_branch_std(hodge_grading_irreducible(p),N)}
 
 {------------------ some test functions--------------------}
+{
+a few issues here: come back and fix them, commented out for now
 
 {hodge_grading_irreducible(p) evaluted at v=s should equal c_form_irreducible(p)}
 set hodgeTestIrreducible(Param p)=bool:hodge_grading_irreducible(p).v_to_s=c_form_irreducible(p)
@@ -260,3 +262,4 @@ let groups=
 (Sp(4,C),20),
 (complexification(G2_s),50)]
 in for (G,N) in groups do hodgeTest(G,N) od
+}

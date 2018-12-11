@@ -1,5 +1,6 @@
 <K_types.at
 <K_norm.at
+<nci_nilrad_roots.at
 
 set N=100 {cutoff for branching}
 
@@ -7,42 +8,10 @@ set N=100 {cutoff for branching}
  for each of the 2^n subsets return the sum
  application: given a subalgebra u this computes all the weights of wedge(u)
 }
-set all_sums([ratvec] ratvecs)=[ratvec]:
-if #ratvecs=0 then [] else
-let l=#ratvecs[0] in for S in generate_all_subsets(ratvecs)  do sum(S,l) od fi
 
 {add up the dimensions of terms in a K_Type_Pol}
 set dimension(K_Type_Pol P)=
 sum(for c@p in P do  split_as_int(c)*dimension(LKT(p)) od)
-
-{like makeS in induction.at, except only keep the roots in u}
-set makeS(KGBElt x_G,Parabolic P)=
-let rho_u=rho_u(P), nilrad_roots=nilrad_roots(P) in
-##for root in makeS(x_G) do if find(nilrad_roots,root)>=0 then [root] else [] fi od
-
-{x is a KGB element of L -> H^{theta_x} ->
-set of nci roots of H, whose restrictions to H^{theta_x} are the weights
-of H^theta on u\cap s
-each nci root contributes
-each pair of complex roots contributes one of them
-}
-set nci_nilrad_roots_restricted_to_H_theta(KGBElt x_L,Parabolic P)=[ratvec]:
-assert(is_parabolic_theta_stable(P),"P is not theta-stable");
-let x_G=embed_KGB(x_L,P.real_form) then
-complex_roots=for root in makeS(x_G,P) do root od in
-##for root in nilrad_roots(P) do if
-is_noncompact_imaginary(root,x_G) then [root] else [] fi od##complex_roots
-
-{returns a function taking a KGBElt to [ratvec]}
-set nci_nilrad_roots_restricted_to_H_theta(Parabolic P)=
-(KGBElt->[ratvec]): (KGBElt x): nci_nilrad_roots_restricted_to_H_theta(x,P)
-
-{first compute the previous function to give a set of n ratvecs,
- run over the 2^n subsets of this set, and return these 2^n sums}
-set sums_nci_nilrad_roots_restricted_to_H_theta(Parabolic P)=(KGBElt->[ratvec]): (KGBElt x):
-let rv=all_sums(nci_nilrad_roots_restricted_to_H_theta(x,P)) in
-{if empty need to return [0,...,0]}
-if #rv=0 then [null(P.root_datum.rank)] else rv fi
 
 set dimension_u_cap_s(Parabolic P)=int:#nci_nilrad_roots_restricted_to_H_theta(P.x_min,P)
 set dimension_wedge_u_cap_s(Parabolic P)=int:2^dimension_u_cap_s(P)
@@ -89,37 +58,36 @@ set add_weights (K_Type mu,(KGBElt->[ratvec]) f)=ParamPol:
 {given a K_type mu and a function f:KGB->[ratvec],
  compute mu\otimes (K-type given by the weights)
 }
-set tensor_product(K_Type mu,(KGBElt -> [ratvec]) weights)=K_Type_Pol:
-   branch_std(add_weights(mu,weights),N)
-
+set tensor_product(K_Type mu,(KGBElt -> [ratvec]) weights,int bound)=K_Type_Pol:
+   branch_std(add_weights(mu,weights),bound)
 
 {The Main Function
  L=Levi(P), P=theta-stable parabolic in G
  mu_L=L\cap K-type
  compute mu_L\otimes wedge(u\cap s)
- this is simply branch_std(add_weights(mu_L,weights),N)
+ this is simply branch_std(add_weights(mu_L,weights),bound)
 }
-set tensor_product_u_cap_s(K_Type mu_L,Parabolic P)=ParamPol:
-tensor_product(mu_L,sums_nci_nilrad_roots_restricted_to_H_theta(P))
+set tensor_product_u_cap_s(K_Type mu_L,Parabolic P,int bound)=ParamPol:
+tensor_product(mu_L,sums_nci_nilrad_roots_restricted_to_H_theta(P),bound)
 
 {a few dimension tests}
-set test(K_Type mu_L,Parabolic P)=bool:
-dimension(tensor_product_u_cap_s(mu_L,P))=dimension(mu_L)*dimension_wedge_u_cap_s(P)
+set test(K_Type mu_L,Parabolic P, int bound)=bool:
+dimension(tensor_product_u_cap_s(mu_L,P,bound))=dimension(mu_L)*dimension_wedge_u_cap_s(P)
 
-set test([K_Type] lktypes,Parabolic P)=bool:
+set test([K_Type] lktypes,Parabolic P, int bound)=bool:
 let failed = [] in
 for mu@i in lktypes do
- let t=test(mu,P) in
+ let t=test(mu,P,bound) in
  if not t then failed#:=i fi
 od;
 if #failed=0 then true else prints("failed: ",failed);false fi
 
 set test(int bound,Parabolic P)=bool:
-test(K_parameters_norm_upto(Levi(P),bound,rho_check(P.root_datum)),P)
+test(K_parameters_norm_upto(Levi(P),bound,rho_check(P.root_datum)),P,bound)
 
-set test_long([K_Type] lktypes,Parabolic P)=void:
+set test_long([K_Type] lktypes,Parabolic P,int bound)=void:
 for mu in lktypes do
- let tp=tensor_product_u_cap_s(mu,P) in
+ let tp=tensor_product_u_cap_s(mu,P,bound) in
  prints("-----------------",new_line,"mu: ", mu, new_line, "dimension(mu): ", dimension(mu),new_line, "dimension wedge(u\cap s):", dimension_wedge_u_cap_s(P), 
 new_line,"dim(u)*dim(wedge):", dimension(mu)*dimension_wedge_u_cap_s(P),new_line, "tensor product: ", tp,new_line,"dimension of tensor product: ",dimension(tp),
 new_line,"dim(mu)*dim(wedge)=dim(tp):",dimension(mu)*dimension_wedge_u_cap_s(P)=dimension(tp)) od
