@@ -64,7 +64,7 @@ set split_coradical_basis (InnerClass G) =  mat:
 set lie_split_radical_hat (InnerClass G) = mat:
   image_subspace((1-distinguished_involution(G))*lie_radical_hat(G))
 
-{ Q-basis of split part of coradical; columns are weights }
+{ Q-basis of compact part of coradical; columns are weights }
 set compact_coradical_basis (InnerClass G) =  mat:
   kernel( (^simple_coroots(G)) ^ {stack up} (1-distinguished_involution(G)) )
 { equivalent: Q-basis of dual of compact part of radical of (complex) group }

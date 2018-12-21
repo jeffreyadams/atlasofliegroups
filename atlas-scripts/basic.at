@@ -1593,6 +1593,7 @@ set purity (ParamPol P)=(int,int,int):
     if =b then x+:=1 elif =a then y+:=1 else z+:=1 fi
   od; (x,y,z)
 
+
 {                               Miscellaneous                           }
 
 {                   Miscellaneous find functions                     }
@@ -1651,6 +1652,9 @@ set pad(string s,int padding)=string: l_adjust(padding,s)
 }
 set monomials (ParamPol P) = [Param]: for c@p in P do p od
 set monomial  (ParamPol P,int i) = Param: monomials(P)[i]
+
+{ height of a ParamPol is max of height of each term}
+set height (ParamPol P)=int:max(for p in monomials(P) do height(p) od)
 
 {. Convert a list of ParamPols into the list of distinct parameters occuring;
    careful: don't let terms cancel! .}

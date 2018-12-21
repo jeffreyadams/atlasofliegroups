@@ -18,7 +18,8 @@ set dimension_wedge_u_cap_s(Parabolic P)=int:2^dimension_u_cap_s(P)
 
 {simply add H to p.lambda and standardize the result}
 set add_weight (Param p,ratvec H)=ParamPol:
-  standardize(parameter(p.x,p.lambda+H,p.nu))*0
+  let shift=if =H then null(rank(p.root_datum)) else H fi in   
+   standardize(parameter(p.x,p.lambda+shift,p.nu))*0
 
 {simply add H to each term of P, standardize the results}
 set add_weight (ParamPol P,ratvec H)=ParamPol:
@@ -31,7 +32,7 @@ standard(parameter(x,lambda+f(x),nu))}
 set add_weight (ParamPol P,(KGBElt->ratvec) f)=ParamPol:
    let result=null_module(P.real_form) in
    for coeff@p in P do
-    let H=f(p.x) in
+    let H=f(p.x) in prints("NOW H=",H);
     result+:=coeff*add_weight(p,H) od;
    result
 
@@ -40,7 +41,7 @@ set add_weights (ParamPol P,(KGBElt ->[ratvec]) f)=ParamPol:
    let result=null_module(P.real_form) in
    for coeff@p in P do
    if #f(p.x)!=0 then 
-    for H in f(p.x) do
+    for H in f(p.x) do 
       result+:=coeff*add_weight(p,H)
     od
    fi
@@ -57,9 +58,16 @@ set add_weights (K_Type mu,(KGBElt->[ratvec]) f)=ParamPol:
 
 {given a K_type mu and a function f:KGB->[ratvec],
  compute mu\otimes (K-type given by the weights)
+ the bound here shouldn't be necessary: add_weights(mu,weights) is a finite sum 
+ of K-types, the bound just needs to be big enough to get them all
+see the next command
 }
 set tensor_product(K_Type mu,(KGBElt -> [ratvec]) weights,int bound)=K_Type_Pol:
    branch_std(add_weights(mu,weights),bound)
+
+{choose the bound appropriately: not at all sure this is right}
+set tensor_product(K_Type mu,(KGBElt -> [ratvec]) weights)=K_Type_Pol:
+let P=add_weights(mu,weights) in branch_std(P,height(P))
 
 {The Main Function
  L=Levi(P), P=theta-stable parabolic in G
@@ -69,6 +77,12 @@ set tensor_product(K_Type mu,(KGBElt -> [ratvec]) weights,int bound)=K_Type_Pol:
 }
 set tensor_product_u_cap_s(K_Type mu_L,Parabolic P,int bound)=ParamPol:
 tensor_product(mu_L,sums_nci_nilrad_roots_restricted_to_H_theta(P),bound)
+
+set tensor_product_wedge_k_u_cap_s(K_Type mu_L,Parabolic P,int bound,int k)=ParamPol:
+tensor_product(mu_L,sums_nci_nilrad_roots_wedge_k_restricted_to_H_theta(P,k),bound)
+
+set tensor_product_wedge_k_u_cap_s(K_Type mu_L,Parabolic P,int k)=ParamPol:
+tensor_product(mu_L,sums_nci_nilrad_roots_wedge_k_restricted_to_H_theta(P,k))
 
 {a few dimension tests}
 set test(K_Type mu_L,Parabolic P, int bound)=bool:

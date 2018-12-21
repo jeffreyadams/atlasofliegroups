@@ -44,15 +44,20 @@ set branch_irr (ParamPol P,int bound) = ParamPol:
 { multiplicity of K-type p_K in standard module p }
 set mult_std (Param p_K,Param p) = int:
   split_as_int(branch_std(p,height(p_K))[p_K])
+set mult_std (K_Type mu,Param p) = int:mult_std(parameter(mu),p)
 
 { multiplicity of K-type p_K in irreducible module p }
 set mult_irr (Param p_K,Param p) = int:
   split_as_int(branch_irr(p,height(p_K))[p_K])
+set mult_irr (K_Type mu,Param p) = int:mult_irr(parameter(mu),p)
 
 set mult_std(Param p_K, ParamPol P) = Split:
   sum(for c@p in P do c*mult_std(p_K,p) od)
+set mult_std(K_Type mu, ParamPol P) = Split:mult_std(parameter(mu),P)
+
 set mult_irr(Param p_K, ParamPol P) = Split:
   sum(for c@p in P do c*mult_irr(p_K,p) od)
+set mult_irr(K_Type mu, ParamPol P) = Split:mult_irr(parameter(mu),P)
 
 set K_signature_irr (Param p,int bound) = (ParamPol,ParamPol):
   let form=hermitian_form_irreducible(p) in
