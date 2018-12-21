@@ -1,0 +1,62 @@
+{given a set S of N ratvecs all of length n
+ returns all 2^N sums of vectors in subsets of S
+ caution: if S is empty this returns [ratvec:[]]
+   i.e. the list of 1 ratvec of length 0
+   (rather than [ratvec]:[] the empty list of ratvecs, which has length 0)
+   this is appropriate since the expected length of the list is 2^N=2^0=1
+ otherwise =[null(n),...]
+
+}
+set all_sums([ratvec] ratvecs)=[ratvec]:
+if #ratvecs=0 then [ratvec:[]] else
+for S in generate_all_subsets(ratvecs)  do sum(S,#ratvecs[0]) od fi
+
+{given a set S of N ratvecs all of length n
+ return list of sums in all subsets of size k
+}
+set sums_of_size_k([ratvec] ratvecs,int k)=
+if #ratvecs=0 then [ratvec:[]] else
+##for S in generate_all_subsets(ratvecs)  do 
+if #S=k then [sum(S,#ratvecs[0])] else [] fi  od fi
+
+{like makeS in induction.at, except only keep the roots in u}
+set makeS(KGBElt x_G,Parabolic P)=
+let rho_u=rho_u(P), nilrad_roots=nilrad_roots(P) in
+##for root in makeS(x_G) do if find(nilrad_roots,root)>=0 then [root] else [] fi od
+
+{Given a theta-stable parbolic P and x_G\in KGB(G)
+ return a set of nci roots of H, whose restrictions to H^{theta_x} are the weights
+ of H^theta on u\cap s
+ each nci root contributes itself
+ each pair of complex roots for G contributes one of them
+Note: our application will be to L_0\subset L\subset G
+ q=l+u is the parabolic, we're interested in tensoring L_0\cap K-types
+ for this command all that matters is \theta_x restricted to H
+ so L_0 plays no role
+}
+set nci_nilrad_roots_restricted_to_H_theta(KGBElt x_G,Parabolic P)=[ratvec]:
+assert(is_parabolic_theta_stable(P),"P is not theta-stable");
+let complex_roots=for root in makeS(x_G,P) do root od in
+##for root in nilrad_roots(P) do if
+is_noncompact_imaginary(root,x_G) then [root] else [] fi od##complex_roots
+
+{returns a function taking a KGBElt to [ratvec]
+ Dangerous bend: this is a KGBElt for L (what is needed for a weight function to compute 
+tensor products) but the roots are for G, so embed_KGB(x_L,G)
+}
+set nci_nilrad_roots_restricted_to_H_theta(Parabolic P)=
+(KGBElt->[ratvec]): (KGBElt x_L): nci_nilrad_roots_restricted_to_H_theta(embed_KGB(x_L,P.real_form),P)
+
+{first compute the previous function to give a set of n ratvecs,
+ run over the 2^n subsets of this set, and return these 2^n sums}
+set sums_nci_nilrad_roots_wedge_k_restricted_to_H_theta(Parabolic P,int k)=(KGBElt->[ratvec]): (KGBElt x_G):
+let rv=sums_of_size_k(nci_nilrad_roots_restricted_to_H_theta(x_G,P),k) in
+{if empty need to return [0,...,0]}
+if #rv=0 then [null(P.root_datum.rank)] else rv fi
+
+{first compute the previous function to give a set of n ratvecs,
+ run over the 2^n subsets of this set, and return these 2^n sums}
+set sums_nci_nilrad_roots_restricted_to_H_theta(Parabolic P)=(KGBElt->[ratvec]): (KGBElt x_G):
+let rv=all_sums(nci_nilrad_roots_restricted_to_H_theta(x_G,P)) in
+{if empty need to return [0,...,0]}
+if #rv=0 then [null(P.root_datum.rank)] else rv fi
