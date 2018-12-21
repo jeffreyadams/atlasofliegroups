@@ -1,0 +1,129 @@
+{<hodge_K_type_formula.at}
+<K_types.at
+<hodgeParamPol.at
+{<tensor_product_sl2.at
+<tensor_product_gl2.at
+}
+{basics of functions from K-hat to Z,W and Z[v]}
+
+set_type multiplicity_function=(K_Type -> int)
+set_type signature_function=(K_Type -> Split)
+set_type hodge_function= (K_Type->i_poly)
+
+set minus_vee_to_the_k(int k)=i_poly:(-1)^k*null(k)#1
+
+{print routines}
+set hodgePrint(hodgeParamPol P)=void:print(P)
+set hodgePrint(KHodgeParamPol KP)=void:print(KP.P)
+set hodgePrint([(vec,Param)] P)=void:print(dearrange(P))
+set hodgePrint([(vec,K_Type)] P)=void:print(dearrange(P))
+
+set coefficient(hodgeParamPol P,K_Type mu)=vec:coefficient(P,parameter(mu))
+
+{the multiplicity function of I(p)}
+set branch_function_std(Param p)=multiplicity_function:
+(K_Type mu):split_as_int(branch_std(p,K_norm(mu))[parameter(mu)])
+
+{the hodge function of I(p)}
+{moved to hodge_K_type_formula.at}
+{set hodge_function_std(Param p)=hodge_function:
+(K_Type mu):coefficient(hodge_branch_std(p,K_norm(mu)),mu)
+}
+
+{convert function f to \sum_mu f(mu)*mu}
+{this function is slow and should be used sparingly}
+{was called hodge_polynomial, renamed to Psi_S
+ see hodgeTempered.pdf (towards the end) and hodge_tensor.at}
+set Psi_S(hodge_function f,[K_Type] ktypes)=KHodgeParamPol:
+(dearrange(##for mu in ktypes do if #f(mu)=0 then [(vec,K_Type)]:[] else  [(f(mu),mu)] fi  od,ktypes[0].real_form),())
+set Psi_S(hodge_function f,[K_Type] ktypes,RealForm G)=KHodgeParamPol:
+(dearrange(##for mu in ktypes do if #f(mu)=0 then [(vec,K_Type)]:[] else  [(f(mu),mu)] fi  od,G),())
+
+{warning: this is slow}
+set hodgePrint(hodge_function f, [K_Type] ktypes)=void:
+if #ktypes=0 then () else
+hodgePrint(Psi_S(f,ktypes,ktypes[0].real_form)) fi
+set nullHodgeFunction(RealForm G)=hodge_function:(K_Type mu):[]
+
+set sort_by ( (vec,(KGBElt,ratvec)->int) f) =
+  ([(vec,(KGBElt,ratvec))] v) [(vec,(KGBElt,ratvec))]:
+    for index in inv_standardisation(for x in v do f(x) od) do v[index] od
+
+set sort_by ( (vec,Param->int) f) =
+  ([(vec,Param)] v) [(vec,Param)]:
+    for index in inv_standardisation(for x in v do f(x) od) do v[index] od
+
+set K_norm(vec v,K_Type mu)=int:K_norm(mu)
+set K_norm(vec v,Param p)=int:K_norm(LKT(p))
+set sort = ([(vec,K_Type)]->[(vec,K_Type)]):sort_by(K_norm@(vec,K_Type))
+set sort = ([(vec,Param)]->[(vec,Param)]):sort_by(K_norm@(vec,Param))
+
+{shift hodge_function: f_new(mu)=f(mu+v)
+ mu+v=parameter(mu.x, mu.lambda+v,0)
+}
+{set tensor_sl2(hodge_function f,K_Type tau)=hodge_function:
+(K_Type mu):
+let rv=poly_0 then
+P=tensor_sl2(mu,tau) in
+for c@p in P do 
+{ rv:=poly_add(rv,c.split_as_int*f(LKT(p))) od}
+ rv:=[1,2] od;rv
+}
+
+
+{multiply function by polynomial: f_new(mu)=f(mu)*poly\in Z[v]}
+set * (i_poly P, hodge_function f)=hodge_function: 
+(K_Type mu):convolve(P,f(mu))
+
+set *(int i,hodge_function f)=hodge_function:constant_poly(i)*f
+
+set + (hodge_function f,hodge_function g)=hodge_function:
+(K_Type mu):poly_plus(f(mu),g(mu))
+
+set - (hodge_function f,hodge_function g)=hodge_function:
+(K_Type mu):poly_minus(f(mu),g(mu))
+
+set is_zero(hodge_function f,[K_Type] ktypes)=bool:
+{let ()=prints("is_zero with:", Psi_S(f,ktypes,ktypes[0].real_form)) in}
+Psi_S(f,ktypes,ktypes[0].real_form)=nullKHodgeParamPol(ktypes[0].real_form)
+
+{set remove_term(hodge_function f,[(vec,Param)] terms,K_Type mu)=(hodge_function,[(vec,Param)]):
+let term=f(mu)*hodge_function_std(parameter(mu)) in 
+(f-term,terms#(f(mu),parameter(mu)))
+
+
+{given list of ktypes, assume d to be sorted by K_norm, find the first one
+for which f(mu)\ne 0
+this is faster than using Psi_S(f,ktypes) and picking the first term}
+{returns -1 if not found}
+set find_smallest_term(hodge_function f,[K_Type] ktypes)=int:
+first(#ktypes,(int i):!=f(ktypes[i]))
+
+set remove_smallest_term(hodge_function f,[(vec,Param)] terms,[K_Type] ktypes)=(hodge_function,[(vec,Param)]):
+let index=find_smallest_term(f,ktypes) in
+if index=-1 then (f,terms) else
+remove_term(f,terms,ktypes[index]) fi
+
+set recursive_remove(hodge_function f,[K_Type] ktypes)= (hodge_function,hodgeParamPol) : 
+ let rec_fun rec_remove(hodge_function g,[(vec,Param)] terms)  = (hodge_function,hodgeParamPol) : 
+ let ()=prints("rec_fun", "  #terms:", #terms) in
+{let ()=hodgePrint(Psi_S(g,ktypes,ktypes[0].real_form));prints(new_line,"terms:");hodgePrint(dearrange(terms,ktypes[0].real_form)) in}
+ if is_zero(g,ktypes) then (g,dearrange(terms)) {g is the zero function} else
+ rec_remove(remove_smallest_term(g,terms,ktypes)) fi
+ in rec_remove(f,[(vec,Param)]:[])
+
+{returns hodgeParamPol P so that,
+ at least on the given K-types,
+ f is a sum of hodge_functions of standard modules
+ i.e. f=\sum m_gamma hodge(I(gamma)),
+ or more precisely
+ f(mu)=\sum m_gamma hodge(I(gamma))(mu) for all mu in ktypes
+ the answer should satisfy: 
+ set P=rewrite(f@K_Type,ktypes)
+ Psi_S(f@K_Type,ktypes)=hodge_branch_std(P,n)
+ where ktypes=K_parameters_norm_upto(G,n)
+}
+set rewrite(hodge_function f,[K_Type] ktypes)=hodgeParamPol:
+let (,P)=recursive_remove(f,ktypes) in P
+
+}
