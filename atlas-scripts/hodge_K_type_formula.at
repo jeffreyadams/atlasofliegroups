@@ -133,6 +133,8 @@ rv
 {not implemented yet}
 set hodge_K_type_formula_long(K_Type mu)=([Param],hodgeParamPol):([],hodge_K_type_formula(mu))
 
+{use old for now: new isn't working yet}
+set hodge_K_type_formula_long(K_Type mu)=([Param],hodgeParamPol):hodge_K_type_formula_long_old(mu)
 
 set fill_out([K_Type] ktypes, int N)=[K_Type]:
 let new_ktypes=ktypes in

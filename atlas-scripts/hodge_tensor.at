@@ -39,9 +39,37 @@ set Psi_S(hodge_function f,[K_Type] ktypes,RealForm G)=KHodgeParamPol:
 set * (i_poly P, hodge_function f)=hodge_function:
 (K_Type mu):convolve(P,f(mu))
 
+set hodge_tensor_std(Param p, (KGBElt -> [ratvec]) weights,K_Type tau)=i_poly:
+let rv=poly_0 in
+for c@p in add_weights(p,weights) do rv:=poly_plus(rv,split_as_int(c)*hodge_function_std(p)(tau)) od;rv
+
+set hodge_tensor_std(ParamPol P, (KGBElt -> [ratvec]) weights,K_Type tau)=i_poly:
+let rv=poly_0 in
+for c@p in P do  rv:=poly_plus(rv,split_as_int(c)*hodge_tensor_std(p,weights,tau)) od;rv
+
+set hodge_tensor_std(Param p, (KGBElt -> [ratvec]) weights)=hodge_function:
+(K_Type mu):hodge_tensor_std(p,weights,mu)
+
+set hodge_tensor_std(ParamPol P, (KGBElt -> [ratvec]) weights)=hodge_function:
+(K_Type mu):hodge_tensor_std(P,weights,mu)
+
+set hodge_tensor_wedge_k_u_cap_s_std(Param p,Parabolic P,int k)=hodge_function:
+let weights=sums_nci_nilrad_roots_wedge_k_restricted_to_H_theta(P, k) in
+minus_vee_to_the_k(k)*hodge_tensor_std(p,weights)
+
+set hodge_tensor_exterior_u_cap_s_std(Param p,Parabolic P)=hodge_function:
+let rv=nullHodgeFunction(P.real_form) in
+ for k:#nilrad_roots(P)
+ do rv+:=hodge_tensor_wedge_k_u_cap_s_std(p,P,k) od;rv
+
+{
+these are not correct, to compute hodge_tensor(arbitrary hodge_function,weights) you need
+to compute Omega_S_inverse(f) and use hodge_tensor(hodgeParamPol,weights)
+}
+{
 set hodge_tensor(hodge_function f, (KGBElt -> [ratvec]) weights,K_Type tau)=i_poly:
-let rv=poly_0 in for c@p in tensor_product(tau,weights) {K_Type_Pol} 
-do let mu=LKT(p) in  rv:=poly_plus(rv,split_as_int(c)*f(mu)) od;rv
+let rv=poly_0 in for c@p in tensor_product(tau,weights) {K_Type_Pol}
+do let mu=LKT(p) in prints("mu=",mu, "f(mu)=",f(mu));  rv:=poly_plus(rv,split_as_int(c)*f(mu)) od;rv
 
 set hodge_tensor(hodge_function f, (KGBElt -> [ratvec]) weights)=hodge_function:
 (K_Type mu):hodge_tensor(f,weights,mu)
@@ -51,9 +79,11 @@ let weights=sums_nci_nilrad_roots_wedge_k_restricted_to_H_theta(P, k) in
 minus_vee_to_the_k(k)*hodge_tensor(f,weights)
 
 set hodge_tensor_exterior_u_cap_s(hodge_function f,Parabolic P)=hodge_function:
-let rv=nullHodgeFunction(P.real_form) in 
- for k:#nilrad_roots(P) 
+let rv=nullHodgeFunction(P.real_form) in
+ for k:#nilrad_roots(P)
  do rv+:=hodge_tensor_wedge_k_u_cap_s(f,P,k) od;rv
+}
+
 
 
 {assume S is sorted by height}
@@ -63,7 +93,7 @@ let n=first(for mu in S do !=coefficient(KP,mu) od) in
  if n=-1 then rv else
   let c=coefficient(KP,S[n]) then
   p=parameter(S[n]) in
-  solve_one(KP-Phi_S(c*p,S),S,rv+c*p) fi 
+  solve_one(KP-Phi_S(c*p,S),S,rv+c*p) fi
 in solve_one(KP,S,nullHodgeParamPol(KP.real_form))
 
 set Omega_S_inverse(hodge_function f,[K_Type] S)=hodgeParamPol:Phi_S_inverse(Psi_S(f,S),S)

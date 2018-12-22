@@ -1,0 +1,14 @@
+<hodge_tensor.at
+set G=SL(2,R)
+set kt=K_parameters_norm_upto(G,10)
+set p=trivial(G)*0
+set f=hodge_function_std(p)
+set weights(K_Type mu)=(KGBElt ->[ratvec]):(KGBElt x):
+if #x=2 then [mu.highest_weight.mu] else [highest_weight(mu,x).mu] fi
+set g=weights(kt[2])
+{set g=weights(LKT(trivial(G)))}
+set ht=hodge_tensor_std(p,g@KGBElt)
+set psiht=Psi_S(ht@K_Type,kt)
+set P=Omega_S_inverse(ht@K_Type,kt)
+set KP=Phi_S(P,kt)
+

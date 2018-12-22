@@ -43,7 +43,12 @@ set Psi_S(hodge_function f,[K_Type] ktypes,RealForm G)=KHodgeParamPol:
 set hodgePrint(hodge_function f, [K_Type] ktypes)=void:
 if #ktypes=0 then () else
 hodgePrint(Psi_S(f,ktypes,ktypes[0].real_form)) fi
+
+set print(hodge_function f, [K_Type] ktypes)=void:hodgePrint(f,ktypes)
+
 set nullHodgeFunction(RealForm G)=hodge_function:(K_Type mu):[]
+
+
 
 set sort_by ( (vec,(KGBElt,ratvec)->int) f) =
   ([(vec,(KGBElt,ratvec))] v) [(vec,(KGBElt,ratvec))]:

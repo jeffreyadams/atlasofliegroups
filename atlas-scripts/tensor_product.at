@@ -21,6 +21,10 @@ set add_weight (Param p,ratvec H)=ParamPol:
   let shift=if =H then null(rank(p.root_datum)) else H fi in   
    standardize(parameter(p.x,p.lambda+shift,p.nu))*0
 
+set add_weights (Param p,(KGBElt->[ratvec]) weights)=ParamPol:
+   let rv=null_module(p.real_form) in
+    for H in weights(p.x) do rv+:=add_weight(p,H) od;rv
+
 {simply add H to each term of P, standardize the results}
 set add_weight (ParamPol P,ratvec H)=ParamPol:
    let result=null_module(P.real_form) in
