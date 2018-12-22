@@ -1,3 +1,5 @@
+<all.at
+
 set G=Sp(4,R)
 set pars=theta_stable_parabolics(G)
 set P=pars[7]

@@ -1,4 +1,5 @@
-<hodge_tensor.at
+<all.at
+
 set G=SL(2,R)
 set kt=K_parameters_norm_upto(G,10)
 set p=trivial(G)*0

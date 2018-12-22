@@ -1,3 +1,5 @@
+<induction.at
+
 {given a set S of N ratvecs all of length n
  returns all 2^N sums of vectors in subsets of S
  caution: if S is empty this returns [ratvec:[]]
