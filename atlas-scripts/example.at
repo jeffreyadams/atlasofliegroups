@@ -7,12 +7,17 @@ set L=Levi(P)
 set p=trivial(L)*0
 set f=hodge_function_std(p)
 set ktl=K_parameters_norm_upto(L,10,rho_check(G))
+set weights(int i)=sums_nci_nilrad_roots_wedge_k_restricted_to_H_theta(P,i)
+
 set g0=hodge_tensor_wedge_k_u_cap_s_std(p,P,0)
 set g1=hodge_tensor_wedge_k_u_cap_s_std(p,P,1)
 set g2=hodge_tensor_wedge_k_u_cap_s_std(p,P,2)
 set g3=hodge_tensor_wedge_k_u_cap_s_std(p,P,3)
-set weights=sums_nci_nilrad_roots_wedge_k_restricted_to_H_theta(P,1)
+set ext=hodge_tensor_exterior_u_cap_s_std(p,P)
 
 
-set weights(K_Type mu)=(KGBElt ->[ratvec]):(KGBElt x):
-if #x=2 then [mu.highest_weight.mu] else [highest_weight(mu,x).mu] fi
+
+
+
+
+

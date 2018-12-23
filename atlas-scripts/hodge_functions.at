@@ -48,8 +48,6 @@ set print(hodge_function f, [K_Type] ktypes)=void:hodgePrint(f,ktypes)
 
 set nullHodgeFunction(RealForm G)=hodge_function:(K_Type mu):[]
 
-
-
 set sort_by ( (vec,(KGBElt,ratvec)->int) f) =
   ([(vec,(KGBElt,ratvec))] v) [(vec,(KGBElt,ratvec))]:
     for index in inv_standardisation(for x in v do f(x) od) do v[index] od

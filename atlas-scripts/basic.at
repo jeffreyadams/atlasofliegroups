@@ -1654,7 +1654,8 @@ set monomials (ParamPol P) = [Param]: for c@p in P do p od
 set monomial  (ParamPol P,int i) = Param: monomials(P)[i]
 
 { height of a ParamPol is max of height of each term}
-set height (ParamPol P)=int:max(for p in monomials(P) do height(p) od)
+set height (ParamPol P)=int:
+if =P then 0 else max(for p in monomials(P) do height(p) od) fi
 
 {. Convert a list of ParamPols into the list of distinct parameters occuring;
    careful: don't let terms cancel! .}

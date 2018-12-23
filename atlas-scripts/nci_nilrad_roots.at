@@ -57,12 +57,12 @@ set nci_nilrad_roots_restricted_to_H_theta(Parabolic P)=
 set sums_nci_nilrad_roots_wedge_k_restricted_to_H_theta(Parabolic P,int k)=(KGBElt->[ratvec]): (KGBElt x_L):
 {let rv=sums_of_size_k(nci_nilrad_roots_restricted_to_H_theta(embed_KGB(x_L,P.real_form),P),k) in}
 let rv=sums_of_size_k(nci_nilrad_roots_restricted_to_H_theta(x_L,P),k) in
-{if empty need to return [0,...,0]}
-if #rv=0 then [null(P.root_datum.rank)] else rv fi
+{if empty need to return [0,...,0]
+no: if empty return [[ratvec]]:[], deal with this case elsewhere}
+{if #rv=0 then [] else rv fi} rv
 
 {first compute the previous function to give a set of n ratvecs,
  run over the 2^n subsets of this set, and return these 2^n sums}
 set sums_nci_nilrad_roots_restricted_to_H_theta(Parabolic P)=(KGBElt->[ratvec]): (KGBElt x_L):
 let rv=all_sums(nci_nilrad_roots_restricted_to_H_theta(x_L,P)) in
-{if empty need to return [0,...,0]}
-if #rv=0 then [null(P.root_datum.rank)] else rv fi
+{if #rv=0 then [null(P.root_datum.rank)] else rv fi} rv

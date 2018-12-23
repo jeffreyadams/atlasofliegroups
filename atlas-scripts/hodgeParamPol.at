@@ -92,8 +92,6 @@ for i:n do
  sum(G,for j:#f do let (v,p)=f[j] then w=v##null(n-#v) in w[i]*p od)
 od fi
 
-
-
 {this fails with an error if #f=0}
 set dearrange([(vec,Param)] f)=hodgeParamPol:dearrange(f,let (,p)=f[0] in p.real_form)
 
@@ -242,11 +240,11 @@ for (f,p) in rearrange(P) do prints("(",poly_format(f,"v"),")","*",LKT(p)) od
 
 {alternative output version}
 set print(hodgeParamPol P)=void:
-let header=["c","x","lambda","nu","codim_O","LKT","dim_K","height","mu"] then
+let header=["c","x","lambda","nu","codim_O","hwt","dim_K","height","mu"] then
 values=for (c,p) in rearrange(P) do
 let (,x)=%p.x then
 (,,wt)=highest_weights(p)[0] in
-[poly_format(c,"v"),x.to_string,p.lambda.to_string,p.nu.to_string,codim(x(p)).to_string,let (,v)=LKTs(p)[0] in v.to_string,LKTs(p)[0].dimension.to_string,
+[poly_format(c,"v"),x.to_string,p.lambda.to_string,p.nu.to_string,codim(x(p)).to_string,LKTs(p)[0].highest_weight.mu.to_string,LKTs(p)[0].dimension.to_string,
 height(p).to_string,p.mu.to_string] od in
 tabulate(header#values,"lllllllll",2," ")
 
