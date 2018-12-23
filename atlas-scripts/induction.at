@@ -831,4 +831,5 @@ set induce_from_gen_parabolic_irr ([int] Levi, Param p)=ParamPol:
    then cf=character_formula (p_N(p,N,Levi)) then
    P_up=select_class_terms_from_ParamPol (class,cf) then
    pairs=move_P_down_by_N(P_up,N,Levi) in let result=null_module(G) in
-   for (c,t) in pairs do result+:=c*standardize(t) od; result
+   for (c,t) in pairs do result+:=c*standardize(t) od;
+   composition_series(result)
