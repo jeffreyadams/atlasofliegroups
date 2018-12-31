@@ -14,9 +14,8 @@ namespace atlas {
     using basic_io::read_bytes;
 
     
-    const BlockElt UndefBlock= ~BlockElt(0);
-    const BlockElt noGoodAscent= UndefBlock-1;
-    
+    const BlockElt no_good_ascent = UndefBlock-1;
+     // value flagging that no good ascent exists
     const unsigned int magic_code=0x06ABdCF0; 
 
 
@@ -29,7 +28,7 @@ namespace atlas {
       if (x>=y) return x; // possibly with |x==UndefBlock|
       const ascent_vector& ax=ascents[x];
       for (size_t s=0; s<rank; ++s)
-        if (d[s] and ax[s]!=noGoodAscent)
+        if (d[s] and ax[s]!=no_good_ascent)
         { x=ax[s]; goto start; } // this should raise $x$, now try another step
       return x; // no raising possible, stop here
     }
@@ -39,10 +38,10 @@ namespace atlas {
     {
       const ascent_vector& ax=ascents[x];
       for (size_t s=0; s<ax.size(); ++s)
-        if (d[s] and ax[s]!=noGoodAscent)
+        if (d[s] and ax[s]!=no_good_ascent)
           return false;
       return true;
-      // now |d[s]| implies |ascents[s]==noGoodAscent| for all simple roots |s|
+      // now |d[s]| implies |ascents[s]==no_good_ascent| for all simple roots |s|
     }
     
     const prim_list& block_info::prims_for_descents_of(BlockElt y)
@@ -99,9 +98,6 @@ namespace atlas {
         -block.start_length.begin() // index of first element of length |l(y)+1|
         -1; // now we have just |l(y)|
     }
-    
-    RankFlags matrix_info::descent_set (BlockElt y) const
-      { return block.descent_set[y]; }
     
     void matrix_info::set_y(BlockElt y)
     {
@@ -251,7 +247,8 @@ namespace atlas {
     polynomial_info::~polynomial_info() { file.close(); }
     
     size_t polynomial_info::degree(KLIndex i) const
-    { if (i<2) return i-1; // quit exit for Zero and One
+    { if (i<2)
+        return i-1; // exit for Zero and One
       file.seekg(index_begin+5*i,std::ios_base::beg);
       ullong index=read_bytes<5>(file);
       ullong next_index=read_bytes<5>(file);
@@ -282,25 +279,21 @@ namespace atlas {
       return basic_io::read_var_bytes(coef_size,file);
     }
     
-    ullong polynomial_info::coeff_start(KLIndex i) const
-    { file.seekg(index_begin+5*i,std::ios_base::beg);
-      ullong index=read_bytes<5>(file);
-      return index/coef_size;
-    }
-    
     cached_pol_info::cached_pol_info(std::ifstream& coefficient_file)
       : polynomial_info(coefficient_file)
-      , cache(n_polynomials()-2)
+      , cache(0)
     {
-      for (KLIndex i=2; i<n_polynomials(); ++i)
+      cache.reserve(n_polynomials()-2);
+      for (KLIndex i=2; i<n_polynomials(); ++i) // skip first two polynomials: $0,1$
       {
     #ifdef VERBOSE
         if ((i&0xFFF)==0) std::cerr << i << '\r';
+          // report progress every once in a while
     #endif
-        size_t d=polynomial_info::degree(i);
+        auto d=polynomial_info::degree(i);
         if ((d&~degree_mask)!=0)
           throw std::runtime_error("Degree found too large (>=32)");
-        cache[i-2]=d;
+        cache.push_back(d); // store degrees in lower $5$ bits
       }
     #ifdef VERBOSE
         std::cerr << n_polynomials()-1 << '\n';
@@ -314,7 +307,8 @@ namespace atlas {
     
     size_t cached_pol_info::leading_coeff (KLIndex i) const
     {
-      if (i<2) return i;
+      if (i<2)
+        return i;
       if ((cache[i-2]&~degree_mask)!=0) return cache[i-2]/(degree_mask+1);
       size_t lc=polynomial_info::leading_coeff(i); // look up in file
       if (lc<=255/(degree_mask+1)) cache[i-2] |= lc*(degree_mask+1);

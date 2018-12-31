@@ -51,7 +51,7 @@
 #include "lietype.h"	// value returned from |LieType| method, |ext_gen|
 
 #include "dynkin.h"
-#include "weyl.h" // for class |Twist|
+#include "weyl.h" // for classes |Twist|, |WeylWord|
 #include "prerootdata.h"
 
 // extra defs for windows compilation -spc
