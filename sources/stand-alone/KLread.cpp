@@ -642,7 +642,8 @@ int main(int argc,char** argv)
           }
         }
         if ((mi.get()!=NULL and std::cin.peek()==':') or row_info.get()!=NULL)
-        { BlockElt x,y;
+        { static const BlockElt UndefBlock = ~0u;
+          BlockElt x=UndefBlock,y;
   	if (std::cin.peek()==':' or std::cin.peek()=='>')
           { bool once=std::cin.peek()==':';
   	  
@@ -656,10 +657,13 @@ int main(int argc,char** argv)
   	  if (once)
   	    x=locate_KL_polynomial(i,*mi,y);
   	  else
-  	    while(++y<mi->block_size())
+  	  { while(++y<mi->block_size())
   	    { try { x=locate_KL_polynomial(i,*mi,y); break;}
   	      catch(std::runtime_error) { std::cerr << y+1 << '\r'; }
   	    }
+              if (x==UndefBlock)
+                throw std::runtime_error("Not found");
+            }
   	}
           else
           { std::pair<BlockElt,BlockElt> p=

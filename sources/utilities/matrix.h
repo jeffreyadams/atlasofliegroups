@@ -116,6 +116,20 @@ public:
   Vector operator- () const &
     { Vector result(*this); return result.negate(); }
 
+  // when left operand is rvalue reference, use destructive operators
+  Vector operator+ (const Vector& v) && { return *this +=v; }
+  Vector operator- (const Vector& v) && { return *this -=v; }
+  Vector operator* (C c) &&  { return *this *=c; }
+  Vector operator- () &&     { return negate(); }
+
+  // when right operand is rvalue reference, use destructive operators too
+  Vector operator+ (Vector&& v) const & { return v+=*this; }
+  Vector operator- (Vector&& v) const & { return v.negate_add(*this); }
+
+  // when both operands are rvalue references, give priority to the left
+  Vector operator+ (Vector&& v) && { return *this +=v; }
+  Vector operator- (Vector&& v) && { return *this -=v; }
+
   template<typename C1>
     Vector<C1> scaled (C1 c) const; // like operator*, but forces type to C1
 
@@ -173,7 +187,8 @@ template<typename C> class Matrix_base
 
   Vector<C> row(unsigned int i) const { return Vector<C>(at(i,0),at(i+1,0)); }
   std::vector<Vector<C> > rows() const;
-  Vector<C> column(unsigned int j) const { Vector<C> c; get_column(c,j); return c; }
+  Vector<C> column(unsigned int j) const
+    { Vector<C> c; get_column(c,j); return c; }
   std::vector<Vector<C> > columns() const;
 
   Vector<C> partial_row(unsigned int i, unsigned int j, unsigned int l) const
@@ -261,8 +276,10 @@ template<typename C> class Matrix : public Matrix_base<C>
 
   // secondary manipulators
 
-  void rowOperation(unsigned int i, unsigned int k, const C& c); // |row(i) += c+row(k)|
-  void columnOperation(unsigned int j, unsigned int k, const C& c); // |col(j) += c*col(k)|
+  // |row(i) += c+row(k)|:
+  void rowOperation(unsigned int i, unsigned int k, const C& c);
+  // |col(j) += c*col(k)|:
+  void columnOperation(unsigned int j, unsigned int k, const C& c);
 
   void rowMultiply(unsigned int i, C f);
   void columnMultiply(unsigned int j,C f);

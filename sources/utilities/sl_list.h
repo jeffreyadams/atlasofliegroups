@@ -1929,12 +1929,12 @@ public:
 
   std::vector<T> to_vector() const &
   { std::vector<T>result; result.reserve(node_count); // avoid recounting length
-    for (auto it=wbegin(); not at_end(it); ++it) // non-counting fill
+    for (auto it=wcbegin(); not at_end(it); ++it) // non-counting fill
       result.emplace_back(*it);
     return result;
   }
 
-  std::vector<T> to_vector() const &&
+  std::vector<T> to_vector() &&
   { std::vector<T>result; result.reserve(node_count); // avoid recounting length
     for (auto it=wbegin(); not at_end(it); ++it) // non-counting fill
       result.emplace_back(std::move(*it));

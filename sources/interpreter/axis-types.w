@@ -980,10 +980,10 @@ minimal quotients, where any such symmetry has been ``folded away''.
 This however still does not give a practical algorithm for testing equivalence,
 so instead we use the following ``bottom-up'' technique. We gather all types
 descending from currently given type definitions (the vertices of our graph,
-which is a finite collection) and partition it according to immediate structural
-differences found (such as: a procedure type is never equivalent to a row type,
-tuple types with different numbers of components are never equivalent, etc.).
-Then we refine that partition by looking at possible differences among
+which is a finite collection) and partition them according to immediate
+structural differences found (such as: a procedure type is never equivalent to a
+row type, tuple types with different numbers of components are never equivalent,
+etc.). Then we refine that partition by looking at possible differences among
 descendent types (we effectively look around in or graph one level further),
 then again look if the refined relation has found distinctions between
 descendent types that previously were not distinguished, and repeat this until

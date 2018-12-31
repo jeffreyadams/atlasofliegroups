@@ -4673,7 +4673,6 @@ constexpr bool in_reversed(unsigned flags) @+{@; return (flags&0x1)!=0; }
 constexpr bool in_forward(unsigned flags) @+{@; return (flags&0x1)==0; }
 constexpr bool out_reversed(unsigned flags) @+{@; return (flags&0x2)!=0; }
 constexpr bool out_forward(unsigned flags) @+{@; return (flags&0x2)==0; }
-constexpr bool no_frame(unsigned flags) @+{@; return (flags&0x4)!=0; }
 constexpr bool has_frame(unsigned flags) @+{@; return (flags&0x4)==0; }
 constexpr bool yields_count(unsigned flags) @+{@; return (flags&0x8)!=0; }
 
@@ -5482,7 +5481,7 @@ is present, but halves the number of template instances used.
 @< Type def... @>=
 template <unsigned flags>
 struct counted_for_expression : public expression_base
-{ id_type id; // may be $-1$, if |no_frame(flags)|
+{ id_type id; // may be $-1$, if |not has_frame(flags)|
   expression_ptr count, bound, body;
   // we allow |bound| (but not |count|) to hold |nullptr|
 @)

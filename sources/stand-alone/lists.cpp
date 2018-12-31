@@ -418,7 +418,7 @@ void do_Hanoi()
   using dst = atlas::containers::stack<std::string>;
   using sub = atlas::containers::simple_list<std::string>;
 
-  dst a (sub { "Blue",
+  dst a (sub { "White",
 	"zero", "one", "two", "three", "four",
 	"five", "six", "seven", "eight", "nine",
 	"ten", "eleven", "twelve", "thirteen", "fourteen",
@@ -480,7 +480,7 @@ int main()
   end = L.reverse(begin,end);
   std::cout << L << std::endl;
   using stack_type = atlas::containers::stack<int,alloc_type>;
-  stack_type st(std::move(L.undress())); // do not reverse here
+  stack_type st(L.undress()); // do not reverse here
   stack_type st2 { 2,3,5,7,11 } ; // here 11 is top
   while (not st.empty())
     std::cout << st.top() << ',', st.pop();
