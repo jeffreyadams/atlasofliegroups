@@ -11,6 +11,8 @@
 - correct bug with mysterious typeahead after bailing out with ? (done?)
 - clean up the mess dealing with input (interface/input, io/interactive...)
 
+- understand why extended block for SL(4,R) trivial is wrong (all4+) in Fokko
+
 * Work on the axis language
 
 - Prevent abuse of type system possible by capturing (in functions) variables
