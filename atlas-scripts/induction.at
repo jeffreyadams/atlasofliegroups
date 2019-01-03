@@ -823,7 +823,19 @@ set move_P_down_by_N (ParamPol P, int N, [int] Levi)=[(Split,Param)]:
    let rd=root_datum(P) then rhou=rho_u(rd,Levi) in
    for c@t in P do (c,parameter(x(t),lambda(t)-2*N*rhou,nu(t)-2*N*rhou)) od
 
-set find_N ([int] Levi, Param p)=int: 2
+set find_N ([int] Levi, Param p)=int:
+   let x=x(p),lam=lambda(p), nu=nu(p) then theta=involution(x),
+   rd=root_datum(x), P=Parabolic:(Levi,x) then two_rhou=2*rho_u(P) then
+   gamma=((1+theta)*lam+(1-theta)*nu)/2 then
+   list=##for alpha in poscoroots(rd) do if alpha*two_rhou > 0 then
+   [-(alpha*gamma)/(alpha*two_rhou)] else [] fi od
+   in {prints(list);} if #list=0 then prints("The parabolic is not proper."); 1
+   else floor(max(list)+1) fi
+
+set is_standard ([int] Levi, Param p) =
+    is_standard (p_N (p,find_N (Levi,p),Levi))
+
+set is_final ([int] Levi, Param p) = is_final (p_N (p,find_N (Levi,p),Levi))
 
 set induce_from_gen_parabolic_irr ([int] Levi, Param p)=ParamPol:
    let G=real_form(p) then
