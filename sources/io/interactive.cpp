@@ -1030,9 +1030,9 @@ WeightInvolution get_commuting_involution
 	break;
       }
     if (type.at_end(it)) // no match among previous entries of |type|
-    { auto last=type.push_back(std::make_pair(cur,RankFlags()));
-      last->second.set(k); // and record this index as occupied by it
-      icf.push_back(&last->first); // for location
+    { type.push_back(std::make_pair(cur,RankFlags()));
+      it->second.set(k); // and record this index as occupied by it
+      icf.push_back(&it->first); // for location
     }
   } // |for(k)|
 

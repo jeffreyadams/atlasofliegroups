@@ -142,19 +142,7 @@ endif
 
 # the compiler to use, including language switch
 # some C++11 support needed (rvalue references, shared_ptr) but g++-4.4 suffices
-CXX = g++ -std=c++0x
-
-CXXVERSION := $(shell $(CXX) -dumpversion)
-CXXVERSIONOLD := $(shell expr `echo $(CXXVERSION) | cut -f1-2 -d.` \< 4.8)
-CXXVERSIONVERYOLD := $(shell expr `echo $(CXXVERSION) | cut -f1-2 -d.` \< 4.6)
-
-ifeq "$(CXXVERSIONOLD)" "1"
-  CXXFLAVOR += -Dincompletecpp11
-endif
-ifeq "$(CXXVERSIONVERYOLD)" "1"
-  CXXFLAVOR += -Dnoexcept= -Dconstexpr= -Dnullptr=0
-endif
-
+CXX = g++ -std=c++11
 
 # RULES follow below
 

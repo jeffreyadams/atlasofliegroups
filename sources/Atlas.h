@@ -15,14 +15,32 @@
  This module defines types in the (global) atlas namespace that can be
  therefore used in short form by all modules that include this file.
 
- It is just a forward-declaration file, and is intended to replace several
- such files. One still needs to include the related header files for these
- types to be complete.
+ It is mostly just a forward-declaration file, and is intended to replace
+ several such files. We also make system-wide |typedef|s here. One still needs
+ to include the related ordinary header files for these types to be complete.
 
  */
 
+// exclude forward files from utilities subdirectory whose contents are copied here
+#define ARITHMETIC_FWD_H
+#define BITMAP_FWD_H
+#define BITSET_FWD_H
+#define FREE_ABELIAN_FWD_H
+#define GRAPH_FWD_H
+#define HASHTABLE_FWD_H
+#define MATRIX_FWD_H
+#define PARTITION_FWD_H
+#define PERMUTATIONS_FWD_H
+#define POLYNOMIALS_FWD_H
+#define POSET_FWD_H
+#define RATVEC_FWD_H
+#define SIZE_FWD_H
+#define SL_LIST_FWD_H
+
+
 #include <vector>
 #include <functional> // for |std::less|
+#include <memory> // for |std::allocator|
 #include <stack> // for our specialisation below
 #include <queue> // for our specialisation below
 
@@ -70,45 +88,19 @@ namespace atlas {
     class sl_list;
 
   template<typename T, typename Alloc = std::allocator<T> >
-    struct sl_list_const_iterator;
+    class sl_list_const_iterator;
   template<typename T,typename Alloc = std::allocator<T> >
     class sl_list_iterator;
 
   template<typename T,typename Alloc = std::allocator<T> >
-    class mirrored_simple_list; // adapter, to allow use with |std::stack|
+    class mirrored_simple_list; // trivial adapter, to allow use with |std::stack|
 
   template<typename T,typename Alloc = std::allocator<T> >
-    class mirrored_sl_list; // adapter, to allow use with |std::stack|
+    class mirrored_sl_list; // trivial adapter, to allow use with |std::stack|
 
-  template<typename T,typename Alloc = std::allocator<T> >
-  struct stack : public std::stack<T, mirrored_simple_list<T,Alloc> >
-  {
-#ifndef incompletecpp11
-    using std::stack<T, mirrored_simple_list<T,Alloc> >::stack;
-#else
-    template <typename... Args>
-      stack(Args&&... args)
-      : std::stack<T, mirrored_simple_list<T,Alloc> >
-	(std::forward<Args>(args)...)
-    {}
-#endif
-  }; // |struct stack|
+  template<typename T,typename Alloc = std::allocator<T> > class stack;
 
-  template<typename T,typename Alloc = std::allocator<T> >
-  struct queue : public std::queue<T, sl_list<T,Alloc> >
-  {
-#ifndef incompletecpp11
-    using std::queue<T, sl_list<T,Alloc> >::queue;
-#else
-    template <typename... Args>
-      queue(Args&&... args)
-      : std::queue<T, sl_list<T,Alloc> > (std::forward<Args>(args)...)
-    {}
-#endif
-    queue() : std::queue<T, sl_list<T,Alloc> > ( sl_list<T,Alloc> {} ) {}
-    queue(std::initializer_list<T> l)
-      : std::queue<T, sl_list<T,Alloc> > ( sl_list<T,Alloc>(l) ) {}
-  }; // |struct queue|
+  template<typename T,typename Alloc = std::allocator<T> > class queue;
 
   } // |namespace containers|
 
@@ -196,7 +188,7 @@ namespace atlas {
 #define POLYNOMIALS_FWD_H
 #define SIZE_FWD_H
 
-  // interpetationless terminology
+  // interpretationless terminology
   typedef matrix::Vector<int> int_Vector;
   typedef matrix::PID_Matrix<int> int_Matrix;
   typedef std::vector<int_Vector> int_VectorList;
@@ -250,7 +242,7 @@ namespace atlas {
     struct InnerClassType;
     struct Layout;
     typedef char TypeLetter;
-    class ext_gen;
+    struct ext_gen;
   }
   using lietype::SimpleLieType;
   using lietype::LieType;
@@ -280,7 +272,7 @@ namespace atlas {
     class Twist; // diagram automorphism (in practice always an involution)
     typedef Twist WeylInterface; // no automorphism, but same implementation
     typedef unsigned char Generator; // index of simple root / simple reflection
-    struct WeylWord : public std::vector<Generator>  { }; // in weyl namespace
+    class WeylWord;
 
     class WeylElt;
     class WeylGroup;
@@ -329,7 +321,7 @@ namespace atlas {
   namespace involutions {
     class InvolutionData;
     class InvolutionTable;
-    class Cartan_orbit;
+    struct Cartan_orbit;
     class Cartan_orbits;
   }
   using involutions::InvolutionData;

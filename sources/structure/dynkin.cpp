@@ -236,7 +236,7 @@ RankFlags DynkinDiagram::component(unsigned int i) const
     result |= new_elts; // transfer
     for (RankFlags::iterator it = new_elts.begin(); it(); ++it)
       new_elts |= d_star[*it];
-    new_elts.andnot(result); // remove any bits that were already previouslt set
+    new_elts.andnot(result); // remove any bits that were already previously set
   }
 
   return result;
@@ -261,13 +261,13 @@ containers::sl_list<RankFlags> DynkinDiagram::components() const
 LieType Lie_type(const int_Matrix& cm)
 {
   DynkinDiagram diagram(cm);
-  const auto cl = diagram.components();
+  const auto component_list = diagram.components();
 
   LieType result;
-  result.reserve(cl.size());
-  for (auto it=cl.begin(); it!=cl.end(); ++it)
+  result.reserve(component_list.size());
+  for (auto& component : component_list)
   {
-    auto cd = diagram.subdiagram(*it);
+    auto cd = diagram.subdiagram(component);
     result.emplace_back(cd.component_kind(),cd.rank());
   }
 
@@ -286,25 +286,23 @@ LieType Lie_type(const int_Matrix& cm)
 */
 LieType DynkinDiagram::classify_semisimple(Permutation& a,bool Bourbaki) const
 {
-  const auto cl = components();
-  a = order_by_components(cl,rank());
+  const auto component_list = components();
+  a = order_by_components(component_list,rank());
 
   unsigned int offset = 0;
-  LieType result; result.reserve(cl.size());
-  for (auto it=cl.begin(); it!=cl.end(); ++it)
+  LieType result; result.reserve(component_list.size());
+  for (const auto& component : component_list)
   {
-    // make a Dynkin diagram for the connected component
-    auto cd = subdiagram(*it);
 
-    // normalize it
+    // normalize Dynkin diagram for the connected component
     Permutation b;
-    result.push_back(cd.classify_simple(b,Bourbaki));
+    result.push_back(subdiagram(component).classify_simple(b,Bourbaki));
 
     // piece together the permutation
     permutations::compose(a,b,offset);
 
     // update offset
-    offset += it->count();
+    offset += component.count();
   }
   return result;
 } // |classify_semisimple|

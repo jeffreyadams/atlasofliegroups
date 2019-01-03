@@ -1,9 +1,8 @@
-/*!
-\file
-  This is constants.h
-*/
 /*
+  This is constants.h
+
   Copyright (C) 2004,2005 Fokko du Cloux
+  Copyright (C) 2018 Marc van Leeuwen
   part of the Atlas of Lie Groups and Representations
 
   For license information see the LICENSE file
@@ -14,13 +13,6 @@
 
 #ifndef CONSTANTS_H  /* guard against multiple inclusions */
 #define CONSTANTS_H
-
-// extra defs for windows compilation -spc
-#ifdef WIN32
-#define and &&
-#define or ||
-#define not !
-#endif
 
 #include <cstddef>
 #include <limits>

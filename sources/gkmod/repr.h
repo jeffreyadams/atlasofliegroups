@@ -275,12 +275,14 @@ class Rep_table : public Rep_context
   SR_poly twisted_deformation(StandardRepr z); // by value
 
  private:
-  void add_block(param_block& block, BlockEltList& survivors);
+  void add_block(param_block& block,
+		 containers::sl_list<BlockElt>& extended_finals);
   // here |block| is non-|const| as the method generates KL polynomials in it
   // and |survivors| is non-|const| because the method computes and exports it
 
   void add_block(ext_block::ext_block& block, param_block& parent,
-		 BlockElt top_elt, BlockEltList& extended_finals);
+		 BlockElt top_elt,
+		 containers::sl_list<BlockElt>& extended_finals);
   // here |block| is non-|const|; the method generates twisted KLV polys in it
 
 }; // |Rep_table|

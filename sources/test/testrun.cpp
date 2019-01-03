@@ -76,8 +76,7 @@ namespace {
   rank r.
 */
 LieTypeIterator::LieTypeIterator(Category c, size_t r)
-  : d_done(false), d_category(c), d_type(first_type(c,r,d_done))
-  , d_firstRank(r), d_lastRank(r)
+  : d_done(false), d_category(c), d_type(first_type(c,r,d_done)), d_lastRank(r)
 {}
 
 LieTypeIterator& LieTypeIterator::operator++ ()

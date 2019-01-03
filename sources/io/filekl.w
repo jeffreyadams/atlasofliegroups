@@ -42,7 +42,10 @@ whereas the reading functions should not depend on linking together with those
 Atlas classes, lest the utility programs become as large as \.{Fokko}
 itself. This source file then will write a file \.{filekl.cpp} that compiles
 to an object module of \.{Fokko}, and  another file \.{filekl\_in.cpp} whose
-object module is to be incorporated into utility programs.
+object module is to be incorporated into utility programs. Each of modules also
+has a corresponding header file, so all in all we produce 4 files for
+compilation from the current source text. Our main output file
+is \.{filekl.cpp}, with others explicitly added below.
 
 @h "filekl.h"
 
@@ -53,7 +56,12 @@ namespace atlas {
   }@;
 }@;
 
-@
+@ In \.{filekl.h} we declare everything that we want to export
+from \.{filekl.cpp}, and define constant values that should be shared between
+that implementation file and its uses. The constant definitions will also be
+included in the header for the \.{filekl\_in} module, so that they are ensured
+to be the same there.
+
 @( filekl.h @>=
 
 #ifndef FILEKL_H
@@ -77,7 +85,10 @@ and \.{Atlas.h}.
 
 #include "../Atlas.h"
 
-@
+@ The \.{filekl\_in} implementation does a lot of file reading, and notably uses
+the |basic_io::read_bytes| function template to read a fixed number of
+consecutive bytes into an |unsigned long long int| value.
+
 @( filekl_in.cpp @>=
 
 #include "filekl_in.h"
@@ -122,23 +133,38 @@ namespace atlas {
 }@;
 #endif
 
-@ The same includes are needed in both header files
-@< Includes needed in the input header file @>=
-#include <iosfwd>
+@ In the file \.{filekl\_in.h} we need not only forward class declarations
+from \.{iosfwd}, but also typedef symbols like |streampos|, so we include the
+more elaborate standard header \.{ios}.
 
-#include "bitset.h"
+@< Includes needed in the input header file @>=
+#include <ios>
+@)
+#include "bitset.h" // to make |RankFlags| a complete type; used when inlining
 #include "../Atlas.h"
 
-@
+@ We need two testable out-of-range values |UndefBlock| and |no_good_ascent| to
+record special circumstances in places where |BlockElt| value is expected.
+
+To test whether the special matrix storage file was one that was created by us,
+we use a special $32$ bit value |magic_code| that should be present in a
+specific place. It's value was chosen in memory of Fokko du Cloux.
+
 @< Constants common for writing and reading @>=
 
-const BlockElt UndefBlock= ~BlockElt(0);
-const BlockElt noGoodAscent= UndefBlock-1;
-
+const BlockElt no_good_ascent = UndefBlock-1;
+ // value flagging that no good ascent exists
 const unsigned int magic_code=0x06ABdCF0; // indication of new matrix format
 
 @* Writing a block file.
-Here is how a block file is written
+Here is how a block file is written.
+
+First the block size in $4$ bytes, then its rank in $1$ byte, the maximal length
+for a block element in $1$ byte, then for each non negative value $l$ strictly
+less that this maximal length the number of elements of length${}\leq l$, each
+in $4$ bytes (this additional information will allow to deduce its length from
+any used |BlockElt| value), then for every block element its descent set in $4$
+bytes,
 
 @< Declarations of exported functions @>=
 void write_block_file(const Block& block, std::ostream& out);
@@ -159,17 +185,15 @@ void write_block_file(const Block& block, std::ostream& out)
     out.put(max_length);
 
     BlockElt z=0;
-    // |basic_io::put_int(z,out)|; obvious: no elements |z| with |length(z)<0|
     for (size_t l=0; l<max_length; ++l)
     {
       while(block.length(z)<=l)
 	++z;
-      basic_io::put_int(z,out); // record: z elements of length<=l
+      basic_io::put_int(z,out);
+      // record that there are |z| elements of |length<=l|
     }
     assert(z<block.size());
-
-    // |basic_io::put_int(block.size(),out);|
-    // also obvious: there are block.size() elements of |length<=max_length|
+    // and don't write |basic_io::put_int(block.size(),out);|
   }
 
   // write descent sets
@@ -178,7 +202,7 @@ void write_block_file(const Block& block, std::ostream& out)
     RankFlags d;
     for (size_t s = 0; s < rank; ++s)
       d.set(s,block.isWeakDescent(s,y));
-    basic_io::put_int(d.to_ulong(),out); // write d as 32-bits value
+    basic_io::put_int(d.to_ulong(),out); // write |d| as 32-bits value
   }
 
   // write table of primitivatisation successors
@@ -192,7 +216,7 @@ void write_block_file(const Block& block, std::ostream& out)
       DescentStatus::Value v = block.descentValue(s,x);
       if (DescentStatus::isDescent(v)
 	  or v==DescentStatus::ImaginaryTypeII)
-	basic_io::put_int(noGoodAscent,out);
+	basic_io::put_int(no_good_ascent,out);
       else if (v == DescentStatus::RealNonparity)
 	basic_io::put_int(UndefBlock,out);
       else if (v == DescentStatus::ComplexAscent)
@@ -254,7 +278,7 @@ start:
   if (x>=y) return x; // possibly with |x==UndefBlock|
   const ascent_vector& ax=ascents[x];
   for (size_t s=0; s<rank; ++s)
-    if (d[s] and ax[s]!=noGoodAscent)
+    if (d[s] and ax[s]!=no_good_ascent)
     @/{@; x=ax[s]; goto start; } // this should raise $x$, now try another step
   return x; // no raising possible, stop here
 }
@@ -267,10 +291,10 @@ block_info::is_primitive(BlockElt x, const RankFlags d) const
 {
   const ascent_vector& ax=ascents[x];
   for (size_t s=0; s<ax.size(); ++s)
-    if (d[s] and ax[s]!=noGoodAscent)
+    if (d[s] and ax[s]!=no_good_ascent)
       return false;
   return true;
-  // now |d[s]| implies |ascents[s]==noGoodAscent| for all simple roots |s|
+  // now |d[s]| implies |ascents[s]==no_good_ascent| for all simple roots |s|
 }
 
 @
@@ -330,11 +354,11 @@ block_info::block_info(std::ifstream& in)
 }
 
 
-// The code below does not belong here: utilities should not depend on gkmod!
 @* Writing a matrix file.
 Here is how a matrix file is written.
 
 @h "kl.h"
+@h <iostream> // to have |std::streamoff| defined
 
 @< Functions for writing binary files @>=
 
@@ -440,7 +464,8 @@ public:
   size_t length (BlockElt y) const; // length in block
   BlockElt first_of_length (size_t l) const
     @+{@; return block.start_length[l]; }
-  RankFlags descent_set (BlockElt y) const;
+  RankFlags descent_set (BlockElt y) const
+    @+{@; return block.descent_set[y]; }
   std::streamoff row_offset(BlockElt y) const @+{@; return row_pos[y]; }
   BlockElt primitivize (BlockElt x,BlockElt y) const
     @+{@; return block.primitivize(x,y); }
@@ -464,12 +489,6 @@ size_t matrix_info::length (BlockElt y) const
     -block.start_length.begin() // index of first element of length |l(y)+1|
     -1; // now we have just |l(y)|
 }
-
-@ Not inlining this method avoids having to include the \.{bitset.h} header
-in \.{filekl\_in.h}.
-@< Methods for reading binary files @>=
-RankFlags matrix_info::descent_set (BlockElt y) const
-  @+{@; return block.descent_set[y]; }
 
 @
 @< Methods for reading binary files @>=
@@ -673,6 +692,14 @@ void write_KL_store(const kl::KLStore& store, std::ostream& out)
 }
 
 @* The {\bf polynomial\_info} class.
+%
+The class |polynomial_info| gives access to polynomials stored in a file, using
+random file access to treat the storage as an indexable repository of
+polynomials. The method |coefficients| produces the polynomial at a given index,
+and the virtual methods |degree| and |leading_coefficient| give less complete
+information, but which is expected to be most frequently accessed. A derived
+class might want to devote some memory to speeding up those accesses.
+
 @< Input class declarations @>=
 class polynomial_info
 {
@@ -686,15 +713,14 @@ class polynomial_info
 public:
   polynomial_info(std::ifstream& coefficient_file);
   virtual ~polynomial_info();
-
-  KLIndex n_polynomials() const { return n_pols; }
-  unsigned int coefficient_size() const { return coef_size; }
-  ullong n_coefficients() const { return n_coef; }
-
+@)
+  KLIndex n_polynomials() const @+{@; return n_pols; }
+  unsigned int coefficient_size() const @+{@; return coef_size; }
+  ullong n_coefficients() const @+{@; return n_coef; }
+@)
   virtual size_t degree(KLIndex i) const;
   std::vector<size_t> coefficients(KLIndex i) const;
   virtual size_t leading_coeff(KLIndex i) const;
-  ullong coeff_start(KLIndex i) const; // number of all preceding coefficients
 };
 
 @*1 Methods of the {\bf polynomial\_info} class.
@@ -711,13 +737,14 @@ polynomial_info::polynomial_info (std::ifstream& coefficient_file)
   coefficients_begin=file.tellg();
 }
 
-polynomial_info::~polynomial_info() { file.close(); }
+polynomial_info::~polynomial_info() @+{@; file.close(); }
 
 @
 @< Methods for reading binary files @>=
 
 size_t polynomial_info::degree(KLIndex i) const
-{ if (i<2) return i-1; // quit exit for Zero and One
+{ if (i<2)
+    return i-1; // exit for Zero and One
   file.seekg(index_begin+5*i,std::ios_base::beg);
   ullong index=read_bytes<5>(file);
   ullong next_index=read_bytes<5>(file);
@@ -755,24 +782,17 @@ size_t polynomial_info::leading_coeff(KLIndex i) const
   return basic_io::read_var_bytes(coef_size,file);
 }
 
-@
-@< Methods for reading binary files @>=
-
-ullong polynomial_info::coeff_start(KLIndex i) const
-{ file.seekg(index_begin+5*i,std::ios_base::beg);
-  ullong index=read_bytes<5>(file);
-  return index/coef_size;
-}
-
 @* The {\bf cached\_pol\_info} class.
 This is a derived class that caches the degrees, and some leading coefficients.
+Since the |const| virtual method |leading_coeff| will use and possibly update the
+|cache| member, that member needs to be declared |mutable|.
 
 @< Input class declarations @>=
 
 class cached_pol_info
   : public polynomial_info
 {
-  static const size_t degree_mask = 0x1F; // degree must <32
+  static const size_t degree_mask = 0x1F; // degree must be${}<32$
   mutable std::vector<unsigned char> cache;
 
 public:
@@ -787,37 +807,47 @@ public:
 
 cached_pol_info::cached_pol_info(std::ifstream& coefficient_file)
   : polynomial_info(coefficient_file)
-  , cache(n_polynomials()-2)
+  , cache(0)
 {
-  for (KLIndex i=2; i<n_polynomials(); ++i)
+  cache.reserve(n_polynomials()-2);
+  for (KLIndex i=2; i<n_polynomials(); ++i) // skip first two polynomials: $0,1$
   {
 #ifdef VERBOSE
     if ((i&0xFFF)==0) std::cerr << i << '\r';
+      // report progress every once in a while
 #endif
-    size_t d=polynomial_info::degree(i);
+    auto d=polynomial_info::degree(i);
     if ((d&~degree_mask)!=0)
       throw std::runtime_error("Degree found too large (>=32)");
-    cache[i-2]=d;
+    cache.push_back(d); // store degrees in lower $5$ bits
   }
 #ifdef VERBOSE
     std::cerr << n_polynomials()-1 << '\n';
 #endif
 }
 
-@
+@ Since recorded nothing for the first two polynomials, the index into |cache|
+is shifted by~$2$.
 @< Methods for reading binary files @>=
 
 size_t cached_pol_info::degree (KLIndex i) const
-{
+@/{@;
   return i<2 ? i-1 : cache[i-2]&degree_mask ;
 }
 
-@
+@ Leading coefficients are stored into the $3$ higher order bits of the
+|unsigned char| in |cache|, provided they fit. When the bits are$~0$ this either
+means the coefficient has not been stored yet, or that they have but did not
+fit. in either case |cahced_pol_info::leading_coeff| needs to call the base
+method |polynomial_info::leading_coeff| to obtain the leading coefficient by
+reading the file.
+
 @< Methods for reading binary files @>=
 
 size_t cached_pol_info::leading_coeff (KLIndex i) const
 {
-  if (i<2) return i;
+  if (i<2)
+    return i;
   if ((cache[i-2]&~degree_mask)!=0) return cache[i-2]/(degree_mask+1);
   size_t lc=polynomial_info::leading_coeff(i); // look up in file
   if (lc<=255/(degree_mask+1)) cache[i-2] |= lc*(degree_mask+1);

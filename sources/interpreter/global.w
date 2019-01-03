@@ -122,22 +122,8 @@ class id_data
 public:
   id_data(shared_share&& val,type_expr&& t,bool is_const)
   : val(std::move(val)), tp(std::move(t)), is_constant(is_const) @+{}
-#ifdef incompletecpp11
-  id_data () : val(), tp(), is_constant(false) @+{}
-    // we \emph{must} have a default constructor
-  id_data (const id_data& x) : val(), tp(), is_constant(false) @+{}
-   // and allow copying such value
-  id_data& operator= (const id_data& x) = @[delete@];
-  id_data (id_data&& x)
-  : val(std::move(x.val)), tp(std::move(x.tp)), is_constant(x.is_constant)@+{}
-  id_data& operator=(id_data&& x)
-  @/{@; val = std::move(x.val); tp = std::move(x.tp); is_constant = x.is_constant;
-    return *this;
-  }
-#else
   id_data @[(id_data&& x) = default@];
   id_data& operator=(id_data&& x) = @[default@]; // no copy-and-swap needed
-#endif
   void swap(id_data& x) @+ {@; val.swap(x.val); tp.swap(x.tp); }
 @)
   const shared_share& value() const @+{@; return val; }
@@ -209,18 +195,8 @@ void Id_table::add(id_type id, shared_value val, type_expr&& type, bool is_const
 { auto its = table.equal_range(id);
 
   if (its.first==its.second) // no global identifier was previously known
-  {
-#ifdef incompletecpp11
-    auto it = table.insert(its.first,std::make_pair(id,id_data()));
-      // create a slot
-    it->second = id_data @|
-          (std::make_shared<shared_value>(std::move(val))
-          , std::move(type), is_const );
-#else
     table.emplace_hint(its.first,id, id_data @|
     (std::make_shared<shared_value>(std::move(val)),std::move(type),is_const));
-#endif
-  }
   else // a global identifier was previously known
     its.first->second = id_data(
       std::make_shared<shared_value>(std::move(val)), std::move(type),is_const);
@@ -239,17 +215,8 @@ void Id_table::add_type_def(id_type id, type_expr&& type)
 { auto its = table.equal_range(id);
 
   if (its.first==its.second) // no global identifier was previously known
-  {
-#ifdef incompletecpp11
-    auto it = table.insert(its.first,std::make_pair(id,id_data()));
-      // create a slot
-    it->second = id_data (shared_share(),std::move(type),true);
-      // and fill it with |type| only
-#else
     table.emplace_hint @|
       (its.first,id,id_data(shared_share(),std::move(type),true));
-#endif
-  }
   else // a global identifier was previously known, replace it
     its.first->second = id_data(shared_share(),std::move(type),true);
 }
@@ -390,18 +357,9 @@ class overload_data
 public:
   overload_data(shared_function&& val,func_type&& t)
   : val(std::move(val)), tp(std::move(t)) @+{}
-#ifdef incompletecpp11
-  overload_data (const overload_data& x) = @[delete@];
-  overload_data& operator=(const overload_data& x) = @[delete@];
-  overload_data(overload_data&& x)
-  : val(std::move(x.val)), tp(std::move(x.tp)) @+{}
-  overload_data& operator=(overload_data&& x)
-  @/{@; val = std::move(x.val); tp = std::move(x.tp); return *this; }
-#else
   overload_data @[(overload_data&& x) = default@];
   overload_data& operator=(overload_data&& x)
    = @[default@]; // no copy-and-swap needed
-#endif
 @)
   const shared_function& @;value() const @+{@; return val; }
   const func_type& type() const @+{@; return tp; }
@@ -435,20 +393,7 @@ non-empty vector.
 class overload_table
 {
 public:
-#ifdef incompletecpp11
-  class variant_list : public std::vector<overload_data>
-  { typedef std::vector<overload_data> Base;
-  public:
-    variant_list() : @[Base()@] @+ {}
-    variant_list (const variant_list& x)
-      // \emph{required} copy constructor, for empty vectors only
-    : @[Base()@] @+{@; assert(x.size()==0); }
-    variant_list (variant_list&& x) : Base(std::move(x)) @+{}
-    variant_list& operator=(const variant_list& x)=@[delete@];
-  };
-#else
   typedef std::vector<overload_data> variant_list;
-#endif
   typedef std::map<id_type,variant_list> map_type;
 private:
   map_type table;
@@ -584,15 +529,8 @@ void overload_table::add
   auto its = table.equal_range(id);
   if (its.first==its.second) // a fresh overloaded identifier
   {
-#ifdef incompletecpp11
-    auto pos=table.insert
-      (its.first,std::make_pair(id, variant_list()));
-    pos->second.push_back(
-      overload_data( std::move(val), std::move(ftype)) );
-#else
     auto pos=table.emplace_hint(its.first,id,variant_list());
     pos->second.emplace_back(std::move(val), std::move(ftype) );
-#endif
   }
   else
     @< Insert an overload for function |val| with function type |ftype| into
@@ -616,14 +554,7 @@ any entry, allows us to avoid testing any types again here.
      // equality found
     slot[pos] = overload_data(std::move(val),std::move(ftype)); // overwrite
   else
-  {
-#ifdef incompletecpp11
-    slot.insert
-      (slot.begin()+pos,overload_data(std::move(val),std::move(ftype)));
-#else
     slot.emplace(slot.begin()+pos,std::move(val),std::move(ftype));
-#endif
-  }
 }
 
 @ The |remove| method allows removing an entry from the overload table, for
@@ -1671,7 +1602,8 @@ through |definition_group::add|.
 
 @< Append to |store| bindings for the identifiers in |fields|... @>=
 { assert(type.kind()==tuple_type or type.kind()==union_type);
-  auto& record = *store.emplace_back(definition_group(length(fields)));
+  auto record = store.end(); // iterator that will point to next pushed item
+  store.emplace_back(definition_group(length(fields)));
 @/
   auto tp_it =wtl_const_iterator(type.tuple());
   if (type.kind()==tuple_type)
@@ -1679,7 +1611,7 @@ through |definition_group::add|.
     for (auto id_it=fields.wcbegin(); not fields.at_end(id_it);
          ++id_it,++tp_it)
       if (id_it->kind==0x1) // field selector present
-        record.add(id_it->name,type_expr(type.copy(),tp_it->copy()));
+        record->add(id_it->name,type_expr(type.copy(),tp_it->copy()));
           // projector type
   }
   else
@@ -1687,7 +1619,7 @@ through |definition_group::add|.
     for (auto id_it=fields.wcbegin(); not fields.at_end(id_it);
          ++id_it,++tp_it)
       if (id_it->kind==0x1) // field selector present
-        record.add(id_it->name,type_expr(tp_it->copy(),type.copy()));
+        record->add(id_it->name,type_expr(tp_it->copy(),type.copy()));
           // injector type
   }
 }
@@ -1934,17 +1866,10 @@ struct rat_value : public value_base
   static const char* name() @+{@; return "rational"; }
   rat_value @[(const rat_value& ) = default@]; // we use |get_own<rat_value>|
 @)
-#ifdef incompletecpp11
-  big_int numerator() const @+{@; return val.numerator(); }
-  big_int denominator() const @+{@; return val.denominator(); }
-  big_int& numerator() @+{@; return val.numerator(); }
-  big_int& denominator() @+{@; return val.denominator(); }
-#else
   big_int numerator() const &@[@] @+{@; return val.numerator(); }
   big_int denominator() const &@[@] @+{@; return val.denominator(); }
   big_int&& numerator() &@[@] @+{@; return std::move(val).numerator(); }
   big_int&& denominator() &@[@] @+{@; return std::move(val).denominator(); }
-#endif
   Rational rat_val() const @+{@; return val.rat_val(); }
 };
 @)

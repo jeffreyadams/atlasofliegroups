@@ -1,8 +1,6 @@
-/*!
-\file
-  This is hashtable_fwd.h
-*/
 /*
+  This is hashtable_fwd.h
+
   Copyright (C) 2006,2011 Marc van Leeuwen
   part of the Atlas of Lie Groups and Representations
 

@@ -133,9 +133,6 @@ data is associated.
 
 struct user_interrupt : public error_base {
   user_interrupt() : error_base("User interrupt") @+{}
-#ifdef incompletecpp11
-  ~user_interrupt() throw() @+{}
-#endif
 };
 
 @ At several points in the interpreter we shall check wither a user interrupt
@@ -665,16 +662,7 @@ component expressions. After type-checking, they are given by a
 struct tuple_expression : public expression_base
 { std::vector<expression_ptr> component;
 @)
-#ifdef incompletecpp11
-  explicit tuple_expression(size_t n) : component()
-    // avoid copying result of single |expression_ptr()|
-  { component.reserve(n);
-    while (n-->0)
-      component.push_back(expression_ptr());
-  }
-#else
   explicit tuple_expression(size_t n) : component(n) @+{}
-#endif
    // always start out with null pointers
   virtual void evaluate(level l) const;
   virtual void print(std::ostream& out) const;
@@ -1101,11 +1089,7 @@ an intermediate structure from |expression_base| that will serve as base for
 both kinds of applied identifier expressions.
 
 @< Type definitions @>=
-#ifdef incompletecpp11
-#define nothing_new_here {} // patch for gcc 4.6
-#else
 #define nothing_new_here @[@[@]=@[default@]
-#endif
 
 struct identifier : public expression_base
 { id_type code;
@@ -1599,8 +1583,9 @@ in case of errors during execution of the function.
 // \.{global.h} predeclares |function_base|, and defines:
 // |typedef std::shared_ptr<const function_base> shared_function;|
 @)
-struct function_base : public value_base
+class function_base : public value_base
 {
+public:
   function_base() : @[value_base@]() @+{}
   virtual ~@[function_base() nothing_new_here@];
   static const char* name() @+{@; return "function value"; }
@@ -3110,6 +3095,7 @@ struct subscr_base : public expression_base
   @+{}
   virtual ~@[subscr_base() nothing_new_here@] ;
 @)
+  virtual void print(std::ostream&out) const@+{} // never used; avoid warning
   void print (std::ostream& out, bool reversed) const; // non |virtual|
   static sub_type index_kind
   (const type_expr& aggr,
@@ -3129,6 +3115,7 @@ struct slice_base : public expression_base
   @+{}
   virtual ~@[slice_base() nothing_new_here@] ;
 @)
+  virtual void print(std::ostream&out) const@+{} // never used; avoid warning
   void print(std::ostream& out, unsigned flags) const; // non |virtual|
 };
 
@@ -4686,7 +4673,6 @@ constexpr bool in_reversed(unsigned flags) @+{@; return (flags&0x1)!=0; }
 constexpr bool in_forward(unsigned flags) @+{@; return (flags&0x1)==0; }
 constexpr bool out_reversed(unsigned flags) @+{@; return (flags&0x2)!=0; }
 constexpr bool out_forward(unsigned flags) @+{@; return (flags&0x2)==0; }
-constexpr bool no_frame(unsigned flags) @+{@; return (flags&0x4)!=0; }
 constexpr bool has_frame(unsigned flags) @+{@; return (flags&0x4)==0; }
 constexpr bool yields_count(unsigned flags) @+{@; return (flags&0x8)!=0; }
 
@@ -5495,7 +5481,7 @@ is present, but halves the number of template instances used.
 @< Type def... @>=
 template <unsigned flags>
 struct counted_for_expression : public expression_base
-{ id_type id; // may be $-1$, if |no_frame(flags)|
+{ id_type id; // may be $-1$, if |not has_frame(flags)|
   expression_ptr count, bound, body;
   // we allow |bound| (but not |count|) to hold |nullptr|
 @)

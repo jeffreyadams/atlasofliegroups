@@ -26,10 +26,10 @@ else
       OFLAG := -O
 endif
 
-CXXFLAGS := -std=c++0x -Wall $(OFLAG) $(INCLUDE_FLAGS)
+CXXFLAGS := -Wall $(OFLAG) $(INCLUDE_FLAGS)
 
 # our beloved C++ compiler
-CXX = g++
+CXX = g++ -std=c++11
 
 cwebx_sources := matrix-merge.w coef-merge.w KLread.w Euler-201.w
 webtexfiles   := $(cwebx_sources:%.w=%.tex)
@@ -116,7 +116,7 @@ lights-off: lights-off.cpp $(lights-off_objects)
 
 Euler-201: Euler-201.cpp $(Euler_objects)
 
-lists: lists.cpp ../utilities/sl_list.h $(lists_objects)
+lists: lists.cpp $(lists_objects)
 
 # a static pattern rule giving the usual C++ single-module compilation
 $(executables): %: %.cpp
