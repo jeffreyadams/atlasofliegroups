@@ -39,19 +39,8 @@ CXXFLAGS := -c $(INCLUDE_FLAGS) -Wno-parentheses
 # these flags set the compilation flavor (default: debugging, no optimization)
 CXXFLAVOR ?= -Wall -ggdb
 
-# our C++ compiler (call language version c++0x, for backward compatibility)
-CXX := g++ -std=c++0x
-
-CXXVERSION := $(shell $(CXX) -dumpversion)
-CXXVERSIONOLD := $(shell expr `echo $(CXXVERSION) | cut -f1-2 -d.` \< 4.8)
-CXXVERSIONVERYOLD := $(shell expr `echo $(CXXVERSION) | cut -f1-2 -d.` \< 4.6)
-
-ifeq "$(CXXVERSIONOLD)" "1"
-  CXXFLAVOR += -Dincompletecpp11
-endif
-ifeq "$(CXXVERSIONVERYOLD)" "1"
-  CXXFLAVOR += -Dnoexcept= -Dconstexpr= -Dnullptr=0
-endif
+# our C++ compiler
+CXX := g++ -std=c++11
 
 # only the Atlas object files listed below are used
 Atlas_objects := $(sources_dir)/structure/prerootdata.o \
@@ -178,7 +167,7 @@ $(c++objects) $(Atlas_objects): %.o: %.cpp
 
 # for running ctanglex we cannot use a static pattern rule, since there are
 # multiple targets: the C++ source and the corresponding header file(s) are
-# made from CWEBx files (.w) by a single run of ctangles (with the ++ switch)
+# made from CWEBx files (.w) by a single run of ctanglex (with the ++ switch)
 
 # For a long time we added manipulations here to preserve the date of existing
 # and unchanged targets, to prevent remaking nearly everything whenever any .w

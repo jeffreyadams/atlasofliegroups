@@ -822,9 +822,9 @@ SR_poly Rep_context::scale(const poly& P, const Rational& f) const
   poly result(repr_less());
   for (auto it=P.begin(); it!=P.end(); ++it)
   { auto z=it->first; // take a copy for modification
-    auto zs = finals_for(scale(z,f));
-    for (auto jt=zs.begin(); not zs.at_end(jt); ++jt)
-      result.add_term(*jt,it->second);
+    auto finals = finals_for(scale(z,f));
+    for (const StandardRepr& final : finals)
+      result.add_term(final,it->second);
   }
   return result;
 }
@@ -834,9 +834,9 @@ SR_poly Rep_context::scale_0(const poly& P) const
   poly result(repr_less());
   for (auto it=P.begin(); it!=P.end(); ++it)
   { auto z=it->first; // take a copy for modification
-    auto zs = finals_for(scale_0(z));
-    for (auto jt=zs.begin(); not zs.at_end(jt); ++jt)
-      result.add_term(*jt,it->second);
+    auto finals = finals_for(scale_0(z));
+    for (const StandardRepr& final : finals)
+      result.add_term(final,it->second);
   }
   return result;
 }
@@ -881,7 +881,7 @@ containers::sl_list<StandardRepr>
 	  const KGBEltPair p = kgb().inverseCayley(s,x);
 	  Weight lr = lambda_rho(*rit);
 	  assert(rd.simpleCoroot(s).dot(lr)%2!=0); // parity says this
-	  *rit = sr_gamma(p.first,lr,gamma); // |*rit| by first inverse Cayley
+	  *rit = sr_gamma(p.first,lr,gamma); // replace by first inverse Cayley
 	  if (p.second!=UndefKGB) // insert second inverse Cayley after first
 	    result.insert(std::next(rit),sr_gamma(p.second,lr,gamma));
 	  break;
@@ -904,9 +904,9 @@ SR_poly Rep_context::expand_final (StandardRepr z) const
   return result;
 } // |Rep_context::expand_final|
 
-void Rep_table::add_block(param_block& block, BlockEltList& survivors)
+void Rep_table::add_block
+  (param_block& block, containers::sl_list<BlockElt>& survivors)
 {
-  survivors.reserve(block.size());
   for (BlockElt x=0; x<block.size(); ++x)
     if (block.survives(x))
       survivors.push_back(x);
@@ -915,10 +915,9 @@ void Rep_table::add_block(param_block& block, BlockEltList& survivors)
   BlockEltList new_survivors;
 
   // fill the |hash| table for new surviving parameters in this block
-  for (BlockEltList::const_iterator
-	 it=survivors.begin(); it!=survivors.end(); ++it)
-    if (hash.match(block.sr(*it))>=old_size)
-      new_survivors.push_back(*it);
+  for (auto x : survivors)
+    if (hash.match(block.sr(x))>=old_size)
+      new_survivors.push_back(x);
 
   assert(hash.size()==old_size+new_survivors.size()); // only new surv. added
   if (new_survivors.empty())
@@ -937,13 +936,13 @@ void Rep_table::add_block(param_block& block, BlockEltList& survivors)
    parameters from |block.finals_for(x)| with coefficient $P(x,z)[q:=s]$
    to the |SR_poly| at |KLV_list[old_size+i], where |z=new_survivors[i]| */
 
-  BlockEltList::const_iterator z_start=new_survivors.begin();
-  for (BlockEltList::const_iterator it = z_start; it!=new_survivors.end(); ++it)
+  auto z_start=new_survivors.cbegin();
+  for (auto it = z_start; it!=new_survivors.cend(); ++it)
     lengths[old_size+(it-z_start)]=block.length(*it);
 
   for (BlockElt x=0; x<=new_survivors.back(); ++x)
   {
-    BlockEltList xs=block.finals_for(x);
+    auto xs=block.finals_for(x);
     if (xs.empty())
       continue; // no point doing work for |x|'s that don't contribute anywhere
 
@@ -953,7 +952,7 @@ void Rep_table::add_block(param_block& block, BlockEltList& survivors)
       ++z_start; // advance so |z| only runs over values with |x<=z|
     assert(z_start!=new_survivors.end() and *z_start>=x);
 
-    for (BlockEltList::const_iterator it=z_start; it!=new_survivors.end(); ++it)
+    for (auto it=z_start; it!=new_survivors.end(); ++it)
     {
       const BlockElt z = *it; // element of |new_survivors| and |x<=z|
       const kl::KLPol& pol = klc.klPol(x,z); // regular KL polynomial
@@ -962,13 +961,13 @@ void Rep_table::add_block(param_block& block, BlockEltList& survivors)
 	eval.times_s()+=static_cast<int>(pol[d]);
       if (not eval.is_zero())
       {
-	unsigned long z_index = old_size+(it-new_survivors.begin());
+	auto z_index = old_size+(it-new_survivors.begin());
 	assert(hash.find(block.sr(z))==z_index);
 	SR_poly& dest = KLV_list[z_index]; // a poly to which |x| contributes
 	if (lengths[z_index]%2!=parity)
 	  eval.negate(); // incorporate sign for length difference
-	for (unsigned int i=0; i<xs.size(); ++i) // from |finals_for(x)|
-	  dest.add_term(block.sr(xs[i]),eval); // contribute each with |eval|
+	for (BlockElt x : xs) // add from |klPol(x,z)| for all |finals_for(x)|
+	  dest.add_term(block.sr(x),eval); // contribute term |eval| for each
       }
     } // |for(it)|
   } // |for(x)|
@@ -983,7 +982,7 @@ SR_poly Rep_table::KL_column_at_s(StandardRepr z) // |z| must be final
   if (hash_index==hash.empty) // previously unknown parameter
   { // then we need to compute to find the requested polynomial
     param_block block(*this,z);
-    BlockEltList survivors;
+    containers::sl_list<BlockElt> survivors;
     add_block(block,survivors);
 
     hash_index=hash.find(z);
@@ -999,7 +998,7 @@ SR_poly Rep_table::deformation_terms (param_block& block,BlockElt y)
   if (not block.survives(y) or block.length(y)==0)
     return result; // easy cases, null result
 
-  BlockEltList survivors;
+  containers::sl_list<BlockElt> survivors;
   add_block(block,survivors); // computes survivors, and add anything new
 
   // map indices of |survivors| to corresponding number in |hash|
@@ -1007,32 +1006,45 @@ SR_poly Rep_table::deformation_terms (param_block& block,BlockElt y)
   auto y_parity=block.length(y)%2;
   assert(hash.find(sr_y)!=hash.empty); // |sr_y| should be known now
 
-  std::vector<unsigned long> remap; remap.reserve(survivors.size());
+  { // cut off |survivors| after value |y|, and reverse what is left
+    auto it=survivors.cbegin();
+    while (*it<y) // skip over everything begore the value |y|
+      ++it;
+    ++it; // and skip that value itself
+    survivors.erase(it,survivors.cend());
+    survivors.reverse(); // now |survivors| is decreasing list starting with |y|
+  }
+
+  std::vector<unsigned long> remap; // map index into |survivors| to hash nr
+  remap.reserve(survivors.size());
   std::unique_ptr<unsigned int[]> index // a sparse array inverting |remap|
     (new unsigned int [hash.size()]); // unlike |std::vector| do not initialise
-  for (auto it=survivors.begin(); it!=survivors.end() and *it<=y; ++it)
+  for (auto x : survivors)
   {
-    auto h=hash.find(block.sr(*it));
-    assert(h!=hash.empty);
+    auto h=hash.find(block.sr(x));
+    assert(h!=hash.empty); // all standard reps for survivors should be found
     index[h]=remap.size(); // point back to entry pushed in next line
     remap.push_back(h);
   }
 
   // since we evaluate at $s=-1$ eventually, we can use integer coefficients
   std::vector<int> acc(remap.size(),0);
-  std::vector<int> remainder(remap.size(),0);
-  remainder.back()=1; // we initialised remainder = 1*sr_y
+  std::vector<int> remainder(remap.size(),0); // coeff.s by |survivor| position
+  remainder.front()=1; // we initialised remainder = 1*sr_y
 
-  for (unsigned i=remainder.size(); i-->0; ) // decreasing essential here
+  for (auto cur : survivors) // value of |cur| is, and must be, decreasing here
   {
-    StandardRepr p_y=block.sr(survivors[i]);
-    int c_y = remainder[i];
-    const SR_poly& KL_y = KLV_list[remap[i]];
-    const bool contribute = block.length(survivors[i])%2!=y_parity;
-    for (auto it=KL_y.begin(); it!=KL_y.end(); ++it)
-    { auto j = index[hash.find(it->first)];
-      assert(j<=i); // triangularity of |KL_y|
-      int c = c_y*it->second.s_to_minus_1();
+    StandardRepr p_cur=block.sr(cur);
+    auto h = hash.find(p_cur);
+    assert(h!=hash.empty);
+    unsigned i=index[h];
+    int c_cur = remainder[i];
+    const SR_poly& KL_cur = KLV_list[h];
+    const bool contribute = block.length(cur)%2!=y_parity;
+    for (const auto& pair : KL_cur)
+    { auto j = index[hash.find(pair.first)];
+      assert(j>=i); // triangularity of |KLV_list|
+      int c = c_cur*pair.second.s_to_minus_1();
       remainder[j] -= c;
       if (contribute) // optimisation will apply loop unswitching to this test
 	acc[j] += c; // here we contribute
@@ -1041,10 +1053,11 @@ SR_poly Rep_table::deformation_terms (param_block& block,BlockElt y)
   }
 
   unsigned int orient_ee = orientation_number(sr_y);
-  for (unsigned i=0; i<acc.size(); ++i)
-  { auto sr_x=block.sr(survivors[i]);
+  unsigned i=0;
+  for (auto x : survivors)
+  { auto sr_x=block.sr(x);
     unsigned int orient_express=orient_ee-orientation_number(sr_x);
-    auto coef = acc[i]*arithmetic::exp_i(orient_express);
+    auto coef = acc[i++]*arithmetic::exp_i(orient_express);
     result.add_term(sr_x,Split_integer(1,-1)*coef);
   }
 
@@ -1134,9 +1147,10 @@ SR_poly twisted_KL_sum
   // finally transcribe from |P_at_s| result
   SR_poly result(rc.repr_less());
   unsigned int parity = eblock.length(y)%2;
-  for (auto it=survivors.begin(); not survivors.at_end(it); ++it)
+  for (auto it = survivors.begin(); not survivors.at_end(it); ++it)
   {
-    auto x = *it; auto factor = P_at_s(x,0);
+    BlockElt x = *it;
+    auto factor = P_at_s(x,0);
     if (eblock.length(x)%2!=parity) // flip sign at odd length difference
       factor = -factor;
     result.add_term(parent.sr(eblock.z(x)),factor);
@@ -1160,11 +1174,12 @@ SR_poly twisted_KL_column_at_s
   return twisted_KL_sum(rc,eblock,eblock.element(entry),block);
 } // |twisted_KL_column_at_s|
 
-void Rep_table::add_block(ext_block::ext_block& block,
+void Rep_table::add_block(ext_block::ext_block& block, // a full extended block
 			  param_block& parent, // its complete unextended block
-			  BlockElt top_elt, BlockEltList& extended_finals)
+			  BlockElt top_elt, // |block| only used for |<=top_elt|
+			  containers::sl_list<BlockElt>& extended_finals)
 {
-  { BlockEltList dummy;  // this exported value will not be used
+  { containers::sl_list<BlockElt> dummy;  // this exported value will not be used
     add_block(parent,dummy); // but we must ensure parent block is known
   }
 
@@ -1206,15 +1221,18 @@ void Rep_table::add_block(ext_block::ext_block& block,
     }
 
   // condense |P_mat| to the extended block elements without singular descents
-  containers::simple_list<BlockElt> finals = block.condense(P_at_s,parent);
+  extended_finals = containers::sl_list<BlockElt> // convert from |simple_list|
+    { block.condense(P_at_s,parent) };
 
-  BlockElt count=0; unsigned y_index=-1;
+  auto top_elt_it = extended_finals.cend();
+  // now |at_end(top_elt_it)|, but |top_elt_it| set to "point to" |top_elt| below
+
   // finally transcribe columns from |P_at_s| into |twisted_KLV_list|
-  for (auto it=finals.begin(); not finals.at_end(it); ++it,++count)
+  for (auto it=extended_finals.cbegin(); it!=extended_finals.cend(); ++it)
   { assert(block.first_descent_among(singular_orbits,*it)==block.rank());
     auto y = *it; // block element, index into (extended) |block|
     if (block.z(y)==top_elt)
-      y_index=count;
+      top_elt_it=it;
     auto y_index = hash.find(block.sr(y,parent));
     assert (y_index!=hash.empty); // since we looked up everything above
     assert (y_index<twisted_KLV_list.size());
@@ -1222,7 +1240,7 @@ void Rep_table::add_block(ext_block::ext_block& block,
     if (dest.empty()) // this means the entry was never defined
     { dest = SR_poly(block.sr(y,parent),repr_less()); // coefficient 1
       unsigned int parity = block.length(y)%2;
-      for (auto x_it=finals.begin(); x_it!=it; ++x_it) // upper part
+      for (auto x_it=extended_finals.begin(); x_it!=it; ++x_it) // upper part
       {
 	auto x = *x_it;
 	auto factor = P_at_s(x,y);
@@ -1232,13 +1250,9 @@ void Rep_table::add_block(ext_block::ext_block& block,
       }
       // since |dest| is a reference, the sum is stored at its destination
     } // |if (y_index>=old_size)|
-  } // |for (it)|
-  assert(y_index<block.size()); // we must have crossed it on our way
-  extended_finals.reserve(y_index+1);
-  for (auto it=finals.begin(); block.z(*it)!=top_elt; ++it)
-    extended_finals.push_back(*it);
-  extended_finals.push_back(block.element(top_elt)); // push the final |*it|
-  assert(extended_finals.size()==y_index+1);
+  } // |for (y : extended_finals)|
+  assert(not top_elt_it.at_end()); // we must have set it somewhere on our way
+  extended_finals.erase(++top_elt_it,extended_finals.cend()); // keep to |top_elt|
 } // |Rep_table::add_block| (extended block)
 
 // look up or compute and return the alternating sum of twisted KL polynomials
@@ -1261,7 +1275,7 @@ SR_poly Rep_table::twisted_KL_column_at_s(StandardRepr z)
     const auto &ic = innerClass();
     ext_block::ext_block eblock(ic,block,ic.distinguished());
 
-    BlockEltList extended_finals;
+    containers::sl_list<BlockElt> extended_finals;
     add_block(eblock,block,entry,extended_finals);
 
     if (hash_index==hash.empty) // then reset |hash_index| to now known value
@@ -1285,22 +1299,24 @@ SR_poly Rep_table::twisted_deformation_terms (param_block& parent,BlockElt y)
     return result; // easy cases, null result
 
   ext_block::ext_block eblock(innerClass(),parent,delta);
-  BlockEltList extended_finals;
+  containers::sl_list<BlockElt> extended_finals;
   add_block(eblock,parent,y,extended_finals);
   assert(eblock.is_present(y)); // since |is_twist_fixed| succeeded
   const BlockElt y_index = eblock.element(y);
-  assert(extended_finals.back()==y_index); // |add_block| ensures this
 
   assert(hash.find(sr_y)!=hash.empty); // |sr_y| should be known now
   unsigned int y_parity = eblock.length(y_index)%2;
 
-  std::vector<unsigned long> remap; remap.reserve(extended_finals.size());
+  extended_finals.reverse();  // now |extended_finals| decreasing from |y|
+
+  std::vector<unsigned long> remap; // from |extended_finals| index to hash nr
+  remap.reserve(extended_finals.size());
   std::unique_ptr<unsigned int[]> index // a sparse array inverting |remap|
     (new unsigned int [hash.size()]); // unlike |std::vector| do not initialise
-  for (auto it=extended_finals.begin(); it!=extended_finals.end(); ++it)
+  for (auto x : extended_finals)
   {
-    unsigned long h=hash.find(eblock.sr(*it,parent));
-    assert(h!=hash.empty);
+    unsigned long h=hash.find(eblock.sr(x,parent));
+    assert(h!=hash.empty); // all |extended_finals| standardreps should be found
     index[h]=remap.size(); // point back to entry pushed in next line
     remap.push_back(h);
   }
@@ -1308,18 +1324,21 @@ SR_poly Rep_table::twisted_deformation_terms (param_block& parent,BlockElt y)
   // since we evaluate at $s=-1$ eventually, we can use integer coefficients
   std::vector<int> acc(remap.size(),0);
   std::vector<int> remainder(remap.size(),0);
-  remainder.back()=1; // we initialised remainder = 1*sr_y
+  remainder.front()=1; // we initialised remainder = 1*sr_y
 
-  for (unsigned i=remainder.size(); i-->0; ) // decreasing essential here
+   for (auto cur : extended_finals) // value of |cur| is, and must be, decreasing
   {
-    StandardRepr p_x=eblock.sr(extended_finals[i],parent);
-    int c_x = remainder[i];
-    const SR_poly& KL_x = twisted_KLV_list[remap[i]];
-    const bool contribute = eblock.length(extended_finals[i])%2!=y_parity;
-    for (auto it=KL_x.begin(); it!=KL_x.end(); ++it)
-    { auto j = index[hash.find(it->first)];
-      assert(j<=i); // triangularity of |KL_x|
-      int c = c_x*it->second.s_to_minus_1();
+    StandardRepr p_cur=eblock.sr(cur,parent);
+    auto h = hash.find(p_cur);
+    assert(h!=hash.empty);
+    unsigned i=index[h];
+    int c_cur = remainder[i];
+    const SR_poly& KL_cur = twisted_KLV_list[h];
+    const bool contribute = eblock.length(cur)%2!=y_parity;
+    for (const auto& pair : KL_cur)
+    { auto j = index[hash.find(pair.first)];
+      assert(j>=i); // triangularity of |twisted_KLV_list|
+      int c = c_cur*pair.second.s_to_minus_1();
       remainder[j] -= c;
       if (contribute) // optimisation will apply loop unswitching to this test
 	acc[j] += c; // here we contribute
@@ -1329,10 +1348,11 @@ SR_poly Rep_table::twisted_deformation_terms (param_block& parent,BlockElt y)
 
   // correct signs in terms of result according to orientation numbers
   unsigned int orient_y = orientation_number(sr_y);
-  for (unsigned i=0; i<acc.size(); ++i)
-  { auto sr_x=eblock.sr(extended_finals[i],parent);
+  unsigned i=0;
+  for (auto x : extended_finals)
+  { auto sr_x=eblock.sr(x,parent);
     unsigned int orient_express=orient_y-orientation_number(sr_x);
-    auto coef = acc[i]*arithmetic::exp_i(orient_express);
+    auto coef = acc[i++]*arithmetic::exp_i(orient_express);
     result.add_term(sr_x,Split_integer(1,-1)*coef);
   }
 
@@ -1385,7 +1405,7 @@ SR_poly Rep_table::twisted_deformation (StandardRepr z)
     BlockElt dummy;
     param_block parent(*this,z,dummy); // full parent block needed for now
     ext_block::ext_block eblock(innerClass(),parent,delta); // full as well
-    BlockEltList extended_finals;
+    containers::sl_list<BlockElt> extended_finals;
     add_block(eblock,parent,dummy,extended_finals);
     const unsigned long h=hash.find(z);
     assert(h<twisted_def_formula.size()); // it was just added by |add_block|

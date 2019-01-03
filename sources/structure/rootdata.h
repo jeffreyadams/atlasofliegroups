@@ -23,6 +23,7 @@
 #include "bitset.h" // for ascent and descent sets
 #include "matrix.h" // for loads of subobjects
 #include "permutations.h" // for storing root permutations
+#include "weyl.h" // for inlining |WeylWord| operations
 
 namespace atlas {
 

@@ -56,10 +56,10 @@ namespace commands {
 
 namespace commands {
 
-struct StrCmp // the string "less than" function disguised as function object
-{ // a zero-size class with just one accessor method
-  bool operator() (const char* a, const char* b) const
-  { return strcmp(a,b) < 0; }
+class StrCmp // the string "less than" function disguised as function object
+{ // a class without data members, and just one function-call overload method
+public:
+  bool operator() (const char* a, const char* b) const { return strcmp(a,b)<0; }
 };
 
 struct Command // a class wrapping a function pointer into a function object

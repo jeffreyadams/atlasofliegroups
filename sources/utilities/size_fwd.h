@@ -1,8 +1,6 @@
-/*!
-\file
-  This is size_fwd.h
-*/
 /*
+  This is size_fwd.h
+
   Copyright (C) 2011 Marc van Leeuwen
   part of the Atlas of Lie Groups and Representations
 

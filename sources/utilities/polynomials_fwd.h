@@ -1,7 +1,3 @@
-/*!
-\file
-\brief Forward class declarations for Polynomial and LaurentPolynomial.
-*/
 /*
   This is polynomials_fwd.h
 

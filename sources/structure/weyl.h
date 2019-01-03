@@ -70,6 +70,15 @@ Twist make_twist(const RootDatum& rd,
 
 /******** main class definitions *******************************************/
 
+class WeylWord : public std::vector<Generator>
+{
+  using Base = std::vector<Generator>;
+ public:
+  WeylWord () : Base () {}
+  WeylWord (Base&& v) : Base(std::move(v)) {}
+  WeylWord (const Base& v) : Base(v) {}
+};
+
 /*
   Representation of an individual element of a Weyl group.
 

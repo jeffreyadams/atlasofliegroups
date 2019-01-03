@@ -368,7 +368,7 @@ class param_block : public Block_base
   RatWeight lambda(BlockElt z) const; // reconstruct from y value
   RankFlags singular_simple_roots() const { return singular; }
   bool survives(BlockElt z) const; // whether $J(z_{reg})$ survives tr. functor
-  BlockEltList finals_for(BlockElt z) const; // expression for $I(z)$
+  containers::sl_list<BlockElt> finals_for(BlockElt z) const; // expr. for $I(z)$
 
   BlockElt lookup(const StandardRepr& sr) const;
 

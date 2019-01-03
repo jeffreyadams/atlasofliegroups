@@ -72,16 +72,6 @@ public:
   digit shift_modulo(digit base); // divide by |base|, return remainder
   big_int reduce_mod (const big_int& divisor); // return value is the quotient!
 
-#ifdef incompletecpp11
-  big_int operator- () const
-    { big_int result(*this); return result.negate(); }
-  big_int operator+ (const big_int& x) const
-    { big_int result(*this); return result+=x; }
-  big_int operator- (const big_int& x) const
-    { big_int result(*this); return result-=x; }
-  big_int operator+ (big_int&& x) const { return x += *this; }
-  big_int operator- (big_int&& x) const { return x.subtract_from(*this); }
-#else
   big_int operator- () const &
     { big_int result(*this); return result.negate(); }
   big_int operator- () && { return this->negate(); }
@@ -98,7 +88,6 @@ public:
     { return size()<x.size() ? x += *this : *this += x; }
   big_int operator- (big_int&& x) &&
     { return size()<x.size() ? x.subtract_from(*this) : *this -= x; }
-#endif
 
   big_int& operator*= (const big_int& x) { return *this = *this * x; }
 
@@ -175,17 +164,10 @@ public:
     , den(big_int::from_unsigned(r.true_denominator()))
     {}
 
-#ifdef incompletecpp11
-  const big_int& numerator() const { return num; }
-  const big_int& denominator() const { return den; }
-  big_int& numerator() { return num; }
-  big_int& denominator() { return den; }
-#else // more exactly we only allow field modification for rvalue objects
   const big_int& numerator() const & { return num; }
   const big_int& denominator() const & { return den; }
   big_int&& numerator() && { return std::move(num); }
   big_int&& denominator() && { return std::move(den); }
-#endif
 
   Rational rat_val() const // limited precision rational, or throw an error
   { return Rational(num.long_val(),den.ulong_val()); }

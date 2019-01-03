@@ -460,14 +460,14 @@ std::ostream& print_KL(std::ostream& f, param_block& block, BlockElt z)
       Poly p(pol); // convert
       if (block.length(x)%2!=parity)
 	p*=-1;
-      BlockEltList nb=block.finals_for(x);
-      for (size_t i=0; i<nb.size(); ++i)
+      auto finals=block.finals_for(x);
+      for (BlockElt final : finals)
       {
 	std::pair<map_type::iterator,bool> trial =
-	  acc.insert(std::make_pair(nb[i],p));
+	  acc.insert(std::make_pair(final,p));
 	if (not trial.second) // failed to create a new entry
 	  trial.first->second += p;
-      } // |for (i)| in |nb|
+      } // |for (final : finals)|
     } // |if(pol!=0)|
   } // |for (x<=z)|
 

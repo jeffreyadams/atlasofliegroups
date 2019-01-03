@@ -887,26 +887,28 @@ void ext_KL_matrix (const StandardRepr p, const int_Matrix& delta,
   Then afterwards non surviving rows and columns (should be 0) are removed.
 */
 
-  containers::simple_list<BlockElt> survivors = eblock.condense(P_mat,B);
+  containers::sl_list<BlockElt> survivors(eblock.condense(P_mat,B));
 
-  BlockEltList compressed (survivors.wcbegin(), survivors.wcend());
-  if (compressed.size()<size) // there were non survivors, so compress |P_mat|
-  { size=compressed.size(); // henceforth this is our size
+  if (survivors.size()<size) // if any non-survivors, we need to compress |P_mat|
+  { size=survivors.size(); // henceforth this is our size
     int_Matrix M (size,size);
-    for (BlockElt i=0; i<M.numRows(); ++i)
-    { auto comp_i = compressed[i];
-      for (BlockElt j=0; j<M.numColumns(); ++j)
-	M(i,j)=P_mat(comp_i,compressed[j]);
+    BlockElt i=0,j=0;
+    for (auto survivor_i : survivors)
+    { for (auto survivor_j : survivors)
+	M(i,j++)=P_mat(survivor_i,survivor_j);
+      ++i;
     }
     P_mat = std::move(M); // replace |P_mat| by its expunged version
   }
 
-  // flip signs for odd length distance, since that is what deformation wants
-  for (BlockElt i=0; i<P_mat.numRows(); ++i)
-  { auto parity = eblock.length(compressed[i])%2;
-    for (BlockElt j=0; j<P_mat.numColumns(); ++j)
-      if (eblock.length(compressed[j])%2!=parity)
-	P_mat(i,j) *= -1;
+  { // flip signs for odd length distance, since that is what deformation wants
+    auto it = survivors.wcbegin(), jt=it;
+    for (BlockElt i=0; i<P_mat.numRows(); ++i,++it)
+    { auto parity = eblock.length(*it)%2;
+      for (BlockElt j=0; j<P_mat.numColumns(); ++j,++jt)
+	if (eblock.length(*jt)%2!=parity)
+	  P_mat(i,j) *= -1;
+    }
   }
 
   block_list.clear(); block_list.reserve(size);
@@ -914,15 +916,9 @@ void ext_KL_matrix (const StandardRepr p, const int_Matrix& delta,
 
   const auto gamma = B.gamma();
   assert(is_dominant_ratweight(rc.rootDatum(),gamma)); // from |param_block|
-#ifndef incompletecpp11
-  for (auto ez : compressed)
+  for (auto ez : survivors)
   {
-   auto z = eblock.z(ez);
- #else
-  for (auto it=compressed.begin(); it!=compressed.end(); ++it)
-  {
-    auto z= eblock.z(*it);
-#endif
+    auto z = eblock.z(ez);
     block_list.push_back(rc.sr_gamma(B.x(z),B.lambda_rho(z),gamma));
     lengths.push_back(B.length(z));
   }
