@@ -66,7 +66,8 @@ set K_types_plus (KHighestWeight(,x,v):mu_in)= (Parabolic,[(Param,K_Type)]):
     assert (k=1,"There is more than one suitable highest weight.");
    let pairs=
    ##for (qL,ind) in good_mu_list[0] do
-   if any(for wt in highest_weights(K_type(ind[0])) do wt=mu_in od) then
+     if any(for wt in highest_weights(K_type(ind[0]))
+              do move_weight(wt,x_Q)=move_weight(mu_in,x_Q) od) then
    [(parameter(x(qL),lambda(qL),rho(qL.root_datum)),K_type(ind[0]))]
    else [] fi
    od in (Q,pairs)

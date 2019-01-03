@@ -809,3 +809,27 @@ set twist_by_minus_2rho_u_cap_s(Parabolic P,Param p_L)=Param:
   x_L=x(p_L) then
   x_G=embed_KGB(x_L,G) in
   parameter(x_L,lambda(p_L)-two_rho_u_cap_s(P,x_G),null(rank(Levi(P))))
+
+set is_in_list (KGBElt x, [KGBElt] list) =bool: any(for y in list do x=y od)
+
+set select_class_terms_from_ParamPol ([KGBElt] class, ParamPol P)=ParamPol:
+  0*P+ for c@t in P do if is_in_list (x(t),class) then (c,t) else (0,t) fi od
+
+set p_N (Param p, int N, [int] S) = Param:
+   let x=x(p) then P=Parabolic:(S,x) then rhou=rho_u(P) in
+   parameter(x,lambda(p)+2*N*rhou,nu(p)+2*N*rhou)
+
+set move_P_down_by_N (ParamPol P, int N, [int] Levi)=[(Split,Param)]:
+   let rd=root_datum(P) then rhou=rho_u(rd,Levi) in
+   for c@t in P do (c,parameter(x(t),lambda(t)-2*N*rhou,nu(t)-2*N*rhou)) od
+
+set find_N ([int] Levi, Param p)=int: 2
+
+set induce_from_gen_parabolic_irr ([int] Levi, Param p)=ParamPol:
+   let G=real_form(p) then
+   N=find_N(Levi,p),x=x(p) then class=equivalence_class_of(Levi,x)
+   then cf=character_formula (p_N(p,N,Levi)) then
+   P_up=select_class_terms_from_ParamPol (class,cf) then
+   pairs=move_P_down_by_N(P_up,N,Levi) in let result=null_module(G) in
+   for (c,t) in pairs do result+:=c*standardize(t) od;
+   composition_series(result)
