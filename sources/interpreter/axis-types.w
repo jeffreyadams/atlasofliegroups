@@ -437,10 +437,6 @@ explicit type_expr(type_list&& l,bool is_union=false);
 explicit type_expr(type_nr_type type_nr)
   : tag(tabled), type_number(type_nr) @+{}
 @)
-#ifdef incompletecpp11
-type_expr(const type_expr& t) = @[delete@];
-type_expr& operator=(const type_expr& t) = @[delete@];
-#endif
 type_expr(type_expr&& t) noexcept; // move constructor
 type_expr& operator=(type_expr&& t) noexcept; // do move assignment only
 void clear() noexcept;
@@ -802,20 +798,8 @@ struct func_type
 @)
   func_type(type_expr&& a, type_expr&& r)
 @/ : arg_type(std::move(a)), result_type(std::move(r)) @+{}
-#ifdef incompletecpp11
-  func_type(const func_type& f) = @[delete@];
-  func_type& operator=(const func_type& f) = @[delete@];
-  func_type(func_type&& f)
-@/: arg_type(std::move(f.arg_type)), result_type(std::move(f.result_type))
-  @+{}
-  func_type& operator=(func_type&& f)
-  {@; arg_type = std::move(f.arg_type); result_type = std::move(f.result_type);
-    return *this;
-  }
-#else
   func_type(func_type&& f) = @[default@]; // move constructor
   func_type& operator=(func_type&& f) = @[default@]; // move assignment
-#endif
   func_type copy() const // in lieu of a copy contructor
   {@; return func_type(arg_type.copy(),result_type.copy()); }
 };
@@ -996,10 +980,10 @@ minimal quotients, where any such symmetry has been ``folded away''.
 This however still does not give a practical algorithm for testing equivalence,
 so instead we use the following ``bottom-up'' technique. We gather all types
 descending from currently given type definitions (the vertices of our graph,
-which is a finite collection) and partition it according to immediate structural
-differences found (such as: a procedure type is never equivalent to a row type,
-tuple types with different numbers of components are never equivalent, etc.).
-Then we refine that partition by looking at possible differences among
+which is a finite collection) and partition them according to immediate
+structural differences found (such as: a procedure type is never equivalent to a
+row type, tuple types with different numbers of components are never equivalent,
+etc.). Then we refine that partition by looking at possible differences among
 descendent types (we effectively look around in or graph one level further),
 then again look if the refined relation has found distinctions between
 descendent types that previously were not distinguished, and repeat this until
@@ -3287,9 +3271,6 @@ struct error_base : public std::exception
 { std::string message;
   explicit error_base(const std::string& s) : message(s) @+{}
   error_base () : message() @+{}
-#ifdef incompletecpp11
-  ~error_base () throw() @+{} // backward compatibility for gcc 4.4
-#endif
   template<typename T> void append_mes (const T& x)
   @/{@; std::ostringstream o;
       o << x;
@@ -3310,9 +3291,6 @@ classes.
 struct logic_error : public error_base
 { explicit logic_error(const std::string& s) : error_base(s) @+{}
   logic_error () : @[error_base@]() @+{}
-#ifdef incompletecpp11
-  ~logic_error () throw() @+{} // backward compatibility for gcc 4.4
-#endif
   template<typename T> logic_error& operator<< (const T& x)
   @+{@; append_mes(x); return *this; }
 };
@@ -3320,9 +3298,6 @@ struct logic_error : public error_base
 struct program_error : public error_base
 { explicit program_error(const std::string& s) : error_base(s) @+{}
   program_error () : @[error_base@]() @+{}
-#ifdef incompletecpp11
-  ~program_error () throw() @+{} // backward compatibility for gcc 4.4
-#endif
   template<typename T> program_error& operator<< (const T& x)
   @+{@; append_mes(x); return *this; }
 };
@@ -3330,9 +3305,6 @@ struct program_error : public error_base
 struct runtime_error : public error_base
 { explicit runtime_error(const std::string& s) : error_base(s) @+{}
   runtime_error () : @[error_base@]() @+{}
-#ifdef incompletecpp11
-  ~runtime_error () throw() @+{} // backward compatibility for gcc 4.4
-#endif
   template<typename T> runtime_error& operator<< (const T& x)
   @+{@; append_mes(x); return *this; }
 };
@@ -3363,9 +3335,6 @@ struct expr_error : public program_error
   expr_error (const expr& e,const std::string& s) noexcept
     : program_error(s),offender(e) @+{}
   expr_error (const expr& e) noexcept : program_error(),offender(e) @+{}
-#ifdef incompletecpp11
-  ~expr_error() throw() @+{}
-#endif
   template<typename T> expr_error& operator<< (const T& x)
   @+{@; append_mes(x); return *this; }
 };
@@ -3385,14 +3354,7 @@ struct type_error : public expr_error
   type_error (const expr& e, type_expr&& a, type_expr&& r) noexcept @/
     : expr_error(e,"Type error") @|
       ,actual(std::move(a)),required(std::move(r)) @+{}
-#ifdef incompletecpp11
-  type_error(type_error&& e)
-  : expr_error(std::move(e))
-  , actual(std::move(e.actual)), required(std::move(e.required)) @+{}
-  ~type_error () throw() @+{}
-#else
   type_error @[(type_error&& e) = default@];
-#endif
   template<typename T> type_error& operator<< (const T& x)
   @+{@; append_mes(x); return *this; }
 };
@@ -3408,12 +3370,6 @@ struct balance_error : public expr_error
 { containers::sl_list<type_expr> variants;
   balance_error(const expr& e)
   : expr_error(e,"No common type found"), variants() @+{}
-#ifdef incompletecpp11
-  balance_error(const balance_error&)=@[delete@];
-  balance_error(balance_error&& o) @|
-  : expr_error(std::move(o)),variants(std::move(o.variants)) @+{}
-  ~balance_error() throw() @+{}
-#endif
   template<typename T> balance_error& operator<< (const T& x)
   @+{@; append_mes(x); return *this; }
 };
@@ -3433,9 +3389,6 @@ struct loop_break : private logic_error
 { unsigned depth;
   loop_break(int n)
   : logic_error("Uncaught break from loop"), depth(n) @+{}
-#ifdef incompletecpp11
-  ~loop_break () throw() @+{}
-#endif
 } ;
 
 
@@ -3449,9 +3402,6 @@ struct function_return : private logic_error
 { shared_value val;
   function_return(shared_value&& val)
   : logic_error("Uncaught return from function"), val(val) @+{}
-#ifdef incompletecpp11
-  ~function_return () throw() @+{}
-#endif
 } ;
 
 

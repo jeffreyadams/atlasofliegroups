@@ -12,10 +12,6 @@
 
 #include <memory> // for |std::allocator|
 
-// include to access the adapter templates, so we can replace default container
-#include <stack>
-#include <queue>
-
 namespace atlas {
 
 namespace containers {
@@ -26,7 +22,7 @@ template<typename T,typename Alloc = std::allocator<T> >
   class sl_list;
 
 template<typename T, typename Alloc = std::allocator<T> >
-  struct sl_list_const_iterator;
+  class sl_list_const_iterator;
 template<typename T,typename Alloc = std::allocator<T> >
   class sl_list_iterator;
 
@@ -36,14 +32,11 @@ template<typename T,typename Alloc = std::allocator<T> >
 template<typename T,typename Alloc = std::allocator<T> >
   class mirrored_sl_list; // trivial adapter, to allow use with |std::stack|
 
-template<typename T,
-	 typename Container = mirrored_simple_list<T,std::allocator<T> > >
-struct stack;
+template<typename T,typename Alloc = std::allocator<T> > class stack;
 
-template<typename T, typename Container = sl_list<T,std::allocator<T> > >
-struct queue;
+template<typename T,typename Alloc = std::allocator<T> > class queue;
 
-} // |namespace cantainers|
+} // |namespace containers|
 
 } // |namespace atlas|
 

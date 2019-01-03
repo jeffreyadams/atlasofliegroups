@@ -10,9 +10,8 @@
 namespace atlas {
   namespace filekl {
     
-    const BlockElt UndefBlock= ~BlockElt(0);
-    const BlockElt noGoodAscent= UndefBlock-1;
-    
+    const BlockElt no_good_ascent = UndefBlock-1;
+     // value flagging that no good ascent exists
     const unsigned int magic_code=0x06ABdCF0; 
 
     

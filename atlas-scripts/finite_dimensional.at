@@ -22,9 +22,14 @@ set dimension (RootDatum rd, ratvec lambda) = int:
   product(for a in poscoroots(rd) do (lambda+rho)*a/(rho*a) od).rat_as_int
 )
 
-{If split torus in the center not necessarily a vec, this could
-fail, leave it for now because otherwise weyl_character_formula.at
-fails to load}
+set Weyl_dim (RootDatum rd, vec lambda) = int:
+( lambda:=dominant(rd,lambda)
+; let rho=rho(rd) in { now apply Weyl's dimension formula }
+  for a in poscoroots(rd) do (lambda+rho)*a/(rho*a) od.product.rat_as_int
+)
+
+{ If split torus in the center not necessarily a vec, this could fail.
+  Leave it for now because otherwise weyl_character_formula.at fails to load }
 {.highest weight of finite dimensional in X^* coordinates.}
 set highest_weight_finite_dimensional (Param p) = vec:
    (p.fd_only.dominant.infinitesimal_character - p.root_datum.rho).ratvec_as_vec

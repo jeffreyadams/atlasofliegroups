@@ -488,13 +488,7 @@ Matrix<C>& Matrix<C>::operator-= (const Matrix<C>&  m)
 }
 
 
-template<typename C> Matrix<C> Matrix<C>::transposed() const
-#if __GNUC__ > 4 || \
-  __GNUC__ == 4 && (__GNUC_MINOR__ > 8 || \
-		    __GNUC_MINOR__ == 8 && __GNUC_PATCHLEVEL__ >= 1)
-// that is, if compiler version is sufficiently new
-  & // though it makes no difference, must explicitly write lvalue ref-qualifier
-#endif
+template<typename C> Matrix<C> Matrix<C>::transposed() const &
 {
   Matrix<C> result(base::numColumns(),base::numRows());
   auto p = base::d_data.begin();

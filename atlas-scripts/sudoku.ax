@@ -187,7 +187,11 @@ set solve ( game_interface game ) = [mat]:
         fi
       od
     ; let choice=ch_of_co[group] in
-      if =min then prints(if sure then "inconsistency" else "dead end" fi); []
+      if =min
+      then prints("no options for ",name_co[group](constraint),"; "
+                 , if sure then "inconsistency" else "dead end" fi
+		 )
+      ; []
       elif min=1 { proceed confidently }
       then
         let remaining = { get the unique available choice |k| for |constraint| }

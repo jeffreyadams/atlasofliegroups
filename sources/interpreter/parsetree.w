@@ -139,12 +139,11 @@ it is not declared.
 struct expr;
 
 @ To represent identifiers efficiently, and also file names, we shall use the
-type |Hash_table::id_type| (a small integer type) of indices into the table of
-identifier or of files names, which we lift out of that class by using a
-|typedef|.
+type |id_type| (a small integer type) of indices into the table of identifier or
+of files names, which we lift out of that class by using a |typedef|.
 
 @< Includes needed... @>=
-#include "buffer.h" // for |Hash_table|
+#include "buffer.h" // for |id_type|
 
 @ In order to be able to track in which file a given user-defined function was
 defined, we shall include a record including the location of definition into
@@ -281,11 +280,10 @@ expr (expr&& other);
 void operator= (expr&& other);
 void swap (expr& other);
 
-@ We do not assume that |expr| is trivially copyable, even though most
-variants (and all in case the macro |incompletecpp1| is defined) are raw
-pointers. Therefore copying requires a large case distinction (which will turn
-out to be very boring). The move constructor and assignment and |swap| method
-are easy to define in terms of |set_from|. However move assignment does
+@ We do not assume that |expr| is trivially copyable, even though most variants
+are raw pointers. Therefore copying requires a large case distinction (which
+will turn out to be very boring). The move constructor and assignment and |swap|
+method are easy to define in terms of |set_from|. However move assignment does
 involve a subtle point: it could be that |other| is a subexpression of the old
 value of |*this|, and it is necessary to move-construct it to a temporary
 variable in order to prevent if from destruction when calling |this->~expr|.
@@ -355,26 +353,21 @@ stored in the |expr| value.
 @< Includes needed... @>=
 #include "bigint.h" // defines |arithmetic::big_int|
 
-@ To keep the size of the |union| in |expr| small, we only use variants that
-are no bigger than a pointer, storing a pointer when more than that is needed.
-For Boolean denotations, the value itself will fit comfortably inside the
-|struct expr@;|. For integers and strings we store a |std::string| value since
-it turns out to have the size of a single pointer; it will an example of how
-the special member functions of |expr| should handle non-POD variants (they
-can neither be assigned to non-initialised memory without calling a
-constructor, nor be left in memory that will be reclaimed without calling a
-destructor). If \Cpp11 support is incomplete, we store a raw character pointer
-|char*@[@]@;| instead. In the integer case we leave the conversion from
-character string to numeric value until after type checking.
+@ To keep the size of the |union| in |expr| small, we only use variants that are
+no bigger than a pointer, storing a pointer when more than that is needed. For
+Boolean denotations, the value itself will fit comfortably inside the |struct
+expr@;|. For integers and strings we store a |std::string| value since that
+turns out to have the size of a single pointer; it will provide an example of
+how the special member functions of |expr| should handle non-POD variants (they
+can neither be assigned to non-initialised memory without calling a constructor,
+nor be left in memory that will be reclaimed without calling a destructor). In
+the integer case we leave the conversion from character string to numeric value
+until after type checking.
 
 @< Variants of ... @>=
 
 bool bool_denotation_variant;
-#ifdef incompletecpp11
-const char* str_denotation_variant;
-#else
 std::string str_denotation_variant;
-#endif
 
 @~Each of the three types of denotation has a tag identifying it.
 
@@ -397,16 +390,6 @@ would implicitly convert to |bool|).
   struct string_tag @+{};
   expr (bool b, const YYLTYPE& loc, bool_tag)
 @/: kind(boolean_denotation), bool_denotation_variant(b), loc(loc) @+{}
-#ifdef incompletecpp11
-  expr(std::string&& s, const YYLTYPE& loc, int_tag)
-@/: kind(integer_denotation)
-  , str_denotation_variant(std::strcpy(new char[s.size()+1],s.c_str()))
-  , loc(loc) @+{}
-  expr(std::string&& s, const YYLTYPE& loc, string_tag)
-@/ : kind(string_denotation)
-   , str_denotation_variant(std::strcpy(new char[s.size()+1],s.c_str()))
-   , loc(loc) @+{}
-#else
   expr(std::string&& s, const YYLTYPE& loc, int_tag)
 @/: kind(integer_denotation)
   , str_denotation_variant(std::move(s))
@@ -415,7 +398,6 @@ would implicitly convert to |bool|).
 @/ : kind(string_denotation)
    , str_denotation_variant(std::move(s))
    , loc(loc) @+{}
-#endif
 
 @~For more explicit construction of these variants in a dynamically allocated
 |expr| object, we provide the functions below. Note that |make_int_denotation|
@@ -478,11 +460,7 @@ look-up of the destructor fails.
 case boolean_denotation: break;
 case integer_denotation:
 case string_denotation:
-#ifdef incompletecpp11
-  delete[](str_denotation_variant); break;
-#else
   str_denotation_variant.~basic_string<char>(); break;
-#endif
 
 @ In the |expr::set_from| method we changed variants both in |*this| (which
 was |no_expr|) and in |other| (which will become |no_expr|). This means that
@@ -496,14 +474,9 @@ this does not mean we can omit the destruction.
     bool_denotation_variant = other.bool_denotation_variant; break;
   case integer_denotation:
   case string_denotation:
-#ifdef incompletecpp11
-    str_denotation_variant = other.str_denotation_variant;
-    other.str_denotation_variant=nullptr;
-#else
     new (&str_denotation_variant)
     std::string(std::move(other.str_denotation_variant));
     other.str_denotation_variant.~basic_string<char>();
-#endif
   break;
 
 @ To print an integer or Boolean denotation we just print its variant field;
@@ -1196,12 +1169,12 @@ struct formula_node
 @)
 typedef containers::sl_node<formula_node>* raw_form_stack;
 struct form_stack : public containers::stack<formula_node>
-{ typedef containers::stack<formula_node> base;
-  typedef containers::simple_list<formula_node> ssub_base;
-    // sub-sub base; skip ``mirrored''
+{ using base = containers::stack<formula_node>;
+  using sub_base = containers::mirrored_simple_list<formula_node>;
+  using ssub_base = containers::simple_list<formula_node>; // sub-sub base
 @)
   form_stack() : @[base()@] @+{}
-  form_stack(raw_form_stack s) : @[base(ssub_base(s))@] @+{}
+  form_stack(raw_form_stack s) : @[base{sub_base{ssub_base{s}}}@] @+{}
     // resuscitate stack from raw pointer
   raw_form_stack release() @+{@; return c.release(); }
     // inanimate the stack to a raw pointer
@@ -1359,17 +1332,8 @@ struct id_pat
 @)
   id_pat (const id_pat& x) = @[ delete @];
 @/id_pat& operator=(const id_pat& x) = @[ delete @];
-#ifdef incompletecpp11
-  id_pat (id_pat&& x)
-  : name(x.name), kind(x.kind), sublist(std::move(x.sublist)) @+{}
-@/id_pat& operator=(id_pat&& x)
-  @/{@; name = x.name; kind = x.kind; sublist = std::move(x.sublist);
-    return *this;
-  }
-#else
 @/id_pat (id_pat&& x) = @[ default @];
 @/id_pat& operator=(id_pat&& x) = @[ default @];
-#endif
   raw_id_pat release()
   @+{@; return { name, kind, sublist.release() }; }
 };
@@ -1476,16 +1440,7 @@ The moving constructor does what the braced initialiser-list syntax would do
 by default; it is present only for backward compatibility \.{gcc}~4.6.
 
 @< Structure and typedef declarations for types built upon |expr| @>=
-struct let_pair { id_pat pattern; expr val;
-#ifdef incompletecpp11
-  let_pair (const let_pair&) = @[delete@];
-  let_pair& operator=(const let_pair&) = @[delete@];
-  let_pair (let_pair&& x)
-  : pattern(std::move(x.pattern)), val(std::move(x.val)) @+{}
-  let_pair (id_pat&& p, expr&& v)
-  : pattern(std::move(p)), val(std::move(v)) @+{}
-#endif
-};
+struct let_pair { id_pat pattern; expr val; };
 typedef containers::simple_list<let_pair> let_list;
 typedef containers::sl_node<let_pair>* raw_let_list;
 @)
@@ -1631,11 +1586,11 @@ program. When defining function one does have to specify parameter types,
 since in this case there is no way to know those types with certainty: in an
 interactive program we cannot wait for \emph{usage} of the function to deduce
 the types of its parameters, and such things as type coercion and function
-overloading would make such type deduction doubtful even if it could be done).
-Types are also an essential ingredient of casts. Types have an elaborate
-(though straightforward) internal structure, and the necessary constructing
-functions like |make_tuple_type| are defined in the module \.{axis-types.w}
-rather than here.
+overloading would make such type deduction doubtful even if it could be done.
+Type expressions are also an essential ingredient of casts. Types can have an
+elaborate (though straightforward) internal structure, and the necessary
+constructing functions like |make_tuple_type| are defined in the
+module \.{axis-types.w} rather than here.
 
 When the parser was compiled as \Cee~code, we were forced to use void pointers
 in the parser, to masquerade for the actual pointers to \Cpp~types; numerous
@@ -2045,16 +2000,6 @@ struct case_variant
 { id_type label;
   id_pat pattern;
   expr branch;
-#ifdef incompletecpp11
-  case_variant (const case_variant&) = @[delete@];
-  case_variant& operator=(const case_variant&) = @[delete@];
-  case_variant (case_variant&& x)
-  : label(x.label)
-  , pattern(std::move(x.pattern))
-  , branch(std::move(x.branch)) @+{}
-  case_variant (id_type lab, id_pat&& p, expr&& v)
-  : label(lab), pattern(std::move(p)), branch(std::move(v)) @+{}
-#endif
 };
 typedef containers::simple_list<case_variant> case_list;
 typedef containers::sl_node<case_variant>* raw_case_list;
@@ -2666,13 +2611,6 @@ struct assignment_node
   assignment_node(id_pat&& lhs, expr&& rhs)
 @/: lhs(std::move(lhs))
   , rhs(std::move(rhs))@+{}
-#ifdef incompletecpp11
-  assignment_node(const assignment_node& x) = @[delete@];
-  assignment_node(assignment_node&& x)
-@/: lhs(std::move(x.lhs))
-  , rhs(std::move(x.rhs))
-  @+{}
-#endif
 };
 
 @ The tag used for assignment statements is |ass_stat|.
@@ -2770,15 +2708,6 @@ struct comp_assignment_node
   , rhs(std::move(rhs))
   , reversed(reversed)
   @+{}
-#ifdef incompletecpp11
-  comp_assignment_node(const comp_assignment_node& x) = @[delete@];
-  comp_assignment_node(comp_assignment_node&& x)
-@/: aggr(x.aggr)
-  , index(std::move(x.index))
-  , rhs(std::move(x.rhs))
-  , reversed(x.reversed)
-  @+{}
-#endif
 };
 @)
 struct field_assignment_node
@@ -2789,14 +2718,6 @@ struct field_assignment_node
   , selector(selector)
   , rhs(std::move(rhs))
   @+{}
-#ifdef incompletecpp11
-  field_assignment_node(const field_assignment_node& x) = @[delete@];
-  field_assignment_node(field_assignment_node&& x)
-@/: aggr(x.aggr)
-  , selector(selector)
-  , rhs(std::move(x.rhs))
-  @+{}
-#endif
 };
 
 @ The tags used for component assignment statements are |comp_ass_stat| for

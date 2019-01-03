@@ -20,6 +20,9 @@
 #include <initializer_list>
 #include <algorithm>
 #include <vector>
+#include <stack>
+#include <queue>
+
 
 namespace atlas {
 
@@ -33,13 +36,14 @@ template<typename T,typename Alloc>
 // when Alloc is not |std::allocator|, we need a deleter class for |unique_ptr|
 // that calls the Alloc destroyer and then deallocator, rather than |::delete|
 
-template <typename Alloc> struct allocator_deleter
+template <typename Alloc> class allocator_deleter
 : private Alloc
 {
   using AT = std::allocator_traits<Alloc>;
   using value_type = typename AT::value_type;
   using pointer    = typename AT::pointer;
 
+public:
   constexpr allocator_deleter ()  = default;
   allocator_deleter (const allocator_deleter&) = default;
   void operator() (pointer p) noexcept
@@ -105,7 +109,7 @@ struct sl_node
 
 template<typename T,typename Alloc> class sl_list_iterator;
 template<typename T, typename Alloc >
-  struct sl_list_const_iterator
+  class sl_list_const_iterator
   : public std::iterator<std::forward_iterator_tag, T>
 {
   friend class simple_list<T,Alloc>;
@@ -141,7 +145,7 @@ public:
   bool operator!=(const self& x) const { return link_loc != x.link_loc; }
 
   bool at_end () const { return link_loc->get()==nullptr; }
-}; // |struct sl_list_const_iterator| template
+}; // |class sl_list_const_iterator| template
 
 
 template<typename T,typename Alloc>
@@ -166,15 +170,15 @@ public:
   // post-increment not defined, using it would almost certainly be a coding
   // error, notably erasing nodes should use |l.erase(it)| without any |++|
 
-}; // |struct sl_list_iterator| template
+}; // |class sl_list_iterator| template
 
-template<typename T, typename Alloc> struct weak_sl_list_iterator;
+template<typename T, typename Alloc> class weak_sl_list_iterator;
 template<typename T, typename Alloc = std::allocator<T> >
-  struct weak_sl_list_const_iterator
+  class weak_sl_list_const_iterator
   : public std::iterator<std::forward_iterator_tag, T>
 {
   friend class weak_sl_list_iterator<T,Alloc>;
-
+public:
   using pointer = typename sl_node<T,Alloc>::link_type::pointer;
   using const_pointer = const sl_node<T,Alloc>*; // hard to describe this otherwise
 
@@ -205,7 +209,7 @@ public:
   bool operator!=(const self& x) const { return ptr != x.ptr; }
 
   bool at_end () const { return ptr==nullptr; }
-}; // |struct weak_sl_list_const_iterator| template
+}; // |class weak_sl_list_const_iterator| template
 
 
 // weak iterators allow acces to list elements but not to the list structure
@@ -233,7 +237,7 @@ public:
   self operator++(int) // post-increment
   { self tmp=*this; Base::ptr = Base::ptr->next.get(); return tmp; }
   // for other methods, including equality tests, use the Base methods
-}; // |struct weak_sl_list_iterator| template
+}; // |class weak_sl_list_iterator| template
 
 
 
@@ -1418,7 +1422,7 @@ template<typename T, typename Alloc>
   {
     if (n>size())
       append(sl_list(n-size(),get_allocator()));
-    else if (n<size)
+    else if (n<size())
       erase(std::next(begin(),n),end());
   }
   void resize (size_type n, const T& val)
@@ -1923,6 +1927,20 @@ public:
     return simple_list<T,Alloc>(head.release(),std::move(node_allocator()));
   }
 
+  std::vector<T> to_vector() const &
+  { std::vector<T>result; result.reserve(node_count); // avoid recounting length
+    for (auto it=wcbegin(); not at_end(it); ++it) // non-counting fill
+      result.emplace_back(*it);
+    return result;
+  }
+
+  std::vector<T> to_vector() &&
+  { std::vector<T>result; result.reserve(node_count); // avoid recounting length
+    for (auto it=wbegin(); not at_end(it); ++it) // non-counting fill
+      result.emplace_back(std::move(*it));
+    return result;
+  }
+
   // accessors
   const T& front () const { return head->contents; }
   const_iterator begin () const noexcept { return const_iterator(head); }
@@ -2019,6 +2037,8 @@ template<typename T,typename Alloc>
 	Base::push_front(*it); // this reverses the order
     }
 
+  mirrored_simple_list& operator=(mirrored_simple_list&& x)
+  { Base::operator=(static_cast<Base&&>(x)); return *this; }
   // forward |push_front| method from |Base|, and its likes, as ...|back|
   template<typename... Args> void push_back(Args&&... args)
   { Base::push_front(std::forward<Args>(args)...); }
@@ -2088,27 +2108,41 @@ template<typename T,typename Alloc>
 
 }; // |class mirrored_sl_list<T,Alloc>|
 
-template<typename T, typename Container> struct stack
-  : public std::stack<T,Container>
+template<typename T,typename Alloc> class stack
+  : public std::stack<T,mirrored_simple_list<T,Alloc> >
 {
-  using std::stack<T,Container>::stack;
+  using msl = mirrored_simple_list<T,Alloc>;
+  using Base = std::stack<T,msl>;
 
-  typedef typename Container::allocator_type allocator_type;
-  // unlike |std::queue|, we also provide initialisation by initializer list
-  stack(std::initializer_list<T> l, const allocator_type& a=allocator_type())
-    : std::stack<T,Container> { Container(l,a) } {}
-}; // |struct stack|
+public:
+  using Base::Base; // inherit constructors
 
-template<typename T, typename Container> struct queue
-  : public std::queue<T,Container>
+  // until recently default, copy and move constructors were heritage-excluded
+  stack() = default; // so defeat this discrimination
+  stack(const Base& b) : Base(b) {}
+  stack(Base&& b) : Base(std::move(b)) {}
+
+  // unlike |std::stack|, we also provide initialisation by initializer list
+  stack(std::initializer_list<T> l) : Base(msl(l)) {}
+}; // |class stack|
+
+template<typename T,typename Alloc> class queue
+  : public std::queue<T,sl_list<T,Alloc> >
 {
-  using std::queue<T,Container>::queue;
+  using sl = sl_list<T,Alloc>;
+  using Base = std::queue<T,sl>;
 
-  typedef typename Container::allocator_type allocator_type;
+public:
+  using Base::Base; // inherit constructors
+
+  // until recently default, copy and move constructors were heritage-excluded
+  queue() = default; // so defeat this discrimination
+  queue(const Base& b) : Base(b) {}
+  queue(Base&& b) : Base(std::move(b)) {}
+
   // unlike |std::queue|, we also provide initialisation by initializer list
-  queue(std::initializer_list<T> l, const allocator_type& a=allocator_type())
-    : std::queue<T,Container> { Container(l,a) } {}
-}; // |struct queue|
+  queue(std::initializer_list<T> l) : Base(sl(l)) {}
+}; // |class queue|
 
 } // |namespace containers|
 

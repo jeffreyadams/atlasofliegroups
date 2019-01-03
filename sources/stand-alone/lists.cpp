@@ -403,8 +403,7 @@ void Hanoi(unsigned int d, stack& a, stack& b, stack&c) // |a| to |c|, using |b|
 	auto b_id = b.top(); b.pop();
 	std::cout << a_id << ": " << (a.empty() ? "empty" : a.top()) << ", "
 		  << b_id << ": " << (b.empty() ? "empty" : b.top()) << ", "
-		  << c_id << ": " << (c.empty() ? "empty" : c.top()) << ", "
-		  << '\n';
+		  << c_id << ": " << (c.empty() ? "empty" : c.top()) << '\n';
 	b.push(b_id);
       }
     }
@@ -416,22 +415,19 @@ void Hanoi(unsigned int d, stack& a, stack& b, stack&c) // |a| to |c|, using |b|
 
 void do_Hanoi()
 {
-  using alloc = std::allocator<std::string>;
-  // using ssub = atlas::containers::simple_list<std::string,alloc>;
-  // using container = atlas::containers::mirrored_simple_list<std::string,alloc>;
-  // using st = atlas::containers::stack<std::string,container>;
-  using dst = std::stack<std::string,std::vector<std::string,alloc>>;
-  using sub = typename dst::container_type;
+  using dst = atlas::containers::stack<std::string>;
+  using sub = atlas::containers::simple_list<std::string>;
 
-  dst a (sub { "Blue",
+  dst a (sub { "White",
 	"zero", "one", "two", "three", "four",
 	"five", "six", "seven", "eight", "nine",
 	"ten", "eleven", "twelve", "thirteen", "fourteen",
 	"fifteen", "sixteen", "seventeen", "eightteen", "nineteen",
-	"twenty", "tentyone", "twentytwo", "ttwentythree", "twentyfour",
-	"twentyfive", "twentysix", "twentyseven", "twentyeight", "twentynine"});
-  dst b (sub { "White" });
-  dst c (sub { "Red" });
+	"twenty", "tentyone", "twentytwo", "twentythree", "twentyfour",
+      "twentyfive", "twentysix", "twentyseven", "twentyeight", "twentynine"});
+  dst b; // try a stack with default constructor
+  b.push("Blue");
+  dst c ({ "Red" });
   Hanoi(22,a,b,c);
 }
 
@@ -483,9 +479,8 @@ int main()
   std::cout << L << std::endl;
   end = L.reverse(begin,end);
   std::cout << L << std::endl;
-  using msl = atlas::containers::mirrored_simple_list<int,alloc_type>;
-  using stack_type = atlas::containers::stack<int,msl>;
-  stack_type st(std::move(L.undress())); // do not reverse here
+  using stack_type = atlas::containers::stack<int,alloc_type>;
+  stack_type st(L.undress()); // do not reverse here
   stack_type st2 { 2,3,5,7,11 } ; // here 11 is top
   while (not st.empty())
     std::cout << st.top() << ',', st.pop();
