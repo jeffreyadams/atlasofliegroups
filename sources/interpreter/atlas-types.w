@@ -5506,7 +5506,8 @@ fields of the |module_coefficient| expression.
 void module_coefficient::evaluate(level l) const
 { shared_virtual_module m = (array->eval(),get<virtual_module_value>());
   shared_module_parameter p = (index->eval(),get<module_parameter_value>());
-  if (m->rf!=p->rf)
+  if (m->rf!=p->rf and m->rf->val!=p->rf->val)
+    // test like |real_form_new_wrapper| does
     throw runtime_error @|
       ("Real form mismatch when subscripting ParamPol value");
   test_standard(*p,"In subscription of ParamPol value");
