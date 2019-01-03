@@ -1,4 +1,5 @@
 {<hodge_K_type_formula.at}
+<hodge_deform.at
 <K_types.at
 <hodgeParamPol.at
 {<tensor_product_sl2.at
@@ -8,7 +9,7 @@
 
 set_type multiplicity_function=(K_Type -> int)
 set_type signature_function=(K_Type -> Split)
-set_type hodge_function= (K_Type->i_poly)
+set_type hodge_function= ((K_Type->i_poly) f,RealForm real_form)
 
 set minus_vee_to_the_k(int k)=i_poly:(-1)^k*null(k)#1
 
@@ -24,6 +25,10 @@ set coefficient(hodgeParamPol P,K_Type mu)=vec:coefficient(P,parameter(mu))
 set branch_function_std(Param p)=multiplicity_function:
 (K_Type mu):split_as_int(branch_std(p,K_norm(mu))[parameter(mu)])
 
+set branch_function_std_as_hodge_function(Param p)=hodge_function:
+((K_Type mu):[split_as_int(branch_std(p,K_norm(mu))[parameter(mu)])],p.real_form)
+
+
 {the hodge function of I(p)}
 {moved to hodge_K_type_formula.at}
 {set hodge_function_std(Param p)=hodge_function:
@@ -35,9 +40,29 @@ set branch_function_std(Param p)=multiplicity_function:
 {was called hodge_polynomial, renamed to Psi_S
  see hodgeTempered.pdf (towards the end) and hodge_tensor.at}
 set Psi_S(hodge_function f,[K_Type] ktypes)=KHodgeParamPol:
-(dearrange(##for mu in ktypes do if #f(mu)=0 then [(vec,K_Type)]:[] else  [(f(mu),mu)] fi  od,ktypes[0].real_form),())
+let rv=##
+ for mu in ktypes do
+  let f_mu=f.f(mu) in
+  if #f_mu=0 then [(vec,K_Type)]:[] else  [(f_mu,mu)]
+  fi
+ od
+in let d=dearrange(rv) in
+(d,())
+
 set Psi_S(hodge_function f,[K_Type] ktypes,RealForm G)=KHodgeParamPol:
-(dearrange(##for mu in ktypes do if #f(mu)=0 then [(vec,K_Type)]:[] else  [(f(mu),mu)] fi  od,G),())
+let rv=(##
+ for mu in ktypes do
+  let f_mu=f.f(mu) in
+  if #f_mu=0 then [(vec,K_Type)]:[] else  [(f_mu,mu)]
+  fi
+ od,G)
+in let d=dearrange(rv) in
+(d,())
+
+set Psi_S(hodge_function f,[K_Type] ktypes,RealForm G)=KHodgeParamPol:
+(dearrange(##for mu in ktypes do
+  let f_mu=f.f(mu) in 
+ if #f_mu=0 then [(vec,K_Type)]:[] else  [(f_mu,mu)] fi  od,G),())
 
 {warning: this is slow}
 set hodgePrint(hodge_function f, [K_Type] ktypes)=void:
@@ -46,7 +71,7 @@ hodgePrint(Psi_S(f,ktypes,ktypes[0].real_form)) fi
 
 set print(hodge_function f, [K_Type] ktypes)=void:hodgePrint(f,ktypes)
 
-set nullHodgeFunction(RealForm G)=hodge_function:(K_Type mu):[]
+set nullHodgeFunction(RealForm G)=hodge_function:((K_Type mu):[],G)
 
 set sort_by ( (vec,(KGBElt,ratvec)->int) f) =
   ([(vec,(KGBElt,ratvec))] v) [(vec,(KGBElt,ratvec))]:
@@ -76,19 +101,28 @@ for c@p in P do
 
 {multiply function by polynomial: f_new(mu)=f(mu)*poly\in Z[v]}
 set * (i_poly P, hodge_function f)=hodge_function: 
-(K_Type mu):convolve(P,f(mu))
+((K_Type mu):convolve(P,f.f(mu)),f.real_form)
 
 set *(int i,hodge_function f)=hodge_function:constant_poly(i)*f
 
 set + (hodge_function f,hodge_function g)=hodge_function:
-(K_Type mu):poly_plus(f(mu),g(mu))
+assert(f.real_form=g.real_form,"real forms don't match in + of hodge_functions");
+((K_Type mu):poly_plus(f.f(mu),g.f(mu)),g.real_form)
 
 set - (hodge_function f,hodge_function g)=hodge_function:
-(K_Type mu):poly_minus(f(mu),g(mu))
+assert(f.real_form=g.real_form,"real forms don't match in + of hodge_functions");
+((K_Type mu):poly_minus(f.f(mu),g.f(mu)),f.real_form)
 
 set is_zero(hodge_function f,[K_Type] ktypes)=bool:
 {let ()=prints("is_zero with:", Psi_S(f,ktypes,ktypes[0].real_form)) in}
 Psi_S(f,ktypes,ktypes[0].real_form)=nullKHodgeParamPol(ktypes[0].real_form)
+
+
+set hodge_theta_induce_standard(Param p,RealForm G)=hodgeParamPol:hodge_recursive_deform(theta_induce_standard(p,G))
+set hodge_theta_induce_standard(hodgeParamPol P,RealForm G)=hodgeParamPol:
+let rv=nullHodgeParamPol(G) in 
+ for (c,p) in rearrange(P) do rv+:=c*hodge_theta_induce_standard(p,G) od;rv
+
 
 {set remove_term(hodge_function f,[(vec,Param)] terms,K_Type mu)=(hodge_function,[(vec,Param)]):
 let term=f(mu)*hodge_function_std(parameter(mu)) in 

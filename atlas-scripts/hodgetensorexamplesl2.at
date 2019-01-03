@@ -9,8 +9,10 @@ if #x=2 then [mu.highest_weight.mu] else [highest_weight(mu,x).mu] fi
 set g=weights(kt[2])
 {set g=weights(LKT(trivial(G)))}
 set ht=hodge_tensor_std(p,g@KGBElt)
-
-{set psiht=Psi_S(ht@K_Type,kt)
+{
+set psiht=Psi_S(ht@K_Type,kt)
+}
+{
 set P=Omega_S_inverse(ht@K_Type,kt)
 set KP=K_hodge_param_pol(P,kt)
 }
