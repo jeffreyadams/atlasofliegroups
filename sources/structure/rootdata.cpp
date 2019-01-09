@@ -1252,8 +1252,11 @@ WeylWord wrt_distinguished(const RootSystem& rs, RootNbrList& Delta)
       }
   while (s<rank);
 
-  WeylWord result;
-  result.assign(w.wcbegin(),w.wcend());
+  // now copy out to |result| the Weyl word twisted by (the final value) |Delta|
+  WeylWord result; result.reserve(length(w));
+  for (auto it=w.begin(); not w.at_end(it); ++it)
+    result.push_back(rs.simpleRootIndex(Delta[*it]));
+
   return result;
 }
 
