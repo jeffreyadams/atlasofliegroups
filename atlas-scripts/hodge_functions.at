@@ -6,7 +6,7 @@
 <tensor_product_gl2.at
 }
 {basics of functions from K-hat to Z,W and Z[v]}
-
+set hktfv=true  {short for hodge_K_type_formula_verbose}
 set_type multiplicity_function=(K_Type -> int)
 set_type signature_function=(K_Type -> Split)
 set_type hodge_function= ((K_Type->i_poly) f,RealForm real_form)
@@ -40,6 +40,7 @@ set branch_function_std_as_hodge_function(Param p)=hodge_function:
 {was called hodge_polynomial, renamed to Psi_S
  see hodgeTempered.pdf (towards the end) and hodge_tensor.at}
 set Psi_S(hodge_function f,[K_Type] ktypes)=KHodgeParamPol:
+let ()=if hktfv then prints("SUB: Psi_S(f,ktypes)", f.real_form) fi in
 let rv=##
  for mu in ktypes do
   let f_mu=f.f(mu) in
@@ -49,7 +50,8 @@ let rv=##
 in let d=dearrange(rv) in
 (d,())
 
-set Psi_S(hodge_function f,[K_Type] ktypes,RealForm G)=KHodgeParamPol:
+{set Psi_S(hodge_function f,[K_Type] ktypes,RealForm G)=KHodgeParamPol:
+let ()=if hktfv then prints("SUB: Psi_S(f,ktypes,G)", f.real_form) fi in
 let rv=(##
  for mu in ktypes do
   let f_mu=f.f(mu) in
@@ -58,8 +60,10 @@ let rv=(##
  od,G)
 in let d=dearrange(rv) in
 (d,())
+}
 
 set Psi_S(hodge_function f,[K_Type] ktypes,RealForm G)=KHodgeParamPol:
+let ()=if hktfv then prints("SUB: Psi_S(f,ktypes)", f.real_form) fi in
 (dearrange(##for mu in ktypes do
   let f_mu=f.f(mu) in 
  if #f_mu=0 then [(vec,K_Type)]:[] else  [(f_mu,mu)] fi  od,G),())
@@ -118,10 +122,13 @@ set is_zero(hodge_function f,[K_Type] ktypes)=bool:
 Psi_S(f,ktypes,ktypes[0].real_form)=nullKHodgeParamPol(ktypes[0].real_form)
 
 
-set hodge_theta_induce_standard(Param p,RealForm G)=hodgeParamPol:hodge_recursive_deform(theta_induce_standard(p,G))
+set hodge_theta_induce_standard(Param p,RealForm G)=hodgeParamPol:
+ hodge_recursive_deform(theta_induce_standard(p,G))
 set hodge_theta_induce_standard(hodgeParamPol P,RealForm G)=hodgeParamPol:
 let rv=nullHodgeParamPol(G) in 
  for (c,p) in rearrange(P) do rv+:=c*hodge_theta_induce_standard(p,G) od;rv
+
+
 
 
 {set remove_term(hodge_function f,[(vec,Param)] terms,K_Type mu)=(hodge_function,[(vec,Param)]):

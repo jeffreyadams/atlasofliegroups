@@ -99,8 +99,8 @@ fi
 
 {hodge tensor hodge_function_std(p) with wedge^k(u_1\cap s), as a hodge function}
 set hodge_tensor_exterior_u_cap_s_std(Param p,Parabolic P)=hodge_function:
-let rv=nullHodgeFunction(P.real_form) in
- for k:#nilrad_roots(P)
+let rv=nullHodgeFunction(p.real_form) in
+ for k:#nilrad_roots(P)+1
  do rv+:=hodge_tensor_wedge_k_u_cap_s_std(p,P,k) od;rv
 
 {assume S is sorted by height}

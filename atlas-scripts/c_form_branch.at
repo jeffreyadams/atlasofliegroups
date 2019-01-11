@@ -29,7 +29,7 @@ let rv=null_module(G) in
 set c_form_branch_std(ParamPol P,int N)=ParamPol:c_form_branch_std(P,N,P.real_form)
 
 set test_hodge_K_type_formula_c_form(K_Type mu, int N)=
-let f=hodge_K_type_formula(mu).v_to_s then
+let f=hodge_K_type_formula(mu,N).v_to_s then
 g=c_form_branch_std(f,N)  in (#g=1, g)
 
 set test_hodge_K_type_formula_c_form([K_Type] ktypes, int N)=
