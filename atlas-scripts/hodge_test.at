@@ -91,9 +91,10 @@ set test_hodge_K_type_mat([K_Type] mus,int N)=([([[vec]],bool)],bool):
 let pairs=for mu@i in mus do let (N,,r)=test_hodge_K_type_mat(mu,N) in (N,r) od in
 (pairs, all( for (,r) in pairs do r od))
 
-{print out hodge_K_type matrices A and B for trivial K-type}
-set print_hodge_K_type_mat_trivial(RealForm G, int N)=let (a,b,A,B)=hodge_K_type_mat_long(LKT(trivial(G)),N)
-in prints("G=",G,new_line,"N=",N,new_line,"set (a,b,A,B)=hodge_K_type_mat_long(trivial(LKT(G)),N)");
+{print out hodge_K_type matrices A and B for given K-type}
+set print_hodge_K_type_mat(K_Type mu, int N)=(int,[K_Type],i_poly_mat,i_poly_mat):
+let (a,b,A,B)=hodge_K_type_mat_long(mu,N)
+in prints("G=",mu.real_form,new_line,"mu=",mu,new_line,"N=",N,new_line,"set (a,b,A,B)=hodge_K_type_mat_long(mu,N)");
 prints("columns of A: graded version of the formula for the LKT of standard (finite number of terms)");
 prints("columns of B: graded K-multiplicities in the standard module (Hodge grading)");
 prints("all coefficients in B matrix must be non-negative");
@@ -102,3 +103,8 @@ printPolyMatrix(A,"v");
 prints("B=");
 printPolyMatrix(B,"v");
 (a,b,A,B)
+
+set print_hodge_K_type_mat_trivial(RealForm G, int N)=(int,[K_Type],i_poly_mat,i_poly_mat):
+print_hodge_K_type_mat(LKT(trivial(G)),N)
+
+
