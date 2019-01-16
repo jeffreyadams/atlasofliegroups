@@ -252,9 +252,17 @@ set print(KHodgeParamPol KP)=void:
 let header=["c","codim","x","weight","dim","height","mu"] then
 P=KP.P then
 values=for (c,p) in rearrange(P) do
-let (,x)=%p.x then
-(,,wt)=highest_weights(p)[0] in
+let (,x)=%p.x in
 [poly_format(c,"v"),codim(x(p)).to_string,x.to_string,LKTs(p)[0].highest_weight.mu.to_string,LKTs(p)[0].dimension.to_string,
+height(p).to_string,p.mu.to_string] od in tabulate(header#values,"lllllll",2," ")
+
+set print(KHodgeParamPol KP,KGBElt x_K)=void:
+let header=["c","codim","x","weight","dim","height","mu"] then
+P=KP.P then
+values=for (c,p) in rearrange(P) do
+let (,x)=%p.x then
+(,,wt)=highest_weights(p,x_K)[0] in
+[poly_format(c,"v"),codim(x(p)).to_string,x.to_string,wt.to_string,LKTs(p)[0].dimension.to_string,
 height(p).to_string,p.mu.to_string] od in tabulate(header#values,"lllllll",2," ")
 
 set print_hodge_branch_std_builtin(Param p,int N)=void:print(hodge_branch_std_builtin(p,N))

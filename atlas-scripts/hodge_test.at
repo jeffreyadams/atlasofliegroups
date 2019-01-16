@@ -1,13 +1,56 @@
-<all.at
-{set hodge_branch_irr(Param p,int N)=KHodgeParamPol:hodge_branch_std(hodge_grading_irreducible(p),N)}
+<hodge_K_type_formula.at
+<c_form_branch.at
+<bigMatrices.at
 
+set hodge_test_verbose=true
 {------------------ some test functions--------------------}
 
-{hodge_grading_irreducible(p) evaluted at v=s should equal c_form_irreducible(p)}
-set hodgeTestIrreducible(Param p)=bool:hodge_grading_irreducible(p).v_to_s=c_form_irreducible(p)
-set hodgeTestIrreducible([Param] params)=(bool,[bool]):
-let results=for p in params do hodgeTestIrreducible(p) od in (all(results),results)
+{test: entries of polynomial matrix are non-negative}
 
+set test_positive(i_poly_mat M)=bool:all(for i:#M do is_non_negative(transpose(M)[i]) od)
+
+set test_positive_hodge_K_type_mat(K_Type mu,int N)=(i_poly_mat,i_poly_mat,bool):
+let (A,B)=hodge_K_type_mat(mu,N) in (A,B,test_positive(B))
+
+set test_positive_hodge_K_type_mat([K_Type] ktypes,int N)=bool:
+all(for mu in ktypes do let (,,rv)=test_positive_hodge_K_type_mat(mu,N) in rv od)
+
+{Note: these tests only verify the formulas for hodge gradings in terms
+of tempered, see below for tests involving tempered representations}
+set test_elementary_hodge_grading_std_at_1(Param p)=bool:hodge_grading_std(p).v_to_1=p*0
+set test_elementary_hodge_grading_std_at_s(Param p)=bool:hodge_grading_std(p).v_to_s=c_form_std(p)
+set test_elementary_hodge_grading_irr_at_1(Param p)=bool:hodge_grading_irreducible(p).v_to_1=character_formula(p)*0
+set test_elementary_hodge_grading_irr_at_s(Param p)=bool:hodge_grading_irreducible(p).v_to_s=c_form_irreducible(p)
+
+{tests involving tempered representations: checking on individual K-types up to height N}
+set test_hodge_grading_std_at_1(Param p,int N)=bool:hodge_branch_std(p,N).v_to_1=branch_std(p,N)
+set test_hodge_grading_std_at_s(Param p,int N)=
+assert(is_equal_rank(p.real_form),"G is not equal rank, test is not defined");
+bool:hodge_branch_std(p,N).v_to_s=c_form_branch_std(p,N)
+
+{several tests together}
+set hodge_test(Param p, int N)=
+let
+a=test_elementary_hodge_grading_std_at_1(p) then
+ ()=if hodge_test_verbose then prints("test_elementary_hodge_grading_std_at_1(p): ",a) fi then
+b=test_elementary_hodge_grading_std_at_s(p) then
+ ()=if hodge_test_verbose then prints("test_elementary_hodge_grading_std_at_s(p): ",b) fi then
+c=test_elementary_hodge_grading_irr_at_1(p) then
+ ()=if hodge_test_verbose then prints("test_elementary_hodge_grading_irr_at_1(p): ",c) fi then
+d=test_elementary_hodge_grading_irr_at_s(p) then
+ ()=if hodge_test_verbose then prints("test_elementary_hodge_grading_irr_at_s(p): ",d) fi in
+if is_equal_rank(p.real_form) then
+let 
+ e= test_hodge_grading_std_at_1(p,N) then
+  ()=if hodge_test_verbose then prints("test_hodge_grading_std_at_1(p): ",e) fi then
+ f=test_hodge_grading_std_at_s(p,N) then
+  ()=if hodge_test_verbose then prints("test_hodge_grading_std_at_s(p): ",f) fi in
+ ([a,b,c,d,e,f],all([a,b,c,d,e,f]))
+else
+([a,b,c,d],all([a,b,c,d]))
+fi
+
+{deprecated
 set hodgetest(Param p,int N)=bool:
 let hodgedef=hodge_recursive_deform(p) then
 (rv,)=hodge_branch_std(hodgedef,N) then
@@ -18,12 +61,11 @@ prints(p.real_form,new_line,"N:",N,new_line,p,new_line,"hodge_deformation to 0: 
 "correct evaluation at v=1:",valid_evaluation_at_1,new_line,
 "correct evaluation at v=s:",valid_evaluation_at_s,new_line,
 "positive coefficients: ",positive,new_line);valid_evaluation_at_1 and valid_evaluation_at_s and positive
+}
 
-set hodgeTest(RealForm G,int N)=bool:hodgetest(trivial(G),N)
-
-set hodgeTest([Param] params,int N)=(bool,[bool]):let result=for p in params do hodgetest(p,N) od in (all(result),result)
-
-set runHodgeTests(int k)=
+set hodge_test(RealForm G,int N)=bool:let (,pass)=hodge_test(trivial(G),N) in pass
+set hodge_test([Param] params,int N)=(bool,[bool]):let result=for p in params do let (,pass)=hodge_test(p,N) in pass od in (all(result),result)
+set run_hodge_tests(int k)=
 let groups=
 [(SL(2,C),10),
 (SL(3,C),15),
@@ -33,6 +75,30 @@ let groups=
 (SO(7,1),80),
 (Sp(4,C),20),
 (complexification(G2_s),50)]
-in for i:k do let (G,N)=groups[i] in hodgeTest(G,N) od 
+in for i:k do let (G,N)=groups[i] in hodge_test(G,N) od 
 
-set runHodgeTests()=runHodgeTests(6)
+set run_hodge_tests()=run_hodge_tests(6)
+
+
+
+{test: all entries of B matrix (for K-type mu) are non-negative}
+set test_hodge_K_type_mat(K_Type mu,int N)=(i_poly_mat,[bool],bool):
+let (A,B)=hodge_K_type_mat(mu,N) in let
+results=for i:#B do is_non_negative(transpose(B)[i]) od in (B,results,all(results))
+
+{test: all entries of each B matrix (running over set of Kptypes) are non-negative}
+set test_hodge_K_type_mat([K_Type] mus,int N)=([([[vec]],bool)],bool):
+let pairs=for mu@i in mus do let (N,,r)=test_hodge_K_type_mat(mu,N) in (N,r) od in
+(pairs, all( for (,r) in pairs do r od))
+
+{print out hodge_K_type matrices A and B for trivial K-type}
+set print_hodge_K_type_mat_trivial(RealForm G, int N)=let (a,b,A,B)=hodge_K_type_mat_long(LKT(trivial(G)),N)
+in prints("G=",G,new_line,"N=",N,new_line,"set (a,b,A,B)=hodge_K_type_mat_long(trivial(LKT(G)),N)");
+prints("columns of A: graded version of the formula for the LKT of standard (finite number of terms)");
+prints("columns of B: graded K-multiplicities in the standard module (Hodge grading)");
+prints("all coefficients in B matrix must be non-negative");
+prints("A=");
+printPolyMatrix(A,"v");
+prints("B=");
+printPolyMatrix(B,"v");
+(a,b,A,B)

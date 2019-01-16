@@ -1,7 +1,7 @@
-<hodge_functions.at
-{<hodge_K_type_formula.at}
+<hodge_K_type_formula.at
 <tensor_product.at
 
+{see hodgeTempered.pdf in Dropbox}
 
 {compute hodge function f\otimes F
  f is an arbitrary Hodge function
@@ -12,29 +12,22 @@
  (f\otimes F)(mu)=
 }
 
+{NOTE: most of these functions have local versions inside
+the definition of hodge_K_type_formula in hodge_K_type_formula.at
+}
 
+{branching to K as a function:}
 set branch_function_std(Param p)=multiplicity_function:
 (K_Type mu):split_as_int(branch_std(p,K_norm(mu))[parameter(mu)])
 
-{set branch_std(Param p)=(Param->int):
-(Param q):branch_std(p)(LKT(q))
-}
-
+{hodge function on a standard module, this calls
+hodge_branch_std, which calls hodge_K_type_formula...}
 set hodge_function_std(Param p)=hodge_function:
 ((K_Type mu):coefficient(hodge_branch_std(p,K_norm(mu)),parameter(mu)),p.real_form)
 
-set shift(vec v,hodge_function f)=hodge_function:
-((K_Type mu): f.f(K_Type:(mu.x,mu.lambda+v)),f.real_form)
-
-{moved Psi_S to hodge_functions.at}
-{
-set Psi_S(hodge_function f,[K_Type] ktypes)=KHodgeParamPol:
-(dearrange(##for mu in ktypes do if #f(mu)=0 then [(vec,K_Type)]:[] else  [(f(mu),mu)] fi  od,ktypes[0].real_form),())
-set Psi_S(hodge_function f,[K_Type] ktypes,RealForm G)=KHodgeParamPol:
-(dearrange(##for mu in ktypes do if #f(mu)=0 then [(vec,K_Type)]:[] else  [(f(mu),mu)] fi  od,G),())
-}
-
-{Phi_S is in hodge_K_type_formula.at}
+{shift a parameter by adding v to lambda, result may not be standard}
+set shift(vec v,hodge_function h)=hodge_function:
+((K_Type mu): h.f(K_Type:(mu.x,mu.lambda+v)),h.real_form)
 
 set * (i_poly P, hodge_function f)=hodge_function:
 ((K_Type mu):convolve(P,f.f(mu)),f.real_form)
@@ -43,7 +36,6 @@ set * (i_poly P, hodge_function f)=hodge_function:
  (f\otimes weights)(mu)=\sum_tau mult(tau,mu\otimes(weights)^*)*f(tau)
  this is a finite sum over the K-types tau appearing in mu\otimes(weights)^*
 }
-
 set dual((KGBElt ->[ratvec]) weights)=(KGBElt->[ratvec]):(KGBElt x):for v in weights(x) do -v od
 
 {general hodge tensor product}
@@ -117,17 +109,15 @@ in solve_one(KP,S,nullHodgeParamPol(KP.real_form))
 {map from hodge functions to hodgeParamPols, given a set S of K-types}
 set Omega_S_inverse(hodge_function f,[K_Type] S)=hodgeParamPol:Phi_S_inverse(Psi_S(f,S),S)
 
-set hodge_tensor_std_as_function(Param p, (KGBElt -> [ratvec]) weights)=hodge_function:
+set hodge_tensor_std(Param p, (KGBElt -> [ratvec]) weights)=hodge_function:
 ((K_Type mu):hodge_tensor_std(p,weights,mu),p.real_form)
 
-set hodge_tensor_wedge_k_u_cap_s_std_as_function(Param p,Parabolic P_1,int k)=hodge_function:
+set hodge_tensor_wedge_k_u_cap_s_std(Param p,Parabolic P_1,int k)=hodge_function:
 let weights=sums_nci_nilrad_roots_wedge_k_restricted_to_H_theta(P_1, k) in
-minus_vee_to_the_k(k)*hodge_tensor_std_as_function(p,weights)
+minus_vee_to_the_k(k)*hodge_tensor_std(p,weights)
 
-set hodge_tensor_exterior_u_cap_s_std_as_function(Param p,Parabolic P)=hodge_function:
+set hodge_tensor_exterior_u_cap_s_std(Param p,Parabolic P)=hodge_function:
 let rv_hf=nullHodgeFunction(p.real_form) in
 for k:#nilrad_roots(P)+1
 do
-let add=hodge_tensor_wedge_k_u_cap_s_std_as_function(p,P,k) in prints("k:",k,"add:",add);rv_hf+:=add od;rv_hf
-
-
+let add=hodge_tensor_wedge_k_u_cap_s_std(p,P,k) in prints("k:",k,"add:",add);rv_hf+:=add od;rv_hf
