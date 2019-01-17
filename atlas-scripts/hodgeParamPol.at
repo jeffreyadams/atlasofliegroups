@@ -2,9 +2,6 @@
 <tabulate.at
 <convert_c_form.at {for Param@mu}
 
-set codim(KGBElt x)=int:nr_of_posroots(root_datum(x))-dimension(x)
-set codim(Param p)=int:codim(x(p))
-
 {set P_t(G)={non-zero, final, standard, tempered parameter}
  this is precisely the set of "K-types" (parameters of G)
  p_i -> LKT(p_i) is a bijection with K^ (irreducible representations of K)

@@ -110,8 +110,9 @@ else
  let cayley=
   if imaginary_type(i,x)=1 then  {construct Cayley transform by hand}
    let y=Cayley(i,x) then
-   nu=(1-involution(y))*ref*gamma/2*0 in  {new value of nu, not necessarily 0}
-   if !=nu and hodge_normalize_verbose then prints("warning:  non-zero nu:", "p=", p, " i=", i, " nu=", nu) fi;
+{   nu=(1-involution(y))*ref*gamma/2*0 in  {new value of nu, not necessarily 0} THIS IS IRRELEVANT}
+   nu=zero in
+{   if !=nu and hodge_normalize_verbose then prints("warning:  non-zero nu:", "p=", p, " i=", i, " nu=", nu) fi;}
    [(vee^(n\2),parameter(y,lambda,nu))]
   else
    let y=Cayley(i,x) then
@@ -131,7 +132,8 @@ else
     prints("k=",k, " f=");printPoly(f);
     prints("new x:", cross(i,x), new_line, "lambda=",lambda, new_line,"alpha=",alpha)
    fi;
-   rv#:=(poly_product(vee^(k-1),f), parameter(cross(i,x),lambda+(n-k)*alpha,zero))
+   {note: - sign was missing here:}
+   rv#:=(-poly_product(vee^(k-1),f), parameter(cross(i,x),lambda+(n-k)*alpha,zero))
   od;
  rv
 fi

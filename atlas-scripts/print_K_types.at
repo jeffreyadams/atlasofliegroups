@@ -118,4 +118,17 @@ set print_K_types (ParamPol P, KGBElt x_K) = void:
           , " ", dimension(mu), " ", length(mu))
   od
 
+set print_K_Type_Pol(K_Type_Pol P)=void:
+let header=["c","codim","x","weight","dim","height","mu"] then
+values=for (c,p) in %P do
+let (,x)=%p.x in
+[c.split_as_int.to_string,codim(x(p)).to_string,x.to_string,LKTs(p)[0].highest_weight.mu.to_string,LKTs(p)[0].dimension.to_string,
+height(p).to_string,p.mu.to_string] od in tabulate(header#values,"lllllll",2," ")
+
+set print_K_Type_Pol(K_Type_Pol P, KGBElt x_K)=void:
+let header=["c","codim","x","weight","dim","height","mu"] then
+values=for (c,p) in %P do
+let (,x)=%p.x in
+[c.split_as_int.to_string,codim(x(p)).to_string,x.to_string,highest_weight(LKTs(p)[0],x_K).mu.to_string,LKTs(p)[0].dimension.to_string,
+height(p).to_string,p.mu.to_string] od in tabulate(header#values,"lllllll",2," ")
 

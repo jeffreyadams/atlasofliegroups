@@ -1273,6 +1273,8 @@ set no_Cminus_roots (KGBElt x) = bool:
 set no_Cplus_roots (KGBElt x) = bool:
   none(semisimple_rank(real_form(x)), (int i)bool: status(i,x)=4)
 
+set codim(KGBElt x)=int:nr_of_posroots(root_datum(x))-dimension(x)
+
 {                               Blocks                                  }
 
 set blocks (RealForm rf) = [Block]:
@@ -1318,6 +1320,7 @@ set infinitesimal_character (Param p) = ratvec: let (,,gamma) =%p in gamma
 set d_lambda (Param p) = ratvec: let (x,,gamma) =%p in (1+involution(x))*gamma/2
 set nu (Param p) = ratvec:       let (x,,gamma) =%p in (1-involution(x))*gamma/2
 set Cartan_class (Param p) = CartanClass: Cartan_class(x(p))
+set codim(Param p)=int:codim(p.x)
 
 set involution (Param p)=involution(x(p))
 
