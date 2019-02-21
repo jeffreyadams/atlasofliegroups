@@ -61,17 +61,23 @@ set element (CyclotomicField F) = ([rat]->CyclotomicFieldElement):
 set cyclotomic_field_element ([rat] v, CyclotomicField F) =
        CyclotomicFieldElement: F.element(v)
 
-set = (CyclotomicFieldElement(v,F),CyclotomicFieldElement(w,G)) = bool:
-   assert(F=G,"cyclotomic fieds differ in comparison");
-   assert(#v=#w and #F.Phi=#v+1,"unnormalized cyclotimic field element(s)");
-   all(for c@i in v do c=w[i] od) { compare without converting to |ratvec| }
-set != (CyclotomicFieldElement x,CyclotomicFieldElement y) = bool: not x=y
-
 {.embed Q in cyclotomic field as (images of) constant polynomials.}
 set embed_Q (rat r,CyclotomicField F) = CyclotomicFieldElement: F.element([r])
 
 set one (CyclotomicField F) = CyclotomicFieldElement:  embed_Q(1,F)
 set zero (CyclotomicField F) = CyclotomicFieldElement: embed_Q(0,F)
+
+set = (CyclotomicFieldElement(v,F),CyclotomicFieldElement(w,G)) = bool:
+   assert(F=G,"cyclotomic fieds differ in comparison");
+   assert(#v=#w and #F.Phi=#v+1,"unnormalized cyclotimic field element(s)");
+   all(for c@i in v do c=w[i] od) { compare without converting to |ratvec| }
+set != (CyclotomicFieldElement x,CyclotomicFieldElement y) = bool: not x=y
+set = (CyclotomicFieldElement(v,F)) = bool:(v,F)=F.zero
+
+
+
+
+set != (CyclotomicFieldElement x) = bool: not x=x.F.zero
 
 set primitive_root (CyclotomicField F) = cyclotomic_field_element([0,1],F)
 
