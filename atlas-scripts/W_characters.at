@@ -69,18 +69,18 @@ set two_rho(RootDatum rd, (int->bool) select {from simple indices}) = vec:
   image under it of the Levi system (a non-standard Levi system $L$ whose value
   $2\rho_L$ equals |rho2_dom|, since the Levi system remains positive throughout
   the transformation). A conjugate standard Levi system will not necessarily map
-  to the same non-standard Levi system $L$, whence generate the orbit of the
+  to the same non-standard Levi system $L$, whence we generate the orbit of the
   latter under the stabiliser subgroup of the |rho2_dom|, with witnesses.
 
   The orbit generation here is taylored to the specific situation that we know
   that all elements of the acting subgroup fix the $2\rho$ value for $L$, so the
   only way they can map all simple generators of $L$ to roots of $L$ is by
-  permuting them among each other. Also since the $2\rho_L$ value being
-  dominant, it will be a fortiori dominant for the positive roots in any system
-  in the orbit of $L$, the acting stabiliser subgroup will map positive roots of
-  $L$ to positive roots. We can then work with positive root indices only, act
-  on lists of such indices, and sort the result to test for equality.
-}
+  permuting them among each other. Also since the $2\rho_L$ value is dominant,
+  for the full system, and so a fortiori dominant for the positive roots in any
+  system in the orbit of $L$, the acting stabiliser subgroup will map positive
+  roots of $L$ to positive roots. We can then work with positive root indices
+  only, act on lists of such indices, and sort the result to test for equality.
+  }
 
 set_type orbit_data = [[int],WeylElt]
 
@@ -94,7 +94,7 @@ set rho_stabiliser_orbit (RootDatum rd, [int] Levi) = orbit_data:
       od
    then act(int i,[int] roots) = [int]:
       let map = root_perm[i] in for j in roots do map[j] od.sort
-   , orbit = [(for i in Levi do root_index(rd,w0*root(rd,i)) od,w0)]
+   , orbit = [(for i in Levi do root_index(rd,/w0*root(rd,i)) od,w0)]
    , current=0
    in while current<#orbit
       do let (L,w)=orbit[current] next current+:=1 in
