@@ -446,7 +446,7 @@ matrix::PID_Matrix<C> adapted_basis(matrix::PID_Matrix<C> M, // by value
     { assert(M(k,j) % M(i,j) == 0); // since |find_small_remainder| said so
       auto q=M(k,j)/M(i,j); // exact division, so safe even when |M(k,j)<0|
       // |M.rowOperation(k,i,-q);| is what we conceptually do
-      result.columnOperation(i,k,q); // inverse mulitplication on the right
+      result.columnOperation(i,k,q); // inverse multiplication on the right
     }
     assert(M(i,j)==d);
     diagonal.push_back(d);
