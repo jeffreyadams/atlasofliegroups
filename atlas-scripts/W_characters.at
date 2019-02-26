@@ -241,9 +241,9 @@ set subsystem_2rho (RootDatum rd, (int->bool) select {from posroot indices}) =
 set conjugate_from_standard_Levi (WeylElt w) =
        (WeylElt,[int],WeylElt): { conjugator from, standard Levi, conjugate w }
    let (rd,):Levi_info=w.Levi_info
-   then rho2_L = subsystem_2rho(Levi_info)
+   then Ld=Levi_datum(Levi_info), rho2_L = subsystem_2rho(Levi_info)
    then Levi = let predicate = is_simple_for(rho2_L) { applies to coroots } in
-               list(rd.nr_of_posroots,(int i)bool:predicate(coroot(rd,i)))
+               list(Ld.nr_of_posroots,(int i)bool:predicate(coroot(Ld,i)))
    then (chamber,perm) = chamber_max_system(rd,maximise(rd,Levi))
    in (chamber,for i:#Levi do perm[i] od.sort,/chamber*w*chamber)
 
