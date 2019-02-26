@@ -10,7 +10,7 @@
    simple roots in the highest root. The label of the lowest root is 1 (not
    in the list of these labels). .}
 set get_labels(RootDatum rd)=vec:
-for i:rank(rd) do rat_as_int(highest_root(rd)*fundamental_coweights(rd)[i]) od
+for i:semisimple_rank(rd) do rat_as_int(highest_root(rd)*fundamental_coweights(rd)[i]) od
 
 set get_subsets_given_order(RootDatum rd, int order)=[[int]]:
    let labels=get_labels(rd) then
@@ -163,7 +163,8 @@ set Kac_diags_up_to_order(RootDatum rd, int max_order)=[[[int]]]:
 {. Given a Kac diagram, compute the corresponding element of the Lie algebra. .}
 set Kac_x (RootDatum rd, vec v)=ratvec: let labels=get_labels(rd)#1
    then r=semisimple_rank(rd),m=v*labels, fcw=fundamental_coweights(rd)
-   then result=ratvec: for i:r do 0/1 od in
+   then l=#fcw[0]
+   then result=ratvec: for i:l do 0/1 od in
      for i:r do result+:=v[i]/m*fcw[i] od; result
 
 {. Given a Kac diagram, compute the order of the corresponding element
