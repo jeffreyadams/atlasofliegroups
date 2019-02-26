@@ -185,10 +185,10 @@ set conjugacy_classes = conjugacy_class_reps@RootDatum
 set minimal_extenders (RootDatum rd,[int] Levi) = [int]:
    let orth = { columns: generators in $X_*$ of annihilator subspace of |Levi| }
       kernel(rd.rank ^ for i in Levi do root(rd,i) od)
-in case a_column_with((vec alpha)bool: !=orth*alpha, rd.posroots)
+in case a_column_with((vec alpha)bool: !=alpha*orth {@*(vec,mat)}, rd.posroots)
    | no_vec: [] { |Levi| already spans subspace containing all roots }
    | solution(alpha):
-      { find a coweight |f| witnessing that |orth*alpha| is nonzero }
+      { find a column |f| of |orth| (coweight) witnessing |alpha*orth| nonzero }
       let f = requisition(a_column_with((vec cowt)bool: !=cowt*alpha, orth))
       , min=0 { minimal positive coroot evaluation on |wt| so far; 0 if none }
       , result = [int]: [] { list of root indices with minimal positive eval }
