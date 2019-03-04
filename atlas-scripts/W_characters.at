@@ -245,15 +245,15 @@ set conjugate_from_standard_Levi (WeylElt w) =
        (WeylElt,[int],WeylElt): { conjugator from, standard Levi, conjugate w }
    let (rd,):Levi_info=w.Levi_info
    then Ld=Levi_datum(Levi_info), rho2_L = subsystem_2rho(Levi_info)
-   then Levi = let predicate = is_simple_for(rho2_L) { applies to coroots } in
-               list(Ld.nr_of_posroots,(int i)bool:predicate(coroot(Ld,i)))
+   then Levi = for alpha_v in columns_with(is_simple_for(rho2_L),Ld.poscoroots)
+	       do coroot_index(rd,alpha_v) od
    then (chamber,perm) = chamber_max_system(rd,maximise(rd,Levi))
    in (chamber,for i:#Levi do perm[i] od.sort,/chamber*w*chamber)
 
 set conjugate_from_classified_standard_Levi ([vec,orbit_data] table) =
 (WeylElt w) (WeylElt,[int],WeylElt):
    let (chamber,Levi,standard_w) = conjugate_from_standard_Levi(w)
-   then rho2 = two_rho(w.root_datum,is_member(Levi))
+   then rho2 = dominant(rd,two_rho(w.root_datum,is_member(Levi)))
    then i=first(#table,(int i)bool: let (r,)=table[i] in r=rho2)
    then (,L_orb) = table[i] then (Levi_repr,)=L_orb[0]
 in if Levi=Levi_repr
