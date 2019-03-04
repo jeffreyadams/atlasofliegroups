@@ -82,51 +82,58 @@ set two_rho(RootDatum rd, (int->bool) select {from simple indices}) = vec:
   only, act on lists of such indices, and sort the result to test for equality.
   }
 
-set_type orbit_data = [[int],WeylElt]
-set right_act([int] Levi,WeylElt w) = [int]:
+set_type orbit_data = [int,WeylElt] { posroot set as binary number, mapping |w| }
+set right_act([int] Levi,WeylElt w) = int: { encode |w^-1*Levi| in binary }
    let rd=w.root_datum in
-   for i in Levi do coroot_index(rd,coroot(rd,i)*w) od.sort
+   for i in Levi do 2^coroot_index(rd,coroot(rd,i)*w) od.sum
+set unbinary (int bin) = [int]: let i=0 in
+   while bin.>
+   do let (q,r)=bin\%2 in if =r then [] else [i] fi
+   next i+:=1; bin:=q
+   od.##
 
 { list of (L,w) where 2rho(L)=dominant(2rho(Levi)) and L=w*Levi  }
 set rho_stabiliser_orbit (RootDatum rd, [int] Levi) = orbit_data:
    let (w0,rho2_dom) = from_dominant(rd,two_rho(rd,is_member(Levi)))
    then rho_stabiliser = Levi_datum(rd,(int i)bool: =coroot(rd,i)*rho2_dom)
    then root_perm = { list of posroot permutations for stabiliser generators }
+      let two=2/1 then pow2(int n)=int:floor(two^n) { negatives to 0 } in
       for beta in rho_stabiliser.simple_roots
-      do for alpha in rd.posroots do root_index(rd,reflect(rd,beta,alpha)) od
+      do for alpha in rd.posroots
+         do root_index(rd,reflect(rd,beta,alpha)).pow2
+	 od
       od
-   then act(int i,[int] roots) = [int]:
-      let map = root_perm[i] in for j in roots do map[j] od.sort
+   then act(int i,[int] roots) = int:
+      let map = root_perm[i] in for j in roots do map[j] od.sum
    , orbit = [(right_act(Levi,w0),/w0)] { starting point }
    , current=0
    in while current<#orbit
-      do let (L,w)=orbit[current] next current+:=1 in
+      do let (L_bin,w)=orbit[current] next current+:=1 then L=L_bin.unbinary in
          for k:rho_stabiliser.semisimple_rank
-         do let new_L=act(k,L) in
-            if none(#orbit,(int i): let (x,)=orbit[i] in x=new_L)
+         do let new_L_bin=act(k,L) in
+            if none(#orbit,(int i): let (x,)=orbit[i] in x=new_L_bin)
             then orbit #:=
-              (new_L,root_reflection(rd,rho_stabiliser.simple_roots[k])*w)
+              (new_L_bin,root_reflection(rd,rho_stabiliser.simple_roots[k])*w)
             fi
          od
       od; orbit
 
 { group together conjugate standard Levis, with witness conjugating from first }
-set classify_standard_Levis (RootDatum rd) =  [vec,orbit_data]:
-   let classify_group ([[int]] list) = [vec,orbit_data]:
-      let orbs=[orbit_data]: [], result=[vec,orbit_data]: [] in
+set classify_standard_Levis (RootDatum rd) =  [vec,[int],[[int],WeylElt]]:
+   let classify_group ([[int]] list) = [vec,[int],[[int],WeylElt]]:
+      let orbs=[orbit_data]: [], result=[vec,[int],[[int],WeylElt]]: [] in
       for Levi in list
       do let (w0,rho2_dom)=from_dominant(rd,two_rho(rd,is_member(Levi)))
-         then i = first(#result,(int i)bool: let (v,)=result[i] in v=rho2_dom)
+         then i = first(#result,(int i)bool: let (v,,)=result[i] in v=rho2_dom)
       in if i.< { is this a previously unseen |rho2_dom| value }
          then orbs #:= rho_stabiliser_orbit(rd,Levi)
-         ;  result #:= (rho2_dom,[(Levi,id_W(rd))])
+         ;  result #:= (rho2_dom,Levi,[])
          else { |rho2_dom| value already seen, and tabulated in |orbs[i]| }
             let orbit=orbs[i], L = right_act(Levi,w0)
             then pos = first(#orbit,(int i)bool: let (rts,)=orbit[i] in L=rts)
             in assert(pos.>=,"conjugate with dominant rho not found in orbit");
-               let (rho2,v)= result[i] in
-               result[i] := (rho2,v#(Levi,let(,w)=orbit[pos] in
-	                                  w0*w { Levi <-w0-- L <-w-- first } ))
+               let (rho2,L,v)= result[i], (,w)=orbit[pos] in
+               result[i] := (rho2,L,v#(Levi,w0*w { Levi <-w0-- L <-w-- first } ))
          fi
      od; result
   ,  r = rd.semisimple_rank
@@ -250,16 +257,16 @@ set conjugate_from_standard_Levi (WeylElt w) =
    then (chamber,perm) = chamber_max_system(rd,maximise(rd,Levi))
    in (chamber,for i:#Levi do perm[i] od.sort,/chamber*w*chamber)
 
-set conjugate_from_classified_standard_Levi ([vec,orbit_data] table) =
+set conjugate_from_classified_standard_Levi ([vec,[int],[[int],WeylElt]] table) =
 (WeylElt w) (WeylElt,[int],WeylElt):
    let (chamber,Levi,standard_w) = conjugate_from_standard_Levi(w)
    then rho2 = dominant(rd,two_rho(w.root_datum,is_member(Levi)))
-   then i=first(#table,(int i)bool: let (r,)=table[i] in r=rho2)
-   then (,L_orb) = table[i] then (Levi_repr,)=L_orb[0]
+   then (,Levi_repr,others) =
+      table[first(#table,(int i)bool: let (r,,)=table[i] in r=rho2)]
 in if Levi=Levi_repr
    then (chamber,Levi,standard_w)
    else let (,conj) =
-       L_orb[first(#L_orb-1,(int i)bool: let (L,)=L_orb[i+1] in L=Levi)]
+            others[first(#others,(int i)bool: let (L,)=others[i] in L=Levi)]
       in (chamber*conj , Levi_repr, /conj*standard_w*conj)
    fi
 
