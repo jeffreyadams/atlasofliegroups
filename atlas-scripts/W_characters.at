@@ -250,34 +250,59 @@ set chamber_max_system (RootDatum rd, [int] sys) = (WeylElt,[int]):
    in assert(all(ssr,is_member(perm)),"Not a complete system");
    (W_elt(rd,for pos in positions do perm[pos] od),perm)
 
+set from_standard_Levi ((RootDatum,[int]) (rd,Levi):arg) =
+      (WeylElt, [int]): { chamber, unsorted standard Levi }
+   let (chamber,perm) = chamber_max_system(rd,maximise(arg)) in
+   (chamber,perm[:#Levi] { select start of simple indices list })
+
+set standard_Levi_lookup (
+      RootDatum rd,[vec,[int],[[int],WeylElt]] table) = ([int]->WeylElt, [int]):
+([int] unsorted_standard_Levi) (WeylElt, [int]):
+   let rho2 = dominant(rd,two_rho(rd,is_member(unsorted_standard_Levi)))
+   , standard_Levi=unsorted_standard_Levi.sort
+   then (,Levi_repr,others) =
+      table[first(#table,(int i)bool: let (r,,)=table[i] in r=rho2)]
+in if standard_Levi=Levi_repr
+   then (id_W(rd),standard_Levi)
+   else let (,conj) =
+      others[first(#others,(int i)bool: let (L,)=others[i] in L=standard_Levi)]
+      in (conj , Levi_repr)
+   fi
+
+
 { value of $2\rho$ for not necessarily standard Levi, from Levi info }
 set subsystem_2rho (RootDatum rd, (int->bool) select {from posroot indices}) =
       vec: { two_rho(Levi_datum(rd,select)), but we can compute it directly: }
    sum(rd.rank #
        ##for alpha@i in rd.posroots do if select(i) then [alpha] else [] fi od)
 
-set conjugate_from_standard_Levi (WeylElt w) =
-       (WeylElt,[int],WeylElt): { conjugator from, standard Levi, conjugate w }
+set Levi_of (WeylElt w) = [int]: { posroot indices for simples of |w| system }
    let (rd,):Levi_info=w.Levi_info
    then Ld=Levi_datum(Levi_info), rho2_L = subsystem_2rho(Levi_info)
-   then Levi = for alpha_v in columns_with(is_simple_for(rho2_L),Ld.poscoroots)
-	       do coroot_index(rd,alpha_v) od
-   then (chamber,perm) = chamber_max_system(rd,maximise(rd,Levi))
-   in (chamber,for i:#Levi do perm[i] od.sort,/chamber*w*chamber)
+in for alpha_v in columns_with(is_simple_for(rho2_L),Ld.poscoroots)
+   do coroot_index(rd,alpha_v) od
 
+{ partial work: find some standard Levi onjugate to that of |w| }
+set conjugate_from_standard_Levi (WeylElt w) =
+       (WeylElt,[int],WeylElt): { conjugator from, standard Levi, conjugate w }
+   let (chamber,unsorted_standard_Levi)
+      = from_standard_Levi(w.root_datum,Levi_of(w))
+   in (chamber,unsorted_standard_Levi.sort,/chamber*w*chamber)
+
+set Levi_lookup (
+      RootDatum rd,[vec,[int],[[int],WeylElt]] table) = ([int]->WeylElt,[int]):
+   let lookup = standard_Levi_lookup(rd,table) in
+([int] Levi) (WeylElt, [int]):
+   let (chamber,unsorted_standard_Levi) = from_standard_Levi(rd,Levi)
+   then (conj,Levi) = lookup(unsorted_standard_Levi)
+   in (chamber*conj,Levi)
+
+{ like |conjugate_from_standard_Levi|, using standard Levi chosen from |table| }
 set conjugate_from_classified_standard_Levi (
       RootDatum rd,[vec,[int],[[int],WeylElt]] table) =
+   let lookup = Levi_lookup(rd,table) in
 (WeylElt w) (WeylElt,[int],WeylElt):
-   let (chamber,standard_Levi,standard_w) = conjugate_from_standard_Levi(w)
-   then rho2 = dominant(rd,two_rho(rd,is_member(standard_Levi)))
-   then (,Levi_repr,others) =
-      table[first(#table,(int i)bool: let (r,,)=table[i] in r=rho2)]
-in if standard_Levi=Levi_repr
-   then (chamber,standard_Levi,standard_w)
-   else let (,conj) =
-      others[first(#others,(int i)bool: let (L,)=others[i] in L=standard_Levi)]
-      in (chamber*conj , Levi_repr, /conj*standard_w*conj)
-   fi
+   let (conj,Levi) = lookup(Levi_of(w)) in (conj,Levi,/conj*w*conj)
 
 { A third task is to test for conjugacy in $W$.
 
