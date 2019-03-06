@@ -149,19 +149,6 @@ set maybe_conjugate(RootDatum rd,[WeylElt] S,[vec] A,[vec] B) = maybe_a_conjugat
    ; ().no_w { report failure if loop runs to completion }
    fi 
 
-set maybe_conjugate(RootDatum rd,[WeylElt] S,[vec] A,[vec] B) =
-       maybe_a_conjugator:
-   if =rank(rd) or =#A and =#B then id_W(rd).w { trivial cases }
-   else
-      for perm in symmetric_group(#A)
-      do let maybe=maybe_conjugate_strict(rd,[id_W(rd)],A*perm,B) in
-         if any(maybe) then return maybe { and break from loop and function } fi
-      od
-   ; ().no_w { report failure if loop runs to completion }
-   fi
-
->>>>>>> 99718cf87f29a61a9a35b516a1a66bb5813d262b
-
 set maybe_conjugate(RootDatum rd,[vec] A,[vec] B)=maybe_a_conjugator:
 maybe_conjugate(rd,[id_W(rd)],A,B)
 
