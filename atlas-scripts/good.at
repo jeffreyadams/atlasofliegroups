@@ -1,5 +1,7 @@
 <cyclotomic_Gaussian_elim.at
 <conjugate.at
+<parabolics.at
+<affine.at
 
 {compute all d^th roots of unity which are eigenvalues
 of M (M is typically the matrix of a Weyl group
@@ -66,16 +68,16 @@ let M=matrix(w) in eigenpairs(M,M.order)
 set zero_coroots(RootDatum rd,[CyclotomicVec] wts)=[int]:
 ##for alpha_check@i in poscoroots(rd) do
 if all (for v in wts do =dot_product(alpha_check,v) od)
-then [i] else [] fi  od 
+then [i] else [] fi  od
 
 {returns a root_datum for a *possibly non-standard* Levi}
-set levi(RootDatum rd,[CyclotomicVec] vecs)=RootDatum: 
+set levi(RootDatum rd,[CyclotomicVec] vecs)=RootDatum:
 let real_vecs=for v in vecs do v+bar(v) od then
 im_vecs  =for v in vecs do v-bar(v) od then
 all_vecs=real_vecs##im_vecs then
 coroots=zero_coroots(rd,all_vecs) then pos_roots=for i in coroots do
 posroots(rd)[i] od then pos_coroots=for i in coroots do
-poscoroots(rd)[i] od in if =#pos_roots then complex_Levi(rd,[int]:[]) 
+poscoroots(rd)[i] od in if =#pos_roots then complex_Levi(rd,[int]:[])
 else let
 (simple_roots,simple_coroots)=simple_system_from_positive(pos_roots,pos_coroots)
 in root_datum(simple_roots,simple_coroots) fi
@@ -110,7 +112,7 @@ let v=ratvec:null(rank(rd)) in
 { prints("pre-final v:", v);
  prints("final v:", v/d);}v/d
 
- 
+
 
 set centralizer(RootDatum rd,RootDatum rd_L)=RootDatum:
 centralizer(rd,simple_roots(rd_L))
@@ -169,7 +171,7 @@ set good_report(RootDatum rd)=good_report(elliptic(rd), affine_datum(rd))
 set run_reports()=void:
 let types=["G2","F4","E6","E7","E8"] in
 for type in types do
-let rd=simply_connected(type) in 
+let rd=simply_connected(type) in
 good_report(rd) od
 
 

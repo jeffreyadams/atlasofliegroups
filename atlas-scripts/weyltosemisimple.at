@@ -1,3 +1,9 @@
+<basic.at
+<sort.at
+<parabolics.at
+<affine.at
+<tabulate.at
+
 {root numbering 0...n-1 versus 1...n}
 set shift_by_minus_1([int] S)=for j in S do j-1 od
 
@@ -6,7 +12,7 @@ set Kac_coordinates(RootDatum rd, ratvec v)=
 let (v,d)=%v then
 w=for alpha in simple_roots(rd) do alpha*v od then
 affine=d-w*labels(rd) then
-w_ratvec=w##[affine]/d in {do this to divide out common factor} 
+w_ratvec=w##[affine]/d in {do this to divide out common factor}
 %w_ratvec
 }
 
@@ -44,7 +50,7 @@ for i:#rp-1 from 1 do
  od; let
 (ad,pullback)=folded_affine(rd,data.delta) then
 ()=prints("final v:",v) then
-(w,omega)=affine_make_dominant(pullback*v/data.d,ad) in 
+(w,omega)=affine_make_dominant(pullback*v/data.d,ad) in
 (v,w,affine_coordinates(w,ad),omega)
 
 set report([good_data] list)=void:
@@ -62,7 +68,7 @@ values=
  P is an m\times n matrix, so that
  P*[x_1,...,x_n]=[y_1,...,y_m]
  where v=[x_1,...,x_n] in given basis of V
- assume v\in V^\delta, then 
+ assume v\in V^\delta, then
  v=[y_1,...,y_m] in given basis of V^delta
  }
 
