@@ -31,11 +31,11 @@ These work for any sub root system
 
 Application:
 
-standard_Levi(rd,rd_L): this returns the standard Levi 
+standard_Levi(rd,rd_L): this returns the standard Levi
 to which rd_L is conjugate, using the rho_check(L) test,
 but with no witness
 
-standard_Levi_witness(rd,rd_L): 
+standard_Levi_witness(rd,rd_L):
 return W_elt taking rd_L to standard
 algorithm:
 rd_L_std=standard_Levi(rd,rd_L)
@@ -99,7 +99,7 @@ set maybe_conjugate_strict(RootDatum rd_orig,[WeylElt] S,[vec] A,[vec] B)=maybe_
 {keep rd_orig just for computing cartan_matrix(rd_orig,*)
  then call recursive function with recursively smaller rd's}
 let rec_fun maybe_conjugate_strict(RootDatum rd,[WeylElt] S,[vec] A,[vec] B)=maybe_a_conjugator:
- if #A=0 then make_W_element(S).w 
+ if #A=0 then make_W_element(S).w
  elif cartan_matrix(rd_orig,A) != cartan_matrix(rd_orig,B) then ().no_w else
 { let ()=prints(new_line,"rd:", rd, new_line, "A: ", A, new_line, "B: ", B) in}
  let m=mover(rd,A[0],B[0]) in
@@ -124,16 +124,17 @@ set conjugate_strict(RootDatum rd,[vec] A,[vec] B)=WeylElt:req(maybe_conjugate_s
 set symmetric_group(int n)=[mat]: for w in W(GL(n)) do matrix(w) od
 
 {try all permutations}
-set maybe_conjugate(RootDatum rd,[WeylElt] S,[vec] A,[vec] B)=maybe_a_conjugator:
-let n=rank(rd) in
-if =n or (#A=0 and #B=0) then id_W(rd).w else let
-perms=symmetric_group(#A) then
-i=0 then
-rec_fun loop_symmetric(int i,[vec] A,[vec] B)=maybe_a_conjugator:
- if i=#perms then ().no_w else
- let maybe=maybe_conjugate_strict(rd,[id_W(rd)],A*perms[i],B) in
- if any(maybe) then maybe else i:=i+1;loop_symmetric(i,A,B) fi fi
- in loop_symmetric(0,A,B) fi
+set maybe_conjugate(RootDatum rd,[WeylElt] S,[vec] A,[vec] B) =
+       maybe_a_conjugator:
+   if =rank(rd) or =#A and =#B then id_W(rd).w { trivial cases }
+   else
+      for perm in symmetric_group(#A)
+      do let maybe=maybe_conjugate_strict(rd,[id_W(rd)],A*perm,B) in
+         if any(maybe) then return maybe { and break from loop and function } fi
+      od
+   ; ().no_w { report failure if loop runs to completion }
+   fi
+
 
 set maybe_conjugate(RootDatum rd,[vec] A,[vec] B)=maybe_a_conjugator:
 maybe_conjugate(rd,[id_W(rd)],A,B)
@@ -156,4 +157,4 @@ sub_root_datum(rd,reps[index])
 {return a WeylElt taking rd_L to a standard Levi root datum}
 set standard_Levi_witness(RootDatum rd,RootDatum rd_L)=WeylElt:
 let w=maybe_conjugate(rd,rd_L,standard_Levi(rd,rd_L)) in
-assert(any(w), "Error finding standard_Levi_witness");req(w) 
+assert(any(w), "Error finding standard_Levi_witness");req(w)
