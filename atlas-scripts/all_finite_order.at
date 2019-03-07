@@ -192,6 +192,19 @@ set is_conjugate_Kac ([int] v,[int] w, RootDatum rd)=bool:
    any(for x in list
       do move_to_fundamental_domain(rd,Kac_x(rd,v)+x)=Kac_x(rd,w) od)
 
+{. crude listing. }
+set Kac_classes_given_order_crude(RootDatum rd,int order)=[[int]]:
+   let labels=get_labels(rd) then
+   limits=for a in labels do if order=a then 2 else ceil(order/a)
+                             fi
+                          od in
+   let S=[[int]]:[] in
+   for v in box(limits) do
+    let extra=order-v*labels in
+     if extra>=0 then let   w=v#(extra) in
+    if gcd(w)=1
+     then S#:=w fi fi  od;S
+
 {. List all Kac elements of a given order, up to conjugacy of the
    corresponding group element. .}
 set Kac_classes_given_order (RootDatum rd,int order)=[[int]]:

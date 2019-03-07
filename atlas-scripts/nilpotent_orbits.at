@@ -577,15 +577,29 @@ let simple_roots=for i in S do
 then simple_coroots=for v in simple_roots do coroot(rd,v) od
 in root_datum(simple_roots,simple_coroots)  fi
 
+{run over list of pairs [(v,w)], only keep those for which the v's
+give distint torus elements
+use this to filter result of Kac_diagrams_with_centralizer
+previously the filtering was done on the fly which was wasteful
+}
+set filter(RootDatum rd,[([int],WeylElt)] list)=[([int],WeylElt)]:
+let keep=[([int],WeylElt)]:[] in
+for (v,w) in list do
+ if none(for (u,) in keep do is_conjugate_Kac(v,u,rd) od) then keep#:=(v,w) fi od;
+keep
+ 
 {use maybe_conjugate from conjugate.at to test conjugacy}
 {. Given a pseudo-Levi L, find all Kac diagrams of order m and whose
    centralizer is conjugate to L. .}
 set Kac_diagrams_with_centralizer (RootDatum rd, [int] L,int m)=[([int],WeylElt)]:
-   let diags=Kac_classes_given_order(rd,m) in
-   let ()=if nilpotent_verbose then prints("#diags: ",#diags) fi in
-   ##for d in diags do
+   let ()=if nilpotent_verbose then prints("Kac_diagrams_with_centralizer: L=", L, " m=", m) fi in
+   let diags=Kac_classes_given_order_crude(rd,m) in
+   let ()=if nilpotent_verbose then prints("#diagrams: ",#diags) fi in
+   let crude=##for d in diags do
      let maybe=maybe_conjugate(rd,pseudo_Levi(rd,zero_roots(rd,d)),pseudo_Levi(rd,L)) in
-      if any(maybe) then [(d,req(maybe))] else [] fi od
+      if any(maybe) then [(d,req(maybe))] else [] fi od then
+   rv=filter(rd,crude) in
+   if nilpotent_verbose then prints("crude answer:", #crude, "  final result:", #rv)  fi;rv
 
 set order_of_center (RootDatum rd)=#Kac_classes_given_order(rd,1)
 
