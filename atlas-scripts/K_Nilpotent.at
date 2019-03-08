@@ -785,8 +785,8 @@ for i:#d.real_orbits do
 let shapeT= let (,,T)=d.T_matrices[i] in shape(T) then
 pairs=#d.pairs[i] in
 [i.to_string,pairs.to_string, shapeT.stringify] od in
-tabulate(header#values,"lll",1," ");
-{prints("Sum of ranks of Q matrices: ", sum(for Q in d.Q_matrices do rank(Q) od));
+tabulate(header#values,"lll",1," "){;
+prints("Sum of ranks of Q matrices: ", sum(for Q in d.Q_matrices do rank(Q) od));
 prints("#K_basis: ", #K_basis(d))}
 
 {display K-types as highest weights for K_0}
