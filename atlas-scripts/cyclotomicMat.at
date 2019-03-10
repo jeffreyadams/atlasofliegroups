@@ -1,4 +1,6 @@
 <basic.at
+<cyclotomic.at
+<tabulate.at
 
 set_type CyclotomicVec = [CyclotomicFieldElement] { sublists are matrix rows, not columns! }
 set_type CyclotomicMat = [[CyclotomicFieldElement]] { sublists are matrix rows, not columns! }
@@ -240,3 +242,4 @@ set is_non_negative = (i_poly->bool): >=@vec { same condition as "dominance" }
 
 set top_left_square_block (CyclotomicMat M,int size) = CyclotomicMat:
   for row in M[:size] do row[:size] od
+}

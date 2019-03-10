@@ -14,3 +14,6 @@
 <all_finite_order.at
 <hodge_test.at
 <hodge_tensor.at
+<K_Nilpotent.at
+<cyclotomic_Gaussian_elim.at
+<cyclotomicMat.at
