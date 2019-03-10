@@ -1,32 +1,11 @@
+{see K_parameters.at}
+
 <basic.at     { for *@(Param,rat) }
 <hermitian.at { for hermitian_form_irreducible }
-<center.at    {for compact_coradical_basis}
-{<K_highest_weights.at}
+<K_highest_weights.at
 
-{Recall from standardrepk.h:
-Normal: $\<\alpha^\vee(1+\theta),\lambda>\geq0$ when $\alpha$ simple,
-complex, and orthogonal to sums of positive imaginary resp. real roots.
-}
-set RC_simple(KGBElt x)=[int]:
-##for alpha@i in x.root_datum.simple_roots do
-let alpha_check=x.root_datum.simple_coroots[i] in
-  if is_complex(i,x) 
-   and =alpha_check*rho_i(x) 
-   and =alpha_check*rho_r(x)
- then [i] 
- else [] 
- fi 
-od 
-
-{return (true,-1) if normal, otherwise (false,j) where
- j is in RC_simple(x) and 
- <p.lambda,simple_coroots[j]><0
-}
-set is_normal(Param p)=(bool,int):
-assert(=p.nu,"nu\ne 0");
-let rd=p.root_datum then
-RC_simple=RC_simple(x(p)) then
-index=first(#RC_simple,(int i)bool:rd.simple_roots[RC_simple[i]]*p.lambda<0) in (index = -1,index)
+{define * for K_types}
+set *(int c,K_Type mu)=K_Type_Pol:c*parameter(mu)
 
 set sort_by_height (ParamPol P) = [(Split,Param)]:
   sort_by_height(for c@p in P do (c,p) od)
@@ -44,20 +23,15 @@ set branch_irr (ParamPol P,int bound) = ParamPol:
 { multiplicity of K-type p_K in standard module p }
 set mult_std (Param p_K,Param p) = int:
   split_as_int(branch_std(p,height(p_K))[p_K])
-set mult_std (K_Type mu,Param p) = int:mult_std(parameter(mu),p)
 
 { multiplicity of K-type p_K in irreducible module p }
 set mult_irr (Param p_K,Param p) = int:
   split_as_int(branch_irr(p,height(p_K))[p_K])
-set mult_irr (K_Type mu,Param p) = int:mult_irr(parameter(mu),p)
 
 set mult_std(Param p_K, ParamPol P) = Split:
   sum(for c@p in P do c*mult_std(p_K,p) od)
-set mult_std(K_Type mu, ParamPol P) = Split:mult_std(parameter(mu),P)
-
 set mult_irr(Param p_K, ParamPol P) = Split:
   sum(for c@p in P do c*mult_irr(p_K,p) od)
-set mult_irr(K_Type mu, ParamPol P) = Split:mult_irr(parameter(mu),P)
 
 set K_signature_irr (Param p,int bound) = (ParamPol,ParamPol):
   let form=hermitian_form_irreducible(p) in
@@ -69,3 +43,44 @@ set signed_mult (Param p_K,Param p) = (int,int):
    , split_as_int(branch_std(Q,height(p_K))[p_K])
    )
 
+{ this should be modified to print all LKTs }
+set print_K_types (ParamPol P) = void:
+  let Q=sort_by_height(P) in
+  for (c,p) in Q
+  do let mu=highest_weight_one(LKT(p)) in
+    prints(split_as_int(c), " ", fundamental_weight_coordinates (mu)
+          , " ", dimension(mu), " ", length(mu))
+  od
+
+set print_K_types (ParamPol P, KGBElt x_K) = void:
+  let Q=sort_by_height(P) in
+  for (c,p) in Q
+  do let mu=highest_weight_one(LKT(p),x_K) in
+    prints(split_as_int(c), " ", fundamental_weight_coordinates (mu)
+          , " ", dimension(mu), " ", length(mu))
+  od
+
+{expand vector giving a virtual sum of K_Types in terms of a basis}
+set view([K_Type] K_basis, vec v)=K_Type_Pol:
+let rv= null_module(K_basis[0].real_form) in 
+for i:#v do rv+:=v[i]*K_basis[i] od ;rv
+
+{K_basis is the basis of a vector space, v is a vector in this basis
+ return sum_i v[i]*K_types[i]
+ need G only if #K_basis=0}
+set expand([int] v,[K_Type] K_basis, RealForm G)=K_Type_Pol:
+let rv=null_module(G) in  for i:#v do rv+:=v[i]*K_basis[i] od;rv 
+
+{error if #K_basis=0}
+set expand([int] v,[K_Type] K_basis)=K_Type_Pol:
+expand(v,K_basis,K_basis[0].real_form)
+
+{find K_Type in list of K_types}
+set find([K_Type] list,K_Type mu)=int: first(#list,(int i)bool:list[i]=mu)
+
+{sort K_Types uniquely}
+set sort_u([K_Type] K_types)=[K_Type]:
+if #K_types=0 then [] else
+let P=null_module(K_types[0].real_form) in 
+for mu in K_types do P+:=parameter(mu) od; 
+for p in monomials(P) do K_type(p) od fi

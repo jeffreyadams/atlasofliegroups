@@ -1,4 +1,3 @@
-<K_highest_weights.at
 <K_types.at
 {
 this used to be called K_types.at
@@ -86,8 +85,6 @@ set print_branch_std_long (Param p,KGBElt x, int bound) = void:
 set print_branch_std_long (Param p, int bound) = void:
   print_branch_std_long(ParamPol:p,bound)
 
-
-
 set print_K_signature_irr (Param p,KGBElt x,int bound) = void:
 ( let form=hermitian_form_irreducible(p) then P=int_part(form),Q=s_part(form) in
   if =P then prints("Positive part is empty")
@@ -101,34 +98,16 @@ set print_K_signature_irr (Param p,KGBElt x,int bound) = void:
 set print_K_signature_irr (Param p,int bound) = void:
   print_K_signature_irr(p,KGB(real_form(p),0),bound)
 
-{ this should be modified to print all LKTs }
-set print_K_types (ParamPol P) = void:
-  let Q=sort_by_height(P) in
-  for (c,p) in Q
-  do let mu=highest_weight_one(LKT(p)) in
-    prints(split_as_int(c), " ", fundamental_weight_coordinates (mu)
-          , " ", dimension(mu), " ", length(mu))
+{similar to print_branch_std_long, except that K-types are given 
+ by their highest weight on K_0}
+set print_branch_K_std_long(ParamPol P, KGBElt x, int bound)=void:
+( prints("rho_K=", rho_K(x));
+ for (mult,q) in sort_by_height(branch_std(P,bound))
+  do let hw=highest_weight(K0_param(LKT(q),x)) in
+    prints(mult, "*", hw, " ", dimensions(q)[0]
+          ,  "    ", height(q))
   od
+)
 
-set print_K_types (ParamPol P, KGBElt x_K) = void:
-  let Q=sort_by_height(P) in
-  for (c,p) in Q
-  do let mu=highest_weight_one(LKT(p),x_K) in
-    prints(split_as_int(c), " ", fundamental_weight_coordinates (mu)
-          , " ", dimension(mu), " ", length(mu))
-  od
-
-set print_K_Type_Pol(K_Type_Pol P)=void:
-let header=["c","codim","x","weight","dim","height","mu"] then
-values=for (c,p) in %P do
-let (,x)=%p.x in
-[c.split_as_int.to_string,codim(x(p)).to_string,x.to_string,LKTs(p)[0].highest_weight.mu.to_string,LKTs(p)[0].dimension.to_string,
-height(p).to_string,p.mu.to_string] od in tabulate(header#values,"lllllll",2," ")
-
-set print_K_Type_Pol(K_Type_Pol P, KGBElt x_K)=void:
-let header=["c","codim","x","weight","dim","height","mu"] then
-values=for (c,p) in %P do
-let (,x)=%p.x in
-[c.split_as_int.to_string,codim(x(p)).to_string,x.to_string,highest_weight(LKTs(p)[0],x_K).mu.to_string,LKTs(p)[0].dimension.to_string,
-height(p).to_string,p.mu.to_string] od in tabulate(header#values,"lllllll",2," ")
-
+set print_branch_K_std_long(ParamPol P, int bound)=void:
+print_branch_K_std_long(P,KGB(P.real_form,0),bound)
