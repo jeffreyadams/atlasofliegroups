@@ -404,6 +404,10 @@ in {=(H*inverse(w), cross(w,x))}
    assert(is_conjugate_orbit(O_dom,O),"dominant(orbit) failed");
    O_dom
 
+set find ([RealNilpotent] list,RealNilpotent O)=int:
+first(#list,(int i)bool:list[i].root_datum=O.root_datum
+and is_conjugate_orbit(list[i],O))
+
 set find_conjugate ([RealNilpotent] list,RealNilpotent O) = int:
    first(#list,(int i)bool: list[i].root_datum=O.root_datum and
                             is_conjugate_orbit(list[i],O))
@@ -418,15 +422,6 @@ in for x in all_real_nilpotent_orbit_KGBs(G,H)
          od.none
       then result#:=x fi
    od; result
-
-{. Make a list of all real nilpotent orbits (H,x,) of G with H the
-   conjugate determined by the corresponding M. Here x need not be
-   in the distinguished fiber. .}
-set real_nilpotent_orbits_alt (RealForm G) = [RealNilpotent]:
-   for H in all_H_nd(G)
-   do let kgbs=real_nilpotent_orbit_KGBs(G,H) in
-      for x in kgbs do real_nilpotent(H,x) od
-   od.##.sort_by_dimension
 
 {. Auxiliary function. .}
 set real_nilpotent_orbit_KGPs (RealForm G,vec H) = [KGPElt]:
@@ -448,6 +443,10 @@ set real_nilpotent_orbits (RealForm G) = [RealNilpotent]:
       then kgps=real_nilpotent_orbit_KGPs(G,H)
    in for P in kgps do real_nilpotent(K,x_min(P)) od
    od.##.sort_by_dimension
+
+{assuming real nilpotents have been computed, just keep the real forms of given OC}
+set real_nilpotent_orbits([RealNilpotent] real_nilpotents, ComplexNilpotent OC)=[RealNilpotent]:
+   ##for O in real_nilpotents do if complex_orbit(O)=OC then [O] else [] fi od
 
 {. Make a list of the real forms of a given complex nilpotent orbit. .}
 set real_nilpotent_orbits (ComplexNilpotent (rd,,H):OC,RealForm G) =

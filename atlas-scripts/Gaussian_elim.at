@@ -96,8 +96,8 @@ set get_data ([[rat]] M) = [Pivot_info]:
   pivots, into a full size vector, by interspersing zeros at the non-pivot
   positions. This function |spread| is constructed by repeated modification,
   each newer version first calling the older one and then taking one more
-  entry to its roper destination. We must be careful to avoid building a
-  recursive call, by first binding the olf function value to a new name |f|,
+  entry to its proper destination. We must be careful to avoid building a
+  recursive call, by first binding the old function value to a new name |f|,
   and calling a function of that name from the newly extended function.
 }
 

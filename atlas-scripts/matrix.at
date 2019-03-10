@@ -61,3 +61,18 @@ set top_left_square_block(mat M,int size) = mat: M[ :size, :size]
 
 set cokernel(mat M)=^kernel(^M)
 set rank(mat A)=let (B,,pivots,)=A.echelon in #pivots
+
+{concatenate matrices with same number of rows}
+set merge_matrices([mat] matrices)=mat:
+if #matrices=0 then id_mat(0) else
+let rv=null(n_columns(matrices[0]),0) in
+for M in matrices do rv##:=M od;rv  fi
+
+set string_compact(mat M)=
+let A=^M then
+size=max(##for col in M do for x:#col do #(col[x].to_string) od od) in 
+##for row in A do 
+ let row_string=new_line 
+  in  for x in row do row_string+:=pad(x.to_string,size+1) od;row_string od
+
+set print_matrix_compact(mat M)=prints(string_compact(M))
