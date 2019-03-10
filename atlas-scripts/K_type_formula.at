@@ -1,6 +1,5 @@
+<is_normal.at
 <K_types_plus.at
-<hodge_deform.at
-<K_norm.at
 
 set K_type_formula_verbose=true
 
