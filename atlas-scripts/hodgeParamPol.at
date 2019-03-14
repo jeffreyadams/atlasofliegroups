@@ -228,45 +228,54 @@ for i:#P do rv+:=shift(hodge_branch_std_builtin(P[i],N),i) od;rv
 
 {nice output}
 set show(hodgeParamPol P)=void:
-for (f,p) in rearrange(P) do prints("(",poly_format(f,"v"),")","*",p)
-od
+let header=["coeff","x","lambda"] then
+values=
+for (f,p) in rearrange(P) do
+[poly_format(f,"v"),let (,n)=%p.x in n.to_string,p.lambda.to_string] od in 
+tabulate(header#values) 
 
 {nice output}
 set show(KHodgeParamPol P)=void:
-for (f,p) in rearrange(P) do prints("(",poly_format(f,"v"),")","*",LKT(p)) od
+let header=["coeff","x","lambda"] then
+values=
+for (f,p) in rearrange(P) do
+[poly_format(f,"v"),let (,n)=%p.x in n.to_string,p.lambda.to_string] od in 
+tabulate(header#values) 
 
 {alternative output version}
-set print(hodgeParamPol P)=void:
-let header=["c","x","lambda","nu","codim_O","hwt","dim_K","height","mu"] then
+set show_long(hodgeParamPol P,KGBElt x_K)=void:
+let header=["c","codim","x","lambda","hw","dim","height","mu"] then
 values=for (c,p) in rearrange(P) do
-let (,x)=%p.x then
-(,,wt)=highest_weights(p)[0] in
-[poly_format(c,"v"),x.to_string,p.lambda.to_string,p.nu.to_string,codim(x(p)).to_string,LKTs(p)[0].highest_weight.mu.to_string,LKTs(p)[0].dimension.to_string,
-height(p).to_string,p.mu.to_string] od in
-tabulate(header#values,"lllllllll",2," ")
+let (,x)=%p.x in
+[poly_format(c,"v"),codim(x(p)).to_string,x.to_string,p.lambda.to_string,highest_weight(LKTs(p)[0],x_K).mu.to_string,LKTs(p)[0].dimension.to_string,
+height(p).to_string,p.mu.to_string] od in tabulate(header#values)
 
-set print(KHodgeParamPol KP)=void:
-let header=["c","codim","x","weight","dim","height","mu"] then
+set show_long(hodgeParamPol P)=void:
+let header=["c","codim","x","lambda","hw","dim","height","mu"] then
+values=for (c,p) in rearrange(P) do
+let (,x)=%p.x in
+[poly_format(c,"v"),codim(x(p)).to_string,x.to_string,p.lambda.to_string,LKTs(p)[0].highest_weight.mu.to_string,LKTs(p)[0].dimension.to_string,
+height(p).to_string,p.mu.to_string] od in tabulate(header#values)
+
+set show_long(KHodgeParamPol KP)=void:
+let header=["c","codim","x","lambda","hw","dim","height","mu"] then
 P=KP.P then
 values=for (c,p) in rearrange(P) do
 let (,x)=%p.x in
-[poly_format(c,"v"),codim(x(p)).to_string,x.to_string,LKTs(p)[0].highest_weight.mu.to_string,LKTs(p)[0].dimension.to_string,
-height(p).to_string,p.mu.to_string] od in tabulate(header#values,"lllllll",2," ")
-
-set print(KHodgeParamPol KP,KGBElt x_K)=void:
-let header=["c","codim","x","weight","dim","height","mu"] then
-P=KP.P then
-values=for (c,p) in rearrange(P) do
-let (,x)=%p.x then
-(,,wt)=highest_weights(p,x_K)[0] in
-[poly_format(c,"v"),codim(x(p)).to_string,x.to_string,wt.to_string,LKTs(p)[0].dimension.to_string,
-height(p).to_string,p.mu.to_string] od in tabulate(header#values,"lllllll",2," ")
+[poly_format(c,"v"),codim(x(p)).to_string,x.to_string,p.lambda.to_string,LKTs(p)[0].highest_weight.mu.to_string,LKTs(p)[0].dimension.to_string,
+height(p).to_string,p.mu.to_string] od in tabulate(header#values)
 
 set print_hodge_branch_std_builtin(Param p,int N)=void:print(hodge_branch_std_builtin(p,N))
 
-set hodge_print(hodgeParamPol P)=void:print(P)
-set hodge_print([(vec,Param)] P)=void:print(dearrange(P))
-set hodge_print([(vec,K_Type)] P)=void:print(dearrange(P))
+set hodge_print(hodgeParamPol P)=void:show(P)
+set hodge_print([(vec,Param)] P)=void:show(dearrange(P))
+set hodge_print([(vec,K_Type)] P)=void:show(dearrange(P))
+
+set hodge_print_long(hodgeParamPol P)=void:show_long(P)
+set hodge_print_long([(vec,Param)] P)=void:show_long(dearrange(P))
+set hodge_print_long([(vec,K_Type)] P)=void:show_long(dearrange(P))
+
+
 
 set coefficient(hodgeParamPol P,K_Type mu)=i_poly:
 let r=rearrange(P) then

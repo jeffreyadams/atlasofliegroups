@@ -800,7 +800,7 @@ prints("K-types given as highest weights for K_0");
 let f=functions_on_real_orbit(O) then
 b=branch_std(f,N) in
 assert(all(for c@p in b do split_as_int(c)>0 od),"negative coefficient");
-print_branch_K_std_long(f,N) od
+print_branch_std_long(f,N) od
 
 {print K-types as KHighestWeights}
 set test_minimal_orbits(RealForm G, int N, void flag)=void:
@@ -822,7 +822,7 @@ prints("K-types given as highest weights for K_0");
 let f=functions_on_real_orbit(O) then
 b=branch_std(f,N) in
 assert(all(for c@p in b do split_as_int(c)>0 od),"negative coefficient");
-print_branch_K_std_long(f,N) od
+print_branch_std_long(f,N) od
 
 {print K-types as KHighestWeights}
 set test_all_orbits(RealForm G, int N, void flag)=void:

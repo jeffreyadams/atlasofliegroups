@@ -820,3 +820,10 @@ set column([K_Type] ktypes,i_poly_mat M,int i)=
 let col=transpose(M)[i] in
 dearrange(for j:#col do (col[j],ktypes[j]) od )
 
+{---- some output routines, see hodgeParamPol.at---}
+
+set print_hodge_std(Param p,int bound)=show(hodge_branch_std(p,bound))
+set print_hodge_std_long(Param p,int bound)=show_long(hodge_branch_std(p,bound))
+
+set print_hodge_irr(Param p,int bound)=show(hodge_branch_irr(p,bound))
+set print_hodge_irr_long(Param p,int bound)=show_long(hodge_branch_irr(p,bound))
