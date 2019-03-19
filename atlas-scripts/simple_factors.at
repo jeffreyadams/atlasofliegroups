@@ -1,0 +1,50 @@
+<misc.at
+
+{complex_torus in torus.at should be redefined}
+set complex_torus(int n)=RootDatum:root_datum(null(n,0),null(n,0))
+
+{root j is orthogonal to all coroots in S}
+set is_orthogonal(RootDatum rd,[int] S, int j)=bool:
+let root=posroots(rd)[j] in all(for i in S do =poscoroots(rd)[i]*root od)
+
+{list of simple roots in same simple factors as simple root #i}
+set simple_factor_indices(RootDatum rd, int i)=[int]:
+let rec_fun f(RootDatum rd, [int] S)=[int]:
+let new=first(for j:ss_rank(rd) do find(S,j)=-1 and not is_orthogonal(rd,S,j) od) in
+ if new=-1 then S else f(rd,S#new) fi in
+ f(rd,[i])
+
+{returns S=[[int]] where S[i] is the list of simple roots of simple factor #i}
+set simple_factors_indices(RootDatum rd)=[[int]]:
+let rec_fun f(RootDatum rd,[[int]] factors)=[[int]]:
+if ss_rank(rd)=0 then [[]] elif
+ss_rank(rd)=sum(for S in factors do #S od) then factors else
+ let new=first(for i:ss_rank(rd) do all(for S in factors do find(S,i)=-1 od) od) in
+ f(rd,factors#simple_factor_indices(rd,new)) fi
+in f(rd,[])
+
+{return RootDatum of simple roots in S (might not be simple)}
+set factor(RootDatum rd,[int] S)=RootDatum:
+ if #S=0 then complex_torus(rank(rd)) else
+ root_datum(for i in S do simple_roots(rd)[i] od,for i in S do simple_coroots(rd)[i] od) fi
+
+{RootDatum of simple factor containing simple root #i}
+set simple_factor(RootDatum rd,int i)=RootDatum:
+factor(rd,simple_factor_indices(rd,i))
+
+{complete list of simple factors, as [RootDatum]}
+set simple_factors(RootDatum rd)=[RootDatum]:
+for S in simple_factors_indices(rd) do factor(rd,S) od
+
+{return (rds,indices)=([RootDatum],[[int]])
+rds[i]=RootDatum of i^th simple factor
+indices[i]: indices of simple roots of rds[i] in simple roots of rd
+So {indices[i][j]} are distinct integers 0,1,...,ss_rank(rd)-1
+indices[i][j] is the index (in the simple roots of rd) of
+ the j^th simple root of factor #i
+}
+set simple_factors_info(RootDatum rd)=([RootDatum],[[int]]):
+(simple_factors(rd),simple_factors_indices(rd))
+
+set highest_roots(RootDatum rd)=[vec]:
+for factor in simple_factors(rd) do highest_root(factor) od

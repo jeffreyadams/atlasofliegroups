@@ -12,8 +12,8 @@
 <W_orbit.at
 
 { subalgebra(rd,roots):
-  roots are assumed to be the set of roots of a reductive subalgebra
-  containing H
+  roots are assumed to be the set of ALL roots of a reductive subalgebra
+  containing H (positive and negative)
   (otherwise an error)
   let twochocheck=compute sum of positive coroots
   simple roots are those with inner product 2 with this
@@ -40,6 +40,13 @@ set subalgebra (RootDatum rd, [vec] roots) = (bool,RootDatum):
       in ( { whether } nr_of_posroots(subrd) = #posroots, subrd)
     fi
   fi
+
+set subalgebra_from_positive(RootDatum rd,[vec] roots)=(bool,RootDatum):
+let all=roots##for v in roots do -v od in 
+subalgebra(rd,roots)
+
+set subalgebra(RootDatum rd,[int] roots)=(bool,RootDatum):
+subalgebra(rd, for j in roots do posroots(rd)[j] od)
 
 {mat k: columns span a subspace U of X_*
  construct RootDatum of Levi given by roots vanishing on U}
