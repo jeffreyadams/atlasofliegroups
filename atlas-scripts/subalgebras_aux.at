@@ -1,0 +1,27 @@
+set maximal_pseudo_Levis_simple(RootDatum rd)=[RootDatum]:
+assert(derived_is_simple(rd),"Root Datum has more than one simple factor");
+let sr=simple_roots(rd) then
+alpha=-highest_root(rd) in
+for i:ss_rank(rd) do subalgebra_by_simple(rd, delete(sr,i)#alpha) od
+
+{all RootDatum must have same rank}
+set all_products([[RootDatum]] rds,RootDatum rd_ambient)=[RootDatum]:
+if #rds=0 then [] elif
+#rds=1 then rds[0] else
+let rec_fun f([[RootDatum]] to_do,[RootDatum] done)=[RootDatum]:
+ if =#to_do then done else
+ let new=##
+  for rd in done do
+   for rd0 in to_do[0] do
+    let new_simple_roots=simple_roots(rd0)##simple_roots(rd) in
+    subalgebra_by_simple(rd_ambient,new_simple_roots) 
+   od
+  od
+  in f(for i:#to_do-1 from 1 do to_do[i] od,new)
+ fi
+in f(for i:#rds-1 from 1 do rds[i] od,rds[0])  fi
+
+
+set maximal_pseudo_Levis(RootDatum rd)=[RootDatum]:
+all_products(for subrd in simple_factors(rd) do maximal_pseudo_Levis_simple(subrd) od,rd)
+

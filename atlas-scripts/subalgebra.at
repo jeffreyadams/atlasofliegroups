@@ -41,12 +41,25 @@ set subalgebra (RootDatum rd, [vec] roots) = (bool,RootDatum):
     fi
   fi
 
-set subalgebra_from_positive(RootDatum rd,[vec] roots)=(bool,RootDatum):
-let all=roots##for v in roots do -v od in 
-subalgebra(rd,roots)
-
+{roots given by indices (in all roots) rather than vecs}
 set subalgebra(RootDatum rd,[int] roots)=(bool,RootDatum):
+subalgebra(rd,for j in roots do roots(rd)[j] od)
+
+{only specify the positive roots}
+set subalgebra_from_positive(RootDatum rd,[vec] roots)=(bool,RootDatum):
+let all=roots##for v in roots do -v od in subalgebra(rd,roots)
+
+{each root is given by index in positive roots, rather than a vec}
+set subalgebra_from_positive(RootDatum rd,[int] roots)=(bool,RootDatum):
 subalgebra(rd, for j in roots do posroots(rd)[j] od)
+
+{specify a subalgebra by a list of positive roots (not necessarily
+simple), to serve as the simple roots of the subalgebra}
+set subalgebra_by_simple(RootDatum rd,[vec] roots)=RootDatum:
+root_datum(for v in roots do v od, for v in roots do coroot(rd,v) od)
+
+set subalgebra_by_simple(RootDatum rd,[int] roots)=RootDatum:
+root_datum(for i in roots do posroots(rd)[i] od, for i in roots do poscoroots(rd)[i] od)
 
 {mat k: columns span a subspace U of X_*
  construct RootDatum of Levi given by roots vanishing on U}
