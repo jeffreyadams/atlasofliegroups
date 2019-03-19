@@ -1,10 +1,17 @@
+<subalgebra.at
+<simple_factors.at
+
 set maximal_pseudo_Levis_simple(RootDatum rd)=[RootDatum]:
 assert(derived_is_simple(rd),"Root Datum has more than one simple factor");
 let sr=simple_roots(rd) then
 alpha=-highest_root(rd) in
 for i:ss_rank(rd) do subalgebra_by_simple(rd, delete(sr,i)#alpha) od
 
-{all RootDatum must have same rank}
+{each RootDatum in rds is made from roots in rd_ambient
+ construct Cartesian products (in rd_ambient) of simple factors
+ see maximal_pseudo_Levis below for the main application
+ and and example
+}
 set all_products([[RootDatum]] rds,RootDatum rd_ambient)=[RootDatum]:
 if #rds=0 then [] elif
 #rds=1 then rds[0] else
@@ -21,7 +28,18 @@ let rec_fun f([[RootDatum]] to_do,[RootDatum] done)=[RootDatum]:
  fi
 in f(for i:#rds-1 from 1 do rds[i] od,rds[0])  fi
 
+{construct all maximal pseudo Levis of rd, not necessarily simple
+ no attempt to mod out by conjugacy
+ for example:
 
+atlas> rd
+Value: simply connected root datum of Lie type 'C2.C2'
+atlas> for sub in maximal_pseudo_Levis(rd) do prints(sub) od
+simply connected root datum of Lie type 'A1.A1.A1.A1'
+simply connected root datum of Lie type 'C2.A1.A1'
+simply connected root datum of Lie type 'A1.A1.C2'
+simply connected root datum of Lie type 'C2.C2'
+}
 set maximal_pseudo_Levis(RootDatum rd)=[RootDatum]:
 all_products(for subrd in simple_factors(rd) do maximal_pseudo_Levis_simple(subrd) od,rd)
 
