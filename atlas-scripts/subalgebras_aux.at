@@ -1,11 +1,57 @@
 <subalgebra.at
 <simple_factors.at
+<conjugate.at
 
+{a few display commands}
+set show([RootDatum] rds)=void:
+for rd in rds do prints(rd.Lie_type.str) od
+
+set show([[RootDatum]] rds)=void:
+for list@i in rds do prints(new_line, i);show(list) od
+
+{find a conjugate of sub_rd in rds, everything going
+on in rd_ambient}
+set find(RootDatum rd_ambient, [RootDatum] rds,RootDatum sub_rd)=bool:
+first(for rd in rds do is_conjugate(rd_ambient,rd,sub_rd) od) !=-1
+
+{sorting by semisimple rank and/or number of simple factors}
+set sort_by((RootDatum->int) f) =
+   ([RootDatum] v) [RootDatum]:
+      for index in inv_standardisation(for x in v do f(x) od) do v[index] od
+
+set sort_by_ss_rank = ([RootDatum]->[RootDatum]):
+   sort_by(ss_rank@RootDatum)
+
+set group_by_ss_rank([RootDatum] rds)=[[RootDatum]]:
+if =#rds then [rds] else
+let n=max(for rd in rds do ss_rank(rd) od) then
+rv=[[RootDatum]]:for i:n+1 do [RootDatum]:[] od in
+for rd in rds do rv[ss_rank(rd)]#:=rd od ;rv fi
+
+set group_by_number_simple_factors([RootDatum] rds)=[[RootDatum]]:
+if =#rds then [rds] else
+let n=max(for rd in rds do number_simple_factors(rd) od) then
+rv=[[RootDatum]]:for i:n+1 do [RootDatum]:[] od in
+for rd in rds do rv[number_simple_factors(rd)]#:=rd od ;rv fi
+
+set group_by_ss_rank_and_number_simple_factors([RootDatum] rds)=
+for x in group_by_ss_rank(rds) do group_by_number_simple_factors(x) od 
+
+{all maximal pseudo Levis of rd
+(including rd itself for induction reasons)
+assumption: rd has one simple factor, i.e. derived(rd) is simple
+run over all subsets obtained by deleting one
+non-special (i.e. label \ne 1) node from
+the extended Dynkin diagram
+this does NOT include actual Levi subgroups
+}
 set maximal_pseudo_Levis_simple(RootDatum rd)=[RootDatum]:
 assert(derived_is_simple(rd),"Root Datum has more than one simple factor");
 let sr=simple_roots(rd) then
+labels=labels(derived(rd)) then
 alpha=-highest_root(rd) in
-for i:ss_rank(rd) do subalgebra_by_simple(rd, delete(sr,i)#alpha) od
+rd#(##for i:ss_rank(rd) do
+ if labels[i] !=1 then [subalgebra_by_simple(rd, delete(sr,i)#alpha)] else [] fi od)
 
 {each RootDatum in rds is made from roots in rd_ambient
  construct Cartesian products (in rd_ambient) of simple factors
@@ -29,9 +75,8 @@ let rec_fun f([[RootDatum]] to_do,[RootDatum] done)=[RootDatum]:
 in f(for i:#rds-1 from 1 do rds[i] od,rds[0])  fi
 
 {construct all maximal pseudo Levis of rd, not necessarily simple
- no attempt to mod out by conjugacy
- for example:
-
+no attempt to mod out by conjugacy
+for example:
 atlas> rd
 Value: simply connected root datum of Lie type 'C2.C2'
 atlas> for sub in maximal_pseudo_Levis(rd) do prints(sub) od
@@ -42,4 +87,54 @@ simply connected root datum of Lie type 'C2.C2'
 }
 set maximal_pseudo_Levis(RootDatum rd)=[RootDatum]:
 all_products(for subrd in simple_factors(rd) do maximal_pseudo_Levis_simple(subrd) od,rd)
+
+{for the inductive step need to keep only proper ones}
+set proper_maximal_pseudo_Levis(RootDatum rd)=[RootDatum]:
+##for pl in maximal_pseudo_Levis(rd) do if dimension(pl)=dimension(rd) then [] else [pl] fi od
+
+{iteratively compute all subalgebras by repeatedly computing maximal pseudo Levis
+ ignore conjugacy
+}
+set iterate_maximal_pseudo_Levis(RootDatum rd)=[RootDatum]:
+let rec_fun f([RootDatum] done,[RootDatum] to_do)=[RootDatum]:
+ if =#to_do then done else
+ f(done#(to_do[0]),(for i:#to_do-1 from 1 do to_do[i] od)##proper_maximal_pseudo_Levis(to_do[0])) fi in
+ f([],[rd]) 
+
+{all equal rank reductive subalgebras, ignoring conjugacy
+algorithm:
+1) iteratively compute all maximal pseudo Levis
+2) for each sub sub_rd list representatives of all conjugacy classes of Levis
+}
+set all_subs_raw(RootDatum rd)=[RootDatum]:
+##for sub in iterate_maximal_pseudo_Levis(rd) do
+ for S in standard_Levi_conjugacy_representatives(sub)  do complex_Levi(sub,S) od  od
+
+{keep one representative from each conjugacy class of subalgebras}
+set filter(RootDatum rd_ambient, [RootDatum] subs)=[RootDatum]:
+if #subs=0 then [] else
+let rv=[subs[0]] in
+ for i:#subs-1 from 1 do
+  if not find(rd_ambient,rv,subs[i]) then rv#:=subs[i] fi od;
+rv fi
+
+{cut down all_subs_raw to one representative of each conjugacy class
+for efficiency group by ss_rank and number of simple factors before 
+testing for conjugacy}
+set all_subs(RootDatum rd)=
+let all=group_by_ss_rank_and_number_simple_factors(all_subs_raw(rd)) in
+let rv=
+for i:#all do
+ for j:#all[i] do
+  let ()=prints("ss_rank: ", i, new_line, "# simple factors: ",j) in 
+  let f=filter(rd,all[i][j])  then
+()=prints("#reduced subs=",#f) in
+f od od in
+{rearrange answer}
+for i:#rv do ##rv[i] od
+
+
+
+
+
 

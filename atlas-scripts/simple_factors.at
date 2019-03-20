@@ -36,6 +36,8 @@ factor(rd,simple_factor_indices(rd,i))
 set simple_factors(RootDatum rd)=[RootDatum]:
 for S in simple_factors_indices(rd) do factor(rd,S) od
 
+set number_simple_factors(RootDatum rd)=#simple_factors_indices(rd)
+
 {return (rds,indices)=([RootDatum],[[int]])
 rds[i]=RootDatum of i^th simple factor
 indices[i]: indices of simple roots of rds[i] in simple roots of rd
