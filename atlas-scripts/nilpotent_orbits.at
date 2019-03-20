@@ -3,7 +3,7 @@
 <all_finite_order.at
 <conjugate.at {for is_conjugate@(RootDatum,[[vec]],[[vec]])}
 
-set nilpotent_verbose=true
+set nilpotent_verbose=false
 
 { ComplexNilpotent: (RootDatum rd,vec H)
   where [H,X,Y] is a Lie triple, H\in X_*, and orbit=G.X
@@ -460,7 +460,8 @@ set real_nilpotent_orbits (ComplexNilpotent (rd,,H):OC,RealForm G) =
    od
 
 {assuming real nilpotents have been computed, just keep the real forms of given OC}
-set real_nilpotent_orbits([RealNilpotent] real_nilpotents, ComplexNilpotent OC)=[RealNilpotent]:
+set real_nilpotent_orbits([RealNilpotent] real_nilpotents, ComplexNilpotent OC)=
+[RealNilpotent]:
    ##for O in real_nilpotents do if complex_orbit(O)=OC then [O] else [] fi od
 
 set minimal_real_nilpotent_orbits (RealForm G) = [RealNilpotent]:
@@ -545,7 +546,6 @@ set pseudo_Levis (RootDatum rd)=[[int]]: let
      od;
      for (T,,) in triples do T od
 
-
 set d_L (RootDatum rd,[int] L)=int: let r=semisimple_rank(rd)
    in if #L=0 then 0 else
    if max(L)<r then 1 else
@@ -595,19 +595,22 @@ let keep=[([int],WeylElt)]:[] in
 for (v,w) in list do
  if none(for (u,) in keep do is_conjugate_Kac(v,u,rd) od) then keep#:=(v,w) fi od;
 keep
- 
+
 {use maybe_conjugate from conjugate.at to test conjugacy}
 {. Given a pseudo-Levi L, find all Kac diagrams of order m and whose
    centralizer is conjugate to L. .}
 set Kac_diagrams_with_centralizer (RootDatum rd, [int] L,int m)=[([int],WeylElt)]:
-   let ()=if nilpotent_verbose then prints("Kac_diagrams_with_centralizer: L=", L, " m=", m) fi in
+   let ()=if nilpotent_verbose then prints("Kac_diagrams_with_centralizer: L=", L,
+   " m=", m) fi in
    let diags=Kac_classes_given_order_crude(rd,m) in
    let ()=if nilpotent_verbose then prints("#diagrams: ",#diags) fi in
    let crude=##for d in diags do
-     let maybe=maybe_conjugate(rd,pseudo_Levi(rd,zero_roots(rd,d)),pseudo_Levi(rd,L)) in
+     let maybe=maybe_conjugate(rd,pseudo_Levi(rd,zero_roots(rd,d)),pseudo_Levi(rd,L))
+   in
       if any(maybe) then [(d,req(maybe))] else [] fi od then
    rv=filter(rd,crude) in
-   if nilpotent_verbose then prints("crude answer:", #crude, "  final result:", #rv)  fi;rv
+   if nilpotent_verbose then prints("crude answer:", #crude, "  final result:", #rv)
+   fi;rv
 
 set order_of_center (RootDatum rd)=#Kac_classes_given_order(rd,1)
 
@@ -618,8 +621,9 @@ set Kac_triples_simple (RootDatum rd, [int] L, int c)=[(int,[int],ratvec,WeylElt
 
 set Kac_triples (RootDatum rd, [int] L)=[(int,[int],ratvec,WeylElt)]:
    let c=order_of_center (rd) in
-   let ()=if nilpotent_verbose then prints("c=",c, new_line,"2*d*c=", 2*d_L(rd,L)*c) fi in
-   ##for i:2*d_L(rd,L)*c from 1 do Kac_triples_simple(rd,L,i) od
+   let ()=if nilpotent_verbose then prints("c=",c, new_line,"2*d*c=", 2*d_L(rd,L)*c)
+          fi in
+   ##for i:5*d_L(rd,L)*c from 1 do Kac_triples_simple(rd,L,i) od
 
 set print_component_info (ComplexNilpotent (rd,(),H))=void:
    let levis=pseudo_Levis_of_orbit (rd,(),H) in
@@ -631,12 +635,14 @@ set print_component_info (ComplexNilpotent (rd,(),H))=void:
    ##for L in levis do
    let ()=if nilpotent_verbose then prints("Levi:",L) fi in
     for (i,diag,v,u) in Kac_triples(rd,L) do
-     [(sort(L)).to_string,d_L(rd,L).to_string,diag.to_string,v.to_string,i.to_string,u.to_string,(v*inverse(u)).to_string]
+     [(sort(L)).to_string,d_L(rd,L).to_string,diag.to_string,v.to_string,i.
+     to_string,u.to_string,(v*inverse(u)).to_string]
     od
    od in
    tabulate(header#values) fi
 
 set print_component_info (RootDatum rd)=void:
    for orb in complex_nilpotent_orbits (rd) do prints();
-   prints("Orbit: H: ",orb.H_of_triple," Dynkin Diagram: ", diagram(orb), " dim: ", dim_nilpotent(orb));
+   prints("Orbit: H: ",orb.H_of_triple," Dynkin Diagram: ", diagram(orb), " dim: ",
+   dim_nilpotent(orb));
    print_component_info (orb) od

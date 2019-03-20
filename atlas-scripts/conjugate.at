@@ -75,10 +75,12 @@ set_type
  maybe_a_conjugator = (void no_w| WeylElt w)
 ]
 set any(maybe_a_mover m)=bool: case m  | w: true | no_w: false esac
-set req(maybe_a_mover m)=WeylElt: case m | w(m):m | else error("error in maybe_a_mover") esac
+set req(maybe_a_mover m)=WeylElt: case m | w(m):m | else
+   error("error in maybe_a_mover") esac
 
 set any(maybe_a_conjugator m)=bool: case m  | w: true | no_w: false esac
-set req(maybe_a_conjugator m)=WeylElt: case m | w(m):m | else error("error in maybe_a_conjugator") esac
+set req(maybe_a_conjugator m)=WeylElt: case m | w(m):m | else
+   error("error in maybe_a_conjugator") esac
 
 {try to find w\in W so w*v_1=v_2}
 set mover(RootDatum rd, vec u, vec v)=maybe_a_mover:
@@ -129,16 +131,18 @@ set maybe_conjugate_strict(RootDatum rd,[vec] A,[vec] B)=maybe_a_conjugator:
 maybe_conjugate_strict(rd,[id_W(rd)],A,B)
 
 {error if w doesn't exist}
-set conjugate_strict(RootDatum rd,[vec] A,[vec] B)=WeylElt:req(maybe_conjugate_strict(rd,[id_W(rd)],A,B))
+set conjugate_strict(RootDatum rd,[vec] A,[vec] B)=WeylElt:
+   req(maybe_conjugate_strict(rd,[id_W(rd)],A,B))
 
 {list of n! matrices in S_n}
 set symmetric_group(int n)=[mat]: for w in W(GL(n)) do matrix(w) od
 
 {try all permutations}
 
-set maybe_conjugate(RootDatum rd,[WeylElt] S,[vec] A,[vec] B) = maybe_a_conjugator:
+set maybe_conjugate(RootDatum rd,[WeylElt] S,[vec] A,[vec] B) =
+   maybe_a_conjugator:
    if =rank(rd) or =#A and =#B then id_W(rd).w
-   elif (#A=0 and #B>0) or (#A>0 and #B=0) then ().no_w { trivial cases } 
+   elif (#A=0 and #B>0) or (#A>0 and #B=0) then ().no_w { trivial cases }
    else let perms=symmetric_group(#A) then nperms=#perms, i=0 in
       while i<nperms
       do let maybe=maybe_conjugate_strict(rd,[id_W(rd)],A*perms[i],B) in
@@ -147,18 +151,21 @@ set maybe_conjugate(RootDatum rd,[WeylElt] S,[vec] A,[vec] B) = maybe_a_conjugat
          fi
       od
    ; ().no_w { report failure if loop runs to completion }
-   fi 
+   fi
 
 set maybe_conjugate(RootDatum rd,[vec] A,[vec] B)=maybe_a_conjugator:
 maybe_conjugate(rd,[id_W(rd)],A,B)
 
-set is_conjugate(RootDatum rd,[vec] A,[vec] B)=bool:any(maybe_conjugate(rd,[id_W(rd)],A,B))
+set is_conjugate(RootDatum rd,[vec] A,[vec] B)=bool:
+   any(maybe_conjugate(rd,[id_W(rd)],A,B))
 
-set maybe_conjugate_strict(RootDatum rd,RootDatum sub_1,RootDatum sub_2)=maybe_a_conjugator:
-maybe_conjugate_strict(rd,simple_roots(sub_1),simple_roots(sub_2))
+set maybe_conjugate_strict(RootDatum rd,RootDatum sub_1,RootDatum sub_2)=
+   maybe_a_conjugator:
+   maybe_conjugate_strict(rd,simple_roots(sub_1),simple_roots(sub_2))
 
-set maybe_conjugate(RootDatum rd,RootDatum sub_1,RootDatum sub_2)=maybe_a_conjugator:
-maybe_conjugate(rd,simple_roots(sub_1),simple_roots(sub_2))
+set maybe_conjugate(RootDatum rd,RootDatum sub_1,RootDatum sub_2)=
+   maybe_a_conjugator:
+   maybe_conjugate(rd,simple_roots(sub_1),simple_roots(sub_2))
 
 set is_conjugate(RootDatum rd,RootDatum sub_1,RootDatum sub_2)=bool:
 any(maybe_conjugate(rd,sub_1,sub_2))
@@ -168,7 +175,8 @@ but not giving a conjugator}
 set standard_Levi(RootDatum rd,RootDatum rd_L)=RootDatum:
 let v=dominant(rho_check(rd_L),rd) then
 reps=standard_Levi_conjugacy_representatives(rd) then
-index=first(for L_std in reps do dominant(rho_check(sub_root_datum(rd,L_std)),rd)=v od) in
+index=first(for L_std in reps do dominant(rho_check(sub_root_datum(rd,L_std)),
+   rd)=v od) in
 {let ()=prints("index:", index) in }
 sub_root_datum(rd,reps[index])
 
