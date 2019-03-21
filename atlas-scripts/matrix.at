@@ -121,8 +121,20 @@ let lt=Lie_type("T",0) {empty type} in
    fi
   od
  od;
- lt
+lt
+
+{types B2 and C2 are allowed, but not others
+ such as C1, B1, D1,D2,D3,...
+ so have to deal with B2=C2 as a special case
+}
+set normalize_Lie_type_matrix(mat M)=
+assert(shape(M)= (16,8),"Matrix is wrong shape");
+M:=update_matrix_entry(M,1,1,M[1][1]+M[2][1]);
+M:=update_matrix_entry(M,2,1,0);
+M
 
 {two complex groups are locally isomorphic iff they have the same Lie_type_matrix}
 set is_locally_isomorphic(RootDatum rd_1,RootDatum rd_2)=bool:
-Lie_type_matrix(rd_1)=Lie_type_matrix(rd_2)
+normalize_Lie_type_matrix(Lie_type_matrix(rd_1))=
+normalize_Lie_type_matrix(Lie_type_matrix(rd_2))
+

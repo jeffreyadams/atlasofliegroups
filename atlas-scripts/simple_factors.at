@@ -1,5 +1,7 @@
 <misc.at
 
+{NOTE: in this file "simple" means "derived group is simple"}
+
 {complex_torus in torus.at should be redefined}
 set complex_torus(int n)=RootDatum:root_datum(null(n,0),null(n,0))
 
@@ -35,6 +37,7 @@ factor(rd,simple_factor_indices(rd,i))
 {complete list of simple factors, as [RootDatum]}
 set simple_factors(RootDatum rd)=[RootDatum]:
 for S in simple_factors_indices(rd) do factor(rd,S) od
+
 
 set number_simple_factors(RootDatum rd)=#simple_factors_indices(rd)
 

@@ -171,6 +171,9 @@ maybe_conjugate(rd,simple_roots(sub_1),simple_roots(sub_2)) fi
 set is_conjugate(RootDatum rd,RootDatum sub_1,RootDatum sub_2)=bool:
 any(maybe_conjugate(rd,sub_1,sub_2))
 
+set is_conjugate_weak(RootDatum rd,RootDatum sub_1,RootDatum sub_2)=bool:
+is_conjugate(rd,rho(sub_1),rho(sub_2))
+
 {which standard Levi is (non-standard) L conjugate to,
 but not giving a conjugator}
 set standard_Levi(RootDatum rd,RootDatum rd_L)=RootDatum:

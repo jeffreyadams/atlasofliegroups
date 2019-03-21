@@ -47,11 +47,12 @@ this does NOT include actual Levi subgroups
 }
 set maximal_pseudo_Levis_simple(RootDatum rd)=[RootDatum]:
 assert(derived_is_simple(rd),"Root Datum has more than one simple factor");
+if is_abelian(rd) then [rd] else
 let sr=simple_roots(rd) then
 labels=labels(derived(rd)) then
 alpha=-highest_root(rd) in
 rd#(##for i:ss_rank(rd) do
- if labels[i] !=1 then [subalgebra_by_simple(rd, delete(sr,i)#alpha)] else [] fi od)
+ if labels[i] !=1 then [subalgebra_by_simple(rd, delete(sr,i)#alpha)] else [] fi od) fi
 
 {each RootDatum in rds is made from roots in rd_ambient
  construct Cartesian products (in rd_ambient) of simple factors
@@ -126,15 +127,157 @@ let all=group_by_ss_rank_and_number_simple_factors(all_subs_raw(rd)) in
 let rv=
 for i:#all do
  for j:#all[i] do
+{  let ()=prints("ss_rank: ", i, new_line, "# simple factors: ",j) in }
+  let f=filter(rd,all[i][j])  in
+{let ()=prints("#reduced subs=",#f) in}
+f od od in
+{rearrange answer}
+for i:#rv do ##rv[i] od
+
+{weak testing: only using rho and rho_check}
+set find_weak(RootDatum rd_ambient, [RootDatum] rds,RootDatum sub_rd)=bool:
+(first(for rd in rds do is_conjugate(rd_ambient,rho(rd),rho(sub_rd)) od) !=-1) and
+(first(for rd in rds do is_conjugate(rho_check(rd),rho_check(sub_rd),rd_ambient) od) !=-1)
+
+{keep one representative from each conjugacy class of subalgebras}
+set filter_weak(RootDatum rd_ambient, [RootDatum] subs)=[RootDatum]:
+if #subs=0 then [] else
+let rv=[subs[0]] in
+ for i:#subs-1 from 1 do
+  if not find_weak(rd_ambient,rv,subs[i]) then rv#:=subs[i] fi od;
+rv fi
+
+{cut down all_subs_raw to one representative of each conjugacy class
+for efficiency group by ss_rank and number of simple factors before 
+testing for conjugacy}
+set all_subs_weak(RootDatum rd)=
+let all=group_by_ss_rank_and_number_simple_factors(all_subs_raw(rd)) in
+let rv=
+for i:#all do
+ for j:#all[i] do
   let ()=prints("ss_rank: ", i, new_line, "# simple factors: ",j) in 
-  let f=filter(rd,all[i][j])  then
+  let f=filter_weak(rd,all[i][j])  then
 ()=prints("#reduced subs=",#f) in
 f od od in
 {rearrange answer}
 for i:#rv do ##rv[i] od
 
 
+set group_by_rho(RootDatum rd_ambient, [RootDatum] rds)=[[RootDatum]]:
+let rv=[[RootDatum]]:[] in
+ for rd in rds do let
+  match=first(for subs in rv do find_weak(rd_ambient,subs,rd) od) in
+   if match=-1 then rv#:=[rd] else rv[match]#:=rd fi od ;rv
 
 
 
+{this should really be in W_characters.at}
+set find_conjugate([WeylElt] S,WeylElt w)=int:
+first(for y in S do is_conjugate(y,w) od)
 
+set find_all_conjugate([WeylElt] S,WeylElt w)=[int]:
+##for y@i in S do if is_conjugate(y,w) then [i] else [] fi od
+
+set group_by_conjugacy([WeylElt] S)=[[WeylElt]]:
+let rv=[[WeylElt]]:[] in
+for w in S do
+ let match=find_conjugate(for list in rv do list[0] od,w) in 
+ if match =-1 then rv#:=[w] else rv[match]#:=w fi od;
+ rv
+
+
+set iterate_maximal_pseudo_Levis(RootDatum rd)=[RootDatum]:
+let rec_fun f([RootDatum] done,[RootDatum] to_do)=[RootDatum]:
+ if =#to_do then done else
+ f(done#(to_do[0]),(for i:#to_do-1 from 1 do to_do[i] od)##proper_maximal_pseudo_Levis(to_do[0])) fi in
+ f([],[rd]) 
+
+set conjugacy_classes_from_subs(RootDatum rd,[RootDatum] subs)=
+for L in subs do W_elt(rd,matrix(coxeter_element(L))) od
+
+
+
+{iteratively compute all subalgebras by repeatedly computing maximal pseudo Levis
+ ignore conjugacy
+ keep extra information: nested sequence of subgroups
+}
+{NOT WORKING}
+set iterate_maximal_pseudo_Levis_long(RootDatum rd)=
+let stop=0 in 
+let rec_fun f([[RootDatum]] done,[[RootDatum]] to_do)=[[RootDatum]]:
+ assert(stop<5,"Stopping");
+ prints("stop=",stop);
+ if =#to_do then done else
+ let ()=prints(new_line,"done:", #done, new_line, "to_do:", #to_do, " ", to_do) in
+ let first_list=to_do[0] then
+  first_sub=first_list[0] then
+  done_new=done#(first_list) then
+  to_do_new=
+   let subs=proper_maximal_pseudo_Levis(first_sub) in
+   (for i:#to_do-1 from 1 do to_do[i] od)##
+    for L in subs do first_list#L od in
+  stop+:=1;
+  f(done_new,to_do_new) fi in
+  f([[]],[[rd]])
+
+{test sub_rd_1 is rd-conjugate to a subalgebra of sub_rd_2}
+set is_contained(RootDatum rd,RootDatum sub_rd_1,RootDatum sub_rd_2)=bool:
+if dimension(sub_rd_1)>dimension(sub_rd_2) or
+   ss_rank(sub_rd_1)>ss_rank(sub_rd_2) then false else
+find(rd,##all_subs(sub_rd_2),sub_rd_1) fi
+
+set hasse(RootDatum rd,[RootDatum] subs)=[[int]]:
+for i:#subs do
+ ##for j:#subs do prints(i, " ", j); if is_contained(rd,subs[j],subs[i]) then [j] else [] fi od od
+
+set export_graph([[int]] data)=void:
+let text=
+"digraph name_of_graph { " + new_line+
+"size='6.5,10.0'; center=true" + new_line+
+"node [color=black,fontcolor=black]; " + new_line+
+" edge [arrowhead=none,color=red];"
+in
+for i:#data do
+ let str=new_line+i.to_string + "[label='x';];" in
+  for j in data[i] do str+:=i.to_string + "->" + j.to_string + ";" od;
+ text+:=str od;prints(text+new_line+"}")
+
+{
+digraph name_of_graph {
+size="6.5,10.0"; center=true
+node [color=black,fontcolor=black];
+edge [arrowhead=none,color=red];
+0 [label="0:1"];
+1 [label="1:1"];
+2 [label="2:5"]; 2 -> 0; 2 -> 1;
+3 [label="3:4"]; 3 -> 2;
+4 [label="4:5"]; 4 -> 0; 4 -> 1;
+5 [label="5:10"]; 5 -> 2; 5 -> 4;
+6 [label="6:4"]; 6 -> 2;
+7 [label="7:20"]; 7 -> 3; 7 -> 5; 7 -> 6;
+8 [label="8:4"]; 8 -> 4;
+9 [label="9:4"]; 9 -> 4;
+10 [label="10:20"]; 10 -> 5; 10 -> 8; 10 -> 9;
+11 [label="11:20"]; 11 -> 3; 11 -> 5; 11 -> 8;
+12 [label="12:20"]; 12 -> 3; 12 -> 5; 12 -> 8;
+13 [label="13:20"]; 13 -> 11; 13 -> 12;
+14 [label="14:10"]; 14 -> 7; 14 -> 13;
+15 [label="15:6"]; 15 -> 7; 15 -> 11;
+16 [label="16:10"]; 16 -> 13;
+17 [label="17:20"]; 17 -> 14; 17 -> 15; 17 -> 16;
+18 [label="18:10"]; 18 -> 10; 18 -> 13;
+19 [label="19:6"]; 19 -> 10; 19 -> 12;
+20 [label="20:20"]; 20 -> 16; 20 -> 18; 20 -> 19;
+21 [label="21:20"]; 21 -> 5; 21 -> 6; 21 -> 9;
+22 [label="22:20"]; 22 -> 14; 22 -> 18; 22 -> 21;
+23 [label="23:20"]; 23 -> 15; 23 -> 19; 23 -> 22;
+24 [label="24:6"]; 24 -> 7; 24 -> 21;
+25 [label="25:6"]; 25 -> 10; 25 -> 21;
+26 [label="26:20"]; 26 -> 22; 26 -> 24; 26 -> 25;
+27 [label="27:4"]; 27 -> 20; 27 -> 23; 27 -> 26;
+28 [label="28:4"]; 28 -> 17; 28 -> 23; 28 -> 26;
+29 [label="29:10"]; 29 -> 17; 29 -> 20; 29 -> 23;
+30 [label="30:5"]; 30 -> 27; 30 -> 28; 30 -> 29;
+31 [label="31:4"]; 31 -> 23; 31 -> 26;
+32 [label="32:1"]; 32 -> 30; 32 -> 31;
+}

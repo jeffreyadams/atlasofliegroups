@@ -699,13 +699,13 @@ set semisimple (LieType t) = LieType:
   let s = LieType: "" in
   for (code,rank) in simple_factors(t) do s:=extend(s,code,rank) od; s
 
-set derived_is_simple (LieType t) = bool: #simple_factors(t)=1
+{set derived_is_simple (LieType t) = bool: #simple_factors(t)=1}
+{#simple_factors(torus)=0}
+set derived_is_simple (LieType t) = bool: #simple_factors(t)<=1
 set is_simple (LieType t) = bool: t.derived_is_simple and =t.central_torus_rank
 
 set str (LieType t) = string:
   (## for (code,rank) in factors(t) do code ## rank.to_string ## "." od)[:1~]
-
-
 
 {                               Root data                               }
 
