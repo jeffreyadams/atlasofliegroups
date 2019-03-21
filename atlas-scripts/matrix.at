@@ -76,3 +76,53 @@ size=max(##for col in M do for x:#col do #(col[x].to_string) od od) in
   in  for x in row do row_string+:=pad(x.to_string,size+1) od;row_string od
 
 set print_matrix_compact(mat M)=prints(string_compact(M))
+
+{update one entry of a matrix}
+set update_matrix_entry(mat M, int i, int j, int value)= mat:
+  let row=M[i] in row[j]:=value; M[i]:=row; M
+
+{add an integer to one entry of a matrix}
+set add_to_matrix_entry(mat M, int i, int j, int value)= mat:
+update_matrix_entry(M,i,j,M[i][j]+value)
+
+{   convert LieType to a canonical 8x16 matrix, for testing local isomorphism  }
+
+{convert ABCDEFGT to an integer}
+set type_numbers=["A","B","C","D","E","F","G","T"]
+set number_of(string type)=int:
+assert(#type=1,"not a single character");
+first(for i:#type_numbers do type=type_numbers[i] od)
+
+{return a matrix of size 8x16
+ each column is a type A=0,B=1,C=2,D=3,E=4,F=5,G=6,T=7
+ an entry k in column X/row j means:
+  the simple factor Xj occurs k times
+  The last column will be [k,0,...,0] where k is the dimension
+   of the center <-> k factors of T1
+}
+set Lie_type_matrix(LieType lt)=mat:
+let M=null(16,8) in
+for (type,rank) in simple_factors(lt) do
+ M:=add_to_matrix_entry(M,number_of(type),rank-1,1) od;
+ {last column: torus factor}
+ M:=update_matrix_entry(M,7,0,central_torus_rank(lt));M
+
+set Lie_type_matrix(RootDatum rd)=mat:Lie_type_matrix(Lie_type(rd))
+{Lie_type_matrix@RealForm is automatic}
+
+{convert from matrix to LieType}
+set Lie_type(mat M)=LieType:
+assert(shape(M)= (16,8),"Matrix is wrong shape");
+let lt=Lie_type("T",0) {empty type} in
+ for col: 8 do
+  for row: 16 do
+   if M[col][row]>0 then
+     for i:M[col][row] do lt*:=Lie_type(type_numbers[col],row+1) od
+   fi
+  od
+ od;
+ lt
+
+{two complex groups are locally isomorphic iff they have the same Lie_type_matrix}
+set is_locally_isomorphic(RootDatum rd_1,RootDatum rd_2)=bool:
+Lie_type_matrix(rd_1)=Lie_type_matrix(rd_2)

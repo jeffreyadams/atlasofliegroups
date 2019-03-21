@@ -155,13 +155,17 @@ maybe_conjugate(rd,[id_W(rd)],A,B)
 set is_conjugate(RootDatum rd,[vec] A,[vec] B)=bool:any(maybe_conjugate(rd,[id_W(rd)],A,B))
 
 set maybe_conjugate_strict(RootDatum rd,RootDatum sub_1,RootDatum sub_2)=maybe_a_conjugator:
-if not is_conjugate(rd,rho(sub_1),rho(sub_2)) then ().no_w elif
-not number_simple_factors(sub_1)=number_simple_factors(sub_2) then ().no_w else
+{very easy test first}
+if not is_locally_isomorphic(sub_1,sub_2) then ().no_w elif
+{rho_check test next}
+not is_conjugate(rho_check(sub_1),rho_check(sub_2),rd) then ().no_w else
 maybe_conjugate_strict(rd,simple_roots(sub_1),simple_roots(sub_2)) fi
 
 set maybe_conjugate(RootDatum rd,RootDatum sub_1,RootDatum sub_2)=maybe_a_conjugator:
-if not is_conjugate(rd,rho(sub_1),rho(sub_2)) then ().no_w elif
-not number_simple_factors(sub_1)=number_simple_factors(sub_2) then ().no_w else
+{very easy test first}
+if not is_locally_isomorphic(sub_1,sub_2) then ().no_w elif
+{rho_check test next}
+not is_conjugate(rho_check(sub_1),rho_check(sub_2),rd) then ().no_w else
 maybe_conjugate(rd,simple_roots(sub_1),simple_roots(sub_2)) fi
 
 set is_conjugate(RootDatum rd,RootDatum sub_1,RootDatum sub_2)=bool:
