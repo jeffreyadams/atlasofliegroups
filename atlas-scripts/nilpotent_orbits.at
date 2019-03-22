@@ -623,7 +623,7 @@ set Kac_triples (RootDatum rd, [int] L)=[(int,[int],ratvec,WeylElt)]:
    let c=order_of_center (rd) in
    let ()=if nilpotent_verbose then prints("c=",c, new_line,"2*d*c=", 2*d_L(rd,L)*c)
           fi in
-   ##for i:d_L(rd,L)*c from 1 do Kac_triples_simple(rd,L,i) od
+   ##for i:2*d_L(rd,L)*c from 1 do Kac_triples_simple(rd,L,i) od
 
 set print_component_info (ComplexNilpotent (rd,(),H))=void:
    let levis=pseudo_Levis_of_orbit (rd,(),H) in
