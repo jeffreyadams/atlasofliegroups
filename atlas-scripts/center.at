@@ -198,13 +198,13 @@ adapted_basis(N): pairs (A,c)
   and divide by c[i]
 This gives the rational vectors [v_1,...,v_n]
 }
-set center(RootDatum rd)=ratmat:
+set center(RootDatum rd)=[ratvec]:
 assert(is_semisimple(rd),"Root Datum is not semisimple");
 let M=ratvecs_as_ratmat(fundamental_coweights(rd)) then
 N=ratmat_as_mat(inverse(M)) then
 (A,c)=adapted_basis(N) then
 (B,v)=filter_units(A,c) in
-ratvecs_as_ratmat(for col@i in B do M*col/c[i] od)
+for col@i in B do M*col/c[i] od
 
 set type_center(RootDatum rd)=[int]:
 assert(is_semisimple(rd),"Root Datum is not semisimple");
