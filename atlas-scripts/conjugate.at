@@ -80,7 +80,11 @@ set req(maybe_a_mover m)=WeylElt: case m | w(m):m | else error("error in maybe_a
 set any(maybe_a_conjugator m)=bool: case m  | w: true | no_w: false esac
 set req(maybe_a_conjugator m)=WeylElt: case m | w(m):m | else error("error in maybe_a_conjugator") esac
 
-{try to find w\in W so w*v_1=v_2}
+{Two versions, weights and coweights}
+
+{Version 1: elements of X^*}
+
+{try to find w\in W so w*v_1=v_2, v_i\in X^*}
 set mover(RootDatum rd, vec u, vec v)=maybe_a_mover:
 let (x,u_1)=from_dominant(rd,u) then
 (y,v_1)=from_dominant(rd,v) in
@@ -93,6 +97,22 @@ let (a,b)=%u,
 (c,d)=%v in mover(rd,ratvec_as_vec(b*d*u),ratvec_as_vec(b*d*v))
 
 set is_conjugate(RootDatum rd, ratvec u, ratvec v)=any(mover(rd,u,v))
+
+{Version 2: elements of X_*}
+
+{try to find w\in W so w*v_1=v_2, v_i\in X_*}
+set mover(vec u, vec v,RootDatum rd)=maybe_a_mover:
+let (u_1,x)=from_dominant(u,rd) then
+(v_1,y)=from_dominant(v,rd) in
+if u_1=v_1 then (y*inverse(x)).w else ().no_w fi
+
+set is_conjugate(vec u, vec v,RootDatum rd)=any(mover(u,v,rd))
+
+set mover(ratvec u, ratvec v,RootDatum rd)=maybe_a_mover:
+let (a,b)=%u,
+(c,d)=%v in mover(ratvec_as_vec(b*d*u),ratvec_as_vec(b*d*v),rd)
+
+set is_conjugate(ratvec u, ratvec v,RootDatum rd)=any(mover(u,v,rd))
 
 
 {make an element of W(rd) from [W_Elt] where the last one is for
@@ -158,7 +178,7 @@ set maybe_conjugate_strict(RootDatum rd,RootDatum sub_1,RootDatum sub_2)=maybe_a
 {very easy test first}
 if not is_locally_isomorphic(sub_1,sub_2) then ().no_w elif
 {rho_check test next}
-not is_conjugate(rho_check(sub_1),rho_check(sub_2),rd) then ().no_w else
+not is_conjugate(rd,rho_check(sub_1),rho_check(sub_2)) then ().no_w else
 maybe_conjugate_strict(rd,simple_roots(sub_1),simple_roots(sub_2)) fi
 
 set maybe_conjugate(RootDatum rd,RootDatum sub_1,RootDatum sub_2)=maybe_a_conjugator:

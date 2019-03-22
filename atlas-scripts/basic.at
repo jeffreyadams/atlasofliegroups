@@ -942,6 +942,7 @@ set fundamental_weights (RootDatum rd) = [ratvec]:
 set fundamental_coweights (RootDatum rd) = [ratvec]:
   for i:semisimple_rank(rd) do fundamental_coweight(rd,i) od
 
+{changing this code, see below
 { find a root of maximal level; if |rd| is simple this is the highest root }
 {.highest root.}
 set highest_root (RootDatum rd) = vec:
@@ -952,6 +953,22 @@ set highest_root (RootDatum rd) = vec:
   then pr~[0] { since the last generated root will be a high root }
   else let level=rho_check(rd) in pr[for alpha in pr do level*alpha od.max_loc]
   fi
+}
+
+{list of all highest roots (one for each simple factor)}
+set highest_roots(RootDatum rd)=[vec]:
+let pr=posroots(rd) in
+##for alpha in pr do
+ if all(for beta in pr do not is_posroot(rd,alpha+beta) od) then [alpha] else [] fi
+od
+
+{error if rd has more than one simple factor}
+set highest_root(RootDatum rd)=vec:
+assert(derived_is_simple(rd),"RootDatum has more than one simple factor, use highest_roots, or highest_root_one to choose one");
+highest_roots(rd)[0]
+
+{return one of the highest roots}
+set highest_root_one(RootDatum rd)=vec:highest_roots(rd)[0]
 
 {                               Weyl group				}
 
