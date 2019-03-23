@@ -123,6 +123,22 @@ let lt=Lie_type("T",0) {empty type} in
  od;
 lt
 
+set standardize_Lie_type(LieType lt)=LieType:Lie_type(Lie_type_matrix(lt))
+
+set nice_format(LieType lt)=string:
+let M=Lie_type_matrix(lt) in
+let rv="" in
+ for col: 8 do
+  for row: 16 do
+   if M[col][row]>0 then
+     let c=if M[col][row]>1 then M[col][row].to_string else "" fi in
+     rv+:="+"+ c +Lie_type(type_numbers[col],row+1).str 
+   fi
+  od
+ od;
+{delete leading "+"}
+let chop="" in for i:#rv-1 from 1 do chop+:=rv[i] od;chop
+
 {types B2 and C2 are allowed, but not others
  such as C1, B1, D1,D2,D3,...
  so have to deal with B2=C2 as a special case

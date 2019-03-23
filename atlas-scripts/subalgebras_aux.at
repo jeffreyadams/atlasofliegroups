@@ -14,10 +14,13 @@ on in rd_ambient}
 set find(RootDatum rd_ambient, [RootDatum] rds,RootDatum sub_rd)=bool:
 first(for rd in rds do is_conjugate(rd_ambient,rd,sub_rd) od) !=-1
 
-{sorting by semisimple rank and/or number of simple factors}
+{sorting by dimension, semisimple rank, #simple factors}
 set sort_by((RootDatum->int) f) =
    ([RootDatum] v) [RootDatum]:
       for index in inv_standardisation(for x in v do f(x) od) do v[index] od
+
+set sort_by_dimension = ([RootDatum] -> [RootDatum]):
+   sort_by(dimension@RootDatum)
 
 set sort_by_ss_rank = ([RootDatum]->[RootDatum]):
    sort_by(ss_rank@RootDatum)
@@ -121,8 +124,12 @@ rv fi
 
 {cut down all_subs_raw to one representative of each conjugacy class
 for efficiency group by ss_rank and number of simple factors before 
-testing for conjugacy}
-set all_subs(RootDatum rd)=
+testing for conjugacy
+return two lists
+first: [[RootDatum]] grouped by ss_rank
+second:[RootDatum] ordered by dimension
+}
+set all_subs(RootDatum rd)=([[RootDatum]],[RootDatum]):
 let all=group_by_ss_rank_and_number_simple_factors(all_subs_raw(rd)) in
 let rv=
 for i:#all do
@@ -131,8 +138,9 @@ for i:#all do
   let f=filter(rd,all[i][j])  in
 {let ()=prints("#reduced subs=",#f) in}
 f od od in
-{rearrange answer}
-for i:#rv do ##rv[i] od
+{regroup answer by ss_rank}
+let grouped_by_ss_rank=for i:#rv do ##rv[i] od in
+(grouped_by_ss_rank,sort_by_dimension(##grouped_by_ss_rank))
 
 {weak testing: only using rho and rho_check}
 set find_weak(RootDatum rd_ambient, [RootDatum] rds,RootDatum sub_rd)=bool:
@@ -230,7 +238,7 @@ let rec_fun f([[RootDatum]] done,[[RootDatum]] to_do)=[[RootDatum]]:
 set is_contained(RootDatum rd,RootDatum sub_rd_1,RootDatum sub_rd_2)=bool:
 if dimension(sub_rd_1)>dimension(sub_rd_2) or
    ss_rank(sub_rd_1)>ss_rank(sub_rd_2) then false else
-find(rd,##all_subs(sub_rd_2),sub_rd_1) fi
+find(rd,let (,all_subs_2)=all_subs(sub_rd_2) in all_subs_2,sub_rd_1) fi
 
 {test sub_rd_1 is rd-conjugate to a subalgebra of sub_rd_2}
 {in which all subs of rd_2 is precomputed}
@@ -243,13 +251,14 @@ find(rd,all_subs_rd_2,sub_rd_1) fi
 set easy([[int]] done,[int] new, int n)=bool:
  any(for j in new do if j<=#done-1 then find(done[j],n) !=-1 else false fi od)
 
+{assume sorted by dimension}
 set hasse(RootDatum rd,[RootDatum] subs)=[[int]]:
 let rv=[[int]]:[] in
 for i:#subs do
-let all_subs_rd_i=##all_subs(subs[i]) in
+let (,all_subs_rd_i)=all_subs(subs[i]) in
 { let ()=prints("rv is now:"); for a@i in rv do prints(i, " ", a) od in}
  let new=prints(new_line,"-----",new_line,"i=",i);[int]:[] in  {list of subalgebras of subs[i]} 
-  for j:#subs downto 0  do {see if subs[j] \subset subs[i]}
+  for j:i downto 0  do {see if subs[j] \subset subs[i]}
    let ()=prints("j=",j) in
 {   let ()=prints("new:",new) in}
    {see if already done by transitivity}
@@ -269,13 +278,13 @@ new_line + "node [color=black,fontcolor=black] " +
 new_line + " edge [arrowhead=none,color=red]; "
 in
 for i:#data do
- let str=new_line+i.to_string + "[label=""" + subs[i].Lie_type.str + """];" in 
+{ let str=new_line+i.to_string + "[label=""" + subs[i].derived.Lie_type.standardize_Lie_type.str + """];" in }
+ let str=new_line+i.to_string + "[label=""" + subs[i].derived.Lie_type.nice_format + """];" in 
   for j in data[i] do str+:=i.to_string + "->" + j.to_string + ";" od;
  text+:=str od;text+new_line+"}"
 
 set make_graph(RootDatum rd)=string:
-let all=all_subs(rd) then
-subs=##all then
+let (,subs)=all_subs(rd) then
 ()=prints("Got subalgebras: ", #subs,new_line,"computing Hasse diagram") then
 h=hasse(rd,subs) in
 prints("Computed Hasse diagram");
