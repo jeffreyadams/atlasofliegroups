@@ -1,5 +1,5 @@
 <misc.at
-
+<Weylgroup.at {for invariant_form}
 {NOTE: in this file "simple" means "derived group is simple"}
 
 {complex_torus in torus.at should be redefined}

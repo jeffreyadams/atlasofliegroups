@@ -2,6 +2,8 @@
 <W_orbit.at
 <simple_factors.at
 <conjugate.at
+<parabolics.at {for Levis}
+<nilpotent_orbits.at {for pseudo Levis}
 
 {
   The functions deal with constructing Levi systems cut out by various linear
