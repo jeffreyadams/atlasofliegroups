@@ -53,3 +53,17 @@ set simple_factors_info(RootDatum rd)=([RootDatum],[[int]]):
 
 set highest_roots(RootDatum rd)=[vec]:
 for factor in simple_factors(rd) do highest_root(factor) od
+
+set simple_factor(RootDatum rd,vec alpha)=RootDatum:
+assert(is_root(rd,alpha),"not a root");
+let factors=simple_factors(rd) then
+j=first(for i:#factors do alpha*rho_check(factors[i]) !=0 od) in
+factors[j]
+
+set is_long(RootDatum rd,vec alpha)=bool:
+assert(is_root(rd,alpha),"not a root");
+let L=simple_factor(rd,alpha) then
+f=invariant_form(L) then
+beta=highest_root(L) in f(alpha,alpha)=f(beta,beta)
+
+set is_short(RootDatum rd,vec alpha)=bool: not is_long(rd,alpha)

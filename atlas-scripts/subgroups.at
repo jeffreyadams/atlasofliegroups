@@ -1,8 +1,141 @@
-{This file has been moved into subgroups.at and will soon be deleted}
-
-<subalgebra.at
+<basic.at
+<W_orbit.at
 <simple_factors.at
 <conjugate.at
+
+{
+  The functions deal with constructing Levi systems cut out by various linear
+  conditions (being orthogonal to a given set of coroots), and their root data.
+  W_character.at handles Levi systems by specifying a RootDatum and a predicate
+  that selects among its positive root indices those for the Levi factor. For
+  the conditions considered here, such predicates are readily written down.
+}
+
+{ subgroup(rd,roots):
+  roots are assumed to be the set of ALL roots of a reductive subgroup
+  containing H (positive and negative)
+  (otherwise an error)
+  let twochocheck=compute sum of positive coroots
+  simple roots are those with inner product 2 with this
+  then construct a RootDatum: root_datum(simple_roots,simple_coroots)
+
+  Function take [vec] argument |roots|, which may be empty; always convert them
+  explictly to a mstrix |rd.rank#roots|, as implicit fails when |roots| empty.
+}
+set subgroup (RootDatum rd, [vec] roots) = (bool,RootDatum):
+  let rk = rank(rd)
+  then posroots = columns_with(is_positive_root(rd),rk#roots)
+  in
+  if 2*#posroots != #roots {should be same number of positive, negative roots}
+  then (false,rd)
+  else
+    let tworhocheck = sum(rk # for v in posroots do coroot(rd,v)  od)
+    then simple_roots= mat: { compute the purported simple roots }
+      columns_with((vec v):v*tworhocheck=2,posroots)
+    in
+    if #roots>0 and #simple_roots=0 then (false,rd)
+    else let simple_coroots = mat: { corresponding coroots }
+             rk # for v in simple_roots do coroot(rd,v) od
+      then subrd = root_datum(simple_roots,simple_coroots)
+      in ( { whether } nr_of_posroots(subrd) = #posroots, subrd)
+    fi
+  fi
+
+{roots given by indices (in all roots) rather than vecs}
+set subgroup(RootDatum rd,[int] roots)=(bool,RootDatum):
+subgroup(rd,for j in roots do roots(rd)[j] od)
+
+{only specify the positive roots}
+set subgroup_from_positive(RootDatum rd,[vec] roots)=(bool,RootDatum):
+let all=roots##for v in roots do -v od in subgroup(rd,roots)
+
+{each root is given by index in positive roots, rather than a vec}
+set subgroup_from_positive(RootDatum rd,[int] roots)=(bool,RootDatum):
+subgroup(rd, for j in roots do posroots(rd)[j] od)
+
+{specify a subgroup by a list of positive roots (not necessarily
+simple), to serve as the simple roots of the subgroup}
+set subgroup_from_simple(RootDatum rd,[vec] roots)=RootDatum:
+if #roots=0 then complex_torus(rank(rd)) else
+root_datum(for v in roots do v od, for v in roots do coroot(rd,v) od) fi
+
+set subgroup_from_simple(RootDatum rd,[int] roots)=RootDatum:
+if #roots=0 then complex_torus(rank(rd)) else
+root_datum(for i in roots do posroots(rd)[i] od, for i in roots do poscoroots(rd)[i] od) fi
+
+{mat k: columns span a subspace U of X_*
+ construct RootDatum of Levi given by roots vanishing on U}
+set Levi_of_subspace (RootDatum rd, mat k) = (bool,RootDatum):
+  let levi_roots=[vec]: ##for a in roots(rd) do if =a*k then [a] else [] fi od
+  in subgroup(rd,levi_roots)
+
+{matrix of elements of X^*}
+set Levi_of_dual_subspace(RootDatum rd, mat k) = (bool,RootDatum):
+  let levi_roots=
+    ##for a in roots(rd) do if =coroot(rd,a)*k then [a] else [] fi od
+  in subgroup(rd,levi_roots)
+
+{Levi subgroup defined by a group element: Levi of the dual subspace
+ w acts on X^*, U=kernel(w-1) \subset X^*, want roots alpha such that alpha^v
+ vanishes on U this is the Cartan if and only if w is elliptic}
+set Levi_of_w (WeylElt w) = (bool,RootDatum):
+  Levi_of_dual_subspace(w.root_datum,eigen_lattice(matrix(w),1))
+
+{Levi subgroup defined by weight in QX^*}
+set Levi_of_weight (RootDatum rd,ratvec v) = (bool,RootDatum):
+  Levi_of_dual_subspace(rd,mat:[numer(v)])
+
+{Levi subgroup defined by weight in QX_*}
+set Levi_of_coweight(RootDatum rd,ratvec v) = (bool,RootDatum):
+  Levi_of_subspace(rd,mat:[numer(v)])
+
+{  normalizer of a set of roots }
+
+{w in subgroup of W such that w permutes set_of_roots}
+set normalizer([WeylElt] subset_of_W,[vec] set_of_roots)= [WeylElt]:
+  ##for w in subset_of_W
+    do if all(for v in set_of_roots do find(set_of_roots,w*v)!=-1 od)
+       then [w] else [] fi
+    od
+
+{w in W such that w permutes set_of_roots}
+set normalizer (RootDatum rd,[vec] set_of_roots) = [WeylElt]:
+  normalizer(W(rd),set_of_roots)
+{for testing}
+set stabilizer_elementary (RootDatum rd, ratvec gamma) = [WeylElt]:
+  ##(for w in W(rd) do if w*gamma=gamma then [w] else  [] fi od)
+
+{ subgroup orthgonal to a set of roots}
+set orthogonal_subgroup (RootDatum rd, [vec] S) = (bool,RootDatum):
+   let S_mat = mat: rank(rd)#S
+   then roots = [vec]:
+     ##for a_v in coroots(rd) do if =a_v*S_mat then [root(rd,a_v)] else [] fi od
+   in subgroup(rd,roots)
+
+{ subgroup orthogonal to a Levi }
+set orthogonal_subgroup(RootDatum rd, RootDatum rd_L)=(bool,RootDatum):
+let S=simple_roots(rd_L) in orthogonal_subgroup(rd,S)
+
+{conjugacy classes of Levis as root data from W_characters.at}
+set Levi_subgroups(RootDatum rd)=[RootDatum]:
+for simple_roots in standard_Levi_conjugacy_representatives(rd)
+do complex_Levi(rd,simple_roots) od
+
+{to make a pseudo Levi  from [int] S:
+ simple roots are simple_roots(rd)[i] (le i\in S, i<ss_rank(rd))
+ and the *negative* of the affine roots if i=ss_rank(rd)
+ }
+set pseudo_Levi(RootDatum rd,[int] S)=RootDatum:
+assert(derived_is_simple(rd),"rd has more than one simple factor");
+subgroup_from_simple(rd,
+ for i in S do
+  if i<ss_rank(rd) then simple_roots(rd)[i] else -highest_root(rd) fi od)
+
+set pseudo_Levi_subgroups(RootDatum rd)=[RootDatum]:
+for simple_roots in pseudo_Levis(rd) do
+pseudo_Levi(rd,simple_roots) od
+
+{------------------}
 
 {these should be moved to W_characters.at}
 
@@ -31,7 +164,7 @@ for list@i in rds do prints(new_line, i);show(list) od
 set find(RootDatum rd_ambient, [RootDatum] rds,RootDatum sub_rd)=bool:
 first(for rd in rds do is_conjugate(rd_ambient,rd,sub_rd) od) !=-1
 
-{test sub_rd_1 is rd-conjugate to a subalgebra of sub_rd_2}
+{test sub_rd_1 is rd-conjugate to a subgroup of sub_rd_2}
 {in which all subs of rd_2 is precomputed}
 set is_contained(RootDatum rd,RootDatum sub_rd_1,RootDatum sub_rd_2,[RootDatum]  all_subs_rd_2)=bool:
 if dimension(sub_rd_1)>dimension(sub_rd_2) or
@@ -71,7 +204,7 @@ set find_weak(RootDatum rd_ambient, [RootDatum] rds,RootDatum sub_rd)=bool:
 (first(for rd in rds do is_conjugate(rd_ambient,rho(rd),rho(sub_rd)) od) !=-1) and
 (first(for rd in rds do is_conjugate(rho_check(rd),rho_check(sub_rd),rd_ambient) od) !=-1)
 
-{keep one representative from each conjugacy class of subalgebras}
+{keep one representative from each conjugacy class of subgroups}
 set filter_weak(RootDatum rd_ambient, [RootDatum] subs)=[RootDatum]:
 if #subs=0 then [] else
 let rv=[subs[0]] in
@@ -85,7 +218,7 @@ let rv=[[RootDatum]]:[] in
   match=first(for subs in rv do find_weak(rd_ambient,subs,rd) od) in
    if match=-1 then rv#:=[rd] else rv[match]#:=rd fi od ;rv
 
-{keep one representative from each conjugacy class of subalgebras}
+{keep one representative from each conjugacy class of subgroups}
 set filter(RootDatum rd_ambient, [RootDatum] subs)=[RootDatum]:
 if #subs=0 then [] else
 let rv=[subs[0]] in
@@ -93,7 +226,7 @@ let rv=[subs[0]] in
   if not find(rd_ambient,rv,subs[i]) then rv#:=subs[i] fi od;
 rv fi
 
-{  constructing all equal rank reductive subalgebras  }
+{  constructing all equal rank reductive subgroups  }
 
 {we call a pseudo Levi "maximal" if it is obtained by
 deleting a single node
@@ -111,14 +244,14 @@ let sr=simple_roots(rd) then
 labels=labels(derived(rd)) then
 alpha=-highest_root(rd) in
 rd#(##for i:ss_rank(rd) do
- if labels[i] !=1 then [subalgebra_from_simple(rd, delete(sr,i)#alpha)] else [] fi od) fi
+ if labels[i] !=1 then [subgroup_from_simple(rd, delete(sr,i)#alpha)] else [] fi od) fi
 
 
 {given nonsimple RootDatum rd=rd_1 * ... * rd_n
- in each rd_i we have a list of c_i subalgebras
+ in each rd_i we have a list of c_i subgroups
  construct the resulting list of
-  c_1*...*c_n subalgebras of rd
- each subalgebra RootDatum is made from roots in rd_ambient
+  c_1*...*c_n subgroups of rd
+ each subgroup RootDatum is made from roots in rd_ambient
  construct Cartesian products (in rd_ambient) of simple factors
  see maximal_pseudo_Levis below for the main application
  and an example
@@ -132,7 +265,7 @@ let rec_fun f([[RootDatum]] to_do,[RootDatum] done)=[RootDatum]:
   for rd in done do
    for rd0 in to_do[0] do
     let new_simple_roots=simple_roots(rd0)##simple_roots(rd) in
-    subalgebra_from_simple(rd_ambient,new_simple_roots) 
+    subgroup_from_simple(rd_ambient,new_simple_roots) 
    od
   od
   in f(for i:#to_do-1 from 1 do to_do[i] od,new)
@@ -157,7 +290,7 @@ all_products(for subrd in simple_factors(rd) do maximal_pseudo_Levis_simple(subr
 set proper_maximal_pseudo_Levis(RootDatum rd)=[RootDatum]:
 ##for pl in maximal_pseudo_Levis(rd) do if dimension(pl)=dimension(rd) then [] else [pl] fi od
 
-{iteratively compute all subalgebras by repeatedly computing maximal pseudo Levis
+{iteratively compute all subgroups by repeatedly computing maximal pseudo Levis
  ignore conjugacy
 }
 set iterate_maximal_pseudo_Levis(RootDatum rd)=[RootDatum]:
@@ -166,7 +299,7 @@ let rec_fun f([RootDatum] done,[RootDatum] to_do)=[RootDatum]:
  f(done#(to_do[0]),(for i:#to_do-1 from 1 do to_do[i] od)##proper_maximal_pseudo_Levis(to_do[0])) fi in
  f([],[rd])
 
-{all equal rank reductive subalgebras, ignoring conjugacy
+{all equal rank reductive subgroups, ignoring conjugacy
 algorithm:
 1) iteratively compute all maximal pseudo Levis
 2) for each sub sub_rd list representatives of all conjugacy classes of Levis
@@ -196,7 +329,7 @@ f od od in
 let grouped_by_ss_rank=for i:#rv do ##rv[i] od in
 (grouped_by_ss_rank,sort_by_dimension(##grouped_by_ss_rank))
 
-{test sub_rd_1 is W(rd)-conjugate to a subalgebra of sub_rd_2}
+{test sub_rd_1 is W(rd)-conjugate to a subgroup of sub_rd_2}
 set is_contained(RootDatum rd,RootDatum sub_rd_1,RootDatum sub_rd_2)=bool:
 if dimension(sub_rd_1)>dimension(sub_rd_2) or
    ss_rank(sub_rd_1)>ss_rank(sub_rd_2) then false else
@@ -221,7 +354,7 @@ for i:#rv do ##rv[i] od
 
 {--------maps to conjugacy classes in W-----------}
 
-{take each subalgebra to its Coxeter element, embedded in W}
+{take each subgroup to its Coxeter element, embedded in W}
 set conjugacy_classes_from_subs(RootDatum rd,[RootDatum] subs)=[(RootDatum,WeylElt)]:
 for L in subs do (L,W_elt(rd,matrix(coxeter_element(L)))) od
 
@@ -232,7 +365,7 @@ for (L,w) in pairs do
  if match =-1 then rv#:=[(L,w)] else rv[match]#:=(L,w) fi od;
  rv
 
-{iteratively compute all subalgebras by repeatedly computing maximal pseudo Levis
+{iteratively compute all subgroups by repeatedly computing maximal pseudo Levis
  ignore conjugacy
  keep extra information: nested sequence of subgroups
 }
@@ -268,7 +401,7 @@ let rv=[[int]]:[] in
 for i:#subs do
 let (,all_subs_rd_i)=all_subs(subs[i]) in
 { let ()=prints("rv is now:"); for a@i in rv do prints(i, " ", a) od in}
- let new={prints(new_line,"-----",new_line,"i=",i);}[int]:[] in  {list of subalgebras of subs[i]}
+ let new={prints(new_line,"-----",new_line,"i=",i);}[int]:[] in  {list of subgroups of subs[i]}
   for j:i downto 0  do {see if subs[j] \subset subs[i]}
 {   let ()=prints("j=",j) in}
 {   let ()=prints("new:",new) in}
@@ -289,7 +422,7 @@ rv
  (tred computes the reduced graph)
  the ingredients are:
  [[int]] data: hasse diagram (produced by hasse(rd,subs))
- [RootDatum] subs: list of all subgroups, produced by sub_algebras(rd)
+ [RootDatum] subs: list of all subgroups, produced by sub_groups(rd)
  [RootDatum] levis: list of levis, produced by Levi_subgroups(rd)
  [RootDatum] pseudo_levis: list of pseudo_levis, produced by pseudo_Levi_subgroups(rd)
  one node for each subgroup, arrow for containment (graph is not necessarily reduced)

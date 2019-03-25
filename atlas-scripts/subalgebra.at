@@ -1,3 +1,5 @@
+{This file has been replaced by subgroups.at and will soon be deleted}
+
 { This file was an auxiliary to conjugacy_classes.at, which is superseded by
   W_characters.at; therefore it will be soon removed.
 
@@ -55,11 +57,13 @@ subalgebra(rd, for j in roots do posroots(rd)[j] od)
 
 {specify a subalgebra by a list of positive roots (not necessarily
 simple), to serve as the simple roots of the subalgebra}
-set subalgebra_by_simple(RootDatum rd,[vec] roots)=RootDatum:
-root_datum(for v in roots do v od, for v in roots do coroot(rd,v) od)
+set subalgebra_from_simple(RootDatum rd,[vec] roots)=RootDatum:
+if #roots=0 then complex_torus(rank(rd)) else
+root_datum(for v in roots do v od, for v in roots do coroot(rd,v) od) fi
 
-set subalgebra_by_simple(RootDatum rd,[int] roots)=RootDatum:
-root_datum(for i in roots do posroots(rd)[i] od, for i in roots do poscoroots(rd)[i] od)
+set subalgebra_from_simple(RootDatum rd,[int] roots)=RootDatum:
+if #roots=0 then complex_torus(rank(rd)) else
+root_datum(for i in roots do posroots(rd)[i] od, for i in roots do poscoroots(rd)[i] od) fi
 
 {mat k: columns span a subspace U of X_*
  construct RootDatum of Levi given by roots vanishing on U}
@@ -114,3 +118,21 @@ set orthogonal_subalgebra (RootDatum rd, [vec] S) = (bool,RootDatum):
 set orthogonal_subalgebra(RootDatum rd, RootDatum rd_L)=(bool,RootDatum):
 let S=simple_roots(rd_L) in orthogonal_subalgebra(rd,S)
 
+{conjugacy classes of Levis as root data from W_characters.at}
+set Levi_subgroups(RootDatum rd)=[RootDatum]:
+for simple_roots in standard_Levi_conjugacy_representatives(rd)
+do complex_Levi(rd,simple_roots) od
+
+{to make a pseudo Levi  from [int] S:
+ simple roots are simple_roots(rd)[i] (le i\in S, i<ss_rank(rd))
+ and the *negative* of the affine roots if i=ss_rank(rd)
+ }
+set pseudo_Levi(RootDatum rd,[int] S)=RootDatum:
+assert(derived_is_simple(rd),"rd has more than one simple factor");
+subalgebra_from_simple(rd,
+ for i in S do
+  if i<ss_rank(rd) then simple_roots(rd)[i] else -highest_root(rd) fi od)
+
+set pseudo_Levi_subgroups(RootDatum rd)=[RootDatum]:
+for simple_roots in pseudo_Levis(rd) do
+pseudo_Levi(rd,simple_roots) od
