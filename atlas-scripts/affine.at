@@ -111,13 +111,14 @@ set reflect(ratvec cwt,(AffineDatum ad, int i))=ratvec:coreflect(ad.rd,cwt,ad.rd
 
 {affine reflections}
 
-{affine reflection on X^*}
+{affine reflection on X^*: i is the number of the simple factor}
 set affine_reflect(AffineDatum ad,int i,ratvec wt)=ratvec:
 reflect((ad,ad.affine_roots[i]),wt)+(1/ad.folding_orders[i])*ad.affine_roots[i]
 
 {affine reflection on X_*}
 set affine_reflect(ratvec cwt,int i,AffineDatum ad)=ratvec:
-reflect(cwt,(ad,ad.affine_coroots[i]))+(1/ad.folding_orders[i])*ad.affine_coroots[i]
+{reflect(cwt,(ad,ad.affine_coroots[i]))+(1/ad.folding_orders[i])*ad.affine_coroots[i]}
+reflect(cwt,(ad,ad.affine_roots[i]))+(1/ad.folding_orders[i])*ad.affine_coroots[i]
 
 {labels: defined for an affine datum,
 multiplicity of each simple root in affine root(s)
@@ -143,16 +144,24 @@ set co_affine_labels(RootDatum rd)=vec:co_affine_labels(affine_datum(rd))
 set reflect_or_affine_reflect((AffineDatum ad,int i), ratvec wt)=ratvec:
 assert(0<=i and i<=ad.ss_rank+ad.number_factors-1,"i is out of range");
 if i<=ad.ss_rank-1 then reflect((ad,i),wt)
-else  affine_reflect(ad,i,wt) fi
+else
+{i=ad.ss_rank+ad.number_factors-2: last ordinary reflection
+ i=ad.ss_rank+ad.number_factors-1: affine reflection in factor #0
+ i=ad.ss_rank+ad.number_factors+j-1: affine reflection in factor #j
+ j=i-ad.ss_rank-ad.number_factors+1
+}
+ let j=i-ad.ss_rank-ad.number_factors+1 in
+ affine_reflect(ad,j,wt)
+fi
 
 {ordinary or affine reflection acting on X_*}
 set reflect_or_affine_reflect(ratvec cwt,(AffineDatum ad,int i))=ratvec:
-if i>=0 then reflect(cwt,(ad,i)) else affine_reflect(cwt,-i,ad) fi
-
-set reflect_or_affine_reflect(ratvec cwt,(AffineDatum ad,int i))=ratvec:
 assert(0<=i and i<=ad.ss_rank+ad.number_factors-1,"i is out of range");
 if i<=ad.ss_rank-1 then reflect(cwt,(ad,i))
-else  affine_reflect(ad,i,cwt) fi
+else
+ let j=i-ad.ss_rank-ad.number_factors+1 in
+ affine_reflect(cwt,j,ad)
+fi
 
 {wt\in X^*\otimes Q
 affine coordinates: a pair (v,w) of ratvecs
