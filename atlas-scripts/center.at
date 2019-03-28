@@ -1,5 +1,6 @@
 <basic.at { for (at least) radical_basis }
 <lattice.at { for image_subspace@mat }
+<ratmat.at
 
 { center Z and dual Z_hat of complex group or real form }
 {
@@ -64,7 +65,7 @@ set split_coradical_basis (InnerClass G) =  mat:
 set lie_split_radical_hat (InnerClass G) = mat:
   image_subspace((1-distinguished_involution(G))*lie_radical_hat(G))
 
-{ Q-basis of split part of coradical; columns are weights }
+{ Q-basis of compact part of coradical; columns are weights }
 set compact_coradical_basis (InnerClass G) =  mat:
   kernel( (^simple_coroots(G)) ^ {stack up} (1-distinguished_involution(G)) )
 { equivalent: Q-basis of dual of compact part of radical of (complex) group }
@@ -174,3 +175,43 @@ set Z_2 (RealForm G) = [vec]:
     else []
     fi
   od
+
+{-------center of a semisimple complex group ----------}
+
+{rd is a semisimple root datum
+return rational vectors [v_1,..., v_n] so that
+set t_j=exp(2\pi iv_j)
+Then {t_1,...,t_n} generate the center of the complex group
+order(t_i)=denominator of the ratvec v_i
+
+Algorithm:
+Z(G)=P^v/X_* = Z<fundamental coweights>/Z^n
+change basis so that P^v=Z^n:
+M=fundamental coweights (a rational matrix)
+N=M^{-1} is an integral matrix, and 
+the sublattice X_* is spanned by the columns of N
+adapted_basis(N): pairs (A,c)
+ where A is an invertible integral matrix
+ c=[c_1,...,c_n]
+ span(N)=<c_1 A[1],..., c_n A[n]>
+ discard all columns with c_i=1 (filter_units)
+ multiply resulting columns by M to change basis back
+  and divide by c[i]
+This gives the rational vectors [v_1,...,v_n]
+}
+set center(RootDatum rd)=[ratvec]:
+assert(is_semisimple(rd),"Root Datum is not semisimple");
+let M=ratvecs_as_ratmat(fundamental_coweights(rd)) then
+N=ratmat_as_mat(inverse(M)) then
+(A,c)=adapted_basis(N) then
+(B,v)=filter_units(A,c) in
+for col@i in B do M*col/c[i] od
+
+set type_center(RootDatum rd)=[int]:
+assert(is_semisimple(rd),"Root Datum is not semisimple");
+let M=ratvecs_as_ratmat(fundamental_coweights(rd)) then
+N=ratmat_as_mat(inverse(M)) then
+(A,c)=adapted_basis(N) then
+(,v)=filter_units(A,c) in v
+
+set order_center(RootDatum rd)=int:product(type_center(rd))
