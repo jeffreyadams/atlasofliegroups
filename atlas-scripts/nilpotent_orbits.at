@@ -625,24 +625,46 @@ set Kac_triples (RootDatum rd, [int] L)=[(int,[int],ratvec,WeylElt)]:
           fi in
    ##for i:2*d_L(rd,L)*c from 1 do Kac_triples_simple(rd,L,i) od
 
+set in_radical (ratvec v, RootDatum rd) = bool:
+   let (,M)=mod_central_torus_info(rd) in is_integer(M*v)
+
+set generators_of_Z_mod_Z_0 (RootDatum rd, [int] L) = [ratvec]:
+   let rdl=pseudo_Levi(rd,L) in let result=[ratvec]:[] in
+   let KC=Kac_triples (rd,L) in
+   for (i,diag,v,w) in KC do let k=v*inverse(w) in
+       if none (for u in result do in_radical((k-u),rdl) od)
+        then result#:=v*inverse(w) fi od;
+   result
+
+set generators_of_component_group (ComplexNilpotent (rd,(),H))=[([int],[ratvec])]:
+   let levis=pseudo_Levis_of_orbit (rd,(),H) in
+   for L in levis do (L,generators_of_Z_mod_Z_0(rd,L)) od
+
 set print_component_info (ComplexNilpotent (rd,(),H))=void:
+   let header=["pseudo_Levi","d_L","Generators"] in
+   let values=
+   for (L,list) in generators_of_component_group((rd,(),H)) do
+   [L.to_string,d_L(rd,L).to_string,list.to_string] od in
+   tabulate(header#values)
+
+set print_component_info_alt (ComplexNilpotent (rd,(),H))=void:
    let levis=pseudo_Levis_of_orbit (rd,(),H) in
    if #levis=0 then prints("There are no pseudo-Levis for this orbit.")
    else
-   let header=["pseudo","d_L","Kac diag","torus_elt","order/Z","w","conj"] then
-   ()=if nilpotent_verbose then prints("#pseudo_levis:",#levis) fi then
+   for L in levis do prints("pseudo_Levi: ",sort(L),"  d_L=",d_L(rd,L));
+   let rdl=pseudo_Levi(rd,L) then
+   header=["Kac diag","torus_elt","order/Z","w","conj","in Z_0(L)"] then
    values=
-   ##for L in levis do
-   let ()=if nilpotent_verbose then prints("Levi:",L) fi in
-    for (i,diag,v,u) in Kac_triples(rd,L) do
-     [(sort(L)).to_string,d_L(rd,L).to_string,diag.to_string,v.to_string,i.
-     to_string,u.to_string,(v*inverse(u)).to_string]
-    od
+   for (i,diag,v,u) in Kac_triples(rd,L) do
+     [diag.to_string,v.to_string,i.
+     to_string,u.to_string,(v*inverse(u)).to_string,in_radical(v*inverse(u),rdl).to_string]
    od in
-   tabulate(header#values) fi
+   tabulate(header#values) od fi
+
 
 set print_component_info (RootDatum rd)=void:
    for orb in complex_nilpotent_orbits (rd) do prints();
    prints("Orbit: H: ",orb.H_of_triple," Dynkin Diagram: ", diagram(orb), " dim: ",
    dim_nilpotent(orb));
    print_component_info (orb) od
+
