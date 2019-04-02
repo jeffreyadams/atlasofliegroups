@@ -1,6 +1,6 @@
 <W_characters.at
 <simple_factors.at
-<matrix.at {for is_locally_isomorphic}
+<lietypes.at  {for locally isomorphic}
 
 {given two sub-root systems of rd find w
 taking one to the other

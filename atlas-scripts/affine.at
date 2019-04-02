@@ -145,12 +145,12 @@ set reflect_or_affine_reflect((AffineDatum ad,int i), ratvec wt)=ratvec:
 assert(0<=i and i<=ad.ss_rank+ad.number_factors-1,"i is out of range");
 if i<=ad.ss_rank-1 then reflect((ad,i),wt)
 else
-{i=ad.ss_rank+ad.number_factors-2: last ordinary reflection
- i=ad.ss_rank+ad.number_factors-1: affine reflection in factor #0
+{i=ad.ss_rank: last ordinary reflection
+ i=ad.ss_rank+j: affine reflection in factor #0
  i=ad.ss_rank+ad.number_factors+j-1: affine reflection in factor #j
- j=i-ad.ss_rank-ad.number_factors+1
+ j=i-ad.ss_rank
 }
- let j=i-ad.ss_rank-ad.number_factors+1 in
+ let j=i-ad.ss_rank in
  affine_reflect(ad,j,wt)
 fi
 
@@ -159,7 +159,7 @@ set reflect_or_affine_reflect(ratvec cwt,(AffineDatum ad,int i))=ratvec:
 assert(0<=i and i<=ad.ss_rank+ad.number_factors-1,"i is out of range");
 if i<=ad.ss_rank-1 then reflect(cwt,(ad,i))
 else
- let j=i-ad.ss_rank-ad.number_factors+1 in
+ let j=i-ad.ss_rank in
  affine_reflect(cwt,j,ad)
 fi
 

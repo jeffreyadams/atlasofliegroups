@@ -125,7 +125,7 @@ let rec_fun f(RootDatum rd,[WeylElt] S,[RootDatum] levis)=[WeylElt]:
  (w,for i:#nested_levis downto 0 do  w*nested_levis[i] od)
 
 {information about the good representative of a conjugacy classes}
-set good(WeylElt w)=([(int,[[CyclotomicFieldElement]])],[int],[RootDatum],[RootDatum],WeylElt,ratvec):
+set good_info(WeylElt w)=([(int,[[CyclotomicFieldElement]])],[int],[RootDatum],[RootDatum],WeylElt,ratvec):
 let ep=eigenpairs(w) then
 (orders,levis)=nested_Levis(w.root_datum,ep) then
 (y,std_levis)=standardize(w.root_datum,levis) then
@@ -135,8 +135,8 @@ v_0=nested_Levis_to_semisimple(w.root_datum,orders,std_levis,order(w)) in
 
 {same as previous, except also use the affine Weyl group to
 put v_0 in the fundamental alcove}
-set good(WeylElt w,AffineDatum ad)=
-let (ep,orders,levis,std_levis,y,v)=good(w) then
+set good_info(WeylElt w,AffineDatum ad)=
+let (ep,orders,levis,std_levis,y,v)=good_info(w) then
 (z,)=affine_make_dominant(v,ad) in
 (ep,orders,levis,std_levis,y,v,z,affine_coordinates(z,ad))
 
@@ -145,7 +145,7 @@ set good_report([WeylElt] ell,AffineDatum ad)=void:
 let header=["order","length","#levis","v","z","Kac"] then
 values=
 for w@i in ell do
-let (ep,orders,levis,std_levis,y,v,z,ac)=good(w,ad) in
+let (ep,orders,levis,std_levis,y,v,z,ac)=good_info(w,ad) in
 [w.order.to_string,w.length.to_string,(#levis).to_string,v.to_string,z.to_string,ac.to_string] od in
 tabulate(header#values)
 

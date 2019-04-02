@@ -6,7 +6,7 @@
 <induction.at { for |embed_KGB@(KGBElt,RealForm)| }
 <center.at { for |lie_compact_radical)@InnerClass| }
 <all_finite_order.at
-
+<simple_factors.at {for computing the subregular and minimal orbits of a non-simple group}
 
 { ComplexNilpotent: (RootDatum rd,vec H)
   where [H,X,Y] is a Lie triple, H\in X_*, and orbit=G.X
@@ -588,3 +588,64 @@ set print_component_info (ComplexNilpotent (rd,(),H))=void:
 set print_component_info (RootDatum rd)=void:
    for orb in complex_nilpotent_orbits (rd) do prints();prints("Orbit:",orb);
    print_component_info (orb) od
+
+{------ principal, zero, subregular and minimal orbits -----}
+
+set principal_orbit(RootDatum rd)=ComplexNilpotent:(rd,(),ratvec_as_vec(2*rho_check(rd)))
+set zero_orbit(RootDatum rd)=ComplexNilpotent:(rd,(),null(rank(rd)))
+
+set subregular_orbit_simple(RootDatum rd)=ComplexNilpotent:
+assert(rd.derived_is_simple,"RootDatum is not simple");
+if is_abelian(rd) then (rd,(),rd.rank.null) else
+let orbits=complex_nilpotent_orbits(rd) then
+j=first(for orbit in orbits do orbit.dim_nilpotent=rd.dimension-rd.rank-2 od) in
+orbits[j] fi
+
+set minimal_orbit_simple(RootDatum rd)=ComplexNilpotent:
+assert(rd.derived_is_simple,"RootDatum is not simple");
+{L=SL(2,highest_root)
+ 2*rho^v(L)=highest_short_root(dual(rd))
+}
+(rd,(),rd.dual.highest_short_root)
+
+{if rd has n simple factors it has n subregular orbits
+each has codimension 2
+could find them by dimension, but alternatively
+take the product of the principal orbits in all
+but 1 factor, and the subregular in that factor
+this is what is needed in the minimal case
+subregular_orbits(rd)[i] is the subregular orbit
+ on factor i, and principal on all other factors
+}
+set subregular_orbits(RootDatum rd)=
+let factors=simple_factors(rd) then
+orbits=[ComplexNilpotent]:[] in
+for i:#factors do
+ let H=null(rd.rank) in
+ for j:#factors do
+  if i=j then H+:=factors[j].subregular_orbit_simple.H_of_triple
+   else H+:=ratvec_as_vec(2*factors[j].rho_check)
+  fi
+ od;
+ orbits#:=(rd,(),H)
+od;
+orbits
+
+{if rd has n simple factors it has n minimal orbits
+take the product of the 0 orbit in all
+but 1 factor, and the minimal orbit in that factor
+minimal_orbits(rd)[i] is the minimal orbit 
+ on factor i, and 0 on all other factors
+}
+set minimal_orbits(RootDatum rd)=
+let factors=simple_factors(rd) then
+orbits=[ComplexNilpotent]:[] in
+for i:#factors do
+ let H=null(rd.rank) in
+ for j:#factors do
+  if i=j then H+:=factors[j].minimal_orbit_simple.H_of_triple
+  fi
+ od;
+ orbits#:=(rd,(),H)
+od;
+orbits

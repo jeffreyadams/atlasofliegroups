@@ -4,7 +4,7 @@
 <conjugate.at
 <parabolics.at {for Levis}
 <nilpotent_orbits.at {for pseudo Levis}
-
+<posets.at
 {
   The functions deal with constructing Levi systems cut out by various linear
   conditions (being orthogonal to a given set of coroots), and their root data.
@@ -157,7 +157,7 @@ for w in S do
 {a few simple output routines}
 
 set show([RootDatum] rds)=void:
-for rd in rds do prints(rd.Lie_type.str) od
+for rd@i in rds do prints(i, " ", rd.Lie_type.str) od
 
 set show([[RootDatum]] rds)=void:
 for list@i in rds do prints(new_line, i);show(list) od
@@ -307,19 +307,19 @@ algorithm:
 2) for each sub sub_rd list representatives of all conjugacy classes of Levis
 }
 {ignoring conjugacy}
-set all_subs_raw(RootDatum rd)=[RootDatum]:
+set subgroups_raw(RootDatum rd)=[RootDatum]:
 ##for sub in iterate_maximal_pseudo_Levis(rd) do
  for S in standard_Levi_conjugacy_representatives(sub)  do complex_Levi(sub,S) od  od
 
-{cut down all_subs_raw to one representative of each conjugacy class
+{cut down subgroups_raw to one representative of each conjugacy class
 for efficiency group by ss_rank and number of simple factors before 
 testing for conjugacy
 return two lists
 first: [[RootDatum]] grouped by ss_rank
 second:[RootDatum] ordered by dimension
 }
-set all_subs(RootDatum rd)=([[RootDatum]],[RootDatum]):
-let all=group_by_ss_rank_and_number_simple_factors(all_subs_raw(rd)) in
+set subgroups(RootDatum rd)=[RootDatum]:
+let all=group_by_ss_rank_and_number_simple_factors(subgroups_raw(rd)) in
 let rv=
 for i:#all do
  for j:#all[i] do
@@ -329,21 +329,22 @@ for i:#all do
 f od od in
 {regroup answer by ss_rank}
 let grouped_by_ss_rank=for i:#rv do ##rv[i] od in
-(grouped_by_ss_rank,sort_by_dimension(##grouped_by_ss_rank))
+sort_by_dimension(##grouped_by_ss_rank)
 
 {test sub_rd_1 is W(rd)-conjugate to a subgroup of sub_rd_2}
 set is_contained(RootDatum rd,RootDatum sub_rd_1,RootDatum sub_rd_2)=bool:
 if dimension(sub_rd_1)>dimension(sub_rd_2) or
    ss_rank(sub_rd_1)>ss_rank(sub_rd_2) then false else
-find(rd,let (,all_subs_2)=all_subs(sub_rd_2) in all_subs_2,sub_rd_1) fi
+find(rd,let all_subs_2=subgroups(sub_rd_2) in all_subs_2,sub_rd_1) fi
 
+set proper_subgroups(RootDatum rd)=[RootDatum]:
+##for L in subgroups(rd) do if L=rd then [] else [L] fi od
 
-
-{cut down all_subs_raw to one representative of each conjugacy class
+{cut down subgroups_raw to one representative of each conjugacy class
 for efficiency group by ss_rank and number of simple factors before 
 testing for conjugacy}
-set all_subs_weak(RootDatum rd)=
-let all=group_by_ss_rank_and_number_simple_factors(all_subs_raw(rd)) in
+set subgroups_weak(RootDatum rd)=
+let all=group_by_ss_rank_and_number_simple_factors(subgroups_raw(rd)) in
 let rv=
 for i:#all do
  for j:#all[i] do
@@ -395,25 +396,30 @@ avoid recomputing containments which arise from transitivity}
 set transitive_containment([[int]] done,[int] new, int n)=bool:
  any(for j in new do if j<=#done-1 then find(done[j],n) !=-1 else false fi od)
 
-
-
 {assume sorted by dimension}
-set hasse(RootDatum rd,[RootDatum] subs)=[[int]]:
-let rv=[[int]]:[] in
-for i:#subs do
-let (,all_subs_rd_i)=all_subs(subs[i]) in
+set subgroups_poset(RootDatum rd,[RootDatum] subgroups)=([RootDatum],Poset):
+let rv=Poset:[] in
+for i:#subgroups do
+let subgroups_rd_i=subgroups(subgroups[i]) in
 { let ()=prints("rv is now:"); for a@i in rv do prints(i, " ", a) od in}
- let new={prints(new_line,"-----",new_line,"i=",i);}[int]:[] in  {list of subgroups of subs[i]}
-  for j:i downto 0  do {see if subs[j] \subset subs[i]}
+ let new={prints(new_line,"-----",new_line,"i=",i);}[int]:[] in  {list of subgroups of subgroups[i]}
+  for j:i downto 0  do {see if subgroups[j] \subset subgroups[i]}
 {   let ()=prints("j=",j) in}
 {   let ()=prints("new:",new) in}
    {see if already done by transitivity}
    if transitive_containment(rv,new,j) then {prints("easy:",i, " ", j);} new#:=j
-    elif is_contained(rd,subs[j],subs[i],all_subs_rd_i) then {prints("added: ", j);}new#:=j fi
+    elif is_contained(rd,subgroups[j],subgroups[i],subgroups_rd_i) then {prints("added: ", j);}new#:=j fi
   od;
   rv#:=new
 od;
-rv
+(subgroups,rv)
+
+set subgroups_poset(RootDatum rd)=([RootDatum],Poset):
+subgroups_poset(rd,subgroups(rd))
+
+set show([RootDatum] subs,Poset P)=void:
+let values=
+for row@i in P do [i.to_string,subs[i].derived.Lie_type.nice_format,row.to_string] od in tabulate(values)
 
 {output the contents of a .dot file, suitable to be processed by graphviz
  recommended method:
@@ -452,7 +458,7 @@ for i:#data do
 
 {produce all of the ingredients needed from RootDatum rd}
 set sub_graph(RootDatum rd)=string:
-let (,subs)=all_subs(rd) then
+let subs=subgroups(rd) then
 ()=prints("Number of subgroups: ", #subs) then
 levis=Levi_subgroups(rd) then
 ()=prints("Number of Levis: ", #levis) then
@@ -460,19 +466,22 @@ pseudo_levis=pseudo_Levi_subgroups(rd) then
 ()=prints("Number of pseudo Levis: ", #pseudo_levis) then
 ()=prints("Number of strict pseudo Levis: ", #pseudo_levis-#levis);
 prints("computing Hasse diagram") then
-h=hasse(rd,subs) in
+(,h)=subgroups_poset(rd,subs) in
 prints("Computed Hasse diagram");
 sub_graph(h,rd,subs,levis,pseudo_levis)
 
 {computing all pseudo Levis is slow, do just maximal ones}
 set sub_graph_max_pseudo_levis_only(RootDatum rd)=string:
-let (,subs)=all_subs(rd) then
+let subs=subgroups(rd) then
 ()=prints("Number of subgroups: ", #subs) then
 levis=Levi_subgroups(rd) then
 ()=prints("Number of Levis: ", #levis) then
 maximal_pseudo_levis=maximal_pseudo_Levis(rd) then
 ()=prints("Number of maximal pseudo Levis: ", #maximal_pseudo_levis) then
 ()=prints("computing Hasse diagram") then
-h=hasse(rd,subs) in
+(,h)=subgroups_poset(rd,subs) in
 prints("Computed Hasse diagram");
 sub_graph(h,rd,subs,levis,maximal_pseudo_levis)
+
+set complex_nilpotent(RootDatum rd,RootDatum sub)=ComplexNilpotent:
+(rd,(),dominant(ratvec_as_vec(2*rho_check(sub)),rd)) 
