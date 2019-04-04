@@ -265,6 +265,34 @@ subregular=fill_nilpotent_posets_subregular(seed) then
 subregular_and_minimal=fill_nilpotent_posets_minimal(subregular) in
 submerge(special_elliptic_poset(rd),subregular_and_minimal)
 
+set rec_fun nilpotent_orbits_and_closures_saturate(RootDatum rd)=ComplexNilpotentPoset:
+if is_abelian(rd)
+ then (rd,[ComplexNilpotent]:[(rd,(),null(rank(rd)))],Poset:[[]])
+else
+ let rv=master_complex_nilpotent_poset(rd) then
+ subs=proper_subgroups(rd) in
+ for rd_sub@i in subs do
+  let rv_1=rv then
+  poset_sub=nilpotent_orbits_and_closures(rd_sub) then
+  rv_2=submerge(saturate(rd,poset_sub),rv_1) in
+  rv:=rv_2
+ od;rv
+fi
+
+set rec_fun nilpotent_orbits_and_closures_induce(RootDatum rd)=ComplexNilpotentPoset:
+if is_abelian(rd)
+ then (rd,[ComplexNilpotent]:[(rd,(),null(rank(rd)))],Poset:[[]])
+else
+ let rv=master_complex_nilpotent_poset(rd) then
+ subs=proper_subgroups(rd) in
+ for rd_sub@i in subs do
+  let rv_1=rv then
+  poset_sub=nilpotent_orbits_and_closures(rd_sub) then
+  rv_2=submerge(simple_induce(rd,poset_sub),rv_1) in
+  rv:=rv_2
+ od;rv
+fi
+
 set rec_fun nilpotent_orbits_and_closures(RootDatum rd)=ComplexNilpotentPoset:
 if is_abelian(rd)
  then (rd,[ComplexNilpotent]:[(rd,(),null(rank(rd)))],Poset:[[]])
@@ -272,15 +300,14 @@ else
  let rv=master_complex_nilpotent_poset(rd) then
  subs=proper_subgroups(rd) in
  for rd_sub@i in subs do
- if dimension(rd_sub) < dimension(rd) then
-{need to use dimension to cut down to proper subgroups
- rd_sub = rd can be false even when rd_sub "is" rd}
-{   let ()=prints("doing ", rd_sub) in}
-  let poset_sub=nilpotent_orbits_and_closures(rd_sub) in
-{  let ()=prints("i=",i," L=",rd_sub);prints("new:", test(submerge(saturate(rd,poset_sub),rv))) in}
-  rv:=submerge(saturate(rd,poset_sub),rv) fi
+  let rv_1=rv then
+  poset_sub=nilpotent_orbits_and_closures(rd_sub) then
+  rv_2=submerge(saturate(rd,poset_sub),rv_1) then
+  rv_3=submerge(simple_induce(rd,poset_sub),rv_2) in
+  rv:=rv_3
  od;rv
 fi
+
 
 set test(ComplexNilpotentPoset P)=
 let loops=[] in
@@ -289,6 +316,7 @@ for i:#poset do for j:#poset do
  if less(poset,i,j) and less(poset,j,i) and i!=j then loops#:=(i,j) fi od od;loops
 
 {for testing: just go up to N}
+
 set rec_fun nilpotent_orbits_and_closures_test(RootDatum rd, int N)=ComplexNilpotentPoset:
 if is_abelian(rd)
  then (rd,[ComplexNilpotent]:[(rd,(),null(rank(rd)))],Poset:[[]])

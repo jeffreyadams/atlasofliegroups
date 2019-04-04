@@ -338,7 +338,9 @@ if dimension(sub_rd_1)>dimension(sub_rd_2) or
 find(rd,let all_subs_2=subgroups(sub_rd_2) in all_subs_2,sub_rd_1) fi
 
 set proper_subgroups(RootDatum rd)=[RootDatum]:
-##for L in subgroups(rd) do if L=rd then [] else [L] fi od
+##for L in subgroups(rd) do if
+{the test L=rd may return false even when L really is rd}
+L.dimension=rd.dimension then [] else [L] fi od
 
 {cut down subgroups_raw to one representative of each conjugacy class
 for efficiency group by ss_rank and number of simple factors before 
@@ -483,5 +485,12 @@ maximal_pseudo_levis=maximal_pseudo_Levis(rd) then
 prints("Computed Hasse diagram");
 sub_graph(h,rd,subs,levis,maximal_pseudo_levis)
 
+{complex nilpotent obtained by saturating the principal orbit of subgroup}
 set complex_nilpotent(RootDatum rd,RootDatum sub)=ComplexNilpotent:
-(rd,(),dominant(ratvec_as_vec(2*rho_check(sub)),rd)) 
+(rd,(),dominant(ratvec_as_vec(2*rho_check(sub)),rd))
+
+set show_subgroup_nilpotent_map(RootDatum rd)=void:
+let values=
+ for L in subgroups(rd) do
+  let orbit=complex_nilpotent(rd,L) in [L.derived.Lie_type.nice_format,orbit.diagram.to_string,orbit.H_of_triple.to_string,orbit.dim_nilpotent.to_string] od
+ in tabulate(["L","diagram","H","dim"]#values)

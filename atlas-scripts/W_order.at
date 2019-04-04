@@ -12,9 +12,9 @@ on conjugacy classes in W
 
 <sort.at
 
-{dominance order on dominant vectors}
+{dominance order on dominant coweights}
 set less(RootDatum rd, ratvec v, ratvec w)=
-assert(is_dominant(rd,v) and is_dominant(rd,w),"v and/or w are not dominant");
+assert(is_dominant(v,rd) and is_dominant(w,rd),"v and/or w are not dominant");
 is_positive(requisition(solve(simple_coroots(rd),v-w)))
 
 set vecs([WeylElt] W)=for w in W do let (,,,,,v)=good_info(w) in v od
