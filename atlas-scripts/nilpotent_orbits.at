@@ -614,6 +614,11 @@ set Kac_diagrams_with_centralizer (RootDatum rd, [int] L,int m)=[([int],WeylElt)
 
 set order_of_center (RootDatum rd)=#Kac_classes_given_order(rd,1)
 
+set Kac_diags_in_center (RootDatum rd,[int] L, int m)=[[[int]]]:
+   let diags=Kac_diags_up_to_order(rd,m) in
+   for dlist in diags do
+    ##for d in dlist do if all(for a in L do d[a]=0 od) then [d] else [] fi od od
+
 set Kac_triples_simple (RootDatum rd, [int] L, int c)=[(int,[int],ratvec,WeylElt)]:
    let d=d_L(rd,L) in
      let list=Kac_diagrams_with_centralizer (rd,L,c*d) in
@@ -623,29 +628,39 @@ set Kac_triples (RootDatum rd, [int] L)=[(int,[int],ratvec,WeylElt)]:
    let c=order_of_center (rd) in
    let ()=if nilpotent_verbose then prints("c=",c, new_line,"2*d*c=", 2*d_L(rd,L)*c)
           fi in
-   ##for i:2*d_L(rd,L)*c from 1 do Kac_triples_simple(rd,L,i) od
+   ##for i:3*d_L(rd,L)*c from 1 do Kac_triples_simple(rd,L,i) od
 
 set in_radical (ratvec v, RootDatum rd) = bool:
    let (,M)=mod_central_torus_info(rd) in is_integer(M*v)
 
-set generators_of_Z_mod_Z_0 (RootDatum rd, [int] L) = [ratvec]:
-   let rdl=pseudo_Levi(rd,L) in let result=[ratvec]:[] in
+set generators_of_Z_mod_Z_0 (RootDatum rd, [int] L) = [(ratvec,int)]:
+   let rdl=pseudo_Levi(rd,L) then (,M)=mod_central_torus_info(rdl)
+   then result=[(ratvec,int)]:[] in
    let KC=Kac_triples (rd,L) in
    for (i,diag,v,w) in KC do let k=v*inverse(w) in
-       if none (for u in result do in_radical((k-u),rdl) od)
-        then result#:=v*inverse(w) fi od;
+       if none (for (u,) in result do is_integer(M*(k-u)) od)
+        then result#:=(k,denom(M*k)) fi od;
    result
 
-set generators_of_component_group (ComplexNilpotent (rd,(),H))=[([int],[ratvec])]:
+set generators_of_component_group (ComplexNilpotent (rd,(),H))=[([int],[(ratvec,int)])]:
    let levis=pseudo_Levis_of_orbit (rd,(),H) in
    for L in levis do (L,generators_of_Z_mod_Z_0(rd,L)) od
 
 set print_component_info (ComplexNilpotent (rd,(),H))=void:
-   let header=["pseudo_Levi","d_L","Generators"] in
+   let header=["Generator of Z/Z0","Order"] in
+   for (L,list) in generators_of_component_group((rd,(),H)) do prints();
+   prints("pseudo-Levi=",L,"  d_L=",d_L(rd,L));
+   let values=for (v,n) in list do
+   [v.to_string,n.to_string] od in
+   tabulate(header#values) od
+
+{set print_component_info_nice (ComplexNilpotent (rd,(),H))=void:
+   let header=["pseudo_Levi","d_L","Generator of Z/Z0","Order"] in
    let values=
    for (L,list) in generators_of_component_group((rd,(),H)) do
-   [L.to_string,d_L(rd,L).to_string,list.to_string] od in
-   tabulate(header#values)
+   for (v,n) in list do [L.to_string,d_L(rd,L).to_string,v.to_string,n.to_string]
+   od od in
+   tabulate(header#values)}
 
 set print_component_info_alt (ComplexNilpotent (rd,(),H))=void:
    let levis=pseudo_Levis_of_orbit (rd,(),H) in
@@ -663,7 +678,7 @@ set print_component_info_alt (ComplexNilpotent (rd,(),H))=void:
 
 
 set print_component_info (RootDatum rd)=void:
-   for orb in complex_nilpotent_orbits (rd) do prints();
+   for orb in complex_nilpotent_orbits (rd) do prints();prints();
    prints("Orbit: H: ",orb.H_of_triple," Dynkin Diagram: ", diagram(orb), " dim: ",
    dim_nilpotent(orb));
    print_component_info (orb) od
