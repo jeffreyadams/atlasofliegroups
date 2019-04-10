@@ -1,6 +1,7 @@
 <nilpotent_orbits.at
 
-
+{compute induction of nilpotent orbits in easy case:
+when determined by the dimension}
 set_type [
 maybe_induce = (void no_orbit| ComplexNilpotent orbit)
 ]
@@ -17,13 +18,8 @@ let target_dimension=O_L.dim_nilpotent + rd.dimension -O_L.root_datum.dimension 
 {assume O_L is for a Levi}
 set simple_induce(ComplexNilpotent O_L,RootDatum rd)=maybe_induce:
 let ind=induce_multiple(O_L,rd) in if #ind=1 then ind[0].orbit else ().no_orbit fi
-{
-{assume P is for a Levi}
-set simple_induce(RootDatum rd,ComplexNilpotentPoset P)=ComplexNilpotentPoset:
-(rd,##for O in P.orbits do
- let maybe=simple_induce(O,rd) in if any(maybe) then [req(maybe)] else [] fi od,
- P.orbit_closures)
-}
+
+
 
 
 

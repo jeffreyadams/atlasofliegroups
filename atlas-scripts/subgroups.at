@@ -494,3 +494,6 @@ let values=
  for L in subgroups(rd) do
   let orbit=complex_nilpotent(rd,L) in [L.derived.Lie_type.nice_format,orbit.diagram.to_string,orbit.H_of_triple.to_string,orbit.dim_nilpotent.to_string] od
  in tabulate(["L","diagram","H","dim"]#values)
+
+{moved to nilpotent_posets.at}
+

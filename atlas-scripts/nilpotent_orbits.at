@@ -33,6 +33,10 @@ set dim_nilpotent (ComplexNilpotent(rd,,H)) = int:
 set diagram (ComplexNilpotent(rd,,H)) = [int]:
    dominant(H,rd){action on coweight} * simple_roots(rd)
 
+{construct complex orbit (rd,(),H) from (rd,Dynkin diagram)}
+set complex_nilpotent_from_diagram(RootDatum rd,[int] diagram)=ComplexNilpotent:
+(rd,(),ratvec_as_vec(sum(for a@i in diagram do a*rd.fundamental_coweights[i] od,rd.rank)))
+
 set sort_by((ComplexNilpotent->int) f) =
    ([ComplexNilpotent] v) [ComplexNilpotent]:
       for index in inv_standardisation(for x in v do f(x) od) do v[index] od
@@ -132,11 +136,6 @@ set all_H_nd (RootDatum rd) = [vec]:
 {. List all complex nilpotent orbits (with H dominant) for a complex group. .}
 set complex_nilpotent_orbits (RootDatum rd) = [ComplexNilpotent]:
    for H in all_H(rd) do complex_nilpotent(rd,H) od.sort_by_dimension
-
-{. (one) complex nilpotent orbit of minimal dimension>0 .}
-set minimal_nilpotent_orbit (RootDatum rd) = ComplexNilpotent:
-   let orbits=complex_nilpotent_orbits(rd) in
-   assert(#orbits>=2,"No minimal orbit present"); orbits[1]
 
 {. For a complex group, for each standard Levi M given by a list of simple
    roots, list the corresponding neutral elements H (dominant for M, not G)
@@ -456,8 +455,7 @@ set real_nilpotent_orbits (ComplexNilpotent (rd,,H):OC,RealForm G) =
    do real_nilpotent(dominant(K,rd),x_min(P))
    od
 
-set minimal_real_nilpotent_orbits (RealForm G) = [RealNilpotent]:
-   real_nilpotent_orbits(minimal_nilpotent_orbit(G.root_datum),G)
+
 
 set make_dominant_H (RealNilpotent (H,x,):O) = RealNilpotent:
    real_nilpotent(dominant(H,root_datum(x)),x_min(parabolic_of_orbit(O)))
@@ -649,3 +647,6 @@ for i:#factors do
  orbits#:=(rd,(),H)
 od;
 orbits
+
+set minimal_real_nilpotent_orbits (RealForm G) = [RealNilpotent]:
+##for orbit in minimal_orbits(G.root_datum) do real_nilpotent_orbits(orbit,G) od
