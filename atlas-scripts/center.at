@@ -1,6 +1,6 @@
 <basic.at { for (at least) radical_basis }
 <lattice.at { for image_subspace@mat }
-<ratmat.at 
+<ratmat.at
 
 { center Z and dual Z_hat of complex group or real form }
 {
