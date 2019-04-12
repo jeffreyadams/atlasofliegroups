@@ -1,5 +1,3 @@
-<nilpotent_posets.at
-
 {Tables of Weyl group conjugacy classes and Nilpotent Orbits
  for the exceptional groups
 }
@@ -46,11 +44,6 @@ set root_datum(NilpotentTable T)=RootDatum:T[0].root_datum
 set lookup_by_name(NilpotentTable T,string name)=int:first(for row in T do row.name=name od)
 set lookup_by_alt_name(NilpotentTable T,string alt_name)=int:
 first(for row in T do row.alt_name=alt_name or (row.alt_name="" and row.name=alt_name) od)
-set lookup_by_diagram(NilpotentTable T,[int] diagram)=int:
-first(for row in T do row.diagram=diagram od)
-set long_name(NilpotentDatum row)=string:
- row.name + if row.alt_name != "" then "[" + row.alt_name + "]" else "" fi
-set long_name(NilpotentTable T,int i)=string:long_name(T[i])
 
 {nice output}
 set show(NilpotentTable T)=void:
@@ -104,14 +97,12 @@ for i in row.closure do i-1 od
 {graph from a table, with specified labels}
 set graph(NilpotentTable T,[string] labels)=string:
 graph(T.nilpotent_poset.orbit_closures,labels)
-{
+
 {graph from a table, with labels
 integer, name and alt_name (when different)
 }
 set graph(NilpotentTable T)=string:
 graph(T, for i:#T do i.to_string + " " + T[i].name + ":" + T[i].alt_name od )
-
-}
 
 {given function from strings -> strings, find preimage}
 set preimage([(string ,string)] pairs,string y)=string:
@@ -130,19 +121,4 @@ let image=
   w=preimage(lusztig_map,name) in
   i.to_string + ":" + w + "->" + row.name + "/" + row.alt_name
  od in
-graph(T_sub,labels)
-
-{graph of a nilpotent poset (see nilpotent_posets.at), using
-the table for the names}
-set graph(NilpotentPoset P,NilpotentTable T)=string:
-let labels=
-for orbit in P.orbits do
- let diagram=diagram(orbit) then
- i=lookup_by_diagram(T,diagram) in
- long_name(T,i) + new_line + T[i].diagram.to_string + new_line + orbit.dim_nilpotent.to_string
-od in graph(P.orbit_closures,labels)
-
-set graph(NilpotentTable T)=string:
-graph(T.nilpotent_poset,T)
-
-
+graph(T_sub,labels) 

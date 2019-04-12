@@ -127,6 +127,11 @@ do complex_Levi(rd,simple_roots) od
  simple roots are simple_roots(rd)[i] (le i\in S, i<ss_rank(rd))
  and the *negative* of the affine roots if i=ss_rank(rd)
  }
+
+set proper_Levi_subgroups(RootDatum rd)=[RootDatum]:
+##for simple_roots in standard_Levi_conjugacy_representatives(rd)
+do if #simple_roots<rd.ss_rank then [complex_Levi(rd,simple_roots)] else [] fi od
+
 set pseudo_Levi(RootDatum rd,[int] S)=RootDatum:
 assert(derived_is_simple(rd),"rd has more than one simple factor");
 subgroup_from_simple(rd,

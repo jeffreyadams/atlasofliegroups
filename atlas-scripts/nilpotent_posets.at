@@ -37,7 +37,7 @@ set sort_u ([ComplexNilpotent] orbits)=[ComplexNilpotent]:
 simply use the same H_of_triple
 }
 set saturate(RootDatum rd,ComplexNilpotent O)=ComplexNilpotent:
-(rd,(),O.H_of_triple)
+(rd,(),dominant(O.H_of_triple,rd))
 
 {saturate the orbits of L together with their closure relations}
 set saturate(RootDatum rd,NilpotentPoset P)=NilpotentPoset:
@@ -183,6 +183,8 @@ let ()=prints(L.derived.Lie_type.nice_format) in
 {graph of NilpotentPoset
 this is the graph of the poset, together with labels
 (H,dimension) from the orbits
+see exceptional.at for a version using a NilpotentTable
+for the names
 }
 set graph(NilpotentPoset P)=string: let (,orbits,posets)=P in
 graph(posets,for orbit in orbits do orbit.diagram.to_string+
