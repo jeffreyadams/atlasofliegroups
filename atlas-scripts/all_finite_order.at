@@ -239,4 +239,3 @@ set centralizer_of_Kac (RootDatum rd, [int] Kac)=RootDatum:
    let roots=[int]:
    ##for k@i in Kac do if k=0 then [i] else [] fi od in
    complex_pseudo_Levi(rd,roots)
-   
