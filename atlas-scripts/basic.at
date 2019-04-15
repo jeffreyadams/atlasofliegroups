@@ -627,8 +627,6 @@ set requisition = rat_requisition("No solution found; having one was required")
 
 set required_solution ((mat,ratvec) system) = ratvec: system.solve.requisition
 
-
-
 {                           Split integers                              }
 
 set !s = Split:(0,1) { ! means it is a constant }
@@ -701,13 +699,13 @@ set semisimple (LieType t) = LieType:
   let s = LieType: "" in
   for (code,rank) in simple_factors(t) do s:=extend(s,code,rank) od; s
 
-set derived_is_simple (LieType t) = bool: #simple_factors(t)=1
+{set derived_is_simple (LieType t) = bool: #simple_factors(t)=1}
+{#simple_factors(torus)=0}
+set derived_is_simple (LieType t) = bool: #simple_factors(t)<=1
 set is_simple (LieType t) = bool: t.derived_is_simple and =t.central_torus_rank
 
 set str (LieType t) = string:
   (## for (code,rank) in factors(t) do code ## rank.to_string ## "." od)[:1~]
-
-
 
 {                               Root data                               }
 
@@ -944,6 +942,7 @@ set fundamental_weights (RootDatum rd) = [ratvec]:
 set fundamental_coweights (RootDatum rd) = [ratvec]:
   for i:semisimple_rank(rd) do fundamental_coweight(rd,i) od
 
+{changing this code, see below
 { find a root of maximal level; if |rd| is simple this is the highest root }
 {.highest root.}
 set highest_root (RootDatum rd) = vec:
@@ -954,6 +953,22 @@ set highest_root (RootDatum rd) = vec:
   then pr~[0] { since the last generated root will be a high root }
   else let level=rho_check(rd) in pr[for alpha in pr do level*alpha od.max_loc]
   fi
+}
+
+{list of all highest roots (one for each simple factor)}
+set highest_roots(RootDatum rd)=[vec]:
+let pr=posroots(rd) in
+##for alpha in pr do
+ if all(for beta in pr do not is_posroot(rd,alpha+beta) od) then [alpha] else [] fi
+od
+
+{error if rd has more than one simple factor}
+set highest_root(RootDatum rd)=vec:
+assert(derived_is_simple(rd),"RootDatum has more than one simple factor, use highest_roots, or highest_root_one to choose one");
+highest_roots(rd)[0]
+
+{return one of the highest roots}
+set highest_root_one(RootDatum rd)=vec:highest_roots(rd)[0]
 
 {                               Weyl group				}
 
@@ -1275,6 +1290,8 @@ set no_Cminus_roots (KGBElt x) = bool:
 set no_Cplus_roots (KGBElt x) = bool:
   none(semisimple_rank(real_form(x)), (int i)bool: status(i,x)=4)
 
+set codim(KGBElt x)=int:nr_of_posroots(root_datum(x))-dimension(x)
+
 {                               Blocks                                  }
 
 set blocks (RealForm rf) = [Block]:
@@ -1320,6 +1337,7 @@ set infinitesimal_character (Param p) = ratvec: let (,,gamma) =%p in gamma
 set d_lambda (Param p) = ratvec: let (x,,gamma) =%p in (1+involution(x))*gamma/2
 set nu (Param p) = ratvec:       let (x,,gamma) =%p in (1-involution(x))*gamma/2
 set Cartan_class (Param p) = CartanClass: Cartan_class(x(p))
+set codim(Param p)=int:codim(p.x)
 
 set involution (Param p)=involution(x(p))
 
@@ -1595,6 +1613,7 @@ set purity (ParamPol P)=(int,int,int):
     if =b then x+:=1 elif =a then y+:=1 else z+:=1 fi
   od; (x,y,z)
 
+
 {                               Miscellaneous                           }
 
 {                   Miscellaneous find functions                     }
@@ -1653,6 +1672,10 @@ set pad(string s,int padding)=string: l_adjust(padding,s)
 }
 set monomials (ParamPol P) = [Param]: for c@p in P do p od
 set monomial  (ParamPol P,int i) = Param: monomials(P)[i]
+
+{ height of a ParamPol is max of height of each term}
+set height (ParamPol P)=int:
+if =P then 0 else max(for p in monomials(P) do height(p) od) fi
 
 {. Convert a list of ParamPols into the list of distinct parameters occuring;
    careful: don't let terms cancel! .}

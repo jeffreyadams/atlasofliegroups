@@ -38,4 +38,4 @@ set G=SO(2,2)
 set p=trivial(G)
 set B=block_of(p)
 
-test_K(B)
+{test_K(B)}

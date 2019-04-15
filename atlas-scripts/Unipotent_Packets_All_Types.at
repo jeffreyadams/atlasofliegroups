@@ -9,6 +9,7 @@
 <induction.at { for |induce_irreducible| }
 <stable.at { for |print_stable| }
 <combinatorics.at
+<K_highest_weights.at
 
 set dual_integral (Param p) = InnerClass:
   dual_integral(p.inner_class,p.infinitesimal_character)

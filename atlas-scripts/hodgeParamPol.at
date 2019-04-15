@@ -1,0 +1,288 @@
+<K_highest_weights.at
+<tabulate.at
+<convert_c_form.at {for Param@mu}
+
+{set P_t(G)={non-zero, final, standard, tempered parameter}
+ this is precisely the set of "K-types" (parameters of G)
+ p_i -> LKT(p_i) is a bijection with K^ (irreducible representations of K)
+ 
+We write
+"K_type" to mean an element of P_t
+"K_rep": an irreducible representation of K
+
+In the K-world p\in P_t can be viewed two ways:
+
+1) p_i -> I(p_i)|_K = all of the K_reps of I(p)
+2) p_i -> LKT(I(p_i)) = a single K_rep
+
+So \sum_i a_i(v)p_i (finite sum) can be viewed two ways:
+
+1) \sum_i a_i(v)I(p_i)|_K    [infinite sum of K_reps with Z[v] coefficients]
+2) \sum_i a_i(v)LKT(I(p_i))  [a finite sum of K_reps with Z[v] coefficients]
+
+We could use the same data structure for both. This is similar to
+using parameters for both stanard or irreducible modules: you need to
+know which is appropriate, by the context.
+
+Instead we'll use an extra void to specify when something is a
+K_rep. We can and should revisit this issue.
+}
+
+{Conclusion:
+
+hodgeParamPol: \sum{i=1}^n a_i(v)p_i where a_i(v) is a polynomial and p_i\in P_t
+corresponding to \sum_i a_i(v)I(p_i)|_K
+data type: hodgeParamPol
+
+KHodgeParamPol:  \sum{i=1}^n a_i(v)p_i where a_i(v) is a polynomial and p_i\in P_t
+corresponding to \sum_{i=1}^n a_i(v)LKT(p_i) (finite sum of K_reps)
+data type: (hodgeParamPol,void)
+
+a hodgeParamPol is an _infinite_ sum of K_reps (with Z[v] coefficients)
+truncated at an integer bound it becomes a finite sum of K_reps with Z[v] 
+coefficients, i.e. a KHodgeParamPol
+this is hodge_branch@(hodgeParamPol,int) and variants
+}
+
+{the data type hodgeParamPol is [ParamPol]
+[P_0,P_1,..,P_n] <-> P_0+P_1*v^2+...+P_n*v^n
+The advantage of the non-obvious convention is that we can use the
+features of ParamPol to take care of combining terms.
+See the functions rearrange and dearrange.
+}
+set_type hodgeParamPol=[ParamPol]
+set_type KHodgeParamPol=([ParamPol] P,void .)
+
+{ -------------- hodgeParamPol versions -------------}
+
+set nullHodgeParamPol(RealForm G)=hodgeParamPol:[null_module(G)]
+set hodge_param_pol(Param p)=hodgeParamPol:[p]
+set *(Split c,hodgeParamPol P)=for f in P do c*f od
+
+
+{rearrange:
+ takes hodgeParamPol:[P_0,P_1,..,P_n] <-> P_0+P_1*v+...+P_n*v^{n-1}
+ to
+ (a_0+a_1v+...a_kv^k)*p_0 + (b_0+...+b_rv^r)*p_1 + ... (...)p_m
+ represented by [([a_0,...,a_k],p_0),...,([...],p_m)]
+ where {p_i} are the monomials of all of the {P_j}
+ the coefficients are i_pols
+This is a more natural way to think of a hodgeParamPol, but less convenient
+computationally.
+}
+set rearrange(hodgeParamPol pols)=[(i_poly,Param)]:
+for p in monomials(pols) do
+ (for i:#pols do split_as_int(pols[i][p]) od,p) od
+
+
+{go other way:
+ given f_0(v)p_0 + ... + f_n(v) p_n, take it to [P_0,...,P_m]
+[a_0+a_1v+...a_kv^k]*p_0 + [b_0+...+b_rv^r]*p_1 + ... [...]*p_n
+ <->  by [([a_0,...,a_k],p_0),...,([...],p_n)] goes to 
+ P_0+P_1*v^2+...+P_m*v^m, represented by
+ [P_0,P_1,..,P_n]
+}
+set dearrange([(vec,Param)] f,RealForm G)=hodgeParamPol:
+if #f=0 then nullHodgeParamPol(G) else
+let n=max(for (v,) in f do #v od) in
+for i:n do
+ sum(G,for j:#f do let (v,p)=f[j] then w=v##null(n-#v) in w[i]*p od)
+od fi
+
+{this fails with an error if #f=0}
+set dearrange([(vec,Param)] f)=hodgeParamPol:dearrange(f,let (,p)=f[0] in p.real_form)
+
+{dearrange an array [(vec,K_Type)], simply replace each K_type mu with parameter(mu)}
+set dearrange([(vec,K_Type)] f,RealForm G)=dearrange(for (v,mu) in f do (v,parameter(mu)) od,G)
+set dearrange([(vec,K_Type)] f)=dearrange(for (v,mu) in f do (v,parameter(mu)) od)
+
+set *(i_poly f,Param p)=hodgeParamPol: dearrange([(f,p)])
+set *(i_poly f,hodgeParamPol P)=hodgeParamPol:
+dearrange(for (g,p) in rearrange(P) do (poly_product(f,g),p) od)
+{Note: error if #P=0}
+
+
+
+set coefficient(hodgeParamPol P,Param p)=i_poly:
+for i:#P do split_as_int(P[i][p]) od
+
+{equality is term by term}
+set =(hodgeParamPol P,hodgeParamPol Q)=bool:
+ (#P=#Q) and all(for i:#P do P[i]=Q[i] od)
+
+set real_form(hodgeParamPol P)=RealForm:
+if #P=0 then torus(0,0,0) else P[0].real_form fi
+
+{polynomial  in v, or constant, times hodgeParamPol}
+set *(i_poly f,hodgeParamPol P)=hodgeParamPol:
+let r=rearrange(P) in dearrange(for (g,p) in r do (convolve(f,g),p) od,P.real_form)
+set *(int c,hodgeParamPol P)=hodgeParamPol:[c]*P
+
+set +(hodgeParamPol P,hodgeParamPol Q)=hodgeParamPol:
+if #P<=#Q then
+ for i:#Q do if i<=#P-1 then P[i]+Q[i] else Q[i] fi od
+else
+ for i:#P do if i<=#Q-1 then P[i]+Q[i] else P[i] fi od
+fi
+set one_minus_v=[1,-1]
+set -(hodgeParamPol P,hodgeParamPol Q)=hodgeParamPol:P+(-1)*Q
+
+set evaluate_at_s(hodgeParamPol Q)=ParamPol:
+null_module(Q.real_form) + sum(Q.real_form,for i:#Q do s^i*Q[i] od)
+
+set evaluate_at_1(hodgeParamPol Q)=ParamPol:
+null_module(Q.real_form) + sum(Q.real_form,for i:#Q do Q[i] od)
+
+set v_to_s(hodgeParamPol Q)=ParamPol:evaluate_at_s(Q)
+set v_to_1(hodgeParamPol Q)=ParamPol:evaluate_at_1(Q)
+
+{ -------------- KHodgeParamPol versions -------------}
+
+set *(i_poly f,K_Type mu)=KHodgeParamPol: (dearrange([(f,parameter(mu))]),())
+set K_hodge_param_pol(K_Type mu)=poly_1*mu
+set *(Split c,KHodgeParamPol KP)=(c*KP.P,())
+
+set *(i_poly f,KHodgeParamPol KP)=KHodgeParamPol:(f*KP.P,())
+
+set nullKHodgeParamPol(RealForm G)=KHodgeParamPol:([null_module(G)],())
+set K_hodge_param_pol(Param p)=KHodgeParamPol:([p],())
+
+set coefficient(KHodgeParamPol KP,Param p)=i_poly:
+let Q=KP.P in for i:#Q do split_as_int(Q[i][p]) od
+
+{equality is term by term}
+set =(KHodgeParamPol KP,KHodgeParamPol KQ)=bool:KP.P=KQ.P
+
+set real_form(KHodgeParamPol KP)=RealForm:real_form(KP.P)
+
+{rearrange:
+ takes KHodgeParamPol:([P_0,P_1,..,P_n],) <-> P_0+P_1*q+...+P_n*v^{n-1}
+ to
+((a_0+a_1q+...a_kv^k)*p_0 + (b_0+...+b_rv^r)*p_1 + ... (...)p_m,)
+ represented by ([([a_0,...,a_k],p_0),...,([...],p_m)],)
+ where {p_i} are the monomials of all of the {P_j}
+ the coefficients are i_pols
+This is a more natural way to think of a hodgeParamPol, but less convenient
+computationally.
+}
+set rearrange(KHodgeParamPol KP)=[(i_poly,Param)]:rearrange(KP.P)
+
+{go other way:
+ given (f_0(q)p_0 + ... + f_n(q) p_n,), take it to ([P_0,...,P_m],)
+[a_0+a_1q+...a_kv^k]*p_0 + [b_0+...+b_rv^r]*p_1 + ... [...]*p_n
+ <->  by [([a_0,...,a_k],p_0),...,([...],p_n)] goes to 
+ P_0+P_1*v^2+...+P_m*v^m, represented by
+ [P_0,P_1,..,P_n]
+}
+set dearrange([(vec,Param)] f,RealForm G,void .)=KHodgeParamPol:(dearrange(f,G),())
+
+{this fails with an error if #f=0}
+set dearrange([(vec,Param)] f,void .)=KHodgeParamPol:dearrange(f,let(,p)=f[0] in p.real_form,())
+
+
+{dearrange an array [(vec,K_Type)], simply replace each K_type mu with parameter(mu)}
+set dearrange([(vec,K_Type)] f,RealForm G,void .)=dearrange(for (v,mu) in f do (v,parameter(mu)) od,G,())
+set dearrange([(vec,K_Type)] f,void .)=dearrange(for (v,mu) in f do (v,parameter(mu)) od,())
+
+{polynomial  in q, or constant, times hodgeParamPol}
+set *(i_poly f,KHodgeParamPol KP)=KHodgeParamPol:
+let r=rearrange(KP.P) in dearrange(for (g,p) in r do (convolve(f,g),p) od,KP.real_form,())
+
+set *(int c,KHodgeParamPol KP)=KHodgeParamPol:[c]*KP
+
+set +(KHodgeParamPol KP,KHodgeParamPol KQ)=KHodgeParamPol:(KP.P+KQ.P,())
+set -(KHodgeParamPol KP,KHodgeParamPol KQ)=KHodgeParamPol:(KP.P+(-1)*KQ.P,())
+
+set evaluate_at_s(KHodgeParamPol KP)=ParamPol:evaluate_at_s(KP.P)
+
+set evaluate_at_1(KHodgeParamPol KP)=ParamPol:evaluate_at_1(KP.P)
+
+set v_to_s(KHodgeParamPol KP)=ParamPol:evaluate_at_s(KP.P)
+set v_to_1(KHodgeParamPol KP)=ParamPol:evaluate_at_1(KP.P)
+
+{-------------------}
+
+{modified version of built-in q_branch}
+set hodge_branch_std_builtin(Param p, int N)=KHodgeParamPol:
+if p.real_form.nr_of_Cartan_classes>1 then prints("Warning: G has more than one conjugacy class of Cartan subgroups.") fi;
+dearrange(q_branch(p,N),p.real_form,())  {q_branch is built-in}
+
+set hodge_branch_std_builtin(ParamPol P, int N)=KHodgeParamPol:
+let rv=nullKHodgeParamPol(P.real_form) in
+for c@p in P do rv+:=c*hodge_branch_std_builtin(p,N) od;rv
+
+{multiply hodgeParamPol by v^k (k\ge 0)}
+set shift(hodgeParamPol P, int k)=hodgeParamPol:
+let null=nullHodgeParamPol(P.real_form) in
+(hodgeParamPol:##for i:k do null od)##P
+
+set shift(KHodgeParamPol KP, int k)=KHodgeParamPol:
+let null=nullHodgeParamPol(KP.P.real_form) in
+((hodgeParamPol:##for i:k do null od)##KP.P,())
+
+set hodge_branch_std_builtin(hodgeParamPol P, int N)=KHodgeParamPol:
+let rv=nullKHodgeParamPol(P.real_form) in
+for i:#P do rv+:=shift(hodge_branch_std_builtin(P[i],N),i) od;rv
+
+{set hodge_branch_irr(Param p,int N)=hodgeParamPol:hodge_branch_std(hodge_grading_irreducible(p),N)}
+
+{nice output}
+set show(hodgeParamPol P)=void:
+let header=["coeff","x","lambda"] then
+values=
+for (f,p) in rearrange(P) do
+[poly_format(f,"v"),let (,n)=%p.x in n.to_string,p.lambda.to_string] od in 
+tabulate(header#values) 
+
+{nice output}
+set show(KHodgeParamPol P)=void:
+let header=["coeff","x","lambda"] then
+values=
+for (f,p) in rearrange(P) do
+[poly_format(f,"v"),let (,n)=%p.x in n.to_string,p.lambda.to_string] od in 
+tabulate(header#values) 
+
+{alternative output version}
+set show_long(hodgeParamPol P,KGBElt x_K)=void:
+let header=["c","codim","x","lambda","hw","dim","height","mu"] then
+values=for (c,p) in rearrange(P) do
+let (,x)=%p.x in
+[poly_format(c,"v"),codim(x(p)).to_string,x.to_string,p.lambda.to_string,highest_weight(LKTs(p)[0],x_K).mu.to_string,LKTs(p)[0].dimension.to_string,
+height(p).to_string,p.mu.to_string] od in tabulate(header#values)
+
+set show_long(hodgeParamPol P)=void:
+let header=["c","codim","x","lambda","hw","dim","height","mu"] then
+values=for (c,p) in rearrange(P) do
+let (,x)=%p.x in
+[poly_format(c,"v"),codim(x(p)).to_string,x.to_string,p.lambda.to_string,LKTs(p)[0].highest_weight.mu.to_string,LKTs(p)[0].dimension.to_string,
+height(p).to_string,p.mu.to_string] od in tabulate(header#values)
+
+set show_long(KHodgeParamPol KP)=void:
+let header=["c","codim","x","lambda","hw","dim","height","mu"] then
+P=KP.P then
+values=for (c,p) in rearrange(P) do
+let (,x)=%p.x in
+[poly_format(c,"v"),codim(x(p)).to_string,x.to_string,p.lambda.to_string,LKTs(p)[0].highest_weight.mu.to_string,LKTs(p)[0].dimension.to_string,
+height(p).to_string,p.mu.to_string] od in tabulate(header#values)
+
+set print_hodge_branch_std_builtin(Param p,int N)=void:print(hodge_branch_std_builtin(p,N))
+
+set hodge_print(hodgeParamPol P)=void:show(P)
+set hodge_print([(vec,Param)] P)=void:show(dearrange(P))
+set hodge_print([(vec,K_Type)] P)=void:show(dearrange(P))
+
+set hodge_print_long(hodgeParamPol P)=void:show_long(P)
+set hodge_print_long([(vec,Param)] P)=void:show_long(dearrange(P))
+set hodge_print_long([(vec,K_Type)] P)=void:show_long(dearrange(P))
+
+
+
+set coefficient(hodgeParamPol P,K_Type mu)=i_poly:
+let r=rearrange(P) then
+n=first(for (,p) in r do LKT(p)=mu od) in 
+if n=-1 then poly_0 else let (c,)=r[n] in c fi
+
+set coefficient(KHodgeParamPol KP,K_Type mu)=i_poly:
+let r=rearrange(KP) then
+n=first(for (,p) in r do LKT(p)=mu od) in 
+if n=-1 then poly_0 else let (c,)=r[n] in c fi

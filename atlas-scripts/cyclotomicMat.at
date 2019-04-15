@@ -1,0 +1,245 @@
+<basic.at
+<cyclotomic.at
+<tabulate.at
+
+set_type CyclotomicVec = [CyclotomicFieldElement] { sublists are matrix rows, not columns! }
+set_type CyclotomicMat = [[CyclotomicFieldElement]] { sublists are matrix rows, not columns! }
+
+set F(CyclotomicMat M)=CyclotomicField:M[0][0].F
+{redefine show more concisely}
+set to_string (CyclotomicFieldElement z) = string:
+   if z=z.F.zero then "0" else to_rat_poly(z.v,"x").to_string fi
+
+
+{.display cyclotomic field element as polynomial in x.}
+set show (CyclotomicFieldElement z) = void: prints(to_string(z))
+
+set show(CyclotomicVec v)=void:
+let rv="" in for a in v do  rv+:=a.to_string+" " od;prints(rv)
+
+
+{			  Cyclotomic vectors				}
+
+set =(CyclotomicVec v,CyclotomicVec w)=bool:
+all(for i:#v do v[i]=w[i] od)
+
+set F(CyclotomicVec v)=CyclotomicField:v[0].F
+
+set =(CyclotomicVec v)=bool:all(for i:#v do v[i]=v.F.zero od)
+
+set +(CyclotomicVec v,CyclotomicVec w)=CyclotomicVec:
+assert(#v=#w,"Cyclotomic vectors not the same length");
+for i:#v do v[i]+w[i] od 
+
+set *(CyclotomicFieldElement z,CyclotomicVec v)=CyclotomicVec:
+for a in v do z*a od
+
+set -(CyclotomicVec v)=CyclotomicVec:(-v[0].F.one)*v
+
+{include F in case of vectors of length 0}
+set dot_product(CyclotomicVec v,CyclotomicVec w,CyclotomicField F)=CyclotomicFieldElement:
+  let sum=F.zero in for p@i in v do sum +:= p*w[i] od; sum
+
+{will fail if vector has length 0}
+set dot_product(CyclotomicVec v,CyclotomicVec w)=CyclotomicFieldElement:
+  dot_product(v,w,v[0].F)
+
+
+{			  Cyclotomic matrices				}
+
+set shape (CyclotomicMat M) = (int,int): if =#M then (0,0) else (#M,#M[0]) fi
+
+set + (CyclotomicMat M,CyclotomicMat N)=CyclotomicMat:
+assert(M.shape=N.shape,"Cyclotomic matrices not the same shape");
+for i:#M do M[i]+N[i] od
+
+set -(CyclotomicMat M) = CyclotomicMat: for row in M do for p in row do -p od od
+set - (CyclotomicMat M,CyclotomicMat N)=CyclotomicMat:M+(-N)
+
+set show(CyclotomicMat M)=
+let table=
+for row in M do
+ for a in row do a.to_string od od
+then column_specifier="l"*#M[0]
+in tabulate(table,column_specifier,2," ")
+
+set transpose(CyclotomicMat M)=CyclotomicMat: { sublists must be of equal length }
+  let n=#M in
+  if n=0 then M { not much we can do for an empty list }
+  else for j:#M[0] do for i:n do M[i][j] od od
+  fi
+
+set *(CyclotomicMat A,CyclotomicMat B) = CyclotomicMat:
+  let n=#A, B_tr=transpose(B) { best to rearrange B once and for all }
+  then m=#B_tr { number of rows of B_tr, or columns of B, and of result }
+  in for i:n do for j:m do dot_product(A[i],B_tr[j]) od od
+
+set *(CyclotomicFieldElement z,CyclotomicMat M)=CyclotomicMat:
+for row in M do z*row od
+
+set *(CyclotomicMat M,CyclotomicVec v)=CyclotomicVec:
+ for i:#M[0] do let s=v[0].F.zero in for Mj@j in M do s+:=Mj[i]*v[j] od; s od
+
+
+{
+
+{ update one entry in a list of polynomials, for instance in a row of a matrix }
+set update_row ([i_poly] R, int j,i_poly v) = [i_poly]: R[j]:=v; R
+{ update one row of a matrix (replacing it by a given new row) }
+set update_matrix_row (CyclotomicMat M, int i, [i_poly] row)= CyclotomicMat:
+   M[i]:=row; M
+{ update one entry in a matrix }
+set update_matrix_entry(CyclotomicMat M, int i, int j, i_poly v)= CyclotomicMat:
+  let row=M[i] in row[j]:=v; M[i]:=row; M
+
+set zero_poly_row (int n) = [i_poly]: for :n do poly_0 od
+set zero_poly_matrix (int rows, int columns) = CyclotomicMat:
+  let !row=zero_poly_row(columns) in for :rows do row od
+set zero_poly_matrix(int n) = CyclotomicMat:zero_poly_matrix(n,n)
+set scalar_poly_matrix (int n, int c) = CyclotomicMat:
+  let !row=zero_poly_row(n) { model row, almost equal to each wanted row } in
+  for i:n do update_row(row,i,constant_poly(c)) od
+set identity_poly_matrix (int n) = CyclotomicMat: scalar_poly_matrix(n,1)
+set mat_as_poly_mat (mat M) = CyclotomicMat:
+ let (r,c)=shape(M) in for i:r do for j:c do [M[i,j]] od od
+
+set + (CyclotomicMat M, i_poly p) = CyclotomicMat: { add polynomial scalar matrix }
+  for row@i in M  do for e@j in row do if i=j then e+p else e fi od od
+set - (CyclotomicMat M, i_poly p) = CyclotomicMat: M+-p
+
+set ^ = (i_poly,int->i_poly): { power of a polynomial }
+  let one=i_poly:[1] { use local constant for efficiency } in
+  (i_poly p,int n) i_poly: { the actual powering function }
+    if n=0 then [1]
+    else { no point in trying to do this by repeated squaring: is not faster }
+      let f=p in while (n-:=1)>0 do f *:= p od; f
+    fi
+
+{ equality of polynomial matrices }
+set = (CyclotomicMat A,CyclotomicMat B) = bool:
+  all(#A, (int i): let r=A[i],s=B[i] in #r=#s and all(#r, (int j): r[j]=s[j] ))
+
+{ polynomial matrix is 0 if all its entries are zero-length polynomials }
+set is_zero (CyclotomicMat M) = bool:
+  all(#M, (int i): let r=M[i] in all(#r, (int j): =#r[j]) )
+
+set upper_unitriangular_inverse (CyclotomicMat P) = CyclotomicMat:
+  let n=#P { number of rows in matrix }, dummy_row=zero_poly_row(0)
+  then Q= for :n do dummy_row od { prepare |n| rows, but leave them empty now }
+  in { solve equation $P*Q=I$ for $Q$, proceeding from bottom to top }
+  for i:n { reverse traversal loop with reverse accumulation -> straight value }
+  ~do let Pi=P[i] { we use only this part of P during this iteration } in
+    Q[i] := { computed row is stored as |Q[i]|, and contributed to result }
+    (zero_poly_row(i) # poly_1) { beginning of row |Q[i]| is somewhat boring }
+    ## { concatenate with more interesting newly computed part of |Q[i]| }
+      for j: n-i-1 from i+1 { left to right, but computations are independent }
+      do let sum=poly_0 in for k: j-i from i+1 do sum -:= Pi[k] * Q[k][j] od
+      ; sum    { contribute $Q_{i,j} = - \sum_{k=i+1}^j P_{i,k}Q_{k,j}$ }
+      od
+  ~od
+
+set lower_unitriangular_inverse(CyclotomicMat M)=transpose(upper_unitriangular_inverse(transpose(M)))
+
+{ compute PMP^{-1} where P is a permutation of [1,,,n]
+  and M is a polynomial matrix
+}
+set poly_permute_basis([int] P, CyclotomicMat A) = CyclotomicMat: { P is permutation }
+  for i:#A do let row=A[P[i]] in for j:#row do row[P[j]] od od
+
+{ some printing functions }
+
+{ make a printable string out of a polynomial and name of indeterminate,
+  for use in other print functions }
+set poly_format (i_poly v, string q)= string:
+   if =v then "0"
+   else
+    ##for c@k in v
+      do
+         if =c then ""
+         else
+            let coef = if c<0 then "-" else "+" fi +
+                if abs(c)=1 and k>0 then "" else int_format(abs(c)) fi
+	    ,  term = if k>1 then q+"^"+int_format(k) elif k=0 then "" else q fi
+	    in string: coef+term
+         fi
+      od
+   fi
+
+{ for |int_poly| and |rat_poly| that value names the indeterminate; use it }
+set to_string (int_poly(X,cs,)) = string:
+   if =#cs then "0"
+   else
+      let pow(int k) = string: { print X^k, possibly shortened }
+          if k>1 then X+"^"+k.to_string elif k=1 then X else "" fi
+      in
+    ##for c@k in cs
+      do case c
+         then "-" + if c!=minus_1 or =k then (-c).to_string else "" fi + pow(k)
+         in "" { nothing for terms with a zero coefficient }
+         else "+" + if c>1 or =k then c.to_string else "" fi + pow(k)
+         esac
+      od
+   fi
+
+set to_string (rat_poly(X,cs,)) = string:
+   if =#cs then "0"
+   else
+      let pow(int k) = string: { print X^k, possibly shortened }
+          if k>1 then X+"^"+k.to_string elif k=1 then X else "" fi
+      in
+    ##for c@k in cs
+      do if c.= then ""
+         else let (n,d)=%c in
+         ##[if n.< then "-" next n:=-n else "+" fi
+           ,if d>1 then c.to_string elif n>1 or k=0 then n.to_string else "" fi
+           ,if k>1 then X+"^"+k.to_string elif k=1 then X else "" fi
+           ]
+         fi
+      od
+   fi
+
+
+{ nice printing of a polynomial }
+set printPoly (i_poly v) = void: prints(poly_format(v,"q"))
+
+{ M=poly_mat is a polynomial matrix; e.g.
+  expr> set M= poly_mat: [[ [0,1], [0,0,1]], [[0], [1]]]
+  expr> printPolyMatrix (M)
+   +q +q^2
+   0 +1
+}
+
+set printPolyMatrix(CyclotomicMat M,int space_size,string char)= void:
+  let space= " "*space_size, wd = max(for v in ##M do #poly_format(v,char) od)
+  in
+    for row in M
+    do prints(##for v in row do space+l_adjust(wd,poly_format(v,char)) od)
+    od
+set printPolyMatrix(CyclotomicMat M,int space_size)= void:printPolyMatrix(M,space_size,"q")
+set printPolyMatrix (CyclotomicMat M,string char) = void: printPolyMatrix(M,3,char)
+set printPolyMatrix (CyclotomicMat M) = void: printPolyMatrix(M,3)
+
+{ this provides maybe more meaningful names for |flex_add| and friends }
+set poly_plus    = +@(i_poly,i_poly) { this binding will remain exported }
+set poly_minus   = -@(i_poly,i_poly) { this binding will remain exported }
+set poly_product = *@(i_poly,i_poly) { this binding will remain exported }
+
+{ restore normal vector arithmetic }
+forget +@(vec,vec)
+forget -@(vec,vec)
+forget *@(vec,vec)
+set + = fix_add@(vec,vec)
+set - = fix_sub@(vec,vec)
+set * = dot_product@(vec,vec)
+
+set sgn_poly (int k) = i_poly:
+  assert(!=k,"taking sign of 0"); [if k.< then -1 else 1 fi]
+
+set divide_by (int k,i_poly v) = i_poly: ratvec_as_vec(v/k)
+
+{i_polynomial has only non-negative coefficients}
+set is_non_negative = (i_poly->bool): >=@vec { same condition as "dominance" }
+
+set top_left_square_block (CyclotomicMat M,int size) = CyclotomicMat:
+  for row in M[:size] do row[:size] od
+}
