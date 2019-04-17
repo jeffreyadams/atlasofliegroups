@@ -652,9 +652,15 @@ set generators_of_Z_mod_Z_0 (RootDatum rd, RootDatum L) = [ratvec]:
         then result#:=v*inverse(w) fi od;
    result
 
-set generators_of_component_group (ComplexNilpotent (rd,(),H))=[(RootDatum,[ratvec])]:
+set generators_of_component_group (ComplexNilpotent (rd,(),H))=
    let levis=pseudo_Levis_of_orbit (rd,(),H) in
-   for L in levis do (L,generators_of_Z_mod_Z_0(rd,L)) od
+   for L in levis do
+let        ()=prints("L=",L) in
+    let (Lmod,M)=mod_central_torus_info(L) then
+    Z=elements_of_center(Lmod) then
+    ()=prints("Z:",Z) then
+    Z_lifted=^(M*Z) in 
+   (L,for v in ratmat_to_bigmat(Z_lifted) do ratvec:v od) od
 
 set print_component_info (ComplexNilpotent (rd,(),H))=void:
    let header=["pseudo_Levi","d_L","Generators"] in

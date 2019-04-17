@@ -221,7 +221,9 @@ set is_center_cyclic(RootDatum rd)=bool:
 if rank(rd)=0 then true elif
 is_semisimple(rd) then #type_center(rd)<=1 else false fi
 
-{define this command:
 set elements_of_center(RootDatum rd)=[ratvec]:
-}
+let Z=center(rd) in 
+ if #Z=0 then [null(rank(rd))] else let
+denoms= for i:#Z do let (,d)=%Z[i]  in d od in
+for v in ratmat_to_bigmat(Z.ratvecs_as_ratmat*box(denoms)) do ratvec:v od fi
 
