@@ -43,6 +43,21 @@ Abar: Lusztig's quotient
 diagram: labeled Dynkin diagram
 }
 set_type NilpotentDatum=(RootDatum root_datum,string name ,string alt_name,int special,[int] closure,string dual,string A,string Abar,[int] diagram)
+set orbit(NilpotentDatum d)=ComplexNilpotent:complex_nilpotent_from_diagram(d.root_datum,d.diagram)
+set dimension(NilpotentDatum d)=int:dim_nilpotent(d.orbit)
+set is_special(NilpotentDatum d)=bool:d.special=1
+set is_even(NilpotentDatum d)=bool:is_integer(d.diagram/2)
+set H(NilpotentDatum d)=d.orbit.H_of_triple
+set Levi(NilpotentDatum d)=RootDatum:
+ let (sr,)=Levi_of_H(d.orbit.H_of_triple,d.root_datum) in 
+ subgroup_by_simple(d.root_datum,sr)
+set is_distinguished(NilpotentDatum d)=bool:
+if  not is_even(d) then false {distinguished=>even, save time} else
+let (sr,)=Levi_of_H(d.H,d.root_datum) in
+#sr=ss_rank(d.root_datum) fi
+
+
+
 set_type NilpotentTable=[NilpotentDatum]
 set root_datum(NilpotentTable T)=RootDatum:T[0].root_datum
 set lookup_by_name(NilpotentTable T,string name)=int:first(for row in T do row.name=name od)
@@ -54,17 +69,18 @@ set long_name(NilpotentDatum row)=string:
  row.name + if row.alt_name != "" then "[" + row.alt_name + "]" else "" fi
 set long_name(NilpotentTable T,int i)=string:long_name(T[i])
 
+
 {nice output}
 set show(NilpotentTable T)=void:
 let values=
 for row@i in T do
-[i.to_string,row.name,row.alt_name,row.special.to_string,row.closure.to_string,row.dual,row.A,row.Abar,row.diagram.to_string] od
-in tabulate(["#","Name", "AltName", "special","closure","dual","A","Abar","diagram"]#values)
+[i.to_string,row.name,row.alt_name,row.dimension.to_string,row.special.to_string,row.closure.to_string,row.dual,row.A,row.Abar,row.diagram.to_string] od
+in tabulate(["#","Name", "AltName","dim", "special","closure","dual","A","Abar","diagram"]#values)
 
 {extract NilpotentPoset from the table}
 set nilpotent_poset(NilpotentTable T)=NilpotentPoset:
 let rd=T.root_datum then
-orbits=for row in T do complex_nilpotent_from_diagram(rd,row.diagram) od then
+orbits=for row in T do row.orbit od then
 poset=for row in T do row.closure od
 in (rd,orbits,poset)
 
@@ -85,6 +101,9 @@ for j in S do
 (rd,name,alt_name,special,
 ##for k in closure do let index=find(S,k) in if index=-1 then [] else [index] fi od,
 dual,A,Abar,diagram) od
+
+set sub_table(NilpotentTable T,(NilpotentDatum->bool) selection_function)=NilpotentTable:
+sub_table(T,##for row@i in T do if selection_function(row) then [i] else [] fi od)
 
 {save a table in a form that can be read in by atlas}
 set text_save(NilpotentTable T,string name)=
@@ -146,5 +165,13 @@ od in graph(P.orbit_closures,labels)
 
 set graph(NilpotentTable T)=string:
 graph(T.nilpotent_poset,T)
+
+{extract sub_table by rule on row, see is_special etc.
+just after set_type NilpotentDatum
+}
+
+set sub_table_distinguished(NilpotentTable T)=NilpotentTable:sub_table(T,is_distinguished@NilpotentDatum)
+set sub_table_even(NilpotentTable T)=NilpotentTable:sub_table(T,is_even@NilpotentDatum)
+
 
 

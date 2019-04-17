@@ -86,7 +86,7 @@ prints(v, " ", Lie_type(rdi), " ", dimension(rdi))
 
 set test([[([int],RootDatum,int)]] data, int n)=void:
 let (,rd,)=data[0][0] in  cox(rd,n); info(data,n)
-
+{
 set find([[([int],RootDatum,int)]] data, int n)=void:
 let (,rd,)=data[0][0] in
 let labels=for i:rank(rd) do rat_as_int(highest_root(rd)*fundamental_coweights(rd)[i]) od in
@@ -96,7 +96,7 @@ set find_short([[([int],RootDatum,int)]] data, int n)=void:
 let (,rd,)=data[0][0] in
 let labels=for i:rank(rd) do rat_as_int(highest_root(rd)*fundamental_coweights(rd)[i]) od in
 for i:#data do for j: min(10,#(data[i]))  do let (v,rdi,k)=data[i][j] in if k=n then prints(i, " ", v, " ", Lie_type(rdi), " ", v*labels, " ", k) fi od od
-
+}
 set table([[([int],RootDatum,int)]] data)=void:
 let n=#data in
 prints("All conjugacy classes of E8 up to order", n);
@@ -186,10 +186,16 @@ set is_conjugate (ratvec v,ratvec w,RootDatum rd)=bool:
    let W=W(rd) in any(for x in W do is_integer(v*x-w) od)
 
 {. Decide whether two Kac diagrams represent conjugate group elements. .}
-set is_conjugate_Kac ([int] v,[int] w, RootDatum rd)=bool:
+set is_conjugate_Kac_old ([int] v,[int] w, RootDatum rd)=bool:
    let list=identity_in_fund_domain(rd) in
    any(for x in list
       do move_to_fundamental_domain(rd,Kac_x(rd,v)+x)=Kac_x(rd,w) od)
+
+set is_conjugate_Kac ([int] v,[int] w, RootDatum rd)=bool:
+   let list=identity_in_fund_domain(rd) then
+   Kac_x_w=Kac_x(rd,w) in
+   any(for x in list
+      do let (z,)=affine_make_dominant(Kac_x(rd,v)+x,affine_datum(rd)) in z=Kac_x_w od)
 
 {. crude listing. }
 set Kac_classes_given_order_crude(RootDatum rd,int order)=[[int]]:

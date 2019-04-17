@@ -3,7 +3,8 @@
 <simple_factors.at
 <conjugate.at
 <parabolics.at {for Levis}
-<nilpotent_orbits.at {for pseudo Levis}
+{<nilpotent_orbits.at {for pseudo Levis}}
+<center.at
 <posets.at
 {
   The functions deal with constructing Levi systems cut out by various linear
@@ -55,15 +56,15 @@ let all=roots##for v in roots do -v od in subgroup(rd,roots)
 set subgroup_from_positive(RootDatum rd,[int] roots)=(bool,RootDatum):
 subgroup(rd, for j in roots do posroots(rd)[j] od)
 
-{specify a subgroup by a list of positive roots (not necessarily
-simple), to serve as the simple roots of the subgroup}
-set subgroup_from_simple(RootDatum rd,[vec] roots)=RootDatum:
+{specify a subgroup by a list of roots (not necessarily
+simple or even positive), to serve as the simple roots of the subgroup}
+set subgroup_by_simple(RootDatum rd,[vec] roots)=RootDatum:
 if #roots=0 then complex_torus(rank(rd)) else
 root_datum(for v in roots do v od, for v in roots do coroot(rd,v) od) fi
 
-set subgroup_from_simple(RootDatum rd,[int] roots)=RootDatum:
+set subgroup_by_simple(RootDatum rd,[int] roots)=RootDatum:
 if #roots=0 then complex_torus(rank(rd)) else
-root_datum(for i in roots do posroots(rd)[i] od, for i in roots do poscoroots(rd)[i] od) fi
+root_datum(for i in roots do roots(rd)[i] od, for i in roots do coroots(rd)[i] od) fi
 
 {mat k: columns span a subspace U of X_*
  construct RootDatum of Levi given by roots vanishing on U}
@@ -118,29 +119,33 @@ set orthogonal_subgroup (RootDatum rd, [vec] S) = (bool,RootDatum):
 set orthogonal_subgroup(RootDatum rd, RootDatum rd_L)=(bool,RootDatum):
 let S=simple_roots(rd_L) in orthogonal_subgroup(rd,S)
 
-{conjugacy classes of Levis as root data from W_characters.at}
-set Levi_subgroups(RootDatum rd)=[RootDatum]:
-for simple_roots in standard_Levi_conjugacy_representatives(rd)
-do complex_Levi(rd,simple_roots) od
 
-{to make a pseudo Levi  from [int] S:
- simple roots are simple_roots(rd)[i] (le i\in S, i<ss_rank(rd))
- and the *negative* of the affine roots if i=ss_rank(rd)
- }
+{
+Given a set of weights,
+compute root datum of coroots perpendicular to all of them 
+}
+set centralizer(RootDatum rd,[vec] wts)=
+let indices=##
+for a@i in poscoroots(rd) do if =a*wts then [i] else [] fi od
+in
+if #indices=0 then complex_torus(rank(rd)) else
+root_datum(simple_system_from_positive(for i in indices do posroots(rd)[i] od,
+for i in indices do poscoroots(rd)[i] od)) fi
 
-set proper_Levi_subgroups(RootDatum rd)=[RootDatum]:
-##for simple_roots in standard_Levi_conjugacy_representatives(rd)
-do if #simple_roots<rd.ss_rank then [complex_Levi(rd,simple_roots)] else [] fi od
+{
+Given a set of coweights,
+compute root datum of roots perpendicular to all of them 
+}
+set centralizer([vec] cwts,RootDatum rd)=
+let indices=##
+for a@i in posroots(rd) do if =a*cwts then [i] else [] fi od
+in
+if #indices=0 then complex_torus(rank(rd)) else
+root_datum(simple_system_from_positive(for i in indices do posroots(rd)[i] od,
+for i in indices do poscoroots(rd)[i] od)) fi
 
-set pseudo_Levi(RootDatum rd,[int] S)=RootDatum:
-assert(derived_is_simple(rd),"rd has more than one simple factor");
-subgroup_from_simple(rd,
- for i in S do
-  if i<ss_rank(rd) then simple_roots(rd)[i] else -highest_root(rd) fi od)
 
-set pseudo_Levi_subgroups(RootDatum rd)=[RootDatum]:
-for simple_roots in pseudo_Levis(rd) do
-pseudo_Levi(rd,simple_roots) od
+
 
 {------------------}
 
@@ -251,7 +256,7 @@ let sr=simple_roots(rd) then
 labels=labels(derived(rd)) then
 alpha=-highest_root(rd) in
 rd#(##for i:ss_rank(rd) do
- if labels[i] !=1 then [subgroup_from_simple(rd, delete(sr,i)#alpha)] else [] fi od) fi
+ if labels[i] !=1 then [subgroup_by_simple(rd, delete(sr,i)#alpha)] else [] fi od) fi
 
 
 {given nonsimple RootDatum rd=rd_1 * ... * rd_n
@@ -272,7 +277,7 @@ let rec_fun f([[RootDatum]] to_do,[RootDatum] done)=[RootDatum]:
   for rd in done do
    for rd0 in to_do[0] do
     let new_simple_roots=simple_roots(rd0)##simple_roots(rd) in
-    subgroup_from_simple(rd_ambient,new_simple_roots) 
+    subgroup_by_simple(rd_ambient,new_simple_roots) 
    od
   od
   in f(for i:#to_do-1 from 1 do to_do[i] od,new)
@@ -335,6 +340,55 @@ f od od in
 {regroup answer by ss_rank}
 let grouped_by_ss_rank=for i:#rv do ##rv[i] od in
 sort_by_dimension(##grouped_by_ss_rank)
+
+{  ----- Levi and pseudo-Levi subgroups ---- }
+
+
+{conjugacy classes of Levis as root data from W_characters.at}
+set Levi_subgroups(RootDatum rd)=[RootDatum]:
+for simple_roots in standard_Levi_conjugacy_representatives(rd)
+do complex_Levi(rd,simple_roots) od
+
+set proper_Levi_subgroups(RootDatum rd)=[RootDatum]:
+##for simple_roots in standard_Levi_conjugacy_representatives(rd)
+do if #simple_roots<rd.ss_rank then [complex_Levi(rd,simple_roots)] else [] fi od
+
+set is_Levi(RootDatum rd,RootDatum rd_L)=bool:
+assert(dimension(rd_L) <= dimension(rd), "L is not a subgroup of G");
+if dimension(rd)=dimension(rd_L) then true else
+let M=radical_basis(rd_L) in
+if n_columns(M)=0 then false else
+let cent=centralizer(M,rd) in dimension(cent)=dimension(rd_L) fi fi
+
+set is_pseudo_levi_in_simple_adjoint(RootDatum rd,RootDatum rd_L)=bool:
+is_center_cyclic(rd_L.mod_central_torus)
+
+set adjoint_image(RootDatum rd,RootDatum rd_L)=RootDatum:
+let simple_roots_L=for alpha in simple_roots(rd_L) do find(roots(rd),alpha) od
+in subgroup_by_simple(rd.adjoint,simple_roots_L)
+
+set is_pseudo_Levi_in_simple(RootDatum rd,RootDatum rd_L)=bool:
+is_pseudo_levi_in_simple_adjoint(rd.adjoint,adjoint_image(rd,rd_L))
+
+set project_on_simple_factor(RootDatum rd,RootDatum rd_L,int i)=
+let factor=simple_factor(rd,i) then
+roots_factor=roots(factor) then
+simple_roots_factor_L=##for alpha in simple_roots(rd_L) do if find(roots_factor,alpha)>=0 then [alpha] else [] fi od
+in subgroup_by_simple(rd,simple_roots_factor_L)
+
+set is_pseudo_Levi(RootDatum rd,RootDatum rd_L)=bool:
+all(for i:number_simple_factors(rd) do
+is_pseudo_Levi_in_simple(simple_factor(rd,i),project_on_simple_factor(rd,rd_L,i)) od)
+
+{if you've computed subgroups=subgroups(rd) already, run through these
+and select the pseudo_Levis. This works for any rd}
+set pseudo_Levi_subgroups(RootDatum rd,[RootDatum] subs)=[RootDatum]:
+##for L in subs do if is_pseudo_Levi(rd,L) then [L] else [] fi od
+
+{this works for any rd: find all equal rank subgroups, and then
+select the pseudo-Levis}
+set pseudo_Levi_subgroups(RootDatum rd)=[RootDatum]:
+pseudo_Levi_subgroups(rd,subgroups(rd))
 
 {test sub_rd_1 is W(rd)-conjugate to a subgroup of sub_rd_2}
 set is_contained(RootDatum rd,RootDatum sub_rd_1,RootDatum sub_rd_2)=bool:
@@ -490,6 +544,7 @@ maximal_pseudo_levis=maximal_pseudo_Levis(rd) then
 prints("Computed Hasse diagram");
 sub_graph(h,rd,subs,levis,maximal_pseudo_levis)
 
+{
 {complex nilpotent obtained by saturating the principal orbit of subgroup}
 set complex_nilpotent(RootDatum rd,RootDatum sub)=ComplexNilpotent:
 (rd,(),dominant(ratvec_as_vec(2*rho_check(sub)),rd))
@@ -499,6 +554,6 @@ let values=
  for L in subgroups(rd) do
   let orbit=complex_nilpotent(rd,L) in [L.derived.Lie_type.nice_format,orbit.diagram.to_string,orbit.H_of_triple.to_string,orbit.dim_nilpotent.to_string] od
  in tabulate(["L","diagram","H","dim"]#values)
+ }
 
-{moved to nilpotent_posets.at}
 

@@ -201,11 +201,12 @@ This gives the rational vectors [v_1,...,v_n]
 }
 set center(RootDatum rd)=[ratvec]:
 assert(is_semisimple(rd),"Root Datum is not semisimple");
+if =rank(rd) then [] else
 let M=ratvecs_as_ratmat(fundamental_coweights(rd)) then
 N=ratmat_as_mat(inverse(M)) then
 (A,c)=adapted_basis(N) then
 (B,v)=filter_units(A,c) in
-for col@i in B do M*col/c[i] od
+for col@i in B do M*col/c[i] od fi
 
 set type_center(RootDatum rd)=[int]:
 assert(is_semisimple(rd),"Root Datum is not semisimple");
@@ -215,4 +216,12 @@ N=ratmat_as_mat(inverse(M)) then
 (,v)=filter_units(A,c) in v
 
 set order_center(RootDatum rd)=int:product(type_center(rd))
+
+set is_center_cyclic(RootDatum rd)=bool:
+if rank(rd)=0 then true elif
+is_semisimple(rd) then #type_center(rd)<=1 else false fi
+
+{define this command:
+set elements_of_center(RootDatum rd)=[ratvec]:
+}
 
