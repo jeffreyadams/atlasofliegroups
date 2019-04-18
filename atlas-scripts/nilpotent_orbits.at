@@ -651,18 +651,19 @@ set generators_of_Z_mod_Z_0 (RootDatum rd, RootDatum L) = [ratvec]:
 
 {ratvec v-> exp(2\pi iv), choose representatives of
 the set of conjugacy classes of these semisimple elements}
-set conjugacy_class_representatives(RootDatum rd,[ratvec] S)=
+set conjugacy_class_representatives(RootDatum rd,[ratvec] S)=([int],[ratvec]):
 if
- #S=0 then [ratvec]:[]
+ #S=0 then ([],[])
 else
  let ad=affine_datum(rd) then
  S_dom=for v in S do let (v_dom,)=affine_make_dominant(v,ad) in v_dom od then
- rv=[S_dom[0]] in
- for v in delete(S_dom,0) do if first(for w in rv do w=v od)=-1 then rv#:=v fi od;
- rv
+ rv=[S_dom[0]] then
+ indices=[0] in
+ for v@i in delete(S_dom,0) do if first(for w in rv do w=v od)=-1 then rv#:=v;indices#:=i fi od;
+ (indices,rv)
 fi
 
-set generators_of_component_group (ComplexNilpotent (rd,(),H))=
+set generators_of_component_group_old (ComplexNilpotent (rd,(),H))=
 for L in pseudo_Levis_of_orbit (rd,(),H) do
  let (Lmod,)=mod_central_torus_info(L) then
  Z=elements_of_center(Lmod) then  {center of L/Z(L)^0}
@@ -682,14 +683,50 @@ for L in pseudo_Levis_of_orbit (rd,(),H) do
  {Z_lifted_2: keep one representative of each G-conjugacy class of these elements
   Note: this step replaces each v with one in the fundamental alcove
  }
- Z_lifted_2=conjugacy_class_representatives(rd,Z_lifted_1) in
+ (,Z_lifted_2)=conjugacy_class_representatives(rd,Z_lifted_1) in
  (L,Z_lifted_0,Z_lifted_1,Z_lifted_2)
+od
+
+{Need a matrix A lifting an element of T/Z(G)^0 to T,
+i.e. satisfying:
+Gmod=G/Z^0
+A*simple_coroots(Gmod)=simple_coroots(G)
+ Gmod is semisimple so simple_coroots(Gmod) is (square and) invertible/Q
+ => A=simple_coroots(G)*inverse(simple_coroots(Gmod))
+ this is applied to L
+}
+set lift(RootDatum rd,ratvec v)=ratvec:
+ let rd_mod=mod_central_torus(rd) then
+ A=simple_coroots(rd)*inverse(mat_as_ratmat(simple_coroots(rd_mod))) in A*v
+
+set generators_of_component_group (ComplexNilpotent (rd,(),H))=
+for L in pseudo_Levis_of_orbit (rd,(),H) do
+ let Lmod=mod_central_torus(L) then
+ Z_Lmod=elements_of_center(Lmod) {center of L/Z(L)^0} then
+ L_rad=radical_basis(L) {central torus} then
+ (,M)=Levi_of_subspace(rd,L_rad) {centralizer of L_rad} then
+
+{ A=simple_coroots(L)*inverse(mat_as_ratmat(simple_coroots(Lmod))) then}
+ { Z_Lmod_lifted=for v in ratmat_to_bigmat(A*Z_Lmod) do ratvec:v  od {convert ratmat to list of ratvecs}  then}
+ {cut down Z_Lmod to those elements satisfying Cent_G(tZ(L)^0)=L}
+ Z_Lmod_reg=##for v in Z_Lmod do if dimension(centralizer(M,lift(L,v)))=L.dimension then [v] else [] fi od then
+ {we now have elements [s_1,...,s_n] of L/Z(L)^0
+  lift these to [t_1,...,t_n] of G (not unique of course)
+  keep one from each conjugacy class, say [t_i_1,...,t_i_r]
+  THEN what matters is the corresponding elements [s_i_1,...,s_i_r], specifically their orders
+  Guess/Hope: s_iZ(L)^0 is conjugate to s_jZ(L)^0 by cent_G(u) if and only if
+  t_i is G-conjugate to t_j. This seems unlikely but looks to be true in examples
+ }
+ Z_Lmod_reg_lifted=for v in Z_Lmod_reg do lift(L,v) od then
+ (indices,Z_Lmod_reg_lifted_cc)=conjugacy_class_representatives(rd,Z_Lmod_reg_lifted) then
+ Z_Lmod_reg_cc=for i in indices do Z_Lmod_reg[i] od in
+ (L,Z_Lmod,Z_Lmod_reg,Z_Lmod_reg_lifted,Z_Lmod_reg_cc)
 od
 
 set component_datum(ComplexNilpotent O)=ComplexNilpotentComponentDatum:
 let g=generators_of_component_group(O) 
-then orders=## for (,,,S) in g do for v in S do denom(v) od od in
-(O,orders,for (L,,,S) in g do (L,S) od)
+then orders=## for (a,b,c,d,S) in g do for v in S do denom(v) od od in
+(O,orders,for (L,b,c,d,S) in g do (L,S) od)
 
 set conjugacy_class_orders(ComplexNilpotent O)=O.component_datum.orders
 set number_conjugacy_classes_component_group(ComplexNilpotent O)=#O.component_datum.orders
@@ -713,6 +750,7 @@ set print_component_info (ComplexNilpotent O)=void:
    prints("orders:",d.orders);
    tabulate(header#values)
 
+{
 set print_component_info_long (ComplexNilpotent O)=void:
    let header=["pseudo_Levi","Z(L)/Z(L)^0","Z(L)/Z(L)^0-reg","Generators"] in
    let values=
@@ -720,10 +758,10 @@ set print_component_info_long (ComplexNilpotent O)=void:
    [L.derived.nice_format,Z_lifted_0.to_string,Z_lifted_1.to_string,Z_lifted_2.to_string] od in
    prints(new_line,"Component info for orbit:",new_line, "H=", O.H_of_triple, " diagram:", O.diagram, " dim:", O.dim_nilpotent);
    prints("Z(L)/Z(L)^0: elements of T representing Z(L)/Z(L)^0");
-   prints("Z(L)/Z(L)^0-reg:, subset for which cent_G(tZ(L)^0) is L (not bigger)");
-   prints("Generators:, subset modulo conjugacy by G");
+   prints("Z(L)/Z(L)^0-reg: subset for which cent_G(tZ(L)^0) is L (not bigger)");
+   prints("Generators: subset modulo conjugacy by G");
    tabulate(header#values)
-
+}
 set print_component_info (RootDatum rd)=void:
    for orb in complex_nilpotent_orbits (rd) do prints();
    print_component_info (orb) od
