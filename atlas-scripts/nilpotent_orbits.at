@@ -18,6 +18,8 @@ set_type
 
 set complex_nilpotent (RootDatum rd, vec H) = ComplexNilpotent: (rd,(),H)
 
+set_type ComplexNilpotentComponentDatum= (ComplexNilpotent orbit,[int] orders,[(RootDatum,[ratvec])] pairs)
+
 {. Two complex nilpotent orbits are equal if the root data are, and
    the H's are conjugate by the Weyl group. .}
 set = (ComplexNilpotent O1,ComplexNilpotent O2) = bool:
@@ -655,7 +657,7 @@ if
 else
  let ad=affine_datum(rd) then
  S_dom=for v in S do let (v_dom,)=affine_make_dominant(v,ad) in v_dom od then
- rv=[S[0]] in
+ rv=[S_dom[0]] in
  for v in delete(S_dom,0) do if first(for w in rv do w=v od)=-1 then rv#:=v fi od;
  rv
 fi
@@ -681,9 +683,36 @@ for L in pseudo_Levis_of_orbit (rd,(),H) do
  {Z_lifted_2: keep one representative of each G-conjugacy class of these elements
   Note: this step replaces each v with one in the fundamental alcove
  }
- Z_lifted_2=conjugacy_class_representatives(L,Z_lifted_1) in
+ Z_lifted_2=conjugacy_class_representatives(rd,Z_lifted_1) in
  (L,Z_lifted_0,Z_lifted_1,Z_lifted_2)
 od
+
+set component_datum(ComplexNilpotent O)=ComplexNilpotentComponentDatum:
+let g=generators_of_component_group(O) 
+then orders=## for (,,,S) in g do for v in S do denom(v) od od in
+(O,orders,for (L,,,S) in g do (L,S) od)
+
+set conjugacy_class_orders(ComplexNilpotent O)=O.component_datum.orders
+set number_conjugacy_classes_component_group(ComplexNilpotent O)=#O.component_datum.orders
+
+set show(ComplexNilpotentComponentDatum d)=void:
+   let header=["pseudo_Levi","Generators"] in
+   let values=
+   for (L,S) in d.pairs do
+   [L.derived.nice_format,S.to_string] od in 
+   prints("Component info for orbit:",new_line,"H=", d.orbit.H_of_triple, " diagram:", d.orbit.diagram, " dim:", d.orbit.dim_nilpotent);
+prints(d.orders);
+   tabulate(header#values)
+
+set print_component_info (ComplexNilpotent O)=void:
+   let d=component_datum(O) then
+   header=["pseudo_Levi","Generators"] then
+   values=
+   for (L,S) in d.pairs do 
+   [L.derived.nice_format,S.to_string] od in
+   prints(new_line,"Component info for orbit:",new_line, "H=", O.H_of_triple, " diagram:", O.diagram, " dim:", O.dim_nilpotent);
+   prints("orders:",d.orders);
+   tabulate(header#values)
 
 set print_component_info_long (ComplexNilpotent O)=void:
    let header=["pseudo_Levi","Z(L)/Z(L)^0","Z(L)/Z(L)^0-reg","Generators"] in
@@ -694,14 +723,6 @@ set print_component_info_long (ComplexNilpotent O)=void:
    prints("Z(L)/Z(L)^0: elements of T representing Z(L)/Z(L)^0");
    prints("Z(L)/Z(L)^0-reg:, subset whose centralizer is L (not bigger)");
    prints("Generators:, subset modulo conjugacy by G");
-   tabulate(header#values)
-
-set print_component_info (ComplexNilpotent O)=void:
-   let header=["pseudo_Levi","Generators"] in
-   let values=
-   for (L,Z_lifted_0,Z_lifted_1,Z_lifted_2) in generators_of_component_group(O) do
-   [L.derived.nice_format,Z_lifted_2.to_string] od in
-   prints("Component info for orbit:",new_line,"H=", O.H_of_triple, " diagram:", O.diagram, " dim:", O.dim_nilpotent);
    tabulate(header#values)
 
 set print_component_info (RootDatum rd)=void:
