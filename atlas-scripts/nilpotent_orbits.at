@@ -556,12 +556,11 @@ set pseudo_Levis (RootDatum rd)=[[int]]: let W=W(rd) then
      for (T,,) in triples do T od
 }
 
-set d_L (RootDatum rd,RootDatum L)=int:
-   let r=semisimple_rank(rd) then
-   roots_L=sort(for alpha in simple_roots(L) do find(roots(rd),alpha) od) in
-   if #roots_L=0 then 0 else
-   if max(roots_L)<r then 1 else
-    let list= for i in complement(r+1,roots_L) do labels(rd)[i] od
+{don't need d_L?}
+set d_L (RootDatum rd,[int] L)=int: let r=semisimple_rank(rd)
+   in if #L=0 then 0 else
+   if max(L)<r then 1 else
+    let list= for i in complement(r+1,sort(L)) do labels(rd)[i] od
     in gcd(list) fi fi
 
 set print_pseudo_Levi_orbit_info (RootDatum rd)=void:
@@ -652,28 +651,70 @@ set generators_of_Z_mod_Z_0 (RootDatum rd, RootDatum L) = [ratvec]:
         then result#:=v*inverse(w) fi od;
    result
 
-set generators_of_component_group (ComplexNilpotent (rd,(),H))=
-   let levis=pseudo_Levis_of_orbit (rd,(),H) in
-   for L in levis do
-let        ()=prints("L=",L) in
-    let (Lmod,M)=mod_central_torus_info(L) then
-    Z=elements_of_center(Lmod) then
-    ()=prints("Z:",Z) then
-    Z_lifted=^(M*Z) in 
-   (L,for v in ratmat_to_bigmat(Z_lifted) do ratvec:v od) od
+{ratvec v-> exp(2\pi iv), choose representatives of
+the set of conjugacy classes of these semisimple elements}
+set conjugacy_class_representatives(RootDatum rd,[ratvec] S)=
+if
+ #S=0 then [ratvec]:[]
+else
+ let ad=affine_datum(rd) then
+ S_dom=for v in S do let (v_dom,)=affine_make_dominant(v,ad) in v_dom od then
+ rv=[S[0]] in
+ for v in delete(S_dom,0) do if first(for w in rv do w=v od)=-1 then rv#:=v fi od;
+ rv
+fi
 
-set print_component_info (ComplexNilpotent (rd,(),H))=void:
-   let header=["pseudo_Levi","d_L","Generators"] in
+
+set generators_of_component_group (ComplexNilpotent (rd,(),H))=
+for L in pseudo_Levis_of_orbit (rd,(),H) do
+ let (Lmod,)=mod_central_torus_info(L) then
+ Z=elements_of_center(Lmod) then  {center of L/Z(L)^0}
+ {
+ ^M*simple_roots(Lmod)=simple_root(L)
+ Need:
+ A*simple_coroots(Lmod)=simple_coroots(L)
+ Lmod is semisimple so simple_coroots(Lmod) is (square and) invertible/Q
+ A=simple_coroots(L)*inverse(simple_coroots(Lmod))
+}
+ {Z_lifted_0: lift of elements from T/Z(L)^0 to T}
+ A=simple_coroots(L)*inverse(mat_as_ratmat(simple_coroots(Lmod))) then
+ Z_lifted_0=for v in ratmat_to_bigmat(A*Z) do ratvec:v  od {convert ratmat to list of ratvecs}  then
+{ ()=prints("Z_lifted:",Z_lifted_0) then}
+ {Z_lifted_1: only keep those for which centralizer_rd(t)=L}
+ Z_lifted_1=##for v in Z_lifted_0 do if dimension(centralizer(rd,v))=L.dimension then [v] else [] fi od then
+ {Z_lifted_2: keep one representative of each G-conjugacy class of these elements
+  Note: this step replaces each v with one in the fundamental alcove
+ }
+ Z_lifted_2=conjugacy_class_representatives(L,Z_lifted_1) in
+ (L,Z_lifted_0,Z_lifted_1,Z_lifted_2)
+od
+
+set print_component_info_long (ComplexNilpotent O)=void:
+   let header=["pseudo_Levi","Z(L)/Z(L)^0","Z(L)/Z(L)^0-reg","Generators"] in
    let values=
-   for (L,list) in generators_of_component_group((rd,(),H)) do
-   [L.to_string,d_L(rd,L).to_string,list.to_string] od in
+   for (L,Z_lifted_0,Z_lifted_1,Z_lifted_2) in generators_of_component_group(O) do
+   [L.derived.nice_format,Z_lifted_0.to_string,Z_lifted_1.to_string,Z_lifted_2.to_string] od in
+   prints(new_line,"Component info for orbit:",new_line, "H=", O.H_of_triple, " diagram:", O.diagram, " dim:", O.dim_nilpotent);
+   prints("Z(L)/Z(L)^0: elements of T representing Z(L)/Z(L)^0");
+   prints("Z(L)/Z(L)^0-reg:, subset whose centralizer is L (not bigger)");
+   prints("Generators:, subset modulo conjugacy by G");
+   tabulate(header#values)
+
+set print_component_info (ComplexNilpotent O)=void:
+   let header=["pseudo_Levi","Generators"] in
+   let values=
+   for (L,Z_lifted_0,Z_lifted_1,Z_lifted_2) in generators_of_component_group(O) do
+   [L.derived.nice_format,Z_lifted_2.to_string] od in
+   prints("Component info for orbit:",new_line,"H=", O.H_of_triple, " diagram:", O.diagram, " dim:", O.dim_nilpotent);
    tabulate(header#values)
 
 set print_component_info (RootDatum rd)=void:
    for orb in complex_nilpotent_orbits (rd) do prints();
-   prints("Orbit: H: ",orb.H_of_triple," Dynkin Diagram: ", diagram(orb), " dim: ",
-   dim_nilpotent(orb));
    print_component_info (orb) od
+
+set print_component_info_long (RootDatum rd)=void:
+   for orb in complex_nilpotent_orbits (rd) do prints();
+   print_component_info_long (orb) od
 
 {------ principal, zero, subregular and minimal orbits -----}
 
