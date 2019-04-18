@@ -662,24 +662,23 @@ else
  rv
 fi
 
-
 set generators_of_component_group (ComplexNilpotent (rd,(),H))=
 for L in pseudo_Levis_of_orbit (rd,(),H) do
  let (Lmod,)=mod_central_torus_info(L) then
  Z=elements_of_center(Lmod) then  {center of L/Z(L)^0}
- {
- ^M*simple_roots(Lmod)=simple_root(L)
- Need:
+{Need a matrix A satisfying:
  A*simple_coroots(Lmod)=simple_coroots(L)
  Lmod is semisimple so simple_coroots(Lmod) is (square and) invertible/Q
- A=simple_coroots(L)*inverse(simple_coroots(Lmod))
+ => A=simple_coroots(L)*inverse(simple_coroots(Lmod))
 }
  {Z_lifted_0: lift of elements from T/Z(L)^0 to T}
  A=simple_coroots(L)*inverse(mat_as_ratmat(simple_coroots(Lmod))) then
  Z_lifted_0=for v in ratmat_to_bigmat(A*Z) do ratvec:v  od {convert ratmat to list of ratvecs}  then
 { ()=prints("Z_lifted:",Z_lifted_0) then}
- {Z_lifted_1: only keep those for which centralizer_rd(t)=L}
- Z_lifted_1=##for v in Z_lifted_0 do if dimension(centralizer(rd,v))=L.dimension then [v] else [] fi od then
+ {Z_lifted_1: only keep those for which centralizer_rd(tZ(L)^0)=L}
+ L_rad=radical_basis(L) {central torus} then
+ (,M)=Levi_of_subspace(rd,L_rad) {centralizer of L_rad} then
+ Z_lifted_1=##for v in Z_lifted_0 do if dimension(centralizer(M,v))=L.dimension then [v] else [] fi od then
  {Z_lifted_2: keep one representative of each G-conjugacy class of these elements
   Note: this step replaces each v with one in the fundamental alcove
  }
@@ -721,7 +720,7 @@ set print_component_info_long (ComplexNilpotent O)=void:
    [L.derived.nice_format,Z_lifted_0.to_string,Z_lifted_1.to_string,Z_lifted_2.to_string] od in
    prints(new_line,"Component info for orbit:",new_line, "H=", O.H_of_triple, " diagram:", O.diagram, " dim:", O.dim_nilpotent);
    prints("Z(L)/Z(L)^0: elements of T representing Z(L)/Z(L)^0");
-   prints("Z(L)/Z(L)^0-reg:, subset whose centralizer is L (not bigger)");
+   prints("Z(L)/Z(L)^0-reg:, subset for which cent_G(tZ(L)^0) is L (not bigger)");
    prints("Generators:, subset modulo conjugacy by G");
    tabulate(header#values)
 

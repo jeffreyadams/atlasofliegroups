@@ -67,7 +67,10 @@ if #roots=0 then complex_torus(rank(rd)) else
 root_datum(for i in roots do roots(rd)[i] od, for i in roots do coroots(rd)[i] od) fi
 
 {mat k: columns span a subspace U of X_*
- construct RootDatum of Levi given by roots vanishing on U}
+ construct RootDatum of Levi given by roots vanishing on U
+ this is the same as the Levi defined by the torus given
+ by exp(\C*v) for v the columns of the matrix
+ }
 set Levi_of_subspace (RootDatum rd, mat k) = (bool,RootDatum):
   let levi_roots=[vec]: ##for a in roots(rd) do if =a*k then [a] else [] fi od
   in subgroup(rd,levi_roots)
