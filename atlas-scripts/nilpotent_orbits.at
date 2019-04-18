@@ -3,7 +3,7 @@
 <induction.at { for |embed_KGB@(KGBElt,RealForm)| }
 <all_finite_order.at
 <subgroups.at
-
+<weyl_character_formula.at {for centralizer@(RootDatum,ratvec)}
 set nilpotent_verbose=false
 
 { ComplexNilpotent: (RootDatum rd,vec H)
@@ -556,18 +556,14 @@ set pseudo_Levis (RootDatum rd)=[[int]]: let W=W(rd) then
      for (T,,) in triples do T od
 }
 
-{don't need d_L?}
+{don't need d_L}
 set d_L (RootDatum rd,[int] L)=int: let r=semisimple_rank(rd)
    in if #L=0 then 0 else
    if max(L)<r then 1 else
     let list= for i in complement(r+1,sort(L)) do labels(rd)[i] od
     in gcd(list) fi fi
 
-set print_pseudo_Levi_orbit_info (RootDatum rd)=void:
-   for L in pseudo_Levi_subgroups(rd)
-   do prints(L," d_L= ",d_L(rd,L)," ",
-         distinguished_H_diagrams(rd,L))
-   od
+set d_L(RootDatum rd,RootDatum rd_L)=order_center(rd_L.mod_central_torus)
 
 {don't use this, use is_conjugate(rd,L,M) from conjugate.at instead}
 set is_conjugate_pseudo_Levi ([int] L, [int] M, RootDatum rd)=bool:
