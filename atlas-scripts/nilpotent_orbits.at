@@ -659,7 +659,7 @@ else
  S_dom=for v in S do let (v_dom,)=affine_make_dominant(v,ad) in v_dom od then
  rv=[S_dom[0]] then
  indices=[0] in
- for v@i in delete(S_dom,0) do if first(for w in rv do w=v od)=-1 then rv#:=v;indices#:=i fi od;
+ for i:#S_dom-1 from 1 do let v=S[i] in if first(for w in rv do w=v od)=-1 then rv#:=v;indices#:=i fi od;
  (indices,rv)
 fi
 
@@ -719,6 +719,7 @@ for L in pseudo_Levis_of_orbit (rd,(),H) do
  }
  Z_Lmod_reg_lifted=for v in Z_Lmod_reg do lift(L,v) od then
  (indices,Z_Lmod_reg_lifted_cc)=conjugacy_class_representatives(rd,Z_Lmod_reg_lifted) then
+ ()=prints("indices:",indices) then
  Z_Lmod_reg_cc=for i in indices do Z_Lmod_reg[i] od in
  (L,Z_Lmod,Z_Lmod_reg,Z_Lmod_reg_lifted,Z_Lmod_reg_cc)
 od
