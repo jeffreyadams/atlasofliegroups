@@ -750,18 +750,16 @@ set print_component_info (ComplexNilpotent O)=void:
    prints("orders:",d.orders);
    tabulate(header#values)
 
-{
+
 set print_component_info_long (ComplexNilpotent O)=void:
-   let header=["pseudo_Levi","Z(L)/Z(L)^0","Z(L)/Z(L)^0-reg","Generators"] in
-   let values=
-   for (L,Z_lifted_0,Z_lifted_1,Z_lifted_2) in generators_of_component_group(O) do
-   [L.derived.nice_format,Z_lifted_0.to_string,Z_lifted_1.to_string,Z_lifted_2.to_string] od in
+   let header=["pseudo_Levi","Z/Z^0","Z/Z^0-reg","Z/Z^0-reg-lifted","Z/Z^0-reg-cc"] then
+   values=
+   for  (L,Z_Lmod,Z_Lmod_reg,Z_Lmod_reg_lifted,Z_Lmod_reg_cc) in  generators_of_component_group(O) do
+   [L.derived.nice_format,Z_Lmod.to_string,Z_Lmod_reg.to_string,Z_Lmod_reg_lifted.to_string,Z_Lmod_reg_cc.to_string] od in
    prints(new_line,"Component info for orbit:",new_line, "H=", O.H_of_triple, " diagram:", O.diagram, " dim:", O.dim_nilpotent);
-   prints("Z(L)/Z(L)^0: elements of T representing Z(L)/Z(L)^0");
-   prints("Z(L)/Z(L)^0-reg: subset for which cent_G(tZ(L)^0) is L (not bigger)");
    prints("Generators: subset modulo conjugacy by G");
    tabulate(header#values)
-}
+
 set print_component_info (RootDatum rd)=void:
    for orb in complex_nilpotent_orbits (rd) do prints();
    print_component_info (orb) od
