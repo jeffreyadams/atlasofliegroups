@@ -770,6 +770,13 @@ set print_component_info_long (RootDatum rd)=void:
    for orb in complex_nilpotent_orbits (rd) do prints();
    print_component_info_long (orb) od
 
+set print_component_info_short (RootDatum rd)=void:
+tabulate(["i","H","diag","dim","A(O)"]#
+ for orb@i in complex_nilpotent_orbits (rd) do
+ let d=component_datum(orb) in
+ [i.to_string,orb.H_of_triple.to_string,orb.diagram.to_string,orb.dim_nilpotent.to_string,d.orders.to_string] od
+ )
+
 {------ principal, zero, subregular and minimal orbits -----}
 
 set principal_orbit(RootDatum rd)=ComplexNilpotent:(rd,(),ratvec_as_vec(2*rho_check(rd)))

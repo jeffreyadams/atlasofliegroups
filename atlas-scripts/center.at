@@ -189,7 +189,7 @@ Algorithm:
 Z(G)=P^v/X_* = Z<fundamental coweights>/Z^n
 change basis so that P^v=Z^n:
 M=fundamental coweights (a rational matrix)
-N=M^{-1} is an integral matrix, and 
+N=M^{-1} is an integral matrix, and
 the sublattice X_* is spanned by the columns of N
 adapted_basis(N): pairs (A,c)
  where A is an invertible integral matrix
@@ -207,6 +207,7 @@ let M=ratvecs_as_ratmat(fundamental_coweights(rd)) then
 N=ratmat_as_mat(inverse(M)) then
 (A,c)=adapted_basis(N) then
 (B,v)=filter_units(A,c) in
+{note: c[i] not v[i] here: denominator comes from inverse(M)}
 for col@i in B do M*col/c[i] od fi
 
 set type_center(RootDatum rd)=[int]:
@@ -227,4 +228,20 @@ let Z=center(rd) in
  if #Z=0 then [null(rank(rd))] else let
 denoms= for i:#Z do let (,d)=%Z[i]  in d od in
 for v in ratmat_to_bigmat(Z.ratvecs_as_ratmat*box(denoms)) do ratvec:v od fi
+
+{dually: the fundamental group of semisimple rd}
+
+set fundamental_group(RootDatum rd)=[ratvec]:
+assert(is_semisimple(rd),"Root Datum is not semisimple");
+if =rank(rd) then [] else
+let (A,c)=adapted_basis(simple_coroots(rd)) then
+(B,v)=filter_units(A,c) in
+{note: v[i] here, not c[i], compare center@RootDatum above:}
+for col@i in B do col/v[i] od fi
+
+set elements_of_fundamental_group(RootDatum rd)=[ratvec]:
+let fg=fundamental_group(rd) in
+ if #fg=0 then [null(rank(rd))] else let
+denoms= for i:#fg do let (,d)=%fg[i]  in d od in
+for v in ratmat_to_bigmat(fg.ratvecs_as_ratmat*box(denoms)) do ratvec:v od fi
 
