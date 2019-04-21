@@ -5,7 +5,7 @@
 <parabolics.at {for Levis}
 {<nilpotent_orbits.at {for pseudo Levis}}
 <center.at
-<posets.at
+<poset.at
 {
   The functions deal with constructing Levi systems cut out by various linear
   conditions (being orthogonal to a given set of coroots), and their root data.

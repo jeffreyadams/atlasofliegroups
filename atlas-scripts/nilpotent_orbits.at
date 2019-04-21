@@ -649,8 +649,10 @@ set generators_of_Z_mod_Z_0 (RootDatum rd, RootDatum L) = [ratvec]:
         then result#:=v*inverse(w) fi od;
    result
 
+{moved to affine.at}
 {ratvec v-> exp(2\pi iv), choose representatives of
 the set of conjugacy classes of these semisimple elements}
+{
 set conjugacy_class_representatives(RootDatum rd,[ratvec] S)=([int],[ratvec]):
 if
  #S=0 then ([],[])
@@ -662,6 +664,7 @@ else
  for i:#S_dom-1 from 1 do let v=S[i] in if first(for w in rv do w=v od)=-1 then rv#:=v;indices#:=i fi od;
  (indices,rv)
 fi
+}
 
 set generators_of_component_group_old (ComplexNilpotent (rd,(),H))=
 for L in pseudo_Levis_of_orbit (rd,(),H) do
@@ -683,7 +686,7 @@ for L in pseudo_Levis_of_orbit (rd,(),H) do
  {Z_lifted_2: keep one representative of each G-conjugacy class of these elements
   Note: this step replaces each v with one in the fundamental alcove
  }
- (,Z_lifted_2)=conjugacy_class_representatives(rd,Z_lifted_1) in
+ (,Z_lifted_2)=semisimple_conjugacy_class_reps(rd,Z_lifted_1) in
  (L,Z_lifted_0,Z_lifted_1,Z_lifted_2)
 od
 
@@ -718,8 +721,8 @@ for L in pseudo_Levis_of_orbit (rd,(),H) do
   t_i is G-conjugate to t_j. This seems unlikely but looks to be true in examples
  }
  Z_Lmod_reg_lifted=for v in Z_Lmod_reg do lift(L,v) od then
- (indices,Z_Lmod_reg_lifted_cc)=conjugacy_class_representatives(rd,Z_Lmod_reg_lifted) then
- ()=prints("indices:",indices) then
+ (,H)=Levi_of_coweight(rd,H) then
+ (indices,Z_Lmod_reg_lifted_cc)=semisimple_conjugacy_class_reps(H,Z_Lmod_reg_lifted) then
  Z_Lmod_reg_cc=for i in indices do Z_Lmod_reg[i] od in
  (L,Z_Lmod,Z_Lmod_reg,Z_Lmod_reg_lifted,Z_Lmod_reg_cc)
 od
@@ -753,13 +756,10 @@ set print_component_info (ComplexNilpotent O)=void:
 
 
 set print_component_info_long (ComplexNilpotent O)=void:
-   let header=["pseudo_Levi","Z/Z^0","Z/Z^0-reg","Z/Z^0-reg-lifted","Z/Z^0-reg-cc"] then
-   values=
-   for  (L,Z_Lmod,Z_Lmod_reg,Z_Lmod_reg_lifted,Z_Lmod_reg_cc) in  generators_of_component_group(O) do
-   [L.derived.nice_format,Z_Lmod.to_string,Z_Lmod_reg.to_string,Z_Lmod_reg_lifted.to_string,Z_Lmod_reg_cc.to_string] od in
-   prints(new_line,"Component info for orbit:",new_line, "H=", O.H_of_triple, " diagram:", O.diagram, " dim:", O.dim_nilpotent);
-   prints("Generators: subset modulo conjugacy by G");
-   tabulate(header#values)
+prints(new_line,"Component info for orbit:",new_line, "H=", O.H_of_triple, " diagram:", O.diagram, " dim:", O.dim_nilpotent);
+for (L,Z_Lmod,Z_Lmod_reg,Z_Lmod_reg_lifted,Z_Lmod_reg_cc) in generators_of_component_group(O) do
+prints(new_line,"L:",L.derived,new_line,"Z(L)/Z(L)^0: ",Z_Lmod,new_line,"Z(L)/Z(L)^0-reg: ",Z_Lmod_reg,new_line,"Z(L)/Z(L)^0-reg-lifted: ",
+Z_Lmod_reg_lifted,new_line,"Z(L)/Z(L)^0-cc: ",Z_Lmod_reg_cc) od
 
 set print_component_info (RootDatum rd)=void:
    for orb in complex_nilpotent_orbits (rd) do prints();
