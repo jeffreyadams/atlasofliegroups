@@ -224,24 +224,38 @@ if rank(rd)=0 then true elif
 is_semisimple(rd) then #type_center(rd)<=1 else false fi
 
 set elements_of_center(RootDatum rd)=[ratvec]:
-let Z=center(rd) in 
+let Z=center(rd) in
  if #Z=0 then [null(rank(rd))] else let
 denoms= for i:#Z do let (,d)=%Z[i]  in d od in
 for v in ratmat_to_bigmat(Z.ratvecs_as_ratmat*box(denoms)) do ratvec:v od fi
 
 {dually: the fundamental group of semisimple rd}
 
-set fundamental_group(RootDatum rd)=[ratvec]:
+{return ([vec] vecs,[int] orders):
+ the fundamental group is X_*/R^v=Z^n/lattice
+ vecs generate X_*/R^v
+ vecs[i] is a vector, of order orders[i] in X^*/R^v
+}
+set fundamental_group(RootDatum rd)=([vec],[int]):
 assert(is_semisimple(rd),"Root Datum is not semisimple");
-if =rank(rd) then [] else
-let (A,c)=adapted_basis(simple_coroots(rd)) then
-(B,v)=filter_units(A,c) in
-{note: v[i] here, not c[i], compare center@RootDatum above:}
-for col@i in B do col/v[i] od fi
+if =rank(rd) then ([null(rd.rank)],[1]) else
+let (B,c)=filter_units(adapted_basis(simple_coroots(rd))) in (B,c)
+fi
 
-set elements_of_fundamental_group(RootDatum rd)=[ratvec]:
-let fg=fundamental_group(rd) in
- if #fg=0 then [null(rank(rd))] else let
-denoms= for i:#fg do let (,d)=%fg[i]  in d od in
-for v in ratmat_to_bigmat(fg.ratvecs_as_ratmat*box(denoms)) do ratvec:v od fi
+{these vectors are a set of representatives of 
+the finite group X_*/R^v = Z^n/lattice
+}
+set elements_of_fundamental_group(RootDatum rd)=
+let (vecs,orders)=fundamental_group(rd) in 
+if #vecs=0 then [null(rank(rd))] else
+vecs*box(orders) fi
 
+
+{copied from nilpotent_orbits.at, not sure where to put it}
+set lift(RootDatum rd,ratvec v)=ratvec:
+ let rd_mod=mod_central_torus(rd) then
+ A=simple_coroots(rd)*inverse(mat_as_ratmat(simple_coroots(rd_mod))) in A*v
+
+set relative_fundamental_group(RootDatum rd)=([vec],[int]):
+let (B,c)= fundamental_group(rd.mod_central_torus) in 
+(for v in B do ratvec_as_vec(lift(rd,v)) od,c)
