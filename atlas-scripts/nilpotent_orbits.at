@@ -573,20 +573,18 @@ set is_conjugate_pseudo_Levi ([int] L, [int] M, RootDatum rd)=bool:
    else let prl=pseudo_roots(L,rd),prm=pseudo_roots(M,rd) in
    is_conjugate(prl,prm,W) fi
 
-{
-Find all (true) pseudo-Levis in which a complex nilpotent orbit is
-distinguished. Modified to return [RootData] rather than [[int]]
+{replaces old pseudo_Levis_of_orbit
+ also return H_L in L mapping to (conjugacy class of) H in rd
+ use H_L to construct the relevant centralizer_rd(H_L)
+ for use in generators_of_component_group
 }
-set pseudo_Levis_of_orbit (ComplexNilpotent (rd,(),H))=
-   let ps=pseudo_Levi_subgroups(rd) then
-   r=semisimple_rank(rd) in
-   ##for L in ps
-    do if {#levi>0 and levi[0]=r and}
-        any (for K in distinguished_H(L)
-               do dominant(K,rd)=dominant(H,rd)
-               od) then [L]
-       else [] fi
-    od
+set pseudo_Levis (ComplexNilpotent O)=
+let rd=O.root_datum then
+H=dominant(O.H_of_triple,rd) in
+##for L in pseudo_Levi_subgroups(rd) do
+ let distinguished_H_L=distinguished_H(L) in
+ let j=first(for H_L in distinguished_H_L do dominant(H_L,rd)=H od)
+ in if j>=0 then [(L,distinguished_H_L[j])] else [] fi od 
 
 {Note: affine root is n+1 not 0}
 {this works only if rd.derived is simple}
@@ -649,47 +647,6 @@ set generators_of_Z_mod_Z_0 (RootDatum rd, RootDatum L) = [ratvec]:
         then result#:=v*inverse(w) fi od;
    result
 
-{moved to affine.at}
-{ratvec v-> exp(2\pi iv), choose representatives of
-the set of conjugacy classes of these semisimple elements}
-{
-set conjugacy_class_representatives(RootDatum rd,[ratvec] S)=([int],[ratvec]):
-if
- #S=0 then ([],[])
-else
- let ad=affine_datum(rd) then
- S_dom=for v in S do let (v_dom,)=affine_make_dominant(v,ad) in v_dom od then
- rv=[S_dom[0]] then
- indices=[0] in
- for i:#S_dom-1 from 1 do let v=S[i] in if first(for w in rv do w=v od)=-1 then rv#:=v;indices#:=i fi od;
- (indices,rv)
-fi
-}
-
-set generators_of_component_group_old (ComplexNilpotent (rd,(),H))=
-for L in pseudo_Levis_of_orbit (rd,(),H) do
- let (Lmod,)=mod_central_torus_info(L) then
- Z=elements_of_center(Lmod) then  {center of L/Z(L)^0}
-{Need a matrix A satisfying:
- A*simple_coroots(Lmod)=simple_coroots(L)
- Lmod is semisimple so simple_coroots(Lmod) is (square and) invertible/Q
- => A=simple_coroots(L)*inverse(simple_coroots(Lmod))
-}
- {Z_lifted_0: lift of elements from T/Z(L)^0 to T}
- A=simple_coroots(L)*inverse(mat_as_ratmat(simple_coroots(Lmod))) then
- Z_lifted_0=for v in ratmat_to_bigmat(A*Z) do ratvec:v  od {convert ratmat to list of ratvecs}  then
-{ ()=prints("Z_lifted:",Z_lifted_0) then}
- {Z_lifted_1: only keep those for which centralizer_rd(tZ(L)^0)=L}
- L_rad=radical_basis(L) {central torus} then
- (,M)=Levi_of_subspace(rd,L_rad) {centralizer of L_rad} then
- Z_lifted_1=##for v in Z_lifted_0 do if dimension(centralizer(M,v))=L.dimension then [v] else [] fi od then
- {Z_lifted_2: keep one representative of each G-conjugacy class of these elements
-  Note: this step replaces each v with one in the fundamental alcove
- }
- (,Z_lifted_2)=semisimple_conjugacy_class_reps(rd,Z_lifted_1) in
- (L,Z_lifted_0,Z_lifted_1,Z_lifted_2)
-od
-
 {Need a matrix A lifting an element of T/Z(G)^0 to T,
 i.e. satisfying:
 Gmod=G/Z^0
@@ -703,7 +660,7 @@ set lift(RootDatum rd,ratvec v)=ratvec:
  A=simple_coroots(rd)*inverse(mat_as_ratmat(simple_coroots(rd_mod))) in A*v
 
 set generators_of_component_group (ComplexNilpotent (rd,(),H))=
-for L in pseudo_Levis_of_orbit (rd,(),H) do
+for (L,H_L) in pseudo_Levis (rd,(),H) do
  let Lmod=mod_central_torus(L) then
  Z_Lmod=elements_of_center(Lmod) {center of L/Z(L)^0} then
  L_rad=radical_basis(L) {central torus} then
@@ -721,8 +678,12 @@ for L in pseudo_Levis_of_orbit (rd,(),H) do
   t_i is G-conjugate to t_j. This seems unlikely but looks to be true in examples
  }
  Z_Lmod_reg_lifted=for v in Z_Lmod_reg do lift(L,v) od then
- (,H)=Levi_of_coweight(rd,H) then
- (indices,Z_Lmod_reg_lifted_cc)=semisimple_conjugacy_class_reps(H,Z_Lmod_reg_lifted) then
+ {need to use the Levi defined by H_L (not H itself) for computing conjugacy}
+ (,Levi_H_L)=Levi_of_coweight(rd,H_L) then
+{ ()=prints("Levi_H_L=",Levi_H_L," ", simple_roots(Levi_H_L)) then}
+{  ()=prints("Z_Lmod_reg_lifted:", Z_Lmod_reg_lifted) then}
+ (indices,Z_Lmod_reg_lifted_cc)=semisimple_conjugacy_class_reps(Levi_H_L,Z_Lmod_reg_lifted) then
+{ ()=prints("Z+Lmod_reg_lifted_cc: ", Z_Lmod_reg_lifted_cc) then}
  Z_Lmod_reg_cc=for i in indices do Z_Lmod_reg[i] od in
  (L,Z_Lmod,Z_Lmod_reg,Z_Lmod_reg_lifted,Z_Lmod_reg_cc)
 od
@@ -730,7 +691,7 @@ od
 set component_datum(ComplexNilpotent O)=ComplexNilpotentComponentDatum:
 let g=generators_of_component_group(O) 
 then orders=## for (a,b,c,d,S) in g do for v in S do denom(v) od od in
-(O,orders,for (L,b,c,d,S) in g do (L,S) od)
+(O,sort(orders),for (L,b,c,d,S) in g do (L,S) od)
 
 set conjugacy_class_orders(ComplexNilpotent O)=O.component_datum.orders
 set number_conjugacy_classes_component_group(ComplexNilpotent O)=#O.component_datum.orders
