@@ -398,10 +398,10 @@ first(for z in action_fundamental_group(v_dom,ad) do z=w_dom od)>=0
 
 set is_semisimple_element_conjugate(ratvec v,ratvec w,RootDatum rd)=
 let rhat=lie_radical_hat(rd) in
-if v*rhat != w*rhat then false
+if not is_integer(v*rhat- w*rhat) then false
 else
-let (rdmod,M)=rd.mod_central_torus_info in true
-{is_semisimple_element_conjugate_in_semisimple(M*v,M*w,rdmod)} fi
+let (rdmod,M)=rd.mod_central_torus_info in 
+is_semisimple_element_conjugate_in_semisimple(M*v,M*w,rdmod) fi
 
 
 
@@ -410,7 +410,8 @@ set semisimple_conjugacy_class_reps(RootDatum rd,[ratvec] S)=([int],[ratvec]):
 let rv=[S[0]] then
 indices=[0] in
 for i:#S-1 from 1 do
- if none(for v in rv do is_semisimple_element_conjugate(S[i],v,rd) od) then rv#:=S[i];indices#:=i fi od;(indices,rv)
+ if none(for v in rv do is_semisimple_element_conjugate(S[i],v,rd) od) then rv#:=S[i];indices#:=i fi od;
+ (sort(indices),rv)
 
 
 
