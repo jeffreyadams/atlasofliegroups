@@ -1,6 +1,6 @@
 <nilpotent_orbits.at
 <nilpotent_induction.at
-<posets.at  {general partially ordered sets}
+<poset.at  {general partially ordered sets}
 <subgroups.at
 <good_W_representatives.at
 <W_order.at
