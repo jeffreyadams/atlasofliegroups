@@ -85,5 +85,9 @@ set update_matrix_entry(mat M, int i, int j, int value)= mat:
 set add_to_matrix_entry(mat M, int i, int j, int value)= mat:
 update_matrix_entry(M,i,j,M[i][j]+value)
 
-{   convert LieType to a canonical 8x16 matrix, for testing local isomorphism  }
-
+set kronecker_product(mat A,mat B)=mat:
+let (m,n)=shape(A),
+(p,q)=shape(B) in
+for i:m*p do
+ for j:n*q do
+  A[(j)\p,(i)\q]*B[(j)%p,(i)%q] od od
