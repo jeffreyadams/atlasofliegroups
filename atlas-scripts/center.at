@@ -249,7 +249,6 @@ let (vecs,orders)=fundamental_group(rd) in
 if #vecs=0 then [null(rank(rd))] else
 vecs*box(orders) fi
 
-
 {copied from nilpotent_orbits.at, not sure where to put it}
 set lift(RootDatum rd,ratvec v)=ratvec:
  let rd_mod=mod_central_torus(rd) then
@@ -258,3 +257,6 @@ set lift(RootDatum rd,ratvec v)=ratvec:
 set relative_fundamental_group(RootDatum rd)=([vec],[int]):
 let (B,c)= fundamental_group(rd.mod_central_torus) in 
 (for v in B do ratvec_as_vec(lift(rd,v)) od,c)
+
+
+

@@ -1,11 +1,8 @@
-<basic.at
-<W_orbit.at
-<simple_factors.at
 <conjugate.at
 <parabolics.at {for Levis}
-{<nilpotent_orbits.at {for pseudo Levis}}
 <center.at
 <poset.at
+<number_theory.at {for is_prime}
 {
   The functions deal with constructing Levi systems cut out by various linear
   conditions (being orthogonal to a given set of coroots), and their root data.
@@ -243,23 +240,32 @@ rv fi
 
 {  constructing all equal rank reductive subgroups  }
 
-{we call a pseudo Levi "maximal" if it is obtained by
+{we call a pseudo Levi "weakly maximal" if it is obtained by
 deleting a single node
-[these aren't really maximal, for that you should assume
+[these aren't maximal, for that you should assume
 the label is prime]
 proper <=> label is not special (special: label=1)
 we include the RootDatum rd itself for induction reasons
 this does NOT include actual Levi subgroups (except rd)
 assumption: rd has one simple factor, i.e. derived(rd) is simple
 }
+set weakly_maximal_pseudo_Levis_simple(RootDatum rd)=[RootDatum]:
+assert(derived_is_simple(rd),"Root Datum has more than one simple factor");
+if is_abelian(rd) then [rd] else
+let sr=simple_roots(rd) then
+labels=labels(derived(rd)) then
+alpha=-highest_root(rd) in
+filter(rd,rd#(##for i:ss_rank(rd) do
+ if labels[i] !=1 then [subgroup_by_simple(rd, delete(sr,i)#alpha)] else [] fi od)) fi
+
 set maximal_pseudo_Levis_simple(RootDatum rd)=[RootDatum]:
 assert(derived_is_simple(rd),"Root Datum has more than one simple factor");
 if is_abelian(rd) then [rd] else
 let sr=simple_roots(rd) then
 labels=labels(derived(rd)) then
 alpha=-highest_root(rd) in
-rd#(##for i:ss_rank(rd) do
- if labels[i] !=1 then [subgroup_by_simple(rd, delete(sr,i)#alpha)] else [] fi od) fi
+filter(rd,rd#(##for i:ss_rank(rd) do
+ if labels[i] !=1 and is_prime(labels[i]) then [subgroup_by_simple(rd, delete(sr,i)#alpha)] else [] fi od)) fi
 
 
 {given nonsimple RootDatum rd=rd_1 * ... * rd_n
@@ -392,6 +398,9 @@ set pseudo_Levi_subgroups(RootDatum rd,[RootDatum] subs)=[RootDatum]:
 select the pseudo-Levis}
 set pseudo_Levi_subgroups(RootDatum rd)=[RootDatum]:
 pseudo_Levi_subgroups(rd,subgroups(rd))
+
+set strict_pseudo_Levi_subgroups(RootDatum rd)=[RootDatum]:
+##for L in pseudo_Levi_subgroups(rd) do if not is_Levi(rd,L) then [L] else [] fi od
 
 {test sub_rd_1 is W(rd)-conjugate to a subgroup of sub_rd_2}
 set is_contained(RootDatum rd,RootDatum sub_rd_1,RootDatum sub_rd_2)=bool:

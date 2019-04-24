@@ -396,14 +396,35 @@ let ad=affine_datum(rd) then
 (w_dom,)=affine_make_dominant(w,ad) in
 first(for z in action_fundamental_group(v_dom,ad) do z=w_dom od)>=0
 
+{rd is reductive, v,w ratvecs -> semisimple elements s,t
+s is G-conjugate to t <=>
+v -> v_dom via the affine Weyl group W_aff=W\rtimes R^vee
+ v_dom is in the fundamental alcove for the action of W_aff
+ i.e. <v_dom,alpha>\ge 0 for all simple roots and <v_dom,\beta><1
+ for all highest roots beta
+w -> w_dom also
+set L=lattice spanned by simple coroots and radical_basis(rd)
+ (the latter is a Z-basis of X_*(radical))
+If G_der is simply connected the condition is
+ v_dom-w_dom \in L
+In general there is an additional term from
+ the finite group X_*/L
+So a set {v_i} in X_* representing X_*/L
+Then the condition is
+v_dom -w_dom + v_i \in L for some v_i
+}
+
 set is_semisimple_element_conjugate(ratvec v,ratvec w,RootDatum rd)=
-let rhat=lie_radical_hat(rd) in
-if not is_integer(v*rhat- w*rhat) then false
-else
-let (rdmod,M)=rd.mod_central_torus_info in 
-is_semisimple_element_conjugate_in_semisimple(M*v,M*w,rdmod) fi
-
-
+if is_abelian(rd) then is_integer(v-w) else
+let ad=affine_datum(rd) then
+(v_dom,)=affine_make_dominant(v,ad) then
+(w_dom,)=affine_make_dominant(w,ad) then
+L=simple_coroots(rd)##radical_basis(rd) then
+rad=radical_basis(rd) then
+(vecs,orders)=filter_units(adapted_basis(L)) then
+Omega=if #vecs=0 then [null(rank(rd))] else  vecs*box(orders) fi in
+any(for z in Omega do in_lattice(rad,v_dom-w_dom) od)
+fi
 
 {the first value returned is the list of indices of chosen ratvecs}
 set semisimple_conjugacy_class_reps(RootDatum rd,[ratvec] S)=([int],[ratvec]):
@@ -412,16 +433,3 @@ indices=[0] in
 for i:#S-1 from 1 do
  if none(for v in rv do is_semisimple_element_conjugate(S[i],v,rd) od) then rv#:=S[i];indices#:=i fi od;
  (sort(indices),rv)
-
-
-
-
-
-
-
-
-{
-set rd=Sp(4)
-set ad=affine_datum(rd)
-set v=[10,0]
-}

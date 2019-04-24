@@ -18,6 +18,11 @@ set_type
 
 set complex_nilpotent (RootDatum rd, vec H) = ComplexNilpotent: (rd,(),H)
 
+{complex orbit; list of orders of conjugacy classes;
+for each conjugacy class a list of pairs (L,[ratvec])
+L is a pseudo-Levi, and each ratvec is a semisimple element,
+each pair (L,ratvec) gives one conjugacy class in A(O)
+}
 set_type ComplexNilpotentComponentDatum= (ComplexNilpotent orbit,[int] orders,[(RootDatum,[ratvec])] pairs)
 
 {. Two complex nilpotent orbits are equal if the root data are, and
@@ -665,7 +670,6 @@ for (L,H_L) in pseudo_Levis (rd,(),H) do
  Z_Lmod=elements_of_center(Lmod) {center of L/Z(L)^0} then
  L_rad=radical_basis(L) {central torus} then
  (,M)=Levi_of_subspace(rd,L_rad) {centralizer of L_rad} then
-
 { A=simple_coroots(L)*inverse(mat_as_ratmat(simple_coroots(Lmod))) then}
  { Z_Lmod_lifted=for v in ratmat_to_bigmat(A*Z_Lmod) do ratvec:v  od {convert ratmat to list of ratvecs}  then}
  {cut down Z_Lmod to those elements satisfying Cent_G(tZ(L)^0)=L}
@@ -680,9 +684,11 @@ for (L,H_L) in pseudo_Levis (rd,(),H) do
  Z_Lmod_reg_lifted=for v in Z_Lmod_reg do lift(L,v) od then
  {need to use the Levi defined by H_L (not H itself) for computing conjugacy}
  (,Levi_H_L)=Levi_of_coweight(rd,H_L) then
-{ ()=prints("Levi_H_L=",Levi_H_L," ", simple_roots(Levi_H_L)) then}
-{  ()=prints("Z_Lmod_reg_lifted:", Z_Lmod_reg_lifted) then}
- (indices,Z_Lmod_reg_lifted_cc)=semisimple_conjugacy_class_reps(Levi_H_L,Z_Lmod_reg_lifted) then
+{ ()=prints("Levi_H_L=",Levi_H_L," ", simple_roots(Levi_H_L)) then
+  ()=prints("Z_Lmod_reg_lifted:", Z_Lmod_reg_lifted) then
+  ()=prints("Levi_H_L:",Levi_H_L) then}
+  ()=prints(new_line,"L=",L, new_line, "M=",M) then
+ (indices,Z_Lmod_reg_lifted_cc)=semisimple_conjugacy_class_reps(M,Z_Lmod_reg_lifted) then
 { ()=prints("Z+Lmod_reg_lifted_cc: ", Z_Lmod_reg_lifted_cc) then}
  Z_Lmod_reg_cc=for i in indices do Z_Lmod_reg[i] od in
  (L,Z_Lmod,Z_Lmod_reg,Z_Lmod_reg_lifted,Z_Lmod_reg_cc)
@@ -695,6 +701,7 @@ then orders=## for (a,b,c,d,S) in g do for v in S do denom(v) od od in
 
 set conjugacy_class_orders(ComplexNilpotent O)=O.component_datum.orders
 set number_conjugacy_classes_component_group(ComplexNilpotent O)=#O.component_datum.orders
+set number_conjugacy_classes_A(ComplexNilpotent O)=#O.component_datum.orders
 
 set show(ComplexNilpotentComponentDatum d)=void:
    let header=["pseudo_Levi","Generators"] in
@@ -702,7 +709,7 @@ set show(ComplexNilpotentComponentDatum d)=void:
    for (L,S) in d.pairs do
    [L.derived.nice_format,S.to_string] od in 
    prints("Component info for orbit:",new_line,"H=", d.orbit.H_of_triple, " diagram:", d.orbit.diagram, " dim:", d.orbit.dim_nilpotent);
-prints(d.orders);
+prints("orders of conj. classes:",d.orders);
    tabulate(header#values)
 
 set print_component_info (ComplexNilpotent O)=void:
