@@ -1,0 +1,126 @@
+set tri(int n)=rat_as_int(n*(n+1)/2)
+
+{number of conjugacy class in the Weyl group}
+set cc_BC(int n)=int:if =n then 1 else #conjugacy_classes(Sp(2*n)) fi
+set cc_D(int n)=int:if  =n then 1 else #conjugacy_classes(SO(2*n)) fi
+
+{number of unipotent representations over the finite field}
+set number_unipotents_BC(int n)=int:
+let i=0 in
+sum(while 2*tri(i)<=n do i+:=1;
+{prints(i," ",2*n-2*tri(i-1), " ",cc_BC(n-tri(i-1)));}
+cc_BC(n-2*tri(i-1)) od)
+
+{number of unipotent representations over the finite field}
+set number_unipotents_D(int n)=int:
+let i=0 in
+sum(while 4*i^2<=n do i+:=1;
+{prints(i," ",n-4*(i-1)^2, " ",cc_D(n-4*(i-1)^2));}
+cc_D(n-4*(i-1)^2) od)
+
+{number of unipotent representations over finite field}
+set number_unipotents_simple(RootDatum rd)=
+assert(is_simple(rd.derived),"Derived root datum is not simple");
+if is_abelian(rd) then 1 else
+let (type,rank)=rd.Lie_type.simple_factors[0] in
+{ascii(type)=A:65,...G:71
+ascii(type)-65=0,...,6}
+case ascii(type)-65
+ in
+  #partitions(rank+1),{A}
+  number_unipotents_BC(rank),      {B}
+  number_unipotents_BC(rank),	   {C}
+  number_unipotents_D(rank),	   {D}
+  case rank-6 in 30,76,166 esac, {E}
+  37, {F}
+  10  {G}
+esac
+fi
+
+{number unipotents in non-simple case}
+set number_unipotents(RootDatum rd)=
+let n=1 in
+ for f in simple_factors(rd) do n*:=number_unipotents_simple(f) od;n
+
+{mainly for testing:}
+set print_number_unipotents(int n)=
+prints("number of conjugacy classes in  W(SL(n)):");
+for i:n from 1 do prints("n:",i, " ", #conjugacy_classes(SL(i))) od;
+prints("number of unipotent representations of SL(n):");
+for i:n from 1 do prints("n:",i, " ", number_unipotents(SL(i))) od;
+prints("number of conjugacy classes in  W(Sp(2n)):");
+for i:n+1  do prints("2n:",2*i, " ", #conjugacy_classes(Sp(2*i))) od;
+prints("number of unipotent representations of Sp(2n):");
+for i:n from 1 do prints("2n:",2*i, " ", number_unipotents(Sp(2*i))) od;
+prints("number of conjugacy classes in  W(SO(2n)):");
+for i:n+1 do prints("2n:", 2*i, " ", #conjugacy_classes(SO(2*i))) od;
+prints("number of unipotent representations of SO(2n)):");
+for i:n+1  do prints("2n:",2*i, " ", number_unipotents(SO(2*i))) od;
+prints("number of unipotent representations of G2: ",number_unipotents(simply_connected(G2)));
+prints("number of unipotent representations of F4: ",number_unipotents(simply_connected(F4)));
+prints("number of unipotent representations of E6: ",number_unipotents(simply_connected(E6)));
+prints("number of unipotent representations of E7: ",number_unipotents(simply_connected(E7)));
+prints("number of unipotent representations of E8: ",number_unipotents(simply_connected(E8)))
+
+set count_orbits_and_centralizers(RootDatum rd)=
+let sum=0 then
+d=##for L in strict_pseudo_Levi_subgroups(rd) do
+ if not is_abelian(L) then
+  [(L,##for O in complex_nilpotent_orbits (L) do
+    let orders=O.conjugacy_class_orders in
+        sum+:=#orders;[(O,orders)] od)]
+  else []
+fi od in (sum,d)
+
+set show_count_orbits_and_centralizers((int,[(RootDatum,[(ComplexNilpotent,[int])])]) d)=void:
+let (sum,a)=d in
+tabulate(["L","sum"]#for (L,pairs) in a do
+ [L.derived.nice_format,sum(for (,orders) in pairs do #orders od).to_string] od
+#["Total",sum.to_string]);
+prints();tabulate(["L","diagram","dim","[A(O)]","|[A(O)]|"]#
+##for (L,pairs) in a do
+ for (O,orders) in pairs do
+ [L.derived.nice_format,O.diagram.to_string,O.dim_nilpotent.to_string,orders.to_string,(#orders).to_string] od od )
+
+set show_count_orbits_and_centralizers(RootDatum rd)=show_count_orbits_and_centralizers(count_orbits_and_centralizers(rd))
+
+set count_unipotents(RootDatum rd)=
+let rv=for L in strict_pseudo_Levi_subgroups(rd) do
+(L,number_unipotents(L)) od in
+(sum(for (,n) in rv do n od),rv)
+
+set show_count_unipotents(RootDatum rd)=
+let (n,pairs)=count_unipotents(rd) in
+prints("total:",n);
+tabulate(
+for (L,k) in pairs do [L.derived.nice_format,k.to_string] od)
+
+set orbits_and_unipotents(RootDatum rd)=
+let rv=for L in pseudo_Levi_subgroups(rd) do
+if is_abelian(L) then (L,0,0) else
+(L,
+sum(for O in complex_nilpotent_orbits (L) do #O.conjugacy_class_orders od),
+number_unipotents(L)) fi od then
+orbs=sum(for (,n,) in rv do n od)  then
+reps=sum(for (,,n) in rv do n od) in
+prints("unipotent reps: ", reps);
+prints("orbits/component groups: ",orbs);
+tabulate(["L","rep","orb","diff"]#
+ for (L,a,b) in rv do [L.derived.nice_format,b.to_string,a.to_string,(b-a).to_string] od
+ #["",reps.to_string,orbs.to_string,(reps-orbs).to_string])
+
+set orbits_and_unipotents_strict(RootDatum rd)=
+let rv=for L in rd#strict_pseudo_Levi_subgroups(rd) do
+if is_abelian(L) then (L,0,0) else
+(L,
+sum(for O in complex_nilpotent_orbits (L) do #O.conjugacy_class_orders od),
+number_unipotents(L)) fi od then
+orbs=sum(for (,n,) in rv do n od)  then
+reps=sum(for (,,n) in rv do n od) in
+prints("unipotent reps: ", reps);
+prints("orbits/component groups: ",orbs);
+tabulate(["L","rep","orb","diff"]#
+ for (L,a,b) in rv do [L.derived.nice_format,b.to_string,a.to_string,(b-a).to_string] od
+ #["",reps.to_string,orbs.to_string,(reps-orbs).to_string])
+
+

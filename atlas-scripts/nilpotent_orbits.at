@@ -687,7 +687,7 @@ for (L,H_L) in pseudo_Levis (rd,(),H) do
 { ()=prints("Levi_H_L=",Levi_H_L," ", simple_roots(Levi_H_L)) then
   ()=prints("Z_Lmod_reg_lifted:", Z_Lmod_reg_lifted) then
   ()=prints("Levi_H_L:",Levi_H_L) then}
-  ()=prints(new_line,"L=",L, new_line, "M=",M) then
+{  ()=prints(new_line,"L=",L, new_line, "M=",M) then}
  (indices,Z_Lmod_reg_lifted_cc)=semisimple_conjugacy_class_reps(M,Z_Lmod_reg_lifted) then
 { ()=prints("Z+Lmod_reg_lifted_cc: ", Z_Lmod_reg_lifted_cc) then}
  Z_Lmod_reg_cc=for i in indices do Z_Lmod_reg[i] od in
