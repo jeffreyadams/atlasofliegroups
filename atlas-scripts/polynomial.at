@@ -146,7 +146,7 @@ set - (rat_poly(X,a,), rat_poly(,b,)) = rat_poly:
   esac
 , () { dummy }
 )
-set convolve ([rat]a,[rat]b) = [rat]: { the heart of polynomial mulitplication }
+set convolve ([rat]a,[rat]b) = [rat]: { the heart of polynomial multiplication }
 (  let da=#a-1
    then result = for :da do rat:0 od ## (let c=a~[0] in for bi in b do c*bi od)
 in for i:da do let c=a[i] in for bj@j in b do result[i+j]+:=c*bj od od
