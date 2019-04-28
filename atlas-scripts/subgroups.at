@@ -569,3 +569,26 @@ let values=
  }
 
 
+set normalizer_report(RootDatum rd)=void:
+prints(new_line,"subgroups of " + rd.nice_format +
+if rd.scad !="" then " (" + rd.scad + ")"  else "" fi);
+tabulate(["L","Diag","Out","Norm","diff"]#
+for L@i in subgroups(rd) do
+ let d=diagram_automorphisms(L) then
+ out=outer_automorphism_group(L.derived) then
+ norm= normalizer(L,rd,out) then
+ diff_string = if #out=#norm then "" else (#out\#norm).to_string fi in
+ [L.derived.nice_format, (#d).to_string,(#out).to_string,(#norm).to_string,diff_string]
+od)
+
+set normalizer_reports()=
+let rds=[
+simply_connected(G2),
+simply_connected(F4),
+simply_connected(E6),
+adjoint(E6),
+simply_connected(E7),
+adjoint(E7){
+simply_connected(E8)}
+] in
+for rd in rds do normalizer_report(rd) od

@@ -2,7 +2,7 @@
   like factorials, binomial coefficients, generators of partitions and so on
 }
 
-<basic.at
+<misc.at
 <sort.at
 <lazy_lists.at { for |inf_list| type and related stuff }
 <groups.at { for root data computed by |GL|, |Sp|, |SO| }
@@ -42,9 +42,8 @@ set odd_places  ([int] v) = for i:floor(#v/2) do v[2*i+1] od
 
 set_type Partition = [int]   { list of decreasing parts, no trailing zeros }
 
-set strip_to_partition ([int] list) = Partition:
-   let i=0, nl=#list in while i<nl and =list~[i] do i+:=1 od; list[:i~]
-{ alternatively: |for x in list do if =x then break fi od| }
+{renamed delete_trailing_zeros and moved to misc.at}
+set strip_to_partition=delete_trailing_zeros@[int]
 
 set is_decreasing ([int] v) = bool: all(for i:#v-1 do v[i]>=v[i+1] od)
 

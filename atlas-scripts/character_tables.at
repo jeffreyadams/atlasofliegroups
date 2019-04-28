@@ -1,5 +1,7 @@
 <basic.at
 <combinatorics.at
+<tabulate.at
+<W_characters.at
 
 { Character table structure for Weyl groups (integer valued characters) }
 
@@ -7,7 +9,9 @@
 
 set_type
 [ character_table =
-  ( int order { of the finite group }
+  ( LieType lie_type
+  , int order { of the finite group }
+  , (int -> Partition) class_partition {only in type A; want partition itself not just string}
   , (int->string) class_label
   , (int->int) class_element_order
   , (int,int->int) class_power
@@ -18,16 +22,40 @@ set_type
   )
 ]
 
+set rank(character_table t)=t.lie_type.rank
 set n_classes (character_table t) = int: #t.class_sizes
 set irrep_dimension (character_table t) = (int i) int: t.table[i,0]
+set character(character_table t)=(int->[int]):(int i):(^t.table)[i]
 
-set scalar_product (character_table t) = (int i0, int i1) rat:
-   let tab=t.table in
-   for j: t.n_classes do tab[i0,j]*tab[i1,j]*t.class_sizes[j] od.sum/t.order
+set scalar_product (character_table ct) = (int i0, int i1) rat:
+   let tab=ct.table in
+   for j: ct.n_classes do tab[i0,j]*tab[i1,j]*ct.class_sizes[j] od.sum/ct.order
 
-set check_orthogonality (character_table t) = bool:
-   let n=t.n_classes, dot=t.scalar_product in
+set check_orthogonality (character_table ct) = bool:
+   let n=ct.n_classes, dot=ct.scalar_product in
    for i:n do for j:n do dot(i,j) = #(i=j) od.all od.all
+{
+set reflection(character_table ct)=[int]:
+for w in ct.class_reps do w.matrix.trace od
+}
+set show_classes(character_table ct)=void:
+tabulate(
+ ["class","order","|cent|","class_size"]# for i:#ct.table do
+[ct.class_label(i),ct.class_element_order(i).to_string, ct.centralizer_orders[i].to_string,ct.class_sizes[i].to_string] od)
+
+set show_reps(character_table ct)=void:
+tabulate(
+["rep name","dimension","character"]#
+for i:ct.n_classes do
+[ct.irreducible_label(i),ct.irrep_dimension(i).to_string,ct.character(i).to_string] od)
+
+set inner_product(character_table ct)=((vec,vec)->int):(vec v,vec w):
+rat_as_int(sum(for i:ct.n_classes do v[i]*w[i]*ct.class_sizes[i] od)/ct.order)
+
+set decompose(character_table ct)=(vec->vec):(vec v):
+for i:#ct.table do ct.inner_product(v,ct.character(i)) od
+
+set W_class_table(character_table ct)=WeylClassTable:W_class_table(simply_connected(ct.lie_type))
 
 set character_table_S(int n) = character_table:
   let order=n.fac, partitions_n = partitions(n)
@@ -35,7 +63,9 @@ set character_table_S(int n) = character_table:
   , c_orders=for lambda in partitions_n do cycle_centralizer_order(lambda) od
   , class_or_irrep_string (int j) = string: partitions_n[j].to_string
 in
-  ( order
+  ( Lie_type(SL(n))
+  , order
+  , (int j) Partition: partitions_n[j]
   , class_or_irrep_string
   , (int j) int: partitions_n[j].cycle_type_order
   , (int j, int p) int: cycle_power(partitions_n[j],p).index
@@ -47,6 +77,8 @@ in
     do for cycles in partitions_n do Murnaghan_Nakayama(lambda,cycles) od
     od
   )
+
+set character_table_A(int n) = character_table:character_table_S(n+1)
 
 set sign_string (bool s) = string: if s then "-" else "+" fi
 set parts_string (Partition lambda) = string: lambda.to_string[1:1~]
@@ -69,7 +101,9 @@ set character_table_H(int n) = character_table:
   , c_orders = for type in class do type.cycle_centralizer_order od
   , sign(bool s) = string: if s then "-" else "+" fi
 in
-  ( order
+  ( Lie_type(Sp(2*n))
+  , order
+  , (int j) Partition:[] {only used in type A}
   , (int j) string: { class_label } class[j].cycles_string
   , (int j) int: class[j].cycle_type_order
   , (int j, int p) int: cycle_power(class[j],p).index
@@ -110,7 +144,9 @@ set character_table_D(int n) = character_table:
   , c_orders = for C in class do C.centralizer_order od
   , sign(bool s) = string: if s then "-" else "+" fi
 in
-  ( order
+  ( Lie_type(SO(2*n))
+  , order
+  , (int j) Partition:[] {only used in type A}
   , (int j) string: { class_label }
     case class[j]
     | cycles.unsplit_class: cycles.cycles_string

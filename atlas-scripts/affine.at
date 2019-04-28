@@ -2,6 +2,8 @@
 <lietypes.at
 <synthetic.at
 <K.at
+<center.at
+<group_operations.at
 
 {affine Weyl groups, for now only the case of a simple RootDatum}
 

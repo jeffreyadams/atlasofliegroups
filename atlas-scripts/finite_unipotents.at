@@ -1,3 +1,9 @@
+<W_characters.at
+<simple_factors.at
+<group_operations.at
+<subgroups.at
+<nilpotent_orbits.at
+
 set tri(int n)=rat_as_int(n*(n+1)/2)
 
 {number of conjugacy class in the Weyl group}

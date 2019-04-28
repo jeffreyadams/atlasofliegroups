@@ -111,3 +111,10 @@ set rec_fun box([int] heights) = [[int]]:
 
 set flatten = ## @ [[int]]
 
+{formerly defined in combinatorics.at as strip_to_partition@[int]}
+{delete trailing zeros}
+set delete_trailing_zeros([int] list)=[int]:
+   let i=0, nl=#list in while i<nl and =list~[i] do i+:=1 od; list[:i~]
+{ alternatively: |for x in list do if =x then break fi od| }
+
+
