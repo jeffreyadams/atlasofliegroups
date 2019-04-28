@@ -1,0 +1,133 @@
+<character_tables.at
+<group_operations.at
+<subgroups.at
+<matrix.at {kronecker}
+
+set is_type_A(character_table ct)=bool:
+let sf=simple_factors(ct.lie_type) then
+(type,)=sf[0] in 
+#sf=1 and type="A"
+
+
+{assuming ct is of type A_n
+Levi_vector(ct,i): i -> partitions(n)[i]
+is the name of a conjugacy class,
+the Levi of this cc a product of type A's
+represented by [a_1,...,a_r] <-> (A_1)^{a_1}x...x(A_r)^{a_r}
+This is the first column of levi(class).Lie_type_matrix
+with trailing 0's truncated
+if w\in W this is
+let (,L)=w.Levi_of_w in L.Lie_type_matrix
+}
+
+{Type S_n/A_{n+1} from here on }
+
+{Levi vector of the i^th class in S_n}
+set Levi_vector(character_table ct,int i)=
+assert(ct.is_type_A,"character table not of type A");
+let P=ct.class_partition(i) then
+rv=null(16) in
+for j in P do rv[j-1]+:=1 od;
+delete_trailing_zeros(delete(rv,0))
+
+{look up actual Weyl group element for given class in character_table
+depends on the type
+currently: only A_n/S_{n+1}
+}
+
+set lookup_class_in_W_class_table(character_table ct,int i,WeylClassTable wct)=int:
+assert(ct.is_type_A,"character table not of type A");
+let v=Levi_vector(ct,i) in
+first(for w in wct.class_representatives()  do
+let (,L)=w.Levi_of_w in v=delete_trailing_zeros(L.Lie_type_matrix[0]) od)
+
+set lookup_class_in_W_class_table(character_table ct,int i,WeylClassTable wct)=int:
+lookup_class_in_W_class_table(ct,i,wct)
+
+set map_classes(character_table ct,WeylClassTable wct)=[int]:
+for i:ct.n_classes do lookup_class_in_W_class_table(ct,i,wct) od
+
+{if wct not given construct it from ct.lie_type}
+set lookup_class_in_W_class_table(character_table ct,int i)=int:
+let wct=ct.W_class_table in lookup_class_in_W_class_table(ct,i,wct)
+
+set lookup_class_in_W_class_table(character_table ct,int i)=int:
+let wct=ct.W_class_table in lookup_class_in_W_class_table(ct,i,wct)
+
+set map_classes(character_table ct)=[int]:
+let wct=ct.W_class_table in 
+for i:ct.n_classes  do lookup_class_in_W_class_table(ct,i,wct) od
+
+set class_reps(character_table ct,WeylClassTable wct)=[WeylElt]:
+assert(ct.is_type_A,"character table not of type A");
+for i in map_classes(ct,wct) do wct.class_representatives()[i] od
+
+set class_reps(character_table ct)=[WeylElt]:
+class_reps(ct,ct.W_class_table)
+
+set class_rep(character_table ct,WeylClassTable wct)=(int->WeylElt):(int i):
+class_reps(ct,wct)[i]
+
+set class_rep(character_table ct)=(int->WeylElt):(int i):
+class_rep(ct,ct.W_class_table)(i)
+
+set reflection(character_table ct)=[int]:
+for i:ct.n_classes do ct.class_rep(i).matrix.trace od
+
+
+
+set character_table_SxS(int n) = character_table:
+let ct_0=character_table_S(n) then
+    N=ct_0.n_classes then
+    order=fac(n)*fac(n),
+    {
+     X={0,1,...,N^2-1}
+     Y={(i,j)| 0<=i,j<=N-1}
+     f:X->Y, g:Y->X are inverse bijections
+     application: N=|S_n|
+     }
+    f=(int->(int,int)):(int a):(a\N,a%N) then
+    g=((int,int)->int):(int a,int b):a*N+b then
+    order=ct_0.order^2 then
+    class_label=(int->string):(int n):let (i,j)=f(n) in
+      ct_0.class_label(i)+":"+ct_0.class_label(j) then
+    class_element_order=(int->int):(int n):let (i,j)=f(n) in
+     lcm(ct_0.class_element_order(i),ct_0.class_element_order(j)) then
+    class_power=((int,int)->int):(int index,int power):
+     {index -f-> pair of indices (i,j) ->
+                 pair(class_power(i,n), class_power(j,n) ->
+	         -g-> single index <=N^2-1}
+    let (i,j)=f(index) in g(ct_0.class_power(i,n),ct_0.class_power(j,n)) then
+    centralizer_orders=[int]: for n:N^2 do let (i,j)=f(n) in
+      ct_0.centralizer_orders[i]*ct_0.centralizer_orders[j] od then
+    class_sizes=[int]: for n:N^2 do let (i,j)=f(n) in
+      ct_0.class_sizes[i]*ct_0.class_sizes[j] od then
+    irreducible_label=(int->string):(int n):let (i,j)=f(n) in
+      ct_0.irreducible_label(i)+":"+ct_0.irreducible_label(j) in
+    ((SL(n)*SL(n)).Lie_type,
+    order,
+    (int j) Partition: partitions(n)[j],
+    class_label,
+    class_element_order,
+    class_power,
+    centralizer_orders,
+    class_sizes,
+    irreducible_label,
+    kronecker_product(ct_0.table,ct_0.table)
+   )
+
+{assume character_table is of type S_n
+ WeylCharacterTable <->RootDatum.derived of type A_{n+1}
+  convert the i^th character of the character_table,
+ i.e. the i^th row of ^ct.character_table,
+ to the [int] giving this character in WeylCharacterTable
+}
+{
+set convert_character(character_table ct,int i,WeylClassTable wct)=
+let j=lookup_class_in_W_class_table(ct.n,i,wct) in (^ct.table)[j]
+}
+
+
+
+
+
