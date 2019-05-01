@@ -3,6 +3,17 @@
 <tabulate.at
 <W_characters.at
 
+{define sum and product of [int] corresponding to direct
+sum and tensor product of characters}
+set sum([int] v,[int] w)=
+assert(#v=#w,"not same size");for i:#v do v[i]+w[i] od
+
+set product([int] v,[int] w)=
+assert(#v=#w,"not same size");for i:#v do v[i]*w[i] od
+set tensor=product@([int],[int])
+
+set tensor_power([int] v,int power)=[int]: for x in v do x^power od
+
 { Character table structure for Weyl groups (integer valued characters) }
 
 { The structure below was inspired by the way GAP represents character tables }
@@ -11,13 +22,14 @@ set_type
 [ character_table =
   ( LieType lie_type
   , int order { of the finite group }
-  , (int -> Partition) class_partition {only in type A; want partition itself not just string}
+  , (int ->[(Partition,vec)]) partitions_and_signs
   , (int->string) class_label
   , (int->int) class_element_order
   , (int,int->int) class_power
   , [int] centralizer_orders
   , [int] class_sizes
   , (int->string) irreducible_label
+  , [int] refl_char
   , mat table { by row=character }
   )
 ]
@@ -27,17 +39,28 @@ set n_classes (character_table t) = int: #t.class_sizes
 set irrep_dimension (character_table t) = (int i) int: t.table[i,0]
 set character(character_table t)=(int->[int]):(int i):(^t.table)[i]
 
+{tensor product of two rows of character table}
+set tensor(character_table t)=(int,int->[int]):(int i,int j):
+product(t.character(i),t.character(j))
+set tensor_power(character_table t)=(int,int->[int]):(int i,int power):
+for x in t.character(i) do x^power od
+
+{sum of two rows of character table}
+set sum(character_table t)=(int,int->[int]):(int i,int j):
+sum(t.character(i),t.character(j))
+
 set scalar_product (character_table ct) = (int i0, int i1) rat:
    let tab=ct.table in
    for j: ct.n_classes do tab[i0,j]*tab[i1,j]*ct.class_sizes[j] od.sum/ct.order
 
+{different name for use with [int],[int] arguments}
+set inner_product(character_table ct)=(([int],[int])->int):([int] v,[int] w):
+rat_as_int(sum(for i:ct.n_classes do v[i]*w[i]*ct.class_sizes[i] od)/ct.order)
+
 set check_orthogonality (character_table ct) = bool:
    let n=ct.n_classes, dot=ct.scalar_product in
    for i:n do for j:n do dot(i,j) = #(i=j) od.all od.all
-{
-set reflection(character_table ct)=[int]:
-for w in ct.class_reps do w.matrix.trace od
-}
+
 set show_classes(character_table ct)=void:
 tabulate(
  ["class","order","|cent|","class_size"]# for i:#ct.table do
@@ -49,8 +72,7 @@ tabulate(
 for i:ct.n_classes do
 [ct.irreducible_label(i),ct.irrep_dimension(i).to_string,ct.character(i).to_string] od)
 
-set inner_product(character_table ct)=((vec,vec)->int):(vec v,vec w):
-rat_as_int(sum(for i:ct.n_classes do v[i]*w[i]*ct.class_sizes[i] od)/ct.order)
+
 
 set decompose(character_table ct)=(vec->vec):(vec v):
 for i:#ct.table do ct.inner_product(v,ct.character(i)) od
@@ -60,22 +82,23 @@ set W_class_table(character_table ct)=WeylClassTable:W_class_table(simply_connec
 set character_table_S(int n) = character_table:
   let order=n.fac, partitions_n = partitions(n)
   then index = index_partition(partitions_n)
-  , c_orders=for lambda in partitions_n do cycle_centralizer_order(lambda) od
+  , c_orders=for lambda in partitions_n do cycle_centralizer_order(lambda) od 
   , class_or_irrep_string (int j) = string: partitions_n[j].to_string
+  , table=#partitions_n ^ { gather rows of this size: }
+    for lambda in partitions_n
+    do for cycles in partitions_n do Murnaghan_Nakayama(lambda,cycles) od od
 in
   ( Lie_type(SL(n))
   , order
-  , (int j) Partition: partitions_n[j]
+  , (int j) [(Partition,vec)]: [(partitions_n[j],vec:[])] {no signs}
   , class_or_irrep_string
   , (int j) int: partitions_n[j].cycle_type_order
   , (int j, int p) int: cycle_power(partitions_n[j],p).index
   , c_orders
   , for co in c_orders do order\co od
   , class_or_irrep_string
-  , #partitions_n ^ { gather rows of this size: }
-    for lambda in partitions_n
-    do for cycles in partitions_n do Murnaghan_Nakayama(lambda,cycles) od
-    od
+  , (^table)[first(for P in partitions_n do P=[n-1,1] od)]
+  , table
   )
 
 set character_table_A(int n) = character_table:character_table_S(n+1)
@@ -103,7 +126,7 @@ set character_table_H(int n) = character_table:
 in
   ( Lie_type(Sp(2*n))
   , order
-  , (int j) Partition:[] {only used in type A}
+  , (int j) [(Partition,vec)]: [([],[])] {do this later}
   , (int j) string: { class_label } class[j].cycles_string
   , (int j) int: class[j].cycle_type_order
   , (int j, int p) int: cycle_power(class[j],p).index
@@ -112,6 +135,7 @@ in
   , (int i) string: { irreducible representation label }
     let (mu,lambda)=irred[i] { mu for the sign character} in
        "{" ## lambda.parts_string ## " | " ## mu.parts_string ## "}"
+  , [int]:[] {reflection character, do this later}
   , #class ^ { gather rows of this size: }
     for pair in irred
     do for cycle_type in class do hyperoctahedral_character(pair,cycle_type) od
@@ -146,7 +170,7 @@ set character_table_D(int n) = character_table:
 in
   ( Lie_type(SO(2*n))
   , order
-  , (int j) Partition:[] {only used in type A}
+  , (int j) [(Partition,vec)]: [([],[])] {do this later}
   , (int j) string: { class_label }
     case class[j]
     | cycles.unsplit_class: cycles.cycles_string
@@ -163,6 +187,7 @@ in
     | (mu,s).split_irr:
       "{" ## mu.parts_string ## " | " ## mu.parts_string ## "}" ## s.sign_string
     esac
+  , [int]:[] {reflection character, do this later}
   , #class ^ { gather rows of this size: }
     for chi in irred do for C in class do Dn_character(chi,C) od od
   )
