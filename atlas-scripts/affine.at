@@ -425,7 +425,10 @@ L=simple_coroots(rd)##radical_basis(rd) then
 rad=radical_basis(rd) then
 (vecs,orders)=filter_units(adapted_basis(L)) then
 Omega=if #vecs=0 then [null(rank(rd))] else  vecs*box(orders) fi in
-any(for z in Omega do in_lattice(rad,v_dom-w_dom) od)
+any(for z in Omega do
+{Note: not enough to do: in_lattice(rad,v_dom+z-w_dom)}
+let (y,)=affine_make_dominant(v_dom+z, ad) in 
+in_lattice(rad,y-w_dom) od)
 fi
 
 {the first value returned is the list of indices of chosen ratvecs}
