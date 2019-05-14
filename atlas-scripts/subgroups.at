@@ -3,6 +3,7 @@
 <center.at
 <poset.at
 <number_theory.at {for is_prime}
+<weyl_character_formula.at {for centralizer@(RootDatum,ratvec)}
 {
   The functions deal with constructing Levi systems cut out by various linear
   conditions (being orthogonal to a given set of coroots), and their root data.
@@ -107,6 +108,9 @@ set normalizer (RootDatum rd,[vec] set_of_roots) = [WeylElt]:
 {for testing}
 set stabilizer_elementary (RootDatum rd, ratvec gamma) = [WeylElt]:
   ##(for w in W(rd) do if w*gamma=gamma then [w] else  [] fi od)
+
+
+
 
 { subgroup orthgonal to a set of roots}
 set orthogonal_subgroup (RootDatum rd, [vec] S) = (bool,RootDatum):
@@ -389,6 +393,18 @@ set is_pseudo_Levi(RootDatum rd,RootDatum rd_L)=bool:
 all(for i:number_simple_factors(rd) do
 is_pseudo_Levi_in_simple(simple_factor(rd,i),project_on_simple_factor(rd,rd_L,i)) od)
 
+
+{semisimple element t so that L=Cent_G(t)^0}
+set regular_central_elements(RootDatum rd_L, RootDatum rd)=
+{assert(is_pseudo_Levi(rd,rd_L),"not a pseudo-Levi");}
+let Lmod=mod_central_torus(rd_L) then
+Z_Lmod=elements_of_center(Lmod) {center of L/Z(L)^0} then
+L_rad=radical_basis(rd_L) {central torus} then
+(,M)=Levi_of_subspace(rd,L_rad) {centralizer of L_rad} in
+##for v in Z_Lmod do if dimension(centralizer(M,lift(rd_L,v)))=rd_L.dimension then [v] else [] fi od 
+
+set regular_central_element(RootDatum rd_L, RootDatum rd)=regular_central_elements(rd_L,rd)[0]
+
 {if you've computed subgroups=subgroups(rd) already, run through these
 and select the pseudo_Levis. This works for any rd}
 set pseudo_Levi_subgroups(RootDatum rd,[RootDatum] subs)=[RootDatum]:
@@ -556,6 +572,8 @@ maximal_pseudo_levis=maximal_pseudo_Levis(rd) then
 prints("Computed Hasse diagram");
 sub_graph(h,rd,subs,levis,maximal_pseudo_levis)
 
+
+
 {
 {complex nilpotent obtained by saturating the principal orbit of subgroup}
 set complex_nilpotent(RootDatum rd,RootDatum sub)=ComplexNilpotent:
@@ -592,3 +610,23 @@ adjoint(E7){
 simply_connected(E8)}
 ] in
 for rd in rds do normalizer_report(rd) od
+
+set component_group_of_pseudo_Levi(RootDatum rd_L,RootDatum rd)=
+assert(is_pseudo_Levi(rd_L,rd),"Not a pseudo-Levi");
+if rd_L.is_abelian then [] else
+let (,M)=Levi_of_subspace(rd,radical_basis(rd_L)) {centralizer of L_rad} then
+norm=normalizer(rd_L,M) then
+center=elements_of_center(rd_L.derived) then
+center_lifted=for v in center do lift(rd_L,v) od then
+rv=[] in
+ for (m,w) in norm do
+  if all (for v in center_lifted do m*v=v od) then rv#:=(m,w) fi od;rv fi
+
+
+set centralizer(RootDatum rd_L,RootDatum rd)=[(mat,WeylElt)]:
+{assert(is_pseudo_Levi(rd_L,rd),"Not a pseudo-Levi");}
+let norm=normalizer(rd_L,rd) then
+rv=[(mat,WeylElt)]:[] then
+t=regular_central_element(rd_L,rd) in
+for (m,w) in norm do if m*t=t then rv#:=(m,w) fi od;rv
+

@@ -222,11 +222,30 @@ set is_center_cyclic(RootDatum rd)=bool:
 if rank(rd)=0 then true elif
 is_semisimple(rd) then #type_center(rd)<=1 else false fi
 
+{list of elements in center for rd semisimple}
 set elements_of_center(RootDatum rd)=[ratvec]:
 let Z=center(rd) in
  if #Z=0 then [null(rank(rd))] else let
 denoms= for i:#Z do let (,d)=%Z[i]  in d od in
 for v in ratmat_to_bigmat(Z.ratvecs_as_ratmat*box(denoms)) do ratvec:v od fi
+
+{Need a matrix A lifting an element of T/Z(G)^0 to T,
+i.e. satisfying:
+Gmod=G/Z^0
+A*simple_coroots(Gmod)=simple_coroots(G)
+ Gmod is semisimple so simple_coroots(Gmod) is (square and) invertible/Q
+ => A=simple_coroots(G)*inverse(simple_coroots(Gmod))
+ this is applied to L
+}
+set lift(RootDatum rd,ratvec v)=ratvec:
+ let rd_mod=mod_central_torus(rd) then
+ A=simple_coroots(rd)*inverse(mat_as_ratmat(simple_coroots(rd_mod))) in A*v
+
+
+{list of elements of center of derived group,
+ as elements of the original group}
+set elements_of_center_derived(RootDatum rd)=[ratvec]:
+for v in elements_of_center(rd.derived) do lift(rd,v) od
 
 {dually: the fundamental group of semisimple rd}
 
@@ -257,6 +276,8 @@ set lift(RootDatum rd,ratvec v)=ratvec:
 set relative_fundamental_group(RootDatum rd)=([vec],[int]):
 let (B,c)= fundamental_group(rd.mod_central_torus) in 
 (for v in B do ratvec_as_vec(lift(rd,v)) od,c)
+
+
 
 
 

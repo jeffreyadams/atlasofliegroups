@@ -652,18 +652,6 @@ set generators_of_Z_mod_Z_0 (RootDatum rd, RootDatum L) = [ratvec]:
         then result#:=v*inverse(w) fi od;
    result
 
-{Need a matrix A lifting an element of T/Z(G)^0 to T,
-i.e. satisfying:
-Gmod=G/Z^0
-A*simple_coroots(Gmod)=simple_coroots(G)
- Gmod is semisimple so simple_coroots(Gmod) is (square and) invertible/Q
- => A=simple_coroots(G)*inverse(simple_coroots(Gmod))
- this is applied to L
-}
-set lift(RootDatum rd,ratvec v)=ratvec:
- let rd_mod=mod_central_torus(rd) then
- A=simple_coroots(rd)*inverse(mat_as_ratmat(simple_coroots(rd_mod))) in A*v
-
 set generators_of_component_group (ComplexNilpotent (rd,(),H))=
 for (L,H_L) in pseudo_Levis (rd,(),H) do
  let Lmod=mod_central_torus(L) then
@@ -673,7 +661,8 @@ for (L,H_L) in pseudo_Levis (rd,(),H) do
 { A=simple_coroots(L)*inverse(mat_as_ratmat(simple_coroots(Lmod))) then}
  { Z_Lmod_lifted=for v in ratmat_to_bigmat(A*Z_Lmod) do ratvec:v  od {convert ratmat to list of ratvecs}  then}
  {cut down Z_Lmod to those elements satisfying Cent_G(tZ(L)^0)=L}
- Z_Lmod_reg=##for v in Z_Lmod do if dimension(centralizer(M,lift(L,v)))=L.dimension then [v] else [] fi od then
+{ Z_Lmod_reg=##for v in Z_Lmod do if dimension(centralizer(M,lift(L,v)))=L.dimension then [v] else [] fi od then}
+ Z_Lmod_reg=regular_central_elements(L,rd) then
  {we now have elements [s_1,...,s_n] of L/Z(L)^0
   lift these to [t_1,...,t_n] of G (not unique of course)
   keep one from each conjugacy class, say [t_i_1,...,t_i_r]
@@ -695,7 +684,7 @@ for (L,H_L) in pseudo_Levis (rd,(),H) do
 { ()=prints("indices:", indices) then
  ()=prints("Z+Lmod_reg_lifted_cc: ", Z_Lmod_reg_lifted_cc) then}
  Z_Lmod_reg_cc=for i in indices do Z_Lmod_reg[i] od in
- (L,Z_Lmod,Z_Lmod_reg,Z_Lmod_reg_lifted,Z_Lmod_reg_cc)
+ (L,Z_Lmod,Z_Lmod_reg,Z_Lmod_reg_lifted,Z_Lmod_reg_lifted_cc)
 od
 
 set component_datum(ComplexNilpotent O)=ComplexNilpotentComponentDatum:
@@ -731,7 +720,7 @@ set print_component_info_long (ComplexNilpotent O)=void:
 prints(new_line,"Component info for orbit:",new_line, "H=", O.H_of_triple, " diagram:", O.diagram, " dim:", O.dim_nilpotent);
 for (L,Z_Lmod,Z_Lmod_reg,Z_Lmod_reg_lifted,Z_Lmod_reg_cc) in generators_of_component_group(O) do
 prints(new_line,"L:",L.derived,new_line,"Z(L)/Z(L)^0: ",Z_Lmod,new_line,"Z(L)/Z(L)^0-reg: ",Z_Lmod_reg,new_line,"Z(L)/Z(L)^0-reg-lifted: ",
-Z_Lmod_reg_lifted,new_line,"Z(L)/Z(L)^0-cc: ",Z_Lmod_reg_cc) od
+Z_Lmod_reg_lifted,new_line,"Z(L)/Z(L)^0-reg-lifted-cc: ",Z_Lmod_reg_cc) od
 
 set print_component_info (RootDatum rd)=void:
    for orb in complex_nilpotent_orbits (rd) do prints();

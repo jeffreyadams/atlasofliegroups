@@ -3,6 +3,7 @@
 <lietypes.at  {for locally isomorphic}
 <group_operations.at
 
+
 {given two sub-root systems of rd find w
 taking one to the other
 
@@ -214,8 +215,9 @@ set standard_Levi_witness(RootDatum rd,RootDatum rd_L)=WeylElt:
 let w=maybe_conjugate(rd,rd_L,standard_Levi(rd,rd_L)) in
 assert(any(w), "Error finding standard_Levi_witness");req(w)
 
-{automorphisms given by permutations of simple roots/coroots}
-{automorphism of Lie algebra}
+{automorphisms given by permutations of simple roots/coroots
+automorphism of Lie algebra
+}
 set diagram_automorphisms(RootDatum rd)=[mat]:
 if rd.is_abelian then [] else
 let perms=symmetric_group(rd.ss_rank) then
@@ -233,14 +235,17 @@ let (,,d)=A*P*A_inverse in if d=1 then [P] else [] fi od fi
 
 set normalizer(RootDatum rd_L,RootDatum rd,[mat] outer_automorphisms)=[(mat,WeylElt)]:
 let A=simple_roots(rd_L) in
-##for P in diagram_automorphisms(rd_L) do
-{##for P in outer_automorphisms do}
+##for P in outer_automorphisms do
 let m=maybe_conjugate_strict(rd,A,A*P) in
 if any(m) then [(P,req(m))] else [] fi od
 
 set normalizer(RootDatum rd_L,RootDatum rd)=[(mat,WeylElt)]:
-let A=simple_roots(rd_L) in
-##for P in outer_automorphism_group(rd_L.derived) do
+let A=simple_roots(rd_L) then
+automorphisms=
+ if rd_L.is_semisimple then rd_L.outer_automorphism_group {if semsimple cut down to this}
+ else rd_L.diagram_automorphisms fi  {not semisimple try all diagram automorphisms}
+in
+##for P in automorphisms do
 let m=maybe_conjugate_strict(rd,A,A*P) in
 if any(m) then [(P,req(m))] else [] fi od
 
