@@ -1,6 +1,7 @@
 <W_characters.at
 <simple_factors.at
 <lietypes.at  {for locally isomorphic}
+<group_operations.at
 
 {given two sub-root systems of rd find w
 taking one to the other
@@ -150,6 +151,9 @@ fi
 set maybe_conjugate_strict(RootDatum rd,[vec] A,[vec] B)=maybe_a_conjugator:
 maybe_conjugate_strict(rd,[id_W(rd)],A,B)
 
+set is_conjugate_strict(RootDatum rd,[vec] A,[vec] B)=bool:
+any(maybe_conjugate_strict(rd,[id_W(rd)],A,B))
+
 {error if w doesn't exist}
 set conjugate_strict(RootDatum rd,[vec] A,[vec] B)=WeylElt:req(maybe_conjugate_strict(rd,[id_W(rd)],A,B))
 
@@ -209,3 +213,39 @@ sub_root_datum(rd,reps[index])
 set standard_Levi_witness(RootDatum rd,RootDatum rd_L)=WeylElt:
 let w=maybe_conjugate(rd,rd_L,standard_Levi(rd,rd_L)) in
 assert(any(w), "Error finding standard_Levi_witness");req(w)
+
+{automorphisms given by permutations of simple roots/coroots}
+{automorphism of Lie algebra}
+set diagram_automorphisms(RootDatum rd)=[mat]:
+if rd.is_abelian then [] else
+let perms=symmetric_group(rd.ss_rank) then
+C=rd.Cartan_matrix in
+##for P in perms do if P*C=C*P then [P] else [] fi od fi
+
+set outer_automorphism_group(RootDatum rd)=[mat]:
+if rd.is_abelian then [] else
+let A=simple_roots(rd) then
+A_inverse=rational_inverse(A) in
+##for P in diagram_automorphisms(rd) do
+let (,,d)=A*P*A_inverse in if d=1 then [P] else [] fi od fi
+
+set normalizer(RootDatum rd_L,RootDatum rd,[mat] outer_automorphisms)=[(mat,WeylElt)]:
+let A=simple_roots(rd_L) in
+##for P in outer_automorphisms do
+let m=maybe_conjugate_strict(rd,A,A*P) in
+if any(m) then [(P,req(m))] else [] fi od
+
+set normalizer(RootDatum rd_L,RootDatum rd)=[(mat,WeylElt)]:
+let A=simple_roots(rd_L) in
+##for P in outer_automorphism_group(rd_L.derived) do
+let m=maybe_conjugate_strict(rd,A,A*P) in
+if any(m) then [(P,req(m))] else [] fi od
+
+set scad(RootDatum rd)=string:
+if rd.is_simply_connected then "sc" elif
+rd.is_adjoint then "ad" else "" fi
+
+
+
+
+

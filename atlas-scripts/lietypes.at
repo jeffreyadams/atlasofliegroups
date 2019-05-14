@@ -90,6 +90,8 @@ let rv="" in
 {delete leading "+"}
 let chop="" in for i:#rv-1 from 1 do chop+:=rv[i] od;chop
 
+set nice_format(RootDatum rd)=string:rd.Lie_type.nice_format
+
 {types B2 and C2 are allowed, but not others
  such as C1, B1, D1,D2,D3,...
  so have to deal with B2=C2 as a special case

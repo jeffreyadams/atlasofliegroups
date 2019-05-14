@@ -45,6 +45,7 @@ set W_orbit_torus_element(RootDatum rd,ratvec v)=[ratvec]:
 
 { see centralizer@(KGBElt,ratvec) in K_highest_weights.at
   don't need x, and test is <alpha,v> is an integer
+  this returns the RootDatum of the Cent_G(exp(2\pi iv)^0
 }
 set centralizer(RootDatum rd,ratvec v) = RootDatum:
    let roots = columns_with((vec alpha): is_integer(alpha*v), posroots(rd))

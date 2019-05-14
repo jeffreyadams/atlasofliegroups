@@ -81,6 +81,13 @@ set is_monotone(Poset P,[int] f)=bool:
 assert(#P=#f,"f is not a permutation of P");
 all (##for i:#P do for j in P[i] do less(P,f[i],f[j]) od od)
 
+set subPoset(Poset P,[int] S)=
+let Q=closure(P) in
+for j in S do
+ let row=Q[j] in
+ ##for k in row do let index=find(S,k) in if index>=0 then [index] else [] fi od
+od
+
 {return a string which, when output to
 a file, can be processed by graphviz to produce a
 graph
@@ -137,3 +144,4 @@ graph(P,(int->string):(int i):labels[i])
 set show(Poset P)=void:
 let values=
 for row@i in P do [i.to_string,row.to_string] od in tabulate(values)
+

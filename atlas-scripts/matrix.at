@@ -85,5 +85,64 @@ set update_matrix_entry(mat M, int i, int j, int value)= mat:
 set add_to_matrix_entry(mat M, int i, int j, int value)= mat:
 update_matrix_entry(M,i,j,M[i][j]+value)
 
-{   convert LieType to a canonical 8x16 matrix, for testing local isomorphism  }
+{A: (m,n) matrix, m rows, n columns
+ B: (p,q) matrix  p rows, q columns
+recall:
+ in atlas A[i] is the i^th column
+ A[i][j]: j^th, i^th column
+ A[i,j]:  i^th, j^th column (the usual)
+
+So
+A=A[i,j] 0<=i<=p-1, 0<=j<=q-1
+B=B[k,l] 0<=k<=m-1, 0<=l<=n-1
+let
+K=A\otimes B of size (mp,nq)
+so
+K=K[x,y] with 0<= x <= mp-1, 0<= y <= nq-1
+
+K[pr+v,qs+w]=A[r,s]*B[v,w]
+where r<=m-1, v<=p-1 => pr+v<=p(m-1)+(p-1)=pm-1
+where s<=n-1, w<=q-1 => qs+w<=q(n-1)+(q-1)=qn-1
+inverting:
+K[x,y]=A[r,s]*B[v,w] where
+x=pr+v,r<=m-1, v<=p-1 => r=x\p, v=x%p
+y=qs+w,s<=n-1, w<=q-1 => r=y\q, w=y%q
+
+Conclusion:
+
+K[x,y]=A[x\p,y\q]*B[x%p,y%q]  (x<=mp-1, y<=nq-1)
+
+}
+
+set kronecker_product(mat A,mat B)=mat:
+let (m,n)=shape(A), {m rows, n columns}
+(p,q)=shape(B) in   {p rows, q columns}
+for y:n*q do
+ for x:m*p do
+{  prints("x:",x, " y:",y," x\p:",x\p, " y\q:",y\q, " x%p:",x%p, " y%q:",y%q);}
+  A[x\p,y\q]*B[x%p,y%q] od od  {mp rows, nq columns}
+
+set Kronecker_product(mat A,mat B)=mat:kronecker_product(A,B)
+
+{tools to keep track of the indices}
+{Given (m,n) and (p,q)
+ X={(x,y) | x<=mp-1, y<=nq-1}
+ Y={(r,s,v,w) | r<=m-1, s<=n-1 v<=p-1, w<=q-1}
+ (all indices are >=0)
+ kronecker_f: X -> Y
+ kronecker_g: Y -> X
+are inverse bijections}
+
+set kronecker_f(int m, int n, int p, int q)=((int, int)->(int,int,int,int)):
+(int x,int y):
+assert(0 <= x and x<= m*p-1 and 0<= y and y<= n*q-1,"index out of range");
+(x\p,y\q,x%p,y%q)
+
+set kronecker_g(int m, int n, int p, int q)=((int,int, int, int)->(int,int)):
+(int r, int s, int v, int w):
+assert(0 <= r and r<= p-1 and 0<= s and s<= q-1,"index out of range");
+(p*r+v,q*s+w)
+
+
+
 
