@@ -431,10 +431,49 @@ let (y,)=affine_make_dominant(v_dom+z, ad) in
 in_lattice(rad,y-w_dom) od)
 fi
 
+{test if ratvec v is in lattice + rational subspace
+ lattice L, rational subspace V
+}
+set in_lattice_subspace_sum ([vec] L,[vec] V)=(ratvec->bool):
+(ratvec v):
+if =#V then in_lattice(L,v) else
+ let ck=cokernel(V) then (new_V,,,) = echelon(ck*L) in
+ let v_new=ck*v in
+ if not is_integer(v_new) then false
+  else
+  in_lattice(new_V,ratvec_as_vec(v_new))
+ fi
+fi
+
+{test if exp(2\pi iv)T is G-conjugate to exp(2\pi iw)
+ where T is a torus
+}
+set is_semisimple_element_conjugate_mod_torus(ratvec v,ratvec w,RootDatum rd,[vec] torus)=
+if is_abelian(rd) then is_integer(v-w) else
+let ad=affine_datum(rd) then
+(v_dom,)=affine_make_dominant(v,ad) then
+(w_dom,)=affine_make_dominant(w,ad) then
+L=simple_coroots(rd)##radical_basis(rd) then
+rad=radical_basis(rd) then
+(vecs,orders)=filter_units(adapted_basis(L)) then
+Omega=if #vecs=0 then [null(rank(rd))] else  vecs*box(orders) fi in
+any(for z in Omega do
+let (y,)=affine_make_dominant(v_dom+z, ad) in
+in_lattice_subspace_sum(rad,torus)(y-w_dom) od)
+fi
+
 {the first value returned is the list of indices of chosen ratvecs}
 set semisimple_conjugacy_class_reps(RootDatum rd,[ratvec] S)=([int],[ratvec]):
 let rv=[S[0]] then
 indices=[0] in
 for i:#S-1 from 1 do
  if none(for v in rv do is_semisimple_element_conjugate(S[i],v,rd) od) then rv#:=S[i];indices#:=i fi od;
+ (sort(indices),rv)
+
+{the first value returned is the list of indices of chosen ratvecs}
+set semisimple_conjugacy_class_mod_torus_reps(RootDatum rd,[ratvec] S,[vec] torus)=([int],[ratvec]):
+let rv=[S[0]] then
+indices=[0] in
+for i:#S-1 from 1 do
+ if none(for v in rv do is_semisimple_element_conjugate_mod_torus(S[i],v,rd,torus) od) then rv#:=S[i];indices#:=i fi od;
  (sort(indices),rv)

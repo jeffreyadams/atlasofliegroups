@@ -222,8 +222,10 @@ let perms=symmetric_group(rd.ss_rank) then
 C=rd.Cartan_matrix in
 ##for P in perms do if P*C=C*P then [P] else [] fi od fi
 
+{this only works for rd semisimple}
 set outer_automorphism_group(RootDatum rd)=[mat]:
 if rd.is_abelian then [] else
+assert(rd.is_semisimple,"RootDatum is not semisimple (or abelian)");
 let A=simple_roots(rd) then
 A_inverse=rational_inverse(A) in
 ##for P in diagram_automorphisms(rd) do
@@ -231,7 +233,8 @@ let (,,d)=A*P*A_inverse in if d=1 then [P] else [] fi od fi
 
 set normalizer(RootDatum rd_L,RootDatum rd,[mat] outer_automorphisms)=[(mat,WeylElt)]:
 let A=simple_roots(rd_L) in
-##for P in outer_automorphisms do
+##for P in diagram_automorphisms(rd_L) do
+{##for P in outer_automorphisms do}
 let m=maybe_conjugate_strict(rd,A,A*P) in
 if any(m) then [(P,req(m))] else [] fi od
 
