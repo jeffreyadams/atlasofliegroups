@@ -665,7 +665,7 @@ set lift(RootDatum rd,ratvec v)=ratvec:
  let rd_mod=mod_central_torus(rd) then
  A=simple_coroots(rd)*inverse(mat_as_ratmat(simple_coroots(rd_mod))) in A*v
 
-set generators_of_component_group (ComplexNilpotent (rd,(),H))=
+set generators_of_component_group_old (ComplexNilpotent (rd,(),H))=
 for (L,H_L) in pseudo_Levis (rd,(),H) do
  let Lmod=mod_central_torus(L) then
  Z_Lmod=elements_of_center(Lmod) {center of L/Z(L)^0} then
@@ -703,7 +703,7 @@ list of ratvecs}  then}
  (L,Z_Lmod,Z_Lmod_reg,Z_Lmod_reg_lifted,Z_Lmod_reg_lifted_cc)
 od
 
-set generators_of_component_group_alt (ComplexNilpotent (rd,(),H))=
+set generators_of_component_group (ComplexNilpotent (rd,(),H))=
 for (L,H_L) in pseudo_Levis (rd,(),H) do
  let Lmod=mod_central_torus(L) then
  Z_Lmod=elements_of_center(Lmod) {center of L/Z(L)^0} then
@@ -757,7 +757,7 @@ set order_in_A (ratvec v, RootDatum rd, vec H)=int:
    (L,H_new)=Bala_Carter_Levi(orb) in in_radical(i*v,L) od) in div[k]
 
 set component_datum(ComplexNilpotent O)=ComplexNilpotentComponentDatum:
-let g=generators_of_component_group_alt(O)
+let g=generators_of_component_group(O)
 then orders=## for (a,H,b,c,d,S) in g do for v in S do order_in_A(v,O.root_datum,H) od od in
 (O,sort(orders),for (L,H,b,c,d,S) in g do (L,S) od)
 
@@ -790,7 +790,7 @@ set print_component_info (ComplexNilpotent O)=void:
 set print_component_info_long (ComplexNilpotent O)=void:
 prints(new_line,"Component info for orbit:",new_line, "H=", O.H_of_triple, " diagram:",
 O.diagram, " dim:", O.dim_nilpotent);
-for (L,Z_Lmod,Z_Lmod_reg,Z_Lmod_reg_lifted,Z_Lmod_reg_cc) in generators_of_component_group(O) do
+for (L,H_L,Z_Lmod,Z_Lmod_reg,Z_Lmod_reg_lifted,Z_Lmod_reg_cc) in generators_of_component_group(O) do
 prints(new_line,"L:",L.derived,new_line,"Z(L)/Z(L)^0: ",Z_Lmod,new_line,"Z(L)/Z(L)^0-reg: ",
 Z_Lmod_reg,new_line,"Z(L)/Z(L)^0-reg-lifted: ",
 Z_Lmod_reg_lifted,new_line,"Z(L)/Z(L)^0-cc: ",Z_Lmod_reg_cc) od

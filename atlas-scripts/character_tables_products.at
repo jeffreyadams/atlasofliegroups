@@ -1,3 +1,8 @@
+<character_tables.at
+<matrix.at
+<group_operations.at
+
+
 set character_table_SxS(int n) = character_table:
 let ct_0=character_table_S(n) then
     N=ct_0.n_classes then
