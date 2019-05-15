@@ -23,7 +23,8 @@ for each conjugacy class a list of pairs (L,[ratvec])
 L is a pseudo-Levi, and each ratvec is a semisimple element,
 each pair (L,ratvec) gives one conjugacy class in A(O)
 }
-set_type ComplexNilpotentComponentDatum= (ComplexNilpotent orbit,[int] orders,[(RootDatum,[ratvec])] pairs)
+set_type ComplexNilpotentComponentDatum=
+             (ComplexNilpotent orbit,[int] orders,[(RootDatum,[ratvec])] pairs)
 
 {. Two complex nilpotent orbits are equal if the root data are, and
    the H's are conjugate by the Weyl group. .}
@@ -589,7 +590,7 @@ H=dominant(O.H_of_triple,rd) in
 ##for L in pseudo_Levi_subgroups(rd) do
  let distinguished_H_L=distinguished_H(L) in
  let j=first(for H_L in distinguished_H_L do dominant(H_L,rd)=H od)
- in if j>=0 then [(L,distinguished_H_L[j])] else [] fi od 
+ in if j>=0 then [(L,distinguished_H_L[j])] else [] fi od
 
 {Note: affine root is n+1 not 0}
 {this works only if rd.derived is simple}
@@ -671,9 +672,11 @@ for (L,H_L) in pseudo_Levis (rd,(),H) do
  L_rad=radical_basis(L) {central torus} then
  (,M)=Levi_of_subspace(rd,L_rad) {centralizer of L_rad} then
 { A=simple_coroots(L)*inverse(mat_as_ratmat(simple_coroots(Lmod))) then}
- { Z_Lmod_lifted=for v in ratmat_to_bigmat(A*Z_Lmod) do ratvec:v  od {convert ratmat to list of ratvecs}  then}
+ { Z_Lmod_lifted=for v in ratmat_to_bigmat(A*Z_Lmod) do ratvec:v  od {convert ratmat to
+list of ratvecs}  then}
  {cut down Z_Lmod to those elements satisfying Cent_G(tZ(L)^0)=L}
- Z_Lmod_reg=##for v in Z_Lmod do if dimension(centralizer(M,lift(L,v)))=L.dimension then [v] else [] fi od then
+ Z_Lmod_reg=##for v in Z_Lmod do if dimension(centralizer(M,lift(L,v)))=L.dimension then [v]
+ else [] fi od then
  {we now have elements [s_1,...,s_n] of L/Z(L)^0
   lift these to [t_1,...,t_n] of G (not unique of course)
   keep one from each conjugacy class, say [t_i_1,...,t_i_r]
@@ -690,18 +693,73 @@ for (L,H_L) in pseudo_Levis (rd,(),H) do
 {  ()=prints("Z_Lmod_reg_lifted:", Z_Lmod_reg_lifted) then
   ()=prints("Levi_H_L:",Levi_H_L) then}
 {  ()=prints(new_line,"L=",L, new_line, "M=",M) then}
-{ (indices,Z_Lmod_reg_lifted_cc)=semisimple_conjugacy_class_reps(Levi_H_L,Z_Lmod_reg_lifted) then}
- (indices,Z_Lmod_reg_lifted_cc)=semisimple_conjugacy_class_mod_torus_reps(Levi_H_L,Z_Lmod_reg_lifted,L_rad) then
+{ (indices,Z_Lmod_reg_lifted_cc)=semisimple_conjugacy_class_reps(Levi_H_L,Z_Lmod_reg_lifted)
+ then}
+ (indices,Z_Lmod_reg_lifted_cc)=semisimple_conjugacy_class_mod_torus_reps
+ (Levi_H_L,Z_Lmod_reg_lifted,L_rad) then
 { ()=prints("indices:", indices) then
  ()=prints("Z+Lmod_reg_lifted_cc: ", Z_Lmod_reg_lifted_cc) then}
  Z_Lmod_reg_cc=for i in indices do Z_Lmod_reg[i] od in
- (L,Z_Lmod,Z_Lmod_reg,Z_Lmod_reg_lifted,Z_Lmod_reg_cc)
+ (L,Z_Lmod,Z_Lmod_reg,Z_Lmod_reg_lifted,Z_Lmod_reg_lifted_cc)
 od
 
+set generators_of_component_group_alt (ComplexNilpotent (rd,(),H))=
+for (L,H_L) in pseudo_Levis (rd,(),H) do
+ let Lmod=mod_central_torus(L) then
+ Z_Lmod=elements_of_center(Lmod) {center of L/Z(L)^0} then
+ L_rad=radical_basis(L) {central torus} then
+ (,M)=Levi_of_subspace(rd,L_rad) {centralizer of L_rad} then
+{ A=simple_coroots(L)*inverse(mat_as_ratmat(simple_coroots(Lmod))) then}
+ { Z_Lmod_lifted=for v in ratmat_to_bigmat(A*Z_Lmod) do ratvec:v  od {convert ratmat to
+list of ratvecs}  then}
+ {cut down Z_Lmod to those elements satisfying Cent_G(tZ(L)^0)=L}
+ Z_Lmod_reg=##for v in Z_Lmod do if dimension(centralizer(M,lift(L,v)))=L.dimension then [v]
+ else [] fi od then
+ {we now have elements [s_1,...,s_n] of L/Z(L)^0
+  lift these to [t_1,...,t_n] of G (not unique of course)
+  keep one from each conjugacy class, say [t_i_1,...,t_i_r]
+  THEN what matters is the corresponding elements [s_i_1,...,s_i_r], specifically their orders
+  Guess/Hope: s_iZ(L)^0 is conjugate to s_jZ(L)^0 by cent_G(u) if and only if
+  t_i is G-conjugate to t_j. This seems unlikely but looks to be true in examples
+ }
+ Z_Lmod_reg_lifted=for v in Z_Lmod_reg do lift(L,v) od then
+ {need to use the Levi defined by H_L (not H itself) for computing conjugacy}
+{ (,Levi_H_L)=Levi_of_coweight(rd,H_L) then}
+ (,Levi_H_L_M)=Levi_of_coweight(M,H_L) then
+  (,Levi_H_L)=Levi_of_coweight(rd,H_L) then
+ {()=prints("Levi_H_L=",Levi_H_L," ", simple_roots(Levi_H_L)) then}
+{  ()=prints("Z_Lmod_reg_lifted:", Z_Lmod_reg_lifted) then
+  ()=prints("Levi_H_L:",Levi_H_L) then}
+{  ()=prints(new_line,"L=",L, new_line, "M=",M) then}
+{ (indices,Z_Lmod_reg_lifted_cc)=semisimple_conjugacy_class_reps(Levi_H_L,Z_Lmod_reg_lifted)
+ then}
+ (indices,Z_Lmod_reg_lifted_cc)=semisimple_conjugacy_class_mod_torus_reps
+ (Levi_H_L,Z_Lmod_reg_lifted,L_rad) then
+{ ()=prints("indices:", indices) then
+ ()=prints("Z+Lmod_reg_lifted_cc: ", Z_Lmod_reg_lifted_cc) then}
+ Z_Lmod_reg_cc=for i in indices do Z_Lmod_reg[i] od in
+ (L,H_L,Z_Lmod,Z_Lmod_reg,Z_Lmod_reg_lifted,Z_Lmod_reg_lifted_cc)
+od
+
+set Bala_Carter_Levi (ComplexNilpotent O)=(RootDatum,vec):
+let rd=O.root_datum then
+H=dominant(O.H_of_triple,rd) in let list=
+##for L in Levi_subgroups(rd) do
+ let distinguished_H_L=distinguished_H(L) in
+ let j=first(for H_L in distinguished_H_L do dominant(H_L,rd)=H od)
+ in if j>=0 then [(L,distinguished_H_L[0])] else [] fi od in list[0]
+
+set order_in_A (ratvec v, RootDatum rd, vec H)=int:
+   let div=divisors(denom(v)) then
+   k=first(
+   for i in div do
+   let CL=centralizer(rd,i*v) then orb=complex_nilpotent(CL,H) then
+   (L,H_new)=Bala_Carter_Levi(orb) in in_radical(i*v,L) od) in div[k]
+
 set component_datum(ComplexNilpotent O)=ComplexNilpotentComponentDatum:
-let g=generators_of_component_group(O) 
-then orders=## for (a,b,c,d,S) in g do for v in S do denom(v) od od in
-(O,sort(orders),for (L,b,c,d,S) in g do (L,S) od)
+let g=generators_of_component_group_alt(O)
+then orders=## for (a,H,b,c,d,S) in g do for v in S do order_in_A(v,O.root_datum,H) od od in
+(O,sort(orders),for (L,H,b,c,d,S) in g do (L,S) od)
 
 set conjugacy_class_orders(ComplexNilpotent O)=O.component_datum.orders
 set number_conjugacy_classes_component_group(ComplexNilpotent O)=#O.component_datum.orders
@@ -711,8 +769,9 @@ set show(ComplexNilpotentComponentDatum d)=void:
    let header=["pseudo_Levi","Generators"] in
    let values=
    for (L,S) in d.pairs do
-   [L.derived.nice_format,S.to_string] od in 
-   prints("Component info for orbit:",new_line,"H=", d.orbit.H_of_triple, " diagram:", d.orbit.diagram, " dim:", d.orbit.dim_nilpotent);
+   [L.derived.nice_format,S.to_string] od in
+   prints("Component info for orbit:",new_line,"H=", d.orbit.H_of_triple, " diagram:",
+   d.orbit.diagram, " dim:", d.orbit.dim_nilpotent);
 prints("orders of conj. classes:",d.orders);
    tabulate(header#values)
 
@@ -720,17 +779,20 @@ set print_component_info (ComplexNilpotent O)=void:
    let d=component_datum(O) then
    header=["pseudo_Levi","Generators"] then
    values=
-   for (L,S) in d.pairs do 
+   for (L,S) in d.pairs do
    [L.derived.nice_format,S.to_string] od in
-   prints(new_line,"Component info for orbit:",new_line, "H=", O.H_of_triple, " diagram:", O.diagram, " dim:", O.dim_nilpotent);
+   prints(new_line,"Component info for orbit:",new_line, "H=", O.H_of_triple, " diagram:",
+   O.diagram, " dim:", O.dim_nilpotent);
    prints("orders:",d.orders);
    tabulate(header#values)
 
 
 set print_component_info_long (ComplexNilpotent O)=void:
-prints(new_line,"Component info for orbit:",new_line, "H=", O.H_of_triple, " diagram:", O.diagram, " dim:", O.dim_nilpotent);
+prints(new_line,"Component info for orbit:",new_line, "H=", O.H_of_triple, " diagram:",
+O.diagram, " dim:", O.dim_nilpotent);
 for (L,Z_Lmod,Z_Lmod_reg,Z_Lmod_reg_lifted,Z_Lmod_reg_cc) in generators_of_component_group(O) do
-prints(new_line,"L:",L.derived,new_line,"Z(L)/Z(L)^0: ",Z_Lmod,new_line,"Z(L)/Z(L)^0-reg: ",Z_Lmod_reg,new_line,"Z(L)/Z(L)^0-reg-lifted: ",
+prints(new_line,"L:",L.derived,new_line,"Z(L)/Z(L)^0: ",Z_Lmod,new_line,"Z(L)/Z(L)^0-reg: ",
+Z_Lmod_reg,new_line,"Z(L)/Z(L)^0-reg-lifted: ",
 Z_Lmod_reg_lifted,new_line,"Z(L)/Z(L)^0-cc: ",Z_Lmod_reg_cc) od
 
 set print_component_info (RootDatum rd)=void:
@@ -745,7 +807,8 @@ set print_component_info_short (RootDatum rd)=void:
 tabulate(["i","H","diag","dim","A(O)"]#
  for orb@i in complex_nilpotent_orbits (rd) do
  let d=component_datum(orb) in
- [i.to_string,orb.H_of_triple.to_string,orb.diagram.to_string,orb.dim_nilpotent.to_string,d.orders.to_string] od
+ [i.to_string,orb.H_of_triple.to_string,orb.diagram.to_string,orb.dim_nilpotent.to_string,
+ d.orders.to_string] od
  )
 
 {------ principal, zero, subregular and minimal orbits -----}
