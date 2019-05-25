@@ -1,0 +1,103 @@
+<subgroups.at
+
+{Cohomology of G/P}
+
+{dim(H^k(G/P))=|{w\in W/W(L)| length(w)=k}
+ Here P=LU and length(w) is the minimal length
+ of elements in the coset wW(L)
+ 
+Note: H^k(G/P) only depends on the conjugacy class of L=Levi(P),
+since G/P=L/L\cap K and the latter only depends on L
+}
+
+{print out results as computed, in addition to
+nice table at the end}
+set cohomology_verbose=false
+
+{replace list of non-negative integers with a list
+of their multiplicities}
+set collect([int] S)=[int]:
+let v=null(max(S)+1) in
+for i:#S do v[S[i]]+:=1 od;v
+
+{original computation}
+set cohom_orig(RootDatum rd, RootDatum rd_L)=
+collect(for w in coset_reps_Levi(rd,rd_L) do length(w) od)
+
+{improved version: only compute up to length(w)=dim(G/P)\2
+ and use Poincare duality
+ }
+set cohom(RootDatum rd, RootDatum rd_L)=
+let dim=(dimension(rd)-dimension(rd_L))\2 then
+bound=dim\2 in
+let half=collect(for w in coset_reps_Levi_terminate(rd,rd_L,bound) do length(w) od) in
+if is_odd(dim) then {no middle term} [int]:half##(reverse(half))
+else
+{is a middle term, need to delete it so it doesn't get counted twice}
+[int]:half##(delete(reverse(half),0)) fi
+
+{nice display of cohomology calculation for all Levi subgroups}
+{third argument will be either cohom or cohom_orig (above)}
+set show_cohom(RootDatum rd,((RootDatum,RootDatum)->[int]) cohomology_function)=void:
+let order_W=order_W(rd) then
+levis=Levi_subgroups(rd) then
+cohomology=
+for i:#levis ~ do
+ let L=levis[i] then
+ order_W_L=order_W(L) then
+ C=cohomology_function(rd,L) in
+  if cohomology_verbose then
+  let   dim=(dimension(rd)-dimension(L))\2 then
+  mult_triv=
+  if =dim then 0
+  elif
+   is_odd(dim) then 0 else  {#C=dim+1: dim odd <=>#C even}
+   {#C odd:, middle degree =(#C+1)/2}
+   assert(is_odd(#C),"what?");
+   C[(#C-1)\2]-C[(#C-3)\2] fi then
+   flag=
+   if is_odd(dim) then "odd" {0 for trivial reasons}
+    elif mult_triv=0 then "*" {interesting case}
+    else "" fi
+  in
+  prints("G: ",rd.nice_format,new_line,L.derived.nice_format, " ", (dimension(rd)-dimension(L))\2, " ", order_W_L, " ", order_W\order_W_L, " ", mult_triv,  "  ",flag, " ", C)
+ fi
+;(L,C)
+od
+in prints(new_line,"G: ",rd.nice_format,new_line,"L: Levi (torus omitted)",new_line,"m: mult of trivial in middle degree cohomology", new_line,
+  "flag: odd (mult is 0 for trivial reason)/* (dim is even and mult=0)",new_line,
+  "dims: dimension of H^k*(G/P) for k=0,1,...,dim(G/P)");
+tabulate(
+ ["L","dim(G/P)","#W_L","#W/W_L","m","flag","dims"]#
+ for (L,C) in cohomology do
+  let  order_W_L=order_W(L) then
+  dim=(dimension(rd)-dimension(L))\2 then
+  mult_triv=
+  if =dim then 0 elif
+  is_odd(dim) then 0 else  {#C=dim+1: dim odd <=>#C even}
+  {#C odd:, middle degree =(#C+1)/2}
+  assert(is_odd(#C),"what?");
+  C[(#C-1)\2]-C[(#C-3)\2] fi then
+ flag=
+  if is_odd(dim) then "odd" {0 for trivial reasons}
+  elif mult_triv=0 then "*" {interesting case}
+  else "" fi
+ in
+ [L.derived.nice_format,
+ ((dimension(rd)-dimension(L))\2).to_string,
+  order_W_L.to_string,
+ (order_W\order_W_L).to_string,
+ mult_triv.to_string,
+  flag,
+ C.to_string
+] od)
+
+{original version for testing, and faster version}
+set show_cohom_orig(RootDatum rd)=show_cohom(rd,cohom_orig@(RootDatum,RootDatum))
+set show_cohom(RootDatum rd)=show_cohom(rd,cohom@(RootDatum,RootDatum))
+
+set list=[SL(2),SL(3),SL(4),SL(5),SL(6),SL(7),Sp(4),Sp(6),Sp(8),simply_connected(G2),simply_connected(F4)]
+set show_cohom([RootDatum] root_data)=void:
+for rd in root_data do show_cohom(rd) od
+
+
