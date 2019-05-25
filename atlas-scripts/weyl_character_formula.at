@@ -2,6 +2,7 @@
 <W_orbit.at
 <representations.at
 <finite_dimensional.at
+<subgroups.at {for centralizer@(RootDatum,ratvec)}
 
 {! Weyl character formula computed at elements of finite order
 
@@ -42,15 +43,6 @@ set reduce_ratvecs_mod_lattice ([ratvec] S) = [ratvec]:
 { action is by dual(rd) since v is in X_*(T)_Q }
 set W_orbit_torus_element(RootDatum rd,ratvec v)=[ratvec]:
    reduce_ratvecs_mod_lattice(W_orbit(dual(rd),v))
-
-{ see centralizer@(KGBElt,ratvec) in K_highest_weights.at
-  don't need x, and test is <alpha,v> is an integer
-  this returns the RootDatum of the Cent_G(exp(2\pi iv)^0
-}
-set centralizer(RootDatum rd,ratvec v) = RootDatum:
-   let roots = columns_with((vec alpha): is_integer(alpha*v), posroots(rd))
-   then coroots = rank(rd) # for alpha in roots do coroot(rd,alpha) od
-   in root_datum_from_positive(roots,coroots)
 
 {. order of element of Q/Z.}
 set QmodZ_order(ratvec v)=int:denom(v)

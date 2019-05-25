@@ -233,6 +233,10 @@ A_inverse=rational_inverse(A) in
 ##for P in diagram_automorphisms(rd) do
 let (,,d)=A*P*A_inverse in if d=1 then [P] else [] fi od fi
 
+{return list of pairs (mat,WeylElt)
+ mat is a permutation matrix of size ss_rank(rd_L)
+ WeylElt is in W(rd)
+} 
 set normalizer(RootDatum rd_L,RootDatum rd,[mat] outer_automorphisms)=[(mat,WeylElt)]:
 let A=simple_roots(rd_L) in
 ##for P in outer_automorphisms do

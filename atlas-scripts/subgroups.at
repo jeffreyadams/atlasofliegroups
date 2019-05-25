@@ -3,7 +3,7 @@
 <center.at
 <poset.at
 <number_theory.at {for is_prime}
-<weyl_character_formula.at {for centralizer@(RootDatum,ratvec)}
+
 {
   The functions deal with constructing Levi systems cut out by various linear
   conditions (being orthogonal to a given set of coroots), and their root data.
@@ -147,6 +147,26 @@ in
 if #indices=0 then complex_torus(rank(rd)) else
 root_datum(simple_system_from_positive(for i in indices do posroots(rd)[i] od,
 for i in indices do poscoroots(rd)[i] od)) fi
+
+set centralizer(RootDatum rd,ratvec v) = RootDatum:
+   let roots = columns_with((vec alpha): is_integer(alpha*v), posroots(rd))
+   then coroots = rank(rd) # for alpha in roots do coroot(rd,alpha) od
+   in root_datum_from_positive(roots,coroots)
+
+set centralizer(RootDatum rd,[ratvec] vecs) = RootDatum:
+   let roots = columns_with((vec alpha): all(for v in vecs do is_integer(alpha*v) od), posroots(rd))
+   then coroots = rank(rd) # for alpha in roots do coroot(rd,alpha) od
+   
+   in root_datum_from_positive(roots,coroots)
+
+{ centralizer of semisimple group element: Cent_G(exp(2\pi iv)^0
+see centralizer@(KGBElt,ratvec) in K_highest_weights.at
+}
+
+set centralizer(RootDatum rd,ratvec v) = RootDatum:
+   let roots = columns_with((vec alpha): is_integer(alpha*v), posroots(rd))
+   then coroots = rank(rd) # for alpha in roots do coroot(rd,alpha) od
+   in root_datum_from_positive(roots,coroots)
 
 
 
@@ -356,7 +376,6 @@ sort_by_dimension(##grouped_by_ss_rank)
 
 {  ----- Levi and pseudo-Levi subgroups ---- }
 
-
 {conjugacy classes of Levis as root data from W_characters.at}
 set Levi_subgroups(RootDatum rd)=[RootDatum]:
 for simple_roots in standard_Levi_conjugacy_representatives(rd)
@@ -366,22 +385,23 @@ set proper_Levi_subgroups(RootDatum rd)=[RootDatum]:
 ##for simple_roots in standard_Levi_conjugacy_representatives(rd)
 do if #simple_roots<rd.ss_rank then [complex_Levi(rd,simple_roots)] else [] fi od
 
-set is_Levi(RootDatum rd,RootDatum rd_L)=bool:
+{return true if rd_L is a (not necessarily standard) Levi subgroup}
+set is_Levi(RootDatum rd_L,RootDatum rd)=bool:
 assert(dimension(rd_L) <= dimension(rd), "L is not a subgroup of G");
 if dimension(rd)=dimension(rd_L) then true else
 let M=radical_basis(rd_L) in
 if n_columns(M)=0 then false else
 let cent=centralizer(M,rd) in dimension(cent)=dimension(rd_L) fi fi
 
-set is_pseudo_levi_in_simple_adjoint(RootDatum rd,RootDatum rd_L)=bool:
+set is_pseudo_Levi_in_simple_adjoint(RootDatum rd_L,RootDatum rd)=bool:
 is_center_cyclic(rd_L.mod_central_torus)
 
-set adjoint_image(RootDatum rd,RootDatum rd_L)=RootDatum:
+set adjoint_image(RootDatum rd_L,RootDatum rd)=RootDatum:
 let simple_roots_L=for alpha in simple_roots(rd_L) do find(roots(rd),alpha) od
 in subgroup_by_simple(rd.adjoint,simple_roots_L)
 
-set is_pseudo_Levi_in_simple(RootDatum rd,RootDatum rd_L)=bool:
-is_pseudo_levi_in_simple_adjoint(rd.adjoint,adjoint_image(rd,rd_L))
+set is_pseudo_Levi_in_simple(RootDatum rd_L,RootDatum rd)=bool:
+is_pseudo_Levi_in_simple_adjoint(adjoint_image(rd_L,rd),rd.adjoint)
 
 set project_on_simple_factor(RootDatum rd,RootDatum rd_L,int i)=
 let factor=simple_factor(rd,i) then
@@ -389,9 +409,9 @@ roots_factor=roots(factor) then
 simple_roots_factor_L=##for alpha in simple_roots(rd_L) do if find(roots_factor,alpha)>=0 then [alpha] else [] fi od
 in subgroup_by_simple(rd,simple_roots_factor_L)
 
-set is_pseudo_Levi(RootDatum rd,RootDatum rd_L)=bool:
+set is_pseudo_Levi(RootDatum rd_L,RootDatum rd)=bool:
 all(for i:number_simple_factors(rd) do
-is_pseudo_Levi_in_simple(simple_factor(rd,i),project_on_simple_factor(rd,rd_L,i)) od)
+is_pseudo_Levi_in_simple(project_on_simple_factor(rd,rd_L,i),simple_factor(rd,i)) od)
 
 
 {semisimple element t so that L=Cent_G(t)^0}
@@ -401,14 +421,16 @@ let Lmod=mod_central_torus(rd_L) then
 Z_Lmod=elements_of_center(Lmod) {center of L/Z(L)^0} then
 L_rad=radical_basis(rd_L) {central torus} then
 (,M)=Levi_of_subspace(rd,L_rad) {centralizer of L_rad} in
-##for v in Z_Lmod do if dimension(centralizer(M,lift(rd_L,v)))=rd_L.dimension then [v] else [] fi od 
+##for v in Z_Lmod do
+ let v_rd=lift(rd_L,v) in
+  if dimension(centralizer(M,v_rd))=rd_L.dimension then [v_rd] else [] fi od 
 
 set regular_central_element(RootDatum rd_L, RootDatum rd)=regular_central_elements(rd_L,rd)[0]
 
 {if you've computed subgroups=subgroups(rd) already, run through these
 and select the pseudo_Levis. This works for any rd}
 set pseudo_Levi_subgroups(RootDatum rd,[RootDatum] subs)=[RootDatum]:
-##for L in subs do if is_pseudo_Levi(rd,L) then [L] else [] fi od
+##for L in subs do if is_pseudo_Levi(L,rd) then [L] else [] fi od
 
 {this works for any rd: find all equal rank subgroups, and then
 select the pseudo-Levis}
@@ -416,7 +438,7 @@ set pseudo_Levi_subgroups(RootDatum rd)=[RootDatum]:
 pseudo_Levi_subgroups(rd,subgroups(rd))
 
 set strict_pseudo_Levi_subgroups(RootDatum rd)=[RootDatum]:
-##for L in pseudo_Levi_subgroups(rd) do if not is_Levi(rd,L) then [L] else [] fi od
+##for L in pseudo_Levi_subgroups(rd) do if not is_Levi(L,rd) then [L] else [] fi od
 
 {test sub_rd_1 is W(rd)-conjugate to a subgroup of sub_rd_2}
 set is_contained(RootDatum rd,RootDatum sub_rd_1,RootDatum sub_rd_2)=bool:
@@ -587,30 +609,6 @@ let values=
  }
 
 
-set normalizer_report(RootDatum rd)=void:
-prints(new_line,"subgroups of " + rd.nice_format +
-if rd.scad !="" then " (" + rd.scad + ")"  else "" fi);
-tabulate(["L","Diag","Out","Norm","diff"]#
-for L@i in subgroups(rd) do
- let d=diagram_automorphisms(L) then
- out=outer_automorphism_group(L.derived) then
- norm= normalizer(L,rd,out) then
- diff_string = if #out=#norm then "" else (#out\#norm).to_string fi in
- [L.derived.nice_format, (#d).to_string,(#out).to_string,(#norm).to_string,diff_string]
-od)
-
-set normalizer_reports()=
-let rds=[
-simply_connected(G2),
-simply_connected(F4),
-simply_connected(E6),
-adjoint(E6),
-simply_connected(E7),
-adjoint(E7){
-simply_connected(E8)}
-] in
-for rd in rds do normalizer_report(rd) od
-
 set component_group_of_pseudo_Levi(RootDatum rd_L,RootDatum rd)=
 assert(is_pseudo_Levi(rd_L,rd),"Not a pseudo-Levi");
 if rd_L.is_abelian then [] else
@@ -619,14 +617,56 @@ norm=normalizer(rd_L,M) then
 center=elements_of_center(rd_L.derived) then
 center_lifted=for v in center do lift(rd_L,v) od then
 rv=[] in
- for (m,w) in norm do
+ for (,w) in norm do
+  let m=w.matrix in 
   if all (for v in center_lifted do m*v=v od) then rv#:=(m,w) fi od;rv fi
 
 
-set centralizer(RootDatum rd_L,RootDatum rd)=[(mat,WeylElt)]:
+set centralizer_pseudo_Levi(RootDatum rd_L,RootDatum rd)=[(mat,WeylElt)]:
 {assert(is_pseudo_Levi(rd_L,rd),"Not a pseudo-Levi");}
 let norm=normalizer(rd_L,rd) then
 rv=[(mat,WeylElt)]:[] then
-t=regular_central_element(rd_L,rd) in
-for (m,w) in norm do if m*t=t then rv#:=(m,w) fi od;rv
+t=regular_central_element(rd_L,rd) then
+rad_L=rd_L.radical_basis in
+for (,w) in norm do
+ let m=w.matrix in 
+ if m*t=t and m*rad_L=rad_L then rv#:=(m,w) fi od;
+rv
+
+set normalizer_report(RootDatum rd)=void:
+prints(new_line,"equal rank subgroups of " + rd.nice_format +
+if rd.scad !="" then " (" + rd.scad + ")"  else "" fi);
+prints("H: type of H_der");
+prints("type: : Levi/Pseudo-Levi/neither");
+prints("Diag: diagram automorphisms of H");
+prints("Out: : outer automorphism group of H_der");
+prints("Norm=Norm_G(H^0)/H^0");
+tabulate(["H","type","Diag","H/H^0","Out","Norm","Out/Norm"]#
+for L@i in subgroups(rd) do
+let type=
+ if is_Levi(L,rd) then "L" elif
+ is_pseudo_Levi(L,rd) then "PL" else "" fi in
+ let d=diagram_automorphisms(L) then
+ out=outer_automorphism_group(L.derived) then
+ norm= normalizer(L,rd,out) then
+  comp=if is_pseudo_Levi(L,rd) then  (#centralizer_pseudo_Levi(L,rd)).to_string else "" fi then
+ diff_string = if #out=#norm then "" else (#out\#norm).to_string fi in
+
+ [L.derived.nice_format,type, (#d).to_string,comp,(#out).to_string,(#norm).to_string,diff_string]
+od)
+
+set normalizer_reports([RootDatum] rds)=
+for rd in rds do normalizer_report(rd) od
+
+set default=
+[simply_connected(G2),
+simply_connected(F4),
+simply_connected(E6),
+adjoint(E6),
+simply_connected(E7),
+adjoint(E7)
+{simply_connected(E8)}
+]
+
+set normalizer_reports()=normalizer_reports(default)
 

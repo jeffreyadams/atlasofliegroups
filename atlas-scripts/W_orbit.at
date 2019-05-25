@@ -22,7 +22,7 @@ set generate_from_dom ([(vec->maybe_a_vec)] S,vec v) = ([vec],[[int]]):
          none(#orbit-stop,(int i)bool:orbit~[i]=y)
   in
   while done<#orbit
-  do if done=stop then stop:=#orbit fi { hit end of level, define new level }
+  do if done=stop then {prints("stop:", #orbit,new_line,"words:",words);} stop:=#orbit fi { hit end of level, define new level }
   ; let w = words[done], a=orbit[done] in done+:=1
   ; for f@i in S
     do case f(a) | else () { skip when no new vector is returned }
@@ -167,3 +167,77 @@ set conjugate_to (RootDatum rd, [WeylElt] S, ratvec v,ratvec w) =
 set conjugate_to (RootDatum rd, ratvec u, ratvec v) = (bool,WeylElt):
   let (wu,u_dom)=from_dominant(rd,u), (wv,v_dom)=from_dominant(rd,u) in
   (u_dom=v_dom, wu*/wv)
+
+
+{     orbit generation routines which terminate early based on length bound  }
+
+set generate_from_dom_terminate ([(vec->maybe_a_vec)] S,vec v, int length_bound) = ([vec],[[int]]):
+  let words=[[int]]:[[]], orbit=[v], done=0, stop=1, length=1
+  then absent (vec y) = bool: { check down to last level marker }
+         none(#orbit-stop,(int i)bool:orbit~[i]=y)
+  in
+  while length<=length_bound and  done<#orbit 
+  do if done=stop then {prints("stop:", #orbit,new_line,"words:",words);}length+:=1; stop:=#orbit fi { hit end of level, define new level }
+  ; let w = words[done], a=orbit[done] in done+:=1
+  ; for f@i in S
+    do case f(a) | else () { skip when no new vector is returned }
+       | solution(b): if absent(b)
+       and #(i#w)<=length_bound {this is necessary because termination step can run over}
+       then ( words #:= i#w, orbit #:= b ) fi
+       esac
+    od
+  od; (orbit,words)
+
+{ same as above, but also compose |gens_rep| matrices for applied generators }
+set generate_action_from_dom_terminate ([(vec->maybe_a_vec)] S,vec v
+                             ,int dim,[mat] gens_rep,int length_bound) =
+     ([vec],[[int]],[mat]):
+  let orbit=[v], words=[[int]]:[[]], actions=[id_mat(dim)], done=0, stop=1, length=1
+  then absent (vec y) = bool: { check down to last level marker }
+         none(#orbit-stop,(int i)bool:orbit~[i]=y)
+  in
+  while length<=length_bound and  done<#orbit
+  do if done=stop then stop:=#orbit;length+:=1 fi { hit end of level, define new level }
+  ; let a=orbit[done], w = words[done], act=actions[done] in done+:=1
+  ; for f@i in S
+    do case f(a) | else () { skip when no new vector is returned }
+       | solution(b): if absent(b)
+         and #(i#w)<=length_bound  {this is necessary because termination step can run over}
+         then orbit #:= b; words #:= i#w; actions #:= gens_rep[i]*act
+         fi
+       esac
+    od
+  od; (orbit,words,actions)
+
+{ get orbit of |v| under parabolic subgroup of Weyl group with generators |S|,
+  and witnessing (minimal) Weyl group elements |w|: |x=w*v| for |x| in orbit }
+set generate_from_terminate (RootDatum rd,[int] S,vec v,int bound) = ([vec],[WeylElt]):
+  let (chamber,dom_wt)=from_dominant(rd,v) { dominant for |S| would suffice }
+  then (orbit,words)=
+    generate_from_dom_terminate(for s in S do simple_actor(rd,s) od,dom_wt,bound)
+  , to_dom= inverse(chamber)
+  in (orbit,for w in words do W_elt(rd,for i in w do S[i] od)*to_dom od)
+
+{ like previous, but assuming |v| is dominant, and incorporating action }
+set generate_action_from_dom (RootDatum rd,[int] S,vec v
+                             ,int dim,[mat] gens_rep) = ([vec],[WeylElt],[mat]):
+  let (orbit,words,action)= generate_action_from_dom
+      (for s in S do simple_actor(rd,s) od,v, dim,for s in S do gens_rep[s] od)
+  in (orbit,for w in words do W_elt(rd,for i in w do S[i] od) od,action)
+
+{ when no |WeylElt| elements are needed in the end, we can simplify a bit }
+set W_orbit (RootDatum rd,[int] S, vec v) = [vec]:
+  let (orbit,)=generate_from_dom(for i in S do simple_actor(rd,i) od,v) in orbit
+
+{ just the coset representatives for the stabilizer of |v| }
+set W_orbit_W_elements((RootDatum,[int],vec) triple) = [WeylElt]:
+  let (,W_elements)=generate_from(triple) in W_elements
+
+{ default S to full set of simple roots }
+set generate_from_terminate (RootDatum rd,vec v,int bound) = ([vec],[WeylElt]):
+  generate_from_terminate(rd,all_simples(rd),v,bound)
+
+set W_orbit (RootDatum rd, vec v) = [vec]:
+  W_orbit(rd,all_simples(rd),v)
+set W_orbit_W_elements(RootDatum rd,vec v) = [WeylElt]:
+  W_orbit_W_elements(rd,all_simples(rd),v)
