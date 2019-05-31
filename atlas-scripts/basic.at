@@ -970,6 +970,7 @@ highest_roots(rd)[0]
 {return one of the highest roots}
 set highest_root_one(RootDatum rd)=vec:highest_roots(rd)[0]
 
+
 {                               Weyl group				}
 
 set id_W = let e=vec:[] in (RootDatum rd): WeylElt: W_elt(rd,e)
