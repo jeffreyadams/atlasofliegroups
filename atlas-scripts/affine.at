@@ -5,8 +5,6 @@
 <center.at
 <group_operations.at
 
-{affine Weyl groups, for now only the case of a simple RootDatum}
-
 set cutoff=10000  {terminate calculation after cutoff steps}
 
 set affine_verbose=false
@@ -54,12 +52,27 @@ set is_one_factor(RootDatum rd)=bool: derived_is_simple(rd)
 set is_one_factor(AffineDatum ad)=bool: is_one_factor(ad.rd)
 
 set number_factors(AffineDatum ad)=int:#ad.affine_roots
-
 set affine_root_sum(AffineDatum ad)=sum(ad.affine_roots)
 set affine_coroot_sum(AffineDatum ad)=sum(ad.affine_coroots)
 
-{this applies only to simple RootDatum:
-basic affine datum uses highest root, folding_order=1
+{an affine root datum ad is obtained by "folding" from a pair
+(root datum,distinguished automorphism)=(rd,delta)
+
+each delta orbit of simple factors of rd contributes a single
+simple factor of ad
+
+1) delta trivial on a simple factor rd_i ->
+ -> (rd_i, highest long root)
+    folding_order =1
+2) order delta=2 or 3 on a simple factor rd_i ->
+ -> (folded(rd_i), highest short root)
+     folding_order =2 or 3
+3) delta permutes r simple factors rd_f
+   delta^r is an automorphism of the first one, of order 1,2,3
+   aply 1 or 2 to (rd_i,delta^r)
+   folding_order = 1,2 or 3 accordingly
+}
+{basic affine datum uses highest root, folding_order=1
  other affine data come from an automorphism of
  a simple root system rd_0 of order 2 or 3,
  in which case the underlying root datum rd is the
@@ -75,11 +88,11 @@ assert(is_one_factor(ad),"More than one simple factor");
 let f(ratvec v)=invariant_form(ad.rd)(v,v) in
 rat_as_int(f(ad.rd.highest_root)/f(ad.affine_roots[0]))
 
+{apply folding_order to each simple factor}
 set folding_orders(AffineDatum ad)=[int]:
-let f(ratvec v)=invariant_form(ad.rd)(v,v) then
-highest_roots=ad.rd.highest_roots in
-for i:#highest_roots do
-rat_as_int(f(highest_roots[i])/f(ad.affine_roots[i]))  od
+let f(ratvec v)=invariant_form(ad.rd)(v,v) in
+for alpha@i in ad.rd.highest_roots do 
+rat_as_int(f(alpha)/f(ad.affine_roots[i]))  od
 
 {the affine reflections are labeled -1,-2,...}
 set_type AffineWeylElt = (AffineDatum ad, [int] w)
@@ -107,20 +120,30 @@ AffineDatum:(for alpha in hr do coroot(rd,alpha) od,rd,hr)
 {Note: need the extra parentheses here to avoid ambiguity}
 set reflect((AffineDatum ad, vec beta), ratvec wt)=ratvec:reflect(ad.rd,beta,wt)
 set reflect((AffineDatum ad, int i), ratvec wt)=ratvec:reflect(ad.rd,ad.rd.posroots[i],wt)
+set reflect(AffineDatum ad)=((vec,ratvec)->ratvec):(vec beta,ratvec wt):reflect((ad,beta),wt)
+set reflect(AffineDatum ad)=((int,ratvec)->ratvec):(int i,ratvec wt):reflect((ad,i),wt)
 
-set reflect(ratvec cwt,(AffineDatum ad, vec beta))=ratvec:coreflect(ad.rd,cwt,beta)
-set reflect(ratvec cwt,(AffineDatum ad, int i))=ratvec:coreflect(ad.rd,cwt,ad.rd.posroots[i])
+set reflect(ratvec cwt,(AffineDatum ad, vec beta))=ratvec:coreflect(ad.rd,beta,cwt)
+set reflect(ratvec cwt,(AffineDatum ad, int i))=ratvec:coreflect(ad.rd,ad.rd.posroots[i],cwt)
+
+set coreflect((AffineDatum ad, vec beta), ratvec cwt)=ratvec:coreflect(ad.rd,beta,cwt)
+set coreflect((AffineDatum ad, int i), ratvec cwt)=ratvec:coreflect(ad.rd,ad.rd.posroots[i],cwt)
+set coreflect(AffineDatum ad)=((vec,ratvec)->ratvec):(vec beta,ratvec cwt):reflect((ad,beta),cwt)
+set coreflect(AffineDatum ad)=((int,ratvec)->ratvec):(int i,ratvec cwt):reflect((ad,i),cwt)
 
 {affine reflections}
 
 {affine reflection on X^*: i is the number of the simple factor}
 set affine_reflect(AffineDatum ad,int i,ratvec wt)=ratvec:
 reflect((ad,ad.affine_roots[i]),wt)+(1/ad.folding_orders[i])*ad.affine_roots[i]
+set affine_reflect(AffineDatum ad)=((int,ratvec)->ratvec):
+(int i,ratvec wt):affine_reflect(ad,i,wt)
 
-{affine reflection on X_*}
-set affine_reflect(ratvec cwt,int i,AffineDatum ad)=ratvec:
+{affine (co)reflection on X_*}
+set affine_coreflect(AffineDatum ad,int i,ratvec cwt)=ratvec:
 {reflect(cwt,(ad,ad.affine_coroots[i]))+(1/ad.folding_orders[i])*ad.affine_coroots[i]}
-reflect(cwt,(ad,ad.affine_roots[i]))+(1/ad.folding_orders[i])*ad.affine_coroots[i]
+coreflect((ad,ad.affine_roots[i]),cwt)+(1/ad.folding_orders[i])*ad.affine_coroots[i]
+set affine_coreflect(AffineDatum ad)=((int,ratvec)->ratvec):(int i,ratvec cwt):affine_coreflect(ad,i,cwt)
 
 {labels: defined for an affine datum,
 multiplicity of each simple root in affine root(s)
@@ -156,14 +179,16 @@ else
  affine_reflect(ad,j,wt)
 fi
 
-{ordinary or affine reflection acting on X_*}
-set reflect_or_affine_reflect(ratvec cwt,(AffineDatum ad,int i))=ratvec:
+{ordinary or affine coreflection acting on X_*}
+set reflect_or_affine_coreflect((AffineDatum ad,int i),ratvec cwt)=ratvec:
 assert(0<=i and i<=ad.ss_rank+ad.number_factors-1,"i is out of range");
-if i<=ad.ss_rank-1 then reflect(cwt,(ad,i))
+if i<=ad.ss_rank-1 then ad.coreflect(i,cwt)
 else
  let j=i-ad.ss_rank in
- affine_reflect(cwt,j,ad)
+ ad.affine_coreflect(j,cwt)
 fi
+set reflect_or_affine_reflect(AffineDatum ad)=((int,ratvec)->ratvec):
+(int i,ratvec cwt):reflect_or_affine_reflect((ad,i),cwt)
 
 {wt\in X^*\otimes Q
 affine coordinates: a pair (v,w) of ratvecs
@@ -256,7 +281,7 @@ set affine_make_dominant (AffineDatum ad, ratvec wt) = (ratvec,AffineWeylElt):
        affine_coordinates(rd,wt),new_line);}(wt,(ad,w))
 
 {wt\in X_* \otimes Q}
-set affine_make_dominant (ratvec cwt,AffineDatum ad) = (ratvec,AffineWeylElt):
+set affine_co_make_dominant (AffineDatum ad,ratvec cwt) = (ratvec,AffineWeylElt):
   assert(#cwt=rank(ad),"vector cwt wrong size for (affine) root system");
   let rd=ad.rd in
   if affine_verbose then prints("cwt=", cwt,  new_line, "affine_coordinates:=", affine_coordinates(cwt,ad)) fi;
@@ -264,7 +289,7 @@ set affine_make_dominant (ratvec cwt,AffineDatum ad) = (ratvec,AffineWeylElt):
   let i=0 { needed to pass value across 'do' }
   then w = while (count <=cutoff) and >=(i:=affine_non_dominant_index(cwt,ad))
     do count+:=1;
-       cwt:=reflect_or_affine_reflect(cwt,(ad,i));
+       cwt:=reflect_or_affine_coreflect((ad,i),cwt);
         {debugging:}
 {        let coroot= if i<rank(ad) then simple_coroots(rd)[i] else ad.affine_coroots[i-rank(ad)] fi in}
 {        prints(count, "  i:",i," coroot:", coroot ,"   cwt:",cwt, "  coords:", affine_coordinates(cwt,ad));}
@@ -274,6 +299,8 @@ set affine_make_dominant (ratvec cwt,AffineDatum ad) = (ratvec,AffineWeylElt):
     od
   in   {prints(new_line,"cwt=", cwt,  "   w=",
        affine_coordinates(rd,cwt),new_line);}(cwt,(ad,w))
+set affine_co_make_dominant (AffineDatum ad)=(ratvec->ratvec,AffineWeylElt):
+(ratvec v):affine_co_make_dominant(ad,v)
 
 {
 set *(AffineWeylElt omega,ratvec v)=ratvec:
@@ -302,30 +329,102 @@ let (v,)=affine_from_dominant(cwt,affine_datum(rd)) in v
 
 }
 
-
-{used in all_finite_order.at: should be updated}
-
-set affine_root(RootDatum rd)=vec:highest_root(rd)
-
 {v\in X^*_Q, in co_affine coordinates}
 set co_usual_coordinates(RootDatum rd, ratvec v)=
 let rv=ratvec:null(rank(rd)) in
 for i:rank(rd) do rv+:=v[i]*fundamental_coweights(rd)[i] od;rv
 
-set co_affine_root (RootDatum rd)=vec:
-   let l=find_posroot(rd,highest_root(rd)) in
-   -poscoroots(rd)[l]
+set is_affine_conjugate(AffineDatum ad,ratvec wt_1,ratvec wt_2)=bool:
+let (wt_1_dom,)=affine_make_dominant(ad,wt_1),
+(wt_2_dom,)=affine_make_dominant(ad,wt_2) in wt_1_dom=wt_2_dom
 
-set affine_reflection_alt(RootDatum rd, ratvec v)=ratvec:
-   let alpha=affine_root(rd) in
-   v-(v*alpha+1)*co_affine_root(rd)
+set is_affine_conjugate(ratvec cwt_1,ratvec cwt_2,AffineDatum ad)=bool:
+let (cwt_1_dom,)=affine_make_dominant(ad,cwt_1),
+(cwt_2_dom,)=affine_make_dominant(ad,cwt_2) in cwt_1_dom=cwt_2_dom
 
-set move_to_fundamental_domain(RootDatum rd, ratvec v)=ratvec:
-   let alpha=affine_root(rd), w=v then q=w*alpha+1 in
-   while q<0 do w:=dominant(affine_reflection_alt(rd,w),rd);
-     q:=w*alpha+1 od; w
+{action of fundamental group on fundamental alcove}
+set action_fundamental_group(ratvec cwt,AffineDatum ad)=
+assert(is_affine_dominant(cwt,ad),"coweight is not in fundamental alcove");
+for v in elements_of_fundamental_group(ad.rd) do let (w,)=ad.affine_co_make_dominant(cwt+v)  in w od
 
-{constructions of AffineDatum}
+{  conjugacy of semisimple elements of G }
+{  test: s=exp(2\pi i v) is G-conjugate to t=exp(2\pi i w)}
+
+{case rd is semisimple}
+set is_semisimple_element_conjugate_in_semisimple(ratvec v,ratvec w,RootDatum rd)=
+assert(rd.is_semisimple,"rd is not semisimple");
+let ad=affine_datum(rd) then
+(v_dom,)=ad.affine_co_make_dominant(v) then
+(w_dom,)=ad.affine_co_make_dominant(w) in
+first(for z in action_fundamental_group(v_dom,ad) do z=w_dom od)>=0
+
+{case rd is reductive
+s is G-conjugate to t <=>
+v -> v_dom via the affine Weyl group W_aff=W\rtimes R^vee
+ v_dom is in the fundamental alcove for the action of W_aff
+ i.e. <v_dom,alpha>\ge 0 for all simple roots and <v_dom,\beta><1
+ for all highest roots beta
+w -> w_dom also
+set L=lattice spanned by simple coroots and radical_basis(rd)
+ (the latter is a Z-basis of X_*(radical))
+If G_der is simply connected the condition is
+ v_dom-w_dom \in L
+In general there is an additional term from
+ the finite group X_*/L
+So a set {v_i} in X_* representing X_*/L
+Then the condition is
+v_dom -w_dom + v_i \in L for some v_i
+}
+
+set is_semisimple_element_conjugate(ratvec v,ratvec w,RootDatum rd)=
+if is_abelian(rd) then is_integer(v-w) else
+let ad=affine_datum(rd) then
+(v_dom,)=ad.affine_co_make_dominant(v) then
+(w_dom,)=ad.affine_co_make_dominant(w) then
+L=simple_coroots(rd)##radical_basis(rd) then
+rad=radical_basis(rd) then
+(vecs,orders)=filter_units(adapted_basis(L)) then
+Omega=if #vecs=0 then [null(rank(rd))] else  vecs*box(orders) fi in
+any(for z in Omega do
+{Note: not enough to do: in_lattice(rad,v_dom+z-w_dom)}
+let (y,)=ad.affine_co_make_dominant(v_dom+z) in 
+in_lattice(rad,y-w_dom) od)
+fi
+
+{test if exp(2\pi iv)T is G-conjugate to exp(2\pi iw)T
+ where T is a torus
+}
+set is_semisimple_element_conjugate_mod_torus(ratvec v,ratvec w,RootDatum rd,[vec] torus)=
+if is_abelian(rd) then is_integer(v-w) else
+let ad=affine_datum(rd) then
+(v_dom,)=ad.affine_co_make_dominant(v) then
+(w_dom,)=ad.affine_co_make_dominant(w) then
+L=simple_coroots(rd)##radical_basis(rd) then
+rad=radical_basis(rd) then
+(vecs,orders)=filter_units(adapted_basis(L)) then
+Omega=if #vecs=0 then [null(rank(rd))] else  vecs*box(orders) fi in
+any(for z in Omega do
+let (y,)=ad.affine_co_make_dominant(v_dom+z) in
+in_lattice_subspace_sum(rad,torus)(y-w_dom) od)
+fi
+
+{the first value returned is the list of indices of chosen ratvecs}
+set semisimple_conjugacy_class_reps(RootDatum rd,[ratvec] S)=([int],[ratvec]):
+let rv=[S[0]] then
+indices=[0] in
+for i:#S-1 from 1 do
+ if none(for v in rv do is_semisimple_element_conjugate(S[i],v,rd) od) then rv#:=S[i];indices#:=i fi od;
+ (sort(indices),rv)
+
+{the first value returned is the list of indices of chosen ratvecs}
+set semisimple_conjugacy_class_mod_torus_reps(RootDatum rd,[ratvec] S,[vec] torus)=([int],[ratvec]):
+let rv=[S[0]] then
+indices=[0] in
+for i:#S-1 from 1 do
+ if none(for v in rv do is_semisimple_element_conjugate_mod_torus(S[i],v,rd,torus) od) then rv#:=S[i];indices#:=i fi od;
+ (sort(indices),rv)
+
+{various constructions of AffineDatum}
 
 set affine_datum(LieType lt)=AffineDatum:
 affine_datum(simply_connected(lt))
@@ -377,103 +476,3 @@ let rd=simply_connected(AtoE+rank.to_string) in
 folded_affine(rd,order_of_automorphism)
 
 set affine_datum(string AtoE,int rank)=(AffineDatum,mat):affine_datum(AtoE,rank,1)
-
-set is_affine_conjugate(AffineDatum ad,ratvec wt_1,ratvec wt_2)=bool:
-let (wt_1_dom,)=affine_make_dominant(ad,wt_1),
-(wt_2_dom,)=affine_make_dominant(ad,wt_2) in wt_1_dom=wt_2_dom
-
-set is_affine_conjugate(ratvec cwt_1,ratvec cwt_2,AffineDatum ad)=bool:
-let (cwt_1_dom,)=affine_make_dominant(ad,cwt_1),
-(cwt_2_dom,)=affine_make_dominant(ad,cwt_2) in cwt_1_dom=cwt_2_dom
-
-{action of fundamental group on fundamental alcove}
-set action_fundamental_group(ratvec cwt,AffineDatum ad)=
-assert(is_affine_dominant(cwt,ad),"coweight is not in fundamental alcove");
-for v in elements_of_fundamental_group(ad.rd) do let (w,)=affine_make_dominant(cwt+v,ad)  in w od
-
-set is_semisimple_element_conjugate_in_semisimple(ratvec v,ratvec w,RootDatum rd)=
-assert(rd.is_semisimple,"rd is not semisimple");
-let ad=affine_datum(rd) then
-(v_dom,)=affine_make_dominant(v,ad) then
-(w_dom,)=affine_make_dominant(w,ad) in
-first(for z in action_fundamental_group(v_dom,ad) do z=w_dom od)>=0
-
-{rd is reductive, v,w ratvecs -> semisimple elements s,t
-s is G-conjugate to t <=>
-v -> v_dom via the affine Weyl group W_aff=W\rtimes R^vee
- v_dom is in the fundamental alcove for the action of W_aff
- i.e. <v_dom,alpha>\ge 0 for all simple roots and <v_dom,\beta><1
- for all highest roots beta
-w -> w_dom also
-set L=lattice spanned by simple coroots and radical_basis(rd)
- (the latter is a Z-basis of X_*(radical))
-If G_der is simply connected the condition is
- v_dom-w_dom \in L
-In general there is an additional term from
- the finite group X_*/L
-So a set {v_i} in X_* representing X_*/L
-Then the condition is
-v_dom -w_dom + v_i \in L for some v_i
-}
-
-set is_semisimple_element_conjugate(ratvec v,ratvec w,RootDatum rd)=
-if is_abelian(rd) then is_integer(v-w) else
-let ad=affine_datum(rd) then
-(v_dom,)=affine_make_dominant(v,ad) then
-(w_dom,)=affine_make_dominant(w,ad) then
-L=simple_coroots(rd)##radical_basis(rd) then
-rad=radical_basis(rd) then
-(vecs,orders)=filter_units(adapted_basis(L)) then
-Omega=if #vecs=0 then [null(rank(rd))] else  vecs*box(orders) fi in
-any(for z in Omega do
-{Note: not enough to do: in_lattice(rad,v_dom+z-w_dom)}
-let (y,)=affine_make_dominant(v_dom+z, ad) in 
-in_lattice(rad,y-w_dom) od)
-fi
-
-{test if ratvec v is in lattice + rational subspace
- lattice L, rational subspace V
-}
-set in_lattice_subspace_sum ([vec] L,[vec] V)=(ratvec->bool):
-(ratvec v):
-if =#V then in_lattice(L,v) else
- let ck=cokernel(V) then (new_V,,,) = echelon(ck*L) in
- let v_new=ck*v in
- if not is_integer(v_new) then false
-  else
-  in_lattice(new_V,ratvec_as_vec(v_new))
- fi
-fi
-
-{test if exp(2\pi iv)T is G-conjugate to exp(2\pi iw)
- where T is a torus
-}
-set is_semisimple_element_conjugate_mod_torus(ratvec v,ratvec w,RootDatum rd,[vec] torus)=
-if is_abelian(rd) then is_integer(v-w) else
-let ad=affine_datum(rd) then
-(v_dom,)=affine_make_dominant(v,ad) then
-(w_dom,)=affine_make_dominant(w,ad) then
-L=simple_coroots(rd)##radical_basis(rd) then
-rad=radical_basis(rd) then
-(vecs,orders)=filter_units(adapted_basis(L)) then
-Omega=if #vecs=0 then [null(rank(rd))] else  vecs*box(orders) fi in
-any(for z in Omega do
-let (y,)=affine_make_dominant(v_dom+z, ad) in
-in_lattice_subspace_sum(rad,torus)(y-w_dom) od)
-fi
-
-{the first value returned is the list of indices of chosen ratvecs}
-set semisimple_conjugacy_class_reps(RootDatum rd,[ratvec] S)=([int],[ratvec]):
-let rv=[S[0]] then
-indices=[0] in
-for i:#S-1 from 1 do
- if none(for v in rv do is_semisimple_element_conjugate(S[i],v,rd) od) then rv#:=S[i];indices#:=i fi od;
- (sort(indices),rv)
-
-{the first value returned is the list of indices of chosen ratvecs}
-set semisimple_conjugacy_class_mod_torus_reps(RootDatum rd,[ratvec] S,[vec] torus)=([int],[ratvec]):
-let rv=[S[0]] then
-indices=[0] in
-for i:#S-1 from 1 do
- if none(for v in rv do is_semisimple_element_conjugate_mod_torus(S[i],v,rd,torus) od) then rv#:=S[i];indices#:=i fi od;
- (sort(indices),rv)

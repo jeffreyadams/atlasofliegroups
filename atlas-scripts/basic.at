@@ -823,10 +823,21 @@ set reflect (RootDatum rd, int i, ratvec v) = ratvec:
   let (n,d) = %v in reflect(rd,i,n)/d
 set reflect (RootDatum rd, vec alpha, ratvec v) = ratvec:
   let (n,d) = %v in reflect(rd,alpha,n)/d
-set coreflect (RootDatum rd, ratvec v, int i) = ratvec:
+{object-like versions:}
+set reflect (RootDatum rd)=((int,ratvec)->ratvec):
+(int i,ratvec v):reflect(rd,i,v)
+set reflect (RootDatum rd)=((vec, ratvec) -> ratvec):
+(vec alpha,ratvec v):reflect(rd,alpha,v)
+  
+set coreflect (RootDatum rd, int i,ratvec v) = ratvec:
   let (n,d) = %v in coreflect(rd,n,i)/d
-set coreflect (RootDatum rd, ratvec v, vec alpha) = ratvec:
+set coreflect (RootDatum rd, vec alpha,ratvec v) = ratvec:
   let (n,d) = %v in coreflect(rd,n,alpha)/d
+  {object-like versions:}
+set coreflect (RootDatum rd)=((int,ratvec)->ratvec):
+(int i,ratvec v):coreflect(rd,i,v)
+set coreflect (RootDatum rd)=((vec, ratvec) -> ratvec):
+(vec alpha,ratvec v):coreflect(rd,alpha,v)
 
 { in matrix version reflect becomes left_reflect and coreflect right_reflect }
 set left_reflect (RootDatum rd, int i, mat M) = mat: { reflection(rd,i)*M }

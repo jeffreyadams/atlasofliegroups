@@ -100,4 +100,6 @@ set list=[SL(2),SL(3),SL(4),SL(5),SL(6),SL(7),Sp(4),Sp(6),Sp(8),simply_connected
 set show_cohom([RootDatum] root_data)=void:
 for rd in root_data do show_cohom(rd) od
 
+set listD=[SO(6),SO(8),SO(10),SO(12),SO(14)]
+set listB=[SO(7),SO(9),SO(11),SO(13),SO(15)]
 

@@ -145,6 +145,9 @@ T
 set fill_structure_constant_table(StructureConstantTable T)=StructureConstantTable:
 for i:T.rd.max_height-1 from 2 do T:=update_structure_constant_table(T,i) od;T
 
+set structure_constant_table(RootDatum rd)=StructureConstantTable:
+fill_structure_constant_table(initialize_structure_constant_table(rd))
+
 {test Jacobi identity}
 set jacobi(StructureConstantTable T)=((vec,vec,vec)->(bool,[int])):(vec alpha, vec beta, vec gamma):
 let N=T.N then
@@ -185,3 +188,10 @@ for a in roots do
   prints(a,b,c," ",x, " ", y, b-a, " ", b+a) fi
 od od od;rv
 
+{extract rows/columns given by S=[int]}
+set sub_table(StructureConstantTable T,[int] S)=mat:
+principal_submatrix(T.table,S)
+
+{extract rows/columns given by S=[vec]}
+set sub_table(StructureConstantTable T,[vec] S)=mat:
+sub_table(T, for v in S do T.rd.all_root_index(v) od)

@@ -127,6 +127,18 @@ set solve_ratvec (mat A, vec v) = ratvec:
 set in_lattice (mat A, ratvec u) = bool: { whether v in image lattice of A }
   let (b,n)=%u in n=1 and solve(A,b).any
 
+{test if ratvec v is in lattice L + rational subspace V}
+set in_lattice_subspace_sum ([vec] L,[vec] V)=(ratvec->bool):
+(ratvec v):
+if =#V then in_lattice(L,v) else
+ let ck=cokernel(V) then (new_V,,,) = echelon(ck*L) in
+ let v_new=ck*v in
+ if not is_integer(v_new) then false
+  else
+  in_lattice(new_V,ratvec_as_vec(v_new))
+ fi
+fi
+
 set vec_solve (mat A, ratvec u) = maybe_a_vec: { integer solution to A*x=b }
   let (b,n)=%u in if n>1 then no_vec() else solve(A,b) fi
 
