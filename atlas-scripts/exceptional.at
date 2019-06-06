@@ -47,9 +47,9 @@ set orbit(NilpotentDatum d)=ComplexNilpotent:complex_nilpotent_from_diagram(d.ro
 set dimension(NilpotentDatum d)=int:dim_nilpotent(d.orbit)
 set is_special(NilpotentDatum d)=bool:d.special=1
 set is_even(NilpotentDatum d)=bool:is_integer(d.diagram/2)
-set H(NilpotentDatum d)=d.orbit.H_of_triple
+set H(NilpotentDatum d)=d.orbit.H{_of_triple}
 set Levi(NilpotentDatum d)=RootDatum:
- let (sr,)=Levi_of_H(d.orbit.H_of_triple,d.root_datum) in 
+ let (sr,)=Levi_of_H(d.orbit.H{_of_triple},d.root_datum) in 
  subgroup_by_simple(d.root_datum,sr)
 set is_distinguished(NilpotentDatum d)=bool:
 if  not is_even(d) then false {distinguished=>even, save time} else

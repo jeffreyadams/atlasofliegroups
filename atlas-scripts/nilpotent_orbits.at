@@ -12,11 +12,13 @@ set nilpotent_verbose=false
   in particular is_dominant(H,rd) should hold
 }
 set_type
-[ ComplexNilpotent = (RootDatum root_datum, void ., vec H_of_triple)
+[ ComplexNilpotent = (RootDatum root_datum, void ., vec H{_of_triple})  {_of_triple not necessary}
 , RealNilpotent    = (vec H, KGBElt x, void .)
 ]
 
 set complex_nilpotent (RootDatum rd, vec H) = ComplexNilpotent: (rd,(),H)
+{"complex" isn't necessary}
+set nilpotent (RootDatum rd, vec H) = complex_nilpotent(rd,H)
 
 {complex orbit; list of orders of conjugacy classes;
 for each conjugacy class a list of pairs (L,[ratvec])
@@ -30,7 +32,7 @@ set_type ComplexNilpotentComponentDatum=
    the H's are conjugate by the Weyl group. .}
 set = (ComplexNilpotent O1,ComplexNilpotent O2) = bool:
    let rd=O1.root_datum in rd=O2.root_datum and
-   dominant(O1.H_of_triple,rd)=dominant(O2.H_of_triple,rd)
+   dominant(O1.H{_of_triple},rd)=dominant(O2.H{_of_triple},rd)
 
 { dimension of the orbit of nilpotents described by a |ComplexNilpotent| }
 set dim_nilpotent (ComplexNilpotent(rd,,H)) = int:
@@ -52,7 +54,7 @@ set sort_by_dimension = ([ComplexNilpotent]->[ComplexNilpotent]):
 
 set find ([ComplexNilpotent] list,ComplexNilpotent O) = int:
    first(#list,(int i)bool:list[i].root_datum=O.root_datum and
-                           list[i].H_of_triple=O.H_of_triple)
+                           list[i].H{_of_triple}=O.H{_of_triple})
 
 set find ([RealNilpotent] list,RealNilpotent O) = int:
    first(#list,(int i)bool:list[i].x.root_datum=O.x.root_datum and
@@ -143,9 +145,9 @@ set all_H_nd (RootDatum rd) = [vec]:
    do distinguished_H(Levi_datum(rd,S))
    od
 
-{. List all complex nilpotent orbits (with H dominant) for a complex group. .}
-set complex_nilpotent_orbits (RootDatum rd) = [ComplexNilpotent]:
-   for H in all_H(rd) do complex_nilpotent(rd,H) od.sort_by_dimension
+{. List all (complex) nilpotent orbits (with H dominant) for a complex group. .}
+set nilpotent_orbits (RootDatum rd) = [ComplexNilpotent]:
+   for H in all_H(rd) do nilpotent(rd,H) od.sort_by_dimension
 
 {. For a complex group, for each standard Levi M given by a list of simple
    roots, list the corresponding neutral elements H (dominant for M, not G)
@@ -586,7 +588,7 @@ set is_conjugate_pseudo_Levi ([int] L, [int] M, RootDatum rd)=bool:
 }
 set pseudo_Levis (ComplexNilpotent O)=
 let rd=O.root_datum then
-H=dominant(O.H_of_triple,rd) in
+H=dominant(O.H{_of_triple},rd) in
 ##for L in pseudo_Levi_subgroups(rd) do
  let distinguished_H_L=distinguished_H(L) in
  let j=first(for H_L in distinguished_H_L do dominant(H_L,rd)=H od)
@@ -741,20 +743,24 @@ list of ratvecs}  then}
  (L,H_L,Z_Lmod,Z_Lmod_reg,Z_Lmod_reg_lifted,Z_Lmod_reg_lifted_cc)
 od
 
-set Bala_Carter_Levi (ComplexNilpotent O)=(RootDatum,vec):
+{return Bala Carter Levi and distinguished H_L for L conjugate to given H}
+set Bala_Carter_Levi_plus (ComplexNilpotent O)=(RootDatum,vec):
 let rd=O.root_datum then
-H=dominant(O.H_of_triple,rd) in let list=
+H=dominant(O.H{_of_triple},rd) in let list=
 ##for L in Levi_subgroups(rd) do
  let distinguished_H_L=distinguished_H(L) in
  let j=first(for H_L in distinguished_H_L do dominant(H_L,rd)=H od)
  in if j>=0 then [(L,distinguished_H_L[0])] else [] fi od in list[0]
+
+{Bala Carter Levi only}
+set Bala_Carter_Levi (ComplexNilpotent O)=RootDatum:let (L,)=O.Bala_Carter_Levi_plus in L
 
 set order_in_A (ratvec v, RootDatum rd, vec H)=int:
    let div=divisors(denom(v)) then
    k=first(
    for i in div do
    let CL=centralizer(rd,i*v) then orb=complex_nilpotent(CL,H) then
-   (L,H_new)=Bala_Carter_Levi(orb) in in_radical(i*v,L) od) in div[k]
+   (L,H_new)=Bala_Carter_Levi_plus(orb) in in_radical(i*v,L) od) in div[k]
 
 set component_datum(ComplexNilpotent O)=ComplexNilpotentComponentDatum:
 let g=generators_of_component_group(O)
@@ -770,7 +776,7 @@ set show(ComplexNilpotentComponentDatum d)=void:
    let values=
    for (L,S) in d.pairs do
    [L.derived.nice_format,S.to_string] od in
-   prints("Component info for orbit:",new_line,"H=", d.orbit.H_of_triple, " diagram:",
+   prints("Component info for orbit:",new_line,"H=", d.orbit.H{_of_triple}, " diagram:",
    d.orbit.diagram, " dim:", d.orbit.dim_nilpotent);
 prints("orders of conj. classes:",d.orders);
    tabulate(header#values)
@@ -781,14 +787,14 @@ set print_component_info (ComplexNilpotent O)=void:
    values=
    for (L,S) in d.pairs do
    [L.derived.nice_format,S.to_string] od in
-   prints(new_line,"Component info for orbit:",new_line, "H=", O.H_of_triple, " diagram:",
+   prints(new_line,"Component info for orbit:",new_line, "H=", O.H{_of_triple}, " diagram:",
    O.diagram, " dim:", O.dim_nilpotent);
    prints("orders:",d.orders);
    tabulate(header#values)
 
 
 set print_component_info_long (ComplexNilpotent O)=void:
-prints(new_line,"Component info for orbit:",new_line, "H=", O.H_of_triple, " diagram:",
+prints(new_line,"Component info for orbit:",new_line, "H=", O.H{_of_triple}, " diagram:",
 O.diagram, " dim:", O.dim_nilpotent);
 for (L,H_L,Z_Lmod,Z_Lmod_reg,Z_Lmod_reg_lifted,Z_Lmod_reg_cc) in generators_of_component_group(O) do
 prints(new_line,"L:",L.derived,new_line,"Z(L)/Z(L)^0: ",Z_Lmod,new_line,"Z(L)/Z(L)^0-reg: ",
@@ -796,18 +802,18 @@ Z_Lmod_reg,new_line,"Z(L)/Z(L)^0-reg-lifted: ",
 Z_Lmod_reg_lifted,new_line,"Z(L)/Z(L)^0-cc: ",Z_Lmod_reg_cc) od
 
 set print_component_info (RootDatum rd)=void:
-   for orb in complex_nilpotent_orbits (rd) do prints();
+   for orb in nilpotent_orbits (rd) do prints();
    print_component_info (orb) od
 
 set print_component_info_long (RootDatum rd)=void:
-   for orb in complex_nilpotent_orbits (rd) do prints();
+   for orb in nilpotent_orbits (rd) do prints();
    print_component_info_long (orb) od
 
 set print_component_info_short (RootDatum rd)=void:
 tabulate(["i","H","diag","dim","A(O)"]#
- for orb@i in complex_nilpotent_orbits (rd) do
+ for orb@i in nilpotent_orbits (rd) do
  let d=component_datum(orb) in
- [i.to_string,orb.H_of_triple.to_string,orb.diagram.to_string,orb.dim_nilpotent.to_string,
+ [i.to_string,orb.H{_of_triple}.to_string,orb.diagram.to_string,orb.dim_nilpotent.to_string,
  d.orders.to_string] od
  )
 
@@ -819,7 +825,7 @@ set zero_orbit(RootDatum rd)=ComplexNilpotent:(rd,(),null(rank(rd)))
 set subregular_orbit_simple(RootDatum rd)=ComplexNilpotent:
 assert(rd.derived_is_simple,"RootDatum is not simple");
 if is_abelian(rd) then (rd,(),rd.rank.null) else
-let orbits=complex_nilpotent_orbits(rd) then
+let orbits=nilpotent_orbits(rd) then
 j=first(for orbit in orbits do orbit.dim_nilpotent=rd.dimension-rd.rank-2 od) in
 orbits[j] fi
 
@@ -845,7 +851,7 @@ orbits=[ComplexNilpotent]:[] in
 for i:#factors do
  let H=null(rd.rank) in
  for j:#factors do
-  if i=j then H+:=factors[j].subregular_orbit_simple.H_of_triple
+  if i=j then H+:=factors[j].subregular_orbit_simple.H{_of_triple}
    else H+:=ratvec_as_vec(2*factors[j].rho_check)
   fi
  od;
@@ -865,7 +871,7 @@ orbits=[ComplexNilpotent]:[] in
 for i:#factors do
  let H=null(rd.rank) in
  for j:#factors do
-  if i=j then H+:=factors[j].minimal_orbit_simple.H_of_triple
+  if i=j then H+:=factors[j].minimal_orbit_simple.H{_of_triple}
   fi
  od;
  orbits#:=(rd,(),H)
@@ -877,7 +883,7 @@ set minimal_real_nilpotent_orbits (RealForm G) = [RealNilpotent]:
 
 set show_nilpotent_orbits([ComplexNilpotent] orbits)=void:
 tabulate(for orbit in orbits do
-[orbit.H_of_triple.to_string,orbit.diagram.to_string,orbit.dim_nilpotent.to_string] od)
+[orbit.H{_of_triple}.to_string,orbit.diagram.to_string,orbit.dim_nilpotent.to_string] od)
 
 set show_nilpotent_orbits(RootDatum rd)=void:
-show_nilpotent_orbits(complex_nilpotent_orbits(rd))
+show_nilpotent_orbits(nilpotent_orbits(rd))

@@ -34,10 +34,10 @@ set sort_u ([ComplexNilpotent] orbits)=[ComplexNilpotent]:
    eliminate_duplicates(sort(orbits))
 
 {G-saturation of an orbit in a subgroup L: G-orbit = G.(L-orbit)
-simply use the same H_of_triple
+simply use the same H{_of_triple}
 }
 set saturate(RootDatum rd,ComplexNilpotent O)=ComplexNilpotent:
-(rd,(),dominant(O.H_of_triple,rd))
+(rd,(),dominant(O.H{_of_triple},rd))
 
 {saturate the orbits of L together with their closure relations}
 set saturate(RootDatum rd,NilpotentPoset P)=NilpotentPoset:
@@ -107,7 +107,7 @@ trivial relations:
 0 < everything < principal
 }
 set seed_complex_nilpotent_poset(RootDatum rd)=NilpotentPoset:
-let orbits=complex_nilpotent_orbits(rd) then
+let orbits=nilpotent_orbits(rd) then
 min=min_loc(for orbit in orbits do dim_nilpotent(orbit) od) then
 max=max_loc(for orbit in orbits do dim_nilpotent(orbit) od) then
 closures=
@@ -136,7 +136,7 @@ for subregular@i in rd.subregular_orbits do
  let subregular_number=find(orbits,subregular) then
 new_relations=
  ##for orbit@j in orbits do
-    if j=subregular_number or project_on_simple_factor(orbit.H_of_triple,i,rd)=project_on_simple_factor(2*rho_check(factors[i]),i,rd) then []
+    if j=subregular_number or project_on_simple_factor(orbit.H{_of_triple},i,rd)=project_on_simple_factor(2*rho_check(factors[i]),i,rd) then []
     else [j] fi
  od
  in closures[subregular_number]:=sort_u(closures[subregular_number] ## new_relations)
@@ -152,7 +152,7 @@ factors=simple_factors(rd) in
 for minimal@i in rd.minimal_orbits do
  let minimal_number=find(orbits,minimal) in
  for orbit@j in orbits do
-    if j !=minimal_number and project_on_simple_factor(orbit.H_of_triple,i,rd) != null(rd.rank) then
+    if j !=minimal_number and project_on_simple_factor(orbit.H{_of_triple},i,rd) != null(rd.rank) then
     closures[j]:=sort_u(closures[j]#minimal_number) fi
  od
 od;
@@ -310,7 +310,7 @@ fi
 
 set show(NilpotentPoset P)=void:
 let values=for orbit@i in P.orbits do
- [i.to_string,orbit.H_of_triple.to_string,orbit.dim_nilpotent.to_string,P.orbit_closures[i].to_string] od
+ [i.to_string,orbit.H{_of_triple}.to_string,orbit.dim_nilpotent.to_string,P.orbit_closures[i].to_string] od
  in tabulate(values)
 
 set show([RootDatum] subs,[NilpotentPoset] orbit_posets)=void:
@@ -320,7 +320,7 @@ prints(new_line,i, " ", subs[i].derived.Lie_type.nice_format);show(orbit_posets[
 set show_subgroup_orbit_nilpotent_map(RootDatum rd)=void:
 let values=
  ##for L in subgroups(rd) do
-  for orbit_L in complex_nilpotent_orbits(L) do 
+  for orbit_L in nilpotent_orbits(L) do 
   let orbit=saturate(rd,orbit_L) in
-  [L.derived.Lie_type.nice_format,orbit_L.diagram.to_string,orbit_L.H_of_triple.to_string,orbit_L.dim_nilpotent.to_string,orbit.diagram.to_string,orbit.H_of_triple.to_string,orbit.dim_nilpotent.to_string] od od
+  [L.derived.Lie_type.nice_format,orbit_L.diagram.to_string,orbit_L.H{_of_triple}.to_string,orbit_L.dim_nilpotent.to_string,orbit.diagram.to_string,orbit.H{_of_triple}.to_string,orbit.dim_nilpotent.to_string] od od
  in tabulate(["L","diagram_L","H_L","dim_L","diagram","H","dim"]#values)

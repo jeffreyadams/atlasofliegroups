@@ -60,7 +60,6 @@ set_type
 
 {. Data type for a K_orbit on G/P_S (synonym for KGPElt). .}
 set_type Parabolic = KGPElt
-{. Data type for a complex Levi=pair of root data.}
 
 {. choose from a nonempty list of KGB elements one with the smallest index. .}
 set min ([KGBElt] list)= KGBElt:
@@ -183,6 +182,10 @@ set complex_Levi (RootDatum rd,[int] S) = RootDatum:
 {synonm for complex_Levi}
 set Levi(ComplexParabolic P)=RootDatum:complex_Levi(P)
 
+{a complex (standard) Levi determines a complex (standard) parabolic}
+set complex_parabolic(RootDatum rd,RootDatum rd_L)=ComplexParabolic:
+(rd,for alpha in rd_L.simple_roots do find(rd.simple_roots,alpha)od)
+
 set simple_root_indices(RootDatum rd,RootDatum rd_L)=[int]:
 assert(all(for alpha in rd_L.simple_roots do find(rd.simple_roots,alpha)!=-1 od),"Not a standard Levi");
 for alpha in rd_L.simple_roots do find(rd.simple_roots,alpha) od
@@ -279,6 +282,9 @@ set nilrad_roots (ComplexParabolic(rd,):P) = mat: { columns are posroots }
 
 set nilrad (Parabolic P) = mat:       nilrad(complex_parabolic(P))
 set nilrad_roots (Parabolic P) = mat: nilrad_roots(complex_parabolic(P))
+
+{nilrad roots only depend on the Levi}
+set nilrad_roots(RootDatum rd,RootDatum rd_L)=mat:nilrad_roots(complex_parabolic(rd,rd_L))
 
 {. Half sum of positive roots not in the Levi (L must be theta-stable). .}
 set rho_u (ComplexParabolic P) = ratvec: { P.root_datum.rho-complex_Levi.rho }

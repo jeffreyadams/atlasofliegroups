@@ -70,7 +70,7 @@ set saturation_quotient_basis = image_complement_basis@mat
 
 { |M| is an $n\times k$ matrix; its columns span a submodule $W$ of $\Z^n$.
   Compute $n\times n$ matrix of projection onto the saturation (or $\Q$-span)
-  of $W$, parallel to its complement from |adapted_sirect_sum(M)|.
+  of $W$, parallel to its complement from |adapted_direct_sum(M)|.
 }
 set projector_to_image (mat M) = mat:
   let (c,R)=adapted_direct_sum(M) in R[ : , :c] * R.inverse[ :c, : ]

@@ -425,9 +425,9 @@ for O in orbits do (O,Phi_upto(O,N,v)) od
 set initialize_KNilpotent(RealForm G, int N,ratvec v, bool include_Q_and_P_X_matrices)=KNilpotentData:
 let complex_orbits= sort_by_dimension
 (
-##for O in complex_nilpotent_orbits(G.root_datum) 
+##for O in nilpotent_orbits(G.root_datum) 
 {only keep a complex orbit if H*delta=H}
-  do if O.H_of_triple*G.distinguished_involution=O.H_of_triple then [O] else [] fi od
+  do if O.H{_of_triple}*G.distinguished_involution=O.H{_of_triple} then [O] else [] fi od
 ) then
 real_orbits=real_nilpotent_orbits(G) then
 default_Q_and_P_X_matrices=for i:#complex_orbits do ([K_Type]:[],[K_Type]:[],null(0,0),null(0,0)) od then
@@ -619,7 +619,7 @@ set av_ann(KNilpotentData d,K_Type_Pol P)=([K_Type],[K_Type],int,mat,vec,vec,boo
 for OC@i in d.complex_orbits do
  let (K_basis,L_cap_K_basis,T,v,w,success)=search(d,i,P)  in
  if success then
-   if kn_verbose then prints("AV(Ann(p)):");prints("Complex orbit #",i,": H=", OC.H_of_triple) fi;
+   if kn_verbose then prints("AV(Ann(p)):");prints("Complex orbit #",i,": H=", OC.H{_of_triple}) fi;
       return(K_basis,L_cap_K_basis,i,T,v,w,success)
  fi
 od;
@@ -688,7 +688,7 @@ for OC@i in d.complex_orbits do
  let real_orbits=closure_real(d,i) then
  (K_basis,L_cap_K_basis,T,v,w,success)=search(d,real_orbits,P) in
  if success then
-  if kn_verbose then prints("AV(Ann(p)):");prints("Complex orbit #",i,": H=", OC.H_of_triple) fi;
+  if kn_verbose then prints("AV(Ann(p)):");prints("Complex orbit #",i,": H=", OC.H{_of_triple}) fi;
   return(K_basis,L_cap_K_basis,i,T,v,w,success)
  fi
 od;
@@ -761,7 +761,7 @@ prints("complex orbits:");
 let header=["#","H", "dim"] then
 values=
 for OC@i in d.complex_orbits do
-[i.to_string, OC.H_of_triple.to_string,dim_nilpotent(OC).to_string] od in 
+[i.to_string, OC.H{_of_triple}.to_string,dim_nilpotent(OC).to_string] od in 
 tabulate(header#values,"lll",2," ");
 prints("matrices attached to complex orbits:");
 let header=["#","Y","Q","P_X"] then

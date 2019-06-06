@@ -4,6 +4,7 @@
 <K.at
 <center.at
 <group_operations.at
+<outer.at
 
 set cutoff=10000  {terminate calculation after cutoff steps}
 
@@ -423,6 +424,33 @@ indices=[0] in
 for i:#S-1 from 1 do
  if none(for v in rv do is_semisimple_element_conjugate_mod_torus(S[i],v,rd,torus) od) then rv#:=S[i];indices#:=i fi od;
  (sort(indices),rv)
+
+{construction an AffineDatum from (RootDatum rd,mat delta)
+where delta is a distinguished automorphism of rd
+}
+
+set is_distinguished(RootDatum rd,mat delta)=bool:
+all(for alpha in rd.simple_roots do find(rd.simple_roots,delta*alpha) !=-1 od)
+
+{
+set affine_datum(RootDatum rd,mat delta)=
+assert(is_distinguished(rd,delta),"automorphism is not distinguished");
+let factors=rd.simple_factors then
+two_rhos=for f in factors do f.two_rho od then
+perm=for v in two_rhos do find(two_rhos,delta*v) od then
+cycles=permutation_cycles(perm) then
+orders=
+ for S in cycles do
+  let f=factors[S[0]] then
+  r=#S {order of cyclic permutation} then
+  delta_power=delta^r then
+  perm_f=for alpha in f.simple_roots do find(f.simple_roots,delta_power*alpha) od in
+  order(permutation_matrix(perm_f)) 
+ od
+ {make matrix of delta^r acting on single simple factor
+ where delta permuts r copies of given simple factor 
+}
+}
 
 {various constructions of AffineDatum}
 
