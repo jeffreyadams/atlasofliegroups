@@ -78,6 +78,7 @@ set standardize_Lie_type(LieType lt)=LieType:Lie_type(Lie_type_matrix(lt))
 
 set nice_format(LieType lt)=string:
 let M=Lie_type_matrix(lt) in
+if =M then "e" {trivial group} else
 let rv="" in
  for col: 8 do
   for row: 16 do
@@ -88,7 +89,7 @@ let rv="" in
   od
  od;
 {delete leading "+"}
-let chop="" in for i:#rv-1 from 1 do chop+:=rv[i] od;chop
+let chop="" in for i:#rv-1 from 1 do chop+:=rv[i] od;chop fi
 
 set nice_format(RootDatum rd)=string:rd.Lie_type.nice_format
 
