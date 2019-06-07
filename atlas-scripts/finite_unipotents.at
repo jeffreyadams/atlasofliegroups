@@ -72,7 +72,7 @@ set count_orbits_and_centralizers(RootDatum rd)=
 let sum=0 then
 d=##for L in strict_pseudo_Levi_subgroups(rd) do
  if not is_abelian(L) then
-  [(L,##for O in complex_nilpotent_orbits (L) do
+  [(L,##for O in nilpotent_orbits (L) do
     let orders=O.conjugacy_class_orders in
         sum+:=#orders;[(O,orders)] od)]
   else []
@@ -105,7 +105,7 @@ set orbits_and_unipotents(RootDatum rd)=
 let rv=for L in pseudo_Levi_subgroups(rd) do
 if is_abelian(L) then (L,0,0) else
 (L,
-sum(for O in complex_nilpotent_orbits (L) do #O.conjugacy_class_orders od),
+sum(for O in nilpotent_orbits (L) do #O.conjugacy_class_orders od),
 number_unipotents(L)) fi od then
 orbs=sum(for (,n,) in rv do n od)  then
 reps=sum(for (,,n) in rv do n od) in
@@ -119,7 +119,7 @@ set orbits_and_unipotents_strict(RootDatum rd)=
 let rv=for L in rd#strict_pseudo_Levi_subgroups(rd) do
 if is_abelian(L) then (L,0,0) else
 (L,
-sum(for O in complex_nilpotent_orbits (L) do #O.conjugacy_class_orders od),
+sum(for O in nilpotent_orbits (L) do #O.conjugacy_class_orders od),
 number_unipotents(L)) fi od then
 orbs=sum(for (,n,) in rv do n od)  then
 reps=sum(for (,,n) in rv do n od) in

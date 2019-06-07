@@ -4,7 +4,8 @@
 <K.at
 <center.at
 <group_operations.at
-<outer.at
+{<outer.at}
+
 
 set cutoff=10000  {terminate calculation after cutoff steps}
 

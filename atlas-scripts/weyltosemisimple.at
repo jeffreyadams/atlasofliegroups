@@ -50,7 +50,7 @@ for i:#rp-1 from 1 do
  od; let
 (ad,pullback)=folded_affine(rd,data.delta) then
 ()=prints("final v:",v) then
-(w,omega)=affine_make_dominant(pullback*v/data.d,ad) in
+(w,omega)=ad.affine_co_make_dominant(pullback*v/data.d) in
 (v,w,affine_coordinates(w,ad),omega)
 
 set report([good_data] list)=void:

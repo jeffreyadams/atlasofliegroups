@@ -137,7 +137,8 @@ v_0=nested_Levis_to_semisimple(w.root_datum,orders,std_levis,order(w)) in
 put v_0 in the fundamental alcove}
 set good(WeylElt w,AffineDatum ad)=
 let (ep,orders,levis,std_levis,y,v)=good(w) then
-(z,)=affine_make_dominant(v,ad) in
+{(z,)=affine_make_dominant(v,ad) in}
+(z,)=ad.affine_co_make_dominant(v) in
 (ep,orders,levis,std_levis,y,v,z,affine_coordinates(z,ad))
 
 {information about good representatives of a list of elliptic elements}
