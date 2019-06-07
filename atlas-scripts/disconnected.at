@@ -1,0 +1,86 @@
+{ This file describes general disconnected complex reductive algebraic
+  groups. The mathematics is described in
+  Dropbox/disconnected/disconnected.pdf.
+
+  First ingredient is a connected reductive G_0, represented by a root
+  datum of rank r.
+
+  Second ingredient is an arbitrary finite group Gamma, with n
+  elements, which will be G/G_0. It's represented by its
+  multiplication table, an n x n matrix of integers.
+
+  Third ingredient is a homomorphism from Gamma to Out(G_0),
+  represented by an n-tuple of integer r x r matrices.
+
+  Fourth minus epsilon ingredient is a representation of Z(G_0). For
+  now it's represented by the character group Z(G_0)^hat, which is a
+  finitely generated abelian group. This group will be represented as
+  a quotient of two lattices: the weight lattice X^* for G_0 by the
+  root lattice. Since X^* is Z^r, we'll represent Z(G_0) as an r x s
+  matrix, the columns generating the root lattice: we can take this to
+  be the matrix M of simple roots of G_0. (In general the character
+  group X^*(Z) of a reductive abelian algebraic Z can be represented
+  as an r x s integer matrix, with r spanning characters subject to
+  the relations specified by the s columns.) Then
+
+  Z(G_0) = Hom(finitely generated,C^\times) = {z \in (C^\times)^r |
+  \prod_{j=1}^r z_j^{m^j_i} = 1}.
+
+  Consequently the elements of finite order in Z(G) are
+
+  Z(G_0)_fin = {q \in Q^r | \sum_j m^j_i q_j \in {\mathbb Z}, all i}/Z^r
+
+      = {r-tuples q of ratls in [0,1) | \sum_j m^j_i q_j \in Z, all i}.
+
+  Fourth ingredient is a 2-cocyle representing a class in H^2(Gamma,
+  Z(G_0)_fin). This is given by an n \times n array of r-tuples of
+  rationals in [0,1), subject to the integrality constraints defined
+  above (one for each simple root). That makes a map from Gamma x
+  Gamma to Z(G_0)_fin; that it's a cocycle is some complicated
+  condition.
+
+}
+
+{finite group of order n is represented by its n x n multiplication table}
+set_type FiniteGroup = mat 
+
+{homomorphism from group of order n to automorphisms of rank r root
+datum is represented by an n-tuple of r x r integer matrices. Happily
+this same collection of matrices also naturally defines the
+corresponding automorphism of Z(rd)_fin.}
+set_type Automorphism = [mat]
+
+{reductive abelian subgroup Z of (C^r) represented by the r x s matrix M
+of characters which are trivial on Z}
+set_type ReductiveAbelian = mat
+
+{class in H^2(Gamma,Z) represented by an array of n^2 vectors of
+rationals of size r. Each of these vectors v is assumed to be subject to
+the defining relations M*v integral, and to have entries in [0,1)}
+set_type FactorSystem = [ratvec]
+
+{Disconnected group (rd,Gamma,alpha,FS) is the union of G_0(rd) and #Gamma
+cosets G_0(rd)(delta_i~). Multiplication rules are
+
+(delta_i~)(delta_j~)=FS[i+(#Gamma)j](delta_{Gamma[i,j]}~)
+
+(delta_i~) g (delta_i~)^{-1} = alpha[i](g)
+
+Here FS[*] is an element of Z(G_0(rd)); g is in G_0[rd]; alpha[i] is
+the distinguished automorphism of G_0(rd) corresponding to the matrix
+alpha[i] (based root datum automorphism)}
+set_type DisconnectedGroup =
+(RootDatum,FiniteGroup,Automorphism,FactorSystem)
+
+set is_associative(FiniteGroup Gamma) = bool:
+all(for i:#Gamma do all(for j:#Gamma do all(for k:#Gamma do
+Gamma[Gamma[i,j],k]=Gamma[i,Gamma[j,k]] od) od) od)
+
+{first test that the ratvecs in F satisfy the defining relations of Z
+next test that F is a factor system}
+set test(FactorSystem F,FiniteGroup Gamma,ReductiveAbelian M,
+Automorphism alpha) =bool:
+all(for i:#F do is_integer(M*F[i]) od)and all(for i:#Gamma do all(for
+j:#Gamma do all(for k:#Gamma do is_integer(
+alpha[i]*F[j+#Gamma*k]-F[Gamma[i,j]+#Gamma*k]+ F[i+#Gamma*Gamma[j,k]]-
+F[i+#Gamma*j]) od) od) od)
