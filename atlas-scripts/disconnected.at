@@ -76,8 +76,28 @@ set is_associative(FiniteGroup Gamma) = bool:
 all(for i:#Gamma do all(for j:#Gamma do all(for k:#Gamma do
 Gamma[Gamma[i,j],k]=Gamma[i,Gamma[j,k]] od) od) od)
 
+set has_inverses(FiniteGroup Gamma) = bool:
+let i=find_identity(Gamma) in if i=#Gamma then return false else
+all(for j:#Gamma do any(for k:#Gamma do Gamma[j,k]=i od) od) fi
+
+{returns the index of an identity element, or #Gamma if none exists}
+set find_identity(FiniteGroup Gamma) = int:
+let i = 0 in while i<#Gamma do if all(for j:#Gamma do Gamma[i,j]=j od) then return i else i :=i+1 fi od; return i
+
+set is_group(FiniteGroup Gamma) = bool:
+if not all(for i:#Gamma do all(for j:#Gamma do 0 <= Gamma[i,j] and Gamma[i,j]
+< #Gamma od) od) then return false else is_associative(Gamma) and
+has_inverses(Gamma) fi
+
+set is_homomorphism(Automorphism alpha, FiniteGroup Gamma) = bool:
+if #alpha != #Gamma then return false else all(for i:#Gamma do all(for
+j:#Gamma do alpha[i]*alpha[j] = alpha[Gamma[i,j]] od) od) fi
+
+set center(RootDatum rd) = ReductiveAbelian: rd.simple_roots
+
 {first test that the ratvecs in F satisfy the defining relations of Z
-next test that F is a factor system}
+next test that F is a factor system !!NEED TO TEST THAT MATRICES
+alpha[i] preserve column span of M!! }
 set test(FactorSystem F,FiniteGroup Gamma,ReductiveAbelian M,
 Automorphism alpha) =bool:
 all(for i:#F do is_integer(M*F[i]) od)and all(for i:#Gamma do all(for
