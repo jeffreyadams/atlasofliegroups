@@ -55,9 +55,21 @@ set leq_equal_sum_partitions(Partition lambda, Partition mu) = bool:
    od; true { any remaining entries of |mu| are necessarily 0 }
 
 { comparing partitions by sum then lexicographically; implicitly 0-extend }
-set leq_Partitions ((Partition,Partition) (lambda,mu):pair) = bool:
+set leq_partitions ((Partition,Partition) (lambda,mu):pair) = bool:
   let sl=lambda.sum, sm=mu.sum in
   if sl=sm else sl<sm then leq_equal_sum_partitions(pair) fi
+
+{ dominance order of partitions}
+set leq_dominance_order_partitions (Partition v,Partition w) = bool:
+   assert(sum(v)=sum(w),"not comparable");
+   assert(v.>= and w.>= , "negative terms");
+   v:=reverse_sort(v); w:=reverse_sort(w);
+   all(for i:min(#v,#w)+1 do sum(v[0:i]) <= sum(w[0:i]) od)
+
+{ same as previous but assume each term is already reverse sorted,
+  and all terms are comparable }
+set leq_dominance_order_partitions_presorted (Partition v,Partition w) = bool:
+   all(for i:min(#v,#w)+1 do sum(v[0:i]) <= sum(w[0:i]) od)
 
 { compare lists of signed cycle lengths, ordered minus first then decreasing }
 set leq_signed_cycles ([int,bool] x, [int,bool]y) = bool:
@@ -512,7 +524,7 @@ set centralizer_order (Dn_class C) = int:
 
 set Dn_irreducibles (int n) = [Dn_irrep]:
  ##for (lambda,mu) in partition_pairs(n)
-   do if leq_Partitions(lambda,mu) then [] else [(lambda,mu).unsplit_irr] fi
+   do if leq_partitions(lambda,mu) then [] else [(lambda,mu).unsplit_irr] fi
    od ##
   (let (s,r)=n\%2 in
    if =r else []
