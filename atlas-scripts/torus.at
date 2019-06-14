@@ -32,7 +32,17 @@ suppose lambda\in X^*(H), then lambda restricted to T
 is in X^*(T)\simeq Z^r. The map is:
 
 restriction: lambda\in Z^n -> (^A)*lambda \in Z^r
+restrict=project (synonyms)
+
+dually: inject: X_*(T)-X_*(H)
 }
 
 set restrict(SubTorus T,vec lambda)=(^T)*lambda
 set restrict(SubTorus T)=(vec->vec):(vec lambda):(^T)*lambda
+
+set project(SubTorus T,vec lambda)=(^T)*lambda
+set project(SubTorus T)=(vec->vec):(vec lambda):(^T)*lambda
+
+set inject(SubTorus T,vec lambda)=T*lambda
+set inject(SubTorus T)=(vec->vec):(vec lambda):T*lambda
+

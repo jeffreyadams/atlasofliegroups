@@ -1,0 +1,86 @@
+<twisted_root_datum.at
+
+{twisted semisimple conjugacy classes (including trivial case of trivial twist)}
+
+{  conjugacy of semisimple elements of G }
+{  test: s=exp(2\pi i v) is G-conjugate to t=exp(2\pi i w)}
+
+{case rd is semisimple}
+set is_semisimple_element_conjugate_in_semisimple(ratvec v,ratvec w,RootDatum rd)=
+assert(rd.is_semisimple,"rd is not semisimple");
+let ad=affine_datum(rd) then
+(v_dom,)=ad.affine_co_make_dominant(v) then
+(w_dom,)=ad.affine_co_make_dominant(w) in
+first(for z in action_fundamental_group(v_dom,ad) do z=w_dom od)>=0
+
+{case rd is reductive
+s is G-conjugate to t <=>
+v -> v_dom via the affine Weyl group W_aff=W\rtimes R^vee
+ v_dom is in the fundamental alcove for the action of W_aff
+ i.e. <v_dom,alpha>\ge 0 for all simple roots and <v_dom,\beta><1
+ for all highest roots beta
+w -> w_dom also
+set L=lattice spanned by simple coroots and radical_basis(rd)
+ (the latter is a Z-basis of X_*(radical))
+If G_der is simply connected the condition is
+ v_dom-w_dom \in L
+In general there is an additional term from
+ the finite group X_*/L
+So a set {v_i} in X_* representing X_*/L
+Then the condition is
+v_dom -w_dom + v_i \in L for some v_i
+}
+
+set is_semisimple_element_conjugate(ratvec v,ratvec w,RootDatum rd)=
+if is_abelian(rd) then is_integer(v-w) else
+let ad=affine_datum(rd) then
+(v_dom,)=ad.affine_co_make_dominant(v) then
+(w_dom,)=ad.affine_co_make_dominant(w) then
+L=simple_coroots(rd)##radical_basis(rd) then
+rad=radical_basis(rd) then
+(vecs,orders)=filter_units(adapted_basis(L)) then
+Omega=if #vecs=0 then [null(rank(rd))] else  vecs*box(orders) fi in
+any(for z in Omega do
+{Note: not enough to do: in_lattice(rad,v_dom+z-w_dom)}
+let (y,)=ad.affine_co_make_dominant(v_dom+z) in 
+in_lattice(rad,y-w_dom) od)
+fi
+
+{test if exp(2\pi iv)T is G-conjugate to exp(2\pi iw)T
+ where T is a torus
+}
+set is_semisimple_element_conjugate_mod_torus(ratvec v,ratvec w,RootDatum rd,[vec] torus)=
+if is_abelian(rd) then is_integer(v-w) else
+let ad=affine_datum(rd) then
+(v_dom,)=ad.affine_co_make_dominant(v) then
+(w_dom,)=ad.affine_co_make_dominant(w) then
+L=simple_coroots(rd)##radical_basis(rd) then
+
+rad=radical_basis(rd) then
+(vecs,orders)=filter_units(adapted_basis(L)) then
+Omega=if #vecs=0 then [null(rank(rd))] else  vecs*box(orders) fi in
+any(for z in Omega do
+let (y,)=ad.affine_co_make_dominant(v_dom+z) in
+in_lattice_subspace_sum(rad,torus)(y-w_dom) od)
+fi
+
+{the first value returned is the list of indices of chosen ratvecs}
+set semisimple_conjugacy_class_reps(RootDatum rd,[ratvec] S)=([int],[ratvec]):
+let rv=[S[0]] then
+indices=[0] in
+for i:#S-1 from 1 do
+ if none(for v in rv do is_semisimple_element_conjugate(S[i],v,rd) od) then rv#:=S[i];indices#:=i fi od;
+ (sort(indices),rv)
+
+{the first value returned is the list of indices of chosen ratvecs}
+set semisimple_conjugacy_class_mod_torus_reps(RootDatum rd,[ratvec] S,[vec] torus)=([int],[ratvec]):
+let rv=[S[0]] then
+indices=[0] in
+for i:#S-1 from 1 do
+ if none(for v in rv do
+{prints("S[i]=",S[i],new_line,"v=",v,new_line,"rd:",rd,"torus:",torus);} is_semisimple_element_conjugate_mod_torus(S[i],v,rd,torus) od) then rv#:=S[i];indices#:=i fi od;
+ (sort(indices),rv)
+
+{construction an AffineDatum from (RootDatum rd,mat delta)
+where delta is a distinguished automorphism of rd
+}

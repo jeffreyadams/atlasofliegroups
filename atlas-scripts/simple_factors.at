@@ -35,10 +35,12 @@ set factor(RootDatum rd,[int] S)=RootDatum:
 set simple_factor(RootDatum rd,int i)=RootDatum:
 factor(rd,simple_factor_indices(rd,i))
 
+set simple_factor(RootDatum rd,vec alpha)=RootDatum: let i=first(for
+j:rd.ss_rank do !=alpha*coroot(rd,j) od) in simple_factor(rd,i)
+
 {complete list of simple factors, as [RootDatum]}
 set simple_factors(RootDatum rd)=[RootDatum]:
 for S in simple_factors_indices(rd) do factor(rd,S) od
-
 
 set number_simple_factors(RootDatum rd)=#simple_factors_indices(rd)
 

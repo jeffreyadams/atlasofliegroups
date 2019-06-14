@@ -231,7 +231,8 @@ assert(rd.is_semisimple,"RootDatum is not semisimple (or abelian)");
 let A=simple_roots(rd) then
 A_inverse=rational_inverse(A) in
 ##for P in diagram_automorphisms(rd) do
-let (,,d)=A*P*A_inverse in if d=1 then [P] else [] fi od fi
+{P is a permutation, M is in correct basis of X^*}
+let (M,,d)=A*P*A_inverse in if d=1 then [{P}M] else [] fi od fi
 
 {return list of pairs (mat,WeylElt)
  mat is a permutation matrix of size ss_rank(rd_L)

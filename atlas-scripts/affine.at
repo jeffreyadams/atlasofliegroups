@@ -6,7 +6,6 @@
 <group_operations.at
 {<outer.at}
 
-
 set cutoff=10000  {terminate calculation after cutoff steps}
 
 set affine_verbose=false
@@ -93,7 +92,7 @@ rat_as_int(f(ad.rd.highest_root)/f(ad.affine_roots[0]))
 {apply folding_order to each simple factor}
 set folding_orders(AffineDatum ad)=[int]:
 let f(ratvec v)=invariant_form(ad.rd)(v,v) in
-for alpha@i in ad.rd.highest_roots do 
+for alpha@i in ad.rd.highest_roots do
 rat_as_int(f(alpha)/f(ad.affine_roots[i]))  od
 
 {the affine reflections are labeled -1,-2,...}
@@ -349,161 +348,5 @@ set action_fundamental_group(ratvec cwt,AffineDatum ad)=
 assert(is_affine_dominant(cwt,ad),"coweight is not in fundamental alcove");
 for v in elements_of_fundamental_group(ad.rd) do let (w,)=ad.affine_co_make_dominant(cwt+v)  in w od
 
-{  conjugacy of semisimple elements of G }
-{  test: s=exp(2\pi i v) is G-conjugate to t=exp(2\pi i w)}
-
-{case rd is semisimple}
-set is_semisimple_element_conjugate_in_semisimple(ratvec v,ratvec w,RootDatum rd)=
-assert(rd.is_semisimple,"rd is not semisimple");
-let ad=affine_datum(rd) then
-(v_dom,)=ad.affine_co_make_dominant(v) then
-(w_dom,)=ad.affine_co_make_dominant(w) in
-first(for z in action_fundamental_group(v_dom,ad) do z=w_dom od)>=0
-
-{case rd is reductive
-s is G-conjugate to t <=>
-v -> v_dom via the affine Weyl group W_aff=W\rtimes R^vee
- v_dom is in the fundamental alcove for the action of W_aff
- i.e. <v_dom,alpha>\ge 0 for all simple roots and <v_dom,\beta><1
- for all highest roots beta
-w -> w_dom also
-set L=lattice spanned by simple coroots and radical_basis(rd)
- (the latter is a Z-basis of X_*(radical))
-If G_der is simply connected the condition is
- v_dom-w_dom \in L
-In general there is an additional term from
- the finite group X_*/L
-So a set {v_i} in X_* representing X_*/L
-Then the condition is
-v_dom -w_dom + v_i \in L for some v_i
-}
-
-set is_semisimple_element_conjugate(ratvec v,ratvec w,RootDatum rd)=
-if is_abelian(rd) then is_integer(v-w) else
-let ad=affine_datum(rd) then
-(v_dom,)=ad.affine_co_make_dominant(v) then
-(w_dom,)=ad.affine_co_make_dominant(w) then
-L=simple_coroots(rd)##radical_basis(rd) then
-rad=radical_basis(rd) then
-(vecs,orders)=filter_units(adapted_basis(L)) then
-Omega=if #vecs=0 then [null(rank(rd))] else  vecs*box(orders) fi in
-any(for z in Omega do
-{Note: not enough to do: in_lattice(rad,v_dom+z-w_dom)}
-let (y,)=ad.affine_co_make_dominant(v_dom+z) in 
-in_lattice(rad,y-w_dom) od)
-fi
-
-{test if exp(2\pi iv)T is G-conjugate to exp(2\pi iw)T
- where T is a torus
-}
-set is_semisimple_element_conjugate_mod_torus(ratvec v,ratvec w,RootDatum rd,[vec] torus)=
-if is_abelian(rd) then is_integer(v-w) else
-let ad=affine_datum(rd) then
-(v_dom,)=ad.affine_co_make_dominant(v) then
-(w_dom,)=ad.affine_co_make_dominant(w) then
-L=simple_coroots(rd)##radical_basis(rd) then
-
-rad=radical_basis(rd) then
-(vecs,orders)=filter_units(adapted_basis(L)) then
-Omega=if #vecs=0 then [null(rank(rd))] else  vecs*box(orders) fi in
-any(for z in Omega do
-let (y,)=ad.affine_co_make_dominant(v_dom+z) in
-in_lattice_subspace_sum(rad,torus)(y-w_dom) od)
-fi
-
-{the first value returned is the list of indices of chosen ratvecs}
-set semisimple_conjugacy_class_reps(RootDatum rd,[ratvec] S)=([int],[ratvec]):
-let rv=[S[0]] then
-indices=[0] in
-for i:#S-1 from 1 do
- if none(for v in rv do is_semisimple_element_conjugate(S[i],v,rd) od) then rv#:=S[i];indices#:=i fi od;
- (sort(indices),rv)
-
-{the first value returned is the list of indices of chosen ratvecs}
-set semisimple_conjugacy_class_mod_torus_reps(RootDatum rd,[ratvec] S,[vec] torus)=([int],[ratvec]):
-let rv=[S[0]] then
-indices=[0] in
-for i:#S-1 from 1 do
- if none(for v in rv do
-{prints("S[i]=",S[i],new_line,"v=",v,new_line,"rd:",rd,"torus:",torus);} is_semisimple_element_conjugate_mod_torus(S[i],v,rd,torus) od) then rv#:=S[i];indices#:=i fi od;
- (sort(indices),rv)
-
-{construction an AffineDatum from (RootDatum rd,mat delta)
-where delta is a distinguished automorphism of rd
-}
-
-set is_distinguished(RootDatum rd,mat delta)=bool:
-all(for alpha in rd.simple_roots do find(rd.simple_roots,delta*alpha) !=-1 od)
-
-{
-set affine_datum(RootDatum rd,mat delta)=
-assert(is_distinguished(rd,delta),"automorphism is not distinguished");
-let factors=rd.simple_factors then
-two_rhos=for f in factors do f.two_rho od then
-perm=for v in two_rhos do find(two_rhos,delta*v) od then
-cycles=permutation_cycles(perm) then
-orders=
- for S in cycles do
-  let f=factors[S[0]] then
-  r=#S {order of cyclic permutation} then
-  delta_power=delta^r then
-  perm_f=for alpha in f.simple_roots do find(f.simple_roots,delta_power*alpha) od in
-  order(permutation_matrix(perm_f)) 
- od
- {make matrix of delta^r acting on single simple factor
- where delta permuts r copies of given simple factor 
-}
-}
-
-{various constructions of AffineDatum}
-
-set affine_datum(LieType lt)=AffineDatum:
-affine_datum(simply_connected(lt))
-
-set affine_datum_long(LieType
-lt)=AffineDatum:affine_datum(simply_connected(lt))
-
-set affine_datum_short(LieType lt)=AffineDatum:
-let rd=simply_connected(lt) in
-affine_datum(rd,highest_short_root(rd))
-
-set dual(AffineDatum (alpha_ch,rd,alpha))=AffineDatum:(alpha,rd,alpha_ch)
-
-set P_3D4=mat:[[1,0],[0,1],[0,0],[0,0]]
-set folded(RootDatum rd,mat delta)=(RootDatum,mat):
-let n=order(delta) in
-assert(n<=3,"order must be 1,2,3");
-if n=1 then (rd,id_mat(rank(rd)))
-elif n=2 then
- let G=quasicompact_form(inner_class(rd,delta)) then
- ((,),(,pullback))=G_K_roots_and_coroots_raw(KGB(G,0)) in
- (root_datum(G_K_simple_roots_and_coroots(KGB(G,0))),pullback)
-else {n=3}
- assert(Lie_type(rd)=Lie_type("D4"));(simply_connected(G2),P_3D4) fi
 
 
-set folded(RootDatum rd,int n)=(RootDatum,mat):
-assert(n<=3,"order must be 1,2,3");
-if n=1 then (rd,id_mat(rank(rd)))
-elif n=2 then
- let G=quasicompact_form(inner_class(rd,"u")) then
- ((,),(,pullback))=G_K_roots_and_coroots_raw(KGB(G,0)) in
- (root_datum(G_K_simple_roots_and_coroots(KGB(G,0))),pullback)
-else {n=3}
- assert(Lie_type(rd)=Lie_type(D4));(simply_connected(G2),P_3D4) fi
-
-set folded_affine(RootDatum rd,mat delta)=(AffineDatum,mat):
-let (folded_rd,P)=folded(rd,delta) in
-if order(delta)=1 then (affine_datum(folded_rd),P) else
-(affine_datum(folded_rd,highest_short_root(folded_rd)),P) fi
-
-set folded_affine(RootDatum rd,int n)=(AffineDatum,mat):
-let (folded_rd,P)=folded(rd,n) in
-if n=1 then (affine_datum(folded_rd),P) else
-(affine_datum(folded_rd,highest_short_root(folded_rd)),P) fi
-
-set affine_datum(string AtoE,int rank,int order_of_automorphism)=(AffineDatum,mat):
-let rd=simply_connected(AtoE+rank.to_string) in
-folded_affine(rd,order_of_automorphism)
-
-set affine_datum(string AtoE,int rank)=(AffineDatum,mat):affine_datum(AtoE,rank,1)
