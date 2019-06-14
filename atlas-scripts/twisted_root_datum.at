@@ -7,26 +7,28 @@ all(for alpha in rd.simple_roots do find(rd.simple_roots,delta*alpha) !=-1 od)
 
 set_type TwistedRootDatum= (RootDatum rd, mat delta)
 
-set *(TwistedRootDatum (rd1,delta1),TwistedRootDatum (rd2,delta2))=(rd1*rd2,block_matrix(delta1,delta2))
+set *(TwistedRootDatum (rd1,delta1),TwistedRootDatum (rd2,delta2))=TwistedRootDatum:(rd1*rd2,block_matrix(delta1,delta2))
 {order of twist: not just the order of delta
 reason: given (rd,delta) we consider (factor,delta)
 where factor is delta-invariant
 }
-set order_twist(TwistedRootDatum (rd,delta))=
+set order_twist(TwistedRootDatum (rd,delta))=int:
 assert(is_distinguished(rd,delta),"automorphism is not distinguished");
 max(for alpha in rd.simple_roots do first(for i:order(delta) from 1 do delta^i*alpha=alpha od)+1 od)
 
 {roots of G with same restriction to T as alpha}
-set roots_same_restriction(RootDatum rd,SubTorus T,vec alpha)=
+set roots_same_restriction(RootDatum rd,SubTorus T,vec alpha)=[vec]:
 ##for beta in rd.roots do
  if =T.restrict(beta-alpha)  then [beta] else [] fi od
 
-set roots_restricting_to(RootDatum rd,SubTorus T,vec alpha)=
+set roots_restricting_to(RootDatum rd,SubTorus T,vec alpha)=[vec]:
 ##for beta in rd.roots do
  if T.restrict(beta)=alpha  then [beta] else [] fi od
 
-{rd is semsimple and delta is distinguished}
-set folded(TwistedRootDatum (rd,delta))=
+{rd is semsimple and delta is distinguished
+returns (RootDatum folded, mat T) where T is a matrix relating H and H^delta
+}
+set folded(TwistedRootDatum (rd,delta))=(RootDatum,mat):
 assert(rd.is_semisimple,"root datum is not semisimple");
 assert(is_distinguished(rd,delta),"delta is not distinguished");
 let T=SubTorus:eigen_lattice(^delta,1) then   {T=(H^\delta)^0; columns are a basis of X_*(T)}
@@ -47,7 +49,7 @@ for alpha in roots do
  coroots#:=ratvec_as_vec(corestrict_w)
 od;
 {(T,roots,mat:coroots,root_datum_from_positive(roots,coroots))}
-(T,root_datum_from_positive(roots,coroots))
+(root_datum_from_positive(roots,coroots),T)
 
 {make it easy to construct in simple case:
 use the first outer automorphism of given order
@@ -82,29 +84,10 @@ else folded_factor.highest_short_root
 fi
 
 set affine_datum(TwistedRootDatum trd)=
-let (T,frd)=trd.folded then
+let (frd,T)=trd.folded then
 affine_roots=for factor in frd.simple_factors do affine_root_of_factor(trd,factor,T) od then
 affine_coroots=for alpha in affine_roots do coroot(frd,alpha) od in
-(affine_coroots,frd,affine_roots) 
-
-{
-set affine_datum(RootDatum rd,mat delta)=
-let factors=rd.simple_factors then
-two_rhos=for f in factors do f.two_rho od then
-perm=for v in two_rhos do find(two_rhos,delta*v) od then
-cycles=permutation_cycles(perm) then
-orders=
- for S in cycles do
-  let f=factors[S[0]] then
-  r=#S {order of cyclic permutation} then
-  delta_power=delta^r then
-  perm_f=for alpha in f.simple_roots do find(f.simple_roots,delta_power*alpha) od in
-  order(permutation_matrix(perm_f)) 
- od
- {make matrix of delta^r acting on single simple factor
- where delta permuts r copies of given simple factor 
-}
-}
+(affine_coroots,frd,affine_roots)
 
 {construct automorphism delta of (rd,rd,...,rd) (r copies)
 (x_1,...,x_r) -> (tau(x_r),x_1,...,x_{r-1})

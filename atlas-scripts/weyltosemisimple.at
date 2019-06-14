@@ -1,7 +1,7 @@
 <basic.at
 <sort.at
 <parabolics.at
-<affine.at
+<twisted_root_datum.at
 <tabulate.at
 
 {root numbering 0...n-1 versus 1...n}
@@ -48,7 +48,9 @@ for i:#rp-1 from 1 do
  let ()=print("new v=",v_1+torus_element(rd,T,l\2)) in
  v:=v_1+torus_element(rd,T,l\2)
  od; let
-(ad,pullback)=folded_affine(rd,data.delta) then
+{(ad,pullback)=folded_affine(rd,data.delta) then}
+(rd_folded,pullback)=folded(rd,data.delta) then
+ad=affine_datum(rd_folded) then
 ()=prints("final v:",v) then
 (w,omega)=ad.affine_co_make_dominant(pullback*v/data.d) in
 (v,w,affine_coordinates(w,ad),omega)
