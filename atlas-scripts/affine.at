@@ -5,6 +5,7 @@
 <center.at
 <group_operations.at
 {<outer.at}
+<simple_factors.at
 
 set cutoff=10000  {terminate calculation after cutoff steps}
 
@@ -93,6 +94,11 @@ rat_as_int(f(ad.rd.highest_root)/f(ad.affine_roots[0]))
 set folding_orders(AffineDatum ad)=[int]:
 let f(ratvec v)=invariant_form(ad.rd)(v,v) in
 for alpha@i in ad.rd.highest_roots do
+{let ()=prints("ad:", ad) in
+let ()=prints("simple roots:", ad.rd.simple_roots) in
+let ()=prints("first affine root:", ad.rd.simple_factors[0].highest_root) in
+let ()=prints("second affine root:", ad.rd.simple_factors[1].highest_root) in
+let ()=prints("fg(alpha):", f(alpha), " f(affine):", f(ad.affine_roots[i])) in}
 rat_as_int(f(alpha)/f(ad.affine_roots[i]))  od
 
 {the affine reflections are labeled -1,-2,...}
@@ -111,9 +117,11 @@ assert(is_one_factor(rd),"RootDatum has more than one simple factor");
 affine_datum(rd,highest_root(rd))
 
 {default affine datum general case: }
-set affine_datum(RootDatum rd)=AffineDatum:
+{bad definition, see twisted_root_datum.at}
+{set affine_datum(RootDatum rd)=AffineDatum:
 let hr=highest_roots(rd) in 
 AffineDatum:(for alpha in hr do coroot(rd,alpha) od,rd,hr)
+}
 
 {ordinary reflections
  beta is a root, acting on X^* or X_*

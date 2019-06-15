@@ -29,7 +29,7 @@ set roots_restricting_to(RootDatum rd,SubTorus T,vec alpha)=[vec]:
 returns (RootDatum folded, mat T) where T is a matrix relating H and H^delta
 }
 set folded(TwistedRootDatum (rd,delta))=(RootDatum,mat):
-assert(rd.is_semisimple,"root datum is not semisimple");
+assert(rd.is_semisimple or delta=id_mat(#delta),"root datum is not semisimple and delta !=1");
 assert(is_distinguished(rd,delta),"delta is not distinguished");
 let T=SubTorus:eigen_lattice(^delta,1) then   {T=(H^\delta)^0; columns are a basis of X_*(T)}
 {T is nxr where n=rd.rank and r=dimension(T)}
