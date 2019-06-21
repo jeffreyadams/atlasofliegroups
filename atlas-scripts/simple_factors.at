@@ -71,9 +71,6 @@ beta=highest_root(L) in f(alpha,alpha)=f(beta,beta)
 
 set is_short(RootDatum rd,vec alpha)=bool: not is_long(rd,alpha)
 
-{ standard basis of R^n}
-set e(int n,int i)=let v=null(n) in v[i]:=1;v
-
 {set project_on_simple_factor(RootDatum rd,int i)=mat:
 ^for alpha in simple_roots(rd.simple_factors[i]) do e(rank(rd),find(rd.simple_roots,alpha)) od
 

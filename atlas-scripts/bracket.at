@@ -1,0 +1,151 @@
+<structure_constants.at
+
+{Lie bracket}
+
+{data type for an element of a reductive Lie algebra Q
+ N=number of roots
+ n=rank
+ X=ratvec of size N <-> \sum_{i=0}^{N-1} x_i X_i where X_i are the root vectors
+ H=ratvec of size n <-> X_* in atlas coordinates
+ arbitrary element of \g: (X,H)
+}
+set_type LieAlgebraElement=(StructureConstantTable t,(ratvec,ratvec) X)
+set rd(LieAlgebraElement (t,))=RootDatum:t.rd
+set root_part(LieAlgebraElement(,(v,)))=ratvec:v
+set semisimple_part(LieAlgebraElement(,(,v)))=ratvec:v
+set H(LieAlgebraElement X)=ratvec:X.semisimple_part
+set =(LieAlgebraElement X,LieAlgebraElement Y)=bool:
+X.rd=Y.rd and X.root_part=Y.root_part and X.H=Y.H
+set null(StructureConstantTable t)=LieAlgebraElement:(t,(null(#t.rd.roots),null(t.rd.ss_rank)))
+set =(LieAlgebraElement X)=bool:X=null(X.t)
+set +(LieAlgebraElement X,LieAlgebraElement Y)=LieAlgebraElement:
+assert(X.rd=Y.rd,"root datum mismatch");
+(X.t,((X.root_part+Y.root_part),(X.H+Y.H)))
+
+set *(rat c,LieAlgebraElement X)=LieAlgebraElement:
+(X.t,(c*X.root_part,c*X.H))
+
+{(t,v,w)-> v##w}
+set coordinates(LieAlgebraElement X)=X.root_part##X.H
+
+{element of Lie algebra coming from ratvec of size n+N=dim(\g)}
+set lie_algebra_element(StructureConstantTable t,ratvec v)=
+(t,(v[:#t.rd.roots],v[#t.rd.roots:]))
+
+{1\le i\le dim\g -> (t,(v,w)) where either v or w has exactly one entry 1}
+set basis(StructureConstantTable t,int i)=LieAlgebraElement:
+lie_algebra_element(t,e(t.rd.dimension,i))
+
+set show(LieAlgebraElement X)=void:
+prints(X.root_part,":",X.H)
+
+{nice string representation of LieAlgebraElement}
+set to_string(LieAlgebraElement X)=string:
+let rv="" then
+()=for i:#X.root_part do if !=X.root_part[i] then rv+:="+"+X.root_part[i].to_string+"*X_"+([int]:X.rd.roots[i]).to_string fi od then
+()=if !=X.H then rv+:=" "+(X.H).to_string fi in rv
+
+set show_long(LieAlgebraElement X)=void:prints(X.to_string)
+
+{coordinates of X_alpha: [0,...,1,..0] (N-tuple)} 
+set coordinates(RootDatum rd,vec alpha)=vec:
+let rv=null(#rd.roots) then
+k=find(rd.roots,alpha) in
+assert(k!=-1,"root not found");
+rv[k]:=1;rv
+
+set coordinates(RootDatum rd)=(vec->vec):(vec alpha):
+coordinates(rd,alpha)
+
+{[X,Y] =[(X.root_term,X.H),(Y.root_term,Y.H)]=
+[X.root_term,Y.root_term] + other terms
+this function returns just the root term of this bracket
+(not the torus part which may also be nonzero)
+this is computed from the structure constant table
+}
+set bracket_root_term(LieAlgebraElement X,LieAlgebraElement Y)=LieAlgebraElement:
+assert(X.rd=Y.rd,"root datum mismatch");
+assert(#X.root_part=#Y.root_part and #X.root_part=#X.rd.roots,"size mismatch");
+let rd=X.rd then
+t=X.t then
+N=#X.root_part then
+n=#X.H then
+rv=ratvec:null(N) in
+for i:N do
+ for j:N do
+  let cij=X.t.table[j][i]*X.root_part[i]*Y.root_part[j] in
+  if cij!=0 then
+   rv+:=cij*t.rd.coordinates(t.rd.roots[i]+t.rd.roots[j])
+  fi
+ od
+od;(X.t,(rv,null(n)))
+
+{torus term, coming from [X_alpha,X_-alpha]}
+set bracket_torus_term(LieAlgebraElement X,LieAlgebraElement Y)=LieAlgebraElement:
+assert(X.rd=Y.rd,"root datum mismatch");
+let rd=X.rd in
+(X.t,
+((ratvec:null(#X.rd.roots),
+sum(for i:#rd.roots do
+  let alpha=rd.roots[i] then
+  j=find(rd.roots, -alpha) in
+  X.root_part[i]*Y.root_part[j]*(-1)^(rd.height(alpha))*rd.coroots[i]
+od,rd.rank))))
+
+{[X,Y]=(X.root_terms,X.H),(Y.root_terms,Y.H)] -> [X.H,Y.root_terms] + [X.H,Y.root_terms],
+ which gives a term \sum_1^N a_i X_i
+}
+set bracket_off_diagonal_terms(LieAlgebraElement X,LieAlgebraElement Y)=LieAlgebraElement:
+assert(X.rd=Y.rd,"root datum mismatch");
+let  rd=X.rd then
+N=#X.root_part then
+n=#X.H then
+scr=rd.simple_coroots in
+(X.t,
+ (
+  (sum(for i:N do (-X.root_part[i]*Y.H*rd.roots[i]+Y.root_part[i]*X.H*rd.roots[i])*e(N,i) od,N)),ratvec:null(n)
+ )
+)
+
+{put the three bracket calculations together}
+set bracket(LieAlgebraElement X,LieAlgebraElement Y)=LieAlgebraElement:
+bracket_root_term(X,Y)+bracket_torus_term(X,Y)+bracket_off_diagonal_terms(X,Y)
+
+{root -> (v,null(rank)) where v=e(N,i)=1 in i^th spot, i=# of root in rd.roots}
+set root_term(StructureConstantTable t,vec alpha)=LieAlgebraElement:(t,(e(#t.rd.roots,find(t.rd.roots,alpha)),null(#t.rd.simple_roots)))
+
+{H(t,h)=(t,null(N),h)}
+set H(StructureConstantTable t,vec h)=LieAlgebraElement:(t,(ratvec:null(#t.rd.roots),ratvec:h))
+
+{(t,alpha,h)=(t,v,h) where v=root_term(t,alpha)}
+set X(StructureConstantTable t,(vec alpha,vec h))=LieAlgebraElement:(root_term(t,alpha))+H(t,h)
+{alternative format}
+set X(StructureConstantTable t,vec alpha,vec h)=LieAlgebraElement:(root_term(t,alpha))+H(t,h)
+
+{general Jacobi formula [[X,Y],Z]+[[Z,X],Y]+[Y,X],X]}
+set jacobi_formula(LieAlgebraElement X,LieAlgebraElement Y,LieAlgebraElement Z)=LieAlgebraElement:
+bracket(bracket(X,Y),Z)+bracket(bracket(Z,X),Y)+bracket(bracket(Y,Z),X)
+
+{test all Jacobi identities for the Lie algebra
+see jacobi_identity in structure_constants.at
+}
+set jacobi_identities(StructureConstantTable t)=bool:
+all(##(##for i:t.rd.dimension do
+ for j:t.rd.dimension do
+  for k:t.rd.dimension do
+      =jacobi_formula(basis(t,i),basis(t,j),basis(t,k)) od od od))
+
+set jacobi_identities_long(StructureConstantTable t)=void:
+for i:t.rd.dimension do
+ for j:t.rd.dimension do
+  for k:t.rd.dimension do
+  let rv=jacobi_formula(basis(t,i),basis(t,j),basis(t,k)) in
+  if not =rv then  prints(new_line,
+ "i:",i, " j:", j, " k:", k," ", rv);show_long(basis(t,i));show_long(basis(t,j));show_long(basis(t,k)) fi  od od od
+
+set jacobi_identities(RootDatum rd)=bool:jacobi_identities(rd.structure_constant_table)
+set jacobi_identities_long(RootDatum rd)=void:jacobi_identities_long(rd.structure_constant_table)
+
+
+
+

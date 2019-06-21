@@ -22,8 +22,7 @@ set m_minus(RootDatum rd)=((vec,vec)->int):(vec alpha,vec beta):m_minus(rd,alpha
 }
 
 set orientation_function(RootDatum rd)=(int ->int):(int index):
-assert(rd.is_simple,"root datum is not simple");
-let n=rd.rank then
+let n=rd.ss_rank then
 v=null(n) in
 v[0]:=1;
 while =product(v) {repeat until all coordinates are pm 1} do
@@ -151,45 +150,49 @@ for i:T.rd.max_height-1 from 2 do T:=update_structure_constant_table(T,i) od;T
 set structure_constant_table(RootDatum rd)=StructureConstantTable:
 fill_structure_constant_table(initialize_structure_constant_table(rd))
 
-{test Jacobi identity}
-set jacobi(StructureConstantTable T)=((vec,vec,vec)->(bool,[int])):(vec alpha, vec beta, vec gamma):
+{return [[X_alpha,X_beta],X_gamma] + [[X_beta,X_gamma],X_alpha] + [[X_gamma,[X_alpha,X_beta]]}
+set jacobi_formula(StructureConstantTable T)=((vec,vec,vec)->(vec)):(vec alpha, vec beta, vec gamma):
 let N=T.N then
 rd=T.rd in
-if alpha=beta or alpha=gamma or beta=gamma then (true,[0,0,0]) {trivial identity}
+if alpha=beta or alpha=gamma or beta=gamma then null(#rd.roots) {trivial identity}
 elif alpha = -beta then
  let rv=[
  {let ()=prints(N(beta,gamma)*N(alpha,beta+gamma)) in} N(beta,gamma)*N(alpha,beta+gamma),
  gamma*coroot(rd,alpha)*(-1)^(rd.height(alpha))*(-1),
- N(gamma,alpha)*N(beta,gamma+alpha)] in {prints("alpha=-beta:", rv);}(sum(rv)=0,rv)
+ N(gamma,alpha)*N(beta,gamma+alpha)] in {prints("alpha=-beta:", rv);}rv
 elif alpha = -gamma  then
  let rv=
  [N(beta,gamma)*N(alpha,beta+gamma),
  N(alpha,beta)*N(gamma,alpha+beta),
- beta*coroot(rd,alpha)*(-1)^(rd.height(alpha))] in {prints("alpha=-gamma:", rv);}(sum(rv)=0,rv)
+ beta*coroot(rd,alpha)*(-1)^(rd.height(alpha))] in {prints("alpha=-gamma:", rv);}rv
 elif beta = -gamma  then
  let rv=
  [alpha*coroot(rd,beta)*(-1)^(rd.height(beta))*(-1),
  N(alpha,beta)*N(gamma,alpha+beta),
- N(gamma,alpha)*N(beta,gamma+alpha)] in {prints("beta=-gamma:", rv);}(sum(rv)=0,rv)
+ N(gamma,alpha)*N(beta,gamma+alpha)] in {prints("beta=-gamma:", rv);}rv
 else
  let rv=
  [N(beta,gamma)*N(alpha,beta+gamma),
  N(alpha,beta)*N(gamma,alpha+beta),
- N(gamma,alpha)*N(beta,gamma+alpha)] in {prints("none:", rv);}(sum(rv)=0,rv)
+ N(gamma,alpha)*N(beta,gamma+alpha)] in {prints("none:", rv);}rv
 fi
 
-{test all Jacobi identities for X,Y,Z root vectors}
-set test(StructureConstantTable T)=bool:
+{test all Jacobi identities for X,Y,Z root vectors
+see jacobi@StructureConstantTable in brackets.at for a more complete test
+}
+set jacobi_structure_constants_identity(StructureConstantTable T)=bool:
 let rd=T.rd then
 rv=true then
  roots=rd.roots in
 for a in roots do
  for b in roots do
   for c in roots do
-   let (x,y)=T.jacobi(a,b,c) in
-    if not x then  rv:=false;
-  prints(a,b,c," ",x, " ", y, b-a, " ", b+a) fi
+   let x=T.jacobi_formula(a,b,c) in
+    if not =x then  rv:=false;
+  prints(a,b,c," ",x, b-a, " ", b+a) fi
 od od od;rv
+
+set jacobi_structure_constants_identity(RootDatum rd)=bool:jacobi_structure_constants_identity(rd.structure_constant_table)
 
 {extract rows/columns given by S=[int]}
 set sub_table(StructureConstantTable T,[int] S)=mat:

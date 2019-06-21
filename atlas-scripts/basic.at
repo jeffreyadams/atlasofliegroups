@@ -281,6 +281,9 @@ set fgrep (string s, string text) = [string]:
 
 set vector (int n,(int->int)f) = vec: for i:n do f(i) od
 
+{ standard basis of R^n}
+set e(int n,int i)=let v=null(n) in v[i]:=1;v
+
 set ones (int n)= vec: for i:n do 1 od
 
 set reverse (vec v)= vec: v~[:]
