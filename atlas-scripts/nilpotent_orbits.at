@@ -843,7 +843,7 @@ tabulate(["i","H","diag","dim","A(O)"]#
 
 set print_component_info_alt (RootDatum rd)=void:
 tabulate(["i","diag","dim","A(O)"]#
- for orb@i in complex_nilpotent_orbits (rd) do
+ for orb@i in nilpotent_orbits (rd) do
  let d=component_datum(orb) in
  [i.to_string,orb.diagram.to_string,orb.dim_nilpotent.to_string,
  d.orders.to_string] od
