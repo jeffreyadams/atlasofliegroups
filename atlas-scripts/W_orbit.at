@@ -115,7 +115,7 @@ set W (RootDatum rd) = [WeylElt]: W_parabolic(rd,#rd.semisimple_rank)
 { variants of the above for |vec| instead of |vec|; reduce to |vec| case }
 set generate_from (RootDatum rd,[int] S,ratvec rv) = ([ratvec],[WeylElt]):
   let (v,d) = %rv then (orbit,W_elements) = generate_from(rd,S,v) in
-  (for x in orbit do v/d od,W_elements)
+  (for x in orbit do x/d od,W_elements)
 set W_orbit (RootDatum rd,[int] S, ratvec rv) = [ratvec]:
   let (v,d) = %rv then orbit = W_orbit(rd,S,v) in for x in orbit do v/d od
 set generate_from (RootDatum rd,ratvec rv) = ([ratvec],[WeylElt]):
