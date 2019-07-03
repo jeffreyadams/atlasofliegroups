@@ -913,9 +913,12 @@ orbits
 set minimal_real_nilpotent_orbits (RealForm G) = [RealNilpotent]:
 ##for orbit in minimal_orbits(G.root_datum) do real_nilpotent_orbits(orbit,G) od
 
+{show commands moved to nilpotent_centralizer.at}
+{
 set show_nilpotent_orbits([ComplexNilpotent] orbits)=void:
 tabulate(for orbit in orbits do
 [orbit.H{_of_triple}.to_string,orbit.diagram.to_string,orbit.dim_nilpotent.to_string] od)
 
 set show_nilpotent_orbits(RootDatum rd)=void:
 show_nilpotent_orbits(nilpotent_orbits(rd))
+}

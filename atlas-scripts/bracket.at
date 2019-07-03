@@ -1,4 +1,6 @@
 <structure_constants.at
+<ratmat.at
+<nilpotent_orbits.at
 
 {Lie bracket}
 
@@ -31,6 +33,9 @@ set coordinates(LieAlgebraElement X)=X.root_part##X.H
 {element of Lie algebra coming from ratvec of size n+N=dim(\g)}
 set lie_algebra_element(StructureConstantTable t,ratvec v)=
 (t,(v[:#t.rd.roots],v[#t.rd.roots:]))
+
+set lie_algebra_element_semisimple(StructureConstantTable t,ratvec v)=lie_algebra_element(t,(null(#t.rd.roots)##v))
+set lie_algebra_element_root_vectors(StructureConstantTable t,ratvec v)=lie_algebra_element(t,v##(null(t.rd.rank)))
 
 {1\le i\le dim\g -> (t,(v,w)) where either v or w has exactly one entry 1}
 set basis(StructureConstantTable t,int i)=LieAlgebraElement:
@@ -121,6 +126,49 @@ set H(StructureConstantTable t,vec h)=LieAlgebraElement:(t,(ratvec:null(#t.rd.ro
 set X(StructureConstantTable t,(vec alpha,vec h))=LieAlgebraElement:(root_term(t,alpha))+H(t,h)
 {alternative format}
 set X(StructureConstantTable t,vec alpha,vec h)=LieAlgebraElement:(root_term(t,alpha))+H(t,h)
+
+set ad(LieAlgebraElement X)=ratmat:
+ratvecs_as_ratmat(for i:X.rd.dimension do coordinates(bracket(X,basis(X.t,i))) od)
+
+{solve ad(X)(Y)=Z for Y}
+set solve_ad(LieAlgebraElement X,LieAlgebraElement Z)=solve(ad(X),coordinates(Z))
+
+{2-eigenspace of ad(H)}
+set two_eigenspace(StructureConstantTable t,ratvec H)=[LieAlgebraElement]:
+let rv=[LieAlgebraElement]:[] in 
+for alpha in t.rd.roots do if alpha*H=2 then rv#:=X(t,alpha,null(t.rd.rank)) fi od ;rv
+
+{   Jacobson-Morozov triples (H,X,Y)    }
+
+{complete Jacobson Morozov triple: given H, find X,Y so that [H,X]=2X, [H,Y]=-2Y, [X,Y]=H}
+set JM_triple(StructureConstantTable t,vec H)=(LieAlgebraElement,LieAlgebraElement,LieAlgebraElement):
+let S=two_eigenspace(t,H) then
+coeffs=box(2,#S) in
+ for A in coeffs do
+ let X=null(t) then
+ ()= for i:#S do X+:=A[i]*S[i]  od then
+ sol=solve_ad(X,H(t,H)) in
+ if any(sol) then {prints("found:", H, new_line, X.root_part);}return((
+ lie_algebra_element_semisimple(t,H),X,lie_algebra_element(t,requisition(sol)))) fi od;(null(t),null(t),null(t))
+
+set JM_triple(StructureConstantTable t,ComplexNilpotent O)=(LieAlgebraElement,LieAlgebraElement,LieAlgebraElement):
+JM_triple(t,O.H)
+
+set JM_triple(StructureConstantTable t)=(ComplexNilpotent->(LieAlgebraElement,LieAlgebraElement,LieAlgebraElement)):
+(ComplexNilpotent O):JM_triple(t,O)
+
+set JM_triple(ComplexNilpotent O)=(LieAlgebraElement,LieAlgebraElement,LieAlgebraElement):
+JM_triple(O.root_datum.structure_constant_table,O)
+
+{complete all triples for rd}
+set JM_triples(StructureConstantTable t)=[(LieAlgebraElement,LieAlgebraElement,LieAlgebraElement)]:
+for O in t.rd.nilpotent_orbits do JM_triple(t,O) od
+
+set JM_triples(RootDatum rd)=[(LieAlgebraElement,LieAlgebraElement,LieAlgebraElement)]:
+JM_triples(rd.structure_constant_table)
+
+
+{        Jacobi identity     }
 
 {general Jacobi formula [[X,Y],Z]+[[Z,X],Y]+[Y,X],X]}
 set jacobi_formula(LieAlgebraElement X,LieAlgebraElement Y,LieAlgebraElement Z)=LieAlgebraElement:

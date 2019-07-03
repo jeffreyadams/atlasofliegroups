@@ -106,26 +106,42 @@ prints("roots_C:",roots_C);
 prints("coroots_C:", coroots_C);
 prints("C:",C.nice_format)
 
+{compact listing: i H diagram dim BC-Levi Cent A(O)}
 set show_nilpotent_orbits([ComplexNilpotent] orbits)=void:
 tabulate(
-["i","H","diagram","dim"]#for  orbit@i in orbits do
-[i.to_string,([int]:orbit.H).to_string,orbit.diagram.to_string,orbit.dim_nilpotent.to_string] od)
-
+["i","H","diagram","dim","BC Levi","Cent","A(O)"]#for  orbit@i in orbits do
+let d=orbit.component_datum in
+[i.to_string,
+([int]:orbit.H).to_string,
+orbit.diagram.to_string,
+orbit.dim_nilpotent.to_string,
+orbit.Bala_Carter_Levi.nice_format,
+orbit.centralizer.nice_format,
+d.orders.to_string
+] od)
 set show_nilpotent_orbits(RootDatum rd)=void:
-prints(new_line,"Nilpotent orbits for ", rd.nice_format);
 show_nilpotent_orbits(nilpotent_orbits(rd))
 
+{longer, less compact output,
+including simple roots and corootsof the centralizers
+}
 set show_nilpotent_orbits_long([ComplexNilpotent] orbits)=void:
-tabulate(
-["i","H","diagram","dim","Cent","A(O)"]#for  orbit@i in orbits do
-let d=orbit.component_datum then
-C=orbit.centralizer in
-[i.to_string,([int]:orbit.H).to_string,orbit.diagram.to_string,orbit.dim_nilpotent.to_string,C.nice_format,d.orders.to_string] od)
-
+for  orbit@i in orbits do
+let C=orbit.centralizer in
+prints(new_line,"orbit #",i,
+new_line,"diagram: ",orbit.diagram,
+new_line,"dim:", orbit.dim_nilpotent,
+new_line,"Bala Carter Levi: ", orbit.Bala_Carter_Levi.nice_format,
+new_line,"A(O): ", orbit.component_datum.orders,
+new_line,"Centralizer: ", C.nice_format,
+new_line,"simple roots of centralizer:", C.simple_roots,
+new_line,"simple coroots of centralizer:", C.simple_coroots
+) od
 set show_nilpotent_orbits_long(RootDatum rd)=void:
 prints(new_line,"Nilpotent orbits for ", rd.nice_format);
 show_nilpotent_orbits_long(nilpotent_orbits(rd))
 
+{i H diagram dim Cent A(O)}
 set show_nilpotent_orbits_long([RootDatum] rds)=void:
 for rd in rds do show_nilpotent_orbits_long(rd) od
 
