@@ -1,4 +1,7 @@
 <basic.at
+<torus.at
+
+set !trivial_group=RootDatum:root_datum(null(0,0),null(0,0))
 
 { complex group for |rd| (the group viewed as a real form of doubled type) }
 set complex (RootDatum rd) = RealForm:

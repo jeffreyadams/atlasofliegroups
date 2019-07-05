@@ -1,10 +1,9 @@
 <misc.at
 <Weylgroup.at {for invariant_form}
 <ratmat.at
-{NOTE: in this file "simple" means "derived group is simple"}
+<torus.at
 
-{complex_torus in torus.at should be redefined}
-set complex_torus(int n)=RootDatum:root_datum(null(n,0),null(n,0))
+{NOTE: in this file "simple" means "derived group is simple"}
 
 {root j is orthogonal to all coroots in S}
 set is_orthogonal(RootDatum rd,[int] S, int j)=bool:

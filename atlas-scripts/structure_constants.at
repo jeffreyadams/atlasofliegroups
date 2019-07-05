@@ -45,7 +45,7 @@ od;if index>=0 and index<n then v[index] else 0 fi
 }
 
 set_type StructureConstantTable=
-(RootDatum rd,
+(RootDatum root_datum,
 (int->int) orientation_function,  {mapping [0,...,n-1] to \pm 1}
 mat table  
 )
@@ -56,15 +56,15 @@ epsilon(alpha)=orientation_function(simple_root_index(alpha)) if alpha is simple
 and epsilon(alpha)=-epsilon(-alpha) for -alpha simple
 }
 set epsilon(StructureConstantTable T)=(vec->int):(vec alpha):
-assert(is_simple_root(T.rd,alpha) or is_simple_root(T.rd,-alpha),"not \pm a simple root");
-if is_posroot(T.rd,alpha) then T.orientation_function(T.rd.simple_root_index(alpha))
-else -T.orientation_function(T.rd.simple_root_index(-alpha)) fi
+assert(is_simple_root(T.root_datum,alpha) or is_simple_root(T.root_datum,-alpha),"not \pm a simple root");
+if is_posroot(T.root_datum,alpha) then T.orientation_function(T.root_datum.simple_root_index(alpha))
+else -T.orientation_function(T.root_datum.simple_root_index(-alpha)) fi
 
 {look up value of N(alpha,beta) in table
  note that lookup is by vec alpha,beta, not int}
 set lookup(StructureConstantTable T)=((vec, vec)->int):(vec alpha,vec beta):
-if T.rd.not_a_root(alpha) or T.rd.not_a_root(beta) then 0 else
-T.table[T.rd.all_root_index(alpha),T.rd.all_root_index(beta)] fi
+if T.root_datum.not_a_root(alpha) or T.root_datum.not_a_root(beta) then 0 else
+T.table[T.root_datum.all_root_index(alpha),T.root_datum.all_root_index(beta)] fi
 
 {synonm for lookup}
 set N(StructureConstantTable T)=((vec,vec)->int):(vec alpha,vec beta):T.lookup(alpha,beta)
@@ -72,8 +72,8 @@ set N(StructureConstantTable T)=((vec,vec)->int):(vec alpha,vec beta):T.lookup(a
 {update one entry of the table}
 set update(StructureConstantTable T)=((vec, vec,int)->StructureConstantTable):(vec alpha,vec beta,int n):
 let table=T.table in
-table[T.rd.all_root_index(alpha),T.rd.all_root_index(beta)]:=n;
-(T.rd,T.orientation_function,table)
+table[T.root_datum.all_root_index(alpha),T.root_datum.all_root_index(beta)]:=n;
+(T.root_datum,T.orientation_function,table)
 
 {inititalize table for rd, fill in all N(alpha,beta) with ht(alpha)=1,
  using given orientation function
@@ -85,14 +85,14 @@ T=(rd,orientation_function,table) in
 for alpha in rd.simple_roots do {fill in N(alpha,beta) for alpha simple, all beta}
  for beta in roots do
  if is_root(rd,alpha+beta) then
-  T:=T.update(alpha,beta,T.epsilon(alpha)*T.rd.m_minus(alpha,beta))
+  T:=T.update(alpha,beta,T.epsilon(alpha)*T.root_datum.m_minus(alpha,beta))
  fi
  od
 od;
 for alpha in rd.simple_roots do  {fill in N(alpha,beta) for -alpha simple, all beta}
  for beta in roots do
  if is_root(rd,-alpha+beta) then
-  T:=T.update(-alpha,beta,T.epsilon(-alpha)*T.rd.m_minus(alpha,-beta))
+  T:=T.update(-alpha,beta,T.epsilon(-alpha)*T.root_datum.m_minus(alpha,-beta))
  fi
  od
 od;T
@@ -104,11 +104,11 @@ initialize_structure_constant_table(rd,rd.orientation_function)
 {assuming all the necessary terms are already in the table, compute a new term}
 set compute_structure_constant(StructureConstantTable T,vec alpha,vec beta)=int:
 let new=
-if T.rd.not_a_root(alpha+beta) then 0
+if T.root_datum.not_a_root(alpha+beta) then 0
  else
- let phi=simple_root_summand(T.rd,alpha) then
+ let phi=simple_root_summand(T.root_datum,alpha) then
  psi=alpha-phi in
- assert(is_root(T.rd,psi),"psi is not a root?");
+ assert(is_root(T.root_datum,psi),"psi is not a root?");
  if (phi != -beta) and (psi != -beta) then
 { prints("looking up:",phi,psi,beta,psi+beta);}
   rat_as_int(
@@ -120,14 +120,14 @@ elif phi=-beta then
 {   prints("looking up 2:",phi,psi,beta,psi+beta);}
   rat_as_int(
              (1/T.lookup(phi,psi))*
-             (T.lookup(psi,beta)*T.lookup(phi,psi+beta)+(-1)^(T.rd.height(phi))*(psi*coroot(T.rd,phi)))
+             (T.lookup(psi,beta)*T.lookup(phi,psi+beta)+(-1)^(T.root_datum.height(phi))*(psi*coroot(T.root_datum,phi)))
             )
 
 else { psi=-beta then }
 {     prints("looking up 3:",phi,psi,beta,psi+beta);}
   -rat_as_int(
               (1/T.lookup(phi,psi))*
-	      ((-1)^(T.rd.height(psi))*phi*coroot(T.rd,psi)+T.lookup(phi,beta)*T.lookup(psi,phi+beta))
+	      ((-1)^(T.root_datum.height(psi))*phi*coroot(T.root_datum,psi)+T.lookup(phi,beta)*T.lookup(psi,phi+beta))
 	     )
  fi
 fi
@@ -137,15 +137,15 @@ in new
 {assuming N(alpha,beta) is computed for all height(alpha)<m, all beta,
 compute for all height(alpha)=m}
 set update_structure_constant_table(StructureConstantTable T,int height)=StructureConstantTable:
-for alpha in roots_of_height(T.rd,height) do
- for beta in T.rd.roots do T:=T.update(alpha,beta,compute_structure_constant(T,alpha,beta))
+for alpha in roots_of_height(T.root_datum,height) do
+ for beta in T.root_datum.roots do T:=T.update(alpha,beta,compute_structure_constant(T,alpha,beta))
  od
 od;
 T
 
 {starting with initialized table, fill completely}
 set fill_structure_constant_table(StructureConstantTable T)=StructureConstantTable:
-for i:T.rd.max_height-1 from 2 do T:=update_structure_constant_table(T,i) od;T
+for i:T.root_datum.max_height-1 from 2 do T:=update_structure_constant_table(T,i) od;T
 
 set structure_constant_table(RootDatum rd)=StructureConstantTable:
 fill_structure_constant_table(initialize_structure_constant_table(rd))
@@ -153,7 +153,7 @@ fill_structure_constant_table(initialize_structure_constant_table(rd))
 {return [[X_alpha,X_beta],X_gamma] + [[X_beta,X_gamma],X_alpha] + [[X_gamma,[X_alpha,X_beta]]}
 set jacobi_formula(StructureConstantTable T)=((vec,vec,vec)->(vec)):(vec alpha, vec beta, vec gamma):
 let N=T.N then
-rd=T.rd in
+rd=T.root_datum in
 if alpha=beta or alpha=gamma or beta=gamma then null(#rd.roots) {trivial identity}
 elif alpha = -beta then
  let rv=[
@@ -181,7 +181,7 @@ fi
 see jacobi@StructureConstantTable in brackets.at for a more complete test
 }
 set jacobi_structure_constants_identity(StructureConstantTable T)=bool:
-let rd=T.rd then
+let rd=T.root_datum then
 rv=true then
  roots=rd.roots in
 for a in roots do
@@ -200,4 +200,4 @@ principal_submatrix(T.table,S)
 
 {extract rows/columns given by S=[vec]}
 set sub_table(StructureConstantTable T,[vec] S)=mat:
-sub_table(T, for v in S do T.rd.all_root_index(v) od)
+sub_table(T, for v in S do T.root_datum.all_root_index(v) od)

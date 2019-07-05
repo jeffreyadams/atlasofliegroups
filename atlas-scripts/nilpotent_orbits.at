@@ -148,6 +148,8 @@ set all_H_nd (RootDatum rd) = [vec]:
 {. List all (complex) nilpotent orbits (with H dominant) for a complex group. .}
 set nilpotent_orbits (RootDatum rd) = [ComplexNilpotent]:
    for H in all_H(rd) do nilpotent(rd,H) od.sort_by_dimension
+{tired of typing so many characters}
+set orbits (RootDatum rd) = [ComplexNilpotent]:nilpotent_orbits(rd)
 
 {. For a complex group, for each standard Levi M given by a list of simple
    roots, list the corresponding neutral elements H (dominant for M, not G)
@@ -770,11 +772,12 @@ od
 {return Bala Carter Levi and distinguished H_L for L conjugate to given H}
 set Bala_Carter_Levi_plus (ComplexNilpotent O)=(RootDatum,vec):
 let rd=O.root_datum then
-H=dominant(O.H{_of_triple},rd) in let list=
-##for L in Levi_subgroups(rd) do
+H=dominant(O.H,rd) in
+for L@k in Levi_subgroups(rd) do
  let distinguished_H_L=distinguished_H(L) in
  let j=first(for H_L in distinguished_H_L do dominant(H_L,rd)=H od)
- in if j>=0 then [(L,distinguished_H_L[0])] else [] fi od in list[0]
+ in if j>=0 then return(L,distinguished_H_L[j]) fi od;
+ (trivial_group,null(0))  {failure, shouldn't happen}
 
 {Bala Carter Levi only}
 set Bala_Carter_Levi (ComplexNilpotent O)=RootDatum:let (L,)=O.Bala_Carter_Levi_plus in L
