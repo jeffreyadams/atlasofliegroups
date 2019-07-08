@@ -1,0 +1,202 @@
+<tits.at
+<structure_constants.at
+<bracket.at
+
+{recall some notation from the Tits group
+ i simple index -> sigma_i lift of s_i to Tits group 
+ w\in W -> sigma_w \in Tits group
+} 
+
+{matrix of permutation action of w on all roots}
+set permutation_of_root_vectors(WeylElt w)=mat:
+let r=w.root_datum.roots in
+for alpha in r do e(#r,find(r, w*alpha)) od
+
+{action sigma_i\in Tits group on X_{alpha_j}
+ i=index of simple root
+ j=# of root alpha in list of all roots
+ let k=index of s_i(\alpha_i), then
+ sigma_i(X_alpha_j)=\pm X_k
+ the sign is given in Geck's paper; this
+ uses his construction of the X_alpha, but computing
+ the sign does not require the StructureConstantTable
+}
+set simple_reflection_on_root_vector(RootDatum rd, int i, int j)=
+let ref=reflection(rd,i) then
+alpha=rd.roots[j] then
+beta=ref*alpha then
+beta_index=find(rd.roots,beta) then
+coeff=
+ if alpha=beta or alpha=-beta then 1
+ else
+ (-1)*(-1)^rd.m_minus(rd.simple_roots[i],alpha)
+ fi
+in coeff*e(#rd.roots,beta_index)
+
+{v=[x_0,x_1,...x_n] n=#roots -> \sum_i x_iX_{\alpha_i}
+ action of sigma_i in Tits group on sums of root vectors in these coordinates
+}
+set simple_reflection_on_root_vectors(RootDatum rd,int i,ratvec v)=ratvec:
+assert(#v=#rd.roots,"v has wrong size");
+sum(for j:#v do v[j]*simple_reflection_on_root_vector(rd,i,j) od,#v)
+
+{action of sigma_1...sigma_n in these coordinates}
+set action_on_root_vectors(RootDatum rd,[int] S,ratvec v)=ratvec:
+for i in S.reverse do v:=simple_reflection_on_root_vectors(rd,i,v) od;v
+
+set action_on_root_vectors(RootDatum rd)=(([int],ratvec)->ratvec):([int] S,ratvec v):action_on_root_vectors(rd,S,v)
+
+{Action sigma_w on LieAlgebraElement}
+set tits_action(WeylElt w,LieAlgebraElement X)=LieAlgebraElement:
+{assert(w.root_datum=X.root_datum,"RootDatum mismatch");}
+(X.t,(action_on_root_vectors(X.t.root_datum,w.word,X.root_part),w*X.H))
+
+{boolean: sigma_w *weakly* fixes X:
+if X=\sum a_i X_i then
+sigma_w(X)=\sum b_i X_i where a_i=\pm b_i for all i
+in the application the a_i are \pm 1, if we generalize this
+then we need to modify this definition
+}
+set tits_centralizes_weak(WeylElt w,LieAlgebraElement X)=bool:
+let Y=tits_action(w,X) in
+X.H=Y.H and
+all(for i:#X.root_part do abs(X.root_part[i])=abs(Y.root_part[i]) od)
+
+{w\in W(sub) weakly centralizing X}
+set tits_centralizer_weak(LieAlgebraElement X,RootDatum sub)=[WeylElt]:
+##for w in W(sub) do
+if tits_centralizes_weak(w,X) then [w] else [] fi od
+
+{w\in W weakly centralizing X}
+set tits_centralizer_weak(LieAlgebraElement X)=tits_centralizer_weak(X,X.root_datum)
+
+{w\in W satisfying wH=H and weakly centralizing X}
+set tits_centralizer_weak(LieAlgebraElement H,LieAlgebraElement X)=
+let (,L)=Levi_of_coweight(H.root_datum,H.H) in
+tits_centralizer_weak(X,L)
+
+{assume the structure constant table is given
+apply the previous to O.H
+}
+set tits_centralizer_weak(StructureConstantTable t,ComplexNilpotent O)=
+let (H,X,Y)=JM_triple(t,O) in tits_centralizer_weak(H,X)
+
+{same as previous, except construct the structure constant table}
+set tits_centralizer_weak(ComplexNilpotent O)=
+let (H,X,Y)=JM_triple(O) in tits_centralizer_weak(H,X)
+{
+set centralizer(LieAlgebraElement X)=
+##for w in W(X.root_datum) do if X*w=X then [w] else [] fi od
+}
+
+{given a matrix M, whose columns span a Q-vector space,
+choose a subset of the columns with the same span
+return new matrix with these columns, list of indices
+giving colums, and list of indices in complement
+}
+set spanning_subset(mat M)=(mat,[int],[int]):
+let r=M.rank then
+rv=null(n_rows(M),0) then
+indices_basis=null(0) then
+indices_other=null(0) in
+for v@i in M do
+ if rank(rv#v)>rank(rv) then rv:=rv#v; indices_basis#:=i
+ else indices_other#:=i
+fi
+od;
+if rv.rank=r then return(rv,indices_basis,indices_other) fi;
+(rv,indices_basis,indices_other)
+
+{change {1,-1} to {0,1}}
+set indicator(int n)=int:if n=1 then 0 else 1 fi
+
+{find a torus element such that alpha_i(t)=epsilon_i
+for given roots alpha_i, and signs epsilon_i
+algorithm: first find unique solution mod(2) for basis
+of the alpha_i, then check if the remaining equations hold mod 2
+}
+set solve_for_torus_element(mat M, vec signs)=(bool,ratvec):
+let (M_basis,indices_basis,indices_other)=spanning_subset(M) then
+target=(for j in indices_basis do indicator(signs[j])  od)
+{target=[1,1,0,1,0,...], should be *1/2, but want to avoid rationals
+solve ^M_basis*m_0=target, then
+       ^M_basis*(m_0/2)=target2
+       m=m_0/2 is what we want
+}
+then m=solve_ratvec(^M_basis,target)/2 in
+{now check that this works for indices_other:
+M[j]*m=(1/2 or 0) + integer
+indicator(signs[j])=1 or 0
+success: M[j]*m-indicator(signs[j])/2 is an integer
+}
+if all(for j in indices_other do is_integer(M[j]*m-indicator(signs[j])/2) od)
+then (true,m) else (false,null(0)) fi
+
+{roots occuring in X.root_part with non-zero coefficient}
+set roots(LieAlgebraElement X)=mat:
+let rv=##for (c,alpha) in X.root_part_array do if c!=0 then [alpha] else [] fi od
+in if #rv=0 then null (0,0) else mat:rv fi
+
+{find a single Tits element g=t*sigma_w so that g.X=X}
+set solve_for_tits_element(WeylElt w,LieAlgebraElement X)=(bool,Tits_elt):
+assert(tits_centralizes_weak(w,X),"w does not weakly centralize X");
+let M=X.roots in
+if #M=0 then (true,(X.root_datum,null(rank(X.root_datum)),w.matrix)) else
+let Y=tits_action(w,X) then
+signs=for (c,)@i in X.root_part_array do
+ let (d,)=Y.root_part_array[i] in rat_as_int(c/d) od
+then
+(success,m)=solve_for_torus_element(M,signs) in
+if not success then (false,tits_identity(X.root_datum)) else
+(true,(X.root_datum,m,w.matrix)) fi
+fi
+
+set basis_dual_lattice(ratmat M)=ratmat:right_inverse(^M)
+set basis_dual_lattice(mat M)=ratmat:basis_dual_lattice(mat_as_ratmat(M))
+
+{find Tits elements taking (H,X) to (H,X)
+ run over w in W so that wH=H and sigma_w(X) weakly equals X
+ if w=1, find all torus elements t so that Ad(t)X=X
+ otherwise find a single torus element t so t\sigma_w(X)=X
+}
+set tits_centralizer_generators(LieAlgebraElement H,LieAlgebraElement X)=
+let S=tits_centralizer_weak(H,X) then
+rv=[Tits_elt]:[] in
+for w in S do
+ if w.matrix=id_mat(w.root_datum.rank) then
+  let M=X.roots then
+  DM=basis_dual_lattice(M) in
+  for v in to_rowrowrat(DM) do  rv#:=(X.root_datum,ratvec:v,id_mat(X.root_datum.rank)) od
+ else
+ let (success,g)=solve_for_tits_element(w,X) in
+ if success then  rv#:=g fi fi od;
+rv
+
+set find([Tits_elt] S,Tits_elt g)=first(#S,(int i)bool:S[i]=g)
+
+{subgroup of Tits group generated by S}
+set tits_subgroup([Tits_elt] S)=[Tits_elt]:
+if =#S then [Tits_elt]:[] else
+let rd=S[0].root_datum then
+subgroup=[Tits_elt]:[tits_identity(rd)] then
+done=0 then
+()=while done=0 do
+let new=false in
+ for g in S do 
+  for h in subgroup do
+   let prod=g*h then
+   k=find(subgroup,prod) in
+    if k=-1 then new:=true;subgroup#:=prod fi
+  od
+ od;if new=false then return(subgroup) fi
+od in subgroup fi
+
+{subgroup of Tits group centralizing (H,X)}
+set tits_centralizer(LieAlgebraElement H,LieAlgebraElement X)=
+tits_subgroup(tits_centralizer_generators(H,X))
+
+{subgroup of Tits group centralizing (H,X)}
+set tits_centralizer(StructureConstantTable t,ComplexNilpotent O)=
+let (H,X,)=JM_triple(t,O) in
+tits_centralizer(H,X)
+
