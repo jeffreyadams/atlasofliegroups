@@ -50,6 +50,9 @@ let rv="" then
 ()=for i:#X.root_part do if !=X.root_part[i] then rv+:="+"+X.root_part[i].to_string+"*X_"+([int]:X.root_datum.roots[i]).to_string fi od then
 ()=if !=X.H then rv+:=" "+(X.H).to_string fi in rv
 
+set root_part_array(LieAlgebraElement X)=[(rat,vec)]:
+##(for i:#X.root_part do if !=X.root_part[i] then [(X.root_part[i],X.root_datum.roots[i])] else [] fi od)
+
 set show_long(LieAlgebraElement X)=void:prints(X.to_string)
 
 {coordinates of X_alpha: [0,...,1,..0] (N-tuple)} 

@@ -15,6 +15,20 @@ coeffs=box(2,#S) in
  if any(sol) then {prints("found:", H, new_line, X.root_part);}return((
  lie_algebra_element_semisimple(t,H),X,lie_algebra_element(t,requisition(sol)))) fi od;(null(t),null(t),null(t))
 
+{ALL Jacobson Morozov triples (with coefficient 0,1)}
+set JM_triples(StructureConstantTable t,vec H)=[(LieAlgebraElement,LieAlgebraElement,LieAlgebraElement)]:
+let S=two_eigenspace(t,H) then
+rv=[(LieAlgebraElement,LieAlgebraElement,LieAlgebraElement)]:[] then
+coeffs=box(2,#S) in
+ for A in coeffs do
+ let X=null(t) then
+ ()= for i:#S do X+:=A[i]*S[i]  od then
+ sol=solve_ad(X,H(t,H)) in
+ if any(sol) then rv#:=(lie_algebra_element_semisimple(t,H),X,lie_algebra_element(t,requisition(sol))) fi od;
+rv
+
+
+
 {complete Jacobson Morozov triple: given H, find X,Y so that [H,X]=2X, [H,Y]=-2Y, [X,Y]=H}
 set JM_triple_reverse(StructureConstantTable t,vec H)=(LieAlgebraElement,LieAlgebraElement,LieAlgebraElement):
 let S=two_eigenspace(t,H) then
