@@ -24,15 +24,21 @@ then run over all one-dimensional unitary representations of
 each real Levi L (infinitesimal character rho(L)) and see
 if p occurs in the induction. Returns [(P,p_L)] P=parabolic,p_L=parameter for
 one-dimensional unitary on L
+pass the list of real parabolics as the first argument:
+
+set real_parabolics=all_real_parabolics(G)
+realize_as_real_induced_from_one_dimensional(real_parabolics,p)
 }
-set realize_as_real_induced_from_one_dimensional(Param p)=
-let all=all_real_parabolics(p.real_form) then
-gamma=p.infinitesimal_character then
-candidate_parabolics=##for P in all do
+set realize_as_real_induced_from_one_dimensional([Parabolic] real_parabolics,Param p)=
+let gamma=p.infinitesimal_character then
+candidate_parabolics=##for P in real_parabolics do
  if dominant(p.root_datum,P.Levi.rho)=gamma then [P] else [] fi od
 in
 ##(##for P in candidate_parabolics do
  for p_L in unitary_one_dimensional(P.Levi) do
   if find(monomials(real_induce_standard(p_L,p.real_form)),p) != -1 then [(P,p_L)] else [] fi od
  od)
+
+set realize_as_real_induced_from_one_dimensional(Param p)=
+realize_as_real_induced_from_one_dimensional(all_real_parabolics(p.real_form),p)
 
