@@ -1,0 +1,38 @@
+<induction.at
+<K_highest_weights.at
+
+{all unitary one-dimensional representations of G with
+given infinitesimal character
+}
+set unitary_one_dimensional(RealForm G,ratvec gamma)=[Param]:
+let x=KGB(G,G.KGB_size-1) in
+##for p in all_parameters_x_gamma(x,gamma) do
+ if is_unitary_character(p) then [p] else [] fi od
+
+{default: gamma=G.rho}
+set unitary_one_dimensional(RealForm G)=[Param]:
+unitary_one_dimensional(G,G.rho)
+
+{see all_real_induced_one_dimensional in induction.at
+given a parameter p, run over all real parabolics, and
+all one dimensional representations of the Levis,
+and look for ones for which p is contained in the induced
+representation.
+First cut down to only P for which P.Levi.rho=p.infinitesimal_character
+this should eliminate all but a small number of possible parabolics
+then run over all one-dimensional unitary representations of
+each real Levi L (infinitesimal character rho(L)) and see
+if p occurs in the induction. Returns [(P,p_L)] P=parabolic,p_L=parameter for
+one-dimensional unitary on L
+}
+set realize_as_real_induced_from_one_dimensional(Param p)=
+let all=all_real_parabolics(p.real_form) then
+gamma=p.infinitesimal_character then
+candidate_parabolics=##for P in all do
+ if dominant(p.root_datum,P.Levi.rho)=gamma then [P] else [] fi od
+in
+##(##for P in candidate_parabolics do
+ for p_L in unitary_one_dimensional(P.Levi) do
+  if find(monomials(real_induce_standard(p_L,p.real_form)),p) != -1 then [(P,p_L)] else [] fi od
+ od)
+
