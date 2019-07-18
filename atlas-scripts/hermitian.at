@@ -380,3 +380,5 @@ set strong_test (Param p)=bool:
   if #bad=0 then prints("number of terms: ", #formula);true
   else prints("number of terms: ", #formula,new_line,"bad terms:", bad );false
   fi
+
+set branch_c_form_irreducible(Param p, int N)=ParamPol:branch(c_form_irreducible(p),N)

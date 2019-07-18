@@ -1,3 +1,5 @@
+<matrix.at
+
 set A1="A1"
 set A2="A2"
 set A3="A3"
@@ -32,5 +34,80 @@ set E7="E7"
 set E8="E8"
 set F4="F4"
 set G2="G2"
+
+{------commands related to having a canonical Lie_type------}
+
+{convert ABCDEFGT to an integer}
+set type_numbers=["A","B","C","D","E","F","G","T"]
+set number_of(string type)=int:
+assert(#type=1,"not a single character");
+first(for i:#type_numbers do type=type_numbers[i] od)
+
+{return a matrix of size 8x32
+ each column is a type A=0,B=1,C=2,D=3,E=4,F=5,G=6,T=7
+ row <-> rank 1,....,32
+ an entry k in column X/row j means:
+  the simple factor Xj occurs k times
+  The last column will be [k,0,...,0] where k is the dimension
+   of the center <-> k factors of T1
+}
+set Lie_type_matrix(LieType lt)=mat:
+let M=null(16,8) in
+for (type,rank) in simple_factors(lt) do
+ M:=add_to_matrix_entry(M,number_of(type),rank-1,1) od;
+ {last column: torus factor}
+ M:=update_matrix_entry(M,7,0,central_torus_rank(lt));M
+
+set Lie_type_matrix(RootDatum rd)=mat:Lie_type_matrix(Lie_type(rd))
+{Lie_type_matrix@RealForm is automatic}
+
+{convert from matrix to LieType}
+set Lie_type(mat M)=LieType:
+assert(shape(M)= (16,8),"Matrix is wrong shape");
+let lt=Lie_type("T",0) {empty type} in
+ for col: 8 do
+  for row: 16 do
+   if M[col][row]>0 then
+     for i:M[col][row] do lt*:=Lie_type(type_numbers[col],row+1) od
+   fi
+  od
+ od;
+lt
+
+set standardize_Lie_type(LieType lt)=LieType:Lie_type(Lie_type_matrix(lt))
+
+set nice_format(LieType lt)=string:
+let M=Lie_type_matrix(lt) in
+if =M then "e" {trivial group} else
+let rv="" in
+ for col: 8 do
+  for row: 16 do
+   if M[col][row]>0 then
+     let c=if M[col][row]>1 then M[col][row].to_string else "" fi in
+     rv+:="+"+ c +Lie_type(type_numbers[col],row+1).str 
+   fi
+  od
+ od;
+{delete leading "+"}
+let chop="" in for i:#rv-1 from 1 do chop+:=rv[i] od;chop fi
+
+set nice_format(RootDatum rd)=string:rd.Lie_type.nice_format
+
+{types B2 and C2 are allowed, but not others
+ such as C1, B1, D1,D2,D3,...
+ so have to deal with B2=C2 as a special case
+}
+set normalize_Lie_type_matrix(mat M)=
+assert(shape(M)= (16,8),"Matrix is wrong shape");
+M:=update_matrix_entry(M,1,1,M[1][1]+M[2][1]);
+M:=update_matrix_entry(M,2,1,0);
+M
+
+{two complex groups are locally isomorphic iff they have the same
+(normalized) Lie_type_matrix}
+set is_locally_isomorphic(RootDatum rd_1,RootDatum rd_2)=bool:
+normalize_Lie_type_matrix(Lie_type_matrix(rd_1))=
+normalize_Lie_type_matrix(Lie_type_matrix(rd_2))
+
 
 

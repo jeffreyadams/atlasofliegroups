@@ -100,6 +100,13 @@ set = (Hn_rep(a1,a2),Hn_rep(b1,b2)) = bool: a1=b1 and a2=b2
 { equality of symbols (not equivalence) }
 set symbols_equal(Symbol a,Symbol b) = bool: a[0]=b[0] and a[1]=b[1]
 
+set hook_length (Partition P, int i, int j) =int:
+  let arm = P[i]-j, leg = transpose(P)[j]-i in arm + leg -1
+
+set dim_rep (Partition P) = int:
+  let dim=fac(sum(P)) in
+  for i:#P do for j:P[i] do dim \:= hook_length(P,i,j) od od; dim
+
 set dimension (Hn_rep(p,q)) = int: { using hook length formula twice: }
    dim_rep(p)*dim_rep(q)* binom(sum(p),sum(q))
 

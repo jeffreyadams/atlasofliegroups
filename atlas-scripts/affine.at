@@ -1,122 +1,360 @@
+<misc.at
+<lietypes.at
 <synthetic.at
+<K.at
+<center.at
+<group_operations.at
+{<outer.at}
+<simple_factors.at
 
-set labels(RootDatum rd)=vec:
-for i:rank(rd) do rat_as_int(highest_root(rd)*fundamental_coweights(rd)[i]) od
+set cutoff=10000  {terminate calculation after cutoff steps}
 
-set affine_labels(RootDatum rd)=vec:labels(rd)##[1]
+set affine_verbose=false
 
-set affine_root(RootDatum rd)=-highest_root(rd)
-{affine_coroot(rd)=affine_root(dual(rd))
-                  =-highest_root(dual(rd))
-                  =-(long root of dual(rd))
-not the same as
-                   (affine_root(rd))^vee
-                  =-(highest root of rd)^vee
-		  =-(highest short root of dual(rd))
+{highest short roots, obtained as dual to highest root of the dual
 }
-set affine_coroot(RootDatum rd)=affine_root(dual(rd))
+set highest_short_roots(RootDatum rd)=[vec]:
+for cr in highest_roots(dual(rd)) do root(rd,cr) od
 
-{v\in X^*_Q
-alpha = -(dual of highest root of dual(rd))
-      = coroot(dual(rd), affine_root(dual(rd))
-      = coroot(dual(rd),affine_coroot(rd))
-      = -(highest short root of rd)
-v -> v - (<v,alpha^vee>+1)alpha
-     =[v-(<v,alpha^vee>)alpha]-alpha
-     =reflect(rd,alpha,v)-alpha
+set highest_short_root(RootDatum rd)=vec:
+assert(derived_is_simple(rd),"Root Datum is not simple");
+highest_short_roots(rd)[0]
+
+{from basic.at:
+reflect: action of root on X^* (add multiple of root)
+coreflect: action of root on X_* (add multiple of coroot)
 }
-set affine_reflection(RootDatum rd,ratvec v)=
-let alpha=coroot(dual(rd),affine_coroot(rd)) in reflect(rd,alpha,v)-alpha
 
-{v\in X_*_Q}
-set co_affine_reflection(RootDatum rd,ratvec v)=
-let alpha_v=coroot(rd,affine_root(rd)) in reflect(dual(rd),alpha_v,v)-alpha_v
+{Affine root datum: (vec alpha^v,RootDatum rd,vec alpha)
+alpha should be a positive root, and alpha^v the
+corresponding coroot
+this acts on either X^* or X_* (\otimes Q)
+in this file: 
+ wt will always be an element of X^*\otimes Q
+ cwt will always be an element of X_*\otimes Q
 
-{let beta=affine_coroot(rd) in coreflection(rd,beta)*v-coroot(dual(rd),affine_coroot(rd))}
+Action on X_*: affine reflection is
 
-{v\in X^*_Q}
-set reflect_or_affine_reflect(RootDatum rd,int i, ratvec v)=ratvec:
-if i<rank(rd) then reflect(rd,i,v) else affine_reflection(rd,v) fi
+cwt -> s_alpha(cwt)+\alpha^v
+       =cwt-<cwt,alpha>alpha^v + alpha^v
+       =cwt-(<cwt,alpha>-1)alpha^v
 
-{v\in X^*_Q}
-set co_reflect_or_affine_reflect(RootDatum rd,int i, ratvec v)=ratvec:
-if i<rank(rd) then coreflect(rd,v,i) else co_affine_reflection(rd,v) fi
+Action on X^*: affine reflection is
 
-{v\in X^*, in usual coordinates}
-set affine_coordinates(RootDatum rd, vec v)=[int]:
-(for alpha_v in simple_coroots(rd) do alpha_v*v od)#(affine_coroot(rd)*v+1)    
+wt ->  s_alpha(wt)+\alpha
+       =wt-<wt,alpha^v>alpha + alpha
+       =wt-(<gamma,alpha^v>-1)alpha
+}
 
-{v\in X^*_Q}
-set affine_coordinates(RootDatum rd, ratvec v)=ratvec:
-(for alpha_v in simple_coroots(rd) do alpha_v*v od)#(affine_coroot(rd)*v+1)
+set_type AffineDatum = ([vec]  affine_coroots,RootDatum rd,[vec] affine_roots)
+set rank(AffineDatum ad)=int:rank(ad.rd)
+set ss_rank(AffineDatum ad)=int:ss_rank(ad.rd)
+set is_simple(AffineDatum ad)=bool: is_simple(ad.rd)
+set is_one_factor(RootDatum rd)=bool: derived_is_simple(rd)
+set is_one_factor(AffineDatum ad)=bool: is_one_factor(ad.rd)
 
-set confirm(RootDatum rd,ratvec v)=void:
-assert(v*affine_labels(dual(rd))=1,"confirm failed")
+set number_factors(AffineDatum ad)=int:#ad.affine_roots
+set affine_root_sum(AffineDatum ad)=sum(ad.affine_roots)
+set affine_coroot_sum(AffineDatum ad)=sum(ad.affine_coroots)
 
-{v\in X^*_Q, in affine coordinates}
-set usual_coordinates(RootDatum rd, ratvec v)=
-let rv=ratvec:null(rank(rd)) in
-for i:rank(rd) do rv+:=v[i]*fundamental_weights(rd)[i] od;rv
+{an affine root datum ad is obtained by "folding" from a pair
+(root datum,distinguished automorphism)=(rd,delta)
 
-{v\in X^*_Q}
-set affine_non_dominant_index (RootDatum rd, ratvec v) = int:
-let w=affine_coordinates(rd,v) in 
-first(for a in w do a<0 od)
+each delta orbit of simple factors of rd contributes a single
+simple factor of ad
 
-{v\in X_*}
-set co_affine_coordinates(RootDatum rd, vec v)=[int]:
-(for alpha in simple_roots(rd) do alpha*v od)#(affine_root(rd)*v+1)
+1) delta trivial on a simple factor rd_i ->
+ -> (rd_i, highest long root)
+    folding_order =1
+2) order delta=2 or 3 on a simple factor rd_i ->
+ -> (folded(rd_i), highest short root)
+     folding_order =2 or 3
+3) delta permutes r simple factors rd_f
+   delta^r is an automorphism of the first one, of order 1,2,3
+   aply 1 or 2 to (rd_i,delta^r)
+   folding_order = 1,2 or 3 accordingly
+}
+{basic affine datum uses highest root, folding_order=1
+ other affine data come from an automorphism of
+ a simple root system rd_0 of order 2 or 3,
+ in which case the underlying root datum rd is the
+ "folded" one, and the affine root is the highest short
+  root. In this case the order of the fold is
+  ||highest root rd||/||highest short root of rd||
+ Conclusion: the order of the fold is always:
+ ||highest root of rd||/||affine_root of rd||
+}
 
-{v\in X_*_Q}
-set co_affine_coordinates(RootDatum rd, ratvec v)=[rat]:
-(for alpha in simple_roots(rd) do alpha*v od)#(affine_root(rd)*v+1)
+set folding_order(AffineDatum ad)=int:
+assert(is_one_factor(ad),"More than one simple factor");
+let f(ratvec v)=invariant_form(ad.rd)(v,v) in
+rat_as_int(f(ad.rd.highest_root)/f(ad.affine_roots[0]))
+
+{apply folding_order to each simple factor}
+set folding_orders(AffineDatum ad)=[int]:
+let f(ratvec v)=invariant_form(ad.rd)(v,v) in
+for alpha@i in ad.rd.highest_roots do
+{let ()=prints("ad:", ad) in
+let ()=prints("simple roots:", ad.rd.simple_roots) in
+let ()=prints("first affine root:", ad.rd.simple_factors[0].highest_root) in
+let ()=prints("second affine root:", ad.rd.simple_factors[1].highest_root) in
+let ()=prints("fg(alpha):", f(alpha), " f(affine):", f(ad.affine_roots[i])) in}
+rat_as_int(f(alpha)/f(ad.affine_roots[i]))  od
+
+{the affine reflections are labeled -1,-2,...}
+set_type AffineWeylElt = (AffineDatum ad, [int] w)
+
+set inverse(AffineWeylElt omega)=AffineWeylElt:(omega.ad,reverse(omega.w))
+
+{make affine datum from a root, simple case}
+set affine_datum(RootDatum rd,vec alpha)=AffineDatum:
+assert(is_one_factor(rd),"RootDatum has more than one simple factor");
+([coroot(rd,alpha)],rd,[alpha])
+
+{default affine datum, simple case: use the highest root}
+set affine_datum(RootDatum rd)=AffineDatum:
+assert(is_one_factor(rd),"RootDatum has more than one simple factor");
+affine_datum(rd,highest_root(rd))
+
+{default affine datum general case: }
+{bad definition, see twisted_root_datum.at}
+{set affine_datum(RootDatum rd)=AffineDatum:
+let hr=highest_roots(rd) in 
+AffineDatum:(for alpha in hr do coroot(rd,alpha) od,rd,hr)
+}
+
+{ordinary reflections
+ beta is a root, acting on X^* or X_*
+ }
+{Note: need the extra parentheses here to avoid ambiguity}
+set reflect((AffineDatum ad, vec beta), ratvec wt)=ratvec:reflect(ad.rd,beta,wt)
+set reflect((AffineDatum ad, int i), ratvec wt)=ratvec:reflect(ad.rd,ad.rd.posroots[i],wt)
+set reflect(AffineDatum ad)=((vec,ratvec)->ratvec):(vec beta,ratvec wt):reflect((ad,beta),wt)
+set reflect(AffineDatum ad)=((int,ratvec)->ratvec):(int i,ratvec wt):reflect((ad,i),wt)
+set reflect(ratvec cwt,(AffineDatum ad, vec beta))=ratvec:coreflect(ad.rd,beta,cwt)
+set reflect(ratvec cwt,(AffineDatum ad, int i))=ratvec:coreflect(ad.rd,ad.rd.posroots[i],cwt)
+
+set coreflect((AffineDatum ad, vec beta), ratvec cwt)=ratvec:coreflect(ad.rd,beta,cwt)
+set coreflect((AffineDatum ad, int i), ratvec cwt)=ratvec:coreflect(ad.rd,ad.rd.posroots[i],cwt)
+set coreflect(AffineDatum ad)=((vec,ratvec)->ratvec):(vec beta,ratvec cwt):coreflect((ad,beta),cwt)
+set coreflect(AffineDatum ad)=((int,ratvec)->ratvec):(int i,ratvec cwt):coreflect((ad,i),cwt)
+
+{affine reflections}
+
+{affine reflection on X^*: i is the number of the simple factor}
+set affine_reflect(AffineDatum ad,int i,ratvec wt)=ratvec:
+reflect((ad,ad.affine_roots[i]),wt)+(1/ad.folding_orders[i])*ad.affine_roots[i]
+set affine_reflect(AffineDatum ad)=((int,ratvec)->ratvec):
+(int i,ratvec wt):affine_reflect(ad,i,wt)
+
+{affine (co)reflection on X_*}
+set affine_coreflect(AffineDatum ad,int i,ratvec cwt)=ratvec:
+{reflect(cwt,(ad,ad.affine_coroots[i]))+(1/ad.folding_orders[i])*ad.affine_coroots[i]}
+coreflect((ad,ad.affine_roots[i]),cwt)+(1/ad.folding_orders[i])*ad.affine_coroots[i]
+set affine_coreflect(AffineDatum ad)=((int,ratvec)->ratvec):(int i,ratvec cwt):affine_coreflect(ad,i,cwt)
+
+{labels: defined for an affine datum,
+multiplicity of each simple root in affine root(s)
+more than one affine root: all multiplicities are 0 except 1
+compute this by taking the <sum of affine roots,fundamental_coweight[i]>
+
+}
+set labels(AffineDatum ad)=for i:rank(ad) do rat_as_int(ad.affine_root_sum*fundamental_coweights(ad.rd)[i]) od
+set co_labels(AffineDatum ad)=for i:rank(ad) do rat_as_int(ad.affine_coroot_sum*fundamental_weights(ad.rd)[i]) od
+set affine_labels(AffineDatum ad)=vec:labels(ad)##[1]
+set co_affine_labels(AffineDatum ad)=vec:co_labels(ad)##[1]
+
+{default labels for RootDatum: alpha=highest root}
+set labels(RootDatum rd)=labels(affine_datum(rd))
+set co_labels(RootDatum rd)=co_labels(affine_datum(rd))
+set affine_labels(RootDatum rd)=vec:affine_labels(affine_datum(rd))
+set co_affine_labels(RootDatum rd)=vec:co_affine_labels(affine_datum(rd))
+
+{ordinary or affine reflection acting on X^*, indexed by integers
+ 0<= i <=ss_rank(rd)-1: ordinary reflection
+ ss_rank(rd) <= i <= ss_rank(rd)+r-1: affine reflections
+ }
+set reflect_or_affine_reflect((AffineDatum ad,int i), ratvec wt)=ratvec:
+assert(0<=i and i<=ad.ss_rank+ad.number_factors-1,"i is out of range");
+if i<=ad.ss_rank-1 then reflect((ad,i),wt)
+else
+{i=ad.ss_rank: last ordinary reflection
+ i=ad.ss_rank+j: affine reflection in factor #0
+ i=ad.ss_rank+ad.number_factors+j-1: affine reflection in factor #j
+ j=i-ad.ss_rank
+}
+ let j=i-ad.ss_rank in
+ affine_reflect(ad,j,wt)
+fi
+
+{ordinary or affine coreflection acting on X_*}
+set coreflect_or_affine_coreflect((AffineDatum ad,int i),ratvec cwt)=ratvec:
+{let ()=prints("cwt:",cwt, "i:", i) in}
+assert(0<=i and i<=ad.ss_rank+ad.number_factors-1,"i is out of range");
+if i<=ad.ss_rank-1 then ad.coreflect(i,cwt)
+else
+ let j=i-ad.ss_rank in
+ ad.affine_coreflect(j,cwt)
+fi
+set coreflect_or_coaffine_reflect(AffineDatum ad)=((int,ratvec)->ratvec):
+(int i,ratvec cwt):coreflect_or_affine_coreflect((ad,i),cwt)
+
+{wt\in X^*\otimes Q
+affine coordinates: a pair (v,w) of ratvecs
+v=[a_0,...,a_{n-1}]
+n=semisimple rank, a_i=inner product with simple coroot
+w=[b_0,...,b_{r-1}]
+r=#simple factors
+b_i=<affine_coroots[i],lambda>-1/folding_orders[i]
+\sum_{i=0}^{n-1} a_i +\sum_{j=0}^{r-1}b_j=r
+fundamental alcove: [a_0,...,a_{n-1}],[b_0,...,b_{r-1}]
+0\le a_i,b_j\le 1  all i,j
+}
+set affine_coordinates(AffineDatum ad, ratvec wt)=(ratvec,ratvec):
+let v=for beta_ch in simple_coroots(ad.rd) do beta_ch*wt od then
+w=for i:ad.number_factors do
+-ad.affine_coroots[i]*wt+1/ad.folding_orders[i] od
+in (v,w)
+
+{default affine coordinates}
+set affine_coordinates(RootDatum rd, ratvec wt)=(ratvec,ratvec):affine_coordinates(affine_datum(rd),wt)
+
+{in case of vec argument, return vec result}
+set affine_coordinates(AffineDatum ad, vec wt)=(vec,vec):
+let (v,w)=affine_coordinates(ad,ratvec:wt) in (ratvec_as_vec(v),ratvec_as_vec(w))
+
+set affine_coordinates(RootDatum rd, vec wt)=(vec,vec):affine_coordinates(affine_datum(rd),wt)
+
+{affine coordinates: X_*\otimes Q case}
+set affine_coordinates(ratvec cwt,AffineDatum ad)=(ratvec,ratvec):
+let v=for beta in simple_roots(ad.rd) do beta*cwt od then
+w=for i:ad.number_factors do
+-ad.affine_roots[i]*cwt+1/ad.folding_orders[i] od
+in (v,w)
+
+set affine_coordinates(vec cwt,AffineDatum ad)=(vec,vec):
+let (v,w)=affine_coordinates(ratvec:cwt, ad) in
+(ratvec_as_vec(v),ratvec_as_vec(w))
+
+set affine_coordinates(vec cwt,RootDatum rd)=(vec,vec):affine_coordinates(cwt,affine_datum(rd))
+
+{test:
+affine_coordinates(ad,wt)*co_affine_labels(ad)=1
+affine_coordinates(cwt,ad)*affine_labels(ad)=1
+}
+set confirm(AffineDatum ad,ratvec coordinates)=void:
+assert(coordinates*co_affine_labels(ad)=1,"confirm failed")
+
+set confirm(ratvec coordinates,AffineDatum ad)=void:
+assert(coordinates*affine_labels(ad)=1,"confirm failed")
+
+set in_fundamental_alcove(AffineDatum ad,ratvec wt)=bool:
+all(for a in let (v,w)=affine_coordinates(ad,wt) in v##w  do 0 <= a and a <= 1 od)
+
+set in_fundamental_alcove(ratvec cwt,AffineDatum ad)=bool:
+all(for a in let (v,w)= affine_coordinates(cwt,ad) in v##w do 0 <= a and a <= 1 od)
+
+{wt\in X^* \otimes Q}
+{v=[a_1,...,a_n] n=ss_rank
+ w=[b_1,...,b_r] r=#simple_factors
+ v##w=[a_1,...,a_n,b_1,...,b_r]
+      [0, ,...,n-1,n,..., ,n+r-1]  (indices from 0 to n+r-1)
+}
+set affine_non_dominant_index (AffineDatum ad, ratvec wt) = int:
+let (v,w)=affine_coordinates(ad,wt) in first(for a in v##w do a<0 od)
+set is_affine_dominant(AffineDatum ad,ratvec wt)=bool:affine_non_dominant_index(ad,wt)=-1
+
+{cwt case}
+set affine_non_dominant_index (ratvec cwt,AffineDatum ad) = int:
+let (v,w)=affine_coordinates(cwt,ad) in first(for a in v##w do a<0 od)
+set is_affine_dominant(ratvec cwt,AffineDatum ad)=bool:affine_non_dominant_index(cwt,ad)=-1
+
+{wt\in X^* \otimes Q}
+set affine_make_dominant (AffineDatum ad, ratvec wt) = (ratvec,AffineWeylElt):
+  assert(#wt=rank(ad),"vector wt wrong size for (affine) root system");
+  let rd=ad.rd in
+  if affine_verbose then prints("wt=", wt,  new_line, "affine_coordinates:=", affine_coordinates(ad,wt)) fi;
+  let count=0 in
+  let i=0 { needed to pass value across 'do' }
+  then w = while (count <=cutoff) and >=(i:=affine_non_dominant_index(ad,wt))
+    do count+:=1;
+       wt:=reflect_or_affine_reflect((ad,i),wt);
+        {debugging:}
+{        let root= if i<rank(ad) then simple_roots(rd)[i] else ad.affine_roots[i-rank(ad)] fi in}
+{        prints(count, "  i:",i," root:", root ,"   wt:",wt, "  coords:", affine_coordinates(ad,wt));}
+{        confirm(rd,affine_coordinates(rd,wt)); {debugging only}}
+        {\debugging}
+       i
+    od
+  in   {prints(new_line,"wt=", wt,  "   w=",
+       affine_coordinates(rd,wt),new_line);}(wt,(ad,w))
+
+{wt\in X_* \otimes Q}
+set affine_co_make_dominant (AffineDatum ad,ratvec cwt) = (ratvec,AffineWeylElt):
+  assert(#cwt=rank(ad),"vector cwt wrong size for (affine) root system");
+  let rd=ad.rd in
+  if affine_verbose then prints("cwt=", cwt,  new_line, "affine_coordinates:=", affine_coordinates(cwt,ad)) fi;
+  let count=0 in
+  let i=0 { needed to pass value across 'do' }
+  then w = while (count <=cutoff) and >=(i:=affine_non_dominant_index(cwt,ad))
+    do count+:=1;
+       cwt:=coreflect_or_affine_coreflect((ad,i),cwt);
+        {debugging:}
+{        let coroot= if i<rank(ad) then simple_coroots(rd)[i] else ad.affine_coroots[i-rank(ad)] fi in}
+{        prints(count, "  i:",i," coroot:", coroot ,"   cwt:",cwt, "  coords:", affine_coordinates(cwt,ad));}
+{        confirm(rd,affine_coordinates(rd,cwt)); {debugging only}}
+        {\debugging}
+       i
+    od
+  in   {prints(new_line,"cwt=", cwt,  "   w=",
+       affine_coordinates(rd,cwt),new_line);}(cwt,(ad,w))
+set affine_co_make_dominant (AffineDatum ad)=(ratvec->ratvec,AffineWeylElt):
+(ratvec v):affine_co_make_dominant(ad,v)
+
+{
+set *(AffineWeylElt omega,ratvec v)=ratvec:
+for i in reverse(omega.w) do
+v:=reflect_or_affine_reflect(omega.ad,i,v) od;v
+
+set *(ratvec v,AffineWeylElt omega)=ratvec:
+for i in reverse(omega.w) do
+v:=reflect_or_affine_reflect(omega.ad,i,v) od;v
+
+{to be consistent with other naming conventions in basic.at}
+
+{v \in X^* \otimes Q, returns (w,omega) such that omega*w=v}
+set affine_from_dominant(AffineDatum ad, ratvec wt)=(ratvec,AffineWeylElt):
+affine_make_dominant(ad,wt)
+
+set affine_dominant(AffineDatum ad, ratvec wt)=ratvec:
+let (v,)=affine_from_dominant(ad,wt) in v
+
+{v \in X_* \otimes Q, returns (w,omega) such that omega*w=v}
+set affine_from_dominant(ratvec cwt,AffineDatum ad)=(ratvec,AffineWeylElt):
+affine_make_dominant(ad,cwt)
+
+set affine_dominant(ratvec cwt,RootDatum rd)=ratvec:
+let (v,)=affine_from_dominant(cwt,affine_datum(rd)) in v
+
+}
 
 {v\in X^*_Q, in co_affine coordinates}
 set co_usual_coordinates(RootDatum rd, ratvec v)=
 let rv=ratvec:null(rank(rd)) in
 for i:rank(rd) do rv+:=v[i]*fundamental_coweights(rd)[i] od;rv
 
-{v\in X_*_Q}
-set co_affine_non_dominant_index (RootDatum rd, ratvec v) = int:
-let w=co_affine_coordinates(rd,v) in 
-first(for a in w do a<0 od)
+set is_affine_conjugate(AffineDatum ad,ratvec wt_1,ratvec wt_2)=bool:
+let (wt_1_dom,)=affine_make_dominant(ad,wt_1),
+(wt_2_dom,)=affine_make_dominant(ad,wt_2) in wt_1_dom=wt_2_dom
 
-{v\in X^*_Q}
-set affine_make_dominant (RootDatum rd, ratvec v) = (ratvec,WeylElt):
-  assert(#v=rank(rd),"vector v wrong size for (affine) root system");
-{  prints("v=", v,  "   w=", affine_coordinates(rd,v),new_line);}
-  let count=0 in 
-  let i=0 { needed to pass value across 'do' }
-  then w = while (count <=1000) and >=(i:=affine_non_dominant_index(rd,v)) 
-    do count+:=1;
-       v:=reflect_or_affine_reflect(rd,i,v);
-       let root= if i<rank(rd) then simple_roots(rd)[i] else affine_root(rd) fi in
-       {prints(count, "  i:",i," root:", root ,"   ",v, "  ", affine_coordinates(rd,v));confirm(rd,affine_coordinates(rd,v));} i 
-    od
-  in   {prints(new_line,"v=", v,  "   w=", 
-       affine_coordinates(rd,v),new_line);}(v,W_elt(rd,w))
+set is_affine_conjugate(ratvec cwt_1,ratvec cwt_2,AffineDatum ad)=bool:
+let (cwt_1_dom,)=affine_make_dominant(ad,cwt_1),
+(cwt_2_dom,)=affine_make_dominant(ad,cwt_2) in cwt_1_dom=cwt_2_dom
 
-{v\in X_*_Q}
-set co_affine_make_dominant (RootDatum rd, ratvec v) = (ratvec,WeylElt):
-  assert(#v=rank(rd),"vector v wrong size for (affine) root system");
-{  prints("v=", v,  "   w=", co_affine_coordinates(rd,v));}
-  let count=0 in
-  let i=0 { needed to pass value across 'do' }
-  then w = while (count <=1000) and >=(i:=co_affine_non_dominant_index(rd,v))
-  do count+:=1;
-{  prints(count," ","i:",i,"  ",v, " ", co_affine_coordinates(rd,v));}
-  v:=co_reflect_or_affine_reflect(rd,i,v); i od
-  in   {prints("v=", v,  "   w=", co_affine_coordinates(rd,v));}(v,W_elt(rd,w))
+{action of fundamental group on fundamental alcove}
+set action_fundamental_group(ratvec cwt,AffineDatum ad)=
+assert(is_affine_dominant(cwt,ad),"coweight is not in fundamental alcove");
+for v in elements_of_fundamental_group(ad.rd) do let (w,)=ad.affine_co_make_dominant(cwt+v)  in w od
 
-set co_affine_root (RootDatum rd)=vec:
-   let l=find_posroot(rd,highest_root(rd)) in
-   -poscoroots(rd)[l]
 
-set affine_reflection_alt(RootDatum rd, ratvec v)=ratvec:
-   let alpha=affine_root(rd) in
-   v-(v*alpha+1)*co_affine_root(rd)
 
-set move_to_fundamental_domain(RootDatum rd, ratvec v)=ratvec:
-   let alpha=affine_root(rd), w=v then q=w*alpha+1 in
-   while q<0 do w:=dominant(affine_reflection_alt(rd,w),rd);
-     q:=w*alpha+1 od; w

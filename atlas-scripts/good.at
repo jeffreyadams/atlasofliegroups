@@ -1,0 +1,172 @@
+<cyclotomic_Gaussian_elim.at
+<conjugate.at
+<parabolics.at
+<affine.at
+
+{good conjugacy class representatives in W,
+constructed using the algorithm of He-Nie,
+in terms of eigenvalues}
+
+{
+M: rational matrix of finite order
+we want to record eigenvalues and eigenvectors for M
+we record these as follows
+an EigenPair is: (int order,[CyclotomicVec] vecs)
+the vecs are all for a fixed cyclotomic field Q(\zeta_d)
+these are a basis of the \zeta_d^order eigenspace of M
+
+the underlying cyclotomic field is vecs[0].F
+(vecs is necessarily non-empty, and all the vecs
+are assumed to be for the same F
+}
+set_type EigenPair = (int order,[CyclotomicVec] vecs)
+set F(EigenPair ep)=CyclotomicField:ep.vecs[0].F
+
+{compute all d^th roots of unity which are eigenvalues
+of a matrix M (M is typically the matrix of a Weyl group
+element of order d)
+simply trial and error, computing in Q(zeta_d)
+}
+set eigenvalues(mat M,int d)=(CyclotomicField,[int]):
+let F=cyclotomic_field(d) then
+zeta=F.primitive_root then
+X=cyclotomic_matrix(M,F) in
+(F,##for i:d do if =det(X-zeta^i) then [i] else [] fi od)
+
+{specify the field F=Q(zeta_d)
+ each integer k -> eigenvalue zeta_d^k
+}
+set eigenvalues(WeylElt w)=(CyclotomicField,[int]):eigenvalues(matrix(w),order(w))
+
+{assuming z is an eigenvalue of M}
+set eigenvectors(mat M,CyclotomicFieldElement z)=[CyclotomicVec]:
+kernel(cyclotomic_matrix(M,z.F)-z)
+
+set eigenvector(mat M,CyclotomicFieldElement z)=CyclotomicVec:
+eigenvectors(M,z)[0]
+
+{F=Q(zeta_d)
+ first compute the eigenvalues (powers of zeta_d)
+ for each eigenvalue return basis of eigenspace
+}
+set eigenpairs(mat M,int d)=[EigenPair]:
+let F=cyclotomic_field(d) then
+zeta=F.primitive_root then
+(,eigenvalues)=eigenvalues(M,d) in
+for k in eigenvalues
+do (k,eigenvectors(M,zeta^k)) od
+
+set eigenpairs(WeylElt w)=[EigenPair]:
+let M=matrix(w) in eigenpairs(M,M.order)
+
+{coroots vanishing on a set of weights}
+set zero_coroots(RootDatum rd,[CyclotomicVec] wts)=[int]:
+##for alpha_check@i in poscoroots(rd) do
+if all (for v in wts do =dot_product(alpha_check,v) od)
+then [i] else [] fi  od
+
+{returns a root_datum for a *possibly non-standard* Levi}
+set levi(RootDatum rd,[CyclotomicVec] vecs)=RootDatum:
+let real_vecs=for v in vecs do v+bar(v) od then
+im_vecs  =for v in vecs do v-bar(v) od then
+all_vecs=real_vecs##im_vecs then
+coroots=zero_coroots(rd,all_vecs) then pos_roots=for i in coroots do
+posroots(rd)[i] od then pos_coroots=for i in coroots do
+poscoroots(rd)[i] od in if =#pos_roots then complex_Levi(rd,[int]:[])
+else let
+(simple_roots,simple_coroots)=simple_system_from_positive(pos_roots,pos_coroots)
+in root_datum(simple_roots,simple_coroots) fi
+
+set nested_Levis(RootDatum rd,[EigenPair] pairs_in)=
+let F=pairs_in[0].F then
+d=F.order then
+S=[CyclotomicVec]:[] then
+levis=[RootDatum]:[rd] then
+orders=[int]:[0] then
+{only keep 0<=k_1<=k_2...<=d\2}
+pairs=[EigenPair]:[] then
+()=for (k,vecs) in pairs_in do if k<=d\2 then  pairs#:=(k,vecs) fi od then
+()=for (k,vecs) in pairs do
+ S##:=vecs;
+ levis#:=levi(rd,S);
+ orders#:=k od in
+(orders,levis)
+
+{map from a nested set of Levi subgroups, and list of orders,
+to semisimple conjugacy classes
+See Adams-He-Nie Section 2
+}
+set nested_Levis_to_semisimple(RootDatum rd,[int] orders,[RootDatum] levis, int d)=
+let v=ratvec:null(rank(rd)) in
+ for i:#levis-1 downto 0 do
+ let v_new=(orders[i+1]-orders[i])*rho_check(levis[i]) + dominant(v,levis[i])  in
+ v:=v_new od;
+v/d
+
+set centralizer(RootDatum rd,RootDatum rd_L)=RootDatum:
+centralizer(rd,simple_roots(rd_L))
+
+{by induction on length of the sequence, conjugate a nested sequence
+of Levi factors to one where each Levi is standard}
+{nested levis are decreasing: [L_0=G,...,L_n=T]}
+set standardize(RootDatum rd_orig,[RootDatum] nested_levis)=(WeylElt,[RootDatum]):
+{make them increasing:}
+let nested_levis=for i:#nested_levis downto 0 do nested_levis[i] od in
+let rec_fun f(RootDatum rd,[WeylElt] S,[RootDatum] levis)=[WeylElt]:
+{ let ()=prints("f:",new_line, rd, new_line, levis) in}
+ if =#levis then S else
+ let L=levis[#levis-1] then
+{ ()=prints("computing:", rd, " ", L) then}
+ w=standard_Levi_witness(rd,L) in
+{ let ()=prints("w:",w) in}
+ f(L,w#S,for i:#levis-1 do levis[i] od) fi in
+ let w=make_W_element(f(rd_orig,[id_W(rd_orig)],nested_levis)) in
+ {change order back!}
+ (w,for i:#nested_levis downto 0 do  w*nested_levis[i] od)
+
+{information about the good representative of a conjugacy classes}
+set good(WeylElt w)=([(int,[[CyclotomicFieldElement]])],[int],[RootDatum],[RootDatum],WeylElt,ratvec):
+let ep=eigenpairs(w) then
+(orders,levis)=nested_Levis(w.root_datum,ep) then
+(y,std_levis)=standardize(w.root_datum,levis) then
+v_0=nested_Levis_to_semisimple(w.root_datum,orders,std_levis,order(w)) in
+{let v=v_0/order(w) in }
+(ep,orders,levis,std_levis,y,v_0)
+
+{same as previous, except also use the affine Weyl group to
+put v_0 in the fundamental alcove}
+set good(WeylElt w,AffineDatum ad)=
+let (ep,orders,levis,std_levis,y,v)=good(w) then
+{(z,)=affine_make_dominant(v,ad) in}
+(z,)=ad.affine_co_make_dominant(v) in
+(ep,orders,levis,std_levis,y,v,z,affine_coordinates(z,ad))
+
+{information about good representatives of a list of elliptic elements}
+set good_report([WeylElt] ell,AffineDatum ad)=void:
+let header=["order","length","#levis","v","z","Kac"] then
+values=
+for w@i in ell do
+let (ep,orders,levis,std_levis,y,v,z,ac)=good(w,ad) in
+[w.order.to_string,w.length.to_string,(#levis).to_string,v.to_string,z.to_string,ac.to_string] od in
+tabulate(header#values)
+
+set good_report(RootDatum rd)=good_report(elliptic(rd), affine_datum(rd))
+
+set run_reports()=void:
+let types=["G2","F4","E6","E7","E8"] in
+for type in types do
+let rd=simply_connected(type) in
+good_report(rd) od
+
+set show(EigenPair ep)=void:
+prints("F=Q(zeta_",ep.F.order,")");
+for v in ep.vecs do
+prints(new_line,"evalue: zeta^",ep.order);for v in ep.vecs do show(v) od od
+
+set show([EigenPair] eigenpairs)=void:
+prints("F=Q(zeta_",eigenpairs[0].F.order,")");
+for ep in eigenpairs do
+for v in ep.vecs do
+prints(new_line,"evalue: zeta^",ep.order);for v in ep.vecs do show(v) od od od
+
+

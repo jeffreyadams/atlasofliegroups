@@ -33,7 +33,7 @@ set tits_delta (RealForm G) = Tits_elt:
 { left multiplication by sigma_s, where s must index a simple root }
 set left (int s,Tits_elt(rd,v,theta)) = Tits_elt:
   ( rd
-  , let v1 = coreflect(rd,v,s) { permute sigma_s e(v), so act by s on v } in
+  , let v1 = coreflect(rd,s,v) { permute sigma_s e(v), so act by s on v } in
     if lengthens(rd,s,theta) { valid even if theta=w.delta is not in W }
     then v1
     else v1+coroot(rd,s)/2 { second term represents m_s = sigma_s^2 }

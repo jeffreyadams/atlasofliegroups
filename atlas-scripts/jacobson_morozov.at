@@ -1,0 +1,41 @@
+<ratmat.at
+<bracket.at
+<nilpotent_orbits.at
+
+set JM_Levi(ComplexNilpotent O)=RootDatum: let (,L)=Levi_of_coweight(O.root_datum,O.H) in L
+
+{complete Jacobson Morozov triple: given H, find X,Y so that [H,X]=2X, [H,Y]=-2Y, [X,Y]=H}
+set JM_triple(StructureConstantTable t,vec H)=(LieAlgebraElement,LieAlgebraElement,LieAlgebraElement):
+let S=two_eigenspace(t,H) then
+coeffs=box(2,#S) in
+ for A in coeffs do
+ let X=null(t) then
+ ()= for i:#S do X+:=A[i]*S[i]  od then
+ sol=solve_ad(X,H(t,H)) in
+ if any(sol) then {prints("found:", H, new_line, X.root_part);}return((
+ lie_algebra_element_semisimple(t,H),X,lie_algebra_element(t,requisition(sol)))) fi od;(null(t),null(t),null(t))
+
+{complete Jacobson Morozov triple: given H, find X,Y so that [H,X]=2X, [H,Y]=-2Y, [X,Y]=H}
+set JM_triple_reverse(StructureConstantTable t,vec H)=(LieAlgebraElement,LieAlgebraElement,LieAlgebraElement):
+let S=two_eigenspace(t,H) then
+coeffs=box(2,#S) in
+ for i:#coeffs downto 0 do
+ let A=coeffs[i]  in
+ let ()=prints(A) in
+ let X=null(t) then
+ ()= for i:#S do X+:=A[i]*S[i]  od then
+ sol=solve_ad(X,H(t,H)) in
+ if any(sol) then {prints("found:", H, new_line, X.root_part);}return((
+ lie_algebra_element_semisimple(t,H),X,lie_algebra_element(t,requisition(sol)))) fi od;(null(t),null(t),null(t))
+
+set JM_triple(StructureConstantTable t,ComplexNilpotent O)=(LieAlgebraElement,LieAlgebraElement,LieAlgebraElement):
+JM_triple(t,O.H)
+
+{complete all triples for rd}
+set JM_triples(StructureConstantTable t)=[(LieAlgebraElement,LieAlgebraElement,LieAlgebraElement)]:
+for O in t.root_datum.nilpotent_orbits do JM_triple(t,O) od
+
+set JM_triples(RootDatum rd)=[(LieAlgebraElement,LieAlgebraElement,LieAlgebraElement)]:
+JM_triples(rd.structure_constant_table)
+
+

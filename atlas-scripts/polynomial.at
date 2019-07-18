@@ -360,6 +360,8 @@ set upper_unitriangular_inverse (i_poly_mat P) = i_poly_mat:
       od
   ~od
 
+set lower_unitriangular_inverse(i_poly_mat M)=transpose(upper_unitriangular_inverse(transpose(M)))
+
 { compute PMP^{-1} where P is a permutation of [1,,,n]
   and M is a polynomial matrix
 }
@@ -429,13 +431,14 @@ set printPoly (i_poly v) = void: prints(poly_format(v,"q"))
    0 +1
 }
 
-set printPolyMatrix(i_poly_mat M,int space_size)= void:
-  let space= " "*space_size, wd = max(for v in ##M do #poly_format(v,"q") od)
+set printPolyMatrix(i_poly_mat M,int space_size,string char)= void:
+  let space= " "*space_size, wd = max(for v in ##M do #poly_format(v,char) od)
   in
     for row in M
-    do prints(##for v in row do space+l_adjust(wd,poly_format(v,"q")) od)
+    do prints(##for v in row do space+l_adjust(wd,poly_format(v,char)) od)
     od
-
+set printPolyMatrix(i_poly_mat M,int space_size)= void:printPolyMatrix(M,space_size,"q")
+set printPolyMatrix (i_poly_mat M,string char) = void: printPolyMatrix(M,3,char)
 set printPolyMatrix (i_poly_mat M) = void: printPolyMatrix(M,3)
 
 { this provides maybe more meaningful names for |flex_add| and friends }

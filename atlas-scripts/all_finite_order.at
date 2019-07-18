@@ -9,11 +9,10 @@
 {. The labels m_i on the Dynkin diagram representing the coefficient of the
    simple roots in the highest root. The label of the lowest root is 1 (not
    in the list of these labels). .}
-set get_labels(RootDatum rd)=vec:
-for i:rank(rd) do rat_as_int(highest_root(rd)*fundamental_coweights(rd)[i]) od
+{labels@RootDatum is now defined in affine.at}
 
 set get_subsets_given_order(RootDatum rd, int order)=[[int]]:
-   let labels=get_labels(rd) then
+   let labels=labels(rd) then
    labels_plus_one=for a in labels do a+1 od in
    let S=[] in
    for v in box(labels_plus_one) do
@@ -22,7 +21,7 @@ set get_subsets_given_order(RootDatum rd, int order)=[[int]]:
     if gcd(w)=1 then S#:=w fi fi  od;S
 
 set get_subsets(RootDatum rd, int max_order)=[[[int]]]:
-   let labels=get_labels(rd) then
+   let labels=labels(rd) then
    labels_plus_one=for a in labels do a+1 od
    then S=for i:max_order+1 do [[int]]:[] od in
     for order:max_order+1 do
@@ -87,7 +86,7 @@ prints(v, " ", Lie_type(rdi), " ", dimension(rdi))
 
 set test([[([int],RootDatum,int)]] data, int n)=void:
 let (,rd,)=data[0][0] in  cox(rd,n); info(data,n)
-
+{
 set find([[([int],RootDatum,int)]] data, int n)=void:
 let (,rd,)=data[0][0] in
 let labels=for i:rank(rd) do rat_as_int(highest_root(rd)*fundamental_coweights(rd)[i]) od in
@@ -97,7 +96,7 @@ set find_short([[([int],RootDatum,int)]] data, int n)=void:
 let (,rd,)=data[0][0] in
 let labels=for i:rank(rd) do rat_as_int(highest_root(rd)*fundamental_coweights(rd)[i]) od in
 for i:#data do for j: min(10,#(data[i]))  do let (v,rdi,k)=data[i][j] in if k=n then prints(i, " ", v, " ", Lie_type(rdi), " ", v*labels, " ", k) fi od od
-
+}
 set table([[([int],RootDatum,int)]] data)=void:
 let n=#data in
 prints("All conjugacy classes of E8 up to order", n);
@@ -136,7 +135,7 @@ for i:#data-1 from 1 do info_reduced(data,i) od
    sum_i(a_i m_i)=m, with a_i's relatively prime. The last entry
    corresponds to the lowest root. These are essentially Kac diagrams. .}
 set Kac_diags_given_order(RootDatum rd, int order)=[[int]]:
-   let labels=get_labels(rd) then
+   let labels=labels(rd) then
    limits=for a in labels do if order=a then 2 else ceil(order/a)
                              fi
                           od in
@@ -147,7 +146,7 @@ set Kac_diags_given_order(RootDatum rd, int order)=[[int]]:
     if gcd(w)=1 then S#:=w fi fi  od;S
 
 set Kac_diags_up_to_order(RootDatum rd, int max_order)=[[[int]]]:
-   let labels=get_labels(rd)
+   let labels=labels(rd)
    then S=for i:max_order+1 do [[int]]:[] od in
     for order:max_order+1 do
       let limits=for a in labels do if order=a then 2
@@ -161,7 +160,7 @@ set Kac_diags_up_to_order(RootDatum rd, int max_order)=[[[int]]]:
 
 
 {. Given a Kac diagram, compute the corresponding element of the Lie algebra. .}
-set Kac_x (RootDatum rd, vec v)=ratvec: let labels=get_labels(rd)#1
+set Kac_x (RootDatum rd, vec v)=ratvec: let labels=labels(rd)#1
    then r=semisimple_rank(rd),m=v*labels, fcw=fundamental_coweights(rd)
    then result=ratvec: for i:r do 0/1 od in
      for i:r do result+:=v[i]/m*fcw[i] od; result
@@ -186,16 +185,29 @@ set identity_in_fund_domain (RootDatum rd)=[ratvec]:
 set is_conjugate (ratvec v,ratvec w,RootDatum rd)=bool:
    let W=W(rd) in any(for x in W do is_integer(v*x-w) od)
 
-{. Decide whether two Kac diagrams represent conjugate group elements. .}
 set is_conjugate_Kac ([int] v,[int] w, RootDatum rd)=bool:
-   let list=identity_in_fund_domain(rd) in
-   any(for x in list
-      do move_to_fundamental_domain(rd,Kac_x(rd,v)+x)=Kac_x(rd,w) od)
+   let list=identity_in_fund_domain(rd) then
+   Kac_x_w=Kac_x(rd,w) in
+   any(for x in list 
+      do let (z,)=rd.affine_datum.affine_co_make_dominant(Kac_x(rd,v)+x) in z=Kac_x_w od)
+
+{. crude listing. }
+set Kac_classes_given_order_crude(RootDatum rd,int order)=[[int]]:
+   let labels=labels(rd) then
+   limits=for a in labels do if order=a then 2 else ceil(order/a)
+                             fi
+                          od in
+   let S=[[int]]:[] in
+   for v in box(limits) do
+    let extra=order-v*labels in
+     if extra>=0 then let   w=v#(extra) in
+    if gcd(w)=1
+     then S#:=w fi fi  od;S
 
 {. List all Kac elements of a given order, up to conjugacy of the
    corresponding group element. .}
 set Kac_classes_given_order (RootDatum rd,int order)=[[int]]:
-   let labels=get_labels(rd) then
+   let labels=labels(rd) then
    limits=for a in labels do if order=a then 2 else ceil(order/a)
                              fi
                           od in

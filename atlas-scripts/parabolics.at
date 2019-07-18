@@ -60,7 +60,6 @@ set_type
 
 {. Data type for a K_orbit on G/P_S (synonym for KGPElt). .}
 set_type Parabolic = KGPElt
-{. Data type for a complex Levi=pair of root data.}
 
 {. choose from a nonempty list of KGB elements one with the smallest index. .}
 set min ([KGBElt] list)= KGBElt:
@@ -180,17 +179,46 @@ set complex_Levi (RootDatum rd, (int->bool) select) = RootDatum:
 set complex_Levi (RootDatum rd,[int] S) = RootDatum:
   complex_Levi(rd,is_member(S))
 
-{. coweight vanishing on all roots of the Levi, positive on other posroots .}
-set Levi_coweight (ComplexParabolic(rd,S)) = vec:
-  (for t in complement(rd.semisimple_rank,S) do fundamental_coweight(rd,t) od
-  ,rd.rank
-  ).sum.numer
+{synonm for complex_Levi}
+set Levi(ComplexParabolic P)=RootDatum:complex_Levi(P)
 
-{. weight vanishing on all coroots of the Levi, positive on other poscoroots .}
-set Levi_weight (ComplexParabolic(rd,S)) = vec:
-  (for t in complement(rd.semisimple_rank,S) do fundamental_weight(rd,t) od
+{a complex (standard) Levi determines a complex (standard) parabolic}
+set complex_parabolic(RootDatum rd,RootDatum rd_L)=ComplexParabolic:
+(rd,for alpha in rd_L.simple_roots do find(rd.simple_roots,alpha)od)
+
+set simple_root_indices(RootDatum rd,RootDatum rd_L)=[int]:
+assert(all(for alpha in rd_L.simple_roots do find(rd.simple_roots,alpha)!=-1 od),"Not a standard Levi");
+for alpha in rd_L.simple_roots do find(rd.simple_roots,alpha) od
+
+set complex_parabolic(RootDatum rd,RootDatum rd_L)=ComplexParabolic:
+(rd,simple_root_indices(rd,rd_L))
+
+{all (complex) parabolics of a RootDatum}
+set parabolics(RootDatum rd)=[ComplexParabolic]:
+for S in generate_all_subsets(#ss_rank(rd)) do (rd,S) od
+
+{. coweight vanishing on all roots of the (standard) Levi, positive on other posroots .}
+set Levi_coweight (RootDatum rd,RootDatum rd_L) = vec:
+  (for t in complement(rd.semisimple_rank,simple_root_indices(rd,rd_L)) do fundamental_coweight(rd,t) od
   ,rd.rank
   ).sum.numer
+set Levi_coweight (ComplexParabolic P) = vec:Levi_coweight(P.root_datum,P.Levi)
+
+{. weight vanishing on all roots of the (standard) Levi, positive on other posroots .}
+set Levi_weight (RootDatum rd,RootDatum rd_L) = vec:
+  (for t in complement(rd.semisimple_rank,simple_root_indices(rd,rd_L)) do fundamental_weight(rd,t) od
+  ,rd.rank
+  ).sum.numer
+set Levi_weight (ComplexParabolic P) = vec:Levi_weight(P.root_datum,P.Levi)
+
+{coset representatives for W/W(L)
+ see coset_reps@(RootDatum,RootDatum) below for more general case
+}
+set coset_reps_Levi(RootDatum rd,RootDatum rd_L)=
+let (,elts)=generate_from(rd, Levi_weight(rd,rd_L)) in elts
+
+set coset_reps_Levi_terminate(RootDatum rd,RootDatum rd_L,int bound)=
+let (,elts)=generate_from_terminate(rd, Levi_weight(rd,rd_L),bound) in elts
 
 {. Test if a complex Levi defined by a set of simple roots $S$ is
    $\theta_x$-stable; .}
@@ -254,6 +282,9 @@ set nilrad_roots (ComplexParabolic(rd,):P) = mat: { columns are posroots }
 
 set nilrad (Parabolic P) = mat:       nilrad(complex_parabolic(P))
 set nilrad_roots (Parabolic P) = mat: nilrad_roots(complex_parabolic(P))
+
+{nilrad roots only depend on the Levi}
+set nilrad_roots(RootDatum rd,RootDatum rd_L)=mat:nilrad_roots(complex_parabolic(rd,rd_L))
 
 {. Half sum of positive roots not in the Levi (L must be theta-stable). .}
 set rho_u (ComplexParabolic P) = ratvec: { P.root_datum.rho-complex_Levi.rho }
@@ -490,10 +521,13 @@ set findlambda (RootDatum rd, RootDatum L) = vec:
    let k=kernel(^simple_coroots(L)) { generators intersection hyperplanes of L }
    in k* random[:n_columns(k)] { weight hopefully not on any other hyperplanes }
 
+
 { coset representatives for W(rd)/W(rd_L); with L non standard Levi subsystem.
   If L=L(lambda) the W-orbit of lambda is in bijection with this quotient}
 set coset_reps (RootDatum rd, RootDatum rd_L) = [WeylElt]:
   let lambda=findlambda(rd,rd_L) in let (,elts)=generate_from(rd,lambda) in elts
+
+
 
 {test the coset_reps function}
 {set test_coset_reps(RootDatum rd,RootDatum rd_L)=
@@ -505,3 +539,4 @@ failures=##for i:#prods do for j:#prods do
   (,,x)=prods[j] in
   if i!=j  and x=w then [(i,j)] else [] fi od od in (prods,##failures)
 }
+

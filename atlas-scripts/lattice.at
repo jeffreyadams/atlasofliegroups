@@ -70,7 +70,7 @@ set saturation_quotient_basis = image_complement_basis@mat
 
 { |M| is an $n\times k$ matrix; its columns span a submodule $W$ of $\Z^n$.
   Compute $n\times n$ matrix of projection onto the saturation (or $\Q$-span)
-  of $W$, parallel to its complement from |adapted_sirect_sum(M)|.
+  of $W$, parallel to its complement from |adapted_direct_sum(M)|.
 }
 set projector_to_image (mat M) = mat:
   let (c,R)=adapted_direct_sum(M) in R[ : , :c] * R.inverse[ :c, : ]
@@ -79,6 +79,11 @@ set projector_to_image (mat M) = mat:
 { complementary projector, to chosen complement to |image_subspace(M)| }
 set projector_mod_image (mat M) = mat:
   let (c,R)=adapted_direct_sum(M) in R[ : ,c: ] * R.inverse[c: , : ]
+
+{alternate form: an mx(m-c) matrix, giving projection to the complement of Im(M), 
+ in the basis image_complement_basis(M)}
+set mod_image_projector(mat M)= mat:
+  let (c,R)=adapted_direct_sum(M) in R.inverse[c: , : ]
 
 { |M| is an $n\times k$ matrix; its columns span a submodule $W$ of $\Z^n$.
   A complement to |image_subspace(M)| is chosen by |adapted_direct_sum(M)|, and
@@ -122,6 +127,18 @@ set solve_ratvec (mat A, vec v) = ratvec:
 set in_lattice (mat A, ratvec u) = bool: { whether v in image lattice of A }
   let (b,n)=%u in n=1 and solve(A,b).any
 
+{test if ratvec v is in lattice L + rational subspace V}
+set in_lattice_subspace_sum ([vec] L,[vec] V)=(ratvec->bool):
+(ratvec v):
+if =#V then in_lattice(L,v) else
+ let ck=cokernel(V) then (new_V,,,) = echelon(ck*L) in
+ let v_new=ck*v in
+ if not is_integer(v_new) then false
+  else
+  in_lattice(new_V,ratvec_as_vec(v_new))
+ fi
+fi
+
 set vec_solve (mat A, ratvec u) = maybe_a_vec: { integer solution to A*x=b }
   let (b,n)=%u in if n>1 then no_vec() else solve(A,b) fi
 
@@ -132,3 +149,58 @@ set vec_solve (mat A, ratvec u) = maybe_a_vec: { integer solution to A*x=b }
 }
 set in_lattice_basis (mat A,mat M) = mat:
   #A { size m of solutions } # for v in M do required_solution(A,v) od
+
+{---------------- some auxiliary lattice functions -----------------------}
+
+set select_columns([int] columns, mat M)=mat:for i in columns do M[i] od
+set select_rows([int] rows, mat M)=mat:^(select_columns(rows,^M))
+set first_columns(int n,mat M)=mat:select_columns(#n,M)
+set first_rows(int n,mat M)=mat:select_rows(#n,M)
+
+
+
+{basis of intersection of two matrices
+ returns (X,Y) where the columns of X span the intersection
+ Y is the first rows of kernel A##B
+}
+set intersection_plus(mat A,mat B)=(mat,mat):
+assert(n_rows(A)=n_rows(B),"A and B must have same number of rows");
+if n_columns(A)=0 or n_columns(B)=0 then (null(n_rows(A),0),null(n_rows(A),0)) else
+let A1=image_lattice(A) {size mxn'}, B1=image_lattice(B) {mxr'} then
+N=kernel(A1##B1) then   {size (n'+r')x t, t=dimension(kernel)}
+M=first_rows(n_columns(A1),N) {first n' rows of N, where n'=#columns of A1, so size n'xt}
+{M=^((^N)[0:n_columns(A1)])  }
+in (A1*M,M) {(size mxt, size n'xt)} fi
+
+{just return the matrix giving the intersection}
+set intersection(mat A,mat B)=mat:
+let (X,)=intersection_plus(A,B) in X
+
+
+{adapted_direct_sum in all its glory
+A: (r,n) matrix
+ E: echelon form of A is an (r,n) matrix
+ E= M##Z where M (r,c) matrix (nonzero columns) and Z=(r,n-c) zero matrix
+ echelon(A)=(mat M,mat C,vec s,int eps)  (see atlas-functions.help)
+ M: (r,c) matrix, C (n,n) invertible  (s: pivot rows, eps is a sign)
+ c=#columns of M
+ n-c=dimension(kernel(A))
+ Then AC=E=M##Z 
+ Furthermore M -> (mat N,mat R) 
+ E: (r,c)  N:(r,c)  R: (r,r) invertible
+ (RN)##Z=E##Z=AC
+ AC=RN##Z
+ Note: image_complement_basis is the last n-c columns of R
+}
+set adapted_direct_sum_plus (mat A) = (int,mat,mat,mat,mat,mat):
+   let (M,C,pivot,)=echelon(A) then (r,c)=shape(M), N=M 
+   then Z=null(r,n_columns(A)-c) 
+   then R=id_mat(r) { record row operations, held in inversed form }
+in for j:c { loop over columns of N while it is being modified in the loop }
+   do let col=N[j] then (d,C)=Bezout(col[j:pivot[j]+1]), tN=^N
+   then tN_C=tN[j:pivot[j]+1] * C, R_C = R[j:pivot[j]+1] * ^C.inverse
+   in N := c^ for i:r do if i<j or i>pivot[j] then tN[i] else tN_C[i-j] fi od
+   ;  R := r# for i:r do if i<j or i>pivot[j] then  R[i] else  R_C[i-j] fi od
+   ; assert(N[j,j]=d)
+   od; assert(R*N=M);assert(A*C=R*(N##Z));(c,R,N,C,M,Z)
+

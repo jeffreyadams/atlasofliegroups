@@ -4,6 +4,9 @@
 <hermitian.at { for hermitian_form_irreducible }
 <K_highest_weights.at
 
+{define * for K_types}
+set *(int c,K_Type mu)=K_Type_Pol:c*parameter(mu)
+
 set sort_by_height (ParamPol P) = [(Split,Param)]:
   sort_by_height(for c@p in P do (c,p) od)
 
@@ -56,3 +59,28 @@ set print_K_types (ParamPol P, KGBElt x_K) = void:
     prints(split_as_int(c), " ", fundamental_weight_coordinates (mu)
           , " ", dimension(mu), " ", length(mu))
   od
+
+{expand vector giving a virtual sum of K_Types in terms of a basis}
+set view([K_Type] K_basis, vec v)=K_Type_Pol:
+let rv= null_module(K_basis[0].real_form) in 
+for i:#v do rv+:=v[i]*K_basis[i] od ;rv
+
+{K_basis is the basis of a vector space, v is a vector in this basis
+ return sum_i v[i]*K_types[i]
+ need G only if #K_basis=0}
+set expand([int] v,[K_Type] K_basis, RealForm G)=K_Type_Pol:
+let rv=null_module(G) in  for i:#v do rv+:=v[i]*K_basis[i] od;rv 
+
+{error if #K_basis=0}
+set expand([int] v,[K_Type] K_basis)=K_Type_Pol:
+expand(v,K_basis,K_basis[0].real_form)
+
+{find K_Type in list of K_types}
+set find([K_Type] list,K_Type mu)=int: first(#list,(int i)bool:list[i]=mu)
+
+{sort K_Types uniquely}
+set sort_u([K_Type] K_types)=[K_Type]:
+if #K_types=0 then [] else
+let P=null_module(K_types[0].real_form) in 
+for mu in K_types do P+:=parameter(mu) od; 
+for p in monomials(P) do K_type(p) od fi

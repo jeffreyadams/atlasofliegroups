@@ -51,3 +51,5 @@ set cyclotomic_polynomial (int n) = int_poly:
    od
 ;  expand(result,prod)
 )
+
+set is_prime(int n)=bool:#divisors(n)=2
