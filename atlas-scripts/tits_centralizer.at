@@ -2,6 +2,9 @@
 <structure_constants.at
 <bracket.at
 
+set index(vec alpha,RootDatum rd)=int:
+first(for i:#rd.roots do rd.roots[i]=alpha od)
+
 {recall some notation from the Tits group
  i simple index -> sigma_i lift of s_i to Tits group 
  w\in W -> sigma_w \in Tits group
@@ -40,50 +43,83 @@ set simple_reflection_on_root_vectors(RootDatum rd,int i,ratvec v)=ratvec:
 assert(#v=#rd.roots,"v has wrong size");
 sum(for j:#v do v[j]*simple_reflection_on_root_vector(rd,i,j) od,#v)
 
+set simple_reflection_on_root_vectors(RootDatum rd,int i,CyclotomicVec v)=CyclotomicVec:
+assert(#v=#rd.roots,"v has wrong size");
+let rv=null(#v,v.F) in
+ for j:#v do rv+:=v[j]*embed(simple_reflection_on_root_vector(rd,i,j),v.F) od;rv
+
 {action of sigma_1...sigma_n in these coordinates}
 set action_on_root_vectors(RootDatum rd,[int] S,ratvec v)=ratvec:
 for i in S.reverse do v:=simple_reflection_on_root_vectors(rd,i,v) od;v
 
-set action_on_root_vectors(RootDatum rd)=(([int],ratvec)->ratvec):([int] S,ratvec v):action_on_root_vectors(rd,S,v)
+{action of sigma_1...sigma_n in these coordinates}
+set action_on_root_vectors(RootDatum rd,[int] S,CyclotomicVec v)=CyclotomicVec:
+for i in S.reverse do v:=simple_reflection_on_root_vectors(rd,i,v) od;v
+
+set action_on_root_vectors(WeylElt w,ratvec v)=ratvec:
+action_on_root_vectors(w.root_datum,w.word,v)
+
+set action_on_root_vectors(WeylElt w,CyclotomicVec v)=CyclotomicVec:
+action_on_root_vectors(w.root_datum,w.word,v)
+
+{sigma_w(X_alpha)=\pm X_{w\alpha}}
+set sign(WeylElt w,vec alpha)=
+let v=coordinates(w.root_datum,alpha) then
+w=action_on_root_vectors(w,v) {=[0,...,0,pm1,0,...0]}
+in rat_as_int(sum(w))
+
+{set action_on_root_vectors(RootDatum rd)=(([int],ratvec)->ratvec):([int] S,ratvec v):action_on_root_vectors(rd,S,v)}
 
 {Action sigma_w on LieAlgebraElement}
 set tits_action(WeylElt w,LieAlgebraElement X)=LieAlgebraElement:
-{assert(w.root_datum=X.root_datum,"RootDatum mismatch");}
-(X.t,(action_on_root_vectors(X.t.root_datum,w.word,X.root_part),w*X.H))
+{(X.t,(action_on_root_vectors(X.t.root_datum,w.word,X.root_part),w*X.H))}
+(X.t,(action_on_root_vectors(X.t.root_datum,w.word,X.root_part),X.H*w))  {w acting on coweight}
+
+{Action sigma_w on LieAlgebraElement}
+set tits_action(WeylElt w,CFLieAlgebraElement X)=CFLieAlgebraElement:
+let M=cyclotomic_matrix(w.matrix,X.F).transpose in
+(X.t,(action_on_root_vectors(X.t.root_datum,w.word,X.root_part),M*X.H))
 
 {boolean: sigma_w *weakly* fixes X:
-if X=\sum a_i X_i then
-sigma_w(X)=\sum b_i X_i where a_i=\pm b_i for all i
-in the application the a_i are \pm 1, if we generalize this
-then we need to modify this definition
+w fixes the support of X
 }
+
 set tits_centralizes_weak(WeylElt w,LieAlgebraElement X)=bool:
-let Y=tits_action(w,X) in
-X.H=Y.H and
-all(for i:#X.root_part do abs(X.root_part[i])=abs(Y.root_part[i]) od)
+assert(X.root_datum=w.root_datum,"RootDatum mismatch");
+let S=X.support in
+w*X.H=X.H and 
+all(for alpha in S do find(S,w*alpha)>=0  od)
+
+set tits_centralizes_weak(WeylElt w,CFLieAlgebraElement X)=bool:
+assert(X.root_datum=w.root_datum,"RootDatum mismatch");
+let S=X.support in
+w*to_rational(X.H)=to_rational(X.H) and 
+all(for alpha in S do find(S,w*alpha)>=0  od)
+
 
 {w\in W(sub) weakly centralizing X}
-set tits_centralizer_weak(LieAlgebraElement X,RootDatum sub)=[WeylElt]:
-##for w in W(sub) do
+set tits_centralizer_weak(LieAlgebraElement X,[WeylElt] S)=[WeylElt]:
+##for w in S do
 if tits_centralizes_weak(w,X) then [w] else [] fi od
 
 {w\in W weakly centralizing X}
-set tits_centralizer_weak(LieAlgebraElement X)=tits_centralizer_weak(X,X.root_datum)
+set tits_centralizer_weak(LieAlgebraElement X)=tits_centralizer_weak(X,W(X.root_datum))
 
 {w\in W satisfying wH=H and weakly centralizing X}
 set tits_centralizer_weak(LieAlgebraElement H,LieAlgebraElement X)=
-let (,L)=Levi_of_coweight(H.root_datum,H.H) in
-tits_centralizer_weak(X,L)
+let (,L)=Levi_of_coweight(H.root_datum,H.H) then
+W_L_embedded_in_W=for w_L in W(L) do W_elt(H.root_datum,w_L.matrix) od in
+tits_centralizer_weak(X,W_L_embedded_in_W)
 
 {assume the structure constant table is given
 apply the previous to O.H
 }
 set tits_centralizer_weak(StructureConstantTable t,ComplexNilpotent O)=
-let (H,X,Y)=JM_triple(t,O) in tits_centralizer_weak(H,X)
+let (,(H,X,Y))=JM_triple_signs(t,O) in tits_centralizer_weak(H,X)
 
 {same as previous, except construct the structure constant table}
 set tits_centralizer_weak(ComplexNilpotent O)=
-let (H,X,Y)=JM_triple(O) in tits_centralizer_weak(H,X)
+let (,(H,X,Y))=JM_triple_signs(O) in tits_centralizer_weak(H,X)
 {
 set centralizer(LieAlgebraElement X)=
 ##for w in W(X.root_datum) do if X*w=X then [w] else [] fi od
@@ -132,25 +168,201 @@ success: M[j]*m-indicator(signs[j])/2 is an integer
 if all(for j in indices_other do is_integer(M[j]*m-indicator(signs[j])/2) od)
 then (true,m) else (false,null(0)) fi
 
+set power_of_primitive_root(CyclotomicFieldElement z)=int:
+assert(z^(z.F.order)=z.F.one,"z is not an n^th root of 1");
+first(z.F.order,(int i)bool:z.F.primitive_root^i=z)
+
+{if F.order is odd replace F with E with E.order=2*F.order,
+and replace zeta_n^k with zeta_{2n}^{2k}
+this is needed in solve_for_torus_element
+}
+set map_root_of_unity(CyclotomicFieldElement z)=CyclotomicFieldElement:
+assert(z.norm=1,"not a root of unity");
+let n=z.F.order in
+if is_even(n) 
+then z else
+let E=cyclotomic_field(2*n) in
+if order(z)<=n then
+ let k=power_of_primitive_root(z) in E.primitive_root^(2*k) 
+else
+  {-z=zeta_n^k =>
+   -z=zeta_{2n}^{2k} =>
+   z=(-1)*zeta_{2n}^{2k} =>
+   z=zeta_{2n}^{n+2k}
+  }
+  let k=power_of_primitive_root(-z) in E.primitive_root^(n+2*k)
+fi
+fi
+
+set map_root_of_unity(CyclotomicVec v)=CyclotomicVec:
+if v.F.order.is_even then v else
+for a in v do map_root_of_unity(a) od fi
+
+{find a torus element such that alpha_i(t)=zeta_i
+where each zeta_i is an n^th root of 1
+if n is odd the zeta_i can have -1 in them
+(coming from signs in Tits action)
+so have order 2n not n;
+so first pass to CF(2n) in this case
+ignore indices for which v[i]=0
+include RootDatum to look up roots
+v has length #roots of rd
+}
+set solve_for_torus_element(mat M, CyclotomicVec v)=
+let v=if v.F.order.is_odd then v else map_root_of_unity(v) fi in
+let (M_basis,indices_basis,indices_other)=spanning_subset(M) then
+F=v.F then
+n=F.order then
+()=prints("v=");show(v) then
+()=prints("M:",M) then
+target=(for j in indices_basis do   power_of_primitive_root(v[j])/n od) then
+w=solve(cyclotomic_matrix(^M_basis,F),target) in
+let ()=prints("w:",w) in
+let ()=for j in indices_basis##indices_other do
+ let c=embed(M[j],F)*w in prints(c.to_string, " ", power_of_primitive_root(v[j])/n) od in
+if all(for j in indices_other do
+ let c=embed(M[j],F)*w in
+ is_rational(c) and is_integer(to_rational(c)-power_of_primitive_root(v[j])/n) od)
+then (true,w) else (false,null(0,F)) fi
+
+set extract(CFLieAlgebraElement X)=(CyclotomicVec,mat):
+let v=[], M=[] in
+for alpha@i in X.root_datum.roots do if not =X.root_part[i] then
+v#:=X.root_part[i]; M#:=alpha fi od;
+(v,M)
+
+{-----------JM ------------}
+
+
+{complete Jacobson Morozov triple: working over F=CF(m):
+given H, find X,Y so that [H,X]=2X, [H,Y]=-2Y, [X,Y]=H
+S is a set of roots (subset of \g_2(H)
+coefficients of X are m^th powers of 1
+}
+set JM_triple(StructureConstantTable t,vec H,[vec] S_roots,CyclotomicField F)=
+let zeta=F.primitive_root then
+S=for alpha in S_roots do CF_lie_algebra_element_root_vectors(t,embed(coordinates(t.root_datum,alpha),F)) od then
+N=#S {length of vectors} then
+coeffs=box(F.order,#S) in
+let ()=prints("coeffs:",#coeffs) in
+for i:#coeffs downto 0 do
+let A=coeffs[i] in 
+let ()=prints("i:",i, " ", A) in
+ let X_vec=null(t,F).root_part then
+ ()= for i:#S do X_vec+:=zeta^A[i]*S[i].root_part   od then
+ X=CF_lie_algebra_element_root_vectors(t,X_vec) then
+ v_X=X.root_part then
+ v_X_short=for alpha in S_roots do let j=find(t.root_datum.roots,alpha) in v_X[j] od 
+then
+ adx=ad(X) then
+ sol=full_solve(ad(X),coordinates(H(t,H,F))) in
+ let ()=prints(any(sol)) in
+  if any(sol) then
+   let v_Y=a_solution(sol) in
+   return(true,(CF_lie_algebra_element_semisimple(t,embed(H,F)),X,CF_lie_algebra_element(t,v_Y)))
+ fi
+od;(false,(null(t,F),null(t,F),null(t,F)))
+
+set JM_triple_one(StructureConstantTable t,vec H,[vec] S_roots,[int] coeff,CyclotomicField F)=
+let zeta=F.primitive_root then
+S=for alpha in S_roots do CF_lie_algebra_element_root_vectors(t,embed(coordinates(t.root_datum,alpha),F)) od then
+N=#S {length of vectors} then
+coeffs=[coeff] in
+let ()=prints("coeffs:",#coeffs) in
+for i:#coeffs downto 0 do
+let A=coeffs[i] in 
+let ()=prints("i:",i, " ", A) in
+ let X_vec=null(t,F).root_part then
+ ()= for i:#S do X_vec+:=zeta^A[i]*S[i].root_part   od then
+ X=CF_lie_algebra_element_root_vectors(t,X_vec) then
+ v_X=X.root_part then
+ v_X_short=for alpha in S_roots do let j=find(t.root_datum.roots,alpha) in v_X[j] od 
+then
+ adx=ad(X) then
+ sol=full_solve(ad(X),coordinates(H(t,H,F))) in
+ let ()=prints(any(sol)) in
+  if any(sol) then
+   let v_Y=a_solution(sol) in
+   return(true,(CF_lie_algebra_element_semisimple(t,embed(H,F)),X,CF_lie_algebra_element(t,v_Y)))
+ fi
+od;(false,(null(t,F),null(t,F),null(t,F)))
+
+
+{same as previous but return a set of triples
+stop is the number of tries
+}
+set JM_triples(StructureConstantTable t,vec H,[vec] S_roots,CyclotomicField F,int number, int start)={(bool,(CFLieAlgebraElement,CFLieAlgebraElement,CFLieAlgebraElement)):}
+let zeta=F.primitive_root then
+S=for alpha in S_roots do CF_lie_algebra_element_root_vectors(t,embed(coordinates(t.root_datum,alpha),F)) od then
+N=#S {length of vectors} then
+coeffs=box(F.order,#S) in
+let ()=prints("coeffs:",#coeffs) in
+##for i:number  from start do
+let j=#coeffs-i in
+let A=coeffs[j] in
+let ()=prints("i:",i, " ", "j:", j,A) in
+ let X_vec=null(t,F).root_part then
+ ()= for i:#S do X_vec+:=zeta^A[i]*S[i].root_part   od then
+ X=CF_lie_algebra_element_root_vectors(t,X_vec)
+then
+ adx=ad(X) then
+ sol=full_solve(ad(X),coordinates(H(t,H,F))) in
+ let ()=prints(any(sol)) in
+ if any(sol) then
+ let v=a_solution(sol)  in
+[(CF_lie_algebra_element_semisimple(t,embed(H,F)),X,CF_lie_algebra_element(t,v))] else [] fi od
+
+{
+set JM_triple(StructureConstantTable t,vec H,CyclotomicField F)=
+let S=for X in two_eigenspace(t,H) do embed(X,F) od in 
+JM_triple(t,H,S,F)
+
+set JM_triples(StructureConstantTable t,vec H,CyclotomicField F,int number,int start)=
+let S=for X in two_eigenspace(t,H) do embed(X,F) od in 
+JM_triples(t,H,S,F,number,start)
+}
+
+{-----------/JM ------------}
+
+
+
+
+
+
+
 {roots occuring in X.root_part with non-zero coefficient}
+{see support(X) in cyclotomic_field_bracket.at}
+{
 set roots(LieAlgebraElement X)=mat:
 let rv=##for (c,alpha) in X.root_part_array do if c!=0 then [alpha] else [] fi od
 in if #rv=0 then null (0,0) else mat:rv fi
+}
 
 {find a single Tits element g=t*sigma_w so that g.X=X}
-set solve_for_tits_element(WeylElt w,LieAlgebraElement X)=(bool,Tits_elt):
+set solve_for_tits_element(WeylElt w,CFLieAlgebraElement X)=(bool,Tits_elt):
 assert(tits_centralizes_weak(w,X),"w does not weakly centralize X");
-let M=X.roots in
+let M=X.support in
 if #M=0 then (true,(X.root_datum,null(rank(X.root_datum)),w.matrix)) else
-let Y=tits_action(w,X) then
-signs=for (c,)@i in X.root_part_array do
- let (d,)=Y.root_part_array[i] in rat_as_int(c/d) od
+let Y=tits_action(w,X) then  {can introduce some -1's}
+v_X=for (c,) in X.root_part_array do c od then
+v_Y=for (c,) in Y.root_part_array do c od then
+()=prints("v_X:");show(v_X)  then
+()=prints("v_Y:");show(v_Y)  then
+()=if v_X.F.order.is_odd then
+ let ()=prints("OIJOIJ") in
+ v_X:=map_root_of_unity(v_X);print("KKKKK");
+ v_Y:=map_root_of_unity(v_Y)
+fi
 then
-(success,m)=solve_for_torus_element(M,signs) in
+()=prints("v_X:",v_X)  then
+()=prints("v_Y:",v_Y)  then
+delta_coeffs=for i:#v_X do power_of_primitive_root(v_X[i]*inverse(v_Y[i])) od 
+then
+(success,m)=solve_for_torus_element(M,delta_coeffs) in
 if not success then (false,tits_identity(X.root_datum)) else
 (true,(X.root_datum,m,w.matrix)) fi
 fi
-
+{
 set basis_dual_lattice(ratmat M)=ratmat:right_inverse(^M)
 set basis_dual_lattice(mat M)=ratmat:basis_dual_lattice(mat_as_ratmat(M))
 
@@ -163,8 +375,9 @@ set tits_centralizer_generators(LieAlgebraElement H,LieAlgebraElement X)=
 let S=tits_centralizer_weak(H,X) then
 rv=[Tits_elt]:[] in
 for w in S do
+let ()=prints("doing w:",w) in
  if w.matrix=id_mat(w.root_datum.rank) then
-  let M=X.roots then
+  let M=image_lattice(X.support) then
   DM=basis_dual_lattice(M) in
   for v in to_rowrowrat(DM) do  rv#:=(X.root_datum,ratvec:v,id_mat(X.root_datum.rank)) od
  else
@@ -197,6 +410,94 @@ tits_subgroup(tits_centralizer_generators(H,X))
 
 {subgroup of Tits group centralizing (H,X)}
 set tits_centralizer(StructureConstantTable t,ComplexNilpotent O)=
-let (H,X,)=JM_triple(t,O) in
+let (,(H,X,))=JM_triple_signs(t,O) in
 tits_centralizer(H,X)
 
+set find([vec] S,vec alpha)=first(for i:#S do alpha=S[i] od)
+
+{orbits of w acting on subset of S, assumed to
+be stabilized by w (or else an error)}
+set orbits([vec] S,WeylElt w)=[[vec]]:
+let rv=[] then
+done=[vec]:[] in
+while(#done<#S) do
+ let j=first(for alpha in S do find(done,alpha)=-1 od) then
+ alpha=S[j] then
+ new_orbit=[alpha] then
+ orbit_done=false in
+ while (orbit_done=false) do
+  let beta=w*(new_orbit~[0]) in
+  if beta=alpha then
+   rv#:=new_orbit;done##:=new_orbit;orbit_done:=true
+    else
+   new_orbit#:=beta
+  fi
+ od
+od;
+rv
+
+set choices([vec] S,WeylElt w)=[[vec]]:orbits(S,w)
+
+set choices(vec H,WeylElt w)=[[vec]]:
+let S=two_eigenspace(w.root_datum,H) in orbits(S,w)
+{
+set make_vectors_from_choices(WeylElt w, [[vec]] choices)=
+let all=##c then
+rd=w.root_datum then
+N=#rd.roots then
+rv=[vec]:[] in
+for orbit in choices do
+ let alpha_0=orbit[0] then
+ v=null(N) in
+ for alpha in orbit do
+  let sign=sign(w,alpha_0) in
+  v+:=sign*coordinates(rd,alpha) od;
+ rv#:=v
+od;
+rv
+
+set combine_vectors_from_choices([vec] vectors)=
+if #vectors=0
+ then []
+else
+ let N=#vectors[0] {size of vectors} then
+ n=#vectors {number of vectors} then
+ shift=for i:n do 1 od then
+ coeffs=for v in box(2,n) do 2*v-shift od in
+ for c in coeffs do
+   let w=null(N) in
+   for i:#c do 
+   w+:=c[i]*vectors[i] od;w
+ od
+fi
+
+set make_choices(vec H,WeylElt w)=
+let c=choices(H,w) then
+m=make_vectors_from_choices(w,c) in
+combine_vectors_from_choices(m)
+
+set list([vec] S,WeylElt w)=void:
+for alpha in S do prints(alpha," ", index(alpha,rd), " ", w*alpha, "  ",index(w*alpha,rd)," ", sign(w,alpha), " ", sign(w,w*alpha)) od
+
+set list(LieAlgebraElement X,WeylElt w)=void:list(X.support,w)
+
+
+
+set good_roots([vec] S,WeylElt w)=
+let orbits=orbits(S,w) then
+rv=[] in
+for orbit in orbits do
+ if #orbits=1
+  then rv#:=[orbit] 
+ else
+  let base_sign=sign(w,orbit[0]) in
+  if  all(for i:#orbit do base_sign=sign(w,orbit[i]) od) then rv#:=[orbit] fi
+ fi
+od;##(##rv)
+
+
+set good_roots(vec H,WeylElt w)=
+let two_roots=two_eigenspace(w.root_datum,H) in good_roots(two_roots,w)
+
+
+}

@@ -66,7 +66,7 @@ set lookup(StructureConstantTable T)=((vec, vec)->int):(vec alpha,vec beta):
 if T.root_datum.not_a_root(alpha) or T.root_datum.not_a_root(beta) then 0 else
 T.table[T.root_datum.all_root_index(alpha),T.root_datum.all_root_index(beta)] fi
 
-{synonm for lookup}
+{synonym for lookup}
 set N(StructureConstantTable T)=((vec,vec)->int):(vec alpha,vec beta):T.lookup(alpha,beta)
 
 {update one entry of the table}

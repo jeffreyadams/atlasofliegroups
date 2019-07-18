@@ -5,7 +5,17 @@
 set_type CyclotomicVec = [CyclotomicFieldElement] { sublists are matrix rows, not columns! }
 set_type CyclotomicMat = [[CyclotomicFieldElement]] { sublists are matrix rows, not columns! }
 
+set n_rows(CyclotomicMat M)=int:#M
+set n_columns(CyclotomicMat M)=int:if =#M then 0 else #M[0] fi
+
 set F(CyclotomicMat M)=CyclotomicField:M[0][0].F
+
+set embed(ratvec v,CyclotomicField F)=CyclotomicVec:for x in v do embed(x,F) od
+
+set is_rational(CyclotomicVec v)=bool:all(for x in v do is_rational(x) od)
+set to_rational(CyclotomicVec v)=ratvec:
+assert(is_rational(v),"vector is not rational");for x in v do to_rational(x) od
+
 {redefine show more concisely}
 set to_string (CyclotomicFieldElement z) = string:
    if z=z.F.zero then "0" else to_rat_poly(z.v,"x").to_string fi
@@ -26,6 +36,7 @@ all(for i:#v do v[i]=w[i] od)
 set F(CyclotomicVec v)=CyclotomicField:v[0].F
 
 set =(CyclotomicVec v)=bool:all(for i:#v do v[i]=v.F.zero od)
+set !=(CyclotomicVec v)=bool:not =v
 
 set +(CyclotomicVec v,CyclotomicVec w)=CyclotomicVec:
 assert(#v=#w,"Cyclotomic vectors not the same length");
@@ -35,6 +46,7 @@ set *(CyclotomicFieldElement z,CyclotomicVec v)=CyclotomicVec:
 for a in v do z*a od
 
 set -(CyclotomicVec v)=CyclotomicVec:(-v[0].F.one)*v
+set -(CyclotomicVec v,CyclotomicVec w)=CyclotomicVec:v+(-w)
 
 {include F in case of vectors of length 0}
 set dot_product(CyclotomicVec v,CyclotomicVec w,CyclotomicField F)=CyclotomicFieldElement:
@@ -43,6 +55,19 @@ set dot_product(CyclotomicVec v,CyclotomicVec w,CyclotomicField F)=CyclotomicFie
 {will fail if vector has length 0}
 set dot_product(CyclotomicVec v,CyclotomicVec w)=CyclotomicFieldElement:
   dot_product(v,w,v[0].F)
+
+set null(int n,CyclotomicField F)=CyclotomicVec:for i:n do F.zero od
+
+set cyclotomic_vector(ratvec v,CyclotomicField F)=CyclotomicVec:
+for a in v do embed(a,F) od
+
+set dot_product(ratvec v,CyclotomicVec w)=CyclotomicFieldElement:
+dot_product(cyclotomic_vector(v,w.F),w)
+
+set null(int n,CyclotomicField F)=CyclotomicVec:for i:n do F.zero od
+
+set bar(CyclotomicVec v)=CyclotomicVec:for z in v do bar(z) od
+set is_real(CyclotomicVec v)=bool:v=bar(v)
 
 
 {			  Cyclotomic matrices				}
@@ -80,6 +105,43 @@ for row in M do z*row od
 set *(CyclotomicMat M,CyclotomicVec v)=CyclotomicVec:
  for i:#M[0] do let s=v[0].F.zero in for Mj@j in M do s+:=Mj[i]*v[j] od; s od
 
+set *(CyclotomicMat M,CyclotomicVec v)=CyclotomicVec:
+ for i:#M[0] do let s=v[0].F.zero in for Mj@j in M do s+:=Mj[i]*v[j] od; s od
+
+set cyclotomic_matrix([[rat]] M,CyclotomicField F)=CyclotomicMat:
+for row in M do cyclotomic_vector(row,F) od
+
+set diagonal_mat(CyclotomicVec v)=CyclotomicMat:
+for i:#v do
+ for j:#v do
+  if i=j then v[i] else v.F.zero fi
+ od
+od
+
+set scalar_mat(CyclotomicFieldElement z,int n)=CyclotomicMat:
+diagonal_mat(for i:n do z od)
+
+set +(CyclotomicMat M,CyclotomicFieldElement z)=CyclotomicMat:
+assert(n_rows(M)=n_columns(M),"Cycltomic matrix is not square");
+M+scalar_mat(z,n_rows(M))
+
+set -(CyclotomicMat M,CyclotomicFieldElement z)=CyclotomicMat:
+M+scalar_mat(-z,n_rows(M))
+
+set scalar_mat(rat r,int n,CyclotomicField F)=CyclotomicMat:
+scalar_mat(embed(r,F),n)
+
+set id_mat(int n,CyclotomicField F)=CyclotomicMat:
+scalar_mat(1,n,F)
+
+set *(CyclotomicFieldElement z,CyclotomicMat M)=CyclotomicMat:
+scalar_mat(z,n_rows(M))*M
+
+set *(rat r,CyclotomicMat M)=CyclotomicMat:
+scalar_mat(r,n_rows(M),M.F)*M
+
+set null(int m,int n,CyclotomicField F)=CyclotomicMat:
+for i:m do null(n,F) od
 
 {
 

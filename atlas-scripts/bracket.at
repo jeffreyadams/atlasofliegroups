@@ -65,6 +65,10 @@ rv[k]:=1;rv
 set coordinates(RootDatum rd)=(vec->vec):(vec alpha):
 coordinates(rd,alpha)
 
+set support(LieAlgebraElement X)=[vec]:
+let v=X.root_part in
+##for alpha@i in X.root_datum.roots do if not =v[i] then [alpha] else [] fi od
+
 {[X,Y] =[(X.root_term,X.H),(Y.root_term,Y.H)]=
 [X.root_term,Y.root_term] + other terms
 this function returns just the root term of this bracket
@@ -134,38 +138,103 @@ set ad(LieAlgebraElement X)=ratmat:
 ratvecs_as_ratmat(for i:X.root_datum.dimension do coordinates(bracket(X,basis(X.t,i))) od)
 
 {solve ad(X)(Y)=Z for Y}
-set solve_ad(LieAlgebraElement X,LieAlgebraElement Z)=solve(ad(X),coordinates(Z))
+set solve_ad(LieAlgebraElement X,LieAlgebraElement Z)=maybe_a_ratvec:solve(ad(X),coordinates(Z))
 
-{2-eigenspace of ad(H)}
+{2-eigenspace of ad(H): as list of roots}
+set two_eigenspace(RootDatum rd,ratvec H)=[vec]:
+##for alpha in rd.roots do if alpha*H=2 then [alpha] else [] fi od
+
+{2-eigenspace of ad(H): as list of LieAlgebraElements}
 set two_eigenspace(StructureConstantTable t,ratvec H)=[LieAlgebraElement]:
-let rv=[LieAlgebraElement]:[] in 
-for alpha in t.root_datum.roots do if alpha*H=2 then rv#:=X(t,alpha,null(t.root_datum.rank)) fi od ;rv
+for alpha in two_eigenspace(t.root_datum,H) do root_term(t,alpha) od
 
 {   Jacobson-Morozov triples (H,X,Y)    }
 
 {complete Jacobson Morozov triple: given H, find X,Y so that [H,X]=2X, [H,Y]=-2Y, [X,Y]=H}
-set JM_triple(StructureConstantTable t,vec H)=(LieAlgebraElement,LieAlgebraElement,LieAlgebraElement):
+set JM_triple(StructureConstantTable t,vec H,int n)=(bool,(LieAlgebraElement,LieAlgebraElement,LieAlgebraElement)):
 let S=two_eigenspace(t,H) then
-coeffs=box(2,#S) in
+coeffs=box(n,#S) in
  for A in coeffs do
  let X=null(t) then
  ()= for i:#S do X+:=A[i]*S[i]  od then
  sol=solve_ad(X,H(t,H)) in
- if any(sol) then {prints("found:", H, new_line, X.root_part);}return((
- lie_algebra_element_semisimple(t,H),X,lie_algebra_element(t,requisition(sol)))) fi od;(null(t),null(t),null(t))
+ if any(sol) then {prints("found:", H, new_line, X.root_part);}
+ return(true,(lie_algebra_element_semisimple(t,H),X,lie_algebra_element(t,requisition(sol)))) fi od;(false,(null(t),null(t),null(t)))
 
-set JM_triple(StructureConstantTable t,ComplexNilpotent O)=(LieAlgebraElement,LieAlgebraElement,LieAlgebraElement):
+set JM_triple(StructureConstantTable t,vec H)=(bool,(LieAlgebraElement,LieAlgebraElement,LieAlgebraElement)):JM_triple(t,H,2)
+
+set JM_triple(StructureConstantTable t,ComplexNilpotent O)=(bool,(LieAlgebraElement,LieAlgebraElement,LieAlgebraElement)):
 JM_triple(t,O.H)
-
-set JM_triple(StructureConstantTable t)=(ComplexNilpotent->(LieAlgebraElement,LieAlgebraElement,LieAlgebraElement)):
+set JM_triple(StructureConstantTable t)=(ComplexNilpotent->(bool,(LieAlgebraElement,LieAlgebraElement,LieAlgebraElement))):
 (ComplexNilpotent O):JM_triple(t,O)
-
-set JM_triple(ComplexNilpotent O)=(LieAlgebraElement,LieAlgebraElement,LieAlgebraElement):
+set JM_triple(ComplexNilpotent O)=(bool,(LieAlgebraElement,LieAlgebraElement,LieAlgebraElement)):
 JM_triple(O.root_datum.structure_constant_table,O)
 
-{complete all triples for rd}
+{try again: find all X's where all coefficients are \pm1, with the
+signs constant on w-orbits
+}
+
+
+{
+[(LieAlgebraElement,LieAlgebraElement,LieAlgebraElement)]:
+set JM_triple_signs_by_orbit(StructureConstantTable t,vec H,WeylElt w)=[(LieAlgebraElement,LieAlgebraElement,LieAlgebraElement)]:
+}
+
+
+
+{different idea: find a triple where all coefficients are \pm 1}
+set JM_triple_signs(StructureConstantTable t,vec H)=(bool,(LieAlgebraElement,LieAlgebraElement,LieAlgebraElement)):
+let S=two_eigenspace(t,H) then
+shift=for i:#S do 1 od then
+coeffs=for v in box(2,#S) do 2*v-shift od in
+ for A in coeffs do
+ let X=null(t) then
+ ()= for i:#S do X+:=A[i]*S[i]  od then
+ sol=solve_ad(X,H(t,H)) in
+ if any(sol) then {prints("found:", H, new_line, X.root_part);}
+ return(true,( lie_algebra_element_semisimple(t,H),X,lie_algebra_element(t,requisition(sol))))fi od;(false,(null(t),null(t),null(t)))
+
+set JM_triple_signs(StructureConstantTable t,ComplexNilpotent O)=(bool,(LieAlgebraElement,LieAlgebraElement,LieAlgebraElement)):
+JM_triple_signs(t,O.H)
+set JM_triple_signs(StructureConstantTable t)=(ComplexNilpotent->(bool,(LieAlgebraElement,LieAlgebraElement,LieAlgebraElement))):
+(ComplexNilpotent O):JM_triple_signs(t,O)
+set JM_triple_signs(ComplexNilpotent O)=(bool,(LieAlgebraElement,LieAlgebraElement,LieAlgebraElement)):
+JM_triple_signs(O.root_datum.structure_constant_table,O)
+
+
+{ALL Jacobson Morozov triples (with coefficient -1,1)}
+
+set JM_triples_signs(StructureConstantTable t,[vec] S,vec H)=[(LieAlgebraElement,LieAlgebraElement,LieAlgebraElement)]:
+let
+shift=for i:#S do 1 od then
+rv=[] then
+coeffs=for v in box(2,#S) do 2*v-shift od in
+let ()=prints("#coeffs:",#coeffs) in
+ for A@i in coeffs do  let ()=prints("i=",i) in
+ let v=null(#t.root_datum.roots) then
+ ()= for i:#S do
+ let ()=prints("A[i]:",A[i], new_line, "coords:", coordinates(t.root_datum)(S[i])) in
+ v+:=A[i]*coordinates(t.root_datum)(S[i])  od then
+ X=lie_algebra_element_root_vectors(t,v) then
+ sol=solve_ad(X,H(t,H)) in
+ let ()=prints("trying:", X.root_part) in
+ if any(sol) then prints("solved"); rv#:=(lie_algebra_element_semisimple(t,H),X,lie_algebra_element(t,requisition(sol))) else prints("NOT solved") fi od;
+rv
+
+set JM_triples_signs(StructureConstantTable t,vec H)=[(LieAlgebraElement,LieAlgebraElement,LieAlgebraElement)]:
+JM_triples_signs(t,two_eigenspace(t.root_datum,H){list of roots},H)
+
+
+set JM_triple_signs(StructureConstantTable t,ComplexNilpotent O)=(bool,(LieAlgebraElement,LieAlgebraElement,LieAlgebraElement)):
+JM_triple_signs(t,O.H)
+set JM_triple_signs(StructureConstantTable t)=(ComplexNilpotent->(bool,(LieAlgebraElement,LieAlgebraElement,LieAlgebraElement))):
+(ComplexNilpotent O):JM_triple_signs(t,O)
+set JM_triple_signs(ComplexNilpotent O)=(bool,(LieAlgebraElement,LieAlgebraElement,LieAlgebraElement)):
+JM_triple_signs(O.root_datum.structure_constant_table,O)
+
+{compute all triples for rd}
 set JM_triples(StructureConstantTable t)=[(LieAlgebraElement,LieAlgebraElement,LieAlgebraElement)]:
-for O in t.root_datum.nilpotent_orbits do JM_triple(t,O) od
+for O in t.root_datum.nilpotent_orbits do let (,jmt)= JM_triple(t,O)  in jmt od
 
 set JM_triples(RootDatum rd)=[(LieAlgebraElement,LieAlgebraElement,LieAlgebraElement)]:
 JM_triples(rd.structure_constant_table)

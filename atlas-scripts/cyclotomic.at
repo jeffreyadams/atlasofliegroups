@@ -62,10 +62,10 @@ set cyclotomic_field_element ([rat] v, CyclotomicField F) =
        CyclotomicFieldElement: F.element(v)
 
 {.embed Q in cyclotomic field as (images of) constant polynomials.}
-set embed_Q (rat r,CyclotomicField F) = CyclotomicFieldElement: F.element([r])
+set embed (rat r,CyclotomicField F) = CyclotomicFieldElement: F.element([r])
 
-set one (CyclotomicField F) = CyclotomicFieldElement:  embed_Q(1,F)
-set zero (CyclotomicField F) = CyclotomicFieldElement: embed_Q(0,F)
+set one (CyclotomicField F) = CyclotomicFieldElement:  embed(1,F)
+set zero (CyclotomicField F) = CyclotomicFieldElement: embed(0,F)
 
 set = (CyclotomicFieldElement(v,F),CyclotomicFieldElement(w,G)) = bool:
    assert(F=G,"cyclotomic fieds differ in comparison");
