@@ -1,0 +1,105 @@
+<tabulate.at
+
+{bruhat order: given x,y\in KGB(G) compute x<=y (boolean)
+in principle this is determined by the covering relations,
+as given by KGB_Hasse}
+
+{single or multivalued descent of C- or real root}
+set descend(int s,KGBElt x)=[KGBElt]:
+let k=status(s,x) in
+if k=0 then [cross(s,x)] {C-}
+elif k=2 then {real}
+ let x_1=Cayley(s,x) then
+ x_2=cross(s,x_1) in
+ if x_1=x_2 then [x_1] else [x_1,x_2] fi
+else prints("s=",s,"x=",x);error("not a descent?") fi
+
+{
+Algorithm: to test x<=y:
+
+a) if x=y return true
+b) length(y)<=length(x) return false
+if not then length(y)>length(x) => y has a descent s
+set y'=descend(s,y)  (one of the 2 if double valued)
+then apply the following table
+
+type s for x   return                                      remark
+C+,ci,nci1     x<=y'                                       ascent
+C-,r2          x'=descend(s,x) in x'<=y'		   single valued descent
+r1	       {x',x''}=descend(s,x) in x'<=y' or x''<=y'  double valued descent
+nci2	       x<=y' or cross(s,x)<=y'                     ascent (image of double-valued descent)
+}
+set bruhat_leq(KGBElt x,KGBElt y)=bool:
+assert(x.real_form=y.real_form,"real forms don't match");
+let rec_fun leq(KGBElt x,KGBElt y)=bool:
+if x=y then true
+elif y.length<=x.length then false
+ else
+ {length(y)>length(x)=> y has a descent}
+ let i=first(#y.real_form.simple_roots,(int i):is_strict_descent(i,y)) in  {strict: don't allow ci}
+ if i=-1 then error("y has no descent") else
+  let y_prime=descend(i,y)[0] in {only need 1 descent of y}
+  case status(i,x)  {cases 0-4}
+  in
+   leq(descend(i,x)[0],y_prime)  {0: C-}
+   ,leq(x,y_prime)               {1: ic}
+   ,let d=descend(i,x) in        {2: r1 or r2} 
+    if #d=1 then
+      leq(d[0],y_prime) {r2}
+       else
+      leq(d[0],y_prime) or leq(d[1],y_prime)  {r1}
+    fi {/r1 or r2}
+   ,let x_prime=cross(i,x) in     {3: nci1 or nci2}
+    if x=x_prime then leq(x,y_prime)  {nci1}
+     else
+     leq(x,y_prime) or leq(x_prime,y_prime)  {nci2}
+    fi {/nci1 or nci2}
+   ,leq(x,y_prime)  {C+}
+  esac
+ fi
+fi
+in leq(x,y)
+
+{x\ge y}
+set bruhat_geq(KGBElt x,KGBElt y)=bool:bruhat_leq(y,x)
+
+{return list of y which are <=x}
+set bruhat_leq(KGBElt x)=[KGBElt]: ##for y in KGB(x.real_form) do if bruhat_leq(x,y) then [y] else [] fi od
+{return list of y which are >=x}
+set bruhat_geq(KGBElt x)=[KGBElt]: ##for y in KGB(x.real_form) do if bruhat_geq(x,y) then [y] else [] fi od
+
+{compute all <= and return in a table for quick access
+bruhat_leq(G)[i][j]=bruhat_leq(KGB(G,i),KGB(G,j)}
+set bruhat_leq(RealForm G)=[[bool]]:
+let kgb=KGB(G) in
+for i:#kgb do for j:#kgb do bruhat_leq(kgb[i],kgb[j]) od od
+
+{compute all >= and return in a table for quick access
+bruhat_geq(G)[i][j]=bruhat_geq(KGB(G,i),KGB(G,j)}
+set bruhat_geq(RealForm G)=[[bool]]:
+let kgb=KGB(G) in
+for i:#kgb do for j:#kgb do bruhat_geq(kgb[i],kgb[j]) od od
+
+{default: >=}
+set bruhat(RealForm G)=[[bool]]:bruhat_geq(G)
+
+{output table of <= for G}
+set show_bruhat_leq(RealForm G)=void:
+let kgb=KGB(G) in
+tabulate(
+["x","dim","x<="]#
+for i:#kgb do
+ let v=##for j:#kgb do if bruhat_leq(kgb[i],kgb[j]) then [j] else [] fi od in
+ [i.to_string,KGB(G,i).dimension.to_string,v.to_string] od)
+
+{output table of >= for G}
+set show_bruhat_geq(RealForm G)=void:
+let kgb=KGB(G) in
+tabulate(
+["x","dim","x>="]#
+for i:#kgb do
+ let v=##for j:#kgb do if bruhat_geq(kgb[i],kgb[j]) then [j] else [] fi od in
+ [i.to_string,KGB(G,i).dimension.to_string,v.to_string] od)
+
+{default table: >=}
+set show_bruhat(RealForm G)=void:show_bruhat_geq(G)
