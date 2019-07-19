@@ -83,6 +83,7 @@ let kgb=KGB(G) in
 for i:#kgb do for j:#kgb do bruhat_geq(kgb[i],kgb[j]) od od
 
 {default: <=}
+set bruhat(KGBElt x,KGBElt y)=bool:bruhat_leq(x,y)
 set bruhat(RealForm G)=[[bool]]:bruhat_leq(G)
 
 {output table of <= for G}
