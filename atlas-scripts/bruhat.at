@@ -80,8 +80,8 @@ set bruhat_geq(RealForm G)=[[bool]]:
 let kgb=KGB(G) in
 for i:#kgb do for j:#kgb do bruhat_geq(kgb[i],kgb[j]) od od
 
-{default: >=}
-set bruhat(RealForm G)=[[bool]]:bruhat_geq(G)
+{default: <=}
+set bruhat(RealForm G)=[[bool]]:bruhat_leq(G)
 
 {output table of <= for G}
 set show_bruhat_leq(RealForm G)=void:
@@ -90,7 +90,7 @@ tabulate(
 ["x","dim","x<="]#
 for i:#kgb do
  let v=##for j:#kgb do if bruhat_leq(kgb[i],kgb[j]) then [j] else [] fi od in
- [i.to_string,KGB(G,i).dimension.to_string,v.to_string] od)
+ [i.to_string,kgb[i].dimension.to_string,v.to_string] od)
 
 {output table of >= for G}
 set show_bruhat_geq(RealForm G)=void:
@@ -99,7 +99,67 @@ tabulate(
 ["x","dim","x>="]#
 for i:#kgb do
  let v=##for j:#kgb do if bruhat_geq(kgb[i],kgb[j]) then [j] else [] fi od in
- [i.to_string,KGB(G,i).dimension.to_string,v.to_string] od)
+ [i.to_string,kgb[i].dimension.to_string,v.to_string] od)
 
-{default table: >=}
-set show_bruhat(RealForm G)=void:show_bruhat_geq(G)
+{default table: <=}
+set show_bruhat(RealForm G)=void:show_bruhat_leq(G)
+
+{ Bruhat order on Weyl group  }
+
+{length(s*w)>length(w)}
+set lengthens(int s,WeylElt w)=bool:
+ w.root_datum.is_positive_coroot(coroot(w.root_datum,s)*w)
+
+{length(s*w)<length(w)}
+set shortens(int s,WeylElt w)=bool:not lengthens(s,w)
+
+{x <= y}
+set bruhat_W_leq(WeylElt x,WeylElt y)=bool:
+assert(x.root_datum=y.root_datum,"root data don't match");
+let rd=x.root_datum then
+rec_fun leq(WeylElt x,WeylElt y)=bool:
+if x=y then true
+elif y.length<=x.length then false
+ else
+ {length(y)>length(x)=> y has a descent}
+ let s=first(#y.root_datum.simple_roots,(int s): shortens(s,y)) in
+ if s=-1 then error("y has no descent") else
+  let y_prime=W_elt(rd,[s])*y in
+  if shortens(s,x) then leq(W_elt(rd,[s])*x,y_prime)
+   else
+  leq(x,y_prime)
+  fi
+ fi
+fi
+in leq(x,y)
+
+{x>=y}
+set bruhat_W_geq(WeylElt x,WeylElt y)=bool:bruhat_W_leq(y,x)
+
+{default: x<=y}
+set bruhat_W(WeylElt x,WeylElt y)=bool:bruhat_W_leq(x,y)
+{don't really need the W}
+set bruhat(WeylElt x,WeylElt y)=bool:bruhat_W(x,y)
+
+set sort_by_length = ([WeylElt] -> [WeylElt]): sort_by( length@WeylElt)
+
+{output table of <= for W}
+set show_bruhat_W_leq(RootDatum rd)=void:
+let W=sort_by_length(rd.W) in
+tabulate(
+["w","length","w<="]#
+for i:#W do
+ let v=##for j:#W do if bruhat_W_leq(W[i],W[j]) then [j] else [] fi od in
+ [i.to_string,W[i].length.to_string,v.to_string] od)
+
+{output table of <= for W}
+set show_bruhat_W_geq(RootDatum rd)=void:
+let W=sort_by_length(rd.W) in
+tabulate(
+["w","length","w<="]#
+for i:#W do
+ let v=##for j:#W do if bruhat_W_geq(W[i],W[j]) then [j] else [] fi od in
+ [i.to_string,W[i].length.to_string,v.to_string] od)
+
+set show_bruhat_W(RootDatum rd)=void:show_bruhat_W_leq(rd)
+set show_bruhat(RootDatum rd)=void:show_bruhat_W_leq(rd)
