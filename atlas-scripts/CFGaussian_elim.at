@@ -1,0 +1,213 @@
+<basic.at
+<cyclotomicMat.at
+
+
+set any (CF_lin_solution x) = bool: case x  | affine_space: true | no_Cyclotomic_solution: false esac
+
+set a_solution ((CyclotomicMat,CyclotomicVec)system) = CyclotomicVec:
+   case full_solve(system)
+   | (v,).affine_space: v
+   | else error("No solution")
+   esac
+
+{ Gaussian elimination on matrices represented by values of type [[rat]] }
+
+{ matrices by lists of lists of rational numbers, forming their columns }
+
+{
+  The idea is to do full Gauss-Jordan reduction of the original matrix |A|,
+  transforming it into an identity matrix, and retain from this process just
+  the data describing the row operations performed (the reduced matrix itself
+  is uninteresting). That data can then be applied to a RHS column vector to
+  solve a linear system, or to a full identity matrix to find |A^-1|. It can
+  also be used to quickly find the determinant of |A|.
+
+  More generally we allow for the possibility of colums for which no pivot can
+  be found (all candidate rows have zeros), in which case we put a different
+  kind of information in the pivot data, which can later be used to determine
+  the kernel of the (original) matrix. Of course this should not happen when a
+  matrix is to be inversed, but functions try to do what they intend to do in
+  the most general setting (and in general we do not assume square matrices).
+}
+
+{in the matrix type include the field as the first argument to deal with empty matrices}
+{use CyclotomicVec and CyclotomicMat from cyclotomicMat.at}
+{set_type CyclotomicVector =(CyclotomicField F,[CyclotomicFieldElement] vector)
+set_type CyclotomicMatrix =(CyclotomicField F,[[CyclotomicFieldElement]] matrix)}
+
+
+set_type
+[ CFPivot_info = ( (int,CyclotomicVec) pivot | CyclotomicVec no_pivot )
+{ When doing a pivot step, we either find a pivot, or not. In the former case
+  we record the pivot row number, as well as the row operation to be applied
+  after the cyclic row permutation bringing the pivot to the echelon position
+  is done (row number equal to the number of previous pivots). The latter row
+  operation is left multiplication by a matrix differing by only one column
+  from the identity, and that columns is recorded (it has the inverse of the
+  pivot vlaue on the main diagonal). In case no pivot is found (the part of
+  the column where a pivot is searched is zero) we instead record the nonzero
+  initial part ot the column. The union type |CFPivot_info| describes these.
+}
+
+, CF_lin_solution = ( void no_Cyclotomic_solution | (CyclotomicVec,CyclotomicMat) affine_space )
+{ A solution is either a particular solution and kernel generators, or none }
+
+]
+
+{
+set embed_Q (rat r,CyclotomicField F) = CyclotomicFieldElement: F.element([r])
+set embed_Q (ratvec v,CyclotomicField F) = CyclotomicVec: for x in v do embed_Q(x,F) od
+
+set embed_Q([[rat]] A,CyclotomicField F)=CyclotomicMat:
+{(F,for i:#A do for j:#A[i] do embed_Q(A[i][j],F) od od)}
+(F,for i:#A do embed_Q(A[i],F) od)
+
+set embed_Q(ratmat A,CyclotomicField F)=CyclotomicMat:
+embed_Q(A.ratmat_to_bigmat,F)
+}
+
+{ avoid converting to |ratvec| when testing a (partial) column to be zero }
+set = (CyclotomicVec row) = bool: all(#row,(int i) bool: =row[i])
+set != (CyclotomicVec row) = bool: not =row
+
+
+set times (CyclotomicMat M, CyclotomicVec v) = CyclotomicVec:
+    for i:#M[0] do let s=M.F.zero in for Mj@j in M do s+:=Mj[i]*v[j] od; s od
+
+set times (CyclotomicMat M, CyclotomicMat N) = CyclotomicMat: (for c in N do times(M,c) od)
+
+{ the |pivot_step| takes as argument the choice function for the pivot }
+set pivot_step ((CyclotomicVec->int) choose_pivot) =
+{ and produces a function that takes a matrix and a count of previous pivots }
+    (CyclotomicMat M, int i) (CFPivot_info,CyclotomicMat):
+    { take initial column |M[0]| to work with; its entries in the first |i|
+      rows (which already have their pivots) are excluded from pivot choice }
+       let col=M[0] then pivot = col[i:].choose_pivot in
+       if pivot.< { a negative choice result signals no valid pivot exists }
+       then (col[:i].no_pivot, M[1:]) { split off and yield initial part |col| }
+       else
+          let k = i + pivot, n=#col { pivot row, and total number of rows }
+          then f = col[k] { value of the pivot entry }
+          , src = { for each |r| list from which index new row |r| is taken }
+             for r:n do if r<i or r>k then r elif r=i then k else r-1 fi od
+          then { coefficients of row operation matrix, including |src| cycling }
+             coefs = for r:n do if r=i then /f else -col[src[r]]/f fi od
+          in ( (k,coefs).pivot { data for this pivot step }
+             , { and compute row reduced remaining columns of |M|: }
+               for c@j in M[1:]
+               do let ck=c[k] { coefficient from original pivot row } in
+                  for r:n do if r=i then ck/f else c[src[r]]+ck*coefs[r] fi od
+               od
+             )
+        fi
+
+{ the simplest strategy is to select the first nonzero coefficient as pivot }
+set greedy (CyclotomicVec choices) = int: first(#choices,(int i)bool :choices[i].!=)
+
+set step = pivot_step(greedy@CyclotomicVec)
+
+set get_data (CyclotomicMat M) = [CFPivot_info]:
+    let
+    i=0 { number of previus pivots, increased for each pivot } in
+    while >#M { traverse and remove successive columns of |M|, stop on empty }
+    do let (pi,M0)=step(M,i) in case pi | pivot: i+:=1 | else () esac
+    ; pi next M:=M0
+    od
+
+
+{ Once accumulated the different |CFPivot_info| values are combined, taking the
+  |pivot| fields together (extracted them for the union type), while
+  transforming the non-pivot information into a matrix whose independent
+  columns span the kernel. A third component of the result is a function that
+  transforms a row-reduced RHS vector, with as many components as there are
+  pivots, into a full size vector, by interspersing zeros at the non-pivot
+  positions. This function |spread| is constructed by repeated modification,
+  each newer version first calling the older one and then taking one more
+  entry to its proper destination. We must be careful to avoid building a
+  recursive call, by first binding the old function value to a new name |f|,
+  and calling a function of that name from the newly extended function.
+
+Pass the (common) cyclotomic field as the first argument
+}
+
+set split_data (CyclotomicField F,[CFPivot_info] data) =
+([int,CyclotomicVec] , CyclotomicMat , (CyclotomicVec->CyclotomicVec) ):
+   let pivots=[int,CyclotomicVec]: [], kernel = CyclotomicMat:[], !n=#data
+   then spread = (CyclotomicVec->CyclotomicVec): { to map coefficient to their pivot positions }
+       (CyclotomicVec c) CyclotomicVec: for :n do F.zero od { start off by just creating zeros }
+   in
+   for d@j in data
+   do case d
+      | piv.pivot:
+         let !f=spread, !k=#pivots { freeze these values } in
+         pivots #:= piv; spread := ((CyclotomicVec c): let v=f(c) in v[j] := c[k]; v)
+      | col.no_pivot: let kc = spread(col) in kc[j]:=-F.one; kernel:=kernel#kc
+      esac
+   od; (pivots,kernel,spread)
+
+{ From the pivot data we can aso directly compute the determinant, basically the
+  product of the inverses of the main diagonal entries of the row operations.
+}
+
+set det (CyclotomicField F,CyclotomicMat A) = CyclotomicFieldElement:
+   let (pivots,kernel,)=split_data(F,A.get_data) in
+   if >#kernel then F.zero { if there are any non-pivot columns, matrix is singular }
+   else let d=F.one in
+      for (k,coefs)@i in pivots do d /:= minus_1^(k-i)*coefs[i] od; d
+   fi
+
+{ Perform row operations from encoded pivot datum, and new pivot row index |i| }
+set apply (int i, int k, CyclotomicVec coefs) = (CyclotomicVec->CyclotomicVec):
+   if i=k { a sufficiently likely case to deserve simplified treatment }
+   then (CyclotomicVec c) CyclotomicVec:
+      for cfr@r in coefs do let a=c[k]*cfr in if r=i then a else c[r]+a fi od
+   else (CyclotomicVec c) CyclotomicVec:
+      for cfr@r in coefs
+      do let a=c[k]*cfr in
+         if r=i then a else c[if r<i or r>k then r else r-1 fi]+a fi
+      od
+   fi
+
+{ Compose those functions for all pivot data (obtained from |split_data|) }
+set apply ([int,CyclotomicVec] pivots) = (CyclotomicVec->CyclotomicVec):
+   (CyclotomicVec col) CyclotomicVec:
+       for (k,coefs)@j in pivots do col:=apply(j,k,coefs)(col) od; col
+
+{ Put the above together for solving a rational linear system |A*x=b| }
+set full_solve (CyclotomicMat A, CyclotomicVec b) = CF_lin_solution:
+   let (pivots,kernel,spread)= split_data(b.F,A.get_data) then sol=b.(apply(pivots))
+   in if =sol[#pivots:] { after |#pivots|, any entries of |sol| must be 0 }
+      then (spread(sol) , kernel).affine_space
+      else ().no_Cyclotomic_solution
+      fi
+set full_solve (CyclotomicMat A, ratvec v) = CF_lin_solution:full_solve(A,embed(v,A.F))
+
+{extract single solution from CF_lin_solution}
+set a_solution(CF_lin_solution sol)=CyclotomicVec:
+case sol | (v,).affine_space:v
+         | else error("No solution")
+esac
+
+{solve for just one solution}
+set solve ((CyclotomicMat,CyclotomicVec)system) = CyclotomicVec:
+   case full_solve(system)
+   | (v,).affine_space: v
+   | else error("No solution")
+   esac
+
+set solve ((CyclotomicMat A,ratvec v)) = CyclotomicVec:
+a_solution((A,embed(v,A.F)))
+
+
+{ For inverse of a matrix, apply row operations to columns of identity matrix }
+set make_inverse (CyclotomicField F,[(int,CyclotomicVec)] data) = CyclotomicMat:
+   let n=#data in for j:n do apply(data)(for i:n do CyclotomicFieldElement:
+   if =#(i=j) then F.one else F.zero fi od) od
+
+set inverse (CyclotomicMat M) = CyclotomicMat:
+   if =#M then return M fi; assert(#M=#M[0],"Inverse of non square matrix");
+   let (pivots,kernel,)= split_data(M.F,M.get_data) in
+   if =#kernel then make_inverse(pivots)
+   else error("No inverse: matrix has nontrivial kernel",kernel)
+   fi
+

@@ -108,6 +108,15 @@ set a_solution ((CyclotomicMat,CyclotomicVec)system) = CyclotomicVec:
    | else error("No solution")
    esac
 
+set a_solution ((CyclotomicMat A,ratvec v)) = CyclotomicVec:
+a_solution((A,embed(v,A.F)))
+
+{extract single solution from CF_lin_solution}
+set a_solution(CF_lin_solution sol)=CyclotomicVec:
+case sol | (v,).affine_space:v
+         | else error("No solution")
+esac
+
 set all_solutions ((CyclotomicMat,CyclotomicVec)system) = 
    case full_solve(system)
    | (,v).affine_space: v

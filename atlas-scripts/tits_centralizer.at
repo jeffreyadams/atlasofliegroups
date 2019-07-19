@@ -1,6 +1,8 @@
 <tits.at
 <structure_constants.at
-<bracket.at
+<cyclotomic_Gaussian_elim.at
+<cyclotomic_field_bracket.at
+<cyclotomicMat.at
 
 set index(vec alpha,RootDatum rd)=int:
 first(for i:#rd.roots do rd.roots[i]=alpha od)
@@ -216,7 +218,7 @@ n=F.order then
 ()=prints("v=");show(v) then
 ()=prints("M:",M) then
 target=(for j in indices_basis do   power_of_primitive_root(v[j])/n od) then
-w=solve(cyclotomic_matrix(^M_basis,F),target) in
+w=a_solution(cyclotomic_matrix(^M_basis,F),target) in
 let ()=prints("w:",w) in
 let ()=for j in indices_basis##indices_other do
  let c=embed(M[j],F)*w in prints(c.to_string, " ", power_of_primitive_root(v[j])/n) od in
@@ -362,6 +364,8 @@ then
 if not success then (false,tits_identity(X.root_datum)) else
 (true,(X.root_datum,m,w.matrix)) fi
 fi
+
+
 {
 set basis_dual_lattice(ratmat M)=ratmat:right_inverse(^M)
 set basis_dual_lattice(mat M)=ratmat:basis_dual_lattice(mat_as_ratmat(M))
@@ -500,4 +504,4 @@ set good_roots(vec H,WeylElt w)=
 let two_roots=two_eigenspace(w.root_datum,H) in good_roots(two_roots,w)
 
 
-}
+}}
