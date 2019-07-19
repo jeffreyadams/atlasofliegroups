@@ -1,4 +1,6 @@
 <tabulate.at
+<W_orbit.at
+<sort.at
 
 {bruhat order: given x,y\in KGB(G) compute x<=y (boolean)
 in principle this is determined by the covering relations,
