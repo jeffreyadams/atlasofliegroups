@@ -27,7 +27,7 @@ namespace atlas {
 
 namespace size {
 
-  /*! \brief
+/*
   A template to indicate the (manually computed) ordinal (position on the list
   of primes) of the largest prime factor of a Weyl group of rank at most n.
 
@@ -44,8 +44,7 @@ namespace size {
 
 
   // predefined values for likely instances of RANK_MAX
-  /*!
-  \brief Position on the list of primes of the
+  /* Position on the list of primes of the
   largest possible prime factor of a Weyl group of rank at most 8.
 
   This is the fourth prime 7.
@@ -55,8 +54,7 @@ namespace size {
     static const unsigned long value = 4ul;
   };
 
-  /*!
-  \brief Position on the list of primes of the
+  /* Position on the list of primes of the
   largest possible prime factor of a Weyl group of rank at most 16.
 
   This is the seventh prime 17 (appearing only in the Weyl group S_17
@@ -67,8 +65,7 @@ namespace size {
     static const unsigned long value = 7ul;
   };
 
-  /*!
-  \brief Position on the list of primes of the
+  /* Position on the list of primes of the
   largest possible prime factor of a Weyl group of rank at most 32.
 
   This is the eleventh prime 31.
@@ -79,8 +76,7 @@ namespace size {
     static const unsigned long value = 11ul;
   };
 
-  /*!
-  \brief Position on the list of primes of the
+  /* Position on the list of primes of the
   largest possible prime factor of a Weyl group of rank at most 64.
 
   This is the eighteenth prime 61.
@@ -91,8 +87,7 @@ namespace size {
     static const unsigned long value = 18ul;
   };
 
-  /*!
-  \brief Position on the list of primes of the
+  /* Position on the list of primes of the
   largest possible prime factor of a Weyl group of rank at most RANK_MAX.
 
   With RANK_MAX=16, this is 7 (for the seventh prime 17).
@@ -116,8 +111,7 @@ namespace size {
 
 namespace size {
 
-  /*!
-  \brief Stores a positive integer as product of prime powers, using
+  /* Store a positive integer as product of prime powers, using
   the first PRIMES_MAX primes.
 
   The exponent of the jth prime is |d_exp[j]|.  The reason for using

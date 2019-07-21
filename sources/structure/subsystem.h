@@ -1,5 +1,5 @@
-/*!
-\file\brief Class definition for the Subsystem class.
+/*
+  Class definition for the Subsystem class.
 */
 /*
   This is subystem.h

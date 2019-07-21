@@ -402,8 +402,8 @@ void Block::compute_first_zs() // assumes |x| values weakly increase
   while (xx<xrange); // stop after setting |d_first_z_of_x[xrange]=size()|
 }
 
-/*!
-  \brief Constructs the BruhatOrder.
+/*
+  Construct the BruhatOrder.
   It could run out of memory, but Commit-or-rollback is guaranteed.
 */
 void Block_base::fillBruhat()
@@ -1656,8 +1656,8 @@ DescentStatus descents(KGBElt x, KGBElt y,
   return result;
 }
 
-/*!
-  \brief Inserts into |hs| the ascents through |s| from elements of |hr|.
+/*
+  Insert into |hs| the ascents through |s| from elements of |hr|.
 
   Explanation: technical function for the Hasse construction, that makes the
   part of the coatom list for a given element arising from a given descent.
@@ -1746,7 +1746,7 @@ std::vector<Poset::EltList> makeHasse(const Block_base& block)
 ******************************************************************************/
 
 
-//!\brief Returns the twisted involution dual to |w|.
+// Return the twisted involution dual to |w|.
 
 /*
   We have $\tau = w.\delta$, with $w$ in the Weyl group $W$, and $\delta$ the

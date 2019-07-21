@@ -83,18 +83,14 @@ class DescentStatus
 
 // accessors
 
-/*!
-\brief Returns descent status of simple root \#s.
-*/
+// Return descent status of simple root \#s.
   Value operator[] (size_t s) const {
     return static_cast<Value> (d_data[s]); // cast converts integer to enum
   }
 
 // manipulators
 
-/*!
-\brief Sets the descent status of simple root \#s to v.
-*/
+// Set the descent status of simple root \#s to v.
   void set(size_t s, Value v) {
     d_data[s] = v; // no cast needed here; enum value converts to integral type
   }

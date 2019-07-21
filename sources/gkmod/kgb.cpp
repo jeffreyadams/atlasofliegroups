@@ -1,6 +1,5 @@
-/*!
-\file
-\brief Implementation of the class KGB representing orbits of K on G/B.
+/*
+  Implementation of the class KGB representing orbits of K on G/B.
 
   This module contains code for the construction of a block in the
   one-sided parameter set (in other words, the subset of the one-sided
@@ -885,8 +884,8 @@ gradings::Status::Value status(const KGB_base& kgb, KGBElt x, RootNbr alpha)
 
 namespace {
 
-/*!
-  \brief Puts in |Hasse| the Hasse diagram of the Bruhat ordering on |kgb|.
+/*
+  Put into |Hasse| the Hasse diagram of the Bruhat ordering on |kgb|.
 
   Explanation: this is the closure ordering of orbits. We use the algorithm
   from Richardson and Springer.

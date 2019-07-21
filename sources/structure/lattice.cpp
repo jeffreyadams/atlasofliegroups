@@ -39,12 +39,12 @@ namespace atlas {
 
 namespace lattice {
 
-  /*!
-  \brief Functions for working with lattices.
+ /*
+   Functions for working with lattices.
 
-  This namespace defines some general lattice functions. It includes change of
-  basis functions, and calculating the orthogonal of a sublattice.
-  */
+   This namespace defines some general lattice functions. It includes change of
+   basis functions, and calculating the orthogonal of a sublattice.
+ */
 
 /*****************************************************************************
 

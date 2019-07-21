@@ -31,11 +31,10 @@ namespace ratvec {
 
 //			       type definitions
 
-  /*!
-  \brief Element of lattice tensored with rational numbers.
+/* Element of lattice tensored with rational numbers.
 
-  LatticeElt d_num divided by unsigned LatticeCoeff d_denom.
-  */
+   |LatticeElt d_num| divided by unsigned |LatticeCoeff d_denom|.
+*/
 template <typename C> // a signed integral type
 class RationalVector
 {
