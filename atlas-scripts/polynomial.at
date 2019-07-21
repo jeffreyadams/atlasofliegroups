@@ -403,15 +403,14 @@ set to_string (int_poly(X,cs,)) = string:
 
 set to_string (rat_poly(X,cs,)) = string:
    if =#cs then "0"
-   else
-      let pow(int k) = string: { print X^k, possibly shortened }
-          if k>1 then X+"^"+k.to_string elif k=1 then X else "" fi
-      in
-    ##for c@k in cs
+   else ##
+      for c@k in cs
       do if c.= then ""
-         else let (n,d)=%c in
-         ##[if n.< then "-" next n:=-n else "+" fi
-           ,if d>1 then c.to_string elif n>1 or k=0 then n.to_string else "" fi
+         else
+	    let (sign,ac) = if c.< then ("-",-c) else ("+",c) fi then (n,d)=%ac
+	 in ##
+	   [sign
+           ,if d>1 then ac.to_string elif n>1 or k=0 then n.to_string else "" fi
            ,if k>1 then X+"^"+k.to_string elif k=1 then X else "" fi
            ]
          fi
