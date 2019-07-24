@@ -1,0 +1,66 @@
+<W_orbit.at
+<bruhat.at
+
+{assuming w0 is a minimal length representative of its conjugacy class,
+find all others}
+set minimal_representatives (WeylElt !w0) = ([WeylElt],[WeylElt]):
+   let rd=w0.root_datum, class = [w0]
+   then conjugators= [id_W(rd)], current=0, ssr=semisimple_rank(rd)
+   , absent (WeylElt x) = none(for y in class do @: y=x od)
+in while current<#class
+   do let c = conjugators[current], w=class[current] in current+:=1
+   { assert(w=c*w0*/c); }
+   ;  for s:ssr
+      do let sws=s#w#s in
+         if absent(sws) and length(sws)=length(w) then class #:= sws; conjugators #:= s#c fi
+      od
+   od; (conjugators,class)
+
+{x<=y:
+assume x is minimal length representative in its conjugacy class
+[x]<=[y] <=> bruhat(x',y) for some minimal length representative x' of [x]
+run over minimal representatives, generate these one at a time and test
+so don't need to generate them all (except in case of false)
+}
+set cc_less_than (WeylElt w0,WeylElt w1) = bool:
+   if bruhat(w0,w1) then true elif
+   length(w0)>length(w1) then false else
+   let rd=w0.root_datum, class = [w0]
+   then conjugators= [id_W(rd)], current=0, ssr=semisimple_rank(rd)
+   , absent (WeylElt x) = none(for y in class do @: y=x od)
+   in let counter=0 
+in while current<#class
+   do let c = conjugators[current], w=class[current] in current+:=1
+   ;  for s:ssr
+      do let sws=s#w#s in
+         if absent(sws) and length(sws)=length(w) then
+	  if  bruhat(sws,w1) then return(true) 
+	 else
+	   counter+:=1;prints(counter);class #:= sws; conjugators #:= s#c
+	 fi fi
+      od
+   od; false fi
+
+set conjugacy_class_poset([WeylElt] classes)=[[int]]:
+let classes=sort_by_length_descending(classes) then
+rv=for i:#classes do [i]  od in
+let ()=prints(rv) in
+for i:#classes  do
+ let row_i=[int]:[i] in
+ for j:#classes downto 0 do
+  let ()=prints("i, j:", i, " ", j) in
+  if find(row_i,j) = -1 then let ()=prints("direct test: ", i, " ", j) in
+   let le=cc_less_than(classes[i],classes[j]) in
+    let ()=prints("le:",le) in
+    if le then row_i:=sort_u(row_i##rv[j]) {add all of rv[i] to rv[i]}
+    fi  {/added to row_i}
+  fi {end j was new}
+ od {done running over j};
+ rv[i]:=row_i;prints(new_line,"rv:");for a@i in rv do prints(i, " ", a) od
+od;{done running over i}
+rv
+
+
+
+set elliptic_conjugacy_class_poset(RootDatum rd)=[[int]]:
+conjugacy_class_poset(elliptic(rd))
