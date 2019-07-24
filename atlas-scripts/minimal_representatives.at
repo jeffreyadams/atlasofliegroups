@@ -1,0 +1,46 @@
+{ brute force enumerate the conjugacy class of |w|, with conjugacy witnesses }
+set minimal_representatives (WeylElt !w0) = ([WeylElt],[WeylElt]):
+   let rd=w0.root_datum, class = [w0]
+   then conjugators= [id_W(rd)], current=0, ssr=semisimple_rank(rd)
+   , absent (WeylElt x) = none(for y in class do @: y=x od)
+in while current<#class
+   do let c = conjugators[current], w=class[current] in current+:=1
+   { assert(w=c*w0*/c); }
+   ;  for s:ssr
+      do let sws=s#w#s in
+         if absent(sws) and length(sws)=length(w) then class #:= sws; conjugators #:= s#c fi
+      od
+   od; (conjugators,class)
+{
+set minimal_representatives(WeylElt w)=
+  let S=for alpha in w.root_datum.simple_roots do root_reflection(w.root_datum,alpha) od then
+  words=[[int]]:[[]],
+  orbit=[w],
+  done=0 then
+  absent (WeylElt y) = bool: { check whole orbit }
+     none(#orbit,(int i)bool:y=orbit[i])
+  in
+  while done<#orbit
+  do let z = words[done], a=orbit[done] in done+:=1
+  ; for y@i in S  do
+  let b= y*a*inverse(y) in if absent(b) then ( words #:= i#z, orbit #:= b ) fi od
+  od; (orbit,words)
+
+
+set generate ([(ratvec->ratvec)] S,ratvec v) = ([ratvec],[[int]]):
+  let words=[[int]]:[[]], orbit=[v], done=0
+  then absent (ratvec y) = bool: { check whole orbit }
+         none(#orbit,(int i)bool:y=orbit[i])
+  in
+  while done<#orbit
+  do let w = words[done], a=orbit[done] in done+:=1
+  ; for f@i in S
+    do let b= f(a) in if absent(b) then ( words #:= i#w, orbit #:= b ) fi od
+  od; (orbit,words)
+
+set generate (RootDatum rd,[WeylElt] S,ratvec v) = ([ratvec],[WeylElt]):
+  let (orbit,words) = generate(for s in S do (ratvec x) ratvec: s*x od, v) in
+  (orbit,for word in words do product(rd,for i in word do S[i] od) od)
+
+
+}
