@@ -145,6 +145,8 @@ set bruhat_W(WeylElt x,WeylElt y)=bool:bruhat_W_leq(x,y)
 set bruhat(WeylElt x,WeylElt y)=bool:bruhat_W(x,y)
 
 set sort_by_length = ([WeylElt] -> [WeylElt]): sort_by( length@WeylElt)
+set minus_length(WeylElt w)=int:-length(w) 
+set sort_by_length_descending = ([WeylElt] -> [WeylElt]): sort_by(minus_length@WeylElt)
 
 {output table of <= for W}
 set show_bruhat_W_leq(RootDatum rd)=void:
