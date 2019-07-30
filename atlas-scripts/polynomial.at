@@ -146,6 +146,28 @@ set - (rat_poly(X,a,), rat_poly(,b,)) = rat_poly:
   esac
 , () { dummy }
 )
+
+{ some mixed scalar/polynomial operations, for convenience }
+set + (int c,int_poly(X,,):p) = int_poly: constant_poly(c,X)+p
+set - (int c,int_poly(X,,):p) = int_poly: constant_poly(c,X)-p
+set + (int_poly(X,,):p,int c) = int_poly: p+constant_poly(c,X)
+set - (int_poly(X,,):p,int c) = int_poly: p-constant_poly(c,X)
+set * (int c,int_poly(X,p,))  = int_poly: to_int_poly(p*c,X)
+set * (int_poly(X,p,),int c)  = int_poly: to_int_poly(p*c,X)
+set \ (int_poly(X,p,),int c)  = int_poly: to_int_poly(p\c,X)
+
+set + (rat c,rat_poly(X,,):p) = rat_poly: constant_poly(c,X)+p
+set - (rat c,rat_poly(X,,):p) = rat_poly: constant_poly(c,X)-p
+set + (rat_poly(X,,):p,rat c) = rat_poly: p+constant_poly(c,X)
+set - (rat_poly(X,,):p,rat c) = rat_poly: p-constant_poly(c,X)
+set * (rat c,rat_poly(X,p,))  = rat_poly: to_rat_poly(p*c,X)
+set * (rat_poly(X,p,),rat c)  = rat_poly: to_rat_poly(p*c,X)
+set / (rat_poly(X,p,),rat c)  = rat_poly: to_rat_poly(p/c,X)
+
+set * (int_poly(X,p,),rat c)  = rat_poly: to_rat_poly((ratvec:p)*c,X)
+set / (int_poly(X,p,),rat c)  = rat_poly: to_rat_poly((ratvec:p)/c,X)
+
+
 set convolve ([rat]a,[rat]b) = [rat]: { the heart of polynomial multiplication }
 (  let da=#a-1
    then result = for :da do rat:0 od ## (let c=a~[0] in for bi in b do c*bi od)
