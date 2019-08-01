@@ -74,9 +74,6 @@ set = (CyclotomicFieldElement(v,F),CyclotomicFieldElement(w,G)) = bool:
 set != (CyclotomicFieldElement x,CyclotomicFieldElement y) = bool: not x=y
 set = (CyclotomicFieldElement(v,F)) = bool:(v,F)=F.zero
 
-
-
-
 set != (CyclotomicFieldElement x) = bool: not x=x.F.zero
 
 set primitive_root (CyclotomicField F) = cyclotomic_field_element([0,1],F)
@@ -187,6 +184,16 @@ set order(CyclotomicFieldElement x)= int:
    let one=x.F.one, div=divisors(x.F.order*2)
    then first=first(#div,(int i)bool: x^div[i]=one)
    in if first.< then 0 else div[first] fi
+
+{if z\in CF(n) is an n^th root of unity, write z=zeta_n^k}
+set power_of_primitive_root(CyclotomicFieldElement z)=int:
+assert(z^(z.F.order)=z.F.one,"z is not an n^th root of 1");
+first(z.F.order,(int i)bool:z.F.primitive_root^i=z)
+
+{in CF(n): if r=a/b and b divides n then return zeta_n^a}
+set root_of_unity(rat r,CyclotomicField F)=CyclotomicFieldElement:
+assert(is_integer(F.order/r.denom),"not a root of unity in F");
+F.primitive_root^(rat_as_int(r.numer*F.order/r.denom))
 
 {.convert cyclotomic field element to a string for output.}
 set to_string (CyclotomicFieldElement(v,F)) = string:
