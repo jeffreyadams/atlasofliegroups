@@ -6,8 +6,9 @@ to make this a finite set}
 set all_one_dimensional_unitary(RealForm G)=
 assert(=#compact_radical_basis(G), "G has a compact central torus");
 let x=KGB(G,G.KGB_size-1) in
-for gamma in all_lambda_differential_0(x) do 
-parameter(x, G.rho+gamma,G.rho) od
+##for gamma in all_lambda_differential_0(x) do 
+let p=parameter(x, G.rho+gamma,G.rho)  in
+if is_one_dimensional(p) then [p] else [] fi od
 
 {run over all real parabolics, all one-dimensional unitary
 representations of each, and induce}
