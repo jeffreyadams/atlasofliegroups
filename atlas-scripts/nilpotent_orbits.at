@@ -151,6 +151,12 @@ set nilpotent_orbits (RootDatum rd) = [ComplexNilpotent]:
 {tired of typing so many characters}
 set orbits (RootDatum rd) = [ComplexNilpotent]:nilpotent_orbits(rd)
 
+set distinguished_nilpotent_orbits(RootDatum rd)=[ComplexNilpotent]:
+for H in rd.distinguished_H do (rd,(),H) od
+
+set distinguished_orbits(RootDatum rd)=[ComplexNilpotent]:
+rd.distinguished_nilpotent_orbits
+
 {. For a complex group, for each standard Levi M given by a list of simple
    roots, list the corresponding neutral elements H (dominant for M, not G)
    giving the complex nilpotent orbits distinguished in M. .}
