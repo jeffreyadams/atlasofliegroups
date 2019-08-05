@@ -57,7 +57,7 @@ set find ([ComplexNilpotent] list,ComplexNilpotent O) = int:
                            list[i].H{_of_triple}=O.H{_of_triple})
 
 set find ([RealNilpotent] list,RealNilpotent O) = int:
-   first(#list,(int i)bool:list[i].x.root_datum=O.x.root_datum and
+   first(#list,(int i)bool:list[i].x=O.x and
                            list[i].H=O.H)
 
 set dim_eigenspace (RootDatum rd, ratvec H, int k) = int:
