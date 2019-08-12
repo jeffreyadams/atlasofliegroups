@@ -87,7 +87,7 @@ in assert(>fA,"Matrix not strictly positive for linear form")
 in for col@j in A do result := divide(result,col,fA[j]) od; result~[0]
 )
 
-set root_partition_function (RootDatum rd, vec v) = int:
+set Kostant_partition_function (RootDatum rd, vec v) = int:
    let f=rd.rho_check then (level,d)=%(f*v) in
    if d=1 then partition_count(rd.posroots,f,level)[monomial(v)].split_as_int
    else 0
