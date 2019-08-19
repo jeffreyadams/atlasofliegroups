@@ -1593,7 +1593,7 @@ void param_block::compute_y_bits(const y_entry::Pooltype& y_pool)
   const InvolutionTable& i_tab = innerClass().involution_table();
   const RatWeight gamma_rho = gamma() - rho(rootDatum());
 
-  // tabulate some |x| (in fact to first) for every value |y|
+  // tabulate some |x| (in fact the first one) for every value |y|
   std::vector<KGBElt> x_of_y(y_pool.size(),UndefKGB);
   for (BlockElt z=0; z<size(); ++z)
     if (x_of_y[y(z)]==UndefKGB)

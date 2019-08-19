@@ -43,7 +43,7 @@ namespace repr {
   and is called the free part $\lambda_0$ of $\gamma$. The difference
   $\gamma-\lambda_0$, i.e., the projection of $\gamma$ on the $-1$-eigenspace,
   is called $\nu$. This component is what we are adding with respect to the
-  values encoded in the |standardrepk::StandarRepK| type. The part of
+  values encoded in the |standardrepk::StandardRepK| type. The part of
   $\tilde\lambda$ that is independent of $\lambda_0$ is its "torsion part"
   (due to the disconnectedness of $H(R)_c$), which would be represented in the
   |Block| structure by the |TorusPart| component of the |TitsElt| of the dual

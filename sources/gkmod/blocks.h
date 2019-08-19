@@ -40,6 +40,7 @@ namespace blocks {
   // map from numbering of |b| to that of |dual_b|, assuming latter is dual
   std::vector<BlockElt> dual_map(const Block& b, const Block& dual_b);
 
+  // flag intersection of |GR.Cartan_set()| with duals of Cartans from |dGR|
   BitMap common_Cartans(RealReductiveGroup& GR,	RealReductiveGroup& dGR);
 
 
@@ -48,7 +49,7 @@ namespace blocks {
 // The class |BlockBase| serves external functionality, not block construction
 class Block_base
 {
-public: // we need this |struct| to be public, though used in derived classes
+public: // this |struct| must be public, though mainly used in derived classes
   struct EltInfo // per block element information
   {
     KGBElt x,y; // indices into |KGB| sets (which might no longer exist)
@@ -97,10 +98,9 @@ public:
 
 // copy, assignment and swap
 
+  Block_base& operator=(const Block_base& b) = delete;
 protected: // derived classes may need to copy-construct their base
   Block_base(const Block_base& b);
-private:
-  Block_base& operator=(const Block_base& b); // not implemented
 public:
 
 // accessors
@@ -341,7 +341,6 @@ class param_block : public Block_base
 
  public:
 
-  param_block(const Rep_context& rc, unsigned int rank);
   param_block // constructor for full block
     (const repr::Rep_context& rc,
      StandardRepr sr, // by value,since it will be made dominant before use
@@ -383,7 +382,7 @@ class param_block : public Block_base
 
 
  private:
-  void compute_y_bits(const y_entry::Pooltype& y_pool); // set the |y_bits|
+  void compute_y_bits(const y_entry::Pooltype& y_pool); // set all the |y_bits|
   void compute_duals
   (const y_part_hash& y_hash,const block_hash& hash,
    const InnerClass& G,const SubSystem& rs);
