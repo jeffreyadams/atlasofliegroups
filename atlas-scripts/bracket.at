@@ -124,15 +124,16 @@ set bracket(LieAlgebraElement X,LieAlgebraElement Y)=LieAlgebraElement:
 bracket_root_term(X,Y)+bracket_torus_term(X,Y)+bracket_off_diagonal_terms(X,Y)
 
 {root -> (v,null(rank)) where v=e(N,i)=1 in i^th spot, i=# of root in rd.roots}
-set root_term(StructureConstantTable t,vec alpha)=LieAlgebraElement:(t,(e(#t.root_datum.roots,find(t.root_datum.roots,alpha)),null(#t.root_datum.simple_roots)))
+set X_alpha(StructureConstantTable t,int i)=LieAlgebraElement:(t,(e(#t.root_datum.roots,i),null(#t.root_datum.simple_roots)))
+set X_alpha(StructureConstantTable t,vec alpha)=LieAlgebraElement:X_alpha(t,find(t.root_datum.roots,alpha))
 
 {H(t,h)=(t,null(N),h)}
 set H(StructureConstantTable t,vec h)=LieAlgebraElement:(t,(ratvec:null(#t.root_datum.roots),ratvec:h))
 
 {(t,alpha,h)=(t,v,h) where v=root_term(t,alpha)}
-set X(StructureConstantTable t,(vec alpha,vec h))=LieAlgebraElement:(root_term(t,alpha))+H(t,h)
+set X(StructureConstantTable t,(vec alpha,vec h))=LieAlgebraElement:(X_alpha(t,alpha))+H(t,h)
 {alternative format}
-set X(StructureConstantTable t,vec alpha,vec h)=LieAlgebraElement:(root_term(t,alpha))+H(t,h)
+set X(StructureConstantTable t,vec alpha,vec h)=LieAlgebraElement:(X_alpha(t,alpha))+H(t,h)
 
 set ad(LieAlgebraElement X)=ratmat:
 ratvecs_as_ratmat(for i:X.root_datum.dimension do coordinates(bracket(X,basis(X.t,i))) od)
@@ -146,7 +147,7 @@ set two_eigenspace(RootDatum rd,ratvec H)=[vec]:
 
 {2-eigenspace of ad(H): as list of LieAlgebraElements}
 set two_eigenspace(StructureConstantTable t,ratvec H)=[LieAlgebraElement]:
-for alpha in two_eigenspace(t.root_datum,H) do root_term(t,alpha) od
+for alpha in two_eigenspace(t.root_datum,H) do X_alpha(t,alpha) od
 
 {   Jacobson-Morozov triples (H,X,Y)    }
 

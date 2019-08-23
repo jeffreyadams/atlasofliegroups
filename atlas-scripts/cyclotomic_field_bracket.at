@@ -1,4 +1,6 @@
-<bracket.at
+{moved to cyclotomic_Lie_algebra.at}
+
+{<bracket.at
 <structure_constants.at
 <ratmat.at
 <nilpotent_orbits.at
@@ -39,7 +41,6 @@ set support(CFLieAlgebraElement X)=[vec]:
 let v=X.root_part in
 ##for alpha@i in X.root_datum.roots do if not =v[i] then [alpha] else [] fi od
 
-
 {element of Lie algebra coming from ratvec of size n+N=dim(\g)}
 set CF_lie_algebra_element(StructureConstantTable t,CyclotomicVec v)=CFLieAlgebraElement:
 (t,(v[:#t.root_datum.roots],v[#t.root_datum.roots:]))
@@ -47,18 +48,29 @@ set CF_lie_algebra_element(StructureConstantTable t,CyclotomicVec v)=CFLieAlgebr
 set CF_lie_algebra_element_semisimple(StructureConstantTable t,CyclotomicVec v)=CF_lie_algebra_element(t,(null(#t.root_datum.roots,v.F)##v))
 set CF_lie_algebra_element_root_vectors(StructureConstantTable t,CyclotomicVec v)=CF_lie_algebra_element(t,v##(null(t.root_datum.rank,v.F)))
 
+{CF versions of constructors}
+set X_alpha(StructureConstantTable t,int i, CyclotomicField F)=CFLieAlgebraElement:embed(X_alpha(t,i),F)
+set X_alpha(StructureConstantTable t,vec alpha, CyclotomicField F)=CFLieAlgebraElement:embed(X_alpha(t,alpha),F)
+set H(StructureConstantTable t,vec h,CyclotomicField F)=CFLieAlgebraElement:embed(H(t,h),F)
+set X(StructureConstantTable t,(vec alpha,vec h),CyclotomicField F)=CFLieAlgebraElement:embed(X(t,(alpha,h)),F)
+set X(StructureConstantTable t,vec alpha,vec h,CyclotomicField F)=CFLieAlgebraElement:embed(X(t,(alpha,h)),F)
+
+{element of Lie algebra coming from ratvec of size n+N=dim(\g)}
+set lie_algebra_element(StructureConstantTable t,CyclotomicVec v)=CFLieAlgebraElement:
+(t,(v[:#t.root_datum.roots],v[#t.root_datum.roots:]))
+
+set lie_algebra_element_semisimple(StructureConstantTable t,CyclotomicVec v)=lie_algebra_element(t,(null(#t.root_datum.roots,v.F)##v))
+set lie_algebra_element_root_vectors(StructureConstantTable t,CyclotomicVec v)=lie_algebra_element(t,v##(null(t.root_datum.rank,v.F)))
+
 {1\le i\le dim\g -> (t,(v,w)) where either v or w has exactly one entry 1}
 set CFbasis(StructureConstantTable t,int i,CyclotomicField F)=CFLieAlgebraElement:
-CF_lie_algebra_element(t,embed(e(t.root_datum.dimension,i),F))
-
-set show(CFLieAlgebraElement X)=void:
-prints(X.root_part,":",X.H)
+lie_algebra_element(t,embed(e(t.root_datum.dimension,i),F))
 
 {nice string representation of LieAlgebraElement}
-set to_string(CFLieAlgebraElement X)=string:
-let rv="" then
-()=for i:#X.root_part do if !=X.root_part[i] then rv+:="+"+X.root_part[i].to_string+"*X_"+([int]:X.root_datum.roots[i]).to_string fi od then
-()=if !=X.H then rv+:=" "+(X.H).to_string fi in rv
+set to_strings(CFLieAlgebraElement X)=string:
+let rv="" in
+(for i:#X.root_part do if !=X.root_part[i] then rv+:="+"+X.root_part[i].to_string+"*X_"+([int]:X.root_datum.roots[i]).to_string fi od,
+(X.H).to_string);rv
 
 set root_part_array(CFLieAlgebraElement X)=[(CyclotomicFieldElement,vec)]:
 ##(for i:#X.root_part do if !=X.root_part[i] then [(X.root_part[i],X.root_datum.roots[i])] else [] fi od)
@@ -140,19 +152,7 @@ scr=rd.simple_coroots in
 set bracket(CFLieAlgebraElement X,CFLieAlgebraElement Y)=CFLieAlgebraElement:
 bracket_root_term(X,Y)+bracket_torus_term(X,Y)+bracket_off_diagonal_terms(X,Y)
 
-{root -> (v,null(rank)) where v=e(N,i)=1 in i^th spot, i=# of root in rd.roots}
-set root_term(StructureConstantTable t,vec alpha,CyclotomicField F)=CFLieAlgebraElement:
-(t,(embed(e(#t.root_datum.roots,find(t.root_datum.roots,alpha)),F),null(#t.root_datum.simple_roots,F)))
 
-{H(t,h)=(t,null(N),h)}
-set H(StructureConstantTable t,vec h,CyclotomicField F)=CFLieAlgebraElement:(t,(null(#t.root_datum.roots,F),embed(h,F)))
-
-{(t,alpha,h)=(t,v,h) where v=root_term(t,alpha)}
-set X(StructureConstantTable t,(vec alpha,vec h))=LieAlgebraElement:(root_term(t,alpha))+H(t,h)
-set X(StructureConstantTable t,vec alpha,vec h)=LieAlgebraElement:(root_term(t,alpha))+H(t,h)
-
-set X(StructureConstantTable t,(vec alpha,vec h),CyclotomicField F)=CFLieAlgebraElement:embed(LieAlgebraElement:(root_term(t,alpha))+H(t,h),F)
-set X(StructureConstantTable t,vec alpha,vec h,CyclotomicField F)=CFLieAlgebraElement:embed(LieAlgebraElement:(root_term(t,alpha))+H(t,h),F)
 
 set ad(CFLieAlgebraElement X)=CyclotomicMat:
 for i:X.root_datum.dimension do coordinates(bracket(X,CFbasis(X.t,i,X.F))) od
@@ -213,3 +213,4 @@ set show([CyclotomicVec] v)=void:
 let rv="[" in
 for i:#v-1 do rv:=rv + to_string(v[i]) + "," od;
 rv:=rv+to_string(v~[0]) + "]";prints(rv)
+}

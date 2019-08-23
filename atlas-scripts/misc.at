@@ -167,7 +167,12 @@ set roots_by_height(RootDatum rd)=[[vec]]:for i:max_height(rd) do roots_of_heigh
 alpha+p\beta is a root (maximal such p)
 alpha-q\beta is a root (maximal such q)
 }
-set root_string(RootDatum rd, vec alpha, vec beta)=(int,int):
+{set root_string(RootDatum rd, vec alpha, vec beta)=(int,int):
+assert(not alpha=-beta,"alpha=-beta");
+let x = first(for i:4 do  not is_root(rd,alpha+i*beta) od) then
+y = first(for i:4 do not  is_root(rd,alpha-i*beta) od) in (x-1,y-1)
+}
+set root_string(RootDatum rd, vec beta, vec alpha)=(int,int):
 assert(not alpha=-beta,"alpha=-beta");
 let x = first(for i:4 do  not is_root(rd,alpha+i*beta) od) then
 y = first(for i:4 do not  is_root(rd,alpha-i*beta) od) in (x-1,y-1)
