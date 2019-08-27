@@ -18,7 +18,7 @@ set semisimple_part(LieAlgebraElement(,(,v)))=ratvec:v
 set H(LieAlgebraElement X)=ratvec:X.semisimple_part
 set =(LieAlgebraElement X,LieAlgebraElement Y)=bool:
 X.root_datum=Y.root_datum and X.root_part=Y.root_part and X.H=Y.H
-set null(StructureConstantTable t)=LieAlgebraElement:(t,(null(#t.root_datum.roots),null(t.root_datum.ss_rank)))
+set null(StructureConstantTable t)=LieAlgebraElement:(t,(null(#t.root_datum.roots),null(t.root_datum.{ss_}rank)))  {ss_?}
 set =(LieAlgebraElement X)=bool:X=null(X.t)
 set +(LieAlgebraElement X,LieAlgebraElement Y)=LieAlgebraElement:
 assert(X.root_datum=Y.root_datum,"root datum mismatch");
@@ -124,7 +124,8 @@ set bracket(LieAlgebraElement X,LieAlgebraElement Y)=LieAlgebraElement:
 bracket_root_term(X,Y)+bracket_torus_term(X,Y)+bracket_off_diagonal_terms(X,Y)
 
 {root -> (v,null(rank)) where v=e(N,i)=1 in i^th spot, i=# of root in rd.roots}
-set X_alpha(StructureConstantTable t,int i)=LieAlgebraElement:(t,(e(#t.root_datum.roots,i),null(#t.root_datum.simple_roots)))
+{set X_alpha(StructureConstantTable t,int i)=LieAlgebraElement:(t,(e(#t.root_datum.roots,i),null(#t.root_datum.simple_roots)))}
+set X_alpha(StructureConstantTable t,int i)=LieAlgebraElement:(t,(e(#t.root_datum.roots,i),null(t.root_datum.rank)))
 set X_alpha(StructureConstantTable t,vec alpha)=LieAlgebraElement:X_alpha(t,find(t.root_datum.roots,alpha))
 
 {H(t,h)=(t,null(N),h)}
@@ -156,8 +157,11 @@ set JM_triple(StructureConstantTable t,vec H,int n)=(bool,(LieAlgebraElement,Lie
 let S=two_eigenspace(t,H) then
 coeffs=box(n,#S) in
  for A in coeffs do
+ let ()=prints(A) in
  let X=null(t) then
  ()= for i:#S do X+:=A[i]*S[i]  od then
+ ()=prints("X:",X) then
+ ()=prints("H:",H(t,H)) then
  sol=solve_ad(X,H(t,H)) in
  if any(sol) then {prints("found:", H, new_line, X.root_part);}
  return(true,(lie_algebra_element_semisimple(t,H),X,lie_algebra_element(t,requisition(sol)))) fi od;(false,(null(t),null(t),null(t)))
@@ -277,4 +281,14 @@ Kernel_Y=ad_Y.kernel then
 Z=ad_X*Kernel_Y then
 Kernel_Z=kernel(Z) in
 Kernel_Y*Kernel_Z
+
+{embed X for L into G
+use this to promote triple (H,X,Y) from L up to G}
+{L must be an equal rank subgroup of rd}
+set embed(LieAlgebraElement X_L,StructureConstantTable t_rd)=
+let rd=t_rd.root_datum then
+v_L=X_L.root_part then
+v=sum(for i:#v_L do
+ let index=find(rd.roots,X_L.root_datum.roots[i]) in e(#rd.roots,index)*v_L[i] od,#rd.roots {need size of ratvecs})
+in LieAlgebraElement:(t_rd,(v,X_L.H))
 

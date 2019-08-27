@@ -602,6 +602,10 @@ H=dominant(O.H{_of_triple},rd) in
  let j=first(for H_L in distinguished_H_L do dominant(H_L,rd)=H od)
  in if j>=0 then [(L,distinguished_H_L[j])] else [] fi od
 
+{orbits in pseudo Levis which saturate to O}
+set saturating_orbits(ComplexNilpotent O)=[ComplexNilpotent]:
+for (L,H) in O.pseudo_Levis do (L,(),H) od
+
 {Note: affine root is n+1 not 0}
 {this works only if rd.derived is simple}
 set pseudo_Levi(RootDatum rd,[int] S)=RootDatum:
