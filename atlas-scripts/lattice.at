@@ -204,3 +204,6 @@ in for j:c { loop over columns of N while it is being modified in the loop }
    ; assert(N[j,j]=d)
    od; assert(R*N=M);assert(A*C=R*(N##Z));(c,R,N,C,M,Z)
 
+{generators of finite abelian group Z^n/A}
+set finite_quotient(mat M)=let (A,v)=filter_units(Smith(M)) in
+for col@i in A do (col,v[i]) od
