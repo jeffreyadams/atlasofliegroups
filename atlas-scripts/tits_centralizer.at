@@ -321,7 +321,7 @@ given H, find X,Y so that [H,X]=2X, [H,Y]=-2Y, [X,Y]=H
 S is a set of roots (subset of \g_2(H))
 coefficients of X are m^th powers of 1
 }
-set JM_triple(StructureConstantTable t,vec H,[vec] S_roots,CyclotomicField F)=
+set JM_triple(StructureConstantTable t,vec H,[vec] S_roots,CyclotomicField F)=(bool,(CFLieAlgebraElement,CFLieAlgebraElement,CFLieAlgebraElement)):
 let zeta=F.primitive_root then
 S=for alpha in S_roots do lie_algebra_element_root_vectors(t,embed(coordinates(t.root_datum,alpha),F)) od then
 N=#S {length of vectors} then
@@ -344,6 +344,9 @@ then
    return(true,(lie_algebra_element_semisimple(t,embed(H,F)),X,lie_algebra_element(t,v_Y)))
  fi
 od;(false,(null(t,F),null(t,F),null(t,F)))
+
+set JM_triple(StructureConstantTable t,ComplexNilpotent O,CyclotomicField F)=
+JM_triple(t,O.H,two_eigenspace(t.root_datum,O.H),F)
 
 set JM_triple_one(StructureConstantTable t,vec H,[vec] S_roots,[int] coeff,CyclotomicField F)=
 let zeta=F.primitive_root then
@@ -371,9 +374,6 @@ then
  fi
 od;
 (false,(null(t,F),null(t,F),null(t,F)))
-
-
-
 
 {same as previous but return a set of triples
 stop is the number of tries
@@ -477,6 +477,13 @@ in
   fi
  fi
 od; (false,null(t,F),null(t,F),tits_identity(w.root_datum))
+
+set JM_triple_strong(StructureConstantTable t,ComplexNilpotent O,CyclotomicField F,WeylElt w,int tries)=
+let S=two_eigenspace(t.root_datum,O.H) then
+v=for i:#S do F.order-1 od in
+let ()=prints("v=",v) in 
+JM_triple_strong(t,O.H,S,F,w,v,tries)
+
 
 {same but with a set of Weyl group elements}
 set JM_triple_strong(StructureConstantTable t,vec H,[vec] S_roots,CyclotomicField F,[WeylElt] ws,[int] start_vec, int tries)=
