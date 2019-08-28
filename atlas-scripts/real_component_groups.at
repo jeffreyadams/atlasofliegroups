@@ -1,0 +1,111 @@
+<nilpotent_orbits.at
+
+{set real_forms_of_orbit_with_Levi (RealForm G,[int] H)=[(RealNilpotent, RealForm, vec)]:
+   let (S,K)=Levi_of_H(H,G) then Levis=viable_Levis(G,S) then
+   list=##for M in Levis do test_real_orbit_plus (G,K,M,S) then
+   for psir
+}
+set test_real_orbit_plus (RealForm G,[int] H, RealForm M, [int] S) = [(KGBElt, KGBElt, RealForm)]:
+ ##for x_M in KGB(M)
+   do let P_L=Parabolic:(simple_roots_from_coweight(root_datum(M),H),x_M)
+   in if is_parabolic_theta_stable(P_L) and x_M=x_min(P_L) else []
+      then
+         let MC=complex_Levi(G,S), theta=involution(x_M)
+         then dim_center=rank(lie_compact_radical(inner_class(MC,theta)))
+         , number_roots =
+            for alpha in posroots(M)
+            do if is_noncompact_imaginary(alpha,x_M) and H*alpha=2 then 1
+               elif is_complex(alpha,x_M) and H*alpha=2 then /2 { with 2/2=1 }
+               else 0
+               fi
+            od.sum
+      in if dimension(K_0(Levi_of_orbit(real_nilpotent(H,x_M))))
+           =dim_center+number_roots
+         then [(embed_KGB(x_M,G),x_M,M)]
+         else []
+         fi
+      fi
+    od
+
+set test_real_orbit_alt (RealForm G,[int] H, RealForm M) = [KGBElt]:
+ ##for x_M in KGB(M)
+   do let P_L=Parabolic:(simple_roots_from_coweight(root_datum(M),H),x_M)
+   in if is_parabolic_theta_stable(P_L) and x_M=x_min(P_L) else []
+      then
+         let MC=root_datum(M), theta=involution(x_M)
+         then dim_center=rank(lie_compact_radical(inner_class(MC,theta)))
+         , number_roots =
+            for alpha in posroots(M)
+            do if is_noncompact_imaginary(alpha,x_M) and H*alpha=2 then 1
+               elif is_complex(alpha,x_M) and H*alpha=2 then /2 { with 2/2=1 }
+               else 0
+               fi
+            od.sum
+      in if dimension(K_0(Levi_of_orbit(real_nilpotent(H,x_M))))
+           =dim_center+number_roots
+         then [embed_KGB(x_M,G)]
+         else []
+         fi
+      fi
+    od
+
+{. Given G and a coweight H, find all x so that (H_nd,x,) is a real
+   nilpotent orbit. Here H_nd is the conjugate of H corresponding to
+   the associated Bala-Carter Levi M. There may be duplications of
+   orbits. .}
+set all_real_nilpotent_orbit_KGBs_plus (RealForm G,[int] H) = [(KGBElt,KGBElt,RealForm)]:
+   let (S,K)=Levi_of_H(H,G) then Levis=viable_Levis(G,S) in
+ ##for M in Levis do test_real_orbit_plus(G,K,M,S) od
+
+set x_preserving_root_datum (RootDatum rd, RealForm G)=[KGBElt]:
+   ##for x in KGB(G) do if
+   all(for alpha in simple_roots(rd) do is_root (rd,involution(x)*alpha) od) then [x]
+   else [] fi od
+
+set real_form_of_pseudo_Levi (RootDatum rd, KGBElt x)=RealForm:
+   let theta=involution(x) then
+   ic_L=inner_class(rd,theta)   in real_form(ic_L,theta,torus_factor(x))
+
+set real_forms_of_pseudo_Levi (RootDatum rd, RealForm G)=[(RealForm,KGBElt)]:
+   let result=[(RealForm,KGBElt)]:[] in
+   for x in x_preserving_root_datum (rd,G) do
+   let L=real_form_of_pseudo_Levi (rd,x) in
+   if none (for (M,) in result do M=L od) then result#:=(L,x) fi od;
+   result
+
+set proper_pseudo_Levis (RootDatum rd)=[[int]]:
+   let r=semisimple_rank (rd) in
+   ##for S in pseudo_Levis(rd) do if #S>0 and S[0]=r then [S] else [] fi od
+
+set real_orbit_KGBs_with_pseudo_Levis (ComplexNilpotent OC, RealForm G)=[(RealForm,vec,[KGBElt])]:
+   let pairs=pseudo_Levis(OC) then
+   result=[(RealForm,vec,[KGBElt])]:[] in
+   for (LC,K) in pairs do
+      for (L,) in real_forms_of_pseudo_Levi (LC,G) do
+         let kgbs=test_real_orbit_alt (G,K,L) in result#:= (L,K,kgbs) od od;
+      result
+
+set standard_real_orbit (vec H,KGBElt x)=RealNilpotent:
+   let K=dominant(H,root_datum(x)),G=real_form(x) in
+   if =H then real_nilpotent(H,KGB(G,0))
+       else let P=parabolic_of_orbit(real_nilpotent(H,x))
+           in real_nilpotent(K,x_min(P)) fi
+
+set standard_real_orbits (vec H,[KGBElt] list)=[RealNilpotent]:
+   if #list=0 then []
+     else let result=[RealNilpotent]:[] in for x in list
+          do let orb=standard_real_orbit (H,x)
+	     in if none(for O in result do is_conjugate_orbit (O,orb) od)
+	        then result#:=orb fi od;
+      result
+    fi
+
+set pseudo_Levis (RealNilpotent O)=[RealForm]:
+   let G=real_form(O), OC=complex_orbit(O)
+    then triples=real_orbit_KGBs_with_pseudo_Levis(OC,G) then
+    result=[RealForm]:[] in
+       for (M,H,list) in triples
+       do if any (for x in list do is_conjugate_orbit(O,standard_real_orbit (H,x)) od)
+          then result#:=M fi od;
+       result
+
