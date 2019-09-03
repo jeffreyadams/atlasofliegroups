@@ -109,5 +109,6 @@ set is_locally_isomorphic(RootDatum rd_1,RootDatum rd_2)=bool:
 normalize_Lie_type_matrix(Lie_type_matrix(rd_1))=
 normalize_Lie_type_matrix(Lie_type_matrix(rd_2))
 
-
-
+{apply Cartan_matrix_type to a RootDatum}
+set Cartan_matrix_type(RootDatum rd)=(LieType,[int]):
+Cartan_matrix_type(Cartan_matrix(rd))
