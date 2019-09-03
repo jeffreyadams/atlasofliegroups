@@ -1,4 +1,4 @@
-<cyclotomic_matrices.at
+<cyclotomicMat.at
 
 {Gaussian elimination over cyclotomic fields}
 
@@ -9,7 +9,7 @@ on the algorithms implmented here.
 
 set_type
 [ Cyclotomic_Pivot_info = ( (int,[CyclotomicFieldElement]) pivot | [CyclotomicFieldElement] no_pivot )
-, lin_solution = ( void no_Cyclotomic_solution | (CyclotomicVec,CyclotomicMat) affine_space )
+, CF_lin_solution = ( void no_Cyclotomic_solution | (CyclotomicVec,CyclotomicMat) affine_space )
 ]
 
 { the |pivot_step| takes as argument the choice function for the pivot }
@@ -94,7 +94,7 @@ set apply ([int,[CyclotomicFieldElement]] pivots) = ([CyclotomicFieldElement]->[
        for (k,coefs)@j in pivots do col:=apply(j,k,coefs)(col) od; col
 
 { Put the above together for solving a rational linear system |A*x=b| }
-set full_solve (CyclotomicMat A, CyclotomicVec b) = lin_solution:
+set full_solve (CyclotomicMat A, CyclotomicVec b) = CF_lin_solution:
    let (pivots,kernel,spread)= split_data(A.get_data,A.F) then sol=b.(apply(pivots))
    in if =sol[#pivots:] { after |#pivots|, any entries of |sol| must be 0 }
       then (spread(sol) , kernel).affine_space
@@ -108,6 +108,15 @@ set a_solution ((CyclotomicMat,CyclotomicVec)system) = CyclotomicVec:
    | else error("No solution")
    esac
 
+set a_solution ((CyclotomicMat A,ratvec v)) = CyclotomicVec:
+a_solution((A,embed(v,A.F)))
+
+{extract single solution from CF_lin_solution}
+set a_solution(CF_lin_solution sol)=CyclotomicVec:
+case sol | (v,).affine_space:v
+         | else error("No solution")
+esac
+
 set all_solutions ((CyclotomicMat,CyclotomicVec)system) = 
    case full_solve(system)
    | (,v).affine_space: v
@@ -119,7 +128,7 @@ set kernel(CyclotomicMat M)=[[CyclotomicFieldElement]]:all_solutions(M,null(n_ro
 { For inverse of a matrix, apply row operations to columns of identity matrix }
 set make_inverse ([(int,[CyclotomicFieldElement])] data) = CyclotomicMat:
    let (,elements)=data[0] then F=elements[0].F then
-   n=#data in for j:n do apply(data)(for i:n do embed_Q(rat: #(i=j),F) od) od
+   n=#data in for j:n do apply(data)(for i:n do embed(rat: #(i=j),F) od) od
 
 set inverse (CyclotomicMat M) = CyclotomicMat:
    if =#M then return M fi; assert(#M=#M[0],"Inverse of non square matrix");

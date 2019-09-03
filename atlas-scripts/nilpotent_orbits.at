@@ -41,6 +41,16 @@ set dim_nilpotent (ComplexNilpotent(rd,,H)) = int:
 set diagram (ComplexNilpotent(rd,,H)) = [int]:
    dominant(H,rd){action on coweight} * simple_roots(rd)
 
+{for a simple root system, put the diagram in standard Bourbaki
+ order. For a non-simple system, put in standard Bourbaki
+ order on each simple factor. Probably the order of the factors
+ doesn't change but this isn't guaranteed.
+} 
+set diagram_normalized(ComplexNilpotent O)=[int]:
+let (,perm)=Cartan_matrix_type(O.root_datum) then
+P=permutation_matrix(perm) in
+P*diagram(O)
+
 {construct complex orbit (rd,(),H) from (rd,Dynkin diagram)}
 set complex_nilpotent_from_diagram(RootDatum rd,[int] diagram)=ComplexNilpotent:
 (rd,(),ratvec_as_vec(sum(for a@i in diagram do a*rd.fundamental_coweights[i] od,rd.rank)))
@@ -57,7 +67,7 @@ set find ([ComplexNilpotent] list,ComplexNilpotent O) = int:
                            list[i].H{_of_triple}=O.H{_of_triple})
 
 set find ([RealNilpotent] list,RealNilpotent O) = int:
-   first(#list,(int i)bool:list[i].x.root_datum=O.x.root_datum and
+   first(#list,(int i)bool:list[i].x=O.x and
                            list[i].H=O.H)
 
 set dim_eigenspace (RootDatum rd, ratvec H, int k) = int:
@@ -150,6 +160,12 @@ set nilpotent_orbits (RootDatum rd) = [ComplexNilpotent]:
    for H in all_H(rd) do nilpotent(rd,H) od.sort_by_dimension
 {tired of typing so many characters}
 set orbits (RootDatum rd) = [ComplexNilpotent]:nilpotent_orbits(rd)
+
+set distinguished_nilpotent_orbits(RootDatum rd)=[ComplexNilpotent]:
+for H in rd.distinguished_H do (rd,(),H) od
+
+set distinguished_orbits(RootDatum rd)=[ComplexNilpotent]:
+rd.distinguished_nilpotent_orbits
 
 {. For a complex group, for each standard Levi M given by a list of simple
    roots, list the corresponding neutral elements H (dominant for M, not G)
@@ -595,6 +611,10 @@ H=dominant(O.H{_of_triple},rd) in
  let distinguished_H_L=distinguished_H(L) in
  let j=first(for H_L in distinguished_H_L do dominant(H_L,rd)=H od)
  in if j>=0 then [(L,distinguished_H_L[j])] else [] fi od
+
+{orbits in pseudo Levis which saturate to O}
+set saturating_orbits(ComplexNilpotent O)=[ComplexNilpotent]:
+for (L,H) in O.pseudo_Levis do (L,(),H) od
 
 {Note: affine root is n+1 not 0}
 {this works only if rd.derived is simple}

@@ -110,4 +110,5 @@ normalize_Lie_type_matrix(Lie_type_matrix(rd_1))=
 normalize_Lie_type_matrix(Lie_type_matrix(rd_2))
 
 
+set Cartan_matrix_type(RootDatum rd)=(LieType,[int]):Cartan_matrix_type(rd.Cartan_matrix)
 

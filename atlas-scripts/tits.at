@@ -129,6 +129,7 @@ set ^ (Tits_elt !xi, int n) = Tits_elt:
   else tits_identity(xi.root_datum)
   fi
 
+{this only works if the torus part is of order 2 (in the ajdoint group?)}
 set order (Tits_elt xi) = int:
   let id=tits_identity(xi.root_datum), d=order(xi.theta)
   in if xi^d=id then d elif xi^(2*d)=id then 2*d else error() fi
