@@ -1,3 +1,5 @@
+<Weylgroup.at
+
 { brute force enumerate the conjugacy class of |w|, with conjugacy witnesses }
 set minimal_representatives (WeylElt !w0) = ([WeylElt],[WeylElt]):
    let rd=w0.root_datum, class = [w0]
