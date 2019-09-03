@@ -41,6 +41,16 @@ set dim_nilpotent (ComplexNilpotent(rd,,H)) = int:
 set diagram (ComplexNilpotent(rd,,H)) = [int]:
    dominant(H,rd){action on coweight} * simple_roots(rd)
 
+{for a simple root system, put the diagram in standard Bourbaki
+ order. For a non-simple system, put in standard Bourbaki
+ order on each simple factor. Probably the order of the factors
+ doesn't change but this isn't guaranteed.
+} 
+set diagram_normalized(ComplexNilpotent O)=[int]:
+let (,perm)=Cartan_matrix_type(O.root_datum) then
+P=permutation_matrix(perm) in
+P*diagram(O)
+
 {construct complex orbit (rd,(),H) from (rd,Dynkin diagram)}
 set complex_nilpotent_from_diagram(RootDatum rd,[int] diagram)=ComplexNilpotent:
 (rd,(),ratvec_as_vec(sum(for a@i in diagram do a*rd.fundamental_coweights[i] od,rd.rank)))
@@ -601,6 +611,10 @@ H=dominant(O.H{_of_triple},rd) in
  let distinguished_H_L=distinguished_H(L) in
  let j=first(for H_L in distinguished_H_L do dominant(H_L,rd)=H od)
  in if j>=0 then [(L,distinguished_H_L[j])] else [] fi od
+
+{orbits in pseudo Levis which saturate to O}
+set saturating_orbits(ComplexNilpotent O)=[ComplexNilpotent]:
+for (L,H) in O.pseudo_Levis do (L,(),H) od
 
 {Note: affine root is n+1 not 0}
 {this works only if rd.derived is simple}

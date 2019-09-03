@@ -645,6 +645,7 @@ set_type
   , ([int],[int]->[int]) tensor
   , ([int],int->[int]) tensor_power
   , (int->[int]) sym_power_refl
+  , mat characters
   )
 ]
 
@@ -706,7 +707,8 @@ in
         od
      ;  reflection_sympowers[k] := for s in acc do s\k od
      od
-  ;  reflection_sympowers[n]
+  ;  reflection_sympowers[n],
+  [for :ncc do 1 od {trivial}, for w in reps do minus_1^w.length od {sgn}, for w in reps do w.matrix.trace od {reflection}]
 )
 
 {. root datum of WeylClassTable .}
