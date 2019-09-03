@@ -41,6 +41,16 @@ set dim_nilpotent (ComplexNilpotent(rd,,H)) = int:
 set diagram (ComplexNilpotent(rd,,H)) = [int]:
    dominant(H,rd){action on coweight} * simple_roots(rd)
 
+{for a simple root system, put the diagram in standard Bourbaki
+ order. For a non-simple system, put in standard Bourbaki
+ order on each simple factor. Probably the order of the factors
+ doesn't change but this isn't guaranteed.
+} 
+set diagram_normalized(ComplexNilpotent O)=[int]:
+let (,perm)=Cartan_matrix_type(O.root_datum) then
+P=permutation_matrix(perm) in
+P*diagram(O)
+
 {construct complex orbit (rd,(),H) from (rd,Dynkin diagram)}
 set complex_nilpotent_from_diagram(RootDatum rd,[int] diagram)=ComplexNilpotent:
 (rd,(),ratvec_as_vec(sum(for a@i in diagram do a*rd.fundamental_coweights[i] od,rd.rank)))
