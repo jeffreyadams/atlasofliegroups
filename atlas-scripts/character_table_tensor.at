@@ -1,6 +1,9 @@
+<character_tables.at
+<group_operations.at
+
+
 set outer_tensor([int] char_1,[int] char_2)=[int]:
  ##for i:#char_1 do for j:#char_2 do char_1[i]*char_2[j] od od
-
 
 set tensor(CharacterTable ct1,CharacterTable ct2)=CharacterTable:
 let m=ct1.n_classes then
@@ -20,8 +23,8 @@ class_rep(int k)=WeylElt:
  let (a,b)=f(k) then
   rd1=ct1.root_datum then
   rd2=ct2.root_datum then
-  w1=ct.class_rep(a) then
-  w2=ct.class_rep(b) then
+  w1=ct1.class_rep(a) then
+  w2=ct2.class_rep(b) then
   rd=rd1*rd2 then
   M=block_matrix(w1.matrix,w2.matrix) in W_elt(rd,M) then
 class_order(int k)=let (a,b)=f(k) in ct1.class_order(a) * ct2.class_order(b) then

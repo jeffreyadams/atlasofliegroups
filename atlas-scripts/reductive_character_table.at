@@ -1,3 +1,6 @@
+<simple_character_table.at
+<character_table_tensor.at
+
 set character_table(RootDatum rd)=
 let factors=rd.derived.simple_factors then
 rv=simple_character_table(factors[0].derived) in

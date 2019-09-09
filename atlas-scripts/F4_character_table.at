@@ -1,3 +1,6 @@
+<character_tables.at
+<nilpotent_orbits.at
+
 set G=F4_s
 set rd=G.root_datum
 set orbits=G.orbits

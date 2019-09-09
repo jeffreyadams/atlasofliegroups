@@ -1,3 +1,6 @@
+<nilpotent_orbits.at
+<character_tables.at
+
 set_type SpringerTable=
   (CharacterTable ct,
   [ComplexNilpotent] orbits,

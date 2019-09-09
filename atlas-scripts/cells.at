@@ -1,4 +1,5 @@
 <character_table_reps.at
+<springer.at
 
 set cells_verbose=true
 
@@ -54,7 +55,7 @@ all(for i:rd.ss_rank do  rd.simple_coroots[i]*gamma != 0 or find(tau,i)=-1 od)
 set push([Param] params,ratvec gamma)=[Param]:
 ##for p in params do if I_will_survive(p,gamma) then [T(p,gamma)] else [] fi od
 
-set parameters_given_AV_infinitesimal_character(SpringerTable ct, ComplexNilpotent O,[([Param],[WCell])] blocks_and_cells,ratvec gamma)=
+set parameters_given_AV_infinitesimal_character(SpringerTable st, ComplexNilpotent O,[([Param],[WCell])] blocks_and_cells,ratvec gamma)=
 [(int,int,Param)]: {[(block number, cell number, parameter)]}
 ##for (block,cells)@i in blocks_and_cells do
  ##for cell@j in cells do

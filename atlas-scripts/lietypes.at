@@ -110,3 +110,8 @@ normalize_Lie_type_matrix(Lie_type_matrix(rd_1))=
 normalize_Lie_type_matrix(Lie_type_matrix(rd_2))
 
 set Cartan_matrix_type(RootDatum rd)=(LieType,[int]):Cartan_matrix_type(rd.Cartan_matrix)
+
+set simple_type(LieType lt)=
+assert(lt.is_simple,"LieType is not simple");
+let letters=["A","B","C","D","E","F","G"] then
+col=first(7,(int i):!=lt.Lie_type_matrix[i]) in (letters[col],lt.rank)
