@@ -119,18 +119,6 @@ tabulate(
  ["class","order","|cent|","class_size"]# for i:#ct.table do
 [ct.class_label(i),ct.class_order(i).to_string, ct.centralizer_order(i).to_string,ct.class_size(i).to_string] od)
 
-set show_reps(CharacterTable ct)=void:
-tabulate(
-["character","signature", "name"] #
-for i:ct.n_classes do
-[ct.character(i).to_string,ct.signature(ct.character(i)).to_string, ct.irreducible_label(i)] od)
-
-set decompose(CharacterTable ct)=(vec->vec):(vec v):
-for i:#ct.table do ct.inner_product(v,ct.character(i)) od
-
-
-
-
 {miscellaneous functions}
 
 {find j so that
@@ -156,6 +144,16 @@ i_short=ct.index_short_reflection in
 if i_short!=-1 then [char[0],char[i_long],char[i_short]] else [char[0],char[i_long]] fi
 
 set signature(CharacterTable ct)=([int] ->[int]):([int] char):signature(ct,char)
+set show_reps(CharacterTable ct)=void:
+tabulate(
+["character","signature", "name"] #
+for i:ct.n_classes do
+[ct.character(i).to_string,
+ct.signature(ct.character(i)).to_string,
+ct.irreducible_label(i)] od)
+
+set decompose(CharacterTable ct)=(vec->vec):(vec v):
+for i:#ct.table do ct.inner_product(v,ct.character(i)) od
 
 set permute_classes(CharacterTable ct,(int->int) f)=CharacterTable:
 let
