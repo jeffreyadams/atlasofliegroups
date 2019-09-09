@@ -1,0 +1,77 @@
+set outer_tensor([int] char_1,[int] char_2)=[int]:
+ ##for i:#char_1 do for j:#char_2 do char_1[i]*char_2[j] od od
+
+
+set tensor(CharacterTable ct1,CharacterTable ct2)=CharacterTable:
+let m=ct1.n_classes then
+n=ct2.n_classes then
+{
+{0,1,...,mn-1} <-> {(a,b)| 0\le 1\le m-1, 0\le b\le n-1}
+f:int ->(int,int) , g:(int,int)->int
+are inverse bijections
+}
+f(int k)=(int,int): (k\n,k%n) then
+g(int a,int b)=int:a*n+b  then
+lie_type=ct1.lie_type *ct2.lie_type then
+order=ct1.order*ct2.order then
+n_classes=m*n then
+class_label(int k)=let (a,b)=f(k) in ct1.class_label(a) + ct2.class_label(b) then
+class_rep(int k)=WeylElt:
+ let (a,b)=f(k) then
+  rd1=ct1.root_datum then
+  rd2=ct2.root_datum then
+  w1=ct.class_rep(a) then
+  w2=ct.class_rep(b) then
+  rd=rd1*rd2 then
+  M=block_matrix(w1.matrix,w2.matrix) in W_elt(rd,M) then
+class_order(int k)=let (a,b)=f(k) in ct1.class_order(a) * ct2.class_order(b) then
+class_power(int i,int j)=let (a,b)=f(j) in g(ct1.class_power(a,j),ct2.class_power(b,j)) then
+centralizer_orders=for i:m*n do
+ let (a,b)=f(i) in ct1.centralizer_orders[a]*ct2.centralizer_orders[b] od then
+class_sizes=for i:m*n do
+ let (a,b)=f(i) in ct1.class_sizes[a]*ct2.class_sizes[b] od then
+irreducible_label(int i)=let (a,b)=f(i) in ct1.irreducible_label(a)+ct2.irreducible_label(b) then
+sym_powers_reflection=
+ ##for char_1 in ct1.characters do
+  for char_2 in ct2.characters do
+   outer_tensor(char_1,char_2)
+  od
+ od then
+degrees=for i:m*n do let (a,b)=f(i) in ct1.degrees[a]*ct2.degrees[b] od then
+table=kronecker_product(ct1.table,ct2.table) in
+(
+lie_type,
+order,
+n_classes,
+(int j) [(Partition,vec)]: [([],[])],  {partitions_and_signs, not used}
+class_label,
+class_rep,
+class_order,
+class_power,
+centralizer_orders,
+class_sizes,
+irreducible_label,
+sym_powers_reflection,
+degrees,
+table)
+ 
+set_type
+[ CharacterTable =
+  (LieType lie_type
+  , int order { of the finite group }
+  {conjugacy classes}
+  , int n_classes  { number of conjugacy classes}
+  , (int ->[(Partition,vec)]) partitions_and_signs  {simple classical groups only}
+  , (int->string) class_label {derived from partitions_and_signs in classical case}
+  , (int ->WeylElt) class_rep     {gives element of W representating class_label(i)}
+  , (int->int) class_order
+  , (int,int->int) class_power   {(i,j) -> class_of(i^th class to the j^power)}
+  , [int] centralizer_orders
+  , [int] class_sizes
+  {irreducible characters}
+  , (int->string) irreducible_label
+  , [[int]] sym_powers_reflection
+  , [int] degrees
+  , mat table { by row=character }
+  )
+]

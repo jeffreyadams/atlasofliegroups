@@ -1,0 +1,253 @@
+<character_table_reps.at
+
+set cells_verbose=true
+
+set #(WCell cell)=int:let (a,b)=cell in #a 
+set parameters([Param] block,WCell cell)=[Param]:
+let (labels,)=cell in for i in labels do block[i] od 
+
+set parameters([Param] block,[WCell] cells)=[Param]:
+##for cell in cells do parameters(block,cell) od
+
+set parameters([([Param],[WCell])] data)=[Param]:
+##for i:#data do parameters(data[i]) od
+
+
+{break set of params into blocks}
+set blocks([Param] params)=[[Param]]:
+let rv=[[Param]]:[] in
+for p in params do
+ let found=first(for block in rv do find(block,p)!=-1 od) in
+ if found=-1 then rv#:=block_of(p) fi
+od;
+rv
+
+{W_cells@Param is built-in}
+
+{need to keep block_of(p) since this is what the numbering
+in W_cells(p) refers to
+}
+set blocks_and_cells([Param] params)=[([Param],[WCell])]:
+for b in blocks(params) do
+let p=b[0] in (block_of(p),W_cells(p)) od
+
+set blocks_and_cells(Param p)=blocks_and_cells(block_of(p))
+
+set cells_given_AV(SpringerTable st, ComplexNilpotent O,([Param],[WCell]) blocks_and_cells)=
+let sigma_O=st.springer(O) then
+(block,cells)=blocks_and_cells then
+()=if cells_verbose then prints("size of block: ", #block,new_line, "number or cells: ", #cells) fi in
+(block,
+   ##for cell@j in cells do
+{    if cells_verbose then let ()=prints("doing cell #",j) fi  in}
+    if st.ct.special_character(cell)=sigma_O then [cell] else [] fi
+    od)
+
+set parameters_given_AV(SpringerTable st, ComplexNilpotent O,([Param],[WCell]) cells)=[Param]:
+parameters(cells_given_AV(st,O,cells))
+
+{true if translation of irreducible parameter p to gamma is non-zero}
+set I_will_survive(Param p,ratvec gamma)=bool:
+let rd=p.root_datum then tau=p.tau in
+all(for i:rd.ss_rank do  rd.simple_coroots[i]*gamma != 0 or find(tau,i)=-1 od)
+
+set push([Param] params,ratvec gamma)=[Param]:
+##for p in params do if I_will_survive(p,gamma) then [T(p,gamma)] else [] fi od
+
+set parameters_given_AV_infinitesimal_character(SpringerTable ct, ComplexNilpotent O,[([Param],[WCell])] blocks_and_cells,ratvec gamma)=
+[(int,int,Param)]: {[(block number, cell number, parameter)]}
+##for (block,cells)@i in blocks_and_cells do
+ ##for cell@j in cells do
+  if st.ct.special_character(cell)=st.springer(O) then 
+   ##for p in parameters(block,cells[j]) do if I_will_survive(p,gamma) then [(i,j,first_param(T_irr(p,gamma)))] else [] fi od
+  else []
+  fi
+ od
+od
+
+{
+set parameters_given_AV_infinitesimal_character(SpringerTable ct, ComplexNilpotent O,([Param],[WCell]) cells,ratvec gamma)=
+##for p in parameters_given_AV(st,O,cells) do
+ if I_will_survive(p,gamma) then [T_irr(p,gamma)] else [] fi od
+}
+
+set weak_integral_packet(SpringerTable st,(ComplexNilpotent->ComplexNilpotent) duality,ComplexNilpotent O_check,[Param] params)=[(int,int,Param)]:
+let ()=if cells_verbose then
+ prints("Computing weak (integral) packet for ", params[0].real_form, new_line,
+ "dual orbit:",new_line, " diagram: ", O_check.diagram, new_line,
+ " normalized diagram: ", O_check.diagram_normalized, new_line,
+ " H: ", O_check.H, new_line,
+ " dimension: ", O_check.dim_nilpotent)
+fi then
+blocks_and_cells=blocks_and_cells(params) then
+()=if cells_verbose then
+ prints("computed ", #blocks_and_cells, " blocks")
+fi  in
+ let  gamma=O_check.H/2 then
+ ()=if cells_verbose then prints("inf. char.=",gamma) fi then
+ O=O_check.duality then
+ ()=if cells_verbose then
+  prints("orbit:",new_line, " diagram: ", O.diagram, new_line,
+   " normalized diagram: ", O.diagram_normalized, new_line,
+   " H: ", O.H, new_line,
+   " dimension: ", O.dim_nilpotent)
+ fi then
+ sigma=st.springer(O) then
+ ()=if cells_verbose then prints("sigma=", sigma, " of dimension ",st.ct.dimension(sigma)) fi then
+ parameters=parameters_given_AV_infinitesimal_character(st,O,blocks_and_cells,gamma) 
+{ ()=if cells_verbose then
+  prints("found ", #parameters, " parameters") fi}
+ in
+parameters
+
+set weak_integral_packet(SpringerTable st,(ComplexNilpotent->ComplexNilpotent) duality,ComplexNilpotent O_check,[Param] params)=[(int,int,Param)]:
+let ()=if cells_verbose then
+ prints("Computing weak (integral) packet for ", params[0].real_form, new_line,
+ "dual orbit:",new_line, " diagram: ", O_check.diagram, new_line,
+ " normalized diagram: ", O_check.diagram_normalized, new_line,
+ " H: ", O_check.H, new_line,
+ " dimension: ", O_check.dim_nilpotent)
+fi then
+blocks_and_cells=blocks_and_cells(params) then
+()=if cells_verbose then
+ prints("computed ", #blocks_and_cells, " blocks")
+fi  in
+ let  gamma=O_check.H/2 then
+ ()=if cells_verbose then prints("inf. char.=",gamma) fi then
+ O=O_check.duality then
+ ()=if cells_verbose then
+  prints("orbit:",new_line, " diagram: ", O.diagram, new_line,
+   " normalized diagram: ", O.diagram_normalized, new_line,
+   " H: ", O.H, new_line,
+   " dimension: ", O.dim_nilpotent)
+ fi then
+ sigma=st.springer(O) then
+ ()=if cells_verbose then prints("sigma=", sigma, " of dimension ",st.ct.dimension(sigma)) fi then
+ parameters=parameters_given_AV_infinitesimal_character(st,O,blocks_and_cells,gamma) 
+{ ()=if cells_verbose then
+  prints("found ", #parameters, " parameters") fi}
+ in
+parameters
+
+
+{reporting functions}
+
+set mult([[(int,int,Param)]] packet)=((int,int,int)->int):(int orbit,int block,int cell):
+let rv=0 in
+for (b,c,p) in packet[orbit] do
+ if b=block and c=cell then rv+:=1 fi
+od;rv
+
+set parameters([[(int,int,Param)]] packet)=((int,int,int)->[Param]):(int orbit,int block,int cell):
+let rv=[Param]:[] in
+for (b,c,p) in packet[orbit] do
+ if b=block and c=cell then rv#:=p fi
+od;rv
+
+set mult_block([[(int,int,Param)]] packet)=((int,int)->int):(int orbit,int block):
+let rv=0 in
+for (b,c,p) in packet[orbit] do
+ if b=block  then rv+:=1 fi
+od;rv
+
+set blocks([[(int,int,Param)]] packets)=sort_u(##for i:#packets do for (b,,) in packets[i] do b od od)
+{set cells([[(int,int,Param)]] packets,int block_number) =sort_u(##for i:#packets do for (,c,) in packets[i] do c od od)}
+set cells([[(int,int,Param)]] packets) =sort_u(##for i:#packets do for (,c,) in packets[i] do c od od)
+
+set show_detail([[(int,int,Param)]] packets)=void:
+let blocks=blocks(packets) then
+cells=cells(packets) then
+m=mult(packets) in
+tabulate(
+ ["orbit","block#","cell#","#packet"]#
+ ##for i:#packets do
+  ##for b in blocks do
+   ##for c in cells do
+    if m(i,b,c)!=0 then [[i.to_string,b.to_string,c.to_string,m(i,b,c).to_string]] else [] fi 
+   od
+  od
+ od
+  )
+
+set show_very_long([[(int,int,Param)]] packets)=void:
+let blocks=blocks(packets) then
+cells=cells(packets) then
+m=mult(packets) in
+tabulate(
+ ["orbit","block#","cell#","parameters"]#
+ ##for i:#packets do
+  ##for b in blocks do
+   ##for c in cells do
+    for p in packets.parameters(i,b,c) do [i.to_string,b.to_string,c.to_string,p.to_string] 
+   od
+  od
+ od
+od
+  )
+
+set show([[(int,int,Param)]] packets)=void:
+let blocks=blocks(packets) then
+cells=cells(packets) then
+m=mult_block(packets) in
+tabulate(
+ ["orbit","block#","#packet"]#
+ ##for i:#packets do
+  ##for b in blocks do
+    if m(i,b)!=0 then [[i.to_string,b.to_string,m(i,b).to_string]] else [] fi 
+   od
+  od
+  )
+
+set show_one_block([[(int,int,Param)]] packets, int block_number)=void:
+let blocks=blocks(packets) then
+cells=cells(packets) then
+m=mult_block(packets) in
+tabulate(
+ ["orbit","#packet"]#
+ ##for i:#packets do
+  ##for b@j in blocks do
+    if j=block_number and m(i,b)!=0 then [[i.to_string,m(i,b).to_string]] else [] fi 
+   od
+  od
+  )
+
+set show_short([[(int,int,Param)]] packets)=void:
+let blocks=blocks(packets) then
+grand_total=0 then
+cells=cells(packets) then
+m=mult(packets) in
+tabulate(
+ ["orbit","#packet"]#
+ ##for i:#packets do
+  let total=sum(for b in blocks do sum(for c in cells do m(i,b,c) od) od)
+ in if total!=0 then grand_total+:=total;[[i.to_string,total.to_string]] else [] fi
+od
+#["Total",grand_total.to_string]
+)
+
+
+
+{
+set associated_variety(CharacterTable ct,[Param] block,WCell cell)=
+let sigma=ct.special_character_of_cell(cell) in
+ct.inverse_springer(sigma)
+
+set cells_with_given_associated_variety(WeylClassTable ct,[Param] params,ComplexNilpotent O)=
+for (block,cells)@i in cells(params) do
+let ()=prints("doing block #",i," with ",#cells," cells") in 
+(block,
+##for cell@j in cells do
+ let ()=prints("doing cell #",j, " of size ",#cell) in
+ let (,AV)=associated_variety(ct,block,cell) in
+ if O=AV then [cell] else [] fi od
+)
+od
+
+
+{
+set weak_Arthur_packet(RealForm G,ComplexNilpotent O_dual)=
+let gamma=O_dual.H then
+assert(is_integer(gamma),"infinitesimal character is not integral");
+cells=cells(all_paramters_gamma(G,gamma)) then
+
+}}

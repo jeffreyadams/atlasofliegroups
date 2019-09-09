@@ -184,3 +184,4 @@ set coxeter_number (RootDatum rd) = int:
 {. torus element representing the Coxeter Weyl group element .}
 set coxeter_torus_element (RootDatum rd) = ratvec:
   rho_check(rd)/coxeter_number(rd)
+
