@@ -89,8 +89,8 @@ update_matrix_entry(M,i,j,M[i][j]+value)
  B: (p,q) matrix  p rows, q columns
 recall:
  in atlas A[i] is the i^th column
- A[i][j]: j^th, i^th column
- A[i,j]:  i^th, j^th column (the usual)
+ A[i][j]: j^th row, i^th column
+ A[i,j]:  i^th row, j^th column (the usual)
 
 So
 A=A[i,j] 0<=i<=p-1, 0<=j<=q-1
