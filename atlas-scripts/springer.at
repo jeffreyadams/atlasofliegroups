@@ -1,0 +1,34 @@
+set_type SpringerTable=
+  (CharacterTable ct,
+  [ComplexNilpotent] orbits,
+  (ComplexNilpotent->ComplexNilpotent) duality,
+  (ComplexNilpotent->int) springer
+  )
+
+set special_closure(SpringerTable st,ComplexNilpotent O)=ComplexNilpotent:
+st.duality(st.duality(O))
+set special_closure(SpringerTable st)=(ComplexNilpotent->ComplexNilpotent):(ComplexNilpotent O):special_closure(st,O)
+
+set is_special(SpringerTable st,ComplexNilpotent O)=bool:
+st.special_closure(O)=O
+
+set is_special(SpringerTable st)=(ComplexNilpotent->bool): (ComplexNilpotent O):is_special(st,O)
+
+set special_orbits(SpringerTable st)=[ComplexNilpotent]:
+##for O in st.orbits do if st.is_special(O) then [O] else [] fi od
+
+set is_even(ComplexNilpotent O)=bool:is_integer(O.H/2)
+
+set even_orbits([ComplexNilpotent] orbits)=[ComplexNilpotent]:
+##for O in orbits do if is_even(O) then [O] else [] fi od
+
+set is_even(ComplexNilpotent O)=bool:is_integer(O.H/2)
+
+set even_orbits([ComplexNilpotent] orbits)=[ComplexNilpotent]:
+##for O in orbits do if is_even(O) then [O] else [] fi od
+
+
+
+{
+set is_special_representation(CharacterTable ct,int i,(ComplexNilpotent->ComplexNilpotent) d)=
+}
