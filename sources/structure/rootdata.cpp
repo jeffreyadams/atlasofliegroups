@@ -51,7 +51,7 @@
 #include "lietype.h"	// value returned from |LieType| method, |ext_gen|
 
 #include "dynkin.h"
-#include "weyl.h" // for class |Twist|
+#include "weyl.h" // for classes |Twist|, |WeylWord|
 #include "prerootdata.h"
 
 // extra defs for windows compilation -spc
@@ -1006,9 +1006,7 @@ WeylWord RootDatum::factor_dominant (Weight& v) const
   while (s<semisimpleRank());
 
   // result is in proper order to transform (right to left) |v| back to original
-  WeylWord result; result.reserve(w.size());
-  std::copy(w.begin(),w.end(),std::back_inserter(result));
-  return result;
+  return WeylWord(std::move(w).to_vector());
 }
 
 // make |lambda| codominant, and return Weyl word that will convert it back
@@ -1029,9 +1027,7 @@ WeylWord RootDatum::factor_codominant (Coweight& v) const
   while (s<semisimpleRank());
 
   // result is in proper order to transform (left to right) |v| back to original
-  WeylWord result; result.reserve(w.size());
-  std::copy(w.begin(),w.end(),std::back_inserter(result));
-  return result;
+  return WeylWord(std::move(w).to_vector());
 }
 
 /*
@@ -1256,9 +1252,11 @@ WeylWord wrt_distinguished(const RootSystem& rs, RootNbrList& Delta)
       }
   while (s<rank);
 
+  // now copy out to |result| the Weyl word twisted by (the final value) |Delta|
   WeylWord result; result.reserve(length(w));
   for (auto it=w.begin(); not w.at_end(it); ++it)
     result.push_back(rs.simpleRootIndex(Delta[*it]));
+
   return result;
 }
 

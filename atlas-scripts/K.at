@@ -26,9 +26,15 @@
 
 set_type
 [ K_Type = (KGBElt x, ratvec lambda)
-, K_Type_Pol = ParamPol { re-use this type, with nu-part of the terms zero }
-, KHighestWeight = (KGBElt x, vec mu)
+, KHighestWeight = (void .,KGBElt x, vec mu)
 ]
+
+set k_highest_weight (KGBElt x, vec mu) = KHighestWeight: ((),x,mu)
+
+set highest_weight_plain (KHighestWeight(,x,v)) = (KGBElt,vec): (x,v)
+
+{ the following is just an alternative name }
+set_type K_Type_Pol = ParamPol { usage should imply nu-part of terms are zero }
 
 { Three ways of parametrizing K-types:
 
@@ -41,8 +47,8 @@ set_type
   final: <lambda+rho_r,alpha^vee> even (alpha real)
   nonzero: <lambda,alpha^vee>=0, alpha imaginary-simple => alpha is non-compact
 
-2. KHighestWeight: (KGBElt x_K,vec mu)
-  x_K in distinguised fiber defines K
+2. KHighestWeight: (,KGBElt x_K,vec mu)
+  x_K in distinguished fiber defines K
   recall that T_K=H^\delta is abelian subgroup of K_#
   mu\in X^*, viewed as element of X^*/(1-delta)X^*=X^*(T_K)
     (T_K can be disconnected)  is a highest weight for K_#=T_K.K_0
@@ -224,8 +230,8 @@ set convert_K_type (RealForm G,(vec two_lambda, vec torus_bits, int cartan)) =
 
 set root_datum (K_Type p) = root_datum(p.x)
 set real_form (K_Type p)  = real_form(p.x)
-set real_form (KHighestWeight (x,))  = real_form(x)
-set K_0(KHighestWeight (x,)) = RealForm: K_0(x)
+set real_form (KHighestWeight (,x,))  = real_form(x)
+set K_0(KHighestWeight (,x,)) = RealForm: K_0(x)
 
 set K_type (Param p) = K_Type:
   assert(=nu(p),"nu(p) is not zero"); (p.x,p.lambda)
@@ -244,7 +250,7 @@ set to_no_Cminus (K_Type(x,lambda)) = K_Type:
   used in definition of lowest K-types
 }
 
-set length (KHighestWeight (x,mu))=rat:
+set length (KHighestWeight (,x,mu))=rat:
   let rd=root_datum(K_0(x)) then mu_shifted=mu+rd.two_rho
   in rd.nondegenerate_invariant_form(mu_shifted,mu_shifted)
 

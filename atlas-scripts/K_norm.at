@@ -1,5 +1,6 @@
-<all_parameters.at
+<K_highest_weights.at
 <tabulate.at
+<K_highest_weights.at
 
 {----------------height and K-norm of K-types------------------}
 
@@ -77,7 +78,7 @@ set print_by_K_norm_short (RootDatum rd) = let norm=K_norm(rd) in (K_Type_Pol P)
 
 set print_by_K_norm (RootDatum rd) = let norm=K_norm(rd) in (K_Type_Pol P) void:
   let result=sort_K_Type_Pol_by_K_norm(rd)(for c@p in P do (c,K_type(p)) od)
-  in for (c,p) in result do let (x_hw,lambda_hw)=highest_weight(p) in
+  in for (c,p) in result do let ((),x_hw,lambda_hw)=highest_weight(p) in
 prints(split_as_int(c),"*(",#x(p),",",lambda(p),") ", " (", #x_hw, ",", lambda_hw, ")   ",  K_norm(rd)(p), "   [", dimension(p),"]") od
 
 set print_by_K_norm (RootDatum rd,K_Type_Pol P) = void: print_by_K_norm(rd)(P)
@@ -253,7 +254,7 @@ set print_K_parameters(KGBElt x_K_in,[K_Type] ktypes,([K_Type]->[K_Type]) f)=voi
 let strings=[["x","lambda","x_K","lambda_K","dim","ht","Knorm"]] in
 prints("(x,lambda):  K-type",new_line, "(x_K,lambda_K): K-highest weight");
 for p in f(ktypes) do
-let (x_K,lambda_K)=highest_weight(p,x_K_in) in
+let ((),x_K,lambda_K)=highest_weight(p,x_K_in) in
 strings#:=[to_string(#x(p)),shorten(lambda(p)), to_string(#x_K), shorten(lambda_K),to_string(dimension(p)),
 to_string(height(parameter(p))),to_string(K_norm(p))] od;
 tabulate(strings,"l",2," ")

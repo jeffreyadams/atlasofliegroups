@@ -2,7 +2,7 @@
 
 { finite dimensional representations of G(C)}
 {.whether p is finite dimensional.}
-set is_finite_dimensional(Param p) = bool:
+set is_finite_dimensional (Param p) = bool:
   let ssr = semisimple_rank(real_form(p))
   in semisimple_rank(integrality_datum(p))=ssr and #tau(p)=ssr
 
@@ -10,28 +10,33 @@ set is_finite_dimensional(Param p) = bool:
 set fd_only (Param p) = Param:
   assert(is_finite_dimensional(p),"representation is infinite dimensional"); p
 
-{ dimension of finite dimensional with given highest weight
-  as a rational to allow up to 2^63-1}
-{.dimension of finite dimensional, valid up to 2^63-1.}
-set dimension_rat (RootDatum rd, ratvec lambda_in) = rat:
-  let lambda=
-    if is_dominant(rd,lambda_in) then lambda_in
-    else
-      let lambda_dominant = dominant(rd,lambda_in) in
-     prints("Warning: changed ", lambda_in, ", to ", lambda_dominant
-           , " to make it dominant");
-       lambda_dominant
-    fi
-  then rho=rho(rd), dim=1/1 { now apply Weyl's dimension formula }
-  in for a in poscoroots(rd) do dim*:=(lambda+rho)*a/(rho*a) od; dim
+{.dimension of finite dimensional representation from its highest weight.}
+set dimension (RootDatum rd, ratvec lambda) = int:
+( let lambda_dom=dominant(rd,lambda) in
+  if lambda != lambda_dom
+  then prints("Warning: changed ", lambda, ", to ", lambda_dom
+             , " to make it dominant")
+  ;  lambda := lambda_dom
+  fi
+; let rho=rho(rd) in { now apply Weyl's dimension formula }
+  product(for a in poscoroots(rd) do (lambda+rho)*a/(rho*a) od).rat_as_int
+)
 
-{.dimension of finite dimensional, valid up to 2^31-1.}
-set dimension (RootDatum rd, ratvec lambda_in) = int:
-   rat_as_int(dimension_rat(rd,lambda_in))
+set Weyl_dim (RootDatum rd, vec lambda) = int:
+( lambda:=dominant(rd,lambda)
+; let rho=rho(rd) in { now apply Weyl's dimension formula }
+  for a in poscoroots(rd) do (lambda+rho)*a/(rho*a) od.product.rat_as_int
+)
 
+{ If split torus in the center not necessarily a vec, this could fail.
+  Leave it for now because otherwise weyl_character_formula.at fails to load }
 {.highest weight of finite dimensional in X^* coordinates.}
-set highest_weight_finite_dimensional(Param p) = vec:
+set highest_weight_finite_dimensional (Param p) = vec:
    (p.fd_only.dominant.infinitesimal_character - p.root_datum.rho).ratvec_as_vec
+
+{allow ratvec if G has split central torus}
+set highest_weight_finite_dimensional_ratvec (Param p) = ratvec:
+   (p.fd_only.dominant.infinitesimal_character - p.root_datum.rho)
 
 set on_fundamental_weights (ratvec v,RootDatum rd) = vec:
    (v*simple_coroots(rd)).ratvec_as_vec
@@ -40,12 +45,10 @@ set on_fundamental_weights (ratvec v,RootDatum rd) = vec:
 set fundamental_weight_coordinates (Param p) = vec:
    on_fundamental_weights(highest_weight_finite_dimensional(p),root_datum(p))
 
-{.dimension of finite dimensional parameter, valid up to 2^63-1.}
-set dimension_rat(Param p) = rat:
-   dimension_rat(root_datum(p),highest_weight_finite_dimensional(p))
-
-{.dimension of finite dimensional parameter, valid up to 2^31-1.}
-set dimension(Param p) = int: rat_as_int(dimension_rat(p))
+{use highest_weight_finite_dimensional_ratvec to all split central torus}
+{.dimension of finite dimensional parameter.}
+set dimension(Param p) = int:
+   dimension(root_datum(p),highest_weight_finite_dimensional_ratvec(p))
 
 
 { this function depends on a complex root datum, with half-swapping involution }

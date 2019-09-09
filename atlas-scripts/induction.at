@@ -311,169 +311,20 @@ set theta_induce_irreducible (ParamPol P,RealForm G) = ParamPol:
 { |theta_induce_irreducible@(Param,RealForm)| not defined, as the |ParamPol|
   version suffices: implicit conversion |Param->ParamPol| will apply }
 
-{ if all complex roots for x are of type C+, then conjecturally the torus
-  parts (torus_factor) of all elements in the fiber are a subset of those for
-  the distinguished fiber:
-  KGB_elt(G,theta(x),torus_bits(x))=KGB_elt(G,theta(x),torus_bits(x_f)) for
-  some x_f in the fundamental fiber
-
-  Mapping x to x_K in the distinguished fiber
-  gives the version of K=K_{x_K} appropriate to y
-  aborts with an error if the conjecture is false for x
-
-  Note: this is false, but may be true with torus_bits in place of
-  torus_factor:
-  KGB_elt(G,theta(x),torus_bits(x))=KGB_elt(G,theta(x),torus_bits(x_f)) for
-  some x_f in the fundamental fiber this differs from the same identity for
-  torus_factor because
-  torus_factor(x)=(1+^theta(x))(torus_bits(x)+base_grading_vector) the
-  (1+^theta(x)) terms messes this up. An example is G=SO(6,2), x=KGB(G,11),
-  which should map to KGB(G,5)
-}
-{. (Auxiliary function) .}
 set map_into_distinguished_fiber (KGBElt x)=KGBElt:
-begin assert(no_Cminus_roots(x),"Only defined if no C- roots")
-; let G=real_form(x), tb=torus_bits(x) in
-  for x0 in distinguished_fiber(G) do if torus_bits(x0)=tb then return x0 fi od
-; { if we get here, no suitable |x0| was found }
-   error("the torus parts for the fiber over ",x
-        ," do not embed in those for the distinguished fiber")
-end
+  begin assert(no_Cminus_roots(x),"Only defined if no C- roots")
+  ; let G=real_form(x), tb=torus_bits(x) in
+    for x0 in distinguished_fiber(G) do if torus_bits(x0)=tb then return x0 fi od
+  ; { if we get here, no suitable |x0| was found }
+     error("the torus parts for the fiber over ",x
+          ," do not embed in those for the distinguished fiber")
+  end
 
-{. Map KGB element x to x_K in the distinguished fiber; if necessary, use
-   complex cross actions first to move x to a fiber without C- roots. .}
-set strong_map_into_distinguished_fiber (KGBElt x) = KGBElt:
-  map_into_distinguished_fiber(x.to_no_Cminus)
-
-{. Another name for strong_map_into_distinguished_fiber .}
-set canonical_x_K = strong_map_into_distinguished_fiber@KGBElt
-
-{. canonical_x_K with input a parameter p; it is applied to x(p). .}
-set canonical_x_K (Param p)  = KGBElt: canonical_x_K(p.x)
 
 {. Positive coroots in the nilradical of the theta-stable parabolic determined
 by x. .}
 set u (KGBElt x) = mat: nilrad(theta_stable_parabolic(x)) { set of coroots }
 
-{ Write \h=\t\oplus\a with respect to theta
-  \t^* is a quotient of \h^*, also \t^* is a sub of \h^*
-  (those elements vanishing on \a) via this decomposition
-  rho_u_cx(P) is in \t^* viewed as a subset of \h^*
-  each pair {alpha,theta(alpha)} contributes \alpha/2, so
-  rho_u_cx(P)=1/4(sum of complex roots of u) [note the denominator]
-}
-{. Half sum of positive complex roots (on fundamental Cartan) in the nilradical of P; P must be theta-stable. .}
-set rho_u_cx (Parabolic P) = ratvec:
-  assert(is_parabolic_theta_stable(P),"P is not theta-stable");
-  {use the most compact Cartan in L}
-  sum(columns_with(is_complex(x_min(P)),nilrad_roots(P))) / 2
-
-{
-  rho_u_cx(P) is not necessarily in X^*
-  rho_u_cx_T(P) \in X^*, same restriction to T_K0,
-  i.e. same image modulo (1-delta)X^* (need this to define \rho_u_cap_k)
-  in rho_u_cx(P) have terms (alpha+theta(alpha)/2, replace these with alpha,
-  which has the same restriction
-  rho_S(theta,rd): each pair alpha,theta(alpha) contributes alpha/2
-  so 2*rho_S(theta,rd) contribution is \alpha, which is what we want
-}
-{. Element of $X^*$ with same restriction to $(X^*)^{\theta}$ as rho_u_cx(P);
-  P must be theta-stable. .}
-set rho_u_cx_T (Parabolic P) = vec:
-  assert(is_parabolic_theta_stable(P),"P is not theta-stable");
-  let x=x_min(P)
-  then rd=root_datum(x), rd_L=root_datum(Levi(P)), theta=involution(x)
-  in ratvec_as_vec(2*rho_S(theta,rd)-2*rho_S(theta,rd_L))
-
-{ \rho_u_ic(P,x) is in \t^* as a subset of \h^*s
-  =1/2 the sum of the imaginary, compact roots in u
-}
-{. Half sum of imaginary compact roots in nilradical of (theta-stable) P; the KGB element x must be attached to the fundamental Cartan; warning message if x is not
-  in the class of P. .}
-set rho_u_ic (Parabolic P, KGBElt x) = ratvec:
-  assert(is_parabolic_theta_stable(P),"P is not theta-stable");
-  assert(is_fundamental_Cartan(x),"x is not attached to the fundamental Cartan");
-  if is_in_class_of(x,P)
-  then sum(columns_with(is_compact_imaginary(x),nilrad_roots(P))) / 2
-  else prints("Warning: x does not belong to the class of P");
-    let y=x_min(P)
-    then rho1=sum(columns_with(is_compact_imaginary(y),nilrad_roots(P))) / 2
-    in inverse(cross_divide(y,x))*rho1
-  fi
-
-{. Test Function .}
-set rho_u_ic_alt (Parabolic P, KGBElt x) = ratvec:
-  assert(is_fundamental_Cartan(x),"x is not attached to the fundamental Cartan");
-   let y=x_min(P) then w=cross_divide(y,x) then
-  rho1=sum(columns_with(is_compact_imaginary(y),nilrad_roots(P))) / 2 in
-  inverse(w)*rho1
-
-{. Sum of compact roots (of $\mathfrak t$) in $\mathfrak u$ for theta-stable parabolic P, with respect to (fundamental) x; warning message if x is not
-  in the class of P .}
-set two_rho_u_cap_k (Parabolic P,KGBElt x) = vec:
-  assert(is_fundamental_Cartan(x),"x is not attached to the fundamental Cartan");
-  if is_in_class_of(x,P) then
-  ratvec_as_vec(rho_u_cx_T(P)+2*rho_u_ic(P,x)) else
-  prints("Warning: x does not belong to the class of P.");
-  let y=x_min(P) then w=cross_divide(y,x) in
-  inverse(w)*ratvec_as_vec(rho_u_cx_T(P)+2*rho_u_ic(P,y)) fi
-
-{. Test Function .}
-set two_rho_u_cap_k_alt (Parabolic P,KGBElt x) = vec:
-  assert(is_fundamental_Cartan(x),"x is not attached to the fundamental Cartan");
-  let y=x_min(P) then w=cross_divide(y,x) in
-  inverse(w)*ratvec_as_vec(rho_u_cx_T(P)+2*rho_u_ic(P,y))
-
-{. Sum of non-compact roots in $\mathfrak u$ (for theta-stable parabolic),
-warning message if (fundamental) x is not in the class of P. .}
-set two_rho_u_cap_s (Parabolic P,KGBElt x) = vec:
-  assert(is_fundamental_Cartan(x),"x is not attached to the fundamental Cartan");
-  if is_in_class_of(x,P) then
-  ratvec_as_vec(2*rho_u(P))-two_rho_u_cap_k(P,x) else
-  prints("Warning: x does not belong to the class of P.");
-  let y=x_min(P) then w=cross_divide(y,x) in
-  inverse(w)*ratvec_as_vec(2*rho_u(P))-two_rho_u_cap_k(P,y) fi
-
-{these give the same restriction to T_K0, but aren't necessarily integral:}
-{. Half sum of compact roots in $\mathfrak u$ for theta-stable parabolic;
-warning message if (fundamental) x is not in the class of P. .}
-set rho_u_cap_k (Parabolic P,KGBElt x) = ratvec:
-  assert(is_fundamental_Cartan(x),"x is not attached to the fundamental Cartan");
-   if is_in_class_of(x,P) then rho_u_cx(P)/2+rho_u_ic(P,x) else
-   prints("Warning: x does not belong to the class of P.");
-  let y=x_min(P) then w=cross_divide(y,x) in
-   inverse(w)*rho_u_cx(P)/2+rho_u_ic(P,y) fi
-
-{. Test Function .}
-set rho_u_cap_k_alt (Parabolic P,KGBElt x) = ratvec:
-  assert(is_fundamental_Cartan(x),"x is not attached to the fundamental Cartan");
-  let y=x_min(P) then w=cross_divide(y,x) in
-  inverse(w)*rho_u_cx(P)/2+rho_u_ic(P,y)
-
-{. Half sum of non-compact roots in $\mathfrak u$ for theta-stable parabolic;
-warning message if (fundamental) x is not in the class of P. .}
-set rho_u_cap_s (Parabolic P,KGBElt x) = ratvec:
-  assert(is_fundamental_Cartan(x),"x is not attached to the fundamental Cartan");
-   if is_in_class_of(x,P) then rho_u(P)-rho_u_cap_k(P,x) else
-   prints("Warning: x does not belong to the class of P.");
-   let y=x_min(P) then w=cross_divide(y,x) in
-   inverse(w)*rho_u(P)-rho_u_cap_k(P,y) fi
-
-{. Test Function .}
-set rho_u_cap_s_alt (Parabolic P,KGBElt x) = ratvec:
-  assert(is_fundamental_Cartan(x),"x is not attached to the fundamental Cartan");
-   let y=x_min(P) then w=cross_divide(y,x) in
-   inverse(w)*rho_u(P)-rho_u_cap_k(P,y)
-
-{. Twist a K-type for a Levi L by minus the sum of non-compact roots in $\mathfrak u$. .}
-set twist_by_minus_2rho_u_cap_s(Parabolic P,Param p_L)=Param:
-   let G=real_form(P) then
-   L=real_form(p_L) then
-   x_L=x(p_L) then
-   x_G=canonical_x_K(embed_KGB(x_L,G)) then
-   p_L_shifted=parameter(x(p_L),lambda(p_L)-two_rho_u_cap_s(P,x_G),null(rank(Levi(P))))
-   in
-   p_L_shifted
 
 {. Dimension of $\mathfrak u$ (nilrad of theta-stable parabolic). .}
 set dim_u(Parabolic P) = int:n_columns(nilrad(P))
@@ -589,6 +440,7 @@ set dim_u_cap_p_1(Parabolic P, ratvec H)=
 Aq(x,lambda,lambda_q)=Aq(wx,wlambda,wlambda_q) so we can assume
 lambda_q is dominant
 }
+
 {. Conjugate the triple (x,lambda, lambda_q) to make lambda_q weakly
   dominant (auxiliary function). .}
 set make_dominant (KGBElt x,ratvec lambda, ratvec lambda_q) =
@@ -866,3 +718,130 @@ set all_real_induced_one_dimensional (RealForm G) = [Param]:
   ##
   for P in all_real_parabolics(G)
   do monomials(real_induce_irreducible(trivial(Levi(P)),G)) od
+
+{------------- some rho-shifts involving theta ----------------}
+
+{define "two" versions which are vecs}
+
+set two_rho_S(KGBElt x)=vec: sum(makeS(x))
+
+set two_rho_S ((mat,RootDatum) pair) = sum(makeS(pair))
+
+set two_rho_u(Parabolic P)=vec:ratvec_as_vec(2*rho_u(P))
+
+{ recall rho_S(x)=sum \alpha,
+   each {\pm alpha,\pm\theta\alpha} contributes \alpha
+  convenient to define two_rho_S(x)
+ and a relative version two_rho_S(P,x)
+ Note: two_rho_S(x,P) =\sum \alpha
+   one \alpha for each complex pair {\alpha,\theta\alpha} of roots in u
+}
+set two_rho_S(Parabolic P,KGBElt x)=vec:
+  assert(is_parabolic_theta_stable(P),"P is not theta-stable");
+  let rd=root_datum(x), rd_L=root_datum(Levi(P)), theta=involution(x) in
+  two_rho_S(theta,rd)-two_rho_S(theta,rd_L)
+
+{ two_rho_S(P)=\sum \alpha, one \alpha from each
+  pair of complex roots {\alpha,\theta\alpha}
+  where \theta=theta_{x_min(P)}}
+set two_rho_S(Parabolic P)=vec:two_rho_S(P,x_min(P))
+
+{. Half sum of complex roots in the nilradical of P .}
+set rho_u_cx (Parabolic P,KGBElt x) = ratvec:
+  sum(columns_with(is_complex(x),nilrad_roots(P))) / 2
+
+{
+  rho_u_cx(P) is not necessarily in X^*
+  rho_u_cx(P) restricted to T=H^theta is a character of T
+    because (1/2)(\alpha+\theta(\alpha))(t)=\alpha(t)=\theta(\alpha(t) (t\in T)
+  so define rho_u_cx_T(P) \in X^* to have the same restriction to T=H^\theta
+  rho_u_cx is a sum of terms (alpha+theta(alpha)/2;
+    replace each such term with alpha, which has the same restriction to T
+  recall two_rho_S is the sum of each \alpha, i.e. rho_cx_u_T=two_rho_S
+  more precisely: rho_u_cx_T(P,x)=two_rho_S(P,x)
+}
+
+{. Element of $X^*$ with same restriction to $(X^*)^{\theta}$ as rho_u_cx(P);
+  P must be theta-stable. .}
+set rho_u_cx_T (Parabolic P) = vec:two_rho_S(P)
+
+{ rho_u_ic(P,x)=half the sum of the imaginary, compact roots in u
+  this is an element of X^*(H)/2
+}
+set rho_u_ic (Parabolic P, KGBElt x) = ratvec:
+ sum(columns_with(is_compact_imaginary(x),nilrad_roots(P))) / 2
+
+{2*rho(u\cap k) is a character of H^\theta
+ need to write it as the restriction of a character of H
+ 2*rho(u\cap k) is the sum of:
+ all compact imaginary roots of u and
+ for each {\alpha,\theta\alpha} in u, contribution of alpha
+ => two_rho_u_cap_k(P,x)=2*rho_u_ic(P,x) + two_rho_S(P)
+}
+{.Sum of compact roots of H in u for theta-stable parabolic P
+  with respect to x on fundamental Cartan(L)=fundamental Cartan(G)
+  warning message if x is not in the class of P .}
+set two_rho_u_cap_k (Parabolic P,KGBElt x) = vec:
+   ratvec_as_vec(2*rho_u_ic(P,x)+two_rho_S(P,x))
+
+{2*rho(u\cap s) is a character of H^\theta
+ need to write it as the restriction of a character of H
+ 2*rho(u\cap s) is the sum of:
+ all noncompact imaginary roots of u and
+ for each {\alpha,\theta\alpha} in u, contribution of alpha
+ => two_rho_u_cap_s(P,x)=2*rho_u_ic(P,x) + two_rho_S(P)
+ also can be written:
+ 2*rho(u\cap s)=2*rho(u)-2*rho(u\cap k)
+}
+{. Sum of non-compact roots in $\mathfrak u$ (for theta-stable parabolic).}
+set two_rho_u_cap_s (Parabolic P,KGBElt x) = vec:
+  ratvec_as_vec(2*rho_u(P))-two_rho_u_cap_k(P,x)
+
+{ P is a theta-stable parabolic
+  p_L is a STFL for L
+  construct a new, possibly non-standard parameter for L
+  by subtracting the appropriate 2\rho(u\cap s) from lambda(p_L)
+  the resulting term might not be standard
+}
+set twist_by_minus_2rho_u_cap_s(Parabolic P,Param p_L)=Param:
+  assert(nu(p_L)=null(rank(Levi(P))),"nu(p_L)\ne 0");
+  let G=real_form(P.x) then
+  x_L=x(p_L) then
+  x_G=embed_KGB(x_L,G) in
+  parameter(x_L,lambda(p_L)-two_rho_u_cap_s(P,x_G),null(rank(Levi(P))))
+
+set is_in_list (KGBElt x, [KGBElt] list) =bool: any(for y in list do x=y od)
+
+set select_class_terms_from_ParamPol ([KGBElt] class, ParamPol P)=ParamPol:
+  0*P+ for c@t in P do if is_in_list (x(t),class) then (c,t) else (0,t) fi od
+
+set p_N (Param p, int N, [int] S) = Param:
+   let x=x(p) then P=Parabolic:(S,x) then rhou=rho_u(P) in
+   parameter(x,lambda(p)+2*N*rhou,nu(p)+2*N*rhou)
+
+set move_P_down_by_N (ParamPol P, int N, [int] Levi)=[(Split,Param)]:
+   let rd=root_datum(P) then rhou=rho_u(rd,Levi) in
+   for c@t in P do (c,parameter(x(t),lambda(t)-2*N*rhou,nu(t)-2*N*rhou)) od
+
+set find_N ([int] Levi, Param p)=int:
+   let x=x(p),lam=lambda(p), nu=nu(p) then theta=involution(x),
+   rd=root_datum(x), P=Parabolic:(Levi,x) then two_rhou=2*rho_u(P) then
+   gamma=((1+theta)*lam+(1-theta)*nu)/2 then
+   list=##for alpha in poscoroots(rd) do if alpha*two_rhou > 0 then
+   [-(alpha*gamma)/(alpha*two_rhou)] else [] fi od
+   in {prints(list);} if #list=0 then prints("The parabolic is not proper."); 1
+   else floor(max(list)+1) fi
+
+set is_standard ([int] Levi, Param p) =
+    is_standard (p_N (p,find_N (Levi,p),Levi))
+
+set is_final ([int] Levi, Param p) = is_final (p_N (p,find_N (Levi,p),Levi))
+
+set induce_from_gen_parabolic_irr ([int] Levi, Param p)=ParamPol:
+   let G=real_form(p) then
+   N=find_N(Levi,p),x=x(p) then class=equivalence_class_of(Levi,x)
+   then cf=character_formula (p_N(p,N,Levi)) then
+   P_up=select_class_terms_from_ParamPol (class,cf) then
+   pairs=move_P_down_by_N(P_up,N,Levi) in let result=null_module(G) in
+   for (c,t) in pairs do result+:=c*standardize(t) od;
+   composition_series(result)

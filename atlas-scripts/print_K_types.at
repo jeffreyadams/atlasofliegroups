@@ -1,4 +1,6 @@
 <K_types.at
+<tabulate.at
+
 {
 this used to be called K_types.at
 now consists almost exclusively of printing functions
@@ -18,23 +20,25 @@ set branch_irr (ParamPol P,int bound) = ParamPol:
   let sum=0*P in for c@p in P do
  sum +:= c*branch_irr(p,bound) od; sum
 }
-set print_branch_irr (ParamPol P,KGBElt x,int bound) = void:
-  for (mult,q) in sort_by_height(branch_irr(P,bound))
-  do prints(mult, "*", highest_weights(q,x)[0]) od
 
-set print_branch_irr (ParamPol P,int bound) = void: { default to x=KGB(G,0) }
-  print_branch_irr(P,KGB(real_form(P),0),bound)
+set print_branch_irr (ParamPol P,int bound) = void:
+let header=["m","x","lambda"] then
+values=
+  for (mult,q) in sort_by_height(branch_irr(P,bound))
+  do [mult.split_as_int.to_string,let (,n)=%q.x in n.to_string,q.lambda.to_string] od in
+  tabulate(header#values) 
 
 { K-types of sum of irreducibles P, up to given bound, sorted by
   height, the output includes multiplicity, highest weight (on the identity
   component of K), dimension and height
 }
 set print_branch_irr_long (ParamPol P,KGBElt x,int bound) = void:
+let header=["m","x","lambda","hw","dim","height"] then
+values=
   for (mult,q) in sort_by_height(branch_irr(P,bound))
   do let hw=highest_weights(q,x)[0] in
-    prints(mult, "*", hw, " ", dimensions(q)[0]
-          , "    ", height(q))
-  od
+  [mult.split_as_int.to_string,let (,n)=%q.x in n.to_string,q.lambda.to_string,let (,v)=highest_weight_plain(hw)in v.to_string,dimension(LKT(q)).to_string,height(q).to_string] od in
+    tabulate(header#values) 
 
 set print_branch_irr_long (ParamPol P,int bound) = void:
   { default to x=KGB(G,0) }
@@ -57,8 +61,8 @@ set print_branch_K_irr_long(ParamPol P, int bound, KGBElt x)=void:
   od
 
 { these definitions promote Param->ParamPol without relying on coercion }
-set print_branch_irr (Param p,KGBElt x, int bound) = void:
-  print_branch_irr(ParamPol:p,x,bound)
+set print_branch_irr (Param p, int bound) = void:
+  print_branch_irr(ParamPol:p,bound)
 set print_branch_irr (Param p, int bound) = void:
   print_branch_irr(ParamPol:p,bound)
 set print_branch_irr_long (Param p,KGBElt x, int bound) = void:
@@ -66,28 +70,25 @@ set print_branch_irr_long (Param p,KGBElt x, int bound) = void:
 set print_branch_irr_long (Param p, int bound) = void:
   print_branch_irr_long(ParamPol:p,bound)
 
-set print_branch_std (ParamPol P,KGBElt x,int bound) = void:
+set print_branch_std (ParamPol P,int bound) = void:
+let header=["m","x","lambda"] then
+values=
   for (mult,q) in sort_by_height(branch_std(P,bound))
-  do let hw=highest_weights(q,x)[0] in
-    prints(mult, "*", hw)
-  od
-
-set print_branch_std (ParamPol P,int bound) = void: { default to x=KGB(G,0) }
-  print_branch_std(P,KGB(real_form(P),0),bound)
-
+  do [mult.split_as_int.to_string,let (,n)=%q.x in n.to_string,q.lambda.to_string] od in
+  tabulate(header#values)
+  
 { K-types of standard p, up to given bound, sorted by height, the
   output includes multiplicity, highest weight (on the identity component of
   K), dimension and height
 }
 set print_branch_std_long (ParamPol P,KGBElt x,int bound) = void:
-( prints("rho_K=", rho_K(x))
-; for (mult,q) in sort_by_height(branch_std(P,bound))
+let header=["m","x","lambda","hw","dim","height"] then
+values=
+  for (mult,q) in sort_by_height(branch_irr(P,bound))
   do let hw=highest_weights(q,x)[0] in
-    prints(mult, "*", hw, " ", dimensions(q)[0]
-          ,  "    ", height(q))
-  od
-)
-
+  [mult.split_as_int.to_string,let (,n)=%q.x in n.to_string,q.lambda.to_string,let (,v)=highest_weight_plain(hw)in v.to_string,dimension(LKT(q)).to_string,height(q).to_string] od in
+    tabulate(header#values)
+    
 set print_branch_std_long (ParamPol P,int bound) = void: { default to x=KGB(G,0) }
   print_branch_std_long(P,KGB(real_form(P),0),bound)
 
@@ -110,15 +111,13 @@ print_branch_K_std_long(P,KGB(P.real_form,0),bound)
 
 { these definitions promote Param->ParamPol without relying on coercion }
 set print_branch_std (Param p,KGBElt x, int bound) = void:
-  print_branch_std(ParamPol:p,x,bound)
+  print_branch_std(ParamPol:p,bound)
 set print_branch_std (Param p, int bound) = void:
   print_branch_std(ParamPol:p,bound)
 set print_branch_std_long (Param p,KGBElt x, int bound) = void:
   print_branch_std_long(ParamPol:p,x,bound)
 set print_branch_std_long (Param p, int bound) = void:
   print_branch_std_long(ParamPol:p,bound)
-
-
 
 set print_K_signature_irr (Param p,KGBElt x,int bound) = void:
 ( let form=hermitian_form_irreducible(p) then P=int_part(form),Q=s_part(form) in
@@ -133,3 +132,16 @@ set print_K_signature_irr (Param p,KGBElt x,int bound) = void:
 set print_K_signature_irr (Param p,int bound) = void:
   print_K_signature_irr(p,KGB(real_form(p),0),bound)
 
+{similar to print_branch_std_long, except that K-types are given 
+ by their highest weight on K_0}
+set print_branch_K_std_long(ParamPol P, KGBElt x, int bound)=void:
+( prints("rho_K=", rho_K(x));
+ for (mult,q) in sort_by_height(branch_std(P,bound))
+  do let hw=highest_weight(K0_param(LKT(q),x)) in
+    prints(mult, "*", hw, " ", dimensions(q)[0]
+          ,  "    ", height(q))
+  od
+)
+
+set print_branch_K_std_long(ParamPol P, int bound)=void:
+print_branch_K_std_long(P,KGB(P.real_form,0),bound)

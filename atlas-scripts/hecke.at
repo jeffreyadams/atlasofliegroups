@@ -320,7 +320,7 @@ set sign_2Ci (int j,ExtParam E) = int:
   then beta=E.delta*alpha then beta_check=coroot(id,beta)
   then exponent = rat_as_int( { exponent of i should be even, convert for -1 }
     ((alpha_check+beta_check)*E.tau) * ((E.g-E.l)*alpha-1) /2 )
-  in (-1)^exponent
+  in minus_1^exponent
 
 set sign_2Cr (int j,ExtParam E) = int:
   let id=integrality_datum(E)
@@ -328,7 +328,7 @@ set sign_2Cr (int j,ExtParam E) = int:
   then beta=E.delta*alpha then beta_check=coroot(id,beta)
   then exponent = rat_as_int( { exponent of i should be even, convert for -1 }
     (alpha_check*(E.gamma-E.lambda_rho)-1) * (E.t*(alpha+beta)) /2 )
-  in (-1)^exponent
+  in minus_1^exponent
 
 set signs_1i1(int j, ExtParam E, ExtParam E1, ExtParam F) = (int,int):
 begin

@@ -222,48 +222,91 @@ const BruhatOrder& RealReductiveGroup::Bruhat_KGB()
 //				Functions
 
 TorusPart minimal_torus_part
-  (const InnerClass& G, RealFormNbr wrf, RatCoweight coch,
+  (const InnerClass& G, RealFormNbr wrf, const RatCoweight& coch,
    const TwistedInvolution& tw, const RatCoweight& torus_factor
   )
 {
   assert(torus_factor==torus_factor*G.matrix(tw)); // assuming already projected
 
+  const auto& rd = G.rootDatum();
+
   RatCoweight diff = (torus_factor-coch).normalize();
   assert (diff.denominator()==1); // since $\exp(2i\pi diff)=1$
 
-  TitsCoset Tc(G,innerclass::grading_of_simples(G,coch));
-  const auto& Tg = Tc.titsGroup();
-  const auto& W = Tg.weylGroup();
-  const auto& i_tab = G.involution_table();
-  const TwistedInvolution e; // basis (identity) twisted involution
+  TorusPart tp(diff.numerator());
+  { // move to fundamental fiber
+    TitsCoset Tc(G,innerclass::grading_of_simples(G,coch));
+    const auto& Tg = Tc.titsGroup();
+    TitsElt a (Tg,tp,tw);
+    const auto& W = Tg.weylGroup();
+    const auto& i_tab = G.involution_table();
+    const TwistedInvolution e; // basis (identity) twisted involution
 
-  TitsElt a (Tg,TorusPart(diff.numerator()),tw);
-  while (a.tw()!=e) // move to fundamental fiber
-  {
-    weyl::Generator s = W.leftDescent(a.tw());
-    if (Tg.hasTwistedCommutation(s,a.tw()))
+    while (a.tw()!=e) // move to fundamental fiber
     {
-      SmallSubspace mod_space = i_tab.mod_space(i_tab.nr(a.tw()));
-      Tc.inverse_Cayley_transform(a,s,mod_space);
+      weyl::Generator s = W.leftDescent(a.tw());
+      if (Tg.hasTwistedCommutation(s,a.tw()))
+      {
+	SmallSubspace mod_space = i_tab.mod_space(i_tab.nr(a.tw()));
+	Tc.inverse_Cayley_transform(a,s,mod_space);
+      }
+      else
+	Tc.basedTwistedConjugate(a,s);
     }
-    else
-      Tc.basedTwistedConjugate(a,s);
+    i_tab.reduce(a); // ensure reduction modulo fiber group denominator subgroup
+    tp = Tg.left_torus_part(a);
   }
-  i_tab.reduce(a); // ensure reduction modulo fiber group denominator subgroup
+  RatCoweight cowt = coch + lift(tp);
 
-// now find the minimal element in the imaginary Weyl group orbit of |a.t()|
-// that induces |G.simple_roots_x0_compact(wrf)| on imaginary simple roots
-  const auto base_cpt = compacts_for(G,y_values::exp_pi(coch));
-  const auto wrf_cpt = G.simple_roots_x0_compact(wrf);
-  const auto sri = G.simple_roots_imaginary();
-  const cartanclass::AdjointFiberElt image // which will give required compacts
-    ( (base_cpt^wrf_cpt).slice(sri), sri.count());
+  const auto basis = G.fundamental_fiber().simpleImaginary();
+  const auto r = basis.size();
+  Grading start_grading;
+  for (unsigned i=0; i<r; ++i)
+    start_grading.set(i,cowt.dot(rd.root(basis[i]))%2==0);
 
-  const TorusPart t = Tg.left_torus_part(a);
-  const cartanclass::FiberElt y = G.to_fundamental_fiber(t);
+  RankFlags basis_simples{0u},mask;
+  { unsigned int i=0;
+    while (i<r and rd.is_simple_root(basis[i]))
+      basis_simples.set(rd.simpleRootIndex(basis[i++]));
+    mask = RankFlags(constants::lMask[i]);
+  }
 
-  const containers::sl_list<TorusPart> candidates =
-    G.torus_parts_for_grading_shift(G.xi_square(wrf),y,image);
+  Grading target // grading of |basis_simples| that we are looking for
+    = G.simple_roots_x0_compact(wrf).slice(basis_simples)^mask;
+
+  BitMap seen (1ul<<rd.rank()); seen.insert(tp.data().to_ulong());
+  containers::simple_list<TorusPart> candidates;
+
+  { containers::stack<std::pair<TorusPart,Grading> > to_do;
+    to_do.push(std::make_pair(tp,start_grading));
+
+    std::vector<TorusPart> m_alpha; m_alpha.reserve(r);
+    std::vector<Grading> grading_shift; grading_shift.reserve(r);
+    for (unsigned i=0; i<r; ++i)
+    {
+      const auto& alpha_v = rd.coroot(basis[i]);
+      m_alpha.push_back(TorusPart(alpha_v));
+      Grading shift;
+      for (unsigned j=0; j<r; ++j)
+        shift.set(j,alpha_v.dot(rd.root(basis[j]))%2!=0);
+      grading_shift.push_back(shift);
+    }
+
+    do
+    { const auto tp=to_do.top().first; const auto gr=to_do.top().second;
+      to_do.pop();
+      if ((gr&mask)==target) // record those that are candidate for being x0
+	candidates.push_front(tp);
+      for(auto it=gr.begin(); it(); ++it)
+      { const auto new_tp = tp + m_alpha[*it];
+	if (not seen.isMember(new_tp.data().to_ulong()))
+	{ seen.insert(new_tp.data().to_ulong());
+	  to_do.push(std::make_pair(new_tp,gr^grading_shift[*it]));
+	}
+      }
+    }
+  while (not to_do.empty());
+  }
 
   assert(not candidates.empty());
 
@@ -271,14 +314,10 @@ TorusPart minimal_torus_part
   auto it = candidates.begin();
   auto min = *it;
   while (not (++it).at_end())
-    if (t+*it<t+min) // offset |t| does not cancel from this relation!
+    if (*it<min)
       min = *it;
 
-  Tg.left_add(min,a);
-  assert((i_tab.reduce(a),Tg.left_torus_part(a)==t+min)); // already reduced
-  assert(compact_simples(Tc,a,G.simple_roots_imaginary())==wrf_cpt);
-
-  return Tg.left_torus_part(a);
+  return min;
 } // |minimal_torus_part|
 
 } // |namespace realredgp|

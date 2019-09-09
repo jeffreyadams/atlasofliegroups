@@ -16,7 +16,8 @@ set compress { output from |partial_KL_block| to a more useful form } (
   let polys_at_minus_1 = for p in polys do eval(p,minus_1) od
   then KL_mat_at_minus_1 = mat: { matrix of polynomial evaluations at -1 }
     for col in KL_mat do for inx in col do polys_at_minus_1[inx] od od
-  then reduced_KL_mat = mat: for j in survivors do map*KL_mat_at_minus_1[j] od
+  then 
+  reduced_KL_mat = mat: for j in survivors do map*KL_mat_at_minus_1[j] od
   , survivor_lengths = let l=0 in
     for s in survivors do while stops[l+1]<=s do l+:=1 od; l od
   in
@@ -30,7 +31,7 @@ set compress { output from |partial_KL_block| to a more useful form } (
   )
 
 set deformation_terms (Param p) = ParamPol:
-  let (B,KL_mat,length) = compress(partial_KL_block(p)) then nB=#B in
+  let (B,KL_mat,length) = compress(partial_KL_block(p:=normal(p))) then nB=#B in
   if =nB or B~[0]!=p
   then null_module(p) { if |p| itself is not among survivors, return 0 }
   else { compute final column |acc| of |Q| matrix by solving linear system

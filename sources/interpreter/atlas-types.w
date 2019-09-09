@@ -366,7 +366,7 @@ void rank_of_Lie_type_wrapper
   if (l==expression_base::no_value)
     return;
 
-  unsigned result;
+  unsigned result=0;
   for (auto it = t->val.begin(); it!=t->val.end(); ++it)
     result += it->second;
 
@@ -2713,9 +2713,10 @@ public:
   , rt_p(nullptr) @+{}
   virtual ~real_form_value ();
 @)
-  static shared_real_form build(shared_inner_class icp,RealFormNbr f);
+  static shared_real_form build(const shared_inner_class& icp,RealFormNbr f);
   static shared_real_form build @|
-   (shared_inner_class icp,RealFormNbr f,const RatCoweight& coch, TorusPart tp);
+   (const shared_inner_class& icp,RealFormNbr f,
+    const RatCoweight& coch, const TorusPart& tp);
   virtual void print(std::ostream& out) const;
   static const char* name() @+{@; return "real form"; }
   real_form_value @[(const real_form_value& ) = delete@];
@@ -2739,7 +2740,8 @@ the same location where it had been looked up. In this case looking up is just
 indexing the vector |icp->real_form_wptr| with the real form number~|f|.
 
 @< Function def...@>=
-shared_real_form real_form_value::build(shared_inner_class icp,RealFormNbr f)
+shared_real_form real_form_value::build
+  (const shared_inner_class& icp,RealFormNbr f)
 {
   auto& w_ptr = icp->real_form_wptr[f];
   if (auto p = w_ptr.lock())
@@ -2763,7 +2765,8 @@ the relevant |RealReductiveGroup| constructor, and are computed by the function
 
 @< Function def...@>=
 shared_real_form real_form_value::build @|
-   (shared_inner_class icp,RealFormNbr f,const RatCoweight& coch, TorusPart tp)
+   (const shared_inner_class& icp, RealFormNbr f,
+    const RatCoweight& coch, const TorusPart& tp)
 {
   auto default_coch = some_coch(icp->val,icp->val.xi_square(f));
   if (coch==default_coch and tp==icp->val.x0_torus_part(f))
@@ -2913,6 +2916,14 @@ void base_grading_vector_wrapper(expression_base::level l)
   if (l!=expression_base::no_value)
     push_value(std::make_shared<rational_vector_value>(rf->val.g_rho_check()));
 }
+
+void initial_torus_bits_wrapper(expression_base::level l)
+{ shared_real_form rf= get<real_form_value>();
+  if (l!=expression_base::no_value)
+    push_value(std::make_shared<vector_value> @|
+      (int_Vector(rf->val.x0_torus_part())));
+}
+
 
 @ There is a partial ordering on the Cartan classes defined for a real form. A
 matrix for this partial ordering is computed by the function |Cartan_order|,
@@ -3136,11 +3147,10 @@ involutions that can be encountered have been entered into the table.
     G->val.generate_Cartan_orbit(*it);
 }
 
-@ The methods |central_fiber| and |x0_torus_part| of |InnerClass|
-can be accessed using following functions. The function |central_fiber|
-computes those torus parts in the fiber at the distinguished involution that
-both remain in the strong real form orbit and are central (do not affect any
-gradings).
+@ The method |central_fiber| of |InnerClass| can be accessed using following
+function. The method computes those torus parts in the fiber at the
+distinguished involution that both remain in the strong real form orbit and are
+central (do not affect any gradings).
 
 @< Local function def...@>=
 void central_fiber_wrapper(expression_base::level l)
@@ -3156,14 +3166,6 @@ void central_fiber_wrapper(expression_base::level l)
   push_value(std::move(result));
 }
 
-void initial_torus_bits_wrapper(expression_base::level l)
-{ shared_real_form rf= get<real_form_value>();
-  if (l!=expression_base::no_value)
-    push_value(std::make_shared<vector_value> @|
-      (int_Vector(rf->val.innerClass().x0_torus_part(rf->val.realForm()))));
-}
-
-
 @ Finally we install everything related to real forms.
 @< Install wrapper functions @>=
 install_function(real_form_wrapper,@|"real_form","(InnerClass,int->RealForm)");
@@ -3173,7 +3175,8 @@ install_function(quasisplit_form_wrapper,@|"quasisplit_form"
 install_function(inner_class_of_real_form_wrapper
                 ,@|"inner_class","(RealForm->InnerClass)");
 install_function(components_rank_wrapper,@|"components_rank","(RealForm->int)");
-install_function(count_Cartans_wrapper,@|"count_Cartans","(RealForm->int)");
+install_function(count_Cartans_wrapper
+                ,@|"nr_of_Cartan_classes","(RealForm->int)");
 install_function(KGB_size_wrapper,@|"KGB_size","(RealForm->int)");
 install_function(base_grading_vector_wrapper
                 ,@|"base_grading_vector","(RealForm->ratvec)");
@@ -4774,11 +4777,11 @@ void KL_block_wrapper(expression_base::level l)
   own_matrix contributes_to = std::make_shared<matrix_value>(
     int_Matrix(n_survivors,block.size(),0));
   for (BlockElt z=0; z<block.size(); ++z)
-  { BlockEltList sb = block.finals_for(z);
-    for (BlockEltList::const_iterator it=sb.begin(); it!=sb.end(); ++it)
-    { BlockElt x= permutations::find_index<int>(survivor->val,*it);
+  { auto finals = block.finals_for(z);
+    for (BlockElt final : finals)
+    { BlockElt x= permutations::find_index<int>(survivor->val,final);
         // a row index
-      if ((block.length(z)-block.length(*it))%2==0)
+      if ((block.length(z)-block.length(final))%2==0)
         ++contributes_to->val(x,z);
       else
         --contributes_to->val(x,z);
@@ -4937,11 +4940,11 @@ void partial_KL_block_wrapper(expression_base::level l)
   own_matrix contributes_to = std::make_shared<matrix_value>(
     int_Matrix(n_survivors,block.size(),0));
   for (BlockElt z=0; z<block.size(); ++z)
-  { BlockEltList sb = block.finals_for(z);
-    for (BlockEltList::const_iterator it=sb.begin(); it!=sb.end(); ++it)
-    { BlockElt x= permutations::find_index<int>(survivor->val,*it);
+  { auto finals = block.finals_for(z);
+    for (BlockElt final : finals)
+    { BlockElt x= permutations::find_index<int>(survivor->val,final);
         // a row index
-      if ((block.length(z)-block.length(*it))%2==0)
+      if ((block.length(z)-block.length(final))%2==0)
         ++contributes_to->val(x,z);
       else
         --contributes_to->val(x,z);
@@ -5503,7 +5506,8 @@ fields of the |module_coefficient| expression.
 void module_coefficient::evaluate(level l) const
 { shared_virtual_module m = (array->eval(),get<virtual_module_value>());
   shared_module_parameter p = (index->eval(),get<module_parameter_value>());
-  if (m->rf!=p->rf)
+  if (m->rf!=p->rf and m->rf->val!=p->rf->val)
+    // test like |real_form_new_wrapper| does
     throw runtime_error @|
       ("Real form mismatch when subscripting ParamPol value");
   test_standard(*p,"In subscription of ParamPol value");
@@ -5835,7 +5839,7 @@ void branch_wrapper(expression_base::level l)
 @)
   khc.normalize(srk);
   standardrepk::combination combo=khc.standardize(srk);
-  RatWeight zero_nu(G.rank());
+  const RatWeight zero_nu(G.rank());
 @/own_virtual_module acc @|
     (new virtual_module_value(p->rf, repr::SR_poly(rc.repr_less())));
   for (auto it=combo.begin(); it!=combo.end(); ++it)
@@ -5887,6 +5891,56 @@ void branch_pol_wrapper(expression_base::level l)
     }
   }
   push_value(std::move(acc));
+}
+
+@ Here is a variant of branch that keeps branch of an additional statistic, and
+therefore returns a linear combination of parameters with polynomial rather than
+integer coefficients. Mostly, this amounts to replacing the call to
+|KhatContext::branch| by one to |qKhatContext::branch| which results from
+constructing a |qHatContext| rather than a |KhatContext|. The type returned by
+the called method is now |q_combin|, which is a linear combination with
+|Polynomial<int>| coefficients; these polynomials are converted to \&{vec}
+values for the \.{atlas} user.
+
+@< Local function def...@>=
+void q_branch_wrapper(expression_base::level l)
+{ int bound = get<int_value>()->int_val();
+  // not ``branch and bound'' but ``branch up to bound''
+  shared_module_parameter p = get<module_parameter_value>();
+  test_standard(*p,"Branching of non-standard parameter is not allowed");
+  const Rep_context rc = p->rc();
+  RealReductiveGroup& G=p->rf->val;
+  standardrepk::qKhatContext khc(G);
+  StandardRepK srk=
+    khc.std_rep_rho_plus (rc.lambda_rho(p->val),G.kgb().titsElt(p->val.x()));
+  assert(khc.isStandard(srk)); // should be ensured by |test_standard|
+  if (l==expression_base::no_value)
+    return;
+@)
+  khc.normalize(srk);
+  standardrepk::q_combin input=khc.standardize(srk);
+  const RatWeight zero_nu(G.rank());
+  standardrepk::q_combin sum(khc.height_order());
+  for (auto it=input.begin(); it!=input.end(); ++it)
+    // loop over finals from |srk|
+  {
+    standardrepk::q_combin chunk = khc.branch(it->first,bound);
+    sum.add_multiple(chunk,it->second);
+  }
+
+@/own_row result = std::make_shared<row_value>(sum.size());
+  auto res_p=result->val.begin();
+  for (auto it=sum.begin(); it!=sum.end(); ++it)
+  {
+    own_vector coef = // convert polynomial to |vector_value|
+      std::make_shared<vector_value>(it->second.begin(),it->second.end());
+    auto tup = std::make_shared<tuple_value>(2);
+    StandardRepr term = rc.sr(khc.rep_no(it->first),khc,zero_nu);
+    tup->val[0] = std::move(coef);
+    tup->val[1] = std::make_shared<module_parameter_value> (p->rf,term);
+    *res_p++ = std::move(tup);
+  }
+  push_value(std::move(result));
 }
 
 @ In the K-type code, standard representations restricted to $K$ are always
@@ -6198,6 +6252,7 @@ install_function(scale_0_poly_wrapper,"at_nu_0", "(ParamPol->ParamPol)");
 install_function(K_type_formula_wrapper,@|"K_type_formula" ,"(Param->ParamPol)");
 install_function(branch_wrapper,@|"branch" ,"(Param,int->ParamPol)");
 install_function(branch_pol_wrapper,@|"branch" ,"(ParamPol,int->ParamPol)");
+install_function(q_branch_wrapper,@|"q_branch" ,"(Param,int->[vec,Param])");
 install_function(to_canonical_wrapper,@|"to_canonical" ,"(Param->Param)");
 install_function(srk_height_wrapper,@|"height" ,"(Param->int)");
 install_function(deform_wrapper,@|"deform" ,"(Param->ParamPol)");

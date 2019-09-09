@@ -1076,9 +1076,6 @@ SRK_context::q_HS_id_eq(const StandardRepK& sr, RootNbr alpha) const
     result -= q_Char(std_rep(rd.simple_reflection(i,lambda),a),
 		     q_CharCoeff(0,1)); // $q^0$
 
-  print(std::cout << "Hecht-Schmid ",sr);
-  print(std::cout << " rewrites to\n  ",result) << std::endl;
-
   return result;
 } // |q_HS_id_eq|
 
@@ -1299,9 +1296,6 @@ q_combin qKhatContext::standardize(const StandardRepK& sr)
   HechtSchmid equation= back_HS_id(sr,witness());
   assert(equation.n_lhs()==1); // |back_HS_id| gives 1-term left hand side
   assert(equation.n_rhs()!=0); // and never a null right hand side
-
-  print(std::cout << "reverse Hecht-Schmid ",sr);
-  print(std::cout << " rewrites to\n  ",equation.rhs()) << std::endl;
 
   // now recursively standardize all terms, storing rules
   q_combin result= standardize(to_q(equation.rhs()));

@@ -97,7 +97,6 @@ class LieTypeIterator {
   bool d_done;
   Category d_category;
   LieType d_type;
-  size_t d_firstRank;
   size_t d_lastRank;
 
  public:

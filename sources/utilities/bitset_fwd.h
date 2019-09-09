@@ -1,7 +1,3 @@
-/*!
-\file
-\brief Type definitions for the class BitSet.
-*/
 /*
   This is bitset_fwd.h
 
@@ -10,6 +6,7 @@
 
   For license information see the LICENSE file
 */
+
 
 #ifndef BITSET_FWD_H  /* guard against multiple inclusions */
 #define BITSET_FWD_H

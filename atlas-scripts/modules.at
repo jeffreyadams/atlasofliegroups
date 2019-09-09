@@ -118,7 +118,7 @@ set - (tag_Param(p,type))= tag_ParamPol: (minus_1*p,type)
 
 { binary - }
 set - (tag_ParamPol(P,type_P),tag_ParamPol(Q,type_Q)) = tag_ParamPol:
-  (P,type_P)+((-1)*Q,type_Q)
+  (P,type_P)+(minus_1*Q,type_Q)
 set -(tag_Param(p,typep),tag_ParamPol(Q,type_Q)) = tag_ParamPol:
   (ParamPol: p,typep)+(minus_1*Q,type_Q)
 set - (tag_Param(p,typep),tag_Param(q,typeq))=tag_ParamPol:

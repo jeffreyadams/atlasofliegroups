@@ -1,0 +1,144 @@
+<K_highest_weights.at
+<K_types.at
+
+set find ([K_Type] ktypes,K_Type mu) = int:first(#ktypes,(int i)bool:ktypes[i]=mu)
+
+{Enhanced version of K_types@KHighestWeight (in K_highest_weights.at)
+ Also the algorithm \tau->tau_q in KHatHowe Theorem 11.9}
+
+{algorithm
+ given K_type p (STFL for G)
+ find (Q,p_L),
+   Q=theta-stable parabolic
+   p_L=parameter for Q (NOT STFL)
+ AND p_L is the parameter of a one-dimensional representation of L
+ such that p=theta_induce_standard(p_L*0,G)
+ Q is the "strongly compatible parabolic" of KHatHowe 11.6
+ p_L is a minimal principal series of L,
+  J(p_L) is one-dimensional of L, whose restriction to L\cap K
+  is denoted tau_K in KHatHowe Theorem 16.6
+The algorithm here is crazily roundabout, using
+stuff from K_highest_weights.at
+Algorithm:
+given a K_Type mu
+compute a single highest weight lambda of mu
+then K_types(lambda) returns a set of K-types of G
+with this highest weight, among them mu itself
+furthermore it realizes each of these K-types
+as induced from Q
+so K_types_plus@KHighestWeight is the same as
+K_types@KHighestWeight  (see K_highest_weights.at)
+except it keeps around extra information: Q
+and an array [(p_L_i,mu_i)]
+then run through the p_L's and pick the one which
+actually gives mu_i=mu
+}
+
+{. Auxiliary function (see inds in K_highest_weights.at for some details). .}
+set inds_plus (KHighestWeight mu_in)=[(K_Type,[Param])]:
+   let Q=parabolic_LKT(mu_in) then G=real_form(Q) then
+   result=[] then (,x,tau)=mu_in, L=Levi(Q) then
+   mu=tau-two_rho_u_cap_s(Q,x)+rho_l(Q) then
+   pL=parameter(KGB(L,#KGB(L)-1),mu,null(rank(L))) then
+   all_pL=all_G_spherical_same_differential(pL) in
+     for qL in all_pL do let
+        ind=monomials(theta_induce_standard(parameter(qL),real_form(x))) in
+      result#:=(qL,ind) od; result
+
+set choose_irred_inds_plus ([[(K_Type,[Param])]] list)=[[(K_Type,[Param])]]:
+  ##for item in list do if
+    all(for (,params) in item do #params=1 od) and #item>0
+     then [item] else [] fi od
+
+
+{. The same as K_types@KHighestWeight, but return more information:
+the associated theta-stable parabolic, and for each K_type, also the
+L-spherical parameter on L .}
+set K_types_plus (KHighestWeight(,x,v):mu_in)= (Parabolic,[(Param,K_Type)]):
+  let G=real_form(x) then
+  Q=parabolic_LKT(mu_in)
+  in assert(is_parabolic_theta_stable(Q), "Q is not theta stable");
+  let x_Q=x_min(Q)
+  then list=for wt in R_K_dom_mu_orbit(mu_in) do move_weight(wt,x_Q) od
+  then test=for weight in list do inds_plus(weight) od in
+    let good_mu_list=choose_irred_inds_plus(test) then k=#good_mu_list in
+    assert (k>0,"There is no suitable weight in the R-group orbit.");
+    assert (k=1,"There is more than one suitable highest weight.");
+   let pairs=
+   ##for (qL,ind) in good_mu_list[0] do
+     if any(for wt in highest_weights(K_type(ind[0]))
+              do move_weight(wt,x_Q)=move_weight(mu_in,x_Q) od) then
+   [(parameter(x(qL),lambda(qL),rho(qL.root_datum)),K_type(ind[0]))]
+   else [] fi
+   od in (Q,pairs)
+
+set K_types_plus (K_Type mu)= (Parabolic,[(Param,K_Type)]):
+K_types_plus(highest_weights(mu)[0])
+
+set test_K_types_plus(KHighestWeight lambda)=bool:
+let (,pairs)=K_types_plus(lambda) then
+ktypes_plus= for (,mu) in pairs do mu od then
+ktypes=K_types(lambda)
+in
+ #ktypes_plus=#ktypes and
+ all(for a in ktypes_plus do find(ktypes,a) !=-1 od)
+
+set test_K_types_plus([KHighestWeight] lambdas)=bool:
+all(for lambda in lambdas do test_K_types_plus(lambda) od)
+
+
+{K_type p -> (Q,p_L) such that
+ p=theta_induce_standard(p_L*0,G)
+ Note: p_L*0 not p_L
+ and J(p_L) is one-dimensional
+See KHatHowe Theorems 11.9 and 16.6
+}
+set tau_q(K_Type mu)=(Parabolic,Param):
+let (Q,pairs)=K_types_plus(mu) then
+j=first(for (,tau) in pairs do tau=mu od) in
+let (mu_L,)=pairs[j] in
+assert(is_one_dimensional(mu_L),"mu_L is not one-dimensional");
+assert(let ind=theta_induce_standard(mu_L*0,mu.real_form) in
+#ind=1 and first_param(ind)=parameter(mu),"mu_L does not induce to mu");
+(Q,mu_L)
+
+set cross_divide_alt (KGBElt x,KGBElt y)=(bool,WeylElt):
+   let W=W(root_datum(y)) in let done=false, n=0, w=W[0], b=false in
+   while not done do if n=#W then prints("The elements are not related by cross-action.");
+                     done:=true
+                     elif cross(W[n],y)=x then done:=true; b:=true; w:=W[n]
+		     else n+:=1
+		     fi
+		  od; (b,w)
+
+set is_strongly_compatible (Param p,Parabolic P) = bool:
+  assert(is_final(p),"p is not final");
+  if not is_parabolic_theta_stable(P) then
+   prints("The parabolic is not theta-stable."); false
+  else
+     let (S,x)=P, G=real_form(x(p)), ic=infinitesimal_character(p*0)
+     then y=maximal(S,x) then rr=[int]:##for i:semisimple_rank(G)
+       do if is_real(simple_roots(G)[i],y) then [i]
+          else []
+	  fi
+       od in
+       if not rr=S then false
+       else let (b,w)=is_in_cross_orbit (x(p),y) in
+          if b=false then b
+          else let lam_new=w*ic in is_dominant (G,lam_new)
+	  fi
+       fi
+  fi
+
+set make_strongly_compatible_parabolic (Param p) = Parabolic:
+   let x=x(p),rd=root_datum(p)
+   then r=#posroots(rd),theta=involution(x), ic=infinitesimal_character(p*0)
+   then wt=ic+(rho_i(x)+(rho_S(x)+theta*rho_S(x))/r)/r in
+   parabolic_by_wt(wt,x)
+
+set test_parabolics (RealForm G)=bool: let bl=block_of(trivial(G))
+   then kt=for p in bl do LKTs(p)[0] od
+   then Ps1=for mu in kt do make_strongly_compatible_parabolic(parameter(mu)) od
+   then Ps2=for mu in kt do let (P,)=tau_q(mu) in P od in
+     all(for P@i in Ps1 do P=Ps2[i] od)
+

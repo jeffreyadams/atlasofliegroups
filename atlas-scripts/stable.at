@@ -110,7 +110,7 @@ set parameters_singular ([*] S,[Param] B)=[Param]:
 
 {vector of (-1)^{length(p)}, and corresponding diagonal matrix}
 set lengths_signs ([Param] params) = [int]:
-  for p in params  do (-1)^length(p) od
+  for p in params  do minus_1^length(p) od
 set lengths_signs_matrix ([Param] params) = mat:
   diagonal(lengths_signs(params))
 set lengths_signs ([int] S,[Param] B) = [int]:

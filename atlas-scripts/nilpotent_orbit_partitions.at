@@ -1,10 +1,4 @@
-<basic.at
-<combinatorics.at { for |Partition| type ans partition generators }
-<coordinates.at
-<groups.at
-<sort.at {for reverse_sort}
-<Weylgroup.at
-<partitions.at
+<combinatorics.at { for |Partition| type, partition generators, dominance order }
 
 { (complex) nilpotent orbits for simple classical groups,
   classical groups: SL(n), GL(n), Sp(2n), SO(n),
@@ -107,18 +101,7 @@ set nilpotent_orbit_ss_elements (LieType t) = [vec]:
 set nilpotent_orbit_ss_elements (RootDatum rd) = [vec]:
   for P in nilpotent_orbit_partitions(rd) do semisimple_element(rd,P) od
 
-
-
-set lesseq_partition (Partition v,Partition w) = bool:
-   assert(sum(v)=sum(w),"not comparable");
-   assert(v.>= and w.>= , "negative terms");
-   v:=reverse_sort(v); w:=reverse_sort(w);
-   all(for i:min(#v,#w)+1 do sum(v[0:i]) <= sum(w[0:i]) od)
-
-{ same as previous but assume each term is already reverse sorted,
-  and all terms are comparable }
-set lesseq_partition_presorted (Partition v,Partition w) = bool:
-   for i:min(#v,#w)+1 do if v[i]!=w[i] then return v[i]<w[i] fi od;true
+{moved lesseq_partition (and renamed it) to combinatorics.at}
 
 { orbits=[v_1,...,v_n]
   closures(orbits)[i] is the set of j (not including i itself) such that
@@ -129,8 +112,9 @@ set closures([Partition] orbits) = [[int]]:
    let orbits=for P in orbits do reverse_sort(P) od in
    for P@i in orbits
    do
-   ## for j:#orbits
-      do if j!=i and lesseq_partition_presorted(orbits[j],P) then [j] else [] fi
+   let ()=prints("P=",P, "i=",i) in
+   ## for j:#orbits 
+      do prints("j=",j);if j!=i and leq_dominance_order_partitions_presorted(orbits[j],P) then prints("got",i, " ", j);[j] else [] fi
       od
    od
 

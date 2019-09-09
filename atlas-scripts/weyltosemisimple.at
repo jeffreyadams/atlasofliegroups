@@ -1,0 +1,92 @@
+<basic.at
+<sort.at
+<parabolics.at
+<twisted_root_datum.at
+<tabulate.at
+
+{root numbering 0...n-1 versus 1...n}
+set shift_by_minus_1([int] S)=for j in S do j-1 od
+
+{
+set Kac_coordinates(RootDatum rd, ratvec v)=
+let (v,d)=%v then
+w=for alpha in simple_roots(rd) do alpha*v od then
+affine=d-w*labels(rd) then
+w_ratvec=w##[affine]/d in {do this to divide out common factor}
+%w_ratvec
+}
+
+set union([int] S,[int] T)=sort_u(S##T)
+
+set_type good_data = (RootDatum rd,string name,[([int],int)] pairs, int d,mat delta)
+
+set reverse_pairs(good_data data)=[([int],int)]: let n=#(data.pairs) in
+for i:n do data.pairs[n-i-1] od
+
+set torus_element(RootDatum rd,[int] S,int k)=ratvec:  {in X_*(T)_Q}
+let L=complex_Levi(rd,S) in rho_check(L)*k
+
+set torus_element(good_data data,bool shift_flag)=
+{the first part of the calculation is entirely in the big root system rd}
+{this returns an element w of V=X_*\otimes Q
+ in fact w will be in V^delta}
+let rd=data.rd then
+rp=reverse_pairs(data) then
+(S,k)=rp[0] then
+()=if shift_flag then S:=shift_by_minus_1(S) fi then
+v=torus_element(rd,S,k\2) {in X_*(T)_Q} in
+let ()=prints("first v=",v) in
+for i:#rp-1 from 1 do
+ let (T,l)=rp[i] then
+ ()=if shift_flag then T:=shift_by_minus_1(T) fi then
+ ()=S:=union(S,T) then
+{()=prints("S:",S) then
+()=prints("T:",T) then
+()=prints("l:",l) then}
+ v_1=dominant(v,complex_Levi(rd,S)) in
+ let ()=print("v_1=",v_1) in
+ let ()=print("new v=",v_1+torus_element(rd,T,l\2)) in
+ v:=v_1+torus_element(rd,T,l\2)
+ od; let
+{(ad,pullback)=folded_affine(rd,data.delta) then}
+(rd_folded,pullback)=folded(rd,data.delta) then
+ad=affine_datum(rd_folded) then
+()=prints("final v:",v) then
+(w,omega)=ad.affine_co_make_dominant(pullback*v/data.d) in
+(v,w,affine_coordinates(w,ad),omega)
+
+set report([good_data] list)=void:
+let header=["w","order","v","Kac","good"] then
+values=
+ for data in list do
+  let (v,x,kc,)=torus_element(data,true) in
+  [data.name.to_string,data.d.to_string,v.to_string,kc.to_string,data.pairs.to_string] od in
+  tabulate(header#values,"lllll",2," ")
+
+{V=X_*\otimes Q
+ V^\delta\subset V
+ V has a basis, making V\simeq Z^n
+ V^\delta has a basis, making V^\delta\simeq Z^m
+ P is an m\times n matrix, so that
+ P*[x_1,...,x_n]=[y_1,...,y_m]
+ where v=[x_1,...,x_n] in given basis of V
+ assume v\in V^\delta, then
+ v=[y_1,...,y_m] in given basis of V^delta
+ }
+
+set coxeter_data(RootDatum rd)=(rd,[(for i:ss_rank(rd) do i od,2)],coxeter_number(rd))
+
+{
+
+{alternative output version}
+set print(hodgeParamPol P)=void:
+let header=["c","x","lambda","nu","codim_O","hwt","dim_K","height","mu"] then
+values=for (c,p) in rearrange(P) do
+let (,x)=%p.x then
+(,,wt)=highest_weights(p)[0] in
+[poly_format(c,"v"),x.to_string,p.lambda.to_string,p.nu.to_string,codim(x(p)).to_string,LKTs(p)[0].highest_weight.mu.to_string,LKTs(p)[0].dimension.to_string,
+height(p).to_string,p.mu.to_string] od in
+tabulate(header#values,"lllllllll",2," ")
+}
+
+

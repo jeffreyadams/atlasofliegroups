@@ -1,0 +1,266 @@
+<W_characters.at
+<simple_factors.at
+<lietypes.at  {for locally isomorphic}
+<group_operations.at
+
+
+{given two sub-root systems of rd find w
+taking one to the other
+
+Algorithm:
+
+Given (rd,[vec] A,[vec] B)
+where A,B are subsets of roots of rd of same cardinality
+implicitly assuming A, B are set of simple roots of
+a sub root system (subgroup of the complex group)
+containing the Cartan T
+
+maybe_a_conjugator_strict:
+first test that A,B give the same Cartan matrix
+ assuming A,B are each the set of simple roots of a RootDatum
+if this passes then
+look for w\in W(rd) taking A[0] to B[0]
+if found:
+ rd->centralizer(rd,B[0])
+ A-> delete(0,A)
+ B-> delete(0,B)
+recursion, ends if #A=#B=0
+return value is maybe_a_conjugator: (void no_w| WeylElt w)
+
+maybe_a_conjugator: run over all of the permutation
+of A (symmetric group of size |A|)
+many choices will fail quickly from the Cartan matrix test
+
+These work for any sub root system
+
+Application:
+
+standard_Levi(rd,rd_L): this returns the standard Levi
+to which rd_L is conjugate, using the rho_check(L) test,
+but with no witness
+
+standard_Levi_witness(rd,rd_L):
+return W_elt taking rd_L to standard
+algorithm:
+rd_L_std=standard_Levi(rd,rd_L)
+then return
+maybe_conjugate(rd,rd_L,rd_L_std)
+}
+
+{given subset of positive roots, which are
+return the root datum for which these are
+the simple roots
+}
+set sub_root_datum(RootDatum rd,[vec] S)=
+if #S=0 then root_datum(null(rank(rd),0),null(rank(rd),0)) else
+root_datum(S, for v in S do coroot(rd,v) od) fi
+
+set sub_root_datum(RootDatum rd,[int] S)=
+sub_root_datum(rd,for i in S do posroots(rd)[i] od)
+
+{Cartan matrix just from a set of roots in rd
+ (which are the simple roots of a sub root system)
+ }
+set cartan_matrix(RootDatum rd,[vec] roots)=mat:
+for alpha in roots do for beta in roots do  alpha*coroot(rd,beta) od od
+
+{typically S is a set of roots
+ compute root datum of coroots perpendicular to all vectors in S}
+set centralizer(RootDatum rd,[vec] S)=
+let indices=##
+for a@i in poscoroots(rd) do if =a*S then [i] else [] fi od
+in
+if #indices=0 then root_datum(null(rank(rd),0),null(rank(rd),0)) else
+root_datum(simple_system_from_positive(for i in indices do posroots(rd)[i] od,
+for i in indices do poscoroots(rd)[i] od)) fi
+
+set_type
+[maybe_a_mover = (void no_w | WeylElt w),
+ maybe_a_conjugator = (void no_w| WeylElt w)
+]
+set any(maybe_a_mover m)=bool: case m  | w: true | no_w: false esac
+set req(maybe_a_mover m)=WeylElt: case m | w(m):m | else error("error in maybe_a_mover") esac
+
+set any(maybe_a_conjugator m)=bool: case m  | w: true | no_w: false esac
+set req(maybe_a_conjugator m)=WeylElt: case m | w(m):m | else error("error in maybe_a_conjugator") esac
+
+{Two versions, weights and coweights}
+
+{Version 1: elements of X^*}
+
+{try to find w\in W so w*v_1=v_2, v_i\in X^*}
+set mover(RootDatum rd, vec u, vec v)=maybe_a_mover:
+let (x,u_1)=from_dominant(rd,u) then
+(y,v_1)=from_dominant(rd,v) in
+if u_1=v_1 then (y*inverse(x)).w else ().no_w fi
+
+set is_conjugate(RootDatum rd, vec u, vec v)=any(mover(rd,u,v))
+
+set mover(RootDatum rd, ratvec u, ratvec v)=maybe_a_mover:
+let (a,b)=%u,
+(c,d)=%v in mover(rd,ratvec_as_vec(b*d*u),ratvec_as_vec(b*d*v))
+
+set is_conjugate(RootDatum rd, ratvec u, ratvec v)=any(mover(rd,u,v))
+
+{Version 2: elements of X_*}
+
+{try to find w\in W so w*v_1=v_2, v_i\in X_*}
+set mover(vec u, vec v,RootDatum rd)=maybe_a_mover:
+let (u_1,x)=from_dominant(u,rd) then
+(v_1,y)=from_dominant(v,rd) in
+if u_1=v_1 then (y*inverse(x)).w else ().no_w fi
+
+set is_conjugate(vec u, vec v,RootDatum rd)=any(mover(u,v,rd))
+
+set mover(ratvec u, ratvec v,RootDatum rd)=maybe_a_mover:
+let (a,b)=%u,
+(c,d)=%v in mover(ratvec_as_vec(b*d*u),ratvec_as_vec(b*d*v),rd)
+
+set is_conjugate(ratvec u, ratvec v,RootDatum rd)=any(mover(u,v,rd))
+
+
+{make an element of W(rd) from [W_Elt] where the last one is for
+rd, and the preceding ones are for smaller root data}
+set make_W_element([WeylElt] S)=
+let M=matrix(S[#S-1]) in
+ for i:#S-1 downto 0 do
+   M:=matrix(S[i])*M od ;W_elt(S[#S-1].root_datum,M)
+
+{try to conjugate A[0], A[1],... to B[0], B[1] *in this order*}
+{return value is maybe_a_conjugator}
+set maybe_conjugate_strict(RootDatum rd_orig,[WeylElt] S,[vec] A,[vec] B)=maybe_a_conjugator:
+if (#A != #B) then ().no_w else 
+{keep rd_orig just for computing cartan_matrix(rd_orig,*)
+ then call recursive function with recursively smaller rd's}
+let rec_fun maybe_conjugate_strict(RootDatum rd,[WeylElt] S,[vec] A,[vec] B)=maybe_a_conjugator:
+ if #A=0 then make_W_element(S).w
+ elif cartan_matrix(rd_orig,A) != cartan_matrix(rd_orig,B) then ().no_w else
+{ let ()=prints(new_line,"rd:", rd, new_line, "A: ", A, new_line, "B: ", B) in}
+ let m=mover(rd,A[0],B[0]) in
+  if any(m) then
+{     let ()=prints("m:",m, " B:", B) in}
+   let rd_new=centralizer(rd,[B[0]]) then
+{ ()=prints("rd_new:",rd_new) then}
+   w=req(m) then
+   A_new=for v in delete(A,0) do matrix(w)*v od then
+   B_new=delete(B,0) in
+   maybe_conjugate_strict(rd_new,[w]##S,A_new,B_new)
+  else ().no_w fi fi
+  in maybe_conjugate_strict(rd_orig,[id_W(rd_orig)],A,B)
+fi
+
+set maybe_conjugate_strict(RootDatum rd,[vec] A,[vec] B)=maybe_a_conjugator:
+maybe_conjugate_strict(rd,[id_W(rd)],A,B)
+
+set is_conjugate_strict(RootDatum rd,[vec] A,[vec] B)=bool:
+any(maybe_conjugate_strict(rd,[id_W(rd)],A,B))
+
+{error if w doesn't exist}
+set conjugate_strict(RootDatum rd,[vec] A,[vec] B)=WeylElt:req(maybe_conjugate_strict(rd,[id_W(rd)],A,B))
+
+{list of n! matrices in S_n}
+set symmetric_group(int n)=[mat]: for w in W(GL(n)) do matrix(w) od
+
+{try all permutations}
+
+set maybe_conjugate(RootDatum rd,[WeylElt] S,[vec] A,[vec] B) = maybe_a_conjugator:
+   if =rank(rd) or =#A and =#B then id_W(rd).w
+   elif (#A=0 and #B>0) or (#A>0 and #B=0) then ().no_w { trivial cases } 
+   else let perms=symmetric_group(#A) then nperms=#perms, i=0 in
+      while i<nperms
+      do let maybe=maybe_conjugate_strict(rd,[id_W(rd)],A*perms[i],B) in
+         if any(maybe) then return maybe { and break from loop and function }
+         else i+:=1
+         fi
+      od
+   ; ().no_w { report failure if loop runs to completion }
+   fi 
+
+set maybe_conjugate(RootDatum rd,[vec] A,[vec] B)=maybe_a_conjugator:
+maybe_conjugate(rd,[id_W(rd)],A,B)
+
+set is_conjugate(RootDatum rd,[vec] A,[vec] B)=bool:any(maybe_conjugate(rd,[id_W(rd)],A,B))
+
+set maybe_conjugate_strict(RootDatum rd,RootDatum sub_1,RootDatum sub_2)=maybe_a_conjugator:
+{very easy test first}
+if not is_locally_isomorphic(sub_1,sub_2) then ().no_w elif
+{rho_check test next}
+not is_conjugate(rd,rho_check(sub_1),rho_check(sub_2)) then ().no_w else
+maybe_conjugate_strict(rd,simple_roots(sub_1),simple_roots(sub_2)) fi
+
+set maybe_conjugate(RootDatum rd,RootDatum sub_1,RootDatum sub_2)=maybe_a_conjugator:
+{very easy test first}
+if not is_locally_isomorphic(sub_1,sub_2) then ().no_w elif
+{rho_check test next}
+not is_conjugate(rho_check(sub_1),rho_check(sub_2),rd) then ().no_w else
+maybe_conjugate(rd,simple_roots(sub_1),simple_roots(sub_2)) fi
+
+set is_conjugate(RootDatum rd,RootDatum sub_1,RootDatum sub_2)=bool:
+any(maybe_conjugate(rd,sub_1,sub_2))
+
+set is_conjugate_weak(RootDatum rd,RootDatum sub_1,RootDatum sub_2)=bool:
+is_conjugate(rd,rho(sub_1),rho(sub_2))
+
+{which standard Levi is (non-standard) L conjugate to,
+but not giving a conjugator}
+set standard_Levi(RootDatum rd,RootDatum rd_L)=RootDatum:
+let v=dominant(rho_check(rd_L),rd) then
+reps=standard_Levi_conjugacy_representatives(rd) then
+index=first(for L_std in reps do dominant(rho_check(sub_root_datum(rd,L_std)),rd)=v od) in
+{let ()=prints("index:", index) in }
+sub_root_datum(rd,reps[index])
+
+{return a WeylElt taking rd_L to a standard Levi root datum}
+set standard_Levi_witness(RootDatum rd,RootDatum rd_L)=WeylElt:
+let w=maybe_conjugate(rd,rd_L,standard_Levi(rd,rd_L)) in
+assert(any(w), "Error finding standard_Levi_witness");req(w)
+
+{automorphisms given by permutations of simple roots/coroots
+automorphism of Lie algebra
+}
+set diagram_automorphisms(RootDatum rd)=[mat]:
+if rd.is_abelian then [] else
+let perms=symmetric_group(rd.ss_rank) then
+C=rd.Cartan_matrix in
+##for P in perms do if P*C=C*P then [P] else [] fi od fi
+
+{this only works for rd semisimple}
+set outer_automorphism_group(RootDatum rd)=[mat]:
+if rd.is_abelian then [] else
+assert(rd.is_semisimple,"RootDatum is not semisimple (or abelian)");
+let A=simple_roots(rd) then
+A_inverse=rational_inverse(A) in
+##for P in diagram_automorphisms(rd) do
+{P is a permutation, M is in correct basis of X^*}
+let (M,,d)=A*P*A_inverse in if d=1 then [{P}M] else [] fi od fi
+
+{return list of pairs (mat,WeylElt)
+ mat is a permutation matrix of size ss_rank(rd_L)
+ WeylElt is in W(rd)
+} 
+set normalizer(RootDatum rd_L,RootDatum rd,[mat] outer_automorphisms)=[(mat,WeylElt)]:
+let A=simple_roots(rd_L) in
+##for P in outer_automorphisms do
+{let m=maybe_conjugate_strict(rd,A,{A*P}P*A) in}
+let m=maybe_conjugate_strict(rd,A,P*A) in
+if any(m) then [(P,req(m))] else [] fi od
+
+set normalizer(RootDatum rd_L,RootDatum rd)=[(mat,WeylElt)]:
+let A=simple_roots(rd_L) then
+automorphisms=
+ if rd_L.is_semisimple then rd_L.outer_automorphism_group {if semsimple cut down to this}
+ else rd_L.diagram_automorphisms fi  {not semisimple try all diagram automorphisms}
+in
+##for P in automorphisms do
+{let m=maybe_conjugate_strict(rd,A,{A*P}P*A) in}
+let m=maybe_conjugate_strict(rd,A,P*A) in
+if any(m) then [(P,req(m))] else [] fi od
+
+set scad(RootDatum rd)=string:
+if rd.is_simply_connected then "sc" elif
+rd.is_adjoint then "ad" else "" fi
+
+
+
+
+

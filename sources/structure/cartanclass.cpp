@@ -45,10 +45,10 @@ namespace atlas {
   A function object defining the action of the simple-imaginary reflections on
   a fiber.
 
-  The function object this class provides, and that can be used by
-  |partition::makeOrbits|, takes the index |s| of a simple-imaginary root and
-  a number |x| encoding an element of the fiber; it returns a number |y|
-  similarly encoding the image of that element under the action of |s|.
+  The function object this class provides, intended for use by
+  |partition::orbits|, takes the index |s| of a simple-imaginary root and a
+  number |x| encoding an element of the fiber; it returns a number |y| similarly
+  encoding the image of that element under the action of |s|.
 
   In fact the number |x| describes (in binary form) the element of the fiber
   group that translates the base point to fiber element in question, and the
@@ -169,7 +169,7 @@ Fiber::Fiber(const RootDatum& rd, const WeightInvolution& theta)
   , d_strongReal(makeStrongReal(rd))
   , d_strongRealFormReps(makeStrongRepresentatives())
 {
-  assert(gradingGroup(rd).dimension()==0);
+  assert(grading_kernel(rd).dimension()==0);
 }
 
 // Copy and assignment
@@ -261,7 +261,7 @@ SmallSubquotient Fiber::makeAdjointFiberGroup(const RootSystem& rs) const
   whence the constructor for |Fiber| just calls this function to |assert| that
   the result is trivial.
 */
-SmallSubspace Fiber::gradingGroup (const RootSystem& rs) const
+SmallSubspace Fiber::grading_kernel (const RootSystem& rs) const
 {
   // define map
   const SmallBitVectorList& baf =
@@ -341,7 +341,7 @@ Grading Fiber::makeBaseGrading
   for an arbitrary real form parameter (as represented by the element of the
   adjoint fiber group moving the base element there).
 
-  Algorithm: the basis for the adjoint fiber group is expressed in the
+  Algorithm: the basis for the adjoint fiber group has been expressed in the
   reduction modulo 2 of the simple coweight basis. Therefore, in order to
   apply to a root, it is enough to express that root in the simple root basis,
   and do the scalar product mod 2. Note that in contrast to |makeBaseGrading|
@@ -540,11 +540,11 @@ Partition Fiber::makeWeakReal(const RootSystem& rs) const
 
   Algorithm: we compute the quotient of the adjoint fiber group by the fiber
   group as a |Subquotient| object whose |space()| is the whole adjoint fiber
-  group. Its |toBasis| method will map each weak real form to a vector on the
-  basis of the (sub)quotient whose |to_ulong()| value will be used to
+  group. Its |toBasis| method will map each weak real form to a vector expressed
+  on the basis of the (sub)quotient whose |to_ulong()| value will be used to
   characterise the central square class. Since we want to preserve this
-  numbering when construting the resulting partition (rather than reordering
-  by smallest element), we call the constructor with a |tags::UnnormalizedTag|
+  numbering when constructing the resulting partition (rather than reordering by
+  smallest element), we call the constructor with a |tags::UnnormalizedTag|
   argument.
 */
 Partition Fiber::makeRealFormPartition() const

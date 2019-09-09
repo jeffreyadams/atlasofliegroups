@@ -1,4 +1,4 @@
-<nilpotent_orbit_partitions.at { for |get_type@RootDatum| }
+<nilpotent_orbit_partitions.at { for |nilpotent_lambdas_classical|, |get_type| }
 
 {lists of 1/2 h(O^\vee) for exceptional groups}
 

@@ -6,8 +6,11 @@
   are done with integers only, distinguishing this script from Gaussian-elim.at
 }
 
-{ |M| is an $n\times k$ matrix, so columns of |M| span a $\Z$-submodule
-  $ W=image(M)$ of $\Z^n$; get canonical    generators for this submodule }
+{ Compute what appears to be called the Hermite form of an integral matrix.
+
+  |M| is an $n\times k$ matrix, so columns of |M| span a $\Z$-submodule
+  $ W=image(M)$ of $\Z^n$; get canonical generators for this submodule
+}
 set image_lattice (mat A) = mat:
    let (M,,pivots,)=echelon(A) then c=#M
 in for i@j in pivots
@@ -20,17 +23,29 @@ set is_saturated (mat M) = bool:
    let (M,,pivots,)=echelon(M)
 in set (M,):=ech_up(M,pivots); product(M.main_diagonal)=1
 
-{ dimension |c| of image, together with a $\Z$-inverible matrix whose first |c|
-  columns span that saturation of the image, the remainder a chosen complement }
+{ A function that avoids using |adapted_basis|, |diagonalize|, or other
+  functions that may suffer severe coefficient growth; to be used in situations
+  where only the (saturated) image subspace as a whole, and possibly a choice
+  of a complementary subspace, are needed, not a special basis for the image
+
+  Find dimension |c| of image, and a $\Z$-inverible matrix whose first |c|
+  columns span saturation of the image; remaining ones span a chosen complement
+}
 set adapted_direct_sum (mat M) = (int,mat):
    let (M,,pivot,)=echelon(M) then (r,c)=shape(M), !M0=M
    then R=id_mat(r) { record row operations, held in inversed form }
-in for j:c { loop over columns of M while it is being modified in the loop }
-   do let col=M[j] then (d,C)=Bezout(col[j:pivot[j]+1]), tM=^M
-   then tM_C=tM[j:pivot[j]+1] * C, R_C = R[j:pivot[j]+1] * ^C.inverse
-   in M := c^ for i:r do if i<j or i>pivot[j] then tM[i] else tM_C[i-j] fi od
-   ;  R := r# for i:r do if i<j or i>pivot[j] then  R[i] else  R_C[i-j] fi od
-   ; assert(M[j,j]=d)
+in { now do coordinate change to make |M| upper triangular }
+   for j:c { loop over columns of M while it is being modified in the loop }
+   do let col=M[j], piv_j=pivot[j]+1 { only consider few rows now: |j:piv_j| }
+   in if j<piv_j { avoid doing any work when our range is a single rows }
+      then
+         let (d,C)=Bezout(col[j:piv_j]), tM=^M
+         then tM_C=tM[j:piv_j] * C, R_C = R[j:piv_j] * ^C.inverse
+         { updated rows are now spliced into place in |M| and |R|: }
+      in M := c^ for i:r do if i<j or i>pivot[j] then tM[i] else tM_C[i-j] fi od
+      ;  R := r# for i:r do if i<j or i>pivot[j] then  R[i] else  R_C[i-j] fi od
+      ; assert(M[j,j]=d)
+      fi
    od; assert(R*M=M0); (c,R)
 
 set image_subspace (mat M) = mat: { generators for $\Q$-span of image of |M| }
@@ -55,7 +70,7 @@ set saturation_quotient_basis = image_complement_basis@mat
 
 { |M| is an $n\times k$ matrix; its columns span a submodule $W$ of $\Z^n$.
   Compute $n\times n$ matrix of projection onto the saturation (or $\Q$-span)
-  of $W$, parallel to its complement from |adapted_sirect_sum(M)|.
+  of $W$, parallel to its complement from |adapted_direct_sum(M)|.
 }
 set projector_to_image (mat M) = mat:
   let (c,R)=adapted_direct_sum(M) in R[ : , :c] * R.inverse[ :c, : ]
@@ -114,6 +129,18 @@ set solve_ratvec (mat A, vec v) = ratvec:
 
 set in_lattice (mat A, ratvec u) = bool: { whether v in image lattice of A }
   let (b,n)=%u in n=1 and solve(A,b).any
+
+{test if ratvec v is in lattice L + rational subspace V}
+set in_lattice_subspace_sum ([vec] L,[vec] V)=(ratvec->bool):
+(ratvec v):
+if =#V then in_lattice(L,v) else
+ let ck=cokernel(V) then (new_V,,,) = echelon(ck*L) in
+ let v_new=ck*v in
+ if not is_integer(v_new) then false
+  else
+  in_lattice(new_V,ratvec_as_vec(v_new))
+ fi
+fi
 
 set vec_solve (mat A, ratvec u) = maybe_a_vec: { integer solution to A*x=b }
   let (b,n)=%u in if n>1 then no_vec() else solve(A,b) fi
@@ -180,3 +207,6 @@ in for j:c { loop over columns of N while it is being modified in the loop }
    ; assert(N[j,j]=d)
    od; assert(R*N=M);assert(A*C=R*(N##Z));(c,R,N,C,M,Z)
 
+{generators of finite abelian group Z^n/A}
+set finite_quotient(mat M)=let (A,v)=filter_units(Smith(M)) in
+for col@i in A do (col,v[i]) od

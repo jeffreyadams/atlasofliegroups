@@ -2,6 +2,7 @@
 <W_orbit.at
 <representations.at
 <finite_dimensional.at
+<subgroups.at {for centralizer@(RootDatum,ratvec)}
 
 {! Weyl character formula computed at elements of finite order
 
@@ -43,14 +44,6 @@ set reduce_ratvecs_mod_lattice ([ratvec] S) = [ratvec]:
 set W_orbit_torus_element(RootDatum rd,ratvec v)=[ratvec]:
    reduce_ratvecs_mod_lattice(W_orbit(dual(rd),v))
 
-{ see centralizer@(KGBElt,ratvec) in K_highest_weights.at
-  don't need x, and test is <alpha,v> is an integer
-}
-set centralizer(RootDatum rd,ratvec v) = RootDatum:
-   let roots = columns_with((vec alpha): is_integer(alpha*v), posroots(rd))
-   then coroots = rank(rd) # for alpha in roots do coroot(rd,alpha) od
-   in root_datum_from_positive(roots,coroots)
-
 {. order of element of Q/Z.}
 set QmodZ_order(ratvec v)=int:denom(v)
 
@@ -80,7 +73,7 @@ set trace_semisimple_simply_connected(
    for w in S do
     let rd_w=centralizer(rd,w), num=eval_char_T(lambda,w,F)
       ,  denom=weyl_denominator_quotient(rd,w,F)
-      then dim_factor= dimension_rat(rd_w,lambda+rho(rd)-rho(rd_w))
+      then dim_factor= dimension(rd_w,lambda+rho(rd)-rho(rd_w))
       then contribution = dim_factor*(num/denom)
       in if verbose_trace
          then prints(new_line, "t= ", w)
@@ -118,7 +111,7 @@ set trace_long (RootDatum rd, vec lambda,ratvec v,CyclotomicField F) =
    for w in S
    do let rd_w=centralizer(rd,w), num=eval_char_T(lambda,w,F)
       ,  denom=weyl_denominator_quotient(rd,w,F)
-      then dim_factor= dimension_rat(rd_w,lambda+rho(rd)-rho(rd_w))
+      then dim_factor= dimension(rd_w,lambda+rho(rd)-rho(rd_w))
       then contribution = dim_factor*(num/denom)
       in if verbose_trace
          then prints(new_line, "t= ", w)
@@ -148,12 +141,8 @@ set trace_long (vec lambda,(RootDatum rd,ratvec v)) =
    trace_long(rd,lambda,v,CF(denom(v)))
 
 {special case of Weyl character formula: x^2\in Z (strong real form)
- used for computing signatures of Hermitian forms, need to handle
- large integers
- currently integer is of size <=2^31-1, want to allow 2^63-1
- (eventually arbitrary precision)
- temporary work-around: use rationals instead of integers
- returns (rat theta,rat k): Trace(pi(x))=e^{2\pi i theta}*k
+ used for computing signatures of Hermitian forms
+ returns (rat theta,int k) representing Trace(pi(x))=e^{2\pi i theta}*k
  since x^2\in Z, \pi(x)=\zeta^{1/2}diag(\pm 1,...,\pm 1) where
  zeta^{1/2} is a square root of the central character evaluated as x^2
  zeta=e^{\pi i\theta}
@@ -161,7 +150,7 @@ set trace_long (vec lambda,(RootDatum rd,ratvec v)) =
 
 {.Weyl character formula for highest weight lambda evaluated on an element x
   in T with x^2 in Z.}
-set trace_strong_real(RootDatum rd, ratvec lambda,ratvec v)=(rat,rat):
+set trace_strong_real (RootDatum rd, ratvec lambda,ratvec v) = (rat,int):
 (  let S=W_orbit_torus_element(rd,v)
    , denominator=weyl_denominator_quotient(rd,v,cyclotomic_field(2)).to_rational
        { this is a power of 2, and same on all elements of orbit }
@@ -173,15 +162,17 @@ set trace_strong_real(RootDatum rd, ratvec lambda,ratvec v)=(rat,rat):
    ;  for w in S
       do let rd_w=centralizer(rd,w) in
          result+:= minus_1^(lambda*2*(w-v)).rat_as_int
-                  *(dimension_rat(rd_w,lambda+rho(rd)-rho(rd_w))/denominator)
-     od; (lambda*v,result)
+                  *(dimension(rd_w,lambda+rho(rd)-rho(rd_w))/denominator)
+      od
+   ;  (lambda*v,result.rat_as_int)
 )
 
 {.Weyl character formula for finite dimensional p evaluated on an element x
  in T with x^2 in Z.}
-set trace_strong_real (Param p,ratvec v) = (rat,rat):
+set trace_strong_real (Param p,ratvec v) = (rat,int):
    trace_strong_real(root_datum(p),
-      p.fd_only.highest_weight_finite_dimensional,v)
+      p.fd_only.highest_weight_finite_dimensional,
+      v)
 
 { Weyl character formula: given set of weights, add them up at exp(2i\pi t)
   input should be the set of weights (with multiplicities) of a representation }

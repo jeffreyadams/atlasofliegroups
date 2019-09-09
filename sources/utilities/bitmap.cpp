@@ -163,7 +163,7 @@ BitMap::iterator BitMap::end() const
 bool BitMap::back_up(unsigned long& n) const
 {
   unsigned int i=n>>baseShift;
-  unsigned int m=(n&posBits)==0 ? 0 : d_map[i]&constants::lMask[n&posBits];
+  auto m=(n&posBits)==0 ? 0 : d_map[i]&constants::lMask[n&posBits];
 
   while(m==0 and i>0)
     m=d_map[--i];

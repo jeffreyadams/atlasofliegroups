@@ -12,6 +12,7 @@
 
 #include "kgb.h"
 #include "bruhat.h"
+#include "bitmap.h"
 #include "sl_list.h"
 
 namespace atlas {
@@ -19,14 +20,11 @@ namespace kgb {
 
 class KGP_orbit
 {
-  std::vector<KGBElt> data;
+  bitmap::BitMap members;
 
 public:
-  // allow KGP class to build orbits
-  friend class KGP;
-
   // Constructor
-  KGP_orbit() {};
+  KGP_orbit(KGBElt size) : members(size) {};
 
   // print function
   std::ostream& print(std::ostream& strm) const;
@@ -35,8 +33,20 @@ public:
   bool operator< (const KGP_orbit &elt) const  { return (open() < elt.open()); }
 
   // accessors
-  KGBElt open() const { return data.back(); }
-  size_t size() const { return data.size(); }
+  KGBElt open() const
+  { unsigned long last=members.capacity();
+    bool success = members.back_up(last); // set |last| to final member
+    assert(success); ndebug_use(success);
+    return static_cast<KGBElt>(last); // return result as |KGBElt|
+  }
+
+  size_t size() const { return members.size(); }
+
+  bitmap::BitMap::iterator begin() const { return members.begin(); }
+  bitmap::BitMap::iterator end() const   { return members.end(); }
+
+  // manipulators
+  void insert (KGBElt x) { members.insert(x); }
 
 };
 
@@ -85,9 +95,8 @@ public:
 
 private:
   // helper function - removes redundant edges from a closure relation
-  typedef containers::queue<KGPElt> KGP_queue;
-  void reduce(KGP_queue& q, std::vector<bool>& closure,
-	      std::vector<Poset::EltList>& hasse, KGPElt minelt);
+  Poset::EltList reduce
+  (KGPElt i, bitmap::BitMap closure, std::vector<Poset::EltList>& hasse);
 
 }; // |class KGP|
 

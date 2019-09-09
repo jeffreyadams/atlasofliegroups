@@ -33,3 +33,10 @@ set tabulate ([[string]] data,
       pad(x,alignments[j],max_per_column[j],c)
     od.##.prints
   od
+
+{useful defaults:
+ string alignments: "lll...l" (number=#data[0])
+ cell_padding: 2
+ pad_char: " "
+ }
+set tabulate ([[string]] data)=void: tabulate(data, "l"*#data[0], 2, " ")

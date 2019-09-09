@@ -62,6 +62,7 @@ set to_binary (int length, int n) = vec:
 
 set generate_all_binary = (int->[vec]): all_0_1_vecs@int
 
+{generate all subsets of a set of integers}
 set generate_all_subsets ([int] S) = [[int]]:
   let rec_fun g (int k) = [[int]]: { subsets of first k elements of S }
     if =k then [[]] { one empty subset of the empty set }
@@ -69,8 +70,12 @@ set generate_all_subsets ([int] S) = [[int]]:
     fi
   in g(#S)
 
-{generate all subsets of [vec], using generate_all_subsets@[int]}
+{generate all subsets of a set of vectors}
 set generate_all_subsets([vec] S) = [[vec]]:
+    for A in generate_all_subsets(for i:#S do i od) do for i in A do S[i] od od
+
+{all 2^n subsets of a set of rational vectors}
+set generate_all_subsets([ratvec] S) = [[ratvec]]:
     for A in generate_all_subsets(for i:#S do i od) do for i in A do S[i] od od
 
 { nicer display of Splits }
@@ -106,3 +111,90 @@ set rec_fun box([int] heights) = [[int]]:
 
 set flatten = ## @ [[int]]
 
+{formerly defined in combinatorics.at as strip_to_partition@[int]}
+{delete trailing zeros}
+set delete_trailing_zeros([int] list)=[int]:
+   let i=0, nl=#list in while i<nl and =list~[i] do i+:=1 od; list[:i~]
+{ alternatively: |for x in list do if =x then break fi od| }
+
+
+
+{  more basic functions involving roots   }
+
+{for logical convenience}
+set not_a_root(RootDatum rd,vec v)=bool:not is_root(rd,v)
+set not_a_root(RootDatum rd)=(vec -> bool):(vec v):not_a_root(rd,v)
+
+{index of root in list of all roots}
+set all_root_index(RootDatum rd,vec alpha)=int:find(rd.roots,alpha)
+set all_root_index(RootDatum rd)=(vec -> int):(vec alpha):all_root_index(rd,alpha)
+
+{index of root in list of simple roots}
+set simple_root_index(RootDatum rd,vec alpha)=int:find(rd.simple_roots,alpha)
+set simple_root_index(RootDatum rd)=(vec -> int):(vec alpha):simple_root_index(rd,alpha)
+
+{return 0...n-1=simple root index of alpha (if positive simple) or -alpha (if negative simple)
+or -1 to indicate an error
+}
+set pm_simple_root_index(RootDatum rd,vec alpha)=int:
+if is_posroot(rd,alpha) then  rd.simple_root_index(alpha) else rd.simple_root_index(-alpha) fi
+set pm_simple_root_index(RootDatum rd)=(vec -> int):(vec alpha):pm_simple_root_index(rd,alpha)
+
+{sgn(alpha)alpha is positive}
+set sgn(RootDatum rd,vec alpha)=int:
+assert(is_root(rd,alpha),"not a root");
+if is_posroot(rd,alpha) then 1 else -1 fi
+set sgn(RootDatum rd)=(vec->int):(vec alpha):sgn(rd,alpha)
+
+{alpha>0: height(alpha)=sum of coefficients of simple roots
+ alpha<0: height(alpha)=height(-alpha)(
+}
+set height(RootDatum rd,vec alpha)=int:
+assert(is_root(rd,alpha),"not a root");
+abs(rat_as_int(rho_check(rd)*alpha))
+set height(RootDatum rd)=(vec->int):(vec alpha):height(rd,alpha)
+
+{list roots of given height}
+set roots_of_height(RootDatum rd,int height)=[vec]:
+## for alpha in roots(rd) do if height(rd,alpha)=height then [alpha] else [] fi od
+
+set max_height(RootDatum rd)=int:max(for alpha in rd.roots do height(rd,alpha) od)
+
+{all roots, sorted by height}
+set roots_by_height(RootDatum rd)=[[vec]]:for i:max_height(rd) do roots_of_height(rd,i) od
+
+{return (p,q) where
+alpha+p\beta is a root (maximal such p)
+alpha-q\beta is a root (maximal such q)
+}
+{set root_string(RootDatum rd, vec alpha, vec beta)=(int,int):
+assert(not alpha=-beta,"alpha=-beta");
+let x = first(for i:4 do  not is_root(rd,alpha+i*beta) od) then
+y = first(for i:4 do not  is_root(rd,alpha-i*beta) od) in (x-1,y-1)
+}
+set root_string(RootDatum rd, vec beta, vec alpha)=(int,int):
+assert(not alpha=-beta,"alpha=-beta");
+let x = first(for i:4 do  not is_root(rd,alpha+i*beta) od) then
+y = first(for i:4 do not  is_root(rd,alpha-i*beta) od) in (x-1,y-1)
+
+set root_string(RootDatum rd)=((vec,vec)->(int,int)):(vec alpha,vec beta):root_string(rd,alpha,beta)
+
+{write a positive root as a sum of simple}
+set rec_fun posroot_as_sum_of_simple(RootDatum rd,vec alpha)=[vec]:
+assert(is_posroot(rd,alpha),"root is not positive");
+ if is_simple_root(rd,alpha) then [alpha] else
+ let i=first(for i:ss_rank(rd) do alpha*simple_coroots(rd)[i]>0 od) in
+ let beta=simple_roots(rd)[i] in beta#posroot_as_sum_of_simple(rd,alpha-beta) fi
+
+{write any root as sum of simple or sum of (-simple)}
+set rec_fun root_as_sum_of_simple(RootDatum rd,vec alpha)=[vec]:
+if is_posroot(rd,alpha) then posroot_as_sum_of_simple(rd,alpha) else
+-posroot_as_sum_of_simple(rd,-alpha) fi
+
+{alpha>0: return alpha_1  (alpha_1 simple) so alpha= alpha_1+(other simple roots...)
+ alpha<0: return -alpha_1 (alpha_1 simple) so alpha=-alpha_1-(other simple roots...)
+}
+set simple_root_summand(RootDatum rd,vec alpha)=vec:
+if is_posroot(rd,alpha) then 
+let i=first(for i:ss_rank(rd) do alpha*simple_coroots(rd)[i]>0 od) in simple_roots(rd)[i] else 
+let i=first(for i:ss_rank(rd) do alpha*simple_coroots(rd)[i]<0 od) in -simple_roots(rd)[i] fi

@@ -191,7 +191,7 @@ set sign (
       in rat_as_int( i_exp/2 ) { convert to exponent of -1, testing parity }
     )
     + { this part is exponent of -1 } (l2-l1)*tau1 + t2*(lambda2-lambda1)
-    in (-1)^exp
+    in minus_1^exp
   fi
 
 set sign_verbose (
@@ -212,7 +212,7 @@ set sign_verbose (
       in rat_as_int( i_exp/2 ) { convert to exponent of -1, testing parity }
     )
     + { this part is exponent of -1 } (l2-l1)*tau1 + t2*(lambda2-lambda1)
-    in sign:= (-1)^exp
+    in sign:= minus_1^exp
   fi; sign
 
 { dual_sign(E,F) see sign(E,F); dual_sign(E,F) tells whether the extended
@@ -231,7 +231,7 @@ set dual_sign (
       in rat_as_int( i_exp/2 ) { convert to exponent of -1, testing parity }
     )
     + { this part is exponent of -1 } t1*(lambda2-lambda1) + (l2-l1)*tau2
-    in (-1)^exp
+    in minus_1^exp
   fi
 
 { for use in Cayley transforms:
@@ -256,7 +256,7 @@ set z (ExtParam E) = rat: { implicit $\exp_{-1}$ }
   E.l * (E.delta-1) * E.tau / 2 + E.t * E.lambda_rho
 
 set z_quot (ExtParam E, ExtParam F) = int:
-  let d=E.z-F.z in assert(=d%1, "z_quot imaginary"); (-1)^(d\1)
+  let d=E.z-F.z in assert(=d%1, "z_quot imaginary"); minus_1^(d\1)
 
 { print information about an extended block }
 set ext_print_block (mat delta, [Param] B) = void:

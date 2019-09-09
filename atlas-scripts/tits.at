@@ -15,7 +15,7 @@
   theta on v, use the transpose inverse (right-multiply v by inverse(theta)).
 }
 
-set_type Tits_elt = (RootDatum root_datum,ratvec torus_part,mat theta)
+set_type [ Tits_elt = (RootDatum root_datum,ratvec torus_part,mat theta) ]
 
 { equality test assumes the root data agree, without check (though it could) }
 set = (Tits_elt(,v,theta),Tits_elt(,u,eta)) = bool: =(v-u)%1 and theta=eta
@@ -33,7 +33,7 @@ set tits_delta (RealForm G) = Tits_elt:
 { left multiplication by sigma_s, where s must index a simple root }
 set left (int s,Tits_elt(rd,v,theta)) = Tits_elt:
   ( rd
-  , let v1 = coreflect(rd,v,s) { permute sigma_s e(v), so act by s on v } in
+  , let v1 = coreflect(rd,s,v) { permute sigma_s e(v), so act by s on v } in
     if lengthens(rd,s,theta) { valid even if theta=w.delta is not in W }
     then v1
     else v1+coroot(rd,s)/2 { second term represents m_s = sigma_s^2 }
@@ -129,6 +129,7 @@ set ^ (Tits_elt !xi, int n) = Tits_elt:
   else tits_identity(xi.root_datum)
   fi
 
+{this only works if the torus part is of order 2 (in the ajdoint group?)}
 set order (Tits_elt xi) = int:
   let id=tits_identity(xi.root_datum), d=order(xi.theta)
   in if xi^d=id then d elif xi^(2*d)=id then 2*d else error() fi

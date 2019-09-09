@@ -1,0 +1,158 @@
+<misc.at
+<Weylgroup.at {for invariant_form}
+<ratmat.at
+<torus.at
+
+{NOTE: in this file "simple" means "derived group is simple"}
+
+{root j is orthogonal to all coroots in S}
+set is_orthogonal(RootDatum rd,[int] S, int j)=bool:
+let root=posroots(rd)[j] in all(for i in S do =poscoroots(rd)[i]*root od)
+
+{list of simple roots in same simple factors as simple root #i}
+set simple_factor_indices(RootDatum rd, int i)=[int]:
+let rec_fun f(RootDatum rd, [int] S)=[int]:
+let new=first(for j:ss_rank(rd) do find(S,j)=-1 and not is_orthogonal(rd,S,j) od) in
+ if new=-1 then S else f(rd,S#new) fi in
+ f(rd,[i])
+
+{returns S=[[int]] where S[i] is the list of simple roots of simple factor #i}
+set simple_factors_indices(RootDatum rd)=[[int]]:
+let rec_fun f(RootDatum rd,[[int]] factors)=[[int]]:
+if ss_rank(rd)=0 then [[]] elif
+ss_rank(rd)=sum(for S in factors do #S od) then factors else
+ let new=first(for i:ss_rank(rd) do all(for S in factors do find(S,i)=-1 od) od) in
+ f(rd,factors#simple_factor_indices(rd,new)) fi
+in f(rd,[])
+
+{return RootDatum of simple roots in S (might not be simple)}
+set factor(RootDatum rd,[int] S)=RootDatum:
+ if #S=0 then complex_torus(rank(rd)) else
+ root_datum(for i in S do simple_roots(rd)[i] od,for i in S do simple_coroots(rd)[i] od) fi
+
+{RootDatum of simple factor containing simple root #i}
+set simple_factor(RootDatum rd,int i)=RootDatum:
+factor(rd,simple_factor_indices(rd,i))
+
+set simple_factor(RootDatum rd,vec alpha)=RootDatum: let i=first(for
+j:rd.ss_rank do !=alpha*coroot(rd,j) od) in simple_factor(rd,i)
+
+{complete list of simple factors, as [RootDatum]}
+set simple_factors(RootDatum rd)=[RootDatum]:
+for S in simple_factors_indices(rd) do factor(rd,S) od
+
+set number_simple_factors(RootDatum rd)=#simple_factors_indices(rd)
+
+{return (rds,indices)=([RootDatum],[[int]])
+rds[i]=RootDatum of i^th simple factor
+indices[i]: indices of simple roots of rds[i] in simple roots of rd
+So {indices[i][j]} are distinct integers 0,1,...,ss_rank(rd)-1
+indices[i][j] is the index (in the simple roots of rd) of
+ the j^th simple root of factor #i
+}
+set simple_factors_info(RootDatum rd)=([RootDatum],[[int]]):
+(simple_factors(rd),simple_factors_indices(rd))
+
+set highest_roots(RootDatum rd)=[vec]:
+for factor in simple_factors(rd) do highest_root(factor) od
+
+set simple_factor(RootDatum rd,vec alpha)=RootDatum:
+assert(is_root(rd,alpha),"not a root");
+let factors=simple_factors(rd) then
+j=first(for i:#factors do alpha*rho_check(factors[i]) !=0 od) in
+factors[j]
+
+set is_long(RootDatum rd,vec alpha)=bool:
+assert(is_root(rd,alpha),"not a root");
+let L=simple_factor(rd,alpha) then
+f=invariant_form(L) then
+beta=highest_root(L) in f(alpha,alpha)=f(beta,beta)
+
+set is_short(RootDatum rd,vec alpha)=bool: not is_long(rd,alpha)
+
+{set project_on_simple_factor(RootDatum rd,int i)=mat:
+^for alpha in simple_roots(rd.simple_factors[i]) do e(rank(rd),find(rd.simple_roots,alpha)) od
+
+set project_on_simple_factor(RootDatum rd,int i,ratvec wt)=ratvec:
+project_on_simple_factor(rd,i)*wt
+
+set project_on_simple_factor(int i,RootDatum rd)=mat:
+for alpha_v in simple_coroots(rd.simple_factors[i]) do e(rank(rd),find(rd.simple_coroots,alpha_v)) od
+
+set project_on_simple_factor(ratvec cwt, int i,RootDatum rd)=ratvec:
+cwt*project_on_simple_factor(i,rd)
+
+set project_on_simple_factor(RootDatum rd,int i)=mat:
+rd.simple_factors[i].simple_roots.projector_to_image
+
+set project_on_simple_factor(RootDatum rd,int i,ratvec wt)=ratvec:
+project_on_simple_factor(rd,i)*wt
+
+set project_on_simple_factor(int i,RootDatum rd)=mat:
+rd.simple_factors[i].simple_coroots.projector_to_image
+
+set project_on_simple_factor(ratvec cwt, int i,RootDatum rd)=ratvec:
+cwt*project_on_simple_factor(i,rd)
+}
+
+
+set project_on_simple_factor(RootDatum rd, int i)=
+let ()=prints("projecting on simple factor A") in
+let f=simple_factors(rd)[i] then
+M=simple_roots(rd)  then
+K=kernel(^M) then
+Q=let (P,d)=invert(M##K) in ratmat:(P,"/",d) then
+R=mat:for alpha in simple_roots(rd) do
+ ##if find(simple_roots(f),alpha)>=0 then [alpha] else [null(rd.rank)] fi od
+ in
+prints("M=",M,new_line,"K=",K, new_line, "Q=",Q, new_line, "R=",R, new_line,"RQ=",R*Q);
+R*Q
+
+set project_on_simple_factor(RootDatum rd, int i,ratvec wt)=
+project_on_simple_factor(rd,i)*wt
+
+set project_on_simple_factor(int i,RootDatum rd)=
+let f=simple_factors(rd)[i] then
+M=simple_coroots(rd)  then
+K={prints("M=",M);}kernel(^M) then
+Q={prints("K=",K);}let (P,d)=invert(M##K) in ratmat:(P,"/",d) then
+{()=prints("Q=",Q) then}
+R=mat:for alpha in simple_coroots(rd) do
+ ##if find(simple_coroots(f),alpha)>=0 then [alpha] else [null(rd.rank)] fi od then
+S=R##null(rd.rank,rd.rank-rd.ss_rank) in
+{prints("R=",R);prints("S=",S);
+prints("M=",M,new_line,"K=",K, new_line, "Q=",Q, new_line, "R=",R, new_line,"S*Q:",S*Q);}
+S*Q
+
+set project_on_simple_factor(ratvec cwt, int i,RootDatum rd)=
+project_on_simple_factor(i,rd)*cwt
+
+
+set project_on_simple_factor(RootDatum rd,int i)=
+let f=simple_factors(rd)[i] then
+M=simple_roots(rd)  then
+K={prints("M=",M);}kernel(^M) then
+Q={prints("K=",K);}let (P,d)=invert(M##K) in ratmat:(P,"/",d) then
+{()=prints("Q=",Q) then}
+R=mat:for alpha in simple_roots(rd) do
+ ##if find(simple_roots(f),alpha)>=0 then [alpha] else [null(rd.rank)] fi od then
+S=R##null(rd.rank,rd.rank-rd.ss_rank) in
+{prints("R=",R);prints("S=",S);}
+{prints("M=",M,new_line,"K=",K, new_line, "Q=",Q, new_line, "R=",R, new_line,"S*Q:",S*Q);}
+S*Q
+
+set project_on_simple_factor(RootDatum rd, int i, ratvec wt)=
+project_on_simple_factor(rd,i)*wt
+
+{
+
+set project_on_simple_factor(int i,RootDatum rd)=
+let scr=simple_coroots(rd) then
+scrf=simple_coroots(simple_factors(rd)[i]) then
+M=mat:##for alpha in scr do 
+ if find(scrf,alpha)>=0 then [alpha] else [null(rd.rank)] fi od
+then scr_inv=let (A,d)=invert(scr) in ratmat:(A,"/",d) in
+M*scr_inv
+
+set project_on_simple_factor(ratvec wt,int i,RootDatum rd)=
+project_on_simple_factor(rd,i)*wt}
