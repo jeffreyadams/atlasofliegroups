@@ -83,7 +83,7 @@ set product(CharacterTable ct)=(([int],[int])->[int]):([int] x,[int] y):
    for xi@i in x do xi*y[i] od
 set power_map(CharacterTable ct)=(int -> [int]):
 (int j): let w=ct.class_rep(j) in for i:w.order do ct.class_index(w^i) od
-
+set degree(CharacterTable ct)=(int -> int):(int i):ct.degrees[i]
 
 set trivial(CharacterTable ct)=[int]: for :ct.n_classes do 1 od
 set sign(CharacterTable ct)=[int]: for w in ct.class_reps do minus_1^w.length od  {sgn}
@@ -177,3 +177,167 @@ for col@i in ct.table do ct.table[f(i)] od
 
 set permute_classes(CharacterTable ct,[int] permutation)=CharacterTable:
 let f(int i)=permutation[i] in permute_classes(ct,f)
+
+
+{copied (and modified) from W_characters.at}
+
+{ Adams's operation (not Jeff's): evaluate character at class of $w^n$ }
+set Adams (CharacterTable tab) = ([int]char, int n) [int]:
+   for i:tab.n_classes do char[tab.class_power(i,n)] od
+
+{ symmetric power of a character }
+set sym_power (CharacterTable tab) = ([int]char, int n) [int]:
+{ with $h_k$ symmetric, $p_k$ Adams, use $kh_k=\sum_{i=0}{k-1} h_ip_{k-i}$ }
+   let { define two local tables of characters, to be expanded in loop }
+     p = { "power sum polynomials", results of Adams operations } [[int]]: [ ]
+         { since there is no $p_0$, the $k$-the Adams operation gives the entry
+           |p[k-1|, but never mind since we will always reverse-index |p| }
+   , h = { "complete homogeneous polynomials", symmetric powers } [tab.trivial]
+   , Adams = tab.Adams { shorthand }
+in for k:n from 1
+   do p #:= Adams(char,k) { expand }
+   ;  let sum=p~[0]
+   in for i:k-1 from 1 do sum:=tab.sum(sum,tensor(h[i],p~[i])) od
+   ; h #:= for s in sum do s\k od { expand table by |sum\k| }
+   od; h[n] { last symmetric power is the one we want }
+
+{sym_powers_reflection should be precalculated
+ then ct.sym_power_reflection(i) is a loookup
+ otherwise return an error, see update_sym_powers_reflection
+}
+set sym_power_reflection(CharacterTable ct)=(int->[int]):(int i):
+let sym_powers_reflection=ct.sym_powers_reflection in
+if #sym_powers_reflection>0 then
+ sym_powers_reflection[i]
+else
+ error("sym_powers_reflection not pre-calculated, run ct:=ct.update_sym_powers_reflection to update")
+fi
+
+{if ct.sym_powers_reflection has not been calculated, do so and update the
+table
+Perhaps it is possible to do this automatically? If you call ct.sym_power_reflection(i)
+and ct.sym_powers_reflection is the default [[int]]:[], then calculate it
+and "silently" update ct
+}
+set update_sym_powers_reflection(CharacterTable ct)=CharacterTable:
+ let sym_powers_reflection=for i:ct.root_datum.nr_of_posroots+1 do ct.sym_power(ct.reflection,i) od 
+ then ()=ct.sym_powers_reflection:=sym_powers_reflection in ct
+
+{ exterior power of a character }
+set ext_power (CharacterTable tab) = ([int]char, int n) [int]:
+{ with $e_k$ ext, $p_k$, use $ke_k=\sum_{i=0}{k-1}(-1)^{k-i-1} e_ip_{k-i}$ }
+   let { define two local tables of characters, to be expanded in loop }
+    sp = { "signed power sum polynomials", $(-1)^{i-1}p_i$ } [[int]]: [ ]
+         { since there is no $p_0$, the $k$-the Adams operation gives the entry
+           |p[k-1|, but never mind since we will always reverse-index |p| }
+   , e = { "elementary symmetric polynomials", exterior powers } [tab.trivial]
+   , Adams = tab.Adams { shorthand }
+in for k:n from 1
+   do sp #:= Cartesian_power(Adams(char,k),minus_1^(k-1)) { expand }
+   ;  let sum=sp~[0]
+   in for i:k-1 from 1 do sum:=tab.sum(sum,tensor(e[i],sp~[i])) od
+   ; e #:= for s in sum do s\k od { expand table by |sum\k| }
+   od; e[n] { last symmetric power is the one we want }
+
+
+{   -----character calculations------}
+{copied (and modified) from W_reps.at}
+
+{. matrix of inner products of characters of representations .}
+set matrix_of_inner_products (CharacterTable tab,[[int]] characters) = mat:
+  let n=#characters
+  in matrix((n,n),(int i,int j): tab.inner(characters[i],characters[j]))
+
+{ filter list of representations to a unique copy of any occurring character }
+{
+set sort_u (CharacterTable tab,[W_rep] list) = [W_rep]:
+  case #list
+  in [], list
+  else let chars = for pi in list do character(tab,pi) od
+     then sorted = [[int]]: sort_u(chars)
+     then positions = for :#sorted do minus_1 od
+     in for char@i in chars
+        do let j =
+           binary_search_first((int j):lex_lesseq(char,sorted[j]),0,#sorted)
+           in assert(char=sorted[j]); if positions[j].< then positions[j]:=i fi
+        od
+     ; for pos in positions do list[pos] od
+  esac
+  }
+
+{ the sign representation occurs in S^(nr_of_posroots)(reflection), and
+  this is the maximum necessary exponent to get all irreducibles }
+{. smallest k so that pi occurs in S^k(reflection) .}
+
+{ct.degrees should be precomputed
+ if not, return error instructing how to update ct
+}
+
+set degree(CharacterTable ct)=(int->int):(int i):
+if #ct.degrees>0 then ct.degrees[i] else
+error("degrees have not been computed, run ct:=ct.update_degrees to update") fi
+
+{update degrees, and sym_powers_reflection if necessary}
+set update_degrees(CharacterTable ct)=CharacterTable:
+if #ct.sym_powers_reflection=0 then ct:=ct.update_sym_powers_reflection fi;
+let degrees=
+for i:ct.n_classes do
+  first(ct.root_datum.nr_of_posroots+1,
+     (int k) bool: !=ct.inner(ct.character(i),ct.sym_powers_reflection[k]))
+od
+in ct.degrees:=degrees;
+ct
+
+set smallest_degree_summands(CharacterTable ct,[int] mults)=
+let rv=[int]:[-1]  in
+for j:#mults do
+ if mults[j]>0 then
+ let deg_j=ct.degree(j)
+  in if deg_j>rv[0] then rv:=[j]
+   elif deg_j=rv[0] then rv#:=j
+  fi 
+ fi
+od;
+rv
+{
+set degree (CharacterTable ct, [int] character)=int:
+degree(ct,character,ct.sym_powers)
+
+set degree (CharacterTable ct)=([int] -> int): ([int] character):degree(ct,character)
+set d(CharacterTable ct)= ([int]->int): degree(ct)
+}
+
+{  representations of W
+  copied (and modified) from W_reps.at
+}
+
+{ data type for representation of W
+  operators[i] is the matrix of the action of simple generator #i
+}
+set_type W_rep = (int dimension, [mat] operators)
+
+{ matrix of pi(w) }
+set operator (W_rep (dimension,operators), WeylElt w) = mat:
+   product(dimension,for s in w.word ~do operators[s] od)
+
+set operator (W_rep pi) = (WeylElt -> mat):
+  (WeylElt w) mat: operator(pi,w)
+
+{ trivial representation of W }
+set trivial_W (RootDatum rd) = W_rep:
+  (1,for i:semisimple_rank(rd) do id_mat(1) od)
+
+{ Compute characters of W-representations on cells, as obtained from W_cells
+  also induced characters from Levi subgroups, and the Steinberg character
+}
+
+{character of pi}
+set  character(CharacterTable ct, W_rep pi) = [int]:
+  for w in ct.class_reps do trace(pi.operator(w)) od
+
+{ isomorphism test using the character }
+set is_isomorphic (CharacterTable tab, W_rep pi, W_rep sigma) = bool:
+  all(tab.n_classes
+     ,(int i): let w = tab.class_reps[i] in
+               trace(pi.operator(w))=trace(sigma.operator(w))
+     )

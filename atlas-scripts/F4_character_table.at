@@ -64,7 +64,6 @@ set primes(int n)=
 {assert(n>=0 and n<=2,"invalid value of n");}
 if n=0 then "" elif n=1 then "'"  elif n=2 then  "''"  else n.to_string fi
 
-
 set F4_name(CharacterTable ct)=(vec->string):(vec v):string:
 let dim=v[0] then
 index=find(ct.characters,v) then
@@ -105,7 +104,7 @@ set character_table_F4()=
 let ct_0=character_table_F4_0() then
 ct=ct_0.update_degrees then
 F4_names(int i)=ct.F4_name(ct.character(i)) {function} in
-ct.irreducible_label:=F4_names@int;
+ct.irreducible_label:=F4_names;
 ct
 
 {
@@ -179,7 +178,7 @@ dual_orbits[dual_orbit_number]
 
 
 
-set st=SpringerTable:(ct,rd.orbits,dual_orbit_F4@ComplexNilpotent,ct.springer_F4)
+
 
 
 
