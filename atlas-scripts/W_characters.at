@@ -4,6 +4,7 @@
 <Weylgroup.at { for |order_W@RootDatum|, |root_reflection@(RootDatum,vec)| }
 <W_orbit.at { for |W@RootDatum| }
 <tabulate.at { for |tabulate| }
+<cyclotomic.at {for |product_of_cyclotomic|}
 
 { The purpose of this file is working with Weyl group characters.
 
@@ -598,6 +599,18 @@ set print_conjugacy_classes ([WeylElt] C) = void:
     od
   in tabulate(data,"rrl",2," ")
 
+{. print order, length, Levi.}
+set print_conjugacy_classes_med ([WeylElt] C) = void:
+  let data=["order","length","Levi","Cyclotomic"] { column headers }
+  # for w in C
+    do [ w.order.to_string
+       , w.length.to_string
+       , w.Levi_datum.Lie_type.semisimple.str
+       , product_of_cyclotomic(rat_poly:("q",char_poly(w),())).to_string
+       ]
+    od
+  in tabulate(data,"rrrl",2," ")
+
 set print_conjugacy_classes_long ([WeylElt] C) = void:
   let data=["order","length","Levi","size","word"] { column headers }
   # for w in C
@@ -612,6 +625,8 @@ set print_conjugacy_classes_long ([WeylElt] C) = void:
 
 set print_conjugacy_classes (RootDatum rd) = void:
   print_conjugacy_classes(conjugacy_class_reps(rd))
+{set print_conjugacy_classes_med (RootDatum rd) = void:
+  rd.conjugacy_class_reps.(sort_by(order@WeylElt)).print_conjugacy_classes_med}
 set print_conjugacy_classes_long (RootDatum rd) = void:
   rd.conjugacy_class_reps.(sort_by(order@WeylElt)).print_conjugacy_classes_long
 

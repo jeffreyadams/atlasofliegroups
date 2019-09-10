@@ -1,0 +1,218 @@
+<character_tables.at
+<F4_character_table.at
+
+{now for the individual types}
+
+{  type A }
+
+{ get an actual WeylElt from a partition <-> conjugacy class in W}
+set conjugacy_class_S(Partition P)=
+assert(is_positive(P), "P is not a parition (has non-positive entries)");
+if #P=0 then id_W(trivial_group)  {special case}
+else
+ {P=[a_1,...,a_r]
+ construct the simple roots and coroots of GL(a_1)x...xGL(a_r)
+ algorithm: P->v=(1,...,1,2,..,2,...,r,...,r)
+ #of terms i is a_i
+ then take the simple roots of GL(n) (n=\sum a_i) orthogonal to v
+ }
+ let n=sum(P) then
+ (GL_roots,GL_coroots)=
+  let v=##
+   for i:#P do
+    for j:P[i] do i+1
+   od
+  od
+  then
+  roots=##for alpha in GL(#v).simple_roots do
+   if alpha*v=0 then [alpha] else [] fi od
+  in (roots,roots)
+then sub_rd=root_datum(GL_roots,GL_coroots,n) then
+  w_sub=sub_rd.coxeter_element in
+  W_elt(SL(n+1),w_sub.matrix)
+fi
+
+set character_table_S_0(int n) = CharacterTable:
+  let order=n.fac, partitions_n = partitions(n) then
+  ncc=#partitions_n
+  then index = index_partition(partitions_n)
+  , centralizer_orders= for i:ncc do cycle_centralizer_order(partitions_n[i]) od
+  , class_or_irrep_string (int j) = string: partitions_n[j].to_string
+  , class_reps=for i:ncc do conjugacy_class_S(partitions_n[i]) od 
+  , table=#partitions_n ^ { gather rows of this size: }
+    for lambda in partitions_n
+    do for cycles in partitions_n do Murnaghan_Nakayama(lambda,cycles) od od
+in
+  (Lie_type(SL(n))  {lie_type}
+  , order            {order}
+  , ncc              {n_classes}
+  , (int j) [(Partition,vec)]: [(partitions_n[j],vec:[])] {partitions_and_signs}
+  , class_or_irrep_string  {class_label}
+  , (int i) WeylElt: class_reps[i]   {class_rep}
+  , (int j) int: partitions_n[j].cycle_type_order  {class_order}
+  , (int j, int p) int: cycle_power(partitions_n[j],p).index  {class_power}
+  , centralizer_orders  {centralizer_orders}
+  , for i:ncc do  order\centralizer_orders[i] od  {class_sizes}
+  , class_or_irrep_string   {irreducible_label}
+  , [[int]]:[] {sym_powers_reflection}
+  , [int]:[]  {degrees}
+  , table
+  )
+
+set character_table_S(int n) = CharacterTable:
+let ct=character_table_S_0(n) in ct.update_degrees
+
+set character_table_A(int n) = CharacterTable:character_table_S(n+1)
+
+set sign_string (bool s) = string: if s then "-" else "+" fi
+set parts_string (Partition lambda) = string: lambda.to_string[1:1~]
+set cycles_string ([int,bool] cycles) = string:
+(  "["
+   ##
+ ##for (l,s)@pos in cycles
+   do if =pos then l.to_string##s.sign_string
+      else "," ##  l.to_string##s.sign_string
+      fi
+   od
+ ##
+   "]"
+)
+
+{     type C     }
+
+{get actual conjugacy class representatives, i.e. elements of W(C_n),
+ from pairs of partitions
+pair of partitions (P,Q) of total size n -> conjugacy class in W(C_n)
+P=(a_1,...,a_r) -> coxeter element of Sp(2a_1)x...xSp(2a_r)
+Q=(b_1,...,b_s) -> coxeter element of GL(b_1)x...xGL(b_s)
+}
+set conjugacy_class_C(Partition P,Partition Q)=
+assert(is_positive(P), "P is not a parition (has non-positive entries)");
+assert(is_positive(Q), "Q is not a parition (has non-positive entries)");
+if #P+#Q=0 then id_W(trivial_group)  {special case}
+else
+ {first, given a single partition P=(a_1,...,a_r)
+ construct the simple roots and coroots of GL(a_1)x...xGL(a_r)
+ algorithm: P->v=(1,...,1,2,..,2,...,r,...,r)
+ #of terms i is a_i
+ then take the simple roots of GL(n) (n=\sum a_i) orthogonal to v
+ }
+ let (GL_roots,GL_coroots)=
+  let partition=P##Q then
+  v=##
+   for i:#partition do
+    for j:partition[i] do i+1
+   od
+  od
+  then
+{  ()=prints("v=",v) then}
+  roots=##for alpha in GL(#v).simple_roots do
+   if alpha*v=0 then [alpha] else [] fi od
+  in (roots,roots)
+ then
+ {next, add single 2e_i term to simple roots of each GL factor from P
+ corresponding e_i term to simple coroots}
+ n=sum(P)+sum(Q) then
+ long_roots=[vec]: for i:#P do 2*e(n,sum(for k:i+1 do P[k] od)-1) od then
+ short_coroots=[vec]: for i:#P do e(n,sum(for k:i+1 do P[k] od)-1) od 
+ in
+{ let ()=prints("GL_roots:",GL_roots,new_line,"long:roots",long_roots,new_line,"GL_coroots:",GL_coroots,new_line,"short_coroots",short_coroots) in}
+ let sub_rd=root_datum(GL_roots##long_roots,GL_coroots##short_coroots,n) then
+  w_sub=sub_rd.coxeter_element in
+ minimal_representative(W_elt(Sp(2*n),w_sub.matrix))
+fi
+
+set character_table_C(int n) = CharacterTable:
+let order=n.fac*2^n, pairs = partition_pairs(n)
+  then cycles = for pair in pairs do pair.cycles od
+  then ncc=#cycles then
+  index = index_signed_cycles(cycles,#(#cycles))
+  , centralizer_orders = for type in cycles do type.cycle_centralizer_order od
+  , sign(bool s) = string: if s then "-" else "+" fi
+in
+  (Lie_type(Sp(2*n))    {lie_type}  
+  , order    {order (of W)}
+  , ncc      {n_classes}
+  , (int j) [(Partition,vec)]: [([],[])] {do this later}  {partitions_and_signs}
+  , (int j) string: { class_label } cycles[j].cycles_string  {class_label}
+  , (int j) WeylElt: conjugacy_class_C(pairs[j])  {class_rep}
+  , (int j) int: cycles[j].cycle_type_order       {class_order}
+  , (int j, int p) int: cycle_power(cycles[j],p).index   {class_power}
+  , centralizer_orders   {class}
+  , for co in centralizer_orders do order\co od    {class_sizes}
+  , (int i) string: pairs[i].cycles.to_string { irreducible representation label }  {irreducible label}
+  , [[int]]:[] {sym_powers_reflection}
+  , [int]:[]  {degrees}
+  , ncc ^ { gather rows of this size: }
+    for pair in pairs
+    do for cycle_type in cycles do hyperoctahedral_character(pair,cycle_type) od
+    od
+  )
+
+
+
+
+{
+set character_table_D(int n) = CharacterTable:
+( let order=n.fac*2^(n-1)
+  , irred = Dn_irreducibles(n)
+  , class = Dn_classes(n)
+  , unsplits = [[int,bool]]:[], splits = [Partition]: []
+  then unsplit_indices =
+   ##for c@i in class
+     do case c | cycles.unsplit_class: unsplits #:= cycles; [i] | else [] esac
+     od
+  , split_indices =
+   ##for c@i in class
+     do case c
+        | (alpha,neg).split_class: if neg then [] else splits #:= alpha; [i] fi
+        | else []
+        esac
+     od
+  then index_unsplit = index_signed_cycles(unsplits,unsplit_indices)
+  , index_split = index_partition(splits) { |splits| is born in sorted order }
+  then index(Dn_class C) = int:
+     case C
+     | cycles.unsplit_class: cycles.index_unsplit
+     | (alpha,neg).split_class: split_indices[alpha.index_split]+#neg
+     esac
+  , centralizer_orders = for C in class do C.centralizer_order od
+  , sign(bool s) = string: if s then "-" else "+" fi
+in
+  ( Lie_type(SO(2*n))
+  , order
+  , (int j) [(Partition,vec)]: [([],[])] {do this later}
+  , (int j) string: { class_label }
+    case class[j]
+    | cycles.unsplit_class: cycles.cycles_string
+    | (alpha,s).split_class: alpha.to_string ## sign(s)
+    esac
+  , (int j) int: class[j].cycle_type_order
+  , (int j, int p) int: cycle_power(class[j],p).index
+  , centralizer_orders
+  , for co in centralizer_orders do order\co od
+  , (int i) string: { irreducible representation label }
+    case irred[i]
+    | (lambda,mu).unsplit_irr: { here we keep the stored order of partitions }
+      "{" ## lambda.parts_string ## " | " ## mu.parts_string ## "}"
+    | (mu,s).split_irr:
+      "{" ## mu.parts_string ## " | " ## mu.parts_string ## "}" ## s.sign_string
+    esac
+  , [int]:[] {reflection character, do this later}
+  ,[WeylElt]:[]
+  , #class ^ { gather rows of this size: }
+    for chi in irred do for C in class do Dn_character(chi,C) od od
+  )
+)
+}
+
+set simple_character_table(LieType lt)=
+assert(lt.is_simple, "Lie Type is not simple");
+let (letter,rank)=lt.simple_type in
+assert(letter="A" or letter="C" or letter="F","only types ACF currently implemented");
+if letter="A" then character_table_A(rank+1)
+elif letter="C" then character_table_C(rank)
+elif letter="F" then character_table_F4()
+else error("missing case") fi
+
+set simple_character_table(RootDatum rd)=simple_character_table(rd.Lie_type)
