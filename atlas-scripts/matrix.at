@@ -51,13 +51,18 @@ in ( C*T1*R[:c,:] , d)
 set factor_scalar (mat M) = { factor out common divisor } (int,mat):
   let d=gcd(for col in M do gcd(col) od) in (d,if =d then M else M\d fi)
 
-
 set principal_submatrix(mat M, [int] S)=mat: { choice |S| of rows, columns }
    let m=#S in matrix((m,m), (int i,int j)int: M[S[i],S[j]] )
 
 set main_diagonal_square_block(mat M, int size, int offset) = mat:
   M[ offset:offset+size, offset:offset+size ]
 set top_left_square_block(mat M,int size) = mat: M[ :size, :size]
+set leading_principal_minor(mat M,int size)=mat:top_left_square_block(M,size)
+
+{select/first_rows/columns are defined in lattice.at}
+
+{row echelon form, just the mat itself, see builtin |echelon|}
+set row_echelon(mat M)=mat:let (E,,,)=echelon(^M) in ^E
 
 set cokernel(mat M)=^kernel(^M)
 set rank(mat A)=let (B,,pivots,)=A.echelon in #pivots
@@ -89,8 +94,8 @@ update_matrix_entry(M,i,j,M[i][j]+value)
  B: (p,q) matrix  p rows, q columns
 recall:
  in atlas A[i] is the i^th column
- A[i][j]: j^th, i^th column
- A[i,j]:  i^th, j^th column (the usual)
+ A[i][j]: j^th row, i^th column
+ A[i,j]:  i^th row, j^th column (the usual)
 
 So
 A=A[i,j] 0<=i<=p-1, 0<=j<=q-1

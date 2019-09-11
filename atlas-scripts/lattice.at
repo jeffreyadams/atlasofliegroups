@@ -75,8 +75,11 @@ set saturation_quotient_basis = image_complement_basis@mat
 set projector_to_image (mat M) = mat:
   let (c,R)=adapted_direct_sum(M) in R[ : , :c] * R.inverse[ :c, : ]
 
+{alternate form: an mxc matrix, giving projection to Im(M) in the basis image_subspace(M)}
+set image_projector(mat M)= mat:
+  let (c,R)=adapted_direct_sum(M) in R.inverse[:c , : ]
 
-{ complementary projector, to chosen complement to |image_subspace(M)| }
+{complementary projector, to chosen complement to |image_subspace(M)| }
 set projector_mod_image (mat M) = mat:
   let (c,R)=adapted_direct_sum(M) in R[ : ,c: ] * R.inverse[c: , : ]
 
