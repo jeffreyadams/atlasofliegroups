@@ -46,7 +46,7 @@ in
   (Lie_type(SL(n))  {lie_type}
   , order            {order}
   , ncc              {n_classes}
-  , (int j) [(Partition,vec)]: [(partitions_n[j],vec:[])] {partitions_and_signs}
+  , (int i) [Partition]: [partitions_n[i]]  {partitions}
   , class_or_irrep_string  {class_label}
   , (int i) WeylElt: class_reps[i]   {class_rep}
   , (int j) int: partitions_n[j].cycle_type_order  {class_order}
@@ -64,90 +64,6 @@ let ct=character_table_S_0(n) in ct.update_degrees
 
 set character_table_A(int n) = CharacterTable:character_table_S(n+1)
 
-set sign_string (bool s) = string: if s then "-" else "+" fi
-set parts_string (Partition lambda) = string: lambda.to_string[1:1~]
-set cycles_string ([int,bool] cycles) = string:
-(  "["
-   ##
- ##for (l,s)@pos in cycles
-   do if =pos then l.to_string##s.sign_string
-      else "," ##  l.to_string##s.sign_string
-      fi
-   od
- ##
-   "]"
-)
-
-{     type C     }
-
-{get actual conjugacy class representatives, i.e. elements of W(C_n),
- from pairs of partitions
-pair of partitions (P,Q) of total size n -> conjugacy class in W(C_n)
-P=(a_1,...,a_r) -> coxeter element of Sp(2a_1)x...xSp(2a_r)
-Q=(b_1,...,b_s) -> coxeter element of GL(b_1)x...xGL(b_s)
-}
-set conjugacy_class_C(Partition P,Partition Q)=
-assert(is_positive(P), "P is not a parition (has non-positive entries)");
-assert(is_positive(Q), "Q is not a parition (has non-positive entries)");
-if #P+#Q=0 then id_W(trivial_group)  {special case}
-else
- {first, given a single partition P=(a_1,...,a_r)
- construct the simple roots and coroots of GL(a_1)x...xGL(a_r)
- algorithm: P->v=(1,...,1,2,..,2,...,r,...,r)
- #of terms i is a_i
- then take the simple roots of GL(n) (n=\sum a_i) orthogonal to v
- }
- let (GL_roots,GL_coroots)=
-  let partition=P##Q then
-  v=##
-   for i:#partition do
-    for j:partition[i] do i+1
-   od
-  od
-  then
-{  ()=prints("v=",v) then}
-  roots=##for alpha in GL(#v).simple_roots do
-   if alpha*v=0 then [alpha] else [] fi od
-  in (roots,roots)
- then
- {next, add single 2e_i term to simple roots of each GL factor from P
- corresponding e_i term to simple coroots}
- n=sum(P)+sum(Q) then
- long_roots=[vec]: for i:#P do 2*e(n,sum(for k:i+1 do P[k] od)-1) od then
- short_coroots=[vec]: for i:#P do e(n,sum(for k:i+1 do P[k] od)-1) od 
- in
-{ let ()=prints("GL_roots:",GL_roots,new_line,"long:roots",long_roots,new_line,"GL_coroots:",GL_coroots,new_line,"short_coroots",short_coroots) in}
- let sub_rd=root_datum(GL_roots##long_roots,GL_coroots##short_coroots,n) then
-  w_sub=sub_rd.coxeter_element in
- minimal_representative(W_elt(Sp(2*n),w_sub.matrix))
-fi
-
-set character_table_C(int n) = CharacterTable:
-let order=n.fac*2^n, pairs = partition_pairs(n)
-  then cycles = for pair in pairs do pair.cycles od
-  then ncc=#cycles then
-  index = index_signed_cycles(cycles,#(#cycles))
-  , centralizer_orders = for type in cycles do type.cycle_centralizer_order od
-  , sign(bool s) = string: if s then "-" else "+" fi
-in
-  (Lie_type(Sp(2*n))    {lie_type}  
-  , order    {order (of W)}
-  , ncc      {n_classes}
-  , (int j) [(Partition,vec)]: [([],[])] {do this later}  {partitions_and_signs}
-  , (int j) string: { class_label } cycles[j].cycles_string  {class_label}
-  , (int j) WeylElt: conjugacy_class_C(pairs[j])  {class_rep}
-  , (int j) int: cycles[j].cycle_type_order       {class_order}
-  , (int j, int p) int: cycle_power(cycles[j],p).index   {class_power}
-  , centralizer_orders   {class}
-  , for co in centralizer_orders do order\co od    {class_sizes}
-  , (int i) string: pairs[i].cycles.to_string { irreducible representation label }  {irreducible label}
-  , [[int]]:[] {sym_powers_reflection}
-  , [int]:[]  {degrees}
-  , ncc ^ { gather rows of this size: }
-    for pair in pairs
-    do for cycle_type in cycles do hyperoctahedral_character(pair,cycle_type) od
-    od
-  )
 
 
 

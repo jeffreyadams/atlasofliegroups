@@ -1,7 +1,7 @@
 <character_table_reps.at
 <springer.at
 
-set cells_verbose=true
+set cells_verbose=false
 
 set #(WCell cell)=int:let (a,b)=cell in #a 
 set parameters([Param] block,WCell cell)=[Param]:
@@ -72,9 +72,9 @@ set parameters_given_AV_infinitesimal_character(SpringerTable ct, ComplexNilpote
  if I_will_survive(p,gamma) then [T_irr(p,gamma)] else [] fi od
 }
 
-set weak_integral_packet(SpringerTable st,(ComplexNilpotent->ComplexNilpotent) duality,ComplexNilpotent O_check,[Param] params)=[(int,int,Param)]:
+set weak_packet(SpringerTable st,ComplexNilpotent O_check,[Param] params)=[(int,int,Param)]:
 let ()=if cells_verbose then
- prints("Computing weak (integral) packet for ", params[0].real_form, new_line,
+ prints("Computing weak packet for ", params[0].real_form, new_line,
  "dual orbit:",new_line, " diagram: ", O_check.diagram, new_line,
  " normalized diagram: ", O_check.diagram_normalized, new_line,
  " H: ", O_check.H, new_line,
@@ -86,7 +86,7 @@ blocks_and_cells=blocks_and_cells(params) then
 fi  in
  let  gamma=O_check.H/2 then
  ()=if cells_verbose then prints("inf. char.=",gamma) fi then
- O=O_check.duality then
+ O=st.duality(O_check) then
  ()=if cells_verbose then
   prints("orbit:",new_line, " diagram: ", O.diagram, new_line,
    " normalized diagram: ", O.diagram_normalized, new_line,
@@ -101,9 +101,9 @@ fi  in
  in
 parameters
 
-set weak_integral_packet(SpringerTable st,(ComplexNilpotent->ComplexNilpotent) duality,ComplexNilpotent O_check,[Param] params)=[(int,int,Param)]:
+set weak_packet(SpringerTable st,ComplexNilpotent O_check,[Param] params)=[(int,int,Param)]:
 let ()=if cells_verbose then
- prints("Computing weak (integral) packet for ", params[0].real_form, new_line,
+ prints("Computing weak packet for ", params[0].real_form, new_line,
  "dual orbit:",new_line, " diagram: ", O_check.diagram, new_line,
  " normalized diagram: ", O_check.diagram_normalized, new_line,
  " H: ", O_check.H, new_line,
@@ -115,7 +115,7 @@ blocks_and_cells=blocks_and_cells(params) then
 fi  in
  let  gamma=O_check.H/2 then
  ()=if cells_verbose then prints("inf. char.=",gamma) fi then
- O=O_check.duality then
+ O=st.duality(O_check) then
  ()=if cells_verbose then
   prints("orbit:",new_line, " diagram: ", O.diagram, new_line,
    " normalized diagram: ", O.diagram_normalized, new_line,
@@ -129,6 +129,9 @@ fi  in
   prints("found ", #parameters, " parameters") fi}
  in
 parameters
+
+set weak_packets(SpringerTable st,[ComplexNilpotent] orbits,[Param] params)=
+for O in orbits do weak_packet(st,O,params) od
 
 
 {reporting functions}
@@ -175,11 +178,11 @@ let blocks=blocks(packets) then
 cells=cells(packets) then
 m=mult(packets) in
 tabulate(
- ["orbit","block#","cell#","parameters"]#
+ ["orbit","block#","cell#","parameters", "inf. char."]#
  ##for i:#packets do
   ##for b in blocks do
    ##for c in cells do
-    for p in packets.parameters(i,b,c) do [i.to_string,b.to_string,c.to_string,p.to_string] 
+    for p in packets.parameters(i,b,c) do [i.to_string,b.to_string,c.to_string,p.to_string, p.infinitesimal_character.to_string] 
    od
   od
  od

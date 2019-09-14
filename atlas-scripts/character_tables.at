@@ -27,8 +27,8 @@ set_type
   , int order { of the finite group }
   {conjugacy classes}
   , int n_classes  { number of conjugacy classes}
-  , (int ->[(Partition,vec)]) partitions_and_signs  {simple classical groups only}
-  , (int->string) class_label {derived from partitions_and_signs in classical case}
+  , (int ->[Partition]) partitions  {rep: partition or pair of partitions in simple classical case}
+  , (int->string) class_label {derived from partitions in classical case}
   , (int ->WeylElt) class_rep     {gives element of W representating class_label(i)}
   , (int->int) class_order
   , (int,int->int) class_power   {(i,j) -> class_of(i^th class to the j^power)}
@@ -47,7 +47,7 @@ CharacterTable=(
 lie_type,              LieType
 order,                 int
 n_classes,             int
-partitions_and_signs,  {int->[(Partition,vec)]}
+partitions,            {int->[Partition]}
 class_label,           {int->string}
 class_rep,             {int->WeylElt}
 class_order,           {int->int}  
@@ -162,7 +162,7 @@ class_sizes=for i:ct.n_classes do ct.class_sizes[f(i)] od in
 (ct.lie_type,
 ct.order,
 ct.n_classes,
-(int i):ct.partitions_and_signs(f(i)),
+(int i):ct.partitions(f(i)),
 (int i):ct.class_label(f(i)),
 (int i):ct.class_rep(f(i)),
 (int i):ct.class_order(f(i)),

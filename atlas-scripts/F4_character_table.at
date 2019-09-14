@@ -1,5 +1,6 @@
 <character_tables.at
 <nilpotent_orbits.at
+<simple_character_table_C.at
 
 set G=F4_s
 set rd=G.root_datum
@@ -90,7 +91,7 @@ in
   ( Lie_type(F4)    {lie_type}  
   , order    {order (of W)}
   , ncc      {n_classes}
-  , (int j) [(Partition,vec)]: [([],[])]  {partitions_and_signs, not used}
+  , (int j): []
   , (int j) string: "" {class_label} {fill in later}
   , (int j) WeylElt: classes_Kondo_F4[j] {class_rep}
   , (int j) int: class_orders_Kondo_F4[j]
@@ -182,6 +183,9 @@ dual_orbits[dual_orbit_number]
 
 
 
+set springer_table_F4(CharacterTable ct)=
+(ct,simply_connected(F4).orbits,
+dual_orbit_F4@ComplexNilpotent,springer_F4(ct))
 
 
 

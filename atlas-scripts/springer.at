@@ -30,8 +30,6 @@ set is_even(ComplexNilpotent O)=bool:is_integer(O.H/2)
 set even_orbits([ComplexNilpotent] orbits)=[ComplexNilpotent]:
 ##for O in orbits do if is_even(O) then [O] else [] fi od
 
-
-
 {
 set is_special_representation(CharacterTable ct,int i,(ComplexNilpotent->ComplexNilpotent) d)=
 }
