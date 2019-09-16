@@ -19,6 +19,7 @@
 #include "kgb.h"     // |kgb.size()|
 #include "innerclass.h" // |twoRho| in |nu_block::print|
 #include "blocks.h"
+#include "block_minimal.h"
 #include "ext_block.h"
 #include "kl.h"
 #include "repr.h"
@@ -126,6 +127,26 @@ std::ostream& param_block::print
        << "(x=" << std::setw(xwidth) << x(z)
        << ",lam_rho=" << std::setw(3*rk+1) << lambda_rho(z)
        << ", nu=" << std::setw(3*rk+3) << nu(z)
+       << ')' << std::setw(2) << "";
+
+  const TwistedInvolution& ti = kgb.involution(x(z));
+  const TwistedWeylGroup& tW = kgb.twistedWeylGroup();
+  // print root datum involution
+  if (as_invol_expr) prettyprint::printInvolution(strm,ti,tW);
+  else prettyprint::printWeylElt(strm,ti,tW.weylGroup());
+
+  return strm ;
+}
+
+std::ostream& block_minimal::print
+  (std::ostream& strm, BlockElt z,bool as_invol_expr) const
+{
+  const KGB& kgb = rc.kgb();
+  unsigned int xwidth = ioutils::digits(highest_x,10ul);
+  unsigned int rk = rootDatum().semisimpleRank();
+
+  strm << " (x=" << std::setw(xwidth) << x(z)
+       << ",lambda-gamma=" << std::setw(5*rk+1) << lambda_gamma(z)
        << ')' << std::setw(2) << "";
 
   const TwistedInvolution& ti = kgb.involution(x(z));

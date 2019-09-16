@@ -99,7 +99,8 @@ Atlas_objects := $(sources_dir)/structure/prerootdata.o \
  $(sources_dir)/structure/y_values.o \
  $(sources_dir)/gkmod/ext_block.o \
  $(sources_dir)/utilities/bigint.o \
- $(sources_dir)/gkmod/ext_kl.o
+ $(sources_dir)/gkmod/ext_kl.o \
+ $(sources_dir)/gkmod/block_minimal.o
 
 cwebx_sources :=  buffer.w parsetree.w lexer.w \
   axis-types.w global.w axis.w atlas-types.w main.w

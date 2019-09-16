@@ -148,7 +148,7 @@ std::vector<Poset::EltList> makeHasse(const Block_base&);
 
 // an auxiliary function:
 // we often need to fill the first empty slot of a |BlockEltPair|
-inline BlockElt& first_free_slot(BlockEltPair& p)
+BlockElt& first_free_slot(BlockEltPair& p)
 {
   if (p.first==UndefBlock)
     return p.first;
@@ -668,7 +668,7 @@ Weight param_block::lambda_rho(BlockElt z) const
   InvolutionNbr i_x = rc.kgb().inv_nr(x(z));
   const WeightInvolution& theta = i_tab.matrix(i_x);
 
-  // do effort to replace |lambda_rho(x)| by what returns from a |Param|
+  // do effort to replace |(1+theta)*(gamma-rho)/2| by what some |Param| returns
   return (theta*gr_numer + gr_numer // |(1+theta)*gr_numer|, without matrix dup
 	  +i_tab.y_lift(i_x,y_bits[y(z)])*gr_denom
 	  )/(2*gr_denom);
@@ -1048,8 +1048,8 @@ param_block::param_block // full block constructor
 
   containers::queue<BlockElt> queue { size() }; // invol. packet boundaries
   KGBEltList ys; ys.reserve(0x100); // enough for |1<<RANK_MAX|
-  KGBEltList cross_ys(ys.size()); cross_ys.reserve(0x100);
-  KGBEltList Cayley_ys(ys.size()); Cayley_ys.reserve(0x100);
+  KGBEltList cross_ys; cross_ys.reserve(0x100);
+  KGBEltList Cayley_ys; Cayley_ys.reserve(0x100);
 
   BitMap x_seen(kgb.size());
   x_seen.insert(z_start.x()); // the only value of |x| seen so far

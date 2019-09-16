@@ -50,7 +50,7 @@ namespace repr {
   KGB-element ($y$). In fact we also convert it internally to a |TorusPart|
   here, called |y_bits|. It represents an element of the quotient of
   $(X^*)^{-\theta}$ by the image $(1-\theta)X^*$; from it we can recover
-  $\tilde\lambda-\lambda_0$. using |involutions::InvolutionTable::unpack|.
+  $\tilde\lambda-\lambda_0$, using |involutions::InvolutionTable::unpack|.
 
   In principle $\gamma$ could take any complex values compatible with
   $\tilde\lambda$. But we are only interested in real values, and in fact
