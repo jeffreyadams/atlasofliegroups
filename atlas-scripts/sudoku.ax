@@ -254,6 +254,12 @@ set advance (int group) = int: { returns count of steps advanced }
 set advance ([int] groups) = int: { returns count of steps advanced }
   sum(while let s=sum(for g in groups do advance(g) od) in >s do s od)
 
+set advance () = int:
+  let length=advance(#4) in
+  if for group:4 do let (,count)=game.best(group) in =count od.any
+  then prints("Dead end reached after ",length," steps")
+  fi; length
+
 set backup (int l) = void: while game.level()>l do game.unchoose() od
 
 set suggest () = void:
@@ -282,7 +288,7 @@ begin
   fi
 end
 
-set A = mat:
+set A0 = mat:
 [7,9,0,0,0,0,0,0,0
 |0,0,2,0,0,0,7,9,8
 |0,0,0,0,0,0,4,0,3

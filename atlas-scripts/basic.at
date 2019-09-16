@@ -317,7 +317,7 @@ set choices_from ([int] S, int k) = [[int]]: { all $k$-subsets of $S$ }
 
 
 {. number of times n occurs in [int] S .}
-set multiplicity (int n, [int] S) = int: #for x in S do x=n od
+set multiplicity (int n, [int] S) = int: for x in S do x=n od.count
 
 {                               Matrices                                }
 
