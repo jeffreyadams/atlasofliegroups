@@ -359,10 +359,18 @@ block_minimal::block_minimal // full block constructor
 
 
 BlockElt block_minimal::lookup(const StandardRepr& sr) const
-{ auto x = sr.x();
+{ const auto x = sr.x();
   InvolutionNbr inv = rc.kgb().inv_nr(x);
-  auto y_ent = involution_table().pack(rc.y_as_torus_elt(sr),inv);
-  auto y = y_hash.find(y_ent);
+  const auto y_ent = involution_table().pack(rc.y_as_torus_elt(sr),inv);
+  const auto y = y_hash.find(y_ent);
+  return y==y_hash.empty ? UndefBlock // the value also known as |xy_hash.empty|
+                         : xy_hash.find(EltInfo{x,y});
+}
+BlockElt block_minimal::lookup(KGBElt x, const RatWeight& gamma_lambda) const
+{
+  const TorusElement t = y_values::exp_pi(gamma_lambda);
+  const auto y_ent = involution_table().pack(t,rc.kgb().inv_nr(x));
+  const auto y = y_hash.find(y_ent);
   return y==y_hash.empty ? UndefBlock // the value also known as |xy_hash.empty|
                          : xy_hash.find(EltInfo{x,y});
 }

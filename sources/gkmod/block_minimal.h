@@ -56,6 +56,7 @@ class block_minimal : public Block_base
   RatWeight gamma_lambda(BlockElt z) const;
 
   BlockElt lookup(const StandardRepr& sr) const;
+  BlockElt lookup(KGBElt x, const RatWeight& gamma_lambda) const;
 
   ext_gens fold_orbits(const WeightInvolution& delta) const;
 

@@ -21,6 +21,7 @@
 #include "weyl.h"
 #include "kgb.h"
 #include "blocks.h"
+#include "block_minimal.h"
 #include "repr.h"
 
 /*
@@ -1035,6 +1036,14 @@ BlockElt twisted
 {
   return block.lookup(block.context().twisted(block.sr(z),delta));
 }
+
+BlockElt twisted
+  (const blocks::block_minimal& block, BlockElt z, const WeightInvolution& delta)
+{
+  return block.lookup(block.context().kgb().twisted(block.x(z),delta)
+		     ,delta*block.gamma_lambda(z));
+}
+
 
 
 /*
