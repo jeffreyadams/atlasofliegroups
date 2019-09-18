@@ -91,13 +91,6 @@ DescValue extended_type(const Block_base& block, BlockElt z, const ext_gen& p,
 			BlockElt& first_link);
 
 
-KGBElt twisted (const KGB& kgb, KGBElt x, const WeightInvolution& delta);
-
-BlockElt twisted (const Block& block,
-		  const KGB& kgb, const KGB& dual_kgb, // all are needed
-		  BlockElt z,
-		  const WeightInvolution& delta);
-
 typedef Polynomial<int> Pol;
 
 class ext_block

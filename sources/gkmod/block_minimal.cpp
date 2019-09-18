@@ -36,7 +36,7 @@ const InvolutionTable& block_minimal::involution_table() const
 const RootDatum& block_minimal::rootDatum() const
   { return rc.rootDatum(); }
 
-RatWeight block_minimal::lambda_gamma(BlockElt z) const
+RatWeight block_minimal::gamma_lambda(BlockElt z) const
 {
   return y_pool[y(z)].repr().log_pi(false);
 }

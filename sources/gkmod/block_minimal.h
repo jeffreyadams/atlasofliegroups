@@ -52,7 +52,8 @@ class block_minimal : public Block_base
   const InvolutionTable& involution_table() const;
   RealReductiveGroup& realGroup() const;
 
-  RatWeight lambda_gamma(BlockElt z) const; // |lambda-gamma|, from |y_bits|
+  // with |gamma| unknown, only the difference |gamma-lambda| is meaningful
+  RatWeight gamma_lambda(BlockElt z) const;
 
   BlockElt lookup(const StandardRepr& sr) const;
 

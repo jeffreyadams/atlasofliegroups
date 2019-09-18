@@ -146,7 +146,7 @@ std::ostream& block_minimal::print
   unsigned int rk = rootDatum().semisimpleRank();
 
   strm << " (x=" << std::setw(xwidth) << x(z)
-       << ",lambda-gamma=" << std::setw(5*rk+1) << lambda_gamma(z)
+       << ",gamma-lambda=" << std::setw(5*rk+1) << gamma_lambda(z)
        << ')' << std::setw(2) << "";
 
   const TwistedInvolution& ti = kgb.involution(x(z));
