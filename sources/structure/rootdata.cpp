@@ -1326,6 +1326,7 @@ WeightInvolution refl_prod(const RootNbrSet& rset, const RootDatum& rd)
 }
 
 
+// get |PreRootDatum| for subdatum whose coroots are those integral on |gamma|
 PreRootDatum integrality_predatum(const RootDatum& rd, const RatWeight& gamma)
 {
   arithmetic::Numer_t n=gamma.denominator(); // signed type!
@@ -1338,6 +1339,7 @@ PreRootDatum integrality_predatum(const RootDatum& rd, const RatWeight& gamma)
   return rd.sub_predatum(rd.simpleBasis(int_roots));
 }
 
+// |RootDatum| whose coroots are selected as those integral on |gamma|
 RootDatum integrality_datum(const RootDatum& rd, const RatWeight& gamma)
 { return RootDatum(integrality_predatum(rd,gamma)); }
 

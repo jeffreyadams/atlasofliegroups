@@ -104,6 +104,7 @@ class SubSystem : public RootSystem // new system, subsytem of dual
   Coweight sub_2rho() const { return rd.dual_twoRho(pos_map); }
   Weight parent_sub_2rho() const { return rd.twoRho(pos_map); }
 
+  // numbers in parent for the positive (co)roots of the subsystem
   RootNbrSet positive_roots() const; // for subsystem only
   InvolutionData involution_data (const WeightInvolution& theta) const;
 

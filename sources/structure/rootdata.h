@@ -65,6 +65,7 @@ RootNbrSet pos_to_neg (const RootSystem& rs, const WeylWord& w);
 WeightInvolution refl_prod(const RootNbrSet&, const RootDatum&);
 
 PreRootDatum integrality_predatum(const RootDatum& rd, const RatWeight& gamma);
+// sub |RootDatum| whose coroots are those integral on |gamma|
 RootDatum integrality_datum(const RootDatum& rd, const RatWeight& gamma);
 RationalList integrality_points(const RootDatum& rd, const RatWeight& gamma);
 unsigned int integrality_rank(const RootDatum& rd, const RatWeight& gamma);
@@ -359,6 +360,7 @@ class RootDatum
   RootDatum(int_Matrix& injector, const RootDatum&, tags::CoderivedTag);
 #endif
 
+  // build |PreRootDatum| with as simple roots/coroots those from |generators|
   PreRootDatum sub_predatum(const RootNbrList& generators) const;
 
 // accessors

@@ -95,7 +95,7 @@ block_minimal::block_minimal // full block constructor
 	  break;
 	} // |if(isAscent)|
       } // |for(s)|
-    while(s<our_rank); // loop until no ascents found in |integral_datumsys|
+    while(s<our_rank); // loop until no ascents found in |integral_datum|
 
     y_hash.match(aux.pack_y(z_start)); // save obtained value for |y|
   } // end of step 2
