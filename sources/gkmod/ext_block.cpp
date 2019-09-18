@@ -1945,8 +1945,7 @@ ext_block::ext_block // for external twist; old style blocks
 } // |ext_block::ext_block|
 
 ext_block::ext_block // for an external twist
-  (const InnerClass& G,
-   const param_block& block, const WeightInvolution& delta,
+  (const param_block& block, const WeightInvolution& delta,
    bool verbose)
   : parent(block)
   , orbits(block.fold_orbits(delta))

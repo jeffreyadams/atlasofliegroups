@@ -851,7 +851,7 @@ void ext_KL_matrix (const StandardRepr p, const int_Matrix& delta,
     throw std::runtime_error("No valid extended bock");
   }
   param_block B(rc,p,entry_element);
-  ext_block::ext_block eblock (rc.innerClass(), B, delta);
+  ext_block::ext_block eblock(B,delta);
 
   BlockElt size= // size of extended block we shall use; before compression
     eblock.element(entry_element+1);

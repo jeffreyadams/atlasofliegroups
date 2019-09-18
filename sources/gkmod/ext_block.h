@@ -133,8 +133,7 @@ class ext_block
 	    const Block& block,
 	    const KGB& kgb, const KGB& dual_kgb, // all are needed
 	    const WeightInvolution& delta);
-  ext_block(const InnerClass& G,
-	    const param_block& block, const WeightInvolution& delta,
+  ext_block(const param_block& block, const WeightInvolution& delta,
 	    bool verbose=false);
 
 // manipulators
