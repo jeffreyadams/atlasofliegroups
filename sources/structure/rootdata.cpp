@@ -70,7 +70,7 @@
   subgroups entirely, and the choice of positive roots gives a choice of a
   corresponding Borel subgroup.
 
-  The related class |PreRootData| stores the necessary information needed in
+  The related class |PreRootDatum| stores the necessary information needed in
   order to generate a root datum, so the user interaction needed to choose a
   root datum really goes into fixing a |PreRootDatum|. It contains matrices
   describing the simple roots and coroots relative to some basis of $X^*$
@@ -78,7 +78,7 @@
   isomorphic root datum, but which is different for Atlas purposes since weights
   and coweights will be expressed in coordinates relative to the same basis.
 
-  Apart from simple (co)rootsm a |PreRootData| contains one more it of
+  Apart from simple (co)roots, a |PreRootDatum| contains one more it of
   information, telling whether roots or coroots should be preferred when
   generating a full root system from the simple (co)roots; for instance we can
   (for simple Lie types) either have the last root be the highest root, or the
@@ -1397,6 +1397,35 @@ ext_gens fold_orbits (const RootDatum& rd, const WeightInvolution& delta)
 	throw std::runtime_error("Not a distinguished involution");
     }
   }
+  return result;
+}
+
+ext_gens fold_orbits (const PreRootDatum& prd, const WeightInvolution& delta)
+{
+  ext_gens result;
+  const auto sr = prd.semisimple_rank();
+  WeightList simple(sr);
+  for (unsigned j=0; j<sr; ++j)
+    simple[j] = prd.simple_root(j);
+  RankFlags seen;
+
+  for (unsigned i=0; i<sr; ++i)
+    if (not seen[i])
+    { Weight image = delta*simple[i];
+      unsigned j;
+      for (j=i; j<sr; ++j)
+	if (image==simple[j])
+	  break;
+      if (j==sr)
+	throw std::runtime_error("Not a distinguished involution");
+
+      seen.set(j);
+      if (i==j)
+	result.push_back(ext_gen(weyl::Generator(i)));
+      else // case |i<j<sr|
+	result.push_back(ext_gen(prd.simple_coroot(j).dot(simple[i])==0,i,j));
+    }
+
   return result;
 }
 

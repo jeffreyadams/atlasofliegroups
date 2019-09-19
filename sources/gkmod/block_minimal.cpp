@@ -375,6 +375,11 @@ BlockElt block_minimal::lookup(KGBElt x, const RatWeight& gamma_lambda) const
                          : xy_hash.find(EltInfo{x,y});
 }
 
+ext_gens block_minimal::fold_orbits(const WeightInvolution& delta) const
+{
+  return rootdata::fold_orbits(integral_datum.pre_root_datum(),delta);
+}
+
 void block_minimal::compute_duals()
 {
   const WeightInvolution& delta = innerClass().distinguished();
