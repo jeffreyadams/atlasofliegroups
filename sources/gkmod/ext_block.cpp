@@ -35,6 +35,22 @@ namespace atlas {
 
 namespace ext_block {
 
+  // Declarations of some local functions
+WeylWord fixed_conjugate_simple (const context& c, RootNbr& alpha);
+bool same_standard_reps (const param& E, const param& F);
+bool same_sign (const param& E, const param& F);
+inline bool is_default (const param& E)
+  { return same_sign(E,param(E.ctxt,E.x(),E.lambda_rho)); }
+DescValue star (const param& E, const ext_gen& p,
+		containers::sl_list<param>& links);
+
+bool is_descent (const ext_gen& kappa, const param& E);
+weyl::Generator first_descent_among
+  (RankFlags singular_orbits, const ext_gens& orbits, const param& E);
+
+
+  // Function definitions
+
 bool is_complex(DescValue v)
 {
   static unsigned long mask =
@@ -1037,13 +1053,42 @@ BlockElt twisted
   return block.lookup(block.context().twisted(block.sr(z),delta));
 }
 
-BlockElt twisted
-  (const blocks::block_minimal& block, BlockElt z, const WeightInvolution& delta)
-{
-  return block.lookup(block.context().kgb().twisted(block.x(z),delta)
-		     ,delta*block.gamma_lambda(z));
-}
 
+/* Try to conjugate |alpha| by product of folded-generators for the (full)
+   root system of |c| to a simple root, and return the left-conjugating word
+   that was applied. This may fail, if after some conjugation one ends up with
+   the long root of a nontrivially folded A2 subsystem (in which case there
+   cannot be any solution because |alpha| is fixed by the involution but none
+   of the simple roots in its component of the root system is). In this case
+   |alpha| is left as that non simple root, and the result conjugates to it.
+ */
+WeylWord fixed_conjugate_simple (const context& ctxt, RootNbr& alpha)
+{ const RootDatum& rd = ctxt.innerClass().rootDatum();
+
+  WeylWord result;
+  while (not rd.is_simple_root(alpha)) // also |break| halfway is possible
+  {
+    weyl::Generator s = rd.descent_set(alpha)
+      .andnot(rd.ascent_set(ctxt.delta_of(alpha))).firstBit();
+    assert(s<rd.semisimpleRank()); // exists for positive non-simple roots
+    weyl::Generator t = ctxt.twisted(s);
+    if (rd.simple_reflected_root(s,alpha)==rd.simpleRootNbr(t))
+      break; // |alpha| is sum of (non-commuting) simple roots |s|,|twisted(s)|
+    result.push_back(s);
+    rd.simple_reflect_root(s,alpha);
+    if (s!=t) // second generator for cases of length 2,3
+    { result.push_back(t);
+      rd.simple_reflect_root(t,alpha);
+      if (rd.diagram_linked(s,t)) // then simple reflections |s,t| don't commute
+      { // we have $sts=tst$, re-apply |s| to symmetrise the reflection word
+	result.push_back(s);
+	rd.simple_reflect_root(s,alpha);
+      }
+    }
+  }
+  std::reverse(result.begin(),result.end());
+  return result;
+} // |fixed_conjugate_simple|
 
 
 /*
@@ -1116,34 +1161,6 @@ param complex_cross(const ext_gen& p, param E) // by-value for |E|, modified
   return E;
 } // |complex_cross|
 
-
-WeylWord fixed_conjugate_simple (const context& ctxt, RootNbr& alpha)
-{ const RootDatum& rd = ctxt.innerClass().rootDatum();
-
-  WeylWord result;
-  while (not rd.is_simple_root(alpha)) // also |break| halfway is possible
-  {
-    weyl::Generator s = rd.descent_set(alpha)
-      .andnot(rd.ascent_set(ctxt.delta_of(alpha))).firstBit();
-    assert(s<rd.semisimpleRank()); // exists for positive non-simple roots
-    weyl::Generator t = ctxt.twisted(s);
-    if (rd.simple_reflected_root(s,alpha)==rd.simpleRootNbr(t))
-      break; // |alpha| is sum of (non-commuting) simple roots |s|,|twisted(s)|
-    result.push_back(s);
-    rd.simple_reflect_root(s,alpha);
-    if (s!=t) // second generator for cases of length 2,3
-    { result.push_back(t);
-      rd.simple_reflect_root(t,alpha);
-      if (rd.diagram_linked(s,t)) // then simple reflections |s,t| don't commute
-      { // we have $sts=tst$, re-apply |s| to symmetrise the reflection word
-	result.push_back(s);
-	rd.simple_reflect_root(s,alpha);
-      }
-    }
-  }
-  std::reverse(result.begin(),result.end());
-  return result;
-} // |fixed_conjugate_simple|
 
 /*
   for real Cayley transforms, one will subtract $\rho_r$ from |lambda_rho|
@@ -1972,6 +1989,7 @@ ext_block::ext_block // for an external twist
     throw std::runtime_error("Failure detected in extended block construction");
 
 } // |ext_block::ext_block|, from a |param_block|
+
 
 void ext_block::complete_construction(const BitMap& fixed_points)
 {
