@@ -199,7 +199,7 @@ unsigned int link_count(DescValue v)
     return 2;
   }
   assert(false); return -1; // keep compiler happy
-}
+} // |link_count|
 
 // number of links that are ascents or descents (not real/imaginary cross)
 unsigned int scent_count(DescValue v)
@@ -1100,14 +1100,14 @@ WeylWord fixed_conjugate_simple (const context& ctxt, RootNbr& alpha)
   develop those generators into reflection words for the full root datum, but
   the reflection action on the other components can be done more directly.
 
-  However, though the integral generators are complex, they action of those
-  reflection words need not be purely complex, which implies that the effect
-  on the |lambda_rho| and |l| components are not purely reflection. The
+  However, though the integral generators are complex, the action of those
+  reflection words need not be purely complex, which implies that the effect on
+  the |lambda_rho| and |l| components are not pure (linear) reflections. The
   difference with respect to pure reflection action can be computed comparing
-  |rho_r| values (half sums of positive real roots in the full system) with
-  the reflected image of that value taken at the starting point, respectively
-  (for |l|) the same thing with |rho_check_imaginary|. This is done by the
-  "correction" terms below.
+  |rho_r| values (half sums of positive real roots in the full system) at
+  arrival with the reflected image of the |rho_r| value taken at the starting
+  point, respectively (for |l|) the same thing with |rho_check_imaginary|. This
+  is done by the "correction" terms below.
  */
 param complex_cross(const ext_gen& p, param E) // by-value for |E|, modified
 { const RootDatum& rd = E.rc().rootDatum();
@@ -1134,8 +1134,8 @@ param complex_cross(const ext_gen& p, param E) // by-value for |E|, modified
 
   InvolutionNbr new_theta = i_tab.nr(E.tw);
   const RootNbrSet& new_theta_real_roots = i_tab.real_roots(new_theta);
-  rho_r_shift -= rd.twoRho(new_theta_real_roots);
-  rho_r_shift/=2; // now it is just a sum of (real) roots
+  rho_r_shift -= rd.twoRho(new_theta_real_roots); // reflected image minus new
+  rho_r_shift/=2; // now difference has become just a sum of (real) roots
   E.lambda_rho -= rho_r_shift;
 
   assert(ec.delta()*rho_r_shift==rho_r_shift); // diff of $\delta$-fixed
