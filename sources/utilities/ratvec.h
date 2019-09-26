@@ -118,6 +118,15 @@ class RationalVector
     return num/(C)d_denom; // order is imposed here by return type |C|
   }
 
+// reinterpret as integer vector (which it is assumed to be here), and possibly
+// convert entries (without any test) to a different signed integer type |C1|
+  template<typename C1>
+  matrix::Vector<C1> force_integer() const
+  {
+    assert(denominator()==(C)1);
+    return matrix::Vector<C1> {numerator().begin(),numerator().end()};
+  }
+
 //manipulators
   RationalVector& normalize();
   V& numerator() { return d_num; } // allow direct manipulation
@@ -156,7 +165,6 @@ template<typename C1, typename C2>
   v.numerator() += M.right_prod(v.numerator());
   return (v/=2).normalize();
 }
-
 
 
 
