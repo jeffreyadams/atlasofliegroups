@@ -186,7 +186,7 @@ set solve ( game_interface game ) = [mat]:
         ; if min<=#sure then break fi { when sure stop at min=1, else at min=0 }
         fi
       od
-    ; let choice=ch_of_co[group] in
+    ; let choice_of=ch_of_co[group] in
       if =min
       then prints("no options for ",name_co[group](constraint),"; "
                  , if sure then "inconsistency" else "dead end" fi
@@ -195,7 +195,7 @@ set solve ( game_interface game ) = [mat]:
       elif min=1 { proceed confidently }
       then
         let remaining = { get the unique available choice |k| for |constraint| }
-          first(9,(int k):game.available(choice(constraint,k))) in
+          first(9,(int k):game.available(choice_of(constraint,k))) in
         assert(>=remaining,"unique choice cannot be found") { check existence }
       ; prints(if not sure then "   " else "" fi { indent }
               ,name_co[group](constraint)
@@ -203,13 +203,13 @@ set solve ( game_interface game ) = [mat]:
               ,if group!=2 then to_string(remaining+1)
                else let (i,j)=remaining\%3 in to_string("",(i+1,j+1))
                fi)
-      ; game.choose(choice(constraint,remaining))
+      ; game.choose(choice_of(constraint,remaining))
       ; solve(sure) { tail recurse here }
       next game.unchoose()
       else { case where we must try several alternatives and backtrack }
         let L = ##
           for k:9
-          do if game.available(choice(constraint,k)) then [k] else [] fi
+          do if game.available(choice_of(constraint,k)) then [k] else [] fi
           od
         in
         prints("Need to explore ",min," alternatives for "
@@ -217,13 +217,40 @@ set solve ( game_interface game ) = [mat]:
       ; prints("Options ", for k in L do k+1 od)
       ; ## { each loop iteration contributes a [mat]; concatenate them }
         for k in L
-        do let ch=choice(constraint,k) in
+        do let ch=choice_of(constraint,k) in
           prints("Trying ", k+1, " (level ",game.level(),")")
         ; game.choose(ch); solve(false) next game.unchoose()
         od
       fi
    fi
  ) (true)
+
+set dead_ends ( game_interface game ) = [int]: { options ruled out linearly }
+  let lev=game.level() in
+  for trial:729
+  do if game.available(trial)
+     then game.choose(trial)
+     ; let fail=false in
+       while if game.level()=81 then break fi { if completed, then no dead end }
+       ; let group=-1, constraint=-1 in
+         for (c,m)@g in for g:4 do game.best(g) od
+         do if m<=1 then constraint:=c; group:=g
+	            ; if =m then fail:=true; break 1 fi
+	    fi
+	 od
+       ; group.>= { some minimum was 1, and none were 0 }
+       do
+         let choice_of=ch_of_co[group] in
+	 for k:9
+	 do let choice=choice_of(constraint,k) in
+	   if game.available(choice) then game.choose(choice); break 0 fi
+	 od
+       od
+     ; if fail then [trial] else { either solution or branching found } [] fi
+     next { undo changes for trial } while game.level()>lev do game.unchoose() od
+     else { don't record trials that directly forbidden as dead ends } []
+     fi
+  od.##
 
 { tools for manual exploration }
 
