@@ -393,47 +393,6 @@ ext_gens block_minimal::fold_orbits(const WeightInvolution& delta) const
   return rootdata::fold_orbits(integral_datum.pre_root_datum(),delta);
 }
 
-void block_minimal::compute_duals()
-{
-  const WeightInvolution& delta = innerClass().distinguished();
-  weyl::Twist twist;
-
-  {
-    WeylWord dummy; // remains empty
-    twist = integral_datum.parent_twist(delta,dummy);
-
-    unsigned int size=0;
-    for (weyl::Generator s=0; s<integral_datum.rank(); ++s)
-      if (twist[s]>=s)
-	++size;
-    orbits.reserve(size); // dimension |orbits| list in our base object
-  }
-
-  // analyse the |twist|-orbits on the Dynkin diagram of |integral_datum|
-  for (weyl::Generator s=0; s<integral_datum.rank(); ++s)
-    if (twist[s]==s)
-      orbits.push_back(ext_gen(s)); // orbit of type |ext_gen::one|
-    else if (twist[s]>s) //  orbit of type |ext_gen::two| or |ext_gen::three|
-      orbits.push_back
-	(ext_gen(integral_datum.cartan(s,twist[s])==0, s,twist[s]));
-
-  const auto& kgb = rc.kgb();
-  for (BlockElt z=0; z<size(); ++z)
-  {
-    KGBElt dual_x = kgb.Hermitian_dual(x(z));
-    if (dual_x!=UndefKGB)
-    {
-      assert(y_hash[y(z)].nr==kgb.inv_nr(x(z))); // check involutions match
-      TorusElement t = y_hash[y(z)].t_rep;
-      t.act_by(delta); // twist |t| by |delta|
-      const KGBElt y =
-	y_hash.find(involution_table().pack(t,kgb.inv_nr(dual_x)));
-
-      info[z].dual = find_in(xy_hash,dual_x,y);
-    }
-  }
-} // |block_minimal::compute_duals|
-
 void block_minimal::reverse_length_and_sort()
 {
   const unsigned max_length = info.back().length;

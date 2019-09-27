@@ -71,8 +71,6 @@ class block_minimal : public Block_base
 
 
  private:
-  void compute_duals();
-
 /*
   reverse lengths and order block with them increasing, and by increasing
   |x(z)| among elements of given length; adapt tables accordingly.
