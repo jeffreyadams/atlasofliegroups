@@ -191,6 +191,10 @@ class ext_block
   template<typename C> // matrix coefficient type (signed)
   containers::simple_list<BlockElt> // returns list of elements selected
     condense (matrix::Matrix<C>& M, const param_block& parent) const;
+  template<typename C> // matrix coefficient type (signed)
+  containers::simple_list<BlockElt> // returns list of elements selected
+    condense (matrix::Matrix<C>& M, const blocks::block_minimal& parent,
+	      const RatWeight& gamma) const;
 
   // coefficient of neighbour |xx| of |x| in the action $(T_s+1)*a_x$
   Pol T_coef(weyl::Generator s, BlockElt xx, BlockElt x) const;

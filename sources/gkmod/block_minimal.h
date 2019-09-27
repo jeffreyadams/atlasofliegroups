@@ -34,7 +34,7 @@ class block_minimal : public Block_base
   block_hash xy_hash;
 
   // group small components together:
-  KGBElt highest_x,highest_y; // maxima over this (maybe partial) block
+  KGBElt highest_x,highest_y; // maxima over this block
 
  public:
 

@@ -1469,7 +1469,7 @@ DescValue star (const paramin& E, const ext_gen& p,
 } // |star|
 
 
-// additional |ext_block| (constructor) method
+// additional |ext_block| methods
 
 ext_block::ext_block
   (const blocks::block_minimal& block, const WeightInvolution& delta)
@@ -1499,6 +1499,45 @@ ext_block::ext_block
 
 }
 
+template<typename C> // matrix coefficient type (signed)
+containers::simple_list<BlockElt> // returns list of elements selected
+  ext_block::condense
+    (matrix::Matrix<C>& M, const blocks::block_minimal& parent,
+     const RatWeight& gamma) const
+{
+  const auto& integral_pre_datum = parent.integral_subsystem().pre_root_datum();
+  RankFlags sing_orbs;
+  for (weyl::Generator s=0; s<rank(); ++s)
+    if (gamma.dot(integral_pre_datum.simple_coroot(orbits[s].s0))==0)
+      sing_orbs.set(s);
+  containers::simple_list<BlockElt> result;
+
+  for (BlockElt y=M.numRows(); y-->0; ) // reverse loop is essential here
+  { auto s = first_descent_among(sing_orbs,y);
+    if (s==rank())
+      result.push_front(y); // no singular descents, so a survivor
+    else // a singular descent found, so not a survivor
+    { // we contribute row |y| to all its descents by |s| with sign |-1|
+      // then conceptually we clear row |y|, but don't bother: it gets ignored
+      auto type=descent_type(s,y);
+      if (is_like_compact(type))
+	continue; // no descents, |y| represents zero; nothing to do for |y|
+
+      // length difference and October surprise combine to always give -1
+      const C c(-1); // surprise!
+      if (has_double_image(type)) // 1r1f, 2r11
+      { auto pair = Cayleys(s,y);
+	M.rowOperation(pair.first,y,c*epsilon(s,pair.first,y));
+	M.rowOperation(pair.second,y,c*epsilon(s,pair.second,y));
+      }
+      else
+      { auto x = some_scent(s,y);
+	M.rowOperation(x,y,c*epsilon(s,x,y));
+      }
+    }
+  }
+  return result;
+} // |ext_block::condense|
 
 bool ext_block::tune_signs(const blocks::block_minimal& block)
 {
@@ -1616,6 +1655,10 @@ bool ext_block::tune_signs(const blocks::block_minimal& block)
 #endif
   return true; // report success if we get here
 } // |tune_signs|
+
+template containers::simple_list<BlockElt> ext_block::condense
+  (matrix::Matrix<Split_integer>& M, const blocks::block_minimal& parent,
+   const RatWeight& gamma) const;
 
 } // |namespace ext_block|
 
