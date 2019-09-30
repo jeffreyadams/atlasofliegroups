@@ -126,7 +126,7 @@ block_minimal::block_minimal // full block constructor
       }
     }
 
-    // now insert elements from |yy_hash| as first R-packet of block
+    // now insert elements from |y_hash| as first R-packet of block
     info.reserve(y_hash.size()); // this is lower bound for final size; reserve
     for (weyl::Generator s=0; s<our_rank; ++s)
       data[s].reserve(y_hash.size());
@@ -228,7 +228,7 @@ block_minimal::block_minimal // full block constructor
 	case gradings::Status::Complex:
 	  { const auto cplx = kgb.isDescent(ids,conj_n)
 	      ? DescentStatus::ComplexDescent
-	      : DescentStatus::ComplexDescent;
+	      : DescentStatus::ComplexAscent;
 	    for (unsigned int j=0; j<nr_y; ++j)
 	      info[base_z+j].descent.set(s,cplx);
 	    break;
@@ -503,13 +503,13 @@ Weight context_minimal::to_simple_shift
 }
 
 /*
-  For the conjugation to simple scenario, we compute a set |pos_neg| of
-  positive roots that become negative under an element of $W^\delta$ that
-  makes the integrally-simple root(s) in question simple. The function
-  |shift_flip| computes from this set, and the involutions at both ends of the
-  link in the block, whether an additional flip is to be added to the link.
+  For the conjugation to simple scenario, we compute a set of positive roots
+  that become negative under an element of $W^\delta$ that makes the
+  integrally-simple root(s) in question simple. From this set |S|, and the
+  involutions at both ends of the link in the block, the function |shift_flip|
+  computes whether an additional flip is to be added to the link.
 
-  This comes from an action of |delta| acts on a certain top wedge product of
+  This comes from an action of |delta| on a certain top wedge product of
   root spaces, and the formula below tells whether that action is by $-1$.
 */
 bool context_minimal::shift_flip
@@ -574,7 +574,7 @@ void validate(const paramin& E)
   const auto& theta = i_tab.matrix(E.tw);
   const auto& delta = E.ctxt.delta();
   assert(delta*theta==theta*delta);
-  const Weight symm = ((1-delta)*E.gamma_lambda).force_integer<int>();
+  const Weight symm = E.gamma_lambda.integer_diff<int>(delta*E.gamma_lambda);
   assert(symm == (1-theta)*E.tau);
   assert((delta-1).right_prod(E.l)==(theta+1).right_prod(E.t));
   assert(((E.ctxt.g_rho_check()-E.l)*(1-theta)).numerator().isZero());
@@ -589,8 +589,8 @@ paramin::paramin
   , tw(ec.realGroup().kgb().involution(x))
   , l(ell(ec.realGroup().kgb(),x))
   , gamma_lambda(gamma_lambda)
-  , tau(matreduc::find_solution(1-theta(),
-				(1-delta())*gamma_lambda.force_integer<int>()))
+  , tau(matreduc::find_solution
+	(1-theta(), gamma_lambda.integer_diff<int>(delta()*gamma_lambda)))
   , t(matreduc::find_solution
 	(theta().transposed()+1,(delta()-1).right_prod(l)))
   , flipped(flipped)
@@ -622,11 +622,9 @@ bool same_standard_reps (const paramin& E, const paramin& F)
     if (E.delta()!=F.delta() or E.ctxt.g_rho_check()!=F.ctxt.g_rho_check())
       return false;
   } // otherwise there might still be a match, so fall through
-  const auto diff = E.gamma_lambda-F.gamma_lambda;
   return E.theta()==F.theta()
     and in_R_image(E.theta()+1,E.l-F.l)
-    and diff.denominator()==1
-    and in_L_image(diff.force_integer<int>(),E.theta()-1);
+    and in_L_image(E.gamma_lambda.integer_diff<int>(F.gamma_lambda),E.theta()-1);
 }
 
 void z_align (const paramin& E, paramin& F, bool extra_flip)
@@ -749,8 +747,7 @@ bool same_sign (const paramin& E, const paramin& F)
 int level_a (const paramin& E, const Weight& shift, RootNbr alpha)
 {
   const RootDatum& rd = E.rc().rootDatum();
-  return (E.gamma_lambda + shift).dot(rd.coroot(alpha))
-    - rd.colevel(alpha); // final term $<\alpha^\vee,\rho>$
+  return (E.gamma_lambda + shift).dot(rd.coroot(alpha));
 }
 
 

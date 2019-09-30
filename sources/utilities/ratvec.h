@@ -118,13 +118,19 @@ class RationalVector
     return num/(C)d_denom; // order is imposed here by return type |C|
   }
 
-// reinterpret as integer vector (which it is assumed to be here), and possibly
-// convert entries (without any test) to a different signed integer type |C1|
+// take difference as integer vector (which it is assumed to be here), converting
+// entries (without any test) to a possibly different signed integer type |C1|
   template<typename C1>
-  matrix::Vector<C1> force_integer() const
+  matrix::Vector<C1> integer_diff(const RationalVector<C>& v) const
   {
-    assert(denominator()==(C)1);
-    return matrix::Vector<C1> {numerator().begin(),numerator().end()};
+    assert(size()==v.size());
+    auto d=denominator();
+    matrix::Vector<C1> result(size());
+    for (unsigned i=0; i<size(); ++i)
+    { assert((d_num[i]-v.d_num[i])%d==0);
+      result[i] = (d_num[i]-v.d_num[i])/d;
+    }
+    return result;
   }
 
 //manipulators

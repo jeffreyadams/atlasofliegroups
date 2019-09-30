@@ -119,9 +119,9 @@ class context_minimal // holds values that remain fixed across extended block
   // whether positive $\alpha$ has $\theta(\alpha)\neq\pm(1|\delta)(\alpha)$
   bool is_very_complex (InvolutionNbr theta, RootNbr alpha) const;
   Weight to_simple_shift(InvolutionNbr theta, InvolutionNbr theta_p,
-			 RootNbrSet pos_to_neg) const;
+			 RootNbrSet pos_to_neg) const; // |pos_to_neg| is by value
   bool shift_flip(InvolutionNbr theta, InvolutionNbr theta_p,
-		  RootNbrSet pos_to_neg) const;
+		  RootNbrSet pos_to_neg) const; // |pos_to_neg| is by value
 
 }; // |context_minimal|
 

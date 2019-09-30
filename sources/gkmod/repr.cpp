@@ -1209,8 +1209,7 @@ SR_poly twisted_KL_sum
     auto factor = P_at_s(elt,0);
     if (eblock.length(elt)%2!=parity) // flip sign at odd length difference
       factor = -factor;
-    const auto lambda_rho =
-      (gamma_rho - parent.gamma_lambda(z)).force_integer<int>();
+    const auto lambda_rho = gamma_rho.integer_diff<int>(parent.gamma_lambda(z));
     result.add_term(rc.sr_gamma(parent.x(z),lambda_rho,gamma),factor);
   }
   return result;
