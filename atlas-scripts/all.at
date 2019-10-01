@@ -29,6 +29,10 @@
 <cyclotomic_field_bracket.at
 <tits_centralizer.at
 <bruhat.at
+<<<<<<< HEAD
 <character_tables.at
 <springer_tables.at
 <coordinates.at
+=======
+<weak_packets.at
+>>>>>>> master

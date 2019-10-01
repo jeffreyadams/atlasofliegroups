@@ -1,4 +1,6 @@
 <character_table_reps.at
+<lietypes.at
+<conjugate.at
 
 set permute([WeylElt] W,(int->int) permutation)=[WeylElt]:
 for w in W do if length(w)=0 then w else W_elt(W[0].root_datum,for i in w.word do permutation(i) od) fi od

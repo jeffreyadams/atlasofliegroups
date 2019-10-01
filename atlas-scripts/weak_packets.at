@@ -6,7 +6,7 @@
 {weak Arthur packets}
 
 
-{SpringerTable: table of Springer data, see springer.at
+{SpringerTable: table of Springer data, see springer_tables.at
  ComplexNilpotent: complex orbit for dual group
  [Param]: list of parameters, should be all_parameters_gamma(G,gamma) where
    gamma is regular and differs from gamma_target by X^*
