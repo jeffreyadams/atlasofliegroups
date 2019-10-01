@@ -1,0 +1,24 @@
+<springer.at
+<character_table_G.at
+
+{springer(orbits[i])= characters[springer[i]]
+springer(0-orbit)=characters[3] (dimension 1, degree 6: sgn)
+springer(A1)=characters[1] (dimension 1, degree 3)
+springer(A1~)=characters[4] (dimension 2, degree 2)
+springer(G2(a1))=characters[5] (dimension 1, degree 2)
+springer(G2)=characters[0] (dimension 1, degree 0: trivial)
+}
+set springer_G2=[3,1,4,5,0]
+set springer_G2(ComplexNilpotent O)=int:
+let diagram=O.diagram_normalized[0] then
+index=find(diagrams,diagram) in
+springer_G2[index]
+
+set springer_table_G2()=
+let ct=character_table_G2() in
+(ct,
+simply_connected(G2).orbits,
+dual_map_G2@ComplexNilpotent,
+dual_map_G2@ComplexNilpotent,
+springer_G2@ComplexNilpotent
+)

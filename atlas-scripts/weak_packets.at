@@ -1,0 +1,341 @@
+<cells.at
+<springer_reductive.at
+<K_highest_weights.at
+<springer_tables.at
+
+{weak Arthur packets}
+
+
+{SpringerTable: table of Springer data, see springer.at
+ ComplexNilpotent: complex orbit for dual group
+ [Param]: list of parameters, should be all_parameters_gamma(G,gamma) where
+   gamma is regular and differs from gamma_target by X^*
+ ratvec gamma_target: target infinitesimal character, probably O.H/2
+result: [(int,int,Param)]=[(block number, cell number, parameter)]}
+
+set weak_packet(SpringerTable st,ComplexNilpotent O_check,[Param] params,ratvec gamma_target)=[(int,int,Param)]:
+if #params=0 then [] else
+let ()=if cells_verbose then
+prints("gamma_target:",gamma_target);
+ prints("Computing weak packet for ", params[0].real_form, new_line,
+ "dual orbit:",new_line, " dual root datum: ", O_check.root_datum,new_line, " diagram: ", O_check.diagram, new_line,
+ " normalized diagram: ", O_check.diagram_normalized, new_line,
+ " H: ", O_check.H, new_line,
+ " dimension: ", O_check.dim_nilpotent)
+fi then
+blocks_and_cells=blocks_and_cells(params) then
+()=if cells_verbose then
+ prints("computed ", #blocks_and_cells, " blocks")
+fi  then
+{ let  gamma=O_check.H/2 then}
+ ()=if cells_verbose then prints("inf. char.=",gamma_target) fi then
+ O=st.dual_map_i(O_check) then
+ ()=if cells_verbose then
+  prints("orbit:",new_line, " root datum: ", O.root_datum, new_line, " diagram: ", O.diagram, new_line,
+   " normalized diagram: ", O.diagram_normalized, new_line,
+   " H: ", O.H, new_line,
+   " dimension: ", O.dim_nilpotent)
+ fi then
+ sigma=st.springer(O) then
+ ()=if cells_verbose then prints("sigma=", sigma, " of dimension ",st.ct.dimension(sigma)) fi then
+ parameters=parameters_given_AV_infinitesimal_character(st,O,blocks_and_cells,gamma_target) 
+{ ()=if cells_verbose then
+  prints("found ", #parameters, " parameters") fi}
+ in
+parameters
+fi
+
+{same as previous command, with additional permutation:
+ for computing dual_map_i and springer(O) we do some case-by-case/table constructions
+ the labeling of simple roots in the given root datum, and the case-by-case constructed
+ on (using simple_factors) may be different
+ permutation is the matrix taking i^th simple root of given root datum to i^th simple root
+  of the constructed one
+}
+set weak_packet(SpringerTable st,ComplexNilpotent O_check,[Param] params,ratvec gamma_target,mat permutation)=[(int,int,Param)]:
+if #params=0 then [] else
+let ()=if cells_verbose then
+prints("gamma_target:",gamma_target);
+ prints("Computing weak packet for ", params[0].real_form, new_line,
+ "dual orbit:",new_line, " dual root datum: ", O_check.root_datum,new_line, " diagram: ", O_check.diagram, new_line,
+ " normalized diagram: ", O_check.diagram_normalized, new_line,
+ " H: ", O_check.H, new_line,
+ " dimension: ", O_check.dim_nilpotent)
+fi then
+blocks_and_cells=blocks_and_cells(params) then
+()=if cells_verbose then
+ prints("computed ", #blocks_and_cells, " blocks")
+fi  then
+{ let  gamma=O_check.H/2 then}
+ ()=if cells_verbose then prints("inf. char.=",gamma_target) fi then
+ O=st.dual_map_i(O_check) then
+ ()=if cells_verbose then
+  prints("orbit:",new_line, " root datum: ", O.root_datum, new_line, " diagram: ", O.diagram, new_line,
+   " normalized diagram: ", O.diagram_normalized, new_line,
+   " H: ", O.H, new_line,
+   " dimension: ", O.dim_nilpotent)
+ fi then
+ sigma=st.springer(O) then
+ ()=if cells_verbose then prints("sigma=", sigma, " of dimension ",st.ct.dimension(sigma)) fi then
+ parameters=parameters_given_AV_infinitesimal_character(st,O,blocks_and_cells,gamma_target,permutation) 
+{ ()=if cells_verbose then
+  prints("found ", #parameters, " parameters") fi}
+ in
+parameters
+fi
+
+{for debugging: do part of the calculation and return intermediate objects}
+{returns: springer table, dual nilpotent, blocks_and_cells, gamma_target
+ can apply  parameters_given_AV_infinitesimal_character(...) to this data
+}
+set weak_packet_partial(SpringerTable st,ComplexNilpotent O_check,[Param] params,ratvec gamma_target)=
+(SpringerTable,ComplexNilpotent,[([Param],[WCell])],ratvec):
+let ()=if cells_verbose then
+prints("gamma_target:",gamma_target);
+ prints("Computing weak packet for ", params[0].real_form, new_line,
+ "dual orbit:",new_line, " dual root datum: ", O_check.root_datum,new_line, " diagram: ", O_check.diagram, new_line,
+ " normalized diagram: ", O_check.diagram_normalized, new_line,
+ " H: ", O_check.H, new_line,
+ " dimension: ", O_check.dim_nilpotent)
+fi then
+blocks_and_cells=blocks_and_cells(params) then
+()=if cells_verbose then
+ prints("computed ", #blocks_and_cells, " blocks")
+fi  then
+{ let  gamma=O_check.H/2 then}
+ ()=if cells_verbose then prints("inf. char.=",gamma_target) fi then
+ O=st.dual_map_i(O_check) then
+ ()=if cells_verbose then
+  prints("orbit:",new_line, " root datum: ", O.root_datum, new_line, " diagram: ", O.diagram, new_line,
+   " normalized diagram: ", O.diagram_normalized, new_line,
+   " H: ", O.H, new_line,
+   " dimension: ", O.dim_nilpotent)
+ fi then
+ sigma=st.springer(O) then
+ ()=if cells_verbose then prints("sigma=", sigma, " of dimension ",st.ct.dimension(sigma)) fi in
+{  parameters=parameters_given_AV_infinitesimal_character(st,O,blocks_and_cells,gamma_target) }
+ (st,O,blocks_and_cells,gamma_target)
+
+{call weak_packet(st,O_check,G,params,gamma_target):
+ set params=all_paramaeters_gamma(G,O_check.H/2+2*rho(G)) and gamma_target=O.H/2
+}
+set weak_packet(SpringerTable st,ComplexNilpotent O_check,RealForm G)=[(int,int,Param)]:
+if cells_verbose then
+ prints("weak_packets(st,O_check,G):", new_line,"O_check: ", O_check.diagram ,new_line, "G: ", G) fi;
+let rd=st.root_datum then
+gamma_target=O_check.H/2 then
+gamma_reg=gamma_target+2*rho(rd) then
+all=all_parameters_gamma(G,gamma_reg) in
+weak_packet(st,O_check,all,gamma_target)
+
+{same as previous, run over a set of dual orbits}
+set weak_packets(SpringerTable st,[ComplexNilpotent] dual_orbits,[Param] params)=
+for O in dual_orbits do
+prints(new_line,"Computing weak packet for orbit: ", O.root_datum, " ", O.H, " dim=", O.dim_nilpotent);
+weak_packet(st,O,params,O.H/2) od
+
+{run over set of dual orbits, for a given real form
+ set [Param] params = all_parameters_gamma(dual_orbit.H/2+2*rho(G))
+}
+set weak_packets(SpringerTable st,[ComplexNilpotent] orbits,RealForm G)=
+for O in orbits do
+prints(new_line,"Computing weak packet for orbit: ", O.root_datum, " ", O.H, " dim=", O.dim_nilpotent);
+weak_packet(st,O,G) od
+
+{assuming O_check is integral, see st=springer_table_reductive(G.root_datum)}
+set weak_packet_integral(ComplexNilpotent O_check,RealForm G)=
+let st=springer_table_reductive(G.root_datum) in
+weak_packet(st,O_check,G)
+
+{given an orbit O_check on the dual side
+ gamma=O_check.H/2
+ rd=integrality_datum(rd,gamma)
+ return all orbits for rd_dual whose G^vee-saturation is the original
+ orbit
+this is entirely on the dual side
+}
+set integral_descents(ComplexNilpotent O_check)=[ComplexNilpotent]:
+let rd=O_check.root_datum.dual then
+rdint=integrality_datum(rd,O_check.H/2) then
+integral_orbits=rdint.dual.orbits then
+H=O_check.H in
+##for O_int_check in integral_orbits do
+{H is in X_*(dual group), so
+is_conjugate(H,O_int_check.H,rd.dual) is the right conjugacy test}
+if is_conjugate(H,O_int_check.H,rd.dual) then [O_int_check] else [] fi od
+
+{compute integral_descents(O_check) (on the dual side)
+ rd_int=integrality datum, rd_int_check=dual side (subgroup)
+ integral_descents(O_check) is a set of orbits for rd_int_check
+ return their duals, which are special orbits for rd_int}
+set integral_descents(SpringerTable st_int,ComplexNilpotent O_check)=
+let descents=integral_descents(O_check) in
+for O_check_int in descents do
+dual_orbit_by_diagram(st_int,O_check_int.diagram_normalized) od
+
+{given complex orbit on dual side, and real form, compute weak Arthur packet}
+set weak_packet(ComplexNilpotent O_check,RealForm G)=[(int,int,Param)]:
+let gamma_final=O_check.H/2 then
+gamma=gamma_final+2*rho(G) then  {this is the target infinitesimal character, need to pass it}
+all=all_parameters_gamma(G,gamma) then
+rd=O_check.root_datum.dual then
+()=prints("gamma:",gamma) then
+()=prints("gamma_final:",gamma_final) then
+rd_int=integrality_datum(rd,gamma) then
+st_int=springer_table_reductive(rd_int) then
+(valid,permutation)=isomorphism_permutation(st_int.root_datum,rd_int) then
+()=prints("rd_int:",rd_int, new_line, "st_int.rd: ", st_int.root_datum) then
+()=assert(valid,"can't find isomorphism of rd_int and st_int.root_datum") then
+dual_integral_orbits=integral_descents(st_int,O_check) in
+##for O_check_int in dual_integral_orbits do
+let ()=prints("computing packet for:", O_check_int) in
+let wp=weak_packet(st_int,O_check_int,all,gamma_final,permutation) in wp od
+
+{for debugging: do part of the calculation and return intermediate result}
+set weak_packet_partial(ComplexNilpotent O_check,RealForm G)=
+[((CharacterTable,[ComplexNilpotent],(ComplexNilpotent->ComplexNilpotent),
+ (ComplexNilpotent->ComplexNilpotent),(ComplexNilpotent->int)),ComplexNilpotent,[Param],ratvec,mat)]:
+let gamma_final=O_check.H/2 then
+gamma=gamma_final+2*rho(G) then  {this is the target infinitesimal character, need to pass it}
+all=all_parameters_gamma(G,gamma) then
+rd=O_check.root_datum.dual then
+()=prints("gamma:",gamma) then
+()=prints("gamma_final:",gamma_final) then
+rd_int=integrality_datum(rd,gamma) then
+st_int=springer_table_reductive(rd_int) then
+(valid,permutation)=isomorphism_permutation(st_int.root_datum,rd_int) then
+()=prints("rd_int:",rd_int, new_line, "st_int.rd: ", st_int.root_datum) then
+()=assert(valid,"can't find isomorphism of rd_int and st_int.root_datum") then
+dual_integral_orbits=integral_descents(st_int,O_check) in
+for O_check_int in dual_integral_orbits do
+ let ()=prints("computing packet for:", O_check_int) in
+{let wp=weak_packet(st_int,O_check_int,all,gamma_final,permutation) in wp od}
+ (st_int,O_check_int,all,gamma_final,permutation) od
+
+{run over a set of dual orbits}
+set weak_packets([ComplexNilpotent] dual_orbits,RealForm G)=[[(int,int,Param)]]:
+if cells_verbose then prints("weak_packets(G) with dual orbits and G=",G) fi;
+for O in dual_orbits do
+prints(new_line,"Computing weak packet for orbit: ", O.root_datum, " ", O.H, " dim=", O.dim_nilpotent);
+weak_packet(O,G) od
+
+{given just a RealForm G, compute the dual orbits then compute
+all weak packets as you run over these dual orbits}
+set weak_packets(RealForm G)=
+if cells_verbose then prints("weak_packets(G) with G=",G) fi;
+[[(int,int,Param)]]:weak_packets(G.dual_orbits,G)
+
+{reporting functions}
+
+{extract just the parameters from [(int,int,Param)] (output of weak_packet(..)}
+set parameters([(int,int,Param)] triples)=[Param]:for (,,p) in triples do p od
+
+{extract just the parameters from [[(int,int,Param)]] (output of weak_packets(...)}
+set parameters([[(int,int,Param)]] packet)=[Param]:
+{##for triple in packet do for (,,p) in triple do p od od}
+##for triple in packet do parameters(triple) od
+
+set mult([[(int,int,Param)]] packet)=((int,int,int)->int):(int orbit,int block,int cell):
+let rv=0 in
+for (b,c,p) in packet[orbit] do
+ if b=block and c=cell then rv+:=1 fi
+od;rv
+
+set parameters_map([[(int,int,Param)]] packet)=((int,int,int)->[Param]):(int orbit,int block,int cell):
+let rv=[Param]:[] in
+for (b,c,p) in packet[orbit] do
+ if b=block and c=cell then rv#:=p fi
+od;rv
+
+set mult_block([[(int,int,Param)]] packet)=((int,int)->int):(int orbit,int block):
+let rv=0 in
+for (b,c,p) in packet[orbit] do
+ if b=block  then rv+:=1 fi
+od;rv
+
+set blocks([[(int,int,Param)]] packets)=sort_u(##for i:#packets do for (b,,) in packets[i] do b od od)
+set cells([[(int,int,Param)]] packets) =sort_u(##for i:#packets do for (,c,) in packets[i] do c od od)
+
+set show_detail([[(int,int,Param)]] packets)=void:
+let blocks=blocks(packets) then
+cells=cells(packets) then
+m=mult(packets) in
+tabulate(
+ ["orbit","block#","cell#","#packet"]#
+ ##for i:#packets do
+  ##for b in blocks do
+   ##for c in cells do
+    if m(i,b,c)!=0 then [[i.to_string,b.to_string,c.to_string,m(i,b,c).to_string]] else [] fi 
+   od
+  od
+ od
+  )
+
+set show_very_long([[(int,int,Param)]] packets)=void:
+let blocks=blocks(packets) then
+cells=cells(packets) then
+m=mult(packets) in
+tabulate(
+ ["orbit","block#","cell#","parameters", "inf. char."]#
+ ##for i:#packets do
+  ##for b in blocks do
+   ##for c in cells do
+    for p in packets.parameters_map(i,b,c) do [i.to_string,b.to_string,c.to_string,p.to_string, p.infinitesimal_character.to_string] 
+   od
+  od
+ od
+od
+  )
+
+set show([[(int,int,Param)]] packets)=void:
+let blocks=blocks(packets) then
+cells=cells(packets) then
+m=mult_block(packets) in
+tabulate(
+ ["orbit","block#","#packet"]#
+ ##for i:#packets do
+  ##for b in blocks do
+    if m(i,b)!=0 then [[i.to_string,b.to_string,m(i,b).to_string]] else [] fi 
+   od
+  od
+  )
+
+set show([ComplexNilpotent] orbits,[[(int,int,Param)]] packets)=void:
+let blocks=blocks(packets) then
+cells=cells(packets) then
+m=mult_block(packets) in
+tabulate(
+ ["orbit#","diagram","dim.","block#","#packet"]#
+ ##for O@i in orbits do 
+  ##for b in blocks do
+    if m(i,b)!=0 then [[i.to_string,O.diagram_normalized.to_string,O.dim_nilpotent.to_string,b.to_string,m(i,b).to_string]] else [] fi 
+   od
+  od
+  )
+
+set show_one_block([[(int,int,Param)]] packets, int block_number)=void:
+let blocks=blocks(packets) then
+cells=cells(packets) then
+m=mult_block(packets) in
+tabulate(
+ ["orbit","#packet"]#
+ ##for i:#packets do
+  ##for b@j in blocks do
+    if j=block_number and m(i,b)!=0 then [[i.to_string,m(i,b).to_string]] else [] fi 
+   od
+  od
+  )
+
+set show_short([[(int,int,Param)]] packets)=void:
+let blocks=blocks(packets) then
+grand_total=0 then
+cells=cells(packets) then
+m=mult(packets) in
+tabulate(
+ ["orbit","#packet"]#
+ ##for i:#packets do
+  let total=sum(for b in blocks do sum(for c in cells do m(i,b,c) od) od)
+ in if total!=0 then grand_total+:=total;[[i.to_string,total.to_string]] else [] fi
+od
+#["Total",grand_total.to_string]
+)

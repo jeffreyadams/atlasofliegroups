@@ -1,0 +1,35 @@
+<character_table_C.at
+
+set conjugacy_class_B(Partition P,Partition Q)=WeylElt:
+let w=conjugacy_class_C(P,Q) in
+W_elt(w.root_datum.dual {type B},for i in w.word do i od)
+
+<character_tables.at
+{     type B     }
+
+set character_table_B(int n) = CharacterTable:
+let order=n.fac*2^n, pairs = partition_pairs(n)
+  then cycles = for pair in pairs do pair.cycles od
+  then ncc=#cycles then
+  index = index_signed_cycles(cycles,#(#cycles))
+  , centralizer_orders = for type in cycles do type.cycle_centralizer_order od
+  , sign(bool s) = string: if s then "-" else "+" fi
+in
+  (Lie_type(SO(2*n+1))    {lie_type}  
+  , order    {order (of W)}
+  , ncc      {n_classes}
+  , (int j) [Partition]: let (P,Q)=pairs[j] in [P,Q]   {partitions}
+  , (int j) string: { class_label } cycles[j].cycles_string  {class_label}
+  , (int j) WeylElt: conjugacy_class_B(pairs[j])  {class_rep}
+  , (int j) int: cycles[j].cycle_type_order       {class_order}
+  , (int j, int p) int: cycle_power(cycles[j],p).index   {class_power}
+  , centralizer_orders   {class}
+  , for co in centralizer_orders do order\co od    {class_sizes}
+  , (int i) string: pairs[i].to_string { irreducible representation label }  {irreducible label}
+  , [[int]]:[] {sym_powers_reflection}
+  , [int]:[]  {degrees}
+  , ncc ^ { gather rows of this size: }
+    for pair in pairs
+    do for cycle_type in cycles do hyperoctahedral_character(pair,cycle_type) od
+    od
+  )

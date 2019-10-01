@@ -1,28 +1,28 @@
 <character_tables.at
 <nilpotent_orbits.at
+<character_table_C.at
 
-set G=F4_s
-set rd=G.root_datum
-set orbits=G.orbits
+set rd_F4=simply_connected(F4)
+set orbits=rd_F4.orbits
 
-set a=W_elt (rd,[1])
-set b=W_elt (rd,[2,1,2])
-set c=W_elt (rd,[2,3,2,1,2,3,2])
-set d=W_elt (rd,[0])
-set tau=W_elt (rd,[2])
-set sigma=W_elt (rd,[2,3])
+set a=W_elt (rd_F4,[1])
+set b=W_elt (rd_F4,[2,1,2])
+set c=W_elt (rd_F4,[2,3,2,1,2,3,2])
+set d=W_elt (rd_F4,[0])
+set tau=W_elt (rd_F4,[2])
+set sigma=W_elt (rd_F4,[2,3])
 set e=(a*b*c*d)^2
 set z=(a*b*c*d)^3
 set classes_Kondo_F4_0=
 [
-id_W(rd),z,a*b,e,e*z,a*d*b*d*c*d,sigma,sigma*z,sigma*e,sigma*e*z,c*d*sigma,d,d*z,sigma*d,sigma*d*z,a*d*b,tau,tau*z,e*tau,e*tau*z,c*a*tau,tau*d,a*tau,a*tau*z,c*d*b*tau
+id_W(rd_F4),z,a*b,e,e*z,a*d*b*d*c*d,sigma,sigma*z,sigma*e,sigma*e*z,c*d*sigma,d,d*z,sigma*d,sigma*d*z,a*d*b,tau,tau*z,e*tau,e*tau*z,c*a*tau,tau*d,a*tau,a*tau*z,c*d*b*tau
 ]
 
 set classes_Kondo_F4= {minimal length reps}
 for w in classes_Kondo_F4_0 do minimal_representative(w) od
 
 set class_centralizer_sizes_Kondo_F4=for w in classes_Kondo_F4 do w.centralizer_order od
-set class_sizes_Kondo_F4=for w@i in classes_Kondo_F4 do order_W(rd)\class_centralizer_sizes_Kondo_F4[i] od
+set class_sizes_Kondo_F4=for w@i in classes_Kondo_F4 do order_W(rd_F4)\class_centralizer_sizes_Kondo_F4[i] od
 set class_orders_Kondo_F4=for w in classes_Kondo_F4 do w.order od
 
 set character_table_Kondo_F4=
@@ -90,7 +90,7 @@ in
   ( Lie_type(F4)    {lie_type}  
   , order    {order (of W)}
   , ncc      {n_classes}
-  , (int j) [(Partition,vec)]: [([],[])]  {partitions_and_signs, not used}
+  , (int j): []
   , (int j) string: "" {class_label} {fill in later}
   , (int j) WeylElt: classes_Kondo_F4[j] {class_rep}
   , (int j) int: class_orders_Kondo_F4[j]
@@ -117,69 +117,6 @@ ct:=ct.update_degrees
 set F4_names(CharacterTable ct)=[string]:for i:ct.n_classes do ct.F4_name(ct.character(i)) od
 set F4_names(int i)=ct.F4_names[i]
 }
-
-
-set springer_by_signature(ComplexNilpotent O)=
-assert(O.root_datum.Lie_type=Lie_type("F4"),"Not type F_4");
-let d=O.diagram_normalized in
-if d=[0,0,0,0] then [1,-1,-1]   {1 -> phi(1,24)}
-elif d=[1,0,0,0] then [2,0,-2]  {A1 -> phi(2,16)''}
-elif d=[0,0,0,1] then [4,-2,-2] {A1~ -> phi(4,13)}
-elif d=[2,0,0,0] then [8,0,-4]  {A2 -> phi(8,9)''}
-elif d=[0,1,0,0] then [9,-3,-3] {A1+A1~ -> phi(9,10)}
-elif d=[0,0,0,2] then [8,-4,0]  {A2~ -> phi(8,9)'}
-elif d=[0,0,1,0] then [4,2,-2]  {A2+A1~ -> phi(4,7)''}
-elif d=[2,0,0,1] then [9,3,-3]  {B2->phi(9,6)''}
-elif d=[0,1,0,1] then [6,0,0]   {A2~+A1 -> phi(6,6)''}  {ambiguous: is the special one, with sum()=19}
-elif d=[1,0,1,0] then [16,0,0]  {C3(a1) -> phi(16,5)}
-elif d=[0,2,0,0] then [12,0,0]  {F4(a3) -> phi(12,4)}
-elif d=[2,2,0,0] then [8,4,0]   {B3 -> phi(8,3)''}
-elif d=[1,0,1,2] then [8,0,4]   {C3 -> phi(8,3)'}
-elif d=[0,2,0,2] then [9,3,3]   {F4(a2) -> phi(9,2)}
-elif d=[2,2,0,2] then [4,2,2]   {F4(a1) -> phi(4,1)}
-elif d=[2,2,2,2] then [1,1,1]   {F4 -> phi(1,0)}
-else error("error in springer correspondence") fi
-
-set springer_F4(CharacterTable ct,ComplexNilpotent O)=int:
-let characters=ct.characters then
-sig=springer_by_signature(O) in
-if sig=[6,0,0] then
- first(for v in characters do ct.signature(v)=sig and sum(v)=19 od)
- else
- first(for v in characters do ct.signature(v)=sig od)
-fi
-
-set springer_F4(CharacterTable ct)=(ComplexNilpotent->int):(ComplexNilpotent O):springer_F4(ct,O)
-
-set dual_orbit_F4(ComplexNilpotent O)=
-let rd=O.root_datum then
-dual_rd=dual(rd) then
-dual_orbits=dual_rd.orbits then
-d=O.diagram_normalized then
-dual_normalized=
-  if d=[0,0,0,0] then [2,2,2,2]
-elif d=[1,0,0,0] then [2,2,0,2]
-elif d=[0,0,0,1] then [2,2,0,2]
-elif d=[0,1,0,0] then [0,2,0,2]
-elif d=[2,0,0,0] then [2,2,0,0]
-elif d=[0,0,0,2] then [1,0,1,2]
-elif d=[0,0,1,0] then [0,2,0,0]
-elif d=[2,0,0,1] then [0,2,0,0]
-elif d=[0,1,0,1] then [0,2,0,0]
-elif d=[1,0,1,0] then [0,2,0,0]
-elif d=[0,2,0,0] then [0,2,0,0]
-elif d=[1,0,1,2] then [0,0,0,2]
-elif d=[2,2,0,0] then [2,0,0,0]
-elif d=[0,2,0,2] then [0,1,0,0]
-elif d=[2,2,0,2] then [0,0,0,1]
-elif d=[2,2,2,2] then [0,0,0,0]
-else error("error computing dual orbit") fi
-then
-dual_orbit_number=first(for O in dual_orbits do O.diagram_normalized=dual_normalized od)
-in
-dual_orbits[dual_orbit_number]
-
-
 
 
 

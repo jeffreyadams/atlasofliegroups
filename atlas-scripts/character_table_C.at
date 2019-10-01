@@ -1,0 +1,131 @@
+<nilpotent_orbits.at
+<character_tables.at
+
+set sign_string (bool s) = string: if s then "-" else "+" fi
+set parts_string (Partition lambda) = string: lambda.to_string[1:1~]
+set cycles_string ([int,bool] cycles) = string:
+(  "["
+   ##
+ ##for (l,s)@pos in cycles
+   do if =pos then l.to_string##s.sign_string
+      else "," ##  l.to_string##s.sign_string
+      fi
+   od
+ ##
+   "]"
+)
+{     type C     }
+
+{representation of H_n is given by a pair of partitions or a symbol}
+{
+  symbol:
+  0 \le f_1 < f_2 < ... < f_a
+  0 \le g_1 < f_2 < ....< g_b
+  equivalence: [f_1,.., f_a] -> [0,f_1+1,..., f_a+1], same on g
+  every symbol is equivalent to a unique one with a=b+1 and at most one 0
+}
+
+set_type Hn_rep  =(Partition,Partition)
+set_type Symbol = [[int]]  { must have 2 parts: [f,g], other conditions above }
+set_type BC_Orbit = Partition
+  { all odd(C) or even(B) parts must have even multiplicity }
+
+{ use equivalence relation on symbols to get one with at most one 0 }
+set normalize ([int] v) = [int]:
+   let nv=#v, i=0 in while i<nv and v[i]<=i do i+:=1 od;
+   for e in v[i:] do e-i od
+
+{ other direction: replace [a1,,,.ak] with [0,1,...,r-1,a1+r,...,ak+r] }
+set expand([int] v, int r) = [int]: #r ## for c in v do c+r od
+
+{ normalize symbol: |f|=|g|+1 and at most 1 zero }
+set normalize (Symbol S) = Symbol:
+  let f=S[0].normalize, g=S[1].normalize then d=#f-(#g+1) in
+  case d in [f,g] then [expand(f,-d),g] else [f,expand(g,d)] esac
+
+{ Symbol to Hn_rep (bijection) }
+set wrep (Symbol S) = Hn_rep:
+( for f_i@i in S[0] do f_i-i ~od.strip_to_partition
+, for g_i@i in S[1] do g_i-i ~od.strip_to_partition
+)
+{Hn_rep to Symbol}
+set symbol (Hn_rep(p,q)) = Symbol:
+   let d=#p-(#q+1) in
+   case d then p##:= for : -d do 0 od in () else q##:=for : d do 0 od esac;
+   [for i:#p do p~[i]+i od,for j:#q do q~[j]+j od]
+
+{ equality of Hn_reps }
+set = (Hn_rep(a1,a2),Hn_rep(b1,b2)) = bool: a1=b1 and a2=b2
+
+{ equality of symbols (not equivalence) }
+set symbols_equal(Symbol a,Symbol b) = bool: a[0]=b[0] and a[1]=b[1]
+
+
+{get actual conjugacy class representatives, i.e. elements of W(C_n),
+ from pairs of partitions
+pair of partitions (P,Q) of total size n -> conjugacy class in W(C_n)
+P=(a_1,...,a_r) -> coxeter element of Sp(2a_1)x...xSp(2a_r)
+Q=(b_1,...,b_s) -> coxeter element of GL(b_1)x...xGL(b_s)
+}
+set conjugacy_class_C(Partition P,Partition Q)=WeylElt:
+assert(is_positive(P), "P is not a parition (has non-positive entries)");
+assert(is_positive(Q), "Q is not a parition (has non-positive entries)");
+if #P+#Q=0 then id_W(trivial_group)  {special case}
+else
+ {first, given a single partition P=(a_1,...,a_r)
+ construct the simple roots and coroots of GL(a_1)x...xGL(a_r)
+ algorithm: P->v=(1,...,1,2,..,2,...,r,...,r)
+ #of terms i is a_i
+ then take the simple roots of GL(n) (n=\sum a_i) orthogonal to v
+ }
+ let (GL_roots,GL_coroots)=
+  let partition=P##Q then
+  v=##
+   for i:#partition do
+    for j:partition[i] do i+1
+   od
+  od
+  then
+{  ()=prints("v=",v) then}
+  roots=##for alpha in GL(#v).simple_roots do
+   if alpha*v=0 then [alpha] else [] fi od
+  in (roots,roots)
+ then
+ {next, add single 2e_i term to simple roots of each GL factor from P
+ corresponding e_i term to simple coroots}
+ n=sum(P)+sum(Q) then
+ long_roots=[vec]: for i:#P do 2*e(n,sum(for k:i+1 do P[k] od)-1) od then
+ short_coroots=[vec]: for i:#P do e(n,sum(for k:i+1 do P[k] od)-1) od 
+ in
+{ let ()=prints("GL_roots:",GL_roots,new_line,"long:roots",long_roots,new_line,"GL_coroots:",GL_coroots,new_line,"short_coroots",short_coroots) in}
+ let sub_rd=root_datum(GL_roots##long_roots,GL_coroots##short_coroots,n) then
+  w_sub=sub_rd.coxeter_element in
+ minimal_representative(W_elt(Sp(2*n),w_sub.matrix))
+fi
+
+set character_table_C(int n) = CharacterTable:
+let order=n.fac*2^n, pairs = partition_pairs(n)
+  then cycles = for pair in pairs do pair.cycles od
+  then ncc=#cycles then
+  index = index_signed_cycles(cycles,#(#cycles))
+  , centralizer_orders = for type in cycles do type.cycle_centralizer_order od
+  , sign(bool s) = string: if s then "-" else "+" fi
+in
+  (Lie_type(Sp(2*n))    {lie_type}  
+  , order    {order (of W)}
+  , ncc      {n_classes}
+  , (int j) [Partition]: let (P,Q)=pairs[j] in [P,Q]   {partitions}
+  , (int j) string: { class_label } cycles[j].cycles_string  {class_label}
+  , (int j) WeylElt: conjugacy_class_C(pairs[j])  {class_rep}
+  , (int j) int: cycles[j].cycle_type_order       {class_order}
+  , (int j, int p) int: cycle_power(cycles[j],p).index   {class_power}
+  , centralizer_orders   {class}
+  , for co in centralizer_orders do order\co od    {class_sizes}
+  , (int i) string: pairs[i].to_string { irreducible representation label }  {irreducible label}
+  , [[int]]:[] {sym_powers_reflection}
+  , [int]:[]  {degrees}
+  , ncc ^ { gather rows of this size: }
+    for pair in pairs
+    do for cycle_type in cycles do hyperoctahedral_character(pair,cycle_type) od
+    od
+  )

@@ -1,0 +1,314 @@
+<springer_tables.at
+
+{Springer correspondence from nilpotent orbits to representations of W in type B/C
+ orbit: partition -> representation= pair of partitions
+ see Carter pg. 419}
+
+set pad([int] v,int N)=v##null(N-#v)
+
+{all partitions for orbits of C_n, partitions of (even) n
+every odd part has even multiplicity}
+set partitions_C(int n)=[Partition]:
+parity_restricted_partitions(2*n,true)
+
+{all partitions for orbits of B_n, partitions of (even) n
+every odd part has even multiplicity}
+set partitions_B(int n)=[Partition]:
+parity_restricted_partitions(2*n+1,false)
+
+{ ---------------- type C ------------------}
+
+{diagram:
+
+ComplexOrbit O            (for Sp(2n) or PSp(2n)
+Partition    P            (for orbit in type C)
+Pair of partitions (p,q)  (for representation of W(C_n))
+
+O->P:  P=partition_of_orbit(O)
+P->O:  O=complex_nilpotent_C(rd,P)
+
+P-> (p,q): (p,q)=springer_C(P)
+O-> (p,q): (p,q)=springer_C(P)
+
+(p,q)->O: O=inverse_springer_C(rd,P)
+(p,q)->P: O=inverse_springer_partition_C(P)
+}
+
+
+
+
+{valid partition in type C: odd parts have even multiplicity}
+set test_C(Partition P)=bool:
+all(for i:max(P) from 1 do if i.is_odd then multiplicity(i,P).is_even else true fi od)
+
+{map from partition for an orbit of Sp(2n) to semisimple element H}
+set semisimple_element_C(Partition P)=
+assert(P.test_C,"Not a valid type C partition");
+let multiplicities=##for i:max(P)+1 from 1 do let m=multiplicity(i,P) in if !=m then [(i,m)] else [] fi od
+then v=ratvec:[] in
+for (i,m) in multiplicities do 
+ if i.is_even then for j:m do v##:=rho(SO(i+1)) od
+  else for j:m\2 do v##:=rho(GL(i)) od fi od;
+  dominant(Sp(sum(P)),v)
+
+{partition of 2n -> ComplexNilpotent for Sp(2n)}
+set complex_nilpotent_C(Partition P)=ComplexNilpotent:
+(Sp(sum(P)),(),ratvec_as_vec(2*semisimple_element_C(P)))
+
+{for PSp(2n) use the diagram}
+set complex_nilpotent_C(RootDatum rd,Partition P)=ComplexNilpotent:
+let O_Sp=P.complex_nilpotent_C then
+orbits=rd.orbits then
+index=first(for O in orbits do O.diagram_normalized=O_Sp.diagram_normalized od) in 
+orbits[index]
+
+set partition_of_orbit_C(ComplexNilpotent O)=
+assert(let (type,)=O.root_datum.simple_type in type="C","Not an orbit in type C");
+let orbit_partitions=partitions_C(O.root_datum.rank) then
+index=first(for P in orbit_partitions do complex_nilpotent_C(O.root_datum,P)=O od) in
+orbit_partitions[index]
+
+{springer map from partition P of 2n to pair of partitions (P,Q) sum(P)+sum(Q)=n}
+set springer_C(Partition P)=(Partition,Partition):
+assert(P.test_C,"Not a valid type C partition");
+let P=sort(P)  {increasing} then
+P=if is_even(#P) then P else 0#P fi {even # of parts} then
+Q=P+for i:#P do i od {add [0,1,2,...,]}
+then v=[int]:[],w=[int]:[] in
+{each odd part 2a+1 contributes a to v, each even part 2a contributes a to w}
+for a in Q do if a.is_odd then v#:=a\2 else w#:=a\2 fi od;
+assert(#v=#w,"error, v and w should have the same size");
+{let ()=prints("v=",v, " w=", w)}
+(delete_leading_zeros(v-for i:#v do i od),delete_leading_zeros( w-for i:#w do i od))
+
+set springer_C(CharacterTable ct,ComplexNilpotent O)=int:
+let (a,b)=springer_C(partition_of_orbit_C(O)) then
+n=O.root_datum.ss_rank then
+index=first(for i:ct.n_classes do let x=ct.partitions(i) in
+{prints("a:", pad(a,n), new_line, "x[0]: ",pad(x[0],n), new_line, pad(b,n), " ", pad(x[1], n));}
+sort(pad(a,n))=sort(pad(x[0],n)) and sort(pad(b,n))=sort(pad(x[1],n)) od) in
+{pad(a,n)=pad(x[0],n) and pad(b,n)=pad(x[1],n) od) in} index
+
+
+set inverse_springer_partition_C((Partition,Partition) partition_pair)=(bool,Partition):
+let (P,Q)=partition_pair then n=sum(P)+sum(Q) then
+()=assert(sum(P)+sum(Q)=n,"P,Q do not add up to correct size");
+P:=sort(pad(P,n));
+Q:=sort(pad(Q,n)) then
+orbits=partitions_C(n) in
+let index=first(for O in orbits do let (A,B)=springer_C(O) in sort(pad(A,n))=P and sort(pad(B,n))=Q od)
+in if index=-1 then (false,null(0))
+else
+(true,orbits[index])
+fi
+
+{inverse Springer map, from pair (P,Q) of partitions,
+both of size n, and sum(P)+sum(Q)=n,
+to ComplexNilpotent for Sp(2n)
+}
+set inverse_springer_C((Partition,Partition) partition_pair)=(bool,ComplexNilpotent):
+let (valid,P)=inverse_springer_partition_C(partition_pair) in
+if valid then (valid,complex_nilpotent_C(P)) else
+(false,trivial_group.zero_orbit) fi
+
+
+{ ---------------- type B ------------------}
+
+{Springer correspondence from nilpotent orbits to representations of W in type B
+ orbit: partition -> representation= pair of partitions
+ see Carter pg. 419}
+
+{diagram:
+
+ComplexOrbit O            (for SO(2n+1))
+Partition    P            (for orbit of SO(2n+1))
+Pair of partitions (p,q)  (for representation of W(SO(2n+1)))
+
+O->P:  P=partition_of_orbit(O)
+P->O:  O=complex_nilpotent_B(P)
+
+P-> (p,q): (p,q)=springer_B(P)
+O-> (p,q): (p,q)=springer_B(P)
+
+(p,q)->O: O=inverse_springer_B(P)
+(p,q)->P: O=inverse_springer_partition_B(P)
+}
+
+set pad([int] v,int N)=v##null(N-#v)
+set pad(ratvec v,int N)=v##null(N-#v)
+
+
+
+{valid partition in type B: odd parts have even multiplicity}
+set test_B(Partition P)=bool:
+all(for i:max(P) from 1 do if i.is_even then multiplicity(i,P).is_even else true fi od)
+
+{map from partition for an orbit of SO(2n+1) to semisimple element H}
+set semisimple_element_B(Partition P)=
+assert(P.test_B,"Not a valid type B partition");
+let multiplicities=##for i:max(P)+1 from 1 do let m=multiplicity(i,P) in if !=m then [(i,m)] else [] fi od
+then v=ratvec:[] in
+let ()=for (i,m) in multiplicities do
+ if i.is_odd then for j:m do v##:=rho(Sp(i-1)) od
+  else for j:m\2 do v##:=rho(GL(i)) od fi
+od 
+then w=pad(v,sum(P)\2) in
+  dominant(SO(sum(P)),w)
+
+{other direction: partition of 2n -> ComplexNilpotent for SO(2n+1)}
+set complex_nilpotent_B(Partition P)=ComplexNilpotent:
+(SO(sum(P)),(),ratvec_as_vec(2*semisimple_element_B(P)))
+
+{for Spin(2n+1) use the normalized diagram}
+set complex_nilpotent_B(RootDatum rd,Partition P)=ComplexNilpotent:
+let O_SO=P.complex_nilpotent_B then
+orbits=rd.orbits then
+index=first(for O in orbits do O.diagram_normalized=O_SO.diagram_normalized od) in 
+orbits[index]
+
+
+set partition_of_orbit_B(ComplexNilpotent O)=
+assert(let (type,)=O.root_datum.simple_type in type="B","Not an orbit in type B");
+let orbit_partitions=partitions_B(O.root_datum.rank) then
+diagram=O.diagram_normalized then
+index=first(for P in orbit_partitions do complex_nilpotent_B(P).diagram_normalized=diagram od) in
+orbit_partitions[index]
+
+{springer map from partition P of 2n to pair of partitions (P,Q) sum(P)+sum(Q)=n}
+set springer_B(Partition P)=(Partition,Partition):
+assert(P.test_B,"Not a valid type B partition");
+let P=sort(P)  {increasing} then
+Q=P+for i:#P do i od {add [0,1,2,...,]}
+then v=[int]:[],w=[int]:[] in
+{each odd part 2a+1 contributes a to v, each even part 2a contributes a to w}
+for a in Q do if a.is_odd then v#:=a\2 else w#:=a\2 fi od;
+prints("v=",v, " w=",w);
+assert(#v=#w+1,"error, #v should equal #w+1");
+(v-for i:#v do i od, w-for i:#w do i od)
+
+set springer_B(ComplexNilpotent O)=(Partition,Partition):
+springer_B(partition_of_orbit_B(O))
+
+set springer_B(CharacterTable ct,ComplexNilpotent O)=int:
+let (a,b)=springer_B(partition_of_orbit_B(O)) then
+n=O.root_datum.ss_rank then
+index=first(for i:ct.n_classes do let x=ct.partitions(i) in
+{prints("a:", pad(a,n), new_line, "x[0]: ",pad(x[0],n), new_line, pad(b,n), " ", pad(x[1], n));}
+{need n+1: sometimes a or b has length n+1 not n}
+sort(pad(a,n+1))=sort(pad(x[0],n+1)) and sort(pad(b,n))=sort(pad(x[1],n)) od) in index
+
+set inverse_springer_partition_B((Partition,Partition) partition_pair)=(bool,Partition):
+let (P,Q)=partition_pair then n=sum(P)+sum(Q) then
+()=assert(sum(P)+sum(Q)=n,"P,Q do not add up to correct size");
+P:=sort(pad(P,n));
+Q:=sort(pad(Q,n)) then
+orbits=partitions_B(2*n) in
+let index=first(for O in orbits do let (A,B)=springer_B(O) in sort(pad(A,n))=P and sort(pad(B,n))=Q od)
+in if index=-1 then (false,null(0))
+else
+(true,orbits[index])
+fi
+
+{inverse Springer map, from pair (P,Q) of partitions,
+both of size n, and sum(P)+sum(Q)=n,
+to ComplexNilpotent for SO(2n+1)
+}
+set inverse_springer_B((Partition,Partition) partition_pair)=(bool,ComplexNilpotent):
+let (valid,P)=inverse_springer_partition_B(partition_pair) in
+if valid then (valid,complex_nilpotent_B(P)) else
+(false,trivial_group.zero_orbit) fi
+
+
+{------------------ duality ----------------------------------}
+
+
+set f([int] P, int i)=int:
+for k:#P-i-1 from i+1 do  if P[k]<P[i]-1 then return k fi od;-1
+
+set rec_fun C_collapse(Partition P)=Partition:
+assert(sum(P).is_even,"Partition not even");
+if is_valid("C",P) then P.delete_trailing_zeros else
+ let Q=if P~[0]=0 then P else P#0  fi then
+ i=first(for k:#Q do Q[k].is_odd and multiplicity(Q[k],Q).is_odd and Q[k]>Q[k+1] od) then
+ j=f(Q,i) in
+ Q[i]-:=1;Q[j]+:=1;
+ C_collapse(Q)
+fi
+
+set rec_fun B_collapse(Partition P)=Partition:
+assert(sum(P).is_odd,"Partition not odd");
+if is_valid("B",P) then P.delete_trailing_zeros else
+ let Q=if P~[0]=0 then P else P#0  fi then
+ i=first(for k:#Q-1 do Q[k].is_even and multiplicity(Q[k],Q).is_odd and Q[k]>Q[k+1] od) then
+ j=f(Q,i) in 
+ Q[i]-:=1;Q[j]+:=1;
+ B_collapse(Q)
+fi
+
+set add_one(Partition P)=Partition:P[0]+:=1;P
+set subtract_one(Partition P)=Partition:P~[0]-:=1;P
+
+set BC_dual(Partition P)=
+if sum(P).is_odd then {from type B_n to type C_n}
+P.subtract_one.C_collapse.transpose.C_collapse
+else  {from type C_n to type B_n}
+P.add_one.B_collapse.transpose.B_collapse
+fi
+
+
+set BC_dual_long(Partition P)=
+if sum(P).is_odd then {from type B_n to type C_n}
+let ()=prints("from B_",sum(P), " to ", "C_",sum(P)) then
+ P1=P.subtract_one then
+ ()=prints("-1: ", P1) then
+ P2=P1.C_collapse then
+ ()=prints("C-collapse: ", P2) then
+ P3=P2.transpose then
+ ()=prints("transpose: ",P3) then
+ P4=P3.C_collapse then
+ ()=prints("C-collapse: ",P4) in P4
+else
+let ()=prints("from C_",sum(P), " to ", "B_",sum(P)) then
+ P1=P.add_one then
+ ()=prints("+1: ", P1) then
+ P2=P1.B_collapse then
+ ()=prints("B-collapse: ", P2) then
+ P3=P2.transpose then
+ ()=prints("transpose: ",P3) then
+ P4=P3.B_collapse then
+ ()=prints("B-collapse: ",P4) in P4
+fi
+
+set test_duality_C(int n)=
+let all=partitions_C(n) in
+tabulate(
+for P in all do [P.to_string,P.BC_dual.BC_dual.to_string] od)
+
+set dual_map_C(ComplexNilpotent O_C)=ComplexNilpotent:
+let P=partition_of_orbit_C(O_C) then
+Q=BC_dual(P) then
+rd_dual=O_C.root_datum.dual in
+complex_nilpotent_B(rd_dual,Q)
+
+set dual_map_B(ComplexNilpotent O_B)=ComplexNilpotent:
+let P=partition_of_orbit_B(O_B) then
+Q=BC_dual(P) then
+rd_dual=O_B.root_datum.dual in
+complex_nilpotent_C(rd_dual,Q)
+
+
+set springer_table_C(CharacterTable ct)=
+let rd=ct.root_datum then
+orbits=rd.orbits then
+dual_map(ComplexNilpotent O)=ComplexNilpotent: dual_map_C(O) then
+dual_map_i(ComplexNilpotent O)=ComplexNilpotent: dual_map_B(O) then
+springer(ComplexNilpotent O)=springer_C(ct,O) in
+(ct,orbits,dual_map,dual_map_i,springer)
+
+set springer_table_B(CharacterTable ct)=
+let rd=ct.root_datum then
+orbits=rd.orbits then
+dual_map(ComplexNilpotent O)=ComplexNilpotent: dual_map_B(O) then
+dual_map_i(ComplexNilpotent O)=ComplexNilpotent: dual_map_C(O) then
+springer(ComplexNilpotent O)=springer_B(ct,O) in
+(ct,orbits,dual_map,dual_map_i,springer)

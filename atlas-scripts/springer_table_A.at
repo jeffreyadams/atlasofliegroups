@@ -1,0 +1,95 @@
+<springer_tables.at
+<coordinates.at
+
+{Springer correspondence from nilpotent orbits to representations of W in type A
+ orbit: partition -> representation= same partition}
+
+{ ---------------- type A/SL(n) ------------------}
+
+{diagram:
+
+ComplexOrbit O            (for SL(n))
+Partition    P            (for orbit in type A)
+Pair of partitions (p,q)  (for representation of W(A_n))
+
+O->P:  P=partition_of_orbit(O)
+P->O:  O=complex_nilpotent_A(rd,P)
+
+P-> (p,q): (p,q)=springer_A(P)
+O-> (p,q): (p,q)=springer_A(P)
+
+(p,q)->O: O=inverse_springer_A(rd,P)
+(p,q)->P: O=inverse_springer_partition_A(P)
+}
+
+{natural coordinates are for GL(n), so need change of coordinates}
+
+{change of basis for X^*
+ set A=GL_to_SL_change_of_basis(n)
+ then, for example, A*rho(GL(n))=rho(SL(n))
+}
+set GL_to_SL_change_of_basis(int n)=mat:
+ratmat_as_mat(inverse_change_basis(SL(n),GL(n).simple_roots))
+
+{change of basis for X_*
+ set A=GL_to_SL_co_change_of_basis(n)
+ then, for example, A*rho_check(GL(n))=rho_check(SL(n))
+}
+set GL_to_SL_co_change_of_basis(int n)=ratmat:
+inverse_change_basis(SL(n).dual,GL(n).simple_coroots)
+
+{map from partition for an orbit of GL(n) to semisimple element H}
+{in SL(n) coordinates}
+set semisimple_element_A(Partition P)=ratvec:  {for SL(n)}
+let v=##for a in P do rho(GL(a)) od then
+n=#v in
+GL_to_SL_co_change_of_basis(n)*(dominant(GL(n),v))
+
+{partition of n -> ComplexNilpotent for GL(n)}
+set complex_nilpotent_A(Partition P)=ComplexNilpotent:  {for SL(n)}
+let n=sum(P) in
+(SL(n),(),ratvec_as_vec(2*semisimple_element_A(P)))
+
+{to make it independent of the isogeny and center use the diagram}
+set complex_nilpotent_A(RootDatum rd,Partition P)=
+assert(sum(P)=rd.ss_rank+1,"rank mismatch");
+let O_SL=complex_nilpotent_A(P) then 
+diag=O_SL.diagram_normalized then
+orbits=rd.orbits then
+index=first(for O in orbits do O.diagram_normalized=diag od) in 
+orbits[index]
+
+set partition_of_orbit_A(ComplexNilpotent O)=
+let orbit_partitions=partitions(O.root_datum.ss_rank+1) then
+index=first(for P in orbit_partitions do complex_nilpotent_A(O.root_datum,P)=O od) in
+orbit_partitions[index]
+
+{springer map in type A}
+set springer_A(Partition P)=Partition:P
+
+set springer_A(CharacterTable ct,ComplexNilpotent O)=int:
+let P=O.partition_of_orbit_A in first(for i:ct.n_classes do  ct.partitions(i)[0]=P od)
+
+set inverse_springer_partition_A(Partition P)=Partition: P
+
+{inverse Springer map, from pair Partition of n
+to ComplexNilpotent for GL(n)
+}
+set inverse_springer_A(Partition P)=ComplexNilpotent:
+complex_nilpotent_A(P)
+
+
+{------------------ duality ----------------------------------}
+
+set A_dual(Partition P)=Partition:P.transpose
+
+set dual_map_A(ComplexNilpotent O)=ComplexNilpotent:
+let P=partition_of_orbit_A(O) in
+complex_nilpotent_A(P.A_dual)
+
+set springer_table_A(CharacterTable ct)=
+let rd=ct.root_datum then
+orbits=rd.orbits then
+dual_map(ComplexNilpotent O)=ComplexNilpotent: dual_map_A(O) then
+springer(ComplexNilpotent O)=springer_A(ct,O) in
+(ct,orbits,dual_map,dual_map,springer)
