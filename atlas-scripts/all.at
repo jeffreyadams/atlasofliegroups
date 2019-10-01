@@ -29,8 +29,6 @@
 <cyclotomic_field_bracket.at
 <tits_centralizer.at
 <bruhat.at
-<springer.at
-<springer_BC.at
-<simple_character_table_C.at
-<cells.at
-
+<character_tables.at
+<springer_tables.at
+<coordinates.at

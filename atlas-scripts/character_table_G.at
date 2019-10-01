@@ -1,0 +1,56 @@
+<character_tables.at
+<nilpotent_orbits.at
+<character_table_C.at
+
+set rd=simply_connected(G2)
+set W=W(rd)
+set orbits=rd.orbits
+set classes=rd.conjugacy_classes
+set degrees=[0,3,3,6,2,1]
+{set classes_0=[[int]]:[[],[0],[1],[0,1],[0,1,0,1],[0,1,0,1,0,1]]
+set classes=for a in classes_0  do W_elt(rd,a) od
+}
+
+set character_table_G2=
+[
+{id} [1,1,1,1,2,2],
+{order 2,size 3} [1,-1,1,-1,0,0],
+{2,3} [1,1,-1,-1,0,0],
+{order 6,size 2} [1,-1,-1,1,-1,1],
+{order 3, size 2} [1,1,1,1,-1,-1],
+{order 2,size 1} [1,-1,-1,1,2,-2]
+]
+
+set centralizer_orders_G2=for w in classes do  count(for y in W do w*y=y*w od) od
+
+set character_table_G2() = CharacterTable:
+let order=1152, ncc=#classes
+in
+  ( Lie_type(G2)    {lie_type}  
+  , #W       {order (of W)}
+  , #classes      {n_classes}
+  , (int j): []
+  , (int j) string: "" {class_label} {fill in later}
+  , (int j) WeylElt: classes[j] {class_rep}
+  , (int j) int: classes[j].order
+  , (int j, int p) int: first(ncc,(int i): is_conjugate(classes[i],classes[j]^p))
+  , centralizer_orders_G2
+  , for i:#classes do #W\centralizer_orders_G2[i] od
+  , (int i) string: "" { irreducible representation label }  {later}
+  , [[int]]:[]  {sym_powers_reflection}
+  ,[int]:degrees {degrees}
+  , character_table_G2
+  )
+
+set orbit_by_diagram(RootDatum rd,[vec] diagram)=
+let index=first(for i:#rd.orbits do rd.orbits[i].diagram_normalized=diagram od) in
+rd.orbits[index]
+
+set diagrams=[[0,0],[0,1],[1,0],[0,2],[2,2]]
+set dual_diagrams=[[2,2],[0,2],[0,2],[0,2],[0,0]]
+
+set dual_map_G2(ComplexNilpotent O)=ComplexNilpotent:
+let diagram=O.diagram_normalized[0] then
+index=find(diagrams,diagram) then
+dual_diagram=dual_diagrams[index] in
+orbit_by_diagram(O.root_datum,[dual_diagram])

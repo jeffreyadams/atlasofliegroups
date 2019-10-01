@@ -1,7 +1,10 @@
-<character_table_reps.at
-<springer.at
+<lietypes.at
+<conjugate.at
+<character_table_reps_aux.at
+<conjugate.at
+<springer_tables.at
 
-set cells_verbose=false
+set cells_verbose=true
 
 set #(WCell cell)=int:let (a,b)=cell in #a 
 set parameters([Param] block,WCell cell)=[Param]:
@@ -48,210 +51,67 @@ set parameters_given_AV(SpringerTable st, ComplexNilpotent O,([Param],[WCell]) c
 parameters(cells_given_AV(st,O,cells))
 
 {true if translation of irreducible parameter p to gamma is non-zero}
-set I_will_survive(Param p,ratvec gamma)=bool:
-let rd=p.root_datum then tau=p.tau in
+set I_will_survive_int(Param p,ratvec gamma)=bool:
+let rd=p.root_datum then
+tau=p.tau in
 all(for i:rd.ss_rank do  rd.simple_coroots[i]*gamma != 0 or find(tau,i)=-1 od)
+
+{corrected version handles non-integral infinitesimal character
+true if translation of irreducible parameter p to gamma is non-zero}
+set I_will_survive(Param p,ratvec gamma)=bool:
+let rd=p.root_datum then
+rd_int=integrality_datum(rd,gamma) then
+tau=p.tau in
+all(for i:rd_int.ss_rank do  rd_int.simple_coroots[i]*gamma != 0 or find(tau,i)=-1 od)
 
 set push([Param] params,ratvec gamma)=[Param]:
 ##for p in params do if I_will_survive(p,gamma) then [T(p,gamma)] else [] fi od
 
 set parameters_given_AV_infinitesimal_character(SpringerTable st, ComplexNilpotent O,[([Param],[WCell])] blocks_and_cells,ratvec gamma)=
 [(int,int,Param)]: {[(block number, cell number, parameter)]}
+let springer_O=st.springer(O) then
+()=if cells_verbose then prints("given AV with infinitesimal character:", gamma, new_line, "O=",O) fi then
+()=if cells_verbose then prints("st:", st, " bc:", blocks_and_cells) fi in
+{()=if cells_verbose then prints("blocks_and_cells:", blocks_and_cells) fi in}
+{params=##for (a,) in blocks_and_cells do a od {for testing} in}
+if cells_verbose then prints("given AV/gamma: st: ", st.root_datum, new_line, " O:", O,new_line," gamma:", gamma) fi;
+{for p in params do prints(p.infinitesimal_character) od;
+prints(" springer(O)=",springer_O) fi;
+}
 ##for (block,cells)@i in blocks_and_cells do
  ##for cell@j in cells do
-  if st.ct.special_character(cell)=st.springer(O) then 
-   ##for p in parameters(block,cells[j]) do if I_will_survive(p,gamma) then [(i,j,first_param(T_irr(p,gamma)))] else [] fi od
+  if cells_verbose then prints("doing block ",i," cell ",j) fi;
+    let spec=st.ct.special_character(cell) in
+{    let spec=special_character(st.ct,cell,st.root_datum.simple_roots) in}
+    if spec=springer_O then
+   ##for p in parameters(block,cells[j]) do if I_will_survive(p,gamma) then
+   prints("survive:", p, " ", gamma);
+[(i,j,first_param(T_irr(p,gamma)))] else [] fi od
   else []
   fi
  od
 od
 
-{
-set parameters_given_AV_infinitesimal_character(SpringerTable ct, ComplexNilpotent O,([Param],[WCell]) cells,ratvec gamma)=
-##for p in parameters_given_AV(st,O,cells) do
- if I_will_survive(p,gamma) then [T_irr(p,gamma)] else [] fi od
+{include permutation}
+set parameters_given_AV_infinitesimal_character(SpringerTable st, ComplexNilpotent O,[([Param],[WCell])] blocks_and_cells,ratvec gamma,mat permutation)=[(int,int,Param)]: {[(block number, cell number, parameter)]}
+let springer_O=st.springer(O) then
+()=if cells_verbose then prints("given AV with infinitesimal character:", gamma, new_line, "O=",O) fi then
+()=if cells_verbose then prints("perm:", permutation) fi in
+{()=if cells_verbose then prints("blocks_and_cells:", blocks_and_cells) fi in}
+{params=##for (a,) in blocks_and_cells do a od {for testing} in}
+if cells_verbose then prints("given AV/gamma: st: ", st.root_datum, new_line, " O:", O,new_line," gamma:", gamma) fi;
+{for p in params do prints(p.infinitesimal_character) od;
+prints(" springer(O)=",springer_O) fi;
 }
-
-set weak_packet(SpringerTable st,ComplexNilpotent O_check,[Param] params)=[(int,int,Param)]:
-let ()=if cells_verbose then
- prints("Computing weak packet for ", params[0].real_form, new_line,
- "dual orbit:",new_line, " diagram: ", O_check.diagram, new_line,
- " normalized diagram: ", O_check.diagram_normalized, new_line,
- " H: ", O_check.H, new_line,
- " dimension: ", O_check.dim_nilpotent)
-fi then
-blocks_and_cells=blocks_and_cells(params) then
-()=if cells_verbose then
- prints("computed ", #blocks_and_cells, " blocks")
-fi  in
- let  gamma=O_check.H/2 then
- ()=if cells_verbose then prints("inf. char.=",gamma) fi then
- O=st.duality(O_check) then
- ()=if cells_verbose then
-  prints("orbit:",new_line, " diagram: ", O.diagram, new_line,
-   " normalized diagram: ", O.diagram_normalized, new_line,
-   " H: ", O.H, new_line,
-   " dimension: ", O.dim_nilpotent)
- fi then
- sigma=st.springer(O) then
- ()=if cells_verbose then prints("sigma=", sigma, " of dimension ",st.ct.dimension(sigma)) fi then
- parameters=parameters_given_AV_infinitesimal_character(st,O,blocks_and_cells,gamma) 
-{ ()=if cells_verbose then
-  prints("found ", #parameters, " parameters") fi}
- in
-parameters
-
-set weak_packet(SpringerTable st,ComplexNilpotent O_check,[Param] params)=[(int,int,Param)]:
-let ()=if cells_verbose then
- prints("Computing weak packet for ", params[0].real_form, new_line,
- "dual orbit:",new_line, " diagram: ", O_check.diagram, new_line,
- " normalized diagram: ", O_check.diagram_normalized, new_line,
- " H: ", O_check.H, new_line,
- " dimension: ", O_check.dim_nilpotent)
-fi then
-blocks_and_cells=blocks_and_cells(params) then
-()=if cells_verbose then
- prints("computed ", #blocks_and_cells, " blocks")
-fi  in
- let  gamma=O_check.H/2 then
- ()=if cells_verbose then prints("inf. char.=",gamma) fi then
- O=st.duality(O_check) then
- ()=if cells_verbose then
-  prints("orbit:",new_line, " diagram: ", O.diagram, new_line,
-   " normalized diagram: ", O.diagram_normalized, new_line,
-   " H: ", O.H, new_line,
-   " dimension: ", O.dim_nilpotent)
- fi then
- sigma=st.springer(O) then
- ()=if cells_verbose then prints("sigma=", sigma, " of dimension ",st.ct.dimension(sigma)) fi then
- parameters=parameters_given_AV_infinitesimal_character(st,O,blocks_and_cells,gamma) 
-{ ()=if cells_verbose then
-  prints("found ", #parameters, " parameters") fi}
- in
-parameters
-
-set weak_packets(SpringerTable st,[ComplexNilpotent] orbits,[Param] params)=
-for O in orbits do weak_packet(st,O,params) od
-
-
-{reporting functions}
-
-set mult([[(int,int,Param)]] packet)=((int,int,int)->int):(int orbit,int block,int cell):
-let rv=0 in
-for (b,c,p) in packet[orbit] do
- if b=block and c=cell then rv+:=1 fi
-od;rv
-
-set parameters([[(int,int,Param)]] packet)=((int,int,int)->[Param]):(int orbit,int block,int cell):
-let rv=[Param]:[] in
-for (b,c,p) in packet[orbit] do
- if b=block and c=cell then rv#:=p fi
-od;rv
-
-set mult_block([[(int,int,Param)]] packet)=((int,int)->int):(int orbit,int block):
-let rv=0 in
-for (b,c,p) in packet[orbit] do
- if b=block  then rv+:=1 fi
-od;rv
-
-set blocks([[(int,int,Param)]] packets)=sort_u(##for i:#packets do for (b,,) in packets[i] do b od od)
-{set cells([[(int,int,Param)]] packets,int block_number) =sort_u(##for i:#packets do for (,c,) in packets[i] do c od od)}
-set cells([[(int,int,Param)]] packets) =sort_u(##for i:#packets do for (,c,) in packets[i] do c od od)
-
-set show_detail([[(int,int,Param)]] packets)=void:
-let blocks=blocks(packets) then
-cells=cells(packets) then
-m=mult(packets) in
-tabulate(
- ["orbit","block#","cell#","#packet"]#
- ##for i:#packets do
-  ##for b in blocks do
-   ##for c in cells do
-    if m(i,b,c)!=0 then [[i.to_string,b.to_string,c.to_string,m(i,b,c).to_string]] else [] fi 
-   od
-  od
- od
-  )
-
-set show_very_long([[(int,int,Param)]] packets)=void:
-let blocks=blocks(packets) then
-cells=cells(packets) then
-m=mult(packets) in
-tabulate(
- ["orbit","block#","cell#","parameters", "inf. char."]#
- ##for i:#packets do
-  ##for b in blocks do
-   ##for c in cells do
-    for p in packets.parameters(i,b,c) do [i.to_string,b.to_string,c.to_string,p.to_string, p.infinitesimal_character.to_string] 
-   od
-  od
+##for (block,cells)@i in blocks_and_cells do
+ ##for cell@j in cells do
+  if cells_verbose then prints("doing block ",i," cell ",j) fi;
+    let spec=special_character_permuted(st.ct,cell,inverse(permutation)) in
+{    let spec=special_character(st.ct,cell,st.root_datum.simple_roots) in}
+    if spec=springer_O then
+   ##for p in parameters(block,cells[j]) do if I_will_survive(p,gamma) then
+[(i,j,first_param(T_irr(p,gamma)))] else [] fi od
+  else []
+  fi
  od
 od
-  )
-
-set show([[(int,int,Param)]] packets)=void:
-let blocks=blocks(packets) then
-cells=cells(packets) then
-m=mult_block(packets) in
-tabulate(
- ["orbit","block#","#packet"]#
- ##for i:#packets do
-  ##for b in blocks do
-    if m(i,b)!=0 then [[i.to_string,b.to_string,m(i,b).to_string]] else [] fi 
-   od
-  od
-  )
-
-set show_one_block([[(int,int,Param)]] packets, int block_number)=void:
-let blocks=blocks(packets) then
-cells=cells(packets) then
-m=mult_block(packets) in
-tabulate(
- ["orbit","#packet"]#
- ##for i:#packets do
-  ##for b@j in blocks do
-    if j=block_number and m(i,b)!=0 then [[i.to_string,m(i,b).to_string]] else [] fi 
-   od
-  od
-  )
-
-set show_short([[(int,int,Param)]] packets)=void:
-let blocks=blocks(packets) then
-grand_total=0 then
-cells=cells(packets) then
-m=mult(packets) in
-tabulate(
- ["orbit","#packet"]#
- ##for i:#packets do
-  let total=sum(for b in blocks do sum(for c in cells do m(i,b,c) od) od)
- in if total!=0 then grand_total+:=total;[[i.to_string,total.to_string]] else [] fi
-od
-#["Total",grand_total.to_string]
-)
-
-
-
-{
-set associated_variety(CharacterTable ct,[Param] block,WCell cell)=
-let sigma=ct.special_character_of_cell(cell) in
-ct.inverse_springer(sigma)
-
-set cells_with_given_associated_variety(WeylClassTable ct,[Param] params,ComplexNilpotent O)=
-for (block,cells)@i in cells(params) do
-let ()=prints("doing block #",i," with ",#cells," cells") in 
-(block,
-##for cell@j in cells do
- let ()=prints("doing cell #",j, " of size ",#cell) in
- let (,AV)=associated_variety(ct,block,cell) in
- if O=AV then [cell] else [] fi od
-)
-od
-
-
-{
-set weak_Arthur_packet(RealForm G,ComplexNilpotent O_dual)=
-let gamma=O_dual.H then
-assert(is_integer(gamma),"infinitesimal character is not integral");
-cells=cells(all_paramters_gamma(G,gamma)) then
-
-}}

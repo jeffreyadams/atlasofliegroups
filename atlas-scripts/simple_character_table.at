@@ -1,12 +1,16 @@
 <character_tables.at
-<F4_character_table.at
+<character_table_B.at  {loads type C also}
+<character_table_F.at
+<character_table_G.at
 
 {now for the individual types}
 
 {  type A }
 
 { get an actual WeylElt from a partition <-> conjugacy class in W}
-set conjugacy_class_S(Partition P)=
+{ sum(P)=n -> S_n -> root datum A_{n-1} -> SL(n)}
+set conjugacy_class_S(Partition P)=WeylElt:  {for SL(n)}
+{construct element for GL(n) and then convert to SL(n) at last step}
 assert(is_positive(P), "P is not a parition (has non-positive entries)");
 if #P=0 then id_W(trivial_group)  {special case}
 else
@@ -28,8 +32,10 @@ else
    if alpha*v=0 then [alpha] else [] fi od
   in (roots,roots)
 then sub_rd=root_datum(GL_roots,GL_coroots,n) then
-  w_sub=sub_rd.coxeter_element in
-  W_elt(SL(n+1),w_sub.matrix)
+  w_sub=sub_rd.coxeter_element then
+  w_GL=W_elt(GL(n),w_sub.matrix) in
+  {convert to SL(n): product of simple roots with the same numbers}
+  W_elt(SL(n),w_GL.word)
 fi
 
 set character_table_S_0(int n) = CharacterTable:
@@ -129,6 +135,7 @@ assert(letter="A" or letter="C" or letter="F","only types ACF currently implemen
 if letter="A" then character_table_A(rank+1)
 elif letter="C" then character_table_C(rank)
 elif letter="F" then character_table_F4()
+elif letter="G" then character_table_G2()
 else error("missing case") fi
 
 set simple_character_table(RootDatum rd)=simple_character_table(rd.Lie_type)

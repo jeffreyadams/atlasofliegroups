@@ -165,7 +165,7 @@ set conjugate_to (RootDatum rd, [WeylElt] S, ratvec v,ratvec w) =
 
 { find WeylElt |w| satisfying |w*v=u| }
 set conjugate_to (RootDatum rd, ratvec u, ratvec v) = (bool,WeylElt):
-  let (wu,u_dom)=from_dominant(rd,u), (wv,v_dom)=from_dominant(rd,u) in
+  let (wu,u_dom)=from_dominant(rd,u), (wv,v_dom)=from_dominant(rd,v) in
   (u_dom=v_dom, wu*/wv)
 
 

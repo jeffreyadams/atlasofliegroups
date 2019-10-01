@@ -1,0 +1,114 @@
+<character_table_reps.at
+
+set permute([WeylElt] W,(int->int) permutation)=[WeylElt]:
+for w in W do if length(w)=0 then w else W_elt(W[0].root_datum,for i in w.word do permutation(i) od) fi od
+
+set permute([WeylElt] W,[int] permutation)=[WeylElt]:
+let f(int i)=permutation[i] in permute(W,f)
+
+set permute([WeylElt] W,mat M)=[WeylElt]:
+{M should be a permutation matrix}
+let f(int i)=first(for j:#M do M[i][j]=1 od) in permute(W,f)
+
+set conjugate_to_simple(RootDatum rd,vec alpha)=
+for beta in rd.simple_roots do
+ let (success,w)=conjugate_to(rd,alpha,beta) in
+ if success then return(w) fi od ;id_W(rd)
+
+
+set cell_action_permuted(WCell cell, int i, (int->int) permutation)=mat:
+cell_action(cell,permutation(i))
+
+set cell_action_permuted(WCell cell, int i, [int]  permutation)=mat:
+cell_action(cell,permutation[i])
+
+set cell_action_permuted(WCell cell, int i, mat permutation)=mat:
+cell_action(cell,first(for j:#permutation do permutation[i][j]=1 od))
+
+set cell_action_permuted(WCell cell,[int] w,(int->int) permutation)=
+  let n=#cell.graph in
+  if =#w then id_mat(n)
+  else let result=cell_action_permuted(cell,w~[0],permutation) in
+     for i:#w-1 from 1 do result:=cell_action_permuted(cell,w~[i],permutation)*result od; result
+  fi
+
+set cell_action_permuted(WCell cell,[int] w,[int] permutation)=
+  let n=#cell.graph in
+  if =#w then id_mat(n)
+  else let result=cell_action_permuted(cell,w~[0],permutation) in
+     for i:#w-1 from 1 do result:=cell_action_permuted(cell,w~[i],permutation)*result od; result
+  fi
+
+set cell_action_permuted(WCell cell,[int] w,mat permutation)=
+  let n=#cell.graph in
+  if =#w then id_mat(n)
+  else let result=cell_action_permuted(cell,w~[0],permutation) in
+     for i:#w-1 from 1 do result:=cell_action_permuted(cell,w~[i],permutation)*result od; result
+  fi
+
+set cell_action_permuted(WCell cell,WeylElt w,(int->int) permutation) = mat: cell_action_permuted(cell,w.word,permutation)
+set cell_action_permuted(WCell cell,WeylElt w,[int] permutation) = mat: cell_action_permuted(cell,w.word,permutation)
+set cell_action_permuted(WCell cell,WeylElt w,mat permutation) = mat: cell_action_permuted(cell,w.word,permutation)
+
+set cell_character_permuted (CharacterTable ct,WCell cell,(int->int) permutation) = [int]:
+  for w in ct.class_reps do trace(cell_action_permuted(cell,w,permutation)) od
+set cell_character_permuted (CharacterTable ct,WCell cell,[int] permutation) = [int]:
+  for w in ct.class_reps do trace(cell_action_permuted(cell,w,permutation)) od
+set cell_character_permuted (CharacterTable ct,WCell cell,mat permutation) = [int]:
+  for w in ct.class_reps do trace(cell_action_permuted(cell,w,permutation)) od
+
+set special_character_permuted(CharacterTable ct,WCell cell,(int->int) permutation)=
+let summands=smallest_degree_summands(ct,ct.decompose(cell_character_permuted(ct,cell,permutation))) in
+if #summands>1 then error("not unique special representation") elif
+#summands=0 then error("no special summands?") else summands[0] fi
+
+set special_character_permuted(CharacterTable ct,WCell cell,[int] permutation)=
+let summands=smallest_degree_summands(ct,ct.decompose(cell_character_permuted(ct,cell,permutation))) in
+if #summands>1 then error("not unique special representation") elif
+#summands=0 then error("no special summands?") else summands[0] fi
+
+set special_character_permuted(CharacterTable ct,WCell cell,mat permutation)=
+let summands=smallest_degree_summands(ct,ct.decompose(cell_character_permuted(ct,cell,permutation))) in
+if #summands>1 then error("not unique special representation") elif
+#summands=0 then error("no special summands?") else summands[0] fi
+
+set special_character_permuted(CharacterTable ct,(int->int) permutation)=(WCell->int):(WCell cell):special_character_permuted(ct,cell,permutation)
+set special_character_permuted(CharacterTable ct,[int] permutation)=(WCell->int):(WCell cell):special_character_permuted(ct,cell,permutation)
+set special_character_permuted(CharacterTable ct,mat permutation)=(WCell->int):(WCell cell):special_character_permuted(ct,cell,permutation)
+
+set isomorphism_permutation(RootDatum rd_1,RootDatum rd_2)=(bool,mat):
+assert(rd_1.is_semisimple and rd_2.is_semisimple,"root data must be semisimple");
+if not is_locally_isomorphic(rd_1,rd_2) then (false, null(0,0))
+else
+ let S=symmetric_group(rd_1.rank) then
+ C_1=rd_1.Cartan_matrix, C_2=rd_2.Cartan_matrix then
+ index=first(for g in S do g*C_2=C_1*g od) in
+ if index=-1 then (false,null(0,0)) else (true,S[index]) fi
+fi
+
+
+{rest is not used currently:}
+
+{. matrix of action of arbitrary root reflection on a cell.}
+set cell_action (WCell cell,RootDatum rd,vec alpha) = mat:
+let w=conjugate_to_simple(rd,alpha) in
+cell_action(cell,w)*cell_action(cell,rd.simple_root_index(alpha))*cell_action(cell,inverse(w))
+
+set cell_action(WCell cell,RootDatum rd,[int] w,[vec] roots)=
+  let n=#cell.graph in
+  if =#w then id_mat(n)
+  else let result=cell_action(cell,rd,roots[w~[0]]) in
+     for i:#w-1 from 1 do result:=cell_action(cell,rd,roots[w~[i]])*result od; result
+  fi
+
+set cell_action(WCell cell,RootDatum rd,WeylElt w,[vec] roots) = mat: cell_action(cell,rd,w.word,roots)
+
+set cell_character (CharacterTable ct,WCell cell,[vec] roots) = [int]:
+  for w in ct.class_reps do trace(cell_action(cell,ct.root_datum,w,roots)) od
+
+set special_character(CharacterTable ct,WCell cell,[vec] roots)=
+let summands=smallest_degree_summands(ct,ct.decompose(cell_character(ct,cell,roots))) in
+if #summands>1 then error("not unique special representation") elif
+#summands=0 then error("no special summands?") else summands[0] fi
+
+set special_character(CharacterTable ct,[vec] roots)=(WCell->int):(WCell cell):special_character(ct,cell,roots)

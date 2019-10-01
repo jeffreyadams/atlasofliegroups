@@ -1,4 +1,3 @@
-<basic.at
 <combinatorics.at
 <tabulate.at
 <W_characters.at
@@ -314,7 +313,7 @@ set d(CharacterTable ct)= ([int]->int): degree(ct)
 { data type for representation of W
   operators[i] is the matrix of the action of simple generator #i
 }
-set_type W_rep = (int dimension, [mat] operators)
+set_type [W_rep = (int dimension, [mat] operators)]
 
 { matrix of pi(w) }
 set operator (W_rep (dimension,operators), WeylElt w) = mat:
@@ -341,3 +340,11 @@ set is_isomorphic (CharacterTable tab, W_rep pi, W_rep sigma) = bool:
      ,(int i): let w = tab.class_reps[i] in
                trace(pi.operator(w))=trace(sigma.operator(w))
      )
+
+
+set inner_no_test(CharacterTable ct)=(([int],[int])->rat): ([int] x,[int] y):
+  assert(#x=ct.n_classes and #y=ct.n_classes,"Wrong sizes");
+  let sizes=for i:ct.n_classes do ct.class_size(i) od then
+  nW=ct.order then
+    s = for size@i in sizes do size*x[i]*y[i] od.sum in s/nW
+    
