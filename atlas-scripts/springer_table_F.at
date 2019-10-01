@@ -1,5 +1,5 @@
 <springer_tables.at
-<character_table_F.at
+
 
 set springer_by_signature(ComplexNilpotent O)=
 assert(O.root_datum.Lie_type=Lie_type("F4"),"Not type F_4");
@@ -62,9 +62,8 @@ in
 dual_orbits[dual_orbit_number]
 
 
-
-
 set springer_table_F4(CharacterTable ct)=SpringerTable:
 (ct,simply_connected(F4).orbits,
-dual_orbit_F4@ComplexNilpotent,dual_orbit_F4@ComplexNilpotent,
+dual_orbit_F4@ComplexNilpotent,
+dual_orbit_F4@ComplexNilpotent,
 springer_F4(ct))

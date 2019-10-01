@@ -1,4 +1,3 @@
-<springer.at
 <springer_tables.at
 
 <simple_character_table.at
@@ -39,7 +38,6 @@ fi
 set springer_table_reductive(RootDatum rd)=
 let factors=simple_factors(rd) then
 st=springer_table_simple(factors[0].derived) in
-let ()=prints("adding:", st.ct.lie_type) in
 for i:#factors-1 from 1 do
  st:=tensor(st,springer_table_simple(factors[i].derived)) od;st
 
