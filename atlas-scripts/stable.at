@@ -1,9 +1,8 @@
+
 <basic.at
-<polynomial.at
 <dual.at { for |dual_block@[Param]| }
-<translate.at { for |Psi@(Param,[int])| }
 <modules.at { for |has_infinitesimal_character@ParamPol| }
-<combinatorics.at { for |pemutation_inverse@[int]| }
+<weak_packets.at
 
 {stable virtual characters}
 {some elementary operations needed, these should be moved elsewhere}
