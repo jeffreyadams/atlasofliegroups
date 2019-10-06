@@ -280,7 +280,8 @@ tabulate(
  ##for i:#packets do
   ##for b in blocks do
    ##for c in cells do
-    for p in packets.parameters_map(i,b,c) do [i.to_string,b.to_string,c.to_string,p.to_string, p.infinitesimal_character.to_string] 
+    for p in packets.parameters_map(i,b,c) do
+    [i.to_string,b.to_string,c.to_string,p.to_string, p.infinitesimal_character.to_string] 
    od
   od
  od
