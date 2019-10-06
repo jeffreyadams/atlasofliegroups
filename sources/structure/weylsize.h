@@ -1,9 +1,8 @@
-/*!
-\file
-\brief Function declarations for namespace weylsize.
+/*
+  Function declarations for namespace weylsize.
 
-Functions to compute the size of a Weyl group (stored as a prime
-factorization, to avoid overflow problems).
+  Functions to compute the size of a Weyl group (stored as a prime
+  factorization, to avoid overflow problems).
 */
 /*
   This is weylsize.h

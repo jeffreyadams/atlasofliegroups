@@ -188,6 +188,10 @@ Lie_type: (string->LieType): interpret string as Lie type.
 extend: (Lie_type,string,int->Lie_type): add a single (type,rank) pair to type
   In extend(lt,t,r), a factor (type,r) is added to the Lie type lt, where type
   is given by the first character of t (or is 'T' if t is the empty string).
+simple_factors: (Lie_type->[string,int]): list of codes for the simple factors
+  Each simple factor is identified by a one-letter string "A","B",...,"G" paired
+  with the rank of a factor of that type; any central torus factor is ignored
+rank: (Lie_type->int): rank, including both simple factors and any central torus
 operator * : (LieType,LieType->LieType): concatenate Lie types
 Lie_type: (RootDatum->LieType): Lie type of a root datum.
 

@@ -1,6 +1,5 @@
-/*!
-\file
-\brief Implementation of  functions for namespace weylsize.
+/*
+  Implementation of  functions for namespace weylsize.
 
 Functions to compute the size of a Weyl group (stored as a prime
 factorization, to avoid overflow problems).

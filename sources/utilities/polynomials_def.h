@@ -447,10 +447,7 @@ void Safe_Poly<C>::safeAdd(const Safe_Poly& q, Degree d)
     polynomials::safeAdd((*this)[j+d],q[j]); // this may throw
 }
 
-/*!
-
-\brief Divides polynomial by scalar c, throwing an error is division is inexact
-*/
+// Divide polynomial by scalar |c|, throwing an error is division is inexact
 template<typename C>
 void Safe_Poly<C>::safeDivide(C c)
 {

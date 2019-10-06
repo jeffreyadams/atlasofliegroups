@@ -229,9 +229,6 @@ in for w_L@i in classes_L
    in  values_G[j] +:= pi_L[i] * (index * sizes_L[i]/sizes_G[j]).rat_as_int
    od; values_G
 
-
-
-
 { the Steinberg character (mainly for testing)}
 
 {alternating sum, over all standard Levis, of induced from trivial
