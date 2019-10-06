@@ -178,10 +178,7 @@ unsigned long Poset::n_comparable() const
 
 /******** manipulators *******************************************************/
 
-/*!
-\brief Resizes the poset to size n, adding only the diagonal for the
-  new rows.
-*/
+// Resize the poset to size |n|, adding only the diagonal for the new rows.
 void Poset::resize(unsigned long n)
 {
   size_t prev = size();

@@ -410,8 +410,8 @@ getInnerClass(lietype::Layout& lo, const LatticeMatrix& basis)
 
   WeightInvolution inv = lietype::involution(lt,ict);
 
-  while (not checkInvolution(inv,basis)) // complain and reget the inner class
-  {
+  while (not checkInvolution(inv,basis)) // in good cases loops 0 times
+  { // if check failed, complain and reget the inner class
     std::cerr
       << "sorry, that inner class is not compatible with the weight lattice"
       << std::endl;

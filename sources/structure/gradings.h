@@ -1,6 +1,5 @@
-/*!
-\file
-\brief Class definitions and function declarations for the class Status.
+/*
+  Class definitions and function declarations for the class Status.
 */
 /*
   This is gradings.h

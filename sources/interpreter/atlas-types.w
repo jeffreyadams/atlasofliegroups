@@ -163,23 +163,21 @@ void Lie_type_value::add_simple_factor (char c,unsigned int rank)
 { static const std::string types=lietype::typeLetters; // |"ABCDEFGT"|
   auto t=types.find(c);
   if (t==std::string::npos)
-    throw runtime_error() << "Invalid type letter '" << c << '\'';
+    throw runtime_error("Invalid type letter '") << c << '\'';
 @.Invalid type letter@>
   const unsigned int r=constants::RANK_MAX; // for convenience
 @/static const unsigned int lwb[]={1,2,2,4,6,4,2,0};
   static const unsigned int upb[]={r,r,r,r,8,4,2,r};
   if (rank<lwb[t])
-    throw runtime_error()
-    << "Too small rank " << rank << " for Lie type " << c;
+    throw runtime_error("Too small rank ") << rank << " for Lie type " << c;
 @.Too small rank@>
   if (rank>upb[t])
   { if (upb[t]!=r)
-      throw runtime_error()
-      << "Too large rank " << rank << " for Lie type " << c;
+      throw runtime_error("Too large rank ") << rank << " for Lie type " << c;
 @.Too large rank@>
     else
-      throw runtime_error() @|
-       << "Rank "+str(rank)+" exceeds implementation limit " << r;
+      throw runtime_error("Rank ") << rank @|
+        << " exceeds implementation limit " << r;
 @.Rank exceeds implementation limit@>
   }
 @)
@@ -1739,9 +1737,9 @@ void W_elt_invert_wrapper(expression_base::level l)
   push_value(std::make_shared<W_elt_value>(w->rd,w->W.inverse(w->val)));
 }
 
-@ Since only one argument needs to furnish the Weyl group, we
-also define multiplication on either side by a generator represented by its
-index, or by a complete Weyl word.
+@ Since only one argument needs to furnish the Weyl group, we also define
+multiplication on either side by a generator represented by its index, or by a
+complete Weyl word.
 
 @< Local function def... @>=
 void check_Weyl_gen(int s, unsigned int rank)
@@ -2009,10 +2007,11 @@ RootNbrList check_root_datum_involution
   for (weyl::Generator i=0; i<s; ++i)
   { Delta[i]=rd.root_index(delta*rd.simpleRoot(i));
     if (Delta[i]==rd.numRoots()) // then image not found
-      throw runtime_error("Matrix maps simple root ") << i << " to non-root";
+      throw runtime_error("Matrix maps simple root ") << (unsigned)i @|
+						      << " to non-root";
     if (delta.right_prod(rd.simpleCoroot(i))!=rd.coroot(Delta[i]))
-      throw runtime_error("Matrix does not map simple coroot ") << i @|
-        << " to coroot " << Delta[i]-rd.numPosRoots();
+      throw runtime_error("Matrix does not map simple coroot ")
+        << (unsigned)i @| << " to coroot " << Delta[i]-rd.numPosRoots();
   }
   return Delta;
 }
@@ -3440,8 +3439,7 @@ void fiber_partition_wrapper(expression_base::level l)
 @.Inner class mismatch...@>
   BitMap b(cc->ic_ptr->val.Cartan_set(rf->val.realForm()));
   if (!b.isMember(cc->number))
-    throw runtime_error
-    ("Cartan class not defined for this real form");
+    throw runtime_error("Cartan class not defined for this real form");
 @.Cartan class not defined@>
   if (l==expression_base::no_value)
     return;
@@ -5037,7 +5035,7 @@ void extended_block_wrapper(expression_base::level l)
   test_standard(*p,"Cannot generate block");
   test_compatible(p->rc().innerClass(),delta);
   if (not ((delta->val-1)*p->val.gamma().numerator()).isZero())
-    throw runtime_error("Involution does not fix infinitesimal character");
+    throw runtime_error@|("Involution does not fix infinitesimal character");
   if (l==expression_base::no_value)
     return;
 @)
@@ -5055,7 +5053,7 @@ void extended_block_wrapper(expression_base::level l)
 into a list of parameters and three tables in the form of matrices.
 
 @< Construct the extended block... @>=
-{ ext_block::ext_block eb(rc.innerClass(),block,delta->val);
+{ ext_block::ext_block eb(block,delta->val);
   own_row params = std::make_shared<row_value>(eb.size());
   int_Matrix types(eb.size(),eb.rank());
 @/int_Matrix links0(eb.size(),eb.rank());
@@ -5563,8 +5561,7 @@ void add_module_term_wrapper(expression_base::level l)
   own_virtual_module accumulator = get_own<virtual_module_value>();
 @/test_standard(*p,"Cannot convert non standard Param to term in ParamPol");
   if (accumulator->rf!=p->rf)
-    throw runtime_error @|
-      ("Real form mismatch when adding a term to a module");
+    throw runtime_error@|("Real form mismatch when adding a term to a module");
   if (l==expression_base::no_value)
     return;
 @)
@@ -5594,8 +5591,7 @@ void add_module_termlist_wrapper(expression_base::level l)
       force<module_parameter_value>(t->val[1].get());
 @/    test_standard(*p,"Cannot convert non standard Param to term in ParamPol");
     if (accumulator->rf!=p->rf)
-      throw runtime_error @|
-        ("Real form mismatch when adding terms to a module");
+      throw runtime_error@|("Real form mismatch when adding terms to a module");
      auto finals = p->rc().finals_for(p->val);
      for (auto it=finals.wcbegin(); not finals.at_end(it); ++it)
        accumulator->val.add_term(*it,coef);
@@ -5623,7 +5619,7 @@ void subtract_virtual_modules_wrapper(expression_base::level l)
   shared_virtual_module subtrahend = get<virtual_module_value>();
   own_virtual_module accumulator = get_own<virtual_module_value>();
   if (accumulator->rf!=subtrahend->rf)
-    throw runtime_error("Real form mismatch when subtracting two modules");
+    throw runtime_error@|("Real form mismatch when subtracting two modules");
   if (l!=expression_base::no_value)
   @/{@; accumulator->val -= subtrahend->val;
     push_value(std::move(accumulator));
@@ -6034,7 +6030,7 @@ void twisted_deform_wrapper(expression_base::level l)
   const auto& rc=p->rc();
   test_standard(*p,"Cannot compute twisted deformation");
   if (not rc.is_twist_fixed(p->val,rc.innerClass().distinguished()))
-    throw runtime_error("Parameter not fixed by inner class involution");
+    throw runtime_error@|("Parameter not fixed by inner class involution");
   if (l==expression_base::no_value)
     return;
 @)
@@ -6072,7 +6068,7 @@ void twisted_full_deform_wrapper(expression_base::level l)
   auto sr=p->val; // take a copy
   rc.make_dominant(sr); // |is_twist_fixed| and |extended_finalise| like this
   if (not rc.is_twist_fixed(sr))
-    throw runtime_error("Parameter not fixed by inner class involution");
+    throw runtime_error@|("Parameter not fixed by inner class involution");
   if (l==expression_base::no_value)
     return;
 @)
@@ -6117,7 +6113,7 @@ void twisted_KL_sum_at_s_wrapper(expression_base::level l)
   p->rc().make_dominant(sr);
     // |is_twist_fixed| and |twisted_KL_column_at_s| like this
   if (not p->rc().is_twist_fixed(sr))
-    throw runtime_error("Parameter not fixed by inner class involution");
+    throw runtime_error@|("Parameter not fixed by inner class involution");
   if (l!=expression_base::no_value)
     push_value (std::make_shared<virtual_module_value>@|
       (p->rf,p->rt().twisted_KL_column_at_s(sr)));
@@ -6167,7 +6163,8 @@ void scale_extended_wrapper(expression_base::level l)
     throw runtime_error("Parameter to be scaled not dominant");
   test_compatible(p->rc().innerClass(),delta);
   if (not rc.is_twist_fixed(sr,delta->val))
-    throw runtime_error("Parameter to be scaled not fixed by given involution");
+    throw runtime_error@|
+      ("Parameter to be scaled not fixed by given involution");
   if (l==expression_base::no_value)
     return;
 @)
@@ -6372,7 +6369,7 @@ void raw_ext_KL_wrapper (expression_base::level l)
   }
   else
   {
-    ext_block::ext_block eb(rc.innerClass(),block,delta->val);
+    ext_block::ext_block eb(block,delta->val);
     std::vector<Polynomial<int> > pool;
     ext_kl::KL_table klt(eb,pool); klt.fill_columns();
   @)

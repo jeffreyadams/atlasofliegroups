@@ -60,9 +60,7 @@ class Partition
 // constructors and destructors
   Partition() {}
 
-  /*!
-  \brief Undefined partition of [0,n[ with no classes yet (use |add_class|)
-  */
+  // Undefined partition of [0,n[ with no classes yet (use |add_class|)
   explicit Partition(unsigned long n):d_class(n),d_classRep() {}
 
   explicit Partition(std::vector<unsigned long>&);

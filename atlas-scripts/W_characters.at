@@ -287,7 +287,7 @@ set Levi_of (WeylElt w) = [int]: { posroot indices for simples of |w| system }
 in for alpha_v in columns_with(is_simple_for(rho2_L),Ld.poscoroots)
    do coroot_index(rd,alpha_v) od
 
-{ partial work: find some standard Levi onjugate to that of |w| }
+{ partial work: find some standard Levi conjugate to that of |w| }
 set conjugate_from_standard_Levi (WeylElt w) =
        (WeylElt,[int],WeylElt): { conjugator from, standard Levi, conjugate w }
    let (chamber,unsorted_standard_Levi)

@@ -424,8 +424,8 @@ TitsGroup::TitsGroup(const int_Matrix& Cartan_matrix,
 }
 
 // Switching between left and right torus parts is a fundamental tool.
-/*!
-  \brief find torus part $x'$ so that $x.w=w.x'$
+/*
+  Find torus part $x'$ so that $x.w=w.x'$
 
   Algorithm: for simple reflections this is |reflect|; repeat left-to-right
 
@@ -466,8 +466,8 @@ TitsElt TitsGroup::dual_twisted(const TitsElt& te, const TorusPart shift) const
 		 TwistedWeylGroup::dual_twisted(te.w()));
 }
 
-/*!
-  \brief Left multiplication of |a| by the canonical generator $\sigma_s$.
+/*
+  Left multiply |a| by the canonical generator $\sigma_s$.
 
   This is the basic case defining the group structure in the Tits group (since
   left-multiplication by an element of $T(2)$ just adds to the torus part).
@@ -497,8 +497,8 @@ void TitsGroup::sigma_inv_mult(weyl::Generator s,TitsElt& a) const
 }
 
 
-/*!
-  \brief Right multiplication of |a| by the canonical generator $sigma_s$.
+/*
+  Right multiply |a| by the canonical generator $sigma_s$.
 
   Algorithm: similar to above, but omitting the |reflect| (since the torus
   part is at the left), and using |weyl::mult| instead of |weyl::leftMult|,
@@ -519,8 +519,8 @@ void TitsGroup::mult_sigma_inv(TitsElt& a, weyl::Generator s) const
 }
 
 
-/*!
-  \brief Product of general Tits group elements
+/*
+  Product of general Tits group elements
 
   Algorithm: The algorithm is to multiply the second factors successively by
   the generators in a reduced expression for |a.w()|, then left-add |a.t()|.
