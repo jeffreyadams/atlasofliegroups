@@ -146,10 +146,15 @@ set dual_parameters_standard_basis ([int] S,[Param] B) = mat:
 set dual_parameters_standard_basis ([*] S,[Param] B) = mat:
   dual_parameters_standard_basis([int]:S,B)
 
+set subspace_injection_matrix ([Param] B,[Param] subset) = mat:
+  let rv=null(#subset,#B), indices=indices(B,subset) in
+  for i:#indices do rv[i,indices[i]]:=1 od;rv
+
 set get_y ([Param] B) = [int]:
   let dual_inner_class=dual_inner_class(B[0]) in
   for p in B do number(dual_KGB(p,dual_inner_class)) od.sort_u
 
+{B is a block}
 set stable_at_regular ([Param] B) = mat:
   let dual_KGB_elements=get_y(B)
   then dual_inner_class=dual_inner_class(B[0])
@@ -172,24 +177,87 @@ set kernel_vanishing ([*] S,[Param] B)   = mat: kernel_vanishing([int]:S,B)
 
 {t\times r matrix, t=dimension of kernel of kernel_vanishing}
 {unsorted version, shouldn't be used except for testing}
+{B is a block (or union of blocks) of parameters at regular infinitesimal character}
 set stable_at_singular_unsorted ([int] S,[Param] B) = (mat,[Param]):
   let Y=left_kernel(kernel_vanishing(S,B))
   then signs=lengths_signs_matrix(S,B)
   in prints("signs:", signs); (Y*signs,parameters_singular(S,B))
 {(^kernel(^kernel_vanishing(S,B))*lengths_signs_matrix(S,B),parameters_singular(S,B))}
 
+{handle empty case where first argument is of type [*]}
 set stable_at_singular_unsorted ([*] S,[Param] B) = (mat,[Param]):
  stable_at_singular_unsorted([int]:S,B)
 
 {same as stable_at_singular_unsorted, except that it is sorted}
+{B is a set of parameters at regular infinitesimal character}
 set stable_at_singular ([int] S,[Param] B) = (mat,[Param]):
   let params=parameters(S,B)
   then (M,)=stable_at_singular_unsorted(S,B)
   then P=permutation_matrix_sort(params)
   in (M*^P,for i in sort(params) do Psi(B[i],S) od)
 
+{handle empty case where first argument is of type [*]}
 set stable_at_singular ([*] S,[Param] B) = (mat,[Param]):
   stable_at_singular([int]:S,B)
+
+{given block (or union of blocks) of parameters B at regular infinitesimal character,
+and a subset\subset B
+S=set of simple roots
+find stable sums in subset pushed to the S-wall}
+set stable_at_singular ([int] S,[Param] B,[Param] subset_in) = (mat,[Param]):
+  {first replace subset with those so that tau(p)\in S-complement}
+  let parameters = for i in parameters(S,B) do B[i] od in
+  prints("S=",S);
+  prints("number of parameters in block:", #B);
+  prints("number of given parameters:", #subset_in);
+  let subset=[Param]:[] in
+  for p@j in subset_in do  if find(parameters,p)>=0 then subset#:=p fi od;
+  prints("number of parameters at singular inf char:", #subset);
+  let B_singular=for i in parameters(S,B) do B[i] od
+  then subset_singular=[Param]:[]
+  in for p in subset do if find(B_singular,p)>=0 then subset_singular#:=p fi od;
+  let A=^(^kernel_vanishing(S,B)*^subspace_injection_matrix(B_singular,subset))
+  then Y=left_kernel(subspace_injection_matrix(B_singular,subset)*
+                     kernel_vanishing(S,B))
+  then signs=lengths_signs_matrix(subset_singular)
+  in (Y*signs,subset_singular)
+
+{handle empty case where first argument is of type [*]}
+set stable_at_singular ([*] S,[Param] B,[Param] subset) = (mat,[Param]):
+  stable_at_singular([int]:S,B,subset)
+
+set stable_sums([Param] singular_parameters)=[(mat,[Param])]:
+let G=singular_parameters[0].real_form then
+gamma_singular=singular_parameters[0].infinitesimal_character then
+gamma_regular=gamma_singular+2*rho(G) then
+all_regular_parameters=all_parameters_gamma(G,gamma_regular) then
+{need to pass list of regular parameters,obtained by
+translating singular_parameters out to gamma_regular}
+my_regular_parameters={for p in singular_parameters do T(p,gamma_regular) od}
+ ##for p in all_regular_parameters do if find(singular_parameters,T(p,gamma_singular))>=0 then [p] else [] fi od
+then
+()=prints("# regular parameters:", #my_regular_parameters) then
+blocks=blocks(all_regular_parameters) then
+rd_int=integrality_datum(G,gamma_singular) then
+S=singular_simple_indices(rd_int,gamma_singular) in
+for B in blocks do
+stable_at_singular(S,B,my_regular_parameters) od
+
+set stable_sums_partial([Param] singular_parameters)=
+let G=singular_parameters[0].real_form then
+gamma_singular=singular_parameters[0].infinitesimal_character then
+gamma_regular=gamma_singular+2*rho(G) then
+all_regular_parameters=all_parameters_gamma(G,gamma_regular) then
+{need to pass list of regular parameters,obtained by
+translating singular_parameters out to gamma_regular}
+my_regular_parameters={for p in singular_parameters do T(p,gamma_regular) od}
+ ##for p in all_regular_parameters do if find(singular_parameters,T(p,gamma_singular))>=0 then [p] else [] fi od
+then
+()=prints("# regular parameters:", #my_regular_parameters) then
+blocks=blocks(all_regular_parameters) then
+rd_int=integrality_datum(G,gamma_singular) then
+S=singular_simple_indices(rd_int,gamma_singular) in
+for B in blocks do (S,B,my_regular_parameters) od
 
 set print_stable_at_singular_unsorted ([int] S,[Param] B) = void:
   let (M,)=stable_at_singular_unsorted(S,B)
@@ -211,32 +279,31 @@ set print_stable_at_singular ([int] S,[Param] B) = void:
 set print_stable_at_singular ([*] S,[Param] B) = void:
   print_stable_at_singular([int]:S,B)
 
-set indices ([Param] B,[Param] subset) = [int]: for p in subset do find(B,p) od
-
 {#subset x #B matrix}
-set subspace_injection_matrix ([Param] B,[Param] subset) = mat:
-  let rv=null(#subset,#B), indices=indices(B,subset) in
-  for i:#indices do rv[i,indices[i]]:=1 od;rv
 
-set stable_at_singular ([int] S,[Param] B,[Param] subset_in) = (mat,[Param]):
-  {first replace subset with those so that tau(p)\in S-complement}
-  let parameters = for i in parameters(S,B) do B[i] od in
-  prints("number of parameters in block:", #B);
-  prints("number of given parameters:", #subset_in);
-  let subset=[Param]:[] in
-  for p in subset_in do if find(parameters,p)>=0 then subset#:=p fi od;
-  prints("number of parameters at singular inf char:", #subset);
-  let B_singular=for i in parameters(S,B) do B[i] od
-  then subset_singular=[Param]:[]
-  in for p in subset do if find(B_singular,p)>=0 then subset_singular#:=p fi od;
-  let A=^(^kernel_vanishing(S,B)*^subspace_injection_matrix(B_singular,subset))
-  then Y=left_kernel(subspace_injection_matrix(B_singular,subset)*
-                     kernel_vanishing(S,B))
-  then signs=lengths_signs_matrix(subset_singular)
-  in (Y*signs,subset_singular)
+set nice_string(Split s)=string:
+let (a,b)=%s in
+if b=0 then a.to_string
+elif a=0 then
+ if b>1 then b.to_string + "s"
+ elif b=1 then "+s"
+ elif b=-1  then "-s" 
+ else a.to_string + "-" + abs(b).to_string + "s"
+ fi
+else
+ if b>1 then a.to_string +  "+" + b.to_string + "s"
+ elif b=1 then a.to_string +  "+s"
+ elif b=-1 then a.to_string + "-s" 
+ else a.to_string + "-" + abs(b).to_string + "s"
+fi
+fi
 
-set stable_at_singular ([*] S,[Param] B,[Param] subset) = (mat,[Param]):
-  stable_at_singular([int]:S,B,subset)
+set printParamPol(ParamPol P)=void:
+let pairs=%P in 
+tabulate(for (c,p) in pairs do [nice_string(c), " ", p.to_string] od)
+
+set printParamPol([ParamPol] list)=void:
+for P in list do printParamPol(P) od
 
 set print_stable_at_singular ([int] S,[Param] B,[Param] subset) = void:
   let (rv,params)=stable_at_singular(S,B,subset) in
@@ -273,3 +340,29 @@ set stable_test_Aq_packet (RealForm G,[int] complex_parabolic) = void:
   stable_test_Aq_packet(G,ComplexParabolic:(G,complex_parabolic))
 set stable_test_Aq_packet (RealForm G,[*] complex_parabolic) = void:
   stable_test_Aq_packet(G,[int]:complex_parabolic)
+
+
+set *(vec v,[Param] params)=
+if #params=0 then null_module(compact_torus(0)) else
+let  rv=null_module(params[0].real_form) in
+ for i:#v do rv+:=v[i]*params[i]
+od;rv fi
+
+set *(mat M,[Param] params)=for v in M do v*params od
+
+set print ([(mat,[Param])] list)=void:
+prints("Number of blocks: ", #list);
+for (M,params)@i in list do
+ prints(new_line,"block #:", i);
+ prints("matrix: ",M);
+ for P@i in ^M*params  do prints("Stable sum #",i);printParamPol(P) od
+{ printParamPol(M*params)}
+od
+
+set print_stable_sums([(int,int,Param)] list)=void:
+print(stable_sums(parameters(list)))
+
+set print_stable_sums([[(int,int,Param)]] lists)=void:
+prints("Stable sums for ",#lists," packets:");
+for list@i in lists do prints("-----------------------------------",new_line,"Packet #",i);print(stable_sums(parameters(list))) od
+

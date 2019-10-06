@@ -70,6 +70,9 @@ beta=highest_root(L) in f(alpha,alpha)=f(beta,beta)
 
 set is_short(RootDatum rd,vec alpha)=bool: not is_long(rd,alpha)
 
+set root_lengths(RootDatum rd)=void:
+let rv="" in
+for alpha in rd.simple_roots do if is_short(rd,alpha) then rv+:="S" else rv+:="L" fi od;prints(rv)
 {set project_on_simple_factor(RootDatum rd,int i)=mat:
 ^for alpha in simple_roots(rd.simple_factors[i]) do e(rank(rd),find(rd.simple_roots,alpha)) od
 
