@@ -146,7 +146,32 @@ set - (rat_poly(X,a,), rat_poly(,b,)) = rat_poly:
   esac
 , () { dummy }
 )
-set convolve ([rat]a,[rat]b) = [rat]: { the heart of polynomial mulitplication }
+
+{ some mixed scalar/polynomial operations, for convenience }
+set + (int c,int_poly(X,,):p) = int_poly: constant_poly(c,X)+p
+set - (int c,int_poly(X,,):p) = int_poly: constant_poly(c,X)-p
+set + (int_poly(X,,):p,int c) = int_poly: p+constant_poly(c,X)
+set - (int_poly(X,,):p,int c) = int_poly: p-constant_poly(c,X)
+set * (int c,int_poly(X,p,))  = int_poly: to_int_poly(p*c,X)
+set * (int_poly(X,p,),int c)  = int_poly: to_int_poly(p*c,X)
+set \ (int_poly(X,p,),int c)  = int_poly: to_int_poly(p\c,X)
+set % (int_poly(X,p,),int c)  = int_poly: to_int_poly(p%c,X)
+
+set + (rat c,rat_poly(X,,):p) = rat_poly: constant_poly(c,X)+p
+set - (rat c,rat_poly(X,,):p) = rat_poly: constant_poly(c,X)-p
+set + (rat_poly(X,,):p,rat c) = rat_poly: p+constant_poly(c,X)
+set - (rat_poly(X,,):p,rat c) = rat_poly: p-constant_poly(c,X)
+set * (rat c,rat_poly(X,p,))  = rat_poly: to_rat_poly(p*c,X)
+set * (rat_poly(X,p,),rat c)  = rat_poly: to_rat_poly(p*c,X)
+set \ (rat_poly(X,p,),int c)  = int_poly: to_int_poly(p\c,X)
+set / (rat_poly(X,p,),rat c)  = rat_poly: to_rat_poly(p/c,X)
+set % (rat_poly(X,p,),rat c)  = rat_poly: to_rat_poly(for x in p do x%c od,X)
+
+set * (int_poly(X,p,),rat c)  = rat_poly: to_rat_poly((ratvec:p)*c,X)
+set / (int_poly(X,p,),rat c)  = rat_poly: to_rat_poly((ratvec:p)/c,X)
+
+
+set convolve ([rat]a,[rat]b) = [rat]: { the heart of polynomial multiplication }
 (  let da=#a-1
    then result = for :da do rat:0 od ## (let c=a~[0] in for bi in b do c*bi od)
 in for i:da do let c=a[i] in for bj@j in b do result[i+j]+:=c*bj od od
@@ -405,15 +430,14 @@ set to_string (int_poly(X,cs,)) = string:
 
 set to_string (rat_poly(X,cs,)) = string:
    if =#cs then "0"
-   else
-      let pow(int k) = string: { print X^k, possibly shortened }
-          if k>1 then X+"^"+k.to_string elif k=1 then X else "" fi
-      in
-    ##for c@k in cs
+   else ##
+      for c@k in cs
       do if c.= then ""
-         else let (n,d)=%c in
-         ##[if n.< then "-" next n:=-n else "+" fi
-           ,if d>1 then c.to_string elif n>1 or k=0 then n.to_string else "" fi
+         else
+	    let (sign,ac) = if c.< then ("-",-c) else ("+",c) fi then (n,d)=%ac
+	 in ##
+	   [sign
+           ,if d>1 then ac.to_string elif n>1 or k=0 then n.to_string else "" fi
            ,if k>1 then X+"^"+k.to_string elif k=1 then X else "" fi
            ]
          fi

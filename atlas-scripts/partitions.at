@@ -1,0 +1,94 @@
+<basic.at
+<combinatorics.at
+<torus.at { use compact torus to do regular Laurent polynomials }
+
+set size = sum@Partition
+
+set hook_length (Partition P, int i, int j) =int:
+  let arm = P[i]-j, leg = transpose(P)[j]-i in arm + leg -1
+
+set dim_rep (Partition P) = int:
+  let dim=fac(size(P)) in
+  for i:#P do for j:P[i] do dim \:= hook_length(P,i,j) od od; dim
+
+{ all weak compositions of numbers <=limit into n parts }
+set rec_fun compositions_le (int limit, int n) = [[int]]:
+  if =n then [[]] { one empty composition (0 parts) }
+  else let result = [[int]]: [] in
+    for last:limit+1
+    do
+      for rest in compositions_le(limit-last,n-1) do result #:= rest#last od
+    od; result
+  fi
+
+{ towards partition functions }
+
+{ close set |S| under operation of adding |a|, up to limit |m| }
+set multi_add (int a, [int] S, int m) = [int]:
+(  assert(>a,"Positivity fails")
+;  let bit=null(m+1), i=0
+   then most = for s in S do bit[s]:=1 od
+             ; for i:m-a+1 do if =bit[i] then [] else bit[i+a]:=1; [i] fi od.##
+   in most ## { |most| of the result is ready, get |a| more values passively }
+      for i: a from m-a+1 do if=bit[i] then [] else [i] fi od.##
+)
+
+{ Given a set |S| of position numbers and a maximum |m|, find all sums |s| of
+  multisets on |S| such that |m-s| is also the sum of a multiset on |S|
+}
+set inter_sums ([int] S, int m) = [int]:
+( assert(>=m and all(for s in S do >=s od),"Positivity fails")
+; let result=[0] in
+  for s in S do result:=multi_add(s,result,m) od
+; let e=#result-1
+  in result:=
+     for r in result
+     do if r+r>m then break fi
+     ;  while r+result[e]>m do e-:=1 od
+     ;  if r+result[e]=m then [r] else [] fi
+     od.##
+; result ##
+  for r in if 2*result~[0]=m then result[:1~] else result fi ~do m-r od
+)
+
+{ in what follows, |ParamPol| values are over an appropriate compact torus }
+
+set const_poly (int c, int n) = ParamPol:
+  let G=compact_torus(n)
+  then exp = let zero=null(n) in param(KGB(G,0),zero,zero)
+  in null_module(G)+(Split:c,exp)
+
+set monomial (vec v) = Param:
+   let n=#v then G=compact_torus(n),zero=null(n) in param(KGB(G,0),v,zero)
+
+set poly_multiple (ParamPol P, vec e) = ParamPol: { |P*X^e| }
+   P.null_module + for c@p in P do let (x,l,nu)=%p in (c,param(x,l+e,nu)) od
+
+set poly_multiple (ParamPol P, [vec] exponents) = ParamPol:
+   P.null_module +
+   for e in exponents do
+      for c@p in P do let (x,l,nu)=%p in (c,param(x,l+e,nu)) od
+   od.##
+
+set_type power_series = [ParamPol] { level-sorted initial part of power series }
+
+{ divide truncated power series |S| by |1-X^v|, with |v| of positive level |l| }
+set divide (power_series S, vec v, int l) = power_series:
+   for k:#S-l from l do S[k]+:=poly_multiple(S[k-l],v) od; S
+
+
+{ count nonnegative integer vector solutions |x| to |A*x=b| for all |b| with
+  |nu*b=level|, under assumption that |nu*A| is all positive and integer
+}
+set partition_count(mat A, ratvec f, int level) = ParamPol:
+(  let fA=ratvec_as_vec(f*A), n=#f { |n=n_rows(A)| }
+in assert(>fA,"Matrix not strictly positive for linear form")
+;  let result = power_series: for i:level+1 do const_poly(#=i,n) od
+in for col@j in A do result := divide(result,col,fA[j]) od; result~[0]
+)
+
+set Kostant_partition_function (RootDatum rd, vec v) = int:
+   let f=rd.rho_check then (level,d)=%(f*v) in
+   if d=1 then partition_count(rd.posroots,f,level)[monomial(v)].split_as_int
+   else 0
+   fi

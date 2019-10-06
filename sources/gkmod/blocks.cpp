@@ -148,7 +148,7 @@ std::vector<Poset::EltList> makeHasse(const Block_base&);
 
 // an auxiliary function:
 // we often need to fill the first empty slot of a |BlockEltPair|
-inline BlockElt& first_free_slot(BlockEltPair& p)
+BlockElt& first_free_slot(BlockEltPair& p)
 {
   if (p.first==UndefBlock)
     return p.first;
@@ -402,8 +402,8 @@ void Block::compute_first_zs() // assumes |x| values weakly increase
   while (xx<xrange); // stop after setting |d_first_z_of_x[xrange]=size()|
 }
 
-/*!
-  \brief Constructs the BruhatOrder.
+/*
+  Construct the BruhatOrder.
   It could run out of memory, but Commit-or-rollback is guaranteed.
 */
 void Block_base::fillBruhat()
@@ -668,7 +668,7 @@ Weight param_block::lambda_rho(BlockElt z) const
   InvolutionNbr i_x = rc.kgb().inv_nr(x(z));
   const WeightInvolution& theta = i_tab.matrix(i_x);
 
-  // do effort to replace |lambda_rho(x)| by what returns from a |Param|
+  // do effort to replace |(1+theta)*(gamma-rho)/2| by what some |Param| returns
   return (theta*gr_numer + gr_numer // |(1+theta)*gr_numer|, without matrix dup
 	  +i_tab.y_lift(i_x,y_bits[y(z)])*gr_denom
 	  )/(2*gr_denom);
@@ -1048,8 +1048,8 @@ param_block::param_block // full block constructor
 
   containers::queue<BlockElt> queue { size() }; // invol. packet boundaries
   KGBEltList ys; ys.reserve(0x100); // enough for |1<<RANK_MAX|
-  KGBEltList cross_ys(ys.size()); cross_ys.reserve(0x100);
-  KGBEltList Cayley_ys(ys.size()); Cayley_ys.reserve(0x100);
+  KGBEltList cross_ys; cross_ys.reserve(0x100);
+  KGBEltList Cayley_ys; Cayley_ys.reserve(0x100);
 
   BitMap x_seen(kgb.size());
   x_seen.insert(z_start.x()); // the only value of |x| seen so far
@@ -1593,7 +1593,7 @@ void param_block::compute_y_bits(const y_entry::Pooltype& y_pool)
   const InvolutionTable& i_tab = innerClass().involution_table();
   const RatWeight gamma_rho = gamma() - rho(rootDatum());
 
-  // tabulate some |x| (in fact to first) for every value |y|
+  // tabulate some |x| (in fact the first one) for every value |y|
   std::vector<KGBElt> x_of_y(y_pool.size(),UndefKGB);
   for (BlockElt z=0; z<size(); ++z)
     if (x_of_y[y(z)]==UndefKGB)
@@ -1656,8 +1656,8 @@ DescentStatus descents(KGBElt x, KGBElt y,
   return result;
 }
 
-/*!
-  \brief Inserts into |hs| the ascents through |s| from elements of |hr|.
+/*
+  Insert into |hs| the ascents through |s| from elements of |hr|.
 
   Explanation: technical function for the Hasse construction, that makes the
   part of the coatom list for a given element arising from a given descent.
@@ -1746,7 +1746,7 @@ std::vector<Poset::EltList> makeHasse(const Block_base& block)
 ******************************************************************************/
 
 
-//!\brief Returns the twisted involution dual to |w|.
+// Return the twisted involution dual to |w|.
 
 /*
   We have $\tau = w.\delta$, with $w$ in the Weyl group $W$, and $\delta$ the

@@ -81,6 +81,10 @@ set * (ratmat(M,,d),mat MM) = ratmat: simplify(M*MM,s,d)
 set * (mat M,ratmat(MM,,d)) = ratmat: simplify(M*MM,s,d)
 set * (ratmat(M,,d),ratmat(MM,,dd)) = ratmat: simplify(M*MM,s,d*dd)
 
+set * (rat a, ratmat(M,,d)) = ratmat: (a/d)*M
+set * (ratmat(M,,d), rat a) = ratmat: (a/d)*M
+set / (ratmat(M,,d), rat a) = ratmat: M/(d*a)
+
 set / (ratmat(M,,d)) = ratmat:
    let (A,f)=invert(M) in
    assert(!=f,"inverse of singular rational matrix"); (d/f)*A
