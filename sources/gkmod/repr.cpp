@@ -20,6 +20,7 @@
 #include "tits.h"
 #include "kgb.h"	// various methods
 #include "blocks.h"	// |dual_involution|
+#include "block_minimal.h" // the |blocks::block_minimal| class
 #include "standardrepk.h"// |KhatContext| methods
 #include "subsystem.h" // |SubSystem| methods
 
@@ -1158,6 +1159,62 @@ SR_poly twisted_KL_sum
   return result;
 } // |twisted_KL_sum|
 
+// same computation of twisted KL column sum, but with a |block_minimal|
+SR_poly twisted_KL_sum
+( ext_block::ext_block& eblock, BlockElt y, const blocks::block_minimal& parent,
+  const RatWeight& gamma) // infinitesimal character, possibly singular
+{
+  // compute cumulated KL polynomimals $P_{x,y}$ with $x\leq y$ survivors
+
+  // start with computing KL polynomials for the entire block
+  std::vector<ext_kl::Pol> pool;
+  ext_kl::KL_table twisted_KLV(eblock,pool);
+  twisted_KLV.fill_columns(y+1); // fill table up to |y| inclusive
+
+  // make a copy of |pool| in which polynomials have been evaluated as |s|
+  std::vector<Split_integer> pool_at_s; pool_at_s.reserve(pool.size());
+  for (unsigned i=0; i<pool.size(); ++i)
+    if (pool[i].isZero())
+      pool_at_s.push_back(Split_integer(0,0));
+    else
+    { const auto& P = pool[i];
+      auto d=P.degree();
+      Split_integer eval(P[d]);
+      while (d-->0)
+	eval = eval.times_s()+Split_integer(P[d]);
+      pool_at_s.push_back(eval);
+    }
+
+  // construct a one-column matrix $(P_{x,y}[q:=s])_{x,0}$, range $x$ is block
+  matrix::Matrix<Split_integer> P_at_s(y+1,1);
+  for (BlockElt x=0; x<=y; ++x)
+  { auto pair = twisted_KLV.KL_pol_index(x,y);
+    P_at_s(x,0) = // get value from |pool_at_s|, possibly negated
+      pair.second ? -pool_at_s[pair.first] : pool_at_s[pair.first];
+  }
+
+  // condense |P_at_s| to the extended block elements without singular descents
+  containers::simple_list<BlockElt> survivors =
+    eblock.condense(P_at_s,parent,gamma);
+
+  // finally transcribe from |P_at_s| result
+  const auto& rc = parent.context();
+  const auto gamma_rho = gamma-rho(parent.rootDatum());
+  SR_poly result(rc.repr_less());
+  unsigned int parity = eblock.length(y)%2;
+  for (auto it = survivors.begin(); not survivors.at_end(it); ++it)
+  {
+    BlockElt elt = *it;
+    BlockElt z = eblock.z(elt); // index of |elt| in |parent|
+    auto factor = P_at_s(elt,0);
+    if (eblock.length(elt)%2!=parity) // flip sign at odd length difference
+      factor = -factor;
+    const auto lambda_rho = gamma_rho.integer_diff<int>(parent.gamma_lambda(z));
+    result.add_term(rc.sr_gamma(parent.x(z),lambda_rho,gamma),factor);
+  }
+  return result;
+} // |twisted_KL_sum|
+
 // compute and return sum of KL polynomials at $s$ for final parameter |z|
 // since |delta| need not be the inner class involution, no storage is done
 SR_poly twisted_KL_column_at_s
@@ -1168,10 +1225,10 @@ SR_poly twisted_KL_column_at_s
   if (not rc.is_final(z))
     throw std::runtime_error("Parameter is not final");
   BlockElt entry; // dummy needed to ensure full block is generated
-  param_block block(rc,z,entry); // which this constructor does
-  ext_block::ext_block eblock(rc.innerClass(),block,delta);
+  blocks::block_minimal block(rc,z,entry); // which this constructor does
+  ext_block::ext_block eblock(block,delta);
 
-  return twisted_KL_sum(rc,eblock,eblock.element(entry),block);
+  return twisted_KL_sum(eblock,eblock.element(entry),block,z.gamma());
 } // |twisted_KL_column_at_s|
 
 void Rep_table::add_block(ext_block::ext_block& block, // a full extended block
@@ -1272,8 +1329,7 @@ SR_poly Rep_table::twisted_KL_column_at_s(StandardRepr z)
   {
     BlockElt entry; // dummy needed to ensure full block is generated
     param_block block(*this,z,entry); // which this constructor does
-    const auto &ic = innerClass();
-    ext_block::ext_block eblock(ic,block,ic.distinguished());
+    ext_block::ext_block eblock(block,innerClass().distinguished());
 
     containers::sl_list<BlockElt> extended_finals;
     add_block(eblock,block,entry,extended_finals);
@@ -1298,7 +1354,7 @@ SR_poly Rep_table::twisted_deformation_terms (param_block& parent,BlockElt y)
   if (not parent.survives(y) or parent.length(y)==0)
     return result; // easy cases, null result
 
-  ext_block::ext_block eblock(innerClass(),parent,delta);
+  ext_block::ext_block eblock(parent,delta);
   containers::sl_list<BlockElt> extended_finals;
   add_block(eblock,parent,y,extended_finals);
   assert(eblock.is_present(y)); // since |is_twist_fixed| succeeded
@@ -1404,7 +1460,7 @@ SR_poly Rep_table::twisted_deformation (StandardRepr z)
   {
     BlockElt dummy;
     param_block parent(*this,z,dummy); // full parent block needed for now
-    ext_block::ext_block eblock(innerClass(),parent,delta); // full as well
+    ext_block::ext_block eblock(parent,delta); // full as well
     containers::sl_list<BlockElt> extended_finals;
     add_block(eblock,parent,dummy,extended_finals);
     const unsigned long h=hash.find(z);

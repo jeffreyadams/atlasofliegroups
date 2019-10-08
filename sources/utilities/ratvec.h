@@ -31,11 +31,10 @@ namespace ratvec {
 
 //			       type definitions
 
-  /*!
-  \brief Element of lattice tensored with rational numbers.
+/* Element of lattice tensored with rational numbers.
 
-  LatticeElt d_num divided by unsigned LatticeCoeff d_denom.
-  */
+   |LatticeElt d_num| divided by unsigned |LatticeCoeff d_denom|.
+*/
 template <typename C> // a signed integral type
 class RationalVector
 {
@@ -119,6 +118,21 @@ class RationalVector
     return num/(C)d_denom; // order is imposed here by return type |C|
   }
 
+// take difference as integer vector (which it is assumed to be here), converting
+// entries (without any test) to a possibly different signed integer type |C1|
+  template<typename C1>
+  matrix::Vector<C1> integer_diff(const RationalVector<C>& v) const
+  {
+    assert(size()==v.size());
+    auto d=denominator();
+    matrix::Vector<C1> result(size());
+    for (unsigned i=0; i<size(); ++i)
+    { assert((d_num[i]-v.d_num[i])%d==0);
+      result[i] = (d_num[i]-v.d_num[i])/d;
+    }
+    return result;
+  }
+
 //manipulators
   RationalVector& normalize();
   V& numerator() { return d_num; } // allow direct manipulation
@@ -157,7 +171,6 @@ template<typename C1, typename C2>
   v.numerator() += M.right_prod(v.numerator());
   return (v/=2).normalize();
 }
-
 
 
 

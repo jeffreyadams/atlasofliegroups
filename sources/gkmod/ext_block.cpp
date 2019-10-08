@@ -21,6 +21,7 @@
 #include "weyl.h"
 #include "kgb.h"
 #include "blocks.h"
+#include "block_minimal.h"
 #include "repr.h"
 
 /*
@@ -33,6 +34,22 @@
 namespace atlas {
 
 namespace ext_block {
+
+  // Declarations of some local functions
+WeylWord fixed_conjugate_simple (const context& c, RootNbr& alpha);
+bool same_standard_reps (const param& E, const param& F);
+bool same_sign (const param& E, const param& F);
+inline bool is_default (const param& E)
+  { return same_sign(E,param(E.ctxt,E.x(),E.lambda_rho)); }
+DescValue star (const param& E, const ext_gen& p,
+		containers::sl_list<param>& links);
+
+bool is_descent (const ext_gen& kappa, const param& E);
+weyl::Generator first_descent_among
+  (RankFlags singular_orbits, const ext_gens& orbits, const param& E);
+
+
+  // Function definitions
 
 bool is_complex(DescValue v)
 {
@@ -182,7 +199,7 @@ unsigned int link_count(DescValue v)
     return 2;
   }
   assert(false); return -1; // keep compiler happy
-}
+} // |link_count|
 
 // number of links that are ascents or descents (not real/imaginary cross)
 unsigned int scent_count(DescValue v)
@@ -1037,77 +1054,14 @@ BlockElt twisted
 }
 
 
-/*
-  An auxiliary routine to compute extended parameters across complex links.
-  The situation is complicated by the fact that the cross action is by a
-  generator of the folded integral system, so we need to exapand it first into
-  a product of |length<=3| integral generators, and then have those generators
-  act on the components of |E|. For the purpose of changing |E.tw| we further
-  develop those generators into reflection words for the full root datum, but
-  the reflection action on the other components can be done more directly.
-
-  However, though the integral generators are complex, they action of those
-  reflection words need not be purely complex, which implies that the effect
-  on the |lambda_rho| and |l| components are not purely reflection. The
-  difference with respect to pure reflection action can be computed comparing
-  |rho_r| values (half sums of positive real roots in the full system) with
-  the reflected image of that value taken at the starting point, respectively
-  (for |l|) the same thing with |rho_check_imaginary|. This is done by the
-  "correction" terms below.
+/* Try to conjugate |alpha| by product of folded-generators for the (full)
+   root system of |c| to a simple root, and return the left-conjugating word
+   that was applied. This may fail, if after some conjugation one ends up with
+   the long root of a nontrivially folded A2 subsystem (in which case there
+   cannot be any solution because |alpha| is fixed by the involution but none
+   of the simple roots in its component of the root system is). In this case
+   |alpha| is left as that non simple root, and the result conjugates to it.
  */
-param complex_cross(const ext_gen& p, param E) // by-value for |E|, modified
-{ const RootDatum& rd = E.rc().rootDatum();
-  const auto& ec = E.ctxt;
-  const RootDatum& id = ec.id();
-  const InvolutionTable& i_tab = E.rc().innerClass().involution_table();
-  auto &tW = E.rc().twistedWeylGroup(); // caution: |p| refers to integr. datum
-
-  InvolutionNbr theta = i_tab.nr(E.tw);
-  const RootNbrSet& theta_real_roots = i_tab.real_roots(theta);
-  Weight rho_r_shift = rd.twoRho(theta_real_roots);
-  Coweight dual_rho_im_shift = rd.dual_twoRho(i_tab.imaginary_roots(theta));
-
-  for (unsigned i=p.w_kappa.size(); i-->0; ) // at most 3 letters, right-to-left
-  { weyl::Generator s=p.w_kappa[i]; // generator for integrality datum
-    tW.twistedConjugate(ec.subsys().reflection(s),E.tw);
-    id.simple_reflect(s,E.lambda_rho,ec.lambda_shift(s));
-    id.simple_reflect(s,rho_r_shift);
-    id.simple_reflect(s,E.tau);
-    id.simple_coreflect(E.l,s,ec.l_shift(s));
-    id.simple_coreflect(dual_rho_im_shift,s);
-    id.simple_coreflect(E.t,s);
-  }
-
-  InvolutionNbr new_theta = i_tab.nr(E.tw);
-  const RootNbrSet& new_theta_real_roots = i_tab.real_roots(new_theta);
-  rho_r_shift -= rd.twoRho(new_theta_real_roots);
-  rho_r_shift/=2; // now it is just a sum of (real) roots
-  E.lambda_rho -= rho_r_shift;
-
-  assert(ec.delta()*rho_r_shift==rho_r_shift); // diff of $\delta$-fixed
-
-  dual_rho_im_shift -= rd.dual_twoRho(i_tab.imaginary_roots(new_theta));
-  dual_rho_im_shift/=2; // now it is just a sum of (imaginary) coroots
-  E.l -= dual_rho_im_shift;
-
-  assert(ec.delta().right_prod(dual_rho_im_shift)==dual_rho_im_shift);
-  validate(E);
-
-  auto& subs=ec.subsys();
-  RootNbr alpha_simple = subs.parent_nr_simple(p.s0);
-  const WeylWord to_simple = fixed_conjugate_simple(ec,alpha_simple);
-  // by symmetry by $\delta$, |to_simple| conjugates $\delta(\alpha)$ to simple:
-  assert(p.length()==1 or rd.is_simple_root(rd.permuted_root(to_simple,
-				                subs.parent_nr_simple(p.s1))));
-  // apply flip for $\delta$ acting on root set for |to_simple|, as elsewhere
-  E.flip(ec.shift_flip(theta,new_theta,pos_to_neg(rd,to_simple)));
-
-  E.flip(p.length()==2); // to parallel the 2i,2r flips
-
-  return E;
-} // |complex_cross|
-
-
 WeylWord fixed_conjugate_simple (const context& ctxt, RootNbr& alpha)
 { const RootDatum& rd = ctxt.innerClass().rootDatum();
 
@@ -1135,6 +1089,78 @@ WeylWord fixed_conjugate_simple (const context& ctxt, RootNbr& alpha)
   std::reverse(result.begin(),result.end());
   return result;
 } // |fixed_conjugate_simple|
+
+
+/*
+  An auxiliary routine to compute extended parameters across complex links.
+  The situation is complicated by the fact that the cross action is by a
+  generator of the folded integral system, so we need to exapand it first into
+  a product of |length<=3| integral generators, and then have those generators
+  act on the components of |E|. For the purpose of changing |E.tw| we further
+  develop those generators into reflection words for the full root datum, but
+  the reflection action on the other components can be done more directly.
+
+  However, though the integral generators are complex, the action of those
+  reflection words need not be purely complex, which implies that the effect on
+  the |lambda_rho| and |l| components are not pure (linear) reflections. The
+  difference with respect to pure reflection action can be computed comparing
+  |rho_r| values (half sums of positive real roots in the full system) at
+  arrival with the reflected image of the |rho_r| value taken at the starting
+  point, respectively (for |l|) the same thing with |rho_check_imaginary|. This
+  is done by the "correction" terms below.
+ */
+param complex_cross(const ext_gen& p, param E) // by-value for |E|, modified
+{ const RootDatum& rd = E.rc().rootDatum();
+  const auto& ec = E.ctxt;
+  const RootDatum& id = ec.id();
+  const InvolutionTable& i_tab = E.rc().innerClass().involution_table();
+  auto &tW = E.rc().twistedWeylGroup(); // caution: |p| refers to integr. datum
+
+  InvolutionNbr theta = i_tab.nr(E.tw);
+  const RootNbrSet& theta_real_roots = i_tab.real_roots(theta);
+  Weight rho_r_shift = rd.twoRho(theta_real_roots);
+  Coweight dual_rho_im_shift = rd.dual_twoRho(i_tab.imaginary_roots(theta));
+
+  for (unsigned i=p.w_kappa.size(); i-->0; ) // at most 3 letters, right-to-left
+  { weyl::Generator s=p.w_kappa[i]; // generator for integrality datum
+    tW.twistedConjugate(ec.subsys().reflection(s),E.tw);
+    id.simple_reflect(s,E.lambda_rho,ec.lambda_shift(s));
+    id.simple_reflect(s,rho_r_shift);
+    id.simple_reflect(s,E.tau);
+    id.simple_coreflect(E.l,s,ec.l_shift(s));
+    id.simple_coreflect(dual_rho_im_shift,s);
+    id.simple_coreflect(E.t,s);
+  }
+
+  InvolutionNbr new_theta = i_tab.nr(E.tw);
+  const RootNbrSet& new_theta_real_roots = i_tab.real_roots(new_theta);
+  rho_r_shift -= rd.twoRho(new_theta_real_roots); // reflected image minus new
+  rho_r_shift/=2; // now difference has become just a sum of (real) roots
+  E.lambda_rho -= rho_r_shift;
+
+  assert(ec.delta()*rho_r_shift==rho_r_shift); // diff of $\delta$-fixed
+
+  dual_rho_im_shift -= rd.dual_twoRho(i_tab.imaginary_roots(new_theta));
+  dual_rho_im_shift/=2; // now it is just a sum of (imaginary) coroots
+  E.l -= dual_rho_im_shift;
+
+  assert(ec.delta().right_prod(dual_rho_im_shift)==dual_rho_im_shift);
+  validate(E);
+
+  auto& subs=ec.subsys();
+  RootNbr alpha_simple = subs.parent_nr_simple(p.s0);
+  const WeylWord to_simple = fixed_conjugate_simple(ec,alpha_simple);
+  // by symmetry by $\delta$, |to_simple| conjugates $\delta(\alpha)$ to simple:
+  assert(p.length()==1 or rd.is_simple_root(rd.permuted_root(to_simple,
+				                subs.parent_nr_simple(p.s1))));
+  // apply flip for $\delta$ acting on root set for |to_simple|, as elsewhere
+  E.flip(ec.shift_flip(theta,new_theta,pos_to_neg(rd,to_simple)));
+
+  E.flip(p.length()==2); // to parallel the 2i,2r flips
+
+  return E;
+} // |complex_cross|
+
 
 /*
   for real Cayley transforms, one will subtract $\rho_r$ from |lambda_rho|
@@ -1936,8 +1962,7 @@ ext_block::ext_block // for external twist; old style blocks
 } // |ext_block::ext_block|
 
 ext_block::ext_block // for an external twist
-  (const InnerClass& G,
-   const param_block& block, const WeightInvolution& delta,
+  (const param_block& block, const WeightInvolution& delta,
    bool verbose)
   : parent(block)
   , orbits(block.fold_orbits(delta))
@@ -1964,6 +1989,7 @@ ext_block::ext_block // for an external twist
     throw std::runtime_error("Failure detected in extended block construction");
 
 } // |ext_block::ext_block|, from a |param_block|
+
 
 void ext_block::complete_construction(const BitMap& fixed_points)
 {

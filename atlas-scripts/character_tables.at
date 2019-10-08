@@ -1,4 +1,3 @@
-<basic.at
 <combinatorics.at
 <tabulate.at
 <W_characters.at
@@ -27,8 +26,8 @@ set_type
   , int order { of the finite group }
   {conjugacy classes}
   , int n_classes  { number of conjugacy classes}
-  , (int ->[(Partition,vec)]) partitions_and_signs  {simple classical groups only}
-  , (int->string) class_label {derived from partitions_and_signs in classical case}
+  , (int ->[Partition]) partitions  {rep: partition or pair of partitions in simple classical case}
+  , (int->string) class_label {derived from partitions in classical case}
   , (int ->WeylElt) class_rep     {gives element of W representating class_label(i)}
   , (int->int) class_order
   , (int,int->int) class_power   {(i,j) -> class_of(i^th class to the j^power)}
@@ -47,7 +46,7 @@ CharacterTable=(
 lie_type,              LieType
 order,                 int
 n_classes,             int
-partitions_and_signs,  {int->[(Partition,vec)]}
+partitions,            {int->[Partition]}
 class_label,           {int->string}
 class_rep,             {int->WeylElt}
 class_order,           {int->int}  
@@ -162,7 +161,7 @@ class_sizes=for i:ct.n_classes do ct.class_sizes[f(i)] od in
 (ct.lie_type,
 ct.order,
 ct.n_classes,
-(int i):ct.partitions_and_signs(f(i)),
+(int i):ct.partitions(f(i)),
 (int i):ct.class_label(f(i)),
 (int i):ct.class_rep(f(i)),
 (int i):ct.class_order(f(i)),
@@ -314,7 +313,7 @@ set d(CharacterTable ct)= ([int]->int): degree(ct)
 { data type for representation of W
   operators[i] is the matrix of the action of simple generator #i
 }
-set_type W_rep = (int dimension, [mat] operators)
+set_type [W_rep = (int dimension, [mat] operators)]
 
 { matrix of pi(w) }
 set operator (W_rep (dimension,operators), WeylElt w) = mat:
@@ -341,3 +340,11 @@ set is_isomorphic (CharacterTable tab, W_rep pi, W_rep sigma) = bool:
      ,(int i): let w = tab.class_reps[i] in
                trace(pi.operator(w))=trace(sigma.operator(w))
      )
+
+
+set inner_no_test(CharacterTable ct)=(([int],[int])->rat): ([int] x,[int] y):
+  assert(#x=ct.n_classes and #y=ct.n_classes,"Wrong sizes");
+  let sizes=for i:ct.n_classes do ct.class_size(i) od then
+  nW=ct.order then
+    s = for size@i in sizes do size*x[i]*y[i] od.sum in s/nW
+    

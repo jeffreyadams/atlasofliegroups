@@ -1,6 +1,5 @@
-/*!
-\file
-\brief Definition of dummy argument tags used for constructor overloading.
+/*
+   Definition of dummy argument tags used for constructor overloading.
 */
 /*
   This is tags.h
@@ -31,9 +30,7 @@ sources/utilities/matrix.h
   */
   struct IteratorTag {};
 
-  /*!
-\brief Dummy argument to distinguish two constructors for Partition.
-  */
+  // Dummy argument to distinguish two constructors for |Partition|.
   struct UnnormalizedTag {};
 
 /******** tags for structure theory ******************************************/

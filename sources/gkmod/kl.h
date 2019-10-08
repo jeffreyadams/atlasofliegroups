@@ -66,9 +66,12 @@ class KLContext
   enum { d_zero = 0, d_one  = 1}; // indices of polynomials 0,1 in |d_store|
   // using enum rather than |static const int| allows implicit const references
 
- private:  // copy and assignment are not needed, and forbidden
-  KLContext(const KLContext&);
-  KLContext& operator= (const KLContext&);
+  // copy, assignment, and swap are not needed, and not provided
+  KLContext(const KLContext&) = delete;
+  KLContext& operator= (const KLContext&) = delete;
+  KLContext(KLContext&&) = delete;
+  KLContext& operator= (KLContext&&) = delete;
+  void swap(KLContext&) = delete;
 
  public:
 

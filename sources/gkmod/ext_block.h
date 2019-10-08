@@ -23,6 +23,7 @@
 #include "innerclass.h"
 #include "realredgp.h"
 #include "blocks.h" // for some inlined methods (dependency should be removed)
+#include "block_minimal.h" // for type |blocks::block_minimal|
 #include "subsystem.h" // for inclusion of |SubSystem| field
 #include "repr.h" // allows using |Rep_context| methods in this file
 
@@ -91,13 +92,6 @@ DescValue extended_type(const Block_base& block, BlockElt z, const ext_gen& p,
 			BlockElt& first_link);
 
 
-KGBElt twisted (const KGB& kgb, KGBElt x, const WeightInvolution& delta);
-
-BlockElt twisted (const Block& block,
-		  const KGB& kgb, const KGB& dual_kgb, // all are needed
-		  BlockElt z,
-		  const WeightInvolution& delta);
-
 typedef Polynomial<int> Pol;
 
 class ext_block
@@ -140,9 +134,9 @@ class ext_block
 	    const Block& block,
 	    const KGB& kgb, const KGB& dual_kgb, // all are needed
 	    const WeightInvolution& delta);
-  ext_block(const InnerClass& G,
-	    const param_block& block, const WeightInvolution& delta,
+  ext_block(const param_block& block, const WeightInvolution& delta,
 	    bool verbose=false);
+  ext_block(const blocks::block_minimal& block, const WeightInvolution& delta);
 
 // manipulators
   void flip_edge(weyl::Generator s, BlockElt x, BlockElt y);
@@ -197,6 +191,10 @@ class ext_block
   template<typename C> // matrix coefficient type (signed)
   containers::simple_list<BlockElt> // returns list of elements selected
     condense (matrix::Matrix<C>& M, const param_block& parent) const;
+  template<typename C> // matrix coefficient type (signed)
+  containers::simple_list<BlockElt> // returns list of elements selected
+    condense (matrix::Matrix<C>& M, const blocks::block_minimal& parent,
+	      const RatWeight& gamma) const;
 
   // coefficient of neighbour |xx| of |x| in the action $(T_s+1)*a_x$
   Pol T_coef(weyl::Generator s, BlockElt xx, BlockElt x) const;
@@ -212,6 +210,7 @@ class ext_block
 private:
   void complete_construction(const BitMap& fixed_points);
   bool check(const param_block& block, bool verbose=false);
+  bool tune_signs(const blocks::block_minimal& block);
 
 }; // |class ext_block|
 
@@ -325,32 +324,6 @@ struct param // allow public member access; methods ensure no invariants anyway
     { return ctxt.rc().sr_gamma(x(),lambda_rho,ctxt.gamma()); }
 }; // |param|
 
-/* Try to conjugate |alpha| by product of folded-generators for the (full)
-   root system of |c| to a simple root, and return the left-conjugating word
-   that was applied. This may fail, if after some conjugation one ends up with
-   the long root of a nontrivially folded A2 subsystem (in which case there
-   cannot be any solution because |alpha| is fixed by the involution but none
-   of the simple roots in its component of the root system is). In this case
-   |alpha| is left as that non simple root, and the result conjugates to it.
- */
-WeylWord fixed_conjugate_simple (const context& c, RootNbr& alpha);
-
-// whether |E| and |F| lie over equivalent |StandrdRepr| values
-bool same_standard_reps (const param& E, const param& F);
-// whether |E| and |F| give same sign, assuming |same_standard_reps(E,F)|
-bool same_sign (const param& E, const param& F);
-
-inline bool is_default (const param& E)
-{ return same_sign(E,param(E.ctxt,E.x(),E.lambda_rho)); }
-
-
-// find out type of extended parameters, and push its neighbours onto |links|
-DescValue star (const param& E, const ext_gen& p,
-		containers::sl_list<param>& links);
-
-bool is_descent (const ext_gen& kappa, const param& E);
-weyl::Generator first_descent_among
-  (RankFlags singular_orbits, const ext_gens& orbits, const param& E);
 
 // a variation of |Rep_context::make_dominant|, used during extended deformation
 StandardRepr scaled_extended_dominant // result will have its |gamma()| dominant

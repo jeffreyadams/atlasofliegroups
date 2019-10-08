@@ -1,10 +1,9 @@
-/*!
-\file
-\brief Implementation of Partition.
+/*
+  Implementation of Partition.
 
-The purpose of the class Partition is to compute the partition of a
-finite set given by a group action.  A typical example is a Weyl group
-acting on elements of order 2 in a torus.
+  The purpose of the class Partition is to compute the partition of a
+  finite set given by a group action.  A typical example is a Weyl group
+  acting on elements of order 2 in a torus.
 */
 /*
   This is partition.cpp
@@ -67,8 +66,8 @@ Partition::Partition(std::vector<unsigned long>& f)
   }
 }
 
-/*!
-  \brief Counts the number of elements in class \#c.
+/*
+  Count the number of elements in class \#c.
 
   NOTE: Straightforward implementation. Successively computing |classSize| for
   all classes would cost more time then necessary.
@@ -111,8 +110,8 @@ unsigned long Partition::new_class(unsigned long j)
   return d_class[j];
 }
 
-/*!
-  \brief Counts the number of elements in class \#c.
+/*
+  Count the number of elements in class \#c.
 
   NOTE: Straightforward implementation. Successively computing |classSize| for
   all classes with this method would cost more time then necessary.

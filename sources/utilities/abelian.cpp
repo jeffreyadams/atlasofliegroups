@@ -211,9 +211,8 @@ unsigned long FiniteAbelianGroup::order(GrpNbr x) const
 }
 
 
-/*!
-
-  \brief Computes the order of |x| modulo |B|, where |B| is a subgroup
+/*
+  Compute the order of |x| modulo |B|, where |B| is a subgroup
   represented by flagging the |GrpNbr| values of its elements in a bitmap
 
   We just keep adding |x| until we end up at an element flagged in |B|
@@ -231,8 +230,8 @@ unsigned long FiniteAbelianGroup::order(const bitmap::BitMap& B,
 }
 
 
-/*!
-  \brief Computes the m in [0,n[ s.t. a(b) = e^{m.2i\pi/n}, where a is
+/*
+  Computes the m in [0,n[ s.t. a(b) = e^{m.2i\pi/n}, where a is
   interpreted as an element of the dual group ($\Hom(G,\C^\times)$), which in
   our representation can be identified with the group itself, b as an element
   of the group, and n is the annihilator of the group (the last entry in
