@@ -109,3 +109,32 @@ set pseudo_Levis (RealNilpotent O)=[RealForm]:
           then result#:=M fi od;
        result
 
+set is_noticed_orbit (RealNilpotent (H,y,()))=bool:
+   let G=real_form(y) then
+      P=Parabolic:(simple_roots_from_coweight(root_datum(G),H),y)
+          in if is_parabolic_theta_stable(P) else false
+      then let x=x_min(P) then
+         MC=root_datum(G), theta=involution(x)
+         then dim_center=rank(lie_compact_radical(inner_class(MC,theta)))
+         , number_roots =
+            for alpha in posroots(G)
+            do if is_noncompact_imaginary(alpha,x) and H*alpha=2 then 1
+               elif is_complex(alpha,x) and H*alpha=2 then /2 { with 2/2=1 }
+               else 0
+               fi
+            od.sum
+      in dimension(K_0(Levi_of_orbit(real_nilpotent(H,x))))
+           =dim_center+number_roots
+         fi
+
+set is_noticed_orbit_in_M (RealNilpotent (H,x,()),RealForm M)=bool:
+   let G=real_form(x) then rd=root_datum(G), MC=root_datum(M) then
+   orbits=nilpotent_orbits(MC) in
+   let n=first(for (,,K) in orbits do is_conjugate(K,H,rd) od) in
+   if n=-1 then {prints("The orbit does not meet M.");} false
+   else let M_orbits=real_nilpotent_orbits(orbits[n],M) then
+     noticed_orbits=##for orb in M_orbits do
+        if is_noticed_orbit (orb) then [orb] else [] fi od
+     in any(for (K,y,) in noticed_orbits do
+       let orb=RealNilpotent:(K,embed_KGB(y,G),()) in
+                 is_conjugate_orbit (orb,(H,x,())) od) fi
