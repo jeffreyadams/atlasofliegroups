@@ -136,6 +136,22 @@ class RealReductiveGroup
 }; // |class RealReductiveGroup|
 
 
+// Equality test. Requires identical inner class, same base grading and initial KGB
+// elements. This should imply the |realForm| numbers of the two are equal.
+
+inline bool operator==
+  (const RealReductiveGroup& x, const RealReductiveGroup& y)
+{
+  return &x.innerClass() == &y.innerClass()
+    and x.g_rho_check() == y.g_rho_check()
+    and x.x0_torus_part() == y.x0_torus_part()
+    and (assert(x.realForm() == y.realForm()),true);
+}
+
+inline bool operator!=
+  (const RealReductiveGroup& x, const RealReductiveGroup& y)
+{ return not(x==y); }
+
 //			   function declarations
 
 TorusPart minimal_torus_part

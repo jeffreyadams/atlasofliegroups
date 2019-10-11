@@ -38,8 +38,6 @@ const InvolutionTable& block_minimal::involution_table() const
   { return innerClass().involution_table(); }
 const RootDatum& block_minimal::rootDatum() const
   { return rc.rootDatum(); }
-const SubSystem& block_minimal::integral_subsystem() const
-  { return integral_datum; }
 
 RatWeight block_minimal::gamma_lambda(BlockElt z) const
 {
@@ -431,6 +429,92 @@ void block_minimal::reverse_length_and_sort()
 
 } // |block_minimal::reverse_length_and_sort|
 
+bool block_minimal::operator != (const block_minimal& other) const
+{
+  if (realGroup()!=other.realGroup())
+    return true;
+  if (integral_datum.positive_roots()!=other.integral_datum.positive_roots())
+    return true;
+  return x(0)!=other.x(0) or gamma_lambda(0)!=other.gamma_lambda(0);
+}
+
+size_t hash_value (const repr::Rep_context& rc, const RootNbrSet& ipr,
+		   KGBElt x, const RatWeight& gamma_lambda)
+{
+  const InvolutionTable& i_tab = rc.innerClass().involution_table();
+  const auto& kgb = rc.kgb();
+  const InvolutionNbr i_x = kgb.inv_nr(x);
+  const auto fp = i_tab.fingerprint(y_values::exp_pi(gamma_lambda),i_x); // reduced
+  size_t result=x;
+  for (auto it=fp.numerator().begin(); it!=fp.numerator().end(); ++it)
+    result = 5*result+*it;
+  result = 7*result + fp.denominator();
+
+  unsigned n=0;
+  do result ^= ipr.range(n,constants::longBits);
+  while ((n+=constants::longBits)<ipr.capacity() and (result*=17,true));
+
+  return result;
+} // |hash_value|
+
+size_t block_hash_table::lookup
+  (const RootNbrSet& ipr,KGBElt x, const RatWeight& gamma_lambda) const
+{
+  size_t code = hash_value(rc,ipr,x,gamma_lambda) & (hash_table.size()-1);
+  auto* e = &hash_table[code];
+  while (e->block!=nullptr and
+	 (e->block->integral_subsystem().positive_roots()!=ipr or
+	  e->block->x(e->z)!=x or
+	  e->block->gamma_lambda(e->z)!=gamma_lambda
+	))
+  {
+    if (++code == hash_table.size())
+      code=0;
+    e = &hash_table[code];
+  }
+
+  return e->block==nullptr ? empty : code;
+}
+
+const block_hash_table::record
+  block_hash_table::empty_record { nullptr, UndefBlock };
+const float block_hash_table::sparse_factor = 1.25;
+
+void block_hash_table::add_block(const block_minimal& block)
+{
+  assert(&block.context()==&rc);
+  const auto ipr = block.integral_subsystem().positive_roots();
+
+  size_t needed = (size_t)((count+block.size())*sparse_factor);
+  size_t size = hash_table.size();
+  while (needed>size)
+    size*=2;
+  if (size!=hash_table.size())
+  { // then expand |hash_table| into new vector of size |size|
+    std::vector<record> new_table(size,empty_record);
+    for (auto it=hash_table.begin(); it!=hash_table.end(); ++it)
+    {
+      const auto z = it->z;
+      size_t code =
+	hash_value(rc,ipr,it->block->x(z),it->block->gamma_lambda(z)) & (size-1);
+      while (new_table[code].block!=nullptr)
+	if (++code==size)
+	  code=0;
+      new_table[code] = *it; // copy entry to new free slot;
+    }
+    hash_table=new_table; // replace by expanded table
+  }
+
+  for (BlockElt z=0; z<block.size(); ++z)
+  {
+    size_t code = hash_value(rc,ipr,block.x(z),block.gamma_lambda(z)) & (size-1);
+    while (hash_table[code].block!=nullptr)
+      if (++code==size)
+	code=0;
+    hash_table[code].block = &block;
+    hash_table[code].z=z;
+  }
+}
 
 } // |namespace blocks|
 

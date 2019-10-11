@@ -34,8 +34,8 @@ inline TorusElement exp_2pi(const RatWeight& r);
 
 /* An element of finite order in $H$. This is like a rational vector in the
    coordinates, taken modulo integers. But we store twice that value (among
-   other things this facilitate adding elements of $H(2)$), so out bijection is
-   |exp_pi| rather than |exp_2pi|, and coordinates are taken modulo $2\Z$
+   other things this facilitates adding elements of $H(2)$), so out bijection
+   is |exp_pi| rather than |exp_2pi|, and coordinates are taken modulo $2\Z$.
  */
 class TorusElement
 {
