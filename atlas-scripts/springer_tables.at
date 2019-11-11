@@ -13,7 +13,7 @@ set_type [SpringerTable=
 set root_datum(SpringerTable st)=RootDatum: st.ct.root_datum
 
 set special_closure(SpringerTable st,ComplexNilpotent O)=ComplexNilpotent:
-st.dual_map(st.dual_map(O))
+st.dual_map_i(st.dual_map(O))
 set special_closure(SpringerTable st)=(ComplexNilpotent->ComplexNilpotent):(ComplexNilpotent O):special_closure(st,O)
 
 set is_special(SpringerTable st,ComplexNilpotent O)=bool:
