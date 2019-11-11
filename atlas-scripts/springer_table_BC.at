@@ -237,7 +237,7 @@ fi
 
 set rec_fun B_collapse(Partition P)=Partition:
 assert(sum(P).is_odd,"Partition not odd");
-if is_valid("B",P) then P.delete_trailing_zeros else
+if is_valid("B",P.delete_trailing_zeros) then P.delete_trailing_zeros else
  let Q=if P~[0]=0 then P else P#0  fi then
  i=first(for k:#Q-1 do Q[k].is_even and multiplicity(Q[k],Q).is_odd and Q[k]>Q[k+1] od) then
  j=f(Q,i) in 
@@ -295,7 +295,6 @@ let P=partition_of_orbit_B(O_B) then
 Q=BC_dual(P) then
 rd_dual=O_B.root_datum.dual in
 complex_nilpotent_C(rd_dual,Q)
-
 
 set springer_table_C(CharacterTable ct)=
 let rd=ct.root_datum then
