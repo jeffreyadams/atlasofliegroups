@@ -216,10 +216,10 @@ set KL_P_signed_polynomials_at_minus_one([Param] B,mat delta) = mat:
 {*DEFINE* the Q-polynomials as inverse of the signed P-matrix}
 {see dual.at for a different approach}
 
-set KL_Q_polynomials (Param p) = i_poly_mat:
-  upper_unitriangular_inverse (KL_P_signed_polynomials(p))
-set KL_Q_polynomials ([Param] B) = i_poly_mat:
-  upper_unitriangular_inverse (KL_P_signed_polynomials(B))
+set KL_Q_polynomials (Param p,mat delta) = i_poly_mat:
+  upper_unitriangular_inverse (KL_P_signed_polynomials(p,delta))
+set KL_Q_polynomials ([Param] B,mat delta) = i_poly_mat:
+  upper_unitriangular_inverse (KL_P_signed_polynomials(B,delta))
 
 
 
