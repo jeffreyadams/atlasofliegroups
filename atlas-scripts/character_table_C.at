@@ -1,11 +1,6 @@
-<<<<<<< HEAD
-
-<character_tables.at
-=======
 <nilpotent_orbits.at
 <character_tables.at
 
->>>>>>> master
 set sign_string (bool s) = string: if s then "-" else "+" fi
 set parts_string (Partition lambda) = string: lambda.to_string[1:1~]
 set cycles_string ([int,bool] cycles) = string:
