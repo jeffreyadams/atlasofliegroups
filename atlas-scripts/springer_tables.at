@@ -2,6 +2,8 @@
 <character_tables.at
 <character_table_tensor.at
 
+{tables encoding the Springer correspondence}
+
 set_type [SpringerTable=
   (CharacterTable ct,
   [ComplexNilpotent] orbits,
@@ -12,22 +14,27 @@ set_type [SpringerTable=
 
 set root_datum(SpringerTable st)=RootDatum: st.ct.root_datum
 
+{dual_map_i(dual_map(O))}
 set special_closure(SpringerTable st,ComplexNilpotent O)=ComplexNilpotent:
 st.dual_map_i(st.dual_map(O))
 set special_closure(SpringerTable st)=(ComplexNilpotent->ComplexNilpotent):(ComplexNilpotent O):special_closure(st,O)
 
+{orbit is special if O=special_closure(O)}
 set is_special(SpringerTable st,ComplexNilpotent O)=bool:
 st.special_closure(O)=O
 
 set is_special(SpringerTable st)=(ComplexNilpotent->bool): (ComplexNilpotent O):is_special(st,O)
 
+{all special orbits}
 set special_orbits(SpringerTable st)=[ComplexNilpotent]:
 ##for O in st.orbits do if st.is_special(O) then [O] else [] fi od
 
-set orbit_by_diagram(SpringerTable st,[vec] diagram)=
+{ComplexNilpotent given by diagram}
+set orbit_by_diagram(SpringerTable st,[vec] diagram)=ComplexNilpotent:
 let index=first(for i:#st.orbits do st.orbits[i].diagram_normalized=diagram od) in
 st.orbits[index]
 
+{equality of normalized diagrams}
 set equal([[int]] a,[[int]] b)=bool:
 if #a != #b then false else
 all(for i:#a do a[i]=b[i] od) fi
@@ -40,6 +47,7 @@ st.root_datum.dual.orbits[index]
 set is_special_representation(CharacterTable ct,int i,(ComplexNilpotent->ComplexNilpotent) d)=
 }
 
+{complex nilpotent of product group}
 set tensor(ComplexNilpotent O1,ComplexNilpotent O2)=ComplexNilpotent:
 let (rd1,(),H1)=O1,(rd2,(),H2)=O2 in (rd1*rd2,(),H1##H2)
 
@@ -53,7 +61,7 @@ set factor_new(ComplexNilpotent O,RootDatum rd1,RootDatum rd2)=
 let diag_1=O.H*rd1.simple_roots then
 diag_2=O.H*rd2.simple_roots in (diag_1,diag_2)
 
-
+{tensor product of springer tables}
 set tensor(SpringerTable st1,SpringerTable st2)=SpringerTable:
 let ct=tensor(st1.ct,st2.ct) then
 rd1=st1.root_datum, rd2=st2.root_datum then

@@ -40,7 +40,8 @@ fi
 
 set character_table_S_0(int n) = CharacterTable:
   let order=n.fac, partitions_n = partitions(n) then
-  ncc=#partitions_n
+  ncc=#partitions_n then
+  conjugacy_classes = partitions_n 
   then index = index_partition(partitions_n)
   , centralizer_orders= for i:ncc do cycle_centralizer_order(partitions_n[i]) od
   , class_or_irrep_string (int j) = string: partitions_n[j].to_string
@@ -52,7 +53,7 @@ in
   (Lie_type(SL(n))  {lie_type}
   , order            {order}
   , ncc              {n_classes}
-  , (int i) [Partition]: [partitions_n[i]]  {partitions}
+  , (int j) classical_class: conjugacy_classes[j].class_A
   , class_or_irrep_string  {class_label}
   , (int i) WeylElt: class_reps[i]   {class_rep}
   , (int j) int: partitions_n[j].cycle_type_order  {class_order}

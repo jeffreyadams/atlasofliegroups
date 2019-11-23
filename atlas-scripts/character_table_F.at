@@ -90,7 +90,7 @@ in
   ( Lie_type(F4)    {lie_type}  
   , order    {order (of W)}
   , ncc      {n_classes}
-  , (int j): []
+  , (int j) classical_class: ().null_class
   , (int j) string: "" {class_label} {fill in later}
   , (int j) WeylElt: classes_Kondo_F4[j] {class_rep}
   , (int j) int: class_orders_Kondo_F4[j]

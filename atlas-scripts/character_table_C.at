@@ -1,5 +1,6 @@
 <nilpotent_orbits.at
 <character_tables.at
+<classical_W_classes_and_reps.at
 
 set sign_string (bool s) = string: if s then "-" else "+" fi
 set parts_string (Partition lambda) = string: lambda.to_string[1:1~]
@@ -60,6 +61,7 @@ set = (Hn_rep(a1,a2),Hn_rep(b1,b2)) = bool: a1=b1 and a2=b2
 { equality of symbols (not equivalence) }
 set symbols_equal(Symbol a,Symbol b) = bool: a[0]=b[0] and a[1]=b[1]
 
+set BC_classes(int n)=[BC_class]:partition_pairs(n)
 
 {get actual conjugacy class representatives, i.e. elements of W(C_n),
  from pairs of partitions
@@ -67,9 +69,7 @@ pair of partitions (P,Q) of total size n -> conjugacy class in W(C_n)
 P=(a_1,...,a_r) -> coxeter element of Sp(2a_1)x...xSp(2a_r)
 Q=(b_1,...,b_s) -> coxeter element of GL(b_1)x...xGL(b_s)
 }
-set conjugacy_class_C(Partition P,Partition Q)=WeylElt:
-assert(is_positive(P), "P is not a parition (has non-positive entries)");
-assert(is_positive(Q), "Q is not a parition (has non-positive entries)");
+set conjugacy_class_C(BC_class (P,Q))=WeylElt:
 if #P+#Q=0 then id_W(trivial_group)  {special case}
 else
  {first, given a single partition P=(a_1,...,a_r)
@@ -107,6 +107,7 @@ set character_table_C(int n) = CharacterTable:
 let order=n.fac*2^n, pairs = partition_pairs(n)
   then cycles = for pair in pairs do pair.cycles od
   then ncc=#cycles then
+  conjugacy_classes {[Dn_conjugacy_class]}= BC_classes(n) then  {array of (Partition,Partition,Partition)}
   index = index_signed_cycles(cycles,#(#cycles))
   , centralizer_orders = for type in cycles do type.cycle_centralizer_order od
   , sign(bool s) = string: if s then "-" else "+" fi
@@ -114,7 +115,7 @@ in
   (Lie_type(Sp(2*n))    {lie_type}  
   , order    {order (of W)}
   , ncc      {n_classes}
-  , (int j) [Partition]: let (P,Q)=pairs[j] in [P,Q]   {partitions}
+  , (int j) classical_class: conjugacy_classes[j].class_BC
   , (int j) string: { class_label } cycles[j].cycles_string  {class_label}
   , (int j) WeylElt: conjugacy_class_C(pairs[j])  {class_rep}
   , (int j) int: cycles[j].cycle_type_order       {class_order}

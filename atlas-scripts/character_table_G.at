@@ -29,7 +29,7 @@ in
   ( Lie_type(G2)    {lie_type}  
   , #W       {order (of W)}
   , #classes      {n_classes}
-  , (int j): []
+  , (int j) classical_class: ().null_class
   , (int j) string: "" {class_label} {fill in later}
   , (int j) WeylElt: classes[j] {class_rep}
   , (int j) int: classes[j].order

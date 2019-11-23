@@ -1,7 +1,4 @@
-<combinatorics.at
-<tabulate.at
-<W_characters.at
-<simple_factors.at
+<classical_W_classes_and_reps.at
 
 {define sum and product of [int] corresponding to direct
 sum and tensor product of characters}
@@ -26,7 +23,8 @@ set_type
   , int order { of the finite group }
   {conjugacy classes}
   , int n_classes  { number of conjugacy classes}
-  , (int ->[Partition]) partitions  {rep: partition or pair of partitions in simple classical case}
+{  , (int ->[Partition]) partitions  {rep: type A:[P]; type BC: [P,Q]; type D: [P,Q,S] in simple classical case}}
+  , (int ->classical_class) classes  {rep: type A:[P]; type BC: [P,Q]; type D: [P,Q,S] in simple classical case}
   , (int->string) class_label {derived from partitions in classical case}
   , (int ->WeylElt) class_rep     {gives element of W representating class_label(i)}
   , (int->int) class_order
@@ -113,10 +111,6 @@ set check_orthogonality (CharacterTable ct) = bool:
    let n=ct.n_classes, dot=ct.scalar_product in
    for i:n do for j:n do dot(i,j) = #(i=j) od.all od.all
 
-set show_classes(CharacterTable ct)=void:
-tabulate(
- ["class","order","|cent|","class_size"]# for i:#ct.table do
-[ct.class_label(i),ct.class_order(i).to_string, ct.centralizer_order(i).to_string,ct.class_size(i).to_string] od)
 
 {miscellaneous functions}
 
@@ -143,13 +137,6 @@ i_short=ct.index_short_reflection in
 if i_short!=-1 then [char[0],char[i_long],char[i_short]] else [char[0],char[i_long]] fi
 
 set signature(CharacterTable ct)=([int] ->[int]):([int] char):signature(ct,char)
-set show_reps(CharacterTable ct)=void:
-tabulate(
-["character","signature", "name"] #
-for i:ct.n_classes do
-[ct.character(i).to_string,
-ct.signature(ct.character(i)).to_string,
-ct.irreducible_label(i)] od)
 
 set decompose(CharacterTable ct)=(vec->vec):(vec v):
 for i:#ct.table do ct.inner_product(v,ct.character(i)) od
@@ -161,7 +148,7 @@ class_sizes=for i:ct.n_classes do ct.class_sizes[f(i)] od in
 (ct.lie_type,
 ct.order,
 ct.n_classes,
-(int i):ct.partitions(f(i)),
+(int i):ct.classes(f(i)),
 (int i):ct.class_label(f(i)),
 (int i):ct.class_rep(f(i)),
 (int i):ct.class_order(f(i)),
@@ -347,4 +334,25 @@ set inner_no_test(CharacterTable ct)=(([int],[int])->rat): ([int] x,[int] y):
   let sizes=for i:ct.n_classes do ct.class_size(i) od then
   nW=ct.order then
     s = for size@i in sizes do size*x[i]*y[i] od.sum in s/nW
-    
+
+
+set show_classes(CharacterTable ct)=void:
+tabulate(
+ ["i","order","|cent|","class_size","name"]# for i:#ct.table do
+[i.to_string,ct.class_order(i).to_string, ct.centralizer_order(i).to_string,ct.class_size(i).to_string,ct.class_label(i)] od)
+
+set show_reps(CharacterTable ct)=void:
+tabulate(
+["i","character","signature", "name"] #
+for i:ct.n_classes do
+[i.to_string,ct.character(i).to_string,
+ct.signature(ct.character(i)).to_string,
+ct.irreducible_label(i)] od)
+
+set show(CharacterTable ct)=void:
+prints("Classes:");
+ct.show_classes;
+prints("Representations:");
+ct.show_reps;
+prints("Character Table:",ct.table)
+

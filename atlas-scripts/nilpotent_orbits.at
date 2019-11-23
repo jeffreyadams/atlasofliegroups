@@ -51,6 +51,7 @@ let (,perm)=Cartan_matrix_type(O.root_datum) then
 P=permutation_matrix(perm) in
 P*diagram(O)
 
+{diagram_normalized is [[int]] to allow for multiple simple factors}
 set diagram_normalized(ComplexNilpotent O)=[[int]]:
 let H=dominant(O.H,O.root_datum) then 
 factors=simple_factors(O.root_datum) in

@@ -46,7 +46,7 @@ table=kronecker_product(ct1.table,ct2.table) in
 lie_type,
 order,
 n_classes,
-(int j): [],
+(int j): null_class(),
 class_label,
 class_rep,
 class_order,

@@ -84,9 +84,9 @@ assert(#v=#w,"error, v and w should have the same size");
 set springer_C(CharacterTable ct,ComplexNilpotent O)=int:
 let (a,b)=springer_C(partition_of_orbit_C(O)) then
 n=O.root_datum.ss_rank then
-index=first(for i:ct.n_classes do let x=ct.partitions(i) in
+index=first(for i:ct.n_classes do let (P,Q)=get_class_BC(ct.classes(i)) in 
 {prints("a:", pad(a,n), new_line, "x[0]: ",pad(x[0],n), new_line, pad(b,n), " ", pad(x[1], n));}
-sort(pad(a,n))=sort(pad(x[0],n)) and sort(pad(b,n))=sort(pad(x[1],n)) od) in
+sort(pad(a,n))=sort(pad(P,n)) and sort(pad(b,n))=sort(pad(Q,n)) od) in
 {pad(a,n)=pad(x[0],n) and pad(b,n)=pad(x[1],n) od) in} index
 
 
@@ -191,11 +191,15 @@ springer_B(partition_of_orbit_B(O))
 
 set springer_B(CharacterTable ct,ComplexNilpotent O)=int:
 let (a,b)=springer_B(partition_of_orbit_B(O)) then
-n=O.root_datum.ss_rank then
-index=first(for i:ct.n_classes do let x=ct.partitions(i) in
+n=
+a:=a.delete_trailing_zeros;
+b:=b.delete_trailing_zeros;
+O.root_datum.ss_rank then
+index=first(for i:ct.n_classes do let (P,Q)=get_class_BC(ct.classes(i)) in 
 {prints("a:", pad(a,n), new_line, "x[0]: ",pad(x[0],n), new_line, pad(b,n), " ", pad(x[1], n));}
 {need n+1: sometimes a or b has length n+1 not n}
-sort(pad(a,n+1))=sort(pad(x[0],n+1)) and sort(pad(b,n))=sort(pad(x[1],n)) od) in index
+sort(pad(a,n))=sort(pad(P,n)) and sort(pad(b,n))=sort(pad(Q,n)) od) in
+index
 
 set inverse_springer_partition_B((Partition,Partition) partition_pair)=(bool,Partition):
 let (P,Q)=partition_pair then n=sum(P)+sum(Q) then
