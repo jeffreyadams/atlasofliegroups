@@ -117,7 +117,7 @@ set generate_from (RootDatum rd,[int] S,ratvec rv) = ([ratvec],[WeylElt]):
   let (v,d) = %rv then (orbit,W_elements) = generate_from(rd,S,v) in
   (for x in orbit do x/d od,W_elements)
 set W_orbit (RootDatum rd,[int] S, ratvec rv) = [ratvec]:
-  let (v,d) = %rv then orbit = W_orbit(rd,S,v) in for x in orbit do v/d od
+  let (v,d) = %rv then orbit = W_orbit(rd,S,v) in for x in orbit do x/d od
 set generate_from (RootDatum rd,ratvec rv) = ([ratvec],[WeylElt]):
   generate_from(rd,all_simples(rd),rv)
 set W_orbit (RootDatum rd, ratvec rv) = [ratvec]: W_orbit(rd,all_simples(rd),rv)

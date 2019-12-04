@@ -245,7 +245,8 @@ set lift(RootDatum rd,ratvec v)=ratvec:
 {list of elements of center of derived group,
  as elements of the original group}
 set elements_of_center_derived(RootDatum rd)=[ratvec]:
-for v in elements_of_center(rd.derived) do lift(rd,v) od
+let (drs,M)=derived_info(rd) in
+for v in elements_of_center(drs) do v*M od
 
 {dually: the fundamental group of semisimple rd}
 
@@ -260,11 +261,11 @@ if =rank(rd) then ([null(rd.rank)],[1]) else
 let (B,c)=filter_units(adapted_basis(simple_coroots(rd))) in (B,c)
 fi
 
-{these vectors are a set of representatives of 
+{these vectors are a set of representatives of
 the finite group X_*/R^v = Z^n/lattice
 }
 set elements_of_fundamental_group(RootDatum rd)=
-let (vecs,orders)=fundamental_group(rd) in 
+let (vecs,orders)=fundamental_group(rd) in
 if #vecs=0 then [null(rank(rd))] else
 vecs*box(orders) fi
 
@@ -274,7 +275,7 @@ set lift(RootDatum rd,ratvec v)=ratvec:
  A=simple_coroots(rd)*inverse(mat_as_ratmat(simple_coroots(rd_mod))) in A*v
 
 set relative_fundamental_group(RootDatum rd)=([vec],[int]):
-let (B,c)= fundamental_group(rd.mod_central_torus) in 
+let (B,c)= fundamental_group(rd.mod_central_torus) in
 (for v in B do ratvec_as_vec(lift(rd,v)) od,c)
 
 
