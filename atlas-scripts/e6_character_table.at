@@ -1,5 +1,6 @@
-<character_tables_2.at
-
+<character_tables.at
+<nilpotent_orbits.at
+<springer_table_E6.at
 
 set rd=simply_connected(E6)
 set W_order=order_W(rd)
