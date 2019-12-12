@@ -1,7 +1,7 @@
 <character_tables.at
 <nilpotent_orbits.at
 <character_table_C.at
-
+<character_table_reps.at
 
 set rd=simply_connected(E6)
 set W_order=order_W(rd)

@@ -1,2 +1,0 @@
-set cartan_of_centralizer(ComplexNilpotent O)=
-let (L,)=O.Bala_Carter_Levi in L.radical_basis

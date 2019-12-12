@@ -1,3 +1,7 @@
+<springer_tables.at
+<character_tables.at
+<character_table_reps.at
+
 {
 Name   Diagram Dim Spec Dual   A:Abar Dual_Diagram
 0      000000  0   1    E6     1      222222

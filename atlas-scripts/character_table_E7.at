@@ -48,6 +48,5 @@ in
 {  , ^table_E7}{this works, used hand calculation}
   ,table_E7_atlas
   )
-set ct=character_table_E7_0()
 
-set ct1=fix_profile(ct,e7_profile,false)
+
