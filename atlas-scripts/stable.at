@@ -41,10 +41,6 @@ set make_param_pol (RealForm G,[int] coefficients,[Param] params) = ParamPol:
 {permutations}
 {S=[a_0,a_1,...] <-> permutation sigma(i)=a_i}
 
-{inverse permutation}
-set inverse_permutation ([int] sigma) = [int]:
-  let result =for:#sigma do 0 od in
-  for a@i in sigma do result[a]:=i od; result
 
 set permutation_matrix_sort([int] S) = mat:
   let n=#S, sorted=sort(S) in matrix((n,n),(int i,int j)int: #(sorted[i]=S[j]) )

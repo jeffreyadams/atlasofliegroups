@@ -216,7 +216,8 @@ N=ratmat_as_mat(inverse(M)) then
 (A,c)=adapted_basis(N) then
 (,v)=filter_units(A,c) in v
 
-set order_center(RootDatum rd)=int:product(type_center(rd))
+set order_center(RootDatum rd)=int:
+if rd.rank=0 then 1 else product(type_center(rd)) fi
 
 set is_center_cyclic(RootDatum rd)=bool:
 if rank(rd)=0 then true elif

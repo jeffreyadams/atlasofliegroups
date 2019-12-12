@@ -5,13 +5,17 @@
 
 <character_table_B.at
 <character_table_C.at
+<character_table_D.at
 <character_table_F.at
 <character_table_G.at
+<character_table_E6.at
 
 <springer_table_A.at
 <springer_table_BC.at
+<springer_table_D.at
 <springer_table_F.at
 <springer_table_G.at
+<springer_table_E6.at
 
 
 set springer_table_simple(RootDatum rd)=
@@ -27,11 +31,19 @@ elif letter="C" then
  let ct_0=character_table_C(n) then
  ct=ct_0.update_degrees in
   springer_table_C(ct)
+elif letter="D" then
+ let ct_0=character_table_D(n) then
+ ct=ct_0.update_degrees in
+  springer_table_D(ct)
 elif letter="F" then
  let ct=character_table_F4() in
  springer_table_F4(ct)
 elif letter="G" then
  springer_table_G2()
+elif letter="E" and n=6 then
+ let ct_0=character_table_E6_0() then
+ ct=update_degrees(ct_0) in
+ springer_table_E6(ct)
 else error("case not covered")
 fi
 

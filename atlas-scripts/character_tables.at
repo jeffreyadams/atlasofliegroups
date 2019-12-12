@@ -23,15 +23,15 @@ set_type
   , int order { of the finite group }
   {conjugacy classes}
   , int n_classes  { number of conjugacy classes}
-{  , (int ->[Partition]) partitions  {rep: type A:[P]; type BC: [P,Q]; type D: [P,Q,S] in simple classical case}}
-  , (int ->classical_class) classes  {rep: type A:[P]; type BC: [P,Q]; type D: [P,Q,S] in simple classical case}
+  , (int ->classical_class) classes
   , (int->string) class_label {derived from partitions in classical case}
-  , (int ->WeylElt) class_rep     {gives element of W representating class_label(i)}
+  , (int ->WeylElt) class_rep     {element of W representing conjugacy class}
   , (int->int) class_order
   , (int,int->int) class_power   {(i,j) -> class_of(i^th class to the j^power)}
   , [int] centralizer_orders
   , [int] class_sizes
   {irreducible characters}
+  , (int->classical_irrep) classical_reps
   , (int->string) irreducible_label
   , [[int]] sym_powers_reflection
   , [int] degrees
@@ -141,6 +141,10 @@ set signature(CharacterTable ct)=([int] ->[int]):([int] char):signature(ct,char)
 set decompose(CharacterTable ct)=(vec->vec):(vec v):
 for i:#ct.table do ct.inner_product(v,ct.character(i)) od
 
+{inverse of f, assuming it is a permutation of [0,..,n]}
+set inverse((int->int) f, int n)=(int j):
+permutation_inverse(for i:n do f(i) od)[j]
+
 set permute_classes(CharacterTable ct,(int->int) f)=CharacterTable:
 let
 centralizer_orders=for i:ct.n_classes do ct.centralizer_orders[f(i)] od then
@@ -152,17 +156,73 @@ ct.n_classes,
 (int i):ct.class_label(f(i)),
 (int i):ct.class_rep(f(i)),
 (int i):ct.class_order(f(i)),
-(int i, int j):ct.class_power(f(i),j),
+(int i, int j):inverse(f,ct.n_classes)(ct.class_power(f(i),j)),
 centralizer_orders,
 class_sizes,
+ct.classical_reps,
 ct.irreducible_label,
-for i:ct.n_classes do ct.sym_powers_reflection[f(i)] od,
-ct.degrees,
+if =#ct.sym_powers_reflection then [] else 
+for i:ct.n_classes do ct.sym_powers_reflection[f(i)] od fi,
+if =#ct.degrees then [] else
+ for i:ct.n_classes do ct.degrees[f(i)] od fi, 
 for col@i in ct.table do ct.table[f(i)] od
 )
 
+{permute classes, including permuting the table itself}
 set permute_classes(CharacterTable ct,[int] permutation)=CharacterTable:
 let f(int i)=permutation[i] in permute_classes(ct,f)
+
+{better to always permute them, if not what you want, leave the table
+empty until you're ready to fill it}
+{permute classes but optionally don't permute the column entries of the table}
+{set permute_classes(CharacterTable ct,[int] permutation,bool permute_table)=CharacterTable:
+let ct1=permute_classes(ct,permutation) in
+if permute_table then ct1 else
+ {only permute the classes themselves, not the character table columns}
+ let ()=ct1.table:=ct.table in ct1 fi
+} 
+
+set permute_representations(CharacterTable ct,(int->int) f)=CharacterTable:
+(ct.lie_type,
+ct.order,
+ct.n_classes,
+ct.classes,
+ct.class_label,
+ct.class_rep,
+ct.class_order,
+ct.class_power,
+ct.centralizer_orders,
+ct.class_sizes,
+ct.classical_reps,
+(int i): ct.irreducible_label(f(i)),
+ct.sym_powers_reflection,
+ct.degrees,
+^for i:ct.n_classes do row(ct.table,f(i)) od
+)
+
+set permute_representations(CharacterTable ct,[int] permutation)=CharacterTable:
+let f(int i)=permutation[i] in permute_representations(ct,f)
+
+set sorting_permutation([int] v,[int] w)=
+assert(sort(v)=sort(w),"v and w are not related by a permutation");
+let rv=[int]:[] in
+for i in w do
+ let index=first(for j:#v do find(rv,j)=-1 and v[j]=i od) in 
+ rv#:=index od;rv
+
+set sorting_permutation([int] v)=
+let sorted=sort(v) then
+rv=[int]:[] in
+for i in sorted do
+ let index=first(for j:#v do find(rv,j)=-1 and v[j]=i od) in 
+ rv#:=index od;rv
+{set y=sorting_permutation(v)
+ set sorted=for j:#y do v[y[j]]
+ then sorted=sort(v)}
+
+
+set sort_by_dimension(CharacterTable ct)=
+permute_representations(ct,sorting_permutation(ct.table[0]))
 
 
 {copied (and modified) from W_characters.at}
@@ -338,8 +398,8 @@ set inner_no_test(CharacterTable ct)=(([int],[int])->rat): ([int] x,[int] y):
 
 set show_classes(CharacterTable ct)=void:
 tabulate(
- ["i","order","|cent|","class_size","name"]# for i:#ct.table do
-[i.to_string,ct.class_order(i).to_string, ct.centralizer_order(i).to_string,ct.class_size(i).to_string,ct.class_label(i)] od)
+ ["i","order","class_size","|cent|","name"]# for i:#ct.table do
+[i.to_string,ct.class_order(i).to_string,ct.class_size(i).to_string, ct.centralizer_order(i).to_string,ct.class_label(i)] od)
 
 set show_reps(CharacterTable ct)=void:
 tabulate(
@@ -355,4 +415,101 @@ ct.show_classes;
 prints("Representations:");
 ct.show_reps;
 prints("Character Table:",ct.table)
+
+
+{more routines for computing character tables, mainly of exceptional
+groups; this was previously in character_tables_2.at
+}
+
+{ profiles for externally input character table, with orders,sizes
+and certain power maps}
+
+set all_entries(mat M)=[int]: sort(##rows(M))
+
+set match_entries(mat M,mat N)=bool:all_entries(M)=all_entries(N)
+
+{find a permutation relating two lists of not necessarily distinct vecs}
+set find_permutation(mat A,mat B)=
+let rv=[int]:[] in
+for v in A do
+ let index=first(for i:#B do find(rv,i)=-1 and B[i]=v od)
+ in rv#:=index od;rv
+
+set rows(mat M,[int] list)=mat: for i in list do row(M,i) od
+
+set profile(mat table,mat orders_and_sizes,[int] sign_and_reflections_rows)=
+^((^orders_and_sizes)##(rows(table,sign_and_reflections_rows)))
+
+{include power map:}
+set profile(mat table,mat orders_and_sizes,mat powers,[int] sign_and_reflections_rows)=
+^((^orders_and_sizes)##(rows(table,sign_and_reflections_rows))##(^powers))
+
+set power_map(CharacterTable ct,int N)=(int -> [int]):
+(int n):let v=ct.power_map(n) in
+for i:N do v[i%(#v)] od
+
+set power_map(CharacterTable ct, [int] powers)=(int -> [int]):
+(int n):let v=ct.power_map(n) in
+for i in powers  do v[i%(#v)] od
+
+{----------------------------------------------------------------}
+{character table versions}
+
+set power_profile(CharacterTable ct,[int] powers)=mat:
+for i:ct.n_classes do power_map(ct,powers)(i) od
+
+set order_size_profile(CharacterTable ct)=mat:
+for i:ct.n_classes do [ct.class_order(i),ct.class_size(i)] od
+
+set sgn_reflection_profile(CharacterTable ct)=mat:
+[ct.sign,ct.reflection]
+
+set profile(CharacterTable ct)=
+^(^ct.order_size_profile)##ct.sgn_reflection_profile
+
+set profile(CharacterTable ct,[int] powers)=
+^(^ct.order_size_profile)##ct.sgn_reflection_profile##(^power_profile(ct,powers))
+
+set ct_size_orders(CharacterTable ct)=
+mat:for i:ct.n_classes do [ct.class_size(i),ct.class_order(i)] od
+
+{sort by lexicographic (order,size,det,trace)}
+set sort_by_profile(CharacterTable ct)=
+let profile=ct.profile then
+profile_sorted=sort(ct.profile) then
+permutation=find_permutation(profile_sorted,profile) in
+permute_classes(ct,permutation)
+
+{sort by lexicographic (order,size,det,trace,powermap)}
+{first does sort_by_profile(ct) to sort by profile without powers}
+set sort_by_profile(CharacterTable ct,[int] powers)=
+let ct1=sort_by_profile(ct) then
+profile=profile(ct1,powers) then
+profile_sorted=sort(profile) then
+permutation=find_permutation(profile_sorted,profile) in
+permute_classes(ct1,permutation)
+
+{sort the magma table similarly: first by profile, then by profile_including_powermap}
+
+set sort_by_profile(mat profile, mat table)=
+let profile_sorted=profile.sort then
+permutation=find_permutation(profile_sorted,profile) in
+(mat:profile_sorted,mat:for j in permutation do columns(table)[j] od)
+
+set set_table(CharacterTable ct,mat profile,mat table)=
+let ct1=sort_by_profile(ct) then
+(profile1,table1)=sort_by_profile(profile,table) in
+assert(profile(ct1)=profile1,"profiles don't match");
+ct1.table:=table1;ct1
+
+set set_table(CharacterTable ct,mat profile,mat table,[int] powers)=
+let ct1=sort_by_profile(ct,powers) then
+(profile1,table1)=sort_by_profile(profile,table) in
+assert(profile(ct1)=profile1,"profiles don't match");
+ct1.table:=table1;ct1
+
+
+
+
+
 

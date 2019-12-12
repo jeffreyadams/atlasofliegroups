@@ -52,6 +52,9 @@ case cl
 |cl.null_class: error("wrong type") {should change this to something for null group?}
 esac
 
+
+
+
 {parametrization of W-conjugacy classes by cycles
 this is used for computing the power map, for example
 }
@@ -76,7 +79,8 @@ set cycles(BC_class (P,Q))=BC_class_cycles:[int,bool]:
  for a in P do (a, true) od## for a in Q do (a,false) od
 set cycles(D_class cl)=D_class_cycles:
   case cl
-   |(P,Q).unsplit_class: (for a in P do (a,true) od##for a in Q do (a,false) od).unsplit_cycle
+{   |(P,Q).unsplit_class: (for a in P do (a,true) od##for a in Q do (a,false) od).unsplit_cycle}
+   |(P,Q).unsplit_class: (for a in P do (a,false) od##for a in Q do (a,true) od).unsplit_cycle
    |(P,Bool).split_class: (P,Bool).split_cycle
   esac
 
@@ -110,7 +114,35 @@ set_type [classical_irrep=
     (A_irrep irrep_A
     |BC_irrep irrep_BC
     |D_irrep irrep_D
+    | void null_irrep{for an exceptional group}
     )]
+
+{-------------------------------------------------------------------}
+set get_irrep_A(classical_irrep cl)=[int]:
+case cl
+|P.irrep_A: P
+|cl.irrep_BC: error("wrong type")
+|cl.irrep_D: error("wrong type")
+|cl.null_irrep: error("wrong type")
+esac
+
+set get_irrep_BC(classical_irrep cl)=([int],[int]):
+case cl
+|cl.irrep_A: error("wrong type")
+|(P,Q).irrep_BC: (P,Q)
+|cl.irrep_D: error("wrong type")
+|cl.null_irrep: error("wrong type")
+esac
+
+set get_irrep_D(classical_irrep cl)=D_irrep:
+case cl
+|cl.irrep_A: error("wrong type")
+|cl.irrep_BC: error("wrong type")
+|x.irrep_D: x {?}
+|cl.null_irrep: error("wrong type")
+esac
+{-------------------------------------------------------------------}
+
 
 {some cases special to type D:}
 { recover the value of |n| }
@@ -169,17 +201,17 @@ set D_class_cycles_list (int n) = [D_class_cycles]:
       fi
    od
 
-set character (D_irrep chi, D_class_cycles  C) = int:
-   assert(chi.rank = C.rank,"Size mismatch");
+set character (D_irrep chi, D_class_cycles  cy) = int:
+   assert(chi.rank = cy.rank,"Size mismatch");
    case chi
    | pair.unsplit_irr:
-     case C
+     case cy
      | class.unsplit_cycle: hyperoctahedral_character(pair,class)
      | (alpha,).split_cycle:
         hyperoctahedral_character(pair,for l in alpha do (l,false) od)
      esac
    | (epsilon,lambda).split_irr:
-     case C
+     case cy
      | class.unsplit_cycle:
        let (q,r) = hyperoctahedral_character((lambda,lambda),class)\%2 in
        assert(=r,"Odd character value at unsplit class"); q
@@ -228,18 +260,69 @@ for x@i in list do if x.is_split
 od;
 ((split,map_split),(unsplit,map_unsplit))
 
-set index_D_classes([D_class] list,[int] map,D_class class)=
+set is_split(D_irrep pi)=bool:
+   case pi
+   | (y,).split_irr: true
+   | x.unsplit_irr: false
+   esac
+
+set split_irrep(D_irrep pi)=
+case pi
+     |(a,b).split_irr:(a,b)
+     |class.unsplit_irr:error("rep is not split")
+esac
+
+set unsplit_irrep(D_irrep pi)=
+case pi
+     |pi.split_irr:error("rep is split")
+     |a.unsplit_irr:a
+esac
+
+set index_D_classes([D_class] list,D_class class)=
 let ((split,map_split),(unsplit,map_unsplit))=split_and_unsplit_classes(list) in
  if class.is_split then
   let (P,boolean)=class.split_class then
    ix=first(for (a,b) in split do P=a and b=boolean od) in
-   map_unsplit[ix]
+   map_split[ix]
   else
    index_signed_cycles(for cy in unsplit do cycles(cy) od,map_unsplit)(cycles(class.unsplit_class))
    fi
 
-set index_D_classes([D_class] list,[int] map)=(D_class->int):
-(D_class class):index_D_classes(list,map,class)
+set index_D_classes([D_class] list)=(D_class->int):
+(D_class class):index_D_classes(list,class)
+
+set index_D_classes([D_class] list)=(D_class->int):
+(D_class class):index_D_classes(list,class)
+
+
+
+set split_and_unsplit_reps([D_irrep] list)=
+let split=[(bool,[int])]:[], map_split=[int]:[] then
+unsplit=[([int],[int])]:[], map_unsplit=[int]:[] in
+for x@i in list do if x.is_split
+ then
+  split:=split#(x.split_irrep);
+{  split:=split#(false,[int]:[]);}
+  map_split#:=i
+ else
+  unsplit#:=x.unsplit_irrep;
+  map_unsplit#:=i
+ fi
+od;
+((split,map_split),(unsplit,map_unsplit))
+
+set index_D_reps([D_irrep] list,D_irrep rep)=
+let ((split,map_split),(unsplit,map_unsplit))=split_and_unsplit_reps(list) in
+ if rep.is_split then
+  let (boolean,P)=rep.split_irrep then
+   ix=first(for (a,b) in split do a=boolean and b=P od) in
+   map_split[ix]
+ else
+   let (P,Q)=rep.unsplit_irrep then
+   ix=first(for (a,b) in unsplit do a=P and b=Q od) in
+   map_unsplit[ix]
+ fi
+
 
 set A_class_string(A_class cl)=cl.to_string
 set BC_class_string(BC_class cl)=cl.to_string

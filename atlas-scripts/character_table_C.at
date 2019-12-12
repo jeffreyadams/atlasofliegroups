@@ -122,6 +122,7 @@ in
   , (int j, int p) int: cycle_power(cycles[j],p).index   {class_power}
   , centralizer_orders   {class}
   , for co in centralizer_orders do order\co od    {class_sizes}
+  , (int i) classical_irrep: pairs[i].irrep_BC 
   , (int i) string: pairs[i].to_string { irreducible representation label }  {irreducible label}
   , [[int]]:[] {sym_powers_reflection}
   , [int]:[]  {degrees}

@@ -36,6 +36,7 @@ in
   , (int j, int p) int: first(ncc,(int i): is_conjugate(classes[i],classes[j]^p))
   , centralizer_orders_G2
   , for i:#classes do #W\centralizer_orders_G2[i] od
+  , (int j): null_irrep()
   , (int i) string: "" { irreducible representation label }  {later}
   , [[int]]:[]  {sym_powers_reflection}
   ,[int]:degrees {degrees}

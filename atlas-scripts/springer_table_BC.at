@@ -84,7 +84,7 @@ assert(#v=#w,"error, v and w should have the same size");
 set springer_C(CharacterTable ct,ComplexNilpotent O)=int:
 let (a,b)=springer_C(partition_of_orbit_C(O)) then
 n=O.root_datum.ss_rank then
-index=first(for i:ct.n_classes do let (P,Q)=get_class_BC(ct.classes(i)) in 
+index=first(for i:ct.n_classes do let (P,Q)=get_irrep_BC(ct.classical_reps(i)) in 
 {prints("a:", pad(a,n), new_line, "x[0]: ",pad(x[0],n), new_line, pad(b,n), " ", pad(x[1], n));}
 sort(pad(a,n))=sort(pad(P,n)) and sort(pad(b,n))=sort(pad(Q,n)) od) in
 {pad(a,n)=pad(x[0],n) and pad(b,n)=pad(x[1],n) od) in} index
@@ -195,7 +195,7 @@ n=
 a:=a.delete_trailing_zeros;
 b:=b.delete_trailing_zeros;
 O.root_datum.ss_rank then
-index=first(for i:ct.n_classes do let (P,Q)=get_class_BC(ct.classes(i)) in 
+index=first(for i:ct.n_classes do let (P,Q)=get_irrep_BC(ct.classical_reps(i)) in 
 {prints("a:", pad(a,n), new_line, "x[0]: ",pad(x[0],n), new_line, pad(b,n), " ", pad(x[1], n));}
 {need n+1: sometimes a or b has length n+1 not n}
 sort(pad(a,n))=sort(pad(P,n)) and sort(pad(b,n))=sort(pad(Q,n)) od) in

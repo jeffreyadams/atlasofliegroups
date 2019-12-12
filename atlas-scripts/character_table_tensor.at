@@ -26,7 +26,6 @@ class_rep(int k)=WeylElt:
   w2=ct2.class_rep(b) then
   rd=rd1*rd2 then
   M=block_matrix(w1.matrix,w2.matrix)  in W_elt(rd,M) then
-
 class_order(int k)=let (a,b)=f(k) in ct1.class_order(a) * ct2.class_order(b) then
 class_power(int i,int j)=let (a,b)=f(j) in g(ct1.class_power(a,j),ct2.class_power(b,j)) then
 centralizer_orders=for i:m*n do
@@ -53,6 +52,7 @@ class_order,
 class_power,
 centralizer_orders,
 class_sizes,
+(int j): null_irrep(),
 irreducible_label,
 sym_powers_reflection,
 degrees,

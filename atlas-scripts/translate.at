@@ -69,7 +69,9 @@ set Psi(ParamPol P,ratvec gamma,[int] v)= ParamPol:
   in null_module(real_form(P)) + for w@q in P do (w,translate_by(q,shift)) od
 
 set T_irr(ParamPol P,ratvec v)=
-composition_series(T(character_formula(P),v))
+{return P if v=infinitesimal character of P}
+if P.infinitesimal_character=v then P else 
+composition_series(T(character_formula(P),v)) fi
 
 set Psi_irr(ParamPol P,int k)=
 composition_series(Psi(character_formula(P),k))

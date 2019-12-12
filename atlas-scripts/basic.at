@@ -1153,6 +1153,9 @@ set split_form (LieType t) = RealForm: split_form(simply_connected(t))
 set quasicompact_form (InnerClass ic) = RealForm: real_form(ic,0)
 { quasisplit_form@InnerClass is built-in }
 
+set compact_form(RootDatum r) = RealForm:
+  quasicompact_form(inner_class(r,id_mat(rank(r))))
+
 set is_compatible (RealForm f, RealForm g) = bool:
   let ic = inner_class(f) in
   inner_class(g)=dual(ic) and >block_sizes(ic)[form_number(f),form_number(g)]

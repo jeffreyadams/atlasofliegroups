@@ -60,6 +60,7 @@ in
   , (int j, int p) int: cycle_power(partitions_n[j],p).index  {class_power}
   , centralizer_orders  {centralizer_orders}
   , for i:ncc do  order\centralizer_orders[i] od  {class_sizes}
+  , (int i) classical_irrep: partitions_n[i].irrep_A
   , class_or_irrep_string   {irreducible_label}
   , [[int]]:[] {sym_powers_reflection}
   , [int]:[]  {degrees}

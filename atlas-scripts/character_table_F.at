@@ -97,6 +97,7 @@ in
   , (int j, int p) int: first(ncc,(int i): is_conjugate(classes_Kondo_F4[i],classes_Kondo_F4[j]^p))
   , class_centralizer_sizes_Kondo_F4
   , class_sizes_Kondo_F4
+  , (int j): null_irrep()
   , (int i) string: "" { irreducible representation label }  {later}
   , [[int]]:[]  {sym_powers_reflection}
   ,[int]:[]     {degrees}

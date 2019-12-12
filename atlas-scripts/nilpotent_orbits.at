@@ -663,7 +663,8 @@ set Kac_diagrams_with_centralizer (RootDatum rd, RootDatum L,int m)=[([int],Weyl
    if nilpotent_verbose then prints("crude answer:", #crude, "  final result:", #rv)
    fi;rv
 
-set order_of_center (RootDatum rd)=#Kac_classes_given_order(rd,1)
+{order_center is defined in center.at}
+{set order_of_center (RootDatum rd)=#Kac_classes_given_order(rd,1)}
 
 set Kac_triples_simple (RootDatum rd,RootDatum L, int c)=[(int,[int],ratvec,WeylElt)]:
    let d=d_L(rd,L) in
@@ -671,7 +672,7 @@ set Kac_triples_simple (RootDatum rd,RootDatum L, int c)=[(int,[int],ratvec,Weyl
         for (diag,w) in list do (c*d,diag,Kac_x(rd,diag),w) od
 
 set Kac_triples (RootDatum rd, RootDatum L)=[(int,[int],ratvec,WeylElt)]:
-   let c=order_of_center (rd) in
+   let c=order_center (rd) in
    let ()=if nilpotent_verbose then prints("c=",c, new_line,"2*d*c=", 2*d_L(rd,L)*c)
           fi in
    ##for i:2*d_L(rd,L)*c from 1 do Kac_triples_simple(rd,L,i) od

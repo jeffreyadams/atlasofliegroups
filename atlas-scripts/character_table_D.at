@@ -15,8 +15,12 @@ NOTE: roles of (P,Q) are switched here
 in type C:
 P=(a_1,...,a_r) -> coxeter element of Sp(2a_1)x...xSp(2a_r)
 Q=(b_1,...,b_s) -> coxeter element of GL(b_1)x...xGL(b_s)
-to lie in type D, r must be even
-this is the condition on Q in type D
+in type D:
+to lie in type D, s must be even:
+P=(a_1,...,a_r) -> coxeter element of GL(a_1)x...xGL(a_r)
+Q=(b_1,...,b_s) -> coxeter element of O(2b_1)x...xO(2b_s)
+the "coxeter element" of O(2b) comes from Sp(2b), and has determinant -1
+=>cneed s to be even
 }
 set conjugacy_class_D(D_class cl)=
 if not cl.is_split then
@@ -42,7 +46,7 @@ set D_irreps (int n) = [D_irrep]:
 let unsplit=
 ##
 for (lambda,mu) in partition_pairs(n)
-  do if lambda !=mu and leq_partitions(lambda,mu) then [(lambda,mu).unsplit_irr] else [] fi
+  do if lambda !=mu and leq_partitions(mu,lambda) then [(lambda,mu).unsplit_irr] else [] fi
 od then
 (s,r)=n\%2 then
 split=
@@ -78,7 +82,7 @@ let order=n.fac*2^(n-1) then
 classes = D_classes(n) then
 cycles = for class in classes do cycles(class) od then
 ncc=#cycles then
-index = index_D_classes(classes,#(#cycles)) then
+index = index_D_classes(classes) then
 centralizer_orders = for type in cycles do type.centralizer_order od then
 reps=D_irreps(n)  then
 sign(bool s) = string: if s then "-" else "+" fi
@@ -93,6 +97,7 @@ in
   , (int j, int p) int: class(cycle_power(cycles[j],p)).index   {class_power}
   , centralizer_orders   {class}
   , for co in centralizer_orders do order\co od    {class_sizes}
+  , (int i) classical_irrep: reps[i].irrep_D
   , (int i) string: reps[i].D_irrep_string { irreducible representation label }  {irreducible label}
   , [[int]]:[] {sym_powers_reflection}
   , [int]:[]  {degrees}

@@ -75,6 +75,7 @@ fi  then
    " H: ", O.H, new_line,
    " dimension: ", O.dim_nilpotent)
  fi then
+ ()=prints("computing springer map of", O.diagram) then
  sigma=st.springer(O) then
  ()=if cells_verbose then prints("sigma=", sigma, " of dimension ",st.ct.dimension(sigma)) fi then
  parameters=parameters_given_AV_infinitesimal_character(st,O,blocks_and_cells,gamma_target,permutation) 
@@ -183,7 +184,8 @@ rd=O_check.root_datum.dual then
 ()=prints("gamma_final:",gamma_final) then
 rd_int=integrality_datum(rd,gamma) then
 st_int=springer_table_reductive(rd_int) then
-(valid,permutation)=isomorphism_permutation(st_int.root_datum,rd_int) then
+()=prints("integral data: st_int") then
+(valid,permutation)=isomorphism_permutation(st_int.root_datum,rd_int.derived) then
 ()=prints("rd_int:",rd_int, new_line, "st_int.rd: ", st_int.root_datum) then
 ()=assert(valid,"can't find isomorphism of rd_int and st_int.root_datum") then
 dual_integral_orbits=integral_descents(st_int,O_check) in
@@ -203,13 +205,32 @@ rd=O_check.root_datum.dual then
 ()=prints("gamma_final:",gamma_final) then
 rd_int=integrality_datum(rd,gamma) then
 st_int=springer_table_reductive(rd_int) then
-(valid,permutation)=isomorphism_permutation(st_int.root_datum,rd_int) then
+(valid,permutation)=isomorphism_permutation(st_int.root_datum,rd_int.derived) then
 ()=prints("rd_int:",rd_int, new_line, "st_int.rd: ", st_int.root_datum) then
 ()=assert(valid,"can't find isomorphism of rd_int and st_int.root_datum") then
 dual_integral_orbits=integral_descents(st_int,O_check) in
 for O_check_int in dual_integral_orbits do
  let ()=prints("computing packet for:", O_check_int) in
 {let wp=weak_packet(st_int,O_check_int,all,gamma_final,permutation) in wp od}
+ (st_int,O_check_int,all,gamma_final,permutation) od
+
+set weak_packet_partial_short(ComplexNilpotent O_check,RealForm G)=
+[((CharacterTable,[ComplexNilpotent],(ComplexNilpotent->ComplexNilpotent),
+ (ComplexNilpotent->ComplexNilpotent),(ComplexNilpotent->int)),ComplexNilpotent,[Param],ratvec,mat)]:
+let gamma_final=O_check.H/2 then
+gamma=gamma_final+2*rho(G) then  {this is the target infinitesimal character, need to pass it}
+all=all_parameters_gamma(G,gamma) then
+rd=O_check.root_datum.dual then
+()=prints("gamma:",gamma) then
+()=prints("gamma_final:",gamma_final) then
+rd_int=integrality_datum(rd,gamma) then
+st_int=springer_table_reductive(rd_int) then
+(valid,permutation)=isomorphism_permutation(st_int.root_datum,rd_int.derived) then
+()=prints("rd_int:",rd_int, new_line, "st_int.rd: ", st_int.root_datum) then
+()=assert(valid,"can't find isomorphism of rd_int and st_int.root_datum") then
+dual_integral_orbits=integral_descents(st_int,O_check) in
+for O_check_int in dual_integral_orbits do
+ let ()=prints("computing packet for:", O_check_int) in
  (st_int,O_check_int,all,gamma_final,permutation) od
 
 {run over a set of dual orbits}
@@ -219,9 +240,20 @@ for O in dual_orbits do
 prints(new_line,"Computing weak packet for orbit: ", O.root_datum, " ", O.H, " dim=", O.dim_nilpotent);
 weak_packet(O,G) od
 
+set no_type_D(RootDatum rd)=bool: =Lie_type_matrix(rd)[3]
+
+set weak_packets_no_type_D([ComplexNilpotent] dual_orbits,RealForm G)=[[(int,int,Param)]]:
+if cells_verbose then prints("weak_packets(G) (no type D) with dual orbits and G=",G) fi;
+##for O_check in dual_orbits do
+ let lambda=O_check.H/2 then
+ rd_int=integrality_datum(G,lambda) in
+ if no_type_D(rd_int) then prints("No type D: ", rd_int);
+ prints(new_line,"Computing weak packet for orbit: ", O_check.root_datum, " ", O_check.H, " dim=", O_check.dim_nilpotent);
+ [weak_packet(O_check,G)] else [] fi od
+
 {given just a RealForm G, compute the dual orbits then compute
 all weak packets as you run over these dual orbits}
-set weak_packets(RealForm G)=
+set weak_packets(RealForm G)=[[(int,int,Param)]]:
 if cells_verbose then prints("weak_packets(G) with G=",G) fi;
 [[(int,int,Param)]]:weak_packets(G.dual_orbits,G)
 
@@ -313,7 +345,7 @@ tabulate(
    od
   od
   )
-
+  
 set show_one_block([[(int,int,Param)]] packets, int block_number)=void:
 let blocks=blocks(packets) then
 cells=cells(packets) then

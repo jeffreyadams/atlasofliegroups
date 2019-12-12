@@ -70,8 +70,8 @@ set push([Param] params,ratvec gamma)=[Param]:
 set parameters_given_AV_infinitesimal_character(SpringerTable st, ComplexNilpotent O,[([Param],[WCell])] blocks_and_cells,ratvec gamma)=
 [(int,int,Param)]: {[(block number, cell number, parameter)]}
 let springer_O=st.springer(O) then
-()=if cells_verbose then prints("given AV with infinitesimal character:", gamma, new_line, "O=",O) fi then
-()=if cells_verbose then prints("st:", st, " bc:", blocks_and_cells) fi in
+()=if cells_verbose then prints("given AV with infinitesimal character:", gamma, new_line, "O=",O) fi in
+{()=if cells_verbose then prints("st:", st, " bc:", blocks_and_cells) fi in}
 {()=if cells_verbose then prints("blocks_and_cells:", blocks_and_cells) fi in}
 {params=##for (a,) in blocks_and_cells do a od {for testing} in}
 if cells_verbose then prints("given AV/gamma: st: ", st.root_datum, new_line, " O:", O,new_line," gamma:", gamma) fi;
@@ -107,6 +107,7 @@ prints(" springer(O)=",springer_O) fi;
  ##for cell@j in cells do
   if cells_verbose then prints("doing block ",i," cell ",j) fi;
     let spec=special_character_permuted(st.ct,cell,inverse(permutation)) in
+{    let ()=prints("got spec", spec) in}
 {    let spec=special_character(st.ct,cell,st.root_datum.simple_roots) in}
     if spec=springer_O then
    ##for p in parameters(block,cells[j]) do if I_will_survive(p,gamma) then
