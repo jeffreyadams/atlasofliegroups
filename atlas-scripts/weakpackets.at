@@ -1,0 +1,35 @@
+<all.at
+
+set setup_packets_C(int n)=
+let G=Sp(2*n,R) then
+rd=G.root_datum then
+ct=character_table_C(n) then
+ct=ct.update_degrees then
+st=springer_table_C(ct) then
+orbits=rd.orbits then
+dual_orbits=rd.dual.orbits then
+even=even_orbits(dual_orbits) in
+(st,even)
+
+set setup_packets_A(int n)=
+let G=GL(n+1,R) then
+rd=G.root_datum then
+ct=character_table_A(n) then
+ct=ct.update_degrees then
+st=springer_table_A(ct) then
+orbits=rd.orbits then
+dual_orbits=rd.dual.orbits then
+even=even_orbits(dual_orbits) in
+(st,even)
+
+set packets_report_C(int n)=
+let (st,even)=setup_packets_C(n) then
+packets=weak_packets(st,even,Sp(2*n,R)) in
+prints(new_line,new_line,"atlas> packets_report_C(",n,")");
+prints(new_line,"Weak packets for Sp(",2*n,",R)");
+prints("Even orbits/integral infinitesimal character only", new_line);
+show_short(packets);
+prints(new_line);
+show_detail(packets);
+prints(new_line);
+show_very_long(packets)
