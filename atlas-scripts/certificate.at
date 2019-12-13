@@ -1,0 +1,18 @@
+<hermitian.at
+
+set negative_terms(Param p)=[(Param,int)]:
+   let P=hermitian_form_irreducible(p) then ht=height(p) then
+     list=%P then (c,)=list[0] in let a=0, b=0 in if int_part(c)!=0 then a:=1
+     fi; if s_part(c)!=0 then b:=1 fi; if a*b=1 then prints("The LKT is indefinite.")
+     fi; let
+   result=[(Param,int)]:[] in
+   for (k,q) in %P do let npart=b*int_part(k)+a*s_part(k) in
+      if npart!=0 and height(q)=ht then result#:=(q,height(q))
+      elif npart!=0 and height(q)>ht and
+        none(for (,n) in result do n>ht and height(q)>n od) then
+      result#:=(q,height(q)) fi od; result
+
+set certificate (Param p) =[(Param,int)]:
+   if not is_hermitian(p) then prints("not hermitian");[]
+   elif is_unitary(p) then prints("unitary");[]
+   else prints("hermitian indefinite"); negative_terms(p) fi
