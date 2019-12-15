@@ -320,12 +320,12 @@ Type expressions are defined by a tagged union. We intend to always only access
 the variant corresponding to the current tag value, but this is not something
 that can be statically ascertained in \Cpp; therefore the tag and the
 corresponding variants originally had public access. The fields were however
-made private with public accessor methods the introduction of |tabled| types, a
-kind of type necessary to represent types with a recursive structure. This is
-not to ensure access according to the tag, but rather to automatically insert a
-test for |tag==tabled| possibly followed by expansion. This makes the handling
-of tabled types transparent in most places, but there is a subtlety to be
-mentioned. The type definitions in the table should of course not be
+made private, with public accessor methods, at the introduction of |tabled|
+types, a kind of type necessary to represent types with a recursive structure.
+This is not to ensure access according to the tag, but rather to automatically
+insert a test for |tag==tabled| possibly followed by expansion. This makes the
+handling of tabled types transparent in most places, but there is a subtlety to
+be mentioned. The type definitions in the table should of course not be
 overwritten, but while |expansion| returns a reference to constant so that the
 |type_expr| values in the table are protected, the methods |func|,
 |component_type| and |tuple| return pointers to non-|const|; this exposes nodes
@@ -366,7 +366,7 @@ class type_expr
     func_type* func_variant; // when |kind==function_type|
     type_p row_variant; // when |kind==row_type|
     raw_type_list tuple_variant; // when |kind==tuple_type| or |kind==union_type|
-    type_nr_type type_number;
+    type_nr_type type_number; // when |kind==tabled_type|
   };
   class defined_type_mapping;
   static defined_type_mapping type_map;
@@ -418,10 +418,14 @@ indicating whether this was possible, and if so makes the necessary
 specialisations to our type. That is done by copying, so the caller does not
 require, acquire, or lose ownership of the pattern for/by this method.
 
-The constructors for the row, tuple, and union types receive pointers that
-will be directly inserted into our |struct| and become owned by it; the
-ownership management is simplest when such pointers are ``passed by check'',
-i.e., as rvalue references to smart pointers.
+The constructors for the different variants all take rvalue reference arguments
+to the information to be incorporated, and start by setting |tag| appropriately.
+For the row, tuple, and union types the references are to smart pointers
+(|unique_ptr| instances) that are thus ``passed by check'', whose cashing takes
+place inside the constructor by calling the |unique_ptr::release| method while
+initialising an appropriate raw pointer field. For function types there are two
+rvalue references to |type_expr| fields, for argument and result types, whose
+contents will be move assigned inside the constructor.
 
 @< Methods of the |type_expr| class @>=
 
@@ -432,8 +436,11 @@ inline type_expr(type_expr&& arg, type_expr&& result);
  // for function types
 explicit type_expr(type_ptr&& c)
   : tag(row_type), row_variant(c.release()) @+{}
-explicit type_expr(type_list&& l,bool is_union=false);
+explicit type_expr(type_list&& l,bool is_union=false)
   // tuple and union types
+  : tag(is_union ? union_type: tuple_type)
+  , tuple_variant(l.release())
+  @+{}
 explicit type_expr(type_nr_type type_nr)
   : tag(tabled), type_number(type_nr) @+{}
 @)
@@ -468,14 +475,37 @@ could be used in a |typedef| before |type_expr| was a complete type.
 
 struct func_type;
 
-@ The constructor for the |type_list| variant with |tuple_variant| field is a
-move constructor.
+@ The variant for function types needs both an argument type and a result type,
+which is obtained by having |type_expr| contain a raw pointer to a |func_type|
+structure. There are occasions where outside code needs to refer to |func_type|,
+so we cannot make this a local definition to the |type_expr| class. The
+definition itself is simple, with all methods inlined. Like for |type_expr| we
+do not provide an ordinary copy constructor, but a value-returning |copy|
+accessor method.
 
-@< Function definitions @>=
-type_expr::type_expr(type_list&& l,bool is_union)
-  : tag(is_union ? union_type: tuple_type)
-  , tuple_variant(l.release())
-  @+{}
+@< Type definitions @>=
+struct func_type
+{ type_expr arg_type, result_type;
+@)
+  func_type(type_expr&& a, type_expr&& r)
+@/: arg_type(std::move(a)), result_type(std::move(r)) @+{}
+@/func_type(func_type&& f) = @[default@]; // move constructor
+  func_type& operator=(func_type&& f) = @[default@]; // move assignment
+  func_type copy() const // in lieu of a copy contructor
+  {@; return func_type(arg_type.copy(),result_type.copy()); }
+};
+
+@ The constructor for function types could be defined inside the structure
+definition, since |func_type| is not (and cannot be) a complete type there. The
+code below is put in the header file after the type definitions, so the
+|func_type| definition we just saw, and in particular its constructor used here,
+will be fully known at that point.
+
+@< Template and inline function definitions @>=
+type_expr::type_expr(type_expr&& arg, type_expr&& result)
+@/ : tag(function_type)
+   , func_variant(new func_type(std::move(arg),std::move(result)))
+   @+{}
 
 @ Instead of a regular copy constructor, which would have to make a deep copy
 (because these descendants are owned by the object), |type_expr| provides a
@@ -484,10 +514,10 @@ inadvertent making of deep copies is avoided. If necessary the |type_expr|
 move constructor can be applied to the temporary for the result from |copy|,
 but this can probably always be avoided by return value optimisation (and in
 any case move construction costs little). Using a named function here results
-in the recursion being visible in the argument the calls of |new|. Since this
+in the recursion being visible in the argument of the calls of |new|. Since this
 is not a constructor, the pointers returned from |new| are immediately owned
 when stored in a component of |type_expr| (and even if this had been a
-constructor, no exception can happen between the storing the pointer and
+constructor, no exception can happen between storing the pointer and function
 termination).
 
 @:type expression copy@>
@@ -626,23 +656,24 @@ void type_expr::swap(type_expr& other) noexcept
       case tabled: std::swap(type_number,other.type_number); break;
     }
   else
-  {
+  @/{@;
     type_expr t(std::move(other));
     other.set_from(std::move(*this));
-    this->set_from(std::move(t));
+    set_from(std::move(t));
   }
 }
 
-@ The |specialise| method is mostly used to either set a completely
-undetermined type to a given pattern, or to test if it already matches it;
-however, we do not exclude the possibility that a partly determined type is
-modified by specialisation of one of its descendants to match the given
-pattern. Matching a pattern means being at least as specific, and specialising
-means replacing by something more specific, so we are (upon success) replacing
-the type for which the method is called by the most general unifier (i.e.,
-common specialisation) of its previous value and |pattern|. Therefore the name
-of this method is somewhat misleading, in that the specialisation is not
-necessarily to |pattern|, but to something matching |pattern|.
+@ The |specialise| method is mostly used to either set a completely undetermined
+type to a given pattern, or to test if it already matches that pattern;
+sometimes however, we do know which of the two will be the apply, nor exclude
+the possibility that that the type was in part more specific then the pattern
+while another part must be modified by specialisation to match it. Matching a
+pattern means being at least as specific, and specialising means replacing by
+something more specific, so we are (upon success) replacing the type for which
+the method is called by the most general unifier (i.e., common specialisation)
+of its previous value and |pattern|. Therefore the name of this method is
+somewhat misleading, in that the specialisation is not necessarily to the
+|pattern| value itself, but to something matching |pattern|.
 
 In the case of an |undetermined_type|, |specialise| uses the |set_from| method
 to make |*this| a copy of |pattern|. In the other cases we only continue if
@@ -654,8 +685,8 @@ situations, since failure to specialise $t_1$ to $t_2$ will usually be
 followed by an attempt to coerce $t_2$ to $t_1$, or by throwing of an error;
 here any specialisation that brings $t_1$ closer to $t_2$ cannot be harmful
 (it probably makes no difference at all). And we provide an accessor method
-|can_specialise| that could be tested before calling |specialise| in cases
-where having commit-or-roll-back is important.
+|can_specialise| that may be tested, to condition calling |specialise| upon the
+possibility of success in cases where having commit-or-roll-back is important.
 
 This method must pay some nontrivial attention to types with |tag==tabled|,
 whose (possibly recursive) meaning is stored in |type_expr::type_map|. If one
@@ -663,7 +694,7 @@ of the two types concerned is of this kind, it is basically replaced by its
 expansion. When it is |*this| itself that is expanded, we do not want to
 recursively call the manipulator |specialise| for the expansion, but luckily
 there is never anything to substitute into defined types, so we can just call
-the method |can_specialise| instead to determine the Boolean result. When both
+the method |can_specialise| instead, to determine the Boolean result. When both
 type expressions have |tag==tabled| we must avoid potentially infinite
 recursion when both are expanded; by ensuring (upon entering type definitions)
 that defined types are only equal if they have the same name, the code here is
@@ -764,47 +795,6 @@ component by component.
   return it0.at_end() and it1.at_end();
   // whether both lists terminated
 }
-
-@ The constructor for function types cannot be defined inside the structure
-definition, since |func_type| is not (and cannot be) a complete type there.
-The constructor for |func_type| used will be defined below.
-
-@< Template and inline function definitions @>=
-type_expr::type_expr(type_expr&& arg, type_expr&& result)
-@/ : tag(function_type)
-   , func_variant(new func_type(std::move(arg),std::move(result)))
-   @+{}
-
-@ The variant for function types needs both an argument type and a result
-type. We cannot define the appropriate structure directly within the |union|
-of |type_expr| where it is needed, since the scope of that definition
-would then be too limited to perform the appropriate |new| in the constructor.
-Therefore we must declare and name the structure type before using it in
-|type_expr|. Afterwards we define the structure, and while we are doing
-that, we also define a constructor to fill the structure (it was used above)
-and a move constructor.
-
-The |func_type| structure has two sub-objects of type |type_expr|,
-rather than pointers to them. A move constructor only makes a
-shallow copy of the topmost nodes in the same way as was done in the move
-constructor for~|type_expr|. Like for |type_expr| we do not provide an
-ordinary copy constructor, but a value-returning |copy| accessor method.
-
-@s result_type normal
-
-@< Type definitions @>=
-struct func_type
-{ type_expr arg_type, result_type;
-@)
-  func_type(type_expr&& a, type_expr&& r)
-@/ : arg_type(std::move(a)), result_type(std::move(r)) @+{}
-  func_type(func_type&& f) = @[default@]; // move constructor
-  func_type& operator=(func_type&& f) = @[default@]; // move assignment
-  func_type copy() const // in lieu of a copy contructor
-  {@; return func_type(arg_type.copy(),result_type.copy()); }
-};
-typedef func_type* func_type_p;
-typedef std::unique_ptr<func_type> func_type_ptr;
 
 @ Finally we need a comparison for structural equality of type expressions.
 
