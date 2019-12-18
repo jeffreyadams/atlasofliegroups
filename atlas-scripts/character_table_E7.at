@@ -1,4 +1,5 @@
 <character_tables.at
+<nilpotent_orbits.at
 
 {the magma data first:}
 set rows=[

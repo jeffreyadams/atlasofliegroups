@@ -4,6 +4,7 @@
 <translate.at { for |Psi@(Param,[int])| }
 <modules.at { for |has_infinitesimal_character@ParamPol| }
 <combinatorics.at { for |pemutation_inverse@[int]| }
+<nilpotent_orbits.at
 <weak_packets.at
 
 
