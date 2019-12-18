@@ -91,6 +91,46 @@ set reflection(CharacterTable ct)=[int]:for w in ct.class_reps do w.matrix.trace
   the first time it is called it fills sym_powers_reflection
  }
 
+set class_power_function(CharacterTable ct)=(int,int->int):
+(int j,int p):first(ct.n_classes,(int i): is_conjugate(ct.class_reps[i],ct.class_reps[j]^p))
+
+
+set initialize_character_table(LieType lt)=CharacterTable:
+assert(lt.is_simple,"LieType is not simple");
+let rd=simply_connected(lt) then
+W_order=order_W(rd) then
+class_size(WeylElt w)=W_order\w.centralizer_order then
+orbits=rd.orbits then
+classes=rd.conjugacy_classes then
+class_centralizer_sizes=for w in classes do w.centralizer_order od then
+class_sizes=for w@i in classes do W_order\class_centralizer_sizes[i] od then
+class_orders=for w in classes do w.order od then
+char_name(CharacterTable ct)=(vec->string):(vec v):string:
+let dim=v[0] then
+index=find(ct.characters,v) then
+d=ct.degree(index) in
+"phi(" + dim.to_string+","+d.to_string+")"
+in (
+  Lie_type(rd)    {lie_type}
+  , W_order    {order (of W)}
+  , #classes      {n_classes}
+  , (int j) classical_class: ().null_class
+  , (int j) string: "" {class_label} {fill in later}
+  , (int j) WeylElt: classes[j] {class_rep}
+  , (int j) int: class_orders[j]
+  , (int j, int p) int: first(#classes,(int i): is_conjugate(classes[i],classes[j]^p))
+  , class_centralizer_sizes
+  , class_sizes
+  , (int j): null_irrep()
+  , (int i) string: "" { irreducible representation label }  {later}
+  , [[int]]:[]  {sym_powers_reflection}
+  ,[int]:[]     {degrees}
+  ,null(#classes,#classes)
+  )
+
+set initialize_character_table(RootDatum rd)=CharacterTable:initialize_character_table(Lie_type(rd))
+
+
 {tensor product of two rows of character table}
 set tensor(CharacterTable t)=(int,int->[int]):(int i,int j):
 product(t.character(i),t.character(j))
@@ -266,7 +306,7 @@ and ct.sym_powers_reflection is the default [[int]]:[], then calculate it
 and "silently" update ct
 }
 set update_sym_powers_reflection(CharacterTable ct)=CharacterTable:
- let sym_powers_reflection=for i:ct.root_datum.nr_of_posroots+1 do ct.sym_power(ct.reflection,i) od 
+ let sym_powers_reflection=for i:ct.root_datum.nr_of_posroots+1 do prints(i); ct.sym_power(ct.reflection,i) od 
  then ()=ct.sym_powers_reflection:=sym_powers_reflection in ct
 
 { exterior power of a character }
@@ -435,7 +475,10 @@ for v in A do
  let index=first(for i:#B do find(rv,i)=-1 and B[i]=v od)
  in rv#:=index od;rv
 
-set rows(mat M,[int] list)=mat: for i in list do row(M,i) od
+set rows(mat M,[int] list)=for i in list do row(M,i) od
+set show_rows(mat M,[int] list)=^rows(M,list)
+set columns(mat M,[int] list)= rows(^M,list)
+set show_columns(mat M,[int] list)=mat:columns(M,list)
 
 set profile(mat table,mat orders_and_sizes,[int] sign_and_reflections_rows)=
 ^((^orders_and_sizes)##(rows(table,sign_and_reflections_rows)))
@@ -496,17 +539,37 @@ let profile_sorted=profile.sort then
 permutation=find_permutation(profile_sorted,profile) in
 (mat:profile_sorted,mat:for j in permutation do columns(table)[j] od)
 
+set sort_by_profile(mat profile_long, mat table,[int] powers)=
+let profile_short=mat:profile_long[:4,:] then
+(profile_short_1,table_1)=sort_by_profile(profile_short,table) then
+{apply the same permutation to profile_long}
+permutation=find_permutation(profile_short_1,profile_short) then
+profile_long_1=for j in permutation do columns(profile_long)[j] od  then
+()=prints("profile_long_1:",^profile_long_1) then
+(profile_2,table_2)=sort_by_profile(profile_long_1,table_1) in
+(profile_long_1,profile_2,table_2)
+
+set sort_by_profile_extra(mat profile_long, mat table,[int] powers)=
+let profile_short=mat:profile_long[:4,:] then
+(profile_short_1,table_1)=sort_by_profile(profile_short,table) then
+{apply the same permutation to profile_long}
+permutation=find_permutation(profile_short_1,profile_short) then
+profile_long_1=for j in permutation do columns(profile_long)[j] od  then
+(profile_2,table_2)=sort_by_profile(profile_long_1,table_1) in
+(profile_long_1,profile_2,table_2,permutation)
+
 set set_table(CharacterTable ct,mat profile,mat table)=
 let ct1=sort_by_profile(ct) then
 (profile1,table1)=sort_by_profile(profile,table) in
 assert(profile(ct1)=profile1,"profiles don't match");
 ct1.table:=table1;ct1
 
-set set_table(CharacterTable ct,mat profile,mat table,[int] powers)=
-let ct1=sort_by_profile(ct,powers) then
-(profile1,table1)=sort_by_profile(profile,table) in
-assert(profile(ct1)=profile1,"profiles don't match");
-ct1.table:=table1;ct1
+set set_table(CharacterTable ct,mat profile_long,mat table,[int] powers)=
+let ct_1=sort_by_profile(ct,powers) then
+(,profile_1,table_1)=sort_by_profile(profile_long,table,powers) in 
+assert(profile(ct_1,powers)=profile_1,"profiles don't match"); 
+ct_1.table:=table_1;ct_1
+
 
 
 

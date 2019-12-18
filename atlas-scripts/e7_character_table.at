@@ -1,6 +1,5 @@
 <character_tables.at
-<nilpotent_orbits.at
-<character_table_C.at
+
 {the magma data first:}
 set rows=[
 [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
@@ -151,51 +150,8 @@ set e7_profile_long=^(^e7_orders_sizes)##(^e7_sgn_reflection)##(^e7_powers)
 
 {end of magma data}
 
-set rd=simply_connected(E7)
-set W_order=order_W(rd)
-set class_size(WeylElt w)=W_order\w.centralizer_order
-
-set orbits=rd.orbits
-{from atlas web site, columns sorted by order}
-set table_E7_atlas=e7_table
-
-set wct=W_class_table(rd)
-set wct_classes=wct.class_representatives()
-
-set classes_E7=wct_classes
-set class_centralizer_sizes_E7=for w in classes_E7 do w.centralizer_order od
-set class_sizes_E7=for w@i in classes_E7 do W_order\class_centralizer_sizes_E7[i] od
-set class_orders_E7=for w in classes_E7 do w.order od
-
-set E7_name(CharacterTable ct)=(vec->string):(vec v):string:
-let dim=v[0] then
-index=find(ct.characters,v) then
-d=ct.degree(index) in
-"phi(" + dim.to_string+","+d.to_string+")"
-
-set character_table_E7_0() = CharacterTable:
-let ncc=60
-in
-  ( Lie_type(E7)    {lie_type}  
-  , W_order    {order (of W)}
-  , ncc      {n_classes}
-  , (int j) classical_class: ().null_class
-  , (int j) string: "" {class_label} {fill in later}
-  , (int j) WeylElt: classes_E7[j] {class_rep}
-  , (int j) int: class_orders_E7[j]
-  , (int j, int p) int: first(ncc,(int i): is_conjugate(classes_E7[i],classes_E7[j]^p))
-  , class_centralizer_sizes_E7
-  , class_sizes_E7
-  , (int j): null_irrep()
-  , (int i) string: "" { irreducible representation label }  {later}
-  , [[int]]:[]  {sym_powers_reflection}
-  ,[int]:[]     {degrees}
-{  , ^table_E7}{this works, used hand calculation}
-  ,table_E7_atlas
-  )
-
 set character_table_E7()=CharacterTable:
-let  ct0=character_table_E7_0() then
+let  ct0=initialize_character_table(simply_connected(E7)) then
 ct1=set_table(ct0,e7_profile,e7_table) then
 ct2=ct1.update_degrees then
 ct3=ct2.update_sym_powers_reflection in

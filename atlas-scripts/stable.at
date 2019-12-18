@@ -310,7 +310,8 @@ set print_stable_at_singular ([int] S,[Param] B,[Param] subset) = void:
   prints("dimension space of stable characters: ", n_rows(rv), new_line,rv)
 
 set print_stable_at_singular ([*] S,[Param] B,[Param] subset) = void:
-  print_stable_at_singular([int]:S,B,subset)
+
+print_stable_at_singular([int]:S,B,subset)
 
 set stable ([Param] params) = (mat,[Param]):
   assert(has_infinitesimal_character(params)

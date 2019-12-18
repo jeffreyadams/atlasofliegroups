@@ -1,0 +1,57 @@
+<e8_gap.at {load the information from gap}
+set e8_table=^e8_gap_table
+set rd=simply_connected(E8)
+
+
+{swap columns of the character table, but not
+the conjugacy classes themselves}
+set swap_columns(CharacterTable ct,[(int,int)] swaps)=
+let table=ct.table then
+table_new=table in
+for (a,b) in swaps do
+ table_new[a]:=table[b];
+ table_new[b]:=table[a]
+od;
+ct.table:=table_new;
+ct
+
+set character_table_E8_0()=CharacterTable:
+initialize_character_table(rd)
+
+{permute columns to match gap columns (order,size,det,trace)}
+set character_table_E8_1()=
+let ct_0=character_table_E8_0() in
+set_table(ct_0,e8_gap_profile,e8_gap_table)
+
+set character_table_E8_2()=
+let ct_1=character_table_E8_1() in
+swap_columns(ct_1,[(100,101)])
+
+set character_table_E8()=
+let ct=character_table_E8_2() in
+ct:=ct.update_sym_powers_reflection;
+ct:=ct.update_degrees;
+ct
+
+{this is the special test which fails if the columns are wrong}
+set test(CharacterTable ct)=
+let S=ct.sym_power(ct.reflection,3) in
+for i:ct.n_classes do ct.inner(ct.characters[i],S) od
+
+{ct2=ct1.update_degrees then
+ct3=ct2.update_sym_powers_reflection in}
+{st=springer_table_E8(ct)} 
+
+
+
+
+
+
+
+{works:
+atlas> set ct2=fix(ct1,[(100,101)])
+Variable ct2: CharacterTable (overriding previous instance, which had type CharacterTable)
+atlas> test(ct2)
+Value: [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+
+}

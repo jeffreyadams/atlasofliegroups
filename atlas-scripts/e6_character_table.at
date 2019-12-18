@@ -2,49 +2,6 @@
 <nilpotent_orbits.at
 <springer_table_E6.at
 
-set rd=simply_connected(E6)
-set W_order=order_W(rd)
-set class_size(WeylElt w)=W_order\w.centralizer_order
-set wct=W_class_table(rd)
-set wct_classes=wct.class_representatives()
-
-set classes_E6=wct_classes
-set class_centralizer_sizes_E6=for w in classes_E6 do w.centralizer_order od
-set class_sizes_E6=for w@i in classes_E6 do W_order\class_centralizer_sizes_E6[i] od
-set class_orders_E6=for w in classes_E6 do w.order od
-
-
-set E6_name(CharacterTable ct)=(vec->string):(vec v):string:
-let dim=v[0] then
-index=find(ct.characters,v) then
-d=ct.degree(index) in
-"phi(" + dim.to_string+","+d.to_string+")"
-
-
-
-set character_table_E6_0() = CharacterTable:
-let ncc=25
-in
-  ( Lie_type(E6)    {lie_type}  
-  , W_order    {order (of W)}
-  , ncc      {n_classes}
-  , (int j) classical_class: ().null_class
-  , (int j) string: "" {class_label} {fill in later}
-  , (int j) WeylElt: classes_E6[j] {class_rep}
-  , (int j) int: class_orders_E6[j]
-  , (int j, int p) int: first(ncc,(int i): is_conjugate(classes_E6[i],classes_E6[j]^p))
-  , class_centralizer_sizes_E6
-  , class_sizes_E6
-  , (int j): null_irrep()
-  , (int i) string: "" { irreducible representation label }  {later}
-  , [[int]]:[]  {sym_powers_reflection}
-  ,[int]:[]     {degrees}
-{  ,table_E6_atlas},
-  null(ncc,ncc)
-  )
-set ct=character_table_E6_0()
-
-
 {from magma}
 set e6_table=^[
 [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
@@ -96,7 +53,7 @@ set e6_profile=^(^e6_orders_sizes)##(^e6_sgn_reflection)
 set e6_profile_long=^(^e6_orders_sizes)##(^e6_sgn_reflection)##(^e6_powers)
 
 set character_table_E6()=
-let ct=character_table_E6_0() then
+let ct=initialize_character_table(simply_connected(E6)) then
 ct1=set_table(ct,e6_profile,e6_table) then
 ct2=ct1.update_degrees then
 ct3=ct2.update_sym_powers_reflection in
