@@ -15,9 +15,9 @@ set translate_debug=false
     will be a quotient of block at gamma
   if gamma or gamma_new is not dominant, no guarantees (but no test either)
 }
-set translate_by (Param p, vec shift) = Param:
-  let (x,lambda_rho,gamma)=%p in param(x,lambda_rho+shift,gamma+shift)
-set T(Param p, ratvec gamma_new)= Param:
+set translate_by (Param p, vec shift) = ParamPol:
+  let (x,lambda_rho,gamma)=%p in finalize(param(x,lambda_rho+shift,gamma+shift))
+set T(Param p, ratvec gamma_new)= ParamPol:
   translate_by(p,ratvec_as_vec(gamma_new-infinitesimal_character(p)))
 
 { translate a ParamPol by translating each term }
@@ -26,7 +26,8 @@ set T(ParamPol P, ratvec gamma_new)= ParamPol:
   else
     let gamma = infinitesimal_character(first_param(P))
     then shift = ratvec_as_vec(gamma_new-gamma)
-    in 0*P + for w@q in P do (w,translate_by(q,shift)) od
+    then rv= 0*P in
+    for w@q in P do rv+:=w*translate_by(q,shift) od;rv
   fi
 
 set to_wall (RootDatum id, int k, ratvec gamma) = vec:
@@ -34,26 +35,21 @@ set to_wall (RootDatum id, int k, ratvec gamma) = vec:
   in assert(d=1,"cannot project to wall "+k); n
 
 { translate parameter p to simple root wall #k of the integral root system }
-set Psi(Param p,int k)= Param:
+set Psi(Param p,int k)= ParamPol:
   let gamma=infinitesimal_character(p)
   then id = integrality_datum(root_datum(p),gamma)
   then shift = -to_wall (id,k,gamma)
   in translate_by(p,shift)
 
-{ translate ParamPol to simple root wall #k of the integral root system; here
-  the integral system might vary among terms; selecting wall #k then is weird
-}
-set Psi(ParamPol P,int k)= ParamPol:
-  null_module(real_form(P)) + for w@q in P do (w,Psi(q,k)) od
-
 { when all terms has same infinitesimal character, this is more efficient: }
 set Psi(ParamPol P,ratvec gamma,int k)= ParamPol:
   let id = integrality_datum(root_datum(P),gamma)
-  then shift = -to_wall (id,k,gamma)
-  in null_module(real_form(P)) + for w@q in P do (w,translate_by(q,shift)) od
+  then shift = -to_wall (id,k,gamma) then
+  rv=null_module(P.real_form) in
+    for w@q in P do rv+:=w*translate_by(q,shift) od;rv
 
 { translate p to intersection of set of simple root walls of integral system }
-set Psi(Param p,[int] v)= Param:
+set Psi(Param p,[int] v)= ParamPol:
   let gamma=infinitesimal_character(p)
   then id=integrality_datum(root_datum(p),gamma)
   then shift = - sum( rank(id) # for k in v  do to_wall(id,k,gamma) od )
@@ -61,20 +57,55 @@ set Psi(Param p,[int] v)= Param:
 
 { translate P to intersection of set of simple root walls of integral system }
 set Psi(ParamPol P,[int] v)= ParamPol:
-  null_module(real_form(P)) + for w@q in P do (w,Psi(q,v)) od
+  let rv=null_module(real_form(P))  in
+  for w@q in P do rv+:=w*Psi(q,v) od;rv
 
 set Psi(ParamPol P,ratvec gamma,[int] v)= ParamPol:
   let id = integrality_datum(root_datum(P),gamma)
   then shift = - sum( rank(id) # for k in v  do to_wall(id,k,gamma) od )
-  in null_module(real_form(P)) + for w@q in P do (w,translate_by(q,shift)) od
+  then rv= null_module(real_form(P))  in
+   for w@q in P do rv+:=w*translate_by(q,shift) od;rv
 
-set T_irr(ParamPol P,ratvec v)=
-{return P if v=infinitesimal character of P}
-if P.infinitesimal_character=v then P else 
-composition_series(T(character_formula(P),v)) fi
+set T_irr(Param p,ratvec v)=ParamPol:
+{has to be a ParamPol to allow for 0
+ result is either 0 or a single parameter
+}
+{return p if v=infinitesimal character of P}
+if p.infinitesimal_character=v then p
+elif
+{p.infinitesimal character is automatically dominant,
+if v is also dominant then we're staying in the chamber,
+and T_irreducible(p) is simply shifting the parameter,
+just like for a standard module, except that
+the result is 0 iff: <alpha^vee,lambda>=0 where
+alpha is a simple root in the tau-invariant of p}
+is_dominant(p.root_datum,v) then
+ if  any (for j in tau(p) do p.root_datum.simple_coroots[j]*v=0 od) 
+  then null_module(p.real_form) 
+  else T(p,v)
+fi
+else
+{hard case: could be crossing a wall}
+composition_series(T(character_formula(p),v)) fi
 
-set Psi_irr(ParamPol P,int k)=
-composition_series(Psi(character_formula(P),k))
+{return an actual Param if nonzero}
+set T_irr_nonzero(Param p,ratvec v)=Param:
+let P=T_irr(p,v) in
+assert(#P=0,"module is 0");
+assert(#P>1,"module is not irreducible");
+first_param(P)
+
+
+{ translate a ParamPol by translating each term }
+set T_irr(ParamPol P, ratvec gamma_new)= ParamPol:
+  if =P then P { without any terms, there is nothing to change }
+  else
+    let gamma = infinitesimal_character(first_param(P))
+    then shift = ratvec_as_vec(gamma_new-gamma)
+    then rv=0*P in
+     for w@q in P do rv+:=w*T_irr(q,shift) od;rv
+  fi
+
 
 { the "pseudo-tau" invariant }
 { this is a subset of simple integral roots such that:
@@ -98,7 +129,7 @@ set pseudo_tau_bitset (Param p)= (int,(int->bool)):
   ( semisimple_rank(id)
   , (int k): let (n,d)=%(fundamental_weight(id,k)*(coroot(id,k)*gamma))
     in d=1 and
-      (let p0=translate_by(p,-n)
+      (let p0=first_param(translate_by(p,-n))
        in is_zero(p0) or x(p0)!=x(first_param(ParamPol:p0)))
   )
 
@@ -111,7 +142,7 @@ set pseudo_tau_complement (Param p)= [int]: complement(pseudo_tau_bitset(p))
 { push Param p to the most singular place where the irreducible is non-zero,
   i.e. to all of the root walls not in the pseudo_tau_invariant
 }
-set make_maximally_singular (Param p)= Param: Psi(p,pseudo_tau_complement(p))
+set make_maximally_singular (Param p)= ParamPol: Psi(p,pseudo_tau_complement(p))
 
 {
   translate each term in a list of parameters to all the simple root walls

@@ -65,7 +65,7 @@ tau=p.tau in
 all(for i:rd_int.ss_rank do  rd_int.simple_coroots[i]*gamma != 0 or find(tau,i)=-1 od)
 
 set push([Param] params,ratvec gamma)=[Param]:
-##for p in params do if I_will_survive(p,gamma) then [T(p,gamma)] else [] fi od
+##for p in params do if I_will_survive(p,gamma) then [T_irr_nonzero(p,gamma)] else [] fi od
 
 set parameters_given_AV_infinitesimal_character(SpringerTable st, ComplexNilpotent O,[([Param],[WCell])] blocks_and_cells,ratvec gamma)=
 [(int,int,Param)]: {[(block number, cell number, parameter)]}
@@ -79,8 +79,9 @@ if cells_verbose then prints("given AV/gamma: st: ", st.root_datum, new_line, " 
 prints(" springer(O)=",springer_O) fi;
 }
 ##for (block,cells)@i in blocks_and_cells do
+  if cells_verbose then prints("doing block ",i , " of size ", #block,new_line, "number of cells: ", #cells) fi;
  ##for cell@j in cells do
-  if cells_verbose then prints("doing block ",i," cell ",j) fi;
+  if cells_verbose then prints("block ",i,"/cell ",j) fi;
     let spec=st.ct.special_character(cell) in
 {    let spec=special_character(st.ct,cell,st.root_datum.simple_roots) in}
     if spec=springer_O then
@@ -104,8 +105,9 @@ if cells_verbose then prints("given AV/gamma: st: ", st.root_datum, new_line, " 
 prints(" springer(O)=",springer_O) fi;
 }
 ##for (block,cells)@i in blocks_and_cells do
+  if cells_verbose then prints("doing block ",i , " of size ", #block, new_line,"number of cells: ", #cells) fi;
  ##for cell@j in cells do
-  if cells_verbose then prints("doing block ",i," cell ",j) fi;
+  if cells_verbose then prints("  block ",i,"/cell ",j) fi;
     let spec=special_character_permuted(st.ct,cell,inverse(permutation)) in
 {    let ()=prints("got spec", spec) in}
 {    let spec=special_character(st.ct,cell,st.root_datum.simple_roots) in}

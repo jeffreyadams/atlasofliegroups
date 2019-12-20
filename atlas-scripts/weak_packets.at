@@ -21,14 +21,15 @@ if #params=0 then [] else
 let ()=if cells_verbose then
 prints("gamma_target:",gamma_target);
  prints("Computing weak packet for ", params[0].real_form, new_line,
+ "given # parameters: ", #params,new_line,
  "dual orbit:",new_line, " dual root datum: ", O_check.root_datum,new_line, " diagram: ", O_check.diagram, new_line,
  " normalized diagram: ", O_check.diagram_normalized, new_line,
  " H: ", O_check.H, new_line,
  " dimension: ", O_check.dim_nilpotent)
 fi then
-blocks_and_cells=blocks_and_cells(params) then
+blocks_and_cells=prints("Computing blocks and cells for ",#params, " parameters");blocks_and_cells(params) then
 ()=if cells_verbose then
- prints("computed ", #blocks_and_cells, " blocks")
+ prints("computed ", #blocks_and_cells, " blocks, of sizes: ", for (b,) in blocks_and_cells do #b od)
 fi  then
 { let  gamma=O_check.H/2 then}
  ()=if cells_verbose then prints("inf. char.=",gamma_target) fi then

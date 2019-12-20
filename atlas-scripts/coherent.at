@@ -91,7 +91,9 @@ set coherent_std (Param p,[int] w) = ParamPol:
   if is_regular(p) then coherent_std_reg(p,w)
   else
     let gamma=infinitesimal_character(p)
-    then p_reg=T(p,gamma+2*rho(real_form(p)))
+{    then p_reg=T(p,gamma+2*rho(real_form(p)))}
+{need first_param since this is actually a ParamPol with one term}
+    then p_reg=first_param(T(p,gamma+2*rho(real_form(p))))
     in T(coherent_std_reg(p_reg,w),gamma)
   fi
 
