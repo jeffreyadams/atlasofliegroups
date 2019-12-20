@@ -307,6 +307,7 @@ and ct.sym_powers_reflection is the default [[int]]:[], then calculate it
 and "silently" update ct
 }
 set update_sym_powers_reflection(CharacterTable ct)=CharacterTable:
+ prints("Computing S^k(ref), K=1..",ct.root_datum.nr_of_posroots);
  let sym_powers_reflection=for i:ct.root_datum.nr_of_posroots+1 do prints(i); ct.sym_power(ct.reflection,i) od 
  then ()=ct.sym_powers_reflection:=sym_powers_reflection in ct
 
@@ -454,20 +455,25 @@ ct.class_rep(i).to_string
 
 set show_reps(CharacterTable ct)=void:
 tabulate(
-["i","dim", "degree"]#
+["i","dim", "degree","name"]#
 for i:ct.n_classes do
 [i.to_string,
 ct.dimension(i).to_string,
-ct.degree(i).to_string] od)
+ct.degree(i).to_string,ct.irreducible_label(i).to_string] od)
 
 set show(CharacterTable ct)=void:
 prints("Classes:");
 ct.show_classes;
 prints("Representations:");
-ct.show_reps;
-prints("Character Table:",ct.table)
+ct.show_reps
 
 set show_long(CharacterTable ct)=void:
+prints("Classes:");
+ct.show_classes_long;
+prints("Representations:");
+ct.show_reps
+
+set show_very_long(CharacterTable ct)=void:
 prints("Classes:");
 ct.show_classes_long;
 prints("Representations:");

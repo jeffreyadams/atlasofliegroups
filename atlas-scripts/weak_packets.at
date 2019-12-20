@@ -7,6 +7,7 @@
 
 
 {SpringerTable: table of Springer data, see springer_tables.at
+ NOTE: this must be the SpringerTable for the integral root system
  ComplexNilpotent: complex orbit for dual group
  [Param]: list of parameters, should be all_parameters_gamma(G,gamma) where
    gamma is regular and differs from gamma_target by X^*
@@ -14,6 +15,8 @@
 result: [(int,int,Param)]=[(block number, cell number, parameter)]}
 
 set weak_packet(SpringerTable st,ComplexNilpotent O_check,[Param] params,ratvec gamma_target)=[(int,int,Param)]:
+assert(integrality_datum(O_check.root_datum.dual,O_check.H/2)=st.root_datum,
+ "root datum mismatch, probably not using the integrality datum for the orbit");
 if #params=0 then [] else
 let ()=if cells_verbose then
 prints("gamma_target:",gamma_target);
@@ -175,6 +178,7 @@ for O_check_int in descents do
 dual_orbit_by_diagram(st_int,O_check_int.diagram_normalized) od
 
 {given complex orbit on dual side, and real form, compute weak Arthur packet}
+{NOTE: the appropriate SpringerTable is for the integral root system}
 set weak_packet(ComplexNilpotent O_check,RealForm G)=[(int,int,Param)]:
 let gamma_final=O_check.H/2 then
 gamma=gamma_final+2*rho(G) then  {this is the target infinitesimal character, need to pass it}

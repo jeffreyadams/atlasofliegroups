@@ -42,7 +42,7 @@ elif letter="F" then
 elif letter="G" then
  springer_table_G2()
 elif letter="E" and n=6 then
- let ct_0=character_table_E6_0() then
+ let ct_0=character_table_E6() then
  ct=update_degrees(ct_0) in
  springer_table_E6(ct)
 else error("case not covered")
