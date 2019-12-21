@@ -596,6 +596,7 @@ set W_class_table (RootDatum rd) = WeylClassTable:
    , !ncc = #reps { number of conjugacy classes }
    , class_of (WeylElt w)= int: first(#reps,(int i): is_conjugate(reps[i],w))
    , !nW = rd.order_W
+   , !rank = rd.rank, !npr=rd.nr_of_posroots
    then inner ([int] x, [int] y) = int:
      assert(#x=ncc and #y=ncc,"Wrong sizes");
      let s = for size@i in sizes do size*x[i]*y[i] od.sum then (q,r)=s \% nW in
@@ -603,11 +604,11 @@ set W_class_table (RootDatum rd) = WeylClassTable:
    , sum ([int] x, [int] y) = [int]: for xi@i in x do xi+y[i] od
    , product ([int] x, [int] y) = [int]: for xi@i in x do xi*y[i] od
    , power_map = [vec]: for w in reps do for i:w.order do class_of(w^i) od od
-   , refl_char = for w in reps do w.matrix.trace od
-   then reflection_sympowers =
-        for :ncc do 1 od # for :rd.nr_of_posroots do [int]:[] od
+   , refl_characteristic = for w in reps do w.matrix.char_poly od
+   then reflection_sympowers = [[int]]: { characters of Sym^k(reflection_rep) }
+        for :ncc do 1 od { initial symmetric 0-power, only one computed here }
+	# for :npr do [int]:[] od { reserve empty table rows }
    , k=0 { last symmetric power computed}
-   , Adams_refl(int n) = [int]: for v in power_map do refl_char[v[n % #v]] od
 in
 ( {print_classes} @:
    let data = for w in reps
@@ -640,13 +641,16 @@ in
 , {tensor_power}
    ([int] x, int n) [int]: assert(#x=ncc,"Wrong size"); for xi in x do xi^n od
 , {sym_power_refl}
-  (int n) [int]: assert(n<=rd.nr_of_posroots,"Bounded symmetric power table");
-     while k<n
-     do let acc = Adams_refl(k+:=1)
-     in for i:k-1 from 1
-        do acc := sum(acc,product(reflection_sympowers[i],Adams_refl(k-i)))
-        od
-     ;  reflection_sympowers[k] := for s in acc do s\k od
+  (int n) [int]: assert(n<=npr,"No symmetric powers recorded beyond "+npr);
+     while k<n { extend until |reflection_sympowers[n]| has been set }
+     do k+:=1; reflection_sympowers[k] :=
+        for j:ncc
+	do let s=0, !chi=refl_characteristic[j] in
+	   for i:min(rank,k) from 1
+	   do s-:=chi~[i]*reflection_sympowers[k-i][j]
+	   od
+	;  s
+	od
      od
   ;  reflection_sympowers[n]
 )
