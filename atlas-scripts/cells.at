@@ -101,7 +101,10 @@ prints(" springer(O)=",springer_O) fi;
     if spec=springer_O then
    ##for p in parameters(block,cells[j]) do if I_will_survive(p,gamma) then
       prints("survive:", p, " ", gamma);
-[(i,j,first_param(T_irr(p,gamma)))] else [] fi od
+prints("translating irreducible ", p, " to ", gamma);
+let p_translated=first_param(T_irr(p,gamma)) in
+prints("result of translation: ", p_translated);
+[(i,j,p_translated)] else [] fi od
   else []
   fi
  od
