@@ -5243,7 +5243,7 @@ from such a subscription. We also make |tp| point to the index type used.
   it_comps.push_front(type_expr(inx_type->copy()));
   type_expr it_type(std::move(it_comps));
     // build tuple type from index and component types
-  if (not pattern_type(f.id).specialise(it_type))
+  if (not it_type.specialise(pattern_type(f.id)))
     throw expr_error(e,"Improper structure of loop variable pattern");
   thread_bindings(f.id,it_type,bind,true); // force all identifiers constant
 }

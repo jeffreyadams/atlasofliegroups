@@ -108,8 +108,8 @@ set * (int_poly(X,a,), int_poly(,b,)) = int_poly:
 , () { dummy }
 )
 set monic_divide (int_poly(X,P,), int_poly(,D,)) =
-       (int_poly,int_poly): { quotient, remainder unstripped: size |degree(D)| }
-assert(#D>0 and D~[0]=1,"Not a monic divisor");
+   (int_poly,int_poly): { quotient, remainder unstripped: size |degree(D)| }
+   assert(#D>0 and D~[0]=1,"Not a monic divisor");
    let deg_D = #D-1, l_P=#P in
    if l_P<deg_D
    then ( constant_poly(int:0,X), to_int_poly(P##for :deg_D-l_P do int:0 od,X) )
@@ -462,8 +462,13 @@ set printPoly (i_poly v) = void: prints(poly_format(v,"q"))
    0 +1
 }
 
+<<<<<<< HEAD
 set printPolyMatrix(i_poly_mat M,int space_size,string char)= void:
    let string_mat = for row in M do for e in row do poly_format(e,char) od od
+=======
+set printPolyMatrix(i_poly_mat M,int space_size)= void:
+   let string_mat = for row in M do for e in row do poly_format(e,"q") od od
+>>>>>>> latest
    then space= " "*space_size, wd =
      if =#string_mat then []
      else for j:#M[0] do for row in string_mat do #row[j] od.max od
@@ -471,7 +476,10 @@ set printPolyMatrix(i_poly_mat M,int space_size,string char)= void:
 in for s_row in string_mat
    do for s@j in s_row do space+l_adjust(wd[j],s) od.##.prints
    od
+<<<<<<< HEAD
 
+=======
+>>>>>>> latest
 
 set printPolyMatrix(i_poly_mat M,int space_size)= void:printPolyMatrix(M,space_size,"q")
 set printPolyMatrix (i_poly_mat M,string char) = void: printPolyMatrix(M,3,char)
