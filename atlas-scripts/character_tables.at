@@ -86,6 +86,19 @@ set degree(CharacterTable ct)=(int -> int):(int i):ct.degrees[i]
 set trivial(CharacterTable ct)=[int]: for :ct.n_classes do 1 od
 set sign(CharacterTable ct)=[int]: for w in ct.class_reps do minus_1^w.length od  {sgn}
 set reflection(CharacterTable ct)=[int]:for w in ct.class_reps do w.matrix.trace od    {reflection}
+
+set sym_powers_reflection([WeylElt] list)=
+let rd=list[0].root_datum then
+wct=W_class_table(rd) then
+wct_class_reps=wct.class_representatives() in
+for i:rd.nr_of_posroots+1 do  {S^i(ref)}
+ let v=wct.sym_power_refl(i) in
+ for j:#v do let index=find_conjugate(wct_class_reps,list[j]) in v[index] od
+od
+
+set update_sym_powers_reflection(CharacterTable ct)=CharacterTable:
+ct.sym_powers_reflection:=sym_powers_reflection(ct.class_reps);ct
+
 {set sym_powers_reflection(CharacterTable ct)=[[int]]:[]}
  {store empty list by default
   see the function sym_power_reflection@CharacterTable below:
@@ -102,7 +115,7 @@ let rd=simply_connected(lt) then
 W_order=order_W(rd) then
 class_size(WeylElt w)=W_order\w.centralizer_order then
 orbits=rd.orbits then
-classes=rd.conjugacy_classes then
+classes=rd.W_class_table.class_representatives() then
 class_centralizer_sizes=for w in classes do w.centralizer_order od then
 class_sizes=for w@i in classes do W_order\class_centralizer_sizes[i] od then
 class_orders=for w in classes do w.order od then
@@ -124,7 +137,7 @@ in (
   , class_sizes
   , (int j): null_irrep()
   , (int i) string: "" { irreducible representation label }  {later}
-  , [[int]]:[]  {sym_powers_reflection}
+  , sym_powers_reflection(classes)  {sym_powers_reflection}
   ,[int]:[]     {degrees}
   ,null(#classes,#classes)
   )
@@ -202,10 +215,11 @@ centralizer_orders,
 class_sizes,
 ct.classical_reps,
 ct.irreducible_label,
-if =#ct.sym_powers_reflection then [] else 
-for i:ct.n_classes do ct.sym_powers_reflection[f(i)] od fi,
+if =#ct.sym_powers_reflection then [] else
+{recompute sym_powers_reflection}
+ sym_powers_reflection(for i:ct.n_classes do ct.class_reps[f(i)] od) fi,
 if =#ct.degrees then [] else
- for i:ct.n_classes do ct.degrees[f(i)] od fi, 
+ for i:ct.n_classes do ct.degrees[f(i)] od fi,
 for col@i in ct.table do ct.table[f(i)] od
 )
 
@@ -288,6 +302,7 @@ in for k:n from 1
    ; h #:= for s in sum do s\k od { expand table by |sum\k| }
    od; h[n] { last symmetric power is the one we want }
 
+
 {sym_powers_reflection should be precalculated
  then ct.sym_power_reflection(i) is a loookup
  otherwise return an error, see update_sym_powers_reflection
@@ -306,10 +321,11 @@ Perhaps it is possible to do this automatically? If you call ct.sym_power_reflec
 and ct.sym_powers_reflection is the default [[int]]:[], then calculate it
 and "silently" update ct
 }
-set update_sym_powers_reflection(CharacterTable ct)=CharacterTable:
+set update_sym_powers_reflection_old(CharacterTable ct)=CharacterTable:
  prints("Computing S^k(ref), K=1..",ct.root_datum.nr_of_posroots);
  let sym_powers_reflection=for i:ct.root_datum.nr_of_posroots+1 do prints(i); ct.sym_power(ct.reflection,i) od 
  then ()=ct.sym_powers_reflection:=sym_powers_reflection in ct
+
 
 { exterior power of a character }
 set ext_power (CharacterTable tab) = ([int]char, int n) [int]:
@@ -365,10 +381,14 @@ set degree(CharacterTable ct)=(int->int):(int i):
 if #ct.degrees>0 then ct.degrees[i] else
 error("degrees have not been computed, run ct:=ct.update_degrees to update") fi
 
-{update degrees, and sym_powers_reflection if necessary}
+{update degrees}
 set update_degrees(CharacterTable ct)=CharacterTable:
-if #ct.sym_powers_reflection=0 then ct:=ct.update_sym_powers_reflection fi;
-let degrees=
+let ct=
+ if #ct.sym_powers_reflection!=0 then ct else
+ ct.update_sym_powers_reflection
+fi 
+then
+ degrees=
 for i:ct.n_classes do
   first(ct.root_datum.nr_of_posroots+1,
      (int k) bool: !=ct.inner(ct.character(i),ct.sym_powers_reflection[k]))

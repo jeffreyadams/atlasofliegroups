@@ -85,7 +85,11 @@ count(for alpha in rd.simple_roots do alpha*co_weight=0 od)
 
 
 set character_table_F4_0() = CharacterTable:
-let order=1152, ncc=25
+{initialize_character_table(simply_connected(F4))}
+let order=1152, ncc=25 then
+wct=W_class_table(simply_connected(F4)) then
+classes=classes_Kondo_F4 then
+sym_powers=sym_powers_reflection(classes) 
 in
   ( Lie_type(F4)    {lie_type}  
   , order    {order (of W)}
@@ -99,10 +103,11 @@ in
   , class_sizes_Kondo_F4
   , (int j): null_irrep()
   , (int i) string: "" { irreducible representation label }  {later}
-  , [[int]]:[]  {sym_powers_reflection}
+  , sym_powers
   ,[int]:[]     {degrees}
   , ^character_table_Kondo_F4
   )
+
 
 set character_table_F4()=
 let ct_0=character_table_F4_0() then
@@ -114,7 +119,6 @@ ct
 {
 set ct=character_table_F4()
 ct:=ct.update_degrees
-
 set F4_names(CharacterTable ct)=[string]:for i:ct.n_classes do ct.F4_name(ct.character(i)) od
 set F4_names(int i)=ct.F4_names[i]
 }

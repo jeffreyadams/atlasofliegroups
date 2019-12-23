@@ -88,6 +88,9 @@ else
  if index=-1 then (false,null(0,0)) else (true,S[index]) fi
 fi
 
+set find_isomorphism_permutation([RootDatum] list,RootDatum rd)=(int,mat):
+for rd_list@i in list do let (success,M)=isomorphism_permutation(rd_list.derived,rd.derived) in
+ if success then return (i,M) fi od;(-1,null(0,0))
 
 {rest is not used currently:}
 

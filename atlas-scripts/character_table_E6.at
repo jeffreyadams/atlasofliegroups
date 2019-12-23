@@ -20,6 +20,8 @@ d=ct.degree(index) in
 "phi(" + dim.to_string+","+d.to_string+")"
 
 set character_table_E6_0() = CharacterTable:
+initialize_character_table(simply_connected(E6))
+{
 let ncc=25
 in
   ( Lie_type(E6)    {lie_type}  
@@ -39,6 +41,7 @@ in
 {  ,table_E6_atlas}
   ,mat:[[]]  {leave empty at first}
   )
+  }
 
 {from magma}
 set e6_table=^[
@@ -92,9 +95,10 @@ set e6_profile_long=^(^e6_orders_sizes)##(^e6_sgn_reflection)##(^e6_powers)
 
 set character_table_E6()=
 let ct=initialize_character_table(simply_connected(E6)) then
-ct1=set_table(ct,e6_profile,e6_table) then
-ct2=ct1.update_sym_powers_reflection then
-ct3=ct2.update_degrees in
-ct3
+ct1=set_table(ct,e6_profile,e6_table) in
+{spr=sym_powers_reflection(ct1.class_reps) in}
+{ct1.sym_powers_reflection:=spr;}
+ct1:=ct1.update_degrees;
+ct1
 
 

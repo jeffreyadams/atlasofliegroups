@@ -154,9 +154,8 @@ set e7_profile_long=^(^e7_orders_sizes)##(^e7_sgn_reflection)##(^e7_powers)
 set character_table_E7()=CharacterTable:
 let  ct0=initialize_character_table(simply_connected(E7)) then
 ct1=set_table(ct0,e7_profile,e7_table) then
-ct2=ct1.update_degrees then
-ct3=ct2.update_sym_powers_reflection in
+ct2=ct1.update_degrees in
 {st=springer_table_E7(ct)}
-ct3
+ct2
 
 
