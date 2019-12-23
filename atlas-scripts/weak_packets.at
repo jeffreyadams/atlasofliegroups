@@ -258,10 +258,8 @@ set chop([ComplexNilpotent] orbits)=[ComplexNilpotent]:
 if #orbits=0 then orbits else for i:#orbits-1 from 1 do orbits[i] od fi
 
 set rec_fun weak_packets([SpringerTable] springer_tables,[ComplexNilpotent] orbits,RealForm G,[[(int,int,Param)]] params)=([[(int,int,Param)]],[SpringerTable]):
-let ()=prints("GOT: ", params)  in
 if =#orbits then (params,springer_tables) else
  let (wp,new_tables)=weak_packet(springer_tables,orbits[0],G) in
- let ()=prints("ADDED: ", wp) in
  params#:=wp; weak_packets(new_tables,chop(orbits),G,params) fi
 
 set weak_packets([SpringerTable] springer_tables,[ComplexNilpotent] orbits,RealForm G)=([[(int,int,Param)]],[SpringerTable]):

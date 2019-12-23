@@ -68,7 +68,7 @@ prints(" springer(O)=",springer_O) fi;
 ##for (block,cells)@i in blocks_and_cells do
   if cells_verbose then prints("doing block ",i , " of size ", #block,new_line, "number of cells: ", #cells) fi;
  ##for cell@j in cells do
-  if cells_verbose then prints("block ",i,"/cell ",j) fi;
+  if cells_verbose then prints("block ",i,"/cell ",j, " of size ", #cell) fi;
     let spec=st.ct.special_character(cell) in
 {    let spec=special_character(st.ct,cell,st.root_datum.simple_roots) in}
     if spec=springer_O then
@@ -94,7 +94,7 @@ prints(" springer(O)=",springer_O) fi;
 ##for (block,cells)@i in blocks_and_cells do
   if cells_verbose then prints("doing block ",i , " of size ", #block, new_line,"number of cells: ", #cells) fi;
  ##for cell@j in cells do
-  if cells_verbose then prints("  block ",i,"/cell ",j) fi;
+  if cells_verbose then prints("  block ",i,"/cell ",j, " of size ", #cell) fi;
     let spec=special_character_permuted(st.ct,cell,inverse(permutation)) in
 {    let ()=prints("got spec", spec) in}
 {    let spec=special_character(st.ct,cell,st.root_datum.simple_roots) in}
