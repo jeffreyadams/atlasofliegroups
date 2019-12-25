@@ -52,6 +52,10 @@ orbits=rd.orbits then
 index=first(for O in orbits do O.diagram_normalized=O_SO.diagram_normalized od) in 
 orbits[index]
 
+set out_D(Partition P)=
+let a=P~[1] then
+b=P~[0] in
+P~[1]:=b;P~[0]:=a;P
 
 
 set partition_of_orbit_D(ComplexNilpotent O)=
@@ -59,7 +63,10 @@ assert(let (type,)=O.root_datum.simple_type in type="D","Not an orbit in type D"
 let orbit_partitions=partitions_D(O.root_datum.rank) then
 diagram=O.diagram_normalized then
 index=first(for P in orbit_partitions do complex_nilpotent_D(P).diagram_normalized=diagram od) in
-orbit_partitions[index]
+if index>=0 then orbit_partitions[index] else
+let out_diagram=out_D(diagram[0]) then
+index=first(for P in orbit_partitions do complex_nilpotent_D(P).diagram_normalized[0]=out_diagram od) in
+orbit_partitions[index] fi
 
 {springer map from partition P of 2n to pair of partitions (P,Q) sum(P)+sum(Q)=n}
 set springer_D(Partition P)=(Partition,Partition):
@@ -80,8 +87,15 @@ springer_D(partition_of_orbit_D(O))
 
 set springer_D(CharacterTable ct,ComplexNilpotent O)=int:
 let (a,b)=springer_D(partition_of_orbit_D(O)) then
-rep=(a,b).unsplit_irr then
-reps=for i:ct.n_classes do  get_irrep_D(ct.classical_reps(i)) od in
+{hard case: a=b, see page 423 of Carter}
+rep=if a!=b then
+      (a,b).unsplit_irr else
+      {two cases have the same pair (a,b), use O itself to distinguish them}
+      let index=first(for P in partitions_D(O.root_datum.rank) do complex_nilpotent_D(P).diagram_normalized=O.diagram_normalized od) in
+       if index>=0 then (false,a).split_irr else
+       (true,a).split_irr fi
+    fi
+then reps=for i:ct.n_classes do  get_irrep_D(ct.classical_reps(i)) od in
 index_D_reps(reps,rep)
 
 

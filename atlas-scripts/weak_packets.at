@@ -259,6 +259,8 @@ if #orbits=0 then orbits else for i:#orbits-1 from 1 do orbits[i] od fi
 
 set rec_fun weak_packets([SpringerTable] springer_tables,[ComplexNilpotent] orbits,RealForm G,[[(int,int,Param)]] params)=([[(int,int,Param)]],[SpringerTable]):
 if =#orbits then (params,springer_tables) else
+ let ()=prints(new_line,"----------------------------------------------------------------------------");
+ prints("Computing weak packet for orbit: ", orbits[0]) in
  let (wp,new_tables)=weak_packet(springer_tables,orbits[0],G) in
  params#:=wp; weak_packets(new_tables,chop(orbits),G,params) fi
 
@@ -267,6 +269,9 @@ weak_packets(springer_tables,orbits,G,[[(int,int,Param)]]:[])
 
 set weak_packets([ComplexNilpotent] orbits,RealForm G)=([[(int,int,Param)]],[SpringerTable]):
 weak_packets([SpringerTable]:[],orbits,G,[[(int,int,Param)]]:[])
+
+set weak_packet(ComplexNilpotent orbit,RealForm G)=([[(int,int,Param)]],[SpringerTable]):
+weak_packets([SpringerTable]:[],[orbit],G,[[(int,int,Param)]]:[])
 
 set weak_packets(RealForm G)=([[(int,int,Param)]],[SpringerTable]):
 weak_packets([SpringerTable]:[],G.dual_orbits,G,[[(int,int,Param)]]:[])
