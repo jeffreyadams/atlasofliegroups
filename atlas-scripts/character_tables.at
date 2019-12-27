@@ -59,9 +59,10 @@ table)
 }
 
 set root_datum (CharacterTable ct) = RootDatum:ct.class_rep(0).root_datum { at least one class exists }
-set rank(CharacterTable t)=t.lie_type.rank
-set dimension (CharacterTable t) = (int i) int: t.table[i,0]
+set rank(CharacterTable ct)=ct.lie_type.rank
 set class_reps(CharacterTable ct)=[WeylElt]: for i:ct.n_classes do ct.class_rep(i) od
+set id_class(CharacterTable ct)=first(for j:ct.n_classes do ct.class_reps[j].length=0 od)
+set dimension (CharacterTable ct) = (int i) int: ct.table[i,ct.id_class]
 set class_index(CharacterTable ct)=(WeylElt -> int): (WeylElt w):
  first(ct.n_classes,(int i): is_conjugate(ct.class_reps[i],w))
 set centralizer_order(CharacterTable ct)=(int->int):(int i): ct.centralizer_orders[i]
