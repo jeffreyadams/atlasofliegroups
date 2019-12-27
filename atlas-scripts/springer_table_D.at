@@ -52,18 +52,30 @@ orbits=rd.orbits then
 index=first(for O in orbits do O.diagram_normalized=O_SO.diagram_normalized od) in 
 orbits[index]
 
-set out_D(Partition P)=
-let a=P~[1] then
-b=P~[0] in
-P~[1]:=b;P~[0]:=a;P
+{outer automorphism of orbits in type D: switch
+last two coordinates of O.diagram
+corresponds to changing sign of  last coordinate of O.H}
+set out_D(vec diagram)=
+let a=diagram~[1] in
+diagram~[1]:=diagram~[0];diagram~[0]:=a;diagram
 
+{see page 423 of Carter
+ambiguity in map from partitions to orbits:
+ map is 1 to 2 on partitions with all even parts
+ don't need to resolve this ambiguity here,
+ but it is necessary when defining the Springer correspondence
+ below
+}
 
 set partition_of_orbit_D(ComplexNilpotent O)=
 assert(let (type,)=O.root_datum.simple_type in type="D","Not an orbit in type D");
 let orbit_partitions=partitions_D(O.root_datum.rank) then
 diagram=O.diagram_normalized then
+{search for the partition mapping to given O}
 index=first(for P in orbit_partitions do complex_nilpotent_D(P).diagram_normalized=diagram od) in
 if index>=0 then orbit_partitions[index] else
+{orbit not in image: must be from very even orbit (all coordinates even)
+ <-> last coordinate of O.H\ne 0}
 let out_diagram=out_D(diagram[0]) then
 index=first(for P in orbit_partitions do complex_nilpotent_D(P).diagram_normalized[0]=out_diagram od) in
 orbit_partitions[index] fi
@@ -87,13 +99,15 @@ springer_D(partition_of_orbit_D(O))
 
 set springer_D(CharacterTable ct,ComplexNilpotent O)=int:
 let (a,b)=springer_D(partition_of_orbit_D(O)) then
-{hard case: a=b, see page 423 of Carter}
+{hard case: a=b, see page 423 of Carter
+see above in partition_of_orbit_D
+}
 rep=if a!=b then
       (a,b).unsplit_irr else
-      {two cases have the same pair (a,b), use O itself to distinguish them}
+      {two cases have the same pair (a,b), use O itself to distinguish them, two choices here}
       let index=first(for P in partitions_D(O.root_datum.rank) do complex_nilpotent_D(P).diagram_normalized=O.diagram_normalized od) in
-       if index>=0 then (false,a).split_irr else
-       (true,a).split_irr fi
+       if index>=0 then (true,a).split_irr else
+       (false,a).split_irr fi
     fi
 then reps=for i:ct.n_classes do  get_irrep_D(ct.classical_reps(i)) od in
 index_D_reps(reps,rep)
