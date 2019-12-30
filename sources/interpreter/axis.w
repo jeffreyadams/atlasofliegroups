@@ -960,7 +960,7 @@ for (wel_const_iterator it(elist); not it.at_end(); ++it)
 method of |containers::sl_list|. In such loops one should not forget
 to \emph{not advance} the iterator in case a node is erased in front of it.
 
-Only if if at least one conflicting type remains do we report an error; if so,
+Only if at least one conflicting type remains do we report an error; if so,
 the type |common| is added as first type to the error object, so that one has
 a complete list of types that caused to balancing to fail.
 
@@ -6018,7 +6018,7 @@ void local_assignment::evaluate(level l) const
 }
 
 @ The type for multiple assignments has to cater for a mixture of global and
-local names present in the destination pattern. This is don by having
+local names present in the destination pattern. This is done by having
 (possibly empty) vectors for both types of destination, and a |Bitmap| telling
 for each name in left-to-right order whether it is global.
 
@@ -6053,7 +6053,7 @@ public:
 };
 
 @ The constructor needs to be defined outside the class definition because it
-sues |copy_id_pat|.
+uses |copy_id_pat|.
 @< Function definitions @>=
 multiple_assignment::multiple_assignment @|
     (const id_pat& lhs,expression_ptr&& r
@@ -6224,27 +6224,31 @@ if ( e.assign_variant->lhs.kind==0x1) // single identifier, do simple assign
 }
 else @< Generate and |return| a |multiple_assignment| @>
 
-@ For traversing the left hand side pattern in a multiple definition, we need
+@ For traversing the left hand side pattern in a multiple assignment, we need
 some semi-local variables, to be accessible from within the recursive function
 but not renewed for each recursive call. The solution of passing around a
 reference to a structure containing those variables is elegantly realised by
-definition the traversal function as a recursive method of that structure (the
-implicit reference |*this| is passed around unchanged).
+definition the traversal function as a recursive method |thread| of that
+structure (the implicit reference |*this| is passed around unchanged). We will
+also use the structure to keep some information after |thread| has completed,
+allowing an additional method |refine| to do some final action at the completion
+of type checking for the multiple assignment.
 
 @< Local class definitions @>=
 struct threader
 { typedef containers::sl_list<multiple_assignment::local_dest> loc_list;
   typedef containers::sl_list<shared_share> glob_list;
 @)
-  const expr& e;
-  loc_list locs;
-  glob_list globs;
-  BitMap is_global;
+  const expr& e; // the multiple assignment expression we are working on
+  loc_list locs; // local variables occurring, in order
+  glob_list globs; // global variables occurring, in order
+  BitMap is_global; // tells how locals and globals are interspersed
   containers::sl_list<std::pair<id_type,const_type_p> > assoc;
+  // types found for them
 @)
   threader (const expr& e) : e(e), locs(), globs(), is_global(), assoc() @+{}
   void thread (const id_pat& pat,type_expr& type); // recursively analyse |pat|
-  void refine () const; // maybe specialise stored identifiers
+  void refine () const; // maybe specialise some stored identifiers
 };
 
 @ The left hand side pattern is traversed in post-order: when there is both an
@@ -6252,7 +6256,10 @@ identifier for the whole and a sub-list, the former is handled after the
 latter. This simplifies testing of type compatibility in the destination
 pattern, where the only possible error now is that a type for a ``parent''
 identifier does not match the (possibly partly specified) tuple type
-established by its children.
+established by its children. The main information obtained by the traversal is
+recorded in the output parameter |type|, which is preferred here over a return
+value because its value is obtained by multiple calls of the |specialise|
+method.
 
 @< Function definitions @>=
 void threader::thread(const id_pat& pat,type_expr& type)
@@ -6277,7 +6284,8 @@ void threader::thread(const id_pat& pat,type_expr& type)
       report_constant_modified(id,e,"multiple assignment");
     is_global.extend_capacity(not is_local);
 @)
-    if (not type.specialise(*id_t)) // incorporate found type into |type|
+    if (not type.specialise(*id_t))
+    // incorporate type found for |id| into |type|
       @< Throw an error to signal type incompatibility for |id| @>
     assoc.push_back(std::make_pair(id,&type));
       // record pointer to |type| for later refinement of |id|
