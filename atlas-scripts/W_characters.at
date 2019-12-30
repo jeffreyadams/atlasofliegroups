@@ -328,6 +328,8 @@ set conjugate_from_classified_standard_Levi (
 { conjugacy test; not complete for composite types with a F4 factor
 use is_conjugate_strong instead (see below)}
 set is_conjugate (WeylElt x,WeylElt y) = bool:
+   {quick false if orders not same}
+   if order(x)!=order(y) then false else
    { there follows a rather complicated and/or expression: }
    let rd=x.root_datum in y.root_datum=rd { easy and necessary } and
    char_poly(matrix(x))=char_poly(matrix(y)) { easy and necessary } and
@@ -345,6 +347,7 @@ in none(for (code,) in factors do code="F" od) { done unless F4 factors } or
    in dominant(rd,alpha)=dominant(rd,beta) { whether these have same length }
    fi
 )))
+fi
 
 { some simple functions that exploit the conjugacy test }
 set conjugacy_class_rep (WeylElt w, [WeylElt] classes) = WeylElt:
@@ -403,6 +406,26 @@ set minimal_representative(WeylElt w)=WeylElt:minimal_representatives(w)[0]
 
 set is_conjugate_strong(WeylElt x,WeylElt y)=bool:
 find(minimal_representatives(x),minimal_representative(y))!=-1
+
+{there appears to be a bug here
+example: 
+
+atlas> set rd=SO(12)
+Variable rd: RootDatum (overriding previous instance, which had type RootDatum)
+atlas> set w=W_elt (rd,[0])
+Variable w: WeylElt (overriding previous instance, which had type WeylElt)
+atlas> set y=W_elt (rd,[1])
+Variable y: WeylElt (overriding previous instance, which had type WeylElt)
+atlas> is_conjugate(w,y)
+Value: true
+atlas> is_conjugate_strong (w,y)
+Value: false
+
+{minimal_representatives does not give all of them:}
+atlas> minimal_representatives(w)
+Value: [<0>]
+}
+
 
 {----------------------------------------------------------------------------}
 
