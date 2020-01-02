@@ -1,7 +1,7 @@
 <basic.at
 <parabolics.at
 {<W_characters.at}
-<character_tables.at
+<character_tables_reductive.at
 <sort.at { for |sort_u@[vec]| }
 <lattice.at { for |restrict_action@(mat,mat)| }
 
@@ -228,6 +228,53 @@ in for w_L@i in classes_L
    do let j=ct_G.class_index(W_elt(rd_G,w_L.matrix))
    in  values_G[j] +:= pi_L[i] * (index * sizes_L[i]/sizes_G[j]).rat_as_int
    od; values_G
+
+{same as previous, except that we're given an embedding of W_L into W_G}
+set induce_character (CharacterTable ct_G,CharacterTable ct_L,(WeylElt->WeylElt) W_embedding,[int] pi_L) =
+       [int]:
+   let rd_G= ct_G.root_datum, rd_L=ct_L.root_datum
+   then index = rat_as_int(order_W(rd_G)/order_W(rd_L))
+   , classes_G=ct_G.class_reps  {[WeylElt] for |G|}
+   , classes_L=ct_L.class_reps  {[WeylElt] for |L|}
+   then values_G= [int]: for c in classes_G do 0 od
+   , sizes_G = ct_G.class_sizes
+   , sizes_L = ct_L.class_sizes
+in for w_L@i in classes_L do
+   let j=ct_G.class_index(W_embedding(w_L))
+   in  values_G[j] +:= pi_L[i] * (index * sizes_L[i]/sizes_G[j]).rat_as_int
+   od; values_G
+
+set embed_W_L(RootDatum rd_G,[int] simple_roots_L,WeylElt w)=WeylElt:
+W_elt(rd_G,for i in w.word do simple_roots_L[i] od)
+
+set embed_W_L(RootDatum rd_G,[int] simple_roots_L)=(WeylElt->WeylElt):
+(WeylElt w):embed_W_L(rd_G,simple_roots_L,w)
+
+set induce_sign(CharacterTable ct_G,[int] simple_roots_L)=[int]:
+let L=Levi_datum(ct_G.root_datum,simple_roots_L) then
+ct_L=character_table(L) in
+induce_character(ct_G,ct_L,embed_W_L(ct_G.root_datum,simple_roots_L),ct_L.sign)
+
+
+set induce_trivial(CharacterTable ct_G,[int] simple_roots_L)=[int]:
+let L=Levi_datum(ct_G.root_datum,simple_roots_L) then
+ct_L=character_table(L) in
+induce_character(ct_G,ct_L,embed_W_L(ct_G.root_datum,simple_roots_L),ct_L.trivial)
+
+set truncated_induce_sign(CharacterTable ct_G,[int] simple_roots_L)=int:
+let L=Levi_datum(ct_G.root_datum,simple_roots_L) then
+n=nr_of_posroots(L) then
+ind=ct_G.decompose(induce_sign(ct_G,simple_roots_L)) then
+rv=##for i:#ind do
+ if ind[i]!=0 and ct_G.degrees[i]=n then
+   if ind[i]!=1 then error("mult not one") else [i] fi
+  else []
+  fi
+od in
+assert(#rv=1,"truncated induced from sign is not irreducible");rv[0]
+
+
+
 
 { the Steinberg character (mainly for testing)}
 
