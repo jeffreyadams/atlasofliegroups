@@ -9,27 +9,35 @@ every odd part has even multiplicity}
 set partitions_D(int n)=[Partition]:
 parity_restricted_partitions(2*n,false)
 
-{ ---------------- type B ------------------}
+{ ---------------- type D ------------------}
 
-{Springer correspondence from nilpotent orbits to representations of W in type B
+{Springer correspondence from nilpotent orbits to representations of W in type D
  orbit: partition -> representation= pair of partitions
  see Carter pg. 419}
 
 {diagram:
 
 ComplexOrbit O            (for SO(2n))
-Partition    P            (for orbit of SO(2n))
-D_irrep                   (for representation of W(SO(2n+1)))
+Partition P               (for orbit of SO(2n))
+D_irrep                   (for representation of W(SO(2n)))
+}
+{from classical_W_classes_and_reps..at:
+
+ D_irrep = { from folding pairs of partitions under swapping }
+   ( ([int],[int]) unsplit_irr { unequal partitions, larger first }
+   | (bool,[int]) split_irr { for pair of equal partitions, with sign }
+                            {switch order to avoid overlap with D_class}
+   )]
 }
 
 set pad([int] v,int N)=v##null(N-#v)
 set pad(ratvec v,int N)=v##null(N-#v)
 
-{valid partition in type B: odd parts have even multiplicity}
+{valid partition in type D: odd parts have even multiplicity}
 set test_D(Partition P)=bool:
 all(for i:max(P) from 1 do if i.is_even then multiplicity(i,P).is_even else true fi od)
 
-{map from partition for an orbit of SO(2n+1) to semisimple element H}
+{map from partition for an orbit of SO(2n) to semisimple element H}
 set semisimple_element_D(Partition P)=
 assert(P.test_D,"Not a valid type D partition");
 let multiplicities=##for i:max(P)+1 from 1 do let m=multiplicity(i,P) in if !=m then [(i,m)] else [] fi od
@@ -81,8 +89,9 @@ index=first(for P in orbit_partitions do complex_nilpotent_D(P).diagram_normaliz
 orbit_partitions[index] fi
 
 {springer map from partition P of 2n to pair of partitions (P,Q) sum(P)+sum(Q)=n}
+{this is weak version of map from orbits to W-reps}
 set springer_D(Partition P)=(Partition,Partition):
-assert(P.test_D,"Not a valid type C partition");
+assert(P.test_D,"Not a valid type D partition");
 let P=sort(P)  {increasing} then
 P=if is_even(#P) then P else 0#P fi {even # of parts} then
 Q=P+for i:#P do i od {add [0,1,2,...,]}
@@ -94,10 +103,10 @@ assert(#v=#w,"error, v and w should have the same size");
 let (a,b)=(delete_leading_zeros(v-for i:#v do i od),delete_leading_zeros( w-for i:#w do i od)) in
 if leq_partitions(b,a) then (reverse_sort(a),reverse_sort(b)) else (reverse_sort(b),reverse_sort(a)) fi
 
-set springer_D(ComplexNilpotent O)=(Partition,Partition):
-springer_D(partition_of_orbit_D(O))
+set springer_D_weak(ComplexNilpotent O)=(Partition,Partition):springer_D(partition_of_orbit_D(O))
 
-set springer_D(CharacterTable ct,ComplexNilpotent O)=int:
+
+set springer_D_old(CharacterTable ct,ComplexNilpotent O)=int:
 let (a,b)=springer_D(partition_of_orbit_D(O)) then
 {hard case: a=b, see page 423 of Carter
 see above in partition_of_orbit_D
@@ -112,10 +121,28 @@ rep=if a!=b then
 then reps=for i:ct.n_classes do  get_irrep_D(ct.classical_reps(i)) od in
 index_D_reps(reps,rep)
 
+{fully valid Springer map:
+ orbit -> pair of partitions (P,Q)
 
+*) if P\ne Q -> unsplit D_irrep  (two distinct partitions)
+
+*) if P=Q then need to use orbit itself (not just the (P,Q))
+   orbit -> Bala Carter Levi L -> truncated_ind(sgn) -> D_irrep
+}
+
+set springer_D(CharacterTable ct,ComplexNilpotent O)=D_irrep:
+let (a,b)=springer_D(partition_of_orbit_D(O)) in
+{hard case: a=b, see page 423 of Carter see above in partition_of_orbit_D}
+if a!=b then
+    (a,b).unsplit_irr 
+else
+    let L=standard_Levi(ct.root_datum,O.Bala_Carter_Levi) then
+    simple_roots_L=for alpha in L.simple_roots do find(ct.root_datum.simple_roots,alpha) od then
+    index=truncated_induce_sign(ct,simple_roots_L)  {an integer}
+    in ct.classical_reps(index).get_irrep_D
+fi
 
 {------------------ duality ----------------------------------}
-
 
 set f([int] P, int i)=int:
 for k:#P-i-1 from i+1 do  if P[k]<P[i]-1 then return k fi od;-1
@@ -160,7 +187,10 @@ complex_nilpotent_D(rd_dual,Q)
 set springer_table_D(CharacterTable ct)=
 let rd=ct.root_datum then
 orbits=rd.orbits then
+reps=for i:ct.n_classes do ct.classical_reps(i).get_irrep_D od then
 dual_map(ComplexNilpotent O)=ComplexNilpotent: dual_map_D(O) then
 dual_map_i(ComplexNilpotent O)=ComplexNilpotent: dual_map_D(O) then
-springer(ComplexNilpotent O)=springer_D(ct,O) in
+springer(ComplexNilpotent O)=index_D_reps(reps,springer_D(ct,O)) in
 (ct,orbits,dual_map,dual_map_i,springer)
+
+{    index_D_reps(reps,rep)}

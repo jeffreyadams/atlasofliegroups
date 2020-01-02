@@ -61,10 +61,15 @@ table)
 set root_datum (CharacterTable ct) = RootDatum:ct.class_rep(0).root_datum { at least one class exists }
 set rank(CharacterTable ct)=ct.lie_type.rank
 set class_reps(CharacterTable ct)=[WeylElt]: for i:ct.n_classes do ct.class_rep(i) od
+set class_representatives(CharacterTable ct)=[WeylElt]: class_reps(ct) {synonym}
 set id_class(CharacterTable ct)=first(for j:ct.n_classes do ct.class_reps[j].length=0 od)
 set dimension (CharacterTable ct) = (int i) int: ct.table[i,ct.id_class]
+
 set class_index(CharacterTable ct)=(WeylElt -> int): (WeylElt w):
- first(ct.n_classes,(int i): is_conjugate(ct.class_reps[i],w))
+  first(ct.n_classes,(int i): is_conjugate(ct.class_reps[i],w))
+set character_value(CharacterTable ct, int class)=(int i) int:ct.table[i,class]
+{since id_class(ct) is slow, in loops it is better to use
+character_value(ct,id_class)(i) where id_class is pre-computed}
 set centralizer_order(CharacterTable ct)=(int->int):(int i): ct.centralizer_orders[i]
 set class_size(CharacterTable ct)=(int->int):(int i): ct.class_sizes[i]
 set character(CharacterTable t)=(int->[int]):(int i):(^t.table)[i]
@@ -323,8 +328,8 @@ and ct.sym_powers_reflection is the default [[int]]:[], then calculate it
 and "silently" update ct
 }
 set update_sym_powers_reflection_old(CharacterTable ct)=CharacterTable:
- prints("Computing S^k(ref), K=1..",ct.root_datum.nr_of_posroots);
- let sym_powers_reflection=for i:ct.root_datum.nr_of_posroots+1 do prints(i); ct.sym_power(ct.reflection,i) od 
+{ prints("Computing S^k(ref), K=1..",ct.root_datum.nr_of_posroots);}
+ let sym_powers_reflection=for i:ct.root_datum.nr_of_posroots+1 do {prints(i);} ct.sym_power(ct.reflection,i) od 
  then ()=ct.sym_powers_reflection:=sym_powers_reflection in ct
 
 
@@ -475,11 +480,12 @@ ct.class_rep(i).to_string
 ] od)
 
 set show_reps(CharacterTable ct)=void:
+let id_class=ct.id_class in 
 tabulate(
 ["i","dim", "degree","name"]#
 for i:ct.n_classes do
 [i.to_string,
-ct.dimension(i).to_string,
+character_value(ct,id_class)(i).to_string,
 ct.degree(i).to_string,ct.irreducible_label(i).to_string] od)
 
 set show(CharacterTable ct)=void:
@@ -590,7 +596,7 @@ let profile_short=mat:profile_long[:4,:] then
 {apply the same permutation to profile_long}
 permutation=find_permutation(profile_short_1,profile_short) then
 profile_long_1=for j in permutation do columns(profile_long)[j] od  then
-()=prints("profile_long_1:",^profile_long_1) then
+{()=prints("profile_long_1:",^profile_long_1) then}
 (profile_2,table_2)=sort_by_profile(profile_long_1,table_1) in
 (profile_long_1,profile_2,table_2)
 
@@ -614,7 +620,6 @@ let ct_1=sort_by_profile(ct,powers) then
 (,profile_1,table_1)=sort_by_profile(profile_long,table,powers) in 
 assert(profile(ct_1,powers)=profile_1,"profiles don't match"); 
 ct_1.table:=table_1;ct_1
-
 
 
 

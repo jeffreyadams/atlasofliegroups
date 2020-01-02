@@ -1,5 +1,5 @@
 <cells.at
-<springer_reductive.at
+<springer_tables_reductive.at
 <K_highest_weights.at
 <springer_tables.at
 
@@ -186,7 +186,7 @@ let (index,M)=find_isomorphism_permutation(for st in springer_tables do st.root_
    if index!=-1 then
      prints("reusing SpringerTable for ",rd.derived.nice_format);(springer_tables[index],springer_tables) else
      prints("computing new SpringerTable for ",rd.derived.nice_format);
-     let new_table=springer_table_reductive(rd) in (new_table,springer_tables#new_table)
+     let new_table=springer_table(rd) in (new_table,springer_tables#new_table)
 fi
 
 {same as previous, run over a set of dual orbits}
@@ -200,7 +200,7 @@ od
 
 {assuming O_check is integral, see st=springer_table_reductive(G.root_datum)}
 set weak_packet_integral(ComplexNilpotent O_check,RealForm G)=
-let st=springer_table_reductive(G.root_datum) in
+let st=springer_table(G.root_datum) in
 weak_packet(st,O_check,G)
 
 {given an orbit O_check on the dual side
@@ -288,7 +288,7 @@ rd=O_check.root_datum.dual then
 ()=prints("gamma:",gamma) then
 ()=prints("gamma_final:",gamma_final) then
 rd_int=integrality_datum(rd,gamma) then
-st_int=springer_table_reductive(rd_int) then
+st_int=springer_table(rd_int) then
 (valid,permutation)=isomorphism_permutation(st_int.root_datum,rd_int.derived) then
 ()=prints("rd_int:",rd_int, new_line, "st_int.rd: ", st_int.root_datum) then
 ()=assert(valid,"can't find isomorphism of rd_int and st_int.root_datum") then
@@ -308,7 +308,7 @@ rd=O_check.root_datum.dual then
 ()=prints("gamma:",gamma) then
 ()=prints("gamma_final:",gamma_final) then
 rd_int=integrality_datum(rd,gamma) then
-st_int=springer_table_reductive(rd_int) then
+st_int=springer_table(rd_int) then
 (valid,permutation)=isomorphism_permutation(st_int.root_datum,rd_int.derived) then
 ()=prints("rd_int:",rd_int, new_line, "st_int.rd: ", st_int.root_datum) then
 ()=assert(valid,"can't find isomorphism of rd_int and st_int.root_datum") then
