@@ -184,10 +184,14 @@ let wp=weak_packet_int(st_int,O_check_int,all,gamma_final,permutation) in wp od
 
 set find_springer_table([SpringerTable] springer_tables,RootDatum rd)=(SpringerTable,[SpringerTable]):
 let (index,M)=find_isomorphism_permutation(for st in springer_tables do st.root_datum  od,rd) in
-   if index!=-1 then
-     if wp_verbose then prints("reusing SpringerTable for ",rd.derived.nice_format) fi;(springer_tables[index],springer_tables) else
-     if wp_verbose then prints("computing new SpringerTable for ",rd.derived.nice_format) fi;
-     let new_table=springer_table(rd) in (new_table,springer_tables#new_table)
+{to disable reusing springer tables uncomment the next line:}
+{let index=-1 in}
+if index!=-1 then
+  if wp_verbose then prints("reusing SpringerTable for ",rd.derived.nice_format) fi;
+  (springer_tables[index],springer_tables)
+else
+  if wp_verbose then prints("computing new SpringerTable for ",rd.derived.nice_format) fi;
+  let new_table=springer_table(rd) in (new_table,springer_tables#new_table)
 fi
 
 {same as previous, run over a set of dual orbits}
