@@ -700,7 +700,7 @@ for (a,b,c,d) in values do
 let d_string=if =c-d then d.to_string else d+"(" + (c-d).to_string + ")" fi in
 [a.nice_format,b.to_string, c.to_string, d_string,(b-d).to_string] od)
 
-
+{
 set groups1=[SL(3),SL(4),SL(5),Sp(4),SO(7),SO(9)]
 set groups=[SL(3),SL(4),SL(5),SO(7),SO(9),SO(11),SO(13),Sp(4),Sp(6),Sp(8),Sp(10),Sp(12),SO(8),SO(10),SO(12),
 simply_connected(G2),
@@ -708,3 +708,4 @@ simply_connected(F4),
 simply_connected(E6),
 simply_connected(E7),
 simply_connected(E8)]
+}

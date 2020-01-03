@@ -4,7 +4,7 @@
 <conjugate.at
 <springer_tables.at
 
-set cells_verbose=true
+set cells_verbose=false
 
 set #(WCell cell)=int:let (a,b)=cell in #a 
 set parameters([Param] block,WCell cell)=[Param]:
@@ -66,14 +66,14 @@ if cells_verbose then prints("given AV/gamma: st: ", st.root_datum, new_line, " 
 prints(" springer(O)=",springer_O) fi;
 }
 ##for (block,cells)@i in blocks_and_cells do
-  if cells_verbose then prints("doing block ",i , " of size ", #block,new_line, "number of cells: ", #cells) fi;
+  if {cells_verbose}true then prints("doing block ",i , " of size ", #block,new_line, "number of cells: ", #cells) fi;
  ##for cell@j in cells do
-  if cells_verbose then prints("block ",i,"/cell ",j, " of size ", #cell) fi;
+  if {cells_verbose} true then prints("block ",i,"/cell ",j, " of size ", #cell) fi;
     let spec=st.ct.special_character(cell) in
 {    let spec=special_character(st.ct,cell,st.root_datum.simple_roots) in}
     if spec=springer_O then
    ##for p in parameters(block,cells[j]) do if I_will_survive(p,gamma) then
-   prints("survive:", p, " ", gamma);
+   if cells_verbose then    prints("survive:", p, " ", gamma) fi;
 [(i,j,first_param(T_irr(p,gamma)))] else [] fi od
   else []
   fi
@@ -92,18 +92,15 @@ if cells_verbose then prints("given AV/gamma: st: ", st.root_datum, new_line, " 
 prints(" springer(O)=",springer_O) fi;
 }
 ##for (block,cells)@i in blocks_and_cells do
-  if cells_verbose then prints("doing block ",i , " of size ", #block, new_line,"number of cells: ", #cells) fi;
+  if {cells_verbose} true then prints("doing block ",i , " of size ", #block, new_line,"number of cells: ", #cells) fi;
  ##for cell@j in cells do
-  if cells_verbose then prints("  block ",i,"/cell ",j, " of size ", #cell) fi;
+  if {cells_verbose} true then prints("  block ",i,"/cell ",j, " of size ", #cell) fi;
     let spec=special_character_permuted(st.ct,cell,inverse(permutation)) in
 {    let ()=prints("got spec", spec) in}
 {    let spec=special_character(st.ct,cell,st.root_datum.simple_roots) in}
     if spec=springer_O then
    ##for p in parameters(block,cells[j]) do if I_will_survive(p,gamma) then
-      prints("survive:", p, " ", gamma);
-prints("translating irreducible ", p, " to ", gamma);
 let p_translated=first_param(T_irr(p,gamma)) in
-prints("result of translation: ", p_translated);
 [(i,j,p_translated)] else [] fi od
   else []
   fi
