@@ -2,12 +2,12 @@
 <nilpotent_orbits.at
 
 {the first part of this file was previously character_table_E6.at}
-set rd=simply_connected(E6)
-set W_order=order_W(rd)
+set rd_E6=simply_connected(E6)
+set W_order=order_W(rd_E6)
 set class_size(WeylElt w)=W_order\w.centralizer_order
 
-set orbits=rd.orbits
-set wct=W_class_table(rd)
+set orbits=rd_E6.orbits
+set wct=W_class_table(rd_E6)
 set wct_classes=wct.class_representatives()
 set classes_E6=wct_classes
 set class_centralizer_sizes_E6=for w in classes_E6 do w.centralizer_order od

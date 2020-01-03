@@ -92,6 +92,9 @@ set degree(CharacterTable ct)=(int -> int):(int i):ct.degrees[i]
 set trivial(CharacterTable ct)=[int]: for :ct.n_classes do 1 od
 set sign(CharacterTable ct)=[int]: for w in ct.class_reps do minus_1^w.length od  {sgn}
 set reflection(CharacterTable ct)=[int]:for w in ct.class_reps do w.matrix.trace od    {reflection}
+set tensor_sign(CharacterTable ct,[int] char)=[int]:tensor(ct.sign,char)
+set tensor_sign(CharacterTable ct)=([int]->[int]):([int] char):tensor_sign(ct,char)
+
 
 set sym_powers_reflection([WeylElt] list)=
 let rd=list[0].root_datum then
@@ -120,7 +123,7 @@ assert(lt.is_simple,"LieType is not simple");
 let rd=simply_connected(lt) then
 W_order=order_W(rd) then
 class_size(WeylElt w)=W_order\w.centralizer_order then
-orbits=rd.orbits then
+{orbits=rd.orbits then}
 classes=rd.W_class_table.class_representatives() then
 class_centralizer_sizes=for w in classes do w.centralizer_order od then
 class_sizes=for w@i in classes do W_order\class_centralizer_sizes[i] od then

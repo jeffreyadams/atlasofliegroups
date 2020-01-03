@@ -311,7 +311,7 @@ for x@i in list do if x.is_split
 od;
 ((split,map_split),(unsplit,map_unsplit))
 
-set index_D_reps([D_irrep] list,D_irrep rep)=
+set index_D_reps([D_irrep] list,D_irrep rep)=int:
 let ((split,map_split),(unsplit,map_unsplit))=split_and_unsplit_reps(list) in
  if rep.is_split then
   let (boolean,P)=rep.split_irrep then

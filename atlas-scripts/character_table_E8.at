@@ -1,0 +1,72 @@
+<e8_gap.at {load the information from gap}
+<e8_magma.at {load the information from gap}
+<nilpotent_orbits.at
+<sym_powers_reflection_E8.at  {precomputed}
+
+{atlas character table for W(E8)}
+{see character_table_E8.txt}
+
+set e8_table=^e8_gap_table
+set e8_profile=e8_gap_profile
+{set e8_table=^e8_magma_table
+set e8_profile=e8_magma_profile}
+{set rd=simply_connected(E8)}
+
+{swap columns of the character table, but not
+the conjugacy classes themselves}
+set swap_columns(CharacterTable ct,[(int,int)] swaps)=
+let table=ct.table then
+table_new=table in
+for (a,b) in swaps do
+ table_new[a]:=table[b];
+ table_new[b]:=table[a]
+od;
+ct.table:=table_new;
+ct
+
+set update_irreducible_labels_E8(CharacterTable ct)=CharacterTable:
+let label=(int->string):
+(int i):
+  let dim=if ct.dimension(i)>0 then ct.dimension(i).to_string else "*" fi then
+  degree= if #ct.degrees>0 then ct.degree(i).to_string else "*" fi in
+  "(" + dim + "," + degree + ")"
+in
+ct.irreducible_label:=label;
+ct
+
+
+set character_table_E8_0()=CharacterTable:
+let init=initialize_character_table(simply_connected(E8)) in
+init:=init.update_irreducible_labels_E8;
+init
+  
+
+{permute columns to match gap columns (order,size,det,trace)}
+set character_table_E8_1()=
+let ct_0=character_table_E8_0() in
+set_table(ct_0,e8_profile,^e8_table)
+
+{checking by hand: need to swap columns 100,101}
+set character_table_E8_2()=
+let ct_1=character_table_E8_1() in
+swap_columns(ct_1,[(100,101)])
+
+{this is the complete calculation, including degrees, but it is slow}
+set character_table_E8()=
+let ct=character_table_E8_2() in
+ct:=ct.update_sym_powers_reflection;
+ct:=ct.update_degrees;
+ct
+
+set character_table_E8_precomputed()=
+let ct=character_table_E8_2() in
+ct.sym_powers_reflection:=e8_sym_powers_reflection;
+ct:=ct.update_degrees;
+ct
+
+{this is the special test which fails if the columns are wrong}
+set test(CharacterTable ct)=
+let S=ct.sym_power(ct.reflection,3) in
+for i:ct.n_classes do ct.inner(ct.characters[i],S) od
+
+{set st=springer_table_E8(ct)} 
