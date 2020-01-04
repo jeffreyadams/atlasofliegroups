@@ -470,3 +470,16 @@ tabulate(
 od
 #["Total",grand_total.to_string]
 )
+
+
+set export([Param] parameters)=void:
+prints("set parameters=[");
+for p@i in parameters do
+ let comma=if i<#parameters-1 then "," else "" fi then
+ (,n)=%p.x, lambda=p.lambda, nu=p.nu in
+ prints("parameter(G,",n,",",lambda,",",nu,")",comma) od;
+prints("]")
+
+
+set export_parameters([[(int,int,Param)]] packets)=void:
+export(parameters(packets))
