@@ -1,0 +1,31 @@
+{multiplication of a square integer matrix times
+a square sparse matrix on the right}
+
+{S given by set of triples (a,b,c)
+where (a,b,c) denotes c in row a/column b}
+
+set_type sparse_mat=[(int,int,int)]
+
+set *(mat M,sparse_mat S)=mat:
+let n=#M then
+rv=null(n,n) in
+for (a,b,c) in S do
+rv[b]+:=c*M[a] od;rv
+
+{turn a sparse_mat into a mat}
+set matrix(sparse_mat S, int n)=
+let rv=null(n,n) in
+for (a,b,c) in S do rv[a,b]:=c od;rv
+
+{turn a mat into a sparse_mat}
+set sparse_matrix(mat M)=
+let rv=[(int,int,int)]:[] in
+for i:#M do
+ for j:#M do
+  if M[i,j]!=0 then rv#:=(i,j,M[i,j]) fi
+ od
+od;rv
+
+{test sparse multiplication}
+set test_times(mat M,sparse_mat S)=bool:
+M*S=M*matrix(S,#M)
