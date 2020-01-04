@@ -3,6 +3,7 @@
 <W_characters.at
 <sort.at { for |sort_u@[vec]| }
 <lattice.at { for |restrict_action@(mat,mat)| }
+<sparse.at
 
 { data type for representation of W
   operators[i] is the matrix of the action of simple generator #i
@@ -121,8 +122,18 @@ set cell_action (WCell cell,[int] w) = mat:
      for i:#w-1 from 1 do result:=cell_action(cell,w~[i])*result od; result
   fi
 
+{. matrix of action of product of simple reflections on a cell .}
+set cell_action_sparse (WCell cell,[int] w) = mat:
+  let n=#cell.graph in
+  if =#w then id_mat(n)
+  else let result=cell_action(cell,w[0]) in
+     for i:#w-1 from 1 do result:=result*sparse_matrix(cell_action(cell,w[i])) od; result
+  fi
+
 {. matrix of action of WeylElt on a cell .}
 set cell_action(WCell cell,WeylElt w) = mat: cell_action(cell,w.word)
+{. matrix of action of WeylElt on a cell .}
+set cell_action_sparse(WCell cell,WeylElt w) = mat: cell_action_sparse(cell,w.word)
 
 {. character of representation of W on cell .}
 set cell_character (WeylClassTable ct,WCell cell) = [int]:
