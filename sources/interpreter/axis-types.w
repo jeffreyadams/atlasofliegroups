@@ -459,6 +459,10 @@ bool specialise(const type_expr& pattern);
 bool can_specialise(const type_expr& pattern) const;
   // tell whether |specialise| would succeed
 @)
+  bool operator== (const type_expr& y) const;
+  bool operator!= (const type_expr& y) const @+{@; return not((*this)==y); }
+  bool is_unstable() const; // whether |undetermined| components elements are present
+@)
 void print(std::ostream& out) const;
 @)
 @< Static methods of |type_expr| that will access |type_map| @>
@@ -796,52 +800,69 @@ component by component.
   // whether both lists terminated
 }
 
-@ Finally we need a comparison for structural equality of type expressions.
-
-@< Declarations of exported functions @>=
-bool operator== (const type_expr& x,const type_expr& y);
-inline bool operator!= (const type_expr& x,const type_expr& y)
-{@; return !(x==y); }
-
-@~This code is quite similar to the |specialise| method; in fact one could
-often use that method instead of the equality operator, but here we want both
-operands to be |const|.
+@ The equality test is quite similar to the |specialise| method; in fact one could
+often use that method in its place, but here we want both operands to be |const|.
 
 @< Function definitions @>=
-bool operator== (const type_expr& x,const type_expr& y)
-{ if (x.raw_kind()!=y.raw_kind())
-  { if (x.raw_kind()!=tabled and y.raw_kind()!=tabled)
-      return false; // different structures
-    return x.raw_kind()==tabled ? x.expansion()==y  : x==y.expansion();
+bool type_expr::operator== (const type_expr& y) const
+{ if (tag!=y.tag)
+  { if (tag!=tabled and y.tag!=tabled) return false; // different structures
+    return tag==tabled ? expansion()==y  : (*this)==y.expansion();
   }
-  switch (x.raw_kind())
+  switch (tag)
   { case undetermined_type: return true;
-    case primitive_type: return x.prim()==y.prim();
+    case primitive_type: return prim_variant==y.prim_variant;
     case function_type:
-      return x.func()->arg_type==y.func()->arg_type
-	 and x.func()->result_type==y.func()->result_type;
-    case row_type: return *x.component_type()==*y.component_type();
+      return func_variant->arg_type==y.func_variant->arg_type @|
+	 and func_variant->result_type==y.func_variant->result_type;
+    case row_type: return *row_variant==*y.row_variant;
     case tuple_type: case union_type:
-       @< Find out and |return| whether all types in |x.tuple()|
-          are equal to those in |y.tuple()| @>
+       @< Find out and |return| whether all types in |tuple_variant|
+          are equal to those in |y.tuple_variant| @>
     case tabled:
-      return x.type_nr()==y.type_nr();
+      return type_number==y.type_number;
       // only equal type numbers give equal types here
   }
   assert(false); return true; // cannot be reached, but compilers don't trust it
 }
 
 @ This module has a familiar structure.
-@< Find out and |return| whether all types in |x.tuple()| are equal to those in
-  |y.tuple()| @>=
+@< Find out and |return| whether all types in |tuple_variant| are equal to
+those in |y.tuple_variant| @>=
 {
-  wtl_const_iterator it0(x.tuple());
-  wtl_const_iterator it1(y.tuple());
+  wtl_const_iterator it0(tuple_variant);
+  wtl_const_iterator it1(y.tuple_variant);
   while (not it0.at_end() and not it1.at_end()
          and *it0==*it1)
     @/{@; ++it0; ++it1; }
   return it0.at_end() and it1.at_end();
   // whether both lists terminated
+}
+
+@ The predicate |is_unstable| checks for the presence of undefined components
+(\.*) in a type (such types are ``unstable'' since the might get modified by
+|specialise|, and in certain places their occurrence could undermine the
+consistency of the type system).
+
+@< Function definitions @>=
+bool type_expr::is_unstable() const
+{ switch (tag)
+  {
+    case undetermined_type: return true;
+    case tabled:  return false; // syntax excludes \.* in tabled types
+    case primitive_type: return false;
+    case function_type:
+      return func_variant->arg_type.is_unstable()
+          or func_variant->result_type.is_unstable();
+    case row_type: return(row_variant->is_unstable());
+    case tuple_type: case union_type:
+    {
+      for (wtl_const_iterator it(tuple_variant); not it.at_end(); ++it)
+        if (it->is_unstable()) return true;
+      return false;
+    }
+  }
+  assert(false); return true; // cannot be reached, but compilers don't trust it
 }
 
 @*2 Storage of defined, possibly recursive, types.
