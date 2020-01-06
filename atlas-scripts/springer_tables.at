@@ -21,13 +21,14 @@ set special_closure(SpringerTable st)=(ComplexNilpotent->ComplexNilpotent):(Comp
 
 {orbit is special if O=special_closure(O)}
 set is_special(SpringerTable st,ComplexNilpotent O)=bool:
-st.special_closure(O)=O
+if is_even(O) then true else st.special_closure(O)=O fi
 
-set is_special(SpringerTable st)=(ComplexNilpotent->bool): (ComplexNilpotent O):is_special(st,O)
+set is_special(SpringerTable st)=(ComplexNilpotent->bool): (ComplexNilpotent O):
+is_special(st,O)
 
 {all special orbits}
 set special_orbits(SpringerTable st)=[ComplexNilpotent]:
-##for O in st.orbits do if st.is_special(O) then [O] else [] fi od
+##for O in st.ct.root_datum.orbits do if st.is_special(O) then [O] else [] fi od
 
 {ComplexNilpotent given by diagram}
 set orbit_by_diagram(SpringerTable st,[vec] diagram)=ComplexNilpotent:

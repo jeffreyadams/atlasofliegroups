@@ -273,6 +273,18 @@ rv=##for i:#ind do
 od in
 assert(#rv=1,"truncated induced from sign is not irreducible");rv[0]
 
+set truncated_induce_trivial(CharacterTable ct_G,[int] simple_roots_L)=int:
+let L=Levi_datum(ct_G.root_datum,simple_roots_L) then
+n=nr_of_posroots(L) then
+ind=ct_G.decompose(induce_trivial(ct_G,simple_roots_L)) then
+rv=##for i:#ind do
+ if ind[i]!=0 and ct_G.degrees[i]=n then
+   if ind[i]!=1 then error("mult not one") else [i] fi
+  else []
+  fi
+od in
+assert(#rv=1,"truncated induced from sign is not irreducible");rv[0]
+
 
 
 
