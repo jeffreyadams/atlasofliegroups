@@ -17,36 +17,68 @@ for beta in rd.simple_roots do
  let (success,w)=conjugate_to(rd,alpha,beta) in
  if success then return(w) fi od ;id_W(rd)
 
-
 set cell_action_permuted(WCell cell, int i, (int->int) permutation)=mat:
 cell_action(cell,permutation(i))
-
 set cell_action_permuted(WCell cell, int i, [int]  permutation)=mat:
 cell_action(cell,permutation[i])
-
 set cell_action_permuted(WCell cell, int i, mat permutation)=mat:
 cell_action(cell,first(for j:#permutation do permutation[i][j]=1 od))
 
-set cell_action_permuted(WCell cell,[int] w,(int->int) permutation)=
+set cell_action_permuted_orig(WCell cell,[int] w,(int->int) permutation)=
   let n=#cell.graph in
   if =#w then id_mat(n)
   else let result=cell_action_permuted(cell,w~[0],permutation) in
      for i:#w-1 from 1 do result:=cell_action_permuted(cell,w~[i],permutation)*result od; result
   fi
 
-set cell_action_permuted(WCell cell,[int] w,[int] permutation)=
+set cell_action_permuted_orig(WCell cell,[int] w,[int] permutation)=
   let n=#cell.graph in
   if =#w then id_mat(n)
   else let result=cell_action_permuted(cell,w~[0],permutation) in
      for i:#w-1 from 1 do result:=cell_action_permuted(cell,w~[i],permutation)*result od; result
   fi
 
-set cell_action_permuted(WCell cell,[int] w,mat permutation)=
+set cell_action_permuted_orig(WCell cell,[int] w,mat permutation)=
   let n=#cell.graph in
   if =#w then id_mat(n)
   else let result=cell_action_permuted(cell,w~[0],permutation) in
      for i:#w-1 from 1 do result:=cell_action_permuted(cell,w~[i],permutation)*result od; result
   fi
+
+{----------------- sparse versions ------------}
+set cell_action_permuted_sparse(WCell cell,[int] w,(int->int) permutation)=
+  let n=#cell.graph in
+  if =#w then id_mat(n)
+  else let result=cell_action_permuted(cell,w~[0],permutation) in
+     for i:#w-1 from 1 do result:=cell_action_permuted(cell,w~[i],permutation)*result od; result
+  fi
+
+set cell_action_permuted_sparse(WCell cell,[int] w,[int] permutation)=
+  let n=#cell.graph in
+  if =#w then id_mat(n)
+  else let result=cell_action_permuted(cell,w~[0],permutation) in
+     for i:#w-1 from 1 do result:=cell_action_permuted(cell,w~[i],permutation)*result od; result
+  fi
+
+set cell_action_permuted_sparse(WCell cell,[int] w,mat permutation)=
+  let n=#cell.graph in
+  if =#w then id_mat(n)
+  else let result=cell_action_permuted(cell,w~[0],permutation) in
+     for i:#w-1 from 1 do result:=cell_action_permuted(cell,w~[i],permutation)*result od; result
+  fi
+{------------choose original or sparse-------------}
+{sparse:}
+set cell_action_permuted(WCell cell,[int] w,(int->int) permutation)=cell_action_permuted_sparse(cell,w,permutation)
+set cell_action_permuted(WCell cell,[int] w,[int] permutation)=cell_action_permuted_sparse(cell,w,permutation)
+set cell_action_permuted(WCell cell,[int] w,mat permutation)=cell_action_permuted_sparse(cell,w,permutation)
+
+{original:}
+{
+set cell_action_permuted(WCell cell,[int] w,(int->int) permutation)=cell_action_permuted_orig(cell,w,permutation)
+set cell_action_permuted(WCell cell,[int] w,[int] permutation)=cell_action_permuted_orig(cell,w,permutation)
+set cell_action_permuted(WCell cell,[int] w,mat permutation)=cell_action_permuted_orig(cell,w,permutation)
+}
+
 
 set cell_action_permuted(WCell cell,WeylElt w,(int->int) permutation) = mat: cell_action_permuted(cell,w.word,permutation)
 set cell_action_permuted(WCell cell,WeylElt w,[int] permutation) = mat: cell_action_permuted(cell,w.word,permutation)
@@ -93,7 +125,7 @@ for rd_list@i in list do let (success,M)=isomorphism_permutation(rd_list.derived
  if success then return (i,M) fi od;(-1,null(0,0))
 
 {rest is not used currently:}
-
+{
 {. matrix of action of arbitrary root reflection on a cell.}
 set cell_action (WCell cell,RootDatum rd,vec alpha) = mat:
 let w=conjugate_to_simple(rd,alpha) in
@@ -117,3 +149,4 @@ if #summands>1 then error("not unique special representation") elif
 #summands=0 then error("no special summands?") else summands[0] fi
 
 set special_character(CharacterTable ct,[vec] roots)=(WCell->int):(WCell cell):special_character(ct,cell,roots)
+}
