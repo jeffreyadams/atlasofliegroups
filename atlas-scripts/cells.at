@@ -92,11 +92,12 @@ if cells_verbose then prints("given AV/gamma: st: ", st.root_datum, new_line, " 
 {for p in params do prints(p.infinitesimal_character) od;
 prints(" springer(O)=",springer_O) fi;
 }
+if (sparse) then prints("Using sparse multipliction") else prints("Using ordinary (non-sparse) multipliction") fi;
 ##for (block,cells)@i in blocks_and_cells do
   if cells_verbose then prints("doing block ",i , " of size ", #block, new_line,"number of cells: ", #cells) fi;
  ##for cell@j in cells do
-  if cells_verbose then prints("  block ",i,"/cell ",j, " of size ", #cell) fi;
-    let spec=special_character_permuted(st.ct,cell,inverse(permutation),sparse) in
+  if {cells_verbose} true  then prints("  block ",i,"/cell ",j, " of size ", #cell) fi;
+    let spec=special_character_permuted(st.ct,cell,inverse(permutation)) in
 {    let ()=prints("got spec", spec) in}
 {    let spec=special_character(st.ct,cell,st.root_datum.simple_roots) in}
     if spec=springer_O then

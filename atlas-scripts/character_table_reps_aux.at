@@ -1,7 +1,7 @@
 <character_table_reps.at
 <lietypes.at
 <conjugate.at
-
+<sparse.at
 set sparse=true
 
 set permute([WeylElt] W,(int->int) permutation)=[WeylElt]:
@@ -37,20 +37,24 @@ set cell_action_permuted_sparse(WCell cell,WeylElt w,mat permutation)=
      for i:#w.word-1 from 1 do result:=result*sparse_matrix(cell_action_permuted(cell,w.word[i],permutation)) od; result
   fi
 
-set cell_character_permuted (CharacterTable ct,WCell cell,mat permutation,bool original_or_sparse) = [int]:
-if original_or_sparse then 
+set cell_character_permuted (CharacterTable ct,WCell cell,mat permutation) = [int]:
+if sparse then 
  for w in ct.class_reps do trace(cell_action_permuted_orig(cell,w,permutation)) od
 else
  for w in ct.class_reps do trace(cell_action_permuted_sparse(cell,w,permutation)) od
 fi
 
-set special_character_permuted(CharacterTable ct,WCell cell,mat permutation,bool original_or_sparse)=
-let summands=smallest_degree_summands(ct,ct.decompose(cell_character_permuted(ct,cell,permutation,original_or_sparse))) in
+set special_character_permuted(CharacterTable ct,WCell cell,mat permutation)=
+{if sparse then
+prints("special_character_permuted: sparse version (sparse=true)")
+else
+prints("special_character_permuted: original version (sparse=false)") fi;}
+let summands=smallest_degree_summands(ct,ct.decompose(cell_character_permuted(ct,cell,permutation))) in
 if #summands>1 then error("not unique special representation") elif
 #summands=0 then error("no special summands?") else summands[0] fi
 
-set special_character_permuted(CharacterTable ct,mat permutation,bool original_or_sparse)=(WCell->int):(WCell cell):
-special_character_permuted(ct,cell,permutation,original_or_sparse)
+set special_character_permuted(CharacterTable ct,mat permutation,bool sparse)=(WCell->int):(WCell cell):
+special_character_permuted(ct,cell,permutation)
 
 set isomorphism_permutation(RootDatum rd_1,RootDatum rd_2)=(bool,mat):
 assert(rd_1.is_semisimple and rd_2.is_semisimple,"root data must be semisimple");

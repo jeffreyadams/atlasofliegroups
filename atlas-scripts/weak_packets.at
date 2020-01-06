@@ -471,7 +471,6 @@ od
 #["Total",grand_total.to_string]
 )
 
-
 set export([Param] parameters)=void:
 prints("set parameters=[");
 for p@i in parameters do
