@@ -2,6 +2,8 @@
 <lietypes.at
 <conjugate.at
 
+set sparse=true
+
 set permute([WeylElt] W,(int->int) permutation)=[WeylElt]:
 for w in W do if length(w)=0 then w else W_elt(W[0].root_datum,for i in w.word do permutation(i) od) fi od
 
@@ -17,98 +19,38 @@ for beta in rd.simple_roots do
  let (success,w)=conjugate_to(rd,alpha,beta) in
  if success then return(w) fi od ;id_W(rd)
 
-set cell_action_permuted(WCell cell, int i, (int->int) permutation)=mat:
-cell_action(cell,permutation(i))
-set cell_action_permuted(WCell cell, int i, [int]  permutation)=mat:
-cell_action(cell,permutation[i])
 set cell_action_permuted(WCell cell, int i, mat permutation)=mat:
 cell_action(cell,first(for j:#permutation do permutation[i][j]=1 od))
 
-set cell_action_permuted_orig(WCell cell,[int] w,(int->int) permutation)=
-  let n=#cell.graph in
-  if =#w then id_mat(n)
-  else let result=cell_action_permuted(cell,w~[0],permutation) in
-     for i:#w-1 from 1 do result:=cell_action_permuted(cell,w~[i],permutation)*result od; result
+set cell_action_permuted_orig(WCell cell,WeylElt w,mat permutation)=
+  let n={prints("original");}#cell.graph in
+  if =#w.word then id_mat(n)
+  else let result=cell_action_permuted(cell,w.word~[0],permutation) in
+     for i:#w.word-1 from 1 do result:=cell_action_permuted(cell,w.word~[i],permutation)*result od; result
   fi
 
-set cell_action_permuted_orig(WCell cell,[int] w,[int] permutation)=
-  let n=#cell.graph in
-  if =#w then id_mat(n)
-  else let result=cell_action_permuted(cell,w~[0],permutation) in
-     for i:#w-1 from 1 do result:=cell_action_permuted(cell,w~[i],permutation)*result od; result
+{sparse version}
+set cell_action_permuted_sparse(WCell cell,WeylElt w,mat permutation)=
+  let n={prints("sparse");}#cell.graph in
+  if =#w.word then id_mat(n)
+  else let result=cell_action_permuted(cell,w.word[0],permutation) in
+     for i:#w.word-1 from 1 do result:=result*sparse_matrix(cell_action_permuted(cell,w.word[i],permutation)) od; result
   fi
 
-set cell_action_permuted_orig(WCell cell,[int] w,mat permutation)=
-  let n=#cell.graph in
-  if =#w then id_mat(n)
-  else let result=cell_action_permuted(cell,w~[0],permutation) in
-     for i:#w-1 from 1 do result:=cell_action_permuted(cell,w~[i],permutation)*result od; result
-  fi
+set cell_character_permuted (CharacterTable ct,WCell cell,mat permutation,bool original_or_sparse) = [int]:
+if original_or_sparse then 
+ for w in ct.class_reps do trace(cell_action_permuted_orig(cell,w,permutation)) od
+else
+ for w in ct.class_reps do trace(cell_action_permuted_sparse(cell,w,permutation)) od
+fi
 
-{----------------- sparse versions ------------}
-set cell_action_permuted_sparse(WCell cell,[int] w,(int->int) permutation)=
-  let n=#cell.graph in
-  if =#w then id_mat(n)
-  else let result=cell_action_permuted(cell,w~[0],permutation) in
-     for i:#w-1 from 1 do result:=cell_action_permuted(cell,w~[i],permutation)*result od; result
-  fi
-
-set cell_action_permuted_sparse(WCell cell,[int] w,[int] permutation)=
-  let n=#cell.graph in
-  if =#w then id_mat(n)
-  else let result=cell_action_permuted(cell,w~[0],permutation) in
-     for i:#w-1 from 1 do result:=cell_action_permuted(cell,w~[i],permutation)*result od; result
-  fi
-
-set cell_action_permuted_sparse(WCell cell,[int] w,mat permutation)=
-  let n=#cell.graph in
-  if =#w then id_mat(n)
-  else let result=cell_action_permuted(cell,w~[0],permutation) in
-     for i:#w-1 from 1 do result:=cell_action_permuted(cell,w~[i],permutation)*result od; result
-  fi
-{------------choose original or sparse-------------}
-{sparse:}
-set cell_action_permuted(WCell cell,[int] w,(int->int) permutation)=cell_action_permuted_sparse(cell,w,permutation)
-set cell_action_permuted(WCell cell,[int] w,[int] permutation)=cell_action_permuted_sparse(cell,w,permutation)
-set cell_action_permuted(WCell cell,[int] w,mat permutation)=cell_action_permuted_sparse(cell,w,permutation)
-
-{original:}
-{
-set cell_action_permuted(WCell cell,[int] w,(int->int) permutation)=cell_action_permuted_orig(cell,w,permutation)
-set cell_action_permuted(WCell cell,[int] w,[int] permutation)=cell_action_permuted_orig(cell,w,permutation)
-set cell_action_permuted(WCell cell,[int] w,mat permutation)=cell_action_permuted_orig(cell,w,permutation)
-}
-
-
-set cell_action_permuted(WCell cell,WeylElt w,(int->int) permutation) = mat: cell_action_permuted(cell,w.word,permutation)
-set cell_action_permuted(WCell cell,WeylElt w,[int] permutation) = mat: cell_action_permuted(cell,w.word,permutation)
-set cell_action_permuted(WCell cell,WeylElt w,mat permutation) = mat: cell_action_permuted(cell,w.word,permutation)
-
-set cell_character_permuted (CharacterTable ct,WCell cell,(int->int) permutation) = [int]:
-  for w in ct.class_reps do trace(cell_action_permuted(cell,w,permutation)) od
-set cell_character_permuted (CharacterTable ct,WCell cell,[int] permutation) = [int]:
-  for w in ct.class_reps do trace(cell_action_permuted(cell,w,permutation)) od
-set cell_character_permuted (CharacterTable ct,WCell cell,mat permutation) = [int]:
-  for w in ct.class_reps do trace(cell_action_permuted(cell,w,permutation)) od
-
-set special_character_permuted(CharacterTable ct,WCell cell,(int->int) permutation)=
-let summands=smallest_degree_summands(ct,ct.decompose(cell_character_permuted(ct,cell,permutation))) in
+set special_character_permuted(CharacterTable ct,WCell cell,mat permutation,bool original_or_sparse)=
+let summands=smallest_degree_summands(ct,ct.decompose(cell_character_permuted(ct,cell,permutation,original_or_sparse))) in
 if #summands>1 then error("not unique special representation") elif
 #summands=0 then error("no special summands?") else summands[0] fi
 
-set special_character_permuted(CharacterTable ct,WCell cell,[int] permutation)=
-let summands=smallest_degree_summands(ct,ct.decompose(cell_character_permuted(ct,cell,permutation))) in
-if #summands>1 then error("not unique special representation") elif
-#summands=0 then error("no special summands?") else summands[0] fi
-
-set special_character_permuted(CharacterTable ct,WCell cell,mat permutation)=
-let summands=smallest_degree_summands(ct,ct.decompose(cell_character_permuted(ct,cell,permutation))) in
-if #summands>1 then error("not unique special representation") elif
-#summands=0 then error("no special summands?") else summands[0] fi
-
-set special_character_permuted(CharacterTable ct,(int->int) permutation)=(WCell->int):(WCell cell):special_character_permuted(ct,cell,permutation)
-set special_character_permuted(CharacterTable ct,[int] permutation)=(WCell->int):(WCell cell):special_character_permuted(ct,cell,permutation)
-set special_character_permuted(CharacterTable ct,mat permutation)=(WCell->int):(WCell cell):special_character_permuted(ct,cell,permutation)
+set special_character_permuted(CharacterTable ct,mat permutation,bool original_or_sparse)=(WCell->int):(WCell cell):
+special_character_permuted(ct,cell,permutation,original_or_sparse)
 
 set isomorphism_permutation(RootDatum rd_1,RootDatum rd_2)=(bool,mat):
 assert(rd_1.is_semisimple and rd_2.is_semisimple,"root data must be semisimple");
