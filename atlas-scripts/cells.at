@@ -1,6 +1,6 @@
 <lietypes.at
 <conjugate.at
-<character_table_reps_aux.at
+<character_table_reps.at
 <conjugate.at
 <springer_tables.at
 <sparse.at
@@ -92,7 +92,6 @@ if cells_verbose then prints("given AV/gamma: st: ", st.root_datum, new_line, " 
 {for p in params do prints(p.infinitesimal_character) od;
 prints(" springer(O)=",springer_O) fi;
 }
-if (sparse) then prints("Using sparse multipliction") else prints("Using ordinary (non-sparse) multipliction") fi;
 ##for (block,cells)@i in blocks_and_cells do
   if cells_verbose then prints("doing block ",i , " of size ", #block, new_line,"number of cells: ", #cells) fi;
  ##for cell@j in cells do
