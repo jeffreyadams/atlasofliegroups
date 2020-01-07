@@ -5,11 +5,11 @@
 <springer_tables.at
 <sparse.at
 
-set cells_verbose=true
+set cells_verbose=false
 
-set #(WCell cell)=int:let (a,b)=cell in #a 
+set #(WCell cell)=int:let (a,b)=cell in #a
 set parameters([Param] block,WCell cell)=[Param]:
-let (labels,)=cell in for i in labels do block[i] od 
+let (labels,)=cell in for i in labels do block[i] od
 
 set parameters([Param] block,[WCell] cells)=[Param]:
 ##for cell in cells do parameters(block,cell) od
@@ -70,7 +70,7 @@ prints(" springer(O)=",springer_O) fi;
   if cells_verbose then prints("doing block ",i , " of size ", #block,new_line, "number of cells: ", #cells) fi;
  ##for cell@j in cells do
   if cells_verbose then prints("block ",i,"/cell ",j, " of size ", #cell) fi;
-    let spec=st.ct.special_character(cell) in 
+    let spec=st.ct.special_character(cell) in
 {    let spec=special_character(st.ct,cell,st.root_datum.simple_roots) in}
     if spec=springer_O then
    ##for p in parameters(block,cells[j]) do if I_will_survive(p,gamma) then
@@ -98,9 +98,8 @@ prints(" springer(O)=",springer_O) fi;
  ##for cell@j in cells do
   if {cells_verbose} true  then prints("  block ",i,"/cell ",j, " of size ", #cell) fi;
     let spec=special_character_permuted(st.ct,cell,inverse(permutation)) in
-    let ()=prints("got spec", spec) in
 {    let spec=special_character(st.ct,cell,st.root_datum.simple_roots) in}
-    if spec=springer_O then 
+    if spec=springer_O then
    ##for p in parameters(block,cells[j]) do let ()=prints("p=",p, " ", p.real_form) in  if I_will_survive(p,gamma) then
       prints("survive:", p, " ", gamma);
 {prints("translating irreducible ", p, " to ", gamma);}

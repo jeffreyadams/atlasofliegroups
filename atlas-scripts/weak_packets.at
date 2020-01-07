@@ -6,7 +6,6 @@ set wp_verbose=false
 
 {weak Arthur packets}
 
-
 {SpringerTable: table of Springer data, see springer_tables.at
  NOTE: this must be the SpringerTable for the integral root system
  ComplexNilpotent: complex orbit for integral dual group
@@ -194,15 +193,6 @@ else
   let new_table=springer_table(rd) in (new_table,springer_tables#new_table)
 fi
 
-{same as previous, run over a set of dual orbits}
-{set weak_packets([SpringerTable] springer_tables,[ComplexNilpotent] dual_orbits,[Param] params)=
-for O_check in dual_orbits do
- let rd_int=integrality_datum(O_check.root_datum.dual,O_check.H/2) then
- st=find_springer_table(springer_tables,rd_int) in
- weak_packet(st,O_check,params,O_check.H/2)
-od
-}
-
 {assuming O_check is integral, see st=springer_table_reductive(G.root_datum)}
 set weak_packet_integral(ComplexNilpotent O_check,RealForm G)=
 let st=springer_table(G.root_datum) in
@@ -262,23 +252,31 @@ dual_integral_orbits=integral_descents(st_int,O_check) in
 set chop([ComplexNilpotent] orbits)=[ComplexNilpotent]:
 if #orbits=0 then orbits else for i:#orbits-1 from 1 do orbits[i] od fi
 
-set rec_fun weak_packets([SpringerTable] springer_tables,[ComplexNilpotent] orbits,RealForm G,[[(int,int,Param)]] params)=([[(int,int,Param)]],[SpringerTable]):
-if =#orbits then (params,springer_tables) else
+{extract just the parameters from [(int,int,Param)] (output of weak_packet(..)}
+set parameters([(int,int,Param)] triples)=[Param]:for (,,p) in triples do p od
+
+set parameters([[(int,int,Param)]] packet)=[Param]:
+{##for triple in packet do for (,,p) in triple do p od od}
+##for triple in packet do parameters(triple) od
+
+set rec_fun weak_packets([SpringerTable] springer_tables,[ComplexNilpotent] orbits,RealForm G,[[(int,int,Param)]] packets)=
+([Param],[[(int,int,Param)]],[SpringerTable]):
+if =#orbits then (parameters(packets),packets,springer_tables) else
   let ()=prints(new_line,"----------------------------------------------------------------------------");
  prints("Computing weak packet for orbit: ",new_line, "H=", orbits[0].H, " diagram=", orbits[0].diagram)  in
  let (wp,new_tables)=weak_packet(springer_tables,orbits[0],G) in
- params#:=wp; weak_packets(new_tables,chop(orbits),G,params) fi
+ packets#:=wp; weak_packets(new_tables,chop(orbits),G,packets) fi
 
-set weak_packets([SpringerTable] springer_tables,[ComplexNilpotent] orbits,RealForm G)=([[(int,int,Param)]],[SpringerTable]):
-weak_packets(springer_tables,orbits,G,[[(int,int,Param)]]:[])
+set weak_packets([SpringerTable] springer_tables,[ComplexNilpotent] orbits,RealForm G)=
+([Param],[[(int,int,Param)]],[SpringerTable]):weak_packets(springer_tables,orbits,G,[[(int,int,Param)]]:[])
 
-set weak_packets([ComplexNilpotent] orbits,RealForm G)=([[(int,int,Param)]],[SpringerTable]):
+set weak_packets([ComplexNilpotent] orbits,RealForm G)=([Param],[[(int,int,Param)]],[SpringerTable]):
 weak_packets([SpringerTable]:[],orbits,G,[[(int,int,Param)]]:[])
 
-set weak_packet(ComplexNilpotent orbit,RealForm G)=([[(int,int,Param)]],[SpringerTable]):
+set weak_packet(ComplexNilpotent orbit,RealForm G)=([Param],[[(int,int,Param)]],[SpringerTable]):
 weak_packets([SpringerTable]:[],[orbit],G,[[(int,int,Param)]]:[])
 
-set weak_packets(RealForm G)=([[(int,int,Param)]],[SpringerTable]):
+set weak_packets(RealForm G)=([Param],[[(int,int,Param)]],[SpringerTable]):
 weak_packets([SpringerTable]:[],G.dual_orbits,G,[[(int,int,Param)]]:[])
 
 
@@ -353,14 +351,6 @@ if wp_verbose then prints("weak_packets(G) with G=",G) fi;
 }
 
 {reporting functions}
-
-{extract just the parameters from [(int,int,Param)] (output of weak_packet(..)}
-set parameters([(int,int,Param)] triples)=[Param]:for (,,p) in triples do p od
-
-{extract just the parameters from [[(int,int,Param)]] (output of weak_packets(...)}
-set parameters([[(int,int,Param)]] packet)=[Param]:
-{##for triple in packet do for (,,p) in triple do p od od}
-##for triple in packet do parameters(triple) od
 
 set mult([[(int,int,Param)]] packet)=((int,int,int)->int):(int orbit,int block,int cell):
 let rv=0 in
