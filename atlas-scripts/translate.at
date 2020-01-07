@@ -67,6 +67,11 @@ set Psi(ParamPol P,ratvec gamma,[int] v)= ParamPol:
    for w@q in P do rv+:=w*translate_by(q,shift) od;rv
 
 {true if translation of irreducible parameter p to gamma is non-zero}
+{set I_will_survive_int(Param p,ratvec gamma)=bool:
+let rd=p.root_datum then
+tau=p.tau in
+all(for i:rd.ss_rank do  rd.simple_coroots[i]*gamma != 0 or find(tau,i)=-1 od)}
+
 set I_will_survive_int(Param p,ratvec gamma)=bool:
 let rd=p.root_datum then
 tau=p.tau in
@@ -76,10 +81,8 @@ all(for i:rd.ss_rank do  rd.simple_coroots[i]*gamma != 0 or find(tau,i)=-1 od)
 true if translation of irreducible parameter p to gamma is non-zero}
 set I_will_survive(Param p,ratvec gamma)=bool:
 let rd=p.root_datum then
-rd_int=integrality_datum(rd,gamma) then
-tau=p.tau in
-all(for i:rd_int.ss_rank do  rd_int.simple_coroots[i]*gamma != 0 or find(tau,i)=-1 od)
-
+rd_int=integrality_datum(rd,gamma) in
+all(for i:rd_int.ss_rank do  rd_int.simple_coroots[i]*gamma != 0 or not is_descent(i,p) od)
 
 
 set T_irr(Param p,ratvec v)=ParamPol:
