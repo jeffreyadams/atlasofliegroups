@@ -19,13 +19,13 @@ rv
 {multiply integer matrix M by sparse
 matrix S: M*S
 }
-set *(mat M,sparse_mat S)=mat:
+set times(mat M,sparse_mat S)=mat:
 let n=#M then
 rv=null(n,n) in
 for (a,b,c) in S do
 rv[b]+:=c*M[a] od;rv
 
-set times(mat M,sparse_mat S)=mat:
+set *(mat M,sparse_mat S)=mat:
 let n=#M then
 {do columns 0,1,...,n-1 in that order}
 S_by_col=arrange_by_columns(S,n) in
