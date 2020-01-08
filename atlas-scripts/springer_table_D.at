@@ -274,12 +274,12 @@ springer(ComplexNilpotent O)=index_D_reps(reps,springer_D(ct,O)) in
 
 set show_D(SpringerTable st)=
 let orbits=st.root_datum.orbits in
-tabulate(
+tabulate(["i","partition","O","d(O)","dd(O)","pi","special"] #
  for O@i in orbits do
   let O_d=prints(i);st.dual_map(O) then
   O_dd=st.dual_map_i(O_d) then
   special=st.is_special(O) then
   sigma_index=st.springer(O) then
   sigma=st.ct.classical_reps(sigma_index).get_irrep_D in
-  [i.to_string,O.diagram.to_string,O_d.diagram.to_string,O_dd.diagram.to_string,sigma.to_string,special.to_string]
+  [i.to_string,O.partition_of_orbit_D.to_string,O.diagram.to_string,O_d.diagram.to_string,O_dd.diagram.to_string,sigma.to_string,special.to_string]
  od)
