@@ -6,7 +6,7 @@ set negative_terms(Param p)=[(Param,int)]:
      fi; if s_part(c)!=0 then b:=1 fi; if a*b=1 then prints("The LKT is indefinite.")
      fi; let
    result=[(Param,int)]:[] in
-   for (k,q) in %P do let npart=b*int_part(k)+a*s_part(k) in
+   for (k,q) in list do let npart=b*int_part(k)+a*s_part(k) in
       if npart!=0 and height(q)=ht then result#:=(q,height(q))
       elif npart!=0 and height(q)>ht and
         none(for (,n) in result do n>ht and height(q)>n od) then
