@@ -1,68 +1,37 @@
-{multiplication of a square integer matrix times
-a square sparse matrix on the right}
+{ multiplication of a square integer matrix times
+  a square sparse matrix on the right}
 
-{S given by set of triples (r,c,v)
-where (r,c,v) denotes v in row r/column c}
+{ S is given by a list of columns, each a list of row number-coefficient pairs }
+set_type [ sparse_column = [(int,int)], sparse_mat=[sparse_column] ]
 
-set_type [sparse_mat=[(int row,int col,int value)]]
-
-set id_sparse_mat(int n)=sparse_mat:for i:n do (i,i,1) od
-
-{group by column}
-set arrange_by_columns(sparse_mat S,int n)=[[(int,int,int)]]:
-let rv=for i:n do [(int,int,int)]:[]  od in
-for (r,c,v) in S do
- rv[c]#:=(r,c,v)
-od;
-rv
-
-{multiply integer matrix M by sparse
-matrix S: M*S
-}
-set times(mat M,sparse_mat S)=mat:
-let n=#M then
-rv=null(n,n) in
-for (a,b,c) in S do
-rv[b]+:=c*M[a] od;rv
-
-set *(mat M,sparse_mat S)=mat:
-let n=#M then
-{do columns 0,1,...,n-1 in that order}
-S_by_col=arrange_by_columns(S,n) in
-{compute each column as a vec before
-putting it in the matrix}
-for i:n do
- let new_col=null(n) in
- for (r,c,v) in S_by_col[i] do
- new_col+:=v*M[r]
- od;
-new_col {this is the i^th column of the answer}
+set sparse(mat M) = sparse_mat:
+for C in M
+do for coef@i in C do if =coef then [] else [(i,coef)] fi od.##
 od
 
-{turn a sparse_mat into a mat}
-set matrix(sparse_mat S, int n)=
-let rv=null(n,n) in
-for (row,col,val) in S do rv[row,col]+:=val od;rv
+set unsparse(sparse_mat S, int height) = mat:
+for C in S do let v=null(height) in for (i,coef) in C do v[i]+:=coef od; v od
 
-{turn a mat into a sparse_mat}
-set sparse_matrix(mat M)=
-let rv=[(int,int,int)]:[] in
-for i:#M do
- for j:#M do
-  if M[i,j]!=0 then rv#:=(i,j,M[i,j]) fi
- od
-od;rv
+set * (mat M, sparse_mat S) = mat:
+for C in S { loop over columns of sparse matrix }
+do (mat: for (i,) in C do M[i] od) * (vec: for (,coef) in C do coef od)
+od
 
 {test sparse multiplication}
 set test_times(mat M,sparse_mat S)=bool:
-M*S=M*matrix(S,#M)
+M*S=M*(unsparse(S,#M))
 
 
-set S=[(0,0,0),(0,1,0),(0,2,3),(3,0,0),(3,2,0),(3,2,1),(1,0,0),(1,0,1),(1,1,1),(2,1,1),(3,2,1),(1,2,3),(0,4,1),(3,3,3),(3,2,3),(3,1,2),(3,2,2)]
+set S= sparse_mat:
+      [[(0,0),(1,0),(2,3),(4,1)]
+      ,[(0,0),(0,1),(1,1),(2,3)]
+      ,[(1,1)]
+      ,[(0,0),(2,0),(2,1),(2,1),(3,3),(2,3),(1,2),(2,2)]
+      ]
 set M=id_mat(5)
-set Smat=matrix(S,5)
+set Smat=unsparse(S,5)
 
-set T=[(0,1,1),(1,0,3),(1,1,4),(0,0,11)]
+set T=sparse_mat: [[(1,1),(0,11)],[(0,3),(1,4)]]
 set N=mat:[[1,2],[3,4]]
 
 set v=[1,0,0,0,0]
