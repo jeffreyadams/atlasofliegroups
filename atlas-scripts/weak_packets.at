@@ -472,3 +472,28 @@ prints("]")
 
 set export_parameters([[(int,int,Param)]] packets)=void:
 export(parameters(packets))
+
+{----------------more output routines---------------------------------}
+
+set weak_packets([RealForm] list)=
+##for G in list do 
+ for H in real_forms(G) do weak_packets(H)
+od
+od
+
+set weak_packets_all_forms(RealForm G)=weak_packets([G])
+
+set weak_packets_all_forms_long(RealForm G)=
+let rf=real_forms(G) then
+m=weak_packets_all_forms(G) in
+for (a,b,)@i in m do prints(rf[i]); show_short(b)
+od
+
+set weak_packets_all_forms_long([RealForm] groups)=void:
+let rf=[RealForm]:[] then
+()= for G in groups do rf##:=real_forms(G) od then
+m=weak_packets(groups) in
+prints(new_line,"Summary of weak packets:");for (a,b,)@i in m do
+prints("------------------------------------------",new_line,rf[i]); show_short(b) od
+
+
