@@ -89,7 +89,7 @@ set cells_table_augmented (CharacterTable ct, [WCell] cells) = mat:
   in matrix_of_inner_products(ct,characters)
 
 set cell_representation (CharacterTable ct,WCell cell) = W_rep:
-  (#cell.graph,for i:ct.lie_type.semisimple_rank do matrix(cell_action(cell,i),#cell.graph) od)
+  (#cell.graph,for i:ct.lie_type.semisimple_rank do unsparse(cell_action(cell,i),#cell.graph) od)
 
 { list of representations defined by an array of cells }
 set cell_representations(CharacterTable ct,[WCell] cells)=[W_rep]:
@@ -139,7 +139,7 @@ cell_action(cell,first(for j:#permutation do permutation[i][j]=1 od))
 set cell_action_permuted(WCell cell,WeylElt w,mat permutation)=mat:
   let n={prints("sparse");}#cell.graph in
   if =#w.word then id_mat(n)
-  else let result=matrix(cell_action_permuted(cell,w.word[0],permutation),#cell.graph) in
+  else let result=unsparse(cell_action_permuted(cell,w.word[0],permutation),#cell.graph) in
      for i:#w.word-1 from 1 do result:=result*cell_action_permuted(cell,w.word[i],permutation) od; result
   fi
 

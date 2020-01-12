@@ -101,22 +101,25 @@ set_type
 {returns a sparse matrix}
 {. matrix of action of i^th simple reflection on a cell .}
 set cell_action (WCell (,graph),int s) = sparse_mat:
-   let rv=sparse_mat:[] in
-   for node@i in graph
-   do if is_member(node.tau)(s)
-      then rv#:=(i,i,-1) 
-      ; for (j,mu) in node.out_list
-        do if not is_member(graph[j].tau)(s) then rv#:=(i,j,mu) fi
-        od
-      else rv#:=(i,i,1) 
-      fi
-   od;rv
+let rv=sparse_mat:[] in
+for node@i in graph
+do 
+ let col=sparse_column:[] in
+ if is_member(node.tau)(s)
+   then col#:=(i,-1)
+   ; for (j,mu) in node.out_list
+     do if not is_member(graph[j].tau)(s) then col#:=(j,mu) fi
+     od
+   else col#:=(i,1) 
+ fi;
+ rv#:=col
+od;rv
 
 {. matrix of action of product of simple reflections on a cell .}
 set cell_action (WCell cell,[int] w) = mat:
   let n=#cell.graph in
   if =#w then id_mat(n)
-  else let result=matrix(cell_action(cell,w[0]),n) in
+  else let result=unsparse(cell_action(cell,w[0]),n) in
      for i:#w-1 from 1 do result:=result*cell_action(cell,w[i]) od; result
   fi
 
@@ -140,7 +143,7 @@ set cells_table_augmented (WeylClassTable ct, [WCell] cells) = mat:
   in matrix_of_inner_products(ct,characters)
 
 set cell_representation (WeylClassTable ct,WCell cell) = W_rep:
-  (#cell.graph,for i:ct.root_datum.semisimple_rank do matrix(cell_action(cell,i),#cell.graph) od)
+  (#cell.graph,for i:ct.root_datum.semisimple_rank do unsparse(cell_action(cell,i),#cell.graph) od)
 
 { list of representations defined by an array of cells }
 set cell_representations(WeylClassTable ct,[WCell] cells)=[W_rep]:
