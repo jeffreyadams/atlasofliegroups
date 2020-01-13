@@ -1,5 +1,6 @@
 <basic.at
 <convert_c_form.at
+<tabulate.at
 
 {.write c-invariant form on standard module as a ParamPol of standardrepKs.}
 set c_form_std = (Param->ParamPol): { never involves |twisted_full_deform| }
@@ -340,7 +341,7 @@ set is_weakly_unitary (Param p) = bool:
 
 { for "big" versions: see extParamPol.at }
 
-set test_line (Param p) = void:
+set test_line_old (Param p) = void:
 ( let (x,lambda_minus_rho,gamma) = %p
   , points=reducibility_points(p)
   ,   ipoints=integrality_points(root_datum(p),2*nu(p))
@@ -360,6 +361,31 @@ set test_line (Param p) = void:
       in prints(nu(p)*t,": ", is_unitary(q))
       ;  prints(nu(p)*points[i],": ", is_unitary(r))
     od
+  fi
+)
+
+set test_line (Param p) = void:
+( let (x,lambda_minus_rho,gamma) = %p
+  , points=reducibility_points(p)
+  ,   ipoints=integrality_points(root_datum(p),2*nu(p))
+  in prints("testing line through ", p)
+; prints("reducibility points: ",points)
+; prints("integrality points (for 2*nu): ",ipoints)
+; if #points=0
+  then prints("entire line is irreducible and unitary"
+             ,if p.at_nu_0.is_final then "" else " (nu=0 is not final)" fi)
+  else points:=(0/1)#points { tack on initial zero }
+  ; if not points[#points-1]=1/1 then points:=points#(1/1) fi
+  ;
+  tabulate(["t","lambda","unitary"]#
+  ##for i:#points-1 from 1
+    do
+      let t=(points[i]+points[i-1])/2
+      then q=param(x,lambda_minus_rho,gamma*t)         { mid point interval }
+      ,    r=param(x,lambda_minus_rho,gamma*points[i]) { end point interval }
+      in [[t.to_string,(nu(p)*t).to_string,is_unitary(q).to_string],
+         [points[i].to_string,(nu(p)*points[i]).to_string,is_unitary(r).to_string]]
+    od)
   fi
 )
 
