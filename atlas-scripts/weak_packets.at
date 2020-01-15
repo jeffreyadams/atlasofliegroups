@@ -183,8 +183,9 @@ let wp=weak_packet_int(st_int,O_check_int,all,gamma_final,permutation) in wp od
 
 set find_springer_table([SpringerTable] springer_tables,RootDatum rd)=(SpringerTable,[SpringerTable]):
 let (index,M)=find_isomorphism_permutation(for st in springer_tables do st.root_datum  od,rd) in
-{to disable reusing springer tables uncomment the next line:}
-{let index=-1 in}
+{thanks to the next line reusing of springer tables is disabled}
+{not recommended: comment the next line to enable reusing of springer tables}
+let index=-1 in
 if index!=-1 then
   if wp_verbose then prints("reusing SpringerTable for ",rd.derived.nice_format) fi;
   (springer_tables[index],springer_tables)
