@@ -1,10 +1,11 @@
 <basic.at
 <parabolics.at
-<cells.at
+{<cells.at}
 {<W_characters.at}
 <character_tables_reductive.at
 <sort.at { for |sort_u@[vec]| }
 <lattice.at { for |restrict_action@(mat,mat)| }
+<W_reps.at
 
 { data type for representation of W
   operators[i] is the matrix of the action of simple generator #i
@@ -69,53 +70,9 @@ set smallest_degree (CharacterTable ct, [int] character) = int:
 set smallest_degree (CharacterTable ct)=([int] -> int): ([int] character):smallest_degree(ct,character)
 set d(CharacterTable ct)= ([int]->int): smallest_degree(ct)
 
-{ ----------- cell representations --------------}
+{-----------------permuted versions of cell representations-----------------}
+{the unpermuted versions are in cells.at}
 
-{. character of representation of W on cell .}
-set cell_character (CharacterTable ct,WCell cell) = [int]:
-  for w in ct.class_reps do trace(cell_action(cell,w)) od
-
-set cell_character(CharacterTable ct)=(WCell -> [int]):
-(WCell cell):cell_character(ct,cell)
-set cell_characters (CharacterTable ct,[WCell] cells) = [[int]]:
-  for cell in cells do cell_character(ct, cell) od
-
-set cells_table (CharacterTable ct,[WCell] cells) = mat:
-  matrix_of_inner_products(ct,cell_characters(ct,cells))
-
-set cells_table_augmented (CharacterTable ct, [WCell] cells) = mat:
-  let characters =
-    cell_characters(ct,cells) ## [ ct.trivial, ct.sign, ct.reflection ]
-  in matrix_of_inner_products(ct,characters)
-
-set cell_representation (CharacterTable ct,WCell cell) = W_rep:
-  (#cell.graph,for i:ct.lie_type.semisimple_rank do unsparse(cell_action(cell,i),#cell.graph) od)
-
-{ list of representations defined by an array of cells }
-set cell_representations(CharacterTable ct,[WCell] cells)=[W_rep]:
-  for cell in cells do cell_representation(ct,cell) od
-
-set smallest_degree_summands(CharacterTable ct,[int] mults)=
-let smallest=-1 then
-indices=[int]:[]  in
-for j:#mults do
- if mults[j]>0 then
- let deg_j=ct.degree(j)
-  in if smallest=-1 or deg_j<smallest then indices:=[j];smallest:=deg_j
-   elif deg_j=smallest  then indices#:=j
-  fi 
- fi
-od;
-indices
-
-set special_character(CharacterTable ct,WCell cell)=
-let summands=smallest_degree_summands(ct,ct.decompose(ct.cell_character(cell))) in
-if #summands>1 then error("not unique special representation") elif
-#summands=0 then error("no special summands?") else summands[0] fi
-
-set special_character(CharacterTable ct)=(WCell->int):(WCell cell):special_character(ct,cell)
-
-{-----------------permuted versions-----------------}
 {computing cell actions in presence of a permutation of the simple roots}
 
 set permute([WeylElt] W,(int->int) permutation)=[WeylElt]:
