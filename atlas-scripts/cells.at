@@ -33,19 +33,6 @@ set cell_representation (CharacterTable ct,WCell cell) = W_rep:
 set cell_representations(CharacterTable ct,[WCell] cells)=[W_rep]:
   for cell in cells do cell_representation(ct,cell) od
 
-set smallest_degree_summands(CharacterTable ct,[int] mults)=
-let smallest=-1 then
-indices=[int]:[]  in
-for j:#mults do
- if mults[j]>0 then
- let deg_j=ct.degree(j)
-  in if smallest=-1 or deg_j<smallest then indices:=[j];smallest:=deg_j
-   elif deg_j=smallest  then indices#:=j
-  fi 
- fi
-od;
-indices
-
 set special_character(CharacterTable ct,WCell cell)=
 let summands=smallest_degree_summands(ct,ct.decompose(ct.cell_character(cell))) in
 if #summands>1 then error("not unique special representation") elif

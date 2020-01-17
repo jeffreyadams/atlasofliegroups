@@ -405,24 +405,19 @@ od
 in ct.degrees:=degrees;
 ct
 
+
 set smallest_degree_summands(CharacterTable ct,[int] mults)=
-let rv=[int]:[-1]  in
+let smallest=-1 then
+indices=[int]:[]  in
 for j:#mults do
  if mults[j]>0 then
  let deg_j=ct.degree(j)
-  in if deg_j>rv[0] then rv:=[j]
-   elif deg_j=rv[0] then rv#:=j
+  in if smallest=-1 or deg_j<smallest then indices:=[j];smallest:=deg_j
+   elif deg_j=smallest  then indices#:=j
   fi 
  fi
 od;
-rv
-{
-set degree (CharacterTable ct, [int] character)=int:
-degree(ct,character,ct.sym_powers)
-
-set degree (CharacterTable ct)=([int] -> int): ([int] character):degree(ct,character)
-set d(CharacterTable ct)= ([int]->int): degree(ct)
-}
+indices
 
 {  representations of W
   copied (and modified) from W_reps.at
@@ -620,12 +615,7 @@ ct1.table:=table1;ct1
 
 set set_table(CharacterTable ct,mat profile_long,mat table,[int] powers)=
 let ct_1=sort_by_profile(ct,powers) then
-(,profile_1,table_1)=sort_by_profile(profile_long,table,powers) in 
-assert(profile(ct_1,powers)=profile_1,"profiles don't match"); 
+(,profile_1,table_1)=sort_by_profile(profile_long,table,powers) in
+assert(profile(ct_1,powers)=profile_1,"profiles don't match");
 ct_1.table:=table_1;ct_1
-
-
-
-
-
 
