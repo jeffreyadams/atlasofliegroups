@@ -91,3 +91,14 @@ i*(st2.ct.n_classes)+j <=st.ct.n_classes-1}
 i*(st2.ct.n_classes)+j in
 (ct,orbits,dual_map,dual_map_i,springer)
 
+
+set show(SpringerTable st)=
+let orbits=st.root_datum.orbits in
+tabulate(["i","O","d(O)","dd(O)","pi","special"] #
+ for O@i in orbits do
+  let O_d=prints(i);st.dual_map(O) then
+  O_dd=st.dual_map_i(O_d) then
+  special=st.is_special(O) then
+  sigma_index=st.springer(O) in
+  [i.to_string,O.diagram.to_string,O_d.diagram.to_string,O_dd.diagram.to_string,sigma_index.to_string,special.to_string]
+ od)

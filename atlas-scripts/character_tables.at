@@ -405,7 +405,6 @@ od
 in ct.degrees:=degrees;
 ct
 
-
 set smallest_degree_summands(CharacterTable ct,[int] mults)=
 let smallest=-1 then
 indices=[int]:[]  in
