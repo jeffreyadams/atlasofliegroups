@@ -1,11 +1,9 @@
 {Load this file to load all recommended .at files}
 <extParamPol.at
-<nilpotent_orbits.at
 <complex.at
 <test_unitarity.at
 <modules.at
 <print_K_types.at
-<tits.at
 <galois.at
 <jantzen.at
 <finite_dimensional_signature.at
@@ -15,22 +13,13 @@
 <hodge_test.at
 <hodge_tensor.at
 <K_Nilpotent.at
-<cyclotomic_Gaussian_elim.at
-<cyclotomicMat.at
-<subgroups.at
-<nilpotent_posets.at
 <exceptionalNilpotentData.at
-<nilpotent_centralizer.at
 <good.at
 <finite_unipotents.at
-<twisted_conjugacy.at
 <weyltosemisimple.at
 <cyclotomic_field_bracket.at
 <tits_centralizer.at
 <bruhat.at
-<springer_tables.at
-<coordinates.at
-<weak_packets.at
 <stable.at
 <GK_dimension.at
 <restricted_roots.at
