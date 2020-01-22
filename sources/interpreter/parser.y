@@ -735,7 +735,7 @@ union_specs: type_field '|' type_field
 ;
 
 type_field : type IDENT { $$.type_pt=$1; $$.ip.kind=0x1; $$.ip.name=$2; }
-	| type'.'{ $$.type_pt=$1; $$.ip.kind=0x0; }
+	| type '.' { $$.type_pt=$1; $$.ip.kind=0x0; }
 ;
 
 type	: PRIMTYPE	{ $$=make_prim_type($1); }
