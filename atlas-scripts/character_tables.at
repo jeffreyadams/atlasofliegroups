@@ -20,7 +20,7 @@ set Cartesian_power([int] x,int n)=[int]:  for v in x do n*v od
 
 set_type
 [ CharacterTable =
-  (LieType lie_type
+  (LieType lie_type  {should be simply connected}
   , int order { of the finite group }
   {conjugacy classes}
   , int n_classes  { number of conjugacy classes}
@@ -58,7 +58,12 @@ degrees		       {[int]}
 table)
 }
 
-set root_datum (CharacterTable ct) = RootDatum:ct.class_rep(0).root_datum { at least one class exists }
+set root_datum (CharacterTable ct) ={ RootDatum:ct.class_rep(0).root_datum { at least one class exists }}
+simply_connected(ct.lie_type)
+{Note: ct.class_rep(0).root_datum might not be the same:
+ in simple type B/D ct.root_datum is simply connected,but
+ ct.class_rep(0).root_datum is SO(n)
+} 
 set rank(CharacterTable ct)=ct.lie_type.rank
 set class_reps(CharacterTable ct)=[WeylElt]: for i:ct.n_classes do ct.class_rep(i) od
 set class_representatives(CharacterTable ct)=[WeylElt]: class_reps(ct) {synonym}

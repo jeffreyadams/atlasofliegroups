@@ -16,7 +16,7 @@ let order=n.fac*2^n, pairs = partition_pairs(n)
   , centralizer_orders = for type in cycles do type.cycle_centralizer_order od
   , sign(bool s) = string: if s then "-" else "+" fi
 in
-  (Lie_type(SO(2*n+1))    {lie_type}  
+  (Lie_type(Spin(2*n+1))    {lie_type}  
   , order    {order (of W)}
   , ncc      {n_classes}
   , (int j) classical_class: conjugacy_classes[j].class_BC
