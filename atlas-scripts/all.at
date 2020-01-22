@@ -20,7 +20,6 @@
 <subgroups.at
 <nilpotent_posets.at
 <exceptionalNilpotentData.at
-<character_tables.at
 <nilpotent_centralizer.at
 <good.at
 <finite_unipotents.at
@@ -29,10 +28,10 @@
 <cyclotomic_field_bracket.at
 <tits_centralizer.at
 <bruhat.at
-<character_tables.at
 <springer_tables.at
 <coordinates.at
 <weak_packets.at
 <stable.at
 <GK_dimension.at
 <restricted_roots.at
+<nonintegral.at
