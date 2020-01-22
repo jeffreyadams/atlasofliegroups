@@ -344,25 +344,19 @@ the symbol \.\$ referring to the last value computed.
 
 @*2 Denotations.
 %
-We call simple constant expressions ``denotations''. There are recognised by
-the scanner, and the parser will build an appropriate node for them, which
-just stores the constant value denoted, or in case of integers the string of
-characters. The latter will be converted below to a |arithmetic::big_int| to be
-stored in the |expr| value.
-
-@< Includes needed... @>=
-#include "bigint.h" // defines |arithmetic::big_int|
-
-@ To keep the size of the |union| in |expr| small, we only use variants that are
-no bigger than a pointer, storing a pointer when more than that is needed. For
-Boolean denotations, the value itself will fit comfortably inside the |struct
-expr@;|. For integers and strings we store a |std::string| value since that
-turns out to have the size of a single pointer; it will provide an example of
-how the special member functions of |expr| should handle non-POD variants (they
-can neither be assigned to non-initialised memory without calling a constructor,
-nor be left in memory that will be reclaimed without calling a destructor). In
-the integer case we leave the conversion from character string to numeric value
-until after type checking.
+We call simple constant expressions ``denotations''. There are recognised by the
+scanner, and the parser will build an appropriate node for them, which just
+stores a value from which an internal \.{axis} value will be constructed after
+type checking. To keep the size of the |union| in |expr| small, we only use
+variants that are no bigger than a pointer, and store a pointer when more than
+that would otherwise be needed. For Boolean denotations, the value itself will
+fit comfortably inside the |struct expr@;|. For integers and strings we store a
+|std::string| value (sharing a single variant) which turns out to have the size
+of a pointer, leaving in the case of integers the conversion from decimal to
+|big_int| to be done later. Storing |std::string| will provide an example of how
+the special member functions of |expr| should handle non-POD variants (they can
+neither be assigned to non-initialised memory without calling a constructor, nor
+be left in memory that will be reclaimed without calling a destructor).
 
 @< Variants of ... @>=
 
@@ -374,15 +368,15 @@ std::string str_denotation_variant;
 @< Enumeration tags for |expr_kind| @>=
 integer_denotation, string_denotation, boolean_denotation, @[@]
 
-@ For most of the variants there is a corresponding constructor that
-placement-constructs the constant value into that variant. For the Boolean
-case we might alternatively have assigned to the field, but not for the
-integer and string variants. Constructors whose arguments other than |loc| have
-easily convertible argument types like |int| or |bool| are given an additional
-tag argument to avoid accidentally invoking an unintended constructor. This
-also removes in particular the danger of accidentally invoking the Boolean
-constructor by accidentally passing some unrelated type by pointer (which
-would implicitly convert to |bool|).
+@ For each of these variants there is a corresponding constructor that
+constructs the constant value into that variant. For the Boolean case we might
+alternatively have assigned to the field, but not for the integer and string
+variants. Constructors whose arguments other than |loc| have easily convertible
+argument types like |int| or |bool| are given an additional tag argument to
+avoid accidentally invoking an unintended constructor. This also removes in
+particular the danger of accidentally invoking the Boolean constructor by
+accidentally passing some unrelated type by pointer (which would implicitly
+convert to |bool|).
 
 @< Methods of |expr| @>=
   struct int_tag @+{}; @+
@@ -399,12 +393,10 @@ would implicitly convert to |bool|).
    , str_denotation_variant(std::move(s))
    , loc(loc) @+{}
 
-@~For more explicit construction of these variants in a dynamically allocated
+@~For more explicit construction of these variants into a dynamically allocated
 |expr| object, we provide the functions below. Note that |make_int_denotation|
 and |make_string_denotation| untypically take a pointer to a |std::string| as
-argument; this is because the value of a string token is maintained on the
-parser stack as a variant of a |union| and so cannot be a type with a
-nontrivial destructor (destruction being handled by explicit calls).
+argument as explained in the next section.
 
 @< Declarations of functions for the parser @>=
 expr_p make_int_denotation (std::string* val_p, const YYLTYPE& loc);
@@ -413,13 +405,17 @@ expr_p make_string_denotation(std::string* val_p, const YYLTYPE& loc);
 
 @~The definition of these functions is quite easy, as will be typical for
 node-building functions. Since the parser stack only contains plain types, the
-argument to |make_int_denotation| and |make_string_denotation| are raw
-pointers to |std::string|, for which they will take care to call |delete|, so
-that the temporarily allocated variable gets cleaned up (as this happens
-whenever a string token becomes an expression, the parser only has to perform
-clean-up during error recovery, when such a token gets popped without becoming
-an expression). We can move from the pointed-to string before it gets
-destroyed, avoiding to copy the string.
+argument to |make_int_denotation| and |make_string_denotation| are raw pointers
+to |std::string|, for which they will take care to have |delete| called, so that
+the temporarily allocated variable gets cleaned up (as this happens whenever a
+string token becomes an expression, the parser only has to perform clean-up
+during error recovery, when such a token gets popped without becoming an
+expression). We move from the pointed-to string before it gets destroyed,
+so the only thing cleaned up is an empty |std::string| shell. The call to
+|delete| is in fact hidden in the destructor of a
+|std::unique_ptr<std::string>| value that is created for this sole purpose, and
+takes place at the point of |return| without interfering with our passing of an
+anonymous pointer as return value.
 
 As a special service to the parser, which for some rules will generate
 integer denotations with the value $0$ not coming from the program text (for
@@ -432,7 +428,7 @@ the value $0$, so we provide that string rather than |"0"| here.
 expr_p make_int_denotation (std::string* val_p, const YYLTYPE& loc)
 { std::unique_ptr<std::string>p(val_p); // this ensures clean-up
   if (val_p==nullptr)
-    p.reset(new std::string); // empty string will convert to $0$
+    p.reset(@[new std::string@]); // empty string will convert to $0$
   return new expr(std::move(*p),loc,expr::int_tag());
 }
 
@@ -440,9 +436,8 @@ expr_p make_bool_denotation(bool val, const YYLTYPE& loc)
 {@; return new expr (val,loc,expr::bool_tag()); }
 
 expr_p make_string_denotation(std::string* val_p, const YYLTYPE& loc)
-{@; expr_p result=new expr(std::move(*val_p),loc,expr::string_tag());
-  delete val_p;
-  return result;
+{ std::unique_ptr<std::string>p(val_p); // this ensures clean-up
+  return new expr(std::move(*val_p),loc,expr::string_tag());;
 }
 
 @ For Boolean denotations there is nothing to destroy. For integer and string

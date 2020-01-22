@@ -195,17 +195,17 @@ kinds of alteration (notably it should not |std::move| from |type| or its
 components).
 
 Upon successful completion, |type| will usually have become completely
-defined. The object |type| should be owned by the caller, who will
+determined. The object |type| should be owned by the caller, who will
 automatically gain ownership of any new nodes added in the process, and
 accessible from |type|. The latter, if it happens, will be caused by calls of
 the |specialise| method for |type|, or for its descendants, within
-|convert_expr|. Although it is a modifiable lvalue reference argument in which
-normally the result of the type analysis is returned, callers should ensure
-that changes to the |type| argument remain local until successful completion,
-so that when the function instead terminates by throwing an exception no
-modifications to |type| will leave permanent traces (any updating of tables
-should be explicitly done using the value of |type| after return from
-|convert_expr|).
+|convert_expr|. It is a modifiable lvalue reference argument in which normally
+the result of the type analysis is returned. It should not be an reference to a
+table entry or other permanent value: any changes to the |type| argument made by
+|convert_expr| should remain locally confined until successful completion, so
+that in case the function should instead terminate by throwing an exception, no
+permanent traces of the call will be left (so any permanent use of |type| should
+be made after return from |convert_expr|).
 
 In some cases |type| will remain partly undefined, like for an emtpy list
 display with an unknown type, which gets specialised only to~`\.{[*]}'. However
@@ -227,29 +227,28 @@ expression_ptr convert_expr(const expr& e, type_expr& type);
 
 @*1 Layers of lexical context.
 %
-In the function |convert_expr| we shall need a type for storing bindings
-between identifiers and types, and this will be the |layer| class. It stores a
-vector of type |layer::vec| of individual bindings, while it automatically
-pushes (a pointer to) itself on a stack |layer::lexical_context| of such
-vectors. Instances of |layer| shall always be stored in ordinary
-(stack-allocated) variables; since their unique constructor pushes the new
-object, and their destructor pops it, |layer::lexical_context| is guaranteed
-to hold at all times a list of references to all current |layer| objects, from
-newest to oldest. This invariant is maintained even in the presence of
-exceptions that may be thrown during type analysis. Since the space on the
-runtime stack occupied by a |vector| is hardly larger than that of the
-reference to it, this is mostly a proof-of-concept, namely that lists can be
-handled with storage for the elements in automatic variables residing in the
-runtime stack. The fact that pushing and popping is automatically managed in
-an exception-safe manner is also cute; however explicitly clearing the list in
-|reset_evaluator| in case of an exception, as used to be done, would also
-work.
+In the function |convert_expr| we shall need a type for storing bindings between
+identifiers and types, and this will be the |layer| class. It stores a vector of
+type |layer::vec| of individual bindings, while it automatically pushes (a
+pointer to) itself on a stack |layer::lexical_context| of such vectors.
+Instances of |layer| shall always be stored in ordinary (stack-allocated)
+variables; since their unique constructor pushes the new object, and their
+destructor pops it, |layer::lexical_context| is guaranteed to hold at all times
+a list of pointers to all current |layer| objects, from newest to oldest. This
+invariant is maintained even in the presence of exceptions that may be thrown
+during type analysis, as the destructors called when the stack unwinds pop the
+pointers to them from the list. The alternative of managing a list of vectors
+directly, as used to be done, would require clearing the list every time program
+analysis has found an error, signalled by throwing an exception. The current
+approach, besides being cute, makes correct handling dependent only on the
+discipline of placing all |layer| instances on the runtime stack (and having
+only one such stack, which means threads cannot be used in program analysis).
 
-We also use this structure to maintain an additional attributes telling
+We also use this structure to maintain additional attributes telling
 whether we are inside a function and how deeply nested inside loops we are.
-This is to facilitate checking the legality of |break| and |return|
+This is to facilitate checking the legality of \&{break} and \&{return}
 expressions. Correct use of these could have been left to the parser at the
-price of increasing the size of the grammar. These attribute may change only
+price of increasing the size of the grammar. These attributes may change only
 when pushing/popping a layer. In most cases such a layer was needed anyway,
 but in some cases (|while| loops) a layer is added specifically to mark this
 change.
@@ -291,13 +290,9 @@ public:
   vec::const_iterator cend() const @+{@; return variable.end(); }
   bool is_const (vec::const_iterator it) const
   @+{@; return constness.isMember(it-cbegin()); }
-  static bool may_break(unsigned depth)
-  {@; return not lexical_context.empty()
-      and lexical_context.front()->loop_depth > depth; }
-  static bool may_return()
-  {@; return not lexical_context.empty()
-      and lexical_context.front()->return_type!=nullptr; }
-  static type_expr& current_return_type()
+  static bool may_break(unsigned depth); // whether \&{break}~|depth| is legal here
+  static bool may_return(); // whether \&{return} is legal here
+  static type_expr& current_return_type() @+
   {@; return *lexical_context.front()->return_type; }
 };
 
@@ -324,6 +319,20 @@ layer::layer(size_t n,type_p return_type) // function or loop layer
 {@; variable.reserve(n); lexical_context.push_front(this); }
 @q layer (size_t n,type_p rt) : layer(n) // delegating constructor @>
 @q @@+{@@; if (rt==nullptr) ++loop_depth; else loop_depth=0,return_type=rt; } @>
+
+@ A statement \&{break}~$n$ breaks out of $n+1$ levels of loops at one, and for
+it to be legal the current |layer|, which must be present, should therefore have
+|loop_depth>n|. For \&{return} to be legal it suffices to be anywhere inside a
+function body, and the above constructors ensure that |return_type!=nullptr| in
+the current layer gives this condition.
+
+@< Function def... @>=
+bool layer::may_break(unsigned depth)
+{@; return not lexical_context.empty()
+      and lexical_context.front()->loop_depth > depth; }
+bool layer::may_return()
+  {@; return not lexical_context.empty()
+      and lexical_context.front()->return_type!=nullptr; }
 
 
 @ The method |add| adds a pair to the vector of bindings; the type is moved
@@ -391,7 +400,7 @@ initially had an unknown component as in `\.{[*]}'. Rather than modifying the
 looked-up type (which is now forbidden), one achieves this by calling
 |layer::specialise| with the |depth| and |offset| returned by |lookup|.
 
-This method must find non-empty layer number |depth|, so it must skip depth
+This method must find non-empty layer number |depth|, so it must skip |depth|
 non-empty layers, and any empty layers separated by them, until reaching the
 non-empty layer that is not to be skipped. The fact that we previously found
 an identifier at |depth| ensures that we do not run off our |lexical_context|.
@@ -422,8 +431,9 @@ expression_ptr convert_expr(const expr& e, type_expr& type)
   {
    @\@< Cases for type-checking and converting expression~|e| against
    |type|, all of which either |return| or |throw| a |type_error| @>
-   case no_expr: assert(false);
+   case no_expr: {} // should not occur
   }
+  assert(false);
   return expression_ptr(nullptr); // keep compiler happy
 }
 
@@ -460,7 +470,7 @@ struct denotation : public expression_base
 
 @ Here are the first examples of the conversions done in |convert_expr|. Each
 time we extract a \Cpp\ value from the |expr| produced by the parser,
-construct and |new|-allocate a \.{axis} value (for instance |int_value|)
+construct and |new|-allocate an \.{axis} value (for instance |int_value|)
 from it making the pointer shared using |std::make_shared|, pass that
 pointer to the |denotation| constructor, and convert the resulting pointer to
 a unique pointer.
@@ -546,11 +556,11 @@ In some cases, notably for facilitating recursive definitions, it is useful to
 have a placeholder expression \&{die} that will assume any type the context
 requires (we even allow an undetermined type, although in its application to
 recursion the type will always be defined). The evaluation of this placeholder
-is not intended, and trying to evaluate is throws a runtime error; for this
-reason the expression is written \&{die}. One could require that a function
-call returns \&{true} by writing ``$f(...)$~\&{or die}''.
+is not intended, and trying to evaluate it throws a runtime error; for this
+reason the expression is written \&{die}. One could require that a call to
+function~$f$ returns |true| by writing ``$f(...)$~\&{or die}''.
 
-These expressions must be representable at runtime, so we define an empty
+These expressions must be representable at run time, so we define an empty
 shell for them.
 
 @< Type definitions @>=
@@ -590,21 +600,36 @@ virtual void print(std::ostream& out) const
 }
 };
 
-@ The break is realised by the \Cpp\ exception mechanism. We shall make sure
-it can only by used in places where it will be caught.
+@ The \&{break} is realised by the \Cpp\ exception mechanism, which allows its
+evaluation to terminate that of intermediate clauses, without burdening the
+latter with the need to test for this possibility. An error type |loop_break| is
+defined for this purpose. During type checking we only allow \&{break} in places
+where it is certain to be caught: inside the required number of nested loops,
+a nesting without any intervening function definition.
 
 @< Function definitions @>=
 void breaker::evaluate (level l) const
 {@; throw loop_break(depth); }
 
 
-@ The only check we do for \&{break} is that it occurs in a loop.
+@ The only check we do for \&{break} is that the lexical context is suitable for
+breaking out of the required number of loops, which number $n+1$ where $n$ is
+the number stored in |e.break_variant|. The test for this condition is performed in
+the method |layer::may_break|.
+
 
 @< Cases for type-checking and converting... @>=
 case break_expr:
 { if (layer::may_break(e.break_variant))
     return expression_ptr(new breaker(e.break_variant));
-  throw expr_error(e,"not in the reach of a loop");
+  if (e.break_variant==0)
+    throw expr_error(e,"Using 'break' not in the reach of any loop");
+  else
+  { std::ostringstream o;
+    o << "Using 'break " << e.break_variant << "' requires " << e.break_variant+1
+    @|<< " nested levels of loops";
+    throw expr_error(e,o.str());
+  }
 }
 
 @*1 The return expression.
@@ -633,25 +658,26 @@ void returner::evaluate (level l) const
 @ For a \&{return} expression we check that it occurs in a function body. From
 the |layer| structure we get a (modifiable) reference
 |layer::current_return_type()| to the return type of the current function,
-which will provide the type context for the expression after~|return|.
+which will provide the type context for the expression after~\&{return}.
 
 @< Cases for type-checking and converting... @>=
 case return_expr:
 { if (layer::may_return())
     return expression_ptr(new @|
       returner(convert_expr(*e.return_variant,layer::current_return_type())));
-  throw expr_error(e,"not inside a function body");
+  throw expr_error(e,"One can only use 'return' within a function body");
 }
 
 @* Tuple displays.
 %
 Tuples are sequences of values of non-uniform type, usually short and with a
 given sequence of types for their components; their most obvious and simple
-use is for argument lists of functions. Without using these tuple types one
-might define function types taking multiple arguments, but then a function
-could still only yield a single value. With tuple types multiple results can
-be produced, and there will be no need to explicitly cater for functions with
-multiple arguments.
+use is for argument lists of functions. Without using these tuple types, one
+might have a mechanism explicitly allowing functions to take multiple arguments,
+as most programming languages do, but that would not allow for functions to
+\emph{return} more than one value. With tuple types, we cater at the same time
+for functions that need multiple arguments and for those that need to return
+multiple results.
 
 Tuple values can be produced by tuple displays, which list explicitly their
 component expressions. After type-checking, they are given by a
@@ -683,35 +709,50 @@ void tuple_expression::print(std::ostream& out) const
 @ When converting a tuple expression, we first try to specialise |type| to a
 tuple type with the right number of unknown components; unless |type| was
 completely undetermined, this just amounts to a test that it is a tuple type
-with the right number of components. Even if the specialisation fails, it need
-not be a type error: the tuple might be convertible to the proper type.
+with the right number of components. But even if this specialisation fails, it
+does not necessarily mean there is a type error: the tuple that the tuple
+expression produces might be convertible to the |type| the context requires.
 (Currently the conversion from a pair of integers to a split integer is the
-unique conversion of this kind that is defined.) For this reason we continue
-to type-check components even when |tuple_expected| is false, using the a
-priori (tuple) type found as starting point for a possible coercion. In this
-case we already know that |type| cannot be specialised to |*tup|, so we call
-|coerce| directly rather than using |conform_types| as happens elsewhere. If
-we do find a type error due to a wrong number of components, this is reported
-via a type pattern; this is probably as clear as mentioning too few or too
-many components explicitly.
+unique conversion of this kind that is defined.) For this reason we continue to
+type-check components even when |tuple_expected| is false, using in this case
+the local variable |tup| to record the a priori (tuple) type of the expression,
+which then serves as starting point for a possible coercion; since we then
+already know that |type| cannot be specialised to |*tup|, we call |coerce|
+directly rather than using |conform_types| as happens elsewhere.
+
+If any type error is reported here (and not from a nested call of
+|convert_expr|), then it must be that |n_tuple_expected| was false, and the call
+to |coerce| did not succeed either. In that case |tup| now holds the a priori
+type of the expression, and |type| is unmodified since entering this case, since
+the only type that changes when specialising to |unknown_tuple(n)| is a
+completely |undetermined_type|, but then |n_tuple_expected| would be true and no
+error would be reported. Therefore the error message given by |type_error|
+describes faithfully the actual and expected type patterns.
 
 @h <memory> // for |std::unique_ptr|
 @< Cases for type-checking and converting... @>=
 case tuple_display:
-{ type_expr tup=unknown_tuple(length(e.sublist));
+{
+  auto n=length(e.sublist);
+  type_expr tup=unknown_tuple(n);
+  bool n_tuple_expected = type.specialise(tup);
+  // whether |type| is a tuple of size~|n|
+@)
+  wtl_iterator tl_it (n_tuple_expected ? type.tuple() : tup.tuple());
+  // traverse either |type| or |tup|
   std::unique_ptr<tuple_expression> tup_exp(new tuple_expression(0));
   std::vector<expression_ptr>& comp = tup_exp->component;
-  comp.reserve(length(e.sublist));
-  bool tuple_expected = type.specialise(tup);
-  // whether |type| is a tuple of correct size
-  wtl_iterator tl_it (tuple_expected ? type.tuple() : tup.tuple());
+  comp.reserve(n);
   for (wel_const_iterator it(e.sublist); not it.at_end(); ++it,++tl_it)
   { comp.push_back(convert_expr(*it,*tl_it));
     if (*tl_it==void_type and not is_empty(*it))
+      // though weird, we allow voiding a component
       comp.back().reset(new voiding(std::move(comp.back())));
   }
+@)
   expression_ptr result(std::move(tup_exp));
-  if (tuple_expected or coerce(tup,type,result))
+    // convert |tup_exp| to a more generic pointer
+  if (n_tuple_expected or coerce(tup,type,result))
     return result;
   throw type_error(e,std::move(tup),type.copy());
 }
@@ -730,10 +771,10 @@ similarly but without preparing a result; we simple leave the component values
 on the execution stack.
 
 The final case is one of the rare occasions where we leave values sitting on
-the |execution_stack| for some time, and the only one where a |break| might
+the |execution_stack| for some time, and the only one where a \&{break} might
 occur at such a point (this should be quite rare, but it is possible). It is
 therefore easier to clean the stack up in the code below, than to mark the
-execution stack before entering any loop that might terminate with |break|,
+execution stack before entering any loop that might terminate with \&{break},
 and resetting it to the marked position when the |loop_break| is caught (in
 particular since there are many kinds of loops that would need consideration).
 However, while we thus localise the clean-up in a single place, this code does
@@ -755,24 +796,27 @@ void tuple_expression::evaluate(level l) const
     { auto result = std::make_shared<tuple_value>(component.size());
       auto dst_it = result->val.begin();
       for (auto it=component.cbegin(); it!=component.cend(); ++it,++dst_it)
-        {@; (*it)->eval(); *dst_it=pop_value(); }
+      @/{@; (*it)->eval(); *dst_it=pop_value(); }
       push_value(result);
     } break;
   case multi_value:
     { auto it=component.begin();
+      // this variable needs to survive |try| into the |catch| blocks
+@)
       try
       {@; for (; it!=component.end(); ++it)
           (*it)->eval();
       }
+@)
       catch (const loop_break&) // clean up execution stack locally
       { for (; it!=component.begin(); --it)
           execution_stack.pop_back();
-        throw; // propagate the |break|
+        throw; // propagate the \&{break}
       }
       catch (const function_return&) // clean up execution stack locally
       { for (; it!=component.begin(); --it)
           execution_stack.pop_back();
-        throw; // propagate the |break|
+        throw; // propagate the \&{return}
       }
     }
   } // |switch(l)|
@@ -907,17 +951,19 @@ void balance
 |broader_eq| relation. If this fails due to incomparable types we move the
 non-conforming type to |conflicts|.
 
-That list also collects types from |balance_error| if thrown directly by one
-of the calls to |convert_expr|. The reason is that it might happen that all of
-the conflicting types can be converted to a final |common| type once it gets
-determined by other branches, so we are prudent here to not propagate the
-error. However, when catching a |balance_error| that was produced in a
-subexpression of the branch we do re-|throw|, as a more specialised type
-|common| cannot salvage in this case: the thrown |balance_error| is in fact
-independent of our current balancing. For the case where we do move the types
-from the |balance_error| to |conflicts|, the fact that they apparently have
-internal incompatibilities means that they can never provide the |common|
-type, which justifies making no comparison with that type.
+That list also collects types from any |balance_error| thrown directly by one of
+the calls to |convert_expr|. The reason is that it might happen that the
+conflicting types causing the |balance_error| can nonetheless all be converted
+to a final |common| that ends up getting chosen due to other branches. So we
+|catch| such an error and just record the types involved; if there ends up being
+a |balance_error| for the parent expression anyway, they will be reported among
+the offending types. However, when catching a |balance_error| that was produced
+in a lower level subexpression, we do re-|throw|, as a more specialised type
+|common| cannot salvage in this case: the thrown |balance_error| is in that case
+independent of our current balancing and to be reported directly. For the case
+where we do move the types from the |balance_error| to |conflicts|, the fact
+that they apparently have internal incompatibilities means that they can never
+provide the |common| type, which justifies making no comparison with that type.
 
 If a branch that produces a maybe salvageable |balance_error| is a list
 display, the type that it will give for our current balancing has an
@@ -960,9 +1006,11 @@ for (wel_const_iterator it(elist); not it.at_end(); ++it)
 method of |containers::sl_list|. In such loops one should not forget
 to \emph{not advance} the iterator in case a node is erased in front of it.
 
-Only if at least one conflicting type remains do we report an error; if so,
-the type |common| is added as first type to the error object, so that one has
-a complete list of types that caused to balancing to fail.
+Only if at least one conflicting type remains do we report an error; if so, the
+type |common| is added as first type to the error object, unless it is unchanged
+from the |undetermined_type| value it was initialised to (which may happen if
+every branch threw a |balance_error| that was caught), so that one has a
+complete list of types that caused to balancing to fail.
 
 
 @< Prune from |conflicts| any types... @>=
@@ -980,7 +1028,8 @@ a complete list of types that caused to balancing to fail.
   else
   { balance_error err(e);
     (err.message += " between ") += description ;
-    err.variants.push_back(std::move(common));
+    if (common.kind()!=undetermined_type)
+      err.variants.push_back(std::move(common));
     err.variants.append(std::move(conflicts));
     throw std::move(err);
   }
@@ -2494,7 +2543,7 @@ the~|body|.
 The stack will be automatically popped when the lifetime of the |frame| ends.
 Usually this happens when we return from the |let_expression::evaluate|, but
 it also happens in case an error is thrown. The latter also includes instances
-of |break| or |return| premature exits from a loop or a user-defined function
+of \&{break} or \&{return} premature exits from a loop or a user-defined function
 in an axis program, which are implemented by throwing and catching specific
 exceptions. In all cases, the static variable |frame::current| will
 automatically be set to the proper value by the |~frame| destructor.
@@ -2897,7 +2946,7 @@ the call completes normally or is terminated by a runtime error. The most
 important advantage of this approach is in case of abnormal exits from loops
 and functions, which are implemented by throwing and catching an exception at
 run-time and will therefore unwind the \Cpp\ stack. (Actually, performing
-|break| from a loop should never lead to destructing any |lambda_frame|,
+\&{break} from a loop should never lead to destructing any |lambda_frame|,
 though it might destruct some |frame|s.)
 
 By naming our frame |fr|, we can textually reuse a |catch| block, as mentioned
@@ -2922,17 +2971,17 @@ void closure_value::apply(expression_base::level l) const
       @< Catch block for providing a trace-back of local variables @>
     }
   } // restore context upon destruction of |fr|
-  @< Catch block for explicit |return| from functions @>
+  @< Catch block for explicit \&{return} from functions @>
 }
 
-@ When the call |f.body.evaluate(l)| ends up executing an explicit |return|
+@ When the call |f.body.evaluate(l)| ends up executing an explicit \&{return}
 expression, it won't have put anything on the |execution_stack|, but the value
 to return will be stored inside the error object. (This is the right thing to
 do in the unlikely case that intermediate values are removed from
 |execution_stack| during the \Cpp\ stack unwinding.) It suffices to place the
 value on the stack, which is just what |push_expanded| does.
 
-@< Catch block for explicit |return| from functions @>=
+@< Catch block for explicit \&{return} from functions @>=
 catch (function_return& err) @+
 {@; push_expanded(l,std::move(err.val)); }
 
@@ -2973,7 +3022,7 @@ void closure_call::evaluate(level l) const
       @< Catch block for providing a trace-back of local variables @>
     }
   } // restore context upon destruction of |fr|
-  @< Catch block for explicit |return| from functions @>
+  @< Catch block for explicit \&{return} from functions @>
   @< Catch block for exceptions thrown within call of |f|... @>
 }
 
@@ -4739,7 +4788,7 @@ list display (except that there is only one expression in this case).
 @< Cases for type-checking and converting... @>=
 case while_expr:
 { while_node& w=*e.while_variant;
-  layer bind(0,nullptr); // no local variables for loop, but allow |break|
+  layer bind(0,nullptr); // no local variables for loop, but allow \&{break}
 @)
   if (type==void_type)
     return expression_ptr@|(make_while_loop (w.flags.to_ulong(),
@@ -5297,7 +5346,7 @@ void for_expression<flags,kind>::evaluate(level l) const
       throw;
     if (l!=no_value)
     { if (out_reversed(flags))
-        // doing |break| in reverse-gathering loop requires a shift
+        // doing \&{break} in reverse-gathering loop requires a shift
         dst=std::move(dst,result->val.end(),result->val.begin());
           // left-align |result|
       result->val.resize(dst-result->val.begin());
@@ -5597,7 +5646,7 @@ case cfor_expr:
     throw type_error(e,row_of_type.copy(),type.copy());
 @)
   if (c.flags[2]) // case of absent loop variable
-  { layer bind(0,nullptr);  // no local variables for loop, but allow |break|
+  { layer bind(0,nullptr);  // no local variables for loop, but allow \&{break}
     expression_ptr body(convert_expr (c.body,*btp));
     if (type!=void_type and *btp==void_type and not is_empty(c.body))
       body.reset(new voiding(std::move(body)));
@@ -5774,7 +5823,7 @@ in \.{[rat]:[*]:[0]}, then the stronger context will be used in the
 conversion. More importantly though, the specialisation now takes
 place \emph{before} the conversion, which in case our cast is a function body
 means that the result type of that function gets specialised before the rest
-of the body is analysed, and any |return| expressions in the body will profit
+of the body is analysed, and any \&{return} expressions in the body will profit
 from the cast's strong type context.
 
 @< Cases for type-checking and converting... @>=
