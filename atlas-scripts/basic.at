@@ -729,6 +729,13 @@ set simply_connected (LieType type) = RootDatum:
 set adjoint (LieType type) = RootDatum:
   adjoint(type,false) { by default prefer roots here }
 
+{define simply_connected and adjoint for RootDatum
+ simply_connected(rd) is a product of simple factors *and* and torus factor
+}
+
+set simply_connected(RootDatum rd)=simply_connected(Lie_type(rd))
+set adjoint(RootDatum rd)=adjoint(Lie_type(rd))
+
 { backwards compatibility function; used to be the built-in prototype }
 set root_datum ([vec] simple_roots, [vec] simple_coroots, int r) = RootDatum:
   root_datum(r#simple_roots,r#simple_coroots,false)

@@ -28,16 +28,17 @@ if not cl.is_split then
  if #P+#Q=0
   then id_W(trivial_group)  {special case}
  else
-  let rd=Spin(2*(sum(P)+sum(Q))) then
-  M=conjugacy_class_C(Q,P {note switch here}).matrix in W_elt(rd,M)
+  let rd=SO(2*(sum(P)+sum(Q))) then
+  M=conjugacy_class_C(Q,P {note switch here}).matrix
+  in lift_sc(W_elt(rd,M))  {lift_sc: W(SO) -> W(Spin)}
  fi
 else
  let (P,Bool)=cl.split_class then
- rd=Spin(2*sum(P)) then
-  M=conjugacy_class_C([int]:[],P).matrix in 
-  if Bool then W_elt(rd,M) else
+ rd=SO(2*sum(P)) then
+  M=conjugacy_class_C([int]:[],P).matrix in
+  if Bool then lift_sc(W_elt(rd,M)) else
    let delta=distinguished_involution(inner_class(rd,"u")) in
-   W_elt(rd, delta*M*delta)
+   lift_sc(W_elt(rd, delta*M*delta)) {lift_sc: W(SO) -> W(Spin)}
  fi
 fi
 

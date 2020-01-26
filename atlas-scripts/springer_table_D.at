@@ -207,7 +207,7 @@ let rd=ct.root_datum then
 {this sign is correct in types D_4 and D_6 by explicit calculation
 see springerD6.txt
 }
-  if sign*val*(-1)^(n\2)>0 then (false,a).split_irr.irrep_D.get_irrep_D else pi_true.get_irrep_D fi
+  if sign*val*(-1)^(n\2)<0 then (false,a).split_irr.irrep_D.get_irrep_D else pi_true.get_irrep_D fi
 
 { this is correct but very slow:}
 {    let L=standard_Levi(ct.root_datum,O.Bala_Carter_Levi) then
@@ -304,32 +304,21 @@ set test_duality_D(int n)=
 let all=partitions_D(n) in
 tabulate(
 for P in all do [P.to_string,P.D_dual.D_dual.to_string] od)
-{
-set springer_D_inverse(CharacterTable ct,D_irrep sigma)=ComplexNilpotent:
-let orbits=ct.root_datum.orbits then
-index=index_D_reps(for orbit in orbits do springer_D(ct,orbit) od,sigma) in
-orbits[index]
 
-set dual_map_D(CharacterTable ct,ComplexNilpotent O_D)=ComplexNilpotent:
-let P=partition_of_orbit_D(O_D) then
-Q=D_dual(P) then
-rd_dual=O_D.root_datum.dual in
-if not is_very_even(P) then complex_nilpotent_D(rd_dual,Q)
-else
- {orbit -> D_irrep -> character chi -> chi_sgn -> D_irrep -> nilpotent}
- let sigma=springer_D(ct,O_D) {D_irrep} then
- sigma_sgn=ct.tensor_sign_D(sigma) {D_irrep} in
- springer_D_inverse(ct,sigma_sgn)
-fi
+{Dangerous bend:
+ the SpringerTable hash (simple) simply connected root datum 
+ We'll be given an orbit for a given Root Datum rd,
+   which isn't necessarily simply connected
+ Need to pass to simply connected root datum, using orbit_by_diagram
 }
-
 set springer_table_D(CharacterTable ct)=
-let rd=ct.root_datum then
+let rd=ct.root_datum {simply connected} then
 orbits=rd.orbits then
 reps=for i:ct.n_classes do ct.classical_reps(i).get_irrep_D od then
 springer_hash_reps=springer_D_by_hash(ct) {ComplexNilpotent->D_irrep} then
-springer(ComplexNilpotent O)=  {=int}
- let rep = springer_hash_reps(O) in index_D_reps(reps,rep) then
+springer(ComplexNilpotent O_0 {not necessarily for sc group})=  {=int}
+ let O=orbit_by_diagram(rd,[O_0.diagram]) then
+ rep = springer_hash_reps(O) in index_D_reps(reps,rep) then
 dual_map(ComplexNilpotent O)=ComplexNilpotent:
  let P=partition_of_orbit_D(O) then
  Q=D_dual(P) then
@@ -339,11 +328,12 @@ dual_map(ComplexNilpotent O)=ComplexNilpotent:
   {orbit -> D_irrep -> character chi -> chi_sgn -> D_irrep -> nilpotent}
   let sigma=springer_hash_reps(O) {D_irrep} then
   sigma_sgn=ct.tensor_sign_D(sigma) {D_irrep} then
-{  springer_D_inverse(ct,sigma_sgn)}
   index=index_D_reps(for O in orbits do springer_hash_reps(O) od ,sigma_sgn) in 
   orbits[index]
  fi then
-dual_map_i(ComplexNilpotent O)=ComplexNilpotent: dual_map(O) in
+dual_map_i(ComplexNilpotent O {for adjoint group})=
+let O_lift=orbit_by_diagram(rd,[O.diagram])  {orbit in simply connected group} in
+dual_map(O_lift) in
 (ct,orbits,dual_map,dual_map_i,springer)
  
 {
