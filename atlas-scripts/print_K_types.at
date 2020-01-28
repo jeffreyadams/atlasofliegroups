@@ -84,7 +84,7 @@ values=
 set print_branch_std_long (ParamPol P,KGBElt x,int bound) = void:
 let header=["m","x","lambda","hw","dim","height"] then
 values=
-  for (mult,q) in sort_by_height(branch_irr(P,bound))
+  for (mult,q) in sort_by_height(branch_std(P,bound))
   do let hw=highest_weights(q,x)[0] in
   [mult.split_as_int.to_string,let (,n)=%q.x in n.to_string,q.lambda.to_string,let (,v)=highest_weight_plain(hw)in v.to_string,dimension(LKT(q)).to_string,height(q).to_string] od in
     tabulate(header#values)
