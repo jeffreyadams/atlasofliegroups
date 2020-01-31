@@ -2360,7 +2360,7 @@ shared_inner_class inner_class_value::build
 { WeylWord ww;
   lietype::Layout lo;
   if (wp==nullptr)
-    wp=&ww; // use |ww| as dummy output unless |p| points somewhere
+    wp=&ww; // use |ww| as dummy output unless |wp| points somewhere
   check_involution(tau,srd->val,*wp,&lo);
     // may also modify |tau|, and sets |lo|
 @)

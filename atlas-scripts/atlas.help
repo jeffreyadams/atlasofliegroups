@@ -530,7 +530,7 @@ A[t] when t equals the tuple (i,j) of integers). One can apply reverse
 indexing provided it applies to both indexes, as in A~[0,0] for the bottom
 right entry. Slicing on both indices of a matrix at the same time (as opposed
 to just the column index as the example above) is possible but somewhat
-different from other form of slicing. The general form is A[i:k,j:l] where
+different from other forms of slicing. The general form is A[i:k,j:l] where
 each of the bounds i,k,j,l may be followed by '~' (but not 'A'; this syntax
 allows no global reversal). This selects a block of 'A' with the
 interpretation above for each of the ranges. For more general slicing of
