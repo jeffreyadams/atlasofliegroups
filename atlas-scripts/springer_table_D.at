@@ -207,21 +207,26 @@ let rd=ct.root_datum then
 {this sign is correct in types D_4 and D_6 by explicit calculation
 see springerD6.txt
 }
-  if sign*val*(-1)^(n\2)<0 then (false,a).split_irr.irrep_D.get_irrep_D else pi_true.get_irrep_D fi
+  if sign*val*(-1)^(n\2)>0 then (false,a).split_irr.irrep_D.get_irrep_D else pi_true.get_irrep_D fi
+fi
 
-{ this is correct but very slow:}
-{    let L=standard_Levi(ct.root_datum,O.Bala_Carter_Levi) then
+set springer_D_by_induction(CharacterTable ct,ComplexNilpotent O)=D_irrep:
+    let L=standard_Levi(ct.root_datum,O.Bala_Carter_Levi) then
     simple_roots_L=for alpha in L.simple_roots do find(ct.root_datum.simple_roots,alpha) od then
     index=truncated_induce_sign(ct,simple_roots_L)  {an integer} then
     sigma=ct.classical_reps(index).get_irrep_D in  {D_irrep}
     ct.tensor_sign_D(sigma)
-    }
+
     {same as:
      set x=induce_trivial(ct,simple_roots_L))
      then y=ct.tensor_sign(x)
      then pick out unique term with correct degree}
 
-fi
+
+
+
+
+
 
 {based on coxeter of Levi factor, not clear how to make this work
 set springer_D(CharacterTable ct,ComplexNilpotent O)=D_irrep:

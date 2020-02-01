@@ -101,7 +101,7 @@ set tensor_sign(CharacterTable ct,[int] char)=[int]:tensor(ct.sign,char)
 set tensor_sign(CharacterTable ct)=([int]->[int]):([int] char):tensor_sign(ct,char)
 
 
-set sym_powers_reflection([WeylElt] list)=
+set sym_powers_reflection([WeylElt] list)=[[int]]:
 let rd=list[0].root_datum then
 wct=W_class_table(rd) then
 wct_class_reps=wct.class_representatives() in

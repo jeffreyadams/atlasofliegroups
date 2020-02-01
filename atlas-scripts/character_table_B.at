@@ -2,7 +2,7 @@
 
 set conjugacy_class_B(Partition P,Partition Q)=WeylElt:
 let w=conjugacy_class_C(P,Q) in
-W_elt(w.root_datum.dual {type B},for i in w.word do i od)
+lift_sc(W_elt(w.root_datum.dual {type B},for i in w.word do i od))
 
 <character_tables.at
 {     type B     }
