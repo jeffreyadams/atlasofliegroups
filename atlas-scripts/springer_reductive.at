@@ -43,7 +43,7 @@ elif letter="E" and n=7 then
 else error("case not covered")
 fi
 
-set springer_table_reductive(RootDatum rd)=
+set springer_table(RootDatum rd)=
 let factors=simple_factors(rd) then
 st=springer_table_simple(factors[0].derived) in
 for i:#factors-1 from 1 do

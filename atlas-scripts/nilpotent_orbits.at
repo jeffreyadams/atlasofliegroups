@@ -960,12 +960,16 @@ show_nilpotent_orbits(nilpotent_orbits(rd))
 
 
 set is_even(ComplexNilpotent O)=bool:is_integer(O.diagram/2)
+set is_non_even(ComplexNilpotent O)=bool:not is_integer(O.diagram/2)
 
 set even_orbits([ComplexNilpotent] orbits)=[ComplexNilpotent]:
 ##for O in orbits do if is_even(O) then [O] else [] fi od
+set even_orbits(RootDatum rd)=even_orbits(rd.orbits)
 
-set even_orbits([ComplexNilpotent] orbits)=[ComplexNilpotent]:
-##for O in orbits do if is_even(O) then [O] else [] fi od
+set non_even_orbits([ComplexNilpotent] orbits)=[ComplexNilpotent]:
+##for O in orbits do if is_non_even(O) then [O] else [] fi od
+set non_even_orbits(RootDatum rd)=non_even_orbits(rd.orbits)
 
 set dual_orbits(RootDatum rd)=[ComplexNilpotent]:rd.dual.orbits
-set dual_even_orbits(RootDatum rd)=even_orbits(rd.dual_orbits)
+set even_dual_orbits(RootDatum rd)=even_orbits(rd.dual_orbits)
+set non_even_dual_orbits(RootDatum rd)=non_even_orbits(rd.dual_orbits)
