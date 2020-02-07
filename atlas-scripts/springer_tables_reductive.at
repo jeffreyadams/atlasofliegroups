@@ -19,6 +19,7 @@
 <springer_table_G.at
 <springer_table_E6.at
 <springer_table_E7.at
+<springer_table_E8.at
 
 
 set springer_table_simple(RootDatum rd)=
@@ -51,6 +52,9 @@ elif letter="E" and n=7 then
  let ct_0=character_table_E7() then
  ct=update_degrees(ct_0) in
  springer_table_E7(ct)
+elif letter="E" and n=8 then
+  let ct=character_table_E8() in
+  springer_table_E8(ct)
 else error("case not covered")
 fi
 

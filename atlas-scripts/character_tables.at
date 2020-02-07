@@ -126,16 +126,25 @@ set class_power_function(CharacterTable ct)=(int,int->int):
 set initialize_character_table(LieType lt)=CharacterTable:
 assert(lt.is_simple,"LieType is not simple");
 let rd=simply_connected(lt) then
+()=prints("Step 1") then
 W_order=order_W(rd) then
+()=prints("Step 2") then
 class_size(WeylElt w)=W_order\w.centralizer_order then
+()=prints("Step 3") then
 {orbits=rd.orbits then}
 classes=rd.W_class_table.class_representatives() then
+()=prints("Step 4") then
 class_centralizer_sizes=for w in classes do w.centralizer_order od then
+()=prints("Step 5") then
 class_sizes=for w@i in classes do W_order\class_centralizer_sizes[i] od then
+()=prints("Step 6") then
 class_orders=for w in classes do w.order od then
+()=prints("Step 7") then
 char_name(CharacterTable ct)=(vec->string):(vec v):string:
 let dim=v[0] then
+()=prints("Step 8") then
 index=find(ct.characters,v) then
+()=prints("Step 9") then
 d=ct.degree(index) in
 "phi(" + dim.to_string+","+d.to_string+")"
 in (
