@@ -252,8 +252,6 @@ RealForm G,
 [([Param],[([int],[int])])]  cell_data)=
 weak_packets(springer_table(G),G.even_dual_orbits,cell_data)
 
-set weak_packets_pre(RealForm G)=
-weak_packets(G,cell_data(character_table(G),G))
 
 {prepare cell_data for input to weak_packets(st,O,cell_data)}
 set cell_data(CharacterTable ct,[Param] parameters)=
@@ -271,6 +269,9 @@ od
 
 set cell_data(CharacterTable ct,RealForm G)=
 cell_data(ct,all_parameters_gamma(G,rho(G)))
+
+set weak_packets_pre(RealForm G)=
+weak_packets(G,cell_data(character_table(G),G))
 
 {------/precomputed cell trace version ----}
 
