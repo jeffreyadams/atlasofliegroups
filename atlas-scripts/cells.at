@@ -52,8 +52,13 @@ set special_character(CharacterTable ct,WCell cell)=
 let summands=smallest_degree_summands(ct,ct.decompose(ct.cell_character(cell))) in
 if #summands>1 then error("not unique special representation") elif
 #summands=0 then error("no special summands?") else summands[0] fi
-
 set special_character(CharacterTable ct)=(WCell->int):(WCell cell):special_character(ct,cell)
+
+set special_character(CharacterTable ct,[int] cell_character)=
+let summands=smallest_degree_summands(ct,ct.decompose(cell_character)) in
+if #summands>1 then error("not unique special representation") elif
+#summands=0 then error("no special summands?") else summands[0] fi
+{set special_character(CharacterTable ct)=([int]->int):([int] cell_character):special_character(ct,cell_character)}
 
 set cells_verbose=false
 
@@ -162,3 +167,35 @@ let p_translated=first_param(T_irr(p,gamma)) in
  od
 od
 
+{include precomputed cell characters (but NOT permutation)}
+set parameters_given_AV_infinitesimal_character(
+SpringerTable st,
+ComplexNilpotent O,
+ratvec gamma,
+[([Param],[([int],[int])])]  cell_data
+{[Param]: list of parameters in block
+ [([int] indices of parameters in cell,[int] character of cell)]
+ }
+)=
+[(int,int,Param)]: {[(block number, cell number, parameter)]}
+let springer_O=st.springer(O) then
+()=if cells_verbose then prints("given AV with infinitesimal character", new_line,"(precomputed cell character): ", gamma, new_line, "O=",O) fi in
+if cells_verbose then prints("given AV/gamma: st: ", st.root_datum, new_line, " O:", O,new_line," gamma:", gamma) fi;
+{for p in params do prints(p.infinitesimal_character) od;
+prints(" springer(O)=",springer_O) fi;
+}
+##for i:#cell_data do  {i=block number}
+ let (parameters,cells)=cell_data[i] in
+  ##for j:#cells do
+   let (cell_param_numbers,cell_character)=cells[j] then
+    ()=if cells_verbose then prints("block ",i,"/cell", j, " of size ",#cell_param_numbers) fi then
+    spec=special_character(st.ct,cell_character) in
+    let ()=if cells_verbose then prints("spec: ", spec, " ", "springer_O: ", springer_O) fi in
+    if spec=springer_O then
+    ##for k in cell_param_numbers do let p=parameters[k] in if I_will_survive(p,gamma) then
+   prints("survive:", p, " ", gamma);
+   [(i,j,first_param(T_irr(p,gamma)))] else [] fi od
+  else []
+  fi
+ od
+od
