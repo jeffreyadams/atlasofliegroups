@@ -1,3 +1,6 @@
+<groups.at
+<springer_tables.at
+
 <E8_big_block_parameters.at     {parameters_big: [Param]: big block}
 <E8_big_block_cell_parameter_numbers.at   {cells_big=[[int]]}
 <E8_big_block_cell_characters.at  {cell_characters_big=[[int]]}
