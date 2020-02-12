@@ -958,9 +958,9 @@ DescValue extended_type(const Block_base& block, BlockElt z, const ext_gen& p,
       return link=UndefBlock, two_imaginary_compact;
     case DescentStatus::ImaginaryTypeI:
       { const BlockElt t=block.cayley(p.s0,z).first;
-        if (block.descentValue(p.s1,t)==DescentStatus::ImaginaryTypeI)
+	if (block.descentValue(p.s1,t)==DescentStatus::ImaginaryTypeI)
 	  return link=block.cayley(p.s1,t).first, two_imaginary_single_single;
-        return fixed_points.isMember(link=block.cayley(p.s1,t).first)
+	return fixed_points.isMember(link=block.cayley(p.s1,t).first)
 	  ? two_imaginary_single_double_fixed
 	  : (link=UndefBlock, two_imaginary_single_double_switched);
       }
@@ -1152,7 +1152,7 @@ param complex_cross(const ext_gen& p, param E) // by-value for |E|, modified
   const WeylWord to_simple = fixed_conjugate_simple(ec,alpha_simple);
   // by symmetry by $\delta$, |to_simple| conjugates $\delta(\alpha)$ to simple:
   assert(p.length()==1 or rd.is_simple_root(rd.permuted_root(to_simple,
-				                subs.parent_nr_simple(p.s1))));
+					    subs.parent_nr_simple(p.s1))));
   // apply flip for $\delta$ acting on root set for |to_simple|, as elsewhere
   E.flip(ec.shift_flip(theta,new_theta,pos_to_neg(rd,to_simple)));
 
@@ -1351,7 +1351,7 @@ DescValue star (const param& E,	const ext_gen& p,
 	      rd.permuted_root(rd.simpleRootNbr(rd.find_descent(alpha_simple)),
 			       ww);
 	    assert(alpha == (E.ctxt.delta()+1)*rd.root(first));
-            assert(i_tab.real_roots(theta).isMember(first));
+	    assert(i_tab.real_roots(theta).isMember(first));
 
 	    rho_r_shift += rd.root(first); // non delta-fixed contribution
 	    ++level; // the change in |rho_r_shift| augments its $\alpha$-level
@@ -1461,14 +1461,14 @@ DescValue star (const param& E,	const ext_gen& p,
 	    return two_imaginary_single_double_switched; // 2i12s
 	  result = two_imaginary_single_double_fixed; // 2i12f
 	  const int m =  unsigned(at)%2; // safe modular reduction
-          const int mm=1-m;
+	  const int mm=1-m;
 
 	  // one of the $\tau$ requires upstairs solution for an odd-odd pair:
 	  const Weight sigma =
 	    matreduc::find_solution(th_1,alpha*(at+mm)+beta*(bt-mm));
 
 	  const Weight new_tau0 = E.tau - alpha*((at+m)/2) - beta*((bt-m)/2);
-          const Coweight new_l = E.l+alpha_v*(tf_alpha/2)+beta_v*(tf_beta/2);
+	  const Coweight new_l = E.l+alpha_v*(tf_alpha/2)+beta_v*(tf_beta/2);
 
 	  // first Cayley link |F0| will be the one that does not need |sigma|
 	  param F0(E.ctxt, new_tw,
@@ -1663,7 +1663,7 @@ DescValue star (const param& E,	const ext_gen& p,
 	  const int dual_f = (E.ctxt.g_rho_check() - E.l).dot(alpha);
 
 	  const Coweight new_l = E.l + alpha_v*dual_f;
-          const Coweight new_t =
+	  const Coweight new_t =
 	    rd.coreflection(E.t,n_alpha) - alpha_v*dual_f;
 	  param F (E.ctxt, new_tw, new_lambda_rho, new_tau, new_l, new_t,
 		   E.is_flipped()!=flipped);
@@ -1698,7 +1698,7 @@ DescValue star (const param& E,	const ext_gen& p,
 
 	  const int dual_f = (E.ctxt.g_rho_check() - E.l).dot(alpha);
 	  const Coweight new_l = E.l + alpha_v*dual_f;
-          const Coweight new_t =
+	  const Coweight new_t =
 	    rd.coreflection(E.t,n_alpha) + alpha_v*dual_f;
 
 	  param F (E.ctxt, new_tw, new_lambda_rho, new_tau, new_l, new_t,
@@ -2012,9 +2012,9 @@ void ext_block::complete_construction(const BitMap& fixed_points)
   for (weyl::Generator s=0; s<folded_rank; ++s)
     data[s].reserve(parent_nr.size()); // same for each |data[s]|.
 
-  for (BlockElt n=0; n<parent_nr.size(); ++n)
+  for (BlockElt n=0; n<parent_nr.size(); ++n) // |n| is index in extrended block
   {
-    BlockElt z=parent_nr[n];
+    BlockElt z=parent_nr[n]; // |z| is index in parent block
     info.push_back(elt_info(z));
     for (weyl::Generator oi=0; oi<orbits.size(); ++oi) // |oi|: orbit index
     {
@@ -2071,7 +2071,7 @@ void ext_block::complete_construction(const BitMap& fixed_points)
   } // |for(n)|
 } // |ext_block::complete_construction|
 
-// we compute $\max\{l\mid l_start[l]\leq n\}$, i.e. |upper_bound(,,n)-1|
+// we compute $\max\{l: l_start[l]\leq n\}$, i.e. |upper_bound(,,n)-1|
 unsigned ext_block::length(BlockElt n) const
 {
   unsigned min=0, max=l_start.size()-1; // the answer will lie in $[min,max)$
@@ -2163,8 +2163,6 @@ bool ext_block::check(const param_block& block, bool verbose)
       if (tp!=descent_type(s,n))
 	return false;
 
-      auto it = links.begin();
-
       switch (tp)
       {
       case one_imaginary_pair_switched: case one_real_pair_switched:
@@ -2178,72 +2176,76 @@ bool ext_block::check(const param_block& block, bool verbose)
       case two_complex_ascent: case two_complex_descent:
       case three_complex_ascent: case three_complex_descent:
 	{ assert(links.size()==1);
+	  const param q = *links.begin();
 	  BlockElt m=cross(s,n); // cross neighbour as bare element of |*this|
 	  BlockElt cz = this->z(m); // corresponding element of (parent) |block|
 	  param F(ctxt,block.x(cz),block.lambda_rho(cz)); // default extension
-	  assert(same_standard_reps(*it,F)); // must lie over same parameter
-	  if (not same_sign(*it,F))
+	  assert(same_standard_reps(q,F)); // must lie over same parameter
+	  if (not same_sign(q,F))
 	  {
 	    flip_edge(s,n,m);
 	    if (verbose)
 	      std::cout << "Flip at cross link " << unsigned{s}
-                        << " from " << z << " to " << cz << '.' << std::endl;
+			<< " from " << z << " to " << cz << '.' << std::endl;
 	  }
 	} break;
       case one_imaginary_single: case one_real_single:
       case two_imaginary_single_single: case two_real_single_single:
 	{ assert(links.size()==2);
+	  const param q0 = *links.begin();
+	  const param q1 = *std::next(links.begin());
 	  BlockElt m=some_scent(s,n); // the unique (inverse) Cayley
 	  BlockElt Cz = this->z(m); // corresponding element of block
 	  param F(ctxt,block.x(Cz),block.lambda_rho(Cz));
-	  assert(same_standard_reps(*it,F));
-	  if (not same_sign(*it,F))
+	  assert(same_standard_reps(q0,F));
+	  if (not same_sign(q0,F))
 	  {
 	    flip_edge(s,n,m);
 	    if (verbose)
 	      std::cout << "Flip at Cayley link " << unsigned{s}
-	                << " from " << z << " to " << Cz << '.' << std::endl;
+			<< " from " << z << " to " << Cz << '.' << std::endl;
 	  }
-	  ++it;
 	  m=cross(s,n); BlockElt cz = this->z(m);
 	  param Fc(ctxt,block.x(cz),block.lambda_rho(cz));
-	  assert(same_standard_reps(*it,Fc));
-	  if (not same_sign(*it,Fc))
+	  assert(same_standard_reps(q1,Fc));
+	  if (not same_sign(q1,Fc))
 	  {
 	    flip_edge(s,n,m);
 	    if (verbose)
 	      std::cout << "Flip at cross link " << unsigned{s}
-	                << " from " << z << " to " << cz << '.' << std::endl;
+			<< " from " << z << " to " << cz << '.' << std::endl;
 	  }
 	} break;
       case two_semi_imaginary: case two_semi_real:
       case three_semi_imaginary: case three_real_semi:
       case three_imaginary_semi: case three_semi_real:
 	{ assert(links.size()==1);
+	  const param q = *links.begin();
 	  BlockElt m=some_scent(s,n); // the unique (inverse) Cayley
 	  BlockElt Cz = this->z(m); // corresponding element of block
 	  param F(ctxt,block.x(Cz),block.lambda_rho(Cz));
-	  assert(same_standard_reps(*it,F));
-	  if (not same_sign(*it,F))
+	  assert(same_standard_reps(q,F));
+	  if (not same_sign(q,F))
 	  {
 	    flip_edge(s,n,m);
 	    if (verbose)
 	      std::cout << "Flip at Cayley link " << unsigned{s}
-		      << " from " << z << " to " << Cz << '.' << std::endl;
+			<< " from " << z << " to " << Cz << '.' << std::endl;
 	  }
 	} break;
       case one_imaginary_pair_fixed: case one_real_pair_fixed:
       case two_imaginary_double_double: case two_real_double_double:
 	{ assert(links.size()==2);
+	  const param q0 = *links.begin();
+	  const param q1 = *std::next(links.begin());
 	  BlockEltPair m=Cayleys(s,n);
 	  BlockElt Cz0 = this->z(m.first); BlockElt Cz1= this->z(m.second);
 	  param F0(ctxt,block.x(Cz0),block.lambda_rho(Cz0));
 	  param F1(ctxt,block.x(Cz1),block.lambda_rho(Cz1));
-	  bool straight=same_standard_reps(*it,F0);
-          const auto& node0 = straight ? *it : *std::next(it);
-          const auto& node1 = straight ? *std::next(it) : *it;
-	  if (not straight)
-	    assert(same_standard_reps(node0,F0));
+	  bool straight=same_standard_reps(q0,F0);
+	  const auto& node0 = straight ? q0 : q1;
+	  const auto& node1 = straight ? q1 : q0;
+	  assert(same_standard_reps(node0,F0));
 	  assert(same_standard_reps(node1,F1));
 	  if (not same_sign(node0,F0))
 	  {
@@ -2262,15 +2264,16 @@ bool ext_block::check(const param_block& block, bool verbose)
 	} break;
       case two_imaginary_single_double_fixed: case two_real_single_double_fixed:
 	{ assert(links.size()==2);
+	  const param q0 = *links.begin();
+	  const param q1 = *std::next(links.begin());
 	  BlockEltPair m=Cayleys(s,n);
 	  BlockElt Cz0 = this->z(m.first); BlockElt Cz1= this->z(m.second);
 	  param F0(ctxt,block.x(Cz0),block.lambda_rho(Cz0));
 	  param F1(ctxt,block.x(Cz1),block.lambda_rho(Cz1));
-	  bool straight=same_standard_reps(*it,F0);
-          const auto& node0 = straight ? *it : *std::next(it);
-          const auto& node1 = straight ? *std::next(it) : *it;
-	  if (not straight)
-	    assert(same_standard_reps(node0,F0));
+	  bool straight=same_standard_reps(q0,F0);
+	  const auto& node0 = straight ? q0 : q1;
+	  const auto& node1 = straight ? q1 : q0;
+	  assert(same_standard_reps(node0,F0));
 	  assert(same_standard_reps(node1,F1));
 	  if (not same_sign(node0,F0))
 	  {
