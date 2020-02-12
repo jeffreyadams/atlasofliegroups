@@ -283,7 +283,8 @@ set vector (int n,(int->int)f) = vec: for i:n do f(i) od
 
 set ones (int n)= vec: for i:n do 1 od
 
-set reverse (vec v)= vec: v~[:]
+set ~ (vec v)= vec: v~[:]
+set reverse ([int] r) = [int]: for x in r do x ~od
 set lower (int k,vec v)= vec: v[:k]
 set upper (int k,vec v)= vec: v[k~:]
 set drop_lower (int k,vec v)= vec: v[k:]
@@ -336,6 +337,9 @@ set column (mat A,int i) = vec: A[i]
 
 set rows (mat A) = [vec]: ^A
 set columns (mat A) = [vec]: A
+
+set ~ (mat A) = mat: { reverse rows and reverse columns }
+  swiss_matrix_knife(45,A,0,0,0,0) { transform 45 = 36 + 9, rows&cols reversed }
 
 set block_matrix (mat A,mat B) = mat:
   let ra=n_rows(A), rb=n_rows(B) then za=null(ra), zb=null(rb) in
