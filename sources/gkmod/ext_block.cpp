@@ -1985,8 +1985,11 @@ ext_block::ext_block // for an external twist
       fixed_points.insert(z);
 
   complete_construction(fixed_points);
-  if (not check(block,verbose)) // this sets the edge signs, not just a check!
-    throw std::runtime_error("Failure detected in extended block construction");
+  if (orbits.size()<block.rank() or
+      fixed_points.size()<block.size()) // only nontrivial extend
+    if (not check(block,verbose)) // this sets the edge signs, not just a check!
+      throw std::runtime_error
+		    ("Failure detected in extended block construction");
 
 } // |ext_block::ext_block|, from a |param_block|
 

@@ -840,44 +840,90 @@ Grading restrictGrading(const RootNbrSet& rs, const RootNbrList& rl)
 }
 
 /*
-  Find a grading in the orbit corresponding to |rf| with the smallest possible
-  number (0 or 1 per simple factor) of noncompact ones among the simple roots.
+  Find a grading in the adjoint fiber orbit corresponding to |rf| with among
+  such gradings the smallest possible (0 or 1 per simple factor) of simple roots
+  marked as noncompact. The grading is represented on the set of all simple
+  roots, even though the simple roots that are not imaginary are not really
+  being graded, and therefore not candidate for being noncompact.
 
-  Precondition: |f| is the fundamental fiber;
+  Precondition: |f| is the fundamental fiber.
 
-  For each noncompact noncomplex irreducible real form, with the exception of
-  sl(2n+1,R) where there is only one grading, there is at least one grading
-  with exactly one noncompact simple root. (The unequal rank inner class in
-  type $A_n$ is particular by the rareness of imaginary simple roots candidate
-  for being noncompact: there is at most one, and only if $n$ is odd; for this
-  case this still just suffices to distinguish sl(n+1,R) from sl(n+1/2,H).)
+  With the exception of unequal rank A_n, each non-quasicompact non-complex real
+  form on a simple type admits at least one grading with exactly one noncompact
+  simple root. The position of this noncompact root among the simple roots
+  (taking care to consider them in the Bourbaki ordering for the Dynkin diagram)
+  though not always unique, easily allows recognising the real form, which will
+  ultimately be done in the function |output::print_real_form_name|. In detail,
+  for the cases relevant here, skipping the quasicompact forms, and counting
+  simple root positions from 0 (for once this turns out slightly awkward):
 
-  Our choice for non-simple types will be a grading which has such a grading
-  on each noncompact noncomplex simple factor, which is achieved by minimising
-  the number of noncompact simple roots. This special grading for the real
-  form will the easily allow a name to be associated to the real form.
+  A_1: sl(2,R) is unique non-compact form (the simple root is noncompact);
+      other non equal rank A_n cases:
+       su(p,n+1-p) a single noncompact simple root can be at position p-1 or n-p;
+  B_n: so(2p,2n+1-2p) a single noncompact simple root can be at position p-1;
+       (forcing the even index first makes this zig-zag correspondence seem easy)
+  C_n: sp(p,n-p) a single noncompact simple root can be at position p-1 or n-p-1
+       sp(2n,R) a single noncompact simple root can be at position n-1
+  D_n equal rank:
+       so(2,2n-2) a single noncompact simple root can be at position 0 only
+       so(2p,2n-2p), p>1: single noncompact simple root at position p-1 or n-p-1
+       n odd:
+        so*(2n) a single noncompact simple root can be at position n-2 or n-1
+       n even:
+        so*(2n)[1,0] single noncompact simple root can be at position n-1-(n/2)%2
+        so*(2n)[0,1] single noncompact simple root can be at position n-2+(n/2)%2
+      unequal rank:
+       so(2p+1,2n-2p-1) single noncompact simple root at position p-1 or n-p-2
+  G2: g2(R) is the unique non-compact form (single noncompacts at position 0 or 1)
+  F4: f4(so(9)) a single noncompact simple short root (at position 2 or 3)
+      f4(R) a single noncompact simple long root (at position 0 or 1)
+  E6 equal rank:
+      e6(so(10).u(1)) single noncompact simple root can be at position 0 or 5
+      e6(su(6).su(2)) single noncompact simple root can be at position 1,2,3,4
+     unequal rank:
+      e6(R) is the unique non-quasicompact form (single noncompacts at 1 or 3)
+  E7: e7(e6.u(1)) a single noncompact simple root can be at position 6
+      e7(so(12).su(2)) single noncompact simple root can be at position 0,2,3,5
+      e7(R)  a single noncompact simple root can be at position 1 or 4
+  E8: e8(e7.su(2))  a single noncompact simple root can be at position 2,3,6,7
+      e8(R)  a single noncompact simple root can be at position 0,1,4,5,
 
-  NOTE: the grading is represented as the set of noncompact imaginary roots
-  among the simple roots for the root system |rs|. This is OK; knowledge of
-  just that set is sufficient to characterise the real form.
+  (The unequal rank inner class in type $A_n$ is particular by the rareness of
+  imaginary simple roots, candidate for being noncompact: there is at most one,
+  and only if $n$ is odd; for this case this still just suffices to distinguish
+  sl(n+1,R) where that root is noncompact from sl(n+1/2,H), where it is compact.)
+
+  Our choice of grading for non-simple types will be a grading that has one
+  noncompact simple root for each non-quasicompact non-complex simple factor.
+  This can be achieved by minimising the number of noncompact simple roots.
+
+  We do not do any effort to pick a particular minimal number grading if there
+  should be more than one, as that would involve comparing the position relative
+  to the standardised ordering of the Dynkin diagram to make any sense, which is
+  not worth the hassle: the remaining ambiguity is dealt with at printing time.
 */
 Grading specialGrading(const Fiber& f, RealFormNbr rf, const RootSystem& rs)
 {
-  std::set<Grading,gradings::GradingCompare> grs;
-  // |GradingCompare| first compares number of set bits
+  unsigned minimum_so_far=rs.rank()+1; // impossibly high value
+  Grading result; // should be assigned to at least once below
 
   unsigned long n = f.adjointFiberSize();
 
   // sort the gradings that occur in this class
   for (unsigned long i=0; i<n; ++i)
   { AdjointFiberElt x(RankFlags(i),f.adjointFiberRank());
-    if (f.adjoint_orbit(x) == rf)
-      grs.insert(restrictGrading(f.noncompactRoots(x),rs.simpleRootList()));
+    if (f.adjoint_orbit(x) == rf) // only consider the orbit for |rf|
+    { // and only consider the grading of those imaginary roots that are simple
+      Grading gr = restrictGrading(f.noncompactRoots(x),rs.simpleRootList());
+      if (gr.count()<minimum_so_far) // only minimize the number of noncompacts
+      {
+	result = gr; // best candidate seen yet
+	minimum_so_far = gr.count();
+      }
+    }
   }
-  assert(not grs.empty());
-
-  // return the first element
-  return *(grs.begin());
+  assert(minimum_so_far<=rs.rank()); // we advanced at least once
+  return result;
 }
 
 Grading specialGrading
