@@ -1249,7 +1249,7 @@ type_expr
         }
         break;
       }
-    default: assert(false);
+    default: assert(false); dst=nullptr; // avoid ``uninitialized'' warning
     }
     dst->splice(dst->end(),type_perm,type_perm.begin());
     // also erases |type_perm.front()|
