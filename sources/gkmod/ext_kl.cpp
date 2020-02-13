@@ -733,15 +733,21 @@ void KL_table::do_new_recursion(BlockElt y,PolHash& hash)
 	    {
 	      BlockEltPair sx_up_t = aux.block.Cayleys(t,s_cross_x);
 	      if (sx_up_t.first<floor_y)
-		Q -= cy[sx_up_t.first];
+		Q -= cy[sx_up_t.first]
+		    *(aux.block.epsilon(s,x,s_cross_x)
+		      *aux.block.epsilon(t,s_cross_x,sx_up_t.first));
 	      if (sx_up_t.second<floor_y)
-		Q -= cy[sx_up_t.second];
+		Q -= cy[sx_up_t.second]
+		    *(aux.block.epsilon(s,x,s_cross_x)
+		      *aux.block.epsilon(t,s_cross_x,sx_up_t.second));
 	    }
 	    else
 	    {
 	      BlockElt sx_up_t=aux.block.Cayley(t,s_cross_x);
 	      if (sx_up_t<floor_y)
-		Q -= cy[sx_up_t];
+		Q -= cy[sx_up_t]
+		    *(aux.block.epsilon(s,x,s_cross_x)
+		      *aux.block.epsilon(t,s_cross_x,sx_up_t));
 	    }
 	  }
 	  break;

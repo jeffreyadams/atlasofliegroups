@@ -92,12 +92,6 @@ namespace {
 
 
 /*
-  Output the gradings corresponding to the various real forms
-  defined for Cartan #cn.
-
-  The gradings are output in the same order as the corresponding orbits are
-  output in the "cartan" command.
-*//*
   Build the standard real form interface for G and lo.
 
   Explanation: d_in[rf] is the inner numbering (the one used by G) of the
@@ -145,9 +139,7 @@ FormNumberMap::FormNumberMap(const InnerClass& G,
 } // |FormNumberMap::FormNumberMap|
 
 
-/*
-  Synopsis: like the previous one, but for the _dual_ real forms.
-*/
+// like the previous constructor, but for the _dual_ real forms.
 FormNumberMap::FormNumberMap(const InnerClass& G,
 			     const lietype::Layout& lo, tags::DualTag)
 : d_in(G.numDualRealForms())
@@ -198,7 +190,13 @@ std::ostream& printRealForms(std::ostream& strm, const FormNumberMap& I)
   return strm;
 }
 
+/*
+  Output the gradings corresponding to the various real forms
+  defined for Cartan #cn.
 
+  The gradings are output in the same order as the corresponding orbits are
+  output in Fokko's "cartan" command.
+*/
 std::ostream& printGradings(std::ostream& strm,
 			    const InnerClass& G, size_t cn, Interface& CI)
 {
@@ -553,9 +551,7 @@ namespace {
 
 
 
-/*
-  Synopsis: prints out the complex form of slt.
-*/
+// Print the complex form of |slt| (actually of two such factors).
 std::ostream& printComplexType(std::ostream& strm,
 			       const SimpleLieType& slt)
 {
@@ -600,7 +596,8 @@ std::ostream& printComplexType(std::ostream& strm,
   return strm;
 }
 
-// we often need to print either '(n)' or '(n-m,m)' in printSimpleType
+// we often need to print either '(n)' or '(n-m,m)' in |print_real_form_name|
+// and when we do, we want them weakly decreasing, and suppressing a final 0
 inline std::ostream& split(std::ostream& s,size_t n,size_t m)
 {
   s << '(';
@@ -616,22 +613,38 @@ inline std::ostream& split(std::ostream& s,size_t n,size_t m)
 }
 
 /*
-  Synopsis: prints out the real form of slt represented by gr.
+  Print the name of the real form of simple type |slt| represented by |gr|,
+  which is a special grading at the fundamental fiber of the simple roots (only
+  imaginary ones give the actual grading, but complex ones retain a 0 bit).
 
-  Algorithm: it turns out that for each irreducible Dynkin diagram, and for
-  each non-compact equal rank real form, there is always at least one grading
-  with exactly one noncompact simple-imaginary root. In that case, this
-  function is called with such a grading; we cannot rely on the noncompact
-  root being the minimal one possible, as simple roots may have been in an
-  unusual order at the point of selecting |gr|, even though such a permutation
-  has been straightend out before calling this function. In the non-equal rank
-  case, such a grading still exists for all irreducible types except A_n, when
-  the imaginary root system is reducible. In that case however the only choice
-  is whether |gr| is trivial (sl(n,H)) or not, which is easy enough to decide.
+  (Complex real forms do not involve a single simple type, do not come here.)
+
+  As explained in |cartanclass::specialGrading|, we can find for any real form a
+  corresponding grading of the simple roots that marks at most one root for each
+  simple factor of the Lie type, and from that information one can deduce an
+  identfying name for the real form (among other ones in its inner class).
+
+  This function assumes it is called with such a grading, and that the simple
+  roots of |lt| are in the standard order. We cannot however rely in all cases
+  on the noncompact root being a specific one for the real form (some of them
+  allow for more than one position), since (1) no effort was done in
+  |specialGrading| to ensure such a choice, and (2) simple roots may have been
+  in an unusual order at the point of selecting |gr|, so it would have been hard
+  to do correctly at that time anyway. If that order was indeed unusual, the
+  bits of |gr| have been since permuted to correct for it, so interpretation of
+  bit positions becomes straightforward here.
+
+  There is a subtle point though: the straightening of the Dynkin diagram was
+  done without regard to the inner class involution. This means that we may have
+  a usual numbering of |slt|, but in an unequal rank case with (effectively) an
+  unusual automorphism determining which simple roots are imaginary (and
+  therefore subject to actual grading). The problem arises only in unequal rank
+  D4 and is easy to deal with: any nonzero grading defines so(5,3) there rather
+  than so(7,1).
 */
-std::ostream& printSimpleType(std::ostream& strm, const Grading& gr,
-			      const SimpleLieType& slt,
-			      const lietype::TypeLetter ic)
+std::ostream& print_real_form_name(std::ostream& strm, const Grading& gr,
+				   const SimpleLieType& slt,
+				   const lietype::TypeLetter ic)
 {
   size_t rk = slt.rank();
   bool gr_trivial = gr.count()==0;
@@ -647,14 +660,15 @@ std::ostream& printSimpleType(std::ostream& strm, const Grading& gr,
       size_t n=rk+1;
       if (ic=='c')
 	split(strm << "su",n,m);
-      else if (rk%2!=0 and gr_trivial) // both parts of this condition needed
-	strm << "sl(" << n/2 << ",H)";
-      else
-	strm << "sl(" << n << ",R)";
+      else // unequal rank $A_n$ case
+	if (rk%2!=0 and gr_trivial) // both parts of this condition needed
+	  strm << "sl(" << n/2 << ",H)";
+	else
+	  strm << "sl(" << n << ",R)";
     }
     break;
   case 'B':
-    split(strm << "so",2*rk+1,2*m);
+    split(strm << "so",2*rk+1,2*m); // surprisingly easy to state
     break;
   case 'C':
     if (m == rk)
@@ -673,7 +687,10 @@ std::ostream& printSimpleType(std::ostream& strm, const Grading& gr,
 	else // so* type with label depending on m and parity of |rk/2|
 	  strm << "so*(" << n << ((rk%4==0)==(m==rk) ? ")[1,0]" : ")[0,1]");
       else // unequal rank case
-	split(strm << "so",n,2*m+1);
+	if (rk>4)
+	  split(strm << "so",n,2*m+1);
+        else // unequal rank D4, we could have $m>=2$
+	  strm << (gr_trivial ? "so(7,1)" : "so(5,3)");
     }
     break;
   case 'E':
@@ -688,7 +705,7 @@ std::ostream& printSimpleType(std::ostream& strm, const Grading& gr,
 	strm << (gr_trivial ? "f4" : "R");
     else if (rk==7) // E7, noncompact forms
       strm << (m==7 ? "e6.u(1)" : m==2 or m==5 ? "R" : "so(12).su(2)");
-    else // E8, noncompact forms
+    else // E8, noncompact forms: e8(e7.su(2)) positions 2,3,6,7, e8(R): 0,1,4,5
       strm <<(gr.any(RankFlags(0xCC)) ? "e7.su(2)" : "R");
     strm << ')';
     break;
@@ -703,7 +720,7 @@ std::ostream& printSimpleType(std::ostream& strm, const Grading& gr,
     break;
   case 'T':
     strm << (ic=='c' ? "u(1)" : "gl(1,R)");
-    if (rk > 1)
+    if (rk > 1) // this can no longer occur
       strm << "^" << rk;
     break;
   default: // cannot happen
@@ -716,12 +733,19 @@ std::ostream& printSimpleType(std::ostream& strm, const Grading& gr,
 
 
 /*
-  Synopsis: outputs the real form of lt represented by gr.
+  Print descriptive name of the real form represented by |d_gr|.
 
-  Precondition: |gr| contains a grading of the simple-imaginary roots (simple
-  roots of the imaginary roots system for the fundamental involution), which
-  represents the given real form, and which contains one noncompact root for
-  each noncompact noncomplex simple factor.
+  Precondition: |d_gr| contains a grading of the simple roots (effectively only
+  grading those that are imaginary), which represents the given real form, and
+  which is special in that it contains a mimimal number of roots marked
+  noncompact; this implies there is percisely one such simple root for each
+  non-quasicompact non-complex non-torus simple factor of the Lie type.
+
+  Torus factors $T_1$ may occur in |lo.d_type|, which have no corresponding bits
+  in the grading |d_gr|, but such factors should match letters in |lo.d_inner|
+  (either |'c'|, |'C'| or |'s'|, where |'C'| accounts for two factors $T_1$),
+  which will be transmitted to |print_real_form_name| so that the correct Lie
+  algebra name for the torus factors can be printed.
 */
 std::ostream& printType(std::ostream& strm,
 			const Grading& d_gr,
@@ -746,8 +770,8 @@ std::ostream& printType(std::ostream& strm,
     else
     {
       Grading grs = gr;
-      grs.truncate(slt.rank());
-      printSimpleType(strm,grs,slt,ict[j]);
+      grs.truncate(slt.semisimple_rank());
+      print_real_form_name(strm,grs,slt,ict[j]);
     }
     if (j < ict.size()-1)
       strm << ".";
