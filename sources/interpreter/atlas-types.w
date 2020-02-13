@@ -2973,33 +2973,14 @@ void KGB_Hasse_wrapper(expression_base::level l)
 }
 
 
-@ Finally we make available an equality test for real forms. This could easily
-be defined in the \.{axis} language itself: two real forms are equal if they
-belong to the same inner class, their base grading vectors are equal, and the
-torus bits of their initial KGB elements are the same (this should imply their
-real form numbers are the same too). However it is useful to define a test here;
-not only can we do the tests more efficiently, the same test will later also be
-used in other equality tests (for KGB elements, or module parameters). We resist
-the temptation to just test (by pointer equality) for identical
-|real_form_value| objects, which would be too strict; however, since the
-|real_form_value::build| will identify real forms obtained by selecting at equal
-|RealFormNbr| indices from the same |inner_class_value|, we do start with such a
-test for efficiency.
+@ Finally we make available the equality test for real forms defined in the
+library. However, since the |real_form_value::build| will identify real forms
+obtained by selecting at equal |RealFormNbr| indices from the same
+|inner_class_value|, it is useful to start with a pointer comparison for
+efficiency.
 
 @< Local function def...@>=
 
-inline bool operator==
-  (const RealReductiveGroup& x, const RealReductiveGroup& y)
-{
-  return &x.innerClass() == &y.innerClass()
-   @| and x.g_rho_check()==y.g_rho_check()
-   @| and x.x0_torus_part()==y.x0_torus_part()
-   @| and (assert(x.realForm()==y.realForm()),true);
-}
-inline bool operator!=
-  (const RealReductiveGroup& x, const RealReductiveGroup& y)
-{@; return not(x==y); }
-@)
 void real_form_eq_wrapper(expression_base::level l)
 { shared_real_form y = get<real_form_value>();
   shared_real_form x = get<real_form_value>();

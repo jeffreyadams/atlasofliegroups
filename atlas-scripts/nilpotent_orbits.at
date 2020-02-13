@@ -51,6 +51,7 @@ let (,perm)=Cartan_matrix_type(O.root_datum) then
 P=permutation_matrix(perm) in
 P*diagram(O)
 
+{diagram_normalized is [[int]] to allow for multiple simple factors}
 set diagram_normalized(ComplexNilpotent O)=[[int]]:
 let H=dominant(O.H,O.root_datum) then 
 factors=simple_factors(O.root_datum) in
@@ -662,7 +663,8 @@ set Kac_diagrams_with_centralizer (RootDatum rd, RootDatum L,int m)=[([int],Weyl
    if nilpotent_verbose then prints("crude answer:", #crude, "  final result:", #rv)
    fi;rv
 
-set order_of_center (RootDatum rd)=#Kac_classes_given_order(rd,1)
+{order_center is defined in center.at}
+{set order_of_center (RootDatum rd)=#Kac_classes_given_order(rd,1)}
 
 set Kac_triples_simple (RootDatum rd,RootDatum L, int c)=[(int,[int],ratvec,WeylElt)]:
    let d=d_L(rd,L) in
@@ -670,7 +672,7 @@ set Kac_triples_simple (RootDatum rd,RootDatum L, int c)=[(int,[int],ratvec,Weyl
         for (diag,w) in list do (c*d,diag,Kac_x(rd,diag),w) od
 
 set Kac_triples (RootDatum rd, RootDatum L)=[(int,[int],ratvec,WeylElt)]:
-   let c=order_of_center (rd) in
+   let c=order_center (rd) in
    let ()=if nilpotent_verbose then prints("c=",c, new_line,"2*d*c=", 2*d_L(rd,L)*c)
           fi in
    ##for i:2*d_L(rd,L)*c from 1 do Kac_triples_simple(rd,L,i) od
@@ -958,12 +960,16 @@ show_nilpotent_orbits(nilpotent_orbits(rd))
 
 
 set is_even(ComplexNilpotent O)=bool:is_integer(O.diagram/2)
+set is_non_even(ComplexNilpotent O)=bool:not is_integer(O.diagram/2)
 
 set even_orbits([ComplexNilpotent] orbits)=[ComplexNilpotent]:
 ##for O in orbits do if is_even(O) then [O] else [] fi od
+set even_orbits(RootDatum rd)=even_orbits(rd.orbits)
 
-set even_orbits([ComplexNilpotent] orbits)=[ComplexNilpotent]:
-##for O in orbits do if is_even(O) then [O] else [] fi od
+set non_even_orbits([ComplexNilpotent] orbits)=[ComplexNilpotent]:
+##for O in orbits do if is_non_even(O) then [O] else [] fi od
+set non_even_orbits(RootDatum rd)=non_even_orbits(rd.orbits)
 
 set dual_orbits(RootDatum rd)=[ComplexNilpotent]:rd.dual.orbits
-set dual_even_orbits(RootDatum rd)=even_orbits(rd.dual_orbits)
+set even_dual_orbits(RootDatum rd)=even_orbits(rd.dual_orbits)
+set non_even_dual_orbits(RootDatum rd)=non_even_orbits(rd.dual_orbits)

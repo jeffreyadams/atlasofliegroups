@@ -22,11 +22,11 @@ class_rep(int k)=WeylElt:
  let (a,b)=f(k) then
   rd1=ct1.root_datum then
   rd2=ct2.root_datum then
-  w1=ct1.class_rep(a) then
-  w2=ct2.class_rep(b) then
-  rd=rd1*rd2 then
-  M=block_matrix(w1.matrix,w2.matrix)  in W_elt(rd,M) then
-
+  w1_word=ct1.class_rep(a).word then
+  w2_word=ct2.class_rep(b).word then
+  w2_word_shifted=for i in w2_word do i+rd1.ss_rank od then
+  w_word=   w1_word##w2_word_shifted in
+  W_elt(rd1*rd2,w_word) then  
 class_order(int k)=let (a,b)=f(k) in ct1.class_order(a) * ct2.class_order(b) then
 class_power(int i,int j)=let (a,b)=f(j) in g(ct1.class_power(a,j),ct2.class_power(b,j)) then
 centralizer_orders=for i:m*n do
@@ -46,13 +46,14 @@ table=kronecker_product(ct1.table,ct2.table) in
 lie_type,
 order,
 n_classes,
-(int j): [],
+(int j): null_class(),
 class_label,
 class_rep,
 class_order,
 class_power,
 centralizer_orders,
 class_sizes,
+(int j): null_irrep(),
 irreducible_label,
 sym_powers_reflection,
 degrees,

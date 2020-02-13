@@ -7,6 +7,20 @@ springer(A1~)=characters[4] (dimension 2, degree 2)
 springer(G2(a1))=characters[5] (dimension 1, degree 2)
 springer(G2)=characters[0] (dimension 1, degree 0: trivial)
 }
+
+set orbit_by_diagram(RootDatum rd,[vec] diagram)=
+let index=first(for i:#rd.orbits do rd.orbits[i].diagram_normalized=diagram od) in
+rd.orbits[index]
+
+set diagrams=[[0,0],[0,1],[1,0],[0,2],[2,2]]
+set dual_diagrams=[[2,2],[0,2],[0,2],[0,2],[0,0]]
+
+set dual_map_G2(ComplexNilpotent O)=ComplexNilpotent:
+let diagram=O.diagram_normalized[0] then
+index=find(diagrams,diagram) then
+dual_diagram=dual_diagrams[index] in
+orbit_by_diagram(O.root_datum,[dual_diagram])
+
 set springer_G2=[3,1,4,5,0]
 set springer_G2(ComplexNilpotent O)=int:
 let diagram=O.diagram_normalized[0] then

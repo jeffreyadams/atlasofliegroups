@@ -1,0 +1,38 @@
+{ multiplication of a square integer matrix times
+  a square sparse matrix on the right}
+
+{ S is given by a list of columns, each a list of row number-coefficient pairs }
+set_type [ sparse_column = [(int,int)], sparse_mat=[sparse_column] ]
+
+set sparse(mat M) = sparse_mat:
+for C in M
+do for coef@i in C do if =coef then [] else [(i,coef)] fi od.##
+od
+
+set unsparse(sparse_mat S, int height) = mat:
+for C in S do let v=null(height) in for (i,coef) in C do v[i]+:=coef od; v od
+
+set * (mat M, sparse_mat S) = mat:
+for C in S { loop over columns of sparse matrix }
+do (mat: for (i,) in C do M[i] od) * (vec: for (,coef) in C do coef od)
+od
+
+{test sparse multiplication}
+set test_times(mat M,sparse_mat S)=bool:
+M*S=M*(unsparse(S,#M))
+
+
+set S= sparse_mat:
+      [[(0,0),(1,0),(2,3),(4,1)]
+      ,[(0,0),(0,1),(1,1),(2,3)]
+      ,[(1,1)]
+      ,[(0,0),(2,0),(2,1),(2,1),(3,3),(2,3),(1,2),(2,2)]
+      ]
+set M=id_mat(5)
+set Smat=unsparse(S,5)
+
+set T=sparse_mat: [[(1,1),(0,11)],[(0,3),(1,4)]]
+set N=mat:[[1,2],[3,4]]
+
+set v=[1,0,0,0,0]
+set Q=mat:[v,v,v,v,v]

@@ -729,11 +729,18 @@ set simply_connected (LieType type) = RootDatum:
 set adjoint (LieType type) = RootDatum:
   adjoint(type,false) { by default prefer roots here }
 
+{define simply_connected and adjoint for RootDatum
+ simply_connected(rd) is a product of simple factors *and* and torus factor
+}
+
+set simply_connected(RootDatum rd)=simply_connected(Lie_type(rd))
+set adjoint(RootDatum rd)=adjoint(Lie_type(rd))
+
 { backwards compatibility function; used to be the built-in prototype }
 set root_datum ([vec] simple_roots, [vec] simple_coroots, int r) = RootDatum:
   root_datum(r#simple_roots,r#simple_coroots,false)
 
-set root_datum (LieType t, [ratvec] gens) = RootDatum:
+set root_datum(LieType t, [ratvec] gens) = RootDatum:
   root_datum(t,quotient_basis(t,gens))
 
 { allow single kernel generator in root datum construction }
@@ -1152,6 +1159,9 @@ set split_form (LieType t) = RealForm: split_form(simply_connected(t))
 
 set quasicompact_form (InnerClass ic) = RealForm: real_form(ic,0)
 { quasisplit_form@InnerClass is built-in }
+
+set compact_form(RootDatum r) = RealForm:
+  quasicompact_form(inner_class(r,id_mat(rank(r))))
 
 set is_compatible (RealForm f, RealForm g) = bool:
   let ic = inner_class(f) in

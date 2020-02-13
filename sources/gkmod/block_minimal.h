@@ -49,7 +49,7 @@ class block_minimal : public Block_base
   // accessors that get values via |rc|
   const repr::Rep_context& context() const { return rc; }
   const RootDatum& rootDatum() const;
-  const SubSystem& integral_subsystem() const;
+  const SubSystem& integral_subsystem() const { return integral_datum; }
   const InnerClass& innerClass() const;
   const InvolutionTable& involution_table() const;
   RealReductiveGroup& realGroup() const;
@@ -61,6 +61,11 @@ class block_minimal : public Block_base
   BlockElt lookup(KGBElt x, const RatWeight& gamma_lambda) const;
 
   ext_gens fold_orbits(const WeightInvolution& delta) const;
+
+  // hash code and comparison, to make blocks hashable and rapidly searchable
+  bool operator != (const block_minimal& other) const;
+  size_t hash_value (KGBElt x, const RatWeight& gamma_lambda) const;
+  BlockElt find (const StandardRepr& sr) const; // return index or |UndefBlock|
 
   // virtual methods
   virtual KGBElt max_x() const { return highest_x; } // might not be final |x|
@@ -79,7 +84,37 @@ class block_minimal : public Block_base
 
 }; // |class block_minimal|
 
+size_t hash_value (const repr::Rep_context& rc, const RootNbrSet& ipr,
+		   KGBElt x, const RatWeight& gamma_lambda);
 
+// A class that helps look up standard representation agains a list of blocks
+class block_hash_table
+{
+  struct record { const block_minimal* block; BlockElt z; };
+
+  const repr::Rep_context& rc;
+  std::vector<record> hash_table;
+  size_t count;
+
+  static const record empty_record;
+  static const float sparse_factor; // factor by which to oversize |hash_table|
+
+public:
+
+  // static constants
+  static constexpr unsigned long empty = ~0ul;
+
+  block_hash_table(const repr::Rep_context& context)
+    : rc(context)
+    , hash_table(64,empty_record)
+    , count(0)
+  {}
+
+  unsigned long lookup
+    (const RootNbrSet& ipr,KGBElt x, const RatWeight& gamma_lambda) const;
+
+  void add_block(const block_minimal& block);
+}; // |block_hash_table|
 
 } // |namespace blocks|
 

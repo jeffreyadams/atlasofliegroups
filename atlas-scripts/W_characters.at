@@ -6,6 +6,7 @@
 <tabulate.at { for |tabulate| }
 <cyclotomic.at {for |product_of_cyclotomic|}
 
+
 { The purpose of this file is working with Weyl group characters.
 
   A large initial part is dedicated to deciding conjugacy in the Weyl group, and
@@ -328,6 +329,8 @@ set conjugate_from_classified_standard_Levi (
 { conjugacy test; not complete for composite types with a F4 factor
 use is_conjugate_strong instead (see below)}
 set is_conjugate (WeylElt x,WeylElt y) = bool:
+   {quick false if orders not same}
+   if order(x)!=order(y) then false else
    { there follows a rather complicated and/or expression: }
    let rd=x.root_datum in y.root_datum=rd { easy and necessary } and
    char_poly(matrix(x))=char_poly(matrix(y)) { easy and necessary } and
@@ -345,6 +348,7 @@ in none(for (code,) in factors do code="F" od) { done unless F4 factors } or
    in dominant(rd,alpha)=dominant(rd,beta) { whether these have same length }
    fi
 )))
+fi
 
 { some simple functions that exploit the conjugacy test }
 set conjugacy_class_rep (WeylElt w, [WeylElt] classes) = WeylElt:
@@ -404,9 +408,27 @@ set minimal_representative(WeylElt w)=WeylElt:minimal_representatives(w)[0]
 set is_conjugate_strong(WeylElt x,WeylElt y)=bool:
 find(minimal_representatives(x),minimal_representative(y))!=-1
 
+{there appears to be a bug here
+example: 
+
+atlas> set rd=SO(12)
+Variable rd: RootDatum (overriding previous instance, which had type RootDatum)
+atlas> set w=W_elt (rd,[0])
+Variable w: WeylElt (overriding previous instance, which had type WeylElt)
+atlas> set y=W_elt (rd,[1])
+Variable y: WeylElt (overriding previous instance, which had type WeylElt)
+atlas> is_conjugate(w,y)
+Value: true
+atlas> is_conjugate_strong (w,y)
+Value: false
+
+{minimal_representatives does not give all of them:}
+atlas> minimal_representatives(w)
+Value: [<0>]
+}
+
+
 {----------------------------------------------------------------------------}
-
-
 
 { brute force enumerate the conjugacy class of |w|, with conjugacy witnesses }
 set conjugators_and_conjugacy_class (WeylElt !w0) = ([WeylElt],[WeylElt]):
@@ -670,6 +692,7 @@ set W_class_table (RootDatum rd) = WeylClassTable:
    , !ncc = #reps { number of conjugacy classes }
    , class_of (WeylElt w)= int: first(#reps,(int i): is_conjugate(reps[i],w))
    , !nW = rd.order_W
+   , !rank = rd.rank, !npr=rd.nr_of_posroots
    then inner ([int] x, [int] y) = int:
      assert(#x=ncc and #y=ncc,"Wrong sizes");
      let s = for size@i in sizes do size*x[i]*y[i] od.sum then (q,r)=s \% nW in
@@ -677,11 +700,11 @@ set W_class_table (RootDatum rd) = WeylClassTable:
    , sum ([int] x, [int] y) = [int]: for xi@i in x do xi+y[i] od
    , product ([int] x, [int] y) = [int]: for xi@i in x do xi*y[i] od
    , power_map = [vec]: for w in reps do for i:w.order do class_of(w^i) od od
-   , refl_char = for w in reps do w.matrix.trace od
-   then reflection_sympowers =
-        for :ncc do 1 od # for :rd.nr_of_posroots do [int]:[] od
+   , refl_characteristic = for w in reps do w.matrix.char_poly od
+   then reflection_sympowers = [[int]]: { characters of Sym^k(reflection_rep) }
+        for :ncc do 1 od { initial symmetric 0-power, only one computed here }
+	# for :npr do [int]:[] od { reserve empty table rows }
    , k=0 { last symmetric power computed}
-   , Adams_refl(int n) = [int]: for v in power_map do refl_char[v[n % #v]] od
 in
 ( {print_classes} @:
    let data = for w in reps
@@ -714,13 +737,16 @@ in
 , {tensor_power}
    ([int] x, int n) [int]: assert(#x=ncc,"Wrong size"); for xi in x do xi^n od
 , {sym_power_refl}
-  (int n) [int]: assert(n<=rd.nr_of_posroots,"Bounded symmetric power table");
-     while k<n
-     do let acc = Adams_refl(k+:=1)
-     in for i:k-1 from 1
-        do acc := sum(acc,product(reflection_sympowers[i],Adams_refl(k-i)))
-        od
-     ;  reflection_sympowers[k] := for s in acc do s\k od
+  (int n) [int]: assert(n<=npr,"No symmetric powers recorded beyond "+npr);
+     while k<n { extend until |reflection_sympowers[n]| has been set }
+     do k+:=1; reflection_sympowers[k] :=
+        for j:ncc
+	do let s=0, !chi=refl_characteristic[j] in
+	   for i:min(rank,k) from 1
+	   do s-:=chi~[i]*reflection_sympowers[k-i][j]
+	   od
+	;  s
+	od
      od
   ;  reflection_sympowers[n],
   [for :ncc do 1 od {trivial}, for w in reps do minus_1^w.length od {sgn}, for w in reps do w.matrix.trace od {reflection}]
@@ -777,3 +803,12 @@ in for k:n from 1
    in for i:k-1 from 1 do sum:=tab.direct_sum(sum,tab.tensor(e[i],sp~[i])) od
    ; e #:= for s in sum do s\k od { expand table by |sum\k| }
    od; e[n] { last symmetric power is the one we want }
+
+{reduce list of Weyl group elements do distinct conjugacy classes}
+set filter_by_class([WeylElt] list)=
+let classes=[WeylElt]:[list[0]] in
+for i:#list-1 from 1 do
+ let index=first(for w in classes do is_conjugate(w,list[i]) od) in
+  if index=-1 then classes#:=list[i] fi
+od;
+classes

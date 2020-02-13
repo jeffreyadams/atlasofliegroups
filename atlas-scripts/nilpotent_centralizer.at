@@ -1,4 +1,5 @@
 <nilpotent_orbits.at
+<galois.at {for strong_real_forms_same_type}
 
 {computing the centralizer of a complex nilpotent}
 
@@ -85,12 +86,22 @@ od;
 set centralizer_roots_and_coroots(ComplexNilpotent O)=([vec],[vec],[vec],[vec]):
 let (roots_G,roots_C)=O.centralizer_roots in centralizer_roots_and_coroots(O,roots_G,roots_C)
 
-{put it all together: compute the identity component of Cent(O) as a reductive group
- more precisely: the (id component of) derived group of Cent_G(X), or Cent_G(SL(2))
+{put it all together: compute the identity component of Cent_G(O) as a reductive group
+ more precisely: the (id component of) reductive part of Cent_G(X), or Cent_G(SL(2))
+Note: Cent_G(O) is finite <=> O is distinguished
+Suppose C=Cent_G(O)^0 has a central torus. If C has a non-trivial semisimple part,
+then the rank of C is determined (by the length of the vectors in question),
+i.e. the dimension of the radical is determined.
+However if Cent_G(O)^0 is a torus (closely related to be not equivlanet to quasi-distinguished),
+then there are non roots to use to determine the rank of the torus. 
+In this case (only): the rank of the torus is the dimension of the radical (maximal central torus)
+of the Bala-Carter Levi of the orbit
 }
 set centralizer(ComplexNilpotent O)=
 let (roots_G,coroots_G,roots_C,coroots_C)=centralizer_roots_and_coroots(O) in
-if #roots_C=0 then complex_torus(0) else
+if #roots_C=0
+ then Bala_Carter_Levi(O).radical
+else
 root_datum_from_positive(roots_C,coroots_C) fi
 
 
@@ -146,3 +157,22 @@ set show_nilpotent_orbits_long([RootDatum] rds)=void:
 for rd in rds do show_nilpotent_orbits_long(rd) od
 
 set list=[SL(2),Sp(4),Sp(6),Sp(8),SO(7),SO(8),SO(9),simply_connected(G2),simply_connected(F4)]
+
+set show_nilpotent_orbits_plus([ComplexNilpotent] orbits)=void:
+tabulate(
+["i","H","diagram","dim","BC Levi","Cent","A(O)","|Z(cent)|","Cent_2"]#for  orbit@i in orbits do
+let d=orbit.component_datum then
+cent=orbit.centralizer in
+[i.to_string,
+([int]:orbit.H).to_string,
+orbit.diagram.to_string,
+orbit.dim_nilpotent.to_string,
+orbit.Bala_Carter_Levi.nice_format,
+cent.nice_format,
+d.orders.to_string,
+cent.derived.order_center.to_string,
+(#cent.compact_form.strong_real_forms_same_type).to_string
+] od)
+
+set show_nilpotent_orbits_plus(RootDatum rd)=void:
+show_nilpotent_orbits_plus(rd.orbits)
