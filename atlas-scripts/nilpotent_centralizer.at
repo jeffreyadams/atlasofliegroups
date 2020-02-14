@@ -132,6 +132,20 @@ orbit.centralizer.nice_format,
 d.orders.to_string,
 (#real_nilpotent_orbits(orbit,G)).to_string] od)
 
+{compact listing: i H diagram dim BC-Levi Cent A(O)}
+set show_nilpotent_orbits([ComplexNilpotent] orbits)=void:
+tabulate(
+["i","H","diagram","dim","BC Levi","Cent","A(O)"]#
+for  orbit@i in orbits do
+let d=orbit.component_datum in
+[i.to_string,
+([int]:orbit.H).to_string,
+orbit.diagram.to_string,
+orbit.dim_nilpotent.to_string,
+orbit.Bala_Carter_Levi.nice_format,
+orbit.centralizer.nice_format,
+d.orders.to_string] od)
+
 set show_nilpotent_orbits(RootDatum rd)=void:
 show_nilpotent_orbits(nilpotent_orbits(rd))
 

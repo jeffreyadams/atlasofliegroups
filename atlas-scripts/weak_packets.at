@@ -8,6 +8,9 @@
 set parameters([([([Param],[WCell])],[(int,int,Param)])] data)=
 ##for (,triple) in data do for (,,p) in triple do p od od
 
+{extract just the parameters from [(int,int,Param)] (output of weak_packet(..)}
+set parameters([(int,int,Param)] triples)=[Param]:for (,,p) in triples do p od
+
 {SpringerTable: table of Springer data, see springer_tables.at
  NOTE: this must be the SpringerTable for the integral root system
  ComplexNilpotent: complex orbit for dual group
@@ -318,10 +321,13 @@ od;rv
 set blocks([(int,int,Param)] packet)=sort_u(for (b,,) in packet do b od )
 set cells([(int,int,Param)] packet)=sort_u(for (,c,) in packet do c od )
 set cells([[(int,int,Param)]] packets) =sort_u(##for i:#packets do for (,c,) in packets[i] do c od od)
+set blocks([[(int,int,Param)]] packets) =sort_u(##for i:#packets do for (b,,) in packets[i] do b od od)
+
 
 set show_short([([([Param],[WCell])],[(int,int,Param)])] blocks_and_cells_and_packets)=void:
 let packets=for (,packet) in blocks_and_cells_and_packets do packet od then
 grand_total=0 then
+blocks=blocks(packets) then
 cells=cells(packets) then
 m=mult(packets) in
 tabulate(
@@ -375,7 +381,7 @@ tabulate(
   od
  od
 
-     #["Total","",(#parameters(for (,b) in blocks_and_cells_and_packets do b od)).to_string,""]
+     #["Total","",(#parameters(##for (,b) in blocks_and_cells_and_packets do b od)).to_string,""]
   )
 
 set mult([[(int,int,Param)]] packet)=((int,int,int)->int):(int orbit,int block,int cell):
@@ -428,7 +434,7 @@ tabulate(
   od
  od
 od
-     #["Total","","",(#parameters(for (,b) in blocks_and_cells_and_packets do b od)).to_string,""]
+     #["Total","","",(#parameters(##for (,b) in blocks_and_cells_and_packets do b od)).to_string,""]
   )
 
 set export([Param] parameters)=void:
@@ -438,9 +444,6 @@ for p@i in parameters do
  (,n)=%p.x, lambda=p.lambda, nu=p.nu in
  prints("parameter(G,",n,",",lambda,",",nu,")",comma) od;
 prints("]")
-
-set export_parameters([[(int,int,Param)]] packets)=void:
-export(parameters(packets))
 
 {----------------more output routines---------------------------------}
 
