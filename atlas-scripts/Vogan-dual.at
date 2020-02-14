@@ -1,6 +1,6 @@
-<basic.at
+<cells.at 
 <parameters.at { for |dual_inner_class| }
-
+<nilpotent_orbits.at {for |is_Aq|}
 { A first main objective of this script is to define a function |dual_KGB| that
   associates to a |Param| value a KGB element for a computed dual real form.
   Even just determining the proper dual real form is a surprisingly delicate
@@ -160,6 +160,9 @@ set check_dual_lambda (Param p) = bool:
 set dual (Param p, InnerClass dual_integral_class) = Param:
   parameter( dual_KGB(p,dual_integral_class), dual_lambda(p), dual_gamma(p) )
 
+{ the dual_integral_class is given by dual_inner_class@Param (parameters.at)}
+set dual(Param p)=Param:dual(p,dual_inner_class(p))
+
 { define dual of (x,y,gamma), see parameters.at }
 set dual(KGBElt x,KGBElt y, ratvec gamma) = Param:
   dual(parameter(x,y,gamma),inner_class(y))
@@ -183,3 +186,26 @@ set test2 (Param p) = [bool]: { consistency of cocharacter across block }
   let G_v=dual_inner_class(p), gamma1=infinitesimal_character(p)%1
   in for q in block_of(p)
      do central_cocharacter(real_form(dual_KGB(q,G_v)))=gamma1 od
+
+
+{  --------- some indicator functions -------------}
+
+{false unless regular infinitesimal character,
+ not necessarily integral, 
+in which case true if the Vogan dual (a parameter
+for the integrality datum) is an Aq}
+set is_dual_Aq (Param p) = bool:
+if not is_regular(p) then false
+else is_Aq(dual(p,dual_inner_class(p)))
+fi
+
+{usually used to see if the dual of a cell has an Aq,
+although the argument isn't required to be a cell}
+set is_dual_Aq([Param] cell)=bool:any(for p in cell do is_dual_Aq(p) od)
+
+
+set is_dual_Aq([Param] block,WCell cell)=bool:
+let (param_numbers,)=cell in
+is_dual_Aq(for i in param_numbers do block[i] od)
+
+set star(bool value)=string:if value then "*" else "" fi
