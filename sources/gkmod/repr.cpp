@@ -1298,10 +1298,10 @@ void Rep_table::add_block(ext_block::ext_block& block, // a full extended block
     auto y = *it; // block element, index into (extended) |block|
     if (block.z(y)==top_elt)
       top_elt_it=it;
-    auto y_index = hash.find(block.sr(y,parent));
-    assert (y_index!=hash.empty); // since we looked up everything above
-    assert (y_index<twisted_KLV_list.size());
-    SR_poly& dest = twisted_KLV_list[y_index];
+    auto hash_y = hash.find(block.sr(y,parent));
+    assert (hash_y!=hash.empty); // since we looked up everything above
+    assert (hash_y<twisted_KLV_list.size());
+    SR_poly& dest = twisted_KLV_list[hash_y];
     if (dest.empty()) // this means the entry was never defined
     { dest = SR_poly(block.sr(y,parent),repr_less()); // coefficient 1
       unsigned int parity = block.length(y)%2;
@@ -1314,10 +1314,10 @@ void Rep_table::add_block(ext_block::ext_block& block, // a full extended block
 	dest.add_term(block.sr(x,parent),factor);
       }
       // since |dest| is a reference, the sum is stored at its destination
-    } // |if (y_index>=old_size)|
+    } // |if (hash_y>=old_size)|
   } // |for (y : extended_finals)|
   assert(not top_elt_it.at_end()); // we must have set it somewhere on our way
-  extended_finals.erase(++top_elt_it,extended_finals.cend()); // keep to |top_elt|
+  extended_finals.erase(++top_elt_it,extended_finals.cend()); // truncate
 } // |Rep_table::add_block| (extended block)
 
 // look up or compute and return the alternating sum of twisted KL polynomials
@@ -1362,61 +1362,69 @@ SR_poly Rep_table::twisted_deformation_terms (param_block& parent,BlockElt y)
   if (not parent.survives(y) or parent.length(y)==0)
     return result; // easy cases, null result
 
-  ext_block::ext_block eblock(parent,delta);
-  containers::sl_list<BlockElt> extended_finals;
-  add_block(eblock,parent,y,extended_finals);
+  ext_block::ext_block eblock(parent,delta); // extract (full) extended block
   assert(eblock.is_present(y)); // since |is_twist_fixed| succeeded
   const BlockElt y_index = eblock.element(y);
 
+  containers::sl_list<BlockElt> extended_finals;
+  add_block(eblock,parent,y,extended_finals); // precompute KLV polynomials
+  // that call computes for whole |eblock|; truncates |extended_finals| after |y|
+
   assert(hash.find(sr_y)!=hash.empty); // |sr_y| should be known now
-  unsigned int y_parity = eblock.length(y_index)%2;
 
-  extended_finals.reverse();  // now |extended_finals| decreasing from |y|
+  extended_finals.reverse(); // |extended_finals| is decreasing from |y_index|
+  assert(extended_finals.front()==y_index);
 
-  std::vector<unsigned long> remap; // from |extended_finals| index to hash nr
-  remap.reserve(extended_finals.size());
+  std::vector<std::pair<StandardRepr,unsigned long> > sr_h;
+    // map |survivors| index to |StandardRepr| and its associated hash number
+  sr_h.reserve(extended_finals.size());
   std::unique_ptr<unsigned int[]> index // a sparse array inverting |remap|
     (new unsigned int [hash.size()]); // unlike |std::vector| do not initialise
-  for (auto x : extended_finals)
-  {
-    unsigned long h=hash.find(eblock.sr(x,parent));
+  for (auto x : extended_finals) // traverse linked list
+  { // index |pos| -> |BlockElt x| -> |StandardRepr sr| -> hash value |h|
+    StandardRepr sr_x=eblock.sr(x,parent);
+    unsigned long h=hash.find(sr_x);
     assert(h!=hash.empty); // all |extended_finals| standardreps should be found
-    index[h]=remap.size(); // point back to entry pushed in next line
-    remap.push_back(h);
+    index[h]=sr_h.size(); // point back |h| -> |pos|
+    sr_h.push_back(std::make_pair(sr_x,h));
   }
 
   // since we evaluate at $s=-1$ eventually, we can use integer coefficients
-  std::vector<int> acc(remap.size(),0);
-  std::vector<int> remainder(remap.size(),0);
+  std::vector<int> acc(sr_h.size(),0);
+  std::vector<int> remainder(sr_h.size(),0);
   remainder.front()=1; // we initialised remainder = 1*sr_y
+  unsigned int y_parity = eblock.length(y_index)%2;
 
-   for (auto cur : extended_finals) // value of |cur| is, and must be, decreasing
-  {
-    StandardRepr p_cur=eblock.sr(cur,parent);
-    auto h = hash.find(p_cur);
-    assert(h!=hash.empty);
-    unsigned i=index[h];
-    int c_cur = remainder[i];
+  for (unsigned pos=0; pos<sr_h.size(); ++pos) // loop through |survivors|
+  { // call |cur| element |pos| of |survivors|; its value decreases in loop
+    int c_cur = remainder[pos]; // coefficient of |cur| in |remainder|
+    if (c_cur==0)
+      continue;
+    auto h = sr_h[pos].second; // hash position of |block.sr(cur)|
     const SR_poly& KL_cur = twisted_KLV_list[h];
-    const bool contribute = eblock.length(cur)%2!=y_parity;
+    const bool contribute = lengths[h]%2!=y_parity; // whether |cur| at odd level
     for (const auto& pair : KL_cur)
-    { auto j = index[hash.find(pair.first)];
-      assert(j>=i); // triangularity of |twisted_KLV_list|
+    { // |pair.first| is monomial from KL sum; lower in block, not |repr_less|
+      assert(not repr_less()(pair.first,sr_h[pos].first)); // monomials go up
+      assert(hash.find(pair.first)!=hash.empty); // |hash| is downwards closed
+      auto j = index[hash.find(pair.first)];
+      assert(j>=pos); // triangularity of |twisted_KLV_list|
       int c = c_cur*pair.second.s_to_minus_1();
       remainder[j] -= c;
       if (contribute) // optimisation will apply loop unswitching to this test
 	acc[j] += c; // here we contribute
     }
-    assert(remainder[i]==0); // check relation of being inverse
+    assert(remainder[pos]==0); // check relation of being inverse
   }
 
-  // correct signs in terms of result according to orientation numbers
-  unsigned int orient_y = orientation_number(sr_y);
-  unsigned i=0;
-  for (auto x : extended_finals)
-  { auto sr_x=eblock.sr(x,parent);
+/* Transform coefficients of |acc| to polynomial |result|, taking into account
+   the differences of |orientation_number| values between |y| and (current) |x|.
+*/
+  unsigned int orient_y = orientation_number(sr_h[0].first);
+  for (unsigned pos=0; pos<sr_h.size(); ++pos)
+  { auto const& sr_x=sr_h[pos].first;
     unsigned int orient_express=orient_y-orientation_number(sr_x);
-    auto coef = acc[i++]*arithmetic::exp_i(orient_express);
+    auto coef = acc[pos]*arithmetic::exp_i(orient_express);
     result.add_term(sr_x,Split_integer(1,-1)*coef);
   }
 
