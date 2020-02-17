@@ -931,7 +931,7 @@ void Rep_table::add_block
   // compute cumulated KL polynomimals $P_{x,y}$ with $x\leq y$ survivors
 
   // start with computing KL polynomials for the entire block
-  const kl::KLContext& klc = block.klc(block.size()-1,false); // silently
+  const kl::KLContext& klc = block.klc(block.size()-1,false); // fill silently
 
   /* get $P(x,z)$ for |x<=z| with |z| among new |survivors|, and contribute
    parameters from |block.finals_for(x)| with coefficient $P(x,z)[q:=s]$
@@ -1367,7 +1367,7 @@ SR_poly Rep_table::twisted_deformation_terms (param_block& parent,BlockElt y)
   const BlockElt y_index = eblock.element(y);
 
   containers::sl_list<BlockElt> extended_finals;
-  add_block(eblock,parent,y,extended_finals); // precompute KLV polynomials
+  add_block(eblock,parent,y,extended_finals); // precompute twisted KLV polys
   // that call computes for whole |eblock|; truncates |extended_finals| after |y|
 
   assert(hash.find(sr_y)!=hash.empty); // |sr_y| should be known now
@@ -1475,21 +1475,11 @@ SR_poly Rep_table::twisted_deformation (StandardRepr z)
   if (not rp.empty()) // without reducuibilty points, just return |result| now
   {
     BlockElt dummy;
-    param_block parent(*this,z,dummy); // full parent block needed for now
-    ext_block::ext_block eblock(parent,delta); // full as well
-    containers::sl_list<BlockElt> extended_finals;
-    add_block(eblock,parent,dummy,extended_finals);
-    const unsigned long h=hash.find(z);
-    assert(h<twisted_def_formula.size()); // it was just added by |add_block|
-
     for (unsigned i=rp.size(); i-->0; )
     {
       Rational r=rp[i]; bool flipped;
       auto zi = ext_block::scaled_extended_dominant(*this,z,delta,r,flipped);
-      std::unique_ptr<param_block> bp;
-      if (i+1<rp.size()) // avoid regenerating same parent block first time
-        bp.reset(new param_block(*this,zi,dummy));
-      param_block& block = bp.get()==nullptr ? parent : *bp;
+      param_block block(*this,zi,dummy);
 
       auto L =
 	ext_block::extended_finalise(*this,zi,delta); // rarely a long list
@@ -1501,6 +1491,8 @@ SR_poly Rep_table::twisted_deformation (StandardRepr z)
 		      flipped==it->second ? jt->second : jt->second.times_s());
       }
     }
+    const unsigned long h=hash.find(z);
+    assert(h<twisted_def_formula.size()); // it was just added by |add_block|
     twisted_def_formula[h]=result; // now store result for future lookup
 
   }
