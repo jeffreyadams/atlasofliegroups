@@ -154,8 +154,8 @@ prints(" springer(O)=",springer_O) fi;
  ##for cell@j in cells do
   if {cells_verbose} true  then prints("  block ",i,"/cell ",j, " of size ", #cell) fi;
     let spec=special_character_permuted(st.ct,cell,inverse(permutation)) in
-{    let spec=special_character(st.ct,cell,st.root_datum.simple_roots) in}
-    if spec=springer_O then 
+let ()=    if cells_verbose then prints("spec: ", spec, " ", "springer_O: ", springer_O) fi in 
+if spec=springer_O then 
    ##for p in parameters(block,cells[j]) do let ()=prints("p=",p, " ", p.real_form) in  if I_will_survive(p,gamma) then
       prints("survive:", p, " ", gamma);
 {prints("translating irreducible ", p, " to ", gamma);}

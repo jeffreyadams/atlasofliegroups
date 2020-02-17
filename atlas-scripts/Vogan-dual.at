@@ -203,7 +203,7 @@ fi
 although the argument isn't required to be a cell}
 set is_dual_Aq([Param] cell)=bool:any(for p in cell do is_dual_Aq(p) od)
 
-
+{argument is a block of parameters, and a WCell}
 set is_dual_Aq([Param] block,WCell cell)=bool:
 let (param_numbers,)=cell in
 is_dual_Aq(for i in param_numbers do block[i] od)
