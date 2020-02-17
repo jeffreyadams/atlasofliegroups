@@ -1071,7 +1071,36 @@ SR_poly Rep_table::deformation_terms (param_block& block,BlockElt y)
   }
 
   return result;
-} // |deformation_terms|
+} // |deformation_terms|, block version
+
+SR_poly Rep_table::deformation_terms (unsigned long sr_hash) const
+{ // the |StandardRepr| |hash[sr_hash]| is necessarily final (survivor)
+  SR_poly result(repr_less());
+  SR_poly remainder(hash[sr_hash],repr_less());
+  auto y_parity=lengths[sr_hash]%2;
+
+  while(not remainder.empty())
+  {
+    auto const& leading = *remainder.cbegin(); // least term is leading term
+    auto h=hash.find(leading.first); // highest term of |remainder|
+    assert(h!=hash.empty); // we remain within the already tabled parameters
+    auto c_cur = leading.second;
+    const SR_poly& KL_cur = KLV_list[h];
+    remainder.add_multiple(KL_cur,-c_cur);
+    assert(remainder.empty() or hash.find(remainder.cbegin()->first)!=h);
+    if (lengths[h]%2!=y_parity)
+      result.add_multiple(KL_cur,c_cur);
+  }
+  unsigned int orient_y = orientation_number(hash[sr_hash]);
+  for (auto& term : result)
+  {
+    unsigned int orient_express=orient_y-orientation_number(term.first);
+    (term.second*= arithmetic::exp_i(orient_express)).times_1_s();
+  }
+
+  return result;
+} // |deformation_terms|, version without block
+
 
 SR_poly Rep_table::deformation(const StandardRepr& z)
 // that |z| is dominant and final is a precondition assured in the recursion
@@ -1101,10 +1130,20 @@ SR_poly Rep_table::deformation(const StandardRepr& z)
     StandardRepr zi = z; scale(zi,rp[i]);
     normalise(zi); // necessary to ensure the following |assert| will hold
     assert(is_final(zi)); // ensures that |deformation_terms| won't refuse
-    param_block b(*this,zi); // construct block interval below |zi|
-    const SR_poly terms = deformation_terms(b,b.size()-1);
-    for (auto const& term : terms)
-      result.add_multiple(deformation(term.first),term.second); // recursion
+    auto h=hash.find(zi);
+    if (h==hash.empty) // then we are in a new block; construct it
+    {
+      param_block b(*this,zi); // construct block interval below |zi|
+      const SR_poly terms = deformation_terms(b,b.size()-1);
+      for (auto const& term : terms)
+	result.add_multiple(deformation(term.first),term.second); // recursion
+      // |b| and any KLV polynomials stored in it will now be destructed!
+    }
+    else
+    { const SR_poly terms = deformation_terms(h);
+      for (auto const& term : terms)
+	result.add_multiple(deformation(term.first),term.second); // recursion
+    }
   }
 
   // now store result for future lookup
@@ -1431,6 +1470,35 @@ SR_poly Rep_table::twisted_deformation_terms (param_block& parent,BlockElt y)
   return result;
 } // |twisted_deformation_terms|
 
+SR_poly Rep_table::twisted_deformation_terms (unsigned long sr_hash) const
+{ // the |StandardRepr| |hash[sr_hash]| is necessarily delta-fixed and final
+  SR_poly result(repr_less());
+  SR_poly remainder(hash[sr_hash],repr_less());
+  auto y_parity=lengths[sr_hash]%2;
+
+  while(not remainder.empty())
+  {
+    auto const& leading = *remainder.cbegin(); // least term is leading term
+    auto h=hash.find(leading.first); // highest term of |remainder|
+    assert(h!=hash.empty); // we remain within the already tabled parameters
+    auto c_cur = leading.second;
+    const SR_poly& KL_cur = twisted_KLV_list[h];
+    remainder.add_multiple(KL_cur,-c_cur);
+    assert(remainder.empty() or hash.find(remainder.cbegin()->first)!=h);
+    if (lengths[h]%2!=y_parity)
+      result.add_multiple(KL_cur,c_cur);
+  }
+  unsigned int orient_y = orientation_number(hash[sr_hash]);
+  for (auto& term : result)
+  {
+    unsigned int orient_express=orient_y-orientation_number(term.first);
+    (term.second*= arithmetic::exp_i(orient_express)).times_1_s();
+  }
+
+  return result;
+} // |twisted_deformation_terms|, version without block
+
+
 // the next function is recursive, so avoid testing properties each time
 // notably assure |z| is final and inner-twist |fixed| before calling this
 SR_poly Rep_table::twisted_deformation (StandardRepr z)
@@ -1474,22 +1542,37 @@ SR_poly Rep_table::twisted_deformation (StandardRepr z)
 
   if (not rp.empty()) // without reducuibilty points, just return |result| now
   {
-    BlockElt dummy;
     for (unsigned i=rp.size(); i-->0; )
     {
       Rational r=rp[i]; bool flipped;
       auto zi = ext_block::scaled_extended_dominant(*this,z,delta,r,flipped);
-      param_block block(*this,zi,dummy);
-
       auto L =
 	ext_block::extended_finalise(*this,zi,delta); // rarely a long list
-      for (auto it=L.begin(); it!=L.end(); ++it)
-      { auto zz = block.lookup(it->first);
-	SR_poly terms = twisted_deformation_terms(block,zz);
-	for (SR_poly::iterator jt=terms.begin(); jt!=terms.end(); ++jt)
-	  result.add_multiple(twisted_deformation(jt->first),  // recursion
-		      flipped==it->second ? jt->second : jt->second.times_s());
+      auto h=hash.find(zi);
+      if (h==hash.empty or
+	  h>=twisted_KLV_list.size() or twisted_KLV_list[h].empty())
+      {	// then we are in a new block; construct it
+	BlockElt dummy;
+	param_block block(*this,zi,dummy);
+	for (auto it=L.begin(); it!=L.end(); ++it)
+	{ const auto zz = block.lookup(it->first);
+	  const bool flip = flipped!=it->second;
+	  const SR_poly terms = twisted_deformation_terms(block,zz);
+	  for (auto const& term : terms)
+	    result.add_multiple(twisted_deformation(term.first),  // recursion
+				flip ? term.second.times_s() : term.second);
+	}
       }
+      else
+	for (auto it=L.begin(); it!=L.end(); ++it)
+	{ const auto hh=hash.find(it->first);
+	  assert(hh!=hash.empty);
+	  const SR_poly terms = twisted_deformation_terms(hh);
+	  const bool flip = flipped!=it->second;
+	  for (auto const& term : terms)
+	    result.add_multiple(twisted_deformation(term.first), // recursion
+				flip ? term.second.times_s() : term.second);
+	}
     }
     const unsigned long h=hash.find(z);
     assert(h<twisted_def_formula.size()); // it was just added by |add_block|
