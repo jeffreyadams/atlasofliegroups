@@ -185,7 +185,7 @@ st_int=springer_table(rd_int) then
 {dual_integral_orbits=integral_descents(st_int,O_check) in}
 O_check_int=integral_descent(st_int,O_check) then
 ()=prints("O_check_int:", O_check_int) then
-()=prints("permutation: ", perm) then
+()=prints("permutation: ", permutation) then
 ()=prints("computing packet for:", O_check_int) then
 (bc,wp)=weak_packet(st_int,O_check_int,all,gamma_final,permutation) in
 (bc,wp)
