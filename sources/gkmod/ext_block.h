@@ -320,7 +320,7 @@ struct param // allow public member access; methods ensure no invariants anyway
     { return ctxt.innerClass().matrix(tw); }
 
   KGBElt x() const; // reconstruct |x| component
-  repr::StandardRepr restrict() const // underlying unexteded representation
+  repr::StandardRepr restrict() const // underlying unextended representation
     { return ctxt.rc().sr_gamma(x(),lambda_rho,ctxt.gamma()); }
 }; // |param|
 
