@@ -132,6 +132,10 @@ class Split_integer
 {
   int ev_1, ev_minus_1; // store evaluations at $1$ and $-1$ for efficiency
   // class invariant: |ev_1| and |ev_minus_1| have the same parity
+
+  struct raw {}; // to signal use of the private constructor
+  explicit constexpr Split_integer(int ev_1, int ev_minus_1, raw)
+  : ev_1(ev_1), ev_minus_1(ev_minus_1) {}
  public:
   explicit constexpr Split_integer(int a=0, int b=0)
   : ev_1(a+b), ev_minus_1(a-b) {}
@@ -150,21 +154,31 @@ class Split_integer
   { ev_1+=y.ev_1; ev_minus_1+=y.ev_minus_1; return *this; }
   Split_integer& operator -=(Split_integer y)
   { ev_1-=y.ev_1; ev_minus_1-=y.ev_minus_1; return *this; }
-  Split_integer operator +(Split_integer y) { return y+= *this; }
-  Split_integer operator -(Split_integer y) { return y.negate()+= *this; }
-  Split_integer operator -() const { return Split_integer(*this).negate(); }
 
-  Split_integer& operator*= (int n) { ev_1*=n; ev_minus_1*=n; return *this; }
-  Split_integer operator* (int n) const { return Split_integer(*this)*=n; }
+  Split_integer operator +(Split_integer y) const
+  { return Split_integer(ev_1+y.ev_1,ev_minus_1+y.ev_minus_1,raw()); }
+  Split_integer operator -(Split_integer y) const
+  { return Split_integer(ev_1-y.ev_1,ev_minus_1-y.ev_minus_1,raw()); }
+  Split_integer operator -() const
+  { return Split_integer(-ev_1,-ev_minus_1,raw()); }
+
   // multiplication is where the "split" representation really wins out:
+  Split_integer& operator*= (int n) { ev_1*=n; ev_minus_1*=n; return *this; }
   Split_integer& operator*= (Split_integer y)
   { ev_1*=y.ev_1; ev_minus_1*=y.ev_minus_1; return *this; }
-  Split_integer operator* (Split_integer y) const { return y*= *this; }
+  Split_integer operator* (int n) const
+  { return Split_integer(ev_1*n,ev_minus_1*n,raw()); }
+  Split_integer operator* (Split_integer y) const
+  { return Split_integer(ev_1*y.ev_1,ev_minus_1*y.ev_minus_1,raw()); }
 
   Split_integer& negate() { ev_1=-ev_1; ev_minus_1=-ev_minus_1; return *this; }
+
   Split_integer& times_s() { ev_minus_1=-ev_minus_1; return *this; }
-  Split_integer& times_1_s() { ev_1=0; // see "Who Killed the ELectric Car"
+  Split_integer times_s() const { return Split_integer(ev_1,-ev_minus_1,raw()); }
+  Split_integer& times_1_s() // multiply by |1-s|
+  { ev_1=0; /* see "Who Killed the ELectric Car" */
     ev_minus_1*=2; return *this; }
+  Split_integer times_1_s() const { return Split_integer(0,2*ev_minus_1,raw()); }
 
   int s_to_1() const { return ev_1; }
   int s_to_minus_1() const { return ev_minus_1; }
