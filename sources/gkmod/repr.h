@@ -266,11 +266,16 @@ class Rep_table : public Rep_context
 
   SR_poly deformation_terms (param_block& block,BlockElt entry_elem);
   // here |block| is non-|const| because it calls |add_block|
+  SR_poly deformation_terms (unsigned long sr_hash) const;
+  // once a parameter has been entered, we can compute this without a block
 
   SR_poly deformation(const StandardRepr& z);
 
   SR_poly twisted_deformation_terms (param_block& block,BlockElt entry_elem);
   // here |block| is non-|const| because it calls |add_block|
+  SR_poly twisted_deformation_terms (unsigned long sr_hash) const;
+  // once a parameter has been entered, we can compute this without a block
+
 
   SR_poly twisted_deformation(StandardRepr z); // by value
 
