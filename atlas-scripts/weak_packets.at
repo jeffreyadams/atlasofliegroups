@@ -128,42 +128,26 @@ weak_packet(st_int,O_check,all,gamma_target)
  return all orbits for rd_dual whose G^vee-saturation is the original
  orbit
 this is entirely on the dual side
-}
-{this function is probably NOT the right thing to do,
- see integral_descent() below, left this here temporarily 
- for testing purposes}
-set integral_descents(ComplexNilpotent O_check)=[ComplexNilpotent]:
-let rd=O_check.root_datum.dual then
-rdint=integrality_datum(rd,O_check.H/2) then
-integral_orbits=rdint.dual.orbits then
-H=O_check.H in
-##for O_int_check in integral_orbits do
-{H is in X_*(dual group), so
-is_conjugate(H,O_int_check.H,rd.dual) is the right conjugacy test}
-if is_conjugate(H,O_int_check.H,rd.dual) then [O_int_check] else [] fi od
-
-{compute integral_descents(O_check) (on the dual side)
- rd_int=integrality datum, rd_int_check=dual side (subgroup)
- integral_descents(O_check) is a set of orbits for rd_int_check
- return their duals, which are special orbits for rd_int}
- {this function should not be used, here only for testing}
-set integral_descents(SpringerTable st_int,ComplexNilpotent O_check)=
-let descents=integral_descents(O_check) in
-for O_check_int in descents do
-dual_orbit_by_diagram(st_int,O_check_int.diagram_normalized) od
-
-{this is the correct function to use: it returns a single 
-ComplexNilpotent for the rd_int.dual
+the first version gives the correct orbit for
+integrality_datum(G,O.H/2).dual
 }
 set integral_descent(ComplexNilpotent O_check)=ComplexNilpotent:
-let rd=O_check.root_datum.dual then
-rd_int=integrality_datum(rd,O_check.H/2) in
-(rd_int.dual,(),O_check.H)
+let rd=O_check.root_datum.dual {the original root datum on the group side} then
+rd_int=integrality_datum(rd,O_check.H/2)  {on the group side} then
+rd_int_dual=rd_int.dual  {on the dual side} in
+(rd_int_dual,(),O_check.H)
 
-{this version returns the correct orbit for the given rd_int.dual}
+
+{we need to move this to st_int.root_datum.dual
+this uses a permutation}
 set integral_descent(SpringerTable st_int,ComplexNilpotent O_check)=ComplexNilpotent:
-let O_check_int=O_check.integral_descent in
-dual_orbit_by_diagram(st_int,O_check_int.diagram_normalized)
+let rd=O_check.root_datum.dual {the original root datum on the group side} then
+O_check_rd_int=O_check.integral_descent {orbit for rd_int_dual} then
+rd_int=integrality_datum(rd,O_check.H/2) {integrality datum on group side} then
+(valid,permutation)=isomorphism_permutation(rd_int.derived,st_int.root_datum) in
+{Note: st_int.root_datum.dual is *adjoint*, so
+O_check_rd_int.diagram = O_check_rd_int.H}
+(st_int.root_datum.dual,(),O_check_rd_int.diagram*permutation)
 
 {This is the primary weak_packet function}
 {given complex orbit on dual side, and real form, compute weak Arthur packet}
