@@ -654,6 +654,13 @@ set theta_stable_parabolics_with([Parabolic] tsp,KGBElt x)=[Parabolic]:
 {. Decide whether there is a theta-stable parabolic determined by x. .}
 set is_theta_x(KGBElt x)=bool: #theta_stable_parabolics_with(x)>0
 
+{ test if p is cohomologically induced from a finite dimensional in the good range }
+set is_coh_ind_from_finite_dimensional (Param p) = bool:
+   let G=real_form(p), ic=infinitesimal_character(p) in
+   is_regular(p) and is_integral(ic,G) and
+   all(for i in support(x(p)) do let alpha=simple_coroots(G)[i] in
+   is_descent(i,p) od)
+
 {. List of parameters p_L in the (weakly) good range for G so that p is
   theta-induced from p_L; may be more than one. .}
 set is_good_range_induced_from (Param p) = [Param]:
