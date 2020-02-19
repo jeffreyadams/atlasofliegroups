@@ -283,7 +283,7 @@ set tau_containing (Block B,[int] P) = [int]:
 { because element(B,i) returns (x,y), so this makes is_Aq(element(B,i)) work: }
 { set is_Aq(KGBElt x,KGBElt y) = is_Aq(parameter(x,y,choose_gamma(x,y))) }
 set is_Aq ((KGBElt x,KGBElt y)) = bool:
-   is_coh_ind_from_finite_dimensional (parameter(x,y,choose_gamma(x,y)))
+   is_coh_ind_from_finite_dimensional(parameter(x,y,choose_gamma(x,y)))
 
 set is_Aq_cell (Block B,[int] C) = bool:
    any(#C,(int i)bool: is_Aq(element(B,C[i])))
@@ -965,3 +965,14 @@ set non_even_orbits(RootDatum rd)=non_even_orbits(rd.orbits)
 set dual_orbits(RootDatum rd)=[ComplexNilpotent]:rd.dual.orbits
 set even_dual_orbits(RootDatum rd)=even_orbits(rd.dual_orbits)
 set non_even_dual_orbits(RootDatum rd)=non_even_orbits(rd.dual_orbits)
+
+
+
+
+
+
+
+
+
+
+

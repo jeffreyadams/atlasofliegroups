@@ -1,4 +1,4 @@
-<cells.at 
+<cells.at
 <parameters.at { for |dual_inner_class| }
 <nilpotent_orbits.at {for |is_Aq|}
 { A first main objective of this script is to define a function |dual_KGB| that
@@ -191,7 +191,7 @@ set test2 (Param p) = [bool]: { consistency of cocharacter across block }
 {  --------- some indicator functions -------------}
 
 {false unless regular infinitesimal character,
- not necessarily integral, 
+ not necessarily integral,
 in which case true if the Vogan dual (a parameter
 for the integrality datum) is an Aq}
 set is_dual_Aq (Param p) = bool:

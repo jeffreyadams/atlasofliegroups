@@ -404,14 +404,14 @@ prints("*: dual(cell) contains an Aq(lambda)");
 prints("*: dual(p) is an Aq(lambda)");
 tabulate(
  ["block#","cell#","parameters", "inf. char."]#
-  ##for b in blocks do 
+  ##for b in blocks do
    ##for c in cells do
     for p in packet.parameters_map(b,c) do
      let (params,cells)=bc[b] then
      cell=cells[c] then
      cell_flag={if not is_integral(p.root_datum,p.infinitesimal_character) then false.star else} is_dual_Aq(params,cell).star {fi} then
      param_flag=if not is_integral(p.root_datum,p.infinitesimal_character) then false.star else is_dual_Aq(make_regular_irr(p)).star fi in
-    [b.to_string,c.to_string+cell_flag,p.to_string+ param_flag, p.infinitesimal_character.to_string] 
+    [b.to_string,c.to_string+cell_flag,p.to_string+ param_flag, p.infinitesimal_character.to_string]
    od
   od
  od
@@ -423,12 +423,12 @@ prints("*: dual(cell) contains an Aq(lambda)");
 prints("*: dual(p) is an Aq(lambda)");
 tabulate(
  ["orbit#","block#","cell#","parameters", "inf. char."]#
- ##for i:#blocks_and_cells_and_packets do 
+ ##for i:#blocks_and_cells_and_packets do
  let (bc,packet)=blocks_and_cells_and_packets[i] then
  blocks=blocks(packet) then
  cells=cells(packet) in
 { m=mult_block(packet) in}
-  ##for b in blocks do 
+  ##for b in blocks do
    ##for c in cells do
     for p in packet.parameters_map(b,c) do
      let (params,cells)=bc[b] then
@@ -457,7 +457,7 @@ prints("]")
 {----------------more output routines---------------------------------}
 
 set weak_packets([RealForm] list)=
-##for G in list do 
+##for G in list do
  ##for H in real_forms(G) do weak_packets(H)
 od
 od
@@ -490,7 +490,8 @@ for (params,cells) in data do
   is_dual_Aq(cell_params)
  od
 od
-set is_Aq([Param] params)=bool:any(for p in params do is_coh_ind_from_finite_dimensional(p) od)
+set is_Aq([Param] params)=bool:
+    any(for p in params do is_coh_ind_from_finite_dimensional(p) od)
 
 set is_Aq([Param] params,WCell cell)=
 let (param_numbers,)=cell in
@@ -498,7 +499,7 @@ is_Aq(for i in param_numbers do params[i] od)
 
 {this applies to output of weak_packet(...) or each entry
 of output of weak_packets(...)
-returns true if each cell which occurs satisfies is_dual_Aq(cell)} 
+returns true if each cell which occurs satisfies is_dual_Aq(cell)}
 set packets_disjoint( ([([Param],[WCell])],[(int,int,Param)]) blocks_and_cells_and_packet)=
 let (bc,packet)=blocks_and_cells_and_packet then
 blocks=blocks(packet) then
