@@ -1,6 +1,6 @@
 <cells.at
 <parameters.at { for |dual_inner_class| }
-{<nilpotent_orbits.at {for |is_Aq|}}
+<nilpotent_orbits.at {for |is_Aq|}
 { A first main objective of this script is to define a function |dual_KGB| that
   associates to a |Param| value a KGB element for a computed dual real form.
   Even just determining the proper dual real form is a surprisingly delicate
