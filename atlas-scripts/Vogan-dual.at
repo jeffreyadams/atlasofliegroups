@@ -196,7 +196,7 @@ in which case true if the Vogan dual (a parameter
 for the integrality datum) is an Aq}
 set is_dual_Aq (Param p) = bool:
 if not is_regular(p) then false
-else is_Aq(dual(p,dual_inner_class(p)))
+else is_coh_ind_from_finite_dimensional(dual(p,dual_inner_class(p)))
 fi
 
 {usually used to see if the dual of a cell has an Aq,

@@ -490,7 +490,7 @@ for (params,cells) in data do
   is_dual_Aq(cell_params)
  od
 od
-set is_Aq([Param] params)=bool:any(for p in params do is_Aq(p) od)
+set is_Aq([Param] params)=bool:any(for p in params do is_coh_ind_from_finite_dimensional(p) od)
 
 set is_Aq([Param] params,WCell cell)=
 let (param_numbers,)=cell in
