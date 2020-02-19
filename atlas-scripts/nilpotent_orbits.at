@@ -277,20 +277,12 @@ set tau_containing (Block B,[int] P) = [int]:
    let t=tau_invariants(B) in
  ##for ti@i in t do if P<=ti then [i] else [] fi od
 
-{ test if p is an Aq }
-set is_Aq (Param p) = bool:
-   all(for i in support(p) do is_descent(i,p) od)
-
 { test if (x,y) -> Aq parameter }
 { the first version isn't necessary, just use the second }
 { because element(B,i) returns (x,y), so this makes is_Aq(element(B,i)) work: }
 { set is_Aq(KGBElt x,KGBElt y) = is_Aq(parameter(x,y,choose_gamma(x,y))) }
-set is_Aq ((KGBElt x,KGBElt y)) = bool: is_Aq(parameter(x,y,choose_gamma(x,y)))
-
-{ compute all Aq's for G as [int], (coming from principal block) }
-set Blocku (RealForm G) = [int]:
-   let B=principal_block(G) in
- ##for i:#B do if is_Aq(element(B,i)) then [i] else [] fi od
+set is_Aq ((KGBElt x,KGBElt y)) = bool:
+   is_coh_ind_from_finite_dimensional (parameter(x,y,choose_gamma(x,y)))
 
 set is_Aq_cell (Block B,[int] C) = bool:
    any(#C,(int i)bool: is_Aq(element(B,C[i])))
