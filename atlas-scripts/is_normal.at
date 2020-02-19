@@ -67,5 +67,7 @@ let pairs=for (,p) in Q do is_normal(p) od then
 index=first(#pairs,(int i)bool: let (normal,root_number)=pairs[i] in not normal) in
 if index=-1 then (true,-1,-1) else (false,index,let (,j)=pairs[index] in j) fi
 
+{For parameters on a general (not necessarily theta-stable) Levi}
+set is_normal ([int] Levi, Param p) = is_normal (p_N (p,find_N (Levi,p),Levi))
 
 
