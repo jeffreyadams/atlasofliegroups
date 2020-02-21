@@ -3,6 +3,7 @@
 <K_highest_weights.at
 <springer_tables.at
 <Vogan-dual.at
+<nilpotent_centralizer.at
 
 {extract just the parameters from [(int,int,Param)]}
 set parameters([(int,int,Param)] triples)=[Param]:for (,,p) in triples do p od
@@ -176,6 +177,7 @@ O_check_int=integral_descent(st_int,O_check) then
 
 {run over a set of dual orbits}
 set weak_packets([ComplexNilpotent] dual_orbits,RealForm G)=
+prints("Computing weak packets for ", #dual_orbits," dual orbits of ",G);
 [([([Param],[WCell])],[(int,int,Param)])]:
 for O in dual_orbits do
  prints(new_line,"Computing weak packet for orbit: ", O.root_datum, " ", O.H, " dim=", O.dim_nilpotent);
@@ -337,7 +339,7 @@ tabulate(
  in if total!=0 then grand_total+:=total;[[i.to_string,total.to_string]] else [] fi
 od
 #["Total",grand_total.to_string]
-)
+);prints()
 
 set show_short(([([Param],[WCell])],[(int,int,Param)]) blocks_and_cells_and_packet)=void:
 show_short([blocks_and_cells_and_packet])
@@ -363,7 +365,7 @@ tabulate(
    od
   od
       #["Total","",(#parameters(packet)).to_string]
-  )
+  );prints()
 
 set show( [([([Param],[WCell])],[(int,int,Param)])] blocks_and_cells_and_packets)=
 prints("*: dual(cell) contains an Aq(lambda)");
@@ -385,9 +387,8 @@ tabulate(
    od
   od
  od
-
      #["Total","",(#parameters(##for (,b) in blocks_and_cells_and_packets do b od)).to_string,""]
-  )
+  );prints()
 
 set mult([[(int,int,Param)]] packet)=((int,int,int)->int):(int orbit,int block,int cell):
 let rv=0 in
@@ -416,7 +417,7 @@ tabulate(
   od
  od
      #["Total","",(#parameters(packet)).to_string,""]
-  )
+  );prints()
 
 set show_long([([([Param],[WCell])],[(int,int,Param)])] blocks_and_cells_and_packets)=void:
 prints("*: dual(cell) contains an Aq(lambda)");
@@ -436,15 +437,12 @@ tabulate(
      cell_flag={if not is_integral(p.root_datum,p.infinitesimal_character) then false.star else} is_dual_Aq(params,cell).star {fi} then
      param_flag=if not is_integral(p.root_datum,p.infinitesimal_character) then false.star else is_dual_Aq(make_regular_irr(p)).star fi in
     [i.to_string,b.to_string,c.to_string+cell_flag,p.to_string+ param_flag, p.infinitesimal_character.to_string]
-
-
-
    od
   od
  od
 od
      #["Total","","",(#parameters(##for (,b) in blocks_and_cells_and_packets do b od)).to_string,""]
-  )
+  );prints()
 
 set export([Param] parameters)=void:
 prints("set parameters=[");
@@ -453,6 +451,18 @@ for p@i in parameters do
  (,n)=%p.x, lambda=p.lambda, nu=p.nu in
  prints("parameter(G,",n,",",lambda,",",nu,")",comma) od;
 prints("]")
+
+{see unipotent_conjecture.at for weak_packet_report@(RealForm,bool)
+to optionally  include test_conjecture_report}
+set weak_packet_report(RealForm G)=[([([Param],[WCell])],[(int,int,Param)])]:
+let wp=weak_packets(G) in
+prints(new_line,"===============================================================================");
+show_nilpotent_orbits(G);prints();
+show_short(wp);
+show(wp);
+show_long(wp);
+prints(export(parameters(wp)));
+wp
 
 {----------------more output routines---------------------------------}
 
@@ -477,38 +487,4 @@ m=weak_packets(groups) in
 prints(new_line,"Summary of weak packets:");for wp@i in m do
 prints("------------------------------------------",new_line,rf[i]); show(wp) od
 
-{------------include information about dual_Aq cells  ------}
 
-{bc=blocks_and_cells([Param])}
-{bc=[([Param],[WCell])]}
-
-{return list of results: each is_dual_Aq([Param],cell)}
-set is_dual_Aq([([Param],[WCell])] data)=
-for (params,cells) in data do
- for (cell,) in cells do
-  let cell_params=for j in cell do params[j] od in
-  is_dual_Aq(cell_params)
- od
-od
-set is_Aq([Param] params)=bool:
-    any(for p in params do is_coh_ind_from_finite_dimensional(p) od)
-
-set is_Aq([Param] params,WCell cell)=
-let (param_numbers,)=cell in
-is_Aq(for i in param_numbers do params[i] od)
-
-{this applies to output of weak_packet(...) or each entry
-of output of weak_packets(...)
-returns true if each cell which occurs satisfies is_dual_Aq(cell)}
-set packets_disjoint( ([([Param],[WCell])],[(int,int,Param)]) blocks_and_cells_and_packet)=
-let (bc,packet)=blocks_and_cells_and_packet then
-blocks=blocks(packet) then
-cells=cells(packet) then
-m=mult(packet) in
-all(##for b in blocks do
- ##for c in cells do
-  let (params,cells)=bc[b] in
-  if m(b,c)!=0 then [is_dual_Aq(params,cells[c])] else [] fi
- od
-od
-)

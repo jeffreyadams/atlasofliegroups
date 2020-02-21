@@ -1,0 +1,79 @@
+{
+{Type A}
+{SL(n)}
+prints("SL(n,R)")
+>"output/SL2R" void:weak_packet_report (SL(2,R),true)
+>"output/SL3R" void:weak_packet_report (SL(3,R),true)
+>"output/SL4R" void:weak_packet_report (SL(4,R),true)
+
+{SU(p,q)}
+prints("SU(p,q)")
+>"output/SU21" void:weak_packet_report (SU(2,1),false)
+>"output/SU22" void:weak_packet_report (SU(2,2),false)
+{>"output/SU32" void:weak_packet_report (SU(3,2),false)}
+
+{SL(n,H)}
+prints("SL(n,H)")
+>"output/SL2H" void:weak_packet_report (SL(2,H),false)
+>"output/SL3H" void:weak_packet_report (SL(3,H),false)
+
+{SL(n,C)}
+prints("SL(n,C)")
+>"output/SL2C" void:weak_packet_report (SL(2,C),false)
+>"output/SL3C" void:weak_packet_report (SL(3,C),false)
+>"output/SL4C" void:weak_packet_report (SL(3,C),false)
+
+{type B}
+prints("Spin(p,q) type B")
+>"output/Spin43" void:weak_packet_report (Spin(4,3),true)
+>"output/Spin52" void:weak_packet_report (Spin(5,2),false)
+>"output/Spin61" void:weak_packet_report (Spin(6,1),false)
+
+{type B complex}
+{prints("Spin(2n+1,C)")
+>"output/Spin7C" void:weak_packet_report (complex(Spin(7)),false)}
+}
+{type C}
+prints("Sp(2n,R)")
+>"output/Sp4R" void:weak_packet_report (Sp(4,R),true)
+>"output/Sp6R" void:weak_packet_report (Sp(6,R),true)
+
+prints("Sp(p,q)")
+>"output/Sp11" void:weak_packet_report (Sp(1,1),false)
+>"output/Sp12" void:weak_packet_report (Sp(1,2),false)
+>"output/Sp22" void:weak_packet_report (Sp(2,2),false)
+
+{type C complex}
+prints("Sp(2n,C)")
+>"output/Sp4C" void:weak_packet_report (Sp(4,C),false)
+{>"output/Sp6C" void:weak_packet_report (Sp(6,C),false)}
+
+{type D}
+prints("Spin(p,q) type D")
+>"output/Spin44" void:weak_packet_report (Spin(4,4),true)
+>"output/Spin53" void:weak_packet_report (Spin(5,3),false)
+>"output/Spin62" void:weak_packet_report (Spin(6,2),false)
+>"output/Spin71" void:weak_packet_report (Spin(7,1),false)
+
+prints("SO*")
+>"output/SOstar8" void:weak_packet_report (SOstar(8),false)
+
+prints("G2")
+>"output/G2s" void:weak_packet_report (G2_s,true)
+
+prints("F4")
+>"output/F4s" void:weak_packet_report (F4_s,true)
+>"output/F4B4" void:weak_packet_report (F4_B4,false)
+
+prints("E6")
+>"output/E6s" void:weak_packet_report (E6_s,true)
+>"output/E6F4" void:weak_packet_report (E6_F4,false)
+
+prints("E7")
+>"output/E7h" void:weak_packet_report (E7_h,false)
+>"output/E7q" void:weak_packet_report (E7_q,false)
+>"output/E7s" void:weak_packet_report (E7_s,false)
+
+
+
+

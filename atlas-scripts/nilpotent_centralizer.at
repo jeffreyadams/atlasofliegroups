@@ -118,21 +118,6 @@ prints("coroots_C:", coroots_C);
 prints("C:",C.nice_format)
 
 {compact listing: i H diagram dim BC-Levi Cent A(O)}
-set show_nilpotent_orbits([ComplexNilpotent] orbits,RealForm G)=void:
-tabulate(
-["i","H","diagram","dim","BC Levi","Cent","A(O)","#RF(O)"]#
-for  orbit@i in orbits do
-let d=orbit.component_datum in
-[i.to_string,
-([int]:orbit.H).to_string,
-orbit.diagram.to_string,
-orbit.dim_nilpotent.to_string,
-orbit.Bala_Carter_Levi.nice_format,
-orbit.centralizer.nice_format,
-d.orders.to_string,
-(#real_nilpotent_orbits(orbit,G)).to_string] od)
-
-{compact listing: i H diagram dim BC-Levi Cent A(O)}
 set show_nilpotent_orbits([ComplexNilpotent] orbits)=void:
 tabulate(
 ["i","H","diagram","dim","BC Levi","Cent","A(O)"]#
@@ -149,8 +134,7 @@ d.orders.to_string] od)
 set show_nilpotent_orbits(RootDatum rd)=void:
 show_nilpotent_orbits(nilpotent_orbits(rd))
 
-set show_nilpotent_orbits(RealForm G)=void:
-show_nilpotent_orbits(nilpotent_orbits(G),G)
+
 
 {longer, less compact output,
 including simple roots and corootsof the centralizers
@@ -164,6 +148,7 @@ new_line,"dim:", orbit.dim_nilpotent,
 new_line,"Bala Carter Levi: ", orbit.Bala_Carter_Levi.nice_format,
 new_line,"A(O): ", orbit.component_datum.orders,
 new_line,"Centralizer: ", C.nice_format,
+new_line, "Z(Cent^0): order of center of derived group of id. comp. of Centralizer",
 new_line,"simple roots of centralizer:", C.simple_roots,
 new_line,"simple coroots of centralizer:", C.simple_coroots
 ) od
@@ -179,7 +164,7 @@ set list=[SL(2),Sp(4),Sp(6),Sp(8),SO(7),SO(8),SO(9),simply_connected(G2),simply_
 
 set show_nilpotent_orbits_plus([ComplexNilpotent] orbits)=void:
 tabulate(
-["i","H","diagram","dim","BC Levi","Cent","A(O)","|Z(cent)|","Cent_2"]#for  orbit@i in orbits do
+["i","H","diagram","dim","BC Levi","Cent","A(O)","|Z(Cent^0)|","Cent_2"]#for  orbit@i in orbits do
 let d=orbit.component_datum then
 cent=orbit.centralizer in
 [i.to_string,
@@ -195,3 +180,39 @@ cent.derived.order_center.to_string,
 
 set show_nilpotent_orbits_plus(RootDatum rd)=void:
 show_nilpotent_orbits_plus(rd.orbits)
+
+{----- show commands for orbits of RealForm G------}
+{includes: number of real forms of the orbit}
+
+{compact listing: i H diagram dim BC-Levi Cent A(O) #RF C_2}
+set show_nilpotent_orbits([ComplexNilpotent] orbits,RealForm G)=void:
+prints(new_line,"complex nilpotent orbits for ", G,
+new_line,"i: orbit number",
+new_line,"H: semisimple element",
+new_line, "BC Levi:  Bala-Carter Levi",
+new_line, "Cent: identity component of Cent(SL(2))",
+new_line, "Z(Cent^0): order of center of derived group of id. comp. of Centralizer",
+new_line, "A(O): orders of conj. classes in component group of centralizer",
+new_line,"#RF(O): number of real forms of O",
+new_line,"C_2: conjugacy classes in Cent(SL(2))^2 with square 1");
+tabulate(
+["i","H","diagram","dim","BC Levi","Cent", "Z(Cent^0)","A(O)","#RF(O)","C_2"]#
+for  orbit@i in orbits do
+let d=orbit.component_datum then
+H=orbit.centralizer then
+C_2=#strong_real_forms_same_type(compact_form(H)) in
+[i.to_string,
+([int]:orbit.H).to_string,
+orbit.diagram.to_string,
+orbit.dim_nilpotent.to_string,
+orbit.Bala_Carter_Levi.nice_format,
+orbit.centralizer.nice_format,
+H.derived.order_center.to_string,
+d.orders.to_string,
+(#real_nilpotent_orbits(orbit,G)).to_string,  {this line (only) requires a RealForm}
+C_2.to_string
+] od)
+
+set show_nilpotent_orbits(RealForm G)=void:
+show_nilpotent_orbits(nilpotent_orbits(G),G)
+
