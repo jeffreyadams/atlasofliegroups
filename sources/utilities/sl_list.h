@@ -1321,7 +1321,7 @@ template<typename T, typename Alloc>
       *p = *first;
 
     if (p==end())
-      append(first,last); // this also advances |taiL| and |node_count|
+      append(first,last); // this also advances |tail| and |node_count|
     else // we have exhausted input before |p|, and need to truncate after |p|
     {
       (tail = p.link_loc)->reset();

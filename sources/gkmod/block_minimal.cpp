@@ -7,6 +7,36 @@
   For license information see the LICENSE file
 */
 
+
+/*
+  Motivation for this compilation unit.
+
+  The computation of KLV polynomials is tightly bound to the notion of block,
+  and indeed in takes place in a |kl::KLContext| value that is constructed from
+  a block, and owned by a pointer member |klc_ptr| of |blocks::Block_base|.
+
+  In unitarity computations, blocks are computed from |Param| values, which
+  internally correspond to the type |StandardRepr|; each one gives a single
+  element of a block. This implies each time an entire block, or at least the
+  part below the intitial parameter, is generated. To avoid excessive
+  wastefulness, values derived from the KLV polynomials are associated in a
+  permanent way with the parameters of the block in a |repr::Rep_table|, so that
+  for a parameter whose block has already been subject to KLV computations, a
+  second computation is avoided. However many parameters can be seen to have
+  isomorphic blocks, namely when they share their |KGB| set and the integral
+  subdatum (as determined by the infinitesimal character |gamma|, indeed already
+  by its class modulo $X^*$); in this unit, blocks of type |block_minimal| are
+  constructed that only use such information, and still allow computation of KLV
+  polynomials (ordinary and twisted).
+
+  It is not clear that it is necessary to actually use blocks that are ignorant
+  of the infinitesimal character other than through the integral subsystem it
+  determines, as it is probably possible to re-use polynomials associated to
+  parameters whose block is isomorphic, by applying a shift to their
+  infinitesimal character. But in any case showing that the blocks can be
+  generated in this way is a good way to get convinced that isomporphism as
+  indicated does exist.
+ */
 #include "block_minimal.h"
 
 #include <cassert>
@@ -29,7 +59,8 @@ void add_z(block_hash& hash,KGBElt x,KGBElt y);
 BlockElt find_in(const block_hash& hash,KGBElt x,KGBElt y);
 BlockElt& first_free_slot(BlockEltPair& p);
 
-  // Function definitions
+  // |block_minimal| methods
+
 RealReductiveGroup& block_minimal::realGroup() const
   { return rc.realGroup(); }
 const InnerClass& block_minimal::innerClass() const
@@ -47,7 +78,7 @@ RatWeight block_minimal::gamma_lambda(BlockElt z) const
 
 block_minimal::block_minimal // full block constructor
   (const Rep_context& rc,
-   const StandardRepr sr,       // not modified, |gamma| is mod
+   const StandardRepr sr,       // not modified, |gamma| is used mod $X^*$ only
    BlockElt& entry_element	// set to block element matching input
   )
   : Block_base(rootdata::integrality_rank(rc.rootDatum(),sr.gamma()))
@@ -444,10 +475,11 @@ size_t hash_value (const repr::Rep_context& rc, const RootNbrSet& ipr,
   const InvolutionTable& i_tab = rc.innerClass().involution_table();
   const auto& kgb = rc.kgb();
   const InvolutionNbr i_x = kgb.inv_nr(x);
-  const auto fp = i_tab.fingerprint(y_values::exp_pi(gamma_lambda),i_x); // reduced
+  const auto fp =
+    i_tab.fingerprint(y_values::exp_pi(gamma_lambda),i_x); // reduced
   size_t result=x;
-  for (auto it=fp.numerator().begin(); it!=fp.numerator().end(); ++it)
-    result = 5*result+*it;
+  for (auto n_entry : fp.numerator())
+    result = 5*result+n_entry;
   result = 7*result + fp.denominator();
 
   unsigned n=0;
@@ -547,6 +579,16 @@ weyl::Generator first_descent_among
 
 
   // |context_minimal| methods and functions
+
+const RootDatum& context_minimal::rootDatum() const
+  { return rc().rootDatum(); }
+const InnerClass& context_minimal::innerClass () const
+  { return rc().innerClass(); }
+RealReductiveGroup& context_minimal::realGroup () const
+  { return rc().realGroup(); }
+const RatCoweight& context_minimal::g_rho_check() const
+  { return realGroup().g_rho_check(); }
+RatCoweight context_minimal::g() const { return realGroup().g(); }
 
 context_minimal::context_minimal
   (const repr::Rep_context& rc, const WeightInvolution& delta,
@@ -650,6 +692,8 @@ WeylWord fixed_conjugate_simple (const context_minimal& ctxt, RootNbr& alpha)
 
   // |paramin| methods and functions
 
+const WeightInvolution& paramin::theta () const
+ { return ctxt.innerClass().matrix(tw); }
 
 void validate(const paramin& E)
 {
@@ -1011,7 +1055,7 @@ DescValue star (const paramin& E, const ext_gen& p,
 	      rd.permuted_root(rd.simpleRootNbr(rd.find_descent(alpha_simple)),
 			       ww);
 	    assert(alpha == (E.ctxt.delta()+1)*rd.root(first));
-            assert(i_tab.real_roots(theta).isMember(first));
+	    assert(i_tab.real_roots(theta).isMember(first));
 
 	    rho_r_shift += rd.root(first); // non delta-fixed contribution
 	    ++level; // the change in |rho_r_shift| augments its $\alpha$-level
@@ -1127,7 +1171,7 @@ DescValue star (const paramin& E, const ext_gen& p,
 	    matreduc::find_solution(th_1,alpha*(at+mm)+beta*(bt-mm));
 
 	  const Weight new_tau0 = E.tau - alpha*((at+m)/2) - beta*((bt-m)/2);
-          const Coweight new_l = E.l+alpha_v*(tf_alpha/2)+beta_v*(tf_beta/2);
+	  const Coweight new_l = E.l+alpha_v*(tf_alpha/2)+beta_v*(tf_beta/2);
 
 	  // first Cayley link |F0| will be the one that does not need |sigma|
 	  paramin F0(E.ctxt, new_tw,
@@ -1324,7 +1368,7 @@ DescValue star (const paramin& E, const ext_gen& p,
 	  const int dual_f = (E.ctxt.g_rho_check() - E.l).dot(alpha);
 
 	  const Coweight new_l = E.l + alpha_v*dual_f;
-          const Coweight new_t =
+	  const Coweight new_t =
 	    rd.coreflection(E.t,n_alpha) - alpha_v*dual_f;
 	  paramin F (E.ctxt, new_tw, new_gamma_lambda, new_tau, new_l, new_t,
 		     E.is_flipped()!=flipped);
@@ -1359,7 +1403,7 @@ DescValue star (const paramin& E, const ext_gen& p,
 
 	  const int dual_f = (E.ctxt.g_rho_check() - E.l).dot(alpha);
 	  const Coweight new_l = E.l + alpha_v*dual_f;
-          const Coweight new_t =
+	  const Coweight new_t =
 	    rd.coreflection(E.t,n_alpha) + alpha_v*dual_f;
 
 	  paramin F (E.ctxt, new_tw, new_gamma_lambda, new_tau, new_l, new_t,
@@ -1633,8 +1677,6 @@ bool ext_block::tune_signs(const blocks::block_minimal& block)
       if (tp!=descent_type(s,n))
 	return false;
 
-      auto it = links.begin();
-
       switch (tp)
       {
       case one_imaginary_pair_switched: case one_real_pair_switched:
@@ -1648,52 +1690,56 @@ bool ext_block::tune_signs(const blocks::block_minimal& block)
       case two_complex_ascent: case two_complex_descent:
       case three_complex_ascent: case three_complex_descent:
 	{ assert(links.size()==1);
+	  const paramin q = *links.begin();
 	  BlockElt m=cross(s,n); // cross neighbour as bare element of |*this|
 	  BlockElt cz = this->z(m); // corresponding element of (parent) |block|
 	  paramin F(ctxt,block.x(cz),block.gamma_lambda(cz)); // default extn
-	  assert(same_standard_reps(*it,F)); // must lie over same parameter
-	  if (not same_sign(*it,F))
+	  assert(same_standard_reps(q,F)); // must lie over same parameter
+	  if (not same_sign(q,F))
 	    flip_edge(s,n,m);
 	} break;
       case one_imaginary_single: case one_real_single:
       case two_imaginary_single_single: case two_real_single_single:
 	{ assert(links.size()==2);
+	  const paramin q0 = *links.begin();
+	  const paramin q1 = *std::next(links.begin());
 	  BlockElt m=some_scent(s,n); // the unique (inverse) Cayley
 	  BlockElt Cz = this->z(m); // corresponding element of block
 	  paramin F(ctxt,block.x(Cz),block.gamma_lambda(Cz));
-	  assert(same_standard_reps(*it,F));
-	  if (not same_sign(*it,F))
+	  assert(same_standard_reps(q0,F));
+	  if (not same_sign(q0,F))
 	    flip_edge(s,n,m);
-	  ++it;
 	  m=cross(s,n); BlockElt cz = this->z(m);
 	  paramin Fc(ctxt,block.x(cz),block.gamma_lambda(cz));
-	  assert(same_standard_reps(*it,Fc));
-	  if (not same_sign(*it,Fc))
+	  assert(same_standard_reps(q1,Fc));
+	  if (not same_sign(q1,Fc))
 	    flip_edge(s,n,m);
 	} break;
       case two_semi_imaginary: case two_semi_real:
       case three_semi_imaginary: case three_real_semi:
       case three_imaginary_semi: case three_semi_real:
 	{ assert(links.size()==1);
+	  const paramin q = *links.begin();
 	  BlockElt m=some_scent(s,n); // the unique (inverse) Cayley
 	  BlockElt Cz = this->z(m); // corresponding element of block
 	  paramin F(ctxt,block.x(Cz),block.gamma_lambda(Cz));
-	  assert(same_standard_reps(*it,F));
-	  if (not same_sign(*it,F))
+	  assert(same_standard_reps(q,F));
+	  if (not same_sign(q,F))
 	    flip_edge(s,n,m);
 	} break;
       case one_imaginary_pair_fixed: case one_real_pair_fixed:
       case two_imaginary_double_double: case two_real_double_double:
 	{ assert(links.size()==2);
+	  const paramin q0 = *links.begin();
+	  const paramin q1 = *std::next(links.begin());
 	  BlockEltPair m=Cayleys(s,n);
 	  BlockElt Cz0 = this->z(m.first); BlockElt Cz1= this->z(m.second);
 	  paramin F0(ctxt,block.x(Cz0),block.gamma_lambda(Cz0));
 	  paramin F1(ctxt,block.x(Cz1),block.gamma_lambda(Cz1));
-	  bool straight=same_standard_reps(*it,F0);
-          const auto& node0 = straight ? *it : *std::next(it);
-          const auto& node1 = straight ? *std::next(it) : *it;
-	  if (not straight)
-	    assert(same_standard_reps(node0,F0));
+	  bool straight=same_standard_reps(q0,F0);
+	  const auto& node0 = straight ? q0 : q1;
+	  const auto& node1 = straight ? q1 : q0;
+	  assert(same_standard_reps(node0,F0));
 	  assert(same_standard_reps(node1,F1));
 	  if (not same_sign(node0,F0))
 	    flip_edge(s,n,m.first);
@@ -1702,15 +1748,16 @@ bool ext_block::tune_signs(const blocks::block_minimal& block)
 	} break;
       case two_imaginary_single_double_fixed: case two_real_single_double_fixed:
 	{ assert(links.size()==2);
+	  const paramin q0 = *links.begin();
+	  const paramin q1 = *std::next(links.begin());
 	  BlockEltPair m=Cayleys(s,n);
 	  BlockElt Cz0 = this->z(m.first); BlockElt Cz1= this->z(m.second);
 	  paramin F0(ctxt,block.x(Cz0),block.gamma_lambda(Cz0));
 	  paramin F1(ctxt,block.x(Cz1),block.gamma_lambda(Cz1));
-	  bool straight=same_standard_reps(*it,F0);
-          const auto& node0 = straight ? *it : *std::next(it);
-          const auto& node1 = straight ? *std::next(it) : *it;
-	  if (not straight)
-	    assert(same_standard_reps(node0,F0));
+	  bool straight=same_standard_reps(q0,F0);
+	  const auto& node0 = straight ? q0 : q1;
+	  const auto& node1 = straight ? q1 : q0;
+	  assert(same_standard_reps(node0,F0));
 	  assert(same_standard_reps(node1,F1));
 	  if (not same_sign(node0,F0))
 	    flip_edge(s,n,m.first);

@@ -181,7 +181,7 @@ class ext_block
   int epsilon(weyl::Generator s, BlockElt x, BlockElt y) const;
 
   // this works only for blocks generated from parameters, so supply |parent|
-  // mark the extended generators (orbits) singular for |parent.gamma()|
+  // mark the extended generators (orbits) that are singular for |parent.gamma()|
   RankFlags singular_orbits(const param_block& parent) const;
 
   weyl::Generator first_descent_among
@@ -214,7 +214,8 @@ private:
 
 }; // |class ext_block|
 
-// reduce marked set |gen_set| (supposed a union of orbits) to set of |orbits|
+// flag those among |orbits| whose elements are flagged in |gen_set|
+// here |gen_set| is supposed a union of orbits, so (any flagged => all flagged)
 RankFlags reduce_to(const ext_gens& orbits, RankFlags gen_set);
 
 // Extended parameters
@@ -277,7 +278,7 @@ struct param // allow public member access; methods ensure no invariants anyway
   Weight lambda_rho; // lift of that value in a |StandardRepr|
   Weight tau; // a solution to $(1-\theta)*\tau=(\delta-1)\lambda_\rho$
   Coweight t; // a solution to $t(1-theta)=l(\delta-1)$
-  bool flipped; // whether tensored with the fliiping representation
+  bool flipped; // whether tensored with the flipping representation
 
   param (const context& ec, const StandardRepr& sr, bool flipped=false);
   param (const context& ec,
