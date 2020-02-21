@@ -167,9 +167,9 @@ Block_base::Block_base(const KGB& kgb)
 {
 } // |Block_base::Block_base|
 
-// an almost trivial constructor used for derived non-integral block types
-Block_base::Block_base(unsigned int rank)
-  : info(), data(rank), orbits()
+// an almost trivial constructor used for non-integral block derived types
+Block_base::Block_base(unsigned int integral_rank)
+  : info(), data(integral_rank), orbits()
   , dd()
   , d_bruhat(nullptr)
   , klc_ptr(nullptr)

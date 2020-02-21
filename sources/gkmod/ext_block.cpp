@@ -350,19 +350,23 @@ KGBElt param::x() const
 }
 
 /*
-  This function serves to replace and circumvent |Rep_context::make_dominant|,
-  which maps any ordinary parameter to one with a dominant |gamma| component,
-  and moreover descends through singular complex descents in the block to the
-  lowest parameter equivalent to the inital parameter. The difference with
-  that method is that here we keep track of all extended parameter components,
-  transforming them from the default choices at the initial elemnt, and at the
-  end comparing with the default choices at the final parameter, recording the
-  sign in |flipped|.
+  This function serves to replace and circumvent |Rep_context::make_dominant|
+  applied to a scaled parameter (as occurs in the ordinary deformation function
+  by calling |finals_for| or |normalise|, both of which call |make_dominant|,
+  after calling |scale|), where |make_dominant| maps any ordinary parameter to
+  one with a dominant |gamma| component, and moreover descends through singular
+  complex descents in the block to the lowest parameter equivalent to the
+  initial parameter. The reason that this is necessary is that scaling only
+  affects the |nu| component of the infinitesimal character, so it may make it
+  traverse walls of Weyl chambers. Indeed the caller should make sure |sr|
+  itself has dominant |gamma|, which moreover is assumed to be fixed by |delta|
+  (if not, don't use this function).
 
-  This is intended for use in deformation, and the initial extended parameter
-  components are those inherited from |sr| before scaling its |nu| part by
-  |factor|. The user should make sure |sr| itself has dominant |gamma|, which
-  moreover is assumed to be fixed by |delta| (if not, don't use this function).
+  The difference with the functioning of |make_dominant| is that here we keep
+  track of all extended parameter components inherited from |sr| (so before
+  scaling its |nu| part by |factor|), transforming them from the default choices
+  for |sr|, and at the end comparing the transformed values to the default
+  choices at the final parameter reached, recording the sign in |flipped|.
  */
 StandardRepr scaled_extended_dominant // result will have its |gamma()| dominant
 (const Rep_context rc,
@@ -390,12 +394,12 @@ StandardRepr scaled_extended_dominant // result will have its |gamma()| dominant
   set_default_extended(rc,result,delta, lr,tau,l,t);
   KGBElt x = result.x(); // another variable, for convenience
 
-  int_Vector r_g_eval (rd.semisimpleRank()); // evaluations at |-gr|
+  int_Vector r_g_eval (rd.semisimpleRank()); // simple root evaluations at |-gr|
   { const RatCoweight& g_r=rc.realGroup().g_rho_check();
     for (unsigned i=0; i<r_g_eval.size(); ++i)
       r_g_eval[i] = -g_r.dot(rd.simpleRoot(i));
   }
-  // since |gamma| reflects along, our action with be affine about $-\rho$
+  // since |gamma| reflects along, our action with be affine, centered at $-\rho$
   const int_Vector ones(rd.semisimpleRank(),1);
 
   { unsigned i; // index into |orbits|
@@ -489,7 +493,8 @@ containers::sl_list<std::pair<StandardRepr,bool> > extended_finalise
    const StandardRepr& sr, const WeightInvolution& delta)
 { // in order that |singular_generators| generate the whole singular system:
   assert(is_dominant_ratweight(rc.rootDatum(),sr.gamma()));
-  // must assume gamma dominant, DON'T call make_dominant here
+  // we must assume |gamma| already dominant, DON'T call |make_dominant| here!
+
   context ctxt(rc,delta,sr.gamma());
   const ext_gens orbits = rootdata::fold_orbits(ctxt.id(),delta);
   const RankFlags singular_orbits =
@@ -2310,10 +2315,12 @@ bool ext_block::check(const param_block& block, bool verbose)
   return true; // report success if we get here
 } // |check|
 
+// flag those among |orbits| whose elements are flagged in |gen_set|
+// here |gen_set| is supposed a union of orbits, so (any flagged => all flagged)
 RankFlags reduce_to(const ext_gens& orbits, RankFlags gen_set)
 { RankFlags result;
   for (weyl::Generator s=0; s<orbits.size(); ++s)
-    result.set(s,gen_set[orbits[s].s0]);
+    result.set(s,gen_set[orbits[s].s0]); // set whether |s0| element in |gen_set|
   return result;
 }
 

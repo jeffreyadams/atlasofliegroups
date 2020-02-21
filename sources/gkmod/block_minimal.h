@@ -14,7 +14,10 @@
 
 #include "blocks.h" // we conceptually just extend that module
 #include "subsystem.h"
-#include "repr.h" // for |repr::Rep_context|
+
+namespace repr {
+class Rep_context;
+}
 
 namespace atlas {
 
@@ -33,7 +36,7 @@ class block_minimal : public Block_base
   // hash structure to allow rapid lookup of |(x,y)| index pairs
   block_hash xy_hash;
 
-  // group small components together:
+  // group small data members together:
   KGBElt highest_x,highest_y; // maxima over this block
 
  public:
@@ -45,7 +48,6 @@ class block_minimal : public Block_base
      BlockElt& entry_element	// set to block element matching input
     );
 
- public:
   // accessors that get values via |rc|
   const repr::Rep_context& context() const { return rc; }
   const RootDatum& rootDatum() const;
@@ -87,7 +89,7 @@ class block_minimal : public Block_base
 size_t hash_value (const repr::Rep_context& rc, const RootNbrSet& ipr,
 		   KGBElt x, const RatWeight& gamma_lambda);
 
-// A class that helps look up standard representation agains a list of blocks
+// A class that helps look up standard representation against a list of blocks
 class block_hash_table
 {
   struct record { const block_minimal* block; BlockElt z; };
@@ -140,12 +142,12 @@ class context_minimal // holds values that remain fixed across extended block
   const repr::Rep_context& rc () const { return d_rc; }
   const RootDatum& id() const { return integr_datum; }
   const SubSystem& subsys() const { return sub; }
-  const RootDatum& rootDatum() const { return d_rc.rootDatum(); }
-  const InnerClass& innerClass () const { return d_rc.innerClass(); }
-  RealReductiveGroup& realGroup () const { return d_rc.realGroup(); }
+  const RootDatum& rootDatum() const;
+  const InnerClass& innerClass () const;
+  RealReductiveGroup& realGroup () const;
   const WeightInvolution& delta () const { return d_delta; }
-  const RatCoweight& g_rho_check() const { return realGroup().g_rho_check(); }
-  RatCoweight g() const { return realGroup().g(); }
+  const RatCoweight& g_rho_check() const;
+  RatCoweight g() const;
   RootNbr delta_of(RootNbr alpha) const { return pi_delta[alpha]; }
   const RootNbrSet& delta_fixed() const { return delta_fixed_roots; }
   weyl::Generator twisted(weyl::Generator s) const { return twist[s]; }
@@ -154,7 +156,7 @@ class context_minimal // holds values that remain fixed across extended block
   // whether positive $\alpha$ has $\theta(\alpha)\neq\pm(1|\delta)(\alpha)$
   bool is_very_complex (InvolutionNbr theta, RootNbr alpha) const;
   Weight to_simple_shift(InvolutionNbr theta, InvolutionNbr theta_p,
-			 RootNbrSet pos_to_neg) const; // |pos_to_neg| is by value
+			 RootNbrSet pos_to_neg) const; // |pos_to_neg| by value
   bool shift_flip(InvolutionNbr theta, InvolutionNbr theta_p,
 		  RootNbrSet pos_to_neg) const; // |pos_to_neg| is by value
 
@@ -170,7 +172,7 @@ struct paramin // allow public member access; methods ensure no invariants
   RatWeight gamma_lambda; // lift of $\gamma-\lambda$ value in a |StandardRepr|
   Weight tau; // a solution to $(1-\theta)*\tau=(1-\delta)gamma_\lambda$
   Coweight t; // a solution to $t(1-theta)=l(\delta-1)$
-  bool flipped; // whether tensored with the fliiping representation
+  bool flipped; // whether tensored with the flipping representation
 
   paramin (const context_minimal& ec,
 	   KGBElt x, const RatWeight& gamma_lambda, bool flipped=false);
@@ -206,10 +208,9 @@ struct paramin // allow public member access; methods ensure no invariants
 
   void flip (bool whether=true) { flipped=(whether!=flipped); }
 
-  const repr::Rep_context rc() const { return ctxt.rc(); }
+  const repr::Rep_context& rc() const { return ctxt.rc(); }
   const WeightInvolution& delta () const { return ctxt.delta(); }
-  const WeightInvolution& theta () const
-    { return ctxt.innerClass().matrix(tw); }
+  const WeightInvolution& theta () const;
 
   KGBElt x() const; // reconstruct |x| component
 }; // |paramin|
