@@ -1,6 +1,25 @@
 <weak_packets.at
 <nilpotent_centralizer.at
 
+
+{------------include information about dual_Aq cells  ------}
+
+{this applies to output of weak_packet(...) or each entry
+of output of weak_packets(...)
+returns true if each cell which occurs satisfies is_dual_Aq(cell)} 
+set packets_disjoint( ([([Param],[WCell])],[(int,int,Param)]) blocks_and_cells_and_packet)=
+let (bc,packet)=blocks_and_cells_and_packet then
+blocks=blocks(packet) then
+cells=cells(packet) then
+m=mult(packet) in
+all(##for b in blocks do
+ ##for c in cells do
+  let (params,cells)=bc[b] in
+  if m(b,c)!=0 then [is_dual_Aq(params,cells[c])] else [] fi
+ od
+od
+)
+
 {dual nilpotents with A(O)=1}
 set simply_connected_dual_orbits(RootDatum rd)=[ComplexNilpotent]:
 ##for O in rd.dual_orbits do
@@ -46,7 +65,7 @@ in
 set test_conjecture_report([([([Param],[WCell])],[(int,int,Param)])] wp,RealForm G)=
 {assuming: wp is for simply_connected_dual_orbits(G)}
 let tc=test_conjecture(wp,G) in
-prints(new_line,"Testing conjecture about size of weak Arthur packets for ",new_line, " ",G,new_line,
+prints("Testing conjecture about size of weak Arthur packets for ",new_line, " ",G,new_line,
 "i:  number of orbit (with A(O)=1)",new_line,
 "data: combinatorial data derived from the orbit",new_line,
 "guess: conjectural size of weak Arthur packet",new_line,
@@ -63,7 +82,6 @@ tabulate(["i","data","guess","actual","A","disjoint","conjecture"] #
  if rv=1 then "true" elif rv=-1 then "false" else "N/A" fi] od);
  prints("-------------------------------------------------------------")
  
-
 set test_conjecture_report(RealForm G)=void:
 test_conjecture_report(weak_packets(simply_connected_dual_orbits(G),G),G)
 
@@ -72,4 +90,18 @@ for G in groups do
  let wp=weak_packets(simply_connected_dual_orbits(G),G) in
  test_conjecture_report(wp,G)
 od
- 
+
+set weak_packet_report(RealForm G,bool conjecture)=[([([Param],[WCell])],[(int,int,Param)])]:
+let wp=weak_packets(G) in
+prints(new_line,"===============================================================================");
+let orbits=G.dual_orbits in
+show_nilpotent_orbits(orbits);prints();
+show_short(wp);
+show(wp);
+show_long(wp);
+if conjecture then
+ let wp_sc = ##for weakpacket@i in wp do
+ let O=orbits[i] in  if #O.component_datum.orders=1 then [weakpacket] else [] fi od in 
+test_conjecture_report(wp_sc,G) fi;
+prints(export(parameters(wp)));
+wp

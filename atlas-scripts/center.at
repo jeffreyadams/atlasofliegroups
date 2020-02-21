@@ -131,7 +131,7 @@ set print_Z (RootDatum rd) = void:
     else
       prints("Split exact sequence:",new_line,"1->S->Z->Z/S->1");
       prints("S=complex torus of rank ", n_rad);
-      prints("S/Z=Center(G/S)=",finite_part)
+      prints("Z/S=Center(G/S)=",finite_part)
     fi
   fi
 
