@@ -48,6 +48,22 @@ size_t StandardRepr::hashCode(size_t modulus) const
   return hash &(modulus-1);
 }
 
+bool StandardReprMod::operator== (const StandardReprMod& z) const
+{ if (x_part!=z.x_part or y_bits!=z.y_bits)
+    return false;
+  auto diff = z.infinitesimal_char-infinitesimal_char;
+  return (diff%=1).isZero();
+}
+
+size_t StandardReprMod::hashCode(size_t modulus) const
+{ auto denom = infinitesimal_char.denominator(); // a signed but positive value
+  size_t hash= x_part + 375*y_bits.data().to_ulong()+83*denom;
+  const Ratvec_Numer_t& num=infinitesimal_char.numerator();
+  for (unsigned i=0; i<num.size(); ++i)
+    hash= 11*(hash&(modulus-1))+arithmetic::remainder(num[i],denom);
+  return hash &(modulus-1);
+}
+
 Rep_context::Rep_context(RealReductiveGroup &G_R)
   : G(G_R), KGB_set(G_R.kgb())
 {}

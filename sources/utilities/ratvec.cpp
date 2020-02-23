@@ -126,8 +126,9 @@ template<typename C>
 RationalVector<C>& RationalVector<C>::operator%=(C n)
 {
   assert(n!=0);
+  C modulus(d_denom*std::abs(n));
   for (auto it=d_num.begin(); it!=d_num.end(); ++it)
-    *it = arithmetic::remainder(*it,C(d_denom*std::abs(n)));
+    *it = arithmetic::remainder(*it,modulus);
   return *this;
 }
 

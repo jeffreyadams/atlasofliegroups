@@ -70,12 +70,13 @@ class StandardRepr
 {
   friend class Rep_context;
 
+ protected:
   KGBElt x_part;
   unsigned int hght; // determined by other fields; mainly for (fast) sorting
   TorusPart y_bits; // torsion part of $\lambda$
   RatWeight infinitesimal_char; // $\gamma$ (determines free part of $\lambda$)
 
-  // one should call constructor from |Rep_context| only
+  // one should call constructor from |Rep_context| of |StandardReprMod|  only
   StandardRepr (KGBElt x,TorusPart y,const RatWeight& gamma,unsigned int h)
     : x_part(x), hght(h), y_bits(y), infinitesimal_char(gamma)
   { infinitesimal_char.normalize(); } // to ensure this class invariant
@@ -97,6 +98,21 @@ class StandardRepr
   size_t hashCode(size_t modulus) const;
 }; // |class StandardRepr|
 
+// a variation that only differs in hashing |infinitesimal_char| modulo $X^*$
+struct StandardReprMod : public StandardRepr
+{
+  StandardReprMod (KGBElt x,TorusPart y,const RatWeight& gamma,unsigned int h)
+    : StandardRepr(x,y,gamma,h) {}
+  StandardReprMod (const StandardRepr& sr) : StandardRepr(sr) {}
+  StandardReprMod (StandardRepr&& sr) : StandardRepr(std::move(sr)) {}
+
+  // override hashing types and functions
+  bool operator== (const StandardReprMod&) const; // this will mean mod $X^*$
+  typedef std::vector<StandardReprMod> Pooltype;
+  bool operator!=(const StandardRepr& another) const
+    { return not operator==(another); }
+  size_t hashCode(size_t modulus) const; // this one ignores $X^*$ too
+}; // |class StandardReprMod
 
 // This class stores the information necessary to interpret a |StandardRepr|
 class Rep_context
