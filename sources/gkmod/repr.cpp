@@ -996,6 +996,26 @@ void Rep_table::add_block
   } // |for(x)|
 } // |Rep_table::add_block|
 
+unsigned long Rep_table::add_block(const StandardReprMod& sr)
+{
+  BlockElt sr_in_block;
+  unsigned our_nr=blocks.size();
+  blocks.emplace_back(*this,sr,sr_in_block);
+  const auto& block=blocks.back();
+  const unsigned long result =
+    mod_info.size()+sr_in_block; // future sequence number for |sr|
+
+  const RatWeight gamma_rho = sr.gamma()-rho(rootDatum());
+  for (BlockElt z=0; z<block.size(); ++z)
+  {
+    Weight lambda_rho=gamma_rho.integer_diff<int>(block.gamma_lambda(z));
+    auto seq = mod_hash.match(sr_gamma(block.x(z),lambda_rho,sr.gamma()));
+    assert(seq==mod_info.size()); // all block elements should be new
+    mod_info.push_back(mod_data{our_nr,z});
+  }
+  return result;
+}
+
 // compute and return sum of KL polynomials at $s$ for final parameter |z|
 SR_poly Rep_table::KL_column_at_s(StandardRepr z) // |z| must be final
 {
@@ -1271,38 +1291,25 @@ SR_poly Rep_table::deformation(const StandardRepr& z)
   normalise(z_near); // so that we may find a stored equivalent parameter
   assert(is_final(z_near));
 
-  { // look up if closest reducibility point to |z| is already known
-    unsigned long h=hash.find(z_near);
-    if (h!=hash.empty and not def_formula[h].empty())
-      return def_formula[h];
-  }
-
   // otherwise compute the deformation terms at all reducibility points
   for (unsigned i=rp.size(); i-->0; )
   {
-    StandardRepr zi = z; scale(zi,rp[i]);
+    StandardReprMod zi(z); scale(zi,rp[i]);
     normalise(zi); // necessary to ensure the following |assert| will hold
     assert(is_final(zi)); // ensures that |deformation_terms| won't refuse
-    auto h=hash.find(zi);
-    if (h==hash.empty) // then we are in a new block; construct it
-    {
-      param_block b(*this,zi); // construct block interval below |zi|
-      const SR_poly terms = deformation_terms(b,b.size()-1);
-      for (auto const& term : terms)
-	result.add_multiple(deformation(term.first),term.second); // recursion
-      // |b| and any KLV polynomials stored in it will now be destructed!
-    }
-    else
-    { const SR_poly terms = deformation_terms(h);
-      for (auto const& term : terms)
-	result.add_multiple(deformation(term.first),term.second); // recursion
-    }
-  }
+    auto h=mod_hash.find(zi); // look up modulo translation in $X^*$
+    if (h==mod_hash.empty) // then we are in a new translation family of blocks
+      h=add_block(zi); // ensure this block is known
+    assert(h<mod_info.size()); // it cannot be |mod_hash.empty| anymore
 
-  // now store result for future lookup
-  unsigned long h=hash.find(z_near);
-  assert(h!=hash.empty); // it should have been added by |deformation_terms|
-  def_formula[h]=result;
+    auto& block = blocks[mod_info[h].block_nr];
+    // not |const|, since its KL table will be (partially) filled next
+
+    const SR_poly terms =
+      repr::deformation_terms(*this,block,mod_info[h].z,zi.gamma());
+    for (auto const& term : terms)
+      result.add_multiple(deformation(term.first),term.second); // recursion
+  }
 
   return result;
 } // |Rep_table::deformation|

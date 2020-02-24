@@ -277,7 +277,7 @@ class Rep_table : public Rep_context
 
   std::vector<blocks::block_minimal> blocks;
 
-  struct mod_data { unsigned short len; unsigned block_nr; BlockElt z; };
+  struct mod_data { unsigned block_nr; BlockElt z; };
   std::vector<mod_data> mod_info;
 
  public:
@@ -317,6 +317,8 @@ class Rep_table : public Rep_context
 		 containers::sl_list<BlockElt>& extended_finals);
   // here |block| is non-|const|; the method generates twisted KLV polys in it
 
+  unsigned long add_block(const StandardReprMod& sr);
+  // add |block_minimal| to |blocks|, and return (new) hash number of |sr|
 }; // |Rep_table|
 
 
