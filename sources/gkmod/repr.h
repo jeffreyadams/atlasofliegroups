@@ -18,6 +18,8 @@
 #include "matrix.h"	// containment
 #include "ratvec.h"	// containment
 
+#include "rootdata.h" // for |rho|, so |Rep_context::lambda| can be inlined
+
 #include "innerclass.h" // inlines
 #include "realredgp.h"	// inlines
 
@@ -25,7 +27,7 @@
 #include "free_abelian.h"
 #include "arithmetic.h" // |SplitInteger|
 
-#include "rootdata.h" // for |rho|, so |Rep_context::lambda| can be inlined
+#include "block_minimal.h"
 
 namespace atlas {
 
@@ -270,9 +272,18 @@ class Rep_table : public Rep_context
   std::vector<SR_poly> twisted_KLV_list; // values at twist-fixed |hash|s only
   std::vector<SR_poly> twisted_def_formula; // idem
 
+  std::vector<StandardReprMod> mod_pool;
+  HashTable<StandardReprMod,unsigned long> mod_hash;
+
+  std::vector<blocks::block_minimal> blocks;
+
+  struct mod_data { unsigned short len; unsigned block_nr; BlockElt z; };
+  std::vector<mod_data> mod_info;
+
  public:
   Rep_table(RealReductiveGroup &G)
     : Rep_context(G), pool(), hash(pool), KLV_list(), def_formula()
+    , mod_pool(), mod_hash(mod_pool), blocks(), mod_info()
   {}
 
   unsigned int length(StandardRepr z); // by value

@@ -822,6 +822,9 @@ bool Rep_context::compare::operator()
   return r_vec<s_vec;
 }
 
+
+// |Rep_table| methods
+
 unsigned int Rep_table::length(StandardRepr z)
 {
   make_dominant(z); // should't hurt, and improves chances of finding |z|
