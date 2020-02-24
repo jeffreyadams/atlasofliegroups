@@ -171,7 +171,7 @@ class Rep_context
     (const StandardRepr& z, RootNbr& witness) const; // simple witness
   bool is_nonzero  // whether $I(z)!=0$: no singular simply-imaginary compact
     (const StandardRepr& z, RootNbr& witness) const; // simply-imaginary witness
-  bool is_normal // wither |z==normal(z)|; implies no singular complex descents
+  bool is_normal // whether |z==normal(z)|; implies no singular complex descents
     (const StandardRepr& z) const; // complex simple witness
   bool is_semifinal  // whether $I(z)$ unrelated by Hecht-Schmid to more compact
     (const StandardRepr& z, RootNbr& witness) const; // singular real witness
