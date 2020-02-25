@@ -275,15 +275,14 @@ class Rep_table : public Rep_context
   std::vector<StandardReprMod> mod_pool;
   HashTable<StandardReprMod,unsigned long> mod_hash;
 
-  std::vector<blocks::block_minimal> blocks;
-
-  struct mod_data { unsigned block_nr; BlockElt z; };
-  std::vector<mod_data> mod_info;
+  struct boundary
+  { unsigned long first_hash; std::unique_ptr<blocks::block_minimal> ptr; };
+  std::vector<boundary> bounds; // to partition hash codes to blocks
 
  public:
   Rep_table(RealReductiveGroup &G)
     : Rep_context(G), pool(), hash(pool), KLV_list(), def_formula()
-    , mod_pool(), mod_hash(mod_pool), blocks(), mod_info()
+    , mod_pool(), mod_hash(mod_pool), bounds()
   {}
 
   unsigned int length(StandardRepr z); // by value

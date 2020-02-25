@@ -998,20 +998,22 @@ void Rep_table::add_block
 
 unsigned long Rep_table::add_block(const StandardReprMod& sr)
 {
-  BlockElt sr_in_block;
-  unsigned our_nr=blocks.size();
-  blocks.emplace_back(*this,sr,sr_in_block);
-  const auto& block=blocks.back();
-  const unsigned long result =
-    mod_info.size()+sr_in_block; // future sequence number for |sr|
+  auto first=mod_hash.size(); // future code of first element of this block
+  BlockElt sr_in_block; // will hold position of |sr| within that block
+  std::unique_ptr<blocks::block_minimal>
+    ptr(new blocks::block_minimal(*this,sr,sr_in_block));
+  auto& block=*ptr;
+  bounds.push_back(boundary { first, std::move(ptr) });
+
+  const unsigned long result = first+sr_in_block; // future sequence number |sr|
 
   const RatWeight gamma_rho = sr.gamma()-rho(rootDatum());
   for (BlockElt z=0; z<block.size(); ++z)
   {
     Weight lambda_rho=gamma_rho.integer_diff<int>(block.gamma_lambda(z));
     auto seq = mod_hash.match(sr_gamma(block.x(z),lambda_rho,sr.gamma()));
-    assert(seq==mod_info.size()); // all block elements should be new
-    mod_info.push_back(mod_data{our_nr,z});
+    assert(seq+1==mod_hash.size()); // all block elements should be new
+    ndebug_use(seq);
   }
   return result;
 }
@@ -1300,13 +1302,19 @@ SR_poly Rep_table::deformation(const StandardRepr& z)
     auto h=mod_hash.find(zi); // look up modulo translation in $X^*$
     if (h==mod_hash.empty) // then we are in a new translation family of blocks
       h=add_block(zi); // ensure this block is known
-    assert(h<mod_info.size()); // it cannot be |mod_hash.empty| anymore
+    assert(h<mod_hash.size()); // it cannot be |mod_hash.empty| anymore
 
-    auto& block = blocks[mod_info[h].block_nr];
-    // not |const|, since its KL table will be (partially) filled next
+    // do binary search as |std::lower_bound| would, but without complications
+    auto lwb=bounds.cbegin();
+    { std::vector<boundary>::const_iterator upb=bounds.cend(),halfway;
+      unsigned long diff;
+      while ((diff=upb-lwb)>1)
+	( (halfway=lwb+diff/2)->first_hash<=h ? lwb : upb) = halfway;
+    }
+    auto& block = *lwb->ptr; // not |const|, filling KL table needed
+    const BlockElt z=h-lwb->first_hash;
 
-    const SR_poly terms =
-      repr::deformation_terms(*this,block,mod_info[h].z,zi.gamma());
+    const SR_poly terms = repr::deformation_terms(*this,block,z,zi.gamma());
     for (auto const& term : terms)
       result.add_multiple(deformation(term.first),term.second); // recursion
   }
