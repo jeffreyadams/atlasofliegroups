@@ -4664,6 +4664,23 @@ void print_n_block_wrapper(expression_base::level l)
     wrap_tuple<0>(); // |no_value| needs no special care
 }
 
+@ A variant for ``abstract'' blocks, implemented by the |block_minimal| class.
+
+@h "block_minimal.h"
+@< Local function def...@>=
+void print_a_block_wrapper(expression_base::level l)
+{ shared_module_parameter p = get<module_parameter_value>();
+  test_standard(*p,"Cannot generate block");
+  BlockElt init_index; // will hold index in the block of the initial element
+  blocks::block_minimal block(p->rc(),p->val,init_index);
+  *output_stream << "Parameter defines element " << init_index
+               @|<< " of the following abstract block:" << std::endl;
+  block.print_to(*output_stream,true);
+    // print block using involution expressions
+  if (l==expression_base::single_value)
+    wrap_tuple<0>(); // |no_value| needs no special care
+}
+
 @ More interesting than printing the block is to return is to the user as a
 list of parameter values. The following function does this, and adds as a
 second result the index that the original parameter has in the resulting
@@ -5143,6 +5160,7 @@ install_function(reducibility_points_wrapper,@|
 install_function(scale_parameter_wrapper,"*", "(Param,rat->Param)");
 install_function(scale_0_parameter_wrapper,"at_nu_0", "(Param->Param)");
 install_function(print_n_block_wrapper,@|"print_block","(Param->)");
+install_function(print_a_block_wrapper,@|"print_abstract_block","(Param->)");
 install_function(block_wrapper,@|"block" ,"(Param->[Param],int)");
 install_function(partial_block_wrapper,@|"partial_block","(Param->[Param])");
 install_function(param_length_wrapper,@|"length","(Param->int)");

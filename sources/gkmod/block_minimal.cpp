@@ -41,7 +41,7 @@ const RootDatum& block_minimal::rootDatum() const
 
 RatWeight block_minimal::gamma_lambda(BlockElt z) const
 {
-  return y_pool[y(z)].repr().log_pi(false);
+  return y_pool[y(z)].repr().log_pi(true);
 }
 
 
