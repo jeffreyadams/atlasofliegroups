@@ -190,12 +190,22 @@ set test2 (Param p) = [bool]: { consistency of cocharacter across block }
 
 {  --------- some indicator functions -------------}
 
-{false unless regular infinitesimal character,
- not necessarily integral,
-in which case true if the Vogan dual (a parameter
-for the integrality datum) is an Aq}
-set is_dual_Aq (Param p) = bool:
-if not is_regular(p) then false
+{support(x): those simple reflections occuring in x.w, see parabolics.at
+ dual_support(x): simple reflections occuring in x.w*w_0
+ this is the support of any y for which (x,y) is a valid parameter}
+set support_dual(KGBElt x)=[int]:
+  let rd=root_datum(x), delta=distinguished_involution(real_form(x)) in
+  list(semisimple_rank(rd),(w(x)*w0(rd)).word.is_member)
+
+set is_dual_Aq(Param p)=bool:
+let G=real_form(p), ic=infinitesimal_character(p) in
+is_regular(p) and is_integral(ic,G) and
+all(for i in support_dual(p.x) do is_ascent(i,p.x) od)
+
+{old version, fails with an error for SU(3,2) without
+the is_integral statement}
+set is_dual_Aq_old (Param p) = bool:
+if not (is_regular(p) and is_integral(p.infinitesimal_character,p.root_datum)) then false
 else is_coh_ind_from_finite_dimensional(dual(p,dual_inner_class(p)))
 fi
 

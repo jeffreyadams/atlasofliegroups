@@ -46,7 +46,7 @@ prints("Sp(p,q)")
 {type C complex}
 prints("Sp(2n,C)")
 >"output/Sp4C" void:weak_packet_report (Sp(4,C),false)
-{>"output/Sp6C" void:weak_packet_report (Sp(6,C),false)}
+>"output/Sp6C" void:weak_packet_report (Sp(6,C),false)
 
 {type D}
 prints("Spin(p,q) type D")

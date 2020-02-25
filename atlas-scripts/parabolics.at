@@ -1,4 +1,5 @@
 <W_orbit.at
+<Weylgroup.at
 
 {! See "Parabolic Subgroups and Induction", in dropbox, ultimately on the
   Atlas web site.
@@ -500,7 +501,7 @@ set print_theta_stable_parabolics (RealForm G) = void:
   distinguished fiber. .}
 set support (KGBElt x) = [int]:
   let rd=root_datum(x), delta=distinguished_involution(real_form(x)) in
-  list(semisimple_rank(rd),W_elt(rd,involution(x)*delta).word.is_member)
+  list(semisimple_rank(rd),x.w.word.is_member)
 
 {. Auxiliary function. .}
 set support_alt(KGBElt x)=[int]:

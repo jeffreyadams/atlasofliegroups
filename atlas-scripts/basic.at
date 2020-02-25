@@ -1471,6 +1471,9 @@ set tau_complement (Param p) = [int]: complement(tau_bitset(p))
 
 set is_descent ((vec,Param) ap) = bool: status(ap)<4
 
+set is_ascent(int i,Param p)=bool: not is_descent(i,p)
+set is_ascent((vec,Param) ap)=bool: not is_descent(ap)
+
 set lookup (Param p, [Param] block) = int:
   let i=#block-1 in while >=i and block[i]!=p do i-:=1 od; i
 
