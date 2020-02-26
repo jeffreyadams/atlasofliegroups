@@ -406,12 +406,14 @@ is_pseudo_Levi_in_simple_adjoint(adjoint_image(rd_L,rd),rd.adjoint)
 set project_on_simple_factor(RootDatum rd,RootDatum rd_L,int i)=
 let factor=simple_factor(rd,i) then
 roots_factor=roots(factor) then
-simple_roots_factor_L=##for alpha in simple_roots(rd_L) do if find(roots_factor,alpha)>=0 then [alpha] else [] fi od
+simple_roots_factor_L=##for alpha in simple_roots(rd_L) do
+   if find(roots_factor,alpha)>=0 then [alpha] else [] fi od
 in subgroup_by_simple(rd,simple_roots_factor_L)
 
 set is_pseudo_Levi(RootDatum rd_L,RootDatum rd)=bool:
-all(for i:number_simple_factors(rd) do
-is_pseudo_Levi_in_simple(project_on_simple_factor(rd,rd_L,i),simple_factor(rd,i)) od)
+let list=simple_factors_indices(rd) in
+all(for i:number_simple_factors(rd) do let j=list[i][0] in
+is_pseudo_Levi_in_simple(project_on_simple_factor(rd,rd_L,j),simple_factor(rd,j)) od)
 
 
 {semisimple element t so that L=Cent_G(t)^0}
@@ -423,7 +425,7 @@ L_rad=radical_basis(rd_L) {central torus} then
 (,M)=Levi_of_subspace(rd,L_rad) {centralizer of L_rad} in
 ##for v in Z_Lmod do
  let v_rd=lift(rd_L,v) in
-  if dimension(centralizer(M,v_rd))=rd_L.dimension then [v_rd] else [] fi od 
+  if dimension(centralizer(M,v_rd))=rd_L.dimension then [v_rd] else [] fi od
 
 set regular_central_element(RootDatum rd_L, RootDatum rd)=regular_central_elements(rd_L,rd)[0]
 
