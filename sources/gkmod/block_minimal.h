@@ -15,11 +15,13 @@
 #include "blocks.h" // we conceptually just extend that module
 #include "subsystem.h"
 
-namespace repr {
-class Rep_context;
-}
-
 namespace atlas {
+
+
+namespace repr {
+  class Rep_context;
+  class StandardReprMod;
+}
 
 namespace blocks {
 
@@ -44,7 +46,7 @@ class block_minimal : public Block_base
   // constructor
   block_minimal
     (const repr::Rep_context& rc,
-     StandardRepr sr, // by value,since it will be made dominant before use
+     const repr::StandardReprMod& srm, // not modified, no "making dominant"
      BlockElt& entry_element	// set to block element matching input
     );
 
@@ -59,7 +61,7 @@ class block_minimal : public Block_base
   // with |gamma| unknown, only the difference |gamma-lambda| is meaningful
   RatWeight gamma_lambda(BlockElt z) const;
 
-  BlockElt lookup(const StandardRepr& sr) const;
+  BlockElt lookup(const repr::StandardReprMod& srm) const;
   BlockElt lookup(KGBElt x, const RatWeight& gamma_lambda) const;
 
   ext_gens fold_orbits(const WeightInvolution& delta) const;

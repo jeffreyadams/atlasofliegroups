@@ -48,6 +48,22 @@ size_t StandardRepr::hashCode(size_t modulus) const
   return hash &(modulus-1);
 }
 
+StandardReprMod StandardReprMod::mod_reduce
+  (const Rep_context& rc, const StandardRepr& sr)
+{
+  auto gamma=sr.gamma(); auto lam_rho=rc.lambda_rho(sr); // both modified below
+  auto& num = gamma.numerator(); assert(num.size()==lam_rho.size());
+
+  const auto d = gamma.denominator(); // positive value of a signed type
+  for (unsigned i=0; i<num.size(); ++i)
+  {
+    auto q = arithmetic::divide(num[i],d);
+    num[i]-= d*q;  // ensure even integral part if |num[i]/d| (0 is even)
+    lam_rho[i] -= q; // ensure shift $\gamma$ is also applied to $\lambda$ part
+  }
+  return StandardReprMod(rc.sr_gamma(sr.x(),lam_rho,gamma));
+}
+
 bool StandardReprMod::operator== (const StandardReprMod& z) const
 { if (x_part!=z.x_part or y_bits!=z.y_bits)
     return false;
@@ -996,22 +1012,24 @@ void Rep_table::add_block
   } // |for(x)|
 } // |Rep_table::add_block|
 
-unsigned long Rep_table::add_block(const StandardReprMod& sr)
+unsigned long Rep_table::add_block(const StandardReprMod& srm)
 {
   auto first=mod_hash.size(); // future code of first element of this block
-  BlockElt sr_in_block; // will hold position of |sr| within that block
+  BlockElt srm_in_block; // will hold position of |srm| within that block
   std::unique_ptr<blocks::block_minimal>
-    ptr(new blocks::block_minimal(*this,sr,sr_in_block));
+    ptr(new blocks::block_minimal(*this,srm,srm_in_block));
   auto& block=*ptr;
   bounds.push_back(boundary { first, std::move(ptr) });
 
-  const unsigned long result = first+sr_in_block; // future sequence number |sr|
-
-  const RatWeight gamma_rho = sr.gamma()-rho(rootDatum());
+  const unsigned long result = // future sequence number for our |srm|
+    first+srm_in_block;
+  const RatWeight gamma_rho = srm.gamma()-rho(rootDatum());
   for (BlockElt z=0; z<block.size(); ++z)
   {
     Weight lambda_rho=gamma_rho.integer_diff<int>(block.gamma_lambda(z));
-    auto seq = mod_hash.match(sr_gamma(block.x(z),lambda_rho,sr.gamma()));
+    auto zm = StandardReprMod::mod_reduce
+      (*this, sr_gamma(block.x(z),lambda_rho,srm.gamma()));
+    auto seq = mod_hash.match(zm);
     assert(seq+1==mod_hash.size()); // all block elements should be new
     ndebug_use(seq);
   }
@@ -1296,12 +1314,13 @@ SR_poly Rep_table::deformation(const StandardRepr& z)
   // otherwise compute the deformation terms at all reducibility points
   for (unsigned i=rp.size(); i-->0; )
   {
-    StandardReprMod zi(z); scale(zi,rp[i]);
+    auto zi = z; scale(zi,rp[i]);
     normalise(zi); // necessary to ensure the following |assert| will hold
     assert(is_final(zi)); // ensures that |deformation_terms| won't refuse
-    auto h=mod_hash.find(zi); // look up modulo translation in $X^*$
+    auto zim = StandardReprMod::mod_reduce(*this,zi); // modular zi
+    auto h=mod_hash.find(zim); // look up modulo translation in $X^*$
     if (h==mod_hash.empty) // then we are in a new translation family of blocks
-      h=add_block(zi); // ensure this block is known
+      h=add_block(zim); // ensure this block is known
     assert(h<mod_hash.size()); // it cannot be |mod_hash.empty| anymore
 
     // do binary search as |std::lower_bound| would, but without complications
@@ -1312,9 +1331,9 @@ SR_poly Rep_table::deformation(const StandardRepr& z)
 	( (halfway=lwb+diff/2)->first_hash<=h ? lwb : upb) = halfway;
     }
     auto& block = *lwb->ptr; // not |const|, filling KL table needed
-    const BlockElt z=h-lwb->first_hash;
+    const BlockElt new_z=h-lwb->first_hash;
 
-    const SR_poly terms = repr::deformation_terms(*this,block,z,zi.gamma());
+    const SR_poly terms = repr::deformation_terms(*this,block,new_z,zi.gamma());
     for (auto const& term : terms)
       result.add_multiple(deformation(term.first),term.second); // recursion
   }
@@ -1417,9 +1436,8 @@ SR_poly twisted_KL_sum
   const auto gamma_rho = gamma-rho(parent.rootDatum());
   SR_poly result(rc.repr_less());
   unsigned int parity = eblock.length(y)%2;
-  for (auto it = survivors.begin(); not survivors.at_end(it); ++it)
+  for (BlockElt elt : survivors)
   {
-    BlockElt elt = *it;
     BlockElt z = eblock.z(elt); // index of |elt| in |parent|
     auto factor = P_at_s(elt,0);
     if (eblock.length(elt)%2!=parity) // flip sign at odd length difference
@@ -1439,8 +1457,9 @@ SR_poly twisted_KL_column_at_s
   rc.normalise(z);
   if (not rc.is_final(z))
     throw std::runtime_error("Parameter is not final");
+  auto zm = StandardReprMod::mod_reduce(rc,z);
   BlockElt entry; // dummy needed to ensure full block is generated
-  blocks::block_minimal block(rc,z,entry); // which this constructor does
+  blocks::block_minimal block(rc,zm,entry); // which this constructor does
   ext_block::ext_block eblock(block,delta);
 
   return twisted_KL_sum(eblock,eblock.element(entry),block,z.gamma());

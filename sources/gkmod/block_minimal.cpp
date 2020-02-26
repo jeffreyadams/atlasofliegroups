@@ -78,12 +78,12 @@ RatWeight block_minimal::gamma_lambda(BlockElt z) const
 
 block_minimal::block_minimal // full block constructor
   (const Rep_context& rc,
-   const StandardRepr sr,       // not modified, |gamma| is used mod $X^*$ only
+   const repr::StandardReprMod& srm, // not modified, |gamma| used mod $X^*$ only
    BlockElt& entry_element	// set to block element matching input
   )
-  : Block_base(rootdata::integrality_rank(rc.rootDatum(),sr.gamma()))
+  : Block_base(rootdata::integrality_rank(rc.rootDatum(),srm.gamma()))
   , rc(rc)
-  , integral_datum(SubSystem::integral(rootDatum(),sr.gamma()))
+  , integral_datum(SubSystem::integral(rootDatum(),srm.gamma()))
   , y_pool()
   , y_hash(y_pool)
   , y_part()
@@ -105,8 +105,8 @@ block_minimal::block_minimal // full block constructor
   nblock_help aux(realGroup(),integral_datum);
 
   // step 1: get |y|, which has $y.t=\exp(\pi\ii(\gamma-\lambda))$ (vG based)
-  const KGBElt x_org = sr.x();
-  const TorusElement y_org = rc.y_as_torus_elt(sr);
+  const KGBElt x_org = srm.x();
+  const TorusElement y_org = rc.y_as_torus_elt(srm);
   auto z_start = nblock_elt(x_org,y_org); // working copy
 
   // step 2: move up toward the most split fiber for the current real form
@@ -387,15 +387,15 @@ block_minimal::block_minimal // full block constructor
 
 
   // and look up which element matches the original input
-  entry_element = lookup(sr);
+  entry_element = lookup(srm);
 
 } // |block_minimal::block_minimal|
 
 
-BlockElt block_minimal::lookup(const StandardRepr& sr) const
-{ const auto x = sr.x();
+  BlockElt block_minimal::lookup(const repr::StandardReprMod& srm) const
+{ const auto x = srm.x();
   InvolutionNbr inv = rc.kgb().inv_nr(x);
-  const auto y_ent = involution_table().pack(rc.y_as_torus_elt(sr),inv);
+  const auto y_ent = involution_table().pack(rc.y_as_torus_elt(srm),inv);
   const auto y = y_hash.find(y_ent);
   return y==y_hash.empty ? UndefBlock // the value also known as |xy_hash.empty|
                          : xy_hash.find(EltInfo{x,y});
