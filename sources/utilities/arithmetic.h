@@ -189,12 +189,13 @@ std::ostream& operator<< (std::ostream& out, const Rational& frac);
 
 /******** inline function definitions ***************************************/
 
-/* The result of |divide(a,b)| is the unique integer $q$ with $a = q.b + r$,
-  and $0 \leq r < b$. Here the sign of |a| may be arbitrary, the requirement
-  for |r| assumes |b| positive, which is why it is passed as unsigned (also
-  this better matches the specification of |remainder| below). Callers must
-  make sure that $b$ is positive, since implicit conversion of a negative
-  signed value to unsigned would wreak havoc.
+/*
+  The result of |divide(a,b)| is the unique integer $q$ with $a = q.b + r$, and
+  $0 \leq r < b$. Here the sign of |a| may be arbitrary, the requirement for |r|
+  assumes |b| positive. So this function assumes |b>=0|, even though |b| is
+  passed in a signed type argument (which also matches the specification of
+  |remainder| below). Callers must make sure that $b$ is positive, since
+  implicit conversion of a negative signed value to unsigned would wreak havoc.
 
   Hardware division probably does _not_ handle negative |a| correctly; for
   instance, divide(-1,2) should be -1, so that -1 = -1.2 + 1, but on my
@@ -204,14 +205,14 @@ std::ostream& operator<< (std::ostream& out, const Rational& frac);
   -1-a$. The latter value can be conveniently written as |~a| if |a| is of an
   unsigned type, but that is not the case for the arguments here, and the
   standards refuse to clearly specify complementing on signed values. So for
-  possbly negative values we spell out sutraction from $-1$ below, hoping that
+  negative values |a| we spell out subtraction from $-1$ below, hoping that
   the optimiser will emit complementation for it; however once a signed value
   has been made positive, we do unsigned division (after converting implicitly
   because unsigned operator arguments beat signed), and finally convert back
   to signed, taking care to do any possibly negative computation after the
-  conversion to signed (but remainders are never negative).
+  conversion to signed (but remainders are never negative).]
 
-  [Amazingly Fokko's incorrect original expresion |-(-a/b -1)| never did any
+  [Amazingly Fokko's incorrect original expression |-(-a/b -1)| never did any
   harm. MvL]
 */
 
@@ -238,7 +239,7 @@ template<>
 
   NOTE: For $a<0$ one should \emph{not} return |b - (-a % b)|; this fails when
   $b$ divides $a$. However replacing |-| by |~|, which maps $a\mapsto-1-a$
-  and satifies |~(q*b+r)==~q*b+(b+~r)|, the result is always correct.
+  and satisfies |~(q*b+r)==~q*b+(b+~r)|, the result is always correct.
 */
 template<typename I>
   I remainder(I a, I b_signed)
