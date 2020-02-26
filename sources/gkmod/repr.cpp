@@ -1196,11 +1196,11 @@ SR_poly deformation_terms
 
   // collect |StandardRepr| values for |finals|
 
-  std::vector<std::pair<StandardRepr,unsigned> > sr_l;
+  std::vector<StandardRepr> sr;
   std::unique_ptr<unsigned int[]> index // a sparse array, map hash to position
     (new unsigned int [block.size()]); // unlike |std::vector| do not initialise
 
-  sr_l.reserve(finals.size());
+  sr.reserve(finals.size());
   {
     const RatWeight gamma_rho = gamma-rho(block.rootDatum());
     unsigned pos=0;
@@ -1209,15 +1209,13 @@ SR_poly deformation_terms
       BlockElt z=*it;
       index[z]=pos;
       Weight lambda_rho=gamma_rho.integer_diff<int>(block.gamma_lambda(z));
-      StandardRepr sr_z= tab.sr_gamma(block.x(z),lambda_rho,gamma);
-      sr_l.push_back
-	(std::make_pair(sr_z,static_cast<unsigned>(block.length(z))));
+      sr.push_back(tab.sr_gamma(block.x(z),lambda_rho,gamma));
     }
   }
 
   // since we evaluate at $s=-1$ eventually, we can use integer coefficients
-  std::vector<int> acc(sr_l.size(),0);
-  std::vector<int> remainder(sr_l.size(),0); // coeff.s by |survivor| position
+  std::vector<int> acc(sr.size(),0);
+  std::vector<int> remainder(sr.size(),0); // coeff.s by |survivor| position
   remainder.front()=1; // we initialised remainder = 1*sr_y
   auto y_parity=block.length(y)%2;
 
@@ -1229,23 +1227,27 @@ SR_poly deformation_terms
     if (c_cur==0)
       continue;
     const bool contribute =  // whether |cur| is at odd level with respect to |y|
-      sr_l[pos].second%2!=y_parity;
+      block.length(z)%2!=y_parity;
     for (BlockElt x=z+1; x-->0; )
+    {
+      const kl::KLPol& pol = klc.klPol(x,z); // regular KL polynomial
+      int eval = 0;
+      for (polynomials::Degree d=pol.size(); d-->0; )
+	eval = static_cast<int>(pol[d]) - eval; // evaluate at $q = -1$
+      if (eval==0)
+	continue; // polynomials with $-1$ as root do not contribute; skip
+      if ((block.length(z)-block.length(x))%2!=0) // when |l(z)-l(x)| odd
+	eval=-eval; // flip sign (do alternating sum of KL column at |-1|)
+      int c = c_cur*eval;
       for (auto jt=contrib[x].begin(); not contrib[x].at_end(jt); ++jt)
       {
 	auto j=index[*jt]; // position where |P(x,z)| contributes
 	assert(j>=pos); // triangularity of KLV polynomials
-	const kl::KLPol& pol = klc.klPol(x,z); // regular KL polynomial
-	int eval = 0;
-	for (polynomials::Degree d=pol.size(); d-->0; )
-	  eval = static_cast<int>(pol[d]) - eval; // evaluate at $q = -1$
-	int c = c_cur*eval;
-	if ((sr_l[pos].second-sr_l[j].second)%2!=0) // when |l(z)-l(x)| odd
-	  c=-c; // flip sign (we're doing alternating sum of KL column at |-1|)
 	remainder[j] -= c;
 	if (contribute) // optimisation will apply loop unswitching to this test
 	  acc[j] += c; // here we contribute
       }
+    }
     assert(remainder[pos]==0); // check relation of being inverse
   }
 
@@ -1255,9 +1257,9 @@ SR_poly deformation_terms
    Transform coefficients of |acc| to polynomial |result|, taking into account
    the differences of |orientation_number| values between |y| and (current) |x|.
 */
-  unsigned int orient_y = tab.orientation_number(sr_l[0].first);
-  for (unsigned pos=0; pos<sr_l.size(); ++pos)
-  { auto const& sr_x=sr_l[pos].first;
+  unsigned int orient_y = tab.orientation_number(sr[0]);
+  for (unsigned pos=0; pos<sr.size(); ++pos)
+  { auto const& sr_x=sr[pos];
     unsigned int orient_express=orient_y-tab.orientation_number(sr_x);
     auto coef = acc[pos]*arithmetic::exp_i(orient_express);
     result.add_term(sr_x,Split_integer(1,-1)*coef);
