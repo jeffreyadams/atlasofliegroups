@@ -732,7 +732,7 @@ operator * : (Param,rat->Param): scale component nu by given rational factor
 at_nu_0 : (Param->Param): reduce component nu to 0 (scale it be a factor 0)
 
 print_block: (Param->): print (non-integral) block generated from parameter
-print_abstract_block: (Param->): print abstract block generated from parameter
+print_common_block: (Param->): print translation family block for parameter
   This is expermental functionality; construct a block in a way that should be
   invariant for shifts of the infinitesimal character by an element of $X^*$
   (while keeping it dominant); print it, with "gamma-lambda", not "lambda-rho"
