@@ -413,7 +413,6 @@ set is_pseudo_Levi(RootDatum rd_L,RootDatum rd)=bool:
 all(for i:number_simple_factors(rd) do
 is_pseudo_Levi_in_simple(project_on_simple_factor(rd,rd_L,i),simple_factor(rd,i)) od)
 
-
 {semisimple element t so that L=Cent_G(t)^0}
 set regular_central_elements(RootDatum rd_L, RootDatum rd)=
 {assert(is_pseudo_Levi(rd,rd_L),"not a pseudo-Levi");}

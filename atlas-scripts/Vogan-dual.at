@@ -192,15 +192,32 @@ set test2 (Param p) = [bool]: { consistency of cocharacter across block }
 
 {support(x): those simple reflections occuring in x.w, see parabolics.at
  dual_support(x): simple reflections occuring in x.w*w_0
- this is the support of any y for which (x,y) is a valid parameter}
+ this is the support of any y for which (x,y) is a valid parameter
+ integral case first}
 set support_dual(KGBElt x)=[int]:
-  let rd=root_datum(x), delta=distinguished_involution(real_form(x)) in
-  list(semisimple_rank(rd),(w(x)*w0(rd)).word.is_member)
+   list(x.root_datum.semisimple_rank,(x.w*w0(x.root_datum)).word.is_member)
 
-set is_dual_Aq(Param p)=bool:
+set support_dual_int(Param p)=[int]:
+assert(is_integral(p.root_datum,p.infinitesimal_character), "p does not have integral infinitesimal character");
+support_dual(p.x)
+
+{general case: need to replace x.w with an element of W(rd_int)}
+set support_dual(Param p)=[int]:
+ let rd_int=integrality_datum(p) then
+ x=p.x then
+ w_int=W_elt(rd_int,x.w.matrix) in let ()=prints("w_int:", w_int) in
+ list(semisimple_rank(rd_int),W_elt(rd_int,x.w*w0(p.root_datum).matrix).word.is_member)
+
+{dual is an Aq(finite dimensional), regular integral case}
+set is_dual_Aq_int(Param p)=bool:
 let G=real_form(p), ic=infinitesimal_character(p) in
-is_regular(p) and is_integral(ic,G) and
+assert(is_regular(p) and is_integral(ic,G),"p is not regular integral");
 all(for i in support_dual(p.x) do is_ascent(i,p.x) od)
+
+{dual is an Aq(finite dimensional), regular but not necessarily integral}
+set is_dual_Aq(Param p)=bool:
+assert(is_regular(p),"p is not regular");
+all(for i in support_dual(p) do is_ascent(i,p) od)
 
 {old version, fails with an error for SU(3,2) without
 the is_integral statement}
