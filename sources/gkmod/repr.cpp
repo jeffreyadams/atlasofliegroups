@@ -1196,39 +1196,29 @@ SR_poly deformation_terms
 
   // collect |StandardRepr| values for |finals|
 
-  std::vector<StandardRepr> sr;
-  std::unique_ptr<unsigned int[]> index // a sparse array, map hash to position
+  std::unique_ptr<unsigned int[]> index // a sparse array, map final to position
     (new unsigned int [block.size()]); // unlike |std::vector| do not initialise
 
-  sr.reserve(finals.size());
-  {
-    const RatWeight gamma_rho = gamma-rho(block.rootDatum());
-    unsigned pos=0;
-    for (auto it=finals.begin(); not finals.at_end(it); ++it,++pos)
-    {
-      BlockElt z=*it;
-      index[z]=pos;
-      Weight lambda_rho=gamma_rho.integer_diff<int>(block.gamma_lambda(z));
-      sr.push_back(tab.sr_gamma(block.x(z),lambda_rho,gamma));
-    }
-  }
+  unsigned pos=0;
+  for (auto z : finals)
+    index[z]=pos++;
 
   // since we evaluate at $s=-1$ eventually, we can use integer coefficients
-  std::vector<int> acc(sr.size(),0);
-  std::vector<int> remainder(sr.size(),0); // coeff.s by |survivor| position
+  std::vector<int> acc(finals.size(),0);
+  std::vector<int> remainder(finals.size(),0); // coeff.s by |survivor| position
   remainder.front()=1; // we initialised remainder = 1*sr_y
   auto y_parity=block.length(y)%2;
 
-  unsigned pos=0;
+  pos=0;
+  // basically |for(BlockElt z:finals)|, but |pos| needs increment on |continue|
   for (auto it=finals.begin(); not finals.at_end(it); ++it,++pos)
-  { // call |cur| element |pos| of |finals|; its value decreases in loop
-    BlockElt z=*it;
-    int c_cur = remainder[pos]; // coefficient of |cur| in |remainder|
+  {
+    const int c_cur = remainder[pos]; // coefficient of |z| in |remainder|
     if (c_cur==0)
       continue;
-    const bool contribute =  // whether |cur| is at odd level with respect to |y|
-      block.length(z)%2!=y_parity;
-    for (BlockElt x=z+1; x-->0; )
+    const BlockElt z=*it; // element |pos| of |finals|; value decreases in loop
+    const bool contribute = block.length(z)%2!=y_parity;
+    for (BlockElt x=z+1; x-->0; ) // for |x| from |z| down to |0| inclusive
     {
       const kl::KLPol& pol = klc.klPol(x,z); // regular KL polynomial
       int eval = 0;
@@ -1257,12 +1247,27 @@ SR_poly deformation_terms
    Transform coefficients of |acc| to polynomial |result|, taking into account
    the differences of |orientation_number| values between |y| and (current) |x|.
 */
-  unsigned int orient_y = tab.orientation_number(sr[0]);
-  for (unsigned pos=0; pos<sr.size(); ++pos)
-  { auto const& sr_x=sr[pos];
-    unsigned int orient_express=orient_y-tab.orientation_number(sr_x);
-    auto coef = acc[pos]*arithmetic::exp_i(orient_express);
-    result.add_term(sr_x,Split_integer(1,-1)*coef);
+  {
+    const RatWeight gamma_rho = gamma-rho(block.rootDatum());
+
+    const unsigned int orient_y = tab.orientation_number
+      (tab.sr_gamma
+       (block.x(y),
+	gamma_rho.integer_diff<int>(block.gamma_lambda(y)),
+	gamma
+      ));
+
+    auto it=finals.begin();
+    for (const int c : acc) // accumulator |acc| runs parallel to |finals|
+    {
+      const auto z = *it; ++it;
+      const Weight lambda_rho=gamma_rho.integer_diff<int>(block.gamma_lambda(z));
+      const auto sr_z=tab.sr_gamma(block.x(z),lambda_rho,gamma);
+
+      auto coef = c*arithmetic::exp_i(orient_y-tab.orientation_number(sr_z));
+      result.add_term(sr_z,Split_integer(1,-1)*coef);
+    }
+    assert(it==finals.end());
   }
 
   return result;
