@@ -85,6 +85,8 @@ ________________________
 <W_K.at { for |cross_divide| }
 <finite_dimensional.at
 
+
+
 set ind_verbose=false
 
 {. If L is a theta-stable Levi factor in G,  KGB for L embeds in KGB for G. .}
@@ -686,10 +688,10 @@ set is_good_range_induced_from (Param p) = [Param]:
   in the (weakly) good range, from p_L, with L minimal (may be G). .}
 set reduce_good_range (Param p) = (Parabolic,Param):
   let G=real_form(p) in
-  if ind_verbose
+  {if ind_verbose
   then if not is_final(p) then prints("p is not final") fi
   ;    if is_zero(p) then prints("The module is zero.") fi
-  fi;
+  fi;}
   let x=x(p) in let P=Parabolic:(support(x),x) in
   let L=Levi(P) in
   (P,
@@ -699,7 +701,7 @@ set reduce_good_range (Param p) = (Parabolic,Param):
     else
       let x_L=inverse_embed_KGB (x,L) in
       let p_L=parameter(x_L,lambda(p)-rho(G)+rho(L),nu(p)) in
-      if ind_verbose then prints(goodness(p_L,G)) fi;
+      {if ind_verbose then prints(goodness(p_L,G)) fi;}
       p_L
     fi
   )
@@ -843,6 +845,7 @@ set is_standard ([int] Levi, Param p) =
 
 set is_final ([int] Levi, Param p) = is_final (p_N (p,find_N (Levi,p),Levi))
 
+
 set induce_from_gen_parabolic_irr ([int] Levi, Param p)=ParamPol:
    let G=real_form(p) then
    N=find_N(Levi,p),x=x(p) then class=equivalence_class_of(Levi,x)
@@ -851,3 +854,7 @@ set induce_from_gen_parabolic_irr ([int] Levi, Param p)=ParamPol:
    pairs=move_P_down_by_N(P_up,N,Levi) in let result=null_module(G) in
    for (c,t) in pairs do result+:=c*standardize(t) od;
    composition_series(result)
+
+set L_infinitesimal_character ([int] Levi, Param p)=ratvec:
+   let theta=involution(p.x) then P=Parabolic:(Levi,p.x) in
+   ((1+theta)*lambda(p)+(1-theta)*nu(p))/2-rho_u(P)
