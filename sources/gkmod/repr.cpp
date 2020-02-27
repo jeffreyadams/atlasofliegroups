@@ -284,7 +284,7 @@ unsigned int Rep_context::orientation_number(const StandardRepr& z) const
   const Permutation& root_inv = i_tab.root_involution(i_x);
   const Ratvec_Numer_t& numer = z.gamma().numerator();
   const arithmetic::Numer_t denom = z.gamma().denominator();
-  const Weight test_wt =
+  const Weight test_wt = // representative of a class modulo $2(1-\theta)(X^*)$
     i_tab.y_lift(i_x,z.y()) +rd.twoRho() -rd.twoRho(real);
 
   unsigned count = 0;
@@ -292,7 +292,7 @@ unsigned int Rep_context::orientation_number(const StandardRepr& z) const
   for (unsigned i=0; i<rd.numPosRoots(); ++i)
   {
     const RootNbr alpha = rd.numPosRoots()+i;
-    const Weight& av = rootDatum().coroot(alpha);
+    const Coweight& av = rootDatum().coroot(alpha);
     const arithmetic::Numer_t num = av.dot(numer);
     if (num%denom!=0) // skip integral roots
     { if (real.isMember(alpha))
