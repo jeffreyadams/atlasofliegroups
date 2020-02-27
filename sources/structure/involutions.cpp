@@ -384,14 +384,16 @@ Weight InvolutionTable::y_lift(InvolutionNbr inv, TorusPart y_part) const
 {
   const record& rec=data[inv];
   Weight result(rec.lift_mat.numRows(),0);
-  // set |result=left_mat*lift| where |lift| is the integer lift of |y_part|
-  for (unsigned i=0; i<y_part.size(); ++i)
-    if (y_part[i])
-      result += rec.lift_mat.column(i);
+  // set |result=lift_mat*lift| where |lift| is the integer lift of |y_part|
+  for (unsigned j=0; j<y_part.size(); ++j)
+    if (y_part[j])
+      for (unsigned i=0; i<result.size(); ++i)
+	result[i] += rec.lift_mat(i,j);
   return result;
 }
 
-// a variant of |y_pack| that is a direct left-inverse of |y_lift| (whence /2)
+// variant of |y_pack| that is a direct left-inverse: |y_unlift(i,y_lift(y))==y|
+// since |y_lift(i,y_pack(lam_rho))=(1-theta(i))*lam_rho|, one needs to halve
 TorusPart InvolutionTable::y_unlift(InvolutionNbr inv, const Weight& lift) const
 {
   const record& rec=data[inv];

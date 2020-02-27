@@ -316,7 +316,7 @@ unsigned int Rep_context::orientation_number(const StandardRepr& z) const
   const Permutation& root_inv = i_tab.root_involution(i_x);
   const Ratvec_Numer_t& numer = z.gamma().numerator();
   const arithmetic::Numer_t denom = z.gamma().denominator();
-  const Weight test_wt =
+  const Weight test_wt = // representative of a class modulo $2(1-\theta)(X^*)$
     i_tab.y_lift(i_x,z.y()) +rd.twoRho() -rd.twoRho(real);
 
   unsigned count = 0;
@@ -324,7 +324,7 @@ unsigned int Rep_context::orientation_number(const StandardRepr& z) const
   for (unsigned i=0; i<rd.numPosRoots(); ++i)
   {
     const RootNbr alpha = rd.numPosRoots()+i;
-    const Weight& av = rootDatum().coroot(alpha);
+    const Coweight& av = rootDatum().coroot(alpha);
     const arithmetic::Numer_t num = av.dot(numer);
     if (num%denom!=0) // skip integral roots
     { if (real.isMember(alpha))
@@ -1137,7 +1137,7 @@ SR_poly Rep_table::deformation_terms (param_block& block,BlockElt y)
 
 // experimental version, avoiding |KLV_list| but rather stored KL polys
 SR_poly deformation_terms
-( const Rep_table& tab, blocks::block_minimal& block, BlockElt y,
+( const Rep_table& tab, blocks::block_minimal& block, const BlockElt y,
   const RatWeight& gamma)
 { assert(y<block.size());
 
