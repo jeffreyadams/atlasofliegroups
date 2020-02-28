@@ -6018,9 +6018,12 @@ void deform_wrapper(expression_base::level l)
   if (l==expression_base::no_value)
     return;
 @)
-  param_block block(p->rc(),p->val); // partial block construction
+  BlockElt p_index; // will hold index of |p| in the block
+  RankFlags singular;
+  auto& block = p->rt().lookup(p->val,p_index,singular);
+
   repr::SR_poly terms
-     = p->rt().deformation_terms(block,block.size()-1);
+     = p->rt().deformation_terms(block,p_index,singular,p->val.gamma());
 
   push_value(std::make_shared<virtual_module_value>(p->rf,std::move(terms)));
 }

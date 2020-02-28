@@ -1036,161 +1036,88 @@ unsigned long Rep_table::add_block(const StandardReprMod& srm)
   return result;
 }
 
-// compute and return sum of KL polynomials at $s$ for final parameter |z|
-SR_poly Rep_table::KL_column_at_s(StandardRepr z) // |z| must be final
+blocks::block_minimal& Rep_table::lookup
+  (const StandardRepr sr,BlockElt& z,RankFlags& singular)
 {
-  normalise(z); // implies that |z| it will appear at the top of its own block
-  assert(is_final(z));
-  unsigned long hash_index=hash.find(z);
-  if (hash_index==hash.empty) // previously unknown parameter
-  { // then we need to compute to find the requested polynomial
-    param_block block(*this,z); // compute partial block, up to |z| inclusive
-    containers::sl_list<BlockElt> survivors; // dummy argument, not used here
-    add_block(block,survivors); // ensure |hash| knows about |block| members
+  auto srm = StandardReprMod::mod_reduce(*this,sr); // modular zi
+  auto h=mod_hash.find(srm); // look up modulo translation in $X^*$
+  if (h==mod_hash.empty) // then we are in a new translation family of blocks
+    h=add_block(srm); // ensure this block is known
+  assert(h<mod_hash.size()); // it cannot be |mod_hash.empty| anymore
 
-    hash_index=hash.find(z);
-    assert(hash_index!=hash.empty);
+  auto lwb=bounds.cbegin();
+  { std::vector<boundary>::const_iterator upb=bounds.cend(),halfway;
+    unsigned long diff;
+    while ((diff=upb-lwb)>1)
+      ( (halfway=lwb+diff/2)->first_hash<=h ? lwb : upb) = halfway;
   }
+  auto& block = *lwb->ptr; // not |const|, filling KL table needed
+  z=h-lwb->first_hash;
 
-  return KLV_list[hash_index];
-} // |Rep_table::KL_column_at_s|
-
-SR_poly Rep_table::deformation_terms (param_block& block,BlockElt y)
-{
-  SR_poly result(repr_less());
-  if (not block.survives(y) or block.length(y)==0)
-    return result; // easy cases, null result
-
-  containers::sl_list<BlockElt> survivors;
-  add_block(block,survivors); // computes survivors, if needed extends |KLV_list|
-
-  { // cut off |survivors| after value |y|, and reverse what is left
-    auto it=survivors.cbegin();
-    while (*it<y) // skip over everything before the value |y|
-      ++it;
-    ++it; // and skip that value itself
-    survivors.erase(it,survivors.cend());
-    survivors.reverse(); // now |survivors| is decreasing list starting with |y|
-  }
-  assert(survivors.front()==y);
-
-  // collect |StandardRepr| values for |survivors|, their hashes and inverse map
-
-  std::vector<std::pair<StandardRepr,unsigned long> > sr_h;
-    // map |survivors| index to |StandardRepr| and its associated hash number
-  sr_h.reserve(survivors.size());
-  std::unique_ptr<unsigned int[]> index // a sparse array, map hash to position
-    (new unsigned int [hash.size()]); // unlike |std::vector| do not initialise
-  for (auto x : survivors) // traverse linked list
-  { // index |pos| -> |BlockElt x| -> |StandardRepr sr| -> hash value |h|
-    StandardRepr sr_x=block.sr(x);
-    unsigned long h=hash.find(sr_x);
-    assert(h!=hash.empty); // all standard reps for survivors should be found
-    index[h]=sr_h.size(); // point back |h| -> |pos|
-    sr_h.push_back(std::make_pair(sr_x,h));
-  }
-
-  // since we evaluate at $s=-1$ eventually, we can use integer coefficients
-  std::vector<int> acc(sr_h.size(),0);
-  std::vector<int> remainder(sr_h.size(),0); // coeff.s by |survivor| position
-  remainder.front()=1; // we initialised remainder = 1*sr_y
-  auto y_parity=block.length(y)%2;
-
-  for (unsigned pos=0; pos<sr_h.size(); ++pos) // loop through |survivors|
-  { // call |cur| element |pos| of |survivors|; its value decreases in loop
-    int c_cur = remainder[pos]; // coefficient of |cur| in |remainder|
-    if (c_cur==0)
-      continue;
-    auto h = sr_h[pos].second; // hash value of |block.sr(cur)|
-    const SR_poly& KL_cur = KLV_list[h]; // KL column sum for |cur|
-    const bool contribute = lengths[h]%2!=y_parity; // whether |cur| at odd level
-    for (const auto& pair : KL_cur)
-    { // |pair.first| is monomial from KL sum; lower in block, not |repr_less|
-      assert(not repr_less()(pair.first,sr_h[pos].first)); // monomials go up
-      assert(hash.find(pair.first)!=hash.empty); // |hash| is downwards closed
-      auto j = index[hash.find(pair.first)]; // index of monomial in |survivors|
-      assert(j>=pos); // triangularity of |KLV_list|
-      int c = c_cur*pair.second.s_to_minus_1();
-      remainder[j] -= c;
-      if (contribute) // optimisation will apply loop unswitching to this test
-	acc[j] += c; // here we contribute
-    }
-    assert(remainder[pos]==0); // check relation of being inverse
-  }
-
-/* The following could be done inside the previous loop at the end of its body,
-   since |acc[pos]| has its definitive value after the iteration for |pos|.
-   However we keep loops separate to maybe increase locality of the one above.
-   Transform coefficients of |acc| to polynomial |result|, taking into account
-   the differences of |orientation_number| values between |y| and (current) |x|.
-*/
-  unsigned int orient_y = orientation_number(sr_h[0].first);
-  for (unsigned pos=0; pos<sr_h.size(); ++pos)
-  { auto const& sr_x=sr_h[pos].first;
-    unsigned int orient_express=orient_y-orientation_number(sr_x);
-    auto coef = acc[pos]*arithmetic::exp_i(orient_express);
-    result.add_term(sr_x,Split_integer(1,-1)*coef);
-  }
-
-  return result;
-} // |deformation_terms|, block version
-
-// experimental version, avoiding |KLV_list| but rather stored KL polys
-SR_poly deformation_terms
-( const Rep_table& tab, blocks::block_minimal& block, const BlockElt y,
-  const RatWeight& gamma)
-{ assert(y<block.size());
-
-  SR_poly result(tab.repr_less());
-  if (block.length(y)==0)
-    return result; // easy case, null result
-
-  RankFlags singular; // subset of integrally-simple roots, singular at |gamma|
+  singular.reset();
   {
     const SubSystem& sub = block.integral_subsystem();
-    const auto& rd = sub.parent_datum();
     for (weyl::Generator s=0; s<block.rank(); ++s)
-      singular.set(s,rd.coroot(sub.parent_nr_simple(s))
-		              .dot(gamma.numerator())==0);
+      singular.set(s,rootDatum().coroot(sub.parent_nr_simple(s))
+					.dot(sr.gamma().numerator())==0);
   }
+  return block;
+} // |Rep_table::lookup|
 
-  containers::sl_list<BlockElt> finals;
-  std::vector<containers::sl_list<BlockElt> > contrib(y+1);
-  for (BlockElt z=0; z<=y; ++z) // compute |finals| and |finals_for| in |contrib|
+std::vector<containers::sl_list<BlockElt> > Rep_table::contributions
+  (blocks::block_minimal& block, RankFlags singular, BlockElt y) const
+{
+  std::vector<containers::sl_list<BlockElt> > result(y+1); // initally all empty
+  for (BlockElt z=0; z<=y; ++z) // compute |finals| and |finals_for| in |result|
   {
     const DescentStatus& desc=block.descent(z);
     auto it=singular.begin();
     for ( ; it(); ++it)
-      if (DescentStatus::isDescent(desc[*it]))
-      { // then |z| is not final
-	if (z==y)
-	  return result; // non-final block element has no deformation terms
+      if (DescentStatus::isDescent(desc[*it])) // then |z| is not final
+      {
 	switch (desc[*it])
 	{
 	case DescentStatus::ComplexDescent:
-	  contrib[z]=contrib[block.cross(*it,z)]; // copy from unique descent
+	  result[z]=result[block.cross(*it,z)]; // copy from unique descent
 	  break;
 	case DescentStatus::RealTypeII:
-	  contrib[z]=contrib[block.inverseCayley(*it,z).first]; // unique descent
+	  result[z]=result[block.inverseCayley(*it,z).first]; // unique descent
 	  break;
 	case descents::DescentStatus::RealTypeI:
 	  {
 	    BlockEltPair iC=block.inverseCayley(*it,z);
-	    contrib[z]=contrib[iC.first];
-	    contrib[z].append(contrib[iC.second].begin(),
-			      contrib[iC.second].end());
+	    result[z]=result[iC.first];
+	    result[z].append(result[iC.second].begin(),
+			      result[iC.second].end());
 	  }
 	default:
-	  break; // leave |contrib[z]| empty in |ImaginaryCompact| case
+	  break; // leave |result[z]| empty in |ImaginaryCompact| case
 	}
-	break; // not final, so effectively |continue| outer loop on |z|
+	// having found one singular descent, we ignore any other ones
+	break; // not final, |break| effectively |continue|s outer loop on |z|
       }
     if (not it()) // then previous loop ran to completion
-    {
-      finals.push_front(z); // this makes a decreasing list
-      contrib[z].push_front(z); // record singleton contribution to ourselves
-    }
+      result[z].push_front(z); // record singleton contribution to ourselves
+    // the fact that |result[z].front()==z| also identifies |z| as "final"
   }
+  return result;
+} // |Rep_table::contributions|
+
+SR_poly Rep_table::deformation_terms
+  ( blocks::block_minimal& block, const BlockElt y,
+    RankFlags singular, const RatWeight& gamma) const
+{ assert(y<block.size());
+
+  SR_poly result(repr_less());
+  if (block.length(y)==0)
+    return result; // easy case, null result
+
+  std::vector<containers::sl_list<BlockElt> > contrib =
+    contributions(block,singular,y);
+  containers::sl_list<BlockElt> finals;
+  for (BlockElt z=0; z<contrib.size(); ++z)
+    if (not contrib[z].empty() and contrib[z].front()==z)
+      finals.push_front(z); // accumulate in reverse order
 
   const kl::KLContext& klc = block.klc(y,false); // fill silently up to |y|
 
@@ -1250,8 +1177,8 @@ SR_poly deformation_terms
   {
     const RatWeight gamma_rho = gamma-rho(block.rootDatum());
 
-    const unsigned int orient_y = tab.orientation_number
-      (tab.sr_gamma
+    const unsigned int orient_y = orientation_number
+      (sr_gamma
        (block.x(y),
 	gamma_rho.integer_diff<int>(block.gamma_lambda(y)),
 	gamma
@@ -1262,17 +1189,61 @@ SR_poly deformation_terms
     {
       const auto z = *it; ++it;
       const Weight lambda_rho=gamma_rho.integer_diff<int>(block.gamma_lambda(z));
-      const auto sr_z=tab.sr_gamma(block.x(z),lambda_rho,gamma);
+      const auto sr_z=sr_gamma(block.x(z),lambda_rho,gamma);
 
-      auto coef = c*arithmetic::exp_i(orient_y-tab.orientation_number(sr_z));
+      auto coef = c*arithmetic::exp_i(orient_y-orientation_number(sr_z));
       result.add_term(sr_z,Split_integer(1,-1)*coef);
     }
     assert(it==finals.end());
   }
 
   return result;
-} // |deformation_terms| function
+} // |deformation_terms|, common block version
 
+// compute and return sum of KL polynomials at $s$ for final parameter |sr|
+SR_poly Rep_table::KL_column_at_s(StandardRepr sr) // |sr| must be final
+{
+  normalise(sr); // implies that |sr| it will appear at the top of its own block
+  assert(is_final(sr));
+
+  BlockElt z;
+  RankFlags singular; // subset of integrally-simple roots, singular at |gamma|
+  auto& block = lookup(sr,z,singular);
+
+  std::vector<containers::sl_list<BlockElt> > contrib =
+    contributions(block,singular,z);
+  assert(contrib.size()==z+1 and contrib[z].front()==z);
+
+  const kl::KLContext& klc = block.klc(z,false); // fill silently up to |z|
+
+  SR_poly result(repr_less());
+  const auto& gamma=sr.gamma();
+  const RatWeight gamma_rho = gamma-rho(block.rootDatum());
+  auto z_length=block.length(z);
+  for (BlockElt x=z+1; x-->0; )
+  {
+    const kl::KLPol& pol = klc.klPol(x,z); // regular KL polynomial
+    if (pol.isZero())
+      continue;
+    Split_integer eval(0);
+    for (polynomials::Degree d=pol.size(); d-->0; )
+      eval.times_s() += static_cast<int>(pol[d]); // evaluate at $q = s$
+    // no test here, nonzero KL polynomials have nonzero evaluation at $q=1$
+
+    if ((z_length-block.length(x))%2!=0) // when |l(z)-l(x)| odd
+      eval.negate(); // flip sign (do alternating sum of KL column at |s|)
+    for (auto c : contrib[x])
+    {
+      const Weight lambda_rho=gamma_rho.integer_diff<int>(block.gamma_lambda(c));
+      const auto sr_c=sr_gamma(block.x(c),lambda_rho,gamma);
+      result.add_term(sr_c,eval);
+    }
+  }
+
+  return result;
+} // |Rep_table::KL_column_at_s|
+
+#if 0
 SR_poly Rep_table::deformation_terms (unsigned long sr_hash) const
 { // the |StandardRepr| |hash[sr_hash]| is necessarily final (survivor)
   SR_poly result(repr_less());
@@ -1300,7 +1271,7 @@ SR_poly Rep_table::deformation_terms (unsigned long sr_hash) const
 
   return result;
 } // |deformation_terms|, version without block
-
+#endif
 
 SR_poly Rep_table::deformation(const StandardRepr& z)
 // that |z| is dominant and final is a precondition assured in the recursion
@@ -1324,23 +1295,10 @@ SR_poly Rep_table::deformation(const StandardRepr& z)
     auto zi = z; scale(zi,rp[i]);
     normalise(zi); // necessary to ensure the following |assert| will hold
     assert(is_final(zi)); // ensures that |deformation_terms| won't refuse
-    auto zim = StandardReprMod::mod_reduce(*this,zi); // modular zi
-    auto h=mod_hash.find(zim); // look up modulo translation in $X^*$
-    if (h==mod_hash.empty) // then we are in a new translation family of blocks
-      h=add_block(zim); // ensure this block is known
-    assert(h<mod_hash.size()); // it cannot be |mod_hash.empty| anymore
+    BlockElt new_z; RankFlags singular;
+    auto& block = lookup(zi,new_z,singular);
 
-    // do binary search as |std::lower_bound| would, but without complications
-    auto lwb=bounds.cbegin();
-    { std::vector<boundary>::const_iterator upb=bounds.cend(),halfway;
-      unsigned long diff;
-      while ((diff=upb-lwb)>1)
-	( (halfway=lwb+diff/2)->first_hash<=h ? lwb : upb) = halfway;
-    }
-    auto& block = *lwb->ptr; // not |const|, filling KL table needed
-    const BlockElt new_z=h-lwb->first_hash;
-
-    const SR_poly terms = repr::deformation_terms(*this,block,new_z,zi.gamma());
+    const SR_poly terms = deformation_terms(block,new_z,singular,zi.gamma());
     for (auto const& term : terms)
       result.add_multiple(deformation(term.first),term.second); // recursion
   }

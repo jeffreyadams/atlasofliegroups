@@ -290,13 +290,19 @@ class Rep_table : public Rep_context
 
   unsigned int length(StandardRepr z); // by value
 
+  blocks::block_minimal& lookup
+    (const StandardRepr sr,BlockElt& z,RankFlags& singular);
+
   SR_poly KL_column_at_s(StandardRepr z); // by value
   SR_poly twisted_KL_column_at_s(StandardRepr z); // by value
 
-  SR_poly deformation_terms (param_block& block,BlockElt entry_elem);
-  // here |block| is non-|const| because it calls |add_block|
+  SR_poly deformation_terms
+    (blocks::block_minimal& block, BlockElt y, RankFlags singular,
+     const RatWeight& gamma) const;
+#if 0
   SR_poly deformation_terms (unsigned long sr_hash) const;
   // once a parameter has been entered, we can compute this without a block
+#endif
 
   SR_poly deformation(const StandardRepr& z);
 
@@ -321,6 +327,10 @@ class Rep_table : public Rep_context
 
   unsigned long add_block(const StandardReprMod& sr);
   // add |block_minimal| to |blocks|, and return (new) hash number of |sr|
+
+  // compute, for |x| up to |y| inclusive, finals to which |P(x,y)| contributes
+  std::vector<containers::sl_list<BlockElt> > contributions
+    (blocks::block_minimal& block, RankFlags singular, BlockElt y) const;
 }; // |Rep_table|
 
 

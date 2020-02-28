@@ -109,7 +109,6 @@ CommandNode reprNode()
   result.add("blocktwist",blocktwist_f,"second");
   result.add("extblock",extblock_f,"second");
   result.add("gextblock",gextblock_f,"second");
-  result.add("deform",deform_f,"computes deformation terms",std_help);
   result.add("kl",kl_f,
 	     "computes KL polynomials in character formula for this parameter",
 	     std_help);
@@ -401,50 +400,6 @@ void kl_f()
   block_io::print_KL(file,block,entry_z);
 }
 
-
-void deform_f()
-{
-
-  Rep_table& rt = currentRepTable();
-  param_block& block = current_param_block();
-  repr::SR_poly terms = rt.deformation_terms(block,entry_z);
-
-  std::vector<StandardRepr> pool;
-  HashTable<StandardRepr,unsigned long> hash(pool);
-
-  ioutils::OutputFile f;
-
-  f << "Orientation numbers:\n";
-  bool first=true;
-  for (BlockElt x=0; x<=entry_z; ++x)
-    if (block.survives(x))
-    {
-      hash.match(block.sr(x));
-      if (first) first=false;
-      else f<< ", ";
-      StandardRepr r = block.sr(x);
-      f << x << ": " <<  rt.orientation_number(r);
-    }
-  f << ".\n";
-
-  if (block.survives(entry_z))
-  {
-    f << "Deformation terms for I(" << entry_z << ")_c: (1-s) times\n";
-    std::ostringstream os;
-    for (repr::SR_poly::const_iterator it=terms.begin(); it!=terms.end(); ++it)
-    {
-      int eval=it->second.e();
-      os << ' ';
-      if (eval==1 or eval==-1)
-	os << (eval==1 ? '+' : '-'); // sign of evaluation
-      else
-	os << std::setiosflags(std::ios_base::showpos) << eval;
-      os <<"I(" << hash.find(it->first) << ")_c";
-    }
-    ioutils::foldLine(f,os.str()) << std::endl;
-
-  }
-} // |deform_f|
 
 
 /* For each element $y$ in the block, outputs the list of non-zero K-L
