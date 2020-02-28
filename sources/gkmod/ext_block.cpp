@@ -2342,9 +2342,8 @@ ext_block::first_descent_among(RankFlags singular_orbits, BlockElt y) const
 // the other rows are not removed, but the result lists the rows to retain
 template<typename C> // matrix coefficient type (signed)
 containers::simple_list<BlockElt> // returns list of elements selected
-  ext_block::condense(matrix::Matrix<C>& M, const param_block& parent) const
+  ext_block::condense(matrix::Matrix<C>& M, RankFlags sing_orbs) const
 {
-  RankFlags sing_orbs = singular_orbits(parent);
   containers::simple_list<BlockElt> result;
 
   for (BlockElt y=M.numRows(); y-->0; ) // reverse loop is essential here
@@ -2548,9 +2547,9 @@ bool check_braid
 } // |check_braid|
 
 template containers::simple_list<BlockElt> ext_block::condense
-  (matrix::Matrix<int>& M, const param_block& parent) const;
+  (matrix::Matrix<int>& M, RankFlags sing_orbs) const;
 template containers::simple_list<BlockElt> ext_block::condense
-  (matrix::Matrix<Split_integer>& M, const param_block& parent) const;
+  (matrix::Matrix<Split_integer>& M, RankFlags sing_orbs) const;
 
 } // |namespace ext_block|
 

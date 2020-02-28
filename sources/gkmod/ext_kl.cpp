@@ -893,7 +893,8 @@ void ext_KL_matrix (const StandardRepr p, const int_Matrix& delta,
   Then afterwards non surviving rows and columns (should be 0) are removed.
 */
 
-  containers::sl_list<BlockElt> survivors(eblock.condense(P_mat,B));
+  containers::sl_list<BlockElt> survivors
+    (eblock.condense(P_mat,eblock.singular_orbits(B)));
 
   if (survivors.size()<size) // if any non-survivors, we need to compress |P_mat|
   { size=survivors.size(); // henceforth this is our size

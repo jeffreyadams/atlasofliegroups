@@ -1329,7 +1329,7 @@ SR_poly twisted_KL_sum
       auto d=P.degree();
       Split_integer eval(P[d]);
       while (d-->0)
-	eval = eval.times_s()+Split_integer(P[d]);
+	eval.times_s()+=static_cast<int>(P[d]);
       pool_at_s.push_back(eval);
     }
 
@@ -1342,14 +1342,14 @@ SR_poly twisted_KL_sum
   }
 
   // condense |P_at_s| to the extended block elements without singular descents
-  containers::simple_list<BlockElt> survivors = eblock.condense(P_at_s,parent);
+  containers::simple_list<BlockElt> survivors =
+    eblock.condense(P_at_s,eblock.singular_orbits(parent));
 
   // finally transcribe from |P_at_s| result
   SR_poly result(rc.repr_less());
   unsigned int parity = eblock.length(y)%2;
-  for (auto it = survivors.begin(); not survivors.at_end(it); ++it)
+  for (BlockElt x : survivors)
   {
-    BlockElt x = *it;
     auto factor = P_at_s(x,0);
     if (eblock.length(x)%2!=parity) // flip sign at odd length difference
       factor = -factor;
@@ -1380,7 +1380,7 @@ SR_poly twisted_KL_sum
       auto d=P.degree();
       Split_integer eval(P[d]);
       while (d-->0)
-	eval = eval.times_s()+Split_integer(P[d]);
+	eval.times_s()+=static_cast<int>(P[d]);
       pool_at_s.push_back(eval);
     }
 
@@ -1393,8 +1393,12 @@ SR_poly twisted_KL_sum
   }
 
   // condense |P_at_s| to the extended block elements without singular descents
+  RankFlags singular_orbits;
+  const auto& ipd = parent.integral_subsystem().pre_root_datum();
+  for (weyl::Generator s=0; s<eblock.rank(); ++s)
+    singular_orbits.set(s,gamma.dot(ipd.simple_coroot(eblock.orbit(s).s0))==0);
   containers::simple_list<BlockElt> survivors =
-    eblock.condense(P_at_s,parent,gamma);
+    eblock.condense(P_at_s,singular_orbits);
 
   // finally transcribe from |P_at_s| result
   const auto& rc = parent.context();
@@ -1478,7 +1482,7 @@ void Rep_table::add_block(ext_block::ext_block& block, // a full extended block
 
   // condense |P_mat| to the extended block elements without singular descents
   extended_finals = containers::sl_list<BlockElt> // convert from |simple_list|
-    { block.condense(P_at_s,parent) };
+    { block.condense(P_at_s,block.singular_orbits(parent)) };
 
   auto top_elt_it = extended_finals.cend();
   // now |at_end(top_elt_it)|, but |top_elt_it| set to "point to" |top_elt| below

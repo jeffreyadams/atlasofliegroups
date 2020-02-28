@@ -146,7 +146,8 @@ class ext_block
   size_t rank() const { return orbits.size(); }
   size_t size() const { return info.size(); }
 
-  const Block_base& untwisted() const { return parent; }
+  const Block_base& untwisted() const // use when only the parent base is needed
+    { return parent; }
 
   ext_gen orbit(weyl::Generator s) const { return orbits[s]; }
   const DynkinDiagram& Dynkin() const { return folded; }
@@ -190,11 +191,7 @@ class ext_block
   // reduce a matrix to elements without descents among singular generators
   template<typename C> // matrix coefficient type (signed)
   containers::simple_list<BlockElt> // returns list of elements selected
-    condense (matrix::Matrix<C>& M, const param_block& parent) const;
-  template<typename C> // matrix coefficient type (signed)
-  containers::simple_list<BlockElt> // returns list of elements selected
-    condense (matrix::Matrix<C>& M, const blocks::block_minimal& parent,
-	      const RatWeight& gamma) const;
+    condense (matrix::Matrix<C>& M, RankFlags singular_orbits) const;
 
   // coefficient of neighbour |xx| of |x| in the action $(T_s+1)*a_x$
   Pol T_coef(weyl::Generator s, BlockElt xx, BlockElt x) const;
