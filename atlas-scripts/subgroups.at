@@ -414,7 +414,6 @@ let list=simple_factors_indices(rd) in
 all(for i:number_simple_factors(rd) do let j=list[i][0] in
 is_pseudo_Levi_in_simple(project_on_simple_factor(rd,rd_L,j),simple_factor(rd,j)) od)
 
-
 {semisimple element t so that L=Cent_G(t)^0}
 set regular_central_elements(RootDatum rd_L, RootDatum rd)=
 {assert(is_pseudo_Levi(rd,rd_L),"not a pseudo-Levi");}
@@ -424,7 +423,7 @@ L_rad=radical_basis(rd_L) {central torus} then
 (,M)=Levi_of_subspace(rd,L_rad) {centralizer of L_rad} in
 ##for v in Z_Lmod do
  let v_rd=lift(rd_L,v) in
-  if dimension(centralizer(M,v_rd))=rd_L.dimension then [v_rd] else [] fi od 
+  if dimension(centralizer(M,v_rd))=rd_L.dimension then [v_rd] else [] fi od
 
 set regular_central_element(RootDatum rd_L, RootDatum rd)=regular_central_elements(rd_L,rd)[0]
 
