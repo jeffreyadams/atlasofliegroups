@@ -23,6 +23,7 @@
 #include "blocks.h"
 #include "block_minimal.h"
 #include "repr.h"
+#include "ext_kl.h"
 
 /*
   For an extended group, the block structure is more complicated than an
@@ -1935,6 +1936,8 @@ weyl::Generator first_descent_among
   return orbits.size(); // no singular descents found
 }
 
+ext_block::~ext_block() = default;
+
 ext_block::ext_block // for external twist; old style blocks
   (const InnerClass& G,
    const Block& block,
@@ -1947,6 +1950,7 @@ ext_block::ext_block // for external twist; old style blocks
   , info()
   , data(orbits.size()) // create that many empty vectors
   , l_start(parent.length(parent.size()-1)+2,0)
+  , KL_ptr(nullptr)
 {
   BitMap fixed_points(block.size());
 
@@ -2336,6 +2340,14 @@ ext_block::first_descent_among(RankFlags singular_orbits, BlockElt y) const
       return *it;
 
   return rank();
+}
+
+const ext_kl::KL_table& ext_block::kl_table(BlockElt limit)
+{
+  if (KL_ptr.get()==nullptr)
+    KL_ptr.reset(new ext_kl::KL_table(*this,nullptr));
+  KL_ptr->fill_columns(limit);
+  return *KL_ptr;
 }
 
 // reduce matrix to rows for extended block elements without singular descents

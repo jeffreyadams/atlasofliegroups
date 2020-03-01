@@ -891,8 +891,7 @@ void test_f() // trial of twisted KLV computation
   else // convert to block number
     last=eblock.element(last);
 
-  std::vector<ext_kl::Pol> pool;
-  ext_kl::KL_table twisted_KLV(eblock,pool);
+  ext_kl::KL_table twisted_KLV(eblock,nullptr);
   twisted_KLV.fill_columns(last);
 
   ioutils::OutputFile f;

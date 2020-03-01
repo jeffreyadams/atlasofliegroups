@@ -6374,7 +6374,7 @@ void raw_ext_KL_wrapper (expression_base::level l)
   {
     ext_block::ext_block eb(block,delta->val);
     std::vector<Polynomial<int> > pool;
-    ext_kl::KL_table klt(eb,pool); klt.fill_columns();
+    ext_kl::KL_table klt(eb,&pool); klt.fill_columns();
   @)
     own_matrix M = std::make_shared<matrix_value>(int_Matrix(klt.size()));
     for (unsigned int y=1; y<klt.size(); ++y)

@@ -29,6 +29,10 @@
 
 namespace atlas {
 
+namespace ext_kl {
+  class KL_table;
+}
+
 namespace ext_block {
 
 // for correspondence of enumerations and conventional codes, see |descent_code|
@@ -127,6 +131,7 @@ class ext_block
   std::vector<std::vector<block_fields> > data;  // size |d_rank| * |size()|
   BlockEltList l_start; // where elements of given length start
 
+  std::unique_ptr<ext_kl::KL_table> KL_ptr;
  public:
 
 // constructors and destructors
@@ -136,10 +141,14 @@ class ext_block
 	    const WeightInvolution& delta);
   ext_block(const param_block& block, const WeightInvolution& delta,
 	    bool verbose=false);
+  // the following variant has its definition in block_minimal.cpp:
   ext_block(const blocks::block_minimal& block, const WeightInvolution& delta);
+
+  ~ext_block(); // cannot be implicitly defined here (|KL_table| incomplete)
 
 // manipulators
   void flip_edge(weyl::Generator s, BlockElt x, BlockElt y);
+  const ext_kl::KL_table& kl_table(BlockElt limit);
 
 // accessors
 

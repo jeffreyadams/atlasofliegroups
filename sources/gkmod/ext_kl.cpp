@@ -143,17 +143,20 @@ bool descent_table::extr_back_up(BlockElt& x, BlockElt y) const
   return false;
 } // |descent_table::extr_back_up|
 
-KL_table::KL_table(const ext_block::ext_block& b, std::vector<Pol>& pool)
-  : aux(b), storage_pool(pool), column()
+KL_table::KL_table(const ext_block::ext_block& b, std::vector<Pol>* pool)
+  : aux(b)
+  , own(pool==nullptr ? new std::vector<Pol> : nullptr)
+  , storage_pool(pool==nullptr ? *own : *pool)
+  , column()
 { // ensure first two pool entries are constant polynomials $0$, and $1$
-  if (pool.empty())
-    pool.push_back(Pol(0));
+  if (storage_pool.empty())
+    storage_pool.push_back(Pol(0));
   else
-    assert(pool[0]==Pol(0));
-  if (pool.size()==1)
-    pool.push_back(Pol(1));
+    assert(storage_pool[0]==Pol(0));
+  if (storage_pool.size()==1)
+    storage_pool.push_back(Pol(1));
   else
-    assert(pool[1]==Pol(1));
+    assert(storage_pool[1]==Pol(1));
 }
 
 std::pair<kl::KLIndex,bool>
@@ -863,7 +866,7 @@ void ext_KL_matrix (const StandardRepr p, const int_Matrix& delta,
     eblock.element(entry_element+1);
 
   std::vector<ext_kl::Pol> pool;
-  KL_table twisted_KLV(eblock,pool);
+  KL_table twisted_KLV(eblock,&pool);
   twisted_KLV.fill_columns(size); // fill up to and including |p|
 
   int_Vector pol_value (pool.size()); // polynomials evaluated as $q=-1$

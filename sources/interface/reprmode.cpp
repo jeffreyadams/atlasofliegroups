@@ -378,8 +378,7 @@ void extkl_f()
   ensure_full_block();
   auto& block = current_param_block();
   ext_block::ext_block eblock(block,delta,true);
-  std::vector<ext_kl::Pol> pool;
-  ext_kl::KL_table twisted_KLV(eblock,pool);
+  ext_kl::KL_table twisted_KLV(eblock,nullptr);
   twisted_KLV.fill_columns();
 
   ioutils::OutputFile f;

@@ -48,6 +48,7 @@
 #include "kgb.h"
 #include "repr.h"
 #include "ext_block.h"
+#include "ext_kl.h" // for |ext_block::ext_kl| contructor defined below
 
 namespace atlas {
 
@@ -409,6 +410,9 @@ BlockElt block_minimal::lookup(KGBElt x, const RatWeight& gamma_lambda) const
                          : xy_hash.find(EltInfo{x,y});
 }
 
+// find element in same common block with |x| and |y| parts twisted by |delta|
+// may return |UndefBlock|, but success does not mean any representative of the
+// $X^*$ coset for this block is actually |delta|-fixed (no such test done)
 BlockElt twisted
   (const blocks::block_minimal& block, BlockElt z,
    const WeightInvolution& delta)
@@ -1534,7 +1538,7 @@ ext_block::ext_block
   if (not tune_signs(block))
     throw std::runtime_error("Failure detected in extended block construction");
 
-}
+} // |ext_block::ext_block|, from a |block_minimal|
 
 bool ext_block::tune_signs(const blocks::block_minimal& block)
 {

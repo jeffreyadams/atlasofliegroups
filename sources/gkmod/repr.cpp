@@ -1316,7 +1316,7 @@ SR_poly twisted_KL_sum
 
   // start with computing KL polynomials for the entire block
   std::vector<ext_kl::Pol> pool;
-  ext_kl::KL_table twisted_KLV(eblock,pool);
+  ext_kl::KL_table twisted_KLV(eblock,&pool);
   twisted_KLV.fill_columns(y+1); // fill table up to |y| inclusive
 
   // make a copy of |pool| in which polynomials have been evaluated as |s|
@@ -1367,7 +1367,7 @@ SR_poly twisted_KL_sum
 
   // start with computing KL polynomials for the entire block
   std::vector<ext_kl::Pol> pool;
-  ext_kl::KL_table twisted_KLV(eblock,pool);
+  ext_kl::KL_table twisted_KLV(eblock,&pool);
   twisted_KLV.fill_columns(y+1); // fill table up to |y| inclusive
 
   // make a copy of |pool| in which polynomials have been evaluated as |s|
@@ -1454,7 +1454,7 @@ void Rep_table::add_block(ext_block::ext_block& block, // a full extended block
 
   // start with computing KL polynomials for the entire block
   std::vector<ext_kl::Pol> pool;
-  ext_kl::KL_table twisted_KLV(block,pool);
+  ext_kl::KL_table twisted_KLV(block,&pool);
   twisted_KLV.fill_columns(); // block is complete, so fill everything
 
   // make a copy of |pool| in which polynomials have been evaluated as |s|
