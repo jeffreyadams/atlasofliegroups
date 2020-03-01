@@ -103,8 +103,8 @@ class KL_table
   bool extremal(BlockElt x, BlockElt y) const
   { return aux.descent_set(x).contains(aux.descent_set(y)); }
 
-  // list of elements |x| such that |mu(x,y)| is nonzero
-  BlockEltList mu_column (BlockElt y) const;
+  // list of elements |x| such that $P(x,y)$ is nonzero, decreasing from |y|
+  containers::sl_list<BlockElt> nonzero_column(BlockElt y) const;
 
   // coefficients in $P_{x,y}$ of $q^{(l(y/x)-i)/2}$ (use with i=1,2,3)
   int mu(short unsigned int i,BlockElt x, BlockElt y) const;

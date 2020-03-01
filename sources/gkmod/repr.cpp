@@ -1103,6 +1103,47 @@ std::vector<containers::sl_list<BlockElt> > Rep_table::contributions
   return result;
 } // |Rep_table::contributions|
 
+containers::sl_list<std::pair<BlockElt,int> > flip
+  (int sign, containers::sl_list<std::pair<BlockElt,int> > list) // by value
+{ if (sign!=1)
+    for (auto& p : list)
+      p.second *= sign;
+  return list;
+}
+
+// compute |extended_finialise| in |BlockElt| form, on initial range of |eblock|
+std::vector<containers::sl_list<std::pair<BlockElt,int> > >
+  contributions (const ext_block::ext_block& eblock, RankFlags singular_orbits,
+		 BlockElt limit) // where to stop computing contributions
+{
+  std::vector<containers::sl_list<std::pair<BlockElt,int> > >
+    result(limit); // |result[z]| gives result for element |z|; initially empty
+  for (BlockElt z=0; z<limit; ++z)
+  {
+    auto s = eblock.first_descent_among(singular_orbits,z);
+    if (s==eblock.rank()) // then this is an extended final element
+      result[z].emplace_front(z,1); // record unit contribution to ourselves
+    else
+    {
+      auto type=eblock.descent_type(s,z);
+      if (is_like_compact(type))
+	continue; // no descents, |z| represents zero; leave |result[z]| empty
+      int sign = generator_length(type)==2 ? -1 : 1; // due to October surprise
+      if (has_double_image(type)) // 1r1f, 2r11
+      { auto pair = eblock.Cayleys(s,z);
+	result[z] = flip(sign*eblock.epsilon(s,pair.first,z),result[pair.first]);
+	result[z].append
+	  (flip(sign*eblock.epsilon(s,pair.second,z),result[pair.second]));
+      }
+      else
+      { auto x = eblock.some_scent(s,z);
+	result[z] = flip(sign*eblock.epsilon(s,x,z),result[x]);
+      }
+    }
+  }
+  return result;
+}
+
 SR_poly Rep_table::deformation_terms
   ( blocks::block_minimal& block, const BlockElt y,
     RankFlags singular, const RatWeight& gamma) const
@@ -1120,8 +1161,6 @@ SR_poly Rep_table::deformation_terms
       finals.push_front(z); // accumulate in reverse order
 
   const kl::KLContext& klc = block.klc(y,false); // fill silently up to |y|
-
-  // collect |StandardRepr| values for |finals|
 
   std::unique_ptr<unsigned int[]> index // a sparse array, map final to position
     (new unsigned int [block.size()]); // unlike |std::vector| do not initialise
@@ -1546,6 +1585,111 @@ SR_poly Rep_table::twisted_KL_column_at_s(StandardRepr z)
   return twisted_KLV_list[hash_index];
 } // |Rep_table::twisted_KL_column_at_s|
 
+SR_poly Rep_table::twisted_deformation_terms
+    (blocks::block_minimal& block, ext_block::ext_block& eblock,
+     BlockElt y, // in numbering of |block|, not |eblock|
+     RankFlags singular_orbits, const RatWeight& gamma) const
+{
+  assert(eblock.is_present(y));
+  const BlockElt y_index = eblock.element(y);
+
+  SR_poly result(repr_less());
+  if (block.length(y)==0)
+    return result; // easy case, null result
+
+  auto contrib = repr::contributions(eblock,singular_orbits,y_index+1);
+  containers::sl_list<BlockElt> finals; // these have numbering for |eblock|!
+  for (BlockElt z=0; z<contrib.size(); ++z)
+    if (not contrib[z].empty() and contrib[z].front().first==z)
+      finals.push_front(z); // accumulate in reverse order
+
+  const auto& kl_tab = eblock.kl_table(y_index+1);
+
+  std::vector<int> pool_at_minus_1; // evaluations at $q=-1$ of KL polynomials
+  {
+    const auto& pool=kl_tab.polys();
+    pool_at_minus_1.reserve(pool.size());
+    for (const auto& pol: pool)
+    {
+      int eval=0;
+      for (unsigned i=pol.degree()+1; i-->0; )
+	eval = pol[i]-eval;
+      pool_at_minus_1.push_back(eval);
+    }
+  }
+
+  std::unique_ptr<unsigned int[]> index // a sparse array, map final to position
+    (new unsigned int [eblock.size()]); // unlike |std::vector| do not initialise
+
+  unsigned pos=0;
+  for (auto z : finals)
+    index[z]=pos++;
+
+  // since we evaluate at $s=-1$ eventually, we can use integer coefficients
+  std::vector<int> acc(finals.size(),0);
+  std::vector<int> remainder(finals.size(),0); // coeff.s by |survivor| position
+  remainder.front()=1; // we initialised remainder = 1*sr_y
+  auto y_parity=block.length(y)%2;
+
+  pos=0;
+  // basically |for(BlockElt z:finals)|, but |pos| needs increment on |continue|
+  for (auto it=finals.begin(); not finals.at_end(it); ++it,++pos)
+  {
+    const int c_cur = remainder[pos]; // coefficient of |z| in |remainder|
+    if (c_cur==0)
+      continue;
+    const BlockElt z=*it; // element |pos| of |finals|; value decreases in loop
+    const bool contribute = block.length(eblock.z(z))%2!=y_parity;
+    for (auto x : kl_tab.nonzero_column(z))
+    {
+      auto p = kl_tab.KL_pol_index(x,z); // pair (index,negate_p)
+      if (pool_at_minus_1[p.first]==0)
+	continue; // polynomials with $-1$ as root do not contribute; skip
+      const int val_xz = p.second!= // XOR stored sign with length diff. parity
+	((block.length(eblock.z(x))-block.length(eblock.z(z)))%2!=0)
+	? -pool_at_minus_1[p.first] : pool_at_minus_1[p.first];
+      for (auto jt=contrib[x].begin(); not contrib[x].at_end(jt); ++jt)
+      {
+	auto j=index[jt->first]; // position where |P(x,z)| contributes
+	assert(j>=pos); // triangularity of KLV polynomials
+	int c =c_cur*val_xz*jt->second;
+	remainder[j] -= c;
+	if (contribute) // optimisation will apply loop unswitching to this test
+	  acc[j] += c; // here we contribute
+      }
+    }
+    assert(remainder[pos]==0); // check relation of being inverse
+  }
+  {
+    const RatWeight gamma_rho = gamma-rho(block.rootDatum());
+
+    const unsigned int orient_y = orientation_number
+      (sr_gamma
+       (block.x(y),
+	gamma_rho.integer_diff<int>(block.gamma_lambda(y)),
+	gamma
+      ));
+
+    auto it=acc.begin();
+    for (const int f : finals) // accumulator |acc| runs parallel to |finals|
+    {
+      const int c = *it++;
+      if (c==0)
+	continue;
+      BlockElt z = eblock.z(f); // |block| numbering used to build |StandardRepr|
+      const Weight lambda_rho =
+	gamma_rho.integer_diff<int>(block.gamma_lambda(z));
+      const auto sr_z=sr_gamma(block.x(z),lambda_rho,gamma);
+
+      auto coef = c*arithmetic::exp_i(orient_y-orientation_number(sr_z));
+      result.add_term(sr_z,Split_integer(1,-1)*coef);
+    }
+    assert(it==acc.end());
+  }
+
+  return result;
+} // |twisted_deformation_terms(blocks::block_minimal&,...)|
+
 SR_poly Rep_table::twisted_deformation_terms (param_block& parent,BlockElt y)
 {
   const auto& delta = innerClass().distinguished();
@@ -1655,8 +1799,71 @@ SR_poly Rep_table::twisted_deformation_terms (unsigned long sr_hash) const
 } // |twisted_deformation_terms|, version without block
 
 
+SR_poly Rep_table::twisted_deformation (StandardRepr z)
+{
+  const auto& delta = innerClass().distinguished();
+  RationalList rp=reducibility_points(z);
+  bool flip_start=false; // whether a flip in descending to first point
+  if (not rp.empty() and rp.back()!=Rational(1,1))
+  { // then shrink wrap toward $\nu=0$
+    z = ext_block::scaled_extended_dominant(*this,z,delta,rp.back(),flip_start);
+    Rational f=rp.back();
+    for (auto& a : rp)
+      a/=f; // rescale reducibility points to new parameter |z|
+    assert(rp.back()==Rational(1,1)); // should make first reduction at |z|
+  }
+
+  SR_poly result(repr_less());
+  { // initialise |result| to fully deformed parameter expanded to finals
+    bool flipped;
+    auto z0 = ext_block::scaled_extended_dominant
+		(*this,z,delta,Rational(0,1),flipped);
+    if (flip_start)
+      flipped = not flipped;
+    auto L = ext_block::extended_finalise(*this,z0,delta);
+    for (const auto& p :L )
+      result.add_term(p.first, p.second==flipped // net flip means |times_s|
+			       ? Split_integer(1,0) : Split_integer(0,1) );
+  }
+  if (not rp.empty())
+  { // compute the deformation terms at all reducibility points
+    for (unsigned i=rp.size(); i-->0; )
+    {
+      Rational r=rp[i]; bool flipped;
+      auto zi = ext_block::scaled_extended_dominant(*this,z,delta,r,flipped);
+      if (flip_start)
+	flipped = not flipped;
+      auto L =
+	ext_block::extended_finalise(*this,zi,delta); // rarely a long list
+
+      for (const auto& p : L)
+      {
+	BlockElt new_z; RankFlags singular;
+	auto& block = lookup(p.first,new_z,singular);
+	auto& eblock = block.extended_block(delta);
+
+	RankFlags singular_orbits;
+	for (weyl::Generator s=0; s<eblock.rank(); ++s)
+	  singular_orbits.set(s,singular[eblock.orbit(s).s0]);
+
+	const SR_poly terms =
+	  twisted_deformation_terms(block,eblock,new_z,
+				    singular_orbits,zi.gamma());
+	const bool flip = flipped!=p.second;
+	for (auto const& term : terms)
+	  result.add_multiple(twisted_deformation(term.first), // recursion
+			      flip ? term.second.times_s() : term.second);
+      }
+    }
+  }
+
+  return result;
+
+} // |Rep_table::twisted_deformation (StandardRepr z)|
+
 // the next function is recursive, so avoid testing properties each time
 // notably assure |z| is final and inner-twist |fixed| before calling this
+#if 0
 SR_poly Rep_table::twisted_deformation (StandardRepr z)
 {
   const auto& delta = innerClass().distinguished();
@@ -1740,6 +1947,7 @@ SR_poly Rep_table::twisted_deformation (StandardRepr z)
     ? SR_poly(repr_less()).add_multiple(result,Split_integer(0,1))
     : result;
 } // |Rep_table::twisted_deformation|
+#endif
 
 std::ostream& Rep_context::print (std::ostream& str,const StandardRepr& z)
   const

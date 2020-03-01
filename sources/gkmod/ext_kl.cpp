@@ -160,7 +160,7 @@ KL_table::KL_table(const ext_block::ext_block& b, std::vector<Pol>* pool)
 }
 
 std::pair<kl::KLIndex,bool>
-KL_table::KL_pol_index(BlockElt x, BlockElt y) const
+  KL_table::KL_pol_index(BlockElt x, BlockElt y) const
 { const kl::KLRow& col_y = column[y];
   unsigned inx=aux.x_index(x,y);
   if (inx<col_y.size())
@@ -177,6 +177,18 @@ Pol KL_table::P(BlockElt x, BlockElt y) const
   return index.second ? -storage_pool[index.first] : storage_pool[index.first];
 }
 
+containers::sl_list<BlockElt> KL_table::nonzero_column(BlockElt y) const
+{
+  const kl::KLRow& col_y = column[y];
+  containers::sl_list<BlockElt> result({y});
+  for (BlockElt x=y; x-->0;)
+  {
+    unsigned inx=aux.x_index(x,y);
+    if (inx<col_y.size() ? col_y[inx]!=kl::KLIndex(0) : inx==aux.self_index(y))
+      result.push_back(x);
+  }
+  return result;
+}
 // coefficient of P_{x,y} of $q^{(l(y/x)-i)/2}$ (used with i=1,2,3 only)
 int KL_table::mu(short unsigned int i,BlockElt x, BlockElt y) const
 {

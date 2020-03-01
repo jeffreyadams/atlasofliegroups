@@ -306,6 +306,9 @@ class Rep_table : public Rep_context
 
   SR_poly deformation(const StandardRepr& z);
 
+  SR_poly twisted_deformation_terms
+    (blocks::block_minimal& block, ext_block::ext_block& eblock,
+     BlockElt y, RankFlags singular, const RatWeight& gamma) const;
   SR_poly twisted_deformation_terms (param_block& block,BlockElt entry_elem);
   // here |block| is non-|const| because it calls |add_block|
   SR_poly twisted_deformation_terms (unsigned long sr_hash) const;

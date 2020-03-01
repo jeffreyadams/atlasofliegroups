@@ -6014,7 +6014,7 @@ currently cannot deal with a partial parent block.
 @< Local function def...@>=
 void deform_wrapper(expression_base::level l)
 { shared_module_parameter p = get<module_parameter_value>();
-  test_standard(*p,"Cannot compute deformation");
+  test_standard(*p,"Cannot compute deformation terms");
   if (l==expression_base::no_value)
     return;
 @)
@@ -6030,17 +6030,25 @@ void deform_wrapper(expression_base::level l)
 @)
 void twisted_deform_wrapper(expression_base::level l)
 { shared_module_parameter p = get<module_parameter_value>();
-  const auto& rc=p->rc();
-  test_standard(*p,"Cannot compute twisted deformation");
-  if (not rc.is_twist_fixed(p->val,rc.innerClass().distinguished()))
+  auto& rt=p->rt();
+  const auto& delta=rt.innerClass().distinguished();
+  test_standard(*p,"Cannot compute twisted deformation terms");
+  if (not rt.is_twist_fixed(p->val,delta))
     throw runtime_error@|("Parameter not fixed by inner class involution");
   if (l==expression_base::no_value)
     return;
 @)
-  BlockElt entry_elem;
-  param_block block(p->rc(),p->val,entry_elem); // full block
+  BlockElt entry_elem; RankFlags singular;
+  auto& block = rt.lookup(p->val,entry_elem,singular);
+  auto& eblock = block.extended_block(delta);
+@)
+  RankFlags singular_orbits;
+  for (weyl::Generator s=0; s<eblock.rank(); ++s)
+    singular_orbits.set(s,singular[eblock.orbit(s).s0]);
+@)
   repr::SR_poly terms
-     = p->rt().twisted_deformation_terms(block,entry_elem);
+     = rt.twisted_deformation_terms@|(block,eblock,entry_elem,
+                                     singular_orbits,p->val.gamma());
 
   push_value(std::make_shared<virtual_module_value>(p->rf,std::move(terms)));
 }
