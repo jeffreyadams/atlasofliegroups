@@ -23,6 +23,10 @@ namespace repr {
   class StandardReprMod;
 }
 
+namespace ext_block {
+  class ext_block;
+}
+
 namespace blocks {
 
 // a class for blocks of (possibly non integral) parameters
@@ -38,17 +42,20 @@ class block_minimal : public Block_base
   // hash structure to allow rapid lookup of |(x,y)| index pairs
   block_hash xy_hash;
 
+  std::unique_ptr<ext_block::ext_block> extended;
+
   // group small data members together:
   KGBElt highest_x,highest_y; // maxima over this block
 
  public:
 
-  // constructor
+  // constructor and destructor
   block_minimal
     (const repr::Rep_context& rc,
      const repr::StandardReprMod& srm, // not modified, no "making dominant"
      BlockElt& entry_element	// set to block element matching input
     );
+  ~block_minimal(); // cleans up |*extended|, so inline definition impossible
 
   // accessors that get values via |rc|
   const repr::Rep_context& context() const { return rc; }
@@ -65,6 +72,8 @@ class block_minimal : public Block_base
   BlockElt lookup(KGBElt x, const RatWeight& gamma_lambda) const;
 
   ext_gens fold_orbits(const WeightInvolution& delta) const;
+
+  ext_block::ext_block& extended_block(const WeightInvolution& delta);
 
   // virtual methods
   virtual KGBElt max_x() const { return highest_x; } // might not be final |x|
@@ -87,6 +96,10 @@ class block_minimal : public Block_base
 
 namespace ext_block
 {
+
+// this class is to |paramin| what |ext_block::context| is to |ext_block::param|
+// data fields that are removed: |d_gamma|, |lambda_shifts|
+// methods that are absent: |gamma|, |lambda_shift|
 class context_minimal // holds values that remain fixed across extended block
 {
   const repr::Rep_context& d_rc;
@@ -128,6 +141,7 @@ class context_minimal // holds values that remain fixed across extended block
 }; // |context_minimal|
 
 // A variant of |ext_block::param| that avoids fixing |gamma|
+// Identical (supplementary) data fields, method absent: |restrict|
 struct paramin // allow public member access; methods ensure no invariants
 {
   const context_minimal& ctxt;

@@ -76,6 +76,7 @@ RatWeight block_minimal::gamma_lambda(BlockElt z) const
   return y_pool[y(z)].repr().log_pi(true);
 }
 
+block_minimal::~block_minimal() = default;
 
 block_minimal::block_minimal // full block constructor
   (const Rep_context& rc,
@@ -89,6 +90,7 @@ block_minimal::block_minimal // full block constructor
   , y_hash(y_pool)
   , y_part()
   , xy_hash(info)
+  , extended(nullptr) // no extended block initially
   , highest_x(rc.realGroup().KGB_size()-1)
   , highest_y() // defined when generation is complete
 {
@@ -424,6 +426,14 @@ BlockElt twisted
 ext_gens block_minimal::fold_orbits(const WeightInvolution& delta) const
 {
   return rootdata::fold_orbits(integral_datum.pre_root_datum(),delta);
+}
+
+ext_block::ext_block& block_minimal::extended_block
+  (const WeightInvolution& delta)
+{
+  if (extended.get()==nullptr)
+    extended.reset(new ext_block::ext_block(*this,delta));
+  return *extended;
 }
 
 void block_minimal::reverse_length_and_sort()
