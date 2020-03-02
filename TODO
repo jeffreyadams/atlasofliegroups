@@ -2,6 +2,7 @@
 
 - Make |Split| type use |big_int| fields, at least in the axis language.
 - Fix lack of edge flipping in first (classical) extended block contructor
+- Rework |Block_Base| which should not contain "extended" field |orbits|
 - Rewrite block construction using methods inspired by synthetic operations
 - Remove code for storing the Hermitian dual in KGB structures and blocks
 - Rewrite K type computations to use data type more compatible with Param
@@ -60,6 +61,7 @@
 
 * Work on the atlas program
 
+- Fix crashing of function |extended_KL_block|
 
 * Work on the atlas scripts
 

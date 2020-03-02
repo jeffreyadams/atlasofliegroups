@@ -35,9 +35,10 @@ class block_minimal : public Block_base
   const Rep_context& rc; // accesses many things, including KGB set for x
   const SubSystem integral_datum;
 
+  std::vector<RatWeight> gam_lam; // values $\gamma-\lambda$ by |y| value
+
   y_entry::Pooltype y_pool;
   y_part_hash y_hash;  // hash table allows storing |y| parts by index
-  std::vector<TorusElement> y_part; // as in the y_values module, indexed by |y|
 
   // hash structure to allow rapid lookup of |(x,y)| index pairs
   block_hash xy_hash;
@@ -84,6 +85,8 @@ class block_minimal : public Block_base
 
 
  private:
+  void lift_y_values(); // compute |gam_lam|
+
 /*
   reverse lengths and order block with them increasing, and by increasing
   |x(z)| among elements of given length; adapt tables accordingly.

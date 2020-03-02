@@ -73,7 +73,11 @@ const RootDatum& block_minimal::rootDatum() const
 
 RatWeight block_minimal::gamma_lambda(BlockElt z) const
 {
-  return y_pool[y(z)].repr().log_pi(true);
+  // find rep. modulo $2X^*$ of some $-\theta$ stable value $\gamma-\lambda$
+  RatWeight result = gam_lam[y(z)];
+  auto theta1 = involution_table().matrix(rc.kgb().involution(x(z)))+1;
+  assert((theta1*result).isZero()); // victory
+  return result;
 }
 
 block_minimal::~block_minimal() = default;
@@ -88,7 +92,6 @@ block_minimal::block_minimal // full block constructor
   , integral_datum(SubSystem::integral(rootDatum(),srm.gamma()))
   , y_pool()
   , y_hash(y_pool)
-  , y_part()
   , xy_hash(info)
   , extended(nullptr) // no extended block initially
   , highest_x(rc.realGroup().KGB_size()-1)
@@ -388,14 +391,33 @@ block_minimal::block_minimal // full block constructor
   reverse_length_and_sort(); // reorder block by increasing value of |x|
   xy_hash.reconstruct(); // adapt to permutation of |info| underlying |xy_hash|
 
-
+  lift_y_values();
   // and look up which element matches the original input
   entry_element = lookup(srm);
 
 } // |block_minimal::block_minimal|
 
+void block_minimal::lift_y_values()
+{
+  gam_lam.reserve(y_pool.size());
+  const InvolutionTable& i_tab = innerClass().involution_table();
 
-  BlockElt block_minimal::lookup(const repr::StandardReprMod& srm) const
+  // tabulate some |x| (in fact the first one) for every value |y|
+  std::vector<KGBElt> x_of_y(y_pool.size(),UndefKGB);
+  for (BlockElt z=0; z<size(); ++z)
+    if (x_of_y[y(z)]==UndefKGB)
+      x_of_y[y(z)]=x(z);
+
+  for (KGBElt y=0; y<y_pool.size(); ++y)
+  { KGBElt x=x_of_y[y];
+    assert(x!=UndefKGB); // since every |y| must have at least one matching |x|
+    InvolutionNbr i_x = rc.kgb().inv_nr(x);
+    gam_lam.push_back(y_pool[y].repr().log_pi(false)); // get a lift
+    ((gam_lam.back() -= i_tab.matrix(i_x)*gam_lam.back()) /= 2).normalize();
+  }
+}
+
+BlockElt block_minimal::lookup(const repr::StandardReprMod& srm) const
 { const auto x = srm.x();
   InvolutionNbr inv = rc.kgb().inv_nr(x);
   const auto y_ent = involution_table().pack(rc.y_as_torus_elt(srm),inv);
