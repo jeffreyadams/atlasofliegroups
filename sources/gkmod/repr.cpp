@@ -1037,7 +1037,7 @@ unsigned long Rep_table::add_block(const StandardReprMod& srm)
 }
 
 blocks::block_minimal& Rep_table::lookup
-  (const StandardRepr sr,BlockElt& z,RankFlags& singular)
+  (const StandardRepr& sr,BlockElt& z,RankFlags& singular)
 {
   auto srm = StandardReprMod::mod_reduce(*this,sr); // modular zi
   auto h=mod_hash.find(srm); // look up modulo translation in $X^*$

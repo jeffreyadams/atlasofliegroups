@@ -291,7 +291,7 @@ class Rep_table : public Rep_context
   unsigned int length(StandardRepr z); // by value
 
   blocks::block_minimal& lookup
-    (const StandardRepr sr,BlockElt& z,RankFlags& singular);
+    (const StandardRepr& sr,BlockElt& z,RankFlags& singular);
 
   SR_poly KL_column_at_s(StandardRepr z); // by value
   SR_poly twisted_KL_column_at_s(StandardRepr z); // by value
