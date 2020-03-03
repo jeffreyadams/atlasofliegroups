@@ -63,6 +63,7 @@ if #summands>1 then error("not unique special representation") elif
 set cells_verbose=false
 
 set #(WCell cell)=int:let (a,b)=cell in #a
+
 set parameters([Param] block,WCell cell)=[Param]:
 let (labels,)=cell in for i in labels do block[i] od
 
@@ -92,6 +93,15 @@ for b in blocks(params) do
 let p=b[0] in (block_of(p),W_cells(p)) od
 
 set blocks_and_cells(Param p)=blocks_and_cells(block_of(p))
+
+set find([([Param],[WCell])] blocks_and_cells,Param p)=(int,int):
+let rv=(-1,-1) in
+for i:#blocks_and_cells do
+ let (params,cells)=blocks_and_cells[i] in
+ for j:#cells do
+  if  find(parameters(params,cells[j]),p)!=-1 then rv:=(i,j);break fi
+od
+od;rv
 
 set cells_given_AV(SpringerTable st, ComplexNilpotent O,([Param],[WCell]) blocks_and_cells)=
 let sigma_O=st.springer(O) then

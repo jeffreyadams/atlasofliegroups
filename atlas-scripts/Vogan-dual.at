@@ -205,7 +205,7 @@ support_dual(p.x)
 set support_dual(Param p)=[int]:
  let rd_int=integrality_datum(p) then
  x=p.x then
- w_int=W_elt(rd_int,x.w.matrix) in let ()=prints("w_int:", w_int) in
+ w_int=W_elt(rd_int,x.w.matrix) in 
  list(semisimple_rank(rd_int),W_elt(rd_int,x.w*w0(p.root_datum).matrix).word.is_member)
 
 {dual is an Aq(finite dimensional), regular integral case}

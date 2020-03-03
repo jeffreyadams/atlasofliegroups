@@ -111,6 +111,17 @@ if #summands>1 then error("not unique special representation") elif
 set special_character_permuted(CharacterTable ct,mat permutation)=(WCell->int):(WCell cell):
 special_character_permuted(ct,cell,permutation)
 
+{for testing: return all permutations}
+set isomorphism_permutations(RootDatum rd_1,RootDatum rd_2)=[mat]:
+assert(rd_1.is_semisimple and rd_2.is_semisimple,"root data must be semisimple");
+if not is_locally_isomorphic(rd_1,rd_2) then [null(0,0)]
+else
+ let S=symmetric_group(rd_1.rank) then
+ C_1=rd_1.Cartan_matrix, C_2=rd_2.Cartan_matrix in
+ ##for g in S do if  g*C_2=C_1*g then [g] else [] fi od
+fi
+
+
 set isomorphism_permutation(RootDatum rd_1,RootDatum rd_2)=(bool,mat):
 assert(rd_1.is_semisimple and rd_2.is_semisimple,"root data must be semisimple");
 if not is_locally_isomorphic(rd_1,rd_2) then (false, null(0,0))
@@ -120,6 +131,13 @@ else
  index=first(for g in S do g*C_2=C_1*g od) in
  if index=-1 then (false,null(0,0)) else (true,S[index]) fi
 fi
+
+{for testing: try different ones}
+set isomorphism_permutation_variant(RootDatum rd_1,RootDatum rd_2)=(bool,mat):
+let all=isomorphism_permutations(rd_1,rd_2) in
+if =#all then (false,null(0,0)) elif
+#all=1 then (true, all[0])
+else (true, all[4]) fi
 
 set find_isomorphism_permutation([RootDatum] list,RootDatum rd)=(int,mat):
 for rd_list@i in list do let (success,M)=isomorphism_permutation(rd_list.derived,rd.derived) in
