@@ -324,9 +324,6 @@ class Rep_table : public Rep_context
   unsigned long add_block(const StandardReprMod& sr);
   // add |block_minimal| to |blocks|, and return (new) hash number of |sr|
 
-  // compute, for |x| up to |y| inclusive, finals to which |P(x,y)| contributes
-  std::vector<containers::sl_list<BlockElt> > contributions
-    (blocks::block_minimal& block, RankFlags singular, BlockElt y) const;
 }; // |Rep_table|
 
 

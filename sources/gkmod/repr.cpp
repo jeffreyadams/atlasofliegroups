@@ -995,8 +995,8 @@ blocks::block_minimal& Rep_table::lookup
   return block;
 } // |Rep_table::lookup|
 
-std::vector<containers::sl_list<BlockElt> > Rep_table::contributions
-  (blocks::block_minimal& block, RankFlags singular, BlockElt y) const
+std::vector<containers::sl_list<BlockElt> > contributions
+  (blocks::block_minimal& block, RankFlags singular, BlockElt y)
 {
   std::vector<containers::sl_list<BlockElt> > result(y+1); // initally all empty
   for (BlockElt z=0; z<=y; ++z) // compute |finals| and |finals_for| in |result|
@@ -1423,7 +1423,7 @@ SR_poly Rep_table::twisted_KL_column_at_s(StandardRepr sr)
     singular_orbits.set(s,singular[eblock.orbit(s).s0]);
 
   const BlockElt y = eblock.element(y0);
-  auto contrib = repr::contributions(eblock,singular_orbits,y+1);
+  auto contrib = contributions(eblock,singular_orbits,y+1);
 
   containers::sl_list<BlockElt> finals; // these have numbering for |eblock|!
   for (BlockElt z=0; z<=y; ++z)
