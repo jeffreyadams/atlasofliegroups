@@ -1195,9 +1195,9 @@ SR_poly twisted_KL_sum
   // finally transcribe from |P_at_s| result
   SR_poly result(rc.repr_less());
   unsigned int parity = eblock.length(y)%2;
-  for (auto it = survivors.begin(); not survivors.at_end(it); ++it)
+  for (auto it=survivors.begin(); not survivors.at_end(it); ++it)
   {
-    BlockElt x = *it;
+    auto x = *it;
     auto factor = P_at_s(x,0);
     if (eblock.length(x)%2!=parity) // flip sign at odd length difference
       factor = -factor;
@@ -1249,13 +1249,13 @@ SR_poly twisted_KL_sum
   const auto gamma_rho = gamma-rho(parent.rootDatum());
   SR_poly result(rc.repr_less());
   unsigned int parity = eblock.length(y)%2;
-  for (auto it = survivors.begin(); not survivors.at_end(it); ++it)
+  for (auto it=survivors.begin(); not survivors.at_end(it); ++it)
   {
-    BlockElt elt = *it;
-    BlockElt z = eblock.z(elt); // index of |elt| in |parent|
-    auto factor = P_at_s(elt,0);
-    if (eblock.length(elt)%2!=parity) // flip sign at odd length difference
+    BlockElt ze = *it;
+    auto factor = P_at_s(ze,0); // get coefficient from condensed column
+    if (eblock.length(ze)%2!=parity) // flip sign at odd length difference
       factor = -factor;
+    BlockElt z = eblock.z(ze); // index of |elt| in |parent|
     const auto lambda_rho = gamma_rho.integer_diff<int>(parent.gamma_lambda(z));
     result.add_term(rc.sr_gamma(parent.x(z),lambda_rho,gamma),factor);
   }
