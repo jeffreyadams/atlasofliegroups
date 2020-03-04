@@ -419,6 +419,9 @@ od
 in ct.degrees:=degrees;
 ct
 
+{mults is a vector of multiplicities of the irreducible characters,
+return a list (without multiplicities) of the irreducible characters
+of smallest degree occuring}
 set smallest_degree_summands(CharacterTable ct,[int] mults)=
 let smallest=-1 then
 indices=[int]:[]  in
@@ -432,9 +435,7 @@ for j:#mults do
 od;
 indices
 
-{  representations of W
-  copied (and modified) from W_reps.at
-}
+{  representations of W; copied (and modified) from W_reps.at}
 
 { data type for representation of W
   operators[i] is the matrix of the action of simple generator #i

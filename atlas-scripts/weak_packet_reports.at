@@ -1,4 +1,12 @@
-{
+{compute weak_packet(G) for many real forms,
+saves results to files
+This file executes upon loading, so its entire contents
+may be commented out so it doesn't bog down check-scripts.sh
+bool: true for split groups, include extra information
+about conjectural relationship between size of weak packet
+and component group information
+}
+
 {Type A}
 {SL(n)}
 prints("SL(n,R)")
@@ -32,7 +40,7 @@ prints("Spin(p,q) type B")
 {type B complex}
 {prints("Spin(2n+1,C)")
 >"output/Spin7C" void:weak_packet_report (complex(Spin(7)),false)}
-}
+
 {type C}
 prints("Sp(2n,R)")
 >"output/Sp4R" void:weak_packet_report (Sp(4,R),true)
@@ -72,7 +80,7 @@ prints("E6")
 prints("E7")
 >"output/E7h" void:weak_packet_report (E7_h,false)
 >"output/E7q" void:weak_packet_report (E7_q,false)
->"output/E7s" void:weak_packet_report (E7_s,false)
+>"output/E7s" void:weak_packet_report (E7_s,true)
 
 
 

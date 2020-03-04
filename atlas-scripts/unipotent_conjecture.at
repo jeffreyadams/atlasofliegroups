@@ -1,3 +1,7 @@
+{conjecture (in some cases) about the size of the weak
+unipotent Arthur packet for a split group. The statement
+of a more general conjecture is not precisely known}
+
 <weak_packets.at
 <nilpotent_centralizer.at
 
@@ -6,7 +10,7 @@
 
 {this applies to output of weak_packet(...) or each entry
 of output of weak_packets(...)
-returns true if each cell which occurs satisfies is_dual_Aq(cell)} 
+returns true if each cell which occurs satisfies is_dual_Aq(cell)}
 set packets_disjoint( ([([Param],[WCell])],[(int,int,Param)]) blocks_and_cells_and_packet)=
 let (bc,packet)=blocks_and_cells_and_packet then
 blocks=blocks(packet) then
@@ -23,7 +27,7 @@ od
 {dual nilpotents with A(O)=1}
 set simply_connected_dual_orbits(RootDatum rd)=[ComplexNilpotent]:
 ##for O in rd.dual_orbits do
-if #O.component_datum.orders=1 then [O] else [] fi od 
+if #O.component_datum.orders=1 then [O] else [] fi od
 
 {if A(O^vee)=1 and all Arthur packets for O^vee are disjoint
 then there is a guess for the size of the weak packet of O^vee
@@ -59,7 +63,7 @@ is_disjoint=packets_disjoint(weak_packet) then
 number_unipotents=let (,x)=weak_packet in #x then
 (A,data, guess)=number_unipotents_guess(O_check) then
 rv=if not is_disjoint then 0 elif number_unipotents=guess then 1 else -1 fi
-in 
+in
 (A,data,guess,number_unipotents,is_disjoint,rv) od
 
 set test_conjecture_report([([([Param],[WCell])],[(int,int,Param)])] wp,RealForm G)=
@@ -81,7 +85,7 @@ tabulate(["i","data","guess","actual","A","disjoint","conjecture"] #
  [i.to_string,data.to_string,guess.to_string,number.to_string,a.to_string,id.to_string,
  if rv=1 then "true" elif rv=-1 then "false" else "N/A" fi] od);
  prints("-------------------------------------------------------------")
- 
+
 set test_conjecture_report(RealForm G)=void:
 test_conjecture_report(weak_packets(simply_connected_dual_orbits(G),G),G)
 
@@ -101,7 +105,7 @@ show(wp);
 show_long(wp);
 if conjecture then
  let wp_sc = ##for weakpacket@i in wp do
- let O=orbits[i] in  if #O.component_datum.orders=1 then [weakpacket] else [] fi od in 
+ let O=orbits[i] in  if #O.component_datum.orders=1 then [weakpacket] else [] fi od in
 test_conjecture_report(wp_sc,G) fi;
 prints(export(parameters(wp)));
 wp
