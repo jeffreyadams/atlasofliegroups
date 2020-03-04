@@ -1450,11 +1450,11 @@ SR_poly Rep_table::twisted_KL_column_at_s(StandardRepr sr)
       eval.negate(); // flip sign (do alternating sum of KL column at |s|)
     for (auto pair : contrib[x])
     {
-      auto xx=pair.first;
+      auto final_x=eblock.z(pair.first);
       const Weight lambda_rho =
-	gamma_rho.integer_diff<int>(block.gamma_lambda(xx));
-      const auto sr_c=sr_gamma(block.x(eblock.z(xx)),lambda_rho,gamma);
-      result.add_term(sr_c,pair.second? -eval : eval);
+	gamma_rho.integer_diff<int>(block.gamma_lambda(final_x));
+      const auto sr_c=sr_gamma(block.x(final_x),lambda_rho,gamma);
+      result.add_term(sr_c,eval*pair.second);
     }
   }
 
