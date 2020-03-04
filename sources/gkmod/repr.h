@@ -269,9 +269,7 @@ class Rep_table : public Rep_context
   std::vector<StandardRepr> pool;
   HashTable<StandardRepr,unsigned long> hash;
   std::vector<unsigned short int> lengths;
-  std::vector<SR_poly> KLV_list; // indexed by |hash| values for |StandardRepr|s
-  std::vector<SR_poly> def_formula; // idem
-
+  std::vector<SR_poly> def_formula; // indexed by hash values for |StandardRepr|s
   std::vector<SR_poly> twisted_def_formula; // values at twist-fixed |hash|s only
 
   std::vector<StandardReprMod> mod_pool;
@@ -284,7 +282,7 @@ class Rep_table : public Rep_context
  public:
   Rep_table(RealReductiveGroup &G)
     : Rep_context(G), pool(), hash(pool)
-    , KLV_list(), def_formula(), twisted_def_formula()
+    , def_formula(), twisted_def_formula()
     , mod_pool(), mod_hash(mod_pool), bounds()
   {}
 
