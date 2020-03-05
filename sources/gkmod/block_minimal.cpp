@@ -1196,7 +1196,7 @@ DescValue star (const paramin& E, const ext_gen& p,
 	  int m = static_cast<unsigned int>(at)%2; // safe modular reduction
 
 	  paramin F0(E.ctxt, new_tw,
-		     E.gamma_lambda - rho_r_shift + alpha*m,
+		     E.gamma_lambda - rho_r_shift - alpha*m,
 		     E.tau - alpha*((at+m)/2) - beta*((bt-m)/2),
 		     E.l+alpha_v*(tf_alpha/2)+beta_v*(tf_beta/2), E.t);
 	  paramin F1(E.ctxt, new_tw,
