@@ -995,10 +995,40 @@ blocks::block_minimal& Rep_table::lookup
   return block;
 } // |Rep_table::lookup|
 
-std::vector<containers::sl_list<BlockElt> > contributions
+// in the following type the second component is a mulitplicity so we are in fact
+// dealing with a sparse reprensetion of polynomials with |BlockElt| exponents
+
+typedef std::pair<BlockElt,int>  term;
+typedef containers::sl_list<term> pair_list;
+
+pair_list combine (pair_list a, pair_list b) // by value, will move from rvalues
+{ // |a| and |b| are assumed to be sorted
+  a.merge(std::move(b),
+	  [](const term& x, const term& y) { return x.first<y.first; });
+  // now any like terms are neigbours, combine them whenever this occurs
+  for (auto it=a.begin(); not a.at_end(it); ++it)
+  {
+    auto it1=std::next(it);
+    if (not a.at_end(it1) and it->first==it1->first)
+    {
+      it->second += it1->second;
+      a.erase(it1);
+    }
+  }
+  return a;
+}
+
+pair_list flip (int sign, pair_list list) // by value
+{ if (sign!=1)
+    for (auto& p : list)
+      p.second *= sign;
+  return list;
+}
+
+std::vector<pair_list> contributions
   (blocks::block_minimal& block, RankFlags singular, BlockElt y)
 {
-  std::vector<containers::sl_list<BlockElt> > result(y+1); // initally all empty
+  std::vector<pair_list> result(y+1); // initally every |result[z]| is empty
   for (BlockElt z=0; z<=y; ++z) // compute |finals| and |finals_for| in |result|
   {
     const DescentStatus& desc=block.descent(z);
@@ -1017,9 +1047,7 @@ std::vector<containers::sl_list<BlockElt> > contributions
 	case descents::DescentStatus::RealTypeI:
 	  {
 	    BlockEltPair iC=block.inverseCayley(*it,z);
-	    result[z]=result[iC.first];
-	    result[z].append(result[iC.second].begin(),
-			      result[iC.second].end());
+	    result[z]= combine(result[iC.first],result[iC.second]);
 	  }
 	default:
 	  break; // leave |result[z]| empty in |ImaginaryCompact| case
@@ -1028,27 +1056,19 @@ std::vector<containers::sl_list<BlockElt> > contributions
 	break; // not final, |break| effectively |continue|s outer loop on |z|
       }
     if (not it()) // then previous loop ran to completion
-      result[z].push_front(z); // record singleton contribution to ourselves
+      result[z].emplace_front(z,1); // record singleton contribution to ourselves
     // the fact that |result[z].front()==z| also identifies |z| as "final"
   }
   return result;
 } // |Rep_table::contributions|
 
-containers::sl_list<std::pair<BlockElt,int> > flip
-  (int sign, containers::sl_list<std::pair<BlockElt,int> > list) // by value
-{ if (sign!=1)
-    for (auto& p : list)
-      p.second *= sign;
-  return list;
-}
 
 // compute |extended_finialise| in |BlockElt| form, on initial range of |eblock|
-std::vector<containers::sl_list<std::pair<BlockElt,int> > >
-  contributions (const ext_block::ext_block& eblock, RankFlags singular_orbits,
-		 BlockElt limit) // where to stop computing contributions
+std::vector<pair_list> contributions
+  (const ext_block::ext_block& eblock, RankFlags singular_orbits,
+   BlockElt limit) // where to stop computing contributions
 {
-  std::vector<containers::sl_list<std::pair<BlockElt,int> > >
-    result(limit); // |result[z]| gives result for element |z|; initially empty
+  std::vector<pair_list> result(limit); // each|result[z]| is initially empty
   for (BlockElt z=0; z<limit; ++z)
   {
     auto s = eblock.first_descent_among(singular_orbits,z);
@@ -1062,9 +1082,9 @@ std::vector<containers::sl_list<std::pair<BlockElt,int> > >
       int sign = generator_length(type)==2 ? -1 : 1; // due to October surprise
       if (has_double_image(type)) // 1r1f, 2r11
       { auto pair = eblock.Cayleys(s,z);
-	result[z] = flip(sign*eblock.epsilon(s,pair.first,z),result[pair.first]);
-	result[z].append
-	  (flip(sign*eblock.epsilon(s,pair.second,z),result[pair.second]));
+	result[z] = combine
+	  ( flip(sign*eblock.epsilon(s,pair.first,z),result[pair.first]),
+	    flip(sign*eblock.epsilon(s,pair.second,z),result[pair.second]));
       }
       else
       { auto x = eblock.some_scent(s,z);
@@ -1073,7 +1093,7 @@ std::vector<containers::sl_list<std::pair<BlockElt,int> > >
     }
   }
   return result;
-}
+} // |contributions|, extended block
 
 SR_poly Rep_table::deformation_terms
   ( blocks::block_minimal& block, const BlockElt y,
@@ -1084,11 +1104,10 @@ SR_poly Rep_table::deformation_terms
   if (block.length(y)==0)
     return result; // easy case, null result
 
-  std::vector<containers::sl_list<BlockElt> > contrib =
-    contributions(block,singular,y);
+  std::vector<pair_list> contrib = contributions(block,singular,y);
   containers::sl_list<BlockElt> finals;
   for (BlockElt z=0; z<contrib.size(); ++z)
-    if (not contrib[z].empty() and contrib[z].front()==z)
+    if (not contrib[z].empty() and contrib[z].front().first==z)
       finals.push_front(z); // accumulate in reverse order
 
   const kl::KLContext& klc = block.klc(y,false); // fill silently up to |y|
@@ -1125,11 +1144,11 @@ SR_poly Rep_table::deformation_terms
 	continue; // polynomials with $-1$ as root do not contribute; skip
       if ((block.length(z)-block.length(x))%2!=0) // when |l(z)-l(x)| odd
 	eval=-eval; // flip sign (do alternating sum of KL column at |-1|)
-      int c = c_cur*eval;
       for (auto jt=contrib[x].begin(); not contrib[x].at_end(jt); ++jt)
       {
-	auto j=index[*jt]; // position where |P(x,z)| contributes
+	auto j=index[jt->first]; // position where |P(x,z)| contributes
 	assert(j>=pos); // triangularity of KLV polynomials
+	int c =c_cur*eval*jt->second;
 	remainder[j] -= c;
 	if (contribute) // optimisation will apply loop unswitching to this test
 	  acc[j] += c; // here we contribute
@@ -1180,9 +1199,8 @@ SR_poly Rep_table::KL_column_at_s(StandardRepr sr) // |sr| must be final
   RankFlags singular; // subset of integrally-simple roots, singular at |gamma|
   auto& block = lookup(sr,z,singular);
 
-  std::vector<containers::sl_list<BlockElt> > contrib =
-    contributions(block,singular,z);
-  assert(contrib.size()==z+1 and contrib[z].front()==z);
+  std::vector<pair_list> contrib = contributions(block,singular,z);
+  assert(contrib.size()==z+1 and contrib[z].front().first==z);
 
   const kl::KLContext& klc = block.klc(z,false); // fill silently up to |z|
 
@@ -1202,11 +1220,12 @@ SR_poly Rep_table::KL_column_at_s(StandardRepr sr) // |sr| must be final
 
     if ((z_length-block.length(x))%2!=0) // when |l(z)-l(x)| odd
       eval.negate(); // flip sign (do alternating sum of KL column at |s|)
-    for (auto c : contrib[x])
+    for (const auto& pair : contrib[x])
     {
+      BlockElt c = pair.first;
       const Weight lambda_rho=gamma_rho.integer_diff<int>(block.gamma_lambda(c));
       const auto sr_c=sr_gamma(block.x(c),lambda_rho,gamma);
-      result.add_term(sr_c,eval);
+      result.add_term(sr_c,eval*pair.second);
     }
   }
 
@@ -1397,7 +1416,7 @@ SR_poly Rep_table::twisted_KL_column_at_s(StandardRepr sr)
 
     if ((y_length-block.length(eblock.z(x)))%2!=0) // when |l(y)-l(x)| odd
       eval.negate(); // flip sign (do alternating sum of KL column at |s|)
-    for (auto pair : contrib[x])
+    for (const auto& pair : contrib[x])
     {
       auto final_x=eblock.z(pair.first);
       const Weight lambda_rho =
