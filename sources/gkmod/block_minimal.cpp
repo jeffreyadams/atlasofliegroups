@@ -957,15 +957,12 @@ DescValue star (const paramin& E, const ext_gen& p,
 	{ // imaginary type 2; now we need to distinguish 1i2f and 1i2s
 
 	  auto new_gamma_lambda = E.gamma_lambda; auto new_tau = E.tau;
-	  RootNbr first; // maybe a root with |(1-delta)*rd.root(first)==alpha|
-	  if (rd.is_simple_root(alpha_simple))
-	    first = -1; // invalid value, not used in this case
-	  else
+	  if (not rd.is_simple_root(alpha_simple))
 	  {
 	    --tau_coef; // the parity change and decrease are both relevant
 	    weyl::Generator s = // first switched root index
 	      rd.find_descent(alpha_simple);
-	    first = // corresponding root summand, conjugated back
+	    RootNbr first = // corresponding root summand, conjugated back
 	      rd.permuted_root(rd.simpleRootNbr(s),ww);
 	    assert(alpha == (E.ctxt.delta()+1)*rd.root(first));
 	    new_gamma_lambda -= rd.root(first);
@@ -974,10 +971,13 @@ DescValue star (const paramin& E, const ext_gen& p,
 
 	  if (tau_coef%2!=0) // was set up so that this means: switched
 	  { // no spurious $\tau'$ since $\<\alpha^\vee,(X^*)^\theta>=2\Z$:
-	    const auto ratv = (E.ctxt.delta()-1)*(E.gamma_lambda-rho_r_shift);
+#ifndef NDEBUG
+	    auto ratv = (E.ctxt.delta()-1)*(E.gamma_lambda-rho_r_shift);
+	    ratv.normalize(); // having a multiple of the weight here won't do!
 	    const Weight target
 	      { ratv.numerator().begin(),ratv.numerator().end() };
 	    assert(not matreduc::has_solution (th_1,target));
+#endif
 	    return one_imaginary_pair_switched; // case 1i2s
 	  }
 	  result = one_imaginary_pair_fixed;  // what remains is case 1i2f
