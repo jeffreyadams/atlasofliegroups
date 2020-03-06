@@ -970,6 +970,7 @@ unsigned long Rep_table::add_block(const StandardReprMod& srm)
 blocks::block_minimal& Rep_table::lookup
   (const StandardRepr& sr,BlockElt& z,RankFlags& singular)
 {
+  hash.match(sr);
   auto srm = StandardReprMod::mod_reduce(*this,sr); // modular zi
   auto h=mod_hash.find(srm); // look up modulo translation in $X^*$
   if (h==mod_hash.empty) // then we are in a new translation family of blocks
@@ -994,6 +995,14 @@ blocks::block_minimal& Rep_table::lookup
   }
   return block;
 } // |Rep_table::lookup|
+
+Rep_table::~Rep_table()
+{
+  std::cout << bounds.size() << " distinct common blocks, with "
+	    << mod_pool.size() << " elements , for "
+	    << pool.size() << " distinct parameters.\n";
+}
+
 
 // in the following type the second component is a mulitplicity so we are in fact
 // dealing with a sparse reprensetion of polynomials with |BlockElt| exponents
