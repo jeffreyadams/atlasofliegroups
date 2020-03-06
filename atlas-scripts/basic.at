@@ -1382,8 +1382,9 @@ set is_strongly_regular (Param p)=bool:
 set survives (Param p) = bool:
   is_final(p) { was recently defined to mean exactly that }
 
+set x_open(RealForm G)=KGBElt: KGB(G,G.KGB_size-1)
 set trivial (RealForm G) = Param: { parameter for the trivial representation }
-  param(KGB(G,KGB_size(G)-1),null(rank(G)),rho(G))
+  param(G.x_open,null(rank(G)),rho(G))
 
 { cross action of Weyl group element; avoid name conflict cross@(vec,Param) }
 set W_cross ([int] w,Param p) = Param:

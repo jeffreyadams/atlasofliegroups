@@ -483,6 +483,9 @@ set parabolics_with_theta_stable_Levi (RealForm G,[int] S) = [Parabolic]:
   do if has_theta_stable_Levi(P) then [P] else [] fi
   od
 
+set minimal_real_parabolic(RealForm G)=Parabolic:real_parabolic(G.x_open)
+set minimal_real_Levi(RealForm G)=RealForm:G.minimal_real_parabolic.Levi
+
 set all_parabolics_with_theta_stable_Levi (RealForm G) = [KGPElt]:
 ##for S in power_set(semisimple_rank(G))
   do
