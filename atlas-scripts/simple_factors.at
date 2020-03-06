@@ -31,7 +31,10 @@ set *([int] P,RootDatum rd)=RootDatum:P.permutation_matrix*rd
 
 {this returns a single RootDatum, with simple roots
 grouped by simple factors; within each simple
-factor roots are in Bourbaki order}
+factor roots are in Bourbaki order
+also permutation satisfying: 
+rd_new=rd*P
+}
 set nice_order(RootDatum rd)=(RootDatum,[int]):
 let (,P)=rd.Cartan_matrix_type in (rd*P,P)
 

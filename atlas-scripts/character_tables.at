@@ -122,22 +122,22 @@ ct.sym_powers_reflection:=sym_powers_reflection(ct.class_reps);ct
 set class_power_function(CharacterTable ct)=(int,int->int):
 (int j,int p):first(ct.n_classes,(int i): is_conjugate(ct.class_reps[i],ct.class_reps[j]^p))
 
-
 set initialize_character_table(LieType lt)=CharacterTable:
 assert(lt.is_simple,"LieType is not simple");
+prints("Initializing CharacterTable for ", lt);
 let rd=simply_connected(lt) then
-()=prints("Step 1") then
+()=prints("Step 1/6") then
 W_order=order_W(rd) then
-()=prints("Step 2") then
+()=prints("Step 2/6") then
 class_size(WeylElt w)=W_order\w.centralizer_order then
-()=prints("Step 3") then
+()=prints("Step 3/6") then
 {orbits=rd.orbits then}
 classes=rd.W_class_table.class_representatives() then
-()=prints("Step 4") then
+()=prints("Step 4/6") then
 class_centralizer_sizes=for w in classes do w.centralizer_order od then
-()=prints("Step 5") then
+()=prints("Step 5/6") then
 class_sizes=for w@i in classes do W_order\class_centralizer_sizes[i] od then
-()=prints("Step 6") then
+()=prints("Step 6/6") then
 class_orders=for w in classes do w.order od {then} 
 {()=prints("Step 7") then
 char_name(CharacterTable ct)=(vec->string):(vec v):string:

@@ -47,7 +47,7 @@ else error("case not covered")
 fi
 
 set springer_table(RootDatum rd)=
-let factors=simple_factors(rd) then
+let (,factors,P)=simple_factors_nice(rd) then
 st=springer_table_simple(factors[0].derived) in
 for i:#factors-1 from 1 do
  st:=tensor(st,springer_table_simple(factors[i].derived)) od;st

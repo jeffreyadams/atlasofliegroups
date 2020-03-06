@@ -6,6 +6,7 @@ bool: true for split groups, include extra information
 about conjectural relationship between size of weak packet
 and component group information
 }
+{
 
 {Type A}
 {SL(n)}
@@ -29,7 +30,7 @@ prints("SL(n,H)")
 prints("SL(n,C)")
 >"output/SL2C" void:weak_packet_report (SL(2,C),false)
 >"output/SL3C" void:weak_packet_report (SL(3,C),false)
->"output/SL4C" void:weak_packet_report (SL(3,C),false)
+>"output/SL4C" void:weak_packet_report (SL(4,C),false)
 
 {type B}
 prints("Spin(p,q) type B")
@@ -72,16 +73,20 @@ prints("G2")
 prints("F4")
 >"output/F4s" void:weak_packet_report (F4_s,true)
 >"output/F4B4" void:weak_packet_report (F4_B4,false)
-
+}
 prints("E6")
+>"output/E6c" void:weak_packet_report (E6_c,true)
+>"output/E6q" void:weak_packet_report (E6_q,true)
+>"output/E6h" void:weak_packet_report (E6_h,true)
 >"output/E6s" void:weak_packet_report (E6_s,true)
 >"output/E6F4" void:weak_packet_report (E6_F4,false)
-
+{
 prints("E7")
 >"output/E7h" void:weak_packet_report (E7_h,false)
 >"output/E7q" void:weak_packet_report (E7_q,false)
 >"output/E7s" void:weak_packet_report (E7_s,true)
 
+}
 
 
 

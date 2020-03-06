@@ -37,8 +37,10 @@ set weak_packet_int(SpringerTable st_int,ComplexNilpotent O_check,[Param] params
 {returns (blocks_and_cells,[(int,int,Param)])}
 assert(integrality_datum(O_check.root_datum.dual,O_check.H/2)=st_int.root_datum,
  "root datum mismatch, probably not using the integrality datum for the orbit");
-if #params=0 then ([],[]) else
-let ()=if cells_verbose then
+if #params=0 then ([],[])
+else
+ let O=st_int.dual_map_i(O_check) then
+ ()=if cells_verbose then
 prints("gamma_target:",gamma_target);
  prints("Computing weak packet for ", params[0].real_form, new_line,
  "given # parameters: ", #params,new_line,
@@ -53,7 +55,6 @@ prints("computed ", #blocks_and_cells, " blocks, of sizes: ", for (b,) in blocks
 fi  then
 { let  gamma=O_check.H/2 then}
  ()=if cells_verbose then prints("inf. char.=",gamma_target) fi then
- O=st_int.dual_map_i(O_check) then
  ()=if cells_verbose then
   prints("orbit:",new_line, " root datum: ", O.root_datum, new_line, " diagram: ", O.diagram, new_line,
    " normalized diagram: ", O.diagram_normalized, new_line,
@@ -68,6 +69,7 @@ fi  then
  in
 (blocks_and_cells,parameters)
 fi
+
 
 {same as previous command, with additional permutation:
  for computing dual_map_i and springer(O) we do some case-by-case/table constructions
@@ -184,15 +186,24 @@ set integral_descent(SpringerTable st_int,ComplexNilpotent O_check)=(ComplexNilp
 let rd=O_check.root_datum.dual {the original root datum on the group side} then
 O_check_rd_int=O_check.integral_descent {orbit for rd_int_dual} then
 rd_int=integrality_datum(rd,O_check.H/2) {integrality datum on group side} then
-(valid,permutation)=isomorphism_permutation(st_int.root_datum,rd_int.derived) in
+{P is the permutation relating rd_int.derived and st_int.root_datum}
+(,P)=nice_order(rd_int.derived) then
+permutation=P.permutation_matrix in
+{by definition permutation should related the Cartan matrices}
+assert(permutation*st_int.root_datum.Cartan_matrix=rd_int.Cartan_matrix*permutation,"permutation does not relate the Cartan matrices");
 {Note: st_int.root_datum.dual is *adjoint*, so O_check_rd_int.diagram = O_check_rd_int.H}
-((st_int.root_datum.dual,(),O_check_rd_int.diagram*inverse(permutation)),permutation)
-
+((st_int.root_datum.dual,(),O_check_rd_int.diagram*permutation),permutation)
 
 {This is the primary weak_packet function}
 {given complex orbit on dual side, and real form, compute weak Arthur packet}
 set weak_packet(ComplexNilpotent O_check,RealForm G)=
 ([([Param],[WCell])],[(int,int,Param)]):
+let ()=prints("Computing weak packets for ",G) then
+delta_check=^G.distinguished_involution  {distinguished involution on dual side} in
+if not twist(delta_check,O_check)=O_check then
+prints("Skipping orbit: dual orbit is not delta_check fixed");([],[]) elif
+is_abelian(G) then (blocks_and_cells(G.trivial),[(0,0,G.trivial)])
+{avoid constructing SpringerTable for torus} else
 let gamma_final=O_check.H/2 then
 gamma=gamma_final+2*rho(G) then  {this is the target infinitesimal character, need to pass it}
 all=all_parameters_gamma(G,gamma) then
@@ -210,6 +221,7 @@ st_int=springer_table(rd_int) then
 (bc,wp)=weak_packet_int(st_int,O_check_int,all,gamma_final,permutation)
 in
 (bc,wp)
+fi
 
 {usage: set (st_int,O_check_int,all,gamma_final,permutation)=weak_packet_trial(O,G)}
 set weak_packet_trial(ComplexNilpotent O_check,RealForm G)=
