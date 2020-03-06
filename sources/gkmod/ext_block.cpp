@@ -1261,15 +1261,12 @@ DescValue star (const param& E,	const ext_gen& p,
 	{ // imaginary type 2; now we need to distinguish 1i2f and 1i2s
 
 	  auto new_lambda_rho = E.lambda_rho; auto new_tau = E.tau;
-	  RootNbr first; // maybe a root with |(1-delta)*rd.root(first)==alpha|
-	  if (rd.is_simple_root(alpha_simple))
-	    first = -1; // invalid value, not used in this case
-	  else
+	  if (not rd.is_simple_root(alpha_simple))
 	  {
 	    --tau_coef; // the parity change and decrease are both relevant
 	    weyl::Generator s = // first switched root index
 	      rd.find_descent(alpha_simple);
-	    first = // corresponding root summand, conjugated back
+	    RootNbr first = // corresponding root summand, conjugated back
 	      rd.permuted_root(rd.simpleRootNbr(s),ww);
 	    assert(alpha == (E.ctxt.delta()+1)*rd.root(first));
 	    new_lambda_rho += rd.root(first);
