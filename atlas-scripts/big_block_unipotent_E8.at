@@ -1,0 +1,30 @@
+<groups.at
+<bigblocke8.at     {[Param]: big block}
+<cells.E8.repsonly.at   {cells=[[int]]}
+<cell_characters_E8.at  {cell_characters_E8=[[int]]}
+prints("loaded files")
+
+set cell_data=[(block_E8,
+for i:#cells do (cells[i], cell_characters_E8[i]) od)]
+
+prints("defined cell_data")
+
+set st=springer_table(simply_connected(E8))
+
+prints("defined Springer table")
+
+set orbits=G.even_dual_orbits
+
+prints("defined even orbits")
+
+set wp=weak_packets(st,orbits,cell_data)
+
+prints("Computed weak packets")
+
+set (,b,)=wp
+
+show_short(wp)
+show(wp)
+show_detail(wp)
+show_very_long(wp)
+
