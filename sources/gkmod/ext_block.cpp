@@ -2560,8 +2560,6 @@ bool check_braid
 
 template containers::simple_list<BlockElt> ext_block::condense
   (matrix::Matrix<int>& M, RankFlags sing_orbs) const;
-template containers::simple_list<BlockElt> ext_block::condense
-  (matrix::Matrix<Split_integer>& M, RankFlags sing_orbs) const;
 
 } // |namespace ext_block|
 

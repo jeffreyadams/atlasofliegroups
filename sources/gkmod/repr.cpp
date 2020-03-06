@@ -1322,38 +1322,32 @@ SR_poly twisted_KL_sum
       pool_at_s.push_back(eval);
     }
 
-  // construct a one-column matrix $(P_{x,y}[q:=s])_{x,0}$, range $x$ is block
-  matrix::Matrix<Split_integer> P_at_s(y+1,1);
-  for (BlockElt x=0; x<=y; ++x)
-  { auto pair = twisted_KLV.KL_pol_index(x,y);
-    P_at_s(x,0) = // get value from |pool_at_s|, possibly negated
-      pair.second ? -pool_at_s[pair.first] : pool_at_s[pair.first];
-  }
-
-  // condense |P_at_s| to the extended block elements without singular descents
   RankFlags singular_orbits;
   const auto& ipd = parent.integral_subsystem().pre_root_datum();
   for (weyl::Generator s=0; s<eblock.rank(); ++s)
     singular_orbits.set(s,gamma.dot(ipd.simple_coroot(eblock.orbit(s).s0))==0);
 
-  containers::simple_list<BlockElt> survivors =
-    eblock.condense(P_at_s,singular_orbits);
+  auto contrib = contributions(eblock,singular_orbits,y+1);
 
-  // finally transcribe from |P_at_s| result
   const auto& rc = parent.context();
   const auto gamma_rho = gamma-rho(parent.rootDatum());
   SR_poly result(rc.repr_less());
   unsigned int parity = eblock.length(y)%2;
-  for (auto it=survivors.begin(); not survivors.at_end(it); ++it)
-  {
-    BlockElt ze = *it;
-    auto factor = P_at_s(ze,0); // get coefficient from condensed column
-    if (eblock.length(ze)%2!=parity) // flip sign at odd length difference
-      factor = -factor;
-    BlockElt z = eblock.z(ze); // index of |elt| in |parent|
-    const auto lambda_rho = gamma_rho.integer_diff<int>(parent.gamma_lambda(z));
-    result.add_term(rc.sr_gamma(parent.x(z),lambda_rho,gamma),factor);
+  for (BlockElt x=0; x<=y; ++x)
+  { const auto& p = twisted_KLV.KL_pol_index(x,y);
+    Split_integer eval = p.second ? -pool_at_s[p.first] : pool_at_s[p.first];
+    if (eblock.length(x)%2!=parity) // flip sign at odd length difference
+      eval = -eval;
+    for (const auto& pair : contrib[x])
+    {
+      BlockElt final_x = eblock.z(pair.first); // index of |elt| in |parent|
+      const auto lambda_rho =
+	gamma_rho.integer_diff<int>(parent.gamma_lambda(final_x));
+      result.add_term(rc.sr_gamma(parent.x(final_x),lambda_rho,gamma),
+		      eval*pair.second);
+    }
   }
+
   return result;
 } // |twisted_KL_sum|
 
