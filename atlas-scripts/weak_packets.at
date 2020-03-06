@@ -220,6 +220,7 @@ st_int=springer_table(rd_int) then
 ()=prints("computing packet for:", O_check_int) then
 (bc,wp)=weak_packet_int(st_int,O_check_int,all,gamma_final,permutation)
 in
+if G.is_split and =#parameters(wp) then prints("ERROR: , empty packet for split group") fi;
 (bc,wp)
 fi
 
