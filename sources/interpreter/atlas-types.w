@@ -5040,7 +5040,8 @@ void extended_block_wrapper(expression_base::level l)
 @)
   const auto& rc = p->rc();
   BlockElt start;
-  param_block block(rc,p->val,start);
+  auto zm = repr::StandardReprMod::mod_reduce(rc,p->val);
+  blocks::block_minimal block(rc,zm,start);
   @< Construct the extended block, then the return value components,
      calling |push_value| for each of them @>
 @)
@@ -5058,10 +5059,12 @@ into a list of parameters and three tables in the form of matrices.
 @/int_Matrix links0(eb.size(),eb.rank());
   int_Matrix links1(eb.size(),eb.rank());
 
+  const auto& gamma=p->val.gamma();
+  const RatWeight gamma_rho = gamma-rho(block.rootDatum());
   for (BlockElt n=0; n<eb.size(); ++n)
   { auto z = eb.z(n); // number of ordinary parameter in |block|
-    StandardRepr block_elt_param =
-      rc.sr_gamma(block.x(z),block.lambda_rho(z),block.gamma());
+    const Weight lambda_rho=gamma_rho.integer_diff<int>(block.gamma_lambda(z));
+    StandardRepr block_elt_param = rc.sr_gamma(block.x(z),lambda_rho,gamma);
     params->val[n] =
       std::make_shared<module_parameter_value>(p->rf,block_elt_param);
     for (weyl::Generator s=0; s<eb.rank(); ++s)
