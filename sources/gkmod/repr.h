@@ -161,6 +161,8 @@ class Rep_context
   Weight lambda_rho(const StandardRepr& z) const;
   RatWeight lambda(const StandardRepr& z) const // half-integer
   { return rho(rootDatum()).normalize()+lambda_rho(z); }
+  RatWeight gamma_lambda(const StandardReprMod& z) const
+  { return (z.gamma()-rho(rootDatum())).normalize()-lambda_rho(z); }
   RatWeight gamma_0 // infinitesimal character deformed to $\nu=0$
     (const StandardRepr& z) const;
 

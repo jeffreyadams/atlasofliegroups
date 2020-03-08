@@ -286,12 +286,12 @@ struct param // allow public member access; methods ensure no invariants anyway
   Coweight t; // a solution to $t(1-theta)=l(\delta-1)$
   bool flipped; // whether tensored with the flipping representation
 
-  param (const context& ec, const StandardRepr& sr, bool flipped=false);
   param (const context& ec,
 	 KGBElt x, const Weight& lambda_rho, bool flipped=false);
   param (const context& ec, const TwistedInvolution& tw,
 	 Weight lambda_rho, Weight tau, Coweight l, Coweight t,
 	 bool flipped=false);
+  param (const context& ec, const StandardRepr& sr); // default extension choice
 
   param (const param& p) = default;
   param (param&& p)

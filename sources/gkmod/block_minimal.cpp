@@ -71,13 +71,14 @@ const InvolutionTable& block_minimal::involution_table() const
 const RootDatum& block_minimal::rootDatum() const
   { return rc.rootDatum(); }
 
+// find a $-\theta$ stable representative modulo $2X^*$ for $\gamma-\lambda$
 RatWeight block_minimal::gamma_lambda(BlockElt z) const
 {
-  // find rep. modulo $2X^*$ of some $-\theta$ stable value $\gamma-\lambda$
-  RatWeight result = gam_lam[y(z)];
+#ifndef NDEBUG
   auto theta1 = involution_table().matrix(rc.kgb().involution(x(z)))+1;
-  assert((theta1*result).isZero()); // victory
-  return result;
+  assert((theta1*gam_lam[y(z)]).isZero()); // was ensured during construction
+#endif
+  return gam_lam[y(z)];
 }
 
 block_minimal::~block_minimal() = default;
@@ -650,13 +651,14 @@ void validate(const paramin& E)
   const auto& theta = i_tab.matrix(E.tw);
   const auto& delta = E.ctxt.delta();
   assert(delta*theta==theta*delta);
-  const Weight symm = E.gamma_lambda.integer_diff<int>(delta*E.gamma_lambda);
-  assert(symm == (1-theta)*E.tau);
+  const Weight diff = E.gamma_lambda.integer_diff<int>(delta*E.gamma_lambda);
+  assert(diff == (1-theta)*E.tau);
   assert((delta-1).right_prod(E.l)==(theta+1).right_prod(E.t));
   assert(((E.ctxt.g_rho_check()-E.l)*(1-theta)).numerator().isZero());
   assert(((theta+1)*E.gamma_lambda).numerator().isZero());
 #endif
 }
+
 
 paramin::paramin
   (const context_minimal& ec,
@@ -686,6 +688,7 @@ paramin::paramin
 {
   validate(*this);
 }
+
 
 
 // whether |E| and |F| lie over equivalent |StandardRepr| values
@@ -1691,6 +1694,265 @@ bool ext_block::tune_signs(const blocks::block_minimal& block)
 #endif
   return true; // report success if we get here
 } // |tune_signs|
+
+// compute the components in a default extended parameter for parameter |sr|
+void set_default_extended
+( const Rep_context& rc, const repr::StandardReprMod& srm,
+  const WeightInvolution& delta,
+  RatWeight& gamma_lambda, Weight& tau, Coweight& l, Coweight& t)
+{
+  const auto& kgb = rc.kgb(); const auto x=srm.x();
+  const WeightInvolution theta = rc.innerClass().matrix(kgb.involution(x));
+
+  gamma_lambda=rc.gamma_lambda(srm); // normalised
+  const auto diff = gamma_lambda.integer_diff<int>(delta*gamma_lambda);;
+  tau=matreduc::find_solution(1-theta,diff);
+  l=ell(kgb,x);
+  t=matreduc::find_solution(theta.transposed()+1,(delta-1).right_prod(l));
+}
+
+// build a default extended parameter for |sr| in the context |ec|
+paramin::paramin (const context_minimal& ec, const repr::StandardReprMod& srm)
+  : ctxt(ec)
+  , tw(ec.rc().kgb().involution(srm.x()))
+  , l(), gamma_lambda(), tau(), t() // components to be computed just below
+  , flipped(false)
+{
+  set_default_extended(ec.rc(),srm,ec.delta(), gamma_lambda,tau,l,t);
+  validate(*this);
+}
+
+KGBElt paramin::x() const
+{ TitsElt a(ctxt.innerClass().titsGroup(),TorusPart(l),tw);
+  return rc().kgb().lookup(a);
+}
+
+repr::StandardRepr paramin::restrict(const RatWeight& gamma) const
+{
+  const RatWeight gamma_rho = gamma-rho(rc().rootDatum());
+  const auto lambda_rho = gamma_rho.integer_diff<int>(gamma_lambda);
+  return rc().sr_gamma(x(),lambda_rho,gamma);
+}
+
+/*
+  This function serves to replace and circumvent |Rep_context::make_dominant|
+  applied to a scaled parameter (as occurs in the ordinary deformation function
+  by calling |finals_for| or |normalise|, both of which call |make_dominant|,
+  after calling |scale|), where |make_dominant| maps any ordinary parameter to
+  one with a dominant |gamma| component, and moreover descends through singular
+  complex descents in the block to the lowest parameter equivalent to the
+  initial parameter. The reason that this is necessary is that scaling only
+  affects the |nu| component of the infinitesimal character, so it may make it
+  traverse walls of Weyl chambers. Indeed the caller should make sure |sr|
+  itself has dominant |gamma|, which moreover is assumed to be fixed by |delta|
+  (if not, don't use this function).
+
+  The difference with the functioning of |make_dominant| is that here we keep
+  track of all extended parameter components inherited from |sr| (so before
+  scaling its |nu| part by |factor|), transforming them from the default choices
+  for |sr|, and at the end comparing the transformed values to the default
+  choices at the final parameter reached, recording the sign in |flipped|.
+ */
+StandardRepr scaled_extended_dominant // result will have its |gamma()| dominant
+(const Rep_context rc,
+ const StandardRepr& sr, const WeightInvolution& delta,
+ Rational factor, // |z.nu()| is scaled by |factor| first
+ bool& flipped // records whether an extended flip was recorded
+ )
+{
+  bool pre_flip = false;
+  const RootDatum& rd=rc.rootDatum(); const KGB& kgb = rc.kgb();
+  const ext_gens orbits = rootdata::fold_orbits(rd,delta);
+  assert(is_dominant_ratweight(rd,sr.gamma())); // dominant
+  assert(((delta-1)*sr.gamma().numerator()).isZero()); // $\delta$-fixed
+
+  // first approximation to result is scaled input
+  auto scaled_sr = rc.sr(sr.x(),rc.lambda_rho(sr),sr.gamma()*factor);
+  // it will be convenent to have a working copy of the numerator of |gamma|
+  RatWeight gamma = scaled_sr.gamma(); // a working copy
+
+  // to get the (implicit) choice of |lambda| adapted to |block_minimal|
+  // it is essential to modularly reduce |scaled_sr.gamma()| here
+  auto srm = repr::StandardReprMod::mod_reduce(rc, scaled_sr);
+  // class |param| cannot change its |gamma|, so work on separate components
+  RatWeight gam_lam; Weight tau; Coweight l,t;
+  // initialise without building a |context| (as |result.gamma()| undominant):
+  set_default_extended(rc,srm,delta, gam_lam,tau,l,t);
+  KGBElt x = scaled_sr.x(); // another variable, for convenience
+
+  int_Vector r_g_eval (rd.semisimpleRank()); // simple root evaluations at |-gr|
+  { const RatCoweight& g_r=rc.realGroup().g_rho_check();
+    for (unsigned i=0; i<r_g_eval.size(); ++i)
+      r_g_eval[i] = -g_r.dot(rd.simpleRoot(i));
+  }
+
+  { unsigned i; // index into |orbits|
+    do // make |gamma_numer| dominant, uses only complex simple root reflections
+      for (i=0; i<orbits.size(); ++i)
+	if (kgb.status(x).isComplex(orbits[i].s0))
+	{ const auto& s=orbits[i];
+	  const auto& alpha_v = rd.simpleCoroot(s.s0);
+	  if (alpha_v.dot(gamma.numerator())<0)
+	  {
+	    rd.act(s.w_kappa,gamma); // change infin.character representative
+	    rd.act(s.w_kappa,gam_lam);
+	    rd.act(s.w_kappa,tau);
+	    rd.shifted_dual_act(l,s.w_kappa,r_g_eval);
+	    rd.dual_act(t,s.w_kappa);
+	    if (s.length()==2)
+	      pre_flip = not pre_flip; // record flip for 2C+/2C- done
+	    x = kgb.cross(s.w_kappa,x);
+	    break; // indicate we advanced; restart search for |s|
+	  }
+	} // |for(i)|, if |isComplex|
+    while(i<orbits.size()); // continue until above |for| runs to completion
+  } // end of transformation of extended parameter components
+
+  // since |gamma| may have changed, we only now build our |context_minimal|
+  context_minimal ctxt(rc,delta, SubSystem::integral(rd,gamma));
+  // now ensure that |E| gets matching |gamma| and |theta| (for flipped test)
+  paramin E(ctxt,kgb.involution(x),gam_lam,tau,l,t,pre_flip);
+
+  { // descend through complex singular simple descents
+    const ext_gens integral_orbits = rootdata::fold_orbits(ctxt.id(),delta);
+    const RankFlags singular_orbits = // flag singular among integral orbits
+      reduce_to(integral_orbits,singular_generators(ctxt.id(),gamma));
+    /*
+      |singular_orbits| are in fact orbits of simple roots, because we have
+      ensured |gamma| is dominant, so the singular subsystem of |rd|
+      is generated by simple (co)roots (evaluting to 0 on |ctxt.gamma()|)
+    */
+     // record the corresponding simple root indices in |rd|, in order
+    containers::sl_list<unsigned> orbit_simple;
+    for (auto it=singular_orbits.begin(); it(); ++it)
+    { auto alpha=ctxt.subsys().parent_nr_simple(integral_orbits[*it].s0);
+      orbit_simple.push_back(rd.simpleRootIndex(alpha));
+    }
+
+    while(true) // will |break| below if no singular complex descent exists
+    {
+      auto soit = singular_orbits.begin(); auto it=orbit_simple.begin();
+      for (; not orbit_simple.at_end(it); ++it,++soit)
+	if (kgb.isComplexDescent(*it,x))
+	  break;
+
+      assert((not soit())==orbit_simple.at_end(it));
+      if (not soit()) // previous loop ran to completion
+	break;
+
+      // find orbit among |integral_orbits| corresponding to that ComplexDescent
+      ext_gen p=integral_orbits[*soit];
+      assert(ctxt.subsys().parent_nr_simple(p.s0)
+	     ==rd.simpleRootNbr(*it)); // check that we located it
+
+      containers::sl_list<paramin> links;
+      auto type = star(E,p,links); // compute neighbours in extended block
+      assert(is_complex(type) or type==two_semi_real);
+      E = *links.begin(); // replace |E| by descended parameter
+      E.flip(has_october_surprise(type)); // to undo extra flip |star|
+      assert(x>E.x()); // make sure we advance; we did simple complex descents
+      x = E.x(); // adapt |x| for complex descent test
+    } // |while| a singular complex descent exists
+  }
+
+  // finally extract |StandardRepr| from |E|
+  StandardRepr result = E.restrict(gamma);
+
+  // but the whole point of this function is to record the relative flip too!
+  srm = repr::StandardReprMod::mod_reduce(rc,result);
+  flipped = not same_sign(E,paramin(ctxt,srm)); // compare |E| to default ext.
+  return result;
+
+} // |scaled_extended_dominant|
+
+/*
+  The following function determines whether an extended parameter has a descent
+  for generator |kappa|, which is an orbit of singularly-simple roots, and since
+  |gamma| is supposed dominant here these are actually simple roots. Rather than
+  call |star| here to do the full analysis, we can do a simplified (there is no
+  |to_simple_shift|) test of notably the parity condition in the real case.
+ */
+bool is_descent (const ext_gen& kappa, const paramin& E)
+{ // easy solution would be to |return is_descent(star(E,kappa,dummy))|;
+  const InvolutionTable& i_tab = E.rc().innerClass().involution_table();
+  const InvolutionNbr theta = i_tab.nr(E.tw); // so use root action of |E.tw|
+  const RootNbr n_alpha = E.ctxt.subsys().parent_nr_simple(kappa.s0);
+  const RootNbr theta_alpha = i_tab.root_involution(theta,n_alpha);
+  const RootDatum& rd = E.rc().rootDatum();
+  assert(rd.is_simple_root(n_alpha)); // as explained in the comment above
+
+  // we don't need to inspect |kappa.type|, it does not affect descent status
+  if (theta_alpha==n_alpha) // imaginary case, return whether compact
+    return (E.ctxt.g_rho_check()-E.l).dot(rd.root(n_alpha)) %2!=0;
+  if (theta_alpha==rd.rootMinus(n_alpha)) // real, return whether parity
+    // whether $\<\alpha^\vee,\gamma-\lambda>$ even (since $\alpha$ will be
+    // singular here, |gamma_lambda| gives the same result as |lambda| would)
+    return E.gamma_lambda.dot(rd.coroot(n_alpha)) %2==0;
+  else // complex
+    return rd.is_negroot(theta_alpha);
+} // |is_descent|
+
+weyl::Generator first_descent_among
+  (RankFlags singular_orbits, const ext_gens& orbits, const paramin& E)
+{ for (auto it=singular_orbits.begin(); it(); ++it)
+    if (is_descent(orbits[*it],E))
+      return *it;
+  return orbits.size(); // no singular descents found
+}
+
+/*
+ This function is destined to be used after |scaled_extended_dominant|, to
+ express the standard representation as linear combination of ones without
+ singular descents, while keeping track (unlike |Rep_context::expand_final|)
+ of flips that might occur during the process.
+ */
+containers::sl_list<std::pair<StandardRepr,bool> > extended_finalise
+  (const repr::Rep_context& rc,
+   const StandardRepr& sr, const WeightInvolution& delta)
+{ // in order that |singular_generators| generate the whole singular system:
+  assert(is_dominant_ratweight(rc.rootDatum(),sr.gamma()));
+  // we must assume |gamma| already dominant, DON'T call |make_dominant| here!
+
+  auto srm = repr::StandardReprMod::mod_reduce(rc,sr);
+  context_minimal ctxt(rc,delta,SubSystem::integral(rc.rootDatum(),sr.gamma()));
+
+  const ext_gens orbits = rootdata::fold_orbits(ctxt.id(),delta);
+  const RankFlags singular_orbits =
+    reduce_to(orbits,singular_generators(ctxt.id(),sr.gamma()));
+
+  containers::queue<paramin> to_do { paramin(ctxt,srm) }; // start with default
+  containers::sl_list<std::pair<StandardRepr,bool> > result;
+
+  do
+  { const paramin E= to_do.front();
+    to_do.pop(); // we are done with |head|
+    auto s = first_descent_among(singular_orbits,orbits,E);
+    if (s>=orbits.size()) // no singular descents, so append to result
+      result.emplace_back
+	(std::make_pair(E.restrict(sr.gamma()),not is_default(E)));
+    else // |s| is a singular descent orbit
+    { containers::sl_list<paramin> links;
+      auto type = star(E,orbits[s],links);
+      if (not is_like_compact(type)) // some descent, push to front of |to_do|
+      { bool flip = has_october_surprise(type); // to undo extra flip |star|
+	auto l_it=links.begin(); RootNbr witness;
+	if (rc.is_nonzero(l_it->restrict(sr.gamma()),witness))
+	{
+	  l_it->flip(flip);
+	  to_do.push(*l_it);
+	}
+	if (has_double_image(type)  // then maybe add second node after |head|
+	    and rc.is_nonzero((++l_it)->restrict(sr.gamma()),witness))
+	{ l_it->flip(flip);
+	  to_do.push(*l_it);
+	}
+      }
+    }
+  }
+  while(not to_do.empty());
+
+  return result;
+} // |extended_finalise|
 
 } // |namespace ext_block|
 

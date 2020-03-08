@@ -162,6 +162,9 @@ struct paramin // allow public member access; methods ensure no invariants
 	   RatWeight gamma_lambda, Weight tau, Coweight l, Coweight t,
 	   bool flipped=false);
 
+  // default extension choice:
+  paramin (const context_minimal& ec, const repr::StandardReprMod& srm);
+
   paramin (const paramin& p) = default;
   paramin (paramin&& p)
   : ctxt(p.ctxt), tw(std::move(p.tw))
@@ -195,6 +198,8 @@ struct paramin // allow public member access; methods ensure no invariants
   const WeightInvolution& theta () const;
 
   KGBElt x() const; // reconstruct |x| component
+  // underlying unextended representation
+  repr::StandardRepr restrict(const RatWeight& gamma) const;
 }; // |paramin|
 
 } // |namespace ext_block|

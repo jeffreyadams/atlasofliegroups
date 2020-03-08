@@ -261,11 +261,11 @@ void set_default_extended
 }
 
 // build a default extended parameter for |sr| in the context |ec|
-param::param (const context& ec, const StandardRepr& sr, bool flipped)
+param::param (const context& ec, const StandardRepr& sr)
   : ctxt(ec)
   , tw(ec.rc().kgb().involution(sr.x()))
   , l(), lambda_rho(), tau(), t() // components to be computed just below
-  , flipped(flipped)
+  , flipped(false)
 {
   set_default_extended(ec.rc(),sr,ec.delta(), lambda_rho,tau,l,t);
   validate(*this);
@@ -350,6 +350,7 @@ KGBElt param::x() const
   return rc().kgb().lookup(a);
 }
 
+#if 0 // functions redifined in block_minimal.cpp
 /*
   This function serves to replace and circumvent |Rep_context::make_dominant|
   applied to a scaled parameter (as occurs in the ordinary deformation function
@@ -382,7 +383,7 @@ StandardRepr scaled_extended_dominant // result will have its |gamma()| dominant
   assert(is_dominant_ratweight(rd,sr.gamma())); // dominant
   assert(((delta-1)*sr.gamma().numerator()).isZero()); // $\delta$-fixed
 
-  // First approximation to result is scaled input; will later be overwritten
+  // first approximation to result is scaled input; will later be overwritten
   StandardRepr result = rc.sr(sr.x(),rc.lambda_rho(sr),sr.gamma()*factor);
 
   // it will be convenent to have a working copy of the numerator of |gamma|
@@ -404,7 +405,7 @@ StandardRepr scaled_extended_dominant // result will have its |gamma()| dominant
   const int_Vector ones(rd.semisimpleRank(),1);
 
   { unsigned i; // index into |orbits|
-    do
+    do // make |gamma_numer| dominant, uses only complex simple root reflections
       for (i=0; i<orbits.size(); ++i)
 	if (kgb.status(x).isComplex(orbits[i].s0))
 	{ const auto& s=orbits[i];
@@ -426,7 +427,7 @@ StandardRepr scaled_extended_dominant // result will have its |gamma()| dominant
     while(i<orbits.size()); // continue until above |for| runs to completion
   } // end of transformation of extended parameter components
 
-  // since |gamma| may have changed, we only now build our |context|
+  // since |gamma_numer| may have changed, we only now build our |context|
   context ctxt(rc,delta, RatWeight(gamma_numer,result.gamma().denominator()));
   // now ensure that |E| gets matching |gamma| and |theta| (for flipped test)
   param E(ctxt,kgb.involution(x),lr,tau,l,t,pre_flip);
@@ -533,6 +534,7 @@ containers::sl_list<std::pair<StandardRepr,bool> > extended_finalise
 
   return result;
 } // |extended_finalise|
+#endif
 
 #if 0 // unused code, but the formula is referred to in the comment below
 int z (const param& E) // value modulo 4, exponent of imaginary unit $i$
@@ -1923,7 +1925,7 @@ bool is_descent (const ext_gen& kappa, const param& E)
     return (E.ctxt.gamma()-E.lambda_rho).dot(rd.coroot(n_alpha)) %2!=0;
   else // complex
     return rd.is_negroot(theta_alpha);
-}
+} // |is_descent|
 
 weyl::Generator first_descent_among
   (RankFlags singular_orbits, const ext_gens& orbits, const param& E)
