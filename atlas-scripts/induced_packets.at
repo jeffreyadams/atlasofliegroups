@@ -1,0 +1,63 @@
+<weak_packets.at
+
+set is_subset([int] A,[int] B)=bool:
+all(for a in A do find (B,a)!=-1 od)
+
+set is_proper_subset([int] A,[int] B)=bool:
+is_subset(A,B) and #A<#B
+
+set is_subset([Param] A,[Param] B)=bool:
+all(for a in A do find (B,a)!=-1 od)
+
+set complement([Param] A,[Param] B)=[Param]:
+##for p in B do if find(A,p)=-1 then [p] else [] fi od
+
+{maximal parabolics among all real parabolics of G=G(R)
+not the same as real forms of maximal parabolics of G(C)
+}
+set maximal_real_parabolics(RealForm G)=
+{if G is (relatively) split this is easy}
+if G.is_relatively_split then 
+ for i:G.ss_rank do KGPElt:(delete(#G.ss_rank,i),G.x_open) od
+else
+{in general: brute force listing and test of containment}
+let real_parabolics=all_real_parabolics(G) then
+proper_real_parabolics=##for P in real_parabolics do if #P.S<G.ss_rank then [P] else [] fi od in
+##for P in proper_real_parabolics do
+ if any(for Q in proper_real_parabolics do  is_proper_subset(P.S,Q.S) od) then [] else [P] fi od
+fi
+
+set unipotent_representations(RealForm G)=[Param]:
+G.weak_packets.parameters
+
+set unipotents(RealForm G)=[Param]:unipotent_representations(G)
+
+set param_pol ([Param] params,RealForm G) = ParamPol:
+  G.null_module + for p in params do (1,p) od
+
+{error  #params=0}
+set param_pol ([Param] params) = ParamPol:
+  params[0].real_form.null_module + for p in params do (1,p) od
+
+set remove_duplicates([Param] list)=[Param]:
+if #list=0 then [] else monomials(param_pol(list)) fi
+
+set induced_unipotents(RealForm G)=
+remove_duplicates(
+##for P in maximal_real_parabolics(G) do
+ ##for p in unipotent_representations(P.Levi) do
+  monomials(real_induce_irreducible(p,G))
+ od
+od)
+
+set induced_unipotents_long(RealForm G)=
+let ind=induced_unipotents(G) then
+all=unipotents(G) in
+if not is_subset(ind,all) then prints("WARNING: not a subset") fi;
+let comp=complement(ind,all) in
+prints("#unipotents: ", #all,new_line, "#induced unipotents: ", #ind, new_line,
+"#non-induced: ", #comp);
+(ind,all,comp)
+
+
+
