@@ -48,11 +48,13 @@ class RationalVector
 // constructors and destructors
   explicit RationalVector(size_t r): d_num(r,0), d_denom(1){} // zero vector
 
-  // Build the RationalVector with numerator v and denominator d.
+  // build the RationalVector with numerator v and denominator d.
   template <typename C1>
     RationalVector(const matrix::Vector<C1>& v, C d);
 
   RationalVector(V&& v, C d);
+
+  RationalVector() : d_num(),d_denom(C(1)) {} // default to empty numerator
 
 
 // accessors
