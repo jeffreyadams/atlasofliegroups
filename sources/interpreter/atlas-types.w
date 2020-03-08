@@ -6007,8 +6007,11 @@ code here the difference consists mainly of calling the
 involution, so we need to test for that here. If the test fails we report an
 error rather than returning for instance a null module, since a twisted
 deformation formula for a non-fixed parameter makes little sense; the user
-should avoid asking for it. Also, since the construction of an extended block
-currently cannot deal with a partial parent block.
+should avoid asking for it. Similarly the twisted variant cannot allow non
+dominant parameters, as this would internally produce an |SR_poly| value with
+non-dominant terms, which should never happen. Also, since the construction of
+an extended block currently cannot deal with a partial parent block, so it
+implies a full block construction.
 
 @< Local function def...@>=
 void deform_wrapper(expression_base::level l)
@@ -6030,6 +6033,8 @@ void twisted_deform_wrapper(expression_base::level l)
   test_standard(*p,"Cannot compute twisted deformation");
   if (not rc.is_twist_fixed(p->val,rc.innerClass().distinguished()))
     throw runtime_error@|("Parameter not fixed by inner class involution");
+  if (not is_dominant_ratweight(rc.rootDatum(),p->val.gamma()))
+    throw runtime_error("Parameter must have dominant infinitesimal character");
   if (l==expression_base::no_value)
     return;
 @)
@@ -6195,7 +6200,7 @@ void finalize_extended_wrapper(expression_base::level l)
   if (not p->rc().is_twist_fixed(p->val,delta->val))
     throw runtime_error("Parameter not fixed by given involution");
   if (not is_dominant_ratweight(rc.rootDatum(),p->val.gamma()))
-    throw runtime_error("Parameter must have dominant gamma");
+    throw runtime_error("Parameter must have dominant infinitesimal character");
   if (l==expression_base::no_value)
     return;
 @)
