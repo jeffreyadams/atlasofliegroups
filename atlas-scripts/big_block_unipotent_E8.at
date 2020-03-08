@@ -1,5 +1,5 @@
 <groups.at
-<bigblocke8.at     {[Param]: big block}
+<bigblock8.at     {[Param]: big block}
 <cells.E8.repsonly.at   {cells=[[int]]}
 <cell_characters_E8.at  {cell_characters_E8=[[int]]}
 prints("loaded files")
