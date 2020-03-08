@@ -559,11 +559,15 @@ class RootDatum
   Weight& make_codominant(Weight& lambda) const // modify and return |lambda|
   { factor_dominant(lambda); return lambda; }
 
-  void act(const WeylWord& ww,Weight& lambda) const
+  template<typename C>
+    void act(const WeylWord& ww, matrix::Vector<C>& lambda) const
     {
       for (auto i=ww.size(); i-->0; )
 	simple_reflect(ww[i],lambda);
     }
+
+  void act(const WeylWord& ww, RatWeight& gamma) const;
+
   // action centered at weight $\mu$ with $simpleCoroot(i).dot(mu) == -shift[i]|
   void shifted_act(const WeylWord& ww,Weight& lambda,int_Vector shift) const
     {
