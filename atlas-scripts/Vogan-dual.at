@@ -215,13 +215,14 @@ assert(is_regular(p) and is_integral(ic,G),"p is not regular integral");
 all(for i in support_dual(p.x) do is_ascent(i,p.x) od)
 
 {dual is an Aq(finite dimensional), regular but not necessarily integral}
-set is_dual_Aq(Param p)=bool:
+{this function is NOT reliable}
+set is_dual_Aq_temp(Param p)=bool:
 assert(is_regular(p),"p is not regular");
 all(for i in support_dual(p) do is_ascent(i,p) od)
 
 {old version, fails with an error for SU(3,2) without
 the is_integral statement}
-set is_dual_Aq_old (Param p) = bool:
+set is_dual_Aq (Param p) = bool:
 if not (is_regular(p) and is_integral(p.infinitesimal_character,p.root_datum)) then false
 else is_coh_ind_from_finite_dimensional(dual(p,dual_inner_class(p)))
 fi
