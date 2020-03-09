@@ -1,3 +1,4 @@
+{
 {compute weak_packet(G) for many real forms,
 saves results to files
 This file executes upon loading, so its entire contents
@@ -76,8 +77,8 @@ prints("F4")
 }
 prints("E6")
 >"output/E6c" void:weak_packet_report (E6_c,true)
->"output/E6q" void:weak_packet_report (E6_q,true)
->"output/E6h" void:weak_packet_report (E6_h,true)
+>"output/E6q" void:weak_packet_report (E6_q,false)
+>"output/E6h" void:weak_packet_report (E6_h,false)
 >"output/E6s" void:weak_packet_report (E6_s,true)
 >"output/E6F4" void:weak_packet_report (E6_F4,false)
 {
@@ -90,3 +91,4 @@ prints("E7")
 
 
 
+}

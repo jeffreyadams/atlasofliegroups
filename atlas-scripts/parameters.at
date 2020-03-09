@@ -136,6 +136,32 @@ set parameter (KGBElt x,KGBElt y,ratvec gamma)=Param:
 set parameter (KGBElt x, KGBElt y)=Param:
   parameter(x,y,choose_g(y,x)) { computes gamma from real_form(y), x-dominant }
 
+{A is a subset of B}
+set is_subset([Param] A,[Param] B)=bool:
+all(for a in A do find (B,a)!=-1 od)
+
+{A is a proper subset of B}
+set is_proper_subset([Param] A,[Param] B)=bool:
+is_subset(A,B) and #A<#B
+
+{complement of A in B}
+set complement([Param] A,[Param] B)=[Param]:
+##for p in B do if find(A,p)=-1 then [p] else [] fi od
+
+{turn [Param] into a ParamPol}
+set param_pol ([Param] params,RealForm G) = ParamPol:
+  G.null_module + for p in params do (1,p) od
+
+{turn [Param] into a ParamPol; error if #params=0}
+set param_pol ([Param] params) = ParamPol:
+assert(#params>0,"Parameter list is empty, use (param_pol([Param],RealForm)) instead");
+  params[0].real_form.null_module + for p in params do (1,p) od
+
+{replace [Param] with list with multiplicity one
+uses properties of ParamPols}
+set remove_duplicates([Param] list)=[Param]:
+if #list=0 then [] else monomials(param_pol(list)) fi
+
 {see Vogan-dual.at}
 {this gives a parameter for the dual group with infinitesimal character g}
 {

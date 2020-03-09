@@ -109,3 +109,19 @@ if conjecture then
 test_conjecture_report(wp_sc,G) fi;
 prints(export(parameters(wp)));
 wp
+
+set weak_packet_report_ind(RealForm G,bool conjecture)=[([([Param],[WCell])],[(int,int,Param)])]:
+let wp=weak_packets(G) then
+ind=induced_unipotents(G) in
+prints(new_line,"===============================================================================");
+let orbits=G.dual_orbits in
+show_nilpotent_orbits(orbits);prints();
+show_short(wp);
+show(wp);
+show_long(wp,ind);
+if conjecture then
+ let wp_sc = ##for weakpacket@i in wp do
+ let O=orbits[i] in  if #O.component_datum.orders=1 then [weakpacket] else [] fi od in
+test_conjecture_report(wp_sc,G) fi;
+prints(export(parameters(wp)));
+wp

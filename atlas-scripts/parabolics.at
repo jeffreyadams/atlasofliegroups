@@ -489,6 +489,21 @@ set minimal_real_Levi(RealForm G)=RealForm:G.minimal_real_parabolic.Levi
 set maximal_parabolics(RootDatum rd)=[ComplexParabolic]:
 for i:rd.ss_rank do (rd,delete(#rd.ss_rank,i)) od
 
+{maximal parabolics among all real parabolics of G=G(R)
+not the same as real forms of maximal parabolics of G(C)
+}
+set maximal_real_parabolics(RealForm G)=
+{if G is (relatively) split this is easy}
+if G.is_relatively_split then 
+ for i:G.ss_rank do KGPElt:(delete(#G.ss_rank,i),G.x_open) od
+else
+{in general: brute force listing and test of containment}
+let real_parabolics=all_real_parabolics(G) then
+proper_real_parabolics=##for P in real_parabolics do if #P.S<G.ss_rank then [P] else [] fi od in
+##for P in proper_real_parabolics do
+ if any(for Q in proper_real_parabolics do  is_proper_subset(P.S,Q.S) od) then [] else [P] fi od
+fi
+
 set all_parabolics_with_theta_stable_Levi (RealForm G) = [KGPElt]:
 ##for S in power_set(semisimple_rank(G))
   do
