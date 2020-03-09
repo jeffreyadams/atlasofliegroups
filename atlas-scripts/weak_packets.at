@@ -552,7 +552,7 @@ tabulate(
   ##for b in blocks do
    ##for c in cells do
     for p in packet.parameters_map(b,c) do
-     let induced_flag=if find(induced_unipotents,p)>=0 then " " else " (I)" fi then
+     let induced_flag=if find(induced_unipotents,p)>=0 then "(I)" else "" fi then
      (params,cells)=bc[b] then
      cell=cells[c] then
      cell_flag={if not is_integral(p.root_datum,p.infinitesimal_character) then false.star else} is_dual_Aq(params,cell).star {fi} then
@@ -580,7 +580,7 @@ tabulate(
      cell=cells[c] then
      cell_flag={if not is_integral(p.root_datum,p.infinitesimal_character) then false.star else} is_dual_Aq(params,cell).star {fi} then
      param_flag=if not is_integral(p.root_datum,p.infinitesimal_character) then false.star else is_dual_Aq(make_regular_irr(p)).star fi then
-     induced_flag=if find(induced_unipotents,p)>=0 then " " else " (I)" fi in
+     induced_flag=if find(induced_unipotents,p)>=0 then "(I)" else "" fi in
     [i.to_string,b.to_string,c.to_string+cell_flag,p.to_string + param_flag+ induced_flag, p.infinitesimal_character.to_string]
    od
   od
