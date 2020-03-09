@@ -561,7 +561,7 @@ tabulate(
    od
   od
  od
-     #["Total","",(#parameters(packet)).to_string,""]
+     #["Total","",(#parameters(packet)).to_string,""]#["Induced","",(#induced_unipotents).to_string,""]
   );prints()
 
 set show_long(( [( [([Param],[WCell])],    {wp} [(int,int,Param)] )],{[(int,int,Param)]} [Param])  {induced_unipotents} data)=
@@ -586,7 +586,7 @@ tabulate(
   od
  od
 od
-     #["Total","","",(#parameters(##for (,b) in blocks_and_cells_and_packets do b od)).to_string,""]
+     #["Total","","",(#parameters(##for (,b) in blocks_and_cells_and_packets do b od)).to_string,""]#["Induced","","",(#induced_unipotents).to_string,""]
   );prints()
 
 
