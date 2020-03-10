@@ -489,13 +489,30 @@ set minimal_real_Levi(RealForm G)=RealForm:G.minimal_real_parabolic.Levi
 set maximal_parabolics(RootDatum rd)=[ComplexParabolic]:
 for i:rd.ss_rank do (rd,delete(#rd.ss_rank,i)) od
 
+{Find equivalence classes of non-imaginary simple roots w.r.t. max. x, for
+alpha \cong alpha' if (1-theta)(alpha)=(1-theta(alpha')}
+set classes_for_real_parabolics (RealForm G)=[[int]]:
+   let theta=trivial(G).x.involution, sr=simple_roots(G) then list=[int]:
+   ##for alpha@i in sr do if not is_imaginary(theta)(alpha) then [i] else []  fi od
+   then result=[[int]]:[] in
+   for i in list do if is_real(theta)(sr[i]) then result#:=[i] else
+    let temp=[int]:
+    ##for j in list do if j >= i and (1-theta)*sr[i]=(1-theta)*sr[j]
+     and all(for v in result do all(for n in v do j!=n od) od) then [j] else [] fi od in
+    result#:=temp fi od;
+    ##for v in result do if #v>0 then [v] else [] fi od
+
 {maximal parabolics among all real parabolics of G=G(R)
 not the same as real forms of maximal parabolics of G(C)
 }
-set maximal_real_parabolics(RealForm G)=
+set maximal_real_parabolics(RealForm G)=[KGPElt]:
+   let x=trivial(G).x in let theta=x.involution then sr=simple_roots(G) in
+   let S=[int]: ##for i:#sr do if is_imaginary(theta)(sr[i]) then [i] else [] fi od
+   in let list=classes_for_real_parabolics(G) then n=#list in
+   for i:n do let RS=S in for v in delete(list,i) do RS:=RS##v od; (RS,x) od
+{set maximal_real_parabolics(RealForm G)=
 {if G is (relatively) split this is easy}
-if G.is_relatively_split then 
- for i:G.ss_rank do KGPElt:(delete(#G.ss_rank,i),G.x_open) od
+if G.is_relatively_split then for i:G.ss_rank do KGPElt:(delete(#G.ss_rank,i),G.x_open) od
 else
 {in general: brute force listing and test of containment}
 let real_parabolics=all_real_parabolics(G) then
@@ -503,6 +520,7 @@ proper_real_parabolics=##for P in real_parabolics do if #P.S<G.ss_rank then [P] 
 ##for P in proper_real_parabolics do
  if any(for Q in proper_real_parabolics do  is_proper_subset(P.S,Q.S) od) then [] else [P] fi od
 fi
+}
 
 set all_parabolics_with_theta_stable_Levi (RealForm G) = [KGPElt]:
 ##for S in power_set(semisimple_rank(G))
