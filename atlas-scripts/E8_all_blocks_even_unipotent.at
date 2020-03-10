@@ -10,11 +10,10 @@
 <E8_small_block_cell_characters.at  {cell_characters_small=[[int]]}
 prints("loaded files")
 
-prints("Springer table already defined")
-{prints("Defining Springer table")
+{prints("Springer table already defined")}
+prints("Defining Springer table")
 set st=springer_table(simply_connected(E8))
 prints("defined Springer table")
-}
 
 set p=parameter(G.trivial.x, 2*rho(G),rho(G))
 set cell_data_tiny_block=([p],[([0],[int]:ones(112))])
@@ -30,13 +29,20 @@ prints("defined cell_data_small_block")
 
 set all_cell_data=[cell_data_big_block,cell_data_small_block,cell_data_tiny_block]
 
+set show([([Param],[(int,int,Param)])] data)=void:
+tabulate(
+##for (,x)@i in data do
+for list in x do 
+ let (b,c,p)=list in
+  [i.to_string,b.to_string,c.to_string,p.to_string, p.infinitesimal_character.to_string] od od
+)
+
 set run_E8_all_blocks()=
-let wp= weak_packets(st,orbits,all_cell_data) then
-(,b,)=wp in
+let wp= weak_packets(st,orbits,all_cell_data) in
 prints("Computed weak packets");
-show_short(b);
-show(b);
-show_detail(b);
-show_very_long(b);
+show(wp);
+{show_detail(wp);
+show_very_long(wp);}
 wp
+
 
