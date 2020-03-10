@@ -938,8 +938,10 @@ for i:#factors do
 od;
 orbits
 
+
 set minimal_real_nilpotent_orbits (RealForm G) = [RealNilpotent]:
 ##for orbit in minimal_orbits(G.root_datum) do real_nilpotent_orbits(orbit,G) od
+
 
 {show commands moved to nilpotent_centralizer.at}
 {

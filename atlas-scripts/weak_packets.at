@@ -242,14 +242,23 @@ st_int=springer_table(rd_int) then
 ()=prints("computing packet for:", O_check_int) in
 (st_int,O_check_int,all,gamma_final,permutation)
 
-{run over a set of dual orbits}
+{run over a set of dual orbits
+check if dual(O_check) intersects G(R)}
 set weak_packets([ComplexNilpotent] dual_orbits,RealForm G)=
-prints("Computing weak packets for ", #dual_orbits," dual orbits of ",G);
 [([([Param],[WCell])],[(int,int,Param)])]:
-for O in dual_orbits do
+let st=prints("Computing weak packets for ", #dual_orbits," dual orbits of ",G);
+springer_table(G) then
+rv=[([([Param],[WCell])],[(int,int,Param)])]:[] in
+for O_check in dual_orbits do
+ let O_0=st.dual_map_i(O_check) then  {O_0 might on group differing by isogeny}
+ O=orbit_by_diagram(G,O_0.diagram_normalized)  {get the orbit on the correct G} in
+ let ()=prints("Orbit by diagram: ", O) in
+ if =#real_nilpotent_orbits(O,G) then prints("Skipping dual orbit ", O_check, " (d(O_check) has no real forms for G)")
+ else
  prints(new_line,"Computing weak packet for orbit: ", O.root_datum, " ", O.H, " dim=", O.dim_nilpotent);
- weak_packet(O,G)
-od
+ rv#:=weak_packet(O_check,G)
+fi
+od;rv
 
 {given just a RealForm G, compute the dual orbits then compute
 all weak packets as you run over these dual orbits}
@@ -340,11 +349,6 @@ set weak_packets_pre(RealForm G)=
 weak_packets(G,cell_data(character_table(G),G))
 
 {------/precomputed cell trace version ----}
-
-{run over a set of dual orbits}
-set weak_packets([ComplexNilpotent] dual_orbits,RealForm G)=
-[([([Param],[WCell])],[(int,int,Param)])]:
-for O in dual_orbits do weak_packet(O,G) od
 
 {reporting functions}
 
