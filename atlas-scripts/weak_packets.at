@@ -256,7 +256,7 @@ for O_check in dual_orbits do
  let O_0=st.dual_map_i(O_check) then  {O_0 might on group differing by isogeny}
  O=orbit_by_diagram(G_orbits,O_0.diagram_normalized)  {get the orbit on the correct G} in
  let ()=prints("Orbit by diagram: ", O) in
- if =#real_nilpotent_orbits(O,G) then prints("Skipping dual orbit ", O_check, " (d(O_check) has no real forms for G)")
+ if =#real_nilpotent_orbits(O,G) then prints("Skipping dual orbit ", O_check, " (d(O_check) has no real forms for G)");rv#:=([],[])
  else
  prints(new_line,"Computing weak packet for orbit: ", O.root_datum, " ", O.H, " dim=", O.dim_nilpotent);
  rv#:=weak_packet(O_check,G)
