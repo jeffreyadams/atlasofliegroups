@@ -1462,9 +1462,15 @@ set print_extended_block = (Param,mat->):
   in (Param p, mat delta) void:
   let (block,types,L0,L1) = extended_block(p,delta)
   , G=p.real_form, parent_block=block_of(p)
-  then (l,r)=shape(types)
-  , indices =
-      let i=0 in for p in block do while parent_block[i]!=p do i+:=1 od; i od
+  then (l,r)=shape(types), pbs=#parent_block
+  then indices =
+      let i=0 in
+      for p in block
+      do for j:pbs from 1
+         do if parent_block[(i+j)%pbs]=p then i:=(i+j)%pbs; break fi
+	 od
+      ; i
+      od
   then wx=width(G.KGB_size-1), wp=width(#parent_block-1)
   , with_sign(int n) = string:
     if n<0 then "-"+(indices[minus_1-n]) else "+"+indices[n] fi
