@@ -2012,7 +2012,7 @@ void ext_block::complete_construction(const BitMap& fixed_points)
   for (weyl::Generator s=0; s<folded_rank; ++s)
     data[s].reserve(parent_nr.size()); // same for each |data[s]|.
 
-  for (BlockElt n=0; n<parent_nr.size(); ++n) // |n| is index in extrended block
+  for (BlockElt n=0; n<parent_nr.size(); ++n) // |n| is index in extended block
   {
     BlockElt z=parent_nr[n]; // |z| is index in parent block
     info.push_back(elt_info(z));
