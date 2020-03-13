@@ -120,12 +120,13 @@ std::ostream& param_block::print
   (std::ostream& strm, BlockElt z,bool as_invol_expr) const
 {
   const KGB& kgb = rc.kgb();
+  const auto gamma_rho = gamma()-rho(rc.rootDatum());
   unsigned int xwidth = ioutils::digits(highest_x,10ul);
   unsigned int rk = rootDatum().semisimpleRank();
 
   strm << (survives(z) ? '*' : ' ')
        << "(x=" << std::setw(xwidth) << x(z)
-       << ",lam_rho=" << std::setw(3*rk+1) << lambda_rho(z)
+       << ",gam_lam=" << std::setw(3*rk+4) << gamma_rho-lambda_rho(z)
        << ", nu=" << std::setw(3*rk+3) << nu(z)
        << ')' << std::setw(2) << "";
 
