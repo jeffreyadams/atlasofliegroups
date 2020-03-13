@@ -226,8 +226,10 @@ template<typename C> Matrix<C>::Matrix(unsigned int n) : base(n,n,C(0))
   It is assumed that all elements of |b| (possibly none) have size |n_rows|.
 */
 template<typename C>
-Matrix_base<C>::Matrix_base(const std::vector<Vector<C> >& b, unsigned int n_rows)
-  : d_rows(n_rows), d_columns(b.size()), d_data(d_rows*d_columns)
+  Matrix_base<C>::Matrix_base
+    (const std::vector<Vector<C> >& b, unsigned int n_rows)
+  : d_rows(n_rows), d_columns(b.size())
+  , d_data(d_rows*b.size()) // computed as |std::size_t| value
 {
   for (unsigned int j = 0; j<d_columns; ++j)
     set_column(j,b[j]);
@@ -243,7 +245,8 @@ Matrix_base<C>::Matrix_base(const std::vector<Vector<C> >& b, unsigned int n_row
 template<typename C>
   template<typename I> Matrix_base<C>::Matrix_base
     (I first, I last, unsigned int n_rows, tags::IteratorTag)
-  : d_rows(n_rows), d_columns(last-first), d_data(d_rows*d_columns)
+  : d_rows(n_rows), d_columns(last-first)
+  , d_data(static_cast<std::size_t>(d_rows)*d_columns)
 {
   I p=first;
   for (unsigned int j=0; j<d_columns; ++j,++p)

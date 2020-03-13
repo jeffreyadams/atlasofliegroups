@@ -161,9 +161,9 @@ template<typename C> class Matrix_base
   Matrix_base(): d_rows(0),d_columns(0),d_data() {}
 
   Matrix_base(unsigned int m, unsigned int n)
-    : d_rows(m),d_columns(n),d_data(m*n) {}
+    : d_rows(m),d_columns(n),d_data(static_cast<std::size_t>(m)*n) {}
   Matrix_base(unsigned int m, unsigned int n, const C& c)
-    : d_rows(m), d_columns(n), d_data(m*n,c) {}
+    : d_rows(m), d_columns(n), d_data(static_cast<std::size_t>(m)*n,c) {}
 
   Matrix_base (const std::vector<Vector<C> >& b,
 	       unsigned int n_rows); // with explicit #rows in case |b| empty
