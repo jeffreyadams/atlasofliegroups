@@ -88,25 +88,25 @@ weak_packets(G,G.dual_orbits,cell_and_character_data(character_table(G),G))
 
 {--------------------------}
 
-{
+
 <E8_big_block_parameters.at     {parameters_big: [Param]: big block}
 <E8_big_block_cell_parameter_numbers.at   {cells_big=[[int]]}
 <E8_big_block_cell_characters.at  {cell_characters_big=[[int]]}
-<E8_big_block_cells.at  {cells_big=([int],([([int],[(int,int)])]))}
-}
+<E8_big_block_cells.at  {E8_big_block_cells=[([int],[([int],[(int,int)])])]}
 
 
 <E8_small_block_parameters.at     {parameters_small: [Param]: small block}
 <E8_small_block_cell_parameter_numbers.at  {cells_small=[[int]]}
 <E8_small_block_cell_characters.at  {cell_characters_small=[[int]]}
-<E8_small_block_cells.at  {cells_small=([int],([([int],[(int,int)])]))}
+<E8_small_block_cells.at  {E8_small_block_cells=([int],([([int],[(int,int)])]))}
 prints("loaded files")
-{
+
 prints("Springer table already defined")
-{prints("Defining Springer table")
+prints("Defining Springer table")
 set st=springer_table(simply_connected(E8))
 prints("defined Springer table")
-}
+
+
 
 set irreducible_PS=parameter(G.x_open,null(8),rho(G))
 set cells_tiny=W_cells(irreducible_PS)
@@ -117,10 +117,10 @@ set cell_data_tiny_block=(([p],cells_tiny),[([0],[int]:ones(112))])
 set orbits=G.even_dual_orbits
 prints("defined even orbits")
 
-set cell_data_big_block=((parameters_big,cells_big),for i:#cells_big do (cells_big[i], cell_characters_big[i]) od)
+set cell_data_big_block=((parameters_big,E8_big_block_cells),for i:#cells_big do (cells_big[i], cell_characters_big[i]) od)
 prints("defined cell_data_big_block")
 
-set cell_data_small_block=((parameters_small,cells_small),for i:#cells_small do (cells_small[i], cell_characters_small[i]) od)
+set cell_data_small_block=((parameters_small,E8_small_block_cells),for i:#cells_small do (cells_small[i], cell_characters_small[i]) od)
 prints("defined cell_data_small_block")
 
 set all_cell_data=[cell_data_big_block,cell_data_small_block,cell_data_tiny_block]
