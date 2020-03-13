@@ -166,7 +166,7 @@ set parameters_given_AV_infinitesimal_character(
 SpringerTable st,
 ComplexNilpotent O,
 ratvec gamma,
-[([Param],[([int],[int])])]  cell_data
+[(([Param],[WCell]),[([int],[int])])]  cell_data
 {[Param]: list of parameters in block
  [([int] indices of parameters in cell,[int] character of cell)]
  }
@@ -176,9 +176,10 @@ let springer_O=st.springer(O) then
 ()=if cells_verbose then prints("given AV with infinitesimal character", new_line,"(precomputed cell character): ", gamma, new_line, "O=",O) fi in
 if cells_verbose then prints("given AV/gamma: st: ", st.root_datum, new_line, " O:", O,new_line," gamma:", gamma) fi;
 ##for i:#cell_data do  {i=block number}
- let (parameters,cells)=cell_data[i] in
-  ##for j:#cells do
-   let (cell_param_numbers,cell_character)=cells[j] then
+ let (parameters_and_cells,cell_characters)=cell_data[i] then
+ (parameters,cells)=parameters_and_cells in
+  ##for j:#cell_characters do
+   let (cell_param_numbers,cell_character)=cell_characters[j] then
     ()=if cells_verbose then prints("block ",i,"/cell", j, " of size ",#cell_param_numbers) fi then
     spec=special_character(st.ct,cell_character) in
     let ()=if cells_verbose then prints("spec: ", spec, " ", "springer_O: ", springer_O) fi in

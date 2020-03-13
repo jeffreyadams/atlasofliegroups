@@ -253,14 +253,18 @@ springer_table(G) then
 G_orbits=G.orbits then
 rv=[([([Param],[WCell])],[(int,int,Param)])]:[] in
 for O_check in dual_orbits do
- let O_0=st.dual_map_i(O_check) then  {O_0 might on group differing by isogeny}
- O=orbit_by_diagram(G_orbits,O_0.diagram_normalized)  {get the orbit on the correct G} in
+  let delta_check=^G.distinguished_involution  {distinguished involution on dual side} in
+  if not twist(delta_check,O_check)=O_check then
+   prints("Skipping orbit: dual orbit is not delta_check fixed");rv#:=([],[])
+  else let
+  O_0=st.dual_map_i(O_check) then  {O_0 might on group differing by isogeny}
+  O=orbit_by_diagram(G_orbits,O_0.diagram_normalized)  {get the orbit on the correct G} in
  let ()=prints("Orbit by diagram: ", O) in
  if =#real_nilpotent_orbits(O,G) then prints("Skipping dual orbit ", O_check, " (d(O_check) has no real forms for G)");rv#:=([],[])
  else
  prints(new_line,"Computing weak packet for orbit: ", O.root_datum, " ", O.H, " dim=", O.dim_nilpotent);
  rv#:=weak_packet(O_check,G)
-fi
+fi fi
 od;rv
 
 {given just a RealForm G, compute the dual orbits then compute
@@ -274,84 +278,6 @@ all weak packets as you run over these dual orbits}
 set weak_packets_even(RealForm G)=
 [([([Param],[WCell])],[(int,int,Param)])]:
 weak_packets(G.even_dual_orbits,G)
-
-{----precomputed cell trace version ----}
-
-{weak_packet:
- given: a RootDatum rd and an even orbit O_check for the dual,
- a SpringerTable for rd,
- "cell_data": precomputed cell characters
- compute weak packet using the precomputed cell traces
-} 
-set weak_packets(
-SpringerTable st,
-ComplexNilpotent O_check,
-[([Param],[([int],[int])])]  cell_data
-{[Param]: list of parameters in block
- [([int] indices of parameters in cell,[int] character of cell)]
- }
-)=([Param],[(int,int,Param)]):
-assert(is_locally_isomorphic(integrality_datum(O_check.root_datum.dual,O_check.H/2),st.root_datum),
- "root datum mismatch, probably not using the integrality datum for the orbit");
-let gamma_target=O_check.H/2 then
-()=if cells_verbose then
- prints("gamma_target:",gamma_target);
- prints("Computing weak packet for ", #cell_data, " blocks ",
- "dual orbit:",new_line, " dual root datum: ", O_check.root_datum,new_line, " diagram: ", O_check.diagram, new_line,
- " normalized diagram: ", O_check.diagram_normalized, new_line,
- " H: ", O_check.H, new_line,
- " dimension: ", O_check.dim_nilpotent)
-fi then
-()=prints("using precomputed parameters and cells ") then
-()=if cells_verbose then prints("inf. char.=",gamma_target) fi then
- O=st.dual_map_i(O_check) then
- ()=if cells_verbose then
-  prints("orbit:",new_line, " root datum: ", O.root_datum, new_line, " diagram: ", O.diagram, new_line,
-   " normalized diagram: ", O.diagram_normalized, new_line,
-   " H: ", O.H, new_line,
-   " dimension: ", O.dim_nilpotent)
-fi then
-sigma=st.springer(O) then
-()=if cells_verbose then prints("sigma=", sigma, " of dimension ",st.ct.dimension(sigma)) fi then
-wp=parameters_given_AV_infinitesimal_character(st,O,gamma_target,cell_data)
-in (parameters(wp),wp)
-
-{same as previous, running over a set of (even) orbits}
-set weak_packets(SpringerTable st,[ComplexNilpotent] dual_orbits,[([Param],[([int],[int])])]  cell_data)=
-[([Param],[(int,int,Param)])]:
-for O in dual_orbits do weak_packets(st,O,cell_data) od
-
-{compute SpringerTable also}
-set weak_packets(RealForm G,[ComplexNilpotent] dual_orbits,[([Param],[([int],[int])])]  cell_data)=
-[([Param],[(int,int,Param)])]:weak_packets(springer_table(G),dual_orbits,cell_data)
-
-{compute G.even_dual_orbits also}
-set weak_packets(
-RealForm G,[([Param],[([int],[int])])]  cell_data)=
-[([Param],[(int,int,Param)])]:weak_packets(springer_table(G),G.even_dual_orbits,cell_data)
-
-{prepare cell_data for input to weak_packets(st,O,cell_data)}
-set cell_data(CharacterTable ct,[Param] parameters)=
-[([Param],[([int],[int])])]:
-let bc=blocks_and_cells(parameters) then
-cells=[[int]]:[],
-characters=[[int]]:[] in
-for i:#bc do
-   let (parameters,cells)=bc[i] in
-   (parameters,for cell in cells do
-    let (params,)=cell in 
-    (params,ct.cell_character(cell))
-   od)
-od
-
-set cell_data(CharacterTable ct,RealForm G)=
-cell_data(ct,all_parameters_gamma(G,rho(G)))
-
-set weak_packets_pre(RealForm G)=
-[([Param],[(int,int,Param)])]:
-weak_packets(G,cell_data(character_table(G),G))
-
-{------/precomputed cell trace version ----}
 
 {reporting functions}
 
