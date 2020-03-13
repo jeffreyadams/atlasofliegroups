@@ -88,12 +88,12 @@ weak_packets(G,G.dual_orbits,cell_and_character_data(character_table(G),G))
 
 {--------------------------}
 
-
+{
 <E8_big_block_parameters.at     {parameters_big: [Param]: big block}
 <E8_big_block_cell_parameter_numbers.at   {cells_big=[[int]]}
 <E8_big_block_cell_characters.at  {cell_characters_big=[[int]]}
 <E8_big_block_cells.at  {cells_big=([int],([([int],[(int,int)])]))}
-
+}
 
 
 <E8_small_block_parameters.at     {parameters_small: [Param]: small block}
@@ -101,7 +101,7 @@ weak_packets(G,G.dual_orbits,cell_and_character_data(character_table(G),G))
 <E8_small_block_cell_characters.at  {cell_characters_small=[[int]]}
 <E8_small_block_cells.at  {cells_small=([int],([([int],[(int,int)])]))}
 prints("loaded files")
-
+{
 prints("Springer table already defined")
 {prints("Defining Springer table")
 set st=springer_table(simply_connected(E8))
