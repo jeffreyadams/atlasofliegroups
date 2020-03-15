@@ -7,84 +7,86 @@ bool: true for split groups, include extra information
 about conjectural relationship between size of weak packet
 and component group information
 }
-{CUT
+
 
 {Type A}
 {SL(n)}
 prints("SL(n,R)")
->"output/SL2R" void:weak_packet_report (SL(2,R))
->"output/SL3R" void:weak_packet_report (SL(3,R))
->"output/SL4R" void:weak_packet_report (SL(4,R))
+>"output/SL2R" void:weak_packet_report_ind (SL(2,R))
+>"output/SL3R" void:weak_packet_report_ind (SL(3,R))
+>"output/SL4R" void:weak_packet_report_ind (SL(4,R))
 
 {SU(p,q)}
 prints("SU(p,q)")
->"output/SU21" void:weak_packet_report (SU(2,1))
->"output/SU22" void:weak_packet_report (SU(2,2))
-{>"output/SU32" void:weak_packet_report (SU(3,2))}
+>"output/SU21" void:weak_packet_report_ind (SU(2,1))
+>"output/SU22" void:weak_packet_report_ind (SU(2,2))
+{>"output/SU32" void:weak_packet_report_ind (SU(3,2))}
 
 {SL(n,H)}
 prints("SL(n,H)")
->"output/SL2H" void:weak_packet_report (SL(2,H))
->"output/SL3H" void:weak_packet_report (SL(3,H))
+>"output/SL2H" void:weak_packet_report_ind (SL(2,H))
+>"output/SL3H" void:weak_packet_report_ind (SL(3,H))
 
 {SL(n,C)}
 prints("SL(n,C)")
->"output/SL2C" void:weak_packet_report (SL(2,C))
->"output/SL3C" void:weak_packet_report (SL(3,C))
->"output/SL4C" void:weak_packet_report (SL(4,C))
+>"output/SL2C" void:weak_packet_report_ind (SL(2,C))
+>"output/SL3C" void:weak_packet_report_ind (SL(3,C))
+>"output/SL4C" void:weak_packet_report_ind (SL(4,C))
 
 {type B}
 prints("Spin(p,q) type B")
->"output/Spin43" void:weak_packet_report (Spin(4,3))
->"output/Spin52" void:weak_packet_report (Spin(5,2))
->"output/Spin61" void:weak_packet_report (Spin(6,1))
+>"output/Spin43" void:weak_packet_report_ind (Spin(4,3))
+>"output/Spin52" void:weak_packet_report_ind (Spin(5,2))
+>"output/Spin61" void:weak_packet_report_ind (Spin(6,1))
 
 {type B complex}
 {prints("Spin(2n+1,C)")
->"output/Spin7C" void:weak_packet_report (complex(Spin(7)))}
+>"output/Spin7C" void:weak_packet_report_ind (complex(Spin(7)))}
 
 {type C}
 prints("Sp(2n,R)")
->"output/Sp4R" void:weak_packet_report (Sp(4,R))
->"output/Sp6R" void:weak_packet_report (Sp(6,R))
+>"output/Sp4R" void:weak_packet_report_ind (Sp(4,R))
+>"output/Sp6R" void:weak_packet_report_ind (Sp(6,R))
 
 prints("Sp(p,q)")
->"output/Sp11" void:weak_packet_report (Sp(1,1))
->"output/Sp12" void:weak_packet_report (Sp(1,2))
->"output/Sp22" void:weak_packet_report (Sp(2,2))
+>"output/Sp11" void:weak_packet_report_ind (Sp(1,1))
+>"output/Sp12" void:weak_packet_report_ind (Sp(1,2))
+>"output/Sp22" void:weak_packet_report_ind (Sp(2,2))
 
 {type C complex}
 prints("Sp(2n,C)")
->"output/Sp4C" void:weak_packet_report (Sp(4,C))
-{>"output/Sp6C" void:weak_packet_report (Sp(6,C))}
+>"output/Sp4C" void:weak_packet_report_ind (Sp(4,C))
+{>"output/Sp6C" void:weak_packet_report_ind (Sp(6,C))}
 
 {type D}
 prints("Spin(p,q) type D")
->"output/Spin44" void:weak_packet_report (Spin(4,4))
->"output/Spin53" void:weak_packet_report (Spin(5,3))
->"output/Spin62" void:weak_packet_report (Spin(6,2))
->"output/Spin71" void:weak_packet_report (Spin(7,1))
+>"output/Spin44" void:weak_packet_report_ind (Spin(4,4))
+>"output/Spin53" void:weak_packet_report_ind (Spin(5,3))
+>"output/Spin62" void:weak_packet_report_ind (Spin(6,2))
+>"output/Spin71" void:weak_packet_report_ind (Spin(7,1))
 
 prints("SO*")
->"output/SOstar8" void:weak_packet_report (SOstar(8))
+>"output/SOstar8" void:weak_packet_report_ind (SOstar(8))
 
 prints("G2")
->"output/G2s" void:weak_packet_report (G2_s)
+>"output/G2s" void:weak_packet_report_ind (G2_s)
 
 prints("F4")
->"output/F4s" void:weak_packet_report (F4_s)
->"output/F4B4" void:weak_packet_report (F4_B4)
-/CUT}
+>"output/F4s" void:weak_packet_report_ind (F4_s)
+>"output/F4B4" void:weak_packet_report_ind (F4_B4)
+
+{CUT
 
 prints("E6")
->"output/E6c" void:weak_packet_report (E6_c)
->"output/E6q" void:weak_packet_report (E6_q)
->"output/E6h" void:weak_packet_report (E6_h)
->"output/E6s" void:weak_packet_report (E6_s)
->"output/E6F4" void:weak_packet_report (E6_F4)
+>"output/E6c" void:weak_packet_report_ind (E6_c)
+>"output/E6q" void:weak_packet_report_ind (E6_q)
+>"output/E6h" void:weak_packet_report_ind (E6_h)
+>"output/E6s" void:weak_packet_report_ind (E6_s)
+>"output/E6F4" void:weak_packet_report_ind (E6_F4)
 
 prints("E7")
->"output/E7h" void:weak_packet_report (E7_h)
->"output/E7q" void:weak_packet_report (E7_q)
-{>"output/E7s" void:weak_packet_report (E7_s)}
+>"output/E7h" void:weak_packet_report_ind (E7_h)
+>"output/E7q" void:weak_packet_report_ind (E7_q)
+{>"output/E7s" void:weak_packet_report_ind (E7_s)}
 
+/CUT}

@@ -248,6 +248,9 @@ st_int=springer_table(rd_int) then
 check if dual(O_check) intersects G(R)}
 set weak_packets([ComplexNilpotent] dual_orbits,RealForm G)=
 [([([Param],[WCell])],[(int,int,Param)])]:
+if is_abelian(G) then [(blocks_and_cells(G.trivial),[(0,0,G.trivial)])]
+{avoid constructing SpringerTable for torus} else
+[([([Param],[WCell])],[(int,int,Param)])]:
 let st=prints("Computing weak packets for ", #dual_orbits," dual orbits of ",G);
 springer_table(G) then
 G_orbits=G.orbits then
@@ -266,6 +269,7 @@ for O_check in dual_orbits do
  rv#:=weak_packet(O_check,G)
 fi fi
 od;rv
+fi
 
 {given just a RealForm G, compute the dual orbits then compute
 all weak packets as you run over these dual orbits}
@@ -653,7 +657,7 @@ show_nilpotent_orbits(orbits);prints();
 show_short(wp);
 show(wp);
 show_long(wp,ind);
-if G.is_relatively_split then 
+if G.is_relatively_split then
  let wp_sc = ##for weakpacket@i in wp do
  let O=orbits[i] in  if #O.component_datum.orders=1 then [weakpacket] else [] fi od in
  test_conjecture_report(wp_sc,G) fi;
