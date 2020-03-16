@@ -8,7 +8,7 @@ about conjectural relationship between size of weak packet
 and component group information
 }
 
-
+{
 {Type A}
 {SL(n)}
 prints("SL(n,R)")
@@ -37,7 +37,8 @@ prints("SL(n,C)")
 prints("Spin(p,q) type B")
 >"output/Spin43" void:weak_packet_report_ind (Spin(4,3))
 >"output/Spin52" void:weak_packet_report_ind (Spin(5,2))
->"output/Spin61" void:weak_packet_report_ind (Spin(6,1))
+
+>"output/Spin61" void:weak_packet_report_ind (Spin(6,1))}
 
 {type B complex}
 {prints("Spin(2n+1,C)")

@@ -79,7 +79,7 @@ where indices_i is the list of simple roots of rd in rd_i
 set split_last_factor(RootDatum rd)=(RootDatum,RootDatum,[[int]]):
 let factors=simple_factors(rd) then
 rv=factors[0].derived then
-()= for i:#factors-2 from 1 do prints(i);rv*:=factors[i].derived od in
+()= for i:#factors-2 from 1 do rv*:=factors[i].derived od in
 (rv,factors~[0].derived, [##for i:#factors-1 do simple_factor_indices(rd,i) od, simple_factor_indices(rd,#factors-1)])
 
 {tensor product of springer tables
@@ -134,6 +134,7 @@ not the same as rd.dual}
  tensor these two to get dual_map_i(O_check)
 }
 let diagram=O_check.diagram_normalized then
+{()=prints("diagram: ", diagram) then}
 diagram_1=[vec]:for i:#diagram-1 do diagram[i] od then
 diagram_2=[vec]:[diagram~[0]] then
 {()=prints("diagram_1: ", diagram_1) then
