@@ -53,6 +53,13 @@ wp=parameters_given_AV_infinitesimal_character(st,O,gamma_target,cell_and_charac
 cell_data=for (d,) in cell_and_character_data do d od in
 (cell_data,wp)
 
+set weak_packet(
+SpringerTable st,
+ComplexNilpotent O_check,
+(([Param],[WCell ]),[([int],[int])]) cell_and_character_data)=
+([([Param],[WCell])],[(int,int,Param)]):
+weak_packet(st,O_check,[cell_and_character_data])
+
 {same as previous, running over a set of orbits, use precomputed version iff the orbit is even}
 set weak_packets(
 SpringerTable st,
@@ -67,6 +74,12 @@ for O_check in dual_orbits do
   weak_packet(O_check,G)
  fi
 od
+
+set weak_packets(
+SpringerTable st,
+[ComplexNilpotent] dual_orbits,
+(([Param],[WCell]),[([int],[int])]) cell_and_character_data)=[([([Param],[WCell])],[(int,int,Param)])]:
+weak_packets(st,dual_orbits,[cell_and_character_data])
 
 {weak_packets(st,data):
  run over G.root_datum.dual_orbits (G is included in data)
@@ -84,6 +97,11 @@ set weak_packets(RealForm G,[ComplexNilpotent] dual_orbits,
 [(([Param],[WCell]),[([int],[int])])] cell_and_character_data)=
 [([([Param],[WCell])],[(int,int,Param)])]:
 weak_packets(springer_table(G),dual_orbits,cell_and_character_data)
+
+set weak_packetsx(RealForm G,[ComplexNilpotent] dual_orbits,
+(([Param],[WCell]),[([int],[int])]) cell_and_character_data)=
+[([([Param],[WCell])],[(int,int,Param)])]:
+weak_packets(springer_table(G),dual_orbits,[cell_and_character_data])
 
 {prepare cell_data for input to weak_packets(st,O,cell_data)}
 set cell_and_character_data(CharacterTable ct,[Param] parameters)=
@@ -143,7 +161,7 @@ prints("defined cell_and_characters_big_block")
 set cell_and_characters_small_block=((parameters_small,E8_small_block_cells),for i:#cells_small do (cells_small[i], cell_characters_small[i]) od)
 prints("defined cell_and_characters_small_block")
 
-set all_cell_and_character_=[cell_and_characters_big_block,cell_and_characters_small_block,cell_and_characters_tiny_block]
+set cell_and_character_data=[cell_and_characters_big_block,cell_and_characters_small_block,cell_and_characters_tiny_block]
 
 {comment out either the first line or lines 2-4}
 prints("Springer table already defined")
