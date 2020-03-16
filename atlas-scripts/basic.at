@@ -322,6 +322,9 @@ set choices_from ([int] S, int k) = [[int]]: { all $k$-subsets of $S$ }
 {. number of times n occurs in [int] S .}
 set multiplicity (int n, [int] S) = int: count(for x in S do x=n od)
 
+{add zeros to make total length =N}
+set pad([int] v,int N)=v##null(N-#v)
+
 {                               Matrices                                }
 
 { matrix defined by its dimension and expression for general entry }

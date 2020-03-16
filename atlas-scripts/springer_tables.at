@@ -51,11 +51,6 @@ is_special(st,O)
 set special_orbits(SpringerTable st)=[ComplexNilpotent]:
 ##for O in st.ct.root_datum.orbits do if st.is_special(O) then [O] else [] fi od
 
-
-{
-set is_special_representation(CharacterTable ct,int i,(ComplexNilpotent->ComplexNilpotent) d)=
-}
-
 {complex nilpotent of product group}
 set tensor(ComplexNilpotent O1,ComplexNilpotent O2)=ComplexNilpotent:
 let (rd1,(),H1)=O1,(rd2,(),H2)=O2 in (rd1*rd2,(),H1##H2)
@@ -66,16 +61,17 @@ H2=O.H[rd2.rank~:] then
 O1=(rd1,(),H1), O2=(rd2,(),H2) in
 (O1,O2)
 
-set factor_new(ComplexNilpotent O,RootDatum rd1,RootDatum rd2)=
+{
+set factor_new(ComplexNilpotent O,RootDatum rd1,RootDatum rd2)=(
 let diag_1=O.H*rd1.simple_roots then
 diag_2=O.H*rd2.simple_roots in (diag_1,diag_2)
+}
 
 {write rd.derived as rd_1 x rd_2 where
 rd_1 is semisimple, rd_2 is simple
 also return [indices_1,indices_2]
 where indices_i is the list of simple roots of rd in rd_i
 }
-
 set split_last_factor(RootDatum rd)=(RootDatum,RootDatum,[[int]]):
 let factors=simple_factors(rd) then
 rv=factors[0].derived then
@@ -147,7 +143,7 @@ O2_check=dual_orbit_by_diagram(st2,diagram_2) then
  tensor(O1,O2)
 in (ct,orbits,dual_map,dual_map_i,springer)
 
-set show(SpringerTable st)=
+set show(SpringerTable st)=void:
 let orbits=st.root_datum.orbits in
 tabulate(["i","O","d(O)","dd(O)","pi","special"] #
  for O@i in orbits do
