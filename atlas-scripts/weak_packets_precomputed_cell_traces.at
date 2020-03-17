@@ -132,7 +132,7 @@ weak_packets(st,G,dual_orbits,data)
 weak_packets(st,G,data)
 }
 {comment this out to avoid loading except when necessary:}
-{CUT
+{CUT}
 
 <E8_big_block_parameters.at     {parameters_big: [Param]: big block}
 <E8_big_block_cell_parameter_numbers.at   {cells_big=[[int]]}
@@ -152,8 +152,10 @@ set cells_tiny=W_cells(irreducible_PS)
 set p=parameter(G.trivial.x, 2*rho(G),rho(G))
 set cell_and_characters_tiny_block=(([p],cells_tiny),[([0],[int]:ones(112))])
 
-set orbits=G.even_dual_orbits
-prints("defined even orbits")
+set E8_dual_orbits=G.dual_orbits
+prints("defined dual orbits")
+set E8_dual_orbits_even=G.even_dual_orbits
+prints("defined dual even orbits")
 
 set cell_and_characters_big_block=((parameters_big,E8_big_block_cells),for i:#cells_big do (cells_big[i], cell_characters_big[i]) od)
 prints("defined cell_and_characters_big_block")
@@ -161,17 +163,22 @@ prints("defined cell_and_characters_big_block")
 set cell_and_characters_small_block=((parameters_small,E8_small_block_cells),for i:#cells_small do (cells_small[i], cell_characters_small[i]) od)
 prints("defined cell_and_characters_small_block")
 
-set cell_and_character_data=[cell_and_characters_big_block,cell_and_characters_small_block,cell_and_characters_tiny_block]
+set E8_cell_and_character_data=[cell_and_characters_big_block,cell_and_characters_small_block,cell_and_characters_tiny_block]
 
 {comment out either the first line or lines 2-4}
-prints("Springer table already defined")
-{
+{prints("Springer table already defined")}
 prints("Defining Springer table")
-set st=springer_table(simply_connected(E8))
+set E8_st=springer_table(simply_connected(E8))
 prints("defined Springer table")
-}
 
-/CUT}
+
+
+{set wp=weak_packets(st_E8,E8_dual_orbits,E8_cell_and_character_data)}
+
+
+
+
+{/CUT}
 
 {assuming the lines between CUT and /CUT have been loaded,
 then weak_packets(st,orbits,all_cell_data) will 
