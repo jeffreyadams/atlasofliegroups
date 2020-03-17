@@ -22,12 +22,12 @@ for G=E8, don't compute cell_and_character data this way, see below
 set real_form([(([Param],[WCell]),[([int],[int])])] data)=RealForm:
 let ((a,),)=data[0] in a[0].real_form
 
-set weak_packet(
-SpringerTable st,
+set weak_packet_int(
+SpringerTable st_int,
 ComplexNilpotent O_check,
 [(([Param],[WCell]),[([int],[int])])] cell_and_character_data)=
 ([([Param],[WCell])],[(int,int,Param)]):
-assert(is_locally_isomorphic(integrality_datum(O_check.root_datum.dual,O_check.H/2),st.root_datum),
+assert(is_locally_isomorphic(integrality_datum(O_check.root_datum.dual,O_check.H/2),st_int.root_datum),
  "root datum mismatch, probably not using the integrality datum for the orbit");
 let gamma_target=O_check.H/2 then
 ()=if cells_verbose then
@@ -40,25 +40,25 @@ let gamma_target=O_check.H/2 then
 fi then
 ()=prints("using precomputed parameters and cells ") then
 ()=if cells_verbose then prints("inf. char.=",gamma_target) fi then
- O=st.dual_map_i(O_check) then
+ O=st_int.dual_map_i(O_check) then
  ()=if cells_verbose then
   prints("orbit:",new_line, " root datum: ", O.root_datum, new_line, " diagram: ", O.diagram, new_line,
    " normalized diagram: ", O.diagram_normalized, new_line,
    " H: ", O.H, new_line,
    " dimension: ", O.dim_nilpotent)
 fi then
-sigma=st.springer(O) then
-()=if cells_verbose then prints("sigma=", sigma, " of dimension ",st.ct.dimension(sigma)) fi then
-wp=parameters_given_AV_infinitesimal_character(st,O,gamma_target,cell_and_character_data) then
+sigma=st_int.springer(O) then
+()=if cells_verbose then prints("sigma=", sigma, " of dimension ",st_int.ct.dimension(sigma)) fi then
+wp=parameters_given_AV_infinitesimal_character(st_int,O,gamma_target,cell_and_character_data) then
 cell_data=for (d,) in cell_and_character_data do d od in
 (cell_data,wp)
 
-set weak_packet(
-SpringerTable st,
+set weak_packet_int(
+SpringerTable st_int,
 ComplexNilpotent O_check,
 (([Param],[WCell ]),[([int],[int])]) cell_and_character_data)=
 ([([Param],[WCell])],[(int,int,Param)]):
-weak_packet(st,O_check,[cell_and_character_data])
+weak_packet_int(st_int,O_check,[cell_and_character_data])
 
 {same as previous, running over a set of orbits, use precomputed version iff the orbit is even}
 set weak_packets(
@@ -66,12 +66,11 @@ SpringerTable st,
 [ComplexNilpotent] dual_orbits,
 [(([Param],[WCell]),[([int],[int])])] cell_and_character_data)=[([([Param],[WCell])],[(int,int,Param)])]:
 for O_check in dual_orbits do
- if O_check.is_even then weak_packet(st,O_check,cell_and_character_data)
+ if O_check.is_even then weak_packet_int(st,O_check,cell_and_character_data)
   else
-  let (d,)=cell_and_character_data[0] then
+  let (d,)=prints("odd case");cell_and_character_data[0] then
   (params,)=d then
-  G=params[0].real_form in
-  weak_packet(O_check,G)
+  G=params[0].real_form in weak_packet(O_check,G)
  fi
 od
 
@@ -98,7 +97,7 @@ set weak_packets(RealForm G,[ComplexNilpotent] dual_orbits,
 [([([Param],[WCell])],[(int,int,Param)])]:
 weak_packets(springer_table(G),dual_orbits,cell_and_character_data)
 
-set weak_packetsx(RealForm G,[ComplexNilpotent] dual_orbits,
+set weak_packets(RealForm G,[ComplexNilpotent] dual_orbits,
 (([Param],[WCell]),[([int],[int])]) cell_and_character_data)=
 [([([Param],[WCell])],[(int,int,Param)])]:
 weak_packets(springer_table(G),dual_orbits,[cell_and_character_data])
@@ -132,7 +131,7 @@ weak_packets(st,G,dual_orbits,data)
 weak_packets(st,G,data)
 }
 {comment this out to avoid loading except when necessary:}
-{CUT}
+{CUT
 
 <E8_big_block_parameters.at     {parameters_big: [Param]: big block}
 <E8_big_block_cell_parameter_numbers.at   {cells_big=[[int]]}
@@ -166,7 +165,7 @@ prints("defined cell_and_characters_small_block")
 set E8_cell_and_character_data=[cell_and_characters_big_block,cell_and_characters_small_block,cell_and_characters_tiny_block]
 
 {comment out either the first line or lines 2-4}
-{prints("Springer table already defined")}
+prints("Springer table already defined")
 prints("Defining Springer table")
 set E8_st=springer_table(simply_connected(E8))
 prints("defined Springer table")
@@ -178,7 +177,7 @@ prints("defined Springer table")
 
 
 
-{/CUT}
+/CUT}
 
 {assuming the lines between CUT and /CUT have been loaded,
 then weak_packets(st,orbits,all_cell_data) will 
@@ -186,24 +185,5 @@ compute all weak packets for E8_s
 weak_packets(st,orbits,cell_and_characters_*_block)
 where *=tiny,small,or big
 compute the weak packets coming from these blocks
-}
-
-{old code, to be deleted:}
-{
-set show([([Param],[(int,int,Param)])] data)=void:
-tabulate(
-##for (,x)@i in data do
-for list in x do 
- let (b,c,p)=list in
-  [i.to_string,b.to_string,c.to_string,p.to_string, p.infinitesimal_character.to_string] od od
-)
-
-set run_E8_all_blocks()=
-let wp= weak_packets(st,orbits,all_cell_data) in
-prints("Computed weak packets");
-show(wp);
-{show_detail(wp);
-show_very_long(wp);}
-wp
 }
 
