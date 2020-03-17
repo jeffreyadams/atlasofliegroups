@@ -700,7 +700,8 @@ bool same_standard_reps (const paramin& E, const paramin& F)
 	("Comparing extended parameters from different inner classes");
     if (E.delta()!=F.delta() or E.ctxt.g_rho_check()!=F.ctxt.g_rho_check())
       return false;
-  } // otherwise there might still be a match, so fall through
+    // otherwise (contexts differ, but agree on vitals), match could still occur
+  } // so fall through
   return E.theta()==F.theta()
     and in_R_image(E.theta()+1,E.l-F.l)
     and in_L_image(E.gamma_lambda.integer_diff<int>(F.gamma_lambda),E.theta()-1);
@@ -813,6 +814,22 @@ bool same_sign (const paramin& E, const paramin& F)
   assert(i_exp%2==0);
   int n1_exp =
     (F.l-E.l).dot(E.tau) + (E.gamma_lambda-F.gamma_lambda).dot(F.t);
+  return ((i_exp/2+n1_exp)%2==0)!=(E.is_flipped()!=F.is_flipped());
+}
+
+// a variation to use when $\nu$ has been scaled
+bool same_sign (const paramin& E, const RatWeight& gamma_E,
+		const paramin& F, const RatWeight& gamma_F)
+{
+  const WeightInvolution& delta = E.delta();
+  Weight kappa1=E.tau, kappa2=F.tau;
+  kappa1 -= delta*kappa1;
+  kappa2 -= delta*kappa2;
+  int i_exp = E.l.dot(kappa1) - F.l.dot(kappa2);
+  assert(i_exp%2==0);
+  int n1_exp =
+    (F.l-E.l).dot(E.tau) +
+    (E.gamma_lambda-gamma_E-F.gamma_lambda+gamma_F).dot(F.t);
   return ((i_exp/2+n1_exp)%2==0)!=(E.is_flipped()!=F.is_flipped());
 }
 
@@ -1757,27 +1774,33 @@ StandardRepr scaled_extended_dominant // result will have its |gamma()| dominant
 (const Rep_context rc,
  const StandardRepr& sr, const WeightInvolution& delta,
  Rational factor, // |z.nu()| is scaled by |factor| first
- bool& flipped // records whether an extended flip was recorded
+ bool& flipped // records whether a net extended flip was computed
  )
 {
-  bool pre_flip = false;
   const RootDatum& rd=rc.rootDatum(); const KGB& kgb = rc.kgb();
+  context_minimal ini_ctxt(rc,delta, SubSystem::integral(rd,sr.gamma()));
   const ext_gens orbits = rootdata::fold_orbits(rd,delta);
   assert(is_dominant_ratweight(rd,sr.gamma())); // dominant
   assert(((delta-1)*sr.gamma().numerator()).isZero()); // $\delta$-fixed
 
   // first approximation to result is scaled input
   auto scaled_sr = rc.sr(sr.x(),rc.lambda_rho(sr),sr.gamma()*factor);
-  // it will be convenent to have a working copy of the numerator of |gamma|
-  RatWeight gamma = scaled_sr.gamma(); // a working copy
 
   // to get the (implicit) choice of |lambda| adapted to |block_minimal|
   // it is essential to modularly reduce |scaled_sr.gamma()| here
   auto srm = repr::StandardReprMod::mod_reduce(rc, scaled_sr);
-  // class |param| cannot change its |gamma|, so work on separate components
+
+  // class |paramin| cannot change its |ctxt|, so extract separate components
   RatWeight gam_lam; Weight tau; Coweight l,t;
-  // initialise without building a |context| (as |result.gamma()| undominant):
-  set_default_extended(rc,srm,delta, gam_lam,tau,l,t);
+  bool pre_flip;
+  { paramin E(ini_ctxt,repr::StandardReprMod::mod_reduce(rc,sr));
+    paramin F(ini_ctxt,srm);
+    gam_lam=F.gamma_lambda; tau=F.tau; l=F.l; t=F.t;
+    pre_flip = not same_sign(E,sr.gamma(),F,scaled_sr.gamma());
+  }
+
+  // it will be convenent to have a working copy of the numerator of |gamma|
+  RatWeight gamma = scaled_sr.gamma(); // a working copy
   KGBElt x = scaled_sr.x(); // another variable, for convenience
 
   int_Vector r_g_eval (rd.semisimpleRank()); // simple root evaluations at |-gr|
@@ -1808,7 +1831,7 @@ StandardRepr scaled_extended_dominant // result will have its |gamma()| dominant
     while(i<orbits.size()); // continue until above |for| runs to completion
   } // end of transformation of extended parameter components
 
-  // since |gamma| may have changed, we only now build our |context_minimal|
+  // since |gamma| may have changed, we now build a new |context_minimal|
   context_minimal ctxt(rc,delta, SubSystem::integral(rd,gamma));
   // now ensure that |E| gets matching |gamma| and |theta| (for flipped test)
   paramin E(ctxt,kgb.involution(x),gam_lam,tau,l,t,pre_flip);
