@@ -704,3 +704,118 @@ let rf=[RealForm]:[] then
 m=weak_packets(groups) in
 prints(new_line,"Summary of weak packets:");for wp@i in m do
 prints("------------------------------------------",new_line,rf[i]); show(wp) od
+
+
+
+{-----------------moved from thta_induced_unipotents.at------}
+
+{allow a central shift}
+set weak_packet(ComplexNilpotent O_check,RealForm G,ratvec shift)=([([Param],[WCell])],[(int,int,Param)]):
+let ()=prints("Computing weak packets for ",G) then
+delta_check=^G.distinguished_involution  {distinguished involution on dual side} in
+if not twist(delta_check,O_check)=O_check then
+prints("Skipping orbit: dual orbit is not delta_check fixed");([],[]) elif
+is_abelian(G) then
+ let characters=all_parameters_gamma(G,shift) in
+ (##for p in characters do blocks_and_cells(p) od,for p@i in characters do (i,0,p) od)
+else
+let gamma_final=O_check.H/2+shift then
+gamma=gamma_final+2*rho(G) then  {this is the target infinitesimal character, need to pass it}
+all=all_parameters_gamma(G,gamma) then
+rd=O_check.root_datum.dual then
+()=prints("gamma:",gamma) then
+()=prints("gamma_final:",gamma_final) then
+rd_int=integrality_datum(rd,gamma) then
+st_int=springer_table(rd_int) then
+()=prints("integral data: st_int") then
+()=prints("rd_int:",rd_int, new_line, "st_int.rd: ", st_int.root_datum) then
+(O_check_int,permutation)=integral_descent(st_int,O_check) then
+()=prints("O_check_int:", O_check_int) then
+()=prints("permutation: ", permutation) then
+()=prints("computing packet for:", O_check_int) then
+(bc,wp)=weak_packet_int(st_int,O_check_int,all,gamma_final,permutation)
+in
+if G.is_split and =#parameters(wp) then prints("ERROR: , empty packet for split group") fi;
+(bc,wp)
+fi
+
+{allow a central shift}
+{run over a set of dual orbits
+check if dual(O_check) intersects \g^(-theta)}
+set weak_packets([ComplexNilpotent] dual_orbits,RealForm G,ratvec shift)=
+[([([Param],[WCell])],[(int,int,Param)])]:
+{avoid constructing SpringerTable for torus}
+if is_abelian(G) then
+ let p=all_parameters_gamma(G,shift)[0] in
+[(blocks_and_cells(p),[(0,0,p)])] else
+[([([Param],[WCell])],[(int,int,Param)])]:
+let st=prints("Computing weak packets for ", #dual_orbits," dual orbits of ",G);
+springer_table(G) then
+G_orbits=G.orbits then
+rv=[([([Param],[WCell])],[(int,int,Param)])]:[] in
+for O_check in dual_orbits do
+  let delta_check=^G.distinguished_involution  {distinguished involution on dual side} in
+  if not twist(delta_check,O_check)=O_check then
+   prints("Skipping orbit: dual orbit is not delta_check fixed");rv#:=([],[])
+  else let
+  O_0=st.dual_map_i(O_check) then  {O_0 might on group differing by isogeny}
+  O=orbit_by_diagram(G_orbits,O_0.diagram_normalized)  {get the orbit on the correct G} in
+ let ()=prints("Orbit by diagram: ", O) in
+ if =#real_nilpotent_orbits(O,G) then prints("Skipping dual orbit ", O_check, " (d(O_check) has no real forms for G)");rv#:=([],[])
+ else
+ prints(new_line,"Computing weak packet for orbit: ", O_check.root_datum, " ", O_check.H, " dim=", O_check.dim_nilpotent);
+ rv#:=weak_packet(O_check,G,shift)
+fi fi
+od;rv
+fi
+
+{allow a central shift}
+set unipotent_representations(RealForm G,ratvec shift)=[Param]:parameters(weak_packets(G.dual_orbits,G,shift))
+set unipotents(RealForm G,ratvec shift)=[Param]:unipotent_representations(G,shift)
+
+set theta_induced_unipotents(RealForm G)=[Param]:
+remove_duplicates(
+##for P in maximal_theta_parabolics(G) do
+ ##for p in unipotent_representations(P.Levi,-rho_u(P)) do
+  let ()=prints("inducing: ", p.real_form,  " ", p) in
+  monomials(theta_induce_irreducible(p,G))
+ od
+od)
+
+
+set theta_induced_unipotents_long(RealForm G)=([Param],[Param],[Param]):
+let ind=theta_induced_unipotents(G) then
+all=unipotents(G) in
+if not is_subset(ind,all) then prints("WARNING: not a subset") fi;
+let comp=complement(ind,all) in
+prints("#unipotents: ", #all,new_line, "#induced unipotents: ", #ind, new_line,
+"#non-induced: ", #comp);
+(ind,all,comp)
+
+set all_induced_unipotents_long(RealForm G)=
+let real_ind=induced_unipotents(G) then
+theta_ind=theta_induced_unipotents(G) then
+all_ind=remove_duplicates(real_ind##theta_ind) then
+all=unipotents(G) in
+if not is_subset(all_ind,all) then prints("WARNING: not a subset") fi;
+let comp=complement(all_ind,all) in
+prints("#unipotents: ",
+#all,new_line,
+"#real induced unipotents: ", #real_ind,new_line,
+"#theta induced unipotents: ", #theta_ind,new_line,
+"#all induced unipotents: ", #all_ind,new_line,
+"#non-induced: ", #comp);
+(real_ind,theta_ind,all_ind,all,comp)
+
+set show([Param] real_ind,[Param] theta_ind,[Param] all_ind,[Param] unipotents,[Param] non_ind)=void:
+prints(new_line,"real induced: ", #real_ind);
+for p in real_ind do prints(p, " ", p.infinitesimal_character) od;
+prints(new_line,"theta induced: ", #theta_ind);
+for p in theta_ind do prints(p, " ", p.infinitesimal_character) od;
+prints(new_line,"all induced: ", #all_ind);
+for p in all_ind do prints(p, " ", p.infinitesimal_character) od;
+prints(new_line,"unipotents : ", #unipotents);
+for p in unipotents do prints(p, " ", p.infinitesimal_character) od;
+prints(new_line,"non induced: ", #non_ind);
+for p in non_ind do prints(p, " ", p.infinitesimal_character) od
+
