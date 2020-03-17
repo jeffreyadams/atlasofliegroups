@@ -74,6 +74,17 @@ for O_check in dual_orbits do
  fi
 od
 
+set weak_packet(SpringerTable st,ComplexNilpotent O_check,
+[(([Param],[WCell]),[([int],[int])])] cell_and_character_data)=([([Param],[WCell])],[(int,int,Param)]):
+ if O_check.is_even then weak_packet_int(st,O_check,cell_and_character_data)
+  else
+  let (d,)=prints("odd case");cell_and_character_data[0] then
+  (params,)=d then
+  G=params[0].real_form in weak_packet(O_check,G)
+ fi
+
+
+
 set weak_packets(
 SpringerTable st,
 [ComplexNilpotent] dual_orbits,
