@@ -117,7 +117,7 @@ fi  then
  (st,O,blocks_and_cells,gamma_target)
 
 {call weak_packet(st,O_check,G,params,gamma_target):
- set params=all_paramaeters_gamma(G,O_check.H/2+2*rho(G)) and gamma_target=O.H/2
+ set params=all_parameters_gamma(G,O_check.H/2+2*rho(G)) and gamma_target=O.H/2
 }
 set weak_packet(SpringerTable st,ComplexNilpotent O_check,RealForm G)=[(int,int,Param)]:
 if cells_verbose then
