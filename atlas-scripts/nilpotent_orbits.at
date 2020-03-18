@@ -51,6 +51,7 @@ let (,perm)=Cartan_matrix_type(O.root_datum) then
 P=permutation_matrix(perm) in
 P*diagram(O)
 
+{diagram_normalized is [[int]] to allow for multiple simple factors}
 set diagram_normalized(ComplexNilpotent O)=[[int]]:
 let H=dominant(O.H,O.root_datum) then 
 factors=simple_factors(O.root_datum) in
@@ -282,7 +283,7 @@ set tau_containing (Block B,[int] P) = [int]:
 { because element(B,i) returns (x,y), so this makes is_Aq(element(B,i)) work: }
 { set is_Aq(KGBElt x,KGBElt y) = is_Aq(parameter(x,y,choose_gamma(x,y))) }
 set is_Aq ((KGBElt x,KGBElt y)) = bool:
-   is_coh_ind_from_finite_dimensional (parameter(x,y,choose_gamma(x,y)))
+   is_coh_ind_from_finite_dimensional(parameter(x,y,choose_gamma(x,y)))
 
 set is_Aq_cell (Block B,[int] C) = bool:
    any(#C,(int i)bool: is_Aq(element(B,C[i])))
@@ -654,7 +655,8 @@ set Kac_diagrams_with_centralizer (RootDatum rd, RootDatum L,int m)=[([int],Weyl
    if nilpotent_verbose then prints("crude answer:", #crude, "  final result:", #rv)
    fi;rv
 
-set order_of_center (RootDatum rd)=#Kac_classes_given_order(rd,1)
+{order_center is defined in center.at}
+{set order_of_center (RootDatum rd)=#Kac_classes_given_order(rd,1)}
 
 set Kac_triples_simple (RootDatum rd,RootDatum L, int c)=[(int,[int],ratvec,WeylElt)]:
    let d=d_L(rd,L) in
@@ -662,7 +664,7 @@ set Kac_triples_simple (RootDatum rd,RootDatum L, int c)=[(int,[int],ratvec,Weyl
         for (diag,w) in list do (c*d,diag,Kac_x(rd,diag),w) od
 
 set Kac_triples (RootDatum rd, RootDatum L)=[(int,[int],ratvec,WeylElt)]:
-   let c=order_of_center (rd) in
+   let c=order_center (rd) in
    let ()=if nilpotent_verbose then prints("c=",c, new_line,"2*d*c=", 2*d_L(rd,L)*c)
           fi in
    ##for i:2*d_L(rd,L)*c from 1 do Kac_triples_simple(rd,L,i) od
@@ -778,10 +780,11 @@ list of ratvecs}  then}
 { (,Levi_H_L)=Levi_of_coweight(rd,H_L) then}
  (,Levi_H_L_M)=Levi_of_coweight(M,H_L) then
   (,Levi_H_L)=Levi_of_coweight(rd,H_L) then
-{()=prints("Levi_H_L=",Levi_H_L," ", simple_roots(Levi_H_L)) then
+  {()=prints("Levi_H_L=",Levi_H_L," ", simple_roots(Levi_H_L)) then
   ()=prints("Z_Lmod_reg_lifted:", Z_Lmod_reg_lifted) then
   ()=prints("Levi_H_L:",Levi_H_L) then
-  ()=prints(new_line,"L=",L, new_line, "M=",M) then}
+  ()=prints(new_line,"L=",L, new_line, "M=",M) then
+  ()=prints(new_line,"Levi_H_L= ",Levi_H_L,new_line,"Z_Lmod_reg_lifted=",Z_Lmod_reg_lifted) then}
  (indices,Z_Lmod_reg_lifted_cc)=semisimple_conjugacy_class_reps(Levi_H_L,Z_Lmod_reg_lifted)
  then
  (indices,Z_Lmod_reg_lifted_cc)=semisimple_conjugacy_class_mod_torus_reps(Levi_H_L,Z_Lmod_reg_lifted,L_rad) then
@@ -950,12 +953,16 @@ show_nilpotent_orbits(nilpotent_orbits(rd))
 
 
 set is_even(ComplexNilpotent O)=bool:is_integer(O.diagram/2)
+set is_non_even(ComplexNilpotent O)=bool:not is_integer(O.diagram/2)
 
 set even_orbits([ComplexNilpotent] orbits)=[ComplexNilpotent]:
 ##for O in orbits do if is_even(O) then [O] else [] fi od
+set even_orbits(RootDatum rd)=even_orbits(rd.orbits)
 
-set even_orbits([ComplexNilpotent] orbits)=[ComplexNilpotent]:
-##for O in orbits do if is_even(O) then [O] else [] fi od
+set non_even_orbits([ComplexNilpotent] orbits)=[ComplexNilpotent]:
+##for O in orbits do if is_non_even(O) then [O] else [] fi od
+set non_even_orbits(RootDatum rd)=non_even_orbits(rd.orbits)
 
 set dual_orbits(RootDatum rd)=[ComplexNilpotent]:rd.dual.orbits
-set dual_even_orbits(RootDatum rd)=even_orbits(rd.dual_orbits)
+set even_dual_orbits(RootDatum rd)=even_orbits(rd.dual_orbits)
+set non_even_dual_orbits(RootDatum rd)=non_even_orbits(rd.dual_orbits)
