@@ -165,7 +165,8 @@ struct paramin // allow public member access; methods ensure no invariants
   // default extension choice:
   paramin (const context_minimal& ec,
 	   KGBElt x, const RatWeight& gamma_lambda, bool flipped=false);
-  paramin (const context_minimal& ec, const repr::StandardRepr& sr);
+  static paramin default_extend
+   (const context_minimal& ec, const repr::StandardRepr& sr);
 
   paramin (const paramin& p) = default;
   paramin (paramin&& p)

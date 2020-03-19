@@ -673,22 +673,6 @@ void validate(const paramin& E)
 
 
 paramin::paramin
-  (const context_minimal& ec,
-   KGBElt x, const RatWeight& gamma_lambda, bool flipped)
-  : ctxt(ec)
-  , tw(ec.realGroup().kgb().involution(x))
-  , l(ell(ec.realGroup().kgb(),x))
-  , gamma_lambda(gamma_lambda)
-  , tau(matreduc::find_solution
-	(1-theta(), gamma_lambda.integer_diff<int>(delta()*gamma_lambda)))
-  , t(matreduc::find_solution
-	(theta().transposed()+1,(delta()-1).right_prod(l)))
-  , flipped(flipped)
-{
-  validate(*this);
-}
-
-paramin::paramin
   (const context_minimal& ec, const TwistedInvolution& tw,
    RatWeight gamma_lambda, Weight tau, Coweight l, Coweight t, bool flipped)
   : ctxt(ec), tw(tw)
@@ -701,6 +685,46 @@ paramin::paramin
   validate(*this);
 }
 
+
+// contructor used for default extension once |x| and |gamma_lamba| are chosen
+paramin::paramin
+  (const context_minimal& ec,
+   KGBElt x, const RatWeight& gamma_lambda, bool flipped)
+  : ctxt(ec)
+  , tw(ec.realGroup().kgb().involution(x)) // now computing |theta()| is valid
+  , l(ell(ec.realGroup().kgb(),x))
+  , gamma_lambda(gamma_lambda)
+  , tau(matreduc::find_solution
+	(1-theta(), gamma_lambda.integer_diff<int>(delta()*gamma_lambda)))
+  , t(matreduc::find_solution
+	(theta().transposed()+1,(delta()-1).right_prod(l)))
+  , flipped(flipped)
+{
+  validate(*this);
+}
+
+// build a default extended parameter for |sr| in the context |ec|
+/*
+  Importantly, this does not use |sr.gamma()| otherwise than for asserting its
+  $\delta$-stability: the same default is used in |block_minimal| for an entire
+  family of blocks, so dependence on |gamma| must be limited to dependence on
+  its reduction modulo 1. Even though |gamma_lambda| is computed at the non
+  $\delta$-fixed |srm.gamma()| below, it is also (due to the way |mod_reduce|
+  works) a proper value of |gamma_lambda| at |sr|, so |(1-delta)*gamma_lambda|,
+  gives a valid value for the equation of which |tau| est une solution. However
+  |gamma_lambda| may be a different representative than |rc.gamma_lambda(sr)|,
+  so don't use that latter: it would give an undesired dependence on |gamma|.
+*/
+paramin paramin::default_extend
+  (const context_minimal& ec, const repr::StandardRepr& sr)
+{
+  assert(((1-ec.delta())*sr.gamma().numerator()).isZero());
+
+  auto srm =  repr::StandardReprMod::mod_reduce(ec.rc(),sr);
+  // get default representative at |gamma%1|, normalised
+  auto gamma_lambda=ec.rc().gamma_lambda(srm);
+  return paramin(ec,sr.x(),gamma_lambda);
+}
 
 
 // whether |E| and |F| lie over equivalent |StandardRepr| values
@@ -1708,41 +1732,6 @@ bool ext_block::tune_signs(const blocks::block_minimal& block)
   return true; // report success if we get here
 } // |tune_signs|
 
-/*
-  Compute the components in a default extended parameter reducing to |srm|.
-  Although no $\delta$-fixed |gamma| is visible here, a |StandardRepr sr|
-  reducing to |srm| with such |sr.gamma()| is assumed to exist; |gamma_lambda|
-  refers to |rc.gamma_lambda(sr)|, but by this is also |rc.gamma_lambda(srm)|
-  (due to |mod_reduce|) so |(1-delta)*gamma_lambda|, gives a valid value for
-  the equation of which |tau| est une solution.
-*/
-void set_default_extended
-( const Rep_context& rc, const repr::StandardReprMod& srm,
-  const WeightInvolution& delta,
-  RatWeight& gamma_lambda, Weight& tau, Coweight& l, Coweight& t)
-{
-  const auto& kgb = rc.kgb(); const auto x=srm.x();
-  const WeightInvolution theta = rc.innerClass().matrix(kgb.involution(x));
-
-  gamma_lambda=rc.gamma_lambda(srm); // default rep.ive at |gamma%1|, normalised
-  const auto diff = gamma_lambda.integer_diff<int>(delta*gamma_lambda);;
-  tau=matreduc::find_solution(1-theta,diff);
-  l=ell(kgb,x);
-  t=matreduc::find_solution(theta.transposed()+1,(delta-1).right_prod(l));
-}
-
-// build a default extended parameter for |sr| in the context |ec|
-paramin::paramin (const context_minimal& ec, const repr::StandardRepr& sr)
-  : ctxt(ec)
-  , tw(ec.rc().kgb().involution(sr.x()))
-  , l(), gamma_lambda(), tau(), t() // components to be computed just below
-  , flipped(false)
-{
-  assert(((1-delta())*sr.gamma().numerator()).isZero());
-  auto srm =  repr::StandardReprMod::mod_reduce(ec.rc(),sr);
-  set_default_extended(ec.rc(),srm,ec.delta(), gamma_lambda,tau,l,t);
-  validate(*this);
-}
 
 KGBElt paramin::x() const
 { TitsElt a(ctxt.innerClass().titsGroup(),TorusPart(l),tw);
@@ -1788,20 +1777,18 @@ StandardRepr scaled_extended_dominant // result will have its |gamma()| dominant
   assert(is_dominant_ratweight(rd,sr.gamma())); // dominant
   assert(((delta-1)*sr.gamma().numerator()).isZero()); // $\delta$-fixed
 
-  // to get the (implicit) choice of |lambda| adapted to |block_minimal|
-  // it is essential to modularly reduce |sr.gamma()| here
-  auto srm = repr::StandardReprMod::mod_reduce(rc,sr);
-
   // first approximation to result is scaled input
   auto scaled_sr = rc.sr(sr.x(),rc.lambda_rho(sr),sr.gamma()*factor);
   // it will be convenent to have a working copy of the numerator of |gamma|
   RatWeight gamma = scaled_sr.gamma(); // a working copy
   KGBElt x = scaled_sr.x(); // another variable, for convenience
 
-  // class |param| cannot change its |gamma|, so work on separate components
-  RatWeight gam_lam; Weight tau; Coweight l,t;
-  // initialise without building a |context| (as |result.gamma()| undominant):
-  set_default_extended(rc,srm,delta, gam_lam,tau,l,t);
+  paramin E0 = paramin::default_extend(ini_ctxt,sr);
+  RatWeight& gam_lam=E0.gamma_lambda;
+  Weight& tau=E0.tau;
+  Coweight& l=E0.l;
+  Coweight& t=E0.t;
+
   gam_lam += gamma-sr.gamma(); // shift |gam_lam| by $\nu$ change
 
   int_Vector r_g_eval (rd.semisimpleRank()); // simple root evaluations at |-gr|
@@ -1836,7 +1823,7 @@ StandardRepr scaled_extended_dominant // result will have its |gamma()| dominant
   // since |gamma| may have changed, we now build a new |context_minimal|
   context_minimal ctxt(rc,delta, SubSystem::integral(rd,gamma));
   // now ensure that |E| gets matching |gamma| and |theta| (for flipped test)
-  paramin E(ctxt,kgb.involution(x),gam_lam,tau,l,t,pre_flip);
+  paramin E1(ctxt,kgb.involution(x),gam_lam,tau,l,t,pre_flip);
 
   { // descend through complex singular simple descents
     const ext_gens integral_orbits = rootdata::fold_orbits(ctxt.id(),delta);
@@ -1871,20 +1858,20 @@ StandardRepr scaled_extended_dominant // result will have its |gamma()| dominant
 	     ==rd.simpleRootNbr(*it)); // check that we located it
 
       containers::sl_list<paramin> links;
-      auto type = star(E,p,links); // compute neighbours in extended block
+      auto type = star(E1,p,links); // compute neighbours in extended block
       assert(is_complex(type) or type==two_semi_real);
-      E = *links.begin(); // replace |E| by descended parameter
-      E.flip(has_october_surprise(type)); // to undo extra flip |star|
-      assert(x>E.x()); // make sure we advance; we did simple complex descents
-      x = E.x(); // adapt |x| for complex descent test
+      E1 = *links.begin(); // replace |E| by descended parameter
+      E1.flip(has_october_surprise(type)); // to undo extra flip |star|
+      assert(x>E1.x()); // make sure we advance; we did simple complex descents
+      x = E1.x(); // adapt |x| for complex descent test
     } // |while| a singular complex descent exists
   }
 
   // finally extract |StandardRepr| from |E|
-  StandardRepr result = E.restrict(gamma);
+  StandardRepr result = E1.restrict(gamma);
 
   // but the whole point of this function is to record the relative flip too!
-  flipped = not same_sign(E,paramin(ctxt,result)); // compare |E| to default ext.
+  flipped = not same_sign(E1,paramin::default_extend(ctxt,result)); // compare |E1| to default
   return result;
 
 } // |scaled_extended_dominant|
@@ -1943,7 +1930,7 @@ containers::sl_list<std::pair<StandardRepr,bool> > extended_finalise
   const RankFlags singular_orbits =
     reduce_to(orbits,singular_generators(ctxt.id(),sr.gamma()));
 
-  containers::queue<paramin> to_do { paramin(ctxt,sr) }; // start with default
+  containers::queue<paramin> to_do { paramin::default_extend(ctxt,sr) };
   containers::sl_list<std::pair<StandardRepr,bool> > result;
 
   do
