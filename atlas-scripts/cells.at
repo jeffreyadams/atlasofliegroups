@@ -157,9 +157,10 @@ if cells_verbose then prints("doing block ",i , " of size ", #block,new_line, "n
  =#survivors
   then {don't bother checking cell representation} [(int,int,Param)]:[]
  elif
- st.ct.special_character(cell)=springer_O
-  then survivors
- else [(int,int,Param)]:[]
+ st.ct.special_character(cell)=springer_O then
+    survivors
+ else
+        [(int,int,Param)]:[]
  fi
  od  {/for cell}
 od  {/for block}
@@ -189,10 +190,12 @@ if cells_verbose then prints("doing block ",i , " of size ", #block,new_line, "n
     fi {I_will_survive}
    od {/##for p};
  =#survivors
-  then {don't bother checking cell representation} [(int,int,Param)]:[]
+  then {prints("NONE");}{don't bother checking cell representation} [(int,int,Param)]:[]
  elif
  special_character_permuted(st.ct,cell,permutation)=springer_O
-  then survivors
+  then
+let c=special_character_permuted(st.ct,cell,permutation) in prints("cell character: ",c, " springer_O:", springer_O);
+survivors
  else [(int,int,Param)]:[]
  fi
  od  {/for cell}

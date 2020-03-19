@@ -224,7 +224,7 @@ st_int=springer_table(rd_int) then
 ()=prints("computing packet for:", O_check_int) then
 (bc,wp)=weak_packet_int(st_int,O_check_int,all,gamma_final,permutation)
 in
-if G.is_split and =#parameters(wp) then prints("ERROR: , empty packet for split group") fi;
+if {G.is_split and } =#parameters(wp) then prints("ERROR: , empty packet") fi;
 (bc,wp)
 fi
 
@@ -819,3 +819,26 @@ for p in unipotents do prints(p, " ", p.infinitesimal_character) od;
 prints(new_line,"non induced: ", #non_ind);
 for p in non_ind do prints(p, " ", p.infinitesimal_character) od
 
+set compare([Param] A_in,[Param] B_in)=
+let A=remove_duplicates(A_in),
+B=remove_duplicates(B_in) then
+B_minus_A=complement(A,B) then
+A_minus_B=complement(B,A) then
+A_cap_B=complement(B_minus_A,B) then
+A_union_B=remove_duplicates(A##B) in
+prints("#A\cup B: ", #A_union_B,new_line,
+"#A\cap B: ", #A_cap_B,new_line,
+"#A-B: ", #A_minus_B,new_line,
+"#B-A: ", #B_minus_A);
+(A_union_B,A_cap_B,A_minus_B,B_minus_A)
+
+set compare_long([Param] A_in,[Param] B_in)=
+let (union,intersection,AminusB,BminusA)=compare(A_in,B_in) in
+prints("union: ", #union);
+for p in union do prints(p) od;
+prints("intersection: ", #intersection);
+for p in intersection do prints(p) od;
+prints("A minus B: ", #AminusB);
+for p in AminusB do prints(p) od;
+prints("B minus A: ", #BminusA);
+for p in BminusA do prints(p) od
