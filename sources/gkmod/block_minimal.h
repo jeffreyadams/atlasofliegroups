@@ -102,14 +102,32 @@ class block_minimal : public Block_base
 namespace ext_block
 {
 
-// this class is to |paramin| what |ext_block::context| is to |ext_block::param|
-// data fields that are removed: |d_gamma|, |lambda_shifts|
-// methods that are absent: |gamma|, |lambda_shift|
-class context_minimal // holds values that remain fixed across extended block
+class paramin_context
 {
   const repr::Rep_context& d_rc;
   const WeightInvolution d_delta;
 
+public:
+  paramin_context (const repr::Rep_context& rc, const WeightInvolution& delta)
+    : d_rc(rc), d_delta(delta) {}
+
+  // accessors
+  const repr::Rep_context& rc () const { return d_rc; }
+  const RootDatum& root_datum () const;
+  const InnerClass& inner_class () const;
+  RealReductiveGroup& real_group () const;
+  const WeightInvolution& delta () const { return d_delta; }
+  const RatCoweight& g_rho_check() const;
+  RatCoweight g() const;
+
+}; // |paramin_context|
+
+// this class is to |paramin| what |ext_block::context| is to |ext_block::param|
+// data fields that are removed: |d_gamma|, |lambda_shifts|
+// methods that are absent: |gamma|, |lambda_shift|
+// holds values that remain fixed across extended block
+class context_minimal : public paramin_context
+{
   const RootDatum integr_datum; // intgrality datum
   const SubSystem sub; // embeds |integr_datum| into parent root datum
   Permutation pi_delta; // permutation of |delta| on roots of full root datum
@@ -122,15 +140,8 @@ class context_minimal // holds values that remain fixed across extended block
 		   const SubSystem& integral_subsystem);
 
   // accessors
-  const repr::Rep_context& rc () const { return d_rc; }
   const RootDatum& id() const { return integr_datum; }
   const SubSystem& subsys() const { return sub; }
-  const RootDatum& rootDatum() const;
-  const InnerClass& innerClass () const;
-  RealReductiveGroup& realGroup () const;
-  const WeightInvolution& delta () const { return d_delta; }
-  const RatCoweight& g_rho_check() const;
-  RatCoweight g() const;
   RootNbr delta_of(RootNbr alpha) const { return pi_delta[alpha]; }
   const RootNbrSet& delta_fixed() const { return delta_fixed_roots; }
   weyl::Generator twisted(weyl::Generator s) const { return twist[s]; }
@@ -149,7 +160,7 @@ class context_minimal // holds values that remain fixed across extended block
 // Identical (supplementary) data fields, method absent: |restrict|
 struct paramin // allow public member access; methods ensure no invariants
 {
-  const context_minimal& ctxt;
+  const paramin_context& ctxt;
   TwistedInvolution tw; // implicitly defines $\theta$
 
   Coweight l; // with |tw| gives a |GlobalTitsElement|; lifts its |t|
@@ -158,15 +169,15 @@ struct paramin // allow public member access; methods ensure no invariants
   Coweight t; // a solution to $t(1-theta)=l(\delta-1)$
   bool flipped; // whether tensored with the flipping representation
 
-  paramin (const context_minimal& ec, const TwistedInvolution& tw,
+  paramin (const paramin_context& ec, const TwistedInvolution& tw,
 	   RatWeight gamma_lambda, Weight tau, Coweight l, Coweight t,
 	   bool flipped=false);
 
   // default extension choice:
-  paramin (const context_minimal& ec,
+  paramin (const paramin_context& ec,
 	   KGBElt x, const RatWeight& gamma_lambda, bool flipped=false);
   static paramin default_extend
-   (const context_minimal& ec, const repr::StandardRepr& sr);
+   (const paramin_context& ec, const repr::StandardRepr& sr);
 
   paramin (const paramin& p) = default;
   paramin (paramin&& p)

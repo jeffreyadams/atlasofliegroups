@@ -529,36 +529,38 @@ inline bool is_default (const paramin& E)
 
 void z_align (const paramin& E, paramin& F, bool extra_flip);
 void z_align (const paramin& E, paramin& F, bool extra_flip, int t_mu);
-paramin complex_cross(const ext_gen& p, paramin E);
+paramin complex_cross(const context_minimal& ctxt,
+		      const ext_gen& p, paramin E);
 int level_a (const paramin& E, const Weight& shift, RootNbr alpha);
-DescValue star (const paramin& E, const ext_gen& p,
+DescValue star (const context_minimal& ctxt, const paramin& E, const ext_gen& p,
 		containers::sl_list<paramin>& links);
 
-bool is_descent (const ext_gen& kappa, const paramin& E);
+bool is_descent
+  (const context_minimal& ctxt, const ext_gen& kappa, const paramin& E);
 weyl::Generator first_descent_among
-  (RankFlags singular_orbits, const ext_gens& orbits, const paramin& E);
+  (const context_minimal& ctxt, RankFlags singular_orbits,
+   const ext_gens& orbits, const paramin& E);
 
-
-  // |context_minimal| methods and functions
-
-const RootDatum& context_minimal::rootDatum() const
+  // |paramin_context| methods
+const RootDatum& paramin_context::root_datum () const
   { return rc().rootDatum(); }
-const InnerClass& context_minimal::innerClass () const
+const InnerClass& paramin_context::inner_class () const
   { return rc().innerClass(); }
-RealReductiveGroup& context_minimal::realGroup () const
+RealReductiveGroup& paramin_context::real_group () const
   { return rc().realGroup(); }
-const RatCoweight& context_minimal::g_rho_check() const
-  { return realGroup().g_rho_check(); }
-RatCoweight context_minimal::g() const { return realGroup().g(); }
+const RatCoweight& paramin_context::g_rho_check () const
+  { return real_group().g_rho_check(); }
+RatCoweight paramin_context::g () const
+  { return real_group().g(); }
+
 
 context_minimal::context_minimal
   (const repr::Rep_context& rc, const WeightInvolution& delta,
    const SubSystem& sub)
-    : d_rc(rc)
-    , d_delta(delta)
+    : paramin_context(rc,delta)
     , integr_datum(sub.pre_root_datum())
     , sub(sub)
-    , pi_delta(rc.rootDatum().rootPermutation(d_delta))
+    , pi_delta(rc.rootDatum().rootPermutation(paramin_context::delta()))
     , delta_fixed_roots(fixed_points(pi_delta))
     , twist()
     , l_shifts (integr_datum.semisimpleRank())
@@ -574,8 +576,8 @@ context_minimal::context_minimal
 }
 
 bool context_minimal::is_very_complex (InvolutionNbr theta, RootNbr alpha) const
-{ const auto& i_tab = innerClass().involution_table();
-  const auto& rd = rootDatum();
+{ const auto& i_tab = inner_class().involution_table();
+  const auto& rd = root_datum();
   assert (rd.is_posroot(alpha)); // this is a precondition
   auto image = i_tab.root_involution(theta,alpha);
   make_positive(rd,image);
@@ -584,9 +586,9 @@ bool context_minimal::is_very_complex (InvolutionNbr theta, RootNbr alpha) const
 
 Weight context_minimal::to_simple_shift
   (InvolutionNbr theta, InvolutionNbr theta_p, RootNbrSet S) const
-{ const InvolutionTable& i_tab = innerClass().involution_table();
+{ const InvolutionTable& i_tab = inner_class().involution_table();
   S &= (i_tab.real_roots(theta) ^i_tab.real_roots(theta_p));
-  return root_sum(rootDatum(),S);
+  return root_sum(root_datum(),S);
 }
 
 /*
@@ -606,7 +608,7 @@ bool context_minimal::shift_flip
   unsigned count=0; // will count 2-element |delta|-orbit elements
   for (auto it=S.begin(); it(); ++it)
     if (is_very_complex(theta,*it) != is_very_complex(theta_p,*it) and
-	not rootDatum().sumIsRoot(*it,delta_of(*it)))
+	not root_datum().sumIsRoot(*it,delta_of(*it)))
       ++count;
 
   assert(count%2==0); // since |pos_to_neg| is supposed to be $\delta$-stable
@@ -623,7 +625,7 @@ bool context_minimal::shift_flip
    |alpha| is left as that non simple root, and the result conjugates to it.
  */
 WeylWord fixed_conjugate_simple (const context_minimal& ctxt, RootNbr& alpha)
-{ const RootDatum& rd = ctxt.innerClass().rootDatum();
+{ const RootDatum& rd = ctxt.root_datum();
 
   WeylWord result;
   while (not rd.is_simple_root(alpha)) // also |break| halfway is possible
@@ -654,12 +656,12 @@ WeylWord fixed_conjugate_simple (const context_minimal& ctxt, RootNbr& alpha)
   // |paramin| methods and functions
 
 const WeightInvolution& paramin::theta () const
- { return ctxt.innerClass().matrix(tw); }
+ { return ctxt.inner_class().matrix(tw); }
 
 void validate(const paramin& E)
 {
 #ifndef NDEBUG // make sure this is a no-op when debugging is disabled
-  const auto& i_tab = E.rc().innerClass().involution_table();
+  const auto& i_tab = E.ctxt.inner_class().involution_table();
   const auto& theta = i_tab.matrix(E.tw);
   const auto& delta = E.ctxt.delta();
   assert(delta*theta==theta*delta);
@@ -673,7 +675,7 @@ void validate(const paramin& E)
 
 
 paramin::paramin
-  (const context_minimal& ec, const TwistedInvolution& tw,
+  (const paramin_context& ec, const TwistedInvolution& tw,
    RatWeight gamma_lambda, Weight tau, Coweight l, Coweight t, bool flipped)
   : ctxt(ec), tw(tw)
   , l(std::move(l))
@@ -688,11 +690,11 @@ paramin::paramin
 
 // contructor used for default extension once |x| and |gamma_lamba| are chosen
 paramin::paramin
-  (const context_minimal& ec,
+  (const paramin_context& ec,
    KGBElt x, const RatWeight& gamma_lambda, bool flipped)
   : ctxt(ec)
-  , tw(ec.realGroup().kgb().involution(x)) // now computing |theta()| is valid
-  , l(ell(ec.realGroup().kgb(),x))
+  , tw(ec.real_group().kgb().involution(x)) // now computing |theta()| is valid
+  , l(ell(ec.real_group().kgb(),x))
   , gamma_lambda(gamma_lambda)
   , tau(matreduc::find_solution
 	(1-theta(), gamma_lambda.integer_diff<int>(delta()*gamma_lambda)))
@@ -716,7 +718,7 @@ paramin::paramin
   so don't use that latter: it would give an undesired dependence on |gamma|.
 */
 paramin paramin::default_extend
-  (const context_minimal& ec, const repr::StandardRepr& sr)
+  (const paramin_context& ec, const repr::StandardRepr& sr)
 {
   assert(((1-ec.delta())*sr.gamma().numerator()).isZero());
 
@@ -744,7 +746,7 @@ paramin& paramin::operator= (paramin&& p)
 
 
 KGBElt paramin::x() const
-{ TitsElt a(ctxt.innerClass().titsGroup(),TorusPart(l),tw);
+{ TitsElt a(ctxt.inner_class().titsGroup(),TorusPart(l),tw);
   return rc().kgb().lookup(a);
 }
 
@@ -760,7 +762,7 @@ repr::StandardRepr paramin::restrict(const RatWeight& gamma) const
 bool same_standard_reps (const paramin& E, const paramin& F)
 {
   if (&E.ctxt!=&F.ctxt)
-  { if (&E.ctxt.innerClass()!=&F.ctxt.innerClass())
+  { if (&E.ctxt.inner_class()!=&F.ctxt.inner_class())
       throw std::runtime_error
 	("Comparing extended parameters from different inner classes");
     if (E.delta()!=F.delta() or E.ctxt.g_rho_check()!=F.ctxt.g_rho_check())
@@ -812,10 +814,10 @@ void z_align (const paramin& E, paramin& F, bool extra_flip, int t_mu)
   (for |l|) the same thing with |rho_check_imaginary|. This is done by the
   "correction" terms below.
  */
-paramin complex_cross(const ext_gen& p, paramin E) // by-value for |E|, modified
+paramin complex_cross(const context_minimal& ctxt,
+		      const ext_gen& p, paramin E) // by-value for |E|, modified
 { const RootDatum& rd = E.rc().rootDatum();
-  const auto& ec = E.ctxt;
-  const RootDatum& id = ec.id();
+  const RootDatum& id = ctxt.id();
   const InvolutionTable& i_tab = E.rc().innerClass().involution_table();
   auto &tW = E.rc().twistedWeylGroup(); // caution: |p| refers to integr. datum
 
@@ -826,11 +828,11 @@ paramin complex_cross(const ext_gen& p, paramin E) // by-value for |E|, modified
 
   for (unsigned i=p.w_kappa.size(); i-->0; ) // at most 3 letters, right-to-left
   { weyl::Generator s=p.w_kappa[i]; // generator for integrality datum
-    tW.twistedConjugate(ec.subsys().reflection(s),E.tw);
+    tW.twistedConjugate(ctxt.subsys().reflection(s),E.tw);
     id.simple_reflect(s,E.gamma_lambda.numerator());
     id.simple_reflect(s,rho_r_shift);
     id.simple_reflect(s,E.tau);
-    id.simple_coreflect(E.l,s,ec.l_shift(s));
+    id.simple_coreflect(E.l,s,ctxt.l_shift(s));
     id.simple_coreflect(dual_rho_im_shift,s);
     id.simple_coreflect(E.t,s);
   }
@@ -841,23 +843,23 @@ paramin complex_cross(const ext_gen& p, paramin E) // by-value for |E|, modified
   rho_r_shift/=2; // now it is just a sum of (real) roots
   E.gamma_lambda += rho_r_shift;
 
-  assert(ec.delta()*rho_r_shift==rho_r_shift); // diff of $\delta$-fixed
+  assert(ctxt.delta()*rho_r_shift==rho_r_shift); // diff of $\delta$-fixed
 
   dual_rho_im_shift -= rd.dual_twoRho(i_tab.imaginary_roots(new_theta));
   dual_rho_im_shift/=2; // now it is just a sum of (imaginary) coroots
   E.l -= dual_rho_im_shift;
 
-  assert(ec.delta().right_prod(dual_rho_im_shift)==dual_rho_im_shift);
+  assert(ctxt.delta().right_prod(dual_rho_im_shift)==dual_rho_im_shift);
   validate(E);
 
-  auto& subs=ec.subsys();
+  auto& subs=ctxt.subsys();
   RootNbr alpha_simple = subs.parent_nr_simple(p.s0);
-  const WeylWord to_simple = fixed_conjugate_simple(ec,alpha_simple);
+  const WeylWord to_simple = fixed_conjugate_simple(ctxt,alpha_simple);
   // by symmetry by $\delta$, |to_simple| conjugates $\delta(\alpha)$ to simple:
   assert(p.length()==1 or rd.is_simple_root(rd.permuted_root(to_simple,
 				                subs.parent_nr_simple(p.s1))));
   // apply flip for $\delta$ acting on root set for |to_simple|, as elsewhere
-  E.flip(ec.shift_flip(theta,new_theta,pos_to_neg(rd,to_simple)));
+  E.flip(ctxt.shift_flip(theta,new_theta,pos_to_neg(rd,to_simple)));
 
   E.flip(p.length()==2); // to parallel the 2i,2r flips
 
@@ -897,7 +899,7 @@ int level_a (const paramin& E, const Weight& shift, RootNbr alpha)
 
 
 // compute type of |p| for |E|, and export adjacent |paramin| values in |links|
-DescValue star (const paramin& E, const ext_gen& p,
+DescValue star (const context_minimal& ctxt, const paramin& E, const ext_gen& p,
 		containers::sl_list<paramin>& links)
 {
   paramin E0=E; // a copy of |E| that might be modified below to "normalise"
@@ -907,8 +909,8 @@ DescValue star (const paramin& E, const ext_gen& p,
   const InnerClass& ic = E.rc().innerClass();
   const InvolutionTable& i_tab = ic.involution_table();
   const RootDatum& rd = E.rc().rootDatum();
-  const RootDatum& integr_datum = E.ctxt.id();
-  const SubSystem& subs = E.ctxt.subsys();
+  const RootDatum& integr_datum = ctxt.id();
+  const SubSystem& subs = ctxt.subsys();
   const InvolutionNbr theta = i_tab.nr(E.tw);
   switch (p.type)
   {
@@ -934,11 +936,11 @@ DescValue star (const paramin& E, const ext_gen& p,
 
 	// try to make $\alpha$ simple by conjugating by $W^\delta$
 	RootNbr alpha_simple = n_alpha;
-	const WeylWord ww = fixed_conjugate_simple(E.ctxt,alpha_simple);
+	const WeylWord ww = fixed_conjugate_simple(ctxt,alpha_simple);
 	const auto theta_p = i_tab.nr(new_tw);
 	const auto S = pos_to_neg(rd,ww);
-	const Weight rho_r_shift = E.ctxt.to_simple_shift(theta,theta_p,S);
-	bool flipped = E.ctxt.shift_flip(theta,theta_p,S);
+	const Weight rho_r_shift = ctxt.to_simple_shift(theta,theta_p,S);
+	bool flipped = ctxt.shift_flip(theta,theta_p,S);
 
 	assert(E.ctxt.delta()*rho_r_shift==rho_r_shift); // $ww\in W^\delta$
 	assert(E.t.dot(alpha)==0); // follows from $\delta*\alpha=\alpha$
@@ -1020,14 +1022,14 @@ DescValue star (const paramin& E, const ext_gen& p,
       else if (theta_alpha==rd.rootMinus(n_alpha)) // length 1 real case
       {
 	RootNbr alpha_simple = n_alpha;
-	const WeylWord ww = fixed_conjugate_simple(E.ctxt,alpha_simple);
+	const WeylWord ww = fixed_conjugate_simple(ctxt,alpha_simple);
 	const TwistedInvolution new_tw = // downstairs
 	  tW.prod(subs.reflection(p.s0),E.tw);
 
 	const auto theta_p=i_tab.nr(new_tw);
 	const auto S = pos_to_neg(rd,ww);
-	Weight rho_r_shift = E.ctxt.to_simple_shift(theta,theta_p,S);
-	bool flipped = E.ctxt.shift_flip(theta,theta_p,S);
+	Weight rho_r_shift = ctxt.to_simple_shift(theta,theta_p,S);
+	bool flipped = ctxt.shift_flip(theta,theta_p,S);
 	assert(E.ctxt.delta()*rho_r_shift==rho_r_shift); // as $ww\in W^\delta$
 
 	const int t_alpha = E.t.dot(alpha);
@@ -1120,7 +1122,7 @@ DescValue star (const paramin& E, const ext_gen& p,
       else // length 1 complex case
       { result = rd.is_posroot(theta_alpha)
 	  ? one_complex_ascent : one_complex_descent ;
-	links.push_back(complex_cross(p,E));
+	links.push_back(complex_cross(ctxt,p,E));
       }
     }
     break;
@@ -1148,12 +1150,12 @@ DescValue star (const paramin& E, const ext_gen& p,
 	  tW.prod(subs.reflection(p.s1),tW.prod(subs.reflection(p.s0),E.tw));
 	// make $\alpha$ simple by conjugating by $W^\delta$
 	RootNbr alpha_simple = n_alpha;
-	const WeylWord ww = fixed_conjugate_simple(E.ctxt,alpha_simple);
+	const WeylWord ww = fixed_conjugate_simple(ctxt,alpha_simple);
 	const auto theta_p = i_tab.nr(new_tw); // upstairs
 
 	const auto S = pos_to_neg(rd,ww);
-	const Weight rho_r_shift = E.ctxt.to_simple_shift(theta,theta_p,S);
-	bool flipped = E.ctxt.shift_flip(theta,theta_p,S);
+	const Weight rho_r_shift = ctxt.to_simple_shift(theta,theta_p,S);
+	bool flipped = ctxt.shift_flip(theta,theta_p,S);
 	assert(E.ctxt.delta()*rho_r_shift==rho_r_shift); // $ww\in W^\delta$
 	assert(rd.is_simple_root(alpha_simple)); // cannot fail for length 2
 
@@ -1232,15 +1234,15 @@ DescValue star (const paramin& E, const ext_gen& p,
       else if (theta_alpha==rd.rootMinus(n_alpha)) // length 2 real case
       {
 	RootNbr alpha_simple = n_alpha;
-	const WeylWord ww = fixed_conjugate_simple(E.ctxt,alpha_simple);
+	const WeylWord ww = fixed_conjugate_simple(ctxt,alpha_simple);
 	assert(rd.is_simple_root(alpha_simple)); // no complications here
 	const TwistedInvolution new_tw = // downstairs
 	  tW.prod(subs.reflection(p.s1),tW.prod(subs.reflection(p.s0),E.tw));
 
 	const auto theta_p=i_tab.nr(new_tw);
 	const auto S = pos_to_neg(rd,ww);
-	const Weight rho_r_shift = E.ctxt.to_simple_shift(theta,theta_p,S);
-	bool flipped = E.ctxt.shift_flip(theta,theta_p,S);
+	const Weight rho_r_shift = ctxt.to_simple_shift(theta,theta_p,S);
+	bool flipped = ctxt.shift_flip(theta,theta_p,S);
 	assert(E.ctxt.delta()*rho_r_shift==rho_r_shift); // as $ww\in W^\delta$
 
 	flipped = not flipped; // because of wedge correction for 2i/2r cases
@@ -1350,7 +1352,7 @@ DescValue star (const paramin& E, const ext_gen& p,
 	if (theta_alpha != (ascent ? n_beta : rd.rootMinus(n_beta)))
 	{ // twisted non-commutation with |s0.s1|
 	  result = ascent ? two_complex_ascent : two_complex_descent;
-	  links.push_back(complex_cross(p,E));
+	  links.push_back(complex_cross(ctxt,p,E));
 	}
 	else if (ascent)
 	{ // twisted commutation with |s0.s1|: 2Ci
@@ -1360,13 +1362,13 @@ DescValue star (const paramin& E, const ext_gen& p,
 	  tW.twistedConjugate(subs.reflection(p.s0),new_tw); // same for |p.s1|
 
 	  RootNbr alpha_simple = n_alpha;
-	  const WeylWord ww = fixed_conjugate_simple(E.ctxt,alpha_simple);
+	  const WeylWord ww = fixed_conjugate_simple(ctxt,alpha_simple);
 	  assert(rd.is_simple_root(alpha_simple)); // no complications here
 
 	  const auto theta_p = i_tab.nr(new_tw); // upstairs
 	  const auto S = pos_to_neg(rd,ww);
-	  const Weight rho_r_shift = E.ctxt.to_simple_shift(theta,theta_p,S);
-	  bool flipped = E.ctxt.shift_flip(theta,theta_p,S);
+	  const Weight rho_r_shift = ctxt.to_simple_shift(theta,theta_p,S);
+	  bool flipped = ctxt.shift_flip(theta,theta_p,S);
 	  assert(E.ctxt.delta()*rho_r_shift==rho_r_shift); // $ww\in W^\delta$
 
 	  // downstairs cross by |ww| only has imaginary and complex steps, so
@@ -1403,13 +1405,13 @@ DescValue star (const paramin& E, const ext_gen& p,
 	  tW.twistedConjugate(subs.reflection(p.s0),new_tw); // same for |p.s1|
 
 	  RootNbr alpha_simple = n_alpha;
-	  const WeylWord ww = fixed_conjugate_simple(E.ctxt,alpha_simple);
+	  const WeylWord ww = fixed_conjugate_simple(ctxt,alpha_simple);
 	  assert(rd.is_simple_root(alpha_simple)); // no complications here
 
 	  const auto theta_p=i_tab.nr(new_tw);
 	  const auto S = pos_to_neg(rd,ww);
-	  const Weight rho_r_shift = E.ctxt.to_simple_shift(theta,theta_p,S);
-	  bool flipped = E.ctxt.shift_flip(theta,theta_p,S);
+	  const Weight rho_r_shift = ctxt.to_simple_shift(theta,theta_p,S);
+	  bool flipped = ctxt.shift_flip(theta,theta_p,S);
 	  assert(E.ctxt.delta()*rho_r_shift==rho_r_shift); // $ww\in W^\delta$
 
 	  const int f = level_a(E,rho_r_shift,n_alpha);
@@ -1468,12 +1470,12 @@ DescValue star (const paramin& E, const ext_gen& p,
 	result = three_imaginary_semi; // this is the 3i case
 
 	RootNbr alpha_simple = n_alpha;
-	const WeylWord ww = fixed_conjugate_simple(E.ctxt,alpha_simple);
+	const WeylWord ww = fixed_conjugate_simple(ctxt,alpha_simple);
 	const auto theta_p = i_tab.nr(new_tw); // upstairs
 
 	const auto S = pos_to_neg(rd,ww);
-	const Weight rho_r_shift = E.ctxt.to_simple_shift(theta,theta_p,S);
-	bool flipped = E.ctxt.shift_flip(theta,theta_p,S);
+	const Weight rho_r_shift = ctxt.to_simple_shift(theta,theta_p,S);
+	bool flipped = ctxt.shift_flip(theta,theta_p,S);
 	assert(E.ctxt.delta()*rho_r_shift==rho_r_shift); // $ww\in W^\delta$
 	assert(rd.is_simple_root(alpha_simple)); // cannot fail for length 3
 
@@ -1492,13 +1494,13 @@ DescValue star (const paramin& E, const ext_gen& p,
       else if (theta_alpha==rd.rootMinus(n_alpha)) // length 3 real case
       {
 	RootNbr alpha_simple = n_alpha;
-	const WeylWord ww = fixed_conjugate_simple(E.ctxt,alpha_simple);
+	const WeylWord ww = fixed_conjugate_simple(ctxt,alpha_simple);
 	assert(rd.is_simple_root(alpha_simple)); // no complications here
 
 	const auto theta_p=i_tab.nr(new_tw);
 	const auto S = pos_to_neg(rd,ww);
-	const Weight rho_r_shift = E.ctxt.to_simple_shift(theta,theta_p,S);
-	bool flipped = E.ctxt.shift_flip(theta,theta_p,S);
+	const Weight rho_r_shift = ctxt.to_simple_shift(theta,theta_p,S);
+	bool flipped = ctxt.shift_flip(theta,theta_p,S);
 	assert(E.ctxt.delta()*rho_r_shift==rho_r_shift); // as $ww\in W^\delta$
 
 	const int a_level = level_a(E,rho_r_shift,n_alpha);
@@ -1536,15 +1538,15 @@ DescValue star (const paramin& E, const ext_gen& p,
 	  result = ascent ? three_semi_imaginary : three_semi_real;
 
 	  RootNbr alpha_simple = n_alpha;
-	  const WeylWord ww = fixed_conjugate_simple(E.ctxt,alpha_simple);
+	  const WeylWord ww = fixed_conjugate_simple(ctxt,alpha_simple);
 	  assert(rd.is_simple_root(alpha_simple)); // no complications here
 
 	  const auto theta_p=i_tab.nr(new_tw);
 	  const auto S = pos_to_neg(rd,ww);
 	  const Weight rho_r_shift = ascent
-	    ?  E.ctxt.to_simple_shift(theta,theta_p,S)
-	    : -E.ctxt.to_simple_shift(theta,theta_p,S);
-	  bool flipped = E.ctxt.shift_flip(theta,theta_p,S);
+	    ?  ctxt.to_simple_shift(theta,theta_p,S)
+	    : -ctxt.to_simple_shift(theta,theta_p,S);
+	  bool flipped = ctxt.shift_flip(theta,theta_p,S);
 	  assert(E.ctxt.delta()*rho_r_shift==rho_r_shift); // $ww\in W^\delta$
 
 	  int tf_alpha = (E.ctxt.g_rho_check() - E.l).dot(alpha);
@@ -1593,7 +1595,7 @@ DescValue star (const paramin& E, const ext_gen& p,
 	else // twisted non-commutation: 3C+ or 3C-
 	{
 	  result = ascent ? three_complex_ascent : three_complex_descent;
-	  links.push_back(complex_cross(p,E));
+	  links.push_back(complex_cross(ctxt,p,E));
 	}
       }
     }
@@ -1643,14 +1645,15 @@ ext_block::ext_block
 
 bool ext_block::tune_signs(const blocks::block_minimal& block)
 {
-  context_minimal ctxt (block.context(),delta(),block.integral_subsystem());
+  paramin_context ctxt (block.context(),delta());
+  context_minimal block_ctxt(block.context(),delta(),block.integral_subsystem());
   containers::sl_list<paramin> links;
   for (BlockElt n=0; n<size(); ++n)
   { auto z=this->z(n);
     const paramin E(ctxt,block.x(z),block.gamma_lambda(z));
     for (weyl::Generator s=0; s<rank(); ++s)
     { const ext_gen& p=orbit(s); links.clear(); // output arguments for |star|
-      auto tp = star(E,p,links);
+      auto tp = star(block_ctxt,E,p,links);
       if (tp!=descent_type(s,n))
 	return false;
 
@@ -1789,7 +1792,7 @@ StandardRepr scaled_extended_dominant // result will have its |gamma()| dominant
  )
 {
   const RootDatum& rd=rc.rootDatum(); const KGB& kgb = rc.kgb();
-  context_minimal ini_ctxt(rc,delta, SubSystem::integral(rd,sr.gamma()));
+  paramin_context ctxt(rc,delta);
   const ext_gens orbits = rootdata::fold_orbits(rd,delta);
   assert(is_dominant_ratweight(rd,sr.gamma())); // dominant
   assert(((delta-1)*sr.gamma().numerator()).isZero()); // $\delta$-fixed
@@ -1800,7 +1803,7 @@ StandardRepr scaled_extended_dominant // result will have its |gamma()| dominant
   RatWeight gamma = scaled_sr.gamma(); // a working copy
   KGBElt x = scaled_sr.x(); // another variable, for convenience
 
-  paramin E0 = paramin::default_extend(ini_ctxt,sr);
+  paramin E0 = paramin::default_extend(ctxt,sr);
 
   E0.gamma_lambda += gamma-sr.gamma(); // shift |E0.gamma_lambda| by $\nu$ change
 
@@ -1831,15 +1834,15 @@ StandardRepr scaled_extended_dominant // result will have its |gamma()| dominant
     while(i<orbits.size()); // continue until above |for| runs to completion
   } // end of transformation of extended parameter components
 
-  // since |gamma| may have changed, we now build a new |context_minimal|
-  context_minimal ctxt(rc,delta, SubSystem::integral(rd,gamma));
   // now ensure that |E| gets matching |gamma| and |theta| (for flipped test)
   paramin E1(ctxt,kgb.involution(x),E0.gamma_lambda,E0.tau,E0.l,E0.t,E0.flipped);
 
   { // descend through complex singular simple descents
-    const ext_gens integral_orbits = rootdata::fold_orbits(ctxt.id(),delta);
+    context_minimal block_ctxt(rc,delta, SubSystem::integral(rd,gamma));
+    const auto int_datum = block_ctxt.id();
+    const ext_gens integral_orbits = rootdata::fold_orbits(int_datum,delta);
     const RankFlags singular_orbits = // flag singular among integral orbits
-      reduce_to(integral_orbits,singular_generators(ctxt.id(),gamma));
+      reduce_to(integral_orbits,singular_generators(int_datum,gamma));
     /*
       |singular_orbits| are in fact orbits of simple roots, because we have
       ensured |gamma| is dominant, so the singular subsystem of |rd|
@@ -1848,7 +1851,7 @@ StandardRepr scaled_extended_dominant // result will have its |gamma()| dominant
      // record the corresponding simple root indices in |rd|, in order
     containers::sl_list<unsigned> orbit_simple;
     for (auto it=singular_orbits.begin(); it(); ++it)
-    { auto alpha=ctxt.subsys().parent_nr_simple(integral_orbits[*it].s0);
+    { auto alpha=block_ctxt.subsys().parent_nr_simple(integral_orbits[*it].s0);
       orbit_simple.push_back(rd.simpleRootIndex(alpha));
     }
 
@@ -1865,11 +1868,12 @@ StandardRepr scaled_extended_dominant // result will have its |gamma()| dominant
 
       // find orbit among |integral_orbits| corresponding to that ComplexDescent
       ext_gen p=integral_orbits[*soit];
-      assert(ctxt.subsys().parent_nr_simple(p.s0)
+      assert(block_ctxt.subsys().parent_nr_simple(p.s0)
 	     ==rd.simpleRootNbr(*it)); // check that we located it
 
       containers::sl_list<paramin> links;
-      auto type = star(E1,p,links); // compute neighbours in extended block
+      auto type = // compute neighbours in extended block
+	star(block_ctxt,E1,p,links);
       assert(is_complex(type) or type==two_semi_real);
       E1 = *links.begin(); // replace |E| by descended parameter
       E1.flip(has_october_surprise(type)); // to undo extra flip |star|
@@ -1882,7 +1886,8 @@ StandardRepr scaled_extended_dominant // result will have its |gamma()| dominant
   StandardRepr result = E1.restrict(gamma);
 
   // but the whole point of this function is to record the relative flip too!
-  flipped = not same_sign(E1,paramin::default_extend(ctxt,result)); // compare |E1| to default
+  flipped =
+    not same_sign(E1,paramin::default_extend(ctxt,result)); // compare |E1| to default
   return result;
 
 } // |scaled_extended_dominant|
@@ -1894,11 +1899,12 @@ StandardRepr scaled_extended_dominant // result will have its |gamma()| dominant
   call |star| here to do the full analysis, we can do a simplified (there is no
   |to_simple_shift|) test of notably the parity condition in the real case.
  */
-bool is_descent (const ext_gen& kappa, const paramin& E)
+bool is_descent
+  (const context_minimal& ctxt, const ext_gen& kappa, const paramin& E)
 { // easy solution would be to |return is_descent(star(E,kappa,dummy))|;
   const InvolutionTable& i_tab = E.rc().innerClass().involution_table();
   const InvolutionNbr theta = i_tab.nr(E.tw); // so use root action of |E.tw|
-  const RootNbr n_alpha = E.ctxt.subsys().parent_nr_simple(kappa.s0);
+  const RootNbr n_alpha = ctxt.subsys().parent_nr_simple(kappa.s0);
   const RootNbr theta_alpha = i_tab.root_involution(theta,n_alpha);
   const RootDatum& rd = E.rc().rootDatum();
   assert(rd.is_simple_root(n_alpha)); // as explained in the comment above
@@ -1915,9 +1921,10 @@ bool is_descent (const ext_gen& kappa, const paramin& E)
 } // |is_descent|
 
 weyl::Generator first_descent_among
-  (RankFlags singular_orbits, const ext_gens& orbits, const paramin& E)
+  (const context_minimal& ctxt, RankFlags singular_orbits,
+   const ext_gens& orbits, const paramin& E)
 { for (auto it=singular_orbits.begin(); it(); ++it)
-    if (is_descent(orbits[*it],E))
+    if (is_descent(ctxt,orbits[*it],E))
       return *it;
   return orbits.size(); // no singular descents found
 }
@@ -1941,19 +1948,20 @@ containers::sl_list<std::pair<StandardRepr,bool> > extended_finalise
   const RankFlags singular_orbits =
     reduce_to(orbits,singular_generators(ctxt.id(),sr.gamma()));
 
-  containers::queue<paramin> to_do { paramin::default_extend(ctxt,sr) };
+  paramin_context pc(rc,delta);
+  containers::queue<paramin> to_do { paramin::default_extend(pc,sr) };
   containers::sl_list<std::pair<StandardRepr,bool> > result;
 
   do
   { const paramin E= to_do.front();
     to_do.pop(); // we are done with |head|
-    auto s = first_descent_among(singular_orbits,orbits,E);
+    auto s = first_descent_among(ctxt,singular_orbits,orbits,E);
     if (s>=orbits.size()) // no singular descents, so append to result
       result.emplace_back
 	(std::make_pair(E.restrict(sr.gamma()),not is_default(E)));
     else // |s| is a singular descent orbit
     { containers::sl_list<paramin> links;
-      auto type = star(E,orbits[s],links);
+      auto type = star(ctxt,E,orbits[s],links);
       if (not is_like_compact(type)) // some descent, push to front of |to_do|
       { bool flip = has_october_surprise(type); // to undo extra flip |star|
 	auto l_it=links.begin(); RootNbr witness;
