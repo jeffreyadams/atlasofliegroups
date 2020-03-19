@@ -92,6 +92,8 @@ const TwistedInvolution Rep_context::involution_of_Cartan(size_t cn) const
 StandardRepr Rep_context::sr_gamma
   (KGBElt x, const Weight& lambda_rho, const RatWeight& gamma) const
 { // we use |lambda_rho| only for its real projection |(theta-1)/2*lambda_rho|
+  // indeed there is no dependence within its $(1-\theta)(X^*)$-coset either
+
   int_Matrix theta1 = kgb().involution_matrix(x)+1;
   Weight t1_gamma (gamma.numerator().begin(), gamma.numerator().end());
   // the division in the next computation may throw when |gamma| is bad for |x|

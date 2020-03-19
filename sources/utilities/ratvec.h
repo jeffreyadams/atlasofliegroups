@@ -81,6 +81,9 @@ class RationalVector
   RationalVector& operator*=(C n);
   RationalVector& operator/=(C n);
   RationalVector& operator%=(C n);
+  RationalVector operator* (C n) && { return (*this)*=n ;}
+  RationalVector operator/ (C n) && { return (*this)/=n ;}
+  RationalVector operator% (C n) && { return (*this)%=n ;}
 
   template <typename C1>
     RationalVector& operator+=(const matrix::Vector<C1>& v)

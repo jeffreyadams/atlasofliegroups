@@ -33,9 +33,11 @@ namespace blocks {
 class block_minimal : public Block_base
 {
   const Rep_context& rc; // accesses many things, including KGB set for x
+
+  const RatWeight gamma_mod_1;
   const SubSystem integral_datum;
 
-  std::vector<RatWeight> gam_lam; // values $\gamma-\lambda$ by |y| value
+  std::vector<TorusPart> y_bits; // as in |StandardRepr|, indexed by |y|
 
   y_entry::Pooltype y_pool;
   y_part_hash y_hash;  // hash table allows storing |y| parts by index
@@ -85,7 +87,7 @@ class block_minimal : public Block_base
 
 
  private:
-  void lift_y_values(); // compute |gam_lam|
+  void compute_y_bits();
 
 /*
   reverse lengths and order block with them increasing, and by increasing
@@ -156,14 +158,14 @@ struct paramin // allow public member access; methods ensure no invariants
   Coweight t; // a solution to $t(1-theta)=l(\delta-1)$
   bool flipped; // whether tensored with the flipping representation
 
-  paramin (const context_minimal& ec,
-	   KGBElt x, const RatWeight& gamma_lambda, bool flipped=false);
   paramin (const context_minimal& ec, const TwistedInvolution& tw,
 	   RatWeight gamma_lambda, Weight tau, Coweight l, Coweight t,
 	   bool flipped=false);
 
   // default extension choice:
-  paramin (const context_minimal& ec, const repr::StandardReprMod& srm);
+  paramin (const context_minimal& ec,
+	   KGBElt x, const RatWeight& gamma_lambda, bool flipped=false);
+  paramin (const context_minimal& ec, const repr::StandardRepr& sr);
 
   paramin (const paramin& p) = default;
   paramin (paramin&& p)

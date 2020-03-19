@@ -662,6 +662,21 @@ RatWeight param_block::nu(BlockElt z) const
 		    ,2*gamma().denominator()).normalize();
 }
 
+/*
+  Importantly, the following method delivers exact same value as obtained from
+  the |StandardRepr| representing |z| via the method |Rep_context::lambda_rho|;
+  the deformation algorithms switch between |param_block| and |StandardRepr|
+  representations of parameters, and for the extended deformation this should
+  not alter the default choice of the conrresponding extended parameter.
+  Incidentally obtaining a |StandardRepr| representing |z| uses this method, but
+  that does not ensure the desired equality, since |Rep_context::sr_gamma| again
+  squeezes out any dependence on the chosen |lambda| representative by calling
+  |InvolutionTable::y_pack|. Since |Rep_context::lambda_rho| uses the same
+  |y_bits| as we do, it suffices to mimick the implementation of that method:
+  compute a choice of $(1-\theta)(lambda-\rho)$ by calling |y_lift(y_bits)|, add
+  to that $(1+\theta)(\lambda-\rho)=(1+\theta)(\gamma-\rho)$ so as to get
+  $2(\lambda-\rho)$ and finally divide (with exact integer result) by $2$.
+*/
 Weight param_block::lambda_rho(BlockElt z) const
 {
   auto& i_tab = rc.innerClass().involution_table();

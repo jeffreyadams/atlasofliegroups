@@ -71,14 +71,18 @@ const InvolutionTable& block_minimal::involution_table() const
 const RootDatum& block_minimal::rootDatum() const
   { return rc.rootDatum(); }
 
-// find a $-\theta$ stable representative modulo $2X^*$ for $\gamma-\lambda$
+// find value $\gamma-\lambda$ that the parameter for |z| at |gamma%1| would give
 RatWeight block_minimal::gamma_lambda(BlockElt z) const
 {
-#ifndef NDEBUG
-  auto theta1 = involution_table().matrix(rc.kgb().involution(x(z)))+1;
-  assert((theta1*gam_lam[y(z)]).isZero()); // was ensured during construction
-#endif
-  return gam_lam[y(z)];
+  auto& i_tab = rc.innerClass().involution_table();
+  InvolutionNbr i_x = rc.kgb().inv_nr(x(z));
+  const WeightInvolution& theta = i_tab.matrix(i_x);
+
+  // |y_lift| gives the choice for $(1-theta)(\lambda-\rho)$ at |gamma_mod_1|
+  // subtract from $(1-\theta)(\gamma\mod1-\rho)$ and divide by 2
+  const auto gm1_rho = gamma_mod_1-rho(rc.rootDatum());
+  auto result = (gm1_rho - theta*gm1_rho-i_tab.y_lift(i_x,y_bits[y(z)]))/2;
+  return result.normalize();
 }
 
 block_minimal::~block_minimal() = default;
@@ -90,7 +94,9 @@ block_minimal::block_minimal // full block constructor
   )
   : Block_base(rootdata::integrality_rank(rc.rootDatum(),srm.gamma()))
   , rc(rc)
-  , integral_datum(SubSystem::integral(rootDatum(),srm.gamma()))
+  , gamma_mod_1(srm.gamma()) // already reduced
+  , integral_datum(SubSystem::integral(rootDatum(),gamma_mod_1))
+  , y_bits()
   , y_pool()
   , y_hash(y_pool)
   , xy_hash(info)
@@ -392,16 +398,17 @@ block_minimal::block_minimal // full block constructor
   reverse_length_and_sort(); // reorder block by increasing value of |x|
   xy_hash.reconstruct(); // adapt to permutation of |info| underlying |xy_hash|
 
-  lift_y_values();
+  compute_y_bits();
   // and look up which element matches the original input
   entry_element = lookup(srm);
 
 } // |block_minimal::block_minimal|
 
-void block_minimal::lift_y_values()
+void block_minimal::compute_y_bits()
 {
-  gam_lam.reserve(y_pool.size());
+  y_bits.reserve(y_pool.size());
   const InvolutionTable& i_tab = innerClass().involution_table();
+  const RatWeight gamma1_rho = gamma_mod_1 - rho(rootDatum());
 
   // tabulate some |x| (in fact the first one) for every value |y|
   std::vector<KGBElt> x_of_y(y_pool.size(),UndefKGB);
@@ -413,8 +420,13 @@ void block_minimal::lift_y_values()
   { KGBElt x=x_of_y[y];
     assert(x!=UndefKGB); // since every |y| must have at least one matching |x|
     InvolutionNbr i_x = rc.kgb().inv_nr(x);
-    gam_lam.push_back(y_pool[y].repr().log_pi(false)); // get a lift
-    ((gam_lam.back() -= i_tab.matrix(i_x)*gam_lam.back()) /= 2).normalize();
+    RatWeight yrep = y_pool[y].repr().log_pi(false);
+    yrep -= i_tab.matrix(i_x)*yrep;
+    yrep /= 2; // now |yrep| is projected to the $-1$ eigenspace of $\theta$
+    const RatWeight lr = (gamma1_rho - yrep).normalize();
+    assert (lr.denominator()==1); // we are back in proper $X^*$ coset
+    const Weight lambda_rho(lr.numerator().begin(),lr.numerator().end());
+    y_bits.push_back(i_tab.y_pack(i_x,lambda_rho));
   }
 }
 
@@ -814,22 +826,6 @@ bool same_sign (const paramin& E, const paramin& F)
   assert(i_exp%2==0);
   int n1_exp =
     (F.l-E.l).dot(E.tau) + (E.gamma_lambda-F.gamma_lambda).dot(F.t);
-  return ((i_exp/2+n1_exp)%2==0)!=(E.is_flipped()!=F.is_flipped());
-}
-
-// a variation to use when $\nu$ has been scaled
-bool same_sign (const paramin& E, const RatWeight& gamma_E,
-		const paramin& F, const RatWeight& gamma_F)
-{
-  const WeightInvolution& delta = E.delta();
-  Weight kappa1=E.tau, kappa2=F.tau;
-  kappa1 -= delta*kappa1;
-  kappa2 -= delta*kappa2;
-  int i_exp = E.l.dot(kappa1) - F.l.dot(kappa2);
-  assert(i_exp%2==0);
-  int n1_exp =
-    (F.l-E.l).dot(E.tau) +
-    (E.gamma_lambda-gamma_E-F.gamma_lambda+gamma_F).dot(F.t);
   return ((i_exp/2+n1_exp)%2==0)!=(E.is_flipped()!=F.is_flipped());
 }
 
@@ -1712,7 +1708,14 @@ bool ext_block::tune_signs(const blocks::block_minimal& block)
   return true; // report success if we get here
 } // |tune_signs|
 
-// compute the components in a default extended parameter for parameter |sr|
+/*
+  Compute the components in a default extended parameter reducing to |srm|.
+  Although no $\delta$-fixed |gamma| is visible here, a |StandardRepr sr|
+  reducing to |srm| with such |sr.gamma()| is assumed to exist; |gamma_lambda|
+  refers to |rc.gamma_lambda(sr)|, but by this is also |rc.gamma_lambda(srm)|
+  (due to |mod_reduce|) so |(1-delta)*gamma_lambda|, gives a valid value for
+  the equation of which |tau| est une solution.
+*/
 void set_default_extended
 ( const Rep_context& rc, const repr::StandardReprMod& srm,
   const WeightInvolution& delta,
@@ -1721,7 +1724,7 @@ void set_default_extended
   const auto& kgb = rc.kgb(); const auto x=srm.x();
   const WeightInvolution theta = rc.innerClass().matrix(kgb.involution(x));
 
-  gamma_lambda=rc.gamma_lambda(srm); // normalised
+  gamma_lambda=rc.gamma_lambda(srm); // default rep.ive at |gamma%1|, normalised
   const auto diff = gamma_lambda.integer_diff<int>(delta*gamma_lambda);;
   tau=matreduc::find_solution(1-theta,diff);
   l=ell(kgb,x);
@@ -1729,12 +1732,14 @@ void set_default_extended
 }
 
 // build a default extended parameter for |sr| in the context |ec|
-paramin::paramin (const context_minimal& ec, const repr::StandardReprMod& srm)
+paramin::paramin (const context_minimal& ec, const repr::StandardRepr& sr)
   : ctxt(ec)
-  , tw(ec.rc().kgb().involution(srm.x()))
+  , tw(ec.rc().kgb().involution(sr.x()))
   , l(), gamma_lambda(), tau(), t() // components to be computed just below
   , flipped(false)
 {
+  assert(((1-delta())*sr.gamma().numerator()).isZero());
+  auto srm =  repr::StandardReprMod::mod_reduce(ec.rc(),sr);
   set_default_extended(ec.rc(),srm,ec.delta(), gamma_lambda,tau,l,t);
   validate(*this);
 }
@@ -1783,25 +1788,21 @@ StandardRepr scaled_extended_dominant // result will have its |gamma()| dominant
   assert(is_dominant_ratweight(rd,sr.gamma())); // dominant
   assert(((delta-1)*sr.gamma().numerator()).isZero()); // $\delta$-fixed
 
+  // to get the (implicit) choice of |lambda| adapted to |block_minimal|
+  // it is essential to modularly reduce |sr.gamma()| here
+  auto srm = repr::StandardReprMod::mod_reduce(rc,sr);
+
   // first approximation to result is scaled input
   auto scaled_sr = rc.sr(sr.x(),rc.lambda_rho(sr),sr.gamma()*factor);
-
-  // to get the (implicit) choice of |lambda| adapted to |block_minimal|
-  // it is essential to modularly reduce |scaled_sr.gamma()| here
-  auto srm = repr::StandardReprMod::mod_reduce(rc, scaled_sr);
-
-  // class |paramin| cannot change its |ctxt|, so extract separate components
-  RatWeight gam_lam; Weight tau; Coweight l,t;
-  bool pre_flip;
-  { paramin E(ini_ctxt,repr::StandardReprMod::mod_reduce(rc,sr));
-    paramin F(ini_ctxt,srm);
-    gam_lam=F.gamma_lambda; tau=F.tau; l=F.l; t=F.t;
-    pre_flip = not same_sign(E,sr.gamma(),F,scaled_sr.gamma());
-  }
-
   // it will be convenent to have a working copy of the numerator of |gamma|
   RatWeight gamma = scaled_sr.gamma(); // a working copy
   KGBElt x = scaled_sr.x(); // another variable, for convenience
+
+  // class |param| cannot change its |gamma|, so work on separate components
+  RatWeight gam_lam; Weight tau; Coweight l,t;
+  // initialise without building a |context| (as |result.gamma()| undominant):
+  set_default_extended(rc,srm,delta, gam_lam,tau,l,t);
+  gam_lam += gamma-sr.gamma(); // shift |gam_lam| by $\nu$ change
 
   int_Vector r_g_eval (rd.semisimpleRank()); // simple root evaluations at |-gr|
   { const RatCoweight& g_r=rc.realGroup().g_rho_check();
@@ -1809,6 +1810,7 @@ StandardRepr scaled_extended_dominant // result will have its |gamma()| dominant
       r_g_eval[i] = -g_r.dot(rd.simpleRoot(i));
   }
 
+  bool pre_flip=false;
   { unsigned i; // index into |orbits|
     do // make |gamma_numer| dominant, uses only complex simple root reflections
       for (i=0; i<orbits.size(); ++i)
@@ -1882,8 +1884,7 @@ StandardRepr scaled_extended_dominant // result will have its |gamma()| dominant
   StandardRepr result = E.restrict(gamma);
 
   // but the whole point of this function is to record the relative flip too!
-  srm = repr::StandardReprMod::mod_reduce(rc,result);
-  flipped = not same_sign(E,paramin(ctxt,srm)); // compare |E| to default ext.
+  flipped = not same_sign(E,paramin(ctxt,result)); // compare |E| to default ext.
   return result;
 
 } // |scaled_extended_dominant|
@@ -1936,14 +1937,13 @@ containers::sl_list<std::pair<StandardRepr,bool> > extended_finalise
   assert(is_dominant_ratweight(rc.rootDatum(),sr.gamma()));
   // we must assume |gamma| already dominant, DON'T call |make_dominant| here!
 
-  auto srm = repr::StandardReprMod::mod_reduce(rc,sr);
   context_minimal ctxt(rc,delta,SubSystem::integral(rc.rootDatum(),sr.gamma()));
 
   const ext_gens orbits = rootdata::fold_orbits(ctxt.id(),delta);
   const RankFlags singular_orbits =
     reduce_to(orbits,singular_generators(ctxt.id(),sr.gamma()));
 
-  containers::queue<paramin> to_do { paramin(ctxt,srm) }; // start with default
+  containers::queue<paramin> to_do { paramin(ctxt,sr) }; // start with default
   containers::sl_list<std::pair<StandardRepr,bool> > result;
 
   do
