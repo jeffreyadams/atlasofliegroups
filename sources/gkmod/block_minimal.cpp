@@ -726,6 +726,35 @@ paramin paramin::default_extend
   return paramin(ec,sr.x(),gamma_lambda);
 }
 
+paramin& paramin::operator= (const paramin& p)
+{ assert(&ctxt==&p.ctxt); // assignment should remain in the same context
+  tw=p.tw;
+  l=p.l; gamma_lambda=p.gamma_lambda; tau=p.tau; t=p.t;
+  flipped=p.flipped;
+  return *this;
+}
+paramin& paramin::operator= (paramin&& p)
+{ assert(&ctxt==&p.ctxt); // assignment should remain in the same context
+  tw=std::move(p.tw);
+  l=std::move(p.l); gamma_lambda=std::move(p.gamma_lambda);
+  tau=std::move(p.tau); t=std::move(p.t);
+  flipped=p.flipped;
+  return *this;
+}
+
+
+KGBElt paramin::x() const
+{ TitsElt a(ctxt.innerClass().titsGroup(),TorusPart(l),tw);
+  return rc().kgb().lookup(a);
+}
+
+repr::StandardRepr paramin::restrict(const RatWeight& gamma) const
+{
+  const RatWeight gamma_rho = gamma-rho(rc().rootDatum());
+  const auto lambda_rho = gamma_rho.integer_diff<int>(gamma_lambda);
+  return rc().sr_gamma(x(),lambda_rho,gamma);
+}
+
 
 // whether |E| and |F| lie over equivalent |StandardRepr| values
 bool same_standard_reps (const paramin& E, const paramin& F)
@@ -1733,18 +1762,6 @@ bool ext_block::tune_signs(const blocks::block_minimal& block)
 } // |tune_signs|
 
 
-KGBElt paramin::x() const
-{ TitsElt a(ctxt.innerClass().titsGroup(),TorusPart(l),tw);
-  return rc().kgb().lookup(a);
-}
-
-repr::StandardRepr paramin::restrict(const RatWeight& gamma) const
-{
-  const RatWeight gamma_rho = gamma-rho(rc().rootDatum());
-  const auto lambda_rho = gamma_rho.integer_diff<int>(gamma_lambda);
-  return rc().sr_gamma(x(),lambda_rho,gamma);
-}
-
 /*
   This function serves to replace and circumvent |Rep_context::make_dominant|
   applied to a scaled parameter (as occurs in the ordinary deformation function
@@ -1784,12 +1801,8 @@ StandardRepr scaled_extended_dominant // result will have its |gamma()| dominant
   KGBElt x = scaled_sr.x(); // another variable, for convenience
 
   paramin E0 = paramin::default_extend(ini_ctxt,sr);
-  RatWeight& gam_lam=E0.gamma_lambda;
-  Weight& tau=E0.tau;
-  Coweight& l=E0.l;
-  Coweight& t=E0.t;
 
-  gam_lam += gamma-sr.gamma(); // shift |gam_lam| by $\nu$ change
+  E0.gamma_lambda += gamma-sr.gamma(); // shift |E0.gamma_lambda| by $\nu$ change
 
   int_Vector r_g_eval (rd.semisimpleRank()); // simple root evaluations at |-gr|
   { const RatCoweight& g_r=rc.realGroup().g_rho_check();
@@ -1797,7 +1810,6 @@ StandardRepr scaled_extended_dominant // result will have its |gamma()| dominant
       r_g_eval[i] = -g_r.dot(rd.simpleRoot(i));
   }
 
-  bool pre_flip=false;
   { unsigned i; // index into |orbits|
     do // make |gamma_numer| dominant, uses only complex simple root reflections
       for (i=0; i<orbits.size(); ++i)
@@ -1807,12 +1819,11 @@ StandardRepr scaled_extended_dominant // result will have its |gamma()| dominant
 	  if (alpha_v.dot(gamma.numerator())<0)
 	  {
 	    rd.act(s.w_kappa,gamma); // change infin.character representative
-	    rd.act(s.w_kappa,gam_lam);
-	    rd.act(s.w_kappa,tau);
-	    rd.shifted_dual_act(l,s.w_kappa,r_g_eval);
-	    rd.dual_act(t,s.w_kappa);
-	    if (s.length()==2)
-	      pre_flip = not pre_flip; // record flip for 2C+/2C- done
+	    rd.act(s.w_kappa,E0.gamma_lambda);
+	    rd.act(s.w_kappa,E0.tau);
+	    rd.shifted_dual_act(E0.l,s.w_kappa,r_g_eval);
+	    rd.dual_act(E0.t,s.w_kappa);
+	    E0.flip(s.length()==2); // record flip for every 2C+/2C- done
 	    x = kgb.cross(s.w_kappa,x);
 	    break; // indicate we advanced; restart search for |s|
 	  }
@@ -1823,7 +1834,7 @@ StandardRepr scaled_extended_dominant // result will have its |gamma()| dominant
   // since |gamma| may have changed, we now build a new |context_minimal|
   context_minimal ctxt(rc,delta, SubSystem::integral(rd,gamma));
   // now ensure that |E| gets matching |gamma| and |theta| (for flipped test)
-  paramin E1(ctxt,kgb.involution(x),gam_lam,tau,l,t,pre_flip);
+  paramin E1(ctxt,kgb.involution(x),E0.gamma_lambda,E0.tau,E0.l,E0.t,E0.flipped);
 
   { // descend through complex singular simple descents
     const ext_gens integral_orbits = rootdata::fold_orbits(ctxt.id(),delta);

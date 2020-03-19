@@ -178,19 +178,8 @@ struct paramin // allow public member access; methods ensure no invariants
   , flipped(p.flipped)
   {}
 
-  paramin& operator= (const paramin& p)
-  { tw=p.tw;
-    l=p.l; gamma_lambda=p.gamma_lambda; tau=p.tau; t=p.t;
-    flipped=p.flipped;
-    return *this;
-  }
-  paramin& operator= (paramin&& p)
-  { tw=std::move(p.tw);
-    l=std::move(p.l); gamma_lambda=std::move(p.gamma_lambda);
-    tau=std::move(p.tau); t=std::move(p.t);
-    flipped=p.flipped;
-    return *this;
-  }
+  paramin& operator= (const paramin& p);
+  paramin& operator= (paramin&& p);
 
   bool is_flipped() const { return flipped; }
 
