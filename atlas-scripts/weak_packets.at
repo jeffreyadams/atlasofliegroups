@@ -112,9 +112,9 @@ fi
 
 {*_trial commands are for testing only, they break the computation into steps
 usage:
-set (st_int,O_check_int,all,gamma_final,permutation)=weak_packet_trial(O,G)
-set (st_int,O_check,blocks_and_cells,gamma_target,permutation)=weak_packet_int_trial(st_int,O_check,all,gamma,perm)
-set (st_int,O_check,blocks_and_cells,gamma_target,permutation)=weak_packet_int_trial(weak_packet_trial(O,G))
+set (st_int,O_check_int,all,gamma_final,permutation)=weak_packet_trial(O_check,G)
+set (st_int,O,blocks_and_cells,gamma_target,permutation)=weak_packet_int_trial(st_int,O,all,gamma,perm)
+set (st_int,O,blocks_and_cells,gamma_target,permutation)=weak_packet_int_trial(weak_packet_trial(O_check,G))
 then
 set params=parameters_given_AV_infinitesimal_character(st_int,O_check,blocks_and_cells,gamma_target,permutation)
 }
@@ -224,7 +224,7 @@ st_int=springer_table(rd_int) then
 ()=prints("computing packet for:", O_check_int) then
 (bc,wp)=weak_packet_int(st_int,O_check_int,all,gamma_final,permutation)
 in
-if {G.is_split and } =#parameters(wp) then prints("ERROR: , empty packet") fi;
+if {G.is_split and } =#parameters(wp) then prints("ALERT: , empty packet") fi;
 (bc,wp)
 fi
 
@@ -657,7 +657,7 @@ show_nilpotent_orbits(orbits);prints();
 show_short(wp);
 show(wp);
 show_long(wp);
-if G.is_relatively_split then 
+if G.is_relatively_split then
  let wp_sc = ##for weakpacket@i in wp do
  let O=orbits[i] in  if #O.component_datum.orders=1 then [weakpacket] else [] fi od in
  test_conjecture_report(wp_sc,G)
@@ -842,3 +842,24 @@ prints("A minus B: ", #AminusB);
 for p in AminusB do prints(p) od;
 prints("B minus A: ", #BminusA);
 for p in BminusA do prints(p) od
+
+{run over many real forms, and for each real forms
+all Levi factors of maximal real parabolics,
+to generate lots of non-semisimple groups}
+set test_weak_packets([RealForm] groups)=void:
+let all_groups=
+##for G in groups do G# for P in maximal_real_parabolics(G) do P.Levi od od in
+for G in all_groups do prints("doing G: ", G);weak_packet_report(G) od
+
+{all simple simply connected or adjoint groups up to rank n,
+together with all Levi factors of real maximal parabolics}
+set test_weak_packets(int n)=
+let groups=
+  ##(for i:n do all_simple_simply_connected_rank(i) od
+  ##for i:n do all_simple_adjoint_rank(i) od)
+then
+ groups=##for G in groups do [G]##(for P in maximal_real_parabolics(G) do P.Levi od) od
+ in
+ prints("Computing weak packets for: ");
+ for G in groups  do prints(G) od;prints();
+ for G in groups do weak_packets(G) od
