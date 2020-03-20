@@ -862,4 +862,4 @@ then
  in
  prints("Computing weak packets for: ");
  for G in groups  do prints(G) od;prints();
- for G in groups do weak_packets(G) od
+ for G in groups do weak_packet_report_ind(G) od
