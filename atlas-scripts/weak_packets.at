@@ -843,23 +843,13 @@ for p in AminusB do prints(p) od;
 prints("B minus A: ", #BminusA);
 for p in BminusA do prints(p) od
 
-{run over many real forms, and for each real forms
-all Levi factors of maximal real parabolics,
-to generate lots of non-semisimple groups}
-set test_weak_packets([RealForm] groups)=void:
-let all_groups=
-##for G in groups do G# for P in maximal_real_parabolics(G) do P.Levi od od in
-for G in all_groups do prints("doing G: ", G);weak_packet_report(G) od
-
-{all simple simply connected or adjoint groups up to rank n,
-together with all Levi factors of real maximal parabolics}
+{all simple simply connected or adjoint groups up to rank n
+compute weak_packet_report, which includes computing
+weak_packets for all Levi factors of real maximal parabolics,
+so this is long list of many non-semisimple groups}
 set test_weak_packets(int n)=
 let groups=
   ##(for i:n do all_simple_simply_connected_rank(i) od
-  ##for i:n do all_simple_adjoint_rank(i) od)
-then
- groups=##for G in groups do [G]##(for P in maximal_real_parabolics(G) do P.Levi od) od
- in
- prints("Computing weak packets for: ");
+  ##for i:n do all_simple_adjoint_rank(i) od) in
  for G in groups  do prints(G) od;prints();
  for G in groups do weak_packet_report_ind(G) od
