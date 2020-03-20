@@ -539,7 +539,8 @@ set two_rho_of_pseudo_Levi (RootDatum rd,[int] list)=vec:
 {use is_conjugate to test conjugacy}
 {this only works if rd(.derived?) is simple}
 {alternative: pseudo_Levi_subgroups defined in subgroups.at}
-set pseudo_Levis (RootDatum rd)=[[int]]: let
+set pseudo_Levis (RootDatum rd)=[[int]]:
+let
    r=semisimple_rank(rd) then
    levis=standard_Levi_conjugacy_representatives(rd) then
    triples=[([int],vec,[vec])]:
@@ -755,6 +756,7 @@ for (L,H_L) in pseudo_Levis (rd,(),H) do
 od
 
 set generators_of_component_group (ComplexNilpotent (rd,(),H))=
+[(RootDatum,vec,[ratvec],[ratvec],[ratvec],[ratvec])]:
 for (L,H_L) in pseudo_Levis (rd,(),H) do
 {let ()=prints("doing H_L:",H_L) in
 let ()=prints("L=",L) in}
@@ -815,9 +817,14 @@ set order_in_A (ratvec v, RootDatum rd, vec H)=int:
    (L,H_new)=Bala_Carter_Levi_plus(orb) in in_radical(i*v,L) od) in div[k]
 
 set component_datum(ComplexNilpotent O)=ComplexNilpotentComponentDatum:
+(ComplexNilpotent,[int],[(RootDatum,[ratvec])]):
+if O.root_datum.is_abelian then
+ let rd=O.root_datum in 
+ (O,[1],[(rd,[null(rd.rank)/1])]) else
 let g=generators_of_component_group(O)
 then orders=## for (a,H,b,c,d,S) in g do for v in S do order_in_A(v,O.root_datum,H) od od in
 (O,sort(orders),for (L,H,b,c,d,S) in g do (L,S) od)
+fi
 
 set conjugacy_class_orders(ComplexNilpotent O)=O.component_datum.orders
 set number_conjugacy_classes_component_group(ComplexNilpotent O)=#O.component_datum.orders
