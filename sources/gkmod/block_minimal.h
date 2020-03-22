@@ -123,9 +123,9 @@ public:
 }; // |paramin_context|
 
 // this class is to |paramin| what |ext_block::context| is to |ext_block::param|
+// it holds relevant values that remain fixed across extended block
 // data fields that are removed: |d_gamma|, |lambda_shifts|
 // methods that are absent: |gamma|, |lambda_shift|
-// holds values that remain fixed across extended block
 class context_minimal : public paramin_context
 {
   const RootDatum integr_datum; // intgrality datum

@@ -1081,7 +1081,8 @@ std::vector<pair_list> contributions
       auto type=eblock.descent_type(s,z);
       if (is_like_compact(type))
 	continue; // no descents, |z| represents zero; leave |result[z]| empty
-      int sign = generator_length(type)==2 ? -1 : 1; // due to October surprise
+      int sign = eblock.l(z,eblock.some_scent(s,z)) // true link length change
+	==2 ? -1 : 1; // due to October surprise
       if (has_double_image(type)) // 1r1f, 2r11
       { auto pair = eblock.Cayleys(s,z);
 	result[z] = combine
