@@ -1524,14 +1524,13 @@ set s_to_minus_1 (ParamPol P) = ParamPol: 0*P + for x@q in P do (-%x,q) od
 { counterpart to built-in +@(ParamPol,(Split,Param)) }
 set - (ParamPol a, (Split,Param) (c,p)) = ParamPol: a+(-c,p)
 
-set sum (RealForm G,[ParamPol] Ps) = ParamPol:
-  let n=#Ps in
-  if n=0 then G.null_module
-  else Ps. { do divide and conquer so as to privilege balanced additions }
-    ( rec_fun s([ParamPol] Ps) ParamPol: { |Ps| has at least one term }
+set sum = (RealForm,[ParamPol]->ParamPol):
+ { do divide and conquer so as to privilege balanced additions }
+ { define recursive hart of |sum| without capturing its arguments }
+  let rec_fun s([ParamPol] Ps) = ParamPol: { |Ps| has at least one term }
         let h = (#Ps)\2 in if =h then Ps[0] else s(Ps[:h])+s(Ps[h:]) fi
-    )
-  fi
+  in (RealForm G,[ParamPol] Ps) ParamPol:
+  if =#Ps then G.null_module else s(Ps) fi
 
 set map ((Param->Param)f, ParamPol P) = ParamPol:
   0*P + for c@p in P do (c,f(p)) od
