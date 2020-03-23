@@ -1001,7 +1001,7 @@ blocks::block_minimal& Rep_table::lookup
 Rep_table::~Rep_table()
 {
   std::cout << bounds.size() << " distinct common blocks, with "
-	    << mod_pool.size() << " elements , for "
+	    << mod_pool.size() << " elements, for "
 	    << pool.size() << " distinct parameters.\n";
 }
 
