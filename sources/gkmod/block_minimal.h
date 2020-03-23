@@ -133,7 +133,7 @@ class context_minimal : public paramin_context
   Permutation pi_delta; // permutation of |delta| on roots of full root datum
   RootNbrSet delta_fixed_roots;
   weyl::Twist twist;
-  int_Vector l_shifts; // affine center for complex cross actions on |l|
+  int_Vector l_shifts; // of size |sub.rank()|; affine center for action on |l|
 
  public:
   context_minimal (const repr::Rep_context& rc, const WeightInvolution& delta,

@@ -819,7 +819,8 @@ paramin complex_cross(const context_minimal& ctxt,
 { const RootDatum& rd = E.rc().rootDatum();
   const RootDatum& id = ctxt.id();
   const InvolutionTable& i_tab = E.rc().innerClass().involution_table();
-  auto &tW = E.rc().twistedWeylGroup(); // caution: |p| refers to integr. datum
+  auto &tW = E.rc().twistedWeylGroup(); // caution: |p| refers to integr. datu
+  const SubSystem& subs=ctxt.subsys();
 
   InvolutionNbr theta = i_tab.nr(E.tw);
   const RootNbrSet& theta_real_roots = i_tab.real_roots(theta);
@@ -828,7 +829,7 @@ paramin complex_cross(const context_minimal& ctxt,
 
   for (unsigned i=p.w_kappa.size(); i-->0; ) // at most 3 letters, right-to-left
   { weyl::Generator s=p.w_kappa[i]; // generator for integrality datum
-    tW.twistedConjugate(ctxt.subsys().reflection(s),E.tw);
+    tW.twistedConjugate(subs.reflection(s),E.tw);
     id.simple_reflect(s,E.gamma_lambda.numerator());
     id.simple_reflect(s,rho_r_shift);
     id.simple_reflect(s,E.tau);
@@ -852,7 +853,6 @@ paramin complex_cross(const context_minimal& ctxt,
   assert(ctxt.delta().right_prod(dual_rho_im_shift)==dual_rho_im_shift);
   validate(E);
 
-  auto& subs=ctxt.subsys();
   RootNbr alpha_simple = subs.parent_nr_simple(p.s0);
   const WeylWord to_simple = fixed_conjugate_simple(ctxt,alpha_simple);
   // by symmetry by $\delta$, |to_simple| conjugates $\delta(\alpha)$ to simple:
@@ -1798,8 +1798,9 @@ StandardRepr scaled_extended_dominant // result will have its |gamma()| dominant
   assert(((delta-1)*sr.gamma().numerator()).isZero()); // $\delta$-fixed
 
   // first approximation to result is scaled input
+  // importantly, $\lambda$ (or equivalently |lambda_rho|) is held fixed here
   auto scaled_sr = rc.sr(sr.x(),rc.lambda_rho(sr),sr.gamma()*factor);
-  // it will be convenent to have a working copy of the numerator of |gamma|
+  // it will be convenent to have a working (modifiable) copy of |gamma|
   RatWeight gamma = scaled_sr.gamma(); // a working copy
   KGBElt x = scaled_sr.x(); // another variable, for convenience
 
@@ -1808,7 +1809,7 @@ StandardRepr scaled_extended_dominant // result will have its |gamma()| dominant
   E0.gamma_lambda += gamma-sr.gamma(); // shift |E0.gamma_lambda| by $\nu$ change
 
   int_Vector r_g_eval (rd.semisimpleRank()); // simple root evaluations at |-gr|
-  { const RatCoweight& g_r=rc.realGroup().g_rho_check();
+  { const RatCoweight& g_r=ctxt.g_rho_check();
     for (unsigned i=0; i<r_g_eval.size(); ++i)
       r_g_eval[i] = -g_r.dot(rd.simpleRoot(i));
   }
