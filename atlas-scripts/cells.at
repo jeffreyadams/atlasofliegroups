@@ -168,6 +168,7 @@ od  {/for block}
 {include permutation}
 set parameters_given_AV_infinitesimal_character(SpringerTable st, ComplexNilpotent O,[([Param],[WCell])] blocks_and_cells,ratvec gamma,mat permutation)=[(int,int,Param)]: {[(block number, cell number, parameter)]}
 let springer_O=st.springer(O) then
+()=prints("O: ", O) then
 springer_dim=st.ct.dimension(springer_O) in
 if cells_verbose then
  prints("given AV with infinitesimal character:", gamma, new_line, "O=",O, new_line, "with permutation: ", permutation);

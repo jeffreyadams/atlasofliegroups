@@ -1,5 +1,5 @@
 <nilpotent_orbits.at
-<galois.at {for strong_real_forms_same_type}
+<galois.at {for conjugacy_classes_involutions}
 
 {computing the centralizer of a complex nilpotent}
 
@@ -200,7 +200,8 @@ tabulate(
 for  orbit@i in orbits do
 let d=orbit.component_datum then
 H=orbit.centralizer then
-C_2=#strong_real_forms_same_type(compact_form(H)) in
+C_2=conjugacy_classes_involutions(H) in
+{C_2=#strong_real_forms_same_type(compact_form(H)) in} 
 [i.to_string,
 ([int]:orbit.H).to_string,
 orbit.diagram.to_string,

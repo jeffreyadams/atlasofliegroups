@@ -522,12 +522,15 @@ proper_real_parabolics=##for P in real_parabolics do if #P.S<G.ss_rank then [P] 
 fi
 }
 
+{theta_stable parabolics, maximal among all such
+unlike the real_parabolic case, these have different x-values
+this is a brute force search, it can be improved along the lines of
+maximal_real_parabolics}
 set maximal_theta_parabolics(RealForm G)=
 let theta_parabolics=theta_stable_parabolics(G) then
 proper_theta_parabolics=##for P in theta_parabolics do if #P.S<G.ss_rank then [P] else [] fi od in
 ##for P in proper_theta_parabolics do
  if any(for Q in proper_theta_parabolics do  P.x=Q.x and is_proper_subset(P.S,Q.S) od) then [] else [P] fi od
-
 
 set all_parabolics_with_theta_stable_Levi (RealForm G) = [KGPElt]:
 ##for S in power_set(semisimple_rank(G))
