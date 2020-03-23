@@ -1,0 +1,368 @@
+<springer_tables.at
+<character_table_reps.at
+
+{Springer correspondence from nilpotent orbits to representations of W in type B/C
+ orbit: partition -> representation= pair of partitions
+ see Carter pg. 419}
+
+{all partitions for orbits of D_n, partitions of (even) n
+every odd part has even multiplicity}
+set partitions_D(int n)=[Partition]:
+parity_restricted_partitions(2*n,false)
+
+{ ---------------- type D ------------------}
+
+{Springer correspondence from nilpotent orbits to representations of W in type D
+ orbit: partition -> representation= pair of partitions
+ see Carter pg. 419}
+
+{diagram:
+
+ComplexOrbit O            (for SO(2n))
+Partition P               (for orbit of SO(2n))
+D_irrep                   (for representation of W(SO(2n)))
+}
+{from classical_W_classes_and_reps..at:
+
+ D_irrep = { from folding pairs of partitions under swapping }
+   ( ([int],[int]) unsplit_irr { unequal partitions, larger first }
+   | (bool,[int]) split_irr { for pair of equal partitions, with sign }
+                            {switch order to avoid overlap with D_class}
+   )]
+}
+
+set pad([int] v,int N)=v##null(N-#v)
+set pad(ratvec v,int N)=v##null(N-#v)
+
+{valid partition in type D: odd parts have even multiplicity}
+set test_D(Partition P)=bool:
+all(for i:max(P) from 1 do if i.is_even then multiplicity(i,P).is_even else true fi od)
+
+{map from partition for an orbit of SO(2n) to semisimple element H}
+set semisimple_element_D(Partition P)=
+assert(P.test_D,"Not a valid type D partition");
+let multiplicities=##for i:max(P)+1 from 1 do let m=multiplicity(i,P) in if !=m then [(i,m)] else [] fi od
+then v=ratvec:[] in
+let ()=for (i,m) in multiplicities do
+ if i.is_odd then for j:m do v##:=rho(Sp(i-1)) od
+  else for j:m\2 do v##:=rho(GL(i)) od fi
+od
+then w=pad(v,sum(P)\2) in
+  dominant(SO(sum(P)),w)
+
+{other direction: partition of 2n -> ComplexNilpotent for SO(2n+1)}
+set complex_nilpotent_D(Partition P)=ComplexNilpotent:
+(SO(sum(P)),(),ratvec_as_vec(2*semisimple_element_D(P)))
+
+{for Spin(2n+1) use the normalized diagram}
+set complex_nilpotent_D(RootDatum rd,Partition P)=ComplexNilpotent:
+let O_SO=P.complex_nilpotent_D then
+orbits=rd.orbits then
+index=first(for O in orbits do O.diagram_normalized=O_SO.diagram_normalized od) in
+orbits[index]
+
+{outer automorphism of orbits in type D: switch
+last two coordinates of O.diagram
+corresponds to changing sign of  last coordinate of O.H}
+set out_D(vec diagram)=
+let a=diagram~[1] in
+diagram~[1]:=diagram~[0];diagram~[0]:=a;diagram
+
+{see page 423 of Carter
+ambiguity in map from partitions to orbits:
+ map is 1 to 2 on partitions with all even parts
+ don't need to resolve this ambiguity here,
+ but it is necessary when defining the Springer correspondence
+ below
+}
+
+set partition_of_orbit_D(ComplexNilpotent O)=
+assert(let (type,)=O.root_datum.derived.simple_type in type="D","Not an orbit in type D (plus torus)");
+let orbit_partitions=partitions_D(O.root_datum.ss_rank) then
+diagram=O.diagram_normalized then
+{search for the partition mapping to given O}
+index=first(for P in orbit_partitions do complex_nilpotent_D(P).diagram_normalized=diagram od) in
+if index>=0 then orbit_partitions[index] else
+{orbit not in image: must be from very even orbit (all coordinates even)
+ <-> last coordinate of O.H\ne 0}
+let out_diagram=out_D(diagram[0]) then
+index=first(for P in orbit_partitions do complex_nilpotent_D(P).diagram_normalized[0]=out_diagram od) in
+orbit_partitions[index] fi
+
+{springer map from partition P of 2n to pair of partitions (P,Q) sum(P)+sum(Q)=n}
+{this is weak version of map from orbits to W-reps}
+set springer_D_weak(Partition P)=(Partition,Partition):
+assert(P.test_D,"Not a valid type D partition");
+let P=sort(P)  {increasing} then
+P=if is_even(#P) then P else 0#P fi {even # of parts} then
+Q=P+for i:#P do i od {add [0,1,2,...,]}
+then v=[int]:[],w=[int]:[] in
+{each odd part 2a+1 contributes a to v, each even part 2a contributes a to w}
+for a in Q do if a.is_odd then v#:=a\2 else w#:=a\2 fi od;
+assert(#v=#w,"error, v and w should have the same size");
+{let ()=prints("v=",v, " w=", w)}
+let (a,b)=(delete_leading_zeros(v-for i:#v do i od),delete_leading_zeros( w-for i:#w do i od)) in
+if leq_partitions(b,a) then (reverse_sort(a),reverse_sort(b)) else (reverse_sort(b),reverse_sort(a)) fi
+
+set springer_D_weak(ComplexNilpotent O)=(Partition,Partition):springer_D_weak(partition_of_orbit_D(O))
+
+{this method is not used}
+set springer_D_old(CharacterTable ct,ComplexNilpotent O)=int:
+let (a,b)=springer_D_weak(partition_of_orbit_D(O)) then
+{hard case: a=b, see page 423 of Carter
+see above in partition_of_orbit_D
+}
+rep=if a!=b then
+      (a,b).unsplit_irr else
+      {two cases have the same pair (a,b), use O itself to distinguish them, two choices here}
+      let index=first(for P in partitions_D(O.root_datum.rank) do complex_nilpotent_D(P).diagram_normalized=O.diagram_normalized od) in
+      	  let ()=prints("GOT:", index) in
+       if index>=0 then (true,a).split_irr else
+       (false,a).split_irr fi
+    fi
+then ()=prints("representation:", rep) then reps=for i:ct.n_classes do  get_irrep_D(ct.classical_reps(i)) od in
+index_D_reps(reps,rep)
+
+{D_irrep -> character}
+set character_D(CharacterTable ct,D_irrep sigma)=[int]:
+let reps=for i:ct.n_classes do ct.classical_reps(i).get_irrep_D od then
+index=index_D_reps(reps,sigma) in
+ct.characters[index]
+set character_D(CharacterTable ct)=(D_irrep->[int]):
+(D_irrep sigma):character_D(ct,sigma)
+
+{character -> D_irrep}
+set irrep_D(CharacterTable ct,[int] char)=D_irrep:
+let index=first(for i:ct.n_classes do ct.characters[i]=char od)
+in ct.classical_reps(index).get_irrep_D
+set irrep_D(CharacterTable ct)=([int]->D_irrep):
+([int] char):irrep_D(ct,char)
+
+set tensor_sign_D(CharacterTable ct,D_irrep sigma)=D_irrep:
+let chi=ct.character_D(sigma) then  {D_irrep}
+chi_sign=ct.tensor_sign(chi) in
+ct.irrep_D(chi_sign)
+set tensor_sign_D(CharacterTable ct)=(D_irrep ->D_irrep):(D_irrep sigma):tensor_sign_D(ct,sigma)
+
+
+{fully valid Springer map:
+ orbit -> pair of partitions (P,Q)
+
+*) if P\ne Q -> unsplit D_irrep  (two distinct partitions)
+
+*) if P=Q then need to use orbit itself (not just the (P,Q))
+   orbit -> Bala Carter Levi L -> truncated_ind(sgn) -> D_irrep
+truncated induction is slow. Instead use the following:
+
+We are given a pair of very even orbits. Let O be the one for which
+the Dynkin diagram ends in [...,0,2]. The Springer correspondence is
+well defined, taking this orbit to the representation sigma= truncated
+induction of the sgn representation on the Bala Carter Levi. (Call the
+other one sigma'). There are two classes labeled
+(true/false,[2,2,...,2]), one of these has representative
+w=s_0s_2,...,s_{n-4},s_{n-2}. The other is
+s_0s_2,...,s_{n-4},s_{n-1} (call this w'). Now sigma satisfies:
+
+sigma(w)>0 
+
+also:
+sigma'(w)<0)
+sigma'(w)<0
+sigma'(w')>0
+
+Conclusion: define the Springer correspondence by: 
+
+the orbit ending in ...,0,2] -> the representation whose character 
+at s_0...s_{n-2} is >0.
+
+the orbit ending in ...,2,0] -> the representation whose character 
+at s_0...s_{n-2} is <0.
+
+Note: s_0...s_{n-2} is the Coxeter element of the standard
+GL(n) subgroup, with roots e_1-e_2,...,e_{n-2}-e_{n-1}
+
+(and not e_{n-2}+e_{n-1})
+
+}
+
+set springer_D(CharacterTable ct,ComplexNilpotent O)=D_irrep:
+let (a,b)=springer_D_weak(partition_of_orbit_D(O)) in
+{easy case}
+if a!=b then
+    (a,b).unsplit_irr
+else
+{
+hard case: a=b, see page 423 of Carter see above in partition_of_orbit_D
+need to do the following: see "full valid Springer correspondence" above
+}
+let rd=ct.root_datum then
+ n=rd.rank then
+ diag=O.diagram then
+ sign=if =diag~[0] then 1 else -1 fi then
+ w=W_elt(rd,for i:n\2 do 2*i od) then
+  w_index=find_conjugate(for i:ct.n_classes do ct.class_representatives[i] od,w) then
+  pi_true=(true,a).split_irr.irrep_D  then
+  pi_true_index=index_D_reps(for i:ct.n_classes do ct.classical_reps(i).get_irrep_D od,pi_true.get_irrep_D) then
+  val=ct.characters[pi_true_index][w_index] in
+{  ()=prints("sign:", sign, "val: ", val) in}
+{this sign is correct in types D_4 and D_6 by explicit calculation
+see springerD6.txt
+}
+  if sign*val*(-1)^(n\2)>0 then (false,a).split_irr.irrep_D.get_irrep_D else pi_true.get_irrep_D fi
+fi
+
+set springer_D_by_induction(CharacterTable ct,ComplexNilpotent O)=D_irrep:
+    let L=standard_Levi(ct.root_datum,O.Bala_Carter_Levi) then
+    simple_roots_L=for alpha in L.simple_roots do find(ct.root_datum.simple_roots,alpha) od then
+    index=truncated_induce_sign(ct,simple_roots_L)  {an integer} then
+    sigma=ct.classical_reps(index).get_irrep_D in  {D_irrep}
+    ct.tensor_sign_D(sigma)
+
+    {same as:
+     set x=induce_trivial(ct,simple_roots_L))
+     then y=ct.tensor_sign(x)
+     then pick out unique term with correct degree}
+
+
+
+
+
+
+
+{based on coxeter of Levi factor, not clear how to make this work
+set springer_D(CharacterTable ct,ComplexNilpotent O)=D_irrep:
+let (a,b)=springer_D_weak(partition_of_orbit_D(O)) in
+{easy case}
+if a!=b then
+    (a,b).unsplit_irr
+else
+{hard case: a=b, see page 423 of Carter see above in partition_of_orbit_D}
+{algorithm:
+ orbit -> Bala Carter Levi L -> sigma= truncated induction from sign on L
+       ->sigma\otimes sgn
+ value of the induced representation on the Coxeter element of L
+is -1, tensoring with sign gives 1
+
+}
+let
+sigma=(true,a).split_irr then
+tau=(false,a).split_irr then
+L=Bala_Carter_Levi(O) then
+w=embed_coxeter(L,ct.root_datum) then
+index=ct.class_index(w) then
+sign_sigma=ct.character_D(sigma)[index] then
+sign_tau=ct.character_D(tau)[index] in
+prints("sign_sigma: ", sign_sigma, new_line, "sign_tau: ", sign_tau);
+if sign_sigma=-1 then tau
+elif sign_tau=-1 then sigma else error("no minus 1") fi fi
+}
+
+{since springer_D is slow it is best to compute it once and make a table}
+
+{this is a bit slow, only want to do it once:}
+set springer_D(CharacterTable ct)=[D_irrep]:
+let orbits=ct.root_datum.orbits then
+reps=for O in orbits do springer_D(ct,O)  od {[D_irrep]} 
+in reps
+
+{this does it once and puts it in a hash}
+set springer_D_by_hash(RootDatum rd,[D_irrep] reps)=(ComplexNilpotent -> D_irrep):
+(ComplexNilpotent O):
+let orbits=rd.orbits then
+orbit_index=first(for i:#orbits do orbits[i]=O od) in
+reps[orbit_index]
+
+set springer_D_by_hash(CharacterTable ct)=(ComplexNilpotent -> D_irrep):
+springer_D_by_hash(ct.root_datum,springer_D(ct))
+
+{------------------ duality ----------------------------------}
+
+set f([int] P, int i)=int:
+for k:#P-i-1 from i+1 do  if P[k]<P[i]-1 then return k fi od;-1
+
+set rec_fun B_collapse(Partition P)=Partition:
+assert(sum(P).is_odd,"Partition not odd");
+if is_valid("B",P.delete_trailing_zeros) then P.delete_trailing_zeros else
+ let Q=if P~[0]=0 then P else P#0  fi then
+ i=first(for k:#Q-1 do Q[k].is_even and multiplicity(Q[k],Q).is_odd and Q[k]>Q[k+1] od) then
+ j=f(Q,i) in
+ Q[i]-:=1;Q[j]+:=1;
+ B_collapse(Q)
+fi
+
+set rec_fun D_collapse(Partition P)=Partition:
+assert(sum(P).is_even,"Partition is not of type even");
+if is_valid("D",P.delete_trailing_zeros) then P.delete_trailing_zeros else
+ let Q=if P~[0]=0 then P else P#0  fi then
+ i=first(for k:#Q-1 do Q[k].is_even and multiplicity(Q[k],Q).is_odd and Q[k]>Q[k+1] od) then
+ j=f(Q,i) in
+ Q[i]-:=1;Q[j]+:=1;
+ D_collapse(Q)
+fi
+
+set add_one(Partition P)=Partition:P[0]+:=1;P
+set subtract_one(Partition P)=Partition:P~[0]-:=1;P
+
+set D_dual(Partition P)=Partition:
+P.D_collapse.transpose.D_collapse
+
+set test_duality_D(int n)=
+let all=partitions_D(n) in
+tabulate(
+for P in all do [P.to_string,P.D_dual.D_dual.to_string] od)
+
+{Dangerous bend:
+ the SpringerTable hash (simple) simply connected root datum 
+ We'll be given an orbit for a given Root Datum rd,
+   which isn't necessarily simply connected
+ Need to pass to simply connected root datum, using orbit_by_diagram
+}
+set springer_table_D(CharacterTable ct)=
+let rd=ct.root_datum {simply connected} then
+orbits=rd.orbits then
+reps=for i:ct.n_classes do ct.classical_reps(i).get_irrep_D od then
+springer_hash_reps=springer_D_by_hash(ct) {ComplexNilpotent->D_irrep} then
+springer(ComplexNilpotent O_0 {not necessarily for sc group})=  {=int}
+ let O=orbit_by_diagram(rd,[O_0.diagram]) then
+ rep = springer_hash_reps(O) in index_D_reps(reps,rep) then
+dual_map(ComplexNilpotent O)=ComplexNilpotent:
+ let P=partition_of_orbit_D(O) then
+ Q=D_dual(P) then
+ rd_dual=O.root_datum.dual in
+ if not is_very_even(P) then complex_nilpotent_D(rd_dual,Q)
+ else
+  {orbit -> D_irrep -> character chi -> chi_sgn -> D_irrep -> nilpotent}
+  let sigma=springer_hash_reps(O) {D_irrep} then
+  sigma_sgn=ct.tensor_sign_D(sigma) {D_irrep} then
+  index=index_D_reps(for O in orbits do springer_hash_reps(O) od ,sigma_sgn) in 
+  orbits[index]
+ fi then
+dual_map_i(ComplexNilpotent O_check {for adjoint group})=
+let O_check_lift=orbit_by_diagram(rd,O_check.diagram_normalized)  {orbit in simply connected group} in
+dual_map(O_check_lift) in
+(ct,orbits,dual_map,dual_map_i,springer)
+ 
+{
+set springer_D_inverse(CharacterTable ct,D_irrep sigma)=ComplexNilpotent:
+let orbits=ct.root_datum.orbits then
+index=index_D_reps(for orbit in orbits do springer_D(ct,orbit) od,sigma) in
+orbits[index]
+ fi then
+dual_map_i(ComplexNilpotent O)=ComplexNilpotent:dual_map(O)
+in (ct,orbits,dual_map,dual_map_i,springer)
+}
+
+
+{    index_D_reps(reps,rep)}
+
+set show_D(SpringerTable st)=
+let orbits=st.root_datum.orbits in
+tabulate(["i","partition","O","d(O)","dd(O)","pi","special"] #
+ for O@i in orbits do
+  let O_d=prints(i);st.dual_map(O) then
+  O_dd=st.dual_map_i(O_d) then
+  special=st.is_special(O) then
+  sigma_index=st.springer(O) then
+  sigma=st.ct.classical_reps(sigma_index).get_irrep_D in
+  [i.to_string,O.partition_of_orbit_D.to_string,O.diagram.to_string,O_d.diagram.to_string,O_dd.diagram.to_string,sigma.to_string,special.to_string]
+ od)

@@ -1,0 +1,46 @@
+<simple_character_table.at
+<character_table_tensor.at
+
+<character_table_B.at
+<character_table_C.at
+<character_table_D.at
+<character_table_F.at
+<character_table_G.at
+<character_table_E6.at
+<character_table_E7.at
+<character_table_E8.at
+
+set character_table_simple(RootDatum rd)=
+let (letter,n)=simple_type(rd) in
+if letter="A" then
+ let ct=character_table_A(n) in ct
+elif letter="B" then
+ let ct_0=character_table_B(n) then
+ ct=ct_0.update_degrees in ct
+elif letter="C" then
+ let ct_0=character_table_C(n) then
+ ct=ct_0.update_degrees in ct
+elif letter="D" then
+ let ct_0=character_table_D(n) then
+ ct=ct_0.update_degrees in ct
+elif letter="F" then
+ let ct=character_table_F4() in ct
+elif letter="G" then character_table_G2()
+elif letter="E" and n=6 then
+ let ct_0=character_table_E6() then
+ ct=update_degrees(ct_0) in ct
+elif letter="E" and n=7 then
+ let ct_0=character_table_E7() then
+ ct=update_degrees(ct_0) in ct
+elif letter="E" and n=8 then
+ let ct=character_table_E8() in ct
+else error("case not covered")
+fi
+
+set character_table(RootDatum rd)=
+let factors=simple_factors(rd) then
+ct=character_table_simple(factors[0].derived) in
+for i:#factors-1 from 1 do
+ ct:=tensor(ct,character_table_simple(factors[i].derived)) od;ct
+
+

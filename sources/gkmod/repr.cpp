@@ -65,7 +65,7 @@ StandardRepr Rep_context::sr_gamma
   // the division in the next computation may throw when |gamma| is bad for |x|
   t1_gamma = theta1*t1_gamma/static_cast<int>(gamma.denominator());
 #ifndef NDEBUG // check that constructor below builds a valid |StandardRepr|
-  Weight image = // $(\theta-1)(\gamma-rho)$
+  Weight image = // $(\theta+1)(\gamma-\rho)$
     t1_gamma-(theta1*rootDatum().twoRho()/2);
   matreduc::find_solution(theta1,image); // a solution must exist
 #endif

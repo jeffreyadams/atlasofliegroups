@@ -414,7 +414,6 @@ let list=simple_factors_indices(rd) in
 all(for i:number_simple_factors(rd) do let j=list[i][0] in
 is_pseudo_Levi_in_simple(project_on_simple_factor(rd,rd_L,j),simple_factor(rd,j)) od)
 
-
 {semisimple element t so that L=Cent_G(t)^0}
 set regular_central_elements(RootDatum rd_L, RootDatum rd)=
 {assert(is_pseudo_Levi(rd,rd_L),"not a pseudo-Levi");}
@@ -671,3 +670,42 @@ adjoint(E7)
 
 set normalizer_reports()=normalizer_reports(default)
 
+
+
+{embed Coxeter element of W(equal rank subgroup)}
+set embed_coxeter(RootDatum rd_H,RootDatum rd)=
+W_elt(rd,matrix(coxeter_element(rd_H)))
+
+set embed_coxeters(RootDatum rd)=
+let subgroups =rd.subgroups then
+classes_gen=for rd_H in subgroups do embed_coxeter (rd_H,rd) od then
+f=filter_by_class(classes_gen) in
+prints("# classes: ", #rd.conjugacy_classes, new_line,
+"#subgroups: ", #subgroups, new_line, "classes generated: ", #f);f
+
+set embed_coxeters([RootDatum] data)=void:
+let values=
+ for rd in data do
+ let subs=rd.subgroups then
+ a=#filter_by_class(for rd_H in subs do embed_coxeter (rd_H,rd) od) in
+ (rd,#rd.conjugacy_classes, #subs,a) od in
+ prints("Generating [W] from Coxeter elements of equal rank subgroups",new_line,
+"#[W]: #conjugacy classes of W",new_line,
+"#subs: number of equal rank subgroups",
+new_line,"#gen: number of classes generated", new_line,
+" (d): #subs-#gen (if nonzero)", new_line,"diff: #[W]-#gen=number of classes not found",new_line);
+ tabulate(
+["G","#[W]","#subs","#gen","diff"] #
+for (a,b,c,d) in values do
+let d_string=if =c-d then d.to_string else d+"(" + (c-d).to_string + ")" fi in
+[a.nice_format,b.to_string, c.to_string, d_string,(b-d).to_string] od)
+
+{
+set groups1=[SL(3),SL(4),SL(5),Sp(4),SO(7),SO(9)]
+set groups=[SL(3),SL(4),SL(5),SO(7),SO(9),SO(11),SO(13),Sp(4),Sp(6),Sp(8),Sp(10),Sp(12),SO(8),SO(10),SO(12),
+simply_connected(G2),
+simply_connected(F4),
+simply_connected(E6),
+simply_connected(E7),
+simply_connected(E8)]
+}

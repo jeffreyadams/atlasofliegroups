@@ -43,6 +43,7 @@ set nilpotent_orbit_partitions(RootDatum rd) = [Partition]:
 { test if partition is valid orbit in type ABCD }
 set is_valid (string type,vec P) = bool:
 { avoid constructing |Lie_type(type[0]+n|, to no choke on "B1" and such }
+  let P=P.delete_trailing_zeros in
   case ascii(type)-ascii("A")
   in true
   , { type B } sum(P).is_odd and
