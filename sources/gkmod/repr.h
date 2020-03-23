@@ -288,6 +288,8 @@ class Rep_table : public Rep_context
     , mod_pool(), mod_hash(mod_pool), bounds()
   {}
 
+  ~Rep_table();
+
   unsigned int length(StandardRepr z); // by value
 
   blocks::block_minimal& lookup
