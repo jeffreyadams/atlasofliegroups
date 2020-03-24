@@ -251,9 +251,9 @@ typedef Rep_context::poly SR_poly;
   |Rep_table| provides storage for data that was previously computed for
   various related nonzero final |StandardRepr| values.
 
-  The data stored consists of lengths, (twisted) KL polynomials evaluated as
-  $q=s$, and (twisted) full deformation formulae. This class provides methods
-  for those computations, and handles the data storage and retrieval.
+  The data stored consists of lengths, and (twisted) full deformation formulae.
+  This class provides methods for their computation, and handles the data
+  storage and retrieval.
 
   The deformation information for a parameter will actually be stored for its
   first reducibility point (thus avoiding some duplication of the same
@@ -270,9 +270,7 @@ class Rep_table : public Rep_context
 {
   std::vector<StandardRepr> pool;
   HashTable<StandardRepr,unsigned long> hash;
-  std::vector<unsigned short int> lengths;
-  std::vector<SR_poly> def_formula; // indexed by hash values for |StandardRepr|s
-  std::vector<SR_poly> twisted_def_formula; // values at twist-fixed |hash|s only
+  std::vector<std::pair<SR_poly,SR_poly> > def_formulae; // ordinary, twisted
 
   std::vector<StandardReprMod> mod_pool;
   HashTable<StandardReprMod,unsigned long> mod_hash;
@@ -281,11 +279,13 @@ class Rep_table : public Rep_context
   { unsigned long first_hash; std::unique_ptr<blocks::block_minimal> ptr; };
   std::vector<boundary> bounds; // to partition hash codes to blocks
 
+  unsigned long long hit_count;
  public:
   Rep_table(RealReductiveGroup &G)
-    : Rep_context(G), pool(), hash(pool)
-    , def_formula(), twisted_def_formula()
+    : Rep_context(G)
+    , pool(), hash(pool), def_formulae()
     , mod_pool(), mod_hash(mod_pool), bounds()
+    ,hit_count(0)
   {}
 
   ~Rep_table();
@@ -320,11 +320,7 @@ class Rep_table : public Rep_context
   SR_poly twisted_deformation(StandardRepr z); // by value
 
  private:
-  void add_block(param_block& block,
-		 containers::sl_list<BlockElt>& extended_finals);
-  // here |block| is non-|const| as the method generates KL polynomials in it
-  // and |survivors| is non-|const| because the method computes and exports it
-
+  unsigned long formula_index (const StandardRepr& h);
   unsigned long add_block(const StandardReprMod& sr);
   // add |block_minimal| to |blocks|, and return (new) hash number of |sr|
 

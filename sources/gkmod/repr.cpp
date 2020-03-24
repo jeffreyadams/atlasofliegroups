@@ -843,16 +843,12 @@ bool Rep_context::compare::operator()
 
 // |Rep_table| methods
 
-unsigned int Rep_table::length(StandardRepr z)
+unsigned int Rep_table::length(StandardRepr sr)
 {
-  make_dominant(z); // should't hurt, and improves chances of finding |z|
-  unsigned long hash_index=hash.find(z);
-  if (hash_index!=hash.empty)
-    return lengths[hash_index];
-
-  // otherwise do it the hard way, constructing a block up to |z|
-  param_block block(*this,z); // compute partial block
-  return block.length(block.size()-1);
+  make_dominant(sr); // should't hurt, and improves chances of finding |z|
+  BlockElt z; RankFlags singular; // unused here
+  auto & block = lookup(sr,z,singular);
+  return block.length(z);
 }
 
 SR_poly Rep_context::scale(const poly& P, const Rational& f) const
@@ -945,6 +941,16 @@ SR_poly Rep_context::expand_final (StandardRepr z) const
   return result;
 } // |Rep_context::expand_final|
 
+unsigned long Rep_table::formula_index (const StandardRepr& sr)
+{
+  const auto prev_size = hash.size();
+  const auto h = hash.match(sr);
+  if (h>=prev_size)
+    def_formulae.push_back
+      (std::make_pair(SR_poly(repr_less()),SR_poly(repr_less())));
+  return h;
+}
+
 unsigned long Rep_table::add_block(const StandardReprMod& srm)
 {
   auto first=mod_hash.size(); // future code of first element of this block
@@ -972,8 +978,8 @@ unsigned long Rep_table::add_block(const StandardReprMod& srm)
 blocks::block_minimal& Rep_table::lookup
   (const StandardRepr& sr,BlockElt& z,RankFlags& singular)
 {
-  hash.match(sr);
-  auto srm = StandardReprMod::mod_reduce(*this,sr); // modular zi
+  formula_index(sr); // for statistics, track all parameters that are looked up
+  auto srm = StandardReprMod::mod_reduce(*this,sr); // modular |sr|
   auto h=mod_hash.find(srm); // look up modulo translation in $X^*$
   if (h==mod_hash.empty) // then we are in a new translation family of blocks
     h=add_block(srm); // ensure this block is known
@@ -985,7 +991,7 @@ blocks::block_minimal& Rep_table::lookup
     while ((diff=upb-lwb)>1)
       ( (halfway=lwb+diff/2)->first_hash<=h ? lwb : upb) = halfway;
   }
-  auto& block = *lwb->ptr; // not |const|, filling KL table needed
+  auto& block = *lwb->ptr; // not |const|, filling KL table later needed
   z=h-lwb->first_hash;
 
   singular.reset();
@@ -1001,8 +1007,9 @@ blocks::block_minimal& Rep_table::lookup
 Rep_table::~Rep_table()
 {
   std::cout << bounds.size() << " distinct common blocks, with "
-	    << mod_pool.size() << " elements, for "
-	    << pool.size() << " distinct parameters.\n";
+	    << mod_pool.size() << " elements, for " << pool.size()
+	    << " distinct parameters. Deformation formula hit count "
+	    <<  hit_count << "\n";
 }
 
 
@@ -1290,6 +1297,12 @@ SR_poly Rep_table::deformation(const StandardRepr& z)
   normalise(z_near); // so that we may find a stored equivalent parameter
   assert(is_final(z_near));
 
+  { // look up if deformation formula for |z_near| is already known and stored
+    unsigned long h=hash.find(z_near);
+    if (h!=hash.empty and not def_formulae[h].first.empty())
+      return ++hit_count,def_formulae[h].first;
+  }
+
   // otherwise compute the deformation terms at all reducibility points
   for (unsigned i=rp.size(); i-->0; )
   {
@@ -1304,7 +1317,8 @@ SR_poly Rep_table::deformation(const StandardRepr& z)
       result.add_multiple(deformation(term.first),term.second); // recursion
   }
 
-  return result;
+  const auto h = formula_index(z_near);
+  return def_formulae[h].first=result;
 } // |Rep_table::deformation|
 
 
@@ -1575,7 +1589,18 @@ SR_poly Rep_table::twisted_deformation (StandardRepr z)
   const auto& delta = innerClass().distinguished();
   RationalList rp=reducibility_points(z);
   bool flip_start=false; // whether a flip in descending to first point
-  if (not rp.empty() and rp.back()!=Rational(1,1))
+  SR_poly result(repr_less());
+  if (rp.empty())
+  {
+    z = ext_block::scaled_extended_dominant
+	  (*this,z,delta,Rational(0,1),flip_start);
+    auto L = ext_block::extended_finalise(*this,z,delta);
+    for (auto it=L.begin(); it!=L.end(); ++it)
+      result.add_term(it->first, it->second==flip_start
+				 ? Split_integer(1,0) : Split_integer(0,1) );
+    return result;
+  }
+  else if (rp.back()!=Rational(1,1))
   { // then shrink wrap toward $\nu=0$
     z = ext_block::scaled_extended_dominant(*this,z,delta,rp.back(),flip_start);
     Rational f=rp.back();
@@ -1584,51 +1609,62 @@ SR_poly Rep_table::twisted_deformation (StandardRepr z)
     assert(rp.back()==Rational(1,1)); // should make first reduction at |z|
   }
 
-  SR_poly result(repr_less());
+  { // if deformation for |z| was previously stored, return it with |flip_start|
+    const auto h=hash.find(z);
+    if (h!=hash.empty and not def_formulae[h].second.empty())
+      return ++hit_count,
+	flip_start // if so we must multiply the stored value by $s$
+	? SR_poly(repr_less()).add_multiple
+	   (def_formulae[h].second,Split_integer(0,1))
+	: def_formulae[h].second;
+  }
+
   { // initialise |result| to fully deformed parameter expanded to finals
-    bool flipped;
+    bool flipped; // contrary to |flip_start| this affects value stored for |z|
     auto z0 = ext_block::scaled_extended_dominant
 		(*this,z,delta,Rational(0,1),flipped);
-    if (flip_start)
-      flipped = not flipped;
     auto L = ext_block::extended_finalise(*this,z0,delta);
     for (const auto& p :L )
-      result.add_term(p.first, p.second==flipped // net flip means |times_s|
+      result.add_term(p.first, p.second==flipped // flip means |times_s|
 			       ? Split_integer(1,0) : Split_integer(0,1) );
   }
-  if (not rp.empty())
-  { // compute the deformation terms at all reducibility points
-    for (unsigned i=rp.size(); i-->0; )
+
+  // compute the deformation terms at all reducibility points
+  for (unsigned i=rp.size(); i-->0; )
+  {
+    Rational r=rp[i]; bool flipped;
+    auto zi = ext_block::scaled_extended_dominant(*this,z,delta,r,flipped);
+    auto L =
+      ext_block::extended_finalise(*this,zi,delta); // rarely a long list
+
+    for (const auto& p : L)
     {
-      Rational r=rp[i]; bool flipped;
-      auto zi = ext_block::scaled_extended_dominant(*this,z,delta,r,flipped);
-      if (flip_start)
-	flipped = not flipped;
-      auto L =
-	ext_block::extended_finalise(*this,zi,delta); // rarely a long list
+      BlockElt new_z; RankFlags singular;
+      auto& block = lookup(p.first,new_z,singular);
+      auto& eblock = block.extended_block(delta);
 
-      for (const auto& p : L)
-      {
-	BlockElt new_z; RankFlags singular;
-	auto& block = lookup(p.first,new_z,singular);
-	auto& eblock = block.extended_block(delta);
+      RankFlags singular_orbits;
+      for (weyl::Generator s=0; s<eblock.rank(); ++s)
+	singular_orbits.set(s,singular[eblock.orbit(s).s0]);
 
-	RankFlags singular_orbits;
-	for (weyl::Generator s=0; s<eblock.rank(); ++s)
-	  singular_orbits.set(s,singular[eblock.orbit(s).s0]);
-
-	const SR_poly terms =
-	  twisted_deformation_terms(block,eblock,new_z,
-				    singular_orbits,zi.gamma());
-	const bool flip = flipped!=p.second;
-	for (auto const& term : terms)
-	  result.add_multiple(twisted_deformation(term.first), // recursion
-			      flip ? term.second.times_s() : term.second);
-      }
+      const SR_poly terms =
+	twisted_deformation_terms(block,eblock,new_z,
+				  singular_orbits,zi.gamma());
+      const bool flip = flipped!=p.second;
+      for (auto const& term : terms)
+	result.add_multiple(twisted_deformation(term.first), // recursion
+			    flip ? term.second.times_s() : term.second);
     }
   }
 
-  return result;
+  { // store
+    const auto h=formula_index(z);
+    def_formulae[h].second=result;
+  }
+
+  return flip_start // if so we must multiply the stored value by $s$
+    ? SR_poly(repr_less()).add_multiple(result,Split_integer(0,1))
+    : result;
 
 } // |Rep_table::twisted_deformation (StandardRepr z)|
 
