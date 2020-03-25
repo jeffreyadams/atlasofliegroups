@@ -88,6 +88,7 @@ bool has_quadruple(DescValue v); // types 2i12f and 2r21f
 bool has_october_surprise(DescValue v); // types 2i**, 2r**, 2C+, 2C-, 3Ci, 3Cr
 
 bool is_proper_ascent(DescValue v); // ascent with at least 1 link
+bool might_be_uncertain(DescValue v); // uncertain if at edge of partial block
 
 unsigned int generator_length(DescValue v);
 unsigned int link_count(DescValue v);

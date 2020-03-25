@@ -1674,8 +1674,14 @@ bool ext_block::tune_signs(const blocks::block_minimal& block)
     for (weyl::Generator s=0; s<rank(); ++s)
     { const ext_gen& p=orbit(s); links.clear(); // output arguments for |star|
       auto tp = star(block_ctxt,E,p,links);
-      if (tp!=descent_type(s,n))
-	return false;
+      if (might_be_uncertain(descent_type(s,n)) and
+	  data[s][n].links.first==UndefBlock) // then reset the uncertain type
+      {
+	data[s][n].type=tp; // replace type, leave possible links to |UndefBlock|
+	continue; // so in this case there are no link signs to tune
+      }
+      else if (tp!=descent_type(s,n))
+	return false; // something is wrong
 
       switch (tp)
       {
@@ -1685,7 +1691,9 @@ bool ext_block::tune_signs(const blocks::block_minimal& block)
       case two_real_single_double_switched:
       case two_real_nonparity: case two_imaginary_compact:
       case three_real_nonparity: case three_imaginary_compact:
-	assert(links.empty()); break;
+	assert(links.empty());
+	break;
+
       case one_complex_ascent: case one_complex_descent:
       case two_complex_ascent: case two_complex_descent:
       case three_complex_ascent: case three_complex_descent:
@@ -1697,7 +1705,9 @@ bool ext_block::tune_signs(const blocks::block_minimal& block)
 	  assert(same_standard_reps(q,F)); // must lie over same parameter
 	  if (not same_sign(q,F))
 	    flip_edge(s,n,m);
-	} break;
+	}
+	break;
+
       case one_imaginary_single: case one_real_single:
       case two_imaginary_single_single: case two_real_single_single:
 	{ assert(links.size()==2);
@@ -1726,7 +1736,9 @@ bool ext_block::tune_signs(const blocks::block_minimal& block)
 	  assert(same_standard_reps(q,F));
 	  if (not same_sign(q,F))
 	    flip_edge(s,n,m);
-	} break;
+	}
+	break;
+
       case one_imaginary_pair_fixed: case one_real_pair_fixed:
       case two_imaginary_double_double: case two_real_double_double:
 	{ assert(links.size()==2);
@@ -1745,7 +1757,9 @@ bool ext_block::tune_signs(const blocks::block_minimal& block)
 	    flip_edge(s,n,m.first);
 	  if (not same_sign(node1,F1))
 	    flip_edge(s,n,m.second);
-	} break;
+	}
+	break;
+
       case two_imaginary_single_double_fixed: case two_real_single_double_fixed:
 	{ assert(links.size()==2);
 	  const paramin q0 = *links.begin();
@@ -1763,7 +1777,8 @@ bool ext_block::tune_signs(const blocks::block_minimal& block)
 	    flip_edge(s,n,m.first);
 	  if (not same_sign(node1,F1))
 	    flip_edge(s,n,m.second);
-	} break;
+	}
+	break;
       } // |switch(tp)|
     } // |for(s)|
   } // |for(n)|
