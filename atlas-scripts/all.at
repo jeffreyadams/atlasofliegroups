@@ -24,8 +24,6 @@
 <GK_dimension.at
 <restricted_roots.at
 <nilpotent_centralizer.at
-<unipotent_conjecture.at
-{to compute unipotent packets for even orbits
-of E8 uncomment the next line (it takes
-about 5 minutes for this script to load)}
-{<E8_all_blocks_unipotent.at}
+<weak_packets_precomputed_cell_traces.at
+
+

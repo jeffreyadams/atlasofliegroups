@@ -31,7 +31,8 @@ let index=first(for i:#rd.orbits do equal(rd.orbits[i].diagram_normalized,diagra
 rd.orbits[index]
 
 set dual_orbit_by_diagram(SpringerTable st,[vec] diagram)=ComplexNilpotent:
-let index=first(for i:#st.root_datum.dual.orbits do  equal(st.root_datum.dual.orbits[i].diagram_normalized,diagram) od) in
+let index=first(for i:#st.root_datum.dual.orbits do
+equal(st.root_datum.dual.orbits[i].diagram_normalized,diagram) od) in
 st.root_datum.dual.orbits[index]
 
 {dual_map_i(dual_map(O))}
@@ -50,11 +51,6 @@ is_special(st,O)
 set special_orbits(SpringerTable st)=[ComplexNilpotent]:
 ##for O in st.ct.root_datum.orbits do if st.is_special(O) then [O] else [] fi od
 
-
-{
-set is_special_representation(CharacterTable ct,int i,(ComplexNilpotent->ComplexNilpotent) d)=
-}
-
 {complex nilpotent of product group}
 set tensor(ComplexNilpotent O1,ComplexNilpotent O2)=ComplexNilpotent:
 let (rd1,(),H1)=O1,(rd2,(),H2)=O2 in (rd1*rd2,(),H1##H2)
@@ -65,11 +61,27 @@ H2=O.H[rd2.rank~:] then
 O1=(rd1,(),H1), O2=(rd2,(),H2) in
 (O1,O2)
 
-set factor_new(ComplexNilpotent O,RootDatum rd1,RootDatum rd2)=
+{
+set factor_new(ComplexNilpotent O,RootDatum rd1,RootDatum rd2)=(
 let diag_1=O.H*rd1.simple_roots then
 diag_2=O.H*rd2.simple_roots in (diag_1,diag_2)
+}
 
-{tensor product of springer tables}
+{write rd.derived as rd_1 x rd_2 where
+rd_1 is semisimple, rd_2 is simple
+also return [indices_1,indices_2]
+where indices_i is the list of simple roots of rd in rd_i
+}
+set split_last_factor(RootDatum rd)=(RootDatum,RootDatum,[[int]]):
+let factors=simple_factors(rd) then
+rv=factors[0].derived then
+()= for i:#factors-2 from 1 do rv*:=factors[i].derived od in
+(rv,factors~[0].derived, [##for i:#factors-1 do simple_factor_indices(rd,i) od, simple_factor_indices(rd,#factors-1)])
+
+{tensor product of springer tables
+st1.root_datum can be anything semisimple,
+st2.root_datum must be simple
+}
 set tensor(SpringerTable st1,SpringerTable st2)=SpringerTable:
 let ct=tensor(st1.ct,st2.ct) then
 rd1=st1.root_datum, rd2=st2.root_datum then
@@ -105,14 +117,33 @@ then springer(ComplexNilpotent O_0)=int:
  (O1,O2)=factor_orbit(O) then
  i=springer(st1)(O1),j=springer(st2)(O2)
  in i*(st2.ct.n_classes)+j
-then dual_map_i(ComplexNilpotent O)=
- let (O1_0,O2_0)=factor(O,rd1.dual,rd2.dual) then
- O1=dual_orbit_by_diagram(st1,O1_0.diagram_normalized), O2=dual_orbit_by_diagram(st2,O2_0.diagram_normalized) then
- dO1=st1.dual_map_i(O1), dO2=st2.dual_map_i(O2) in
- tensor(dO1,dO2)
+then dual_map_i(ComplexNilpotent O_check)=
+{O_check is for st.root_datum.dual,
+not the same as rd.dual}
+{st1: all but last factor of rd (n-1 factors)
+ st2: last factor
+ diagram: O_check.diagram_normalized, has n factors
+ diagram_1: first n-1 factors of diagram
+ diagram_2: last factor of diagram
+ then st1.dual_map_i(O_check_1)
+ st2.dual_map_i(O_check_2)
+ tensor these two to get dual_map_i(O_check)
+}
+let diagram=O_check.diagram_normalized then
+{()=prints("diagram: ", diagram) then}
+diagram_1=[vec]:for i:#diagram-1 do diagram[i] od then
+diagram_2=[vec]:[diagram~[0]] then
+{()=prints("diagram_1: ", diagram_1) then
+()=prints("diagram_2: ", diagram_2) then}
+O1_check=dual_orbit_by_diagram(st1,diagram_1) then
+O2_check=dual_orbit_by_diagram(st2,diagram_2) then 
+{()=prints("O1_check: ", O1_check) then
+()=prints("O2_check: ", O2_check) then}
+ O1=st1.dual_map_i(O1_check), O2=st2.dual_map_i(O2_check) in
+ tensor(O1,O2)
 in (ct,orbits,dual_map,dual_map_i,springer)
 
-set show(SpringerTable st)=
+set show(SpringerTable st)=void:
 let orbits=st.root_datum.orbits in
 tabulate(["i","O","d(O)","dd(O)","pi","special"] #
  for O@i in orbits do

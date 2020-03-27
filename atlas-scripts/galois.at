@@ -107,3 +107,5 @@ set pi0 (RealForm G) = int: 2^(components_rank(G))
 set iterate_H1 (int rank) = void: iterate_H1(rank,rank)
 set iterate_H1 = @void: iterate_H1(1,8)
 
+set conjugacy_classes_involutions(RootDatum rd)=int:
+#strong_real_forms_same_type(compact_form(rd)) 

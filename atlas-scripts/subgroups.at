@@ -126,7 +126,7 @@ let S=simple_roots(rd_L) in orthogonal_subgroup(rd,S)
 
 {
 Given a set of weights,
-compute root datum of coroots perpendicular to all of them 
+compute root datum of coroots perpendicular to all of them
 }
 set centralizer(RootDatum rd,[vec] wts)=
 let indices=##
@@ -138,7 +138,7 @@ for i in indices do poscoroots(rd)[i] od)) fi
 
 {
 Given a set of coweights,
-compute root datum of roots perpendicular to all of them 
+compute root datum of roots perpendicular to all of them
 }
 set centralizer([vec] cwts,RootDatum rd)=
 let indices=##
@@ -156,7 +156,7 @@ set centralizer(RootDatum rd,ratvec v) = RootDatum:
 set centralizer(RootDatum rd,[ratvec] vecs) = RootDatum:
    let roots = columns_with((vec alpha): all(for v in vecs do is_integer(alpha*v) od), posroots(rd))
    then coroots = rank(rd) # for alpha in roots do coroot(rd,alpha) od
-   
+
    in root_datum_from_positive(roots,coroots)
 
 { centralizer of semisimple group element: Cent_G(exp(2\pi iv)^0
@@ -184,7 +184,7 @@ set find_all_conjugate([WeylElt] S,WeylElt w)=[int]:
 set group_by_conjugacy([WeylElt] S)=[[WeylElt]]:
 let rv=[[WeylElt]]:[] in
 for w in S do
- let match=find_conjugate(for list in rv do list[0] od,w) in 
+ let match=find_conjugate(for list in rv do list[0] od,w) in
  if match =-1 then rv#:=[w] else rv[match]#:=w fi od;
  rv
 
@@ -414,7 +414,6 @@ set is_pseudo_Levi(RootDatum rd_L,RootDatum rd)=bool:
 let list=simple_factors_indices(rd) in
 all(for i:number_simple_factors(rd) do let j=list[i][0] in
 is_pseudo_Levi_in_simple(project_on_simple_factor(rd,rd_L,j),simple_factor(rd,j)) od)
-
 
 {semisimple element t so that L=Cent_G(t)^0}
 set regular_central_elements(RootDatum rd_L, RootDatum rd)=

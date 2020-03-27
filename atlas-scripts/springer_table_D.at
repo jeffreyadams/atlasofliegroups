@@ -77,8 +77,8 @@ ambiguity in map from partitions to orbits:
 }
 
 set partition_of_orbit_D(ComplexNilpotent O)=
-assert(let (type,)=O.root_datum.simple_type in type="D","Not an orbit in type D");
-let orbit_partitions=partitions_D(O.root_datum.rank) then
+assert(let (type,)=O.root_datum.derived.simple_type in type="D","Not an orbit in type D (plus torus)");
+let orbit_partitions=partitions_D(O.root_datum.ss_rank) then
 diagram=O.diagram_normalized then
 {search for the partition mapping to given O}
 index=first(for P in orbit_partitions do complex_nilpotent_D(P).diagram_normalized=diagram od) in
@@ -337,9 +337,9 @@ dual_map(ComplexNilpotent O)=ComplexNilpotent:
   index=index_D_reps(for O in orbits do springer_hash_reps(O) od ,sigma_sgn) in 
   orbits[index]
  fi then
-dual_map_i(ComplexNilpotent O {for adjoint group})=
-let O_lift=orbit_by_diagram(rd,[O.diagram])  {orbit in simply connected group} in
-dual_map(O_lift) in
+dual_map_i(ComplexNilpotent O_check {for adjoint group})=
+let O_check_lift=orbit_by_diagram(rd,O_check.diagram_normalized)  {orbit in simply connected group} in
+dual_map(O_check_lift) in
 (ct,orbits,dual_map,dual_map_i,springer)
  
 {

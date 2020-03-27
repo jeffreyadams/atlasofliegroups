@@ -322,6 +322,9 @@ set choices_from ([int] S, int k) = [[int]]: { all $k$-subsets of $S$ }
 {. number of times n occurs in [int] S .}
 set multiplicity (int n, [int] S) = int: count(for x in S do x=n od)
 
+{add zeros to make total length =N}
+set pad([int] v,int N)=v##null(N-#v)
+
 {                               Matrices                                }
 
 { matrix defined by its dimension and expression for general entry }
@@ -1382,8 +1385,9 @@ set is_strongly_regular (Param p)=bool:
 set survives (Param p) = bool:
   is_final(p) { was recently defined to mean exactly that }
 
+set x_open(RealForm G)=KGBElt: KGB(G,G.KGB_size-1)
 set trivial (RealForm G) = Param: { parameter for the trivial representation }
-  param(KGB(G,KGB_size(G)-1),null(rank(G)),rho(G))
+  param(G.x_open,null(rank(G)),rho(G))
 
 { cross action of Weyl group element; avoid name conflict cross@(vec,Param) }
 set W_cross ([int] w,Param p) = Param:
@@ -1470,6 +1474,9 @@ set tau (Param p)            = [int]: list(tau_bitset(p))
 set tau_complement (Param p) = [int]: complement(tau_bitset(p))
 
 set is_descent ((vec,Param) ap) = bool: status(ap)<4
+
+set is_ascent(int i,Param p)=bool: not is_descent(i,p)
+set is_ascent((vec,Param) ap)=bool: not is_descent(ap)
 
 set lookup (Param p, [Param] block) = int:
   let i=#block-1 in while >=i and block[i]!=p do i-:=1 od; i

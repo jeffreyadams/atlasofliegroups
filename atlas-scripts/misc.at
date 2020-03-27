@@ -78,6 +78,18 @@ set generate_all_subsets([vec] S) = [[vec]]:
 set generate_all_subsets([ratvec] S) = [[ratvec]]:
     for A in generate_all_subsets(for i:#S do i od) do for i in A do S[i] od od
 
+{A is a subset of B}
+set is_subset([int] A,[int] B)=bool:
+all(for a in A do find (B,a)!=-1 od)
+
+{A is a proper subset of B}
+set is_proper_subset([int] A,[int] B)=bool:
+is_subset(A,B) and #A<#B
+
+{complement of A in B}
+set complement([Param] A,[Param] B)=[Param]:
+##for p in B do if find(A,p)=-1 then [p] else [] fi od
+
 { nicer display of Splits }
 set prettyPrint (Split w) = string:
   let (a,b)=%w in

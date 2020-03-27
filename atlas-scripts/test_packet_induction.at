@@ -5,9 +5,9 @@ set weak_packets_parabolically_induced(RealForm G, [int] parabnodelist)=
 let P=Parabolic:(parabnodelist,trivial(G).x)
 then L=Levi(P)
 then Lorbits=L.dual_orbits
-then (wp,,)=weak_packets(L)
+then wp=weak_packets(L)
 then output=[]
-in for p in wp do for ppp in monomials(real_induce_irreducible(p,G)) do output#:=ppp od od; output
+in for p in parameters(wp) do for ppp in monomials(real_induce_irreducible(p,G)) do output#:=ppp od od; output
 
 set weak_packets_parabolically_induced_from_all_parabolics(RealForm G)=
 let alloutput=[]

@@ -190,12 +190,40 @@ set test2 (Param p) = [bool]: { consistency of cocharacter across block }
 
 {  --------- some indicator functions -------------}
 
-{false unless regular infinitesimal character,
- not necessarily integral,
-in which case true if the Vogan dual (a parameter
-for the integrality datum) is an Aq}
+{support(x): those simple reflections occuring in x.w, see parabolics.at
+ dual_support(x): simple reflections occuring in x.w*w_0
+ this is the support of any y for which (x,y) is a valid parameter
+ integral case first}
+set support_dual(KGBElt x)=[int]:
+   list(x.root_datum.semisimple_rank,(x.w*w0(x.root_datum)).word.is_member)
+
+set support_dual_int(Param p)=[int]:
+assert(is_integral(p.root_datum,p.infinitesimal_character), "p does not have integral infinitesimal character");
+support_dual(p.x)
+
+{general case: need to replace x.w with an element of W(rd_int)}
+set support_dual(Param p)=[int]:
+ let rd_int=integrality_datum(p) then
+ x=p.x then
+ w_int=W_elt(rd_int,x.w.matrix) in 
+ list(semisimple_rank(rd_int),W_elt(rd_int,x.w*w0(p.root_datum).matrix).word.is_member)
+
+{dual is an Aq(finite dimensional), regular integral case}
+set is_dual_Aq_int(Param p)=bool:
+let G=real_form(p), ic=infinitesimal_character(p) in
+assert(is_regular(p) and is_integral(ic,G),"p is not regular integral");
+all(for i in support_dual(p.x) do is_ascent(i,p.x) od)
+
+{dual is an Aq(finite dimensional), regular but not necessarily integral}
+{this function is NOT reliable}
+set is_dual_Aq_temp(Param p)=bool:
+assert(is_regular(p),"p is not regular");
+all(for i in support_dual(p) do is_ascent(i,p) od)
+
+{old version, fails with an error for SU(3,2) without
+the is_integral statement}
 set is_dual_Aq (Param p) = bool:
-if not is_regular(p) then false
+if not (is_regular(p) and is_integral(p.infinitesimal_character,p.root_datum)) then false
 else is_coh_ind_from_finite_dimensional(dual(p,dual_inner_class(p)))
 fi
 
