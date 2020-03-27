@@ -64,11 +64,10 @@ let orbit_partitions=partitions(O.root_datum.ss_rank+1) then
 index=first(for P in orbit_partitions do complex_nilpotent_A(O.root_datum,P)=O od) in
 orbit_partitions[index]
 
-{springer map in type A}
-set springer_A(Partition P)=Partition:P
 
 set springer_A(CharacterTable ct,ComplexNilpotent O)=int:
-let P=O.partition_of_orbit_A in first(for i:ct.n_classes do  ct.partitions(i)[0]=P od)
+let P=O.partition_of_orbit_A in
+first(for i:ct.n_classes do P=get_class_A(ct.classes(i))  od)
 
 set inverse_springer_partition_A(Partition P)=Partition: P
 

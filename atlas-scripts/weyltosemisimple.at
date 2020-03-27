@@ -40,9 +40,9 @@ for i:#rp-1 from 1 do
  let (T,l)=rp[i] then
  ()=if shift_flag then T:=shift_by_minus_1(T) fi then
  ()=S:=union(S,T) then
-{()=prints("S:",S) then
+()=prints("S:",S) then
 ()=prints("T:",T) then
-()=prints("l:",l) then}
+()=prints("l:",l) then
  v_1=dominant(v,complex_Levi(rd,S)) in
  let ()=print("v_1=",v_1) in
  let ()=print("new v=",v_1+torus_element(rd,T,l\2)) in

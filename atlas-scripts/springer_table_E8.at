@@ -1,0 +1,228 @@
+<springer_tables.at
+<character_tables.at
+<character_table_reps.at
+<character_table_E8.at
+
+{name,diagram,dim,special,dual,A/Abar}
+
+set E8_data=[["0","00000000","0","1","E8","1"],
+["A1","00000001","58","1","E8(a1)","1"],
+["2A1","10000000","92","1","E8(a2)","1"],
+["3A1","00000010","112","0","E8(a3)","1"],
+["A2","00000002","114","1","E8(a3)","S2"],
+["4A1","01000000","128","0","E8(a4)","1"],
+["A2+A1","10000001","136","1","E8(a4)","S2"],
+["A2+2A1","00000100","146","1","E8(b4)","1"],
+["A3","10000002","148","1","E7(a1)","1"],
+["A2+3A1","00100000","154","0","E8(a5)","1"],
+["2A2","20000000","156","1","E8(a5)","S2"],
+["2A2+A1","10000010","162","0","E8(b5)","1"],
+["A3+A1","00000101","164","0","E8(b5)","1"],
+["D4(a1)","00000020","166","1","E8(b5)","S3"],
+["D4","00000022","168","1","E6","1"],
+["2A2+2A1","00001000","168","0","E8(a6)","1"],
+["A3+2A1","00100001","172","0","E8(a6)","1"],
+["D4(a1)+A1","01000010","176","1","E8(a6)","S3"],
+["A3+A2","10000100","178","1","D7(a1)","S2:1"],
+["A4","20000002","180","1","E7(a3)","S2"],
+["A3+A2+A1","00010000","182","0","E8(b6)","1"],
+["D4+A1","01000012","184","0","E6(a1)","1"],
+["D4(a1)+A2","02000000","184","1","E8(b6)","S2"],
+["A4+A1","10000101","188","1","E6(a1)+A1","S2"],
+["2A3","10001000","188","0","D7(a2)","1"],
+["D5(a1)","10000102","190","1","E6(a1)","S2"],
+["A4+2A1","00010001","192","1","D7(a2)","S2"],
+["A4+A2","00000200","194","1","D5+A2","1"],
+["A5","20000101","196","0","D6(a1)","1"],
+["D5(a1)+A1","00010002","196","1","E7(a4)","1"],
+["A4+A2+A1","00100100","196","1","A6+A1","1"],
+["D4+A2","02000002","198","1","A6","S2:1"],
+["E6(a3)","20000020","198","1","D6(a1)","S2"],
+["D5","20000022","200","1","D5","1"],
+["A4+A3","00010010","200","0","E8(a7)","1"],
+["A5+A1","10010001","202","0","E8(a7)","1"],
+["D5(a1)+A2","00100101","202","0","E8(a7)","1"],
+["D6(a2)","01100010","204","0","E8(a7)","S2"],
+["E6(a3)+A1","10001010","204","0","E8(a7)","S2"],
+["E7(a5)","00010100","206","0","E8(a7)","S3"],
+["D5+A1","10001012","208","0","E6(a3)","1"],
+["E8(a7)","00002000","208","1","E8(a7)","S5"],
+["A6","20000200","210","1","D4+A2","1"],
+["D6(a1)","01100012","210","1","E6(a3)","S2"],
+["A6+A1","10010100","212","1","A4+A2+A1","1"],
+["E7(a4)","00010102","212","1","D5(a1)+A1","S2:1"],
+["E6(a1)","20000202","214","1","D5(a1)","S2"],
+["D5+A2","00002002","214","1","A4+A2","S2:1"],
+["D6","21100012","216","0","A4","1"],
+["E6","20000222","216","1","D4","1"],
+["D7(a2)","10010101","216","1","A4+2A1","S2"],
+["A7","10010110","218","0","D4(a1)+A2","1"],
+["E6(a1)+A1","10010102","218","1","A4+A1","S2"],
+["E7(a3)","20010102","220","1","A4","S2"],
+["E8(b6)","00020002","220","1","D4(a1)+A2","S3:S2"],
+["D7(a1)","20002002","222","1","A3+A2","S2:1"],
+["E6+A1","10010122","222","0","D4(a1)","1"],
+["E7(a2)","01101022","224","0","D4(a1)","1"],
+["E8(a6)","00020020","224","1","D4(a1)+A1","S3"],
+["D7","21101101","226","0","2A2","1"],
+["E8(b5)","00020022","226","1","D4(a1)","S3"],
+["E7(a1)","21101022","228","1","A3","1"],
+["E8(a5)","20020020","228","1","2A2","S2"],
+["E8(b4)","20020022","230","1","A2+2A1","S2:1"],
+["E7","21101222","232","0","A2","1"],
+["E8(a4)","20020202","232","1","A2+A1","S2"],
+["E8(a3)","20020222","234","1","A2","S2"],
+["E8(a2)","22202022","236","1","2A1","1"],
+["E8(a1)","22202222","238","1","A1","1"],
+["E8","22222222","240","1","0","1"]]
+
+set n=#E8_data
+set E8_names=for i:n do E8_data[i][0] od
+set E8_diagrams=for i:n do E8_data[i][1] od
+set E8_dimensions=for i:n do E8_data[i][2] od
+set E8_special=for i:n do E8_data[i][3] od
+set E8_dual_names=for i:n do E8_data[i][4] od
+
+set diagram_to_name_E8(string diagram)=
+let index=first(for j:#E8_diagrams do E8_diagrams[j]=diagram od) in E8_names[index]
+
+set name_to_diagram_E8(string name)=
+let index=first(for j:#E8_names do E8_names[j]=name od) in E8_diagrams[index]
+
+set dual_diagram_E8(string diagram)=
+let index=first(for j:#E8_diagrams do E8_diagrams[j]=diagram od) then
+dual_name=E8_dual_names[index] then
+index=first(for j:#E8_names do E8_names[j]=dual_name od) in
+E8_diagrams[index]
+
+set to_int(string str)=
+assert(#str=1, "not a single character");
+if str="0" then 0
+elif str="1" then 1
+elif str="2" then 2
+elif str="3"  then 3
+elif str="4" then 4
+elif str="5" then 5
+elif str="6" then 6
+elif str="7" then 7
+elif str="8" then 8
+elif str="9" then 9
+else error("not a single character")  fi
+
+
+set split(string str)=[int]:
+for i:#str do to_int(str[i]) od
+
+set join([int] list)=##for i in list do i.to_string od
+
+{this is a variable of type [([int],[int])]}
+set dual_diagram_table_E8=
+for i:#E8_diagrams do
+ let diagram=E8_diagrams[i] then
+ dual_diagram=dual_diagram_E8(diagram) in
+(split(diagram),split(dual_diagram)) od
+
+{this is a function [int]->[int]}
+set dual_diagram_E8([int] diagram)=
+let index=first(for (diag,)@i in dual_diagram_table_E8 do diagram=diag od) then
+(,dual_diagram)=dual_diagram_table_E8[index] in dual_diagram
+
+set dual_E8(ComplexNilpotent O)=ComplexNilpotent:
+complex_nilpotent_from_diagram(O.root_datum,dual_diagram_E8(O.diagram))
+
+set springer_by_name_table_E8=
+[
+("0",   (1,120)),
+("A1",  (8,91)),
+("2A1",  (35,74   )),
+("3A1",  (84,64   )),
+("A2",  (112,63   )),
+("4A1",  (50,56   )),
+("A2+A1",  (210,52   )),
+("A2+2A1",  (560,47   )),
+("A3",  (567,46   )),
+("A2+3A1",  (400,43   )),
+("2A2",  (700,42   )),
+("2A2+A1",  (448,39   )),
+("A3+A1",  (1344,38   )),
+("D4(a1)",  (1400,37   )),
+("D4",  (525,36   )),
+("2A2+2A1",  (175,36   )),
+("A3+2A1",  (1050,34   )),
+("D4(a1)+A1",  (1400,32   )),
+("A3+A2",  (3240,31   )),
+("A4",  (2268,30   )),
+("A3+A2+A1",  (1400,29   )),
+("D4+A1",  (700,28   )),
+("D4(a1)+A2",  (2240,28   )),
+("A4+A1",  (4096,26   )),
+("2A3",  (840,26   )),
+("D5(a1)",  (2800,25   )),
+("A4+2A1",  (4200,24   )),
+("A4+A2",  (4536,23   )),
+("A5",  (3200,22   )),
+("D5(a1)+A1",  (6075,22   )),
+("A4+A2+A1",  (2835,22   )),
+("D4+A2",  (4200,21   )),
+("E6(a3)",  (5600,21   )),
+("D5",  (2100,20   )),
+("A4+A3",  (420,20   )),
+("A5+A1",  (2016,19   )),
+("D5(a1)+A2",  (1344,19   )),
+("D6(a2)",  (4200,18   )),
+("E6(a3)+A1",  (3150,18   )),
+("E7(a5)",  (7168,17   )),
+("D5+A1",  (3200,16   )),
+("E8(a7)",  (4480,16   )),
+("A6",  (4200,15   )),
+("D6(a1)",  (5600,15   )),
+("A6+A1",  (2835,14   )),
+("E7(a4)",  (6075,14   )),
+("E6(a1)",  (2800,13   )),
+("D5+A2",  (4536,13   )),
+("D6",  (972,12   )),
+("E6",  (525,12   )),
+("D7(a2)",  (4200,12   )),
+("A7",  (1400,11   )),
+("E6(a1)+A1",  (4096,11   )),
+("E7(a3)",  (2268,10   )),
+("E8(b6)",  (2240,10   )),
+("D7(a1)",  (3240,9   )),
+("E6+A1",  (448,9   )),
+("E7(a2)",  (1344,8   )),
+("E8(a6)",  (1400,8   )),
+("D7",  (400,7   )),
+("E8(b5)",  (1400,7   )),
+("E7(a1)",  (567,6   )),
+("E8(a5)",  (700,6   )),
+("E8(b4)",  (560,5   )),
+("E7",  (84,4   )),
+("E8(a4)",  (210,4   )),
+("E8(a3)",  (112,3   )),
+("E8(a2)",  (35,2   )),
+("E8(a1)",  (8,1   )),
+("E8", (1,0))]
+
+set springer_by_name_E8(string name)=(int,int):
+let index=first(for (n,)@j in springer_by_name_table_E8 do n=name od) then
+(,pair)=springer_by_name_table_E8[index] in pair
+
+set springer_E8(ComplexNilpotent O)=
+assert(O.root_datum.Lie_type=Lie_type("E8"),"Not type E8");
+let diagram=join(O.diagram) {string} then
+name=diagram_to_name_E8(diagram) in
+springer_by_name_E8(name)
+
+set springer_E8(CharacterTable ct,ComplexNilpotent O)=int:
+let characters=ct.characters then
+(sig_0,sig_1)=springer_E8(O) in
+first(for v@i in characters do
+v[0]=sig_0 and ct.degrees[i]=sig_1 od)
+
+set springer_table_E8(CharacterTable ct)=
+let rd=ct.root_datum then
+orbits=rd.orbits then
+dual_map(ComplexNilpotent O)=ComplexNilpotent: dual_E8(O) then
+dual_map_i(ComplexNilpotent O)=ComplexNilpotent: dual_E8(O) then
+springer(ComplexNilpotent O)=springer_E8(ct,O) in
+(ct,orbits,dual_map,dual_map_i,springer)

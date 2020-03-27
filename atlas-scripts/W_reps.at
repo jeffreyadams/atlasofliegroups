@@ -3,6 +3,7 @@
 <W_characters.at
 <sort.at { for |sort_u@[vec]| }
 <lattice.at { for |restrict_action@(mat,mat)| }
+<sparse.at
 
 { data type for representation of W
   operators[i] is the matrix of the action of simple generator #i
@@ -97,28 +98,29 @@ set_type
   a cell is: ([int],[([int],[(int,int)])]) cell,int i)
   as described in the W_cells command in atlas-functions.help}
 
+{returns a sparse matrix}
 {. matrix of action of i^th simple reflection on a cell .}
-set cell_action (WCell (,graph),int s) = mat:
-   let n=#graph then I=id_mat(n)
-in n ^ { matrix is given by rows of length n }
-   for node@i in graph
-   do let row = I[i] { row value for the case that s not in tau invariant } in
-      if is_member(node.tau)(s)
-      then row[i]:=-1
-      ; for (j,mu) in node.out_list
-        do if not is_member(graph[j].tau)(s) then row[j]:=mu fi
-        od
-      fi
-   ;  row
-   od
-
+set cell_action (WCell (,graph),int s) = sparse_mat:
+let rv=sparse_mat:[] in
+for node@i in graph
+do 
+ let col=sparse_column:[] in
+ if is_member(node.tau)(s)
+   then col#:=(i,-1)
+   ; for (j,mu) in node.out_list
+     do if not is_member(graph[j].tau)(s) then col#:=(j,mu) fi
+     od
+   else col#:=(i,1) 
+ fi;
+ rv#:=col
+od;rv
 
 {. matrix of action of product of simple reflections on a cell .}
 set cell_action (WCell cell,[int] w) = mat:
   let n=#cell.graph in
   if =#w then id_mat(n)
-  else let result=cell_action(cell,w~[0]) in
-     for i:#w-1 from 1 do result:=cell_action(cell,w~[i])*result od; result
+  else let result=unsparse(cell_action(cell,w[0]),n) in
+     for i:#w-1 from 1 do result:=result*cell_action(cell,w[i]) od; result
   fi
 
 {. matrix of action of WeylElt on a cell .}
@@ -141,7 +143,7 @@ set cells_table_augmented (WeylClassTable ct, [WCell] cells) = mat:
   in matrix_of_inner_products(ct,characters)
 
 set cell_representation (WeylClassTable ct,WCell cell) = W_rep:
-  (#cell.graph,for i:ct.root_datum.semisimple_rank do cell_action(cell,i) od)
+  (#cell.graph,for i:ct.root_datum.semisimple_rank do unsparse(cell_action(cell,i),#cell.graph) od)
 
 { list of representations defined by an array of cells }
 set cell_representations(WeylClassTable ct,[WCell] cells)=[W_rep]:

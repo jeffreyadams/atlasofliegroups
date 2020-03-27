@@ -185,3 +185,10 @@ set coxeter_number (RootDatum rd) = int:
 set coxeter_torus_element (RootDatum rd) = ratvec:
   rho_check(rd)/coxeter_number(rd)
 
+{lift Weyl group element to simply connected group}
+set lift_sc(WeylElt w)=W_elt(w.root_datum.simply_connected,w.word)
+
+{Weyl group element of a KGB element}
+
+set w(KGBElt x)=W_elt(x.real_form,x.involution*x.real_form.distinguished_involution)
+set w(Param p)=p.x.w

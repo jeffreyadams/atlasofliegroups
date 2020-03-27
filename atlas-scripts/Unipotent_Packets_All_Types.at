@@ -1,5 +1,8 @@
 {Given a block and a partition of the dual group, find all Unipotent packets corresponding to that orbit in the block}
 
+{note: rv#:=Psi(parameter(b[t]), S) replaced with
+rv#:=first_param(Psi(parameter(b[t]), S)) fi od in several places due
+to change of syntax}
 <basic.at
 <sort.at
 <W_reps_type_BC.at
@@ -274,9 +277,9 @@ then S=singular_simple_indices(G, H)
 then V=all_Cells_with_Aq_Lambda_as_Real_forms_B(B, P)
 in for v in V do
 				for i:#v do
-						for t in W_Cells_G[dual_Cell (B, v[i])]
-						do if subset(S, tau_complement(parameter(b[t]))) then rv#:=Psi(parameter(b[t]), S) fi od
-						od; rv1#:=rv; rv:=[]
+				for t in W_Cells_G[dual_Cell (B, v[i])]
+				do if subset(S, tau_complement(parameter(b[t]))) then rv#:=first_param(Psi(parameter(b[t]), S)) fi od
+				od; rv1#:=rv; rv:=[]
 				od; rv1
 
 
@@ -297,7 +300,7 @@ then Q=sort(all_Cells_with_Aq_Lambda_B (B, P))
 then W=delete_sub_vector(Q,W)
 in for w in W do
 				for t in W_Cells_G[dual_Cell (B, w)]
-						do if subset(S,tau_complement(parameter(b[t]))) then rv#:=Psi(parameter(b[t]), S) fi
+						do if subset(S,tau_complement(parameter(b[t]))) then rv#:=first_param(Psi(parameter(b[t]), S)) fi
 						od; rv1#:=rv; rv:=[]
 				od; rv1
 
@@ -468,7 +471,7 @@ then V=all_Cells_with_Aq_Lambda_as_Real_forms_C(B, P)
 in for v in V do
 				for i:#v do
 						for t in W_Cells_G[dual_Cell (B, v[i])]
-						do if subset(S, tau_complement(parameter(b[t]))) then rv#:=Psi(parameter(b[t]), S) fi od
+						do if subset(S, tau_complement(parameter(b[t]))) then rv#:=first_param(Psi(parameter(b[t]), S)) fi od
 						od; rv1#:=rv; rv:=[]
 				od; rv1
 
@@ -490,7 +493,7 @@ then Q=sort(all_Cells_with_Aq_Lambda_C (B, P))
 then W=delete_sub_vector(Q,W)
 in for w in W do
 				for t in W_Cells_G[dual_Cell (B, w)]
-						do if subset(S,tau_complement(parameter(b[t]))) then rv#:=Psi(parameter(b[t]), S) fi
+						do if subset(S,tau_complement(parameter(b[t]))) then rv#:=first_param(Psi(parameter(b[t]), S)) fi
 						od; rv1#:=rv; rv:=[]
 				od; rv1
 

@@ -1,4 +1,5 @@
 <W_orbit.at
+<Weylgroup.at
 
 {! See "Parabolic Subgroups and Induction", in dropbox, ultimately on the
   Atlas web site.
@@ -482,6 +483,55 @@ set parabolics_with_theta_stable_Levi (RealForm G,[int] S) = [Parabolic]:
   do if has_theta_stable_Levi(P) then [P] else [] fi
   od
 
+set minimal_real_parabolic(RealForm G)=Parabolic:real_parabolic(G.x_open)
+set minimal_real_Levi(RealForm G)=RealForm:G.minimal_real_parabolic.Levi
+
+set maximal_parabolics(RootDatum rd)=[ComplexParabolic]:
+for i:rd.ss_rank do (rd,delete(#rd.ss_rank,i)) od
+
+{Find equivalence classes of non-imaginary simple roots w.r.t. max. x, for
+alpha \cong alpha' if (1-theta)(alpha)=(1-theta(alpha')}
+set classes_for_real_parabolics (RealForm G)=[[int]]:
+   let theta=trivial(G).x.involution, sr=simple_roots(G) then list=[int]:
+   ##for alpha@i in sr do if not is_imaginary(theta)(alpha) then [i] else []  fi od
+   then result=[[int]]:[] in
+   for i in list do if is_real(theta)(sr[i]) then result#:=[i] else
+    let temp=[int]:
+    ##for j in list do if j >= i and (1-theta)*sr[i]=(1-theta)*sr[j]
+     and all(for v in result do all(for n in v do j!=n od) od) then [j] else [] fi od in
+    result#:=temp fi od;
+    ##for v in result do if #v>0 then [v] else [] fi od
+
+{maximal parabolics among all real parabolics of G=G(R)
+not the same as real forms of maximal parabolics of G(C)
+}
+set maximal_real_parabolics(RealForm G)=[KGPElt]:
+   let x=trivial(G).x in let theta=x.involution then sr=simple_roots(G) in
+   let S=[int]: ##for i:#sr do if is_imaginary(theta)(sr[i]) then [i] else [] fi od
+   in let list=classes_for_real_parabolics(G) then n=#list in
+   for i:n do let RS=S in for v in delete(list,i) do RS:=RS##v od; (RS,x) od
+{set maximal_real_parabolics(RealForm G)=
+{if G is (relatively) split this is easy}
+if G.is_relatively_split then for i:G.ss_rank do KGPElt:(delete(#G.ss_rank,i),G.x_open) od
+else
+{in general: brute force listing and test of containment}
+let real_parabolics=all_real_parabolics(G) then
+proper_real_parabolics=##for P in real_parabolics do if #P.S<G.ss_rank then [P] else [] fi od in
+##for P in proper_real_parabolics do
+ if any(for Q in proper_real_parabolics do  is_proper_subset(P.S,Q.S) od) then [] else [P] fi od
+fi
+}
+
+{theta_stable parabolics, maximal among all such
+unlike the real_parabolic case, these have different x-values
+this is a brute force search, it can be improved along the lines of
+maximal_real_parabolics}
+set maximal_theta_parabolics(RealForm G)=
+let theta_parabolics=theta_stable_parabolics(G) then
+proper_theta_parabolics=##for P in theta_parabolics do if #P.S<G.ss_rank then [P] else [] fi od in
+##for P in proper_theta_parabolics do
+ if any(for Q in proper_theta_parabolics do  P.x=Q.x and is_proper_subset(P.S,Q.S) od) then [] else [P] fi od
+
 set all_parabolics_with_theta_stable_Levi (RealForm G) = [KGPElt]:
 ##for S in power_set(semisimple_rank(G))
   do
@@ -499,8 +549,8 @@ set print_theta_stable_parabolics (RealForm G) = void:
 {. The smallest list of simple roots such that descents lead to the
   distinguished fiber. .}
 set support (KGBElt x) = [int]:
-  let rd=root_datum(x), delta=distinguished_involution(real_form(x)) in
-  list(semisimple_rank(rd),W_elt(rd,involution(x)*delta).word.is_member)
+  {note: x.w has the distinguished involution in it}
+  list(x.root_datum.semisimple_rank,x.w.word.is_member)
 
 {. Auxiliary function. .}
 set support_alt(KGBElt x)=[int]:

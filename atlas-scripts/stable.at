@@ -4,6 +4,7 @@
 <translate.at { for |Psi@(Param,[int])| }
 <modules.at { for |has_infinitesimal_character@ParamPol| }
 <combinatorics.at { for |pemutation_inverse@[int]| }
+<nilpotent_orbits.at
 <weak_packets.at
 
 
@@ -31,7 +32,7 @@ set has_infinitesimal_character ([Param] params) = bool:
 set make_regular (Param p) = Param:
   let gamma=infinitesimal_character(p) in
   if is_regular(root_datum(p),gamma) then p
-  else T(p,make_regular(root_datum(p),gamma))
+  else T_irr_nonzero(p,make_regular(root_datum(p),gamma))
   fi
 
 set make_param_pol (RealForm G,[int] coefficients,[Param] params) = ParamPol:
@@ -41,10 +42,6 @@ set make_param_pol (RealForm G,[int] coefficients,[Param] params) = ParamPol:
 {permutations}
 {S=[a_0,a_1,...] <-> permutation sigma(i)=a_i}
 
-{inverse permutation}
-set inverse_permutation ([int] sigma) = [int]:
-  let result =for:#sigma do 0 od in
-  for a@i in sigma do result[a]:=i od; result
 
 set permutation_matrix_sort([int] S) = mat:
   let n=#S, sorted=sort(S) in matrix((n,n),(int i,int j)int: #(sorted[i]=S[j]) )
@@ -64,7 +61,7 @@ set in_tau_complement([*] S,Param p) = bool: true
 { translate irreducibles to singular infinitesimal character,
   only keep those for which tau(p)\subset S-complement }
 set Psi ([Param] params,[int] S) = [Param]:
-   ## for p in params do if in_tau_complement(S,p) then [Psi(p,S)] else [] fi od
+   ## for p in params do if in_tau_complement(S,p) then [first_param(Psi(p,S))] else [] fi od
 
 {from now on [int] S is a set of simple roots,
  [Param] B is a block of parameters with regular infinitesimal character
@@ -106,7 +103,7 @@ set parameters ([int] S,[Param] B) = [int]:
 set parameters ([*] S,[Param] B) = [int]: parameters([int]:S,B)
 
 set parameters_singular ([int] S,[Param] B) = [Param]:
-  for i in parameters(S,B) do Psi(B[i],S) od
+  for i in parameters(S,B) do first_param(Psi(B[i],S)) od
 set parameters_singular ([*] S,[Param] B)=[Param]:
   parameters_singular([int]: S,B)
 
@@ -196,7 +193,7 @@ set stable_at_singular ([int] S,[Param] B) = (mat,[Param]):
   let params=parameters(S,B)
   then (M,)=stable_at_singular_unsorted(S,B)
   then P=permutation_matrix_sort(params)
-  in (M*^P,for i in sort(params) do Psi(B[i],S) od)
+  in (M*^P,for i in sort(params) do first_param(Psi(B[i],S)) od)
 
 {handle empty case where first argument is of type [*]}
 set stable_at_singular ([*] S,[Param] B) = (mat,[Param]):
@@ -236,7 +233,7 @@ all_regular_parameters=all_parameters_gamma(G,gamma_regular) then
 {need to pass list of regular parameters,obtained by
 translating singular_parameters out to gamma_regular}
 my_regular_parameters={for p in singular_parameters do T(p,gamma_regular) od}
- ##for p in all_regular_parameters do if find(singular_parameters,T(p,gamma_singular))>=0 then [p] else [] fi od
+ ##for p in all_regular_parameters do if find(singular_parameters,first_param(T(p,gamma_singular)))>=0 then [p] else [] fi od
 then
 ()=prints("# regular parameters:", #my_regular_parameters) then
 blocks=blocks(all_regular_parameters) then
@@ -253,7 +250,7 @@ all_regular_parameters=all_parameters_gamma(G,gamma_regular) then
 {need to pass list of regular parameters,obtained by
 translating singular_parameters out to gamma_regular}
 my_regular_parameters={for p in singular_parameters do T(p,gamma_regular) od}
- ##for p in all_regular_parameters do if find(singular_parameters,T(p,gamma_singular))>=0 then [p] else [] fi od
+ ##for p in all_regular_parameters do if find(singular_parameters,first_param(T(p,gamma_singular)))>=0 then [p] else [] fi od
 then
 ()=prints("# regular parameters:", #my_regular_parameters) then
 blocks=blocks(all_regular_parameters) then
@@ -314,7 +311,8 @@ set print_stable_at_singular ([int] S,[Param] B,[Param] subset) = void:
   prints("dimension space of stable characters: ", n_rows(rv), new_line,rv)
 
 set print_stable_at_singular ([*] S,[Param] B,[Param] subset) = void:
-  print_stable_at_singular([int]:S,B,subset)
+
+print_stable_at_singular([int]:S,B,subset)
 
 set stable ([Param] params) = (mat,[Param]):
   assert(has_infinitesimal_character(params)
@@ -324,7 +322,7 @@ set stable ([Param] params) = (mat,[Param]):
   then gamma=infinitesimal_character(p)
   then gamma_reg=make_regular(root_datum(p),gamma)
   then S=singular_simple_indices(G,infinitesimal_character(p))
-  then params_reg=for p in params do T(p,gamma_reg) od
+  then params_reg=for p in params do first_param(T(p,gamma_reg)) od
   then B=block_of(params_reg[0])
   in stable_at_singular(S,B,params_reg)
 

@@ -1,6 +1,6 @@
-<basic.at
+<cells.at
 <parameters.at { for |dual_inner_class| }
-
+<nilpotent_orbits.at {for |is_Aq|}
 { A first main objective of this script is to define a function |dual_KGB| that
   associates to a |Param| value a KGB element for a computed dual real form.
   Even just determining the proper dual real form is a surprisingly delicate
@@ -160,6 +160,9 @@ set check_dual_lambda (Param p) = bool:
 set dual (Param p, InnerClass dual_integral_class) = Param:
   parameter( dual_KGB(p,dual_integral_class), dual_lambda(p), dual_gamma(p) )
 
+{ the dual_integral_class is given by dual_inner_class@Param (parameters.at)}
+set dual(Param p)=Param:dual(p,dual_inner_class(p))
+
 { define dual of (x,y,gamma), see parameters.at }
 set dual(KGBElt x,KGBElt y, ratvec gamma) = Param:
   dual(parameter(x,y,gamma),inner_class(y))
@@ -183,3 +186,54 @@ set test2 (Param p) = [bool]: { consistency of cocharacter across block }
   let G_v=dual_inner_class(p), gamma1=infinitesimal_character(p)%1
   in for q in block_of(p)
      do central_cocharacter(real_form(dual_KGB(q,G_v)))=gamma1 od
+
+
+{  --------- some indicator functions -------------}
+
+{support(x): those simple reflections occuring in x.w, see parabolics.at
+ dual_support(x): simple reflections occuring in x.w*w_0
+ this is the support of any y for which (x,y) is a valid parameter
+ integral case first}
+set support_dual(KGBElt x)=[int]:
+   list(x.root_datum.semisimple_rank,(x.w*w0(x.root_datum)).word.is_member)
+
+set support_dual_int(Param p)=[int]:
+assert(is_integral(p.root_datum,p.infinitesimal_character), "p does not have integral infinitesimal character");
+support_dual(p.x)
+
+{general case: need to replace x.w with an element of W(rd_int)}
+set support_dual(Param p)=[int]:
+ let rd_int=integrality_datum(p) then
+ x=p.x then
+ w_int=W_elt(rd_int,x.w.matrix) in 
+ list(semisimple_rank(rd_int),W_elt(rd_int,x.w*w0(p.root_datum).matrix).word.is_member)
+
+{dual is an Aq(finite dimensional), regular integral case}
+set is_dual_Aq_int(Param p)=bool:
+let G=real_form(p), ic=infinitesimal_character(p) in
+assert(is_regular(p) and is_integral(ic,G),"p is not regular integral");
+all(for i in support_dual(p.x) do is_ascent(i,p.x) od)
+
+{dual is an Aq(finite dimensional), regular but not necessarily integral}
+{this function is NOT reliable}
+set is_dual_Aq_temp(Param p)=bool:
+assert(is_regular(p),"p is not regular");
+all(for i in support_dual(p) do is_ascent(i,p) od)
+
+{old version, fails with an error for SU(3,2) without
+the is_integral statement}
+set is_dual_Aq (Param p) = bool:
+if not (is_regular(p) and is_integral(p.infinitesimal_character,p.root_datum)) then false
+else is_coh_ind_from_finite_dimensional(dual(p,dual_inner_class(p)))
+fi
+
+{usually used to see if the dual of a cell has an Aq,
+although the argument isn't required to be a cell}
+set is_dual_Aq([Param] cell)=bool:any(for p in cell do is_dual_Aq(p) od)
+
+{argument is a block of parameters, and a WCell}
+set is_dual_Aq([Param] block,WCell cell)=bool:
+let (param_numbers,)=cell in
+is_dual_Aq(for i in param_numbers do block[i] od)
+
+set star(bool value)=string:if value then "*" else "" fi
