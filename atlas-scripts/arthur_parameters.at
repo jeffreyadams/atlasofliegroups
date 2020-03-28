@@ -51,7 +51,7 @@ set pbo(RootDatum rd)=[[ComplexNilpotent_d]]:arthur_parameters_by_orbit(rd)
 set show([[ComplexNilpotent]] list)=void:
 for orbits@i in list do
 prints(new_line,"index of orbit O for G: ",i,new_line, "#orbits for (disconnected) Cent(O)", #orbits);
-tabulate(["Cent of orbit_0","H","diagram"]#
+tabulate(["K_0","H","diagram"]#
  for O in orbits do
  [O.root_datum.to_string,O.H.to_string,O.diagram.to_string] od) od
 
@@ -60,7 +60,7 @@ let v=for orbits_d in list do #orbits_d od in
 prints("#parameters by orbit: ",v,new_line, "Total: ", sum(v));
 for orbits_d@i in list do
 prints(new_line,"index of orbit O for G: ",i,new_line, "#orbits for (disconnected) Cent(O): ", #orbits_d);
-tabulate(["Cent of orbit_0","H","mult"]#
+tabulate(["K_0","H","mult"]#
  for O_d in orbits_d do
  let mult=#intersect(O_d) in
  [O_d.rd_d.rd.to_string,O_d.H.to_string,mult.to_string] od) od
