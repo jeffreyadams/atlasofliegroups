@@ -38,6 +38,12 @@ set = (ComplexNilpotent O1,ComplexNilpotent O2) = bool:
 set dim_nilpotent (ComplexNilpotent(rd,,H)) = int:
   sum(for alpha in posroots(rd) do case alpha*H in 0, 1 else 2 esac od)
 
+{synonym}
+set dim (ComplexNilpotent O) = int:dim_nilpotent(O)
+
+{saturate an orbit from subgroup to G}
+set saturate(ComplexNilpotent O,RootDatum rd)=ComplexNilpotent:(rd,(),O.H)
+
 set diagram (ComplexNilpotent(rd,,H)) = [int]:
    dominant(H,rd){action on coweight} * simple_roots(rd)
 
@@ -80,6 +86,12 @@ set find ([ComplexNilpotent] list,ComplexNilpotent O) = int:
 set find ([RealNilpotent] list,RealNilpotent O) = int:
    first(#list,(int i)bool:list[i].x=O.x and
                            list[i].H=O.H)
+
+set remove_duplicates([ComplexNilpotent] orbits)=[ComplexNilpotent]:
+let rv=[ComplexNilpotent]:[] in
+for orbit in orbits do
+ if find(rv,orbit)=-1 then rv#:=orbit fi
+od;rv
 
 set dim_eigenspace (RootDatum rd, ratvec H, int k) = int:
    if =k { level 0 is special: include torus and negative roots at this level }
