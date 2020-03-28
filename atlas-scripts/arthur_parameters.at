@@ -1,0 +1,73 @@
+<disconnected.at
+<galois.at {strong_real_forms_same_type}
+
+{parametrizing sets of unipotent Arthur parameters}
+
+{strong real forms with z^2=e}
+set strong_real_forms_e(RootDatum rd)=[RealForm]:
+let K=compact_form(rd) then
+rf=real_forms(K) in
+for i in strong_real_forms_same_type(K) do rf[i] od
+
+{given y, all nilpotent orbits in the full centralizer
+of y, that is nilpotent orbits in Cent(y)_0, modulo
+the action of Cent(y)/Cent(y)_0
+}
+set arthur_parameters_by_y(RootDatum rd)=[[ComplexNilpotent_d]]:
+let dual_forms=strong_real_forms_e(rd.dual) in
+for Gd in dual_forms do Gd.K.orbits od
+
+set arthur_parameters_of_orbit(RootDatum rd,ComplexNilpotent O_check)=[ComplexNilpotent_d]:
+let dual_forms=strong_real_forms_e(dual(rd)) in
+##for Gd@i in dual_forms do
+ ##for O_d in Gd.K.orbits do
+ if saturate(O_d,Gd)=O_check then [O_d]  else [] fi od 
+od
+
+set arthur_parameters_by_orbit(RootDatum rd)=[[ComplexNilpotent_d]]:
+let rv=for O_check in rd.dual_orbits do arthur_parameters_of_orbit(rd,O_check) od
+then v=for a in rv do #a od in
+prints(v,": ",sum(v));rv
+
+{naive versions for testing}
+set arthur_parameters_by_y_naive(RootDatum rd)=[[ComplexNilpotent]]:
+let dual_forms=strong_real_forms_e(rd.dual) in
+for Gd in dual_forms do Gd.K_0.orbits od
+
+set arthur_parameters_of_orbit_naive(RootDatum rd,ComplexNilpotent O_check)=[ComplexNilpotent]:
+let dual_forms=strong_real_forms_e(dual(rd)) in
+##for Gd@i in dual_forms do
+ ##for O_d in Gd.K_0.orbits do
+ if saturate(O_d,Gd)=O_check then [O_d]  else [] fi od 
+od
+
+set arthur_parameters_by_orbit_naive(RootDatum rd)=[[ComplexNilpotent]]:
+let rv=for O_check in rd.dual_orbits do arthur_parameters_of_orbit_naive(rd,O_check) od
+then v=for a in rv do #a od in
+prints(v,": ",sum(v));rv
+
+set pbo(RootDatum rd)=[[ComplexNilpotent_d]]:arthur_parameters_by_orbit(rd)
+
+set show([[ComplexNilpotent]] list)=void:
+for orbits@i in list do
+prints(new_line,"index of orbit O for G: ",i,new_line, "#orbits for (disconnected) Cent(O)", #orbits);
+tabulate(["Cent of orbit_0","H","diagram"]#
+ for O in orbits do
+ [O.root_datum.to_string,O.H.to_string,O.diagram.to_string] od) od
+
+set show([[ComplexNilpotent_d]] list)=void:
+let v=for orbits_d in list do #orbits_d od in
+prints("#parameters by orbit: ",v,new_line, "Total: ", sum(v));
+for orbits_d@i in list do
+prints(new_line,"index of orbit O for G: ",i,new_line, "#orbits for (disconnected) Cent(O): ", #orbits_d);
+tabulate(["Cent of orbit_0","H","mult"]#
+ for O_d in orbits_d do
+ let mult=#intersect(O_d) in
+ [O_d.rd_d.rd.to_string,O_d.H.to_string,mult.to_string] od) od
+
+
+
+
+
+
+
