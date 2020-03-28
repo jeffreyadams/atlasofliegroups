@@ -7,7 +7,7 @@
 theta is an involution. G/G^theta is an elementary 2-group}
 
 
-set_type [DisconnectedGroup = (RootDatum rd,[vec] characters,[mat] R_K_dom)]
+set_type [DisconnectedGroup = (RootDatum rd,[vec] characters,[mat] automorphisms)]
 {characters: representatives of the 2-group ker(1+delta)/im(1-delta)=X^*(H^delta/(H^delta)_0)
 automorphisms: a set A of square matrices of size rank(rd)a, satisying:
 1) M^2=1  (M\in A)
@@ -45,15 +45,15 @@ set K(RealForm G)=DisconnectedGroup:
 let K_0=K_0(G) then
 x=nice_choice_x(G)  {not sure this is necessary?} then
 characters=characters_order_2(x) then
-R_K_dom=R_K_dom(x) in
-(K_0,characters,for w in R_K_dom do factor_action(x,w) od)
+automorphisms=R_K_dom(x) in
+(K_0,characters,for w in automorphisms do factor_action(x,w) od)
 
 set_type [ComplexNilpotent_d=(DisconnectedGroup rd_d,void .,vec H)]
 
 set root_datum(ComplexNilpotent_d O_d)=O_d.rd_d.rd
 
 set =(ComplexNilpotent_d a,ComplexNilpotent_d b)=bool:
-any(for M in a.rd_d.R_K_dom do ^M*a.H=b.H od)
+any(for M in a.rd_d.automorphisms do ^M*a.H=b.H od)
 
 set find([ComplexNilpotent_d] orbits,ComplexNilpotent_d O)=int:
 first(for orbit in orbits do orbit=O od)
@@ -75,7 +75,7 @@ od;rv
 {nilpotent orbit for G intersect G_0}
 set intersect(ComplexNilpotent_d O_d)=[ComplexNilpotent]:
 let O=(O_d.root_datum,(),O_d.H) in
-remove_duplicates(for w in O_d.rd_d.R_K_dom do (O.root_datum,(),w*O.H) od)
+remove_duplicates(for w in O_d.rd_d.automorphisms do (O.root_datum,(),w*O.H) od)
 
 set nilpotent_orbits(DisconnectedGroup G)=[ComplexNilpotent_d]:
 let orbits=G.rd.orbits then
