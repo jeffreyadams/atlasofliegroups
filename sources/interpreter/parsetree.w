@@ -2937,48 +2937,6 @@ case field_ass_stat:
 }
 break;
 
-@*1 Recursive function expressions.
-%
-The basic \.{axis} language is not friendly for recursion, since identifiers
-defined in a local or global definition only come into scope after the body of
-the definition. The fact that recursive functions can nonetheless be defined
-is due to the possibility to call functions from a variable, where a runtime
-assignment to the variable ensures that the by the time it gets called, it
-refers to the very function (body) that contains the call. We provide
-syntactic sugar to make this easier for the user; this being so, no new kind
-of |expr| is needed to implement it.
-
-@< Declarations of functions for the parser @>=
-expr_p make_recfun(id_type f, expr_p d,
-   const YYLTYPE& loc, const YYLTYPE& f_loc);
-
-@ The \&{rec\_fun} syntax requires a function name $f$ and a definition |def|
-which, apart from specifying its argument type(s)~$A$ as usual, also specifies
-an explicit result type~$R$; this is represented as having a body that is a
-cast to~$R$. We shall translate this into ``\&{let} $f=(A~.)
-R:$~\&{die} \&{in} $(f:=\\{def})$'' where the dot designates an empty
-identifier pattern (the \&{die} must be wrapped in a function to prevent the
-evaluation of \&{let} from blowing up).
-
-@< Definitions of functions for the parser@>=
-expr_p make_recfun(id_type f, expr_p d,
-   const YYLTYPE& loc, const YYLTYPE& f_loc)
-{
-  expr_ptr dd(d); expr& definition=*dd;
-  assert(definition.kind==lambda_expr); // grammar ensures this
-  lambda_node& lam = *definition.lambda_variant;
-  assert(lam.body.kind==cast_expr); // grammar ensures this
-  cast_node& body = *lam.body.cast_variant;
-  expr die_expr(f_loc,expr::die_tag());
-  expr dummy_body (new cast_node(body.type.copy(),std::move(die_expr)),f_loc);
-  expr dummy_f
-   (new lambda_node@|(id_pat(),lam.parameter_type.copy(),std::move(dummy_body))
-    ,loc);
-  expr rec_assign (new assignment_node(f,std::move(definition)),loc);
-  return new expr(new let_expr_node @|
-    (id_pat(f),std::move(dummy_f),std::move(rec_assign)),loc);
-}
-
 
 @*1 Sequence statements.
 %
