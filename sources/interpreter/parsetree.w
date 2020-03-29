@@ -851,14 +851,14 @@ for building this variant, differing by the type through which they take the
 source location.
 
 @< Methods of |expr| @>=
-expr(app&& fx, const YYLTYPE& loc)
+expr(app fx, const YYLTYPE& loc)
 @/: kind(function_call)
- , call_variant(std::move(fx))
+ , call_variant(fx)
  , loc(loc)
  @+{}
-expr(app&& fx, const source_location& loc)
+expr(app fx, const source_location& loc)
 @/: kind(function_call)
- , call_variant(std::move(fx))
+ , call_variant(fx)
  , loc(loc)
  @+{}
 
@@ -1458,9 +1458,9 @@ let let_variant;
 
 @ There is a constructor for building this variant.
 @< Methods of |expr| @>=
-expr(let&& declaration, const YYLTYPE& loc)
+expr(let declaration, const YYLTYPE& loc)
  : kind(let_expr)
- , let_variant(std::move(declaration))
+ , let_variant(declaration)
  , loc(loc)
  @+{}
 
@@ -1760,22 +1760,22 @@ used to).
 
 @< Cases for printing... @>=
 case lambda_expr:
-{ const lambda& fun=e.lambda_variant;
-  if (fun->parameter_type==void_type)
+{ const auto& fun=*e.lambda_variant;
+  if (fun.parameter_type==void_type)
     out << '@@';
   else
-    out << '(' << fun->parameter_type << ' ' << fun->pattern << ')';
-  out << ':' << fun->body;
+    out << '(' << fun.parameter_type << ' ' << fun.pattern << ')';
+  out << ':' << fun.body;
 }
 break;
 case rec_lambda_expr:
-{ const rec_lambda& fun=e.rec_lambda_variant;
-  out << fun->self << ':';
-  if (fun->parameter_type==void_type)
+{ const auto& fun=*e.rec_lambda_variant;
+  out << fun.self << ':';
+  if (fun.parameter_type==void_type)
     out << '@@';
   else
-    out << '(' << fun->parameter_type << ' ' << fun->pattern << ')';
-  out << ':' << fun->body;
+    out << '(' << fun.parameter_type << ' ' << fun.pattern << ')';
+  out << ':' << fun.body;
 }
 break;
 
@@ -1825,9 +1825,9 @@ cond if_variant;
 below, the variant |if_variant| will be reused (for case expressions), so
 exceptionally we pass the |expr_kind| tag explicitly.
 @< Methods of |expr| @>=
-expr(expr_kind which, cond&& conditional, const YYLTYPE& loc)
+expr(expr_kind which, cond conditional, const YYLTYPE& loc)
  : kind(which)
- , if_variant(std::move(conditional))
+ , if_variant(conditional)
  , loc(loc)
 @+{}
 
@@ -2092,9 +2092,9 @@ disc disc_variant;
 expressions.
 
 @< Methods of |expr| @>=
-expr(disc&& discrimination, const YYLTYPE& loc)
+expr(disc discrimination, const YYLTYPE& loc)
  : kind(discrimination_expr)
- , disc_variant(std::move(discrimination))
+ , disc_variant(discrimination)
  , loc(loc)
 @+{}
 
@@ -2267,19 +2267,19 @@ c_loop cfor_variant;
 
 @ There is a constructor for building each type of loop expression.
 @< Methods of |expr| @>=
-expr(w_loop&& loop, const YYLTYPE& loc)
+expr(w_loop loop, const YYLTYPE& loc)
  : kind(while_expr)
- , while_variant(std::move(loop))
+ , while_variant(loop)
  , loc(loc)
 @+{}
-expr(f_loop&& loop, const YYLTYPE& loc)
+expr(f_loop loop, const YYLTYPE& loc)
  : kind(for_expr)
- , for_variant(std::move(loop))
+ , for_variant(loop)
  , loc(loc)
 @+{}
-expr(c_loop&& loop, const YYLTYPE& loc)
+expr(c_loop loop, const YYLTYPE& loc)
  : kind(cfor_expr)
- , cfor_variant(std::move(loop))
+ , cfor_variant(loop)
  , loc(loc)
 @+{}
 
@@ -2341,21 +2341,21 @@ input syntax.
 
 @< Cases for printing... @>=
 case while_expr:
-{ const w_loop& w=e.while_variant;
-@/ out << " while " << w->body << " od ";
+{ const auto& w=*e.while_variant;
+@/ out << " while " << w.body << " od ";
 }
 break;
 case for_expr:
-{ const f_loop& f=e.for_variant;
-  const patlist& pl = f->id.sublist;
+{ const auto& f=*e.for_variant;
+  const patlist& pl = f.id.sublist;
 @/const id_pat& index = pl.front();
   const id_pat& entry = *++pl.begin(); // |pl.size()==2|
 @/out << " for " << entry;
   if ((index.kind&0x1)!=0)
     out << '@@' << index;
-  out << " in " << f->in_part
-      << (f->flags[0] ? " ~do " : " do ") @| << f->body
-      << (f->flags[1] ? " ~od " : " od ");
+  out << " in " << f.in_part
+      << (f.flags[0] ? " ~do " : " do ") @| << f.body
+      << (f.flags[1] ? " ~od " : " od ");
 }
 break;
 case cfor_expr:
@@ -2420,19 +2420,19 @@ slc slice_variant;
 @ There are constructors for building the new variants. For the furst one a
 variation will be useful too.
 @< Methods of |expr| @>=
-expr(sub&& s, const YYLTYPE& loc)
+expr(sub s, const YYLTYPE& loc)
  : kind(subscription)
- , subscription_variant(std::move(s))
+ , subscription_variant(s)
  , loc(loc)
  @+{}
-expr(sub&& s, const source_location& loc)
+expr(sub s, const source_location& loc)
  : kind(subscription)
- , subscription_variant(std::move(s))
+ , subscription_variant(s)
  , loc(loc)
  @+{}
-expr(slc&& s, const YYLTYPE& loc)
+expr(slc s, const YYLTYPE& loc)
  : kind(slice)
- , slice_variant(std::move(s))
+ , slice_variant(s)
  , loc(loc)
  @+{}
 
@@ -2485,9 +2485,9 @@ governed by |flags|.
 @h "lexer.h"
 @< Cases for printing... @>=
 case subscription:
-{ const sub& s=e.subscription_variant;
-  const expr& i=s->index;
-  out << s->array << '[';
+{ const auto& s=*e.subscription_variant;
+  const expr& i=s.index;
+  out << s.array << '[';
   if (i.kind!=tuple_display) out << i;
   else
   {
@@ -2500,10 +2500,10 @@ case subscription:
 }
 break;
 case slice:
-{ const slc& s=e.slice_variant;
-@/out << s->array << (s->flags[0] ? "~[" : "[") @|
-      << s->lower << (s->flags[1] ? "~:" : ":") @|
-      << s->upper << (s->flags[2] ? "~]" : "]");
+{ const auto& s=*e.slice_variant;
+@/out << s.array << (s.flags[0] ? "~[" : "[") @|
+      << s.lower << (s.flags[1] ? "~:" : ":") @|
+      << s.upper << (s.flags[2] ? "~]" : "]");
 }
 break;
 
@@ -2538,9 +2538,9 @@ cast cast_variant;
 
 @ There is a constructor for building the new variant.
 @< Methods of |expr| @>=
-expr(cast&& c, const YYLTYPE& loc)
+expr(cast c, const YYLTYPE& loc)
  : kind(cast_expr)
- , cast_variant(std::move(c))
+ , cast_variant(c)
  , loc(loc)
 @+{}
 
@@ -2572,8 +2572,8 @@ case cast_expr: delete cast_variant; break;
 
 @< Cases for printing... @>=
 case cast_expr:
-{@; const cast& c = e.cast_variant;
-  out << c->type << ':' << c->exp ;
+{@; const auto& c = *e.cast_variant;
+  out << c.type << ':' << c.exp ;
 }
 break;
 
@@ -2607,9 +2607,9 @@ op_cast op_cast_variant;
 
 @ There is a constructor for building the new variant.
 @< Methods of |expr| @>=
-expr(op_cast&& c, const YYLTYPE& loc)
+expr(op_cast c, const YYLTYPE& loc)
  : kind(op_cast_expr)
- , op_cast_variant(std::move(c))
+ , op_cast_variant(c)
  , loc(loc)
 @+{}
 
@@ -2640,8 +2640,8 @@ case op_cast_expr: delete op_cast_variant; break;
 
 @< Cases for printing... @>=
 case op_cast_expr:
-{ const op_cast& c = e.op_cast_variant;
-  out << main_hash_table->name_of(c->oper) << '@@' << c->type;
+{ const auto& c = *e.op_cast_variant;
+  out << main_hash_table->name_of(c.oper) << '@@' << c.type;
 }
 break;
 
@@ -2679,9 +2679,9 @@ assignment assign_variant;
 
 @ As always there is a constructor for building the new variant.
 @< Methods of |expr| @>=
-expr(assignment&& a, const YYLTYPE& loc)
+expr(assignment a, const YYLTYPE& loc)
  : kind(ass_stat)
- , assign_variant(std::move(a))
+ , assign_variant(a)
  , loc(loc)
 @+{}
 
@@ -2725,10 +2725,10 @@ simple assignment
 
 @< Cases for printing... @>=
 case ass_stat:
-{ const assignment& ass = e.assign_variant;
-  if ((ass->lhs.kind&0x3)!=0x1)
+{ const auto& ass = *e.assign_variant;
+  if ((ass.lhs.kind&0x3)!=0x1)
     out << "set ";
-  out << ass->lhs << ":=" << ass->rhs ;
+  out << ass.lhs << ":=" << ass.rhs ;
 }
 break;
 
@@ -2795,9 +2795,9 @@ expr(comp_assignment ca, const YYLTYPE& loc)
  , loc(loc)
 @+{}
 @)
-expr(fld_assignment&& fa, const YYLTYPE& loc)
+expr(fld_assignment fa, const YYLTYPE& loc)
  : kind(field_ass_stat)
- , field_assign_variant(std::move(fa))
+ , field_assign_variant(fa)
  , loc(loc)
 @+{}
 
@@ -2923,17 +2923,17 @@ case field_ass_stat: delete field_assign_variant; break;
 
 @< Cases for printing... @>=
 case comp_ass_stat:
-{ const comp_assignment& ass = e.comp_assign_variant;
-  out << main_hash_table->name_of(ass->aggr)
-      << (ass->reversed ? "~[" : "[") << ass->index << @| "]:="
-      << ass->rhs ;
+{ const auto& ass = *e.comp_assign_variant;
+  out << main_hash_table->name_of(ass.aggr)
+      << (ass.reversed ? "~[" : "[") << ass.index << @| "]:="
+      << ass.rhs ;
 }
 break;
 case field_ass_stat:
-{ const fld_assignment& ass = e.field_assign_variant;
-  out << main_hash_table->name_of(ass->aggr)
-      << '.' << main_hash_table->name_of(ass->selector) @|
-      << ":=" << ass->rhs ;
+{ const auto& ass = *e.field_assign_variant;
+  out << main_hash_table->name_of(ass.aggr)
+      << '.' << main_hash_table->name_of(ass.selector) @|
+      << ":=" << ass.rhs ;
 }
 break;
 
@@ -3020,9 +3020,9 @@ sequence sequence_variant;
 
 @ As always there is a constructor for building the new variant.
 @< Methods of |expr| @>=
-expr(sequence&& s, unsigned which, const YYLTYPE& loc)
+expr(sequence s, unsigned which, const YYLTYPE& loc)
  : kind(which==0 ? seq_expr : which==1 ? next_expr : do_expr)
- , sequence_variant(std::move(s))
+ , sequence_variant(s)
  , loc(loc)
 @+{}
 
@@ -3063,18 +3063,18 @@ case do_expr:
 
 @< Cases for printing... @>=
 case seq_expr:
-{@; const sequence& seq = e.sequence_variant;
-  out << seq->first << "; " << seq->last ;
+{@; const auto& seq = *e.sequence_variant;
+  out << seq.first << "; " << seq.last ;
 }
 break;
 case next_expr:
-{@; const sequence& seq = e.sequence_variant;
-  out << seq->first << " next " << seq->last ;
+{@; const auto& seq = *e.sequence_variant;
+  out << seq.first << " next " << seq.last ;
 }
 break;
 case do_expr:
-{@; const sequence& seq = e.sequence_variant;
-  out << seq->first << " do " << seq->last ;
+{@; const auto& seq = *e.sequence_variant;
+  out << seq.first << " do " << seq.last ;
 }
 break;
 
@@ -3084,7 +3084,7 @@ It is a sign of the functional inspiration of the \.{axis} programming
 language that nearly all syntax is involved with building expressions. The
 small parts of non-expression syntax there are deal mostly with commands,
 which are directly invoked from the parser actions and do not involve any
-parse tree being built at all. There is however a bit a tree building that
+parse tree being built at all. There is however a bit of tree building that
 does not involve expressions, namely the definition of (possibly recursive)
 types. For ordinary type expressions we could do with the types |type_p| and
 |raw_type_list| defined in the \.{axis-types} module, but in type definitions
@@ -3092,6 +3092,7 @@ we need a list of pairs of a type identifier and its defining type expression.
 
 @< Type declarations for the parser @>=
 typedef struct {@; id_type id; type_p type; patlist fields; } typedef_struct;
+   // sic
 typedef containers::simple_list<typedef_struct> typedef_list;
 typedef atlas::containers::sl_node<typedef_struct>* raw_typedef_list;
 
