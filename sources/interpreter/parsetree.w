@@ -1617,6 +1617,7 @@ void destroy_type_list(raw_type_list t)@+ {@; (type_list(t)); }
 @ For user-defined functions we shall use a structure |lambda_node|.
 @< Type declarations needed in definition of |struct expr@;| @>=
 typedef struct lambda_node* lambda;
+typedef struct rec_lambda_node* rec_lambda;
 
 @~It contains a pattern for the formal parameter(s), its type (a smart pointer
 defined in \.{axis-types.w}), an expression (the body of the function), and
@@ -1633,29 +1634,50 @@ struct lambda_node
   , body(std::move(body))
 @+{}
 };
+@)
+struct rec_lambda_node : public lambda_node
+{
+  id_type self;
+  type_expr result_type;
+@)
+  rec_lambda_node@|
+    (id_type self, id_pat&& pattern, type_expr&& pt, expr&& body, type_expr&& rt)
+  : lambda_node(std::move(pattern),std::move(pt),std::move(body))
+  , self(self), result_type(std::move(rt)) @+{}
+};
 
 @ The tag used for user-defined functions is |lambda_expr|.
 @< Enumeration tags... @>=
-lambda_expr,@[@]
+lambda_expr,rec_lambda_expr,@[@]
 
 @ We introduce the variant of |expr| as usual.
 @< Variants of ... @>=
 lambda lambda_variant;
+rec_lambda rec_lambda_variant;
 
-@ There is a constructor for building lambda expressions.
+@ There are constructors for building lambda expressions, and recursive ones.
 @< Methods of |expr| @>=
-expr(lambda&& fun, const YYLTYPE& loc)
+expr(lambda fun, const YYLTYPE& loc)
  : kind(lambda_expr)
- , lambda_variant(std::move(fun))
+ , lambda_variant(fun)
+ , loc(loc)
+@+{}
+expr(rec_lambda fun, const YYLTYPE& loc)
+ : kind(rec_lambda_expr)
+ , rec_lambda_variant(fun)
  , loc(loc)
 @+{}
 
-@ There is as usual a function for constructing a node, to be called
+@ There are as usual a functions for constructing a node, to be called
 by the parser.
 
 @< Declarations of functions for the parser @>=
 expr_p make_lambda_node(raw_patlist pat_l, raw_type_list type_l, expr_p body,
  const YYLTYPE& loc);
+expr_p make_rec_lambda_node(id_type self,
+@| raw_patlist pat_l, raw_type_list type_l,
+@| expr_p body, type_p body_t,
+@| const YYLTYPE& loc);
 
 @ There is a twist in building a lambda node, similar to what we saw for
 building let-expressions, in that for syntactic reasons the parser passes
@@ -1690,10 +1712,37 @@ expr_p make_lambda_node(raw_patlist p, raw_type_list tl, expr_p b,
   return new expr(lambda(new@| lambda_node
       (std::move(pattern),std::move(parameter_type),std::move(body))),loc);
 }
+@)
+expr_p make_rec_lambda_node(id_type self,
+@| raw_patlist p, raw_type_list tl,
+@| expr_p b, type_p bt,
+@| const YYLTYPE& loc)
+{
+  patlist pat_l(p);
+  type_list type_l(tl);
+  expr_ptr body_p(b);
+  type_ptr body_t(bt); // safety
+  id_pat pattern; type_expr parameter_type;
+  if (type_l.singleton())
+@/{@; pattern=std::move(pat_l.front());
+    parameter_type = std::move(type_l.front());
+  }
+  else
+@/{ pat_l.reverse(); pattern=id_pat(std::move(pat_l));
+  @/type_l.reverse(); parameter_type=type_expr(std::move(type_l));
+  // make tuple type
+  }
+  return new expr(rec_lambda(new@| rec_lambda_node
+      (self,std::move(pattern),std::move(parameter_type),@|
+       std::move(*body_p),std::move(*body_t))
+      ),loc);
+}
 
-@ Since |lambda| is a raw pointer, we can just assign.
+@ Since |lambda| and |rec_lambda| are raw pointers, we can just assign here.
 @< Cases for copying... @>=
 case lambda_expr: lambda_variant=other.lambda_variant;
+break;
+case rec_lambda_expr: rec_lambda_variant=other.rec_lambda_variant;
 break;
 
 @ And we must of course take care of destroying lambda expressions, which is
@@ -1701,6 +1750,7 @@ done correctly by the implicit destructions provoked by calling |delete|.
 
 @< Cases for destroying... @>=
 case lambda_expr: delete lambda_variant; break;
+case rec_lambda_expr: delete rec_lambda_variant; break;
 
 @ Because of the above transformations, lambda expressions are printed with
 all parameter types grouped into one tuple (unless there was exactly one
@@ -1711,6 +1761,16 @@ used to).
 @< Cases for printing... @>=
 case lambda_expr:
 { const lambda& fun=e.lambda_variant;
+  if (fun->parameter_type==void_type)
+    out << '@@';
+  else
+    out << '(' << fun->parameter_type << ' ' << fun->pattern << ')';
+  out << ':' << fun->body;
+}
+break;
+case rec_lambda_expr:
+{ const rec_lambda& fun=e.rec_lambda_variant;
+  out << fun->self << ':';
   if (fun->parameter_type==void_type)
     out << '@@';
   else

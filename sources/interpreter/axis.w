@@ -269,7 +269,7 @@ private:
 public:
   layer(const layer&) = @[delete@]; // no ordinary copy constructor
   layer& operator= (const layer&) = @[delete@]; // nor assignment operator
-  layer(size_t n); // non-function non-loop layer
+  explicit layer(size_t n); // non-function non-loop layer
   layer(size_t n,type_p return_type);
     // function or (with |return_type==nullptr|) loop layer
   ~layer () @+{@; lexical_context.pop_front(); }
@@ -290,7 +290,8 @@ public:
   vec::const_iterator cend() const @+{@; return variable.end(); }
   bool is_const (vec::const_iterator it) const
   @+{@; return constness.isMember(it-cbegin()); }
-  static bool may_break(unsigned depth); // whether \&{break}~|depth| is legal here
+  static bool may_break(unsigned depth);
+    // whether \&{break}~|depth| is legal here
   static bool may_return(); // whether \&{return} is legal here
   static type_expr& current_return_type() @+
   {@; return *lexical_context.front()->return_type; }
@@ -2032,6 +2033,7 @@ but also the local variable name |f| to math the field name
 |builtin_call::f| that the cited module referred to in previous
 instances.
 
+@: general call evaluate @>
 @< Function definitions @>=
 void call_expression::evaluate(level l) const
 { function->eval();
@@ -2656,14 +2658,16 @@ struct recursive_lambda : public lambda_expression
 };
 
 @ For recursive functions we assemble a pair-pattern, consisting of the
-recursive identifier marked constant, and the actual argument pattern for the
-recursive function.
+recursive identifier, and the actual argument pattern for the
+recursive function. Although the recursive identifier cannot be assigned to,
+there is no need to set the constant bit in its pattern here, as that property
+will be enforced during type checking.
 
 @< Function def... @>=
 id_pat rec_pair(id_type s,id_pat && p)
 { patlist pl;
   pl.push_front(std::move(p));
-  pl.push_front(id_pat(s,0x5,patlist())); // constant identifier
+  pl.push_front(id_pat(s));
   return id_pat(std::move(pl));
 }
 inline recursive_lambda::recursive_lambda(id_type self,@|
@@ -2756,6 +2760,47 @@ case lambda_expr:
   thread_bindings(pat,arg_type,new_layer,false);
 @/return expression_ptr(new @| lambda_expression
    (copy_id_pat(pat), convert_expr(fun.body,*rt), std::move(e.loc)));
+}
+
+@ Type checking recursive lambda expressions is slightly different. The return
+type must be specified, so we should be able to fully specialise |type| (unless
+it is |void|). We must, in addition to binding the argument pattern to the
+argument type, bind the recursive identifier to the function type given by
+|fun.parameter_type| and |fun.result_type|; we build that type as |f_type|
+rather than use the specialised |type|, just in case the latter should be
+|void|. The call to |thread_bindings| for the recursive identifier has final
+argument |true| indicating the identifier should be treated as constant during
+the call to |convert_expr| for the body. That call needs an lvalue for its
+expected type, and the |layer| constructor needs the same in the form of a
+pointer to non-|const| (in both cases because the type might be specialised,
+from the type of the body respectively from |return| clauses inside it), For
+these uses we supply |f_type.func()->result_type| (aliased |r_type|) rather than
+using |type| (again, it might be |void|), which since |f_type| is local means
+any specialisation done to it will be lost; however there should be no such
+changes since |fun.result_type| is already fully specialised.
+
+@< Cases for type-checking and converting... @>=
+case rec_lambda_expr:
+{ const rec_lambda_node& fun=*e.rec_lambda_variant;
+  const id_pat& pat=fun.pattern;
+  const type_expr& arg_type=fun.parameter_type;
+    // argument type specified in |fun|
+  if (not pattern_type(pat).specialise(arg_type))
+    // do |pat| structure and |arg_type| conflict?
+    throw expr_error(e,"Function argument pattern does not match its type");
+  type_expr f_type(arg_type.copy(),fun.result_type.copy());
+    // not |const| though it cannot change
+  if (not type.specialise(f_type) and type!=void_type)
+      @/throw type_error(e, std::move(f_type), type.copy());
+@)
+  type_expr& r_type=f_type.func()->result_type;
+    // non |const| though it cannot change
+  layer new_layer(1+count_identifiers(pat),&r_type);
+@/thread_bindings(id_pat(fun.self),f_type,new_layer,true);
+  thread_bindings(pat,arg_type,new_layer,false);
+@/return expression_ptr(new @| recursive_lambda
+   (fun.self,copy_id_pat(pat),
+    convert_expr(fun.body,r_type), std::move(e.loc)));
 }
 
 @* Closures.
@@ -2855,7 +2900,10 @@ void closure_value<recursive>::report_origin(std::ostream& o) const
 {@; o << "defined " << p->loc; }
 
 @ Evaluating a $\lambda$-expression just forms a closure using the current
-execution context, and returns that.
+execution context, and returns that. Since the |recursive_lambda| already has
+done the work of wrapping the recursive identifier into a pattern with that of
+the arguments, the recursive case only differs from the ordinary one here by
+making |true| the template argument of the |closure_value| constructor.
 
 While this code looks rather innocent, note that the sharing of
 |frame::current| created here may survive after one or more frames on the list
@@ -2961,14 +3009,17 @@ std::vector<id_type> lambda_frame::id_list() const
 @ In general a closure formed from a $\lambda$ expression can be handled in
 various ways (like being passed as argument, returned, stored) before being
 applied as a function, in which case the call is performed by
-|call_expression::evaluate| described above; the actual code this executes is
-given in section@# lambda evaluation @> below. However, in most cases the path
-from definition to call is more direct: the closure from a user-defined
-function is bound to an identifier (or operator) in the global overload table,
-and located during type-checking of a call expression. As this special but
-frequent case can be handled more efficiently than by building a
-|call_expression|, we introduce a new |expression| type that is capable of
-directly storing a closure value.
+|call_expression::evaluate| described above in
+%
+section@# general call evaluate @>; the actual code this executes (through the
+virtual method |apply|) is given in section@# lambda evaluation @> below.
+However, in many cases the path from definition to call is more direct: the
+closure from a user-defined function is bound to an identifier (or operator) in
+the global overload table, and located during type-checking of a call
+expression. As this special but frequent case can be handled more efficiently
+than by building a |call_expression|, we introduce a new |expression| type
+|closure_call| that is capable of directly storing a closure value, evaluating
+only its argument sub-expression at run time.
 
 Closures themselves are anonymous, so the name |n| that becomes the |name| field
 of the |overloaded_call| base object reflects the overloaded name that was used
