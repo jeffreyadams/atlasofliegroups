@@ -194,7 +194,7 @@ new_line, "Cent: identity component of Cent(SL(2))",
 new_line, "Z(Cent^0): order of center of derived group of id. comp. of Centralizer",
 new_line, "A(O): orders of conj. classes in component group of centralizer",
 new_line,"#RF(O): number of real forms of O",
-new_line,"C_2: conjugacy classes in Cent(SL(2))^2 with square 1");
+new_line,"C_2: conjugacy classes in Cent(SL(2))_0 with square 1");
 tabulate(
 ["i","H","diagram","dim","BC Levi","Cent", "Z(Cent^0)","A(O)","#RF(O)","C_2"]#
 for  orbit@i in orbits do
