@@ -27,7 +27,7 @@ od
 set arthur_parameters_by_orbit(RootDatum rd)=[[ComplexNilpotent_d]]:
 let rv=for O_check in rd.dual_orbits do arthur_parameters_of_orbit(rd,O_check) od
 then v=for a in rv do #a od in
-prints(v,": ",sum(v));rv
+{prints(v,": ",sum(v));}rv
 
 {naive versions for testing}
 set arthur_parameters_by_y_naive(RootDatum rd)=[[ComplexNilpotent]]:
@@ -56,10 +56,11 @@ tabulate(["K_0","H","diagram"]#
  [O.root_datum.to_string,O.H.to_string,O.diagram.to_string] od) od
 
 set show([[ComplexNilpotent_d]] list)=void:
+prints("Arthur parameters listed by orbit: ");
 let v=for orbits_d in list do #orbits_d od in
 prints("#parameters by orbit: ",v,new_line, "Total: ", sum(v));
 for orbits_d@i in list do
-prints(new_line,"index of orbit O for G: ",i,new_line, "#orbits for (disconnected) Cent(O): ", #orbits_d);
+prints(new_line,"orbit #",i," for G",new_line, "#orbits for (disconnected) Cent(O): ", #orbits_d);
 tabulate(["K_0","H","mult"]#
  for O_d in orbits_d do
  let mult=#intersect(O_d) in

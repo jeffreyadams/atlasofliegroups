@@ -1,11 +1,8 @@
 {computing weak unipotent Arthur packets}
 
-<cells.at
 <springer_reductive.at
-<K_highest_weights.at
-<springer_tables.at
-<Vogan-dual.at
 <nilpotent_centralizer.at
+<arthur_parameters.at
 
 {extract just the parameters from [(int,int,Param)]}
 set parameters([(int,int,Param)] triples)=[Param]:for (,,p) in triples do p od
@@ -653,7 +650,9 @@ set weak_packet_report(RealForm G)=[([([Param],[WCell])],[(int,int,Param)])]:
 let wp=weak_packets(G) in
 prints(new_line,"===============================================================================");
 let orbits=G.dual_orbits in
-show_nilpotent_orbits(orbits);prints();
+show_nilpotent_orbits(G);prints(new_line);
+show(arthur_parameters_by_orbit(G));
+prints();
 show_short(wp);
 show(wp);
 show_long(wp);
@@ -671,7 +670,8 @@ let wp=weak_packets(G) then
 ind=induced_unipotents(G) in
 prints(new_line,"===============================================================================");
 let orbits=G.dual_orbits in
-show_nilpotent_orbits(orbits);prints();
+show_nilpotent_orbits(G);prints(new_line);
+show(arthur_parameters_by_orbit(G));
 show_short(wp);
 show(wp);
 show_long(wp,ind);
