@@ -21,8 +21,8 @@
   is quite subtle; maybe forbid binding to names with such type altogether.
 
 - give better type error message about "needed type" when a let expression
-  pattern does not match the type of the defining expression. What appear to
-  happen is that if if a tuple type is provided but the number of components
+  pattern does not match the type of the defining expression. What appears to
+  happen is that if a tuple type is provided but the number of components
   mismatches the pattern, the "needed" components are taken from that tuple, and
   the user must figure out that their number was in fact too few (or too much).
 
