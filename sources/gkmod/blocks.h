@@ -81,18 +81,19 @@ protected: // all fields may be set in a derived class contructor
   };
 
   std::vector<EltInfo> info; // its size defines the size of the block
-  std::vector<std::vector<block_fields> > data;  // size |d_rank| * |size()|
+  std::vector<std::vector<block_fields> > data; // size |rank| * |size()|
   ext_gens orbits; // orbits of simple generators under distinguished involution
 
-  DynkinDiagram dd;
+  DynkinDiagram dd; // diagram on simple generators for the block
+
   // possible tables of Bruhat order and Kazhdan-Lusztig polynomials
   BruhatOrder* d_bruhat;
   kl::KLContext* klc_ptr;
 
 public:
 // constructors and destructors
-  Block_base(const KGB& kgb);
-  Block_base(unsigned int rank); // only dimensions some vectors
+  Block_base(const KGB& kgb); // for |Block|, implicitly at integral inf. char.
+  Block_base(unsigned int integral_rank); // only dimensions some vectors
 
   virtual ~Block_base(); // deletes |d_bruhat| and |klc_ptr| (if non-NULL)
 
@@ -105,7 +106,7 @@ public:
 
 // accessors
 
-  unsigned int rank() const { return data.size(); } // semisimple rank matters
+  unsigned int rank() const { return data.size(); } // integral rank
   unsigned int folded_rank() const { return orbits.size(); }
   BlockElt size() const { return info.size(); }
 
@@ -337,7 +338,7 @@ class param_block : public Block_base
   // group small components together:
   int gr_denom;
   KGBElt highest_x,highest_y; // maxima over this (maybe partial) block
-  RankFlags singular; // flags simple roots for which |infin_char| is singular
+  RankFlags singular; // flags, among integrally-simple roots, singular ones
 
  public:
 

@@ -964,6 +964,7 @@ struct inner_class_factor
 	     ? simple_ict::equal_rank : simple_ict::unequal_rank;
     }
     else assert(false);
+    kind=simple_ict::equal_rank; // avoid later "uninitialzed" warning
   }
 };
 

@@ -649,58 +649,50 @@ first line, changing the prompt to 'L >' in the second line to indicate this.
 When types do not match exactly, axis will sometimes insert implicit type
 conversions that are accompanied by conversions of the corresponding values.
 For instance, although the 'vec' type, which functions of the Atlas library
-use, models the same values as '[int]' (pronounced "row of int"; this is the
-general row-of construction applied for component type int), the two types
-have different internal representations (that of 'vec' is a bit more compact).
-The row display syntax will always produce a value of row-of type, so it can
-only be used to produce a '[int]' value. What makes it nevertheless possible
-to provide 'vec' values to functions that need it is the fact that atlas will
-convert between '[int]' and 'vec' when the context that require this. In
+use, models about the same values as '[int]' (pronounced "row of int"; this
+is the general row-of construction applied for component type int), the two
+types have different internal representations (that of 'vec' packs 32-bit
+integers, and is therefore more compact, while 'int' values have unbounded
+size). The row display syntax will always produce a value of row-of type, so
+it can only be used to produce a '[int]' value. What makes it nevertheless
+possible to provide 'vec' values to functions that need it, is that atlas will
+convert between '[int]' and 'vec' when the context requires this. In
 particular one can write a row display as argument to a function in a position
 that takes a 'vec' value. Inversely where a '[int]' value is required, a
 function call returning 'vec' will be accepted, and its result converted.
 
 Not all conversions are bidirectional; in some cases like conversion of
 integers into rational numbers no conversion in the opposite direction is
-provided. One could take the integer part (floor) of a rational number, but
-since this is not the only reasonable option, the call of an explicit function
-will be required for this conversion. Since the user has no control over
-implicit conversions (neither the set of such conversions, nor the details of
-each conversion), they only have been defined in cases where there appears to
-be no doubt about the natural (injective) way to map one type to the other.
-For similar reasons implicit conversions are defined conservatively: when for
-certain values there is no obvious conversion, an error is produced rather than
-making a guess about the desired value; the user who wishes more liberal
-treatment is invited to write and use an explicit conversion that defines it.
-For instance an implicit conversion from '[vec]' to 'mat' is provided (it is
-essential for entering matrix values); a choice is built into atlas that the
-vectors will become columns (rather than rows) of the matrix, but the
-conversion will produce an error when applied to vectors of different lengths
-(rather than padding in some way), and also when applied to an empty row of
-vectors (since there is no way to know the number of rows that the resulting
-empty matrix should have). The latter point causes this implicit conversion to
-often be the wrong choice in programming situations where a row of vectors all
-of known size (but possibly without any vectors at all) needs to be converted
-into a matrix; a built-in operator '#' of signature '(int,[vec]->mat)' is
-provided that allows explicitly specifying the size of the vectors, and thus
-producing a correct result even when the row of vectors is empty.
+provided. It would have been possible to take the integer part (floor) of a
+rational number, but since this looses information, this is not done
+implicitly; an explicit function can be used to do this conversion. Since the
+user has no control over implicit conversions (neither the set of such
+conversions, nor the details of each conversion), they only have been defined
+in cases where there appears to be no doubt about the natural (injective) way
+to map one type to the other (even so, one should be aware that conversion
+from '[int]' to 'vec' may cause an integer overflow error). For similar
+reasons the conversions themselves are defined conservatively: in doubtful
+cases they prefer to signal a runtime error rather than make a guess about the
+desired result. This applies in particular to conversion from a list of
+(column) vectors to a matrix, where their might be ambiguity about the number of
+rows of the result; a more explict alternative is provided as discussed below.
 
 Here is a list of all implicit type conversions
 
   int        -> rat      (denominator 1)
-  vec       <-> [int]    (expansion/compression)
-  ratvec    <-> [rat]    (ratvec has least common denominator)
+  vec       <-> [int]    (expansion/compression of entries fitting in 32 bits)
+  ratvec    <-> [rat]    (expansion/compression to least common denominator)
   vec        -> ratvec   (denominator 1)
-  [int]      -> ratvec   (denominator 1, terms must fit in 64 bits)
-  vec        -> [rat]    (same as passing via ratvec)
-  [int]      -> [rat]    (conversion int->rat applied to each entry)
+  [int]      -> ratvec   (denominator 1, entries must fit in 64 bits)
+  vec        -> [rat]    (same as passing vec->ratvec->[rat])
+  [int]      -> [rat]    (conversion int->rat is applied to each entry)
   mat       <-> [vec]    (vectors are columns of the matrix)
-  mat       <-> [[int]]  (inner arrays are columns of the matrix)
-  [vec]     <-> [[int]]  (convert each vec separately)
-  mat        -> [ratvec] (columns with denominator 1)
+  mat       <-> [[int]]  (inner arrays convert to columns of the matrix)
+  [vec]     <-> [[int]]  (convert each vec entry separately into [int])
+  mat        -> [ratvec] (use columns, giving them denominator 1)
   mat        -> [[rat]]  (entries by columns, with denominator 1)
-  [vec]      -> [ratvec] (conversion vec->ratvec applied to each vector)
-  [vec]      -> [[rat]]  (conversion vec->[rat] applied to each vector)
+  [vec]      -> [ratvec] (conversion vec->ratvec applied to each vector entry)
+  [vec]      -> [[rat]]  (conversion vec->[rat] applied to each vector entry)
   [[int]]    -> [ratvec] (conversion [int]->ratvec applied to each sublist)
   [[int]]    -> [[rat]]  (conversion int->rat applied to each inner entry)
 
@@ -727,56 +719,87 @@ convenience to users, as these conversion could be written out explicitly:
   |  0,  0,  0,  0,  0, -1,  2, -1 |
   |  0,  0,  0,  0,  0,  0, -1,  2 |
 
-If desired, a context requiring a given type can be created by a cast: writing
-the desired type name followed by a colon and the expression. So while one
-(currently, this may change in the future) gets an error for
+Some limitations of implicit conversions should be noted: they are only
+applied when the desired type can be deduced from the context, and they only
+apply to values given by individual expressions in the program (in particular
+row values will not be automatically broken up and conversions applied to
+their components; this explains why some of the conversions above are present:
+they nevertheless provide such an operation in certain common situations).
+
+A cast can be used to explicitly specify a desired type of an expression: it
+suffices to prefix the expression by a specification of that type followed by
+a colon. When the type of a compound expression (such as a list or tuple
+display, a loop or a conditional expression) is so specified, the
+subexpressions that will provide the value of the compound expression thereby
+automatically inherit an appropriate desired type; thus a single cast can
+enable many implicit conversions that would not otherwise have taken place.
+Even so, the mechanism described below called type balancing often allows
+implicit conversions to be deduced even without a cast: when several
+subexpressions should give values of the same type, and while their a priori
+types differ, all can be implicitly converted to one of them, then such
+conversion will be inserted. For instance
 
   atlas> [1,1/2,1/3,1/4]
-  Error during analysis of expression at <standard input>:...
-  Type error:
-    Subexpression /(1,2) at <standard input>:...
-    has wrong type: found rat while int was needed.
-  Type check failed
-
-this can be repaired by asking for a list of 'rat'
-
-  atlas> [rat]: [1,1/2,1/3,1/4]
   Value: [1/1,1/2,1/3,1/4]
 
-Alternatively this input could be turned into a 'ratvec'
+where an implicit conversion int->rat has been applied to the initial
+subexpression '1', leading to a type '[rat]' for the list display. If a
+conversion [rat]->ratvec of the result is desired, an explicit cast can still
+be applied:
 
   atlas> ratvec: [1,1/2,1/3,1/4]
   Value: [ 12,  6,  4,  3 ]/12
 
-Note that here in addition to the conversion of the initial '1' from integer
-to rational, a conversion of the row from '[rat]' to 'ratvec' is inserted.
+Here the conversion [rat]->ratvec is applied to the list display in addition
+to the conversion int->rat of the initial '1'. In fact this example no longer
+involves balancing; int->rat conversions would be applied to the components of
+the list display even if all of them had a priori type 'int', as shown here:
 
-This conversion is applied whenever a list of rationals (or integers) is given
-in place of a 'ratvec'; for instance inner_class takes a list of 'ratvec'
-values as second "kernel generators" argument, and they can be specified as
+  atlas> ratvec:[1,2,3,4]
+  Value: [ 1, 2, 3, 4 ]/1
 
-  atlas> inner_class ("D4.A3",[ratvec]:[[0,1/2,1/4],[0,0,1/2]],"ss")
+As this example shows, expected types "creep into" the components of the list
+display even though the list itself will undergo type conversion. In such
+cases atlas chooses the row type closest to the final type for the implicit
+conversion, which here (for final type 'ratvec') is '[rat]' rather than
+'[int]'; even though in this case both implicit conversion [rat]->ratvec and
+[int]->ratvec are available, choosing the latter would force all component
+expressions to be of type 'int', which would be unnecessarily restrictive.
+
+Although selecting a definition among different overloaded instances in an
+operator application (formula) or function call uses the type(s) of the
+argument(s), atlas will allow implicit conversions being applied to operands
+and function arguments if necessary to make the overload match. For instance
+
+  atlas> inner_class("D4.A3",[[0,1/2,1/4],[0,0,1/2]],"ss")
   Value: Complex reductive group of type D4.A3, with involution defining
   inner class of type 'cs', with 10 real forms and 15 dual real forms
 
-Note that the cast '[ratvec]:' to a row of rational vectors is needed because
-(1) the call to 'inner_class' is overloaded, so atlas cannot know beforehand
-that the second argument is of type '[ratvec]', and (2) in isolation the row
-display '[[0,1/2,1/4],[0,0,1/2]]' would give a type error, similarly to the
-example just above. But once the cast is written, atlas knows that each of
-the two sub-displays in the row display must have type 'ratvec', so it is not
-necessary to separately cast those, or to cast the constants '0' to 'rat'.
+invokes the instance inner_class@(Lie_type,[ratvec],string), where implicit
+conversions string->Lie_type to the first argument and [rat]->ratvec (twice)
+and int->rat (thrice) inside the second argument have been applied.
 
-In this call there could be one kernel generator, '[ratvec]:[[0,1/2,1/4]]', or
-none at all 'ratvec:[]' (for an empty row argument a cast is always necessary
-in order to resolve overloading). However 'ratvec:[0,1/2,1/4]' will not be
-accepted, since a row of rational vectors is required, and atlas will not
-turn a single value into a singleton row automatically. (One could on the
-other hand admit such an argument by defining an additional overload of
-'inner_class' that accepts a single 'ratvec' and builds a singleton row from
-it with which it then calls the built-in version of 'inner_class'.)
+One case where a cast is often necessary even though it does not actually
+involve any implicit conversions is the empty list display '[]'. Since this
+could stand for an empty list of any type, the type checker cannot know which
+one is intended, and a cast can be applied to make that type clear. This
+applies in particular when '[]' occurs as argument to a function or operator,
+as it may have separate definitions for different row types; for this reason
+an empty list display (without cast) is not allowed in such positions. For
+instance, if a call similar to the above one of inner_class were to have an
+empty set of kernel generators (the second argument), writing [] fails:
 
-Matrices can be built from lists of columns by requiring type 'mat':
+  atlas> inner_class("D4.A3",[],"ss")
+  Error in expression inner_class("D4.A3",[],"ss") at <standard input>:2:0-28
+    Failed to match 'inner_class' with argument type (string,[*],string)
+
+but a cast solves the problem
+
+  atlas> inner_class("D4.A3",[ratvec]:[],"ss")
+  Value: Complex reductive group of type D4.A3, with involution defining
+  inner class of type 'cs', with 10 real forms and 15 dual real forms
+
+A matrix can be obtained from the lists of its columns by a cast:
 
   atlas> mat: [[1,2,4],[3,5,7]]
   Value:
@@ -784,9 +807,9 @@ Matrices can be built from lists of columns by requiring type 'mat':
   | 2, 5 |
   | 4, 7 |
 
-Each list of integers giving a column is in fact first converted to a vector,
-and one could also use a vector-valued expression in its place (for instance
-an identifier bound to a vector value).
+Each list of integers giving a column is in fact first impolicitly converted
+to a vector, and one could therefore also use a vector-valued expression in
+its place (for instance an identifier bound to a vector value).
 
 For specifying a matrix by rows, a special syntax is provided:
 
@@ -796,19 +819,49 @@ For specifying a matrix by rows, a special syntax is provided:
   | 3,  5, 7 |
   | 0, -1, 6 |
 
-Note that 'mat:' is not required here, the syntax itself forces a matrix
-result. On the other hand it will not accept 'vec' values as lines; to
-construct a matrix from its row vectors, write '^[r_0,r_1,...]', where '^' is
-a prefix operator indicating matrix transposition. Here the argument is
-implicitly converted from '[vec]' to 'mat', illustrating that although
-overloaded calls (here of the operator '^') do not impose any type on their
-argument, they do match when an argument is found with a type (here '[vec]')
-sufficiently close to one (here 'mat') for which an overload is defined. In
-case the list of rows is given by an expression other than a row display, and
-it could return an empty list, it is better to write 'n^rows' rather than
-just '^rows', where 'n' is the constant size of the rows, as it then returns
-an n times 0 empty matrix rather than an error when 'rows' is an empty list.
+Note that 'mat:' is not required here, the syntax itself implies this type.
 
+Both ways of specifying matrices are somewhat limited: for the former there
+needs to be at least one column, for the latter at least two rows (so at least
+one instance of '|'), and all columns respectively rows must be of the same
+length. Also the latter form does not accept 'vec' values as lines, only an
+explicit list of integer entries. The following alternatives are available,
+which cover the excluded cases. The function 'null' with two integer arguments
+will produce a zero matrix of any desired shape, including those with zero
+rows or zero columns:
+
+  atlas> null(0,4)
+  Value: The 0x4 matrix
+  atlas> null(3,0)
+  Value: The 3x0 matrix
+  atlas> null(3,4)
+  Value:
+  | 0, 0, 0, 0 |
+  | 0, 0, 0, 0 |
+  | 0, 0, 0, 0 |
+
+A single-operand (prefix) operator '^' (transposition) will transform a 'vec'
+value into a matrix of one row, and another instance of the same operator
+transforms any matrix into its transpose. Thus the construction of a matrix
+from a list of 'vec' values used for its rows is possible as '^[r_0,r_1,...]'
+(which first forms a matrix of columns and then transposes it), and for the
+single-row case one can write ^r_0 instead of ^[r_0].
+
+A caveat is in place when constructing a matrix from a sequence of columns,
+especially when that sequence is produced by a loop, or any way other than by
+an explicit list display. If it is a possibility that the sequence turns out
+empty, for instance by the loop iterating 0 times, then it is an error to use
+the implicit conversion [vec]->mat, which in such cases will produce a runtime
+error: there is no way to guess the desired height of the (zero column) matrix
+from the size of the (absent) vectors. Instead one should use the instance of
+the built-in operator '#' with signature '(int,[vec]->mat)'; its first
+argument specifies the height of the resulting matrix, and any vectors in the
+list provided as second argument should match that size. A typical use of this
+operator has the form 'n # for ... do V od' where the expression V should
+produce vectors of size n only. For combining a list of vectors as _rows_ of a
+matrix, an analogue '^' of the mentioned operator '#' is available, as well as
+a function 'stack_rows' that assembles a possibly ragged collection of vectors
+into a matrix by padding out short rows with zero entries as needed.
 
 6 Defining and modifying identifiers
 

@@ -4664,6 +4664,23 @@ void print_n_block_wrapper(expression_base::level l)
     wrap_tuple<0>(); // |no_value| needs no special care
 }
 
+@ A variant for ``abstract'' blocks, implemented by the |block_minimal| class.
+
+@h "block_minimal.h"
+@< Local function def...@>=
+void print_c_block_wrapper(expression_base::level l)
+{ shared_module_parameter p = get<module_parameter_value>();
+  test_standard(*p,"Cannot generate block");
+  BlockElt init_index; // will hold index in the block of the initial element
+  blocks::block_minimal block(p->rc(),p->val,init_index);
+  *output_stream << "Parameter defines element " << init_index
+               @|<< " of the following common block:" << std::endl;
+  block.print_to(*output_stream,true);
+    // print block using involution expressions
+  if (l==expression_base::single_value)
+    wrap_tuple<0>(); // |no_value| needs no special care
+}
+
 @ More interesting than printing the block is to return is to the user as a
 list of parameter values. The following function does this, and adds as a
 second result the index that the original parameter has in the resulting
@@ -5143,6 +5160,7 @@ install_function(reducibility_points_wrapper,@|
 install_function(scale_parameter_wrapper,"*", "(Param,rat->Param)");
 install_function(scale_0_parameter_wrapper,"at_nu_0", "(Param->Param)");
 install_function(print_n_block_wrapper,@|"print_block","(Param->)");
+install_function(print_c_block_wrapper,@|"print_common_block","(Param->)");
 install_function(block_wrapper,@|"block" ,"(Param->[Param],int)");
 install_function(partial_block_wrapper,@|"partial_block","(Param->[Param])");
 install_function(param_length_wrapper,@|"length","(Param->int)");
@@ -5989,8 +6007,11 @@ code here the difference consists mainly of calling the
 involution, so we need to test for that here. If the test fails we report an
 error rather than returning for instance a null module, since a twisted
 deformation formula for a non-fixed parameter makes little sense; the user
-should avoid asking for it. Also, since the construction of an extended block
-currently cannot deal with a partial parent block.
+should avoid asking for it. Similarly the twisted variant cannot allow non
+dominant parameters, as this would internally produce an |SR_poly| value with
+non-dominant terms, which should never happen. Also, since the construction of
+an extended block currently cannot deal with a partial parent block, so it
+implies a full block construction.
 
 @< Local function def...@>=
 void deform_wrapper(expression_base::level l)
@@ -6012,6 +6033,8 @@ void twisted_deform_wrapper(expression_base::level l)
   test_standard(*p,"Cannot compute twisted deformation");
   if (not rc.is_twist_fixed(p->val,rc.innerClass().distinguished()))
     throw runtime_error@|("Parameter not fixed by inner class involution");
+  if (not is_dominant_ratweight(rc.rootDatum(),p->val.gamma()))
+    throw runtime_error("Parameter must have dominant infinitesimal character");
   if (l==expression_base::no_value)
     return;
 @)
@@ -6177,7 +6200,7 @@ void finalize_extended_wrapper(expression_base::level l)
   if (not p->rc().is_twist_fixed(p->val,delta->val))
     throw runtime_error("Parameter not fixed by given involution");
   if (not is_dominant_ratweight(rc.rootDatum(),p->val.gamma()))
-    throw runtime_error("Parameter must have dominant gamma");
+    throw runtime_error("Parameter must have dominant infinitesimal character");
   if (l==expression_base::no_value)
     return;
 @)

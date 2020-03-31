@@ -167,9 +167,9 @@ Block_base::Block_base(const KGB& kgb)
 {
 } // |Block_base::Block_base|
 
-// an almost trivial constructor used for derived non-integral block types
-Block_base::Block_base(unsigned int rank)
-  : info(), data(rank), orbits()
+// an almost trivial constructor used for non-integral block derived types
+Block_base::Block_base(unsigned int integral_rank)
+  : info(), data(integral_rank), orbits()
   , dd()
   , d_bruhat(nullptr)
   , klc_ptr(nullptr)
@@ -1603,11 +1603,11 @@ void param_block::compute_y_bits(const y_entry::Pooltype& y_pool)
   { KGBElt x=x_of_y[y];
     assert(x!=UndefKGB); // since every |y| must have at least one matching |x|
     InvolutionNbr i_x = rc.kgb().inv_nr(x);
-    RatWeight yr = y_pool[y].repr().log_pi(false);
-    yr -= i_tab.matrix(i_x)*yr;
-    yr /= 2; // now |yr| has been projected to the $-1$ eigenspace of $\theta$
-    const RatWeight lr = (gamma_rho - yr).normalize();
-    assert (lr.denominator()==1);
+    RatWeight yrep = y_pool[y].repr().log_pi(false);
+    yrep -= i_tab.matrix(i_x)*yrep;
+    yrep /= 2; // now |yrep| is projected to the $-1$ eigenspace of $\theta$
+    const RatWeight lr = (gamma_rho - yrep).normalize();
+    assert (lr.denominator()==1); // we are back in proper $X^*$ coset
     const Weight lambda_rho(lr.numerator().begin(),lr.numerator().end());
     y_bits.push_back(i_tab.y_pack(i_x,lambda_rho));
   }

@@ -284,7 +284,7 @@ unsigned int Rep_context::orientation_number(const StandardRepr& z) const
   const Permutation& root_inv = i_tab.root_involution(i_x);
   const Ratvec_Numer_t& numer = z.gamma().numerator();
   const arithmetic::Numer_t denom = z.gamma().denominator();
-  const Weight test_wt =
+  const Weight test_wt = // representative of a class modulo $2(1-\theta)(X^*)$
     i_tab.y_lift(i_x,z.y()) +rd.twoRho() -rd.twoRho(real);
 
   unsigned count = 0;
@@ -292,7 +292,7 @@ unsigned int Rep_context::orientation_number(const StandardRepr& z) const
   for (unsigned i=0; i<rd.numPosRoots(); ++i)
   {
     const RootNbr alpha = rd.numPosRoots()+i;
-    const Weight& av = rootDatum().coroot(alpha);
+    const Coweight& av = rootDatum().coroot(alpha);
     const arithmetic::Numer_t num = av.dot(numer);
     if (num%denom!=0) // skip integral roots
     { if (real.isMember(alpha))
@@ -1157,57 +1157,6 @@ SR_poly Rep_table::deformation(const StandardRepr& z)
 
 // basic computation of twisted KL column sum, no tabulation of the result
 SR_poly twisted_KL_sum
-( const Rep_context& rc, ext_block::ext_block& eblock, BlockElt y,
-  param_block& parent) // its complete unextended block
-{
-  // compute cumulated KL polynomimals $P_{x,y}$ with $x\leq y$ survivors
-
-  // start with computing KL polynomials for the entire block
-  std::vector<ext_kl::Pol> pool;
-  ext_kl::KL_table twisted_KLV(eblock,pool);
-  twisted_KLV.fill_columns(y+1); // fill table up to |y| inclusive
-
-  // make a copy of |pool| in which polynomials have been evaluated as |s|
-  std::vector<Split_integer> pool_at_s; pool_at_s.reserve(pool.size());
-  for (unsigned i=0; i<pool.size(); ++i)
-    if (pool[i].isZero())
-      pool_at_s.push_back(Split_integer(0,0));
-    else
-    { const auto& P = pool[i];
-      auto d=P.degree();
-      Split_integer eval(P[d]);
-      while (d-->0)
-	eval = eval.times_s()+Split_integer(P[d]);
-      pool_at_s.push_back(eval);
-    }
-
-  // construct a one-column matrix $(P_{x,y}[q:=s])_{x,0}$, range $x$ is block
-  matrix::Matrix<Split_integer> P_at_s(y+1,1);
-  for (BlockElt x=0; x<=y; ++x)
-  { auto pair = twisted_KLV.KL_pol_index(x,y);
-    P_at_s(x,0) = // get value from |pool_at_s|, possibly negated
-      pair.second ? -pool_at_s[pair.first] : pool_at_s[pair.first];
-  }
-
-  // condense |P_at_s| to the extended block elements without singular descents
-  containers::simple_list<BlockElt> survivors = eblock.condense(P_at_s,parent);
-
-  // finally transcribe from |P_at_s| result
-  SR_poly result(rc.repr_less());
-  unsigned int parity = eblock.length(y)%2;
-  for (auto it = survivors.begin(); not survivors.at_end(it); ++it)
-  {
-    BlockElt x = *it;
-    auto factor = P_at_s(x,0);
-    if (eblock.length(x)%2!=parity) // flip sign at odd length difference
-      factor = -factor;
-    result.add_term(parent.sr(eblock.z(x)),factor);
-  }
-  return result;
-} // |twisted_KL_sum|
-
-// same computation of twisted KL column sum, but with a |block_minimal|
-SR_poly twisted_KL_sum
 ( ext_block::ext_block& eblock, BlockElt y, const blocks::block_minimal& parent,
   const RatWeight& gamma) // infinitesimal character, possibly singular
 {
@@ -1249,13 +1198,13 @@ SR_poly twisted_KL_sum
   const auto gamma_rho = gamma-rho(parent.rootDatum());
   SR_poly result(rc.repr_less());
   unsigned int parity = eblock.length(y)%2;
-  for (auto it = survivors.begin(); not survivors.at_end(it); ++it)
+  for (auto it=survivors.begin(); not survivors.at_end(it); ++it)
   {
-    BlockElt elt = *it;
-    BlockElt z = eblock.z(elt); // index of |elt| in |parent|
-    auto factor = P_at_s(elt,0);
-    if (eblock.length(elt)%2!=parity) // flip sign at odd length difference
+    BlockElt ze = *it;
+    auto factor = P_at_s(ze,0); // get coefficient from condensed column
+    if (eblock.length(ze)%2!=parity) // flip sign at odd length difference
       factor = -factor;
+    BlockElt z = eblock.z(ze); // index of |elt| in |parent|
     const auto lambda_rho = gamma_rho.integer_diff<int>(parent.gamma_lambda(z));
     result.add_term(rc.sr_gamma(parent.x(z),lambda_rho,gamma),factor);
   }

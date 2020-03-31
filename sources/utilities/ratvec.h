@@ -48,11 +48,13 @@ class RationalVector
 // constructors and destructors
   explicit RationalVector(size_t r): d_num(r,0), d_denom(1){} // zero vector
 
-  // Build the RationalVector with numerator v and denominator d.
+  // build the RationalVector with numerator v and denominator d.
   template <typename C1>
     RationalVector(const matrix::Vector<C1>& v, C d);
 
   RationalVector(V&& v, C d);
+
+  RationalVector() : d_num(),d_denom(C(1)) {} // default to empty numerator
 
 
 // accessors
@@ -121,14 +123,15 @@ class RationalVector
 // take difference as integer vector (which it is assumed to be here), converting
 // entries (without any test) to a possibly different signed integer type |C1|
   template<typename C1>
-  matrix::Vector<C1> integer_diff(const RationalVector<C>& v) const
+    matrix::Vector<C1> integer_diff(const RationalVector<C>& v) const
   {
     assert(size()==v.size());
-    auto d=denominator();
+    const auto d=denominator(), vd=v.denominator();
+    const auto dvd=d*vd;
     matrix::Vector<C1> result(size());
     for (unsigned i=0; i<size(); ++i)
-    { assert((d_num[i]-v.d_num[i])%d==0);
-      result[i] = (d_num[i]-v.d_num[i])/d;
+    { assert((d_num[i]*vd-d*v.d_num[i])%dvd==0);
+      result[i] = (d_num[i]*vd-d*v.d_num[i])/dvd;
     }
     return result;
   }
