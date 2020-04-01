@@ -125,9 +125,10 @@ dependency on the readline library.
 @q axis_version "0.9.6" set of implicit conversions closed for composition @>
 @q axis_version "0.9.7" set_type command, possibly recursive, added @>
 @q axis_version "0.9.8" fully functional set_type command @>
-@d axis_version "0.9.9" @q integer 'case': optional out-of-bounds clause(s) @>
+@q axis_version "0.9.9" integer 'case': optional out-of-bounds clause(s) @>
+@d axis_version "1.0" @q recursion implemented without creating memory leak @>
 
- // numbering from 0.5 (on 27/11/2010); last change Jun 15, 2017
+ // numbering from 0.5 (on 27/11/2010); last change April 1st, 2020
 
 @c
 
