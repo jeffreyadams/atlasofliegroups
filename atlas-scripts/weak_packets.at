@@ -3,6 +3,8 @@
 <springer_reductive.at
 <nilpotent_centralizer.at
 <arthur_parameters.at
+<cells.at { for cells_verbose }
+<Vogan-dual.at { for is_dual_Aq }
 
 {extract just the parameters from [(int,int,Param)]}
 set parameters([(int,int,Param)] triples)=[Param]:for (,,p) in triples do p od
@@ -60,7 +62,7 @@ fi  then
  fi then
  sigma=st_int.springer(O) then
  ()=if cells_verbose then prints("sigma=", sigma, " of dimension ",st_int.ct.dimension(sigma)) fi then
- parameters=parameters_given_AV_infinitesimal_character(st_int,O,blocks_and_cells,gamma_target) 
+ parameters=parameters_given_AV_infinitesimal_character(st_int,O,blocks_and_cells,gamma_target)
 { ()=if cells_verbose then
   prints("found ", #parameters, " parameters") fi}
  in
@@ -140,7 +142,7 @@ fi  then
  fi then
  ()=prints("computing springer map of", O.diagram) then
  sigma=st_int.springer(O) then
- ()=if cells_verbose then prints("sigma=", sigma, " of dimension ",st_int.ct.dimension(sigma)) fi 
+ ()=if cells_verbose then prints("sigma=", sigma, " of dimension ",st_int.ct.dimension(sigma)) fi
  in
 (st_int,O,blocks_and_cells,gamma_target,permutation)
 fi
@@ -377,7 +379,7 @@ tabulate(
      p=params[0] then
      cell=cells[c] then
      cell_flag= if is_dual_Aq(params,cell) then "*" else "" fi in
-[[b.to_string,c.to_string + cell_flag,m(b,c).to_string]] else [] fi 
+[[b.to_string,c.to_string + cell_flag,m(b,c).to_string]] else [] fi
    od
   od
       #["Total","",(#parameters(packet)).to_string]
@@ -387,19 +389,19 @@ set show( [([([Param],[WCell])],[(int,int,Param)])] blocks_and_cells_and_packets
 prints("*: dual(cell) contains an Aq(lambda)");
 tabulate(
  ["orbit#","block#","cell#","parameters"]#
- ##for i:#blocks_and_cells_and_packets do 
+ ##for i:#blocks_and_cells_and_packets do
  let (bc,packet)=blocks_and_cells_and_packets[i] then
  blocks=blocks(packet) then
  cells=cells(packet) then
  m=mult(packet) in
-  ##for b in blocks do 
+  ##for b in blocks do
    ##for c in cells do
     if m(b,c)!=0 then
      let (params,cells)=bc[b] then
      p=params[0] then
      cell=cells[c] then
      cell_flag={if not is_integral(p.root_datum,p.infinitesimal_character) then false.star else} is_dual_Aq(params,cell).star {fi} in
-[[i.to_string,b.to_string,c.to_string + cell_flag,m(b,c).to_string]] else [] fi 
+[[i.to_string,b.to_string,c.to_string + cell_flag,m(b,c).to_string]] else [] fi
    od
   od
  od
@@ -595,7 +597,7 @@ int: #conjugacy classes of H), if it isn't 1 we don't care
 [int]: data for computing the guess
 int: guess for order of Pi(Psi)
 int: number of real forms of unipotent
-bool: Arthur packets are disjoint 
+bool: Arthur packets are disjoint
 int: 0 (conjecture doesn't apply) or \pm 1 (conjecture true/false)
 mainly used as input to teste_conjecture_report
 }
