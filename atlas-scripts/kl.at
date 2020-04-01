@@ -7,6 +7,25 @@
 <basic.at
 <polynomial.at { defines types poly, poly_mat }
 
+
+set nice_string(Split s)=string:
+let (a,b)=%s in
+if b=0 then a.to_string
+elif a=0 then
+ if b>1 then b.to_string + "s"
+ elif b=1 then "+s"
+ elif b=-1  then "-s" 
+ else a.to_string + "-" + abs(b).to_string + "s"
+ fi
+else
+ if b>1 then a.to_string +  "+" + b.to_string + "s"
+ elif b=1 then a.to_string +  "+s"
+ elif b=-1 then a.to_string + "-s" 
+ else a.to_string + "-" + abs(b).to_string + "s"
+fi
+fi
+
+
 {
   Basic object: column of KL matrix (P-matrix), of polynomials evaluted as s,
   which by setting s=1 gives formula for irreducible as sum of standards

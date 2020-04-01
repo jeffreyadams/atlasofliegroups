@@ -280,23 +280,6 @@ set print_stable_at_singular ([*] S,[Param] B) = void:
 
 {#subset x #B matrix}
 
-set nice_string(Split s)=string:
-let (a,b)=%s in
-if b=0 then a.to_string
-elif a=0 then
- if b>1 then b.to_string + "s"
- elif b=1 then "+s"
- elif b=-1  then "-s" 
- else a.to_string + "-" + abs(b).to_string + "s"
- fi
-else
- if b>1 then a.to_string +  "+" + b.to_string + "s"
- elif b=1 then a.to_string +  "+s"
- elif b=-1 then a.to_string + "-s" 
- else a.to_string + "-" + abs(b).to_string + "s"
-fi
-fi
-
 set printParamPol(ParamPol P)=void:
 let pairs=%P in 
 tabulate(for (c,p) in pairs do [nice_string(c), " ", p.to_string] od)
