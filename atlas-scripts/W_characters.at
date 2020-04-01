@@ -363,60 +363,77 @@ representatives of a conjugacy class}
 
 set find([WeylElt] list,WeylElt w)=first(for y in list do y=w od)
 
-{algorithm to compute minimal length representatives directly by
-induction
-algorithm (due to He):
-one can conjugate w to a minimal length representative
- one simple, weakly length decreasing conjugation at a time
- (also: given one minimal length representative, get them
-  all by conjugating without increasing the length)
-So: given class=[w_1,...,w_n] all of which are conjugate and the same length
-compute s_i*w_j*s_i for all simple s_i
-keep a list shorter of all shorter ones
-add to class if same length
-if #shorter>0 start over with this
-else if class has gotten longer, repeat
-else return class
-includes witnesses
+{ the following is WRONG, but is left in because other code depends on it :-(
+
+  algorithm to compute minimal length representatives directly by induction
+  algorithm (due to He):
+    one can conjugate w to a minimal length representative
+    one simple, weakly length decreasing conjugation at a time
+    (also: given one minimal length representative, get them
+           all by conjugating without increasing the length)
+    FALSE: in A2 the two simple generators are conjugate, but (obviously)
+           not by either one of them, so any conjugation path increases length
+  So:
+  given a class=[w_1,...,w_n], all of which are conjugate and same length |l|,
+  compute s_i*w_j*s_i for all simple s_i
+  keep a list |shorter| of all shorter then |l|, and add to class if length |l|
+  if #shorter>0, start over with |shorter| as list
+  else if class has gotten longer, repeat
+  else return class
+  the function includes witnesses in its result
 }
-set rec_fun minimal_representatives_witnesses([WeylElt] class,[WeylElt] witnesses)=([WeylElt],[WeylElt]):
-let rd=class[0].root_datum then
-shorter=[WeylElt]:[] then
-witnesses_shorter=[WeylElt]:[] then
-absent([WeylElt] elements,WeylElt x) = none(for y in elements do @: y=x od) then
-new_same_length=false in
-for s:rd.ss_rank do
- for w@i in class do
-  let sws=s#w#s,sw=s#w in
-   if length(sws)<length(w) and absent(shorter,sws) then shorter#:=sws;witnesses_shorter#:=sw*witnesses[i]
-    elif length(sws)=length(w) and absent(class,sws) then new_same_length:=true; class#:=sws;witnesses#:=sw*witnesses[i]
+set rec_fun minimal_representatives_witnesses(
+      [WeylElt] class,[WeylElt] witnesses) = ([WeylElt],[WeylElt]):
+(  let rd=class[0].root_datum
+   , shorter=[WeylElt]:[], witnesses_shorter=[WeylElt]:[]
+   , absent([WeylElt] elements, WeylElt x) = bool:
+        for y in elements do if y=x then return false fi od; true
+   , new_same_length=false
+in for s:rd.semisimple_rank
+   do for w@i in class
+      do let sws=s#w#s in
+         case length(sws)-length(w)
+         then { less }
+           if absent(shorter,sws)
+	   then shorter#:=sws; witnesses_shorter#:=s#witnesses[i]
+           fi
+         in { equal }
+           if absent(class,sws)
+	   then new_same_length:=true; class#:=sws; witnesses#:=s#witnesses[i]
+           fi
+         else { greater } ()
+         esac
+      od
+   od
+;  if #shorter>0
+   then minimal_representatives_witnesses(shorter,witnesses_shorter)
+   elif new_same_length then minimal_representatives_witnesses(class,witnesses)
+   else (class,witnesses)
    fi
-  od
-od;
-if #shorter>0 then minimal_representatives_witnesses(shorter,witnesses_shorter)
-elif new_same_length then minimal_representatives_witnesses(class,witnesses)
-else (class,witnesses)
-fi
+)
 
-set minimal_representatives_witnesses(WeylElt w)=([WeylElt],[WeylElt]):minimal_representatives_witnesses([w],[id_W(w.root_datum)])
-set minimal_representative_witness(WeylElt w)=(WeylElt,WeylElt):
- let (class,witnesses)=minimal_representatives_witnesses(w) in (class[0],witnesses[0])
+set minimal_representatives_witnesses (WeylElt w) =
+   ([WeylElt],[WeylElt]):
+   minimal_representatives_witnesses([w],[id_W(w.root_datum)])
+set minimal_representative_witness (WeylElt w) = (WeylElt,WeylElt):
+   let (class,witnesses)=minimal_representatives_witnesses(w)
+   in (class[0],witnesses[0])
 
-set minimal_representatives(WeylElt w)=[WeylElt]:let (reps,)=minimal_representatives_witnesses(w) in reps
-set minimal_representative(WeylElt w)=WeylElt:minimal_representatives(w)[0]
+set minimal_representatives (WeylElt w) = [WeylElt]:
+   let (reps,)=minimal_representatives_witnesses(w) in reps
+set minimal_representative (WeylElt w) = WeylElt: minimal_representatives(w)[0]
 
-set is_conjugate_strong(WeylElt x,WeylElt y)=bool:
-find(minimal_representatives(x),minimal_representative(y))!=-1
+set is_conjugate_strong (WeylElt x,WeylElt y) = bool:
+   find(minimal_representatives(x),minimal_representative(y))!=-1
 
-{there appears to be a bug here
-example: 
+{ there appears to be a bug here. Example:
 
-atlas> set rd=SO(12)
-Variable rd: RootDatum (overriding previous instance, which had type RootDatum)
+atlas> set rd=SL(3) { or "A2".adjoint }
+Variable rd: RootDatum
 atlas> set w=W_elt (rd,[0])
-Variable w: WeylElt (overriding previous instance, which had type WeylElt)
-atlas> set y=W_elt (rd,[1])
-Variable y: WeylElt (overriding previous instance, which had type WeylElt)
+Variable w: WeylElt
+atlas> set y=W_elt
+Variable y: WeylElt
 atlas> is_conjugate(w,y)
 Value: true
 atlas> is_conjugate_strong (w,y)
@@ -426,7 +443,6 @@ Value: false
 atlas> minimal_representatives(w)
 Value: [<0>]
 }
-
 
 {----------------------------------------------------------------------------}
 
