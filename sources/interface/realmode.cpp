@@ -146,8 +146,9 @@ Rep_table& currentRepTable() { return *rt; }
 namespace {
 
 /*
-  Synopsis: attempts to set a real form interactively. In case of failure,
-  throws an InputError and returns.
+  Attempt to set a real form interactively.
+  In case of failure catches an |InputError|, signals the user,
+  and rethrows |EntryError|.
 */
 void real_mode_entry()
 {
@@ -186,9 +187,7 @@ void realform_f()
 
 
 
-/*
-  Synopsis: destroys the real group and its interface, resoring nullptr pointers
-*/
+// Destroy the real group and its interface, resoring nullptr pointers
 void real_mode_exit()
 {
   delete G_R_pointer; G_R_pointer=nullptr;

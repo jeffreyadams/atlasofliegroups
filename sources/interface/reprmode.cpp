@@ -177,8 +177,9 @@ const wgraph::WGraph& current_param_WGraph()
 *****************************************************************************/
 
 /*
-  Synopsis: attempts to set a real form and dual real form interactively.
-  In case of failure, throws an InputError and returns.
+  Attempt to set a real form and dual real form interactively.
+  In case of failure catches an |InputError|, signals the user,
+  and rethrows |EntryError|.
 */
 void repr_mode_entry()
 {
@@ -263,9 +264,8 @@ void repr_f()
     e("parameter not changed");
   }
 }
-/*
-  Synopsis: destroys any local data, resoring nullptr pointers
-*/
+
+// Destroy any local data, restoring |nullptr| pointers
 void repr_mode_exit()
 {
   state=noblock;

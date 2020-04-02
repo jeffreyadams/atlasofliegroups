@@ -17,8 +17,8 @@
 #include "matrix.h"
 #include "matreduc.h"
 
-/*!****************************************************************************
-\file
+/*****************************************************************************
+
   This is a partial and tentative implementation of the concept of a finite
   abelian group. Typically we have in mind the center of a reductive
   semisimple group.
@@ -56,8 +56,8 @@ FiniteAbelianGroup::FiniteAbelianGroup(const GroupType& t)
    Why is this a method of |FiniteAbelianGroup|, without using |*this|? MvL
 */
 
-/*!
-  Synopsis: put in |v| a representative of |a|.
+/*
+  Put in |v| a representative of |a|.
 
   NOTE: sloppy implementation; we don't check for overflow, which may happen
   in all cases, as the coefficients of v will be signed quantities.
@@ -69,9 +69,7 @@ void FiniteAbelianGroup::toWeight(matrix::Vector<int>& v, const GrpArr& a)
 }
 
 
-/*!
-  Synopsis: put in |v| a representative of |x|.
-*/
+// Put in |v| a representative of |x|.
 void FiniteAbelianGroup::toWeight(matrix::Vector<int>& v, GrpNbr x) const
 {
   const GroupType& t = type();
@@ -86,10 +84,10 @@ void FiniteAbelianGroup::toWeight(matrix::Vector<int>& v, GrpNbr x) const
 /******** accessors **********************************************************/
 
 
-/*!
-  Synopsis: a += b.
+/*
+  Perform |a += b|.
 
-  Precondition: a and b hold valid arrays for the group;
+  Precondition: |a| and |b| hold valid arrays for the group;
 
   The only difficulty is doing it without triggering overflow.
 */
@@ -104,9 +102,7 @@ GrpArr& FiniteAbelianGroup::add(GrpArr& a, const GrpArr& b) const
   return a;
 }
 
-/*!
-  Synopsis: a -= b.
-*/
+// Perform |a -= b|.
 GrpArr& FiniteAbelianGroup::subtract(GrpArr& a, const GrpArr& b) const
 {
   for (size_t i=0; i<a.size(); ++i)
@@ -118,18 +114,14 @@ GrpArr& FiniteAbelianGroup::subtract(GrpArr& a, const GrpArr& b) const
   return a;
 }
 
-/*!
-  Synopsis: a += x.
-*/
+// Perform |a += x|.
 GrpArr& FiniteAbelianGroup::add(GrpArr& a, GrpNbr x) const
 {
   return add(a,toArray(x)); // expand in components, then add each
 }
 
 
-/*!
-  Synopsis: x + b. Note that |x| is by value, so here |add| cannot mean |+=|
-*/
+// Compute |x + b|. Note that |x| is by value, so here |add| cannot mean |+=|
 GrpNbr FiniteAbelianGroup::add(GrpNbr x, const GrpArr& b) const
 {
   GrpArr a=toArray(x); // we need an lvalue, so give it a name
@@ -137,8 +129,8 @@ GrpNbr FiniteAbelianGroup::add(GrpNbr x, const GrpArr& b) const
 }
 
 
-/*!
-  Synopsis: x + y.
+/*
+  Compute |x + y|.
 
   Of course adding as integers does not do the right thing; decompose
 */
@@ -148,17 +140,15 @@ GrpNbr FiniteAbelianGroup::add(GrpNbr x, GrpNbr y) const
 }
 
 
-/*!
-  Synopsis: returns the l.c.m. of the orders of the elements of the group.
-*/
+// Return the least common multiple of the orders of the elements of the group.
 unsigned long FiniteAbelianGroup::annihilator() const
 {
   return d_type.size()==0 ? 1 : d_type.back();
 }
 
 
-/*!
-  Synopsis: applies the matrix q to the element x, on the left.
+/*
+  Apply the matrix |q| to the element |x|, on the left.
 
   The idea is that the matrix defines an endomorphism of the group in terms
   of the array representation.
@@ -172,8 +162,8 @@ GrpNbr FiniteAbelianGroup::leftApply(GrpNbr x, const Endomorphism& q) const
 }
 
 
-/*!
-  Synopsis: applies the matrix q to the array a, on the left.
+/*
+  Apply the matrix |q| to the array |a|, on the left.
 
   The idea is that the matrix defines an endomorphism of the group in terms
   of the array representation.
@@ -195,9 +185,7 @@ GrpArr& FiniteAbelianGroup::leftApply(GrpArr& a, const Endomorphism& q) const
 }
 
 
-/*!
-  Synopsis: computes the order of x in the group.
-*/
+//  Compute the order of |x| in the group.
 unsigned long FiniteAbelianGroup::order(GrpNbr x) const
 {
   unsigned long n = 1;
@@ -231,13 +219,11 @@ unsigned long FiniteAbelianGroup::order(const bitmap::BitMap& B,
 
 
 /*
-  Computes the m in [0,n[ s.t. a(b) = e^{m.2i\pi/n}, where a is
+  Compute the $m$ in $[0,n[$ such that $a(b) = e^{m.2i\pi/n}$, where $a$ is
   interpreted as an element of the dual group ($\Hom(G,\C^\times)$), which in
-  our representation can be identified with the group itself, b as an element
-  of the group, and n is the annihilator of the group (the last entry in
-  d_type). This is a sort of scalar product, weighted by cotype, modulo n.
-
-  T
+  our representation can be identified with the group itself, $b$ as an element
+  of the group, and $n$ is the annihilator of the group (the last entry in
+  |d_type|). This is a sort of scalar product, weighted by cotype, modulo $n$.
 */
 unsigned long FiniteAbelianGroup::pairing(const GrpArr& a, const GrpArr& b)
   const
@@ -252,14 +238,14 @@ unsigned long FiniteAbelianGroup::pairing(const GrpArr& a, const GrpArr& b)
 }
 
 
-/*!
-  Synopsis: computes the m in [0,t[ s.t. a(b) = e^{2i pi m/t}, where a is
-  interpreted as an element of the dual group, b as an element of the group.
+/*
+  Compute the $m$ in $[0,t[$ such that $a(b) = e^{2i pi m/t}$, where $a$ is
+  interpreted as an element of the dual group, $b$ as an element of the group.
 
-  Precondition: pairing(a,b) is an element of t-torsion in Z/n, where n is
-  the annihilator of the group;
+  Precondition: |pairing(a,b)| is an element of t-torsion in $\Z/n$, where
+  $n$ is the annihilator of the group;
 
-  The required m is just pairing(a,b)/(n/t).
+  The required $m$ is just |pairing(a,b)/(n/t)|.
 
   NOTE: this is a sloppy implementation, that doesn't deal carefully with
   overflow. It is expected to be used only for very small groups.
@@ -278,9 +264,7 @@ unsigned long FiniteAbelianGroup::pairing(const GrpArr& a, const GrpArr& b,
 }
 
 
-/*!
-  Computes n.x in the group
-*/
+// Compute $n.x$ in the group
 GrpNbr FiniteAbelianGroup::prod(GrpNbr x, unsigned long n) const
 {
   GrpArr a = toArray(x);
@@ -328,8 +312,8 @@ namespace abelian {
 /******** constructors and destructors ***************************************/
 
 
-/*!
-  Constructs the homomorphism with matrix al, from groups |source| to |dest|.
+/*
+  Construct the homomorphism with matrix |al|, from groups |source| to |dest|.
 
   Precondition: the elements of |al| are of size source.rank(), and their
   number is dest.rank(). Note that the matrix is therefore given by rows
@@ -358,8 +342,8 @@ Homomorphism::Homomorphism(const std::vector<GrpArr>& al,
 
 /******** accessors **********************************************************/
 
-/*!
-  Synopsis: applies the homomorphism to x according to the rules explained
+/*
+  applies the homomorphism to x according to the rules explained
   in the introduction to this section, and puts the result in dest.
 
   Precondition: x is in the subgroup for which this makes sense.
@@ -384,10 +368,10 @@ GrpArr Homomorphism::operator*(const GrpArr& a) const
 }
 
 
-/*!
-  Synopsis: return h(x).
+/*
+  Return $h(x)$.
 
-  Precondition: x is in the subgroup for which this makes sense;
+  Precondition: |x| is in the subgroup for which this makes sense;
 
   Forwarded to the GrpArr form.
 */
@@ -408,18 +392,18 @@ GrpNbr Homomorphism::operator*(GrpNbr x) const
 
 namespace abelian {
 
-/*!
-  Synopsis: writes A/B in canonical form.
+/*
+  Write $A/B$ in canonical form.
 
-  Explanation: we see the current group A as a quotient of Z^d, where d is the
-  rank of A, and the generators of the kernel are multiples of the standard
-  basis vectors given by d_type. The bitmap |B| specifies a subgroup by
+  We see the current group $A$ as a quotient of $\Z^d$, where $d$ is the
+  rank of $A$, and the generators of the kernel are multiples of the standard
+  basis vectors given by |d_type|. The bitmap |B| specifies a subgroup by
   generators through the |GrpNbr| encoding. Then we wish to write the quotient
-  A/B in canonical form (i.e., as a product of cyclic groups with
-  cardinalities dividing each other.) For this, we put in b a scaled Smith
-  normal basis for the inverse image of B in Z^d.
+  $A/B$ in canonical form (i.e., as a product of cyclic groups with
+  cardinalities dividing each other.) For this, we put in $b$ a scaled Smith
+  normal basis for the inverse image of $B$ in $\Z^d$.
 
-  Note that A is not necessarily in canonical form, so even when B is the
+  Note that $A$ is not necessarily in canonical form, so even when $B$ is the
   trivial subgroup this might yield a basis rather different from the kernel
   basis.
 */
@@ -444,7 +428,7 @@ namespace abelian {
     M.set_column(A.rank()+i,v);
   }
 
-  // get Smith normal basis for columns span of |M|, and invariant factors
+// get Smith normal basis for columns span of |M|, and invariant factors
 
   std::vector<int> inv_factors;
   matrix::PID_Matrix<int> basis = matreduc::Smith_basis(M,inv_factors);
@@ -456,12 +440,12 @@ namespace abelian {
 }
 
 
-/*!
-  Synopsis: puts in C the coset x+B in A.
+/*
+  Put in $C$ the coset $x+B$ in $A$.
 
-  Precondition: C.capacity() == A.order();
+  Precondition: |.capacity() == A.order()|;
 
-  NOTE : this is a straightforward implementation, shifting elements of B
+  NOTE : this is a straightforward implementation, shifting elements of $B$
   individually.
 */
 void coset(bitmap::BitMap& C, const bitmap::BitMap& B, GrpNbr x,
@@ -477,9 +461,9 @@ void coset(bitmap::BitMap& C, const bitmap::BitMap& B, GrpNbr x,
 }
 
 
-/*!
-  Synopsis: returns a reference to a bitmap containing exactly one generator
-  for each cyclic subgroup of A.
+/*
+  Return a reference to a bitmap containing exactly one generator
+  for each cyclic subgroup of |A|.
 
   We simply set all bits, then traverse all elements and whenever a bit is set
   we clear the bits of all elements that generate the same cyclic subgroup as
@@ -521,8 +505,8 @@ const bitmap::BitMap& cycGenerators(const FiniteAbelianGroup& A)
 }
 
 
-/*!
-  Synopsis: transforms B into the subgroup generated by B and x in A.
+/*
+  Transform |B| into the subgroup generated by |B| and |x| in |A|.
 
   NOTE : this is a simple-minded implementation; we do not aim for speed.
 */
@@ -543,8 +527,8 @@ void generateSubgroup(bitmap::BitMap& B, GrpNbr x, const FiniteAbelianGroup& A)
 }
 
 
-/*!
-  Synopsis: puts in gen a list of generators of the subgroup B.
+/*
+  puts in gen a list of generators of the subgroup B.
 */
 void generators(GrpNbrList& gen, const bitmap::BitMap& B,
 		const FiniteAbelianGroup& A)
@@ -553,9 +537,7 @@ void generators(GrpNbrList& gen, const bitmap::BitMap& B,
 }
 
 
-/*!
-  Tells if c is all twos.
-*/
+// Whether |c| is all twos.
 bool isElementaryAbelian(const std::vector<unsigned long>& c)
 {
   for (size_t i=0; i<c.size(); ++i)
@@ -567,12 +549,12 @@ bool isElementaryAbelian(const std::vector<unsigned long>& c)
 
 
 /*
-  return a list of representatives of the cosets modulo B.
+  Return a list of representatives of the cosets modulo |B|.
 
-  Precondition: qr.capacity() = A.order();
+  Precondition: |qr.capacity() = A.order()|;
 
-  Algorithm: fill up qr; traverse qr, and for each x that is reached, remove
-  from qr the elements of the coset of x other than x.
+  Algorithm: fill up |qr|; traverse |qr|, and for each |x| that is reached,
+  remove from |qr| the elements of the coset of |x| other than |x|.
 
   The efficiency depends on the efficiency of coset computations.
 */
@@ -592,14 +574,14 @@ bitmap::BitMap quotReps(const bitmap::BitMap& B, const FiniteAbelianGroup& A)
 }
 
 
-/*!
-  Synopsis: puts the array-form of x in a.
+/*
+  Put the array-form of |x| into |a|.
 
-  Precondition: x is representable for t (x < prod t[i]); otherwise the
-  result is the expression of x modulo that product.
+  Precondition: |x| is representable for |t| (|x < prod t[i]|); otherwise the
+  result is the expression of |x| modulo that product.
 
   Explanation: the array-form (relative to type) is the unique expression
-  of x in the variable-radix base defined by type.
+  of |x| in the variable-radix base defined by type.
 */
 void to_array(GrpArr& a, GrpNbr x, const GroupType& t)
 {
@@ -643,10 +625,10 @@ void toEndomorphism(Endomorphism& e, const matrix::PID_Matrix<int>& q,
 }
 
 
-/*!
-  Synopsis: returns the number-form of a.
+/*
+  Return the number-form of |a|.
 
-  Precondition: a is representable as a GrpNbr;
+  Precondition: |a| is representable as a |GrpNbr|;
 */
 GrpNbr to_GrpNbr(const GrpArr& a, const GroupType& t)
 {
@@ -659,17 +641,18 @@ GrpNbr to_GrpNbr(const GrpArr& a, const GroupType& t)
 }
 
 
-/*!
-  Synopsis: transposes the endomorphism e.
+/*
+  Transpose the endomorphism |e|.
 
   This is more subtle than one might think; the main point is that when
-  m|n, the transpose of the canonical map Z/nZ -> Z/mZ is the injection
-  Z/mZ -> Z/nZ which takes 1 to n/m. In general, any map Z/nZ -> Z/mZ
-  factors thru Z/dZ, where d = gcd(m,n), so it is a multiple of the map
-  defined by 1 -> m/d; the transpose is the same multiple of 1 -> n/d.
+  $m\div n$, the transpose of the canonical map $\Z/n\Z to \Z/m\Z$ is the
+  injection $\Z/m\Z to \Z/n\Z$ which takes 1 to $n/m$. In general, any map
+  $\Z/n\Z \to \Z/m\Z$ factors through $\Z/d\Z$, where $d =gcd(m,n)$, so it is
+  a multiple of the map defined by $1 \to m/d$; the transpose is the same
+  multiple of $1 \to n/d$.
 
   NOTE: this implementation works for homomorphisms between different groups
-  just as well (except that one needs two grouptypes then.)
+  just as well (except that one needs two group types then.)
 */
 void transpose(Endomorphism& e, const FiniteAbelianGroup& A)
 {

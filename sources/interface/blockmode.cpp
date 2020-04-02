@@ -195,7 +195,7 @@ const wgraph::WGraph& currentWGraph()
 namespace {
 
 /*
-  Synopsis: attempts to set a real form and dual real form interactively.
+  Attempt to set a real form and dual real form interactively.
   In case of failure, throws an InputError and returns.
 */
 void block_mode_entry()
@@ -248,9 +248,7 @@ void dualrealform_f()
 
 
 
-/*
-  Synopsis: destroys any local data, resoring nullptr pointers
-*/
+// Destroy any local data, resoring |nullptr| pointers
 void block_mode_exit()
 {
   delete dual_G_R_pointer; dual_G_R_pointer=nullptr;
@@ -398,7 +396,7 @@ void blockorder_f()
   kgb_io::printBruhatOrder(file,block.bruhatOrder());
 }
 
-// Writes a binary file containing descent sets and ascent sets for block
+// Write a binary file containing descent sets and ascent sets for block
 void blockwrite_f()
 {
   std::ofstream block_out; // binary output files
@@ -413,7 +411,7 @@ void blockwrite_f()
 }
 
 /*
-  Synopsis: prints out information about the stabilizer of a representation
+  Print out information about the stabilizer of a representation
   under the cross action
 */
 void blockstabilizer_f()

@@ -1,9 +1,8 @@
-/*!
-\file
-  This is ratvec.cpp. This module contains some simple utilities for matrices.
-*/
 /*
+  This is ratvec.cpp. This module contains some simple utilities for matrices.
+
   Copyright (C) 2004,2005 Fokko du Cloux
+  Copyright (C) 2006-2020 Marc van Leeuwen
   part of the Atlas of Lie Groups and Representations
 
   For license information see the LICENSE file

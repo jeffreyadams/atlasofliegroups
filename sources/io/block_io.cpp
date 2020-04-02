@@ -381,9 +381,7 @@ std::ostream& printBlockU(std::ostream& strm, const Block& block)
 } // |printBlockU|
 
 
-/*
-  Synopsis: outputs the descent status for the various generators
-*/
+// Output the descent status for the various generators
 std::ostream& printDescent(std::ostream& strm,
 			   const DescentStatus& ds,
 			   size_t rank, RankFlags mask)

@@ -223,10 +223,10 @@ BlockElt Block_base::length_first(size_t l) const
 
 
 /*
-  Tells if s is a strict ascent generator for z.
+  Whether |s| is a strict ascent generator for |z|.
 
-  Explanation: this means that descentValue(s,z) is one of ComplexAscent,
-  ImaginaryTypeI or ImaginaryTypeII.
+  This means that |descentValue(s,z)| is one of |ComplexAscent|,
+  |ImaginaryTypeI| or |ImaginaryTypeII|.
 */
 bool Block_base::isStrictAscent(weyl::Generator s, BlockElt z) const
 {
@@ -236,10 +236,10 @@ bool Block_base::isStrictAscent(weyl::Generator s, BlockElt z) const
 }
 
 /*
-  Tells if s is a strict descent generator for z.
+  Whether |s| is a strict descent generator for |z|.
 
-  Explanation: this means that descentValue(s,z) is one of ComplexDescent,
-  RealTypeI or RealTypeII.
+  This means that |descentValue(s,z)| is one of |ComplexDescent|,
+  |RealTypeI| or |RealTypeII|.
 */
 bool Block_base::isStrictDescent(weyl::Generator s, BlockElt z) const
 {
@@ -249,8 +249,8 @@ bool Block_base::isStrictDescent(weyl::Generator s, BlockElt z) const
 }
 
 /*
-  Returns the first descent for z (the number of a simple root) that is
-  not imaginary compact, or rank() if there is no such descent.
+  Return the first descent (the number of a simple root) for |z| that is
+  not imaginary compact, or |rank()| if there is no such descent.
 */
 weyl::Generator Block_base::firstStrictDescent(BlockElt z) const
 {
@@ -262,8 +262,8 @@ weyl::Generator Block_base::firstStrictDescent(BlockElt z) const
 }
 
 /*
- Returns the first descent for z (the number of a simple root) that is either
- complex or real type I; if there is no such descent returns |rank()|
+  Return the first descent (the number of a simple root) for |z| that is either
+  complex or real type I; if there is no such descent return |rank()|
 */
 weyl::Generator Block_base::firstStrictGoodDescent(BlockElt z) const
 {
@@ -279,7 +279,7 @@ weyl::Generator Block_base::firstStrictGoodDescent(BlockElt z) const
 void param_block::reverse_length_and_sort(bool full_block)
 {
   const unsigned max_length =
-    // full block ends compact, while partial blcok starts so
+    // full block ends compact, while partial block starts so
     (full_block ? info.back() : info.front()).length;
 
   const KGBElt x_lim=realGroup().KGB_size(); // limit for |x| values
@@ -321,7 +321,7 @@ void param_block::reverse_length_and_sort(bool full_block)
 
 // Here is one method not related to block construction
 /*
-  The functor \f$T_{\alpha,\beta}\f$
+  The functor $T_{\alpha,\beta}$
 
   Precondition: alpha and beta are adjacent roots, of which alpha is a (weak)
   descent for y, while beta is not a descent for y.

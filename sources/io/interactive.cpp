@@ -161,9 +161,7 @@ bool get_yes_or_no(const char* prompt)
 }
 
 
-/*
-  Synopsis: get a file name from terminal, abandon with InputError on '?'
-*/
+// Get a file name from terminal, abandon with InputError on '?'
 std::string getFileName(const std::string& prompt)
 {
   input::InputBuffer buf;
@@ -194,7 +192,7 @@ bool open_binary_file(std::ofstream& block_out,const std::string& prompt)
 
 
 /*
-  Synopsis: puts in prompt an informative string for getting a value from vals.
+  puts in prompt an informative string for getting a value from vals.
 
   Explanation: the string is actually "mess (one of ...): ", where ... stands
   for the set elements in vals.
@@ -213,13 +211,13 @@ void bitMapPrompt(std::string& prompt, const char* mess,
 
 
 /*
-  Synopsis: gets a cartan class number from the user.
+  Get a cartan class number from the user.
 
-  Explanation: cs contains the set of cartans defined for some real form;
+  Explanation: |cs| contains the set of cartans defined for some real form;
   the user must enter one of those. Before getting the value from the user,
   we attempt to read it from line (this allows for type-ahead.)
 
-  Throws an InputError if not successful; cn is not touched in that case.
+  Throw an |InputError| if not successful; |cn| is unchanged in that case.
 */
 size_t get_Cartan_class(const BitMap& cs)
 {
@@ -244,10 +242,10 @@ size_t get_Cartan_class(const BitMap& cs)
   This is called in the entry function to the "main mode", and drives some of
   the calls to other instances of |getInteractive| below.
 
-  Replaces |pI| by a  pointer to a new |Interface| gotten interactively from
+  Replace |pI| by a  pointer to a new |Interface| gotten interactively from
   the user, and |pG| by a poitner the the corresponding inner class
 
-  Throws an |InputError| if the interaction with the user is not successful;
+  Throw an |InputError| if the interaction with the user is not successful;
   in that case both pointers are unchanged.
 
   We pass references to pointers to both an |InnerClass| and to a
@@ -297,10 +295,10 @@ bool get_type_ahead(input::InputBuffer& src, input::InputBuffer& dst)
 }
 
 /*
-  Synopsis: gets a LieType interactively from the user.
+  Get a |LieType| interactively from the user.
 
-  Throws an InputError is the interaction does not end in a correct assignment
-  of lt. Does not touch lt unless the assignment succeeds.
+  Throw an |InputError| is the interaction does not end in a correct assignment
+  of |lt|. Does not touch |lt| unless the assignment succeeds.
 */
 void getInteractive(LieType& d_lt)
 {
@@ -335,7 +333,7 @@ void getInteractive(LieType& d_lt)
   form of |lt| to the actual lattice basis; this might be necessary for checking
   if certain real forms are defined for this covering.
 
-  This function throws an |InputError| if the interaction with the user fails.
+  Throw an |InputError| if the interaction with the user fails.
   In that case |d_b| is not touched.
 */
 PreRootDatum get_pre_root_datum(LatticeMatrix& basis, const LieType& lt)
@@ -378,10 +376,10 @@ PreRootDatum get_pre_root_datum(LatticeMatrix& basis, const LieType& lt)
 
 
 /*
+  Write an inner class into |lo.d_inner| and returns distinguished involution
+
   Precondition: |lo| already contains the Lie type resulting from user
   interaction, and the identity permutation, and |basis| the sublattice basis
-
-  Writes an inner class into |lo.d_inner| and returns distinguished involution
 
   An inner class is described by a sequence of typeletters, one of:
 
@@ -398,7 +396,7 @@ PreRootDatum get_pre_root_datum(LatticeMatrix& basis, const LieType& lt)
   type (a C consumes two entries in |lt|). Moreover, the inner class has to be
   compatible with the chosen sublattice: |d| has to stabilize this sublattice.
 
-  Throws an InputError if the interaction is not successful.
+  Throw an |InputError| if the interaction is not successful.
 */
 WeightInvolution
 getInnerClass(lietype::Layout& lo, const LatticeMatrix& basis)
@@ -425,10 +423,10 @@ getInnerClass(lietype::Layout& lo, const LatticeMatrix& basis)
 
 
 /*
-  Synopsis: gets an InnerClassType interactively from the user.
+  Get an |InnerClassType| interactively from the user.
 
-  Throws an InputError is the interaction does not end in a correct assignment
-  of ict. Does not touch ict unless the assignment succeeds.
+  Throw an |InputError| if the interaction does not end in a correct assignment
+  of |ict|. Does not touch |ict| unless the assignment succeeds.
 */
 void getInteractive(InnerClassType& ict, const LieType& lt)
 {
@@ -456,11 +454,11 @@ void getInteractive(InnerClassType& ict, const LieType& lt)
 /*
   This is called by the entry function to "real mode".
 
-  Synopsis: replaces d_G by a new RealReductiveGroup gotten
-  interactively from the user. The complex group interface is not touched.
+  Replaces |d_G| by a new |RealReductiveGroup| obtained interactively.
+  The complex group interface is not touched.
 
-  Throws an InputError if the interaction with the user is not successful;
-  in that case, d_G is not touched.
+  Throw an |InputError| if the interaction with the user is not successful;
+  in that case, |d_G| is unchanged.
 */
 
 RealFormNbr get_real_form(output::Interface& CI)
@@ -504,7 +502,7 @@ RealFormNbr get_real_form(output::Interface& CI)
   with real form |rf|. If |rf| too large to be a real form number, present the
   list of all dual real forms in the inner class, and select from it.
 
-  Throws an InputError if the interaction with the user fails.
+  Throw an |InputError| if the interaction with the user fails.
 */
 RealFormNbr get_dual_real_form(output::Interface& CI,
 			       const InnerClass& G,
@@ -616,9 +614,9 @@ void getInteractive(atlas::Parabolic &psg, size_t rank)
 
 
 /*
-  Synopsis: gets a value for c from the user, with c in [0,limit[.
+  Get a value for |c| from the user, with |c| in $[0,limit[$.
 
-  Prompts (the first time) with prompt. Regets the value if not in the right
+  Prompt (the first time) with prompt. Reget the value if not in the right
   range. The value is unchanged in case of failure.
 
 */
@@ -657,10 +655,10 @@ unsigned long get_bounded_int(input::InputBuffer& ib,
 
 
 /*
-  Synopsis: gets a value for d_c from the user, from the set vals; tries first
+  Get a value for |d_c| from the user, from the set |vals|; try first
   to get from line.
 
-  Prompts (the first time) with prompt. Regets the value if not in the right
+  Prompt (the first time) with prompt. Reget the value if not in the right
   range. The value is unchanged in case of failure
 */
 
@@ -1130,7 +1128,7 @@ WeightInvolution get_commuting_involution
 
 
 /*
-  Synopsis: returns inputBuf.
+  Return |inputBuf|.
 
   This allows callers to specify our static input buffer
 */

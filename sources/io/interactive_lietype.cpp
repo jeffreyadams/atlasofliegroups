@@ -1,8 +1,6 @@
-/*!
-\file
-  This is interactive_lietype.cpp
-*/
 /*
+  This is interactive_lietype.cpp
+
   Copyright (C) 2004,2005 Fokko du Cloux
   part of the Atlas of Lie Groups and Representations
 
@@ -36,10 +34,7 @@ namespace {
 
 namespace interactive_lietype {
 
-/*!
-  Synopsis: checks if a valid inner class for lt will be read from buf.
-*/
-
+// Test whether a valid inner class code for |lt| can be read from |buf|.
 bool checkInnerClass(input::InputBuffer& buf, const LieType& lt,
 		     bool output)
 {
@@ -103,16 +98,14 @@ bool checkInnerClass(input::InputBuffer& buf, const LieType& lt,
 }
 
 
-/*!
-  Synopsis: checks if buf starts with a valid Lie type.
+/*
+  Test whether |buf| starts with a valid Lie type.
 
   A valid Lie type is a dot-separated non-empty string of entities of the form
   where X is a letter in the range [A-G] or T (for torus), and n is a number
   in the appropriate range for X. White between entities is ignored; reading
   terminates when after a pair Xn the next read operation on a character does
   not produce '.' (i.e., when the next non-white character is not a dot.)
-
-  Return value is 0 for correct input, non-zero otherwise.
 */
 bool checkLieType(input::InputBuffer& buf)
 {
@@ -144,9 +137,7 @@ bool checkLieType(input::InputBuffer& buf)
 }
 
 
-/*!
-  Synopsis: checks if reading a SimpleLieType from buf will succeed.
-*/
+// Test whether reading a |SimpleLieType| from |buf| will succeed.
 bool checkSimpleLieType(input::InputBuffer& buf)
 {
   std::streampos pos = buf.tellg();
@@ -178,8 +169,8 @@ bool checkSimpleLieType(input::InputBuffer& buf)
 }
 
 
-/*!
-  Synopsis: checks that the total rank does not exceed RANK_MAX.
+/*
+  Test whether the total rank does not exceed |RANK_MAX|.
 
   Precondition: it has already been checked that successive read operations
   on buf will yield a valid simple type, optionally followed by a dot and
@@ -212,9 +203,7 @@ bool checkTotalRank(input::InputBuffer& buf)
 }
 
 
-/*!
-  Prints the message appropriate for a bad choice of rank for type x.
-*/
+// Print the message appropriate for a bad choice of rank for type |x|.
 std::ostream& printRankMessage(std::ostream& strm, lietype::TypeLetter x)
 {
   const unsigned r=constants::RANK_MAX;
@@ -253,8 +242,8 @@ std::ostream& printRankMessage(std::ostream& strm, lietype::TypeLetter x)
 }
 
 
-/*!
-  Synopsis: reads an inner class type from buf.
+/*
+  Read an inner class type from |buf|.
 
   Precondition: checkInnerClass(ict,buf) returns true;
 
@@ -281,8 +270,8 @@ void readInnerClass(InnerClassType& ict, input::InputBuffer& buf,
 }
 
 
-/*!
-  Synopsis: reads the Lie type from buf.
+/*
+  Read the Lie type from |buf|.
 
   Precondition: it has been checked that the read operation will succeed:
   successive read operations will yield a valid simple Lie type, optionally
@@ -321,10 +310,10 @@ void readLieType(LieType& lt, input::InputBuffer& buf)
 namespace {
 
 
-/*!
-  Synopsis: takes a SimpleLieType off the buffer.
+/*
+  Remove a |SimpleLieType| from |buf|.
 
-  Precondition: a SimpleLieType will be successfully read; otherwise the
+  Precondition: a |SimpleLieType| will be successfully read; otherwise the
   effect is undefined.
 
   Useful when reading forward for testing purposes
