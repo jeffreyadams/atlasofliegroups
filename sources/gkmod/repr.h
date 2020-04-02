@@ -101,18 +101,28 @@ class StandardRepr
 }; // |class StandardRepr|
 
 // a variation that only differs in hashing |infinitesimal_char| modulo $X^*$
-class StandardReprMod : public StandardRepr
+class StandardReprMod
 {
-  StandardReprMod (StandardRepr&& sr) // private raw constructor
-    : StandardRepr(std::move(sr)) {}
+  friend class Rep_context;
+
+  KGBElt x_part;
+  TorusPart y_bits; // torsion part of $\lambda$
+  RatWeight inf_char_mod_1; // coset rep. of $\gamma$ in $X^*_\Q / X^*$
+
+  StandardReprMod (StandardRepr&& sr); // private raw constructor
 
  public:
-  // when building, we force integral parts of |gamma| components to become even
+  // when building, we force integral parts of |gamma_mod1| components to zero
   static StandardReprMod mod_reduce
     (const Rep_context& rc,const StandardRepr& sr);
 
-  // override hashing types and functions
-  bool operator== (const StandardReprMod&) const; // this will mean mod $X^*$
+  const RatWeight& gamma_mod1() const { return inf_char_mod_1; }
+  KGBElt x() const { return x_part; }
+  const TorusPart& y() const { return y_bits; }
+
+  bool operator== (const StandardReprMod& other) const
+  { return x_part==other.x_part and y_bits==other.y_bits
+    and inf_char_mod_1==other.inf_char_mod_1; }
   typedef std::vector<StandardReprMod> Pooltype;
   bool operator!=(const StandardReprMod& another) const
     { return not operator==(another); }
@@ -161,8 +171,7 @@ class Rep_context
   Weight lambda_rho(const StandardRepr& z) const;
   RatWeight lambda(const StandardRepr& z) const // half-integer
   { return rho(rootDatum()).normalize()+lambda_rho(z); }
-  RatWeight gamma_lambda(const StandardReprMod& z) const
-  { return (z.gamma()-rho(rootDatum())).normalize()-lambda_rho(z); }
+  RatWeight gamma_lambda(const StandardReprMod& z) const;
   RatWeight gamma_0 // infinitesimal character deformed to $\nu=0$
     (const StandardRepr& z) const;
 
@@ -170,6 +179,7 @@ class Rep_context
 
   // the value of $\exp_{-1}(\gamma-\lambda)$ is $y$ value in a |param_block|
   TorusElement y_as_torus_elt(const StandardRepr& z) const;
+  TorusElement y_as_torus_elt(const StandardReprMod& z) const;
 
   // attributes; they set |witness| only in case they return |false|
   bool is_standard  // whether $I(z)$ is non-virtual: gamma imaginary-dominant

@@ -92,9 +92,9 @@ common_block::common_block // full block constructor
    const repr::StandardReprMod& srm, // not modified, |gamma| used mod $X^*$ only
    BlockElt& entry_element	// set to block element matching input
   )
-  : Block_base(rootdata::integrality_rank(rc.rootDatum(),srm.gamma()))
+  : Block_base(rootdata::integrality_rank(rc.rootDatum(),srm.gamma_mod1()))
   , rc(rc)
-  , gamma_mod_1(srm.gamma()) // already reduced
+  , gamma_mod_1(srm.gamma_mod1()) // already reduced
   , integral_datum(SubSystem::integral(rootDatum(),gamma_mod_1))
   , y_bits()
   , y_pool()

@@ -48,35 +48,35 @@ size_t StandardRepr::hashCode(size_t modulus) const
   return hash &(modulus-1);
 }
 
+StandardReprMod::StandardReprMod (StandardRepr&& sr)
+: x_part(sr.x())
+, y_bits(sr.y())
+, inf_char_mod_1(sr.gamma()) // will be reduced modulo 1 caller; is normalized
+{}
+
 StandardReprMod StandardReprMod::mod_reduce
   (const Rep_context& rc, const StandardRepr& sr)
 {
-  auto gamma=sr.gamma(); auto lam_rho=rc.lambda_rho(sr); // both modified below
-  auto& num = gamma.numerator(); assert(num.size()==lam_rho.size());
+  auto gamma_mod1=sr.gamma(); // a normalized rational vector
+  auto lam_rho=rc.lambda_rho(sr); // both these valeus are modified below
+  auto& num = gamma_mod1.numerator(); assert(num.size()==lam_rho.size());
 
-  const auto d = gamma.denominator(); // positive value of a signed type
+  const auto d = gamma_mod1.denominator(); // positive value of a signed type
   for (unsigned i=0; i<num.size(); ++i)
   {
     auto q = arithmetic::divide(num[i],d);
     num[i]-= d*q;  // ensure even integral part if |num[i]/d| (0 is even)
-    lam_rho[i] -= q; // ensure shift $\gamma$ is also applied to $\lambda$ part
+    lam_rho[i] -= q; // shift to $\gamma_mod1$ is also applied to $\lambda$ part
   }
-  return StandardReprMod(rc.sr_gamma(sr.x(),lam_rho,gamma));
-}
-
-bool StandardReprMod::operator== (const StandardReprMod& z) const
-{ if (x_part!=z.x_part or y_bits!=z.y_bits)
-    return false;
-  auto diff = z.infinitesimal_char-infinitesimal_char;
-  return (diff%=1).isZero();
+  return StandardReprMod(rc.sr_gamma(sr.x(),lam_rho,gamma_mod1));
 }
 
 size_t StandardReprMod::hashCode(size_t modulus) const
-{ auto denom = infinitesimal_char.denominator(); // a signed but positive value
-  size_t hash= x_part + 375*y_bits.data().to_ulong()+83*denom;
-  const Ratvec_Numer_t& num=infinitesimal_char.numerator();
+{ size_t hash= x_part +
+    243*y_bits.data().to_ulong()+47*inf_char_mod_1.denominator();
+  const Ratvec_Numer_t& num=inf_char_mod_1.numerator();
   for (unsigned i=0; i<num.size(); ++i)
-    hash= 11*(hash&(modulus-1))+arithmetic::remainder(num[i],denom);
+    hash= 11*(hash&(modulus-1))+num[i];
   return hash &(modulus-1);
 }
 
@@ -162,6 +162,17 @@ Weight Rep_context::lambda_rho(const StandardRepr& z) const
   return (i2 + i_tab.y_lift(i_x,z.y()))/2; // division exact again
 }
 
+// this function is similar to |common_block::gamma_lambda|
+RatWeight Rep_context::gamma_lambda(const StandardReprMod& z) const
+{
+  const InvolutionNbr i_x = kgb().inv_nr(z.x());
+  const InvolutionTable& i_tab = innerClass().involution_table();
+  const WeightInvolution& theta = i_tab.matrix(i_x);
+
+  const RatWeight gamma_rho = z.gamma_mod1() - rho(rootDatum());
+  return (gamma_rho-theta*gamma_rho - i_tab.y_lift(i_x,z.y()))/2;
+}
+
 RatWeight Rep_context::gamma_0 (const StandardRepr& z) const
 {
   const InvolutionTable& i_tab = innerClass().involution_table();
@@ -178,6 +189,9 @@ RatWeight Rep_context::nu(const StandardRepr& z) const
 
 TorusElement Rep_context::y_as_torus_elt(const StandardRepr& z) const
 { return y_values::exp_pi(z.gamma()-lambda(z)); }
+
+TorusElement Rep_context::y_as_torus_elt(const StandardReprMod& z) const
+{ return y_values::exp_pi(gamma_lambda(z)); }
 
 // |z| standard means (weakly) dominant on the (simple-)imaginary roots
 bool Rep_context::is_standard(const StandardRepr& z, RootNbr& witness) const
@@ -962,12 +976,12 @@ unsigned long Rep_table::add_block(const StandardReprMod& srm)
 
   const unsigned long result = // future sequence number for our |srm|
     first+srm_in_block;
-  const RatWeight gamma_rho = srm.gamma()-rho(rootDatum());
+  const RatWeight gamma_rho = srm.gamma_mod1()-rho(rootDatum());
   for (BlockElt z=0; z<block.size(); ++z)
   {
     Weight lambda_rho=gamma_rho.integer_diff<int>(block.gamma_lambda(z));
     auto zm = StandardReprMod::mod_reduce
-      (*this, sr_gamma(block.x(z),lambda_rho,srm.gamma()));
+      (*this, sr_gamma(block.x(z),lambda_rho,srm.gamma_mod1()));
     auto seq = mod_hash.match(zm);
     assert(seq+1==mod_hash.size()); // all block elements should be new
     ndebug_use(seq);
