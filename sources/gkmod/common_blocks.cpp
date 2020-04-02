@@ -1,7 +1,7 @@
 /*
-  This is block_minimal.cpp
+  This is common_blocks.cpp
 
-  Copyright (C) 2019 Marc van Leeuwen
+  Copyright (C) 2019,2020 Marc van Leeuwen
   Part of the Atlas of Lie Groups and Representations
 
   For license information see the LICENSE file
@@ -37,7 +37,7 @@
   generated in this way is a good way to get convinced that isomporphism as
   indicated does exist.
  */
-#include "block_minimal.h"
+#include "common_blocks.h"
 
 #include <cassert>
 #include <vector>

@@ -1,7 +1,7 @@
 /*
-  This is block_minimal.h
+  This is common_blocks.h
 
-  Copyright (C) 2019 Marc van Leeuwen
+  Copyright (C) 2019,2020 Marc van Leeuwen
   part of the Atlas of Lie Groups and Representations
 
   For license information see the LICENSE file
@@ -9,8 +9,8 @@
 
 // Variant of |param_block| in blocks.h, to be shared when having same KL data
 
-#ifndef BLOCK_MINIMAL_H  /* guard against multiple inclusions */
-#define BLOCK_MINIMAL_H
+#ifndef COMMON_BLOCKS_H  /* guard against multiple inclusions */
+#define COMMON_BLOCKS_H
 
 #include "blocks.h" // we conceptually just extend that module
 #include "subsystem.h"

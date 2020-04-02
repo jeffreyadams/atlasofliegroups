@@ -27,7 +27,7 @@
 #include "free_abelian.h"
 #include "arithmetic.h" // |SplitInteger|
 
-#include "block_minimal.h"
+#include "common_blocks.h"
 
 namespace atlas {
 

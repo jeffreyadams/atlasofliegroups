@@ -21,7 +21,7 @@
 #include "weyl.h"
 #include "kgb.h"
 #include "blocks.h"
-#include "block_minimal.h"
+#include "common_blocks.h"
 #include "repr.h"
 #include "ext_kl.h"
 

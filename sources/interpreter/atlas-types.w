@@ -4666,7 +4666,7 @@ void print_n_block_wrapper(expression_base::level l)
 
 @ A variant for ``abstract'' blocks, implemented by the |block_minimal| class.
 
-@h "block_minimal.h"
+@h "common_blocks.h"
 @< Local function def...@>=
 void print_c_block_wrapper(expression_base::level l)
 { shared_module_parameter p = get<module_parameter_value>();

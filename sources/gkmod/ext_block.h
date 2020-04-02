@@ -23,7 +23,7 @@
 #include "innerclass.h"
 #include "realredgp.h"
 #include "blocks.h" // for some inlined methods (dependency should be removed)
-#include "block_minimal.h" // for type |blocks::block_minimal|
+#include "common_blocks.h" // for type |blocks::block_minimal|
 #include "subsystem.h" // for inclusion of |SubSystem| field
 #include "repr.h" // allows using |Rep_context| methods in this file
 

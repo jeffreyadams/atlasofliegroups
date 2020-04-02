@@ -19,7 +19,7 @@
 #include "kgb.h"     // |kgb.size()|
 #include "innerclass.h" // |twoRho| in |nu_block::print|
 #include "blocks.h"
-#include "block_minimal.h"
+#include "common_blocks.h"
 #include "ext_block.h"
 #include "kl.h"
 #include "repr.h"

@@ -20,7 +20,7 @@
 #include "tits.h"
 #include "kgb.h"	// various methods
 #include "blocks.h"	// |dual_involution|
-#include "block_minimal.h" // the |blocks::block_minimal| class
+#include "common_blocks.h" // the |blocks::block_minimal| class
 #include "standardrepk.h"// |KhatContext| methods
 #include "subsystem.h" // |SubSystem| methods
 
