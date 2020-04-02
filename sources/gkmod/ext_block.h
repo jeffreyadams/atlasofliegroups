@@ -23,7 +23,7 @@
 #include "innerclass.h"
 #include "realredgp.h"
 #include "blocks.h" // for some inlined methods (dependency should be removed)
-#include "common_blocks.h" // for type |blocks::block_minimal|
+#include "common_blocks.h" // for type |blocks::common_block|
 #include "subsystem.h" // for inclusion of |SubSystem| field
 #include "repr.h" // allows using |Rep_context| methods in this file
 
@@ -142,8 +142,8 @@ class ext_block
 	    const WeightInvolution& delta);
   ext_block(const param_block& block, const WeightInvolution& delta,
 	    bool verbose=false);
-  // the following variant has its definition in block_minimal.cpp:
-  ext_block(const blocks::block_minimal& block, const WeightInvolution& delta);
+  // the following variant has its definition in common_blocks.cpp:
+  ext_block(const blocks::common_block& block, const WeightInvolution& delta);
 
   ~ext_block(); // cannot be implicitly defined here (|KL_table| incomplete)
 
@@ -217,7 +217,7 @@ class ext_block
 private:
   void complete_construction(const BitMap& fixed_points);
   bool check(const param_block& block, bool verbose=false);
-  bool tune_signs(const blocks::block_minimal& block);
+  bool tune_signs(const blocks::common_block& block);
 
 }; // |class ext_block|
 

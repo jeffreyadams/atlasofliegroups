@@ -25,7 +25,7 @@
   second computation is avoided. However many parameters can be seen to have
   isomorphic blocks, namely when they share their |KGB| set and the integral
   subdatum (as determined by the infinitesimal character |gamma|, indeed already
-  by its class modulo $X^*$); in this unit, blocks of type |block_minimal| are
+  by its class modulo $X^*$); in this unit, blocks of type |common_block| are
   constructed that only use such information, and still allow computation of KLV
   polynomials (ordinary and twisted).
 
@@ -34,7 +34,7 @@
   determines, as it is probably possible to re-use polynomials associated to
   parameters whose block is isomorphic, by applying a shift to their
   infinitesimal character. But in any case showing that the blocks can be
-  generated in this way is a good way to get convinced that isomporphism as
+  generated in this way is a good way to get convinced that an isomorphism as
   indicated does exist.
  */
 #include "common_blocks.h"
@@ -60,19 +60,19 @@ void add_z(block_hash& hash,KGBElt x,KGBElt y);
 BlockElt find_in(const block_hash& hash,KGBElt x,KGBElt y);
 BlockElt& first_free_slot(BlockEltPair& p);
 
-  // |block_minimal| methods
+  // |common_block| methods
 
-RealReductiveGroup& block_minimal::realGroup() const
+RealReductiveGroup& common_block::realGroup() const
   { return rc.realGroup(); }
-const InnerClass& block_minimal::innerClass() const
+const InnerClass& common_block::innerClass() const
   { return rc.innerClass(); }
-const InvolutionTable& block_minimal::involution_table() const
+const InvolutionTable& common_block::involution_table() const
   { return innerClass().involution_table(); }
-const RootDatum& block_minimal::rootDatum() const
+const RootDatum& common_block::rootDatum() const
   { return rc.rootDatum(); }
 
 // find value $\gamma-\lambda$ that the parameter for |z| at |gamma%1| would give
-RatWeight block_minimal::gamma_lambda(BlockElt z) const
+RatWeight common_block::gamma_lambda(BlockElt z) const
 {
   auto& i_tab = rc.innerClass().involution_table();
   InvolutionNbr i_x = rc.kgb().inv_nr(x(z));
@@ -85,9 +85,9 @@ RatWeight block_minimal::gamma_lambda(BlockElt z) const
   return result.normalize();
 }
 
-block_minimal::~block_minimal() = default;
+common_block::~common_block() = default;
 
-block_minimal::block_minimal // full block constructor
+common_block::common_block // full block constructor
   (const Rep_context& rc,
    const repr::StandardReprMod& srm, // not modified, |gamma| used mod $X^*$ only
    BlockElt& entry_element	// set to block element matching input
@@ -402,9 +402,9 @@ block_minimal::block_minimal // full block constructor
   // and look up which element matches the original input
   entry_element = lookup(srm);
 
-} // |block_minimal::block_minimal|
+} // |common_block::common_block|
 
-void block_minimal::compute_y_bits()
+void common_block::compute_y_bits()
 {
   y_bits.reserve(y_pool.size());
   const InvolutionTable& i_tab = innerClass().involution_table();
@@ -430,7 +430,7 @@ void block_minimal::compute_y_bits()
   }
 }
 
-BlockElt block_minimal::lookup(const repr::StandardReprMod& srm) const
+BlockElt common_block::lookup(const repr::StandardReprMod& srm) const
 { const auto x = srm.x();
   InvolutionNbr inv = rc.kgb().inv_nr(x);
   const auto y_ent = involution_table().pack(rc.y_as_torus_elt(srm),inv);
@@ -438,7 +438,7 @@ BlockElt block_minimal::lookup(const repr::StandardReprMod& srm) const
   return y==y_hash.empty ? UndefBlock // the value also known as |xy_hash.empty|
                          : xy_hash.find(EltInfo{x,y});
 }
-BlockElt block_minimal::lookup(KGBElt x, const RatWeight& gamma_lambda) const
+BlockElt common_block::lookup(KGBElt x, const RatWeight& gamma_lambda) const
 {
   const TorusElement t = y_values::exp_pi(gamma_lambda);
   const auto y_ent = involution_table().pack(t,rc.kgb().inv_nr(x));
@@ -451,19 +451,19 @@ BlockElt block_minimal::lookup(KGBElt x, const RatWeight& gamma_lambda) const
 // may return |UndefBlock|, but success does not mean any representative of the
 // $X^*$ coset for this block is actually |delta|-fixed (no such test done)
 BlockElt twisted
-  (const blocks::block_minimal& block, BlockElt z,
+  (const blocks::common_block& block, BlockElt z,
    const WeightInvolution& delta)
 {
   return block.lookup(block.context().kgb().twisted(block.x(z),delta)
 		     ,delta*block.gamma_lambda(z));
 }
 
-ext_gens block_minimal::fold_orbits(const WeightInvolution& delta) const
+ext_gens common_block::fold_orbits(const WeightInvolution& delta) const
 {
   return rootdata::fold_orbits(integral_datum.pre_root_datum(),delta);
 }
 
-ext_block::ext_block& block_minimal::extended_block
+ext_block::ext_block& common_block::extended_block
   (const WeightInvolution& delta)
 {
   if (extended.get()==nullptr)
@@ -471,7 +471,7 @@ ext_block::ext_block& block_minimal::extended_block
   return *extended;
 }
 
-void block_minimal::reverse_length_and_sort()
+void common_block::reverse_length_and_sort()
 {
   const unsigned max_length = info.back().length;
 
@@ -507,7 +507,7 @@ void block_minimal::reverse_length_and_sort()
     } // |for z|
   } // |for s|
 
-} // |block_minimal::reverse_length_and_sort|
+} // |common_block::reverse_length_and_sort|
 
 size_t hash_value (const repr::Rep_context& rc, const RootNbrSet& ipr,
 		   KGBElt x, const RatWeight& gamma_lambda)
@@ -728,7 +728,7 @@ paramin::paramin
 // build a default extended parameter for |sr| in the context |ec|
 /*
   Importantly, this does not use |sr.gamma()| otherwise than for asserting its
-  $\delta$-stability: the same default is used in |block_minimal| for an entire
+  $\delta$-stability: the same default is used in |common_block| for an entire
   family of blocks, so dependence on |gamma| must be limited to dependence on
   its reduction modulo 1. Even though |gamma_lambda| is computed at the non
   $\delta$-fixed |srm.gamma()| below, it is also (due to the way |mod_reduce|
@@ -1636,7 +1636,7 @@ DescValue star (const context_minimal& ctxt, const paramin& E, const ext_gen& p,
 // additional |ext_block| methods
 
 ext_block::ext_block
-  (const blocks::block_minimal& block, const WeightInvolution& delta)
+  (const blocks::common_block& block, const WeightInvolution& delta)
   : parent(block)
   , orbits(block.fold_orbits(delta))
   , folded(block.Dynkin().folded(orbits))
@@ -1661,9 +1661,9 @@ ext_block::ext_block
   if (not tune_signs(block))
     throw std::runtime_error("Failure detected in extended block construction");
 
-} // |ext_block::ext_block|, from a |block_minimal|
+} // |ext_block::ext_block|, from a |common_block|
 
-bool ext_block::tune_signs(const blocks::block_minimal& block)
+bool ext_block::tune_signs(const blocks::common_block& block)
 {
   paramin_context ctxt (block.context(),delta());
   context_minimal block_ctxt(block.context(),delta(),block.integral_subsystem());

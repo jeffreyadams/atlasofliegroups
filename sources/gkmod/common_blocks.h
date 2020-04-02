@@ -30,7 +30,7 @@ namespace ext_block {
 namespace blocks {
 
 // a class for blocks of (possibly non integral) parameters
-class block_minimal : public Block_base
+class common_block : public Block_base
 {
   const Rep_context& rc; // accesses many things, including KGB set for x
 
@@ -53,12 +53,12 @@ class block_minimal : public Block_base
  public:
 
   // constructor and destructor
-  block_minimal
+  common_block
     (const repr::Rep_context& rc,
      const repr::StandardReprMod& srm, // not modified, no "making dominant"
      BlockElt& entry_element	// set to block element matching input
     );
-  ~block_minimal(); // cleans up |*extended|, so inline definition impossible
+  ~common_block(); // cleans up |*extended|, so inline definition impossible
 
   // accessors that get values via |rc|
   const repr::Rep_context& context() const { return rc; }
@@ -95,7 +95,7 @@ class block_minimal : public Block_base
 */
   void reverse_length_and_sort();
 
-}; // |class block_minimal|
+}; // |class common_block|
 
 } // |namespace blocks|
 

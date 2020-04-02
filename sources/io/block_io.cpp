@@ -138,7 +138,7 @@ std::ostream& param_block::print
   return strm ;
 }
 
-std::ostream& block_minimal::print
+std::ostream& common_block::print
   (std::ostream& strm, BlockElt z,bool as_invol_expr) const
 {
   const KGB& kgb = rc.kgb();

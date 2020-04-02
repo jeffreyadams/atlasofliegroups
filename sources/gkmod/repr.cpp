@@ -20,7 +20,7 @@
 #include "tits.h"
 #include "kgb.h"	// various methods
 #include "blocks.h"	// |dual_involution|
-#include "common_blocks.h" // the |blocks::block_minimal| class
+#include "common_blocks.h" // the |blocks::common_block| class
 #include "standardrepk.h"// |KhatContext| methods
 #include "subsystem.h" // |SubSystem| methods
 
@@ -955,8 +955,8 @@ unsigned long Rep_table::add_block(const StandardReprMod& srm)
 {
   auto first=mod_hash.size(); // future code of first element of this block
   BlockElt srm_in_block; // will hold position of |srm| within that block
-  std::unique_ptr<blocks::block_minimal>
-    ptr(new blocks::block_minimal(*this,srm,srm_in_block));
+  std::unique_ptr<blocks::common_block>
+    ptr(new blocks::common_block(*this,srm,srm_in_block));
   auto& block=*ptr;
   bounds.push_back(boundary { first, std::move(ptr) });
 
@@ -975,7 +975,7 @@ unsigned long Rep_table::add_block(const StandardReprMod& srm)
   return result;
 }
 
-blocks::block_minimal& Rep_table::lookup
+blocks::common_block& Rep_table::lookup
   (const StandardRepr& sr,BlockElt& z,RankFlags& singular)
 {
   auto srm = StandardReprMod::mod_reduce(*this,sr); // modular |z|
@@ -1034,7 +1034,7 @@ pair_list flip (int sign, pair_list list) // by value
 }
 
 std::vector<pair_list> contributions
-  (blocks::block_minimal& block, RankFlags singular, BlockElt y)
+  (blocks::common_block& block, RankFlags singular, BlockElt y)
 {
   std::vector<pair_list> result(y+1); // initally every |result[z]| is empty
   for (BlockElt z=0; z<=y; ++z) // compute |finals| and |finals_for| in |result|
@@ -1105,7 +1105,7 @@ std::vector<pair_list> contributions
 } // |contributions|, extended block
 
 SR_poly Rep_table::deformation_terms
-  ( blocks::block_minimal& block, const BlockElt y,
+  ( blocks::common_block& block, const BlockElt y,
     RankFlags singular, const RatWeight& gamma) const
 { assert(y<block.size());
 
@@ -1314,7 +1314,7 @@ SR_poly Rep_table::deformation(const StandardRepr& z)
 
 // basic computation of twisted KL column sum, no tabulation of the result
 SR_poly twisted_KL_sum
-( ext_block::ext_block& eblock, BlockElt y, const blocks::block_minimal& parent,
+( ext_block::ext_block& eblock, BlockElt y, const blocks::common_block& parent,
   const RatWeight& gamma) // infinitesimal character, possibly singular
 {
   // compute cumulated KL polynomimals $P_{x,y}$ with $x\leq y$ survivors
@@ -1378,7 +1378,7 @@ SR_poly twisted_KL_column_at_s
     throw std::runtime_error("Parameter is not final");
   auto zm = StandardReprMod::mod_reduce(rc,z);
   BlockElt entry; // dummy needed to ensure full block is generated
-  blocks::block_minimal block(rc,zm,entry); // which this constructor does
+  blocks::common_block block(rc,zm,entry); // which this constructor does
   ext_block::ext_block eblock(block,delta);
 
   return twisted_KL_sum(eblock,eblock.element(entry),block,z.gamma());
@@ -1440,7 +1440,7 @@ SR_poly Rep_table::twisted_KL_column_at_s(StandardRepr sr)
 } // |Rep_table::twisted_KL_column_at_s|
 
 SR_poly Rep_table::twisted_deformation_terms
-    (blocks::block_minimal& block, ext_block::ext_block& eblock,
+    (blocks::common_block& block, ext_block::ext_block& eblock,
      BlockElt y, // in numbering of |block|, not |eblock|
      RankFlags singular_orbits, const RatWeight& gamma) const
 {
@@ -1542,7 +1542,7 @@ SR_poly Rep_table::twisted_deformation_terms
   }
 
   return result;
-} // |twisted_deformation_terms(blocks::block_minimal&,...)|
+} // |twisted_deformation_terms(blocks::common_block&,...)|
 
 #if 0
 SR_poly Rep_table::twisted_deformation_terms (unsigned long sr_hash) const

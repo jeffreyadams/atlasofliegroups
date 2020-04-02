@@ -4664,7 +4664,7 @@ void print_n_block_wrapper(expression_base::level l)
     wrap_tuple<0>(); // |no_value| needs no special care
 }
 
-@ A variant for ``abstract'' blocks, implemented by the |block_minimal| class.
+@ A variant for ``common'' blocks, implemented by the |common_block| class.
 
 @h "common_blocks.h"
 @< Local function def...@>=
@@ -4673,7 +4673,7 @@ void print_c_block_wrapper(expression_base::level l)
   test_standard(*p,"Cannot generate block");
   BlockElt init_index; // will hold index in the block of the initial element
   auto zm = repr::StandardReprMod::mod_reduce(p->rc(),p->val);
-  blocks::block_minimal block(p->rc(),zm,init_index);
+  blocks::common_block block(p->rc(),zm,init_index);
   *output_stream << "Parameter defines element " << init_index
                @|<< " of the following common block:" << std::endl;
   block.print_to(*output_stream,true);
@@ -5041,7 +5041,7 @@ void extended_block_wrapper(expression_base::level l)
   const auto& rc = p->rc();
   BlockElt start;
   auto zm = repr::StandardReprMod::mod_reduce(rc,p->val);
-  blocks::block_minimal block(rc,zm,start);
+  blocks::common_block block(rc,zm,start);
   @< Construct the extended block, then the return value components,
      calling |push_value| for each of them @>
 @)

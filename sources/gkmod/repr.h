@@ -276,7 +276,7 @@ class Rep_table : public Rep_context
   HashTable<StandardReprMod,unsigned long> mod_hash;
 
   struct boundary
-  { unsigned long first_hash; std::unique_ptr<blocks::block_minimal> ptr; };
+  { unsigned long first_hash; std::unique_ptr<blocks::common_block> ptr; };
   std::vector<boundary> bounds; // to partition hash codes to blocks
 
  public:
@@ -288,14 +288,14 @@ class Rep_table : public Rep_context
 
   unsigned int length(StandardRepr z); // by value
 
-  blocks::block_minimal& lookup
+  blocks::common_block& lookup
     (const StandardRepr& sr,BlockElt& z,RankFlags& singular);
 
   SR_poly KL_column_at_s(StandardRepr z); // by value
   SR_poly twisted_KL_column_at_s(StandardRepr z); // by value
 
   SR_poly deformation_terms
-    (blocks::block_minimal& block, BlockElt y, RankFlags singular,
+    (blocks::common_block& block, BlockElt y, RankFlags singular,
      const RatWeight& gamma) const;
 #if 0
   SR_poly deformation_terms (unsigned long sr_hash) const;
@@ -305,7 +305,7 @@ class Rep_table : public Rep_context
   SR_poly deformation(const StandardRepr& z);
 
   SR_poly twisted_deformation_terms
-    (blocks::block_minimal& block, ext_block::ext_block& eblock,
+    (blocks::common_block& block, ext_block::ext_block& eblock,
      BlockElt y, RankFlags singular, const RatWeight& gamma) const;
   SR_poly twisted_deformation_terms (param_block& block,BlockElt entry_elem);
   // here |block| is non-|const| because it calls |add_block|
@@ -318,7 +318,7 @@ class Rep_table : public Rep_context
  private:
   unsigned long formula_index (const StandardRepr& h);
   unsigned long add_block(const StandardReprMod& sr);
-  // add |block_minimal| to |blocks|, and return (new) hash number of |sr|
+  // add |common_block| to |blocks|, and return (new) hash number of |sr|
 
 }; // |Rep_table|
 

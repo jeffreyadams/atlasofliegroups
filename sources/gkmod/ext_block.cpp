@@ -366,7 +366,7 @@ KGBElt param::x() const
   return rc().kgb().lookup(a);
 }
 
-#if 0 // functions redifined in block_minimal.cpp
+#if 0 // functions redifined in common_blocks.cpp
 /*
   This function serves to replace and circumvent |Rep_context::make_dominant|
   applied to a scaled parameter (as occurs in the ordinary deformation function
