@@ -1363,7 +1363,7 @@ BlockElt
     if (kgb.isComplexDescent(sub.simple(s),conj_x))
     {
       cross_act(sz,s);
-      sz_inx = nblock_below(sz,level+1);
+      sz_inx = nblock_below(sz,level+1); // recursion
       pred.reserve(predecessors[sz_inx].size()+1); // a rough estimate
       pred.push_back(sz_inx); // certainly |sz| is predecessor of |z|
       break; // we shall add $s$-ascents of |predecessors[sz_inx]| below
@@ -1373,7 +1373,7 @@ BlockElt
       if (not is_real_nonparity(z,s)) // excludes real nonparity
       { // so we now know that |z| has a type 1 real descent at |s|
 	do_down_Cayley(sz,s);
-	sz_inx = nblock_below(sz,level+1);
+	sz_inx = nblock_below(sz,level+1); // recursion
 	pred.reserve(predecessors[sz_inx].size()+2); // a rough estimate
 	pred.push_back(sz_inx);
 	cross_act(sz,s); // get other inverse Cayley image of |z|
@@ -1483,7 +1483,6 @@ param_block::param_block // partial block constructor, for interval below |sr|
 			    .dot(infin_char.numerator())==0);
 
   partial_nblock_help aux(realGroup(),sub,y_hash,xy_hash);
-  highest_y=y_hash.size()-1;
 
   // step 1: get |y|, which has $y.t=\exp(\pi\ii(\gamma-\lambda))$ (vG based)
   const KGBElt x_org = sr.x();
@@ -1494,7 +1493,7 @@ param_block::param_block // partial block constructor, for interval below |sr|
 
   size_t size= last+1;
   assert(info.size()==size); // |info| should have obtained precisely this size
-
+  highest_y=y_hash.size()-1;
 
   reverse_length_and_sort(false); // do reversal operation for partial block
   xy_hash.reconstruct(); // adapt to permutation of the block
