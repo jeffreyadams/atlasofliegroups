@@ -1336,7 +1336,7 @@ struct partial_nblock_help : public nblock_help
   // construct elements below |z|, at depth |level| from the root call
   BlockElt nblock_below (const nblock_elt& z, unsigned level);
 
-}; // |class partial_nblock_help|
+}; // |partial_nblock_help|
 
 // |nblock_below| extends |y_hash|, and |zz_hash| with |z|, having ensured the
 // presence of its predecessors. Returns (new, current max) hash index of |z|

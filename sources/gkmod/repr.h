@@ -287,9 +287,8 @@ class Rep_table : public Rep_context
   std::vector<StandardReprMod> mod_pool;
   HashTable<StandardReprMod,unsigned long> mod_hash;
 
-  struct boundary
-  { unsigned long first_hash; std::unique_ptr<blocks::common_block> ptr; };
-  std::vector<boundary> bounds; // to partition hash codes to blocks
+  std::vector<std::unique_ptr<blocks::common_block> > block_p;
+  std::vector<std::pair<blocks::common_block*, BlockElt> > place;
 
  public:
   Rep_table(RealReductiveGroup &G);

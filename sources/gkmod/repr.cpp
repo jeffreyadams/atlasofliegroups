@@ -872,7 +872,7 @@ bool Rep_context::compare::operator()
 Rep_table::Rep_table(RealReductiveGroup &G)
 : Rep_context(G)
 , pool(), hash(pool), def_formulae()
-, mod_pool(), mod_hash(mod_pool), bounds()
+, mod_pool(), mod_hash(mod_pool), block_p(), place()
 {}
 Rep_table::~Rep_table() = default;
 
@@ -991,7 +991,7 @@ unsigned long Rep_table::add_block(const StandardReprMod& srm)
   std::unique_ptr<blocks::common_block>
     ptr(new blocks::common_block(*this,srm,srm_in_block));
   auto& block=*ptr;
-  bounds.push_back(boundary { first, std::move(ptr) });
+  block_p.push_back(std::move(ptr));
 
   const unsigned long result = // future sequence number for our |srm|
     first+srm_in_block;
@@ -1002,8 +1002,9 @@ unsigned long Rep_table::add_block(const StandardReprMod& srm)
     auto zm = StandardReprMod::mod_reduce
       (*this, sr_gamma(block.x(z),lambda_rho,srm.gamma_mod1()));
     auto seq = mod_hash.match(zm);
-    assert(seq+1==mod_hash.size()); // all block elements should be new
+    assert(seq==place.size()); // all block elements should be new
     ndebug_use(seq);
+    place.emplace_back(&block,z);
   }
   return result;
 }
@@ -1015,16 +1016,10 @@ blocks::common_block& Rep_table::lookup
   auto h=mod_hash.find(srm); // look up modulo translation in $X^*$
   if (h==mod_hash.empty) // then we are in a new translation family of blocks
     h=add_block(srm); // ensure this block is known
-  assert(h<mod_hash.size()); // it cannot be |mod_hash.empty| anymore
+  assert(h<place.size()); // it cannot be |mod_hash.empty| anymore
 
-  auto lwb=bounds.cbegin();
-  { std::vector<boundary>::const_iterator upb=bounds.cend(),halfway;
-    unsigned long diff;
-    while ((diff=upb-lwb)>1)
-      ( (halfway=lwb+diff/2)->first_hash<=h ? lwb : upb) = halfway;
-  }
-  auto& block = *lwb->ptr; // not |const|, filling KL table later needed
-  z=h-lwb->first_hash;
+  auto& block = *place[h].first;
+  z = place[h].second;
 
   singular.reset();
   {
