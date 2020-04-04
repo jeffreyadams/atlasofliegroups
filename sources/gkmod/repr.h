@@ -78,7 +78,7 @@ class StandardRepr
   TorusPart y_bits; // torsion part of $\lambda$
   RatWeight infinitesimal_char; // $\gamma$ (determines free part of $\lambda$)
 
-  // one should call constructor from |Rep_context| or |StandardReprMod| only
+  // one should call constructor from |Rep_context| only
   StandardRepr (KGBElt x,TorusPart y,const RatWeight& gamma,unsigned int h)
     : x_part(x), hght(h), y_bits(y), infinitesimal_char(gamma)
   { infinitesimal_char.normalize(); } // to ensure this class invariant
@@ -115,6 +115,9 @@ class StandardReprMod
   // when building, we force integral parts of |gamma_mod1| components to zero
   static StandardReprMod mod_reduce
     (const Rep_context& rc,const StandardRepr& sr);
+  static StandardReprMod build
+    (const Rep_context& rc, const RatWeight& gamma_mod_1, // must be reduced
+     KGBElt x, const RatWeight& gam_lam);
 
   const RatWeight& gamma_mod1() const { return inf_char_mod_1; }
   KGBElt x() const { return x_part; }

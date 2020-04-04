@@ -71,6 +71,18 @@ StandardReprMod StandardReprMod::mod_reduce
   return StandardReprMod(rc.sr_gamma(sr.x(),lam_rho,gamma_mod1));
 }
 
+StandardReprMod StandardReprMod::build
+  (const Rep_context& rc, const RatWeight& gamma_mod_1, // must be reduced
+   KGBElt x, const RatWeight& gam_lam)
+{
+  const auto gamma_rho = gamma_mod_1 - rho(rc.root_datum());
+  const RatWeight lr_rat = (gamma_mod_1-gamma_rho).normalize();
+  assert(lr_rat.denominator()==1);
+  Weight lam_rho(lr_rat.numerator().begin(),lr_rat.numerator().end());
+  return StandardReprMod(rc.sr_gamma(x,lam_rho,gamma_mod_1));
+}
+
+
 size_t StandardReprMod::hashCode(size_t modulus) const
 { size_t hash= x_part +
     243*y_bits.data().to_ulong()+47*inf_char_mod_1.denominator();
