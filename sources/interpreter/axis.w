@@ -269,7 +269,7 @@ private:
 public:
   layer(const layer&) = @[delete@]; // no ordinary copy constructor
   layer& operator= (const layer&) = @[delete@]; // nor assignment operator
-  layer(size_t n); // non-function non-loop layer
+  explicit layer(size_t n); // non-function non-loop layer
   layer(size_t n,type_p return_type);
     // function or (with |return_type==nullptr|) loop layer
   ~layer () @+{@; lexical_context.pop_front(); }
@@ -290,7 +290,8 @@ public:
   vec::const_iterator cend() const @+{@; return variable.end(); }
   bool is_const (vec::const_iterator it) const
   @+{@; return constness.isMember(it-cbegin()); }
-  static bool may_break(unsigned depth); // whether \&{break}~|depth| is legal here
+  static bool may_break(unsigned depth);
+    // whether \&{break}~|depth| is legal here
   static bool may_return(); // whether \&{return} is legal here
   static type_expr& current_return_type() @+
   {@; return *lexical_context.front()->return_type; }
@@ -1493,6 +1494,7 @@ will still be accepted.
     arg.reset(new voiding(std::move(arg)));
   std::ostringstream name;
   name << main_hash_table->name_of(id) << '@@' << arg_type;
+@)
   call = v.value()->build_call(v.value(),name.str(),std::move(arg),e.loc);
 @)
   if (type==void_type and
@@ -1617,16 +1619,17 @@ struct call_base : public expression_base
 };
 @)
 
-@ We similarly define an intermediate class |function_base| between
-|value_base| and the concrete classes that will define function objects,
-like built-in functions. The main (virtual) methods introduced here are
-|apply|, which will serve in |call_expression::evaluate| below to implement
-a call of the function object once arguments have been evaluated to the stack,
-and |build_call| that is instead used to build a specialised call expression
-when a function value is identified at analysis time (in overloaded calls).
-In addition |argument_policy| tells how the function object wants its
-arguments prepared, and |report_origin| which serves in forming an back-trace
-in case of errors during execution of the function.
+@ We similarly define an intermediate class |function_base| between |value_base|
+and the concrete classes that will define function objects, like built-in
+functions. The main (virtual) methods introduced here are |apply|, which will
+serve in |call_expression::evaluate| below to implement a call of the function
+object once arguments have been evaluated to the stack, and |build_call| that is
+instead used to build a specialised call expression when a function value is
+identified at analysis time (in overloaded calls). In addition |argument_policy|
+tells how the function object wants its arguments prepared, |maybe_push| is a
+hook that does nothing except for recursive functions that it it for their
+implementation, and |report_origin| which serves in forming an back-trace in
+case of errors during execution of the function.
 
 @< Type def... @>=
 // \.{global.h} predeclares |function_base|, and defines:
@@ -1643,6 +1646,8 @@ public:
     // go; arg.\ values on |execution_stack|
   virtual expression_base::level argument_policy() const=0;
     // form to prepare arguments in
+  virtual void maybe_push(const std::shared_ptr<const function_base>& p) const
+    @+{}
   virtual void report_origin(std::ostream& o) const=0;
     // tell where we are from
   virtual expression_ptr build_call
@@ -2001,24 +2006,26 @@ void builtin_call::evaluate(level l) const
 }
 
 
-@ Finally we consider the case where evaluating a |call_expression| results in
-calling a built-in function. Since the function to be called is here produced
-by evaluating an expression (maybe as simple as an identifier), the fact that
-it is a built-in rather than user-defined function can here only be
-determined at run time. The part of this method that deals with the case of a
-user defined function is split off, and will be presented later once we have
-discussed the representation of user defined functions.
+@ Finally we consider the case where evaluation is done though a
+|call_expression|, as happens when the function object cannot be identified at
+compile time. Since the function to be called is here produced by evaluating an
+expression (maybe as simple as an identifier), the question whether a built-in
+rather than user-defined (or other kind of) function is being called can only be
+determined at run time. The distinction is handled though the virtual methods
+|argument_policy| and |apply| of |functions_base|, so the code below handles all
+kinds of function objects at once.
 
-To evaluate a |call_expression| object, in which the function part can be any
-expression, we must evaluate this function part, and then dynamically test
-whether it is a built-in or a user-defined function. In the former case we
-evaluate the arguments, expanding them on the |execution_stack|, and then call
-the built-in function. In that case we pass on the |level| parameter that was
-passed to |call_expression::evaluate| method to the built-in function, so that
-if necessary it can in its turn return and expanded result (or no result at
-all). The evaluation of user-defined functions will be detailed later, but we
-can already say that in this case it will be more useful to receive the
-argument on the stack as a single value.
+To evaluate a |call_expression| object, we first evaluate this function part,
+and then dynamically cast it to a |function_base f| (which should always
+succeed, assuming type checking is sound). Then we evaluate the arguments
+according to the |f->argument_policy()|, and then call |f->apply|, which should
+find the arguments in the form it expects.
+In that case we pass on the |level| parameter that was passed to
+|call_expression::evaluate| method to the built-in function, so that if
+necessary it can in its turn return and expanded result (or no result at all).
+The evaluation of user-defined functions will be detailed later, but we can
+already say that in this case it will be more useful to receive the argument on
+the stack as a single value.
 
 We reuse the previous |catch| block literally a third time; this time not only
 do we judiciously choose the name |arg_string| to match what we did before,
@@ -2026,6 +2033,7 @@ but also the local variable name |f| to math the field name
 |builtin_call::f| that the cited module referred to in previous
 instances.
 
+@: general call evaluate @>
 @< Function definitions @>=
 void call_expression::evaluate(level l) const
 { function->eval();
@@ -2033,6 +2041,7 @@ void call_expression::evaluate(level l) const
   if (f.get()==nullptr)
     throw logic_error
       ("Non-function value found for function in a call expression");
+  f->maybe_push(f); // provide shared pointer to self for recursive functions
   std::string arg_string;
   if (verbosity==0)
     argument->evaluate(f->argument_policy());
@@ -2585,22 +2594,42 @@ catch (error_base& e)
 
 @*1 Lambda-expressions (user-defined functions).
 %
-In contrast to let-expressions, a $\lambda$-expression can be evaluated one
-or more times, yielding ``closure'' values that need to refer to the pattern,
-and which might outlive the $\lambda$-expression, so appropriate duplication
-or sharing must be organised. We opt for sharing between the
-$\lambda$-expression and any closures obtained from it. Since the evaluator
-handles expressions by reference to |expression_base|, one cannot achieve
-sharing directly to |lambda_expression|; instead we store a shared pointer to
-a structure with the necessary components.
+In contrast to let-expressions, a $\lambda$-expression not merely extends the
+current context with new bindings, but upon evaluation yields a ``closure'', a
+value that captures the current context, and which after possibly being passed
+around, can later be combined with argument values to provide an extended
+context in which its body is evaluated. The closure might outlive the expression
+in which it occurs, and different closures for the same $\lambda$-expression can
+have overlapping lifetimes; if creating a closure is to avoid copying the
+$\lambda$-expression, yet memory for it is to be freed when the last reference
+to it disappears, we organise a |std::shared_ptr| based mechanism for sharing
+it. The general mechanism employed by the evaluator is not suited for this, as
+it handles expressions by reference to |expression_base|, which is too general
+for us. So instead we split off a structure |lambda_struct| to which both
+$\lambda$-expressions and closures will store a shared pointer.
 
-Since this is the kind
-of runtime value that will hold the result of a user function definition, we
-provide a field |loc| to record the source location.
+Since this is the kind of runtime value that will hold the result of a user
+function definition, we provide a field |loc| to record the source location.
+
+The constructor for |lambda_expression| moves the provided pattern and creates a
+new shared reference to the copy (further sharing will occur when the
+$\lambda$-expression is evaluated). The |loc| field is copy-constructed from the
+one passed, which resides in a |const|-qualified |expr| object produced by the
+parser; therefore moving is not an option here, and since this is plain data it
+wouldn't be more efficient anyway.
+
+To give explicit support for recursive functions, we define a second structure
+|recursive_lambda| for a $\lambda$-expression whose body can also refer to the
+$\lambda$-expression itself. In addition to a |lambda_expression| it stores a
+recursive identifier. We choose to derive |recursive_lambda| from
+|lambda_expression|, but to store the recursive identifier inside the base
+|lambda_expression| itself, by having the |id_pat| be a pair with the recursive
+identifier as first component and the usual argument pattern as second field.
 
 @< Type def... @>=
 struct lambda_struct
 { id_pat param; @+ expression_ptr body; @+ source_location loc;
+@)
   lambda_struct
       (id_pat&& param, expression_ptr&& body, const source_location& loc)
   : param(std::move(param)), body(std::move(body)), loc(loc) @+{}
@@ -2611,28 +2640,40 @@ struct lambda_expression : public expression_base
 { shared_lambda p;
   @)
   lambda_expression
-    (const id_pat& p, expression_ptr&& b, const source_location& loc);
+    (id_pat&& pat, expression_ptr&& b, const source_location& loc)
+    : p(std::make_shared<lambda_struct>(std::move(pat),std::move(b),loc)) @+{}
+
   virtual ~@[lambda_expression() nothing_new_here@];
     // subobjects do all the work
   virtual void evaluate(level l) const;
   virtual void print(std::ostream& out) const;
 };
+@)
+struct recursive_lambda : public lambda_expression
+{ recursive_lambda(id_type self,@|
+     id_pat&& p, expression_ptr&& b, const source_location& loc);
+  virtual ~@[recursive_lambda() nothing_new_here@];
+  virtual void evaluate(level l) const;
+  virtual void print(std::ostream& out) const;
+};
 
-
-@ The main constructor cannot be inside the class definition, as it requires
-the local function |copy_id_pat|. It copies the pattern and creates a new
-shared reference to the copy (further sharing will occur when the
-$\lambda$-expression is evaluated). The |loc| field is copy-constructed from
-the one passed, which resides in a |const|-qualified |expr| object produced by
-the parser; therefore moving is not an option here, and since this is plain
-data it wouldn't be more efficient anyway.
+@ For recursive functions we assemble a pair-pattern, consisting of the
+recursive identifier, and the actual argument pattern for the
+recursive function. Although the recursive identifier cannot be assigned to,
+there is no need to set the constant bit in its pattern here, as that property
+will be enforced during type checking.
 
 @< Function def... @>=
-inline
-lambda_expression::lambda_expression @|
-  (const id_pat& p, expression_ptr&& b, const source_location& loc)
-: p(std::make_shared<lambda_struct>(copy_id_pat(p),std::move(b),loc))
-@+{}
+id_pat rec_pair(id_type s,id_pat && p)
+{ patlist pl;
+  pl.push_front(std::move(p));
+  pl.push_front(id_pat(s));
+  return id_pat(std::move(pl));
+}
+inline recursive_lambda::recursive_lambda(id_type self,@|
+     id_pat&& p, expression_ptr&& b, const source_location& loc)
+  : lambda_expression(rec_pair(self,std::move(p)),std::move(b),loc) @+{}
+
 
 @ To print an anonymous function, we print the parameter list, followed by a
 colon and by the function body. If the parameter list contains a name for the
@@ -2652,17 +2693,24 @@ syntax tree representing the user input (as happens in messages from the type
 checker).
 
 @< Function definitions @>=
-std::ostream& operator<<(std::ostream& out, const lambda_struct& l)
-{ if ((l.param.kind&0x1)!=0)
-    if ((l.param.kind&0x4)!=0)
-      out << "(!" << l.param << ')';
-    else out << '(' << l.param << ')';
-  else if ((l.param.kind&0x2)!=0 and not l.param.sublist.empty())
-    out << l.param;
+void print_lambda(std::ostream& out,
+  const id_pat& param, const expression_ptr& body)
+{ if ((param.kind&0x1)!=0) // single argument
+    out << '(' << param << ')';
+  else if ((param.kind&0x2)!=0 and not param.sublist.empty())
+    out << param;
   else out << '@@';
-  return out << ": " << *l.body;
+  out << ": " << *body;
 }
-void lambda_expression::print(std::ostream& out) const @+{@; out << *p; }
+@)
+void lambda_expression::print(std::ostream& out) const
+{@; print_lambda(out,p->param,p->body); }
+void recursive_lambda::print(std::ostream& out) const
+{ auto it=p->param.sublist.begin();
+  id_type self=it->name;
+  const id_pat& param=*++it;
+  print_lambda(out << main_hash_table->name_of(self) << ':',param,p->body);
+}
 
 @ Handling of user-defined functions in type analysis is usually uneventful
 (apart from the analysis of its body, which can of course be arbitrarily
@@ -2710,8 +2758,49 @@ case lambda_expr:
                        type.copy());
 @/layer new_layer(count_identifiers(pat),rt);
   thread_bindings(pat,arg_type,new_layer,false);
-@/return expression_ptr(new @|
-      lambda_expression(pat, convert_expr(fun.body,*rt), std::move(e.loc)));
+@/return expression_ptr(new @| lambda_expression
+   (copy_id_pat(pat), convert_expr(fun.body,*rt), std::move(e.loc)));
+}
+
+@ Type checking recursive lambda expressions is slightly different. The return
+type must be specified, so we should be able to fully specialise |type| (unless
+it is |void|). We must, in addition to binding the argument pattern to the
+argument type, bind the recursive identifier to the function type given by
+|fun.parameter_type| and |fun.result_type|; we build that type as |f_type|
+rather than use the specialised |type|, just in case the latter should be
+|void|. The call to |thread_bindings| for the recursive identifier has final
+argument |true| indicating the identifier should be treated as constant during
+the call to |convert_expr| for the body. That call needs an lvalue for its
+expected type, and the |layer| constructor needs the same in the form of a
+pointer to non-|const| (in both cases because the type might be specialised,
+from the type of the body respectively from |return| clauses inside it), For
+these uses we supply |f_type.func()->result_type| (aliased |r_type|) rather than
+using |type| (again, it might be |void|), which since |f_type| is local means
+any specialisation done to it will be lost; however there should be no such
+changes since |fun.result_type| is already fully specialised.
+
+@< Cases for type-checking and converting... @>=
+case rec_lambda_expr:
+{ const rec_lambda_node& fun=*e.rec_lambda_variant;
+  const id_pat& pat=fun.pattern;
+  const type_expr& arg_type=fun.parameter_type;
+    // argument type specified in |fun|
+  if (not pattern_type(pat).specialise(arg_type))
+    // do |pat| structure and |arg_type| conflict?
+    throw expr_error(e,"Function argument pattern does not match its type");
+  type_expr f_type(arg_type.copy(),fun.result_type.copy());
+    // not |const| though it cannot change
+  if (not type.specialise(f_type) and type!=void_type)
+      @/throw type_error(e, std::move(f_type), type.copy());
+@)
+  type_expr& r_type=f_type.func()->result_type;
+    // non |const| though it cannot change
+  layer new_layer(1+count_identifiers(pat),&r_type);
+@/thread_bindings(id_pat(fun.self),f_type,new_layer,true);
+  thread_bindings(pat,arg_type,new_layer,false);
+@/return expression_ptr(new @| recursive_lambda
+   (fun.self,copy_id_pat(pat),
+    convert_expr(fun.body,r_type), std::move(e.loc)));
 }
 
 @* Closures.
@@ -2731,18 +2820,28 @@ encountered.
 Sharing the |lambda_struct| among different closures obtained from the same
 $\lambda$-expression is efficient in terms of space, but would require double
 dereference upon evaluation. Since the latter occurs frequently, we speed up
-evaluation by also using a reference |body| directly to the function body.
-Note that closures are formed when the \emph{definition} of a user-defined
-function is processed, so this optimisation should make evaluation of globally
-defined functions a bit faster. For local functions, the closure is formed
-during the execution of the outer function, so the optimisation only helps if
-the closure formed will be called more than once; this is still probable,
-though there are usage patters (for instance simulating a case statement by
-selecting a closure from an array, and then calling it) for which local
-closures are actually executed less than once on average; in such cases we are
-actually wasting effort here.
+evaluation by also using a reference |body| directly to the function body. Note
+that closures are formed when the \emph{definition} of a user-defined function
+is processed, so this optimisation should make evaluation of globally defined
+functions a bit faster. For local functions, the closure is formed during the
+execution of the outer function, so the optimisation only helps if the closure
+formed will be called more than once; this is still probable, though there are
+usage patters (for instance simulating a case statement by selecting a closure
+from an array of closures, and then calling it) for which local closures are
+actually executed less than once on average; in such cases we are actually
+wasting effort here.
 
+We provide a method |maybe_push| that will push a shared pointer (which in fact
+will be one to the closure itself) on the stack, as is needed for the
+implementation of recursive functions. Since the default implementation of this
+method is to do nothing, we need to implement it only when the template argument
+|recursive| holds, but it is most convenient to define it here anyway and use a
+dynamic test of the template argument that the compiler should optimise away.
+
+@s closure_ptr vector
+@s shared_closure vector
 @< Type def... @>=
+template<bool recursive>
 struct closure_value : public function_base
 { shared_context context;
   shared_lambda p;
@@ -2753,18 +2852,25 @@ struct closure_value : public function_base
   virtual ~ @[closure_value() nothing_new_here@];
   virtual void print(std::ostream& out) const;
   virtual void apply(expression_base::level l) const;
-  virtual expression_base::level argument_policy() const @+
+  virtual expression_base::level argument_policy() const
   {@; return expression_base::single_value; }
+  virtual void maybe_push(const std::shared_ptr<const function_base>& p) const
+  {@; if (recursive)
+      push_value(p);
+  }
   virtual void report_origin(std::ostream& o) const;
   virtual expression_ptr build_call
     (const shared_function& owner,const std::string& name,
      expression_ptr&& arg, const source_location& loc) const;
 @)
-  static const char* name() @+{@; return "closure"; }
+  static const char* name() @+
+   {@; return recursive ? "recursive closure" : "closure"; }
   closure_value @[(const closure_value& ) = delete@];
 };
-typedef std::unique_ptr<closure_value> closure_ptr;
-typedef std::shared_ptr<const closure_value> shared_closure;
+template<bool recursive>
+using  closure_ptr = std::unique_ptr<closure_value<recursive> >;
+template<bool recursive>
+using shared_closure = std::shared_ptr<const closure_value<recursive> >;
 
 @ A closure prints the |lambda_expression| from which it was obtained, but we
 also print an indication of where the function was defined (this was not
@@ -2775,15 +2881,29 @@ better only the bindings for relevant (because referenced) identifiers could
 be printed. But it's not done yet.
 
 @< Function def... @>=
-void closure_value::print(std::ostream& out) const
-{@; out << "Function defined " << p->loc << std::endl << *p;
+template<>
+void closure_value<false>::print(std::ostream& out) const
+{@; print_lambda(out << "Function defined " << p->loc << std::endl,
+                 p->param,p->body);
+}
+template<>
+void closure_value<true>::print(std::ostream& out) const
+{ auto it=p->param.sublist.begin();
+  id_type self=it->name;
+  const id_pat& param=*++it;
+  out << "Recursive function defined " << p->loc << std::endl;
+  print_lambda(out<< main_hash_table->name_of(self) << ':',param,p->body);
 }
 
-void closure_value::report_origin(std::ostream& o) const
- @+ {@; o << "defined " << p->loc; }
+template<bool recursive>
+void closure_value<recursive>::report_origin(std::ostream& o) const
+{@; o << "defined " << p->loc; }
 
 @ Evaluating a $\lambda$-expression just forms a closure using the current
-execution context, and returns that.
+execution context, and returns that. Since the |recursive_lambda| already has
+done the work of wrapping the recursive identifier into a pattern with that of
+the arguments, the recursive case only differs from the ordinary one here by
+making |true| the template argument of the |closure_value| constructor.
 
 While this code looks rather innocent, note that the sharing of
 |frame::current| created here may survive after one or more frames on the list
@@ -2796,7 +2916,11 @@ kind of stack, in particular it cannot be embedded in the \Cpp\ runtime stack
 @< Function def... @>=
 void lambda_expression::evaluate(level l) const
 {@;if (l!=no_value)
-     push_value(std::make_shared<closure_value>(frame::current,p));
+     push_value(std::make_shared<closure_value<false> >(frame::current,p));
+}
+void recursive_lambda::evaluate(level l) const
+{@;if (l!=no_value)
+     push_value(std::make_shared<closure_value<true> >(frame::current,p));
 }
 
 @*1 Calling user-defined functions.
@@ -2885,43 +3009,54 @@ std::vector<id_type> lambda_frame::id_list() const
 @ In general a closure formed from a $\lambda$ expression can be handled in
 various ways (like being passed as argument, returned, stored) before being
 applied as a function, in which case the call is performed by
-|call_expression::evaluate| described above; the actual code this executes is
-given in section@# lambda evaluation @> below. However, in most cases the path
-from definition to call is more direct: the closure from a user-defined
-function is bound to an identifier (or operator) in the global overload table,
-and located during type-checking of a call expression. As this special but
-frequent case can be handled more efficiently than by building a
-|call_expression|, we introduce a new |expression| type that is capable of
-directly storing a closure value.
+|call_expression::evaluate| described above in
+%
+section@# general call evaluate @>; the actual code this executes (through the
+virtual method |apply|) is given in section@# lambda evaluation @> below.
+However, in many cases the path from definition to call is more direct: the
+closure from a user-defined function is bound to an identifier (or operator) in
+the global overload table, and located during type-checking of a call
+expression. As this special but frequent case can be handled more efficiently
+than by building a |call_expression|, we introduce a new |expression| type
+|closure_call| that is capable of directly storing a closure value, evaluating
+only its argument sub-expression at run time.
 
-Closures themselves are anonymous, so the |print_name| reflects the overloaded
-name that was used to identify this function; it can vary separately from the
-closure |f| if the latter is entered more than once in the the tables. This
-is in contrast to |builtin_call| where the name is taken from the
-stored |builtin_value|, and cannot be dissociated from the wrapper function.
+Closures themselves are anonymous, so the name |n| that becomes the |name| field
+of the |overloaded_call| base object reflects the overloaded name that was used
+to identify this function; it can vary separately from the closure |f| if the
+latter is entered more than once in the the tables. This is in contrast to
+|builtin_call| where the name is taken from the stored |builtin_value|, and
+cannot be dissociated from the wrapper function.
 
 @< Type definitions @>=
+template<bool recursive>
 struct closure_call : public overloaded_call
-{ shared_closure f;
+{ shared_closure<recursive> f;
 @)
   closure_call @|
-   (shared_closure f,const std::string& n,expression_ptr&& a
+   (shared_closure<recursive>&& f,const std::string& n,expression_ptr&& a
    ,const source_location& loc)
-  : overloaded_call(n,std::move(a),loc), f(f) @+ {}
+  : overloaded_call(n,std::move(a),loc), f(std::move(f)) @+ {}
   virtual ~@[closure_call() nothing_new_here@];
   virtual void evaluate(level l) const;
 };
 
 @ Here is how a |closure_value| can turn itself into an
 |closure_call| when provided with an argument expression, as well
-as a |name| to call itself and a |source_location| for the call.
+as a |name| to call itself and a |source_location| for the call. The method
+|build_call| constructs a shared pointer |me| to the |closure_value| object it is
+called for, but whose sharing is managed by a separately provided |shared_ptr
+owner|, and constructs a |closure_call| from that pointer and the provided
+argument(s) |arg|, and named according to the separately provided |name|.
 
 @< Function def... @>=
-expression_ptr closure_value::build_call
+template<bool recursive>
+expression_ptr closure_value<recursive>::build_call
     (const shared_function& owner,const std::string& name,
      expression_ptr&& arg, const source_location& loc) const
-{ std::shared_ptr<const closure_value> f(owner,this);
-  return expression_ptr(new @| closure_call(f,name,std::move(arg),loc));
+{ std::shared_ptr<const closure_value<recursive> > me(owner,this);
+@/return expression_ptr(new @| closure_call<recursive>
+    (std::move(me),name,std::move(arg),loc));
 }
 
 
@@ -2935,16 +3070,16 @@ the identifiers are not used at all at runtime (they are present in the
 used here); our implementation can be classified as one using ``nameless
 dummies'' (also known as ``de Bruijn indices'').
 
-When we come here |f| must be a |closure_value|, the argument has already been
+When we come here, the argument of our |closure_value| has already been
 evaluated, and is available as a single value on the |execution_stack|. The
 evaluation of the call temporarily replaces the current execution context
-|frame::current| by one composed of |f->context| stored in the closure and a
-new frame defined by the parameter list |f->param| and the argument obtained
-as |pop_value()|; the function body is evaluated in this extended context.
+|frame::current| by one composed of |f->context| stored in the closure and a new
+frame defined by the parameter list |f->param| and the argument obtained as
+|pop_value()|; the function body is evaluated in this extended context.
 Afterwards the original context is restored by the destructor of~|fr|, whether
 the call completes normally or is terminated by a runtime error. The most
-important advantage of this approach is in case of abnormal exits from loops
-and functions, which are implemented by throwing and catching an exception at
+important advantage of this approach is in case of abnormal exits from loops and
+functions, which are implemented by throwing and catching an exception at
 run-time and will therefore unwind the \Cpp\ stack. (Actually, performing
 \&{break} from a loop should never lead to destructing any |lambda_frame|,
 though it might destruct some |frame|s.)
@@ -2955,7 +3090,8 @@ at its definition.
 @: lambda evaluation @>
 
 @< Function def... @>=
-void closure_value::apply(expression_base::level l) const
+template<>
+void closure_value<false>::apply(expression_base::level l) const
 {
   try
   { lambda_frame fr(p->param,context);
@@ -2963,13 +3099,36 @@ void closure_value::apply(expression_base::level l) const
     if (fr.is_empty()) // we must test for functions without named arguments
     {@; execution_stack.pop_back();
       body.evaluate(l);
-    } //  drop argument, evaluate avoiding |bind|
+    } //  drop arg, evaluate avoiding |bind|
     else
     { fr.bind(pop_value()); // decompose arguments(s) and bind values in |fr|
       try {@; body.evaluate(l); }
         // call, passing evaluation level |l| to function body
       @< Catch block for providing a trace-back of local variables @>
     }
+  } // restore context upon destruction of |fr|
+  @< Catch block for explicit \&{return} from functions @>
+}
+
+@ Here is where recursive functions differ from non-recursive ones. Instead of
+just binding the arguments popped from the stack, we build a pair consisting of
+our current (recursive) |closure_value| itself and the argument, and bind that
+to the pattern of the |lambda_struct| access from the closure. Since the
+recursive name is alwys present, we do not have to worry about the possibility
+of a |lambda_frame| without any identifiers.
+
+@< Function def... @>=
+template<>
+void closure_value<true>::apply(expression_base::level l) const
+{
+  try
+  { lambda_frame fr(p->param,context);
+      // save context, create new one for |*this|
+    wrap_tuple<2>(); // combine pre-pushed self object with pushed argument(s)
+    fr.bind(pop_value()); // bind self value and arguments in |fr|
+    try {@; body.evaluate(l); }
+      // call, passing evaluation level |l| to function body
+      @< Catch block for providing a trace-back of local variables @>
   } // restore context upon destruction of |fr|
   @< Catch block for explicit \&{return} from functions @>
 }
@@ -3000,8 +3159,11 @@ a fourth textual reuse of the |catch| block for function calls, as well as
 (|fr|) a third reuse of the |catch| block for local variables.
 
 @< Function definitions @>=
-void closure_call::evaluate(level l) const
-{ argument->eval(); // evaluate arguments as a single value
+template<bool recursive>
+void closure_call<recursive>::evaluate(level l) const
+{ if (recursive)
+    push_value(f); // duplicate our closure to the execution stack
+  argument->eval(); // evaluate arguments as a single value
   std::string arg_string;
   if (verbosity!=0) // then record argument(s) as string
   {@; std::ostringstream o;
@@ -3012,11 +3174,14 @@ void closure_call::evaluate(level l) const
   { lambda_frame fr(f->p->param,f->context);
       // save context, create new one for |f|
 @)
-    if (fr.is_empty()) // we must test for functions without named arguments
+    if (not recursive and fr.is_empty())
+       // we must test for functions without named arguments
       {@; execution_stack.pop_back(); f->body.evaluate(l); }
       //  avoid |bind|, evaluate
     else
-    { fr.bind(pop_value()); // decompose arguments(s) and bind values in |fr|
+    { if (recursive)
+        wrap_tuple<2>(); // combine our closure with actual arguments
+      fr.bind(pop_value()); // decompose arguments(s) and bind values in |fr|
       try {@; f->body.evaluate(l); }
       // call, passing evaluation level |l| to function body
       @< Catch block for providing a trace-back of local variables @>

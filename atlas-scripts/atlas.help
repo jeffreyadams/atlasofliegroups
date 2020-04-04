@@ -673,9 +673,9 @@ to map one type to the other (even so, one should be aware that conversion
 from '[int]' to 'vec' may cause an integer overflow error). For similar
 reasons the conversions themselves are defined conservatively: in doubtful
 cases they prefer to signal a runtime error rather than make a guess about the
-dired result. This applies in particular to conversion from a list of (column)
-vectors to a matrix, where their might be ambiguity about the number of rows
-of the result; a more explict alternative is provided as discussed below.
+desired result. This applies in particular to conversion from a list of
+(column) vectors to a matrix, where their might be ambiguity about the number of
+rows of the result; a more explict alternative is provided as discussed below.
 
 Here is a list of all implicit type conversions
 
