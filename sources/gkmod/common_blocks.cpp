@@ -541,7 +541,7 @@ unsigned int scent_count(DescValue v);
 Coweight ell (const KGB& kgb, KGBElt x);
 
   // Declarations of some local functions
-WeylWord fixed_conjugate_simple (const context_minimal& c, RootNbr& alpha);
+WeylWord fixed_conjugate_simple (const common_context& c, RootNbr& alpha);
 bool same_standard_reps (const paramin& E, const paramin& F);
 bool same_sign (const paramin& E, const paramin& F);
 inline bool is_default (const paramin& E)
@@ -549,16 +549,16 @@ inline bool is_default (const paramin& E)
 
 void z_align (const paramin& E, paramin& F, bool extra_flip);
 void z_align (const paramin& E, paramin& F, bool extra_flip, int t_mu);
-paramin complex_cross(const context_minimal& ctxt,
+paramin complex_cross(const common_context& ctxt,
 		      const ext_gen& p, paramin E);
 int level_a (const paramin& E, const Weight& shift, RootNbr alpha);
-DescValue star (const context_minimal& ctxt, const paramin& E, const ext_gen& p,
+DescValue star (const common_context& ctxt, const paramin& E, const ext_gen& p,
 		containers::sl_list<paramin>& links);
 
 bool is_descent
-  (const context_minimal& ctxt, const ext_gen& kappa, const paramin& E);
+  (const common_context& ctxt, const ext_gen& kappa, const paramin& E);
 weyl::Generator first_descent_among
-  (const context_minimal& ctxt, RankFlags singular_orbits,
+  (const common_context& ctxt, RankFlags singular_orbits,
    const ext_gens& orbits, const paramin& E);
 
   // |paramin_context| methods
@@ -574,7 +574,7 @@ RatCoweight paramin_context::g () const
   { return real_group().g(); }
 
 
-context_minimal::context_minimal
+common_context::common_context
   (const repr::Rep_context& rc, const WeightInvolution& delta,
    const SubSystem& sub)
     : paramin_context(rc,delta)
@@ -595,7 +595,7 @@ context_minimal::context_minimal
     l_shifts[i] = -g_rho_check.dot(integr_datum.simpleRoot(i));
 }
 
-bool context_minimal::is_very_complex (InvolutionNbr theta, RootNbr alpha) const
+bool common_context::is_very_complex (InvolutionNbr theta, RootNbr alpha) const
 { const auto& i_tab = inner_class().involution_table();
   const auto& rd = root_datum();
   assert (rd.is_posroot(alpha)); // this is a precondition
@@ -604,7 +604,7 @@ bool context_minimal::is_very_complex (InvolutionNbr theta, RootNbr alpha) const
   return image!=alpha and image!=delta_of(alpha);
 }
 
-Weight context_minimal::to_simple_shift
+Weight common_context::to_simple_shift
   (InvolutionNbr theta, InvolutionNbr theta_p, RootNbrSet S) const
 { const InvolutionTable& i_tab = inner_class().involution_table();
   S &= (i_tab.real_roots(theta) ^i_tab.real_roots(theta_p));
@@ -621,7 +621,7 @@ Weight context_minimal::to_simple_shift
   This comes from an action of |delta| on a certain top wedge product of
   root spaces, and the formula below tells whether that action is by $-1$.
 */
-bool context_minimal::shift_flip
+bool common_context::shift_flip
   (InvolutionNbr theta, InvolutionNbr theta_p, RootNbrSet S) const
 { S.andnot(delta_fixed()); // $\delta$-fixed roots won't contribute
 
@@ -644,7 +644,7 @@ bool context_minimal::shift_flip
    of the simple roots in its component of the root system is). In this case
    |alpha| is left as that non simple root, and the result conjugates to it.
  */
-WeylWord fixed_conjugate_simple (const context_minimal& ctxt, RootNbr& alpha)
+WeylWord fixed_conjugate_simple (const common_context& ctxt, RootNbr& alpha)
 { const RootDatum& rd = ctxt.root_datum();
 
   WeylWord result;
@@ -834,7 +834,7 @@ void z_align (const paramin& E, paramin& F, bool extra_flip, int t_mu)
   (for |l|) the same thing with |rho_check_imaginary|. This is done by the
   "correction" terms below.
  */
-paramin complex_cross(const context_minimal& ctxt,
+paramin complex_cross(const common_context& ctxt,
 		      const ext_gen& p, paramin E) // by-value for |E|, modified
 { const RootDatum& rd = E.rc().rootDatum();
   const RootDatum& id = ctxt.id();
@@ -919,7 +919,7 @@ int level_a (const paramin& E, const Weight& shift, RootNbr alpha)
 
 
 // compute type of |p| for |E|, and export adjacent |paramin| values in |links|
-DescValue star (const context_minimal& ctxt, const paramin& E, const ext_gen& p,
+DescValue star (const common_context& ctxt, const paramin& E, const ext_gen& p,
 		containers::sl_list<paramin>& links)
 {
   paramin E0=E; // a copy of |E| that might be modified below to "normalise"
@@ -1666,7 +1666,7 @@ ext_block::ext_block
 bool ext_block::tune_signs(const blocks::common_block& block)
 {
   paramin_context ctxt (block.context(),delta());
-  context_minimal block_ctxt(block.context(),delta(),block.integral_subsystem());
+  common_context block_ctxt(block.context(),delta(),block.integral_subsystem());
   containers::sl_list<paramin> links;
   for (BlockElt n=0; n<size(); ++n)
   { auto z=this->z(n);
@@ -1874,7 +1874,7 @@ StandardRepr scaled_extended_dominant // result will have its |gamma()| dominant
   paramin E1(ctxt,kgb.involution(x),E0.gamma_lambda,E0.tau,E0.l,E0.t,E0.flipped);
 
   { // descend through complex singular simple descents
-    context_minimal block_ctxt(rc,delta, SubSystem::integral(rd,gamma));
+    common_context block_ctxt(rc,delta, SubSystem::integral(rd,gamma));
     const auto int_datum = block_ctxt.id();
     const ext_gens integral_orbits = rootdata::fold_orbits(int_datum,delta);
     const RankFlags singular_orbits = // flag singular among integral orbits
@@ -1936,7 +1936,7 @@ StandardRepr scaled_extended_dominant // result will have its |gamma()| dominant
   |to_simple_shift|) test of notably the parity condition in the real case.
  */
 bool is_descent
-  (const context_minimal& ctxt, const ext_gen& kappa, const paramin& E)
+  (const common_context& ctxt, const ext_gen& kappa, const paramin& E)
 { // easy solution would be to |return is_descent(star(E,kappa,dummy))|;
   const InvolutionTable& i_tab = E.rc().innerClass().involution_table();
   const InvolutionNbr theta = i_tab.nr(E.tw); // so use root action of |E.tw|
@@ -1957,7 +1957,7 @@ bool is_descent
 } // |is_descent|
 
 weyl::Generator first_descent_among
-  (const context_minimal& ctxt, RankFlags singular_orbits,
+  (const common_context& ctxt, RankFlags singular_orbits,
    const ext_gens& orbits, const paramin& E)
 { for (auto it=singular_orbits.begin(); it(); ++it)
     if (is_descent(ctxt,orbits[*it],E))
@@ -1978,7 +1978,7 @@ containers::sl_list<std::pair<StandardRepr,bool> > extended_finalise
   assert(is_dominant_ratweight(rc.rootDatum(),sr.gamma()));
   // we must assume |gamma| already dominant, DON'T call |make_dominant| here!
 
-  context_minimal ctxt(rc,delta,SubSystem::integral(rc.rootDatum(),sr.gamma()));
+  common_context ctxt(rc,delta,SubSystem::integral(rc.rootDatum(),sr.gamma()));
 
   const ext_gens orbits = rootdata::fold_orbits(ctxt.id(),delta);
   const RankFlags singular_orbits =

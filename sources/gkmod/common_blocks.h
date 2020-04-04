@@ -122,11 +122,13 @@ public:
 
 }; // |paramin_context|
 
-// this class is to |paramin| what |ext_block::context| is to |ext_block::param|
-// it holds relevant values that remain fixed across extended block
-// data fields that are removed: |d_gamma|, |lambda_shifts|
-// methods that are absent: |gamma|, |lambda_shift|
-class context_minimal : public paramin_context
+/*
+  This class is to |paramin| what |ext_block::context| is to |ext_block::param|
+  it holds relevant values that remain fixed across extended block
+  data fields that are removed: |d_gamma|, |lambda_shifts|
+  methods that are absent: |gamma|, |lambda_shift|
+*/
+class common_context : public paramin_context
 {
   const RootDatum integr_datum; // intgrality datum
   const SubSystem sub; // embeds |integr_datum| into parent root datum
@@ -136,7 +138,7 @@ class context_minimal : public paramin_context
   int_Vector l_shifts; // of size |sub.rank()|; affine center for action on |l|
 
  public:
-  context_minimal (const repr::Rep_context& rc, const WeightInvolution& delta,
+  common_context (const repr::Rep_context& rc, const WeightInvolution& delta,
 		   const SubSystem& integral_subsystem);
 
   // accessors
@@ -154,7 +156,7 @@ class context_minimal : public paramin_context
   bool shift_flip(InvolutionNbr theta, InvolutionNbr theta_p,
 		  RootNbrSet pos_to_neg) const; // |pos_to_neg| is by value
 
-}; // |context_minimal|
+}; // |common_context|
 
 // A variant of |ext_block::param| that avoids fixing |gamma|
 // Identical (supplementary) data fields, method absent: |restrict|
