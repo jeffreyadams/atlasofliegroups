@@ -531,6 +531,19 @@ size_t hash_value (const repr::Rep_context& rc, const RootNbrSet& ipr,
 
 } // |namespace blocks|
 
+namespace repr {
+
+// |Ext_rep_context| methods
+
+Ext_rep_context::Ext_rep_context
+  (const repr::Rep_context& rc, const WeightInvolution& delta)
+: Rep_context(rc), d_delta(delta) {}
+
+Ext_rep_context::Ext_rep_context (const repr::Rep_context& rc)
+: Rep_context(rc), d_delta(rc.inner_class().distinguished()) {}
+
+} // |namespace blocks|
+
 namespace ext_block
 {
   // Declarations of some functions re-used from ext_block.cpp
@@ -561,26 +574,13 @@ weyl::Generator first_descent_among
   (const common_context& ctxt, RankFlags singular_orbits,
    const ext_gens& orbits, const paramin& E);
 
-  // |paramin_context| methods
-const RootDatum& paramin_context::root_datum () const
-  { return rc().root_datum(); }
-const InnerClass& paramin_context::inner_class () const
-  { return rc().inner_class(); }
-RealReductiveGroup& paramin_context::real_group () const
-  { return rc().real_group(); }
-const RatCoweight& paramin_context::g_rho_check () const
-  { return real_group().g_rho_check(); }
-RatCoweight paramin_context::g () const
-  { return real_group().g(); }
-
-
 common_context::common_context
   (const repr::Rep_context& rc, const WeightInvolution& delta,
    const SubSystem& sub)
-    : paramin_context(rc,delta)
+    : repr::Ext_rep_context(rc,delta)
     , integr_datum(sub.pre_root_datum())
     , sub(sub)
-    , pi_delta(rc.root_datum().rootPermutation(paramin_context::delta()))
+    , pi_delta(rc.root_datum().rootPermutation(delta))
     , delta_fixed_roots(fixed_points(pi_delta))
     , twist()
     , l_shifts (integr_datum.semisimpleRank())
@@ -695,7 +695,7 @@ void validate(const paramin& E)
 
 
 paramin::paramin
-  (const paramin_context& ec, const TwistedInvolution& tw,
+(const repr::Ext_rep_context& ec, const TwistedInvolution& tw,
    RatWeight gamma_lambda, Weight tau, Coweight l, Coweight t, bool flipped)
   : ctxt(ec), tw(tw)
   , l(std::move(l))
@@ -710,7 +710,7 @@ paramin::paramin
 
 // contructor used for default extension once |x| and |gamma_lamba| are chosen
 paramin::paramin
-  (const paramin_context& ec,
+(const repr::Ext_rep_context& ec,
    KGBElt x, const RatWeight& gamma_lambda, bool flipped)
   : ctxt(ec)
   , tw(ec.real_group().kgb().involution(x)) // now computing |theta()| is valid
@@ -738,13 +738,13 @@ paramin::paramin
   so don't use that latter: it would give an undesired dependence on |gamma|.
 */
 paramin paramin::default_extend
-  (const paramin_context& ec, const repr::StandardRepr& sr)
+(const repr::Ext_rep_context& ec, const repr::StandardRepr& sr)
 {
   assert(((1-ec.delta())*sr.gamma().numerator()).isZero());
 
-  auto srm =  repr::StandardReprMod::mod_reduce(ec.rc(),sr);
+  auto srm =  repr::StandardReprMod::mod_reduce(ec,sr);
   // get default representative at |gamma%1|, normalised
-  auto gamma_lambda=ec.rc().gamma_lambda(srm);
+  auto gamma_lambda=ec.gamma_lambda(srm);
   return paramin(ec,sr.x(),gamma_lambda);
 }
 
@@ -1665,7 +1665,7 @@ ext_block::ext_block
 
 bool ext_block::tune_signs(const blocks::common_block& block)
 {
-  paramin_context ctxt (block.context(),delta());
+  repr::Ext_rep_context ctxt (block.context(),delta());
   common_context block_ctxt(block.context(),delta(),block.integral_subsystem());
   containers::sl_list<paramin> links;
   for (BlockElt n=0; n<size(); ++n)
@@ -1827,7 +1827,7 @@ StandardRepr scaled_extended_dominant // result will have its |gamma()| dominant
  )
 {
   const RootDatum& rd=rc.root_datum(); const KGB& kgb = rc.kgb();
-  paramin_context ctxt(rc,delta);
+  repr::Ext_rep_context ctxt(rc,delta);
   const ext_gens orbits = rootdata::fold_orbits(rd,delta);
   assert(is_dominant_ratweight(rd,sr.gamma())); // dominant
   assert(((delta-1)*sr.gamma().numerator()).isZero()); // $\delta$-fixed
@@ -1984,8 +1984,7 @@ containers::sl_list<std::pair<StandardRepr,bool> > extended_finalise
   const RankFlags singular_orbits =
     reduce_to(orbits,singular_generators(ctxt.id(),sr.gamma()));
 
-  paramin_context pc(rc,delta);
-  containers::queue<paramin> to_do { paramin::default_extend(pc,sr) };
+  containers::queue<paramin> to_do { paramin::default_extend(ctxt,sr) };
   containers::sl_list<std::pair<StandardRepr,bool> > result;
 
   do

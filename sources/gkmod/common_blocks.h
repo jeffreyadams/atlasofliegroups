@@ -100,27 +100,22 @@ class common_block : public Block_base
 
 } // |namespace blocks|
 
-namespace ext_block {
-
-class paramin_context
+namespace repr {
+// a slight extension of |Rep_context|, fix |delta| for extended representations
+class Ext_rep_context : public Rep_context
 {
-  const repr::Rep_context& d_rc;
   const WeightInvolution d_delta;
-
 public:
-  paramin_context (const repr::Rep_context& rc, const WeightInvolution& delta)
-    : d_rc(rc), d_delta(delta) {}
+  Ext_rep_context (const repr::Rep_context& rc); // default twisting
+  Ext_rep_context (const repr::Rep_context& rc, const WeightInvolution& delta);
 
-  // accessors
-  const repr::Rep_context& rc () const { return d_rc; }
-  const RootDatum& root_datum () const;
-  const InnerClass& inner_class () const;
-  RealReductiveGroup& real_group () const;
   const WeightInvolution& delta () const { return d_delta; }
-  const RatCoweight& g_rho_check() const;
-  RatCoweight g() const;
 
-}; // |paramin_context|
+}; // |class Ext_rep_context|
+
+} // |namespace repr|
+
+namespace ext_block {
 
 /*
   This class is to |paramin| what |ext_block::context| is to |ext_block::param|
@@ -128,7 +123,7 @@ public:
   data fields that are removed: |d_gamma|, |lambda_shifts|
   methods that are absent: |gamma|, |lambda_shift|
 */
-class common_context : public paramin_context
+class common_context : public repr::Ext_rep_context
 {
   const RootDatum integr_datum; // intgrality datum
   const SubSystem sub; // embeds |integr_datum| into parent root datum
@@ -162,7 +157,7 @@ class common_context : public paramin_context
 // Identical (supplementary) data fields, method absent: |restrict|
 struct paramin // allow public member access; methods ensure no invariants
 {
-  const paramin_context& ctxt;
+  const repr::Ext_rep_context& ctxt;
   TwistedInvolution tw; // implicitly defines $\theta$
 
   Coweight l; // with |tw| gives a |GlobalTitsElement|; lifts its |t|
@@ -171,15 +166,15 @@ struct paramin // allow public member access; methods ensure no invariants
   Coweight t; // a solution to $t(1-theta)=l(\delta-1)$
   bool flipped; // whether tensored with the flipping representation
 
-  paramin (const paramin_context& ec, const TwistedInvolution& tw,
+  paramin (const repr::Ext_rep_context& ec, const TwistedInvolution& tw,
 	   RatWeight gamma_lambda, Weight tau, Coweight l, Coweight t,
 	   bool flipped=false);
 
   // default extension choice:
-  paramin (const paramin_context& ec,
+  paramin (const repr::Ext_rep_context& ec,
 	   KGBElt x, const RatWeight& gamma_lambda, bool flipped=false);
   static paramin default_extend
-   (const paramin_context& ec, const repr::StandardRepr& sr);
+  (const repr::Ext_rep_context& ec, const repr::StandardRepr& sr);
 
   paramin (const paramin& p) = default;
   paramin (paramin&& p)
@@ -198,7 +193,7 @@ struct paramin // allow public member access; methods ensure no invariants
 
   void flip (bool whether=true) { flipped=(whether!=flipped); }
 
-  const repr::Rep_context& rc() const { return ctxt.rc(); }
+  const repr::Rep_context& rc() const { return ctxt; } // reference base object
   const WeightInvolution& delta () const { return ctxt.delta(); }
   const WeightInvolution& theta () const;
 
