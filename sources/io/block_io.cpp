@@ -121,7 +121,7 @@ std::ostream& param_block::print
 {
   const KGB& kgb = rc.kgb();
   unsigned int xwidth = ioutils::digits(highest_x,10ul);
-  unsigned int rk = rootDatum().semisimpleRank();
+  unsigned int rk = root_datum().semisimpleRank();
 
   strm << (survives(z) ? '*' : ' ')
        << "(x=" << std::setw(xwidth) << x(z)
@@ -143,7 +143,7 @@ std::ostream& common_block::print
 {
   const KGB& kgb = rc.kgb();
   unsigned int xwidth = ioutils::digits(highest_x,10ul);
-  unsigned int rk = rootDatum().semisimpleRank();
+  unsigned int rk = root_datum().semisimpleRank();
 
   strm << " (x=" << std::setw(xwidth) << x(z)
        << ",gamma-lambda=" << std::setw(5*rk+1) << gamma_lambda(z)

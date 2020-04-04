@@ -768,12 +768,12 @@ StandardRepr get_repr(const Rep_context& c)
   unsigned long x=get_bounded_int
     (sr_input_buffer,"Choose KGB element: ",c.kgb().size());
 
-  prettyprint::printVector(std::cout<<"2rho = ",c.rootDatum().twoRho())
+  prettyprint::printVector(std::cout<<"2rho = ",c.root_datum().twoRho())
     << std::endl;
   Weight lambda_rho=
-    get_weight(sr_input_buffer,"Give lambda-rho: ",c.innerClass().rank());
+    get_weight(sr_input_buffer,"Give lambda-rho: ",c.inner_class().rank());
   RatWeight nu =
-    get_ratweight(sr_input_buffer,"nu:",c.rootDatum().rank());
+    get_ratweight(sr_input_buffer,"nu:",c.root_datum().rank());
   return c.sr(x,lambda_rho,nu);
 }
 

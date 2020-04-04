@@ -250,13 +250,13 @@ class context // holds values that remain fixed across extended block
   const repr::Rep_context& rc () const { return d_rc; }
   const RootDatum& id() const { return integr_datum; }
   const SubSystem& subsys() const { return sub; }
-  const RootDatum& rootDatum() const { return d_rc.rootDatum(); }
-  const InnerClass& innerClass () const { return d_rc.innerClass(); }
-  RealReductiveGroup& realGroup () const { return d_rc.realGroup(); }
+  const RootDatum& root_datum() const { return d_rc.root_datum(); }
+  const InnerClass& inner_class () const { return d_rc.inner_class(); }
+  RealReductiveGroup& real_group () const { return d_rc.real_group(); }
   const WeightInvolution& delta () const { return d_delta; }
   const RatWeight& gamma() const { return d_gamma; }
-  const RatCoweight& g_rho_check() const { return realGroup().g_rho_check(); }
-  RatCoweight g() const { return realGroup().g(); }
+  const RatCoweight& g_rho_check() const { return real_group().g_rho_check(); }
+  RatCoweight g() const { return real_group().g(); }
   RootNbr delta_of(RootNbr alpha) const { return pi_delta[alpha]; }
   const RootNbrSet& delta_fixed() const { return delta_fixed_roots; }
   weyl::Generator twisted(weyl::Generator s) const { return twist[s]; }
@@ -325,7 +325,7 @@ struct param // allow public member access; methods ensure no invariants anyway
   const repr::Rep_context rc() const { return ctxt.rc(); }
   const WeightInvolution& delta () const { return ctxt.delta(); }
   const WeightInvolution& theta () const
-    { return ctxt.innerClass().matrix(tw); }
+    { return ctxt.inner_class().matrix(tw); }
 
   KGBElt x() const; // reconstruct |x| component
   repr::StandardRepr restrict() const // underlying unextended representation

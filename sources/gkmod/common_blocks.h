@@ -14,6 +14,7 @@
 
 #include "blocks.h" // we conceptually just extend that module
 #include "subsystem.h"
+#include "repr.h"
 
 namespace atlas {
 
@@ -62,11 +63,11 @@ class common_block : public Block_base
 
   // accessors that get values via |rc|
   const repr::Rep_context& context() const { return rc; }
-  const RootDatum& rootDatum() const;
+  const RootDatum& root_datum() const;
   const SubSystem& integral_subsystem() const { return integral_datum; }
-  const InnerClass& innerClass() const;
+  const InnerClass& inner_class() const;
   const InvolutionTable& involution_table() const;
-  RealReductiveGroup& realGroup() const;
+  RealReductiveGroup& real_group() const;
 
   // with |gamma| unknown, only the difference |gamma-lambda| is meaningful
   RatWeight gamma_lambda(BlockElt z) const;
@@ -99,8 +100,7 @@ class common_block : public Block_base
 
 } // |namespace blocks|
 
-namespace ext_block
-{
+namespace ext_block {
 
 class paramin_context
 {

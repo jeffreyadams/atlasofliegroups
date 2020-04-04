@@ -27,11 +27,11 @@
 #include "free_abelian.h"
 #include "arithmetic.h" // |SplitInteger|
 
-#include "common_blocks.h"
-
 namespace atlas {
 
-namespace repr {
+namespace blocks { class common_block; }
+
+ namespace repr {
 
 /*
   A parameter of a standard representation is determined by a triplet
@@ -139,15 +139,14 @@ class Rep_context
   explicit Rep_context(RealReductiveGroup &G);
 
   // accessors
-  RealReductiveGroup& realGroup() const { return G; }
-  const InnerClass& innerClass() const { return G.innerClass(); }
-  const RootDatum& rootDatum() const { return G.rootDatum(); }
-  const WeylGroup& weylGroup() const { return G.weylGroup(); }
-  const TwistedWeylGroup& twistedWeylGroup() const
+  RealReductiveGroup& real_group() const { return G; }
+  const InnerClass& inner_class() const { return G.innerClass(); }
+  const RootDatum& root_datum() const { return G.rootDatum(); }
+  const TwistedWeylGroup& twisted_Weyl_group() const
     { return G.twistedWeylGroup(); }
-  const TitsGroup& titsGroup() const { return G.titsGroup(); }
-  const TitsCoset& basedTitsGroup() const { return G.basedTitsGroup(); }
   const KGB& kgb() const { return KGB_set; }
+  const RatCoweight& g_rho_check() const { return G.g_rho_check(); }
+  RatCoweight g() const { return G.g(); }
   size_t rank() const;
 
   const TwistedInvolution involution_of_Cartan(size_t cn) const;
@@ -170,7 +169,7 @@ class Rep_context
 
   Weight lambda_rho(const StandardRepr& z) const;
   RatWeight lambda(const StandardRepr& z) const // half-integer
-  { return rho(rootDatum()).normalize()+lambda_rho(z); }
+  { return rho(root_datum()).normalize()+lambda_rho(z); }
   RatWeight gamma_lambda(const StandardReprMod& z) const;
   RatWeight gamma_0 // infinitesimal character deformed to $\nu=0$
     (const StandardRepr& z) const;
@@ -199,7 +198,7 @@ class Rep_context
 
   bool is_twist_fixed(StandardRepr z, const WeightInvolution& delta) const;
   bool is_twist_fixed(const StandardRepr& z) const
-  { return is_twist_fixed(z,innerClass().distinguished()); }
+  { return is_twist_fixed(z,inner_class().distinguished()); }
 
   void make_dominant(StandardRepr& z) const; // ensure |z.gamma()| dominant
 
@@ -290,11 +289,9 @@ class Rep_table : public Rep_context
   std::vector<boundary> bounds; // to partition hash codes to blocks
 
  public:
-  Rep_table(RealReductiveGroup &G)
-    : Rep_context(G)
-    , pool(), hash(pool), def_formulae()
-    , mod_pool(), mod_hash(mod_pool), bounds()
-  {}
+  Rep_table(RealReductiveGroup &G);
+  ~Rep_table();
+  // both defined out of line because of implicit use |common_block| destructor
 
   unsigned int length(StandardRepr z); // by value
 

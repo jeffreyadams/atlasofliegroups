@@ -355,10 +355,10 @@ class param_block : public Block_base
  public:
   // accessors that get values via |rc|
   const repr::Rep_context& context() const { return rc; }
-  const RootDatum& rootDatum() const;
-  const InnerClass& innerClass() const;
+  const RootDatum& root_datum() const;
+  const InnerClass& inner_class() const;
   const InvolutionTable& involution_table() const;
-  RealReductiveGroup& realGroup() const;
+  RealReductiveGroup& real_group() const;
 
   const RatWeight& gamma() const { return infin_char; }
   StandardRepr sr(BlockElt z) const; // parameter associated to block element

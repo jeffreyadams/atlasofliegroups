@@ -249,8 +249,8 @@ Coweight ell (const KGB& kgb, KGBElt x)
 void validate(const param& E)
 {
 #ifndef NDEBUG // make sure this is a no-op when debugging is disabled
-  const auto& i_tab = E.rc().innerClass().involution_table();
-  const auto& rd = E.rc().innerClass().rootDatum();
+  const auto& i_tab = E.rc().inner_class().involution_table();
+  const auto& rd = E.rc().root_datum();
   const auto& theta = i_tab.matrix(E.tw);
   const auto& delta = E.ctxt.delta();
   assert(delta*theta==theta*delta);
@@ -268,7 +268,7 @@ void set_default_extended
    Weight& lambda_rho, Weight& tau, Coweight& l, Coweight& t)
 {
   const auto& kgb = rc.kgb(); const auto x=sr.x();
-  WeightInvolution theta = rc.innerClass().matrix(kgb.involution(x));
+  WeightInvolution theta = rc.inner_class().matrix(kgb.involution(x));
 
   lambda_rho=rc.lambda_rho(sr);
   tau=matreduc::find_solution(1-theta,(delta-1)*lambda_rho);
@@ -290,8 +290,8 @@ param::param (const context& ec, const StandardRepr& sr)
 param::param (const context& ec,
 	      KGBElt x, const Weight& lambda_rho, bool flipped)
   : ctxt(ec)
-  , tw(ec.realGroup().kgb().involution(x))
-  , l(ell(ec.realGroup().kgb(),x))
+  , tw(ec.real_group().kgb().involution(x))
+  , l(ell(ec.real_group().kgb(),x))
   , lambda_rho(lambda_rho)
   , tau(matreduc::find_solution(1-theta(),(delta()-1)*lambda_rho))
   , t(matreduc::find_solution
@@ -348,7 +348,7 @@ bool in_R_image(WeightInvolution&& A,Coweight b)
 bool same_standard_reps (const param& E, const param& F)
 {
   if (&E.ctxt!=&F.ctxt)
-  { if (&E.ctxt.innerClass()!=&F.ctxt.innerClass())
+  { if (&E.ctxt.inner_class()!=&F.ctxt.inner_class())
       throw std::runtime_error
 	("Comparing extended parameters from different inner classes");
     if (E.delta()!=F.delta()
@@ -362,7 +362,7 @@ bool same_standard_reps (const param& E, const param& F)
 }
 
 KGBElt param::x() const
-{ TitsElt a(ctxt.innerClass().titsGroup(),TorusPart(l),tw);
+{ TitsElt a(ctxt.inner_class().titsGroup(),TorusPart(l),tw);
   return rc().kgb().lookup(a);
 }
 
@@ -678,15 +678,15 @@ context::context
     : d_rc(rc)
     , d_delta(delta)
     , d_gamma(gamma)
-    , integr_datum(integrality_datum(rc.rootDatum(),gamma))
-    , sub(SubSystem::integral(rc.rootDatum(),gamma))
-    , pi_delta(rc.rootDatum().rootPermutation(d_delta))
+    , integr_datum(integrality_datum(rc.root_datum(),gamma))
+    , sub(SubSystem::integral(rc.root_datum(),gamma))
+    , pi_delta(rc.root_datum().rootPermutation(d_delta))
     , delta_fixed_roots(fixed_points(pi_delta))
     , twist()
     , lambda_shifts (integr_datum.semisimpleRank())
     , l_shifts (integr_datum.semisimpleRank())
 {
-  const RootDatum& rd = rc.rootDatum();
+  const RootDatum& rd = rc.root_datum();
   assert(is_dominant_ratweight(rd,d_gamma)); // this is a class invariant
 
   for (weyl::Generator s=0; s<rd.semisimpleRank(); ++s)
@@ -703,8 +703,8 @@ context::context
 }
 
 bool context::is_very_complex (InvolutionNbr theta, RootNbr alpha) const
-{ const auto& i_tab = innerClass().involution_table();
-  const auto& rd = rootDatum();
+{ const auto& i_tab = inner_class().involution_table();
+  const auto& rd = root_datum();
   assert (rd.is_posroot(alpha)); // this is a precondition
   auto image = i_tab.root_involution(theta,alpha);
   make_positive(rd,image);
@@ -713,9 +713,9 @@ bool context::is_very_complex (InvolutionNbr theta, RootNbr alpha) const
 
 Weight context::to_simple_shift
   (InvolutionNbr theta, InvolutionNbr theta_p, RootNbrSet S) const
-{ const InvolutionTable& i_tab = innerClass().involution_table();
+{ const InvolutionTable& i_tab = inner_class().involution_table();
   S &= (i_tab.real_roots(theta) ^i_tab.real_roots(theta_p));
-  return root_sum(rootDatum(),S);
+  return root_sum(root_datum(),S);
 }
 
 /*
@@ -735,7 +735,7 @@ bool context::shift_flip
   unsigned count=0; // will count 2-element |delta|-orbit elements
   for (auto it=S.begin(); it(); ++it)
     if (is_very_complex(theta,*it) != is_very_complex(theta_p,*it) and
-	not rootDatum().sumIsRoot(*it,delta_of(*it)))
+	not root_datum().sumIsRoot(*it,delta_of(*it)))
       ++count;
 
   assert(count%2==0); // since |pos_to_neg| is supposed to be $\delta$-stable
@@ -923,7 +923,7 @@ BlockElt twisted
    |alpha| is left as that non simple root, and the result conjugates to it.
  */
 WeylWord fixed_conjugate_simple (const context& ctxt, RootNbr& alpha)
-{ const RootDatum& rd = ctxt.innerClass().rootDatum();
+{ const RootDatum& rd = ctxt.root_datum();
 
   WeylWord result;
   while (not rd.is_simple_root(alpha)) // also |break| halfway is possible
@@ -970,11 +970,11 @@ WeylWord fixed_conjugate_simple (const context& ctxt, RootNbr& alpha)
   is done by the "correction" terms below.
  */
 param complex_cross(const ext_gen& p, param E) // by-value for |E|, modified
-{ const RootDatum& rd = E.rc().rootDatum();
+{ const RootDatum& rd = E.rc().root_datum();
   const auto& ec = E.ctxt;
   const RootDatum& id = ec.id();
-  const InvolutionTable& i_tab = E.rc().innerClass().involution_table();
-  auto &tW = E.rc().twistedWeylGroup(); // caution: |p| refers to integr. datum
+  const InvolutionTable& i_tab = E.rc().inner_class().involution_table();
+  auto &tW = E.rc().twisted_Weyl_group(); // caution: |p| refers to integr. datum
 
   InvolutionNbr theta = i_tab.nr(E.tw);
   const RootNbrSet& theta_real_roots = i_tab.real_roots(theta);
@@ -1031,7 +1031,7 @@ param complex_cross(const ext_gen& p, param E) // by-value for |E|, modified
 */
 int level_a (const param& E, const Weight& shift, RootNbr alpha)
 {
-  const RootDatum& rd = E.rc().rootDatum();
+  const RootDatum& rd = E.rc().root_datum();
   return (E.ctxt.gamma() - E.lambda_rho + shift).dot(rd.coroot(alpha))
     - rd.colevel(alpha); // final term $<\alpha^\vee,\rho>$
 }
@@ -1044,10 +1044,10 @@ DescValue star (const param& E,	const ext_gen& p,
   param E0=E; // a copy of |E| that might be modified below to "normalise"
   DescValue result;
 
-  const TwistedWeylGroup& tW = E.rc().twistedWeylGroup();
-  const InnerClass& ic = E.rc().innerClass();
+  const TwistedWeylGroup& tW = E.rc().twisted_Weyl_group();
+  const InnerClass& ic = E.rc().inner_class();
   const InvolutionTable& i_tab = ic.involution_table();
-  const RootDatum& rd = E.rc().rootDatum();
+  const RootDatum& rd = E.rc().root_datum();
   const RootDatum& integr_datum = E.ctxt.id();
   const SubSystem& subs = E.ctxt.subsys();
   const InvolutionNbr theta = i_tab.nr(E.tw);
@@ -1758,10 +1758,10 @@ DescValue star (const param& E,	const ext_gen& p,
 bool is_descent (const ext_gen& kappa, const param& E)
 { // easy solution would be to |return is_descent(star(E,kappa,dummy))|;
 
-  const InnerClass& ic = E.rc().innerClass();
+  const InnerClass& ic = E.rc().inner_class();
   const InvolutionTable& i_tab = ic.involution_table();
   const InvolutionNbr theta = i_tab.nr(E.tw); // so use root action of |E.tw|
-  const RootDatum& rd = E.rc().rootDatum();
+  const RootDatum& rd = E.rc().root_datum();
   const SubSystem& subs = E.ctxt.subsys();
 
   const RootNbr n_alpha = subs.parent_nr_simple(kappa.s0);

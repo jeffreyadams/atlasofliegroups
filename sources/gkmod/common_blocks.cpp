@@ -62,25 +62,25 @@ BlockElt& first_free_slot(BlockEltPair& p);
 
   // |common_block| methods
 
-RealReductiveGroup& common_block::realGroup() const
-  { return rc.realGroup(); }
-const InnerClass& common_block::innerClass() const
-  { return rc.innerClass(); }
+RealReductiveGroup& common_block::real_group() const
+  { return rc.real_group(); }
+const InnerClass& common_block::inner_class() const
+  { return rc.inner_class(); }
 const InvolutionTable& common_block::involution_table() const
-  { return innerClass().involution_table(); }
-const RootDatum& common_block::rootDatum() const
-  { return rc.rootDatum(); }
+  { return inner_class().involution_table(); }
+const RootDatum& common_block::root_datum() const
+  { return rc.root_datum(); }
 
 // find value $\gamma-\lambda$ that the parameter for |z| at |gamma%1| would give
 RatWeight common_block::gamma_lambda(BlockElt z) const
 {
-  auto& i_tab = rc.innerClass().involution_table();
+  auto& i_tab = rc.inner_class().involution_table();
   InvolutionNbr i_x = rc.kgb().inv_nr(x(z));
   const WeightInvolution& theta = i_tab.matrix(i_x);
 
   // |y_lift| gives the choice for $(1-theta)(\lambda-\rho)$ at |gamma_mod_1|
   // subtract from $(1-\theta)(\gamma\mod1-\rho)$ and divide by 2
-  const auto gm1_rho = gamma_mod_1-rho(rc.rootDatum());
+  const auto gm1_rho = gamma_mod_1-rho(rc.root_datum());
   auto result = (gm1_rho - theta*gm1_rho-i_tab.y_lift(i_x,y_bits[y(z)]))/2;
   return result.normalize();
 }
@@ -92,20 +92,20 @@ common_block::common_block // full block constructor
    const repr::StandardReprMod& srm, // not modified, |gamma| used mod $X^*$ only
    BlockElt& entry_element	// set to block element matching input
   )
-  : Block_base(rootdata::integrality_rank(rc.rootDatum(),srm.gamma_mod1()))
+  : Block_base(rootdata::integrality_rank(rc.root_datum(),srm.gamma_mod1()))
   , rc(rc)
   , gamma_mod_1(srm.gamma_mod1()) // already reduced
-  , integral_datum(SubSystem::integral(rootDatum(),gamma_mod_1))
+  , integral_datum(SubSystem::integral(root_datum(),gamma_mod_1))
   , y_bits()
   , y_pool()
   , y_hash(y_pool)
   , xy_hash(info)
   , extended(nullptr) // no extended block initially
-  , highest_x(rc.realGroup().KGB_size()-1)
+  , highest_x(rc.real_group().KGB_size()-1)
   , highest_y() // defined when generation is complete
 {
-  const InnerClass& ic = innerClass();
-  const RootDatum& rd = ic.rootDatum();
+  const InnerClass& ic = inner_class();
+  const RootDatum& rd = root_datum();
 
   const InvolutionTable& i_tab = ic.involution_table();
   const KGB& kgb = rc.kgb();
@@ -115,7 +115,7 @@ common_block::common_block // full block constructor
 
   size_t our_rank = integral_datum.rank();
 
-  nblock_help aux(realGroup(),integral_datum);
+  nblock_help aux(real_group(),integral_datum);
 
   // step 1: get |y|, which has $y.t=\exp(\pi\ii(\gamma-\lambda))$ (vG based)
   const KGBElt x_org = srm.x();
@@ -407,8 +407,8 @@ common_block::common_block // full block constructor
 void common_block::compute_y_bits()
 {
   y_bits.reserve(y_pool.size());
-  const InvolutionTable& i_tab = innerClass().involution_table();
-  const RatWeight gamma1_rho = gamma_mod_1 - rho(rootDatum());
+  const InvolutionTable& i_tab = inner_class().involution_table();
+  const RatWeight gamma1_rho = gamma_mod_1 - rho(root_datum());
 
   // tabulate some |x| (in fact the first one) for every value |y|
   std::vector<KGBElt> x_of_y(y_pool.size(),UndefKGB);
@@ -475,7 +475,7 @@ void common_block::reverse_length_and_sort()
 {
   const unsigned max_length = info.back().length;
 
-  const KGBElt x_lim=realGroup().KGB_size(); // limit for |x| values
+  const KGBElt x_lim=real_group().KGB_size(); // limit for |x| values
   std::vector<unsigned> value(size(),0u); // values to be ranked below
 
   for (BlockElt i=0; i<size(); ++i)
@@ -512,7 +512,7 @@ void common_block::reverse_length_and_sort()
 size_t hash_value (const repr::Rep_context& rc, const RootNbrSet& ipr,
 		   KGBElt x, const RatWeight& gamma_lambda)
 {
-  const InvolutionTable& i_tab = rc.innerClass().involution_table();
+  const InvolutionTable& i_tab = rc.inner_class().involution_table();
   const auto& kgb = rc.kgb();
   const InvolutionNbr i_x = kgb.inv_nr(x);
   const auto fp =
@@ -563,11 +563,11 @@ weyl::Generator first_descent_among
 
   // |paramin_context| methods
 const RootDatum& paramin_context::root_datum () const
-  { return rc().rootDatum(); }
+  { return rc().root_datum(); }
 const InnerClass& paramin_context::inner_class () const
-  { return rc().innerClass(); }
+  { return rc().inner_class(); }
 RealReductiveGroup& paramin_context::real_group () const
-  { return rc().realGroup(); }
+  { return rc().real_group(); }
 const RatCoweight& paramin_context::g_rho_check () const
   { return real_group().g_rho_check(); }
 RatCoweight paramin_context::g () const
@@ -580,12 +580,12 @@ common_context::common_context
     : paramin_context(rc,delta)
     , integr_datum(sub.pre_root_datum())
     , sub(sub)
-    , pi_delta(rc.rootDatum().rootPermutation(paramin_context::delta()))
+    , pi_delta(rc.root_datum().rootPermutation(paramin_context::delta()))
     , delta_fixed_roots(fixed_points(pi_delta))
     , twist()
     , l_shifts (integr_datum.semisimpleRank())
 {
-  const RootDatum& rd = rc.rootDatum();
+  const RootDatum& rd = root_datum();
   for (weyl::Generator s=0; s<rd.semisimpleRank(); ++s)
     twist[s] = rd.simpleRootIndex(delta_of(rd.simpleRootNbr(s)));
 
@@ -772,7 +772,7 @@ KGBElt paramin::x() const
 
 repr::StandardRepr paramin::restrict(const RatWeight& gamma) const
 {
-  const RatWeight gamma_rho = gamma-rho(rc().rootDatum());
+  const RatWeight gamma_rho = gamma-rho(rc().root_datum());
   const auto lambda_rho = gamma_rho.integer_diff<int>(gamma_lambda);
   return rc().sr_gamma(x(),lambda_rho,gamma);
 }
@@ -836,10 +836,10 @@ void z_align (const paramin& E, paramin& F, bool extra_flip, int t_mu)
  */
 paramin complex_cross(const common_context& ctxt,
 		      const ext_gen& p, paramin E) // by-value for |E|, modified
-{ const RootDatum& rd = E.rc().rootDatum();
+{ const RootDatum& rd = E.rc().root_datum();
   const RootDatum& id = ctxt.id();
-  const InvolutionTable& i_tab = E.rc().innerClass().involution_table();
-  auto &tW = E.rc().twistedWeylGroup(); // caution: |p| refers to integr. datu
+  const InvolutionTable& i_tab = E.rc().inner_class().involution_table();
+  auto &tW = E.rc().twisted_Weyl_group(); // caution: |p| refers to integr. datum
   const SubSystem& subs=ctxt.subsys();
 
   InvolutionNbr theta = i_tab.nr(E.tw);
@@ -913,7 +913,7 @@ bool same_sign (const paramin& E, const paramin& F)
 */
 int level_a (const paramin& E, const Weight& shift, RootNbr alpha)
 {
-  const RootDatum& rd = E.rc().rootDatum();
+  const RootDatum& rd = E.rc().root_datum();
   return (E.gamma_lambda + shift).dot(rd.coroot(alpha));
 }
 
@@ -925,10 +925,10 @@ DescValue star (const common_context& ctxt, const paramin& E, const ext_gen& p,
   paramin E0=E; // a copy of |E| that might be modified below to "normalise"
   DescValue result;
 
-  const TwistedWeylGroup& tW = E.rc().twistedWeylGroup();
-  const InnerClass& ic = E.rc().innerClass();
+  const TwistedWeylGroup& tW = E.rc().twisted_Weyl_group();
+  const InnerClass& ic = E.rc().inner_class();
   const InvolutionTable& i_tab = ic.involution_table();
-  const RootDatum& rd = E.rc().rootDatum();
+  const RootDatum& rd = E.rc().root_datum();
   const RootDatum& integr_datum = ctxt.id();
   const SubSystem& subs = ctxt.subsys();
   const InvolutionNbr theta = i_tab.nr(E.tw);
@@ -1826,7 +1826,7 @@ StandardRepr scaled_extended_dominant // result will have its |gamma()| dominant
  bool& flipped // records whether a net extended flip was computed
  )
 {
-  const RootDatum& rd=rc.rootDatum(); const KGB& kgb = rc.kgb();
+  const RootDatum& rd=rc.root_datum(); const KGB& kgb = rc.kgb();
   paramin_context ctxt(rc,delta);
   const ext_gens orbits = rootdata::fold_orbits(rd,delta);
   assert(is_dominant_ratweight(rd,sr.gamma())); // dominant
@@ -1938,11 +1938,11 @@ StandardRepr scaled_extended_dominant // result will have its |gamma()| dominant
 bool is_descent
   (const common_context& ctxt, const ext_gen& kappa, const paramin& E)
 { // easy solution would be to |return is_descent(star(E,kappa,dummy))|;
-  const InvolutionTable& i_tab = E.rc().innerClass().involution_table();
+  const InvolutionTable& i_tab = E.rc().inner_class().involution_table();
   const InvolutionNbr theta = i_tab.nr(E.tw); // so use root action of |E.tw|
   const RootNbr n_alpha = ctxt.subsys().parent_nr_simple(kappa.s0);
   const RootNbr theta_alpha = i_tab.root_involution(theta,n_alpha);
-  const RootDatum& rd = E.rc().rootDatum();
+  const RootDatum& rd = E.rc().root_datum();
   assert(rd.is_simple_root(n_alpha)); // as explained in the comment above
 
   // we don't need to inspect |kappa.type|, it does not affect descent status
@@ -1975,10 +1975,10 @@ containers::sl_list<std::pair<StandardRepr,bool> > extended_finalise
   (const repr::Rep_context& rc,
    const StandardRepr& sr, const WeightInvolution& delta)
 { // in order that |singular_generators| generate the whole singular system:
-  assert(is_dominant_ratweight(rc.rootDatum(),sr.gamma()));
+  assert(is_dominant_ratweight(rc.root_datum(),sr.gamma()));
   // we must assume |gamma| already dominant, DON'T call |make_dominant| here!
 
-  common_context ctxt(rc,delta,SubSystem::integral(rc.rootDatum(),sr.gamma()));
+  common_context ctxt(rc,delta,SubSystem::integral(rc.root_datum(),sr.gamma()));
 
   const ext_gens orbits = rootdata::fold_orbits(ctxt.id(),delta);
   const RankFlags singular_orbits =

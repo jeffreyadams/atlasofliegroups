@@ -4555,7 +4555,7 @@ but we first call |test_compatible|.
 void parameter_outer_twist_wrapper(expression_base::level l)
 { auto delta = get<matrix_value>();
   auto p = get<module_parameter_value>();
-  test_compatible(p->rc().innerClass(),delta);
+  test_compatible(p->rc().inner_class(),delta);
   if (l!=expression_base::no_value)
     push_value(std::make_shared<module_parameter_value>
 		(p->rf,p->rc().twisted(p->val,delta->val)));
@@ -5032,7 +5032,7 @@ void extended_block_wrapper(expression_base::level l)
 { auto delta =get<matrix_value>();
   shared_module_parameter p = get<module_parameter_value>();
   test_standard(*p,"Cannot generate block");
-  test_compatible(p->rc().innerClass(),delta);
+  test_compatible(p->rc().inner_class(),delta);
   if (not ((delta->val-1)*p->val.gamma().numerator()).isZero())
     throw runtime_error@|("Involution does not fix infinitesimal character");
   if (l==expression_base::no_value)
@@ -5060,7 +5060,7 @@ into a list of parameters and three tables in the form of matrices.
   int_Matrix links1(eb.size(),eb.rank());
 
   const auto& gamma=p->val.gamma();
-  const RatWeight gamma_rho = gamma-rho(block.rootDatum());
+  const RatWeight gamma_rho = gamma-rho(block.root_datum());
   for (BlockElt n=0; n<eb.size(); ++n)
   { auto z = eb.z(n); // number of ordinary parameter in |block|
     const Weight lambda_rho=gamma_rho.integer_diff<int>(block.gamma_lambda(z));
@@ -5112,7 +5112,7 @@ void extended_KL_block_wrapper(expression_base::level l)
 { auto delta = get<matrix_value>();
   auto p = get<module_parameter_value>();
   test_standard(*p,"Cannot generate extended block");
-  test_compatible(p->rc().innerClass(),delta);
+  test_compatible(p->rc().inner_class(),delta);
   if (l==expression_base::no_value)
     return;
 @)
@@ -6037,11 +6037,11 @@ void deform_wrapper(expression_base::level l)
 void twisted_deform_wrapper(expression_base::level l)
 { shared_module_parameter p = get<module_parameter_value>();
   auto& rt=p->rt();
-  const auto& delta=rt.innerClass().distinguished();
+  const auto& delta=rt.inner_class().distinguished();
   test_standard(*p,"Cannot compute twisted deformation terms");
   if (not rt.is_twist_fixed(p->val,delta))
     throw runtime_error@|("Parameter not fixed by inner class involution");
-  if (not is_dominant_ratweight(rt.rootDatum(),p->val.gamma()))
+  if (not is_dominant_ratweight(rt.root_datum(),p->val.gamma()))
     throw runtime_error("Parameter must have dominant infinitesimal character");
   if (l==expression_base::no_value)
     return;
@@ -6092,7 +6092,7 @@ void twisted_full_deform_wrapper(expression_base::level l)
     return;
 @)
   auto finals =
-    ext_block::extended_finalise(rc,sr,rc.innerClass().distinguished());
+    ext_block::extended_finalise(rc,sr,rc.inner_class().distinguished());
   repr::SR_poly result (rc.repr_less());
   for (auto it=finals.cbegin(); it!=finals.cend(); ++it)
     result.add_multiple(p->rt().twisted_deformation(it->first) @|
@@ -6146,7 +6146,7 @@ void external_twisted_KL_sum_at_s_wrapper(expression_base::level l)
   shared_module_parameter p = get<module_parameter_value>();
   test_standard(*p,"Cannot compute Kazhdan-Lusztig sum");
   test_normal_is_final(*p,"Cannot compute Kazhdan-Lusztig sum");
-  test_compatible(p->rc().innerClass(),delta);
+  test_compatible(p->rc().inner_class(),delta);
   if (not p->rc().is_twist_fixed(p->val,delta->val))
     throw runtime_error("Parameter not fixed by given involution");
   if (l!=expression_base::no_value)
@@ -6178,9 +6178,9 @@ void scale_extended_wrapper(expression_base::level l)
   const StandardRepr sr = p->val;
   const auto& rc = p->rc();
   test_standard(*p,"Cannot scale extended parameter");
-  if (not is_dominant_ratweight(rc.rootDatum(),sr.gamma()))
+  if (not is_dominant_ratweight(rc.root_datum(),sr.gamma()))
     throw runtime_error("Parameter to be scaled not dominant");
-  test_compatible(p->rc().innerClass(),delta);
+  test_compatible(p->rc().inner_class(),delta);
   if (not rc.is_twist_fixed(sr,delta->val))
     throw runtime_error@|
       ("Parameter to be scaled not fixed by given involution");
@@ -6211,10 +6211,10 @@ void finalize_extended_wrapper(expression_base::level l)
   auto p = get<module_parameter_value>();
   const auto& rc = p->rc();
   test_standard(*p,"Cannot finalize extended parameter");
-  test_compatible(rc.innerClass(),delta);
+  test_compatible(rc.inner_class(),delta);
   if (not p->rc().is_twist_fixed(p->val,delta->val))
     throw runtime_error("Parameter not fixed by given involution");
-  if (not is_dominant_ratweight(rc.rootDatum(),p->val.gamma()))
+  if (not is_dominant_ratweight(rc.root_datum(),p->val.gamma()))
     throw runtime_error("Parameter must have dominant infinitesimal character");
   if (l==expression_base::no_value)
     return;
@@ -6373,7 +6373,7 @@ void raw_ext_KL_wrapper (expression_base::level l)
 { auto delta = get<matrix_value>();
   shared_module_parameter p = get<module_parameter_value>();
   test_standard(*p,"Cannot generate block");
-  test_compatible(p->rc().innerClass(),delta);
+  test_compatible(p->rc().inner_class(),delta);
   if (l==expression_base::no_value)
     return;
 @)

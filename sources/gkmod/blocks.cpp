@@ -282,7 +282,7 @@ void param_block::reverse_length_and_sort(bool full_block)
     // full block ends compact, while partial block starts so
     (full_block ? info.back() : info.front()).length;
 
-  const KGBElt x_lim=realGroup().KGB_size(); // limit for |x| values
+  const KGBElt x_lim=real_group().KGB_size(); // limit for |x| values
   std::vector<unsigned> value(size(),0u); // values to be ranked below
 
   for (BlockElt i=0; i<size(); ++i)
@@ -642,14 +642,14 @@ void Block::compute_supports()
 
 
 
-RealReductiveGroup& param_block::realGroup() const
-  { return rc.realGroup(); }
-const InnerClass& param_block::innerClass() const
-  { return rc.realGroup().innerClass(); }
+RealReductiveGroup& param_block::real_group() const
+  { return rc.real_group(); }
+const InnerClass& param_block::inner_class() const
+  { return rc.real_group().innerClass(); }
 const InvolutionTable& param_block::involution_table() const
-  { return innerClass().involution_table(); }
-const RootDatum& param_block::rootDatum() const
-  { return innerClass().rootDatum(); }
+  { return inner_class().involution_table(); }
+const RootDatum& param_block::root_datum() const
+  { return inner_class().rootDatum(); }
 
 StandardRepr param_block::sr(BlockElt z) const
   { return rc.sr_gamma(x(z),lambda_rho(z),gamma()); }
@@ -679,7 +679,7 @@ RatWeight param_block::nu(BlockElt z) const
 */
 Weight param_block::lambda_rho(BlockElt z) const
 {
-  auto& i_tab = rc.innerClass().involution_table();
+  auto& i_tab = rc.inner_class().involution_table();
   InvolutionNbr i_x = rc.kgb().inv_nr(x(z));
   const WeightInvolution& theta = i_tab.matrix(i_x);
 
@@ -691,7 +691,7 @@ Weight param_block::lambda_rho(BlockElt z) const
 
 RatWeight param_block::lambda(BlockElt z) const
 {
-  return rho(rootDatum())+lambda_rho(z);
+  return rho(root_datum())+lambda_rho(z);
 }
 
 
@@ -801,7 +801,7 @@ BlockElt param_block::lookup(const StandardRepr& sr) const
 ext_gens param_block::fold_orbits(const WeightInvolution& delta) const
 {
   assert(delta*gamma().numerator()==gamma().numerator());
-  const auto sub = integrality_datum(innerClass().rootDatum(),infin_char);
+  const auto sub = integrality_datum(inner_class().rootDatum(),infin_char);
   return rootdata::fold_orbits(sub,delta);
 }
 
@@ -955,7 +955,7 @@ param_block::param_block // full block constructor
    StandardRepr sr,             // by value; made dominant internally
    BlockElt& entry_element	// set to block element matching input
   )
-  : Block_base(rootdata::integrality_rank(rc.rootDatum(),sr.gamma()))
+  : Block_base(rootdata::integrality_rank(rc.root_datum(),sr.gamma()))
   , rc(rc)
   , infin_char(0) // don't set yet
   , gr_numer() // idem
@@ -963,7 +963,7 @@ param_block::param_block // full block constructor
   , z_pool()
   , z_hash(z_pool)
   , gr_denom()
-  , highest_x(rc.realGroup().KGB_size()-1)
+  , highest_x(rc.real_group().KGB_size()-1)
   , highest_y() // defined when generation is complete
   , singular()
 {
@@ -973,15 +973,15 @@ param_block::param_block // full block constructor
   // into the |info| field for some future block) into a hashable value
   block_hash xy_hash(info);
 
-  const InnerClass& G = innerClass();
-  const RootDatum& rd = G.rootDatum();
+  const InnerClass& G = inner_class();
+  const RootDatum& rd = root_datum();
 
   const InvolutionTable& i_tab = G.involution_table();
   const KGB& kgb = rc.kgb();
 
   rc.make_dominant(sr); // make dominant before computing subsystem
   infin_char=sr.gamma(); // now we can set the infinitesimal character
-  { const RatWeight gamma_rho = (gamma() - rho(rootDatum())).normalize();
+  { const RatWeight gamma_rho = (gamma() - rho(root_datum())).normalize();
     gr_numer=Weight(gamma_rho.numerator().begin(),gamma_rho.numerator().end());
     gr_denom = gamma_rho.denominator();
   }
@@ -995,7 +995,7 @@ param_block::param_block // full block constructor
     singular.set(s,rd.coroot(sub.parent_nr_simple(s))
 		            .dot(infin_char.numerator())==0);
 
-  nblock_help aux(realGroup(),sub);
+  nblock_help aux(real_group(),sub);
 
   // step 1: get |y|, which has $y.t=\exp(\pi\ii(\gamma-\lambda))$ (vG based)
   const KGBElt x_org = sr.x();
@@ -1440,14 +1440,14 @@ BlockElt
   block_elt_entry e(z.x(),y_hash.match(pack_y(z)),DescentStatus(),level);
   BlockElt res = zz_hash.match(e);
   assert(res==predecessors.size()); // |z| must have been added just now
-  predecessors.push_back(pred); // store list of elements covered by |z|
+  predecessors.push_back(std::move(pred)); // list of elements covered by |z|
   return res;
 } // |partial_nblock_help::nblock_below|
 
 
 param_block::param_block // partial block constructor, for interval below |sr|
 (const Rep_context& rc, StandardRepr sr) // by value; made dominant internally
-  : Block_base(rootdata::integrality_rank(rc.rootDatum(),sr.gamma()))
+  : Block_base(rootdata::integrality_rank(rc.root_datum(),sr.gamma()))
   , rc(rc)
   , infin_char(0) // don't set yet
   , gr_numer() // idem
@@ -1462,13 +1462,13 @@ param_block::param_block // partial block constructor, for interval below |sr|
   y_entry::Pooltype y_pool;
   y_part_hash y_hash(y_pool); // hash table allows storing |y| parts by index
   block_hash xy_hash(info);
-  const RootDatum& rd = innerClass().rootDatum();
+  const RootDatum& rd = root_datum();
 
   const KGB& kgb = rc.kgb();
 
   rc.normalise(sr); // normalise before computing subsystem
   infin_char=sr.gamma(); // now we can set the infinitesimal character
-  { const RatWeight gamma_rho = (gamma() - rho(rootDatum())).normalize();
+  { const RatWeight gamma_rho = (gamma() - rho(root_datum())).normalize();
     gr_numer=Weight(gamma_rho.numerator().begin(),gamma_rho.numerator().end());
     gr_denom = gamma_rho.denominator();
   }
@@ -1482,7 +1482,7 @@ param_block::param_block // partial block constructor, for interval below |sr|
     singular.set(s,rd.coroot(sub.parent_nr_simple(s))
 			    .dot(infin_char.numerator())==0);
 
-  partial_nblock_help aux(realGroup(),sub,y_hash,xy_hash);
+  partial_nblock_help aux(real_group(),sub,y_hash,xy_hash);
 
   // step 1: get |y|, which has $y.t=\exp(\pi\ii(\gamma-\lambda))$ (vG based)
   const KGBElt x_org = sr.x();
@@ -1597,15 +1597,15 @@ param_block::param_block // partial block constructor, for interval below |sr|
     } // |for(s)|
   } // |for(i)|
 
-  compute_duals(y_hash,xy_hash,innerClass(),sub);
+  compute_duals(y_hash,xy_hash,inner_class(),sub);
   compute_y_bits(y_pool);
 
 } // |param_block::param_block|, partial block version
 
 void param_block::compute_y_bits(const y_entry::Pooltype& y_pool)
 { y_bits.reserve(y_pool.size());
-  const InvolutionTable& i_tab = innerClass().involution_table();
-  const RatWeight gamma_rho = gamma() - rho(rootDatum());
+  const InvolutionTable& i_tab = inner_class().involution_table();
+  const RatWeight gamma_rho = gamma() - rho(root_datum());
 
   // tabulate some |x| (in fact the first one) for every value |y|
   std::vector<KGBElt> x_of_y(y_pool.size(),UndefKGB);
