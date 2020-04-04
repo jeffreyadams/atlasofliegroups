@@ -509,26 +509,6 @@ void common_block::reverse_length_and_sort()
 
 } // |common_block::reverse_length_and_sort|
 
-size_t hash_value (const repr::Rep_context& rc, const RootNbrSet& ipr,
-		   KGBElt x, const RatWeight& gamma_lambda)
-{
-  const InvolutionTable& i_tab = rc.inner_class().involution_table();
-  const auto& kgb = rc.kgb();
-  const InvolutionNbr i_x = kgb.inv_nr(x);
-  const auto fp =
-    i_tab.fingerprint(y_values::exp_pi(gamma_lambda),i_x); // reduced
-  size_t result=x;
-  for (auto n_entry : fp.numerator())
-    result = 5*result+n_entry;
-  result = 7*result + fp.denominator();
-
-  unsigned n=0;
-  do result ^= ipr.range(n,constants::longBits);
-  while ((n+=constants::longBits)<ipr.capacity() and (result*=17,true));
-
-  return result;
-} // |hash_value|
-
 } // |namespace blocks|
 
 namespace repr {
