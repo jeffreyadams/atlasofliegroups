@@ -410,8 +410,7 @@ void Rep_context::make_dominant(StandardRepr& z) const
   z.y_bits=inner_class().involution_table().y_pack(kgb().inv_nr(x),lr);
 } // |make_dominant|
 
-StandardRepr&
-Rep_context::singular_cross (StandardRepr& z,weyl::Generator s) const
+void Rep_context::singular_cross (weyl::Generator s,StandardRepr& z) const
 {
   assert(root_datum().simpleCoroot(s).dot(z.gamma().numerator())==0);
   Weight lr = lambda_rho(z); auto& x=z.x_part;
@@ -420,7 +419,6 @@ Rep_context::singular_cross (StandardRepr& z,weyl::Generator s) const
   x = kgb().cross(s,x);
   z.y_bits = // reinsert $y$ bits component
     inner_class().involution_table().y_pack(kgb().inv_nr(x),lr);
-  return z;
 }
 
 // auxiliary: move to a canonical for the |gens| (singular) subgroup of $W$
@@ -429,7 +427,7 @@ void Rep_context::to_singular_canonical(RankFlags gens, StandardRepr& z) const
   TwistedInvolution tw = kgb().involution(z.x_part); // copy to be modified
   WeylWord ww = inner_class().canonicalize(tw,gens);
   for (auto it=ww.begin(); it!=ww.end(); ++it) // move to that involution
-    singular_cross(z,*it);
+    singular_cross(*it,z);
   assert(tw == kgb().involution(z.x_part));
 }
 
@@ -601,7 +599,7 @@ StandardRepr Rep_context::cross(weyl::Generator s, StandardRepr z) const
   const SubSystem& subsys = SubSystem::integral(rd,infin_char);
   blocks::nblock_help aux(real_group(),subsys);
   blocks::nblock_elt src(z.x(),y_as_torus_elt(z));
-  aux.cross_act(src,s);
+  aux.cross_act(s,src);
   const RatWeight& t =	src.y().as_Qmod2Z();
   // InvolutionNbr i_x = kgb().inv_nr(z.x());
   // no need to do |inner_class().involution_table().real_unique(i_x,t)|
@@ -652,7 +650,7 @@ StandardRepr Rep_context::Cayley(weyl::Generator s, StandardRepr z) const
   const SubSystem& subsys = SubSystem::integral(rd,infin_char);
   blocks::nblock_help aux(real_group(),subsys);
   blocks::nblock_elt src(z.x(),y_as_torus_elt(z));
-  aux.do_up_Cayley(src,s);
+  aux.do_up_Cayley(s,src);
   RatWeight t =	 src.y().log_pi(false);
   // InvolutionNbr i_x = kgb().inv_nr(z.x());
   // no need to do |inner_class().involution_table().real_unique(i_x,t)|
@@ -672,7 +670,7 @@ StandardRepr Rep_context::inv_Cayley(weyl::Generator s, StandardRepr z) const
   const SubSystem& subsys = SubSystem::integral(rd,infin_char);
   blocks::nblock_help aux(real_group(),subsys);
   blocks::nblock_elt src(z.x(),y_as_torus_elt(z));
-  aux.do_down_Cayley(src,s);
+  aux.do_down_Cayley(s,src);
   RatWeight t =	 src.y().log_pi(false);
   // InvolutionNbr i_x = kgb().inv_nr(z.x());
   // no need to do |inner_class().involution_table().real_unique(i_x,t)|
@@ -939,7 +937,7 @@ containers::sl_list<StandardRepr>
       else if (kgb().status(s,x)==gradings::Status::Complex)
       { if (kgb().isDescent(s,x))
 	{ // replace |*rit| by its complex descent for |s|
-	  singular_cross(*rit,s);
+	  singular_cross(s,*rit);
 	  break; // reconsider all singular roots for the new parameter
 	}
       }

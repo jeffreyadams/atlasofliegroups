@@ -821,7 +821,7 @@ nblock_help::nblock_help(RealReductiveGroup& GR, const SubSystem& subsys)
   }
 }
 
-void nblock_help::check_y(const TorusElement& t, InvolutionNbr i) const
+void nblock_help::check_y (const TorusElement& t, InvolutionNbr i) const
 {
   InvolutionData id = sub.involution_data(i_tab.matrix(i));
   const RootNbrList& rb = id.real_basis();
@@ -829,7 +829,7 @@ void nblock_help::check_y(const TorusElement& t, InvolutionNbr i) const
     assert(t.evaluate_at(rd.coroot(rb[i])).normalize().denominator()==1);
 }
 
-void nblock_help::parent_cross_act(nblock_elt& z, weyl::Generator s) const
+void nblock_help::parent_cross_act (weyl::Generator s, nblock_elt& z) const
 {
   switch (kgb.status(s,z.x()))
   {
@@ -845,19 +845,19 @@ void nblock_help::parent_cross_act(nblock_elt& z, weyl::Generator s) const
   z.xx=kgb.cross(s,z.xx);
 }
 
-void nblock_help::cross_act_parent_word(const WeylWord& ww, nblock_elt& z)
+void nblock_help::cross_act_parent_word (const WeylWord& ww, nblock_elt& z)
   const
 {
   for (size_t i=ww.size(); i-->0; )
-    parent_cross_act(z,ww[i]);
+    parent_cross_act(ww[i],z);
 }
 
-void nblock_help::cross_act (nblock_elt& z, weyl::Generator s) const
+void nblock_help::cross_act (weyl::Generator s, nblock_elt& z) const
 {
   cross_act_parent_word(sub.reflection(s),z);
 }
 
-void nblock_help::parent_up_Cayley(nblock_elt& z, weyl::Generator s) const
+void nblock_help::parent_up_Cayley (weyl::Generator s, nblock_elt& z) const
 {
   KGBElt cx=kgb.cayley(s,z.xx); // direct Cayley transform on $x$ side
   if (cx == UndefKGB) // undefined Cayley transform: not imaginary noncompact
@@ -878,17 +878,17 @@ void nblock_help::parent_up_Cayley(nblock_elt& z, weyl::Generator s) const
 		       false);
 }
 
-void nblock_help::do_up_Cayley (nblock_elt& z, weyl::Generator s) const
+void nblock_help::do_up_Cayley (weyl::Generator s, nblock_elt& z) const
 {
   const WeylWord& ww=sub.to_simple(s);
   for (size_t i=ww.size(); i-->0; )
-    parent_cross_act(z,ww[i]);
-  parent_up_Cayley(z,sub.simple(s));
+    parent_cross_act(ww[i],z);
+  parent_up_Cayley(sub.simple(s),z);
   for (size_t i=0; i<ww.size(); ++i)
-    parent_cross_act(z,ww[i]);
+    parent_cross_act(ww[i],z);
 }
 
-bool nblock_help::is_real_nonparity(nblock_elt z, weyl::Generator s) const
+bool nblock_help::is_real_nonparity(weyl::Generator s, nblock_elt z) const
 {
   cross_act_parent_word(sub.to_simple(s),z);
   assert(kgb.status(sub.simple(s),z.x())==gradings::Status::Real);
@@ -897,7 +897,7 @@ bool nblock_help::is_real_nonparity(nblock_elt z, weyl::Generator s) const
   return (r.numerator()/r.denominator())%2!=0; // return whether odd
 }
 
-void nblock_help::parent_down_Cayley(nblock_elt& z, weyl::Generator s) const
+void nblock_help::parent_down_Cayley(weyl::Generator s, nblock_elt& z) const
 {
   KGBElt cx=kgb.inverseCayley(s,z.xx).first; // inverse Cayley on $x$ side
   if (cx == UndefKGB) // not a real root, so undefined inverse Cayley
@@ -911,14 +911,14 @@ void nblock_help::parent_down_Cayley(nblock_elt& z, weyl::Generator s) const
   // for nonparity roots, leave |z| is unchanged for atlas |inv_Cayley|
 }
 
-void nblock_help::do_down_Cayley (nblock_elt& z, weyl::Generator s) const
+void nblock_help::do_down_Cayley (weyl::Generator s, nblock_elt& z) const
 {
   const WeylWord& ww=sub.to_simple(s);
   for (size_t i=ww.size(); i-->0; )
-    parent_cross_act(z,ww[i]);
-  parent_down_Cayley(z,sub.simple(s));
+    parent_cross_act(ww[i],z);
+  parent_down_Cayley(sub.simple(s),z);
   for (size_t i=0; i<ww.size(); ++i)
-    parent_cross_act(z,ww[i]);
+    parent_cross_act(ww[i],z);
 }
 
 void nblock_help::twist(nblock_elt& z) const
@@ -1013,11 +1013,11 @@ param_block::param_block // full block constructor
 	if (kgb.isAscent(ss,xx))
 	{
 	  if (kgb.status(ss,xx)==gradings::Status::Complex)
-	    aux.cross_act(z_start,s);
+	    aux.cross_act(s,z_start);
 	  else // imaginary noncompact
 	  {
 	    assert(kgb.status(ss,xx) == gradings::Status::ImaginaryNoncompact);
-	    aux.do_up_Cayley(z_start,s);
+	    aux.do_up_Cayley(s,z_start);
 	  }
 	  break;
 	} // |if(isAscent)|
@@ -1101,7 +1101,7 @@ param_block::param_block // full block constructor
       unsigned int y_start=y_hash.size(); // new |y|s numbered from here up
 
       nblock_elt sample(first_x,y_hash[ys[0]].repr());
-      aux.cross_act(sample,s);
+      aux.cross_act(s,sample);
       bool new_cross = // whether cross action discovers unseen involution
 	y_hash.find(aux.pack_y(sample)) == y_hash.empty;
       assert(x_seen.isMember(sample.x()) == not new_cross);
@@ -1113,7 +1113,7 @@ param_block::param_block // full block constructor
 	for (unsigned int j=0; j<nr_y; ++j)
 	{
 	  nblock_elt z(first_x,y_hash[ys[j]].repr());
-	  aux.cross_act(z,s);
+	  aux.cross_act(s,z);
 	  cross_ys.push_back(y_hash.match(aux.pack_y(z)));
 	  assert(y_hash.size()== (new_cross ? old_size+j+1 : old_size));
 	  ndebug_use(old_size);
@@ -1176,7 +1176,7 @@ param_block::param_block // full block constructor
 	  for (unsigned int j=0; j<nr_y; ++j)
 	  {
 	    nblock_elt z(n,y_hash[ys[j]].repr()); // element non-conjugated
-	    if (aux.is_real_nonparity(z,s))
+	    if (aux.is_real_nonparity(s,z))
 	      info[base_z+j].descent.set(s,DescentStatus::RealNonparity);
 	    else
 	    {
@@ -1209,7 +1209,7 @@ param_block::param_block // full block constructor
 	    if (descentValue(s,base_z+j) != DescentStatus::RealNonparity)
 	    {
 	      nblock_elt z(n,y_hash[ys[j]].repr());
-	      aux.do_down_Cayley(z,s);
+	      aux.do_down_Cayley(s,z);
 	      Cayley_ys.push_back(y_hash.match(aux.pack_y(z)));
 	    }
 
@@ -1362,7 +1362,7 @@ BlockElt
     KGBElt conj_x= conj_in_x(s,z.x());
     if (kgb.isComplexDescent(sub.simple(s),conj_x))
     {
-      cross_act(sz,s);
+      cross_act(s,sz);
       sz_inx = nblock_below(sz,level+1); // recursion
       pred.reserve(predecessors[sz_inx].size()+1); // a rough estimate
       pred.push_back(sz_inx); // certainly |sz| is predecessor of |z|
@@ -1370,13 +1370,13 @@ BlockElt
     }
     else if (kgb.isDoubleCayleyImage(sub.simple(s),conj_x)) // excludes type 2
     {
-      if (not is_real_nonparity(z,s)) // excludes real nonparity
+      if (not is_real_nonparity(s,z)) // excludes real nonparity
       { // so we now know that |z| has a type 1 real descent at |s|
-	do_down_Cayley(sz,s);
+	do_down_Cayley(s,sz);
 	sz_inx = nblock_below(sz,level+1); // recursion
 	pred.reserve(predecessors[sz_inx].size()+2); // a rough estimate
 	pred.push_back(sz_inx);
-	cross_act(sz,s); // get other inverse Cayley image of |z|
+	cross_act(s,sz); // get other inverse Cayley image of |z|
 	pred.push_back(nblock_below(sz,level+1)); // and include it in |pred|
 	break; // we shall add $s$-ascents of |predecessors[sz_inx]| below
       } // |if (real_parity)|
@@ -1397,19 +1397,19 @@ BlockElt
       case gradings::Status::Complex:
 	if (not kgb.isDescent(sub.simple(s),conj_x)) // complex ascent
 	{
-	  cross_act(c,s);
+	  cross_act(s,c);
 	  pred.push_back(nblock_below(c,level+1));
 	} // |if(complex ascent)
 	break;
       case gradings::Status::ImaginaryNoncompact:
 	{
 	  bool type_2 = kgb.cross(sub.simple(s),conj_x)==conj_x;
-	  do_up_Cayley(c,s);
+	  do_up_Cayley(s,c);
 	  pred.push_back(nblock_below(c,level+1));
 
 	  if (type_2)
 	  {
-	    cross_act(c,s); // this changes |c| since we are in type 2
+	    cross_act(s,c); // this changes |c| since we are in type 2
 	    pred.push_back(nblock_below(c,level+1));
 	  }
 	}
@@ -1425,10 +1425,10 @@ BlockElt
       KGBElt conj_x= conj_in_x(s,z.x());
       if (kgb.status(sub.simple(s),conj_x)==gradings::Status::Real)
       {
-	if (not is_real_nonparity(z,s)) // then it was real type II
+	if (not is_real_nonparity(s,z)) // then it was real type II
 	{
 	  assert (not kgb.isDoubleCayleyImage(sub.simple(s),conj_x));
-	  do_down_Cayley(sz,s);
+	  do_down_Cayley(s,sz);
 	  pred.push_back(nblock_below(sz,level+1)); // recurr ignoring descents
 	}
       }
@@ -1518,7 +1518,7 @@ param_block::param_block // partial block constructor, for interval below |sr|
       {
 	if (kgb.status(sub.simple(s),conj_x)==gradings::Status::Complex)
 	{
-	  aux.cross_act(cur,s);
+	  aux.cross_act(s,cur);
 	  BlockElt sz = aux.lookup(cur);
 	  assert(sz!=aux.zz_hash.empty); // should be in generated partial block
 	  tab_s[i].cross_image = sz; tab_s[sz].cross_image = i;
@@ -1530,14 +1530,14 @@ param_block::param_block // partial block constructor, for interval below |sr|
 	{
 	  assert(kgb.status(sub.simple(s),conj_x)==gradings::Status::Real);
 
-	  if (aux.is_real_nonparity(cur,s))
+	  if (aux.is_real_nonparity(s,cur))
 	  {
 	    tab_s[i].cross_image = i;
 	    z.descent.set(s,DescentStatus::RealNonparity);
 	  }
 	  else // |s| is real parity
 	  {
-	    aux.do_down_Cayley(cur,s);
+	    aux.do_down_Cayley(s,cur);
 	    BlockElt sz = aux.lookup(cur);
 	    tab_s[i].Cayley_image.first = sz; // first inverse Cayley
 	    assert(length(i)==length(sz)+1);
@@ -1548,7 +1548,7 @@ param_block::param_block // partial block constructor, for interval below |sr|
 	      assert(descentValue(s,sz)==DescentStatus::ImaginaryTypeI);
 	      tab_s[i].cross_image = i;
 	      tab_s[sz].Cayley_image.first = i; // single-valued Cayley
-	      aux.cross_act(cur,s);
+	      aux.cross_act(s,cur);
 	      sz = aux.lookup(cur);
 	      assert(descentValue(s,sz)==DescentStatus::ImaginaryTypeI);
 	      assert(length(i)==length(sz)+1);
@@ -1562,7 +1562,7 @@ param_block::param_block // partial block constructor, for interval below |sr|
 	      first_free_slot(tab_s[sz].Cayley_image) // double-valued Cayley
 		= i;
 	      cur = aux.get(i); // reset to current element
-	      aux.cross_act(cur,s);
+	      aux.cross_act(s,cur);
 	      BlockElt cross_z = aux.lookup(cur);
 	      if (cross_z!=aux.zz_hash.empty) // cross neighbour might be absent
 		tab_s[i].cross_image = cross_z;

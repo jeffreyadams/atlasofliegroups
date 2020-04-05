@@ -133,11 +133,11 @@ common_block::common_block // full block constructor
 	if (kgb.isAscent(ss,xx))
 	{
 	  if (kgb.status(ss,xx)==gradings::Status::Complex)
-	    aux.cross_act(z_start,s);
+	    aux.cross_act(s,z_start);
 	  else // imaginary noncompact
 	  {
 	    assert(kgb.status(ss,xx) == gradings::Status::ImaginaryNoncompact);
-	    aux.do_up_Cayley(z_start,s);
+	    aux.do_up_Cayley(s,z_start);
 	  }
 	  break;
 	} // |if(isAscent)|
@@ -218,7 +218,7 @@ common_block::common_block // full block constructor
       unsigned int y_start=y_hash.size(); // new |y|s numbered from here up
 
       nblock_elt sample(first_x,y_hash[first_y].repr());
-      aux.cross_act(sample,s);
+      aux.cross_act(s,sample);
       bool new_cross = // whether cross action discovers unseen involution
 	not x_seen.isMember(sample.x());
 
@@ -228,7 +228,7 @@ common_block::common_block // full block constructor
 	for (unsigned int j=0; j<nr_y; ++j)
 	{
 	  nblock_elt z(first_x,y_hash[first_y+j].repr());
-	  aux.cross_act(z,s);
+	  aux.cross_act(s,z);
 	  cross_ys.push_back(y_hash.match(aux.pack_y(z)));
 	  assert(y_hash.size()== (new_cross ? old_size+j+1 : old_size));
 	  ndebug_use(old_size);
@@ -291,7 +291,7 @@ common_block::common_block // full block constructor
 	  for (unsigned int j=0; j<nr_y; ++j)
 	  {
 	    nblock_elt z(n,y_hash[first_y+j].repr()); // unconjugated element
-	    if (aux.is_real_nonparity(z,s))
+	    if (aux.is_real_nonparity(s,z))
 	      info[base_z+j].descent.set(s,DescentStatus::RealNonparity);
 	    else
 	    {
@@ -324,7 +324,7 @@ common_block::common_block // full block constructor
 	    if (descentValue(s,base_z+j) != DescentStatus::RealNonparity)
 	    {
 	      nblock_elt z(n,y_hash[first_y+j].repr());
-	      aux.do_down_Cayley(z,s); // anyway there is but a single |y| value
+	      aux.do_down_Cayley(s,z); // anyway there is but a single |y| value
 	      Cayley_ys.push_back(y_hash.match(aux.pack_y(z)));
 	    }
 

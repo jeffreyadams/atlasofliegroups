@@ -426,18 +426,18 @@ private:
   std::vector<TorusElement> half_alpha; // half the simple roots
 
   void check_y(const TorusElement& t, InvolutionNbr i) const;
-  void parent_cross_act(nblock_elt& z, weyl::Generator s) const;
-  void parent_up_Cayley(nblock_elt& z, weyl::Generator s) const;
-  void parent_down_Cayley(nblock_elt& z, weyl::Generator s) const;
+  void parent_cross_act(weyl::Generator s,nblock_elt& z) const;
+  void parent_up_Cayley(weyl::Generator s,nblock_elt& z) const;
+  void parent_down_Cayley(weyl::Generator s,nblock_elt& z) const;
 
 public:
   nblock_help(RealReductiveGroup& GR, const SubSystem& subsys);
 
-  void cross_act(nblock_elt& z, weyl::Generator s) const;
+  void cross_act(weyl::Generator s,nblock_elt& z) const;
   void cross_act_parent_word(const WeylWord& ww, nblock_elt& z) const;
-  void do_up_Cayley (nblock_elt& z, weyl::Generator s) const;
-  void do_down_Cayley (nblock_elt& z, weyl::Generator s) const;
-  bool is_real_nonparity(nblock_elt z, weyl::Generator s) const; // by value
+  void do_up_Cayley (weyl::Generator s,nblock_elt& z) const;
+  void do_down_Cayley (weyl::Generator s,nblock_elt& z) const;
+  bool is_real_nonparity(weyl::Generator s,nblock_elt z) const; // by value
 
   void twist(nblock_elt& z) const;
 

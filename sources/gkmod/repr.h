@@ -251,7 +251,7 @@ class Rep_context
  private:
   // make integrally dominant, with precomputed integral subsystem; return path
   WeylWord make_dominant(StandardRepr& z,const SubSystem& subsys) const;
-  StandardRepr& singular_cross (StandardRepr& z,weyl::Generator s) const;
+  void singular_cross (weyl::Generator s,StandardRepr& z) const;
   void to_singular_canonical(RankFlags gens, StandardRepr& z) const;
   unsigned int height(Weight theta_plus_1_gamma) const;
 }; // |Rep_context|
