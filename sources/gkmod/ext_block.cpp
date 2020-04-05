@@ -725,7 +725,7 @@ Weight context::to_simple_shift
   |shift_flip| computes from this set, and the involutions at both ends of the
   link in the block, whether an additional flip is to be added to the link.
 
-  This comes from an action of |delta| acts on a certain top wedge product of
+  This comes from an action of |delta| on a certain top wedge product of
   root spaces, and the formula below tells whether that action is by $-1$.
 */
 bool context::shift_flip
@@ -739,7 +739,7 @@ bool context::shift_flip
       ++count;
 
   assert(count%2==0); // since |pos_to_neg| is supposed to be $\delta$-stable
-  return count%4!=0;
+  return count%4!=0; // whether number of 2-element orbits (themselves) is odd
 }
 
 // auxiliary function to recognise local situation in |ext_block| construction

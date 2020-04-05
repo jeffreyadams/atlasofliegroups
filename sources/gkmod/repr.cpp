@@ -701,10 +701,7 @@ Weight Cayley_shift (const InnerClass& G,
 { const RootDatum& rd=G.rootDatum();
   const InvolutionTable& i_tab = G.involution_table();
   RootNbrSet S = pos_to_neg(rd,to_simple) & i_tab.real_roots(theta_upstairs);
-  Weight sum(rd.rank(),0); // difference of $\rho_r$ values
-  for (auto it=S.begin(); it(); ++it)
-    sum += rd.root(*it); // sum real posroots upstairs that |to_simple| negates
-  return sum;
+  return root_sum(rd,S);
 }
 
 // a method used to ensure |z| is integrally dominant, used by |any_Cayley|

@@ -144,8 +144,17 @@ class common_context : public repr::Ext_rep_context
   weyl::Generator twisted(weyl::Generator s) const { return twist[s]; }
   int l_shift(weyl::Generator s) const { return l_shifts[s]; }
 
+  // methods for local common block construction, as in |Rep_context|
+  // however, the generator |s| is interpreted for the |integr_datum|
+  // and it is the caller's responsibility to ensure that |z| is dominant
+  repr::StandardReprMod cross
+    (weyl::Generator s, const repr::StandardReprMod& z) const;
+  repr::StandardReprMod down_Cayley
+    (weyl::Generator s, const repr::StandardReprMod& z) const;
+  bool is_parity (weyl::Generator s, const repr::StandardReprMod& z) const;
+
   // whether positive $\alpha$ has $\theta(\alpha)\neq\pm(1|\delta)(\alpha)$
-  bool is_very_complex (InvolutionNbr theta, RootNbr alpha) const;
+  bool is_very_complex(InvolutionNbr theta, RootNbr alpha) const;
   Weight to_simple_shift(InvolutionNbr theta, InvolutionNbr theta_p,
 			 RootNbrSet pos_to_neg) const; // |pos_to_neg| by value
   bool shift_flip(InvolutionNbr theta, InvolutionNbr theta_p,

@@ -267,6 +267,8 @@ class context // holds values that remain fixed across extended block
   bool is_very_complex (InvolutionNbr theta, RootNbr alpha) const;
   Weight to_simple_shift(InvolutionNbr theta, InvolutionNbr theta_p,
 			 RootNbrSet pos_to_neg) const;
+  // whether conjugation-to-simple sending |theta| to |theta_p|, and with
+  // |pos_to_neg| as set of positive roots becoming negative, induces a flip
   bool shift_flip(InvolutionNbr theta, InvolutionNbr theta_p,
 		  RootNbrSet pos_to_neg) const;
 

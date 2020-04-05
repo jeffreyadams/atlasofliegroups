@@ -573,6 +573,52 @@ common_context::common_context
   const RatCoweight& g_rho_check = this->g_rho_check();
   for (unsigned i=0; i<l_shifts.size(); ++i)
     l_shifts[i] = -g_rho_check.dot(integr_datum.simpleRoot(i));
+} // |common_context::common_context|
+
+
+repr::StandardReprMod common_context::cross
+    (weyl::Generator s, const repr::StandardReprMod& z) const
+{
+  const auto& refl = sub.reflection(s); // reflection word in full system
+  const KGBElt new_x = kgb().cross(refl,z.x());
+  RatWeight gamma_lambda = this->gamma_lambda(z);
+  integr_datum.simple_reflect(s,gamma_lambda.numerator());
+
+  const auto& i_tab = inner_class().involution_table();
+  RootNbrSet pos_neg = pos_to_neg(root_datum(),refl);
+  pos_neg &= i_tab.real_roots(kgb().inv_nr(z.x())); // only real roots for |z|
+  gamma_lambda += root_sum(root_datum(),pos_neg); // correction of $\rho_r$'s
+  return repr::StandardReprMod::build(*this,z.gamma_mod1(),new_x,gamma_lambda);
+}
+
+repr::StandardReprMod common_context::down_Cayley
+    (weyl::Generator s, const repr::StandardReprMod& z) const
+{
+  const auto& conj = sub.to_simple(s); // word in full system
+  KGBElt conj_x = kgb().cross(conj,z.x());
+  conj_x = kgb().inverseCayley(sub.simple(s),conj_x).first;
+  const auto new_x = kgb().cross(conj_x,conj);
+  RatWeight gamma_lambda = this->gamma_lambda(z);
+
+  const auto& i_tab = inner_class().involution_table();
+  RootNbrSet pos_neg = pos_to_neg(root_datum(),conj);
+  RootNbrSet real_flip = i_tab.real_roots(kgb().inv_nr(z.x()));
+  real_flip ^= i_tab.real_roots(kgb().inv_nr(new_x));
+  pos_neg &= real_flip; // posroots that change real status and map to negative
+  gamma_lambda += root_sum(root_datum(),pos_neg); // correction of $\rho_r$'s
+  return repr::StandardReprMod::build(*this,z.gamma_mod1(),new_x,gamma_lambda);
+}
+
+bool common_context::is_parity
+    (weyl::Generator s, const repr::StandardReprMod& z) const
+{
+  const auto& i_tab = inner_class().involution_table();
+  const auto& real_roots = i_tab.real_roots(kgb().inv_nr(z.x()));
+  assert(real_roots.isMember(sub.parent_nr_simple(s)));
+  const Coweight alpha_hat = integr_datum.coroot(s);
+  int eval = this->gamma_lambda(z).dot(alpha_hat);
+  int rho_r_corr = alpha_hat.dot(root_datum().twoRho(real_roots))/2;
+  return (eval+rho_r_corr)%2!=0;
 }
 
 bool common_context::is_very_complex (InvolutionNbr theta, RootNbr alpha) const
