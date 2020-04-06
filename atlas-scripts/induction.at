@@ -164,13 +164,17 @@ set real_induce_irreducible (ParamPol P,RealForm G) = ParamPol:
   for coeff@p in P do result+:=coeff*real_induce_irreducible_final(p,G) od;
   result
 
+{print out partial information along the way
+the terms reported at length L are precisely those of length L in the final result
+set composition_series_verbose in kl.at}
 set real_induce_irreducible_final_verbose (Param p_L, RealForm G) = ParamPol:
   let std=real_induce_irreducible_as_sum_of_standards(p_L,G) then
   ()=prints("standards: ", for p in monomials(std) do length(p) od) in
   std.composition_series_verbose
 
-{. Given a polynomial of parameters of L, real induce each term,
-   and write the result as a polynomial of parameters for G. .}
+{print out partial information along the way
+the terms reported at length L are precisely those of length L in the final result
+set composition_series_verbose in kl.at}
 set real_induce_irreducible_verbose (ParamPol P,RealForm G) = ParamPol:
 { map |(Param p):real_induce_irreducible_final(p,G)| over terms of |P|, but we
   cannot use |map@((Param->ParamPol),ParamPol)|, since the real group changes }

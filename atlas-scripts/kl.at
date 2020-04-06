@@ -6,8 +6,6 @@
 
 <basic.at
 <polynomial.at { defines types poly, poly_mat }
-
-
 set nice_string(Split s)=string:
 let (a,b)=%s in
 if b=0 then a.to_string
@@ -25,6 +23,8 @@ else
 fi
 fi
 
+set print_with_length(ParamPol P)=void:
+for (c,p) in %P do prints(c.nice_string, "*"  , p, " ", p.length) od
 
 {
   Basic object: column of KL matrix (P-matrix), of polynomials evaluted as s,
@@ -84,6 +84,22 @@ for i:#P do
  fi
 od;result
 
+set composition_series_verbose(ParamPol P)= ParamPol:
+let result=null_module(P) then
+max=max(for p in monomials(P) do length(p) od) in
+for L:max+1 downto 0 do
+ let ()=prints("Length: ", L) then
+ result_new=null_module(P) then
+ ()=for (c,p) in %P do
+     if length(p)=L then result_new +:=c*composition_series(p)  fi
+    od in
+{    ()=prints("OK") in}
+    result:=result+result_new;
+    prints("terms in result of length ", L, ":");
+    for (c,p) in %result do if length(p)=L then prints(c.nice_string, "*",p, " ", p.length) fi od
+od;
+prints("result:");print_with_length(result);
+result
 
 set tabulate_at_1 ([Param] block, (Param->ParamPol) f) = mat:
   for y in block { y determines a column of the result }
