@@ -70,15 +70,16 @@ set composition_series_verbose(ParamPol P)= ParamPol:
 let result=null_module(P) in
 for i:#P do 
  let (c,p)=(%P)[i] then
+ ()=prints("length of p: ", length(p)) then
  result_new =result+c*composition_series(p) in
  result:=result_new; 
  if i<#P-1 then
   let next_length=length(monomials(P)[i]) in
   {the next line is for debugging, comment it out}
 {  prints(new_line,"----------------------",new_line,"all terms: ", result);}
-  let ()=prints("terms of length > ", next_length,":") in
+  let ()=prints("terms of length >= ", next_length,":") in
   for (d,q) in %result do
-   if length(q)>next_length then prints(d.nice_string, "*", q) fi
+   if length(q)>=next_length then prints(d.nice_string, "*", q, " ", q.length) fi
   od
  fi
 od;result
