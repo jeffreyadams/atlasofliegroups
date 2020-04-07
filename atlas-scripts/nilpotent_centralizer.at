@@ -227,4 +227,4 @@ prints(factor.derived) od
 
 set centralizer_isogenies(RootDatum rd)=void:
 for orbit in rd.orbits do
-prints(new_line,"orbit: H:",orbit.H, " diagram:", orbit.diagram, " dim:", orbit.dim_nilpotent);examine_orbit(orbit) od
+prints(new_line,"orbit: H:",orbit.H, " diagram:", orbit.diagram, " dim:", orbit.dim_nilpotent);centralizer_isogeny(orbit) od
