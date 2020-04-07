@@ -217,6 +217,7 @@ C_2.to_string
 set show_nilpotent_orbits(RealForm G)=void:
 show_nilpotent_orbits(nilpotent_orbits(G),G)
 
+{useful in determining the precise structure of the centralizer}
 set centralizer_isogeny(ComplexNilpotent O)=void:
 let cent=centralizer(O) then
 sf=simple_factors(cent) in
