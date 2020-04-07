@@ -217,3 +217,13 @@ C_2.to_string
 set show_nilpotent_orbits(RealForm G)=void:
 show_nilpotent_orbits(nilpotent_orbits(G),G)
 
+set centralizer_isogeny(ComplexNilpotent O)=void:
+let cent=centralizer(O) then
+sf=simple_factors(cent) in
+prints("Centralizer: ",cent.nice_format);
+for factor in sf do
+prints(factor.derived) od
+
+set centralizer_isogenies(RootDatum rd)=void:
+for orbit in rd.orbits do
+prints(new_line,"orbit: H:",orbit.H, " diagram:", orbit.diagram, " dim:", orbit.dim_nilpotent);examine_orbit(orbit) od
