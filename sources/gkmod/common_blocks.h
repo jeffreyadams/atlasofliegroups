@@ -101,6 +101,7 @@ class common_block : public Block_base
 } // |namespace blocks|
 
 namespace repr {
+
 // a slight extension of |Rep_context|, fix |delta| for extended representations
 class Ext_rep_context : public Rep_context
 {
@@ -113,9 +114,29 @@ public:
 
 }; // |class Ext_rep_context|
 
-} // |namespace repr|
+// another extension of |Rep_context|, fix integral system for common block
+class common_context : public Rep_context
+{
+  const RootDatum integr_datum; // intgrality datum
+  const SubSystem sub; // embeds |integr_datum| into parent root datum
+public:
+  common_context (RealReductiveGroup& G, const SubSystem& integral);
 
-namespace ext_block {
+  // accessors
+  const RootDatum& id() const { return integr_datum; }
+  const SubSystem& subsys() const { return sub; }
+
+  // methods for local common block construction, as in |Rep_context|
+  // however, the generator |s| is interpreted for the |integr_datum|
+  // and it is the caller's responsibility to ensure that |z| is dominant
+  StandardReprMod cross (weyl::Generator s, const StandardReprMod& z) const;
+  StandardReprMod down_Cayley(weyl::Generator s, const StandardReprMod& z) const;
+  bool is_parity (weyl::Generator s, const StandardReprMod& z) const;
+
+  Weight to_simple_shift(InvolutionNbr theta, InvolutionNbr theta_p,
+			 RootNbrSet pos_to_neg) const; // |pos_to_neg| by value
+
+}; // |class common_context|
 
 /*
   This class is to |paramin| what |ext_block::context| is to |ext_block::param|
@@ -123,44 +144,35 @@ namespace ext_block {
   data fields that are removed: |d_gamma|, |lambda_shifts|
   methods that are absent: |gamma|, |lambda_shift|
 */
-class common_context : public repr::Ext_rep_context
+class Ext_common_context : public repr::common_context
 {
-  const RootDatum integr_datum; // intgrality datum
-  const SubSystem sub; // embeds |integr_datum| into parent root datum
+  const WeightInvolution d_delta;
   Permutation pi_delta; // permutation of |delta| on roots of full root datum
   RootNbrSet delta_fixed_roots;
   weyl::Twist twist;
   int_Vector l_shifts; // of size |sub.rank()|; affine center for action on |l|
 
  public:
-  common_context (const repr::Rep_context& rc, const WeightInvolution& delta,
-		   const SubSystem& integral_subsystem);
+  Ext_common_context (RealReductiveGroup& G, const WeightInvolution& delta,
+		      const SubSystem& integral_subsystem);
 
   // accessors
-  const RootDatum& id() const { return integr_datum; }
-  const SubSystem& subsys() const { return sub; }
+  const WeightInvolution& delta () const { return d_delta; }
   RootNbr delta_of(RootNbr alpha) const { return pi_delta[alpha]; }
   const RootNbrSet& delta_fixed() const { return delta_fixed_roots; }
   weyl::Generator twisted(weyl::Generator s) const { return twist[s]; }
   int l_shift(weyl::Generator s) const { return l_shifts[s]; }
 
-  // methods for local common block construction, as in |Rep_context|
-  // however, the generator |s| is interpreted for the |integr_datum|
-  // and it is the caller's responsibility to ensure that |z| is dominant
-  repr::StandardReprMod cross
-    (weyl::Generator s, const repr::StandardReprMod& z) const;
-  repr::StandardReprMod down_Cayley
-    (weyl::Generator s, const repr::StandardReprMod& z) const;
-  bool is_parity (weyl::Generator s, const repr::StandardReprMod& z) const;
-
   // whether positive $\alpha$ has $\theta(\alpha)\neq\pm(1|\delta)(\alpha)$
   bool is_very_complex(InvolutionNbr theta, RootNbr alpha) const;
-  Weight to_simple_shift(InvolutionNbr theta, InvolutionNbr theta_p,
-			 RootNbrSet pos_to_neg) const; // |pos_to_neg| by value
   bool shift_flip(InvolutionNbr theta, InvolutionNbr theta_p,
 		  RootNbrSet pos_to_neg) const; // |pos_to_neg| is by value
 
-}; // |common_context|
+}; // |Ext_common_context|
+
+} // |namespace repr|
+
+namespace ext_block {
 
 // A variant of |ext_block::param| that avoids fixing |gamma|
 // Identical (supplementary) data fields, method absent: |restrict|

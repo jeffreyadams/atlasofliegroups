@@ -696,7 +696,7 @@ bool KGB::is_dual_twist_stable
   (const RealReductiveGroup& G, TorusPart& shift) const
 {
   // although |G| will be for "dualrealform", we use non-dualised nomenclature
-  const RootDatum& rd = G.rootDatum();
+  const RootDatum& rd = G.root_datum();
 
   Grading base = basedTitsGroup().base_grading();
   RatWeight rw (titsGroup().rank());
@@ -774,7 +774,7 @@ KGBElt KGB::lookup(TitsElt a) const
 KGBElt KGB::twisted(KGBElt x,const WeightInvolution& delta) const
 {
   auto a = titsElt(x);
-  auto delta_twist = rootdata::twist(G.rootDatum(),delta);
+  auto delta_twist = rootdata::twist(G.root_datum(),delta);
   auto delta2 = BinaryMap(delta);
   RatCoweight diff = (base_grading_vector()-base_grading_vector()*delta)
     .normalize();

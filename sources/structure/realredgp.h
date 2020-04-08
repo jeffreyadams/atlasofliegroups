@@ -77,7 +77,7 @@ class RealReductiveGroup
   const InnerClass& innerClass() const { return d_innerClass; }
   // following method forces |const| result, compare with |cbegin| methods
   RealFormNbr realForm() const { return d_realForm; }
-  const RootDatum& rootDatum() const;
+  const RootDatum& root_datum() const;
   const TitsCoset& basedTitsGroup() const { return *d_Tg; }
   const TitsGroup& titsGroup() const;
   const WeylGroup& weylGroup() const;

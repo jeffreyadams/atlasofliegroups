@@ -363,7 +363,7 @@ std::ostream& printBlockStabilizer(std::ostream& strm,
 
 {
   const InnerClass& G_C = G_R.innerClass();
-  const RootDatum& rd = G_R.rootDatum();
+  const RootDatum& rd = G_R.root_datum();
   const WeylGroup& W = G_R.weylGroup();
 
   RealFormNbr rf = G_R.realForm();

@@ -124,7 +124,7 @@ void RealReductiveGroup::swap(RealReductiveGroup& other)
 }
 
 
-const RootDatum& RealReductiveGroup::rootDatum() const
+const RootDatum& RealReductiveGroup::root_datum() const
   { return d_innerClass.rootDatum(); }
 
 const TitsGroup& RealReductiveGroup::titsGroup() const
@@ -144,7 +144,7 @@ const CartanClass& RealReductiveGroup::cartan(size_t cn) const
   { return d_innerClass.cartan(cn); }
 
 RatCoweight RealReductiveGroup::g() const
-  { return g_rho_check()+rho_check(rootDatum()); }
+  { return g_rho_check()+rho_check(root_datum()); }
 
 // the base grading can be computed directly from $g-\rho\check$, as imaginary
 // simple roots are simple-imaginary, so dot product flags the compact ones
@@ -155,10 +155,10 @@ Grading RealReductiveGroup::base_grading() const
 
 size_t RealReductiveGroup::numCartan() const { return Cartan_set().size(); }
 
-size_t RealReductiveGroup::rank() const { return rootDatum().rank(); };
+size_t RealReductiveGroup::rank() const { return root_datum().rank(); };
 
 size_t RealReductiveGroup::semisimpleRank() const
-  { return rootDatum().semisimpleRank(); }
+  { return root_datum().semisimpleRank(); }
 
 size_t RealReductiveGroup::numInvolutions()
   { return innerClass().numInvolutions(Cartan_set()); }
@@ -179,7 +179,7 @@ size_t RealReductiveGroup::mostSplit() const
 Grading RealReductiveGroup::grading_offset()
 {
   RootNbrSet rset= noncompactRoots(); // grading for real form rep
-  return cartanclass::restrictGrading(rset,rootDatum().simpleRootList());
+  return cartanclass::restrictGrading(rset,root_datum().simpleRootList());
 }
 
 

@@ -522,62 +522,17 @@ Ext_rep_context::Ext_rep_context
 Ext_rep_context::Ext_rep_context (const repr::Rep_context& rc)
 : Rep_context(rc), d_delta(rc.inner_class().distinguished()) {}
 
-} // |namespace blocks|
+// |common_context| methods
 
-namespace ext_block
-{
-  // Declarations of some functions re-used from ext_block.cpp
-
-bool in_L_image(Weight beta,WeightInvolution&& A);
-bool in_R_image(WeightInvolution&& A,Coweight b);
-unsigned int scent_count(DescValue v);
-Coweight ell (const KGB& kgb, KGBElt x);
-
-  // Declarations of some local functions
-WeylWord fixed_conjugate_simple (const common_context& c, RootNbr& alpha);
-bool same_standard_reps (const paramin& E, const paramin& F);
-bool same_sign (const paramin& E, const paramin& F);
-inline bool is_default (const paramin& E)
-  { return same_sign(E,paramin(E.ctxt,E.x(),E.gamma_lambda)); }
-
-void z_align (const paramin& E, paramin& F, bool extra_flip);
-void z_align (const paramin& E, paramin& F, bool extra_flip, int t_mu);
-paramin complex_cross(const common_context& ctxt,
-		      const ext_gen& p, paramin E);
-int level_a (const paramin& E, const Weight& shift, RootNbr alpha);
-DescValue star (const common_context& ctxt, const paramin& E, const ext_gen& p,
-		containers::sl_list<paramin>& links);
-
-bool is_descent
-  (const common_context& ctxt, const ext_gen& kappa, const paramin& E);
-weyl::Generator first_descent_among
-  (const common_context& ctxt, RankFlags singular_orbits,
-   const ext_gens& orbits, const paramin& E);
-
-common_context::common_context
-  (const repr::Rep_context& rc, const WeightInvolution& delta,
-   const SubSystem& sub)
-    : repr::Ext_rep_context(rc,delta)
-    , integr_datum(sub.pre_root_datum())
-    , sub(sub)
-    , pi_delta(rc.root_datum().rootPermutation(delta))
-    , delta_fixed_roots(fixed_points(pi_delta))
-    , twist()
-    , l_shifts (integr_datum.semisimpleRank())
-{
-  const RootDatum& rd = root_datum();
-  for (weyl::Generator s=0; s<rd.semisimpleRank(); ++s)
-    twist[s] = rd.simpleRootIndex(delta_of(rd.simpleRootNbr(s)));
-
-  // the reflections for |E.l| pivot around |g_rho_check()|
-  const RatCoweight& g_rho_check = this->g_rho_check();
-  for (unsigned i=0; i<l_shifts.size(); ++i)
-    l_shifts[i] = -g_rho_check.dot(integr_datum.simpleRoot(i));
-} // |common_context::common_context|
+common_context::common_context (RealReductiveGroup& G, const SubSystem& sub)
+: Rep_context(G)
+, integr_datum(sub.pre_root_datum())
+, sub(sub)
+{} // |common_context::common_context|
 
 
-repr::StandardReprMod common_context::cross
-    (weyl::Generator s, const repr::StandardReprMod& z) const
+StandardReprMod common_context::cross
+    (weyl::Generator s, const StandardReprMod& z) const
 {
   const auto& refl = sub.reflection(s); // reflection word in full system
   const KGBElt new_x = kgb().cross(refl,z.x());
@@ -591,8 +546,8 @@ repr::StandardReprMod common_context::cross
   return repr::StandardReprMod::build(*this,z.gamma_mod1(),new_x,gamma_lambda);
 }
 
-repr::StandardReprMod common_context::down_Cayley
-    (weyl::Generator s, const repr::StandardReprMod& z) const
+StandardReprMod common_context::down_Cayley
+    (weyl::Generator s, const StandardReprMod& z) const
 {
   const auto& conj = sub.to_simple(s); // word in full system
   KGBElt conj_x = kgb().cross(conj,z.x());
@@ -610,7 +565,7 @@ repr::StandardReprMod common_context::down_Cayley
 }
 
 bool common_context::is_parity
-    (weyl::Generator s, const repr::StandardReprMod& z) const
+    (weyl::Generator s, const StandardReprMod& z) const
 {
   const auto& i_tab = inner_class().involution_table();
   const auto& real_roots = i_tab.real_roots(kgb().inv_nr(z.x()));
@@ -621,20 +576,43 @@ bool common_context::is_parity
   return (eval+rho_r_corr)%2!=0;
 }
 
-bool common_context::is_very_complex (InvolutionNbr theta, RootNbr alpha) const
-{ const auto& i_tab = inner_class().involution_table();
-  const auto& rd = root_datum();
-  assert (rd.is_posroot(alpha)); // this is a precondition
-  auto image = i_tab.root_involution(theta,alpha);
-  make_positive(rd,image);
-  return image!=alpha and image!=delta_of(alpha);
-}
 
 Weight common_context::to_simple_shift
   (InvolutionNbr theta, InvolutionNbr theta_p, RootNbrSet S) const
 { const InvolutionTable& i_tab = inner_class().involution_table();
   S &= (i_tab.real_roots(theta) ^i_tab.real_roots(theta_p));
   return root_sum(root_datum(),S);
+}
+
+
+Ext_common_context::Ext_common_context
+  (RealReductiveGroup& G, const WeightInvolution& delta, const SubSystem& sub)
+    : repr::common_context(G,sub)
+    , d_delta(delta)
+    , pi_delta(G.root_datum().rootPermutation(delta))
+    , delta_fixed_roots(fixed_points(pi_delta))
+    , twist()
+    , l_shifts(id().semisimpleRank())
+{
+  const RootDatum& rd = root_datum();
+  for (weyl::Generator s=0; s<rd.semisimpleRank(); ++s)
+    twist[s] = rd.simpleRootIndex(delta_of(rd.simpleRootNbr(s)));
+
+  // the reflections for |E.l| pivot around |g_rho_check()|
+  const RatCoweight& g_rho_check = this->g_rho_check();
+  for (unsigned i=0; i<l_shifts.size(); ++i)
+    l_shifts[i] = -g_rho_check.dot(id().simpleRoot(i));
+} // |Ext_common_context::Ext_common_context|
+
+
+bool Ext_common_context::is_very_complex
+  (InvolutionNbr theta, RootNbr alpha) const
+{ const auto& i_tab = inner_class().involution_table();
+  const auto& rd = root_datum();
+  assert (rd.is_posroot(alpha)); // this is a precondition
+  auto image = i_tab.root_involution(theta,alpha);
+  make_positive(rd,image);
+  return image!=alpha and image!=delta_of(alpha);
 }
 
 /*
@@ -647,7 +625,7 @@ Weight common_context::to_simple_shift
   This comes from an action of |delta| on a certain top wedge product of
   root spaces, and the formula below tells whether that action is by $-1$.
 */
-bool common_context::shift_flip
+bool Ext_common_context::shift_flip
   (InvolutionNbr theta, InvolutionNbr theta_p, RootNbrSet S) const
 { S.andnot(delta_fixed()); // $\delta$-fixed roots won't contribute
 
@@ -661,6 +639,40 @@ bool common_context::shift_flip
   return count%4!=0;
 }
 
+} // |namespace repr|
+
+namespace ext_block
+{
+  // Declarations of some functions re-used from ext_block.cpp
+
+bool in_L_image(Weight beta,WeightInvolution&& A);
+bool in_R_image(WeightInvolution&& A,Coweight b);
+unsigned int scent_count(DescValue v);
+Coweight ell (const KGB& kgb, KGBElt x);
+
+  // Declarations of some local functions
+  WeylWord fixed_conjugate_simple
+    (const repr::Ext_common_context& c, RootNbr& alpha);
+bool same_standard_reps (const paramin& E, const paramin& F);
+bool same_sign (const paramin& E, const paramin& F);
+inline bool is_default (const paramin& E)
+  { return same_sign(E,paramin(E.ctxt,E.x(),E.gamma_lambda)); }
+
+void z_align (const paramin& E, paramin& F, bool extra_flip);
+void z_align (const paramin& E, paramin& F, bool extra_flip, int t_mu);
+paramin complex_cross(const repr::Ext_common_context& ctxt,
+		      const ext_gen& p, paramin E);
+int level_a (const paramin& E, const Weight& shift, RootNbr alpha);
+DescValue star (const repr::Ext_common_context& ctxt,
+		const paramin& E, const ext_gen& p,
+		containers::sl_list<paramin>& links);
+
+bool is_descent
+  (const repr::Ext_common_context& ctxt, const ext_gen& kappa, const paramin& E);
+weyl::Generator first_descent_among
+  (const repr::Ext_common_context& ctxt, RankFlags singular_orbits,
+   const ext_gens& orbits, const paramin& E);
+
 
 /* Try to conjugate |alpha| by product of folded-generators for the (full)
    root system of |c| to a simple root, and return the left-conjugating word
@@ -670,7 +682,8 @@ bool common_context::shift_flip
    of the simple roots in its component of the root system is). In this case
    |alpha| is left as that non simple root, and the result conjugates to it.
  */
-WeylWord fixed_conjugate_simple (const common_context& ctxt, RootNbr& alpha)
+  WeylWord fixed_conjugate_simple
+    (const repr::Ext_common_context& ctxt, RootNbr& alpha)
 { const RootDatum& rd = ctxt.root_datum();
 
   WeylWord result;
@@ -860,7 +873,7 @@ void z_align (const paramin& E, paramin& F, bool extra_flip, int t_mu)
   (for |l|) the same thing with |rho_check_imaginary|. This is done by the
   "correction" terms below.
  */
-paramin complex_cross(const common_context& ctxt,
+paramin complex_cross(const repr::Ext_common_context& ctxt,
 		      const ext_gen& p, paramin E) // by-value for |E|, modified
 { const RootDatum& rd = E.rc().root_datum();
   const RootDatum& id = ctxt.id();
@@ -945,7 +958,8 @@ int level_a (const paramin& E, const Weight& shift, RootNbr alpha)
 
 
 // compute type of |p| for |E|, and export adjacent |paramin| values in |links|
-DescValue star (const common_context& ctxt, const paramin& E, const ext_gen& p,
+DescValue star (const repr::Ext_common_context& ctxt,
+		const paramin& E, const ext_gen& p,
 		containers::sl_list<paramin>& links)
 {
   paramin E0=E; // a copy of |E| that might be modified below to "normalise"
@@ -1691,15 +1705,15 @@ ext_block::ext_block
 
 bool ext_block::tune_signs(const blocks::common_block& block)
 {
-  repr::Ext_rep_context ctxt (block.context(),delta());
-  common_context block_ctxt(block.context(),delta(),block.integral_subsystem());
+  repr::Ext_common_context ctxt
+    (block.context().real_group(),delta(),block.integral_subsystem());
   containers::sl_list<paramin> links;
   for (BlockElt n=0; n<size(); ++n)
   { auto z=this->z(n);
     const paramin E(ctxt,block.x(z),block.gamma_lambda(z));
     for (weyl::Generator s=0; s<rank(); ++s)
     { const ext_gen& p=orbit(s); links.clear(); // output arguments for |star|
-      auto tp = star(block_ctxt,E,p,links);
+      auto tp = star(ctxt,E,p,links);
       if (might_be_uncertain(descent_type(s,n)) and
 	  data[s][n].links.first==UndefBlock) // then reset the uncertain type
       {
@@ -1852,7 +1866,8 @@ StandardRepr scaled_extended_dominant // result will have its |gamma()| dominant
  bool& flipped // records whether a net extended flip was computed
  )
 {
-  const RootDatum& rd=rc.root_datum(); const KGB& kgb = rc.kgb();
+  const RootDatum& rd=rc.root_datum();
+  RealReductiveGroup& G=rc.real_group(); const KGB& kgb = rc.kgb();
   repr::Ext_rep_context ctxt(rc,delta);
   const ext_gens orbits = rootdata::fold_orbits(rd,delta);
   assert(is_dominant_ratweight(rd,sr.gamma())); // dominant
@@ -1900,7 +1915,7 @@ StandardRepr scaled_extended_dominant // result will have its |gamma()| dominant
   paramin E1(ctxt,kgb.involution(x),E0.gamma_lambda,E0.tau,E0.l,E0.t,E0.flipped);
 
   { // descend through complex singular simple descents
-    common_context block_ctxt(rc,delta, SubSystem::integral(rd,gamma));
+    repr::Ext_common_context block_ctxt(G,delta, SubSystem::integral(rd,gamma));
     const auto int_datum = block_ctxt.id();
     const ext_gens integral_orbits = rootdata::fold_orbits(int_datum,delta);
     const RankFlags singular_orbits = // flag singular among integral orbits
@@ -1948,8 +1963,8 @@ StandardRepr scaled_extended_dominant // result will have its |gamma()| dominant
   StandardRepr result = E1.restrict(gamma);
 
   // but the whole point of this function is to record the relative flip too!
-  flipped =
-    not same_sign(E1,paramin::default_extend(ctxt,result)); // compare |E1| to default
+  flipped = // compare |E1| to default
+    not same_sign(E1,paramin::default_extend(ctxt,result));
   return result;
 
 } // |scaled_extended_dominant|
@@ -1962,7 +1977,7 @@ StandardRepr scaled_extended_dominant // result will have its |gamma()| dominant
   |to_simple_shift|) test of notably the parity condition in the real case.
  */
 bool is_descent
-  (const common_context& ctxt, const ext_gen& kappa, const paramin& E)
+  (const repr::Ext_common_context& ctxt, const ext_gen& kappa, const paramin& E)
 { // easy solution would be to |return is_descent(star(E,kappa,dummy))|;
   const InvolutionTable& i_tab = E.rc().inner_class().involution_table();
   const InvolutionNbr theta = i_tab.nr(E.tw); // so use root action of |E.tw|
@@ -1983,7 +1998,7 @@ bool is_descent
 } // |is_descent|
 
 weyl::Generator first_descent_among
-  (const common_context& ctxt, RankFlags singular_orbits,
+  (const repr::Ext_common_context& ctxt, RankFlags singular_orbits,
    const ext_gens& orbits, const paramin& E)
 { for (auto it=singular_orbits.begin(); it(); ++it)
     if (is_descent(ctxt,orbits[*it],E))
@@ -2004,7 +2019,8 @@ containers::sl_list<std::pair<StandardRepr,bool> > extended_finalise
   assert(is_dominant_ratweight(rc.root_datum(),sr.gamma()));
   // we must assume |gamma| already dominant, DON'T call |make_dominant| here!
 
-  common_context ctxt(rc,delta,SubSystem::integral(rc.root_datum(),sr.gamma()));
+  repr::Ext_common_context ctxt
+    (rc.real_group(),delta,SubSystem::integral(rc.root_datum(),sr.gamma()));
 
   const ext_gens orbits = rootdata::fold_orbits(ctxt.id(),delta);
   const RankFlags singular_orbits =

@@ -755,7 +755,7 @@ StandardRepK get_standardrep(const SRK_context& c)
   unsigned long x=get_bounded_int
     (sr_input_buffer,"Choose KGB element: ",c.kgb().size());
 
-  prettyprint::printVector(std::cout<<"2rho = ",c.rootDatum().twoRho())
+  prettyprint::printVector(std::cout<<"2rho = ",c.root_datum().twoRho())
     << std::endl;
   Weight lambda=
   get_weight(sr_input_buffer,"Give lambda-rho: ",c.innerClass().rank());

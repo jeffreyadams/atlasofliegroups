@@ -4450,7 +4450,7 @@ void parameter_cross_wrapper(expression_base::level l)
 { shared_module_parameter p = get<module_parameter_value>();
   int s = get<int_value>()->int_val();
   unsigned int r =
-    rootdata::integrality_rank(p->rf->val.rootDatum(),p->val.gamma());
+    rootdata::integrality_rank(p->rf->val.root_datum(),p->val.gamma());
   if (static_cast<unsigned>(s)>=r)
     throw runtime_error
       ("Illegal simple reflection: ") << s << ", should be <" << r;
@@ -4463,7 +4463,7 @@ void parameter_Cayley_wrapper(expression_base::level l)
 { shared_module_parameter p = get<module_parameter_value>();
   int s = get<int_value>()->int_val();
   unsigned int r =
-    rootdata::integrality_rank(p->rf->val.rootDatum(),p->val.gamma());
+    rootdata::integrality_rank(p->rf->val.root_datum(),p->val.gamma());
   if (static_cast<unsigned>(s)>=r)
     throw runtime_error("Illegal simple reflection: ") << s @|
       << ", should be <" << r;
@@ -4476,7 +4476,7 @@ void parameter_inv_Cayley_wrapper(expression_base::level l)
 { shared_module_parameter p = get<module_parameter_value>();
   int s = get<int_value>()->int_val();
   unsigned int r =
-    rootdata::integrality_rank(p->rf->val.rootDatum(),p->val.gamma());
+    rootdata::integrality_rank(p->rf->val.root_datum(),p->val.gamma());
   if (static_cast<unsigned>(s)>=r)
     throw runtime_error("Illegal simple reflection: ") << s
       << ", should be <" << r;
@@ -5806,7 +5806,7 @@ since the parameter itself reported here might be final.
 { if (not khc.isFinal(srk))
   { std::ostringstream os;
     print_stdrep(os << "Non final restriction to K: ",p->val,rc) @|
-      << "\n  (witness " << khc.rootDatum().coroot(khc.witness()) << ')';
+      << "\n  (witness " << khc.root_datum().coroot(khc.witness()) << ')';
     throw runtime_error(os.str());
   }
 }

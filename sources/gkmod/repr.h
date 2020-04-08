@@ -144,7 +144,7 @@ class Rep_context
   // accessors
   RealReductiveGroup& real_group() const { return G; }
   const InnerClass& inner_class() const { return G.innerClass(); }
-  const RootDatum& root_datum() const { return G.rootDatum(); }
+  const RootDatum& root_datum() const { return G.root_datum(); }
   const TwistedWeylGroup& twisted_Weyl_group() const
     { return G.twistedWeylGroup(); }
   const KGB& kgb() const { return KGB_set; }
