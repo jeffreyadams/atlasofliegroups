@@ -13,6 +13,7 @@
 #define COMMON_BLOCKS_H
 
 #include "blocks.h" // we conceptually just extend that module
+#include "gradings.h" // type |gradings::Status| must be complete
 #include "subsystem.h"
 #include "repr.h"
 
@@ -128,9 +129,11 @@ public:
 
   // methods for local common block construction, as in |Rep_context|
   // however, the generator |s| is interpreted for the |integr_datum|
-  // and it is the caller's responsibility to ensure that |z| is dominant
   StandardReprMod cross (weyl::Generator s, const StandardReprMod& z) const;
   StandardReprMod down_Cayley(weyl::Generator s, const StandardReprMod& z) const;
+  StandardReprMod up_Cayley(weyl::Generator s, const StandardReprMod& z) const;
+  std::pair<gradings::Status::Value,bool> // status and whether a descent/type 1
+    status(weyl::Generator s, KGBElt x) const; // with |s| for |integr_datum|
   bool is_parity (weyl::Generator s, const StandardReprMod& z) const;
 
   Weight to_simple_shift(InvolutionNbr theta, InvolutionNbr theta_p,

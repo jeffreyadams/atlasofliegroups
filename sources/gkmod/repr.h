@@ -31,7 +31,9 @@ namespace atlas {
 
 namespace blocks { class common_block; }
 
- namespace repr {
+namespace repr {
+
+class common_context;
 
 /*
   A parameter of a standard representation is determined by a triplet
@@ -321,13 +323,15 @@ class Rep_table : public Rep_context
   SR_poly twisted_deformation_terms (unsigned long sr_hash) const;
   // once a parameter has been entered, we can compute this without a block
 
+  blocks::common_block& add_block_below // method defined in common_blocks.cpp
+    (const common_context&, const StandardReprMod& srm);
 
   SR_poly twisted_deformation(StandardRepr z); // by value
 
  private:
-  unsigned long formula_index (const StandardRepr& h);
-  unsigned long add_block(const StandardReprMod& sr);
-  // add |common_block| to |blocks|, and return (new) hash number of |sr|
+  unsigned long formula_index (const StandardRepr&);
+  unsigned long add_block(const StandardReprMod&);
+  class Bruhat_generator; // helper class: internal |add_block_below| recursion
 
 }; // |Rep_table|
 

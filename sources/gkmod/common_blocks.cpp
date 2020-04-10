@@ -41,6 +41,7 @@
 
 #include <cassert>
 #include <vector>
+#include <map>
 
 #include "matreduc.h"
 #include "realredgp.h"
@@ -530,6 +531,148 @@ common_context::common_context (RealReductiveGroup& G, const SubSystem& sub)
 , sub(sub)
 {} // |common_context::common_context|
 
+// |Rep_table| helper class
+class Rep_table::Bruhat_generator
+{
+  Rep_table& parent;
+  const common_context& ctxt;
+  std::map<unsigned long,containers::simple_list<unsigned long> > predecessors;
+public:
+  Bruhat_generator (Rep_table* caller, const common_context& ctxt)
+    : parent(*caller),ctxt(ctxt), predecessors() {}
+  containers::simple_list<unsigned long> block_below(const StandardReprMod& srm);
+}; // |class Rep_table::Bruhat_generator|
+
+// |Rep_table| methods
+blocks::common_block& Rep_table::add_block_below
+  (const common_context& ctxt, const StandardReprMod& srm)
+{
+  Bruhat_generator gen(this,ctxt);
+  const auto elements=gen.block_below(srm);
+  // TODO: should do block merge things here
+  blocks::common_block* p=nullptr;
+  return *p;
+}
+
+
+containers::simple_list<unsigned long> Rep_table::Bruhat_generator::block_below
+  (const StandardReprMod& srm)
+{
+  auto& hash=parent.mod_hash;
+  { const auto h=hash.find(srm);
+    if (h!=hash.empty)
+    {} // TODO fetch Bruhat interval from stored block
+  }
+  const auto rank = ctxt.id().rank();
+  containers::sl_list<unsigned long> pred; // list of elements covered by z
+  // invariant: |block_below| has been called for every element in |pred|
+
+  weyl::Generator s; // a complex or real type 1 descent to be found, if exists
+  containers::sl_list<containers::simple_list<unsigned long> > results;
+  for (s=0; s<rank; ++s)
+  {
+    std::pair<gradings::Status::Value,bool> stat=ctxt.status(s,srm.x());
+    if (not stat.second)
+      continue; // ignore imaginary, complex ascent or real (potentially) type 2
+    if (stat.first==gradings::Status::Complex)
+    { // complex descent
+      const StandardReprMod sz = ctxt.cross(s,srm);
+      results.push_back(block_below(sz)); // recursion
+      pred.push_back(hash.find(sz)); // must call |hash.find| after |block_below|
+      break; // we shall add $s$-ascents of predecessors of |sz| below
+    }
+    else if (stat.first==gradings::Status::Real and ctxt.is_parity(s,srm))
+    { // |z| has a type 1 real descent at |s|
+      const StandardReprMod sz0 = ctxt.down_Cayley(s,srm);
+      const StandardReprMod sz1 = ctxt.cross(s,sz0);
+      results.push_back(block_below(sz0)); // recursion
+      results.push_back(block_below(sz1)); // recursion
+      pred.push_back(hash.find(sz0)); // call |hash.find| after |block_below|
+      pred.push_back(hash.find(sz1));
+      break; // we shall add $s$-ascents of |predecessors[sz_inx]| below
+    } // |if (real type 1)|
+
+  } // |for (s)|
+
+  // if above loop performed a |break| it found complex or real type 1 descent
+  if (s==rank) // otherwise, the only descents are real type 2, if any
+  {
+    while (s-->0) // we reverse the loop just because |s==rank| already
+      if (ctxt.status(s,srm.x()).first==gradings::Status::Real and
+	  ctxt.is_parity(s,srm))
+      {
+	const auto sz = ctxt.down_Cayley(s,srm);
+	results.push_back(block_below(sz)); // recursion
+	pred.push_back(hash.find(sz));
+      }
+  }
+  else // a complex or real type 1 descent |sz==pred.front()| for |s| was found
+  { // add |s|-ascents for elements covered by |sz|
+    const auto pred_sz = predecessors.at(pred.front());
+    for (auto it = pred_sz.begin(); not pred.at_end(it); ++it)
+    {
+      const auto p = *it; // sequence number of a predecessor of |sz|
+      const StandardReprMod zp = parent.mod_pool[p];
+      std::pair<gradings::Status::Value,bool> stat=ctxt.status(s,zp.x());
+      switch (stat.first)
+      {
+      case gradings::Status::Real: case gradings::Status::ImaginaryCompact:
+	break; // nothing to do without ascent
+      case gradings::Status::Complex:
+	if (not stat.second) // complex ascent
+	{
+	  const auto szp = ctxt.cross(s,zp);
+	  results.push_back(block_below(szp)); // recursion
+	  pred.push_back(hash.find(szp));
+	} // |if(complex ascent)
+	break;
+      case gradings::Status::ImaginaryNoncompact:
+	{
+	  const auto szp = ctxt.up_Cayley(s,zp);
+	  results.push_back(block_below(szp)); // recursion
+	  pred.push_back(hash.find(szp));
+	  if (not stat.second) // then nci type 2
+	  {
+	    const auto szp1 = ctxt.cross(s,szp);
+	    results.push_back(block_below(szp1)); // recursion
+	    pred.push_back(hash.find(szp1));
+	  }
+	}
+	break;
+      } // |switch(status(s,conj_x))|
+    } // |for (it)|
+  } // |if (s<rank)|
+  predecessors.emplace(std::make_pair(hash.match(srm),pred.undress()));
+  { // merge all |results| together and remove duplicates
+    const auto h=hash.match(srm); // finally generated sequence number for |srm|
+    results.push_front(containers::simple_list<unsigned long> {h} );
+    while (results.size()>1)
+    {
+      auto it=results.begin();
+      auto first = std::move(*it);
+      first.merge(std::move(*++it));
+      results.erase(results.begin(),++it);
+      first.unique();
+      results.push_back(std::move(first));
+    }
+  }
+  return results.front();
+} // |Rep_table::Bruhat_generator::block_below|
+
+std::pair<gradings::Status::Value,bool>
+  common_context::status(weyl::Generator s, KGBElt x) const
+{
+  const auto& conj = sub.to_simple(s); // word in full system
+  KGBElt conj_x = kgb().cross(conj,x);
+  const auto t=sub.simple(s);
+  const auto stat = kgb().status(t,conj_x);
+  return std::make_pair(kgb().status(t,conj_x),
+			stat==gradings::Status::Real
+			? kgb().isDoubleCayleyImage(t,conj_x) // real type 1
+			: stat==gradings::Status::Complex
+			? kgb().isDescent(t,conj_x)
+			: conj_x!=kgb().cross(t,conj_x)); // nc imaginary type 1
+}
 
 StandardReprMod common_context::cross
     (weyl::Generator s, const StandardReprMod& z) const
@@ -549,6 +692,7 @@ StandardReprMod common_context::cross
 StandardReprMod common_context::down_Cayley
     (weyl::Generator s, const StandardReprMod& z) const
 {
+  assert(is_parity(s,z)); // which also asserts that |z| is real for |s|
   const auto& conj = sub.to_simple(s); // word in full system
   KGBElt conj_x = kgb().cross(conj,z.x());
   conj_x = kgb().inverseCayley(sub.simple(s),conj_x).first;
@@ -574,6 +718,25 @@ bool common_context::is_parity
   const int eval = this->gamma_lambda(z).dot(alpha_hat);
   const int rho_r_corr = alpha_hat.dot(root_datum().twoRho(real_roots))/2;
   return (eval+rho_r_corr)%2!=0;
+}
+
+StandardReprMod common_context::up_Cayley
+    (weyl::Generator s, const StandardReprMod& z) const
+{
+  const auto& conj = sub.to_simple(s); // word in full system
+  KGBElt conj_x = kgb().cross(conj,z.x());
+  conj_x = kgb().cayley(sub.simple(s),conj_x);
+  const auto new_x = kgb().cross(conj_x,conj);
+  RatWeight gamma_lambda = this->gamma_lambda(z);
+
+  const auto& i_tab = inner_class().involution_table();
+  const auto& new_real_roots = i_tab.real_roots(kgb().inv_nr(new_x));
+  const Coweight& alpha_hat = integr_datum.simpleCoroot(s);
+  const int rho_r_corr = alpha_hat.dot(root_datum().twoRho(new_real_roots));
+  assert(rho_r_corr%2==0);
+  if (rho_r_corr%4==0)
+    gamma_lambda += RatWeight(integr_datum.root(s),2); // add half-alpha
+  return repr::StandardReprMod::build(*this,z.gamma_mod1(),new_x,gamma_lambda);
 }
 
 
