@@ -1398,19 +1398,19 @@ BlockElt
 	if (not kgb.isDescent(sub.simple(s),conj_x)) // complex ascent
 	{
 	  cross_act(s,c);
-	  pred.push_back(nblock_below(c,level+1));
+	  pred.push_back(nblock_below(c,level+1)); // recursion
 	} // |if(complex ascent)
 	break;
       case gradings::Status::ImaginaryNoncompact:
 	{
 	  bool type_2 = kgb.cross(sub.simple(s),conj_x)==conj_x;
 	  do_up_Cayley(s,c);
-	  pred.push_back(nblock_below(c,level+1));
+	  pred.push_back(nblock_below(c,level+1)); // recursion
 
 	  if (type_2)
 	  {
 	    cross_act(s,c); // this changes |c| since we are in type 2
-	    pred.push_back(nblock_below(c,level+1));
+	    pred.push_back(nblock_below(c,level+1)); // recursion
 	  }
 	}
 	break;
@@ -1429,7 +1429,7 @@ BlockElt
 	{
 	  assert (not kgb.isDoubleCayleyImage(sub.simple(s),conj_x));
 	  do_down_Cayley(s,sz);
-	  pred.push_back(nblock_below(sz,level+1)); // recurr ignoring descents
+	  pred.push_back(nblock_below(sz,level+1)); // recursion, ignore descents
 	}
       }
     } // |while (s-->0)|
@@ -1438,7 +1438,7 @@ BlockElt
   // finally we can add |z| to |zz_hash|, after all its Bruhat-predecessors
   assert(zz_hash.size()==predecessors.size());
   block_elt_entry e(z.x(),y_hash.match(pack_y(z)),DescentStatus(),level);
-  BlockElt res = zz_hash.match(e);
+  BlockElt res = zz_hash.match(e); // this is where |info| of block grows
   assert(res==predecessors.size()); // |z| must have been added just now
   predecessors.push_back(std::move(pred)); // list of elements covered by |z|
   return res;

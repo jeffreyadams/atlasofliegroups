@@ -42,6 +42,7 @@
 #include <cassert>
 #include <vector>
 #include <map>
+#include <algorithm>
 
 #include "matreduc.h"
 #include "realredgp.h"
@@ -403,7 +404,7 @@ common_block::common_block // full block constructor
   // and look up which element matches the original input
   entry_element = lookup(srm);
 
-} // |common_block::common_block|
+} // |common_block::common_block|, full
 
 void common_block::compute_y_bits()
 {
@@ -430,6 +431,177 @@ void common_block::compute_y_bits()
     y_bits.push_back(i_tab.y_pack(i_x,lambda_rho));
   }
 }
+
+common_block::common_block // partial block constructor
+    (const repr::Rep_table& rt,
+     const repr::common_context& ctxt,
+     containers::sl_list<unsigned long>& elements,
+     const RatWeight& gamma_mod_1)
+  : Block_base(rootdata::integrality_rank(rt.root_datum(),gamma_mod_1))
+  , rc(rt)
+  , gamma_mod_1(gamma_mod_1) // already reduced
+  , integral_datum(SubSystem::integral(root_datum(),gamma_mod_1))
+  , y_bits()
+  , y_pool()
+  , y_hash(y_pool)
+  , xy_hash(info)
+  , extended(nullptr) // no extended block initially
+  , highest_x(0) // it won't be less than this; increased later
+  , highest_y(0) // defined when generation is complete
+{
+  info.reserve(elements.size());
+  const auto& kgb = rt.kgb();
+  std::vector<containers::sl_list<TorusPart> > y_table
+    (inner_class().involution_table().size());
+  // every element of |y_table| is a list of |TorusPart| values of the same rank
+  // therefore, we can (and will) compare list elements and sort the lists
+  for (unsigned long elt : elements)
+  { const auto& srm=rt.srm(elt);
+    const KGBElt x=srm.x();
+    const TorusPart& y=srm.y();
+    if (x>highest_x)
+      highest_x=x;
+    auto& loc=y_table[kgb.inv_nr(x)];
+    auto it = std::find_if_not(loc.cbegin(),loc.cend(),
+			       [&y](const TorusPart& t) {return t<y; });
+    if (it==loc.end() or y<*it) // skip if |y| already present in the list
+      loc.insert(it,y);
+  }
+
+  const auto& i_tab = inner_class().involution_table();
+  for (InvolutionNbr i_x=y_table.size(); i_x-->0; )
+  {
+    highest_y += y_table[i_x].size();
+    for (TorusPart& y : y_table[i_x])
+    {
+      RatWeight gamma_lambda = rt.gamma_lambda(i_x,y,gamma_mod_1);
+      TorusElement t = y_values::exp_pi(gamma_lambda);
+      y_hash.match(i_tab.pack(t,i_x)); // enter this |y_entry| into |y_hash|
+    }
+  }
+  assert(y_pool.size()==highest_y);
+  -- highest_y; // one less than the number of distinct |y| values
+
+  elements.sort // sorting by |x| first implies having weakly increasing lengths
+    ([&rt](unsigned long a, unsigned long b)
+      { auto& srm_a=rt.srm(a), &srm_b=rt.srm(b);
+	return srm_a.x()!=srm_b.x() ? srm_a.x()<srm_b.x() : srm_a.y()<srm_b.y();
+      }
+     );
+
+  for (unsigned long elt : elements)
+  { const auto& srm=rt.srm(elt);
+    const KGBElt x=srm.x();
+    auto y = y_hash.find(i_tab.pack(rt.y_as_torus_elt(srm),kgb.inv_nr(x)));
+    assert(y!=y_hash.empty);
+    info.emplace_back(x,y,DescentStatus(),kgb.length(x));
+  }
+  xy_hash.reconstruct(); // we must do this before we use the |lookup| method
+
+  // allocate link fields with |UndefBlock| entries
+  data.assign(integral_datum.rank(),std::vector<block_fields>(elements.size()));
+
+  assert(info.size()==elements.size());
+  auto it = elements.cbegin();
+  for (BlockElt i=0; i<info.size(); ++i,++it)
+  {
+    EltInfo& z = info[i];
+    const auto srm_z = rt.srm(*it);
+    for (weyl::Generator s=0; s<integral_datum.rank(); ++s)
+    {
+      auto& tab_s = data[s];
+      const auto stat = ctxt.status(s,z.x);
+      switch (stat.first)
+      {
+      case gradings::Status::Complex:
+	{
+	  z.descent.set(s,stat.second
+			  ? DescentStatus::ComplexDescent
+			  : DescentStatus::ComplexAscent);
+	  if (stat.second) // set links both ways when seeing descent
+	  {
+	    BlockElt sz = lookup(ctxt.cross(s,srm_z));
+	    assert(sz!=UndefBlock);
+	    assert(length(i)==length(sz)+1);
+	    assert(descentValue(s,sz)==DescentStatus::ComplexAscent);
+	    tab_s[i].cross_image = sz;
+	    tab_s[sz].cross_image = i;
+	  }
+	}
+	break;
+      case gradings::Status::Real:
+	{
+	  if (ctxt.is_parity(s,srm_z))
+	  {
+	    const auto srm_sz = ctxt.down_Cayley(s,srm_z);
+	    BlockElt sz = lookup(srm_sz);
+	    assert(sz!=UndefBlock);
+	    assert(length(i)==length(sz)+1);
+	    tab_s[i].Cayley_image.first = sz; // first Cayley descent
+	    if (stat.second)
+	    {
+	      z.descent.set(s,DescentStatus::RealTypeI);
+	      tab_s[i].cross_image = i;
+	      assert(descentValue(s,sz)==DescentStatus::ImaginaryTypeI);
+	      tab_s[sz].Cayley_image.first = i; // single-valued Cayley ascent
+	      sz = lookup(ctxt.cross(s,srm_sz)); // move to other Cayley descent
+	      assert(sz!=UndefBlock);
+	      assert(descentValue(s,sz)==DescentStatus::ImaginaryTypeI);
+	      tab_s[i].Cayley_image.second = sz; // second Cayley descent
+	      tab_s[sz].Cayley_image.first = i; // single-valued Cayley ascent
+	    }
+	    else
+	    {
+	      z.descent.set(s,DescentStatus::RealTypeII);
+	      assert(descentValue(s,sz)==DescentStatus::ImaginaryTypeII);
+	      first_free_slot(tab_s[sz].Cayley_image) = i; // one of two ascents
+	      tab_s[i].cross_image = lookup(ctxt.cross(s,srm_z)); // maybe Undef
+	    }
+	  }
+	  else
+	  {
+	    z.descent.set(s,DescentStatus::RealNonparity);
+	    tab_s[i].cross_image = i;
+	  }
+	}
+	break;
+      case gradings::Status::ImaginaryCompact:
+	{
+	  z.descent.set(s,DescentStatus::ImaginaryCompact);
+	  tab_s[i].cross_image = i;
+	}
+	break;
+      case gradings::Status::ImaginaryNoncompact:
+	{
+	  if (stat.second)
+	  {
+	    z.descent.set(s,DescentStatus::ImaginaryTypeI);
+	    tab_s[i].cross_image = lookup(ctxt.cross(s,srm_z)); // maybe Undef
+	  }
+	  else
+	  {
+	    z.descent.set(s,DescentStatus::ImaginaryTypeII);
+	    tab_s[i].cross_image = i;
+	  }
+	}
+	break;
+      }
+    } // |for (s)|
+  } // |for (i)|
+
+  y_bits.reserve(y_pool.size());
+  for (InvolutionNbr i_x=y_table.size(); i_x-->0; )
+    for (TorusPart& y : y_table[i_x])
+    {
+#ifndef NDEBUG
+      RatWeight gamma_lambda = rt.gamma_lambda(i_x,y,gamma_mod_1);
+      TorusElement t = y_values::exp_pi(gamma_lambda);
+      assert(y_hash.find(i_tab.pack(t,i_x))==y_bits.size());
+#endif
+      y_bits.push_back(y);
+    }
+
+} // |common_block::common_block|, partial
 
 BlockElt common_block::lookup(const repr::StandardReprMod& srm) const
 { const auto x = srm.x();
@@ -547,11 +719,34 @@ public:
 blocks::common_block& Rep_table::add_block_below
   (const common_context& ctxt, const StandardReprMod& srm)
 {
+  assert(mod_hash.find(srm)==mod_hash.empty); // otherwise don't call us
   Bruhat_generator gen(this,ctxt);
-  const auto elements=gen.block_below(srm);
+  const auto prev_size = mod_pool.size(); // limit of previously known elements
+  containers::sl_list<unsigned long> elements(gen.block_below(srm));
+
+  std::unique_ptr<blocks::common_block> new_block_p
+    (new blocks::common_block (*this,ctxt,elements,srm.gamma_mod1()));
+
+  containers::sl_list<std::pair<blocks::common_block*,
+				containers::sl_list<BlockElt> > > sub_blocks;
+  for (auto it=elements.begin(); not elements.at_end(it); ++it)
+    if (*it<prev_size)
+    {
+      const auto block_p=place[*it].first;
+      auto jt = sub_blocks.begin();
+      for ( ; not sub_blocks.at_end(jt); ++jt)
+	if (jt->first==block_p) // sub-block already known
+	{
+	  jt->second.push_back(place[*it].second);
+	  break;
+	}
+      if (sub_blocks.at_end(jt)) // then we have a fresh sub-block
+	sub_blocks.push_back
+	  (std::make_pair(block_p,
+			  containers::sl_list<BlockElt>{place[*it].second}));
+    }
   // TODO: should do block merge things here
-  blocks::common_block* p=nullptr;
-  return *p;
+  return *new_block_p.release(); // for now, to keep the compiler happy
 }
 
 
@@ -933,7 +1128,7 @@ paramin::paramin
   $\delta$-stability: the same default is used in |common_block| for an entire
   family of blocks, so dependence on |gamma| must be limited to dependence on
   its reduction modulo 1. Even though |gamma_lambda| is computed at the non
-  $\delta$-fixed |srm.gamma()| below, it is also (due to the way |mod_reduce|
+  $\delta$-fixed |srm.gamma_mod1()|, it is also (due to the way |mod_reduce|
   works) a proper value of |gamma_lambda| at |sr|, so |(1-delta)*gamma_lambda|,
   gives a valid value for the equation of which |tau| est une solution. However
   |gamma_lambda| may be a different representative than |rc.gamma_lambda(sr)|,

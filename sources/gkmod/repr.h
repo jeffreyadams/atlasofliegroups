@@ -175,6 +175,8 @@ class Rep_context
   Weight lambda_rho(const StandardRepr& z) const;
   RatWeight lambda(const StandardRepr& z) const // half-integer
   { return rho(root_datum()).normalize()+lambda_rho(z); }
+  RatWeight gamma_lambda
+    (InvolutionNbr i_x, const TorusPart& y_bits, const RatWeight& gamma) const;
   RatWeight gamma_lambda(const StandardReprMod& z) const;
   RatWeight gamma_0 // infinitesimal character deformed to $\nu=0$
     (const StandardRepr& z) const;
@@ -296,6 +298,8 @@ class Rep_table : public Rep_context
   Rep_table(RealReductiveGroup &G);
   ~Rep_table();
   // both defined out of line because of implicit use |common_block| destructor
+
+  const StandardReprMod& srm(unsigned long n) const { return mod_pool[n]; }
 
   unsigned int length(StandardRepr z); // by value
 

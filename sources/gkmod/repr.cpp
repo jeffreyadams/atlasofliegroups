@@ -175,15 +175,18 @@ Weight Rep_context::lambda_rho(const StandardRepr& z) const
 }
 
 // this function is similar to |common_block::gamma_lambda|
-RatWeight Rep_context::gamma_lambda(const StandardReprMod& z) const
+RatWeight Rep_context::gamma_lambda
+  (InvolutionNbr i_x,  const TorusPart& y_bits, const RatWeight& gamma) const
 {
-  const InvolutionNbr i_x = kgb().inv_nr(z.x());
   const InvolutionTable& i_tab = inner_class().involution_table();
   const WeightInvolution& theta = i_tab.matrix(i_x);
 
-  const RatWeight gamma_rho = z.gamma_mod1() - rho(root_datum());
-  return (gamma_rho-theta*gamma_rho - i_tab.y_lift(i_x,z.y()))/2;
+  const RatWeight gamma_rho = gamma - rho(root_datum());
+  return (gamma_rho-theta*gamma_rho - i_tab.y_lift(i_x,y_bits))/2;
 }
+
+RatWeight Rep_context::gamma_lambda(const StandardReprMod& z) const
+{ return gamma_lambda(kgb().inv_nr(z.x()),z.y(),z.gamma_mod1()); }
 
 RatWeight Rep_context::gamma_0 (const StandardRepr& z) const
 {

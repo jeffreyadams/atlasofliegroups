@@ -22,6 +22,7 @@ namespace atlas {
 
 namespace repr {
   class Rep_context;
+  class common_context;
   class StandardReprMod;
 }
 
@@ -55,11 +56,16 @@ class common_block : public Block_base
  public:
 
   // constructor and destructor
-  common_block
+  common_block // full block
     (const repr::Rep_context& rc,
      const repr::StandardReprMod& srm, // not modified, no "making dominant"
      BlockElt& entry_element	// set to block element matching input
     );
+  common_block // partial block
+    (const repr::Rep_table& rt,
+     const repr::common_context& ctxt,
+     containers::sl_list<unsigned long>& elements,
+     const RatWeight& gamma_mod_1);
   ~common_block(); // cleans up |*extended|, so inline definition impossible
 
   // accessors that get values via |rc|
