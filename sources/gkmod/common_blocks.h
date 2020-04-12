@@ -14,6 +14,7 @@
 
 #include "blocks.h" // we conceptually just extend that module
 #include "gradings.h" // type |gradings::Status| must be complete
+#include "bruhat.h" // type |BruhatOrder| must be complete for destructor
 #include "subsystem.h"
 #include "repr.h"
 
@@ -85,6 +86,9 @@ class common_block : public Block_base
   ext_gens fold_orbits(const WeightInvolution& delta) const;
 
   ext_block::ext_block& extended_block(const WeightInvolution& delta);
+
+  void set_Bruhat(std::vector<Poset::EltList>&& Hasse)
+  { delete d_bruhat; d_bruhat = new BruhatOrder(std::move(Hasse)); }
 
   // virtual methods
   virtual KGBElt max_x() const { return highest_x; } // might not be final |x|

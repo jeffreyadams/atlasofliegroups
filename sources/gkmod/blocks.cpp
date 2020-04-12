@@ -1596,7 +1596,6 @@ param_block::param_block // partial block constructor, for interval below |sr|
 
     } // |for(s)|
   } // |for(i)|
-
   compute_duals(y_hash,xy_hash,inner_class(),sub);
   compute_y_bits(y_pool);
 
@@ -1703,12 +1702,12 @@ void insertAscents(std::set<BlockElt>& hs,
 }
 
 
-/*!
-  Puts into |Hasse| the Hasse diagram data for the Bruhat ordering on |block|.
+/*
+  Put into |Hasse| the Hasse diagram data for the Bruhat ordering on |block|.
 
   Explanation: we used the algorithm from Vogan's 1982 Park City notes...
   which contains a bad definition. Now modified to work like kgb makeHasse:
-  seek an ascent s that is complex or type I real. If it exists, use it as in
+  seek a descent s that is complex or type I real. If it exists, use it as in
   kgb. If it doesn't then we're essentially at a split principal series. The
   immediate predecessors of z are just the inverse Cayley transforms.
 */

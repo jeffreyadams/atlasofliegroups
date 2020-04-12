@@ -44,6 +44,7 @@
 #include <map>
 #include <algorithm>
 
+#include "poset.h"
 #include "matreduc.h"
 #include "realredgp.h"
 #include "subsystem.h"
@@ -712,6 +713,9 @@ class Rep_table::Bruhat_generator
 public:
   Bruhat_generator (Rep_table* caller, const common_context& ctxt)
     : parent(*caller),ctxt(ctxt), predecessors() {}
+
+  const containers::simple_list<unsigned long>& covered(unsigned long n)
+  { return predecessors.at(n); }
   containers::simple_list<unsigned long> block_below(const StandardReprMod& srm);
 }; // |class Rep_table::Bruhat_generator|
 
@@ -729,6 +733,19 @@ blocks::common_block& Rep_table::add_block_below
   auto& block = *new_block_p;
 
   block_p.push_back(std::move(new_block_p)); // insert block
+
+  std::vector<Poset::EltList> Hasse_diagram(block.size());
+  for (auto z : elements)
+  {
+    const auto& cover = gen.covered(z);
+    const auto len = atlas::containers::length(cover);
+    BlockElt i_z = block.lookup(this->srm(z));
+    auto& row = Hasse_diagram[i_z];
+    row.reserve(len);
+    for (auto it=cover.begin(); not cover.at_end(it); ++it)
+      row.push_back(block.lookup(this->srm(*it)));
+  }
+  block.set_Bruhat(std::move(Hasse_diagram));
 
   containers::sl_list<std::pair<blocks::common_block*,
 				containers::sl_list<BlockElt> > > sub_blocks;
