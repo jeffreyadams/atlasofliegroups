@@ -726,27 +726,40 @@ blocks::common_block& Rep_table::add_block_below
 
   std::unique_ptr<blocks::common_block> new_block_p
     (new blocks::common_block (*this,ctxt,elements,srm.gamma_mod1()));
+  auto& block = *new_block_p;
+
+  block_p.push_back(std::move(new_block_p)); // insert block
 
   containers::sl_list<std::pair<blocks::common_block*,
 				containers::sl_list<BlockElt> > > sub_blocks;
-  for (auto it=elements.begin(); not elements.at_end(it); ++it)
-    if (*it<prev_size)
+  for (auto z : elements)
+    if (z<prev_size)
     {
-      const auto block_p=place[*it].first;
-      auto jt = sub_blocks.begin();
-      for ( ; not sub_blocks.at_end(jt); ++jt)
-	if (jt->first==block_p) // sub-block already known
+      const auto block_p=place[z].first;
+      const BlockElt z_rel = place[z].second;
+      auto it = sub_blocks.begin();
+      for ( ; not sub_blocks.at_end(it); ++it)
+	if (it->first==block_p) // sub-block already known
 	{
-	  jt->second.push_back(place[*it].second);
+	  it->second.push_back(z_rel);
 	  break;
 	}
-      if (sub_blocks.at_end(jt)) // then we have a fresh sub-block
+      if (sub_blocks.at_end(it)) // then we have a fresh sub-block
 	sub_blocks.push_back
-	  (std::make_pair(block_p,
-			  containers::sl_list<BlockElt>{place[*it].second}));
+	  (std::make_pair(block_p,containers::sl_list<BlockElt>{z_rel}));
     }
+
+  static const std::pair<blocks::common_block*, BlockElt>
+    empty(nullptr,UndefBlock);
+  place.resize(mod_pool.size(),empty); // extend with empty slots, filled next
+
+  for (const auto& z : elements)
+  {
+    const StandardReprMod srm = this->srm(z);
+    place[z] = std::make_pair(&block,block.lookup(srm));
+  }
   // TODO: should do block merge things here
-  return *new_block_p.release(); // for now, to keep the compiler happy
+  return block;
 }
 
 
