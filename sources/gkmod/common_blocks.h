@@ -107,7 +107,7 @@ class Ext_rep_context : public Rep_context
 {
   const WeightInvolution d_delta;
 public:
-  Ext_rep_context (const repr::Rep_context& rc); // default twisting
+  explicit Ext_rep_context (const repr::Rep_context& rc); // default twisting
   Ext_rep_context (const repr::Rep_context& rc, const WeightInvolution& delta);
 
   const WeightInvolution& delta () const { return d_delta; }

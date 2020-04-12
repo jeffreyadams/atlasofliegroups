@@ -1707,10 +1707,11 @@ bool ext_block::tune_signs(const blocks::common_block& block)
 {
   repr::Ext_common_context ctxt
     (block.context().real_group(),delta(),block.integral_subsystem());
+  repr::Ext_rep_context param_ctxt(block.context(),delta());
   containers::sl_list<paramin> links;
   for (BlockElt n=0; n<size(); ++n)
   { auto z=this->z(n);
-    const paramin E(ctxt,block.x(z),block.gamma_lambda(z));
+    const paramin E(param_ctxt,block.x(z),block.gamma_lambda(z));
     for (weyl::Generator s=0; s<rank(); ++s)
     { const ext_gen& p=orbit(s); links.clear(); // output arguments for |star|
       auto tp = star(ctxt,E,p,links);
@@ -1741,7 +1742,7 @@ bool ext_block::tune_signs(const blocks::common_block& block)
 	  const paramin q = *links.begin();
 	  BlockElt m=cross(s,n); // cross neighbour as bare element of |*this|
 	  BlockElt cz = this->z(m); // corresponding element of (parent) |block|
-	  paramin F(ctxt,block.x(cz),block.gamma_lambda(cz)); // default extn
+	  paramin F(param_ctxt,block.x(cz),block.gamma_lambda(cz)); // default extn
 	  assert(same_standard_reps(q,F)); // must lie over same parameter
 	  if (not same_sign(q,F))
 	    flip_edge(s,n,m);
@@ -1755,12 +1756,12 @@ bool ext_block::tune_signs(const blocks::common_block& block)
 	  const paramin q1 = *std::next(links.begin());
 	  BlockElt m=some_scent(s,n); // the unique (inverse) Cayley
 	  BlockElt Cz = this->z(m); // corresponding element of block
-	  paramin F(ctxt,block.x(Cz),block.gamma_lambda(Cz));
+	  paramin F(param_ctxt,block.x(Cz),block.gamma_lambda(Cz));
 	  assert(same_standard_reps(q0,F));
 	  if (not same_sign(q0,F))
 	    flip_edge(s,n,m);
 	  m=cross(s,n); BlockElt cz = this->z(m);
-	  paramin Fc(ctxt,block.x(cz),block.gamma_lambda(cz));
+	  paramin Fc(param_ctxt,block.x(cz),block.gamma_lambda(cz));
 	  assert(same_standard_reps(q1,Fc));
 	  if (not same_sign(q1,Fc))
 	    flip_edge(s,n,m);
@@ -1772,7 +1773,7 @@ bool ext_block::tune_signs(const blocks::common_block& block)
 	  const paramin q = *links.begin();
 	  BlockElt m=some_scent(s,n); // the unique (inverse) Cayley
 	  BlockElt Cz = this->z(m); // corresponding element of block
-	  paramin F(ctxt,block.x(Cz),block.gamma_lambda(Cz));
+	  paramin F(param_ctxt,block.x(Cz),block.gamma_lambda(Cz));
 	  assert(same_standard_reps(q,F));
 	  if (not same_sign(q,F))
 	    flip_edge(s,n,m);
@@ -1786,8 +1787,8 @@ bool ext_block::tune_signs(const blocks::common_block& block)
 	  const paramin q1 = *std::next(links.begin());
 	  BlockEltPair m=Cayleys(s,n);
 	  BlockElt Cz0 = this->z(m.first); BlockElt Cz1= this->z(m.second);
-	  paramin F0(ctxt,block.x(Cz0),block.gamma_lambda(Cz0));
-	  paramin F1(ctxt,block.x(Cz1),block.gamma_lambda(Cz1));
+	  paramin F0(param_ctxt,block.x(Cz0),block.gamma_lambda(Cz0));
+	  paramin F1(param_ctxt,block.x(Cz1),block.gamma_lambda(Cz1));
 	  bool straight=same_standard_reps(q0,F0);
 	  const auto& node0 = straight ? q0 : q1;
 	  const auto& node1 = straight ? q1 : q0;
@@ -1806,8 +1807,8 @@ bool ext_block::tune_signs(const blocks::common_block& block)
 	  const paramin q1 = *std::next(links.begin());
 	  BlockEltPair m=Cayleys(s,n);
 	  BlockElt Cz0 = this->z(m.first); BlockElt Cz1= this->z(m.second);
-	  paramin F0(ctxt,block.x(Cz0),block.gamma_lambda(Cz0));
-	  paramin F1(ctxt,block.x(Cz1),block.gamma_lambda(Cz1));
+	  paramin F0(param_ctxt,block.x(Cz0),block.gamma_lambda(Cz0));
+	  paramin F1(param_ctxt,block.x(Cz1),block.gamma_lambda(Cz1));
 	  bool straight=same_standard_reps(q0,F0);
 	  const auto& node0 = straight ? q0 : q1;
 	  const auto& node1 = straight ? q1 : q0;
@@ -2019,6 +2020,7 @@ containers::sl_list<std::pair<StandardRepr,bool> > extended_finalise
   assert(is_dominant_ratweight(rc.root_datum(),sr.gamma()));
   // we must assume |gamma| already dominant, DON'T call |make_dominant| here!
 
+  repr::Ext_rep_context param_ctxt(rc,delta);
   repr::Ext_common_context ctxt
     (rc.real_group(),delta,SubSystem::integral(rc.root_datum(),sr.gamma()));
 
@@ -2026,7 +2028,7 @@ containers::sl_list<std::pair<StandardRepr,bool> > extended_finalise
   const RankFlags singular_orbits =
     reduce_to(orbits,singular_generators(ctxt.id(),sr.gamma()));
 
-  containers::queue<paramin> to_do { paramin::default_extend(ctxt,sr) };
+  containers::queue<paramin> to_do { paramin::default_extend(param_ctxt,sr) };
   containers::sl_list<std::pair<StandardRepr,bool> > result;
 
   do
