@@ -39,7 +39,7 @@ class common_block : public Block_base
   const Rep_context& rc; // accesses many things, including KGB set for x
 
   const RatWeight gamma_mod_1;
-  const SubSystem integral_datum;
+  const SubSystem integral_sys;
 
   std::vector<TorusPart> y_bits; // as in |StandardRepr|, indexed by |y|
 
@@ -72,7 +72,7 @@ class common_block : public Block_base
   // accessors that get values via |rc|
   const repr::Rep_context& context() const { return rc; }
   const RootDatum& root_datum() const;
-  const SubSystem& integral_subsystem() const { return integral_datum; }
+  const SubSystem& integral_subsystem() const { return integral_sys; }
   const InnerClass& inner_class() const;
   const InvolutionTable& involution_table() const;
   RealReductiveGroup& real_group() const;

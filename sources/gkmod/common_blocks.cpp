@@ -98,7 +98,7 @@ common_block::common_block // full block constructor
   : Block_base(rootdata::integrality_rank(rc.root_datum(),srm.gamma_mod1()))
   , rc(rc)
   , gamma_mod_1(srm.gamma_mod1()) // already reduced
-  , integral_datum(SubSystem::integral(root_datum(),gamma_mod_1))
+  , integral_sys(SubSystem::integral(root_datum(),gamma_mod_1))
   , y_bits()
   , y_pool()
   , y_hash(y_pool)
@@ -114,11 +114,11 @@ common_block::common_block // full block constructor
   const KGB& kgb = rc.kgb();
 
   Block_base::dd = // integral Dynkin diagram, converted from dual side
-    DynkinDiagram(integral_datum.cartanMatrix().transposed());
+    DynkinDiagram(integral_sys.cartanMatrix().transposed());
 
-  size_t our_rank = integral_datum.rank();
+  size_t our_rank = integral_sys.rank();
 
-  nblock_help aux(real_group(),integral_datum);
+  nblock_help aux(real_group(),integral_sys);
 
   // step 1: get |y|, which has $y.t=\exp(\pi\ii(\gamma-\lambda))$ (vG based)
   const KGBElt x_org = srm.x();
@@ -131,8 +131,8 @@ common_block::common_block // full block constructor
     do
       for(s=0; s<our_rank; ++s)
       {
-	KGBElt xx=kgb.cross(integral_datum.to_simple(s),z_start.x());
-	weyl::Generator ss=integral_datum.simple(s);
+	KGBElt xx=kgb.cross(integral_sys.to_simple(s),z_start.x());
+	weyl::Generator ss=integral_sys.simple(s);
 	if (kgb.isAscent(ss,xx))
 	{
 	  if (kgb.status(ss,xx)==gradings::Status::Complex)
@@ -145,7 +145,7 @@ common_block::common_block // full block constructor
 	  break;
 	} // |if(isAscent)|
       } // |for(s)|
-    while(s<our_rank); // loop until no ascents found in |integral_datum|
+    while(s<our_rank); // loop until no ascents found in |integral_sys|
 
     y_hash.match(aux.pack_y(z_start)); // save obtained value for |y|
   } // end of step 2
@@ -157,7 +157,7 @@ common_block::common_block // full block constructor
 
     // generating reflections are by subsystem real roots for |theta0|
     RootNbrSet pos_real =
-      integral_datum.positive_roots() & i_tab.real_roots(theta0);
+      integral_sys.positive_roots() & i_tab.real_roots(theta0);
     RootNbrList gen_root = rd.simpleBasis(pos_real);
     for (size_t i=0; i<y_hash.size(); ++i) // |y_hash| grows
     {
@@ -242,7 +242,7 @@ common_block::common_block // full block constructor
       {
 	BlockElt base_z = next+i*nr_y; // first element of R-packet
 	KGBElt n = x(base_z); // |n| is |x| value for R-packet
-	KGBElt s_x_n = kgb.cross(integral_datum.reflection(s),n);
+	KGBElt s_x_n = kgb.cross(integral_sys.reflection(s),n);
 	assert (new_cross == not x_seen.isMember(s_x_n)); // check consistency
 
 	// set the cross links for this |n| and all corresponding |y|s
@@ -265,9 +265,9 @@ common_block::common_block // full block constructor
 	    tab_s[base_z+j].cross_image = find_in(xy_hash,s_x_n,cross_ys[j]);
 
 	// compute component |s| of |info[z].descent|, for this |n|, all |y|s
-	KGBElt conj_n = kgb.cross(integral_datum.to_simple(s),n); // conjugate
+	KGBElt conj_n = kgb.cross(integral_sys.to_simple(s),n); // conjugate
 	bool any_Cayley=false; // is made |true| if a real parity case is found
-	const auto ids=integral_datum.simple(s);
+	const auto ids=integral_sys.simple(s);
 	switch(kgb.status(ids,conj_n))
 	{
 	case gradings::Status::Complex:
@@ -314,7 +314,7 @@ common_block::common_block // full block constructor
 	  continue; // if there were no valid Cayley links, we're done for |i|
 
 	KGBEltPair Cayleys = kgb.inverseCayley(ids,conj_n);
-	KGBElt ctx1 = kgb.cross(Cayleys.first,integral_datum.to_simple(s));
+	KGBElt ctx1 = kgb.cross(Cayleys.first,integral_sys.to_simple(s));
 
 	if (i==0) // whether in initial R-packet
 	{ // |any_Cayley| was independent of |x|; if so, do in first R-packet:
@@ -334,9 +334,9 @@ common_block::common_block // full block constructor
 	  if (new_Cayley) // then we need to create new R-packets
 	  {
 	    // complete a full (subsystem) fiber of x's over the new involution
-	    // using |integral_datum| imaginary cross actions
+	    // using |integral_sys| imaginary cross actions
 	    RootNbrSet pos_imag = // subsystem positive imaginary roots
-	      integral_datum.positive_roots() &
+	      integral_sys.positive_roots() &
 	      i_tab.imaginary_roots(kgb.inv_nr(ctx1));
 	    RootNbrList ib = rd.simpleBasis(pos_imag);
 
@@ -380,7 +380,7 @@ common_block::common_block // full block constructor
 	    if (Cayleys.second!=UndefKGB) // then double valued (type1)
 	    {
 	      KGBElt ctx2 =
-		kgb.cross(Cayleys.second,integral_datum.to_simple(s));
+		kgb.cross(Cayleys.second,integral_sys.to_simple(s));
 	      assert (x_seen.isMember(ctx2));
 	      target = find_in(xy_hash,ctx2,cty);
 	      tab_s[base_z+j].Cayley_image.second = target;
@@ -441,7 +441,7 @@ common_block::common_block // partial block constructor
   : Block_base(rootdata::integrality_rank(rt.root_datum(),gamma_mod_1))
   , rc(rt)
   , gamma_mod_1(gamma_mod_1) // already reduced
-  , integral_datum(SubSystem::integral(root_datum(),gamma_mod_1))
+  , integral_sys(SubSystem::integral(root_datum(),gamma_mod_1))
   , y_bits()
   , y_pool()
   , y_hash(y_pool)
@@ -500,7 +500,7 @@ common_block::common_block // partial block constructor
   xy_hash.reconstruct(); // we must do this before we use the |lookup| method
 
   // allocate link fields with |UndefBlock| entries
-  data.assign(integral_datum.rank(),std::vector<block_fields>(elements.size()));
+  data.assign(integral_sys.rank(),std::vector<block_fields>(elements.size()));
 
   assert(info.size()==elements.size());
   auto it = elements.cbegin();
@@ -508,7 +508,7 @@ common_block::common_block // partial block constructor
   {
     EltInfo& z = info[i];
     const auto srm_z = rt.srm(*it);
-    for (weyl::Generator s=0; s<integral_datum.rank(); ++s)
+    for (weyl::Generator s=0; s<integral_sys.rank(); ++s)
     {
       auto& tab_s = data[s];
       const auto stat = ctxt.status(s,z.x);
@@ -634,7 +634,7 @@ BlockElt twisted
 
 ext_gens common_block::fold_orbits(const WeightInvolution& delta) const
 {
-  return rootdata::fold_orbits(integral_datum.pre_root_datum(),delta);
+  return rootdata::fold_orbits(integral_sys.pre_root_datum(),delta);
 }
 
 ext_block::ext_block& common_block::extended_block
