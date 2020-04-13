@@ -716,7 +716,7 @@ public:
   Bruhat_generator (Rep_table* caller, const common_context& ctxt)
     : parent(*caller),ctxt(ctxt), predecessors(), less_eq() {}
 
-  const containers::simple_list<unsigned long>& covered(unsigned long n)
+  const containers::simple_list<unsigned long>& covered(unsigned long n) const
   { return predecessors.at(n); }
   containers::simple_list<unsigned long> block_below(const StandardReprMod& srm);
 }; // |class Rep_table::Bruhat_generator|
