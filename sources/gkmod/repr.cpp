@@ -120,6 +120,14 @@ StandardRepr Rep_context::sr_gamma
 		      height(t1_gamma));
 }
 
+StandardRepr Rep_context::sr
+  (const StandardReprMod& srm, const RatWeight& gamma) const
+{
+  const RatWeight gamma_rho = gamma-rho(root_datum());
+  const auto lambda_rho = gamma_rho.integer_diff<int>(gamma_lambda(srm));
+  return sr_gamma(srm.x(),lambda_rho,gamma);
+}
+
 // Height is $\max_{w\in W} \< \rho^v*w , (\theta+1)\gamma >$
 unsigned int Rep_context::height(Weight theta_plus_1_gamma) const
 {
@@ -1027,6 +1035,20 @@ blocks::common_block& Rep_table::lookup
 					.dot(sr.gamma().numerator())==0);
   }
   return block;
+} // |Rep_table::lookup|
+
+blocks::common_block& Rep_table::lookup (const StandardRepr& sr)
+{
+  auto srm = StandardReprMod::mod_reduce(*this,sr); // modular |z|
+  assert(mod_hash.size()==place.size()); // should be in sync at this point
+  auto h=mod_hash.find(srm); // look up modulo translation in $X^*$
+  if (h!=mod_hash.empty) // then we are in a new translation family of blocks
+  {
+    assert(h<place.size()); // it cannot be |mod_hash.empty| anymore
+    return *place[h].first;
+  }
+  common_context ctxt(real_group(),SubSystem::integral(root_datum(),sr.gamma()));
+  return add_block_below(ctxt,srm); // ensure this block is known
 } // |Rep_table::lookup|
 
 // in the following type the second component is a mulitplicity so we are in fact

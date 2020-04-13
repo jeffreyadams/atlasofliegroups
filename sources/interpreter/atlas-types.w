@@ -4714,7 +4714,7 @@ also construct a module parameter value for each element of |block|.
 
 }
 
-@ There is also a function that computes just a partial block.
+@ There are also a functions that compute just a partial block.
 @< Local function def...@>=
 void partial_block_wrapper(expression_base::level l)
 { shared_module_parameter p = get<module_parameter_value>();
@@ -4724,6 +4724,23 @@ void partial_block_wrapper(expression_base::level l)
 @)
   param_block block(p->rc(),p->val);
   @< Push a list of parameter values for the elements of |block| @>
+}
+@)
+void partial_common_block_wrapper(expression_base::level l)
+{ shared_module_parameter p = get<module_parameter_value>();
+  test_standard(*p,"Cannot generate block");
+  if (l==expression_base::no_value)
+    return;
+@)
+  blocks::common_block& block = p->rt().lookup(p->val);
+@)
+  { own_row param_list = std::make_shared<row_value>(block.size());
+    for (BlockElt z=0; z<block.size(); ++z)
+      param_list->val[z] =
+	  std::make_shared<module_parameter_value> @|
+             (p->rf,p->rc().sr(block.representative(z),p->val.gamma()));
+    push_value(std::move(param_list));
+  }
 }
 
 @ Knowing the length in its block of a parameter is of independent interest.
@@ -5167,6 +5184,8 @@ install_function(print_n_block_wrapper,@|"print_block","(Param->)");
 install_function(print_c_block_wrapper,@|"print_common_block","(Param->)");
 install_function(block_wrapper,@|"block" ,"(Param->[Param],int)");
 install_function(partial_block_wrapper,@|"partial_block","(Param->[Param])");
+install_function(partial_common_block_wrapper,@|"partial_common_block"
+                ,"(Param->[Param])");
 install_function(param_length_wrapper,@|"length","(Param->int)");
 install_function(KL_block_wrapper,@|"KL_block"
                 ,"(Param->[Param],int,mat,[vec],vec,vec,mat)");

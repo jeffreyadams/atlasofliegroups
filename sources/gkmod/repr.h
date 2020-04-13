@@ -163,6 +163,7 @@ class Rep_context
   StandardRepr sr // construct parameter from |(x,\lambda,\nu)| triplet
     (KGBElt x, const Weight& lambda_rho, const RatWeight& nu) const
     { return sr_gamma(x,lambda_rho,gamma(x,lambda_rho,nu)); }
+  StandardRepr sr (const StandardReprMod& srm, const RatWeight& gamma) const;
 
   StandardRepr
     sr(const standardrepk::StandardRepK& srk,
@@ -305,6 +306,9 @@ class Rep_table : public Rep_context
 
   blocks::common_block& lookup
     (const StandardRepr& sr,BlockElt& z,RankFlags& singular);
+
+  blocks::common_block& lookup(const StandardRepr& sr); // partial
+
 
   SR_poly KL_column_at_s(StandardRepr z); // by value
   SR_poly twisted_KL_column_at_s(StandardRepr z); // by value
