@@ -76,7 +76,7 @@ StandardReprMod StandardReprMod::build
    KGBElt x, const RatWeight& gam_lam)
 {
   const auto gamma_rho = gamma_mod_1 - rho(rc.root_datum());
-  const RatWeight lr_rat = (gamma_mod_1-gamma_rho).normalize();
+  const RatWeight lr_rat = (gamma_rho-gam_lam).normalize();
   assert(lr_rat.denominator()==1);
   Weight lam_rho(lr_rat.numerator().begin(),lr_rat.numerator().end());
   return StandardReprMod(rc.sr_gamma(x,lam_rho,gamma_mod_1));
