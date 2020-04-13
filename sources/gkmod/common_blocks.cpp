@@ -570,9 +570,9 @@ bool common_context::is_parity
   const auto& i_tab = inner_class().involution_table();
   const auto& real_roots = i_tab.real_roots(kgb().inv_nr(z.x()));
   assert(real_roots.isMember(sub.parent_nr_simple(s)));
-  const Coweight alpha_hat = integr_datum.coroot(s);
-  int eval = this->gamma_lambda(z).dot(alpha_hat);
-  int rho_r_corr = alpha_hat.dot(root_datum().twoRho(real_roots))/2;
+  const Coweight& alpha_hat = integr_datum.simpleCoroot(s);
+  const int eval = this->gamma_lambda(z).dot(alpha_hat);
+  const int rho_r_corr = alpha_hat.dot(root_datum().twoRho(real_roots))/2;
   return (eval+rho_r_corr)%2!=0;
 }
 
