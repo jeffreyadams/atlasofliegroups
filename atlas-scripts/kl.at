@@ -53,8 +53,8 @@ for c@p in P do result+:=c*character_formula(p) od;result
 
 { composition series }
 
-set composition_series (Param p) = ParamPol:
-( let acc = ParamPol: p, result = null_module(p) in
+set composition_series (ParamPol P) = ParamPol:
+( let acc = ParamPol: P, result = null_module(P) in
   while !=acc { non null module }
   do let (coef,final):term=first_term(acc) in
     result +:= term; acc -:= coef*character_formula(final)
@@ -62,9 +62,8 @@ set composition_series (Param p) = ParamPol:
 ; result
 )
 
-set composition_series(ParamPol P)= ParamPol:
-let result=null_module(P) in
-for c@p in P do result+:=c*composition_series(p) od;result
+set composition_series (Param p) = ParamPol:
+composition_series(ParamPol:p)
 
 set composition_series_verbose(ParamPol P)= ParamPol:
 let result=null_module(P) in
