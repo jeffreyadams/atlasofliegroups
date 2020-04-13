@@ -819,7 +819,7 @@ containers::simple_list<unsigned long> Rep_table::Bruhat_generator::block_below
       return { leq_hash.begin(),leq_hash.end() } ;
     }
   }
-  const auto rank = ctxt.id().rank();
+  const auto rank = ctxt.id().semisimpleRank();
   containers::sl_list<unsigned long> pred; // list of elements covered by z
   // invariant: |block_below| has been called for every element in |pred|
 

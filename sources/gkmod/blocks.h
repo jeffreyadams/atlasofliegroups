@@ -106,7 +106,7 @@ public:
 
 // accessors
 
-  unsigned int rank() const { return data.size(); } // integral rank
+  unsigned int rank() const { return data.size(); } // integral semisimple rank
   unsigned int folded_rank() const { return orbits.size(); }
   BlockElt size() const { return info.size(); }
 
