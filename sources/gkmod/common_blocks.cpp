@@ -704,6 +704,7 @@ common_context::common_context (RealReductiveGroup& G, const SubSystem& sub)
 , sub(sub)
 {} // |common_context::common_context|
 
+
 // |Rep_table| helper class
 class Rep_table::Bruhat_generator
 {
@@ -718,6 +719,7 @@ public:
   { return predecessors.at(n); }
   containers::simple_list<unsigned long> block_below(const StandardReprMod& srm);
 }; // |class Rep_table::Bruhat_generator|
+
 
 // |Rep_table| methods
 blocks::common_block& Rep_table::add_block_below
@@ -747,6 +749,7 @@ blocks::common_block& Rep_table::add_block_below
   }
   block.set_Bruhat(std::move(Hasse_diagram));
 
+#if 0 // code in preparation for incorporation of older sub-blocks into new one
   containers::sl_list<std::pair<blocks::common_block*,
 				containers::sl_list<BlockElt> > > sub_blocks;
   for (auto z : elements)
@@ -765,6 +768,10 @@ blocks::common_block& Rep_table::add_block_below
 	sub_blocks.push_back
 	  (std::make_pair(block_p,containers::sl_list<BlockElt>{z_rel}));
     }
+#else
+  static_cast<void>(prev_size); // suppress unused variable warning
+#endif
+  // TODO: should do block merge things here
 
   static const std::pair<blocks::common_block*, BlockElt>
     empty(nullptr,UndefBlock);
@@ -773,11 +780,10 @@ blocks::common_block& Rep_table::add_block_below
   for (const auto& z : elements)
   {
     const StandardReprMod srm = this->srm(z);
-    place[z] = std::make_pair(&block,block.lookup(srm));
+    place[z] = std::make_pair(&block,block.lookup(srm)); // extend or replace
   }
-  // TODO: should do block merge things here
   return block;
-}
+} // |Rep_table::add_block_below|
 
 
 containers::simple_list<unsigned long> Rep_table::Bruhat_generator::block_below
@@ -785,8 +791,33 @@ containers::simple_list<unsigned long> Rep_table::Bruhat_generator::block_below
 {
   auto& hash=parent.mod_hash;
   { const auto h=hash.find(srm);
-    if (h!=hash.empty)
-    {} // TODO fetch Bruhat interval from stored block
+    if (h<parent.place.size()) // a representation from some older common block
+    { // fill the corresponding block's Bruhat poset, and get result from it:
+      const auto& pair = parent.place[h];
+      blocks::common_block& block = *pair.first;
+      BlockElt z0=pair.second; // number of |srm| inside |block|
+      auto& Bruhat_poset = block.bruhatOrder().poset();
+      const BitMap& below = Bruhat_poset.below(z0);
+      // ensure |predecessors| contains entries for all elements |<=z0|
+      std::vector<unsigned long> leq_hash;
+      leq_hash.reserve(below.size()+1);
+      for (auto it=below.begin();  it(); ++it)
+	leq_hash.push_back(hash.find(block.representative(*it)));
+      leq_hash.push_back(hash.find(block.representative(z0)));
+      auto it=below.begin(); // restart
+      for (unsigned i=0; i<leq_hash.size(); ++i,++it)
+      {
+	BlockElt z= it() ? *it : z0; // final |BlockElt z0| absent from |below|
+	// since |less_eq| is increasing, we already have hashes |below(z)|
+	containers::simple_list<unsigned long> covered_by_z;
+	auto jt = covered_by_z.begin(); // writing iterator
+	for (auto B_it=Bruhat_poset.covered_by(z).begin(); B_it(); ++B_it)
+	  jt=covered_by_z.insert(jt,leq_hash[*B_it]); // convert to hashes
+	predecessors[leq_hash[z]] =  // create or overwrite |predecessors| entry
+	  std::move(covered_by_z);
+      }
+      return { leq_hash.begin(),leq_hash.end() } ;
+    }
   }
   const auto rank = ctxt.id().rank();
   containers::sl_list<unsigned long> pred; // list of elements covered by z

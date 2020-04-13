@@ -77,14 +77,21 @@ class common_block : public Block_base
   const InvolutionTable& involution_table() const;
   RealReductiveGroup& real_group() const;
 
+  RatWeight gamma_mod1 () const { return gamma_mod_1; }
+
   // with |gamma| unknown, only the difference |gamma-lambda| is meaningful
   RatWeight gamma_lambda(BlockElt z) const;
 
   BlockElt lookup(const repr::StandardReprMod& srm) const;
   BlockElt lookup(KGBElt x, const RatWeight& gamma_lambda) const;
 
+  repr::StandardReprMod representative (BlockElt z) const
+  { return repr::StandardReprMod::build(rc,gamma_mod_1,x(z),gamma_lambda(z)); }
+
   ext_gens fold_orbits(const WeightInvolution& delta) const;
 
+  // manipulators
+  void swallow (const common_block& sub); // integrate an older partial block
   ext_block::ext_block& extended_block(const WeightInvolution& delta);
 
   void set_Bruhat(std::vector<Poset::EltList>&& Hasse)

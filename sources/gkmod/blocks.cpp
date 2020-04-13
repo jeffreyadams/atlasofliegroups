@@ -408,11 +408,8 @@ void Block::compute_first_zs() // assumes |x| values weakly increase
 */
 void Block_base::fillBruhat()
 {
-  if (d_bruhat==nullptr) // do this only the first time
-  {
-    std::vector<Poset::EltList> hd = makeHasse(*this);
-    d_bruhat = new BruhatOrder(hd); // commit iff new completed without throwing
-  }
+  if (d_bruhat==nullptr) // if any order is previously stored, trust and use it
+    d_bruhat = new BruhatOrder(makeHasse(*this)); // else use |makeHasse| below
 }
 
 // computes and stores the KL polynomials
