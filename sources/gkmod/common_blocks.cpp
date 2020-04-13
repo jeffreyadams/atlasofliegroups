@@ -710,10 +710,11 @@ class Rep_table::Bruhat_generator
 {
   Rep_table& parent;
   const common_context& ctxt;
-  std::map<unsigned long,containers::simple_list<unsigned long> > predecessors;
+  std::map<unsigned long,containers::simple_list<unsigned long> >
+    predecessors, less_eq;
 public:
   Bruhat_generator (Rep_table* caller, const common_context& ctxt)
-    : parent(*caller),ctxt(ctxt), predecessors() {}
+    : parent(*caller),ctxt(ctxt), predecessors(), less_eq() {}
 
   const containers::simple_list<unsigned long>& covered(unsigned long n)
   { return predecessors.at(n); }
@@ -818,6 +819,8 @@ containers::simple_list<unsigned long> Rep_table::Bruhat_generator::block_below
       }
       return { leq_hash.begin(),leq_hash.end() } ;
     }
+    else if (h!=hash.empty)
+      return less_eq.at(h); // avoid recomputation
   }
   const auto rank = ctxt.id().semisimpleRank();
   containers::sl_list<unsigned long> pred; // list of elements covered by z
@@ -898,7 +901,8 @@ containers::simple_list<unsigned long> Rep_table::Bruhat_generator::block_below
       } // |switch(status(s,conj_x))|
     } // |for (it)|
   } // |if (s<rank)|
-  predecessors.emplace(std::make_pair(hash.match(srm),pred.undress()));
+  auto h = hash.match(srm);
+  predecessors.emplace(std::make_pair(h,pred.undress()));
   { // merge all |results| together and remove duplicates
     const auto h=hash.match(srm); // finally generated sequence number for |srm|
     results.push_front(containers::simple_list<unsigned long> {h} );
@@ -912,6 +916,7 @@ containers::simple_list<unsigned long> Rep_table::Bruhat_generator::block_below
       results.push_back(std::move(first));
     }
   }
+  less_eq.emplace(std::make_pair(h,results.front())); // store a copy
   return results.front();
 } // |Rep_table::Bruhat_generator::block_below|
 
