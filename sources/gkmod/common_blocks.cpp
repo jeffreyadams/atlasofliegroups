@@ -724,6 +724,8 @@ public:
   Bruhat_generator (Rep_table* caller, const common_context& ctxt)
     : parent(*caller),ctxt(ctxt), pool(), local_h(pool), predecessors() {}
 
+  bool in_interval (unsigned long n) const
+  { return local_h.find(n)!=local_h.empty; }
   const containers::simple_list<unsigned long>& covered(unsigned long n) const
   { return predecessors.at(local_h.find(n)); }
   containers::simple_list<unsigned long> block_below(const StandardReprMod& srm);
@@ -739,26 +741,6 @@ blocks::common_block& Rep_table::add_block_below
   const auto prev_size = mod_pool.size(); // limit of previously known elements
   containers::sl_list<unsigned long> elements(gen.block_below(srm));
 
-  std::unique_ptr<blocks::common_block> new_block_p
-    (new blocks::common_block (*this,ctxt,elements,srm.gamma_mod1()));
-  auto& block = *new_block_p;
-
-  block_p.push_back(std::move(new_block_p)); // insert block
-
-  std::vector<Poset::EltList> Hasse_diagram(block.size());
-  for (auto z : elements)
-  {
-    const auto& cover = gen.covered(z);
-    const auto len = atlas::containers::length(cover);
-    BlockElt i_z = block.lookup(this->srm(z));
-    auto& row = Hasse_diagram[i_z];
-    row.reserve(len);
-    for (auto it=cover.begin(); not cover.at_end(it); ++it)
-      row.push_back(block.lookup(this->srm(*it)));
-  }
-  block.set_Bruhat(std::move(Hasse_diagram));
-
-#if 0 // code in preparation for incorporation of older sub-blocks into new one
   containers::sl_list<std::pair<blocks::common_block*,
 				containers::sl_list<BlockElt> > > sub_blocks;
   for (auto z : elements)
@@ -777,9 +759,57 @@ blocks::common_block& Rep_table::add_block_below
 	sub_blocks.push_back
 	  (std::make_pair(block_p,containers::sl_list<BlockElt>{z_rel}));
     }
-#else
-  static_cast<void>(prev_size); // suppress unused variable warning
-#endif
+
+  for (auto& pair : sub_blocks)
+  {
+    if (pair.first->size() > pair.second.size()) // inclomplete inclusion
+    {
+      const auto& block = *pair.first;
+      pair.second.sort(); // following loop requires increase
+      auto it = pair.second.begin();
+      for (BlockElt z=0; z<block.size(); ++z)
+	if (not it.at_end() and *it==z)
+	  ++it; // skip element already in Bruhat interval
+	else // join element outside Bruhat interval to new block
+	  elements.push_back(mod_hash.find(block.representative(z)));
+    }
+    // since all |block| elements are incorporated
+    pair.second.clear(); // forget which were in the Bruhat interval
+  }
+
+  std::unique_ptr<blocks::common_block> new_block_p
+    (new blocks::common_block (*this,ctxt,elements,srm.gamma_mod1()));
+  // the constructor rearranges |elements| to the order in the block
+  auto& block = *new_block_p;
+
+  block_p.push_back(std::move(new_block_p)); // insert block
+
+  std::vector<Poset::EltList> Hasse_diagram(block.size());
+  for (auto z : elements)
+  {
+    BlockElt i_z = block.lookup(this->srm(z)); // index of |z| in our new block
+    auto& row = Hasse_diagram[i_z];
+    if (gen.in_interval(z)) // these have their covered's in |gen|
+    {
+      const auto& cover = gen.covered(z);
+      const auto len = atlas::containers::length(cover);
+      row.reserve(len);
+      for (auto it=cover.begin(); not cover.at_end(it); ++it)
+	row.push_back(block.lookup(this->srm(*it)));
+    }
+    else // elements in an old block, outside Bruhat interval
+    { // get covered elements from stored Bruhat order of old block
+      auto& old_block = *place[z].first;
+      const BlockElt z_rel = place[z].second;
+      const auto& covered = old_block.bruhatOrder().hasse(z_rel);
+      const auto len = covered.size();
+      row.reserve(len);
+      for (auto y : covered)
+	row.push_back(block.lookup(this->srm(y)));
+    }
+  }
+  block.set_Bruhat(std::move(Hasse_diagram));
+
   // TODO: should do block merge things here
 
   static const std::pair<blocks::common_block*, BlockElt>
