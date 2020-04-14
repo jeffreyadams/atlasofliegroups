@@ -814,12 +814,10 @@ containers::simple_list<unsigned long> Rep_table::Bruhat_generator::block_below
       const BitMap& below = Bruhat_poset.below(z0);
 
       // ensure |predecessors| contains entries for all elements |<=z0|
-      containers::simple_list<unsigned long> result;
       std::vector<unsigned long> full_nr(block.size(),hash.empty);
       for (auto it=below.begin();  it(); ++it)
-	result.push_front(full_nr[*it] = hash.find(block.representative(*it)));
-      result.push_front(full_nr[z0] = h);
-      result.reverse(); // now |result| is list of |full_nr|s of interval |<=z0|
+	full_nr[*it] = hash.find(block.representative(*it));
+      full_nr[z0] = h;
 
       auto it=below.begin(); // restart
       for (unsigned i=0; i<below.size()+1; ++i,++it)
@@ -833,18 +831,27 @@ containers::simple_list<unsigned long> Rep_table::Bruhat_generator::block_below
 	for (auto B_it=Bruhat_poset.covered_by(z).begin(); B_it(); ++B_it)
 	  jt=covered_by_z.insert(jt,full_nr[*B_it]); // convert to full number
 
-	assert(hash.size()==predecessors.size()); // check synchronisation
+	containers::simple_list<unsigned long> leq_z;
+	jt = leq_z.begin(); // writing iterator
+	for (auto B_it=Bruhat_poset.below(z).begin(); B_it(); ++B_it)
+	  jt=leq_z.insert(jt,full_nr[*B_it]); // convert to full number
+	leq_z.insert(jt,full_nr[z]); // reflexivity
+
+	assert(local_h.size()==predecessors.size()); // check synchronisation
 	BlockElt zz = local_h.match(full_nr[z]);
 	if (zz==predecessors.size())
 	{ // new element for |local_h|, so create slots
-	  predecessors.push_back(std::move(covered_by_z)); // create
-	  less_eq.emplace_back(); // value not needed, but keep |less_eq| in sync
+	  predecessors.push_back(std::move(covered_by_z));
+	  less_eq.push_back(std::move(leq_z));
 	}
-	else predecessors[zz] = std::move(covered_by_z);   // overwrite
+	else
+	{ // overwrite the slots at index |zz|
+	  predecessors[zz] = std::move(covered_by_z);
+	  less_eq[zz]      = std::move(leq_z);
+	}
       }
       BlockElt zz0 = local_h.find(h);
       assert (zz0!=local_h.empty); // it was matched at end of loop above
-      less_eq[zz0]=std::move(result); // store |result| at latest empty slot
       return less_eq[zz0]; // and return it
     }
     else if (h!=hash.empty) // then |srm| was seen earlier in current recursion
