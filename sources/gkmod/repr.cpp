@@ -878,7 +878,7 @@ bool Rep_context::compare::operator()
 Rep_table::Rep_table(RealReductiveGroup &G)
 : Rep_context(G)
 , pool(), hash(pool), def_formulae()
-, mod_pool(), mod_hash(mod_pool), block_p(), place()
+, mod_pool(), mod_hash(mod_pool), block_list(), place()
 {}
 Rep_table::~Rep_table() = default;
 
@@ -997,7 +997,7 @@ unsigned long Rep_table::add_block(const StandardReprMod& srm)
   std::unique_ptr<blocks::common_block>
     ptr(new blocks::common_block(*this,srm,srm_in_block));
   auto& block=*ptr;
-  block_p.push_back(std::move(ptr));
+  block_list.push_back(std::move(ptr));
 
   const unsigned long result = // future sequence number for our |srm|
     first+srm_in_block;

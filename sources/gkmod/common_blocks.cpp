@@ -464,7 +464,7 @@ common_block::common_block // partial block constructor
       highest_x=x;
     auto& loc=y_table[kgb.inv_nr(x)];
     auto it = std::find_if_not(loc.cbegin(),loc.cend(),
-			       [&y](const TorusPart& t) {return t<y; });
+			       [&y](const TorusPart& t) { return t<y; });
     if (it==loc.end() or y<*it) // skip if |y| already present in the list
       loc.insert(it,y);
   }
@@ -782,7 +782,7 @@ blocks::common_block& Rep_table::add_block_below
   // the constructor rearranges |elements| to the order in the block
   auto& block = *new_block_p;
 
-  block_p.push_back(std::move(new_block_p)); // insert block
+  block_list.push_back(std::move(new_block_p)); // insert block
 
   std::vector<Poset::EltList> Hasse_diagram(block.size());
   for (auto z : elements)
@@ -811,6 +811,17 @@ blocks::common_block& Rep_table::add_block_below
   block.set_Bruhat(std::move(Hasse_diagram));
 
   // TODO: should do block merge things here
+
+  for (const auto& pair : sub_blocks) // remove absorbed blocks
+  {
+    auto block_p = pair.first;
+    auto it = std::find_if
+      (block_list.begin(),block_list.end(),
+       [block_p](const std::unique_ptr<blocks::common_block>& p)
+       { return p.get()==block_p; } );
+    if (it!=block_list.end())
+      block_list.erase(it);
+  }
 
   static const std::pair<blocks::common_block*, BlockElt>
     empty(nullptr,UndefBlock);

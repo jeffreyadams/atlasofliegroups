@@ -292,7 +292,7 @@ class Rep_table : public Rep_context
   std::vector<StandardReprMod> mod_pool;
   HashTable<StandardReprMod,unsigned long> mod_hash;
 
-  std::vector<std::unique_ptr<blocks::common_block> > block_p;
+  containers::sl_list<std::unique_ptr<blocks::common_block> > block_list;
   std::vector<std::pair<blocks::common_block*, BlockElt> > place;
 
  public:
