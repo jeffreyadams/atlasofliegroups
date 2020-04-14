@@ -704,20 +704,30 @@ common_context::common_context (RealReductiveGroup& G, const SubSystem& sub)
 , sub(sub)
 {} // |common_context::common_context|
 
+struct ulong_entry
+{ unsigned long val;
+  ulong_entry(unsigned long n) : val(n) {}
+  typedef std::vector<ulong_entry> Pooltype;
+  bool operator != (ulong_entry x) const { return val!=x.val;  }
+  size_t hashCode(size_t modulus) const { return (5*val)&(modulus-1); }
+};
 
 // |Rep_table| helper class
 class Rep_table::Bruhat_generator
 {
   Rep_table& parent;
   const common_context& ctxt;
-  std::map<unsigned long,containers::simple_list<unsigned long> >
-    predecessors, less_eq;
+  std::vector<ulong_entry> pool;
+  HashTable<ulong_entry,BlockElt> local_h; // hash table, avoid name |hash|
+  std::vector<containers::simple_list<unsigned long> > predecessors, less_eq;
 public:
   Bruhat_generator (Rep_table* caller, const common_context& ctxt)
-    : parent(*caller),ctxt(ctxt), predecessors(), less_eq() {}
+    : parent(*caller),ctxt(ctxt)
+    , pool(), local_h(pool), predecessors(), less_eq()
+  {}
 
   const containers::simple_list<unsigned long>& covered(unsigned long n) const
-  { return predecessors.at(n); }
+  { return predecessors.at(local_h.find(n)); }
   containers::simple_list<unsigned long> block_below(const StandardReprMod& srm);
 }; // |class Rep_table::Bruhat_generator|
 
@@ -823,13 +833,22 @@ containers::simple_list<unsigned long> Rep_table::Bruhat_generator::block_below
 	for (auto B_it=Bruhat_poset.covered_by(z).begin(); B_it(); ++B_it)
 	  jt=covered_by_z.insert(jt,full_nr[*B_it]); // convert to full number
 
-	predecessors[full_nr[z]] =  // create or overwrite |predecessors| entry
-	  std::move(covered_by_z);
+	assert(hash.size()==predecessors.size()); // check synchronisation
+	BlockElt zz = local_h.match(full_nr[z]);
+	if (zz==predecessors.size())
+	{ // new element for |local_h|, so create slots
+	  predecessors.push_back(std::move(covered_by_z)); // create
+	  less_eq.emplace_back(); // value not needed, but keep |less_eq| in sync
+	}
+	else predecessors[zz] = std::move(covered_by_z);   // overwrite
       }
-      return less_eq[full_nr[z0]] = result;
+      BlockElt zz0 = local_h.find(h);
+      assert (zz0!=local_h.empty); // it was matched at end of loop above
+      less_eq[zz0]=std::move(result); // store |result| at latest empty slot
+      return less_eq[zz0]; // and return it
     }
-    else if (h!=hash.empty)
-      return less_eq.at(h); // avoid recomputation
+    else if (h!=hash.empty) // then |srm| was seen earlier in current recursion
+      return less_eq.at(local_h.find(h)); // avoid recomputation
   }
   const auto rank = ctxt.id().semisimpleRank();
   containers::sl_list<unsigned long> pred; // list of elements covered by z
@@ -857,7 +876,7 @@ containers::simple_list<unsigned long> Rep_table::Bruhat_generator::block_below
       results.push_back(block_below(sz1)); // recursion
       pred.push_back(hash.find(sz0)); // call |hash.find| after |block_below|
       pred.push_back(hash.find(sz1));
-      break; // we shall add $s$-ascents of |predecessors[sz_inx]| below
+      break; // we shall add $s$-ascents of predecessors of |sz_inx| below
     } // |if (real type 1)|
 
   } // |for (s)|
@@ -876,7 +895,7 @@ containers::simple_list<unsigned long> Rep_table::Bruhat_generator::block_below
   }
   else // a complex or real type 1 descent |sz==pred.front()| for |s| was found
   { // add |s|-ascents for elements covered by |sz|
-    const auto pred_sz = predecessors.at(pred.front());
+    const auto pred_sz = predecessors.at(local_h.find(pred.front()));
     for (auto it = pred_sz.begin(); not pred.at_end(it); ++it)
     {
       const auto p = *it; // sequence number of a predecessor of |sz|
@@ -910,8 +929,8 @@ containers::simple_list<unsigned long> Rep_table::Bruhat_generator::block_below
       } // |switch(status(s,conj_x))|
     } // |for (it)|
   } // |if (s<rank)|
-  auto h = hash.match(srm);
-  predecessors.emplace(std::make_pair(h,pred.undress()));
+
+  const auto h=hash.match(srm); // finally generate sequence number for |srm|
   { // merge all |results| together and remove duplicates
     results.push_front(containers::simple_list<unsigned long> {h} );
     while (results.size()>1)
@@ -924,8 +943,12 @@ containers::simple_list<unsigned long> Rep_table::Bruhat_generator::block_below
       results.push_back(std::move(first));
     }
   }
-  less_eq.emplace(std::make_pair(h,results.front())); // store a copy
-  return results.front();
+  unsigned hh = local_h.match(h); // local sequence number for |srm|
+  assert(hh==predecessors.size()); ndebug_use(hh);
+  assert(less_eq.size()==predecessors.size());
+  predecessors.push_back(pred.undress()); // store |pred| at |hh|
+  less_eq.push_back(std::move(results.front())); // store merged list at |hh|
+  return less_eq.back(); // and return a copy of that list
 } // |Rep_table::Bruhat_generator::block_below|
 
 std::pair<gradings::Status::Value,bool>
