@@ -719,12 +719,10 @@ class Rep_table::Bruhat_generator
   const common_context& ctxt;
   std::vector<ulong_entry> pool;
   HashTable<ulong_entry,BlockElt> local_h; // hash table, avoid name |hash|
-  std::vector<containers::simple_list<unsigned long> > predecessors, less_eq;
+  std::vector<containers::simple_list<unsigned long> > predecessors;
 public:
   Bruhat_generator (Rep_table* caller, const common_context& ctxt)
-    : parent(*caller),ctxt(ctxt)
-    , pool(), local_h(pool), predecessors(), less_eq()
-  {}
+    : parent(*caller),ctxt(ctxt), pool(), local_h(pool), predecessors() {}
 
   const containers::simple_list<unsigned long>& covered(unsigned long n) const
   { return predecessors.at(local_h.find(n)); }
@@ -805,8 +803,8 @@ containers::simple_list<unsigned long> Rep_table::Bruhat_generator::block_below
     if (h!=hash.empty) // then |srm| was seen earlier
     {
       unsigned hh = local_h.find(h);
-      if (hh!=local_h.empty)
-	return less_eq.at(h); // avoid recomputation
+      if (hh!=local_h.empty) // then we visited this element in current recursion
+	return containers::simple_list<unsigned long>(); // nothing new
     }
   }
   const auto rank = ctxt.id().semisimpleRank();
@@ -904,10 +902,8 @@ containers::simple_list<unsigned long> Rep_table::Bruhat_generator::block_below
   }
   unsigned hh = local_h.match(h); // local sequence number for |srm|
   assert(hh==predecessors.size()); ndebug_use(hh);
-  assert(less_eq.size()==predecessors.size());
   predecessors.push_back(pred.undress()); // store |pred| at |hh|
-  less_eq.push_back(std::move(results.front())); // store merged list at |hh|
-  return less_eq.back(); // and return a copy of that list
+  return results.front();
 } // |Rep_table::Bruhat_generator::block_below|
 
 std::pair<gradings::Status::Value,bool>
