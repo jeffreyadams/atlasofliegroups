@@ -797,27 +797,36 @@ containers::simple_list<unsigned long> Rep_table::Bruhat_generator::block_below
       const auto& pair = parent.place[h];
       blocks::common_block& block = *pair.first;
       BlockElt z0=pair.second; // number of |srm| inside |block|
+      assert(block.representative(z0)==srm);
+      // and therefore |hash.find(block.representative(z0))==h|
+
       auto& Bruhat_poset = block.bruhatOrder().poset();
       const BitMap& below = Bruhat_poset.below(z0);
+
       // ensure |predecessors| contains entries for all elements |<=z0|
-      std::vector<unsigned long> leq_hash;
-      leq_hash.reserve(below.size()+1);
+      containers::simple_list<unsigned long> result;
+      std::vector<unsigned long> full_nr(block.size(),hash.empty);
       for (auto it=below.begin();  it(); ++it)
-	leq_hash.push_back(hash.find(block.representative(*it)));
-      leq_hash.push_back(hash.find(block.representative(z0)));
+	result.push_front(full_nr[*it] = hash.find(block.representative(*it)));
+      result.push_front(full_nr[z0] = h);
+      result.reverse(); // now |result| is list of |full_nr|s of interval |<=z0|
+
       auto it=below.begin(); // restart
-      for (unsigned i=0; i<leq_hash.size(); ++i,++it)
+      for (unsigned i=0; i<below.size()+1; ++i,++it)
       {
 	BlockElt z= it() ? *it : z0; // final |BlockElt z0| absent from |below|
+	assert(full_nr[z]!=hash.empty); // all |below(z0)| were known too
+
 	// since |less_eq| is increasing, we already have hashes |below(z)|
 	containers::simple_list<unsigned long> covered_by_z;
 	auto jt = covered_by_z.begin(); // writing iterator
 	for (auto B_it=Bruhat_poset.covered_by(z).begin(); B_it(); ++B_it)
-	  jt=covered_by_z.insert(jt,leq_hash[*B_it]); // convert to hashes
-	predecessors[leq_hash[z]] =  // create or overwrite |predecessors| entry
+	  jt=covered_by_z.insert(jt,full_nr[*B_it]); // convert to full number
+
+	predecessors[full_nr[z]] =  // create or overwrite |predecessors| entry
 	  std::move(covered_by_z);
       }
-      return { leq_hash.begin(),leq_hash.end() } ;
+      return less_eq[full_nr[z0]] = result;
     }
     else if (h!=hash.empty)
       return less_eq.at(h); // avoid recomputation
@@ -904,7 +913,6 @@ containers::simple_list<unsigned long> Rep_table::Bruhat_generator::block_below
   auto h = hash.match(srm);
   predecessors.emplace(std::make_pair(h,pred.undress()));
   { // merge all |results| together and remove duplicates
-    const auto h=hash.match(srm); // finally generated sequence number for |srm|
     results.push_front(containers::simple_list<unsigned long> {h} );
     while (results.size()>1)
     {
