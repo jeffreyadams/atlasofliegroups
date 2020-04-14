@@ -802,60 +802,12 @@ containers::simple_list<unsigned long> Rep_table::Bruhat_generator::block_below
 {
   auto& hash=parent.mod_hash;
   { const auto h=hash.find(srm);
-    if (h<parent.place.size()) // a representation from some older common block
-    { // fill the corresponding block's Bruhat poset, and get result from it:
-      const auto& pair = parent.place[h];
-      blocks::common_block& block = *pair.first;
-      BlockElt z0=pair.second; // number of |srm| inside |block|
-      assert(block.representative(z0)==srm);
-      // and therefore |hash.find(block.representative(z0))==h|
-
-      auto& Bruhat_poset = block.bruhatOrder().poset();
-      const BitMap& below = Bruhat_poset.below(z0);
-
-      // ensure |predecessors| contains entries for all elements |<=z0|
-      std::vector<unsigned long> full_nr(block.size(),hash.empty);
-      for (auto it=below.begin();  it(); ++it)
-	full_nr[*it] = hash.find(block.representative(*it));
-      full_nr[z0] = h;
-
-      auto it=below.begin(); // restart
-      for (unsigned i=0; i<below.size()+1; ++i,++it)
-      {
-	BlockElt z= it() ? *it : z0; // final |BlockElt z0| absent from |below|
-	assert(full_nr[z]!=hash.empty); // all |below(z0)| were known too
-
-	// since |less_eq| is increasing, we already have hashes |below(z)|
-	containers::simple_list<unsigned long> covered_by_z;
-	auto jt = covered_by_z.begin(); // writing iterator
-	for (auto B_it=Bruhat_poset.covered_by(z).begin(); B_it(); ++B_it)
-	  jt=covered_by_z.insert(jt,full_nr[*B_it]); // convert to full number
-
-	containers::simple_list<unsigned long> leq_z;
-	jt = leq_z.begin(); // writing iterator
-	for (auto B_it=Bruhat_poset.below(z).begin(); B_it(); ++B_it)
-	  jt=leq_z.insert(jt,full_nr[*B_it]); // convert to full number
-	leq_z.insert(jt,full_nr[z]); // reflexivity
-
-	assert(local_h.size()==predecessors.size()); // check synchronisation
-	BlockElt zz = local_h.match(full_nr[z]);
-	if (zz==predecessors.size())
-	{ // new element for |local_h|, so create slots
-	  predecessors.push_back(std::move(covered_by_z));
-	  less_eq.push_back(std::move(leq_z));
-	}
-	else
-	{ // overwrite the slots at index |zz|
-	  predecessors[zz] = std::move(covered_by_z);
-	  less_eq[zz]      = std::move(leq_z);
-	}
-      }
-      BlockElt zz0 = local_h.find(h);
-      assert (zz0!=local_h.empty); // it was matched at end of loop above
-      return less_eq[zz0]; // and return it
+    if (h!=hash.empty) // then |srm| was seen earlier
+    {
+      unsigned hh = local_h.find(h);
+      if (hh!=local_h.empty)
+	return less_eq.at(h); // avoid recomputation
     }
-    else if (h!=hash.empty) // then |srm| was seen earlier in current recursion
-      return less_eq.at(local_h.find(h)); // avoid recomputation
   }
   const auto rank = ctxt.id().semisimpleRank();
   containers::sl_list<unsigned long> pred; // list of elements covered by z
