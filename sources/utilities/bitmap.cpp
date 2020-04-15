@@ -174,6 +174,17 @@ bool BitMap::back_up(unsigned long& n) const
   return true;
 }
 
+unsigned long last (const BitMap& set)
+{
+  unsigned long result = set.capacity();
+#ifdef NDEBUG
+  set.back_up(result);
+#else
+  bool success = set.back_up(result);
+  assert(success);
+#endif
+  return result;
+}
 
 /*
   Whether the current bitmap contains |b|. It is assumed that

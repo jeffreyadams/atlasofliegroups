@@ -302,12 +302,12 @@ class Rep_table : public Rep_context
 
   const StandardReprMod& srm(unsigned long n) const { return mod_pool[n]; }
 
-  unsigned int length(StandardRepr z); // by value
+  unsigned short length(StandardRepr z); // by value
 
   blocks::common_block& lookup
     (const StandardRepr& sr,BlockElt& z,RankFlags& singular);
 
-  blocks::common_block& lookup(const StandardRepr& sr); // partial
+  blocks::common_block& lookup(const StandardRepr& sr,BlockElt& z); // partial
 
 
   SR_poly KL_column_at_s(StandardRepr z); // by value
@@ -332,7 +332,7 @@ class Rep_table : public Rep_context
   // once a parameter has been entered, we can compute this without a block
 
   blocks::common_block& add_block_below // method defined in common_blocks.cpp
-    (const common_context&, const StandardReprMod& srm);
+    (const common_context&, const StandardReprMod& srm, BitMap* subset);
 
   SR_poly twisted_deformation(StandardRepr z); // by value
 

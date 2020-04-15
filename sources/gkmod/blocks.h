@@ -120,7 +120,7 @@ public:
   KGBElt x(BlockElt z) const { assert(z<size()); return info[z].x; }
   KGBElt y(BlockElt z) const { assert(z<size()); return info[z].y; }
 
-  size_t length(BlockElt z) const { return info[z].length; }
+  unsigned short length(BlockElt z) const { return info[z].length; }
 
   // first element of length (at least) |l|, or |size()| if there are none
   BlockElt length_first(size_t l) const;

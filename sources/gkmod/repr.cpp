@@ -882,11 +882,12 @@ Rep_table::Rep_table(RealReductiveGroup &G)
 {}
 Rep_table::~Rep_table() = default;
 
-unsigned int Rep_table::length(StandardRepr sr)
+unsigned short Rep_table::length(StandardRepr sr)
 {
   make_dominant(sr); // length should not change in equivalence class
-  auto & block = lookup(sr); // construct partial block
-  return block.length(block.size()-1);
+  BlockElt z;
+  auto & block = lookup(sr,z); // construct partial block
+  return block.length(z);
 }
 
 SR_poly Rep_context::scale(const poly& P, const Rational& f) const
@@ -1036,7 +1037,7 @@ blocks::common_block& Rep_table::lookup
   return block;
 } // |Rep_table::lookup|
 
-blocks::common_block& Rep_table::lookup (const StandardRepr& sr)
+blocks::common_block& Rep_table::lookup (const StandardRepr& sr,BlockElt& which)
 {
   auto srm = StandardReprMod::mod_reduce(*this,sr); // modular |z|
   assert(mod_hash.size()==place.size()); // should be in sync at this point
@@ -1044,10 +1045,15 @@ blocks::common_block& Rep_table::lookup (const StandardRepr& sr)
   if (h!=mod_hash.empty) // then we are in a new translation family of blocks
   {
     assert(h<place.size()); // it cannot be |mod_hash.empty| anymore
+    which = place[h].second;
     return *place[h].first;
   }
   common_context ctxt(real_group(),SubSystem::integral(root_datum(),sr.gamma()));
-  return add_block_below(ctxt,srm); // ensure this block is known
+  BitMap subset;
+  auto& block= add_block_below(ctxt,srm,&subset); // ensure block is known
+  which = last(subset);
+  assert(block.representative(which)==srm);
+  return block;
 } // |Rep_table::lookup|
 
 // in the following type the second component is a mulitplicity so we are in fact

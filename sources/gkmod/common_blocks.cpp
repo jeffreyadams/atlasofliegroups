@@ -740,7 +740,7 @@ public:
 
 // |Rep_table| methods
 blocks::common_block& Rep_table::add_block_below
-  (const common_context& ctxt, const StandardReprMod& srm)
+  (const common_context& ctxt, const StandardReprMod& srm, BitMap* subset)
 {
   assert(mod_hash.find(srm)==mod_hash.empty); // otherwise don't call us
   Bruhat_generator gen(this,ctxt);
@@ -790,6 +790,7 @@ blocks::common_block& Rep_table::add_block_below
 
   block_list.push_back(std::move(new_block_p)); // insert block
 
+  *subset=BitMap(block.size());
   std::vector<Poset::EltList> Hasse_diagram(block.size());
   for (auto z : elements)
   {
@@ -797,6 +798,7 @@ blocks::common_block& Rep_table::add_block_below
     auto& row = Hasse_diagram[i_z];
     if (gen.in_interval(z)) // these have their covered's in |gen|
     {
+      subset->insert(i_z); // mark |z| as element ot the Bruhat interval
       const auto& cover = gen.covered(z);
       const auto len = atlas::containers::length(cover);
       row.reserve(len);

@@ -4732,12 +4732,21 @@ void partial_common_block_wrapper(expression_base::level l)
   if (l==expression_base::no_value)
     return;
 @)
-  blocks::common_block& block = p->rt().lookup(p->val);
+  BlockElt z;
+  blocks::common_block& block = p->rt().lookup(p->val,z);
 @)
-  { own_row param_list = std::make_shared<row_value>(block.size());
-    for (BlockElt z=0; z<block.size(); ++z)
-      param_list->val[z] =
-	  std::make_shared<module_parameter_value> @|
+  unsigned long n=block.size();
+  BitMap subset(n);
+  subset.insert(z);
+  while (subset.back_up(n)) // compute downward closure
+    for (BlockElt y : block.bruhatOrder().hasse(n))
+      subset.insert(y);
+
+  { own_row param_list = std::make_shared<row_value>(subset.size());
+    size_t i=0;
+    for (auto z : subset)
+      param_list->val[i++] =
+         std::make_shared<module_parameter_value> @|
              (p->rf,p->rc().sr(block.representative(z),p->val.gamma()));
     push_value(std::move(param_list));
   }
