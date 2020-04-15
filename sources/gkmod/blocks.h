@@ -161,10 +161,6 @@ public:
 
   BlockElt Hermitian_dual(BlockElt z) const { return info[z].dual; }
 
-  // The functor $T_{\alpha,\beta}$; might have been a non-method function
-  BlockEltPair link
-    (weyl::Generator alpha,weyl::Generator beta,BlockElt y) const;
-
   // print whole block to stream (name chosen to avoid masking by |print|)
   std::ostream& print_to
     (std::ostream& strm,bool as_invol_expr) const; // defined in |block_io|
@@ -304,6 +300,10 @@ private:
   void compute_supports(); // used during construction
 
 }; // |class Block|
+
+// The functor $T_{\alpha,\beta}$
+BlockEltPair link(weyl::Generator alpha,weyl::Generator beta,
+		  const Block_base& block, BlockElt y);
 
 struct param_entry
 { KGBElt x; TorusPart y;
