@@ -87,6 +87,7 @@ class common_block : public Block_base
 
   repr::StandardReprMod representative (BlockElt z) const
   { return repr::StandardReprMod::build(rc,gamma_mod_1,x(z),gamma_lambda(z)); }
+  repr::StandardRepr sr (BlockElt z,const RatWeight& gamma) const;
 
   ext_gens fold_orbits(const WeightInvolution& delta) const;
 

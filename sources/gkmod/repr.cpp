@@ -1226,21 +1226,13 @@ SR_poly Rep_table::deformation_terms
    the differences of |orientation_number| values between |y| and (current) |x|.
 */
   {
-    const RatWeight gamma_rho = gamma-rho(block.root_datum());
-
-    const unsigned int orient_y = orientation_number
-      (sr_gamma
-       (block.x(y),
-	gamma_rho.integer_diff<int>(block.gamma_lambda(y)),
-	gamma
-      ));
+    const unsigned int orient_y = orientation_number(block.sr(y,gamma));
 
     auto it=finals.begin();
     for (const int c : acc) // accumulator |acc| runs parallel to |finals|
     {
       const auto z = *it; ++it;
-      const Weight lambda_rho=gamma_rho.integer_diff<int>(block.gamma_lambda(z));
-      const auto sr_z=sr_gamma(block.x(z),lambda_rho,gamma);
+      const auto sr_z = block.sr(z,gamma);
 
       auto coef = c*arithmetic::exp_i(orient_y-orientation_number(sr_z));
       result.add_term(sr_z,Split_integer(1,-1)*coef);
@@ -1268,7 +1260,6 @@ SR_poly Rep_table::KL_column_at_s(StandardRepr sr) // |sr| must be final
 
   SR_poly result(repr_less());
   const auto& gamma=sr.gamma();
-  const RatWeight gamma_rho = gamma-rho(block.root_datum());
   auto z_length=block.length(z);
   for (BlockElt x=z+1; x-->0; )
   {
@@ -1283,12 +1274,7 @@ SR_poly Rep_table::KL_column_at_s(StandardRepr sr) // |sr| must be final
     if ((z_length-block.length(x))%2!=0) // when |l(z)-l(x)| odd
       eval.negate(); // flip sign (do alternating sum of KL column at |s|)
     for (const auto& pair : contrib[x])
-    {
-      BlockElt c = pair.first;
-      const Weight lambda_rho=gamma_rho.integer_diff<int>(block.gamma_lambda(c));
-      const auto sr_c=sr_gamma(block.x(c),lambda_rho,gamma);
-      result.add_term(sr_c,eval*pair.second);
-    }
+      result.add_term(block.sr(pair.first,gamma),eval*pair.second);
   }
 
   return result;
@@ -1399,7 +1385,6 @@ SR_poly twisted_KL_sum
   auto contrib = contributions(eblock,singular_orbits,y+1);
 
   const auto& rc = parent.context();
-  const auto gamma_rho = gamma-rho(parent.root_datum());
   SR_poly result(rc.repr_less());
   unsigned int parity = eblock.length(y)%2;
   for (BlockElt x=0; x<=y; ++x)
@@ -1408,13 +1393,7 @@ SR_poly twisted_KL_sum
     if (eblock.length(x)%2!=parity) // flip sign at odd length difference
       eval = -eval;
     for (const auto& pair : contrib[x])
-    {
-      BlockElt final_x = eblock.z(pair.first); // index of |elt| in |parent|
-      const auto lambda_rho =
-	gamma_rho.integer_diff<int>(parent.gamma_lambda(final_x));
-      result.add_term(rc.sr_gamma(parent.x(final_x),lambda_rho,gamma),
-		      eval*pair.second);
-    }
+      result.add_term(parent.sr(eblock.z(pair.first),gamma),eval*pair.second);
   }
 
   return result;
@@ -1480,13 +1459,7 @@ SR_poly Rep_table::twisted_KL_column_at_s(StandardRepr sr)
     if ((y_length-block.length(eblock.z(x)))%2!=0) // when |l(y)-l(x)| odd
       eval.negate(); // flip sign (do alternating sum of KL column at |s|)
     for (const auto& pair : contrib[x])
-    {
-      auto final_x=eblock.z(pair.first);
-      const Weight lambda_rho =
-	gamma_rho.integer_diff<int>(block.gamma_lambda(final_x));
-      const auto sr_c=sr_gamma(block.x(final_x),lambda_rho,gamma);
-      result.add_term(sr_c,eval*pair.second);
-    }
+      result.add_term(block.sr(eblock.z(pair.first),gamma),eval*pair.second);
   }
 
   return result;
@@ -1568,14 +1541,7 @@ SR_poly Rep_table::twisted_deformation_terms
     assert(remainder[pos]==0); // check relation of being inverse
   }
   {
-    const RatWeight gamma_rho = gamma-rho(block.root_datum());
-
-    const unsigned int orient_y = orientation_number
-      (sr_gamma
-       (block.x(y),
-	gamma_rho.integer_diff<int>(block.gamma_lambda(y)),
-	gamma
-      ));
+    const unsigned int orient_y = orientation_number(block.sr(y,gamma));
 
     auto it=acc.begin();
     for (const int f : finals) // accumulator |acc| runs parallel to |finals|
@@ -1584,9 +1550,7 @@ SR_poly Rep_table::twisted_deformation_terms
       if (c==0)
 	continue;
       BlockElt z = eblock.z(f); // |block| numbering used to build |StandardRepr|
-      const Weight lambda_rho =
-	gamma_rho.integer_diff<int>(block.gamma_lambda(z));
-      const auto sr_z=sr_gamma(block.x(z),lambda_rho,gamma);
+      const auto sr_z = block.sr(z,gamma);
 
       auto coef = c*arithmetic::exp_i(orient_y-orientation_number(sr_z));
       result.add_term(sr_z,Split_integer(1,-1)*coef);

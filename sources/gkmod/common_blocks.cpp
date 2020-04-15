@@ -627,6 +627,13 @@ BlockElt common_block::lookup(KGBElt x, const RatWeight& gamma_lambda) const
                          : xy_hash.find(EltInfo{x,y});
 }
 
+repr::StandardRepr common_block::sr (BlockElt z,const RatWeight& gamma) const
+{
+  const RatWeight gamma_rho = gamma-rho(root_datum());
+  const Weight lambda_rho = gamma_rho.integer_diff<int>(gamma_lambda(z));
+  return rc.sr_gamma(x(z),lambda_rho,gamma);
+}
+
 // find element in same common block with |x| and |y| parts twisted by |delta|
 // may return |UndefBlock|, but success does not mean any representative of the
 // $X^*$ coset for this block is actually |delta|-fixed (no such test done)
