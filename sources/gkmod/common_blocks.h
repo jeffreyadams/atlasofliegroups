@@ -91,7 +91,8 @@ class common_block : public Block_base
   ext_gens fold_orbits(const WeightInvolution& delta) const;
 
   // manipulators
-  void swallow (const common_block& sub); // integrate an older partial block
+  void swallow // integrate an older partial block, with mapping of elements
+    (const common_block& sub, const BlockEltList& embed);
   ext_block::ext_block& extended_block(const WeightInvolution& delta);
 
   void set_Bruhat(std::vector<Poset::EltList>&& Hasse)

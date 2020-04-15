@@ -884,10 +884,9 @@ Rep_table::~Rep_table() = default;
 
 unsigned int Rep_table::length(StandardRepr sr)
 {
-  make_dominant(sr); // should't hurt, and improves chances of finding |z|
-  BlockElt z; RankFlags singular; // unused here
-  auto & block = lookup(sr,z,singular);
-  return block.length(z);
+  make_dominant(sr); // length should not change in equivalence class
+  auto & block = lookup(sr); // construct partial block
+  return block.length(block.size()-1);
 }
 
 SR_poly Rep_context::scale(const poly& P, const Rational& f) const

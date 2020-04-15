@@ -457,12 +457,12 @@ common_block::common_block // partial block constructor
   // every element of |y_table| is a list of |TorusPart| values of the same rank
   // therefore, we can (and will) compare list elements and sort the lists
   for (unsigned long elt : elements)
-  { const auto& srm=rt.srm(elt);
-    const KGBElt x=srm.x();
-    const TorusPart& y=srm.y();
+  { const auto& srm = rt.srm(elt);
+    const KGBElt x = srm.x();
+    const TorusPart& y = srm.y();
     if (x>highest_x)
       highest_x=x;
-    auto& loc=y_table[kgb.inv_nr(x)];
+    auto& loc = y_table[kgb.inv_nr(x)];
     auto it = std::find_if_not(loc.cbegin(),loc.cend(),
 			       [&y](const TorusPart& t) { return t<y; });
     if (it==loc.end() or y<*it) // skip if |y| already present in the list
@@ -483,7 +483,7 @@ common_block::common_block // partial block constructor
   assert(y_pool.size()==highest_y);
   -- highest_y; // one less than the number of distinct |y| values
 
-  elements.sort // sorting by |x| first implies having weakly increasing lengths
+  elements.sort // sort by |x| first
     ([&rt](unsigned long a, unsigned long b)
       { auto& srm_a=rt.srm(a), &srm_b=rt.srm(b);
 	return srm_a.x()!=srm_b.x() ? srm_a.x()<srm_b.x() : srm_a.y()<srm_b.y();
@@ -495,7 +495,7 @@ common_block::common_block // partial block constructor
     const KGBElt x=srm.x();
     auto y = y_hash.find(i_tab.pack(rt.y_as_torus_elt(srm),kgb.inv_nr(x)));
     assert(y!=y_hash.empty);
-    info.emplace_back(x,y,DescentStatus(),kgb.length(x));
+    info.emplace_back(x,y); // leave descent status unset and |length==0| for now
   }
   xy_hash.reconstruct(); // we must do this before we use the |lookup| method
 
@@ -523,7 +523,10 @@ common_block::common_block // partial block constructor
 	  {
 	    BlockElt sz = lookup(ctxt.cross(s,srm_z));
 	    assert(sz!=UndefBlock);
-	    assert(length(i)==length(sz)+1);
+	    if (length(i)==0) // then this is the first descent for |i|
+	      info[i].length=length(sz)+1;
+	    else
+	      assert(length(i)==length(sz)+1);
 	    assert(descentValue(s,sz)==DescentStatus::ComplexAscent);
 	    tab_s[i].cross_image = sz;
 	    tab_s[sz].cross_image = i;
@@ -537,7 +540,10 @@ common_block::common_block // partial block constructor
 	    const auto srm_sz = ctxt.down_Cayley(s,srm_z);
 	    BlockElt sz = lookup(srm_sz);
 	    assert(sz!=UndefBlock);
-	    assert(length(i)==length(sz)+1);
+	    if (length(i)==0) // then this is the first descent for |i|
+	      info[i].length=length(sz)+1;
+	    else
+	      assert(length(i)==length(sz)+1);
 	    tab_s[i].Cayley_image.first = sz; // first Cayley descent
 	    if (stat.second)
 	    {
@@ -829,7 +835,7 @@ blocks::common_block& Rep_table::add_block_below
 
   for (const auto& z : elements)
   {
-    const StandardReprMod srm = this->srm(z);
+    const StandardReprMod& srm = this->srm(z);
     place[z] = std::make_pair(&block,block.lookup(srm)); // extend or replace
   }
   return block;
