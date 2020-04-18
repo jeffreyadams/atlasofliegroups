@@ -991,12 +991,12 @@ StandardReprMod common_context::cross
   const auto& refl = sub.reflection(s); // reflection word in full system
   const KGBElt new_x = kgb().cross(refl,z.x());
   RatWeight gamma_lambda = this->gamma_lambda(z);
-  integr_datum.simple_reflect(s,gamma_lambda.numerator());
 
   const auto& i_tab = inner_class().involution_table();
   RootNbrSet pos_neg = pos_to_neg(root_datum(),refl);
   pos_neg &= i_tab.real_roots(kgb().inv_nr(z.x())); // only real roots for |z|
-  gamma_lambda += root_sum(root_datum(),pos_neg); // correction of $\rho_r$'s
+  gamma_lambda -= root_sum(root_datum(),pos_neg); // correction for $\rho_r$'s
+  integr_datum.simple_reflect(s,gamma_lambda.numerator()); // then reflect
   return repr::StandardReprMod::build(*this,z.gamma_mod1(),new_x,gamma_lambda);
 }
 
