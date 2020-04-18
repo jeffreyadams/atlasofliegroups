@@ -1041,12 +1041,22 @@ StandardReprMod common_context::up_Cayley
   RatWeight gamma_lambda = this->gamma_lambda(z);
 
   const auto& i_tab = inner_class().involution_table();
-  const auto& new_real_roots = i_tab.real_roots(kgb().inv_nr(new_x));
+  const RootNbrSet& upstairs_real_roots = i_tab.real_roots(kgb().inv_nr(new_x));
+  RootNbrSet real_flip = upstairs_real_roots;
+  real_flip ^= i_tab.real_roots(kgb().inv_nr(z.x())); // remove downstairs reals
+
+  RootNbrSet pos_neg = pos_to_neg(root_datum(),conj);
+  pos_neg &= real_flip; // posroots that change real status and map to negative
+  gamma_lambda += root_sum(root_datum(),pos_neg); // correction of $\rho_r$'s
+
+  // correct in case the parity condition fails for our raised |gamma_lambda|
   const Coweight& alpha_hat = integr_datum.simpleCoroot(s);
-  const int rho_r_corr = alpha_hat.dot(root_datum().twoRho(new_real_roots));
-  assert(rho_r_corr%2==0);
-  if (rho_r_corr%4==0)
+  const int rho_r_corr = // integer since alpha is among |upstairs_real_roots|
+    alpha_hat.dot(root_datum().twoRho(upstairs_real_roots))/2;
+  const int eval = gamma_lambda.dot(alpha_hat);
+  if ((eval+rho_r_corr)%2==0) // parity condition says it should be 1
     gamma_lambda += RatWeight(integr_datum.root(s),2); // add half-alpha
+
   return repr::StandardReprMod::build(*this,z.gamma_mod1(),new_x,gamma_lambda);
 }
 
