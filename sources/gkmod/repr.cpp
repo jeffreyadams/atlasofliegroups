@@ -1338,8 +1338,14 @@ SR_poly Rep_table::deformation(const StandardRepr& z)
     auto zi = z; scale(zi,rp[i]);
     normalise(zi); // necessary to ensure the following |assert| will hold
     assert(is_final(zi)); // ensures that |deformation_terms| won't refuse
-    BlockElt new_z; RankFlags singular;
-    auto& block = lookup(zi,new_z,singular);
+    BlockElt new_z;
+    auto& block = lookup(zi,new_z);
+
+    RankFlags singular;
+    const SubSystem& sub = block.integral_subsystem();
+    for (weyl::Generator s=0; s<block.rank(); ++s)
+      singular.set(s,root_datum().coroot(sub.parent_nr_simple(s))
+					.dot(zi.gamma().numerator())==0);
 
     const SR_poly terms = deformation_terms(block,new_z,singular,zi.gamma());
     for (auto const& term : terms)
