@@ -227,6 +227,8 @@ class InvolutionTable
   mapper as_map() const { return mapper(this); }
 
   // manipulators
+
+  // these methods construct/propagate information at individual involutions
   InvolutionNbr add_involution(const TwistedInvolution& tw);
   InvolutionNbr add_cross(weyl::Generator s, InvolutionNbr n);
 
