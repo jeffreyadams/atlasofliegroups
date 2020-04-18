@@ -810,7 +810,11 @@ blocks::common_block& Rep_table::add_block_below
       const auto len = atlas::containers::length(cover);
       row.reserve(len);
       for (auto it=cover.begin(); not cover.at_end(it); ++it)
-	row.push_back(block.lookup(this->srm(*it)));
+      {
+	const BlockElt y = block.lookup(this->srm(*it));
+	assert(y!=UndefBlock);
+	row.push_back(y);
+      }
     }
     else // elements in an old block, outside Bruhat interval
     { // get covered elements from stored Bruhat order of old block
@@ -819,8 +823,12 @@ blocks::common_block& Rep_table::add_block_below
       const auto& covered = old_block.bruhatOrder().hasse(z_rel);
       const auto len = covered.size();
       row.reserve(len);
-      for (auto y : covered)
-	row.push_back(block.lookup(this->srm(y)));
+      for (auto y_rel : covered)
+      {
+	const BlockElt y = block.lookup(old_block.representative(y_rel));
+	assert(y!=UndefBlock);
+	row.push_back(y);
+      }
     }
   }
   block.set_Bruhat(std::move(Hasse_diagram));
