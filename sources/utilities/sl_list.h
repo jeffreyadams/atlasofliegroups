@@ -1883,7 +1883,7 @@ template<typename T, typename Alloc>
       }
     }
 
-     if (e0==b1)
+    if (e0==b1)
       return iterator(*e1.link_loc); // nothing to do, and code below would fail
 
     // cycle backward |(*b0.link_loc, qq, *e1.link_loc)|:
