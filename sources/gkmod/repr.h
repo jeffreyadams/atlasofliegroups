@@ -195,7 +195,7 @@ class Rep_context
     (const StandardRepr& z, RootNbr& witness) const; // simple witness
   bool is_nonzero  // whether $I(z)!=0$: no singular simply-imaginary compact
     (const StandardRepr& z, RootNbr& witness) const; // simply-imaginary witness
-  bool is_normal // whether |z==normal(z)|; implies no singular complex descents
+  bool is_normal // whether |z==normalise(z)|: has no singular complex descents
     (const StandardRepr& z) const; // complex simple witness
   bool is_semifinal  // whether $I(z)$ unrelated by Hecht-Schmid to more compact
     (const StandardRepr& z, RootNbr& witness) const; // singular real witness
@@ -210,8 +210,8 @@ class Rep_context
 
   void make_dominant(StandardRepr& z) const; // ensure |z.gamma()| dominant
 
-  // in addition to |make_dominant| ensure a normalised form of the parameter
-  void normalise(StandardRepr& z) const;
+  // in addition to |make_dominant| apply any singular complex descents
+  void normalise(StandardRepr& z) const; // which ensures a normalised form
 
   bool equivalent(StandardRepr z0, StandardRepr z1) const; // by value
 

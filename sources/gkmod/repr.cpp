@@ -489,7 +489,7 @@ bool Rep_context::is_twist_fixed
   to_singular_canonical(simple_singulars,z);
 
   return z==twisted(z,delta);
-} // |normalise|
+} // |is_twist_fixed|
 
 // equivalence is equality after |make_dominant| and |to_singular_canonical|
 bool Rep_context::equivalent(StandardRepr z0, StandardRepr z1) const
@@ -1232,10 +1232,13 @@ SR_poly Rep_table::deformation_terms
     for (const int c : acc) // accumulator |acc| runs parallel to |finals|
     {
       const auto z = *it; ++it;
-      const auto sr_z = block.sr(z,gamma);
+      if (c!=0) // test must follow |++it| !
+      {
+	const auto sr_z = block.sr(z,gamma);
 
-      auto coef = c*arithmetic::exp_i(orient_y-orientation_number(sr_z));
-      result.add_term(sr_z,Split_integer(1,-1)*coef);
+	auto coef = c*arithmetic::exp_i(orient_y-orientation_number(sr_z));
+	result.add_term(sr_z,Split_integer(1,-1)*coef);
+      }
     }
     assert(it==finals.end());
   }
