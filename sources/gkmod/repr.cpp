@@ -997,10 +997,13 @@ unsigned long Rep_table::add_block(const StandardReprMod& srm)
   std::unique_ptr<blocks::common_block>
     ptr(new blocks::common_block(*this,srm,srm_in_block));
   auto& block=*ptr;
+
+  BitMap swallow(block_list.size()); // indices of partial blocks to swallow
   block_list.push_back(std::move(ptr));
 
   const unsigned long result = // future sequence number for our |srm|
     first+srm_in_block;
+
   const RatWeight gamma_rho = srm.gamma_mod1()-rho(root_datum());
   for (BlockElt z=0; z<block.size(); ++z)
   {
@@ -1008,12 +1011,31 @@ unsigned long Rep_table::add_block(const StandardReprMod& srm)
     auto zm = StandardReprMod::mod_reduce
       (*this, sr_gamma(block.x(z),lambda_rho,srm.gamma_mod1()));
     auto seq = mod_hash.match(zm);
-    assert(seq==place.size()); // all block elements should be new
-    ndebug_use(seq);
-    place.emplace_back(&block,z);
+    if (seq==place.size()) // block element is new
+      place.emplace_back(&block,z);
+    else
+    {
+      unsigned i=0;
+      for (auto it=block_list.begin(); not block_list.at_end(it); ++it,++i)
+	if (it->get()==place[seq].first)
+	  break;
+      assert(i<block_list.size()-1); // must be found as aolder block
+      swallow.insert(i); // record that block |i| in |block_list| gets swallowed
+      place[seq].first=&block; // let |zm| henceforth point to the new |block|
+      place[seq].second=z; // with |z| as relative index
+    }
   }
+
+  // remove swallowed blocks for |block_lst|
+  unsigned i=0;
+  for (auto it=block_list.begin(); not block_list.at_end(it); ++i) // no |++it|!
+    if (swallow.isMember(i))
+      block_list.erase(it);
+    else
+      ++it;
+
   return result;
-}
+}// |Rep_table::add_block|
 
 blocks::common_block& Rep_table::lookup
   (const StandardRepr& sr,BlockElt& z,RankFlags& singular)
@@ -1021,7 +1043,7 @@ blocks::common_block& Rep_table::lookup
   auto srm = StandardReprMod::mod_reduce(*this,sr); // modular |z|
   auto h=mod_hash.find(srm); // look up modulo translation in $X^*$
   if (h==mod_hash.empty) // then we are in a new translation family of blocks
-    h=add_block(srm); // ensure this block is known
+    h=add_block(srm); // ensure this block is known, record hash for |srm|
   assert(h<place.size()); // it cannot be |mod_hash.empty| anymore
 
   auto& block = *place[h].first;
