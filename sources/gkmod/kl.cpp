@@ -578,34 +578,34 @@ void KLContext::recursionRow(std::vector<KLPol>& klv,
       switch (descentValue(s,x))
       {
       case DescentStatus::ImaginaryCompact:
-	{ // (q+1)P_{x,sy}
+	{ // $(q+1)P_{x,sy}$
 	  klv[i] = klPol(x,sy);
-	  klv[i].safeAdd(klv[i],1);
+	  klv[i].safeAdd(klv[i],1); // mulitply by $1+q$
 	}
 	break;
       case DescentStatus::ComplexDescent:
-	{ // P_{sx,sy}+q.P_{x,sy}
+	{ // $P_{sx,sy}+q.P_{x,sy}$
 	  BlockElt sx = cross(s,x);
 	  klv[i] = klPol(sx,sy);
 	  klv[i].safeAdd(klPol(x,sy),1);
 	}
 	break;
       case DescentStatus::RealTypeI:
-	{ // P_{sx.first,sy}+P_{sx.second,sy}+(q-1)P_{x,sy}
+	{ // $P_{sx.first,sy}+P_{sx.second,sy}+(q-1)P_{x,sy}$
 	  BlockEltPair sx = inverseCayley(s,x);
 	  klv[i] = klPol(sx.first,sy);
 	  klv[i].safeAdd(klPol(sx.second,sy));
 	  KLPolRef Pxsy = klPol(x,sy);
 	  klv[i].safeAdd(Pxsy,1);
-	  klv[i].safeSubtract(Pxsy);
+	  klv[i].safeSubtract(Pxsy); // subtraction must be last
 	}
 	break;
       case DescentStatus::RealTypeII:
-	{ // P_{sx,sy}+qP_{x,sy}-P_{s.x,sy}
+	{ // $P_{sx,sy}+qP_{x,sy}-P_{s.x,sy}$
 	  BlockElt sx = inverseCayley(s,x).first;
 	  klv[i] = klPol(sx,sy);
 	  klv[i].safeAdd(klPol(x,sy),1);
-	  klv[i].safeSubtract(klPol(cross(s,x),sy));
+	  klv[i].safeSubtract(klPol(cross(s,x),sy)); // subtraction must be last
 	}
 	break;
       default: assert(false); // this cannot happen

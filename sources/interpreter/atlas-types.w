@@ -4648,7 +4648,8 @@ void test_normal_is_final(const module_parameter_value& p, const char* descr)
 }
 
 @ Here is the first block generating function, which just reproduces to output
-from the \.{Fokko} program for the \.{nblock} command.
+of the \.{nblock} command in the \.{Fokko} program, and a variation for partial
+blocks.
 
 @< Local function def...@>=
 void print_n_block_wrapper(expression_base::level l)
@@ -4657,14 +4658,26 @@ void print_n_block_wrapper(expression_base::level l)
   BlockElt init_index; // will hold index in the block of the initial element
   param_block block(p->rc(),p->val,init_index);
   *output_stream << "Parameter defines element " << init_index
-               @|<< " of the following block:" << std::endl;
+               @|<< " of the following block:\n";
   block.print_to(*output_stream,true);
     // print block using involution expressions
   if (l==expression_base::single_value)
     wrap_tuple<0>(); // |no_value| needs no special care
 }
 
-@ A variant for ``common'' blocks, implemented by the |common_block| class.
+void print_p_block_wrapper(expression_base::level l)
+{ shared_module_parameter p = get<module_parameter_value>();
+  test_standard(*p,"Cannot generate block");
+  param_block block(p->rc(),p->val); // without index does partial construction
+  *output_stream
+    << "Parameter defines final element of the following partial block:\n";
+  block.print_to(*output_stream,true);
+    // print block using involution expressions
+  if (l==expression_base::single_value)
+    wrap_tuple<0>(); // |no_value| needs no special care
+}
+
+@ Their variants for ``common'' blocks, implemented by the |common_block| class.
 
 @h "common_blocks.h"
 @< Local function def...@>=
@@ -4676,6 +4689,25 @@ void print_c_block_wrapper(expression_base::level l)
   blocks::common_block block(p->rc(),zm,init_index);
   *output_stream << "Parameter defines element " << init_index
                @|<< " of the following common block:" << std::endl;
+  block.print_to(*output_stream,true);
+    // print block using involution expressions
+  if (l==expression_base::single_value)
+    wrap_tuple<0>(); // |no_value| needs no special care
+}
+
+void print_pc_block_wrapper(expression_base::level l)
+{ shared_module_parameter p = get<module_parameter_value>();
+  test_standard(*p,"Cannot generate block");
+  repr::common_context ctxt
+    (p->rc().real_group(),@|
+     SubSystem::integral(p->rc().root_datum(),p->val.gamma()));
+  auto zm = repr::StandardReprMod::mod_reduce(p->rc(),p->val);
+  BitMap which;
+  const blocks::common_block& block = p->rt().add_block_below(ctxt,zm,&which);
+  *output_stream << "Partial block";
+  for (auto it=which.begin(); it!=which.end(); ++it)
+    *output_stream << (it==which.begin() ? ' ' : ',') << *it;
+  *output_stream << " in the following common block:\n";
   block.print_to(*output_stream,true);
     // print block using involution expressions
   if (l==expression_base::single_value)
@@ -5191,6 +5223,8 @@ install_function(scale_parameter_wrapper,"*", "(Param,rat->Param)");
 install_function(scale_0_parameter_wrapper,"at_nu_0", "(Param->Param)");
 install_function(print_n_block_wrapper,@|"print_block","(Param->)");
 install_function(print_c_block_wrapper,@|"print_common_block","(Param->)");
+install_function(print_p_block_wrapper,@|"print_partial_block","(Param->)");
+install_function(print_pc_block_wrapper,@|"print_partial_common_block","(Param->)");
 install_function(block_wrapper,@|"block" ,"(Param->[Param],int)");
 install_function(partial_block_wrapper,@|"partial_block","(Param->[Param])");
 install_function(partial_common_block_wrapper,@|"partial_common_block"
