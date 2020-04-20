@@ -104,8 +104,8 @@ common_block::common_block // full block constructor
   , y_hash(y_pool)
   , xy_hash(info)
   , extended(nullptr) // no extended block initially
-  , highest_x(rc.real_group().KGB_size()-1)
-  , highest_y() // defined when generation is complete
+  , highest_x() // defined below when we have moved to top of block
+  , highest_y() // defined below when generation is complete
 {
   const InnerClass& ic = inner_class();
   const RootDatum& rd = root_datum();
@@ -188,7 +188,8 @@ common_block::common_block // full block constructor
   KGBEltList Cayley_ys; Cayley_ys.reserve(0x100);
 
   BitMap x_seen(kgb.size());
-  x_seen.insert(z_start.x()); // the only value of |x| seen so far
+  highest_x = z_start.x();
+  x_seen.insert(highest_x); // the only value of |x| seen so far
 
   BlockElt next=0; // start at beginning of (growing) list of block elements
 
@@ -398,8 +399,8 @@ common_block::common_block // full block constructor
   // end of step 4
 
   highest_y=y_hash.size()-1; // set highest occurring |y| value, for |ysize|
-  reverse_length_and_sort(); // reorder block by increasing value of |x|
-  xy_hash.reconstruct(); // adapt to permutation of |info| underlying |xy_hash|
+  // reverse lengths; reorder by increasing length then value of |x|
+  sort(info.back().length,true);
 
   compute_y_bits();
   // and look up which element matches the original input
@@ -483,11 +484,9 @@ common_block::common_block // partial block constructor
   assert(y_pool.size()==highest_y);
   -- highest_y; // one less than the number of distinct |y| values
 
-  elements.sort // sort by |x| first
+  elements.sort // pre-sort by |x| to ensure descents precede in setting lengths
     ([&rt](unsigned long a, unsigned long b)
-      { auto& srm_a=rt.srm(a), &srm_b=rt.srm(b);
-	return srm_a.x()!=srm_b.x() ? srm_a.x()<srm_b.x() : srm_a.y()<srm_b.y();
-      }
+          { return rt.srm(a).x()<rt.srm(b).x(); }
      );
 
   for (unsigned long elt : elements)
@@ -503,6 +502,7 @@ common_block::common_block // partial block constructor
   data.assign(integral_sys.rank(),std::vector<block_fields>(elements.size()));
 
   assert(info.size()==elements.size());
+  unsigned short max_length=0;
   auto it = elements.cbegin();
   for (BlockElt i=0; i<info.size(); ++i,++it)
   {
@@ -524,7 +524,11 @@ common_block::common_block // partial block constructor
 	    BlockElt sz = lookup(ctxt.cross(s,srm_z));
 	    assert(sz!=UndefBlock);
 	    if (length(i)==0) // then this is the first descent for |i|
+	    {
 	      info[i].length=length(sz)+1;
+	      if (info[i].length>max_length)
+		max_length=info[i].length;
+	    }
 	    else
 	      assert(length(i)==length(sz)+1);
 	    assert(descentValue(s,sz)==DescentStatus::ComplexAscent);
@@ -541,7 +545,11 @@ common_block::common_block // partial block constructor
 	    BlockElt sz = lookup(srm_sz);
 	    assert(sz!=UndefBlock);
 	    if (length(i)==0) // then this is the first descent for |i|
+	    {
 	      info[i].length=length(sz)+1;
+	      if (info[i].length>max_length)
+		max_length=info[i].length;
+	    }
 	    else
 	      assert(length(i)==length(sz)+1);
 	    tab_s[i].Cayley_image.first = sz; // first Cayley descent
@@ -596,6 +604,9 @@ common_block::common_block // partial block constructor
     } // |for (s)|
   } // |for (i)|
 
+  sort(max_length,false);  // sort by length, then |x|
+
+  // finally compute |y_bits| parallel to |y_table| backwards
   y_bits.reserve(y_pool.size());
   for (InvolutionNbr i_x=y_table.size(); i_x-->0; )
     for (TorusPart& y : y_table[i_x])
@@ -658,17 +669,16 @@ ext_block::ext_block& common_block::extended_block
   return *extended;
 }
 
-void common_block::reverse_length_and_sort()
+void common_block::sort(unsigned short max_length, bool reverse_length)
 {
-  const unsigned max_length = info.back().length;
-
-  const KGBElt x_lim=real_group().KGB_size(); // limit for |x| values
+  const KGBElt x_lim=highest_x+1; // limit for |x| values
   std::vector<unsigned> value(size(),0u); // values to be ranked below
 
   for (BlockElt i=0; i<size(); ++i)
   { assert(length(i)<=max_length);
-    auto new_len = info[i].length = max_length-length(i); // reverse length
-    value[i]= new_len*x_lim+x(i); // length has priority over value of |x|
+    if (reverse_length)
+       info[i].length = max_length-length(i); // reverse length
+    value[i]= info[i].length*x_lim+x(i); // length has priority over value of |x|
   }
 
   Permutation ranks = // standardization permutation, to be used for reordering
@@ -683,7 +693,9 @@ void common_block::reverse_length_and_sort()
     ranks.permute(tab_s); // permute fields of |data[s]|
     for (BlockElt z=0; z<size(); ++z) // and update cross and Cayley links
     {
-      tab_s[z].cross_image = ranks[tab_s[z].cross_image];
+      BlockElt& sz = tab_s[z].cross_image;
+      if (sz!=UndefBlock)
+	sz = ranks[sz];
       BlockEltPair& p=tab_s[z].Cayley_image;
       if (p.first!=UndefBlock)
       {
@@ -694,7 +706,8 @@ void common_block::reverse_length_and_sort()
     } // |for z|
   } // |for s|
 
-} // |common_block::reverse_length_and_sort|
+  xy_hash.reconstruct(); // adapt to permutation of |info| underlying |xy_hash|
+} // |common_block::sort|
 
 } // |namespace blocks|
 

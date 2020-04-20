@@ -108,13 +108,12 @@ class common_block : public Block_base
 
 
  private:
-  void compute_y_bits();
-
 /*
-  reverse lengths and order block with them increasing, and by increasing
-  |x(z)| among elements of given length; adapt tables accordingly.
+ sort by increaing length (after reversing if |reverse_length|), within equal
+ length groups so by |x(z)|. Permute tables correspondingly
 */
-  void reverse_length_and_sort();
+  void sort(unsigned short max_length, bool reverse_length);
+  void compute_y_bits();
 
 }; // |class common_block|
 
