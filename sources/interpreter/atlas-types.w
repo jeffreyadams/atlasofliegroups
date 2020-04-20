@@ -6089,13 +6089,7 @@ void deform_wrapper(expression_base::level l)
   BlockElt p_index; // will hold index of |p| in the block
   auto& block = p->rt().lookup(p->val,p_index); // generate partial common block
   const auto& gamma = p->val.gamma();
-  RankFlags singular;
-  const SubSystem& subs = block.integral_subsystem();
-  for (weyl::Generator s=0; s<block.rank(); ++s)
-    singular.set(s,p->rc().root_datum() @|
-      .coroot(subs.parent_nr_simple(s)).dot(gamma.numerator())==0);
-
-  repr::SR_poly terms = p->rt().deformation_terms(block,p_index,singular,gamma);
+  repr::SR_poly terms = p->rt().deformation_terms(block,p_index,gamma);
 
   push_value(std::make_shared<virtual_module_value>(p->rf,std::move(terms)));
 }

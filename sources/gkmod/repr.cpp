@@ -1174,15 +1174,14 @@ std::vector<pair_list> contributions
 } // |contributions|, extended block
 
 SR_poly Rep_table::deformation_terms
-  ( blocks::common_block& block, const BlockElt y,
-    RankFlags singular, const RatWeight& gamma) const
+  ( blocks::common_block& block, const BlockElt y, const RatWeight& gamma) const
 { assert(y<block.size());
 
   SR_poly result(repr_less());
   if (block.length(y)==0)
     return result; // easy case, null result
 
-  std::vector<pair_list> contrib = contributions(block,singular,y);
+  std::vector<pair_list> contrib = contributions(block,block.singular(gamma),y);
   containers::sl_list<BlockElt> finals;
   for (BlockElt z=0; z<contrib.size(); ++z)
     if (not contrib[z].empty() and contrib[z].front().first==z)
@@ -1359,14 +1358,7 @@ SR_poly Rep_table::deformation(const StandardRepr& z)
     assert(is_final(zi)); // ensures that |deformation_terms| won't refuse
     BlockElt new_z;
     auto& block = lookup(zi,new_z);
-
-    RankFlags singular;
-    const SubSystem& sub = block.integral_subsystem();
-    for (weyl::Generator s=0; s<block.rank(); ++s)
-      singular.set(s,root_datum().coroot(sub.parent_nr_simple(s))
-					.dot(zi.gamma().numerator())==0);
-
-    const SR_poly terms = deformation_terms(block,new_z,singular,zi.gamma());
+    const SR_poly terms = deformation_terms(block,new_z,zi.gamma());
     for (auto const& term : terms)
       result.add_multiple(deformation(term.first),term.second); // recursion
   }

@@ -314,8 +314,7 @@ class Rep_table : public Rep_context
   SR_poly twisted_KL_column_at_s(StandardRepr z); // by value
 
   SR_poly deformation_terms
-    (blocks::common_block& block, BlockElt y, RankFlags singular,
-     const RatWeight& gamma) const;
+    (blocks::common_block& block, BlockElt y, const RatWeight& gamma) const;
 #if 0
   SR_poly deformation_terms (unsigned long sr_hash) const;
   // once a parameter has been entered, we can compute this without a block
