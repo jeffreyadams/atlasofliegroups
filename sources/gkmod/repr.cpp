@@ -521,7 +521,7 @@ bool Rep_context::equivalent(StandardRepr z0, StandardRepr z1) const
   to_singular_canonical(simple_singulars,z1);
 
   return z0==z1;
-}
+} // |Rep_context::equivalent|
 
 StandardRepr& Rep_context::scale(StandardRepr& z, const Rational& f) const
 { // we can just replace the |infinitesimal_char|, nothing else changes
@@ -1049,13 +1049,7 @@ blocks::common_block& Rep_table::lookup
   auto& block = *place[h].first;
   z = place[h].second;
 
-  singular.reset();
-  {
-    const SubSystem& sub = block.integral_subsystem();
-    for (weyl::Generator s=0; s<block.rank(); ++s)
-      singular.set(s,root_datum().coroot(sub.parent_nr_simple(s))
-					.dot(sr.gamma().numerator())==0);
-  }
+  singular=block.singular(sr.gamma());
   return block;
 } // |Rep_table::lookup|
 
