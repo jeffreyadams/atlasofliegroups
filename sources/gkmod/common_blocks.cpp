@@ -74,6 +74,15 @@ const InvolutionTable& common_block::involution_table() const
 const RootDatum& common_block::root_datum() const
   { return rc.root_datum(); }
 
+RankFlags common_block::singular (const RatWeight& gamma) const
+{
+  RankFlags result;
+  for (weyl::Generator s=0; s<rank(); ++s)
+    result.set(s,root_datum().coroot(integral_sys.parent_nr_simple(s))
+				    .dot(gamma.numerator())==0);
+  return result;
+}
+
 // find value $\gamma-\lambda$ that the parameter for |z| at |gamma%1| would give
 RatWeight common_block::gamma_lambda(BlockElt z) const
 {

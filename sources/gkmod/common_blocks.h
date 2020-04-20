@@ -78,6 +78,8 @@ class common_block : public Block_base
   RealReductiveGroup& real_group() const;
 
   RatWeight gamma_mod1 () const { return gamma_mod_1; }
+  // simple coroots of |sub| singular for |gamma|
+  RankFlags singular (const RatWeight& gamma) const;
 
   // with |gamma| unknown, only the difference |gamma-lambda| is meaningful
   RatWeight gamma_lambda(BlockElt z) const;
