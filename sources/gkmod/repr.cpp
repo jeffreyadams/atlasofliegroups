@@ -1393,7 +1393,7 @@ SR_poly twisted_KL_sum
       pool_at_s.push_back(eval);
     }
 
-  RankFlags singular_orbits;
+  RankFlags singular_orbits; // flag singulars among orbits
   const auto& ipd = parent.integral_subsystem().pre_root_datum();
   for (weyl::Generator s=0; s<eblock.rank(); ++s)
     singular_orbits.set(s,gamma.dot(ipd.simple_coroot(eblock.orbit(s).s0))==0);
@@ -1440,11 +1440,12 @@ SR_poly Rep_table::twisted_KL_column_at_s(StandardRepr sr)
   normalise(sr);
   const auto& delta = inner_class().distinguished();
   assert(is_final(sr) and sr==inner_twisted(sr));
-  BlockElt y0; RankFlags singular;
-  auto& block = lookup_full_block(sr,y0,singular);
+  BlockElt y0;
+  auto& block = lookup(sr,y0);
   auto& eblock = block.extended_block(delta);
 
-  RankFlags singular_orbits;
+  RankFlags singular=block.singular(sr.gamma());
+  RankFlags singular_orbits; // flag singulars among orbits
   for (weyl::Generator s=0; s<eblock.rank(); ++s)
     singular_orbits.set(s,singular[eblock.orbit(s).s0]);
 
@@ -1659,13 +1660,14 @@ SR_poly Rep_table::twisted_deformation (StandardRepr z)
     auto L =
       ext_block::extended_finalise(*this,zi,delta); // rarely a long list
 
-    for (const auto& p : L)
+    for (const std::pair<StandardRepr,bool>& p : L)
     {
-      BlockElt new_z; RankFlags singular;
-      auto& block = lookup_full_block(p.first,new_z,singular);
+      BlockElt new_z;
+      auto& block = lookup(p.first,new_z);
       auto& eblock = block.extended_block(delta);
 
-      RankFlags singular_orbits;
+      RankFlags singular = block.singular(p.first.gamma());
+      RankFlags singular_orbits; // flag singulars among orbits
       for (weyl::Generator s=0; s<eblock.rank(); ++s)
 	singular_orbits.set(s,singular[eblock.orbit(s).s0]);
 
