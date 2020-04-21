@@ -197,14 +197,14 @@ adapted_basis(N): pairs (A,c)
  span(N)=<c_1 A[1],..., c_n A[n]>
  discard all columns with c_i=1 (filter_units)
  multiply resulting columns by M to change basis back
-  (and divide by c[i] [NOT CORRECT])
 This gives the rational vectors [v_1,...,v_n]
 }
 set center(RootDatum rd)=[ratvec]:
-assert(is_semisimple(rd),"Root Datum is not semisimple");
+{assert(is_semisimple(rd),"Root Datum is not semisimple");}
 if =rank(rd) then [] else
 let M=ratvecs_as_ratmat(fundamental_coweights(rd)) then
-N=ratmat_as_mat(inverse(M)) then
+{N=ratmat_as_mat(inverse(M)) then}
+N=ratmat_as_mat(left_inverse(M)) then
 (A,c)=adapted_basis(N) then
 (B,v)=filter_units(A,c) in
 for col@i in B do M*col od fi
@@ -229,6 +229,14 @@ let Z=center(rd) in
  if #Z=0 then [null(rank(rd))] else let
 denoms= for i:#Z do let (,d)=%Z[i]  in d od in
 for v in ratmat_to_bigmat(Z.ratvecs_as_ratmat*box(denoms)) do ratvec:v od fi
+
+{rd semisimple, map arbitrary element v of P^vee to
+one of the given elements_of_center(rd):
+this is the element_of_center(rd) which is equal to v mod Z^n
+}
+set map_to_center(RootDatum rd,ratvec v)=ratvec:
+let Z=rd.elements_of_center in 
+let i=first(for z in Z do is_integer(z-v) od) in Z[i] 
 
 {Need a matrix A lifting an element of T/Z(G)^0 to T,
 i.e. satisfying:
