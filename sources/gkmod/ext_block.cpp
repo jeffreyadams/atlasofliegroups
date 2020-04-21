@@ -789,7 +789,7 @@ DescValue extended_type(const Block_base& block, BlockElt z, const ext_gen& p,
     case DescentStatus::ImaginaryCompact:
       return link=UndefBlock, two_imaginary_compact;
     case DescentStatus::ImaginaryTypeI:
-      { const BlockElt t=block.cayley(p.s0,z).first;
+      { const BlockElt t=block.cayley(p.s0,z).first; // unique Cayley ascent
 	if (t==UndefBlock)
 	  return link=t, two_imaginary_single_double_fixed; // uncertain
 	if (block.descentValue(p.s1,t)==DescentStatus::ImaginaryTypeI)
@@ -808,12 +808,22 @@ DescValue extended_type(const Block_base& block, BlockElt z, const ext_gen& p,
 	  : (link=UndefBlock, two_real_single_double_switched);
       }
     case DescentStatus::ImaginaryTypeII:
-      { const BlockElt t=block.cayley(p.s0,z).first;
-	if (t==UndefBlock)
-	  return link=t, two_imaginary_double_double; // certain but unset |link|
-	link=block.cayley(p.s1,t).first;
-	if (link!=UndefBlock and not fixed_points.isMember(link))
-	  link=block.cross(p.s0,link), assert(fixed_points.isMember(link));
+      { BlockElt tmp=block.cayley(p.s0,z).first;
+	if (tmp==UndefBlock) // first Cayley ascent crossed edge of partial block
+	  // since both our links have it as ascent, they are beyond edge too
+	  return link=tmp, two_imaginary_double_double; // certain, unset |link|
+	auto pair = block.cayley(p.s1,tmp);
+	if (pair.first==UndefBlock or // then both components are |UndefBlock|
+	    (not fixed_points.isMember(pair.first) and pair.second==UndefBlock))
+	{ // try again with other pair of Cayley ascent by |s0| of |z|
+	  if ((tmp=block.cayley(p.s0,z).second)==UndefBlock)
+	    return link=tmp, two_imaginary_double_double; // crt, unset |link|
+	  pair = block.cayley(p.s1,tmp); // try other pair
+	  if (pair.first==UndefBlock)
+	    return link=UndefBlock, two_imaginary_double_double;
+	}
+	link = fixed_points.isMember(pair.first) ? pair.first : pair.second;
+	assert(link==UndefBlock or fixed_points.isMember(link));
 	return two_imaginary_double_double;
       }
     case DescentStatus::RealTypeI:
@@ -868,8 +878,9 @@ DescValue extended_type(const Block_base& block, BlockElt z, const ext_gen& p,
 	if (t==UndefBlock)
 	  return link=t, three_imaginary_semi; // certain, but with unset |link|
 	link=block.cross(p.s1,t); // could be |UndefBlock|; then leave it
-	assert(link==block.cross(p.s0,block.cayley(p.s1,z).first));
-	assert(t==UndefBlock or fixed_points.isMember(link));
+	if (link!=UndefBlock) // then |block.cayley(p.s1,z)| is defined, and
+	  assert(fixed_points.isMember(link) and
+		 link==block.cross(p.s0,block.cayley(p.s1,z).first));
 	return three_imaginary_semi;
       }
     case DescentStatus::RealTypeII:
@@ -1871,7 +1882,7 @@ void ext_block::complete_construction(const BitMap& fixed_points)
       DescValue type = extended_type(parent,z,orbits[oi],link,fixed_points);
       data[oi].push_back(block_fields(type)); // create entry
 
-      if (link==UndefBlock) // compact, nonparity or uncertain type
+      if (is_like_compact(type) or is_like_nonparity(type))
 	continue; // leave both link fields |UndefBlock| in those cases
 
       // now maybe set |second|, depending on case
@@ -1888,50 +1899,79 @@ void ext_block::complete_construction(const BitMap& fixed_points)
 	// cases where second link is second Cayley image, cross of |link|
       case one_real_pair_fixed:
       case one_imaginary_pair_fixed:
-	second = parent.cross(s,link);
+	if (link!=UndefBlock)
+	  second = parent.cross(s,link);
 	break;
 
-	// cases where second link is double cross neighbour for |s|
+	// cases where second link is double cross neighbour for |s| of |z|
       case two_imaginary_single_single:
       case two_real_single_single:
 	{
-	  BlockElt sz = parent.cross(s,z);
-	  if (sz!=UndefBlock)
+	  BlockElt tmp = parent.cross(s,z);
+	  if (tmp!=UndefBlock)
 	  {
-	    second = parent.cross(t,sz);
-	    assert((sz=parent.cross(t,z))==UndefBlock or
-		   second==parent.cross(s,sz));
+	    second = parent.cross(t,tmp);
+	    assert((tmp=parent.cross(t,z))==UndefBlock or
+		   second==parent.cross(s,tmp));
 	  }
+	  else if ((tmp=parent.cross(t,z))!=UndefBlock) // try alternative route
+	    second=parent.cross(s,tmp);
+	  else if (type==two_real_single_single and // try to pass from above
+		   (tmp=parent.cross(t,parent.cayley(s,z).first))!=UndefBlock)
+	  {
+	    auto pair = parent.cayley(s,tmp);
+	    second = pair.first!=UndefBlock and fixed_points.isMember(pair.first)
+	      ? pair.first : pair.second;
+	  }
+	  // for |two_imaginary_single_single| a nasty case remains: though the
+	  // double cross neighbour may be in the block, all intermediates could
+	  // be absent. Then leave |second| undefined, hoping it is never needed
 	}
 	break;
 
 	// pair-to-pair link cases; second link is second Cayley, and sort
       case two_imaginary_single_double_fixed:
       case two_real_single_double_fixed:
-	second = parent.cross(s,link); // second Cayley image is cross of |link|
-	assert(second==parent.cross(t,link)); // (for either generator)
-	if (link>second) // to make sure ordering is same for a twin pair
-	  std::swap(link,second); // we order both by block number (for now)
+	if (link!=UndefBlock)
+	{
+	  second = parent.cross(s,link); // second Cayley image is cross of first
+	  assert(second==parent.cross(t,link)); // (for either generator)
+	  if (link>second) // to make sure ordering is same for a twin pair
+	    std::swap(link,second); // we order both by block number (for now)
+	}
 	break;
 
 	// cases where second link is second Cayley image, double cross of |link|
       case two_imaginary_double_double:
       case two_real_double_double:
+	if (link!=UndefBlock)
 	{
-	  BlockElt sl = parent.cross(s,link);
-	  if (sl!=UndefBlock)
+	  BlockElt tmp = parent.cross(s,link);
+	  if (tmp!=UndefBlock)
 	  {
-	    second = parent.cross(t,sl);
-	    assert((sl=parent.cross(t,link))==UndefBlock or
-		   second==parent.cross(s,sl));
+	    second = parent.cross(t,tmp);
+	    assert((tmp=parent.cross(t,link))==UndefBlock or
+		   second==parent.cross(s,tmp));
 	  }
+	  else if ((tmp=parent.cross(t,link))!=UndefBlock)
+	    second = parent.cross(s,tmp);
+	  else if ((tmp=parent.cayley(s,z).second)!=UndefBlock)
+	  { // in |two_imaginary_double_double| case, try again from above
+	    auto pair = parent.cayley(t,tmp);
+	    if (pair.first!=UndefBlock)
+	      second = fixed_points.isMember(pair.first)
+		? pair.first : pair.second;
+	  }
+	  if (link>second) // make sure single |UndefBlock| is ranked second
+	      std::swap(link,second); // by ordering by block number
 	}
 	break;
       } // |switch(type)|
 
       // enter translations of |link| and |second| to child block numbering
       BlockEltPair& dest = data[oi].back().links;
-      dest.first=child_nr[link];
+      if (link!=UndefBlock)
+	dest.first=child_nr[link];
       if (second!=UndefBlock)
 	dest.second = child_nr[second];
     }

@@ -2267,21 +2267,22 @@ bool ext_block::tune_signs(const blocks::common_block& block)
 	  const paramin q0 = *links.begin();
 	  const paramin q1 = *std::next(links.begin());
 	  BlockElt m=some_scent(s,n); // the unique (inverse) Cayley
-	  if (m==UndefBlock)
-	    break; // don't fall off the edge of a partial block
-	  BlockElt Cz = this->z(m); // corresponding element of block
-	  paramin F(param_ctxt,block.x(Cz),block.gamma_lambda(Cz));
-	  assert(same_standard_reps(q0,F));
-	  if (not same_sign(q0,F))
-	    flip_edge(s,n,m);
-	  m=cross(s,n);
-	  if (m==UndefBlock)
-	    break; // don't fall off the edge of a partial block
-	  BlockElt cz = this->z(m);
-	  paramin Fc(param_ctxt,block.x(cz),block.gamma_lambda(cz));
-	  assert(same_standard_reps(q1,Fc));
-	  if (not same_sign(q1,Fc))
-	    flip_edge(s,n,m);
+	  if (m!=UndefBlock) // don't fall off the edge of a partial block
+	  {
+	    BlockElt Cz = this->z(m); // corresponding element of block
+	    paramin F(param_ctxt,block.x(Cz),block.gamma_lambda(Cz));
+	    assert(same_standard_reps(q0,F));
+	    if (not same_sign(q0,F))
+	      flip_edge(s,n,m);
+	  }
+	  if ((m=cross(s,n))!=UndefBlock) // cross link, don't fall off the edge
+	  {
+	    BlockElt cz = this->z(m);
+	    paramin Fc(param_ctxt,block.x(cz),block.gamma_lambda(cz));
+	    assert(same_standard_reps(q1,Fc));
+	    if (not same_sign(q1,Fc))
+	      flip_edge(s,n,m);
+	  }
 	} break;
       case two_semi_imaginary: case two_semi_real:
       case three_semi_imaginary: case three_real_semi:
@@ -2305,18 +2306,25 @@ bool ext_block::tune_signs(const blocks::common_block& block)
 	  const paramin q0 = *links.begin();
 	  const paramin q1 = *std::next(links.begin());
 	  BlockEltPair m=Cayleys(s,n);
-	  if (m.first==UndefBlock or m.second==UndefBlock)
-	    break; // don't fall off the edge of a partial block
-	  BlockElt Cz0 = this->z(m.first); BlockElt Cz1= this->z(m.second);
-	  paramin F0(param_ctxt,block.x(Cz0),block.gamma_lambda(Cz0));
-	  paramin F1(param_ctxt,block.x(Cz1),block.gamma_lambda(Cz1));
-	  bool straight=same_standard_reps(q0,F0);
+
+	  if (m.first==UndefBlock)
+	    break; // nothing to do if both are undefined
+
+	  BlockElt Cz = this->z(m.first);
+	  paramin F0(param_ctxt,block.x(Cz),block.gamma_lambda(Cz));
+	  bool straight = same_standard_reps(q0,F0);
 	  const auto& node0 = straight ? q0 : q1;
-	  const auto& node1 = straight ? q1 : q0;
 	  assert(same_standard_reps(node0,F0));
-	  assert(same_standard_reps(node1,F1));
 	  if (not same_sign(node0,F0))
 	    flip_edge(s,n,m.first);
+
+	  if (m.second==UndefBlock)
+	    break;
+
+	  Cz = this->z(m.second);
+	  paramin F1(param_ctxt,block.x(Cz),block.gamma_lambda(Cz));
+	  const auto& node1 = straight ? q1 : q0;
+	  assert(same_standard_reps(node1,F1));
 	  if (not same_sign(node1,F1))
 	    flip_edge(s,n,m.second);
 	}
@@ -2327,18 +2335,25 @@ bool ext_block::tune_signs(const blocks::common_block& block)
 	  const paramin q0 = *links.begin();
 	  const paramin q1 = *std::next(links.begin());
 	  BlockEltPair m=Cayleys(s,n);
-	  if (m.first==UndefBlock or m.second==UndefBlock)
-	    break; // don't fall off the edge of a partial block
-	  BlockElt Cz0 = this->z(m.first); BlockElt Cz1= this->z(m.second);
-	  paramin F0(param_ctxt,block.x(Cz0),block.gamma_lambda(Cz0));
-	  paramin F1(param_ctxt,block.x(Cz1),block.gamma_lambda(Cz1));
+
+	  if (m.first==UndefBlock)
+	    break; // nothing to do if both are undefined
+
+	  BlockElt Cz = this->z(m.first);
+	  paramin F0(param_ctxt,block.x(Cz),block.gamma_lambda(Cz));
 	  bool straight=same_standard_reps(q0,F0);
 	  const auto& node0 = straight ? q0 : q1;
-	  const auto& node1 = straight ? q1 : q0;
 	  assert(same_standard_reps(node0,F0));
-	  assert(same_standard_reps(node1,F1));
 	  if (not same_sign(node0,F0))
 	    flip_edge(s,n,m.first);
+
+	  if (m.second==UndefBlock)
+	    break;
+
+	  Cz= this->z(m.second);
+	  paramin F1(param_ctxt,block.x(Cz),block.gamma_lambda(Cz));
+	  const auto& node1 = straight ? q1 : q0;
+	  assert(same_standard_reps(node1,F1));
 	  if (not same_sign(node1,F1))
 	    flip_edge(s,n,m.second);
 	}
