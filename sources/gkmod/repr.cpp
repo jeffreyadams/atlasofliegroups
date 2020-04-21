@@ -1268,16 +1268,15 @@ SR_poly Rep_table::KL_column_at_s(StandardRepr sr) // |sr| must be final
   assert(is_final(sr));
 
   BlockElt z;
-  RankFlags singular; // subset of integrally-simple roots, singular at |gamma|
-  auto& block = lookup(sr,z,singular);
+  auto& block = lookup(sr,z);
 
-  std::vector<pair_list> contrib = contributions(block,singular,z);
+  const auto& gamma=sr.gamma();
+  std::vector<pair_list> contrib = contributions(block,block.singular(gamma),z);
   assert(contrib.size()==z+1 and contrib[z].front().first==z);
 
   const kl::KLContext& klc = block.klc(z,false); // fill silently up to |z|
 
   SR_poly result(repr_less());
-  const auto& gamma=sr.gamma();
   auto z_length=block.length(z);
   for (BlockElt x=z+1; x-->0; )
   {
