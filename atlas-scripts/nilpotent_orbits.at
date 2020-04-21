@@ -484,6 +484,11 @@ set real_nilpotent_orbits (RealForm G) = [RealNilpotent]:
    in for P in kgps do real_nilpotent(K,x_min(P)) od
    od.##.sort_by_dimension
 
+set number_real_nilpotent_orbits (RealForm G) = int:#G.real_nilpotent_orbits
+set number_real_nilpotent_orbits ([RealForm] groups) = [int]:for G in groups do G.number_real_nilpotent_orbits od
+set number_real_nilpotent_orbits (InnerClass ic) = [int]:number_real_nilpotent_orbits(ic.real_forms)
+{set number_real_nilpotent_orbits_e (InnerClass ic) = [int]:number_real_nilpotent_orbits(ic.strong_real_forms_e)}
+
 {. Make a list of the real forms of a given complex nilpotent orbit. .}
 set real_nilpotent_orbits (ComplexNilpotent (rd,,H):OC,RealForm G) =
       [RealNilpotent]:
@@ -491,6 +496,11 @@ set real_nilpotent_orbits (ComplexNilpotent (rd,,H):OC,RealForm G) =
    for P in real_nilpotent_orbit_KGPs(G,K)
    do real_nilpotent(dominant(K,rd),x_min(P))
    od
+
+set number_real_nilpotent_orbits (ComplexNilpotent O,RealForm G) = int:#real_nilpotent_orbits(O,G)
+set number_real_nilpotent_orbits (ComplexNilpotent O,[RealForm] groups) = [int]:for G in groups do number_real_nilpotent_orbits(O,G) od
+set number_real_nilpotent_orbits (ComplexNilpotent O,InnerClass ic) = [int]:number_real_nilpotent_orbits(O,ic.real_forms)
+{set number_real_nilpotent_orbits_e (ComplexNilpotent O,InnerClass ic) = [int]:number_real_nilpotent_orbits(O,ic.strong_real_forms_e)}
 
 {assuming real nilpotents have been computed, just keep the real forms of given OC}
 set real_nilpotent_orbits([RealNilpotent] real_nilpotents, ComplexNilpotent OC)=[RealNilpotent]:
@@ -979,6 +989,22 @@ set show_nilpotent_orbits(RootDatum rd)=void:
 show_nilpotent_orbits(nilpotent_orbits(rd))
 }
 
+{integrality_datum of an orbit O_check for G_check
+ rd=root datum on group side -> integrality_datum(rd,H/2)
+ this is the dual of the root datum of a subgroup of G_check
+}
+set integrality_datum(ComplexNilpotent O_check)=RootDatum:
+integrality_datum(O_check.root_datum.dual,O_check.H/2)
+
+{given an orbit O_check on the dual side
+ rd_int: integrality datum(O_check)
+ rd_int_dual: dual(rd_int), root datum of subgroup on dual side
+ return (rd_int_dual,(),O_check.H)
+}
+set integral_descent(ComplexNilpotent O_check)=ComplexNilpotent:
+(integrality_datum(O_check).dual,(),O_check.H)
+
+{see weak_packets.at for integral_descent@(SpringerTable,ComplexNilpotent)}
 
 set is_even(ComplexNilpotent O)=bool:is_integer(O.diagram/2)
 set is_non_even(ComplexNilpotent O)=bool:not is_integer(O.diagram/2)
