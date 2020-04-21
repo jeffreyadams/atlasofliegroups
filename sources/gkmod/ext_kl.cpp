@@ -575,17 +575,25 @@ void KL_table::fill_next_column(PolHash& hash)
       if (aux.is_descent(s,x)) // then we computed $P(x,y)$ above
         *it = hash.match(cy[x]*sign);
       else // |x| might not be descent for |s| if primitive but not extremal
-      { // find and use a double-valued ascent for |x| that is decsent for |y|
+      { // find and use a double-valued ascent for |x| that is descent for |y|
 	assert(has_double_image(type(s,x))); // since |s| non-good ascent
 	BlockEltPair sx = aux.block.Cayleys(s,x);
-	PolEntry Q = P(sx.first,y);  // computed earlier in this loop
-	if (aux.block.epsilon(s,x,sx.first)<0)
-	  Q *= -1;
-	if (aux.block.epsilon(s,x,sx.second)>0)
-	  Q += P(sx.second,y);
+	if (sx.first==UndefBlock) // if we cross the edge of a partial block
+	  *it=0; // then there can be no contribution form the Cayleys
 	else
-	  Q -= P(sx.second,y);
-        *it = hash.match(Q);
+	{
+	  PolEntry Q = P(sx.first,y);  // computed earlier in this loop
+	  if (aux.block.epsilon(s,x,sx.first)<0)
+	    Q *= -1;
+	  if (sx.second!=UndefBlock)
+	  {
+	    if (aux.block.epsilon(s,x,sx.second)>0)
+	      Q += P(sx.second,y);
+	    else
+	      Q -= P(sx.second,y);
+	  }
+	  *it = hash.match(Q);
+	}
       }
     assert(it==column.back().rend()); // check that we've traversed the column
   }
@@ -651,13 +659,19 @@ void KL_table::do_new_recursion(BlockElt y,PolHash& hash)
 	s = aux.easy_set(x,y).firstBit();
 	assert(has_double_image(type(s,x))); // since |s| non-good ascent
 	BlockEltPair sx = aux.block.Cayleys(s,x);
-	cy[x] = P(sx.first,y);  // computed earlier this loop
-	if (aux.block.epsilon(s,x,sx.first)<0)
-	  cy[x] *= -1;
-	if (aux.block.epsilon(s,x,sx.second)>0)
-	  cy[x] += P(sx.second,y);
-	else
-	  cy[x] -= P(sx.second,y);
+	if (sx.first!=UndefBlock)
+	{
+	  cy[x] = P(sx.first,y);  // computed earlier this loop
+	  if (aux.block.epsilon(s,x,sx.first)<0)
+	    cy[x] *= -1;
+	  if (sx.second!=UndefBlock)
+	  {
+	    if (aux.block.epsilon(s,x,sx.second)>0)
+	      cy[x] += P(sx.second,y);
+	    else
+	      cy[x] -= P(sx.second,y);
+	  }
+	}
       }
     }
     else // |x| is extremal for |y|, so we must do real computation
@@ -694,6 +708,7 @@ void KL_table::do_new_recursion(BlockElt y,PolHash& hash)
 	case ext_block::three_complex_ascent:
 	  { // |(is_complex(tsx))|
 	    BlockElt sx=aux.block.cross(s,x);
+	    // if |sx==UndefBlock| the next condition always fails
 	    if (sx<floor_y) // subtract contrib. from $[T_x](T_s+1).T_{sx}=q^k$
 	      Q -= aux.block.T_coef(s,x,sx)*cy[sx]; // coef is $\pm q^k$
 	  } // implicit division of $Q$ here is by |T_coef(s,x,x)==1|
@@ -703,7 +718,7 @@ void KL_table::do_new_recursion(BlockElt y,PolHash& hash)
 	case ext_block::three_imaginary_semi:
 	  { // |has_defect(tsx)|
 	    BlockElt sx=aux.block.Cayley(s,x);
-	    if (sx<floor_y)
+	    if (sx<floor_y) // then in particular |sx!=UndefBlock|
 	      Q -= aux.block.T_coef(s,x,sx)*cy[sx]; // coef is $\pm(q^k-q)$
 
 	    /* divide by |T_coef(s,x,x)==1+q|, knowing that $Q$ may be missing
@@ -723,7 +738,7 @@ void KL_table::do_new_recursion(BlockElt y,PolHash& hash)
 	case ext_block::two_imaginary_double_double:
 	  { // |is_like_type_2(tsx)|
 	    assert(has_double_image(tsx)); // since it is a type 2 ascent
-	    BlockEltPair sx=aux.block.Cayleys(s,x);
+	    BlockEltPair sx=aux.block.Cayleys(s,x); // again |UndefBlock|s are OK
 	    if (sx.first<floor_y)
 	      Q -= aux.block.T_coef(s,x,sx.first)*cy[sx.first]; // $\pm(q^k-1)$
 	    if (sx.second<floor_y)

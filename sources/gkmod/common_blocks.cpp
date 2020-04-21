@@ -2251,8 +2251,10 @@ bool ext_block::tune_signs(const blocks::common_block& block)
 	{ assert(links.size()==1);
 	  const paramin q = *links.begin();
 	  BlockElt m=cross(s,n); // cross neighbour as bare element of |*this|
+	  if (m==UndefBlock)
+	    break; // don't fall off the edge of a partial block
 	  BlockElt cz = this->z(m); // corresponding element of (parent) |block|
-	  paramin F(param_ctxt,block.x(cz),block.gamma_lambda(cz)); // default extn
+	  paramin F(param_ctxt,block.x(cz),block.gamma_lambda(cz)); // default
 	  assert(same_standard_reps(q,F)); // must lie over same parameter
 	  if (not same_sign(q,F))
 	    flip_edge(s,n,m);
@@ -2265,12 +2267,17 @@ bool ext_block::tune_signs(const blocks::common_block& block)
 	  const paramin q0 = *links.begin();
 	  const paramin q1 = *std::next(links.begin());
 	  BlockElt m=some_scent(s,n); // the unique (inverse) Cayley
+	  if (m==UndefBlock)
+	    break; // don't fall off the edge of a partial block
 	  BlockElt Cz = this->z(m); // corresponding element of block
 	  paramin F(param_ctxt,block.x(Cz),block.gamma_lambda(Cz));
 	  assert(same_standard_reps(q0,F));
 	  if (not same_sign(q0,F))
 	    flip_edge(s,n,m);
-	  m=cross(s,n); BlockElt cz = this->z(m);
+	  m=cross(s,n);
+	  if (m==UndefBlock)
+	    break; // don't fall off the edge of a partial block
+	  BlockElt cz = this->z(m);
 	  paramin Fc(param_ctxt,block.x(cz),block.gamma_lambda(cz));
 	  assert(same_standard_reps(q1,Fc));
 	  if (not same_sign(q1,Fc))
@@ -2282,6 +2289,8 @@ bool ext_block::tune_signs(const blocks::common_block& block)
 	{ assert(links.size()==1);
 	  const paramin q = *links.begin();
 	  BlockElt m=some_scent(s,n); // the unique (inverse) Cayley
+	  if (m==UndefBlock)
+	    break; // don't fall off the edge of a partial block
 	  BlockElt Cz = this->z(m); // corresponding element of block
 	  paramin F(param_ctxt,block.x(Cz),block.gamma_lambda(Cz));
 	  assert(same_standard_reps(q,F));
@@ -2296,6 +2305,8 @@ bool ext_block::tune_signs(const blocks::common_block& block)
 	  const paramin q0 = *links.begin();
 	  const paramin q1 = *std::next(links.begin());
 	  BlockEltPair m=Cayleys(s,n);
+	  if (m.first==UndefBlock or m.second==UndefBlock)
+	    break; // don't fall off the edge of a partial block
 	  BlockElt Cz0 = this->z(m.first); BlockElt Cz1= this->z(m.second);
 	  paramin F0(param_ctxt,block.x(Cz0),block.gamma_lambda(Cz0));
 	  paramin F1(param_ctxt,block.x(Cz1),block.gamma_lambda(Cz1));
@@ -2316,6 +2327,8 @@ bool ext_block::tune_signs(const blocks::common_block& block)
 	  const paramin q0 = *links.begin();
 	  const paramin q1 = *std::next(links.begin());
 	  BlockEltPair m=Cayleys(s,n);
+	  if (m.first==UndefBlock or m.second==UndefBlock)
+	    break; // don't fall off the edge of a partial block
 	  BlockElt Cz0 = this->z(m.first); BlockElt Cz1= this->z(m.second);
 	  paramin F0(param_ctxt,block.x(Cz0),block.gamma_lambda(Cz0));
 	  paramin F1(param_ctxt,block.x(Cz1),block.gamma_lambda(Cz1));

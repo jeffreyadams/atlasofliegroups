@@ -625,18 +625,6 @@ bool same_sign_with_one_of (const param& E, const param& F1, const param& F2)
     : throw std::runtime_error("Neither candidate has same standard repn");
 }
 
-void ext_block::add_neighbours
-  (BlockEltList& dst, weyl::Generator s, BlockElt n) const
-{
-  const BlockEltPair& links = data[s][n].links;
-  if (links.first==UndefBlock)
-    return;
-  dst.push_back(links.first);
-  if (links.second==UndefBlock)
-    return;
-  dst.push_back(links.second);
-}
-
 void ext_block::flip_edge(weyl::Generator s, BlockElt x, BlockElt y)
 {
   BlockEltPair p= data[s][x].links;
@@ -1906,8 +1894,15 @@ void ext_block::complete_construction(const BitMap& fixed_points)
 	// cases where second link is double cross neighbour for |s|
       case two_imaginary_single_single:
       case two_real_single_single:
-	second = parent.cross(t,parent.cross(s,z));
-	assert(second==parent.cross(s,parent.cross(t,z)));
+	{
+	  BlockElt sz = parent.cross(s,z);
+	  if (sz!=UndefBlock)
+	  {
+	    second = parent.cross(t,sz);
+	    assert((sz=parent.cross(t,z))==UndefBlock or
+		   second==parent.cross(s,sz));
+	  }
+	}
 	break;
 
 	// pair-to-pair link cases; second link is second Cayley, and sort
@@ -1922,8 +1917,15 @@ void ext_block::complete_construction(const BitMap& fixed_points)
 	// cases where second link is second Cayley image, double cross of |link|
       case two_imaginary_double_double:
       case two_real_double_double:
-	second = parent.cross(t,parent.cross(s,link));
-	assert(second==parent.cross(s,parent.cross(t,link)));
+	{
+	  BlockElt sl = parent.cross(s,link);
+	  if (sl!=UndefBlock)
+	  {
+	    second = parent.cross(t,sl);
+	    assert((sl=parent.cross(t,link))==UndefBlock or
+		   second==parent.cross(s,sl));
+	  }
+	}
 	break;
       } // |switch(type)|
 
@@ -2317,10 +2319,24 @@ void show_mat(std::ostream& strm,const matrix::Matrix<Pol> M,unsigned inx)
     }
 }
 
+bool ext_block::add_neighbours
+  (BlockEltList& dst, weyl::Generator s, BlockElt n) const
+{
+  const BlockEltPair& links = data[s][n].links;
+  if (links.first==UndefBlock)
+    return 0<link_count(descent_type(s,n)); // whether too short
+  dst.push_back(links.first);
+  if (links.second==UndefBlock)
+    return 1<link_count(descent_type(s,n)); // whether too short;
+  dst.push_back(links.second);
+  return false; // success, |link_count| cannot exceed 2
+}
+
 bool check_quadratic (const ext_block& b, weyl::Generator s, BlockElt x)
 { BlockEltList l; l.reserve(4);
 
-  b.add_neighbours(l,s,x);
+  if (b.add_neighbours(l,s,x))
+    return true;
 
   if (l.empty()) // compact or nonparity cases, there is nothing to check
     return true;
@@ -2336,7 +2352,8 @@ bool check_quadratic (const ext_block& b, weyl::Generator s, BlockElt x)
   assert(l.size()==2);
 
   if (has_quadruple(tp))
-  { b.add_neighbours(l,s,l[0]);
+  { if (b.add_neighbours(l,s,l[0]))
+      return true;
     if (x==l[2])
       l[2]=l[3]; // make sure |l[2]| complets the square
     assert (l[2]!=x);
@@ -2359,36 +2376,38 @@ bool check_braid
   BitMap to_do(b.size()),used(b.size());
   to_do.insert(x);
   for (unsigned int i=0; i<len; ++i) // repeat |len| times, |i| is not used
-    for (BitMap::iterator it=to_do.begin(); it(); ++it)
+    for (BlockElt z : to_do)
     {
-      used.insert(*it);
-      to_do.remove(*it);
-      BlockEltList l; l.reserve(4); // for neighbours of |*it| by |s| and |t|
-      b.add_neighbours(l,s,*it);
-      b.add_neighbours(l,t,*it);
-      for (unsigned j=0; j<l.size(); ++j)
-	if (not used.isMember(l[j]))
-	  to_do.insert(l[j]);
+      used.insert(z);
+      to_do.remove(z);
+      BlockEltList l; l.reserve(4); // for neighbours of |z| by |s| and |t|
+      if (b.add_neighbours(l,s,z) or b.add_neighbours(l,t,z))
+	return true;
+      for (BlockElt y : l)
+	if (not used.isMember(y))
+	  to_do.insert(y);
     }
 
   unsigned int n=used.size();
-  matrix::Matrix<Pol> Ts(n,n,Pol()), Tt(n,n,Pol());
+   matrix::Matrix<Pol> Ts(n,n,Pol()), Tt(n,n,Pol());
 
-  unsigned int j=0;
-  for (BitMap::iterator jt=used.begin(); jt(); ++jt,++j)
+   unsigned int j=0; // track index of |y|
+  for (const BlockElt y : used)
   {
-    BlockElt y = *jt;
     set(Ts,j,j, b.T_coef(s,y,y)-Pol(1)); set(Tt,j,j, b.T_coef(t,y,y)-Pol(1));
     BlockEltList l; l.reserve(2);
-    b.add_neighbours(l,s,*jt);
+    if (b.add_neighbours(l,s,y))
+      return true;
     for (unsigned int i=0; i<l.size(); ++i)
       if (used.isMember(l[i]))
 	set(Ts,used.position(l[i]),j, b.T_coef(s,l[i],y));
     l.clear();
-    b.add_neighbours(l,t,*jt);
+    if (b.add_neighbours(l,t,y))
+      return true;
     for (unsigned int i=0; i<l.size(); ++i)
       if (used.isMember(l[i]))
 	set(Tt,used.position(l[i]),j, b.T_coef(t,l[i],y));
+    ++j; // keep |j| in phase with |y|
   }
   matrix::Vector<Pol> v(n,Pol()), w;
   v[used.position(x)]=Pol(1); w=v;
@@ -2404,7 +2423,7 @@ bool check_braid
 
   static bool verbose = false;
   bool success = v==w;
-  if (verbose and (not success or b.z(x)==59))
+  if (verbose and not success)
   {
     //    std::cout << "success: " << success << std::endl;
     show_mat(std::cout,Ts,s);

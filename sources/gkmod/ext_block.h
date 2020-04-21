@@ -209,7 +209,8 @@ class ext_block
   BlockEltList down_set(BlockElt y) const;
 
   // here all elements reached by a link are added to |l|, (a/de)scent first
-  void add_neighbours(BlockEltList& dst, weyl::Generator s, BlockElt n) const;
+  bool add_neighbours(BlockEltList& dst, weyl::Generator s, BlockElt n) const;
+  // return value tells whether the edge of the block was hit (so too few added)
 
   // print whole block to stream (name chosen to avoid masking by |print|)
   std::ostream& print_to(std::ostream& strm) const; // defined in |block_io|
