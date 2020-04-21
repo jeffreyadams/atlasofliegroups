@@ -75,28 +75,33 @@ descent_table::descent_table(const ext_block::ext_block& eb)
     descents[x]=desc;
     good_ascents[x]=good_asc;
 
-    BitMap& flip = prim_flip[x]; // place to record primitivisation flips $x$
+    BitMap& flip_x = prim_flip[x]; // place to record primitivisation flips $x$
 
     // compute primitivisations of |x|, storing index among primitives for |D|
-    // loop must be downwards so initially index is w.r.t. descending order
-    for (unsigned long desc=prim_index.size(); desc-->0;)
+    // since |x| is decreasing, index counts _larger_ primitive elements for |D|
+    for (unsigned long descs=0; descs<prim_index.size(); ++descs) // all bitsets
     {
-      RankFlags D(desc); // descent set for which to primitive
+      RankFlags D(descs); // descent set for which to primitive
       D &= good_asc;
       if (D.none()) // then element |x| is primitive for the descent set
-	prim_index[desc][x] = prim_count[desc]++; // self-ref; increment count
+	prim_index[descs][x] = prim_count[descs]++; // self-ref; increment count
       else
       {
 	weyl::Generator s = D.firstBit();
 	if (is_like_nonparity(block.descent_type(s,x)))
-	  prim_index[desc][x] = ~0; // stop primitivisation with zero result
+	  prim_index[descs][x] = ~0; // stop primitivisation with zero result
 	else
 	{
 	  BlockElt sx = block.some_scent(s,x);
-	  assert(sx>x); // ascents go up in block
-	  prim_index[desc][x] = prim_index[desc][sx];
-	  if ((block.epsilon(s,x,sx)<0)!=prim_flip[sx].isMember(desc))
-	    flip.insert(desc);
+	  if (sx==UndefBlock) // primitivization would cross partial block edge
+	    prim_index[descs][x] = ~0; // stop primitivisation with zero result
+	  else
+	  {
+	    assert(sx>x); // ascents go up in block
+	    prim_index[descs][x] = prim_index[descs][sx];
+	    flip_x.set_to(descs,
+		 (block.epsilon(s,x,sx)<0)!=prim_flip[sx].isMember(descs));
+	  }
 	}
       }
     } // |for (desc)|
@@ -249,6 +254,7 @@ Pol KL_table::product_comp (BlockElt x, weyl::Generator s, BlockElt sy) const
 // auxiliary to form $aq^{-1}+b+aq$, shifted to an ordinary polynomial
 inline Pol m(int a,int b) { return a==0 ? Pol(b) : qk_plus_1(2)*a + Pol(1,b); }
 
+#ifndef NDEBUG // |get_M| only used for double-checking the result of |extract_M|
 /*
   Find $m_s(x,y)$ (symmetric Laurent polynomials in $r$) by recursive formula
   $m(x)\cong r^k p_{x,y} + def(s,x) r p_{s_x,y}-\sum_{x<u<y}p_{x,u}m(u)$ where
@@ -272,7 +278,8 @@ Pol KL_table::get_M(weyl::Generator s, BlockElt x, BlockElt y,
 		    const std::vector<Pol>& M) const
 {
   const ext_block::ext_block& bl=aux.block;
-  const BlockElt z =  bl.some_scent(s,y); // unique ascent by |s| of |y|
+  const BlockElt z =  bl.some_scent(s,y); // ascent by |s| of |y|
+  assert(z!=UndefBlock); // since in caller |y| was obtained as an |s|-descent
 
   const unsigned defect = has_defect(type(s,z)) ? 1 : 0;
   const unsigned k = bl.orbit(s).length();
@@ -367,6 +374,7 @@ Pol KL_table::get_M(weyl::Generator s, BlockElt x, BlockElt y,
 
   return extract_M(Q,l(z,x)+defect,defect);
 } // |KL_table::get_M|
+#endif
 
 /*
   This is largely the same formula, but used in different context, which
@@ -525,7 +533,7 @@ void KL_table::fill_next_column(PolHash& hash)
   column.back().resize(aux.col_size(y));
 
   weyl::Generator s;
-  BlockElt sy;
+  BlockElt sy; // gets set to unique descent for |s| of |y|, if one can be found
   if (has_direct_recursion(y,s,sy))
   {
     const unsigned defect = has_defect(type(s,y)) ? 1 : 0;
@@ -550,9 +558,8 @@ void KL_table::fill_next_column(PolHash& hash)
 	  continue;
 
 	assert(u<Ms.size());
-	Pol gM = get_M(s,u,sy,Ms);
 	Ms[u]=extract_M(cy[u],d,defect);
-	assert(Ms[u]==gM);
+	assert(Ms[u]==get_M(s,u,sy,Ms));
 
 	if (Ms[u].isZero())
 	  continue;

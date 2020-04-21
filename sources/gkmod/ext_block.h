@@ -186,7 +186,8 @@ class ext_block
   BlockEltPair Cayleys(weyl::Generator s, BlockElt n) const; // must be two
 
   // some of the above: an (a/de)scent of |n| in block; assumed to exist
-  BlockElt some_scent(weyl::Generator s, BlockElt n) const;
+  BlockElt some_scent(weyl::Generator s, BlockElt n) const
+    { return data[s][n].links.first; }
 
   // whether link for |s| from |x| to |y| has a sign flip attached
   int epsilon(weyl::Generator s, BlockElt x, BlockElt y) const;

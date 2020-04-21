@@ -1996,13 +1996,6 @@ BlockElt ext_block::cross(weyl::Generator s, BlockElt n) const
   assert(false); return UndefBlock; // keep compiler happy
 } // |ext_block::cross|
 
-BlockElt ext_block::some_scent(weyl::Generator s, BlockElt n) const
-{
-  const BlockElt c = data[s][n].links.first;
-  assert(c!=UndefBlock);
-  return c;
-}
-
 BlockElt ext_block::Cayley(weyl::Generator s, BlockElt n) const
 {
   return  is_complex(descent_type(s,n)) ? UndefBlock : data[s][n].links.first;

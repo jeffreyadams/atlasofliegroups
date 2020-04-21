@@ -119,9 +119,11 @@ class KL_table
   Pol product_comp (BlockElt x, weyl::Generator s, BlockElt sy) const;
   Pol extract_M(Pol& Q,unsigned d,unsigned defect) const;
 
+#ifndef NDEBUG
   // compute $M(s,x,sy)$ recursively using vector |Ms| (for direct recursion)
   Pol get_M(weyl::Generator s,BlockElt x, BlockElt sy,
 	    const std::vector<Pol>& Ms) const; // previous values $M(s,u,sy)$
+#endif
 
   // variant of above for new recursion: omit term if depending on $P_{x_s,y}$
   Pol get_Mp(weyl::Generator s,BlockElt x, BlockElt y,
