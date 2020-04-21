@@ -2407,23 +2407,24 @@ bool check_braid
   static const unsigned int cox_entry[] = {2, 3, 4, 6};
   unsigned int len = cox_entry[b.Dynkin().edge_multiplicity(s,t)];
 
-  BitMap to_do(b.size()),used(b.size());
-  to_do.insert(x);
-  for (unsigned int i=0; i<len; ++i) // repeat |len| times, |i| is not used
-    for (BlockElt z : to_do)
-    {
-      used.insert(z);
-      to_do.remove(z);
-      BlockEltList l; l.reserve(4); // for neighbours of |z| by |s| and |t|
-      if (b.add_neighbours(l,s,z) or b.add_neighbours(l,t,z))
-	return true;
-      for (BlockElt y : l)
-	if (not used.isMember(y))
-	  to_do.insert(y);
-    }
+  BitMap used(b.size());
+  containers::queue<BlockElt> to_do { x };
+  do
+  {
+    BlockElt z=to_do.front();
+    to_do.pop();
+    used.insert(z);
+    BlockEltList l; l.reserve(4); // for neighbours of |z| by |s| and |t|
+    if (b.add_neighbours(l,s,z) or b.add_neighbours(l,t,z))
+      return true;
+    for (BlockElt y : l)
+      if (not used.isMember(y))
+	to_do.push(y);
+  }
+  while (not to_do.empty());
 
   unsigned int n=used.size();
-   matrix::Matrix<Pol> Ts(n,n,Pol()), Tt(n,n,Pol());
+  matrix::Matrix<Pol> Ts(n,n,Pol()), Tt(n,n,Pol());
 
    unsigned int j=0; // track index of |y|
   for (const BlockElt y : used)
