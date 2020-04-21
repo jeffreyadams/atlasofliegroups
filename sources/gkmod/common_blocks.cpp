@@ -462,6 +462,10 @@ common_block::common_block // partial block constructor
 {
   info.reserve(elements.size());
   const auto& kgb = rt.kgb();
+
+  Block_base::dd = // integral Dynkin diagram, converted from dual side
+    DynkinDiagram(integral_sys.cartanMatrix().transposed());
+
   std::vector<containers::sl_list<TorusPart> > y_table
     (inner_class().involution_table().size());
   // every element of |y_table| is a list of |TorusPart| values of the same rank
