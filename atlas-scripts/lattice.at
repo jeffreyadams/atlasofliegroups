@@ -1,5 +1,5 @@
 <basic.at
-<matrix.at { for |ech_up@(mat,[int])| }
+<ratmat.at
 
 { General linear algebra over $\Z$. In so far as saturation of lattices is
   done, this actually relates to vector spaces over $\Q$, but all computations
@@ -210,3 +210,16 @@ in for j:c { loop over columns of N while it is being modified in the loop }
 {generators of finite abelian group Z^n/A}
 set finite_quotient(mat M)=let (A,v)=filter_units(Smith(M)) in
 for col@i in A do (col,v[i]) od
+
+{test if ratvec v is in Z-linear span of columns of ratmat A
+ require: columns of A are linearly independent
+ let w=unique solution to A*w=v,
+ return false if w doesn't exist, or boolean is_integer(w) if it does
+}
+set in_lattice (ratmat A, ratvec v) = bool:
+let (A_int,,d)=A then
+(M,C,pivots,)=echelon(A_int) in 
+assert(#M>=#A_int,"columns of matrix are not linearly independent");
+   case solve(A,v) | w.solution: is_integer(w)
+   | else false
+   esac
