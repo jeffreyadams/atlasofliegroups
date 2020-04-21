@@ -1,9 +1,6 @@
+<basic.at
 <groups.at
 <generate_groups.at
-
-<parameters.at
-<center.at
-<sort.at
 
 { G is a RealForm
   pi0(G)=order of component group of G(R)
@@ -19,7 +16,11 @@ set square_classes (InnerClass ic) = [[int]]:
 { for a RealForm just convert it to its InnerClass, Cartan(0) is the same }
 
 {list of integer labels of strong real forms}
-set strong_real_forms(InnerClass ic)=[int]: sort(##square_classes(ic))
+set strong_real_forms_indices(InnerClass ic)=[int]: sort(##square_classes(ic))
+
+{list of real forms with multiplicity}
+set strong_real_forms(InnerClass ic)=[RealForm]:
+let rf=ic.real_forms in for i in ic.strong_real_forms_indices do rf[i] od
 
 { assume you want all strong real forms, i.e. Cartan 0 }
 set print_strong_real (RealForm G) = void:
@@ -69,20 +70,35 @@ set central_invariant_index (InnerClass ic, int k) = int:
 set central_invariant_index (RealForm G) = int:
   find(square_classes(G),form_number(G))
 
-{central_invariant@RealForm is the same as square@RealForm, except that we 
-view its values in Z^delta/(1+delta)Z}
+{central_invariant@RealForm is the same as square@RealForm,
+ except that we will view its values in Z^delta/(1+delta)Z}
 set central_invariant(RealForm G)=ratvec:square(G)  {see parameters.at}
+set central_invariant(InnerClass ic,int i)=ratvec:central_invariant(ic.real_forms[i])
 
 {two ratvecs in P^v, each gives an element of Z, assumed to be
 in Z^delta. They define the same central invariant if they
-are equivalent modulo (1+delta)Z
-G is required to be semisimple
-center(G) is a list of ratvecs, each is in (X_*)_Q
-action on center is by ^distinguished_involution=^d
-condition: v-w is in (1+^d)*center(ic)
+are equivalent modulo (1+delta)Z+X^*
 }
-set equal_central_invariant(InnerClass ic,ratvec v,ratvec w)=bool:
-in_lattice((1+^ic.distinguished_involution)*center(ic),v-w)
+
+set one_plus_delta_Z(InnerClass ic)=[ratvec]:
+sort_u(for v in ic.derived.elements_of_center do map_to_center(ic,(1+^ic.distinguished_involution)*v) od)
+
+set in_one_plus_delta_Z(InnerClass ic,ratvec v)=bool:
+find(ic.one_plus_delta_Z,map_to_center(ic,v))!=-1
+
+set equal_central_invariant(InnerClass ic,ratvec v,ratvec w)=bool:in_one_plus_delta_Z(ic,v-w)
+
+set equal_central_invariant(RealForm G,ratvec v)=bool:
+equal_central_invariant(G.inner_class,G.central_invariant,v)
+
+set real_forms_given_central_invariant(InnerClass ic,ratvec v)=[RealForm]:
+##for G in ic.real_forms do if equal_central_invariant(G,v) then [G] else [] fi od
+
+set strong_real_forms_given_central_invariant(InnerClass ic,ratvec v)=[RealForm]:
+##for G in ic.strong_real_forms do if equal_central_invariant(G,v) then [G] else [] fi od
+
+
+
 
 {
   strong_real_forms_same_type(ic,k)
