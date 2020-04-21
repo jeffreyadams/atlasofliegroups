@@ -1917,7 +1917,8 @@ void ext_block::complete_construction(const BitMap& fixed_points)
 	  else if ((tmp=parent.cross(t,z))!=UndefBlock) // try alternative route
 	    second=parent.cross(s,tmp);
 	  else if (type==two_real_single_single and // try to pass from above
-		   (tmp=parent.cross(t,parent.cayley(s,z).first))!=UndefBlock)
+		   (tmp=parent.cross(t,parent.inverseCayley(s,z).first))
+		    !=UndefBlock)
 	  {
 	    auto pair = parent.cayley(s,tmp);
 	    second = pair.first!=UndefBlock and fixed_points.isMember(pair.first)
