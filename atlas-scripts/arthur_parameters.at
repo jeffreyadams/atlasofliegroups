@@ -17,15 +17,34 @@ set arthur_parameters_by_y(RootDatum rd)=[[ComplexNilpotent_d]]:
 let dual_forms=strong_real_forms_e(rd.dual) in
 for Gd in dual_forms do Gd.K.orbits od
 
-set arthur_parameters_of_orbit(RootDatum rd,ComplexNilpotent O_check)=[ComplexNilpotent_d]:
-let dual_forms=strong_real_forms_e(dual(rd)) in
+{Arthur parameters for *split* inner class of complex group rd,
+ where Psi(SL(2,C)) <-> O_check
+ conceptual algorithm: run over conjugacy classes of order 2
+  in the (disconnected) centralizer_{G^v}(O_check)
+ actual algorithm:
+  rd_int=integrality_datum(O_check_H/2)
+  rd_int_dual=dual(rd_int), call this group G^v_int
+  let O_check_int be the G^v_int orbit of O_check.H
+  run over strong real forms y_1,...,y_n of rd_int_dual
+  let K^v_i=centralizer in rd_int_dual of y_i (
+       the complexified maximal compact of the corresponding real form of rd_int_dual
+  collect the nilpotent orbits of K_v_i whose saturation to G^v_int is equal to O_check_int
+  since K_v_i can be disconnected this is a ComplexNilpotent_d object,
+   first run over orbits for the identity component, and then mod out by
+    conjugation by the component group (see disconnected.at)
+}    
+set arthur_parameters(RootDatum rd,ComplexNilpotent O_check)=[ComplexNilpotent_d]:
+{let O_check_int=integral_descent(O_check) then}
+let O_check_int=O_check then
+rd_int_dual=O_check_int.root_datum then
+dual_forms=strong_real_forms_e(rd_int_dual) in
 ##for Gd@i in dual_forms do
  ##for O_d in Gd.K.orbits do
- if saturate(O_d,Gd)=O_check then [O_d]  else [] fi od 
+ if saturate(O_d,rd_int_dual)=O_check_int then [O_d]  else [] fi od 
 od
 
 set arthur_parameters_by_orbit(RootDatum rd)=[[ComplexNilpotent_d]]:
-let rv=for O_check in rd.dual_orbits do arthur_parameters_of_orbit(rd,O_check) od
+let rv=for O_check in rd.dual_orbits do arthur_parameters(rd,O_check) od
 then v=for a in rv do #a od in
 {prints(v,": ",sum(v));}rv
 
@@ -34,7 +53,7 @@ set arthur_parameters_by_y_naive(RootDatum rd)=[[ComplexNilpotent]]:
 let dual_forms=strong_real_forms_e(rd.dual) in
 for Gd in dual_forms do Gd.K_0.orbits od
 
-set arthur_parameters_of_orbit_naive(RootDatum rd,ComplexNilpotent O_check)=[ComplexNilpotent]:
+set arthur_parameters_naive(RootDatum rd,ComplexNilpotent O_check)=[ComplexNilpotent]:
 let dual_forms=strong_real_forms_e(dual(rd)) in
 ##for Gd@i in dual_forms do
  ##for O_d in Gd.K_0.orbits do
@@ -42,7 +61,7 @@ let dual_forms=strong_real_forms_e(dual(rd)) in
 od
 
 set arthur_parameters_by_orbit_naive(RootDatum rd)=[[ComplexNilpotent]]:
-let rv=for O_check in rd.dual_orbits do arthur_parameters_of_orbit_naive(rd,O_check) od
+let rv=for O_check in rd.dual_orbits do arthur_parameters_naive(rd,O_check) od
 then v=for a in rv do #a od in
 prints(v,": ",sum(v));rv
 
@@ -61,10 +80,10 @@ let v=for orbits_d in list do #orbits_d od in
 prints("#parameters by orbit: ",v,new_line, "Total: ", sum(v));
 for orbits_d@i in list do
 prints(new_line,"orbit #",i," for G",new_line, "#orbits for (disconnected) Cent(O): ", #orbits_d);
-tabulate(["K_0","H","mult"]#
+tabulate(["K_0","H","diagram","dim","mult"]#
  for O_d in orbits_d do
  let mult=#intersect(O_d) in
- [O_d.rd_d.rd.to_string,O_d.H.to_string,mult.to_string] od) od
+ [O_d.rd_d.rd.to_string,O_d.H.to_string,intersect(O_d)[0].diagram.to_string,intersect(O_d)[0].dim_nilpotent.to_string,mult.to_string] od) od
 
 
 
