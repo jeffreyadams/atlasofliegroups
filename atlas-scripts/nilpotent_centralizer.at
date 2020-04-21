@@ -117,6 +117,7 @@ prints("roots_C:",roots_C);
 prints("coroots_C:", coroots_C);
 prints("C:",C.nice_format)
 
+{
 {compact listing: i H diagram dim BC-Levi Cent A(O)}
 set show_nilpotent_orbits([ComplexNilpotent] orbits)=void:
 tabulate(
@@ -164,7 +165,7 @@ set list=[SL(2),Sp(4),Sp(6),Sp(8),SO(7),SO(8),SO(9),simply_connected(G2),simply_
 
 set show_nilpotent_orbits_plus([ComplexNilpotent] orbits)=void:
 tabulate(
-["i","H","diagram","dim","BC Levi","Cent","A(O)","|Z(Cent^0)|","Cent_2"]#for  orbit@i in orbits do
+["i","H","diagram","dim","BC Levi","Cent","Z","C_2","A(O)"]#for  orbit@i in orbits do
 let d=orbit.component_datum then
 cent=orbit.centralizer in
 [i.to_string,
@@ -173,9 +174,9 @@ orbit.diagram.to_string,
 orbit.dim_nilpotent.to_string,
 orbit.Bala_Carter_Levi.nice_format,
 cent.nice_format,
-d.orders.to_string,
 cent.derived.order_center.to_string,
-(#cent.compact_form.strong_real_forms_same_type).to_string
+(#cent.compact_form.strong_real_forms_same_type).to_string,
+d.orders.to_string
 ] od)
 
 set show_nilpotent_orbits_plus(RootDatum rd)=void:
@@ -216,15 +217,27 @@ C_2.to_string
 
 set show_nilpotent_orbits(RealForm G)=void:
 show_nilpotent_orbits(nilpotent_orbits(G),G)
+}
 
-{useful in determining the precise structure of the centralizer}
-set centralizer_isogeny(ComplexNilpotent O)=void:
-let cent=centralizer(O) then
-sf=simple_factors(cent) in
-prints("Centralizer: ",cent.nice_format);
+set describe_isogeny(RootDatum rd)=void:
+let sf=simple_factors(rd) in
+prints("centralizer: ",rd.nice_format);
+prints("center: ", print_Z(rd));
 for factor in sf do
 prints(factor.derived) od
 
-set centralizer_isogenies(RootDatum rd)=void:
+set describe_isogeny(ComplexNilpotent O)=void:describe_isogeny(centralizer(O))
+
+{useful in determining the precise structure of the centralizer}
+set show_centralizer_isogeny(ComplexNilpotent O)=void:
+let cent=centralizer(O) then
+sf=very_simple_factors(cent) in
+prints("Centralizer: ",cent.nice_format);
+print_Z(cent);
+for factor in sf do
+prints(factor.derived) od
+
+set show_centralizer_isogenies(RootDatum rd)=void:
 for orbit in rd.orbits do
-prints(new_line,"orbit: H:",orbit.H, " diagram:", orbit.diagram, " dim:", orbit.dim_nilpotent);centralizer_isogeny(orbit) od
+prints(new_line,"orbit: H:",orbit.H, " diagram:", orbit.diagram, " dim:", orbit.dim_nilpotent);
+show_centralizer_isogeny(orbit) od
