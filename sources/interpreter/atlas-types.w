@@ -6107,7 +6107,7 @@ void twisted_deform_wrapper(expression_base::level l)
     return;
 @)
   BlockElt entry_elem; RankFlags singular;
-  auto& block = rt.lookup(p->val,entry_elem,singular);
+  auto& block = rt.lookup_full_block(p->val,entry_elem,singular);
   auto& eblock = block.extended_block(delta);
 @)
   RankFlags singular_orbits;

@@ -1037,7 +1037,7 @@ unsigned long Rep_table::add_block(const StandardReprMod& srm)
   return result;
 }// |Rep_table::add_block|
 
-blocks::common_block& Rep_table::lookup
+blocks::common_block& Rep_table::lookup_full_block
   (const StandardRepr& sr,BlockElt& z,RankFlags& singular)
 {
   auto srm = StandardReprMod::mod_reduce(*this,sr); // modular |z|
@@ -1051,7 +1051,7 @@ blocks::common_block& Rep_table::lookup
 
   singular=block.singular(sr.gamma());
   return block;
-} // |Rep_table::lookup|
+} // |Rep_table::lookup_full_block|
 
 blocks::common_block& Rep_table::lookup (const StandardRepr& sr,BlockElt& which)
 {
@@ -1441,7 +1441,7 @@ SR_poly Rep_table::twisted_KL_column_at_s(StandardRepr sr)
   const auto& delta = inner_class().distinguished();
   assert(is_final(sr) and sr==inner_twisted(sr));
   BlockElt y0; RankFlags singular;
-  auto& block = lookup(sr,y0,singular);
+  auto& block = lookup_full_block(sr,y0,singular);
   auto& eblock = block.extended_block(delta);
 
   RankFlags singular_orbits;
@@ -1662,7 +1662,7 @@ SR_poly Rep_table::twisted_deformation (StandardRepr z)
     for (const auto& p : L)
     {
       BlockElt new_z; RankFlags singular;
-      auto& block = lookup(p.first,new_z,singular);
+      auto& block = lookup_full_block(p.first,new_z,singular);
       auto& eblock = block.extended_block(delta);
 
       RankFlags singular_orbits;

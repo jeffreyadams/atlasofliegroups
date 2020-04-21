@@ -304,7 +304,7 @@ class Rep_table : public Rep_context
 
   unsigned short length(StandardRepr z); // by value
 
-  blocks::common_block& lookup
+  blocks::common_block& lookup_full_block
     (const StandardRepr& sr,BlockElt& z,RankFlags& singular);
 
   blocks::common_block& lookup(const StandardRepr& sr,BlockElt& z); // partial
