@@ -11,27 +11,48 @@ set strong_real_forms_central_invariant(InnerClass ic,ratvec v)=[int]:
  }
 
 set strong_real_forms_nilpotent_orbit_correct_central_invariant(ComplexNilpotent O, InnerClass ic)=[RealForm]:
-assert(is_even(O), "orbit is not even");
+{assert(is_even(O), "orbit is not even");}
 strong_real_forms_given_central_invariant(ic,O.H/2)
 
+set strong_real_forms_nilpotent_orbit_e(ComplexNilpotent O, InnerClass ic)=[RealForm]:
+{assert(is_even(O), "orbit is not even");}
+strong_real_forms_e(ic)
+
+{
 set number_real_nilpotent_orbits_correct_central_invariant(ComplexNilpotent O_check,InnerClass ic_check)=[int]:
-if is_even(O_check) then
-for G in strong_real_forms_nilpotent_orbit_correct_central_invariant(O_check,ic_check) do 
+for G in strong_real_forms_nilpotent_orbit_correct_central_invariant(O_check,ic_check) do
 number_real_nilpotent_orbits(O_check,G) od
-else [int]:[] fi
+}
 
 
 {run over real forms with correct central invariant
  for each such rf, compute number of real forms of orbit, return [int]
 }
-{set number_real_nilpotent_orbits_correct_central_invariant(ComplexNilpotent O_check,InnerClass ic)=[int]:
+set number_real_nilpotent_orbits_correct_central_invariant(ComplexNilpotent O_check,InnerClass ic)=[int]:
+if ic.is_equal_rank then
 let O_check_int=O_check.integral_descent then
 rd_int=O_check_int.root_datum  then
-inner_class_int=inner_class(rd_int,ic.distinguished_involution) then
-rf_int=real_forms(inner_class_int) then
-srf_int_correct_type=strong_real_forms_type(central_invariant(O_check_int)) {[int]} in
-for k in srf_int_correct_type do number_real_nilpotent_orbits(O_check_int,rf_int[k]) od
- }
+ic_check_int=inner_class(rd_int,ic.distinguished_involution) then
+rf_int=real_forms(ic_check_int) in
+for G in strong_real_forms_nilpotent_orbit_correct_central_invariant(O_check_int,ic_check_int) do
+{srf_int_correct_type=strong_real_forms_type(central_invariant(O_check_int,inner_class_int)) {[int]} in}
+number_real_nilpotent_orbits(O_check_int,G) od
+{for k in srf_int_correct_type do number_real_nilpotent_orbits(O_check_int,rf_int[k]) od}
+elif O_check.is_even then
+for G in strong_real_forms_nilpotent_orbit_e(O_check,ic) do
+number_real_nilpotent_orbits(O_check,G) od
+else
+[int]:[] fi
+
+set debug(ComplexNilpotent O_check,InnerClass ic)=
+let O_check_int=O_check.integral_descent then
+rd_int=O_check_int.root_datum  then
+ic_check_int=inner_class(rd_int,ic.distinguished_involution) then
+rf_int=real_forms(ic_check_int) then
+srf_int=strong_real_forms_nilpotent_orbit_correct_central_invariant(O_check_int,ic_check_int) 
+in (O_check_int,rd_int,ic_check_int,rf_int,srf_int)
+
+{for k in srf_int_correct_type do number_real_nilpotent_orbits(O_check_int,rf_int[k]) od}
 set compact_inner_class(RootDatum rd)=inner_class(rd,id_mat(rd.rank))
 
 {compact listing: i H diagram dim BC-Levi Cent A(O)}
@@ -205,7 +226,8 @@ d=orbit.component_datum then
 number_real_nilpotents=number_real_nilpotent_orbits_correct_central_invariant(orbit, ic_dual) then
 arthur_parameters=arthur_parameters(ic_dual,orbit) in
 let ()=prints("test:",orbit, " ", arthur_parameters) in
-{assert(sum(number_real_nilpotents)=#arthur_parameters,"two counts of Arthur parameters don't match");}
+if ic_dual.is_equal_rank{ or orbit.is_even } then
+assert(sum(number_real_nilpotents)=#arthur_parameters,"two counts of Arthur parameters don't match") fi;
 (
 orbit,
 orbit.diagram,

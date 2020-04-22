@@ -79,23 +79,55 @@ set central_invariant(InnerClass ic,int i)=ratvec:central_invariant(ic.real_form
 in Z^delta. They define the same central invariant if they
 are equivalent modulo (1+delta)Z+X^*
 }
+{
 
-set one_plus_delta_Z(InnerClass ic)=[ratvec]:
-sort_u(for v in ic.derived.elements_of_center do map_to_center(ic,(1+^ic.distinguished_involution)*v) od)
 
 set in_one_plus_delta_Z(InnerClass ic,ratvec v)=bool:
 find(ic.one_plus_delta_Z,map_to_center(ic,v))!=-1
 
+set one_plus_delta_Z_der(InnerClass ic)=[ratvec]:
+let (ic_d,M)=ic.derived_info in  {^M maps X_*(T_der) to X_*(T)} 
+sort_u(for v in ic.derived.elements_of_center do ^M*map_to_center(ic_d,(1+^ic_d.distinguished_involution)*v) od)
+
+set in_one_plus_delta_Z_der(InnerClass ic,ratvec v)=bool:
+find(ic.one_plus_delta_Z_der,map_to_center(ic,v))!=-1
+}
+
+set in_one_plus_delta_Z(InnerClass ic,ratvec v)=
+assert(ic.is_equal_rank,"Only equal rank case at the moment");
+let M=1+ic.distinguished_involution {2*Id} then
+N=ic.simple_roots then
+J=intersection(M,N) in
+{let ()=prints("M=",M,new_line,"N=",N, new_line,"J=",J, "v*J/2", v*J/2) in}
+is_integer(v*J/2)
+
+{only equal rank}
 set equal_central_invariant(InnerClass ic,ratvec v,ratvec w)=bool:in_one_plus_delta_Z(ic,v-w)
 
+{only equal rank}
 set equal_central_invariant(RealForm G,ratvec v)=bool:
 equal_central_invariant(G.inner_class,G.central_invariant,v)
 
+{only equal rank}
 set real_forms_given_central_invariant(InnerClass ic,ratvec v)=[RealForm]:
 ##for G in ic.real_forms do if equal_central_invariant(G,v) then [G] else [] fi od
 
+{only equal rank}
 set strong_real_forms_given_central_invariant(InnerClass ic,ratvec v)=[RealForm]:
 ##for G in ic.strong_real_forms do if equal_central_invariant(G,v) then [G] else [] fi od
+
+{any group, strong real forms x with x^2=1 are in bijection with
+strong real forms G where central_invariant(G)=central_invariant(G.quasicompact_form)
+note that the central invariant might not be trivial, for example
+in U(2,2) Z/Z^2={iI,-I} in atlas
+}
+set strong_real_forms_central_invariant_e(InnerClass ic)=[RealForm]:
+let v=central_invariant(ic.quasicompact_form) in
+##for G in ic.strong_real_forms do if G.central_invariant=v then [G] else [] fi od
+
+
+
+
 
 
 
