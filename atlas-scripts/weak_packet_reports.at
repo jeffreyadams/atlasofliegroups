@@ -7,7 +7,7 @@ bool: true for split groups, include extra information
 about conjectural relationship between size of weak packet
 and component group information
 }
-
+{CUT
 {
 {Type A}
 {SL(n)}
@@ -76,18 +76,26 @@ prints("F4")
 >"output/F4s" void:weak_packet_report_ind (F4_s)
 >"output/F4B4" void:weak_packet_report_ind (F4_B4)
 
-{CUT
+/CUT}
 
-prints("E6")
->"output/E6c" void:weak_packet_report_ind (E6_c)
->"output/E6q" void:weak_packet_report_ind (E6_q)
->"output/E6h" void:weak_packet_report_ind (E6_h)
->"output/E6s" void:weak_packet_report_ind (E6_s)
->"output/E6F4" void:weak_packet_report_ind (E6_F4)
+prints("E6_sc")
+>"output/E6_sc_c" void:weak_packet_report_ind (E6_c)
+>"output/E6_sc_q" void:weak_packet_report_ind (E6_q)
+>"output/E6_sc_h" void:weak_packet_report_ind (E6_h)
+>"output/E6_sc_s" void:weak_packet_report_ind (E6_s)
+>"output/E6_sc_F4" void:weak_packet_report_ind (E6_F4)
+prints("E6_ad")
+>"output/E6_ad_c" void:weak_packet_report_ind (adjoint(E6_c))
+>"output/E6_ad_q" void:weak_packet_report_ind (adjoint(E6_q))
+>"output/E6_ad_h" void:weak_packet_report_ind (adjoint(E6_h))
+>"output/E6_ad_s" void:weak_packet_report_ind (adjoint(E6_s))
+>"output/E6_ad_F4" void:weak_packet_report_ind (adjoint(E6_F4))
 
 prints("E7")
->"output/E7h" void:weak_packet_report_ind (E7_h)
->"output/E7q" void:weak_packet_report_ind (E7_q)
+>"output/E7_sc_h" void:weak_packet_report_ind (E7_h)
+>"output/E7_sc_q" void:weak_packet_report_ind (E7_q)
+>"output/E7_ad_h" void:weak_packet_report_ind (adjoint(E7_h))
+>"output/E7_ad_q" void:weak_packet_report_ind (adjoint(E7_q))
 {>"output/E7s" void:weak_packet_report_ind (E7_s)}
 
 /CUT}
