@@ -1,7 +1,7 @@
 /*
-  This is block_minimal.cpp
+  This is common_blocks.cpp
 
-  Copyright (C) 2019 Marc van Leeuwen
+  Copyright (C) 2019,2020 Marc van Leeuwen
   Part of the Atlas of Lie Groups and Representations
 
   For license information see the LICENSE file
@@ -25,7 +25,7 @@
   second computation is avoided. However many parameters can be seen to have
   isomorphic blocks, namely when they share their |KGB| set and the integral
   subdatum (as determined by the infinitesimal character |gamma|, indeed already
-  by its class modulo $X^*$); in this unit, blocks of type |block_minimal| are
+  by its class modulo $X^*$); in this unit, blocks of type |common_block| are
   constructed that only use such information, and still allow computation of KLV
   polynomials (ordinary and twisted).
 
@@ -34,20 +34,24 @@
   determines, as it is probably possible to re-use polynomials associated to
   parameters whose block is isomorphic, by applying a shift to their
   infinitesimal character. But in any case showing that the blocks can be
-  generated in this way is a good way to get convinced that isomporphism as
+  generated in this way is a good way to get convinced that an isomorphism as
   indicated does exist.
  */
-#include "block_minimal.h"
+#include "common_blocks.h"
 
 #include <cassert>
 #include <vector>
+#include <map>
+#include <algorithm>
 
+#include "poset.h"
 #include "matreduc.h"
 #include "realredgp.h"
 #include "subsystem.h"
 #include "kgb.h"
 #include "repr.h"
 #include "ext_block.h"
+#include "ext_kl.h" // for |ext_block::ext_kl| contructor defined below
 
 namespace atlas {
 
@@ -59,54 +63,75 @@ void add_z(block_hash& hash,KGBElt x,KGBElt y);
 BlockElt find_in(const block_hash& hash,KGBElt x,KGBElt y);
 BlockElt& first_free_slot(BlockEltPair& p);
 
-  // |block_minimal| methods
+  // |common_block| methods
 
-RealReductiveGroup& block_minimal::realGroup() const
-  { return rc.realGroup(); }
-const InnerClass& block_minimal::innerClass() const
-  { return rc.innerClass(); }
-const InvolutionTable& block_minimal::involution_table() const
-  { return innerClass().involution_table(); }
-const RootDatum& block_minimal::rootDatum() const
-  { return rc.rootDatum(); }
+RealReductiveGroup& common_block::real_group() const
+  { return rc.real_group(); }
+const InnerClass& common_block::inner_class() const
+  { return rc.inner_class(); }
+const InvolutionTable& common_block::involution_table() const
+  { return inner_class().involution_table(); }
+const RootDatum& common_block::root_datum() const
+  { return rc.root_datum(); }
 
-RatWeight block_minimal::gamma_lambda(BlockElt z) const
+RankFlags common_block::singular (const RatWeight& gamma) const
 {
-  return y_pool[y(z)].repr().log_pi(true);
+  RankFlags result;
+  for (weyl::Generator s=0; s<rank(); ++s)
+    result.set(s,root_datum().coroot(integral_sys.parent_nr_simple(s))
+				    .dot(gamma.numerator())==0);
+  return result;
 }
 
+// find value $\gamma-\lambda$ that the parameter for |z| at |gamma%1| would give
+RatWeight common_block::gamma_lambda(BlockElt z) const
+{
+  auto& i_tab = rc.inner_class().involution_table();
+  InvolutionNbr i_x = rc.kgb().inv_nr(x(z));
+  const WeightInvolution& theta = i_tab.matrix(i_x);
 
-block_minimal::block_minimal // full block constructor
+  // |y_lift| gives the choice for $(1-theta)(\lambda-\rho)$ at |gamma_mod_1|
+  // subtract from $(1-\theta)(\gamma\mod1-\rho)$ and divide by 2
+  const auto gm1_rho = gamma_mod_1-rho(rc.root_datum());
+  auto result = (gm1_rho - theta*gm1_rho-i_tab.y_lift(i_x,y_bits[y(z)]))/2;
+  return result.normalize();
+}
+
+common_block::~common_block() = default;
+
+common_block::common_block // full block constructor
   (const Rep_context& rc,
-   const StandardRepr sr,       // not modified, |gamma| is used mod $X^*$ only
+   const repr::StandardReprMod& srm, // not modified, |gamma| used mod $X^*$ only
    BlockElt& entry_element	// set to block element matching input
   )
-  : Block_base(rootdata::integrality_rank(rc.rootDatum(),sr.gamma()))
+  : Block_base(rootdata::integrality_rank(rc.root_datum(),srm.gamma_mod1()))
   , rc(rc)
-  , integral_datum(SubSystem::integral(rootDatum(),sr.gamma()))
+  , gamma_mod_1(srm.gamma_mod1()) // already reduced
+  , integral_sys(SubSystem::integral(root_datum(),gamma_mod_1))
+  , y_bits()
   , y_pool()
   , y_hash(y_pool)
-  , y_part()
   , xy_hash(info)
-  , highest_x(rc.realGroup().KGB_size()-1)
-  , highest_y() // defined when generation is complete
+  , extended(nullptr) // no extended block initially
+  , highest_x() // defined below when we have moved to top of block
+  , highest_y() // defined below when generation is complete
 {
-  const InnerClass& ic = innerClass();
-  const RootDatum& rd = ic.rootDatum();
+  const InnerClass& ic = inner_class();
+  const RootDatum& rd = root_datum();
 
   const InvolutionTable& i_tab = ic.involution_table();
   const KGB& kgb = rc.kgb();
 
   Block_base::dd = // integral Dynkin diagram, converted from dual side
-    DynkinDiagram(integral_datum.cartanMatrix().transposed());
+    DynkinDiagram(integral_sys.cartanMatrix().transposed());
 
-  size_t our_rank = integral_datum.rank();
+  size_t our_rank = integral_sys.rank();
 
-  nblock_help aux(realGroup(),integral_datum);
+  nblock_help aux(real_group(),integral_sys);
 
   // step 1: get |y|, which has $y.t=\exp(\pi\ii(\gamma-\lambda))$ (vG based)
-  const KGBElt x_org = sr.x();
-  const TorusElement y_org = rc.y_as_torus_elt(sr);
+  const KGBElt x_org = srm.x();
+  const TorusElement y_org = rc.y_as_torus_elt(srm);
   auto z_start = nblock_elt(x_org,y_org); // working copy
 
   // step 2: move up toward the most split fiber for the current real form
@@ -115,21 +140,21 @@ block_minimal::block_minimal // full block constructor
     do
       for(s=0; s<our_rank; ++s)
       {
-	KGBElt xx=kgb.cross(integral_datum.to_simple(s),z_start.x());
-	weyl::Generator ss=integral_datum.simple(s);
+	KGBElt xx=kgb.cross(integral_sys.to_simple(s),z_start.x());
+	weyl::Generator ss=integral_sys.simple(s);
 	if (kgb.isAscent(ss,xx))
 	{
 	  if (kgb.status(ss,xx)==gradings::Status::Complex)
-	    aux.cross_act(z_start,s);
+	    aux.cross_act(s,z_start);
 	  else // imaginary noncompact
 	  {
 	    assert(kgb.status(ss,xx) == gradings::Status::ImaginaryNoncompact);
-	    aux.do_up_Cayley(z_start,s);
+	    aux.do_up_Cayley(s,z_start);
 	  }
 	  break;
 	} // |if(isAscent)|
       } // |for(s)|
-    while(s<our_rank); // loop until no ascents found in |integral_datum|
+    while(s<our_rank); // loop until no ascents found in |integral_sys|
 
     y_hash.match(aux.pack_y(z_start)); // save obtained value for |y|
   } // end of step 2
@@ -141,7 +166,7 @@ block_minimal::block_minimal // full block constructor
 
     // generating reflections are by subsystem real roots for |theta0|
     RootNbrSet pos_real =
-      integral_datum.positive_roots() & i_tab.real_roots(theta0);
+      integral_sys.positive_roots() & i_tab.real_roots(theta0);
     RootNbrList gen_root = rd.simpleBasis(pos_real);
     for (size_t i=0; i<y_hash.size(); ++i) // |y_hash| grows
     {
@@ -172,7 +197,8 @@ block_minimal::block_minimal // full block constructor
   KGBEltList Cayley_ys; Cayley_ys.reserve(0x100);
 
   BitMap x_seen(kgb.size());
-  x_seen.insert(z_start.x()); // the only value of |x| seen so far
+  highest_x = z_start.x();
+  x_seen.insert(highest_x); // the only value of |x| seen so far
 
   BlockElt next=0; // start at beginning of (growing) list of block elements
 
@@ -205,7 +231,7 @@ block_minimal::block_minimal // full block constructor
       unsigned int y_start=y_hash.size(); // new |y|s numbered from here up
 
       nblock_elt sample(first_x,y_hash[first_y].repr());
-      aux.cross_act(sample,s);
+      aux.cross_act(s,sample);
       bool new_cross = // whether cross action discovers unseen involution
 	not x_seen.isMember(sample.x());
 
@@ -215,7 +241,7 @@ block_minimal::block_minimal // full block constructor
 	for (unsigned int j=0; j<nr_y; ++j)
 	{
 	  nblock_elt z(first_x,y_hash[first_y+j].repr());
-	  aux.cross_act(z,s);
+	  aux.cross_act(s,z);
 	  cross_ys.push_back(y_hash.match(aux.pack_y(z)));
 	  assert(y_hash.size()== (new_cross ? old_size+j+1 : old_size));
 	  ndebug_use(old_size);
@@ -226,7 +252,7 @@ block_minimal::block_minimal // full block constructor
       {
 	BlockElt base_z = next+i*nr_y; // first element of R-packet
 	KGBElt n = x(base_z); // |n| is |x| value for R-packet
-	KGBElt s_x_n = kgb.cross(integral_datum.reflection(s),n);
+	KGBElt s_x_n = kgb.cross(integral_sys.reflection(s),n);
 	assert (new_cross == not x_seen.isMember(s_x_n)); // check consistency
 
 	// set the cross links for this |n| and all corresponding |y|s
@@ -249,9 +275,9 @@ block_minimal::block_minimal // full block constructor
 	    tab_s[base_z+j].cross_image = find_in(xy_hash,s_x_n,cross_ys[j]);
 
 	// compute component |s| of |info[z].descent|, for this |n|, all |y|s
-	KGBElt conj_n = kgb.cross(integral_datum.to_simple(s),n); // conjugate
+	KGBElt conj_n = kgb.cross(integral_sys.to_simple(s),n); // conjugate
 	bool any_Cayley=false; // is made |true| if a real parity case is found
-	const auto ids=integral_datum.simple(s);
+	const auto ids=integral_sys.simple(s);
 	switch(kgb.status(ids,conj_n))
 	{
 	case gradings::Status::Complex:
@@ -278,7 +304,7 @@ block_minimal::block_minimal // full block constructor
 	  for (unsigned int j=0; j<nr_y; ++j)
 	  {
 	    nblock_elt z(n,y_hash[first_y+j].repr()); // unconjugated element
-	    if (aux.is_real_nonparity(z,s))
+	    if (aux.is_real_nonparity(s,z))
 	      info[base_z+j].descent.set(s,DescentStatus::RealNonparity);
 	    else
 	    {
@@ -298,7 +324,7 @@ block_minimal::block_minimal // full block constructor
 	  continue; // if there were no valid Cayley links, we're done for |i|
 
 	KGBEltPair Cayleys = kgb.inverseCayley(ids,conj_n);
-	KGBElt ctx1 = kgb.cross(Cayleys.first,integral_datum.to_simple(s));
+	KGBElt ctx1 = kgb.cross(Cayleys.first,integral_sys.to_simple(s));
 
 	if (i==0) // whether in initial R-packet
 	{ // |any_Cayley| was independent of |x|; if so, do in first R-packet:
@@ -311,16 +337,16 @@ block_minimal::block_minimal // full block constructor
 	    if (descentValue(s,base_z+j) != DescentStatus::RealNonparity)
 	    {
 	      nblock_elt z(n,y_hash[first_y+j].repr());
-	      aux.do_down_Cayley(z,s); // anyway there is but a single |y| value
+	      aux.do_down_Cayley(s,z); // anyway there is but a single |y| value
 	      Cayley_ys.push_back(y_hash.match(aux.pack_y(z)));
 	    }
 
 	  if (new_Cayley) // then we need to create new R-packets
 	  {
 	    // complete a full (subsystem) fiber of x's over the new involution
-	    // using |integral_datum| imaginary cross actions
+	    // using |integral_sys| imaginary cross actions
 	    RootNbrSet pos_imag = // subsystem positive imaginary roots
-	      integral_datum.positive_roots() &
+	      integral_sys.positive_roots() &
 	      i_tab.imaginary_roots(kgb.inv_nr(ctx1));
 	    RootNbrList ib = rd.simpleBasis(pos_imag);
 
@@ -364,7 +390,7 @@ block_minimal::block_minimal // full block constructor
 	    if (Cayleys.second!=UndefKGB) // then double valued (type1)
 	    {
 	      KGBElt ctx2 =
-		kgb.cross(Cayleys.second,integral_datum.to_simple(s));
+		kgb.cross(Cayleys.second,integral_sys.to_simple(s));
 	      assert (x_seen.isMember(ctx2));
 	      target = find_in(xy_hash,ctx2,cty);
 	      tab_s[base_z+j].Cayley_image.second = target;
@@ -382,25 +408,241 @@ block_minimal::block_minimal // full block constructor
   // end of step 4
 
   highest_y=y_hash.size()-1; // set highest occurring |y| value, for |ysize|
-  reverse_length_and_sort(); // reorder block by increasing value of |x|
-  xy_hash.reconstruct(); // adapt to permutation of |info| underlying |xy_hash|
+  // reverse lengths; reorder by increasing length then value of |x|
+  sort(info.back().length,true);
 
-
+  compute_y_bits();
   // and look up which element matches the original input
-  entry_element = lookup(sr);
+  entry_element = lookup(srm);
 
-} // |block_minimal::block_minimal|
+} // |common_block::common_block|, full
 
+void common_block::compute_y_bits()
+{
+  y_bits.reserve(y_pool.size());
+  const InvolutionTable& i_tab = inner_class().involution_table();
+  const RatWeight gamma1_rho = gamma_mod_1 - rho(root_datum());
 
-BlockElt block_minimal::lookup(const StandardRepr& sr) const
-{ const auto x = sr.x();
+  // tabulate some |x| (in fact the first one) for every value |y|
+  std::vector<KGBElt> x_of_y(y_pool.size(),UndefKGB);
+  for (BlockElt z=0; z<size(); ++z)
+    if (x_of_y[y(z)]==UndefKGB)
+      x_of_y[y(z)]=x(z);
+
+  for (KGBElt y=0; y<y_pool.size(); ++y)
+  { KGBElt x=x_of_y[y];
+    assert(x!=UndefKGB); // since every |y| must have at least one matching |x|
+    InvolutionNbr i_x = rc.kgb().inv_nr(x);
+    RatWeight yrep = y_pool[y].repr().log_pi(false);
+    yrep -= i_tab.matrix(i_x)*yrep;
+    yrep /= 2; // now |yrep| is projected to the $-1$ eigenspace of $\theta$
+    const RatWeight lr = (gamma1_rho - yrep).normalize();
+    assert (lr.denominator()==1); // we are back in proper $X^*$ coset
+    const Weight lambda_rho(lr.numerator().begin(),lr.numerator().end());
+    y_bits.push_back(i_tab.y_pack(i_x,lambda_rho));
+  }
+}
+
+common_block::common_block // partial block constructor
+    (const repr::Rep_table& rt,
+     const repr::common_context& ctxt,
+     containers::sl_list<unsigned long>& elements,
+     const RatWeight& gamma_mod_1)
+  : Block_base(rootdata::integrality_rank(rt.root_datum(),gamma_mod_1))
+  , rc(rt)
+  , gamma_mod_1(gamma_mod_1) // already reduced
+  , integral_sys(SubSystem::integral(root_datum(),gamma_mod_1))
+  , y_bits()
+  , y_pool()
+  , y_hash(y_pool)
+  , xy_hash(info)
+  , extended(nullptr) // no extended block initially
+  , highest_x(0) // it won't be less than this; increased later
+  , highest_y(0) // defined when generation is complete
+{
+  info.reserve(elements.size());
+  const auto& kgb = rt.kgb();
+
+  Block_base::dd = // integral Dynkin diagram, converted from dual side
+    DynkinDiagram(integral_sys.cartanMatrix().transposed());
+
+  std::vector<containers::sl_list<TorusPart> > y_table
+    (inner_class().involution_table().size());
+  // every element of |y_table| is a list of |TorusPart| values of the same rank
+  // therefore, we can (and will) compare list elements and sort the lists
+  for (unsigned long elt : elements)
+  { const auto& srm = rt.srm(elt);
+    const KGBElt x = srm.x();
+    const TorusPart& y = srm.y();
+    if (x>highest_x)
+      highest_x=x;
+    auto& loc = y_table[kgb.inv_nr(x)];
+    auto it = std::find_if_not(loc.cbegin(),loc.cend(),
+			       [&y](const TorusPart& t) { return t<y; });
+    if (it==loc.end() or y<*it) // skip if |y| already present in the list
+      loc.insert(it,y);
+  }
+
+  const auto& i_tab = inner_class().involution_table();
+  for (InvolutionNbr i_x=y_table.size(); i_x-->0; )
+  {
+    highest_y += y_table[i_x].size();
+    for (TorusPart& y : y_table[i_x])
+    {
+      RatWeight gamma_lambda = rt.gamma_lambda(i_x,y,gamma_mod_1);
+      TorusElement t = y_values::exp_pi(gamma_lambda);
+      y_hash.match(i_tab.pack(t,i_x)); // enter this |y_entry| into |y_hash|
+    }
+  }
+  assert(y_pool.size()==highest_y);
+  -- highest_y; // one less than the number of distinct |y| values
+
+  elements.sort // pre-sort by |x| to ensure descents precede in setting lengths
+    ([&rt](unsigned long a, unsigned long b)
+          { return rt.srm(a).x()<rt.srm(b).x(); }
+     );
+
+  for (unsigned long elt : elements)
+  { const auto& srm=rt.srm(elt);
+    const KGBElt x=srm.x();
+    auto y = y_hash.find(i_tab.pack(rt.y_as_torus_elt(srm),kgb.inv_nr(x)));
+    assert(y!=y_hash.empty);
+    info.emplace_back(x,y); // leave descent status unset and |length==0| for now
+  }
+  xy_hash.reconstruct(); // we must do this before we use the |lookup| method
+
+  // allocate link fields with |UndefBlock| entries
+  data.assign(integral_sys.rank(),std::vector<block_fields>(elements.size()));
+
+  assert(info.size()==elements.size());
+  unsigned short max_length=0;
+  auto it = elements.cbegin();
+  for (BlockElt i=0; i<info.size(); ++i,++it)
+  {
+    EltInfo& z = info[i];
+    const auto srm_z = rt.srm(*it);
+    for (weyl::Generator s=0; s<integral_sys.rank(); ++s)
+    {
+      auto& tab_s = data[s];
+      const auto stat = ctxt.status(s,z.x);
+      switch (stat.first)
+      {
+      case gradings::Status::Complex:
+	{
+	  z.descent.set(s,stat.second
+			  ? DescentStatus::ComplexDescent
+			  : DescentStatus::ComplexAscent);
+	  if (stat.second) // set links both ways when seeing descent
+	  {
+	    BlockElt sz = lookup(ctxt.cross(s,srm_z));
+	    assert(sz!=UndefBlock);
+	    if (length(i)==0) // then this is the first descent for |i|
+	    {
+	      info[i].length=length(sz)+1;
+	      if (info[i].length>max_length)
+		max_length=info[i].length;
+	    }
+	    else
+	      assert(length(i)==length(sz)+1);
+	    assert(descentValue(s,sz)==DescentStatus::ComplexAscent);
+	    tab_s[i].cross_image = sz;
+	    tab_s[sz].cross_image = i;
+	  }
+	}
+	break;
+      case gradings::Status::Real:
+	{
+	  if (ctxt.is_parity(s,srm_z))
+	  {
+	    const auto srm_sz = ctxt.down_Cayley(s,srm_z);
+	    BlockElt sz = lookup(srm_sz);
+	    assert(sz!=UndefBlock);
+	    if (length(i)==0) // then this is the first descent for |i|
+	    {
+	      info[i].length=length(sz)+1;
+	      if (info[i].length>max_length)
+		max_length=info[i].length;
+	    }
+	    else
+	      assert(length(i)==length(sz)+1);
+	    tab_s[i].Cayley_image.first = sz; // first Cayley descent
+	    if (stat.second)
+	    {
+	      z.descent.set(s,DescentStatus::RealTypeI);
+	      tab_s[i].cross_image = i;
+	      assert(descentValue(s,sz)==DescentStatus::ImaginaryTypeI);
+	      tab_s[sz].Cayley_image.first = i; // single-valued Cayley ascent
+	      sz = lookup(ctxt.cross(s,srm_sz)); // move to other Cayley descent
+	      assert(sz!=UndefBlock);
+	      assert(descentValue(s,sz)==DescentStatus::ImaginaryTypeI);
+	      tab_s[i].Cayley_image.second = sz; // second Cayley descent
+	      tab_s[sz].Cayley_image.first = i; // single-valued Cayley ascent
+	    }
+	    else
+	    {
+	      z.descent.set(s,DescentStatus::RealTypeII);
+	      assert(descentValue(s,sz)==DescentStatus::ImaginaryTypeII);
+	      first_free_slot(tab_s[sz].Cayley_image) = i; // one of two ascents
+	      tab_s[i].cross_image = lookup(ctxt.cross(s,srm_z)); // maybe Undef
+	    }
+	  }
+	  else
+	  {
+	    z.descent.set(s,DescentStatus::RealNonparity);
+	    tab_s[i].cross_image = i;
+	  }
+	}
+	break;
+      case gradings::Status::ImaginaryCompact:
+	{
+	  z.descent.set(s,DescentStatus::ImaginaryCompact);
+	  tab_s[i].cross_image = i;
+	}
+	break;
+      case gradings::Status::ImaginaryNoncompact:
+	{
+	  if (stat.second)
+	  {
+	    z.descent.set(s,DescentStatus::ImaginaryTypeI);
+	    tab_s[i].cross_image = lookup(ctxt.cross(s,srm_z)); // maybe Undef
+	  }
+	  else
+	  {
+	    z.descent.set(s,DescentStatus::ImaginaryTypeII);
+	    tab_s[i].cross_image = i;
+	  }
+	}
+	break;
+      }
+    } // |for (s)|
+  } // |for (i)|
+
+  sort(max_length,false);  // sort by length, then |x|
+
+  // finally compute |y_bits| parallel to |y_table| backwards
+  y_bits.reserve(y_pool.size());
+  for (InvolutionNbr i_x=y_table.size(); i_x-->0; )
+    for (TorusPart& y : y_table[i_x])
+    {
+#ifndef NDEBUG
+      RatWeight gamma_lambda = rt.gamma_lambda(i_x,y,gamma_mod_1);
+      TorusElement t = y_values::exp_pi(gamma_lambda);
+      assert(y_hash.find(i_tab.pack(t,i_x))==y_bits.size());
+#endif
+      y_bits.push_back(y);
+    }
+
+} // |common_block::common_block|, partial
+
+BlockElt common_block::lookup(const repr::StandardReprMod& srm) const
+{ const auto x = srm.x();
   InvolutionNbr inv = rc.kgb().inv_nr(x);
-  const auto y_ent = involution_table().pack(rc.y_as_torus_elt(sr),inv);
+  const auto y_ent = involution_table().pack(rc.y_as_torus_elt(srm),inv);
   const auto y = y_hash.find(y_ent);
   return y==y_hash.empty ? UndefBlock // the value also known as |xy_hash.empty|
                          : xy_hash.find(EltInfo{x,y});
 }
-BlockElt block_minimal::lookup(KGBElt x, const RatWeight& gamma_lambda) const
+BlockElt common_block::lookup(KGBElt x, const RatWeight& gamma_lambda) const
 {
   const TorusElement t = y_values::exp_pi(gamma_lambda);
   const auto y_ent = involution_table().pack(t,rc.kgb().inv_nr(x));
@@ -409,30 +651,47 @@ BlockElt block_minimal::lookup(KGBElt x, const RatWeight& gamma_lambda) const
                          : xy_hash.find(EltInfo{x,y});
 }
 
+repr::StandardRepr common_block::sr (BlockElt z,const RatWeight& gamma) const
+{
+  const RatWeight gamma_rho = gamma-rho(root_datum());
+  const Weight lambda_rho = gamma_rho.integer_diff<int>(gamma_lambda(z));
+  return rc.sr_gamma(x(z),lambda_rho,gamma);
+}
+
+// find element in same common block with |x| and |y| parts twisted by |delta|
+// may return |UndefBlock|, but success does not mean any representative of the
+// $X^*$ coset for this block is actually |delta|-fixed (no such test done)
 BlockElt twisted
-  (const blocks::block_minimal& block, BlockElt z,
+  (const blocks::common_block& block, BlockElt z,
    const WeightInvolution& delta)
 {
   return block.lookup(block.context().kgb().twisted(block.x(z),delta)
 		     ,delta*block.gamma_lambda(z));
 }
 
-ext_gens block_minimal::fold_orbits(const WeightInvolution& delta) const
+ext_gens common_block::fold_orbits(const WeightInvolution& delta) const
 {
-  return rootdata::fold_orbits(integral_datum.pre_root_datum(),delta);
+  return rootdata::fold_orbits(integral_sys.pre_root_datum(),delta);
 }
 
-void block_minimal::reverse_length_and_sort()
+ext_block::ext_block& common_block::extended_block
+  (const WeightInvolution& delta)
 {
-  const unsigned max_length = info.back().length;
+  if (extended.get()==nullptr)
+    extended.reset(new ext_block::ext_block(*this,delta));
+  return *extended;
+}
 
-  const KGBElt x_lim=realGroup().KGB_size(); // limit for |x| values
+void common_block::sort(unsigned short max_length, bool reverse_length)
+{
+  const KGBElt x_lim=highest_x+1; // limit for |x| values
   std::vector<unsigned> value(size(),0u); // values to be ranked below
 
   for (BlockElt i=0; i<size(); ++i)
   { assert(length(i)<=max_length);
-    auto new_len = info[i].length = max_length-length(i); // reverse length
-    value[i]= new_len*x_lim+x(i); // length has priority over value of |x|
+    if (reverse_length)
+       info[i].length = max_length-length(i); // reverse length
+    value[i]= info[i].length*x_lim+x(i); // length has priority over value of |x|
   }
 
   Permutation ranks = // standardization permutation, to be used for reordering
@@ -447,7 +706,9 @@ void block_minimal::reverse_length_and_sort()
     ranks.permute(tab_s); // permute fields of |data[s]|
     for (BlockElt z=0; z<size(); ++z) // and update cross and Cayley links
     {
-      tab_s[z].cross_image = ranks[tab_s[z].cross_image];
+      BlockElt& sz = tab_s[z].cross_image;
+      if (sz!=UndefBlock)
+	sz = ranks[sz];
       BlockEltPair& p=tab_s[z].Cayley_image;
       if (p.first!=UndefBlock)
       {
@@ -458,174 +719,410 @@ void block_minimal::reverse_length_and_sort()
     } // |for z|
   } // |for s|
 
-} // |block_minimal::reverse_length_and_sort|
-
-bool block_minimal::operator != (const block_minimal& other) const
-{
-  if (realGroup()!=other.realGroup())
-    return true;
-  if (integral_datum.positive_roots()!=other.integral_datum.positive_roots())
-    return true;
-  return x(0)!=other.x(0) or gamma_lambda(0)!=other.gamma_lambda(0);
-}
-
-size_t hash_value (const repr::Rep_context& rc, const RootNbrSet& ipr,
-		   KGBElt x, const RatWeight& gamma_lambda)
-{
-  const InvolutionTable& i_tab = rc.innerClass().involution_table();
-  const auto& kgb = rc.kgb();
-  const InvolutionNbr i_x = kgb.inv_nr(x);
-  const auto fp =
-    i_tab.fingerprint(y_values::exp_pi(gamma_lambda),i_x); // reduced
-  size_t result=x;
-  for (auto n_entry : fp.numerator())
-    result = 5*result+n_entry;
-  result = 7*result + fp.denominator();
-
-  unsigned n=0;
-  do result ^= ipr.range(n,constants::longBits);
-  while ((n+=constants::longBits)<ipr.capacity() and (result*=17,true));
-
-  return result;
-} // |hash_value|
-
-size_t block_hash_table::lookup
-  (const RootNbrSet& ipr,KGBElt x, const RatWeight& gamma_lambda) const
-{
-  size_t code = hash_value(rc,ipr,x,gamma_lambda) & (hash_table.size()-1);
-  auto* e = &hash_table[code];
-  while (e->block!=nullptr and
-	 (e->block->integral_subsystem().positive_roots()!=ipr or
-	  e->block->x(e->z)!=x or
-	  e->block->gamma_lambda(e->z)!=gamma_lambda
-	))
-  {
-    if (++code == hash_table.size())
-      code=0;
-    e = &hash_table[code];
-  }
-
-  return e->block==nullptr ? empty : code;
-}
-
-const block_hash_table::record
-  block_hash_table::empty_record { nullptr, UndefBlock };
-const float block_hash_table::sparse_factor = 1.25;
-
-void block_hash_table::add_block(const block_minimal& block)
-{
-  assert(&block.context()==&rc);
-  const auto ipr = block.integral_subsystem().positive_roots();
-
-  size_t needed = (size_t)((count+block.size())*sparse_factor);
-  size_t size = hash_table.size();
-  while (needed>size)
-    size*=2;
-  if (size!=hash_table.size())
-  { // then expand |hash_table| into new vector of size |size|
-    std::vector<record> new_table(size,empty_record);
-    for (auto it=hash_table.begin(); it!=hash_table.end(); ++it)
-    {
-      const auto z = it->z;
-      size_t code =
-	hash_value(rc,ipr,it->block->x(z),it->block->gamma_lambda(z)) & (size-1);
-      while (new_table[code].block!=nullptr)
-	if (++code==size)
-	  code=0;
-      new_table[code] = *it; // copy entry to new free slot;
-    }
-    hash_table=new_table; // replace by expanded table
-  }
-
-  for (BlockElt z=0; z<block.size(); ++z)
-  {
-    size_t code = hash_value(rc,ipr,block.x(z),block.gamma_lambda(z)) & (size-1);
-    while (hash_table[code].block!=nullptr)
-      if (++code==size)
-	code=0;
-    hash_table[code].block = &block;
-    hash_table[code].z=z;
-  }
-}
+  xy_hash.reconstruct(); // adapt to permutation of |info| underlying |xy_hash|
+} // |common_block::sort|
 
 } // |namespace blocks|
 
-namespace ext_block
+namespace repr {
+
+// |Ext_rep_context| methods
+
+Ext_rep_context::Ext_rep_context
+  (const repr::Rep_context& rc, const WeightInvolution& delta)
+: Rep_context(rc), d_delta(delta) {}
+
+Ext_rep_context::Ext_rep_context (const repr::Rep_context& rc)
+: Rep_context(rc), d_delta(rc.inner_class().distinguished()) {}
+
+// |common_context| methods
+
+common_context::common_context (RealReductiveGroup& G, const SubSystem& sub)
+: Rep_context(G)
+, integr_datum(sub.pre_root_datum())
+, sub(sub)
+{} // |common_context::common_context|
+
+struct ulong_entry
+{ unsigned long val;
+  ulong_entry(unsigned long n) : val(n) {}
+  typedef std::vector<ulong_entry> Pooltype;
+  bool operator != (ulong_entry x) const { return val!=x.val;  }
+  size_t hashCode(size_t modulus) const { return (5*val)&(modulus-1); }
+};
+
+// |Rep_table| helper class
+class Rep_table::Bruhat_generator
 {
-  // Declarations of some functions re-used from ext_block.cpp
+  Rep_table& parent;
+  const common_context& ctxt;
+  std::vector<ulong_entry> pool;
+  HashTable<ulong_entry,BlockElt> local_h; // hash table, avoid name |hash|
+  std::vector<containers::simple_list<unsigned long> > predecessors;
+public:
+  Bruhat_generator (Rep_table* caller, const common_context& ctxt)
+    : parent(*caller),ctxt(ctxt), pool(), local_h(pool), predecessors() {}
 
-bool in_L_image(Weight beta,WeightInvolution&& A);
-bool in_R_image(WeightInvolution&& A,Coweight b);
-unsigned int scent_count(DescValue v);
-Coweight ell (const KGB& kgb, KGBElt x);
-
-  // Declarations of some local functions
-WeylWord fixed_conjugate_simple (const context_minimal& c, RootNbr& alpha);
-bool same_standard_reps (const paramin& E, const paramin& F);
-bool same_sign (const paramin& E, const paramin& F);
-inline bool is_default (const paramin& E)
-  { return same_sign(E,paramin(E.ctxt,E.x(),E.gamma_lambda)); }
-
-void z_align (const paramin& E, paramin& F, bool extra_flip);
-void z_align (const paramin& E, paramin& F, bool extra_flip, int t_mu);
-paramin complex_cross(const ext_gen& p, paramin E);
-int level_a (const paramin& E, const Weight& shift, RootNbr alpha);
-DescValue star (const paramin& E, const ext_gen& p,
-		containers::sl_list<paramin>& links);
-
-bool is_descent (const ext_gen& kappa, const paramin& E);
-weyl::Generator first_descent_among
-  (RankFlags singular_orbits, const ext_gens& orbits, const paramin& E);
+  bool in_interval (unsigned long n) const
+  { return local_h.find(n)!=local_h.empty; }
+  const containers::simple_list<unsigned long>& covered(unsigned long n) const
+  { return predecessors.at(local_h.find(n)); }
+  containers::simple_list<unsigned long> block_below(const StandardReprMod& srm);
+}; // |class Rep_table::Bruhat_generator|
 
 
-  // |context_minimal| methods and functions
+// |Rep_table| methods
+blocks::common_block& Rep_table::add_block_below
+  (const common_context& ctxt, const StandardReprMod& srm, BitMap* subset)
+{
+  assert(mod_hash.find(srm)==mod_hash.empty); // otherwise don't call us
+  Bruhat_generator gen(this,ctxt);
+  const auto prev_size = mod_pool.size(); // limit of previously known elements
+  containers::sl_list<unsigned long> elements(gen.block_below(srm));
 
-const RootDatum& context_minimal::rootDatum() const
-  { return rc().rootDatum(); }
-const InnerClass& context_minimal::innerClass () const
-  { return rc().innerClass(); }
-RealReductiveGroup& context_minimal::realGroup () const
-  { return rc().realGroup(); }
-const RatCoweight& context_minimal::g_rho_check() const
-  { return realGroup().g_rho_check(); }
-RatCoweight context_minimal::g() const { return realGroup().g(); }
+  containers::sl_list<std::pair<blocks::common_block*,
+				containers::sl_list<BlockElt> > > sub_blocks;
+  for (auto z : elements)
+    if (z<prev_size)
+    {
+      const auto block_p=place[z].first;
+      const BlockElt z_rel = place[z].second;
+      auto it = sub_blocks.begin();
+      for ( ; not sub_blocks.at_end(it); ++it)
+	if (it->first==block_p) // sub-block already known
+	{
+	  it->second.push_back(z_rel);
+	  break;
+	}
+      if (sub_blocks.at_end(it)) // then we have a fresh sub-block
+	sub_blocks.push_back
+	  (std::make_pair(block_p,containers::sl_list<BlockElt>{z_rel}));
+    }
 
-context_minimal::context_minimal
-  (const repr::Rep_context& rc, const WeightInvolution& delta,
-   const SubSystem& sub)
-    : d_rc(rc)
+  for (auto& pair : sub_blocks)
+  {
+    if (pair.first->size() > pair.second.size()) // inclomplete inclusion
+    {
+      const auto& block = *pair.first;
+      pair.second.sort(); // following loop requires increase
+      auto it = pair.second.begin();
+      for (BlockElt z=0; z<block.size(); ++z)
+	if (not it.at_end() and *it==z)
+	  ++it; // skip element already in Bruhat interval
+	else // join element outside Bruhat interval to new block
+	  elements.push_back(mod_hash.find(block.representative(z)));
+    }
+    // since all |block| elements are incorporated
+    pair.second.clear(); // forget which were in the Bruhat interval
+  }
+
+  std::unique_ptr<blocks::common_block> new_block_p
+    (new blocks::common_block (*this,ctxt,elements,srm.gamma_mod1()));
+  // the constructor rearranges |elements| to the order in the block
+  auto& block = *new_block_p;
+
+  block_list.push_back(std::move(new_block_p)); // insert block
+
+  *subset=BitMap(block.size());
+  std::vector<Poset::EltList> Hasse_diagram(block.size());
+  for (auto z : elements)
+  {
+    BlockElt i_z = block.lookup(this->srm(z)); // index of |z| in our new block
+    auto& row = Hasse_diagram[i_z];
+    if (gen.in_interval(z)) // these have their covered's in |gen|
+    {
+      subset->insert(i_z); // mark |z| as element ot the Bruhat interval
+      const auto& cover = gen.covered(z);
+      const auto len = atlas::containers::length(cover);
+      row.reserve(len);
+      for (auto it=cover.begin(); not cover.at_end(it); ++it)
+      {
+	const BlockElt y = block.lookup(this->srm(*it));
+	assert(y!=UndefBlock);
+	row.push_back(y);
+      }
+    }
+    else // elements in an old block, outside Bruhat interval
+    { // get covered elements from stored Bruhat order of old block
+      auto& old_block = *place[z].first;
+      const BlockElt z_rel = place[z].second;
+      const auto& covered = old_block.bruhatOrder().hasse(z_rel);
+      const auto len = covered.size();
+      row.reserve(len);
+      for (auto y_rel : covered)
+      {
+	const BlockElt y = block.lookup(old_block.representative(y_rel));
+	assert(y!=UndefBlock);
+	row.push_back(y);
+      }
+    }
+  }
+  block.set_Bruhat(std::move(Hasse_diagram));
+
+  // TODO: should do block merge things here
+
+  for (const auto& pair : sub_blocks) // remove absorbed blocks
+  {
+    auto block_p = pair.first;
+    auto it = std::find_if
+      (block_list.begin(),block_list.end(),
+       [block_p](const std::unique_ptr<blocks::common_block>& p)
+       { return p.get()==block_p; } );
+    if (it!=block_list.end())
+      block_list.erase(it);
+  }
+
+  static const std::pair<blocks::common_block*, BlockElt>
+    empty(nullptr,UndefBlock);
+  place.resize(mod_pool.size(),empty); // extend with empty slots, filled next
+
+  for (const auto& z : elements)
+  {
+    const StandardReprMod& srm = this->srm(z);
+    place[z] = std::make_pair(&block,block.lookup(srm)); // extend or replace
+  }
+  return block;
+} // |Rep_table::add_block_below|
+
+
+containers::simple_list<unsigned long> Rep_table::Bruhat_generator::block_below
+  (const StandardReprMod& srm)
+{
+  auto& hash=parent.mod_hash;
+  { const auto h=hash.find(srm);
+    if (h!=hash.empty) // then |srm| was seen earlier
+    {
+      unsigned hh = local_h.find(h);
+      if (hh!=local_h.empty) // then we visited this element in current recursion
+	return containers::simple_list<unsigned long>(); // nothing new
+    }
+  }
+  const auto rank = ctxt.id().semisimpleRank();
+  containers::sl_list<unsigned long> pred; // list of elements covered by z
+  // invariant: |block_below| has been called for every element in |pred|
+
+  weyl::Generator s; // a complex or real type 1 descent to be found, if exists
+  containers::sl_list<containers::simple_list<unsigned long> > results;
+  for (s=0; s<rank; ++s)
+  {
+    std::pair<gradings::Status::Value,bool> stat=ctxt.status(s,srm.x());
+    if (not stat.second)
+      continue; // ignore imaginary, complex ascent or real (potentially) type 2
+    if (stat.first==gradings::Status::Complex)
+    { // complex descent
+      const StandardReprMod sz = ctxt.cross(s,srm);
+      results.push_back(block_below(sz)); // recursion
+      pred.push_back(hash.find(sz)); // must call |hash.find| after |block_below|
+      break; // we shall add $s$-ascents of predecessors of |sz| below
+    }
+    else if (stat.first==gradings::Status::Real and ctxt.is_parity(s,srm))
+    { // |z| has a type 1 real descent at |s|
+      const StandardReprMod sz0 = ctxt.down_Cayley(s,srm);
+      const StandardReprMod sz1 = ctxt.cross(s,sz0);
+      results.push_back(block_below(sz0)); // recursion
+      results.push_back(block_below(sz1)); // recursion
+      pred.push_back(hash.find(sz0)); // call |hash.find| after |block_below|
+      pred.push_back(hash.find(sz1));
+      break; // we shall add $s$-ascents of predecessors of |sz_inx| below
+    } // |if (real type 1)|
+
+  } // |for (s)|
+
+  // if above loop performed a |break| it found complex or real type 1 descent
+  if (s==rank) // otherwise, the only descents are real type 2, if any
+  {
+    while (s-->0) // we reverse the loop just because |s==rank| already
+      if (ctxt.status(s,srm.x()).first==gradings::Status::Real and
+	  ctxt.is_parity(s,srm))
+      {
+	const auto sz = ctxt.down_Cayley(s,srm);
+	results.push_back(block_below(sz)); // recursion
+	pred.push_back(hash.find(sz));
+      }
+  }
+  else // a complex or real type 1 descent |sz==pred.front()| for |s| was found
+  { // add |s|-ascents for elements covered by |sz|
+    const auto pred_sz = predecessors.at(local_h.find(pred.front()));
+    for (auto it = pred_sz.begin(); not pred.at_end(it); ++it)
+    {
+      const auto p = *it; // sequence number of a predecessor of |sz|
+      const StandardReprMod zp = parent.mod_pool[p];
+      std::pair<gradings::Status::Value,bool> stat=ctxt.status(s,zp.x());
+      switch (stat.first)
+      {
+      case gradings::Status::Real: case gradings::Status::ImaginaryCompact:
+	break; // nothing to do without ascent
+      case gradings::Status::Complex:
+	if (not stat.second) // complex ascent
+	{
+	  const auto szp = ctxt.cross(s,zp);
+	  results.push_back(block_below(szp)); // recursion
+	  pred.push_back(hash.find(szp));
+	} // |if(complex ascent)
+	break;
+      case gradings::Status::ImaginaryNoncompact:
+	{
+	  const auto szp = ctxt.up_Cayley(s,zp);
+	  results.push_back(block_below(szp)); // recursion
+	  pred.push_back(hash.find(szp));
+	  if (not stat.second) // then nci type 2
+	  {
+	    const auto szp1 = ctxt.cross(s,szp);
+	    results.push_back(block_below(szp1)); // recursion
+	    pred.push_back(hash.find(szp1));
+	  }
+	}
+	break;
+      } // |switch(status(s,conj_x))|
+    } // |for (it)|
+  } // |if (s<rank)|
+
+  const auto h=hash.match(srm); // finally generate sequence number for |srm|
+  { // merge all |results| together and remove duplicates
+    results.push_front(containers::simple_list<unsigned long> {h} );
+    while (results.size()>1)
+    {
+      auto it=results.begin();
+      auto first = std::move(*it);
+      first.merge(std::move(*++it));
+      results.erase(results.begin(),++it);
+      first.unique();
+      results.push_back(std::move(first));
+    }
+  }
+  unsigned hh = local_h.match(h); // local sequence number for |srm|
+  assert(hh==predecessors.size()); ndebug_use(hh);
+  predecessors.push_back(pred.undress()); // store |pred| at |hh|
+  return results.front();
+} // |Rep_table::Bruhat_generator::block_below|
+
+std::pair<gradings::Status::Value,bool>
+  common_context::status(weyl::Generator s, KGBElt x) const
+{
+  const auto& conj = sub.to_simple(s); // word in full system
+  KGBElt conj_x = kgb().cross(conj,x);
+  const auto t=sub.simple(s);
+  const auto stat = kgb().status(t,conj_x);
+  return std::make_pair(kgb().status(t,conj_x),
+			stat==gradings::Status::Real
+			? kgb().isDoubleCayleyImage(t,conj_x) // real type 1
+			: stat==gradings::Status::Complex
+			? kgb().isDescent(t,conj_x)
+			: conj_x!=kgb().cross(t,conj_x)); // nc imaginary type 1
+}
+
+StandardReprMod common_context::cross
+    (weyl::Generator s, const StandardReprMod& z) const
+{
+  const auto& refl = sub.reflection(s); // reflection word in full system
+  const KGBElt new_x = kgb().cross(refl,z.x());
+  RatWeight gamma_lambda = this->gamma_lambda(z);
+
+  const auto& i_tab = inner_class().involution_table();
+  RootNbrSet pos_neg = pos_to_neg(root_datum(),refl);
+  pos_neg &= i_tab.real_roots(kgb().inv_nr(z.x())); // only real roots for |z|
+  gamma_lambda -= root_sum(root_datum(),pos_neg); // correction for $\rho_r$'s
+  integr_datum.simple_reflect(s,gamma_lambda.numerator()); // then reflect
+  return repr::StandardReprMod::build(*this,z.gamma_mod1(),new_x,gamma_lambda);
+}
+
+StandardReprMod common_context::down_Cayley
+    (weyl::Generator s, const StandardReprMod& z) const
+{
+  assert(is_parity(s,z)); // which also asserts that |z| is real for |s|
+  const auto& conj = sub.to_simple(s); // word in full system
+  KGBElt conj_x = kgb().cross(conj,z.x());
+  conj_x = kgb().inverseCayley(sub.simple(s),conj_x).first;
+  const auto new_x = kgb().cross(conj_x,conj);
+  RatWeight gamma_lambda = this->gamma_lambda(z);
+
+  const auto& i_tab = inner_class().involution_table();
+  RootNbrSet pos_neg = pos_to_neg(root_datum(),conj);
+  RootNbrSet real_flip = i_tab.real_roots(kgb().inv_nr(z.x()));
+  real_flip ^= i_tab.real_roots(kgb().inv_nr(new_x));
+  pos_neg &= real_flip; // posroots that change real status and map to negative
+  gamma_lambda += root_sum(root_datum(),pos_neg); // correction of $\rho_r$'s
+  return repr::StandardReprMod::build(*this,z.gamma_mod1(),new_x,gamma_lambda);
+}
+
+bool common_context::is_parity
+    (weyl::Generator s, const StandardReprMod& z) const
+{
+  const auto& i_tab = inner_class().involution_table();
+  const auto& real_roots = i_tab.real_roots(kgb().inv_nr(z.x()));
+  assert(real_roots.isMember(sub.parent_nr_simple(s)));
+  const Coweight& alpha_hat = integr_datum.simpleCoroot(s);
+  const int eval = this->gamma_lambda(z).dot(alpha_hat);
+  const int rho_r_corr = alpha_hat.dot(root_datum().twoRho(real_roots))/2;
+  return (eval+rho_r_corr)%2!=0;
+}
+
+StandardReprMod common_context::up_Cayley
+    (weyl::Generator s, const StandardReprMod& z) const
+{
+  const auto& conj = sub.to_simple(s); // word in full system
+  KGBElt conj_x = kgb().cross(conj,z.x());
+  conj_x = kgb().cayley(sub.simple(s),conj_x);
+  const auto new_x = kgb().cross(conj_x,conj);
+  RatWeight gamma_lambda = this->gamma_lambda(z);
+
+  const auto& i_tab = inner_class().involution_table();
+  const RootNbrSet& upstairs_real_roots = i_tab.real_roots(kgb().inv_nr(new_x));
+  RootNbrSet real_flip = upstairs_real_roots;
+  real_flip ^= i_tab.real_roots(kgb().inv_nr(z.x())); // remove downstairs reals
+
+  RootNbrSet pos_neg = pos_to_neg(root_datum(),conj);
+  pos_neg &= real_flip; // posroots that change real status and map to negative
+  gamma_lambda += root_sum(root_datum(),pos_neg); // correction of $\rho_r$'s
+
+  // correct in case the parity condition fails for our raised |gamma_lambda|
+  const Coweight& alpha_hat = integr_datum.simpleCoroot(s);
+  const int rho_r_corr = // integer since alpha is among |upstairs_real_roots|
+    alpha_hat.dot(root_datum().twoRho(upstairs_real_roots))/2;
+  const int eval = gamma_lambda.dot(alpha_hat);
+  if ((eval+rho_r_corr)%2==0) // parity condition says it should be 1
+    gamma_lambda += RatWeight(integr_datum.root(s),2); // add half-alpha
+
+  return repr::StandardReprMod::build(*this,z.gamma_mod1(),new_x,gamma_lambda);
+}
+
+
+Weight common_context::to_simple_shift
+  (InvolutionNbr theta, InvolutionNbr theta_p, RootNbrSet S) const
+{ const InvolutionTable& i_tab = inner_class().involution_table();
+  S &= (i_tab.real_roots(theta) ^i_tab.real_roots(theta_p));
+  return root_sum(root_datum(),S);
+}
+
+
+Ext_common_context::Ext_common_context
+  (RealReductiveGroup& G, const WeightInvolution& delta, const SubSystem& sub)
+    : repr::common_context(G,sub)
     , d_delta(delta)
-    , integr_datum(sub.pre_root_datum())
-    , sub(sub)
-    , pi_delta(rc.rootDatum().rootPermutation(d_delta))
+    , pi_delta(G.root_datum().rootPermutation(delta))
     , delta_fixed_roots(fixed_points(pi_delta))
     , twist()
-    , l_shifts (integr_datum.semisimpleRank())
+    , l_shifts(id().semisimpleRank())
 {
-  const RootDatum& rd = rc.rootDatum();
+  const RootDatum& rd = root_datum();
   for (weyl::Generator s=0; s<rd.semisimpleRank(); ++s)
     twist[s] = rd.simpleRootIndex(delta_of(rd.simpleRootNbr(s)));
 
   // the reflections for |E.l| pivot around |g_rho_check()|
   const RatCoweight& g_rho_check = this->g_rho_check();
   for (unsigned i=0; i<l_shifts.size(); ++i)
-    l_shifts[i] = -g_rho_check.dot(integr_datum.simpleRoot(i));
-}
+    l_shifts[i] = -g_rho_check.dot(id().simpleRoot(i));
+} // |Ext_common_context::Ext_common_context|
 
-bool context_minimal::is_very_complex (InvolutionNbr theta, RootNbr alpha) const
-{ const auto& i_tab = innerClass().involution_table();
-  const auto& rd = rootDatum();
+
+bool Ext_common_context::is_very_complex
+  (InvolutionNbr theta, RootNbr alpha) const
+{ const auto& i_tab = inner_class().involution_table();
+  const auto& rd = root_datum();
   assert (rd.is_posroot(alpha)); // this is a precondition
   auto image = i_tab.root_involution(theta,alpha);
   make_positive(rd,image);
   return image!=alpha and image!=delta_of(alpha);
-}
-
-Weight context_minimal::to_simple_shift
-  (InvolutionNbr theta, InvolutionNbr theta_p, RootNbrSet S) const
-{ const InvolutionTable& i_tab = innerClass().involution_table();
-  S &= (i_tab.real_roots(theta) ^i_tab.real_roots(theta_p));
-  return root_sum(rootDatum(),S);
 }
 
 /*
@@ -638,19 +1135,53 @@ Weight context_minimal::to_simple_shift
   This comes from an action of |delta| on a certain top wedge product of
   root spaces, and the formula below tells whether that action is by $-1$.
 */
-bool context_minimal::shift_flip
+bool Ext_common_context::shift_flip
   (InvolutionNbr theta, InvolutionNbr theta_p, RootNbrSet S) const
 { S.andnot(delta_fixed()); // $\delta$-fixed roots won't contribute
 
   unsigned count=0; // will count 2-element |delta|-orbit elements
   for (auto it=S.begin(); it(); ++it)
     if (is_very_complex(theta,*it) != is_very_complex(theta_p,*it) and
-	not rootDatum().sumIsRoot(*it,delta_of(*it)))
+	not root_datum().sumIsRoot(*it,delta_of(*it)))
       ++count;
 
   assert(count%2==0); // since |pos_to_neg| is supposed to be $\delta$-stable
   return count%4!=0;
 }
+
+} // |namespace repr|
+
+namespace ext_block
+{
+  // Declarations of some functions re-used from ext_block.cpp
+
+bool in_L_image(Weight beta,WeightInvolution&& A);
+bool in_R_image(WeightInvolution&& A,Coweight b);
+unsigned int scent_count(DescValue v);
+Coweight ell (const KGB& kgb, KGBElt x);
+
+  // Declarations of some local functions
+  WeylWord fixed_conjugate_simple
+    (const repr::Ext_common_context& c, RootNbr& alpha);
+bool same_standard_reps (const paramin& E, const paramin& F);
+bool same_sign (const paramin& E, const paramin& F);
+inline bool is_default (const paramin& E)
+  { return same_sign(E,paramin(E.ctxt,E.x(),E.gamma_lambda)); }
+
+void z_align (const paramin& E, paramin& F, bool extra_flip);
+void z_align (const paramin& E, paramin& F, bool extra_flip, int t_mu);
+paramin complex_cross(const repr::Ext_common_context& ctxt,
+		      const ext_gen& p, paramin E);
+int level_a (const paramin& E, const Weight& shift, RootNbr alpha);
+DescValue star (const repr::Ext_common_context& ctxt,
+		const paramin& E, const ext_gen& p,
+		containers::sl_list<paramin>& links);
+
+bool is_descent
+  (const repr::Ext_common_context& ctxt, const ext_gen& kappa, const paramin& E);
+weyl::Generator first_descent_among
+  (const repr::Ext_common_context& ctxt, RankFlags singular_orbits,
+   const ext_gens& orbits, const paramin& E);
 
 
 /* Try to conjugate |alpha| by product of folded-generators for the (full)
@@ -661,8 +1192,9 @@ bool context_minimal::shift_flip
    of the simple roots in its component of the root system is). In this case
    |alpha| is left as that non simple root, and the result conjugates to it.
  */
-WeylWord fixed_conjugate_simple (const context_minimal& ctxt, RootNbr& alpha)
-{ const RootDatum& rd = ctxt.innerClass().rootDatum();
+  WeylWord fixed_conjugate_simple
+    (const repr::Ext_common_context& ctxt, RootNbr& alpha)
+{ const RootDatum& rd = ctxt.root_datum();
 
   WeylWord result;
   while (not rd.is_simple_root(alpha)) // also |break| halfway is possible
@@ -693,41 +1225,26 @@ WeylWord fixed_conjugate_simple (const context_minimal& ctxt, RootNbr& alpha)
   // |paramin| methods and functions
 
 const WeightInvolution& paramin::theta () const
- { return ctxt.innerClass().matrix(tw); }
+ { return ctxt.inner_class().matrix(tw); }
 
 void validate(const paramin& E)
 {
 #ifndef NDEBUG // make sure this is a no-op when debugging is disabled
-  const auto& i_tab = E.rc().innerClass().involution_table();
+  const auto& i_tab = E.ctxt.inner_class().involution_table();
   const auto& theta = i_tab.matrix(E.tw);
   const auto& delta = E.ctxt.delta();
   assert(delta*theta==theta*delta);
-  const Weight symm = E.gamma_lambda.integer_diff<int>(delta*E.gamma_lambda);
-  assert(symm == (1-theta)*E.tau);
+  const Weight diff = E.gamma_lambda.integer_diff<int>(delta*E.gamma_lambda);
+  assert(diff == (1-theta)*E.tau);
   assert((delta-1).right_prod(E.l)==(theta+1).right_prod(E.t));
   assert(((E.ctxt.g_rho_check()-E.l)*(1-theta)).numerator().isZero());
   assert(((theta+1)*E.gamma_lambda).numerator().isZero());
 #endif
 }
 
-paramin::paramin
-  (const context_minimal& ec,
-   KGBElt x, const RatWeight& gamma_lambda, bool flipped)
-  : ctxt(ec)
-  , tw(ec.realGroup().kgb().involution(x))
-  , l(ell(ec.realGroup().kgb(),x))
-  , gamma_lambda(gamma_lambda)
-  , tau(matreduc::find_solution
-	(1-theta(), gamma_lambda.integer_diff<int>(delta()*gamma_lambda)))
-  , t(matreduc::find_solution
-	(theta().transposed()+1,(delta()-1).right_prod(l)))
-  , flipped(flipped)
-{
-  validate(*this);
-}
 
 paramin::paramin
-  (const context_minimal& ec, const TwistedInvolution& tw,
+(const repr::Ext_rep_context& ec, const TwistedInvolution& tw,
    RatWeight gamma_lambda, Weight tau, Coweight l, Coweight t, bool flipped)
   : ctxt(ec), tw(tw)
   , l(std::move(l))
@@ -740,16 +1257,87 @@ paramin::paramin
 }
 
 
+// contructor used for default extension once |x| and |gamma_lamba| are chosen
+paramin::paramin
+(const repr::Ext_rep_context& ec,
+   KGBElt x, const RatWeight& gamma_lambda, bool flipped)
+  : ctxt(ec)
+  , tw(ec.real_group().kgb().involution(x)) // now computing |theta()| is valid
+  , l(ell(ec.real_group().kgb(),x))
+  , gamma_lambda(gamma_lambda)
+  , tau(matreduc::find_solution
+	(1-theta(), gamma_lambda.integer_diff<int>(delta()*gamma_lambda)))
+  , t(matreduc::find_solution
+	(theta().transposed()+1,(delta()-1).right_prod(l)))
+  , flipped(flipped)
+{
+  validate(*this);
+}
+
+// build a default extended parameter for |sr| in the context |ec|
+/*
+  Importantly, this does not use |sr.gamma()| otherwise than for asserting its
+  $\delta$-stability: the same default is used in |common_block| for an entire
+  family of blocks, so dependence on |gamma| must be limited to dependence on
+  its reduction modulo 1. Even though |gamma_lambda| is computed at the non
+  $\delta$-fixed |srm.gamma_mod1()|, it is also (due to the way |mod_reduce|
+  works) a proper value of |gamma_lambda| at |sr|, so |(1-delta)*gamma_lambda|,
+  gives a valid value for the equation of which |tau| est une solution. However
+  |gamma_lambda| may be a different representative than |rc.gamma_lambda(sr)|,
+  so don't use that latter: it would give an undesired dependence on |gamma|.
+*/
+paramin paramin::default_extend
+(const repr::Ext_rep_context& ec, const repr::StandardRepr& sr)
+{
+  assert(((1-ec.delta())*sr.gamma().numerator()).isZero());
+
+  auto srm =  repr::StandardReprMod::mod_reduce(ec,sr);
+  // get default representative at |gamma%1|, normalised
+  auto gamma_lambda=ec.gamma_lambda(srm);
+  return paramin(ec,sr.x(),gamma_lambda);
+}
+
+paramin& paramin::operator= (const paramin& p)
+{ assert(&ctxt==&p.ctxt); // assignment should remain in the same context
+  tw=p.tw;
+  l=p.l; gamma_lambda=p.gamma_lambda; tau=p.tau; t=p.t;
+  flipped=p.flipped;
+  return *this;
+}
+paramin& paramin::operator= (paramin&& p)
+{ assert(&ctxt==&p.ctxt); // assignment should remain in the same context
+  tw=std::move(p.tw);
+  l=std::move(p.l); gamma_lambda=std::move(p.gamma_lambda);
+  tau=std::move(p.tau); t=std::move(p.t);
+  flipped=p.flipped;
+  return *this;
+}
+
+
+KGBElt paramin::x() const
+{ TitsElt a(ctxt.inner_class().titsGroup(),TorusPart(l),tw);
+  return rc().kgb().lookup(a);
+}
+
+repr::StandardRepr paramin::restrict(const RatWeight& gamma) const
+{
+  const RatWeight gamma_rho = gamma-rho(rc().root_datum());
+  const auto lambda_rho = gamma_rho.integer_diff<int>(gamma_lambda);
+  return rc().sr_gamma(x(),lambda_rho,gamma);
+}
+
+
 // whether |E| and |F| lie over equivalent |StandardRepr| values
 bool same_standard_reps (const paramin& E, const paramin& F)
 {
   if (&E.ctxt!=&F.ctxt)
-  { if (&E.ctxt.innerClass()!=&F.ctxt.innerClass())
+  { if (&E.ctxt.inner_class()!=&F.ctxt.inner_class())
       throw std::runtime_error
 	("Comparing extended parameters from different inner classes");
     if (E.delta()!=F.delta() or E.ctxt.g_rho_check()!=F.ctxt.g_rho_check())
       return false;
-  } // otherwise there might still be a match, so fall through
+    // otherwise (contexts differ, but agree on vitals), match could still occur
+  } // so fall through
   return E.theta()==F.theta()
     and in_R_image(E.theta()+1,E.l-F.l)
     and in_L_image(E.gamma_lambda.integer_diff<int>(F.gamma_lambda),E.theta()-1);
@@ -795,12 +1383,13 @@ void z_align (const paramin& E, paramin& F, bool extra_flip, int t_mu)
   (for |l|) the same thing with |rho_check_imaginary|. This is done by the
   "correction" terms below.
  */
-paramin complex_cross(const ext_gen& p, paramin E) // by-value for |E|, modified
-{ const RootDatum& rd = E.rc().rootDatum();
-  const auto& ec = E.ctxt;
-  const RootDatum& id = ec.id();
-  const InvolutionTable& i_tab = E.rc().innerClass().involution_table();
-  auto &tW = E.rc().twistedWeylGroup(); // caution: |p| refers to integr. datum
+paramin complex_cross(const repr::Ext_common_context& ctxt,
+		      const ext_gen& p, paramin E) // by-value for |E|, modified
+{ const RootDatum& rd = E.rc().root_datum();
+  const RootDatum& id = ctxt.id();
+  const InvolutionTable& i_tab = E.rc().inner_class().involution_table();
+  auto &tW = E.rc().twisted_Weyl_group(); // caution: |p| refers to integr. datum
+  const SubSystem& subs=ctxt.subsys();
 
   InvolutionNbr theta = i_tab.nr(E.tw);
   const RootNbrSet& theta_real_roots = i_tab.real_roots(theta);
@@ -809,11 +1398,11 @@ paramin complex_cross(const ext_gen& p, paramin E) // by-value for |E|, modified
 
   for (unsigned i=p.w_kappa.size(); i-->0; ) // at most 3 letters, right-to-left
   { weyl::Generator s=p.w_kappa[i]; // generator for integrality datum
-    tW.twistedConjugate(ec.subsys().reflection(s),E.tw);
+    tW.twistedConjugate(subs.reflection(s),E.tw);
     id.simple_reflect(s,E.gamma_lambda.numerator());
     id.simple_reflect(s,rho_r_shift);
     id.simple_reflect(s,E.tau);
-    id.simple_coreflect(E.l,s,ec.l_shift(s));
+    id.simple_coreflect(E.l,s,ctxt.l_shift(s));
     id.simple_coreflect(dual_rho_im_shift,s);
     id.simple_coreflect(E.t,s);
   }
@@ -824,23 +1413,22 @@ paramin complex_cross(const ext_gen& p, paramin E) // by-value for |E|, modified
   rho_r_shift/=2; // now it is just a sum of (real) roots
   E.gamma_lambda += rho_r_shift;
 
-  assert(ec.delta()*rho_r_shift==rho_r_shift); // diff of $\delta$-fixed
+  assert(ctxt.delta()*rho_r_shift==rho_r_shift); // diff of $\delta$-fixed
 
   dual_rho_im_shift -= rd.dual_twoRho(i_tab.imaginary_roots(new_theta));
   dual_rho_im_shift/=2; // now it is just a sum of (imaginary) coroots
   E.l -= dual_rho_im_shift;
 
-  assert(ec.delta().right_prod(dual_rho_im_shift)==dual_rho_im_shift);
+  assert(ctxt.delta().right_prod(dual_rho_im_shift)==dual_rho_im_shift);
   validate(E);
 
-  auto& subs=ec.subsys();
   RootNbr alpha_simple = subs.parent_nr_simple(p.s0);
-  const WeylWord to_simple = fixed_conjugate_simple(ec,alpha_simple);
+  const WeylWord to_simple = fixed_conjugate_simple(ctxt,alpha_simple);
   // by symmetry by $\delta$, |to_simple| conjugates $\delta(\alpha)$ to simple:
   assert(p.length()==1 or rd.is_simple_root(rd.permuted_root(to_simple,
 				                subs.parent_nr_simple(p.s1))));
   // apply flip for $\delta$ acting on root set for |to_simple|, as elsewhere
-  E.flip(ec.shift_flip(theta,new_theta,pos_to_neg(rd,to_simple)));
+  E.flip(ctxt.shift_flip(theta,new_theta,pos_to_neg(rd,to_simple)));
 
   E.flip(p.length()==2); // to parallel the 2i,2r flips
 
@@ -874,24 +1462,25 @@ bool same_sign (const paramin& E, const paramin& F)
 */
 int level_a (const paramin& E, const Weight& shift, RootNbr alpha)
 {
-  const RootDatum& rd = E.rc().rootDatum();
+  const RootDatum& rd = E.rc().root_datum();
   return (E.gamma_lambda + shift).dot(rd.coroot(alpha));
 }
 
 
 // compute type of |p| for |E|, and export adjacent |paramin| values in |links|
-DescValue star (const paramin& E, const ext_gen& p,
+DescValue star (const repr::Ext_common_context& ctxt,
+		const paramin& E, const ext_gen& p,
 		containers::sl_list<paramin>& links)
 {
   paramin E0=E; // a copy of |E| that might be modified below to "normalise"
   DescValue result;
 
-  const TwistedWeylGroup& tW = E.rc().twistedWeylGroup();
-  const InnerClass& ic = E.rc().innerClass();
+  const TwistedWeylGroup& tW = E.rc().twisted_Weyl_group();
+  const InnerClass& ic = E.rc().inner_class();
   const InvolutionTable& i_tab = ic.involution_table();
-  const RootDatum& rd = E.rc().rootDatum();
-  const RootDatum& integr_datum = E.ctxt.id();
-  const SubSystem& subs = E.ctxt.subsys();
+  const RootDatum& rd = E.rc().root_datum();
+  const RootDatum& integr_datum = ctxt.id();
+  const SubSystem& subs = ctxt.subsys();
   const InvolutionNbr theta = i_tab.nr(E.tw);
   switch (p.type)
   {
@@ -917,11 +1506,11 @@ DescValue star (const paramin& E, const ext_gen& p,
 
 	// try to make $\alpha$ simple by conjugating by $W^\delta$
 	RootNbr alpha_simple = n_alpha;
-	const WeylWord ww = fixed_conjugate_simple(E.ctxt,alpha_simple);
+	const WeylWord ww = fixed_conjugate_simple(ctxt,alpha_simple);
 	const auto theta_p = i_tab.nr(new_tw);
 	const auto S = pos_to_neg(rd,ww);
-	const Weight rho_r_shift = E.ctxt.to_simple_shift(theta,theta_p,S);
-	bool flipped = E.ctxt.shift_flip(theta,theta_p,S);
+	const Weight rho_r_shift = ctxt.to_simple_shift(theta,theta_p,S);
+	bool flipped = ctxt.shift_flip(theta,theta_p,S);
 
 	assert(E.ctxt.delta()*rho_r_shift==rho_r_shift); // $ww\in W^\delta$
 	assert(E.t.dot(alpha)==0); // follows from $\delta*\alpha=\alpha$
@@ -1003,14 +1592,14 @@ DescValue star (const paramin& E, const ext_gen& p,
       else if (theta_alpha==rd.rootMinus(n_alpha)) // length 1 real case
       {
 	RootNbr alpha_simple = n_alpha;
-	const WeylWord ww = fixed_conjugate_simple(E.ctxt,alpha_simple);
+	const WeylWord ww = fixed_conjugate_simple(ctxt,alpha_simple);
 	const TwistedInvolution new_tw = // downstairs
 	  tW.prod(subs.reflection(p.s0),E.tw);
 
 	const auto theta_p=i_tab.nr(new_tw);
 	const auto S = pos_to_neg(rd,ww);
-	Weight rho_r_shift = E.ctxt.to_simple_shift(theta,theta_p,S);
-	bool flipped = E.ctxt.shift_flip(theta,theta_p,S);
+	Weight rho_r_shift = ctxt.to_simple_shift(theta,theta_p,S);
+	bool flipped = ctxt.shift_flip(theta,theta_p,S);
 	assert(E.ctxt.delta()*rho_r_shift==rho_r_shift); // as $ww\in W^\delta$
 
 	const int t_alpha = E.t.dot(alpha);
@@ -1103,7 +1692,7 @@ DescValue star (const paramin& E, const ext_gen& p,
       else // length 1 complex case
       { result = rd.is_posroot(theta_alpha)
 	  ? one_complex_ascent : one_complex_descent ;
-	links.push_back(complex_cross(p,E));
+	links.push_back(complex_cross(ctxt,p,E));
       }
     }
     break;
@@ -1131,12 +1720,12 @@ DescValue star (const paramin& E, const ext_gen& p,
 	  tW.prod(subs.reflection(p.s1),tW.prod(subs.reflection(p.s0),E.tw));
 	// make $\alpha$ simple by conjugating by $W^\delta$
 	RootNbr alpha_simple = n_alpha;
-	const WeylWord ww = fixed_conjugate_simple(E.ctxt,alpha_simple);
+	const WeylWord ww = fixed_conjugate_simple(ctxt,alpha_simple);
 	const auto theta_p = i_tab.nr(new_tw); // upstairs
 
 	const auto S = pos_to_neg(rd,ww);
-	const Weight rho_r_shift = E.ctxt.to_simple_shift(theta,theta_p,S);
-	bool flipped = E.ctxt.shift_flip(theta,theta_p,S);
+	const Weight rho_r_shift = ctxt.to_simple_shift(theta,theta_p,S);
+	bool flipped = ctxt.shift_flip(theta,theta_p,S);
 	assert(E.ctxt.delta()*rho_r_shift==rho_r_shift); // $ww\in W^\delta$
 	assert(rd.is_simple_root(alpha_simple)); // cannot fail for length 2
 
@@ -1215,15 +1804,15 @@ DescValue star (const paramin& E, const ext_gen& p,
       else if (theta_alpha==rd.rootMinus(n_alpha)) // length 2 real case
       {
 	RootNbr alpha_simple = n_alpha;
-	const WeylWord ww = fixed_conjugate_simple(E.ctxt,alpha_simple);
+	const WeylWord ww = fixed_conjugate_simple(ctxt,alpha_simple);
 	assert(rd.is_simple_root(alpha_simple)); // no complications here
 	const TwistedInvolution new_tw = // downstairs
 	  tW.prod(subs.reflection(p.s1),tW.prod(subs.reflection(p.s0),E.tw));
 
 	const auto theta_p=i_tab.nr(new_tw);
 	const auto S = pos_to_neg(rd,ww);
-	const Weight rho_r_shift = E.ctxt.to_simple_shift(theta,theta_p,S);
-	bool flipped = E.ctxt.shift_flip(theta,theta_p,S);
+	const Weight rho_r_shift = ctxt.to_simple_shift(theta,theta_p,S);
+	bool flipped = ctxt.shift_flip(theta,theta_p,S);
 	assert(E.ctxt.delta()*rho_r_shift==rho_r_shift); // as $ww\in W^\delta$
 
 	flipped = not flipped; // because of wedge correction for 2i/2r cases
@@ -1333,7 +1922,7 @@ DescValue star (const paramin& E, const ext_gen& p,
 	if (theta_alpha != (ascent ? n_beta : rd.rootMinus(n_beta)))
 	{ // twisted non-commutation with |s0.s1|
 	  result = ascent ? two_complex_ascent : two_complex_descent;
-	  links.push_back(complex_cross(p,E));
+	  links.push_back(complex_cross(ctxt,p,E));
 	}
 	else if (ascent)
 	{ // twisted commutation with |s0.s1|: 2Ci
@@ -1343,13 +1932,13 @@ DescValue star (const paramin& E, const ext_gen& p,
 	  tW.twistedConjugate(subs.reflection(p.s0),new_tw); // same for |p.s1|
 
 	  RootNbr alpha_simple = n_alpha;
-	  const WeylWord ww = fixed_conjugate_simple(E.ctxt,alpha_simple);
+	  const WeylWord ww = fixed_conjugate_simple(ctxt,alpha_simple);
 	  assert(rd.is_simple_root(alpha_simple)); // no complications here
 
 	  const auto theta_p = i_tab.nr(new_tw); // upstairs
 	  const auto S = pos_to_neg(rd,ww);
-	  const Weight rho_r_shift = E.ctxt.to_simple_shift(theta,theta_p,S);
-	  bool flipped = E.ctxt.shift_flip(theta,theta_p,S);
+	  const Weight rho_r_shift = ctxt.to_simple_shift(theta,theta_p,S);
+	  bool flipped = ctxt.shift_flip(theta,theta_p,S);
 	  assert(E.ctxt.delta()*rho_r_shift==rho_r_shift); // $ww\in W^\delta$
 
 	  // downstairs cross by |ww| only has imaginary and complex steps, so
@@ -1386,13 +1975,13 @@ DescValue star (const paramin& E, const ext_gen& p,
 	  tW.twistedConjugate(subs.reflection(p.s0),new_tw); // same for |p.s1|
 
 	  RootNbr alpha_simple = n_alpha;
-	  const WeylWord ww = fixed_conjugate_simple(E.ctxt,alpha_simple);
+	  const WeylWord ww = fixed_conjugate_simple(ctxt,alpha_simple);
 	  assert(rd.is_simple_root(alpha_simple)); // no complications here
 
 	  const auto theta_p=i_tab.nr(new_tw);
 	  const auto S = pos_to_neg(rd,ww);
-	  const Weight rho_r_shift = E.ctxt.to_simple_shift(theta,theta_p,S);
-	  bool flipped = E.ctxt.shift_flip(theta,theta_p,S);
+	  const Weight rho_r_shift = ctxt.to_simple_shift(theta,theta_p,S);
+	  bool flipped = ctxt.shift_flip(theta,theta_p,S);
 	  assert(E.ctxt.delta()*rho_r_shift==rho_r_shift); // $ww\in W^\delta$
 
 	  const int f = level_a(E,rho_r_shift,n_alpha);
@@ -1451,12 +2040,12 @@ DescValue star (const paramin& E, const ext_gen& p,
 	result = three_imaginary_semi; // this is the 3i case
 
 	RootNbr alpha_simple = n_alpha;
-	const WeylWord ww = fixed_conjugate_simple(E.ctxt,alpha_simple);
+	const WeylWord ww = fixed_conjugate_simple(ctxt,alpha_simple);
 	const auto theta_p = i_tab.nr(new_tw); // upstairs
 
 	const auto S = pos_to_neg(rd,ww);
-	const Weight rho_r_shift = E.ctxt.to_simple_shift(theta,theta_p,S);
-	bool flipped = E.ctxt.shift_flip(theta,theta_p,S);
+	const Weight rho_r_shift = ctxt.to_simple_shift(theta,theta_p,S);
+	bool flipped = ctxt.shift_flip(theta,theta_p,S);
 	assert(E.ctxt.delta()*rho_r_shift==rho_r_shift); // $ww\in W^\delta$
 	assert(rd.is_simple_root(alpha_simple)); // cannot fail for length 3
 
@@ -1475,13 +2064,13 @@ DescValue star (const paramin& E, const ext_gen& p,
       else if (theta_alpha==rd.rootMinus(n_alpha)) // length 3 real case
       {
 	RootNbr alpha_simple = n_alpha;
-	const WeylWord ww = fixed_conjugate_simple(E.ctxt,alpha_simple);
+	const WeylWord ww = fixed_conjugate_simple(ctxt,alpha_simple);
 	assert(rd.is_simple_root(alpha_simple)); // no complications here
 
 	const auto theta_p=i_tab.nr(new_tw);
 	const auto S = pos_to_neg(rd,ww);
-	const Weight rho_r_shift = E.ctxt.to_simple_shift(theta,theta_p,S);
-	bool flipped = E.ctxt.shift_flip(theta,theta_p,S);
+	const Weight rho_r_shift = ctxt.to_simple_shift(theta,theta_p,S);
+	bool flipped = ctxt.shift_flip(theta,theta_p,S);
 	assert(E.ctxt.delta()*rho_r_shift==rho_r_shift); // as $ww\in W^\delta$
 
 	const int a_level = level_a(E,rho_r_shift,n_alpha);
@@ -1519,15 +2108,15 @@ DescValue star (const paramin& E, const ext_gen& p,
 	  result = ascent ? three_semi_imaginary : three_semi_real;
 
 	  RootNbr alpha_simple = n_alpha;
-	  const WeylWord ww = fixed_conjugate_simple(E.ctxt,alpha_simple);
+	  const WeylWord ww = fixed_conjugate_simple(ctxt,alpha_simple);
 	  assert(rd.is_simple_root(alpha_simple)); // no complications here
 
 	  const auto theta_p=i_tab.nr(new_tw);
 	  const auto S = pos_to_neg(rd,ww);
 	  const Weight rho_r_shift = ascent
-	    ?  E.ctxt.to_simple_shift(theta,theta_p,S)
-	    : -E.ctxt.to_simple_shift(theta,theta_p,S);
-	  bool flipped = E.ctxt.shift_flip(theta,theta_p,S);
+	    ?  ctxt.to_simple_shift(theta,theta_p,S)
+	    : -ctxt.to_simple_shift(theta,theta_p,S);
+	  bool flipped = ctxt.shift_flip(theta,theta_p,S);
 	  assert(E.ctxt.delta()*rho_r_shift==rho_r_shift); // $ww\in W^\delta$
 
 	  int tf_alpha = (E.ctxt.g_rho_check() - E.l).dot(alpha);
@@ -1576,7 +2165,7 @@ DescValue star (const paramin& E, const ext_gen& p,
 	else // twisted non-commutation: 3C+ or 3C-
 	{
 	  result = ascent ? three_complex_ascent : three_complex_descent;
-	  links.push_back(complex_cross(p,E));
+	  links.push_back(complex_cross(ctxt,p,E));
 	}
       }
     }
@@ -1597,7 +2186,7 @@ DescValue star (const paramin& E, const ext_gen& p,
 // additional |ext_block| methods
 
 ext_block::ext_block
-  (const blocks::block_minimal& block, const WeightInvolution& delta)
+  (const blocks::common_block& block, const WeightInvolution& delta)
   : parent(block)
   , orbits(block.fold_orbits(delta))
   , folded(block.Dynkin().folded(orbits))
@@ -1622,60 +2211,28 @@ ext_block::ext_block
   if (not tune_signs(block))
     throw std::runtime_error("Failure detected in extended block construction");
 
-}
+} // |ext_block::ext_block|, from a |common_block|
 
-template<typename C> // matrix coefficient type (signed)
-containers::simple_list<BlockElt> // returns list of elements selected
-  ext_block::condense
-    (matrix::Matrix<C>& M, const blocks::block_minimal& parent,
-     const RatWeight& gamma) const
+bool ext_block::tune_signs(const blocks::common_block& block)
 {
-  const auto& integral_pre_datum = parent.integral_subsystem().pre_root_datum();
-  RankFlags sing_orbs;
-  for (weyl::Generator s=0; s<rank(); ++s)
-    if (gamma.dot(integral_pre_datum.simple_coroot(orbits[s].s0))==0)
-      sing_orbs.set(s);
-  containers::simple_list<BlockElt> result;
-
-  for (BlockElt y=M.numRows(); y-->0; ) // reverse loop is essential here
-  { auto s = first_descent_among(sing_orbs,y);
-    if (s==rank())
-      result.push_front(y); // no singular descents, so a survivor
-    else // a singular descent found, so not a survivor
-    { // we contribute row |y| to all its descents by |s| with sign |-1|
-      // then conceptually we clear row |y|, but don't bother: it gets ignored
-      auto type=descent_type(s,y);
-      if (is_like_compact(type))
-	continue; // no descents, |y| represents zero; nothing to do for |y|
-
-      // length difference and October surprise combine to always give -1
-      const C c(-1); // surprise!
-      if (has_double_image(type)) // 1r1f, 2r11
-      { auto pair = Cayleys(s,y);
-	M.rowOperation(pair.first,y,c*epsilon(s,pair.first,y));
-	M.rowOperation(pair.second,y,c*epsilon(s,pair.second,y));
-      }
-      else
-      { auto x = some_scent(s,y);
-	M.rowOperation(x,y,c*epsilon(s,x,y));
-      }
-    }
-  }
-  return result;
-} // |ext_block::condense|
-
-bool ext_block::tune_signs(const blocks::block_minimal& block)
-{
-  context_minimal ctxt (block.context(),delta(),block.integral_subsystem());
+  repr::Ext_common_context ctxt
+    (block.context().real_group(),delta(),block.integral_subsystem());
+  repr::Ext_rep_context param_ctxt(block.context(),delta());
   containers::sl_list<paramin> links;
   for (BlockElt n=0; n<size(); ++n)
   { auto z=this->z(n);
-    const paramin E(ctxt,block.x(z),block.gamma_lambda(z));
+    const paramin E(param_ctxt,block.x(z),block.gamma_lambda(z));
     for (weyl::Generator s=0; s<rank(); ++s)
     { const ext_gen& p=orbit(s); links.clear(); // output arguments for |star|
-      auto tp = star(E,p,links);
-      if (tp!=descent_type(s,n))
-	return false;
+      auto tp = star(ctxt,E,p,links);
+      if (might_be_uncertain(descent_type(s,n)) and
+	  data[s][n].links.first==UndefBlock) // then reset the uncertain type
+      {
+	data[s][n].type=tp; // replace type, leave possible links to |UndefBlock|
+	continue; // so in this case there are no link signs to tune
+      }
+      else if (tp!=descent_type(s,n))
+	return false; // something is wrong
 
       switch (tp)
       {
@@ -1685,35 +2242,47 @@ bool ext_block::tune_signs(const blocks::block_minimal& block)
       case two_real_single_double_switched:
       case two_real_nonparity: case two_imaginary_compact:
       case three_real_nonparity: case three_imaginary_compact:
-	assert(links.empty()); break;
+	assert(links.empty());
+	break;
+
       case one_complex_ascent: case one_complex_descent:
       case two_complex_ascent: case two_complex_descent:
       case three_complex_ascent: case three_complex_descent:
 	{ assert(links.size()==1);
 	  const paramin q = *links.begin();
 	  BlockElt m=cross(s,n); // cross neighbour as bare element of |*this|
+	  if (m==UndefBlock)
+	    break; // don't fall off the edge of a partial block
 	  BlockElt cz = this->z(m); // corresponding element of (parent) |block|
-	  paramin F(ctxt,block.x(cz),block.gamma_lambda(cz)); // default extn
+	  paramin F(param_ctxt,block.x(cz),block.gamma_lambda(cz)); // default
 	  assert(same_standard_reps(q,F)); // must lie over same parameter
 	  if (not same_sign(q,F))
 	    flip_edge(s,n,m);
-	} break;
+	}
+	break;
+
       case one_imaginary_single: case one_real_single:
       case two_imaginary_single_single: case two_real_single_single:
 	{ assert(links.size()==2);
 	  const paramin q0 = *links.begin();
 	  const paramin q1 = *std::next(links.begin());
 	  BlockElt m=some_scent(s,n); // the unique (inverse) Cayley
-	  BlockElt Cz = this->z(m); // corresponding element of block
-	  paramin F(ctxt,block.x(Cz),block.gamma_lambda(Cz));
-	  assert(same_standard_reps(q0,F));
-	  if (not same_sign(q0,F))
-	    flip_edge(s,n,m);
-	  m=cross(s,n); BlockElt cz = this->z(m);
-	  paramin Fc(ctxt,block.x(cz),block.gamma_lambda(cz));
-	  assert(same_standard_reps(q1,Fc));
-	  if (not same_sign(q1,Fc))
-	    flip_edge(s,n,m);
+	  if (m!=UndefBlock) // don't fall off the edge of a partial block
+	  {
+	    BlockElt Cz = this->z(m); // corresponding element of block
+	    paramin F(param_ctxt,block.x(Cz),block.gamma_lambda(Cz));
+	    assert(same_standard_reps(q0,F));
+	    if (not same_sign(q0,F))
+	      flip_edge(s,n,m);
+	  }
+	  if ((m=cross(s,n))!=UndefBlock) // cross link, don't fall off the edge
+	  {
+	    BlockElt cz = this->z(m);
+	    paramin Fc(param_ctxt,block.x(cz),block.gamma_lambda(cz));
+	    assert(same_standard_reps(q1,Fc));
+	    if (not same_sign(q1,Fc))
+	      flip_edge(s,n,m);
+	  }
 	} break;
       case two_semi_imaginary: case two_semi_real:
       case three_semi_imaginary: case three_real_semi:
@@ -1721,49 +2290,74 @@ bool ext_block::tune_signs(const blocks::block_minimal& block)
 	{ assert(links.size()==1);
 	  const paramin q = *links.begin();
 	  BlockElt m=some_scent(s,n); // the unique (inverse) Cayley
+	  if (m==UndefBlock)
+	    break; // don't fall off the edge of a partial block
 	  BlockElt Cz = this->z(m); // corresponding element of block
-	  paramin F(ctxt,block.x(Cz),block.gamma_lambda(Cz));
+	  paramin F(param_ctxt,block.x(Cz),block.gamma_lambda(Cz));
 	  assert(same_standard_reps(q,F));
 	  if (not same_sign(q,F))
 	    flip_edge(s,n,m);
-	} break;
+	}
+	break;
+
       case one_imaginary_pair_fixed: case one_real_pair_fixed:
       case two_imaginary_double_double: case two_real_double_double:
 	{ assert(links.size()==2);
 	  const paramin q0 = *links.begin();
 	  const paramin q1 = *std::next(links.begin());
 	  BlockEltPair m=Cayleys(s,n);
-	  BlockElt Cz0 = this->z(m.first); BlockElt Cz1= this->z(m.second);
-	  paramin F0(ctxt,block.x(Cz0),block.gamma_lambda(Cz0));
-	  paramin F1(ctxt,block.x(Cz1),block.gamma_lambda(Cz1));
-	  bool straight=same_standard_reps(q0,F0);
+
+	  if (m.first==UndefBlock)
+	    break; // nothing to do if both are undefined
+
+	  BlockElt Cz = this->z(m.first);
+	  paramin F0(param_ctxt,block.x(Cz),block.gamma_lambda(Cz));
+	  bool straight = same_standard_reps(q0,F0);
 	  const auto& node0 = straight ? q0 : q1;
-	  const auto& node1 = straight ? q1 : q0;
 	  assert(same_standard_reps(node0,F0));
-	  assert(same_standard_reps(node1,F1));
 	  if (not same_sign(node0,F0))
 	    flip_edge(s,n,m.first);
+
+	  if (m.second==UndefBlock)
+	    break;
+
+	  Cz = this->z(m.second);
+	  paramin F1(param_ctxt,block.x(Cz),block.gamma_lambda(Cz));
+	  const auto& node1 = straight ? q1 : q0;
+	  assert(same_standard_reps(node1,F1));
 	  if (not same_sign(node1,F1))
 	    flip_edge(s,n,m.second);
-	} break;
+	}
+	break;
+
       case two_imaginary_single_double_fixed: case two_real_single_double_fixed:
 	{ assert(links.size()==2);
 	  const paramin q0 = *links.begin();
 	  const paramin q1 = *std::next(links.begin());
 	  BlockEltPair m=Cayleys(s,n);
-	  BlockElt Cz0 = this->z(m.first); BlockElt Cz1= this->z(m.second);
-	  paramin F0(ctxt,block.x(Cz0),block.gamma_lambda(Cz0));
-	  paramin F1(ctxt,block.x(Cz1),block.gamma_lambda(Cz1));
+
+	  if (m.first==UndefBlock)
+	    break; // nothing to do if both are undefined
+
+	  BlockElt Cz = this->z(m.first);
+	  paramin F0(param_ctxt,block.x(Cz),block.gamma_lambda(Cz));
 	  bool straight=same_standard_reps(q0,F0);
 	  const auto& node0 = straight ? q0 : q1;
-	  const auto& node1 = straight ? q1 : q0;
 	  assert(same_standard_reps(node0,F0));
-	  assert(same_standard_reps(node1,F1));
 	  if (not same_sign(node0,F0))
 	    flip_edge(s,n,m.first);
+
+	  if (m.second==UndefBlock)
+	    break;
+
+	  Cz= this->z(m.second);
+	  paramin F1(param_ctxt,block.x(Cz),block.gamma_lambda(Cz));
+	  const auto& node1 = straight ? q1 : q0;
+	  assert(same_standard_reps(node1,F1));
 	  if (not same_sign(node1,F1))
 	    flip_edge(s,n,m.second);
-	} break;
+	}
+	break;
       } // |switch(tp)|
     } // |for(s)|
   } // |for(n)|
@@ -1784,9 +2378,227 @@ bool ext_block::tune_signs(const blocks::block_minimal& block)
   return true; // report success if we get here
 } // |tune_signs|
 
-template containers::simple_list<BlockElt> ext_block::condense
-  (matrix::Matrix<Split_integer>& M, const blocks::block_minimal& parent,
-   const RatWeight& gamma) const;
+
+/*
+  This function serves to replace and circumvent |Rep_context::make_dominant|
+  applied to a scaled parameter (as occurs in the ordinary deformation function
+  by calling |finals_for| or |normalise|, both of which call |make_dominant|,
+  after calling |scale|), where |make_dominant| maps any ordinary parameter to
+  one with a dominant |gamma| component, and moreover descends through singular
+  complex descents in the block to the lowest parameter equivalent to the
+  initial parameter. The reason that this is necessary is that scaling only
+  affects the |nu| component of the infinitesimal character, so it may make it
+  traverse walls of Weyl chambers. Indeed the caller should make sure |sr|
+  itself has dominant |gamma|, which moreover is assumed to be fixed by |delta|
+  (if not, don't use this function).
+
+  The difference with the functioning of |make_dominant| is that here we keep
+  track of all extended parameter components inherited from |sr| (so before
+  scaling its |nu| part by |factor|), transforming them from the default choices
+  for |sr|, and at the end comparing the transformed values to the default
+  choices at the final parameter reached, recording the sign in |flipped|.
+ */
+StandardRepr scaled_extended_dominant // result will have its |gamma()| dominant
+(const Rep_context rc,
+ const StandardRepr& sr, const WeightInvolution& delta,
+ Rational factor, // |z.nu()| is scaled by |factor| first
+ bool& flipped // records whether a net extended flip was computed
+ )
+{
+  const RootDatum& rd=rc.root_datum();
+  RealReductiveGroup& G=rc.real_group(); const KGB& kgb = rc.kgb();
+  repr::Ext_rep_context ctxt(rc,delta);
+  const ext_gens orbits = rootdata::fold_orbits(rd,delta);
+  assert(is_dominant_ratweight(rd,sr.gamma())); // dominant
+  assert(((delta-1)*sr.gamma().numerator()).isZero()); // $\delta$-fixed
+
+  // first approximation to result is scaled input
+  // importantly, $\lambda$ (or equivalently |lambda_rho|) is held fixed here
+  auto scaled_sr = rc.sr(sr.x(),rc.lambda_rho(sr),sr.gamma()*factor);
+  // it will be convenent to have a working (modifiable) copy of |gamma|
+  RatWeight gamma = scaled_sr.gamma(); // a working copy
+  KGBElt x = scaled_sr.x(); // another variable, for convenience
+
+  paramin E0 = paramin::default_extend(ctxt,sr);
+
+  E0.gamma_lambda += gamma-sr.gamma(); // shift |E0.gamma_lambda| by $\nu$ change
+
+  int_Vector r_g_eval (rd.semisimpleRank()); // simple root evaluations at |-gr|
+  { const RatCoweight& g_r=ctxt.g_rho_check();
+    for (unsigned i=0; i<r_g_eval.size(); ++i)
+      r_g_eval[i] = -g_r.dot(rd.simpleRoot(i));
+  }
+
+  { unsigned i; // index into |orbits|
+    do // make |gamma_numer| dominant, uses only complex simple root reflections
+      for (i=0; i<orbits.size(); ++i)
+	if (kgb.status(x).isComplex(orbits[i].s0))
+	{ const auto& s=orbits[i];
+	  const auto& alpha_v = rd.simpleCoroot(s.s0);
+	  if (alpha_v.dot(gamma.numerator())<0)
+	  {
+	    rd.act(s.w_kappa,gamma); // change infin.character representative
+	    rd.act(s.w_kappa,E0.gamma_lambda);
+	    rd.act(s.w_kappa,E0.tau);
+	    rd.shifted_dual_act(E0.l,s.w_kappa,r_g_eval);
+	    rd.dual_act(E0.t,s.w_kappa);
+	    E0.flip(s.length()==2); // record flip for every 2C+/2C- done
+	    x = kgb.cross(s.w_kappa,x);
+	    break; // indicate we advanced; restart search for |s|
+	  }
+	} // |for(i)|, if |isComplex|
+    while(i<orbits.size()); // continue until above |for| runs to completion
+  } // end of transformation of extended parameter components
+
+  // now ensure that |E| gets matching |gamma| and |theta| (for flipped test)
+  paramin E1(ctxt,kgb.involution(x),E0.gamma_lambda,E0.tau,E0.l,E0.t,E0.flipped);
+
+  { // descend through complex singular simple descents
+    repr::Ext_common_context block_ctxt(G,delta, SubSystem::integral(rd,gamma));
+    const auto& int_datum = block_ctxt.id();
+    const ext_gens integral_orbits = rootdata::fold_orbits(int_datum,delta);
+    const RankFlags singular_orbits = // flag singular among integral orbits
+      reduce_to(integral_orbits,singular_generators(int_datum,gamma));
+    /*
+      |singular_orbits| are in fact orbits of simple roots, because we have
+      ensured |gamma| is dominant, so the singular subsystem of |rd|
+      is generated by simple (co)roots (evaluting to 0 on |ctxt.gamma()|)
+    */
+     // record the corresponding simple root indices in |rd|, in order
+    containers::sl_list<unsigned> orbit_simple;
+    for (auto it=singular_orbits.begin(); it(); ++it)
+    { auto alpha=block_ctxt.subsys().parent_nr_simple(integral_orbits[*it].s0);
+      orbit_simple.push_back(rd.simpleRootIndex(alpha));
+    }
+
+    while(true) // will |break| below if no singular complex descent exists
+    {
+      auto soit = singular_orbits.begin(); auto it=orbit_simple.begin();
+      for (; not orbit_simple.at_end(it); ++it,++soit)
+	if (kgb.isComplexDescent(*it,x))
+	  break;
+
+      assert((not soit())==orbit_simple.at_end(it));
+      if (not soit()) // previous loop ran to completion
+	break;
+
+      // find orbit among |integral_orbits| corresponding to that ComplexDescent
+      ext_gen p=integral_orbits[*soit];
+      assert(block_ctxt.subsys().parent_nr_simple(p.s0)
+	     ==rd.simpleRootNbr(*it)); // check that we located it
+
+      containers::sl_list<paramin> links;
+      auto type = // compute neighbours in extended block
+	star(block_ctxt,E1,p,links);
+      assert(is_complex(type) or type==two_semi_real);
+      E1 = *links.begin(); // replace |E| by descended parameter
+      E1.flip(has_october_surprise(type)); // to undo extra flip |star|
+      assert(x>E1.x()); // make sure we advance; we did simple complex descents
+      x = E1.x(); // adapt |x| for complex descent test
+    } // |while| a singular complex descent exists
+  }
+
+  // finally extract |StandardRepr| from |E|
+  StandardRepr result = E1.restrict(gamma);
+
+  // but the whole point of this function is to record the relative flip too!
+  flipped = // compare |E1| to default
+    not same_sign(E1,paramin::default_extend(ctxt,result));
+  return result;
+
+} // |scaled_extended_dominant|
+
+/*
+  The following function determines whether an extended parameter has a descent
+  for generator |kappa|, which is an orbit of singularly-simple roots, and since
+  |gamma| is supposed dominant here these are actually simple roots. Rather than
+  call |star| here to do the full analysis, we can do a simplified (there is no
+  |to_simple_shift|) test of notably the parity condition in the real case.
+ */
+bool is_descent
+  (const repr::Ext_common_context& ctxt, const ext_gen& kappa, const paramin& E)
+{ // easy solution would be to |return is_descent(star(E,kappa,dummy))|;
+  const InvolutionTable& i_tab = E.rc().inner_class().involution_table();
+  const InvolutionNbr theta = i_tab.nr(E.tw); // so use root action of |E.tw|
+  const RootNbr n_alpha = ctxt.subsys().parent_nr_simple(kappa.s0);
+  const RootNbr theta_alpha = i_tab.root_involution(theta,n_alpha);
+  const RootDatum& rd = E.rc().root_datum();
+  assert(rd.is_simple_root(n_alpha)); // as explained in the comment above
+
+  // we don't need to inspect |kappa.type|, it does not affect descent status
+  if (theta_alpha==n_alpha) // imaginary case, return whether compact
+    return (E.ctxt.g_rho_check()-E.l).dot(rd.root(n_alpha)) %2!=0;
+  if (theta_alpha==rd.rootMinus(n_alpha)) // real, return whether parity
+    // whether $\<\alpha^\vee,\gamma-\lambda>$ even (since $\alpha$ will be
+    // singular here, |gamma_lambda| gives the same result as |lambda| would)
+    return E.gamma_lambda.dot(rd.coroot(n_alpha)) %2==0;
+  else // complex
+    return rd.is_negroot(theta_alpha);
+} // |is_descent|
+
+weyl::Generator first_descent_among
+  (const repr::Ext_common_context& ctxt, RankFlags singular_orbits,
+   const ext_gens& orbits, const paramin& E)
+{ for (auto it=singular_orbits.begin(); it(); ++it)
+    if (is_descent(ctxt,orbits[*it],E))
+      return *it;
+  return orbits.size(); // no singular descents found
+}
+
+/*
+ This function is destined to be used after |scaled_extended_dominant|, to
+ express the standard representation as linear combination of ones without
+ singular descents, while keeping track (unlike |Rep_context::expand_final|)
+ of flips that might occur during the process.
+ */
+containers::sl_list<std::pair<StandardRepr,bool> > extended_finalise
+  (const repr::Rep_context& rc,
+   const StandardRepr& sr, const WeightInvolution& delta)
+{ // in order that |singular_generators| generate the whole singular system:
+  assert(is_dominant_ratweight(rc.root_datum(),sr.gamma()));
+  // we must assume |gamma| already dominant, DON'T call |make_dominant| here!
+
+  repr::Ext_rep_context param_ctxt(rc,delta);
+  repr::Ext_common_context ctxt
+    (rc.real_group(),delta,SubSystem::integral(rc.root_datum(),sr.gamma()));
+
+  const ext_gens orbits = rootdata::fold_orbits(ctxt.id(),delta);
+  const RankFlags singular_orbits =
+    reduce_to(orbits,singular_generators(ctxt.id(),sr.gamma()));
+
+  containers::queue<paramin> to_do { paramin::default_extend(param_ctxt,sr) };
+  containers::sl_list<std::pair<StandardRepr,bool> > result;
+
+  do
+  { const paramin E= to_do.front();
+    to_do.pop(); // we are done with |head|
+    auto s = first_descent_among(ctxt,singular_orbits,orbits,E);
+    if (s>=orbits.size()) // no singular descents, so append to result
+      result.emplace_back
+	(std::make_pair(E.restrict(sr.gamma()),not is_default(E)));
+    else // |s| is a singular descent orbit
+    { containers::sl_list<paramin> links;
+      auto type = star(ctxt,E,orbits[s],links);
+      if (not is_like_compact(type)) // some descent, push to front of |to_do|
+      { bool flip = has_october_surprise(type); // to undo extra flip |star|
+	auto l_it=links.begin(); RootNbr witness;
+	if (rc.is_nonzero(l_it->restrict(sr.gamma()),witness))
+	{
+	  l_it->flip(flip);
+	  to_do.push(*l_it);
+	}
+	if (has_double_image(type)  // then maybe add second node after |head|
+	    and rc.is_nonzero((++l_it)->restrict(sr.gamma()),witness))
+	{ l_it->flip(flip);
+	  to_do.push(*l_it);
+	}
+      }
+    }
+  }
+  while(not to_do.empty());
+
+  return result;
+} // |extended_finalise|
 
 } // |namespace ext_block|
 

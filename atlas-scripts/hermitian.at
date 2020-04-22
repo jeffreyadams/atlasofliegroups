@@ -10,14 +10,14 @@ set twisted_c_form_std = (Param->ParamPol): { c-form on extended group }
 
 {    c_form on irreducible representations   }
 
-{ untwisted |c_form_irreducible|; for efficiency, only used in equal rank case }
+set oriented_KL_sum  (Param p) = ParamPol:
+   let ori_nr_p = orientation_nr(p) in  null_module(real_form(p)) +
+   for c@q in KL_sum_at_s(p) do (c*orientation_nr_term(ori_nr_p,q),q) od
+
+{ untwisted |c_form_irreducible|, for efficiency; only used in equal rank case }
 {.c-invariant form on irreducible module of p as ParamPol of standardrepKs.}
 set c_form_irreducible (Param p) = ParamPol:
-( let ori_nr_p = orientation_nr(p), P = null_module(real_form(p)) in
-  for c@q in KL_sum_at_s(p)
-  do P +:= c*orientation_nr_term(ori_nr_p,q)*c_form_std(q) od
-; P
-)
+  map(c_form_std@Param, oriented_KL_sum(p) )
 
 {    twisted_c_form_irreducible   }
 

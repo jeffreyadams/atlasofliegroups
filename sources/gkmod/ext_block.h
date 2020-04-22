@@ -23,11 +23,15 @@
 #include "innerclass.h"
 #include "realredgp.h"
 #include "blocks.h" // for some inlined methods (dependency should be removed)
-#include "block_minimal.h" // for type |blocks::block_minimal|
+#include "common_blocks.h" // for type |blocks::common_block|
 #include "subsystem.h" // for inclusion of |SubSystem| field
 #include "repr.h" // allows using |Rep_context| methods in this file
 
 namespace atlas {
+
+namespace ext_kl {
+  class KL_table;
+}
 
 namespace ext_block {
 
@@ -84,6 +88,7 @@ bool has_quadruple(DescValue v); // types 2i12f and 2r21f
 bool has_october_surprise(DescValue v); // types 2i**, 2r**, 2C+, 2C-, 3Ci, 3Cr
 
 bool is_proper_ascent(DescValue v); // ascent with at least 1 link
+bool might_be_uncertain(DescValue v); // uncertain if at edge of partial block
 
 unsigned int generator_length(DescValue v);
 unsigned int link_count(DescValue v);
@@ -127,6 +132,7 @@ class ext_block
   std::vector<std::vector<block_fields> > data;  // size |d_rank| * |size()|
   BlockEltList l_start; // where elements of given length start
 
+  std::unique_ptr<ext_kl::KL_table> KL_ptr;
  public:
 
 // constructors and destructors
@@ -136,17 +142,22 @@ class ext_block
 	    const WeightInvolution& delta);
   ext_block(const param_block& block, const WeightInvolution& delta,
 	    bool verbose=false);
-  ext_block(const blocks::block_minimal& block, const WeightInvolution& delta);
+  // the following variant has its definition in common_blocks.cpp:
+  ext_block(const blocks::common_block& block, const WeightInvolution& delta);
+
+  ~ext_block(); // cannot be implicitly defined here (|KL_table| incomplete)
 
 // manipulators
   void flip_edge(weyl::Generator s, BlockElt x, BlockElt y);
+  const ext_kl::KL_table& kl_table(BlockElt limit);
 
 // accessors
 
   size_t rank() const { return orbits.size(); }
   size_t size() const { return info.size(); }
 
-  const Block_base& untwisted() const { return parent; }
+  const Block_base& untwisted() const // use when only the parent base is needed
+    { return parent; }
 
   ext_gen orbit(weyl::Generator s) const { return orbits[s]; }
   const DynkinDiagram& Dynkin() const { return folded; }
@@ -175,7 +186,8 @@ class ext_block
   BlockEltPair Cayleys(weyl::Generator s, BlockElt n) const; // must be two
 
   // some of the above: an (a/de)scent of |n| in block; assumed to exist
-  BlockElt some_scent(weyl::Generator s, BlockElt n) const;
+  BlockElt some_scent(weyl::Generator s, BlockElt n) const
+    { return data[s][n].links.first; }
 
   // whether link for |s| from |x| to |y| has a sign flip attached
   int epsilon(weyl::Generator s, BlockElt x, BlockElt y) const;
@@ -190,11 +202,7 @@ class ext_block
   // reduce a matrix to elements without descents among singular generators
   template<typename C> // matrix coefficient type (signed)
   containers::simple_list<BlockElt> // returns list of elements selected
-    condense (matrix::Matrix<C>& M, const param_block& parent) const;
-  template<typename C> // matrix coefficient type (signed)
-  containers::simple_list<BlockElt> // returns list of elements selected
-    condense (matrix::Matrix<C>& M, const blocks::block_minimal& parent,
-	      const RatWeight& gamma) const;
+    condense (matrix::Matrix<C>& M, RankFlags singular_orbits) const;
 
   // coefficient of neighbour |xx| of |x| in the action $(T_s+1)*a_x$
   Pol T_coef(weyl::Generator s, BlockElt xx, BlockElt x) const;
@@ -202,7 +210,8 @@ class ext_block
   BlockEltList down_set(BlockElt y) const;
 
   // here all elements reached by a link are added to |l|, (a/de)scent first
-  void add_neighbours(BlockEltList& dst, weyl::Generator s, BlockElt n) const;
+  bool add_neighbours(BlockEltList& dst, weyl::Generator s, BlockElt n) const;
+  // return value tells whether the edge of the block was hit (so too few added)
 
   // print whole block to stream (name chosen to avoid masking by |print|)
   std::ostream& print_to(std::ostream& strm) const; // defined in |block_io|
@@ -210,7 +219,7 @@ class ext_block
 private:
   void complete_construction(const BitMap& fixed_points);
   bool check(const param_block& block, bool verbose=false);
-  bool tune_signs(const blocks::block_minimal& block);
+  bool tune_signs(const blocks::common_block& block);
 
 }; // |class ext_block|
 
@@ -243,13 +252,13 @@ class context // holds values that remain fixed across extended block
   const repr::Rep_context& rc () const { return d_rc; }
   const RootDatum& id() const { return integr_datum; }
   const SubSystem& subsys() const { return sub; }
-  const RootDatum& rootDatum() const { return d_rc.rootDatum(); }
-  const InnerClass& innerClass () const { return d_rc.innerClass(); }
-  RealReductiveGroup& realGroup () const { return d_rc.realGroup(); }
+  const RootDatum& root_datum() const { return d_rc.root_datum(); }
+  const InnerClass& inner_class () const { return d_rc.inner_class(); }
+  RealReductiveGroup& real_group () const { return d_rc.real_group(); }
   const WeightInvolution& delta () const { return d_delta; }
   const RatWeight& gamma() const { return d_gamma; }
-  const RatCoweight& g_rho_check() const { return realGroup().g_rho_check(); }
-  RatCoweight g() const { return realGroup().g(); }
+  const RatCoweight& g_rho_check() const { return real_group().g_rho_check(); }
+  RatCoweight g() const { return real_group().g(); }
   RootNbr delta_of(RootNbr alpha) const { return pi_delta[alpha]; }
   const RootNbrSet& delta_fixed() const { return delta_fixed_roots; }
   weyl::Generator twisted(weyl::Generator s) const { return twist[s]; }
@@ -260,6 +269,8 @@ class context // holds values that remain fixed across extended block
   bool is_very_complex (InvolutionNbr theta, RootNbr alpha) const;
   Weight to_simple_shift(InvolutionNbr theta, InvolutionNbr theta_p,
 			 RootNbrSet pos_to_neg) const;
+  // whether conjugation-to-simple sending |theta| to |theta_p|, and with
+  // |pos_to_neg| as set of positive roots becoming negative, induces a flip
   bool shift_flip(InvolutionNbr theta, InvolutionNbr theta_p,
 		  RootNbrSet pos_to_neg) const;
 
@@ -280,12 +291,12 @@ struct param // allow public member access; methods ensure no invariants anyway
   Coweight t; // a solution to $t(1-theta)=l(\delta-1)$
   bool flipped; // whether tensored with the flipping representation
 
-  param (const context& ec, const StandardRepr& sr, bool flipped=false);
   param (const context& ec,
 	 KGBElt x, const Weight& lambda_rho, bool flipped=false);
   param (const context& ec, const TwistedInvolution& tw,
 	 Weight lambda_rho, Weight tau, Coweight l, Coweight t,
 	 bool flipped=false);
+  param (const context& ec, const StandardRepr& sr); // default extension choice
 
   param (const param& p) = default;
   param (param&& p)
@@ -318,7 +329,7 @@ struct param // allow public member access; methods ensure no invariants anyway
   const repr::Rep_context rc() const { return ctxt.rc(); }
   const WeightInvolution& delta () const { return ctxt.delta(); }
   const WeightInvolution& theta () const
-    { return ctxt.innerClass().matrix(tw); }
+    { return ctxt.inner_class().matrix(tw); }
 
   KGBElt x() const; // reconstruct |x| component
   repr::StandardRepr restrict() const // underlying unextended representation

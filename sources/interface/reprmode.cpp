@@ -63,7 +63,6 @@ namespace commands {
   void partial_block_f();
   void block_f();
   void blockorder_f();
-  void blocktwist_f();
   void extblock_f();
   void gextblock_f();
   void deform_f();
@@ -106,10 +105,8 @@ CommandNode reprNode()
 	     use_tag);
   result.add("block",block_f,"second"); // block mode sets tag
   result.add("blockorder",blockorder_f,"second");
-  result.add("blocktwist",blocktwist_f,"second");
   result.add("extblock",extblock_f,"second");
   result.add("gextblock",gextblock_f,"second");
-  result.add("deform",deform_f,"computes deformation terms",std_help);
   result.add("kl",kl_f,
 	     "computes KL polynomials in character formula for this parameter",
 	     std_help);
@@ -178,8 +175,9 @@ const wgraph::WGraph& current_param_WGraph()
 *****************************************************************************/
 
 /*
-  Synopsis: attempts to set a real form and dual real form interactively.
-  In case of failure, throws an InputError and returns.
+  Attempt to set a real form and dual real form interactively.
+  In case of failure catches an |InputError|, signals the user,
+  and rethrows |EntryError|.
 */
 void repr_mode_entry()
 {
@@ -264,9 +262,8 @@ void repr_f()
     e("parameter not changed");
   }
 }
-/*
-  Synopsis: destroys any local data, resoring nullptr pointers
-*/
+
+// Destroy any local data, restoring |nullptr| pointers
 void repr_mode_exit()
 {
   state=noblock;
@@ -323,12 +320,6 @@ void blockorder_f()
   kgb_io::printBruhatOrder(file,block.bruhatOrder());
 }
 
-void blocktwist_f()
-{
-  ioutils::OutputFile file;
-  block_io::print_twist(file,current_param_block());
-}
-
 void extblock_f()
 {
   const auto& delta=current_inner_class().distinguished(); // implicit here
@@ -379,8 +370,7 @@ void extkl_f()
   ensure_full_block();
   auto& block = current_param_block();
   ext_block::ext_block eblock(block,delta,true);
-  std::vector<ext_kl::Pol> pool;
-  ext_kl::KL_table twisted_KLV(eblock,pool);
+  ext_kl::KL_table twisted_KLV(eblock,nullptr);
   twisted_KLV.fill_columns();
 
   ioutils::OutputFile f;
@@ -401,50 +391,6 @@ void kl_f()
   block_io::print_KL(file,block,entry_z);
 }
 
-
-void deform_f()
-{
-
-  Rep_table& rt = currentRepTable();
-  param_block& block = current_param_block();
-  repr::SR_poly terms = rt.deformation_terms(block,entry_z);
-
-  std::vector<StandardRepr> pool;
-  HashTable<StandardRepr,unsigned long> hash(pool);
-
-  ioutils::OutputFile f;
-
-  f << "Orientation numbers:\n";
-  bool first=true;
-  for (BlockElt x=0; x<=entry_z; ++x)
-    if (block.survives(x))
-    {
-      hash.match(block.sr(x));
-      if (first) first=false;
-      else f<< ", ";
-      StandardRepr r = block.sr(x);
-      f << x << ": " <<  rt.orientation_number(r);
-    }
-  f << ".\n";
-
-  if (block.survives(entry_z))
-  {
-    f << "Deformation terms for I(" << entry_z << ")_c: (1-s) times\n";
-    std::ostringstream os;
-    for (repr::SR_poly::const_iterator it=terms.begin(); it!=terms.end(); ++it)
-    {
-      int eval=it->second.e();
-      os << ' ';
-      if (eval==1 or eval==-1)
-	os << (eval==1 ? '+' : '-'); // sign of evaluation
-      else
-	os << std::setiosflags(std::ios_base::showpos) << eval;
-      os <<"I(" << hash.find(it->first) << ")_c";
-    }
-    ioutils::foldLine(f,os.str()) << std::endl;
-
-  }
-} // |deform_f|
 
 
 /* For each element $y$ in the block, outputs the list of non-zero K-L

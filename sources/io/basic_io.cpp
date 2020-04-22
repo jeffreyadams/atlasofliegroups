@@ -95,7 +95,7 @@ std::ostream& operator<< (std::ostream& strm, const InnerClassType& ict)
 namespace weyl {
 
 /*
-  Synopsis: outputs w as a string of digits
+  Outputs |w| as a string of digits
 
   Originally this was without separators, with the following
   NOTE: this is satisfactory only if the rank is < 10; otherwise, use
@@ -125,7 +125,7 @@ namespace weyl {
 namespace matrix { // since |Weight| = |matrix::Vector<int>|
 
 /*
-  Synopsis: output of a lattice element.
+  Output of a lattice element.
 
   Using |seqPrint| it is output as a bracket-enclosed, comma-separated list.
 */

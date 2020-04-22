@@ -113,13 +113,13 @@ SRK_context::SRK_context(RealReductiveGroup &GR)
   , simple_reflection_mod_2()
   , proj_pool(), proj_sets(proj_pool), proj_data()
 {
-  const RootDatum& rd=rootDatum();
+  const RootDatum& rd=root_datum();
   simple_reflection_mod_2.reserve(G.semisimpleRank());
   for (size_t i=0; i<G.semisimpleRank(); ++i)
     simple_reflection_mod_2.push_back
       (BinaryMap(rd.simple_reflection(i).transposed()));
 
-  size_t n = rootDatum().rank();
+  size_t n = root_datum().rank();
 
   // what remains is filling |C_info|, which is quite a bit of code
   size_t nr=0;
@@ -196,7 +196,7 @@ HCParam SRK_context::project (CartanNbr cn, Weight lambda) const
 {
   const Cartan_info& ci=info(cn);
 
-  (lambda -= rootDatum().twoRho()) /= 2; // final division is exact
+  (lambda -= root_datum().twoRho()) /= 2; // final division is exact
 
   // now |lambda| actually represents $\lambda-\rho$ in plain coordinates
   return std::make_pair
@@ -214,14 +214,14 @@ Weight SRK_context::lift(CartanNbr cn, HCParam p) const
   for (size_t i=0; i<torsion_lift.size(); ++i)
     if (p.second[i])
       result += torsion_lift[i]; // add even vectors representing torsion part
-  (result*=2) += rootDatum().twoRho(); // convert $\lambda-\rho$ to $2\lambda$
+  (result*=2) += root_datum().twoRho(); // convert $\lambda-\rho$ to $2\lambda$
 
   return result;
 }
 
 StandardRepK SRK_context::std_rep (const Weight& two_lambda, TitsElt a) const
 {
-  const RootDatum& rd=rootDatum();
+  const RootDatum& rd=root_datum();
 
   TwistedInvolution sigma=a.tw();
   const WeylWord ww = innerClass().canonicalize(sigma);
@@ -278,7 +278,7 @@ StandardRepK SRK_context::KGB_elt_rep(KGBElt z) const
 level
 SRK_context::height(const StandardRepK& sr) const
 {
-  const RootDatum& rd=rootDatum();
+  const RootDatum& rd=root_datum();
   const Weight mu=theta_lift(sr);
 
   level sum=0;
@@ -299,13 +299,13 @@ const proj_info& SRK_context::get_projection(RankFlags gens)
 
   proj_data.push_back(proj_info());
   proj_data.back().projection=
-    orth_projection(rootDatum(),gens,proj_data.back().denom);
+    orth_projection(root_datum(),gens,proj_data.back().denom);
   return proj_data.back();
 } // |SRK_context::get_projection|
 
 level SRK_context::height_bound(const Weight& lambda)
 {
-  const RootDatum& rd=rootDatum();
+  const RootDatum& rd=root_datum();
 
   RankFlags negatives,new_negatives;
   Weight mu;
@@ -329,7 +329,7 @@ level SRK_context::height_bound(const Weight& lambda)
 
 bool SRK_context::isStandard(const StandardRepK& sr) const
 {
-  const RootDatum& rd=rootDatum();
+  const RootDatum& rd=root_datum();
   Weight lambda=lift(sr);
   const Fiber& f=fiber(sr);
 
@@ -356,7 +356,7 @@ bool SRK_context::isNormal(Weight lambda, CartanNbr cn) const
 
 bool SRK_context::isZero(const StandardRepK& sr) const
 {
-  const RootDatum& rd=rootDatum();
+  const RootDatum& rd=root_datum();
   Weight lambda=lift(sr);
   const Fiber& f=fiber(sr);
   TitsElt a=titsElt(sr);
@@ -373,7 +373,7 @@ bool SRK_context::isZero(const StandardRepK& sr) const
 
 bool SRK_context::isFinal(const StandardRepK& sr) const
 {
-  const RootDatum& rd=rootDatum();
+  const RootDatum& rd=root_datum();
   Weight lambda=lift(sr);
   const Fiber& f=fiber(sr);
 
@@ -389,7 +389,7 @@ bool SRK_context::isFinal(const StandardRepK& sr) const
 
 void SRK_context::normalize(StandardRepK& sr) const
 {
-  const RootDatum& rd = rootDatum();
+  const RootDatum& rd = root_datum();
   CartanNbr cn = sr.Cartan();
   const Cartan_info& ci = info(cn);
   Weight lambda = lift(sr);
@@ -414,7 +414,7 @@ q_Char SRK_context::q_reflect_eq(const StandardRepK& sr,size_t i,
 				 Weight lambda, // doubled
 				 const Weight& cowt) const
 {
-  const RootDatum& rd = rootDatum();
+  const RootDatum& rd = root_datum();
   const TorusPart& x = sr.d_fiberElt;
   CartanNbr cn = sr.Cartan();
 
@@ -471,7 +471,7 @@ PSalgebra
 SRK_context::theta_stable_parabolic
   (const StandardRepK& sr, WeylWord& conjugator) const
 {
-  const RootDatum& rd=rootDatum();
+  const RootDatum& rd=root_datum();
   const TwistedWeylGroup& W=twistedWeylGroup();
 
   Weight dom=theta_lift(sr); // theta-stable weight, to be made dominant
@@ -581,7 +581,7 @@ KGBEltList SRK_context::sub_KGB(const PSalgebra& q) const
 
 RawChar SRK_context::KGB_sum(const PSalgebra& q, const Weight& lambda) const
 {
-  const RootDatum& rd=rootDatum();
+  const RootDatum& rd=root_datum();
   KGBEltList sub=sub_KGB(q); std::reverse(sub.begin(),sub.end());
 
   std::vector<size_t> sub_inv(kgb().size(),~0ul);
@@ -646,7 +646,7 @@ RawChar SRK_context::KGB_sum(const PSalgebra& q, const Weight& lambda) const
 CharForm
 SRK_context::K_type_formula(const StandardRepK& sr, level bound)
 {
-  const RootDatum& rd=rootDatum();
+  const RootDatum& rd=root_datum();
 
   // Get theta stable parabolic subalgebra
 
@@ -722,7 +722,7 @@ SRK_context::K_type_formula(const StandardRepK& sr, level bound)
 Raw_q_Char SRK_context::q_KGB_sum(const PSalgebra& p,
 				  const Weight& lambda) const
 {
-  const RootDatum& rd=rootDatum();
+  const RootDatum& rd=root_datum();
   KGBEltList sub=sub_KGB(p); std::reverse(sub.begin(),sub.end());
 
   std::vector<size_t> sub_inv(kgb().size(),~0ul);
@@ -788,7 +788,7 @@ Raw_q_Char SRK_context::q_KGB_sum(const PSalgebra& p,
 q_CharForm
 SRK_context::q_K_type_formula(const StandardRepK& sr, level bound)
 {
-  const RootDatum& rd=rootDatum();
+  const RootDatum& rd=root_datum();
 
   // Get theta stable parabolic subalgebra
 
@@ -868,7 +868,7 @@ SRK_context::q_K_type_formula(const StandardRepK& sr, level bound)
 HechtSchmid
 SRK_context::HS_id(const StandardRepK& sr, RootNbr alpha) const
 {
-  const RootDatum& rd=rootDatum();
+  const RootDatum& rd=root_datum();
   TitsElt a=titsElt(sr);
   Weight lambda=lift(sr); // is non-dominant for |alpha|, so |sr| is not normal
   assert(rd.is_posroot(alpha)); // indeed |alpha| simple-imaginary for |a.tw()|
@@ -905,8 +905,8 @@ SRK_context::HS_id(const StandardRepK& sr, RootNbr alpha) const
     id.add_rh(sr1);
     if (sr0.d_fiberElt==sr.d_fiberElt) // type II
     {
-      lambda += rootDatum().simpleRoot(i); // other possibility
-      lambda += rootDatum().simpleRoot(i); // add twice: doubled coordinates
+      lambda += root_datum().simpleRoot(i); // other possibility
+      lambda += root_datum().simpleRoot(i); // add twice: doubled coordinates
       StandardRepK sr2= std_rep(lambda, a);
       assert(sr1.d_lambda != sr2.d_lambda);
       id.add_rh(sr2);
@@ -952,7 +952,7 @@ SRK_context::HS_id(const StandardRepK& sr, RootNbr alpha) const
 HechtSchmid
 SRK_context::back_HS_id(const StandardRepK& sr, RootNbr alpha) const
 {
-  const RootDatum& rd=rootDatum();
+  const RootDatum& rd=root_datum();
   assert(rd.is_posroot(alpha)); // in fact it must be simple-real for |a.tw()|
 
   TitsElt a=titsElt(sr);
@@ -1023,7 +1023,7 @@ SRK_context::back_HS_id(const StandardRepK& sr, RootNbr alpha) const
 q_Char
 SRK_context::q_HS_id_eq(const StandardRepK& sr, RootNbr alpha) const
 {
-  const RootDatum& rd=rootDatum();
+  const RootDatum& rd=root_datum();
   TitsElt a=titsElt(sr);
   Weight lambda=lift(sr);
   assert(rd.is_posroot(alpha)); // indeed |alpha| simple-imaginary for |a.tw()|
@@ -1066,7 +1066,7 @@ SRK_context::q_HS_id_eq(const StandardRepK& sr, RootNbr alpha) const
 		     q_CharCoeff(-lambda.dot(alpha_vee)/4,1));
     if (type_II)
     {
-      lambda += rootDatum().simpleRoot(i)*2; // (doubled coordinates)
+      lambda += root_datum().simpleRoot(i)*2; // (doubled coordinates)
       result += q_Char(std_rep(lambda,a), // $*q^{same exponent as above}$
 		       q_CharCoeff(-lambda.dot(alpha_vee)/4,1));
     }
@@ -1625,7 +1625,7 @@ void KhatContext::go(const StandardRepK& initial)
 #ifdef VERBOSE
   if (nonfinal_pool.size()>0)
   {
-    const RootDatum& rd=rootDatum();
+    const RootDatum& rd=root_datum();
     std::cout << "Intermediate representations:\n";
     for (size_t i=0; i<nonfinal_pool.size(); ++i)
     {

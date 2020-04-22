@@ -1,8 +1,6 @@
-/*!
-\file
-  This is size.h
-*/
 /*
+  This is size.h
+
   Copyright (C) 2004,2005 Fokko du Cloux
   part of the Atlas of Lie Groups and Representations
 

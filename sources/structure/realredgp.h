@@ -13,6 +13,8 @@
 #ifndef REALREDGP_H  /* guard against multiple inclusions */
 #define REALREDGP_H
 
+#include <memory> // for |std::unique_ptr|
+
 #include "bitmap_fwd.h"
 #include "poset_fwd.h"
 #include "../Atlas.h"
@@ -59,9 +61,8 @@ class RealReductiveGroup
   RatCoweight square_class_cocharacter; // a base coweight for square class
   TorusPart torus_part_x0; // initial |TorusPart| relative to square class base
 
-  const TitsCoset* d_Tg; // owned pointer; the group is stored here
-  KGB* kgb_ptr; // owned pointer, but initially |NULL|
-  KGB* dual_kgb_ptr; // owned pointer, but initially |NULL|
+  std::unique_ptr<const TitsCoset> d_Tg; // the Tits group is stored here
+  std::unique_ptr<KGB> kgb_ptr; // initially |NULL|
 
   Status d_status;
 
@@ -77,7 +78,7 @@ class RealReductiveGroup
   const InnerClass& innerClass() const { return d_innerClass; }
   // following method forces |const| result, compare with |cbegin| methods
   RealFormNbr realForm() const { return d_realForm; }
-  const RootDatum& rootDatum() const;
+  const RootDatum& root_datum() const;
   const TitsCoset& basedTitsGroup() const { return *d_Tg; }
   const TitsGroup& titsGroup() const;
   const WeylGroup& weylGroup() const;
@@ -127,7 +128,6 @@ class RealReductiveGroup
   InnerClass& innerClass() { return d_innerClass; }
 
   const KGB& kgb();
-  const KGB& kgb_as_dual();
   const BruhatOrder& Bruhat_KGB();
 
 // internal methods

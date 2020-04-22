@@ -35,11 +35,7 @@ namespace atlas {
 
 namespace prettyprint {
 
-
-/*
-  Synopsis: outputs the first values of the bitmap left-to-right, on a single
-  line
-*/
+// Output the first values of the bitmap left-to-right, on a single line
 std::ostream& prettyPrint(std::ostream& strm, const BitMap& b,
 			  size_t n)
 {
@@ -56,7 +52,7 @@ std::ostream& prettyPrint(std::ostream& strm, const BitMap& b,
 }
 
 
-// Prints the n first bits of v on strm left-to-right.
+// Print the |n| first bits of |b| on |strm| left-to-right.
 template<unsigned int d>
 std::ostream& prettyPrint(std::ostream& strm, const BitSet<d>& b,
 			  size_t n)
@@ -71,7 +67,7 @@ std::ostream& prettyPrint(std::ostream& strm, const BitSet<d>& b,
 }
 
 
-// Prints the bits of |v| on |strm| in a "vector-like" format.
+// Print the bits of |v| on |strm| in a "vector-like" format.
 template<unsigned int dim>
 std::ostream& prettyPrint(std::ostream& strm, const BitVector<dim>& v)
 {
@@ -87,7 +83,7 @@ std::ostream& prettyPrint(std::ostream& strm, const BitVector<dim>& v)
 }
 
 
-// Pretty-prints a list of bitvectors, one per line.
+// Pretty-print a list of bitvectors, one per line.
 template<unsigned int dim>
 std::ostream& prettyPrint(std::ostream& strm,
 			  const std::vector<BitVector<dim> >& a)
@@ -123,7 +119,7 @@ std::ostream& printBasis(std::ostream& strm, const std::vector<V>& b)
 
 
 /*
-  Synopsis: prints the descent set d to strm.
+  Prints the descent set |d| to |strm|.
 
   Here rank is the number of significant bits in d; the output format is
   pre * sep * ... * post, where the * are the bits in d, output as their
@@ -153,9 +149,7 @@ std::ostream& printDescentSet(std::ostream& strm, const RankFlags& d,
 }
 
 
-/*
-  Outputs root #n to strm in the root coordinates.
-*/
+// Output root #n to strm in the root coordinates.
 std::ostream& printInRootBasis(std::ostream& strm, RootNbr n,
 			       const RootSystem& rs)
 {
@@ -163,7 +157,7 @@ std::ostream& printInRootBasis(std::ostream& strm, RootNbr n,
 }
 
 /*
-  Synopsis: outputs the set of roots contained in r to strm, expressed in root
+  Output the set of roots contained in |r| to |strm|, expressed in root
   coordinates.
 */
 std::ostream& printInRootBasis(std::ostream& strm, const RootNbrSet& r,
@@ -181,7 +175,7 @@ std::ostream& printInRootBasis(std::ostream& strm, const RootNbrSet& r,
 }
 
 /*
-  Synopsis: prints the roots in the list in the lattice basis, by default
+  prints the roots in the list in the lattice basis, by default
   as one per line.
 */
 std::ostream& printRootList(std::ostream& strm, const RootNbrList& r,
@@ -198,7 +192,7 @@ std::ostream& printRootList(std::ostream& strm, const RootNbrList& r,
 }
 
 /*
-  Synopsis: prints the coroots in the list in the lattice basis, by default
+  prints the coroots in the list in the lattice basis, by default
   as one per line.
 */
 std::ostream& printCorootList(std::ostream& strm, const RootNbrList& r,
@@ -213,9 +207,9 @@ std::ostream& printCorootList(std::ostream& strm, const RootNbrList& r,
   return strm;
 }
 /*
-  Synopsis: outputs an expression for the twisted involution.
+  Output an expression for the twisted involution.
 
-  Precondition: w is a (twisted) involution.
+  Precondition: |w| is a (twisted) involution.
 
   Symbols are to be interpreted from right to left as operations performed on
   an initially empty twisted involution; if the number |s| is followed by a
@@ -246,7 +240,7 @@ std::ostream& printVector(std::ostream& strm, const std::vector<C>& v,
 }
 
 /*
-  Outputs the matrix to a stream. It is assumed that operator << is defined
+  Output the matrix to a stream. It is assumed that operator << is defined
   for C, and that C is "small" (in particular, has no newlines in its output.)
 */
 template<typename C>
@@ -279,7 +273,7 @@ std::ostream& printMatrix(std::ostream& strm, const matrix::Matrix_base<C>& m,
 
 
 /*
-  Synopsis: prints the status flags.
+  Print the status flags.
 
   Precondition: there are rank valid fields in gs;
 
@@ -344,9 +338,7 @@ std::ostream& printTorusType(std::ostream& strm, const WeightInvolution& tau)
 }
 
 
-/*
-  Synopsis: outputs w as a reduced expression.
-*/
+// Output |w| as a reduced expression.
 std::ostream& printWeylElt(std::ostream& strm, const WeylElt& w,
 			   const WeylGroup& W)
 {
@@ -355,7 +347,7 @@ std::ostream& printWeylElt(std::ostream& strm, const WeylElt& w,
 }
 
 /*
-  Synopsis: outputs the list of WeylElts as words in the outer representation,
+  Output the list of |WeylElt|s as words in the outer representation,
   with the given separator, prefix and postfix.
 */
 std::ostream& printWeylList(std::ostream& strm, const WeylEltList& wl,

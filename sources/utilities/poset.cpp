@@ -1,10 +1,9 @@
-/*!
-\file
-This is poset.cpp.  This file contains a simple-minded
-implementation of a poset structure, where one explicitly keeps the
-bit-matrix of the order relation.
-*/
 /*
+  This is poset.cpp.
+
+  This file contains a simple-minded implementation of a poset structure,
+  where one explicitly keeps the bit-matrix of the order relation.
+
   Copyright (C) 2004,2005 Fokko du Cloux
   part of the Atlas of Lie Groups and Representations
 
@@ -96,12 +95,11 @@ bitmap::BitMap Poset::above(Elt x) const
   return result;
 }
 
-/*!
-  Synopsis: writes in a the elements in b that are maximal for the induced
-  order.
+/*
+  Write to |a| the elements in |b| that are maximal for the induced order.
 
-  Algorithm: the largest element x in b (if any) is maximal; add that to a,
-  remove from b the intersection with the closure of x, and iterate.
+  Algorithm: the largest element |x| in |b| (if any) is maximal; add that
+  to |a|, remove from |b| the intersection with the closure of |x|, and iterate.
 */
 bitmap::BitMap Poset::maxima(const bitmap::BitMap& b) const
 {

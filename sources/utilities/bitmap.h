@@ -239,7 +239,7 @@ class BitMap
 
 }; // |class BitMap|
 
-
+unsigned long last (const BitMap& set); // final element of non-empty |set|
 
   /* Iterator to traverse the \emph{set} bits (members present) of a BitMap.
 

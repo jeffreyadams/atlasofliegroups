@@ -156,8 +156,7 @@ void common_print(which_group kind,
 
 
 /*
-  Synopsis: prints the stabilizer of a representation in this W-orbit
-  for the cross-action.
+  Print the stabilizer of a representation in this W-orbit for the cross-action.
 
   Explanation: this is the intersection of the real and dual real Weyl groups.
 */
@@ -172,9 +171,7 @@ std::ostream& printBlockStabilizer(std::ostream& strm,
   return strm;
 }
 
-/*
-  Synopsis: prints the real Weyl group.
-*/
+// Print the real Weyl group.
 std::ostream& printRealWeyl(std::ostream& strm, const realweyl::RealWeyl& rw,
 			    const realweyl::RealWeylGenerators& rwg)
 {
@@ -184,9 +181,7 @@ std::ostream& printRealWeyl(std::ostream& strm, const realweyl::RealWeyl& rw,
   return strm;
 }
 
-/*
-  Synopsis: prints the dual real Weyl group.
-*/
+// Print the dual real Weyl group.
 std::ostream& printDualRealWeyl(std::ostream& strm,
 				const realweyl::RealWeyl& rw,
 				const realweyl::RealWeylGenerators& rwg)
