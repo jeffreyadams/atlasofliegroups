@@ -16,7 +16,7 @@ strong_real_forms_given_central_invariant(ic,O.H/2)
 
 set strong_real_forms_nilpotent_orbit_e(ComplexNilpotent O, InnerClass ic)=[RealForm]:
 {assert(is_even(O), "orbit is not even");}
-strong_real_forms_e(ic)
+strong_real_forms_central_invariant_e(ic)
 
 {
 set number_real_nilpotent_orbits_correct_central_invariant(ComplexNilpotent O_check,InnerClass ic_check)=[int]:

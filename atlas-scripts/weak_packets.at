@@ -204,7 +204,7 @@ st_int=springer_table(rd_int) then
 ()=prints("rd_int:",rd_int, new_line, "st_int.rd: ", st_int.root_datum) then
 (O_check_int,permutation)=integral_descent(st_int,O_check) then
 ()=prints("O_check_int:", O_check_int) then
-()=prints("permutation: ", permutation) then
+{()=prints("permutation: ", permutation) then}
 ()=prints("computing packet for:", O_check_int) then
 (bc,wp)=weak_packet_int(st_int,O_check_int,all,gamma_final,permutation)
 in
