@@ -304,8 +304,7 @@ class Rep_table : public Rep_context
 
   unsigned short length(StandardRepr z); // by value
 
-  blocks::common_block& lookup_full_block
-    (const StandardRepr& sr,BlockElt& z,RankFlags& singular);
+  blocks::common_block& lookup_full_block(const StandardRepr& sr,BlockElt& z);
 
   blocks::common_block& lookup(const StandardRepr& sr,BlockElt& z); // partial
 
@@ -330,14 +329,14 @@ class Rep_table : public Rep_context
   SR_poly twisted_deformation_terms (unsigned long sr_hash) const;
   // once a parameter has been entered, we can compute this without a block
 
-  blocks::common_block& add_block_below // method defined in common_blocks.cpp
+  blocks::common_block& add_block_below // partial; defined in common_blocks.cpp
     (const common_context&, const StandardReprMod& srm, BitMap* subset);
 
   SR_poly twisted_deformation(StandardRepr z); // by value
 
  private:
   unsigned long formula_index (const StandardRepr&);
-  unsigned long add_block(const StandardReprMod&);
+  unsigned long add_block(const StandardReprMod&); // full block
   class Bruhat_generator; // helper class: internal |add_block_below| recursion
 
 }; // |Rep_table|

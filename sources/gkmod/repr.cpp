@@ -1026,7 +1026,7 @@ unsigned long Rep_table::add_block(const StandardReprMod& srm)
 }// |Rep_table::add_block|
 
 blocks::common_block& Rep_table::lookup_full_block
-  (const StandardRepr& sr,BlockElt& z,RankFlags& singular)
+  (const StandardRepr& sr,BlockElt& z)
 {
   auto srm = StandardReprMod::mod_reduce(*this,sr); // modular |z|
   auto h=mod_hash.find(srm); // look up modulo translation in $X^*$
@@ -1034,11 +1034,9 @@ blocks::common_block& Rep_table::lookup_full_block
     h=add_block(srm); // ensure this block is known, record hash for |srm|
   assert(h<place.size()); // it cannot be |mod_hash.empty| anymore
 
-  auto& block = *place[h].first;
   z = place[h].second;
+  return *place[h].first;
 
-  singular=block.singular(sr.gamma());
-  return block;
 } // |Rep_table::lookup_full_block|
 
 blocks::common_block& Rep_table::lookup (const StandardRepr& sr,BlockElt& which)

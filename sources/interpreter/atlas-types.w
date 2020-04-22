@@ -4686,8 +4686,7 @@ void print_c_block_wrapper(expression_base::level l)
 { shared_module_parameter p = get<module_parameter_value>();
   test_standard(*p,"Cannot generate block");
   BlockElt init_index; // will hold index in the block of the initial element
-  auto zm = repr::StandardReprMod::mod_reduce(p->rc(),p->val);
-  blocks::common_block block(p->rc(),zm,init_index);
+  blocks::common_block& block = p->rt().lookup_full_block(p->val,init_index);
   *output_stream << "Parameter defines element " << init_index
                @|<< " of the following common block:" << std::endl;
   block.print_to(*output_stream,true);
@@ -4699,18 +4698,22 @@ void print_c_block_wrapper(expression_base::level l)
 void print_pc_block_wrapper(expression_base::level l)
 { shared_module_parameter p = get<module_parameter_value>();
   test_standard(*p,"Cannot generate block");
-  repr::common_context ctxt
-    (p->rc().real_group(),@|
-     SubSystem::integral(p->rc().root_datum(),p->val.gamma()));
-  auto zm = repr::StandardReprMod::mod_reduce(p->rc(),p->val);
-  BitMap which;
-  const blocks::common_block& block = p->rt().add_block_below(ctxt,zm,&which);
-  *output_stream << "Partial block";
-  for (auto it=which.begin(); it!=which.end(); ++it)
-    *output_stream << (it==which.begin() ? ' ' : ',') << *it;
-  *output_stream << " in the following common block:\n";
-  block.print_to(*output_stream,true);
-    // print block using involution expressions
+  BlockElt init_index; // will hold index in the block of the initial element
+  blocks::common_block& block = p->rt().lookup(p->val,init_index);
+  BitMap less = block.bruhatOrder().poset().below(init_index);
+  if (less.full())
+  {
+    if (init_index+1<block.size())
+      *output_stream << "Elements <= " << init_index << " of following block\n";
+  }
+  else
+  {
+    *output_stream << "Subset {";
+    for (auto @[n : less@]@;@;)
+      *output_stream << n << ',';
+    *output_stream << init_index << "} in the following common block:\n";
+  }
+  block.print_to(*output_stream,true); // print using involution expressions
   if (l==expression_base::single_value)
     wrap_tuple<0>(); // |no_value| needs no special care
 }
@@ -6107,10 +6110,11 @@ void twisted_deform_wrapper(expression_base::level l)
   if (l==expression_base::no_value)
     return;
 @)
-  BlockElt entry_elem; RankFlags singular;
-  auto& block = rt.lookup_full_block(p->val,entry_elem,singular);
+  BlockElt entry_elem;
+  auto& block = rt.lookup(p->val,entry_elem);
   auto& eblock = block.extended_block(delta);
 @)
+  RankFlags singular = block.singular(p->val.gamma());
   RankFlags singular_orbits;
   for (weyl::Generator s=0; s<eblock.rank(); ++s)
     singular_orbits.set(s,singular[eblock.orbit(s).s0]);
