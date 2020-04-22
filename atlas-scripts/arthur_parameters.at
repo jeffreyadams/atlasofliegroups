@@ -4,6 +4,9 @@
 {parametrizing sets of unipotent Arthur parameters}
 
 {strong real forms with z^2=e}
+{this is not correct in the nonequal rank case
+ set strong_real_forms_central_invariant_e in galois.at
+ }
 set strong_real_forms_e(RootDatum rd)=[RealForm]:
 let K=compact_form(rd) then
 rf=real_forms(K) in
@@ -17,8 +20,9 @@ set arthur_parameters_by_y(RootDatum rd)=[[ComplexNilpotent_d]]:
 let dual_forms=strong_real_forms_e(rd.dual) in
 for Gd in dual_forms do Gd.K.orbits od
 
-{Arthur parameters for *split* inner class of complex group rd,
+{Arthur parameters for G corresponding to given dual complex orbit
  where Psi(SL(2,C)) <-> O_check
+ NOTE: only for G in split inner class, so extension of the dual group is trivial
  conceptual algorithm: run over conjugacy classes of order 2
   in the (disconnected) centralizer_{G^v}(O_check)
  actual algorithm:
@@ -32,12 +36,12 @@ for Gd in dual_forms do Gd.K.orbits od
   since K_v_i can be disconnected this is a ComplexNilpotent_d object,
    first run over orbits for the identity component, and then mod out by
     conjugation by the component group (see disconnected.at)
-}    
+}
+{rd is assumed to be inner to split, so dual inner class is equal rank}
 set arthur_parameters(RootDatum rd,ComplexNilpotent O_check)=[ComplexNilpotent_d]:
-{let O_check_int=integral_descent(O_check) then}
 let O_check_int=O_check then
 rd_int_dual=O_check_int.root_datum then
-dual_forms=strong_real_forms_e(rd_int_dual) in
+dual_forms=strong_real_forms_central_invariant_e(rd_int_dual.compact_form) in
 ##for Gd@i in dual_forms do
  ##for O_d in Gd.K.orbits do
  if saturate(O_d,rd_int_dual)=O_check_int then [O_d]  else [] fi od 

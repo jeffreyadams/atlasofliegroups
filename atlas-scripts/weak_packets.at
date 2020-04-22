@@ -670,6 +670,8 @@ ap=arthur_parameters_by_orbit(G) in
 prints(new_line,"===============================================================================");
 let orbits=G.dual_orbits then
 (ic,data)=nilpotent_orbits_data_very_long(G.dual_quasisplit_form.inner_class) in
+prints("Orbits for the dual group: ", G.dual_quasisplit_form);
+show_nilpotent_orbits_very_long((ic,data));
 prints(new_line,"Information about orbit centralizers:");
 for (,,,,cent,,,,,)@i in data do
 prints("orbit#: ", i, " diagram: ", orbits[i].diagram);
