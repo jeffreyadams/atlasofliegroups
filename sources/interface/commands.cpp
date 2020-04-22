@@ -170,7 +170,7 @@ CommandNode::CommandNode(const char* str,
 /******** manipulators ******************************************************/
 
 /*
-  Synopsis: adds a new command during initial construction of a |CommandNode|
+  Add a new command during initial construction of a |CommandNode|
   NOTE: names should be unique within the Node, whence the |assert| below
 */
 void CommandNode::add(const char* const name, const Command& command)
@@ -193,7 +193,7 @@ void CommandNode::add(const char* const name, action_pointer f,
 }
 
 /*
-  Inserts the commands from source into dest. This is used when going to a
+  Insert the commands from source into dest. This is used when going to a
   "desecendant" mode, to inherit the commands defined for the parent mode.
   Here existing commands are not overridden!
 */
@@ -269,7 +269,7 @@ CommandNode::const_iterator CommandTree::look_up
 
 
 /*
-  add to |e| the set of command names in mode and its descendants,
+  Add to |e| the set of command names in mode and its descendants,
   that begin with |name|.
 */
 void CommandTree::extensions(std::set<const char*,StrCmp>& e,
@@ -311,7 +311,7 @@ CommandTree::~CommandTree()
     delete d_nextList[i];
 }
 
-// grow the tree from root to leaves, inheriting down after copying node |c|
+// Grow the tree from root to leaves, inheriting down after copying node |c|
 CommandTree& CommandTree::add_descendant(const CommandNode& c)
 {
   d_nextList.push_back(new CommandTree(c));
@@ -321,7 +321,7 @@ CommandTree& CommandTree::add_descendant(const CommandNode& c)
 }
 
 /*
-  Attempts to activate the current mode tree, executing its entry function
+  Attempt to activate the current mode tree, executing its entry function
   (which could throw an |EntryError|). Then push the mode tree onto stack.
 */
 void CommandTree::activate() const
@@ -331,7 +331,7 @@ void CommandTree::activate() const
 }
 
 /*
-  Runs an interactive session of the program with this mode as basic mode
+  Run an interactive session of the program with this mode as basic mode
 
   Gets commands from the user until it gets the "qq" command, at which time it
   returns control.
@@ -428,7 +428,7 @@ void CommandTree::run() const
 
 
 /*
-  Returns the InputBuffer in which the current command line was stored
+  Return the InputBuffer in which the current command line was stored
 
   Explanation: the idea is to enable functions to pick off arguments from the
   command line, so that the user can type forward. Nobody actually does this.
@@ -440,7 +440,7 @@ input::InputBuffer& currentLine()
 
 
 /*
-  Synopsis: returns the currently active mode.
+  Return the currently active mode.
   Mostly useful for communication with readline.
 */
 const CommandTree* currentMode()

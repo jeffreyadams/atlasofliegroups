@@ -1,16 +1,16 @@
 /*
-  Template definitions for the classes |Subspace| and |Subquotient|.
-
-  These class templates deal with subspaces and subquotients of vector spaces
-  over $Z/2Z$, elements of which are of type |BitVector|.
-*/
-/*
   This is subquotient.cpp
 
   Copyright (C) 2004,2005 Fokko du Cloux
   part of the Atlas of Lie Groups and Representations
 
   For license information see the LICENSE file
+*/
+/*
+  Template definitions for the classes |Subspace| and |Subquotient|.
+
+  These class templates deal with subspaces and subquotients of vector spaces
+  over $Z/2Z$, elements of which are of type |BitVector|.
 */
 
 #include "subquotient.h"
@@ -141,10 +141,10 @@ BitVector<dim> Subspace<dim>::representative
 /******** manipulators *******************************************************/
 
 
-/*!
-  Synopsis: applies |r| to our subspace, normalizing the resulting subspace.
+/*
+  Apply |r| to our subspace, normalizing the resulting subspace.
 
-  Precondition: r is a matrix of the appropriate column size (it could go to a
+  Precondition: |r| is a matrix of the appropriate column size (it could go to a
   space of another dimension, even.)
 */
 template<unsigned int dim>
@@ -233,8 +233,8 @@ void Subquotient<dim>::swap(Subquotient& source)
 
 namespace subquotient {
 
-/*!
-  Synopsis: puts in |msq| the matrix of the map induced by |m| at the
+/*
+  Puts in |msq| the matrix of the map induced by |m| at the
   subquotient level.
 
   Precondition: |m| has |source.rank()| columns and |dest.rank()| rows, in

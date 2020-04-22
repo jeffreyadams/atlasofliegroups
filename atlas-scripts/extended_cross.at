@@ -154,7 +154,7 @@ set ext_cross_3(int j,ExtParam E) = ExtParam:
 { ext_cross_simple calls one of the ext_cross_i; it supposes that the
   root(integrality_datum(E),j) is actually among simple_roots(RootDatum(ic(E)).
   This function used to be called in all cases, but now it is called by
-  nonintegral.rx:ext_cross@(int,ExtParam) only in special cases (and
+  nonintegral.at:ext_cross@(int,ExtParam) only in special cases (and
   after moving to a simple root), namely for types 2i11, 2i12, 2r22, and 2r21.
 }
 set ext_cross_simple (int j, ExtParam (ic,delta,,,,,,,,):E) =

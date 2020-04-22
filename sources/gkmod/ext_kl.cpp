@@ -75,28 +75,33 @@ descent_table::descent_table(const ext_block::ext_block& eb)
     descents[x]=desc;
     good_ascents[x]=good_asc;
 
-    BitMap& flip = prim_flip[x]; // place to record primitivisation flips $x$
+    BitMap& flip_x = prim_flip[x]; // place to record primitivisation flips $x$
 
     // compute primitivisations of |x|, storing index among primitives for |D|
-    // loop must be downwards so initially index is w.r.t. descending order
-    for (unsigned long desc=prim_index.size(); desc-->0;)
+    // since |x| is decreasing, index counts _larger_ primitive elements for |D|
+    for (unsigned long descs=0; descs<prim_index.size(); ++descs) // all bitsets
     {
-      RankFlags D(desc); // descent set for which to primitive
+      RankFlags D(descs); // descent set for which to primitive
       D &= good_asc;
       if (D.none()) // then element |x| is primitive for the descent set
-	prim_index[desc][x] = prim_count[desc]++; // self-ref; increment count
+	prim_index[descs][x] = prim_count[descs]++; // self-ref; increment count
       else
       {
 	weyl::Generator s = D.firstBit();
 	if (is_like_nonparity(block.descent_type(s,x)))
-	  prim_index[desc][x] = ~0; // stop primitivisation with zero result
+	  prim_index[descs][x] = ~0; // stop primitivisation with zero result
 	else
 	{
 	  BlockElt sx = block.some_scent(s,x);
-	  assert(sx>x); // ascents go up in block
-	  prim_index[desc][x] = prim_index[desc][sx];
-	  if ((block.epsilon(s,x,sx)<0)!=prim_flip[sx].isMember(desc))
-	    flip.insert(desc);
+	  if (sx==UndefBlock) // primitivization would cross partial block edge
+	    prim_index[descs][x] = ~0; // stop primitivisation with zero result
+	  else
+	  {
+	    assert(sx>x); // ascents go up in block
+	    prim_index[descs][x] = prim_index[descs][sx];
+	    flip_x.set_to(descs,
+		 (block.epsilon(s,x,sx)<0)!=prim_flip[sx].isMember(descs));
+	  }
 	}
       }
     } // |for (desc)|
@@ -143,21 +148,24 @@ bool descent_table::extr_back_up(BlockElt& x, BlockElt y) const
   return false;
 } // |descent_table::extr_back_up|
 
-KL_table::KL_table(const ext_block::ext_block& b, std::vector<Pol>& pool)
-  : aux(b), storage_pool(pool), column()
+KL_table::KL_table(const ext_block::ext_block& b, std::vector<Pol>* pool)
+  : aux(b)
+  , own(pool==nullptr ? new std::vector<Pol> : nullptr)
+  , storage_pool(pool==nullptr ? *own : *pool)
+  , column()
 { // ensure first two pool entries are constant polynomials $0$, and $1$
-  if (pool.empty())
-    pool.push_back(Pol(0));
+  if (storage_pool.empty())
+    storage_pool.push_back(Pol(0));
   else
-    assert(pool[0]==Pol(0));
-  if (pool.size()==1)
-    pool.push_back(Pol(1));
+    assert(storage_pool[0]==Pol(0));
+  if (storage_pool.size()==1)
+    storage_pool.push_back(Pol(1));
   else
-    assert(pool[1]==Pol(1));
+    assert(storage_pool[1]==Pol(1));
 }
 
 std::pair<kl::KLIndex,bool>
-KL_table::KL_pol_index(BlockElt x, BlockElt y) const
+  KL_table::KL_pol_index(BlockElt x, BlockElt y) const
 { const kl::KLRow& col_y = column[y];
   unsigned inx=aux.x_index(x,y);
   if (inx<col_y.size())
@@ -174,6 +182,18 @@ Pol KL_table::P(BlockElt x, BlockElt y) const
   return index.second ? -storage_pool[index.first] : storage_pool[index.first];
 }
 
+containers::sl_list<BlockElt> KL_table::nonzero_column(BlockElt y) const
+{
+  const kl::KLRow& col_y = column[y];
+  containers::sl_list<BlockElt> result({y});
+  for (BlockElt x=y; x-->0;)
+  {
+    unsigned inx=aux.x_index(x,y);
+    if (inx<col_y.size() ? col_y[inx]!=kl::KLIndex(0) : inx==aux.self_index(y))
+      result.push_back(x);
+  }
+  return result;
+}
 // coefficient of P_{x,y} of $q^{(l(y/x)-i)/2}$ (used with i=1,2,3 only)
 int KL_table::mu(short unsigned int i,BlockElt x, BlockElt y) const
 {
@@ -234,6 +254,7 @@ Pol KL_table::product_comp (BlockElt x, weyl::Generator s, BlockElt sy) const
 // auxiliary to form $aq^{-1}+b+aq$, shifted to an ordinary polynomial
 inline Pol m(int a,int b) { return a==0 ? Pol(b) : qk_plus_1(2)*a + Pol(1,b); }
 
+#ifndef NDEBUG // |get_M| only used for double-checking the result of |extract_M|
 /*
   Find $m_s(x,y)$ (symmetric Laurent polynomials in $r$) by recursive formula
   $m(x)\cong r^k p_{x,y} + def(s,x) r p_{s_x,y}-\sum_{x<u<y}p_{x,u}m(u)$ where
@@ -257,7 +278,8 @@ Pol KL_table::get_M(weyl::Generator s, BlockElt x, BlockElt y,
 		    const std::vector<Pol>& M) const
 {
   const ext_block::ext_block& bl=aux.block;
-  const BlockElt z =  bl.some_scent(s,y); // unique ascent by |s| of |y|
+  const BlockElt z =  bl.some_scent(s,y); // ascent by |s| of |y|
+  assert(z!=UndefBlock); // since in caller |y| was obtained as an |s|-descent
 
   const unsigned defect = has_defect(type(s,z)) ? 1 : 0;
   const unsigned k = bl.orbit(s).length();
@@ -352,6 +374,7 @@ Pol KL_table::get_M(weyl::Generator s, BlockElt x, BlockElt y,
 
   return extract_M(Q,l(z,x)+defect,defect);
 } // |KL_table::get_M|
+#endif
 
 /*
   This is largely the same formula, but used in different context, which
@@ -510,7 +533,7 @@ void KL_table::fill_next_column(PolHash& hash)
   column.back().resize(aux.col_size(y));
 
   weyl::Generator s;
-  BlockElt sy;
+  BlockElt sy; // gets set to unique descent for |s| of |y|, if one can be found
   if (has_direct_recursion(y,s,sy))
   {
     const unsigned defect = has_defect(type(s,y)) ? 1 : 0;
@@ -535,9 +558,8 @@ void KL_table::fill_next_column(PolHash& hash)
 	  continue;
 
 	assert(u<Ms.size());
-	Pol gM = get_M(s,u,sy,Ms);
 	Ms[u]=extract_M(cy[u],d,defect);
-	assert(Ms[u]==gM);
+	assert(Ms[u]==get_M(s,u,sy,Ms));
 
 	if (Ms[u].isZero())
 	  continue;
@@ -560,17 +582,25 @@ void KL_table::fill_next_column(PolHash& hash)
       if (aux.is_descent(s,x)) // then we computed $P(x,y)$ above
         *it = hash.match(cy[x]*sign);
       else // |x| might not be descent for |s| if primitive but not extremal
-      { // find and use a double-valued ascent for |x| that is decsent for |y|
+      { // find and use a double-valued ascent for |x| that is descent for |y|
 	assert(has_double_image(type(s,x))); // since |s| non-good ascent
 	BlockEltPair sx = aux.block.Cayleys(s,x);
-	PolEntry Q = P(sx.first,y);  // computed earlier in this loop
-	if (aux.block.epsilon(s,x,sx.first)<0)
-	  Q *= -1;
-	if (aux.block.epsilon(s,x,sx.second)>0)
-	  Q += P(sx.second,y);
+	if (sx.first==UndefBlock) // if we cross the edge of a partial block
+	  *it=0; // then there can be no contribution form the Cayleys
 	else
-	  Q -= P(sx.second,y);
-        *it = hash.match(Q);
+	{
+	  PolEntry Q = P(sx.first,y);  // computed earlier in this loop
+	  if (aux.block.epsilon(s,x,sx.first)<0)
+	    Q *= -1;
+	  if (sx.second!=UndefBlock)
+	  {
+	    if (aux.block.epsilon(s,x,sx.second)>0)
+	      Q += P(sx.second,y);
+	    else
+	      Q -= P(sx.second,y);
+	  }
+	  *it = hash.match(Q);
+	}
       }
     assert(it==column.back().rend()); // check that we've traversed the column
   }
@@ -636,13 +666,19 @@ void KL_table::do_new_recursion(BlockElt y,PolHash& hash)
 	s = aux.easy_set(x,y).firstBit();
 	assert(has_double_image(type(s,x))); // since |s| non-good ascent
 	BlockEltPair sx = aux.block.Cayleys(s,x);
-	cy[x] = P(sx.first,y);  // computed earlier this loop
-	if (aux.block.epsilon(s,x,sx.first)<0)
-	  cy[x] *= -1;
-	if (aux.block.epsilon(s,x,sx.second)>0)
-	  cy[x] += P(sx.second,y);
-	else
-	  cy[x] -= P(sx.second,y);
+	if (sx.first!=UndefBlock)
+	{
+	  cy[x] = P(sx.first,y);  // computed earlier this loop
+	  if (aux.block.epsilon(s,x,sx.first)<0)
+	    cy[x] *= -1;
+	  if (sx.second!=UndefBlock)
+	  {
+	    if (aux.block.epsilon(s,x,sx.second)>0)
+	      cy[x] += P(sx.second,y);
+	    else
+	      cy[x] -= P(sx.second,y);
+	  }
+	}
       }
     }
     else // |x| is extremal for |y|, so we must do real computation
@@ -679,6 +715,7 @@ void KL_table::do_new_recursion(BlockElt y,PolHash& hash)
 	case ext_block::three_complex_ascent:
 	  { // |(is_complex(tsx))|
 	    BlockElt sx=aux.block.cross(s,x);
+	    // if |sx==UndefBlock| the next condition always fails
 	    if (sx<floor_y) // subtract contrib. from $[T_x](T_s+1).T_{sx}=q^k$
 	      Q -= aux.block.T_coef(s,x,sx)*cy[sx]; // coef is $\pm q^k$
 	  } // implicit division of $Q$ here is by |T_coef(s,x,x)==1|
@@ -688,7 +725,7 @@ void KL_table::do_new_recursion(BlockElt y,PolHash& hash)
 	case ext_block::three_imaginary_semi:
 	  { // |has_defect(tsx)|
 	    BlockElt sx=aux.block.Cayley(s,x);
-	    if (sx<floor_y)
+	    if (sx<floor_y) // then in particular |sx!=UndefBlock|
 	      Q -= aux.block.T_coef(s,x,sx)*cy[sx]; // coef is $\pm(q^k-q)$
 
 	    /* divide by |T_coef(s,x,x)==1+q|, knowing that $Q$ may be missing
@@ -708,7 +745,7 @@ void KL_table::do_new_recursion(BlockElt y,PolHash& hash)
 	case ext_block::two_imaginary_double_double:
 	  { // |is_like_type_2(tsx)|
 	    assert(has_double_image(tsx)); // since it is a type 2 ascent
-	    BlockEltPair sx=aux.block.Cayleys(s,x);
+	    BlockEltPair sx=aux.block.Cayleys(s,x); // again |UndefBlock|s are OK
 	    if (sx.first<floor_y)
 	      Q -= aux.block.T_coef(s,x,sx.first)*cy[sx.first]; // $\pm(q^k-1)$
 	    if (sx.second<floor_y)
@@ -863,7 +900,7 @@ void ext_KL_matrix (const StandardRepr p, const int_Matrix& delta,
     eblock.element(entry_element+1);
 
   std::vector<ext_kl::Pol> pool;
-  KL_table twisted_KLV(eblock,pool);
+  KL_table twisted_KLV(eblock,&pool);
   twisted_KLV.fill_columns(size); // fill up to and including |p|
 
   int_Vector pol_value (pool.size()); // polynomials evaluated as $q=-1$
@@ -893,7 +930,8 @@ void ext_KL_matrix (const StandardRepr p, const int_Matrix& delta,
   Then afterwards non surviving rows and columns (should be 0) are removed.
 */
 
-  containers::sl_list<BlockElt> survivors(eblock.condense(P_mat,B));
+  containers::sl_list<BlockElt> survivors
+    (eblock.condense(P_mat,eblock.singular_orbits(B)));
 
   if (survivors.size()<size) // if any non-survivors, we need to compress |P_mat|
   { size=survivors.size(); // henceforth this is our size
@@ -921,7 +959,7 @@ void ext_KL_matrix (const StandardRepr p, const int_Matrix& delta,
   lengths = int_Vector(0); lengths.reserve(size);
 
   const auto gamma = B.gamma();
-  assert(is_dominant_ratweight(rc.rootDatum(),gamma)); // from |param_block|
+  assert(is_dominant_ratweight(rc.root_datum(),gamma)); // from |param_block|
   for (auto ez : survivors)
   {
     auto z = eblock.z(ez);

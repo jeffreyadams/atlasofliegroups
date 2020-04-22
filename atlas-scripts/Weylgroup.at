@@ -10,15 +10,17 @@ set lengthens (RootDatum rd, mat M, int s) = bool: { for right multiplication }
 set lengthens (RootDatum rd, int s, mat M) = bool: { for left multiplication }
   rd.is_positive_coroot(coroot(rd,s)*M)
 
-{ write given root (assumed positive) as |w*alpha| with alpha simple }
+{ write given root (assumed positive) as |w*beta| with |beta| simple }
 set from_simple (RootDatum rd, vec alpha) = (WeylElt,vec):
-  let r = semisimple_rank(rd), w=id_W(rd) in
-  while { first find index that will make alpha shorter, which should exist }
-    let i = first( r, (int i):(coroot(rd,i)*alpha).> ) in
-    assert(i.>=,"Not a positive root")  { some descent must be found }
-  ; alpha != root(rd,i) { this is the condition of the outer while! }
-  do alpha := W_gen(rd,i)*alpha; w := w#i
-  od; (w,alpha)
+  let r = semisimple_rank(rd)
+  then ww = { simple reflections done left-to-right, so back is right-to-left }
+    while { first find index that will make alpha shorter, which should exist }
+      let i = first( r, (int i):(coroot(rd,i)*alpha).> ) in
+      assert(i.>=,"Not a positive root")  { some descent must be found }
+    ; alpha != root(rd,i) { this is the condition of the outer while! }
+    do alpha := W_gen(rd,i)*alpha; i
+    od
+  in (W_elt(rd,ww),alpha)
 
 set root_reflection (RootDatum rd, vec alpha) = WeylElt:
   let (w,beta) = from_simple(rd,alpha) in w*W_gen(rd,root_index(rd,beta))*/w

@@ -25,7 +25,7 @@ set posroot_cross (int i, Param p) = Param:
   also w given by sequence of simple root reflections, or
   w=s_beta for beta an arbitrary positive root
 
-  Compare this function to posroot_cross@(int,KGBElt) from synthetic.rx
+  Compare this function to posroot_cross@(int,KGBElt) from synthetic.at
   the main difference if that |w| is applied to |gamma| here, whereas for
   integral cross actions (and Cayley transforms) |gamma| is unchanged.
   The call of |make_dominant_using_roots| is just a consequence of the change
@@ -34,7 +34,7 @@ set posroot_cross (int i, Param p) = Param:
 set cross (mat w, Param p) = Param:
   let (x0,,gamma) = %p { gamma is (assumend to be?) dominant }
   then rd = root_datum(real_form(x0))
-  , x1=cross(w,x0) { apply matrix cross action on KGBElt, from synthetic.rx }
+  , x1=cross(w,x0) { apply matrix cross action on KGBElt, from synthetic.at }
   { the provided w will be such that gamma(x1)=w*gamma is integrally-dominant }
   , grading_wt=gamma-lambda(p)+rho_r(x0)
   then (new_gamma,)=make_dominant_using_roots(rd, w*gamma)
@@ -82,7 +82,7 @@ set cross (mat w, Param p) = Param:
   necessary correction to t is similar (but dual) to that of tau
 
   Contrary to ext_cross_special below, this does not call ext_cross@
-     extended_cross.rx
+     extended_cross.at
 }
 set ext_cross(
   mat w,ExtParam(ic,delta,gamma,lambda_rho,theta,g,l,,tau,t):E) =
@@ -90,7 +90,7 @@ set ext_cross(
   assert(w*delta=delta*w,"w not in W^delta");
   prints("ext_cross by w=",w); prints("E:"); display(E);
   let rd=root_datum(ic), x=x(E), w1= inverse(w), gamma1=w*gamma
-  then rho=rho(rd), x1=cross(w,x) { call cross@(mat,KGBElt) from synthetic.rx }
+  then rho=rho(rd), x1=cross(w,x) { call cross@(mat,KGBElt) from synthetic.at }
   , gamma2 = integrally_dominant(rd,gamma1)
   then rho_r_shift = w*rho_r(x)-rho_r(x1), theta1=involution(x1)
   then lambda_rho2 =
@@ -143,7 +143,7 @@ set ext_cross_special (int i, ExtParam E, bool show) = ExtParam:
     let (w,beta) = Wdelta_conjugate(root_datum(E), delta(E), j) in
     if show then prints("w=", w, " beta=", beta) fi;
     let E1=ext_cross(w,E) { use function defined above to move to simple }
-    then (E2,shift)=translate_to_dominant(E1) { from extended_misc.rx }
+    then (E2,shift)=translate_to_dominant(E1) { from extended_misc.at }
     then i=root_index(integrality_datum(E2),beta) in
     if show
     then prints("E1="); valid(E1) { print any anomalies }; display(E1)
@@ -222,7 +222,7 @@ set posroot_ext_Cayley (int i,ExtParam E) = [ExtParam]:
 { extended Cayley transform of any length, and not necessarily simple
   Cayley transform by j^th simple root of the *integral* roots
   if this root is also simple for G, then call ext_Cayley(...)
-  otherwise, call nonintegral.rx:posroot_ext_Cayley
+  otherwise, call nonintegral.at:posroot_ext_Cayley
   (with the appropriate change in root number)
 }
 set ext_Cayley (int j, ExtParam E, bool show) = [ExtParam]:
@@ -235,7 +235,7 @@ set ext_Cayley (int j, ExtParam E, bool show) = [ExtParam]:
   then do_Cayley = in_string_list(type,cayley_types)
   in
   if show
-  then prints("ext_Cayley in nonintegral.rx with  E:",format(E))
+  then prints("ext_Cayley in nonintegral.at with  E:",format(E))
   ;    prints("ext_Cayley, j=", j, ", " ,parameter(E))
   fi
 ; if not do_Cayley
@@ -250,7 +250,7 @@ set ext_Cayley (int j, ExtParam E, bool show) = [ExtParam]:
     then alpha = root(id,j) { a simple root of the integral subsystem }
     in
       if is_simple_root(rd,alpha)
-      then { call ext_Cayley_simple@(int,ExtParam), extended_cayley.rx }
+      then { call ext_Cayley_simple@(int,ExtParam), extended_cayley.at }
 	ext_Cayley_simple(j,E)
       else { call posroot_ext_Cayley@(int,ExtParam) defined above }
 	posroot_ext_Cayley(root_index(rd,alpha),E)

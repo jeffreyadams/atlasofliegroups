@@ -452,20 +452,6 @@ TorusPart TitsGroup::pull_across(const WeylElt& w, TorusPart x) const
   return x;
 }
 
-TitsElt TitsGroup::twisted(const TitsElt& te) const
-{
-  return TitsElt(*this,
-		 TitsGroup::twisted(left_torus_part(te)),
-		 TwistedWeylGroup::twisted(te.w()));
-}
-
-TitsElt TitsGroup::dual_twisted(const TitsElt& te, const TorusPart shift) const
-{
-  return TitsElt(*this,
-		 shift+TitsGroup::dual_twisted(left_torus_part(te)),
-		 TwistedWeylGroup::dual_twisted(te.w()));
-}
-
 /*
   Left multiply |a| by the canonical generator $\sigma_s$.
 

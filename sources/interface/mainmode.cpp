@@ -138,10 +138,11 @@ void replace_inner_class(InnerClass* G,output::Interface* I)
 namespace {
 
 /*
-  Synopsis: entry function to the main program mode.
+  Entry function to the main program mode.
 
-  It attempts to set the group type interactively. Throws an EntryError on
-  failure.
+  Attempt to set the group type interactively.
+  In case of failure catches an |InputError|, signals the user,
+  and rethrows |EntryError|.
 */
 void main_mode_entry()
 {
@@ -165,7 +166,7 @@ void main_mode_exit()
 
 
 /*
-  Synopsis: returns a |CommandNode| object that is constructed during the call.
+  Return a |CommandNode| object that is constructed during the call.
 */
 CommandNode mainNode()
 {

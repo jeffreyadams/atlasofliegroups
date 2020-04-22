@@ -1,8 +1,6 @@
-/*!
-\file
-  This is size.cpp
-*/
 /*
+  This is size.cpp
+
   Copyright (C) 2004,2005 Fokko du Cloux
   part of the Atlas of Lie Groups and Representations
 
@@ -48,8 +46,8 @@ public:
 ******************************************************************************/
 
 
-/*!
-  Synopsis: constructs the SizeType object representing value |a|.
+/*
+  Construct the |SizeType| object representing value |a|.
 
   Triggers a fatal error if a is not representable as a SizeType
 */
@@ -66,8 +64,8 @@ template<typename C> SizeType<C>::SizeType(unsigned long a)
   if (a > 1) // a was not representable
     error::PrimesError()("error: number not representable as SizeType");
 }
-/*!
-  Synopsis: return the unsigned long value of $prime(i)^{d_exp[i]}$
+/*
+  Return the |unsigned long| value of $prime(i)^{d_exp[i]}$
 
   The algorithm is the classical algorithm with squarings and multiplications,
   logarithmic in i.
@@ -93,8 +91,8 @@ template<typename C>
 }
 
 
-/*!
-  Synopsis: returns the unsigned long value of *this.
+/*
+  Return the |unsigned long| value of |*this|.
 
   NOTE: in case of overflow, we simply return the value modulo $2^{longBits}$.
 */
@@ -109,9 +107,7 @@ template<typename C>
   return c;
 }
 
-/*!
-  NOTE: multiplication becomes addition in our logarithmic representation.
-*/
+// NOTE: multiplication becomes addition in our logarithmic representation.
 template<typename C>
   SizeType<C>& SizeType<C>::operator*= (const SizeType& a)
 {
@@ -122,9 +118,7 @@ template<typename C>
 }
 
 
-/*!
-  NOTE: division becomes subtraction in our logarithmic representation.
-*/
+// NOTE: division becomes subtraction in our logarithmic representation.
 template<typename C>
   SizeType<C>& SizeType<C>::operator/= (const SizeType& a)
 {
@@ -141,10 +135,10 @@ template<typename C>
 ******************************************************************************/
 
 
-/*!
-  Synopsis: returns the j-th prime number, counting from 0.
+/*
+  Return the |j|-th prime number, counting from $0$.
 
-  Precondition: j < PRIMES_MAX;
+  Precondition: |j < PRIMES_MAX|;
 */
 unsigned long prime(size_t j)
 {
@@ -173,10 +167,10 @@ Size factorial (unsigned long n)
 namespace {
 
 
-/*!
-  Synopsis: constructs a PrimeHelper object containing the primes <= n.
+/*
+  Construct a |PrimeHelper| object containing primes less than or equal to $n$.
 
-  Also checks that PRIMES_MAX is large enough to contain the list; triggers
+  Also checks that |PRIMES_MAX| is large enough to contain the list; triggers
   a (fatal) |error::PrimesError| otherwise.
 */
 PrimeHelper::PrimeHelper(unsigned long n)

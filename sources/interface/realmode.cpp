@@ -57,7 +57,6 @@ namespace {
   void kgb_f();
   void KGB_f();
   void kgborder_f();
-  void kgbtwist_f();
   void kgbgraph_f();
 
   void kgp_f();
@@ -104,7 +103,6 @@ CommandNode realNode()
 	     "computes KGB data (more information than the kgb command)",KGB_h);
   result.add("kgborder",kgborder_f,
 	     "prints the Bruhat ordering on K\\G/B",std_help);
-  result.add("kgbtwist",kgbtwist_f,"shows twist orbits on K\\G/B");
   result.add("kgbgraph",kgbgraph_f,
 	     "makes a 'dot' file for the Bruhat ordering on K\\G/B",std_help);
   result.add("kgp", kgp_f,"prints the orbits of K on G/P",std_help);
@@ -146,8 +144,9 @@ Rep_table& currentRepTable() { return *rt; }
 namespace {
 
 /*
-  Synopsis: attempts to set a real form interactively. In case of failure,
-  throws an InputError and returns.
+  Attempt to set a real form interactively.
+  In case of failure catches an |InputError|, signals the user,
+  and rethrows |EntryError|.
 */
 void real_mode_entry()
 {
@@ -186,9 +185,7 @@ void realform_f()
 
 
 
-/*
-  Synopsis: destroys the real group and its interface, resoring nullptr pointers
-*/
+// Destroy the real group and its interface, resoring nullptr pointers
 void real_mode_exit()
 {
   delete G_R_pointer; G_R_pointer=nullptr;
@@ -304,15 +301,6 @@ void kgborder_f()
   ioutils::OutputFile file;
 
   kgb_io::printBruhatOrder(file,G.Bruhat_KGB());
-}
-
-void kgbtwist_f()
-{
-  RealReductiveGroup& G = currentRealGroup();
-
-  ioutils::OutputFile file;
-
-  kgb_io::print_twist(file,G.kgb());
 }
 
 

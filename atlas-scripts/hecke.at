@@ -17,7 +17,7 @@ set = (KGB_pair(x,y), KGB_pair(z,w) ) = bool: x=z and y=w
 set != (KGB_pair(x,y), KGB_pair(z,w)) = bool: x!=z or y!=w
 
 { y_gen=(ic,omega,psi), psi\in X^*(H)_Q is dual torus factor, made to be
-  omega-fixed. Compare definition to x@entended_param from extended_misc.rx,
+  omega-fixed. Compare definition to x@entended_param from extended_misc.at,
   which implies that torus_factor(x(E))=(g-l-rho_check(ic))*(1+theta)/2
 }
 set y_gen(ExtParam(ic,,gamma,lambda,,,,omega,,)) = KGBElt_gen:

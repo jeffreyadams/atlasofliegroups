@@ -9,7 +9,7 @@
 
   In this module no effort is done to handle cases more efficiently by numeric
   encoding, so types are simply short strings. Similarly we use |status_text|
-  from basic.rx rather than the numeric codes from built-in |status|, for
+  from basic.at rather than the numeric codes from built-in |status|, for
   readbility.
 }
 

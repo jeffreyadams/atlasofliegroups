@@ -361,7 +361,7 @@ void Ktypeform_f()
     {
       khc.print(std::cout << "Representation ",sr)
         << " is not final, as witnessed by coroot "
-	<< G.rootDatum().coroot(khc.witness()) << ".\n";
+	<< G.root_datum().coroot(khc.witness()) << ".\n";
       return;
     }
   }
@@ -424,7 +424,7 @@ void qKtypeform_f()
     {
       khc.print(std::cout << "Representation ",sr)
         << " is not final, as witnessed by coroot "
-	<< G.rootDatum().coroot(khc.witness()) << ".\n";
+	<< G.root_datum().coroot(khc.witness()) << ".\n";
       return;
     }
   }
@@ -483,7 +483,7 @@ void Ktypemat_f()
     {
       khc.print(std::cout << "Representation ",sr)
         << " is not standard, as witnessed by coroot "
-	<< G.rootDatum().coroot(khc.witness())
+	<< G.root_datum().coroot(khc.witness())
 	<< ".\n";
       return;
     }
@@ -491,7 +491,7 @@ void Ktypemat_f()
     {
       khc.print(std::cout << "Representation ",sr)
         << " is not final, as witnessed by coroot "
-	<< G.rootDatum().coroot(khc.witness()) << ".\n";
+	<< G.root_datum().coroot(khc.witness()) << ".\n";
       return;
     }
   }
@@ -574,7 +574,7 @@ void qKtypemat_f()
     {
       khc.print(std::cout << "Representation ",sr)
         << " is not standard, as witnessed by coroot "
-	<< G.rootDatum().coroot(khc.witness())
+	<< G.root_datum().coroot(khc.witness())
 	<< ".\n";
       return;
     }
@@ -582,7 +582,7 @@ void qKtypemat_f()
     {
       khc.print(std::cout << "Representation ",sr)
         << " is not final, as witnessed by coroot "
-	<< G.rootDatum().coroot(khc.witness()) << ".\n";
+	<< G.root_datum().coroot(khc.witness()) << ".\n";
       return;
     }
   }
@@ -717,7 +717,7 @@ void branch_f()
     {
       khc.print(std::cout << "Representation ",srk)
         << " is not standard, as witnessed by coroot "
-	<< G.rootDatum().coroot(khc.witness())
+	<< G.root_datum().coroot(khc.witness())
 	<< ".\n";
       return;
     }
@@ -725,7 +725,7 @@ void branch_f()
     {
       khc.print(std::cout << "Representation ",srk)
         << " is not final, as witnessed by coroot "
-	<< G.rootDatum().coroot(khc.witness()) << ".\n";
+	<< G.root_datum().coroot(khc.witness()) << ".\n";
       return;
     }
   }
@@ -772,7 +772,7 @@ void qbranch_f()
     {
       khc.print(std::cout << "Representation ",srk)
         << " is not standard, as witnessed by coroot "
-	<< G.rootDatum().coroot(khc.witness())
+	<< G.root_datum().coroot(khc.witness())
 	<< ".\n";
       return;
     }
@@ -780,7 +780,7 @@ void qbranch_f()
     {
       khc.print(std::cout << "Representation ",srk)
         << " is not final, as witnessed by coroot "
-	<< G.rootDatum().coroot(khc.witness()) << ".\n";
+	<< G.root_datum().coroot(khc.witness()) << ".\n";
       return;
     }
   }
@@ -826,7 +826,7 @@ void srtest_f()
   unsigned long x=interactive::get_bounded_int
     (interactive::sr_input(),"Choose KGB element: ",G.kgb().size());
 
-  prettyprint::printVector(std::cout<<"2rho = ",G.rootDatum().twoRho())
+  prettyprint::printVector(std::cout<<"2rho = ",G.root_datum().twoRho())
     << std::endl;
 
   Weight lambda=
@@ -837,7 +837,7 @@ void srtest_f()
 
   StandardRepK sr=khc.std_rep_rho_plus(lambda,kgb.titsElt(x));
 
-  (lambda *= 2) += G.rootDatum().twoRho();
+  (lambda *= 2) += G.root_datum().twoRho();
   prettyprint::printVector(std::cout << "Weight (1/2)",lambda);
   prettyprint::printVector(std::cout << " converted to (1/2)",khc.lift(sr));
 
@@ -891,8 +891,7 @@ void test_f() // trial of twisted KLV computation
   else // convert to block number
     last=eblock.element(last);
 
-  std::vector<ext_kl::Pol> pool;
-  ext_kl::KL_table twisted_KLV(eblock,pool);
+  ext_kl::KL_table twisted_KLV(eblock,nullptr);
   twisted_KLV.fill_columns(last);
 
   ioutils::OutputFile f;

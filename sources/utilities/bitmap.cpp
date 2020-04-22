@@ -53,7 +53,7 @@ namespace bitmap {
   */
   unsigned long BitMap::posBits = constants::posBits;
 
-  /*!
+  /*
   Constant used to pick a bit-address apart: this is the logical
   complement of posBits, and masks the word-address within a BitMap index
   (which still must be shifted right by baseShift to be interpreted correctly,
@@ -63,7 +63,7 @@ namespace bitmap {
   */
   unsigned long BitMap::baseBits = constants::baseBits;
 
-  /*!
+  /*
   Constant saying how much we have to shift the BitMap index n of a bit (that
   is, the power of two by which it much be divided) to get the index of the
   d_map element that contains this bit (it is the number of set bits in
@@ -92,7 +92,7 @@ template <typename I> // iterator type
     insert(*it);
 }
 
-/*!
+/*
   In this constructor template we assume that I and J are iterator types with
   the same value_type. The idea is that [first,last[ is an ordered range,
   for which we can call lower_bound. Then we construct the bitmap which
@@ -123,10 +123,10 @@ BitMap& BitMap::operator= (const BitMap& a)
   return *this;
 }
 
-/*!******* range bounds *******************************************************/
+/******** range bounds *******************************************************/
 
-/*!
-  Returns an iterator pointing to the first set bit in the bitmap.
+/*
+  Return an iterator pointing to the first set bit in the bitmap.
 
   If the bitset is empty, this is will be equal to |end()|.
 */
@@ -174,9 +174,20 @@ bool BitMap::back_up(unsigned long& n) const
   return true;
 }
 
+unsigned long last (const BitMap& set)
+{
+  unsigned long result = set.capacity();
+#ifdef NDEBUG
+  set.back_up(result);
+#else
+  bool success = set.back_up(result);
+  assert(success);
+#endif
+  return result;
+}
 
 /*
-  Tells whether the current bitmap contains |b|. It is assumed that
+  Whether the current bitmap contains |b|. It is assumed that
   |b.capacity()<=capacity()|.
 
   This would amount to |not b.andnot(*this)| if |b| were by-value rather
@@ -204,9 +215,9 @@ bool BitMap::disjoint(const BitMap& b) const
 }
 
 
-/*!
-  Tells whether the bitmap is empty. Thanks to our convention of zeroing
-  unused bits, it is enough to check whether all the components of d_map
+/*
+  Whether the bitmap is empty. Thanks to our convention of zeroing
+  unused bits, it is enough to check whether all the components of |d_map|
   are zero.
 */
 bool BitMap::empty() const
@@ -235,8 +246,8 @@ unsigned long BitMap::front() const
     return (b<<baseShift) + bits::firstBit(d_map[b]);
 }
 
-/*!
-  Tells whether the bitmap is full. This means that all blocks are full,
+/*
+  Tell whether the bitmap is full. This means that all blocks are full,
   except maybe for the last one where we have to look only at the significant
   part.
 */
@@ -339,8 +350,8 @@ unsigned long BitMap::range(unsigned long n, unsigned long r) const
 
 }
 
-/*!
-  Returns the number of set bits in the bitmap (this is its size as a
+/*
+  Return the number of set bits in the bitmap (this is its size as a
   container of unsigned long.)
 
   NOTE: correctness depends on unused bits in the final word being cleared.
@@ -522,7 +533,7 @@ void BitMap::clear(size_t start, size_t stop)
   }
 }
 
-/*!
+/*
   Here we assume that I is an iterator whose value_type is unsigned long,
   and we do the sequence of insertions from the range [first,last[.
 */
@@ -560,8 +571,8 @@ void BitMap::extend_capacity(bool b)
   set_to(d_capacity++,b);
 }
 
-/*!
-  Synopsis: sets r bits from position n to the first r bits in a.
+/*
+  Set |r| bits from position |n| to the first |r| bits in |a|.
 
   Precondition: |n| and |n+r-1| have same integer quotient by |longBits| (or
   |r==0| in which case nothing happens), so in particular |r<=longBits|.
@@ -620,7 +631,7 @@ BitMap::iterator& BitMap::iterator::operator= (const BitMap::iterator& i)
   return *this;
 }
 
-/*!
+/*
   The incrementation operator; it has to move the bitAddress to the next
   set bit, and move the chunk if necessary.
 
@@ -665,7 +676,7 @@ BitMap::iterator& BitMap::iterator::operator++ ()
 }
 
 
-/*!
+/*
   Post-increment operator; it should return the value as it was _before_ the
   incrementation. This operator can mostly by avoided, as |M.remove(*it++)|
   can safely be replaced by |M.remove(*it),++it|

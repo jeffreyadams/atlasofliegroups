@@ -19,7 +19,7 @@
 #include "kgb.h"     // |kgb.size()|
 #include "innerclass.h" // |twoRho| in |nu_block::print|
 #include "blocks.h"
-#include "block_minimal.h"
+#include "common_blocks.h"
 #include "ext_block.h"
 #include "kl.h"
 #include "repr.h"
@@ -121,7 +121,7 @@ std::ostream& param_block::print
 {
   const KGB& kgb = rc.kgb();
   unsigned int xwidth = ioutils::digits(highest_x,10ul);
-  unsigned int rk = rootDatum().semisimpleRank();
+  unsigned int rk = root_datum().semisimpleRank();
 
   strm << (survives(z) ? '*' : ' ')
        << "(x=" << std::setw(xwidth) << x(z)
@@ -138,12 +138,12 @@ std::ostream& param_block::print
   return strm ;
 }
 
-std::ostream& block_minimal::print
+std::ostream& common_block::print
   (std::ostream& strm, BlockElt z,bool as_invol_expr) const
 {
   const KGB& kgb = rc.kgb();
   unsigned int xwidth = ioutils::digits(highest_x,10ul);
-  unsigned int rk = rootDatum().semisimpleRank();
+  unsigned int rk = root_datum().semisimpleRank();
 
   strm << " (x=" << std::setw(xwidth) << x(z)
        << ",gamma-lambda=" << std::setw(5*rk+1) << gamma_lambda(z)
@@ -381,9 +381,7 @@ std::ostream& printBlockU(std::ostream& strm, const Block& block)
 } // |printBlockU|
 
 
-/*
-  Synopsis: outputs the descent status for the various generators
-*/
+// Output the descent status for the various generators
 std::ostream& printDescent(std::ostream& strm,
 			   const DescentStatus& ds,
 			   size_t rank, RankFlags mask)
@@ -433,36 +431,6 @@ std::ostream& printDescent(std::ostream& strm,
   return strm;
 }
 
-
-std::ostream& print_twist(std::ostream& strm, const Block_base& block)
-{
-  if (block.Hermitian_dual(0)==UndefBlock)
-    return strm << "Block is not stable under twist" << std::endl;
-
-  std::ostringstream os; BlockElt count=0;
-
-  os << "Elements fixed under twist: ";
-  for (BlockElt z=0; z<block.size(); ++z)
-    if (block.Hermitian_dual(z)==z)
-    {
-      if (count>0)
-	os << ", ";
-      os << z;
-      ++count;
-    }
-  ioutils::foldLine(strm,os.str()) << std::endl;
-
-  os.str(""); // clear string for rewriting
-  strm << "Elements interchanged by twist: " << std::endl;
-  for (BlockElt z=0; z<block.size(); ++z)
-    if (block.Hermitian_dual(z)>z)
-      os << '(' << z << ' ' << block.Hermitian_dual(z) << ") ";
-
-  ioutils::foldLine(strm,os.str(),"",") ") << std::endl;
-
-  return strm << "Total " << count << " fixed elements out of " << block.size()
-	      << std::endl;
-}
 
 std::ostream& print_KL(std::ostream& f, param_block& block, BlockElt z)
 {

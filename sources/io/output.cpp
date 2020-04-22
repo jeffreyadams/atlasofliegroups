@@ -363,7 +363,7 @@ std::ostream& printBlockStabilizer(std::ostream& strm,
 
 {
   const InnerClass& G_C = G_R.innerClass();
-  const RootDatum& rd = G_R.rootDatum();
+  const RootDatum& rd = G_R.root_datum();
   const WeylGroup& W = G_R.weylGroup();
 
   RealFormNbr rf = G_R.realForm();
@@ -473,18 +473,18 @@ std::ostream& printRealWeyl(std::ostream& strm,
 }
 
 /*
-  Synopsis: outputs information about the strong real forms of G.
+  Output information about the strong real forms of |G_C|.
 
-  Explanation: the inverse image in \X of a class of weak real forms of G is
-  of the form Z.\X(z), where z is an admissible value for x^2 for a strong real
-  form of that class; so there is associated to the class of weak real forms
-  a coset (1+\delta)(Z).z in Z^\delta. All the various \X(z) for all possible
-  choices of z are isomorphic by Z-translation. Therefore it is enough to
-  describe the combinatorial structure of one of them, for each class of weak
-  real forms. This is a finite problem in all cases.
+  Explanation: the inverse image in $\X$ of a class of weak real forms of $G$ is
+  of the form $Z.\X(z)$, where $z$ is an admissible value of $x^2$ for a strong
+  real form of that class; so there is associated to the class of weak real forms
+  a coset $(1+\delta)(Z).z$ in $Z^\delta$. All the various $\X(z)$ for all
+  possible choices of $z$ are isomorphic by $Z$-translation. Therefore it is
+  enough to describe the combinatorial structure of one of them, for each class
+  of weak real forms. This is a finite problem in all cases.
 
-  We output the orbits of W_im in X(z), which correspond to the various strong
-  real forms; we label them with the corresponding weak real form.
+  We output the orbits of $W_{im}$ in $\X(z)$, which correspond to the various
+  strong real forms; we label them with the corresponding weak real form.
 */
 std::ostream& printStrongReal(std::ostream& strm,
 			      const InnerClass& G_C,

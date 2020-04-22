@@ -93,7 +93,7 @@ RootNbrSet max_orth(const RootNbrSet& non_compact,
 ******************************************************************************/
 
 /*
-  Synopsis: compares |lhs| and |rhs|, returns whether |lhs<rhs| as gradings
+  Compare |lhs| and |rhs|, returns whether |lhs<rhs| as gradings
 
   By definition this holds iff either |lhs| has fewer set bits, or they have
   the number, and |lhs<rhs| holds in the usual (bitwise lexicographic) sense.
@@ -111,7 +111,7 @@ bool GradingCompare::operator() (const Grading& lhs, const Grading& rhs)
 #if 0 // the remaining functions are never used, but are retained for reference
 
 /*
-  Synopsis: tells whether |v| is noncompact w.r.t. the grading |g|.
+  Whether |v| is noncompact w.r.t. the grading |g|.
 
   NOTE : it is essential that |v| is expressed in the root basis in which
   |g| is also given!
