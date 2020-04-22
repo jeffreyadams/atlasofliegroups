@@ -225,7 +225,7 @@ d=orbit.component_datum then
 ()=prints("doing orbit: ", orbit) then
 number_real_nilpotents=number_real_nilpotent_orbits_correct_central_invariant(orbit, ic_dual) then
 arthur_parameters=arthur_parameters(ic_dual,orbit) in
-let ()=prints("test:",orbit, " ", arthur_parameters) in
+{let ()=prints("test:",orbit, " ", arthur_parameters) in}
 if ic_dual.is_equal_rank{ or orbit.is_even } then
 assert(sum(number_real_nilpotents)=#arthur_parameters,"two counts of Arthur parameters don't match") fi;
 (
