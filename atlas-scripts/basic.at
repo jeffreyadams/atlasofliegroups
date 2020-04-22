@@ -1129,6 +1129,8 @@ set is_equal_rank (InnerClass ic) = bool: { whether distinguished_involution=1 }
 
 set is_split (RealForm G) = bool: { whether most split Cartan has theta = -1 }
   =compact_rank(most_split_Cartan(G))
+{is_split@InnerClass is not the same as is_split@RealForm}
+set is_split(InnerClass ic)=bool:is_split(quasisplit_form(ic))  
 
 { equality of Cartan classes }
 set = (CartanClass H,CartanClass J) = bool:
