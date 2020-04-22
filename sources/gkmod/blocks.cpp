@@ -490,16 +490,6 @@ Block::Block(const KGB& kgb,const KGB& dual_kgb)
     } // |for (z)|
   } // |for(s)|
 
-  // Complete |Block_base| initialisation by installing the dual links.
-  if (dual_kgb.Hermitian_dual(0)!=UndefKGB) // then whole block stable
-  {
-    orbits = tW.twist_orbits(); // orbits on full Dynkin diagram
-    // the following is correct since |dual_kgb| was built with dual twist
-    for (BlockElt z=0; z<size; ++z)
-      info[z].dual =
-	element(kgb.Hermitian_dual(x(z)),dual_kgb.Hermitian_dual(y(z)));
-  }
-
   // Continue filling the fields of the |Block| derived class proper
   d_Cartan.reserve(size);
   d_involution.reserve(size);
@@ -1072,7 +1062,6 @@ param_block::param_block // full block constructor
   reverse_length_and_sort(true); // reorder block by increasing value of |x|
   xy_hash.reconstruct(); // adapt to permutation of the block
 
-  compute_duals(y_hash,xy_hash,G,sub); // finally compute Hermitian duals
   compute_y_bits(y_pool);
 
   // and look up which element matches the original input
@@ -1124,48 +1113,6 @@ void param_block::reverse_length_and_sort(bool full_block)
 
 } // |param_block::reverse_length_and_sort|
 
-
-void param_block::compute_duals
-  (const y_part_hash& y_hash,const block_hash& hash,
-   const InnerClass& G,const SubSystem& rs)
-{
-  const WeightInvolution& delta = G.distinguished();
-
-  if (delta*infin_char==infin_char) // for stable blocks compute |delta|-action
-  {
-    WeylWord dummy; // remains empty; the following only serves to get the
-    weyl::Twist twist = rs.parent_twist(delta,dummy); // twist induced in |rs|
-    {
-      unsigned int size=0;
-      for (weyl::Generator s=0; s<rs.rank(); ++s)
-	if (twist[s]>=s)
-	  ++size;
-      orbits.reserve(size);
-    }
-
-    // analyse the |twist|-orbits on the Dynkin diagram of |rs|
-    for (weyl::Generator s=0; s<rs.rank(); ++s)
-      if (twist[s]==s)
-	orbits.push_back(ext_gen(s));
-      else if (twist[s]>s)
-	orbits.push_back(ext_gen(rs.cartan(s,twist[s])==0, s,twist[s]));
-
-    for (BlockElt z=0; z<size(); ++z)
-    {
-      KGBElt dual_x = rc.kgb().Hermitian_dual(x(z));
-      if (dual_x!=UndefKGB)
-      {
-	assert(y_hash[y(z)].nr==rc.kgb().inv_nr(x(z))); // check coherence
-	TorusElement t = y_hash[y(z)].t_rep;
-	t.act_by(delta); // twist |t| by |delta|
-	const KGBElt y =
-	  y_hash.find(involution_table().pack(t,rc.kgb().inv_nr(dual_x)));
-
-	info[z].dual = find_in(hash,dual_x,y);
-      }
-    }
-  }
-} // |param_block::compute_duals|
 
 void param_block::compute_y_bits(const y_entry::Pooltype& y_pool)
 { y_bits.reserve(y_pool.size());
@@ -1511,7 +1458,6 @@ param_block::param_block // partial block constructor, for interval below |sr|
 
     } // |for(s)|
   } // |for(i)|
-  compute_duals(y_hash,xy_hash,inner_class(),sub);
   compute_y_bits(y_pool);
 
 } // |param_block::param_block|, partial block version

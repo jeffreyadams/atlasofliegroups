@@ -55,13 +55,12 @@ public: // this |struct| must be public, though mainly used in derived classes
     KGBElt x,y; // indices into |KGB| sets (which might no longer exist)
     DescentStatus descent;
     unsigned short length;
-    BlockElt dual; // number of Hermitian dual of this element, if any
     EltInfo(KGBElt xx,KGBElt yy,DescentStatus dd, unsigned short ll)
-      : x(xx),y(yy),descent(dd),length(ll), dual(UndefBlock) {}
+      : x(xx),y(yy),descent(dd),length(ll) {}
 
   // sometimes leave |descent| and |length| (which |hashCode| ignores) blank
     EltInfo(KGBElt xx,KGBElt yy)
-      : x(xx),y(yy),descent(),length(0), dual(UndefBlock) {}
+      : x(xx),y(yy),descent(),length(0) {}
 
   // methods that will allow building a hashtable with |info| as pool
     typedef std::vector<EltInfo> Pooltype;
@@ -158,8 +157,6 @@ public:
   bool isStrictDescent(weyl::Generator, BlockElt) const;
   weyl::Generator firstStrictDescent(BlockElt z) const;
   weyl::Generator firstStrictGoodDescent(BlockElt z) const;
-
-  BlockElt Hermitian_dual(BlockElt z) const { return info[z].dual; }
 
   // print whole block to stream (name chosen to avoid masking by |print|)
   std::ostream& print_to
@@ -384,9 +381,6 @@ class param_block : public Block_base
 
  private:
   void compute_y_bits(const y_entry::Pooltype& y_pool); // set all the |y_bits|
-  void compute_duals
-  (const y_part_hash& y_hash,const block_hash& hash,
-   const InnerClass& G,const SubSystem& rs);
 
 /*
   reverse lengths and order block with them increasing, and by increasing

@@ -69,7 +69,6 @@ namespace {
   void blockorder_f();
   void blockwrite_f();
   void blockstabilizer_f();
-  void blocktwist_f();
   void extblock_f();
   void gextblock_f();
   void klbasis_f();
@@ -128,7 +127,6 @@ CommandNode blockNode()
 	     "writes the block information to disk",std_help);
   result.add("blockstabilizer",blockstabilizer_f,
 	     "print the real Weyl group for the block",std_help);
-  result.add("blocktwist",blocktwist_f,"shows twist orbits on block");
   result.add("extblock",extblock_f,
 	     "prints block for group extended by inner class involution");
   result.add("gextblock",gextblock_f,"prints block for general extended group");
@@ -425,12 +423,6 @@ void blockstabilizer_f()
   ioutils::OutputFile file;
   output::printBlockStabilizer
     (file,currentRealGroup(),cn,currentDualRealForm());
-}
-
-void blocktwist_f()
-{
-  ioutils::OutputFile file;
-  block_io::print_twist(file,currentBlock());
 }
 
 void extblock_f()

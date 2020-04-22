@@ -63,7 +63,6 @@ namespace commands {
   void partial_block_f();
   void block_f();
   void blockorder_f();
-  void blocktwist_f();
   void extblock_f();
   void gextblock_f();
   void deform_f();
@@ -106,7 +105,6 @@ CommandNode reprNode()
 	     use_tag);
   result.add("block",block_f,"second"); // block mode sets tag
   result.add("blockorder",blockorder_f,"second");
-  result.add("blocktwist",blocktwist_f,"second");
   result.add("extblock",extblock_f,"second");
   result.add("gextblock",gextblock_f,"second");
   result.add("kl",kl_f,
@@ -320,12 +318,6 @@ void blockorder_f()
   std::cout << "block size: " << block.size() << std::endl;
   ioutils::OutputFile file;
   kgb_io::printBruhatOrder(file,block.bruhatOrder());
-}
-
-void blocktwist_f()
-{
-  ioutils::OutputFile file;
-  block_io::print_twist(file,current_param_block());
 }
 
 void extblock_f()
