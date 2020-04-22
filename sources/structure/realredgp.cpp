@@ -96,8 +96,7 @@ void RealReductiveGroup::construct()
 }
 
 
-RealReductiveGroup::~RealReductiveGroup()
-{ delete d_Tg; delete kgb_ptr; }
+RealReductiveGroup::~RealReductiveGroup() = default; // do |unique_ptr| magic
 
 /******** accessors *********************************************************/
 
@@ -195,8 +194,8 @@ RootNbrSet RealReductiveGroup::noncompactRoots() const
 // return stored KGB structure, after generating it if necessary
 const KGB& RealReductiveGroup::kgb()
 {
-  if (kgb_ptr==nullptr)
-    kgb_ptr = new KGB(*this,Cartan_set());
+  if (kgb_ptr.get()==nullptr)
+    kgb_ptr.reset(new KGB(*this,Cartan_set()));
   return *kgb_ptr;
 }
 

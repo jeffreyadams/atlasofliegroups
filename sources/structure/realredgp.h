@@ -13,6 +13,8 @@
 #ifndef REALREDGP_H  /* guard against multiple inclusions */
 #define REALREDGP_H
 
+#include <memory> // for |std::unique_ptr|
+
 #include "bitmap_fwd.h"
 #include "poset_fwd.h"
 #include "../Atlas.h"
@@ -59,8 +61,8 @@ class RealReductiveGroup
   RatCoweight square_class_cocharacter; // a base coweight for square class
   TorusPart torus_part_x0; // initial |TorusPart| relative to square class base
 
-  const TitsCoset* d_Tg; // owned pointer; the group is stored here
-  KGB* kgb_ptr; // owned pointer, but initially |NULL|
+  std::unique_ptr<const TitsCoset> d_Tg; // the Tits group is stored here
+  std::unique_ptr<KGB> kgb_ptr; // initially |NULL|
 
   Status d_status;
 
