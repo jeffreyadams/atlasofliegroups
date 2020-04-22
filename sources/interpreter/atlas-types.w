@@ -3825,7 +3825,8 @@ void KGB_twist_wrapper(expression_base::level l)
   if (l==expression_base::no_value)
     return;
 @)
-  x->val= kgb.Hermitian_dual(x->val); // do twist
+  x->val= kgb.twisted(x->val,x->rf->val.innerClass().distinguished());
+    // do twist
   push_value(std::move(x));
 }
 @)

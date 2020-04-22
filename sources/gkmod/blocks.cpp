@@ -511,14 +511,17 @@ Block Block::build(InnerClass& G, RealFormNbr rf, RealFormNbr drf)
   InnerClass dG(G,tags::DualTag()); // the dual group
   RealReductiveGroup dG_R(dG,drf);
 
-  KGB kgb     (G_R, common_Cartans(G_R,dG_R),false);
-  KGB dual_kgb(dG_R,common_Cartans(dG_R,G_R),true);
+  KGB kgb     (G_R, common_Cartans(G_R,dG_R));
+  KGB dual_kgb(dG_R,common_Cartans(dG_R,G_R));
   return Block(kgb,dual_kgb); // |kgb| and |dual_kgb| disappear afterwards!
 }
 
 // Given both real group and dual real group, we can just call main contructor
 Block Block::build(RealReductiveGroup& G_R, RealReductiveGroup& dG_R)
-{ return Block(G_R.kgb(),dG_R.kgb_as_dual()); }
+{
+  auto& kgb = G_R.kgb(); auto& dual_kgb = dG_R.kgb(); // temporaries
+  return Block(kgb,dual_kgb);
+}
 
 // manipulators
 
@@ -696,12 +699,6 @@ void nblock_help::do_down_Cayley (weyl::Generator s, nblock_elt& z) const
   parent_down_Cayley(sub.simple(s),z);
   for (size_t i=0; i<ww.size(); ++i)
     parent_cross_act(ww[i],z);
-}
-
-void nblock_help::twist(nblock_elt& z) const
-{
-  z.xx = kgb.Hermitian_dual(z.xx);
-  z.yy.act_by(i_tab.delta); // apply matrix |i_tab.delta| to |RatWeight z.yy|
 }
 
 

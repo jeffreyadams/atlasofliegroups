@@ -433,8 +433,6 @@ public:
   void do_down_Cayley (weyl::Generator s,nblock_elt& z) const;
   bool is_real_nonparity(weyl::Generator s,nblock_elt z) const; // by value
 
-  void twist(nblock_elt& z) const;
-
   y_entry pack_y(const nblock_elt& z) const;
 }; // |class nblock_help|
 

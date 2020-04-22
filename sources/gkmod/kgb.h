@@ -64,9 +64,8 @@ class KGB_base
   {
     gradings::Status status; // status of each simple root for this element
     DescentSet desc; //  which simple reflections are complex descent or real
-    KGBElt dual; // number of Hermitian dual of this element
 
-  EltInfo() : status(), desc(), dual(UndefKGB) {}
+  EltInfo() : status(), desc() {}
 
   }; // |struct EltInfo|
 
@@ -139,8 +138,6 @@ class KGB_base
 
   unsigned int length(KGBElt x) const
   { return ic.involution_table().length(inv_nr(x));}
-
-  KGBElt Hermitian_dual(KGBElt x) const { return info[x].dual; }
 
   // a method useful mostly for traversing all our involutions
   const TwistedInvolution& nth_involution(inv_index n) const
@@ -243,11 +240,10 @@ class global_KGB : public KGB_base
   global_KGB(const global_KGB& org); // forbid copying
 
  public:
-  global_KGB(InnerClass& G, bool dual_twist=false);
+  global_KGB(InnerClass& G);
 
   global_KGB(InnerClass& G,
-	     const GlobalTitsElement& x,
-	     bool dual_twist=false); // generate KGB containing |x|
+	     const GlobalTitsElement& x); // generate KGB containing |x|
 
 // accessors
   const GlobalTitsGroup& globalTitsGroup() const { return Tg; }
@@ -264,7 +260,7 @@ class global_KGB : public KGB_base
 
  private:
   void generate_involutions(size_t n);
-  void generate(size_t predicted_size, bool dual_twist);
+  void generate(size_t predicted_size);
 
 }; // |class global_KGB|
 
@@ -313,8 +309,7 @@ class KGB : public KGB_base
  public:
 
 // constructors and destructors
-  explicit KGB(RealReductiveGroup& GR,
-	       const BitMap& Cartan_classes, bool dual_twist=false);
+  explicit KGB(RealReductiveGroup& GR, const BitMap& Cartan_classes);
 
   ~KGB(); // { delete d_bruhat; delete d_base; } // these are owned (or NULL)
 
@@ -363,8 +358,6 @@ class KGB : public KGB_base
 
 // private methods
 private:
-  bool is_dual_twist_stable(const RealReductiveGroup& GR, TorusPart& shift)
-    const; // auxiliary to see if this dual KGB can be twist-stable
 
   void fillBruhat();
 

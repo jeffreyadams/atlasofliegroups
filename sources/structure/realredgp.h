@@ -61,7 +61,6 @@ class RealReductiveGroup
 
   const TitsCoset* d_Tg; // owned pointer; the group is stored here
   KGB* kgb_ptr; // owned pointer, but initially |NULL|
-  KGB* dual_kgb_ptr; // owned pointer, but initially |NULL|
 
   Status d_status;
 
@@ -127,7 +126,6 @@ class RealReductiveGroup
   InnerClass& innerClass() { return d_innerClass; }
 
   const KGB& kgb();
-  const KGB& kgb_as_dual();
   const BruhatOrder& Bruhat_KGB();
 
 // internal methods

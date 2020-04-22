@@ -57,7 +57,6 @@ namespace {
   void kgb_f();
   void KGB_f();
   void kgborder_f();
-  void kgbtwist_f();
   void kgbgraph_f();
 
   void kgp_f();
@@ -104,7 +103,6 @@ CommandNode realNode()
 	     "computes KGB data (more information than the kgb command)",KGB_h);
   result.add("kgborder",kgborder_f,
 	     "prints the Bruhat ordering on K\\G/B",std_help);
-  result.add("kgbtwist",kgbtwist_f,"shows twist orbits on K\\G/B");
   result.add("kgbgraph",kgbgraph_f,
 	     "makes a 'dot' file for the Bruhat ordering on K\\G/B",std_help);
   result.add("kgp", kgp_f,"prints the orbits of K on G/P",std_help);
@@ -303,15 +301,6 @@ void kgborder_f()
   ioutils::OutputFile file;
 
   kgb_io::printBruhatOrder(file,G.Bruhat_KGB());
-}
-
-void kgbtwist_f()
-{
-  RealReductiveGroup& G = currentRealGroup();
-
-  ioutils::OutputFile file;
-
-  kgb_io::print_twist(file,G.kgb());
 }
 
 
