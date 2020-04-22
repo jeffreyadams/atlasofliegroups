@@ -2455,7 +2455,7 @@ StandardRepr scaled_extended_dominant // result will have its |gamma()| dominant
 
   { // descend through complex singular simple descents
     repr::Ext_common_context block_ctxt(G,delta, SubSystem::integral(rd,gamma));
-    const auto int_datum = block_ctxt.id();
+    const auto& int_datum = block_ctxt.id();
     const ext_gens integral_orbits = rootdata::fold_orbits(int_datum,delta);
     const RankFlags singular_orbits = // flag singular among integral orbits
       reduce_to(integral_orbits,singular_generators(int_datum,gamma));

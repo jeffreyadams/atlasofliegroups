@@ -358,6 +358,9 @@ class RootDatum
 
   RootDatum(const RootDatum&, tags::DualTag);
 
+  RootDatum(const RootDatum&) = delete;
+  RootDatum(RootDatum&&) = default;
+
 #if 0 // (co)derived constructors no loger used, done at |PreRootData| level now
   RootDatum(int_Matrix& projector, const RootDatum&, tags::DerivedTag);
   RootDatum(int_Matrix& injector, const RootDatum&, tags::CoderivedTag);
