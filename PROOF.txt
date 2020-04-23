@@ -137,6 +137,12 @@ page 15, line 1 (jda)
 It is Adams's humble opinion that the correct punctuation is
 "Langlands's classification". But both versions are considered correct
 so I don't insist.
+
+(dav) Google popularity contest: "Langlands' classification" gets 8000 hits,
+and "Langlands's classification" gets 14 (several from Knapp, which
+fits with the attitude implicit in Jeff's comment). I think that the
+extra (sorry, the _required_) "s" is a stumbling block in reading the
+phrase.
 *********************************
 page 22 (jda)
 
@@ -165,7 +171,14 @@ Page 28 (jda)
 
 line 12: is equal on \tilde H...  "on" should be in italics
 
-next displayed formula (for \Theta_\pi): unmatched large left parentheses
+(dav) actually that was the way it was written: emphasizing the phrase
+"on H~^+_reg" since the formula does {\em not} hold hold on the whole
+regular set.
+
+next displayed formula (for \Theta_\pi): unmatched large left
+parentheses
+
+(dav) ??? I don't see it.
 
 sentence after this formula: three occurences of "level *" with quotes. I think
 the first one should be in quotes, but the latter 2 should not.
