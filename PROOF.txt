@@ -1,0 +1,232 @@
+This is a repository for errors in the 16 April 2020 page proofs
+
+*********************************
+Marc's suggestion to change "skew-adjoint" to "anti-self-adjoint" in
+the abstract: Google gives 22,900 hits for
+
+"skew-adjoint" mathematics
+
+and 13,100 hits for
+
+"anti-self-adjoint" mathematics
+
+I take this as reason enough not to change the abstract, but am
+willing to be outvoted.
+*********************************
+I hate the font that they use for \mathcal (see page 1) but I suppose
+it's mathematically harmless?
+*********************************
+Third complete paragraph on page 3: breaking the equation t=0 is bad;
+should be entirely on the second line.
+*********************************
+There are a few places in the manuscript that use the LaTeX code
+
+   \cites{ref1,ref2}
+
+These are not typeset correctly; the result is meant to be
+
+   [number for ref1, number for ref2]
+
+First occurrence is on page 3; there are two on page 135, and one on the
+bottom of page 156.
+*********************************
+Since you have changed the names of the sections to "Chapter," all the
+references to "Section xx" need to be changed to "Chapter xx." This
+can be done with search and replace "Section" by "Chapter":
+
+page 4, in paragraphs 4 and 5
+page 5, paragraph 1 Sec 3
+page 6, paragraph 2 Sec 3
+page 8, two paragraphs from bottom Sec 6
+page 34, end of 1st paragraph  Sec 9
+page 38 top Sec 8
+page 38 bottom Sec 15
+page 48 1st paragraph Sec 15
+page 57 top Secs 18 19
+page 57 middle
+page 62 second paragraph Sec 8
+page 69 1st paragraph Sec 12
+page 87 3rd paragraph Sec 9
+page 99 1st paragraph Sec 14
+page 100 bottom Secs 18 and 19
+page 106 last paragraph Sec 20, Sec 21
+page 109 first paragraph Sec 15
+         second paragraph Sec 17
+page 117 middle Sec 18
+page 119 bottom Sec 20
+page 128 bottom Sec 19
+page 135 first paragraph Sec 19
+
+page 142: first occurrence of "Section" that should NOT be replaced
+by "Chapter"
+top of page 143: second occurrence of Section not to replace
+page 155, 1st paragraph: third occurrence of Section not to replace
+
+page 159, before 21.1 Sec 6
+page 165, before 22.1b Sec 3
+page 168 middle Sec 21
+*********************************
+Since you have changed the names of the sections to "Chapter," all the
+references to "this section" need to be changed to "this chapter"
+Can be done by search-and-replace "this section" by "this chapter" and
+"present section" by "present chapter" and "next section" by "next chapter"
+and "few sections" by "few chapters"
+
+don't change "intersection"
+*********************************
+page 11, proof of Theorem 2.7: replace "Part 1." by "Part (1)"
+replace "Part 2." by "Part (2)"
+replace "Part 3." by "Part (3)"
+replace "Part 4." by "Part (4)"
+replace "Part 5." by "Part (5)"
+*********************************
+page 11: add missing period after "[13, Theorem 9]." at end of proof
+of Theorem 2.7
+*********************************
+On page 26, Definition 5.10, you appear to have tried to move the main
+display inline. The result is too garbled for me to interpret at
+all. Here is the submitted TeX code for the formula:
+
+level one (that is, the central element $-1$ acts by $-1$) function
+$$D(\widetilde{h}) = \rho_{\abs}(\widetilde{h})\cdot \left(\prod_{\alpha \in
+  R_{\mathbb R}^+} |1 - \alpha(h)^{-1}|\right)\left(\prod_{\beta\in R^+
+ - R^+_{\mathbb R}}(1-\beta(h)^{-1})\right).$$
+(Here $h\in H$ is the image of $\widetilde{h}$ under the covering map.)
+
+Setting this formula inline appears to us to be a bad idea, but if you
+insist, please carefully check the result against our submitted pdf file.
+*********************************
+Page 34, line 6: remove a space after "tr(\pi(g)) on G" and before the period.
+*********************************
+page 35, line 11: subscript is "disc" (not disk): it is an
+abbreviation of "discrete"
+*********************************
+page 40, statement 2 of Theorem 7.1: last formula should be
+
+$J_{L_{\im}}((\Lambda,\nu_{\re}))$
+
+That is, replace subscript "im" by "re".
+*********************************
+page 49, lines 10-11: again it appears that you tried to put a
+displayed equation inline, and the result is unrecognizably
+garbled. Corrected LaTeX code is
+
+  We abuse notation by writing $\delta$ for the distinguished
+  generator $\delta_1$, so that
+  $${}^\delta L({\mathbb C}) = L({\mathbb C})\{e,\delta,
+  \delta^2,\dots,\delta^{m-1}\},$$
+  a union of $m$ cosets of $L({\mathbb C})$.
+
+(This is slightly amended for clarity from what was submitted.)
+*********************************
+page 56, Theorem 9.4. The opening has been badly garbled; it should
+read
+
+   Theorem 9.4 ([25, Theorem 11.129]). — Suppose
+
+The LaTeX code as submitted was
+
+   \begin{theorem}[\cite{KV}*{Theorem 11.129}] \label{thm:VZrealiz}
+  Suppose
+
+I don't know what might have happened to it.
+
+
+*********************************
+Didn't proof Chapter 13 very carefully
+*********************************
+page 98, Lemma 14.4:  The title is garbled. LaTeX code is
+
+   \begin{lemma}[Jantzen \Cite{Jantzen}*{Lemma 5.1}]\label{lemma:jantzenfilt}
+   Suppose $E$ and $F$
+
+which should produce
+
+   Lemma 14.4 (Jantzen[20, Lemma 5.1]) --- Suppose E and F
+*********************************
+page 98, Lemma 14.4 "spaces of _finite_ dimension" (missing i in "finite")
+*********************************
+page 110, before Proposition 16.1: remove "<".
+*********************************
+page 110, Proposition 16.2(1): remove second "," after i.e.
+*********************************
+page 111, Definition 16.4: reduce space between "algebra," and
+"and". (The space seems to arise from the placement of the LaTeX
+commands
+
+  \addtocounter{equation}{-1}
+  \begin{subequations}\label{se:introots}
+
+These could be moved to immediately before the displayed equation that
+follows.)
+*********************************
+page 118, 6 lines from bottom: remove ")" at end of line.
+*********************************
+page 119, 5 lines from bottom: lower case "f" in "formulas"
+*********************************
+page 123, first line: change \mu_s to \lambda_s
+*********************************
+page 127, line 9: add )
+
+   (Definition 13.7). For (d), since
+
+*********************************
+page 139, three lines before (18.7e): change "negative" to "positive"
+*********************************
+page 141, before Definition 18.9: should we change "esthetically"
+(American spelling) to "aesthetically" (British). The second
+looks better to me; it's what we had in the submission, and the
+editors changed it.
+*********************************
+page 148, four lines below (19.3c): change "the the" to "the"
+*********************************
+page 154: practice in the rest of the paper is to refer to parts of
+theorems as "part (1)," etc. So change "2(b)" to "(2b)", "2(a)" to
+"(2a)", "1(b)" to "(1b)", "Parts 3 and 4" to "Parts (3) and (4)", and
+"2(b)" to "(2b)" (twice).
+*********************************
+Page 154, proof of Theorem 20.6: missing ) after "comparable in the
+Bruhat order.)"
+*********************************
+page 154, Lemma 20.7(3): line should end
+
+ to that on  $I_{\quo}(\Gamma_0)$; and
+*********************************
+page 155, line 3: insert "under the" as
+
+   corresponding to $\nu_1$ under the identification $i(R_s^+,R^+) of
+
+*********************************
+page 155, 9 lines from bottom: do not capitalize "conjecture". (If for
+some reason you insist on that, then write instead
+
+  Kazhdan-Lusztig Conjecture (Theorem 18.10), in the case
+*********************************
+page 156, middle: add ")" after "have opposite parity."
+*********************************
+page 159: lower case f in "formulas (15.11g)"
+*********************************
+page 159, last line: change "disk" to "disc" (This is not a complete
+word, but an abbreviation for "discrete".)
+*********************************
+page 160, lines 3 and 10, and twice in Corollary 21.3: change "disk" to "disc"
+*********************************
+page 161, lines 2 and 13: change "disk" to "disc"
+*********************************
+page 169, after third display: change "a positive" to "a nonzero
+even":
+
+   For not a nonzero even integer, this principal...
+
+*********************************
+References kl79 and kl80 have been eliminated from the bibliography,
+presumably because of the failure to read their citations with \cites.
+
+Same for Yee and Yee-new
+*********************************
+Every occurrence of David Vogan in the bibliography (about six) has been
+incorrectly set as "J. D. A. Vogan;" should be "D. A. Vogan, Jr." A
+particularly terrible occurrence is in the Langlands reference now
+numbered 26.
+*****************************
+Reference to Knapp, "Lie groups beyond..." has an extra "ed."
