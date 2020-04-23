@@ -1,5 +1,19 @@
 This is a repository for errors in the 16 April 2020 page proofs
+*********************************
+Abstract (jda)
 
+An important tool is a variant of Weyl's...
+
+or some other wording, this isn't exactly Weyl's unitary trick
+*********************************
+page x (jda)
+
+first line, delete "in R": R isn't defined, is unnecessary, and doesn't
+add anything
+*********************************
+Page 2, line 21 (jda)
+
+representation of a real reductive group... (insert "real"?)
 *********************************
 Marc's suggestion to change "skew-adjoint" to "anti-self-adjoint" in
 the abstract: Google gives 22,900 hits for
@@ -18,6 +32,13 @@ it's mathematically harmless?
 *********************************
 Third complete paragraph on page 3: breaking the equation t=0 is bad;
 should be entirely on the second line.
+*********************************
+page 4, line 5 (jda)
+
+replace "finally" with "ultimately"
+
+We don't mean to say that after a long time, we've come to be interested
+in Hermitian forms...
 *********************************
 There are a few places in the manuscript that use the LaTeX code
 
@@ -74,6 +95,26 @@ and "few sections" by "few chapters"
 
 don't change "intersection"
 *********************************
+page 6, line 11 [punctuation inside/outside quotes] (jda)
+
+of "irreducible representations;" but...
+
+should be
+
+of "irreducible representations"; but...
+
+According to standard references the semicolon goes outside the quote.
+This also occurs twice on page 11 and on page 15
+
+The rule depends on the punctuation: commas and periods inside,
+colons, semicolons and dashes outside.
+
+On page 154: "unitary trick:"
+
+I don't know if we want to bring this up, but in the body of the paper
+commas go inside (correct), but in the references they are on the
+outside (wrong). Maybe the rules are different for references.
+*********************************
 page 11, proof of Theorem 2.7: replace "Part 1." by "Part (1)"
 replace "Part 2." by "Part (2)"
 replace "Part 3." by "Part (3)"
@@ -82,6 +123,30 @@ replace "Part 5." by "Part (5)"
 *********************************
 page 11: add missing period after "[13, Theorem 9]." at end of proof
 of Theorem 2.7
+*********************************
+page 12, Theorem 32. (jda)
+
+I think it would be nice (but not essential) to add this reference
+for Theorem 3.2:
+
+J. Adams & O. Ta\"ibi - "Galois Cohomology of Real Groups",
+{\it Duke Math. J.} 167 (2018), no. 6, 1057–1097.
+*********************************
+page 15, line 1 (jda)
+
+It is Adams's humble opinion that the correct punctuation is
+"Langlands's classification". But both versions are considered correct
+so I don't insist.
+*********************************
+page 22 (jda)
+
+Lemma 5.6 item 1 is somewhat out of place, and I'm not sure epsilon
+actually gets used anywhere (\epsilon_{iR} appears in Lemma 5.9). But
+probably just leave it.
+*********************************
+page 23 (jda) Definition 5.7
+
+Suppose G(C) is a complex ... (insert "a")
 *********************************
 On page 26, Definition 5.10, you appear to have tried to move the main
 display inline. The result is too garbled for me to interpret at
@@ -96,6 +161,44 @@ $$D(\widetilde{h}) = \rho_{\abs}(\widetilde{h})\cdot \left(\prod_{\alpha \in
 Setting this formula inline appears to us to be a bad idea, but if you
 insist, please carefully check the result against our submitted pdf file.
 *********************************
+Page 28 (jda)
+
+line 12: is equal on \tilde H...  "on" should be in italics
+
+next displayed formula (for \Theta_\pi): unmatched large left parentheses
+
+sentence after this formula: three occurences of "level *" with quotes. I think
+the first one should be in quotes, but the latter 2 should not.
+*********************************
+page 32 (jda)
+
+Theorem 6.1 2. is a level one... (insert "a")
+
+last line: "...is the alternating sum of these functors". Maybe saying
+"functors" here is a little odd, we mean alternating sum of the
+functors applied to something. Maybe simply "...is the corresponding
+alternating sum".
+*****************************
+page 33 (jda)
+
+last line: should there be parentheses (or brackets?) around the argument?
+Same question on page 34, second displayed formula
+*****************************
+page 35 (jda)
+
+line 1: "conjugate by G". Is it necessary to say anything about the fact the
+we're acting on (characters of) a covering group?
+
+line 10: disc not disk
+
+line 15: If \Lambda is a discrete parmeter and nu is a continuous
+parameter for \Lambda, then (\Lambda,\nu) is a Langlands parameter,
+and things like I(\Lambda,\nu) are defined. For example see
+Proposition 6.6 2. Maybe this is obvious, but I think we should say
+something to indicate what the notation I(Lambda,nu) means.
+
+I hate the caligraphic L.
+*****************************
 Page 34, line 6: remove a space after "tr(\pi(g)) on G" and before the period.
 *********************************
 page 35, line 11: subscript is "disc" (not disk): it is an
@@ -119,6 +222,18 @@ garbled. Corrected LaTeX code is
 
 (This is slightly amended for clarity from what was submitted.)
 *********************************
+page 53 (jda)
+
+Formula (9.1b) needs a period at the end (sorry)
+*****************************
+page 54, line -5 (jda)
+ 
+I'm really mystified why we write "VZ" stands for "Zuckerman".  Maybe
+there are two Zuckermans, Gregg and Victor? Or these are virtual in
+some sense?  I'm speaking here are a random reader. I vote for
+"Vogan-Zuckerman".
+
+*****************************
 page 56, Theorem 9.4. The opening has been badly garbled; it should
 read
 
@@ -130,7 +245,22 @@ The LaTeX code as submitted was
   Suppose
 
 I don't know what might have happened to it.
+*****************************
+page 74 (jda)
 
+Proposition 12.6, 5, right hand side J\oplus J^\theta.
+
+The LHS is a representation of the extended group, the RHS is
+unextended. Is this equality meant as a vector space? Or it should say
+"restricted to (\g,K)" somewhere? Similarly in part 6, and Proposition
+12.7 part 4.
+*****************************
+page 90 (jda)
+
+First line of plain text: "... for the connected group". Maybe this is
+being too picky, but G (or K) aren't necessarily connected, so
+"connected" here means "case of the real points of a connected group".
+Maybe just drop "for the connected group" (implicit in Theorem 6.1).
 
 *********************************
 Didn't proof Chapter 13 very carefully
