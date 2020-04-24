@@ -3,6 +3,11 @@ This is a repository for errors in the 16 April 2020 page proofs
 Authors (mvl)
 For consistency across the four names, and to match my other publications, we
 should add my middle initials: "Marc A. A. van Leeuwen"
+
+(jda) Unfortunately I have publications using "J. Adams" and also
+"J. D. Adams". I see that Peter uses "Peter E. Trapa" mostly, but also
+"Peter Trapa". In any event I can use either version; probably simply
+adding A. A. for Marc is best.
 *********************************
 Abstract (jda)
 
@@ -188,6 +193,8 @@ and "Langlands's classification" gets 14 (several from Knapp, which
 fits with the attitude implicit in Jeff's comment). I think that the
 extra (sorry, the _required_) "s" is a stumbling block in reading the
 phrase.
+
+(jda) I give up.
 *********************************
 page 22 (jda)
 
@@ -224,6 +231,9 @@ next displayed formula (for \Theta_\pi): unmatched large left
 parentheses
 
 (dav) ??? I don't see it.
+
+(jda) my mistake, an optical illusion makes the left parenthese
+look bigger than the right
 
 sentence after this formula: three occurences of "level *" with quotes. I think
 the first one should be in quotes, but the latter 2 should not.
@@ -390,6 +400,10 @@ some reason you insist on that, then write instead
 
   Kazhdan-Lusztig Conjecture (Theorem 18.10), in the case
 *********************************
+page 155, line 14 (jda)
+
+"...result in [3], but..."  (change period to comma)
+*****************************
 page 156, middle: add ")" after "have opposite parity."
 *********************************
 page 159: lower case f in "formulas (15.11g)"
