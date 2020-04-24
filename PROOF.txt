@@ -1,5 +1,9 @@
 This is a repository for errors in the 16 April 2020 page proofs
 *********************************
+Authors (mvl)
+For consistency across the four names, and to match my other publications, we
+should add my middle initials: "Marc A. A. van Leeuwen"
+*********************************
 Abstract (jda)
 
 An important tool is a variant of Weyl's...
@@ -10,6 +14,47 @@ page x (jda)
 
 first line, delete "in R": R isn't defined, is unnecessary, and doesn't
 add anything
+*********************************
+Page 1 First half of the 3rd paragraph (mvl)
+
+I suggest the following rewording is both a bit shorter and easier to read:
+
+The first step in Gelfand's program is therefore to find a nice
+Hilbert space ${\mathcal H}$ (often of functions on $X$) on which $G$
+acts by unitary operators:
+\begin{equation*} \pi\colon G \rightarrow U({\mathcal H}). \end{equation*}
+For example, if $G$ preserves a measure on $X$, one can take
+\begin{equation*} {\mathcal H} =L^2(X) \end{equation*}
+Such a group homomorphism~$\pi$ (assumed to be continuous...
+[unchanged hereafter]
+*********************************
+Page 1,2 Paragraph across the page change and the next one on page 2 (mvl)
+
+Even though it is only about analogues, the fact that different types of
+objects (eigenvectors and the line they span) are confused irks me a bit.
+I've tried to reword in a manner that avoids this wihout being too formal.
+Note that I dropped mention of eigenspaces, lest in the analogue I should have
+to mention isotypical components (is that the term?). I leave it to the
+nitpickers (is anybody going to outdo me?) to complain that the emphisised
+portion should really be irreducible unitary sub-representation (with or without
+the dash); while precise that would be unnecessarily distracting.
+
+One of the most powerful tools of linear algebra is the theory of
+eigenvalues and eigenvectors, which allow some problems about linear
+transformations of a complex vector space to be understood by decomposing
+the space as a direct sum of one-dimensional invariant subspaces, in each of
+which the transformation is just multiplication by a complex number. These
+one-dimensional subspaces preserved by the linear transformation are those
+spanned by an eigenvector of the transformation, and the associated complex
+number its eigenvalue. In unitary representation
+theory the analogue of such a one-dimensional space is an
+{\em irreducible unitary representation}: a nonzero unitary representation
+having no proper closed subspaces invariant under~$\pi(G)$. Just as a
+finite-dimensional complex vector space equipped with a (nice enough)
+linear transformation is a direct sum of subspaces spanned by eigenvectors,
+so any (nice enough) unitary representation is something like a direct sum
+of irreducible unitary sub-representations.
+
 *********************************
 Page 2, line 21 (jda)
 
