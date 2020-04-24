@@ -125,288 +125,303 @@ common_block::common_block // full block constructor
   Block_base::dd = // integral Dynkin diagram, converted from dual side
     DynkinDiagram(integral_sys.cartanMatrix().transposed());
 
-  size_t our_rank = integral_sys.rank();
+  const unsigned our_rank = integral_sys.rank();
 
-  nblock_help aux(real_group(),integral_sys);
+  repr::common_context ctxt(real_group(),integral_sys);
 
-  // step 1: get |y|, which has $y.t=\exp(\pi\ii(\gamma-\lambda))$ (vG based)
-  const KGBElt x_org = srm.x();
-  const TorusElement y_org = rc.y_as_torus_elt(srm);
-  auto z_start = nblock_elt(x_org,y_org); // working copy
+  // step 1: initialise |z|
+  auto z = srm; // get a working copy
 
-  // step 2: move up toward the most split fiber for the current real form
-  { // modify |x| and |y|, ascending for |x|, descending for |y|
+  // step 2: move up |z| toward the most split fiber for the current real form
+  {
     weyl::Generator s;
     do
       for(s=0; s<our_rank; ++s)
       {
-	KGBElt xx=kgb.cross(integral_sys.to_simple(s),z_start.x());
-	weyl::Generator ss=integral_sys.simple(s);
-	if (kgb.isAscent(ss,xx))
+	std::pair<gradings::Status::Value,bool> stat = ctxt.status(s,z.x());
+	if (stat.first==gradings::Status::Complex
+	    and not stat.second) // complex ascent
 	{
-	  if (kgb.status(ss,xx)==gradings::Status::Complex)
-	    aux.cross_act(s,z_start);
-	  else // imaginary noncompact
-	  {
-	    assert(kgb.status(ss,xx) == gradings::Status::ImaginaryNoncompact);
-	    aux.do_up_Cayley(s,z_start);
-	  }
+	  z = ctxt.cross(s,z);
 	  break;
-	} // |if(isAscent)|
+	}
+	else if (stat.first==gradings::Status::ImaginaryNoncompact)
+	{
+	  z = ctxt.up_Cayley(s,z);
+	  break;
+	}
+	// otherwise try next |s|
       } // |for(s)|
     while(s<our_rank); // loop until no ascents found in |integral_sys|
-
-    y_hash.match(aux.pack_y(z_start)); // save obtained value for |y|
-  } // end of step 2
+  }
+  y_hash.match(i_tab.pack(rc.y_as_torus_elt(z),kgb.inv_nr(highest_x=z.x())));
+  // end of step 2
 
   // step 3: generate imaginary fiber-orbit of |y|'s (|x| is unaffected)
+  containers::queue<
+    containers::sl_list<containers::sl_list<repr::StandardReprMod> >
+    >elements; // involution packets, |x| varies in outer, |y| in inner list
   {
-    const KGBElt x0 = z_start.x();
-    const InvolutionNbr theta0 = kgb.inv_nr(x0);
-
+    const InvolutionNbr theta = kgb.inv_nr(highest_x);
     // generating reflections are by subsystem real roots for |theta0|
-    RootNbrSet pos_real =
-      integral_sys.positive_roots() & i_tab.real_roots(theta0);
-    RootNbrList gen_root = rd.simpleBasis(pos_real);
-    for (size_t i=0; i<y_hash.size(); ++i) // |y_hash| grows
+    RootNbrSet pos_real = // as subset of full root datum posroots
+      integral_sys.positive_roots() & i_tab.real_roots(theta);
+    const RootNbrList generator_roots = rd.simpleBasis(pos_real);
+    std::vector<WeylWord> reflect(generator_roots.size());
+    for (unsigned i=0; i<generator_roots.size(); ++i)
     {
-      const TorusElement y = y_hash[i].repr();
-      for (weyl::Generator s=0; s<gen_root.size(); ++s)
-      {
-	nblock_elt z(x0,y);
-	aux.cross_act_parent_word(rd.reflectionWord(gen_root[s]),z);
-	assert(z.x()==x0);
-	y_hash.match(aux.pack_y(z));
-      }
+      auto alpha = // generating root expressed as root for |integral_sys|
+	integral_sys.from_parent(generator_roots[i]);
+      assert(alpha!=RootNbr(-1)); // renaming to subsystem should work
+      reflect[i] = integral_sys.reflectionWord(alpha); // word in integral gen's
     }
 
-    // now insert elements from |y_hash| as first R-packet of block
-    info.reserve(y_hash.size()); // this is lower bound for final size; reserve
-    for (weyl::Generator s=0; s<our_rank; ++s)
-      data[s].reserve(y_hash.size());
+    containers::sl_list<repr::StandardReprMod> queue { z };
+    elements.emplace(); // create empty involution packet at front
+    auto& list = // when popping |queue|, move elts here
+      elements.front().emplace_back(); // create sublist for the unique |x| value
+    do
+    {
+      auto zz = queue.front();
+      list.splice(list.end(),queue,queue.begin()); // move node
+      for (const auto& w : reflect)
+      {
+	auto new_z = zz;
+	for (auto s : w) // order is irrelevant for a reflection word
+	  new_z = ctxt.cross(s,new_z);
+	assert(new_z.x()==highest_x); // since we have a real reflection
 
+	auto prev = y_pool.size();
+	auto new_y = y_hash.match(i_tab.pack(rc.y_as_torus_elt(new_z),theta));
+	if (new_y==prev) // then this was really a new y-value
+	  queue.push_back(new_z);
+	/*
+	  queue.push(repr::StandardReprMod::build
+		     (rc,srm.gamma_mod1(),
+		      highest_x, y_pool.back().repr().log_pi(false)));
+	*/
+      }
+    }
+    while (not queue.empty());
+
+    // now insert elements from |y_hash| as first R-packet of block
     for (size_t i=0; i<y_hash.size(); ++i)
-      add_z(xy_hash,x0,i); // adds information to |info|; we leave |length==0|
+      add_z(xy_hash,highest_x,i); // adds element to |info|, setting |length==0|
 
   } // end of step 3
 
   // step 4: generate packets for successive involutions
-
   containers::queue<BlockElt> queue { size() }; // involution packet boundaries
-  KGBEltList cross_ys; cross_ys.reserve(0x100); // for |1<<RANK_MAX|
-  KGBEltList Cayley_ys; Cayley_ys.reserve(0x100);
 
-  BitMap x_seen(kgb.size());
-  highest_x = z_start.x();
-  x_seen.insert(highest_x); // the only value of |x| seen so far
-
+  BitMap x_seen(kgb.size()); // for |x| below |highest_x|, record encounters
+  x_seen.insert(highest_x);
   BlockElt next=0; // start at beginning of (growing) list of block elements
 
   do // process involution packet of elements from |next| to |queue.front()|
   { // |next| is constant throughout the loop body, popped from |queue| at end
     const KGBElt first_x = x(next), first_y=y(next);
-    const InvolutionNbr i_theta = kgb.inv_nr(first_x);
 
     // precompute (reversed) length for anything generated this iteration
     const auto next_length = info[next].length+1;
 
-    unsigned int nr_y = 0; // will be size of the R-packet of |first_x|
-    // find it by traversing that R-packet; they have |nr_y| consecutive |y|s
-    for (BlockElt z=next; z<size() and x(z)==first_x; ++z)
+    const auto bundle = std::move(elements.front());
+    elements.pop();
+    const unsigned int nr_x = bundle.size();
+    const unsigned int nr_y = bundle.front().size();
+#ifndef NDEBUG
+    assert((queue.front()-next)==nr_x*nr_y);
     {
-      assert(y_hash[y(z)].nr==i_theta); // involution of |y| must match |x|
-      ndebug_use(i_theta);
-      assert(y(z)==first_y+nr_y);   // and |y|s are consecutive
-      ++nr_y;
+      const InvolutionNbr tau = kgb.inv_nr(first_x);
+      auto z=next;
+      for (const auto& row : bundle)
+      {
+	assert(kgb.inv_nr(x(z))==tau);
+	assert(row.front().x()==x(z));
+	auto it = row.wcbegin();
+	for (unsigned j=0; j<nr_y; ++j,++z,++it)
+	{
+	  assert(y_hash[y(z)].nr==tau); // involutions must match
+	  assert(y(z)==first_y+j);   // and |y|s are consecutive
+	  assert(y_hash.find(i_tab.pack(rc.y_as_torus_elt(*it),tau))==y(z));
+	}
+      }
     }
-
-    assert((queue.front()-next)%nr_y==0); // |x| values in equal-size R-packets
-    unsigned int nr_x= (queue.front()-next)/nr_y; // number of R-packets here
+#endif
 
     for (weyl::Generator s=0; s<our_rank; ++s)
     {
       std::vector<block_fields>& tab_s = data[s];
       tab_s.resize(size()); // ensure enough slots for now
 
-      unsigned int y_start=y_hash.size(); // new |y|s numbered from here up
+      const repr::StandardReprMod& head = bundle.front().front();
+      const bool cross_new_involution =
+	not x_seen.isMember(ctxt.cross(s,head).x());
+      const bool is_real = // whether |s| is real for this involution packet
+	ctxt.status(s,first_x).first==gradings::Status::Real;
+      const bool is_type1 = is_real and ctxt.status(s,first_x).second;
 
-      nblock_elt sample(first_x,y_hash[first_y].repr());
-      aux.cross_act(s,sample);
-      bool new_cross = // whether cross action discovers unseen involution
-	not x_seen.isMember(sample.x());
+      containers::sl_list<KGBElt> cross_ys, Cayley_ys;
+      const size_t old_y_size = y_pool.size(); // from here up |y|'s are new
+      KGBElt sample_x=UndefKGB; // to be set in case of any |Cayley_ys|
 
-      cross_ys.clear(); Cayley_ys.clear();
-      { // compute values into |cross_ys|
-	size_t old_size =  y_hash.size();
-	for (unsigned int j=0; j<nr_y; ++j)
+      { // compute values into |cross_ys|, and check for existence of real parity
+
+	auto it = bundle.front().cbegin();
+	for (unsigned int j=0; j<nr_y; ++j,++it)
 	{
-	  nblock_elt z(first_x,y_hash[first_y+j].repr());
-	  aux.cross_act(s,z);
-	  cross_ys.push_back(y_hash.match(aux.pack_y(z)));
-	  assert(y_hash.size()== (new_cross ? old_size+j+1 : old_size));
-	  ndebug_use(old_size);
+	  auto sz = ctxt.cross(s,*it);
+	  InvolutionNbr theta = kgb.inv_nr(sz.x());
+	  TorusElement t = rc.y_as_torus_elt(sz);
+	  cross_ys.push_back(y_hash.match(i_tab.pack(t,theta)));
+	  if (is_real and ctxt.is_parity(s,*it)) // then do Cayley instead
+	  { // looking only for |y| value, so just one Cayley descent suffices
+	    sz = ctxt.down_Cayley(s,*it);
+	    theta = kgb.inv_nr(sample_x=sz.x()); // same |sample_x| each time
+	    t = rc.y_as_torus_elt(sz);
+	    Cayley_ys.push_back(y_hash.match(i_tab.pack(t,theta)));
+	  }
 	}
       } // compute values |cross_ys|
 
-      for (unsigned int i=0; i<nr_x; ++i) // |i| counts R-packets for involution
-      {
-	BlockElt base_z = next+i*nr_y; // first element of R-packet
-	KGBElt n = x(base_z); // |n| is |x| value for R-packet
-	KGBElt s_x_n = kgb.cross(integral_sys.reflection(s),n);
-	assert (new_cross == not x_seen.isMember(s_x_n)); // check consistency
+      { // handle cross actions and descent statusses in all cases
+	const auto theta = kgb.inv_nr(ctxt.cross(s,head).x());
+	BlockElt cur = next; // start of old involution packet
 
-	// set the cross links for this |n| and all corresponding |y|s
-	if (new_cross) // add a new R-packet
-	{
-	  x_seen.insert(s_x_n); // record the new |x| value
-	  for (unsigned int j=0; j<nr_y; ++j)
+	if (cross_new_involution)
+	{ // add a new involution packet
+	  containers::sl_list<containers::sl_list<repr::StandardReprMod> >
+	    packet;
+	  for (const auto& row : bundle)
 	  {
-	    tab_s[base_z+j].cross_image = size(); // link to new element
+	    auto& packet_list = packet.emplace_back();
+	    auto it = cross_ys.cbegin();
+	    for (const auto& z : row)
+	    {
+	      auto &sz = packet_list.emplace_back(ctxt.cross(s,z));
+	      assert(*it==y_hash.find(i_tab.pack(rc.y_as_torus_elt(sz),theta)));
+	      tab_s[cur++].cross_image = info.size();
+	      add_z(xy_hash,sz.x(),*it);
+	      info.back().length=next_length;
+	      ++it;
+	    }
+	    x_seen.insert(packet_list.front().x());
+	  } // |for (row)|
+	  elements.push(std::move(packet));
+	  queue.push(info.size()); // mark end of a new involution packet
+	} // |if (cross_new_involution)|
+	else
+	  for (const auto& row : bundle)
+	  {
+	    assert(row.front().x()==x(cur));
+	    KGBElt s_cross_x = kgb.cross(integral_sys.reflection(s),x(cur));
+	    for (auto y : cross_ys)
+	      tab_s[cur++].cross_image = find_in(xy_hash,s_cross_x,y);
+	  }
 
-	    add_z(xy_hash,s_x_n,cross_ys[j]);
-	    // same |x| neighbour throughout loop, but |y| neighbour varies
-
-	    info.back().length=next_length;
-	  } // |for(j)|
-	  // |d_first_z_of_x.push_back(info.size())| would mark end of R-packet
+	cur = next; // back up for setting descent status
+	if (is_real) // then status depends on |y|
+	{ const auto parity = // supposing |y| says "parity", which type is it?
+	      is_type1 ? DescentStatus::RealTypeI : DescentStatus::RealTypeII
+	    , nonparity = DescentStatus::RealNonparity;
+	  for (const auto& row : bundle) // actually |x| is irrelevant
+	    for (const auto& z : row)
+	      info[cur++].descent.set(s,
+				      ctxt.is_parity(s,z) ? parity : nonparity);
 	}
-	else // if |not new_cross|, install cross links to existing elements
-	  for (unsigned int j=0; j<nr_y; ++j)
-	    tab_s[base_z+j].cross_image = find_in(xy_hash,s_x_n,cross_ys[j]);
+	else
+	  for (unsigned i=0; i<nr_x; ++i)
+	  {
+	    auto stat = ctxt.status(s,x(cur));
+	    auto block_status =
+	      stat.first == gradings::Status::Complex
+	      ? stat.second ? DescentStatus::ComplexDescent
+	                    : DescentStatus::ComplexAscent
+	      : stat.first == gradings::Status::ImaginaryCompact
+	                    ? DescentStatus::ImaginaryCompact
+	      : stat.second ? DescentStatus::ImaginaryTypeI
+	                    : DescentStatus::ImaginaryTypeII;
+	    for (unsigned j=0; j<nr_y; ++j)
+	      info[cur++].descent.set(s,block_status);
+	  }
+      } // done for cross action
 
-	// compute component |s| of |info[z].descent|, for this |n|, all |y|s
-	KGBElt conj_n = kgb.cross(integral_sys.to_simple(s),n); // conjugate
-	bool any_Cayley=false; // is made |true| if a real parity case is found
-	const auto ids=integral_sys.simple(s);
-	switch(kgb.status(ids,conj_n))
+      if (not Cayley_ys.empty())
+      {
+	if (not x_seen.isMember(sample_x))
+	{ // we must now extend |info| with elements for the new involution
+	  // the |x| values of Cayleys of known elements do not suffice; rather
+	  // complete |sample_x| to its subsystem fiber over new involution
+	  containers::sl_list<containers::sl_list<repr::StandardReprMod> >
+	    packet;
+
+	  RootNbrSet pos_imag = // subsystem positive imaginary roots
+	    integral_sys.positive_roots() &
+	    i_tab.imaginary_roots(kgb.inv_nr(sample_x));
+	  RootNbrList imaginary_generators = rd.simpleBasis(pos_imag);
+
+	  auto to_do = containers::queue<KGBElt> { sample_x };
+	  do
+	  {
+	    KGBElt x = to_do.front(); to_do.pop();
+	    if (x_seen.isMember(x))
+	      continue;
+
+	    x_seen.insert(x);
+	    auto& packet_list = packet.emplace_back();
+
+	    for (auto y = old_y_size; y<y_pool.size(); ++y) // distinct new |y|s
+	    {
+	      add_z(xy_hash,x,y), info.back().length=next_length;
+	      packet_list.emplace_back
+		(repr::StandardReprMod::build
+		 (rc,srm.gamma_mod1(), x,y_pool[y].repr().log_pi(false)));
+	    }
+
+	    // push any new neighbours of |x| onto |to_do|
+	    for (RootNbr alpha : imaginary_generators)
+	      to_do.push(kgb.cross(rd.reflectionWord(alpha),x));
+	  }
+	  while (not to_do.empty());
+
+	  elements.push(std::move(packet));
+	  queue.push(info.size()); // mark end of a new involution packet
+	  tab_s.resize(info.size()); // ensure the Cayley link slots below exist
+	} // |if (not x_seen.isMember(sample_x))|: finished extending |info|
+
+	// it remains to set Cayley links in both directions
+	BlockElt cur = next; // start of old involution packet
+	for (const auto& row : bundle)
 	{
-	case gradings::Status::Complex:
-	  { const auto cplx = kgb.isDescent(ids,conj_n)
-	      ? DescentStatus::ComplexDescent
-	      : DescentStatus::ComplexAscent;
-	    for (unsigned int j=0; j<nr_y; ++j)
-	      info[base_z+j].descent.set(s,cplx);
-	    break;
-	  }
-	case gradings::Status::ImaginaryCompact:
-	  for (unsigned int j=0; j<nr_y; ++j)
-	    info[base_z+j].descent.set(s,DescentStatus::ImaginaryCompact);
-	  break;
-	case gradings::Status::ImaginaryNoncompact:
-	  { const auto imx = kgb.cross(ids,conj_n)!=conj_n
-	      ? DescentStatus::ImaginaryTypeI
-	      : DescentStatus::ImaginaryTypeII;
-	    for (unsigned int j=0; j<nr_y; ++j)
-	      info[base_z+j].descent.set(s,imx);
-	    break;
-	  }
-	case gradings::Status::Real: // now status depends on |y|
-	  for (unsigned int j=0; j<nr_y; ++j)
+	  auto it = Cayley_ys.cbegin();
+	  for (const auto& z : row)
 	  {
-	    nblock_elt z(n,y_hash[first_y+j].repr()); // unconjugated element
-	    if (aux.is_real_nonparity(s,z))
-	      info[base_z+j].descent.set(s,DescentStatus::RealNonparity);
-	    else
+	    if (ctxt.is_parity(s,z))
 	    {
-	      any_Cayley=true;
-	      if (cross_ys[j] == first_y+j) // whether our own cross neighbour
-		info[base_z+j].descent.set(s,DescentStatus::RealTypeI);
-	      else
-		info[base_z+j].descent.set(s,DescentStatus::RealTypeII);
-	    }
-	  }
-	  break;// but this |Real| case is re-examined, below
-	} // |switch(kgb.status(ids,conj_n))|
-
-
-	// now do inverse Cayley transform through |s| if applicable
-	if (not any_Cayley)
-	  continue; // if there were no valid Cayley links, we're done for |i|
-
-	KGBEltPair Cayleys = kgb.inverseCayley(ids,conj_n);
-	KGBElt ctx1 = kgb.cross(Cayleys.first,integral_sys.to_simple(s));
-
-	if (i==0) // whether in initial R-packet
-	{ // |any_Cayley| was independent of |x|; if so, do in first R-packet:
-	  assert(y_hash.size()==y_start); // nothing created by cross actions
-
-	  bool new_Cayley = not x_seen.isMember(ctx1);
-
-	  // independent of new creation, fill |Cayley_ys|, extend |y_hash|
-	  for (unsigned int j=0; j<nr_y; ++j)
-	    if (descentValue(s,base_z+j) != DescentStatus::RealNonparity)
-	    {
-	      nblock_elt z(n,y_hash[first_y+j].repr());
-	      aux.do_down_Cayley(s,z); // anyway there is but a single |y| value
-	      Cayley_ys.push_back(y_hash.match(aux.pack_y(z)));
-	    }
-
-	  if (new_Cayley) // then we need to create new R-packets
-	  {
-	    // complete a full (subsystem) fiber of x's over the new involution
-	    // using |integral_sys| imaginary cross actions
-	    RootNbrSet pos_imag = // subsystem positive imaginary roots
-	      integral_sys.positive_roots() &
-	      i_tab.imaginary_roots(kgb.inv_nr(ctx1));
-	    RootNbrList ib = rd.simpleBasis(pos_imag);
-
-	    {
-	      x_seen.insert(ctx1);
-	      auto to_do = containers::queue<KGBElt> { ctx1 };
-	      do
-	      { KGBElt cur_x = to_do.front(); to_do.pop();
-
-		// generate part of block for |cur_x|, and the just added |y|s
-		for (unsigned int y=y_start; y<y_hash.size(); ++y)
-		{
-		  add_z(xy_hash,cur_x,y);
-		  info.back().length=next_length;
-		}
-
-		// push any new neigghbours of |cur_x| onto |to_do|
-		for (size_t r=0; r<ib.size(); ++r)
-		{
-		  KGBElt new_x = kgb.cross(rd.reflectionWord(ib[r]),cur_x);
-		  if (not x_seen.isMember(new_x))
-		    x_seen.insert(new_x), to_do.push(new_x);
-		} // |for(r)|
+	      auto sz = ctxt.down_Cayley(s,z);
+	      BlockElt target = find_in(xy_hash,sz.x(),*it);
+	      tab_s[cur].Cayley_image.first = target;
+	      first_free_slot(tab_s[target].Cayley_image) = cur;
+	      if (is_type1)
+	      {
+		auto other_x = ctxt.cross(s,sz).x();
+		assert(x_seen.isMember(other_x));
+		target = find_in(xy_hash,other_x,*it);
+		tab_s[cur].Cayley_image.second = target;
+		first_free_slot(tab_s[target].Cayley_image) = cur;
 	      }
-	      while (not to_do.empty());
+	      ++it; // so |it| runs through |Cayley_ys|
 	    }
-
-	    // finallly make sure that Cayley links slots exist for code below
-	    tab_s.resize(size());
-	  } // |if (new_Cayley)|: finished creating new R-packets
-	} // |if (i==0)|: finished work for first |x| when some |y| is parity
-
-	// now in all cases make links using |element| lookup
-	for (unsigned int j=0,p=0; j<nr_y; ++j) // |p| counts parity |y|s only
-	  if (descentValue(s,base_z+j)!=DescentStatus::RealNonparity)
-	  {
-	    KGBElt cty=Cayley_ys[p++]; // unique Cayley transform of |y|
-	    BlockElt target = find_in(xy_hash,ctx1,cty);
-	    tab_s[base_z+j].Cayley_image.first = target;
-	    first_free_slot(tab_s[target].Cayley_image) = base_z+j;
-	    if (Cayleys.second!=UndefKGB) // then double valued (type1)
-	    {
-	      KGBElt ctx2 =
-		kgb.cross(Cayleys.second,integral_sys.to_simple(s));
-	      assert (x_seen.isMember(ctx2));
-	      target = find_in(xy_hash,ctx2,cty);
-	      tab_s[base_z+j].Cayley_image.second = target;
-	      first_free_slot(tab_s[target].Cayley_image) = base_z+j;
-	    }
-	  } // |for(j)|
-
-      } // |for(i)
-
-      if (y_hash.size()>y_start)
-	queue.push(size()); // mark end of a new involution packet
+	    ++cur;
+	  }
+	  assert(Cayley_ys.at_end(it));
+	}
+      } // |if (not Cayley_ys.empty())|
     } // |for(s)|
   }
   while (next=queue.front(), queue.pop(), not queue.empty());
   // end of step 4
 
+  highest_x = last(x_seen); // to be sure; length need not increase with |x|
   highest_y=y_hash.size()-1; // set highest occurring |y| value, for |ysize|
   // reverse lengths; reorder by increasing length then value of |x|
   sort(info.back().length,true);
@@ -1003,7 +1018,7 @@ std::pair<gradings::Status::Value,bool>
   KGBElt conj_x = kgb().cross(conj,x);
   const auto t=sub.simple(s);
   const auto stat = kgb().status(t,conj_x);
-  return std::make_pair(kgb().status(t,conj_x),
+  return std::make_pair(stat,
 			stat==gradings::Status::Real
 			? kgb().isDoubleCayleyImage(t,conj_x) // real type 1
 			: stat==gradings::Status::Complex

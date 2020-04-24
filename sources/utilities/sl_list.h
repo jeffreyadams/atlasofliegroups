@@ -1664,7 +1664,7 @@ template<typename T, typename Alloc>
 
     // the following adjustments are needed independently; they can only both
     // apply when |this==&other| and |pos==end|; then the final effect is no-op
-    if (end==other.cend()) // splicing may cut of tail from |other|
+    if (end==other.cend()) // splicing may cut off tail from |other|
       other.tail = begin.link_loc; // in which case we must reset |other.tail|
     if (pos==cend()) // if splicing to the end of |*this|
       tail = end.link_loc; // then we must reset |tail| to end of spliced range
