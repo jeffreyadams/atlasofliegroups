@@ -164,6 +164,11 @@ On page 154: "unitary trick:"
 I don't know if we want to bring this up, but in the body of the paper
 commas go inside (correct), but in the references they are on the
 outside (wrong). Maybe the rules are different for references.
+
+(dav) I've changed everything in the text. In the bibliography, Google
+seems to indicate flexibility; LaTeX lets you choose which you want in
+the bibliography style, although comma-inside-the-quotes appears
+first. 
 *********************************
 page 11, proof of Theorem 2.7: replace "Part 1." by "Part (1)"
 replace "Part 2." by "Part (2)"
@@ -257,6 +262,10 @@ page 35 (jda)
 line 1: "conjugate by G". Is it necessary to say anything about the fact the
 we're acting on (characters of) a covering group?
 
+(dav): I don't think so. The fact that the coverings defined by
+different rho are canonically isomorphic may be lurking in the
+background, but nothing more serious than that.
+
 line 10: disc not disk
 
 line 15: If \Lambda is a discrete parmeter and nu is a continuous
@@ -264,6 +273,15 @@ parameter for \Lambda, then (\Lambda,\nu) is a Langlands parameter,
 and things like I(\Lambda,\nu) are defined. For example see
 Proposition 6.6 2. Maybe this is obvious, but I think we should say
 something to indicate what the notation I(Lambda,nu) means.
+
+Following Definition 6.5, before Proposition 6.6, insert
+
+   The point of this definition is that a pair $(\Lambda,\nu)$, with
+   $\Lambda$ a discrete parameter and $\nu$ a continuous parameter for
+   $\Lambda$, may be regarded as a Langlands parameter. We will
+   therefore write $I(\Lambda,\nu)$ for the corresponding standard
+   representation (Theorem \ref{thm:LC}), $J(\Lambda,\nu)$ for its
+   irreducible quotient, and so on.
 
 I hate the caligraphic L.
 *****************************
@@ -276,7 +294,7 @@ page 40, statement 2 of Theorem 7.1: last formula should be
 
 $J_{L_{\im}}((\Lambda,\nu_{\re}))$
 
-That is, replace subscript "im" by "re".
+That is, replace ONLY THE LAST subscript "im" by "re".
 *********************************
 page 49, lines 10-11: again it appears that you tried to put a
 displayed equation inline, and the result is unrecognizably
@@ -295,12 +313,16 @@ page 53 (jda)
 Formula (9.1b) needs a period at the end (sorry)
 *****************************
 page 54, line -5 (jda)
- 
+
 I'm really mystified why we write "VZ" stands for "Zuckerman".  Maybe
 there are two Zuckermans, Gregg and Victor? Or these are virtual in
 some sense?  I'm speaking here are a random reader. I vote for
 "Vogan-Zuckerman".
 
+(dav) Replace line -5 by
+
+  The ``VZ'' stands for ``Vogan-Zuckerman,'' since we will use this hypothesis
+  to make Zuckerman's construction of standard modules.
 *****************************
 page 56, Theorem 9.4. The opening has been badly garbled; it should
 read
@@ -322,6 +344,25 @@ The LHS is a representation of the extended group, the RHS is
 unextended. Is this equality meant as a vector space? Or it should say
 "restricted to (\g,K)" somewhere? Similarly in part 6, and Proposition
 12.7 part 4.
+
+replace displays by
+  $$J_{\text{\textnormal{ind}}} = \Ind_{({\mathfrak g},K)}^{({\mathfrak
+    g},{}^\delta K)} (J), \qquad J_{\text{
+  \textnormal{ind}}}|_{({\mathfrak g},K)} = J \oplus  J^\theta$$
+
+  $$I_{\quo,\text{\textnormal{ind}}} = \Ind_{({\mathfrak
+  g},K)}^{({\mathfrak g},{}^\delta K)} (I_{\quo}), \qquad
+  I_{\quo,\text{\textnormal{ind}}}|_{({\mathfrak g},K)} = I_{\quo}
+  \oplus I_{\quo}^\theta$$
+
+on page 75, replace item (4) of Proposition 12.7 by
+
+  \item If $J' = \Ind(J)$, realized on $J + J^\theta$ by Proposition
+  \ref{prop:Gdeltareps}, then the $c$-invariant form on $J'$ 
+  is the orthogonal sum of the form for $J$ on both $J$ and
+  $J^\theta$ (using Definition \ref{def:pairaut} to identify their
+  spaces).  A similar statement holds for $I'$.
+
 *****************************
 page 90 (jda)
 
@@ -329,6 +370,13 @@ First line of plain text: "... for the connected group". Maybe this is
 being too picky, but G (or K) aren't necessarily connected, so
 "connected" here means "case of the real points of a connected group".
 Maybe just drop "for the connected group" (implicit in Theorem 6.1).
+
+Replace the first line of plain text by
+
+  This is a consequence of the Langlands classification for $G$
+  (Theorem \ref{thm:LC}), of Clifford theory (Proposition
+  \ref{prop:extpairrep}), and of the analysis of extended parameters
+  made in Proposition \ref{prop:extLP} above.
 
 *********************************
 Didn't proof Chapter 13 very carefully
@@ -420,6 +468,10 @@ even":
 
    For not a nonzero even integer, this principal...
 
+*********************************
+In the bibliography, your style file encloses article titles in
+quotes, with a comma at the end outside the quotes. I believe American
+style would prefer to put the comma inside the quotes.
 *********************************
 References kl79 and kl80 have been eliminated from the bibliography,
 presumably because of the failure to read their citations with \cites.
