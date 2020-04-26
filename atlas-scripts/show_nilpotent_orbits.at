@@ -11,7 +11,7 @@ set strong_real_forms_central_invariant(InnerClass ic,ratvec v)=[int]:
  }
 
 set strong_real_forms_nilpotent_orbit_correct_central_invariant(ComplexNilpotent O, InnerClass ic)=[RealForm]:
-{assert(is_even(O), "orbit is not even");}
+assert(is_even(O), "orbit is not even");
 strong_real_forms_given_central_invariant(ic,O.H/2)
 
 set strong_real_forms_nilpotent_orbit_e(ComplexNilpotent O, InnerClass ic)=[RealForm]:
@@ -222,9 +222,10 @@ data=
 for  orbit in orbits do
 let cent=orbit.centralizer then
 d=orbit.component_datum then
-()=prints("doing orbit: ", orbit) then
+{()=prints("doing orbit: ", orbit) then}
 number_real_nilpotents=number_real_nilpotent_orbits_correct_central_invariant(orbit, ic_dual) then
-arthur_parameters=arthur_parameters(ic_dual,orbit) in
+{arthur_parameters=arthur_parameters(ic_dual,orbit) in}
+arthur_parameters=arthur_parameters(ic_dual.dual,orbit) in
 {let ()=prints("test:",orbit, " ", arthur_parameters) in [testing git]}
 if ic_dual.is_equal_rank{ or orbit.is_even } then
 assert(sum(number_real_nilpotents)=#arthur_parameters,"two counts of Arthur parameters don't match") fi;

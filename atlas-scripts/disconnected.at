@@ -66,6 +66,10 @@ assert(O.root_datum=G.rd,"root data don't match");(G,(),O.H)
 set saturate(ComplexNilpotent_d O_d,RootDatum rd)=ComplexNilpotent:
 (rd,(),O_d.H)
 
+{saturate an orbit from a disconnected subgroup H, with matrix giving X_*(T_H) -> X_*(T)}
+set saturate(ComplexNilpotent_d O_d,RootDatum rd,mat inc)=ComplexNilpotent:
+(rd,(),inc*O_d.H)
+
 set remove_duplicates([ComplexNilpotent_d] orbits)=[ComplexNilpotent_d]:
 let rv=[ComplexNilpotent_d]:[] in
 for orbit in orbits do

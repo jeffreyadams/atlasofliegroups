@@ -41,8 +41,11 @@ set dim_nilpotent (ComplexNilpotent(rd,,H)) = int:
 {synonym}
 set dim (ComplexNilpotent O) = int:dim_nilpotent(O)
 
-{saturate an orbit from subgroup to G}
+{saturate an orbit from an equal rank subgroup to G}
 set saturate(ComplexNilpotent O,RootDatum rd)=ComplexNilpotent:(rd,(),O.H)
+
+{saturate an orbit from a subgroup H, with matrix giving X_*(T_H) -> X_*(T)}
+set saturate(ComplexNilpotent O,RootDatum rd,mat inc)=ComplexNilpotent:(rd,(),inc*O.H)
 
 set diagram (ComplexNilpotent(rd,,H)) = [int]:
    dominant(H,rd){action on coweight} * simple_roots(rd)

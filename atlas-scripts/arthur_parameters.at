@@ -1,75 +1,55 @@
 <disconnected.at
 <galois.at {strong_real_forms_same_type}
 
-{parametrizing sets of unipotent Arthur parameters}
+{parametrizing sets of unipotent Arthur parameters: see notesOnUnipotentParamters.pdf in Dropbox}
 
-{strong real forms with z^2=e}
-{this is not correct in the nonequal rank case
- set strong_real_forms_central_invariant_e in galois.at
- }
-set strong_real_forms_e(RootDatum rd)=[RealForm]:
-let K=compact_form(rd) then
-rf=real_forms(K) in
-for i in strong_real_forms_same_type(K) do rf[i] od
+{see galois.at for strong_real_forms_central_invariant_e}
 
-{given y, all nilpotent orbits in the full centralizer
-of y, that is nilpotent orbits in Cent(y)_0, modulo
-the action of Cent(y)/Cent(y)_0
-}
-set arthur_parameters_by_y(RootDatum rd)=[[ComplexNilpotent_d]]:
-let dual_forms=strong_real_forms_e(rd.dual) in
-for Gd in dual_forms do Gd.K.orbits od
-
-{Arthur parameters for G corresponding to given dual complex orbit
+{Arthur parameters for inner class corresponding to given dual complex orbit
  where Psi(SL(2,C)) <-> O_check
- NOTE: only for G in split inner class, so extension of the dual group is trivial
  conceptual algorithm: run over conjugacy classes of order 2
   in the (disconnected) centralizer_{G^v}(O_check)
  actual algorithm:
-  rd_int=integrality_datum(O_check_H/2)
-  rd_int_dual=dual(rd_int), call this group G^v_int
-  let O_check_int be the G^v_int orbit of O_check.H
-  run over strong real forms y_1,...,y_n of rd_int_dual
-  let K^v_i=centralizer in rd_int_dual of y_i (
-       the complexified maximal compact of the corresponding real form of rd_int_dual
-  collect the nilpotent orbits of K_v_i whose saturation to G^v_int is equal to O_check_int
-  since K_v_i can be disconnected this is a ComplexNilpotent_d object,
+  rd_dual=O_check.root_datum
+  run over strong real forms y_1,...,y_n of rd_dual
+  let K^\vee_i=centralizer in rd_dual of y_i (
+       the complexified maximal compact of the corresponding real form of rd_dual
+  collect the nilpotent orbits of K^\vee_i whose saturation to G^v is equal to O_check
+  since K^\vee_i can be disconnected this is a ComplexNilpotent_d object,
    first run over orbits for the identity component, and then mod out by
     conjugation by the component group (see disconnected.at)
+the return value is [ComplexNilpotent_d], each of which is a complex nilpotent
+orbit for a (possibly disconnected) group K^vee_i
 }
-{rd is assumed to be inner to split, so dual inner class is equal rank}
-set arthur_parameters(RootDatum rd,ComplexNilpotent O_check)=[ComplexNilpotent_d]:
-let O_check_int=O_check then
-rd_int_dual=O_check_int.root_datum then
-dual_forms=strong_real_forms_central_invariant_e(rd_int_dual.compact_form) in
+set arthur_parameters(InnerClass ic,ComplexNilpotent O_check)=[ComplexNilpotent_d]:
+assert(ic.dual.root_datum=O_check.root_datum,"Root datum mismatch");
+let dual_forms=strong_real_forms_central_invariant_e(ic.dual) in
 ##for Gd@i in dual_forms do
  ##for O_d in Gd.K.orbits do
- if saturate(O_d,rd_int_dual)=O_check_int then [O_d]  else [] fi od 
+ if saturate(O_d,O_check.root_datum,injection_from_K_matrix(Gd))=O_check then [O_d]  else [] fi od 
 od
 
-set arthur_parameters_by_orbit(RootDatum rd)=[[ComplexNilpotent_d]]:
-let rv=for O_check in rd.dual_orbits do arthur_parameters(rd,O_check) od
-then v=for a in rv do #a od in
-{prints(v,": ",sum(v));}rv
+{arthur parameters, listed by dual unipotent orbit;
+the return valule is [[ComplexNilpotent_d]]
+the i^th array [ComplexNilpotent_d] is an array
+ of orbits, for various K^\vee_j, whose G^\vee-saturation
+ is the i^th unipotent G^\vee-orbit
 
-{naive versions for testing}
-set arthur_parameters_by_y_naive(RootDatum rd)=[[ComplexNilpotent]]:
-let dual_forms=strong_real_forms_e(rd.dual) in
-for Gd in dual_forms do Gd.K_0.orbits od
+}
+set arthur_parameters_by_orbit(InnerClass ic)=[[ComplexNilpotent_d]]:
+for O_check in ic.dual_orbits do arthur_parameters(ic,O_check) od
 
-set arthur_parameters_naive(RootDatum rd,ComplexNilpotent O_check)=[ComplexNilpotent]:
-let dual_forms=strong_real_forms_e(dual(rd)) in
-##for Gd@i in dual_forms do
- ##for O_d in Gd.K_0.orbits do
- if saturate(O_d,Gd)=O_check then [O_d]  else [] fi od 
-od
+{by_orbit  is the default}
+set arthur_parameters(InnerClass ic)=[[ComplexNilpotent_d]]:arthur_parameters_by_orbit(ic)
 
-set arthur_parameters_by_orbit_naive(RootDatum rd)=[[ComplexNilpotent]]:
-let rv=for O_check in rd.dual_orbits do arthur_parameters_naive(rd,O_check) od
-then v=for a in rv do #a od in
-prints(v,": ",sum(v));rv
-
-set pbo(RootDatum rd)=[[ComplexNilpotent_d]]:arthur_parameters_by_orbit(rd)
+{arthur parameters, listed by dual strong real forms y
+the return valule is [[ComplexNilpotent_d]]
+the i^th [ComplexNipotent_d] is the list of unipotent orbits
+ for K^\vee_i
+}
+set arthur_parameters_by_y(InnerClass ic)=[[ComplexNilpotent_d]]:
+let dual_forms=strong_real_forms_central_invariant_e(ic.dual) in
+for Gd in dual_forms do Gd.K.orbits od
 
 set show([[ComplexNilpotent]] list)=void:
 for orbits@i in list do
