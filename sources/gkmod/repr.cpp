@@ -980,7 +980,6 @@ unsigned long Rep_table::formula_index (const StandardRepr& sr)
 
 unsigned long Rep_table::add_block(const StandardReprMod& srm)
 {
-  auto first=mod_hash.size(); // future code of first element of this block
   BlockElt srm_in_block; // will hold position of |srm| within that block
   std::unique_ptr<blocks::common_block>
     ptr(new blocks::common_block(*this,srm,srm_in_block));
@@ -988,9 +987,6 @@ unsigned long Rep_table::add_block(const StandardReprMod& srm)
 
   BitMap swallow(block_list.size()); // indices of partial blocks to swallow
   block_list.push_back(std::move(ptr));
-
-  const unsigned long result = // future sequence number for our |srm|
-    first+srm_in_block;
 
   const RatWeight gamma_rho = srm.gamma_mod1()-rho(root_datum());
   for (BlockElt z=0; z<block.size(); ++z)
@@ -1007,7 +1003,7 @@ unsigned long Rep_table::add_block(const StandardReprMod& srm)
       for (auto it=block_list.begin(); not block_list.at_end(it); ++it,++i)
 	if (it->get()==place[seq].first)
 	  break;
-      assert(i<block_list.size()-1); // must be found as aolder block
+      assert(i<block_list.size()-1); // must be found as an older block
       swallow.insert(i); // record that block |i| in |block_list| gets swallowed
       place[seq].first=&block; // let |zm| henceforth point to the new |block|
       place[seq].second=z; // with |z| as relative index
@@ -1022,7 +1018,7 @@ unsigned long Rep_table::add_block(const StandardReprMod& srm)
     else
       ++it;
 
-  return result;
+  return mod_hash.find(srm);
 }// |Rep_table::add_block|
 
 blocks::common_block& Rep_table::lookup_full_block
@@ -1030,9 +1026,9 @@ blocks::common_block& Rep_table::lookup_full_block
 {
   auto srm = StandardReprMod::mod_reduce(*this,sr); // modular |z|
   auto h=mod_hash.find(srm); // look up modulo translation in $X^*$
-  if (h==mod_hash.empty) // then we are in a new translation family of blocks
-    h=add_block(srm); // ensure this block is known, record hash for |srm|
-  assert(h<place.size()); // it cannot be |mod_hash.empty| anymore
+  if (h==mod_hash.empty or not place[h].first->is_full()) // then we must
+    h=add_block(srm); // generate a new full block (possibly swalllow older ones)
+  assert(h<place.size() and place[h].first->is_full());
 
   z = place[h].second;
   return *place[h].first;

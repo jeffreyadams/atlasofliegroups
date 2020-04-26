@@ -53,6 +53,7 @@ class common_block : public Block_base
 
   // group small data members together:
   KGBElt highest_x,highest_y; // maxima over this block
+  const bool generated_as_full_block; // tells which constructor was used
 
  public:
 
@@ -76,6 +77,8 @@ class common_block : public Block_base
   const InnerClass& inner_class() const;
   const InvolutionTable& involution_table() const;
   RealReductiveGroup& real_group() const;
+
+  bool is_full () const { return generated_as_full_block; }
 
   RatWeight gamma_mod1 () const { return gamma_mod_1; }
   // simple coroots of |sub| singular for |gamma|

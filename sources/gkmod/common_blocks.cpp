@@ -115,6 +115,7 @@ common_block::common_block // full block constructor
   , extended(nullptr) // no extended block initially
   , highest_x() // defined below when we have moved to top of block
   , highest_y() // defined below when generation is complete
+  , generated_as_full_block(true)
 {
   const InnerClass& ic = inner_class();
   const RootDatum& rd = root_datum();
@@ -474,6 +475,7 @@ common_block::common_block // partial block constructor
   , extended(nullptr) // no extended block initially
   , highest_x(0) // it won't be less than this; increased later
   , highest_y(0) // defined when generation is complete
+  , generated_as_full_block(false)
 {
   info.reserve(elements.size());
   const auto& kgb = rt.kgb();
