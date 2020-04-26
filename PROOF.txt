@@ -364,6 +364,8 @@ on page 75, replace item (4) of Proposition 12.7 by
   spaces).  A similar statement holds for $I'$.
 
 *****************************
+page 82 line 11: replace "condition (e)" by "condition e)".
+*****************************
 page 90 (jda)
 
 First line of plain text: "... for the connected group". Maybe this is
@@ -425,6 +427,8 @@ looks better to me; it's what we had in the submission, and the
 editors changed it.
 *********************************
 page 148, four lines below (19.3c): change "the the" to "the"
+*********************************
+page 151, line 7: add ")" at end of line.
 *********************************
 page 154: practice in the rest of the paper is to refer to parts of
 theorems as "part (1)," etc. So change "2(b)" to "(2b)", "2(a)" to
