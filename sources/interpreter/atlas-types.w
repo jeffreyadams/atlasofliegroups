@@ -4797,6 +4797,27 @@ void param_length_wrapper(expression_base::level l)
     push_value(std::make_shared<int_value>(p->rt().length(p->val)));
 }
 
+@ This function is similar to |KGB_Hasse_wrapper|, but generates the (full)
+block on the fly.
+
+@< Local function def...@>=
+void block_Hasse_wrapper(expression_base::level l)
+{ shared_module_parameter p = get<module_parameter_value>();
+  test_standard(*p,"Cannot generate block");
+  if (l==expression_base::no_value)
+    return;
+@)
+  BlockElt init_index; // will hold index in the block of the initial element
+  blocks::common_block& block = p->rt().lookup_full_block(p->val,init_index);
+  const BruhatOrder& Bruhat = block.bruhatOrder();
+  auto n= block.size();
+  own_matrix M = std::make_shared<matrix_value>(int_Matrix(n,n,0));
+  for (unsigned j=0; j<n; ++j)
+    for (@[ unsigned int i : Bruhat.hasse(j) @]@;@;)
+      M->val(i,j)=1;
+  push_value(std::move(M));
+}
+
 @ Here is a version of the |block| command that also exports the table of
 Kazhdan-Lusztig polynomials for the block, in the same format as \\{raw\_KL}
 that will be defined below.
@@ -5000,7 +5021,7 @@ void partial_KL_block_wrapper(expression_base::level l)
     int_Matrix(n_survivors,block.size(),0));
   for (BlockElt z=0; z<block.size(); ++z)
   { auto finals = block.finals_for(z);
-    for (BlockElt final : finals)
+    for (@[BlockElt@+ final : finals@]@;@;)
     { BlockElt x= permutations::find_index<int>(survivor->val,final);
         // a row index
       if ((block.length(z)-block.length(final))%2==0)
@@ -5234,6 +5255,7 @@ install_function(partial_block_wrapper,@|"partial_block","(Param->[Param])");
 install_function(partial_common_block_wrapper,@|"partial_common_block"
                 ,"(Param->[Param])");
 install_function(param_length_wrapper,@|"length","(Param->int)");
+install_function(block_Hasse_wrapper,@|"block_Hasse","(Param->mat)");
 install_function(KL_block_wrapper,@|"KL_block"
                 ,"(Param->[Param],int,mat,[vec],vec,vec,mat)");
 install_function(dual_KL_block_wrapper,@|"dual_KL_block"

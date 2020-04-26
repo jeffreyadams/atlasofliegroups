@@ -98,11 +98,11 @@ class common_block : public Block_base
 
   // manipulators
   void swallow // integrate an older partial block, with mapping of elements
-    (const common_block& sub, const BlockEltList& embed);
+    (common_block&& sub, const BlockEltList& embed);
   ext_block::ext_block& extended_block(const WeightInvolution& delta);
 
   void set_Bruhat(std::vector<Poset::EltList>&& Hasse)
-  { delete d_bruhat; d_bruhat = new BruhatOrder(std::move(Hasse)); }
+  { d_bruhat.reset(new BruhatOrder(std::move(Hasse))); }
 
   // virtual methods
   virtual KGBElt max_x() const { return highest_x; } // might not be final |x|

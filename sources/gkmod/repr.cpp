@@ -985,7 +985,8 @@ unsigned long Rep_table::add_block(const StandardReprMod& srm)
     ptr(new blocks::common_block(*this,srm,srm_in_block));
   auto& block=*ptr;
 
-  BitMap swallow(block_list.size()); // indices of partial blocks to swallow
+  // pairs of a block index in the list and a mapping vector into |block|
+  containers::simple_list<std::pair<unsigned,BlockEltList> > embeddings;
   block_list.push_back(std::move(ptr));
 
   const RatWeight gamma_rho = srm.gamma_mod1()-rho(root_datum());
@@ -999,24 +1000,42 @@ unsigned long Rep_table::add_block(const StandardReprMod& srm)
       place.emplace_back(&block,z);
     else
     {
+      auto block_ptr = place[seq].first;
       unsigned i=0;
-      for (auto it=block_list.begin(); not block_list.at_end(it); ++it,++i)
-	if (it->get()==place[seq].first)
-	  break;
+      auto e_it = embeddings.begin();
+      for (auto it=block_list.begin(); not block_list.at_end(it); ++it, ++i)
+      {
+	if (it->get()==block_ptr)
+	  break; // found the partial block in which |zm| was previously located
+	if (not embeddings.at_end(e_it) and e_it->first==i)
+	  ++e_it; // keep |e_it| pointing at or ahead of block |i|
+      }
       assert(i<block_list.size()-1); // must be found as an older block
-      swallow.insert(i); // record that block |i| in |block_list| gets swallowed
+
+      if (embeddings.at_end(e_it) or e_it->first>i)
+	embeddings.insert(e_it,std::make_pair
+			       (i,BlockEltList(block_ptr->size(),UndefBlock)));
+      e_it->second[place[seq].second]=z; // record embedding as |z|
       place[seq].first=&block; // let |zm| henceforth point to the new |block|
       place[seq].second=z; // with |z| as relative index
     }
   }
 
-  // remove swallowed blocks for |block_lst|
+  // finaly swallow blocks in |embeddings|, and remove them from |block_list|
   unsigned i=0;
-  for (auto it=block_list.begin(); not block_list.at_end(it); ++i) // no |++it|!
-    if (swallow.isMember(i))
-      block_list.erase(it);
-    else
-      ++it;
+  auto b_it=block_list.begin();
+  for (auto pair : embeddings)
+  {
+    while (i < pair.first)
+      ++b_it , ++i; // advance |b_it| to block originally at |i| in |block_list|
+#ifndef NDEBUG
+    for (BlockElt z : pair.second)
+      assert(z!=UndefBlock);
+#endif
+    block.swallow(std::move(**b_it),pair.second);
+    block_list.erase(b_it);
+    ++i; // but don't increase |b_it|
+  }
 
   return mod_hash.find(srm);
 }// |Rep_table::add_block|

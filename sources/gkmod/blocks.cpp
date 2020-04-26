@@ -135,7 +135,9 @@ DescentStatus descents(KGBElt x, KGBElt y,
 		       const KGB_base& kgb, const KGB_base& dual_kgb);
 
   // compute Hasse diagram of the Bruhat order of a block
-std::vector<Poset::EltList> makeHasse(const Block_base&);
+std::vector<Poset::EltList> complete_Hasse_diagram
+  (const Block_base&,
+   std::vector<std::unique_ptr<BlockEltList> >& partial_Hasse_diagram);
 
 
 } // |namespace|
@@ -162,6 +164,7 @@ BlockElt& first_free_slot(BlockEltPair& p)
 Block_base::Block_base(const KGB& kgb)
   : info(), data(kgb.rank()), orbits()
   , dd(kgb.innerClass().rootDatum().cartanMatrix())
+  , partial_Hasse_diagram()
   , d_bruhat(nullptr)
   , klc_ptr(nullptr)
 {
@@ -171,6 +174,7 @@ Block_base::Block_base(const KGB& kgb)
 Block_base::Block_base(unsigned int integral_rank)
   : info(), data(integral_rank), orbits()
   , dd()
+  , partial_Hasse_diagram()
   , d_bruhat(nullptr)
   , klc_ptr(nullptr)
 {}
@@ -178,6 +182,7 @@ Block_base::Block_base(unsigned int integral_rank)
 Block_base::Block_base(const Block_base& b) // copy constructor
   : info(b.info), data(b.data), orbits(b.orbits)
   , dd(b.dd)
+  , partial_Hasse_diagram()
   , d_bruhat(nullptr) // don't care to copy; is empty in |Block::build| anyway
   , klc_ptr(nullptr)  // likewise
 {
@@ -186,7 +191,7 @@ Block_base::Block_base(const Block_base& b) // copy constructor
 #endif
 }
 
-Block_base::~Block_base() { delete d_bruhat; delete klc_ptr; }
+Block_base::~Block_base() = default; // but calls deleters implicitly
 
 /*
   Look up element by |x|, |y| coordinates
@@ -277,22 +282,25 @@ weyl::Generator Block_base::firstStrictGoodDescent(BlockElt z) const
 
 // manipulators
 
-/*
-  Construct the BruhatOrder.
-  It could run out of memory, but Commit-or-rollback is guaranteed.
-*/
-void Block_base::fillBruhat()
+void Block_base::set_Bruhat_covered (BlockElt z, BlockEltList&& covered)
 {
-  if (d_bruhat==nullptr) // if any order is previously stored, trust and use it
-    d_bruhat = new BruhatOrder(makeHasse(*this)); // else use |makeHasse| below
+  assert(z<size());
+  partial_Hasse_diagram.resize(size()); // create empty slots for whole block
+  partial_Hasse_diagram[z].reset(new BlockEltList(std::move(covered)));
+}
+// Construct the BruhatOrder. Commit-or-rollback is guaranteed.
+void Block_base::fill_Bruhat()
+{
+  if (d_bruhat.get()==nullptr) // if any order is previously stored, just use it
+    d_bruhat.reset // otherwise compute it, maybe using |partial_Hasse_diagram|
+      (new BruhatOrder(complete_Hasse_diagram(*this,partial_Hasse_diagram)));
 }
 
 // computes and stores the KL polynomials
 void Block_base::fill_klc(BlockElt last_y,bool verbose)
 {
-  if (klc_ptr==nullptr) // do this only the first time
-    klc_ptr=new kl::KLContext(*this);
-
+  if (klc_ptr.get()==nullptr) // do this only the first time
+    klc_ptr.reset(new kl::KLContext(*this));
   klc_ptr->fill(last_y,verbose); // extend tables to contain |last_y|
 }
 
@@ -1620,17 +1628,15 @@ DescentStatus descents(KGBElt x, KGBElt y,
 /*
   Insert into |hs| the ascents through |s| from elements of |hr|.
 
-  Explanation: technical function for the Hasse construction, that makes the
-  part of the coatom list for a given element arising from a given descent.
+  This is a technical function for the Hasse construction, that makes the
+  part of the co-atom list for a given element arising from a given descent.
 */
-void insertAscents(std::set<BlockElt>& hs,
-		   const Poset::EltList& hr,
-		   size_t s,
-		   const Block_base& block)
+  void insert_ascents(const Block_base& block,
+		      const Poset::EltList& hr, // ascents of whom
+		      size_t s, // ascents by who
+		      std::set<BlockElt>& hs) // output
 {
-  for (size_t j = 0; j < hr.size(); ++j)
-  {
-    BlockElt z = hr[j];
+  for (BlockElt z : hr)
     switch (block.descentValue(s,z))
     {
     case DescentStatus::ComplexAscent:
@@ -1646,7 +1652,6 @@ void insertAscents(std::set<BlockElt>& hs,
     default: // not a strict ascent
       break;
     }
-  }
 }
 
 
@@ -1654,49 +1659,56 @@ void insertAscents(std::set<BlockElt>& hs,
   Put into |Hasse| the Hasse diagram data for the Bruhat ordering on |block|.
 
   Explanation: we used the algorithm from Vogan's 1982 Park City notes...
-  which contains a bad definition. Now modified to work like kgb makeHasse:
-  seek a descent s that is complex or type I real. If it exists, use it as in
+  which contains a bad definition. Later modified to work like |kgb::makeHasse|:
+  seek a descent |s| that is complex or type I real. If it exists, use it as in
   kgb. If it doesn't then we're essentially at a split principal series. The
-  immediate predecessors of z are just the inverse Cayley transforms.
+  immediate predecessors of |z| are just the inverse Cayley transforms.
 */
-std::vector<Poset::EltList> makeHasse(const Block_base& block)
+std::vector<Poset::EltList> complete_Hasse_diagram
+(const Block_base& block,
+ std::vector<std::unique_ptr<BlockEltList> >& partial_Hasse_diagram)
 {
-  std::vector<Poset::EltList> result(block.size());
+  std::vector<Poset::EltList> result;
+  result.reserve(block.size());
 
   for (BlockElt z = 0; z < block.size(); ++z)
-  {
-    std::set<BlockElt> h_z;
+    if (z<partial_Hasse_diagram.size() and partial_Hasse_diagram[z]!=nullptr)
+      result.push_back(std::move(*partial_Hasse_diagram[z])); // accept provided
+    else
+    {
+      std::set<BlockElt> covered;
 
-    size_t s=block.firstStrictGoodDescent(z);
-    if (s<block.rank())
-      switch (block.descentValue(s,z))
-      {
-      default: assert(false); break;
-      case DescentStatus::ComplexDescent:
+      auto s = block.firstStrictGoodDescent(z);
+      if (s<block.rank())
+	switch (block.descentValue(s,z))
 	{
-	  BlockElt sz = block.cross(s,z);
-	  h_z.insert(sz);
-	  insertAscents(h_z,result[sz],s,block);
+	default: assert(false); break;
+	case DescentStatus::ComplexDescent:
+	  {
+	    BlockElt sz = block.cross(s,z);
+	    covered.insert(sz);
+	    insert_ascents(block,result[sz],s,covered);
+	  }
+	  break;
+	case DescentStatus::RealTypeI: // inverseCayley(s,z) two-valued
+	  {
+	    BlockEltPair sz = block.inverseCayley(s,z);
+	    covered.insert(sz.first);
+	    covered.insert(sz.second);
+	    insert_ascents(block,result[sz.first],s,covered);
+	  }
 	}
-	break;
-      case DescentStatus::RealTypeI: // inverseCayley(s,z) two-valued
-	{
-	  BlockEltPair sz = block.inverseCayley(s,z);
-	  h_z.insert(sz.first);
-	  h_z.insert(sz.second);
-	  insertAscents(h_z,result[sz.first],s,block);
-	}
-      }
-    else // now just gather all RealTypeII descents of |z|
-      for (size_t s = 0; s < block.rank(); ++s)
-	if (block.descentValue(s,z)==DescentStatus::RealTypeII)
-	  h_z.insert(block.inverseCayley(s,z).first);
+      else // now just gather all RealTypeII descents of |z|
+	for (weyl::Generator s = 0; s < block.rank(); ++s)
+	  if (block.descentValue(s,z)==DescentStatus::RealTypeII)
+	    covered.insert(block.inverseCayley(s,z).first);
 
-    std::copy(h_z.begin(),h_z.end(),std::back_inserter(result[z])); // set->list
-  } // for |z|
+      result.emplace_back(covered.begin(),covered.end()); // convert set->vector
+    } // if stored else compute
 
+  partial_Hasse_diagram.clear(); // remove empty shell
   return result;
-} // |makeHasse|
+} // |complete_Hasse_diagram|
 
 } // |namespace|
 

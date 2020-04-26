@@ -699,6 +699,17 @@ ext_block::ext_block& common_block::extended_block
   return *extended;
 }
 
+// integrate an older partial block, with mapping of elements
+void common_block::swallow(common_block&& sub, const BlockEltList& embed)
+{
+  for (BlockElt z=0; z<sub.size(); ++z)
+  {
+    auto& covered = std::move(sub).Bruhat_order().Hasse(z);
+    for (auto& c : covered)
+      c=embed[c]; // translate in place
+    set_Bruhat_covered(embed[z],std::move(covered));
+  }
+}
 void common_block::sort(unsigned short max_length, bool reverse_length)
 {
   const KGBElt x_lim=highest_x+1; // limit for |x| values
@@ -818,7 +829,7 @@ blocks::common_block& Rep_table::add_block_below
 
   for (auto& pair : sub_blocks)
   {
-    if (pair.first->size() > pair.second.size()) // inclomplete inclusion
+    if (pair.first->size() > pair.second.size()) // then incomplete inclusion
     {
       const auto& block = *pair.first;
       pair.second.sort(); // following loop requires increase
@@ -854,12 +865,12 @@ blocks::common_block& Rep_table::add_block_below
       row.reserve(len);
       for (auto it=cover.begin(); not cover.at_end(it); ++it)
       {
-	const BlockElt y = block.lookup(this->srm(*it));
+	const BlockElt y = block.lookup(this->srm(*it)); // get relative number
 	assert(y!=UndefBlock);
-	row.push_back(y);
+	row.push_back(y); // store covering relation in |Hasse_diagram|
       }
     }
-    else // elements in an old block, outside Bruhat interval
+    else // element |z| is in an old block, outside Bruhat interval
     { // get covered elements from stored Bruhat order of old block
       auto& old_block = *place[z].first;
       const BlockElt z_rel = place[z].second;
@@ -876,11 +887,26 @@ blocks::common_block& Rep_table::add_block_below
   }
   block.set_Bruhat(std::move(Hasse_diagram));
 
-  // TODO: should do block merge things here
-
-  for (const auto& pair : sub_blocks) // remove absorbed blocks
+  const RatWeight gamma_rho = srm.gamma_mod1()-rho(root_datum());
+  for (const auto& pair : sub_blocks) // swallow sub-blocks
   {
-    auto block_p = pair.first;
+    auto& sub_block = *pair.first;
+    BlockEltList embed; embed.reserve(sub_block.size());
+    for (BlockElt z=0; z<sub_block.size(); ++z)
+    {
+      Weight lambda_rho=gamma_rho.integer_diff<int>(sub_block.gamma_lambda(z));
+      auto zm = StandardReprMod::mod_reduce
+	(*this, sr_gamma(sub_block.x(z),lambda_rho,srm.gamma_mod1()));
+      const BlockElt z_rel = block.lookup(zm);
+      assert(z_rel!=UndefBlock);
+      embed.push_back(z_rel);
+    }
+    block.swallow(std::move(sub_block),embed);
+  }
+
+  for (const auto& pair : sub_blocks) // remove blocks that have been swallowed
+  {
+    auto block_p = pair.first; // even pilfered, the pointer is still unchanged
     auto it = std::find_if
       (block_list.begin(),block_list.end(),
        [block_p](const std::unique_ptr<blocks::common_block>& p)
@@ -895,8 +921,8 @@ blocks::common_block& Rep_table::add_block_below
 
   for (const auto& z : elements)
   {
-    const StandardReprMod& srm = this->srm(z);
-    place[z] = std::make_pair(&block,block.lookup(srm)); // extend or replace
+    const BlockElt z_rel = block.lookup(this->srm(z));
+    place[z] = std::make_pair(&block,z_rel); // extend or replace
   }
   return block;
 } // |Rep_table::add_block_below|

@@ -15,6 +15,7 @@
 
 #include <cassert>
 #include <iostream>
+#include <memory> // for |std::unique_ptr|
 
 #include "ratvec.h"	// containment infinitesimal character
 
@@ -86,15 +87,16 @@ protected: // all fields may be set in a derived class contructor
   DynkinDiagram dd; // diagram on simple generators for the block
 
   // possible tables of Bruhat order and Kazhdan-Lusztig polynomials
-  BruhatOrder* d_bruhat;
-  kl::KLContext* klc_ptr;
+  std::vector<std::unique_ptr<BlockEltList> > partial_Hasse_diagram;
+  std::unique_ptr<BruhatOrder> d_bruhat;
+  std::unique_ptr<kl::KLContext> klc_ptr;
 
 public:
 // constructors and destructors
   Block_base(const KGB& kgb); // for |Block|, implicitly at integral inf. char.
   Block_base(unsigned int integral_rank); // only dimensions some vectors
 
-  virtual ~Block_base(); // deletes |d_bruhat| and |klc_ptr| (if non-NULL)
+  virtual ~Block_base(); // out-of-line because of deleters implicitly called
 
 // copy, assignment and swap
 
@@ -167,12 +169,15 @@ public:
     (std::ostream& strm, BlockElt z,bool as_invol_expr) const =0;
 
   // manipulators
-  BruhatOrder& bruhatOrder() { fillBruhat(); return *d_bruhat; }
+  BruhatOrder& bruhatOrder() { fill_Bruhat(); return *d_bruhat; }
+  BruhatOrder&& Bruhat_order() && { fill_Bruhat(); return std::move(*d_bruhat); }
   kl::KLContext& klc(BlockElt last_y, bool verbose)
   { fill_klc(last_y,verbose); return *klc_ptr; }
 
+ protected:
+  void set_Bruhat_covered (BlockElt z, BlockEltList&& covered);
  private:
-  void fillBruhat();
+  void fill_Bruhat();
   void fill_klc(BlockElt last_y,bool verbose);
 
 }; // |class Block_base|

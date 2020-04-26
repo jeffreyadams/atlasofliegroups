@@ -731,6 +731,13 @@ reducibility_points: (Param->[rat]): the 0<t<=1 with I(x,lambda,t\nu) reducible
 operator * : (Param,rat->Param): scale component nu by given rational factor
 at_nu_0 : (Param->Param): reduce component nu to 0 (scale it be a factor 0)
 
+block_Hasse: (Param->mat): Hasse diagram of Buhat order of block of parameter
+  Calling KGB_Hasse(p) ensure the full block containing the parameter p is
+  generated, and returns a matrix describing the Hasse diagram of its Bruhat
+  order: the set of pairs (x,z) for which the interval { y | x<=y<=z } contains
+  exaclty the two elements, namely x et z. The matrix is indexed by the numbers
+  of the block elements as displayed in print_common_block(p).
+
 print_block: (Param->): print (non-integral) block generated from parameter
 print_partial_block: (Param->): print partial block generated from parameter
 print_common_block: (Param->): print translation family block for parameter
