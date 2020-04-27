@@ -968,6 +968,29 @@ SR_poly Rep_context::expand_final (StandardRepr z) const
   return result;
 } // |Rep_context::expand_final|
 
+// erase node in |block_list| after |pos|, avoiding dangling iterators in |place|
+void Rep_table::block_erase (bl_it pos)
+{
+  assert (not block_list.at_end(pos));
+  const auto next_pos = std::next(pos);
+  if (not block_list.at_end(next_pos))
+  { // then make sure in |place| instances of |next_pos| are replaced by |pos|
+    const auto& block = *next_pos;
+    const RatWeight gamma_rho = block.gamma_mod1()-rho(root_datum());
+    for (BlockElt z=0; z<block.size(); ++z)
+    {
+      Weight lambda_rho=gamma_rho.integer_diff<int>(block.gamma_lambda(z));
+      auto zm = StandardReprMod::mod_reduce
+	(*this, sr_gamma(block.x(z),lambda_rho,block.gamma_mod1()));
+      unsigned long seq = mod_hash.find(zm);
+      assert(seq<place.size()); // all elements in |block_list| must have |place|
+      if (place[seq].first==next_pos) // could be false if |block| was swallowed
+	place[seq].first=pos; // replace iterator that is about to be invalidated
+    }
+  }
+  block_list.erase(pos);
+}
+
 unsigned long Rep_table::formula_index (const StandardRepr& sr)
 {
   const auto prev_size = hash.size();
@@ -981,58 +1004,55 @@ unsigned long Rep_table::formula_index (const StandardRepr& sr)
 unsigned long Rep_table::add_block(const StandardReprMod& srm)
 {
   BlockElt srm_in_block; // will hold position of |srm| within that block
-  auto& block=block_list.emplace_back(*this,srm,srm_in_block);
+  containers::sl_list<blocks::common_block> temp; // must use temporary singleton
+  auto& block = temp.emplace_back(*this,srm,srm_in_block); // build full block
 
-  // pairs of a block index in the list and a mapping vector into |block|
-  containers::simple_list<std::pair<unsigned,BlockEltList> > embeddings;
+  // pairs of a block pointer and a mapping vector into the new |block|
+  using sub_pair = std::pair<blocks::common_block*,BlockEltList >;
+  containers::simple_list<sub_pair> embeddings;
 
-  const RatWeight gamma_rho = srm.gamma_mod1()-rho(root_datum());
   for (BlockElt z=0; z<block.size(); ++z)
   {
-    Weight lambda_rho=gamma_rho.integer_diff<int>(block.gamma_lambda(z));
-    auto zm = StandardReprMod::mod_reduce
-      (*this, sr_gamma(block.x(z),lambda_rho,srm.gamma_mod1()));
-    auto seq = mod_hash.match(zm);
+    auto seq = mod_hash.match(block.representative(z));
     if (seq==place.size()) // block element is new
-      place.emplace_back(&block,z);
+      place.emplace_back(bl_it(),z); // iterator filled later
     else
     {
-      auto block_ptr = place[seq].first;
-      unsigned i=0;
+      auto& sub_block = *place[seq].first;
       auto e_it = embeddings.begin();
-      for (auto it=block_list.begin(); not block_list.at_end(it); ++it, ++i)
-      {
-	if (&*it==block_ptr)
-	  break; // found the partial block in which |zm| was previously located
-	if (not embeddings.at_end(e_it) and e_it->first==i)
-	  ++e_it; // keep |e_it| pointing at or ahead of block |i|
-      }
-      assert(i<block_list.size()-1); // must be found as an older block
-
-      if (embeddings.at_end(e_it) or e_it->first>i)
-	embeddings.insert(e_it,std::make_pair
-			       (i,BlockEltList(block_ptr->size(),UndefBlock)));
+      while (not embeddings.at_end(e_it) and e_it->first!=&sub_block)
+	++e_it;
+      if (embeddings.at_end(e_it))
+	embeddings.emplace(e_it,
+			   &sub_block,BlockEltList(sub_block.size(),UndefBlock));
       e_it->second[place[seq].second]=z; // record embedding as |z|
-      place[seq].first=&block; // let |zm| henceforth point to the new |block|
-      place[seq].second=z; // with |z| as relative index
+      // leave |place[seq].first| pointing to our block for now
+      place[seq].second = z; // relative index of |zm| in new block
     }
   }
 
-  // finaly swallow blocks in |embeddings|, and remove them from |block_list|
-  unsigned i=0;
-  auto b_it=block_list.begin();
+  // swallow blocks in |embeddings|, and remove them from |block_list|
   for (auto pair : embeddings)
   {
-    while (i < pair.first)
-      ++b_it , ++i; // advance |b_it| to block originally at |i| in |block_list|
+    auto& sub_block = *pair.first;
+    auto h = mod_hash.find(sub_block.representative(0));
+    assert(h!=mod_hash.empty);
+    auto block_it = place[h].first; // found iterator to our |block_list| entry
 #ifndef NDEBUG
     for (BlockElt z : pair.second)
       assert(z!=UndefBlock);
 #endif
-    block.swallow(std::move(*b_it),pair.second);
-    block_list.erase(b_it);
-    ++i; // but don't increase |b_it|
+    block.swallow(std::move(sub_block),pair.second);
+    block_erase(block_it);
   }
+
+  // only after |block_erase| upheavals is it safe to link in the new block
+  // also, it can only go to the end of the list, to not invalidate any iterators
+  const auto new_block_it=block_list.end(); // iterator for new block elements
+  block_list.splice(new_block_it,temp,temp.begin()); // link in |block| at end
+  // now make sure for all |elements| that |place| fields are set for new block
+  for (BlockElt z=0; z<block.size(); ++z)
+    place[mod_hash.find(block.representative(z))].first = new_block_it;
 
   return mod_hash.find(srm);
 }// |Rep_table::add_block|

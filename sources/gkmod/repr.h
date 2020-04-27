@@ -293,7 +293,8 @@ class Rep_table : public Rep_context
   HashTable<StandardReprMod,unsigned long> mod_hash;
 
   containers::sl_list<blocks::common_block> block_list;
-  std::vector<std::pair<blocks::common_block*, BlockElt> > place;
+  using bl_it = containers::sl_list<blocks::common_block>::iterator;
+  std::vector<std::pair<bl_it, BlockElt> > place;
 
  public:
   Rep_table(RealReductiveGroup &G);
@@ -335,6 +336,7 @@ class Rep_table : public Rep_context
   SR_poly twisted_deformation(StandardRepr z); // by value
 
  private:
+  void block_erase (bl_it pos); // erase from |block_list| in safe manner
   unsigned long formula_index (const StandardRepr&);
   unsigned long add_block(const StandardReprMod&); // full block
   class Bruhat_generator; // helper class: internal |add_block_below| recursion

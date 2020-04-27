@@ -808,23 +808,22 @@ blocks::common_block& Rep_table::add_block_below
   const auto prev_size = mod_pool.size(); // limit of previously known elements
   containers::sl_list<unsigned long> elements(gen.block_below(srm));
 
-  containers::sl_list<std::pair<blocks::common_block*,
-				containers::sl_list<BlockElt> > > sub_blocks;
+  using sub_pair =
+    std::pair<blocks::common_block*,containers::sl_list<BlockElt> >;
+  containers::sl_list<sub_pair> sub_blocks;
   for (auto z : elements)
-    if (z<prev_size)
-    {
-      const auto block_p=place[z].first;
+    if (z<prev_size) // then |z| was already known as a partial block element
+    { // record block pointer and index of |z| in block into |sub_blocks|
+      const auto block_p = &*place[z].first;
       const BlockElt z_rel = place[z].second;
-      auto it = sub_blocks.begin();
-      for ( ; not sub_blocks.at_end(it); ++it)
-	if (it->first==block_p) // sub-block already known
-	{
-	  it->second.push_back(z_rel);
-	  break;
-	}
+      auto it = std::find_if
+	(sub_blocks.begin(),sub_blocks.end(),
+	 [block_p](const sub_pair& pair) { return &*pair.first==block_p; }
+	 );
       if (sub_blocks.at_end(it)) // then we have a fresh sub-block
-	sub_blocks.push_back
-	  (std::make_pair(block_p,containers::sl_list<BlockElt>{z_rel}));
+	sub_blocks.emplace_back(block_p,containers::sl_list<BlockElt>{z_rel});
+      else // a sub-block already recorded (at |it|)
+	it->second.push_back(z_rel); // append |z_rel| to its list of elements
     }
 
   for (auto& pair : sub_blocks)
@@ -844,7 +843,8 @@ blocks::common_block& Rep_table::add_block_below
     pair.second.clear(); // forget which were in the Bruhat interval
   }
 
-  auto& block = block_list.emplace_back // construct block and get a reference
+  containers::sl_list<blocks::common_block> temp; // must use temporary singleton
+  auto& block = temp.emplace_back // construct block and get a reference
     (*this,ctxt,elements,srm.gamma_mod1());
 
   *subset=BitMap(block.size());
@@ -883,41 +883,39 @@ blocks::common_block& Rep_table::add_block_below
   }
   block.set_Bruhat(std::move(Hasse_diagram));
 
-  const RatWeight gamma_rho = srm.gamma_mod1()-rho(root_datum());
+  static const std::pair<bl_it, BlockElt> empty(bl_it(),UndefBlock);
+  place.resize(mod_pool.size(),empty); // new entries point to |new_block_it|
+
   for (const auto& pair : sub_blocks) // swallow sub-blocks
   {
     auto& sub_block = *pair.first;
+    bl_it block_it; // set belowe
     BlockEltList embed; embed.reserve(sub_block.size());
     for (BlockElt z=0; z<sub_block.size(); ++z)
     {
-      Weight lambda_rho=gamma_rho.integer_diff<int>(sub_block.gamma_lambda(z));
-      auto zm = StandardReprMod::mod_reduce
-	(*this, sr_gamma(sub_block.x(z),lambda_rho,srm.gamma_mod1()));
+      auto zm = sub_block.representative(z);
       const BlockElt z_rel = block.lookup(zm);
       assert(z_rel!=UndefBlock);
       embed.push_back(z_rel);
     }
+    auto h = mod_hash.find(sub_block.representative(0));
+    assert(h!=mod_hash.empty);
+    block_it = place[h].first;
+
+    assert(&*block_it==&sub_block); // ensure we erase |sub_block|
     block.swallow(std::move(sub_block),embed);
+    block_erase(block_it); // even pilfered, the pointer is still unchanged
   }
 
-  for (const auto& pair : sub_blocks) // remove blocks that have been swallowed
-  {
-    auto block_p = pair.first; // even pilfered, the pointer is still unchanged
-    auto it = std::find_if
-      (block_list.begin(),block_list.end(),
-       [block_p](const blocks::common_block& p) { return &p==block_p; } );
-    if (it!=block_list.end())
-      block_list.erase(it);
-  }
-
-  static const std::pair<blocks::common_block*, BlockElt>
-    empty(nullptr,UndefBlock);
-  place.resize(mod_pool.size(),empty); // extend with empty slots, filled next
-
+  // only after the |block_erase| upheavals is it safe to link in the new block
+  // also, it can only go to the end of the list, to not invalidate any iterators
+  const auto new_block_it=block_list.end(); // iterator for new block elements
+  block_list.splice(new_block_it,temp,temp.begin()); // link in |block| at end
+  // now make sure for all |elements| that |place| fields are set for new block
   for (const auto& z : elements)
   {
     const BlockElt z_rel = block.lookup(this->srm(z));
-    place[z] = std::make_pair(&block,z_rel); // extend or replace
+    place[z] = std::make_pair(new_block_it,z_rel); // extend or replace
   }
   return block;
 } // |Rep_table::add_block_below|
