@@ -981,13 +981,10 @@ unsigned long Rep_table::formula_index (const StandardRepr& sr)
 unsigned long Rep_table::add_block(const StandardReprMod& srm)
 {
   BlockElt srm_in_block; // will hold position of |srm| within that block
-  std::unique_ptr<blocks::common_block>
-    ptr(new blocks::common_block(*this,srm,srm_in_block));
-  auto& block=*ptr;
+  auto& block=block_list.emplace_back(*this,srm,srm_in_block);
 
   // pairs of a block index in the list and a mapping vector into |block|
   containers::simple_list<std::pair<unsigned,BlockEltList> > embeddings;
-  block_list.push_back(std::move(ptr));
 
   const RatWeight gamma_rho = srm.gamma_mod1()-rho(root_datum());
   for (BlockElt z=0; z<block.size(); ++z)
@@ -1005,7 +1002,7 @@ unsigned long Rep_table::add_block(const StandardReprMod& srm)
       auto e_it = embeddings.begin();
       for (auto it=block_list.begin(); not block_list.at_end(it); ++it, ++i)
       {
-	if (it->get()==block_ptr)
+	if (&*it==block_ptr)
 	  break; // found the partial block in which |zm| was previously located
 	if (not embeddings.at_end(e_it) and e_it->first==i)
 	  ++e_it; // keep |e_it| pointing at or ahead of block |i|
@@ -1032,7 +1029,7 @@ unsigned long Rep_table::add_block(const StandardReprMod& srm)
     for (BlockElt z : pair.second)
       assert(z!=UndefBlock);
 #endif
-    block.swallow(std::move(**b_it),pair.second);
+    block.swallow(std::move(*b_it),pair.second);
     block_list.erase(b_it);
     ++i; // but don't increase |b_it|
   }

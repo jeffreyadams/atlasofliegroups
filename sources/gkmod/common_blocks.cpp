@@ -844,12 +844,8 @@ blocks::common_block& Rep_table::add_block_below
     pair.second.clear(); // forget which were in the Bruhat interval
   }
 
-  std::unique_ptr<blocks::common_block> new_block_p
-    (new blocks::common_block (*this,ctxt,elements,srm.gamma_mod1()));
-  // the constructor rearranges |elements| to the order in the block
-  auto& block = *new_block_p;
-
-  block_list.push_back(std::move(new_block_p)); // insert block
+  auto& block = block_list.emplace_back // construct block and get a reference
+    (*this,ctxt,elements,srm.gamma_mod1());
 
   *subset=BitMap(block.size());
   std::vector<Poset::EltList> Hasse_diagram(block.size());
@@ -909,8 +905,7 @@ blocks::common_block& Rep_table::add_block_below
     auto block_p = pair.first; // even pilfered, the pointer is still unchanged
     auto it = std::find_if
       (block_list.begin(),block_list.end(),
-       [block_p](const std::unique_ptr<blocks::common_block>& p)
-       { return p.get()==block_p; } );
+       [block_p](const blocks::common_block& p) { return &p==block_p; } );
     if (it!=block_list.end())
       block_list.erase(it);
   }
