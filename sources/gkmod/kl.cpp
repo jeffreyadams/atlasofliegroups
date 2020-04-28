@@ -148,10 +148,10 @@ bool KLPolEntry::operator!=(KLPolEntry::Pooltype::const_reference e) const
 
 KL_table::KL_table(const Block_base& b)
   : klsupport::KLSupport(b) // construct unfilled support object from block
-  , fill_limit(0)
-  , d_prim()
-  , d_kl()
-  , d_mu()
+  , d_holes(0) // start without ambition to fill
+  , d_prim(b.size()) // create empty slots for whole block; doesn't cost much
+  , d_kl(b.size())
+  , d_mu(b.size())
   , d_store(2)
 {
   // make sure the support (base class) is filled
@@ -273,18 +273,21 @@ PrimitiveRow KL_table::primitiveRow(BlockElt y) const
 // Fill (or extend) the KL- and mu-lists.
 void KL_table::fill(BlockElt y, bool verbose)
 {
-  if (y<fill_limit)
+  if (y<first_hole())
     return; // tables present already sufficiently large for |y|
 
+  auto old_limit = hole_limit();
+  if (old_limit<=y)
+  {
+    d_holes.set_capacity(y+1);
+    d_holes.fill(old_limit,y+1);
+  }
 #ifndef VERBOSE
   verbose=false; // if compiled for silence, force this variable
 #endif
 
   try
   {
-    d_prim.resize(y+1);
-    d_kl.resize(y+1);
-    d_mu.resize(y+1);
     if (verbose)
     {
       std::cerr << "computing Kazhdan-Lusztig polynomials ..." << std::endl;
@@ -293,15 +296,16 @@ void KL_table::fill(BlockElt y, bool verbose)
     }
     else
       silent_fill(y);
-
-    fill_limit = y+1; // commit extension of tables
   }
   catch (std::bad_alloc)
   { // roll back, and transform failed allocation into MemoryOverflow
-    std::cerr << "\n memory full, KL computation abondoned." << std::endl;
-    d_prim.resize(fill_limit);
-    d_kl.resize(fill_limit);
-    d_mu.resize(fill_limit); // truncate to previous contents
+    std::cerr << "\n memory full, KL computation abondoned.\n";
+    for (auto it = d_holes.begin(); it() and *it<=y; ++it)
+    { // remove any partially written columns
+      d_prim[*it].clear();
+      d_kl[*it].clear();
+      d_mu[*it].clear();
+    }
     throw error::MemoryOverflow();
   }
 
@@ -1108,8 +1112,11 @@ void KL_table::silent_fill(BlockElt last_y)
   {
     KLHash hash(d_store); // (re-)construct a hastable for polynomial storage
     // fill the lists
-    for (BlockElt y=fill_limit; y<=last_y; ++y)
-      fillKLRow(y,hash);
+    for (auto it = d_holes.begin(); it() and *it<=last_y; ++it)
+    {
+      fillKLRow(*it,hash);
+      d_holes.remove(*it);
+    }
     // after all rows are done the hash table is freed, only the store remains
   }
   catch (kl_error::KLError& e)
@@ -1130,7 +1137,7 @@ void KL_table::verbose_fill(BlockElt last_y)
   {
     KLHash hash(d_store);
 
-    size_t minLength = length(fill_limit); // length of first new |y|
+    size_t minLength = length(first_hole()); // length of first new |y|
     size_t maxLength = length(last_y<size() ? last_y : size()-1);
 
     //set timers for KL computation
@@ -1146,7 +1153,7 @@ void KL_table::verbose_fill(BlockElt last_y)
 
     for (size_t l=minLength; l<=maxLength; ++l) // by length for progress report
     {
-      BlockElt y_start = l==minLength ? fill_limit : lengthLess(l);
+      BlockElt y_start = l==minLength ? first_hole() : lengthLess(l);
       BlockElt y_limit = l<maxLength ? lengthLess(l+1) : last_y+1;
       for (BlockElt y=y_start; y<y_limit; ++y)
       {
@@ -1154,6 +1161,7 @@ void KL_table::verbose_fill(BlockElt last_y)
 
 	nr_of_prim_nulls += fillKLRow(y,hash);
 	prim_size += d_prim[y].size();
+	d_holes.remove(y);
       }
 
       // now length |l| is completed

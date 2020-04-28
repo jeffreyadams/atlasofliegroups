@@ -19,6 +19,7 @@
 
 #include "../Atlas.h"
 
+#include "bitmap.h"
 #include "klsupport.h"	// containment
 #include "polynomials.h"// containment
 
@@ -48,7 +49,7 @@ class KL_table
   : public klsupport::KLSupport // base is needed for full functionality
 {
 
-  BlockElt fill_limit; // all "rows" |y| with |y<fill_limit| have been computed
+  BitMap d_holes; // columns to fill; its |capacity| limits ambition to do so
 
 /*
   Entry |d_prim[y]| is a list of the elements $x_i$ that are primitive with
@@ -84,6 +85,10 @@ class KL_table
   KL_table(const Block_base&); // construct initial base object
 
 // accessors
+
+  BlockElt first_hole () const { return d_holes.front(); }
+  BlockElt hole_limit () const { return d_holes.capacity(); }
+
   // construct lists of extremal respectively primitive elements for |y|
   PrimitiveRow extremalRow(BlockElt y) const;
   PrimitiveRow primitiveRow(BlockElt y) const;
