@@ -101,8 +101,8 @@ class common_block : public Block_base
     (common_block&& sub, const BlockEltList& embed);
   ext_block::ext_block& extended_block(const WeightInvolution& delta);
 
-  void set_Bruhat(std::vector<Poset::EltList>&& Hasse)
-  { d_bruhat.reset(new BruhatOrder(std::move(Hasse))); }
+  void set_Bruhat
+  (containers::sl_list<std::pair<BlockElt,BlockEltList> >&& partial_Hasse);
 
   // virtual methods
   virtual KGBElt max_x() const { return highest_x; } // might not be final |x|

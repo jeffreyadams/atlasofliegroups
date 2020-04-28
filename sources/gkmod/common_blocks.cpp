@@ -710,6 +710,14 @@ void common_block::swallow(common_block&& sub, const BlockEltList& embed)
     set_Bruhat_covered(embed[z],std::move(covered));
   }
 }
+
+void common_block::set_Bruhat
+  (containers::sl_list<std::pair<BlockElt,BlockEltList> >&& partial_Hasse)
+{
+  for (auto& pair : partial_Hasse)
+    set_Bruhat_covered(pair.first,std::move(pair.second));
+}
+
 void common_block::sort(unsigned short max_length, bool reverse_length)
 {
   const KGBElt x_lim=highest_x+1; // limit for |x| values
@@ -848,40 +856,25 @@ blocks::common_block& Rep_table::add_block_below
     (*this,ctxt,elements,srm.gamma_mod1());
 
   *subset=BitMap(block.size());
-  std::vector<Poset::EltList> Hasse_diagram(block.size());
+  containers::sl_list<std::pair<BlockElt,BlockEltList> > partial_Hasse_diagram;
   for (auto z : elements)
-  {
-    BlockElt i_z = block.lookup(this->srm(z)); // index of |z| in our new block
-    auto& row = Hasse_diagram[i_z];
     if (gen.in_interval(z)) // these have their covered's in |gen|
     {
+      BlockElt i_z = block.lookup(this->srm(z)); // index of |z| in our new block
       subset->insert(i_z); // mark |z| as element ot the Bruhat interval
-      const auto& cover = gen.covered(z);
-      const auto len = atlas::containers::length(cover);
-      row.reserve(len);
-      for (auto it=cover.begin(); not cover.at_end(it); ++it)
+      const auto& covered = gen.covered(z);
+      BlockEltList row;
+      row.reserve(atlas::containers::length(covered));
+      for (auto it=covered.begin(); not covered.at_end(it); ++it)
       {
 	const BlockElt y = block.lookup(this->srm(*it)); // get relative number
 	assert(y!=UndefBlock);
 	row.push_back(y); // store covering relation in |Hasse_diagram|
       }
+      partial_Hasse_diagram.emplace_back(i_z,row);
     }
-    else // element |z| is in an old block, outside Bruhat interval
-    { // get covered elements from stored Bruhat order of old block
-      auto& old_block = *place[z].first;
-      const BlockElt z_rel = place[z].second;
-      const auto& covered = old_block.bruhatOrder().hasse(z_rel);
-      const auto len = covered.size();
-      row.reserve(len);
-      for (auto y_rel : covered)
-      {
-	const BlockElt y = block.lookup(old_block.representative(y_rel));
-	assert(y!=UndefBlock);
-	row.push_back(y);
-      }
-    }
-  }
-  block.set_Bruhat(std::move(Hasse_diagram));
+
+  block.set_Bruhat(std::move(partial_Hasse_diagram));
 
   static const std::pair<bl_it, BlockElt> empty(bl_it(),UndefBlock);
   place.resize(mod_pool.size(),empty); // new entries point to |new_block_it|
