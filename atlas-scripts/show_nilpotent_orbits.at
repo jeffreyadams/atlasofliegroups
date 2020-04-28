@@ -32,10 +32,14 @@ set number_real_nilpotent_orbits_correct_central_invariant(ComplexNilpotent O_ch
 if ic.is_equal_rank then
 let O_check_int=O_check.integral_descent then
 rd_int=O_check_int.root_datum  then
+()=prints("rd_int: ", rd_int) then
+()=prints("O_check_int: ", O_check_int) then
 ic_check_int=inner_class(rd_int,ic.distinguished_involution) then
-rf_int=real_forms(ic_check_int) in
+()=prints("ic_check_int: ", ic_check_int) in
+{rf_int=real_forms(ic_check_int) in} 
 for G in strong_real_forms_nilpotent_orbit_correct_central_invariant(O_check_int,ic_check_int) do
 {srf_int_correct_type=strong_real_forms_type(central_invariant(O_check_int,inner_class_int)) {[int]} in}
+prints("G: ", G, "number: ", number_real_nilpotent_orbits(O_check_int,G));
 number_real_nilpotent_orbits(O_check_int,G) od
 {for k in srf_int_correct_type do number_real_nilpotent_orbits(O_check_int,rf_int[k]) od}
 elif O_check.is_even then
