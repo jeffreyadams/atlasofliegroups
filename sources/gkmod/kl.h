@@ -1,7 +1,7 @@
 /*
   This is kl.h
 
-  Class definitions and function declarations for the class |KLContext|.
+  Class definitions and function declarations for the class |KL_table|.
 
 
   Copyright (C) 2004,2005 Fokko du Cloux
@@ -29,22 +29,22 @@ namespace kl {
 /******** function declarations *********************************************/
 
 
-wgraph::WGraph wGraph(const KLContext&);
+wgraph::WGraph wGraph(const KL_table&);
 
 
 /******** type definitions **************************************************/
 
-/* Namely: the definition of KLContext itself */
+/* Namely: the definition of KL_table itself */
 
 typedef std::vector<std::pair<BlockElt,MuCoeff> > MuRow;
 
 class KLPolEntry; // class definition will given in the implementation file
 
 /*
-  |KLContext| is a class that Calculates and stores the
+  |KL_table| is a class that Calculates and stores the
   Kazhdan-Lusztig-Vogan polynomials for a block of representations of $G$.
 */
-class KLContext
+class KL_table
   : public klsupport::KLSupport // base is needed for full functionality
 {
 
@@ -72,16 +72,16 @@ class KLContext
   // using enum rather than |static const int| allows implicit const references
 
   // copy, assignment, and swap are not needed, and not provided
-  KLContext(const KLContext&) = delete;
-  KLContext& operator= (const KLContext&) = delete;
-  KLContext(KLContext&&) = delete;
-  KLContext& operator= (KLContext&&) = delete;
-  void swap(KLContext&) = delete;
+  KL_table(const KL_table&) = delete;
+  KL_table& operator= (const KL_table&) = delete;
+  KL_table(KL_table&&) = delete;
+  KL_table& operator= (KL_table&&) = delete;
+  void swap(KL_table&) = delete;
 
  public:
 
 // constructors and destructors
-  KLContext(const Block_base&); // construct initial base object
+  KL_table(const Block_base&); // construct initial base object
 
 // accessors
   // construct lists of extremal respectively primitive elements for |y|
@@ -160,7 +160,7 @@ class KLContext
 		       BlockElt y, KLHash& hash);
   KLPol muNewFormula(BlockElt x, BlockElt y, size_t s, const MuRow& muy);
 
-}; // |class KLContext|
+}; // |class KL_table|
 
 } // |namespace kl|
 

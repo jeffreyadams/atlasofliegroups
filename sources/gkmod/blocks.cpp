@@ -166,7 +166,7 @@ Block_base::Block_base(const KGB& kgb)
   , dd(kgb.innerClass().rootDatum().cartanMatrix())
   , partial_Hasse_diagram()
   , d_bruhat(nullptr)
-  , klc_ptr(nullptr)
+  , kl_tab_ptr(nullptr)
 {
 } // |Block_base::Block_base|
 
@@ -176,7 +176,7 @@ Block_base::Block_base(unsigned int integral_rank)
   , dd()
   , partial_Hasse_diagram()
   , d_bruhat(nullptr)
-  , klc_ptr(nullptr)
+  , kl_tab_ptr(nullptr)
 {}
 
 Block_base::Block_base(const Block_base& b) // copy constructor
@@ -184,7 +184,7 @@ Block_base::Block_base(const Block_base& b) // copy constructor
   , dd(b.dd)
   , partial_Hasse_diagram()
   , d_bruhat(nullptr) // don't care to copy; is empty in |Block::build| anyway
-  , klc_ptr(nullptr)  // likewise
+  , kl_tab_ptr(nullptr)  // likewise
 {
 #ifdef VERBOSE // then show that we're called (does not actually happen)
   std::cerr << "copying a block" << std::endl;
@@ -297,11 +297,11 @@ void Block_base::fill_Bruhat()
 }
 
 // computes and stores the KL polynomials
-void Block_base::fill_klc(BlockElt last_y,bool verbose)
+void Block_base::fill_kl_tab(BlockElt last_y,bool verbose)
 {
-  if (klc_ptr.get()==nullptr) // do this only the first time
-    klc_ptr.reset(new kl::KLContext(*this));
-  klc_ptr->fill(last_y,verbose); // extend tables to contain |last_y|
+  if (kl_tab_ptr.get()==nullptr) // do this only the first time
+    kl_tab_ptr.reset(new kl::KL_table(*this));
+  kl_tab_ptr->fill(last_y,verbose); // extend tables to contain |last_y|
 }
 
 // free function

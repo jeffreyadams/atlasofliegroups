@@ -9,7 +9,7 @@
 */
 
 /*
-  Implementation of the class KLContext.
+  Implementation of the class KL_table.
 
   This module contains code for the computation of the Kazhdan-Lusztig
   polynomials for a given block of representations. We have taken the radical
@@ -109,7 +109,7 @@ public:
 
 /*****************************************************************************
 
-        Chapter I -- Public methods of the KLPolEntry and KLContext classes.
+        Chapter I -- Public methods of the KLPolEntry and KL_table classes.
 
  *****************************************************************************/
 
@@ -143,10 +143,10 @@ bool KLPolEntry::operator!=(KLPolEntry::Pooltype::const_reference e) const
   return false; // no difference found
 }
 
-/* methods of KLContext */
+/* methods of KL_table */
 
 
-KLContext::KLContext(const Block_base& b)
+KL_table::KL_table(const Block_base& b)
   : klsupport::KLSupport(b) // construct unfilled support object from block
   , fill_limit(0)
   , d_prim()
@@ -180,7 +180,7 @@ KLContext::KLContext(const Block_base& b)
   use offset of result to find polynomial in |d_store|, if not found, the
   polynomial is zero. Always returns a value from |d_store|, maybe |d_zero|.
   */
-KLPolRef KLContext::klPol(BlockElt x, BlockElt y) const
+KLPolRef KL_table::klPol(BlockElt x, BlockElt y) const
 {
   const KLRow& klr = d_kl[y];
   x=primitivize(x,descentSet(y));
@@ -194,7 +194,7 @@ KLPolRef KLContext::klPol(BlockElt x, BlockElt y) const
 }
 
 // The same, but just return the index into |d_store| that gives $P_{x,y}$
-KLIndex KLContext::KL_pol_index(BlockElt x, BlockElt y) const
+KLIndex KL_table::KL_pol_index(BlockElt x, BlockElt y) const
 {
   const KLRow& klr = d_kl[y];
   x=primitivize(x,descentSet(y));
@@ -218,7 +218,7 @@ bool mu_entry_compare(const std::pair<BlockElt,MuCoeff>& x,
   occur in |d_mu[y]| (and in fact, that only those occur.) So it is a simple
   matter of looking up $x$. We can say 0 without lookup in some easy cases.
 */
-MuCoeff KLContext::mu(BlockElt x, BlockElt y) const
+MuCoeff KL_table::mu(BlockElt x, BlockElt y) const
 {
   unsigned int lx=length(x),ly=length(y);
   if (ly<=lx or (ly-lx)%2==0)
@@ -241,7 +241,7 @@ MuCoeff KLContext::mu(BlockElt x, BlockElt y) const
   for |y| is either a descent for |x|.  or  $asc(x)\cap desc(y)=\emptyset$.
   Here descent means "in the $\tau$ invariant" (possibilities C-, ic, r1, r2).
 */
-PrimitiveRow KLContext::extremalRow(BlockElt y)
+PrimitiveRow KL_table::extremalRow(BlockElt y)
   const
 {
   BitMap b(size());
@@ -258,7 +258,7 @@ PrimitiveRow KLContext::extremalRow(BlockElt y)
   Explanation: this means that |length(x) < length(y)|, and every descent
   for |y| is either a descent, or an imaginary type II ascent for |x|.
 */
-PrimitiveRow KLContext::primitiveRow(BlockElt y) const
+PrimitiveRow KL_table::primitiveRow(BlockElt y) const
 {
   BitMap b(size());
   b.fill(0,lengthLess(length(y)));   // start with all elements < y in length
@@ -271,7 +271,7 @@ PrimitiveRow KLContext::primitiveRow(BlockElt y) const
 /******** manipulators *******************************************************/
 
 // Fill (or extend) the KL- and mu-lists.
-void KLContext::fill(BlockElt y, bool verbose)
+void KL_table::fill(BlockElt y, bool verbose)
 {
   if (y<fill_limit)
     return; // tables present already sufficiently large for |y|
@@ -307,7 +307,7 @@ void KLContext::fill(BlockElt y, bool verbose)
 
 }
 
-BitMap KLContext::primMap (BlockElt y) const
+BitMap KL_table::primMap (BlockElt y) const
 {
   BitMap b(size()); // block-size bitmap
 
@@ -353,7 +353,7 @@ BitMap KLContext::primMap (BlockElt y) const
   |descentValue(s,y)| is either |DescentStatus::ComplexDescent| or
   |DescentStatus::RealTypeI|. If no such generator exists, we return |rank()|.
 */
-weyl::Generator KLContext::firstDirectRecursion(BlockElt y) const
+weyl::Generator KL_table::firstDirectRecursion(BlockElt y) const
 {
   const DescentStatus& d = descent(y);
   weyl::Generator s;
@@ -363,7 +363,7 @@ weyl::Generator KLContext::firstDirectRecursion(BlockElt y) const
 
   return s;
 
-} // |KLContext::firstDirectRecursion|
+} // |KL_table::firstDirectRecursion|
 
 /*
   Return the first real nonparity ascent for y that is a complex ascent, or
@@ -374,7 +374,7 @@ weyl::Generator KLContext::firstDirectRecursion(BlockElt y) const
 
   If no such generator exists, we return |rank()|.
 */
-weyl::Generator KLContext::first_nice_and_real(BlockElt x,BlockElt y) const
+weyl::Generator KL_table::first_nice_and_real(BlockElt x,BlockElt y) const
 {
   const DescentStatus& dx = descent(x);
   const DescentStatus& dy = descent(y);
@@ -390,7 +390,7 @@ weyl::Generator KLContext::first_nice_and_real(BlockElt x,BlockElt y) const
       }
   return s;
 
-} // |KLContext::first_nice_and_real|
+} // |KL_table::first_nice_and_real|
 
 /*
   Preconditions:
@@ -422,7 +422,7 @@ weyl::Generator KLContext::first_nice_and_real(BlockElt x,BlockElt y) const
   method can still be used, and indeed simplifies by not needing t.
 */
 std::pair<weyl::Generator,weyl::Generator>
-   KLContext::first_endgame_pair(BlockElt x, BlockElt y) const
+   KL_table::first_endgame_pair(BlockElt x, BlockElt y) const
 {
   const DescentStatus& dx = descent(x);
   const DescentStatus& dy = descent(y);
@@ -444,14 +444,14 @@ std::pair<weyl::Generator,weyl::Generator>
     }
   return std::make_pair(r,0); // failure
 
-} // |KLContext::first_endgame_pair|
+} // |KL_table::first_endgame_pair|
 
 // A convenience method that is "derived" from (the non-ancestor) |Block|
-inline BlockEltPair KLContext::inverseCayley(size_t s, BlockElt y) const
+inline BlockEltPair KL_table::inverseCayley(size_t s, BlockElt y) const
 { return block().inverseCayley(s,y); }
 
 // compute the down-set of $y$, the non-extremal $x$ with $\mu(x,y)\neq0$
-std::set<BlockElt> KLContext::down_set(BlockElt y) const
+std::set<BlockElt> KL_table::down_set(BlockElt y) const
 {
   std::set<BlockElt> result;
 
@@ -474,7 +474,7 @@ std::set<BlockElt> KLContext::down_set(BlockElt y) const
     }
   return result;
 
-} // |KLContext::down_set|
+} // |KL_table::down_set|
 
 /*
   Return the Kazhdan-Lusztig polynomial for x corresponding to the given row.
@@ -489,7 +489,7 @@ std::set<BlockElt> KLContext::down_set(BlockElt y) const
 
   Like the basic |klPol|, this will return zero when |x==UndefBlock|.
 */
-KLPolRef KLContext::klPol(BlockElt x, BlockElt y,
+KLPolRef KL_table::klPol(BlockElt x, BlockElt y,
 			  KLRow::const_iterator klv,
 			  PrimitiveRow::const_iterator p_begin,
 			  PrimitiveRow::const_iterator p_end) const
@@ -512,7 +512,7 @@ KLPolRef KLContext::klPol(BlockElt x, BlockElt y,
 
   Row of $y$ is the set of all $P_{x,y}$ for $x<y$; actually more like a column
 */
-size_t KLContext::fillKLRow(BlockElt y, KLHash& hash)
+size_t KL_table::fillKLRow(BlockElt y, KLHash& hash)
 {
   size_t sparseness=0; // number of entries saved by suppressing zero polys
   if (d_kl[y].size()>0)
@@ -556,7 +556,7 @@ size_t KLContext::fillKLRow(BlockElt y, KLHash& hash)
   by |muCorrection|; the form of the summation depends only on |y1| (which it
   recomputes), but involves polynomials $P_{x,z}$ that depend on $x$ as well.
 */
-void KLContext::recursionRow(std::vector<KLPol>& klv,
+void KL_table::recursionRow(std::vector<KLPol>& klv,
 			     const PrimitiveRow& e,
 			     BlockElt y,
 			     size_t s)
@@ -614,12 +614,12 @@ void KLContext::recursionRow(std::vector<KLPol>& klv,
   }
   catch (error::NumericUnderflow& err){
     throw kl_error::KLError(e[i],y,__LINE__,
-			    static_cast<const KLContext&>(*this));
+			    static_cast<const KL_table&>(*this));
   }
 
   muCorrection(klv,e,y,s); // subtract mu-correction from all of |klv|
 
-} // |KLContext::recursionRow|
+} // |KL_table::recursionRow|
 
 /*
   Subtract from all polynomials in |klv| the correcting terms in the
@@ -656,7 +656,7 @@ void KLContext::recursionRow(std::vector<KLPol>& klv,
   Elements of length at least $l(sy)=l(y)-1$ on the list |e| are always
   rejected, so the tail of |e| never reached.
  */
-void KLContext::muCorrection(std::vector<KLPol>& klv,
+void KL_table::muCorrection(std::vector<KLPol>& klv,
 			     const PrimitiveRow& e,
 			     BlockElt y, size_t s)
 {
@@ -718,10 +718,10 @@ void KLContext::muCorrection(std::vector<KLPol>& klv,
   }
   catch (error::NumericUnderflow& err){
     throw kl_error::KLError(e[j],y,__LINE__,
-			    static_cast<const KLContext&>(*this));
+			    static_cast<const KL_table&>(*this));
   }
 
-} // |KLContext::muCorrection|
+} // |KL_table::muCorrection|
 
 /*
   Write down row |y| in |d_kl| and |d_prim|.
@@ -744,7 +744,7 @@ void KLContext::muCorrection(std::vector<KLPol>& klv,
   for that case this function could be considerably simplified, but it works
   well as is, so we didn't write a simplified version.
  */
-size_t KLContext::writeRow(const std::vector<KLPol>& klv,
+size_t KL_table::writeRow(const std::vector<KLPol>& klv,
 			   const PrimitiveRow& er, BlockElt y,
 			   KLHash& hash)
 {
@@ -816,10 +816,10 @@ size_t KLContext::writeRow(const std::vector<KLPol>& klv,
 
   return nzpr_p  -nzpr.begin(); // measure unused space
 
-} // |KLContext::writeRow|
+} // |KL_table::writeRow|
 
 // this method is called instead of |writeRow| in cases involving new recursion
-size_t KLContext::remove_zeros(const KLRow& klv,
+size_t KL_table::remove_zeros(const KLRow& klv,
 			       const PrimitiveRow& pr, BlockElt y)
 {
   PrimitiveRow nzpr(pr.size()); // columns of the nonzero primimitive entries
@@ -842,7 +842,7 @@ size_t KLContext::remove_zeros(const KLRow& klv,
 
   return nzpr_p  -nzpr.begin(); // measure unused space
 
-} // |KLContext::remove_zeros|
+} // |KL_table::remove_zeros|
 
 /*
   Puts in klv[i] the polynomial P_{e[i],y} for every primtitve x=pr[i],
@@ -887,7 +887,7 @@ size_t KLContext::remove_zeros(const KLRow& klv,
   This code gets executed for |y| that are of minimal length, in which case
   it only contributes $P_{y,y}=1$; the |while| loop will be executed 0 times.
 */
-void KLContext::newRecursionRow
+void KL_table::newRecursionRow
 ( KLRow& klv,
   const PrimitiveRow& pr, // primitive elements of length less than |length(y)|
   BlockElt y,
@@ -1028,7 +1028,7 @@ void KLContext::newRecursionRow
   catch (error::NumericUnderflow& err) // repackage error, reporting x,y
   {
     throw kl_error::KLError(pr[j],y,__LINE__,
-			    static_cast<const KLContext&>(*this));
+			    static_cast<const KL_table&>(*this));
   }
 
   d_mu[y]=MuRow(mu_y.rbegin(),mu_y.rend()); // reverse to a tight copy
@@ -1039,7 +1039,7 @@ void KLContext::newRecursionRow
       std::swap(d_mu[y][i-1],d_mu[y][i]);
   }
 
-} // |KLContext::newRecursionRow|
+} // |KL_table::newRecursionRow|
 
 /*
   Store into |klv[j]| the $\mu$-sum appearing a new K-L recursion.
@@ -1064,7 +1064,7 @@ void KLContext::newRecursionRow
   only once, and terminating the scan of |klv| once its values |x| become too
   large to produce a non-zero $P_{x,z}$.
 */
-KLPol KLContext::muNewFormula
+KLPol KL_table::muNewFormula
   (BlockElt x, BlockElt y, size_t s, const MuRow& mu_y)
 {
   KLPol pol=Zero;
@@ -1095,14 +1095,14 @@ KLPol KLContext::muNewFormula
   }
   catch (error::NumericOverflow& e){
     throw kl_error::KLError(x,y,__LINE__,
-			    static_cast<const KLContext&>(*this));
+			    static_cast<const KL_table&>(*this));
   }
 
   return pol;
-} // |KLContext::muNewFormula|
+} // |KL_table::muNewFormula|
 
 
-void KLContext::silent_fill(BlockElt last_y)
+void KL_table::silent_fill(BlockElt last_y)
 {
   try
   {
@@ -1122,9 +1122,9 @@ void KLContext::silent_fill(BlockElt last_y)
 }
 
 /*
-  New routine that does verbose filling of existing |KLContext| object
+  New routine that does verbose filling of existing |KL_table| object
 */
-void KLContext::verbose_fill(BlockElt last_y)
+void KL_table::verbose_fill(BlockElt last_y)
 {
   try
   {
@@ -1241,25 +1241,25 @@ void KLContext::verbose_fill(BlockElt last_y)
   element occurs as |x| for another as |y|; the |y| are always increasing.
 
 */
-wgraph::WGraph wGraph(const KLContext& klc)
+wgraph::WGraph wGraph(const KL_table& kl_tab)
 {
-  wgraph::WGraph wg(klc.rank(),klc.size());
+  wgraph::WGraph wg(kl_tab.rank(),kl_tab.size());
 
   // fill in descent sets, edges and coefficients
-  for (BlockElt y = 0; y < klc.size(); ++y)
+  for (BlockElt y = 0; y < kl_tab.size(); ++y)
   {
-    const RankFlags& d_y = klc.descentSet(y);
+    const RankFlags& d_y = kl_tab.descentSet(y);
     wg.descent_sets[y] = d_y;
-    const MuRow& mrow = klc.muRow(y);
+    const MuRow& mrow = kl_tab.muRow(y);
     for (size_t j = 0; j < mrow.size(); ++j)
     {
       BlockElt x = mrow[j].first;
       assert(x<y); // this is a property of |muRow|
-      const RankFlags& d_x = klc.descentSet(x);
+      const RankFlags& d_x = kl_tab.descentSet(x);
       if (d_x == d_y)
 	continue;
       MuCoeff mu = mrow[j].second;
-      if (klc.length(y) - klc.length(x) > 1)
+      if (kl_tab.length(y) - kl_tab.length(x) > 1)
       { // nonzero $\mu$, unequal descents, $l(x)+1<l(y)$: edge from $x$ to $y$
 	wg.oriented_graph.edgeList(x).push_back(y);
 	wg.coefficients[x].push_back(mu);

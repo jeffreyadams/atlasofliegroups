@@ -1205,7 +1205,7 @@ SR_poly Rep_table::deformation_terms
     if (not contrib[z].empty() and contrib[z].front().first==z)
       finals.push_front(z); // accumulate in reverse order
 
-  const kl::KLContext& klc = block.klc(y,false); // fill silently up to |y|
+  const kl::KL_table& kl_tab = block.kl_tab(y,false); // fill silently up to |y|
 
   std::unique_ptr<unsigned int[]> index // a sparse array, map final to position
     (new unsigned int [block.size()]); // unlike |std::vector| do not initialise
@@ -1231,7 +1231,7 @@ SR_poly Rep_table::deformation_terms
     const bool contribute = block.length(z)%2!=y_parity;
     for (BlockElt x=z+1; x-->0; ) // for |x| from |z| down to |0| inclusive
     {
-      const kl::KLPol& pol = klc.klPol(x,z); // regular KL polynomial
+      const kl::KLPol& pol = kl_tab.klPol(x,z); // regular KL polynomial
       int eval = 0;
       for (polynomials::Degree d=pol.size(); d-->0; )
 	eval = static_cast<int>(pol[d]) - eval; // evaluate at $q = -1$
@@ -1292,13 +1292,13 @@ SR_poly Rep_table::KL_column_at_s(StandardRepr sr) // |sr| must be final
   std::vector<pair_list> contrib = contributions(block,block.singular(gamma),z);
   assert(contrib.size()==z+1 and contrib[z].front().first==z);
 
-  const kl::KLContext& klc = block.klc(z,false); // fill silently up to |z|
+  const kl::KL_table& kl_tab = block.kl_tab(z,false); // fill silently up to |z|
 
   SR_poly result(repr_less());
   auto z_length=block.length(z);
   for (BlockElt x=z+1; x-->0; )
   {
-    const kl::KLPol& pol = klc.klPol(x,z); // regular KL polynomial
+    const kl::KLPol& pol = kl_tab.klPol(x,z); // regular KL polynomial
     if (pol.isZero())
       continue;
     Split_integer eval(0);

@@ -21,7 +21,7 @@
 
 /*****************************************************************************
 
-  Output functions for the |KLContext|, defined in sources/kl/kl.h
+  Output functions for the |KL_table|, defined in sources/kl/kl.h
 
 ******************************************************************************/
 
@@ -44,23 +44,23 @@ const char* KLIndeterminate = "q"; // name used on output for indeterminate
 namespace kl_io {
 
 
-// Print the non-zero Kazhdan-Lusztig-Vogan polynomials from klc to strm.
+// Print the non-zero Kazhdan-Lusztig-Vogan polynomials from kl_tab to strm.
 std::ostream& printAllKL
-  (std::ostream& strm, const kl::KLContext& klc, Block_base& block)
+  (std::ostream& strm, const kl::KL_table& kl_tab, Block_base& block)
 {
   size_t count = 0;
 
-  int width = ioutils::digits(klc.size()-1,10ul);
+  int width = ioutils::digits(kl_tab.size()-1,10ul);
   int tab = 2;
 
-  for (size_t y = 0; y < klc.size(); ++y)
+  for (size_t y = 0; y < kl_tab.size(); ++y)
   {
 
     strm << std::setw(width) << y << ": ";
     bool first = true;
 
     for (size_t x = 0; x <= y; ++x) {
-      const kl::KLPol& pol = klc.klPol(x,y);
+      const kl::KLPol& pol = kl_tab.klPol(x,y);
       if (pol.isZero())
 	continue;
       if (first)
@@ -94,23 +94,23 @@ std::ostream& printAllKL
 }
 
 
-// Print the primitive kl polynomials from klc to strm.
+// Print the primitive kl polynomials from kl_tab to strm.
 std::ostream& printPrimitiveKL
-  (std::ostream& strm, const kl::KLContext& klc, Block_base& block)
+  (std::ostream& strm, const kl::KL_table& kl_tab, Block_base& block)
 {
   size_t count = 0;
   size_t zero_count = 0;
   size_t incomp_count = 0;
 
-  int width = ioutils::digits(klc.size()-1,10ul);
+  int width = ioutils::digits(kl_tab.size()-1,10ul);
   int tab = 2;
 
   BruhatOrder& bo=block.bruhatOrder(); // non-const!
   const poset::Poset& Bruhat=bo.poset(); // full poset is generated here
 
-  for (size_t y = 0; y < klc.size(); ++y)
+  for (size_t y = 0; y < kl_tab.size(); ++y)
   {
-    kl::PrimitiveRow e = klc.primitiveRow(y); // list of ALL primitive x's
+    kl::PrimitiveRow e = kl_tab.primitiveRow(y); // list of ALL primitive x's
 
     strm << std::setw(width) << y << ": ";
     bool first = true;
@@ -118,7 +118,7 @@ std::ostream& printPrimitiveKL
       if (Bruhat.lesseq(e[j],y))
       { // now |x=e[j]| is primitive for |y| and Bruhat-comparable
 	++count;
-	if ((klc.klPol(e[j],y).isZero()))
+	if ((kl_tab.klPol(e[j],y).isZero()))
 	  ++zero_count;
 	if (first)
 	{
@@ -131,11 +131,11 @@ std::ostream& printPrimitiveKL
 	       << std::setw(width) << e[j] << ": ";
 	}
 
-	klc.klPol(e[j],y).print(strm,KLIndeterminate) << std::endl;
+	kl_tab.klPol(e[j],y).print(strm,KLIndeterminate) << std::endl;
       }
       else
       {
-	assert(klc.klPol(e[j],y).isZero());
+	assert(kl_tab.klPol(e[j],y).isZero());
 	++incomp_count;
       } // |for (j)|
 
@@ -156,10 +156,10 @@ std::ostream& printPrimitiveKL
 }
 
 
-// Print the list of all distinct Kazhdan-Lusztig-Vogan polynomials in |klc|
-std::ostream& printKLList(std::ostream& strm, const kl::KLContext& klc)
+// Print the list of all distinct Kazhdan-Lusztig-Vogan polynomials in |kl_tab|
+std::ostream& printKLList(std::ostream& strm, const kl::KL_table& kl_tab)
 {
-  const kl::KLStore& store = klc.polStore();
+  const kl::KLStore& store = kl_tab.polStore();
   std::vector<kl::KLPol> polList;
 
   // get polynomials, omitting Zero
@@ -178,13 +178,13 @@ std::ostream& printKLList(std::ostream& strm, const kl::KLContext& klc)
 }
 
 
-// Print the mu-coefficients from |klc| to |strm|.
-std::ostream& printMu(std::ostream& strm, const kl::KLContext& klc)
+// Print the mu-coefficients from |kl_tab| to |strm|.
+std::ostream& printMu(std::ostream& strm, const kl::KL_table& kl_tab)
 {
-  int width = ioutils::digits(klc.size()-1,10ul);
+  int width = ioutils::digits(kl_tab.size()-1,10ul);
 
-  for (size_t y = 0; y < klc.size(); ++y) {
-    const kl::MuRow& mrow = klc.muRow(y);
+  for (size_t y = 0; y < kl_tab.size(); ++y) {
+    const kl::MuRow& mrow = kl_tab.muRow(y);
     strm << std::setw(width) << y << ": ";
     for (size_t j = 0; j < mrow.size(); ++j) {
       if (j>0)

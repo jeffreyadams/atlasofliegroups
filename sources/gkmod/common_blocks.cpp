@@ -12,8 +12,8 @@
   Motivation for this compilation unit.
 
   The computation of KLV polynomials is tightly bound to the notion of block,
-  and indeed in takes place in a |kl::KLContext| value that is constructed from
-  a block, and owned by a pointer member |klc_ptr| of |blocks::Block_base|.
+  and indeed in takes place in a |kl::KL_table| value that is constructed from
+  a block, and owned by a pointer member |kl_tab_ptr| of |blocks::Block_base|.
 
   In unitarity computations, blocks are computed from |Param| values, which
   internally correspond to the type |StandardRepr|; each one gives a single

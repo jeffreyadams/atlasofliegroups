@@ -363,10 +363,10 @@ Here is how a matrix file is written.
 @< Functions for writing binary files @>=
 
 std::streamoff
-write_KL_row(const kl::KLContext& klc, BlockElt y, std::ostream& out)
+write_KL_row(const kl::KL_table& kl_tab, BlockElt y, std::ostream& out)
 {
-  BitMap prims=klc.primMap(y);
-  const kl::KLRow& klr=klc.klRow(y);
+  BitMap prims=kl_tab.primMap(y);
+  const kl::KLRow& klr=kl_tab.klRow(y);
 
   assert(klr.size()+1==prims.capacity()); // check the number of KL polynomials
 
@@ -401,23 +401,23 @@ write_KL_row(const kl::KLContext& klc, BlockElt y, std::ostream& out)
 @
 
 @< Declarations of exported functions @>=
-void write_matrix_file(const kl::KLContext& klc, std::ostream& out);
+void write_matrix_file(const kl::KL_table& kl_tab, std::ostream& out);
 
 @~@< Functions for writing binary files @>=
 
-void write_matrix_file(const kl::KLContext& klc, std::ostream& out)
+void write_matrix_file(const kl::KL_table& kl_tab, std::ostream& out)
 {
-  std::vector<unsigned int> delta(klc.size());
+  std::vector<unsigned int> delta(kl_tab.size());
   std::streamoff offset=0;
-  for (BlockElt y=0; y<klc.size(); ++y)
+  for (BlockElt y=0; y<kl_tab.size(); ++y)
   {
-    std::streamoff new_offset=write_KL_row(klc,y,out);
+    std::streamoff new_offset=write_KL_row(kl_tab,y,out);
     delta[y]=static_cast<unsigned int>((new_offset-offset)/4);
     offset=new_offset;
   }
 
   // now write the values allowing rapid location of the matrix rows
-  for (BlockElt y=0; y<klc.size(); ++y)
+  for (BlockElt y=0; y<kl_tab.size(); ++y)
     basic_io::put_int(delta[y],out);
 
   // and finally sign file as being in new format by overwriting 4 bytes

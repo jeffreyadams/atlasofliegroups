@@ -3939,7 +3939,7 @@ to them.
 objects to ensure these remain in existence as long as our block does; in fact
 we include two such shared pointers, one for each real form. The |val| field
 contains an actual |Block| instance, which is constructed when the |Block_value|
-is. We also reserve a field |klc| in the structure to store KL polynomials,
+is. We also reserve a field |kl_tab| in the structure to store KL polynomials,
 though they will only be computed once they are asked for.
 
 The constructor for |Block_value| should avoid calling the version of the
@@ -3954,13 +3954,13 @@ exactly a classical one.
 struct Block_value : public value_base
 { const shared_real_form rf; const shared_real_form dual_rf;
   mutable Block val; // Bruhat order may be generated implicitly
-  mutable kl::KLContext klc; // as may KLV polynomials
+  mutable kl::KL_table kl_tab; // as may KLV polynomials
 @)
   Block_value(const shared_real_form& form,
               const shared_real_form& dual_form)
   : rf(form), dual_rf(dual_form)
   , val(Block::build(rf->val,dual_rf->val))
-  , klc(val)
+  , kl_tab(val)
   {}
   ~Block_value() @+{}
 @)
@@ -4833,9 +4833,9 @@ void KL_block_wrapper(expression_base::level l)
   param_block block(p->rc(),p->val,start);
   @< Push a list of parameter values for the elements of |block| @>
   push_value(std::make_shared<int_value>(start));
-  const kl::KLContext& klc = block.klc(block.size()-1,false);
+  const kl::KL_table& kl_tab = block.kl_tab(block.size()-1,false);
 @)
-  @< Extract from |klc| an |own_matrix M@;| and |own_row polys@;| @>
+  @< Extract from |kl_tab| an |own_matrix M@;| and |own_row polys@;| @>
 @)
   own_vector length_stops = std::make_shared<vector_value>(
      int_Vector(block.length(block.size()-1)+2));
@@ -4882,15 +4882,15 @@ void KL_block_wrapper(expression_base::level l)
 variable |M| and |polys|. One reason to extract it is that it can be used
 identically in two wrapper functions.
 
-@< Extract from |klc| an |own_matrix M@;| and |own_row polys@;| @>=
-own_matrix M = std::make_shared<matrix_value>(int_Matrix(klc.size()));
-for (unsigned int y=1; y<klc.size(); ++y)
+@< Extract from |kl_tab| an |own_matrix M@;| and |own_row polys@;| @>=
+own_matrix M = std::make_shared<matrix_value>(int_Matrix(kl_tab.size()));
+for (unsigned int y=1; y<kl_tab.size(); ++y)
   for (unsigned int x=0; x<y; ++x)
-    M->val(x,y)= klc.KL_pol_index(x,y);
+    M->val(x,y)= kl_tab.KL_pol_index(x,y);
 @)
 own_row polys = std::make_shared<row_value>(0);
-polys->val.reserve(klc.polStore().size());
-for (auto it=klc.polStore().begin(); it!=klc.polStore().end(); ++it)
+polys->val.reserve(kl_tab.polStore().size());
+for (auto it=kl_tab.polStore().begin(); it!=kl_tab.polStore().end(); ++it)
   polys->val.emplace_back(std::make_shared<vector_value> @|
      (std::vector<int>(it->begin(),it->end())));
 
@@ -4918,9 +4918,9 @@ void dual_KL_block_wrapper(expression_base::level l)
   @< Push a reversed list of parameter values for the elements of |block| @>
   push_value(std::make_shared<int_value>(size1-start));
   auto dual_block = blocks::Bare_block::dual(block);
-  const kl::KLContext& klc = dual_block.klc(size1,false);
+  const kl::KL_table& kl_tab = dual_block.kl_tab(size1,false);
 @)
-  @< Extract from |klc| an |own_matrix M@;| and |own_row polys@;| @>
+  @< Extract from |kl_tab| an |own_matrix M@;| and |own_row polys@;| @>
 @)
   own_vector length_stops = std::make_shared<vector_value>(
      int_Vector(block.length(size1)+2));
@@ -4985,17 +4985,17 @@ void partial_KL_block_wrapper(expression_base::level l)
   param_block block(p->rc(),p->val);
   @< Push a list of parameter values for the elements of |block| @>
 
-  const kl::KLContext& klc = block.klc(block.size()-1,false);
+  const kl::KL_table& kl_tab = block.kl_tab(block.size()-1,false);
   // compute KL polynomials, silently
 
-  own_matrix M = std::make_shared<matrix_value>(int_Matrix(klc.size()));
-  for (unsigned int y=1; y<klc.size(); ++y)
+  own_matrix M = std::make_shared<matrix_value>(int_Matrix(kl_tab.size()));
+  for (unsigned int y=1; y<kl_tab.size(); ++y)
     for (unsigned int x=0; x<y; ++x)
-      M->val(x,y)= klc.KL_pol_index(x,y);
+      M->val(x,y)= kl_tab.KL_pol_index(x,y);
 @)
   own_row polys = std::make_shared<row_value>(0);
-  polys->val.reserve(klc.polStore().size());
-  for (auto it=klc.polStore().begin(); it!=klc.polStore().end(); ++it)
+  polys->val.reserve(kl_tab.polStore().size());
+  for (auto it=kl_tab.polStore().begin(); it!=kl_tab.polStore().end(); ++it)
     polys->val.emplace_back(std::make_shared<vector_value> @|
        (std::vector<int>(it->begin(),it->end())));
 @)
@@ -5054,9 +5054,9 @@ void param_W_cells_wrapper(expression_base::level l)
   BlockElt start; // will hold index in the block of the initial element
   param_block block(p->rc(),p->val,start);
 @)
-  const kl::KLContext& klc = block.klc(block.size()-1,false);
+  const kl::KL_table& kl_tab = block.kl_tab(block.size()-1,false);
    // this does the actual KL computation
-  wgraph::WGraph wg = kl::wGraph(klc);
+  wgraph::WGraph wg = kl::wGraph(kl_tab);
   wgraph::DecomposedWGraph dg(wg);
 @)
   own_row cells=std::make_shared<row_value>(0);
@@ -6384,14 +6384,14 @@ void raw_KL_wrapper (expression_base::level l)
   if (l==expression_base::no_value)
     return;
 @)
-  b->klc.fill(); // this does the actual KL computation
-  own_matrix M = std::make_shared<matrix_value>(int_Matrix(b->klc.size()));
-  for (unsigned int y=1; y<b->klc.size(); ++y)
+  b->kl_tab.fill(); // this does the actual KL computation
+  own_matrix M = std::make_shared<matrix_value>(int_Matrix(b->kl_tab.size()));
+  for (unsigned int y=1; y<b->kl_tab.size(); ++y)
     for (unsigned int x=0; x<y; ++x)
-      M->val(x,y) = b->klc.KL_pol_index(x,y);
+      M->val(x,y) = b->kl_tab.KL_pol_index(x,y);
 @)
   own_row polys = std::make_shared<row_value>(0);
-  const auto& store=b->klc.polStore();
+  const auto& store=b->kl_tab.polStore();
   polys->val.reserve(store.size());
   for (auto it=store.begin(); it!=store.end(); ++it)
     polys->val.emplace_back(std::make_shared<vector_value> @|
@@ -6411,8 +6411,8 @@ void raw_KL_wrapper (expression_base::level l)
 }
 
 @ For testing, it is useful to also have the dual Kazhdan-Lusztig tables. In
-this case we cannot of course use the field |b->klc| to store the KL
-polynomials, so we here us a local |kl::KLContext| variable.
+this case we cannot of course use the field |b->kl_tab| to store the KL
+polynomials, so we here us a local |kl::KL_table| variable.
 
 @< Local function def...@>=
 void raw_dual_KL_wrapper (expression_base::level l)
@@ -6421,18 +6421,18 @@ void raw_dual_KL_wrapper (expression_base::level l)
   Block dual_block = Block::build(b->dual_rf->val,b->rf->val);
 
   std::vector<BlockElt> dual=blocks::dual_map(block,dual_block);
-  kl::KLContext klc(dual_block); klc.fill();
+  kl::KL_table kl_tab(dual_block); kl_tab.fill();
   if (l==expression_base::no_value)
     return;
 @)
-  own_matrix M = std::make_shared<matrix_value>(int_Matrix(klc.size()));
-  for (unsigned int y=1; y<klc.size(); ++y)
+  own_matrix M = std::make_shared<matrix_value>(int_Matrix(kl_tab.size()));
+  for (unsigned int y=1; y<kl_tab.size(); ++y)
     for (unsigned int x=0; x<y; ++x)
-      M->val(x,y) = klc.KL_pol_index(dual[y],dual[x]);
+      M->val(x,y) = kl_tab.KL_pol_index(dual[y],dual[x]);
 @)
   own_row polys = std::make_shared<row_value>(0);
-  polys->val.reserve(klc.polStore().size());
-  for (auto it=klc.polStore().begin(); it!=klc.polStore().end(); ++it)
+  polys->val.reserve(kl_tab.polStore().size());
+  for (auto it=kl_tab.polStore().begin(); it!=kl_tab.polStore().end(); ++it)
     polys->val.emplace_back(std::make_shared<vector_value> @|
        (std::vector<int>(it->begin(),it->end())));
 @)
@@ -6519,8 +6519,8 @@ void W_graph_wrapper(expression_base::level l)
   if (l=expression_base::no_value)
     return;
 @)
-  b->klc.fill(); // this does the actual KL computation
-  wgraph::WGraph wg = kl::wGraph(b->klc);
+  b->kl_tab.fill(); // this does the actual KL computation
+  wgraph::WGraph wg = kl::wGraph(b->kl_tab);
 @)
   own_row vertices=std::make_shared<row_value>(0);
   @< Push to |vertices| a list of pairs for each element of |wg|, each
@@ -6537,8 +6537,8 @@ void W_cells_wrapper(expression_base::level l)
   if (l=expression_base::no_value)
     return;
 @)
-  b->klc.fill(); // this does the actual KL computation
-  wgraph::WGraph wg = kl::wGraph(b->klc);
+  b->kl_tab.fill(); // this does the actual KL computation
+  wgraph::WGraph wg = kl::wGraph(b->kl_tab);
   wgraph::DecomposedWGraph dg(wg);
 @)
 
@@ -6746,10 +6746,10 @@ void print_KL_basis_wrapper(expression_base::level l)
 { shared_Block b = get<Block_value>();
   Block& block = b->val;
 @)
-  b->klc.fill(); // this does the actual KL computation
+  b->kl_tab.fill(); // this does the actual KL computation
   *output_stream
     << "Full list of non-zero Kazhdan-Lusztig-Vogan polynomials:\n\n";
-  kl_io::printAllKL(*output_stream,b->klc,block);
+  kl_io::printAllKL(*output_stream,b->kl_tab,block);
 @)
   if (l==expression_base::single_value)
     wrap_tuple<0>();
@@ -6762,10 +6762,10 @@ void print_prim_KL_wrapper(expression_base::level l)
 { shared_Block b = get<Block_value>();
   Block &block = b->val; // this one must be non-|const|
 @)
-  b->klc.fill(); // this does the actual KL computation
+  b->kl_tab.fill(); // this does the actual KL computation
   *output_stream
     << "Non-zero Kazhdan-Lusztig-Vogan polynomials for primitive pairs:\n\n";
-  kl_io::printPrimitiveKL(*output_stream,b->klc,block);
+  kl_io::printPrimitiveKL(*output_stream,b->kl_tab,block);
 @)
   if (l==expression_base::single_value)
     wrap_tuple<0>();
@@ -6778,8 +6778,8 @@ outputs just a list of all distinct Kazhdan-Lusztig-Vogan polynomials.
 void print_KL_list_wrapper(expression_base::level l)
 { shared_Block b = get<Block_value>();
 @)
-  b->klc.fill(); // this does the actual KL computation
-  kl_io::printKLList(*output_stream,b->klc);
+  b->kl_tab.fill(); // this does the actual KL computation
+  kl_io::printKLList(*output_stream,b->kl_tab);
 @)
   if (l==expression_base::single_value)
     wrap_tuple<0>();
@@ -6787,7 +6787,7 @@ void print_KL_list_wrapper(expression_base::level l)
 
 @ We close with two functions for printing the $W$-graph determined by the
 polynomials computed. For |print_W_cells| we must construct one more object,
-after having built the |klc::KLContext|.
+after having built the |kl_tab::KL_table|.
 
 @h "wgraph.h"
 @h "wgraph_io.h"
@@ -6796,8 +6796,8 @@ after having built the |klc::KLContext|.
 void print_W_cells_wrapper(expression_base::level l)
 { shared_Block b = get<Block_value>();
 @)
-  b->klc.fill(); // this does the actual KL computation
-  wgraph::WGraph wg = kl::wGraph(b->klc);
+  b->kl_tab.fill(); // this does the actual KL computation
+  wgraph::WGraph wg = kl::wGraph(b->kl_tab);
   wgraph::DecomposedWGraph dg(wg);
 @)
   wgraph_io::printWDecomposition(*output_stream,dg);
@@ -6813,8 +6813,8 @@ routine of |print_W_cells|.
 void print_W_graph_wrapper(expression_base::level l)
 { shared_Block b = get<Block_value>();
 @)
-  b->klc.fill(); // this does the actual KL computation
-  wgraph::WGraph wg = kl::wGraph(b->klc);
+  b->kl_tab.fill(); // this does the actual KL computation
+  wgraph::WGraph wg = kl::wGraph(b->kl_tab);
 @)
   wgraph_io::printWGraph(*output_stream,wg);
 @)

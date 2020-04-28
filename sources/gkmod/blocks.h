@@ -89,7 +89,7 @@ protected: // all fields may be set in a derived class contructor
   // possible tables of Bruhat order and Kazhdan-Lusztig polynomials
   std::vector<std::unique_ptr<BlockEltList> > partial_Hasse_diagram;
   std::unique_ptr<BruhatOrder> d_bruhat;
-  std::unique_ptr<kl::KLContext> klc_ptr;
+  std::unique_ptr<kl::KL_table> kl_tab_ptr;
 
 public:
 // constructors and destructors
@@ -171,14 +171,14 @@ public:
   // manipulators
   BruhatOrder& bruhatOrder() { fill_Bruhat(); return *d_bruhat; }
   BruhatOrder&& Bruhat_order() && { fill_Bruhat(); return std::move(*d_bruhat); }
-  kl::KLContext& klc(BlockElt last_y, bool verbose)
-  { fill_klc(last_y,verbose); return *klc_ptr; }
+  kl::KL_table& kl_tab(BlockElt last_y, bool verbose)
+  { fill_kl_tab(last_y,verbose); return *kl_tab_ptr; }
 
  protected:
   void set_Bruhat_covered (BlockElt z, BlockEltList&& covered);
  private:
   void fill_Bruhat();
-  void fill_klc(BlockElt last_y,bool verbose);
+  void fill_kl_tab(BlockElt last_y,bool verbose);
 
 }; // |class Block_base|
 
