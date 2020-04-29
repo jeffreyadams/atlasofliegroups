@@ -31,7 +31,28 @@ namespace ext_block {
   class ext_block;
 }
 
+namespace repr {
+
+class Repr_mod_entry
+{ KGBElt x; RankFlags y, mask;
+public:
+  Repr_mod_entry(const Rep_context& rc, const StandardReprMod& srm);
+
+  StandardReprMod srm(const Rep_context& rc,const RatWeight& gamma_mod_1) const;
+
+  // obligatory fields for hashable entry
+  using Pooltype =  std::vector<Repr_mod_entry>;
+  size_t hashCode(size_t modulus) const
+  { return (5*x-11*(y&mask).to_ulong())&(modulus-1); }
+  bool operator !=(const Repr_mod_entry& o) const
+  { return x!=o.x or (y&mask)!=(o.y&o.mask); }
+
+}; // |Repr_mod_entry|
+
+} // |namespace repr|
+
 namespace blocks {
+
 
 // a class for blocks of (possibly non integral) parameters
 class common_block : public Block_base

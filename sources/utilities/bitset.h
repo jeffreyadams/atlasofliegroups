@@ -359,6 +359,10 @@ template<unsigned int n> class BitSet
   bool operator[] (unsigned int j) const { return Base::test(j); }
 
   // non-assignment logical operators added by MvL
+  BitSet operator~ () const // logical NOT over full length |dim|
+    { BitSet t(*this); return t.complement(n); }
+  BitSet complement (unsigned int limit) const // logical NOT for |limit| bits
+    { BitSet t(*this); return t.complement(limit); }
   BitSet operator& (const BitSet& b) const // logical AND
     { BitSet t(*this); return t&=b; }
   BitSet operator| (const BitSet& b) const // logical OR

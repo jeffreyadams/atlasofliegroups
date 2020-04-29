@@ -204,7 +204,7 @@ InvolutionNbr InvolutionTable::add_involution
 
   // |R| will map $\lambda-\rho$ to reduced torus part coordinates
   // |B| will then map these coordinates (mod 2) through to $A*(\lambda-\rho)$
-  std::vector<int> diagonal;
+  int_Vector diagonal;
   int_Matrix B = matreduc::adapted_basis(A,diagonal); // matrix for lifting
   int_Matrix R = B.inverse(); // matrix that maps to adapted basis coordinates
   R=R.block(0,0,diagonal.size(),R.numColumns()); // restrict to image |A|
@@ -231,7 +231,7 @@ InvolutionNbr InvolutionTable::add_involution
   data.push_back(record(theta,InvolutionData(rd,theta),
 			lattice::row_saturate(A), // |projector| for |y|
 			R, // |M_real|
-			diagonal,
+			SmallBitVector(diagonal), // values 1,2 become bits 1,0
 			B, // |lift_mat|
 			length,W_length,
 			tits::fiber_denom(theta))); // |mod_space| for |x|
@@ -286,38 +286,6 @@ InvolutionTable::is_complex_descent(InvolutionNbr n,RootNbr alpha) const
     rd.is_negroot(root_involution(n,alpha));
 }
 
-bool InvolutionTable::equivalent
-  (const TorusElement& t1, const TorusElement& t2, InvolutionNbr i) const
-{
-  assert(i<hash.size());
-  RatWeight wt=(t2-t1).log_2pi();
-  Ratvec_Numer_t p = data[i].projector * wt.numerator();
-
-  for (size_t j=0; j<p.size(); ++j)
-    if (p[j]%wt.denominator()!=0)
-      return false;
-
-  return true;
-}
-
-RatWeight InvolutionTable::fingerprint
-  (const TorusElement& t, InvolutionNbr i) const
-{
-  assert(i<hash.size());
-  RatWeight wt = t.log_2pi();
-  Ratvec_Numer_t p = data[i].projector * wt.numerator();
-
-  // reduce modulo integers and return
-  for (size_t j=0; j<p.size(); ++j)
-    p[j]= arithmetic::remainder(p[j],wt.denominator());
-  return RatWeight(p,wt.denominator()).normalize();
-}
-
-y_entry InvolutionTable::pack (const TorusElement& t, InvolutionNbr i) const
-{
-  return y_entry(fingerprint(t,i),i,t);
-}
-
 // this method makes involution table usable in X command, even if inefficient
 KGB_elt_entry InvolutionTable::x_pack(const GlobalTitsElement& x) const
 {
@@ -361,6 +329,45 @@ InvolutionTable::x_equiv(const GlobalTitsElement& x0,
   return true;
 }
 
+
+RankFlags InvolutionTable::y_mask(InvolutionNbr i) const
+{
+  const auto& diag = data[i].diagonal; // bits 1,0 for diagonal entries 1,2
+  return diag.data().complement(diag.size()); // complement: filter out bits 1
+}
+
+bool InvolutionTable::equivalent
+  (const TorusElement& t1, const TorusElement& t2, InvolutionNbr i) const
+{
+  assert(i<hash.size());
+  RatWeight wt=(t2-t1).log_2pi();
+  Ratvec_Numer_t p = data[i].projector * wt.numerator();
+
+  for (size_t j=0; j<p.size(); ++j)
+    if (p[j]%wt.denominator()!=0)
+      return false;
+
+  return true;
+}
+
+RatWeight InvolutionTable::fingerprint
+  (const TorusElement& t, InvolutionNbr i) const
+{
+  assert(i<hash.size());
+  RatWeight wt = t.log_2pi();
+  Ratvec_Numer_t p = data[i].projector * wt.numerator();
+
+  // reduce modulo integers and return
+  for (size_t j=0; j<p.size(); ++j)
+    p[j]= arithmetic::remainder(p[j],wt.denominator());
+  return RatWeight(p,wt.denominator()).normalize();
+}
+
+y_entry InvolutionTable::pack (const TorusElement& t, InvolutionNbr i) const
+{
+  return y_entry(fingerprint(t,i),i,t);
+}
+
 // choose unique representative for real projection class of a rational weight
 void InvolutionTable::real_unique(InvolutionNbr inv, RatWeight& y) const
 {
@@ -368,7 +375,9 @@ void InvolutionTable::real_unique(InvolutionNbr inv, RatWeight& y) const
   Ratvec_Numer_t v = rec.M_real * y.numerator();
   assert(v.size()==rec.diagonal.size());
   for (unsigned i=0; i<v.size(); ++i)
-    v[i]= arithmetic::remainder(v[i],2*rec.diagonal[i]*y.denominator());
+  { int factor = rec.diagonal[i] ? 2 : 4; // twice |diagonal[i]| before reduction
+    v[i]= arithmetic::remainder(v[i],factor*y.denominator());
+  }
 
   y.numerator()= rec.lift_mat * v; // original |y| now "mapped to" |(1-theta)*y|
   (y/=2).normalize(); // and this gets us back to the class of the original |y|
@@ -380,8 +389,8 @@ TorusPart InvolutionTable::y_pack(InvolutionNbr inv, const Weight& lambda_rho)
   const record& rec=data[inv];
   int_Vector v = rec.M_real * lambda_rho;
   assert(v.size()==rec.diagonal.size());
-  // DON'T REDUCE |v[i]%=diagonal[i]|: |lambda| recontruction depends on original
-  return TorusPart(v); // reduces integer coordinates modulo 2 to bits
+  // DON'T REDUCE according to |diagonal|: |lambda| recontruction needs original
+  return TorusPart(v); // reduces all integer coordinates to bits, modulo 2
 }
 
 Weight InvolutionTable::y_lift(InvolutionNbr inv, TorusPart y_part) const

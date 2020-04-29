@@ -55,6 +55,23 @@
 
 namespace atlas {
 
+namespace repr {
+
+Repr_mod_entry::Repr_mod_entry(const Rep_context& rc, const StandardReprMod& srm)
+  : x(srm.x())
+  , y(srm.y().data())
+  , mask(rc.inner_class().involution_table().y_mask(rc.kgb().inv_nr(x)))
+{}
+
+StandardReprMod Repr_mod_entry::srm
+  (const Rep_context& rc,const RatWeight& gamma_mod_1) const
+{ TorusPart yv(y,rc.inner_class().involution_table().tp_sz(rc.kgb().inv_nr(x)));
+  return StandardReprMod::build
+    (rc,gamma_mod_1, x, rc.gamma_lambda(rc.kgb().inv_nr(x),yv,gamma_mod_1));
+}
+
+} // |namespace repr|
+
 namespace blocks {
 
 // Some declarations of undeclared stuff in blocks.cpp that we (continue to) use
