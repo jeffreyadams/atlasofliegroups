@@ -1,10 +1,3 @@
-/*!
-\file
-\brief Declaration of the functions in namespace kltest.
-
-These functions are designed to test a mathematical assertion used in
-the implementation of the KL algorithm.
-*/
 /*
   This is kltest.h
 
@@ -12,6 +5,12 @@ the implementation of the KL algorithm.
   part of the Atlas of Lie Groups and Representations
 
   For license information see the LICENSE file
+*/
+/*
+   Declaration of the functions in namespace |kltest|.
+
+   These functions are designed to test a mathematical assertion used in
+   the implementation of the KL algorithm.
 */
 
 #ifndef KLTEST_H  /* guard against multiple inclusions */

@@ -536,9 +536,6 @@ class TitsGroup : public TwistedWeylGroup
   // Binary matrix*vector product to compute twist on torus part
   TorusPart twisted(const TorusPart x) const { return d_involution*x; }
   TorusPart dual_twisted(const TorusPart x) const { return dual_involution*x; }
-  TitsElt twisted(const TitsElt& te) const;
-  // dual twist adds in a shift (computed by |TitsCoset::is_dual_twist_stable|)
-  TitsElt dual_twisted(const TitsElt& te, const TorusPart shift) const;
 
   // In-place imperative version of |twisted(TorusPart x)|
   void twist(TorusPart x) const { x=twisted(x); }

@@ -195,17 +195,17 @@ kinds of alteration (notably it should not |std::move| from |type| or its
 components).
 
 Upon successful completion, |type| will usually have become completely
-defined. The object |type| should be owned by the caller, who will
+determined. The object |type| should be owned by the caller, who will
 automatically gain ownership of any new nodes added in the process, and
 accessible from |type|. The latter, if it happens, will be caused by calls of
 the |specialise| method for |type|, or for its descendants, within
-|convert_expr|. Although it is a modifiable lvalue reference argument in which
-normally the result of the type analysis is returned, callers should ensure
-that changes to the |type| argument remain local until successful completion,
-so that when the function instead terminates by throwing an exception no
-modifications to |type| will leave permanent traces (any updating of tables
-should be explicitly done using the value of |type| after return from
-|convert_expr|).
+|convert_expr|. It is a modifiable lvalue reference argument in which normally
+the result of the type analysis is returned. It should not be an reference to a
+table entry or other permanent value: any changes to the |type| argument made by
+|convert_expr| should remain locally confined until successful completion, so
+that in case the function should instead terminate by throwing an exception, no
+permanent traces of the call will be left (so any permanent use of |type| should
+be made after return from |convert_expr|).
 
 In some cases |type| will remain partly undefined, like for an emtpy list
 display with an unknown type, which gets specialised only to~`\.{[*]}'. However
@@ -227,29 +227,28 @@ expression_ptr convert_expr(const expr& e, type_expr& type);
 
 @*1 Layers of lexical context.
 %
-In the function |convert_expr| we shall need a type for storing bindings
-between identifiers and types, and this will be the |layer| class. It stores a
-vector of type |layer::vec| of individual bindings, while it automatically
-pushes (a pointer to) itself on a stack |layer::lexical_context| of such
-vectors. Instances of |layer| shall always be stored in ordinary
-(stack-allocated) variables; since their unique constructor pushes the new
-object, and their destructor pops it, |layer::lexical_context| is guaranteed
-to hold at all times a list of references to all current |layer| objects, from
-newest to oldest. This invariant is maintained even in the presence of
-exceptions that may be thrown during type analysis. Since the space on the
-runtime stack occupied by a |vector| is hardly larger than that of the
-reference to it, this is mostly a proof-of-concept, namely that lists can be
-handled with storage for the elements in automatic variables residing in the
-runtime stack. The fact that pushing and popping is automatically managed in
-an exception-safe manner is also cute; however explicitly clearing the list in
-|reset_evaluator| in case of an exception, as used to be done, would also
-work.
+In the function |convert_expr| we shall need a type for storing bindings between
+identifiers and types, and this will be the |layer| class. It stores a vector of
+type |layer::vec| of individual bindings, while it automatically pushes (a
+pointer to) itself on a stack |layer::lexical_context| of such vectors.
+Instances of |layer| shall always be stored in ordinary (stack-allocated)
+variables; since their unique constructor pushes the new object, and their
+destructor pops it, |layer::lexical_context| is guaranteed to hold at all times
+a list of pointers to all current |layer| objects, from newest to oldest. This
+invariant is maintained even in the presence of exceptions that may be thrown
+during type analysis, as the destructors called when the stack unwinds pop the
+pointers to them from the list. The alternative of managing a list of vectors
+directly, as used to be done, would require clearing the list every time program
+analysis has found an error, signalled by throwing an exception. The current
+approach, besides being cute, makes correct handling dependent only on the
+discipline of placing all |layer| instances on the runtime stack (and having
+only one such stack, which means threads cannot be used in program analysis).
 
-We also use this structure to maintain an additional attributes telling
+We also use this structure to maintain additional attributes telling
 whether we are inside a function and how deeply nested inside loops we are.
-This is to facilitate checking the legality of |break| and |return|
+This is to facilitate checking the legality of \&{break} and \&{return}
 expressions. Correct use of these could have been left to the parser at the
-price of increasing the size of the grammar. These attribute may change only
+price of increasing the size of the grammar. These attributes may change only
 when pushing/popping a layer. In most cases such a layer was needed anyway,
 but in some cases (|while| loops) a layer is added specifically to mark this
 change.
@@ -270,7 +269,7 @@ private:
 public:
   layer(const layer&) = @[delete@]; // no ordinary copy constructor
   layer& operator= (const layer&) = @[delete@]; // nor assignment operator
-  layer(size_t n); // non-function non-loop layer
+  explicit layer(size_t n); // non-function non-loop layer
   layer(size_t n,type_p return_type);
     // function or (with |return_type==nullptr|) loop layer
   ~layer () @+{@; lexical_context.pop_front(); }
@@ -291,13 +290,10 @@ public:
   vec::const_iterator cend() const @+{@; return variable.end(); }
   bool is_const (vec::const_iterator it) const
   @+{@; return constness.isMember(it-cbegin()); }
-  static bool may_break(unsigned depth)
-  {@; return not lexical_context.empty()
-      and lexical_context.front()->loop_depth > depth; }
-  static bool may_return()
-  {@; return not lexical_context.empty()
-      and lexical_context.front()->return_type!=nullptr; }
-  static type_expr& current_return_type()
+  static bool may_break(unsigned depth);
+    // whether \&{break}~|depth| is legal here
+  static bool may_return(); // whether \&{return} is legal here
+  static type_expr& current_return_type() @+
   {@; return *lexical_context.front()->return_type; }
 };
 
@@ -324,6 +320,20 @@ layer::layer(size_t n,type_p return_type) // function or loop layer
 {@; variable.reserve(n); lexical_context.push_front(this); }
 @q layer (size_t n,type_p rt) : layer(n) // delegating constructor @>
 @q @@+{@@; if (rt==nullptr) ++loop_depth; else loop_depth=0,return_type=rt; } @>
+
+@ A statement \&{break}~$n$ breaks out of $n+1$ levels of loops at one, and for
+it to be legal the current |layer|, which must be present, should therefore have
+|loop_depth>n|. For \&{return} to be legal it suffices to be anywhere inside a
+function body, and the above constructors ensure that |return_type!=nullptr| in
+the current layer gives this condition.
+
+@< Function def... @>=
+bool layer::may_break(unsigned depth)
+{@; return not lexical_context.empty()
+      and lexical_context.front()->loop_depth > depth; }
+bool layer::may_return()
+  {@; return not lexical_context.empty()
+      and lexical_context.front()->return_type!=nullptr; }
 
 
 @ The method |add| adds a pair to the vector of bindings; the type is moved
@@ -391,7 +401,7 @@ initially had an unknown component as in `\.{[*]}'. Rather than modifying the
 looked-up type (which is now forbidden), one achieves this by calling
 |layer::specialise| with the |depth| and |offset| returned by |lookup|.
 
-This method must find non-empty layer number |depth|, so it must skip depth
+This method must find non-empty layer number |depth|, so it must skip |depth|
 non-empty layers, and any empty layers separated by them, until reaching the
 non-empty layer that is not to be skipped. The fact that we previously found
 an identifier at |depth| ensures that we do not run off our |lexical_context|.
@@ -422,8 +432,9 @@ expression_ptr convert_expr(const expr& e, type_expr& type)
   {
    @\@< Cases for type-checking and converting expression~|e| against
    |type|, all of which either |return| or |throw| a |type_error| @>
-   case no_expr: assert(false);
+   case no_expr: {} // should not occur
   }
+  assert(false);
   return expression_ptr(nullptr); // keep compiler happy
 }
 
@@ -460,7 +471,7 @@ struct denotation : public expression_base
 
 @ Here are the first examples of the conversions done in |convert_expr|. Each
 time we extract a \Cpp\ value from the |expr| produced by the parser,
-construct and |new|-allocate a \.{axis} value (for instance |int_value|)
+construct and |new|-allocate an \.{axis} value (for instance |int_value|)
 from it making the pointer shared using |std::make_shared|, pass that
 pointer to the |denotation| constructor, and convert the resulting pointer to
 a unique pointer.
@@ -546,11 +557,11 @@ In some cases, notably for facilitating recursive definitions, it is useful to
 have a placeholder expression \&{die} that will assume any type the context
 requires (we even allow an undetermined type, although in its application to
 recursion the type will always be defined). The evaluation of this placeholder
-is not intended, and trying to evaluate is throws a runtime error; for this
-reason the expression is written \&{die}. One could require that a function
-call returns \&{true} by writing ``$f(...)$~\&{or die}''.
+is not intended, and trying to evaluate it throws a runtime error; for this
+reason the expression is written \&{die}. One could require that a call to
+function~$f$ returns |true| by writing ``$f(...)$~\&{or die}''.
 
-These expressions must be representable at runtime, so we define an empty
+These expressions must be representable at run time, so we define an empty
 shell for them.
 
 @< Type definitions @>=
@@ -590,21 +601,36 @@ virtual void print(std::ostream& out) const
 }
 };
 
-@ The break is realised by the \Cpp\ exception mechanism. We shall make sure
-it can only by used in places where it will be caught.
+@ The \&{break} is realised by the \Cpp\ exception mechanism, which allows its
+evaluation to terminate that of intermediate clauses, without burdening the
+latter with the need to test for this possibility. An error type |loop_break| is
+defined for this purpose. During type checking we only allow \&{break} in places
+where it is certain to be caught: inside the required number of nested loops,
+a nesting without any intervening function definition.
 
 @< Function definitions @>=
 void breaker::evaluate (level l) const
 {@; throw loop_break(depth); }
 
 
-@ The only check we do for \&{break} is that it occurs in a loop.
+@ The only check we do for \&{break} is that the lexical context is suitable for
+breaking out of the required number of loops, which number $n+1$ where $n$ is
+the number stored in |e.break_variant|. The test for this condition is performed in
+the method |layer::may_break|.
+
 
 @< Cases for type-checking and converting... @>=
 case break_expr:
 { if (layer::may_break(e.break_variant))
     return expression_ptr(new breaker(e.break_variant));
-  throw expr_error(e,"not in the reach of a loop");
+  if (e.break_variant==0)
+    throw expr_error(e,"Using 'break' not in the reach of any loop");
+  else
+  { std::ostringstream o;
+    o << "Using 'break " << e.break_variant << "' requires " << e.break_variant+1
+    @|<< " nested levels of loops";
+    throw expr_error(e,o.str());
+  }
 }
 
 @*1 The return expression.
@@ -633,25 +659,26 @@ void returner::evaluate (level l) const
 @ For a \&{return} expression we check that it occurs in a function body. From
 the |layer| structure we get a (modifiable) reference
 |layer::current_return_type()| to the return type of the current function,
-which will provide the type context for the expression after~|return|.
+which will provide the type context for the expression after~\&{return}.
 
 @< Cases for type-checking and converting... @>=
 case return_expr:
 { if (layer::may_return())
     return expression_ptr(new @|
       returner(convert_expr(*e.return_variant,layer::current_return_type())));
-  throw expr_error(e,"not inside a function body");
+  throw expr_error(e,"One can only use 'return' within a function body");
 }
 
 @* Tuple displays.
 %
 Tuples are sequences of values of non-uniform type, usually short and with a
 given sequence of types for their components; their most obvious and simple
-use is for argument lists of functions. Without using these tuple types one
-might define function types taking multiple arguments, but then a function
-could still only yield a single value. With tuple types multiple results can
-be produced, and there will be no need to explicitly cater for functions with
-multiple arguments.
+use is for argument lists of functions. Without using these tuple types, one
+might have a mechanism explicitly allowing functions to take multiple arguments,
+as most programming languages do, but that would not allow for functions to
+\emph{return} more than one value. With tuple types, we cater at the same time
+for functions that need multiple arguments and for those that need to return
+multiple results.
 
 Tuple values can be produced by tuple displays, which list explicitly their
 component expressions. After type-checking, they are given by a
@@ -683,35 +710,50 @@ void tuple_expression::print(std::ostream& out) const
 @ When converting a tuple expression, we first try to specialise |type| to a
 tuple type with the right number of unknown components; unless |type| was
 completely undetermined, this just amounts to a test that it is a tuple type
-with the right number of components. Even if the specialisation fails, it need
-not be a type error: the tuple might be convertible to the proper type.
+with the right number of components. But even if this specialisation fails, it
+does not necessarily mean there is a type error: the tuple that the tuple
+expression produces might be convertible to the |type| the context requires.
 (Currently the conversion from a pair of integers to a split integer is the
-unique conversion of this kind that is defined.) For this reason we continue
-to type-check components even when |tuple_expected| is false, using the a
-priori (tuple) type found as starting point for a possible coercion. In this
-case we already know that |type| cannot be specialised to |*tup|, so we call
-|coerce| directly rather than using |conform_types| as happens elsewhere. If
-we do find a type error due to a wrong number of components, this is reported
-via a type pattern; this is probably as clear as mentioning too few or too
-many components explicitly.
+unique conversion of this kind that is defined.) For this reason we continue to
+type-check components even when |tuple_expected| is false, using in this case
+the local variable |tup| to record the a priori (tuple) type of the expression,
+which then serves as starting point for a possible coercion; since we then
+already know that |type| cannot be specialised to |*tup|, we call |coerce|
+directly rather than using |conform_types| as happens elsewhere.
+
+If any type error is reported here (and not from a nested call of
+|convert_expr|), then it must be that |n_tuple_expected| was false, and the call
+to |coerce| did not succeed either. In that case |tup| now holds the a priori
+type of the expression, and |type| is unmodified since entering this case, since
+the only type that changes when specialising to |unknown_tuple(n)| is a
+completely |undetermined_type|, but then |n_tuple_expected| would be true and no
+error would be reported. Therefore the error message given by |type_error|
+describes faithfully the actual and expected type patterns.
 
 @h <memory> // for |std::unique_ptr|
 @< Cases for type-checking and converting... @>=
 case tuple_display:
-{ type_expr tup=unknown_tuple(length(e.sublist));
+{
+  auto n=length(e.sublist);
+  type_expr tup=unknown_tuple(n);
+  bool n_tuple_expected = type.specialise(tup);
+  // whether |type| is a tuple of size~|n|
+@)
+  wtl_iterator tl_it (n_tuple_expected ? type.tuple() : tup.tuple());
+  // traverse either |type| or |tup|
   std::unique_ptr<tuple_expression> tup_exp(new tuple_expression(0));
   std::vector<expression_ptr>& comp = tup_exp->component;
-  comp.reserve(length(e.sublist));
-  bool tuple_expected = type.specialise(tup);
-  // whether |type| is a tuple of correct size
-  wtl_iterator tl_it (tuple_expected ? type.tuple() : tup.tuple());
+  comp.reserve(n);
   for (wel_const_iterator it(e.sublist); not it.at_end(); ++it,++tl_it)
   { comp.push_back(convert_expr(*it,*tl_it));
     if (*tl_it==void_type and not is_empty(*it))
+      // though weird, we allow voiding a component
       comp.back().reset(new voiding(std::move(comp.back())));
   }
+@)
   expression_ptr result(std::move(tup_exp));
-  if (tuple_expected or coerce(tup,type,result))
+    // convert |tup_exp| to a more generic pointer
+  if (n_tuple_expected or coerce(tup,type,result))
     return result;
   throw type_error(e,std::move(tup),type.copy());
 }
@@ -730,10 +772,10 @@ similarly but without preparing a result; we simple leave the component values
 on the execution stack.
 
 The final case is one of the rare occasions where we leave values sitting on
-the |execution_stack| for some time, and the only one where a |break| might
+the |execution_stack| for some time, and the only one where a \&{break} might
 occur at such a point (this should be quite rare, but it is possible). It is
 therefore easier to clean the stack up in the code below, than to mark the
-execution stack before entering any loop that might terminate with |break|,
+execution stack before entering any loop that might terminate with \&{break},
 and resetting it to the marked position when the |loop_break| is caught (in
 particular since there are many kinds of loops that would need consideration).
 However, while we thus localise the clean-up in a single place, this code does
@@ -755,24 +797,27 @@ void tuple_expression::evaluate(level l) const
     { auto result = std::make_shared<tuple_value>(component.size());
       auto dst_it = result->val.begin();
       for (auto it=component.cbegin(); it!=component.cend(); ++it,++dst_it)
-        {@; (*it)->eval(); *dst_it=pop_value(); }
+      @/{@; (*it)->eval(); *dst_it=pop_value(); }
       push_value(result);
     } break;
   case multi_value:
     { auto it=component.begin();
+      // this variable needs to survive |try| into the |catch| blocks
+@)
       try
       {@; for (; it!=component.end(); ++it)
           (*it)->eval();
       }
+@)
       catch (const loop_break&) // clean up execution stack locally
       { for (; it!=component.begin(); --it)
           execution_stack.pop_back();
-        throw; // propagate the |break|
+        throw; // propagate the \&{break}
       }
       catch (const function_return&) // clean up execution stack locally
       { for (; it!=component.begin(); --it)
           execution_stack.pop_back();
-        throw; // propagate the |break|
+        throw; // propagate the \&{return}
       }
     }
   } // |switch(l)|
@@ -907,17 +952,19 @@ void balance
 |broader_eq| relation. If this fails due to incomparable types we move the
 non-conforming type to |conflicts|.
 
-That list also collects types from |balance_error| if thrown directly by one
-of the calls to |convert_expr|. The reason is that it might happen that all of
-the conflicting types can be converted to a final |common| type once it gets
-determined by other branches, so we are prudent here to not propagate the
-error. However, when catching a |balance_error| that was produced in a
-subexpression of the branch we do re-|throw|, as a more specialised type
-|common| cannot salvage in this case: the thrown |balance_error| is in fact
-independent of our current balancing. For the case where we do move the types
-from the |balance_error| to |conflicts|, the fact that they apparently have
-internal incompatibilities means that they can never provide the |common|
-type, which justifies making no comparison with that type.
+That list also collects types from any |balance_error| thrown directly by one of
+the calls to |convert_expr|. The reason is that it might happen that the
+conflicting types causing the |balance_error| can nonetheless all be converted
+to a final |common| that ends up getting chosen due to other branches. So we
+|catch| such an error and just record the types involved; if there ends up being
+a |balance_error| for the parent expression anyway, they will be reported among
+the offending types. However, when catching a |balance_error| that was produced
+in a lower level subexpression, we do re-|throw|, as a more specialised type
+|common| cannot salvage in this case: the thrown |balance_error| is in that case
+independent of our current balancing and to be reported directly. For the case
+where we do move the types from the |balance_error| to |conflicts|, the fact
+that they apparently have internal incompatibilities means that they can never
+provide the |common| type, which justifies making no comparison with that type.
 
 If a branch that produces a maybe salvageable |balance_error| is a list
 display, the type that it will give for our current balancing has an
@@ -960,9 +1007,11 @@ for (wel_const_iterator it(elist); not it.at_end(); ++it)
 method of |containers::sl_list|. In such loops one should not forget
 to \emph{not advance} the iterator in case a node is erased in front of it.
 
-Only if if at least one conflicting type remains do we report an error; if so,
-the type |common| is added as first type to the error object, so that one has
-a complete list of types that caused to balancing to fail.
+Only if at least one conflicting type remains do we report an error; if so, the
+type |common| is added as first type to the error object, unless it is unchanged
+from the |undetermined_type| value it was initialised to (which may happen if
+every branch threw a |balance_error| that was caught), so that one has a
+complete list of types that caused to balancing to fail.
 
 
 @< Prune from |conflicts| any types... @>=
@@ -980,7 +1029,8 @@ a complete list of types that caused to balancing to fail.
   else
   { balance_error err(e);
     (err.message += " between ") += description ;
-    err.variants.push_back(std::move(common));
+    if (common.kind()!=undetermined_type)
+      err.variants.push_back(std::move(common));
     err.variants.append(std::move(conflicts));
     throw std::move(err);
   }
@@ -1444,6 +1494,7 @@ will still be accepted.
     arg.reset(new voiding(std::move(arg)));
   std::ostringstream name;
   name << main_hash_table->name_of(id) << '@@' << arg_type;
+@)
   call = v.value()->build_call(v.value(),name.str(),std::move(arg),e.loc);
 @)
   if (type==void_type and
@@ -1568,16 +1619,17 @@ struct call_base : public expression_base
 };
 @)
 
-@ We similarly define an intermediate class |function_base| between
-|value_base| and the concrete classes that will define function objects,
-like built-in functions. The main (virtual) methods introduced here are
-|apply|, which will serve in |call_expression::evaluate| below to implement
-a call of the function object once arguments have been evaluated to the stack,
-and |build_call| that is instead used to build a specialised call expression
-when a function value is identified at analysis time (in overloaded calls).
-In addition |argument_policy| tells how the function object wants its
-arguments prepared, and |report_origin| which serves in forming an back-trace
-in case of errors during execution of the function.
+@ We similarly define an intermediate class |function_base| between |value_base|
+and the concrete classes that will define function objects, like built-in
+functions. The main (virtual) methods introduced here are |apply|, which will
+serve in |call_expression::evaluate| below to implement a call of the function
+object once arguments have been evaluated to the stack, and |build_call| that is
+instead used to build a specialised call expression when a function value is
+identified at analysis time (in overloaded calls). In addition |argument_policy|
+tells how the function object wants its arguments prepared, |maybe_push| is a
+hook that does nothing except for recursive functions that it it for their
+implementation, and |report_origin| which serves in forming an back-trace in
+case of errors during execution of the function.
 
 @< Type def... @>=
 // \.{global.h} predeclares |function_base|, and defines:
@@ -1594,6 +1646,8 @@ public:
     // go; arg.\ values on |execution_stack|
   virtual expression_base::level argument_policy() const=0;
     // form to prepare arguments in
+  virtual void maybe_push(const std::shared_ptr<const function_base>& p) const
+    @+{}
   virtual void report_origin(std::ostream& o) const=0;
     // tell where we are from
   virtual expression_ptr build_call
@@ -1952,24 +2006,26 @@ void builtin_call::evaluate(level l) const
 }
 
 
-@ Finally we consider the case where evaluating a |call_expression| results in
-calling a built-in function. Since the function to be called is here produced
-by evaluating an expression (maybe as simple as an identifier), the fact that
-it is a built-in rather than user-defined function can here only be
-determined at run time. The part of this method that deals with the case of a
-user defined function is split off, and will be presented later once we have
-discussed the representation of user defined functions.
+@ Finally we consider the case where evaluation is done though a
+|call_expression|, as happens when the function object cannot be identified at
+compile time. Since the function to be called is here produced by evaluating an
+expression (maybe as simple as an identifier), the question whether a built-in
+rather than user-defined (or other kind of) function is being called can only be
+determined at run time. The distinction is handled though the virtual methods
+|argument_policy| and |apply| of |functions_base|, so the code below handles all
+kinds of function objects at once.
 
-To evaluate a |call_expression| object, in which the function part can be any
-expression, we must evaluate this function part, and then dynamically test
-whether it is a built-in or a user-defined function. In the former case we
-evaluate the arguments, expanding them on the |execution_stack|, and then call
-the built-in function. In that case we pass on the |level| parameter that was
-passed to |call_expression::evaluate| method to the built-in function, so that
-if necessary it can in its turn return and expanded result (or no result at
-all). The evaluation of user-defined functions will be detailed later, but we
-can already say that in this case it will be more useful to receive the
-argument on the stack as a single value.
+To evaluate a |call_expression| object, we first evaluate this function part,
+and then dynamically cast it to a |function_base f| (which should always
+succeed, assuming type checking is sound). Then we evaluate the arguments
+according to the |f->argument_policy()|, and then call |f->apply|, which should
+find the arguments in the form it expects.
+In that case we pass on the |level| parameter that was passed to
+|call_expression::evaluate| method to the built-in function, so that if
+necessary it can in its turn return and expanded result (or no result at all).
+The evaluation of user-defined functions will be detailed later, but we can
+already say that in this case it will be more useful to receive the argument on
+the stack as a single value.
 
 We reuse the previous |catch| block literally a third time; this time not only
 do we judiciously choose the name |arg_string| to match what we did before,
@@ -1977,6 +2033,7 @@ but also the local variable name |f| to math the field name
 |builtin_call::f| that the cited module referred to in previous
 instances.
 
+@: general call evaluate @>
 @< Function definitions @>=
 void call_expression::evaluate(level l) const
 { function->eval();
@@ -1984,6 +2041,7 @@ void call_expression::evaluate(level l) const
   if (f.get()==nullptr)
     throw logic_error
       ("Non-function value found for function in a call expression");
+  f->maybe_push(f); // provide shared pointer to self for recursive functions
   std::string arg_string;
   if (verbosity==0)
     argument->evaluate(f->argument_policy());
@@ -2494,7 +2552,7 @@ the~|body|.
 The stack will be automatically popped when the lifetime of the |frame| ends.
 Usually this happens when we return from the |let_expression::evaluate|, but
 it also happens in case an error is thrown. The latter also includes instances
-of |break| or |return| premature exits from a loop or a user-defined function
+of \&{break} or \&{return} premature exits from a loop or a user-defined function
 in an axis program, which are implemented by throwing and catching specific
 exceptions. In all cases, the static variable |frame::current| will
 automatically be set to the proper value by the |~frame| destructor.
@@ -2536,22 +2594,42 @@ catch (error_base& e)
 
 @*1 Lambda-expressions (user-defined functions).
 %
-In contrast to let-expressions, a $\lambda$-expression can be evaluated one
-or more times, yielding ``closure'' values that need to refer to the pattern,
-and which might outlive the $\lambda$-expression, so appropriate duplication
-or sharing must be organised. We opt for sharing between the
-$\lambda$-expression and any closures obtained from it. Since the evaluator
-handles expressions by reference to |expression_base|, one cannot achieve
-sharing directly to |lambda_expression|; instead we store a shared pointer to
-a structure with the necessary components.
+In contrast to let-expressions, a $\lambda$-expression not merely extends the
+current context with new bindings, but upon evaluation yields a ``closure'', a
+value that captures the current context, and which after possibly being passed
+around, can later be combined with argument values to provide an extended
+context in which its body is evaluated. The closure might outlive the expression
+in which it occurs, and different closures for the same $\lambda$-expression can
+have overlapping lifetimes; if creating a closure is to avoid copying the
+$\lambda$-expression, yet memory for it is to be freed when the last reference
+to it disappears, we organise a |std::shared_ptr| based mechanism for sharing
+it. The general mechanism employed by the evaluator is not suited for this, as
+it handles expressions by reference to |expression_base|, which is too general
+for us. So instead we split off a structure |lambda_struct| to which both
+$\lambda$-expressions and closures will store a shared pointer.
 
-Since this is the kind
-of runtime value that will hold the result of a user function definition, we
-provide a field |loc| to record the source location.
+Since this is the kind of runtime value that will hold the result of a user
+function definition, we provide a field |loc| to record the source location.
+
+The constructor for |lambda_expression| moves the provided pattern and creates a
+new shared reference to the copy (further sharing will occur when the
+$\lambda$-expression is evaluated). The |loc| field is copy-constructed from the
+one passed, which resides in a |const|-qualified |expr| object produced by the
+parser; therefore moving is not an option here, and since this is plain data it
+wouldn't be more efficient anyway.
+
+To give explicit support for recursive functions, we define a second structure
+|recursive_lambda| for a $\lambda$-expression whose body can also refer to the
+$\lambda$-expression itself. In addition to a |lambda_expression| it stores a
+recursive identifier. We choose to derive |recursive_lambda| from
+|lambda_expression|, but to store the recursive identifier inside the base
+|lambda_expression| itself, by having the |id_pat| be a pair with the recursive
+identifier as first component and the usual argument pattern as second field.
 
 @< Type def... @>=
 struct lambda_struct
 { id_pat param; @+ expression_ptr body; @+ source_location loc;
+@)
   lambda_struct
       (id_pat&& param, expression_ptr&& body, const source_location& loc)
   : param(std::move(param)), body(std::move(body)), loc(loc) @+{}
@@ -2562,28 +2640,40 @@ struct lambda_expression : public expression_base
 { shared_lambda p;
   @)
   lambda_expression
-    (const id_pat& p, expression_ptr&& b, const source_location& loc);
+    (id_pat&& pat, expression_ptr&& b, const source_location& loc)
+    : p(std::make_shared<lambda_struct>(std::move(pat),std::move(b),loc)) @+{}
+
   virtual ~@[lambda_expression() nothing_new_here@];
     // subobjects do all the work
   virtual void evaluate(level l) const;
   virtual void print(std::ostream& out) const;
 };
+@)
+struct recursive_lambda : public lambda_expression
+{ recursive_lambda(id_type self,@|
+     id_pat&& p, expression_ptr&& b, const source_location& loc);
+  virtual ~@[recursive_lambda() nothing_new_here@];
+  virtual void evaluate(level l) const;
+  virtual void print(std::ostream& out) const;
+};
 
-
-@ The main constructor cannot be inside the class definition, as it requires
-the local function |copy_id_pat|. It copies the pattern and creates a new
-shared reference to the copy (further sharing will occur when the
-$\lambda$-expression is evaluated). The |loc| field is copy-constructed from
-the one passed, which resides in a |const|-qualified |expr| object produced by
-the parser; therefore moving is not an option here, and since this is plain
-data it wouldn't be more efficient anyway.
+@ For recursive functions we assemble a pair-pattern, consisting of the
+recursive identifier, and the actual argument pattern for the
+recursive function. Although the recursive identifier cannot be assigned to,
+there is no need to set the constant bit in its pattern here, as that property
+will be enforced during type checking.
 
 @< Function def... @>=
-inline
-lambda_expression::lambda_expression @|
-  (const id_pat& p, expression_ptr&& b, const source_location& loc)
-: p(std::make_shared<lambda_struct>(copy_id_pat(p),std::move(b),loc))
-@+{}
+id_pat rec_pair(id_type s,id_pat && p)
+{ patlist pl;
+  pl.push_front(std::move(p));
+  pl.push_front(id_pat(s));
+  return id_pat(std::move(pl));
+}
+inline recursive_lambda::recursive_lambda(id_type self,@|
+     id_pat&& p, expression_ptr&& b, const source_location& loc)
+  : lambda_expression(rec_pair(self,std::move(p)),std::move(b),loc) @+{}
+
 
 @ To print an anonymous function, we print the parameter list, followed by a
 colon and by the function body. If the parameter list contains a name for the
@@ -2603,17 +2693,24 @@ syntax tree representing the user input (as happens in messages from the type
 checker).
 
 @< Function definitions @>=
-std::ostream& operator<<(std::ostream& out, const lambda_struct& l)
-{ if ((l.param.kind&0x1)!=0)
-    if ((l.param.kind&0x4)!=0)
-      out << "(!" << l.param << ')';
-    else out << '(' << l.param << ')';
-  else if ((l.param.kind&0x2)!=0 and not l.param.sublist.empty())
-    out << l.param;
+void print_lambda(std::ostream& out,
+  const id_pat& param, const expression_ptr& body)
+{ if ((param.kind&0x1)!=0) // single argument
+    out << '(' << param << ')';
+  else if ((param.kind&0x2)!=0 and not param.sublist.empty())
+    out << param;
   else out << '@@';
-  return out << ": " << *l.body;
+  out << ": " << *body;
 }
-void lambda_expression::print(std::ostream& out) const @+{@; out << *p; }
+@)
+void lambda_expression::print(std::ostream& out) const
+{@; print_lambda(out,p->param,p->body); }
+void recursive_lambda::print(std::ostream& out) const
+{ auto it=p->param.sublist.begin();
+  id_type self=it->name;
+  const id_pat& param=*++it;
+  print_lambda(out << main_hash_table->name_of(self) << ':',param,p->body);
+}
 
 @ Handling of user-defined functions in type analysis is usually uneventful
 (apart from the analysis of its body, which can of course be arbitrarily
@@ -2661,8 +2758,49 @@ case lambda_expr:
                        type.copy());
 @/layer new_layer(count_identifiers(pat),rt);
   thread_bindings(pat,arg_type,new_layer,false);
-@/return expression_ptr(new @|
-      lambda_expression(pat, convert_expr(fun.body,*rt), std::move(e.loc)));
+@/return expression_ptr(new @| lambda_expression
+   (copy_id_pat(pat), convert_expr(fun.body,*rt), std::move(e.loc)));
+}
+
+@ Type checking recursive lambda expressions is slightly different. The return
+type must be specified, so we should be able to fully specialise |type| (unless
+it is |void|). We must, in addition to binding the argument pattern to the
+argument type, bind the recursive identifier to the function type given by
+|fun.parameter_type| and |fun.result_type|; we build that type as |f_type|
+rather than use the specialised |type|, just in case the latter should be
+|void|. The call to |thread_bindings| for the recursive identifier has final
+argument |true| indicating the identifier should be treated as constant during
+the call to |convert_expr| for the body. That call needs an lvalue for its
+expected type, and the |layer| constructor needs the same in the form of a
+pointer to non-|const| (in both cases because the type might be specialised,
+from the type of the body respectively from |return| clauses inside it), For
+these uses we supply |f_type.func()->result_type| (aliased |r_type|) rather than
+using |type| (again, it might be |void|), which since |f_type| is local means
+any specialisation done to it will be lost; however there should be no such
+changes since |fun.result_type| is already fully specialised.
+
+@< Cases for type-checking and converting... @>=
+case rec_lambda_expr:
+{ const rec_lambda_node& fun=*e.rec_lambda_variant;
+  const id_pat& pat=fun.pattern;
+  const type_expr& arg_type=fun.parameter_type;
+    // argument type specified in |fun|
+  if (not pattern_type(pat).specialise(arg_type))
+    // do |pat| structure and |arg_type| conflict?
+    throw expr_error(e,"Function argument pattern does not match its type");
+  type_expr f_type(arg_type.copy(),fun.result_type.copy());
+    // not |const| though it cannot change
+  if (not type.specialise(f_type) and type!=void_type)
+      @/throw type_error(e, std::move(f_type), type.copy());
+@)
+  type_expr& r_type=f_type.func()->result_type;
+    // non |const| though it cannot change
+  layer new_layer(1+count_identifiers(pat),&r_type);
+@/thread_bindings(id_pat(fun.self),f_type,new_layer,true);
+  thread_bindings(pat,arg_type,new_layer,false);
+@/return expression_ptr(new @| recursive_lambda
+   (fun.self,copy_id_pat(pat),
+    convert_expr(fun.body,r_type), std::move(e.loc)));
 }
 
 @* Closures.
@@ -2682,18 +2820,28 @@ encountered.
 Sharing the |lambda_struct| among different closures obtained from the same
 $\lambda$-expression is efficient in terms of space, but would require double
 dereference upon evaluation. Since the latter occurs frequently, we speed up
-evaluation by also using a reference |body| directly to the function body.
-Note that closures are formed when the \emph{definition} of a user-defined
-function is processed, so this optimisation should make evaluation of globally
-defined functions a bit faster. For local functions, the closure is formed
-during the execution of the outer function, so the optimisation only helps if
-the closure formed will be called more than once; this is still probable,
-though there are usage patters (for instance simulating a case statement by
-selecting a closure from an array, and then calling it) for which local
-closures are actually executed less than once on average; in such cases we are
-actually wasting effort here.
+evaluation by also using a reference |body| directly to the function body. Note
+that closures are formed when the \emph{definition} of a user-defined function
+is processed, so this optimisation should make evaluation of globally defined
+functions a bit faster. For local functions, the closure is formed during the
+execution of the outer function, so the optimisation only helps if the closure
+formed will be called more than once; this is still probable, though there are
+usage patters (for instance simulating a case statement by selecting a closure
+from an array of closures, and then calling it) for which local closures are
+actually executed less than once on average; in such cases we are actually
+wasting effort here.
 
+We provide a method |maybe_push| that will push a shared pointer (which in fact
+will be one to the closure itself) on the stack, as is needed for the
+implementation of recursive functions. Since the default implementation of this
+method is to do nothing, we need to implement it only when the template argument
+|recursive| holds, but it is most convenient to define it here anyway and use a
+dynamic test of the template argument that the compiler should optimise away.
+
+@s closure_ptr vector
+@s shared_closure vector
 @< Type def... @>=
+template<bool recursive>
 struct closure_value : public function_base
 { shared_context context;
   shared_lambda p;
@@ -2704,18 +2852,25 @@ struct closure_value : public function_base
   virtual ~ @[closure_value() nothing_new_here@];
   virtual void print(std::ostream& out) const;
   virtual void apply(expression_base::level l) const;
-  virtual expression_base::level argument_policy() const @+
+  virtual expression_base::level argument_policy() const
   {@; return expression_base::single_value; }
+  virtual void maybe_push(const std::shared_ptr<const function_base>& p) const
+  {@; if (recursive)
+      push_value(p);
+  }
   virtual void report_origin(std::ostream& o) const;
   virtual expression_ptr build_call
     (const shared_function& owner,const std::string& name,
      expression_ptr&& arg, const source_location& loc) const;
 @)
-  static const char* name() @+{@; return "closure"; }
+  static const char* name() @+
+   {@; return recursive ? "recursive closure" : "closure"; }
   closure_value @[(const closure_value& ) = delete@];
 };
-typedef std::unique_ptr<closure_value> closure_ptr;
-typedef std::shared_ptr<const closure_value> shared_closure;
+template<bool recursive>
+using  closure_ptr = std::unique_ptr<closure_value<recursive> >;
+template<bool recursive>
+using shared_closure = std::shared_ptr<const closure_value<recursive> >;
 
 @ A closure prints the |lambda_expression| from which it was obtained, but we
 also print an indication of where the function was defined (this was not
@@ -2726,15 +2881,29 @@ better only the bindings for relevant (because referenced) identifiers could
 be printed. But it's not done yet.
 
 @< Function def... @>=
-void closure_value::print(std::ostream& out) const
-{@; out << "Function defined " << p->loc << std::endl << *p;
+template<>
+void closure_value<false>::print(std::ostream& out) const
+{@; print_lambda(out << "Function defined " << p->loc << std::endl,
+                 p->param,p->body);
+}
+template<>
+void closure_value<true>::print(std::ostream& out) const
+{ auto it=p->param.sublist.begin();
+  id_type self=it->name;
+  const id_pat& param=*++it;
+  out << "Recursive function defined " << p->loc << std::endl;
+  print_lambda(out<< main_hash_table->name_of(self) << ':',param,p->body);
 }
 
-void closure_value::report_origin(std::ostream& o) const
- @+ {@; o << "defined " << p->loc; }
+template<bool recursive>
+void closure_value<recursive>::report_origin(std::ostream& o) const
+{@; o << "defined " << p->loc; }
 
 @ Evaluating a $\lambda$-expression just forms a closure using the current
-execution context, and returns that.
+execution context, and returns that. Since the |recursive_lambda| already has
+done the work of wrapping the recursive identifier into a pattern with that of
+the arguments, the recursive case only differs from the ordinary one here by
+making |true| the template argument of the |closure_value| constructor.
 
 While this code looks rather innocent, note that the sharing of
 |frame::current| created here may survive after one or more frames on the list
@@ -2747,7 +2916,11 @@ kind of stack, in particular it cannot be embedded in the \Cpp\ runtime stack
 @< Function def... @>=
 void lambda_expression::evaluate(level l) const
 {@;if (l!=no_value)
-     push_value(std::make_shared<closure_value>(frame::current,p));
+     push_value(std::make_shared<closure_value<false> >(frame::current,p));
+}
+void recursive_lambda::evaluate(level l) const
+{@;if (l!=no_value)
+     push_value(std::make_shared<closure_value<true> >(frame::current,p));
 }
 
 @*1 Calling user-defined functions.
@@ -2836,43 +3009,54 @@ std::vector<id_type> lambda_frame::id_list() const
 @ In general a closure formed from a $\lambda$ expression can be handled in
 various ways (like being passed as argument, returned, stored) before being
 applied as a function, in which case the call is performed by
-|call_expression::evaluate| described above; the actual code this executes is
-given in section@# lambda evaluation @> below. However, in most cases the path
-from definition to call is more direct: the closure from a user-defined
-function is bound to an identifier (or operator) in the global overload table,
-and located during type-checking of a call expression. As this special but
-frequent case can be handled more efficiently than by building a
-|call_expression|, we introduce a new |expression| type that is capable of
-directly storing a closure value.
+|call_expression::evaluate| described above in
+%
+section@# general call evaluate @>; the actual code this executes (through the
+virtual method |apply|) is given in section@# lambda evaluation @> below.
+However, in many cases the path from definition to call is more direct: the
+closure from a user-defined function is bound to an identifier (or operator) in
+the global overload table, and located during type-checking of a call
+expression. As this special but frequent case can be handled more efficiently
+than by building a |call_expression|, we introduce a new |expression| type
+|closure_call| that is capable of directly storing a closure value, evaluating
+only its argument sub-expression at run time.
 
-Closures themselves are anonymous, so the |print_name| reflects the overloaded
-name that was used to identify this function; it can vary separately from the
-closure |f| if the latter is entered more than once in the the tables. This
-is in contrast to |builtin_call| where the name is taken from the
-stored |builtin_value|, and cannot be dissociated from the wrapper function.
+Closures themselves are anonymous, so the name |n| that becomes the |name| field
+of the |overloaded_call| base object reflects the overloaded name that was used
+to identify this function; it can vary separately from the closure |f| if the
+latter is entered more than once in the the tables. This is in contrast to
+|builtin_call| where the name is taken from the stored |builtin_value|, and
+cannot be dissociated from the wrapper function.
 
 @< Type definitions @>=
+template<bool recursive>
 struct closure_call : public overloaded_call
-{ shared_closure f;
+{ shared_closure<recursive> f;
 @)
   closure_call @|
-   (shared_closure f,const std::string& n,expression_ptr&& a
+   (shared_closure<recursive>&& f,const std::string& n,expression_ptr&& a
    ,const source_location& loc)
-  : overloaded_call(n,std::move(a),loc), f(f) @+ {}
+  : overloaded_call(n,std::move(a),loc), f(std::move(f)) @+ {}
   virtual ~@[closure_call() nothing_new_here@];
   virtual void evaluate(level l) const;
 };
 
 @ Here is how a |closure_value| can turn itself into an
 |closure_call| when provided with an argument expression, as well
-as a |name| to call itself and a |source_location| for the call.
+as a |name| to call itself and a |source_location| for the call. The method
+|build_call| constructs a shared pointer |me| to the |closure_value| object it is
+called for, but whose sharing is managed by a separately provided |shared_ptr
+owner|, and constructs a |closure_call| from that pointer and the provided
+argument(s) |arg|, and named according to the separately provided |name|.
 
 @< Function def... @>=
-expression_ptr closure_value::build_call
+template<bool recursive>
+expression_ptr closure_value<recursive>::build_call
     (const shared_function& owner,const std::string& name,
      expression_ptr&& arg, const source_location& loc) const
-{ std::shared_ptr<const closure_value> f(owner,this);
-  return expression_ptr(new @| closure_call(f,name,std::move(arg),loc));
+{ std::shared_ptr<const closure_value<recursive> > me(owner,this);
+@/return expression_ptr(new @| closure_call<recursive>
+    (std::move(me),name,std::move(arg),loc));
 }
 
 
@@ -2886,18 +3070,18 @@ the identifiers are not used at all at runtime (they are present in the
 used here); our implementation can be classified as one using ``nameless
 dummies'' (also known as ``de Bruijn indices'').
 
-When we come here |f| must be a |closure_value|, the argument has already been
+When we come here, the argument of our |closure_value| has already been
 evaluated, and is available as a single value on the |execution_stack|. The
 evaluation of the call temporarily replaces the current execution context
-|frame::current| by one composed of |f->context| stored in the closure and a
-new frame defined by the parameter list |f->param| and the argument obtained
-as |pop_value()|; the function body is evaluated in this extended context.
+|frame::current| by one composed of |f->context| stored in the closure and a new
+frame defined by the parameter list |f->param| and the argument obtained as
+|pop_value()|; the function body is evaluated in this extended context.
 Afterwards the original context is restored by the destructor of~|fr|, whether
 the call completes normally or is terminated by a runtime error. The most
-important advantage of this approach is in case of abnormal exits from loops
-and functions, which are implemented by throwing and catching an exception at
+important advantage of this approach is in case of abnormal exits from loops and
+functions, which are implemented by throwing and catching an exception at
 run-time and will therefore unwind the \Cpp\ stack. (Actually, performing
-|break| from a loop should never lead to destructing any |lambda_frame|,
+\&{break} from a loop should never lead to destructing any |lambda_frame|,
 though it might destruct some |frame|s.)
 
 By naming our frame |fr|, we can textually reuse a |catch| block, as mentioned
@@ -2906,7 +3090,8 @@ at its definition.
 @: lambda evaluation @>
 
 @< Function def... @>=
-void closure_value::apply(expression_base::level l) const
+template<>
+void closure_value<false>::apply(expression_base::level l) const
 {
   try
   { lambda_frame fr(p->param,context);
@@ -2914,7 +3099,7 @@ void closure_value::apply(expression_base::level l) const
     if (fr.is_empty()) // we must test for functions without named arguments
     {@; execution_stack.pop_back();
       body.evaluate(l);
-    } //  drop argument, evaluate avoiding |bind|
+    } //  drop arg, evaluate avoiding |bind|
     else
     { fr.bind(pop_value()); // decompose arguments(s) and bind values in |fr|
       try {@; body.evaluate(l); }
@@ -2922,17 +3107,40 @@ void closure_value::apply(expression_base::level l) const
       @< Catch block for providing a trace-back of local variables @>
     }
   } // restore context upon destruction of |fr|
-  @< Catch block for explicit |return| from functions @>
+  @< Catch block for explicit \&{return} from functions @>
 }
 
-@ When the call |f.body.evaluate(l)| ends up executing an explicit |return|
+@ Here is where recursive functions differ from non-recursive ones. Instead of
+just binding the arguments popped from the stack, we build a pair consisting of
+our current (recursive) |closure_value| itself and the argument, and bind that
+to the pattern of the |lambda_struct| access from the closure. Since the
+recursive name is alwys present, we do not have to worry about the possibility
+of a |lambda_frame| without any identifiers.
+
+@< Function def... @>=
+template<>
+void closure_value<true>::apply(expression_base::level l) const
+{
+  try
+  { lambda_frame fr(p->param,context);
+      // save context, create new one for |*this|
+    wrap_tuple<2>(); // combine pre-pushed self object with pushed argument(s)
+    fr.bind(pop_value()); // bind self value and arguments in |fr|
+    try {@; body.evaluate(l); }
+      // call, passing evaluation level |l| to function body
+      @< Catch block for providing a trace-back of local variables @>
+  } // restore context upon destruction of |fr|
+  @< Catch block for explicit \&{return} from functions @>
+}
+
+@ When the call |f.body.evaluate(l)| ends up executing an explicit \&{return}
 expression, it won't have put anything on the |execution_stack|, but the value
 to return will be stored inside the error object. (This is the right thing to
 do in the unlikely case that intermediate values are removed from
 |execution_stack| during the \Cpp\ stack unwinding.) It suffices to place the
 value on the stack, which is just what |push_expanded| does.
 
-@< Catch block for explicit |return| from functions @>=
+@< Catch block for explicit \&{return} from functions @>=
 catch (function_return& err) @+
 {@; push_expanded(l,std::move(err.val)); }
 
@@ -2951,8 +3159,11 @@ a fourth textual reuse of the |catch| block for function calls, as well as
 (|fr|) a third reuse of the |catch| block for local variables.
 
 @< Function definitions @>=
-void closure_call::evaluate(level l) const
-{ argument->eval(); // evaluate arguments as a single value
+template<bool recursive>
+void closure_call<recursive>::evaluate(level l) const
+{ if (recursive)
+    push_value(f); // duplicate our closure to the execution stack
+  argument->eval(); // evaluate arguments as a single value
   std::string arg_string;
   if (verbosity!=0) // then record argument(s) as string
   {@; std::ostringstream o;
@@ -2963,17 +3174,20 @@ void closure_call::evaluate(level l) const
   { lambda_frame fr(f->p->param,f->context);
       // save context, create new one for |f|
 @)
-    if (fr.is_empty()) // we must test for functions without named arguments
+    if (not recursive and fr.is_empty())
+       // we must test for functions without named arguments
       {@; execution_stack.pop_back(); f->body.evaluate(l); }
       //  avoid |bind|, evaluate
     else
-    { fr.bind(pop_value()); // decompose arguments(s) and bind values in |fr|
+    { if (recursive)
+        wrap_tuple<2>(); // combine our closure with actual arguments
+      fr.bind(pop_value()); // decompose arguments(s) and bind values in |fr|
       try {@; f->body.evaluate(l); }
       // call, passing evaluation level |l| to function body
       @< Catch block for providing a trace-back of local variables @>
     }
   } // restore context upon destruction of |fr|
-  @< Catch block for explicit |return| from functions @>
+  @< Catch block for explicit \&{return} from functions @>
   @< Catch block for exceptions thrown within call of |f|... @>
 }
 
@@ -4739,7 +4953,7 @@ list display (except that there is only one expression in this case).
 @< Cases for type-checking and converting... @>=
 case while_expr:
 { while_node& w=*e.while_variant;
-  layer bind(0,nullptr); // no local variables for loop, but allow |break|
+  layer bind(0,nullptr); // no local variables for loop, but allow \&{break}
 @)
   if (type==void_type)
     return expression_ptr@|(make_while_loop (w.flags.to_ulong(),
@@ -5297,7 +5511,7 @@ void for_expression<flags,kind>::evaluate(level l) const
       throw;
     if (l!=no_value)
     { if (out_reversed(flags))
-        // doing |break| in reverse-gathering loop requires a shift
+        // doing \&{break} in reverse-gathering loop requires a shift
         dst=std::move(dst,result->val.end(),result->val.begin());
           // left-align |result|
       result->val.resize(dst-result->val.begin());
@@ -5597,7 +5811,7 @@ case cfor_expr:
     throw type_error(e,row_of_type.copy(),type.copy());
 @)
   if (c.flags[2]) // case of absent loop variable
-  { layer bind(0,nullptr);  // no local variables for loop, but allow |break|
+  { layer bind(0,nullptr);  // no local variables for loop, but allow \&{break}
     expression_ptr body(convert_expr (c.body,*btp));
     if (type!=void_type and *btp==void_type and not is_empty(c.body))
       body.reset(new voiding(std::move(body)));
@@ -5774,7 +5988,7 @@ in \.{[rat]:[*]:[0]}, then the stronger context will be used in the
 conversion. More importantly though, the specialisation now takes
 place \emph{before} the conversion, which in case our cast is a function body
 means that the result type of that function gets specialised before the rest
-of the body is analysed, and any |return| expressions in the body will profit
+of the body is analysed, and any \&{return} expressions in the body will profit
 from the cast's strong type context.
 
 @< Cases for type-checking and converting... @>=
@@ -6018,7 +6232,7 @@ void local_assignment::evaluate(level l) const
 }
 
 @ The type for multiple assignments has to cater for a mixture of global and
-local names present in the destination pattern. This is don by having
+local names present in the destination pattern. This is done by having
 (possibly empty) vectors for both types of destination, and a |Bitmap| telling
 for each name in left-to-right order whether it is global.
 
@@ -6053,7 +6267,7 @@ public:
 };
 
 @ The constructor needs to be defined outside the class definition because it
-sues |copy_id_pat|.
+uses |copy_id_pat|.
 @< Function definitions @>=
 multiple_assignment::multiple_assignment @|
     (const id_pat& lhs,expression_ptr&& r
@@ -6224,27 +6438,31 @@ if ( e.assign_variant->lhs.kind==0x1) // single identifier, do simple assign
 }
 else @< Generate and |return| a |multiple_assignment| @>
 
-@ For traversing the left hand side pattern in a multiple definition, we need
+@ For traversing the left hand side pattern in a multiple assignment, we need
 some semi-local variables, to be accessible from within the recursive function
 but not renewed for each recursive call. The solution of passing around a
 reference to a structure containing those variables is elegantly realised by
-definition the traversal function as a recursive method of that structure (the
-implicit reference |*this| is passed around unchanged).
+definition the traversal function as a recursive method |thread| of that
+structure (the implicit reference |*this| is passed around unchanged). We will
+also use the structure to keep some information after |thread| has completed,
+allowing an additional method |refine| to do some final action at the completion
+of type checking for the multiple assignment.
 
 @< Local class definitions @>=
 struct threader
 { typedef containers::sl_list<multiple_assignment::local_dest> loc_list;
   typedef containers::sl_list<shared_share> glob_list;
 @)
-  const expr& e;
-  loc_list locs;
-  glob_list globs;
-  BitMap is_global;
+  const expr& e; // the multiple assignment expression we are working on
+  loc_list locs; // local variables occurring, in order
+  glob_list globs; // global variables occurring, in order
+  BitMap is_global; // tells how locals and globals are interspersed
   containers::sl_list<std::pair<id_type,const_type_p> > assoc;
+  // types found for them
 @)
   threader (const expr& e) : e(e), locs(), globs(), is_global(), assoc() @+{}
   void thread (const id_pat& pat,type_expr& type); // recursively analyse |pat|
-  void refine () const; // maybe specialise stored identifiers
+  void refine () const; // maybe specialise some stored identifiers
 };
 
 @ The left hand side pattern is traversed in post-order: when there is both an
@@ -6252,7 +6470,10 @@ identifier for the whole and a sub-list, the former is handled after the
 latter. This simplifies testing of type compatibility in the destination
 pattern, where the only possible error now is that a type for a ``parent''
 identifier does not match the (possibly partly specified) tuple type
-established by its children.
+established by its children. The main information obtained by the traversal is
+recorded in the output parameter |type|, which is preferred here over a return
+value because its value is obtained by multiple calls of the |specialise|
+method.
 
 @< Function definitions @>=
 void threader::thread(const id_pat& pat,type_expr& type)
@@ -6277,7 +6498,8 @@ void threader::thread(const id_pat& pat,type_expr& type)
       report_constant_modified(id,e,"multiple assignment");
     is_global.extend_capacity(not is_local);
 @)
-    if (not type.specialise(*id_t)) // incorporate found type into |type|
+    if (not type.specialise(*id_t))
+    // incorporate type found for |id| into |type|
       @< Throw an error to signal type incompatibility for |id| @>
     assoc.push_back(std::make_pair(id,&type));
       // record pointer to |type| for later refinement of |id|

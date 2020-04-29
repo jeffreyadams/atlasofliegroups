@@ -191,13 +191,13 @@ InvolutionNbr InvolutionTable::add_involution
 
   // compute the involution matrix |theta| using |Cayley_roots|
   const WeylGroup& W= tW.weylGroup();
-  TwistedInvolution cross;
+  TwistedInvolution cross; // records $w\in W$ conjugating |delta| to |theta|
   RootNbrList Cayleys = Cayley_roots(canonical,rd,tW,cross);
 
   WeightInvolution theta = delta;
-  W.act(rd,cross,theta);
-  for (RootNbrList::const_iterator it=Cayleys.begin(); it!=Cayleys.end(); ++it)
-    rd.reflect(*it,theta);
+  W.act(rd,cross,theta); // taking |cross| as |WeylElt| multiplies theta<-delta
+  for (auto& alpha : Cayleys)
+    rd.reflect(alpha,theta);
 
   int_Matrix A=theta; // will contain |id-theta|, later row-saturated
   A.negate() += 1;
@@ -229,9 +229,12 @@ InvolutionNbr InvolutionTable::add_involution
   unsigned int W_length=W.length(canonical);
   unsigned int length = (W_length+Cayleys.size())/2;
   data.push_back(record(theta,InvolutionData(rd,theta),
-			lattice::row_saturate(A),
-			R,diagonal,B,
-			length,W_length,tits::fiber_denom(theta)));
+			lattice::row_saturate(A), // |projector| for |y|
+			R, // |M_real|
+			diagonal,
+			B, // |lift_mat|
+			length,W_length,
+			tits::fiber_denom(theta))); // |mod_space| for |x|
   assert(data.size()==hash.size());
 
   return result;
@@ -377,21 +380,24 @@ TorusPart InvolutionTable::y_pack(InvolutionNbr inv, const Weight& lambda_rho)
   const record& rec=data[inv];
   int_Vector v = rec.M_real * lambda_rho;
   assert(v.size()==rec.diagonal.size());
-  return TorusPart(v); // reduce coordinates modulo 2
+  // DON'T REDUCE |v[i]%=diagonal[i]|: |lambda| recontruction depends on original
+  return TorusPart(v); // reduces integer coordinates modulo 2 to bits
 }
 
 Weight InvolutionTable::y_lift(InvolutionNbr inv, TorusPart y_part) const
 {
   const record& rec=data[inv];
   Weight result(rec.lift_mat.numRows(),0);
-  // set |result=left_mat*lift| where |lift| is the integer lift of |y_part|
-  for (unsigned i=0; i<y_part.size(); ++i)
-    if (y_part[i])
-      result += rec.lift_mat.column(i);
+  // set |result=lift_mat*lift| where |lift| is the integer lift of |y_part|
+  for (unsigned j=0; j<y_part.size(); ++j)
+    if (y_part[j])
+      for (unsigned i=0; i<result.size(); ++i)
+	result[i] += rec.lift_mat(i,j);
   return result;
 }
 
-// a variant of |y_pack| that is a direct left-inverse of |y_lift| (whence /2)
+// variant of |y_pack| that is a direct left-inverse: |y_unlift(i,y_lift(y))==y|
+// since |y_lift(i,y_pack(lam_rho))=(1-theta(i))*lam_rho|, one needs to halve
 TorusPart InvolutionTable::y_unlift(InvolutionNbr inv, const Weight& lift) const
 {
   const record& rec=data[inv];

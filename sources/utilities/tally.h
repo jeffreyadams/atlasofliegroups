@@ -1,20 +1,19 @@
-/*!
-\file
-  This is tally.h
-*/
 /*
+  This is tally.h
+
   Copyright (C) 2007 Marc van Leeuwen
   part of the Atlas of Lie Groups and Representations
 
   For license information see the LICENSE file
 */
 
-/* The purpose of this module it to provide a simple class template |TallyVec|
-   that can be used to maintain a histogram in an efficient and flexible way.
-   The class behaves as a vector of counters, indexed by unsigned numbers, and
-   the basic operation provided is to increment the counter for a given index.
-   The resulting vector can be written to are read back from a file, and an
-   operation is provided to make a histogram of the counter values themselves.
+/*
+  The purpose of this module it to provide a simple class template |TallyVec|
+  that can be used to maintain a histogram in an efficient and flexible way.
+  The class behaves as a vector of counters, indexed by unsigned numbers, and
+  the basic operation provided is to increment the counter for a given index.
+  The resulting vector can be written to are read back from a file, and an
+  operation is provided to make a histogram of the counter values themselves.
 */
 
 #ifndef TALLY_H
@@ -27,14 +26,15 @@
 namespace atlas {
 namespace tally {
 
-/* The |TallyVec| class template has one type parameters that should be an
-   unsigned integral type: it is the type used for the primary counters,
-   determining the range of frequency that can be maintained most efficiently
-   (once a counter overflows it will be maintained in a less storage- and
-   time-efficient way). Typically it will be a small type to avoid wasting
-   space on the average low counter values. The type indexing the counters and
-   used for the counter values when they overflow are considered to be of less
-   impact, so both will be taken |unsigned long long int| in all cases.
+/*
+  The |TallyVec| class template has one type parameter that should be an
+  unsigned integral type: it is the type used for the primary counters,
+  determining the range of frequency that can be maintained most efficiently
+  (once a counter overflows it will be maintained in a less storage- and
+  time-efficient way). Typically it will be a small type to avoid wasting
+  space on the average low counter values. The type indexing the counters and
+  used for the counter values when they overflow are considered to be of less
+  impact, so both will be taken |unsigned long long int| in all cases.
 */
 
 template <typename Count>

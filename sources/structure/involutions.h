@@ -104,7 +104,7 @@ class InvolutionTable
     int_Matrix projector; // for |y|, same kernel as |row_saturate(theta-id)|
     int_Matrix M_real; // $1-\theta$; then expression in scaled adapted basis
     int_Vector diagonal; // divisors for image of |M_real|
-    int_Matrix lift_mat; // section: satisfies |lift_mat*M_real==1-theta|
+    int_Matrix lift_mat; // for section: satisfies |lift_mat*M_real==1-theta|
     unsigned int length;
     unsigned int W_length;
     SmallSubspace mod_space; // for |x|
@@ -199,11 +199,15 @@ class InvolutionTable
   // choose unique representative for real projection of rational weight
   void real_unique(InvolutionNbr i, RatWeight& y) const;
 
-  // pack $\lambda-\rho$ into a |TorusPart|
+  // pack $\lambda'$ into a |TorusPart| (depends only on  $(1-\theta)\lambda'$)
   TorusPart y_pack(InvolutionNbr i, const Weight& lambda_rho) const;
+  // find |(1-theta)*lam_rho| for any |lam_rho| with |ypack(i,lam_rho)=y_part|
   Weight y_lift(InvolutionNbr i, TorusPart y_part) const;
+
+  // effectively do |y_pack(i,lifted/2)|, but avoid half-integer coordinates
   TorusPart y_unlift(InvolutionNbr i, const Weight& lifted) const;
-  // for acting on a torus part involution may change; caller should supply
+  // apply |delta| to |y_part| at |i0|, the result being at |i1==delta*i0*delta|
+  // this is used to twist a parameter by |delta|, which affects its involution
   TorusPart y_act(InvolutionNbr i0, InvolutionNbr i1, // source, destination
 		  TorusPart y_part, const WeightInvolution& delta) const
   { return y_unlift(i1,delta*y_lift(i0,y_part)); }
@@ -223,6 +227,8 @@ class InvolutionTable
   mapper as_map() const { return mapper(this); }
 
   // manipulators
+
+  // these methods construct/propagate information at individual involutions
   InvolutionNbr add_involution(const TwistedInvolution& tw);
   InvolutionNbr add_cross(weyl::Generator s, InvolutionNbr n);
 

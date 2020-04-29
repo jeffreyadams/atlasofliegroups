@@ -43,7 +43,6 @@ RealReductiveGroup::RealReductiveGroup (InnerClass& G_C, RealFormNbr rf)
   , d_Tg(new // allocate private copy
 	 TitsCoset(G_C,grading_of_simples(G_C,square_class_cocharacter)))
   , kgb_ptr(nullptr)
-  , dual_kgb_ptr(nullptr)
   , d_status()
 { construct(); }
 
@@ -61,7 +60,6 @@ RealReductiveGroup::RealReductiveGroup
   , d_Tg(new // allocate private copy
 	 TitsCoset(G_C,grading_of_simples(G_C,square_class_cocharacter)))
   , kgb_ptr(nullptr)
-  , dual_kgb_ptr(nullptr)
   , d_status()
 { construct(); }
 
@@ -98,8 +96,7 @@ void RealReductiveGroup::construct()
 }
 
 
-RealReductiveGroup::~RealReductiveGroup()
-{ delete d_Tg; delete kgb_ptr; delete dual_kgb_ptr; }
+RealReductiveGroup::~RealReductiveGroup() = default; // do |unique_ptr| magic
 
 /******** accessors *********************************************************/
 
@@ -119,12 +116,11 @@ void RealReductiveGroup::swap(RealReductiveGroup& other)
 
   std::swap(d_Tg,other.d_Tg);
   std::swap(kgb_ptr,other.kgb_ptr);
-  std::swap(dual_kgb_ptr,other.dual_kgb_ptr);
   std::swap(d_status,other.d_status);
 }
 
 
-const RootDatum& RealReductiveGroup::rootDatum() const
+const RootDatum& RealReductiveGroup::root_datum() const
   { return d_innerClass.rootDatum(); }
 
 const TitsGroup& RealReductiveGroup::titsGroup() const
@@ -144,7 +140,7 @@ const CartanClass& RealReductiveGroup::cartan(size_t cn) const
   { return d_innerClass.cartan(cn); }
 
 RatCoweight RealReductiveGroup::g() const
-  { return g_rho_check()+rho_check(rootDatum()); }
+  { return g_rho_check()+rho_check(root_datum()); }
 
 // the base grading can be computed directly from $g-\rho\check$, as imaginary
 // simple roots are simple-imaginary, so dot product flags the compact ones
@@ -155,10 +151,10 @@ Grading RealReductiveGroup::base_grading() const
 
 size_t RealReductiveGroup::numCartan() const { return Cartan_set().size(); }
 
-size_t RealReductiveGroup::rank() const { return rootDatum().rank(); };
+size_t RealReductiveGroup::rank() const { return root_datum().rank(); };
 
 size_t RealReductiveGroup::semisimpleRank() const
-  { return rootDatum().semisimpleRank(); }
+  { return root_datum().semisimpleRank(); }
 
 size_t RealReductiveGroup::numInvolutions()
   { return innerClass().numInvolutions(Cartan_set()); }
@@ -179,7 +175,7 @@ size_t RealReductiveGroup::mostSplit() const
 Grading RealReductiveGroup::grading_offset()
 {
   RootNbrSet rset= noncompactRoots(); // grading for real form rep
-  return cartanclass::restrictGrading(rset,rootDatum().simpleRootList());
+  return cartanclass::restrictGrading(rset,root_datum().simpleRootList());
 }
 
 
@@ -198,17 +194,9 @@ RootNbrSet RealReductiveGroup::noncompactRoots() const
 // return stored KGB structure, after generating it if necessary
 const KGB& RealReductiveGroup::kgb()
 {
-  if (kgb_ptr==nullptr)
-    kgb_ptr = new KGB(*this,Cartan_set(),false); // generate as non-dual
+  if (kgb_ptr.get()==nullptr)
+    kgb_ptr.reset(new KGB(*this,Cartan_set()));
   return *kgb_ptr;
-}
-
-// return stored KGB structure, after generating it if necessary
-const KGB& RealReductiveGroup::kgb_as_dual()
-{
-  if (dual_kgb_ptr==nullptr)
-    dual_kgb_ptr = new KGB(*this,Cartan_set(),true); // generate as dual
-  return *dual_kgb_ptr;
 }
 
 // return stored Bruhat order of KGB, after generating it if necessary

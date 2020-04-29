@@ -3825,7 +3825,8 @@ void KGB_twist_wrapper(expression_base::level l)
   if (l==expression_base::no_value)
     return;
 @)
-  x->val= kgb.Hermitian_dual(x->val); // do twist
+  x->val= kgb.twisted(x->val,x->rf->val.innerClass().distinguished());
+    // do twist
   push_value(std::move(x));
 }
 @)
@@ -4450,7 +4451,7 @@ void parameter_cross_wrapper(expression_base::level l)
 { shared_module_parameter p = get<module_parameter_value>();
   int s = get<int_value>()->int_val();
   unsigned int r =
-    rootdata::integrality_rank(p->rf->val.rootDatum(),p->val.gamma());
+    rootdata::integrality_rank(p->rf->val.root_datum(),p->val.gamma());
   if (static_cast<unsigned>(s)>=r)
     throw runtime_error
       ("Illegal simple reflection: ") << s << ", should be <" << r;
@@ -4463,7 +4464,7 @@ void parameter_Cayley_wrapper(expression_base::level l)
 { shared_module_parameter p = get<module_parameter_value>();
   int s = get<int_value>()->int_val();
   unsigned int r =
-    rootdata::integrality_rank(p->rf->val.rootDatum(),p->val.gamma());
+    rootdata::integrality_rank(p->rf->val.root_datum(),p->val.gamma());
   if (static_cast<unsigned>(s)>=r)
     throw runtime_error("Illegal simple reflection: ") << s @|
       << ", should be <" << r;
@@ -4476,7 +4477,7 @@ void parameter_inv_Cayley_wrapper(expression_base::level l)
 { shared_module_parameter p = get<module_parameter_value>();
   int s = get<int_value>()->int_val();
   unsigned int r =
-    rootdata::integrality_rank(p->rf->val.rootDatum(),p->val.gamma());
+    rootdata::integrality_rank(p->rf->val.root_datum(),p->val.gamma());
   if (static_cast<unsigned>(s)>=r)
     throw runtime_error("Illegal simple reflection: ") << s
       << ", should be <" << r;
@@ -4555,7 +4556,7 @@ but we first call |test_compatible|.
 void parameter_outer_twist_wrapper(expression_base::level l)
 { auto delta = get<matrix_value>();
   auto p = get<module_parameter_value>();
-  test_compatible(p->rc().innerClass(),delta);
+  test_compatible(p->rc().inner_class(),delta);
   if (l!=expression_base::no_value)
     push_value(std::make_shared<module_parameter_value>
 		(p->rf,p->rc().twisted(p->val,delta->val)));
@@ -4648,7 +4649,8 @@ void test_normal_is_final(const module_parameter_value& p, const char* descr)
 }
 
 @ Here is the first block generating function, which just reproduces to output
-from the \.{Fokko} program for the \.{nblock} command.
+of the \.{nblock} command in the \.{Fokko} program, and a variation for partial
+blocks.
 
 @< Local function def...@>=
 void print_n_block_wrapper(expression_base::level l)
@@ -4657,9 +4659,61 @@ void print_n_block_wrapper(expression_base::level l)
   BlockElt init_index; // will hold index in the block of the initial element
   param_block block(p->rc(),p->val,init_index);
   *output_stream << "Parameter defines element " << init_index
-               @|<< " of the following block:" << std::endl;
+               @|<< " of the following block:\n";
   block.print_to(*output_stream,true);
     // print block using involution expressions
+  if (l==expression_base::single_value)
+    wrap_tuple<0>(); // |no_value| needs no special care
+}
+
+void print_p_block_wrapper(expression_base::level l)
+{ shared_module_parameter p = get<module_parameter_value>();
+  test_standard(*p,"Cannot generate block");
+  param_block block(p->rc(),p->val); // without index does partial construction
+  *output_stream
+    << "Parameter defines final element of the following partial block:\n";
+  block.print_to(*output_stream,true);
+    // print block using involution expressions
+  if (l==expression_base::single_value)
+    wrap_tuple<0>(); // |no_value| needs no special care
+}
+
+@ Their variants for ``common'' blocks, implemented by the |common_block| class.
+
+@h "common_blocks.h"
+@< Local function def...@>=
+void print_c_block_wrapper(expression_base::level l)
+{ shared_module_parameter p = get<module_parameter_value>();
+  test_standard(*p,"Cannot generate block");
+  BlockElt init_index; // will hold index in the block of the initial element
+  blocks::common_block& block = p->rt().lookup_full_block(p->val,init_index);
+  *output_stream << "Parameter defines element " << init_index
+               @|<< " of the following common block:" << std::endl;
+  block.print_to(*output_stream,true);
+    // print block using involution expressions
+  if (l==expression_base::single_value)
+    wrap_tuple<0>(); // |no_value| needs no special care
+}
+
+void print_pc_block_wrapper(expression_base::level l)
+{ shared_module_parameter p = get<module_parameter_value>();
+  test_standard(*p,"Cannot generate block");
+  BlockElt init_index; // will hold index in the block of the initial element
+  blocks::common_block& block = p->rt().lookup(p->val,init_index);
+  BitMap less = block.bruhatOrder().poset().below(init_index);
+  if (less.full())
+  {
+    if (init_index+1<block.size())
+      *output_stream << "Elements <= " << init_index << " of following block\n";
+  }
+  else
+  {
+    *output_stream << "Subset {";
+    for (auto @[n : less@]@;@;)
+      *output_stream << n << ',';
+    *output_stream << init_index << "} in the following common block:\n";
+  }
+  block.print_to(*output_stream,true); // print using involution expressions
   if (l==expression_base::single_value)
     wrap_tuple<0>(); // |no_value| needs no special care
 }
@@ -4696,7 +4750,7 @@ also construct a module parameter value for each element of |block|.
 
 }
 
-@ There is also a function that computes just a partial block.
+@ There are also a functions that compute just a partial block.
 @< Local function def...@>=
 void partial_block_wrapper(expression_base::level l)
 { shared_module_parameter p = get<module_parameter_value>();
@@ -4706,6 +4760,32 @@ void partial_block_wrapper(expression_base::level l)
 @)
   param_block block(p->rc(),p->val);
   @< Push a list of parameter values for the elements of |block| @>
+}
+@)
+void partial_common_block_wrapper(expression_base::level l)
+{ shared_module_parameter p = get<module_parameter_value>();
+  test_standard(*p,"Cannot generate block");
+  if (l==expression_base::no_value)
+    return;
+@)
+  BlockElt z;
+  blocks::common_block& block = p->rt().lookup(p->val,z);
+@)
+  unsigned long n=block.size();
+  BitMap subset(n);
+  subset.insert(z);
+  while (subset.back_up(n)) // compute downward closure
+    for (BlockElt y : block.bruhatOrder().hasse(n))
+      subset.insert(y);
+
+  { own_row param_list = std::make_shared<row_value>(subset.size());
+    size_t i=0;
+    for (auto z : subset)
+      param_list->val[i++] =
+         std::make_shared<module_parameter_value> @|
+             (p->rf,p->rc().sr(block.representative(z),p->val.gamma()));
+    push_value(std::move(param_list));
+  }
 }
 
 @ Knowing the length in its block of a parameter is of independent interest.
@@ -5014,7 +5094,7 @@ void extended_block_wrapper(expression_base::level l)
 { auto delta =get<matrix_value>();
   shared_module_parameter p = get<module_parameter_value>();
   test_standard(*p,"Cannot generate block");
-  test_compatible(p->rc().innerClass(),delta);
+  test_compatible(p->rc().inner_class(),delta);
   if (not ((delta->val-1)*p->val.gamma().numerator()).isZero())
     throw runtime_error@|("Involution does not fix infinitesimal character");
   if (l==expression_base::no_value)
@@ -5022,7 +5102,8 @@ void extended_block_wrapper(expression_base::level l)
 @)
   const auto& rc = p->rc();
   BlockElt start;
-  param_block block(rc,p->val,start);
+  auto zm = repr::StandardReprMod::mod_reduce(rc,p->val);
+  blocks::common_block block(rc,zm,start);
   @< Construct the extended block, then the return value components,
      calling |push_value| for each of them @>
 @)
@@ -5040,10 +5121,12 @@ into a list of parameters and three tables in the form of matrices.
 @/int_Matrix links0(eb.size(),eb.rank());
   int_Matrix links1(eb.size(),eb.rank());
 
+  const auto& gamma=p->val.gamma();
+  const RatWeight gamma_rho = gamma-rho(block.root_datum());
   for (BlockElt n=0; n<eb.size(); ++n)
   { auto z = eb.z(n); // number of ordinary parameter in |block|
-    StandardRepr block_elt_param =
-      rc.sr_gamma(block.x(z),block.lambda_rho(z),block.gamma());
+    const Weight lambda_rho=gamma_rho.integer_diff<int>(block.gamma_lambda(z));
+    StandardRepr block_elt_param = rc.sr_gamma(block.x(z),lambda_rho,gamma);
     params->val[n] =
       std::make_shared<module_parameter_value>(p->rf,block_elt_param);
     for (weyl::Generator s=0; s<eb.rank(); ++s)
@@ -5091,7 +5174,7 @@ void extended_KL_block_wrapper(expression_base::level l)
 { auto delta = get<matrix_value>();
   auto p = get<module_parameter_value>();
   test_standard(*p,"Cannot generate extended block");
-  test_compatible(p->rc().innerClass(),delta);
+  test_compatible(p->rc().inner_class(),delta);
   if (l==expression_base::no_value)
     return;
 @)
@@ -5143,8 +5226,13 @@ install_function(reducibility_points_wrapper,@|
 install_function(scale_parameter_wrapper,"*", "(Param,rat->Param)");
 install_function(scale_0_parameter_wrapper,"at_nu_0", "(Param->Param)");
 install_function(print_n_block_wrapper,@|"print_block","(Param->)");
+install_function(print_c_block_wrapper,@|"print_common_block","(Param->)");
+install_function(print_p_block_wrapper,@|"print_partial_block","(Param->)");
+install_function(print_pc_block_wrapper,@|"print_partial_common_block","(Param->)");
 install_function(block_wrapper,@|"block" ,"(Param->[Param],int)");
 install_function(partial_block_wrapper,@|"partial_block","(Param->[Param])");
+install_function(partial_common_block_wrapper,@|"partial_common_block"
+                ,"(Param->[Param])");
 install_function(param_length_wrapper,@|"length","(Param->int)");
 install_function(KL_block_wrapper,@|"KL_block"
                 ,"(Param->[Param],int,mat,[vec],vec,vec,mat)");
@@ -5784,7 +5872,7 @@ since the parameter itself reported here might be final.
 { if (not khc.isFinal(srk))
   { std::ostringstream os;
     print_stdrep(os << "Non final restriction to K: ",p->val,rc) @|
-      << "\n  (witness " << khc.rootDatum().coroot(khc.witness()) << ')';
+      << "\n  (witness " << khc.root_datum().coroot(khc.witness()) << ')';
     throw runtime_error(os.str());
   }
 }
@@ -5989,36 +6077,51 @@ code here the difference consists mainly of calling the
 involution, so we need to test for that here. If the test fails we report an
 error rather than returning for instance a null module, since a twisted
 deformation formula for a non-fixed parameter makes little sense; the user
-should avoid asking for it. Also, since the construction of an extended block
-currently cannot deal with a partial parent block.
+should avoid asking for it. Similarly the twisted variant cannot allow non
+dominant parameters, as this would internally produce an |SR_poly| value with
+non-dominant terms, which should never happen. Also, since the construction of
+an extended block currently cannot deal with a partial parent block, so it
+implies a full block construction.
 
 @< Local function def...@>=
 void deform_wrapper(expression_base::level l)
 { shared_module_parameter p = get<module_parameter_value>();
-  test_standard(*p,"Cannot compute deformation");
+  test_standard(*p,"Cannot compute deformation terms");
   if (l==expression_base::no_value)
     return;
 @)
-  param_block block(p->rc(),p->val); // partial block construction
-  repr::SR_poly terms
-     = p->rt().deformation_terms(block,block.size()-1);
+  BlockElt p_index; // will hold index of |p| in the block
+  auto& block = p->rt().lookup(p->val,p_index); // generate partial common block
+  const auto& gamma = p->val.gamma();
+  repr::SR_poly terms = p->rt().deformation_terms(block,p_index,gamma);
 
   push_value(std::make_shared<virtual_module_value>(p->rf,std::move(terms)));
 }
 @)
 void twisted_deform_wrapper(expression_base::level l)
 { shared_module_parameter p = get<module_parameter_value>();
-  const auto& rc=p->rc();
-  test_standard(*p,"Cannot compute twisted deformation");
-  if (not rc.is_twist_fixed(p->val,rc.innerClass().distinguished()))
+  auto& rt=p->rt();
+  const auto& delta=rt.inner_class().distinguished();
+  test_standard(*p,"Cannot compute twisted deformation terms");
+  if (not rt.is_twist_fixed(p->val,delta))
     throw runtime_error@|("Parameter not fixed by inner class involution");
+  if (not is_dominant_ratweight(rt.root_datum(),p->val.gamma()))
+    throw runtime_error("Parameter must have dominant infinitesimal character");
   if (l==expression_base::no_value)
     return;
 @)
   BlockElt entry_elem;
-  param_block block(p->rc(),p->val,entry_elem); // full block
+  auto& block = rt.lookup(p->val,entry_elem);
+  auto& eblock = block.extended_block(delta);
+@)
+  RankFlags singular = block.singular(p->val.gamma());
+  RankFlags singular_orbits;
+  for (weyl::Generator s=0; s<eblock.rank(); ++s)
+    singular_orbits.set(s,singular[eblock.orbit(s).s0]);
+@)
   repr::SR_poly terms
-     = p->rt().twisted_deformation_terms(block,entry_elem);
+     = rt.twisted_deformation_terms@|(block,eblock,entry_elem,
+                                     singular_orbits,p->val.gamma());
 
   push_value(std::make_shared<virtual_module_value>(p->rf,std::move(terms)));
 }
@@ -6054,7 +6157,7 @@ void twisted_full_deform_wrapper(expression_base::level l)
     return;
 @)
   auto finals =
-    ext_block::extended_finalise(rc,sr,rc.innerClass().distinguished());
+    ext_block::extended_finalise(rc,sr,rc.inner_class().distinguished());
   repr::SR_poly result (rc.repr_less());
   for (auto it=finals.cbegin(); it!=finals.cend(); ++it)
     result.add_multiple(p->rt().twisted_deformation(it->first) @|
@@ -6108,7 +6211,7 @@ void external_twisted_KL_sum_at_s_wrapper(expression_base::level l)
   shared_module_parameter p = get<module_parameter_value>();
   test_standard(*p,"Cannot compute Kazhdan-Lusztig sum");
   test_normal_is_final(*p,"Cannot compute Kazhdan-Lusztig sum");
-  test_compatible(p->rc().innerClass(),delta);
+  test_compatible(p->rc().inner_class(),delta);
   if (not p->rc().is_twist_fixed(p->val,delta->val))
     throw runtime_error("Parameter not fixed by given involution");
   if (l!=expression_base::no_value)
@@ -6140,9 +6243,9 @@ void scale_extended_wrapper(expression_base::level l)
   const StandardRepr sr = p->val;
   const auto& rc = p->rc();
   test_standard(*p,"Cannot scale extended parameter");
-  if (not is_dominant_ratweight(rc.rootDatum(),sr.gamma()))
+  if (not is_dominant_ratweight(rc.root_datum(),sr.gamma()))
     throw runtime_error("Parameter to be scaled not dominant");
-  test_compatible(p->rc().innerClass(),delta);
+  test_compatible(p->rc().inner_class(),delta);
   if (not rc.is_twist_fixed(sr,delta->val))
     throw runtime_error@|
       ("Parameter to be scaled not fixed by given involution");
@@ -6173,11 +6276,11 @@ void finalize_extended_wrapper(expression_base::level l)
   auto p = get<module_parameter_value>();
   const auto& rc = p->rc();
   test_standard(*p,"Cannot finalize extended parameter");
-  test_compatible(rc.innerClass(),delta);
+  test_compatible(rc.inner_class(),delta);
   if (not p->rc().is_twist_fixed(p->val,delta->val))
     throw runtime_error("Parameter not fixed by given involution");
-  if (not is_dominant_ratweight(rc.rootDatum(),p->val.gamma()))
-    throw runtime_error("Parameter must have dominant gamma");
+  if (not is_dominant_ratweight(rc.root_datum(),p->val.gamma()))
+    throw runtime_error("Parameter must have dominant infinitesimal character");
   if (l==expression_base::no_value)
     return;
 @)
@@ -6335,7 +6438,7 @@ void raw_ext_KL_wrapper (expression_base::level l)
 { auto delta = get<matrix_value>();
   shared_module_parameter p = get<module_parameter_value>();
   test_standard(*p,"Cannot generate block");
-  test_compatible(p->rc().innerClass(),delta);
+  test_compatible(p->rc().inner_class(),delta);
   if (l==expression_base::no_value)
     return;
 @)
@@ -6352,7 +6455,7 @@ void raw_ext_KL_wrapper (expression_base::level l)
   {
     ext_block::ext_block eb(block,delta->val);
     std::vector<Polynomial<int> > pool;
-    ext_kl::KL_table klt(eb,pool); klt.fill_columns();
+    ext_kl::KL_table klt(eb,&pool); klt.fill_columns();
   @)
     own_matrix M = std::make_shared<matrix_value>(int_Matrix(klt.size()));
     for (unsigned int y=1; y<klt.size(); ++y)

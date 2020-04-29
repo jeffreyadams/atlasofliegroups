@@ -256,7 +256,7 @@ many cases be used to modify that value (but not its type).
 const_type_p Id_table::type_of(id_type id,bool& is_const) const
 { map_type::const_iterator p=table.find(id);
   if (p==table.end())
-    return nullptr;
+  {@; is_const=false; return nullptr; } // avoid later ``uninintialized'' warning
   is_const=p->second.is_const();
   return &p->second.type();
 }

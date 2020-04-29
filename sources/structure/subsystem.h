@@ -74,8 +74,8 @@ class SubSystem : public RootSystem // new system, subsytem of dual
 #endif
 
   weyl::Twist parent_twist(const WeightInvolution& theta, WeylWord& ww) const;
-  // make |theta=sub_W_action(ww).delta| for parent-side sub-distinguished
-  // |delta|, and return the twist of the sub-diagram for that |delta|
+  // make |ww|, |delta| such that |theta=sub_W_action(ww).delta| for parent-side
+  // sub-distinguished |delta|; return twist of the sub-diagram for that |delta|
 
   PreRootDatum pre_root_datum() const; // viewed from parent side
 

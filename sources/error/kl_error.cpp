@@ -24,10 +24,7 @@ namespace kl_error {
 
 void KLError::operator() (const char* mess) const
 
-/*
-  Synopsis: outputs error information
-*/
-
+// Output error information
 {
   std::cerr << mess << std::endl;
   std::cerr << "line #" << line << " in kl.cpp" << std::endl;

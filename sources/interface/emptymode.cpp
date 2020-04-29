@@ -55,9 +55,7 @@ namespace {
 
 *****************************************************************************/
 
-/*
-  Synopsis: returns a |CommandNode| object that is constructed on first call.
-*/
+// Return a |CommandNode| object that is constructed on first call
 CommandNode emptyNode()
 {
   CommandNode result("empty: ",printVersion,relax_f);
@@ -140,10 +138,7 @@ void extract_cells_f()
 *****************************************************************************/
 
 
-/*
-  Prints an opening message and the version number.
-*/
-
+// Print an opening message and the version number.
 void printVersion()
 {
   std::cout << "This is 'Fokko', interface to " << version::NAME << '.'

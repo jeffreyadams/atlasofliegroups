@@ -42,8 +42,8 @@ class BruhatOrder
 /*
    Full poset relation. Only computed on demand, until then has size 0.
 
-   It is assumed (byt the calss |Poset|) that element \#i can precede
-   element \#j in the poset only if i < j.
+   It is assumed (by the class |Poset|) that element |i| can precede
+   element |j| in the poset only if |i < j|.
 */
   poset::Poset d_poset;
 
@@ -52,6 +52,9 @@ class BruhatOrder
 // constructors and destructors
   explicit BruhatOrder(const std::vector<poset::Poset::EltList>& Hasse_diagram)
     : d_hasse(Hasse_diagram), d_poset(0) {}
+
+  explicit BruhatOrder(const std::vector<poset::Poset::EltList>&& Hasse_diagram)
+    : d_hasse(std::move(Hasse_diagram)), d_poset(0) {}
 
 
 // accessors

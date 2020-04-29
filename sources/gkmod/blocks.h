@@ -55,13 +55,12 @@ public: // this |struct| must be public, though mainly used in derived classes
     KGBElt x,y; // indices into |KGB| sets (which might no longer exist)
     DescentStatus descent;
     unsigned short length;
-    BlockElt dual; // number of Hermitian dual of this element, if any
     EltInfo(KGBElt xx,KGBElt yy,DescentStatus dd, unsigned short ll)
-      : x(xx),y(yy),descent(dd),length(ll), dual(UndefBlock) {}
+      : x(xx),y(yy),descent(dd),length(ll) {}
 
   // sometimes leave |descent| and |length| (which |hashCode| ignores) blank
     EltInfo(KGBElt xx,KGBElt yy)
-      : x(xx),y(yy),descent(),length(0), dual(UndefBlock) {}
+      : x(xx),y(yy),descent(),length(0) {}
 
   // methods that will allow building a hashtable with |info| as pool
     typedef std::vector<EltInfo> Pooltype;
@@ -81,18 +80,19 @@ protected: // all fields may be set in a derived class contructor
   };
 
   std::vector<EltInfo> info; // its size defines the size of the block
-  std::vector<std::vector<block_fields> > data;  // size |d_rank| * |size()|
+  std::vector<std::vector<block_fields> > data; // size |rank| * |size()|
   ext_gens orbits; // orbits of simple generators under distinguished involution
 
-  DynkinDiagram dd;
+  DynkinDiagram dd; // diagram on simple generators for the block
+
   // possible tables of Bruhat order and Kazhdan-Lusztig polynomials
   BruhatOrder* d_bruhat;
   kl::KLContext* klc_ptr;
 
 public:
 // constructors and destructors
-  Block_base(const KGB& kgb);
-  Block_base(unsigned int rank); // only dimensions some vectors
+  Block_base(const KGB& kgb); // for |Block|, implicitly at integral inf. char.
+  Block_base(unsigned int integral_rank); // only dimensions some vectors
 
   virtual ~Block_base(); // deletes |d_bruhat| and |klc_ptr| (if non-NULL)
 
@@ -105,7 +105,7 @@ public:
 
 // accessors
 
-  unsigned int rank() const { return data.size(); } // semisimple rank matters
+  unsigned int rank() const { return data.size(); } // integral semisimple rank
   unsigned int folded_rank() const { return orbits.size(); }
   BlockElt size() const { return info.size(); }
 
@@ -119,7 +119,7 @@ public:
   KGBElt x(BlockElt z) const { assert(z<size()); return info[z].x; }
   KGBElt y(BlockElt z) const { assert(z<size()); return info[z].y; }
 
-  size_t length(BlockElt z) const { return info[z].length; }
+  unsigned short length(BlockElt z) const { return info[z].length; }
 
   // first element of length (at least) |l|, or |size()| if there are none
   BlockElt length_first(size_t l) const;
@@ -157,12 +157,6 @@ public:
   bool isStrictDescent(weyl::Generator, BlockElt) const;
   weyl::Generator firstStrictDescent(BlockElt z) const;
   weyl::Generator firstStrictGoodDescent(BlockElt z) const;
-
-  BlockElt Hermitian_dual(BlockElt z) const { return info[z].dual; }
-
-  // The functor $T_{\alpha,\beta}$; might have been a non-method function
-  BlockEltPair link
-    (weyl::Generator alpha,weyl::Generator beta,BlockElt y) const;
 
   // print whole block to stream (name chosen to avoid masking by |print|)
   std::ostream& print_to
@@ -304,6 +298,10 @@ private:
 
 }; // |class Block|
 
+// The functor $T_{\alpha,\beta}$
+BlockEltPair link(weyl::Generator alpha,weyl::Generator beta,
+		  const Block_base& block, BlockElt y);
+
 struct param_entry
 { KGBElt x; TorusPart y;
 
@@ -337,7 +335,7 @@ class param_block : public Block_base
   // group small components together:
   int gr_denom;
   KGBElt highest_x,highest_y; // maxima over this (maybe partial) block
-  RankFlags singular; // flags simple roots for which |infin_char| is singular
+  RankFlags singular; // flags, among integrally-simple roots, singular ones
 
  public:
 
@@ -354,10 +352,10 @@ class param_block : public Block_base
  public:
   // accessors that get values via |rc|
   const repr::Rep_context& context() const { return rc; }
-  const RootDatum& rootDatum() const;
-  const InnerClass& innerClass() const;
+  const RootDatum& root_datum() const;
+  const InnerClass& inner_class() const;
   const InvolutionTable& involution_table() const;
-  RealReductiveGroup& realGroup() const;
+  RealReductiveGroup& real_group() const;
 
   const RatWeight& gamma() const { return infin_char; }
   StandardRepr sr(BlockElt z) const; // parameter associated to block element
@@ -383,9 +381,6 @@ class param_block : public Block_base
 
  private:
   void compute_y_bits(const y_entry::Pooltype& y_pool); // set all the |y_bits|
-  void compute_duals
-  (const y_part_hash& y_hash,const block_hash& hash,
-   const InnerClass& G,const SubSystem& rs);
 
 /*
   reverse lengths and order block with them increasing, and by increasing
@@ -425,20 +420,18 @@ private:
   std::vector<TorusElement> half_alpha; // half the simple roots
 
   void check_y(const TorusElement& t, InvolutionNbr i) const;
-  void parent_cross_act(nblock_elt& z, weyl::Generator s) const;
-  void parent_up_Cayley(nblock_elt& z, weyl::Generator s) const;
-  void parent_down_Cayley(nblock_elt& z, weyl::Generator s) const;
+  void parent_cross_act(weyl::Generator s,nblock_elt& z) const;
+  void parent_up_Cayley(weyl::Generator s,nblock_elt& z) const;
+  void parent_down_Cayley(weyl::Generator s,nblock_elt& z) const;
 
 public:
   nblock_help(RealReductiveGroup& GR, const SubSystem& subsys);
 
-  void cross_act(nblock_elt& z, weyl::Generator s) const;
+  void cross_act(weyl::Generator s,nblock_elt& z) const;
   void cross_act_parent_word(const WeylWord& ww, nblock_elt& z) const;
-  void do_up_Cayley (nblock_elt& z, weyl::Generator s) const;
-  void do_down_Cayley (nblock_elt& z, weyl::Generator s) const;
-  bool is_real_nonparity(nblock_elt z, weyl::Generator s) const; // by value
-
-  void twist(nblock_elt& z) const;
+  void do_up_Cayley (weyl::Generator s,nblock_elt& z) const;
+  void do_down_Cayley (weyl::Generator s,nblock_elt& z) const;
+  bool is_real_nonparity(weyl::Generator s,nblock_elt z) const; // by value
 
   y_entry pack_y(const nblock_elt& z) const;
 }; // |class nblock_help|

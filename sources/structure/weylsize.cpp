@@ -1,17 +1,16 @@
 /*
-  Implementation of  functions for namespace weylsize.
-
-Functions to compute the size of a Weyl group (stored as a prime
-factorization, to avoid overflow problems).
-  This is weylsize.cpp
-*/
-/*
   This is weylsize.cpp
 
   Copyright (C) 2004,2005 Fokko du Cloux
   part of the Atlas of Lie Groups and Representations
 
   For license information see the LICENSE file
+*/
+/*
+  Implementation of  functions for namespace weylsize.
+
+  Functions to compute the size of a Weyl group (stored as a prime
+  factorization, to avoid overflow problems).
 */
 
 #include "weylsize.h"
@@ -45,7 +44,7 @@ size::Size weylSize(const LieType& lt)
 
 
 /*!
-  Synopsis: returns the size of the Weyl group with Lie type slt.
+  Return the size of the Weyl group with Lie type |slt|.
 
   NOTE: we build in knowledge about the Weyl group here, although we could
   have computed from first principles

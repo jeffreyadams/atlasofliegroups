@@ -69,7 +69,6 @@ namespace {
   void blockorder_f();
   void blockwrite_f();
   void blockstabilizer_f();
-  void blocktwist_f();
   void extblock_f();
   void gextblock_f();
   void klbasis_f();
@@ -128,7 +127,6 @@ CommandNode blockNode()
 	     "writes the block information to disk",std_help);
   result.add("blockstabilizer",blockstabilizer_f,
 	     "print the real Weyl group for the block",std_help);
-  result.add("blocktwist",blocktwist_f,"shows twist orbits on block");
   result.add("extblock",extblock_f,
 	     "prints block for group extended by inner class involution");
   result.add("gextblock",gextblock_f,"prints block for general extended group");
@@ -195,7 +193,7 @@ const wgraph::WGraph& currentWGraph()
 namespace {
 
 /*
-  Synopsis: attempts to set a real form and dual real form interactively.
+  Attempt to set a real form and dual real form interactively.
   In case of failure, throws an InputError and returns.
 */
 void block_mode_entry()
@@ -248,9 +246,7 @@ void dualrealform_f()
 
 
 
-/*
-  Synopsis: destroys any local data, resoring nullptr pointers
-*/
+// Destroy any local data, resoring |nullptr| pointers
 void block_mode_exit()
 {
   delete dual_G_R_pointer; dual_G_R_pointer=nullptr;
@@ -398,7 +394,7 @@ void blockorder_f()
   kgb_io::printBruhatOrder(file,block.bruhatOrder());
 }
 
-// Writes a binary file containing descent sets and ascent sets for block
+// Write a binary file containing descent sets and ascent sets for block
 void blockwrite_f()
 {
   std::ofstream block_out; // binary output files
@@ -413,7 +409,7 @@ void blockwrite_f()
 }
 
 /*
-  Synopsis: prints out information about the stabilizer of a representation
+  Print out information about the stabilizer of a representation
   under the cross action
 */
 void blockstabilizer_f()
@@ -427,12 +423,6 @@ void blockstabilizer_f()
   ioutils::OutputFile file;
   output::printBlockStabilizer
     (file,currentRealGroup(),cn,currentDualRealForm());
-}
-
-void blocktwist_f()
-{
-  ioutils::OutputFile file;
-  block_io::print_twist(file,currentBlock());
 }
 
 void extblock_f()
