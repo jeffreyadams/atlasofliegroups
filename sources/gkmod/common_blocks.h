@@ -70,6 +70,11 @@ class common_block : public Block_base
   // hash structure to allow rapid lookup of |(x,y)| index pairs
   block_hash xy_hash;
 
+  // hash structure to facilitate lookup of elements in |StandardReprMod| form
+  using repr_hash = HashTable<repr::Repr_mod_entry,BlockElt>;
+  repr::Repr_mod_entry::Pooltype z_pool;
+  repr_hash srm_hash;
+
   std::unique_ptr<ext_block::ext_block> extended;
 
   // group small data members together:

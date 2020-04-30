@@ -129,6 +129,8 @@ common_block::common_block // full block constructor
   , y_pool()
   , y_hash(y_pool)
   , xy_hash(info)
+  , z_pool()
+  , srm_hash(z_pool)
   , extended(nullptr) // no extended block initially
   , highest_x() // defined below when we have moved to top of block
   , highest_y() // defined below when generation is complete
@@ -202,6 +204,7 @@ common_block::common_block // full block constructor
     {
       auto zz = queue.front();
       list.splice(list.end(),queue,queue.begin()); // move node
+      srm_hash.match(repr::Repr_mod_entry(rc,zz));
       for (const auto& w : reflect)
       {
 	auto new_z = zz;
@@ -320,6 +323,7 @@ common_block::common_block // full block constructor
 	      tab_s[cur++].cross_image = info.size();
 	      add_z(xy_hash,sz.x(),*it);
 	      info.back().length=next_length;
+	      srm_hash.match(repr::Repr_mod_entry(rc,sz));
 	      ++it;
 	    }
 	    x_seen.insert(packet_list.front().x());
@@ -390,9 +394,10 @@ common_block::common_block // full block constructor
 	    for (auto y = old_y_size; y<y_pool.size(); ++y) // distinct new |y|s
 	    {
 	      add_z(xy_hash,x,y), info.back().length=next_length;
-	      packet_list.emplace_back
+	      auto& new_srm = packet_list.emplace_back
 		(repr::StandardReprMod::build
 		 (rc,srm.gamma_mod1(), x,y_pool[y].repr().log_pi(false)));
+	      srm_hash.match(repr::Repr_mod_entry(rc,new_srm));
 	    }
 
 	    // push any new neighbours of |x| onto |to_do|
@@ -489,6 +494,8 @@ common_block::common_block // partial block constructor
   , y_pool()
   , y_hash(y_pool)
   , xy_hash(info)
+  , z_pool()
+  , srm_hash(z_pool)
   , extended(nullptr) // no extended block initially
   , highest_x(0) // it won't be less than this; increased later
   , highest_y(0) // defined when generation is complete
@@ -542,6 +549,7 @@ common_block::common_block // partial block constructor
     auto y = y_hash.find(i_tab.pack(rt.y_as_torus_elt(srm),kgb.inv_nr(x)));
     assert(y!=y_hash.empty);
     info.emplace_back(x,y); // leave descent status unset and |length==0| for now
+    srm_hash.match(repr::Repr_mod_entry(rc,srm));
   }
   xy_hash.reconstruct(); // we must do this before we use the |lookup| method
 
@@ -669,20 +677,13 @@ common_block::common_block // partial block constructor
 } // |common_block::common_block|, partial
 
 BlockElt common_block::lookup(const repr::StandardReprMod& srm) const
-{ const auto x = srm.x();
-  InvolutionNbr inv = rc.kgb().inv_nr(x);
-  const auto y_ent = involution_table().pack(rc.y_as_torus_elt(srm),inv);
-  const auto y = y_hash.find(y_ent);
-  return y==y_hash.empty ? UndefBlock // the value also known as |xy_hash.empty|
-                         : xy_hash.find(EltInfo{x,y});
+{ // since |srm_hash.empty==UndefBlock|, we can just say:
+  return srm_hash.find(repr::Repr_mod_entry(rc,srm));
 }
+
 BlockElt common_block::lookup(KGBElt x, const RatWeight& gamma_lambda) const
 {
-  const TorusElement t = y_values::exp_pi(gamma_lambda);
-  const auto y_ent = involution_table().pack(t,rc.kgb().inv_nr(x));
-  const auto y = y_hash.find(y_ent);
-  return y==y_hash.empty ? UndefBlock // the value also known as |xy_hash.empty|
-                         : xy_hash.find(EltInfo{x,y});
+  return lookup(repr::StandardReprMod::build(rc,gamma_mod_1,x,gamma_lambda));
 }
 
 repr::StandardRepr common_block::sr (BlockElt z,const RatWeight& gamma) const
@@ -751,6 +752,8 @@ void common_block::sort(unsigned short max_length, bool reverse_length)
     permutations::standardization(value,(max_length+1)*x_lim,nullptr);
 
   ranks.permute(info); // permute |info|, ordering them by increasing |value|
+  ranks.permute(z_pool);
+  srm_hash.reconstruct();
 
   // now adapt |data| tables, assumed to be already computed
   for (weyl::Generator s=0; s<rank(); ++s)
