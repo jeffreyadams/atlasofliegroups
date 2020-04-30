@@ -117,8 +117,6 @@ common_block::common_block // full block constructor
   , rc(rc)
   , gamma_mod_1(srm.gamma_mod1()) // already reduced
   , integral_sys(SubSystem::integral(root_datum(),gamma_mod_1))
-  , y_pool()
-  , y_hash(y_pool)
   , z_pool()
   , srm_hash(z_pool)
   , extended(nullptr) // no extended block initially
@@ -139,6 +137,8 @@ common_block::common_block // full block constructor
 
   repr::common_context ctxt(real_group(),integral_sys);
 
+  y_entry::Pooltype y_pool;
+  y_part_hash y_hash(y_pool);
   block_hash xy_hash(info);
 
   // step 1: initialise |z|
@@ -455,8 +455,6 @@ common_block::common_block // partial block constructor
   , rc(rt)
   , gamma_mod_1(gamma_mod_1) // already reduced
   , integral_sys(SubSystem::integral(root_datum(),gamma_mod_1))
-  , y_pool()
-  , y_hash(y_pool)
   , z_pool()
   , srm_hash(z_pool)
   , extended(nullptr) // no extended block initially
@@ -469,6 +467,9 @@ common_block::common_block // partial block constructor
 
   Block_base::dd = // integral Dynkin diagram, converted from dual side
     DynkinDiagram(integral_sys.cartanMatrix().transposed());
+
+  y_entry::Pooltype y_pool;
+  y_part_hash y_hash(y_pool);
 
   std::vector<containers::sl_list<TorusPart> > y_table
     (inner_class().involution_table().size());

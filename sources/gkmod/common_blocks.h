@@ -62,9 +62,6 @@ class common_block : public Block_base
   const RatWeight gamma_mod_1;
   const SubSystem integral_sys;
 
-  y_entry::Pooltype y_pool;
-  y_part_hash y_hash;  // hash table allows storing |y| parts by index
-
   // hash structure to facilitate lookup of elements in |StandardReprMod| form
   using repr_hash = HashTable<repr::Repr_mod_entry,BlockElt>;
   repr::Repr_mod_entry::Pooltype z_pool;
