@@ -62,13 +62,8 @@ class common_block : public Block_base
   const RatWeight gamma_mod_1;
   const SubSystem integral_sys;
 
-  std::vector<TorusPart> y_bits; // as in |StandardRepr|, indexed by |y|
-
   y_entry::Pooltype y_pool;
   y_part_hash y_hash;  // hash table allows storing |y| parts by index
-
-  // hash structure to allow rapid lookup of |(x,y)| index pairs
-  block_hash xy_hash;
 
   // hash structure to facilitate lookup of elements in |StandardReprMod| form
   using repr_hash = HashTable<repr::Repr_mod_entry,BlockElt>;
@@ -144,7 +139,6 @@ class common_block : public Block_base
  length groups so by |x(z)|. Permute tables correspondingly
 */
   void sort(unsigned short max_length, bool reverse_length);
-  void compute_y_bits();
 
 }; // |class common_block|
 

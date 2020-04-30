@@ -103,15 +103,7 @@ RankFlags common_block::singular (const RatWeight& gamma) const
 // find value $\gamma-\lambda$ that the parameter for |z| at |gamma%1| would give
 RatWeight common_block::gamma_lambda(BlockElt z) const
 {
-  auto& i_tab = rc.inner_class().involution_table();
-  InvolutionNbr i_x = rc.kgb().inv_nr(x(z));
-  const WeightInvolution& theta = i_tab.matrix(i_x);
-
-  // |y_lift| gives the choice for $(1-theta)(\lambda-\rho)$ at |gamma_mod_1|
-  // subtract from $(1-\theta)(\gamma\mod1-\rho)$ and divide by 2
-  const auto gm1_rho = gamma_mod_1-rho(rc.root_datum());
-  auto result = (gm1_rho - theta*gm1_rho-i_tab.y_lift(i_x,y_bits[y(z)]))/2;
-  return result.normalize();
+  return rc.gamma_lambda(z_pool[z].srm(rc,gamma_mod_1));
 }
 
 common_block::~common_block() = default;
@@ -125,10 +117,8 @@ common_block::common_block // full block constructor
   , rc(rc)
   , gamma_mod_1(srm.gamma_mod1()) // already reduced
   , integral_sys(SubSystem::integral(root_datum(),gamma_mod_1))
-  , y_bits()
   , y_pool()
   , y_hash(y_pool)
-  , xy_hash(info)
   , z_pool()
   , srm_hash(z_pool)
   , extended(nullptr) // no extended block initially
@@ -148,6 +138,8 @@ common_block::common_block // full block constructor
   const unsigned our_rank = integral_sys.rank();
 
   repr::common_context ctxt(real_group(),integral_sys);
+
+  block_hash xy_hash(info);
 
   // step 1: initialise |z|
   auto z = srm; // get a working copy
@@ -446,40 +438,13 @@ common_block::common_block // full block constructor
 
   highest_x = last(x_seen); // to be sure; length need not increase with |x|
   highest_y=y_hash.size()-1; // set highest occurring |y| value, for |ysize|
+
   // reverse lengths; reorder by increasing length then value of |x|
   sort(info.back().length,true);
 
-  compute_y_bits();
-  // and look up which element matches the original input
-  entry_element = lookup(srm);
+  entry_element = lookup(srm); // look up element matching the original input
 
 } // |common_block::common_block|, full
-
-void common_block::compute_y_bits()
-{
-  y_bits.reserve(y_pool.size());
-  const InvolutionTable& i_tab = inner_class().involution_table();
-  const RatWeight gamma1_rho = gamma_mod_1 - rho(root_datum());
-
-  // tabulate some |x| (in fact the first one) for every value |y|
-  std::vector<KGBElt> x_of_y(y_pool.size(),UndefKGB);
-  for (BlockElt z=0; z<size(); ++z)
-    if (x_of_y[y(z)]==UndefKGB)
-      x_of_y[y(z)]=x(z);
-
-  for (KGBElt y=0; y<y_pool.size(); ++y)
-  { KGBElt x=x_of_y[y];
-    assert(x!=UndefKGB); // since every |y| must have at least one matching |x|
-    InvolutionNbr i_x = rc.kgb().inv_nr(x);
-    RatWeight yrep = y_pool[y].repr().log_pi(false);
-    yrep -= i_tab.matrix(i_x)*yrep;
-    yrep /= 2; // now |yrep| is projected to the $-1$ eigenspace of $\theta$
-    const RatWeight lr = (gamma1_rho - yrep).normalize();
-    assert (lr.denominator()==1); // we are back in proper $X^*$ coset
-    const Weight lambda_rho(lr.numerator().begin(),lr.numerator().end());
-    y_bits.push_back(i_tab.y_pack(i_x,lambda_rho));
-  }
-}
 
 common_block::common_block // partial block constructor
     (const repr::Rep_table& rt,
@@ -490,10 +455,8 @@ common_block::common_block // partial block constructor
   , rc(rt)
   , gamma_mod_1(gamma_mod_1) // already reduced
   , integral_sys(SubSystem::integral(root_datum(),gamma_mod_1))
-  , y_bits()
   , y_pool()
   , y_hash(y_pool)
-  , xy_hash(info)
   , z_pool()
   , srm_hash(z_pool)
   , extended(nullptr) // no extended block initially
@@ -551,7 +514,6 @@ common_block::common_block // partial block constructor
     info.emplace_back(x,y); // leave descent status unset and |length==0| for now
     srm_hash.match(repr::Repr_mod_entry(rc,srm));
   }
-  xy_hash.reconstruct(); // we must do this before we use the |lookup| method
 
   // allocate link fields with |UndefBlock| entries
   data.assign(integral_sys.rank(),std::vector<block_fields>(elements.size()));
@@ -659,20 +621,7 @@ common_block::common_block // partial block constructor
     } // |for (s)|
   } // |for (i)|
 
-  sort(max_length,false);  // sort by length, then |x|
-
-  // finally compute |y_bits| parallel to |y_table| backwards
-  y_bits.reserve(y_pool.size());
-  for (InvolutionNbr i_x=y_table.size(); i_x-->0; )
-    for (TorusPart& y : y_table[i_x])
-    {
-#ifndef NDEBUG
-      RatWeight gamma_lambda = rt.gamma_lambda(i_x,y,gamma_mod_1);
-      TorusElement t = y_values::exp_pi(gamma_lambda);
-      assert(y_hash.find(i_tab.pack(t,i_x))==y_bits.size());
-#endif
-      y_bits.push_back(y);
-    }
+  sort(max_length,false);  // finally sort by length, then |x|
 
 } // |common_block::common_block|, partial
 
@@ -775,7 +724,6 @@ void common_block::sort(unsigned short max_length, bool reverse_length)
     } // |for z|
   } // |for s|
 
-  xy_hash.reconstruct(); // adapt to permutation of |info| underlying |xy_hash|
 } // |common_block::sort|
 
 } // |namespace blocks|
