@@ -154,9 +154,6 @@ KL_table::KL_table(const Block_base& b)
   , d_mu(b.size())
   , d_store(2)
 {
-  // make sure the support (base class) is filled
-  klsupport::KLSupport::fill();
-
   d_store[d_zero]=Zero; // ensure these polynomials are present
   d_store[d_one]=One;   // at expected indices, even if maybe absent in |d_kl|
 }
