@@ -1231,7 +1231,7 @@ SR_poly Rep_table::deformation_terms
     const bool contribute = block.length(z)%2!=y_parity;
     for (BlockElt x=z+1; x-->0; ) // for |x| from |z| down to |0| inclusive
     {
-      const kl::KLPol& pol = kl_tab.klPol(x,z); // regular KL polynomial
+      const kl::KLPol& pol = kl_tab.KL_pol(x,z); // regular KL polynomial
       int eval = 0;
       for (polynomials::Degree d=pol.size(); d-->0; )
 	eval = static_cast<int>(pol[d]) - eval; // evaluate at $q = -1$
@@ -1298,7 +1298,7 @@ SR_poly Rep_table::KL_column_at_s(StandardRepr sr) // |sr| must be final
   auto z_length=block.length(z);
   for (BlockElt x=z+1; x-->0; )
   {
-    const kl::KLPol& pol = kl_tab.klPol(x,z); // regular KL polynomial
+    const kl::KLPol& pol = kl_tab.KL_pol(x,z); // regular KL polynomial
     if (pol.isZero())
       continue;
     Split_integer eval(0);

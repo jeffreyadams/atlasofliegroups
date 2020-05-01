@@ -60,7 +60,7 @@ std::ostream& printAllKL
     bool first = true;
 
     for (size_t x = 0; x <= y; ++x) {
-      const kl::KLPol& pol = kl_tab.klPol(x,y);
+      const kl::KLPol& pol = kl_tab.KL_pol(x,y);
       if (pol.isZero())
 	continue;
       if (first)
@@ -110,7 +110,7 @@ std::ostream& printPrimitiveKL
 
   for (size_t y = 0; y < kl_tab.size(); ++y)
   {
-    kl::PrimitiveRow e = kl_tab.primitiveRow(y); // list of ALL primitive x's
+    auto e = kl_tab.primitive_column(y); // list of ALL primitive x's for y
 
     strm << std::setw(width) << y << ": ";
     bool first = true;
@@ -118,7 +118,7 @@ std::ostream& printPrimitiveKL
       if (Bruhat.lesseq(e[j],y))
       { // now |x=e[j]| is primitive for |y| and Bruhat-comparable
 	++count;
-	if ((kl_tab.klPol(e[j],y).isZero()))
+	if ((kl_tab.KL_pol(e[j],y).isZero()))
 	  ++zero_count;
 	if (first)
 	{
@@ -131,11 +131,11 @@ std::ostream& printPrimitiveKL
 	       << std::setw(width) << e[j] << ": ";
 	}
 
-	kl_tab.klPol(e[j],y).print(strm,KLIndeterminate) << std::endl;
+	kl_tab.KL_pol(e[j],y).print(strm,KLIndeterminate) << std::endl;
       }
       else
       {
-	assert(kl_tab.klPol(e[j],y).isZero());
+	assert(kl_tab.KL_pol(e[j],y).isZero());
 	++incomp_count;
       } // |for (j)|
 
@@ -184,12 +184,12 @@ std::ostream& printMu(std::ostream& strm, const kl::KL_table& kl_tab)
   int width = ioutils::digits(kl_tab.size()-1,10ul);
 
   for (size_t y = 0; y < kl_tab.size(); ++y) {
-    const kl::MuRow& mrow = kl_tab.muRow(y);
+    const kl::MuColumn& mcol = kl_tab.mu_column(y);
     strm << std::setw(width) << y << ": ";
-    for (size_t j = 0; j < mrow.size(); ++j) {
+    for (size_t j = 0; j < mcol.size(); ++j) {
       if (j>0)
 	strm << ",";
-      strm << "(" << mrow[j].first << "," << mrow[j].second << ")";
+      strm << "(" << mcol[j].first << "," << mcol[j].second << ")";
     }
     strm << std::endl;
   }

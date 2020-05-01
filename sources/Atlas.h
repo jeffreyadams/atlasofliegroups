@@ -425,8 +425,6 @@ namespace atlas {
     typedef KLCoeff MuCoeff;
     typedef std::vector<KLPol> KLStore;
     typedef KLStore::const_reference KLPolRef;
-    typedef std::vector<KLIndex> KLRow;
-    typedef std::vector<BlockElt> PrimitiveRow;
   }
   using kl::KLCoeff;
   using kl::KLPol;

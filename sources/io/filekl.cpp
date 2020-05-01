@@ -66,7 +66,7 @@ namespace atlas {
     write_KL_row(const kl::KL_table& kl_tab, BlockElt y, std::ostream& out)
     {
       BitMap prims=kl_tab.primMap(y);
-      const kl::KLRow& klr=kl_tab.klRow(y);
+      const kl::KLColumn& klr=kl_tab.KL_column(y);
 
       assert(klr.size()+1==prims.capacity()); // check the number of KL polynomials
 

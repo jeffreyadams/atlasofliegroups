@@ -107,7 +107,7 @@ KLSupport::KLSupport(const Block_base& b)
 	  d_goodAscent[z].set(s); // good ascent
     }
   }
-}
+} // |KLSupport::KLSupport|
 
 /******** accessors **********************************************************/
 

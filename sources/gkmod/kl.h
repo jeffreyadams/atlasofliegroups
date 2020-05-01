@@ -27,6 +27,9 @@ namespace atlas {
 
 namespace kl {
 
+using KLColumn = std::vector<KLIndex>;
+using PrimitiveColumn = std::vector<BlockElt>;
+
 /******** function declarations *********************************************/
 
 
@@ -37,7 +40,7 @@ wgraph::WGraph wGraph(const KL_table&);
 
 /* Namely: the definition of KL_table itself */
 
-typedef std::vector<std::pair<BlockElt,MuCoeff> > MuRow;
+using MuColumn = std::vector<std::pair<BlockElt,MuCoeff> >;
 
 class KLPolEntry; // class definition will given in the implementation file
 
@@ -55,21 +58,21 @@ class KL_table
   Entry |d_prim[y]| is a list of the elements $x_i$ that are primitive with
   respect to $y$ and have |P_{y,x_i}| not zero.
 */
-  std::vector<PrimitiveRow> d_prim;
+  std::vector<PrimitiveColumn> d_prim;
 
 /*
   $d_kl[y]$ is a list of indices into |d_hashtable| of polynomials
   $P_{x_i,y}$ with $x_i=d_prim[i]$
 */
-  std::vector<KLRow> d_kl;       // list of polynomial pointers
+  std::vector<KLColumn> d_kl;       // list of polynomial pointers
 
-// Entry |d_mu[y]| is a |MuRow|; it has parallel vectors for $x$ and |mu(x,y)|
-  std::vector<MuRow> d_mu;       // lists of $x$'s and their |mu|-coefficients
+// Entry |d_mu[y]| is a vector of pairs of an $x$ and corresponding |mu(x,y)|
+  std::vector<MuColumn> d_mu;       // lists of $x$'s and their |mu|-coefficients
 
   KLStore d_store; // the distinct actual polynomials
 
   // the constructors will ensure that |d_store| contains 0, 1 at beginning
-  enum { d_zero = 0, d_one  = 1}; // indices of polynomials 0,1 in |d_store|
+  enum { d_zero = 0, d_one  = 1 }; // indices of polynomials 0,1 in |d_store|
   // using enum rather than |static const int| allows implicit const references
 
   // copy, assignment, and swap are not needed, and not provided
@@ -90,13 +93,13 @@ class KL_table
   BlockElt hole_limit () const { return d_holes.capacity(); }
 
   // construct lists of extremal respectively primitive elements for |y|
-  PrimitiveRow extremalRow(BlockElt y) const;
-  PrimitiveRow primitiveRow(BlockElt y) const;
+  PrimitiveColumn extremal_column(BlockElt y) const;
+  PrimitiveColumn primitive_column(BlockElt y) const;
 
   bool isZero(const KLIndex p) const { return p == d_zero; }
 
   // A constant reference to the Kazhdan-Lusztig-Vogan polynomial P_{x,y}
-  KLPolRef klPol(BlockElt x, BlockElt y) const;
+  KLPolRef KL_pol(BlockElt x, BlockElt y) const;
 
   // That polynomial in the form of an index into |polStore()==d_store|
   KLIndex KL_pol_index(BlockElt x, BlockElt y) const;
@@ -105,22 +108,22 @@ class KL_table
   Returns the list of pointers to the non-zero KL polynomials
   P_{x_i,y} (with x_i = d_prim[i] primitive with respect to y).
 */
-  const KLRow& klRow(BlockElt y) const { return d_kl[y]; }
+  const KLColumn& KL_column(BlockElt y) const { return d_kl[y]; }
 
   MuCoeff mu(BlockElt x, BlockElt y) const; // $\mu(x,y)$
 
   // List of nonzero $\mu(x,y)$ for |y|, as pairs $(x,\mu(x,y))$
-  const MuRow& muRow(BlockElt y) const { return d_mu[y]; }
+  const MuColumn& mu_column(BlockElt y) const { return d_mu[y]; }
 
   // List of all non-zero KL polynomials for the block, in generation order
   const KLStore& polStore() const { return d_store; }
 
-  // get bitmap of primitive elements for row |y| with nonzero KL polynomial
+  // get bitmap of primitive elements for column |y| with nonzero KL polynomial
   BitMap primMap (BlockElt y) const;
 
 // manipulators
 
-  // partial fill, up to and including the "row" of |y|
+  // partial fill, up to and including the column of |y|
   void fill(BlockElt y, bool verbose=false);
 
   void fill(bool verbose=false)
@@ -138,32 +141,33 @@ class KL_table
   weyl::Generator first_nice_and_real(BlockElt x,BlockElt y) const;
   std::pair<weyl::Generator,weyl::Generator>
   first_endgame_pair(BlockElt x, BlockElt y) const;
-  BlockEltPair inverseCayley(size_t s, BlockElt y) const;
+  BlockEltPair inverse_Cayley(weyl::Generator s, BlockElt y) const;
   std::set<BlockElt> down_set(BlockElt y) const;
 
-  KLPolRef klPol(BlockElt x, BlockElt y,
-		   KLRow::const_iterator klv,
-		   PrimitiveRow::const_iterator p_begin,
-		   PrimitiveRow::const_iterator p_end) const;
+  KLPolRef KL_pol(BlockElt x, BlockElt y,
+		  KLColumn::const_iterator klv,
+		  PrimitiveColumn::const_iterator p_begin,
+		  PrimitiveColumn::const_iterator p_end) const;
 
   // manipulators
   void silent_fill(BlockElt last_y); // called by public |fill| when not verbose
   void verbose_fill(BlockElt last_y); // called by public |fill| when verbose
 
   // the |size_t| results serve only for statistics; caller may ignore them
-  size_t fillKLRow(BlockElt y, KLHash& hash);
-  void recursionRow(std::vector<KLPol> & klv,
-		    const PrimitiveRow& e, BlockElt y, size_t s);
-  void muCorrection(std::vector<KLPol>& klv,
-		    const PrimitiveRow& e,
-		    BlockElt y, size_t s);
-  size_t writeRow(const std::vector<KLPol>& klv,
-		  const PrimitiveRow& e, BlockElt y, KLHash& hash);
-  size_t remove_zeros(const KLRow& klv,
-		      const PrimitiveRow& e, BlockElt y);
-  void newRecursionRow(KLRow & klv,const PrimitiveRow& pr,
-		       BlockElt y, KLHash& hash);
-  KLPol muNewFormula(BlockElt x, BlockElt y, size_t s, const MuRow& muy);
+  size_t fill_KL_column(BlockElt y, KLHash& hash);
+  void recursion_column(std::vector<KLPol> & klv,
+			const PrimitiveColumn& e, BlockElt y, weyl::Generator s);
+  void mu_correction(std::vector<KLPol>& klv,
+		     const PrimitiveColumn& e,
+		     BlockElt y, weyl::Generator s);
+  size_t write_column(const std::vector<KLPol>& klv,
+		      const PrimitiveColumn& e, BlockElt y, KLHash& hash);
+  size_t remove_zeros(const KLColumn& klv,
+		      const PrimitiveColumn& e, BlockElt y);
+  void new_recursion_column(KLColumn & klv,const PrimitiveColumn& pc,
+			   BlockElt y, KLHash& hash);
+  KLPol mu_new_formula(BlockElt x, BlockElt y, weyl::Generator s,
+		       const MuColumn& muy);
 
 }; // |class KL_table|
 

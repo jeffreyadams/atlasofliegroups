@@ -443,7 +443,7 @@ std::ostream& print_KL(std::ostream& f, param_block& block, BlockElt z)
   unsigned int parity = block.length(z)%2;
   for (size_t x = 0; x <= z; ++x)
   {
-    const kl::KLPol& pol = kl_tab.klPol(x,z);
+    const kl::KLPol& pol = kl_tab.KL_pol(x,z);
     if (not pol.isZero())
     {
       Poly p(pol); // convert
