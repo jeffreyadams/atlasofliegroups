@@ -1046,7 +1046,7 @@ void KL_table::verbose_fill(BlockElt last_y)
 {
   try
   {
-    KLHash hash(d_store);
+    KLHash hash(d_store,4);
 
     size_t minLength = length(first_hole()); // length of first new |y|
     size_t maxLength = length(last_y<size() ? last_y : size()-1);

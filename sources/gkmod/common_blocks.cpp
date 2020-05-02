@@ -119,7 +119,7 @@ common_block::common_block // full block constructor
   , gamma_mod_1(srm.gamma_mod1()) // already reduced
   , integral_sys(SubSystem::integral(root_datum(),gamma_mod_1))
   , z_pool()
-  , srm_hash(z_pool)
+  , srm_hash(z_pool,5)
   , extended(nullptr) // no extended block initially
   , highest_x() // defined below when we have moved to top of block
   , highest_y() // defined below when generation is complete
