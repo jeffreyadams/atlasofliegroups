@@ -40,7 +40,12 @@ wgraph::WGraph wGraph(const KL_table&);
 
 /* Namely: the definition of KL_table itself */
 
-using MuColumn = std::vector<std::pair<BlockElt,MuCoeff> >;
+struct Mu_pair
+{ BlockElt x; MuCoeff coef;
+  Mu_pair (BlockElt x,MuCoeff coef) : x(x), coef(coef) {}
+  bool operator< (const Mu_pair& other) const { return x<other.x; }
+};
+using Mu_column = std::vector<Mu_pair>;
 
 class KLPolEntry; // class definition will given in the implementation file
 
@@ -64,10 +69,10 @@ class KL_table
   $d_kl[y]$ is a list of indices into |d_hashtable| of polynomials
   $P_{x_i,y}$ with $x_i=d_prim[i]$
 */
-  std::vector<KLColumn> d_kl;       // list of polynomial pointers
+  std::vector<KLColumn> d_kl;    // list of polynomial pointers
 
 // Entry |d_mu[y]| is a vector of pairs of an $x$ and corresponding |mu(x,y)|
-  std::vector<MuColumn> d_mu;       // lists of $x$'s and their |mu|-coefficients
+  std::vector<Mu_column> d_mu;   // lists of $x$'s and their |mu|-coefficients
 
   KLStore d_store; // the distinct actual polynomials
 
@@ -113,7 +118,7 @@ class KL_table
   MuCoeff mu(BlockElt x, BlockElt y) const; // $\mu(x,y)$
 
   // List of nonzero $\mu(x,y)$ for |y|, as pairs $(x,\mu(x,y))$
-  const MuColumn& mu_column(BlockElt y) const { return d_mu[y]; }
+  const Mu_column& mu_column(BlockElt y) const { return d_mu[y]; }
 
   // List of all non-zero KL polynomials for the block, in generation order
   const KLStore& polStore() const { return d_store; }
@@ -167,7 +172,7 @@ class KL_table
   void new_recursion_column(KLColumn & klv,const PrimitiveColumn& pc,
 			   BlockElt y, KLHash& hash);
   KLPol mu_new_formula(BlockElt x, BlockElt y, weyl::Generator s,
-		       const MuColumn& muy);
+		       const Mu_column& muy);
 
 }; // |class KL_table|
 

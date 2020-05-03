@@ -199,11 +199,6 @@ KLIndex KL_table::KL_pol_index(BlockElt x, BlockElt y) const
   return xptr == pc.cend() or *xptr != x ? d_zero : d_kl[y][xptr - pc.cbegin()];
 }
 
-// an auxiliary needed to be passed in a call of |std::lower_bound|
-bool mu_entry_compare(const std::pair<BlockElt,MuCoeff>& x,
-		      const std::pair<BlockElt,MuCoeff>& y)
-{ return x.first<y.first; }
-
 /*
   Return $\mu(x,y)$.
 
@@ -216,14 +211,13 @@ MuCoeff KL_table::mu(BlockElt x, BlockElt y) const
   unsigned int lx=length(x),ly=length(y);
   if (ly<=lx or (ly-lx)%2==0)
     return MuCoeff(0);
-  const MuColumn& mc = d_mu[y];
-  std::pair<BlockElt,MuCoeff> x0(x,0); // second component is unused
-  auto xloc= std::lower_bound(mc.cbegin(),mc.cend(),x0,&mu_entry_compare);
+  const Mu_column& mc = d_mu[y];
+  auto xloc= std::lower_bound(mc.cbegin(),mc.cend(),Mu_pair{x,MuCoeff(0)});
 
-  if (xloc==mc.cend() or xloc->first!=x)
+  if (xloc==mc.cend() or xloc->x!=x)
     return MuCoeff(0); // x not found in mr
 
-  return mc[xloc-mc.cbegin()].second;
+  return mc[xloc-mc.cbegin()].coef;
 }
 
 /*
@@ -659,7 +653,7 @@ void KL_table::mu_correction(std::vector<KLPol>& klv,
     descentValue(s,y) == DescentStatus::ComplexDescent ? cross(s,y)
     : inverse_Cayley(s,y).first;  // s is real type I for y here, ignore .second
 
-  const MuColumn& mcol = d_mu[sy];
+  const Mu_column& mcol = d_mu[sy];
   size_t l_y = length(y);
 
   size_t zi=e.size(); // should satisfy |e[zi]==z| whenever such |zi| exists
@@ -668,7 +662,7 @@ void KL_table::mu_correction(std::vector<KLPol>& klv,
   try {
     for (size_t i = mcol.size(); i-->0; ) // loop over |z| decreasing from |sy|
     {
-      BlockElt z = mcol[i].first;
+      BlockElt z = mcol[i].x;
       DescentStatus::Value v = descentValue(s,z);
       if (not DescentStatus::isDescent(v))
 	continue;
@@ -677,7 +671,7 @@ void KL_table::mu_correction(std::vector<KLPol>& klv,
       while (zi>0 and e[zi-1]>=z)
 	--zi; // ensure |e[k]>=z| if and only if |k>=iz|
 
-      MuCoeff mu = mcol[i].second; // mu!=MuCoeff(0)
+      MuCoeff mu = mcol[i].coef; // mu!=MuCoeff(0)
 
       polynomials::Degree d = (l_y-l_z)/2; // power of q used in the loops below
 
@@ -787,7 +781,7 @@ size_t KL_table::write_column(const std::vector<KLPol>& klv,
   if (ly==0)
     return 0; // nothing left to do at minimal length
 
-  std::set<BlockElt> downs = down_set(y);
+  std::set<BlockElt> downs = down_set(y); // elements covered by |y|
 
   // commit
   d_prim[y] = PrimitiveColumn(nzpc_p,nzpc.end()); // copy shifting, from |nzpc_p|
@@ -800,12 +794,12 @@ size_t KL_table::write_column(const std::vector<KLPol>& klv,
     BlockElt x=pc[*it];
     KLPolRef Pxy = KL_pol(x,y,KL_p,nzpc_p,nzpc.end());
     assert(not Pxy.isZero());
-    d_mu[y].push_back(std::make_pair(x,Pxy[Pxy.degree()]));
+    d_mu[y].emplace_back(x,MuCoeff(Pxy[Pxy.degree()]));
   }
   for (std::set<BlockElt>::iterator it=downs.begin(); it!=downs.end(); ++it)
   {
-    d_mu[y].push_back(std::make_pair(*it,MuCoeff(1)));
-    for (size_t i=d_mu[y].size()-1; i>0 and d_mu[y][i-1].first>*it; --i)
+    d_mu[y].emplace_back(*it,MuCoeff(1));
+    for (size_t i=d_mu[y].size()-1; i>0 and d_mu[y][i-1].x>*it; --i)
       std::swap(d_mu[y][i-1],d_mu[y][i]); // insertion-sort
   }
 
@@ -894,12 +888,12 @@ void KL_table::new_recursion_column
 
   unsigned int l_y = length(y);
 
-  MuColumn mu_y; mu_y.reserve(lengthLess(length(y))); // a very gross estimate
+  Mu_column mu_y; mu_y.reserve(lengthLess(length(y))); // a very gross estimate
 
   // start off |mu_y| with ones for |down_set(y)|, not otherwise computed
   std::set<BlockElt> downs = down_set(y);
   for (std::set<BlockElt>::iterator it=downs.begin(); it!=downs.end(); ++it)
-    mu_y.push_back(std::make_pair(*it,MuCoeff(1)));
+    mu_y.emplace_back(*it,MuCoeff(1));
 
   size_t j = klv.size(); // declare outside try block for error reporting
   try {
@@ -965,7 +959,7 @@ void KL_table::new_recursion_column
 	}
 	klv[j] = hash.match(pol);
 	if ((l_y-l_x)%2!=0 and pol.degree()==(l_y-l_x)/2)
-	  mu_y.push_back(std::make_pair(x,pol[pol.degree()]));
+	  mu_y.emplace_back(x,pol[pol.degree()]);
 
       } // end of |first_nice_and_real| case
 
@@ -1013,7 +1007,7 @@ void KL_table::new_recursion_column
 
 	  klv[j] = hash.match(pol);
 	  if ((l_y-l_x)%2!=0 and pol.degree()==(l_y-l_x)/2)
-	    mu_y.push_back(std::make_pair(x,pol[pol.degree()]));
+	    mu_y.emplace_back(x,pol[pol.degree()]);
 	}
 	else // |first_endgame_pair| found nothing
 	  klv[j]=d_zero;
@@ -1026,11 +1020,11 @@ void KL_table::new_recursion_column
 			    static_cast<const KL_table&>(*this));
   }
 
-  d_mu[y]=MuColumn(mu_y.rbegin(),mu_y.rend()); // reverse to a tight copy
+  d_mu[y]=Mu_column(mu_y.rbegin(),mu_y.rend()); // reverse to a tight copy
 
   for (unsigned int k=mu_y.size()-downs.size(); k<mu_y.size(); ++k)
   { // successively insertion-sort the down-set x's into previous list
-    for (size_t i=k; i>0 and d_mu[y][i-1].first>d_mu[y][i].first; --i)
+    for (size_t i=k; i>0 and d_mu[y][i-1].x > d_mu[y][i].x; --i)
       std::swap(d_mu[y][i-1],d_mu[y][i]);
   }
 
@@ -1060,7 +1054,7 @@ void KL_table::new_recursion_column
   large to produce a non-zero $P_{x,z}$.
 */
 KLPol KL_table::mu_new_formula
-  (BlockElt x, BlockElt y, weyl::Generator s, const MuColumn& mu_y)
+  (BlockElt x, BlockElt y, weyl::Generator s, const Mu_column& mu_y)
 {
   KLPol pol=Zero;
 
@@ -1070,7 +1064,7 @@ KLPol KL_table::mu_new_formula
   {
     for (auto it=mu_y.cbegin(); it!=mu_y.cend(); ++it)
     {
-      BlockElt z = it->first; // a block element with $\mu(z,y)\neq0$
+      BlockElt z = it->x; // a block element with $\mu(z,y)\neq0$
       unsigned int lz = length(z);
       if (lz<=lx)
 	break; // length |z| decreases, and |z==x| must be excluded, so stop
@@ -1078,7 +1072,7 @@ KLPol KL_table::mu_new_formula
 
       // now we have a true contribution with nonzero $\mu$
       unsigned int d = (ly - lz +1)/2; // power of $q$ used in the formula
-      MuCoeff mu = it->second;
+      MuCoeff mu = it->coef;
       KLPolRef Pxz = KL_pol(x,z); // which is known because $z<y$
 
       if (mu==MuCoeff(1)) // avoid useless multiplication by 1 if possible
@@ -1249,15 +1243,15 @@ wgraph::WGraph wGraph(const KL_table& kl_tab)
   {
     const RankFlags& d_y = kl_tab.descentSet(y);
     wg.descent_sets[y] = d_y;
-    const MuColumn& mcol = kl_tab.mu_column(y);
+    const Mu_column& mcol = kl_tab.mu_column(y);
     for (size_t j = 0; j < mcol.size(); ++j)
     {
-      BlockElt x = mcol[j].first;
+      BlockElt x = mcol[j].x;
       assert(x<y); // this is a property of |mu_column|
       const RankFlags& d_x = kl_tab.descentSet(x);
       if (d_x == d_y)
 	continue;
-      MuCoeff mu = mcol[j].second;
+      MuCoeff mu = mcol[j].coef;
       if (kl_tab.length(y) - kl_tab.length(x) > 1)
       { // nonzero $\mu$, unequal descents, $l(x)+1<l(y)$: edge from $x$ to $y$
 	wg.oriented_graph.edgeList(x).push_back(y);

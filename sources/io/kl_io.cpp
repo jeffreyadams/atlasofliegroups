@@ -184,12 +184,12 @@ std::ostream& printMu(std::ostream& strm, const kl::KL_table& kl_tab)
   int width = ioutils::digits(kl_tab.size()-1,10ul);
 
   for (size_t y = 0; y < kl_tab.size(); ++y) {
-    const kl::MuColumn& mcol = kl_tab.mu_column(y);
+    const kl::Mu_column& mcol = kl_tab.mu_column(y);
     strm << std::setw(width) << y << ": ";
     for (size_t j = 0; j < mcol.size(); ++j) {
       if (j>0)
 	strm << ",";
-      strm << "(" << mcol[j].first << "," << mcol[j].second << ")";
+      strm << "(" << mcol[j].x << "," << mcol[j].coef << ")";
     }
     strm << std::endl;
   }
