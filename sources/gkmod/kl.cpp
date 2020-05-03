@@ -40,7 +40,6 @@
 #include <sys/resource.h> // for getrusage in verbose
 
 #include <cassert>
-#include <set>  // for |down_set|
 #include <stdexcept>
 
 #include "hashtable.h"
@@ -440,31 +439,6 @@ std::pair<weyl::Generator,weyl::Generator>
 inline BlockEltPair KL_table::inverse_Cayley(weyl::Generator s, BlockElt y) const
 { return block().inverseCayley(s,y); }
 
-// compute the down-set of $y$, the non-extremal $x$ with $\mu(x,y)\neq0$
-std::set<BlockElt> KL_table::down_set(BlockElt y) const
-{
-  std::set<BlockElt> result;
-
-  for (RankFlags::iterator it=descentSet(y).begin(); it(); ++it)
-    switch (descentValue(*it,y))
-    {
-    case DescentStatus::ComplexDescent: result.insert(cross(*it,y));
-      break;
-    case DescentStatus::RealTypeI:
-      {
-	BlockEltPair sy = inverse_Cayley(*it,y);
-	result.insert(sy.first); result.insert(sy.second);
-      }
-      break;
-    case DescentStatus::RealTypeII:
-      result.insert(inverse_Cayley(*it,y).first);
-      break;
-    default: // |case DescentStatus::ImaginaryCompact| nothing
-      break;
-    }
-  return result;
-
-} // |KL_table::down_set|
 
 /*
   Return the Kazhdan-Lusztig polynomial for x corresponding to the given column.
@@ -710,7 +684,7 @@ void KL_table::mu_correction(std::vector<KLPol>& klv,
 			    static_cast<const KL_table&>(*this));
   }
 
-} // |KL_table::muCorrection|
+} // |KL_table::mu_correction|
 
 /*
   Write down column |y| in |d_kl| and |d_prim|.
@@ -745,7 +719,7 @@ size_t KL_table::write_column(const std::vector<KLPol>& klv,
   auto nzpc_p = nzpc.end();
   auto KL_p = KL.end();
 
-  BitMap mu_elements(pc.size()); // flags |i| with |mu(pc[i],y)>0|
+  Mu_list mu_pairs; // those |x| with |mu(x,y)>0|
 
   unsigned int ly = length(y);
 
@@ -760,8 +734,8 @@ size_t KL_table::write_column(const std::vector<KLPol>& klv,
 	*--nzpc_p = pc[i];
         *--KL_p = hash.match(Pxy);
 	unsigned int lx=length(pc[i]);
-	if ((ly-lx)%2>0 and Pxy.degree()==(ly-lx)/2) // in fact |(ly-lx-1)/2|
-	  mu_elements.insert(i);
+	if (ly==lx+2*Pxy.degree()+1) // in particular parities |lx|, |ly| differ
+	  mu_pairs.emplace_front(pc[i],MuCoeff(Pxy[Pxy.degree()]));
       }
     }
     else // insert a polynomial for primitive non-extremal pc[i] if nonzero
@@ -781,33 +755,25 @@ size_t KL_table::write_column(const std::vector<KLPol>& klv,
   if (ly==0)
     return 0; // nothing left to do at minimal length
 
-  std::set<BlockElt> downs = down_set(y); // elements covered by |y|
+  Mu_list downs;
+  for (BlockElt x : down_set(block(),y))
+    downs.emplace_back(x,MuCoeff(1));
+  // These $x$s are non-extremal for $y$, yet have $\mu(x,y)=1\neq0$
+
+  // some elements in |mu_pairs| may have same length as |downs|: merge is needed
+  mu_pairs.merge(std::move(downs)); // need not call |unique|: sets are disjoint
 
   // commit
   d_prim[y] = PrimitiveColumn(nzpc_p,nzpc.end()); // copy shifting, from |nzpc_p|
   d_kl[y] = KLColumn(KL_p,KL.end());
 
-  d_mu[y].reserve(mu_elements.size()+downs.size());
-
-  for (BitMap::iterator it=mu_elements.begin(); it(); ++it)
-  {
-    BlockElt x=pc[*it];
-    KLPolRef Pxy = KL_pol(x,y,KL_p,nzpc_p,nzpc.end());
-    assert(not Pxy.isZero());
-    d_mu[y].emplace_back(x,MuCoeff(Pxy[Pxy.degree()]));
-  }
-  for (std::set<BlockElt>::iterator it=downs.begin(); it!=downs.end(); ++it)
-  {
-    d_mu[y].emplace_back(*it,MuCoeff(1));
-    for (size_t i=d_mu[y].size()-1; i>0 and d_mu[y][i-1].x>*it; --i)
-      std::swap(d_mu[y][i-1],d_mu[y][i]); // insertion-sort
-  }
+  d_mu[y].assign(mu_pairs.wcbegin(),mu_pairs.wcend()); // convert to vector
 
   return nzpc_p - nzpc.begin(); // measure unused space
 
 } // |KL_table::write_column|
 
-// this method is called instead of |write_column| in cases involving new recursion
+// this method is called instead of |write_column| when new recursion applies
 size_t KL_table::remove_zeros(const KLColumn& klv,
 			      const PrimitiveColumn& pc, BlockElt y)
 {
@@ -888,12 +854,15 @@ void KL_table::new_recursion_column
 
   unsigned int l_y = length(y);
 
-  Mu_column mu_y; mu_y.reserve(lengthLess(length(y))); // a very gross estimate
+  Mu_list mu_pairs; // those |x| with |mu(x,y)>0|
 
-  // start off |mu_y| with ones for |down_set(y)|, not otherwise computed
-  std::set<BlockElt> downs = down_set(y);
-  for (std::set<BlockElt>::iterator it=downs.begin(); it!=downs.end(); ++it)
-    mu_y.emplace_back(*it,MuCoeff(1));
+  // start off |mu_pairs| with ones for |down_set(y)|, not otherwise computed
+  for (BlockElt x : down_set(block(),y))
+    mu_pairs.emplace_back(x,MuCoeff(1)); // initial part |mu_pairs| is increasing
+
+  // remainder of |mu_pairs| will be decreasing by |x|; it does not matter that
+  // all |mu_pairs| is not decreasing by |x|, but it must be decreasing by length
+  const auto downs_end = mu_pairs.end(); // record separation for final sorting
 
   size_t j = klv.size(); // declare outside try block for error reporting
   try {
@@ -924,7 +893,7 @@ void KL_table::new_recursion_column
       if (s < rank()) // there is such an ascent s
       {
 	// start setting |pol| to the expression (3.4) in recursion.pdf
-	KLPol pol = mu_new_formula(x,y,s,mu_y);
+	KLPol pol = mu_new_formula(x,y,s,mu_pairs);
 
 	switch (descentValue(s,x))
 	{
@@ -958,8 +927,8 @@ void KL_table::new_recursion_column
 	default: assert(false); //we've handled all possible NiceAscents
 	}
 	klv[j] = hash.match(pol);
-	if ((l_y-l_x)%2!=0 and pol.degree()==(l_y-l_x)/2)
-	  mu_y.emplace_back(x,pol[pol.degree()]);
+	if (l_y==l_x+2*pol.degree()+1)
+	  mu_pairs.emplace_back(x,pol[pol.degree()]);
 
       } // end of |first_nice_and_real| case
 
@@ -982,7 +951,7 @@ void KL_table::new_recursion_column
 	std::pair<size_t,size_t> st = first_endgame_pair(x,y);
 	if ((s=st.first) < rank())
 	{
-	  KLPol pol = mu_new_formula(x,y,s,mu_y);
+	  KLPol pol = mu_new_formula(x,y,s,mu_pairs);
 
 	  //subtract (q-1)P_{xprime,y} from terms of expression (3.4)
 	  BlockElt xprime = cayley(s,x).first;
@@ -1006,9 +975,9 @@ void KL_table::new_recursion_column
 	  }
 
 	  klv[j] = hash.match(pol);
-	  if ((l_y-l_x)%2!=0 and pol.degree()==(l_y-l_x)/2)
-	    mu_y.emplace_back(x,pol[pol.degree()]);
-	}
+	  if (l_y==l_x+2*pol.degree()+1)
+	    mu_pairs.emplace_back(x,pol[pol.degree()]);
+	} // |if (endgame_pair(x,y)) |
 	else // |first_endgame_pair| found nothing
 	  klv[j]=d_zero;
       } // end of no NiceAscent case
@@ -1020,18 +989,18 @@ void KL_table::new_recursion_column
 			    static_cast<const KL_table&>(*this));
   }
 
-  d_mu[y]=Mu_column(mu_y.rbegin(),mu_y.rend()); // reverse to a tight copy
-
-  for (unsigned int k=mu_y.size()-downs.size(); k<mu_y.size(); ++k)
-  { // successively insertion-sort the down-set x's into previous list
-    for (size_t i=k; i>0 and d_mu[y][i-1].x > d_mu[y][i].x; --i)
-      std::swap(d_mu[y][i-1],d_mu[y][i]);
+  {
+    Mu_list downs; // set apart initial part which is increasing
+    downs.splice(downs.begin(),mu_pairs,mu_pairs.begin(),downs_end);
+    mu_pairs.reverse(); // remainder was decreasing, so make it increasing
+    mu_pairs.merge(std::move(downs)); // fusion with initial increasing part
   }
+  d_mu[y].assign(mu_pairs.wcbegin(),mu_pairs.wcend());
 
 } // |KL_table::new_recursion_column|
 
 /*
-  Store into |klv[j]| the $\mu$-sum appearing a new K-L recursion.
+  Store into |klv[j]| the $\mu$-sum appearing in a new K-L recursion.
 
   Here |pc| is the primitive column for |y|, $s$ is real nonparity for $y$ and
   either C+ or imaginary for $x=pc[j]$ (those are the cases for which the
@@ -1054,7 +1023,7 @@ void KL_table::new_recursion_column
   large to produce a non-zero $P_{x,z}$.
 */
 KLPol KL_table::mu_new_formula
-  (BlockElt x, BlockElt y, weyl::Generator s, const Mu_column& mu_y)
+  (BlockElt x, BlockElt y, weyl::Generator s, const Mu_list& mu_y)
 {
   KLPol pol=Zero;
 
@@ -1062,9 +1031,9 @@ KLPol KL_table::mu_new_formula
 
   try
   {
-    for (auto it=mu_y.cbegin(); it!=mu_y.cend(); ++it)
+    for (const auto& pair : mu_y) // a block element with $\mu(z,y)\neq0$
     {
-      BlockElt z = it->x; // a block element with $\mu(z,y)\neq0$
+      BlockElt z = pair.x;
       unsigned int lz = length(z);
       if (lz<=lx)
 	break; // length |z| decreases, and |z==x| must be excluded, so stop
@@ -1072,7 +1041,7 @@ KLPol KL_table::mu_new_formula
 
       // now we have a true contribution with nonzero $\mu$
       unsigned int d = (ly - lz +1)/2; // power of $q$ used in the formula
-      MuCoeff mu = it->coef;
+      MuCoeff mu = pair.coef;
       KLPolRef Pxz = KL_pol(x,z); // which is known because $z<y$
 
       if (mu==MuCoeff(1)) // avoid useless multiplication by 1 if possible

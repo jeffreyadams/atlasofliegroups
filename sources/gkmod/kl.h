@@ -46,6 +46,7 @@ struct Mu_pair
   bool operator< (const Mu_pair& other) const { return x<other.x; }
 };
 using Mu_column = std::vector<Mu_pair>;
+using Mu_list = containers::sl_list<Mu_pair>;
 
 class KLPolEntry; // class definition will given in the implementation file
 
@@ -147,7 +148,6 @@ class KL_table
   std::pair<weyl::Generator,weyl::Generator>
   first_endgame_pair(BlockElt x, BlockElt y) const;
   BlockEltPair inverse_Cayley(weyl::Generator s, BlockElt y) const;
-  std::set<BlockElt> down_set(BlockElt y) const;
 
   KLPolRef KL_pol(BlockElt x, BlockElt y,
 		  KLColumn::const_iterator klv,
@@ -172,7 +172,7 @@ class KL_table
   void new_recursion_column(KLColumn & klv,const PrimitiveColumn& pc,
 			   BlockElt y, KLHash& hash);
   KLPol mu_new_formula(BlockElt x, BlockElt y, weyl::Generator s,
-		       const Mu_column& muy);
+		       const Mu_list& muy);
 
 }; // |class KL_table|
 
