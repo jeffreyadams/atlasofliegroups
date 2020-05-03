@@ -17,9 +17,10 @@
 #include <iostream>
 #include <memory> // for |std::unique_ptr|
 
-#include "ratvec.h"	// containment infinitesimal character
-
 #include "../Atlas.h"
+#include "ratvec.h"	// containment infinitesimal character
+#include "sl_list.h"    // return type |down_set| function
+
 #include "tits.h"	// representative of $y$ in |non_integral_block|
 #include "descents.h"	// inline methods
 #include "lietype.h"    // |ext_gen|;
@@ -151,6 +152,7 @@ public:
   DescentStatus::Value descentValue(weyl::Generator s, BlockElt z) const
     { assert(z<size()); assert(s<rank()); return descent(z)[s]; }
 
+  RankFlags descent_generators (BlockElt z) const; // all |s| giving weak descent
   bool isWeakDescent(weyl::Generator s, BlockElt z) const
     { return DescentStatus::isDescent(descentValue(s,z)); }
 
@@ -182,6 +184,8 @@ public:
 
 }; // |class Block_base|
 
+// sorted list of elements reachable by a descent from $y$.
+containers::simple_list<BlockElt> down_set(const Block_base& block,BlockElt y);
 
 // a derived class with minimal implementation to be a concrete class
 class Bare_block : public Block_base

@@ -144,7 +144,7 @@ std::vector<Poset::EltList> complete_Hasse_diagram
 
 /*****************************************************************************
 
-        Chapter I -- The Block_base class
+        Chapter I -- The |Block_base| class
 
 ******************************************************************************/
 
@@ -192,6 +192,42 @@ Block_base::Block_base(const Block_base& b) // copy constructor
 }
 
 Block_base::~Block_base() = default; // but calls deleters implicitly
+
+RankFlags Block_base::descent_generators (BlockElt z) const
+{
+  RankFlags result;
+  for (weyl::Generator s=0; s<rank(); ++s)
+    result.set(s,DescentStatus::isDescent(descentValue(s,z)));
+  return result;
+}
+
+containers::simple_list<BlockElt> down_set(const Block_base& block,BlockElt y)
+{
+  containers::simple_list<BlockElt> result;
+
+  for (weyl::Generator s : block.descent_generators(y))
+    switch (block.descentValue(s,y))
+    {
+    case DescentStatus::ComplexDescent: result.push_front(block.cross(s,y));
+      break;
+    case DescentStatus::RealTypeI:
+      {
+	BlockEltPair sy = block.inverseCayley(s,y);
+	result.push_front(sy.first); result.push_front(sy.second);
+      }
+      break;
+    case DescentStatus::RealTypeII:
+      result.push_front(block.inverseCayley(s,y).first);
+      break;
+    default: // |case DescentStatus::ImaginaryCompact| nothing
+      break;
+    }
+  result.sort();
+  result.unique();
+  return result;
+
+} // |down_set|
+
 
 /*
   Look up element by |x|, |y| coordinates
