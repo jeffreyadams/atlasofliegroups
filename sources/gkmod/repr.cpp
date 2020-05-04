@@ -31,6 +31,8 @@
 
 #include "basic_io.h"
 
+#include "../interpreter/axis.h" // |check_interrupt|
+
 namespace atlas {
   namespace repr {
 
@@ -1313,7 +1315,14 @@ containers::simple_list<unsigned long> Rep_table::Bruhat_generator::block_below
     } // |for (it)|
   } // |if (s<rank)|
 
+  auto prev = hash.size();
   const auto h=hash.match(srm); // finally generate sequence number for |srm|
+  if (h==prev and (h+1)%1000==0)
+  {
+    std::cout << "block_below:  " << hash.size()
+	      << "    " << parent.block_list.size() << '\n';
+    interpreter::check_interrupt();
+  }
   { // merge all |results| together and remove duplicates
     results.push_front(containers::simple_list<unsigned long> {h} );
     while (results.size()>1)

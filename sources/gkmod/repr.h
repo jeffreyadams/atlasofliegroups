@@ -424,6 +424,7 @@ class Rep_table : public Rep_context
 
   // the |length| method generates a partial block, for best amortised efficiency
   unsigned short length(StandardRepr z); // by value
+  size_t nr_blocks() const { return block_list.size(); }
 
   blocks::common_block& lookup_full_block
     (StandardRepr& sr,BlockElt& z); // |sr| is by reference; will be normalised

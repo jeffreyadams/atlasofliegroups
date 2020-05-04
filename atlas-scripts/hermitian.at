@@ -17,7 +17,12 @@ set oriented_KL_sum  (Param p) = ParamPol:
 { untwisted |c_form_irreducible|, for efficiency; only used in equal rank case }
 {.c-invariant form on irreducible module of p as ParamPol of standardrepKs.}
 set c_form_irreducible (Param p) = ParamPol:
-  map(c_form_std@Param, oriented_KL_sum(p) )
+  let P=oriented_KL_sum(p), count=0 then nP=#P
+  then
+    f(Param p) = if count<11 or count%10=0 or nP-count<=10
+                 then prints("Term ",count,": ",p)
+		 fi; count+:=1; full_deform(p)
+  in prints("Fully deforming ",nP," terms"); map(f, P)
 
 {    twisted_c_form_irreducible   }
 
@@ -47,7 +52,14 @@ set twisted_c_form_irreducible_contributions (Param p) =
 set twisted_c_form_irreducible (Param p) = ParamPol:
 ( let (fixed,unfixed)=twisted_c_form_irreducible_contributions(p)
 { |1+s| divides |unfixed|, no need for |scale_extended|; take half at |nu=0| }
-  in map(twisted_c_form_std@Param,fixed)+half(unfixed.at_nu_0)
+  , count=0
+  then nf=#fixed
+  then
+    f(Param p) = if count<11 or count%10=0 or nf-count<=10
+                 then prints("Term ",count,": ",p)
+		 fi; count+:=1; twisted_full_deform(p)
+  in prints("Fully twisted deforming ",nf," terms (",#unfixed," unfixed).")
+; map(f,fixed)+half(unfixed.at_nu_0)
 )
 
 {.whether J(p) admits an invariant Hermitian form.}
