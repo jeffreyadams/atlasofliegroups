@@ -1561,7 +1561,7 @@ set - (ParamPol P, [Param] ps) = ParamPol: P+for p in ps do (split_minus_1,p) od
 
 { |ParamPol| summation by divide and conquer to privilege balanced additions }
 set sum = (RealForm,[ParamPol]->ParamPol):
- { define recursive hart of |sum| without capturing its arguments }
+ { do divide and conquer so as to privilege balanced additions }
   let rec_fun s([ParamPol] Ps) = ParamPol: { |Ps| has at least one term }
         let h = (#Ps)\2 in if =h then Ps[0] else s(Ps[:h])+s(Ps[h:]) fi
   in (RealForm G,[ParamPol] Ps) ParamPol:
