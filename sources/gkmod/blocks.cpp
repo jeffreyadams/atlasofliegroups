@@ -819,7 +819,10 @@ common_block::common_block // full block constructor
     {
       auto zz = queue.front();
       list.splice(list.end(),queue,queue.begin()); // move node
-      srm_hash.match(repr::Repr_mod_entry(rc,zz));
+      auto prev = srm_hash.size();
+      auto seq = srm_hash.match(repr::Repr_mod_entry(rc,zz));
+      if (seq==prev and (seq+1)%1000==0)
+	std::cout << "Full block step 3:  " << srm_hash.size() << std::endl;
       for (const auto& w : reflect)
       {
 	auto new_z = zz;
@@ -1012,7 +1015,10 @@ common_block::common_block // full block constructor
 	      auto& new_srm = packet_list.emplace_back
 		(repr::StandardReprMod::build
 		 (rc,srm.gamma_mod1(), x,y_pool[y].repr().log_pi(false)));
-	      srm_hash.match(repr::Repr_mod_entry(rc,new_srm));
+	      auto prev = srm_hash.size();
+	      auto seq = srm_hash.match(repr::Repr_mod_entry(rc,new_srm));
+	      if (seq==prev and (seq+1)%100==0)
+		std::cout << "Full block Cayleys: " << srm_hash.size() << '\n';
 	    }
 
 	    // push any new neighbours of |x| onto |to_do|
@@ -1178,8 +1184,12 @@ common_block::common_block // partial block constructor
     auto y = y_hash.find(i_tab.pack(rt.y_as_torus_elt(srm),kgb.inv_nr(x)));
     assert(y!=y_hash.empty);
     info.emplace_back(x,y); // leave descent status unset and |length==0| for now
-    srm_hash.match(repr::Repr_mod_entry(rc,srm));
-  }
+    auto prev = srm_hash.size();
+    auto seq = srm_hash.match(repr::Repr_mod_entry(rc,srm));
+    if (seq==prev and (seq+1)%1000==0)
+      std::cout << "Partial block:  " << srm_hash.size()
+		<< "    " << rt.nr_blocks() << std::endl;
+   }
 
   // allocate link fields with |UndefBlock| entries
   data.assign(integral_sys.rank(),std::vector<block_fields>(elements.size()));
