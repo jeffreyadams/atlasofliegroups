@@ -136,11 +136,14 @@ struct user_interrupt : public error_base {
 };
 
 @ At several points in the interpreter we shall check wither a user interrupt
-has raised |interrupt_flag|. When this happens we clear the flag and throw an
-exception. We define a local function to do this, which helps us to never
-forget to clear the flag.
+has raised |interrupt_flag|, by calling |check_interrupt|.
 
-@< Local function definitions @>=
+@< Declarations of exported functions @>=
+void check_interrupt();
+
+@ When this finds the flag raised, we clear the flag and throw an exception.
+
+@< Function definitions @>=
 void check_interrupt()
 {@;
   if (interrupt_flag!=0)

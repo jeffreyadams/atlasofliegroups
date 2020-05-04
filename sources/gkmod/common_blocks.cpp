@@ -29,7 +29,6 @@
   constructed that only use such information, and still allow computation of KLV
   polynomials (ordinary and twisted).
  */
-#include "common_blocks.h"
 
 namespace atlas {
 

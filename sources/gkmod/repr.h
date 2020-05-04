@@ -374,6 +374,7 @@ class Rep_table : public Rep_context
 
   // the |length| method generates a partial block, for best amortised efficiency
   unsigned short length(StandardRepr z); // by value
+  size_t nr_blocks() const { return block_list.size(); }
 
   unsigned long alcove_number (StandardRepr z) const
     { deformation_unit zu(*this,std::move(z)); return alcove_hash.find(zu); }
