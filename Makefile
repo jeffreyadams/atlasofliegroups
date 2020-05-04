@@ -158,22 +158,22 @@ CXX = g++ -std=c++11
 
 .PHONY: all install version distribution
 
-# The default target is 'all', which builds the executable 'Fokko', and 'atlas'
-all: Fokko atlas
+# The default target is 'all', which builds the executable 'atlas'
+all: atlas
 
 # the following dependency forces emptymode.cpp to be recompiled whenever any
 # of the object files changes; this guarantees that the date in the version
 # string it prints will be that of the last recompilation.
 sources/interface/emptymode.o: $(Fokko_sources)
 
-# For profiling not only 'CXXFLAGS' used in compiling is modified, but linking
-# also is different
+# Linking the Fokko program is disabled, as repr.cpp depends on the interrupt
+# checking function of the interpreter, but Fokko is built without
 Fokko: $(Fokko_objects)
-ifeq ($(profile),true)
-	$(CXX) -pg -o Fokko $(Fokko_objects) $(LDFLAGS)
-else
-	$(CXX) -o Fokko $(Fokko_objects) $(LDFLAGS)
-endif
+#ifeq ($(profile),true)
+#	$(CXX) -pg -o Fokko $(Fokko_objects) $(LDFLAGS)
+#else
+#	$(CXX) -o Fokko $(Fokko_objects) $(LDFLAGS)
+#endif
 
 # Rules with two colons are static pattern rules: they are like implicit
 # rules, but only apply to the files listed before the first colon
@@ -221,7 +221,7 @@ endif
 
 include sources/interpreter/dependencies # these are manually maintained for now
 
-install: Fokko atlas
+install: atlas
 ifneq ($(INSTALLDIR),$(shell pwd))
 	@echo "Installing directories and files in $(INSTALLDIR)"
 	$(INSTALL) -d $(INSTALLDIR)/messages $(INSTALLDIR)/atlas-scripts

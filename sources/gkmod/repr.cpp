@@ -34,6 +34,8 @@
 
 #include "basic_io.h"   // lookup of |operator<<| instances
 
+#include "../interpreter/axis.h" // |check_interrupt|
+
 namespace atlas {
   namespace repr {
 
@@ -1415,7 +1417,16 @@ blocks::common_block& Rep_table::add_block_below
   {
     auto h = match_reduced_hash(elt); // fingerprint of parameter family
     if (h==place.size()) // block element has new reduced hash value
+    {
+      if ((h+1)%1000==0)
+      {
+	std::cout << "add_block_below: "
+		  << reduced_hash.size() << " reduced parameters, "
+		  << block_list.size() << " blocks \n";
+	interpreter::check_interrupt();
+      }
       place.emplace_back(bl_it(),-1); // create slot; both fields filled later
+    }
     else if (h<place_limit) // then a similar parameter was known
     { // record block pointer and offset of |elt| from its buddy in |sub_blocks|
       common_block* sub = &*place[h].first;

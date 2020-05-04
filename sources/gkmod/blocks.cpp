@@ -819,9 +819,12 @@ common_block::common_block // full block constructor
     // now insert elements from |list| as first R-packet of block
     for (auto it=list.wcbegin(); not list.at_end(it); ++it,++y_count)
     {
+      auto prev = srm_hash.size();
       auto h=srm_hash.match(*it);
       assert(h==info.size()); // must be new; keep |z_pool| and |info| synced
       ndebug_use(h);
+      if (h==prev and (h+1)%1000==0)
+	std::cout << "Full block step 3:  " << srm_hash.size() << std::endl;
       info.emplace_back(highest_x,y_count); // extend |info|; sets |length==0|
     }
     assert(y_count==list.size()); // we have taken into account the first packet
@@ -999,9 +1002,12 @@ common_block::common_block // full block constructor
 	      const auto gamma_lambda = srm.gamma_lambda();
 	      auto& new_srm =
 		packet_list.push_back(StandardReprMod::build(rc,x,gamma_lambda));
+	      auto prev = srm_hash.size();
 	      const auto h = srm_hash.match(new_srm);
 	      assert (h==info.size()); // must be new; |z_pool| and |info| synced
 	      ndebug_use(h);
+	      if (h==prev and (h+1)%100==0)
+		std::cout << "Full block Cayleys: " << srm_hash.size() << '\n';
 	      info.emplace_back(x,y++);
 	      info.back().length=next_length;
 	    }
@@ -1128,7 +1134,10 @@ common_block::common_block // partial block constructor
 	break;
     assert(y-slot.offset<slot.list.size()); // should have found it
     info.emplace_back(x,y); // for now leave descent status unset, |length==0|
-    srm_hash.match(srm);
+    auto prev = srm_hash.size();
+    auto seq = srm_hash.match(srm);
+    if (seq==prev and (seq+1)%1000==0)
+      std::cout << "Partial block:  " << srm_hash.size() << std::endl;
   }
 
   // allocate link fields with |UndefBlock| entries
