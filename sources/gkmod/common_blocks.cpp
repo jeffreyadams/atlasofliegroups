@@ -260,6 +260,7 @@ common_block::common_block // full block constructor
       }
     }
 #endif
+    ndebug_use(first_y);
 
     for (weyl::Generator s=0; s<our_rank; ++s)
     {
@@ -312,6 +313,7 @@ common_block::common_block // full block constructor
 	    {
 	      auto &sz = packet_list.emplace_back(ctxt.cross(s,z));
 	      assert(*it==y_hash.find(i_tab.pack(rc.y_as_torus_elt(sz),theta)));
+	      ndebug_use(theta);
 	      tab_s[cur++].cross_image = info.size();
 	      add_z(xy_hash,sz.x(),*it);
 	      info.back().length=next_length;
@@ -327,7 +329,8 @@ common_block::common_block // full block constructor
 	  for (const auto& row : bundle)
 	  {
 	    assert(row.front().x()==x(cur));
-	    KGBElt s_cross_x = kgb.cross(integral_sys.reflection(s),x(cur));
+	    KGBElt s_cross_x =
+	      kgb.cross(integral_sys.reflection(s),row.front().x());
 	    for (auto y : cross_ys)
 	      tab_s[cur++].cross_image = find_in(xy_hash,s_cross_x,y);
 	  }

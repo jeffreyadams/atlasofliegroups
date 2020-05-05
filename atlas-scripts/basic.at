@@ -1533,10 +1533,10 @@ set sum = (RealForm,[ParamPol]->ParamPol):
   if =#Ps then G.null_module else s(Ps) fi
 
 set map ((Param->Param)f, ParamPol P) = ParamPol:
-  0*P + for c@p in P do (c,f(p)) od
+  0*P + for c@p in P ~do (c,f(p)) od
 
 set map ((Param->ParamPol)f, ParamPol P) = ParamPol:
-  sum(P.real_form,for c@p in P do c*f(p) od)
+  sum(P.real_form,for c@p in P ~do c*f(p) od)
 
 set half (ParamPol P) = ParamPol: 0*P+ for c@t in P do (half(c),t) od
 { inverse of multiplication *@(int,ParamPol); don't confuse with scaling }

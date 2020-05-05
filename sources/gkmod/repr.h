@@ -305,6 +305,12 @@ class Rep_table : public Rep_context
 
   unsigned short length(StandardRepr z); // by value
 
+  unsigned long parameter_number (StandardRepr z) const { return hash.find(z); }
+  const SR_poly& deformation_formula(unsigned long h) const
+    { return def_formulae[h].first; }
+  const SR_poly& twisted_deformation_formula(unsigned long h) const
+    { return def_formulae[h].second; }
+
   blocks::common_block& lookup_full_block(const StandardRepr& sr,BlockElt& z);
 
   blocks::common_block& lookup(const StandardRepr& sr,BlockElt& z); // partial

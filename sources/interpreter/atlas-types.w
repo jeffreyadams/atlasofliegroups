@@ -6187,6 +6187,27 @@ void twisted_full_deform_wrapper(expression_base::level l)
   push_value(std::make_shared<virtual_module_value>(p->rf,result));
 }
 
+@ To monitor the storage, we provide a function |storage_status| that returns a
+negative value for parameters absent from the tables, and otherwise the a
+non-negative value indicating in its first two bits whether a deformation formal
+respectively a twisted deformation formula is stored for the parameter.
+
+@< Local function def...@>=
+void storage_status_wrapper(expression_base::level l)
+{ shared_module_parameter p = get<module_parameter_value>();
+  if (l==expression_base::no_value)
+    return;
+  const auto& rt = p->rt();
+  auto h = rt.parameter_number(p->val);
+  int code = -1;
+  if (h!=HashTable<StandardRepr,unsigned long>::empty)
+  {
+    code = rt.deformation_formula(h).empty() ? 0 : 1;
+    code += rt.twisted_deformation_formula(h).empty() ? 0 : 2;
+  }
+  push_value(std::make_shared<int_value>(code));
+}
+
 @ And here is another way to invoke the Kazhdan-Lusztig computations, which
 given a parameter corresponding to $y$ will obtain the formal sum over $x$ in
 the block of $y$ (or the Bruhat interval below $y$, where all those giving a
@@ -6363,6 +6384,7 @@ install_function(twisted_deform_wrapper,@|"twisted_deform" ,"(Param->ParamPol)")
 install_function(full_deform_wrapper,@|"full_deform","(Param->ParamPol)");
 install_function(twisted_full_deform_wrapper,@|"twisted_full_deform"
                 ,"(Param->ParamPol)");
+install_function(storage_status_wrapper,@|"storage_status","(Param->int)");
 install_function(KL_sum_at_s_wrapper,@|"KL_sum_at_s","(Param->ParamPol)");
 install_function(twisted_KL_sum_at_s_wrapper,@|"twisted_KL_sum_at_s"
                 ,"(Param->ParamPol)");
