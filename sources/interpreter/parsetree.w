@@ -237,7 +237,9 @@ do no harm even if they were implicitly assumed.
 expr() : kind(no_expr), loc() @+{}
 @/expr(const expr& x) = @[delete@];
 expr& operator=(const expr& x) = @[delete@];
-~expr(); // defined below using a large |switch| statement
+~expr();
+void clear();
+// revert to |no_expr| state, defined below using a large |switch| statement
 
 @ While we are defining functions to parse expressions, we shall also define a
 function |destroy_expr| to clean up the memory occupied by an expression. It
@@ -253,23 +255,33 @@ destructor of the |expr| pointed to.
 @< Definitions of functions for the parser @>=
 void destroy_expr(expr_p p) @+ {@; delete p; }
 
-@ The actual definition of the destructor is distributed among the different
-variants of |expr|.
+@ The destructor frees any claimed memory by calling the |clear| method that
+does this and then sets |kind=no_expr|. The definition of that method is
+distributed among the different variants of |expr|. The reason to separate the
+two parts is because in assignments we need to clear out the old value before
+setting the new one, but calling the destructor is not possible as inspecting
+|kind| afterwards (which we do in an |assert| to make sure we did not forget to
+clear up) would be undefined behaviour (we discovered this the day we first
+compile with both debugging and optimisation on: the optimiser simply optimised
+away setting |kind=no_expr| in the destructor).
 
 @< Definitions of functions not for the parser @>=
-expr::~expr()
-{
+expr::~expr() @+
+{@;
   if (kind!=no_expr)
-  {
-    switch (kind)
-    {@; @< Cases for destroying an expression @>
-      @+ case no_expr: {}
-    }
-    kind = no_expr;
+    clear();
+}
+@)
+void expr::clear()
+{
+  switch (kind)
+  {@; @< Cases for destroying an expression @>
+    @+ case no_expr: {}
   }
+  kind = no_expr;
 }
 
-@ We define a move constructor and move assignment, a (rarely sued) |swap|
+@ We define a move constructor and move assignment, and a (rarely used) |swap|
 method. Our first purpose in defining these was to eliminate the need for
 copying as much as possible by detecting now forbidden copy constructions and
 assignments hidden in the code.
@@ -286,7 +298,7 @@ will turn out to be very boring). The move constructor and assignment and |swap|
 method are easy to define in terms of |set_from|. However move assignment does
 involve a subtle point: it could be that |other| is a subexpression of the old
 value of |*this|, and it is necessary to move-construct it to a temporary
-variable in order to prevent if from destruction when calling |this->~expr|.
+variable in order to prevent if from destruction when calling |clear|.
 
 @< Definitions of functions not for... @>=
 void expr::set_from (expr& other)
@@ -306,7 +318,7 @@ void expr::operator= (expr&& other)
 {@;
   if (this!=&other)
   { expr tmp(std::move(other)); // move |other| out of destruction's way
-    this->~expr(); // now destruct old value
+    clear(); // now clean up old value
     set_from(tmp);
   }
 }
@@ -804,13 +816,13 @@ bool is_empty(const expr& e)
 
 @*1 Function applications.
 %
-Another recursive type of expression is the function application. Since it
-will store two sub-expressions by value, we must use a pointer when including
-it as variant of |expr|. We use a raw pointer, as there is not much point in
-having a smart pointer as a variant field in a |union|: the variant does not
-benefit from automatic destruction, so the destructor |expr::~expr| would
-still have to explicitly call the destructor for the variant; with a raw
-pointer it will just directly called |delete| for the pointer.
+Another recursive type of expression is the function application. Since it will
+store two sub-expressions by value, we must use a pointer when including it as
+variant of |expr|. We use a raw pointer, as there is not much point in having a
+smart pointer as a variant field in a |union|: the variant does not benefit from
+automatic destruction, so |expr::clear| would still have to explicitly call the
+destructor for the variant; with a raw pointer it will just directly called
+|delete| for the pointer.
 
 @< Type declarations needed in definition of |struct expr@;| @>=
 typedef struct application_node* app;
