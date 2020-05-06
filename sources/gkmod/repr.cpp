@@ -1057,9 +1057,9 @@ unsigned long Rep_table::add_block(const StandardReprMod& srm)
   return mod_hash.find(srm);
 }// |Rep_table::add_block|
 
-blocks::common_block& Rep_table::lookup_full_block
-  (const StandardRepr& sr,BlockElt& z)
+blocks::common_block& Rep_table::lookup_full_block (StandardRepr& sr,BlockElt& z)
 {
+  make_dominant(sr); // without this we would not be in any valid block
   auto srm = StandardReprMod::mod_reduce(*this,sr); // modular |z|
   auto h=mod_hash.find(srm); // look up modulo translation in $X^*$
   if (h==mod_hash.empty or not place[h].first->is_full()) // then we must
@@ -1071,8 +1071,9 @@ blocks::common_block& Rep_table::lookup_full_block
 
 } // |Rep_table::lookup_full_block|
 
-blocks::common_block& Rep_table::lookup (const StandardRepr& sr,BlockElt& which)
+blocks::common_block& Rep_table::lookup (StandardRepr& sr,BlockElt& which)
 {
+  normalise(sr); // gives a valid block, and smallest partial block
   auto srm = StandardReprMod::mod_reduce(*this,sr); // modular |z|
   assert(mod_hash.size()==place.size()); // should be in sync at this point
   auto h=mod_hash.find(srm); // look up modulo translation in $X^*$
@@ -1193,7 +1194,7 @@ std::vector<pair_list> contributions
 
 SR_poly Rep_table::deformation_terms
   ( blocks::common_block& block, const BlockElt y, const RatWeight& gamma) const
-{ assert(y<block.size());
+{ assert(y<block.size()); // and |y| is final, see |assert| below
 
   SR_poly result(repr_less());
   if (block.length(y)==0)
@@ -1205,6 +1206,7 @@ SR_poly Rep_table::deformation_terms
     if (not contrib[z].empty() and contrib[z].front().first==z)
       finals.push_front(z); // accumulate in reverse order
 
+  assert(not finals.empty() and finals.front()==y); // do not call for non-final
   const kl::KL_table& kl_tab = block.kl_tab(y,false); // fill silently up to |y|
 
   std::unique_ptr<unsigned int[]> index // a sparse array, map final to position
@@ -1678,7 +1680,7 @@ SR_poly Rep_table::twisted_deformation (StandardRepr z)
     auto L =
       ext_block::extended_finalise(*this,zi,delta); // rarely a long list
 
-    for (const std::pair<StandardRepr,bool>& p : L)
+    for (std::pair<StandardRepr,bool>& p : L)
     {
       BlockElt new_z;
       auto& block = lookup(p.first,new_z);

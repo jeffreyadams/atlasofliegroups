@@ -4638,13 +4638,20 @@ void test_standard(const module_parameter_value& p, const char* descr)
   throw runtime_error(os.str());
 }
 
-void test_normal_is_final(const module_parameter_value& p, const char* descr)
-{ RootNbr witness; bool nonzero=p.rc().is_nonzero(p.val,witness);
-  if (nonzero and p.rc().is_semifinal(p.val,witness))
-    return; // nothing to report
+void test_final(const module_parameter_value& p, const char* descr)
+{ RootNbr witness; std::string reason;
+  bool OK = p.rc().is_dominant(p.val,witness);
+  if (not OK)
+    reason = "not dominant";
+  else if (not (OK=p.rc().is_normal(p.val)))
+    reason = "not normal";
+  else if (not(OK = p.rc().is_nonzero(p.val,witness)))
+    reason = "zero";
+  else if (not(OK = p.rc().is_semifinal(p.val,witness)))
+    reason = "not semifinal";
+  else return; // nothing to report
   std::ostringstream os; p.print(os << descr << ":\n  ");
-@/os << "\n  Parameter is " << (nonzero ? "not semifinal" : "zero")
-   @|  <<", as witnessed by coroot #" << witness;
+@/os << "\n  Parameter is " << reason;
   throw runtime_error(os.str());
 }
 
@@ -4683,7 +4690,7 @@ void print_p_block_wrapper(expression_base::level l)
 @h "common_blocks.h"
 @< Local function def...@>=
 void print_c_block_wrapper(expression_base::level l)
-{ shared_module_parameter p = get<module_parameter_value>();
+{ own_module_parameter p = get_own<module_parameter_value>();
   test_standard(*p,"Cannot generate block");
   BlockElt init_index; // will hold index in the block of the initial element
   blocks::common_block& block = p->rt().lookup_full_block(p->val,init_index);
@@ -4696,7 +4703,7 @@ void print_c_block_wrapper(expression_base::level l)
 }
 
 void print_pc_block_wrapper(expression_base::level l)
-{ shared_module_parameter p = get<module_parameter_value>();
+{ own_module_parameter p = get_own<module_parameter_value>();
   test_standard(*p,"Cannot generate block");
   BlockElt init_index; // will hold index in the block of the initial element
   blocks::common_block& block = p->rt().lookup(p->val,init_index);
@@ -4763,7 +4770,7 @@ void partial_block_wrapper(expression_base::level l)
 }
 @)
 void partial_common_block_wrapper(expression_base::level l)
-{ shared_module_parameter p = get<module_parameter_value>();
+{ own_module_parameter p = get_own<module_parameter_value>();
   test_standard(*p,"Cannot generate block");
   if (l==expression_base::no_value)
     return;
@@ -4802,7 +4809,7 @@ block on the fly.
 
 @< Local function def...@>=
 void block_Hasse_wrapper(expression_base::level l)
-{ shared_module_parameter p = get<module_parameter_value>();
+{ own_module_parameter p = get_own<module_parameter_value>();
   test_standard(*p,"Cannot generate block");
   if (l==expression_base::no_value)
     return;
@@ -6107,33 +6114,33 @@ implies a full block construction.
 
 @< Local function def...@>=
 void deform_wrapper(expression_base::level l)
-{ shared_module_parameter p = get<module_parameter_value>();
+{ own_module_parameter p = get_own<module_parameter_value>();
   test_standard(*p,"Cannot compute deformation terms");
   if (l==expression_base::no_value)
     return;
 @)
   BlockElt p_index; // will hold index of |p| in the block
   auto& block = p->rt().lookup(p->val,p_index); // generate partial common block
-  const auto& gamma = p->val.gamma();
+  const auto& gamma = p->val.gamma(); // after being made dominant in |lookup|
   repr::SR_poly terms = p->rt().deformation_terms(block,p_index,gamma);
 
   push_value(std::make_shared<virtual_module_value>(p->rf,std::move(terms)));
 }
 @)
 void twisted_deform_wrapper(expression_base::level l)
-{ shared_module_parameter p = get<module_parameter_value>();
+{ own_module_parameter p = get_own<module_parameter_value>();
   auto& rt=p->rt();
   const auto& delta=rt.inner_class().distinguished();
   test_standard(*p,"Cannot compute twisted deformation terms");
   if (not rt.is_twist_fixed(p->val,delta))
     throw runtime_error@|("Parameter not fixed by inner class involution");
-  if (not is_dominant_ratweight(rt.root_datum(),p->val.gamma()))
-    throw runtime_error("Parameter must have dominant infinitesimal character");
+  test_final(*p,"Twisted deformation requires final parameter");
   if (l==expression_base::no_value)
     return;
 @)
   BlockElt entry_elem;
   auto& block = rt.lookup(p->val,entry_elem);
+    // though by reference, does not change |p->val|
   auto& eblock = block.extended_block(delta);
 @)
   RankFlags singular = block.singular(p->val.gamma());
@@ -6154,12 +6161,13 @@ within the |real_form_value|.
 
 @< Local function def...@>=
 void full_deform_wrapper(expression_base::level l)
-{ shared_module_parameter p = get<module_parameter_value>();
+{ own_module_parameter p = get_own<module_parameter_value>();
   test_standard(*p,"Cannot compute full deformation");
   if (l==expression_base::no_value)
     return;
 @)
   const auto& rc = p->rc();
+  rc.normalise(p->val);
   auto finals = rc.finals_for(p->val);
   repr::SR_poly result (rc.repr_less());
   for (auto it=finals.cbegin(); it!=finals.cend(); ++it)
@@ -6171,15 +6179,14 @@ void twisted_full_deform_wrapper(expression_base::level l)
 { shared_module_parameter p = get<module_parameter_value>();
   const auto& rc=p->rc();
   test_standard(*p,"Cannot compute full twisted deformation");
-  auto sr=p->val; // take a copy
-  rc.make_dominant(sr); // |is_twist_fixed| and |extended_finalise| like this
-  if (not rc.is_twist_fixed(sr))
+  test_final(*p,"Full twisted deformation requires final parameter");
+  if (not rc.is_twist_fixed(p->val))
     throw runtime_error@|("Parameter not fixed by inner class involution");
   if (l==expression_base::no_value)
     return;
 @)
   auto finals =
-    ext_block::extended_finalise(rc,sr,rc.inner_class().distinguished());
+    ext_block::extended_finalise(rc,p->val,rc.inner_class().distinguished());
   repr::SR_poly result (rc.repr_less());
   for (auto it=finals.cbegin(); it!=finals.cend(); ++it)
     result.add_multiple(p->rt().twisted_deformation(it->first) @|
@@ -6226,7 +6233,7 @@ twisted KLV polynomials, computed for the inner class involution.
 void KL_sum_at_s_wrapper(expression_base::level l)
 { shared_module_parameter p = get<module_parameter_value>();
   test_standard(*p,"Cannot compute Kazhdan-Lusztig sum");
-  test_normal_is_final(*p,"Cannot compute Kazhdan-Lusztig sum");
+  test_final(*p,"Cannot compute Kazhdan-Lusztig sum");
   if (l!=expression_base::no_value)
     push_value(std::make_shared<virtual_module_value>@|
       (p->rf,p->rt().KL_column_at_s(p->val)));
@@ -6235,7 +6242,7 @@ void KL_sum_at_s_wrapper(expression_base::level l)
 void twisted_KL_sum_at_s_wrapper(expression_base::level l)
 { shared_module_parameter p = get<module_parameter_value>();
   test_standard(*p,"Cannot compute Kazhdan-Lusztig sum");
-  test_normal_is_final(*p,"Cannot compute Kazhdan-Lusztig sum");
+  test_final(*p,"Cannot compute Kazhdan-Lusztig sum");
   auto sr=p->val; // take a copy
   p->rc().make_dominant(sr);
     // |is_twist_fixed| and |twisted_KL_column_at_s| like this
@@ -6253,7 +6260,7 @@ void external_twisted_KL_sum_at_s_wrapper(expression_base::level l)
 { shared_matrix delta = get<matrix_value>();
   shared_module_parameter p = get<module_parameter_value>();
   test_standard(*p,"Cannot compute Kazhdan-Lusztig sum");
-  test_normal_is_final(*p,"Cannot compute Kazhdan-Lusztig sum");
+  test_final(*p,"Cannot compute Kazhdan-Lusztig sum");
   test_compatible(p->rc().inner_class(),delta);
   if (not p->rc().is_twist_fixed(p->val,delta->val))
     throw runtime_error("Parameter not fixed by given involution");

@@ -311,10 +311,11 @@ class Rep_table : public Rep_context
   const SR_poly& twisted_deformation_formula(unsigned long h) const
     { return def_formulae[h].second; }
 
-  blocks::common_block& lookup_full_block(const StandardRepr& sr,BlockElt& z);
+  blocks::common_block& lookup_full_block
+    (StandardRepr& sr,BlockElt& z); // |sr| is by reference; will be normalised
 
-  blocks::common_block& lookup(const StandardRepr& sr,BlockElt& z); // partial
-
+  blocks::common_block& lookup // constuct only partial block if necessary
+    (StandardRepr& sr,BlockElt& z); // |sr| is by reference; will be normalised
 
   SR_poly KL_column_at_s(StandardRepr z); // by value
   SR_poly twisted_KL_column_at_s(StandardRepr z); // by value
