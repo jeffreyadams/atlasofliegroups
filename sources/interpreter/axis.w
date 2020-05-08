@@ -3397,7 +3397,7 @@ struct module_coefficient : public subscr_base
 @/: subscr_base(std::move(pol),std::move(param)) @+{}
   virtual void evaluate(level l) const;
   virtual void print(std::ostream& out) const
-  @+{@; out << *array << '[' << ']'; }
+  @+{@; out << *array << '[' << *index << ']'; }
 };
 
 
