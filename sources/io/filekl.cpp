@@ -66,9 +66,9 @@ namespace atlas {
     write_KL_row(const kl::KL_table& kl_tab, BlockElt y, std::ostream& out)
     {
       BitMap prims=kl_tab.primMap(y);
-      const kl::KLColumn& klr=kl_tab.KL_column(y);
+      const auto& kld=kl_tab.KL_data(y);
 
-      assert(klr.size()+1==prims.capacity()); // check the number of KL polynomials
+      assert(kld.size()+1==prims.capacity()); // check the number of KL polynomials
 
       // write row number for consistency check on reading
       basic_io::put_int(y,out);
@@ -83,11 +83,11 @@ namespace atlas {
         basic_io::put_int(prims.range(i,32),out);
 
       // finally, write the indices of the KL polynomials themselves
-      for (size_t i=0; i<klr.size(); ++i)
+      for (size_t i=0; i<kld.size(); ++i)
       {
-        assert((klr[i]!=0)==prims.isMember(i));
-        if (klr[i]!=0) // only write nonzero indices
-          basic_io::put_int(klr[i],out);
+        assert((kld[i].P!=0)==prims.isMember(i));
+        if (kld[i].P!=0) // only write nonzero indices
+          basic_io::put_int(kld[i].P,out);
       }
 
       basic_io::put_int(1,out); // write unrecorded final polynomial 1
