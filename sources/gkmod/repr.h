@@ -318,6 +318,8 @@ class Rep_table : public Rep_context
     (StandardRepr& sr,BlockElt& z); // |sr| is by reference; will be normalised
 
   SR_poly KL_column_at_s(StandardRepr z); // by value
+  containers::simple_list<std::pair<BlockElt,kl::KLPol> >
+    KL_column(StandardRepr z); // by value
   SR_poly twisted_KL_column_at_s(StandardRepr z); // by value
 
   SR_poly deformation_terms

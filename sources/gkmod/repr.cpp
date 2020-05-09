@@ -1317,6 +1317,28 @@ SR_poly Rep_table::KL_column_at_s(StandardRepr sr) // |sr| must be final
   return result;
 } // |Rep_table::KL_column_at_s|
 
+// compute and return column of KL table for final parameter |sr|
+containers::simple_list<std::pair<BlockElt,kl::KLPol> >
+  Rep_table::KL_column(StandardRepr sr) // |sr| must be final
+{
+  assert(is_final(sr));
+
+  BlockElt z;
+  auto& block = lookup(sr,z);
+
+  const kl::KL_table& kl_tab = block.kl_tab(z,false); // fill silently up to |z|
+
+  containers::simple_list<std::pair<BlockElt,kl::KLPol> > result;
+  for (BlockElt x=z+1; x-->0; )
+  {
+    const kl::KLPol& pol = kl_tab.KL_pol(x,z); // regular KL polynomial
+    if (not pol.isZero())
+      result.emplace_front(x,pol);
+  }
+
+  return result;
+} // |Rep_table::KL_column|
+
 #if 0
 SR_poly Rep_table::deformation_terms (unsigned long sr_hash) const
 { // the |StandardRepr| |hash[sr_hash]| is necessarily final (survivor)

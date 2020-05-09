@@ -6253,6 +6253,35 @@ void twisted_KL_sum_at_s_wrapper(expression_base::level l)
       (p->rf,p->rt().twisted_KL_column_at_s(sr)));
 }
 
+@ Here is a function to directly access a stored Kazhdan-Lusztig polynomial
+
+@< Local function def...@>=
+void KL_column_wrapper(expression_base::level l)
+{ own_module_parameter p = get_own<module_parameter_value>();
+  test_standard(*p,"Cannot compute Kazhdan-Lusztig column");
+  test_final(*p,"Cannot compute Kazhdan-Lusztig column");
+  if (l==expression_base::no_value)
+    return;
+@)
+  auto col = p->rt().KL_column(p->val);
+  BlockElt z;
+  const blocks::common_block& block = p->rt().lookup(p->val,z);
+  own_row column = std::make_shared<row_value>(0);
+  column->val.reserve(length(col));
+  for (auto it=col.wcbegin(); not col.at_end(it); ++it)
+  {
+    StandardRepr sr = block.sr(it->first,p->val.gamma());
+    auto tup = std::make_shared<tuple_value>(3);
+    tup->val[0] = std::make_shared<int_value>(it->first);
+    tup->val[1] = std::make_shared<module_parameter_value>(p->rf,std::move(sr));
+    tup->val[2] = std::make_shared<vector_value>@|(
+      std::vector<int>(it->second.begin(),it->second.end()));
+    column->val.push_back(std::move(tup));
+  }
+  push_value(std::move(column));
+}
+@)
+
 @ We add another function in which the external involution is an argument
 
 @< Local function def...@>=
@@ -6395,6 +6424,7 @@ install_function(storage_status_wrapper,@|"storage_status","(Param->int)");
 install_function(KL_sum_at_s_wrapper,@|"KL_sum_at_s","(Param->ParamPol)");
 install_function(twisted_KL_sum_at_s_wrapper,@|"twisted_KL_sum_at_s"
                 ,"(Param->ParamPol)");
+install_function(KL_column_wrapper,@|"KL_column","(Param->[int,Param,vec])");
 install_function(external_twisted_KL_sum_at_s_wrapper,@|"twisted_KL_sum_at_s"
                 ,"(Param,mat->ParamPol)");
 install_function(scale_extended_wrapper,@|"scale_extended"
