@@ -40,12 +40,14 @@ public:
 
   StandardReprMod srm(const Rep_context& rc,const RatWeight& gamma_mod_1) const;
 
+  unsigned long y_stripped() const { return(y&mask).to_ulong(); }
+
   // obligatory fields for hashable entry
   using Pooltype =  std::vector<Repr_mod_entry>;
   size_t hashCode(size_t modulus) const
-  { return (5*x-11*(y&mask).to_ulong())&(modulus-1); }
+  { return (5*x-11*y_stripped())&(modulus-1); }
   bool operator !=(const Repr_mod_entry& o) const
-  { return x!=o.x or (y&mask)!=(o.y&o.mask); }
+    { return x!=o.x or y_stripped()!=o.y_stripped(); }
 
 }; // |Repr_mod_entry|
 
@@ -131,13 +133,13 @@ class common_block : public Block_base
 
 
  private:
-/*
- sort by increaing length (after reversing if |reverse_length|), within equal
- length groups so by |x(z)|. Permute tables correspondingly
-*/
-  void sort(unsigned short max_length, bool reverse_length);
+// sort by increaing length, then |x|, then |y|; permute tables correspondingly
+  void sort();
 
 }; // |class common_block|
+
+// sorting criterion used to |common_block::sort| the |info| array in block base
+bool elt_info_less(const Block_base::EltInfo& a,const Block_base::EltInfo& b);
 
 } // |namespace blocks|
 

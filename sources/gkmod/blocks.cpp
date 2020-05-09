@@ -321,6 +321,10 @@ weyl::Generator Block_base::firstStrictGoodDescent(BlockElt z) const
 void Block_base::set_Bruhat_covered (BlockElt z, BlockEltList&& covered)
 {
   assert(z<size());
+#ifndef NDEBUG
+  for (auto x : covered)
+    assert(x<z);
+#endif
   partial_Hasse_diagram.resize(size()); // create empty slots for whole block
   partial_Hasse_diagram[z].reset(new BlockEltList(std::move(covered)));
 }

@@ -170,9 +170,8 @@ common_block::common_block // full block constructor
   // end of step 2
 
   // step 3: generate imaginary fiber-orbit of |y|'s (|x| is unaffected)
-  containers::queue<
-    containers::sl_list<containers::sl_list<repr::StandardReprMod> >
-    >elements; // involution packets, |x| varies in outer, |y| in inner list
+  using LL = containers::sl_list<containers::sl_list<repr::StandardReprMod> >;
+  containers::queue<LL>elements; // involution packets, by |x| outer, |y| inner
   {
     const InvolutionNbr theta = kgb.inv_nr(highest_x);
     // generating reflections are by subsystem real roots for |theta0|
@@ -208,11 +207,6 @@ common_block::common_block // full block constructor
 	auto new_y = y_hash.match(i_tab.pack(rc.y_as_torus_elt(new_z),theta));
 	if (new_y==prev) // then this was really a new y-value
 	  queue.push_back(new_z);
-	/*
-	  queue.push(repr::StandardReprMod::build
-		     (rc,srm.gamma_mod1(),
-		      highest_x, y_pool.back().repr().log_pi(false)));
-	*/
       }
     }
     while (not queue.empty());
@@ -229,6 +223,7 @@ common_block::common_block // full block constructor
   BitMap x_seen(kgb.size()); // for |x| below |highest_x|, record encounters
   x_seen.insert(highest_x);
   BlockElt next=0; // start at beginning of (growing) list of block elements
+  containers::sl_list<LL> bundles;
 
   do // process involution packet of elements from |next| to |queue.front()|
   { // |next| is constant throughout the loop body, popped from |queue| at end
@@ -237,8 +232,9 @@ common_block::common_block // full block constructor
     // precompute (reversed) length for anything generated this iteration
     const auto next_length = info[next].length+1;
 
-    const auto bundle = std::move(elements.front());
-    elements.pop();
+    const LL& bundle = // keep handle on packet being transferred
+      elements.pop_splice_to(bundles,bundles.end()); // transfer bundle
+
     const unsigned int nr_x = bundle.size();
     const unsigned int nr_y = bundle.front().size();
 #ifndef NDEBUG
@@ -278,7 +274,8 @@ common_block::common_block // full block constructor
       const size_t old_y_size = y_pool.size(); // from here up |y|'s are new
       KGBElt sample_x=UndefKGB; // to be set in case of any |Cayley_ys|
 
-      { // compute values into |cross_ys|, and check for existence of real parity
+      { // compute values into |cross_ys|,
+	// check for existence of real parity. in which case compute |Cayley_ys|
 
 	auto it = bundle.front().cbegin();
 	for (unsigned int j=0; j<nr_y; ++j,++it)
@@ -303,8 +300,7 @@ common_block::common_block // full block constructor
 
 	if (cross_new_involution)
 	{ // add a new involution packet
-	  containers::sl_list<containers::sl_list<repr::StandardReprMod> >
-	    packet;
+	  LL packet;
 	  for (const auto& row : bundle)
 	  {
 	    auto& packet_list = packet.emplace_back();
@@ -430,9 +426,9 @@ common_block::common_block // full block constructor
 	      ++it; // so |it| runs through |Cayley_ys|
 	    }
 	    ++cur;
-	  }
+	  } // |for(z : row)|
 	  assert(Cayley_ys.at_end(it));
-	}
+	} // |for(row : bundle)|
       } // |if (not Cayley_ys.empty())|
     } // |for(s)|
   }
@@ -442,12 +438,45 @@ common_block::common_block // full block constructor
   highest_x = last(x_seen); // to be sure; length need not increase with |x|
   highest_y=y_hash.size()-1; // set highest occurring |y| value, for |ysize|
 
-  // reverse lengths; reorder by increasing length then value of |x|
-  sort(info.back().length,true);
+  std::vector<unsigned int> renumber(y_hash.size());
+  {
+    using pair_tp = std::pair<unsigned long,unsigned int>;
+    containers::sl_list<pair_tp> L;
+    auto less = [](const pair_tp& a,const pair_tp& b)->bool
+      { return a.first<b.first; };
+    unsigned int i=0; auto finish = L.end();
+    for (const auto& packet : bundles)
+    {
+      auto start=finish;
+      for (const auto& srm : packet.front()) // only traverse first row of packet
+      { // gather their |y_stripped| values
+	auto y_strip = repr::Repr_mod_entry(rc,srm).y_stripped();
+	L.emplace_back(y_strip,i++);
+      }
+      L.sort(start,finish = L.end(),less);  // and sort interval by those values
+      assert(finish==L.end()); // |L.sort| has modified |finish| to achieve this
+    }
+    i=0;
+    for (const auto& pair : L)
+      renumber[pair.second]=i++;
+  }
+  // now we renumber so that for each involution |y| increases with |y_stripped|
+  for (auto& entry : info)
+    entry.y=renumber[entry.y]; // makes |y_hash| useless; it is dropped anyway
+
+  { // reverse lengths
+    auto max_length=info.back().length;
+    for (auto& entry : info)
+    { assert(entry.length<=max_length);
+      entry.length = max_length-entry.length;
+    }
+  }
+
+  sort();
 
   entry_element = lookup(srm); // look up element matching the original input
 
-} // |common_block::common_block|, full
+} // |common_block::common_block|, full block version
 
 common_block::common_block // partial block constructor
     (const repr::Rep_table& rt,
@@ -467,6 +496,7 @@ common_block::common_block // partial block constructor
 {
   info.reserve(elements.size());
   const auto& kgb = rt.kgb();
+  const auto& i_tab = inner_class().involution_table();
 
   Block_base::dd = // integral Dynkin diagram, converted from dual side
     DynkinDiagram(integral_sys.cartanMatrix().transposed());
@@ -474,38 +504,42 @@ common_block::common_block // partial block constructor
   y_entry::Pooltype y_pool;
   y_part_hash y_hash(y_pool);
 
-  std::vector<containers::sl_list<TorusPart> > y_table
-    (inner_class().involution_table().size());
-  // every element of |y_table| is a list of |TorusPart| values of the same rank
-  // therefore, we can (and will) compare list elements and sort the lists
-  for (unsigned long elt : elements)
-  { const auto& srm = rt.srm(elt);
-    const KGBElt x = srm.x();
-    const TorusPart& y = srm.y();
-    if (x>highest_x)
-      highest_x=x;
-    auto& loc = y_table[kgb.inv_nr(x)];
-    auto it = std::find_if_not(loc.cbegin(),loc.cend(),
-			       [&y](const TorusPart& t) { return t<y; });
-    if (it==loc.end() or y<*it) // skip if |y| already present in the list
-      loc.insert(it,y);
-  }
-
-  const auto& i_tab = inner_class().involution_table();
-  for (InvolutionNbr i_x=y_table.size(); i_x-->0; )
-  {
-    highest_y += y_table[i_x].size();
-    for (TorusPart& y : y_table[i_x])
-    {
-      RatWeight gamma_lambda = rt.gamma_lambda(i_x,y,gamma_mod_1);
-      TorusElement t = y_values::exp_pi(gamma_lambda);
-      y_hash.match(i_tab.pack(t,i_x)); // enter this |y_entry| into |y_hash|
+  { // we first fill |y_hash|, carefully ordering those for a same involution
+    using y_tab_type = std::pair<unsigned long,TorusPart>;
+    std::vector<containers::sl_list<y_tab_type> > y_table
+      (inner_class().involution_table().size());
+    // every element of |y_table| pairs a |y_stripped| value and a corresponding
+    // |TorusPart|; the former is used for sorting, the latter for |gamma_lambda|
+    for (unsigned long elt : elements)
+    { const auto& srm = rt.srm(elt);
+      const KGBElt x = srm.x();
+      if (x>highest_x)
+	highest_x=x;
+      y_tab_type entry(repr::Repr_mod_entry(rc,srm).y_stripped(),srm.y());
+      auto& loc = y_table[kgb.inv_nr(x)];
+      auto it = std::find_if_not(loc.cbegin(),loc.cend(),
+		[&entry](const y_tab_type& t) { return t.first<entry.first; });
+      if (it==loc.end() or entry.first<it->first) // only insert |entry| if new
+	loc.insert(it,entry);
     }
-  }
-  assert(y_pool.size()==highest_y);
-  -- highest_y; // one less than the number of distinct |y| values
 
-  elements.sort // pre-sort by |x| to ensure descents precede in setting lengths
+    for (InvolutionNbr i_x=y_table.size(); i_x-->0; )
+    {
+      auto old_size = y_hash.size();
+      for (const y_tab_type& entry : y_table[i_x])
+      {
+	RatWeight gamma_lambda = rt.gamma_lambda(i_x,entry.second,gamma_mod_1);
+	TorusElement t = y_values::exp_pi(gamma_lambda);
+	y_hash.match(i_tab.pack(t,i_x)); // enter this |y_entry| into |y_hash|
+      } // we ensured that that |y| increases with |y_stripped| value in packet
+      assert(y_hash.size()==old_size+y_table[i_x].size()); // all |y|'s were new
+      highest_y += y_table[i_x].size();
+    }
+    assert(y_pool.size()==highest_y);
+    -- highest_y; // one less than the number of distinct |y| values
+  }
+
+  elements.sort // pre-sort by |x| ensures descents precede when setting lengths
     ([&rt](unsigned long a, unsigned long b)
           { return rt.srm(a).x()<rt.srm(b).x(); }
      );
@@ -523,7 +557,6 @@ common_block::common_block // partial block constructor
   data.assign(integral_sys.rank(),std::vector<block_fields>(elements.size()));
 
   assert(info.size()==elements.size());
-  unsigned short max_length=0;
   auto it = elements.cbegin();
   for (BlockElt i=0; i<info.size(); ++i,++it)
   {
@@ -545,11 +578,7 @@ common_block::common_block // partial block constructor
 	    BlockElt sz = lookup(ctxt.cross(s,srm_z));
 	    assert(sz!=UndefBlock);
 	    if (length(i)==0) // then this is the first descent for |i|
-	    {
 	      info[i].length=length(sz)+1;
-	      if (info[i].length>max_length)
-		max_length=info[i].length;
-	    }
 	    else
 	      assert(length(i)==length(sz)+1);
 	    assert(descentValue(s,sz)==DescentStatus::ComplexAscent);
@@ -566,11 +595,7 @@ common_block::common_block // partial block constructor
 	    BlockElt sz = lookup(srm_sz);
 	    assert(sz!=UndefBlock);
 	    if (length(i)==0) // then this is the first descent for |i|
-	    {
 	      info[i].length=length(sz)+1;
-	      if (info[i].length>max_length)
-		max_length=info[i].length;
-	    }
 	    else
 	      assert(length(i)==length(sz)+1);
 	    tab_s[i].Cayley_image.first = sz; // first Cayley descent
@@ -625,9 +650,9 @@ common_block::common_block // partial block constructor
     } // |for (s)|
   } // |for (i)|
 
-  sort(max_length,false);  // finally sort by length, then |x|
+  sort();  // finally sort by length, then |x|, then |y|
 
-} // |common_block::common_block|, partial
+} // |common_block::common_block|, partial block version
 
 BlockElt common_block::lookup(const repr::StandardReprMod& srm) const
 { // since |srm_hash.empty==UndefBlock|, we can just say:
@@ -689,20 +714,19 @@ void common_block::set_Bruhat
     set_Bruhat_covered(pair.first,std::move(pair.second));
 }
 
-void common_block::sort(unsigned short max_length, bool reverse_length)
+// comparison of |info| entries: |length|, |x|, |y_stripped()|
+bool elt_info_less (const Block_base::EltInfo& a,const Block_base::EltInfo& b)
+{ if (a.length!=b.length)
+    return a.length<b.length;
+  if (a.x!=b.x)
+    return a.x<b.x;
+  return a.y<b.y; // this implies comparison between |y_stripped| values
+}
+
+void common_block::sort()
 {
-  const KGBElt x_lim=highest_x+1; // limit for |x| values
-  std::vector<unsigned> value(size(),0u); // values to be ranked below
-
-  for (BlockElt i=0; i<size(); ++i)
-  { assert(length(i)<=max_length);
-    if (reverse_length)
-       info[i].length = max_length-length(i); // reverse length
-    value[i]= info[i].length*x_lim+x(i); // length has priority over value of |x|
-  }
-
   Permutation ranks = // standardization permutation, to be used for reordering
-    permutations::standardization(value,(max_length+1)*x_lim,nullptr);
+    permutations::standardization(info.begin(),info.end(),elt_info_less);
 
   ranks.permute(info); // permute |info|, ordering them by increasing |value|
   ranks.permute(z_pool);
