@@ -2166,6 +2166,18 @@ public:
 
   // unlike |std::queue|, we also provide initialisation by initializer list
   queue(std::initializer_list<T> l) : Base(sl(l)) {}
+
+  T& pop_splice_to(sl& dest,typename sl::iterator it)
+  { dest.splice(it,this->c,this->c.begin()); return *it; }
+  const T& pop_splice_to(sl& dest,typename sl::const_iterator it)
+  { dest.splice(it,this->c,this->c.begin()); return *it; }
+
+  T& pop_splice_to(simple_list<T,Alloc>& dest,
+		   typename simple_list<T,Alloc>::iterator it)
+  { dest.splice(it,this->c,this->c.begin()); return *it; }
+  const T& pop_splice_to(simple_list<T,Alloc>& dest,
+			 typename simple_list<T,Alloc>::const_iterator it)
+  { dest.splice(it,this->c,this->c.begin()); return *it; }
 }; // |class queue|
 
 } // |namespace containers|
