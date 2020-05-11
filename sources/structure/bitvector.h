@@ -290,7 +290,7 @@ template<unsigned int dim> class BitVector
 
   void slice(const BitSet<dim>& mask);
   void unslice(BitSet<dim> mask, size_t new_size);
-}; // class BitVector
+}; // |class BitVector|
 
 /* the following template inherits everything from |std::vector| but after
    some constructors that mimick those of |BitVector|, we also provide a
@@ -326,7 +326,7 @@ template<unsigned int dim> class BitVectorList
     BitVectorList(I begin, I end)
     : std::vector<BitVector<dim> >(begin,end)
     {}
-};
+}; // |class BitVectorList|
 
 
 // note that the elements in d_data are the _column_ vectors of the matrix

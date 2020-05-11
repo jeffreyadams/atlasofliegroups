@@ -29,7 +29,7 @@ namespace commands {
   RealReductiveGroup& currentDualRealGroup();
   RealFormNbr currentDualRealForm();
   Block& currentBlock();
-  kl::KLContext& currentKL();
+  kl::KL_table& currentKL();
   const wgraph::WGraph& currentWGraph();
 
 } // |namespace commands|

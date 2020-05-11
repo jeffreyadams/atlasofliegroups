@@ -75,7 +75,8 @@ class HashTable
   static const float fill_fraction; // (probably ought to be variable)
 
   // constructor
-  HashTable(typename Entry::Pooltype& pool); // caller supplies ref to pool
+  HashTable(typename Entry::Pooltype& pool, // caller supplies ref to pool
+	    unsigned int n=8); // intially make $2^n$ slots
 
   // manipulator
   Number match(const Entry&);   // lookup entry and return its sequence number

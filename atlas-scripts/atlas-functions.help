@@ -731,6 +731,13 @@ reducibility_points: (Param->[rat]): the 0<t<=1 with I(x,lambda,t\nu) reducible
 operator * : (Param,rat->Param): scale component nu by given rational factor
 at_nu_0 : (Param->Param): reduce component nu to 0 (scale it be a factor 0)
 
+block_Hasse: (Param->mat): Hasse diagram of Buhat order of block of parameter
+  Calling KGB_Hasse(p) ensure the full block containing the parameter p is
+  generated, and returns a matrix describing the Hasse diagram of its Bruhat
+  order: the set of pairs (x,z) for which the interval { y | x<=y<=z } contains
+  exaclty the two elements, namely x et z. The matrix is indexed by the numbers
+  of the block elements as displayed in print_common_block(p).
+
 print_block: (Param->): print (non-integral) block generated from parameter
 print_partial_block: (Param->): print partial block generated from parameter
 print_common_block: (Param->): print translation family block for parameter
@@ -857,6 +864,11 @@ deform: (Param->ParamPol): compute deformation terms when nu decreases
 twisted_deform: (Param->ParamPol): inner class twisted deformation terms
   This is like deform, but uses the twisted KL polynomials (for the inner class
   involution) instead. The argument parameter must be fixed under that twist.
+  It must also be fully prepared for deformation, that is, have dominant
+  infinitesimal character and be final; this is because interpretation of the
+  result depends (by a sign) on the chosen default extension for the parameter,
+  and preparations may cause a flip in that choice. If needed use scale_extended
+  and finalize_extended to do these preparations while keeping track of flips.
 
 full_deform: (Param->ParamPol): perform deformation all the way to nu=0
   This is like deform, but recursively deforms all new terms produced as long
@@ -864,7 +876,17 @@ full_deform: (Param->ParamPol): perform deformation all the way to nu=0
 twisted_full_deform: (Param->ParamPol): inner class twisted deformation to nu=0
   This is like full_deform, but uses the twisted KL polynomials (for the inner
   class involution) instead. The parameter must be fixed under that twist.
+  It must also be fully prepared for deformation, that is, have dominant
+  infinitesimal character and be final; this is because interpretation of the
+  result depends (by a sign) on the chosen default extension for the parameter,
+  and preparations may cause a flip in that choice. If needed use scale_extended
+  and finalize_extended to do these preparations while keeping track of flips.
 
+KL_column: (Param->[int,Param,vec]): column of Kazhdan-Lusztig table
+  Returns a list of nonzero Kazhdan-Lusztig polynomials P(x,y) with the given
+  parameter as y, each as a triple (n,x,P(x,y)) where x is the parameter for
+  the first index of the polynomial, P(x,y) the polynomial itsef as a vector of
+  coefficients (by increasing degree), and n is the number in its block of x.
 KL_sum_at_s: (Param->ParamPol): signed sum of KL polynomials at s, fixed y
   Computes \sum_{x\leq y}(-1)^{l(y)-l(x)}P_{x,y}[q:=s].x where y is the block
   element of the parameter, and the sum is over other block elements x.

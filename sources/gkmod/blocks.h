@@ -15,10 +15,12 @@
 
 #include <cassert>
 #include <iostream>
-
-#include "ratvec.h"	// containment infinitesimal character
+#include <memory> // for |std::unique_ptr|
 
 #include "../Atlas.h"
+#include "ratvec.h"	// containment infinitesimal character
+#include "sl_list.h"    // return type |down_set| function
+
 #include "tits.h"	// representative of $y$ in |non_integral_block|
 #include "descents.h"	// inline methods
 #include "lietype.h"    // |ext_gen|;
@@ -86,15 +88,16 @@ protected: // all fields may be set in a derived class contructor
   DynkinDiagram dd; // diagram on simple generators for the block
 
   // possible tables of Bruhat order and Kazhdan-Lusztig polynomials
-  BruhatOrder* d_bruhat;
-  kl::KLContext* klc_ptr;
+  std::vector<std::unique_ptr<BlockEltList> > partial_Hasse_diagram;
+  std::unique_ptr<BruhatOrder> d_bruhat;
+  std::unique_ptr<kl::KL_table> kl_tab_ptr;
 
 public:
 // constructors and destructors
   Block_base(const KGB& kgb); // for |Block|, implicitly at integral inf. char.
   Block_base(unsigned int integral_rank); // only dimensions some vectors
 
-  virtual ~Block_base(); // deletes |d_bruhat| and |klc_ptr| (if non-NULL)
+  virtual ~Block_base(); // out-of-line because of deleters implicitly called
 
 // copy, assignment and swap
 
@@ -149,6 +152,7 @@ public:
   DescentStatus::Value descentValue(weyl::Generator s, BlockElt z) const
     { assert(z<size()); assert(s<rank()); return descent(z)[s]; }
 
+  RankFlags descent_generators (BlockElt z) const; // all |s| giving weak descent
   bool isWeakDescent(weyl::Generator s, BlockElt z) const
     { return DescentStatus::isDescent(descentValue(s,z)); }
 
@@ -167,16 +171,21 @@ public:
     (std::ostream& strm, BlockElt z,bool as_invol_expr) const =0;
 
   // manipulators
-  BruhatOrder& bruhatOrder() { fillBruhat(); return *d_bruhat; }
-  kl::KLContext& klc(BlockElt last_y, bool verbose)
-  { fill_klc(last_y,verbose); return *klc_ptr; }
+  BruhatOrder& bruhatOrder() { fill_Bruhat(); return *d_bruhat; }
+  BruhatOrder&& Bruhat_order() && { fill_Bruhat(); return std::move(*d_bruhat); }
+  kl::KL_table& kl_tab(BlockElt last_y, bool verbose)
+  { fill_kl_tab(last_y,verbose); return *kl_tab_ptr; }
 
+ protected:
+  void set_Bruhat_covered (BlockElt z, BlockEltList&& covered);
  private:
-  void fillBruhat();
-  void fill_klc(BlockElt last_y,bool verbose);
+  void fill_Bruhat();
+  void fill_kl_tab(BlockElt last_y,bool verbose);
 
 }; // |class Block_base|
 
+// sorted list of elements reachable by a descent from $y$.
+containers::simple_list<BlockElt> down_set(const Block_base& block,BlockElt y);
 
 // a derived class with minimal implementation to be a concrete class
 class Bare_block : public Block_base

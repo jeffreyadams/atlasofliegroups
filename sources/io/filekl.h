@@ -17,7 +17,7 @@ namespace atlas {
     
     void write_block_file(const Block& block, std::ostream& out);
     
-    void write_matrix_file(const kl::KLContext& klc, std::ostream& out);
+    void write_matrix_file(const kl::KL_table& kl_tab, std::ostream& out);
     
     void write_KL_store(const kl::KLStore& store, std::ostream& out);
 

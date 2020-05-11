@@ -88,6 +88,12 @@ class DescentStatus
     return static_cast<Value> (d_data[s]); // cast converts integer to enum
   }
 
+  bool operator== (const DescentStatus& other) const
+  { return std::memcmp(d_data,other.d_data,sizeof(d_data))==0; }
+
+  bool operator!= (const DescentStatus& other) const
+  { return not ((*this)==other); }
+
 // manipulators
 
 // Set the descent status of simple root \#s to v.
