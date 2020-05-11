@@ -864,6 +864,11 @@ deform: (Param->ParamPol): compute deformation terms when nu decreases
 twisted_deform: (Param->ParamPol): inner class twisted deformation terms
   This is like deform, but uses the twisted KL polynomials (for the inner class
   involution) instead. The argument parameter must be fixed under that twist.
+  It must also be fully prepared for deformation, that is, have dominant
+  infinitesimal character and be final; this is because interpretation of the
+  result depends (by a sign) on the chosen default extension for the parameter,
+  and preparations may cause a flip in that choice. If needed use scale_extended
+  and finalize_extended to do these preparations while keeping track of flips.
 
 full_deform: (Param->ParamPol): perform deformation all the way to nu=0
   This is like deform, but recursively deforms all new terms produced as long
@@ -871,6 +876,11 @@ full_deform: (Param->ParamPol): perform deformation all the way to nu=0
 twisted_full_deform: (Param->ParamPol): inner class twisted deformation to nu=0
   This is like full_deform, but uses the twisted KL polynomials (for the inner
   class involution) instead. The parameter must be fixed under that twist.
+  It must also be fully prepared for deformation, that is, have dominant
+  infinitesimal character and be final; this is because interpretation of the
+  result depends (by a sign) on the chosen default extension for the parameter,
+  and preparations may cause a flip in that choice. If needed use scale_extended
+  and finalize_extended to do these preparations while keeping track of flips.
 
 KL_column: (Param->[int,Param,vec]): column of Kazhdan-Lusztig table
   Returns a list of nonzero Kazhdan-Lusztig polynomials P(x,y) with the given
