@@ -198,8 +198,8 @@ MuCoeff KL_table::mu(BlockElt x, BlockElt y) const
 /*
   Return the list of all |x| extremal w.r.t. |y|.
 
-  Explanation: this means that |length(x) < length(y)|, and every descent
-  for |y| is either a descent for |x|.  or  $asc(x)\cap desc(y)=\emptyset$.
+  Explanation: this means that |length(x) < length(y)|, and every descent for |y|
+  is also a descent for |x|, in other words $asc(x)\cap desc(y)=\emptyset$.
   Here descent means "in the $\tau$ invariant" (possibilities C-, ic, r1, r2).
 */
 PrimitiveColumn KL_table::extremal_column(BlockElt y)
@@ -481,24 +481,23 @@ size_t KL_table::fill_KL_column(BlockElt y, KLHash& hash)
 }
 
 /*
-  Put into |klv| the right-hand side of the recursion formula for |y|
-  corresponding to the descent |s|.
+  Put into |klv[i]| the the right-hand sides of the recursion formulae for the
+  elements |x=e[i]| with |y|, corresponding to the descent |s| for |y|. Here |e|
+  contains the block elements extremal for |y| (so in particular their length is
+  less than that of |y| and |s| is a descent for all of them), and |s| is either
+  a complex, or a real type I descent for |y|. The formula takes the form
 
-  Precondition: |s| is either a complex, or a real type I descent for |y|.
+    P_{x,y} = (c_s.c_{y'})-part - correction term
 
-  Explanation: the shape of the formula is:
-
-    P_{x,y} = (c_s.c_{y1})-part - correction term
-
-  where y1 = cross(s,y) when s is complex for y, one of the two elements in
-  inverseCayley(s,y) when s is real. The (c_s.c_{y1})-part depends on the
-  status of x w.r.t. s (we look only at extremal x, so we know it is a
-  descent). The correction term, coming from $\sum_z mu(z,y1)c_z$, is handled
-  by |muCorrection|; the form of the summation depends only on |y1| (which it
-  recomputes), but involves polynomials $P_{x,z}$ that depend on $x$ as well.
+  where y' = cross(s,y) when s is complex for y, one of the two elements in
+  inverseCayley(s,y) when s is real. The (c_s.c_{y'})-part depends on what kind
+  of descent |s| is for |x|. The correction term comes from $\sum_z mu(z,y1)c_z$
+  and is handled by |muCorrection|; the form of the summation depends only on
+  |y1| (which is recomputed here), but the summation itself involves polynomials
+  $P_{x,z}$ that depend on $x$ as well.
 */
 void KL_table::recursion_column(std::vector<KLPol>& klv,
-				const PrimitiveColumn& e,
+				const PrimitiveColumn& e, // extremals for y
 				BlockElt y,
 				weyl::Generator s)
 {
@@ -551,7 +550,14 @@ void KL_table::recursion_column(std::vector<KLPol>& klv,
 	break;
       default: assert(false); // this cannot happen
       }
-    }
+      // for now |klv[i].degree()| might be one notch too high, which will be
+      // corrected in |mu_correction|; also |assert| there are based on this one
+      assert(klv[i].isZero() or 2*klv[i].degree()<length(y)-length(x) or
+	     (2*klv[i].degree()==length(y)-length(x) and
+	      klv[i][klv[i].degree()]==mu(x,sy)
+	     ));
+    } // |for (i=e.size()-->0)|
+
   }
   catch (error::NumericUnderflow& err){
     throw kl_error::KLError(e[i],y,__LINE__,
@@ -566,13 +572,13 @@ void KL_table::recursion_column(std::vector<KLPol>& klv,
   Subtract from all polynomials in |klv| the correcting terms in the
   K-L recursion.
 
-  Precondtion: |klv| already contains, for all $x$ that are primitive w.r.t.
-  |y| in increasing order, the terms in $P_{x,y}$ corresponding to
-  $c_s.c_{y'}$, whery |y'| is $s.y$ if |s| is a complex descent, and |y'| is
-  an inverse Cayley transform of |y| if |s| is real type I.
+  Precondtion: |klv| already contains, for all $x$ that are extremal for |y|,
+  which are listed in |e| in increasing order, the terms in $P_{x,y}$
+  corresponding to $c_s.c_{y'}$, whery |y'| is $s.y$ if |s| is a complex
+  descent, and |y'| is an inverse Cayley transform of |y| if |s| is real type I.
   The mu-table and KL-table have been filled in for elements of length < l(y).
 
-  Explanation: the recursion formula is of the form:
+  The recursion formula is of the form:
   $$
     lhs = c_s.c_{y'} - \sum_{z} mu(z,y')c_z
   $$
@@ -581,18 +587,19 @@ void KL_table::recursion_column(std::vector<KLPol>& klv,
   |y|, and for $c_{y}+c_{s.y}$ when |s| is real type II; however it plays no
   part in this function that only subtracts $\mu$-terms.
 
+
   The element $y'$ is called |sy| in the code below.
 
   We construct a loop over |z| first, before traversing |klv| (the test for
-  $z<sy$ is absent, but $\mu(z,sy)\neq0$ implies $z<sy$ (strict, as mu(sy,sy)
-  is 0; in any case no coefficient for |sy| is stored in |d_mu[sy]|, and
-  moreover $z=sy$ would be rejected by the descent condition). The choix have
-  the out loop over $z$ and the inner loop over $x$ (i.e., over |klv|) allows
-  fetching $\mu(z,sy)$ only once, and terminating each scan of |klv| once its
-  values |x| become too large to produce a non-zero $P_{x,z}$. (In fact we
-  stop once $l(x)=l(z)$, and separately consider the case $x=z$.) Either
-  direction of the loop on $z$ would work, but taking it decreasing is more
-  natural; we keep track of the index |zi| at which $x=z$ occurs, if it does.
+  $z<sy$ is absent, but $\mu(z,sy)\neq0$ implies $z<sy$ (strict, as mu(sy,sy) is
+  0; in any case no coefficient for |sy| is stored in |d_mu[sy]|, and moreover
+  $z=sy$ would be rejected by the descent condition). The choix have the out
+  loop over $z$ and the inner loop over $x$ (i.e., over |klv|) allows fetching
+  $\mu(z,sy)$ only once, and terminating each scan of |klv| once its values |x|
+  become too large to produce a non-zero $P_{x,z}$. (In fact we stop once
+  $l(x)=l(z)$, and separately consider the case $x=z$.) Either direction of the
+  loop on $z$ would work, but taking it decreasing is more natural; we keep
+  track of the index |zi| at which $z$ occurs in |e|, if it does.
 
   Elements of length at least $l(sy)=l(y)-1$ on the list |e| are always
   rejected, so the tail of |e| never reached.
@@ -606,56 +613,48 @@ void KL_table::mu_correction(std::vector<KLPol>& klv,
     : inverse_Cayley(s,y).first;  // s is real type I for y here, ignore .second
 
   const Mu_column& mcol = d_mu[sy];
-  size_t l_y = length(y);
+  size_t ly = length(y);
 
-  size_t zi=e.size(); // should satisfy |e[zi]==z| whenever such |zi| exists
+  size_t inx_z=e.size(); // should satisfy |e[inx_z]==z| whenever that exists
 
   size_t j; // define outside for error reporting
   try {
-    for (size_t i = mcol.size(); i-->0; ) // loop over |z| decreasing from |sy|
-    {
-      BlockElt z = mcol[i].x;
-      DescentStatus::Value v = descentValue(s,z);
-      if (not DescentStatus::isDescent(v))
-	continue;
-
-      size_t l_z = length(z);
-      while (zi>0 and e[zi-1]>=z)
-	--zi; // ensure |e[k]>=z| if and only if |k>=iz|
-
-      MuCoeff mu = mcol[i].coef; // mu!=MuCoeff(0)
-
-      polynomials::Degree d = (l_y-l_z)/2; // power of q used in the loops below
-
-      assert( zi==e.size() or e[zi]>z or
-	      (klv[zi].degree()==d and klv[zi][d]==mu) );
-
-      if (mu==MuCoeff(1)) // avoid useless multiplication by 1 if possible
-	for (j = 0; j < e.size(); ++j)
-	{
-	  BlockElt x = e[j];
-	  if (length(x) >= l_z) break; // once reached, $x=z$ is only case left
-
-	  KLPolRef pol = KL_pol(x,z);
-	  klv[j].safeSubtract(pol,d); // subtract q^d.P_{x,z} from klv[j]
-	} // for (j)
-      else // mu!=MuCoeff(1)
-	for (j = 0; j < e.size(); ++j)
-	{
-	  BlockElt x = e[j];
-	  if (length(x) >= l_z) break; // once reached, $x=z$ is only case left
-
-	  KLPolRef pol = KL_pol(x,z);
-	  klv[j].safeSubtract(pol,d,mu); // subtract q^d.mu.P_{x,z} from klv[j]
-	} // for {j)
-
-      if (zi<e.size() and e[zi]==z) // handle final term |x==z|
+    for (auto it = mcol.rbegin(); it!=mcol.rend(); ++it) // makes |z| decreasing
+      if (DescentStatus::isDescent(descentValue(s,it->x))) // |s| descent for |z|
       {
-	assert( klv[zi].degree()==d and klv[zi][d]==mu );
-	klv[zi].safeSubtract(KLPol(d,mu)); // subtract off the term $mu.q^d$
-      }
+	BlockElt z = it->x;
+	MuCoeff mu = it->coef; // $\mu(z,sy)$, which is nonzero
 
-    } // for (i)
+	size_t lz = length(z);
+	polynomials::Degree d = (ly-lz)/2; // power of |q| used below
+
+	if (mu==MuCoeff(1)) // avoid useless multiplication by 1 if possible
+	  for (j=0; j<e.size(); ++j)
+	  {
+	    BlockElt x = e[j];
+	    if (length(x) >= lz) break; // once reached, $x=z$ is only case left
+	    KLPolRef pol = KL_pol(x,z);
+	    klv[j].safeSubtract(pol,d); // subtract q^d.P_{x,z} from klv[j]
+	  } // |for (j)|
+	else // (rare) case that |mu>1|
+	  for (j=0; j<e.size(); ++j)
+	  {
+	    BlockElt x = e[j];
+	    if (length(x) >= lz) break; // once reached, $x=z$ is only case left
+	    KLPolRef pol = KL_pol(x,z);
+	    klv[j].safeSubtract(pol,d,mu); // subtract q^d.mu.P_{x,z} from klv[j]
+	  } // |for (j)|
+
+	while (inx_z>0 and e[inx_z-1]>=z)
+	  --inx_z; // ensure |e[k]>=z| if and only if |k>=inx_z|
+
+	if (inx_z<e.size() and e[inx_z]==z) // handle final term |x==z|
+	{ // none of the larger |z| should have altered leading coefficient
+	  assert( klv[inx_z].degree()==d and klv[inx_z][d]==mu );
+	  klv[inx_z].safeSubtract(KLPol(d,mu)); // subtract off the term $mu.q^d$
+	}
+
+      } // |for (it->reverse(mcol))|
   }
   catch (error::NumericUnderflow& err){
     throw kl_error::KLError(e[j],y,__LINE__,
