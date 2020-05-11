@@ -83,29 +83,6 @@ namespace kl {
 // Polynomial $1.q^0$.
   const KLPol One(0,KLCoeff(1)); // since |Polynomial(d,1)| gives |1.q^d|.
 
-// we wrap |KLPol| into a class |KLPolEntry| that can be used in a |HashTable|
-
-/* This associates the type |KLStore| as underlying storage type to |KLPol|,
-   and adds the methods |hashCode| (hash function) and |!=| (unequality), for
-   use by the |HashTable| template.
- */
-class KLPolEntry : public KLPol
-{
-public:
-  // constructors
-  KLPolEntry() : KLPol() {} // default constructor builds zero polynomial
-  KLPolEntry(const KLPol& p) : KLPol(p) {} // lift polynomial to this class
-
-  // members required for an Entry parameter to the HashTable template
-  typedef KLStore Pooltype;		   // associated storage type
-  size_t hashCode(size_t modulus) const; // hash function
-
-  // compare polynomial with one from storage
-  bool operator!=(Pooltype::const_reference e) const;
-
-}; // |class KLPolEntry|
-
-
 /*****************************************************************************
 
         Chapter I -- Public methods of the KLPolEntry and KL_table classes.
@@ -147,11 +124,12 @@ bool KLPolEntry::operator!=(KLPolEntry::Pooltype::const_reference e) const
 
 KL_table::KL_table(const Block_base& b)
   : klsupport::KLSupport(b) // construct unfilled support object from block
-  , d_holes(0) // start without ambition to fill
+  , d_holes(b.size()) // start with ambition to fill everything
   , d_KL(b.size()) // create empty slots for whole block; doesn't cost much
   , d_mu(b.size())
   , d_store(2)
 {
+  d_holes.fill();
   d_store[d_zero]=Zero; // ensure these polynomials are present
   d_store[d_one]=One;   // at expected indices, even if maybe absent in |d_KL|
 }
@@ -253,18 +231,15 @@ PrimitiveColumn KL_table::primitive_column(BlockElt y) const
 
 /******** manipulators *******************************************************/
 
+
+KLHash KL_table::pol_hash () { return KLHash(d_store); }
+
 // Fill (or extend) the KL- and mu-lists.
 void KL_table::fill(BlockElt y, bool verbose)
 {
   if (y<first_hole())
     return; // tables present already sufficiently large for |y|
 
-  auto old_limit = hole_limit();
-  if (old_limit<=y)
-  {
-    d_holes.set_capacity(y+1);
-    d_holes.fill(old_limit,y+1);
-  }
 #ifndef VERBOSE
   verbose=false; // if compiled for silence, force this variable
 #endif
@@ -1155,6 +1130,32 @@ void KL_table::verbose_fill(BlockElt last_y)
 
 }
 
+void KL_table::swallow (KL_table&& sub, const BlockEltList& embed, KLHash& hash)
+{
+#ifndef NDEBUG
+  check_sub(sub,embed);
+#endif
+  std::vector<KLIndex> poly_trans(sub.d_store.size());;
+  for (KLIndex i=0; i<sub.d_store.size(); ++i)
+    poly_trans[i]=hash.match(sub.d_store[i]); // should also extend |d_store|
+
+  for (BlockElt z=0; z<sub.block().size(); ++z)
+    if (d_holes.isMember(embed[z]))
+      {
+	for (auto& entry : sub.d_KL[z])
+	{
+	  entry.x=embed[entry.x];      // renumber block elements
+	  entry.P=poly_trans[entry.P]; // renumber polynomial indices
+	}
+	d_KL[embed[z]] = std::move(sub.d_KL[z]);
+
+	for (auto& entry : sub.d_mu[z])
+	  entry.x = embed[entry.x]; // renumber block elements (coef unchanged)
+	d_mu[embed[z]] = std::move(sub.d_mu[z]);
+
+	d_holes.remove(embed[z]);
+      }
+}
 
 
 /*****************************************************************************

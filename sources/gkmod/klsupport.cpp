@@ -15,6 +15,7 @@
   of arbitrary subsets of the block.
 */
 
+#include <cassert>
 #include "klsupport.h"
 
 /*
@@ -175,6 +176,22 @@ BlockElt
   return x;
 }
 
+#ifndef NDEBUG
+void KLSupport::check_sub(const KLSupport& sub, const BlockEltList& embed)
+{
+  assert(sub.rank()==rank());
+  for (unsigned i=1; i<embed.size(); ++i)
+    assert(embed[i-1]<embed[i]);
+  for (BlockElt z=0; z<sub.block().size(); ++z)
+  {
+    assert(sub.block().length(z)==d_block.length(embed[z]));
+    assert(sub.block().descent(z)==d_block.descent(embed[z]));
+    for (weyl::Generator s=0; s<d_block.rank(); ++s)
+      if (sub.cross(s,z)!=UndefBlock)
+	assert(embed[sub.cross(s,z)]==cross(s,embed[z]));
+  }
+}
+#endif
 
 } // |namespace klsupport|
 

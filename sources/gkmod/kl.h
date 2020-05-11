@@ -27,8 +27,11 @@ namespace atlas {
 
 namespace kl {
 
+class KLPolEntry; // class definition will given in the implementation file
+
 using KLColumn = std::vector<KLIndex>;
 using PrimitiveColumn = std::vector<BlockElt>;
+using KLHash = HashTable<KLPolEntry,KLIndex>;
 
 /******** function declarations *********************************************/
 
@@ -55,8 +58,6 @@ using KL_column = std::vector<KL_pair>;
 using Mu_column = std::vector<Mu_pair>;
 using Mu_list = containers::sl_list<Mu_pair>;
 
-
-class KLPolEntry; // class definition will given in the implementation file
 
 /*
   |KL_table| is a class that Calculates and stores the
@@ -95,7 +96,6 @@ class KL_table
 // accessors
 
   BlockElt first_hole () const { return d_holes.front(); }
-  BlockElt hole_limit () const { return d_holes.capacity(); }
 
   // construct lists of extremal respectively primitive elements for |y|
   PrimitiveColumn extremal_column(BlockElt y) const;
@@ -133,10 +133,12 @@ class KL_table
      fill(size()-1,verbose); // simulate forbidden first default argument
   }
 
+  KLHash pol_hash ();
+
+  void swallow (KL_table&& sub, const BlockEltList& embed, KLHash& hash);
 
   // private methods used during construction
  private:
-  typedef HashTable<KLPolEntry,KLIndex> KLHash;
 
   //accessors
   weyl::Generator firstDirectRecursion(BlockElt y) const;
@@ -168,6 +170,29 @@ class KL_table
     (BlockElt x, BlockElt y, weyl::Generator s, const Mu_list& muy);
 
 }; // |class KL_table|
+
+// we wrap |KLPol| into a class |KLPolEntry| that can be used in a |HashTable|
+
+/* This associates the type |KLStore| as underlying storage type to |KLPol|,
+   and adds the methods |hashCode| (hash function) and |!=| (unequality), for
+   use by the |HashTable| template.
+ */
+class KLPolEntry : public KLPol
+{
+public:
+  // constructors
+  KLPolEntry() : KLPol() {} // default constructor builds zero polynomial
+  KLPolEntry(const KLPol& p) : KLPol(p) {} // lift polynomial to this class
+
+  // members required for an Entry parameter to the HashTable template
+  typedef KLStore Pooltype;		   // associated storage type
+  size_t hashCode(size_t modulus) const; // hash function
+
+  // compare polynomial with one from storage
+  bool operator!=(Pooltype::const_reference e) const;
+
+}; // |class KLPolEntry|
+
 
 } // |namespace kl|
 

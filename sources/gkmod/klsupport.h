@@ -79,6 +79,9 @@ class KLSupport
   void filter_extremal (BitMap&, const RankFlags&) const;
   void filter_primitive (BitMap&, const RankFlags&) const;
 
+#ifndef NDEBUG
+  void check_sub(const KLSupport& sub, const BlockEltList& embed);
+#endif
 };
 
 } // |namespace klsupport|

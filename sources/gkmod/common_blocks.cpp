@@ -50,6 +50,7 @@
 #include "subsystem.h"
 #include "kgb.h"
 #include "repr.h"
+#include "kl.h" // for |KLPolEntry|
 #include "ext_block.h"
 #include "ext_kl.h" // for |ext_block::ext_kl| contructor defined below
 
@@ -695,8 +696,17 @@ ext_block::ext_block& common_block::extended_block
   return *extended;
 }
 
+kl::KLHash common_block::KL_hash()
+{
+  if (kl_tab_ptr.get()==nullptr) // do this only the first time
+    kl_tab_ptr.reset(new kl::KL_table(*this));
+
+  return kl_tab_ptr->pol_hash();
+}
+
 // integrate an older partial block, with mapping of elements
-void common_block::swallow(common_block&& sub, const BlockEltList& embed)
+void common_block::swallow
+  (common_block&& sub, const BlockEltList& embed, kl::KLHash& hash)
 {
   for (BlockElt z=0; z<sub.size(); ++z)
   {
@@ -704,6 +714,11 @@ void common_block::swallow(common_block&& sub, const BlockEltList& embed)
     for (auto& c : covered)
       c=embed[c]; // translate in place
     set_Bruhat_covered(embed[z],std::move(covered));
+  }
+  if (sub.kl_tab_ptr!=nullptr)
+  {
+    assert (kl_tab_ptr.get()!=nullptr); // because |KL_hash| built |hash|
+    kl_tab_ptr->swallow(std::move(*sub.kl_tab_ptr),embed,hash);
   }
 }
 
@@ -873,27 +888,33 @@ blocks::common_block& Rep_table::add_block_below
   block.set_Bruhat(std::move(partial_Hasse_diagram));
 
   static const std::pair<bl_it, BlockElt> empty(bl_it(),UndefBlock);
-  place.resize(mod_pool.size(),empty); // new entries point to |new_block_it|
+  place.resize(mod_pool.size(),empty);
 
-  for (const auto& pair : sub_blocks) // swallow sub-blocks
+  if (not sub_blocks.empty())
   {
-    auto& sub_block = *pair.first;
-    bl_it block_it; // set belowe
-    BlockEltList embed; embed.reserve(sub_block.size());
-    for (BlockElt z=0; z<sub_block.size(); ++z)
-    {
-      auto zm = sub_block.representative(z);
-      const BlockElt z_rel = block.lookup(zm);
-      assert(z_rel!=UndefBlock);
-      embed.push_back(z_rel);
-    }
-    auto h = mod_hash.find(sub_block.representative(0));
-    assert(h!=mod_hash.empty);
-    block_it = place[h].first;
+    kl::KLHash hash = block.KL_hash();
 
-    assert(&*block_it==&sub_block); // ensure we erase |sub_block|
-    block.swallow(std::move(sub_block),embed);
-    block_erase(block_it); // even pilfered, the pointer is still unchanged
+    for (const auto& pair : sub_blocks) // swallow sub-blocks
+    {
+      auto& sub_block = *pair.first;
+      bl_it block_it; // set below
+      BlockEltList embed; embed.reserve(sub_block.size());
+      for (BlockElt z=0; z<sub_block.size(); ++z)
+      {
+	auto zm = sub_block.representative(z);
+	const BlockElt z_rel = block.lookup(zm);
+	assert(z_rel!=UndefBlock);
+	embed.push_back(z_rel);
+      }
+
+      auto h = mod_hash.find(sub_block.representative(0));
+      assert(h!=mod_hash.empty);
+      block_it = place[h].first;
+
+      assert(&*block_it==&sub_block); // ensure we erase |sub_block|
+      block.swallow(std::move(sub_block),embed,hash);
+      block_erase(block_it); // even pilfered, the pointer is still unchanged
+    }
   }
 
   // only after the |block_erase| upheavals is it safe to link in the new block

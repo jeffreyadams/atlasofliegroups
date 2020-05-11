@@ -1032,6 +1032,7 @@ unsigned long Rep_table::add_block(const StandardReprMod& srm)
   }
 
   // swallow blocks in |embeddings|, and remove them from |block_list|
+  kl::KLHash hash = block.KL_hash();
   for (auto pair : embeddings)
   {
     auto& sub_block = *pair.first;
@@ -1042,7 +1043,7 @@ unsigned long Rep_table::add_block(const StandardReprMod& srm)
     for (BlockElt z : pair.second)
       assert(z!=UndefBlock);
 #endif
-    block.swallow(std::move(sub_block),pair.second);
+    block.swallow(std::move(sub_block),pair.second,hash);
     block_erase(block_it);
   }
 

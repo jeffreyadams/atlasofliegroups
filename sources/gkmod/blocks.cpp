@@ -326,7 +326,8 @@ void Block_base::set_Bruhat_covered (BlockElt z, BlockEltList&& covered)
     assert(x<z);
 #endif
   partial_Hasse_diagram.resize(size()); // create empty slots for whole block
-  partial_Hasse_diagram[z].reset(new BlockEltList(std::move(covered)));
+  if (partial_Hasse_diagram[z].get()==nullptr)
+    partial_Hasse_diagram[z].reset(new BlockEltList(std::move(covered)));
 }
 // Construct the BruhatOrder. Commit-or-rollback is guaranteed.
 void Block_base::fill_Bruhat()

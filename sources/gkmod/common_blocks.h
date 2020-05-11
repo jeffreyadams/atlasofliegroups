@@ -17,6 +17,7 @@
 #include "bruhat.h" // type |BruhatOrder| must be complete for destructor
 #include "subsystem.h"
 #include "repr.h"
+#include "kl.h"
 
 namespace atlas {
 
@@ -117,8 +118,9 @@ class common_block : public Block_base
   ext_gens fold_orbits(const WeightInvolution& delta) const;
 
   // manipulators
+  kl::KLHash KL_hash();
   void swallow // integrate an older partial block, with mapping of elements
-    (common_block&& sub, const BlockEltList& embed);
+    (common_block&& sub, const BlockEltList& embed, kl::KLHash& hash);
   ext_block::ext_block& extended_block(const WeightInvolution& delta);
 
   void set_Bruhat
