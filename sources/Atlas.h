@@ -418,15 +418,13 @@ namespace atlas {
     class DecomposedWGraph;
   }
   namespace kl {
-    class KLContext;
+    class KL_table;
     typedef unsigned int KLCoeff;
     typedef polynomials::Safe_Poly<KLCoeff> KLPol;
     typedef unsigned int KLIndex; // $<2^{32}$ distinct polynomials for $E_8$!
     typedef KLCoeff MuCoeff;
     typedef std::vector<KLPol> KLStore;
     typedef KLStore::const_reference KLPolRef;
-    typedef std::vector<KLIndex> KLRow;
-    typedef std::vector<BlockElt> PrimitiveRow;
   }
   using kl::KLCoeff;
   using kl::KLPol;

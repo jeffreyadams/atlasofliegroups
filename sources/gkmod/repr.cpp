@@ -968,6 +968,29 @@ SR_poly Rep_context::expand_final (StandardRepr z) const
   return result;
 } // |Rep_context::expand_final|
 
+// erase node in |block_list| after |pos|, avoiding dangling iterators in |place|
+void Rep_table::block_erase (bl_it pos)
+{
+  assert (not block_list.at_end(pos));
+  const auto next_pos = std::next(pos);
+  if (not block_list.at_end(next_pos))
+  { // then make sure in |place| instances of |next_pos| are replaced by |pos|
+    const auto& block = *next_pos;
+    const RatWeight gamma_rho = block.gamma_mod1()-rho(root_datum());
+    for (BlockElt z=0; z<block.size(); ++z)
+    {
+      Weight lambda_rho=gamma_rho.integer_diff<int>(block.gamma_lambda(z));
+      auto zm = StandardReprMod::mod_reduce
+	(*this, sr_gamma(block.x(z),lambda_rho,block.gamma_mod1()));
+      unsigned long seq = mod_hash.find(zm);
+      assert(seq<place.size()); // all elements in |block_list| must have |place|
+      if (place[seq].first==next_pos) // could be false if |block| was swallowed
+	place[seq].first=pos; // replace iterator that is about to be invalidated
+    }
+  }
+  block_list.erase(pos);
+}
+
 unsigned long Rep_table::formula_index (const StandardRepr& sr)
 {
   const auto prev_size = hash.size();
@@ -980,67 +1003,78 @@ unsigned long Rep_table::formula_index (const StandardRepr& sr)
 
 unsigned long Rep_table::add_block(const StandardReprMod& srm)
 {
-  auto first=mod_hash.size(); // future code of first element of this block
   BlockElt srm_in_block; // will hold position of |srm| within that block
-  std::unique_ptr<blocks::common_block>
-    ptr(new blocks::common_block(*this,srm,srm_in_block));
-  auto& block=*ptr;
+  containers::sl_list<blocks::common_block> temp; // must use temporary singleton
+  auto& block = temp.emplace_back(*this,srm,srm_in_block); // build full block
 
-  BitMap swallow(block_list.size()); // indices of partial blocks to swallow
-  block_list.push_back(std::move(ptr));
+  // pairs of a block pointer and a mapping vector into the new |block|
+  using sub_pair = std::pair<blocks::common_block*,BlockEltList >;
+  containers::simple_list<sub_pair> embeddings;
 
-  const unsigned long result = // future sequence number for our |srm|
-    first+srm_in_block;
-
-  const RatWeight gamma_rho = srm.gamma_mod1()-rho(root_datum());
   for (BlockElt z=0; z<block.size(); ++z)
   {
-    Weight lambda_rho=gamma_rho.integer_diff<int>(block.gamma_lambda(z));
-    auto zm = StandardReprMod::mod_reduce
-      (*this, sr_gamma(block.x(z),lambda_rho,srm.gamma_mod1()));
-    auto seq = mod_hash.match(zm);
+    auto seq = mod_hash.match(block.representative(z));
     if (seq==place.size()) // block element is new
-      place.emplace_back(&block,z);
+      place.emplace_back(bl_it(),z); // iterator filled later
     else
     {
-      unsigned i=0;
-      for (auto it=block_list.begin(); not block_list.at_end(it); ++it,++i)
-	if (it->get()==place[seq].first)
-	  break;
-      assert(i<block_list.size()-1); // must be found as aolder block
-      swallow.insert(i); // record that block |i| in |block_list| gets swallowed
-      place[seq].first=&block; // let |zm| henceforth point to the new |block|
-      place[seq].second=z; // with |z| as relative index
+      auto& sub_block = *place[seq].first;
+      auto e_it = embeddings.begin();
+      while (not embeddings.at_end(e_it) and e_it->first!=&sub_block)
+	++e_it;
+      if (embeddings.at_end(e_it))
+	embeddings.emplace(e_it,
+			   &sub_block,BlockEltList(sub_block.size(),UndefBlock));
+      e_it->second[place[seq].second]=z; // record embedding as |z|
+      // leave |place[seq].first| pointing to our block for now
+      place[seq].second = z; // relative index of |zm| in new block
     }
   }
 
-  // remove swallowed blocks for |block_lst|
-  unsigned i=0;
-  for (auto it=block_list.begin(); not block_list.at_end(it); ++i) // no |++it|!
-    if (swallow.isMember(i))
-      block_list.erase(it);
-    else
-      ++it;
+  // swallow blocks in |embeddings|, and remove them from |block_list|
+  kl::KLHash hash = block.KL_hash();
+  for (auto pair : embeddings)
+  {
+    auto& sub_block = *pair.first;
+    auto h = mod_hash.find(sub_block.representative(0));
+    assert(h!=mod_hash.empty);
+    auto block_it = place[h].first; // found iterator to our |block_list| entry
+#ifndef NDEBUG
+    for (BlockElt z : pair.second)
+      assert(z!=UndefBlock);
+#endif
+    block.swallow(std::move(sub_block),pair.second,hash);
+    block_erase(block_it);
+  }
 
-  return result;
+  // only after |block_erase| upheavals is it safe to link in the new block
+  // also, it can only go to the end of the list, to not invalidate any iterators
+  const auto new_block_it=block_list.end(); // iterator for new block elements
+  block_list.splice(new_block_it,temp,temp.begin()); // link in |block| at end
+  // now make sure for all |elements| that |place| fields are set for new block
+  for (BlockElt z=0; z<block.size(); ++z)
+    place[mod_hash.find(block.representative(z))].first = new_block_it;
+
+  return mod_hash.find(srm);
 }// |Rep_table::add_block|
 
-blocks::common_block& Rep_table::lookup_full_block
-  (const StandardRepr& sr,BlockElt& z)
+blocks::common_block& Rep_table::lookup_full_block (StandardRepr& sr,BlockElt& z)
 {
+  make_dominant(sr); // without this we would not be in any valid block
   auto srm = StandardReprMod::mod_reduce(*this,sr); // modular |z|
   auto h=mod_hash.find(srm); // look up modulo translation in $X^*$
-  if (h==mod_hash.empty) // then we are in a new translation family of blocks
-    h=add_block(srm); // ensure this block is known, record hash for |srm|
-  assert(h<place.size()); // it cannot be |mod_hash.empty| anymore
+  if (h==mod_hash.empty or not place[h].first->is_full()) // then we must
+    h=add_block(srm); // generate a new full block (possibly swalllow older ones)
+  assert(h<place.size() and place[h].first->is_full());
 
   z = place[h].second;
   return *place[h].first;
 
 } // |Rep_table::lookup_full_block|
 
-blocks::common_block& Rep_table::lookup (const StandardRepr& sr,BlockElt& which)
+blocks::common_block& Rep_table::lookup (StandardRepr& sr,BlockElt& which)
 {
+  normalise(sr); // gives a valid block, and smallest partial block
   auto srm = StandardReprMod::mod_reduce(*this,sr); // modular |z|
   assert(mod_hash.size()==place.size()); // should be in sync at this point
   auto h=mod_hash.find(srm); // look up modulo translation in $X^*$
@@ -1161,7 +1195,7 @@ std::vector<pair_list> contributions
 
 SR_poly Rep_table::deformation_terms
   ( blocks::common_block& block, const BlockElt y, const RatWeight& gamma) const
-{ assert(y<block.size());
+{ assert(y<block.size()); // and |y| is final, see |assert| below
 
   SR_poly result(repr_less());
   if (block.length(y)==0)
@@ -1173,7 +1207,8 @@ SR_poly Rep_table::deformation_terms
     if (not contrib[z].empty() and contrib[z].front().first==z)
       finals.push_front(z); // accumulate in reverse order
 
-  const kl::KLContext& klc = block.klc(y,false); // fill silently up to |y|
+  assert(not finals.empty() and finals.front()==y); // do not call for non-final
+  const kl::KL_table& kl_tab = block.kl_tab(y,false); // fill silently up to |y|
 
   std::unique_ptr<unsigned int[]> index // a sparse array, map final to position
     (new unsigned int [block.size()]); // unlike |std::vector| do not initialise
@@ -1199,7 +1234,7 @@ SR_poly Rep_table::deformation_terms
     const bool contribute = block.length(z)%2!=y_parity;
     for (BlockElt x=z+1; x-->0; ) // for |x| from |z| down to |0| inclusive
     {
-      const kl::KLPol& pol = klc.klPol(x,z); // regular KL polynomial
+      const kl::KLPol& pol = kl_tab.KL_pol(x,z); // regular KL polynomial
       int eval = 0;
       for (polynomials::Degree d=pol.size(); d-->0; )
 	eval = static_cast<int>(pol[d]) - eval; // evaluate at $q = -1$
@@ -1260,13 +1295,13 @@ SR_poly Rep_table::KL_column_at_s(StandardRepr sr) // |sr| must be final
   std::vector<pair_list> contrib = contributions(block,block.singular(gamma),z);
   assert(contrib.size()==z+1 and contrib[z].front().first==z);
 
-  const kl::KLContext& klc = block.klc(z,false); // fill silently up to |z|
+  const kl::KL_table& kl_tab = block.kl_tab(z,false); // fill silently up to |z|
 
   SR_poly result(repr_less());
   auto z_length=block.length(z);
   for (BlockElt x=z+1; x-->0; )
   {
-    const kl::KLPol& pol = klc.klPol(x,z); // regular KL polynomial
+    const kl::KLPol& pol = kl_tab.KL_pol(x,z); // regular KL polynomial
     if (pol.isZero())
       continue;
     Split_integer eval(0);
@@ -1282,6 +1317,28 @@ SR_poly Rep_table::KL_column_at_s(StandardRepr sr) // |sr| must be final
 
   return result;
 } // |Rep_table::KL_column_at_s|
+
+// compute and return column of KL table for final parameter |sr|
+containers::simple_list<std::pair<BlockElt,kl::KLPol> >
+  Rep_table::KL_column(StandardRepr sr) // |sr| must be final
+{
+  assert(is_final(sr));
+
+  BlockElt z;
+  auto& block = lookup(sr,z);
+
+  const kl::KL_table& kl_tab = block.kl_tab(z,false); // fill silently up to |z|
+
+  containers::simple_list<std::pair<BlockElt,kl::KLPol> > result;
+  for (BlockElt x=z+1; x-->0; )
+  {
+    const kl::KLPol& pol = kl_tab.KL_pol(x,z); // regular KL polynomial
+    if (not pol.isZero())
+      result.emplace_front(x,pol);
+  }
+
+  return result;
+} // |Rep_table::KL_column|
 
 #if 0
 SR_poly Rep_table::deformation_terms (unsigned long sr_hash) const
@@ -1646,7 +1703,7 @@ SR_poly Rep_table::twisted_deformation (StandardRepr z)
     auto L =
       ext_block::extended_finalise(*this,zi,delta); // rarely a long list
 
-    for (const std::pair<StandardRepr,bool>& p : L)
+    for (std::pair<StandardRepr,bool>& p : L)
     {
       BlockElt new_z;
       auto& block = lookup(p.first,new_z);

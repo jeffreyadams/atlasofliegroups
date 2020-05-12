@@ -132,7 +132,7 @@ std::vector<WGraph> cells(const WGraph& wg)
 } // |cells|
 
 /* The following function is an alternative to the function |wGraph| defined
-   in kl.cpp. Here we do not assume that a KLContext is available, but that
+   in kl.cpp. Here we do not assume that a KL_table is available, but that
    binary files with information about the block, matrix, and KL polynomials
    are avaialble. As a consequence we must redo the work of
    |kl::Helper::fillMuRow| as well as that to the mentioned |wGraph| function.

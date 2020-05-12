@@ -34,9 +34,9 @@ namespace kltest {
 
   bool checkBasePoint(const KGB&);
 
-  void dualityPermutation(Permutation&, const kl::KLContext&);
+  void dualityPermutation(Permutation&, const kl::KL_table&);
 
-  bool dualityVerify(const kl::KLContext& klc, const kl::KLContext& dual_klc);
+  bool dualityVerify(const kl::KL_table& kl_tab, const kl::KL_table& dual_kl_tab);
 }
 
 /******** type definitions **************************************************/

@@ -166,16 +166,16 @@ Block& currentBlock()
   return *block_pointer;
 }
 
-kl::KLContext& currentKL()
+kl::KL_table& currentKL()
 {
-  return currentBlock().klc(currentBlock().size()-1,true);
+  return currentBlock().kl_tab(currentBlock().size()-1,true);
 }
 
 const wgraph::WGraph& currentWGraph()
 {
   if (WGr_pointer==nullptr)
   {
-    const kl::KLContext& c=currentKL();
+    const kl::KL_table& c=currentKL();
     WGr_pointer=new wgraph::WGraph(kl::wGraph(c));
   }
   return *WGr_pointer;
@@ -457,22 +457,22 @@ void gextblock_f()
 */
 void klbasis_f()
 {
-  const kl::KLContext& klc = currentKL();
+  const kl::KL_table& kl_tab = currentKL();
 
   ioutils::OutputFile file;
   file << "Full list of non-zero Kazhdan-Lusztig-Vogan polynomials:"
        << std::endl << std::endl;
-  kl_io::printAllKL(file,klc,currentBlock());
+  kl_io::printAllKL(file,kl_tab,currentBlock());
 }
 
 
 // Print the list of all distinct Kazhdan-Lusztig-Vogan polynomials
 void kllist_f()
 {
-  const kl::KLContext& klc = currentKL();
+  const kl::KL_table& kl_tab = currentKL();
 
   ioutils::OutputFile file;
-  kl_io::printKLList(file,klc);
+  kl_io::printKLList(file,kl_tab);
 }
 
 /*
@@ -485,12 +485,12 @@ void kllist_f()
 
 void primkl_f()
 {
-  const kl::KLContext& klc = currentKL();
+  const kl::KL_table& kl_tab = currentKL();
 
   ioutils::OutputFile file;
   file << "Kazhdan-Lusztig-Vogan polynomials for primitive pairs:"
        << std::endl << std::endl;
-  kl_io::printPrimitiveKL(file,klc,currentBlock());
+  kl_io::printPrimitiveKL(file,kl_tab,currentBlock());
 }
 
 // Write the results of the KL computations to a pair of binary files
@@ -501,18 +501,18 @@ void klwrite_f()
   interactive::open_binary_file
     (coefficient_out,"File name for polynomial output: ");
 
-  const kl::KLContext& klc = currentKL();
+  const kl::KL_table& kl_tab = currentKL();
 
   if (matrix_out.is_open())
   {
     std::cout << "Writing matrix entries... " << std::flush;
-    filekl::write_matrix_file(klc,matrix_out);
+    filekl::write_matrix_file(kl_tab,matrix_out);
     std::cout << "Done." << std::endl;
   }
   if (coefficient_out.is_open())
   {
     std::cout << "Writing polynomial coefficients... " << std::flush;
-    filekl::write_KL_store(klc.polStore(),coefficient_out);
+    filekl::write_KL_store(kl_tab.polStore(),coefficient_out);
     std::cout << "Done." << std::endl;
   }
 }

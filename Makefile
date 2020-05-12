@@ -82,12 +82,12 @@ dependencies := $(Fokko_objects:%.o=%.d)
 # normal (nflags)
 # optimizing (oflags)
 # development with debugging (gflags)
-# profiling (pflags)
+# profiling (pflags), which implies optimization and excludes readline
 nflags := -Wall -DNDEBUG
 oflags := -Wall -O3 -DNDEBUG
 gflags := -Wall -ggdb
 pflags := -Wall -pg -O3 -DNDEBUG -DNREADLINE
-
+goflags := -Wall -ggdb -O3
 
 # these flags are necessary for compilation, the -c should not be altered
 CXXFLAGS  = -c $(CXXFLAVOR)
@@ -101,7 +101,11 @@ Fokko_flags = $(Fokko_includes)
 # alternatively, you can do "make CXXFLAVOR='explicit options'" to specify
 
 ifeq ($(optimize),true)
+ifeq ($(debug),true)
+      CXXFLAVOR := $(goflags)
+else
       CXXFLAVOR := $(oflags)
+endif
 else
 ifeq ($(debug),true)
       CXXFLAVOR := $(gflags)
