@@ -236,76 +236,75 @@ void KLSupport::fillDownsets()
 }
 
 /*
-  Synopsis: fills in the table d_prim_index.
+  Fill in the table |d_prim_index|.
 
-  Explanation: for each z in the block, and each descent set |A|, one can
-  reach from |z| a primitive element |z'| for |A| by following 'C+' or 'i1'
-  ascents, or possibly run into an 'rn' ascent aborting the search (when this
-  happens any KL polynomial $P_{z,y}$ with |descentSet(y)==A| will be zero).
+  For each |z| in the block, and each descent set |A|, one can from |z| either
+  reach a primitive element |z'| for |A| by following 'C+' or 'i1' ascents in
+  |A| , or run into an 'rn' ascent in |A| which aborts the search (because when
+  this happens, one has $P_{z,y}=0$ for any |y| for which |descentSet(y)==A|).
 
-  Rather than |z'|, we store the index of |z'| in the list of primitives for
-  |A|, this avoiding any form of binary search (but we will have to store
-  null polynomials to ensure every polynomial has a predictable place).
-
-  Sets the PrimitivizeFilled bit in d_state if successful.
+  After doing this for any |A| and |z|, we store not |z'|, but its index in the
+  list of primitives for |A|, recoreded as |prim_index[z]| below. This avoids
+  having to use binary search to locate the polynomial $P_{z',y}$, provided it
+  is stored at an offset |prim_index[z]| in the appropriate vector. This does
+  mean we will have to store null polynomials at primitive elements to ensure
+  everything is at its predicted place, while such (fairly common) polynomials
+  could be suppressed when using pairs $(x,P_{x,y})$ and binary search on $x$.
 */
 
   void KLSupport::fillPrimitivize()
   {
-    using namespace bitset;
-    using namespace descents;
-    using namespace blocks;
-
     if (d_state.test(PrimitivizeFilled))
       return;
 
     size_t two_to_the_r = 1ul << rank();
-    d_prim_index.resize(two_to_the_r);
-
-    size_t blocksize = d_block.size();
+    d_prim_index.resize(two_to_the_r); // create |two_to_the_r| empty slots
 
     for (unsigned long j = 0 ; j<two_to_the_r ; ++j)
     {
       const RankFlags A(j); // the current descent set
 
-      BlockEltList prim;
-      std::vector<unsigned int>& prim_index = d_prim_index[j];
-      prim_index.resize(blocksize);
+      auto& prim_index = d_prim_index[j];
+      prim_index.resize(d_block.size()); // create slots; we will fill backwards
 
       BitMap primitives(size()); primitives.fill();
       filter_primitive(primitives,A); // compute all primitive elements for A
 
       unsigned int prim_count = primitives.size(); // start at high end
 
-      for (BlockElt z = blocksize; z-->0;)
+      for (BlockElt z = d_block.size(); z-->0;)
       {
 	// primitivize
 	RankFlags a = goodAscentSet(z)&A;
 	if (a.none())
-	{
+	{ // then |z| is primitive, record its index
 	  assert(primitives.isMember(z)); // sanity check
 	  prim_index[z] = --prim_count;
 	  continue;
 	}
 
         // if \emph{some} ascent is real nonparity, cop out right away
-	for (RankFlags::iterator it=a.begin(); it(); ++it)
+	// choosing another descent should hit zero as well, so not really needed
+	RankFlags::iterator it; // declare outside loop
+	for (it=a.begin(); it(); ++it)
 	  if (descentValue(*it,z) == DescentStatus::RealNonparity)
-	    goto finish; // no primitivization
+	    break;
 
-	{ // grouping needed because of the above goto
+	if (it()) // then we found some real noparity ascent
+	  prim_index[z] = ~0; // so mark "cut to zero" primitivization
+	else // loop completed without finding any real noparity ascents
+	{ // so we use another good ascent
 	  size_t s = a.firstBit();
 	  DescentStatus::Value v = descentValue(s,z);
 	  assert(v == DescentStatus::ComplexAscent or
 		 v==DescentStatus::ImaginaryTypeI);
 	  BlockElt sz =  v==DescentStatus::ComplexAscent
 	    ? d_block.cross(s,z) : d_block.cayley(s,z).first;
-	  if (sz==UndefBlock)
-	    goto finish; // link out of partial block: give up primitivization
-	  prim_index[z] = prim_index[sz];
-	  continue; // avoid executing the |finish| code
+	  if (sz==UndefBlock) // our link points out of partial block
+	    prim_index[z] = ~0; // so mark "cut to zero" primitivization
+	  else // result is the same as the (previously recorded) one for |sz|
+	    prim_index[z] = prim_index[sz]; // so copy that down
 	}
-      finish: prim_index[z] = ~0; // mark invalid primtivization
       } // |for(z-->0)|
       assert(prim_count==0); // we've seen all primitives
     } // |for(A)|

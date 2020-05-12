@@ -83,7 +83,7 @@ class KLSupport
   { return (goodAscentSet(x)&descentSet(y)).firstBit(); }
 
   /* computing KL polynomials used to spend a large amount of time evaluating
-     primitivize and then to binary-search for the resulting primitve element.
+     primitivize and then to binary-search for the resulting primitive element.
      Since the primitive condition only depends on the descent set, we speed
      things up by tabulating for each descent set the map from block elements
      to the index of their primitivized counterparts.
