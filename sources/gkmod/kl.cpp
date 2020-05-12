@@ -1139,21 +1139,21 @@ void KL_table::swallow (KL_table&& sub, const BlockEltList& embed, KLHash& hash)
     poly_trans[i]=hash.match(sub.d_store[i]); // should also extend |d_store|
 
   for (BlockElt z=0; z<sub.block().size(); ++z)
-    if (d_holes.isMember(embed[z]))
+    if (not sub.d_holes.isMember(z) and d_holes.isMember(embed[z]))
+    { // then transfer |sub.d_KL[z]| and |sub.d_mu[z]| to new block
+      for (auto& entry : sub.d_KL[z])
       {
-	for (auto& entry : sub.d_KL[z])
-	{
-	  entry.x=embed[entry.x];      // renumber block elements
-	  entry.P=poly_trans[entry.P]; // renumber polynomial indices
-	}
-	d_KL[embed[z]] = std::move(sub.d_KL[z]);
-
-	for (auto& entry : sub.d_mu[z])
-	  entry.x = embed[entry.x]; // renumber block elements (coef unchanged)
-	d_mu[embed[z]] = std::move(sub.d_mu[z]);
-
-	d_holes.remove(embed[z]);
+	entry.x=embed[entry.x];      // renumber block elements
+	entry.P=poly_trans[entry.P]; // renumber polynomial indices
       }
+      d_KL[embed[z]] = std::move(sub.d_KL[z]);
+
+      for (auto& entry : sub.d_mu[z])
+	entry.x = embed[entry.x]; // renumber block elements (coef unchanged)
+      d_mu[embed[z]] = std::move(sub.d_mu[z]);
+
+      d_holes.remove(embed[z]);
+    }
 }
 
 
