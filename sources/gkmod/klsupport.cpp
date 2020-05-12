@@ -50,7 +50,7 @@ KLSupport::KLSupport(const Block_base& b)
   , d_downset()
   , d_primset()
   , d_lengthLess()
-  , d_prim_index()
+  , d_prim_index(1ul << rank()) // $2^r$ empty slots, with $r$ (semisimple) rank
 {}
 
 /******** copy, assignment and swap ******************************************/
@@ -165,9 +165,6 @@ void KLSupport::fill()
   // make the downsets
   fillDownsets();
 
-  //fill the primitivize table
-  fillPrimitivize();
-
   d_state.set(Filled);
 
 }
@@ -252,67 +249,45 @@ void KLSupport::fillDownsets()
   could be suppressed when using pairs $(x,P_{x,y})$ and binary search on $x$.
 */
 
-  void KLSupport::fillPrimitivize()
+  void KLSupport::fill_prim_index(prim_index_tp& index_vec,RankFlags A) const
   {
-    if (d_state.test(PrimitivizeFilled))
-      return;
+    index_vec.resize(d_block.size()); // create slots; we will fill backwards
 
-    size_t two_to_the_r = 1ul << rank();
-    d_prim_index.resize(two_to_the_r); // create |two_to_the_r| empty slots
+    BitMap primitives(size()); primitives.fill();
+    filter_primitive(primitives,A); // compute all primitive elements for A
 
-    for (unsigned long j = 0 ; j<two_to_the_r ; ++j)
+    unsigned int prim_count = primitives.size(); // start at high end
+    constexpr unsigned int dead_end = -1; // signal no valid primitivization
+
+    for (BlockElt z = d_block.size(); z-->0;)
     {
-      const RankFlags A(j); // the current descent set
-
-      auto& prim_index = d_prim_index[j];
-      prim_index.resize(d_block.size()); // create slots; we will fill backwards
-
-      BitMap primitives(size()); primitives.fill();
-      filter_primitive(primitives,A); // compute all primitive elements for A
-
-      unsigned int prim_count = primitives.size(); // start at high end
-
-      for (BlockElt z = d_block.size(); z-->0;)
+      auto& dest = index_vec[z]; // the slot to fill during this iteration
+      RankFlags a = goodAscentSet(z)&A;
+      if (a.none())
+      { // then |z| is primitive, record its index
+	assert(primitives.isMember(z)); // sanity check
+	dest = --prim_count;
+      }
+      else
       {
-	// primitivize
-	RankFlags a = goodAscentSet(z)&A;
-	if (a.none())
-	{ // then |z| is primitive, record its index
-	  assert(primitives.isMember(z)); // sanity check
-	  prim_index[z] = --prim_count;
-	  continue;
+	weyl::Generator s = a.firstBit();
+	switch (descentValue(s,z))
+	{
+	case DescentStatus::RealNonparity: dest = dead_end; break;
+	case DescentStatus::ComplexAscent:
+	  { auto sz=d_block.cross(s,z);
+	    dest = sz==UndefBlock ? dead_end : index_vec[sz];
+	  } break;
+	case DescentStatus::ImaginaryTypeI:
+	  { auto sz=d_block.cayley(s,z).first;
+	    dest = sz==UndefBlock ? dead_end : index_vec[sz];
+	  } break;
+	default: assert(false);
 	}
-
-        // if \emph{some} ascent is real nonparity, cop out right away
-	// choosing another descent should hit zero as well, so not really needed
-	RankFlags::iterator it; // declare outside loop
-	for (it=a.begin(); it(); ++it)
-	  if (descentValue(*it,z) == DescentStatus::RealNonparity)
-	    break;
-
-	if (it()) // then we found some real noparity ascent
-	  prim_index[z] = ~0; // so mark "cut to zero" primitivization
-	else // loop completed without finding any real noparity ascents
-	{ // so we use another good ascent
-	  size_t s = a.firstBit();
-	  DescentStatus::Value v = descentValue(s,z);
-	  assert(v == DescentStatus::ComplexAscent or
-		 v==DescentStatus::ImaginaryTypeI);
-	  BlockElt sz =  v==DescentStatus::ComplexAscent
-	    ? d_block.cross(s,z) : d_block.cayley(s,z).first;
-	  if (sz==UndefBlock) // our link points out of partial block
-	    prim_index[z] = ~0; // so mark "cut to zero" primitivization
-	  else // result is the same as the (previously recorded) one for |sz|
-	    prim_index[z] = prim_index[sz]; // so copy that down
-	}
-      } // |for(z-->0)|
-      assert(prim_count==0); // we've seen all primitives
-    } // |for(A)|
-
-    d_state.set(PrimitivizeFilled);
-
-    return;
-  } // |fillPrimitivize|
+      }
+    } // |for(z-->0)|
+    assert(prim_count==0); // we've seen all primitives
+  } // |fill_prim_index|
 } // |namespace klsupport|
 
 /*****************************************************************************

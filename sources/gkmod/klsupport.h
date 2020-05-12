@@ -29,8 +29,7 @@ namespace klsupport {
 
 class KLSupport
 {
-  enum State {PrimitivizeFilled, DownsetsFilled, LengthLessFilled, Filled,
-	      NumStates};
+  enum State {DownsetsFilled, LengthLessFilled, Filled, NumStates};
 
   BitSet<NumStates> d_state;
 
@@ -41,7 +40,10 @@ class KLSupport
   std::vector<BitMap> d_downset;
   std::vector<BitMap> d_primset;
   std::vector<BlockElt> d_lengthLess;
-  std::vector<std::vector<unsigned int> > d_prim_index;
+
+  using prim_index_tp = std::vector<unsigned int>;
+  mutable // because entries are filled on-demand by |const| methods
+    std::vector<prim_index_tp> d_prim_index;
 
  public:
 
@@ -88,12 +90,16 @@ class KLSupport
      things up by tabulating for each descent set the map from block elements
      to the index of their primitivized counterparts.
   */
-  unsigned int prim_index (BlockElt x, const RankFlags& descent_set) const
-  { return d_prim_index[descent_set.to_ulong()][x]; }
+  unsigned int prim_index (BlockElt x, RankFlags descent_set) const
+  { prim_index_tp& vec=d_prim_index[descent_set.to_ulong()];
+    if (vec.size()==0)
+      fill_prim_index(vec,descent_set);
+    return vec[x];
+  }
 
   // this is where an element |y| occurs in its "own" primitive row
   unsigned int self_index (BlockElt y) const
-  { return d_prim_index[descentSet(y).to_ulong()][y]; }
+  { return prim_index(y,descentSet(y)); }
 
   // the following are filters of the bitmap
   void filter_extremal(BitMap&, const RankFlags&) const;
@@ -102,7 +108,7 @@ class KLSupport
 // manipulators
   void fill();
   void fillDownsets();
-  void fillPrimitivize();
+  void fill_prim_index(prim_index_tp& dest,RankFlags A) const;
 };
 
 } // |namespace klsupport|
