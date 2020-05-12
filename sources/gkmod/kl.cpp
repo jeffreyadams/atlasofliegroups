@@ -202,16 +202,14 @@ KLIndex KLContext::KL_pol_index(BlockElt x, BlockElt y) const
 /*
   Return $\mu(x,y)$.
 
-  This function is not used internally. So we prefer do just use the table of
-  KL polynomials.
- */
+  This function is not used internally, so we are sure all tables are computed.
+  We then prefer fast lookup in |d_kl| over binary search in |d_mu|.
+*/
 MuCoeff KLContext::mu(BlockElt x, BlockElt y) const
 {
-  unsigned int lx=length(x),ly=length(y);
-  if (ly<=lx or (ly-lx)%2==0)
-    return MuCoeff(0);
   KLPolRef p = klPol(x,y);
-  return p.degree()<(ly-lx)/2 ? MuCoeff(0) : MuCoeff(p[p.degree()]);
+  return p.isZero() or 2*p.degree()+1+length(x)<length(y) ? MuCoeff(0)
+						: MuCoeff(p[p.degree()]);
 }
 
 /*
@@ -670,7 +668,7 @@ void KLContext::muCorrection(std::vector<KLPol>& klv,
 
    - generate the list of all primitve elements for |y|, which contains |er|
    - for each primitive element |x|, if it is extremal just look up $P_{x,y}$
-     from |klv| in |d_hashtable; if |x| is primitive but not extramal, compute
+     from |klv| in |d_store|; if |x| is primitive but not extremal, compute
      that polynomial (as sum of two $P_{x',y}$ in the same row) and similarly
      store the result
    - record those |x| which have nonzero $\mu(x,y)$, and write |d_mu[y]|
