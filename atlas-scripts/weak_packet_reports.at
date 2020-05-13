@@ -8,7 +8,7 @@ about conjectural relationship between size of weak packet
 and component group information
 }
 {CUT
-{
+
 {Type A}
 {SL(n)}
 prints("SL(n,R)")
@@ -42,7 +42,7 @@ prints("Spin(p,q) type B")
 
 {type B complex}
 {prints("Spin(2n+1,C)")
->"output/Spin7C" void:weak_packet_report_ind (complex(Spin(7)))}
+>"output/Spin7C" void:weak_packet_report_ind (complex(Spin(7)))
 
 {type C}
 prints("Sp(2n,R)")
@@ -76,7 +76,7 @@ prints("F4")
 >"output/F4s" void:weak_packet_report_ind (F4_s)
 >"output/F4B4" void:weak_packet_report_ind (F4_B4)
 
-/CUT}
+
 
 prints("E6_sc")
 >"output/E6_sc_c" void:weak_packet_report_ind (E6_c)
@@ -99,3 +99,19 @@ prints("E7")
 {>"output/E7s" void:weak_packet_report_ind (E7_s)}
 
 /CUT}
+
+prints("Component group info")
+prints(G2)
+>"output/G2_components.txt" void:print_component_info(G2_s)
+prints(F4)
+>"output/F4_components.txt" void:print_component_info(F4_s)
+prints("E6 simply connected")
+>"output/E6_sc_components.txt" void:print_component_info(E6_s)
+prints("E6 adjoint")
+>"output/E6_ad_components.txt" void:print_component_info(adjoint(E6_s))
+prints("E7 simply connected")
+>"output/E7_sc_components.txt" void:print_component_info(E7_s)
+prints("E7 adjoint")
+>"output/E7_ad_components.txt" void:print_component_info(adjoint(E7_s))
+prints(E8)
+>"output/E8_components.txt" void:print_component_info(E8_s)

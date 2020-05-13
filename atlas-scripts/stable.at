@@ -233,7 +233,9 @@ all_regular_parameters=all_parameters_gamma(G,gamma_regular) then
 {need to pass list of regular parameters,obtained by
 translating singular_parameters out to gamma_regular}
 my_regular_parameters={for p in singular_parameters do T(p,gamma_regular) od}
- ##for p in all_regular_parameters do if find(singular_parameters,first_param(T(p,gamma_singular)))>=0 then [p] else [] fi od
+ ##for p in all_regular_parameters do
+   let p_sing=T(p,gamma_singular) in
+     if #p_sing>0 and find(singular_parameters,first_param(T(p,gamma_singular)))>=0 then [p] else [] fi od
 then
 ()=prints("# regular parameters:", #my_regular_parameters) then
 blocks=blocks(all_regular_parameters) then
