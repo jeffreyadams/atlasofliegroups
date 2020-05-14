@@ -459,6 +459,10 @@ bool specialise(const type_expr& pattern);
 bool can_specialise(const type_expr& pattern) const;
   // tell whether |specialise| would succeed
 @)
+  bool operator== (const type_expr& y) const;
+  bool operator!= (const type_expr& y) const @+{@; return not((*this)==y); }
+  bool is_unstable() const; // whether |undetermined| components elements are present
+@)
 void print(std::ostream& out) const;
 @)
 @< Static methods of |type_expr| that will access |type_map| @>
@@ -796,52 +800,69 @@ component by component.
   // whether both lists terminated
 }
 
-@ Finally we need a comparison for structural equality of type expressions.
-
-@< Declarations of exported functions @>=
-bool operator== (const type_expr& x,const type_expr& y);
-inline bool operator!= (const type_expr& x,const type_expr& y)
-{@; return !(x==y); }
-
-@~This code is quite similar to the |specialise| method; in fact one could
-often use that method instead of the equality operator, but here we want both
-operands to be |const|.
+@ The equality test is quite similar to the |specialise| method; in fact one could
+often use that method in its place, but here we want both operands to be |const|.
 
 @< Function definitions @>=
-bool operator== (const type_expr& x,const type_expr& y)
-{ if (x.raw_kind()!=y.raw_kind())
-  { if (x.raw_kind()!=tabled and y.raw_kind()!=tabled)
-      return false; // different structures
-    return x.raw_kind()==tabled ? x.expansion()==y  : x==y.expansion();
+bool type_expr::operator== (const type_expr& y) const
+{ if (tag!=y.tag)
+  { if (tag!=tabled and y.tag!=tabled) return false; // different structures
+    return tag==tabled ? expansion()==y  : (*this)==y.expansion();
   }
-  switch (x.raw_kind())
+  switch (tag)
   { case undetermined_type: return true;
-    case primitive_type: return x.prim()==y.prim();
+    case primitive_type: return prim_variant==y.prim_variant;
     case function_type:
-      return x.func()->arg_type==y.func()->arg_type
-	 and x.func()->result_type==y.func()->result_type;
-    case row_type: return *x.component_type()==*y.component_type();
+      return func_variant->arg_type==y.func_variant->arg_type @|
+	 and func_variant->result_type==y.func_variant->result_type;
+    case row_type: return *row_variant==*y.row_variant;
     case tuple_type: case union_type:
-       @< Find out and |return| whether all types in |x.tuple()|
-          are equal to those in |y.tuple()| @>
+       @< Find out and |return| whether all types in |tuple_variant|
+          are equal to those in |y.tuple_variant| @>
     case tabled:
-      return x.type_nr()==y.type_nr();
+      return type_number==y.type_number;
       // only equal type numbers give equal types here
   }
   assert(false); return true; // cannot be reached, but compilers don't trust it
 }
 
 @ This module has a familiar structure.
-@< Find out and |return| whether all types in |x.tuple()| are equal to those in
-  |y.tuple()| @>=
+@< Find out and |return| whether all types in |tuple_variant| are equal to
+those in |y.tuple_variant| @>=
 {
-  wtl_const_iterator it0(x.tuple());
-  wtl_const_iterator it1(y.tuple());
+  wtl_const_iterator it0(tuple_variant);
+  wtl_const_iterator it1(y.tuple_variant);
   while (not it0.at_end() and not it1.at_end()
          and *it0==*it1)
     @/{@; ++it0; ++it1; }
   return it0.at_end() and it1.at_end();
   // whether both lists terminated
+}
+
+@ The predicate |is_unstable| checks for the presence of undefined components
+(\.*) in a type (such types are ``unstable'' since the might get modified by
+|specialise|, and in certain places their occurrence could undermine the
+consistency of the type system).
+
+@< Function definitions @>=
+bool type_expr::is_unstable() const
+{ switch (tag)
+  {
+    case undetermined_type: return true;
+    case tabled:  return false; // syntax excludes \.* in tabled types
+    case primitive_type: return false;
+    case function_type:
+      return func_variant->arg_type.is_unstable()
+          or func_variant->result_type.is_unstable();
+    case row_type: return(row_variant->is_unstable());
+    case tuple_type: case union_type:
+    {
+      for (wtl_const_iterator it(tuple_variant); not it.at_end(); ++it)
+        if (it->is_unstable()) return true;
+      return false;
+    }
+  }
+  assert(false); return true; // cannot be reached, but compilers don't trust it
 }
 
 @*2 Storage of defined, possibly recursive, types.
@@ -1228,7 +1249,7 @@ type_expr
         }
         break;
       }
-    default: assert(false);
+    default: assert(false); dst=nullptr; // avoid ``uninitialized'' warning
     }
     dst->splice(dst->end(),type_perm,type_perm.begin());
     // also erases |type_perm.front()|
@@ -3161,41 +3182,53 @@ unsigned int is_close (const type_expr& x, const type_expr& y)
 
 @ For balancing we need a related but slightly different partial ordering on
 types. The function |broader_eq| tells whether an expression of \foreign{a
-priori} type |b| might also valid (with possible coercions inserted) in the
-context of type~|a|; if so we call type |a| broader than~|b|.
+priori} type |b| might also valid (with possible coercions inserted) in a
+context that requires an expression of type~|a|; if so we call type |a| broader
+than~|b|.
 
 @< Declarations of exported functions @>=
 bool broader_eq (const type_expr& a, const type_expr& b);
 
-@~The relation |greater_eq(a,b)| does not imply that values of type~|b| can be
+@~The relation |broader_eq(a,b)| does not imply that values of type~|b| can be
 converted to type~|a|; what is indicated is a possible conversion of
-expressions might depend on the form of the expressions, and only be achieved
-by coercions applied to more or less deeply nested subexpressions (for
-instance a list display is required if $a$ is \.{[rat]} and |b| is \.{[int]}).
-It is not the responsibility of |greater_eq| to decide whether this succeeds
-or not (an error will be thrown later if it turns out to fail), but it defines
-a partial ordering to guide which types are candidate types will be
-considered.
+expressions, but the might depend on the form of the expressions, and only be
+achieved by coercions applied inside more or less deeply nested subexpressions.
+For instance, while \.{[int]} cannot be coerced to \.{[Split]}, the latter type
+is still considered broader than the former, and indeed a list display of
+expressions of a priori type \.{int} would be valid in a context that
+requires \.{[Split]}, with each component of the list display individually
+coerced to \.{Split}. It is not the responsibility of |broader_eq| to decide
+whether such a case exists or is at hand, but just to define a partial ordering
+that holds at least in those cases where some expression of a priori type
+|b| \emph{can} be accepted in a context that requires an expression of type~|a|.
+If |broader_eq(a,b)| returns true, then the expression that gave type~|b| will
+be reconsidered in a context requiring type~|a|, and this second tentative might
+succeed (with inserted conversions) or still fail, with an error being reported
+at that time.
 
-Since these are types deduced for expressions rather than required type
-patterns, \.* stands for tho most narrow rather than a very broad type, indeed
-one for an expression like \.{die} that can never return a value, and the
-type \.{[*]} is narrower than any other row type (the only value that an
-expression with this type can return is an empty list). Nonetheless
-``broader'' does not imply more possible values, and the type \.{void} is the
-broadest of all since all values can be converted to it.
+Since the type being compared types were types found for concrete expressions
+(rather than type patterns imposed by the context), an occurrence of \.* is
+rare, and when it occurs stands for the type of a fictitious value that can be
+assumed to become any type one wishes (an expression like \.{die}, or the absent
+element of an empty list display); therefore all type compare |broader_eq|
+than \.*, making that type a neutral value for balancing. At the other extreme,
+the type \.{void} is the broadest of all, since all values can be converted to
+it.
 
-The implementation is by structural recursion, like |is_close|, but some
-details are different. We do take |void_type| into consideration here, as well
-as the (rare) type |unknown_type|. Since we want to define a partial ordering,
-we must forbid one direction of all two-way coercions; since those always
-involve exactly one primitive types, we do this by only allowing the
+The implementation of |braoder_eq| is by structural recursion, like |is_close|,
+but some details are different. We do take |void_type| into consideration here,
+as well as the (rare) type |unknown_type|. Since we want to define a partial
+ordering, we must forbid one direction of all two-way coercions; since those
+always involve exactly one primitive types, we do this by only allowing the
 conversion in the direction of the primitive type. For the rest we just do the
 recursion in the usual way with just one twist: function types can only be
-comparable if they have equal argument types, but there might be a recursive
-|broader_eq| relation between the result types (because a coercion might
-``creep into'' the body of a lambda expression; this is not likely, but we can
-cater for it here).
+comparable if they have equal argument types (as there is no way inserted
+conversions can change the argument type of a lambda expression), but there
+might be a recursive |broader_eq| relation between the result types (since an
+externally imposed function type might be honoured by inserting a conversion
+into the body of an anonymous function, causing it to return the required type;
+this is a fairly hypothetical possibility, but as we can cater for it in the
+definition of |broader_eq| at little cost, we might as well do it).
 
 @< Function definitions @>=
 bool broader_eq (const type_expr& a, const type_expr& b)
@@ -3210,8 +3243,9 @@ bool broader_eq (const type_expr& a, const type_expr& b)
   if (ak==primitive_type)
     return (is_close(a,b)&0x2)!=0; // whether |b| can be converted to |a|
   if (ak!=bk)
-    // includes remaining cases where |b.kind()==primitive_type|
-    return false; // no broader between different kinds on non-primitive types
+    // this includes remaining cases where |bk==primitive_type|
+    return false;
+    // and different kinds on non-primitive types are incomparable
   if (ak==row_type)
     return broader_eq(*a.component_type(),*b.component_type());
   if (ak==function_type)

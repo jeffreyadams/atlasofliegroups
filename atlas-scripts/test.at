@@ -1,0 +1,267 @@
+<basic.at
+<std_decs.at
+<groups.at
+<hermitian.at
+
+G:=SO(6,5)
+delta:=G.distinguished_involution
+rho:=G.rho
+p:=G.trivial
+gamma:=p.infinitesimal_character
+theta:=p.x.involution
+set gamma1=gamma%1
+q := param(KGB(G,387),null(5),[9,3,4,4,-3]/2)
+set prep () = let (fixed,) = twisted_c_form_irreducible_contributions(p) in
+   sum(fixed.real_form
+      ,for c@p in fixed ~do let t=full_deform(p) in if p=q then break fi; c*t od
+      )
+set q3 = q*/3
+set q3d = dominant(q3)
+set q3n = normal(q3)
+set qprime = { q.deform.first_param }
+  parameter(KGB(G,371),[9,7,5,3,1]/2,[9,0,4,4,0]/2)
+set qdouble = { ((qprime*(3/5)).deform.first_param*(15/17)).normal }
+  parameter(KGB(G,223),[7,7,7,1,3]/2,[0,3,3,0,3]/2)
+set target = parameter(KGB(G,27),[7,5,3,1,1]/2,[0,0,0,0,1]/2)
+set go () = qdouble.deform[target]
+
+set culprit = { parameter(KGB(G,308),[9,7,5,3,1]/2,[9,0,0,3,1]/2) }
+              { parameter(KGB(G,267),[9,7,5,3,1]/2,[9,0,0,3,0]/2) }
+	       parameter(G,217,[9,7,5,3,1]/2,[9,0,0,0,1]/2)
+	      { parameter(G,173,[9,7,5,3,1]/2,[9,0,0,0,0]/2) }
+{ set P=oriented_KL_sum(p) }
+{
+G:=SO(6,3) { also SO(4,4) needs study }
+set target=parameter(KGB(G,7),[5,3,3,1]/2,[0,0,0,0]/1)
+q:=parameter(KGB(G,61),[7,5,3,1]/2,[7,5,3,0]/2)
+set r= { normal(q.deform.monomials[5]*(2/3) }
+      parameter(KGB(G,51),[7,3,5,1]/2,[6,0,6,1]/3)
+set go () = deform(r)
+}
+{
+q:=param(KGB(G,74),null(5),[4,4,2,2,0]/1)
+set r = param(KGB(G,33),null(5),[4,5,0,4,-1]/2)
+
+set q1 = q*(3/4)
+}
+{ G:=SL(7,R)
+set q:=param(KGB(G,220),null(6),[12,9,9,6,3,3]/2) { wrong coef |target| below }
+set (q1,)=scale_extended(q,delta,/3) { here |deform| goes different }
+{ q1=parameter(KGB(G,61),[3,3,1,2,2,-1]/1,[2,3,0,1,2,-1]/2) }
+
+set target = parameter(KGB(G,0),[2,2,1,1,1,0],null(6))
+}
+set sep(ParamPol P)=(ParamPol,ParamPol):
+  let a=0*P,b=0*P,left=false in
+  for c@q in P do if left:=not left then a+:=(c,q) else b+:=(c,q) fi od;(a,b)
+
+set select(ratvec gamma) = (ParamPol P):
+  P.null_module + ##
+  for c@q in P
+  do if q.infinitesimal_character=gamma then [(c,q)] else [] fi
+  od
+
+set fd (ParamPol P) = ParamPol: map(full_deform@Param,P)
+set tfd (ParamPol P) = ParamPol: map(twisted_full_deform@Param,P)
+
+set dpts (Param p) = [Param,bool]:
+  for f in reducibility_points(p) do scale_extended(p,delta,f) od
+
+set def_terms (Param p) = ParamPol:
+  (ParamPol:p*0) +
+  sum(real_form(p),for f in reducibility_points(p) do deform(p*f) od)
+set dts (Param p) = ParamPol:
+  let sum=ParamPol: p*0 in
+  for (q,flip) in dpts(p)
+  do if flip then sum-:=q.twisted_deform else sum+:=q.twisted_deform fi
+  od; sum
+
+set deformations (Param p) = [ParamPol]:
+  let s=(ParamPol:p*0) in s #
+  for f in reducibility_points(p)
+  do  s +:= for c@q in deform(normal(p*f)) do c*full_deform(q) od
+  od
+
+set def_try  (Param p) = ParamPol:
+  let s=(ParamPol:p*0) in
+  for f in reducibility_points(p)
+  do prints(f," ",go()); s +:=
+    for c@q in deform(p*f)
+    do prints(c,"@",q," ",go())
+    ; c*full_deform(q)
+    next prints("Deformed ",q," ",go())
+    od
+  od; s
+
+set defos (Param p) = [ParamPol]:
+  let s=(ParamPol:p*0) in s #
+  for f in reducibility_points(p)
+  do  s +:=
+  ( let D=deform(print(p*f.print)) then nD=#D,i=0 in
+    for c@q in D
+    do prints("Deformation of term ",(i+:=1)-1," (of ",nD,"), coef=",c)
+    ; let r=c*full_deform(q.print) in prints("Result",r); r next prints(72*"-")
+    od
+  )
+  od
+
+{
+rd := simply_connected("D5")
+ic := inner_class(rd,let I=id_mat(5) in for i in [0,1,2,4,3] do I[i] od)
+G := ic.quasisplit_form
+p:= param(KGB(G,250),[0,0,0,0,0],[0,1,0,0,0]/1)
+
+set perm=[0,3,1,2,4]
+set conj(mat M) = mat:matrix((5,5),(int i,int j)int: M[perm[i],perm[j]])
+set perm_roots=conj(rd.simple_roots)
+
+set rd1 = root_datum(perm_roots,id_mat(5))
+set ic1 = inner_class(rd1,
+                      conj(let I=id_mat(5) in for i in [0,1,2,4,3] do I[i] od))
+set G1 = ic1.quasisplit_form
+set p1=param(KGB(G1,250),[0,0,0,0,0],[0,0,1,0,0]/1)
+
+set perm(vec v)=vec: for i:5 do v[perm[i]] od
+set perm(ratvec rv) = ratvec: let (n,d)=%rv in perm(n)/d
+set to1(KGBElt x)=KGBElt: KGB_elt(rd1,conj(x.involution),perm(x.torus_factor))
+set to1(Param p)=Param:
+   let (x,lambda_rho,nu)=%p in param(x.to1,lambda_rho.perm,nu.perm)
+
+set_type data_type = ([Param] pars, mat code, mat C1, mat C2)
+set eblock=extended_block(p,ic.distinguished_involution)
+set eblock1=extended_block(p1,ic1.distinguished_involution)
+
+set embed = [int]: { mapping from eblock indices into unextended block }
+  let (block,)=p.block, i=0 in
+  for q in eblock.pars do while i<#block and block[i]!=q do i+:=1 od; i od
+
+set emap = { mapping from eblock to corresponding eblock1 index (involution) }
+{ let ps= eblock.pars, ps1=eblock1.pars then n=#ps in
+  for i:n do first(n,(int j):ps1[j]=to1(ps[i])) od
+  This turns out to be a simple transposition (216 217) so avoid computation: }
+   let map=#220 in map[216]:=217; map[217]:=216; map
+
+set transport(int i) = int:
+  if i<0 then -1-emap[-1-i] elif i=220 then 220 else emap[i] fi
+set transport(vec v)=vec: for i:220 do transport(v[emap[i]]) od
+
+set to0(mat M) = mat: for j in [0,2,3,1] do M[j].transport od
+
+set diff (mat A,mat B) = void :
+  for v@j in A do for x@i in v do if x!=B[i,j] then print(i,j,x,B[i,j]) fi od od
+
+{ diff(eblock.C1,eblock1.C1.to0) }
+
+set partition ([mat,mat] links) = [int]:
+begin
+   let n=let (m,)=links[0] in m.n_rows
+   then status=null(n), todo=[0]
+in status[0]:=1
+;  while >#todo
+   do let i=todo[0] in todo:=todo[1:]
+   ; for (A,B)@lnknr in links
+     do for j:A.n_columns
+        do let a=A[i,j], b=B[i,j]
+	   then ta=if a<0 then -1-a else a fi, tb=if b<0 then -1-b else b fi
+	   , flip = minus_1^(#(a<0)+#(b<0)) { whether link signs differ }
+	in if ta>=n then assert(a=n and b=n)
+	   elif ta!=tb
+	   then prints("Link ",lnknr," mismatch at ",i,": (",ta,",",tb,")")
+	   elif =status[ta] then status[ta]:=status[i]*flip; todo#:=ta
+	   elif status[ta]!=status[i]*flip
+	   then prints("Sign mismatch at link ",lnknr,": ",i,"->",ta)
+	   fi
+	od
+     od
+   od
+;  status
+end
+
+set flips = partition([(eblock.C1,eblock1.C1.to0),(eblock.C2,eblock1.C2.to0)])
+
+reK : (mat,[vec],vec)
+reK1: (mat,[vec],vec)
+diff: mat
+
+set go() = void: { with debugging on the second computation aborts }
+( reK :=raw_ext_KL(p ,ic.distinguished_involution)
+; reK1:=raw_ext_KL(p1,ic1.distinguished_involution)
+; let (A,polA,)=reK,(B,polB,)=reK1 in diff:=
+   matrix((220,220)
+         ,(int i,int j) int:
+            let flip=flips[i]*flips[j], k=A[emap[i],emap[j]], l=B[i,j]
+	    then P=polA[k.abs],Q=polB[l.abs] in #(k.sign*P!=flip*l.sign*Q)
+	 ) { nonzero entries at (32,217),(49,217),(71,217) }
+)
+
+{ report of debugging to see why twisted KL poly at (71,217) in B, q^2-2q
+  differs from (presumably correct) twisted KL poly at (71,216) in A, q^2.
+
+  "human oriented" output applies |embed| 49->63, 71->101, 216-336, 217->337
+
+  from |print_extended_block(p,ic.distinguished_involution)|:
+  ...
+  62: [1C+  ,1C-  ,1i1  ,2i12f] -100  +35  +63  +62;  .    .  +79   +116,-117
+  63: [1C+  ,1C-  ,1i1  ,2ic  ] -101  +36  +62  +63;  .    .  +79       .
+  64: [1C-  ,1r1f ,1C-  ,2C+  ]  +37  +64  +37 +166;  . +40,+41 .       .
+  ...
+ 100: [1C-  ,1i1  ,1i1  ,2i12f]  -62  +99 +101 +100;  .  +119 +121  -164,+165
+ 101: [1C-  ,1ic  ,1i1  ,2ic  ]  -63 +101 +100 +101;  .    .  +121      .
+ 102: [1r1f ,1C+  ,1r2  ,2rn  ] +102 +142 +103 +102;+70,+73.  +69      .
+ ...
+ 336: [1rn  ,1r2  ,1rn  ,2r21f] +336 +334 +336 +336;  . +325   .    +306,-309
+ ...
+
+ and from |print_extended_block(p1,ic1.distinguished_involution)|:
+ ...
+  62: [1C+  ,2i12f,1C-  ,1i1  ] -100  +62  +35  +63;  . +116,-117  .    +79
+  63: [1C+  ,2ic  ,1C-  ,1i1  ] -101  +63  +36  +62;  .     .      .    +79
+  64: [1C-  ,2C+  ,1r1f ,1C-  ]  +37 +166  +64  +37;  .     .   +40,+41  .
+ ...
+ 100: [1C-  ,2i12f,1i1  ,1i1  ]  -62 +100  +99 +101;  . -164,+165 +119  +121
+ 101: [1C-  ,2ic  ,1ic  ,1i1  ]  -63 +101 +101 +100;  .     .       .   +121
+ 102: [1r1f ,2rn  ,1C+  ,1r2  ] +102 +102 +142 +103;+70,+73 .       .    +69
+ ...
+ 337: [1rn  ,2r21f,1r2  ,1rn  ] +337 +337 +334 +337;   . +306,-309 +325   .
+
+ Computation for A:
+   y=216 (->336) descents[y]= ~[0,1,0,1]: {1,3} i.e., 1r2 and 2r21f
+   x=71  (->101) descents[x]= ~[1,1,0,1]: {0,1,3} i.e., 1C-, 1ic and 2ic
+ Since all descents for |y| are also descents for |x|, |x| is extremal for |y|
+ The nonparity extended generators for |y| are 0 and 2 (both 1rn)
+ For s=0, tsx=one_complex_descent, neither like type1 nor an ascent, not compact
+ For s=2, tsx=one_imaginary_single, like type1 and cross(s,x)=70 (->100) has
+          ascents that are descents for y (both generator 1:1i1 and 3:2i12f are)
+ So real computation starts for s=2, type(s,x)=one_imaginary_single
+ Alias M=M_s[1] because extended generator 2 is non-parity root nr 1 for y==216
+ This is a vector of length 210, many of whose entries are zero polynomials, but
+ entry M[205] has a polynomial 1, P(x,u)=q-1 for u=205 sets Q=q^2-q
+ The summation over x<u<y has a contribution for u=205 only, leaves Q=q^2-q
+ (end game code)
+ x_prime=85 (->121), x_prime<floor_y code executes but cy[x_prime]==0 so no
+ change, s_cross_x=70 has an easy_set {1,3} from which t=1 is chosen with type
+ ttscx=one_imaginary_single which does not |has_double_image|, so we compute
+ sx_up_t=83 (->119) with cy[83]=-q this ends up in statement |Q-=cy[sx_up_t]|
+ subtracting -q from Q, leaving q^2
+
+ Computation for B:
+   y=21y (->337) descents[y]= ~[0,1,1,0]: {1,2} i.e., 2r21f and 1r2
+   x=71  (->101) descents[x]= ~[1,1,1,0]: {0,1,2} i.e., 1C-, 2ic and 1ic
+ Since all descents for |y| are also descents for |x|, |x| is extremal for |y|
+ The nonparity extended generators for |y| are 0 and 3 (both 1rn)
+ For s=0, tsx=one_complex_descent, neither like type1 nor an ascent, not compact
+ For s=3, tsx=one_imaginary_single, like type1 and cross(s,x)=70 (->100) has
+          ascents that are descents for y (both generator 1:2i12f and 2:1i1 are)
+ So real computation starts for s=3, type(s,x)=one_imaginary_single
+ Alias M=M_s[1] because extended generator 3 is non-parity root nr 1 for y==217
+ This is a vector of length 210, many of whose entries are zero polynomials, but
+ entry M[205] has a polynomial 1, P(x,u)=q-1 for u=205 sets Q=q^2-q
+ The summation over x<u<y has a contribution for u=205 only, leaves Q=q^2-q
+ (end game code)
+ x_prime=85 (->121), x_prime<floor_y code executes but cy[x_prime]==0 so no
+ change, s_cross_x=70 has an easy_set {1,2} from which t=1 is chosen with type
+ ttscx=two_imaginary_single_double_fixed which |has_double_image|, so we compute
+ p sx_up_t=(108,109) (->(164,165)) with cy[108]=q and qy[109]=0 this ends up in
+ statement |Q -= cy[sx_up_t.first]| subtracting q from Q, leaving q^2-2q
+}
+}

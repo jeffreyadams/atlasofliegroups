@@ -122,6 +122,14 @@ ct:=ct.update_degrees
 set F4_names(CharacterTable ct)=[string]:for i:ct.n_classes do ct.F4_name(ct.character(i)) od
 set F4_names(int i)=ct.F4_names[i]
 }
+forget a
+forget b
+forget c
+forget d
+forget tau
+forget sigma
+forget e
+forget z
 
 
 

@@ -69,4 +69,4 @@ set test(CharacterTable ct)=
 let S=ct.sym_power(ct.reflection,3) in
 for i:ct.n_classes do ct.inner(ct.characters[i],S) od
 
-{set st=springer_table_E8(ct)} 
+

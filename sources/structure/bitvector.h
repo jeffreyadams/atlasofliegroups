@@ -115,7 +115,7 @@ template<unsigned int dim> int_Vector lift(const BitVector<dim>& v);
   BitVector<2*RANK_MAX> are now instantiated, (that is <16> or <32>), so |dim|
   is not very relevant; one could imagine |dim==longBits| throughout.
 
-  Let the integer |m| be \f$\lceil dim/longBits \rceil\f$ (quotient rounded
+  Let the integer |m| be $\lceil dim/longBits \rceil$ (quotient rounded
   upwards) . The vector is stored as the BitSet<dim> |d_data|, which is a
   (fixed size) array of |m| words of memory. (On a 32 bit machine with
   RANK_MAX=16 one always has |m==1|, so that |d_data| is a single word of
@@ -290,7 +290,7 @@ template<unsigned int dim> class BitVector
 
   void slice(const BitSet<dim>& mask);
   void unslice(BitSet<dim> mask, size_t new_size);
-}; // class BitVector
+}; // |class BitVector|
 
 /* the following template inherits everything from |std::vector| but after
    some constructors that mimick those of |BitVector|, we also provide a
@@ -326,7 +326,7 @@ template<unsigned int dim> class BitVectorList
     BitVectorList(I begin, I end)
     : std::vector<BitVector<dim> >(begin,end)
     {}
-};
+}; // |class BitVectorList|
 
 
 // note that the elements in d_data are the _column_ vectors of the matrix

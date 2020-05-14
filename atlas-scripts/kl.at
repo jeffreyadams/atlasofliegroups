@@ -26,26 +26,19 @@
 { ------------------------------------------------------------------- }
 
 set character_formula (Param p) = ParamPol: s_to_1(KL_sum_at_s(p))
-set character_formula (ParamPol P)=ParamPol:
-let result=null_module(P) in
-for c@p in P do result+:=c*character_formula(p) od;result
+set character_formula (ParamPol P) = ParamPol: map(character_formula@Param,P)
 
 { ------------------------------------------------------------------- }
 
 { composition series }
 
-set composition_series (Param p) = ParamPol:
-( let acc = ParamPol: p, result = null_module(p) in
-  while !=acc { non null module }
-  do let (coef,final):term=first_term(acc) in
-    result +:= term; acc -:= coef*character_formula(final)
+set composition_series(ParamPol P) = ParamPol:
+  null_module(P)+
+  while !=P { non null module }
+  do let (coef,p):term=first_term(P) in P -:= coef*character_formula(p); term
   od
-; result
-)
 
-set composition_series(ParamPol P)= ParamPol:
-let result=null_module(P) in
-for c@p in P do result+:=c*composition_series(p) od;result
+set composition_series (Param p) = ParamPol: composition_series(ParamPol: p)
 
 set tabulate_at_1 ([Param] block, (Param->ParamPol) f) = mat:
   for y in block { y determines a column of the result }
@@ -77,3 +70,61 @@ set print_character_formula (Param p) = void:
 
 set print_composition_series(Param p) = void:
   print_formatted(composition_series(p))
+
+{string output used in composition_series_verbose}
+set nice_string(Split s)=string:
+let (a,b)=%s in
+if b=0 then a.to_string
+elif a=0 then
+ if b>1 then b.to_string + "s"
+ elif b=1 then "+s"
+ elif b=-1  then "-s" 
+ else a.to_string + "-" + abs(b).to_string + "s"
+ fi
+else
+ if b>1 then a.to_string +  "+" + b.to_string + "s"
+ elif b=1 then a.to_string +  "+s"
+ elif b=-1 then a.to_string + "-s" 
+ else a.to_string + "-" + abs(b).to_string + "s"
+fi
+fi
+
+set print_with_length(ParamPol P)=void:
+for (c,p) in %P do prints(c.nice_string, "*"  , p, " ", p.length) od
+
+{print out high length terms as they become available}
+set composition_series_verbose(ParamPol P)= ParamPol:
+let result=null_module(P) in
+for i:#P do 
+ let (c,p)=(%P)[i] then
+ ()=prints("length of p: ", length(p)) then
+ result_new =result+c*composition_series(p) in
+ result:=result_new; 
+ if i<#P-1 then
+  let next_length=length(monomials(P)[i]) in
+  {the next line is for debugging, comment it out}
+{  prints(new_line,"----------------------",new_line,"all terms: ", result);}
+  let ()=prints("terms of length >= ", next_length,":") in
+  for (d,q) in %result do
+   if length(q)>=next_length then prints(d.nice_string, "*", q, " ", q.length) fi
+  od
+ fi
+od;result
+
+{print out high length terms as they become available}
+set composition_series_verbose(ParamPol P)= ParamPol:
+let result=null_module(P) then
+max=max(for p in monomials(P) do length(p) od) in
+for L:max+1 downto 0 do
+ let ()=prints("Length: ", L) then
+ result_new=null_module(P) then
+ ()=for (c,p) in %P do
+     if length(p)=L then result_new +:=c*composition_series(p)  fi
+    od in
+{    ()=prints("OK") in}
+    result:=result+result_new;
+    prints("terms in result of length ", L, ":");
+    for (c,p) in %result do if length(p)=L then prints(c.nice_string, "*",p, " ", p.length) fi od
+od;
+prints("result:");print_with_length(result);
+result

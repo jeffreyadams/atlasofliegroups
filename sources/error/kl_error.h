@@ -31,10 +31,10 @@ struct KLError {
   size_t x;
   size_t y;
   int line;
-  const kl::KLContext* klc;
+  const kl::KL_table* kl_tab;
   // constructors
-  KLError(size_t x, size_t y, int line, const kl::KLContext& klc)
-    :x(x), y(y), line(line), klc(&klc) {}
+  KLError(size_t x, size_t y, int line, const kl::KL_table& kl_tab)
+    :x(x), y(y), line(line), kl_tab(&kl_tab) {}
   // accessors
   void operator() (const char*) const;
 };

@@ -157,33 +157,6 @@ std::ostream& print_X(std::ostream& strm, const global_KGB& kgb)
   return print(strm,kgb,false,nullptr,nullptr);
 }
 
-std::ostream& print_twist(std::ostream& strm, const KGB_base& kgb)
-{
-  std::ostringstream os; KGBElt count=0;
-
-  os << "Elements fixed under twist: ";
-  for (KGBElt i=0; i<kgb.size(); ++i)
-    if (kgb.Hermitian_dual(i)==i)
-    {
-      if (count>0)
-	os << ", ";
-      os << i;
-      ++count;
-    }
-  ioutils::foldLine(strm,os.str()) << std::endl;
-
-  os.str(""); // clear string for rewriting
-  strm << "Elements interchanged by twist: " << std::endl;
-  for (KGBElt i=0; i<kgb.size(); ++i)
-    if (kgb.Hermitian_dual(i)>i)
-      os << '(' << i << ' ' << kgb.Hermitian_dual(i) << ") ";
-
-  ioutils::foldLine(strm,os.str(),"",") ") << std::endl;
-
-  return strm << "Total " << count << " fixed elements out of " << kgb.size()
-	      << std::endl;
-}
-
 
 // Print the Hasse diagram of the Bruhat ordering |bruhat| to |strm|.
 std::ostream&

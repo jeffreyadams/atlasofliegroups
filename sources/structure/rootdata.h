@@ -58,7 +58,8 @@ void make_positive(const RootSystem& rs,RootNbr& alpha);
 // afterwards |alpha| is shifted to become a \emph{simple} root index
 WeylWord conjugate_to_simple(const RootSystem& rs,RootNbr& alpha);
 
-// set of positive roots sent to negative by |w| (whose sum is $(1-w^{-1})\rho$)
+// set of positive roots sent to negative by left multiplication by |w|
+// (their sum is $(1-w^{-1})\rho$)
 RootNbrSet pos_to_neg (const RootSystem& rs, const WeylWord& w);
 
 // compute product of reflections in set of orthogonal roots
@@ -68,6 +69,7 @@ PreRootDatum integrality_predatum(const RootDatum& rd, const RatWeight& gamma);
 // sub |RootDatum| whose coroots are those integral on |gamma|
 RootDatum integrality_datum(const RootDatum& rd, const RatWeight& gamma);
 RationalList integrality_points(const RootDatum& rd, const RatWeight& gamma);
+// semisimple rank of |integrality_datum(rd,gamma)|
 unsigned int integrality_rank(const RootDatum& rd, const RatWeight& gamma);
 
 weyl::Twist twist (const RootDatum& rd, const WeightInvolution& delta);
@@ -356,6 +358,9 @@ class RootDatum
 
   RootDatum(const RootDatum&, tags::DualTag);
 
+  RootDatum(const RootDatum&) = delete;
+  RootDatum(RootDatum&&) = default;
+
 #if 0 // (co)derived constructors no loger used, done at |PreRootData| level now
   RootDatum(int_Matrix& projector, const RootDatum&, tags::DerivedTag);
   RootDatum(int_Matrix& injector, const RootDatum&, tags::CoderivedTag);
@@ -559,11 +564,15 @@ class RootDatum
   Weight& make_codominant(Weight& lambda) const // modify and return |lambda|
   { factor_dominant(lambda); return lambda; }
 
-  void act(const WeylWord& ww,Weight& lambda) const
+  template<typename C>
+    void act(const WeylWord& ww, matrix::Vector<C>& lambda) const
     {
       for (auto i=ww.size(); i-->0; )
 	simple_reflect(ww[i],lambda);
     }
+
+  void act(const WeylWord& ww, RatWeight& gamma) const;
+
   // action centered at weight $\mu$ with $simpleCoroot(i).dot(mu) == -shift[i]|
   void shifted_act(const WeylWord& ww,Weight& lambda,int_Vector shift) const
     {

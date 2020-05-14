@@ -2,14 +2,50 @@
 <Weylgroup.at {for invariant_form}
 <ratmat.at
 <torus.at
+<lietypes.at
+<combinatorics.at
 
-{NOTE: in this file "simple" means "derived group is simple"}
+{NOTE: in this file "simple" means "derived group is simple"
+each simple factor of rd has the same rank as G
+(these are useful coordinates)
+see very_simple_factors for the actual simple factors}
+
+{P: permutation of simple roots, given by matrix of size rd.semisimple_rank}
+set permute(RootDatum rd,mat P)=RootDatum:
+root_datum(rd.simple_roots*P,rd.simple_coroots*P)
+set *(RootDatum rd,mat P)=RootDatum:permute(rd,P)
+
+{apply permutation given as [int]}
+set permute(RootDatum rd,[int] P)=RootDatum:
+permute(rd,P.permutation_matrix)
+set *(RootDatum rd,[int] P)=RootDatum:rd*P.permutation_matrix
+
+{P should be a permutation matrix of size rd.rank}
+set permute(mat P,RootDatum rd)=RootDatum:
+root_datum(P*rd.simple_roots,P*rd.simple_coroots)
+set *(mat P,RootDatum rd)=RootDatum:permute(P,rd)
+{note: P*(Q*rd)=(PQ)*rd}
+
+{apply permutation given as [int]}
+set permute([int] P,RootDatum rd)=RootDatum:
+permute(P.permutation_matrix,rd)
+set *([int] P,RootDatum rd)=RootDatum:P.permutation_matrix*rd
+
+
+{this returns a single RootDatum, with simple roots
+grouped by simple factors; within each simple
+factor roots are in Bourbaki order
+also permutation satisfying: 
+rd_new=rd*P
+}
+set nice_order(RootDatum rd)=(RootDatum,[int]):
+let (,P)=rd.Cartan_matrix_type in (rd*P,P)
 
 {root j is orthogonal to all coroots in S}
 set is_orthogonal(RootDatum rd,[int] S, int j)=bool:
 let root=posroots(rd)[j] in all(for i in S do =poscoroots(rd)[i]*root od)
 
-{list of simple roots in same simple factors as simple root #i}
+{list of simple roots in same simple factor as simple root #i}
 set simple_factor_indices(RootDatum rd, int i)=[int]:
 let rec_fun f(RootDatum rd, [int] S)=[int]:
 let new=first(for j:ss_rank(rd) do find(S,j)=-1 and not is_orthogonal(rd,S,j) od) in
@@ -25,14 +61,15 @@ ss_rank(rd)=sum(for S in factors do #S od) then factors else
  f(rd,factors#simple_factor_indices(rd,new)) fi
 in f(rd,[])
 
-{return RootDatum of simple roots in S (might not be simple)}
-set factor(RootDatum rd,[int] S)=RootDatum:
- if #S=0 then complex_torus(rank(rd)) else
- root_datum(for i in S do simple_roots(rd)[i] od,for i in S do simple_coroots(rd)[i] od) fi
+{return RootDatum of subset_of_simple_roots (might not be simple)}
+set factor(RootDatum rd,[int] subset_of_simple_roots )=RootDatum:
+let S=subset_of_simple_roots in 
+if #S=0 then complex_torus(rank(rd)) else
+root_datum(for i in S do simple_roots(rd)[i] od,for i in S do simple_coroots(rd)[i] od) fi
 
 {RootDatum of simple factor containing simple root #i}
-set simple_factor(RootDatum rd,int i)=RootDatum:
-factor(rd,simple_factor_indices(rd,i))
+set simple_factor(RootDatum rd,int root_number)=RootDatum:
+factor(rd,simple_factor_indices(rd,root_number))
 
 set simple_factor(RootDatum rd,vec alpha)=RootDatum: let i=first(for
 j:rd.ss_rank do !=alpha*coroot(rd,j) od) in simple_factor(rd,i)
@@ -40,6 +77,27 @@ j:rd.ss_rank do !=alpha*coroot(rd,j) od) in simple_factor(rd,i)
 {complete list of simple factors, as [RootDatum]}
 set simple_factors(RootDatum rd)=[RootDatum]:
 for S in simple_factors_indices(rd) do factor(rd,S) od
+
+set very_simple_factors(RootDatum rd)=[RootDatum]:
+##for sf in rd.simple_factors do
+ if not is_abelian(sf) then [sf.derived] else [] fi od
+
+{complete list of simple factors, as [RootDatum]
+returns:
+RootDatum rd_new: permutation of original, with roots ordered
+by simple factor, and within each simple factor by Bourbaki
+order;no attempt is made to order the simple factors
+[RootDatum]: list of simple factors
+[int]: permutation relating rd and rd_new:
+rd*P=rd_new
+i.e.
+rd.simple_roots*(P.permutation_matrix)=rd_new.simple_roots
+rd.simple_coroots*(P.permutation_matrix)=rd_new.simple_coroots
+}
+set simple_factors_nice(RootDatum rd)=(RootDatum,[RootDatum],[int]):
+let (rd_nice,P)=rd.nice_order in
+assert(rd*P=rd_nice,"failure computing permutation");
+(rd_nice,for S in simple_factors_indices(rd_nice) do factor(rd_nice,S) od,P)
 
 set number_simple_factors(RootDatum rd)=#simple_factors_indices(rd)
 
@@ -146,16 +204,3 @@ S*Q
 
 set project_on_simple_factor(RootDatum rd, int i, ratvec wt)=
 project_on_simple_factor(rd,i)*wt
-
-{
-
-set project_on_simple_factor(int i,RootDatum rd)=
-let scr=simple_coroots(rd) then
-scrf=simple_coroots(simple_factors(rd)[i]) then
-M=mat:##for alpha in scr do 
- if find(scrf,alpha)>=0 then [alpha] else [null(rd.rank)] fi od
-then scr_inv=let (A,d)=invert(scr) in ratmat:(A,"/",d) in
-M*scr_inv
-
-set project_on_simple_factor(ratvec wt,int i,RootDatum rd)=
-project_on_simple_factor(rd,i)*wt}

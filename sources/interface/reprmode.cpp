@@ -63,7 +63,6 @@ namespace commands {
   void partial_block_f();
   void block_f();
   void blockorder_f();
-  void blocktwist_f();
   void extblock_f();
   void gextblock_f();
   void deform_f();
@@ -83,7 +82,7 @@ namespace commands {
   BlockElt entry_z = UndefBlock;
   SubSystemWithGroup* sub=nullptr;
   StandardRepr* sr=nullptr;
-  param_block* param_block_pointer=nullptr; // block gives access to |KLContext|
+  param_block* param_block_pointer=nullptr; // block gives access to |KL_table|
   wgraph::WGraph* param_WGr_pointer=nullptr;
 
 
@@ -106,10 +105,8 @@ CommandNode reprNode()
 	     use_tag);
   result.add("block",block_f,"second"); // block mode sets tag
   result.add("blockorder",blockorder_f,"second");
-  result.add("blocktwist",blocktwist_f,"second");
   result.add("extblock",extblock_f,"second");
   result.add("gextblock",gextblock_f,"second");
-  result.add("deform",deform_f,"computes deformation terms",std_help);
   result.add("kl",kl_f,
 	     "computes KL polynomials in character formula for this parameter",
 	     std_help);
@@ -143,9 +140,9 @@ const SubSystemWithGroup& currentSubSystem() { return *sub; }
 
 const StandardRepr& currentStandardRepr() { return *sr; }
 
-kl::KLContext& current_param_KL()
+kl::KL_table& current_param_KL()
 {
-  return current_param_block().klc(current_param_block().size()-1,true);
+  return current_param_block().kl_tab(current_param_block().size()-1,true);
 }
 
 void ensure_full_block()
@@ -162,7 +159,7 @@ void ensure_full_block()
 const wgraph::WGraph& current_param_WGraph()
 { if (param_WGr_pointer==nullptr)
   { ensure_full_block();
-    const kl::KLContext& c=current_param_KL();
+    const kl::KL_table& c=current_param_KL();
     param_WGr_pointer=new wgraph::WGraph(kl::wGraph(c));
   }
   return *param_WGr_pointer;
@@ -178,8 +175,9 @@ const wgraph::WGraph& current_param_WGraph()
 *****************************************************************************/
 
 /*
-  Synopsis: attempts to set a real form and dual real form interactively.
-  In case of failure, throws an InputError and returns.
+  Attempt to set a real form and dual real form interactively.
+  In case of failure catches an |InputError|, signals the user,
+  and rethrows |EntryError|.
 */
 void repr_mode_entry()
 {
@@ -264,9 +262,8 @@ void repr_f()
     e("parameter not changed");
   }
 }
-/*
-  Synopsis: destroys any local data, resoring nullptr pointers
-*/
+
+// Destroy any local data, restoring |nullptr| pointers
 void repr_mode_exit()
 {
   state=noblock;
@@ -323,12 +320,6 @@ void blockorder_f()
   kgb_io::printBruhatOrder(file,block.bruhatOrder());
 }
 
-void blocktwist_f()
-{
-  ioutils::OutputFile file;
-  block_io::print_twist(file,current_param_block());
-}
-
 void extblock_f()
 {
   const auto& delta=current_inner_class().distinguished(); // implicit here
@@ -379,8 +370,7 @@ void extkl_f()
   ensure_full_block();
   auto& block = current_param_block();
   ext_block::ext_block eblock(block,delta,true);
-  std::vector<ext_kl::Pol> pool;
-  ext_kl::KL_table twisted_KLV(eblock,pool);
+  ext_kl::KL_table twisted_KLV(eblock,nullptr);
   twisted_KLV.fill_columns();
 
   ioutils::OutputFile f;
@@ -402,50 +392,6 @@ void kl_f()
 }
 
 
-void deform_f()
-{
-
-  Rep_table& rt = currentRepTable();
-  param_block& block = current_param_block();
-  repr::SR_poly terms = rt.deformation_terms(block,entry_z);
-
-  std::vector<StandardRepr> pool;
-  HashTable<StandardRepr,unsigned long> hash(pool);
-
-  ioutils::OutputFile f;
-
-  f << "Orientation numbers:\n";
-  bool first=true;
-  for (BlockElt x=0; x<=entry_z; ++x)
-    if (block.survives(x))
-    {
-      hash.match(block.sr(x));
-      if (first) first=false;
-      else f<< ", ";
-      StandardRepr r = block.sr(x);
-      f << x << ": " <<  rt.orientation_number(r);
-    }
-  f << ".\n";
-
-  if (block.survives(entry_z))
-  {
-    f << "Deformation terms for I(" << entry_z << ")_c: (1-s) times\n";
-    std::ostringstream os;
-    for (repr::SR_poly::const_iterator it=terms.begin(); it!=terms.end(); ++it)
-    {
-      int eval=it->second.e();
-      os << ' ';
-      if (eval==1 or eval==-1)
-	os << (eval==1 ? '+' : '-'); // sign of evaluation
-      else
-	os << std::setiosflags(std::ios_base::showpos) << eval;
-      os <<"I(" << hash.find(it->first) << ")_c";
-    }
-    ioutils::foldLine(f,os.str()) << std::endl;
-
-  }
-} // |deform_f|
-
 
 /* For each element $y$ in the block, outputs the list of non-zero K-L
    polynomials $P_{x,y}$.
@@ -454,22 +400,22 @@ void deform_f()
 */
 void klbasis_f()
 {
-  const kl::KLContext& klc = current_param_KL();
+  const kl::KL_table& kl_tab = current_param_KL();
 
   ioutils::OutputFile file;
   file << "Full list of non-zero Kazhdan-Lusztig-Vogan polynomials:"
        << std::endl << std::endl;
-  kl_io::printAllKL(file,klc,current_param_block());
+  kl_io::printAllKL(file,kl_tab,current_param_block());
 }
 
 
 // Print the list of all distinct Kazhdan-Lusztig-Vogan polynomials
 void kllist_f()
 {
-  const kl::KLContext& klc = current_param_KL();
+  const kl::KL_table& kl_tab = current_param_KL();
 
   ioutils::OutputFile file;
-  kl_io::printKLList(file,klc);
+  kl_io::printKLList(file,kl_tab);
 }
 
 /*
@@ -482,12 +428,12 @@ void kllist_f()
 
 void primkl_f()
 {
-  const kl::KLContext& klc = current_param_KL();
+  const kl::KL_table& kl_tab = current_param_KL();
 
   ioutils::OutputFile file;
   file << "Kazhdan-Lusztig-Vogan polynomials for primitive pairs:"
        << std::endl << std::endl;
-  kl_io::printPrimitiveKL(file,klc,current_param_block());
+  kl_io::printPrimitiveKL(file,kl_tab,current_param_block());
 }
 
 // Write the results of the KL computations to a pair of binary files
@@ -498,18 +444,18 @@ void klwrite_f()
   interactive::open_binary_file
     (coefficient_out,"File name for polynomial output: ");
 
-  const kl::KLContext& klc = current_param_KL();
+  const kl::KL_table& kl_tab = current_param_KL();
 
   if (matrix_out.is_open())
   {
     std::cout << "Writing matrix entries... " << std::flush;
-    filekl::write_matrix_file(klc,matrix_out);
+    filekl::write_matrix_file(kl_tab,matrix_out);
     std::cout << "Done." << std::endl;
   }
   if (coefficient_out.is_open())
   {
     std::cout << "Writing polynomial coefficients... " << std::flush;
-    filekl::write_KL_store(klc.polStore(),coefficient_out);
+    filekl::write_KL_store(kl_tab.polStore(),coefficient_out);
     std::cout << "Done." << std::endl;
   }
 }

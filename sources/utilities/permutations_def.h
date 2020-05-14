@@ -1,9 +1,7 @@
-/*!
-\file
+/*
   This is permutations_def.h. This file contains the definitions of the
   template functions declared in permutations.h
-*/
-/*
+
   Copyright (C) 2004,2005 Fokko du Cloux
   part of the Atlas of Lie Groups and Representations
 
@@ -83,6 +81,34 @@ template<typename T> void Permutation::permute(std::vector<T>& v) const
       }
     }
 }
+
+/*
+  Standardization is a method of associating to a sequence of numbers |a| a
+  permutation |pi|, such that |a[i]<a[j]| implies |pi[i]<pi[j], and
+  |a[i]==a[j]| implies that |pi[i]<pi[j] is equivalent to |i<j|. Equivalently,
+  setting |a=standardization(a).permute(a)| amounts to stable sorting of |a|.
+*/
+template<typename InputIt, typename Compare, typename>
+  Permutation standardization(InputIt first, InputIt last, Compare less)
+{
+  using T = typename std::iterator_traits<InputIt>::value_type;
+  using P = std::pair<T,unsigned long>;
+  std::vector<P> aux;
+  aux.reserve(std::distance(first,last));
+  unsigned long i=0;
+  for (auto it=first; it!=last; ++it)
+    aux.emplace_back(*it,i++);
+
+  std::stable_sort(aux.begin(),aux.end(),
+		   [&less](const P& x,const P& y)
+		   { return less(x.first,y.first); });
+
+  Permutation result(aux.size());
+  for (unsigned long k=0; k<aux.size(); ++k)
+    result[aux[k].second]=k;
+  return result;
+}
+
 
 } // |namespace permutations|
 

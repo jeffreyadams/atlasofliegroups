@@ -1,9 +1,11 @@
 <basic.at
 <parabolics.at
+{<cells.at}
 {<W_characters.at}
 <character_tables_reductive.at
 <sort.at { for |sort_u@[vec]| }
 <lattice.at { for |restrict_action@(mat,mat)| }
+<W_reps.at
 
 { data type for representation of W
   operators[i] is the matrix of the action of simple generator #i
@@ -68,120 +70,80 @@ set smallest_degree (CharacterTable ct, [int] character) = int:
 set smallest_degree (CharacterTable ct)=([int] -> int): ([int] character):smallest_degree(ct,character)
 set d(CharacterTable ct)= ([int]->int): smallest_degree(ct)
 
-{ ----------- cell representations --------------}
+{-----------------permuted versions of cell representations-----------------}
+{the unpermuted versions are in cells.at}
 
-{ Type definitions that facilitate handling output from W_cells }
-set_type
-[ WCell = ([int] labels, WGraph graph)
-, WGraph = [WNode]
-, WNode = ([int] tau,[int,int] out_list)
-]
+{computing cell actions in presence of a permutation of the simple roots}
 
-{ Description of the cell representation taken from messages/wcells.help
+set permute([WeylElt] W,(int->int) permutation)=[WeylElt]:
+for w in W do if length(w)=0 then w else W_elt(W[0].root_datum,for i in w.word do permutation(i) od) fi od
 
-  The Weyl group representation attached to the cell may be described as
-  follows. It has a Z basis {L_j} indexed by the cell elements j. If
-  root i is in the tau invariant for element j, then
+set permute([WeylElt] W,[int] permutation)=[WeylElt]:
+let f(int i)=permutation[i] in permute(W,f)
 
-  s_i(L_j) = -L_j.
+set permute([WeylElt] W,mat M)=[WeylElt]:
+{M should be a permutation matrix}
+let f(int i)=first(for j:#M do M[i][j]=1 od) in permute(W,f)
 
-  If i is not in the tau invariant, then
+set conjugate_to_simple(RootDatum rd,vec alpha)=
+for beta in rd.simple_roots do
+ let (success,w)=conjugate_to(rd,alpha,beta) in
+ if success then return(w) fi od ;id_W(rd)
 
-  s_i(L_j) = L_j + sum_{elements k, i in tau(k)} m_{kj} * L_k.
+set cell_action_permuted(WCell cell, int i, mat permutation)=sparse_mat:
+cell_action(cell,first(for j:#permutation do permutation[i][j]=1 od))
 
-  where m_{kj} denotes the multiplicity of the edge from k to j.
-  That is, m*L_k appears in the sum here if i is in the tau-invariant of
-  L_k, and the pair (j,m) appears in the list for row k.
-
-  ([224,247,250,253,256],
-  [([0,1,2],[(1,1)]),
-  ([0,1,3],[(0,1),(3,1),(4,1)]),
-  ([1,2,3],[(3,1)]),([0,2,3],
-  [(1,1),(2,1)]),([0,1,2],[(1,1)])])
-
-  0[224]: {1,2,3} --> 1
-  1[247]: {1,2,4} --> 0,3,4
-  2[250]: {2,3,4} --> 3
-  3[253]: {1,3,4} --> 1,2
-  4[256]: {1,2,3} --> 1
-}
-
-{ matrix of action of of i^th simple reflection on a cell
-  a cell is: ([int],[([int],[(int,int)])]) cell,int i)
-  as described in the W_cells command in atlas-functions.help}
-
-{. matrix of action of i^th simple reflection on a cell .}
-set cell_action (WCell (,graph),int s) = mat:
-   let n=#graph then I=id_mat(n)
-in n ^ { matrix is given by rows of length n }
-   for node@i in graph
-   do let row = I[i] { row value for the case that s not in tau invariant } in
-      if is_member(node.tau)(s)
-      then row[i]:=-1
-      ; for (j,mu) in node.out_list
-        do if not is_member(graph[j].tau)(s) then row[j]:=mu fi
-        od
-      fi
-   ;  row
-   od
-
-
-{. matrix of action of product of simple reflections on a cell .}
-set cell_action (WCell cell,[int] w) = mat:
-  let n=#cell.graph in
-  if =#w then id_mat(n)
-  else let result=cell_action(cell,w~[0]) in
-     for i:#w-1 from 1 do result:=cell_action(cell,w~[i])*result od; result
+set cell_action_permuted(WCell cell,WeylElt w,mat permutation)=mat:
+  let n={prints("sparse");}#cell.graph in
+  if =#w.word then id_mat(n)
+  else let result=unsparse(cell_action_permuted(cell,w.word[0],permutation),#cell.graph) in
+     for i:#w.word-1 from 1 do result:=result*cell_action_permuted(cell,w.word[i],permutation) od; result
   fi
 
-{. matrix of action of WeylElt on a cell .}
-set cell_action(WCell cell,WeylElt w) = mat: cell_action(cell,w.word)
+set cell_character_permuted (CharacterTable ct,WCell cell,mat permutation) = [int]:
+for w in ct.class_reps do trace(cell_action_permuted(cell,w,permutation)) od
 
-{. character of representation of W on cell .}
-set cell_character (CharacterTable ct,WCell cell) = [int]:
-  for w in ct.class_reps do trace(cell_action(cell,w)) od
-
-set cell_character(CharacterTable ct)=(WCell -> [int]):
-(WCell cell):cell_character(ct,cell)
-
-{. list of characters of representation on list of cells .}
-set cell_characters (CharacterTable ct,[WCell] cells) = [[int]]:
-  for cell in cells do cell_character(ct, cell) od
-
-set cells_table (CharacterTable ct,[WCell] cells) = mat:
-  matrix_of_inner_products(ct,cell_characters(ct,cells))
-
-set cells_table_augmented (CharacterTable ct, [WCell] cells) = mat:
-  let characters =
-    cell_characters(ct,cells) ## [ ct.trivial, ct.sign, ct.reflection ]
-  in matrix_of_inner_products(ct,characters)
-
-set cell_representation (CharacterTable ct,WCell cell) = W_rep:
-  (#cell.graph,for i:ct.lie_type.semisimple_rank do cell_action(cell,i) od)
-
-{ list of representations defined by an array of cells }
-set cell_representations(CharacterTable ct,[WCell] cells)=[W_rep]:
-  for cell in cells do cell_representation(ct,cell) od
-
-set smallest_degree_summands(CharacterTable ct,[int] mults)=
-let smallest=-1 then
-indices=[int]:[]  in
-for j:#mults do
- if mults[j]>0 then
- let deg_j=ct.degree(j)
-  in if smallest=-1 or deg_j<smallest then indices:=[j];smallest:=deg_j
-   elif deg_j=smallest  then indices#:=j
-  fi 
- fi
-od;
-indices
-
-set special_character(CharacterTable ct,WCell cell)=
-let summands=smallest_degree_summands(ct,ct.decompose(ct.cell_character(cell))) in
+set special_character_permuted(CharacterTable ct,WCell cell,mat permutation)=
+let summands=smallest_degree_summands(ct,ct.decompose(cell_character_permuted(ct,cell,permutation))) in
 if #summands>1 then error("not unique special representation") elif
 #summands=0 then error("no special summands?") else summands[0] fi
 
-set special_character(CharacterTable ct)=(WCell->int):(WCell cell):special_character(ct,cell)
+set special_character_permuted(CharacterTable ct,mat permutation)=(WCell->int):(WCell cell):
+special_character_permuted(ct,cell,permutation)
+
+{for testing: return all permutations}
+set isomorphism_permutations(RootDatum rd_1,RootDatum rd_2)=[mat]:
+assert(rd_1.is_semisimple and rd_2.is_semisimple,"root data must be semisimple");
+if not is_locally_isomorphic(rd_1,rd_2) then [null(0,0)]
+else
+ let S=symmetric_group(rd_1.rank) then
+ C_1=rd_1.Cartan_matrix, C_2=rd_2.Cartan_matrix in
+ ##for g in S do if  g*C_2=C_1*g then [g] else [] fi od
+fi
+
+
+set isomorphism_permutation(RootDatum rd_1,RootDatum rd_2)=(bool,mat):
+assert(rd_1.is_semisimple and rd_2.is_semisimple,"root data must be semisimple");
+if not is_locally_isomorphic(rd_1,rd_2) then (false, null(0,0))
+else
+ let S=symmetric_group(rd_1.rank) then
+ C_1=rd_1.Cartan_matrix, C_2=rd_2.Cartan_matrix then
+ index=first(for g in S do g*C_2=C_1*g od) in
+ if index=-1 then (false,null(0,0)) else (true,S[index]) fi
+fi
+
+{for testing: try different ones}
+set isomorphism_permutation_variant(RootDatum rd_1,RootDatum rd_2)=(bool,mat):
+let all=isomorphism_permutations(rd_1,rd_2) in
+if =#all then (false,null(0,0)) elif
+#all=1 then (true, all[0])
+else (true, all[4]) fi
+
+set find_isomorphism_permutation([RootDatum] list,RootDatum rd)=(int,mat):
+for rd_list@i in list do let (success,M)=isomorphism_permutation(rd_list.derived,rd.derived) in
+ if success then return (i,M) fi od;(-1,null(0,0))
+
+
 
 { ------------------- induction ------------------- }
 

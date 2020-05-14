@@ -2,6 +2,7 @@
 
 - Make |Split| type use |big_int| fields, at least in the axis language.
 - Fix lack of edge flipping in first (classical) extended block contructor
+- Rework |Block_Base| which should not contain "extended" field |orbits|
 - Rewrite block construction using methods inspired by synthetic operations
 - Remove code for storing the Hermitian dual in KGB structures and blocks
 - Rewrite K type computations to use data type more compatible with Param
@@ -21,10 +22,13 @@
   is quite subtle; maybe forbid binding to names with such type altogether.
 
 - give better type error message about "needed type" when a let expression
-  pattern does not match the type of the defining expression. What appear to
-  happen is that if if a tuple type is provided but the number of components
+  pattern does not match the type of the defining expression. What appears to
+  happen is that if a tuple type is provided but the number of components
   mismatches the pattern, the "needed" components are taken from that tuple, and
   the user must figure out that their number was in fact too few (or too much).
+
+- Fix memory leak with recursive functions, at least for explicitly recursive
+  ones (people who manually make a recursive loop can be allowed to suffer).
 
 - Maybe allow |set a:=b,b:=a+b| as alternative for |set (a,b):=(b,a+b)|
 
@@ -57,6 +61,7 @@
 
 * Work on the atlas program
 
+- Fix crashing of function |extended_KL_block|
 
 * Work on the atlas scripts
 

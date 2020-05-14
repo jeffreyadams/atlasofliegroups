@@ -23,13 +23,13 @@ namespace kl_io {
   /* these functions have non-|const| final arguments,
      this is necessary because the implementation generates the Bruhat order */
   std::ostream& printAllKL
-    (std::ostream&, const kl::KLContext&, Block_base&);
+    (std::ostream&, const kl::KL_table&, Block_base&);
   std::ostream& printPrimitiveKL
-    (std::ostream&, const kl::KLContext&, Block_base&);
+    (std::ostream&, const kl::KL_table&, Block_base&);
 
-  std::ostream& printKLList(std::ostream&, const kl::KLContext&);
+  std::ostream& printKLList(std::ostream&, const kl::KL_table&);
 
-  std::ostream& printMu(std::ostream&, const kl::KLContext&);
+  std::ostream& printMu(std::ostream&, const kl::KL_table&);
 
 }
 

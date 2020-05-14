@@ -1,8 +1,6 @@
-/*!
-\file
-  This is abelian_fwd.h
-*/
 /*
+  This is abelian_fwd.h
+
   Copyright (C) 2004,2005 Fokko du Cloux
   part of the Atlas of Lie Groups and Representations
 

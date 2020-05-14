@@ -1,15 +1,5 @@
 <springer_tables.at
-
 <simple_character_table.at
-<character_tables.at
-
-<character_table_B.at
-<character_table_C.at
-<character_table_D.at
-<character_table_F.at
-<character_table_G.at
-<character_table_E6.at
-<character_table_E7.at
 
 <springer_table_A.at
 <springer_table_BC.at
@@ -18,6 +8,7 @@
 <springer_table_G.at
 <springer_table_E6.at
 <springer_table_E7.at
+<springer_table_E8.at
 
 
 set springer_table_simple(RootDatum rd)=
@@ -50,11 +41,13 @@ elif letter="E" and n=7 then
  let ct_0=character_table_E7() then
  ct=update_degrees(ct_0) in
  springer_table_E7(ct)
+elif letter="E" and n=8 then
+ springer_table_E8(character_table_E8())
 else error("case not covered")
 fi
 
-set springer_table_reductive(RootDatum rd)=
-let factors=simple_factors(rd) then
+set springer_table(RootDatum rd)=
+let (,factors,P)=simple_factors_nice(rd) then
 st=springer_table_simple(factors[0].derived) in
 for i:#factors-1 from 1 do
  st:=tensor(st,springer_table_simple(factors[i].derived)) od;st

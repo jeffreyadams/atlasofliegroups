@@ -20,7 +20,7 @@ set Cartesian_power([int] x,int n)=[int]:  for v in x do n*v od
 
 set_type
 [ CharacterTable =
-  (LieType lie_type
+  (LieType lie_type  {should be simply connected}
   , int order { of the finite group }
   {conjugacy classes}
   , int n_classes  { number of conjugacy classes}
@@ -58,7 +58,12 @@ degrees		       {[int]}
 table)
 }
 
-set root_datum (CharacterTable ct) = RootDatum:ct.class_rep(0).root_datum { at least one class exists }
+set root_datum (CharacterTable ct) ={ RootDatum:ct.class_rep(0).root_datum { at least one class exists }}
+simply_connected(ct.lie_type)
+{Note: ct.class_rep(0).root_datum might not be the same:
+ in simple type B/D ct.root_datum is simply connected,but
+ ct.class_rep(0).root_datum is SO(n)
+} 
 set rank(CharacterTable ct)=ct.lie_type.rank
 set class_reps(CharacterTable ct)=[WeylElt]: for i:ct.n_classes do ct.class_rep(i) od
 set class_representatives(CharacterTable ct)=[WeylElt]: class_reps(ct) {synonym}
@@ -96,7 +101,7 @@ set tensor_sign(CharacterTable ct,[int] char)=[int]:tensor(ct.sign,char)
 set tensor_sign(CharacterTable ct)=([int]->[int]):([int] char):tensor_sign(ct,char)
 
 
-set sym_powers_reflection([WeylElt] list)=
+set sym_powers_reflection([WeylElt] list)=[[int]]:
 let rd=list[0].root_datum then
 wct=W_class_table(rd) then
 wct_class_reps=wct.class_representatives() in
@@ -117,22 +122,31 @@ ct.sym_powers_reflection:=sym_powers_reflection(ct.class_reps);ct
 set class_power_function(CharacterTable ct)=(int,int->int):
 (int j,int p):first(ct.n_classes,(int i): is_conjugate(ct.class_reps[i],ct.class_reps[j]^p))
 
-
 set initialize_character_table(LieType lt)=CharacterTable:
 assert(lt.is_simple,"LieType is not simple");
+prints("Initializing CharacterTable for ", lt);
 let rd=simply_connected(lt) then
+()=prints("Step 1/6") then
 W_order=order_W(rd) then
+()=prints("Step 2/6") then
 class_size(WeylElt w)=W_order\w.centralizer_order then
+()=prints("Step 3/6") then
 {orbits=rd.orbits then}
 classes=rd.W_class_table.class_representatives() then
+()=prints("Step 4/6") then
 class_centralizer_sizes=for w in classes do w.centralizer_order od then
+()=prints("Step 5/6") then
 class_sizes=for w@i in classes do W_order\class_centralizer_sizes[i] od then
-class_orders=for w in classes do w.order od then
+()=prints("Step 6/6") then
+class_orders=for w in classes do w.order od {then} 
+{()=prints("Step 7") then
 char_name(CharacterTable ct)=(vec->string):(vec v):string:
 let dim=v[0] then
+()=prints("Step 8") then
 index=find(ct.characters,v) then
+()=prints("Step 9") then
 d=ct.degree(index) in
-"phi(" + dim.to_string+","+d.to_string+")"
+"phi(" + dim.to_string+","+d.to_string+")"}
 in (
   Lie_type(rd)    {lie_type}
   , W_order    {order (of W)}
@@ -405,28 +419,23 @@ od
 in ct.degrees:=degrees;
 ct
 
+{mults is a vector of multiplicities of the irreducible characters,
+return a list (without multiplicities) of the irreducible characters
+of smallest degree occuring}
 set smallest_degree_summands(CharacterTable ct,[int] mults)=
-let rv=[int]:[-1]  in
+let smallest=-1 then
+indices=[int]:[]  in
 for j:#mults do
  if mults[j]>0 then
  let deg_j=ct.degree(j)
-  in if deg_j>rv[0] then rv:=[j]
-   elif deg_j=rv[0] then rv#:=j
+  in if smallest=-1 or deg_j<smallest then indices:=[j];smallest:=deg_j
+   elif deg_j=smallest  then indices#:=j
   fi 
  fi
 od;
-rv
-{
-set degree (CharacterTable ct, [int] character)=int:
-degree(ct,character,ct.sym_powers)
+indices
 
-set degree (CharacterTable ct)=([int] -> int): ([int] character):degree(ct,character)
-set d(CharacterTable ct)= ([int]->int): degree(ct)
-}
-
-{  representations of W
-  copied (and modified) from W_reps.at
-}
+{  representations of W; copied (and modified) from W_reps.at}
 
 { data type for representation of W
   operators[i] is the matrix of the action of simple generator #i
@@ -620,12 +629,7 @@ ct1.table:=table1;ct1
 
 set set_table(CharacterTable ct,mat profile_long,mat table,[int] powers)=
 let ct_1=sort_by_profile(ct,powers) then
-(,profile_1,table_1)=sort_by_profile(profile_long,table,powers) in 
-assert(profile(ct_1,powers)=profile_1,"profiles don't match"); 
+(,profile_1,table_1)=sort_by_profile(profile_long,table,powers) in
+assert(profile(ct_1,powers)=profile_1,"profiles don't match");
 ct_1.table:=table_1;ct_1
-
-
-
-
-
 

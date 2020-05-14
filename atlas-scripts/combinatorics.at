@@ -2,7 +2,7 @@
   like factorials, binomial coefficients, generators of partitions and so on
 }
 
-<misc.at
+<basic.at
 <sort.at
 <lazy_lists.at { for |inf_list| type and related stuff }
 <groups.at { for root data computed by |GL|, |Sp|, |SO| }
@@ -42,8 +42,8 @@ set odd_places  ([int] v) = for i:floor(#v/2) do v[2*i+1] od
 
 set_type Partition = [int]   { list of decreasing parts, no trailing zeros }
 
-{renamed delete_trailing_zeros and moved to misc.at}
-set strip_to_partition=delete_trailing_zeros@[int]
+set strip_to_partition (Partition lambda) = [int]:
+  lambda[:1+last(for p in lambda do !=p od)]
 
 set is_very_even(Partition P)=is_integer(P/2)
 
@@ -478,8 +478,7 @@ in for (l,sign) in cycles
    od
 
 
-{ adaptation to the above to deal with Weyl groups of type Dn }
-{moved to classical_W_classes_and_reps.at}
+{ the same for Weyl groups of type $D_n$: in classical_W_classes_and_reps.at }
 
 
 {			    Formal power series				}

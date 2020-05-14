@@ -218,6 +218,7 @@ $(atlas_dir)/atlas-types.o $(atlas_dir)/atlas-types.tex: \
  $(sources_dir)/structure/weyl.h \
  $(sources_dir)/structure/y_values.h \
  $(sources_dir)/gkmod/blocks.h \
+ $(sources_dir)/gkmod/common_blocks.h \
  $(sources_dir)/gkmod/descents.h \
  $(sources_dir)/gkmod/ext_block.h \
  $(sources_dir)/gkmod/kgb.h \

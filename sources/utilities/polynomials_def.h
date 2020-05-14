@@ -53,10 +53,11 @@ template<typename C>
 }
 
 /*
-  Constructs cX^d.
+  Construct $cX^d$.
 
-  We construct cX^d, and not the zero polynomial, so that our basic assumption
-  about the degree (leading coefficient is nonzero) is satisfied.
+  The constructor builds a mononomial $cX^d$, and not the zero polynomial, so
+  that our invariant about the degree (the leading coefficient is nonzero)
+  is satisfied.
 */
 template<typename C>
   Polynomial<C>::Polynomial(Degree d, C c): d_data(d+1,C(0))
@@ -95,9 +96,9 @@ C& Polynomial<C>::operator[] (Degree i)
 }
 
 /*
-  Adjusts the size of d_data so that it corresponds to the degree + 1.
+  Adjust the size of |d_data| so that it corresponds to the degree + 1.
 
-  Just casts away any leading zero coefficients, possibly all of them
+  Just cast away any leading zero coefficients, possibly all of them
 */
 
 template<typename C>
@@ -265,9 +266,9 @@ bool Polynomial<C>::multi_term () const
 }
 
 /*
-  Polynomial comparison: whether p < q
+  Polynomial comparison: whether $p < q$
 
-  Explanation: p < q if deg(p) < deg(q), or if degrees are equal, and the
+  Explanation: $p < q$ if $\deg(p) < \deg(q)$, or if degrees are equal, and the
   comparison holds for coefficients, in lex-order starting from the top.
 */
 template<typename C>
@@ -286,12 +287,12 @@ bool compare (const Polynomial<C>& p, const Polynomial<C>& q)
 }
 
 /*
-  Synopsis: prints out the monomial c.x^d.
+  Print out the monomial $c.x^d$.
 
-  Preconditions: c is non-zero;
+  Preconditions: |c| is non-zero;
 
-  Explanation: c and d are printed only if non-one, except in degree zero
-  where c is always printed; x is the name of the indeterminate.
+  Explanation: |c| and |d| are printed only if non-one, except in degree zero
+  where |c| is always printed; |x| is the name of the indeterminate.
 
   The output format for the exponents is tex-like, but "q^13", not "q^{13}".
 */
@@ -338,9 +339,9 @@ std::ostream& Polynomial<C>::print(std::ostream& strm, const char* x) const
 
 
 /*
-  a += b.
+  Perform |a += b|.
 
-  Throws a NumericOverflow exception in case of overflow.
+  Throw a |NumericOverflow| exception in case of overflow.
 */
 template<typename C> void safeAdd(C& a, C b)
 {
@@ -353,9 +354,9 @@ template<typename C> void safeAdd(C& a, C b)
 }
 
 /*
-  a /= b.
+  Perform |a /= b|.
 
-  Throws a NumericOverflow exception in case of nondivisibility.
+  Throw a |NumericOverflow| exception in case of nondivisibility.
 */
 template<typename C> void safeDivide(C& a, C b)
 {
@@ -367,9 +368,9 @@ template<typename C> void safeDivide(C& a, C b)
 
 
 /*
-  a *= b.
+  Perform |a *= b|.
 
-  Throws a NumericOverflow exception in case of overflow.
+  Throw a |NumericOverflow| exception in case of overflow.
 */
 template<typename C> void safeProd(C& a, C b)
 {
@@ -386,9 +387,9 @@ template<typename C> void safeProd(C& a, C b)
 
 
 /*
-  a -= b.
+  Perform |a -= b|.
 
-  Throws a NumericUnderflow exception in case of underflow.
+  Throw a |NumericUnderflow| exception in case of underflow.
 */
 template<typename C> void safeSubtract(C& a, C b)
 {
@@ -402,11 +403,11 @@ template<typename C> void safeSubtract(C& a, C b)
 
 
 /*
-  Adds x^d.c.q, to *this, watching for overflow, assuming |c>0|.
+  Add $x^d.c.q$, to |*this|, watching for overflow, assuming |c>0|.
 
-  NOTE: may forward a NumericOverflow exception.
+  NOTE: may throw a |NumericOverflow| exception.
 
-  NOTE: we need to be careful in the case where q = *this, but we can
+  NOTE: we need to be careful in the case where |q = *this|, but we can
   avoid making a copy, by doing the addition top-to-bottom.
 */
 template<typename C>
@@ -496,11 +497,11 @@ void Safe_Poly<C>::safe_quotient_by_1_plus_q(Degree delta)
 }
 
 /*
-  Subtracts x^d.c.q from *this, watching for underflow, assuming |c>0|
+  Subtract $x^d.c.q$ from |*this|, watching for underflow, assuming |c>0|
 
-  NOTE: may forward a NumericUnderflow exception.
+  NOTE: may throw a |NumericUnderflow| exception.
 
-  NOTE: q = *this is possible only for d = 0; still, we do the prudent thing
+  NOTE: |q == *this| is possible only for $d=0$; still, we do the prudent thing
   and subtract backwards.
 */
 template<typename C>

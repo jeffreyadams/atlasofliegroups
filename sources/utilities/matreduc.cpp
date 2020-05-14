@@ -416,8 +416,11 @@ matrix::PID_Matrix<C> adapted_basis(matrix::PID_Matrix<C> M, // by value
     column_apply(M,ops,j);
     assert(M(i,j)==d);
     size_t k; // row number
-    while (find_small_remainder(M.partial_column(j,i,m),k))
+    while (find_small_remainder(M.partial_column(j,i,m),k)) // sets |k| when true
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
     { k += i; // convert relative |k| to actual row number
+#pragma GCC diagnostic pop
       auto q=arithmetic::divide(M(k,j),M(i,j));
       for (size_t l=j; l<n; ++l) // columns |M| can be nonzero starting from |j|
       {

@@ -264,7 +264,7 @@ class SRK_context
 
   // accessors
   const InnerClass& innerClass() const { return G.innerClass(); }
-  const RootDatum& rootDatum() const { return G.rootDatum(); }
+  const RootDatum& root_datum() const { return G.root_datum(); }
   const WeylGroup& weylGroup() const { return G.weylGroup(); }
   const TwistedWeylGroup& twistedWeylGroup() const
     { return G.twistedWeylGroup(); }
@@ -307,7 +307,7 @@ class SRK_context
 
   StandardRepK std_rep_rho_plus (Weight lambda_rho, TitsElt a) const
   {
-    (lambda_rho *= 2) += rootDatum().twoRho();
+    (lambda_rho *= 2) += root_datum().twoRho();
     return std_rep(lambda_rho,a); // in fact first argument now is $2\lambda$
   }
 

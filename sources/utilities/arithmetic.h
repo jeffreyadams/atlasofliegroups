@@ -132,6 +132,10 @@ class Split_integer
 {
   int ev_1, ev_minus_1; // store evaluations at $1$ and $-1$ for efficiency
   // class invariant: |ev_1| and |ev_minus_1| have the same parity
+
+  struct raw {}; // to signal use of the private constructor
+  explicit constexpr Split_integer(int ev_1, int ev_minus_1, raw)
+  : ev_1(ev_1), ev_minus_1(ev_minus_1) {}
  public:
   explicit constexpr Split_integer(int a=0, int b=0)
   : ev_1(a+b), ev_minus_1(a-b) {}
@@ -150,21 +154,31 @@ class Split_integer
   { ev_1+=y.ev_1; ev_minus_1+=y.ev_minus_1; return *this; }
   Split_integer& operator -=(Split_integer y)
   { ev_1-=y.ev_1; ev_minus_1-=y.ev_minus_1; return *this; }
-  Split_integer operator +(Split_integer y) { return y+= *this; }
-  Split_integer operator -(Split_integer y) { return y.negate()+= *this; }
-  Split_integer operator -() const { return Split_integer(*this).negate(); }
 
-  Split_integer& operator*= (int n) { ev_1*=n; ev_minus_1*=n; return *this; }
-  Split_integer operator* (int n) const { return Split_integer(*this)*=n; }
+  Split_integer operator +(Split_integer y) const
+  { return Split_integer(ev_1+y.ev_1,ev_minus_1+y.ev_minus_1,raw()); }
+  Split_integer operator -(Split_integer y) const
+  { return Split_integer(ev_1-y.ev_1,ev_minus_1-y.ev_minus_1,raw()); }
+  Split_integer operator -() const
+  { return Split_integer(-ev_1,-ev_minus_1,raw()); }
+
   // multiplication is where the "split" representation really wins out:
+  Split_integer& operator*= (int n) { ev_1*=n; ev_minus_1*=n; return *this; }
   Split_integer& operator*= (Split_integer y)
   { ev_1*=y.ev_1; ev_minus_1*=y.ev_minus_1; return *this; }
-  Split_integer operator* (Split_integer y) const { return y*= *this; }
+  Split_integer operator* (int n) const
+  { return Split_integer(ev_1*n,ev_minus_1*n,raw()); }
+  Split_integer operator* (Split_integer y) const
+  { return Split_integer(ev_1*y.ev_1,ev_minus_1*y.ev_minus_1,raw()); }
 
   Split_integer& negate() { ev_1=-ev_1; ev_minus_1=-ev_minus_1; return *this; }
+
   Split_integer& times_s() { ev_minus_1=-ev_minus_1; return *this; }
-  Split_integer& times_1_s() { ev_1=0; // see "Who Killed the ELectric Car"
+  Split_integer times_s() const { return Split_integer(ev_1,-ev_minus_1,raw()); }
+  Split_integer& times_1_s() // multiply by |1-s|
+  { ev_1=0; /* see "Who Killed the ELectric Car" */
     ev_minus_1*=2; return *this; }
+  Split_integer times_1_s() const { return Split_integer(0,2*ev_minus_1,raw()); }
 
   int s_to_1() const { return ev_1; }
   int s_to_minus_1() const { return ev_minus_1; }
@@ -175,12 +189,13 @@ std::ostream& operator<< (std::ostream& out, const Rational& frac);
 
 /******** inline function definitions ***************************************/
 
-/* The result of |divide(a,b)| is the unique integer $q$ with $a = q.b + r$,
-  and $0 \leq r < b$. Here the sign of |a| may be arbitrary, the requirement
-  for |r| assumes |b| positive, which is why it is passed as unsigned (also
-  this better matches the specification of |remainder| below). Callers must
-  make sure that $b$ is positive, since implicit conversion of a negative
-  signed value to unsigned would wreak havoc.
+/*
+  The result of |divide(a,b)| is the unique integer $q$ with $a = q.b + r$, and
+  $0 \leq r < b$. Here the sign of |a| may be arbitrary, the requirement for |r|
+  assumes |b| positive. So this function assumes |b>=0|, even though |b| is
+  passed in a signed type argument (which also matches the specification of
+  |remainder| below). Callers must make sure that $b$ is positive, since
+  implicit conversion of a negative signed value to unsigned would wreak havoc.
 
   Hardware division probably does _not_ handle negative |a| correctly; for
   instance, divide(-1,2) should be -1, so that -1 = -1.2 + 1, but on my
@@ -190,14 +205,14 @@ std::ostream& operator<< (std::ostream& out, const Rational& frac);
   -1-a$. The latter value can be conveniently written as |~a| if |a| is of an
   unsigned type, but that is not the case for the arguments here, and the
   standards refuse to clearly specify complementing on signed values. So for
-  possbly negative values we spell out sutraction from $-1$ below, hoping that
+  negative values |a| we spell out subtraction from $-1$ below, hoping that
   the optimiser will emit complementation for it; however once a signed value
   has been made positive, we do unsigned division (after converting implicitly
   because unsigned operator arguments beat signed), and finally convert back
   to signed, taking care to do any possibly negative computation after the
-  conversion to signed (but remainders are never negative).
+  conversion to signed (but remainders are never negative).]
 
-  [Amazingly Fokko's incorrect original expresion |-(-a/b -1)| never did any
+  [Amazingly Fokko's incorrect original expression |-(-a/b -1)| never did any
   harm. MvL]
 */
 
@@ -224,7 +239,7 @@ template<>
 
   NOTE: For $a<0$ one should \emph{not} return |b - (-a % b)|; this fails when
   $b$ divides $a$. However replacing |-| by |~|, which maps $a\mapsto-1-a$
-  and satifies |~(q*b+r)==~q*b+(b+~r)|, the result is always correct.
+  and satisfies |~(q*b+r)==~q*b+(b+~r)|, the result is always correct.
 */
 template<typename I>
   I remainder(I a, I b_signed)

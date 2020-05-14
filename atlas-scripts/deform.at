@@ -102,6 +102,7 @@ set recursive_deform (Param p) = ParamPol:
       do { apply |full_def| recursively to all those terms }
         at_nu0 +:= full_def(sc*k,q) { gather harvest from those deformations }
       od
+    ; prints("full_def complete, result:",at_nu0)
     ; at_nu0
     end
   else rec_fun full_def (Split sc,Param p) ParamPol:

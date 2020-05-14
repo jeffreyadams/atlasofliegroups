@@ -38,6 +38,15 @@ set = (ComplexNilpotent O1,ComplexNilpotent O2) = bool:
 set dim_nilpotent (ComplexNilpotent(rd,,H)) = int:
   sum(for alpha in posroots(rd) do case alpha*H in 0, 1 else 2 esac od)
 
+{synonym}
+set dim (ComplexNilpotent O) = int:dim_nilpotent(O)
+
+{saturate an orbit from an equal rank subgroup to G}
+set saturate(ComplexNilpotent O,RootDatum rd)=ComplexNilpotent:(rd,(),O.H)
+
+{saturate an orbit from a subgroup H, with matrix giving X_*(T_H) -> X_*(T)}
+set saturate(ComplexNilpotent O,RootDatum rd,mat inc)=ComplexNilpotent:(rd,(),inc*O.H)
+
 set diagram (ComplexNilpotent(rd,,H)) = [int]:
    dominant(H,rd){action on coweight} * simple_roots(rd)
 
@@ -80,6 +89,12 @@ set find ([ComplexNilpotent] list,ComplexNilpotent O) = int:
 set find ([RealNilpotent] list,RealNilpotent O) = int:
    first(#list,(int i)bool:list[i].x=O.x and
                            list[i].H=O.H)
+
+set remove_duplicates([ComplexNilpotent] orbits)=[ComplexNilpotent]:
+let rv=[ComplexNilpotent]:[] in
+for orbit in orbits do
+ if find(rv,orbit)=-1 then rv#:=orbit fi
+od;rv
 
 set dim_eigenspace (RootDatum rd, ratvec H, int k) = int:
    if =k { level 0 is special: include torus and negative roots at this level }
@@ -278,20 +293,12 @@ set tau_containing (Block B,[int] P) = [int]:
    let t=tau_invariants(B) in
  ##for ti@i in t do if P<=ti then [i] else [] fi od
 
-{ test if p is an Aq }
-set is_Aq (Param p) = bool:
-   all(for i in support(p) do is_descent(i,p) od)
-
 { test if (x,y) -> Aq parameter }
 { the first version isn't necessary, just use the second }
 { because element(B,i) returns (x,y), so this makes is_Aq(element(B,i)) work: }
 { set is_Aq(KGBElt x,KGBElt y) = is_Aq(parameter(x,y,choose_gamma(x,y))) }
-set is_Aq ((KGBElt x,KGBElt y)) = bool: is_Aq(parameter(x,y,choose_gamma(x,y)))
-
-{ compute all Aq's for G as [int], (coming from principal block) }
-set Blocku (RealForm G) = [int]:
-   let B=principal_block(G) in
- ##for i:#B do if is_Aq(element(B,i)) then [i] else [] fi od
+set is_Aq ((KGBElt x,KGBElt y)) = bool:
+   is_coh_ind_from_finite_dimensional(parameter(x,y,choose_gamma(x,y)))
 
 set is_Aq_cell (Block B,[int] C) = bool:
    any(#C,(int i)bool: is_Aq(element(B,C[i])))
@@ -480,6 +487,11 @@ set real_nilpotent_orbits (RealForm G) = [RealNilpotent]:
    in for P in kgps do real_nilpotent(K,x_min(P)) od
    od.##.sort_by_dimension
 
+set number_real_nilpotent_orbits (RealForm G) = int:#G.real_nilpotent_orbits
+set number_real_nilpotent_orbits ([RealForm] groups) = [int]:for G in groups do G.number_real_nilpotent_orbits od
+set number_real_nilpotent_orbits (InnerClass ic) = [int]:number_real_nilpotent_orbits(ic.real_forms)
+{set number_real_nilpotent_orbits_e (InnerClass ic) = [int]:number_real_nilpotent_orbits(ic.strong_real_forms_e)}
+
 {. Make a list of the real forms of a given complex nilpotent orbit. .}
 set real_nilpotent_orbits (ComplexNilpotent (rd,,H):OC,RealForm G) =
       [RealNilpotent]:
@@ -487,6 +499,11 @@ set real_nilpotent_orbits (ComplexNilpotent (rd,,H):OC,RealForm G) =
    for P in real_nilpotent_orbit_KGPs(G,K)
    do real_nilpotent(dominant(K,rd),x_min(P))
    od
+
+set number_real_nilpotent_orbits (ComplexNilpotent O,RealForm G) = int:#real_nilpotent_orbits(O,G)
+set number_real_nilpotent_orbits (ComplexNilpotent O,[RealForm] groups) = [int]:for G in groups do number_real_nilpotent_orbits(O,G) od
+set number_real_nilpotent_orbits (ComplexNilpotent O,InnerClass ic) = [int]:number_real_nilpotent_orbits(O,ic.real_forms)
+{set number_real_nilpotent_orbits_e (ComplexNilpotent O,InnerClass ic) = [int]:number_real_nilpotent_orbits(O,ic.strong_real_forms_e)}
 
 {assuming real nilpotents have been computed, just keep the real forms of given OC}
 set real_nilpotent_orbits([RealNilpotent] real_nilpotents, ComplexNilpotent OC)=[RealNilpotent]:
@@ -547,7 +564,8 @@ set two_rho_of_pseudo_Levi (RootDatum rd,[int] list)=vec:
 {use is_conjugate to test conjugacy}
 {this only works if rd(.derived?) is simple}
 {alternative: pseudo_Levi_subgroups defined in subgroups.at}
-set pseudo_Levis (RootDatum rd)=[[int]]: let
+set pseudo_Levis (RootDatum rd)=[[int]]:
+let
    r=semisimple_rank(rd) then
    levis=standard_Levi_conjugacy_representatives(rd) then
    triples=[([int],vec,[vec])]:
@@ -763,6 +781,7 @@ for (L,H_L) in pseudo_Levis (rd,(),H) do
 od
 
 set generators_of_component_group (ComplexNilpotent (rd,(),H))=
+[(RootDatum,vec,[ratvec],[ratvec],[ratvec],[ratvec])]:
 for (L,H_L) in pseudo_Levis (rd,(),H) do
 {let ()=prints("doing H_L:",H_L) in
 let ()=prints("L=",L) in}
@@ -788,10 +807,11 @@ list of ratvecs}  then}
 { (,Levi_H_L)=Levi_of_coweight(rd,H_L) then}
  (,Levi_H_L_M)=Levi_of_coweight(M,H_L) then
   (,Levi_H_L)=Levi_of_coweight(rd,H_L) then
-{()=prints("Levi_H_L=",Levi_H_L," ", simple_roots(Levi_H_L)) then
+  {()=prints("Levi_H_L=",Levi_H_L," ", simple_roots(Levi_H_L)) then
   ()=prints("Z_Lmod_reg_lifted:", Z_Lmod_reg_lifted) then
   ()=prints("Levi_H_L:",Levi_H_L) then
-  ()=prints(new_line,"L=",L, new_line, "M=",M) then}
+  ()=prints(new_line,"L=",L, new_line, "M=",M) then
+  ()=prints(new_line,"Levi_H_L= ",Levi_H_L,new_line,"Z_Lmod_reg_lifted=",Z_Lmod_reg_lifted) then}
  (indices,Z_Lmod_reg_lifted_cc)=semisimple_conjugacy_class_reps(Levi_H_L,Z_Lmod_reg_lifted)
  then
  (indices,Z_Lmod_reg_lifted_cc)=semisimple_conjugacy_class_mod_torus_reps(Levi_H_L,Z_Lmod_reg_lifted,L_rad) then
@@ -822,9 +842,14 @@ set order_in_A (ratvec v, RootDatum rd, vec H)=int:
    (L,H_new)=Bala_Carter_Levi_plus(orb) in in_radical(i*v,L) od) in div[k]
 
 set component_datum(ComplexNilpotent O)=ComplexNilpotentComponentDatum:
+(ComplexNilpotent,[int],[(RootDatum,[ratvec])]):
+if O.root_datum.is_abelian then
+ let rd=O.root_datum in 
+ (O,[1],[(rd,[null(rd.rank)/1])]) else
 let g=generators_of_component_group(O)
 then orders=## for (a,H,b,c,d,S) in g do for v in S do order_in_A(v,O.root_datum,H) od od in
 (O,sort(orders),for (L,H,b,c,d,S) in g do (L,S) od)
+fi
 
 set conjugacy_class_orders(ComplexNilpotent O)=O.component_datum.orders
 set number_conjugacy_classes_component_group(ComplexNilpotent O)=#O.component_datum.orders
@@ -846,14 +871,14 @@ set print_component_info (ComplexNilpotent O)=void:
    values=
    for (L,S) in d.pairs do
    [L.derived.nice_format,S.to_string] od in
-   prints(new_line,"Component info for orbit:",new_line, "H=", O.H{_of_triple}, " diagram:",
+   prints("Component info for orbit:",new_line, "H=", O.H{_of_triple}, " diagram:",
    O.diagram, " dim:", O.dim_nilpotent);
    prints("orders:",d.orders);
    tabulate(header#values)
 
 
 set print_component_info_long (ComplexNilpotent O)=void:
-prints(new_line,"Component info for orbit:",new_line, "H=", O.H{_of_triple}, " diagram:",
+prints("Component info for orbit:",new_line, "H=", O.H{_of_triple}, " diagram:",
 O.diagram, " dim:", O.dim_nilpotent);
 for (L,H_L,Z_Lmod,Z_Lmod_reg,Z_Lmod_reg_lifted,Z_Lmod_reg_cc) in generators_of_component_group(O) do
 prints(new_line,"L:",L.derived,new_line,"Z(L)/Z(L)^0: ",Z_Lmod,new_line,"Z(L)/Z(L)^0-reg: ",
@@ -861,12 +886,13 @@ Z_Lmod_reg,new_line,"Z(L)/Z(L)^0-reg-lifted: ",
 Z_Lmod_reg_lifted,new_line,"Z(L)/Z(L)^0-cc: ",Z_Lmod_reg_cc) od
 
 set print_component_info (RootDatum rd)=void:
-   for orb in nilpotent_orbits (rd) do prints();
-   print_component_info (orb) od
+   prints("Component groups of nilpotent orbits",new_line,"G=",rd);
+   for orb@i in nilpotent_orbits (rd) do
+   prints(new_line,"Orbit #",i);print_component_info (orb) od
 
 set print_component_info_long (RootDatum rd)=void:
-   for orb in nilpotent_orbits (rd) do prints();
-   print_component_info_long (orb) od
+   for orb@i in nilpotent_orbits (rd) do prints();
+   prints(new_line,"Orbit #",i);print_component_info_long (orb) od
 
 set print_component_info_short (RootDatum rd)=void:
 tabulate(["i","H","diag","dim","A(O)"]#
@@ -945,8 +971,17 @@ for i:#factors do
 od;
 orbits
 
+
 set minimal_real_nilpotent_orbits (RealForm G) = [RealNilpotent]:
 ##for orbit in minimal_orbits(G.root_datum) do real_nilpotent_orbits(orbit,G) od
+
+
+set orbit_by_diagram([ComplexNilpotent] orbits, [vec] diagram)=ComplexNilpotent:
+let index=first(for i:#orbits do orbits[i].diagram_normalized=diagram od) in
+orbits[index]
+
+set orbit_by_diagram(RootDatum rd,[vec] diagram)=ComplexNilpotent:
+orbit_by_diagram(rd.orbits,diagram)
 
 {show commands moved to nilpotent_centralizer.at}
 {
@@ -958,14 +993,38 @@ set show_nilpotent_orbits(RootDatum rd)=void:
 show_nilpotent_orbits(nilpotent_orbits(rd))
 }
 
+{integrality_datum of an orbit O_check for G_check
+ rd=root datum on group side -> integrality_datum(rd,H/2)
+ this is the dual of the root datum of a subgroup of G_check
+}
+set integrality_datum(ComplexNilpotent O_check)=RootDatum:
+integrality_datum(O_check.root_datum.dual,O_check.H/2)
+
+{given an orbit O_check on the dual side
+ rd_int: integrality datum(O_check)
+ rd_int_dual: dual(rd_int), root datum of subgroup on dual side
+ return (rd_int_dual,(),O_check.H)
+}
+set integral_descent(ComplexNilpotent O_check)=ComplexNilpotent:
+(integrality_datum(O_check).dual,(),O_check.H)
+
+{see weak_packets.at for integral_descent@(SpringerTable,ComplexNilpotent)}
 
 set is_even(ComplexNilpotent O)=bool:is_integer(O.diagram/2)
+set is_non_even(ComplexNilpotent O)=bool:not is_integer(O.diagram/2)
 
 set even_orbits([ComplexNilpotent] orbits)=[ComplexNilpotent]:
 ##for O in orbits do if is_even(O) then [O] else [] fi od
+set even_orbits(RootDatum rd)=even_orbits(rd.orbits)
 
-set even_orbits([ComplexNilpotent] orbits)=[ComplexNilpotent]:
-##for O in orbits do if is_even(O) then [O] else [] fi od
+set non_even_orbits([ComplexNilpotent] orbits)=[ComplexNilpotent]:
+##for O in orbits do if is_non_even(O) then [O] else [] fi od
+set non_even_orbits(RootDatum rd)=non_even_orbits(rd.orbits)
 
 set dual_orbits(RootDatum rd)=[ComplexNilpotent]:rd.dual.orbits
-set dual_even_orbits(RootDatum rd)=even_orbits(rd.dual_orbits)
+set even_dual_orbits(RootDatum rd)=even_orbits(rd.dual_orbits)
+set non_even_dual_orbits(RootDatum rd)=non_even_orbits(rd.dual_orbits)
+
+set twist(mat delta,ComplexNilpotent O)=ComplexNilpotent:
+(O.root_datum,(),O.H*delta)  {O.H\in X_*, delta acts on right} 
+

@@ -29,15 +29,16 @@ if not cl.is_split then
   then id_W(trivial_group)  {special case}
  else
   let rd=SO(2*(sum(P)+sum(Q))) then
-  M=conjugacy_class_C(Q,P {note switch here}).matrix in W_elt(rd,M)
+  M=conjugacy_class_C(Q,P {note switch here}).matrix
+  in lift_sc(W_elt(rd,M))  {lift_sc: W(SO) -> W(Spin)}
  fi
 else
  let (P,Bool)=cl.split_class then
  rd=SO(2*sum(P)) then
-  M=conjugacy_class_C([int]:[],P).matrix in 
-  if Bool then W_elt(rd,M) else
+  M=conjugacy_class_C([int]:[],P).matrix in
+  if Bool then lift_sc(W_elt(rd,M)) else
    let delta=distinguished_involution(inner_class(rd,"u")) in
-   W_elt(rd, delta*M*delta)
+   lift_sc(W_elt(rd, delta*M*delta)) {lift_sc: W(SO) -> W(Spin)}
  fi
 fi
 
@@ -87,7 +88,7 @@ centralizer_orders = for type in cycles do type.centralizer_order od then
 reps=D_irreps(n)  then
 sign(bool s) = string: if s then "-" else "+" fi
 in
-  (Lie_type(SO(2*n))    {lie_type}
+  (Lie_type(Spin(2*n))    {lie_type}
   , order    {order (of W)}
   , ncc      {n_classes}
   , (int j) classical_class: classes[j].class_D
@@ -107,3 +108,27 @@ in
      od
     od
   )
+set split_classes(CharacterTable ct)=[classical_class]:
+##for i:ct.n_classes do if ct.classes(i).get_class_D.is_split then [ct.classes(i)] else [] fi od
+
+set split_reps(CharacterTable ct)=
+##for i:ct.n_classes do if ct.classical_reps(i).get_irrep_D.is_split then [ct.classical_reps(i)] else [] fi od
+
+set index(CharacterTable ct,D_irrep pi)=int:
+index_D_reps(for i:ct.n_classes do ct.classical_reps(i).get_irrep_D od,pi)
+
+set  index(CharacterTable ct,classical_irrep pi)=int:
+index_D_reps(for i:ct.n_classes do ct.classical_reps(i).get_irrep_D od,pi.get_irrep_D)
+
+set index(CharacterTable ct,classical_class c)=int:
+index_D_classes(for i:ct.n_classes do ct.classes(i).get_class_D od,c.get_class_D)
+
+set index(CharacterTable ct,D_class c)=int:
+index_D_classes(for i:ct.n_classes do ct.classes(i).get_class_D od,c)
+
+set split_table(CharacterTable ct)=
+let reps=ct.split_reps then
+classes=ct.split_classes in
+(reps,classes,for pi in reps do
+ for c in classes do
+  ct.characters[index(ct,pi)][index(ct,c)] od od)

@@ -174,7 +174,7 @@ void KGB_base::add_element()
 */
 
 // create structure incorporating all KGB structures for a given inner class
-global_KGB::global_KGB(InnerClass& G_C, bool dual_twist)
+global_KGB::global_KGB(InnerClass& G_C)
   : KGB_base(G_C,G_C.semisimpleRank())
   , Tg(G_C) // construct global Tits group as subobject
   , elt()
@@ -215,12 +215,11 @@ global_KGB::global_KGB(InnerClass& G_C, bool dual_twist)
     first_of_tau.push_back(elt.size()); // end of fundamental fiber
   }
 
-  generate(size,dual_twist);
+  generate(size);
 
 }
 
-global_KGB::global_KGB(InnerClass& G_C,
-		       const GlobalTitsElement& x, bool dual_twist)
+global_KGB::global_KGB(InnerClass& G_C, const GlobalTitsElement& x)
   : KGB_base(G_C,G_C.semisimpleRank())
   , Tg(G_C) // construct global Tits group as subobject
   , elt()
@@ -272,7 +271,7 @@ global_KGB::global_KGB(InnerClass& G_C,
       elt.push_back(elt_hash[i].repr());
   } // got elements at the fundamental fiber
 
-  generate(0,dual_twist); // complete element generation, no predicted size
+  generate(0); // complete element generation, no predicted size
 } // |global_KGB::global_KGB|
 
 /*
@@ -353,7 +352,7 @@ void global_KGB::generate_involutions(size_t num_inv)
   assert(inv_nrs.size()==num_inv);
 } // |global_KGB::generate_involutions|
 
-void global_KGB::generate(size_t predicted_size, bool dual_twist)
+void global_KGB::generate(size_t predicted_size)
 {
   const Cartan_orbits& i_tab = ic.involution_table();
   const TwistedWeylGroup& W = Tg; // for when |GlobalTitsGroup| is not used
@@ -464,10 +463,6 @@ void global_KGB::generate(size_t predicted_size, bool dual_twist)
 
   assert(elt.size()==predicted_size or predicted_size==0);
 
-  // finally set the Hermitian dual links
-  for (KGBElt i=0; i<elt.size(); ++i)
-    info[i].dual = lookup
-      (dual_twist ? Tg.dual_twisted(elt[i]) : Tg.twisted(elt[i]));
 } // |global_KGB::generate|
 
 
@@ -478,8 +473,7 @@ void global_KGB::generate(size_t predicted_size, bool dual_twist)
 
 */
 
-KGB::KGB(RealReductiveGroup& G,
-	 const BitMap& Cartan_classes, bool dual_twist)
+KGB::KGB(RealReductiveGroup& G, const BitMap& Cartan_classes)
   : KGB_base(G.innerClass(),G.innerClass().semisimpleRank())
   , G(G)
   , Cartan()
@@ -659,17 +653,7 @@ KGB::KGB(RealReductiveGroup& G,
   for (auto it=inv_nrs.begin(); it!=inv_nrs.end(); ++it)
     Cartan.push_back(i_tab.Cartan_class(*it));
 
-  TorusPart shift(ic.rank());
-  bool do_dual_twist = dual_twist and is_dual_twist_stable(G,shift);
-  if (do_dual_twist)
-  {
-    // see whether some element (our initial seed) maps into the block
-    TitsElt test = titsGroup().dual_twisted(elt_pool[0],shift);
-    i_tab.reduce(test);
-    if (elt_hash.find(test)==elt_hash.empty)
-      do_dual_twist = false; // twist stablises the square class, but not KGB
-  }
-  // finally install inverse Cayley and twist links
+  // finally install inverse Cayley links
   for (KGBElt x=0; x<size; ++x)
   {
     for (weyl::Generator s=0; s<rank; ++s)
@@ -682,50 +666,8 @@ KGB::KGB(RealReductiveGroup& G,
 	else target.second=x;
       }
     }
-    if (not dual_twist)
-      info[x].dual = lookup(titsGroup().twisted(titsElt(x)));
-    else if (do_dual_twist)
-      info[x].dual = lookup(titsGroup().dual_twisted(titsElt(x),shift));
-    else
-      info[x].dual = UndefKGB;
   }
 } // |KGB::KGB(G,Cartan_classes,i_tab)|
-
-
-bool KGB::is_dual_twist_stable
-  (const RealReductiveGroup& G, TorusPart& shift) const
-{
-  // although |G| will be for "dualrealform", we use non-dualised nomenclature
-  const RootDatum& rd = G.rootDatum();
-
-  Grading base = basedTitsGroup().base_grading();
-  RatWeight rw (titsGroup().rank());
-  for (Grading::iterator it=base.begin(); it(); ++it) // flagged simple roots
-  {
-    rw -= rd.fundamental_coweight(*it); // because relative to implicit base
-    rw += rd.fundamental_coweight(weylGroup().Chevalley_dual(*it));
-  }
-  // before requiring integrality, we need to mod out by equivalence
-  int_Matrix A = G.innerClass().distinguished(); // |G.innerClass()| is not |ic|
-  A.transpose() += 1;
-  int_Matrix projector = lattice::row_saturate(A);
-  projector.apply_to(rw.numerator()); // this may change the size of |rw|
-  rw.normalize();
-  if (rw.denominator()!=1)
-    return false;
-
-  // now there is an integer vector with same projection as |rw|; find one
-  BinaryEquationList eqns; eqns.reserve(projector.numRows());
-  for (unsigned int i=0; i<projector.numRows(); ++i)
-  {
-    eqns.push_back(BinaryEquation(projector.row(i)));
-    eqns.back().pushBack(rw.numerator()[i]%2!=0); // rhs of equation
-  }
-
-  bool success = bitvector::solvable(eqns,shift);
-  assert(success);
-  return success;
-} // |KGB::is_dual_twist_stable|
 
 
 
@@ -774,7 +716,7 @@ KGBElt KGB::lookup(TitsElt a) const
 KGBElt KGB::twisted(KGBElt x,const WeightInvolution& delta) const
 {
   auto a = titsElt(x);
-  auto delta_twist = rootdata::twist(G.rootDatum(),delta);
+  auto delta_twist = rootdata::twist(G.root_datum(),delta);
   auto delta2 = BinaryMap(delta);
   RatCoweight diff = (base_grading_vector()-base_grading_vector()*delta)
     .normalize();

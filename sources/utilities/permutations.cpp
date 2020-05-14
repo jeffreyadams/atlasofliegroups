@@ -1,10 +1,7 @@
-/*!
-\file
+/*
   This is permutations.cpp.  This file contains the non-template
   definitions of the functions declared in permutations.h
 
-*/
-/*
   Copyright (C) 2004,2005 Fokko du Cloux
   part of the Atlas of Lie Groups and Representations
 
@@ -61,20 +58,20 @@ std::vector<U> Permutation::renumbering(const std::vector<U>& v) const
 {
   const Permutation& pi=*this;
   std::vector<U> result; result.reserve(v.size());
-  for (size_t i=0; i<v.size(); ++i)
-    result.push_back(pi[v[i]]);
+  for (auto x : v)
+    result.push_back(pi[x]);
   return result;
 }
 
-/*!
-  Synopsis: a *= b;
+/*
+  Perform |a *= b|;
 
-  Precondition : a holds a permutation of [0,N[; b holds a permutation of
-  [0,M[; M + n <= N;
+  Precondition : |a| holds a permutation of $[0,N[$; |b| holds a permutation of
+  $[0,M[$; and $M + n <= N$;
 
-  Postcondition : a holds the permutation a_new of [0,N[ where a_new[i+n]
-  = a[ b[i] + n ] for i in [0,M[; a is not changed outside the range
-  [n,M+n[.
+  Postcondition : |a| holds the permutation |a_new| of $[0,N[$ where
+  |a_new[i+n] == a[ b[i] + n ]| for $i$ in $[0,M[$; |a| is not changed
+  outside the range $[n,M+n[$.
 
   NOTE : although we know that the permutation can be done in place with
   the aid of just a bitmap, we do the lazy approach here and make a copy

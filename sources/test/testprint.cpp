@@ -32,9 +32,8 @@
 
 /*****************************************************************************
 
-  This module contains a number of print commands vor viewing parts of the
-  data which would normally be hidden away. It is intended for testing
-  purposes.
+  This module contains a number of print commands vor viewing parts of the data
+  which would normally be hidden away. It is intended for testing purposes.
 
 ******************************************************************************/
 
@@ -109,21 +108,7 @@ std::ostream& print(std::ostream& strm, const RootDatum& rd)
 
 
 /*
-  Synopsis: prints out data about the real reductive group G.
-
-  NOTE: to be implemented.
-
-std::ostream& print
-  (std::ostream& strm, const RealReductiveGroup& G)
-{
-  return strm;
-}
-*/
-
-
-
-/*
-  In this function, rb should contain a basis of some rootsystem; we are
+  In this function, |rb| should contain a basis of some root system; we are
   outputting the matrix with M(i,j)=root(rb[i]).scalarProduct(coroot(rb[j]))
 */
 std::ostream& printCartanMatrix(std::ostream& strm,
@@ -134,9 +119,7 @@ std::ostream& printCartanMatrix(std::ostream& strm,
 }
 
 
-/*
-  Prints the dual component group of G as a sep-separated list.
-*/
+// Print the dual component group of G as a sep-separated list.
 std::ostream& printComponents(std::ostream& strm,
 			      const RealReductiveGroup& G,
 			      const char* sep)
