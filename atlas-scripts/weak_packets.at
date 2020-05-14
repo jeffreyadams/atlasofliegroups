@@ -859,3 +859,6 @@ show_tempered(weak_packets(G))
 
 set unipotent_representations(RealForm G)=[Param]:
 parameters(weak_packets(G))
+
+set unipotent_representations_by_orbit(RealForm G)=[[Param]]:
+let wp=weak_packets(G) in for (,b) in wp do parameters(b) od
