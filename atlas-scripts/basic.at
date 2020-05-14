@@ -5,6 +5,7 @@ set_type { union types for versions of |solve|, cannot share |void| tag }
 ]
 
 set !minus_1 = -1 { using this constant avoids evaluating unary minus }
+set ~ (int n) = minus_1-n { subtract from -1, or bitwise complement }
 
 set # (int n)= [int]: for i:n do i od       { [0,1,...,n-1] }
 set # (bool b) = int: if b then 1 else 0 fi { Iverson symbol }
@@ -17,14 +18,20 @@ set assert (bool b) = void: assert(b,"assertion failed") { default message }
 
 { bitsets encoded as functions (int->bool) together with upper bound |limit| }
 
+set bitset ([int] L) =
+  let map=[bool]:[], len=0 { invariant len=#map } in
+  for x in L ~ { reversing loop minimises expansions for many lists }
+  do if x<len then map[x]:=true
+     else map := for i:x+1 do if i<len then map[i] else i=x fi od ; len := x+1
+     fi
+  od; (len,(int i)bool: map[i])
+
 set list (int limit, (int->bool) predicate) = [int]:
   ## for i:limit do if predicate(i) then [i] else [] fi od
 set complement (int limit,(int->bool) predicate) = [int]:
   ## for i:limit do if predicate(i) then [] else [i] fi od
-{ complement of strictly increasing |list| of values |v| with |0<=v<n| }
 set complement (int n, [int] list) = [int]:
-  let i=0, v=0, !l=#list in { i next position to inspect, v next value to seek }
-  while while i<l and list[i]=v do i+:=1; v+:=1 od; v<n do v next v+:=1 od
+  let (len,f)=bitset(list) in complement(n,(int i)bool: i<len and f(i))
 
 set count (int limit,(int->bool) predicate) = int:
   let c=0 in for i:limit do if predicate(i) then c+:=1 fi od; c
@@ -643,6 +650,7 @@ set required_solution ((mat,ratvec) system) = ratvec: system.solve.requisition
 
 set !s = Split:(0,1) { ! means it is a constant }
 set !split_1 = Split:1 { do conversion now }
+set !split_minus_1 = Split: minus_1
 set !one_minus_s = Split:(1,-1), !one_plus_s = Split:(1,1)  { near idempotents }
 
 set int_part (Split x) = int: let (r,)=%x in r
@@ -1560,8 +1568,6 @@ set print_extended_block = (Param,mat->):
 set null_module (ParamPol P) = ParamPol: 0*P { built-in does this efficiently }
 set -(ParamPol P) = ParamPol: minus_1*P
 
-set + (ParamPol P, [Param] ps) = ParamPol: P+for p in ps do (1,p) od
-
 set first_param (ParamPol P) = Param: let (,p)=first_term(P) in p
 set last_param (ParamPol P)  = Param: let (,p)=last_term(P) in p
 
@@ -1571,19 +1577,26 @@ set s_to_minus_1 (ParamPol P) = ParamPol: 0*P + for x@q in P do (-%x,q) od
 { counterpart to built-in +@(ParamPol,(Split,Param)) }
 set - (ParamPol a, (Split,Param) (c,p)) = ParamPol: a+(-c,p)
 
+set + (ParamPol P, [Param] ps) = ParamPol: P+for p in ps do (split_1,p) od
+set - (ParamPol P, [Param] ps) = ParamPol: P+for p in ps do (split_minus_1,p) od
+
+{ |ParamPol| summation by divide and conquer to privilege balanced additions }
 set sum = (RealForm,[ParamPol]->ParamPol):
- { do divide and conquer so as to privilege balanced additions }
  { define recursive hart of |sum| without capturing its arguments }
   let rec_fun s([ParamPol] Ps) = ParamPol: { |Ps| has at least one term }
         let h = (#Ps)\2 in if =h then Ps[0] else s(Ps[:h])+s(Ps[h:]) fi
   in (RealForm G,[ParamPol] Ps) ParamPol:
   if =#Ps then G.null_module else s(Ps) fi
 
+set + (ParamPol P,[ParamPol] Ps) = ParamPol: P+sum(P.real_form,Ps)
+set - (ParamPol P,[ParamPol] Ps) = ParamPol: P-sum(P.real_form,Ps)
+
+
 set map ((Param->Param)f, ParamPol P) = ParamPol:
-  0*P + for c@p in P do (c,f(p)) od
+  0*P + for c@p in P ~do (c,f(p)) od
 
 set map ((Param->ParamPol)f, ParamPol P) = ParamPol:
-  sum(P.real_form,for c@p in P do c*f(p) od)
+  sum(P.real_form,for c@p in P ~do c*f(p) od)
 
 set half (ParamPol P) = ParamPol: 0*P+ for c@t in P do (half(c),t) od
 { inverse of multiplication *@(int,ParamPol); don't confuse with scaling }

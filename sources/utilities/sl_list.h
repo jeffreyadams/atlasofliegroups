@@ -1664,7 +1664,7 @@ template<typename T, typename Alloc>
 
     // the following adjustments are needed independently; they can only both
     // apply when |this==&other| and |pos==end|; then the final effect is no-op
-    if (end==other.cend()) // splicing may cut of tail from |other|
+    if (end==other.cend()) // splicing may cut off tail from |other|
       other.tail = begin.link_loc; // in which case we must reset |other.tail|
     if (pos==cend()) // if splicing to the end of |*this|
       tail = end.link_loc; // then we must reset |tail| to end of spliced range
@@ -2166,6 +2166,18 @@ public:
 
   // unlike |std::queue|, we also provide initialisation by initializer list
   queue(std::initializer_list<T> l) : Base(sl(l)) {}
+
+  T& pop_splice_to(sl& dest,typename sl::iterator it)
+  { dest.splice(it,this->c,this->c.begin()); return *it; }
+  const T& pop_splice_to(sl& dest,typename sl::const_iterator it)
+  { dest.splice(it,this->c,this->c.begin()); return *it; }
+
+  T& pop_splice_to(simple_list<T,Alloc>& dest,
+		   typename simple_list<T,Alloc>::iterator it)
+  { dest.splice(it,this->c,this->c.begin()); return *it; }
+  const T& pop_splice_to(simple_list<T,Alloc>& dest,
+			 typename simple_list<T,Alloc>::const_iterator it)
+  { dest.splice(it,this->c,this->c.begin()); return *it; }
 }; // |class queue|
 
 } // |namespace containers|

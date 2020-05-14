@@ -15,6 +15,7 @@
 #include "ext_block.h"
 #include "../Atlas.h"
 #include "polynomials.h"
+#include "kl.h"
 
 namespace atlas {
 
@@ -78,7 +79,7 @@ class KL_table
   std::unique_ptr<std::vector<Pol> > own; // points to |storage_pool| if we own
   std::vector<Pol>& storage_pool; // the distinct actual polynomials, maybe owned
 
-  std::vector<kl::KLRow> column; // columns are lists of polynomial pointers
+  std::vector<kl::KLColumn> column; // columns are lists of polynomial pointers
 
  public:
   KL_table(const ext_block::ext_block& b, std::vector<Pol>* pool);

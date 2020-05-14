@@ -435,7 +435,7 @@ std::ostream& printDescent(std::ostream& strm,
 std::ostream& print_KL(std::ostream& f, param_block& block, BlockElt z)
 {
   // silently fill the whole KL table
-  const kl::KLContext& klc = block.klc(z,false);
+  const kl::KL_table& kl_tab = block.kl_tab(z,false);
 
   typedef Polynomial<int> Poly;
   typedef std::map<BlockElt,Poly> map_type;
@@ -443,7 +443,7 @@ std::ostream& print_KL(std::ostream& f, param_block& block, BlockElt z)
   unsigned int parity = block.length(z)%2;
   for (size_t x = 0; x <= z; ++x)
   {
-    const kl::KLPol& pol = klc.klPol(x,z);
+    const kl::KLPol& pol = kl_tab.KL_pol(x,z);
     if (not pol.isZero())
     {
       Poly p(pol); // convert

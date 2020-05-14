@@ -82,7 +82,7 @@ namespace commands {
   BlockElt entry_z = UndefBlock;
   SubSystemWithGroup* sub=nullptr;
   StandardRepr* sr=nullptr;
-  param_block* param_block_pointer=nullptr; // block gives access to |KLContext|
+  param_block* param_block_pointer=nullptr; // block gives access to |KL_table|
   wgraph::WGraph* param_WGr_pointer=nullptr;
 
 
@@ -140,9 +140,9 @@ const SubSystemWithGroup& currentSubSystem() { return *sub; }
 
 const StandardRepr& currentStandardRepr() { return *sr; }
 
-kl::KLContext& current_param_KL()
+kl::KL_table& current_param_KL()
 {
-  return current_param_block().klc(current_param_block().size()-1,true);
+  return current_param_block().kl_tab(current_param_block().size()-1,true);
 }
 
 void ensure_full_block()
@@ -159,7 +159,7 @@ void ensure_full_block()
 const wgraph::WGraph& current_param_WGraph()
 { if (param_WGr_pointer==nullptr)
   { ensure_full_block();
-    const kl::KLContext& c=current_param_KL();
+    const kl::KL_table& c=current_param_KL();
     param_WGr_pointer=new wgraph::WGraph(kl::wGraph(c));
   }
   return *param_WGr_pointer;
@@ -400,22 +400,22 @@ void kl_f()
 */
 void klbasis_f()
 {
-  const kl::KLContext& klc = current_param_KL();
+  const kl::KL_table& kl_tab = current_param_KL();
 
   ioutils::OutputFile file;
   file << "Full list of non-zero Kazhdan-Lusztig-Vogan polynomials:"
        << std::endl << std::endl;
-  kl_io::printAllKL(file,klc,current_param_block());
+  kl_io::printAllKL(file,kl_tab,current_param_block());
 }
 
 
 // Print the list of all distinct Kazhdan-Lusztig-Vogan polynomials
 void kllist_f()
 {
-  const kl::KLContext& klc = current_param_KL();
+  const kl::KL_table& kl_tab = current_param_KL();
 
   ioutils::OutputFile file;
-  kl_io::printKLList(file,klc);
+  kl_io::printKLList(file,kl_tab);
 }
 
 /*
@@ -428,12 +428,12 @@ void kllist_f()
 
 void primkl_f()
 {
-  const kl::KLContext& klc = current_param_KL();
+  const kl::KL_table& kl_tab = current_param_KL();
 
   ioutils::OutputFile file;
   file << "Kazhdan-Lusztig-Vogan polynomials for primitive pairs:"
        << std::endl << std::endl;
-  kl_io::printPrimitiveKL(file,klc,current_param_block());
+  kl_io::printPrimitiveKL(file,kl_tab,current_param_block());
 }
 
 // Write the results of the KL computations to a pair of binary files
@@ -444,18 +444,18 @@ void klwrite_f()
   interactive::open_binary_file
     (coefficient_out,"File name for polynomial output: ");
 
-  const kl::KLContext& klc = current_param_KL();
+  const kl::KL_table& kl_tab = current_param_KL();
 
   if (matrix_out.is_open())
   {
     std::cout << "Writing matrix entries... " << std::flush;
-    filekl::write_matrix_file(klc,matrix_out);
+    filekl::write_matrix_file(kl_tab,matrix_out);
     std::cout << "Done." << std::endl;
   }
   if (coefficient_out.is_open())
   {
     std::cout << "Writing polynomial coefficients... " << std::flush;
-    filekl::write_KL_store(klc.polStore(),coefficient_out);
+    filekl::write_KL_store(kl_tab.polStore(),coefficient_out);
     std::cout << "Done." << std::endl;
   }
 }

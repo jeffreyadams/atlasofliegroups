@@ -58,8 +58,8 @@ std::vector<U> Permutation::renumbering(const std::vector<U>& v) const
 {
   const Permutation& pi=*this;
   std::vector<U> result; result.reserve(v.size());
-  for (size_t i=0; i<v.size(); ++i)
-    result.push_back(pi[v[i]]);
+  for (auto x : v)
+    result.push_back(pi[x]);
   return result;
 }
 

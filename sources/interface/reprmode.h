@@ -37,7 +37,7 @@ namespace commands {
   param_block& current_param_block();
   const StandardRepr& currentStandardRepr();
   void ensure_full_block();
-  kl::KLContext& current_param_KL();
+  kl::KL_table& current_param_KL();
   const wgraph::WGraph& current_param_WGraph();
 } // |namespace reprmode|
 

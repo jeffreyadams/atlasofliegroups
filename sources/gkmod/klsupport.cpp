@@ -15,6 +15,7 @@
   of arbitrary subsets of the block.
 */
 
+#include <cassert>
 #include "klsupport.h"
 
 /*
@@ -27,13 +28,6 @@
 
 namespace atlas {
 
-namespace {
-
-  void fillLengthLess
-    (std::vector<BlockElt>&, const Block_base&);
-
-} // |namespace|
-
 /*****************************************************************************
 
         Chapter I -- The KLSupport class
@@ -43,135 +37,34 @@ namespace {
 namespace klsupport {
 
 KLSupport::KLSupport(const Block_base& b)
-  : d_state()
-  , d_block(b)
-  , d_descent()
-  , d_goodAscent()
-  , d_downset()
-  , d_primset()
+  : d_block(b)
   , d_lengthLess()
-  , d_prim_index()
-{}
-
-/******** copy, assignment and swap ******************************************/
-
-void KLSupport::swap(KLSupport& other)
+  , d_descent(size())
+  , d_goodAscent(size())
+  , d_downset(rank())
+  , d_primset(rank())
+  , d_prim_index(1ul << rank()) // $2^r$ empty slots, with $r$ (semisimple) rank
 {
-  d_state.swap(other.d_state);
-
-  assert(&d_block==&other.d_block);
-
-  d_descent.swap(other.d_descent);
-  d_goodAscent.swap(other.d_goodAscent);
-  d_downset.swap(other.d_downset);
-  d_primset.swap(other.d_primset);
-  d_lengthLess.swap(other.d_lengthLess);
-  d_prim_index.swap(other.d_prim_index);
-
-}
-
-/******** accessors **********************************************************/
-
 /*
-  Flag in b those block elements which are extremal w.r.t. the simple
-  reflections in d.
-
-  Preconditions: the capacity of b is the size(); d contains rank() flags;
-
-  Explanation: an element z in the block is extremal w.r.t. d, if all the
-  simple generators flagged in d are descents for z. Since d_downset[s] flags
-  the elements for which s is a descent, this amounts to requesting that z
-  belong to the intersection of the downsets for the various descents in d.
+  Make |d_lengthLess| into a vector of size |max(lengths(d_block))+2| such that
+  for |0<=l<=max(lengths(d_block))+1|, the |BlockELt| |d_lengthLess[l]| is the
+  first one of length at least |l| in |d_block| (or |d_block.size()| if there
+  are none, as is the case for $l=\max(lengths(d_block))+1)$. In other words,
+  |d_lengthLess[l]| counts the elements in |d_block| of length less than |l|.
 */
-
-void KLSupport::filter_extremal(BitMap& b, const RankFlags& d)
-  const
-{
-  for (weyl::Generator s=0; s<rank(); ++s)
-    if (d.test(s))
-      b &= d_downset[s];
-}
-
-
-/*
-  Primitivize b w.r.t. the values whose descent set is d, i.e.,
-  throw out from b the non-primitive elements with respect to d
-
-  Preconditions: the capacity of b is the size(); d contains rank() flags;
-
-  Explanation: an element z in the block is primitive w.r.t. d, if all the
-  simple generators flagged in d are either descents, or imaginary type II
-  ascents for z. Since d_primset[s] flags the elements for which s is a
-  descent or imaginary type II, this amounts to requesting that z belong to
-  the intersection of the primsets for the various descents in d.
-*/
-void KLSupport::filter_primitive(BitMap& b, const RankFlags& d) const
-{
-  for (weyl::Generator s=0; s<rank(); ++s)
-    if (d.test(s))
-      b &= d_primset[s];
-}
-
-
-/*
-  Finds for |x| a primitive element for |d| above it, returning that value, or
-  returns |UndefBlock| if a real nonparity case is hit, or (in partial blocks)
-  ascent through an undefined complex ascent or Cayley transform is attempted
-
-  Explanation: a primitive element for |d| is one for which all elements in
-  |d| are either descents or type II imaginary ascents. So if |x| is not
-  primitive, it has an ascent in |d| that is either complex, imaginary type I
-  or real nonparity. In the first two cases we replace |x| by the (unique)
-  ascended element and continue; in the last case, we return |UndefBlock| (for
-  K-L computations, this case implies that $P_{x,y}=0$; the value of
-  |UndefBlock| is conveniently larger than any valid BlockElt |y|, so this
-  case will be handled effortlessly together with triangularity). It is also
-  permissible to pass |x==UndefBlock|, which will be returned immediately.
-*/
-
-#if 0 // code disabled because replaced by table look-up
-BlockElt
-  KLSupport::primitivize(BlockElt x, const RankFlags& d) const
-{
-  RankFlags a; // good ascents for x that are descents for y
-
-  while (x!=UndefBlock and (a = goodAscentSet(x)&d).any())
   {
-    size_t s = a.firstBit();
-    DescentStatus::Value v = descentValue(s,x);
-    x = v == DescentStatus::RealNonparity ? UndefBlock
-      : v == DescentStatus::ComplexAscent ? d_block.cross(s,x)
-      : d_block.cayley(s,x).first; // imaginary type I
+    auto l_size = (d_block.size()==0 ? 0 : d_block.length(d_block.size()-1))+2;
+    d_lengthLess.resize(l_size);
+
+    d_lengthLess[0]=0; // no elements of length<0
+    size_t l=0;
+    for (BlockElt z=0; z<d_block.size(); ++z) // invariant |d_block.length(z)>=l|
+      while (d_block.length(z)>l)
+	d_lengthLess[++l]=z;
+
+    // do not forget the last length!
+    d_lengthLess[l+1]=d_block.size(); // here $l=\max(lengths(d_block))$
   }
-  return x;
-  }
-#endif
-
-/******** manipulators *******************************************************/
-
-// Fill the |lengthLess| table, and the downsets
-void KLSupport::fill()
-{
-  if (d_state.test(Filled)) // do nothing
-    return;
-
-  // fill lengthLess if necessary
-  if (not d_state.test(LengthLessFilled))
-  {
-    fillLengthLess(d_lengthLess,block());
-    d_state.set(LengthLessFilled);
-  }
-
-  // make the downsets
-  fillDownsets();
-
-  //fill the primitivize table
-  fillPrimitivize();
-
-  d_state.set(Filled);
-
-}
-
 
 /*
   Fill in the |downset|, |primset|, |descents| and |goodAscent| bitmap/set
@@ -194,159 +87,172 @@ void KLSupport::fill()
   bitmap for |s| records the block elements |z| for which |s| is not a
   |goodAscent|, in other words it is either a |descent| or imaginary type II.
 */
-void KLSupport::fillDownsets()
-{
-  if (d_state.test(DownsetsFilled))
-    return;
-
   size_t size = d_block.size();
-  std::vector<BitMap> downset(rank());
-  std::vector<BitMap> primset(rank());
-  std::vector<RankFlags> descents(size);
-  std::vector<RankFlags> good_ascent(size);
 
   for (weyl::Generator s=0; s<rank(); ++s)
   {
-    downset[s].set_capacity(size);
-    primset[s].set_capacity(size);
+    d_downset[s].set_capacity(size);
+    d_primset[s].set_capacity(size);
     for (BlockElt z = 0; z < size; ++z)
     {
       DescentStatus::Value v = descentValue(s,z);
       if (DescentStatus::isDescent(v))
       {
-	downset[s].insert(z);
-	primset[s].insert(z);
-	descents[z].set(s);
+	d_downset[s].insert(z);
+	d_primset[s].insert(z);
+	d_descent[z].set(s);
       }
       else // ascents
 	if (v == DescentStatus::ImaginaryTypeII)
-	  primset[s].insert(z);  // s is a "bad" ascent
+	  d_primset[s].insert(z);  // s is a "bad" ascent
 	else
-	  good_ascent[z].set(s); // good ascent
+	  d_goodAscent[z].set(s); // good ascent
     }
   }
+} // |KLSupport::KLSupport|
 
-  // commit
-  d_downset.swap(downset);
-  d_primset.swap(primset);
-  d_descent.swap(descents);
-  d_goodAscent.swap(good_ascent);
-  d_state.set(DownsetsFilled);
-
-}
 
 /*
-  Synopsis: fills in the table d_prim_index.
+  Fill in the table |d_prim_index|.
 
-  Explanation: for each z in the block, and each descent set |A|, one can
-  reach from |z| a primitive element |z'| for |A| by following 'C+' or 'i1'
-  ascents, or possibly run into an 'rn' ascent aborting the search (when this
-  happens any KL polynomial $P_{z,y}$ with |descentSet(y)==A| will be zero).
+  For each |z| in the block, and each descent set |A|, one can from |z| either
+  reach a primitive element |z'| for |A| by following 'C+' or 'i1' ascents in
+  |A| , or run into an 'rn' ascent in |A| which aborts the search (because when
+  this happens, one has $P_{z,y}=0$ for any |y| for which |descentSet(y)==A|).
 
-  Rather than |z'|, we store the index of |z'| in the list of primitives for
-  |A|, this avoiding any form of binary search (but we will have to store
-  null polynomials to ensure every polynomial has a predictable place).
-
-  Sets the PrimitivizeFilled bit in d_state if successful.
+  After doing this for any |A| and |z|, we store not |z'|, but its index in the
+  list of primitives for |A|, recoreded as |prim_index[z]| below. This avoids
+  having to use binary search to locate the polynomial $P_{z',y}$, provided it
+  is stored at an offset |prim_index[z]| in the appropriate vector. This does
+  mean we will have to store null polynomials at primitive elements to ensure
+  everything is at its predicted place, while such (fairly common) polynomials
+  could be suppressed when using pairs $(x,P_{x,y})$ and binary search on $x$.
 */
 
-  void KLSupport::fillPrimitivize()
-  {
-    using namespace bitset;
-    using namespace descents;
-    using namespace blocks;
-
-    if (d_state.test(PrimitivizeFilled))
-      return;
-
-    size_t two_to_the_r = 1ul << rank();
-    d_prim_index.resize(two_to_the_r);
-
-    size_t blocksize = d_block.size();
-
-    for (unsigned long j = 0 ; j<two_to_the_r ; ++j)
-    {
-      const RankFlags A(j); // the current descent set
-
-      BlockEltList prim;
-      std::vector<unsigned int>& prim_index = d_prim_index[j];
-      prim_index.resize(blocksize);
-
-      BitMap primitives(size()); primitives.fill();
-      filter_primitive(primitives,A); // compute all primitive elements for A
-
-      unsigned int prim_count = primitives.size(); // start at high end
-
-      for (BlockElt z = blocksize; z-->0;)
-      {
-	// primitivize
-	RankFlags a = goodAscentSet(z)&A;
-	if (a.none())
-	{
-	  assert(primitives.isMember(z)); // sanity check
-	  prim_index[z] = --prim_count;
-	  continue;
-	}
-
-        // if \emph{some} ascent is real nonparity, cop out right away
-	for (RankFlags::iterator it=a.begin(); it(); ++it)
-	  if (descentValue(*it,z) == DescentStatus::RealNonparity)
-	    goto finish; // no primitivization
-
-	{ // grouping needed because of the above goto
-	  size_t s = a.firstBit();
-	  DescentStatus::Value v = descentValue(s,z);
-	  assert(v == DescentStatus::ComplexAscent or
-		 v==DescentStatus::ImaginaryTypeI);
-	  BlockElt sz =  v==DescentStatus::ComplexAscent
-	    ? d_block.cross(s,z) : d_block.cayley(s,z).first;
-	  if (sz==UndefBlock)
-	    goto finish; // link out of partial block: give up primitivization
-	  prim_index[z] = prim_index[sz];
-	  continue; // avoid executing the |finish| code
-	}
-      finish: prim_index[z] = ~0; // mark invalid primtivization
-      } // |for(z-->0)|
-      assert(prim_count==0); // we've seen all primitives
-    } // |for(A)|
-
-    d_state.set(PrimitivizeFilled);
-
-    return;
-  } // |fillPrimitivize|
-} // |namespace klsupport|
-
-/*****************************************************************************
-
-        Chapter II -- Functions local to this module
-
- *****************************************************************************/
-
-namespace {
-
-/*
-  Make ll into a vector of size max(lengths(b))+2 such that for
-  0<=l<=max(lengths(b))+1, the element ll[l] is the first BlockElt of length
-  at least l in b (or b.size() if there are none, as for l=max(lengths(b))+1)
-  In other words, as a number ll[l] counts the elements in b of length < l.
-
-  Precondition: b is sorted by length;
-*/
-void fillLengthLess
-  (std::vector<BlockElt>& ll, const Block_base& b)
+void KLSupport::fill_prim_index(prim_index_tp& index_vec,RankFlags A) const
 {
-  ll.clear(); ll.resize(b.size()==0 ? 2 : b.length(b.size()-1)+2);
+  index_vec.resize(d_block.size()); // create slots; we will fill backwards
 
-  ll[0]=0; // no elements of length<0
-  size_t l=0;
-  for (BlockElt z=0; z<b.size(); ++z)
-    while (b.length(z)>l)
-      ll[++l]=z;  // invariant |l<=b.length(z)| after this statement
+  BitMap primitives(size()); primitives.fill();
+  filter_primitive(primitives,A); // compute all primitive elements for A
 
-  // do not forget the last length!
-  ll[l+1]=b.size(); // here l=b.length(b.size()-1)=max(lengths(b))
+  unsigned int prim_count = primitives.size(); // start at high end
+  constexpr unsigned int dead_end = -1; // signal no valid primitivization
+
+  for (BlockElt z = d_block.size(); z-->0;)
+  {
+    auto& dest = index_vec[z]; // the slot to fill during this iteration
+    RankFlags a = goodAscentSet(z)&A;
+    if (a.none())
+    { // then |z| is primitive, record its index
+      assert(primitives.isMember(z)); // sanity check
+      dest = --prim_count;
+    }
+    else
+    {
+      weyl::Generator s = a.firstBit();
+      switch (descentValue(s,z))
+      {
+      case DescentStatus::RealNonparity: dest = dead_end; break;
+      case DescentStatus::ComplexAscent:
+	{ auto sz=d_block.cross(s,z);
+	  dest = sz==UndefBlock ? dead_end : index_vec[sz];
+	} break;
+      case DescentStatus::ImaginaryTypeI:
+	{ auto sz=d_block.cayley(s,z).first;
+	  dest = sz==UndefBlock ? dead_end : index_vec[sz];
+	} break;
+      default: assert(false);
+      }
+    }
+  } // |for(z-->0)|
+  assert(prim_count==0); // we've seen all primitives
+} // |fill_prim_index|
+
+/******** accessors **********************************************************/
+
+/*
+  Flag in |b|, which is of size |size()|, those block elements which are
+  extremal w.r.t. the simple reflections in |d|, i.e., for which all simple
+  generators flagged in |d| are descents. Since |d_downset[s]| flags the
+  elements for which |s| is a descent, this amounts to requesting that |z|
+  belong to the intersection of all the downsets of generators flagged in |d|.
+*/
+
+void KLSupport::filter_extremal(BitMap& b, const RankFlags& d) const
+{
+  for (weyl::Generator s=0; s<rank(); ++s)
+    if (d.test(s))
+      b &= d_downset[s];
 }
 
-} // |namsespace|
+
+/*
+  Flag in |b|, which is of size |size()|, those block elements which are
+  extremal w.r.t. the simple reflections in |d|, i.e., for which all simple
+  generators flagged in |d| are either descents or imaginary type II ascents.
+  Since |d_primset[s]| flags the elements for which |s| is a descent or
+  imaginary type II ascent, this amounts to requesting that |z| belong to the
+  intersection of all the primsets of generators flagged in |d|.
+*/
+void KLSupport::filter_primitive(BitMap& b, const RankFlags& d) const
+{
+  for (weyl::Generator s=0; s<rank(); ++s)
+    if (d.test(s))
+      b &= d_primset[s];
+}
+
+
+#if 0 // code disabled because replaced by table look-up
+/*
+  Find for |x| a primitive element for |d| above it, returning that value, or
+  return |UndefBlock| if a real nonparity case is hit, or (in partial blocks)
+  ascent through an undefined complex ascent or Cayley transform is attempted
+
+  A primitive element for |d| is one for which all elements in |d| are either
+  descents or type II imaginary ascents. So if |x| is not primitive, it has an
+  ascent in |d| that is either complex, imaginary type I or real nonparity. In
+  the first two cases we replace |x| by the (unique) ascended element and
+  continue; in the last case, we return |UndefBlock| (for K-L computations, this
+  case implies that $P_{x,y}=0$; the value of |UndefBlock| is conveniently
+  larger than any valid BlockElt |y|, so this case will be handled effortlessly
+  together with triangularity). It is also permissible to pass |x==UndefBlock|,
+  which will be returned immediately.
+*/
+BlockElt
+  KLSupport::primitivize(BlockElt x, const RankFlags& d) const
+{
+  RankFlags a; // good ascents for x that are descents for y
+
+  while (x!=UndefBlock and (a = goodAscentSet(x)&d).any())
+  {
+    size_t s = a.firstBit();
+    DescentStatus::Value v = descentValue(s,x);
+    x = v == DescentStatus::RealNonparity ? UndefBlock
+      : v == DescentStatus::ComplexAscent ? d_block.cross(s,x)
+      : d_block.cayley(s,x).first; // imaginary type I
+  }
+  return x;
+}
+#endif // code disabled because replaced by table look-up
+
+#ifndef NDEBUG
+void KLSupport::check_sub(const KLSupport& sub, const BlockEltList& embed)
+{
+  assert(sub.rank()==rank());
+  for (unsigned i=1; i<embed.size(); ++i)
+    assert(embed[i-1]<embed[i]);
+  for (BlockElt z=0; z<sub.block().size(); ++z)
+  {
+    assert(sub.block().length(z)==d_block.length(embed[z]));
+    assert(sub.block().descent(z)==d_block.descent(embed[z]));
+    for (weyl::Generator s=0; s<d_block.rank(); ++s)
+      if (sub.cross(s,z)!=UndefBlock)
+	assert(embed[sub.cross(s,z)]==cross(s,embed[z]));
+  }
+}
+#endif
+
+} // |namespace klsupport|
 
 } // |namespace atlas|

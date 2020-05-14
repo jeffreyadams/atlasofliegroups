@@ -152,6 +152,7 @@ class BitMap
   // Number of values |<n| present (set) in the bitmap
   unsigned long position(unsigned long n) const;
 
+  // First value for which |isMember| holds, or |capacity()| if none exist
   unsigned long front() const;
 
   // decrement |n| (at least once) until it points to a member

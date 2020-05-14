@@ -17,6 +17,7 @@
 #include "bruhat.h" // type |BruhatOrder| must be complete for destructor
 #include "subsystem.h"
 #include "repr.h"
+#include "kl.h"
 
 namespace atlas {
 
@@ -31,7 +32,30 @@ namespace ext_block {
   class ext_block;
 }
 
+namespace repr {
+
+class Repr_mod_entry
+{ KGBElt x; RankFlags y, mask;
+public:
+  Repr_mod_entry(const Rep_context& rc, const StandardReprMod& srm);
+
+  StandardReprMod srm(const Rep_context& rc,const RatWeight& gamma_mod_1) const;
+
+  unsigned long y_stripped() const { return(y&mask).to_ulong(); }
+
+  // obligatory fields for hashable entry
+  using Pooltype =  std::vector<Repr_mod_entry>;
+  size_t hashCode(size_t modulus) const
+  { return (5*x-11*y_stripped())&(modulus-1); }
+  bool operator !=(const Repr_mod_entry& o) const
+    { return x!=o.x or y_stripped()!=o.y_stripped(); }
+
+}; // |Repr_mod_entry|
+
+} // |namespace repr|
+
 namespace blocks {
+
 
 // a class for blocks of (possibly non integral) parameters
 class common_block : public Block_base
@@ -41,18 +65,16 @@ class common_block : public Block_base
   const RatWeight gamma_mod_1;
   const SubSystem integral_sys;
 
-  std::vector<TorusPart> y_bits; // as in |StandardRepr|, indexed by |y|
-
-  y_entry::Pooltype y_pool;
-  y_part_hash y_hash;  // hash table allows storing |y| parts by index
-
-  // hash structure to allow rapid lookup of |(x,y)| index pairs
-  block_hash xy_hash;
+  // hash structure to facilitate lookup of elements in |StandardReprMod| form
+  using repr_hash = HashTable<repr::Repr_mod_entry,BlockElt>;
+  repr::Repr_mod_entry::Pooltype z_pool;
+  repr_hash srm_hash;
 
   std::unique_ptr<ext_block::ext_block> extended;
 
   // group small data members together:
   KGBElt highest_x,highest_y; // maxima over this block
+  const bool generated_as_full_block; // tells which constructor was used
 
  public:
 
@@ -77,6 +99,8 @@ class common_block : public Block_base
   const InvolutionTable& involution_table() const;
   RealReductiveGroup& real_group() const;
 
+  bool is_full () const { return generated_as_full_block; }
+
   RatWeight gamma_mod1 () const { return gamma_mod_1; }
   // simple coroots of |sub| singular for |gamma|
   RankFlags singular (const RatWeight& gamma) const;
@@ -94,12 +118,13 @@ class common_block : public Block_base
   ext_gens fold_orbits(const WeightInvolution& delta) const;
 
   // manipulators
+  kl::KLHash KL_hash();
   void swallow // integrate an older partial block, with mapping of elements
-    (const common_block& sub, const BlockEltList& embed);
+    (common_block&& sub, const BlockEltList& embed, kl::KLHash& hash);
   ext_block::ext_block& extended_block(const WeightInvolution& delta);
 
-  void set_Bruhat(std::vector<Poset::EltList>&& Hasse)
-  { delete d_bruhat; d_bruhat = new BruhatOrder(std::move(Hasse)); }
+  void set_Bruhat
+  (containers::sl_list<std::pair<BlockElt,BlockEltList> >&& partial_Hasse);
 
   // virtual methods
   virtual KGBElt max_x() const { return highest_x; } // might not be final |x|
@@ -110,14 +135,13 @@ class common_block : public Block_base
 
 
  private:
-/*
- sort by increaing length (after reversing if |reverse_length|), within equal
- length groups so by |x(z)|. Permute tables correspondingly
-*/
-  void sort(unsigned short max_length, bool reverse_length);
-  void compute_y_bits();
+// sort by increaing length, then |x|, then |y|; permute tables correspondingly
+  void sort();
 
 }; // |class common_block|
+
+// sorting criterion used to |common_block::sort| the |info| array in block base
+bool elt_info_less(const Block_base::EltInfo& a,const Block_base::EltInfo& b);
 
 } // |namespace blocks|
 

@@ -78,6 +78,12 @@ struct Permutation
 
   void compose(Permutation&, const Permutation&, unsigned long n = 0);
 
+  template<typename InputIt, typename Compare,
+	   typename = typename std::enable_if<
+  std::is_base_of<std::input_iterator_tag,
+		  typename std::iterator_traits<InputIt>::iterator_category
+  >::value>::type>
+    Permutation standardization(InputIt first, InputIt last, Compare less);
   template<typename U>
     Permutation standardization(const std::vector<U>& a, size_t bound,
 				std::vector<unsigned int>* stops = NULL);

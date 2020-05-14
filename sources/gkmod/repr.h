@@ -292,8 +292,9 @@ class Rep_table : public Rep_context
   std::vector<StandardReprMod> mod_pool;
   HashTable<StandardReprMod,unsigned long> mod_hash;
 
-  containers::sl_list<std::unique_ptr<blocks::common_block> > block_list;
-  std::vector<std::pair<blocks::common_block*, BlockElt> > place;
+  containers::sl_list<blocks::common_block> block_list;
+  using bl_it = containers::sl_list<blocks::common_block>::iterator;
+  std::vector<std::pair<bl_it, BlockElt> > place;
 
  public:
   Rep_table(RealReductiveGroup &G);
@@ -304,12 +305,21 @@ class Rep_table : public Rep_context
 
   unsigned short length(StandardRepr z); // by value
 
-  blocks::common_block& lookup_full_block(const StandardRepr& sr,BlockElt& z);
+  unsigned long parameter_number (StandardRepr z) const { return hash.find(z); }
+  const SR_poly& deformation_formula(unsigned long h) const
+    { return def_formulae[h].first; }
+  const SR_poly& twisted_deformation_formula(unsigned long h) const
+    { return def_formulae[h].second; }
 
-  blocks::common_block& lookup(const StandardRepr& sr,BlockElt& z); // partial
+  blocks::common_block& lookup_full_block
+    (StandardRepr& sr,BlockElt& z); // |sr| is by reference; will be normalised
 
+  blocks::common_block& lookup // constuct only partial block if necessary
+    (StandardRepr& sr,BlockElt& z); // |sr| is by reference; will be normalised
 
   SR_poly KL_column_at_s(StandardRepr z); // by value
+  containers::simple_list<std::pair<BlockElt,kl::KLPol> >
+    KL_column(StandardRepr z); // by value
   SR_poly twisted_KL_column_at_s(StandardRepr z); // by value
 
   SR_poly deformation_terms
@@ -335,6 +345,7 @@ class Rep_table : public Rep_context
   SR_poly twisted_deformation(StandardRepr z); // by value
 
  private:
+  void block_erase (bl_it pos); // erase from |block_list| in safe manner
   unsigned long formula_index (const StandardRepr&);
   unsigned long add_block(const StandardReprMod&); // full block
   class Bruhat_generator; // helper class: internal |add_block_below| recursion
