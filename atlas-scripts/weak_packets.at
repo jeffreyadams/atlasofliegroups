@@ -856,3 +856,6 @@ for i:#wp do let (a,b)=wp[i] in for (,,p) in b do if =p.nu then prints(i, " ", p
 
 set show_unipotent_tempered(RealForm G)=void:
 show_tempered(weak_packets(G))
+
+set unipotent_representations(RealForm G)=[Param]:
+parameters(weak_packets(G))

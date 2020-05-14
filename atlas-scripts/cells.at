@@ -150,7 +150,7 @@ if cells_verbose then prints("doing block ",i , " of size ", #block,new_line, "n
  elif 
    for p in parameters(block,cells[j]) do
     if I_will_survive(p,gamma) then
-      prints("survive:", p, " ", gamma);
+{      prints("survive:", p, " ", gamma);}
       survivors#:=(i,j,first_param(T_irr(p,gamma)))
     fi {I_will_survive}
    od {/##for p};
@@ -186,7 +186,7 @@ if cells_verbose then prints("doing block ",i , " of size ", #block,new_line, "n
  elif 
    for p in parameters(block,cells[j]) do
     if I_will_survive(p,gamma) then
-      prints("survive:", p, " ", gamma);
+{      prints("survive:", p, " ", gamma);}
       survivors#:=(i,j,first_param(T_irr(p,gamma)))
     fi {I_will_survive}
    od {/##for p};
@@ -227,7 +227,7 @@ if cells_verbose then prints("given AV/gamma: st: ", st.root_datum, new_line, " 
     let ()=if cells_verbose then prints("spec: ", spec, " ", "springer_O: ", springer_O) fi in
     if spec=springer_O then
     ##for k in cell_param_numbers do let p=parameters[k] in if I_will_survive(p,gamma) then
-   prints("survive:", p, " ", gamma);
+{   prints("survive:", p, " ", gamma);}
    [(i,j,first_param(T_irr(p,gamma)))] else [] fi od
   else []
   fi
