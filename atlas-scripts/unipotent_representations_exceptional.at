@@ -1,3 +1,9 @@
+<basic.at
+<groups.at
+<lietypes.at
+<tabulate.at
+<W_K.at
+
 {arrays of unipotent representations
 of the following groups:
 G2_c,G2_s,F4_c,
@@ -291,11 +297,28 @@ parameter(G,981,[ 1, 1, 1, 1, 1, 1 ]/1,[ 1, 1, 1, 0, 1, 1 ]/1),
 parameter(G,981,[ 1, 1, 1, 1, 1, 1 ]/1,[ 1, 1, 1, 1, 1, 1 ]/1)
 ]
 
-set G=adjoint(E6_c)
+set G=adjoint(E6).compact_form
 set parameters_E6_ad_c=[
 parameter(G,0,[  8, 11, 15, 21, 15,  8 ]/1,[ 0, 0, 0, 0, 0, 0 ]/1)
 ]
-set G=adjoint(E6_q)
+
+set G=adjoint(E6).compact_form.real_forms[1]
+set parameters_E6_ad_h=[
+parameter(G,65,[ 2, 3, 4, 5, 4, 2 ]/1,[ 0, 0, 0, 0, 0, 0 ]/1),
+parameter(G,177,[ 3, 5, 5, 8, 6, 4 ]/1,[ 0, 1, 0, 1, 1, 1 ]/1),
+parameter(G,196,[ 4, 5, 6, 8, 5, 3 ]/1,[ 1, 1, 1, 1, 0, 0 ]/1),
+parameter(G,392,[  5,  8,  9, 15,  9,  4 ]/1,[  3,  6,  6, 12,  6,  3 ]/2),
+parameter(G,484,[  7, 11, 13, 19, 13,  7 ]/1,[  5, 10, 10, 15, 10,  5 ]/2),
+parameter(G,456,[  7,  8, 13, 19, 13,  7 ]/1,[  5,  6, 10, 16, 10,  5 ]/2),
+parameter(G,346,[  6,  8, 10, 15, 10,  6 ]/1,[  5,  5,  5, 10,  5,  5 ]/2),
+parameter(G,347,[  6,  8, 10, 15, 10,  6 ]/1,[  5,  5,  5, 10,  5,  5 ]/2),
+parameter(G,499,[  8, 10, 14, 19, 13,  8 ]/1,[ 10, 10, 15, 20, 15, 10 ]/2),
+parameter(G,502,[  8, 12, 15, 21, 15,  8 ]/1,[  5,  8,  9, 12,  8,  4 ]/1),
+parameter(G,496,[  8, 12, 15, 21, 15,  8 ]/1,[  4,  8,  8, 12,  9,  5 ]/1),
+parameter(G,512,[  8, 11, 15, 21, 15,  8 ]/1,[ 16, 22, 27, 38, 27, 16 ]/2)
+]
+
+set G=adjoint(E6).compact_form.real_forms[2]
 set parameters_E6_ad_q=[
 parameter(G,851,[ 0, 3, 3, 5, 3, 0 ]/1,[ 0, 0, 0, 0, 0, 0 ]/1),
 parameter(G,0,[ 0, 0, 0, 0, 0, 0 ]/1,[ 0, 0, 0, 0, 0, 0 ]/1),
@@ -346,30 +369,16 @@ parameter(G,1789,[  8, 12, 16, 22, 16,  8 ]/1,[  6,  8, 11, 15, 11,  6 ]/1),
 parameter(G,1790,[  8, 11, 15, 21, 15,  8 ]/1,[  8, 11, 15, 21, 15,  8 ]/1)
 ]
 
-set G=adjoint(E6_h)
-set parameters_E6_ad_h=[
-parameter(G,65,[ 2, 3, 4, 5, 4, 2 ]/1,[ 0, 0, 0, 0, 0, 0 ]/1),
-parameter(G,177,[ 3, 5, 5, 8, 6, 4 ]/1,[ 0, 1, 0, 1, 1, 1 ]/1),
-parameter(G,196,[ 4, 5, 6, 8, 5, 3 ]/1,[ 1, 1, 1, 1, 0, 0 ]/1),
-parameter(G,392,[  5,  8,  9, 15,  9,  4 ]/1,[  3,  6,  6, 12,  6,  3 ]/2),
-parameter(G,484,[  7, 11, 13, 19, 13,  7 ]/1,[  5, 10, 10, 15, 10,  5 ]/2),
-parameter(G,456,[  7,  8, 13, 19, 13,  7 ]/1,[  5,  6, 10, 16, 10,  5 ]/2),
-parameter(G,346,[  6,  8, 10, 15, 10,  6 ]/1,[  5,  5,  5, 10,  5,  5 ]/2),
-parameter(G,347,[  6,  8, 10, 15, 10,  6 ]/1,[  5,  5,  5, 10,  5,  5 ]/2),
-parameter(G,499,[  8, 10, 14, 19, 13,  8 ]/1,[ 10, 10, 15, 20, 15, 10 ]/2),
-parameter(G,502,[  8, 12, 15, 21, 15,  8 ]/1,[  5,  8,  9, 12,  8,  4 ]/1),
-parameter(G,496,[  8, 12, 15, 21, 15,  8 ]/1,[  4,  8,  8, 12,  9,  5 ]/1),
-parameter(G,512,[  8, 11, 15, 21, 15,  8 ]/1,[ 16, 22, 27, 38, 27, 16 ]/2)
-]
 
-set G=adjoint(E6_F4)
+
+set G=adjoint(E6).split_form.real_forms[0]
 set parameters_E6_ad_F4=[
 parameter(G,0,[ 3, 5, 6, 9, 6, 3 ]/1,[ 0, 0, 0, 0, 0, 0 ]/1),
 parameter(G,31,[  6,  9, 11, 17, 11,  6 ]/1,[ 2, 4, 4, 8, 4, 2 ]/1),
 parameter(G,44,[  8, 11, 15, 21, 15,  8 ]/1,[  8,  8, 12, 16, 12,  8 ]/1)
 ]
 
-set G=adjoint(E6_s)
+set G=adjoint(E6).split_form.real_forms[1]
 set parameters_E6_ad_s=[
 parameter(G,981,[  8, 11, 15, 21, 15,  8 ]/1,[ 0, 0, 0, 0, 0, 0 ]/1),
 parameter(G,0,[ 0, 0, 0, 0, 0, 0 ]/1,[ 0, 0, 0, 0, 0, 0 ]/1),
@@ -793,10 +802,10 @@ parameter(G,20925,[1,1,1,1,1,1,1]/1,[1,1,1,0,1,1,1]/1),
 parameter(G,20925,[1,1,1,1,1,1,1]/1,[1,1,1,1,1,1,1]/1)]
 
 {E7_ad_c,E7_ad_h,E7_ad_q,E7_ad}
-set G=adjoint(E7_c)
+set G=adjoint(E7).compact_form.real_forms[0]
 set parameters_E7_ad_c=[Param]:[parameter(G,0,[34,49,66,96,75,52,27]/2,[0,0,0,0,0,0,0]/1)]
 
-set G=adjoint(E7_h)
+set G=adjoint(E7).compact_form.real_forms[1]
 set parameters_E7_ad_h=[
 parameter(G,121,[ 10, 13, 18, 24, 19, 12,  7 ]/2,[ 0, 0, 0, 0, 0, 0, 0 ]/1),
 parameter(G,121,[ 10, 13, 18, 24, 19, 12,  9 ]/2,[ 0, 0, 0, 0, 0, 0, 0 ]/1),
@@ -824,7 +833,7 @@ parameter(G,1665,[  38,  53,  72, 104,  81,  56,  29 ]/2,[ 34, 43, 60, 86, 69, 5
 ]
 
 
-set G=adjoint(E7_q)
+set G=adjoint(E7).compact_form.real_forms[2]
 set parameters_E7_ad_q=[
 parameter(G,20,[ 2, 3, 4, 6, 5, 4, 3 ]/2,[ 0, 0, 0, 0, 0, 0, 0 ]/1),
 parameter(G,1870,[  2,  9, 10, 16, 11,  4,  3 ]/2,[ 0, 0, 0, 0, 0, 0, 0 ]/1),
@@ -882,7 +891,7 @@ parameter(G,8940,[ 34, 49, 66, 94, 75, 52, 27 ]/2,[ 26, 36, 49, 69, 56, 40, 20 ]
 parameter(G,8945,[ 34, 49, 66, 96, 75, 52, 27 ]/2,[ 17, 24, 33, 48, 37, 26, 13 ]/1)
 ]
 
-set G=adjoint(E7_s)
+set G=adjoint(E7).compact_form.real_forms[3]
 set parameters_E7_ad_s=[Param]:
 [parameter(G,13329,[ 34, 51, 66, 96, 77, 52, 29 ]/2,[ 0, 0, 0, 0, 0, 0, 0 ]/1),
 parameter(G,212,[ 0, 1, 0, 0, 1, 0, 3 ]/2,[ 0, 0, 0, 0, 0, 0, 0 ]/1),
@@ -1161,10 +1170,6 @@ parameter(G,13329,[ 34, 49, 66, 96, 75, 52, 27 ]/2,[ 26, 37, 50, 72, 57, 40, 21 
 parameter(G,13329,[ 34, 49, 66, 96, 75, 52, 27 ]/2,[ 34, 49, 66, 96, 75, 52, 27 ]/2),
 parameter(G,13329,[ 34, 51, 66, 96, 77, 52, 29 ]/2,[ 34, 49, 66, 96, 75, 52, 27 ]/2)
 ]
-
-
-
-
 
 set G=E8_c
 set parameters_E8_c=[
