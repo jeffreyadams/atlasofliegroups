@@ -60,10 +60,8 @@ class KLSupport
   const DescentStatus& descent(BlockElt y) const // combined for all |s|
     { return d_block.descent(y); }
 
-  const RankFlags& descentSet (BlockElt z) const
-    { return d_descent[z]; }
-  const RankFlags& goodAscentSet (BlockElt z) const
-    { return d_goodAscent[z]; }
+  RankFlags descentSet (BlockElt z) const { return d_descent[z]; }
+  RankFlags goodAscentSet (BlockElt z) const { return d_goodAscent[z]; }
 
   // find ascent for |x| that is descent for |y| if any; |longBits| if none
   unsigned int ascent_descent (BlockElt x,BlockElt y) const

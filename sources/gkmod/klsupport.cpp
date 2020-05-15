@@ -147,8 +147,9 @@ void KLSupport::filter_primitive(BitMap& b, const RankFlags& d) const
 
 /*
   Find for |x| a primitive element for |d| above it, returning that value, or
-  return |UndefBlock| if a real nonparity case is hit, or (in partial blocks)
-  ascent through an undefined complex ascent or Cayley transform is attempted
+  return |d_block.size()| if a real nonparity case is hit, or if (in partial
+  blocks) ascent through a complex ascent or Cayley transform is attempted,
+  which link points outside of the block (it is represented as |UnderBlock|).
 
   A primitive element for |d| is one for which all elements in |d| are either
   descents or type II imaginary ascents. So if |x| is not primitive, it has an
@@ -158,22 +159,24 @@ void KLSupport::filter_primitive(BitMap& b, const RankFlags& d) const
   case implies that $P_{x,y}=0$; the value of |UndefBlock| is conveniently
   larger than any valid BlockElt |y|, so this case will be handled effortlessly
   together with triangularity). It is also permissible to pass |x==UndefBlock|,
-  which will be returned immediately.
+  for which will |d_block.size()| be returned immediately.
 */
 BlockElt
   KLSupport::primitivize(BlockElt x, const RankFlags& d) const
 {
-  RankFlags a; // good ascents for x that are descents for y
-
-  while (x!=UndefBlock and (a = goodAscentSet(x)&d).any())
+  while (x!=UndefBlock)
   {
-    size_t s = a.firstBit();
+    RankFlags a = // good ascents for |x| that are descents for |y|
+      goodAscentSet(x) & d;
+    if (a.none()) // then we have succeeded in making |x| primitive
+      return x;
+    weyl::Generator s = a.firstBit();
     DescentStatus::Value v = descentValue(s,x);
     x = v == DescentStatus::RealNonparity ? UndefBlock
       : v == DescentStatus::ComplexAscent ? d_block.cross(s,x)
       : d_block.cayley(s,x).first; // imaginary type I
   }
-  return x;
+  return d_block.size();
 }
 
 #ifndef NDEBUG
