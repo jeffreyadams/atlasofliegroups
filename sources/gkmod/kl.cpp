@@ -461,7 +461,7 @@ size_t KL_table::fill_KL_column(BlockElt y, KLHash& hash)
 
     recursion_column(klv,e,y,s); // compute all polynomials for these |x|
     // write result
-    sparseness += write_column(klv,e,y,hash);
+    sparseness += complete_primitives(klv,e,y,hash);
   }
   else // we must use an approach that distinguishes on |x| values
   {
@@ -672,30 +672,27 @@ void KL_table::mu_correction(std::vector<KLPol>& klv,
 
 } // |KL_table::mu_correction|
 
-/*
-  Write down column |y| in |d_KL|.
+/* A method that takes a row |klv| of completed KL polynomials, computed by
+   |recursion_column| at |y| and extremal elements |x| listed in |er|, and
+   transfers them to the main storage structures. Its tasks are
 
-  Precondition: The parallel pair (klv,er) records the polynomials for at
-  least all the extremal values $x$ for $y$, and at most for all primitive
-  values $x$ for $y$. So when $x=er[i]$ then $P_{x,y}=klv[i]$. In practice
-  |er| will contain either all extremal elements (when called from
-  |recursion_column|) or all primitive elements (for |new_recursion_column|).
+   - generate the list of all primitve elements for |y|, which contains |er|
+   - for each primitive element |x|, if it is extremal just look up $P_{x,y}$
+     from |klv| in |d_store|; if |x| is primitive but not extremal, compute
+     that polynomial (as sum of two $P_{x',y}$ in the same row) and similarly
+     store the result
+   - record those |x| which have nonzero $\mu(x,y)$, and write |d_mu[y]|
 
-  This function writes out these data to |d_KL[y]|, transformed as follows:
-  (1) rather than storing polynomials from |klv| (or others computed here),
-  these are looked up in |d_hashtable| and the index is stored; (2) when a
-  polynomial turns out to be 0, nothing is recorded in |d_KL[y]|; (3) for
-  primitive elements not present in |er|, the polynomial is computed here
-  on-the-fly (using an imaginary type II ascent that exists in this case) and
-  then stored along with those from |er|.
-
-  Case (3) will not apply if |er| already contains all primitive elements, and
-  for that case this function could be considerably simplified, but it works
-  well as is, so we didn't write a simplified version.
+   For the latter point there are two categories of |x|: the extremal ones
+   (which can conveniently be handled in the loop over |x|), and those found
+   by a (complex or real) descent from |y| itself (they have $\mu(x,y)=1$).
+   The latter are of length one less than |y| (but there can be extremal |x|
+   of that length as well with nonzero mu), and are primitive only in the real
+   type 2 case; we must treat them outside the loop over primitive elements.
  */
-size_t KL_table::write_column(const std::vector<KLPol>& klv,
-			      const PrimitiveColumn& ec, BlockElt y,
-			      KLHash& hash)
+size_t KL_table::complete_primitives(const std::vector<KLPol>& klv,
+				    const PrimitiveColumn& ec, BlockElt y,
+				    KLHash& hash)
 {
   auto pc = primitive_column(y); // the elements for which we must write an entry
 
@@ -712,7 +709,7 @@ size_t KL_table::write_column(const std::vector<KLPol>& klv,
   for (size_t i = pc.size(); i-->0; )
     if (j<ec.size() and pc[i]==ec[j]) // must test for underflow |j|
     { // extremal element; use stored polynomial
-      const KLPol& Pxy=klv[j--];
+      const KLPol& Pxy=klv[j--]; // use KL polynomial and advance downwards
       if (not Pxy.isZero())
       {
 	*--nz_KL_p = KL_pair(pc[i],hash.match(Pxy));
@@ -733,9 +730,6 @@ size_t KL_table::write_column(const std::vector<KLPol>& klv,
       // no need to check for |mu| here: |down_set| has the only possible cases
     }
 
-  if (ly==0)
-    return 0; // nothing left to do at minimal length
-
   Mu_list downs;
   for (BlockElt x : down_set(block(),y))
     downs.emplace_back(x,MuCoeff(1));
@@ -750,7 +744,7 @@ size_t KL_table::write_column(const std::vector<KLPol>& klv,
 
   return nz_KL_p - nz_KL.begin(); // measure unused space
 
-} // |KL_table::write_column|
+} // |KL_table::complete_primitives|
 
 /*
   Puts in klv[i] the polynomial P_{e[i],y} for every primtitve x=pc[i],

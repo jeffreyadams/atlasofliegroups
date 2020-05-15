@@ -162,8 +162,9 @@ class KL_table
   void mu_correction(std::vector<KLPol>& klv,
 		     const PrimitiveColumn& e,
 		     BlockElt y, weyl::Generator s);
-  size_t write_column(const std::vector<KLPol>& klv,
-		      const PrimitiveColumn& e, BlockElt y, KLHash& hash);
+  size_t complete_primitives(const std::vector<KLPol>& klv,
+			   const PrimitiveColumn& e, BlockElt y,
+			   KLHash& hash);
   void new_recursion_column(KL_column & kl_col, BlockElt y, KLHash& hash);
   KLPol mu_new_formula
     (BlockElt x, BlockElt y, weyl::Generator s, const Mu_list& muy);
