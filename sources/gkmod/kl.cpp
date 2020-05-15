@@ -571,7 +571,7 @@ void KL_table::recursion_column(std::vector<KLPol>& klv,
 			    static_cast<const KL_table&>(*this));
   }
 
-  mu_correction(klv,e,y,s); // subtract mu-correction from all of |klv|
+  mu_correction(klv,e,sy,s); // subtract mu-correction from all of |klv|
 
 } // |KL_table::recursion_column|
 
@@ -579,47 +579,35 @@ void KL_table::recursion_column(std::vector<KLPol>& klv,
   Subtract from all polynomials in |klv| the correcting terms in the
   K-L recursion.
 
-  Precondtion: |klv| already contains, for all $x$ that are extremal for |y|,
-  which are listed in |e| in increasing order, the terms in $P_{x,y}$
-  corresponding to $c_s.c_{y'}$, whery |y'| is $s.y$ if |s| is a complex
-  descent, and |y'| is an inverse Cayley transform of |y| if |s| is real type I.
-  The mu-table and KL-table have been filled in for elements of length < l(y).
+  When we call |mu_correction|, the polynomial |klv[x]| already contains, for
+  all $x$ that are extremal for |y| (the members of |e|), the terms in $P_{x,y}$
+  corresponding to $c_s.c_{y'}$, where |y'| is an |s| descent of |y| as before.
+  The tables |d_KL| and |d_mu| have been filled in for elements of length < l(y).
 
   The recursion formula is of the form:
   $$
     lhs = c_s.c_{y'} - \sum_{z} mu(z,y')c_z
   $$
-  where |z| runs over the elements $< y'$ such that |s| is a descent for |z|.
-  Here $lhs$ stands for $c_y$ when |s| is a complex descent or real type I for
+  where $y'$ is the |s|-descent of |y| passed as argument |sy|, with the sum
+  over |z| runing over the elements $< y'$ such that |s| is a descent for |z|.
+  (Here $lhs$ stands for $c_y$ when |s| is a complex descent or real type I for
   |y|, and for $c_{y}+c_{s.y}$ when |s| is real type II; however it plays no
-  part in this function that only subtracts $\mu$-terms.
+  part in this function that only subtracts $\mu$-terms.)
 
-
-  The element $y'$ is called |sy| in the code below.
-
-  We construct a loop over |z| first, before traversing |klv| (the test for
-  $z<sy$ is absent, but $\mu(z,sy)\neq0$ implies $z<sy$ (strict, as mu(sy,sy) is
-  0; in any case no coefficient for |sy| is stored in |d_mu[sy]|, and moreover
-  $z=sy$ would be rejected by the descent condition). The choix have the out
-  loop over $z$ and the inner loop over $x$ (i.e., over |klv|) allows fetching
-  $\mu(z,sy)$ only once, and terminating each scan of |klv| once its values |x|
-  become too large to produce a non-zero $P_{x,z}$. (In fact we stop once
-  $l(x)=l(z)$, and separately consider the case $x=z$.) Either direction of the
-  loop on $z$ would work, but taking it decreasing is more natural; we keep
-  track of the index |zi| at which $z$ occurs in |e|, if it does.
-
-  Elements of length at least $l(sy)=l(y)-1$ on the list |e| are always
-  rejected, so the tail of |e| never reached.
+  We construct a loopfirst over those |z| for which $\mu(z,y')$ is nonzero
+  (which implies $z<y'$) and for which |s| is a descent, before traversing |e|
+  for the values of |x| for which |klv[x]| needs correction. This allows
+  fetching $\mu(z,sy)$ only once, and terminating each inner loop once |x|
+  becomes too large to produce a non-zero $P_{x,z}$. (In fact we stop once
+  $l(x)=l(z)$, and separately consider the possibility $x=z$ with $P_{x,z}=1$.)
+  Either direction of the loop on $z$ would work, but taking it decreasing is
+  more natural.
  */
 void KL_table::mu_correction(std::vector<KLPol>& klv, const BitMap& e,
-			     BlockElt y, weyl::Generator s)
+			     BlockElt sy, weyl::Generator s)
 {
-  BlockElt sy =
-    descentValue(s,y) == DescentStatus::ComplexDescent ? cross(s,y)
-    : inverse_Cayley(s,y).first;  // s is real type I for y here, ignore .second
-
   const Mu_column& mcol = d_mu[sy];
-  size_t ly = length(y);
+  size_t ly = length(sy)+1; // the length of |y|, otherwise |y| is not used here
 
   BlockElt xx=UndefBlock; // define outside for error reporting
   try {
@@ -656,6 +644,9 @@ void KL_table::mu_correction(std::vector<KLPol>& klv, const BitMap& e,
       } // |for (it->reverse(mcol))| |if(isDescent(descentValue(s,it->x))|
   }
   catch (error::NumericUnderflow& err){
+    BlockElt y = // reconstruct |y| uniquely from |s| and |sy|
+      descentValue(s,sy) == DescentStatus::ComplexAscent
+      ? cross(s,sy) : cayley(s,sy).first;
     throw kl_error::KLError(xx,y,__LINE__,
 			    static_cast<const KL_table&>(*this));
   }

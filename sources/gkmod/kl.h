@@ -160,7 +160,7 @@ class KL_table
   void recursion_column(std::vector<KLPol> & klv,
 			const BitMap& e, BlockElt y, weyl::Generator s);
   void mu_correction(std::vector<KLPol>& klv, const BitMap& e,
-		     BlockElt y, weyl::Generator s);
+		     BlockElt sy, weyl::Generator s);
   size_t complete_primitives(std::vector<KLPol>& klv, const BitMap& e,
 			     BlockElt y, KLHash& hash);
   void new_recursion_column(KL_column & kl_col, BlockElt y, KLHash& hash);
