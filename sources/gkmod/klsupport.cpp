@@ -129,19 +129,21 @@ KLSupport::KLSupport(const Block_base& b)
   could be suppressed when using pairs $(x,P_{x,y})$ and binary search on $x$.
 */
 
-void KLSupport::fill_prim_index(prim_index_tp& index_vec,RankFlags A) const
+void KLSupport::fill_prim_index(RankFlags A)
 {
-  index_vec.resize(d_block.size()); // create slots; we will fill backwards
+  prim_index_tp& record=d_prim_index[A.to_ulong()];
+  record.index.resize(d_block.size()); // create slots; we will fill backwards
 
   BitMap primitives(size()); primitives.fill();
   filter_primitive(primitives,A); // compute all primitive elements for A
+  record.range = primitives.size();
 
-  unsigned int prim_count = primitives.size(); // start at high end
+  unsigned int prim_count = record.range; // start at high end
   constexpr unsigned int dead_end = -1; // signal no valid primitivization
 
   for (BlockElt z = d_block.size(); z-->0;)
   {
-    auto& dest = index_vec[z]; // the slot to fill during this iteration
+    auto& dest = record.index[z]; // the slot to fill during this iteration
     RankFlags a = goodAscentSet(z)&A;
     if (a.none())
     { // then |z| is primitive, record its index
@@ -156,11 +158,11 @@ void KLSupport::fill_prim_index(prim_index_tp& index_vec,RankFlags A) const
       case DescentStatus::RealNonparity: dest = dead_end; break;
       case DescentStatus::ComplexAscent:
 	{ auto sz=d_block.cross(s,z);
-	  dest = sz==UndefBlock ? dead_end : index_vec[sz];
+	  dest = sz==UndefBlock ? dead_end : record.index[sz];
 	} break;
       case DescentStatus::ImaginaryTypeI:
 	{ auto sz=d_block.cayley(s,z).first;
-	  dest = sz==UndefBlock ? dead_end : index_vec[sz];
+	  dest = sz==UndefBlock ? dead_end : record.index[sz];
 	} break;
       default: assert(false);
       }

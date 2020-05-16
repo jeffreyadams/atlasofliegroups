@@ -37,9 +37,13 @@ class KLSupport
   std::vector<BitMap> d_downset;
   std::vector<BitMap> d_primset;
 
-  using prim_index_tp = std::vector<unsigned int>;
-  mutable // because entries are filled on-demand by |const| methods
-    std::vector<prim_index_tp> d_prim_index;
+  struct prim_index_tp
+  {
+    std::vector<unsigned int> index; // from |BlockElt| to index of prim'zed
+    unsigned int range; // number of primitive elements for this descen set
+  prim_index_tp() : index(), range(-1) {}
+  };
+  std::vector<prim_index_tp> d_prim_index; // indexed by descent set number
 
  public:
 
@@ -83,11 +87,23 @@ class KLSupport
      things up by tabulating for each descent set the map from block elements
      to the index of their primitivized counterparts.
   */
+  void prepare_prim_index(RankFlags A) // call us before any |prim_index(...,A)|
+  { prim_index_tp& record=d_prim_index[A.to_ulong()];
+    if (record.range==static_cast<unsigned int>(-1))
+      fill_prim_index(A);
+    assert(record.range!=static_cast<unsigned int>(-1));
+  }
+
   unsigned int prim_index (BlockElt x, RankFlags descent_set) const
-  { prim_index_tp& vec=d_prim_index[descent_set.to_ulong()];
-    if (vec.size()==0)
-      fill_prim_index(vec,descent_set);
-    return vec[x];
+  { const prim_index_tp& record=d_prim_index[descent_set.to_ulong()];
+    assert(record.range!=static_cast<unsigned int>(-1));
+    return record.index[x];
+  }
+
+  unsigned int nr_of_primitives (RankFlags descent_set) const
+  { const prim_index_tp& record=d_prim_index[descent_set.to_ulong()];
+    assert(record.range!=static_cast<unsigned int>(-1));
+    return record.range;
   }
 
   // this is where an element |y| occurs in its "own" primitive row
@@ -98,7 +114,7 @@ class KLSupport
   void filter_extremal (BitMap&, const RankFlags&) const;
   void filter_primitive (BitMap&, const RankFlags&) const;
 
-  void fill_prim_index(prim_index_tp& dest,RankFlags A) const;
+  void fill_prim_index(RankFlags A);
 
 #ifndef NDEBUG
   void check_sub(const KLSupport& sub, const BlockEltList& embed);

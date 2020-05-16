@@ -413,6 +413,9 @@ void KL_table::fill_KL_column(BlockElt y, KLHash& hash)
 {
   if (d_KL[y].size()>0)
     return; // column has already been filled
+
+  prepare_prim_index(descentSet(y)); // so looking up |KL_pol(x,y)| will be OK
+
   weyl::Generator s = firstDirectRecursion(y);
   if (s<rank())  // a direct recursion was found, use it for |y|, for all |x|
   {
@@ -1057,26 +1060,27 @@ void KL_table::swallow (KL_table&& sub, const BlockEltList& embed, KLHash& hash)
   for (BlockElt z=0; z<sub.block().size(); ++z)
     if (not sub.d_holes.isMember(z) and d_holes.isMember(embed[z]))
     { // then transfer |sub.d_KL[z]| and |sub.d_mu[z]| to new block
-	auto sub_pc = sub.primitive_column(z);
-	auto pc = primitive_column(embed[z]);
-	RankFlags desc = sub.descentSet(z);
-	assert(sub.d_KL[z].size()==sub_pc.size());
-	assert(desc == descentSet(embed[z]));
-	d_KL[embed[z]].resize(pc.size(),d_zero); // default to |d_zero|
-	for (unsigned int i=0; i<sub_pc.size(); ++i)
-	{
-	  unsigned int new_i = prim_index(embed[sub_pc[i]],desc);
-	  assert(sub.prim_index(sub_pc[i],desc)==i); // |sub_pc[i]| is primitive
-	  assert(prim_index(pc[new_i],desc)==new_i); // |pc[new_i]| is primitive
-	  d_KL[embed[z]][new_i] = poly_trans[sub.d_KL[z][i]];
-	}
-
-	for (auto& entry : sub.d_mu[z])
-	  entry.x = embed[entry.x]; // renumber block elements (coef unchanged)
-	d_mu[embed[z]] = std::move(sub.d_mu[z]);
-
-	d_holes.remove(embed[z]);
+      RankFlags desc = sub.descentSet(z);
+      prepare_prim_index(desc); // first make sure |KLSuport| is ready for |z|
+      auto sub_pc = sub.primitive_column(z);
+      auto pc = primitive_column(embed[z]);
+      assert(sub.d_KL[z].size()==sub_pc.size());
+      assert(desc == descentSet(embed[z]));
+      d_KL[embed[z]].resize(pc.size(),d_zero); // default to |d_zero|
+      for (unsigned int i=0; i<sub_pc.size(); ++i)
+      {
+	unsigned int new_i = prim_index(embed[sub_pc[i]],desc);
+	assert(sub.prim_index(sub_pc[i],desc)==i); // |sub_pc[i]| is primitive
+	assert(prim_index(pc[new_i],desc)==new_i); // |pc[new_i]| is primitive
+	d_KL[embed[z]][new_i] = poly_trans[sub.d_KL[z][i]];
       }
+
+      for (auto& entry : sub.d_mu[z])
+	entry.x = embed[entry.x]; // renumber block elements (coef unchanged)
+      d_mu[embed[z]] = std::move(sub.d_mu[z]);
+
+      d_holes.remove(embed[z]);
+    }
 }
 
 
