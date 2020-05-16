@@ -4896,8 +4896,9 @@ for (unsigned int y=1; y<kl_tab.size(); ++y)
     M->val(x,y)= kl_tab.KL_pol_index(x,y);
 @)
 own_row polys = std::make_shared<row_value>(0);
-polys->val.reserve(kl_tab.polStore().size());
-for (auto it=kl_tab.polStore().begin(); it!=kl_tab.polStore().end(); ++it)
+const auto& store = kl_tab.pol_store();
+polys->val.reserve(store.size());
+for (auto it=store.begin(); it!=store.end(); ++it)
   polys->val.emplace_back(std::make_shared<vector_value> @|
      (std::vector<int>(it->begin(),it->end())));
 
@@ -5001,8 +5002,9 @@ void partial_KL_block_wrapper(expression_base::level l)
       M->val(x,y)= kl_tab.KL_pol_index(x,y);
 @)
   own_row polys = std::make_shared<row_value>(0);
-  polys->val.reserve(kl_tab.polStore().size());
-  for (auto it=kl_tab.polStore().begin(); it!=kl_tab.polStore().end(); ++it)
+  const auto& store = kl_tab.pol_store();
+  polys->val.reserve(store.size());
+  for (auto it=store.begin(); it!=store.end(); ++it)
     polys->val.emplace_back(std::make_shared<vector_value> @|
        (std::vector<int>(it->begin(),it->end())));
 @)
@@ -6450,7 +6452,7 @@ void raw_KL_wrapper (expression_base::level l)
       M->val(x,y) = b->kl_tab.KL_pol_index(x,y);
 @)
   own_row polys = std::make_shared<row_value>(0);
-  const auto& store=b->kl_tab.polStore();
+  const auto& store = b->kl_tab.pol_store();
   polys->val.reserve(store.size());
   for (auto it=store.begin(); it!=store.end(); ++it)
     polys->val.emplace_back(std::make_shared<vector_value> @|
@@ -6490,8 +6492,9 @@ void raw_dual_KL_wrapper (expression_base::level l)
       M->val(x,y) = kl_tab.KL_pol_index(dual[y],dual[x]);
 @)
   own_row polys = std::make_shared<row_value>(0);
-  polys->val.reserve(kl_tab.polStore().size());
-  for (auto it=kl_tab.polStore().begin(); it!=kl_tab.polStore().end(); ++it)
+  const auto& store = kl_tab.pol_store();
+  polys->val.reserve(store.size());
+  for (auto it=store.begin(); it!=store.end(); ++it)
     polys->val.emplace_back(std::make_shared<vector_value> @|
        (std::vector<int>(it->begin(),it->end())));
 @)

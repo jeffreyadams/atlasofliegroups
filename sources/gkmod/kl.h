@@ -5,7 +5,8 @@
 
 
   Copyright (C) 2004,2005 Fokko du Cloux
-  Copyright 2012 David Vogan, Marc van Leeuwen
+  Copyright (C) 2012 David Vogan
+  Copyright (C) 2006-2020 Marc van Leeuwen
   part of the Atlas of Lie Groups and Representations
 
   For license information see the LICENSE file
@@ -113,7 +114,7 @@ class KL_table
 
 
   // List of all non-zero KL polynomials for the block, in generation order
-  const KLStore& polStore() const { return d_store; }
+  const KLStore& pol_store() const { return d_store; }
 
   const KL_column& KL_data(BlockElt y) const { return d_KL[y]; }
 
@@ -121,7 +122,7 @@ class KL_table
   const Mu_column& mu_column(BlockElt y) const { return d_mu[y]; }
 
   // get bitmap of primitive elements for column |y| with nonzero KL polynomial
-  BitMap primMap (BlockElt y) const;
+  BitMap prim_map (BlockElt y) const;
 
 // manipulators
 
@@ -141,15 +142,11 @@ class KL_table
  private:
 
   //accessors
-  weyl::Generator firstDirectRecursion(BlockElt y) const;
+  weyl::Generator first_direct_recursion(BlockElt y) const;
   weyl::Generator first_nice_and_real(BlockElt x,BlockElt y) const;
   std::pair<weyl::Generator,weyl::Generator>
     first_endgame_pair(BlockElt x, BlockElt y) const;
   BlockEltPair inverse_Cayley(weyl::Generator s, BlockElt y) const;
-
-  KLPolRef KL_pol(BlockElt x, BlockElt y,
-		  KL_column::const_iterator p_begin,
-		  KL_column::const_iterator p_end) const;
 
   // manipulators
   void silent_fill(BlockElt last_y); // called by public |fill| when not verbose

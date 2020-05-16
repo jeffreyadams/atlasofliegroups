@@ -455,7 +455,7 @@ void klwrite_f()
   if (coefficient_out.is_open())
   {
     std::cout << "Writing polynomial coefficients... " << std::flush;
-    filekl::write_KL_store(kl_tab.polStore(),coefficient_out);
+    filekl::write_KL_store(kl_tab.pol_store(),coefficient_out);
     std::cout << "Done." << std::endl;
   }
 }

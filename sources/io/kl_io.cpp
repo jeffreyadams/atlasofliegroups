@@ -154,7 +154,7 @@ std::ostream& printPrimitiveKL
 // Print the list of all distinct Kazhdan-Lusztig-Vogan polynomials in |kl_tab|
 std::ostream& printKLList(std::ostream& strm, const kl::KL_table& kl_tab)
 {
-  const kl::KLStore& store = kl_tab.polStore();
+  const kl::KLStore& store = kl_tab.pol_store();
   std::vector<kl::KLPol> polList;
 
   // get polynomials, omitting Zero

@@ -2,16 +2,15 @@
   This is klsupport.cpp
 
   Copyright (C) 2004,2005 Fokko du Cloux
-  Copyright (C) 2006-2017 Marc van Leeuwen
+  Copyright (C) 2006-2020 Marc van Leeuwen
   part of the Atlas of Lie Groups and Representations
 
   For license information see the LICENSE file
 */
 
-/* Implementation for KLSupport.
-
+/*
   This module provides support code for the Kazhdan-Lusztig computation,
-  mostly the management of the list of primitive pairs, and primitivization
+  mostly the management of the lists of primitive pairs, and primitivization
   of arbitrary subsets of the block.
 */
 
@@ -19,18 +18,19 @@
 #include "klsupport.h"
 
 /*
+  [Original note by Fokko du Cloux (no longer pertinent, thickets are avoided)]
   After some hesitation, I think I _am_ going to assume that the block has
   been sorted by length and root datum involution, and then by R-packet.
   This does make the hard case in the recursion a lot simpler to handle:
   "thickets" of representations are in fact R-packets, so they will be
-  consecutively numbered. [Fokko]
+  consecutively numbered.
 */
 
 namespace atlas {
 
 /*****************************************************************************
 
-        Chapter I -- The KLSupport class
+				The |KLSupport| class
 
  *****************************************************************************/
 
@@ -94,7 +94,7 @@ KLSupport::KLSupport(const Block_base& b)
     d_primset[s].set_capacity(size);
     for (BlockElt z = 0; z < size; ++z)
     {
-      DescentStatus::Value v = descentValue(s,z);
+      DescentStatus::Value v = descent_value(s,z);
       if (DescentStatus::isDescent(v))
       {
 	d_downset[s].insert(z);
@@ -167,11 +167,11 @@ BlockElt
   while (x!=UndefBlock)
   {
     RankFlags a = // good ascents for |x| that are descents for |y|
-      goodAscentSet(x) & d;
+      good_ascent_set(x) & d;
     if (a.none()) // then we have succeeded in making |x| primitive
       return x;
     weyl::Generator s = a.firstBit();
-    DescentStatus::Value v = descentValue(s,x);
+    DescentStatus::Value v = descent_value(s,x);
     x = v == DescentStatus::RealNonparity ? UndefBlock
       : v == DescentStatus::ComplexAscent ? d_block.cross(s,x)
       : d_block.cayley(s,x).first; // imaginary type I
