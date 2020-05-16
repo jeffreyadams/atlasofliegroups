@@ -95,7 +95,7 @@ class KLSupport
   unsigned int prim_index (BlockElt x, RankFlags descent_set) const
   { const prim_index_tp& record=d_prim_index[descent_set.to_ulong()];
     assert(record.range!=static_cast<unsigned int>(-1));
-    return record.index[x];
+    return x==UndefBlock ? record.range : record.index[x];
   }
 
   unsigned int nr_of_primitives (RankFlags descent_set) const

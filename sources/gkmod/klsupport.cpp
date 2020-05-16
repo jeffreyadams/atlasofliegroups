@@ -139,7 +139,7 @@ void KLSupport::fill_prim_index(RankFlags A)
   record.range = primitives.size();
 
   unsigned int prim_count = record.range; // start at high end
-  constexpr unsigned int dead_end = -1; // signal no valid primitivization
+  const unsigned int dead_end = record.range; // signal no valid index
 
   for (BlockElt z = d_block.size(); z-->0;)
   {

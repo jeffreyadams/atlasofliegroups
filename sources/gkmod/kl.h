@@ -94,7 +94,7 @@ class KL_table
 
   // construct lists of extremal respectively primitive elements for |y|
   BitMap extremals (BlockElt y) const;
-  PrimitiveColumn primitive_column(BlockElt y) const;
+  BitMap primitives (BlockElt y) const;
 
   bool isZero(const KLIndex p) const { return p == d_zero; }
 
@@ -139,7 +139,7 @@ class KL_table
   weyl::Generator firstDirectRecursion(BlockElt y) const;
   weyl::Generator first_nice_and_real(BlockElt x,BlockElt y) const;
   std::pair<weyl::Generator,weyl::Generator>
-  first_endgame_pair(BlockElt x, BlockElt y) const;
+    first_endgame_pair(BlockElt x, BlockElt y) const;
   BlockEltPair inverse_Cayley(weyl::Generator s, BlockElt y) const;
 
   // manipulators
@@ -153,7 +153,8 @@ class KL_table
 		     BlockElt sy, weyl::Generator s);
   void complete_primitives(std::vector<KLPol>& klv, const BitMap& e,
 			   BlockElt y, KLHash& hash);
-  void new_recursion_column(KL_column & kl_col, BlockElt y, KLHash& hash);
+  std::vector<KLIndex>
+    new_recursion_column(const BitMap& prims, BlockElt y, KLHash& hash);
   KLPol mu_new_formula
     (BlockElt x, BlockElt y, weyl::Generator s, const Mu_list& muy);
 
