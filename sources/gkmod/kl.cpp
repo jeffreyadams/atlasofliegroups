@@ -270,31 +270,25 @@ void KL_table::fill(BlockElt y, bool verbose)
 
 BitMap KL_table::prim_map (BlockElt y) const
 {
-  BitMap b(size()); // block-size bitmap
+  BitMap b=primitives(y); // block-size bitmap indicating primitives for |y|
 
-  // start with all elements < y in length
-  b.fill(0,length_less(length(y)));
-  b.insert(y);   // and y itself
-
-  filter_primitive(b,descent_set(y)); // filter out those that are not primitive
-
-  // now b holds a bitmap indicating primitive elements for y
-
-  // our result will be a bitmap of that capacity
+  // our result will be a bitmap whose capacity is the number of primitives
   BitMap result (b.size()); // initiallly all bits are cleared
 
- // the list of pairs for primitive elements with nonzero polynomials at y
+  // the list of pairs for primitive elements with nonzero polynomials at |y|
   const auto& col = d_KL[y];
 
-  // traverse |b|, and for elements that occur in |col|, set bits in |result|
-
-  size_t position=0; // position among set bits in b (avoids using b.position)
-  size_t j=0; // index into |col|;
-  for (BitMap::iterator it=b.begin(); j<col.size() and it(); ++position,++it)
-    if (*it==col[j].x) // look if |*it| occurs in |col| (indexes nonzero element)
-    {
-      result.insert(position); ++j; // record its position and advance in |col|
-    }
+  // traverse |col|, for each element find it in |b| and flag it in |result|
+  BitMap::iterator it=b.begin();
+  assert(it() or col.empty()); // since |x| fields of |col| are subset of |b|
+  unsigned int pos=0; // keep track of position to avoid using |b.position|
+  for (const auto& pair : col)
+  {
+    while (*it<pair.x)
+      ++pos,++it,assert(it());
+    assert(*it==pair.x);
+    result.insert(pos);
+  }
 
   return result;
 }
@@ -625,15 +619,14 @@ void KL_table::mu_correction(std::vector<KLPol>& klv, const BitMap& e,
 } // |KL_table::mu_correction|
 
 /* A method that takes a row |klv| of completed KL polynomials, computed by
-   |recursion_column| at |y| and extremal elements |x| listed in |er|, and
+   |recursion_column| at |y| and extremal elements |x| listed in |ext|, and
    transfers them to the main storage structures. Its tasks are
 
-   - generate the list of all primitve elements for |y|, which contains |er|
+   - generate the list of all primitve elements for |y|, which contains |ext|
    - for each primitive element |x|, if it is extremal just look up $P_{x,y}$
-     from |klv| in |d_store|; if |x| is primitive but not extremal, compute
-     that polynomial (as sum of two $P_{x',y}$ in the same row) and similarly
-     store the result
-   - record those |x| which have nonzero $\mu(x,y)$, and write |d_mu[y]|
+     as |klv[x]|, if |x| is primitive but not extremal, compute that polynomial
+     (as sum of two $P_{x',y}$ in the same column); hash and store the result
+   - record nonzero $P_{x,y}$ as $(x,P)$ and similarly any non-zero $\mu(x,y)$
 
    For the latter point there are two categories of |x|: the extremal ones
    (which can conveniently be handled in the loop over |x|), and those found
@@ -645,10 +638,9 @@ void KL_table::mu_correction(std::vector<KLPol>& klv, const BitMap& e,
 size_t KL_table::complete_primitives(std::vector<KLPol>& klv, const BitMap& ext,
 				     BlockElt y, KLHash& hash)
 {
-  auto pc = primitives(y); // the elements for which we must write an entry
+  auto prims = primitives(y); // the elements for which we must write an entry
 
-  KL_column nz_KL(pc.size()); // column of $(x,P_{x,y})$ with $x$ prim, $P\neq0$
-
+  KL_column nz_KL(prims.size()); // those $(x,P_{x,y})$ with $x$ prim, $P\neq0$
   auto nz_KL_p = nz_KL.end();
 
   Mu_list mu_pairs; // those |x| with |mu(x,y)>0|
@@ -656,7 +648,7 @@ size_t KL_table::complete_primitives(std::vector<KLPol>& klv, const BitMap& ext,
   unsigned int ly = length(y);
   auto desc_y = descent_set(y);
 
-  for (unsigned long x=pc.capacity(); pc.back_up(x); )
+  for (unsigned long x=prims.capacity(); prims.back_up(x); )
     if (ext.isMember(x))
     { // extremal element; use stored polynomial
       const KLPol& Pxy=klv[x];
@@ -749,10 +741,12 @@ std::vector<KLIndex> KL_table::new_recursion_column
   const unsigned int l_y = length(y);
   const auto desc_y = descent_set(y);
 
-  std::vector<KLIndex> kl_y(block().size()+1);
-  kl_y[y]=d_one;
-  Mu_list mu_pairs; // those |x| with |mu(x,y)>0|
+  std::vector<KLIndex> cur_col(block().size()+1);
+  cur_col[y]=d_one;
+  auto KL_y = [this,&cur_col,desc_y] (BlockElt x) -> KLPol
+    { return d_store[cur_col[primitivize(x,desc_y)]]; };
 
+  Mu_list mu_pairs; // those |x| with |mu(x,y)>0|
   // start off |mu_pairs| with ones for |down_set(y)|, not otherwise computed
   for (BlockElt x : down_set(block(),y))
     mu_pairs.emplace_back(x,MuCoeff(1)); // initial part |mu_pairs| is increasing
@@ -770,9 +764,9 @@ std::vector<KLIndex> KL_table::new_recursion_column
       { // equation (1.9) in recursion.pdf
 	assert(descent_value(s,x)==DescentStatus::ImaginaryTypeII);
 	BlockEltPair p = cayley(s,x);
-	KLPol Pxy = d_store[kl_y[primitivize(p.first,desc_y)]];
-	Pxy.safeAdd(d_store[kl_y[primitivize(p.second,desc_y)]]);
-	kl_y[x] = hash.match(Pxy); // record definitive value $P_{x,y}$
+	KLPol Pxy = KL_y(p.first);
+	Pxy.safeAdd(KL_y(p.second));
+	cur_col[x] = hash.match(Pxy); // record definitive value $P_{x,y}$
 	continue; // done with |x|, go on to the next
       }
 
@@ -792,19 +786,15 @@ std::vector<KLIndex> KL_table::new_recursion_column
 
 	switch (descent_value(s,x))
 	{
-	case DescentStatus::ComplexAscent:
-	{ // use equations (3.3a)=(3.4)
-	  BlockElt pr_sx = primitivize(cross(s,x),desc_y);
-	  pol.safeSubtract(d_store[kl_y[pr_sx]],1);
-	  // subtract qP_{sx,y} from mu terms
-	} // ComplexAscent case
+	case DescentStatus::ComplexAscent: // use equations (3.3a)=(3.4)
+	  pol.safeSubtract(KL_y(cross(s,x)),1); // subtract qP_{sx,y}
 	break;
 
 	case DescentStatus::ImaginaryTypeII:
 	{ // use equations (3.3a)=(3.5)
 	  BlockEltPair p = cayley(s,x);
-	  KLPol sum = d_store[kl_y[primitivize(p.first,desc_y)]];
-	  sum.safeAdd(d_store[kl_y[primitivize(p.second,desc_y)]]);
+	  KLPol sum = KL_y(p.first);
+	  sum.safeAdd(KL_y(p.second));
 	  pol.safeAdd(sum);
 	  pol.safeSubtract(sum,1); //now we've added (1-q)(P_{x',y}+P_{x'',y})
 	  pol.safeDivide(2);   //this could throw, but should not
@@ -821,7 +811,7 @@ std::vector<KLIndex> KL_table::new_recursion_column
 
 	default: assert(false); //we've handled all possible NiceAscents
 	}
-	kl_y[x] = hash.match(pol); // record definitive value $P_{x,y}$
+	cur_col[x] = hash.match(pol); // record definitive value $P_{x,y}$
 	if (l_y==l_x+2*pol.degree()+1)
 	  mu_pairs.emplace_back(x,pol[pol.degree()]);
 
@@ -854,8 +844,7 @@ std::vector<KLIndex> KL_table::new_recursion_column
 	  KLPol pol = mu_new_formula(x,y,s,mu_pairs);
 
 	  //subtract (q-1)P_{xprime,y} from terms of expression (3.4)
-	  BlockElt pr_xprime = primitivize(cayley(s,x).first,desc_y);
-	  const auto& P_xprime_y = d_store[kl_y[pr_xprime]];
+	  const auto& P_xprime_y = KL_y(cayley(s,x).first);
 	  pol.safeAdd(P_xprime_y);
 	  pol.safeSubtract(P_xprime_y,1);
 
@@ -869,16 +858,16 @@ std::vector<KLIndex> KL_table::new_recursion_column
 	    BlockEltPair sx_up_t = cayley(t,cross(s,x));
 
 	    // any |UndefBlock| component of |sx_up_t| will contribute $0$
-	    pol.safeSubtract(d_store[kl_y[primitivize(sx_up_t.first,desc_y)]]);
-	    pol.safeSubtract(d_store[kl_y[primitivize(sx_up_t.second,desc_y)]]);
+	    pol.safeSubtract(KL_y(sx_up_t.first));
+	    pol.safeSubtract(KL_y(sx_up_t.second));
 	  }
 
-	  kl_y[x] = hash.match(pol); // record definitive value $P_{x,y}$
+	  cur_col[x] = hash.match(pol); // record definitive value $P_{x,y}$
 	  if (l_y==l_x+2*pol.degree()+1)
 	    mu_pairs.emplace_back(x,pol[pol.degree()]);
 	} // |if (endgame_pair(x,y)) |
 	else // |first_endgame_pair| found nothing
-	  assert(kl_y[x]==d_zero); // just check it unchanged since initialised
+	  assert(cur_col[x]==d_zero); // just check it unchanged since initialised
       } // end of no NiceAscent case
     } // while (j-->0)
   }
@@ -896,19 +885,16 @@ std::vector<KLIndex> KL_table::new_recursion_column
   }
   d_mu[y].assign(mu_pairs.wcbegin(),mu_pairs.wcend());
 
-  return kl_y;
+  return cur_col;
 } // |KL_table::new_recursion_column|
 
 /*
   Compute the $\mu$-sum appearing in a new K-L recursion.
 
-  Here |pc| is the primitive column for |y|, $s$ is real nonparity for $y$ and
-  either C+ or imaginary for $x=pc[j]$ (those are the cases for which the
-  formula is used; the status w.r.t. $x$ is not actually used by the code), and
-  for all $k>j$ one already has stored $P_{pc[k],y}$ in |klv[k]|.
-
-  The mu-table and KL-table have been filled in for elements of length < l(y),
-  so that for $z<y$ we can call |KL_pol(x,z)|.
+  Here $s$ is real nonparity for $y$ and either C+ or imaginary for $x$ (those
+  are the cases for which the formula is used; the status with respect to $x$ is
+  not actually used by the code). The list of $\mu$ values for |y| for elements
+  down to $x$ is given as |mu_y|. For $z<y$ we can safely call |KL_pol(x,z)|.
 
   The various recursion formulas involve a sum:
   $$

@@ -1,7 +1,7 @@
 /*
   This is ext_kl.h
 
-  Copyright (C) 2013 Marc van Leeuwen
+  Copyright (C) 2013-2020 Marc van Leeuwen
   part of the Atlas of Lie Groups and Representations
 
   For license information see the LICENSE file
@@ -79,7 +79,8 @@ class KL_table
   std::unique_ptr<std::vector<Pol> > own; // points to |storage_pool| if we own
   std::vector<Pol>& storage_pool; // the distinct actual polynomials, maybe owned
 
-  std::vector<kl::KLColumn> column; // columns are lists of polynomial pointers
+  using KLColumn = std::vector<kl::KLIndex>;
+  std::vector<KLColumn> column; // columns are lists of polynomial pointers
 
  public:
   KL_table(const ext_block::ext_block& b, std::vector<Pol>* pool);
