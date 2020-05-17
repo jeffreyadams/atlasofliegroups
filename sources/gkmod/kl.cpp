@@ -419,7 +419,8 @@ void KL_table::fill_KL_column(BlockElt y, KLHash& hash)
   weyl::Generator s = firstDirectRecursion(y);
   if (s<rank())  // a direct recursion was found, use it for |y|, for all |x|
   {
-    std::vector<KLPol> klv;
+    std::vector<KLPol> klv(block().size()+1); // storage, indexed by |BlockElt|
+    klv[y]=One; // ensure diagonal entry of it taken to be $P_{y,y}=1$
     PrimitiveColumn e = extremal_column(y); // we compute for |x| extremal only
 
     recursion_column(klv,e,y,s); // compute all polynomials for these |x|
@@ -434,7 +435,7 @@ void KL_table::fill_KL_column(BlockElt y, KLHash& hash)
 }
 
 /*
-  Put into |klv[i]| the the right-hand sides of the recursion formulae for the
+  Put into |klv[x]| the the right-hand sides of the recursion formulae for the
   elements |x=e[i]| with |y|, corresponding to the descent |s| for |y|. Here |e|
   contains the block elements extremal for |y| (so in particular their length is
   less than that of |y| and |s| is a descent for all of them), and |s| is either
@@ -454,66 +455,64 @@ void KL_table::recursion_column(std::vector<KLPol>& klv,
 				BlockElt y,
 				weyl::Generator s)
 {
-  klv.resize(e.size());
-
   BlockElt sy =
     descentValue(s,y) == DescentStatus::ComplexDescent ? cross(s,y)
     : inverse_Cayley(s,y).first;  // s is real type I for y here, ignore .second
 
-  size_t i; // keep outside for error reporting
+  auto e_it=e.crbegin(); // keep outside for error reporting
   try {
 
     // the following loop could be run in either direction: no dependency.
     // however it is natural to take |x| descending from |y| (exclusive)
-    for (i=e.size(); i-->0; )
+    for (; e_it!=e.crend(); ++e_it)
     {
-      BlockElt x = e[i]; // extremal for $y$, so $s$ is descent for $x$
+      BlockElt x = *e_it; // extremal for $y$, so $s$ is descent for $x$
       switch (descentValue(s,x))
       {
       case DescentStatus::ImaginaryCompact:
 	{ // $(q+1)P_{x,sy}$
-	  klv[i] = KL_pol(x,sy);
-	  klv[i].safeAdd(klv[i],1); // mulitply by $1+q$
+	  klv[x] = KL_pol(x,sy);
+	  klv[x].safeAdd(klv[x],1); // mulitply by $1+q$
 	}
 	break;
       case DescentStatus::ComplexDescent:
 	{ // $P_{sx,sy}+q.P_{x,sy}$
 	  BlockElt sx = cross(s,x);
-	  klv[i] = KL_pol(sx,sy);
-	  klv[i].safeAdd(KL_pol(x,sy),1);
+	  klv[x] = KL_pol(sx,sy);
+	  klv[x].safeAdd(KL_pol(x,sy),1);
 	}
 	break;
       case DescentStatus::RealTypeI:
 	{ // $P_{sx.first,sy}+P_{sx.second,sy}+(q-1)P_{x,sy}$
 	  BlockEltPair sx = inverse_Cayley(s,x);
-	  klv[i] = KL_pol(sx.first,sy);
-	  klv[i].safeAdd(KL_pol(sx.second,sy));
+	  klv[x] = KL_pol(sx.first,sy);
+	  klv[x].safeAdd(KL_pol(sx.second,sy));
 	  KLPolRef Pxsy = KL_pol(x,sy);
-	  klv[i].safeAdd(Pxsy,1);
-	  klv[i].safeSubtract(Pxsy); // subtraction must be last
+	  klv[x].safeAdd(Pxsy,1);
+	  klv[x].safeSubtract(Pxsy); // subtraction must be last
 	}
 	break;
       case DescentStatus::RealTypeII:
 	{ // $P_{sx,sy}+qP_{x,sy}-P_{s.x,sy}$
 	  BlockElt sx = inverse_Cayley(s,x).first;
-	  klv[i] = KL_pol(sx,sy);
-	  klv[i].safeAdd(KL_pol(x,sy),1);
-	  klv[i].safeSubtract(KL_pol(cross(s,x),sy)); // subtraction must be last
+	  klv[x] = KL_pol(sx,sy);
+	  klv[x].safeAdd(KL_pol(x,sy),1);
+	  klv[x].safeSubtract(KL_pol(cross(s,x),sy)); // subtraction must be last
 	}
 	break;
       default: assert(false); // this cannot happen
       }
       // for now |klv[i].degree()| might be one notch too high, which will be
       // corrected in |mu_correction|; also |assert| there are based on this one
-      assert(klv[i].isZero() or 2*klv[i].degree()<length(y)-length(x) or
-	     (2*klv[i].degree()==length(y)-length(x) and
-	      klv[i][klv[i].degree()]==mu(x,sy)
+      assert(klv[x].isZero() or 2*klv[x].degree()<length(y)-length(x) or
+	     (2*klv[x].degree()==length(y)-length(x) and
+	      klv[x][klv[x].degree()]==mu(x,sy)
 	     ));
     } // |for (i=e.size()-->0)|
 
   }
   catch (error::NumericUnderflow& err){
-    throw kl_error::KLError(e[i],y,__LINE__,
+    throw kl_error::KLError(*e_it,y,__LINE__,
 			    static_cast<const KL_table&>(*this));
   }
 
@@ -568,10 +567,9 @@ void KL_table::mu_correction(std::vector<KLPol>& klv,
   const Mu_column& mcol = d_mu[sy];
   size_t ly = length(y);
 
-  size_t inx_z=e.size(); // should satisfy |e[inx_z]==z| whenever that exists
-
-  size_t j; // define outside for error reporting
+  BlockElt xx=UndefBlock; // define outside for error reporting
   try {
+    auto e_it = e.rbegin(); // really only used to see if |z| below exists in |e|
     for (auto it = mcol.rbegin(); it!=mcol.rend(); ++it) // makes |z| decreasing
       if (DescentStatus::isDescent(descentValue(s,it->x))) // |s| descent for |z|
       {
@@ -582,35 +580,33 @@ void KL_table::mu_correction(std::vector<KLPol>& klv,
 	polynomials::Degree d = (ly-lz)/2; // power of |q| used below
 
 	if (mu==MuCoeff(1)) // avoid useless multiplication by 1 if possible
-	  for (j=0; j<e.size(); ++j)
+	  for (BlockElt x : e)
 	  {
-	    BlockElt x = e[j];
 	    if (length(x) >= lz) break; // once reached, $x=z$ is only case left
 	    KLPolRef pol = KL_pol(x,z);
-	    klv[j].safeSubtract(pol,d); // subtract q^d.P_{x,z} from klv[j]
+	    klv[xx=x].safeSubtract(pol,d); // subtract $q^d.P_{x,z}$ from klv[x]
 	  } // |for (j)|
 	else // (rare) case that |mu>1|
-	  for (j=0; j<e.size(); ++j)
+	  for (BlockElt x : e)
 	  {
-	    BlockElt x = e[j];
 	    if (length(x) >= lz) break; // once reached, $x=z$ is only case left
 	    KLPolRef pol = KL_pol(x,z);
-	    klv[j].safeSubtract(pol,d,mu); // subtract q^d.mu.P_{x,z} from klv[j]
+	    klv[xx=x].safeSubtract(pol,d,mu); // subtract $q^d.mu.P_{x,z}$
 	  } // |for (j)|
 
-	while (inx_z>0 and e[inx_z-1]>=z)
-	  --inx_z; // ensure |e[k]>=z| if and only if |k>=inx_z|
+	while (e_it!=e.crend() and *e_it>z) // "advance" in "decreasing" list
+	  ++e_it; // skipping larger values until maybe we found |z| in |e|
 
-	if (inx_z<e.size() and e[inx_z]==z) // handle final term |x==z|
+	if (e_it!=e.crend() and *e_it==z) // handle final term |x==z|
 	{ // none of the larger |z| should have altered leading coefficient
-	  assert( klv[inx_z].degree()==d and klv[inx_z][d]==mu );
-	  klv[inx_z].safeSubtract(KLPol(d,mu)); // subtract off the term $mu.q^d$
+	  assert( klv[z].degree()==d and klv[z][d]==mu );
+	  klv[xx=z].safeSubtract(KLPol(d,mu)); // subtract off the term $mu.q^d$
 	}
 
-      } // |for (it->reverse(mcol))|
+      } // |for (it->reverse(mcol))| |if(isDescent(descentValue(s,it->x))|
   }
   catch (error::NumericUnderflow& err){
-    throw kl_error::KLError(e[j],y,__LINE__,
+    throw kl_error::KLError(xx,y,__LINE__,
 			    static_cast<const KL_table&>(*this));
   }
 
@@ -634,7 +630,7 @@ void KL_table::mu_correction(std::vector<KLPol>& klv,
    of that length as well with nonzero mu), and are primitive only in the real
    type 2 case; we must treat them outside the loop over primitive elements.
  */
-void KL_table::complete_primitives(const std::vector<KLPol>& klv,
+void KL_table::complete_primitives(std::vector<KLPol>& klv,
 				    const PrimitiveColumn& ec, BlockElt y,
 				    KLHash& hash)
 {
@@ -646,12 +642,12 @@ void KL_table::complete_primitives(const std::vector<KLPol>& klv,
 
   unsigned int ly = length(y);
 
-  size_t j= ec.size()-1; // points to current extremal element
+  size_t j= ec.size()-1; // points to current extremal element, if any
 
   for (size_t i = pc.size(); i-->0; )
     if (j<ec.size() and pc[i]==ec[j]) // must test for underflow |j|
     { // extremal element; use stored polynomial
-      const KLPol& Pxy=klv[j--]; // use KL polynomial and advance downwards
+      const KLPol& Pxy=klv[ec[j--]]; // use KL polynomial and advance downwards
       unsigned int lx=length(pc[i]);
       KL[i]=hash.match(Pxy);
       if (ly==lx+2*Pxy.degree()+1) // in particular parities |lx|, |ly| differ

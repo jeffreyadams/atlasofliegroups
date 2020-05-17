@@ -152,7 +152,7 @@ class KL_table
   void mu_correction(std::vector<KLPol>& klv,
 		     const PrimitiveColumn& e,
 		     BlockElt y, weyl::Generator s);
-  void complete_primitives(const std::vector<KLPol>& klv,
+  void complete_primitives(std::vector<KLPol>& klv,
 			   const PrimitiveColumn& e, BlockElt y,
 			   KLHash& hash);
   void new_recursion_column(KL_column & kl_col, BlockElt y, KLHash& hash);
