@@ -30,8 +30,6 @@ namespace kl {
 
 class KLPolEntry; // class definition will given in the implementation file
 
-using KLColumn = std::vector<KLIndex>;
-using PrimitiveColumn = std::vector<BlockElt>;
 using KLHash = HashTable<KLPolEntry,KLIndex>;
 
 /******** function declarations *********************************************/

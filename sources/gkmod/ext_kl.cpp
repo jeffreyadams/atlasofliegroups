@@ -166,7 +166,7 @@ KL_table::KL_table(const ext_block::ext_block& b, std::vector<Pol>* pool)
 
 std::pair<kl::KLIndex,bool>
   KL_table::KL_pol_index(BlockElt x, BlockElt y) const
-{ const kl::KLColumn& col_y = column[y];
+{ const KLColumn& col_y = column[y];
   unsigned inx=aux.x_index(x,y);
   if (inx<col_y.size())
     return std::make_pair(col_y[inx],aux.flips(x,y));
@@ -184,7 +184,7 @@ Pol KL_table::P(BlockElt x, BlockElt y) const
 
 containers::sl_list<BlockElt> KL_table::nonzero_column(BlockElt y) const
 {
-  const kl::KLColumn& col_y = column[y];
+  const KLColumn& col_y = column[y];
   containers::sl_list<BlockElt> result({y});
   for (BlockElt x=y; x-->0;)
   {
@@ -527,7 +527,7 @@ Pol KL_table::extract_M(Pol& Q,unsigned d,unsigned defect) const
 void KL_table::fill_next_column(PolHash& hash)
 {
   const BlockElt y = column.size();
-  column.push_back(kl::KLColumn());
+  column.push_back(KLColumn());
   if (aux.col_size(y)==0)
     return; // there is just the non-recorded $P(y,y)=1$
   column.back().resize(aux.col_size(y));
@@ -577,7 +577,7 @@ void KL_table::fill_next_column(PolHash& hash)
       } // |for(u)|
 
     // finally copy relevant coefficients from |cy| array to |column[y]|
-    kl::KLColumn::reverse_iterator it = column.back().rbegin();
+    KLColumn::reverse_iterator it = column.back().rbegin();
     for (BlockElt x=floor_y; aux.prim_back_up(x,y); it++)
       if (aux.is_descent(s,x)) // then we computed $P(x,y)$ above
         *it = hash.match(cy[x]*sign);
@@ -627,7 +627,7 @@ void KL_table::do_new_recursion(BlockElt y,PolHash& hash)
 {
   const BlockElt floor_y =aux.length_floor(y);
   std::vector<PolEntry> cy(floor_y,(PolEntry()));
-  kl::KLColumn::iterator out_it = column.back().end();
+  KLColumn::iterator out_it = column.back().end();
   std::vector<weyl::Generator> rn_s; rn_s.reserve(rank());
   std::vector<std::vector<Pol> > M_s; M_s.reserve(rank());
   for (weyl::Generator s=0; s<rank(); ++s)
