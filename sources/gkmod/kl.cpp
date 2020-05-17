@@ -723,12 +723,12 @@ void KL_table::complete_primitives(const std::vector<KLPol>& klv,
   it only contributes $P_{y,y}=1$; the |while| loop will be executed 0 times.
 */
 void KL_table::new_recursion_column
-( KL_column& klv, // with entries primitive elements of length |< length(y)|
+( KL_column& kl_col, // with entries primitive elements of length |< length(y)|
   BlockElt y,
   KLHash& hash)
 {
   PrimitiveColumn pc = primitive_column(y); // use all |x| primitive for |y|
-  klv.resize(pc.size()); // create slots for all pertinent elements |x|
+  kl_col.resize(pc.size()); // create slots for all pertinent elements |x|
 
   unsigned int l_y = length(y);
 
@@ -742,11 +742,12 @@ void KL_table::new_recursion_column
   // all |mu_pairs| is not decreasing by |x|, but it must be decreasing by length
   const auto downs_end = mu_pairs.end(); // record separation for final sorting
 
-  size_t j = klv.size(); // declare outside try block for error reporting
+  auto kl_col_it=kl_col.end(); // needs to outlive try block for error repacking
   try {
-    while (j-->0)
+    while (kl_col_it!=kl_col.begin()) // reverse loop but use plain iterator
     {
-      BlockElt x = pc[j];
+      --kl_col_it; // saying |while(kl_col_it-- != ...)| above would underflow it
+      BlockElt x = pc[kl_col_it-kl_col.begin()];
 
       unsigned int s= ascent_descent(x,y);
       if (s<rank()) // a primitive element that is not extremal; easy case
@@ -755,7 +756,7 @@ void KL_table::new_recursion_column
 	BlockEltPair p = cayley(s,x);
 	KLPol pol = KL_pol(p.first,y); // present since |klv| is |d_kl[y]|
 	pol.safeAdd(KL_pol(p.second,y));
-	klv[j] = hash.match(pol);
+	*kl_col_it = hash.match(pol);
 	continue; // done with |x|, go on to the next
       }
 
@@ -804,28 +805,33 @@ void KL_table::new_recursion_column
 
 	default: assert(false); //we've handled all possible NiceAscents
 	}
-	klv[j] = hash.match(pol);
+	*kl_col_it = hash.match(pol);
 	if (l_y==l_x+2*pol.degree()+1)
 	  mu_pairs.emplace_back(x,pol[pol.degree()]);
 
       } // end of |first_nice_and_real| case
 
-      else
+      else // there is no Weyl group generator "nice for |x| and real for |y|"
       {
-	/* just setting klv[j]=Zero; won't do here, even in C2. We need to use
-	   idea on p. 8 of recursion.pdf. This means: find s and t, both real
-	   for y and imaginary for x, moreover repectively nonparity and
-	   parity (r2) for y, repectively i1 and compact for x, while t is
-	   noncompact for s.x (the imaginary cross of x), which implies t is
-	   adjacent to s. Then we can compute P_{s.x,y} using t (an easy
-	   recursion, (1.9) but for t, expresses it as sum of one or two
-	   already computed polynomials), and for the sum P_{sx,y}+P_{x,y} we
-	   have a formula (3.6) of the kind used for NiceAscent, and it
-	   suffices to subtract P_{s.x,y} from it.
+      /*
+        The need for the new recusion and the absence of "nice and real"
+        generators almost implies $P_{x,y}=0$, but not quite; already in the
+        case of C2 there are exceptions. To find them we need to use the idea
+        described on p. 8 of recursion.pdf: find $s$ and $t$, both real for $y$
+        and imaginary for $x$, moreover being repectively nonparity and parity
+        (r2) for $y$ while being repectively i1 and compact for x, while
+        moreover $t$ is noncompact for $s.x$ (the imaginary cross image of $x$),
+        which can only happen when |t| is adjacent in the Dynkin diagram to $s$.
+        If such $(s,t)$ exist, then we can compute $P_{s.x,y}$ using $t$ (since
+        an easy recursion, (1.9) but for $t$, expresses it as sum of one or two
+        already computed polynomials), while for the sum $P_{sx,y}+P_{x,y}$ we
+        have a formula (3.6) of the kind used for NiceAscent; it then suffices
+        to compute that formula and subtract $P_{s.x,y}$ from it.
 
-	   If no such s,t exist then we may conclude x is not Bruhat below y,
-	   so P_{x,y}=0.
-	*/
+	Finally if no such $(s,t)$ exist, then we have exhausted all
+	possibilities where $x$ is below $y$ in the Bruhat order, so we may
+	validly conclude that $P_{x,y}=0$.
+      */
 	std::pair<size_t,size_t> st = first_endgame_pair(x,y);
 	if ((s=st.first) < rank())
 	{
@@ -837,7 +843,7 @@ void KL_table::new_recursion_column
 	  pol.safeAdd(P_xprime_y);
 	  pol.safeSubtract(P_xprime_y,1);
 
-	  //now klv[j] holds P_{x,y}+P_{s.x,y}
+	  //now |*kl_col_it| holds P_{x,y}+P_{s.x,y}
 
 	  unsigned int t=st.second;
 
@@ -849,21 +855,20 @@ void KL_table::new_recursion_column
 	    // any |UndefBlock| component of |sx_up_t| will contribute $0$
 	    pol.safeSubtract(KL_pol(sx_up_t.first,y));
 	    pol.safeSubtract(KL_pol(sx_up_t.second,y));
-
 	  }
 
-	  klv[j] = hash.match(pol);
+	  *kl_col_it = hash.match(pol);
 	  if (l_y==l_x+2*pol.degree()+1)
 	    mu_pairs.emplace_back(x,pol[pol.degree()]);
 	} // |if (endgame_pair(x,y)) |
 	else // |first_endgame_pair| found nothing
-	  klv[j]=d_zero;
+	  *kl_col_it = d_zero;
       } // end of no NiceAscent case
     } // while (j-->0)
   }
   catch (error::NumericUnderflow& err) // repackage error, reporting x,y
   {
-    throw kl_error::KLError(pc[j],y,__LINE__,
+    throw kl_error::KLError(pc[kl_col_it-kl_col.begin()],y,__LINE__,
 			    static_cast<const KL_table&>(*this));
   }
 
@@ -878,7 +883,7 @@ void KL_table::new_recursion_column
 } // |KL_table::new_recursion_column|
 
 /*
-  Store into |klv[j]| the $\mu$-sum appearing in a new K-L recursion.
+  Compute the $\mu$-sum appearing in a new K-L recursion.
 
   Here |pc| is the primitive column for |y|, $s$ is real nonparity for $y$ and
   either C+ or imaginary for $x=pc[j]$ (those are the cases for which the
