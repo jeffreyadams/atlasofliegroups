@@ -189,20 +189,19 @@ MuCoeff KL_table::mu(BlockElt x, BlockElt y) const
 }
 
 /*
-  Return the list of all |x| extremal w.r.t. |y|.
+  Return the |BitMap| of all |x| extremal w.r.t. |y|.
 
-  Explanation: this means that |length(x) < length(y)|, and every descent for |y|
-  is also a descent for |x|, in other words $asc(x)\cap desc(y)=\emptyset$.
-  Here descent means "in the $\tau$ invariant" (possibilities C-, ic, r1, r2).
+  This means that |length(x) < length(y)|, and every descent for |y| is also a
+  descent for |x|, in other words $asc(x)\cap desc(y)=\emptyset$. Here descent
+  means "in the $\tau$ invariant" (possibilities C-, ic, r1, r2).
 */
-PrimitiveColumn KL_table::extremal_column(BlockElt y)
-  const
+BitMap KL_table::extremals(BlockElt y) const
 {
-  BitMap b(size());
-  b.fill(0,lengthLess(length(y)));  // start with all elements < y in length
-  filter_extremal(b,descentSet(y)); // filter out those that are not extremal
+  BitMap result(size());
+  result.fill(0,lengthLess(length(y)));  // start with all elements < y in length
+  filter_extremal(result,descentSet(y)); // filter out the non-extremal elements
 
-  return PrimitiveColumn(b.begin(),b.end()); // convert to vector
+  return result;
 }
 
 
@@ -421,10 +420,10 @@ void KL_table::fill_KL_column(BlockElt y, KLHash& hash)
   {
     std::vector<KLPol> klv(block().size()+1); // storage, indexed by |BlockElt|
     klv[y]=One; // ensure diagonal entry of it taken to be $P_{y,y}=1$
-    PrimitiveColumn e = extremal_column(y); // we compute for |x| extremal only
+    BitMap ext = extremals(y); // we compute for |x| extremal only
 
-    recursion_column(klv,e,y,s); // compute all polynomials for these |x|
-    complete_primitives(klv,e,y,hash); // add primitives; store in |d_KL|
+    recursion_column(klv,ext,y,s); // compute all polynomials for these |x|
+    complete_primitives(klv,ext,y,hash); // add primitives; store in |d_KL|
   }
   else // we must use an approach that distinguishes on |x| values
   {
@@ -451,7 +450,7 @@ void KL_table::fill_KL_column(BlockElt y, KLHash& hash)
   $P_{x,z}$ that depend on $x$ as well.
 */
 void KL_table::recursion_column(std::vector<KLPol>& klv,
-				const PrimitiveColumn& e, // extremals for y
+				const BitMap& e, // extremals for |y|
 				BlockElt y,
 				weyl::Generator s)
 {
@@ -459,14 +458,14 @@ void KL_table::recursion_column(std::vector<KLPol>& klv,
     descentValue(s,y) == DescentStatus::ComplexDescent ? cross(s,y)
     : inverse_Cayley(s,y).first;  // s is real type I for y here, ignore .second
 
-  auto e_it=e.crbegin(); // keep outside for error reporting
+  unsigned long x = // declaration outside is needed for error reporting
+     e.capacity(); // reverse traverser, used in |while| loop below
   try {
 
     // the following loop could be run in either direction: no dependency.
     // however it is natural to take |x| descending from |y| (exclusive)
-    for (; e_it!=e.crend(); ++e_it)
-    {
-      BlockElt x = *e_it; // extremal for $y$, so $s$ is descent for $x$
+    while (e.back_up(x))
+    { // now |x| is extremal for $y$, so $s$ is descent for $x$
       switch (descentValue(s,x))
       {
       case DescentStatus::ImaginaryCompact:
@@ -512,7 +511,7 @@ void KL_table::recursion_column(std::vector<KLPol>& klv,
 
   }
   catch (error::NumericUnderflow& err){
-    throw kl_error::KLError(*e_it,y,__LINE__,
+    throw kl_error::KLError(x,y,__LINE__,
 			    static_cast<const KL_table&>(*this));
   }
 
@@ -556,8 +555,7 @@ void KL_table::recursion_column(std::vector<KLPol>& klv,
   Elements of length at least $l(sy)=l(y)-1$ on the list |e| are always
   rejected, so the tail of |e| never reached.
  */
-void KL_table::mu_correction(std::vector<KLPol>& klv,
-			     const PrimitiveColumn& e,
+void KL_table::mu_correction(std::vector<KLPol>& klv, const BitMap& e,
 			     BlockElt y, weyl::Generator s)
 {
   BlockElt sy =
@@ -569,7 +567,6 @@ void KL_table::mu_correction(std::vector<KLPol>& klv,
 
   BlockElt xx=UndefBlock; // define outside for error reporting
   try {
-    auto e_it = e.rbegin(); // really only used to see if |z| below exists in |e|
     for (auto it = mcol.rbegin(); it!=mcol.rend(); ++it) // makes |z| decreasing
       if (DescentStatus::isDescent(descentValue(s,it->x))) // |s| descent for |z|
       {
@@ -594,11 +591,8 @@ void KL_table::mu_correction(std::vector<KLPol>& klv,
 	    klv[xx=x].safeSubtract(pol,d,mu); // subtract $q^d.mu.P_{x,z}$
 	  } // |for (j)|
 
-	while (e_it!=e.crend() and *e_it>z) // "advance" in "decreasing" list
-	  ++e_it; // skipping larger values until maybe we found |z| in |e|
-
-	if (e_it!=e.crend() and *e_it==z) // handle final term |x==z|
-	{ // none of the larger |z| should have altered leading coefficient
+	if (e.isMember(z)) // then handle final term |x==z|
+	{ // none of the larger |z| should have altered the leading coefficient
 	  assert( klv[z].degree()==d and klv[z][d]==mu );
 	  klv[xx=z].safeSubtract(KLPol(d,mu)); // subtract off the term $mu.q^d$
 	}
@@ -630,9 +624,8 @@ void KL_table::mu_correction(std::vector<KLPol>& klv,
    of that length as well with nonzero mu), and are primitive only in the real
    type 2 case; we must treat them outside the loop over primitive elements.
  */
-void KL_table::complete_primitives(std::vector<KLPol>& klv,
-				    const PrimitiveColumn& ec, BlockElt y,
-				    KLHash& hash)
+void KL_table::complete_primitives(std::vector<KLPol>& klv, const BitMap& ext,
+				   BlockElt y, KLHash& hash)
 {
   auto pc = primitive_column(y); // the elements for which we must write an entry
   KL_column& KL = d_KL[y]; // the column that we must write to
@@ -642,12 +635,10 @@ void KL_table::complete_primitives(std::vector<KLPol>& klv,
 
   unsigned int ly = length(y);
 
-  size_t j= ec.size()-1; // points to current extremal element, if any
-
   for (size_t i = pc.size(); i-->0; )
-    if (j<ec.size() and pc[i]==ec[j]) // must test for underflow |j|
+    if (ext.isMember(pc[i]))
     { // extremal element; use stored polynomial
-      const KLPol& Pxy=klv[ec[j--]]; // use KL polynomial and advance downwards
+      const KLPol& Pxy=klv[pc[i]];
       unsigned int lx=length(pc[i]);
       KL[i]=hash.match(Pxy);
       if (ly==lx+2*Pxy.degree()+1) // in particular parities |lx|, |ly| differ

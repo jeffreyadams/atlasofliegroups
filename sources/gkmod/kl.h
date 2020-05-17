@@ -93,7 +93,7 @@ class KL_table
   BlockElt first_hole () const { return d_holes.front(); }
 
   // construct lists of extremal respectively primitive elements for |y|
-  PrimitiveColumn extremal_column(BlockElt y) const;
+  BitMap extremals (BlockElt y) const;
   PrimitiveColumn primitive_column(BlockElt y) const;
 
   bool isZero(const KLIndex p) const { return p == d_zero; }
@@ -148,13 +148,11 @@ class KL_table
 
   void fill_KL_column(BlockElt y, KLHash& hash);
   void recursion_column(std::vector<KLPol> & klv,
-			const PrimitiveColumn& e, BlockElt y, weyl::Generator s);
-  void mu_correction(std::vector<KLPol>& klv,
-		     const PrimitiveColumn& e,
+			const BitMap& e, BlockElt y, weyl::Generator s);
+  void mu_correction(std::vector<KLPol>& klv, const BitMap& e,
 		     BlockElt y, weyl::Generator s);
-  void complete_primitives(std::vector<KLPol>& klv,
-			   const PrimitiveColumn& e, BlockElt y,
-			   KLHash& hash);
+  void complete_primitives(std::vector<KLPol>& klv, const BitMap& e,
+			   BlockElt y, KLHash& hash);
   void new_recursion_column(KL_column & kl_col, BlockElt y, KLHash& hash);
   KLPol mu_new_formula
     (BlockElt x, BlockElt y, weyl::Generator s, const Mu_list& muy);
