@@ -2,7 +2,7 @@
   This is klsupport.h
 
   Copyright (C) 2004,2005 Fokko du Cloux
-  Copyright (C) 2006-2017 Marc van Leeuwen
+  Copyright (C) 2006-2020 Marc van Leeuwen
   part of the Atlas of Lie Groups and Representations
 
   For license information see the LICENSE file
@@ -37,9 +37,13 @@ class KLSupport
   std::vector<BitMap> d_downset;
   std::vector<BitMap> d_primset;
 
-  using prim_index_tp = std::vector<unsigned int>;
-  mutable // because entries are filled on-demand by |const| methods
-    std::vector<prim_index_tp> d_prim_index;
+  struct prim_index_tp
+  {
+    std::vector<unsigned int> index; // from |BlockElt| to index of prim'zed
+    unsigned int range; // number of primitive elements for this descen set
+  prim_index_tp() : index(), range(-1) {}
+  };
+  std::vector<prim_index_tp> d_prim_index; // indexed by descent set number
 
  public:
 
@@ -52,30 +56,28 @@ class KLSupport
   size_t size () const { return d_block.size(); }
 
   size_t length (BlockElt z) const { return d_block.length(z); }
-  BlockElt lengthLess (size_t l) const // number of block elements of length < l
+  BlockElt length_less (size_t l) const // number of block elements of length < l
     { return d_lengthLess[l]; }
 
   BlockElt cross (size_t s, BlockElt z) const  { return d_block.cross(s,z); }
   BlockEltPair cayley (size_t s, BlockElt z) const
     { return d_block.cayley(s,z); }
 
-  DescentStatus::Value descentValue (size_t s, BlockElt z) const
+  DescentStatus::Value descent_value (size_t s, BlockElt z) const
     { return d_block.descentValue(s,z); }
   const DescentStatus& descent(BlockElt y) const // combined for all |s|
     { return d_block.descent(y); }
 
-  const RankFlags& descentSet (BlockElt z) const
-    { return d_descent[z]; }
-  const RankFlags& goodAscentSet (BlockElt z) const
-    { return d_goodAscent[z]; }
+  RankFlags descent_set (BlockElt z) const { return d_descent[z]; }
+  RankFlags good_ascent_set (BlockElt z) const { return d_goodAscent[z]; }
 
   // find ascent for |x| that is descent for |y| if any; |longBits| if none
   unsigned int ascent_descent (BlockElt x,BlockElt y) const
-    { return (descentSet(y)-descentSet(x)).firstBit(); }
+    { return (descent_set(y)-descent_set(x)).firstBit(); }
 
   // find non-i2 ascent for |x| that is descent for |y| if any; or |longBits|
   unsigned int good_ascent_descent (BlockElt x,BlockElt y) const
-    { return (goodAscentSet(x)&descentSet(y)).firstBit(); }
+    { return (good_ascent_set(x)&descent_set(y)).firstBit(); }
 
   /* computing KL polynomials used to spend a large amount of time evaluating
      primitivize and then to binary-search for the resulting primitive element.
@@ -83,22 +85,34 @@ class KLSupport
      things up by tabulating for each descent set the map from block elements
      to the index of their primitivized counterparts.
   */
+  void prepare_prim_index(RankFlags A) // call us before any |prim_index(...,A)|
+  { prim_index_tp& record=d_prim_index[A.to_ulong()];
+    if (record.range==static_cast<unsigned int>(-1))
+      fill_prim_index(A);
+    assert(record.range!=static_cast<unsigned int>(-1));
+  }
+
   unsigned int prim_index (BlockElt x, RankFlags descent_set) const
-  { prim_index_tp& vec=d_prim_index[descent_set.to_ulong()];
-    if (vec.size()==0)
-      fill_prim_index(vec,descent_set);
-    return vec[x];
+  { const prim_index_tp& record=d_prim_index[descent_set.to_ulong()];
+    assert(record.range!=static_cast<unsigned int>(-1));
+    return x==UndefBlock ? record.range : record.index[x];
+  }
+
+  unsigned int nr_of_primitives (RankFlags descent_set) const
+  { const prim_index_tp& record=d_prim_index[descent_set.to_ulong()];
+    assert(record.range!=static_cast<unsigned int>(-1));
+    return record.range;
   }
 
   // this is where an element |y| occurs in its "own" primitive row
   unsigned int self_index (BlockElt y) const
-  { return prim_index(y,descentSet(y)); }
+  { return prim_index(y,descent_set(y)); }
 
   // the following are filters of the bitmap
   void filter_extremal (BitMap&, const RankFlags&) const;
   void filter_primitive (BitMap&, const RankFlags&) const;
 
-  void fill_prim_index(prim_index_tp& dest,RankFlags A) const;
+  void fill_prim_index(RankFlags A);
 
 #ifndef NDEBUG
   void check_sub(const KLSupport& sub, const BlockEltList& embed);

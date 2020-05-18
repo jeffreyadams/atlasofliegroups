@@ -110,32 +110,27 @@ std::ostream& printPrimitiveKL
 
   for (size_t y = 0; y < kl_tab.size(); ++y)
   {
-    auto e = kl_tab.primitive_column(y); // list of ALL primitive x's for y
+    BitMap prims = kl_tab.primitives(y); // list of ALL primitive x's for y
 
     strm << std::setw(width) << y << ": ";
     bool first = true;
-    for (size_t j  = 0; j < e.size(); ++j)
-      if (Bruhat.lesseq(e[j],y))
-      { // now |x=e[j]| is primitive for |y| and Bruhat-comparable
+    for (BlockElt x : prims)
+      if (Bruhat.lesseq(x,y))
+      {
 	++count;
-	if ((kl_tab.KL_pol(e[j],y).isZero()))
+	if ((kl_tab.KL_pol(x,y).isZero()))
 	  ++zero_count;
 	if (first)
-	{
-	  strm << std::setw(width) << e[j] << ": ";
-	  first = false;
-	}
+	  first = false, strm << std::setw(width) << x << ": ";
 	else
-	{
 	  strm << std::setw(width+tab)<< ""
-	       << std::setw(width) << e[j] << ": ";
-	}
+	       << std::setw(width) << x << ": ";
 
-	kl_tab.KL_pol(e[j],y).print(strm,KLIndeterminate) << std::endl;
+	kl_tab.KL_pol(x,y).print(strm,KLIndeterminate) << std::endl;
       }
       else
       {
-	assert(kl_tab.KL_pol(e[j],y).isZero());
+	assert(kl_tab.KL_pol(x,y).isZero());
 	++incomp_count;
       } // |for (j)|
 
@@ -159,7 +154,7 @@ std::ostream& printPrimitiveKL
 // Print the list of all distinct Kazhdan-Lusztig-Vogan polynomials in |kl_tab|
 std::ostream& printKLList(std::ostream& strm, const kl::KL_table& kl_tab)
 {
-  const kl::KLStore& store = kl_tab.polStore();
+  const kl::KLStore& store = kl_tab.pol_store();
   std::vector<kl::KLPol> polList;
 
   // get polynomials, omitting Zero

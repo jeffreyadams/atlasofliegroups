@@ -365,7 +365,7 @@ Here is how a matrix file is written.
 std::streamoff
 write_KL_row(const kl::KL_table& kl_tab, BlockElt y, std::ostream& out)
 {
-  BitMap prims=kl_tab.primMap(y); // marks nonzero KL polys among primitives
+  BitMap prims=kl_tab.prim_map(y); // marks nonzero KL polys among primitives
   const auto& kld=kl_tab.KL_data(y);
 
   assert(kld.size()+1==prims.capacity()); // check the number of KL polynomials
