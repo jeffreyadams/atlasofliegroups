@@ -674,8 +674,9 @@ size_t KL_table::complete_primitives(std::vector<KLPol>& klv, const BitMap& ext,
     }
 
   Mu_list downs;
-  for (BlockElt x : down_set(block(),y))
-    downs.emplace_back(x,MuCoeff(1));
+  auto ds = down_set(block(),y);
+  for (auto it=ds.begin(); not ds.at_end(it); ++it)
+    downs.emplace_back(*it,MuCoeff(1));
   // These $x$s are non-extremal for $y$, yet have $\mu(x,y)=1\neq0$
 
   // some elements in |mu_pairs| may have same length as |downs|: merge is needed
@@ -747,9 +748,10 @@ std::vector<KLIndex> KL_table::new_recursion_column
     { return d_store[cur_col[primitivize(x,desc_y)]]; };
 
   Mu_list mu_pairs; // those |x| with |mu(x,y)>0|
+  auto ds = down_set(block(),y);
   // start off |mu_pairs| with ones for |down_set(y)|, not otherwise computed
-  for (BlockElt x : down_set(block(),y))
-    mu_pairs.emplace_back(x,MuCoeff(1)); // initial part |mu_pairs| is increasing
+  for (auto it=ds.begin(); not ds.at_end(it); ++it)
+    mu_pairs.emplace_back(*it,MuCoeff(1)); // initial part |mu_pairs|, increasing
 
   // remainder of |mu_pairs| will be decreasing by |x|; it does not matter that
   // all |mu_pairs| is not decreasing by |x|, but it must be decreasing by length

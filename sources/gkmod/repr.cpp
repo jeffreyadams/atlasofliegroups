@@ -1033,17 +1033,17 @@ unsigned long Rep_table::add_block(const StandardReprMod& srm)
 
   // swallow blocks in |embeddings|, and remove them from |block_list|
   kl::KLHash hash = block.KL_hash();
-  for (auto pair : embeddings)
+  for (auto it= embeddings.begin(); not embeddings.at_end(it); ++it)
   {
-    auto& sub_block = *pair.first;
+    auto& sub_block = *it->first;
     auto h = mod_hash.find(sub_block.representative(0));
     assert(h!=mod_hash.empty);
     auto block_it = place[h].first; // found iterator to our |block_list| entry
 #ifndef NDEBUG
-    for (BlockElt z : pair.second)
+    for (BlockElt z : it->second)
       assert(z!=UndefBlock);
 #endif
-    block.swallow(std::move(sub_block),pair.second,hash);
+    block.swallow(std::move(sub_block),it->second,hash);
     block_erase(block_it);
   }
 
