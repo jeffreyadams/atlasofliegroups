@@ -147,10 +147,19 @@ public:
     else return BlockEltPair(UndefBlock,UndefBlock);
   }
 
+  BlockElt unique_ascent(weyl::Generator s, BlockElt z) const
+  { assert(z<size()); assert(s<rank());
+    auto v = descentValue(s,z);
+    if (v == DescentStatus::ComplexAscent)
+      return data[s][z].cross_image;
+    assert(v == DescentStatus::ImaginaryTypeI);
+    return data[s][z].Cayley_image.first;
+  }
+
   const DescentStatus& descent(BlockElt z) const
     { assert(z<size()); return info[z].descent; }
   DescentStatus::Value descentValue(weyl::Generator s, BlockElt z) const
-    { assert(z<size()); assert(s<rank()); return descent(z)[s]; }
+    { assert(z<size()); assert(s<rank()); return info[z].descent[s]; }
 
   RankFlags descent_generators (BlockElt z) const; // all |s| giving weak descent
   bool isWeakDescent(weyl::Generator s, BlockElt z) const

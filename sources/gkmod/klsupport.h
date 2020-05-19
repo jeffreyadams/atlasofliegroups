@@ -40,9 +40,6 @@ class KLSupport
   std::vector<Elt_info> info;
   std::vector<BlockElt> length_stop; // |length_stop[l]| is first of length |l|
 
-  std::vector<BitMap> d_downset;
-  std::vector<BitMap> d_primset;
-
  public:
 
 // constructors and destructors
@@ -73,15 +70,35 @@ class KLSupport
   unsigned int ascent_descent (BlockElt x,BlockElt y) const
     { return (descent_set(y)-descent_set(x)).firstBit(); }
 
-  BlockElt primitivize (BlockElt x, const RankFlags& A) const;
-
   // find non-i2 ascent for |x| that is descent for |y| if any; or |longBits|
   unsigned int good_ascent_descent (BlockElt x,BlockElt y) const
     { return (good_ascent_set(x)&descent_set(y)).firstBit(); }
 
-  // the following are filters of the bitmap
-  void filter_extremal (BitMap&, const RankFlags&) const;
-  void filter_primitive (BitMap&, const RankFlags&) const;
+  bool is_extremal (BlockElt x, RankFlags descents_y) const
+    { return descent_set(x).contains(descents_y); }
+  bool is_primitive (BlockElt x, RankFlags descents_y) const
+    { return (good_ascent_set(x) & descents_y).none(); } // disjointness
+  bool is_extremal (BlockElt x, BlockElt y) const
+    { return is_extremal(x,descent_set(y)); }
+  bool is_primitive (BlockElt x, BlockElt y) const
+    { return is_primitive(x,descent_set(y)); }
+
+  // in practice the main operation for extremals/primitives is reverse traversal
+
+  // set $x$ to last extremal element for $y$ strictly before $x$, or fail
+  bool extr_back_up(BlockElt& x, RankFlags desc_y) const
+    { while (x-->0) if (is_extremal(x,desc_y)) return true;
+      return false; // now |x| has crashed through 0 and should be ignored
+    }
+
+  // set $x$ to last primitive element for $y$ strictly before $x$, or fail
+  bool prim_back_up(BlockElt& x, RankFlags desc_y) const
+    { while (x-->0) if (is_primitive(x,desc_y)) return true;
+      return false; // now |x| has crashed through 0 and should be ignored
+    }
+
+  // primitive element for |desc_y| above and reachable from |x|, or block size
+  BlockElt primitivize (BlockElt x, RankFlags desc_y) const;
 
 #ifndef NDEBUG
   void check_sub(const KLSupport& sub, const BlockEltList& embed);
