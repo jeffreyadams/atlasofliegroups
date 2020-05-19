@@ -31,8 +31,12 @@ Pol qk_minus_q(int k);
 
 class descent_table
 {
-  std::vector<RankFlags> descents; // sets of descents ($\tau$-invariants)
-  std::vector<RankFlags> good_ascents; // ascents usable in primitivization
+  struct Elt_info // per block element information
+  { RankFlags descents;
+    RankFlags good_ascents;
+  Elt_info(RankFlags d,RankFlags a): descents(d), good_ascents(a) {}
+  };
+  std::vector<Elt_info> info;
 
   std::vector<std::vector<unsigned int> > prim_index;
   std::vector<BitMap> prim_flip; // sign for |prim_index|, transposed indexing
@@ -44,26 +48,28 @@ class descent_table
 
 // accessors
 
-  RankFlags descent_set(BlockElt y) const { return descents[y]; }
+  RankFlags descent_set(BlockElt y) const { return info[y].descents; }
+  RankFlags good_ascent_set(BlockElt y) const { return info[y].good_ascents; }
+
   bool is_descent(weyl::Generator s, BlockElt y) const
   { return descent_set(y).test(s); }
 
   // index of primitive element corresponding to $x$ in row for $y$
   unsigned int x_index(BlockElt x, BlockElt y) const
-  { return prim_index[descents[y].to_ulong()][x]; }
+  { return prim_index[info[y].descents.to_ulong()][x]; }
   unsigned int self_index(BlockElt y) const { return x_index(y,y); }
   bool flips(BlockElt x,BlockElt y) const
-  { return prim_flip[x].isMember(descents[y].to_ulong()); }
+  { return prim_flip[x].isMember(info[y].descents.to_ulong()); }
 
   BlockElt length_floor(BlockElt y) const
   { return block.length_first(block.length(y)); }
   unsigned int col_size(BlockElt y) const;
 
   RankFlags very_easy_set(BlockElt x, BlockElt y) const
-  { return good_ascents[x]&descents[y]; }
+  { return info[x].good_ascents & info[y].descents; }
 
   RankFlags easy_set(BlockElt x, BlockElt y) const
-  { return descents[y]-descents[x]; }
+  { return info[y].descents-info[x].descents; }
 
   // set $x$ to last primitive element for $y$ strictly before $x$, or fail
   bool prim_back_up(BlockElt& x, BlockElt y) const;

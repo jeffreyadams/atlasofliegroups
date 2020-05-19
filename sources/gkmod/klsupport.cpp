@@ -38,79 +38,77 @@ namespace klsupport {
 
 KLSupport::KLSupport(const Block_base& b)
   : d_block(b)
-  , d_lengthLess()
-  , d_descent(size())
-  , d_goodAscent(size())
-  , d_downset(rank())
-  , d_primset(rank())
+  , info()
+  , length_stop()
+  , d_downset(rank(),BitMap(b.size())) // bitmaps are filled below
+  , d_primset(d_downset) // start with a copy; bitmaps filled below too
 {
 /*
-  Make |d_lengthLess| into a vector of size |max(lengths(d_block))+2| such that
-  for |0<=l<=max(lengths(d_block))+1|, the |BlockELt| |d_lengthLess[l]| is the
+  Make |length_stop| into a vector of size |max(lengths(d_block))+2| such that
+  for |0<=l<=max(lengths(d_block))+1|, the |BlockElt| |length_stop[l]| is the
   first one of length at least |l| in |d_block| (or |d_block.size()| if there
-  are none, as is the case for $l=\max(lengths(d_block))+1)$. In other words,
-  |d_lengthLess[l]| counts the elements in |d_block| of length less than |l|.
+  are none, as is the case for $l=1+\max(lengths(d_block))$). In other words,
+  |length_stop[l]| counts the elements in |d_block| of length less than |l|.
 */
   {
-    auto l_size = (d_block.size()==0 ? 0 : d_block.length(d_block.size()-1))+2;
-    d_lengthLess.resize(l_size);
+    length_stop.reserve
+      (d_block.size()==0 ? 1 : 2+d_block.length(d_block.size()-1));
 
-    d_lengthLess[0]=0; // no elements of length<0
-    size_t l=0;
+    // the following loop could handle length jumps, although that never happens
     for (BlockElt z=0; z<d_block.size(); ++z) // invariant |d_block.length(z)>=l|
-      while (d_block.length(z)>l)
-	d_lengthLess[++l]=z;
+      while (length_stop.size()<=d_block.length(z)) // in fact runs at most once
+	length_stop.push_back(z);
 
-    // do not forget the last length!
-    d_lengthLess[l+1]=d_block.size(); // here $l=\max(lengths(d_block))$
+    // at block size as final |length_stop| (although it appears to be unused)
+    length_stop.push_back(d_block.size()); // index is $1+\max(lengths(d_block))$
   }
 
 /*
-  Fill in the |downset|, |primset|, |descents| and |goodAscent| bitmap/set
-  vectors. Here |downset| and |primset| are vectors indexed by a simple
-  reflection |s|, and giving a bitmap over all block elements, while
-  |descents| and |goodAscent| are vectors indexed by a block element |z| and
-  giving a bitset over all simple reflections. This difference is motivated by
-  their use: |downset| and |primset| are used to filter bitmaps over the
-  entire block according to some set of simple generators, which is easier if
-  the data is grouped by generator. In fact the data computed is stored twice:
-  one always has |downset[s].isMember(z) == descents[z].test(s)| and
-  |primset[s].isMember(z) != good_ascent[z].test(s)|
+  Fill in the |downset|, |primset| bitmap vectors, and |info| bitset fields.
+  Here |downset| and |primset| are vectors indexed by a simple reflection |s|,
+  and giving a bitmap over all block elements, while |info| is vectors indexed
+  by a block element |z| and giving two bitsets over all simple reflections.
+  This difference is motivated by their use: |downset| and |primset| are used to
+  filter bitmaps over the entire block according to some set of simple
+  generators, which is easier if the data is grouped by generator. In fact the
+  data computed is stored twice: one always has |d_downset[s].isMember(z)| if
+  and only if |info[z].decents.test(s)| and similarly |d_primset[s].isMember(z)|
+  if and only if |not info[z].good_ascents.test(s)|.
 
   The predicate that |s| is a |descent| for |z| is taken in the weak sense
   that |s| belongs to the "tau-invariant" of |z|, in other words, it is a
   complex descent, real parity (type I or type II), or imaginary compact (the
-  final case does not actually allow going down). The |goodAscent| bitset for
+  final case does not actually allow going down). The |good_ascents| bitset for
   |z| holds the non-decents for |z| that are not imaginary type II, so they
   are either complex ascent, imaginary type I or real nonparity. The |primset|
   bitmap for |s| records the block elements |z| for which |s| is not a
-  |goodAscent|, in other words it is either a |descent| or imaginary type II.
+  |good_ascent|, in other words it is either a |descent| or imaginary type II.
 */
-  size_t size = d_block.size();
-
-  for (weyl::Generator s=0; s<rank(); ++s)
+  info.reserve(d_block.size());
+  for (BlockElt z = 0; z < d_block.size(); ++z)
   {
-    d_downset[s].set_capacity(size);
-    d_primset[s].set_capacity(size);
-    for (BlockElt z = 0; z < size; ++z)
+    RankFlags desc, good_asc;
+    for (weyl::Generator s=0; s<rank(); ++s)
     {
       DescentStatus::Value v = descent_value(s,z);
       if (DescentStatus::isDescent(v))
       {
 	d_downset[s].insert(z);
 	d_primset[s].insert(z);
-	d_descent[z].set(s);
+	desc.set(s);
       }
       else // ascents
 	if (v == DescentStatus::ImaginaryTypeII)
 	  d_primset[s].insert(z);  // s is a "bad" ascent
 	else
-	  d_goodAscent[z].set(s); // good ascent
-    }
-  }
+	  good_asc.set(s); // good ascent
+    } // |for(s)|
+    info.emplace_back(desc,good_asc);
+  } // |for(BlockElt z)|
 } // |KLSupport::KLSupport|
 
 /******** accessors **********************************************************/
+
 
 /*
   Flag in |b|, which is of size |size()|, those block elements which are
