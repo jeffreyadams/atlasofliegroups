@@ -31,9 +31,15 @@ class KLSupport
 {
   const Block_base& d_block;  // non-owned reference
 
-  std::vector<BlockElt> d_lengthLess;
-  std::vector<RankFlags> d_descent;
-  std::vector<RankFlags> d_goodAscent;
+  struct Elt_info // per block element information
+  { RankFlags descents;
+    RankFlags good_ascents;
+  Elt_info(RankFlags d,RankFlags a): descents(d), good_ascents(a) {}
+  };
+
+  std::vector<Elt_info> info;
+  std::vector<BlockElt> length_stop; // |length_stop[l]| is first of length |l|
+
   std::vector<BitMap> d_downset;
   std::vector<BitMap> d_primset;
 
@@ -53,11 +59,11 @@ class KLSupport
 // accessors
   const Block_base& block () const { return d_block; }
   size_t rank () const { return d_block.rank(); }
-  size_t size () const { return d_block.size(); }
+  size_t size () const { return d_block.size(); } // also |info.size()|
 
   size_t length (BlockElt z) const { return d_block.length(z); }
-  BlockElt length_less (size_t l) const // number of block elements of length < l
-    { return d_lengthLess[l]; }
+  BlockElt length_less (size_t l) const // number of block elements of length<l
+  { return length_stop[l]; }
 
   BlockElt cross (size_t s, BlockElt z) const  { return d_block.cross(s,z); }
   BlockEltPair cayley (size_t s, BlockElt z) const
@@ -68,8 +74,8 @@ class KLSupport
   const DescentStatus& descent(BlockElt y) const // combined for all |s|
     { return d_block.descent(y); }
 
-  RankFlags descent_set (BlockElt z) const { return d_descent[z]; }
-  RankFlags good_ascent_set (BlockElt z) const { return d_goodAscent[z]; }
+  RankFlags descent_set (BlockElt z) const { return info[z].descents; }
+  RankFlags good_ascent_set (BlockElt z) const { return info[z].good_ascents; }
 
   // find ascent for |x| that is descent for |y| if any; |longBits| if none
   unsigned int ascent_descent (BlockElt x,BlockElt y) const

@@ -125,7 +125,7 @@ public:
   unsigned short length(BlockElt z) const { return info[z].length; }
 
   // first element of length (at least) |l|, or |size()| if there are none
-  BlockElt length_first(size_t l) const;
+  BlockElt length_first(size_t l) const; // does a binary search in the block
 
   BlockElt cross(weyl::Generator s, BlockElt z) const
   { assert(z<size()); assert(s<rank()); return data[s][z].cross_image; }

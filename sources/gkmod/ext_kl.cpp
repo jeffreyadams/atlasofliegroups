@@ -52,16 +52,13 @@ bool PolEntry::operator!=(PolEntry::Pooltype::const_reference e) const
 
 
 descent_table::descent_table(const ext_block::ext_block& eb)
-  : descents(eb.size()), good_ascents(eb.size())
+  : info()
   , prim_index(1<<eb.rank(),std::vector<unsigned int>(eb.size(),0))
   , prim_flip(eb.size(),BitMap(prim_index.size()))
   , block(eb)
 {
-  // counts of primitive block elements, one for each descent set
-  std::vector<BlockElt> prim_count(1<<eb.rank(),0);
-
-  // following loop must decrease for primitivisation calculation below
-  for (BlockElt x = block.size(); x-->0; )
+  info.reserve(block.size());
+  for (BlockElt x=0; x<block.size(); ++x)
   {
     RankFlags desc, good_asc;
     for (weyl::Generator s=0; s<block.rank(); ++s)
@@ -72,56 +69,63 @@ descent_table::descent_table(const ext_block::ext_block& eb)
       else if (not has_double_image(v))
 	good_asc.set(s); // good ascent: at most one upward neighbour
     }
-    descents[x]=desc;
-    good_ascents[x]=good_asc;
+    info.emplace_back(desc,good_asc);
+  }
 
-    BitMap& flip_x = prim_flip[x]; // place to record primitivisation flips $x$
-
-    // compute primitivisations of |x|, storing index among primitives for |D|
-    // since |x| is decreasing, index counts _larger_ primitive elements for |D|
-    for (unsigned long descs=0; descs<prim_index.size(); ++descs) // all bitsets
-    {
-      RankFlags D(descs); // descent set for which to primitive
-      D &= good_asc;
-      if (D.none()) // then element |x| is primitive for the descent set
-	prim_index[descs][x] = prim_count[descs]++; // self-ref; increment count
-      else
-      {
-	weyl::Generator s = D.firstBit();
-	if (is_like_nonparity(block.descent_type(s,x)))
-	  prim_index[descs][x] = ~0; // stop primitivisation with zero result
-	else
-	{
-	  BlockElt sx = block.some_scent(s,x);
-	  if (sx==UndefBlock) // primitivization would cross partial block edge
-	    prim_index[descs][x] = ~0; // stop primitivisation with zero result
-	  else
-	  {
-	    assert(sx>x); // ascents go up in block
-	    prim_index[descs][x] = prim_index[descs][sx];
-	    flip_x.set_to(descs,
-		 (block.epsilon(s,x,sx)<0)!=prim_flip[sx].isMember(descs));
-	  }
-	}
-      }
-    } // |for (desc)|
-  } // |for(x)|
-
-  // primitive lists will actually be stored increasing, so reverse indices
-  for (unsigned long desc=prim_index.size(); desc-->0;)
+  for (auto& prindex_vec : prim_index)
   {
-    BlockElt last=prim_count[desc]-1;
+    auto descs = &prindex_vec - &prim_index[0]; // position within |prim_index|
+    constexpr unsigned int dead_end = -1;
+
+    BlockElt count = 0;
+    // following loop must decrease for primitivisation calculation below
     for (BlockElt x = block.size(); x-->0; )
     {
-      unsigned int& slot = prim_index[desc][x];
-      if (slot != ~0u) // leave "cop out" indices as such
+    // store index of primitivized |x| among primitives for |RankFlags(descs)|
+    // since |x| is decreasing, initially count _larger_ primitive elements
+      BitMap& flip_x = prim_flip[x]; // place to record primitivisation flips $x$
+      unsigned int& dest = prindex_vec[x]; // the slot to fill
+
+      RankFlags D(descs); // descent set for which to primitive
+      D &= good_ascent_set(x);
+
+      if (D.none()) // then element |x| is primitive for the descent set
+      {
+	dest = count++; // store a self-reference, then increment count
+	continue;
+      }
+
+      weyl::Generator s = D.firstBit();
+      if (is_like_nonparity(block.descent_type(s,x)))
+      {
+	dest = dead_end; // stop primitivisation with zero result
+	continue;
+      }
+
+      BlockElt sx = block.some_scent(s,x);
+      if (sx==UndefBlock) // primitivization would cross partial block edge
+      {
+	dest = dead_end; // stop primitivisation with zero result
+	continue;
+      }
+
+      assert(sx>x); // ascents go up in block
+      dest = prindex_vec[sx]; // |x| has the same primitivization as |sx|
+      flip_x.set_to(descs, // and a flip that is relative to that of |sx|
+		    (block.epsilon(s,x,sx)<0)!=prim_flip[sx].isMember(descs));
+    } // |for(x)|, decreasing
+    // primitive lists are actually to be stored increasing, so reverse indices
+
+    BlockElt last=count-1;
+    for (unsigned int& slot : prindex_vec)
+      if (slot != dead_end) // leave dead end indices as such
 	slot = last-slot; // reverse all other indices
-    }
-  }
+
+  } // |for (desc)|
 
 } // |descent_table| constructor
 
-// number of primimitive elements for descents(y) of length less than y
+// number of primitive elements for |descent_set(y)| of length less than |y|
 unsigned int descent_table::col_size(BlockElt y) const
 {
   BlockElt x=length_floor(y);
@@ -132,20 +136,20 @@ unsigned int descent_table::col_size(BlockElt y) const
 
 bool descent_table::prim_back_up(BlockElt& x, BlockElt y) const
 {
-  RankFlags desc=descents[y];
+  RankFlags desc=descent_set(y);
   while (x-->0)
-    if ((good_ascents[x]&desc).none())
+    if ((good_ascent_set(x) & desc).none()) // disjoint sets
       return true;
-  return false;
+  return false; // in which case |x| has crashed through 0 and should be ignored
 } // |descent_table::prim_back_up|
 
 bool descent_table::extr_back_up(BlockElt& x, BlockElt y) const
 {
-  RankFlags desc=descents[y];
+  RankFlags desc=descent_set(y);
   while (x-->0)
-    if (descents[x].contains(desc))
+    if (descent_set(x).contains(desc)) // ascent set of |x| disjoint from |desc|
       return true; // stop when no descents of |y| are (any) ascents of |x|
-  return false;
+  return false; // in which case |x| has crashed through 0 and should be ignored
 } // |descent_table::extr_back_up|
 
 KL_table::KL_table(const ext_block::ext_block& b, std::vector<Pol>* pool)

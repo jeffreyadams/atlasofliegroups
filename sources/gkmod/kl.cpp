@@ -975,7 +975,7 @@ void KL_table::verbose_fill(BlockElt last_y)
       std::cerr // << "t="    << std::setw(5) << deltaTime << "s.
 	<< "l=" << std::setw(3) << l // completed length
 	<< ", y="  << std::setw(6)
-	<< length_less(l+1)-1 // last y value done
+	<< y_limit-1 // last y value done
 	<< ", polys:"  << std::setw(11) << d_store.size()
 	<< ", mat:"  << std::setw(11) << kl_size
 	<<  std::endl;
