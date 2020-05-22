@@ -40,8 +40,6 @@ KLSupport::KLSupport(const Block_base& b)
   : d_block(b)
   , info()
   , length_stop()
-  , d_downset(rank(),BitMap(b.size())) // bitmaps are filled below
-  , d_primset(d_downset) // start with a copy; bitmaps filled below too
   , d_prim_index(1ul << rank()) // $2^r$ empty slots, with $r$ (semisimple) rank
 {
 /*
@@ -65,25 +63,14 @@ KLSupport::KLSupport(const Block_base& b)
   }
 
 /*
-  Fill in the |downset|, |primset| bitmap vectors, and |info| bitset fields.
-  Here |downset| and |primset| are vectors indexed by a simple reflection |s|,
-  and giving a bitmap over all block elements, while |info| is vectors indexed
-  by a block element |z| and giving two bitsets over all simple reflections.
-  This difference is motivated by their use: |downset| and |primset| are used to
-  filter bitmaps over the entire block according to some set of simple
-  generators, which is easier if the data is grouped by generator. In fact the
-  data computed is stored twice: one always has |d_downset[s].isMember(z)| if
-  and only if |info[z].decents.test(s)| and similarly |d_primset[s].isMember(z)|
-  if and only if |not info[z].good_ascents.test(s)|.
-
-  The predicate that |s| is a |descent| for |z| is taken in the weak sense
-  that |s| belongs to the "tau-invariant" of |z|, in other words, it is a
-  complex descent, real parity (type I or type II), or imaginary compact (the
-  final case does not actually allow going down). The |good_ascents| bitset for
-  |z| holds the non-decents for |z| that are not imaginary type II, so they
-  are either complex ascent, imaginary type I or real nonparity. The |primset|
-  bitmap for |s| records the block elements |z| for which |s| is not a
-  |good_ascent|, in other words it is either a |descent| or imaginary type II.
+  Fill in |info|, a vector indexed by a block element |z| and giving two bitsets
+  over all simple reflections. The |descents| field of |info[z]| is the
+  "tau-invariant" of |z|: bits are set for simple reflections |s| that are
+  either a complex descent, real parity (type I or type II), or imaginary
+  compact for |z| (the final case does not actually allow descending through
+  |s|). The |good_ascents| filed for |z| flags those |s| that are neither
+  decents for |z|, nor imaginary type II ascents, so they are either complex
+  ascent, imaginary type I or real nonparity.
 */
   info.reserve(d_block.size());
   for (BlockElt z = 0; z < d_block.size(); ++z)
@@ -93,16 +80,9 @@ KLSupport::KLSupport(const Block_base& b)
     {
       DescentStatus::Value v = descent_value(s,z);
       if (DescentStatus::isDescent(v))
-      {
-	d_downset[s].insert(z);
-	d_primset[s].insert(z);
 	desc.set(s);
-      }
-      else // ascents
-	if (v == DescentStatus::ImaginaryTypeII)
-	  d_primset[s].insert(z);  // s is a "bad" ascent
-	else
-	  good_asc.set(s); // good ascent
+      else if (v != DescentStatus::ImaginaryTypeII)
+	good_asc.set(s);
     } // |for(s)|
     info.emplace_back(desc,good_asc);
   } // |for(BlockElt z)|
@@ -126,84 +106,46 @@ KLSupport::KLSupport(const Block_base& b)
   could be suppressed when using pairs $(x,P_{x,y})$ and binary search on $x$.
 */
 
-void KLSupport::fill_prim_index(RankFlags A)
+void KLSupport::fill_prim_index(RankFlags descs)
 {
-  prim_index_tp& record=d_prim_index[A.to_ulong()];
+  prim_index_tp& record=d_prim_index[descs.to_ulong()];
   record.index.resize(d_block.size()); // create slots; we will fill backwards
 
-  BitMap primitives(size()); primitives.fill();
-  filter_primitive(primitives,A); // compute all primitive elements for A
-  record.range = primitives.size();
-
-  unsigned int prim_count = record.range; // start at high end
-  const unsigned int dead_end = record.range; // signal no valid index
-
-  for (BlockElt z = d_block.size(); z-->0;)
+  unsigned int count = 0; // count primitives seen
+  constexpr unsigned int dead_end = -1; // signals "no valid index" temporarily
+  for (BlockElt x = d_block.size(); x-->0;)
   {
-    auto& dest = record.index[z]; // the slot to fill during this iteration
-    RankFlags a = good_ascent_set(z)&A;
+    // store index of primitivized |x| among primitives for |RankFlags(descs)|
+    // since |x| is decreasing, initially count _larger_ primitive elements
+    auto& dest = record.index[x]; // the slot to fill during this iteration
+    RankFlags a = good_ascent_set(x) & descs;
     if (a.none())
-    { // then |z| is primitive, record its index
-      assert(primitives.isMember(z)); // sanity check
-      dest = --prim_count;
+    { // then |x| is primitive, record its index
+      dest = count++; // for now, record nr of larger primitives
+      continue;
     }
+
+    const weyl::Generator s = a.firstBit();
+    const auto v = descent_value(s,x);
+    if (v==DescentStatus::RealNonparity)
+      dest = dead_end;
     else
     {
-      weyl::Generator s = a.firstBit();
-      switch (descent_value(s,z))
-      {
-      case DescentStatus::RealNonparity: dest = dead_end; break;
-      case DescentStatus::ComplexAscent:
-	{ auto sz=d_block.cross(s,z);
-	  dest = sz==UndefBlock ? dead_end : record.index[sz];
-	} break;
-      case DescentStatus::ImaginaryTypeI:
-	{ auto sz=d_block.cayley(s,z).first;
-	  dest = sz==UndefBlock ? dead_end : record.index[sz];
-	} break;
-      default: assert(false);
-      }
+      auto sz = d_block.unique_ascent(s,x);
+      dest = sz==UndefBlock ? dead_end : record.index[sz];
     }
-  } // |for(z-->0)|
-  assert(prim_count==0); // we've seen all primitives
+  } // |for(x-->0)|
+
+  record.range = count;
+  const BlockElt last=count-1;
+  for (unsigned int& slot : record.index)
+    slot = slot==dead_end ? record.range : last-slot; // reverse indices
+
 } // |fill_prim_index|
 
 /******** accessors **********************************************************/
 
-
-/*
-  Flag in |b|, which is of size |size()|, those block elements which are
-  extremal w.r.t. the simple reflections in |d|, i.e., for which all simple
-  generators flagged in |d| are descents. Since |d_downset[s]| flags the
-  elements for which |s| is a descent, this amounts to requesting that |z|
-  belong to the intersection of all the downsets of generators flagged in |d|.
-*/
-
-void KLSupport::filter_extremal(BitMap& b, const RankFlags& d) const
-{
-  for (weyl::Generator s=0; s<rank(); ++s)
-    if (d.test(s))
-      b &= d_downset[s];
-}
-
-
-/*
-  Flag in |b|, which is of size |size()|, those block elements which are
-  extremal w.r.t. the simple reflections in |d|, i.e., for which all simple
-  generators flagged in |d| are either descents or imaginary type II ascents.
-  Since |d_primset[s]| flags the elements for which |s| is a descent or
-  imaginary type II ascent, this amounts to requesting that |z| belong to the
-  intersection of all the primsets of generators flagged in |d|.
-*/
-void KLSupport::filter_primitive(BitMap& b, const RankFlags& d) const
-{
-  for (weyl::Generator s=0; s<rank(); ++s)
-    if (d.test(s))
-      b &= d_primset[s];
-}
-
-
-#if 0 // code disabled because replaced by table look-up
+#if 0
 /*
   Find for |x| a primitive element for |d| above it, returning that value, or
   return |d_block.size()| if a real nonparity case is hit, or if (in partial
@@ -221,21 +163,20 @@ void KLSupport::filter_primitive(BitMap& b, const RankFlags& d) const
   for which will |d_block.size()| be returned immediately.
 */
 BlockElt
-  KLSupport::primitivize(BlockElt x, const RankFlags& d) const
+  KLSupport::primitivize(BlockElt x, RankFlags desc_y) const
 {
   while (x!=UndefBlock)
   {
     RankFlags a = // good ascents for |x| that are descents for |y|
-      good_ascent_set(x) & d;
+      good_ascent_set(x) & desc_y;
     if (a.none()) // then we have succeeded in making |x| primitive
       return x;
     weyl::Generator s = a.firstBit();
-    DescentStatus::Value v = descent_value(s,x);
-    x = v == DescentStatus::RealNonparity ? UndefBlock
-      : v == DescentStatus::ComplexAscent ? d_block.cross(s,x)
-      : d_block.cayley(s,x).first; // imaginary type I
+    if (descent_value(s,x) == DescentStatus::RealNonparity)
+      break; // and |return d_block.size()|
+    x = d_block.unique_ascent(s,x);
   }
-  return d_block.size();
+  return d_block.size(); // indicate that a dead end was reached
 }
 #endif // code disabled because replaced by table look-up
 
@@ -245,13 +186,13 @@ void KLSupport::check_sub(const KLSupport& sub, const BlockEltList& embed)
   assert(sub.rank()==rank());
   for (unsigned i=1; i<embed.size(); ++i)
     assert(embed[i-1]<embed[i]);
-  for (BlockElt z=0; z<sub.block().size(); ++z)
+  for (BlockElt x=0; x<sub.block().size(); ++x)
   {
-    assert(sub.block().length(z)==d_block.length(embed[z]));
-    assert(sub.block().descent(z)==d_block.descent(embed[z]));
+    assert(sub.block().length(x)==d_block.length(embed[x]));
+    assert(sub.block().descent(x)==d_block.descent(embed[x]));
     for (weyl::Generator s=0; s<d_block.rank(); ++s)
-      if (sub.cross(s,z)!=UndefBlock)
-	assert(embed[sub.cross(s,z)]==cross(s,embed[z]));
+      if (sub.cross(s,x)!=UndefBlock)
+	assert(embed[sub.cross(s,x)]==cross(s,embed[x]));
   }
 }
 #endif

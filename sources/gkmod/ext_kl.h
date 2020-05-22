@@ -54,6 +54,12 @@ class descent_table
   bool is_descent(weyl::Generator s, BlockElt y) const
   { return descent_set(y).test(s); }
 
+  RankFlags very_easy_set(BlockElt x, BlockElt y) const
+  { return info[x].good_ascents & info[y].descents; }
+
+  RankFlags easy_set(BlockElt x, BlockElt y) const
+  { return info[y].descents-info[x].descents; }
+
   // index of primitive element corresponding to $x$ in row for $y$
   unsigned int x_index(BlockElt x, BlockElt y) const
   { return prim_index[info[y].descents.to_ulong()][x]; }
@@ -63,13 +69,9 @@ class descent_table
 
   BlockElt length_floor(BlockElt y) const
   { return block.length_first(block.length(y)); }
+
+  // number of primitive elements for |descent_set(y)| of length less than |y|
   unsigned int col_size(BlockElt y) const;
-
-  RankFlags very_easy_set(BlockElt x, BlockElt y) const
-  { return info[x].good_ascents & info[y].descents; }
-
-  RankFlags easy_set(BlockElt x, BlockElt y) const
-  { return info[y].descents-info[x].descents; }
 
   // set $x$ to last primitive element for $y$ strictly before $x$, or fail
   bool prim_back_up(BlockElt& x, BlockElt y) const;

@@ -40,9 +40,6 @@ class KLSupport
   std::vector<Elt_info> info;
   std::vector<BlockElt> length_stop; // |length_stop[l]| is first of length |l|
 
-  std::vector<BitMap> d_downset;
-  std::vector<BitMap> d_primset;
-
   struct prim_index_tp
   {
     std::vector<unsigned int> index; // from |BlockElt| to index of prim'zed
@@ -64,6 +61,7 @@ class KLSupport
   size_t length (BlockElt z) const { return d_block.length(z); }
   BlockElt length_less (size_t l) const // number of block elements of length<l
   { return length_stop[l]; }
+  BlockElt length_floor (BlockElt y) const { return length_stop[length(y)]; }
 
   BlockElt cross (size_t s, BlockElt z) const  { return d_block.cross(s,z); }
   BlockEltPair cayley (size_t s, BlockElt z) const
@@ -91,7 +89,7 @@ class KLSupport
      things up by tabulating for each descent set the map from block elements
      to the index of their primitivized counterparts.
   */
-  void prepare_prim_index(RankFlags A) // call us before any |prim_index(...,A)|
+  void prepare_prim_index (RankFlags A) // call us before any |prim_index(...,A)|
   { prim_index_tp& record=d_prim_index[A.to_ulong()];
     if (record.range==static_cast<unsigned int>(-1))
       fill_prim_index(A);
@@ -114,9 +112,37 @@ class KLSupport
   unsigned int self_index (BlockElt y) const
   { return prim_index(y,descent_set(y)); }
 
-  // the following are filters of the bitmap
-  void filter_extremal (BitMap&, const RankFlags&) const;
-  void filter_primitive (BitMap&, const RankFlags&) const;
+  bool is_extremal (BlockElt x, RankFlags descents_y) const
+    { return descent_set(x).contains(descents_y); }
+  bool is_primitive (BlockElt x, RankFlags descents_y) const
+    { return (good_ascent_set(x) & descents_y).none(); } // disjointness
+  bool is_extremal (BlockElt x, BlockElt y) const
+    { return is_extremal(x,descent_set(y)); }
+  bool is_primitive (BlockElt x, BlockElt y) const
+    { return is_primitive(x,descent_set(y)); }
+
+  // in practice the main operation for extremals/primitives is reverse traversal
+
+  // set $x$ to last extremal element for $y$ strictly before $x$, or fail
+  bool extr_back_up(BlockElt& x, RankFlags desc_y) const
+    { while (x-->0) if (is_extremal(x,desc_y)) return true;
+      return false; // now |x| has crashed through 0 and should be ignored
+    }
+
+  // set $x$ to last primitive element for $y$ strictly before $x$, or fail
+  bool prim_back_up(BlockElt& x, RankFlags desc_y) const
+    { while (x-->0) if (is_primitive(x,desc_y)) return true;
+      return false; // now |x| has crashed through 0 and should be ignored
+    }
+
+  // number of primitive elements for |descent_set(y)| of length less than |y|
+  unsigned int col_size (BlockElt y) const
+  { BlockElt x=length_floor(y); const RankFlags desc_y=descent_set(y);
+    return prim_back_up(x,desc_y) ? prim_index(x,desc_y)+1 : 0;
+  }
+
+  // primitive element for |desc_y| above and reachable from |x|, or block size
+  BlockElt primitivize (BlockElt x, RankFlags desc_y) const;
 
   void fill_prim_index(RankFlags A);
 

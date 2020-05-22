@@ -189,22 +189,6 @@ MuCoeff KL_table::mu(BlockElt x, BlockElt y) const
 						: MuCoeff(p[p.degree()]);
 }
 
-/*
-  Return the |BitMap| of all |x| extremal w.r.t. |y|.
-
-  This means that |length(x) < length(y)|, and every descent for |y| is also a
-  descent for |x|, in other words $asc(x)\cap desc(y)=\emptyset$. Here descent
-  means "in the $\tau$ invariant" (possibilities C-, ic, r1, r2).
-*/
-BitMap KL_table::extremals(BlockElt y) const
-{
-  BitMap result(size());
-  result.fill(0,length_less(length(y)));  // start with elements $<y$ in length
-  filter_extremal(result,descent_set(y)); // filter out the non-extremal elements
-
-  return result;
-}
-
 
 /*
   Return the list of all |x| primitive w.r.t. |y|.
@@ -214,10 +198,12 @@ BitMap KL_table::extremals(BlockElt y) const
 */
 BitMap KL_table::primitives (BlockElt y) const
 {
-  BitMap result(size());
-  result.fill(0,length_less(length(y)));  // start with elements $<y$ in length
-  filter_primitive(result,descent_set(y)); // filter out non-primitive elements
-
+  const BlockElt limit = length_floor(y);
+  const RankFlags desc_y = descent_set(y);
+  BitMap result(limit);
+  BlockElt x=limit;
+  while (prim_back_up(x,desc_y))
+    result.insert(x);
   return result;
 }
 
@@ -404,18 +390,13 @@ void KL_table::fill_KL_column(BlockElt y, KLHash& hash)
   weyl::Generator s = first_direct_recursion(y);
   if (s<rank())  // a direct recursion was found, use it for |y|, for all |x|
   {
-    std::vector<KLPol> klv(block().size()+1); // storage, indexed by |BlockElt|
-    klv[y]=One; // ensure diagonal entry of it taken to be $P_{y,y}=1$
-    BitMap ext = extremals(y); // we compute for |x| extremal only
-
-    recursion_column(klv,ext,y,s); // compute all polynomials for these |x|
-    complete_primitives(klv,ext,y,hash); // add primitives; store in |d_KL|
+    std::vector<KLPol> klv = // compute all polynomials for extremal |x| for |y|
+      recursion_column(y,s);
+    // write result
+    complete_primitives(klv,y,hash); // add primitives; store in |d_KL|
   }
   else // we must use an approach that distinguishes on |x| values
-  {
-    BitMap prims = primitives(y); // here we do all |x| primitive for |y|
-    d_KL[y] = new_recursion_column(prims,y,hash); // compute and install column
-  }
+    d_KL[y] = new_recursion_column(y,hash); // compute and install column
 } // |KL_table::fill_KL_column|
 
 /*
@@ -434,22 +415,23 @@ void KL_table::fill_KL_column(BlockElt y, KLHash& hash)
   |y1| (which is recomputed here), but the summation itself involves polynomials
   $P_{x,z}$ that depend on $x$ as well.
 */
-void KL_table::recursion_column(std::vector<KLPol>& klv,
-				const BitMap& e, // extremals for |y|
-				BlockElt y,
-				weyl::Generator s)
+std::vector<KLPol> KL_table::recursion_column (BlockElt y,weyl::Generator s)
 {
-  BlockElt sy =
+  std::vector<KLPol> klv(block().size()+1); // storage, indexed by |BlockElt|
+  klv[y]=One; // ensure diagonal entry of it taken to be $P_{y,y}=1$
+
+  const RankFlags desc_y = descent_set(y);
+  const BlockElt sy =
     descent_value(s,y) == DescentStatus::ComplexDescent ? cross(s,y)
     : inverse_Cayley(s,y).first;  // s is real type I for y here, ignore .second
 
-  unsigned long x = // declaration outside is needed for error reporting
-     e.capacity(); // reverse traverser, used in |while| loop below
+  BlockElt x = // declaration outside is needed for error reporting
+    length_floor(y);
   try {
 
     // the following loop could be run in either direction: no dependency.
     // however it is natural to take |x| descending from |y| (exclusive)
-    while (e.back_up(x))
+    while (extr_back_up(x,desc_y))
     { // now |x| is extremal for $y$, so $s$ is descent for $x$
       switch (descent_value(s,x))
       {
@@ -500,7 +482,8 @@ void KL_table::recursion_column(std::vector<KLPol>& klv,
 			    static_cast<const KL_table&>(*this));
   }
 
-  mu_correction(klv,e,sy,s); // subtract mu-correction from all of |klv|
+  mu_correction(klv,desc_y,sy,s); // subtract mu-correction from all of |klv|
+  return klv;
 
 } // |KL_table::recursion_column|
 
@@ -532,7 +515,7 @@ void KL_table::recursion_column(std::vector<KLPol>& klv,
   Either direction of the loop on $z$ would work, but taking it decreasing is
   more natural.
  */
-void KL_table::mu_correction(std::vector<KLPol>& klv, const BitMap& e,
+void KL_table::mu_correction(std::vector<KLPol>& klv, RankFlags desc_y,
 			     BlockElt sy, weyl::Generator s)
 {
   const Mu_column& mcol = d_mu[sy];
@@ -549,22 +532,21 @@ void KL_table::mu_correction(std::vector<KLPol>& klv, const BitMap& e,
 	size_t lz = length(z);
 	polynomials::Degree d = (ly-lz)/2; // power of |q| used below
 
+	BlockElt x = length_less(lz);
 	if (mu==MuCoeff(1)) // avoid useless multiplication by 1 if possible
-	  for (BlockElt x : e)
+	  while (extr_back_up(x,desc_y))
 	  {
-	    if (length(x) >= lz) break; // once reached, $x=z$ is only case left
 	    KLPolRef pol = KL_pol(x,z);
 	    klv[xx=x].safeSubtract(pol,d); // subtract $q^d.P_{x,z}$ from klv[x]
-	  } // |for (j)|
+	  }
 	else // (rare) case that |mu>1|
-	  for (BlockElt x : e)
+	  while (extr_back_up(x,desc_y))
 	  {
-	    if (length(x) >= lz) break; // once reached, $x=z$ is only case left
 	    KLPolRef pol = KL_pol(x,z);
 	    klv[xx=x].safeSubtract(pol,d,mu); // subtract $q^d.mu.P_{x,z}$
-	  } // |for (j)|
+	  }
 
-	if (e.isMember(z)) // then handle final term |x==z|
+	if (is_extremal(z,desc_y)) // then handle final term |x==z|
 	{ // none of the larger |z| should have altered the leading coefficient
 	  assert( klv[z].degree()==d and klv[z][d]==mu );
 	  klv[xx=z].safeSubtract(KLPol(d,mu)); // subtract off the term $mu.q^d$
@@ -573,9 +555,7 @@ void KL_table::mu_correction(std::vector<KLPol>& klv, const BitMap& e,
       } // |for (it->reverse(mcol))| |if(isDescent(descentValue(s,it->x))|
   }
   catch (error::NumericUnderflow& err){
-    BlockElt y = // reconstruct |y| uniquely from |s| and |sy|
-      descent_value(s,sy) == DescentStatus::ComplexAscent
-      ? cross(s,sy) : cayley(s,sy).first;
+    BlockElt y = block().unique_ascent(s,sy); // reconstruct |y| uniquely
     throw kl_error::KLError(xx,y,__LINE__,
 			    static_cast<const KL_table&>(*this));
   }
@@ -599,21 +579,21 @@ void KL_table::mu_correction(std::vector<KLPol>& klv, const BitMap& e,
    of that length as well with nonzero mu), and are primitive only in the real
    type 2 case; we must treat them outside the loop over primitive elements.
  */
-void KL_table::complete_primitives(std::vector<KLPol>& klv, const BitMap& ext,
-				   BlockElt y, KLHash& hash)
+void KL_table::complete_primitives(std::vector<KLPol>& klv,
+				     BlockElt y, KLHash& hash)
 {
-  auto prims = primitives(y); // the elements for which we must write an entry
   KL_column& KL = d_KL[y]; // the column that we must write to
-  KL.resize(prims.size()); // create slots for all pertinent elements |x|
+  KL.resize(col_size(y)); // create slots for all pertinent elements |x|
 
   Mu_list mu_pairs; // those |x| with |mu(x,y)>0|
-
-  unsigned int ly = length(y);
+  const unsigned int ly = length(y);
+  const RankFlags desc_y = descent_set(y);
 
   auto KL_it = KL.rbegin(); // prepare for writing |KL| backwards
-  for (unsigned long x=prims.capacity(); prims.back_up(x); ++KL_it)
-    if (ext.isMember(x))
-    { // extremal element; use stored polynomial
+  // traverse primitives for |y| of length |y| less than |ly| backwards
+  for(BlockElt x=length_floor(y); prim_back_up(x,desc_y);++KL_it)
+    if (is_extremal(x,desc_y))
+    { // extremal element for |y|; use polynomial from vector passed to us
       const KLPol& Pxy = klv[x];
       *KL_it = hash.match(Pxy);
       unsigned int lx = length(x);
@@ -688,10 +668,7 @@ void KL_table::complete_primitives(std::vector<KLPol>& klv, const BitMap& ext,
   This code gets executed for |y| that are of minimal length, in which case
   it only contributes $P_{y,y}=1$; the |while| loop will be executed 0 times.
 */
-std::vector<KLIndex> KL_table::new_recursion_column
-( const BitMap& prims, // with entries primitive elements of length |< length(y)|
-  BlockElt y,
-  KLHash& hash)
+std::vector<KLIndex> KL_table::new_recursion_column(BlockElt y, KLHash& hash)
 {
   const unsigned int l_y = length(y);
   const auto desc_y = descent_set(y);
@@ -711,11 +688,11 @@ std::vector<KLIndex> KL_table::new_recursion_column
   // all |mu_pairs| is not decreasing by |x|, but it must be decreasing by length
   const auto downs_end = mu_pairs.end(); // record separation for final sorting
 
-  unsigned long x = length_less(length(y)); // upper bound for |prims| members
+  BlockElt x = length_less(l_y);
   try {
     auto col_it = // |*col_it| will be entry for $P_{x,y}$
-      cur_col.begin()+prims.size(); // this is the upper bound for written part
-    while (prims.back_up(x)) // reverse loop through block elements in |prims|
+      cur_col.begin()+col_size(y); // the upper bound for written part
+    while (prim_back_up(x,desc_y)) // reverse loop through primitive elements
     {
       --col_it; // synchronise with |x|
       unsigned int s= ascent_descent(x,y);
@@ -845,7 +822,7 @@ std::vector<KLIndex> KL_table::new_recursion_column
   d_mu[y].assign(mu_pairs.wcbegin(),mu_pairs.wcend());
 
   // slice off the relevant initial part of |cur_col|, for elements in |prims|
-  return std::vector<KLIndex>(cur_col.begin(),cur_col.begin()+prims.size());
+  return std::vector<KLIndex>(cur_col.begin(), cur_col.begin()+col_size(y));
 } // |KL_table::new_recursion_column|
 
 /*
