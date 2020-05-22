@@ -5068,6 +5068,7 @@ void param_W_cells_wrapper(expression_base::level l)
   wgraph::WGraph wg = kl::wGraph(kl_tab);
   wgraph::DecomposedWGraph dg(wg);
 @)
+  push_value(std::make_shared<int_value>(start));
   own_row cells=std::make_shared<row_value>(0);
   cells->val.reserve(dg.cellCount());
   for (unsigned int c = 0; c < dg.cellCount(); ++c)
@@ -5088,6 +5089,8 @@ void param_W_cells_wrapper(expression_base::level l)
     cells->val.push_back(std::move(tup));
   }
   push_value(std::move(cells));
+  if (l==expression_base::single_value)
+   wrap_tuple<2>();
 }
 
 @ The following code was isolated so that it can be reused below.
@@ -5272,7 +5275,7 @@ install_function(dual_KL_block_wrapper,@|"dual_KL_block"
 install_function(partial_KL_block_wrapper,@|"partial_KL_block"
                 ,"(Param->[Param],mat,[vec],vec,vec,mat)");
 install_function(param_W_cells_wrapper,@|"W_cells"
-                ,"(Param->[[int],[[int],[int,int]]])");
+                ,"(Param->int,[[int],[[int],[int,int]]])");
 install_function(extended_block_wrapper,@|"extended_block"
                 ,"(Param,mat->[Param],mat,mat,mat)");
 install_function(extended_KL_block_wrapper,@|"extended_KL_block"
