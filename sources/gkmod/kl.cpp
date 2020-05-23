@@ -625,7 +625,9 @@ void KL_table::complete_primitives(std::vector<KLPol>& klv,
 } // |KL_table::complete_primitives|
 
 /*
-  Complete second components in |kl_col| so that it holds pairs $(x,P_{x,y}$.
+  Compute polynomials $P_{x,y}$ for all $x$ of length less than and primitive
+  for |y|, look them up and return a vector of their indices in |d_store|.
+
   These KL polynomials are computed by a recursion formula designed for those
   elements |y| for which the direct recursion does not apply.
 
