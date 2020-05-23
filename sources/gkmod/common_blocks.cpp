@@ -534,6 +534,7 @@ common_block::common_block // partial block constructor
 	y_hash.match(i_tab.pack(t,i_x)); // enter this |y_entry| into |y_hash|
       } // we ensured that that |y| increases with |y_stripped| value in packet
       assert(y_hash.size()==old_size+y_table[i_x].size()); // all |y|'s were new
+      ndebug_use(old_size);
       highest_y += y_table[i_x].size();
     }
     assert(y_pool.size()==highest_y);

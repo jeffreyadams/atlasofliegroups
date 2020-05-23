@@ -287,19 +287,19 @@ BitMap KL_table::prim_map (BlockElt y) const
  *****************************************************************************/
 
 /*
-  Return the first descent generator that is not real type II
+  Return the first generator that is a strict descent other than real type II
 
-  Explanation: these are the ones that give a direct recursion formula for the
-  K-L basis element. Explicitly, we search for a generator |s| such that
-  |descentValue(s,y)| is either |DescentStatus::ComplexDescent| or
-  |DescentStatus::RealTypeI|. If no such generator exists, we return |rank()|.
+  These are the ones that give a direct recursion formula for the K-L basis
+  element. Concretely, |first_direct_recursion(y)| returns the first generator
+  |s| such that |descentValue(s,y)| is either |DescentStatus::ComplexDescent| or
+  |DescentStatus::RealTypeI|. If no such generator exists, it returns |rank()|.
 */
 weyl::Generator KL_table::first_direct_recursion(BlockElt y) const
 {
   const DescentStatus& d = descent(y);
   weyl::Generator s;
   for (s=0; s<rank(); ++s)
-    if (DescentStatus::isDirectRecursion(d[s]))
+    if (DescentStatus::isDirectRecursion(d[s])) // complex descent or real type1
       break;
 
   return s;
@@ -334,11 +334,11 @@ weyl::Generator KL_table::first_nice_and_real(BlockElt x,BlockElt y) const
 } // |KL_table::first_nice_and_real|
 
 /*
-  Preconditions:
-  * all descents for y are of type r2 (firstDirectRecursion has failed)
-  * x is extremal for y (none of the descents for y are ascents for x)
-  * none of the rn ascents for y is C+, ic or i2 for x (so
-    |first_nice_and_real| failed to find anything)
+  When this routing is called, it has been observed that:
+  * any true descent for y is of type r2 (|first_direct_recursion| has failed)
+  * |x| is extremal for |y| (none of the weak descents for y are ascents for x)
+  * none of the rn ascents for y is C+, ic or i2 for x (|first_nice_and_real|
+    failed to find anything)
 
   Return the first pair (s,t) such that
   1) (s,t) is (rn,r2) for y;
@@ -763,7 +763,7 @@ std::vector<KLIndex> KL_table::new_recursion_column(BlockElt y, KLHash& hash)
 
       /* now |x| is extremal for |y|. By (split 1) and Lemma 3.1 of recursion.pdf
          this implies that if $x<y$ in the Bruhat order, there is at least one
-         |s| real for |y| that is a true ascent (not rn) for |x| and therefore
+         |s| real for |y| that is a strict ascent (not rn) for |x| and therefore
          rn for |y|; we first hope that at least one of them is not i1 for |x|
       */
       // first seek a real nonparity ascent for |y| that is C+,i2 or ic for |x|

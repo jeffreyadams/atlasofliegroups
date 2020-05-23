@@ -110,8 +110,10 @@ class KL_table
   // The twisted Kazhdan-Lusztig-Vogan polynomial P_{x,y}
   Pol P(BlockElt x, BlockElt y) const;
 
-  bool extremal(BlockElt x, BlockElt y) const
-  { return aux.descent_set(x).contains(aux.descent_set(y)); }
+  bool is_extremal(BlockElt x, BlockElt y) const
+  { return aux.easy_set(x,y).none(); }
+  bool is_primitive(BlockElt x, BlockElt y) const
+  { return aux.very_easy_set(x,y).none(); }
 
   // list of elements |x| such that $P(x,y)$ is nonzero, decreasing from |y|
   containers::sl_list<BlockElt> nonzero_column(BlockElt y) const;
