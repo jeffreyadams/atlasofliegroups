@@ -630,10 +630,6 @@ void KL_table::do_new_recursion(BlockElt y,PolHash& hash)
 {
   // in local vector |cy| store $P_x,y}$ whenever $l(x)<l(y)$
   const BlockElt floor_y =aux.length_floor(y);
-  std::vector<PolEntry> cy(floor_y,(PolEntry()));
-
-  // for the primitive |x| we transfer to |column.back()| so |P(xx,y)| works
-  KLColumn::iterator out_it = column.back().end();
 
   struct non_parity_info { weyl::Generator s; std::vector<Pol> M; };
   containers::sl_list<non_parity_info> rn_for_y;
@@ -662,33 +658,32 @@ void KL_table::do_new_recursion(BlockElt y,PolHash& hash)
   }
 #endif
 
-  for (BlockElt x=floor_y; x-->0; )
-  { // compute |cy[x]| and store at |--out_it| whenever |x| is primitive for |y|
-    if (not is_extremal(x,y))
-    {
-      if (not is_primitive(x,y)) // then we can equate to a previous polynomial
-	cy[x] = P(x,y); // primitivising |x| safely returns such a polynomial
-      else // though not extremal |x| is primitive; |P(x,y)| cannot be called yet
-      { // so combine contributions from (at most) two Cayley ascents by hand
-	weyl::Generator s = aux.easy_set(x,y).firstBit();
-	assert(s<rank() and not aux.is_descent(s,x)); // since |x| not extremal
-	assert(has_double_image(type(s,x))); // since ascent |s| for |x| not good
-	BlockEltPair sx = aux.block.Cayleys(s,x);
-	if (sx.first!=UndefBlock)
+  // for the primitive |x| we transfer to |column.back()| so |P(xx,y)| works
+  auto out_it = column.back().rbegin();
+
+  for (BlockElt x=floor_y; aux.prim_back_up(x,y); ++out_it)
+  { // compute $P_{x,y}$ for all |x| primitive for |y|, and store at |*out_it|
+    if (not is_extremal(x,y)) // primitive though not extremal
+    { // combine contributions from (at most) two Cayley ascents by hand
+      weyl::Generator s = aux.easy_set(x,y).firstBit();
+      assert(s<rank() and not aux.is_descent(s,x)); // since |x| not extremal
+      assert(has_double_image(type(s,x))); // since ascent |s| for |x| not good
+      BlockEltPair sx = aux.block.Cayleys(s,x);
+      auto Pxy = Pol(0);
+      if (sx.first!=UndefBlock)
+      { // although |P(x,y)| cannot be called yet, |P(x',y)| for |x'>x| is OK
+	Pxy = P(sx.first,y); // computed earlier this loop
+	if (aux.block.epsilon(s,x,sx.first)<0)
+	  Pxy *= -1;
+	if (sx.second!=UndefBlock)
 	{
-	  cy[x] = P(sx.first,y);  // computed earlier this loop
-	  if (aux.block.epsilon(s,x,sx.first)<0)
-	    cy[x] *= -1;
-	  if (sx.second!=UndefBlock)
-	  {
-	    if (aux.block.epsilon(s,x,sx.second)>0)
-	      cy[x] += P(sx.second,y);
-	    else
-	      cy[x] -= P(sx.second,y);
-	  }
+	  if (aux.block.epsilon(s,x,sx.second)>0)
+	    Pxy += P(sx.second,y);
+	  else
+	    Pxy -= P(sx.second,y);
 	}
-	*--out_it = hash.match(cy[x]); // store result in primitive (only) case
-      } // end of |else| for |if (not is_primitive(x,y))|
+      }
+      *out_it = hash.match(Pxy); // store result in primitive (only) case
     } // end of "then" branch for |if (not is_extremal(x,y))|
     else // |x| is extremal for |y|, so we must do real computation
     { // first seek proper |s| the is real non-arity for |y|
@@ -707,14 +702,12 @@ void KL_table::do_new_recursion(BlockElt y,PolHash& hash)
 	  { info_ptr = &info; break; }
       }
 
-      if (info_ptr==nullptr) // then we have found nothing
-	assert(cy[x]==Pol(0)); // and we can now safely leave |cy[x]| zero
-      else // we did |break| above, so we found some |s| with good type |tsx|
+      auto Q = Pol(0); // default value for when no good |s| was found
+      if (info_ptr!=nullptr) // |break| above, we found |s| with good type |tsx|
       {	// we still have |info_ptr| and |tsx==type(info_ptr->s,x)| at hand
 	const auto s = info_ptr->s;
 	const auto& M = info_ptr->M;
 	const unsigned k = aux.block.orbit(s).length();
-	PolEntry& Q=cy[x]; // the entry that we are going to compute below
 	const BlockElt last_u=aux.block.length_first(aux.block.length(x)+1);
 
 	// initialise $Q=\sum_{x<u<y}[s\in\tau(u)]r^{l(y/u)+k}P_{x,u}m_s(u,y)$
@@ -732,7 +725,7 @@ void KL_table::do_new_recursion(BlockElt y,PolHash& hash)
 	    BlockElt sx=aux.block.cross(s,x);
 	    // if |sx==UndefBlock| the next condition always fails
 	    if (sx<floor_y) // subtract contrib. from $[T_x](T_s+1).T_{sx}=q^k$
-	      Q -= aux.block.T_coef(s,x,sx)*cy[sx]; // coef is $\pm q^k$
+	      Q -= aux.block.T_coef(s,x,sx)*P(sx,y); // coef is $\pm q^k$
 	  } // implicit division of $Q$ here is by |T_coef(s,x,x)==1|
 	  break;
 	case ext_block::two_semi_imaginary:
@@ -741,7 +734,7 @@ void KL_table::do_new_recursion(BlockElt y,PolHash& hash)
 	  { // |has_defect(tsx)|
 	    BlockElt sx=aux.block.Cayley(s,x);
 	    if (sx<floor_y) // then in particular |sx!=UndefBlock|
-	      Q -= aux.block.T_coef(s,x,sx)*cy[sx]; // coef is $\pm(q^k-q)$
+	      Q -= aux.block.T_coef(s,x,sx)*P(sx,y); // coef is $\pm(q^k-q)$
 
 	    /* divide by |T_coef(s,x,x)==1+q|, knowing that $Q$ may be missing
 	       a term in effective degree $r^1$, from |mu(1,x,y)| that is not
@@ -762,9 +755,10 @@ void KL_table::do_new_recursion(BlockElt y,PolHash& hash)
 	    assert(has_double_image(tsx)); // since it is a type 2 ascent
 	    BlockEltPair sx=aux.block.Cayleys(s,x); // again |UndefBlock|s are OK
 	    if (sx.first<floor_y)
-	      Q -= aux.block.T_coef(s,x,sx.first)*cy[sx.first]; // $\pm(q^k-1)$
+	      Q -= aux.block.T_coef(s,x,sx.first) // $\pm(q^k-1)$
+		*P(sx.first,y);
 	    if (sx.second<floor_y)
-	      Q -= aux.block.T_coef(s,x,sx.second)*cy[sx.second]; // idem
+	      Q -= aux.block.T_coef(s,x,sx.second)*P(sx.second,y); // idem
 	    Q/=2;                     // divide by |T_coef(s,x,x)==2|
 	  }
 	  break;
@@ -773,7 +767,7 @@ void KL_table::do_new_recursion(BlockElt y,PolHash& hash)
 	  { // |is_like_type_1(tsx)|, this used to be called the endgame case
 	    BlockElt x_prime=aux.block.Cayley(s,x);
 	    if (x_prime<floor_y)
-	      Q -= aux.block.T_coef(s,x,x_prime)*cy[x_prime]; // $\pm(q^k-1)$
+	      Q -= aux.block.T_coef(s,x,x_prime)*P(x_prime,y); // $\pm(q^k-1)$
 	    // implict division of $Q$ here is by |T_coef(s,x,x)==1|
 
 	    // now subtract off $P_{s\times x,y}$, easily computed on the fly
@@ -785,11 +779,11 @@ void KL_table::do_new_recursion(BlockElt y,PolHash& hash)
 	    {
 	      BlockEltPair sx_up_t = aux.block.Cayleys(t,s_cross_x);
 	      if (sx_up_t.first<floor_y)
-		Q -= cy[sx_up_t.first]
+		Q -= P(sx_up_t.first,y)
 		    *(aux.block.epsilon(s,x,s_cross_x)
 		      *aux.block.epsilon(t,s_cross_x,sx_up_t.first));
 	      if (sx_up_t.second<floor_y)
-		Q -= cy[sx_up_t.second]
+		Q -= P(sx_up_t.second,y)
 		    *(aux.block.epsilon(s,x,s_cross_x)
 		      *aux.block.epsilon(t,s_cross_x,sx_up_t.second));
 	    }
@@ -797,7 +791,7 @@ void KL_table::do_new_recursion(BlockElt y,PolHash& hash)
 	    {
 	      BlockElt sx_up_t=aux.block.Cayley(t,s_cross_x);
 	      if (sx_up_t<floor_y)
-		Q -= cy[sx_up_t]
+		Q -= P(sx_up_t,y)
 		    *(aux.block.epsilon(s,x,s_cross_x)
 		      *aux.block.epsilon(t,s_cross_x,sx_up_t));
 	    }
@@ -807,9 +801,9 @@ void KL_table::do_new_recursion(BlockElt y,PolHash& hash)
 	  {
 	    BlockEltPair sx=aux.block.Cayleys(s,x);
 	    if (sx.first<floor_y)
-	      Q -= aux.block.T_coef(s,x,sx.first)*cy[sx.first]; // $\pm(q^2-1)$
+	      Q -= aux.block.T_coef(s,x,sx.first)*P(sx.first,y); // $\pm(q^2-1)$
 	    if (sx.second<floor_y)
-	      Q -= aux.block.T_coef(s,x,sx.second)*cy[sx.second]; // idem
+	      Q -= aux.block.T_coef(s,x,sx.second)*P(sx.second,y); // idem
  	    Q/=2; // divide by |T_coef(s,x,x)==2|
 	  }
 	  break;
@@ -825,13 +819,13 @@ void KL_table::do_new_recursion(BlockElt y,PolHash& hash)
 	  break;
 	default: assert(false); // other cases should not have selected |s|
 	} // |switch(tsx)|
-	// now |Q| which is alias for |cy[x]| is completely computed
-      } // end of |else| of |if(info_ptr==nullptr)|
-      *--out_it = hash.match(cy[x]); // extremal implies primitive: store result
+	// now |Q| is completely computed
+      } // |if (info_ptr!=nullptr)|
+      *out_it = hash.match(Q); // extremal implies primitive: store result
     } // end of |else| of |if (not is_extremal(x,y))|
 
     // now if there is a defect ascent from |x|, update |M| for |mu(1,x,y)|
-    if (aux.block.l(y,x)%2!=0 and cy[x].degree()==aux.block.l(y,x)/2)
+    if (aux.block.l(y,x)==1+2*P(x,y).degree())
       for (auto& info : rn_for_y)
       {
 	const weyl::Generator s=info.s;	auto& M = info.M;
@@ -840,7 +834,7 @@ void KL_table::do_new_recursion(BlockElt y,PolHash& hash)
 	{
 	  const BlockElt sx = aux.block.Cayley(s,x);
 	  assert(sx<floor_y); // could only fail if |x| in downset, tested above
-	  int mu = cy[x].coef(aux.block.l(y,x)/2) * aux.block.epsilon(s,x,sx);
+	  int mu = P(x,y).coef(aux.block.l(y,x)/2) * aux.block.epsilon(s,x,sx);
 	  M[sx] += Pol (M[sx].degree()==2 ? 1 : 0, mu);
 	}
       }
@@ -850,7 +844,7 @@ void KL_table::do_new_recursion(BlockElt y,PolHash& hash)
 	info.M[x] = get_Mp(info.s,x,y,info.M);
   } // |for(x)|
 
-  assert(out_it==column[y].begin()); // check that we've traversed the column
+  assert(out_it==column[y].rend()); // check that we've traversed the column
 } // |KL_table::do_new_recursion|
 
 
