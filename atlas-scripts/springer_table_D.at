@@ -7,8 +7,7 @@
 
 {all partitions for orbits of D_n, partitions of (even) n
 every odd part has even multiplicity}
-set partitions_D(int n)=[Partition]:
-parity_restricted_partitions(2*n,false)
+set partitions_D(int n)=[Partition]: parity_restricted_partitions(false)(2*n)
 
 { ---------------- type D ------------------}
 

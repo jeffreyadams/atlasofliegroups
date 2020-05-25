@@ -27,7 +27,9 @@ set cells_table_augmented (CharacterTable ct, [WCell] cells) = mat:
   in matrix_of_inner_products(ct,characters)
 
 set cell_representation (CharacterTable ct,WCell cell) = W_rep:
-  (#cell.graph,for i:ct.lie_type.semisimple_rank do unsparse(cell_action(cell,i),#cell.graph) od)
+  (#cell.graph,
+   for i:ct.lie_type.semisimple_rank
+   do unsparse(cell_action(cell,i),#cell.graph) od)
 
 { list of representations defined by an array of cells }
 set cell_representations(CharacterTable ct,[WCell] cells)=[W_rep]:
@@ -36,16 +38,20 @@ set cell_representations(CharacterTable ct,[WCell] cells)=[W_rep]:
 {smallest_degree_summands is in character_tables.at}
 
 set special_character(CharacterTable ct,WCell cell)=
-let summands=smallest_degree_summands(ct,ct.decompose(ct.cell_character(cell))) in
-if #summands>1 then error("not unique special representation") elif
-#summands=0 then error("no special summands?") else summands[0] fi
-set special_character(CharacterTable ct)=(WCell->int):(WCell cell):special_character(ct,cell)
+let summands=smallest_degree_summands(ct,ct.decompose(ct.cell_character(cell)))
+in if #summands>1 then error("not unique special representation")
+   elif #summands=0 then error("no special summands?")
+   else summands[0]
+   fi
+set special_character(CharacterTable ct)=(WCell->int):(WCell cell):
+  special_character(ct,cell)
 
 set special_character(CharacterTable ct,[int] cell_character)=
 let summands=smallest_degree_summands(ct,ct.decompose(cell_character)) in
 if #summands>1 then error("not unique special representation") elif
 #summands=0 then error("no special summands?") else summands[0] fi
-{set special_character(CharacterTable ct)=([int]->int):([int] cell_character):special_character(ct,cell_character)}
+{set special_character(CharacterTable ct)=([int]->int):
+ ([int] cell_character):special_character(ct,cell_character)}
 
 set cells_verbose=false
 
@@ -76,8 +82,8 @@ rv
 in W_cells(p) refers to
 }
 set blocks_and_cells([Param] params)=[([Param],[WCell])]:
-for b in blocks(params) do
-let p=b[0] in (block_of(p),W_cells(p)) od
+  for b in blocks(params)
+  do let (,cell)=W_cells(b[0]) in (b,cell) od
 
 set blocks_and_cells(Param p)=blocks_and_cells(block_of(p))
 
