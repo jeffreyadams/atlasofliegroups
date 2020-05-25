@@ -236,7 +236,7 @@ Pol qk_minus_q(int k)
 Pol KL_table::product_comp (BlockElt x, weyl::Generator s, BlockElt sy) const
 {
   assert(is_descent(type(s,x)));  // otherwise don't call this function
-  BlockEltList neighbours; neighbours.reserve(s);
+  containers::sl_list<BlockElt> neighbours;
   aux.block.add_neighbours(neighbours,s,x);
   Pol result=aux.block.T_coef(s,x,x)*P(x,sy); // start with term from diagonal
   for (BlockElt sx : neighbours)
