@@ -1,3 +1,4 @@
+<basic.at
 <combinatorics.at { for |Partition| type, partition generators, dominance order }
 
 { (complex) nilpotent orbits for simple classical groups,
@@ -24,13 +25,14 @@ set type_number (RootDatum rd) = int: type_number(Lie_type(rd))
 { (complex) nilpotent orbits, partition-type classification,
   for simple group of type A-D
 }
-set nilpotent_orbit_partitions (LieType t)= [Partition]:
+set nilpotent_orbit_partitions =
+  let C_partitions = parity_restricted_partitions(true)  { odd restricted }
+  ,  BD_partitions = parity_restricted_partitions(false) { even restricted }
+  in (LieType t) [Partition]:
   let n=semisimple_rank(t) in
   case type_number(t) { this only lets simple types through }
-  in partitions(n+1) { all partitions in type A }
-  , parity_restricted_partitions(2*n+1,false) { even restricted in type B }
-  , parity_restricted_partitions(2*n,true) { odd restricted in type C }
-  , parity_restricted_partitions(2*n,false) { even restricted in type D }
+  in  partitions(n+1), BD_partitions(2*n+1)
+  , C_partitions(2*n), BD_partitions(2*n)
   else error("Exceptional type")
   esac
 
@@ -41,11 +43,11 @@ set nilpotent_orbit_partitions(RootDatum rd) = [Partition]:
    nilpotent_orbit_partitions(Lie_type(rd))
 
 { test if partition is valid orbit in type ABCD }
-set is_valid (string type,vec P) = bool:
+set is_valid (string type,Partition P) = bool:
 { avoid constructing |Lie_type(type[0]+n|, to no choke on "B1" and such }
-  let P=P.delete_trailing_zeros in
+  P:=P.strip_to_partition; { avoid frequencies of 0 }
   case ascii(type)-ascii("A")
-  in true
+  in { type A } true
   , { type B } sum(P).is_odd and
     all(for mult in P.frequencies.even_places do mult.is_even od)
   , { type C } sum(P).is_even and

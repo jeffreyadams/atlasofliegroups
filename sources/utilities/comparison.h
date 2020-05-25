@@ -1,8 +1,6 @@
-/*!
-\file
-  This is comparison.h
-*/
 /*
+  This is comparison.h
+
   Copyright (C) 2004,2005 Fokko du Cloux
   part of the Atlas of Lie Groups and Representations
 
@@ -24,18 +22,19 @@ namespace comparison {
 
 namespace comparison {
 
-/* The template Compare turns a unary function object into a comparison class
-   The comparison is done by comparing the images under the function object
-   by means of operator<.
+/*
+  The template |Compare| turns a unary function object into a comparison class
+  The comparison is done by comparing the images under the function object
+  by means of operator<.
 
-   So if |f| is a unary function object, one can set
+  So if |f| is a unary function object, one can set
 
-   Compare<F> comp=Compare<F>(f); // or Compare<F> comp(f);
+    Compare<F> comp=Compare<F>(f); // or Compare<F> comp(f);
 
-   after which |comp(x,y)| is equivalent to |f(x)<f(y)|. Rather than being
-   stored in a variable, |Compare<F>(f)| is usually passed as an argument (of
-   type |const Compare<F>&|) to a (STL) function needing a comparison object.
- */
+  after which |comp(x,y)| is equivalent to |f(x)<f(y)|. Rather than being
+  stored in a variable, |Compare<F>(f)| is usually passed as an argument (of
+  type |const Compare<F>&|) to a (STL) function needing a comparison object.
+*/
 
 // template function allowing |compare(f)| to abbreviate |Compare<F>(f)|
 template<typename F>
@@ -55,8 +54,8 @@ class Compare {
   }
 };
 
-}
+} // |namespace comparison|
 
-}
+} // |namespace atlas|
 
 #endif

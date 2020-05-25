@@ -502,6 +502,20 @@ set classes_for_real_parabolics (RealForm G)=[[int]]:
     result#:=temp fi od;
     ##for v in result do if #v>0 then [v] else [] fi od
 
+{Find equivalence classes of non-imaginary simple roots w.r.t. max. x, for
+alpha \cong alpha' if (1-theta)(alpha)=(1-theta(alpha')}
+set classes_for_theta_parabolics (RealForm G)=[[int]]:
+   let theta=distinguished_involution(G), sr=simple_roots(G) then list=[int]:
+   ##for alpha@i in sr do if not is_real(theta)(alpha) then [i] else []  fi od
+   then result=[[int]]:[] in
+   for i in list do if is_imaginary(theta)(sr[i]) then result#:=[i] else
+    let temp=[int]:
+    ##for j in list do if j >= i and (1+theta)*sr[i]=(1+theta)*sr[j]
+     and all(for v in result do all(for n in v do j!=n od) od) then [j] else [] fi od in
+    result#:=temp fi od;
+    ##for v in result do if #v>0 then [v] else [] fi od
+
+
 {maximal parabolics among all real parabolics of G=G(R)
 not the same as real forms of maximal parabolics of G(C)
 }
@@ -510,23 +524,23 @@ set maximal_real_parabolics(RealForm G)=[KGPElt]:
    let S=[int]: ##for i:#sr do if is_imaginary(theta)(sr[i]) then [i] else [] fi od
    in let list=classes_for_real_parabolics(G) then n=#list in
    for i:n do let RS=S in for v in delete(list,i) do RS:=RS##v od; (RS,x) od
-{set maximal_real_parabolics(RealForm G)=
-{if G is (relatively) split this is easy}
-if G.is_relatively_split then for i:G.ss_rank do KGPElt:(delete(#G.ss_rank,i),G.x_open) od
-else
-{in general: brute force listing and test of containment}
-let real_parabolics=all_real_parabolics(G) then
-proper_real_parabolics=##for P in real_parabolics do if #P.S<G.ss_rank then [P] else [] fi od in
-##for P in proper_real_parabolics do
- if any(for Q in proper_real_parabolics do  is_proper_subset(P.S,Q.S) od) then [] else [P] fi od
-fi
-}
+
+{theta_stable parabolics, maximal among all such
+unlike the real_parabolic case, these have different x-values}
+set maximal_theta_parabolics(RealForm G)=[KGPElt]:
+   let theta= distinguished_involution(inner_class(G))
+   then sr=simple_roots(G) in
+   let S=[int]: ##for i:#sr do if is_real(theta)(sr[i]) then [i] else [] fi od
+   in let list=classes_for_theta_parabolics(G) then n=#list in
+   ## for i:n do let RS=S in for v in delete(list,i) do RS:=RS##v od;
+   theta_stable_parabolics (G,(root_datum(G),RS)) od
+
 
 {theta_stable parabolics, maximal among all such
 unlike the real_parabolic case, these have different x-values
 this is a brute force search, it can be improved along the lines of
 maximal_real_parabolics}
-set maximal_theta_parabolics(RealForm G)=
+{set maximal_theta_parabolics(RealForm G)=
 let theta_parabolics=theta_stable_parabolics(G) then
 proper_theta_parabolics=##for P in theta_parabolics do if #P.S<G.ss_rank then [P] else [] fi od in
 ##for P in proper_theta_parabolics do
@@ -539,7 +553,7 @@ set all_parabolics_with_theta_stable_Levi (RealForm G) = [KGPElt]:
     do if has_theta_stable_Levi(P) then [P] else [] fi
     od
   od
-
+}
 {. For each theta-stable parabolic of G, print S, Levi factor, and maximal x. .}
 set print_theta_stable_parabolics (RealForm G) = void:
   let all = theta_stable_parabolics(G) in

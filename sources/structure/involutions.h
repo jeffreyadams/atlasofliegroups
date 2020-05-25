@@ -19,6 +19,7 @@
 #include "hashtable.h"   // containment
 #include "permutations.h"// containment root permutation in |InvolutionData|
 #include "bitmap.h"      // containment root sets in |InvolutionData|
+#include "bitvector.h"   // containment |diagonal| in |InvolutionTable::record|
 
 #include "weyl.h"        // containment of |WI_Entry|
 #include "subquotient.h" // containment of |SmallSubspace|
@@ -103,8 +104,8 @@ class InvolutionTable
     WeightInvolution theta;
     int_Matrix projector; // for |y|, same kernel as |row_saturate(theta-id)|
     int_Matrix M_real; // $1-\theta$; then expression in scaled adapted basis
-    int_Vector diagonal; // divisors for image of |M_real|
-    int_Matrix lift_mat; // section: satisfies |lift_mat*M_real==1-theta|
+    SmallBitVector diagonal; // divisors for image of |M_real|
+    int_Matrix lift_mat; // for section: satisfies |lift_mat*M_real==1-theta|
     unsigned int length;
     unsigned int W_length;
     SmallSubspace mod_space; // for |x|
@@ -112,7 +113,7 @@ class InvolutionTable
   record(const WeightInvolution& inv,
 	 const InvolutionData& inv_d,
 	 const int_Matrix& proj,
-	 const int_Matrix& Mre, const std::vector<int>&d, const int_Matrix& lm,
+	 const int_Matrix& Mre, const SmallBitVector& d, const int_Matrix& lm,
 	 unsigned int l,
 	 unsigned int Wl,
 	 const SmallSubspace& ms)
@@ -189,21 +190,29 @@ class InvolutionTable
   const SmallSubspace& mod_space(InvolutionNbr n) const
   { assert(n<size()); return data[n].mod_space; }
 
+  KGB_elt_entry x_pack(const GlobalTitsElement& x) const; // for X only; slow
+  bool x_equiv(const GlobalTitsElement& x0,const GlobalTitsElement& x1) const;
+
+  // functionality for |y| values, as |TorusPart|, |TorusElement| or |y_entry|
+  unsigned short tp_sz(InvolutionNbr i) const { return data[i].diagonal.size(); }
+  RankFlags y_mask(InvolutionNbr i) const; // relavance mask for |y_bits|
   bool equivalent(const TorusElement& t1, const TorusElement& t2,
 		  InvolutionNbr i) const;
   RatWeight fingerprint(const TorusElement& t, InvolutionNbr i) const;
   y_entry pack(const TorusElement& t, InvolutionNbr i) const;
-  KGB_elt_entry x_pack(const GlobalTitsElement& x) const; // for X only; slow
-  bool x_equiv(const GlobalTitsElement& x0,const GlobalTitsElement& x1) const;
 
   // choose unique representative for real projection of rational weight
   void real_unique(InvolutionNbr i, RatWeight& y) const;
 
-  // pack $\lambda-\rho$ into a |TorusPart|
+  // pack $\lambda'$ into a |TorusPart| (depends only on  $(1-\theta)\lambda'$)
   TorusPart y_pack(InvolutionNbr i, const Weight& lambda_rho) const;
+  // find |(1-theta)*lam_rho| for any |lam_rho| with |ypack(i,lam_rho)=y_part|
   Weight y_lift(InvolutionNbr i, TorusPart y_part) const;
+
+  // effectively do |y_pack(i,lifted/2)|, but avoid half-integer coordinates
   TorusPart y_unlift(InvolutionNbr i, const Weight& lifted) const;
-  // for acting on a torus part involution may change; caller should supply
+  // apply |delta| to |y_part| at |i0|, the result being at |i1==delta*i0*delta|
+  // this is used to twist a parameter by |delta|, which affects its involution
   TorusPart y_act(InvolutionNbr i0, InvolutionNbr i1, // source, destination
 		  TorusPart y_part, const WeightInvolution& delta) const
   { return y_unlift(i1,delta*y_lift(i0,y_part)); }
@@ -223,6 +232,8 @@ class InvolutionTable
   mapper as_map() const { return mapper(this); }
 
   // manipulators
+
+  // these methods construct/propagate information at individual involutions
   InvolutionNbr add_involution(const TwistedInvolution& tw);
   InvolutionNbr add_cross(weyl::Generator s, InvolutionNbr n);
 

@@ -226,10 +226,8 @@ expr    : LET lettail { $$=$2; }
 	  { $$=make_lambda_node($2.patl,$2.typel,$5,@$); }
 	| '(' id_specs ')' cast
 	  { $$=make_lambda_node($2.patl,$2.typel,$4,@$); }
-	| REC_FUN IDENT '(' id_specs_opt ')' cast
-	  { auto l=make_lambda_node($4.patl,$4.typel,$6,@$);
-	    $$ = make_recfun($2,l,@$,@2);
-	  }
+	| REC_FUN IDENT '(' id_specs_opt ')' type ':' expr
+	  { $$ = make_rec_lambda_node($2,$4.patl,$4.typel,$8,$6,@$); }
 	| RETURN expr { $$=make_return($2,@$); }
 	| cast
 	| tertiary ';' expr { $$=make_sequence($1,$3,0,@$); }
@@ -252,9 +250,9 @@ declaration: pattern '=' expr { $$ = make_let_node($1,$3); }
 	  { struct raw_id_pat p; p.kind=0x1; p.name=$1;
 	    $$ = make_let_node(p,make_lambda_node($3.patl,$3.typel,$6,@$));
 	  }
-	| REC_FUN IDENT '(' id_specs_opt ')' '=' cast
-	  { auto l = make_lambda_node($4.patl,$4.typel,$7,@$);
-	    auto f = make_recfun($2,l,@$,@2);
+	| REC_FUN IDENT '(' id_specs_opt ')' '=' type ':' expr
+	  {
+	    auto f = make_rec_lambda_node($2,$4.patl,$4.typel,$9,$7,@$);
 	    struct raw_id_pat p; p.kind=0x1; p.name=$2; // use $2 again
 	    $$ = make_let_node(p,f);
 	  }
@@ -735,7 +733,7 @@ union_specs: type_field '|' type_field
 ;
 
 type_field : type IDENT { $$.type_pt=$1; $$.ip.kind=0x1; $$.ip.name=$2; }
-	| type'.'{ $$.type_pt=$1; $$.ip.kind=0x0; }
+	| type '.' { $$.type_pt=$1; $$.ip.kind=0x0; }
 ;
 
 type	: PRIMTYPE	{ $$=make_prim_type($1); }

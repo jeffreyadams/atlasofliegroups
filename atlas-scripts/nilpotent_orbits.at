@@ -38,6 +38,15 @@ set = (ComplexNilpotent O1,ComplexNilpotent O2) = bool:
 set dim_nilpotent (ComplexNilpotent(rd,,H)) = int:
   sum(for alpha in posroots(rd) do case alpha*H in 0, 1 else 2 esac od)
 
+{synonym}
+set dim (ComplexNilpotent O) = int:dim_nilpotent(O)
+
+{saturate an orbit from an equal rank subgroup to G}
+set saturate(ComplexNilpotent O,RootDatum rd)=ComplexNilpotent:(rd,(),O.H)
+
+{saturate an orbit from a subgroup H, with matrix giving X_*(T_H) -> X_*(T)}
+set saturate(ComplexNilpotent O,RootDatum rd,mat inc)=ComplexNilpotent:(rd,(),inc*O.H)
+
 set diagram (ComplexNilpotent(rd,,H)) = [int]:
    dominant(H,rd){action on coweight} * simple_roots(rd)
 
@@ -80,6 +89,12 @@ set find ([ComplexNilpotent] list,ComplexNilpotent O) = int:
 set find ([RealNilpotent] list,RealNilpotent O) = int:
    first(#list,(int i)bool:list[i].x=O.x and
                            list[i].H=O.H)
+
+set remove_duplicates([ComplexNilpotent] orbits)=[ComplexNilpotent]:
+let rv=[ComplexNilpotent]:[] in
+for orbit in orbits do
+ if find(rv,orbit)=-1 then rv#:=orbit fi
+od;rv
 
 set dim_eigenspace (RootDatum rd, ratvec H, int k) = int:
    if =k { level 0 is special: include torus and negative roots at this level }
@@ -472,6 +487,11 @@ set real_nilpotent_orbits (RealForm G) = [RealNilpotent]:
    in for P in kgps do real_nilpotent(K,x_min(P)) od
    od.##.sort_by_dimension
 
+set number_real_nilpotent_orbits (RealForm G) = int:#G.real_nilpotent_orbits
+set number_real_nilpotent_orbits ([RealForm] groups) = [int]:for G in groups do G.number_real_nilpotent_orbits od
+set number_real_nilpotent_orbits (InnerClass ic) = [int]:number_real_nilpotent_orbits(ic.real_forms)
+{set number_real_nilpotent_orbits_e (InnerClass ic) = [int]:number_real_nilpotent_orbits(ic.strong_real_forms_e)}
+
 {. Make a list of the real forms of a given complex nilpotent orbit. .}
 set real_nilpotent_orbits (ComplexNilpotent (rd,,H):OC,RealForm G) =
       [RealNilpotent]:
@@ -479,6 +499,11 @@ set real_nilpotent_orbits (ComplexNilpotent (rd,,H):OC,RealForm G) =
    for P in real_nilpotent_orbit_KGPs(G,K)
    do real_nilpotent(dominant(K,rd),x_min(P))
    od
+
+set number_real_nilpotent_orbits (ComplexNilpotent O,RealForm G) = int:#real_nilpotent_orbits(O,G)
+set number_real_nilpotent_orbits (ComplexNilpotent O,[RealForm] groups) = [int]:for G in groups do number_real_nilpotent_orbits(O,G) od
+set number_real_nilpotent_orbits (ComplexNilpotent O,InnerClass ic) = [int]:number_real_nilpotent_orbits(O,ic.real_forms)
+{set number_real_nilpotent_orbits_e (ComplexNilpotent O,InnerClass ic) = [int]:number_real_nilpotent_orbits(O,ic.strong_real_forms_e)}
 
 {assuming real nilpotents have been computed, just keep the real forms of given OC}
 set real_nilpotent_orbits([RealNilpotent] real_nilpotents, ComplexNilpotent OC)=[RealNilpotent]:
@@ -846,14 +871,14 @@ set print_component_info (ComplexNilpotent O)=void:
    values=
    for (L,S) in d.pairs do
    [L.derived.nice_format,S.to_string] od in
-   prints(new_line,"Component info for orbit:",new_line, "H=", O.H{_of_triple}, " diagram:",
+   prints("Component info for orbit:",new_line, "H=", O.H{_of_triple}, " diagram:",
    O.diagram, " dim:", O.dim_nilpotent);
    prints("orders:",d.orders);
    tabulate(header#values)
 
 
 set print_component_info_long (ComplexNilpotent O)=void:
-prints(new_line,"Component info for orbit:",new_line, "H=", O.H{_of_triple}, " diagram:",
+prints("Component info for orbit:",new_line, "H=", O.H{_of_triple}, " diagram:",
 O.diagram, " dim:", O.dim_nilpotent);
 for (L,H_L,Z_Lmod,Z_Lmod_reg,Z_Lmod_reg_lifted,Z_Lmod_reg_cc) in generators_of_component_group(O) do
 prints(new_line,"L:",L.derived,new_line,"Z(L)/Z(L)^0: ",Z_Lmod,new_line,"Z(L)/Z(L)^0-reg: ",
@@ -861,12 +886,13 @@ Z_Lmod_reg,new_line,"Z(L)/Z(L)^0-reg-lifted: ",
 Z_Lmod_reg_lifted,new_line,"Z(L)/Z(L)^0-cc: ",Z_Lmod_reg_cc) od
 
 set print_component_info (RootDatum rd)=void:
-   for orb in nilpotent_orbits (rd) do prints();
-   print_component_info (orb) od
+   prints("Component groups of nilpotent orbits",new_line,"G=",rd);
+   for orb@i in nilpotent_orbits (rd) do
+   prints(new_line,"Orbit #",i);print_component_info (orb) od
 
 set print_component_info_long (RootDatum rd)=void:
-   for orb in nilpotent_orbits (rd) do prints();
-   print_component_info_long (orb) od
+   for orb@i in nilpotent_orbits (rd) do prints();
+   prints(new_line,"Orbit #",i);print_component_info_long (orb) od
 
 set print_component_info_short (RootDatum rd)=void:
 tabulate(["i","H","diag","dim","A(O)"]#
@@ -967,6 +993,22 @@ set show_nilpotent_orbits(RootDatum rd)=void:
 show_nilpotent_orbits(nilpotent_orbits(rd))
 }
 
+{integrality_datum of an orbit O_check for G_check
+ rd=root datum on group side -> integrality_datum(rd,H/2)
+ this is the dual of the root datum of a subgroup of G_check
+}
+set integrality_datum(ComplexNilpotent O_check)=RootDatum:
+integrality_datum(O_check.root_datum.dual,O_check.H/2)
+
+{given an orbit O_check on the dual side
+ rd_int: integrality datum(O_check)
+ rd_int_dual: dual(rd_int), root datum of subgroup on dual side
+ return (rd_int_dual,(),O_check.H)
+}
+set integral_descent(ComplexNilpotent O_check)=ComplexNilpotent:
+(integrality_datum(O_check).dual,(),O_check.H)
+
+{see weak_packets.at for integral_descent@(SpringerTable,ComplexNilpotent)}
 
 set is_even(ComplexNilpotent O)=bool:is_integer(O.diagram/2)
 set is_non_even(ComplexNilpotent O)=bool:not is_integer(O.diagram/2)

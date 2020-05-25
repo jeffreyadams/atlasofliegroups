@@ -524,6 +524,8 @@ template<typename T, typename Alloc>
   iterator begin() noexcept { return iterator(head); }
   weak_iterator wbegin() noexcept { return weak_iterator(head.get()); }
 
+  iterator end() noexcept = delete;
+
   // instead of |end()| we provide the |at_end| condition
   static bool at_end (iterator p) { return p.at_end(); }
   static bool at_end (weak_iterator p) { return p.at_end(); }
@@ -586,6 +588,14 @@ template<typename T, typename Alloc>
 
   size_type max_size() const noexcept
   { return std::allocator_traits<Alloc>::max_size(get_allocator()); }
+
+/*
+   Somewhat unusally the method |insert| returns an iterator pointing not to the
+   added item(s), but _after_ them (same for |emplace|, |prepend|, |splice|).
+   Thus the idiom |it=list.insert(it,...)| can be used to insert and step over
+   added item(s) at the same time. To obtain an iterator to the first added item
+   (if any), one can simply keep a copy of the iterator passed to these methods.
+ */
 
   iterator insert (const_iterator pos, const T& val)
   {
@@ -689,6 +699,8 @@ template<typename T, typename Alloc>
     link = std::move(insertion.head);
     return iterator(*p.link_loc); // now points at a link field in our list
   }
+
+  // erase methods erase node after iterator, return iterator at erasure
 
   iterator erase (const_iterator pos)
   { link_type& link = *pos.link_loc;
@@ -812,7 +824,7 @@ template<typename T, typename Alloc>
 	p = &((*p)->next);
   }
 
-  void unique()
+  void unique() // remove after each item identical items (for |==|)
   {
     node_ptr p = head.get();
     if (p!=nullptr) // following loop has |p!=nullptr| as invariant
@@ -820,12 +832,13 @@ template<typename T, typename Alloc>
       {
 	link_type& link = p->next;
 	if (p->contents==link->contents)
-	  link.reset(link->next.release());
+	  link.reset(link->next.release()); // remove item |link| refers to
 	else
-	  p=p->next.get();
+	  p=link.get(); // difference found, advance |p| to |link|
       }
   }
 
+  // remove after each item |x| successive items |y| satifying |relation(x,y)|
   template<typename BinaryPredicate>
     void unique(BinaryPredicate relation)
   {
@@ -834,10 +847,10 @@ template<typename T, typename Alloc>
       while (p->next.get()!=nullptr)
       {
 	link_type& link = p->next;
-	if (pred(p->contents,link->contents))
-	  link.reset(link->next.release());
+	if (relation(p->contents,link->contents))
+	  link.reset(link->next.release()); // remove item |link| refers to
 	else
-	  p=p->next.get();
+	  p=link.get(); // relation found false, advance |p| to |link|
       }
   }
 
@@ -1310,7 +1323,7 @@ template<typename T, typename Alloc>
       *p = *first;
 
     if (p==end())
-      append(first,last); // this also advances |taiL| and |node_count|
+      append(first,last); // this also advances |tail| and |node_count|
     else // we have exhausted input before |p|, and need to truncate after |p|
     {
       (tail = p.link_loc)->reset();
@@ -1389,30 +1402,38 @@ template<typename T, typename Alloc>
     ++node_count;
   }
 
-  void push_back (const T& val)
+/*
+  Exceptionally |push_back| and |emplace_back| return a reference to the
+  inserted item, which would otherwise require keeping a copy of the |end|
+  iterator from before the insertion and dereferencing it afterwards.
+*/
+  T& push_back (const T& val)
   {
     link_type& last = *tail; // hold this link field for |return| statement
     last.reset(allocator_new(node_allocator(),val));
     tail = &last->next; // then move |tail| to point to null smart ptr agin
     ++node_count;
+    return last->contents;
   }
 
-  void push_back(T&& val)
+  T& push_back(T&& val)
   {
     link_type& last = *tail; // hold this link field for |return| statement
     last.reset(allocator_new(node_allocator(),std::move(val)));
     tail = &last->next; // then move |tail| to point to null smart ptr agin
     ++node_count;
+    return last->contents;
   }
 
   template<typename... Args>
-    void emplace_back (Args&&... args)
+    T& emplace_back (Args&&... args)
   {
     link_type& last = *tail; // hold this link field for |return| statement
     // construct node value
     last.reset(allocator_new(node_allocator(),std::forward<Args>(args)...));
     tail = &last->next; // then move |tail| to point to null smart ptr agin
     ++node_count;
+    return last->contents;
   }
 
   bool empty () const noexcept { return tail==&head; } // or |node_count==0|
@@ -1645,7 +1666,7 @@ template<typename T, typename Alloc>
 
     // the following adjustments are needed independently; they can only both
     // apply when |this==&other| and |pos==end|; then the final effect is no-op
-    if (end==other.cend()) // splicing may cut of tail from |other|
+    if (end==other.cend()) // splicing may cut off tail from |other|
       other.tail = begin.link_loc; // in which case we must reset |other.tail|
     if (pos==cend()) // if splicing to the end of |*this|
       tail = end.link_loc; // then we must reset |tail| to end of spliced range
@@ -1723,39 +1744,44 @@ template<typename T, typename Alloc>
     tail = p;
   }
 
-  void unique()
+  void unique() // remove after each item identical items (for |==|)
   {
     node_ptr p = head.get();
-    if (p!=nullptr)
+    if (p!=nullptr) // following loop has |p!=nullptr| as invariant
     {
       while (p->next.get()!=nullptr)
-	if (p->contents==p->next->contents)
+      {
+	link_type& link = p->next;
+	if (p->contents==link->contents)
 	{
-	  link_type& link = p->next; // link to (second) node to erase
-	  link.reset(link->next.release());
+	  link.reset(link->next.release()); // remove item |link| refers to
 	  --node_count;
 	}
 	else
-	  p=p->next.get();
+	  p=link.get(); // difference found, advance |p| to |link|
+      }
       tail = &p->next;
     }
   }
 
+  // remove after each item |x| successive items |y| satifying |relation(x,y)|
   template<typename BinaryPredicate>
     void unique(BinaryPredicate relation)
   {
     node_ptr p = head.get();
-    if (p!=nullptr)
+    if (p!=nullptr) // following loop has |p!=nullptr| as invariant
     {
       while (p->next.get()!=nullptr)
-	if (pred(p->contents,p->next->contents))
+      {
+	link_type& link = p->next;
+	if (relation(p->contents,link->contents))
 	{
-	  link_type& link = p->next; // link to (second) node to erase
-	  link.reset(link->next.release());
+	  link.reset(link->next.release());  // remove item |link| refers to
 	  --node_count;
 	}
 	else
-	  p=p->next.get();
+	  p=link.get(); // difference found, advance |p| to |link|
+      }
       tail = &p->next;
     }
   }
@@ -1859,7 +1885,7 @@ template<typename T, typename Alloc>
       }
     }
 
-     if (e0==b1)
+    if (e0==b1)
       return iterator(*e1.link_loc); // nothing to do, and code below would fail
 
     // cycle backward |(*b0.link_loc, qq, *e1.link_loc)|:
@@ -2142,6 +2168,18 @@ public:
 
   // unlike |std::queue|, we also provide initialisation by initializer list
   queue(std::initializer_list<T> l) : Base(sl(l)) {}
+
+  T& pop_splice_to(sl& dest,typename sl::iterator it)
+  { dest.splice(it,this->c,this->c.begin()); return *it; }
+  const T& pop_splice_to(sl& dest,typename sl::const_iterator it)
+  { dest.splice(it,this->c,this->c.begin()); return *it; }
+
+  T& pop_splice_to(simple_list<T,Alloc>& dest,
+		   typename simple_list<T,Alloc>::iterator it)
+  { dest.splice(it,this->c,this->c.begin()); return *it; }
+  const T& pop_splice_to(simple_list<T,Alloc>& dest,
+			 typename simple_list<T,Alloc>::const_iterator it)
+  { dest.splice(it,this->c,this->c.begin()); return *it; }
 }; // |class queue|
 
 } // |namespace containers|

@@ -65,15 +65,15 @@ namespace {
 
         Chapter II -- The LieTypeIterator class
 
-  A LieTypeIterator runs through a set of Lie types (for example, all
+  A |LieTypeIterator| runs through a set of Lie types (for example, all
   semisimple Lie types of a given rank), up to equivalence (permutation of
   factors). This will provide the foundation for more complicated iterators.
 
 ******************************************************************************/
 
 /*
-  Constructs an iterator that will run through all types of category c in
-  rank r.
+  Construct an iterator that will run through all types of category |c| in
+  rank |r|.
 */
 LieTypeIterator::LieTypeIterator(Category c, size_t r)
   : d_done(false), d_category(c), d_type(first_type(c,r,d_done)), d_lastRank(r)
@@ -231,7 +231,7 @@ void advance_type(SimpleLieType& slt,Category c)
 ******************************************************************************/
 
 /*
-  Makes a TorusMapIterator that runs through all r-tuples in $S^r$. Since we
+  Make a TorusMapIterator that runs through all r-tuples in $S^r$. Since we
   are assuming that $S$ is non-empty, we can safely dereference |b.begin()|
   and set |d_done=false| initially
 */
@@ -330,7 +330,7 @@ void TorusMapIterator::reset(const BitMap& qr)
 /******** constructors and destructors ***************************************/
 
 /*
-  Constructs the CoveringIterator for which the base group is the product
+  Construct the CoveringIterator for which the base group is the product
   of the torus and the simply connected semisimple group.
 */
 CoveringIterator::CoveringIterator(const LieType& lt)
@@ -395,9 +395,7 @@ CoveringIterator::CoveringIterator(const CoveringIterator& i)
 {}
 
 
-/*
-  We need to delete the d_dcenter pointer.
-*/
+// We need to delete the |d_dcenter| pointer.
 CoveringIterator::~CoveringIterator()
 {
   delete d_dcenter;
@@ -406,9 +404,7 @@ CoveringIterator::~CoveringIterator()
 /******** assignment ********************************************************/
 
 
-/*
-  Assignment operator; uses copy constructor.
-*/
+// Assignment operator; uses copy constructor.
 CoveringIterator& CoveringIterator::operator= (const CoveringIterator& i)
 {
   // handle self-assignment
@@ -424,7 +420,7 @@ CoveringIterator& CoveringIterator::operator= (const CoveringIterator& i)
 
 
 /*
-  Advances the iterator to the next subgroup. This is hard!
+  Advance the iterator to the next subgroup. This is hard!
 
   To try to keep things within reasonable bounds, I proceed in terms of
   generators of cyclic subgroups. The first subgroup is {0}. Then we go
@@ -471,7 +467,8 @@ finish: // update d_preRootDatum
 
 
 /*
-  Puts in b the basis of a sublattice corresponding to d_group and d_torusMap.
+  Put into |b| the basis of a sublattice corresponding to |d_group| and
+  |d_torusMap|.
 
   The algorithm is as follows. We look at the lattice spanned by the vectors
   of our Smith basis starting from where the invariant factor becomes > 1.
@@ -623,7 +620,7 @@ SubgroupIterator::SubgroupIterator(const SubgroupIterator& i)
 
 
 /*
-  Synopsis: assignment operator
+  assignment operator
 */
 SubgroupIterator& SubgroupIterator::operator= (const SubgroupIterator& i)
 {
@@ -730,9 +727,9 @@ void SubgroupIterator::resetGenerator()
 namespace {
 
 /*
-  Returns a generator for the quotient group B/C. It is assumed that B and
-  C are subgroups of A, that C is included in B, and that the quotient is
-  cyclic and non-trivial.
+  Return a generator for the quotient group $B/C$. It is assumed that |B| and
+  |C| are subgroups of |A|, that |C| is included in |B|, and that the quotient
+  is cyclic and non-trivial.
 */
 
 abelian::GrpNbr quotGenerator(const abelian::FiniteAbelianGroup& A,
@@ -813,14 +810,14 @@ void setCycGenerator(BitMap& cyc,
 
 
 /*
-  Synopsis: eliminates from cyc those elements which together with B will
-  generate the same subgroup of A as x.
+  Eliminate from |cyc| those elements which together with |B| will
+  generate the same subgroup of |A| as |x|.
 
-  Precondition: B is a subgroup of A; x is an element of A not contained in B;
-  cyc is a subset of A.
+  Precondition: |B| is a subgroup of |A|; |x| is an element of |A| not contained
+  in |B|; |cyc| is a subset of |A|.
 
-  Algorithm: we go through the multiples of x that generate the same subgroup
-  as x mod B, and eliminate the corresponding B-cosets from cyc.
+  Algorithm: we go through the multiples of |x| that generate the same subgroup
+  as |x| modulo |B|, and eliminate the corresponding |B|-cosets from |cyc|.
 */
 void updateCycGenerator(BitMap& cyc,
 			const abelian::FiniteAbelianGroup& A,

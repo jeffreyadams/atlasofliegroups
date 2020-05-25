@@ -47,12 +47,12 @@ set posroot_Cayley (int i, KGBElt x) = KGBElt:
   in
   if theta3=theta0*r { imaginary or real }
   then
-    let  (w,alpha) = from_simple(rd,root(rd,i)) { root(rd,s) = w*alpha }
-    then w1=inverse(w)
-    then theta1 = w*theta0*w1 { involution for Cayley by root(rd,s) }
-    then theta2 = reflection(rd,alpha)*theta1 { for simple imaginary Cayley }
-    then diff1 = rho_check_i(rd,theta1)*w - rho_check_i(rd,theta0)
-    ,    diff2 = rho_check_i(rd,theta2)*w - rho_check_i(rd,theta3)
+    let  (w,alpha) = from_simple(rd,root(rd,i)) { root(rd,i) = w*alpha }
+    then w1 = /w
+    then theta1 = w1*theta0*w { involution before Cayley by simple root alpha }
+    then theta2 = reflection(rd,alpha)*theta1 { involution after that Cayley }
+    then diff1 = rho_check_i(rd,theta1)*w1 - rho_check_i(rd,theta0)
+    ,    diff2 = rho_check_i(rd,theta2)*w1 - rho_check_i(rd,theta3)
     in KGB_elt (G, theta3, torus_factor(x) + diff1 - diff2)
   else x { complex reflection: Cayley not defined, return x unchanged }
   fi
@@ -66,11 +66,10 @@ set posroot_Cayley (int i, Param p) = Param:
            ,"coroot is not integral for parameter"
            )
 ; let  (w,alpha) = from_simple(rd,root(rd,i))
-  then w1 = inverse(w)
-  then theta1 = w*theta0*w1 { involution before Cayley by simple root(id,s) }
+  then theta1 = (/w)*theta0*w { involution before Cayley by simple root(id,s) }
   then theta2 = reflection(rd,alpha)*theta1 { after imaginary simple Cayley }
-  then diff1 = w1*rho_r(rd,theta1) - rho_r(rd,theta0)
-  ,    diff2 = w1*rho_r(rd,theta2) - rho_r(rd,theta3)
+  then diff1 = w*rho_r(rd,theta1) - rho_r(rd,theta0)
+  ,    diff2 = w*rho_r(rd,theta2) - rho_r(rd,theta3)
   in parameter(x3,lambda(p) + diff1 - diff2, gamma)
 )
 
@@ -82,11 +81,10 @@ set posroot_inv_Cayley (int i, Param p) = Param:
            ,"coroot is not integral for parameter"
            )
 ; let (w,alpha) = from_simple(rd,root(rd,i))
-  then w1=inverse(w)
-  then theta1 = w*theta0*w1 { involution before Cayley by simple root(rd,s) }
+  then theta1 = (/w)*theta0*w { involution before Cayley by simple root(rd,s) }
   then theta2 = reflection(rd,alpha)*theta1 { after that simple Cayley }
-  then diff1 = w1*rho_r(rd,theta1) - rho_r(rd,theta0)
-  ,    diff2 = w1*rho_r(rd,theta2) - rho_r(rd,theta3)
+  then diff1 = w*rho_r(rd,theta1) - rho_r(rd,theta0)
+  ,    diff2 = w*rho_r(rd,theta2) - rho_r(rd,theta3)
   in assert(=(1+theta0)*diff1,"non-real diff at 0")
 ;    assert(=(1+theta3)*diff2,"non-real diff at 3")
 ; let par(ratvec mu) = { use only torsion of mu; ensure infin.char.=gamma }

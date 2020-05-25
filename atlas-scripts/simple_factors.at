@@ -4,8 +4,12 @@
 <torus.at
 <lietypes.at
 <combinatorics.at
+<group_operations.at
 
-{NOTE: in this file "simple" means "derived group is simple"}
+{NOTE: in this file "simple" means "derived group is simple"
+each simple factor of rd has the same rank as G
+(these are useful coordinates)
+see very_simple_factors for the actual simple factors}
 
 {P: permutation of simple roots, given by matrix of size rd.semisimple_rank}
 set permute(RootDatum rd,mat P)=RootDatum:
@@ -74,6 +78,10 @@ j:rd.ss_rank do !=alpha*coroot(rd,j) od) in simple_factor(rd,i)
 {complete list of simple factors, as [RootDatum]}
 set simple_factors(RootDatum rd)=[RootDatum]:
 for S in simple_factors_indices(rd) do factor(rd,S) od
+
+set very_simple_factors(RootDatum rd)=[RootDatum]:
+##for sf in rd.simple_factors do
+ if not is_abelian(sf) then [sf.derived] else [] fi od
 
 {complete list of simple factors, as [RootDatum]
 returns:

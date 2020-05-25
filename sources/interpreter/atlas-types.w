@@ -3825,7 +3825,8 @@ void KGB_twist_wrapper(expression_base::level l)
   if (l==expression_base::no_value)
     return;
 @)
-  x->val= kgb.Hermitian_dual(x->val); // do twist
+  x->val= kgb.twisted(x->val,x->rf->val.innerClass().distinguished());
+    // do twist
   push_value(std::move(x));
 }
 @)
@@ -3938,7 +3939,7 @@ to them.
 objects to ensure these remain in existence as long as our block does; in fact
 we include two such shared pointers, one for each real form. The |val| field
 contains an actual |Block| instance, which is constructed when the |Block_value|
-is. We also reserve a field |klc| in the structure to store KL polynomials,
+is. We also reserve a field |kl_tab| in the structure to store KL polynomials,
 though they will only be computed once they are asked for.
 
 The constructor for |Block_value| should avoid calling the version of the
@@ -3953,13 +3954,13 @@ exactly a classical one.
 struct Block_value : public value_base
 { const shared_real_form rf; const shared_real_form dual_rf;
   mutable Block val; // Bruhat order may be generated implicitly
-  mutable kl::KLContext klc; // as may KLV polynomials
+  mutable kl::KL_table kl_tab; // as may KLV polynomials
 @)
   Block_value(const shared_real_form& form,
               const shared_real_form& dual_form)
   : rf(form), dual_rf(dual_form)
   , val(Block::build(rf->val,dual_rf->val))
-  , klc(val)
+  , kl_tab(val)
   {}
   ~Block_value() @+{}
 @)
@@ -4450,7 +4451,7 @@ void parameter_cross_wrapper(expression_base::level l)
 { shared_module_parameter p = get<module_parameter_value>();
   int s = get<int_value>()->int_val();
   unsigned int r =
-    rootdata::integrality_rank(p->rf->val.rootDatum(),p->val.gamma());
+    rootdata::integrality_rank(p->rf->val.root_datum(),p->val.gamma());
   if (static_cast<unsigned>(s)>=r)
     throw runtime_error
       ("Illegal simple reflection: ") << s << ", should be <" << r;
@@ -4463,7 +4464,7 @@ void parameter_Cayley_wrapper(expression_base::level l)
 { shared_module_parameter p = get<module_parameter_value>();
   int s = get<int_value>()->int_val();
   unsigned int r =
-    rootdata::integrality_rank(p->rf->val.rootDatum(),p->val.gamma());
+    rootdata::integrality_rank(p->rf->val.root_datum(),p->val.gamma());
   if (static_cast<unsigned>(s)>=r)
     throw runtime_error("Illegal simple reflection: ") << s @|
       << ", should be <" << r;
@@ -4476,7 +4477,7 @@ void parameter_inv_Cayley_wrapper(expression_base::level l)
 { shared_module_parameter p = get<module_parameter_value>();
   int s = get<int_value>()->int_val();
   unsigned int r =
-    rootdata::integrality_rank(p->rf->val.rootDatum(),p->val.gamma());
+    rootdata::integrality_rank(p->rf->val.root_datum(),p->val.gamma());
   if (static_cast<unsigned>(s)>=r)
     throw runtime_error("Illegal simple reflection: ") << s
       << ", should be <" << r;
@@ -4555,7 +4556,7 @@ but we first call |test_compatible|.
 void parameter_outer_twist_wrapper(expression_base::level l)
 { auto delta = get<matrix_value>();
   auto p = get<module_parameter_value>();
-  test_compatible(p->rc().innerClass(),delta);
+  test_compatible(p->rc().inner_class(),delta);
   if (l!=expression_base::no_value)
     push_value(std::make_shared<module_parameter_value>
 		(p->rf,p->rc().twisted(p->val,delta->val)));
@@ -4637,18 +4638,26 @@ void test_standard(const module_parameter_value& p, const char* descr)
   throw runtime_error(os.str());
 }
 
-void test_normal_is_final(const module_parameter_value& p, const char* descr)
-{ RootNbr witness; bool nonzero=p.rc().is_nonzero(p.val,witness);
-  if (nonzero and p.rc().is_semifinal(p.val,witness))
-    return; // nothing to report
+void test_final(const module_parameter_value& p, const char* descr)
+{ RootNbr witness; std::string reason;
+  bool OK = p.rc().is_dominant(p.val,witness);
+  if (not OK)
+    reason = "not dominant";
+  else if (not (OK=p.rc().is_normal(p.val)))
+    reason = "not normal";
+  else if (not(OK = p.rc().is_nonzero(p.val,witness)))
+    reason = "zero";
+  else if (not(OK = p.rc().is_semifinal(p.val,witness)))
+    reason = "not semifinal";
+  else return; // nothing to report
   std::ostringstream os; p.print(os << descr << ":\n  ");
-@/os << "\n  Parameter is " << (nonzero ? "not semifinal" : "zero")
-   @|  <<", as witnessed by coroot #" << witness;
+@/os << "\n  Parameter is " << reason;
   throw runtime_error(os.str());
 }
 
 @ Here is the first block generating function, which just reproduces to output
-from the \.{Fokko} program for the \.{nblock} command.
+of the \.{nblock} command in the \.{Fokko} program, and a variation for partial
+blocks.
 
 @< Local function def...@>=
 void print_n_block_wrapper(expression_base::level l)
@@ -4657,9 +4666,61 @@ void print_n_block_wrapper(expression_base::level l)
   BlockElt init_index; // will hold index in the block of the initial element
   param_block block(p->rc(),p->val,init_index);
   *output_stream << "Parameter defines element " << init_index
-               @|<< " of the following block:" << std::endl;
+               @|<< " of the following block:\n";
   block.print_to(*output_stream,true);
     // print block using involution expressions
+  if (l==expression_base::single_value)
+    wrap_tuple<0>(); // |no_value| needs no special care
+}
+
+void print_p_block_wrapper(expression_base::level l)
+{ shared_module_parameter p = get<module_parameter_value>();
+  test_standard(*p,"Cannot generate block");
+  param_block block(p->rc(),p->val); // without index does partial construction
+  *output_stream
+    << "Parameter defines final element of the following partial block:\n";
+  block.print_to(*output_stream,true);
+    // print block using involution expressions
+  if (l==expression_base::single_value)
+    wrap_tuple<0>(); // |no_value| needs no special care
+}
+
+@ Their variants for ``common'' blocks, implemented by the |common_block| class.
+
+@h "common_blocks.h"
+@< Local function def...@>=
+void print_c_block_wrapper(expression_base::level l)
+{ own_module_parameter p = get_own<module_parameter_value>();
+  test_standard(*p,"Cannot generate block");
+  BlockElt init_index; // will hold index in the block of the initial element
+  blocks::common_block& block = p->rt().lookup_full_block(p->val,init_index);
+  *output_stream << "Parameter defines element " << init_index
+               @|<< " of the following common block:" << std::endl;
+  block.print_to(*output_stream,true);
+    // print block using involution expressions
+  if (l==expression_base::single_value)
+    wrap_tuple<0>(); // |no_value| needs no special care
+}
+
+void print_pc_block_wrapper(expression_base::level l)
+{ own_module_parameter p = get_own<module_parameter_value>();
+  test_standard(*p,"Cannot generate block");
+  BlockElt init_index; // will hold index in the block of the initial element
+  blocks::common_block& block = p->rt().lookup(p->val,init_index);
+  BitMap less = block.bruhatOrder().poset().below(init_index);
+  if (less.full())
+  {
+    if (init_index+1<block.size())
+      *output_stream << "Elements <= " << init_index << " of following block\n";
+  }
+  else
+  {
+    *output_stream << "Subset {";
+    for (auto @[n : less@]@;@;)
+      *output_stream << n << ',';
+    *output_stream << init_index << "} in the following common block:\n";
+  }
+  block.print_to(*output_stream,true); // print using involution expressions
   if (l==expression_base::single_value)
     wrap_tuple<0>(); // |no_value| needs no special care
 }
@@ -4696,7 +4757,7 @@ also construct a module parameter value for each element of |block|.
 
 }
 
-@ There is also a function that computes just a partial block.
+@ There are also a functions that compute just a partial block.
 @< Local function def...@>=
 void partial_block_wrapper(expression_base::level l)
 { shared_module_parameter p = get<module_parameter_value>();
@@ -4707,6 +4768,32 @@ void partial_block_wrapper(expression_base::level l)
   param_block block(p->rc(),p->val);
   @< Push a list of parameter values for the elements of |block| @>
 }
+@)
+void partial_common_block_wrapper(expression_base::level l)
+{ own_module_parameter p = get_own<module_parameter_value>();
+  test_standard(*p,"Cannot generate block");
+  if (l==expression_base::no_value)
+    return;
+@)
+  BlockElt z;
+  blocks::common_block& block = p->rt().lookup(p->val,z);
+@)
+  unsigned long n=block.size();
+  BitMap subset(n);
+  subset.insert(z);
+  while (subset.back_up(n)) // compute downward closure
+    for (BlockElt y : block.bruhatOrder().hasse(n))
+      subset.insert(y);
+
+  { own_row param_list = std::make_shared<row_value>(subset.size());
+    size_t i=0;
+    for (auto z : subset)
+      param_list->val[i++] =
+         std::make_shared<module_parameter_value> @|
+             (p->rf,p->rc().sr(block.representative(z),p->val.gamma()));
+    push_value(std::move(param_list));
+  }
+}
 
 @ Knowing the length in its block of a parameter is of independent interest.
 @< Local function def...@>=
@@ -4715,6 +4802,27 @@ void param_length_wrapper(expression_base::level l)
   test_standard(*p,"Cannot determine block for parameter length");
   if (l!=expression_base::no_value)
     push_value(std::make_shared<int_value>(p->rt().length(p->val)));
+}
+
+@ This function is similar to |KGB_Hasse_wrapper|, but generates the (full)
+block on the fly.
+
+@< Local function def...@>=
+void block_Hasse_wrapper(expression_base::level l)
+{ own_module_parameter p = get_own<module_parameter_value>();
+  test_standard(*p,"Cannot generate block");
+  if (l==expression_base::no_value)
+    return;
+@)
+  BlockElt init_index; // will hold index in the block of the initial element
+  blocks::common_block& block = p->rt().lookup_full_block(p->val,init_index);
+  const BruhatOrder& Bruhat = block.bruhatOrder();
+  auto n= block.size();
+  own_matrix M = std::make_shared<matrix_value>(int_Matrix(n,n,0));
+  for (unsigned j=0; j<n; ++j)
+    for (@[ unsigned int i : Bruhat.hasse(j) @]@;@;)
+      M->val(i,j)=1;
+  push_value(std::move(M));
 }
 
 @ Here is a version of the |block| command that also exports the table of
@@ -4732,9 +4840,9 @@ void KL_block_wrapper(expression_base::level l)
   param_block block(p->rc(),p->val,start);
   @< Push a list of parameter values for the elements of |block| @>
   push_value(std::make_shared<int_value>(start));
-  const kl::KLContext& klc = block.klc(block.size()-1,false);
+  const kl::KL_table& kl_tab = block.kl_tab(block.size()-1,false);
 @)
-  @< Extract from |klc| an |own_matrix M@;| and |own_row polys@;| @>
+  @< Extract from |kl_tab| an |own_matrix M@;| and |own_row polys@;| @>
 @)
   own_vector length_stops = std::make_shared<vector_value>(
      int_Vector(block.length(block.size()-1)+2));
@@ -4781,15 +4889,16 @@ void KL_block_wrapper(expression_base::level l)
 variable |M| and |polys|. One reason to extract it is that it can be used
 identically in two wrapper functions.
 
-@< Extract from |klc| an |own_matrix M@;| and |own_row polys@;| @>=
-own_matrix M = std::make_shared<matrix_value>(int_Matrix(klc.size()));
-for (unsigned int y=1; y<klc.size(); ++y)
+@< Extract from |kl_tab| an |own_matrix M@;| and |own_row polys@;| @>=
+own_matrix M = std::make_shared<matrix_value>(int_Matrix(kl_tab.size()));
+for (unsigned int y=1; y<kl_tab.size(); ++y)
   for (unsigned int x=0; x<y; ++x)
-    M->val(x,y)= klc.KL_pol_index(x,y);
+    M->val(x,y)= kl_tab.KL_pol_index(x,y);
 @)
 own_row polys = std::make_shared<row_value>(0);
-polys->val.reserve(klc.polStore().size());
-for (auto it=klc.polStore().begin(); it!=klc.polStore().end(); ++it)
+const auto& store = kl_tab.pol_store();
+polys->val.reserve(store.size());
+for (auto it=store.begin(); it!=store.end(); ++it)
   polys->val.emplace_back(std::make_shared<vector_value> @|
      (std::vector<int>(it->begin(),it->end())));
 
@@ -4817,9 +4926,9 @@ void dual_KL_block_wrapper(expression_base::level l)
   @< Push a reversed list of parameter values for the elements of |block| @>
   push_value(std::make_shared<int_value>(size1-start));
   auto dual_block = blocks::Bare_block::dual(block);
-  const kl::KLContext& klc = dual_block.klc(size1,false);
+  const kl::KL_table& kl_tab = dual_block.kl_tab(size1,false);
 @)
-  @< Extract from |klc| an |own_matrix M@;| and |own_row polys@;| @>
+  @< Extract from |kl_tab| an |own_matrix M@;| and |own_row polys@;| @>
 @)
   own_vector length_stops = std::make_shared<vector_value>(
      int_Vector(block.length(size1)+2));
@@ -4884,17 +4993,18 @@ void partial_KL_block_wrapper(expression_base::level l)
   param_block block(p->rc(),p->val);
   @< Push a list of parameter values for the elements of |block| @>
 
-  const kl::KLContext& klc = block.klc(block.size()-1,false);
+  const kl::KL_table& kl_tab = block.kl_tab(block.size()-1,false);
   // compute KL polynomials, silently
 
-  own_matrix M = std::make_shared<matrix_value>(int_Matrix(klc.size()));
-  for (unsigned int y=1; y<klc.size(); ++y)
+  own_matrix M = std::make_shared<matrix_value>(int_Matrix(kl_tab.size()));
+  for (unsigned int y=1; y<kl_tab.size(); ++y)
     for (unsigned int x=0; x<y; ++x)
-      M->val(x,y)= klc.KL_pol_index(x,y);
+      M->val(x,y)= kl_tab.KL_pol_index(x,y);
 @)
   own_row polys = std::make_shared<row_value>(0);
-  polys->val.reserve(klc.polStore().size());
-  for (auto it=klc.polStore().begin(); it!=klc.polStore().end(); ++it)
+  const auto& store = kl_tab.pol_store();
+  polys->val.reserve(store.size());
+  for (auto it=store.begin(); it!=store.end(); ++it)
     polys->val.emplace_back(std::make_shared<vector_value> @|
        (std::vector<int>(it->begin(),it->end())));
 @)
@@ -4920,7 +5030,7 @@ void partial_KL_block_wrapper(expression_base::level l)
     int_Matrix(n_survivors,block.size(),0));
   for (BlockElt z=0; z<block.size(); ++z)
   { auto finals = block.finals_for(z);
-    for (BlockElt final : finals)
+    for (@[BlockElt@+ final : finals@]@;@;)
     { BlockElt x= permutations::find_index<int>(survivor->val,final);
         // a row index
       if ((block.length(z)-block.length(final))%2==0)
@@ -4953,11 +5063,12 @@ void param_W_cells_wrapper(expression_base::level l)
   BlockElt start; // will hold index in the block of the initial element
   param_block block(p->rc(),p->val,start);
 @)
-  const kl::KLContext& klc = block.klc(block.size()-1,false);
+  const kl::KL_table& kl_tab = block.kl_tab(block.size()-1,false);
    // this does the actual KL computation
-  wgraph::WGraph wg = kl::wGraph(klc);
+  wgraph::WGraph wg = kl::wGraph(kl_tab);
   wgraph::DecomposedWGraph dg(wg);
 @)
+  push_value(std::make_shared<int_value>(start));
   own_row cells=std::make_shared<row_value>(0);
   cells->val.reserve(dg.cellCount());
   for (unsigned int c = 0; c < dg.cellCount(); ++c)
@@ -4978,6 +5089,8 @@ void param_W_cells_wrapper(expression_base::level l)
     cells->val.push_back(std::move(tup));
   }
   push_value(std::move(cells));
+  if (l==expression_base::single_value)
+   wrap_tuple<2>();
 }
 
 @ The following code was isolated so that it can be reused below.
@@ -5014,7 +5127,7 @@ void extended_block_wrapper(expression_base::level l)
 { auto delta =get<matrix_value>();
   shared_module_parameter p = get<module_parameter_value>();
   test_standard(*p,"Cannot generate block");
-  test_compatible(p->rc().innerClass(),delta);
+  test_compatible(p->rc().inner_class(),delta);
   if (not ((delta->val-1)*p->val.gamma().numerator()).isZero())
     throw runtime_error@|("Involution does not fix infinitesimal character");
   if (l==expression_base::no_value)
@@ -5022,7 +5135,8 @@ void extended_block_wrapper(expression_base::level l)
 @)
   const auto& rc = p->rc();
   BlockElt start;
-  param_block block(rc,p->val,start);
+  auto zm = repr::StandardReprMod::mod_reduce(rc,p->val);
+  blocks::common_block block(rc,zm,start);
   @< Construct the extended block, then the return value components,
      calling |push_value| for each of them @>
 @)
@@ -5040,10 +5154,12 @@ into a list of parameters and three tables in the form of matrices.
 @/int_Matrix links0(eb.size(),eb.rank());
   int_Matrix links1(eb.size(),eb.rank());
 
+  const auto& gamma=p->val.gamma();
+  const RatWeight gamma_rho = gamma-rho(block.root_datum());
   for (BlockElt n=0; n<eb.size(); ++n)
   { auto z = eb.z(n); // number of ordinary parameter in |block|
-    StandardRepr block_elt_param =
-      rc.sr_gamma(block.x(z),block.lambda_rho(z),block.gamma());
+    const Weight lambda_rho=gamma_rho.integer_diff<int>(block.gamma_lambda(z));
+    StandardRepr block_elt_param = rc.sr_gamma(block.x(z),lambda_rho,gamma);
     params->val[n] =
       std::make_shared<module_parameter_value>(p->rf,block_elt_param);
     for (weyl::Generator s=0; s<eb.rank(); ++s)
@@ -5091,7 +5207,7 @@ void extended_KL_block_wrapper(expression_base::level l)
 { auto delta = get<matrix_value>();
   auto p = get<module_parameter_value>();
   test_standard(*p,"Cannot generate extended block");
-  test_compatible(p->rc().innerClass(),delta);
+  test_compatible(p->rc().inner_class(),delta);
   if (l==expression_base::no_value)
     return;
 @)
@@ -5143,9 +5259,15 @@ install_function(reducibility_points_wrapper,@|
 install_function(scale_parameter_wrapper,"*", "(Param,rat->Param)");
 install_function(scale_0_parameter_wrapper,"at_nu_0", "(Param->Param)");
 install_function(print_n_block_wrapper,@|"print_block","(Param->)");
+install_function(print_c_block_wrapper,@|"print_common_block","(Param->)");
+install_function(print_p_block_wrapper,@|"print_partial_block","(Param->)");
+install_function(print_pc_block_wrapper,@|"print_partial_common_block","(Param->)");
 install_function(block_wrapper,@|"block" ,"(Param->[Param],int)");
 install_function(partial_block_wrapper,@|"partial_block","(Param->[Param])");
+install_function(partial_common_block_wrapper,@|"partial_common_block"
+                ,"(Param->[Param])");
 install_function(param_length_wrapper,@|"length","(Param->int)");
+install_function(block_Hasse_wrapper,@|"block_Hasse","(Param->mat)");
 install_function(KL_block_wrapper,@|"KL_block"
                 ,"(Param->[Param],int,mat,[vec],vec,vec,mat)");
 install_function(dual_KL_block_wrapper,@|"dual_KL_block"
@@ -5153,7 +5275,7 @@ install_function(dual_KL_block_wrapper,@|"dual_KL_block"
 install_function(partial_KL_block_wrapper,@|"partial_KL_block"
                 ,"(Param->[Param],mat,[vec],vec,vec,mat)");
 install_function(param_W_cells_wrapper,@|"W_cells"
-                ,"(Param->[[int],[[int],[int,int]]])");
+                ,"(Param->int,[[int],[[int],[int,int]]])");
 install_function(extended_block_wrapper,@|"extended_block"
                 ,"(Param,mat->[Param],mat,mat,mat)");
 install_function(extended_KL_block_wrapper,@|"extended_KL_block"
@@ -5784,7 +5906,7 @@ since the parameter itself reported here might be final.
 { if (not khc.isFinal(srk))
   { std::ostringstream os;
     print_stdrep(os << "Non final restriction to K: ",p->val,rc) @|
-      << "\n  (witness " << khc.rootDatum().coroot(khc.witness()) << ')';
+      << "\n  (witness " << khc.root_datum().coroot(khc.witness()) << ')';
     throw runtime_error(os.str());
   }
 }
@@ -5989,36 +6111,51 @@ code here the difference consists mainly of calling the
 involution, so we need to test for that here. If the test fails we report an
 error rather than returning for instance a null module, since a twisted
 deformation formula for a non-fixed parameter makes little sense; the user
-should avoid asking for it. Also, since the construction of an extended block
-currently cannot deal with a partial parent block.
+should avoid asking for it. Similarly the twisted variant cannot allow non
+dominant parameters, as this would internally produce an |SR_poly| value with
+non-dominant terms, which should never happen. Also, since the construction of
+an extended block currently cannot deal with a partial parent block, so it
+implies a full block construction.
 
 @< Local function def...@>=
 void deform_wrapper(expression_base::level l)
-{ shared_module_parameter p = get<module_parameter_value>();
-  test_standard(*p,"Cannot compute deformation");
+{ own_module_parameter p = get_own<module_parameter_value>();
+  test_standard(*p,"Cannot compute deformation terms");
   if (l==expression_base::no_value)
     return;
 @)
-  param_block block(p->rc(),p->val); // partial block construction
-  repr::SR_poly terms
-     = p->rt().deformation_terms(block,block.size()-1);
+  BlockElt p_index; // will hold index of |p| in the block
+  auto& block = p->rt().lookup(p->val,p_index); // generate partial common block
+  const auto& gamma = p->val.gamma(); // after being made dominant in |lookup|
+  repr::SR_poly terms = p->rt().deformation_terms(block,p_index,gamma);
 
   push_value(std::make_shared<virtual_module_value>(p->rf,std::move(terms)));
 }
 @)
 void twisted_deform_wrapper(expression_base::level l)
-{ shared_module_parameter p = get<module_parameter_value>();
-  const auto& rc=p->rc();
-  test_standard(*p,"Cannot compute twisted deformation");
-  if (not rc.is_twist_fixed(p->val,rc.innerClass().distinguished()))
+{ own_module_parameter p = get_own<module_parameter_value>();
+  auto& rt=p->rt();
+  const auto& delta=rt.inner_class().distinguished();
+  test_standard(*p,"Cannot compute twisted deformation terms");
+  if (not rt.is_twist_fixed(p->val,delta))
     throw runtime_error@|("Parameter not fixed by inner class involution");
+  test_final(*p,"Twisted deformation requires final parameter");
   if (l==expression_base::no_value)
     return;
 @)
   BlockElt entry_elem;
-  param_block block(p->rc(),p->val,entry_elem); // full block
+  auto& block = rt.lookup(p->val,entry_elem);
+    // though by reference, does not change |p->val|
+  auto& eblock = block.extended_block(delta);
+@)
+  RankFlags singular = block.singular(p->val.gamma());
+  RankFlags singular_orbits;
+  for (weyl::Generator s=0; s<eblock.rank(); ++s)
+    singular_orbits.set(s,singular[eblock.orbit(s).s0]);
+@)
   repr::SR_poly terms
-     = p->rt().twisted_deformation_terms(block,entry_elem);
+     = rt.twisted_deformation_terms@|(block,eblock,entry_elem,
+                                     singular_orbits,p->val.gamma());
 
   push_value(std::make_shared<virtual_module_value>(p->rf,std::move(terms)));
 }
@@ -6029,12 +6166,13 @@ within the |real_form_value|.
 
 @< Local function def...@>=
 void full_deform_wrapper(expression_base::level l)
-{ shared_module_parameter p = get<module_parameter_value>();
+{ own_module_parameter p = get_own<module_parameter_value>();
   test_standard(*p,"Cannot compute full deformation");
   if (l==expression_base::no_value)
     return;
 @)
   const auto& rc = p->rc();
+  rc.normalise(p->val);
   auto finals = rc.finals_for(p->val);
   repr::SR_poly result (rc.repr_less());
   for (auto it=finals.cbegin(); it!=finals.cend(); ++it)
@@ -6046,20 +6184,40 @@ void twisted_full_deform_wrapper(expression_base::level l)
 { shared_module_parameter p = get<module_parameter_value>();
   const auto& rc=p->rc();
   test_standard(*p,"Cannot compute full twisted deformation");
-  auto sr=p->val; // take a copy
-  rc.make_dominant(sr); // |is_twist_fixed| and |extended_finalise| like this
-  if (not rc.is_twist_fixed(sr))
+  test_final(*p,"Full twisted deformation requires final parameter");
+  if (not rc.is_twist_fixed(p->val))
     throw runtime_error@|("Parameter not fixed by inner class involution");
   if (l==expression_base::no_value)
     return;
 @)
   auto finals =
-    ext_block::extended_finalise(rc,sr,rc.innerClass().distinguished());
+    ext_block::extended_finalise(rc,p->val,rc.inner_class().distinguished());
   repr::SR_poly result (rc.repr_less());
   for (auto it=finals.cbegin(); it!=finals.cend(); ++it)
     result.add_multiple(p->rt().twisted_deformation(it->first) @|
                        ,it->second ? Split_integer(0,1) : Split_integer(1,0));
   push_value(std::make_shared<virtual_module_value>(p->rf,result));
+}
+
+@ To monitor the storage, we provide a function |storage_status| that returns a
+negative value for parameters absent from the tables, and otherwise the a
+non-negative value indicating in its first two bits whether a deformation formal
+respectively a twisted deformation formula is stored for the parameter.
+
+@< Local function def...@>=
+void storage_status_wrapper(expression_base::level l)
+{ shared_module_parameter p = get<module_parameter_value>();
+  if (l==expression_base::no_value)
+    return;
+  const auto& rt = p->rt();
+  auto h = rt.parameter_number(p->val);
+  int code = -1;
+  if (h!=HashTable<StandardRepr,unsigned long>::empty)
+  {
+    code = rt.deformation_formula(h).empty() ? 0 : 1;
+    code += rt.twisted_deformation_formula(h).empty() ? 0 : 2;
+  }
+  push_value(std::make_shared<int_value>(code));
 }
 
 @ And here is another way to invoke the Kazhdan-Lusztig computations, which
@@ -6080,7 +6238,7 @@ twisted KLV polynomials, computed for the inner class involution.
 void KL_sum_at_s_wrapper(expression_base::level l)
 { shared_module_parameter p = get<module_parameter_value>();
   test_standard(*p,"Cannot compute Kazhdan-Lusztig sum");
-  test_normal_is_final(*p,"Cannot compute Kazhdan-Lusztig sum");
+  test_final(*p,"Cannot compute Kazhdan-Lusztig sum");
   if (l!=expression_base::no_value)
     push_value(std::make_shared<virtual_module_value>@|
       (p->rf,p->rt().KL_column_at_s(p->val)));
@@ -6089,7 +6247,7 @@ void KL_sum_at_s_wrapper(expression_base::level l)
 void twisted_KL_sum_at_s_wrapper(expression_base::level l)
 { shared_module_parameter p = get<module_parameter_value>();
   test_standard(*p,"Cannot compute Kazhdan-Lusztig sum");
-  test_normal_is_final(*p,"Cannot compute Kazhdan-Lusztig sum");
+  test_final(*p,"Cannot compute Kazhdan-Lusztig sum");
   auto sr=p->val; // take a copy
   p->rc().make_dominant(sr);
     // |is_twist_fixed| and |twisted_KL_column_at_s| like this
@@ -6100,6 +6258,35 @@ void twisted_KL_sum_at_s_wrapper(expression_base::level l)
       (p->rf,p->rt().twisted_KL_column_at_s(sr)));
 }
 
+@ Here is a function to directly access a stored Kazhdan-Lusztig polynomial
+
+@< Local function def...@>=
+void KL_column_wrapper(expression_base::level l)
+{ own_module_parameter p = get_own<module_parameter_value>();
+  test_standard(*p,"Cannot compute Kazhdan-Lusztig column");
+  test_final(*p,"Cannot compute Kazhdan-Lusztig column");
+  if (l==expression_base::no_value)
+    return;
+@)
+  auto col = p->rt().KL_column(p->val);
+  BlockElt z;
+  const blocks::common_block& block = p->rt().lookup(p->val,z);
+  own_row column = std::make_shared<row_value>(0);
+  column->val.reserve(length(col));
+  for (auto it=col.wcbegin(); not col.at_end(it); ++it)
+  {
+    StandardRepr sr = block.sr(it->first,p->val.gamma());
+    auto tup = std::make_shared<tuple_value>(3);
+    tup->val[0] = std::make_shared<int_value>(it->first);
+    tup->val[1] = std::make_shared<module_parameter_value>(p->rf,std::move(sr));
+    tup->val[2] = std::make_shared<vector_value>@|(
+      std::vector<int>(it->second.begin(),it->second.end()));
+    column->val.push_back(std::move(tup));
+  }
+  push_value(std::move(column));
+}
+@)
+
 @ We add another function in which the external involution is an argument
 
 @< Local function def...@>=
@@ -6107,8 +6294,8 @@ void external_twisted_KL_sum_at_s_wrapper(expression_base::level l)
 { shared_matrix delta = get<matrix_value>();
   shared_module_parameter p = get<module_parameter_value>();
   test_standard(*p,"Cannot compute Kazhdan-Lusztig sum");
-  test_normal_is_final(*p,"Cannot compute Kazhdan-Lusztig sum");
-  test_compatible(p->rc().innerClass(),delta);
+  test_final(*p,"Cannot compute Kazhdan-Lusztig sum");
+  test_compatible(p->rc().inner_class(),delta);
   if (not p->rc().is_twist_fixed(p->val,delta->val))
     throw runtime_error("Parameter not fixed by given involution");
   if (l!=expression_base::no_value)
@@ -6140,9 +6327,9 @@ void scale_extended_wrapper(expression_base::level l)
   const StandardRepr sr = p->val;
   const auto& rc = p->rc();
   test_standard(*p,"Cannot scale extended parameter");
-  if (not is_dominant_ratweight(rc.rootDatum(),sr.gamma()))
+  if (not is_dominant_ratweight(rc.root_datum(),sr.gamma()))
     throw runtime_error("Parameter to be scaled not dominant");
-  test_compatible(p->rc().innerClass(),delta);
+  test_compatible(p->rc().inner_class(),delta);
   if (not rc.is_twist_fixed(sr,delta->val))
     throw runtime_error@|
       ("Parameter to be scaled not fixed by given involution");
@@ -6173,11 +6360,11 @@ void finalize_extended_wrapper(expression_base::level l)
   auto p = get<module_parameter_value>();
   const auto& rc = p->rc();
   test_standard(*p,"Cannot finalize extended parameter");
-  test_compatible(rc.innerClass(),delta);
+  test_compatible(rc.inner_class(),delta);
   if (not p->rc().is_twist_fixed(p->val,delta->val))
     throw runtime_error("Parameter not fixed by given involution");
-  if (not is_dominant_ratweight(rc.rootDatum(),p->val.gamma()))
-    throw runtime_error("Parameter must have dominant gamma");
+  if (not is_dominant_ratweight(rc.root_datum(),p->val.gamma()))
+    throw runtime_error("Parameter must have dominant infinitesimal character");
   if (l==expression_base::no_value)
     return;
 @)
@@ -6238,9 +6425,11 @@ install_function(twisted_deform_wrapper,@|"twisted_deform" ,"(Param->ParamPol)")
 install_function(full_deform_wrapper,@|"full_deform","(Param->ParamPol)");
 install_function(twisted_full_deform_wrapper,@|"twisted_full_deform"
                 ,"(Param->ParamPol)");
+install_function(storage_status_wrapper,@|"storage_status","(Param->int)");
 install_function(KL_sum_at_s_wrapper,@|"KL_sum_at_s","(Param->ParamPol)");
 install_function(twisted_KL_sum_at_s_wrapper,@|"twisted_KL_sum_at_s"
                 ,"(Param->ParamPol)");
+install_function(KL_column_wrapper,@|"KL_column","(Param->[int,Param,vec])");
 install_function(external_twisted_KL_sum_at_s_wrapper,@|"twisted_KL_sum_at_s"
                 ,"(Param,mat->ParamPol)");
 install_function(scale_extended_wrapper,@|"scale_extended"
@@ -6259,14 +6448,14 @@ void raw_KL_wrapper (expression_base::level l)
   if (l==expression_base::no_value)
     return;
 @)
-  b->klc.fill(); // this does the actual KL computation
-  own_matrix M = std::make_shared<matrix_value>(int_Matrix(b->klc.size()));
-  for (unsigned int y=1; y<b->klc.size(); ++y)
+  b->kl_tab.fill(); // this does the actual KL computation
+  own_matrix M = std::make_shared<matrix_value>(int_Matrix(b->kl_tab.size()));
+  for (unsigned int y=1; y<b->kl_tab.size(); ++y)
     for (unsigned int x=0; x<y; ++x)
-      M->val(x,y) = b->klc.KL_pol_index(x,y);
+      M->val(x,y) = b->kl_tab.KL_pol_index(x,y);
 @)
   own_row polys = std::make_shared<row_value>(0);
-  const auto& store=b->klc.polStore();
+  const auto& store = b->kl_tab.pol_store();
   polys->val.reserve(store.size());
   for (auto it=store.begin(); it!=store.end(); ++it)
     polys->val.emplace_back(std::make_shared<vector_value> @|
@@ -6286,8 +6475,8 @@ void raw_KL_wrapper (expression_base::level l)
 }
 
 @ For testing, it is useful to also have the dual Kazhdan-Lusztig tables. In
-this case we cannot of course use the field |b->klc| to store the KL
-polynomials, so we here us a local |kl::KLContext| variable.
+this case we cannot of course use the field |b->kl_tab| to store the KL
+polynomials, so we here us a local |kl::KL_table| variable.
 
 @< Local function def...@>=
 void raw_dual_KL_wrapper (expression_base::level l)
@@ -6296,18 +6485,19 @@ void raw_dual_KL_wrapper (expression_base::level l)
   Block dual_block = Block::build(b->dual_rf->val,b->rf->val);
 
   std::vector<BlockElt> dual=blocks::dual_map(block,dual_block);
-  kl::KLContext klc(dual_block); klc.fill();
+  kl::KL_table kl_tab(dual_block); kl_tab.fill();
   if (l==expression_base::no_value)
     return;
 @)
-  own_matrix M = std::make_shared<matrix_value>(int_Matrix(klc.size()));
-  for (unsigned int y=1; y<klc.size(); ++y)
+  own_matrix M = std::make_shared<matrix_value>(int_Matrix(kl_tab.size()));
+  for (unsigned int y=1; y<kl_tab.size(); ++y)
     for (unsigned int x=0; x<y; ++x)
-      M->val(x,y) = klc.KL_pol_index(dual[y],dual[x]);
+      M->val(x,y) = kl_tab.KL_pol_index(dual[y],dual[x]);
 @)
   own_row polys = std::make_shared<row_value>(0);
-  polys->val.reserve(klc.polStore().size());
-  for (auto it=klc.polStore().begin(); it!=klc.polStore().end(); ++it)
+  const auto& store = kl_tab.pol_store();
+  polys->val.reserve(store.size());
+  for (auto it=store.begin(); it!=store.end(); ++it)
     polys->val.emplace_back(std::make_shared<vector_value> @|
        (std::vector<int>(it->begin(),it->end())));
 @)
@@ -6335,7 +6525,7 @@ void raw_ext_KL_wrapper (expression_base::level l)
 { auto delta = get<matrix_value>();
   shared_module_parameter p = get<module_parameter_value>();
   test_standard(*p,"Cannot generate block");
-  test_compatible(p->rc().innerClass(),delta);
+  test_compatible(p->rc().inner_class(),delta);
   if (l==expression_base::no_value)
     return;
 @)
@@ -6352,7 +6542,7 @@ void raw_ext_KL_wrapper (expression_base::level l)
   {
     ext_block::ext_block eb(block,delta->val);
     std::vector<Polynomial<int> > pool;
-    ext_kl::KL_table klt(eb,pool); klt.fill_columns();
+    ext_kl::KL_table klt(eb,&pool); klt.fill_columns();
   @)
     own_matrix M = std::make_shared<matrix_value>(int_Matrix(klt.size()));
     for (unsigned int y=1; y<klt.size(); ++y)
@@ -6394,8 +6584,8 @@ void W_graph_wrapper(expression_base::level l)
   if (l=expression_base::no_value)
     return;
 @)
-  b->klc.fill(); // this does the actual KL computation
-  wgraph::WGraph wg = kl::wGraph(b->klc);
+  b->kl_tab.fill(); // this does the actual KL computation
+  wgraph::WGraph wg = kl::wGraph(b->kl_tab);
 @)
   own_row vertices=std::make_shared<row_value>(0);
   @< Push to |vertices| a list of pairs for each element of |wg|, each
@@ -6412,8 +6602,8 @@ void W_cells_wrapper(expression_base::level l)
   if (l=expression_base::no_value)
     return;
 @)
-  b->klc.fill(); // this does the actual KL computation
-  wgraph::WGraph wg = kl::wGraph(b->klc);
+  b->kl_tab.fill(); // this does the actual KL computation
+  wgraph::WGraph wg = kl::wGraph(b->kl_tab);
   wgraph::DecomposedWGraph dg(wg);
 @)
 
@@ -6621,10 +6811,10 @@ void print_KL_basis_wrapper(expression_base::level l)
 { shared_Block b = get<Block_value>();
   Block& block = b->val;
 @)
-  b->klc.fill(); // this does the actual KL computation
+  b->kl_tab.fill(); // this does the actual KL computation
   *output_stream
     << "Full list of non-zero Kazhdan-Lusztig-Vogan polynomials:\n\n";
-  kl_io::printAllKL(*output_stream,b->klc,block);
+  kl_io::printAllKL(*output_stream,b->kl_tab,block);
 @)
   if (l==expression_base::single_value)
     wrap_tuple<0>();
@@ -6637,10 +6827,10 @@ void print_prim_KL_wrapper(expression_base::level l)
 { shared_Block b = get<Block_value>();
   Block &block = b->val; // this one must be non-|const|
 @)
-  b->klc.fill(); // this does the actual KL computation
+  b->kl_tab.fill(); // this does the actual KL computation
   *output_stream
     << "Non-zero Kazhdan-Lusztig-Vogan polynomials for primitive pairs:\n\n";
-  kl_io::printPrimitiveKL(*output_stream,b->klc,block);
+  kl_io::printPrimitiveKL(*output_stream,b->kl_tab,block);
 @)
   if (l==expression_base::single_value)
     wrap_tuple<0>();
@@ -6653,8 +6843,8 @@ outputs just a list of all distinct Kazhdan-Lusztig-Vogan polynomials.
 void print_KL_list_wrapper(expression_base::level l)
 { shared_Block b = get<Block_value>();
 @)
-  b->klc.fill(); // this does the actual KL computation
-  kl_io::printKLList(*output_stream,b->klc);
+  b->kl_tab.fill(); // this does the actual KL computation
+  kl_io::printKLList(*output_stream,b->kl_tab);
 @)
   if (l==expression_base::single_value)
     wrap_tuple<0>();
@@ -6662,7 +6852,7 @@ void print_KL_list_wrapper(expression_base::level l)
 
 @ We close with two functions for printing the $W$-graph determined by the
 polynomials computed. For |print_W_cells| we must construct one more object,
-after having built the |klc::KLContext|.
+after having built the |kl_tab::KL_table|.
 
 @h "wgraph.h"
 @h "wgraph_io.h"
@@ -6671,8 +6861,8 @@ after having built the |klc::KLContext|.
 void print_W_cells_wrapper(expression_base::level l)
 { shared_Block b = get<Block_value>();
 @)
-  b->klc.fill(); // this does the actual KL computation
-  wgraph::WGraph wg = kl::wGraph(b->klc);
+  b->kl_tab.fill(); // this does the actual KL computation
+  wgraph::WGraph wg = kl::wGraph(b->kl_tab);
   wgraph::DecomposedWGraph dg(wg);
 @)
   wgraph_io::printWDecomposition(*output_stream,dg);
@@ -6688,8 +6878,8 @@ routine of |print_W_cells|.
 void print_W_graph_wrapper(expression_base::level l)
 { shared_Block b = get<Block_value>();
 @)
-  b->klc.fill(); // this does the actual KL computation
-  wgraph::WGraph wg = kl::wGraph(b->klc);
+  b->kl_tab.fill(); // this does the actual KL computation
+  wgraph::WGraph wg = kl::wGraph(b->kl_tab);
 @)
   wgraph_io::printWGraph(*output_stream,wg);
 @)

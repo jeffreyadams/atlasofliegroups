@@ -13,8 +13,9 @@ template <class Entry, typename Number>
 
 /* the constructor builds |d_hash| to match the contents of |d_pool| */
 template <class Entry, typename Number>
-  HashTable<Entry,Number>::HashTable(typename Entry::Pooltype& pool)
-    : d_mod(256),d_hash(), d_pool(pool) // caller supplies pool reference
+HashTable<Entry,Number>::HashTable(typename Entry::Pooltype& pool,
+				   unsigned int n)
+    : d_mod(1UL<<n),d_hash(), d_pool(pool) // caller supplies pool reference
     {
       reconstruct();
     }

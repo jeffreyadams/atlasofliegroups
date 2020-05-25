@@ -455,8 +455,8 @@ LieType Lie_type(const int_Matrix& cm,
   return result;
 
 }
-/*!
-  Synopsis: Returns some permutation that will take |d| to Bourbaki form
+/*
+  Return some permutation that will take |d| to Bourbaki form
 
   This means that nodes of the diagram |d| taken in the order |a[0],...,a[r-1]|
   traverse each of its connected components consecutively, and in the order

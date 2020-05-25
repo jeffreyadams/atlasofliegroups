@@ -69,7 +69,6 @@ namespace {
   void blockorder_f();
   void blockwrite_f();
   void blockstabilizer_f();
-  void blocktwist_f();
   void extblock_f();
   void gextblock_f();
   void klbasis_f();
@@ -128,7 +127,6 @@ CommandNode blockNode()
 	     "writes the block information to disk",std_help);
   result.add("blockstabilizer",blockstabilizer_f,
 	     "print the real Weyl group for the block",std_help);
-  result.add("blocktwist",blocktwist_f,"shows twist orbits on block");
   result.add("extblock",extblock_f,
 	     "prints block for group extended by inner class involution");
   result.add("gextblock",gextblock_f,"prints block for general extended group");
@@ -168,16 +166,16 @@ Block& currentBlock()
   return *block_pointer;
 }
 
-kl::KLContext& currentKL()
+kl::KL_table& currentKL()
 {
-  return currentBlock().klc(currentBlock().size()-1,true);
+  return currentBlock().kl_tab(currentBlock().size()-1,true);
 }
 
 const wgraph::WGraph& currentWGraph()
 {
   if (WGr_pointer==nullptr)
   {
-    const kl::KLContext& c=currentKL();
+    const kl::KL_table& c=currentKL();
     WGr_pointer=new wgraph::WGraph(kl::wGraph(c));
   }
   return *WGr_pointer;
@@ -195,7 +193,7 @@ const wgraph::WGraph& currentWGraph()
 namespace {
 
 /*
-  Synopsis: attempts to set a real form and dual real form interactively.
+  Attempt to set a real form and dual real form interactively.
   In case of failure, throws an InputError and returns.
 */
 void block_mode_entry()
@@ -248,9 +246,7 @@ void dualrealform_f()
 
 
 
-/*
-  Synopsis: destroys any local data, resoring nullptr pointers
-*/
+// Destroy any local data, resoring |nullptr| pointers
 void block_mode_exit()
 {
   delete dual_G_R_pointer; dual_G_R_pointer=nullptr;
@@ -398,7 +394,7 @@ void blockorder_f()
   kgb_io::printBruhatOrder(file,block.bruhatOrder());
 }
 
-// Writes a binary file containing descent sets and ascent sets for block
+// Write a binary file containing descent sets and ascent sets for block
 void blockwrite_f()
 {
   std::ofstream block_out; // binary output files
@@ -413,7 +409,7 @@ void blockwrite_f()
 }
 
 /*
-  Synopsis: prints out information about the stabilizer of a representation
+  Print out information about the stabilizer of a representation
   under the cross action
 */
 void blockstabilizer_f()
@@ -427,12 +423,6 @@ void blockstabilizer_f()
   ioutils::OutputFile file;
   output::printBlockStabilizer
     (file,currentRealGroup(),cn,currentDualRealForm());
-}
-
-void blocktwist_f()
-{
-  ioutils::OutputFile file;
-  block_io::print_twist(file,currentBlock());
 }
 
 void extblock_f()
@@ -467,22 +457,22 @@ void gextblock_f()
 */
 void klbasis_f()
 {
-  const kl::KLContext& klc = currentKL();
+  const kl::KL_table& kl_tab = currentKL();
 
   ioutils::OutputFile file;
   file << "Full list of non-zero Kazhdan-Lusztig-Vogan polynomials:"
        << std::endl << std::endl;
-  kl_io::printAllKL(file,klc,currentBlock());
+  kl_io::printAllKL(file,kl_tab,currentBlock());
 }
 
 
 // Print the list of all distinct Kazhdan-Lusztig-Vogan polynomials
 void kllist_f()
 {
-  const kl::KLContext& klc = currentKL();
+  const kl::KL_table& kl_tab = currentKL();
 
   ioutils::OutputFile file;
-  kl_io::printKLList(file,klc);
+  kl_io::printKLList(file,kl_tab);
 }
 
 /*
@@ -495,12 +485,12 @@ void kllist_f()
 
 void primkl_f()
 {
-  const kl::KLContext& klc = currentKL();
+  const kl::KL_table& kl_tab = currentKL();
 
   ioutils::OutputFile file;
   file << "Kazhdan-Lusztig-Vogan polynomials for primitive pairs:"
        << std::endl << std::endl;
-  kl_io::printPrimitiveKL(file,klc,currentBlock());
+  kl_io::printPrimitiveKL(file,kl_tab,currentBlock());
 }
 
 // Write the results of the KL computations to a pair of binary files
@@ -511,18 +501,18 @@ void klwrite_f()
   interactive::open_binary_file
     (coefficient_out,"File name for polynomial output: ");
 
-  const kl::KLContext& klc = currentKL();
+  const kl::KL_table& kl_tab = currentKL();
 
   if (matrix_out.is_open())
   {
     std::cout << "Writing matrix entries... " << std::flush;
-    filekl::write_matrix_file(klc,matrix_out);
+    filekl::write_matrix_file(kl_tab,matrix_out);
     std::cout << "Done." << std::endl;
   }
   if (coefficient_out.is_open())
   {
     std::cout << "Writing polynomial coefficients... " << std::flush;
-    filekl::write_KL_store(klc.polStore(),coefficient_out);
+    filekl::write_KL_store(kl_tab.pol_store(),coefficient_out);
     std::cout << "Done." << std::endl;
   }
 }

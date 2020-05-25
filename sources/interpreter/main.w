@@ -125,9 +125,10 @@ dependency on the readline library.
 @q axis_version "0.9.6" set of implicit conversions closed for composition @>
 @q axis_version "0.9.7" set_type command, possibly recursive, added @>
 @q axis_version "0.9.8" fully functional set_type command @>
-@d axis_version "0.9.9" @q integer 'case': optional out-of-bounds clause(s) @>
+@q axis_version "0.9.9" integer 'case': optional out-of-bounds clause(s) @>
+@d axis_version "1.0" @q recursion implemented without creating memory leak @>
 
- // numbering from 0.5 (on 27/11/2010); last change Jun 15, 2017
+ // numbering from 0.5 (on 27/11/2010); last change April 1st, 2020
 
 @c
 
@@ -713,16 +714,16 @@ names, should be used instead.
 This function is called with |text| pointing to the partial string to be
 completed, which is at positions from |start| up to |end| in the buffer
 |rl_line_buffer|. We decide by looking at the part before |start| whether we
-should interpret that part as a partial file name, and if so in which
-directory we should look: if only characters \.<, \.> and spaces precede the
-string, then we ask for file name completion, and since input will most likely
-come from the directory in |first_path|, if any was specified, we temporarily
-change directory there if only and at least one characters \.< was present. In
-the more common case where file name completion is not called for, we call the
-readline function |rl_completion_matches| with |text| to get us a list of
-possible completions, which it does by calling our |id_completion_func|
-repeatedly, and we pass the pointer to the list of completions back to our
-caller (which is probably some |readline| action function).
+should interpret that part as a partial file name, and if so in which directory
+we should look: if only characters \.<, \.> and spaces precede the string, then
+we ask for file name completion, and since input will most likely come from the
+directory in |first_path|, if any was specified, we temporarily change directory
+there if only characters~\.<, and at least one, were present. In the more common
+case where file name completion is not called for, we call the readline function
+|rl_completion_matches| with |text| to get us a list of possible completions,
+which it does by calling our |id_completion_func| repeatedly, and we pass the
+pointer to the list of completions back to our caller (which is probably some
+|readline| action function).
 
 @< Definitions of global namespace functions @>=
 #ifndef NREADLINE
@@ -741,11 +742,14 @@ extern "C" char** do_completion(const char* text, int start, int end)
       else
         break; // any other preceding characters make it not a file name
 
-    if (working_directory_name!=nullptr and need_file and i==start)
+    if (working_directory_name!=nullptr and @| need_file and i==start)
        // the sub-string is preceded by one or more copies of \.<, \.>
-    { static_cast<void> // pretend we inspect the result, in fact ignore failure
-      (chdir(in and first_path!=nullptr ? first_path : working_directory_name));
+    {
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-result"
+      chdir(in and first_path!=nullptr ? first_path : working_directory_name);
          // temporary \.{cd}
+#pragma GCC diagnostic pop
       return nullptr; // and signal that file name completion should be used
     }
   }
@@ -780,8 +784,10 @@ notice the temporary change of working directory.
 @< Undo temporary trickery aimed at |readline| filename completion @>=
 #ifndef NOT_UNIX
 if (working_directory_name!=nullptr)
-  static_cast<void> // pretend we inspect the result, in fact ignore failure
-      (chdir(working_directory_name)); // reset to true working directory
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-result"
+      chdir(working_directory_name); // reset to true working directory
+#pragma GCC diagnostic pop
 #endif
 
 

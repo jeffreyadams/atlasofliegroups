@@ -5,6 +5,7 @@ set_type { union types for versions of |solve|, cannot share |void| tag }
 ]
 
 set !minus_1 = -1 { using this constant avoids evaluating unary minus }
+set ~ (int n) = minus_1-n { subtract from -1, or bitwise complement }
 
 set # (int n)= [int]: for i:n do i od       { [0,1,...,n-1] }
 set # (bool b) = int: if b then 1 else 0 fi { Iverson symbol }
@@ -17,14 +18,20 @@ set assert (bool b) = void: assert(b,"assertion failed") { default message }
 
 { bitsets encoded as functions (int->bool) together with upper bound |limit| }
 
+set bitset ([int] L) =
+  let map=[bool]:[], len=0 { invariant len=#map } in
+  for x in L ~ { reversing loop minimises expansions for many lists }
+  do if x<len then map[x]:=true
+     else map := for i:x+1 do if i<len then map[i] else i=x fi od ; len := x+1
+     fi
+  od; (len,(int i)bool: map[i])
+
 set list (int limit, (int->bool) predicate) = [int]:
   ## for i:limit do if predicate(i) then [i] else [] fi od
 set complement (int limit,(int->bool) predicate) = [int]:
   ## for i:limit do if predicate(i) then [] else [i] fi od
-{ complement of strictly increasing |list| of values |v| with |0<=v<n| }
 set complement (int n, [int] list) = [int]:
-  let i=0, v=0, !l=#list in { i next position to inspect, v next value to seek }
-  while while i<l and list[i]=v do i+:=1; v+:=1 od; v<n do v next v+:=1 od
+  let (len,f)=bitset(list) in complement(n,(int i)bool: i<len and f(i))
 
 set count (int limit,(int->bool) predicate) = int:
   let c=0 in for i:limit do if predicate(i) then c+:=1 fi od; c
@@ -281,12 +288,13 @@ set fgrep (string s, string text) = [string]:
 
 set vector (int n,(int->int)f) = vec: for i:n do f(i) od
 
-{ standard basis of R^n}
-set e(int n,int i)=let v=null(n) in v[i]:=1;v
+{ standard basis in rank n }
+set e(int n,int i) = vec: for j:n do #(i=j) od
 
 set ones (int n)= vec: for i:n do 1 od
 
-set reverse (vec v)= vec: v~[:]
+set ~ (vec v)= vec: v~[:]
+set reverse ([int] r) = [int]: for x in r do x ~od
 set lower (int k,vec v)= vec: v[:k]
 set upper (int k,vec v)= vec: v[k~:]
 set drop_lower (int k,vec v)= vec: v[k:]
@@ -320,10 +328,10 @@ set choices_from ([int] S, int k) = [[int]]: { all $k$-subsets of $S$ }
 
 
 {. number of times n occurs in [int] S .}
-set multiplicity (int n, [int] S) = int: count(for x in S do x=n od)
+set multiplicity (int n, [int] S) = int: for x in S do x=n od.count
 
 {add zeros to make total length =N}
-set pad([int] v,int N)=v##null(N-#v)
+set pad ([int] v,int N) = vec: v##null(N-#v)
 
 {                               Matrices                                }
 
@@ -342,6 +350,9 @@ set column (mat A,int i) = vec: A[i]
 
 set rows (mat A) = [vec]: ^A
 set columns (mat A) = [vec]: A
+
+set ~ (mat A) = mat: { reverse rows and reverse columns }
+  swiss_matrix_knife(45,A,0,0,0,0) { transform 45 = 36 + 9, rows&cols reversed }
 
 set block_matrix (mat A,mat B) = mat:
   let ra=n_rows(A), rb=n_rows(B) then za=null(ra), zb=null(rb) in
@@ -633,10 +644,13 @@ set requisition = rat_requisition("No solution found; having one was required")
 
 set required_solution ((mat,ratvec) system) = ratvec: system.solve.requisition
 
+
+
 {                           Split integers                              }
 
 set !s = Split:(0,1) { ! means it is a constant }
 set !split_1 = Split:1 { do conversion now }
+set !split_minus_1 = Split: minus_1
 set !one_minus_s = Split:(1,-1), !one_plus_s = Split:(1,1)  { near idempotents }
 
 set int_part (Split x) = int: let (r,)=%x in r
@@ -705,13 +719,15 @@ set semisimple (LieType t) = LieType:
   let s = LieType: "" in
   for (code,rank) in simple_factors(t) do s:=extend(s,code,rank) od; s
 
-{set derived_is_simple (LieType t) = bool: #simple_factors(t)=1}
-{#simple_factors(torus)=0}
+{ the following assumes the dubious convention that tori are simple iff they
+  are of rank 0; other tori are not simple, but their derived group is }
 set derived_is_simple (LieType t) = bool: #simple_factors(t)<=1
 set is_simple (LieType t) = bool: t.derived_is_simple and =t.central_torus_rank
 
 set str (LieType t) = string:
   (## for (code,rank) in factors(t) do code ## rank.to_string ## "." od)[:1~]
+
+
 
 {                               Root data                               }
 
@@ -732,18 +748,19 @@ set simply_connected (LieType type) = RootDatum:
 set adjoint (LieType type) = RootDatum:
   adjoint(type,false) { by default prefer roots here }
 
-{define simply_connected and adjoint for RootDatum
- simply_connected(rd) is a product of simple factors *and* and torus factor
+{ simply_connected and adjoint for a RootDatum: each is a product of
+  simple factors and possibly a torus factor. Since |Lie_type| is used,
+  coordinates for the new root datum are unrelated to those of |rd|
 }
 
-set simply_connected(RootDatum rd)=simply_connected(Lie_type(rd))
-set adjoint(RootDatum rd)=adjoint(Lie_type(rd))
+set simply_connected (RootDatum rd) = RootDatum: simply_connected(Lie_type(rd))
+set adjoint (RootDatum rd) = RootDatum: adjoint(Lie_type(rd))
 
 { backwards compatibility function; used to be the built-in prototype }
 set root_datum ([vec] simple_roots, [vec] simple_coroots, int r) = RootDatum:
   root_datum(r#simple_roots,r#simple_coroots,false)
 
-set root_datum(LieType t, [ratvec] gens) = RootDatum:
+set root_datum (LieType t, [ratvec] gens) = RootDatum:
   root_datum(t,quotient_basis(t,gens))
 
 { allow single kernel generator in root datum construction }
@@ -836,21 +853,20 @@ set reflect (RootDatum rd, int i, ratvec v) = ratvec:
   let (n,d) = %v in reflect(rd,i,n)/d
 set reflect (RootDatum rd, vec alpha, ratvec v) = ratvec:
   let (n,d) = %v in reflect(rd,alpha,n)/d
-{object-like versions:}
-set reflect (RootDatum rd)=((int,ratvec)->ratvec):
-(int i,ratvec v):reflect(rd,i,v)
-set reflect (RootDatum rd)=((vec, ratvec) -> ratvec):
-(vec alpha,ratvec v):reflect(rd,alpha,v)
-  
-set coreflect (RootDatum rd, int i,ratvec v) = ratvec:
+set coreflect (RootDatum rd, int i, ratvec v) = ratvec:
   let (n,d) = %v in coreflect(rd,n,i)/d
-set coreflect (RootDatum rd, vec alpha,ratvec v) = ratvec:
+set coreflect (RootDatum rd, vec alpha, ratvec v) = ratvec:
   let (n,d) = %v in coreflect(rd,n,alpha)/d
-  {object-like versions:}
+
+{ object-like versions: }
+set reflect (RootDatum rd) = ((int,ratvec)->ratvec):
+  (int i, ratvec v): ratvec: reflect(rd,i,v)
+set reflect (RootDatum rd) = ((vec, ratvec) -> ratvec):
+  (vec alpha, ratvec v): ratvec: reflect(rd,alpha,v)
 set coreflect (RootDatum rd)=((int,ratvec)->ratvec):
-(int i,ratvec v):coreflect(rd,i,v)
+  (int i, ratvec v): ratvec: coreflect(rd,i,v)
 set coreflect (RootDatum rd)=((vec, ratvec) -> ratvec):
-(vec alpha,ratvec v):coreflect(rd,alpha,v)
+  (vec alpha, ratvec v): ratvec: coreflect(rd,alpha,v)
 
 { in matrix version reflect becomes left_reflect and coreflect right_reflect }
 set left_reflect (RootDatum rd, int i, mat M) = mat: { reflection(rd,i)*M }
@@ -966,33 +982,24 @@ set fundamental_weights (RootDatum rd) = [ratvec]:
 set fundamental_coweights (RootDatum rd) = [ratvec]:
   for i:semisimple_rank(rd) do fundamental_coweight(rd,i) od
 
-{changing this code, see below
-{ find a root of maximal level; if |rd| is simple this is the highest root }
-{.highest root.}
-set highest_root (RootDatum rd) = vec:
-{ root data produced by |dual@RootDatum| are not ordered by level, so do work: }
+
+{ list of all highest roots (one for each simple factor) }
+set highest_roots (RootDatum rd) = [vec]:
   let pr=posroots(rd) in
-  if =pr then error("Empty set of roots, none is highest")
-  elif not rd.prefers_coroots { when generated in root order, take short cut }
-  then pr~[0] { since the last generated root will be a high root }
-  else let level=rho_check(rd) in pr[for alpha in pr do level*alpha od.max_loc]
-  fi
-}
+##for alpha in pr
+  do if all(for beta in pr do not is_posroot(rd,alpha+beta) od)
+     then [alpha] else []
+     fi
+  od
 
-{list of all highest roots (one for each simple factor)}
-set highest_roots(RootDatum rd)=[vec]:
-let pr=posroots(rd) in
-##for alpha in pr do
- if all(for beta in pr do not is_posroot(rd,alpha+beta) od) then [alpha] else [] fi
-od
+{ single highest root, or error if rd has more than one simple factor }
+set highest_root (RootDatum rd) = vec:
+  assert(derived_is_simple(rd),
+         "Multiple simple factors, no unique highest root");
+  highest_roots(rd)[0]
 
-{error if rd has more than one simple factor}
-set highest_root(RootDatum rd)=vec:
-assert(derived_is_simple(rd),"RootDatum has more than one simple factor, use highest_roots, or highest_root_one to choose one");
-highest_roots(rd)[0]
-
-{return one of the highest roots}
-set highest_root_one(RootDatum rd)=vec:highest_roots(rd)[0]
+{ one of the highest roots }
+set highest_root_one (RootDatum rd) = vec: highest_roots(rd)[0]
 
 
 {                               Weyl group				}
@@ -1129,6 +1136,8 @@ set is_equal_rank (InnerClass ic) = bool: { whether distinguished_involution=1 }
 
 set is_split (RealForm G) = bool: { whether most split Cartan has theta = -1 }
   =compact_rank(most_split_Cartan(G))
+{is_split@InnerClass is not the same as is_split@RealForm}
+set is_split(InnerClass ic)=bool:is_split(quasisplit_form(ic))  
 
 { equality of Cartan classes }
 set = (CartanClass H,CartanClass J) = bool:
@@ -1163,7 +1172,7 @@ set split_form (LieType t) = RealForm: split_form(simply_connected(t))
 set quasicompact_form (InnerClass ic) = RealForm: real_form(ic,0)
 { quasisplit_form@InnerClass is built-in }
 
-set compact_form(RootDatum r) = RealForm:
+set compact_form (RootDatum r) = RealForm:
   quasicompact_form(inner_class(r,id_mat(rank(r))))
 
 set is_compatible (RealForm f, RealForm g) = bool:
@@ -1365,7 +1374,7 @@ set infinitesimal_character (Param p) = ratvec: let (,,gamma) =%p in gamma
 set d_lambda (Param p) = ratvec: let (x,,gamma) =%p in (1+involution(x))*gamma/2
 set nu (Param p) = ratvec:       let (x,,gamma) =%p in (1-involution(x))*gamma/2
 set Cartan_class (Param p) = CartanClass: Cartan_class(x(p))
-set codim(Param p)=int:codim(p.x)
+set codim (Param p) = int: codim(p.x)
 
 set involution (Param p)=involution(x(p))
 
@@ -1385,7 +1394,7 @@ set is_strongly_regular (Param p)=bool:
 set survives (Param p) = bool:
   is_final(p) { was recently defined to mean exactly that }
 
-set x_open(RealForm G)=KGBElt: KGB(G,G.KGB_size-1)
+set x_open (RealForm G) = KGBElt: KGB(G,G.KGB_size-1)
 set trivial (RealForm G) = Param: { parameter for the trivial representation }
   param(G.x_open,null(rank(G)),rho(G))
 
@@ -1475,8 +1484,8 @@ set tau_complement (Param p) = [int]: complement(tau_bitset(p))
 
 set is_descent ((vec,Param) ap) = bool: status(ap)<4
 
-set is_ascent(int i,Param p)=bool: not is_descent(i,p)
-set is_ascent((vec,Param) ap)=bool: not is_descent(ap)
+set is_ascent ((int,Param) ip) = bool: not is_descent(ip)
+set is_ascent ((vec,Param) ap) = bool: not is_descent(ap)
 
 set lookup (Param p, [Param] block) = int:
   let i=#block-1 in while >=i and block[i]!=p do i-:=1 od; i
@@ -1508,9 +1517,15 @@ set print_extended_block = (Param,mat->):
   in (Param p, mat delta) void:
   let (block,types,L0,L1) = extended_block(p,delta)
   , G=p.real_form, parent_block=block_of(p)
-  then (l,r)=shape(types)
-  , indices =
-      let i=0 in for p in block do while parent_block[i]!=p do i+:=1 od; i od
+  then (l,r)=shape(types), pbs=#parent_block
+  then indices =
+      let i=0 in
+      for p in block
+      do for j:pbs from 1
+         do if parent_block[(i+j)%pbs]=p then i:=(i+j)%pbs; break fi
+	 od
+      ; i
+      od
   then wx=width(G.KGB_size-1), wp=width(#parent_block-1)
   , with_sign(int n) = string:
     if n<0 then "-"+(indices[minus_1-n]) else "+"+indices[n] fi
@@ -1553,8 +1568,6 @@ set print_extended_block = (Param,mat->):
 set null_module (ParamPol P) = ParamPol: 0*P { built-in does this efficiently }
 set -(ParamPol P) = ParamPol: minus_1*P
 
-set + (ParamPol P, [Param] ps) = ParamPol: P+for p in ps do (1,p) od
-
 set first_param (ParamPol P) = Param: let (,p)=first_term(P) in p
 set last_param (ParamPol P)  = Param: let (,p)=last_term(P) in p
 
@@ -1564,20 +1577,26 @@ set s_to_minus_1 (ParamPol P) = ParamPol: 0*P + for x@q in P do (-%x,q) od
 { counterpart to built-in +@(ParamPol,(Split,Param)) }
 set - (ParamPol a, (Split,Param) (c,p)) = ParamPol: a+(-c,p)
 
-set sum (RealForm G,[ParamPol] Ps) = ParamPol:
-  let n=#Ps in
-  if n=0 then G.null_module
-  else Ps. { do divide and conquer so as to privilege balanced additions }
-    ( rec_fun s([ParamPol] Ps) ParamPol: { |Ps| has at least one term }
+set + (ParamPol P, [Param] ps) = ParamPol: P+for p in ps do (split_1,p) od
+set - (ParamPol P, [Param] ps) = ParamPol: P+for p in ps do (split_minus_1,p) od
+
+{ |ParamPol| summation by divide and conquer to privilege balanced additions }
+set sum = (RealForm,[ParamPol]->ParamPol):
+ { define recursive hart of |sum| without capturing its arguments }
+  let rec_fun s([ParamPol] Ps) = ParamPol: { |Ps| has at least one term }
         let h = (#Ps)\2 in if =h then Ps[0] else s(Ps[:h])+s(Ps[h:]) fi
-    )
-  fi
+  in (RealForm G,[ParamPol] Ps) ParamPol:
+  if =#Ps then G.null_module else s(Ps) fi
+
+set + (ParamPol P,[ParamPol] Ps) = ParamPol: P+sum(P.real_form,Ps)
+set - (ParamPol P,[ParamPol] Ps) = ParamPol: P-sum(P.real_form,Ps)
+
 
 set map ((Param->Param)f, ParamPol P) = ParamPol:
-  0*P + for c@p in P do (c,f(p)) od
+  0*P + for c@p in P ~do (c,f(p)) od
 
 set map ((Param->ParamPol)f, ParamPol P) = ParamPol:
-  sum(P.real_form,for c@p in P do c*f(p) od)
+  sum(P.real_form,for c@p in P ~do c*f(p) od)
 
 set half (ParamPol P) = ParamPol: 0*P+ for c@t in P do (half(c),t) od
 { inverse of multiplication *@(int,ParamPol); don't confuse with scaling }
@@ -1656,7 +1675,7 @@ set find ([int] v, int k) = int:      first(#v,(int i)bool:v[i]=k)
 set find ([Param] P,Param p) = int:   first(#P,(int i)bool:P[i]=p)
 set find ([KGBElt] S,KGBElt x) = int: first(#S,(int i)bool:S[i]=x)
 set find ([vec] S,vec v) = int:       first(#S,(int i)bool:S[i]=v)
-
+set find ([ratvec] S,ratvec v) = int: first(#S,(int i)bool:S[i]=v)
 
 { No version for finding [int] due to potential ambiguity with vec version.
   Note that |find(L,x)| has alternative |first(for y in L do x=y od)| which
@@ -1706,8 +1725,8 @@ set monomials (ParamPol P) = [Param]: for c@p in P do p od
 set monomial  (ParamPol P,int i) = Param: monomials(P)[i]
 
 { height of a ParamPol is max of height of each term}
-set height (ParamPol P)=int:
-if =P then 0 else max(for p in monomials(P) do height(p) od) fi
+set height (ParamPol P) = int:
+  max(0)(for p in monomials(P) do height(p) od)
 
 {. Convert a list of ParamPols into the list of distinct parameters occuring;
    careful: don't let terms cancel! .}

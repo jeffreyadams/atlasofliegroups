@@ -42,8 +42,8 @@ class BruhatOrder
 /*
    Full poset relation. Only computed on demand, until then has size 0.
 
-   It is assumed (byt the calss |Poset|) that element \#i can precede
-   element \#j in the poset only if i < j.
+   It is assumed (by the class |Poset|) that element |i| can precede
+   element |j| in the poset only if |i < j|.
 */
   poset::Poset d_poset;
 
@@ -53,6 +53,9 @@ class BruhatOrder
   explicit BruhatOrder(const std::vector<poset::Poset::EltList>& Hasse_diagram)
     : d_hasse(Hasse_diagram), d_poset(0) {}
 
+  explicit BruhatOrder(const std::vector<poset::Poset::EltList>&& Hasse_diagram)
+    : d_hasse(std::move(Hasse_diagram)), d_poset(0) {}
+
 
 // accessors
 
@@ -61,6 +64,9 @@ class BruhatOrder
   // Return row |x| of the Hasse diagram for the order.
   const std::vector<poset::Poset::Elt>& hasse(size_t x) const
   { return d_hasse[x]; }
+
+  // while we're being pilfered, allow modifiable access to |d_hasse|
+  std::vector<poset::Poset::Elt>& Hasse(size_t x) && { return d_hasse[x]; }
 
   // Return the number of comparable pairs in the order.
   unsigned long n_comparable() const

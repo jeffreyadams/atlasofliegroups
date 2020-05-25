@@ -430,9 +430,7 @@ Layout dual(const Layout& lo)
 }
 
 
-/*!
-  Synopsis: checks if the rank l is in the valid range for x.
-*/
+// Check if the rank |l| is in the valid range for |x|.
 bool checkRank(const TypeLetter& x, unsigned int l)
 {
   if (l>constants::RANK_MAX) return false;
@@ -513,7 +511,7 @@ WeightInvolution involution(const Layout& lo)
   unsigned int r = 0;   // position in flattened Dynkin diagram; an index into |pi|
   unsigned int pos = 0; // position in |lt|
 
-  for (unsigned int j=0; j<ic.size(); ++j) // |r|,|pos| are also advanced, near end
+  for (unsigned int j=0; j<ic.size(); ++j) // |r|,|pos| also advanced, near end
   {
     SimpleLieType slt = lt[pos];
     const auto rs = slt.rank();
@@ -593,9 +591,8 @@ WeightInvolution involution(const LieType& lt,
 namespace lietype {
 
 
-/*!
-  Synopsis: sets the block of size (rs,rs) starting from (r,r) to the
-  identity
+/*
+  Set the block of size (rs,rs) starting from (r,r) to the identity
 
   Precondition: the block is set to zero.
 */
@@ -608,9 +605,8 @@ void addCompactInvolution(WeightInvolution& m, unsigned int r,
 }
 
 
-/*!
-  Synopsis: flips the last two vectors in the block of size rs starting
-  from (r,r).
+/*
+  Flip the last two vectors in the block of size rs starting from (r,r).
 
   Precondition: the block is set to zero.
 */
@@ -625,9 +621,8 @@ void addDInvolution(WeightInvolution& m, unsigned int r, unsigned int rs,
 }
 
 
-/*!
-  Synopsis: sets the block of size (rs,rs) starting from (r,r) to minus the
-  identity
+/*
+  Set the block of size (rs,rs) starting from (r,r) to minus the identity
 
   Precondition: the block is set to zero.
 */
@@ -639,9 +634,9 @@ void addMinusIdentity(WeightInvolution& m, unsigned int r, unsigned int rs,
 }
 
 
-/*!
-  Synopsis: appends to m, from position (r,r), the fundamental involution
-  corresponding to x in size rs.
+/*
+  Append to |m|, from position $(r,r)$, the fundamental involution
+  corresponding to |x| in size |rs|.
 */
 void addSimpleInvolution(WeightInvolution& m, unsigned int r,
 			 const SimpleLieType& slt, TypeLetter x,

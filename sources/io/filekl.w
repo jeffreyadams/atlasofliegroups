@@ -363,19 +363,19 @@ Here is how a matrix file is written.
 @< Functions for writing binary files @>=
 
 std::streamoff
-write_KL_row(const kl::KLContext& klc, BlockElt y, std::ostream& out)
+write_KL_row(const kl::KL_table& kl_tab, BlockElt y, std::ostream& out)
 {
-  BitMap prims=klc.primMap(y);
-  const kl::KLRow& klr=klc.klRow(y);
+  BitMap prims=kl_tab.prim_map(y); // marks nonzero KL polys among primitives
+  const auto& kld=kl_tab.KL_data(y);
 
-  assert(klr.size()+1==prims.capacity()); // check the number of KL polynomials
+  assert(kld.size()+1==prims.capacity()); // check the number of KL polynomials
 
   // write row number for consistency check on reading
   basic_io::put_int(y,out);
 
   std::streamoff start_row=out.tellp();
 
-  // write number of primitive elements for convenience
+  // write number of primitive elements, plus 1 for |y| itself, for convenience
   basic_io::put_int(prims.capacity(),out);
 
   // now write the bitmap as a sequence of unsigned int values
@@ -383,11 +383,11 @@ write_KL_row(const kl::KLContext& klc, BlockElt y, std::ostream& out)
     basic_io::put_int(prims.range(i,32),out);
 
   // finally, write the indices of the KL polynomials themselves
-  for (size_t i=0; i<klr.size(); ++i)
+  for (size_t i=0; i<kld.size(); ++i)
   {
-    assert((klr[i]!=0)==prims.isMember(i));
-    if (klr[i]!=0) // only write nonzero indices
-      basic_io::put_int(klr[i],out);
+    assert((kld[i]!=0)==prims.isMember(i));
+    if (kld[i]!=0) // only write nonzero indices
+      basic_io::put_int(kld[i],out);
   }
 
   basic_io::put_int(1,out); // write unrecorded final polynomial 1
@@ -401,23 +401,23 @@ write_KL_row(const kl::KLContext& klc, BlockElt y, std::ostream& out)
 @
 
 @< Declarations of exported functions @>=
-void write_matrix_file(const kl::KLContext& klc, std::ostream& out);
+void write_matrix_file(const kl::KL_table& kl_tab, std::ostream& out);
 
 @~@< Functions for writing binary files @>=
 
-void write_matrix_file(const kl::KLContext& klc, std::ostream& out)
+void write_matrix_file(const kl::KL_table& kl_tab, std::ostream& out)
 {
-  std::vector<unsigned int> delta(klc.size());
+  std::vector<unsigned int> delta(kl_tab.size());
   std::streamoff offset=0;
-  for (BlockElt y=0; y<klc.size(); ++y)
+  for (BlockElt y=0; y<kl_tab.size(); ++y)
   {
-    std::streamoff new_offset=write_KL_row(klc,y,out);
+    std::streamoff new_offset=write_KL_row(kl_tab,y,out);
     delta[y]=static_cast<unsigned int>((new_offset-offset)/4);
     offset=new_offset;
   }
 
   // now write the values allowing rapid location of the matrix rows
-  for (BlockElt y=0; y<klc.size(); ++y)
+  for (BlockElt y=0; y<kl_tab.size(); ++y)
     basic_io::put_int(delta[y],out);
 
   // and finally sign file as being in new format by overwriting 4 bytes

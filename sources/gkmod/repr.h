@@ -18,6 +18,8 @@
 #include "matrix.h"	// containment
 #include "ratvec.h"	// containment
 
+#include "rootdata.h" // for |rho|, so |Rep_context::lambda| can be inlined
+
 #include "innerclass.h" // inlines
 #include "realredgp.h"	// inlines
 
@@ -25,11 +27,13 @@
 #include "free_abelian.h"
 #include "arithmetic.h" // |SplitInteger|
 
-#include "rootdata.h" // for |rho|, so |Rep_context::lambda| can be inlined
-
 namespace atlas {
 
+namespace blocks { class common_block; }
+
 namespace repr {
+
+class common_context;
 
 /*
   A parameter of a standard representation is determined by a triplet
@@ -70,6 +74,7 @@ class StandardRepr
 {
   friend class Rep_context;
 
+ protected:
   KGBElt x_part;
   unsigned int hght; // determined by other fields; mainly for (fast) sorting
   TorusPart y_bits; // torsion part of $\lambda$
@@ -97,6 +102,37 @@ class StandardRepr
   size_t hashCode(size_t modulus) const;
 }; // |class StandardRepr|
 
+// a variation that only differs in hashing |infinitesimal_char| modulo $X^*$
+class StandardReprMod
+{
+  friend class Rep_context;
+
+  KGBElt x_part;
+  TorusPart y_bits; // torsion part of $\lambda$
+  RatWeight inf_char_mod_1; // coset rep. of $\gamma$ in $X^*_\Q / X^*$
+
+  StandardReprMod (StandardRepr&& sr); // private raw constructor
+
+ public:
+  // when building, we force integral parts of |gamma_mod1| components to zero
+  static StandardReprMod mod_reduce
+    (const Rep_context& rc,const StandardRepr& sr);
+  static StandardReprMod build
+    (const Rep_context& rc, const RatWeight& gamma_mod_1, // must be reduced
+     KGBElt x, const RatWeight& gam_lam);
+
+  const RatWeight& gamma_mod1() const { return inf_char_mod_1; }
+  KGBElt x() const { return x_part; }
+  const TorusPart& y() const { return y_bits; }
+
+  bool operator== (const StandardReprMod& other) const
+  { return x_part==other.x_part and y_bits==other.y_bits
+    and inf_char_mod_1==other.inf_char_mod_1; }
+  typedef std::vector<StandardReprMod> Pooltype;
+  bool operator!=(const StandardReprMod& another) const
+    { return not operator==(another); }
+  size_t hashCode(size_t modulus) const; // this one ignores $X^*$ too
+}; // |class StandardReprMod|
 
 // This class stores the information necessary to interpret a |StandardRepr|
 class Rep_context
@@ -108,15 +144,14 @@ class Rep_context
   explicit Rep_context(RealReductiveGroup &G);
 
   // accessors
-  RealReductiveGroup& realGroup() const { return G; }
-  const InnerClass& innerClass() const { return G.innerClass(); }
-  const RootDatum& rootDatum() const { return G.rootDatum(); }
-  const WeylGroup& weylGroup() const { return G.weylGroup(); }
-  const TwistedWeylGroup& twistedWeylGroup() const
+  RealReductiveGroup& real_group() const { return G; }
+  const InnerClass& inner_class() const { return G.innerClass(); }
+  const RootDatum& root_datum() const { return G.root_datum(); }
+  const TwistedWeylGroup& twisted_Weyl_group() const
     { return G.twistedWeylGroup(); }
-  const TitsGroup& titsGroup() const { return G.titsGroup(); }
-  const TitsCoset& basedTitsGroup() const { return G.basedTitsGroup(); }
   const KGB& kgb() const { return KGB_set; }
+  const RatCoweight& g_rho_check() const { return G.g_rho_check(); }
+  RatCoweight g() const { return G.g(); }
   size_t rank() const;
 
   const TwistedInvolution involution_of_Cartan(size_t cn) const;
@@ -128,6 +163,7 @@ class Rep_context
   StandardRepr sr // construct parameter from |(x,\lambda,\nu)| triplet
     (KGBElt x, const Weight& lambda_rho, const RatWeight& nu) const
     { return sr_gamma(x,lambda_rho,gamma(x,lambda_rho,nu)); }
+  StandardRepr sr (const StandardReprMod& srm, const RatWeight& gamma) const;
 
   StandardRepr
     sr(const standardrepk::StandardRepK& srk,
@@ -139,7 +175,10 @@ class Rep_context
 
   Weight lambda_rho(const StandardRepr& z) const;
   RatWeight lambda(const StandardRepr& z) const // half-integer
-  { return rho(rootDatum()).normalize()+lambda_rho(z); }
+  { return rho(root_datum()).normalize()+lambda_rho(z); }
+  RatWeight gamma_lambda
+    (InvolutionNbr i_x, const TorusPart& y_bits, const RatWeight& gamma) const;
+  RatWeight gamma_lambda(const StandardReprMod& z) const;
   RatWeight gamma_0 // infinitesimal character deformed to $\nu=0$
     (const StandardRepr& z) const;
 
@@ -147,6 +186,7 @@ class Rep_context
 
   // the value of $\exp_{-1}(\gamma-\lambda)$ is $y$ value in a |param_block|
   TorusElement y_as_torus_elt(const StandardRepr& z) const;
+  TorusElement y_as_torus_elt(const StandardReprMod& z) const;
 
   // attributes; they set |witness| only in case they return |false|
   bool is_standard  // whether $I(z)$ is non-virtual: gamma imaginary-dominant
@@ -155,7 +195,7 @@ class Rep_context
     (const StandardRepr& z, RootNbr& witness) const; // simple witness
   bool is_nonzero  // whether $I(z)!=0$: no singular simply-imaginary compact
     (const StandardRepr& z, RootNbr& witness) const; // simply-imaginary witness
-  bool is_normal // wither |z==normal(z)|; implies no singular complex descents
+  bool is_normal // whether |z==normalise(z)|: has no singular complex descents
     (const StandardRepr& z) const; // complex simple witness
   bool is_semifinal  // whether $I(z)$ unrelated by Hecht-Schmid to more compact
     (const StandardRepr& z, RootNbr& witness) const; // singular real witness
@@ -166,12 +206,12 @@ class Rep_context
 
   bool is_twist_fixed(StandardRepr z, const WeightInvolution& delta) const;
   bool is_twist_fixed(const StandardRepr& z) const
-  { return is_twist_fixed(z,innerClass().distinguished()); }
+  { return is_twist_fixed(z,inner_class().distinguished()); }
 
   void make_dominant(StandardRepr& z) const; // ensure |z.gamma()| dominant
 
-  // in addition to |make_dominant| ensure a normalised form of the parameter
-  void normalise(StandardRepr& z) const;
+  // in addition to |make_dominant| apply any singular complex descents
+  void normalise(StandardRepr& z) const; // which ensures a normalised form
 
   bool equivalent(StandardRepr z0, StandardRepr z1) const; // by value
 
@@ -216,7 +256,7 @@ class Rep_context
  private:
   // make integrally dominant, with precomputed integral subsystem; return path
   WeylWord make_dominant(StandardRepr& z,const SubSystem& subsys) const;
-  StandardRepr& singular_cross (StandardRepr& z,weyl::Generator s) const;
+  void singular_cross (weyl::Generator s,StandardRepr& z) const;
   void to_singular_canonical(RankFlags gens, StandardRepr& z) const;
   unsigned int height(Weight theta_plus_1_gamma) const;
 }; // |Rep_context|
@@ -228,9 +268,9 @@ typedef Rep_context::poly SR_poly;
   |Rep_table| provides storage for data that was previously computed for
   various related nonzero final |StandardRepr| values.
 
-  The data stored consists of lengths, (twisted) KL polynomials evaluated as
-  $q=s$, and (twisted) full deformation formulae. This class provides methods
-  for those computations, and handles the data storage and retrieval.
+  The data stored consists of lengths, and (twisted) full deformation formulae.
+  This class provides methods for their computation, and handles the data
+  storage and retrieval.
 
   The deformation information for a parameter will actually be stored for its
   first reducibility point (thus avoiding some duplication of the same
@@ -247,48 +287,68 @@ class Rep_table : public Rep_context
 {
   std::vector<StandardRepr> pool;
   HashTable<StandardRepr,unsigned long> hash;
-  std::vector<unsigned short int> lengths;
-  std::vector<SR_poly> KLV_list; // indexed by |hash| values for |StandardRepr|s
-  std::vector<SR_poly> def_formula; // idem
+  std::vector<std::pair<SR_poly,SR_poly> > def_formulae; // ordinary, twisted
 
-  std::vector<SR_poly> twisted_KLV_list; // values at twist-fixed |hash|s only
-  std::vector<SR_poly> twisted_def_formula; // idem
+  std::vector<StandardReprMod> mod_pool;
+  HashTable<StandardReprMod,unsigned long> mod_hash;
+
+  containers::sl_list<blocks::common_block> block_list;
+  using bl_it = containers::sl_list<blocks::common_block>::iterator;
+  std::vector<std::pair<bl_it, BlockElt> > place;
 
  public:
-  Rep_table(RealReductiveGroup &G)
-    : Rep_context(G), pool(), hash(pool), KLV_list(), def_formula()
-  {}
+  Rep_table(RealReductiveGroup &G);
+  ~Rep_table();
+  // both defined out of line because of implicit use |common_block| destructor
 
-  unsigned int length(StandardRepr z); // by value
+  const StandardReprMod& srm(unsigned long n) const { return mod_pool[n]; }
+
+  unsigned short length(StandardRepr z); // by value
+
+  unsigned long parameter_number (StandardRepr z) const { return hash.find(z); }
+  const SR_poly& deformation_formula(unsigned long h) const
+    { return def_formulae[h].first; }
+  const SR_poly& twisted_deformation_formula(unsigned long h) const
+    { return def_formulae[h].second; }
+
+  blocks::common_block& lookup_full_block
+    (StandardRepr& sr,BlockElt& z); // |sr| is by reference; will be normalised
+
+  blocks::common_block& lookup // constuct only partial block if necessary
+    (StandardRepr& sr,BlockElt& z); // |sr| is by reference; will be normalised
 
   SR_poly KL_column_at_s(StandardRepr z); // by value
+  containers::simple_list<std::pair<BlockElt,kl::KLPol> >
+    KL_column(StandardRepr z); // by value
   SR_poly twisted_KL_column_at_s(StandardRepr z); // by value
 
-  SR_poly deformation_terms (param_block& block,BlockElt entry_elem);
-  // here |block| is non-|const| because it calls |add_block|
+  SR_poly deformation_terms
+    (blocks::common_block& block, BlockElt y, const RatWeight& gamma) const;
+#if 0
   SR_poly deformation_terms (unsigned long sr_hash) const;
   // once a parameter has been entered, we can compute this without a block
+#endif
 
   SR_poly deformation(const StandardRepr& z);
 
+  SR_poly twisted_deformation_terms
+    (blocks::common_block& block, ext_block::ext_block& eblock,
+     BlockElt y, RankFlags singular, const RatWeight& gamma) const;
   SR_poly twisted_deformation_terms (param_block& block,BlockElt entry_elem);
   // here |block| is non-|const| because it calls |add_block|
   SR_poly twisted_deformation_terms (unsigned long sr_hash) const;
   // once a parameter has been entered, we can compute this without a block
 
+  blocks::common_block& add_block_below // partial; defined in common_blocks.cpp
+    (const common_context&, const StandardReprMod& srm, BitMap* subset);
 
   SR_poly twisted_deformation(StandardRepr z); // by value
 
  private:
-  void add_block(param_block& block,
-		 containers::sl_list<BlockElt>& extended_finals);
-  // here |block| is non-|const| as the method generates KL polynomials in it
-  // and |survivors| is non-|const| because the method computes and exports it
-
-  void add_block(ext_block::ext_block& block, param_block& parent,
-		 BlockElt top_elt,
-		 containers::sl_list<BlockElt>& extended_finals);
-  // here |block| is non-|const|; the method generates twisted KLV polys in it
+  void block_erase (bl_it pos); // erase from |block_list| in safe manner
+  unsigned long formula_index (const StandardRepr&);
+  unsigned long add_block(const StandardReprMod&); // full block
+  class Bruhat_generator; // helper class: internal |add_block_below| recursion
 
 }; // |Rep_table|
 

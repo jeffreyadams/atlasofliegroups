@@ -1045,6 +1045,9 @@ WeylWord RootDatum::to_dominant(Weight lambda) const
   return result; // and forget modified |lambda|
 }
 
+  void RootDatum::act(const WeylWord& ww, RatWeight& gamma) const
+  { act(ww,gamma.numerator()); }
+
 /*
   The matrix represented by ww.
 

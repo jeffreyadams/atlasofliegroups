@@ -1,0 +1,457 @@
+<nilpotent_centralizer.at
+<arthur_parameters.at
+{
+set real_forms_central_invariant(InnerClass ic,ratvec v)=[int]:
+##for G@i in ic.real_forms do if equal_central_invariant(G,v) 
+ then [i] else [] fi od
+
+set strong_real_forms_central_invariant(InnerClass ic,ratvec v)=[int]:
+##for i in ic.strong_real_forms do if equal_central_invariant(ic.real_forms[i],v)
+ then [i] else [] fi od
+ }
+
+set strong_real_forms_nilpotent_orbit_correct_central_invariant(ComplexNilpotent O, InnerClass ic)=[RealForm]:
+assert(is_even(O), "orbit is not even");
+strong_real_forms_given_central_invariant(ic,O.H/2)
+
+set strong_real_forms_nilpotent_orbit_e(ComplexNilpotent O, InnerClass ic)=[RealForm]:
+{assert(is_even(O), "orbit is not even");}
+strong_real_forms_central_invariant_e(ic)
+
+{
+set number_real_nilpotent_orbits_correct_central_invariant(ComplexNilpotent O_check,InnerClass ic_check)=[int]:
+for G in strong_real_forms_nilpotent_orbit_correct_central_invariant(O_check,ic_check) do
+number_real_nilpotent_orbits(O_check,G) od
+}
+
+
+{run over real forms with correct central invariant
+ for each such rf, compute number of real forms of orbit, return [int]
+}
+set number_real_nilpotent_orbits_correct_central_invariant(ComplexNilpotent O_check,InnerClass ic)=[int]:
+if ic.is_equal_rank then
+let O_check_int=O_check.integral_descent then
+rd_int=O_check_int.root_datum  then
+()=prints("rd_int: ", rd_int) then
+()=prints("O_check_int: ", O_check_int) then
+ic_check_int=inner_class(rd_int,ic.distinguished_involution) then
+()=prints("ic_check_int: ", ic_check_int) in
+{rf_int=real_forms(ic_check_int) in} 
+for G in strong_real_forms_nilpotent_orbit_correct_central_invariant(O_check_int,ic_check_int) do
+{srf_int_correct_type=strong_real_forms_type(central_invariant(O_check_int,inner_class_int)) {[int]} in}
+prints("G: ", G, "number: ", number_real_nilpotent_orbits(O_check_int,G));
+number_real_nilpotent_orbits(O_check_int,G) od
+{for k in srf_int_correct_type do number_real_nilpotent_orbits(O_check_int,rf_int[k]) od}
+elif O_check.is_even then
+for G in strong_real_forms_nilpotent_orbit_e(O_check,ic) do
+number_real_nilpotent_orbits(O_check,G) od
+else
+[int]:[] fi
+
+set debug(ComplexNilpotent O_check,InnerClass ic)=
+let O_check_int=O_check.integral_descent then
+rd_int=O_check_int.root_datum  then
+ic_check_int=inner_class(rd_int,ic.distinguished_involution) then
+rf_int=real_forms(ic_check_int) then
+srf_int=strong_real_forms_nilpotent_orbit_correct_central_invariant(O_check_int,ic_check_int) 
+in (O_check_int,rd_int,ic_check_int,rf_int,srf_int)
+
+{for k in srf_int_correct_type do number_real_nilpotent_orbits(O_check_int,rf_int[k]) od}
+set compact_inner_class(RootDatum rd)=inner_class(rd,id_mat(rd.rank))
+
+{compact listing: i H diagram dim BC-Levi Cent A(O)}
+set show_nilpotent_orbits_short([ComplexNilpotent] orbits)=void:
+tabulate(
+["i","H","diagram","dim","BC Levi"]#
+for  orbit@i in orbits do
+let d=orbit.component_datum in
+[i.to_string,
+([int]:orbit.H).to_string,
+orbit.diagram.to_string,
+orbit.dim_nilpotent.to_string,
+orbit.Bala_Carter_Levi.nice_format] od)
+
+{compact listing: i H diagram dim BC-Levi Cent A(O)}
+set show_nilpotent_orbits([ComplexNilpotent] orbits)=void:
+tabulate(
+["i","H","diagram","dim","BC Levi","Cent","A(O)"]#
+for  orbit@i in orbits do
+let d=orbit.component_datum in
+[i.to_string,
+([int]:orbit.H).to_string,
+orbit.diagram.to_string,
+orbit.dim_nilpotent.to_string,
+orbit.Bala_Carter_Levi.nice_format,
+orbit.centralizer.nice_format,
+d.orders.to_string] od)
+
+set show_nilpotent_orbits(RootDatum rd)=void:show_nilpotent_orbits(nilpotent_orbits(rd))
+set show_nilpotent_orbits_short(RootDatum rd)=void:show_nilpotent_orbits_short(nilpotent_orbits(rd))
+
+set show_nilpotent_orbits_long([ComplexNilpotent] orbits)=void:
+tabulate(
+["i","H","diagram","dim","BC Levi","Cent","Z","C_2","A(O)"]#for  orbit@i in orbits do
+let d=orbit.component_datum then
+cent=orbit.centralizer in
+[i.to_string,
+([int]:orbit.H).to_string,
+orbit.diagram.to_string,
+orbit.dim_nilpotent.to_string,
+orbit.Bala_Carter_Levi.nice_format,
+cent.nice_format,
+cent.derived.order_center.to_string,
+(#cent.compact_form.strong_real_forms_same_type).to_string,
+d.orders.to_string
+] od)
+
+set show_nilpotent_orbits_long(RootDatum rd)=void:show_nilpotent_orbits_long(rd.orbits)
+
+{----- show commands for orbits of RealForm G------}
+{includes: number of real forms of the orbit}
+
+{compact listing: i H diagram dim BC-Levi Cent A(O) #RF C_2}
+set show_nilpotent_orbits_long([ComplexNilpotent] orbits,RealForm G)=void:
+prints(new_line,"complex nilpotent orbits for ", G,
+new_line,"i: orbit number",
+new_line,"H: semisimple element",
+new_line, "BC Levi:  Bala-Carter Levi",
+new_line, "Cent: identity component of Cent(SL(2))",
+new_line, "Z(Cent^0): order of center of derived group of id. comp. of Centralizer",
+new_line, "A(O): orders of conj. classes in component group of centralizer",
+new_line,"#RF(O): number of real forms of O",
+new_line,"C_2: conjugacy classes in Cent(SL(2))_0 with square 1");
+tabulate(
+["i","H","diagram","dim","BC Levi","Cent", "Z","C_2","A(O)","#RF(O)"]#
+for  orbit@i in orbits do
+let d=orbit.component_datum then
+H=orbit.centralizer then
+C2=conjugacy_classes_involutions(H) in
+{C_2=#strong_real_forms_same_type(compact_form(H)) in} 
+[i.to_string,
+([int]:orbit.H).to_string,
+orbit.diagram.to_string,
+orbit.dim_nilpotent.to_string,
+orbit.Bala_Carter_Levi.nice_format,
+orbit.centralizer.nice_format,
+H.derived.order_center.to_string,
+C2.to_string,
+d.orders.to_string,
+{number_real_nilpotent_orbits(orbit,G).to_string}
+number_real_nilpotent_orbits_correct_central_invariant(orbit,compact_inner_class(integrality_datum(G,orbit.H/2).dual)).to_string
+] od)
+
+set show_nilpotent_orbits_long([ComplexNilpotent] orbits,InnerClass ic)=void:
+prints(new_line,"complex nilpotent orbits for inner class ",ic,
+new_line,"i: orbit number",
+new_line,"H: semisimple element",
+new_line, "BC Levi:  Bala-Carter Levi",
+new_line, "Cent: identity component of Cent(SL(2))",
+new_line, "Z(Cent^0): order of center of derived group of id. comp. of Centralizer",
+new_line, "A(O): orders of conj. classes in component group of centralizer",
+new_line,"#RF(O): number of real forms of O for all real forms in inner class",
+new_line,"C_2: conjugacy classes in Cent(SL(2))_0 with square 1");
+tabulate(
+["i","H","diagram","dim","BC Levi","Cent", "Z","C_2","A(O)","#RF(O)"]#
+for  orbit@i in orbits do
+let d=orbit.component_datum then
+H=orbit.centralizer then
+C_2=conjugacy_classes_involutions(H) in
+[i.to_string,
+([int]:orbit.H).to_string,
+orbit.diagram.to_string,
+orbit.dim_nilpotent.to_string,
+orbit.Bala_Carter_Levi.nice_format,
+orbit.centralizer.nice_format,
+H.derived.order_center.to_string,
+C_2.to_string,
+d.orders.to_string,
+number_real_nilpotent_orbits(orbit,ic).to_string
+] od)
+
+
+
+
+{not really necessary}
+set show_nilpotent_orbits_short(RealForm G)=void:show_nilpotent_orbits_short(G.root_datum)
+set show_nilpotent_orbits(RealForm G)=void:show_nilpotent_orbits(G.root_datum)
+
+
+set show_nilpotent_orbits_long(RealForm G)=void:show_nilpotent_orbits_long(nilpotent_orbits(G),G)
+
+set nilpotent_orbits_data_long(InnerClass ic)=
+let orbits=ic.orbits then
+data=
+for  orbit in orbits do
+let cent=orbit.centralizer then
+d=orbit.component_datum in
+(
+orbit,
+orbit.diagram,
+orbit.dim_nilpotent,
+orbit.Bala_Carter_Levi,
+cent,
+cent.derived.order_center,
+conjugacy_classes_involutions(cent),
+d.orders,
+number_real_nilpotent_orbits(orbit,ic)) od
+{in tabulate(
+["i","diagram","dim","BC Levi","Cent", "Z","C_2","A(O)","#RF(O)"]#
+for (diag,dim,levi,cent,Z,C2,A,rf)@i in data do
+[i.to_string,
+diag.to_string,
+dim.to_string,
+levi.nice_format,
+cent.nice_format,
+Z.to_string,
+C2.to_string,
+A.to_string,
+rf.to_string
+] od);data}
+in data
+
+{very long: includes Arthur parameter information
+ the given InnerClass ic should be on the dual side,
+ the orbits are on the dual side, as are the counts of Arthur parameters
+ assert these two numbers agree:
+  two ways of counting number of Arthur parameters
+  arthur_parameters@(RootDatum,ComplexNilpotent) see arthur_parameters.at
+  same as number of nilpotent orbits of integrality datum (dual side) with
+   correct central invariant
+}
+set nilpotent_orbits_data_very_long(InnerClass ic_dual)=
+(InnerClass,[(ComplexNilpotent,[int],int,RootDatum,RootDatum,int,int,[int],[int],[ComplexNilpotent_d])]):
+let
+orbits=ic_dual.orbits then
+data=
+for  orbit in orbits do
+let cent=orbit.centralizer then
+d=orbit.component_datum then
+{()=prints("doing orbit: ", orbit) then}
+number_real_nilpotents=number_real_nilpotent_orbits_correct_central_invariant(orbit, ic_dual) then
+{arthur_parameters=arthur_parameters(ic_dual,orbit) in}
+arthur_parameters=arthur_parameters(ic_dual.dual,orbit) in
+{let ()=prints("test:",orbit, " ", arthur_parameters) in [testing git]}
+if ic_dual.is_equal_rank{ or orbit.is_even } then
+assert(sum(number_real_nilpotents)=#arthur_parameters,"two counts of Arthur parameters don't match") fi;
+(
+orbit,
+orbit.diagram,
+orbit.dim_nilpotent,
+orbit.Bala_Carter_Levi,
+cent,
+cent.derived.order_center,
+conjugacy_classes_involutions(cent),
+d.orders,
+{number_real_nilpotent_orbits(orbit,ic),}
+number_real_nilpotents,
+arthur_parameters
+) od
+in (ic_dual,data)
+
+set show_nilpotent_orbits_very_long((InnerClass ic,[(ComplexNilpotent,[int],int,RootDatum,RootDatum,int,int,[int],[int],[ComplexNilpotent_d])] data))=void:
+prints(new_line,"complex nilpotent orbits for inner class ",new_line, ic,
+new_line,
+"root datum of inner class: ", ic.root_datum,
+new_line,"i: orbit number",
+new_line,"H: semisimple element",
+new_line, "BC Levi:  Bala-Carter Levi",
+new_line, "Cent: identity component of Cent(SL(2))",
+new_line, "Z(Cent^0): order of center of derived group of id. comp. of Centralizer",
+new_line,"C_2: conjugacy classes in Cent(SL(2))_0 with square 1",
+new_line, "A(O): orders of conj. classes in component group of centralizer of O",
+new_line,"#RF: number of real forms of O for all real forms (of integrality datum) in inner class",
+new_line,"#AP: number of Arthur parameters for O");
+tabulate(
+["i","diagram","dim","BC Levi","Cent", "Z","C_2","A(O)","#RF","#AP"]#
+for (orbit,diag,dim,levi,cent,Z,C2,A,rf,ap)@i in data do
+[i.to_string,
+diag.to_string,
+dim.to_string,
+levi.nice_format,
+cent.nice_format,
+Z.to_string,
+C2.to_string,
+A.to_string,
+rf.to_string,
+(#ap).to_string
+] od)
+
+set show_nilpotent_orbits_very_long(InnerClass ic)=void:
+show_nilpotent_orbits_very_long(nilpotent_orbits_data_very_long(ic))
+
+{
+set show_nilpotent_orbits_very_long_plus([ComplexNilpotent] orbits,[[ComplexNilpotent_d]] arthur_parameters)=
+tabulate(
+["i","H","diagram","dim","BC Levi","Cent","Z","C_2","A(O)","Ar"]#for  orbit@i in orbits do
+let d=orbit.component_datum then
+cent=orbit.centralizer in
+[i.to_string,
+([int]:orbit.H).to_string,
+orbit.diagram.to_string,
+orbit.dim_nilpotent.to_string,
+orbit.Bala_Carter_Levi.nice_format,
+cent.nice_format,
+cent.derived.order_center.to_string,
+(#cent.compact_form.strong_real_forms_same_type).to_string,
+d.orders.to_string,
+(#arthur_parameters[i]).to_string
+] od);
+let (diagram,dim,levi,cent,Z,C_2,A_O,real_orbits)=data in
+(diagram,dim,levi,cent,Z,C_2,A_O,real_orbits,arthur_parameters)
+}
+
+{----- show commands for orbits of RealForm G------}
+{includes: number of real forms of the orbit}
+
+{compact listing: i H diagram dim BC-Levi Cent A(O) #RF C_2}
+set show_nilpotent_orbits_long([ComplexNilpotent] orbits,RealForm G)=void:
+prints(new_line,"complex nilpotent orbits for ", G,
+new_line,"i: orbit number",
+new_line,"H: semisimple element",
+new_line, "BC Levi:  Bala-Carter Levi",
+new_line, "Cent: identity component of Cent(SL(2))",
+new_line, "Z(Cent^0): order of center of derived group of id. comp. of Centralizer",
+new_line, "A(O): orders of conj. classes in component group of centralizer",
+new_line,"#RF(O): number of real forms of O",
+new_line,"C_2: conjugacy classes in Cent(SL(2))_0 with square 1");
+tabulate(
+["i","H","diagram","dim","BC Levi","Cent", "Z","C_2","A(O)","#RF(O)"]#
+for  orbit@i in orbits do
+let d=orbit.component_datum then
+H=orbit.centralizer then
+C2=conjugacy_classes_involutions(H) in
+{C_2=#strong_real_forms_same_type(compact_form(H)) in} 
+[i.to_string,
+([int]:orbit.H).to_string,
+orbit.diagram.to_string,
+orbit.dim_nilpotent.to_string,
+orbit.Bala_Carter_Levi.nice_format,
+orbit.centralizer.nice_format,
+H.derived.order_center.to_string,
+C2.to_string,
+d.orders.to_string,
+number_real_nilpotent_orbits(orbit,G).to_string
+{number_real_nilpotent_orbits_correct_central_invariant(orbit, ic).to_string}
+] od)
+
+set show_nilpotent_orbits_long([ComplexNilpotent] orbits,InnerClass ic)=void:
+prints(new_line,"complex nilpotent orbits for inner class ",new_line,ic,
+new_line,"i: orbit number",
+new_line,"H: semisimple element",
+new_line, "BC Levi:  Bala-Carter Levi",
+new_line, "Cent: identity component of Cent(SL(2))",
+new_line, "Z(Cent^0): order of center of derived group of id. comp. of Centralizer",
+new_line, "A(O): orders of conj. classes in component group of centralizer",
+new_line,"#RF(O): number of real forms of O for all real forms in inner class",
+new_line,"C_2: conjugacy classes in Cent(SL(2))_0 with square 1");
+tabulate(
+["i","H","diagram","dim","BC Levi","Cent", "Z","C_2","A(O)","#RF(O)"]#
+for  orbit@i in orbits do
+let d=orbit.component_datum then
+H=orbit.centralizer then
+C_2=conjugacy_classes_involutions(H) in
+[i.to_string,
+([int]:orbit.H).to_string,
+orbit.diagram.to_string,
+orbit.dim_nilpotent.to_string,
+orbit.Bala_Carter_Levi.nice_format,
+orbit.centralizer.nice_format,
+H.derived.order_center.to_string,
+C_2.to_string,
+d.orders.to_string,
+number_real_nilpotent_orbits(orbit,ic).to_string
+] od)
+
+
+
+
+{not really necessary}
+set show_nilpotent_orbits_short(RealForm G)=void:show_nilpotent_orbits_short(G.root_datum)
+set show_nilpotent_orbits(RealForm G)=void:show_nilpotent_orbits(G.root_datum)
+
+
+set show_nilpotent_orbits_long(RealForm G)=void:show_nilpotent_orbits_long(nilpotent_orbits(G),G)
+
+set show_nilpotent_orbits_long(InnerClass ic)=void:
+prints(new_line,"complex nilpotent orbits for  inner class ", ic,
+new_line,"i: orbit number",
+new_line,"H: semisimple element",
+new_line, "BC Levi:  Bala-Carter Levi",
+new_line, "Cent: identity component of Cent(SL(2))",
+new_line, "Z(Cent^0): order of center of derived group of id. comp. of Centralizer",
+new_line,"C_2: conjugacy classes in Cent(SL(2))_0 with square 1",
+new_line, "A(O): orders of conj. classes in component group of centralizer",
+new_line,"#RF(O): number of real forms of O for all real forms in inner class");
+let orbits=ic.orbits then
+data=
+for  orbit in orbits do
+let cent=orbit.centralizer then
+d=orbit.component_datum in
+(
+orbit.diagram,
+orbit.dim_nilpotent,
+orbit.Bala_Carter_Levi,
+cent,
+cent.derived.order_center,
+conjugacy_classes_involutions(cent),
+d.orders,
+number_real_nilpotent_orbits_correct_central_invariant(orbit, ic)) od
+{number_real_nilpotent_orbits(orbit,ic)) od}
+in tabulate(
+["i","diagram","dim","BC Levi","Cent", "Z","C_2","A(O)","#RF(O)"]#
+for (diag,dim,levi,cent,Z,C2,A,rf)@i in data do
+[i.to_string,
+diag.to_string,
+dim.to_string,
+levi.nice_format,
+cent.nice_format,
+Z.to_string,
+C2.to_string,
+A.to_string,
+rf.to_string
+] od)
+
+{also return everything you calculate:
+for each orbit:
+(diagram,dim,BC Levi,cent,Z(cent_0),C_2,orders of classes of A(O), #real orbits for all forms in inner class)
+(}
+set show_nilpotent_orbits_long_plus(InnerClass ic)=[([int],int,RootDatum,RootDatum,int,int,[int],[int])]:
+prints(new_line,"complex nilpotent orbits for  inner class ", ic,
+new_line,"i: orbit number",
+new_line,"H: semisimple element",
+new_line, "BC Levi:  Bala-Carter Levi",
+new_line, "Cent: identity component of Cent(SL(2))",
+new_line, "Z(Cent^0): order of center of derived group of id. comp. of Centralizer",
+new_line,"C_2: conjugacy classes in Cent(SL(2))_0 with square 1",
+new_line, "A(O): orders of conj. classes in component group of centralizer",
+new_line,"#RF(O): number of real forms of O for all real forms in inner class");
+let orbits=ic.orbits then
+data=
+for  orbit in orbits do
+let cent=orbit.centralizer then
+d=orbit.component_datum in
+(
+orbit.diagram,
+orbit.dim_nilpotent,
+orbit.Bala_Carter_Levi,
+cent,
+cent.derived.order_center,
+conjugacy_classes_involutions(cent),
+d.orders,
+number_real_nilpotent_orbits_correct_central_invariant(orbit, ic)) od
+{number_real_nilpotent_orbits(orbit,ic)) od}
+in tabulate(
+["i","diagram","dim","BC Levi","Cent", "Z","C_2","A(O)","#RF(O)"]#
+for (diag,dim,levi,cent,Z,C2,A,rf)@i in data do
+[i.to_string,
+diag.to_string,
+dim.to_string,
+levi.nice_format,
+cent.nice_format,
+Z.to_string,
+C2.to_string,
+A.to_string,
+rf.to_string
+] od);
+data
+
