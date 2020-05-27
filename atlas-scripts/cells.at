@@ -35,13 +35,13 @@ set cell_representations(CharacterTable ct,[WCell] cells)=[W_rep]:
 
 {smallest_degree_summands is in character_tables.at}
 
-set special_character(CharacterTable ct,WCell cell)=
+set special_character(CharacterTable ct,WCell cell)=int:
 let summands=smallest_degree_summands(ct,ct.decompose(ct.cell_character(cell))) in
 if #summands>1 then error("not unique special representation") elif
 #summands=0 then error("no special summands?") else summands[0] fi
 set special_character(CharacterTable ct)=(WCell->int):(WCell cell):special_character(ct,cell)
 
-set special_character(CharacterTable ct,[int] cell_character)=
+set special_character(CharacterTable ct,[int] cell_character)=int:
 let summands=smallest_degree_summands(ct,ct.decompose(cell_character)) in
 if #summands>1 then error("not unique special representation") elif
 #summands=0 then error("no special summands?") else summands[0] fi

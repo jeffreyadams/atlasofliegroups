@@ -2,8 +2,9 @@
 <induction.at { for |embed_KGB@(KGBElt,RealForm)| }
 <all_finite_order.at
 <subgroups.at
-<weyl_character_formula.at {for centralizer@(RootDatum,ratvec)}
+{<weyl_character_formula.at {for centralizer@(RootDatum,ratvec)}}
 <twisted_conjugacy.at
+
 set nilpotent_verbose=false
 
 { ComplexNilpotent: (RootDatum rd,vec H)
@@ -1027,4 +1028,7 @@ set non_even_dual_orbits(RootDatum rd)=non_even_orbits(rd.dual_orbits)
 
 set twist(mat delta,ComplexNilpotent O)=ComplexNilpotent:
 (O.root_datum,(),O.H*delta)  {O.H\in X_*, delta acts on right} 
+
+
+
 

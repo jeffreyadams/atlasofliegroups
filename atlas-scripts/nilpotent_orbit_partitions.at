@@ -1,5 +1,6 @@
 <basic.at
 <combinatorics.at { for |Partition| type, partition generators, dominance order }
+<nilpotent_orbits.at
 
 { (complex) nilpotent orbits for simple classical groups,
   classical groups: SL(n), GL(n), Sp(2n), SO(n),
@@ -125,3 +126,10 @@ set closures([Partition] orbits) = [[int]]:
   simple exceptional case also }
 set nilpotent_lambdas_classical (RootDatum rd) = [ratvec]:
     for lambda in nilpotent_orbit_ss_elements(dual(rd)) do lambda/2 od
+
+set complex_nilpotent_from_partition(RootDatum rd, Partition p)=
+ComplexNilpotent:(rd,(),semisimple_element(rd,p))
+
+set dim_nilpotent_partition(RootDatum rd,Partition p)=
+dim_nilpotent(complex_nilpotent_from_partition(rd,p))
+
