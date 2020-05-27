@@ -149,8 +149,9 @@ class KL_table
 
   void fill_KL_column(BlockElt y, KLHash& hash);
   std::vector<KLPol> recursion_column(BlockElt y, weyl::Generator s);
-  void mu_correction(std::vector<KLPol>& klv, RankFlags desc_y,
-		     BlockElt sy, weyl::Generator s);
+  void mu_correction(std::vector<KLPol>& klv,
+		     const BlockEltList& extremals,
+		     RankFlags desc_y, BlockElt sy, weyl::Generator s);
   void complete_primitives(std::vector<KLPol>& klv, BlockElt y, KLHash& hash);
   std::vector<KLIndex> new_recursion_column(BlockElt y, KLHash& hash);
   KLPol mu_new_formula
