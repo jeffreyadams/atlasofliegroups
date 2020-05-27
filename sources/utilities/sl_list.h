@@ -524,6 +524,8 @@ template<typename T, typename Alloc>
   iterator begin() noexcept { return iterator(head); }
   weak_iterator wbegin() noexcept { return weak_iterator(head.get()); }
 
+  iterator end() noexcept = delete;
+
   // instead of |end()| we provide the |at_end| condition
   static bool at_end (iterator p) { return p.at_end(); }
   static bool at_end (weak_iterator p) { return p.at_end(); }

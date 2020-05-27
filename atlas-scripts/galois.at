@@ -1,6 +1,9 @@
 <basic.at
 <groups.at
 <generate_groups.at
+<sort.at
+<parameters.at
+<lattice.at
 
 { G is a RealForm
   pi0(G)=order of component group of G(R)

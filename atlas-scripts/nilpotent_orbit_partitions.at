@@ -1,5 +1,6 @@
 <basic.at
 <combinatorics.at { for |Partition| type, partition generators, dominance order }
+<nilpotent_orbits.at
 
 { (complex) nilpotent orbits for simple classical groups,
   classical groups: SL(n), GL(n), Sp(2n), SO(n),
@@ -25,13 +26,14 @@ set type_number (RootDatum rd) = int: type_number(Lie_type(rd))
 { (complex) nilpotent orbits, partition-type classification,
   for simple group of type A-D
 }
-set nilpotent_orbit_partitions (LieType t)= [Partition]:
+set nilpotent_orbit_partitions =
+  let C_partitions = parity_restricted_partitions(true)  { odd restricted }
+  ,  BD_partitions = parity_restricted_partitions(false) { even restricted }
+  in (LieType t) [Partition]:
   let n=semisimple_rank(t) in
   case type_number(t) { this only lets simple types through }
-  in partitions(n+1) { all partitions in type A }
-  , parity_restricted_partitions(2*n+1,false) { even restricted in type B }
-  , parity_restricted_partitions(2*n,true) { odd restricted in type C }
-  , parity_restricted_partitions(2*n,false) { even restricted in type D }
+  in  partitions(n+1), BD_partitions(2*n+1)
+  , C_partitions(2*n), BD_partitions(2*n)
   else error("Exceptional type")
   esac
 
@@ -125,3 +127,10 @@ set closures([Partition] orbits) = [[int]]:
   simple exceptional case also }
 set nilpotent_lambdas_classical (RootDatum rd) = [ratvec]:
     for lambda in nilpotent_orbit_ss_elements(dual(rd)) do lambda/2 od
+
+set complex_nilpotent_from_partition(RootDatum rd, Partition p)=
+ComplexNilpotent:(rd,(),semisimple_element(rd,p))
+
+set dim_nilpotent_partition(RootDatum rd,Partition p)=
+dim_nilpotent(complex_nilpotent_from_partition(rd,p))
+

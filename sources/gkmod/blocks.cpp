@@ -771,7 +771,8 @@ void add_z(block_hash& hash,KGBElt x,KGBElt y)
 {
   size_t old_size=hash.size();
   BlockElt z=hash.match(block_elt_entry(x,y)); // constructor sets |length==0|
-  assert(z==old_size); ndebug_use(old_size); ndebug_use(z);
+  assert(z==old_size);
+  ndebug_use(old_size); ndebug_use(z);
 }
 
 // find already constructed element, to be called during construction
@@ -945,8 +946,8 @@ param_block::param_block // full block constructor
 	  aux.cross_act(s,z);
 	  cross_ys.push_back(y_hash.match(aux.pack_y(z)));
 	  assert(y_hash.size()== (new_cross ? old_size+j+1 : old_size));
-	  ndebug_use(old_size);
 	}
+	ndebug_use(old_size);
       } // compute values |cross_ys|
 
       for (unsigned int i=0; i<nr_x; ++i) // |i| counts R-packets for involution

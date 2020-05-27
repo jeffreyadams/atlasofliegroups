@@ -98,7 +98,7 @@ prints("E7")
 >"output/E7_ad_q" void:weak_packet_report_ind (adjoint(E7_q))
 {>"output/E7s" void:weak_packet_report_ind (E7_s)}
 
-/CUT}
+
 
 prints("Component group info")
 prints(G2)
@@ -115,3 +115,5 @@ prints("E7 adjoint")
 >"output/E7_ad_components.txt" void:print_component_info(adjoint(E7_s))
 prints(E8)
 >"output/E8_components.txt" void:print_component_info(E8_s)
+
+CUT}

@@ -4,6 +4,7 @@
 <torus.at
 <lietypes.at
 <combinatorics.at
+<group_operations.at
 
 {NOTE: in this file "simple" means "derived group is simple"
 each simple factor of rd has the same rank as G
