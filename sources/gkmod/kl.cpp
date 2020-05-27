@@ -425,54 +425,60 @@ std::vector<KLPol> KL_table::recursion_column (BlockElt y,weyl::Generator s)
     descent_value(s,y) == DescentStatus::ComplexDescent ? cross(s,y)
     : inverse_Cayley(s,y).first;  // s is real type I for y here, ignore .second
 
+  // make increasing list of all extremal elements shorter than |y|
+  BlockEltList extremals; extremals.reserve(col_size(y)); // more than enough
+  for (BlockElt x=0; x<length_floor(y); ++x)
+    if (is_extremal(x,desc_y))
+      extremals.push_back(x);
+
   BlockElt x = // declaration outside is needed for error reporting
     length_floor(y);
   try {
 
-    // the following loop could be run in either direction: no dependency.
-    // however it is natural to take |x| descending from |y| (exclusive)
-    while (extr_back_up(x,desc_y))
+    // while more natural to do descending |x| doing forward avoids |std:reverse|
+    for (auto it=extremals.cbegin(); it!=extremals.cend(); ++it)
     { // now |x| is extremal for $y$, so $s$ is descent for $x$
+      KLPol& Pxy = klv[x=*it];
       switch (descent_value(s,x))
       {
       case DescentStatus::ImaginaryCompact:
 	{ // $(q+1)P_{x,sy}$
-	  klv[x] = KL_pol(x,sy);
-	  klv[x].safeAdd(klv[x],1); // mulitply by $1+q$
+	  Pxy = KL_pol(x,sy);
+	  Pxy.safeAdd(Pxy,1); // mulitply by $1+q$
 	}
 	break;
       case DescentStatus::ComplexDescent:
 	{ // $P_{sx,sy}+q.P_{x,sy}$
 	  BlockElt sx = cross(s,x);
-	  klv[x] = KL_pol(sx,sy);
-	  klv[x].safeAdd(KL_pol(x,sy),1);
+	  Pxy = KL_pol(sx,sy);
+	  Pxy.safeAdd(KL_pol(x,sy),1);
 	}
 	break;
       case DescentStatus::RealTypeI:
 	{ // $P_{sx.first,sy}+P_{sx.second,sy}+(q-1)P_{x,sy}$
 	  BlockEltPair sx = inverse_Cayley(s,x);
-	  klv[x] = KL_pol(sx.first,sy);
-	  klv[x].safeAdd(KL_pol(sx.second,sy));
+	  Pxy = KL_pol(sx.first,sy);
+	  Pxy.safeAdd(KL_pol(sx.second,sy));
 	  KLPolRef Pxsy = KL_pol(x,sy);
-	  klv[x].safeAdd(Pxsy,1);
-	  klv[x].safeSubtract(Pxsy); // subtraction must be last
+	  Pxy.safeAdd(Pxsy,1);
+	  Pxy.safeSubtract(Pxsy); // subtraction must be last
 	}
 	break;
       case DescentStatus::RealTypeII:
 	{ // $P_{sx,sy}+qP_{x,sy}-P_{s.x,sy}$
 	  BlockElt sx = inverse_Cayley(s,x).first;
-	  klv[x] = KL_pol(sx,sy);
-	  klv[x].safeAdd(KL_pol(x,sy),1);
-	  klv[x].safeSubtract(KL_pol(cross(s,x),sy)); // subtraction must be last
+	  Pxy = KL_pol(sx,sy);
+	  Pxy.safeAdd(KL_pol(x,sy),1);
+	  Pxy.safeSubtract(KL_pol(cross(s,x),sy)); // subtraction must be last
 	}
 	break;
       default: assert(false); // this cannot happen
       }
-      // for now |klv[i].degree()| might be one notch too high, which will be
+      // for now |Pxy.degree()| might be one notch too high, which will be
       // corrected in |mu_correction|; also |assert| there are based on this one
-      assert(klv[x].isZero() or 2*klv[x].degree()<length(y)-length(x) or
-	     (2*klv[x].degree()==length(y)-length(x) and
-	      klv[x][klv[x].degree()]==mu(x,sy)
+      assert(Pxy.isZero() or 2*Pxy.degree()<length(y)-length(x) or
+	     (2*Pxy.degree()==length(y)-length(x) and
+	      Pxy[Pxy.degree()]==mu(x,sy)
 	     ));
     } // |for (i=e.size()-->0)|
 
@@ -482,7 +488,8 @@ std::vector<KLPol> KL_table::recursion_column (BlockElt y,weyl::Generator s)
 			    static_cast<const KL_table&>(*this));
   }
 
-  mu_correction(klv,desc_y,sy,s); // subtract mu-correction from all of |klv|
+  // now subtract mu-corrections from all of |klv|
+  mu_correction(klv,extremals,desc_y,sy,s);
   return klv;
 
 } // |KL_table::recursion_column|
@@ -515,8 +522,9 @@ std::vector<KLPol> KL_table::recursion_column (BlockElt y,weyl::Generator s)
   Either direction of the loop on $z$ would work, but taking it decreasing is
   more natural.
  */
-void KL_table::mu_correction(std::vector<KLPol>& klv, RankFlags desc_y,
-			     BlockElt sy, weyl::Generator s)
+void KL_table::mu_correction(std::vector<KLPol>& klv,
+			     const BlockEltList& extremals,
+			     RankFlags desc_y, BlockElt sy, weyl::Generator s)
 {
   const Mu_column& mcol = d_mu[sy];
   size_t ly = length(sy)+1; // the length of |y|, otherwise |y| is not used here
@@ -532,16 +540,19 @@ void KL_table::mu_correction(std::vector<KLPol>& klv, RankFlags desc_y,
 	size_t lz = length(z);
 	polynomials::Degree d = (ly-lz)/2; // power of |q| used below
 
-	BlockElt x = length_less(lz);
 	if (mu==MuCoeff(1)) // avoid useless multiplication by 1 if possible
-	  while (extr_back_up(x,desc_y))
+	  for (BlockElt x : extremals)
 	  {
+	    if (length(x)>=lz)
+	      break; // now only case |x==z| possibly needs consideration
 	    KLPolRef pol = KL_pol(x,z);
 	    klv[xx=x].safeSubtract(pol,d); // subtract $q^d.P_{x,z}$ from klv[x]
 	  }
 	else // (rare) case that |mu>1|
-	  while (extr_back_up(x,desc_y))
+	  for (BlockElt x : extremals)
 	  {
+	    if (length(x)>=lz)
+	      break; // now only case |x==z| possibly needs consideration
 	    KLPolRef pol = KL_pol(x,z);
 	    klv[xx=x].safeSubtract(pol,d,mu); // subtract $q^d.mu.P_{x,z}$
 	  }
