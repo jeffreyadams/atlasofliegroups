@@ -380,20 +380,15 @@ inline BlockEltPair KL_table::inverse_Cayley(weyl::Generator s, BlockElt y) cons
 
   Column of $y$ is the set of all $P_{x,y}$ for $x<y$
 */
-void KL_table::fill_KL_column(BlockElt y, KLHash& hash)
+void KL_table::fill_KL_column(std::vector<KLPol>& klv, BlockElt y, KLHash& hash)
 {
-  if (d_KL[y].size()>0)
-    return; // column has already been filled
-
   prepare_prim_index(descent_set(y)); // so looking up |KL_pol(x,y)| will be OK
 
   weyl::Generator s = first_direct_recursion(y);
   if (s<rank())  // a direct recursion was found, use it for |y|, for all |x|
   {
-    std::vector<KLPol> klv = // compute all polynomials for extremal |x| for |y|
-      recursion_column(y,s);
-    // write result
-    complete_primitives(klv,y,hash); // add primitives; store in |d_KL|
+    recursion_column(y,s,klv); // compute $P_{x,y}$ for extremal |x| for |y|
+    complete_primitives(klv,y,hash); // add primitive |x|s; store in |d_KL|
   }
   else // we must use an approach that distinguishes on |x| values
     d_KL[y] = new_recursion_column(y,hash); // compute and install column
@@ -415,10 +410,10 @@ void KL_table::fill_KL_column(BlockElt y, KLHash& hash)
   |y1| (which is recomputed here), but the summation itself involves polynomials
   $P_{x,z}$ that depend on $x$ as well.
 */
-std::vector<KLPol> KL_table::recursion_column (BlockElt y,weyl::Generator s)
+void KL_table::recursion_column (BlockElt y,weyl::Generator s,
+				 std::vector<KLPol>& klv)
 {
-  std::vector<KLPol> klv(block().size()+1); // storage, indexed by |BlockElt|
-  klv[y]=One; // ensure diagonal entry of it taken to be $P_{y,y}=1$
+  klv.clear();
 
   const RankFlags desc_y = descent_set(y);
   const BlockElt sy =
@@ -438,7 +433,9 @@ std::vector<KLPol> KL_table::recursion_column (BlockElt y,weyl::Generator s)
     // while more natural to do descending |x| doing forward avoids |std:reverse|
     for (auto it=extremals.cbegin(); it!=extremals.cend(); ++it)
     { // now |x| is extremal for $y$, so $s$ is descent for $x$
-      KLPol& Pxy = klv[x=*it];
+      x=*it;
+      klv.push_back(Zero);
+      KLPol& Pxy=klv.back();
       switch (descent_value(s,x))
       {
       case DescentStatus::ImaginaryCompact:
@@ -489,8 +486,7 @@ std::vector<KLPol> KL_table::recursion_column (BlockElt y,weyl::Generator s)
   }
 
   // now subtract mu-corrections from all of |klv|
-  mu_correction(klv,extremals,desc_y,sy,s);
-  return klv;
+  mu_correction(extremals,desc_y,sy,s,klv);
 
 } // |KL_table::recursion_column|
 
@@ -522,14 +518,14 @@ std::vector<KLPol> KL_table::recursion_column (BlockElt y,weyl::Generator s)
   Either direction of the loop on $z$ would work, but taking it decreasing is
   more natural.
  */
-void KL_table::mu_correction(std::vector<KLPol>& klv,
-			     const BlockEltList& extremals,
-			     RankFlags desc_y, BlockElt sy, weyl::Generator s)
+void KL_table::mu_correction(const BlockEltList& extremals,
+			     RankFlags desc_y, BlockElt sy, weyl::Generator s,
+			     std::vector<KLPol>& klv)
 {
   const Mu_column& mcol = d_mu[sy];
   size_t ly = length(sy)+1; // the length of |y|, otherwise |y| is not used here
 
-  BlockElt xx=UndefBlock; // define outside for error reporting
+  BlockElt x; // define outside for error reporting
   try {
     for (auto it = mcol.rbegin(); it!=mcol.rend(); ++it) // makes |z| decreasing
       if (DescentStatus::isDescent(descent_value(s,it->x))) // descent for |z|?
@@ -540,34 +536,36 @@ void KL_table::mu_correction(std::vector<KLPol>& klv,
 	size_t lz = length(z);
 	polynomials::Degree d = (ly-lz)/2; // power of |q| used below
 
+	auto in_it = extremals.cbegin();
+	auto out_it = klv.begin();
 	if (mu==MuCoeff(1)) // avoid useless multiplication by 1 if possible
-	  for (BlockElt x : extremals)
+	  for (; in_it!=extremals.cend() and length(x=*in_it)<lz;
+	       ++in_it,++out_it)
 	  {
-	    if (length(x)>=lz)
-	      break; // now only case |x==z| possibly needs consideration
 	    KLPolRef pol = KL_pol(x,z);
-	    klv[xx=x].safeSubtract(pol,d); // subtract $q^d.P_{x,z}$ from klv[x]
+	    out_it->safeSubtract(pol,d); // subtract $q^d.P_{x,z}$ from klv[x]
 	  }
 	else // (rare) case that |mu>1|
-	  for (BlockElt x : extremals)
+	  for (; in_it!=extremals.cend() and length(x=*in_it)<lz;
+	       ++in_it,++out_it)
 	  {
-	    if (length(x)>=lz)
-	      break; // now only case |x==z| possibly needs consideration
 	    KLPolRef pol = KL_pol(x,z);
-	    klv[xx=x].safeSubtract(pol,d,mu); // subtract $q^d.mu.P_{x,z}$
+	    out_it->safeSubtract(pol,d,mu); // subtract $q^d.mu.P_{x,z}$
 	  }
 
 	if (is_extremal(z,desc_y)) // then handle final term |x==z|
 	{ // none of the larger |z| should have altered the leading coefficient
-	  assert( klv[z].degree()==d and klv[z][d]==mu );
-	  klv[xx=z].safeSubtract(KLPol(d,mu)); // subtract off the term $mu.q^d$
+	  while ((x=*in_it)!=z)
+	    ++in_it,++out_it; // advance |out_it| to |klv| entry for |z|
+	  assert( out_it->degree()==d and (*out_it)[d]==mu );
+	  out_it->safeSubtract(KLPol(d,mu)); // subtract off the term $mu.q^d$
 	}
 
       } // |for (it->reverse(mcol))| |if(isDescent(descentValue(s,it->x))|
   }
   catch (error::NumericUnderflow& err){
     BlockElt y = block().unique_ascent(s,sy); // reconstruct |y| uniquely
-    throw kl_error::KLError(xx,y,__LINE__,
+    throw kl_error::KLError(x,y,__LINE__,
 			    static_cast<const KL_table&>(*this));
   }
 
@@ -590,8 +588,8 @@ void KL_table::mu_correction(std::vector<KLPol>& klv,
    of that length as well with nonzero mu), and are primitive only in the real
    type 2 case; we must treat them outside the loop over primitive elements.
  */
-void KL_table::complete_primitives(std::vector<KLPol>& klv,
-				     BlockElt y, KLHash& hash)
+void KL_table::complete_primitives(const std::vector<KLPol>& klv, BlockElt y,
+				   KLHash& hash)
 {
   KL_column& KL = d_KL[y]; // the column that we must write to
   KL.resize(col_size(y)); // create slots for all pertinent elements |x|
@@ -601,17 +599,18 @@ void KL_table::complete_primitives(std::vector<KLPol>& klv,
   const RankFlags desc_y = descent_set(y);
 
   auto KL_it = KL.rbegin(); // prepare for writing |KL| backwards
+  auto it = klv.rbegin(); // prepare for reading |klv| backwards
   // traverse primitives for |y| of length |y| less than |ly| backwards
-  for(BlockElt x=length_floor(y); prim_back_up(x,desc_y);++KL_it)
+  for(BlockElt x=length_floor(y); prim_back_up(x,desc_y); ++KL_it)
     if (is_extremal(x,desc_y))
     { // extremal element for |y|; use polynomial from vector passed to us
-      const KLPol& Pxy = klv[x];
+      const KLPol& Pxy = *it++;
       *KL_it = hash.match(Pxy);
       unsigned int lx = length(x);
       if (ly==lx+2*Pxy.degree()+1) // in particular parities |lx|, |ly| differ
 	mu_pairs.emplace_front(x,MuCoeff(Pxy[Pxy.degree()]));
     }
-    else // must insert a polynomial for primitive non-extramal |x|
+    else // must insert a polynomial for primitive non-extremal |x|
     {
       unsigned int s = ascent_descent(x,y);
       assert(descent_value(s,x)==DescentStatus::ImaginaryTypeII);
@@ -621,6 +620,7 @@ void KL_table::complete_primitives(std::vector<KLPol>& klv,
       *KL_it = hash.match(Pxy); // add poly at primitive non-extremal x
     }
   assert(KL_it==KL.rend());
+  assert(it==klv.rend());
 
   Mu_list downs;
   auto ds = down_set(block(),y);
@@ -898,13 +898,14 @@ KLPol KL_table::mu_new_formula
 
 void KL_table::silent_fill(BlockElt last_y)
 {
+  std::vector<KLPol> klv; klv.reserve(block().size()); // enough working storage
   try
   {
     KLHash hash(d_store); // (re-)construct a hastable for polynomial storage
     // fill the lists
     for (auto it = d_holes.begin(); it() and *it<=last_y; ++it)
     {
-      fill_KL_column(*it,hash);
+      fill_KL_column(klv,*it,hash);
       d_holes.remove(*it);
     }
     // after all columns are done the hash table is freed, only the store remains
@@ -923,6 +924,7 @@ void KL_table::silent_fill(BlockElt last_y)
 */
 void KL_table::verbose_fill(BlockElt last_y)
 {
+  std::vector<KLPol> klv; klv.reserve(block().size()); // enough working storage
   try
   {
     KLHash hash(d_store,4);
@@ -949,7 +951,7 @@ void KL_table::verbose_fill(BlockElt last_y)
       {
 	std::cerr << y << "\r";
 
-	fill_KL_column(y,hash);
+	fill_KL_column(klv,y,hash);
 	kl_size += d_KL[y].size();
 	d_holes.remove(y);
       }
