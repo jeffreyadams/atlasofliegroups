@@ -6,13 +6,11 @@
 
 {all partitions for orbits of C_n, partitions of (even) n
 every odd part has even multiplicity}
-set partitions_C(int n)=[Partition]:
-parity_restricted_partitions(2*n,true)
+set partitions_C(int n)=[Partition]: parity_restricted_partitions(true)(2*n)
 
 {all partitions for orbits of B_n, partitions of (even) n
 every odd part has even multiplicity}
-set partitions_B(int n)=[Partition]:
-parity_restricted_partitions(2*n+1,false)
+set partitions_B(int n)=[Partition]: parity_restricted_partitions(false)(2*n+1)
 
 { ---------------- type C ------------------}
 

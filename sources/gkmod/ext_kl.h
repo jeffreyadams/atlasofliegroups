@@ -1,7 +1,7 @@
 /*
   This is ext_kl.h
 
-  Copyright (C) 2013 Marc van Leeuwen
+  Copyright (C) 2013-2020 Marc van Leeuwen
   part of the Atlas of Lie Groups and Representations
 
   For license information see the LICENSE file
@@ -31,8 +31,12 @@ Pol qk_minus_q(int k);
 
 class descent_table
 {
-  std::vector<RankFlags> descents; // sets of descents ($\tau$-invariants)
-  std::vector<RankFlags> good_ascents; // ascents usable in primitivization
+  struct Elt_info // per block element information
+  { RankFlags descents;
+    RankFlags good_ascents;
+  Elt_info(RankFlags d,RankFlags a): descents(d), good_ascents(a) {}
+  };
+  std::vector<Elt_info> info;
 
   std::vector<std::vector<unsigned int> > prim_index;
   std::vector<BitMap> prim_flip; // sign for |prim_index|, transposed indexing
@@ -44,26 +48,30 @@ class descent_table
 
 // accessors
 
-  RankFlags descent_set(BlockElt y) const { return descents[y]; }
+  RankFlags descent_set(BlockElt y) const { return info[y].descents; }
+  RankFlags good_ascent_set(BlockElt y) const { return info[y].good_ascents; }
+
   bool is_descent(weyl::Generator s, BlockElt y) const
   { return descent_set(y).test(s); }
 
+  RankFlags very_easy_set(BlockElt x, BlockElt y) const
+  { return info[x].good_ascents & info[y].descents; }
+
+  RankFlags easy_set(BlockElt x, BlockElt y) const
+  { return info[y].descents-info[x].descents; }
+
   // index of primitive element corresponding to $x$ in row for $y$
   unsigned int x_index(BlockElt x, BlockElt y) const
-  { return prim_index[descents[y].to_ulong()][x]; }
+  { return prim_index[info[y].descents.to_ulong()][x]; }
   unsigned int self_index(BlockElt y) const { return x_index(y,y); }
   bool flips(BlockElt x,BlockElt y) const
-  { return prim_flip[x].isMember(descents[y].to_ulong()); }
+  { return prim_flip[x].isMember(info[y].descents.to_ulong()); }
 
   BlockElt length_floor(BlockElt y) const
   { return block.length_first(block.length(y)); }
+
+  // number of primitive elements for |descent_set(y)| of length less than |y|
   unsigned int col_size(BlockElt y) const;
-
-  RankFlags very_easy_set(BlockElt x, BlockElt y) const
-  { return good_ascents[x]&descents[y]; }
-
-  RankFlags easy_set(BlockElt x, BlockElt y) const
-  { return descents[y]-descents[x]; }
 
   // set $x$ to last primitive element for $y$ strictly before $x$, or fail
   bool prim_back_up(BlockElt& x, BlockElt y) const;
@@ -79,7 +87,8 @@ class KL_table
   std::unique_ptr<std::vector<Pol> > own; // points to |storage_pool| if we own
   std::vector<Pol>& storage_pool; // the distinct actual polynomials, maybe owned
 
-  std::vector<kl::KLColumn> column; // columns are lists of polynomial pointers
+  using KLColumn = std::vector<kl::KLIndex>;
+  std::vector<KLColumn> column; // columns are lists of polynomial pointers
 
  public:
   KL_table(const ext_block::ext_block& b, std::vector<Pol>* pool);
@@ -101,8 +110,10 @@ class KL_table
   // The twisted Kazhdan-Lusztig-Vogan polynomial P_{x,y}
   Pol P(BlockElt x, BlockElt y) const;
 
-  bool extremal(BlockElt x, BlockElt y) const
-  { return aux.descent_set(x).contains(aux.descent_set(y)); }
+  bool is_extremal(BlockElt x, BlockElt y) const
+  { return aux.easy_set(x,y).none(); }
+  bool is_primitive(BlockElt x, BlockElt y) const
+  { return aux.very_easy_set(x,y).none(); }
 
   // list of elements |x| such that $P(x,y)$ is nonzero, decreasing from |y|
   containers::sl_list<BlockElt> nonzero_column(BlockElt y) const;

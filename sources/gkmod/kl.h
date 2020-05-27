@@ -5,7 +5,8 @@
 
 
   Copyright (C) 2004,2005 Fokko du Cloux
-  Copyright 2012 David Vogan, Marc van Leeuwen
+  Copyright (C) 2012 David Vogan
+  Copyright (C) 2006-2020 Marc van Leeuwen
   part of the Atlas of Lie Groups and Representations
 
   For license information see the LICENSE file
@@ -29,8 +30,6 @@ namespace kl {
 
 class KLPolEntry; // class definition will given in the implementation file
 
-using KLColumn = std::vector<KLIndex>;
-using PrimitiveColumn = std::vector<BlockElt>;
 using KLHash = HashTable<KLPolEntry,KLIndex>;
 
 /******** function declarations *********************************************/
@@ -92,9 +91,11 @@ class KL_table
 
   BlockElt first_hole () const { return d_holes.front(); }
 
-  // construct lists of extremal respectively primitive elements for |y|
-  PrimitiveColumn extremal_column(BlockElt y) const;
-  PrimitiveColumn primitive_column(BlockElt y) const;
+  BlockElt length_floor(BlockElt y) const
+  { return length_less(length(y)); }
+
+  // construct lists of primitive elements for |y|
+  BitMap primitives (BlockElt y) const;
 
   bool isZero(const KLIndex p) const { return p == d_zero; }
 
@@ -108,7 +109,7 @@ class KL_table
 
 
   // List of all non-zero KL polynomials for the block, in generation order
-  const KLStore& polStore() const { return d_store; }
+  const KLStore& pol_store() const { return d_store; }
 
   const KL_column& KL_data(BlockElt y) const { return d_KL[y]; }
 
@@ -116,7 +117,7 @@ class KL_table
   const Mu_column& mu_column(BlockElt y) const { return d_mu[y]; }
 
   // get bitmap of primitive elements for column |y| with nonzero KL polynomial
-  BitMap primMap (BlockElt y) const;
+  BitMap prim_map (BlockElt y) const;
 
 // manipulators
 
@@ -136,26 +137,25 @@ class KL_table
  private:
 
   //accessors
-  weyl::Generator firstDirectRecursion(BlockElt y) const;
+  weyl::Generator first_direct_recursion(BlockElt y) const;
   weyl::Generator first_nice_and_real(BlockElt x,BlockElt y) const;
   std::pair<weyl::Generator,weyl::Generator>
-  first_endgame_pair(BlockElt x, BlockElt y) const;
+    first_endgame_pair(BlockElt x, BlockElt y) const;
   BlockEltPair inverse_Cayley(weyl::Generator s, BlockElt y) const;
 
   // manipulators
   void silent_fill(BlockElt last_y); // called by public |fill| when not verbose
   void verbose_fill(BlockElt last_y); // called by public |fill| when verbose
 
-  void fill_KL_column(BlockElt y, KLHash& hash);
-  void recursion_column(std::vector<KLPol> & klv,
-			const PrimitiveColumn& e, BlockElt y, weyl::Generator s);
-  void mu_correction(std::vector<KLPol>& klv,
-		     const PrimitiveColumn& e,
-		     BlockElt y, weyl::Generator s);
-  void complete_primitives(const std::vector<KLPol>& klv,
-			   const PrimitiveColumn& e, BlockElt y,
+  void fill_KL_column(std::vector<KLPol>& klv, BlockElt y, KLHash& hash);
+  void recursion_column(BlockElt y, weyl::Generator s,
+			std::vector<KLPol>& klv);
+  void mu_correction(const BlockEltList& extremals,
+		     RankFlags desc_y, BlockElt sy, weyl::Generator s,
+		     std::vector<KLPol>& klv);
+  void complete_primitives(const std::vector<KLPol>& klv, BlockElt y,
 			   KLHash& hash);
-  void new_recursion_column(KL_column & kl_col, BlockElt y, KLHash& hash);
+  std::vector<KLIndex> new_recursion_column(BlockElt y, KLHash& hash);
   KLPol mu_new_formula
     (BlockElt x, BlockElt y, weyl::Generator s, const Mu_list& muy);
 

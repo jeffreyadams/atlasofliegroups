@@ -129,8 +129,59 @@ set partitions = (int n) [Partition]:
   ; ##table~[0] { concatenate entries of final table row }
   fi
 
+set part_restricted_partitions ((int->bool)pred) =
+  (int n) [Partition]:
+  if n.< then []
+  else
+    let table = [[ [Partition] ]]: { partitions by sum, then by largest part }
+      for m:n+1
+      do if =m then [ [[]] ] { empty partition of 0 } else [] { nothing yet } fi
+      od
+    in
+    for m:n from 1
+    do table[m] := ([Partition]: []) { no partitions with largest part 0 } #
+      for k: if m=n then n else min(m,n-m) { truncate to need } fi from 1
+	 { form list of partitions of |m| with largest part |k| }
+      do
+        if pred(k) then
+          let rem = m-k { amount remaining after using one part |k| of |m| } in
+    	  { traverse all partitions of |rem| with parts at most |min(k,rem)|: }
+	  for lambda in ##table[rem][:min(k,rem)+1] do k#lambda od
+	else [] { leave empty list at position |k| which fails |pred| }
+	fi
+      od
+    od
+  ; ##table~[0] { concatenate entries of final table row }
+  fi
+
+set odd_part_partitions = part_restricted_partitions(is_odd@int)
+
+{ partitions with distinct parts: all multiplicties are 0 or 1 }
+set strict_partitions = (int n) [Partition]:
+  if n.< then []
+  else
+    let table = [[ [Partition] ]]: { partitions by sum, then by largest part }
+      for m:n+1
+      do if =m then [ [[]] ] { empty partition of 0 } else [] { nothing yet } fi
+      od
+    in
+    for m:n from 1
+    do table[m] := ([Partition]: []) { no partitions with largest part 0 } #
+      for k: if m=n then n else min(m,n-m-1) { truncate to need } fi from 1
+	 { form list of partitions of |m| with largest part |k| }
+      do { traverse all partitions |m-k| with parts at most |min(k,m-k)|: }
+        let rem = m-k in
+        for lambda in ##table[rem][:min(k-1,rem)+1] do k#lambda od
+      od
+    od
+  ; ##table~[0] { concatenate entries of final table row }
+  fi
+
 { partitions with even multiplicity of parts of one parity (odd or even) }
-set parity_restricted_partitions (int n, bool restrict_odd_parts) = [Partition]:
+set parity_restricted_partitions (bool restrict_odd_parts) = (int->[Partition]):
+  let is_multiplicity_restricted = (int->bool):
+    if restrict_odd_parts then is_odd@int else is_even@int fi   in
+  (int n) [Partition]:
   if n.< or restrict_odd_parts and n.is_odd then [] { impossible, so nothing }
   else
     let table = [[ [Partition] ]]: { partitions by sum, then by largest part }
@@ -143,12 +194,14 @@ set parity_restricted_partitions (int n, bool restrict_odd_parts) = [Partition]:
       for k: if m=n then n else min(m,n-m) { truncate to need } fi from 1
 	 { form list of partitions of |m| with largest part |k| }
       do { traverse all partitions |m-k| with parts at most |min(k,m-k)|: }
-        if if restrict_odd_parts then k.is_odd else k.is_even fi
-        then { restrict use of k to using it twice } let rem=m-k-k in
+        if k.is_multiplicity_restricted
+        then { restrict use of k to using it twice, |lambda| may also have |k| }
+	  let rem=m-k-k in
           if rem.< then []  { if a negative remainder, then no solutions here }
           else for lambda in ##table[rem][:min(k,rem)+1] do [k,k]##lambda od
           fi
-	else let rem = m-k in
+	else { we use |k| once, |lambda| could have part(s) equal to |k| too }
+	  let rem = m-k in
           for lambda in ##table[rem][:min(k,rem)+1] do k#lambda od
         fi
       od
