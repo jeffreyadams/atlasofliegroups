@@ -96,6 +96,9 @@ class KL_table
 
   BlockElt first_hole () const { return d_holes.front(); }
 
+  BlockElt length_floor(BlockElt y) const
+  { return length_less(length(y)); }
+
   // construct lists of primitive elements for |y|
   BitMap primitives (BlockElt y) const;
 
@@ -149,11 +152,12 @@ class KL_table
   void silent_fill(BlockElt last_y); // called by public |fill| when not verbose
   void verbose_fill(BlockElt last_y); // called by public |fill| when verbose
 
-  // the |size_t| results serve only for statistics; caller may ignore them
-  size_t fill_KL_column(BlockElt y, KLHash& hash);
-  std::vector<KLPol> recursion_column(BlockElt y, weyl::Generator s);
-  void mu_correction(std::vector<KLPol>& klv, RankFlags desc_y,
-		     BlockElt sy, weyl::Generator s);
+  size_t fill_KL_column(std::vector<KLPol>& klv, BlockElt y, KLHash& hash);
+  void recursion_column(BlockElt y, weyl::Generator s,
+			std::vector<KLPol>& klv);
+  void mu_correction(const BlockEltList& extremals,
+		     RankFlags desc_y, BlockElt sy, weyl::Generator s,
+		     std::vector<KLPol>& klv);
   size_t complete_primitives(std::vector<KLPol>& klv, BlockElt y, KLHash& hash);
   std::vector<KLIndex> new_recursion_column(BlockElt y, KLHash& hash);
   KLPol mu_new_formula
