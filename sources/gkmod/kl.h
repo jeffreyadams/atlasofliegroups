@@ -148,7 +148,8 @@ class KL_table
   void verbose_fill(BlockElt last_y); // called by public |fill| when verbose
 
   void fill_KL_column(BlockElt y, KLHash& hash);
-  std::vector<KLPol> recursion_column(BlockElt y, weyl::Generator s);
+  void recursion_column(BlockElt y, weyl::Generator s,
+			std::vector<KLPol>& klv);
   void mu_correction(std::vector<KLPol>& klv,
 		     const BlockEltList& extremals,
 		     RankFlags desc_y, BlockElt sy, weyl::Generator s);

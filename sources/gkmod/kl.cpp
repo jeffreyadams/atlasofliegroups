@@ -390,10 +390,9 @@ void KL_table::fill_KL_column(BlockElt y, KLHash& hash)
   weyl::Generator s = first_direct_recursion(y);
   if (s<rank())  // a direct recursion was found, use it for |y|, for all |x|
   {
-    std::vector<KLPol> klv = // compute all polynomials for extremal |x| for |y|
-      recursion_column(y,s);
-    // write result
-    complete_primitives(klv,y,hash); // add primitives; store in |d_KL|
+    std::vector<KLPol> klv(block().size()+1); // storage, indexed by |BlockElt|
+    recursion_column(y,s,klv); // compute $P_{x,y}$ for extremal |x| for |y|
+    complete_primitives(klv,y,hash); // add primitive |x|s; store in |d_KL|
   }
   else // we must use an approach that distinguishes on |x| values
     d_KL[y] = new_recursion_column(y,hash); // compute and install column
@@ -415,9 +414,9 @@ void KL_table::fill_KL_column(BlockElt y, KLHash& hash)
   |y1| (which is recomputed here), but the summation itself involves polynomials
   $P_{x,z}$ that depend on $x$ as well.
 */
-std::vector<KLPol> KL_table::recursion_column (BlockElt y,weyl::Generator s)
+void KL_table::recursion_column (BlockElt y,weyl::Generator s,
+				 std::vector<KLPol>& klv)
 {
-  std::vector<KLPol> klv(block().size()+1); // storage, indexed by |BlockElt|
   klv[y]=One; // ensure diagonal entry of it taken to be $P_{y,y}=1$
 
   const RankFlags desc_y = descent_set(y);
@@ -490,7 +489,6 @@ std::vector<KLPol> KL_table::recursion_column (BlockElt y,weyl::Generator s)
 
   // now subtract mu-corrections from all of |klv|
   mu_correction(klv,extremals,desc_y,sy,s);
-  return klv;
 
 } // |KL_table::recursion_column|
 
