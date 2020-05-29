@@ -148,15 +148,13 @@ KL_table::KL_table(const Block_base& b)
   Since |d_KL| holds all polynomials for primitive pairs $(x,y)$, this is just a
   lookup function. Find the index |inx| of the primitivisation of |x| in the
   column |kl_col==d_kl[y]| (done in using quick lookup in |prim_index|). If this
-  has made |inx| out of bounds (in particular if |inx==UndefBlock|) return a
-  zero polynomial. Otherwise fetch from |d_KL| and |d_store|.
+  has made |inx| out of bounds (in particular if |prim_index| indicates a
+  dead-end) return a zero polynomial. Otherwise fetch from |d_KL| and |d_store|.
   */
 KLPolRef KL_table::KL_pol(BlockElt x, BlockElt y) const
 {
-  if (x==UndefBlock) // partial blocks can cause this in many ways
-    return d_store[d_zero];
   const auto& kl_col = d_KL[y];
-  unsigned int inx = prim_index(x,descent_set(y));
+  unsigned int inx = prim_index(x,descent_set(y)); // can handle |x==UndefBlock|
 
   if (inx>=kl_col.size()) // l(x)>=l(y), includes case x==-1: no primitivization
     return d_store[inx==self_index(y) ? d_one : d_zero];
@@ -166,10 +164,8 @@ KLPolRef KL_table::KL_pol(BlockElt x, BlockElt y) const
 // The same, but just return the index into |d_store| that gives $P_{x,y}$
 KLIndex KL_table::KL_pol_index(BlockElt x, BlockElt y) const
 {
-  if (x==UndefBlock) // partial blocks can cause this in many ways
-    return d_zero;
   const auto& kl_col = d_KL[y];
-  unsigned int inx = prim_index(x,descent_set(y));
+  unsigned int inx = prim_index(x,descent_set(y)); // can handle |x==UndefBlock|
 
   if (inx>=kl_col.size()) // l(x)>=l(y), includes case |inx==(unsigned)-1|
     return inx==self_index(y) ? d_one : d_zero;
@@ -380,7 +376,8 @@ inline BlockEltPair KL_table::inverse_Cayley(weyl::Generator s, BlockElt y) cons
 
   Column of $y$ is the set of all $P_{x,y}$ for $x<y$
 */
-void KL_table::fill_KL_column(std::vector<KLPol>& klv, BlockElt y, KLHash& hash)
+void KL_table::fill_KL_column
+  (std::vector<KLPol>& klv, BlockElt y, KLHash& hash)
 {
   prepare_prim_index(descent_set(y)); // so looking up |KL_pol(x,y)| will be OK
 
@@ -428,8 +425,8 @@ void KL_table::recursion_column (BlockElt y,weyl::Generator s,
     length_floor(y);
   try {
 
-    // while more natural to do descending |x| doing forward avoids |std:reverse|
-    for (auto it=extremals.cbegin(); it!=extremals.cend(); ++it)
+    // reversal in the following loop is not essential, but a bit more natural
+    for (auto it=extremals.crbegin(); it!=extremals.crend(); ++it)
     { // now |x| is extremal for $y$, so $s$ is descent for $x$
       KLPol& Pxy = klv[x=*it];
       switch (descent_value(s,x))
@@ -594,13 +591,13 @@ void KL_table::complete_primitives(std::vector<KLPol>& klv,
 
   auto KL_it = KL.rbegin(); // prepare for writing |KL| backwards
   // traverse primitives for |y| of length |y| less than |ly| backwards
-  for(BlockElt x=length_floor(y); prim_back_up(x,desc_y);++KL_it)
+  for(BlockElt x=length_floor(y); prim_back_up(x,desc_y); ++KL_it)
     if (is_extremal(x,desc_y))
     { // extremal element for |y|; use polynomial from vector passed to us
       KLPol& Pxy = klv[x];
       *KL_it = hash.match(Pxy);
       unsigned int lx = length(x);
-      if (ly==lx+2*Pxy.degree()+1) // in particular parities |lx|, |ly| differ
+      if (not Pxy.isZero() and ly==lx+2*Pxy.degree()+1)
 	mu_pairs.emplace_front(x,MuCoeff(Pxy[Pxy.degree()]));
       Pxy=Zero; // clean up |klv| for next column
     }
@@ -891,7 +888,7 @@ KLPol KL_table::mu_new_formula
 
 void KL_table::silent_fill(BlockElt last_y)
 {
-  std::vector<KLPol> klv(block().size()); // storage, indexed by |BlockElt|
+  std::vector<KLPol> klv(block().size(),Zero); // storage, indexed by |BlockElt|
   try
   {
     KLHash hash(d_store); // (re-)construct a hastable for polynomial storage
@@ -917,7 +914,7 @@ void KL_table::silent_fill(BlockElt last_y)
 */
 void KL_table::verbose_fill(BlockElt last_y)
 {
-  std::vector<KLPol> klv(block().size()); // storage, indexed by |BlockElt|
+  std::vector<KLPol> klv(block().size(),Zero); // storage, indexed by |BlockElt|
   try
   {
     KLHash hash(d_store,4);

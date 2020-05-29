@@ -186,13 +186,13 @@ void KLSupport::check_sub(const KLSupport& sub, const BlockEltList& embed)
   assert(sub.rank()==rank());
   for (unsigned i=1; i<embed.size(); ++i)
     assert(embed[i-1]<embed[i]);
-  for (BlockElt x=0; x<sub.block().size(); ++x)
+  for (BlockElt z=0; z<sub.block().size(); ++z)
   {
-    assert(sub.block().length(x)==d_block.length(embed[x]));
-    assert(sub.block().descent(x)==d_block.descent(embed[x]));
+    assert(sub.block().length(z)==d_block.length(embed[z]));
+    assert(sub.block().descent(z)==d_block.descent(embed[z]));
     for (weyl::Generator s=0; s<d_block.rank(); ++s)
-      if (sub.cross(s,x)!=UndefBlock)
-	assert(embed[sub.cross(s,x)]==cross(s,embed[x]));
+      if (sub.cross(s,z)!=UndefBlock)
+	assert(embed[sub.cross(s,z)]==cross(s,embed[z]));
   }
 }
 #endif
