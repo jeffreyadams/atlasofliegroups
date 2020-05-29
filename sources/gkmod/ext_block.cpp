@@ -2354,7 +2354,7 @@ void show_mat(std::ostream& strm,const matrix::Matrix<Pol> M,unsigned inx)
 }
 
 bool ext_block::add_neighbours
-  (BlockEltList& dst, weyl::Generator s, BlockElt n) const
+  (containers::sl_list<BlockElt>& dst, weyl::Generator s, BlockElt n) const
 {
   const BlockEltPair& links = data[s][n].links;
   if (links.first==UndefBlock)
@@ -2366,36 +2366,39 @@ bool ext_block::add_neighbours
   return false; // success, |link_count| cannot exceed 2
 }
 
-bool check_quadratic (const ext_block& b, weyl::Generator s, BlockElt x)
-{ BlockEltList l; l.reserve(4);
+bool check_quadratic (const ext_block& b, weyl::Generator s, BlockElt x0)
+{ containers::sl_list<BlockElt> l;
 
-  if (b.add_neighbours(l,s,x))
+  if (b.add_neighbours(l,s,x0))
     return true;
 
   if (l.empty()) // compact or nonparity cases, there is nothing to check
     return true;
 
   // check symmetry of link signs
-  for (auto it=l.begin(); it!=l.end(); ++it)
-    if (b.epsilon(s,x,*it)!=b.epsilon(s,*it,x))
+  for (BlockElt y : l)
+    if (b.epsilon(s,x0,y)!=b.epsilon(s,y,x0))
       return false;
 
-  auto tp = b.descent_type(s,x);
+  auto tp = b.descent_type(s,x0);
   if (l.size()==1) // cases without cycles; we're done
     return true;
   assert(l.size()==2);
+  BlockElt y0 = l.front(); l.pop_front();
+  BlockElt y1 = l.front(); l.pop_front();
 
   if (has_quadruple(tp))
-  { if (b.add_neighbours(l,s,l[0]))
+  { if (b.add_neighbours(l,s,y0))
       return true;
-    if (x==l[2])
-      l[2]=l[3]; // make sure |l[2]| complets the square
-    assert (l[2]!=x);
-    return b.epsilon(s,x,l[0])*b.epsilon(s,x,l[1]) != // negative product here!
-      b.epsilon(s,l[0],l[2])*b.epsilon(s,l[1],l[2]);
+    if (x0==l.front())
+      l.pop_front(); // so that |l.front()| won't be |x0|
+    BlockElt x1 = l.front();
+    assert (x0!=x1);
+    return b.epsilon(s,x0,y0)*b.epsilon(s,x0,y1) != // negative product here!
+      b.epsilon(s,y0,x1)*b.epsilon(s,y1,x1);
   }
   else
-    return b.epsilon(s,x,l[0])*b.epsilon(s,x,l[1])==b.epsilon(s,l[0],l[1]);
+    return b.epsilon(s,x0,y0)*b.epsilon(s,x0,y1)==b.epsilon(s,y0,y1);
 }
 
 bool check_braid
@@ -2414,7 +2417,7 @@ bool check_braid
     BlockElt z=to_do.front();
     to_do.pop();
     used.insert(z);
-    BlockEltList l; l.reserve(4); // for neighbours of |z| by |s| and |t|
+    containers::sl_list<BlockElt> l;
     if (b.add_neighbours(l,s,z) or b.add_neighbours(l,t,z))
       return true;
     for (BlockElt y : l)
@@ -2429,19 +2432,20 @@ bool check_braid
    unsigned int j=0; // track index of |y|
   for (const BlockElt y : used)
   {
-    set(Ts,j,j, b.T_coef(s,y,y)-Pol(1)); set(Tt,j,j, b.T_coef(t,y,y)-Pol(1));
-    BlockEltList l; l.reserve(2);
+    set(Ts,j,j, b.T_coef(s,y,y)-Pol(1));
+    set(Tt,j,j, b.T_coef(t,y,y)-Pol(1));
+    containers::sl_list<BlockElt> l;
     if (b.add_neighbours(l,s,y))
       return true;
-    for (unsigned int i=0; i<l.size(); ++i)
-      if (used.isMember(l[i]))
-	set(Ts,used.position(l[i]),j, b.T_coef(s,l[i],y));
+    for (BlockElt z : l)
+      if (used.isMember(z))
+	set(Ts,used.position(z),j, b.T_coef(s,z,y));
     l.clear();
     if (b.add_neighbours(l,t,y))
       return true;
-    for (unsigned int i=0; i<l.size(); ++i)
-      if (used.isMember(l[i]))
-	set(Tt,used.position(l[i]),j, b.T_coef(t,l[i],y));
+    for (BlockElt z : l)
+      if (used.isMember(z))
+	set(Tt,used.position(z),j, b.T_coef(t,z,y));
     ++j; // keep |j| in phase with |y|
   }
   matrix::Vector<Pol> v(n,Pol()), w;
