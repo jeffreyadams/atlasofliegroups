@@ -415,8 +415,7 @@ size_t KL_table::fill_KL_column
   }
   else // we must use an approach that distinguishes on |x| values
   {
-    std::vector<KLIndex> klc = // a vector of size |block().size()+1|
-      new_recursion_column(y,hash);
+    new_recursion_column(klv,y,hash);
 
     // commit
     const RankFlags desc_y = descent_set(y);
@@ -425,11 +424,14 @@ size_t KL_table::fill_KL_column
     BlockElt x = length_floor(y);
     while (prim_back_up(x,desc_y))
     {
-      const auto& Pxy = klc[x];
-      if (isZero(Pxy))
+      auto& Pxy = klv[x];
+      if (Pxy.isZero())
 	++zero_count;
       else
-	non_zeros.emplace_front(x,Pxy);
+      {
+	non_zeros.emplace_front(x,hash.match(Pxy));
+	Pxy=Zero; // clean up;
+      }
     }
 
     d_KL[y].assign(non_zeros.wcbegin(),non_zeros.wcend());
@@ -748,15 +750,15 @@ size_t KL_table::complete_primitives(std::vector<KLPol>& klv,
   This code gets executed for |y| that are of minimal length, in which case
   it only contributes $P_{y,y}=1$; the |while| loop will be executed 0 times.
 */
-std::vector<KLIndex> KL_table::new_recursion_column(BlockElt y, KLHash& hash)
+void KL_table::new_recursion_column
+  (std::vector<KLPol>& klv, BlockElt y, KLHash& hash)
 {
   const unsigned int l_y = length(y);
   const auto desc_y = descent_set(y);
 
-  std::vector<KLIndex> cur_col(block().size()+1);
-  cur_col[y]=d_one;
-  auto KL_y = [this,&cur_col,desc_y] (BlockElt x) -> KLPol
-    { return d_store[cur_col[primitivize(x,desc_y)]]; };
+  klv[y] = One;
+  auto KL_y = [this,&klv,desc_y] (BlockElt x) -> KLPol
+    { return klv[primitivize(x,desc_y)]; };
 
   Mu_list mu_pairs; // those |x| with |mu(x,y)>0|
   auto ds = down_set(block(),y);
@@ -772,15 +774,15 @@ std::vector<KLIndex> KL_table::new_recursion_column(BlockElt y, KLHash& hash)
   try {
     while (prim_back_up(x,desc_y)) // reverse loop through primitive elements
     {
+      KLPol& Pxy = klv[x]; // the entry that we are to compute
       unsigned int s= ascent_descent(x,y);
       if (s<rank()) // a primitive element that is not extremal; easy case
       { // equation (1.9) in recursion.pdf
 	assert(descent_value(s,x)==DescentStatus::ImaginaryTypeII);
 	BlockEltPair p = cayley(s,x);
-	KLPol Pxy = KL_y(p.first);
+	Pxy = KL_y(p.first);
 	Pxy.safeAdd(KL_y(p.second));
-	cur_col[x] = hash.match(Pxy); // record definitive value $P_{x,y}$
-	continue; // done with |x|, go on to the next
+	continue; // $P_{x,y}$ is stored in |klv[x]|, go on to the next
       }
 
       unsigned int l_x = length(x);
@@ -794,13 +796,13 @@ std::vector<KLIndex> KL_table::new_recursion_column(BlockElt y, KLHash& hash)
       s = first_nice_and_real(x,y);
       if (s < rank()) // there is such an ascent s
       {
-	// start setting |pol| to the expression (3.4) in recursion.pdf
-	KLPol pol = mu_new_formula(x,y,s,mu_pairs);
+	// start setting |Pxy| to the expression (3.4) in recursion.pdf
+	Pxy = mu_new_formula(x,y,s,mu_pairs);
 
 	switch (descent_value(s,x))
 	{
 	case DescentStatus::ComplexAscent: // use equations (3.3a)=(3.4)
-	  pol.safeSubtract(KL_y(cross(s,x)),1); // subtract qP_{sx,y}
+	  Pxy.safeSubtract(KL_y(cross(s,x)),1); // subtract qP_{sx,y}
 	break;
 
 	case DescentStatus::ImaginaryTypeII:
@@ -808,9 +810,9 @@ std::vector<KLIndex> KL_table::new_recursion_column(BlockElt y, KLHash& hash)
 	  BlockEltPair p = cayley(s,x);
 	  KLPol sum = KL_y(p.first);
 	  sum.safeAdd(KL_y(p.second));
-	  pol.safeAdd(sum);
-	  pol.safeSubtract(sum,1); //now we've added (1-q)(P_{x',y}+P_{x'',y})
-	  pol.safeDivide(2);   //this could throw, but should not
+	  Pxy.safeAdd(sum);
+	  Pxy.safeSubtract(sum,1); //now we've added (1-q)(P_{x',y}+P_{x'',y})
+	  Pxy.safeDivide(2);   //this could throw, but should not
 	} // ImaginaryTypeII case
 	break;
 
@@ -819,14 +821,13 @@ std::vector<KLIndex> KL_table::new_recursion_column(BlockElt y, KLHash& hash)
 	     leading (if nonzero) term to appear in addition to (3.4), giving
 	     rise to equation (3.7). Yet we can determine the quotient by q+1.
 	  */
-	  pol.safe_quotient_by_1_plus_q(length(y)-length(x));
+	  Pxy.safe_quotient_by_1_plus_q(length(y)-length(x));
 	  break;
 
 	default: assert(false); //we've handled all possible NiceAscents
 	}
-	cur_col[x] = hash.match(pol); // record definitive value $P_{x,y}$
-	if (l_y==l_x+2*pol.degree()+1)
-	  mu_pairs.emplace_back(x,pol[pol.degree()]);
+	if (not Pxy.isZero() and l_y==l_x+2*Pxy.degree()+1)
+	  mu_pairs.emplace_back(x,Pxy[Pxy.degree()]);
 
       } // end of |first_nice_and_real| case
 
@@ -854,14 +855,14 @@ std::vector<KLIndex> KL_table::new_recursion_column(BlockElt y, KLHash& hash)
 	auto st = first_endgame_pair(x,y);
 	if ((s=st.first) < rank())
 	{
-	  KLPol pol = mu_new_formula(x,y,s,mu_pairs);
+	  Pxy = mu_new_formula(x,y,s,mu_pairs);
 
 	  //subtract (q-1)P_{xprime,y} from terms of expression (3.4)
 	  const auto& P_xprime_y = KL_y(cayley(s,x).first);
-	  pol.safeAdd(P_xprime_y);
-	  pol.safeSubtract(P_xprime_y,1);
+	  Pxy.safeAdd(P_xprime_y);
+	  Pxy.safeSubtract(P_xprime_y,1);
 
-	  //now |pol| holds P_{x,y}+P_{s.x,y}
+	  //now |Pxy| holds P_{x,y}+P_{s.x,y}
 
 	  weyl::Generator t = st.second;
 
@@ -871,16 +872,15 @@ std::vector<KLIndex> KL_table::new_recursion_column(BlockElt y, KLHash& hash)
 	    BlockEltPair sx_up_t = cayley(t,cross(s,x));
 
 	    // any |UndefBlock| component of |sx_up_t| will contribute $0$
-	    pol.safeSubtract(KL_y(sx_up_t.first));
-	    pol.safeSubtract(KL_y(sx_up_t.second));
+	    Pxy.safeSubtract(KL_y(sx_up_t.first));
+	    Pxy.safeSubtract(KL_y(sx_up_t.second));
 	  }
 
-	  cur_col[x] = hash.match(pol); // record definitive value $P_{x,y}$
-	  if (l_y==l_x+2*pol.degree()+1)
-	    mu_pairs.emplace_back(x,pol[pol.degree()]);
+	  if (not Pxy.isZero() and l_y==l_x+2*Pxy.degree()+1)
+	    mu_pairs.emplace_back(x,Pxy[Pxy.degree()]);
 	} // |if (endgame_pair(x,y)) |
 	else // |first_endgame_pair| found nothing
-	  assert(cur_col[x]==d_zero); // just check unchanged since initialised
+	  assert(Pxy.isZero()); // just check unchanged since initialised
       } // end of no NiceAscent case
     } // while (j-->0)
   }
@@ -890,6 +890,7 @@ std::vector<KLIndex> KL_table::new_recursion_column(BlockElt y, KLHash& hash)
 			    static_cast<const KL_table&>(*this));
   }
 
+  klv[y] = Zero; // clean up
   {
     Mu_list downs; // set apart initial part which is increasing
     downs.splice(downs.begin(),mu_pairs,mu_pairs.begin(),downs_end);
@@ -898,7 +899,6 @@ std::vector<KLIndex> KL_table::new_recursion_column(BlockElt y, KLHash& hash)
   }
   d_mu[y].assign(mu_pairs.wcbegin(),mu_pairs.wcend());
 
-  return cur_col;
 } // |KL_table::new_recursion_column|
 
 /*

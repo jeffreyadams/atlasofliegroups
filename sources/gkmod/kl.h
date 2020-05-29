@@ -159,7 +159,7 @@ class KL_table
 		     RankFlags desc_y, BlockElt sy, weyl::Generator s,
 		     std::vector<KLPol>& klv);
   size_t complete_primitives(std::vector<KLPol>& klv, BlockElt y, KLHash& hash);
-  std::vector<KLIndex> new_recursion_column(BlockElt y, KLHash& hash);
+  void new_recursion_column (std::vector<KLPol>& klv, BlockElt y, KLHash& hash);
   KLPol mu_new_formula
     (BlockElt x, BlockElt y, weyl::Generator s, const Mu_list& muy);
 
