@@ -35,18 +35,22 @@ namespace polynomials {
 template<typename C>
   bool compare(const Polynomial<C>&, const Polynomial<C>&); // lex ordering
 
+// the following operations will throw on overflow, but not on other errors
+// underflow and division by zero trigger failing assertions while debugging
+// the rationale is that only overflow should be plausible in production code
+
 // basic operations which test for overflow/underflow, assuming |C| is unsigned
 template<typename C>
-  void safeAdd(C&, C); // version of |operator+=| testing for overflow
+  void safe_add(C&, C); // version of |operator+=| testing for overflow
 
 template<typename C>
-  void safeDivide(C&, C); // version of |operator/=| testing for divisibility
+void safe_subtract(C&, C);// version of |operator-=| asserting no underflow
 
 template<typename C>
-  void safeProd(C&, C); // version of |operator*=| testing for overflow
+  void safe_multiply(C&, C); // version of |operator*=| testing for overflow
 
 template<typename C>
-void safeSubtract(C&, C);// version of |operator-=| testing for underflow
+  void safe_divide(C&, C); // version of |operator/=| asserting validity
 
 
 /******** type definitions **************************************************/
