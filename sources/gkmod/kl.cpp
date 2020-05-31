@@ -130,8 +130,8 @@ KL_table::KL_table(const Block_base& b)
   , d_store(2)
 {
   d_holes.fill();
-  d_store[d_zero]=Zero; // ensure these polynomials are present
-  d_store[d_one]=One;   // at expected indices, even if maybe absent in |d_KL|
+  d_store[zero]=Zero; // ensure these polynomials are present
+  d_store[one]=One;   // at expected indices, even if maybe absent in |d_KL|
 }
 
 /******** copy, assignment and swap ******************************************/
@@ -156,24 +156,24 @@ KL_table::KL_table(const Block_base& b)
 KLPolRef KL_table::KL_pol(BlockElt x, BlockElt y) const
 {
   x=primitivize(x,descent_set(y));
-  if (x>=y) return d_store[x==y ? d_one : d_zero];
+  if (x>=y) return d_store[x==y ? one : zero];
 
-  KL_pair target(x,d_zero); // provide dummy second component for search
+  KL_pair target(x,zero); // provide dummy second component for search
   const auto& kl_col = d_KL[y];
   auto xptr = std::lower_bound(kl_col.cbegin(),kl_col.cend(),target);
-  return d_store[xptr == kl_col.cend() or xptr->x != x ? d_zero : xptr->P];
+  return d_store[xptr == kl_col.cend() or xptr->x != x ? zero : xptr->P];
 }
 
 // The same, but just return the index into |d_store| that gives $P_{x,y}$
 KLIndex KL_table::KL_pol_index(BlockElt x, BlockElt y) const
 {
   x=primitivize(x,descent_set(y));
-  if (x>=y) return x==y ? d_one : d_zero;
+  if (x>=y) return x==y ? one : zero;
 
-  KL_pair target(x,d_zero); // provide dummy second component for search
+  KL_pair target(x,zero); // provide dummy second component for search
   const auto& kl_col = d_KL[y];
   auto xptr = std::lower_bound(kl_col.cbegin(),kl_col.cend(),target);
-  return xptr == kl_col.cend() or xptr->x != x ? d_zero : xptr->P;
+  return xptr == kl_col.cend() or xptr->x != x ? zero : xptr->P;
 }
 
 /*

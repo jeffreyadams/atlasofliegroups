@@ -77,8 +77,8 @@ class KL_table
   KLStore d_store; // the distinct actual polynomials
 
   // the constructors will ensure that |d_store| contains 0, 1 at beginning
-  enum { d_zero = 0, d_one  = 1 }; // indices of polynomials 0,1 in |d_store|
-  // using enum rather than |static const int| allows implicit const references
+  enum { zero = 0, one  = 1 }; // indices of polynomials 0,1 in |d_store|
+  // use |enum| rather than |static constxepr KLIndex|: avoid any references
 
   // copy, assignment, and swap are not needed, and not provided
   KL_table(const KL_table&) = delete;
@@ -102,7 +102,7 @@ class KL_table
   // construct lists of primitive elements for |y|
   BitMap primitives (BlockElt y) const;
 
-  bool isZero(const KLIndex p) const { return p == d_zero; }
+  bool isZero(const KLIndex p) const { return p == zero; }
 
   // A constant reference to the Kazhdan-Lusztig-Vogan polynomial P_{x,y}
   KLPolRef KL_pol(BlockElt x, BlockElt y) const;
