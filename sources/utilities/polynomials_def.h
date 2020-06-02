@@ -481,7 +481,7 @@ void Safe_Poly<C>::safeSubtract(const Safe_Poly& q, Degree d)
 template<typename C>
 void Safe_Poly<C>::safeDivide(C c)
 {
-  for (C cur_coef : *this)
+  for (C& cur_coef : *this)
     polynomials::safe_divide(cur_coef,c);
 } // |safeDivide|
 
