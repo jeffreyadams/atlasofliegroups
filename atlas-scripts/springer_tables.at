@@ -154,16 +154,20 @@ tabulate(["i","O","d(O)","dd(O)","pi","special"] #
   [i.to_string,O.diagram.to_string,O_d.diagram.to_string,O_dd.diagram.to_string,sigma_index.to_string,special.to_string]
  od)
 
-set springer_inverse(SpringerTable st,int special_character_number)=
-first(for i:#st.orbits do st.springer(st.orbits[i])=special_character_number od)
+set springer_inverse(SpringerTable st,int special_character_number)=ComplexNilpotent:
+st.orbits[first(for i:#st.orbits do st.springer(st.orbits[i])=special_character_number od)]
 
-set springer_inverse(SpringerTable st)=(int->int):(int j):springer_inverse(st,j)
-{
-set special_orbit(SpringerTable st,WCell cell)=int:st.springer_inverse(st.ct.special_character(cell))
-set special_orbit(SpringerTable st)=(WCell->int):(WCell cell):special_orbit(st,cell)
+set springer_inverse(SpringerTable st)=(int->ComplexNilpotent):(int j):springer_inverse(st,j)
+
+set special_orbit(SpringerTable st,WCell cell)=ComplexNilpotent:st.springer_inverse(st.ct.special_character(cell))
+set special_orbit(SpringerTable st)=(WCell->ComplexNilpotent):(WCell cell):special_orbit(st,cell)
 
 set W_cell(Param p)=WCell:
-let (block,index_p)=block(p) then
-cells=W_cells(block) in
-cells[first(for i:#cells do let (param_indices,)=cells[i] in find(param_indices,index_p)>=0 od)]
-}
+let (index,cells)=W_cells(p) in
+cells[first(for i:#cells do let (param_indices,)=cells[i] in find(param_indices,index)>=0 od)]
+
+set special_orbit(SpringerTable st,Param p)=ComplexNilpotent:special_orbit(st,W_cell(p))
+set special_orbit(SpringerTable st)=(Param->ComplexNilpotent):(Param p):special_orbit(st,W_cell(p))
+
+set GK_dimension(SpringerTable st,Param p)=int:st.special_orbit(p).dim_nilpotent\2
+set GK_dimension(SpringerTable st)=(Param->int):(Param p):st.special_orbit(p).dim_nilpotent\2
