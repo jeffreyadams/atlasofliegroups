@@ -26,7 +26,6 @@ namespace error {
   // overflow errors
   struct MemoryOverflow;
   struct NumericOverflow;
-  struct NumericUnderflow;
 
   struct Cartan_error;
   struct Cayley_error;
@@ -59,10 +58,6 @@ struct MemoryOverflow {
 };
 
 struct NumericOverflow {
-  void operator() (const char*);
-};
-
-struct NumericUnderflow {
   void operator() (const char*);
 };
 

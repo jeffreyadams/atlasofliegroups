@@ -77,17 +77,6 @@ void NumericOverflow::operator() (const char* mess)
 }
 
 
-/*
-  Execute the |NumericUnderflow| error.
-
-  This prints a short message and returns.
-*/
-void NumericUnderflow::operator() (const char* mess)
-{
-  std::cerr << mess << std::endl;
-  return;
-}
-
 }
 
 }

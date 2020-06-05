@@ -2,7 +2,7 @@
   This is polynomials_def.h.
 
   Copyright (C) 2004,2005 Fokko du Cloux
-  Copyright (C) 2009 Marc van Leeuwen
+  Copyright (C) 2009,2020 Marc van Leeuwen
   part of the Atlas of Lie Groups and Representations
 
   For license information see the LICENSE file
@@ -32,7 +32,7 @@
 #include <algorithm> // |std::fill| and |std::copy|
 #include <stdexcept>
 
-#include "error.h"
+#include "error.h" // for ||
 
 namespace atlas {
 
@@ -339,96 +339,76 @@ std::ostream& Polynomial<C>::print(std::ostream& strm, const char* x) const
 
 
 /*
-  Perform |a += b|.
+  Perform |a += b| after testing that it will not overflow capacity of type |C|
 
-  Throw a |NumericOverflow| exception in case of overflow.
+  Throw a |NumericOverflow| exception in case that test fails
 */
-template<typename C> void safeAdd(C& a, C b)
-{
-  assert(a>=C(0)); // we're try to conserve this; it'd better be true initially
-  assert(b>=C(0)); // so the we only need to check for overflow
+template<typename C> void safe_add(C& a, C b)
+{ // start with some tests that are useful only for signed types |C|
   if (b > std::numeric_limits<C>::max() - a)
     throw error::NumericOverflow();
-  else
-    a += b;
+  a += b;
 }
 
-/*
-  Perform |a /= b|.
-
-  Throw a |NumericOverflow| exception in case of nondivisibility.
-*/
-template<typename C> void safeDivide(C& a, C b)
-{
-  if (a%b != 0) // safe use of |%|, since test is against |0|
-    throw error::NumericOverflow();
-  else
-    a /= b; // now division is exact, so safe use of |/=|
-}
-
-
-/*
-  Perform |a *= b|.
-
-  Throw a |NumericOverflow| exception in case of overflow.
-*/
-template<typename C> void safeProd(C& a, C b)
-{
-  assert(a>=C(0)); // we're try to conserve this; it'd better be true initially
-  assert(b>=C(0)); // so the we only need to check for overflow
-  if (a == 0) // do nothing
-    return;
-
-  if (b > std::numeric_limits<C>::max()/a)
-    throw error::NumericOverflow();
-  else
-    a *= b;
-}
-
-
-/*
-  Perform |a -= b|.
-
-  Throw a |NumericUnderflow| exception in case of underflow.
-*/
-template<typename C> void safeSubtract(C& a, C b)
+// substraction throws no runtime error; success should be statically ensured
+template<typename C> void safe_subtract(C& a, C b)
 {
   assert(a>=C(0)); // we're try to conserve this; it'd better be true initially
   assert(b>=C(0)); // so the we only need to check for underflow
-  if (b > a)
-    throw error::NumericUnderflow();
-  else
-    a -= b;
+  assert(a>=b); // this is what caller should ensure mathematically
+  a -= b;
 }
+
+/*
+  Perform |a *= b| after testing that it will not overflow capacity of type |C|
+
+  Throw a |NumericOverflow| exception in case that test fails
+*/
+template<typename C> void safe_multiply(C& a, C b)
+{
+  if (a == C(0))
+    return; // do nothing
+
+  if (b > std::numeric_limits<C>::max()/a)
+    throw error::NumericOverflow();
+  a *= b;
+}
+
+template<typename C> void safe_divide(C& a, C b)
+{
+  assert(b!= C(0));
+  assert(a%b == C(0));
+  a /= b; // now division is exact, so safe use of |/=|
+}
+
 
 
 /*
   Add $x^d.c.q$, to |*this|, watching for overflow, assuming |c>0|.
 
-  NOTE: may throw a |NumericOverflow| exception.
-
-  NOTE: we need to be careful in the case where |q = *this|, but we can
+  We need to be careful in the case where |q| aliasses |*this|, but we can
   avoid making a copy, by doing the addition top-to-bottom.
 */
 template<typename C>
 void Safe_Poly<C>::safeAdd(const Safe_Poly& q, Degree d, C c)
 {
-  if (q.isZero()) // do nothing
-    return;
+  if (q.isZero() or c==C(0))
+    return; // do nothing
 
-  size_t qs = q.size();   // save the original size of q, it might change
+  const auto qs = q.size();   // save the original size of q, it might change
 
-  // find degree of result
-  if (q.size()+d > base::size())
-    base::resize(q.size()+d);
+  // ensure sufficient room for result
+  if (qs+d > base::size())
+    base::resize(qs+d);
 
-  for (size_t j = qs; j-->0;)
+  auto* shift_base = &(*this)[d]; // pointer to lowest coefficient affected
+  for (size_t j = qs; j-->0;) // loop must be backwards if |&q == this|
   {
-    C a = q[j];
-    polynomials::safeProd(a,c);           // this may throw
-    polynomials::safeAdd((*this)[j+d],a); // this may throw
+    C a = q[j]; // need a copy for the multiplication
+    polynomials::safe_multiply(a,c);        // this may throw
+    polynomials::safe_add(shift_base[j],a); // this may throw
   }
-}
+} // |safeAdd|
 
 /* A simplified version avoiding multiplication in the common case |c==1| */
 
@@ -438,23 +418,72 @@ void Safe_Poly<C>::safeAdd(const Safe_Poly& q, Degree d)
   if (q.isZero()) // do nothing
     return;
 
-  size_t qs = q.size();   // save the original size of q, it might change
+  const auto qs = q.size();   // save the original size of q, it might change
 
   // find degree
-  if (q.size()+d > base::size())
-    base::resize(q.size()+d);
+  if (qs+d > base::size())
+    base::resize(qs+d);
 
-  for (size_t j = qs; j-->0; )
-    polynomials::safeAdd((*this)[j+d],q[j]); // this may throw
-}
+  auto* shift_base = &(*this)[d]; // pointer to lowest coefficient affected
+  for (size_t j = qs; j-->0; ) // loop must be backwards if |&q == this|
+    polynomials::safe_add(shift_base[j],q[j]); // this may throw
+} // |safeAdd|
+
+/*
+  Subtract $x^d.c.q$ from |*this|, asserting no underflow, assuming |c>0|
+
+  We need to be careful in the case where |q| aliasses |*this|, but we can
+  avoid making a copy, by doing the addition top-to-bottom.
+*/
+template<typename C>
+void Safe_Poly<C>::safeSubtract(const Safe_Poly& q, Degree d, C c)
+{
+  if (q.isZero() or c==C(0))
+    return; // do nothing
+
+  const auto qs = q.size();   // save the original size of q, it might change
+
+  assert(qs+d<=base::size()); // if not, leading coefficient would get negative
+
+  auto* shift_base = &(*this)[d]; // pointer to lowest coefficient affected
+  for (size_t j = qs; j-->0; ) // loop must be backwards if |&q == this|
+  {
+    C a = q[j]; // need a copy for the multiplication
+    polynomials::safe_multiply(a,c);        // this may throw
+    polynomials::safe_subtract(shift_base[j],a);
+  }
+
+  // set degree
+  base::adjustSize();
+} // |safeSubtract|
+
+/* Again a simplified version deals with the common case |c==1| */
+
+template<typename C>
+void Safe_Poly<C>::safeSubtract(const Safe_Poly& q, Degree d)
+{
+  if (q.isZero()) // do nothing
+    return;
+
+  const auto qs = q.size();   // save the original size of q, it might change
+
+  assert(qs+d<=base::size()); // if not, leading coefficient would get negative
+
+  auto* shift_base = &(*this)[d]; // pointer to lowest coefficient affected
+  for (size_t j = qs; j-->0;)
+    polynomials::safe_subtract(shift_base[j],q[j]);
+
+  // set degree
+  base::adjustSize();
+ } // |safeSubtract|
 
 // Divide polynomial by scalar |c|, throwing an error is division is inexact
 template<typename C>
 void Safe_Poly<C>::safeDivide(C c)
 {
-  for (size_t j = 0; j < base::size(); ++j )
-    polynomials::safeDivide((*this)[j],c); //this may throw
-}
+  for (C& cur_coef : *this)
+    polynomials::safe_divide(cur_coef,c);
+} // |safeDivide|
 
 /*
   Divide polynomial by $q+1$, imagining if necessary an additional leading
@@ -486,7 +515,7 @@ void Safe_Poly<C>::safe_quotient_by_1_plus_q(Degree delta)
   if (base::isZero()) // this avoids problems with |base::degree()|
     return; // need not and cannot invent nonzero \mu*q^{d+1} here
   for (size_t j = 1; j <= base::degree(); ++j)
-    polynomials::safeSubtract((*this)[j],(*this)[j-1]); // does c[j] -= c[j-1]
+    polynomials::safe_subtract((*this)[j],(*this)[j-1]); // does c[j] -= c[j-1]
   if ((*this)[base::degree()]==0) // test coefficient in old leading term
   { // then upward division was exact: polynomial was already multiple of q+1
     base::adjustSize(); // decreases degree by exactly 1
@@ -494,59 +523,9 @@ void Safe_Poly<C>::safe_quotient_by_1_plus_q(Degree delta)
   }
   else // we need to imagine a term $\mu*q^{d+1}$ with nonzero $\mu$
     assert(2*base::degree()+1==delta); // and quotient must have degree $d$
-}
 
-/*
-  Subtract $x^d.c.q$ from |*this|, watching for underflow, assuming |c>0|
+} // |safe_quotient_by_1_plus_q|
 
-  NOTE: may throw a |NumericUnderflow| exception.
-
-  NOTE: |q == *this| is possible only for $d=0$; still, we do the prudent thing
-  and subtract backwards.
-*/
-template<typename C>
-void Safe_Poly<C>::safeSubtract(const Safe_Poly& q, Degree d, C c)
-{
-  if (q.isZero()) // do nothing
-    return;
-
-  size_t qs = q.size();   // save the original size of q, it might change
-
-  if (q.size()+d > base::size()) // underflow, leading coef becomes negative
-    throw error::NumericUnderflow();
-
-  for (size_t j = qs; j-->0; )
-  {
-    C a = q[j];
-    polynomials::safeProd(a,c);                // this may throw
-    polynomials::safeSubtract((*this)[j+d],a); // this may throw
-  }
-
-  // set degree
-  base::adjustSize();
-}
-
-/* Again a simplified version deals with the common case |c==1| */
-
-template<typename C>
-void Safe_Poly<C>::safeSubtract(const Safe_Poly& q, Degree d)
-
-{
-  if (q.isZero()) // do nothing
-    return;
-
-  // save the degree of q
-  Degree qs = q.size();
-
-  if (qs+d > base::size()) // underflow
-    throw error::NumericUnderflow();
-
-  for (size_t j = qs; j-->0;)
-    polynomials::safeSubtract((*this)[j+d],q[j]); // this may throw
-
-  // set degree
-  base::adjustSize();
- } // |safeSubtract|
 
 } // |namespace polynomials|
 
