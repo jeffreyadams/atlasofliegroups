@@ -257,6 +257,31 @@ set standardize (ParamPol P) = ParamPol: map (standardize@Param, P)
 
 {--------------------- theta-stable parabolic induction -------------------}
 
+set find_N (Param p_L,RealForm G) = int:
+  let L=real_form(p_L) in
+  assert(is_standard_Levi(L,G),"L is not standard");
+  assert(is_parabolic_theta_stable(make_parabolic(L,G)),
+  "L is not Levi of theta-stable parabolic");
+  let rho_u=rho(G)-rho(L)
+  in let v=infinitesimal_character(p_L)+rho_u
+  in let pcg=poscoroots(G)
+   then two_rhou=2*rho_u then
+   list=##for alpha in pcg do if alpha*two_rhou > 0 then
+   [-(alpha*v)/(alpha*two_rhou)] else [] fi od
+   in {prints(list);} if #list=0 then prints("The parabolic is not proper."); 1
+   else floor(max(list)+1) fi
+
+set theta_induce_irreducible_redefine (Param p, RealForm G)=ParamPol:
+   let rd=root_datum(G), N=find_N (p,G), rhou=rho(G)-rho(real_form(p))
+   then q=translate_by (p,ratvec_as_vec(N*2*rhou)).monomials[0]
+   then ind=parameter(embed_KGB(x(q),G),lambda(q)+rhou,nu(q))
+   then ic=dominant(rd,infinitesimal_character(p)+rhou)
+   then (,w)=conjugate_to(rd,ic,infinitesimal_character(p)+rhou)
+   then P=coherent_irr(ind,word(w))
+   then result=null_module(G) in
+      for coeff@q in P do result+:=coeff*T_irr(q,ic) od;
+   result
+
 {. Theta-stable (cohomological) parabolic induction of a standard module for
    the Levi L of a theta-stable parabolic; if outside of weakly good range,
    must apply standardize. .}
