@@ -159,15 +159,4 @@ st.orbits[first(for i:#st.orbits do st.springer(st.orbits[i])=special_character_
 
 set springer_inverse(SpringerTable st)=(int->ComplexNilpotent):(int j):springer_inverse(st,j)
 
-set special_orbit(SpringerTable st,WCell cell)=ComplexNilpotent:st.springer_inverse(st.ct.special_character(cell))
-set special_orbit(SpringerTable st)=(WCell->ComplexNilpotent):(WCell cell):special_orbit(st,cell)
 
-set W_cell(Param p)=WCell:
-let (index,cells)=W_cells(p) in
-cells[first(for i:#cells do let (param_indices,)=cells[i] in find(param_indices,index)>=0 od)]
-
-set special_orbit(SpringerTable st,Param p)=ComplexNilpotent:special_orbit(st,W_cell(p))
-set special_orbit(SpringerTable st)=(Param->ComplexNilpotent):(Param p):special_orbit(st,W_cell(p))
-
-set GK_dimension(SpringerTable st,Param p)=int:st.special_orbit(p).dim_nilpotent\2
-set GK_dimension(SpringerTable st)=(Param->int):(Param p):st.special_orbit(p).dim_nilpotent\2
