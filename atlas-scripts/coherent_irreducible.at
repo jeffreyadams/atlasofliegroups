@@ -3,6 +3,8 @@
 
 {better implementation of coherent translation in basis of irreducibles
 see coherent_irr(p) in coherent.at
+needs a WGraph, which is produced by wgraph in Fokko,
+but not currently available in atlas
 }
 
 {returns a sparse matrix}
