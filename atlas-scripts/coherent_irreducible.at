@@ -1,0 +1,191 @@
+<W_reps.at
+<coherent.at
+
+{better implementation of coherent translation in basis of irreducibles
+see coherent_irr(p) in coherent.at
+{returns a sparse matrix}
+{. matrix of action of i^th simple reflection on a graph .}
+set graph_action_orig (WGraph graph,int s) = sparse_mat:
+let rv=sparse_mat:[] in
+for node@i in graph
+do 
+ let col=sparse_column:[] in
+ if is_member(node.tau)(s)
+   then col#:=(i,-1)
+   ; for (j,mu) in node.out_list
+     do if not is_member(graph[j].tau)(s) then col#:=(j,mu) fi
+     od
+   else col#:=(i,1) 
+ fi;
+ let ()=prints("col: ", col) in
+ rv#:=col
+od;rv
+
+set mu(WGraph graph,int i,int j)=
+let (,g)=graph[i]  then
+index=first(for (k,)@t in g do k=j od) in
+if index=-1 then 0 else let (,mu)=g[index] in mu fi
+
+
+
+{matrix of T_s, given by graph, with q=1
+ action is described in wgraphs.help
+ however this matrix is the TRANSPOSE of the one given by graph_action@(WGraph,int) in
+ in W_reps.at
+ Also note: this is the coherent continuation action on the basis of {(-1)^length(p)*p}
+ this function shouldn't be needed, but is included for instructional purposes;
+ what we really use is graph_action_column
+}
+set graph_action_new (WGraph graph,int s) = sparse_mat:
+let rv=sparse_mat:[] in
+for node@i in graph do
+ let col=sparse_column:[] in
+ if is_member(node.tau)(s)
+   then col#:=(i,1)
+   else
+   col#:=(i,-1);
+   for j:#graph do
+{   let ()=prints("doing i: ", i, " j: ", j) in}
+    if not j=i and  is_member(graph[j].tau)(s) then
+     let mu=mu(graph,j,i) in {let ()=prints("i: 1", i, "j: ", j, " mu", mu) in}
+       if !=mu then col#:=(j,mu(graph,j,i)) fi
+    fi
+   od
+ fi;
+ let ()=prints("col: ", col) in rv#:=col
+od;rv
+
+{column of matrix of action of T_s, coming from W-graph, with q=1
+ This is the coherent continuation action in the basis of {(-1)^(length(p))p}
+Example: big block of SL(2,R)
+graph_action_column(graph,0,0)=[(0,-1),(2,1)]
+graph_action_column(graph,1,0)=[(1,-1),(2,1)]
+graph_action_column(graph,2,0)=[(2,1)]
+graph_action_new(graph,0)= (list of these columns) -> matrix
+
+-1 0  0
+0 -1  0
+1  1  1
+see filtrations.pdf, end of section 1
+}
+set graph_action_column (WGraph graph,int col_number,int s) = sparse_column:
+let rv=sparse_column:[] then
+{for node@i in graph do}
+i=col_number then
+node=graph[i] in
+ let col=sparse_column:[] in
+ if is_member(node.tau)(s)
+   then col#:=(i,1)
+   else
+   col#:=(i,-1);
+   for j:#graph do
+{   let ()=prints("doing i: ", i, " j: ", j) in}
+    if not j=i and  is_member(graph[j].tau)(s) then
+     let mu=mu(graph,j,i) in
+       if !=mu then col#:=(j,mu(graph,j,i)) fi
+    fi
+   od
+ fi;
+col
+
+set sign(Param p,Param q)=int:(-1)^(length(p)-length(q))
+
+{same as previous, except in the basis of irreducibles (rather than \pm irreducible)
+ need the list of parameters just for the lengths
+ this is precisely what is needed to compute coherent continuation in the basis of irreducibles
+}
+set graph_action_column ([Param] parameters,WGraph graph,int col_number,int s) = sparse_column:
+let rv=sparse_column:[] then
+{for node@i in graph do}
+i=col_number then
+node=graph[i] in
+ let col=sparse_column:[] in
+ if is_member(node.tau)(s)
+   then col#:=(i,1)
+   else
+   col#:=(i,-1);
+   for j:#graph do
+{   let ()=prints("doing i: ", i, " j: ", j) in}
+    if not j=i and  is_member(graph[j].tau)(s) then
+     let mu=mu(graph,j,i) in 
+       if !=mu then col#:=(j,mu(graph,j,i)*sign(parameters[j],parameters[i])) fi
+    fi
+   od
+ fi;
+col
+
+{just as graph_action_new was mainly for testing, this function
+isn't essential but is a useful tool}
+set graph_action ([Param] params,WGraph graph,int s) = sparse_mat:
+let rv=sparse_mat:[] in
+for node@i in graph do
+ let col=sparse_column:[] in
+ if is_member(node.tau)(s)
+   then col#:=(i,1)
+   else
+   col#:=(i,-1);
+   for j:#graph do
+{   let ()=prints("doing i: ", i, " j: ", j) in}
+    if not j=i and  is_member(graph[j].tau)(s) then
+     let mu=mu(graph,j,i) in 
+       if !=mu then col#:=(j,mu(graph,j,i)*sign(params[i],params[j])) fi
+    fi
+   od
+ fi;
+ let ()=prints("col: ", col) in rv#:=col
+od;rv
+
+{coherent continuation of irreducibles is defined using the W-graph,
+keeping in mind the W-graph is the action in the basis of (-1)^length(p)p
+AND 
+}
+set coherent_irr([Param] block,WGraph graph,Param p,int s)=ParamPol:
+assert(is_regular(p),"infinitesimal character is not regular");
+let index=find(block,p) then
+rv=null_module(p.real_form) in
+for (index,coeff) in graph_action_column(block,graph,index,s) do
+ rv+:=coeff*block[index] od;
+-rv
+
+set coherent_irr ([Param] block,WGraph graph,ParamPol P,int s) = ParamPol:
+  let sum=0*P in   for coeff@p in P do sum +:= coeff*coherent_irr(block,graph,p,s) od; sum
+
+set coherent_irr ([Param] block,WGraph graph,Param p,[int] w) = ParamPol:
+  let P=virtual(p) in for s in w do P:=coherent_irr(block,graph,P,s) od; P
+
+set coherent_irr ([Param] block,WGraph graph,ParamPol P,[int] w) = ParamPol:
+  for s in w do P:=coherent_irr(block,graph,P,s) od; P
+
+
+
+{ in singular case,
+  move to regular infinitesimal character, apply w, and move back
+  Dangerous Bend (example):
+
+  atlas> set G=Sp(6,R)
+  atlas> set p=parameter(KGB(G,3),[3,2,2],[0,0,0])
+  Value: zero parameter (x=3,lambda=[3,2,2]/1,nu=[0,0,0]/1)
+
+  the root e2-e3 is compact, so this limit of DS is zero
+  however its coherent continuation is not zero
+
+  atlas> coherent_std(0,p)
+  Value:
+  -1*final parameter (x=4,lambda=[3,2,2]/1,nu=[0,0,0]/1)
+  1*final parameter (x=9,lambda=[3,2,2]/1,nu=[1,-1,0]/2)
+}
+
+{ action of simple root on parameter, basis of standards }
+{need to provide block and graph at regular infinitesimal character }
+{
+set coherent_irr ([Param] block_reg,WGraph graph_reg,Param p,int s) = ParamPol:
+  if is_regular(p) then
+    let block_gamma=for q in block_reg do first_param(T_irr(q,p.infinitesimal_character)) od in 
+    coherent_irr_reg(block_gamma,graph,p,s)
+  else
+    let gamma=infinitesimal_character(p)
+    then p_reg=T(p,gamma+rho(real_form(p))) then
+    block_gamma=for q in block_reg do first_param(T_irr(q,p.infinitesimal_character)) od
+    in T(coherent_irr_reg(block_gamma,graph,p_reg,s),gamma)
+  fi
+  }
