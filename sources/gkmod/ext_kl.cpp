@@ -160,11 +160,11 @@ KL_table::KL_table(const ext_block::ext_block& b, std::vector<Pol>* pool)
   if (storage_pool.empty())
     storage_pool.push_back(Pol(0));
   else
-    assert(storage_pool[0]==Pol(0));
+    assert(storage_pool[zero]==Pol(0));
   if (storage_pool.size()==1)
     storage_pool.push_back(Pol(1));
   else
-    assert(storage_pool[1]==Pol(1));
+    assert(storage_pool[one]==Pol(1));
 }
 
 std::pair<kl::KLIndex,bool>
@@ -174,9 +174,9 @@ std::pair<kl::KLIndex,bool>
   if (inx<col_y.size())
     return std::make_pair(col_y[inx],aux.flips(x,y));
   else if (inx==aux.self_index(y)) // diagonal entries are unrecorded
-    return std::make_pair(kl::KLIndex(1),aux.flips(x,y));
+    return {one,aux.flips(x,y)};
   else
-    return std::make_pair(kl::KLIndex(0),false); // out of bounds implies zero
+    return {zero,false}; // out of bounds implies zero
 }
 
 Pol KL_table::P(BlockElt x, BlockElt y) const
@@ -189,10 +189,10 @@ containers::sl_list<BlockElt> KL_table::nonzero_column(BlockElt y) const
 {
   const KLColumn& col_y = column[y];
   containers::sl_list<BlockElt> result({y});
-  for (BlockElt x=y; x-->0;)
+  for (BlockElt x=aux.length_floor(y); x-->0;)
   {
     unsigned inx=aux.x_index(x,y);
-    if (inx<col_y.size() ? col_y[inx]!=kl::KLIndex(0) : inx==aux.self_index(y))
+    if (inx<col_y.size() ? col_y[inx]!=zero : inx==aux.self_index(y))
       result.push_back(x);
   }
   return result;

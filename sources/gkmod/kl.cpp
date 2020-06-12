@@ -129,8 +129,8 @@ KL_table::KL_table(const Block_base& b)
   , d_store(2)
 {
   d_holes.fill();
-  d_store[d_zero]=Zero; // ensure these polynomials are present
-  d_store[d_one]=One;   // at expected indices, even if maybe absent in |d_KL|
+  d_store[zero]=Zero; // ensure these polynomials are present
+  d_store[one]=One;   // at expected indices, even if maybe absent in |d_KL|
 }
 
 /******** copy, assignment and swap ******************************************/
@@ -156,7 +156,7 @@ KLPolRef KL_table::KL_pol(BlockElt x, BlockElt y) const
   unsigned int inx = prim_index(x,descent_set(y)); // can handle |x==UndefBlock|
 
   if (inx>=kl_col.size()) // l(x)>=l(y), includes case x==-1: no primitivization
-    return d_store[inx==self_index(y) ? d_one : d_zero];
+    return d_store[inx==self_index(y) ? one : zero];
   return d_store[kl_col[inx]];
 }
 
@@ -167,7 +167,7 @@ KLIndex KL_table::KL_pol_index(BlockElt x, BlockElt y) const
   unsigned int inx = prim_index(x,descent_set(y)); // can handle |x==UndefBlock|
 
   if (inx>=kl_col.size()) // l(x)>=l(y), includes case |inx==(unsigned)-1|
-    return inx==self_index(y) ? d_one : d_zero;
+    return inx==self_index(y) ? one : zero;
   return kl_col[inx];
 }
 
@@ -248,7 +248,7 @@ BitMap KL_table::prim_map (BlockElt y) const
   const auto& col = d_KL[y];
   BitMap result(col.size());
   for (unsigned int i=0;  i<col.size(); ++i)
-    result.set_to(i,col[i]!=d_zero);
+    result.set_to(i,col[i]!=zero);
 
   return result;
 }
@@ -996,7 +996,7 @@ void KL_table::swallow (KL_table&& sub, const BlockEltList& embed, KLHash& hash)
       BlockEltList pc(prims.begin(),prims.end());
       assert(sub.d_KL[z].size()==sub_pc.size());
       assert(desc == descent_set(embed[z]));
-      d_KL[embed[z]].resize(pc.size(),d_zero); // default to |d_zero|
+      d_KL[embed[z]].resize(pc.size(),zero); // default to |zero|
       for (unsigned int i=0; i<sub_pc.size(); ++i)
       {
 	unsigned int new_i = prim_index(embed[sub_pc[i]],desc);

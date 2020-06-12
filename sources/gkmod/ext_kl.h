@@ -52,26 +52,43 @@ class descent_table
   RankFlags good_ascent_set(BlockElt y) const { return info[y].good_ascents; }
 
   bool is_descent(weyl::Generator s, BlockElt y) const
-  { return descent_set(y).test(s); }
+    { return descent_set(y).test(s); }
 
   RankFlags very_easy_set(BlockElt x, BlockElt y) const
-  { return info[x].good_ascents & info[y].descents; }
+    { return info[x].good_ascents & info[y].descents; }
 
   RankFlags easy_set(BlockElt x, BlockElt y) const
-  { return info[y].descents-info[x].descents; }
+    { return info[y].descents-info[x].descents; }
 
   // index of primitive element corresponding to $x$ in row for $y$
   unsigned int x_index(BlockElt x, BlockElt y) const
-  { return prim_index[info[y].descents.to_ulong()][x]; }
+    { return prim_index[info[y].descents.to_ulong()][x]; }
   unsigned int self_index(BlockElt y) const { return x_index(y,y); }
   bool flips(BlockElt x,BlockElt y) const
-  { return prim_flip[x].isMember(info[y].descents.to_ulong()); }
+    { return prim_flip[x].isMember(info[y].descents.to_ulong()); }
 
   BlockElt length_floor(BlockElt y) const
-  { return block.length_first(block.length(y)); }
+    { return block.length_first(block.length(y)); }
 
   // number of primitive elements for |descent_set(y)| of length less than |y|
   unsigned int col_size(BlockElt y) const;
+
+  bool is_extremal (BlockElt x, RankFlags descents_y) const
+    { return descent_set(x).contains(descents_y); } // easy set empty
+  bool is_primitive (BlockElt x, RankFlags descents_y) const
+    { return (good_ascent_set(x) & descents_y).none(); } // very easy set empty
+
+  // set $x$ to last extremal element for $y$ strictly before $x$, or fail
+  bool extr_back_up(BlockElt& x, RankFlags desc_y) const
+    { while (x-->0) if (is_extremal(x,desc_y)) return true;
+      return false; // now |x| has crashed through 0 and should be ignored
+    }
+
+  // set $x$ to last primitive element for $y$ strictly before $x$, or fail
+  bool prim_back_up(BlockElt& x, RankFlags desc_y) const
+    { while (x-->0) if (is_primitive(x,desc_y)) return true;
+      return false; // now |x| has crashed through 0 and should be ignored
+    }
 
   // set $x$ to last primitive element for $y$ strictly before $x$, or fail
   bool prim_back_up(BlockElt& x, BlockElt y) const;
@@ -89,6 +106,10 @@ class KL_table
 
   using KLColumn = std::vector<kl::KLIndex>;
   std::vector<KLColumn> column; // columns are lists of polynomial pointers
+
+  // the constructors will ensure that |storage_pool| contains 0, 1 at beginning
+  enum { zero = 0, one  = 1 }; // indices of polynomials 0,1 in |storage_pool|
+  // use |enum| rather than |static constxepr kl::KLIndex|: avoid any references
 
  public:
   KL_table(const ext_block::ext_block& b, std::vector<Pol>* pool);
