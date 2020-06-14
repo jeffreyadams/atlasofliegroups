@@ -1481,11 +1481,10 @@ SR_poly Rep_table::twisted_KL_column_at_s(StandardRepr sr)
   // |z| must be inner-class-twist-fixed, nonzero and final
 {
   normalise(sr);
-  const auto& delta = inner_class().distinguished();
   assert(is_final(sr) and sr==inner_twisted(sr));
   BlockElt y0;
   auto& block = lookup(sr,y0);
-  auto& eblock = block.extended_block(delta);
+  auto& eblock = block.extended_block();
 
   RankFlags singular=block.singular(sr.gamma());
   RankFlags singular_orbits; // flag singulars among orbits
@@ -1707,7 +1706,7 @@ SR_poly Rep_table::twisted_deformation (StandardRepr z)
     {
       BlockElt new_z;
       auto& block = lookup(p.first,new_z);
-      auto& eblock = block.extended_block(delta);
+      auto& eblock = block.extended_block();
 
       RankFlags singular = block.singular(p.first.gamma());
       RankFlags singular_orbits; // flag singulars among orbits
