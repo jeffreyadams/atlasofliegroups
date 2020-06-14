@@ -1,0 +1,84 @@
+
+
+{Laurent polynomial in indeterminate v with integer coefficients}
+{([a_0,...,a_{m-1}],n) <-> v^n(a_0+a_1v + ...a_{m-1} v^{m-1})}
+
+set_type i_laurent_poly = (vec w,int n)
+
+{
+( [0,a_0,...,a_m],n) = ([a_0,...,a_m],n+1)
+ ([0^r,a_0,...,a_m],n) = ([a_0,...,a_m],n+r)  (cut off r leading zeros; n -> n+r)
+ ([a_0,...,a_m],n) = ([0,a_0,...,a_m],n-1)
+ ([a_0,...,a_m],n) = ([0^r,a_0,...,a_m],n-r)       (add r leading zeros; n -> n-r)
+}
+
+set normalize(i_laurent_poly (f,n))=i_laurent_poly:
+if =f then ([],0) else
+let r=first(for j:#f do !=f[j] od) in  (strip(f[r:]),n+r) fi
+
+set degree(i_laurent_poly (f,n))=int:degree(f)+n
+set lowest_power(i_laurent_poly (f,n))=let (g,l)=normalize(f,n) in l
+
+set =(i_laurent_poly f,i_laurent_poly g)=bool:
+let (v,m)=normalize(f), (w,n)=normalize(g) in m=n and v=w
+
+set constant_laurent_poly(int c)=i_laurent_poly:([c],0)
+set zero_laurent_poly=i_laurent_poly:([],0)
+set v_inverse=i_laurent_poly:([1],-1)
+set v_minus_power(int k)=i_laurent_poly:([1],-k)
+
+set nth_power(int n)=i_laurent_poly:([1],n)
+
+set pol_as_laurent_pol(i_poly f)=i_laurent_poly:(f,0)
+
+{ignore the integer factor}
+set poly(i_laurent_poly (w,))=i_poly:w
+
+set shift(i_laurent_poly (f,n),int shift)=i_laurent_poly:
+assert(shift>=0,"only positive shift allowed");
+(null(shift)##f,n-shift)
+
+set *(int c,i_laurent_poly f)=i_laurent_poly:(c*f.w,f.n)
+
+set *(i_laurent_poly f,i_laurent_poly g)=i_laurent_poly:
+(poly_product(f.w,g.w),f.n+g.n)
+
+set *(i_poly f,i_laurent_poly g)=pol_as_laurent_pol(f)*g
+set *(i_laurent_poly f,i_poly g)=pol_as_laurent_pol(g)*f
+
+set +(i_laurent_poly f,i_laurent_poly g)=i_laurent_poly:
+if f.n>g.n then
+let f1=shift(f,f.n-g.n) in (poly_plus(f1.w,g.w), g.n) else
+let g1=shift(g,g.n-f.n) in (poly_plus(f.w,g1.w), f.n) fi
+
+set +(i_poly f,i_laurent_poly g)=pol_as_laurent_pol(f)+g
+set +(i_laurent_poly f,i_poly g)=pol_as_laurent_pol(g)+f
+
+set -(i_laurent_poly f,i_laurent_poly g)=i_laurent_poly:f+(-1)*g
+
+set laurent_poly_format (i_laurent_poly (v,n), string q)= string:
+   if =v then "0"
+   else
+   let (v,n)=normalize(v,n) in 
+    ##for c@j in v
+      do
+         let k=j+n in 
+         if =c then ""
+         else
+            let coef = if c<0 then "-" else "+" fi +
+                if abs(c)=1 and k!=0 then "" else int_format(abs(c)) fi
+	    ,  term = if k>1 then q+"^"+int_format(k) elif k=0 then "" elif k<0 then q+"^{"+int_format(k) + "}" else q fi
+	    in string: coef+term
+         fi
+      od
+   fi
+
+set show(i_laurent_poly f)=void:prints(laurent_poly_format(f,"v"))
+
+
+set g=(vec:[0,0,3,4,-2,4,0],-5)
+set h=(vec:[0,0,3,4,-2,4,0],-8)
+
+set a=(vec:[1,1],0)
+set b=(vec:[1,1],-1)
+set c=(vec:[1,1],1)

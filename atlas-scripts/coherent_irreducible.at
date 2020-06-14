@@ -1,5 +1,6 @@
 <W_reps.at
 <coherent.at
+<hodgeParamLaurentPol.at
 
 {better implementation of coherent translation in basis of irreducibles
 see coherent_irr(p) in coherent.at
@@ -118,6 +119,9 @@ node=graph[i] in
  fi;
 col
 
+set mu([Param] params,WGraph graph, Param p,Param q)=int:
+mu(graph,find(params,p),find(params,q))
+
 {just as graph_action_new was mainly for testing, this function
 isn't essential but is a useful tool}
 set graph_action ([Param] params,WGraph graph,int s) = sparse_mat:
@@ -160,7 +164,164 @@ set coherent_irr ([Param] block,WGraph graph,Param p,[int] w) = ParamPol:
 set coherent_irr ([Param] block,WGraph graph,ParamPol P,[int] w) = ParamPol:
   for s in w do P:=coherent_irr(block,graph,P,s) od; P
 
+{-----------------------Hecke action-------------------}
 
+{the action of \T_alpha=q^{-1/2}(-T_alpha+q)
+ see filtrations.pdf in Dropbox
+}
+
+{
+\T_alpha(J(delta))=(v+1/v)J + (1/v)\sum J(delta') + \sum mu(gamma,delta)v^{l(delta)-l(gamma)}J(gamma)
+}
+set vee=i_laurent_poly:([1],1)  {i_laurent_poly, not i_poly}
+set v_sum=i_laurent_poly:vee+v_inverse
+set v_laurent_power(int i)=i_laurent_poly:([1],i)
+
+{why isn't this already defined?}
+set is_noncompact_imaginary(int i,Param p)=bool:
+is_noncompact_imaginary(p.root_datum.simple_roots[i],p.x)
+
+set T([Param] params,WGraph graph,int i {simple root}, Param p)=hodgeParamLaurentPol:
+if in_tau(i,p)
+ then nullHodgeParamLaurentPol(p.real_form)
+ else
+ let rv=v_sum*p in
+  for q in params do
+{  let ()=prints("try q:", q) in}
+   if length(q)<length(p) or length(q)=length(p)+1 and in_tau(i,q) then
+{   let ()=prints("ADDING q:", q, " ", mu(params,graph,q,p)) in}
+    rv+:=mu(params,graph,q,p)*v_laurent_power(length(p)-length(q))*hodge_param_laurent_pol(q)
+   fi
+  od;rv
+ fi
+
+{set T([Param] params,WGraph graph,int i {simple root}, Param p)=hodgeParamLaurentPol:
+T(params,graph,i,hodge_param_laurent_pol(p))}
+
+set T([Param] params,WGraph graph,int i {simple root}, hodgeParamLaurentPol hplp)=
+let r=rearrange(hplp) { f_0(v)p_0 + ... f_n(v)p_n} then
+rv=nullHodgeParamLaurentPol(hplp.real_form) in
+ for (f,p) in r do
+{     let ()=prints("OK") in}
+ let x=f*T(params,graph,i,p) in let ()=prints(x) in
+  rv+:=f*T(params,graph,i,p)
+ od;
+rv
+
+
+
+
+
+set T([Param] params,WGraph graph,[int] w, hodgeParamLaurentPol hplp)=
+for j in w ~ do hplp:=T(params,graph,j,hplp) od;hplp
+
+set T([Param] params,WGraph graph,[int] w,Param p)=
+T(params,graph,w,hodge_param_laurent_pol(p))
+
+set T([Param] params,WGraph graph,WeylElt w, hodgeParamLaurentPol hplp)=
+T(params,graph,w.word,hplp)
+
+set T([Param] params,WGraph graph,WeylElt w, Param p)=
+T(params,graph,w.word,hodge_param_laurent_pol(p))
+
+set quad_test([Param] params,WGraph graph,int i {simple root}, hodgeParamLaurentPol hplp)=
+let tp=T(params,graph,i,hplp) then
+x=T(params,graph,i,tp) then
+y=T(params,graph,i,x) in
+(x,y,v_sum*x=y)
+
+set quad_test([Param] params,WGraph graph,int i {simple root},Param p)=
+quad_test(params,graph,i,hodge_param_laurent_pol(p))
+
+set quad_test([Param] params,WGraph graph,int i {simple root},[Param] list)=
+for p in list do let (,,z)=quad_test(params,graph,i,p) in z od
+
+{B should be singular_block_of(std), and Q should be KL_Q_polynomials(std)}
+set graded_composition_series ([Param]B,i_poly_mat Q,Param std) = [Param,vec]:
+ ##for irr in B
+   do {let f=KL_Q_polynomial(B,Q,irr,std) in}
+      let f=graded_multiplicities(B,Q,irr,std) in
+      {if f != zero_poly and #f !=0 then }
+      if sum(f).> then [(irr,f)] else [] fi
+   od
+
+
+
+set graded_standard(Param std)=hodgeParamPol:
+let b=block_of(std) then
+Q=KL_Q_polynomials(std) then
+rv=nullHodgeParamPol(std.real_form) in
+for irr in b do
+ let f=KL_Q_polynomial(b,Q,irr,std) in
+  if sum(f).> then rv+:=f*hodge_param_pol(irr) fi
+ od;
+rv
+
+{cross(p)=q^{-1/2}(Tp-q^{-1/2}
+         =v^{-1}(Tp)-v^{-2}p
+}
+set cross([Param] params,WGraph graph, int i, hodgeParamLaurentPol hplp)=
+v_inverse*T(params,graph,i,hplp)-v_laurent_power(-2)*hplp
+
+set cross([Param] params,WGraph graph, int i, hodgeParamPol hpp)=
+cross(params,graph,i,hodge_param_laurent_pol(hpp))
+
+set cross([Param] params,WGraph graph, int i, ParamPol P)=
+cross(params,graph,i,hodge_param_laurent_pol(P))
+
+set cross([Param] params,WGraph graph, int i, Param p)=
+cross(params,graph,i,hodge_param_laurent_pol(p))
+
+set cross([Param] params,WGraph graph, [int] w, hodgeParamLaurentPol hplp)=
+for j in w ~ do hplp:=cross(params,graph,j,hplp) od;hplp
+
+set cross([Param] params,WGraph graph, [int] w, hodgeParamPol hpp)=
+cross(params,graph,w,hodge_param_laurent_pol(hpp))
+
+set cross([Param] params,WGraph graph, [int] w, ParamPol P)=
+cross(params,graph,w,hodge_param_laurent_pol(P))
+
+set cross([Param] params,WGraph graph, [int] w, Param p)=
+cross(params,graph,w,hodge_param_laurent_pol(p))
+
+set icross([Param] params,WGraph graph, int i, hodgeParamLaurentPol hplp)=
+v_laurent_power(1)*T(params,graph,i,hplp)-v_laurent_power(2)*hplp
+
+set cross([Param] params,WGraph graph, int i, hodgeParamPol hpp)=hodgeParamLaurentPol:
+cross(params,graph,i,hodge_param_laurent_pol(hpp))
+
+set cross_graded([Param] params,WGraph graph, int i, Param p)=
+cross(params,graph,i,graded_standard(p))
+
+set cross_graded([Param] params,WGraph graph, [int] w, Param p)=
+cross(params,graph,w,graded_standard(p))
+
+set icross([Param] params,WGraph graph, int i, hodgeParamPol hpp)=hodgeParamLaurentPol:
+icross(params,graph,i,hodge_param_laurent_pol(hpp))
+
+set icross([Param] params,WGraph graph, int i, Param p)=
+icross(params,graph,i,hodge_param_laurent_pol(p))
+
+set icross_graded([Param] params,WGraph graph, int i, Param p)=
+icross(params,graph,i,graded_standard(p))
+
+set cross_square([Param] params,WGraph graph, int i, hodgeParamLaurentPol hplp)=
+icross(params,graph,i,cross(params,graph,i,hplp))
+
+set cross_square([Param] params,WGraph graph, int i, hodgeParamPol hpp)=
+cross_square(params,graph,i,hodge_param_laurent_pol(hpp))
+
+set cross_square([Param] params,WGraph graph, int i, Param p)=
+cross_square(params,graph,i,hodge_param_laurent_pol(p))
+
+set cross_square([Param] params,WGraph graph, int i, ParamPol P)=
+cross_square(params,graph,i,hodge_param_laurent_pol(P))
+
+set cross_square_test([Param] params,WGraph graph, int i, ParamPol P)=bool:
+cross_square(params,graph,i,P)=hodge_param_laurent_pol(P)
+
+set cross_square_test([Param] params,WGraph graph, int i, Param p)=bool:
+cross_square(params,graph,i,p)=hodge_param_laurent_pol(p)
 
 { in singular case,
   move to regular infinitesimal character, apply w, and move back
