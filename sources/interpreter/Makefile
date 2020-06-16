@@ -82,7 +82,6 @@ Atlas_objects := $(sources_dir)/structure/prerootdata.o \
  $(sources_dir)/gkmod/wgraph.o \
  $(sources_dir)/io/kl_io.o \
  $(sources_dir)/utilities/graph.o \
- $(sources_dir)/error/kl_error.o \
  $(sources_dir)/io/kgb_io.o \
  $(sources_dir)/io/wgraph_io.o \
  $(sources_dir)/io/filekl.o \

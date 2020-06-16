@@ -162,7 +162,7 @@ namespace atlas {
   namespace polynomials {
     template<typename C> class Polynomial;
     template<typename C> class Safe_Poly;
-    typedef size_t Degree; // exponent range; not stored.
+    typedef unsigned int Degree; // exponent range; not stored.
   }
   using polynomials::Polynomial;
   namespace size {
