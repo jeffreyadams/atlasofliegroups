@@ -108,7 +108,7 @@ shifts=##for ((f,n),p) in pairs do
 
 
 set *(i_laurent_poly f,Param p)=hodgeParamLaurentPol: dearrange([(f,p)],p.real_form)
-
+set *(i_poly f,Param p)=hodgeParamLaurentPol: poly_as_laurent_poly(f)*p
 
 
 {polynomial  in v, or constant, times hodgeParamPol}
@@ -119,6 +119,8 @@ dearrange(for (g,p) in r do (f*g,p) od,hplp.real_form) fi
 set *(int c,hodgeParamLaurentPol hplp)=hodgeParamLaurentPol:
 constant_laurent_poly(c)*hplp
 
+set *(i_poly f,hodgeParamLaurentPol hplp)=hodgeParamLaurentPol:
+poly_as_laurent_poly(f)*hplp
 
 {given list of shifts for first, rewrite to be compatible with new}
 {not needed
@@ -169,12 +171,15 @@ set power_times(Param p,int n)=hodgeParamLaurentPol:([p],[n])
 
 {nice output}
 set show(hodgeParamLaurentPol hplp)=void:
-let header=["coeff","x","lambda","nu"] then
+let header=["coeff","l","x","lambda","nu"] then
 values=
 for (f,p) in rearrange(hplp) do
-[laurent_poly_format(f,"v"),let (,n)=%p.x in n.to_string,p.lambda.to_string,p.nu.to_string] od in
+[laurent_poly_format(f,"v"),
+p.length.to_string,
+let (,n)=%p.x in n.to_string,
+p.lambda.to_string,
+p.nu.to_string] od in
 tabulate(header#values)
-
 
 set hodge_print(hodgeParamPol P)=void:show(P)
 set hodge_print([(vec,Param)] P)=void:show(dearrange(P))

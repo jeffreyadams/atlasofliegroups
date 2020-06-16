@@ -12,6 +12,7 @@ set_type i_laurent_poly = (vec w,int n)
  ([a_0,...,a_m],n) = ([0^r,a_0,...,a_m],n-r)       (add r leading zeros; n -> n-r)
 }
 
+
 set normalize(i_laurent_poly (f,n))=i_laurent_poly:
 if =f then ([],0) else
 let r=first(for j:#f do !=f[j] od) in  (strip(f[r:]),n+r) fi
@@ -22,16 +23,21 @@ set lowest_power(i_laurent_poly (f,n))=let (g,l)=normalize(f,n) in l
 set =(i_laurent_poly f,i_laurent_poly g)=bool:
 let (v,m)=normalize(f), (w,n)=normalize(g) in m=n and v=w
 
-set constant_laurent_poly(int c)=i_laurent_poly:([c],0)
-set zero_laurent_poly=i_laurent_poly:([],0)
-set v_inverse=i_laurent_poly:([1],-1)
+set poly_as_laurent_poly(i_poly f)=i_laurent_poly:(f,0)
+set constant_laurent_poly (int n) = i_laurent_poly:poly_as_laurent_poly(constant_poly(n))
+set zero_laurent_poly=i_laurent_poly:constant_laurent_poly(0)
+
+set v_laurent_power(int i)=i_laurent_poly:([1],i)  {i can be negative}
+set v_laurent=i_laurent_poly:poly_as_laurent_poly(vee)  {v^1 as Laurent polynomial}
+
 set v_minus_power(int k)=i_laurent_poly:([1],-k)
 
-set nth_power(int n)=i_laurent_poly:([1],n)
+set v_inverse=i_laurent_poly:v_minus_power(1)  {1/v}
+set v_laurent_squared=v_laurent_power(2)       {v^2}
+set v_minus_two=v_laurent_power(-2)            {v^{-2}}
 
-set pol_as_laurent_pol(i_poly f)=i_laurent_poly:(f,0)
 
-{ignore the integer factor}
+{ignore the integer (shift) factor}
 set poly(i_laurent_poly (w,))=i_poly:w
 
 set shift(i_laurent_poly (f,n),int shift)=i_laurent_poly:
@@ -43,18 +49,22 @@ set *(int c,i_laurent_poly f)=i_laurent_poly:(c*f.w,f.n)
 set *(i_laurent_poly f,i_laurent_poly g)=i_laurent_poly:
 (poly_product(f.w,g.w),f.n+g.n)
 
-set *(i_poly f,i_laurent_poly g)=pol_as_laurent_pol(f)*g
-set *(i_laurent_poly f,i_poly g)=pol_as_laurent_pol(g)*f
+set *(i_poly f,i_laurent_poly g)=poly_as_laurent_poly(f)*g
+set *(i_laurent_poly f,i_poly g)=poly_as_laurent_poly(g)*f
 
 set +(i_laurent_poly f,i_laurent_poly g)=i_laurent_poly:
 if f.n>g.n then
 let f1=shift(f,f.n-g.n) in (poly_plus(f1.w,g.w), g.n) else
 let g1=shift(g,g.n-f.n) in (poly_plus(f.w,g1.w), f.n) fi
 
-set +(i_poly f,i_laurent_poly g)=pol_as_laurent_pol(f)+g
-set +(i_laurent_poly f,i_poly g)=pol_as_laurent_pol(g)+f
 
+set +(i_poly f,i_laurent_poly g)=poly_as_laurent_poly(f)+g
+set +(i_laurent_poly f,i_poly g)=poly_as_laurent_poly(g)+f
 set -(i_laurent_poly f,i_laurent_poly g)=i_laurent_poly:f+(-1)*g
+
+set +(i_laurent_poly f,int i)=i_laurent_poly:f+constant_laurent_poly(i)
+set -(i_laurent_poly f,int i)=i_laurent_poly:f-constant_laurent_poly(i)
+set v_sum=i_laurent_poly:vee+v_inverse   {v+1/v}
 
 set laurent_poly_format (i_laurent_poly (v,n), string q)= string:
    if =v then "0"
