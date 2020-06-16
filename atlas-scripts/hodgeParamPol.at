@@ -45,7 +45,19 @@ this is hodge_branch@(hodgeParamPol,int) and variants
 }
 
 {the data type hodgeParamPol is [ParamPol]
-[P_0,P_1,..,P_n] <-> P_0+P_1*v^2+...+P_n*v^n
+[P_0,P_1,..,P_n] <-> P_0+P_1*v+...+P_n*v^n
+
+[P_0,...,P_m] -> (P_0+P_1*v+...+P_m*v^m)
+Write the union of monomials(P_i) as {p_0,...,p_r}.
+The order of this set matters.
+Write P_i=\sum a_{i,j}p_j where j\le r. 
+Then this corresponds to
+\sum a_{i,0}v^i)p_0 +
+\sum a_{i,1}v^i)p_1 +
+...
+\sum a_{i,r}v^i)p_r
+
+
 The advantage of the non-obvious convention is that we can use the
 features of ParamPol to take care of combining terms.
 See the functions rearrange and dearrange.
@@ -62,17 +74,27 @@ set *(Split c,hodgeParamPol P)=for f in P do c*f od
 
 {rearrange:
  takes hodgeParamPol:[P_0,P_1,..,P_n] <-> P_0+P_1*v+...+P_n*v^{n-1}
- to
- (a_0+a_1v+...a_kv^k)*p_0 + (b_0+...+b_rv^r)*p_1 + ... (...)p_m
- represented by [([a_0,...,a_k],p_0),...,([...],p_m)]
- where {p_i} are the monomials of all of the {P_j}
- the coefficients are i_pols
+
+write P_i=\sum_0^r a_{i,j}p_j   i\le r, j\le m
+
+\sum a_{i,0}v^i)p_0 +
+\sum a_{i,1}v^i)p_1 +
+...
+\sum a_{i,r}v^i)p_r
+ represented by 
+[
+( [a_{0,0},a_{1,0},...,a_{m,0}],p_0),
+( [a_{0,1},a_{1,1},...,a_{m,1}],p_1),
+...
+( [a_{0,r},a_{1,r},...,a_{m,r}],p_r)
+]
 This is a more natural way to think of a hodgeParamPol, but less convenient
 computationally.
 }
 set rearrange(hodgeParamPol pols)=[(i_poly,Param)]:
+if =#pols then [] else
 for p in monomials(pols) do
- (for i:#pols do split_as_int(pols[i][p]) od,p) od
+ (for i:#pols do split_as_int(pols[i][p]) od,p) od fi
 
 
 {go other way:

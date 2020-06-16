@@ -26,6 +26,8 @@
 <nilpotent_centralizer.at
 <weak_packets_precomputed_cell_traces.at
 <arthur_parameters.at
+<coherent_irreducible.at
+
 {this is slow to load:
 <unipotent_representations_exceptional.at
 }

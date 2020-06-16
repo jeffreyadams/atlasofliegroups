@@ -126,6 +126,38 @@ set cell_action (WCell cell,[int] w) = mat:
 {. matrix of action of WeylElt on a cell .}
 set cell_action(WCell cell,WeylElt w) = mat: cell_action(cell,w.word)
 
+{the cell_action functions really live on the level of WGraph:}
+
+{returns a sparse matrix}
+{. matrix of action of i^th simple reflection on a W-graph .}
+set graph_action (WGraph graph,int s) = sparse_mat:
+let rv=sparse_mat:[] in
+for node@i in graph
+do 
+ let col=sparse_column:[] in
+ if is_member(node.tau)(s)
+   then col#:=(i,-1)
+   ; for (j,mu) in node.out_list
+     do if not is_member(graph[j].tau)(s) then col#:=(j,mu) fi
+     od
+   else col#:=(i,1) 
+ fi;
+ rv#:=col
+od;rv
+
+{. matrix of action of product of simple reflections on a cell .}
+set graph_action (WGraph graph,[int] w) = mat:
+  let n=#graph in
+  if =#w then id_mat(n)
+  else let result=unsparse(graph_action(graph,w[0]),n) in
+     for i:#w-1 from 1 do result:=result*graph_action(graph,w[i]) od; result
+  fi
+
+{. matrix of action of WeylElt on a cell .}
+set graph_action(WGraph graph,WeylElt w) = mat: graph_action(graph,w.word)
+
+
+
 {. character of representation of W on cell .}
 set cell_character (WeylClassTable ct,WCell cell) = [int]:
   for w in ct.class_representatives() do trace(cell_action(cell,w)) od
