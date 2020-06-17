@@ -9,34 +9,14 @@ set is_compact_imaginary(int i,Param p)=bool:status(i,p)=1
 
 {better implementation of coherent translation in basis of irreducibles
 see coherent_irr(p) in coherent.at
-needs a WGraph, which is produced by wgraph in Fokko,
-but not currently available in atlas
+needs a WGraph, which is produced by W_graph@Param,
+which returns (int,WGraph)
 }
-
-{returns a sparse matrix}
-{. matrix of action of i^th simple reflection on a graph .}
-set graph_action_orig (WGraph graph,int s) = sparse_mat:
-let rv=sparse_mat:[] in
-for node@i in graph
-do
- let col=sparse_column:[] in
- if is_member(node.tau)(s)
-   then col#:=(i,-1)
-   ; for (j,mu) in node.out_list
-     do if not is_member(graph[j].tau)(s) then col#:=(j,mu) fi
-     od
-   else col#:=(i,1)
- fi;
- let ()=prints("col: ", col) in
- rv#:=col
-od;rv
 
 set mu(WGraph graph,int i,int j)=
 let (,g)=graph[i]  then
 index=first(for (k,)@t in g do k=j od) in
 if index=-1 then 0 else let (,mu)=g[index] in mu fi
-
-
 
 {matrix of T_s, given by graph, with q=1
  action is described in wgraphs.help
@@ -172,13 +152,8 @@ set coherent_irr ([Param] block,WGraph graph,ParamPol P,[int] w) = ParamPol:
 
 {the action of \T_alpha=q^{-1/2}(-T_alpha+q)
  see filtrations.pdf in Dropbox
-}
-
-{
 \T_alpha(J(delta))=(v+1/v)J + (1/v)\sum J(delta') + \sum mu(gamma,delta)v^{l(delta)-l(gamma)}J(gamma)
 }
-
-
 
 {tT stands for \tilde T=q^{-1/2}(-T+q)
 action in basis of irreducibles}
