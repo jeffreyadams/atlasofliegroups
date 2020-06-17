@@ -166,6 +166,10 @@ rv=for p in params do
 
 set -(hodgeParamLaurentPol P,hodgeParamLaurentPol Q)=P+(-1)*Q
 
+set v_to_1(hodgeParamLaurentPol hplp)=ParamPol:
+let rv=null_module(hplp.real_form) in
+ for P in hplp.hpp do rv+:=P od;rv
+
 {v^k*p for k\in Z}
 set power_times(Param p,int n)=hodgeParamLaurentPol:([p],[n])
 

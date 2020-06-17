@@ -2,6 +2,11 @@
 <coherent.at
 <hodgeParamLaurentPol.at
 
+{why isn't this already defined?}
+set is_noncompact_imaginary(int i,Param p)=bool:
+is_noncompact_imaginary(p.root_datum.simple_roots[i],p.x)
+set is_compact_imaginary(int i,Param p)=bool:status(i,p)=1
+
 {better implementation of coherent translation in basis of irreducibles
 see coherent_irr(p) in coherent.at
 needs a WGraph, which is produced by wgraph in Fokko,
@@ -173,11 +178,10 @@ set coherent_irr ([Param] block,WGraph graph,ParamPol P,[int] w) = ParamPol:
 \T_alpha(J(delta))=(v+1/v)J + (1/v)\sum J(delta') + \sum mu(gamma,delta)v^{l(delta)-l(gamma)}J(gamma)
 }
 
-{why isn't this already defined?}
-set is_noncompact_imaginary(int i,Param p)=bool:
-is_noncompact_imaginary(p.root_datum.simple_roots[i],p.x)
 
-{tT stands for \tilde T=q^{-1/2}(-T+q)}
+
+{tT stands for \tilde T=q^{-1/2}(-T+q)
+action in basis of irreducibles}
 set tT([Param] params,WGraph graph,int i {simple root}, Param p)=hodgeParamLaurentPol:
 if in_tau(i,p)
  then nullHodgeParamLaurentPol(p.real_form)
@@ -205,6 +209,12 @@ rv
 set tT([Param] params,WGraph graph,int i {simple root}, hodgeParamPol hpp)=hodgeParamLaurentPol:
 tT(params,graph,i,hodge_param_laurent_pol(hpp))
 
+set tT([Param] params,WGraph graph,[int] w, hodgeParamLaurentPol hplp)=hodgeParamLaurentPol:
+for j in w ~ do hplp:=tT(params,graph,j,hplp) od;hplp
+
+set tT([Param] params,WGraph graph,WeylElt w {simple root}, hodgeParamLaurentPol hplp)=hodgeParamLaurentPol:
+tT(params,graph,w.word,hplp)
+
 {get ordinary T_alpha from tT=\tilde T: T=-q^{1/2}\tilde T+q}
 set T([Param] params,WGraph graph,int i {simple root}, Param p)=hodgeParamLaurentPol:
 (-1)*vee*tT(params,graph,i,p) + v_laurent_squared*hodge_param_laurent_pol(p)
@@ -212,8 +222,14 @@ set T([Param] params,WGraph graph,int i {simple root}, Param p)=hodgeParamLauren
 set T([Param] params,WGraph graph,int i {simple root}, hodgeParamLaurentPol hplp)=hodgeParamLaurentPol:
 (-1)*vee*tT(params,graph,i,hplp) + v_laurent_squared*hplp
 
-set T([Param] params,WGraph graph,int i {simple root}, hodgeParamPol hplp)=hodgeParamLaurentPol:
-T(params,graph,i,hodge_param_laurent_pol(hplp))
+set T([Param] params,WGraph graph,int i {simple root}, hodgeParamPol hpp)=hodgeParamLaurentPol:
+T(params,graph,i,hodge_param_laurent_pol(hpp))
+
+set T([Param] params,WGraph graph,[int] w, hodgeParamLaurentPol hplp)=hodgeParamLaurentPol:
+for j in w ~ do hplp:=T(params,graph,j,hplp) od;hplp
+
+set T([Param] params,WGraph graph,WeylElt w, hodgeParamPol hpp)=hodgeParamLaurentPol:
+T(params,graph,w.word,hodge_param_laurent_pol(hpp))
 
 set T_inv([Param] params,WGraph graph,int i {simple root}, Param p)=hodgeParamLaurentPol:
 v_minus_two*T(params,graph,0,p)+(v_minus_two-1)*hodge_param_laurent_pol(p)
@@ -228,17 +244,92 @@ v_minus_two*tT(params,graph,i,p) + (v_minus_two-1)*hodge_param_laurent_pol(p)
 set tT_inv([Param] params,WGraph graph,int i {simple root}, hodgeParamLaurentPol hplp)=hodgeParamLaurentPol:
 v_minus_two*tT(params,graph,i,hplp) + (v_minus_two-1)*hplp
 
-{S=(-tT)^-1=-(tT)^{-1}}
-set S([Param] params,WGraph graph,int i {simple root}, Param p)=hodgeParamLaurentPol:(-1)*T_inv(params,graph,i,p)
-set S([Param] params,WGraph graph,int i {simple root}, hodgeParamLaurentPol hplp)=hodgeParamLaurentPol:(-1)*T_inv(params,graph,i,hplp)
-set S([Param] params,WGraph graph,int i {simple root}, hodgeParamPol hpp)=hodgeParamLaurentPol:
-S(params,graph,i,hodge_param_laurent_pol(hpp))
+set tT_inv([Param] params,WGraph graph,[int] w, hodgeParamLaurentPol hplp)=hodgeParamLaurentPol:
+for j in w ~ do hplp:=tT_inv(params,graph,j,hplp) od;hplp
 
-{S^{-1}=-tT^{-1}}
-set S_inv([Param] params,WGraph graph,int i {simple root}, Param p)=hodgeParamLaurentPol:(-1)*T(params,graph,i,p)
-set S_inv([Param] params,WGraph graph,int i {simple root}, hodgeParamLaurentPol hplp)=hodgeParamLaurentPol:(-1)*T(params,graph,i,hplp)
-set S_inv([Param] params,WGraph graph,int i {simple root}, hodgeParamPol hpp)=hodgeParamLaurentPol:
-S_inv(params,graph,i,hodge_param_laurent_pol(hpp))
+set tT_inv([Param] params,WGraph graph,WeylElt w {simple root}, hodgeParamLaurentPol hplp)=hodgeParamLaurentPol:
+tT_inv(params,graph,w.word,hplp)
+
+{S=-tT}
+set S([Param] params,WGraph graph,int i {simple root}, Param p)=hodgeParamLaurentPol:(-1)*T(params,graph,i,p)
+set S([Param] params,WGraph graph,int i {simple root}, hodgeParamLaurentPol hplp)=hodgeParamLaurentPol:(-1)*T(params,graph,i,hplp)
+set S([Param] params,WGraph graph,int i {simple root}, hodgeParamPol hpp)=hodgeParamLaurentPol:S(params,graph,i,hodge_param_laurent_pol(hpp))
+
+
+set S([Param] params,WGraph graph,[int] w, hodgeParamLaurentPol hplp)=
+for j in w ~ do hplp:=S(params,graph,j,hplp) od;hplp
+
+set S([Param] params,WGraph graph,[int] w,Param p)=
+S(params,graph,w,hodge_param_laurent_pol(p))
+
+set S([Param] params,WGraph graph,WeylElt w, hodgeParamLaurentPol hplp)=
+S(params,graph,w.word,hplp)
+
+set S([Param] params,WGraph graph,WeylElt w, Param p)=
+tT(params,graph,w.word,hodge_param_laurent_pol(p))
+
+{S_inv=S^{-1}=(-tT)^-1}
+set S_inv([Param] params,WGraph graph,int i {simple root}, Param p)=hodgeParamLaurentPol:(-1)*T_inv(params,graph,i,p)
+set S_inv([Param] params,WGraph graph,int i {simple root}, hodgeParamLaurentPol hplp)=hodgeParamLaurentPol:(-1)*T_inv(params,graph,i,hplp)
+set S_inv([Param] params,WGraph graph,int i {simple root}, hodgeParamPol hpp)=hodgeParamLaurentPol:S_inv(params,graph,i,hodge_param_laurent_pol(hpp))
+
+set S_inv([Param] params,WGraph graph,[int] w, hodgeParamLaurentPol hplp)=
+for j in w ~ do hplp:=S_inv(params,graph,j,hplp) od;hplp
+
+set S_inv([Param] params,WGraph graph,[int] w,Param p)=
+S_inv(params,graph,w,hodge_param_laurent_pol(p))
+
+set S_inv([Param] params,WGraph graph,[int] w, hodgeParamPol hpp)=
+S_inv(params,graph,w,hodge_param_laurent_pol(hpp))
+
+set S_inv([Param] params,WGraph graph,WeylElt w, hodgeParamLaurentPol hplp)=
+S_inv(params,graph,w.word,hplp)
+
+set S_inv([Param] params,WGraph graph,WeylElt w, Param p)=
+tT(params,graph,w.word,hodge_param_laurent_pol(p))
+
+set S_inv([Param] params,WGraph graph,WeylElt w, hodgeParamPol hpp)=
+S_inv(params,graph,w,hodge_param_laurent_pol(hpp))
+
+
+
+{to compute I(B,s_alpha\gamma) use
+I(B,s_alpha\gamma)=
+ S_inv\inv(I(B,gamma)) if \alpha is an ascent
+ S(I(B,gamma)) if \alpha is a descent
+} 
+set M([Param] params,WGraph graph,int i {simple root}, Param p)=hodgeParamLaurentPol:
+if is_compact_imaginary(i,p) then nullHodgeParamLaurentPol(p.real_form)
+elif is_ascent(i,p) then S(params,graph,i,p)
+elif is_descent(i,p) then S_inv(params,graph,i,p)
+else error("missing case")
+fi
+
+
+set graded_standard(Param std)=hodgeParamPol:
+let b=block_of(std) then
+Q=KL_Q_polynomials(std) then
+rv=nullHodgeParamPol(std.real_form) in
+for irr in b do
+ let f=KL_Q_polynomial(b,Q,irr,std) in
+  if sum(f).> then rv+:=f*hodge_param_pol(irr) fi
+ od;
+rv
+
+
+{to compute I(B,s_alpha\gamma) apply
+ let M=(-S) or (-S)^{-1} if \alpha is an ascent or descent for p
+ then apply M to all terms in the graded_standard module of p
+}
+set M_graded([Param] params,WGraph graph,int i {simple root}, Param p)=hodgeParamLaurentPol:
+let hplp=hodge_param_laurent_pol(graded_standard(p)) in
+if is_compact_imaginary(i,p) then nullHodgeParamLaurentPol(p.real_form)
+elif is_ascent(i,p) then S(params,graph,i,hplp)
+elif is_descent(i,p) then S_inv(params,graph,i,hplp)
+else error("missing case")
+fi
+
+
 
 set tT([Param] params,WGraph graph,[int] w, hodgeParamLaurentPol hplp)=
 for j in w ~ do hplp:=tT(params,graph,j,hplp) od;hplp
@@ -273,17 +364,6 @@ set graded_composition_series ([Param]B,i_poly_mat Q,Param std) = [Param,vec]:
       if sum(f).> then [(irr,f)] else [] fi
    od
 
-
-
-set graded_standard(Param std)=hodgeParamPol:
-let b=block_of(std) then
-Q=KL_Q_polynomials(std) then
-rv=nullHodgeParamPol(std.real_form) in
-for irr in b do
- let f=KL_Q_polynomial(b,Q,irr,std) in
-  if sum(f).> then rv+:=f*hodge_param_pol(irr) fi
- od;
-rv
 
 
 {
