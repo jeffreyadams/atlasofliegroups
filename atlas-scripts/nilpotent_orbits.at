@@ -1027,8 +1027,5 @@ set even_dual_orbits(RootDatum rd)=even_orbits(rd.dual_orbits)
 set non_even_dual_orbits(RootDatum rd)=non_even_orbits(rd.dual_orbits)
 
 set twist(mat delta,ComplexNilpotent O)=ComplexNilpotent:
-(O.root_datum,(),O.H*delta)  {O.H\in X_*, delta acts on right} 
-
-
-
+(O.root_datum,(),O.H*delta)  {O.H\in X_*, delta acts on right}
 
