@@ -1795,12 +1795,12 @@ ext_block::ext_block // for external twist; old style blocks
    const WeightInvolution& delta)
   : parent(block)
   , orbits(fold_orbits(G.rootDatum(),delta))
-  , folded(block.Dynkin().folded(orbits))
-  , d_delta(delta)
   , info()
   , data(orbits.size()) // create that many empty vectors
   , l_start(parent.length(parent.size()-1)+2,0)
   , KL_ptr(nullptr)
+  , folded_diagram(block.Dynkin().folded(orbits))
+  , delta(delta)
 {
   BitMap fixed_points(block.size());
 
@@ -1825,11 +1825,11 @@ ext_block::ext_block // for an external twist
    bool verbose)
   : parent(block)
   , orbits(block.fold_orbits(delta))
-  , folded(block.Dynkin().folded(orbits))
-  , d_delta(delta)
   , info()
   , data(orbits.size()) // create that many empty vectors
   , l_start(parent.length(parent.size()-1)+2,0)
+  , folded_diagram(block.Dynkin().folded(orbits))
+  , delta(delta)
 {
   BitMap fixed_points(block.size());
 
@@ -2053,7 +2053,7 @@ BlockEltPair ext_block::Cayleys(weyl::Generator s, BlockElt n) const
 // the signs are recorded in |eb|, and printed to |cout| if |verbose| holds.
 bool ext_block::check(const param_block& block, bool verbose)
 {
-  context ctxt (block.context(),delta(),block.gamma());
+  context ctxt (block.context(),delta,block.gamma());
   containers::sl_list<param> links;
   for (BlockElt n=0; n<size(); ++n)
   { auto z=this->z(n);
@@ -2408,7 +2408,7 @@ bool check_braid
   if (s==t)
     return true;
   static const unsigned int cox_entry[] = {2, 3, 4, 6};
-  unsigned int len = cox_entry[b.Dynkin().edge_multiplicity(s,t)];
+  unsigned int len = cox_entry[b.folded_diagram.edge_multiplicity(s,t)];
 
   BitMap used(b.size());
   containers::queue<BlockElt> to_do { x };
