@@ -150,7 +150,8 @@ class ext_block
 
 // manipulators
   void flip_edge(weyl::Generator s, BlockElt x, BlockElt y);
-  const ext_kl::KL_table& kl_table(BlockElt limit);
+  const ext_kl::KL_table& kl_table
+    (BlockElt limit, std::vector<Pol>* pool=nullptr);
 
 // accessors
 

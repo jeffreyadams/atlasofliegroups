@@ -1011,9 +1011,10 @@ void KL_table::swallow (KL_table&& sub, const BlockEltList& embed, KLHash& hash)
 #ifndef NDEBUG
   check_sub(sub,embed);
 #endif
-  std::vector<KLIndex> poly_trans(sub.d_store.size());;
-  for (KLIndex i=0; i<sub.d_store.size(); ++i)
-    poly_trans[i]=hash.match(sub.d_store[i]); // should also extend |d_store|
+  // set up polynomial translation while ensuring those of |sub| are known here
+  std::vector<KLIndex> poly_trans; poly_trans.reserve(sub.d_store.size());
+  for (const auto& poly : sub.d_store)
+    poly_trans.push_back(hash.match(poly)); // this also extends |d_store|
 
   for (BlockElt z=0; z<sub.block().size(); ++z)
     if (not sub.d_holes.isMember(z) and d_holes.isMember(embed[z]))

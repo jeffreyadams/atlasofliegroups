@@ -2234,10 +2234,11 @@ ext_block::first_descent_among(RankFlags singular_orbits, BlockElt y) const
   return rank();
 }
 
-const ext_kl::KL_table& ext_block::kl_table(BlockElt limit)
+const ext_kl::KL_table& ext_block::kl_table
+  (BlockElt limit, std::vector<Pol>* pool)
 {
-  if (KL_ptr.get()==nullptr)
-    KL_ptr.reset(new ext_kl::KL_table(*this,nullptr));
+  if (KL_ptr==nullptr)
+    KL_ptr.reset(new ext_kl::KL_table(*this,pool));
   KL_ptr->fill_columns(limit);
   return *KL_ptr;
 }
