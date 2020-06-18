@@ -12,7 +12,7 @@ set_type i_laurent_poly = (vec w,int n)
  ([a_0,...,a_m],n) = ([0^r,a_0,...,a_m],n-r)       (add r leading zeros; n -> n-r)
 }
 
-
+{normalize: a_0\ne 0}
 set normalize(i_laurent_poly (f,n))=i_laurent_poly:
 if =f then ([],0) else
 let r=first(for j:#f do !=f[j] od) in  (strip(f[r:]),n+r) fi
@@ -24,6 +24,12 @@ set =(i_laurent_poly f,i_laurent_poly g)=bool:
 let (v,m)=normalize(f), (w,n)=normalize(g) in m=n and v=w
 
 set poly_as_laurent_poly(i_poly f)=i_laurent_poly:(f,0)
+
+set laurent_poly_as_poly(i_laurent_poly f)=i_poly:
+let g=f.normalize in 
+assert(g.n>=0,"not a polynomial");null(g.n)##g.w
+
+
 set constant_laurent_poly (int n) = i_laurent_poly:poly_as_laurent_poly(constant_poly(n))
 set zero_laurent_poly=i_laurent_poly:constant_laurent_poly(0)
 

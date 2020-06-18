@@ -503,3 +503,6 @@ set top_left_square_block (i_poly_mat M,int size) = i_poly_mat:
 set vee=i_poly:[0,1]  {polynomial v}
 set v_power(int k)=i_poly:vee^k
 set vshow(i_poly v)=void:printPoly(v,"v")
+
+{write f(q) as a polynomial in v^2=q}
+set at_v_squared(i_poly f)=i_poly: ##for a in f do [a,0] od

@@ -42,7 +42,7 @@ for node@i in graph do
     fi
    od
  fi;
- let ()=prints("col: ", col) in rv#:=col
+{ let ()=prints("col: ", col) in }rv#:=col
 od;rv
 
 {column of matrix of action of T_s, coming from W-graph, with q=1
@@ -125,7 +125,7 @@ for node@i in graph do
     fi
    od
  fi;
- let ()=prints("col: ", col) in rv#:=col
+{ let ()=prints("col: ", col) in} rv#:=col
 od;rv
 
 {coherent continuation of irreducibles is defined using the W-graph,
@@ -176,7 +176,7 @@ let r=rearrange(hplp) { f_0(v)p_0 + ... f_n(v)p_n} then
 rv=nullHodgeParamLaurentPol(hplp.real_form) in
  for (f,p) in r do
 {     let ()=prints("OK") in}
- let x=f*tT(params,graph,i,p) in let ()=prints(x) in
+ let x=f*tT(params,graph,i,p) in {let ()=prints(x) in} 
   rv+:=f*tT(params,graph,i,p)
  od;
 rv
@@ -280,16 +280,35 @@ elif is_descent(i,p) then S_inv(params,graph,i,p)
 else error("missing case")
 fi
 
-
 set graded_standard(Param std)=hodgeParamPol:
 let b=block_of(std) then
 Q=KL_Q_polynomials(std) then
 rv=nullHodgeParamPol(std.real_form) in
 for irr in b do
  let f=KL_Q_polynomial(b,Q,irr,std) in
-  if sum(f).> then rv+:=f*hodge_param_pol(irr) fi
+  if sum(f).> then rv+:=f.at_v_squared*hodge_param_pol(irr) fi
  od;
 rv
+
+set reverse(hodgeParamLaurentPol hplp)=ParamPol: character_formula(hplp.v_to_1)
+
+set chain([Param] params,WGraph graph,[int] w, [int] powers,hodgeParamLaurentPol hplp)=
+for i:#w downto 0 do
+ let s=w[i] {simple root} then
+ power=powers[i]  {\pm 1} in
+ hplp:=
+  if power=1 then S(params,graph,s,hplp)
+  elif power=-1 then S_inv(params,graph,s,hplp)
+  else error("missing case")
+  fi
+ od;
+hplp
+
+set chain([Param] params,WGraph graph,[int] w, [int] powers,hodgeParamPol hpp)=
+chain(params,graph,w,powers,hodge_param_laurent_pol(hpp))
+
+set chain_graded([Param] params,WGraph graph,[int] w, [int] powers,Param p)=
+chain(params,graph,w,powers,graded_standard(p))
 
 
 {to compute I(B,s_alpha\gamma) apply
@@ -329,16 +348,6 @@ quad_test(params,graph,i,hodge_param_laurent_pol(p))
 
 set quad_test([Param] params,WGraph graph,int i {simple root},[Param] list)=
 for p in list do let (,,z)=quad_test(params,graph,i,p) in z od
-
-{B should be singular_block_of(std), and Q should be KL_Q_polynomials(std)}
-set graded_composition_series ([Param]B,i_poly_mat Q,Param std) = [Param,vec]:
- ##for irr in B
-   do {let f=KL_Q_polynomial(B,Q,irr,std) in}
-      let f=graded_multiplicities(B,Q,irr,std) in
-      {if f != zero_poly and #f !=0 then }
-      if sum(f).> then [(irr,f)] else [] fi
-   od
-
 
 
 {
