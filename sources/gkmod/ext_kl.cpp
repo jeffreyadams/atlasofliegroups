@@ -16,40 +16,6 @@
 namespace atlas {
 namespace ext_kl {
 
-class PolEntry : public Pol
-{
-public:
-  // constructors
-  PolEntry() : Pol() {} // default constructor builds zero polynomial
-  PolEntry(const Pol& p) : Pol(p) {} // lift polynomial to this class
-
-  // members required for an Entry parameter to the HashTable template
-  typedef std::vector<Pol> Pooltype;  // associated storage type
-  size_t hashCode(size_t modulus) const; // hash function
-
-  // compare polynomial with one from storage
-  bool operator!=(Pooltype::const_reference e) const;
-}; // |class KLPolEntry|
-
-inline size_t PolEntry::hashCode(size_t modulus) const
-{ const Pol& P=*this;
-  if (P.isZero()) return 0;
-  polynomials::Degree i=P.degree();
-  size_t h=P[i]; // start with leading coefficient
-  while (i-->0)
-    h= (h<<21)+(h<<13)+(h<<8)+(h<<5)+h+P[i];
-  return h & (modulus-1);
-}
-
-bool PolEntry::operator!=(PolEntry::Pooltype::const_reference e) const
-{
-  if (degree()!=e.degree()) return true;
-  if (isZero()) return false; // since degrees match
-  for (polynomials::Degree i=0; i<=degree(); ++i)
-    if ((*this)[i]!=e[i]) return true;
-  return false; // no difference found
-}
-
 
 descent_table::descent_table(const ext_block::ext_block& eb)
   : info()
@@ -543,7 +509,7 @@ void KL_table::fill_next_column(PolHash& hash)
     const int sign = aux.block.epsilon(s,sy,y);
     const BlockElt floor_y =aux.length_floor(y);
 
-    std::vector<PolEntry> cy(floor_y,(PolEntry()));
+    std::vector<IntPolEntry> cy(floor_y,(IntPolEntry()));
     std::vector<Pol>Ms(floor_y,(Pol()));
 
     // fill array |cy| with initial contributions from $(T_s+1)*c_{sy}$
@@ -592,7 +558,7 @@ void KL_table::fill_next_column(PolHash& hash)
 	  *it=0; // then there can be no contribution form the Cayleys
 	else
 	{
-	  PolEntry Q = P(sx.first,y);  // computed earlier in this loop
+	  IntPolEntry Q = P(sx.first,y);  // computed earlier in this loop
 	  if (aux.block.epsilon(s,x,sx.first)<0)
 	    Q *= -1;
 	  if (sx.second!=UndefBlock)

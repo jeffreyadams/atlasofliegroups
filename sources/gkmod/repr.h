@@ -26,6 +26,7 @@
 #include "hashtable.h"
 #include "free_abelian.h"
 #include "arithmetic.h" // |SplitInteger|
+#include "polynomials.h"
 
 namespace atlas {
 
@@ -333,11 +334,11 @@ class Rep_table : public Rep_context
 
   SR_poly twisted_deformation_terms
     (blocks::common_block& block, ext_block::ext_block& eblock,
-     BlockElt y, RankFlags singular, const RatWeight& gamma) const;
-  SR_poly twisted_deformation_terms (param_block& block,BlockElt entry_elem);
-  // here |block| is non-|const| because it calls |add_block|
+     BlockElt y, RankFlags singular, const RatWeight& gamma);
+#if 0
   SR_poly twisted_deformation_terms (unsigned long sr_hash) const;
   // once a parameter has been entered, we can compute this without a block
+#endif
 
   blocks::common_block& add_block_below // partial; defined in common_blocks.cpp
     (const common_context&, const StandardReprMod& srm, BitMap* subset);

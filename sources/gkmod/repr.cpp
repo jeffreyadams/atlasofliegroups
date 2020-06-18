@@ -1527,7 +1527,7 @@ SR_poly Rep_table::twisted_KL_column_at_s(StandardRepr sr)
 SR_poly Rep_table::twisted_deformation_terms
     (blocks::common_block& block, ext_block::ext_block& eblock,
      BlockElt y, // in numbering of |block|, not |eblock|
-     RankFlags singular_orbits, const RatWeight& gamma) const
+     RankFlags singular_orbits, const RatWeight& gamma)
 {
   assert(eblock.is_present(y));
   const BlockElt y_index = eblock.element(y);
@@ -1621,7 +1621,7 @@ SR_poly Rep_table::twisted_deformation_terms
 } // |twisted_deformation_terms(blocks::common_block&,...)|
 
 #if 0
-SR_poly Rep_table::twisted_deformation_terms (unsigned long sr_hash) const
+SR_poly Rep_table::twisted_deformation_terms (unsigned long sr_hash)
 { // the |StandardRepr| |hash[sr_hash]| is necessarily delta-fixed and final
   SR_poly result(repr_less());
   SR_poly remainder(hash[sr_hash],repr_less());

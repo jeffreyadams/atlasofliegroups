@@ -89,36 +89,6 @@ namespace kl {
 
  *****************************************************************************/
 
-/* methods of KLPolEntry */
-
-
-/*
-  Calculate a hash value in [0,modulus[, where modulus is a power of 2
-
-  The function is in fact evaluation of the polynomial (with coefficients
-  interpreted in $\Z$) at the point $2^{21}+2^{13}+2^8+2^5+1=2105633$, which can
-  be calculated quickly (without multiplications) and which gives a good spread
-  (which is not the case if 2105633 is replaced by a small number, because the
-  evaluation values will not grow fast enough for low degree polynomials!).
-*/
-inline size_t KLPolEntry::hashCode(size_t modulus) const
-{ const KLPol& P=*this;
-  if (P.isZero()) return 0;
-  polynomials::Degree i=P.degree();
-  size_t h=P[i]; // start with leading coefficient
-  while (i-->0) h= (h<<21)+(h<<13)+(h<<8)+(h<<5)+h+P[i];
-  return h & (modulus-1);
-}
-
-bool KLPolEntry::operator!=(KLPolEntry::Pooltype::const_reference e) const
-{
-  if (degree()!=e.degree()) return true;
-  if (isZero()) return false; // since degrees match
-  for (polynomials::Degree i=0; i<=degree(); ++i)
-    if ((*this)[i]!=e[i]) return true;
-  return false; // no difference found
-}
-
 /* methods of KL_table */
 
 
