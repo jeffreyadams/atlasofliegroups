@@ -1,6 +1,6 @@
 <hodgeParamPol.at
 <laurentPolynomial.at
-
+<hodge_K_type_formula.at
 {see hodgeParamPol.at and hodgeParamLaurentPol.pdf}
 
 {recall: set_type hodgeParamPol=[ParamPol]
@@ -44,6 +44,7 @@ set hodge_param_laurent_pol(ParamPol P)=hodgeParamLaurentPol:([P],null(#monomial
 set hodge_param_laurent_pol(Param p)=hodgeParamLaurentPol:(hodge_param_pol(p),[0])
 set hodge_param_laurent_pol(hodgeParamPol P)=hodgeParamLaurentPol:(P,null(#monomials(P)))
 set *(Split c,hodgeParamLaurentPol hplp)=hodgeParamLaurentPol:(c*hplp.hpp,hplp.shifts)
+set -(hodgeParamLaurentPol hplp)=hodgeParamLaurentPol:(-1)*hplp
 
 set real_form(hodgeParamLaurentPol hplp)=RealForm:real_form(hodge_param_pol(hplp))
 
@@ -213,3 +214,34 @@ set f=hodgeParamLaurentPol:
 set g=hodgeParamLaurentPol:([a],[-1])
 set h=hodgeParamLaurentPol:([b,2*b],[0])
 set l=hodgeParamLaurentPol:([b],[-3])}
+
+
+set show_long(hodgeParamLaurentPol hplp) =void:
+   let factors=monomials(hplp) then
+   r=rearrange(hplp) then  {(Laurent poly,Param)}
+   lowest_power=min(for (f,p) in r do lowest_power(f) od) then
+   max_power=max(for (f,p) in r do degree(f) od) then
+   ()=prints("lowest power: ", lowest_power) then
+   ()=prints("max power: ", max_power) then
+   shift_term=v_laurent_power(max(0,-lowest_power)) then
+   ()=prints("shift: ", laurent_poly_format(shift_term,"q")) in
+   prints("G=", real_form(hplp));
+   tabulate(["x","lambda","nu","l","f","shift*f","grading"]#
+   for (f_in,p) in r~ do
+   let   f=laurent_poly_as_poly(shift_term*f_in) then
+   m=delete_trailing_zeros(f) then
+   string_m="" in
+      for i:max_power-lowest_power+1
+      do string_m +:=
+       if i<#m then  m[i].to_string + " " else ". " fi
+      od
+   ;
+   [(#(p.x)).to_string,
+   p.lambda.to_string,
+   p.nu.to_string,
+   p.length.to_string,
+   laurent_poly_format(f_in,"q"),
+   poly_format(f, "q"),
+   "[" +  string_m + "]"]
+   
+   od)
