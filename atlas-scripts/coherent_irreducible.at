@@ -2,6 +2,8 @@
 <coherent.at
 <hodgeParamLaurentPol.at
 
+set W_graph_of(Param p)=let (,g)=W_graph(p) in g
+
 {why isn't this already defined?}
 set is_noncompact_imaginary(int i,Param p)=bool:
 is_noncompact_imaginary(p.root_datum.simple_roots[i],p.x)
@@ -147,6 +149,25 @@ set coherent_irr ([Param] block,WGraph graph,Param p,[int] w) = ParamPol:
 
 set coherent_irr ([Param] block,WGraph graph,ParamPol P,[int] w) = ParamPol:
   for s in w do P:=coherent_irr(block,graph,P,s) od; P
+
+set coherent_irr_new (Param p,int s)=ParamPol:coherent_irr(block_of(p),W_graph_of(p),p,s)
+
+set coherent_irr_new (Param p,[int] w) = ParamPol:
+  let P=virtual(p) in for s in w do P:=coherent_irr(block_of(p),W_graph_of(p),P,s) od; P
+
+set coherent_irr_new (ParamPol P,int s) = ParamPol:
+  let p=first_param(P) then
+  block=block_of(p) then
+  graph=W_graph_of(p) then
+  sum=0*P in   for coeff@p in P do sum +:= coeff*coherent_irr
+  (block,graph,p,s) od; sum
+
+set coherent_irr_new (ParamPol P,[int] w) = ParamPol:
+  let p=first_param(P) then
+  block=block_of(p) then
+  graph=W_graph_of(p) in
+  for s in w do P:=coherent_irr(block,graph,P,s) od; P
+
 
 {-----------------------Hecke action-------------------}
 
