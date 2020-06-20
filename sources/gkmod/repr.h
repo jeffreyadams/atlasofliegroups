@@ -242,7 +242,7 @@ class Rep_context
 
   compare repr_less() const;
 
-  typedef Free_Abelian<StandardRepr,Split_integer,compare> poly;
+  using poly = Free_Abelian<StandardRepr,Split_integer,compare>;
 
   poly scale(const poly& P, const Rational& f) const;
   poly scale_0(const poly& P) const;
@@ -262,7 +262,7 @@ class Rep_context
   unsigned int height(Weight theta_plus_1_gamma) const;
 }; // |Rep_context|
 
-typedef Rep_context::poly SR_poly;
+using SR_poly = Rep_context::poly;
 
 /*
   In addition to providing methods inherited from |Rep_context|, the class
@@ -293,8 +293,11 @@ class Rep_table : public Rep_context
   std::vector<StandardReprMod> mod_pool;
   HashTable<StandardReprMod,unsigned long> mod_hash;
 
-  std::vector<Polynomial<int> > poly_pool;
-  HashTable<polynomials::PolEntry<int>,unsigned int> poly_hash;
+  std::vector<kl::KLPol> KL_poly_pool;
+  KL_hash_Table KL_poly_hash;
+
+  std::vector<ext_kl::Pol> poly_pool;
+  ext_KL_hash_Table poly_hash;
 
   containers::sl_list<blocks::common_block> block_list;
   using bl_it = containers::sl_list<blocks::common_block>::iterator;

@@ -21,9 +21,6 @@ namespace atlas {
 
 namespace ext_kl {
 
-using Pol = Polynomial<int>;
-using PolRef = const Pol&;
-
 Pol qk_plus_1(int k);
 inline Pol q_plus_1() { return qk_plus_1(1); }
 Pol qk_minus_1(int k);
@@ -140,8 +137,9 @@ class KL_table
   // coefficients in $P_{x,y}$ of $q^{(l(y/x)-i)/2}$ (use with i=1,2,3)
   int mu(short unsigned int i,BlockElt x, BlockElt y) const;
 
-  // manipulator
-  void fill_columns(BlockElt y=0);
+  // manipulators
+  void fill_columns(BlockElt limit=0); // do all |y<limit|; if |limit==0| do all
+  void swallow (KL_table&& sub, const BlockEltList& embed, KL_hash_Table& hash);
  private:
   using PolHash = HashTable<IntPolEntry,kl::KLIndex>;
   void fill_column(BlockElt y,PolHash& hash);

@@ -812,6 +812,15 @@ void KL_table::do_new_recursion(BlockElt y,PolHash& hash)
   assert(out_it==column[y].rend()); // check that we've traversed the column
 } // |KL_table::do_new_recursion|
 
+void KL_table::swallow
+  (KL_table&& sub, const BlockEltList& embed, KL_hash_Table& hash)
+{
+  // set up polynomial translation while ensuring those of |sub| are known here
+  std::vector<kl::KLIndex> poly_trans;
+  poly_trans.reserve(sub.storage_pool.size());
+  // for (const auto& poly : sub.storage_pool)
+  //   poly_trans.push_back(hash.match(poly)); // this also extends |storage_pool|
+}
 
 bool check(const Pol& P_sigma, const KLPol& P)
 {

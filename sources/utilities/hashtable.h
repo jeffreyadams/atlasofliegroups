@@ -78,8 +78,10 @@ class HashTable
   HashTable(typename Entry::Pooltype& pool, // caller supplies ref to pool
 	    unsigned int n=8); // intially make $2^n$ slots
 
-  // manipulator
+  // manipulators
   Number match(const Entry&);   // lookup entry and return its sequence number
+  const typename Entry::Pooltype& pool() const
+  { return d_pool; } // allow sharing |d_pool|
 
   // accessors
   Number find(const Entry&) const; // const variant of match; may return empty

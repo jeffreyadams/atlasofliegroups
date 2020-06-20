@@ -867,6 +867,7 @@ Rep_table::Rep_table(RealReductiveGroup &G)
 : Rep_context(G)
 , pool(), hash(pool), def_formulae()
 , mod_pool(), mod_hash(mod_pool)
+, KL_poly_pool(), KL_poly_hash(KL_poly_pool)
 , poly_pool(), poly_hash(poly_pool)
 , block_list(), place()
 {}
@@ -1034,7 +1035,7 @@ unsigned long Rep_table::add_block(const StandardReprMod& srm)
   }
 
   // swallow blocks in |embeddings|, and remove them from |block_list|
-  kl::KLHash hash = block.KL_hash();
+  auto hash_object = block.KL_hash();
   for (auto it= embeddings.begin(); not embeddings.at_end(it); ++it)
   {
     auto& sub_block = *it->first;
@@ -1045,7 +1046,7 @@ unsigned long Rep_table::add_block(const StandardReprMod& srm)
     for (BlockElt z : it->second)
       assert(z!=UndefBlock);
 #endif
-    block.swallow(std::move(sub_block),it->second,hash);
+    block.swallow(std::move(sub_block),it->second,hash_object.ref);
     block_erase(block_it);
   }
 

@@ -153,6 +153,9 @@ class ext_block
   const ext_kl::KL_table& kl_table
     (BlockElt limit, std::vector<Pol>* pool=nullptr);
 
+  void swallow // integrate an older partial block, with mapping of elements
+    (ext_block&& sub, const BlockEltList& embed, KL_hash_Table& hash);
+
 // accessors
 
   size_t rank() const { return orbits.size(); }

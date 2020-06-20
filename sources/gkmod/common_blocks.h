@@ -17,7 +17,7 @@
 #include "bruhat.h" // type |BruhatOrder| must be complete for destructor
 #include "subsystem.h"
 #include "repr.h"
-#include "kl.h"
+#include "kl.h" // for type |Poly_hash_export|
 
 namespace atlas {
 
@@ -118,9 +118,9 @@ class common_block : public Block_base
   ext_gens fold_orbits(const WeightInvolution& delta) const;
 
   // manipulators
-  kl::KLHash KL_hash(); // get table from |*kl_tab_ptr|, after maybe creating it
+  kl::Poly_hash_export KL_hash(); // table from |*kl_tab_ptr|, maybe creating it
   void swallow // integrate an older partial block, with mapping of elements
-    (common_block&& sub, const BlockEltList& embed, kl::KLHash& hash);
+    (common_block&& sub, const BlockEltList& embed, KL_hash_Table& hash);
   ext_block::ext_block& extended_block(); // for inner class involution; store it
 
   void set_Bruhat
