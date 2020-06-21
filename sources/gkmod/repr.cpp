@@ -867,8 +867,8 @@ Rep_table::Rep_table(RealReductiveGroup &G)
 : Rep_context(G)
 , pool(), hash(pool), def_formulae()
 , mod_pool(), mod_hash(mod_pool)
-, KL_poly_pool(), KL_poly_hash(KL_poly_pool)
-, poly_pool(), poly_hash(poly_pool)
+, KL_poly_pool{KLPol(),KLPol(KLCoeff(1))}, KL_poly_hash(KL_poly_pool)
+, poly_pool{ext_kl::Pol(0),ext_kl::Pol(1)}, poly_hash(poly_pool)
 , block_list(), place()
 {}
 Rep_table::~Rep_table() = default;
@@ -1422,7 +1422,8 @@ SR_poly twisted_KL_sum
 
   // start with computing KL polynomials for the entire block
   std::vector<ext_kl::Pol> pool;
-  ext_kl::KL_table twisted_KLV(eblock,&pool);
+  ext_KL_hash_Table hash(pool,4);
+  ext_kl::KL_table twisted_KLV(eblock,&hash);
   twisted_KLV.fill_columns(y+1); // fill table up to |y| inclusive
 
   // make a copy of |pool| in which polynomials have been evaluated as |s|
@@ -1502,7 +1503,7 @@ SR_poly Rep_table::twisted_KL_column_at_s(StandardRepr sr)
     if (not contrib[z].empty() and contrib[z].front().first==z)
       finals.push_front(z); // accumulate in reverse order
 
-  const auto& kl_tab = eblock.kl_table(y+1,&poly_pool);
+  const auto& kl_tab = eblock.kl_table(y+1,&poly_hash);
 
   SR_poly result(repr_less());
   const auto& gamma=sr.gamma();
@@ -1545,7 +1546,7 @@ SR_poly Rep_table::twisted_deformation_terms
     if (not contrib[z].empty() and contrib[z].front().first==z)
       finals.push_front(z); // accumulate in reverse order
 
-  const auto& kl_tab = eblock.kl_table(y_index+1,&poly_pool);
+  const auto& kl_tab = eblock.kl_table(y_index+1,&poly_hash);
 
   std::vector<int> pool_at_minus_1; // evaluations at $q=-1$ of KL polynomials
   {

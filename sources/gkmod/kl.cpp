@@ -81,7 +81,7 @@ namespace kl {
   const KLPol Zero;
 
 // Polynomial $1.q^0$.
-  const KLPol One(0,KLCoeff(1)); // since |Polynomial(d,1)| gives |1.q^d|.
+  const KLPol One(KLCoeff(1)); // since |Polynomial(d,1)| gives |1.q^d|.
 
 /*****************************************************************************
 
@@ -1017,9 +1017,9 @@ void KL_table::swallow (KL_table&& sub, const BlockEltList& embed, KL_hash_Table
   check_sub(sub,embed);
 #endif
   // set up polynomial translation while ensuring those of |sub| are known here
-  std::vector<KLIndex> poly_trans; poly_trans.reserve(sub.d_store.size());
-  for (const auto& poly : sub.d_store)
-    poly_trans.push_back(hash.match(poly)); // this also extends |d_store|
+  std::vector<KLIndex> poly_trans; poly_trans.reserve(sub.storage_pool.size());
+  for (const auto& poly : sub.storage_pool)
+    poly_trans.push_back(hash.match(poly)); // this also extends |storage_pool|
 
   for (BlockElt z=0; z<sub.block().size(); ++z)
     if (not sub.d_holes.isMember(z) and d_holes.isMember(embed[z]))

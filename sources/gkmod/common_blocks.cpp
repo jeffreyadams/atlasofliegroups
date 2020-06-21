@@ -724,7 +724,7 @@ void common_block::swallow
   if (sub.extended!=nullptr)
   {
     auto& eblock = extended_block(); // get or generate the extended block
-    eblock.swallow(std::move(*sub.extended),embed,hash);
+    eblock.swallow(std::move(*sub.extended),embed);
   }
 }
 
