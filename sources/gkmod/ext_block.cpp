@@ -1828,6 +1828,7 @@ ext_block::ext_block // for an external twist
   , info()
   , data(orbits.size()) // create that many empty vectors
   , l_start(parent.length(parent.size()-1)+2,0)
+  , KL_ptr(nullptr)
   , folded_diagram(block.Dynkin().folded(orbits))
   , delta(delta)
 {

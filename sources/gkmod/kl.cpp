@@ -1011,7 +1011,8 @@ void KL_table::verbose_fill(BlockElt last_y)
 
 }
 
-void KL_table::swallow (KL_table&& sub, const BlockEltList& embed, KL_hash_Table& hash)
+void KL_table::swallow
+  (KL_table&& sub, const BlockEltList& embed, KL_hash_Table& hash)
 {
 #ifndef NDEBUG
   check_sub(sub,embed);

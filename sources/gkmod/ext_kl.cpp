@@ -94,8 +94,8 @@ descent_table::descent_table(const ext_block::ext_block& eb)
 unsigned int descent_table::col_size(BlockElt y) const
 {
   BlockElt x=length_floor(y);
-  if (prim_back_up(x,y)) // find last primitive $x$ of length less than $y$
-    return x_index(x,y)+1; //
+  if (prim_back_up(x,y)) // find last primitive |x| of length less than |y|
+    return x_index(x,y)+1; // size in one more than index of that |x| for |y|
   return 0; // no primitives below length of |y| at all
 } // |descent_table::col_size|
 
@@ -149,6 +149,7 @@ std::pair<kl::KLIndex,bool>
 Pol KL_table::P(BlockElt x, BlockElt y) const
 {
   auto index = KL_pol_index(x,y);
+  assert(index.first<storage_pool.size());
   return index.second ? -storage_pool[index.first] : storage_pool[index.first];
 }
 
@@ -821,11 +822,42 @@ void KL_table::do_new_recursion(BlockElt y,PolHash& hash)
 
 void KL_table::swallow(KL_table&& sub, const BlockEltList& embed)
 {
-  // set up polynomial translation while ensuring those of |sub| are known here
-  std::vector<kl::KLIndex> poly_trans;
-  poly_trans.reserve(sub.storage_pool.size());
-  // for (const auto& poly : sub.storage_pool)
-  //   poly_trans.push_back(hash.match(poly)); // this also extends |storage_pool|
+  if (pol_hash!=nullptr and sub.pol_hash==pol_hash) // case of shared hash tables
+  {
+    for (BlockElt y=0; y<sub.aux.block.size(); ++y)
+      if (sub.column[y].size()==sub.aux.col_size(y) and column[embed[y]].empty())
+      { // then transfer |sub.column[y]| to new block
+	auto& cur_col=column[embed[y]];
+	cur_col.assign(aux.col_size(embed[y]),zero); // default to 0
+	BlockElt x=sub.aux.length_floor(y);
+	const auto desc = sub.descent_set(y);
+	for (auto it=sub.column[y].crbegin(); sub.aux.prim_back_up(x,desc); ++it)
+	  cur_col.at(aux.x_index(embed[x],embed[y])) = *it;
+      }
+    return;
+  }
+  // distict polynomial hash tables requires setting up polynomial translation
+  std::vector<kl::KLIndex> poly_trans(sub.storage_pool.size(),KLIndex(-1));
+  {
+    auto hash_object = polynomial_hash_table ();
+    auto& hash = hash_object.ref;
+    for (const auto& c : sub.column)
+      for (auto ind : c)
+	poly_trans[ind] = hash.match(sub.storage_pool[ind]);
+    // besides filling |poly_trans| this also extends |storage_pool| as needed
+  }
+
+  // it remains to do the same as above but passing values through |poly_trans|
+  for (BlockElt y=0; y<sub.aux.block.size(); ++y)
+    if (sub.column[y].size()==sub.aux.col_size(y) and column[embed[y]].empty())
+    { // then transfer |sub.column[y]| to new block
+      auto& cur_col=column[embed[y]];
+      cur_col.assign(aux.col_size(embed[y]),zero); // default to 0
+      BlockElt x=sub.aux.length_floor(y);
+      const auto desc = sub.descent_set(y);
+      for (auto it=sub.column[y].crbegin(); sub.aux.prim_back_up(x,desc); ++it)
+	cur_col.at(aux.x_index(embed[x],embed[y])) = poly_trans[*it];
+    }
 }
 
 bool check(const Pol& P_sigma, const KLPol& P)
