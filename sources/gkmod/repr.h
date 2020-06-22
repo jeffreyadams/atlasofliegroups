@@ -308,15 +308,17 @@ class Rep_table : public Rep_context
   ~Rep_table();
   // both defined out of line because of implicit use |common_block| destructor
 
+  ext_KL_hash_Table* shared_poly_table () { return &poly_hash; }
+
   const StandardReprMod& srm(unsigned long n) const { return mod_pool[n]; }
 
   unsigned short length(StandardRepr z); // by value
 
   unsigned long parameter_number (StandardRepr z) const { return hash.find(z); }
   const SR_poly& deformation_formula(unsigned long h) const
-    { return def_formulae[h].first; }
+    { assert(h<def_formulae.size()); return def_formulae[h].first; }
   const SR_poly& twisted_deformation_formula(unsigned long h) const
-    { return def_formulae[h].second; }
+    { assert(h<def_formulae.size()); return def_formulae[h].second; }
 
   blocks::common_block& lookup_full_block
     (StandardRepr& sr,BlockElt& z); // |sr| is by reference; will be normalised
@@ -330,7 +332,7 @@ class Rep_table : public Rep_context
   SR_poly twisted_KL_column_at_s(StandardRepr z); // by value
 
   SR_poly deformation_terms
-    (blocks::common_block& block, BlockElt y, const RatWeight& gamma) const;
+    (blocks::common_block& block, BlockElt y, const RatWeight& gamma);
 #if 0
   SR_poly deformation_terms (unsigned long sr_hash) const;
   // once a parameter has been entered, we can compute this without a block

@@ -129,6 +129,7 @@ class ext_block
   std::vector<std::vector<block_fields> > data;  // size |d_rank| * |size()|
   BlockEltList l_start; // where elements of given length start
 
+  ext_KL_hash_Table* pol_hash; // hash table pointer for |KL_table| construction
   std::unique_ptr<ext_kl::KL_table> KL_ptr;
  public:
 // two passive |const| fields, unused by any method but publically visible
@@ -144,7 +145,8 @@ class ext_block
   ext_block(const param_block& block, const WeightInvolution& delta,
 	    bool verbose=false);
   // the following variant has its definition in common_blocks.cpp:
-  ext_block(const blocks::common_block& block, const WeightInvolution& delta);
+  ext_block(const blocks::common_block& block, const WeightInvolution& delta,
+	    ext_KL_hash_Table* pol_hash);
 
   ~ext_block(); // cannot be implicitly defined here (|KL_table| incomplete)
 

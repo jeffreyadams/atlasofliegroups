@@ -1798,6 +1798,7 @@ ext_block::ext_block // for external twist; old style blocks
   , info()
   , data(orbits.size()) // create that many empty vectors
   , l_start(parent.length(parent.size()-1)+2,0)
+  , pol_hash(nullptr)
   , KL_ptr(nullptr)
   , folded_diagram(block.Dynkin().folded(orbits))
   , delta(delta)
@@ -1828,6 +1829,7 @@ ext_block::ext_block // for an external twist
   , info()
   , data(orbits.size()) // create that many empty vectors
   , l_start(parent.length(parent.size()-1)+2,0)
+  , pol_hash(nullptr)
   , KL_ptr(nullptr)
   , folded_diagram(block.Dynkin().folded(orbits))
   , delta(delta)
@@ -2250,7 +2252,7 @@ void ext_block::swallow // integrate older partial block, using |embed| mapping
   if (sub.KL_ptr!=nullptr)
   {
     if (KL_ptr==nullptr)
-      KL_ptr.reset(new ext_kl::KL_table(*this,nullptr));
+      KL_ptr.reset(new ext_kl::KL_table(*this,pol_hash));
 
     // restrict the translation vector to its |sub| elements (|delta|-fixed ones)
     BlockEltList eblock_embed; eblock_embed.reserve(sub.size());

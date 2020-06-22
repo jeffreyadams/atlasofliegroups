@@ -1035,7 +1035,6 @@ unsigned long Rep_table::add_block(const StandardReprMod& srm)
   }
 
   // swallow blocks in |embeddings|, and remove them from |block_list|
-  auto hash_object = block.KL_hash();
   for (auto it= embeddings.begin(); not embeddings.at_end(it); ++it)
   {
     auto& sub_block = *it->first;
@@ -1046,7 +1045,7 @@ unsigned long Rep_table::add_block(const StandardReprMod& srm)
     for (BlockElt z : it->second)
       assert(z!=UndefBlock);
 #endif
-    block.swallow(std::move(sub_block),it->second,hash_object.ref);
+    block.swallow(std::move(sub_block),it->second,&KL_poly_hash,&poly_hash);
     block_erase(block_it);
   }
 
@@ -1197,7 +1196,7 @@ std::vector<pair_list> contributions
 } // |contributions|, extended block
 
 SR_poly Rep_table::deformation_terms
-  ( blocks::common_block& block, const BlockElt y, const RatWeight& gamma) const
+  ( blocks::common_block& block, const BlockElt y, const RatWeight& gamma)
 { assert(y<block.size()); // and |y| is final, see |assert| below
 
   SR_poly result(repr_less());
@@ -1211,7 +1210,8 @@ SR_poly Rep_table::deformation_terms
       finals.push_front(z); // accumulate in reverse order
 
   assert(not finals.empty() and finals.front()==y); // do not call for non-final
-  const kl::KL_table& kl_tab = block.kl_tab(y,false); // fill silently up to |y|
+  const kl::KL_table& kl_tab =
+    block.kl_tab(y,&KL_poly_hash,false); // fill silently up to |y|
 
   std::unique_ptr<unsigned int[]> index // a sparse array, map final to position
     (new unsigned int [block.size()]); // unlike |std::vector| do not initialise
@@ -1298,7 +1298,8 @@ SR_poly Rep_table::KL_column_at_s(StandardRepr sr) // |sr| must be final
   std::vector<pair_list> contrib = contributions(block,block.singular(gamma),z);
   assert(contrib.size()==z+1 and contrib[z].front().first==z);
 
-  const kl::KL_table& kl_tab = block.kl_tab(z,false); // fill silently up to |z|
+  const kl::KL_table& kl_tab =
+    block.kl_tab(z,&KL_poly_hash,false); // fill silently up to |z|
 
   SR_poly result(repr_less());
   auto z_length=block.length(z);
@@ -1330,7 +1331,8 @@ containers::simple_list<std::pair<BlockElt,kl::KLPol> >
   BlockElt z;
   auto& block = lookup(sr,z);
 
-  const kl::KL_table& kl_tab = block.kl_tab(z,false); // fill silently up to |z|
+  const kl::KL_table& kl_tab =
+    block.kl_tab(z,&KL_poly_hash,false); // fill silently up to |z|
 
   containers::simple_list<std::pair<BlockElt,kl::KLPol> > result;
   for (BlockElt x=z+1; x-->0; )
@@ -1474,7 +1476,7 @@ SR_poly twisted_KL_column_at_s
   auto zm = StandardReprMod::mod_reduce(rc,z);
   BlockElt entry; // dummy needed to ensure full block is generated
   blocks::common_block block(rc,zm,entry); // which this constructor does
-  ext_block::ext_block eblock(block,delta);
+  ext_block::ext_block eblock(block,delta,nullptr);
 
   return twisted_KL_sum(eblock,eblock.element(entry),block,z.gamma());
 } // |twisted_KL_column_at_s|
@@ -1488,7 +1490,7 @@ SR_poly Rep_table::twisted_KL_column_at_s(StandardRepr sr)
   assert(is_final(sr) and sr==inner_twisted(sr));
   BlockElt y0;
   auto& block = lookup(sr,y0);
-  auto& eblock = block.extended_block();
+  auto& eblock = block.extended_block(&poly_hash);
 
   RankFlags singular=block.singular(sr.gamma());
   RankFlags singular_orbits; // flag singulars among orbits
@@ -1710,7 +1712,7 @@ SR_poly Rep_table::twisted_deformation (StandardRepr z)
     {
       BlockElt new_z;
       auto& block = lookup(p.first,new_z);
-      auto& eblock = block.extended_block();
+      auto& eblock = block.extended_block(&poly_hash);
 
       RankFlags singular = block.singular(p.first.gamma());
       RankFlags singular_orbits; // flag singulars among orbits
