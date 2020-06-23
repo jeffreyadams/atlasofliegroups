@@ -2243,6 +2243,26 @@ const ext_kl::KL_table& ext_block::kl_table
   return *KL_ptr;
 }
 
+void ext_block::swallow // integrate older partial block, using |embed| mapping
+  (ext_block&& sub, const BlockEltList& embed, KL_hash_Table& hash)
+{
+  if (sub.KL_ptr!=nullptr)
+  {
+    if (KL_ptr==nullptr)
+      KL_ptr.reset(new ext_kl::KL_table(*this,nullptr));
+
+    // restrict the translation vector to its |sub| elements (|delta|-fixed ones)
+    BlockEltList eblock_embed; eblock_embed.reserve(sub.size());
+    for (BlockElt x=0; x<sub.size(); ++x)
+    {
+      eblock_embed.push_back(element(embed[sub.z(x)]));
+      assert(eblock_embed.back()!=size()); // check that lookup succeeded
+    }
+    KL_ptr->swallow(std::move(*sub.KL_ptr),eblock_embed,hash);
+  }
+}
+
+
 // reduce matrix to rows for extended block elements without singular descents
 // the other rows are not removed, but the result lists the rows to retain
 template<typename C> // matrix coefficient type (signed)

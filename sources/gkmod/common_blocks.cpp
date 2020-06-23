@@ -697,17 +697,17 @@ ext_block::ext_block& common_block::extended_block()
   return *extended;
 }
 
-kl::KLHash common_block::KL_hash()
+kl::Poly_hash_export common_block::KL_hash()
 {
   if (kl_tab_ptr.get()==nullptr) // do this only the first time
     kl_tab_ptr.reset(new kl::KL_table(*this));
 
-  return kl_tab_ptr->pol_hash();
+  return kl_tab_ptr-> polynomial_hash_table();
 }
 
 // integrate an older partial block, with mapping of elements
 void common_block::swallow
-  (common_block&& sub, const BlockEltList& embed, kl::KLHash& hash)
+  (common_block&& sub, const BlockEltList& embed, KL_hash_Table& hash)
 {
   for (BlockElt z=0; z<sub.size(); ++z)
   {
@@ -720,6 +720,11 @@ void common_block::swallow
   {
     assert (kl_tab_ptr.get()!=nullptr); // because |KL_hash| built |hash|
     kl_tab_ptr->swallow(std::move(*sub.kl_tab_ptr),embed,hash);
+  }
+  if (sub.extended!=nullptr)
+  {
+    auto& eblock = extended_block(); // get or generate the extended block
+    eblock.swallow(std::move(*sub.extended),embed,hash);
   }
 }
 
@@ -895,7 +900,7 @@ blocks::common_block& Rep_table::add_block_below
 
   if (not sub_blocks.empty())
   {
-    kl::KLHash hash = block.KL_hash(); // we need this for polynomial look-up
+    auto hash_object = block.KL_hash(); // we need this for polynomial look-up
 
     for (const auto& pair : sub_blocks) // swallow sub-blocks
     {
@@ -915,7 +920,7 @@ blocks::common_block& Rep_table::add_block_below
       block_it = place[h].first;
 
       assert(&*block_it==&sub_block); // ensure we erase |sub_block|
-      block.swallow(std::move(sub_block),embed,hash);
+      block.swallow(std::move(sub_block),embed,hash_object.ref);
       block_erase(block_it); // even pilfered, the pointer is still unchanged
     }
   }

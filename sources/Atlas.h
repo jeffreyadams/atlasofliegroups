@@ -167,8 +167,6 @@ namespace atlas {
     using Degree = unsigned int; // exponent range; not stored.
   }
   using polynomials::Polynomial;
-  using IntPolEntry = polynomials::PolEntry<int>;
-  using PosPolEntry = polynomials::SafePolEntry<unsigned int>;
 
   namespace size {
     template<typename C> class SizeType;
@@ -425,13 +423,25 @@ namespace atlas {
     class KL_table;
     using KLCoeff = unsigned int;
     using KLPol = polynomials::Safe_Poly<KLCoeff>;
-    using KLIndex = unsigned int; // $<2^{32}$ distinct polynomials for $E_8$!
-    using MuCoeff = KLCoeff;
     using KLStore = std::vector<KLPol>;
     using KLPolRef = KLStore::const_reference;
+    using KLIndex = unsigned int; // $<2^{32}$ distinct polynomials for $E_8$!
+    using MuCoeff = KLCoeff;
   }
   using kl::KLCoeff;
   using kl::KLPol;
+  using PosPolEntry = polynomials::SafePolEntry<KLCoeff>;
+  using KL_hash_Table = HashTable<PosPolEntry,kl::KLIndex>;
+
+  namespace ext_kl {
+    class KL_table;
+    using Coeff = int;
+    using Pol = Polynomial<Coeff>;
+    using PolRef = const Pol&;
+    using KLIndex = unsigned int;
+  }
+  using IntPolEntry = polynomials::PolEntry<ext_kl::Coeff>;
+  using ext_KL_hash_Table = HashTable<IntPolEntry,ext_kl::KLIndex>;
 
   namespace standardrepk {
     class StandardRepK;	// standard representation restricted to K
