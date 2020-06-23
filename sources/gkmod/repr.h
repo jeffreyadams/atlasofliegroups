@@ -293,6 +293,9 @@ class Rep_table : public Rep_context
   std::vector<StandardReprMod> mod_pool;
   HashTable<StandardReprMod,unsigned long> mod_hash;
 
+  std::vector<Polynomial<int> > poly_pool;
+  HashTable<polynomials::PolEntry<int>,unsigned int> poly_hash;
+
   containers::sl_list<blocks::common_block> block_list;
   using bl_it = containers::sl_list<blocks::common_block>::iterator;
   std::vector<std::pair<bl_it, BlockElt> > place;

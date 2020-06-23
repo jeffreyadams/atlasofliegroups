@@ -866,7 +866,9 @@ bool Rep_context::compare::operator()
 Rep_table::Rep_table(RealReductiveGroup &G)
 : Rep_context(G)
 , pool(), hash(pool), def_formulae()
-, mod_pool(), mod_hash(mod_pool), block_list(), place()
+, mod_pool(), mod_hash(mod_pool)
+, poly_pool(), poly_hash(poly_pool)
+, block_list(), place()
 {}
 Rep_table::~Rep_table() = default;
 
@@ -1499,7 +1501,7 @@ SR_poly Rep_table::twisted_KL_column_at_s(StandardRepr sr)
     if (not contrib[z].empty() and contrib[z].front().first==z)
       finals.push_front(z); // accumulate in reverse order
 
-  const auto& kl_tab = eblock.kl_table(y+1);
+  const auto& kl_tab = eblock.kl_table(y+1,&poly_pool);
 
   SR_poly result(repr_less());
   const auto& gamma=sr.gamma();
@@ -1542,7 +1544,7 @@ SR_poly Rep_table::twisted_deformation_terms
     if (not contrib[z].empty() and contrib[z].front().first==z)
       finals.push_front(z); // accumulate in reverse order
 
-  const auto& kl_tab = eblock.kl_table(y_index+1);
+  const auto& kl_tab = eblock.kl_table(y_index+1,&poly_pool);
 
   std::vector<int> pool_at_minus_1; // evaluations at $q=-1$ of KL polynomials
   {
