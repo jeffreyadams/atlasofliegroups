@@ -173,7 +173,8 @@ template <typename C>
   typedef Polynomial<C> base;
  public:
   Safe_Poly() : base() {} // zero polynomial
-  explicit Safe_Poly(Degree d, C c) : base(d,c) {}
+  explicit Safe_Poly(C c) : base(c) {}
+  Safe_Poly(Degree d, C c) : base(d,c) {}
 
   // unlike |operator+| etc., the following test for negative coefficients
   void safeAdd(const Safe_Poly& p, Degree d, C c); // *this += c*q^d*p

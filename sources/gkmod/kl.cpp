@@ -80,7 +80,7 @@ namespace kl {
   const KLPol Zero;
 
 // Polynomial $1.q^0$.
-  const KLPol One(0,KLCoeff(1)); // since |Polynomial(d,1)| gives |1.q^d|.
+  const KLPol One(KLCoeff(1)); // since |Polynomial(d,1)| gives |1.q^d|.
 
 /*****************************************************************************
 

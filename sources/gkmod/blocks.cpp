@@ -338,10 +338,11 @@ void Block_base::fill_Bruhat()
 }
 
 // computes and stores the KL polynomials
-void Block_base::fill_kl_tab(BlockElt last_y,bool verbose)
+void Block_base::fill_kl_tab(BlockElt last_y,
+			     KL_hash_Table* pol_hash, bool verbose)
 {
   if (kl_tab_ptr.get()==nullptr) // do this only the first time
-    kl_tab_ptr.reset(new kl::KL_table(*this));
+    kl_tab_ptr.reset(new kl::KL_table(*this,pol_hash));
   kl_tab_ptr->fill(last_y,verbose); // extend tables to contain |last_y|
 }
 

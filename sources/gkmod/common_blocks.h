@@ -118,10 +118,13 @@ class common_block : public Block_base
   ext_gens fold_orbits(const WeightInvolution& delta) const;
 
   // manipulators
-  kl::Poly_hash_export KL_hash(); // table from |*kl_tab_ptr|, maybe creating it
+  // obtain KL hash table from |*kl_tab_ptr|, maybe creating it using arugment
+  kl::Poly_hash_export KL_hash(KL_hash_Table* KL_pol_hash);
   void swallow // integrate an older partial block, with mapping of elements
-    (common_block&& sub, const BlockEltList& embed, KL_hash_Table& hash);
-  ext_block::ext_block& extended_block(); // for inner class involution; store it
+    (common_block&& sub, const BlockEltList& embed,
+     KL_hash_Table* KL_pol_hash, ext_KL_hash_Table* ext_KL_pol_hash);
+  ext_block::ext_block& extended_block(ext_KL_hash_Table* pol_hash);
+  // get/build extended block for inner class involution; if built, store it
 
   void set_Bruhat
   (containers::sl_list<std::pair<BlockElt,BlockEltList> >&& partial_Hasse);

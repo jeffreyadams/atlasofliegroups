@@ -1798,6 +1798,7 @@ ext_block::ext_block // for external twist; old style blocks
   , info()
   , data(orbits.size()) // create that many empty vectors
   , l_start(parent.length(parent.size()-1)+2,0)
+  , pol_hash(nullptr)
   , KL_ptr(nullptr)
   , folded_diagram(block.Dynkin().folded(orbits))
   , delta(delta)
@@ -1828,6 +1829,8 @@ ext_block::ext_block // for an external twist
   , info()
   , data(orbits.size()) // create that many empty vectors
   , l_start(parent.length(parent.size()-1)+2,0)
+  , pol_hash(nullptr)
+  , KL_ptr(nullptr)
   , folded_diagram(block.Dynkin().folded(orbits))
   , delta(delta)
 {
@@ -2235,21 +2238,21 @@ ext_block::first_descent_among(RankFlags singular_orbits, BlockElt y) const
 }
 
 const ext_kl::KL_table& ext_block::kl_table
-  (BlockElt limit, std::vector<Pol>* pool)
+  (BlockElt limit, ext_KL_hash_Table* pol_hash)
 {
   if (KL_ptr==nullptr)
-    KL_ptr.reset(new ext_kl::KL_table(*this,pool));
+    KL_ptr.reset(new ext_kl::KL_table(*this,pol_hash));
   KL_ptr->fill_columns(limit);
   return *KL_ptr;
 }
 
 void ext_block::swallow // integrate older partial block, using |embed| mapping
-  (ext_block&& sub, const BlockEltList& embed, KL_hash_Table& hash)
+  (ext_block&& sub, const BlockEltList& embed)
 {
   if (sub.KL_ptr!=nullptr)
   {
     if (KL_ptr==nullptr)
-      KL_ptr.reset(new ext_kl::KL_table(*this,nullptr));
+      KL_ptr.reset(new ext_kl::KL_table(*this,pol_hash));
 
     // restrict the translation vector to its |sub| elements (|delta|-fixed ones)
     BlockEltList eblock_embed; eblock_embed.reserve(sub.size());
@@ -2258,7 +2261,7 @@ void ext_block::swallow // integrate older partial block, using |embed| mapping
       eblock_embed.push_back(element(embed[sub.z(x)]));
       assert(eblock_embed.back()!=size()); // check that lookup succeeded
     }
-    KL_ptr->swallow(std::move(*sub.KL_ptr),eblock_embed,hash);
+    KL_ptr->swallow(std::move(*sub.KL_ptr),eblock_embed);
   }
 }
 

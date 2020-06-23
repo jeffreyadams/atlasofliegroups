@@ -689,25 +689,26 @@ ext_gens common_block::fold_orbits(const WeightInvolution& delta) const
   return rootdata::fold_orbits(integral_sys.pre_root_datum(),delta);
 }
 
-ext_block::ext_block& common_block::extended_block()
+ext_block::ext_block& common_block::extended_block(ext_KL_hash_Table* pol_hash)
 {
   if (extended.get()==nullptr)
     extended.reset
-      (new ext_block::ext_block(*this,inner_class().distinguished()));
+      (new ext_block::ext_block(*this,inner_class().distinguished(),pol_hash));
   return *extended;
 }
 
-kl::Poly_hash_export common_block::KL_hash()
+kl::Poly_hash_export common_block::KL_hash(KL_hash_Table* KL_pol_hash)
 {
   if (kl_tab_ptr.get()==nullptr) // do this only the first time
-    kl_tab_ptr.reset(new kl::KL_table(*this));
+    kl_tab_ptr.reset(new kl::KL_table(*this,KL_pol_hash));
 
   return kl_tab_ptr-> polynomial_hash_table();
 }
 
 // integrate an older partial block, with mapping of elements
 void common_block::swallow
-  (common_block&& sub, const BlockEltList& embed, KL_hash_Table& hash)
+  (common_block&& sub, const BlockEltList& embed,
+   KL_hash_Table* KL_pol_hash, ext_KL_hash_Table* ext_KL_pol_hash)
 {
   for (BlockElt z=0; z<sub.size(); ++z)
   {
@@ -718,13 +719,14 @@ void common_block::swallow
   }
   if (sub.kl_tab_ptr!=nullptr)
   {
+    auto hash_object = KL_hash(KL_pol_hash); // need this for polynomial look-up
     assert (kl_tab_ptr.get()!=nullptr); // because |KL_hash| built |hash|
-    kl_tab_ptr->swallow(std::move(*sub.kl_tab_ptr),embed,hash);
+    kl_tab_ptr->swallow(std::move(*sub.kl_tab_ptr),embed,hash_object.ref);
   }
   if (sub.extended!=nullptr)
   {
-    auto& eblock = extended_block(); // get or generate the extended block
-    eblock.swallow(std::move(*sub.extended),embed,hash);
+    auto& eblock = extended_block(ext_KL_pol_hash); // get/build extended block
+    eblock.swallow(std::move(*sub.extended),embed);
   }
 }
 
@@ -900,8 +902,6 @@ blocks::common_block& Rep_table::add_block_below
 
   if (not sub_blocks.empty())
   {
-    auto hash_object = block.KL_hash(); // we need this for polynomial look-up
-
     for (const auto& pair : sub_blocks) // swallow sub-blocks
     {
       auto& sub_block = *pair.first;
@@ -920,7 +920,7 @@ blocks::common_block& Rep_table::add_block_below
       block_it = place[h].first;
 
       assert(&*block_it==&sub_block); // ensure we erase |sub_block|
-      block.swallow(std::move(sub_block),embed,hash_object.ref);
+      block.swallow(std::move(sub_block),embed,&KL_poly_hash,&poly_hash);
       block_erase(block_it); // even pilfered, the pointer is still unchanged
     }
   }
@@ -2242,12 +2242,15 @@ DescValue star (const repr::Ext_common_context& ctxt,
 // additional |ext_block| methods
 
 ext_block::ext_block
-  (const blocks::common_block& block, const WeightInvolution& delta)
+  (const blocks::common_block& block, const WeightInvolution& delta,
+   ext_KL_hash_Table* pol_hash)
   : parent(block)
   , orbits(block.fold_orbits(delta))
   , info()
   , data(orbits.size()) // create that many empty vectors
   , l_start(parent.length(parent.size()-1)+2,0)
+  , pol_hash(pol_hash)
+  , KL_ptr(nullptr)
   , folded_diagram(block.Dynkin().folded(orbits))
   , delta(delta)
 {

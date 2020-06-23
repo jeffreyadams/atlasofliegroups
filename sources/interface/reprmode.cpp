@@ -142,7 +142,8 @@ const StandardRepr& currentStandardRepr() { return *sr; }
 
 kl::KL_table& current_param_KL()
 {
-  return current_param_block().kl_tab(current_param_block().size()-1,true);
+  return current_param_block().kl_tab
+    (current_param_block().size()-1,nullptr,true);
 }
 
 void ensure_full_block()
