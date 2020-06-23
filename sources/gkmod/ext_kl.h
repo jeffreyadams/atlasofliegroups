@@ -144,7 +144,7 @@ class KL_table
   void fill_columns(BlockElt y=0);
  private:
   using PolHash = HashTable<IntPolEntry,kl::KLIndex>;
-  void fill_next_column(PolHash& hash);
+  void fill_column(BlockElt y,PolHash& hash);
 
   // component of basis element $a_x$ in product $(T_s+1)C_{sy}$
   Pol product_comp (BlockElt x, weyl::Generator s, BlockElt sy) const;

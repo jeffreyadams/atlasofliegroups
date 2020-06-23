@@ -121,7 +121,7 @@ KL_table::KL_table(const ext_block::ext_block& b, std::vector<Pol>* pool)
   : aux(b)
   , own(pool==nullptr ? new std::vector<Pol> : nullptr)
   , storage_pool(pool==nullptr ? *own : *pool)
-  , column()
+  , column(b.size(),KLColumn()) // start with empty columns
 { // ensure first two pool entries are constant polynomials $0$, and $1$
   if (storage_pool.empty())
     storage_pool.push_back(Pol(0));
@@ -418,15 +418,17 @@ bool KL_table::has_direct_recursion(BlockElt y,
   return false; // none of the generators gives a direct recursion
 }
 
-
-void KL_table::fill_columns(BlockElt y)
+// ensure all columns |y<limit| are computed
+void KL_table::fill_columns(BlockElt limit)
 {
   PolHash hash(storage_pool); // (re)construct hash table for the polynomials
-  if (y==0 or y>aux.block.size())
-    y=aux.block.size(); // fill whole block if no explicit stop was indicated
-  column.reserve(y);
-  while (column.size()<y)
-    fill_next_column(hash);
+  if (limit==0)
+    limit=aux.block.size(); // fill whole block if no explicit stop was indicated
+  for (BlockElt y=aux.block.length_first(1); y<limit; ++y)
+    if (column[y].size()!=aux.col_size(y))
+    { assert(column[y].empty()); // there should not be partially filled columns
+      fill_column(y,hash);
+    }
 }
 
 /*
@@ -493,13 +495,10 @@ Pol KL_table::extract_M(Pol& Q,unsigned d,unsigned defect) const
   return M;
 } // |KL_table::extract_M|
 
-void KL_table::fill_next_column(PolHash& hash)
+  void KL_table::fill_column(BlockElt y,PolHash& hash)
 {
-  const BlockElt y = column.size();
-  column.push_back(KLColumn());
-  if (aux.col_size(y)==0)
-    return; // there is just the non-recorded $P(y,y)=1$
-  column.back().resize(aux.col_size(y));
+  // initialise column with dummy zero values; necessary for backwards filling
+  column[y].assign(aux.col_size(y),kl::KLIndex(0));
 
   weyl::Generator s;
   BlockElt sy; // gets set to unique descent for |s| of |y|, if one can be found
@@ -546,7 +545,7 @@ void KL_table::fill_next_column(PolHash& hash)
       } // |for(u)|
 
     // finally copy relevant coefficients from |cy| array to |column[y]|
-    KLColumn::reverse_iterator it = column.back().rbegin();
+    KLColumn::reverse_iterator it = column[y].rbegin();
     for (BlockElt x=floor_y; aux.prim_back_up(x,y); it++)
       if (aux.is_descent(s,x)) // then we computed $P(x,y)$ above
         *it = hash.match(cy[x]*sign);
@@ -571,13 +570,13 @@ void KL_table::fill_next_column(PolHash& hash)
 	  *it = hash.match(Q);
 	}
       }
-    assert(it==column.back().rend()); // check that we've traversed the column
+    assert(it==column[y].rend()); // check that we've traversed the column
   } // end of |if (has_direct_recursion(y,s,sy))|
   else // direct recursion was not possible
     do_new_recursion(y,hash);
 
   assert(check_polys(y));
- } // |KL_table::fill_next_column|
+ } // |KL_table::fill_column|
 
 /*
   Basic idea for new recursion: if some $s$ is real nonparity for $y$ and a
@@ -625,7 +624,7 @@ void KL_table::do_new_recursion(BlockElt y,PolHash& hash)
 #endif
 
   // for the primitive |x| we transfer to |column.back()| so |P(xx,y)| works
-  auto out_it = column.back().rbegin();
+  auto out_it = column[y].rbegin();
 
   for (BlockElt x=floor_y; aux.prim_back_up(x,y); ++out_it)
   { // compute $P_{x,y}$ for all |x| primitive for |y|, and store at |*out_it|

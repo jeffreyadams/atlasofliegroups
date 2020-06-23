@@ -124,9 +124,6 @@ class ext_block
 
   const Block_base& parent; // block, maybe non-intg. where we are fixed points
   ext_gens orbits; // $\delta$-orbits of generators for the parent block
-  const DynkinDiagram folded; // diagram defined on those orbits
-
-  WeightInvolution d_delta; // purely passive: nothing else uses coordinates
 
   std::vector<elt_info> info; // its size defines the size of the block
   std::vector<std::vector<block_fields> > data;  // size |d_rank| * |size()|
@@ -134,6 +131,10 @@ class ext_block
 
   std::unique_ptr<ext_kl::KL_table> KL_ptr;
  public:
+// two passive |const| fields, unused by any method but publically visible
+
+  const DynkinDiagram folded_diagram; // diagram defined on |orbits|
+  const WeightInvolution delta; // involution in coordinates
 
 // constructors and destructors
   ext_block(const InnerClass& G,
@@ -160,8 +161,6 @@ class ext_block
     { return parent; }
 
   ext_gen orbit(weyl::Generator s) const { return orbits[s]; }
-  const DynkinDiagram& Dynkin() const { return folded; }
-  const WeightInvolution& delta() const { return d_delta; }
 
   BlockElt z(BlockElt n) const { assert(n<size()); return info[n].z; }
   StandardRepr sr(BlockElt n, const param_block& parent) const

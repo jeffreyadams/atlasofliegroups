@@ -2240,11 +2240,11 @@ ext_block::ext_block
   (const blocks::common_block& block, const WeightInvolution& delta)
   : parent(block)
   , orbits(block.fold_orbits(delta))
-  , folded(block.Dynkin().folded(orbits))
-  , d_delta(delta)
   , info()
   , data(orbits.size()) // create that many empty vectors
   , l_start(parent.length(parent.size()-1)+2,0)
+  , folded_diagram(block.Dynkin().folded(orbits))
+  , delta(delta)
 {
   BitMap fixed_points(block.size());
 
@@ -2267,8 +2267,8 @@ ext_block::ext_block
 bool ext_block::tune_signs(const blocks::common_block& block)
 {
   repr::Ext_common_context ctxt
-    (block.context().real_group(),delta(),block.integral_subsystem());
-  repr::Ext_rep_context param_ctxt(block.context(),delta());
+    (block.context().real_group(),delta,block.integral_subsystem());
+  repr::Ext_rep_context param_ctxt(block.context(),delta);
   containers::sl_list<paramin> links;
   for (BlockElt n=0; n<size(); ++n)
   { auto z=this->z(n);
