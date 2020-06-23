@@ -171,9 +171,10 @@ set coherent_irr_new (ParamPol P,[int] w) = ParamPol:
 
 {-----------------------Hecke action-------------------}
 
-{the action of \T_alpha=q^{-1/2}(-T_alpha+q)
+{the action of \T_alpha=v^{-1}(-T_alpha+v^2)
  see filtrations.pdf in Dropbox
-\T_alpha(J(delta))=(v+1/v)J + (1/v)\sum J(delta') + \sum mu(gamma,delta)v^{l(delta)-l(gamma)}J(gamma)
+ corrected formula:
+\T_alpha(J(delta))=(v+1/v)J + \sum J(delta') + \sum mu(gamma,delta)J(gamma)
 }
 
 {tT stands for \tilde T=q^{-1/2}(-T+q)
@@ -187,7 +188,7 @@ if in_tau(i,p)
 {  let ()=prints("try q:", q) in}
    if length(q)<length(p) or length(q)=length(p)+1 and in_tau(i,q) then
 {   let ()=prints("ADDING q:", q, " ", mu(params,graph,q,p)) in}
-    rv+:=mu(params,graph,q,p)*v_laurent_power(length(p)-length(q))*hodge_param_laurent_pol(q)
+    rv+:=mu(params,graph,q,p)*{v_inverse*}hodge_param_laurent_pol(q)
    fi
   od;rv
  fi
@@ -211,7 +212,7 @@ for j in w ~ do hplp:=tT(params,graph,j,hplp) od;hplp
 set tT([Param] params,WGraph graph,WeylElt w {simple root}, hodgeParamLaurentPol hplp)=hodgeParamLaurentPol:
 tT(params,graph,w.word,hplp)
 
-{get ordinary T_alpha from tT=\tilde T: T=-q^{1/2}\tilde T+q}
+{get ordinary T_alpha from tT=\tilde T: T=v\tilde T+v^2}
 set T([Param] params,WGraph graph,int i {simple root}, Param p)=hodgeParamLaurentPol:
 (-1)*vee*tT(params,graph,i,p) + v_laurent_squared*hodge_param_laurent_pol(p)
 
@@ -228,10 +229,10 @@ set T([Param] params,WGraph graph,WeylElt w, hodgeParamPol hpp)=hodgeParamLauren
 T(params,graph,w.word,hodge_param_laurent_pol(hpp))
 
 set T_inv([Param] params,WGraph graph,int i {simple root}, Param p)=hodgeParamLaurentPol:
-v_minus_two*T(params,graph,0,p)+(v_minus_two-1)*hodge_param_laurent_pol(p)
+v_minus_two*T(params,graph,i,p)+(v_minus_two-1)*hodge_param_laurent_pol(p)
 
 set T_inv([Param] params,WGraph graph,int i {simple root}, hodgeParamLaurentPol hplp)=hodgeParamLaurentPol:
-v_minus_two*T(params,graph,0,hplp)+(v_minus_two-1)*hplp
+v_minus_two*T(params,graph,i,hplp)+(v_minus_two-1)*hplp
 
 {tT^{-1}=q^{-1}tT+(q^{-1}-1)}
 set tT_inv([Param] params,WGraph graph,int i {simple root}, Param p)=hodgeParamLaurentPol:
@@ -301,13 +302,17 @@ elif is_descent(i,p) then S_inv(params,graph,i,p)
 else error("missing case")
 fi
 
-set graded_standard(Param std)=hodgeParamPol:
+set graded_standard(Param std)=hodgeParamLaurentPol:
 let b=block_of(std) then
 Q=KL_Q_polynomials(std) then
-rv=nullHodgeParamPol(std.real_form) in
+rv=nullHodgeParamLaurentPol(std.real_form) in
 for irr in b do
  let f=KL_Q_polynomial(b,Q,irr,std) in
-  if sum(f).> then rv+:=f.at_v_squared*hodge_param_pol(irr) fi
+  if sum(f).> then let
+     f1=poly_as_laurent_poly(f.at_v_squared)*v_laurent_power(length(irr)-length(std))  then
+     f2=hodge_param_laurent_pol(irr) 
+     in rv+:=f1*f2
+     fi
  od;
 rv
 
@@ -336,6 +341,7 @@ chain(params,graph,w,powers,graded_standard(p))
  let M=(-S) or (-S)^{-1} if \alpha is an ascent or descent for p
  then apply M to all terms in the graded_standard module of p
 }
+{
 set M_graded([Param] params,WGraph graph,int i {simple root}, Param p)=hodgeParamLaurentPol:
 let hplp=hodge_param_laurent_pol(graded_standard(p)) in
 if is_compact_imaginary(i,p) then nullHodgeParamLaurentPol(p.real_form)
@@ -343,7 +349,7 @@ elif is_ascent(i,p) then S(params,graph,i,hplp)
 elif is_descent(i,p) then S_inv(params,graph,i,hplp)
 else error("missing case")
 fi
-
+}
 
 
 set tT([Param] params,WGraph graph,[int] w, hodgeParamLaurentPol hplp)=

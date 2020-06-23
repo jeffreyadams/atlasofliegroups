@@ -215,23 +215,39 @@ set g=hodgeParamLaurentPol:([a],[-1])
 set h=hodgeParamLaurentPol:([b,2*b],[0])
 set l=hodgeParamLaurentPol:([b],[-3])}
 
+set flip(i_poly f,int ld)=i_poly:
+{let ()=prints(new_line,"f=",f,"ld=",ld) in}
+ let r=ld\2 then
+ f=pad(f,r+1)  {f=[a_0,...,a_r], #f=r+1} in
+ if ld.is_even then
+  ##for a in f~ do [a,0] od
+ else
+  ##for a in f~ do [0,a] od
+ fi
+
 
 set show_long(hodgeParamLaurentPol hplp) =void:
-   let factors=monomials(hplp) then
+  let factors=monomials(hplp) then
+   max_length=max(for p in factors do length(p) od) then
+   ()=prints("max_length: ", max_length) then
    r=rearrange(hplp) then  {(Laurent poly,Param)}
    lowest_power=min(for (f,p) in r do lowest_power(f) od) then
    max_power=max(for (f,p) in r do degree(f) od) then
    ()=prints("lowest power: ", lowest_power) then
    ()=prints("max power: ", max_power) then
-   shift_term=v_laurent_power(max(0,-lowest_power)) then
-   ()=prints("shift: ", laurent_poly_format(shift_term,"q")) in
+   shift_int=max(0,-lowest_power) then
+   shift_term=v_laurent_power(shift_int) then
+   ()=prints("shift: ", laurent_poly_format(shift_term,"q")) then
+   ()=prints("shift_int: ", shift_int) in
    prints("G=", real_form(hplp));
-   tabulate(["x","lambda","nu","l","f","shift*f","grading"]#
-   for (f_in,p) in r~ do
-   let   f=laurent_poly_as_poly(shift_term*f_in) then
-   m=delete_trailing_zeros(f) then
+   tabulate(["x","lambda","nu","l","f_in","f","ld","pivot","f_flipped","grading"]#
+   for (f_in,p)@i in r do
+   let   f_shifted=laurent_poly_as_poly(shift_term*f_in) then
+{   ()=prints(i, " ", "f_shifted: ", f_shifted) then}
+   f_flipped=flip(f_shifted,max_length-length(p)-shift_int) then
+   m=delete_trailing_zeros(f_flipped) then
    string_m="" in
-      for i:max_power-lowest_power+1
+      for i:max_length
       do string_m +:=
        if i<#m then  m[i].to_string + " " else ". " fi
       od
@@ -241,7 +257,9 @@ set show_long(hodgeParamLaurentPol hplp) =void:
    p.nu.to_string,
    p.length.to_string,
    laurent_poly_format(f_in,"q"),
-   poly_format(f, "q"),
+   poly_format(f_shifted,"q"),
+   (max_length-length(p)).to_string,
+   (max_length-length(p)-shift_int).to_string,
+   poly_format(f_flipped,"q"),
    "[" +  string_m + "]"]
-   
    od)
