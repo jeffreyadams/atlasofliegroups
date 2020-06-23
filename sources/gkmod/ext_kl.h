@@ -21,8 +21,8 @@ namespace atlas {
 
 namespace ext_kl {
 
-typedef Polynomial<int> Pol;
-typedef const Pol& PolRef;
+using Pol = Polynomial<int>;
+using PolRef = const Pol&;
 
 Pol qk_plus_1(int k);
 inline Pol q_plus_1() { return qk_plus_1(1); }
@@ -96,8 +96,6 @@ class descent_table
 
 }; // |descent_table|
 
-class PolEntry; // class definition will be given in the implementation file
-
 class KL_table
 {
   const descent_table aux;
@@ -145,7 +143,7 @@ class KL_table
   // manipulator
   void fill_columns(BlockElt y=0);
  private:
-  typedef HashTable<PolEntry,kl::KLIndex> PolHash;
+  using PolHash = HashTable<IntPolEntry,kl::KLIndex>;
   void fill_next_column(PolHash& hash);
 
   // component of basis element $a_x$ in product $(T_s+1)C_{sy}$

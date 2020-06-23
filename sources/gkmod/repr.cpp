@@ -1481,11 +1481,10 @@ SR_poly Rep_table::twisted_KL_column_at_s(StandardRepr sr)
   // |z| must be inner-class-twist-fixed, nonzero and final
 {
   normalise(sr);
-  const auto& delta = inner_class().distinguished();
   assert(is_final(sr) and sr==inner_twisted(sr));
   BlockElt y0;
   auto& block = lookup(sr,y0);
-  auto& eblock = block.extended_block(delta);
+  auto& eblock = block.extended_block();
 
   RankFlags singular=block.singular(sr.gamma());
   RankFlags singular_orbits; // flag singulars among orbits
@@ -1528,7 +1527,7 @@ SR_poly Rep_table::twisted_KL_column_at_s(StandardRepr sr)
 SR_poly Rep_table::twisted_deformation_terms
     (blocks::common_block& block, ext_block::ext_block& eblock,
      BlockElt y, // in numbering of |block|, not |eblock|
-     RankFlags singular_orbits, const RatWeight& gamma) const
+     RankFlags singular_orbits, const RatWeight& gamma)
 {
   assert(eblock.is_present(y));
   const BlockElt y_index = eblock.element(y);
@@ -1622,7 +1621,7 @@ SR_poly Rep_table::twisted_deformation_terms
 } // |twisted_deformation_terms(blocks::common_block&,...)|
 
 #if 0
-SR_poly Rep_table::twisted_deformation_terms (unsigned long sr_hash) const
+SR_poly Rep_table::twisted_deformation_terms (unsigned long sr_hash)
 { // the |StandardRepr| |hash[sr_hash]| is necessarily delta-fixed and final
   SR_poly result(repr_less());
   SR_poly remainder(hash[sr_hash],repr_less());
@@ -1707,7 +1706,7 @@ SR_poly Rep_table::twisted_deformation (StandardRepr z)
     {
       BlockElt new_z;
       auto& block = lookup(p.first,new_z);
-      auto& eblock = block.extended_block(delta);
+      auto& eblock = block.extended_block();
 
       RankFlags singular = block.singular(p.first.gamma());
       RankFlags singular_orbits; // flag singulars among orbits

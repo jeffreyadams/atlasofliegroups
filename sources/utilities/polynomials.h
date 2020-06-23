@@ -186,6 +186,69 @@ template <typename C>
 
 }; // |template <typename C> class Safe_Poly|
 
+template <typename C> class PolEntry : public Polynomial<C>
+{
+  using Pol = Polynomial<C>;
+public:
+  // constructors
+  PolEntry() : Pol() {} // default constructor builds zero polynomial
+  PolEntry(const Pol& p) : Pol(p) {} // lift polynomial to this class
+
+  // members required for an Entry parameter to the HashTable template
+  using Pooltype = std::vector<Pol>;  // associated storage type
+  size_t hashCode(size_t modulus) const // hash function
+  { const Pol& P=*this;
+    if (P.isZero()) return 0;
+    Degree i=P.degree();
+    size_t h=P[i]; // start with leading coefficient, converted to unsigned
+    while (i-->0)
+      h= (h<<21)+(h<<13)+(h<<8)+(h<<5)+h+P[i];
+    return h & (modulus-1);
+  }
+
+  // compare polynomial with one from storage
+  bool operator!=(typename Pooltype::const_reference e) const
+  { const Pol& P=*this;
+    if (P.degree()!=e.degree()) return true;
+    if (P.isZero()) return false; // since degrees match
+    for (Degree i=0; i<=P.degree(); ++i)
+      if (P[i]!=e[i]) return true;
+    return false; // no difference found
+  }
+
+}; // |template <typename C> class PolEntry|
+
+template <typename U> class SafePolEntry : public Safe_Poly<U>
+{
+  using SafePol = Safe_Poly<U>;
+public:
+  // constructors
+  SafePolEntry() : SafePol() {} // default constructor builds zero polynomial
+  SafePolEntry(const SafePol& p) : SafePol(p) {} // lift polynomial to this class
+
+  // members required for an Entry parameter to the HashTable template
+  using Pooltype = std::vector<SafePol>;  // associated storage type
+  size_t hashCode(size_t modulus) const // hash function
+  { const SafePol& P=*this;
+    if (P.isZero()) return 0;
+    Degree i=P.degree();
+    size_t h=P[i]; // start with leading coefficient, converted to unsigned
+    while (i-->0) h= (h<<21)+(h<<13)+(h<<8)+(h<<5)+h+P[i];
+    return h & (modulus-1);
+  }
+
+  // compare polynomial with one from storage
+  bool operator!=(typename Pooltype::const_reference e) const
+  { const SafePol& P=*this;
+    if (P.degree()!=e.degree()) return true;
+    if (P.isZero()) return false; // since degrees match
+    for (Degree i=0; i<=P.degree(); ++i)
+      if (P[i]!=e[i]) return true;
+    return false; // no difference found
+  }
+
+}; // |class KLPolEntry|
+
 } // |namespace polynomials|
 
 } // |namespace atlas|

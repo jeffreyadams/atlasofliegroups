@@ -689,11 +689,11 @@ ext_gens common_block::fold_orbits(const WeightInvolution& delta) const
   return rootdata::fold_orbits(integral_sys.pre_root_datum(),delta);
 }
 
-ext_block::ext_block& common_block::extended_block
-  (const WeightInvolution& delta)
+ext_block::ext_block& common_block::extended_block()
 {
   if (extended.get()==nullptr)
-    extended.reset(new ext_block::ext_block(*this,delta));
+    extended.reset
+      (new ext_block::ext_block(*this,inner_class().distinguished()));
   return *extended;
 }
 
@@ -824,9 +824,9 @@ blocks::common_block& Rep_table::add_block_below
   (const common_context& ctxt, const StandardReprMod& srm, BitMap* subset)
 {
   assert(mod_hash.find(srm)==mod_hash.empty); // otherwise don't call us
-  Bruhat_generator gen(this,ctxt);
+  Bruhat_generator gen(this,ctxt); // object to help generating Bruhat interval
   const auto prev_size = mod_pool.size(); // limit of previously known elements
-  containers::sl_list<unsigned long> elements(gen.block_below(srm));
+  containers::sl_list<unsigned long> elements(gen.block_below(srm)); // generate
 
   using sub_pair =
     std::pair<blocks::common_block*,containers::sl_list<BlockElt> >;
@@ -846,20 +846,21 @@ blocks::common_block& Rep_table::add_block_below
 	it->second.push_back(z_rel); // append |z_rel| to its list of elements
     }
 
+  // add to |elements| any members of |sub_blocks| that are not already there
   for (auto& pair : sub_blocks)
   {
     if (pair.first->size() > pair.second.size()) // then incomplete inclusion
-    {
+    { // so there are some elements to pick up form partial block |*pair.first|
       const auto& block = *pair.first;
       pair.second.sort(); // following loop requires increase
       auto it = pair.second.begin();
       for (BlockElt z=0; z<block.size(); ++z)
 	if (not it.at_end() and *it==z)
-	  ++it; // skip element already in Bruhat interval
-	else // join element outside Bruhat interval to new block
+	  ++it; // skip element already present in generated Bruhat interval
+	else // join old element but outside Bruhat interval to new block
 	  elements.push_back(mod_hash.find(block.representative(z)));
     }
-    // since all |block| elements are incorporated
+    // since all |block| elements are now incorporated in |elements|
     pair.second.clear(); // forget which were in the Bruhat interval
   }
 
@@ -867,10 +868,10 @@ blocks::common_block& Rep_table::add_block_below
   auto& block = temp.emplace_back // construct block and get a reference
     (*this,ctxt,elements,srm.gamma_mod1());
 
-  *subset=BitMap(block.size());
+  *subset=BitMap(block.size()); // this bitmap will be exported via |subset|
   containers::sl_list<std::pair<BlockElt,BlockEltList> > partial_Hasse_diagram;
-  for (auto z : elements)
-    if (gen.in_interval(z)) // these have their covered's in |gen|
+  for (auto z : elements) // Bruhat interval is no longer contiguous in this list
+    if (gen.in_interval(z)) // select those that have their covered's in |gen|
     {
       BlockElt i_z = block.lookup(this->srm(z)); // index of |z| in our new block
       subset->insert(i_z); // mark |z| as element ot the Bruhat interval
@@ -887,19 +888,20 @@ blocks::common_block& Rep_table::add_block_below
     }
 
   block.set_Bruhat(std::move(partial_Hasse_diagram));
+  // remainder of Hasse diagram will be imported from swallowed sub-blocks
 
   static const std::pair<bl_it, BlockElt> empty(bl_it(),UndefBlock);
   place.resize(mod_pool.size(),empty);
 
   if (not sub_blocks.empty())
   {
-    kl::KLHash hash = block.KL_hash();
+    kl::KLHash hash = block.KL_hash(); // we need this for polynomial look-up
 
     for (const auto& pair : sub_blocks) // swallow sub-blocks
     {
       auto& sub_block = *pair.first;
       bl_it block_it; // set below
-      BlockEltList embed; embed.reserve(sub_block.size());
+      BlockEltList embed; embed.reserve(sub_block.size()); // translation array
       for (BlockElt z=0; z<sub_block.size(); ++z)
       {
 	auto zm = sub_block.representative(z);
@@ -1208,8 +1210,8 @@ unsigned int scent_count(DescValue v);
 Coweight ell (const KGB& kgb, KGBElt x);
 
   // Declarations of some local functions
-  WeylWord fixed_conjugate_simple
-    (const repr::Ext_common_context& c, RootNbr& alpha);
+WeylWord fixed_conjugate_simple
+  (const repr::Ext_common_context& c, RootNbr& alpha);
 bool same_standard_reps (const paramin& E, const paramin& F);
 bool same_sign (const paramin& E, const paramin& F);
 inline bool is_default (const paramin& E)
@@ -1231,6 +1233,8 @@ weyl::Generator first_descent_among
    const ext_gens& orbits, const paramin& E);
 
 
+  // Definitions of local functions in |namespace ext_block|
+
 /* Try to conjugate |alpha| by product of folded-generators for the (full)
    root system of |c| to a simple root, and return the left-conjugating word
    that was applied. This may fail, if after some conjugation one ends up with
@@ -1239,8 +1243,8 @@ weyl::Generator first_descent_among
    of the simple roots in its component of the root system is). In this case
    |alpha| is left as that non simple root, and the result conjugates to it.
  */
-  WeylWord fixed_conjugate_simple
-    (const repr::Ext_common_context& ctxt, RootNbr& alpha)
+WeylWord fixed_conjugate_simple
+  (const repr::Ext_common_context& ctxt, RootNbr& alpha)
 { const RootDatum& rd = ctxt.root_datum();
 
   WeylWord result;
@@ -1272,7 +1276,7 @@ weyl::Generator first_descent_among
   // |paramin| methods and functions
 
 const WeightInvolution& paramin::theta () const
- { return ctxt.inner_class().matrix(tw); }
+  { return ctxt.inner_class().matrix(tw); }
 
 void validate(const paramin& E)
 {
@@ -1334,7 +1338,7 @@ paramin::paramin
   so don't use that latter: it would give an undesired dependence on |gamma|.
 */
 paramin paramin::default_extend
-(const repr::Ext_rep_context& ec, const repr::StandardRepr& sr)
+  (const repr::Ext_rep_context& ec, const repr::StandardRepr& sr)
 {
   assert(((1-ec.delta())*sr.gamma().numerator()).isZero());
 
