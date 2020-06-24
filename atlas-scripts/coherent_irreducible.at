@@ -1,6 +1,7 @@
 <W_reps.at
 <coherent.at
 <hodgeParamLaurentPol.at
+<stable.at
 
 set W_graph_of(Param p)=let (,g)=W_graph(p) in g
 
@@ -443,6 +444,20 @@ cross_square(params,graph,i,P)=hodge_param_laurent_pol(P)
 
 set cross_square_test([Param] params,WGraph graph, int i, Param p)=bool:
 cross_square(params,graph,i,p)=hodge_param_laurent_pol(p)
+
+{moved from induction.at to avoid circularity issue}
+
+set theta_induce_irreducible_new (Param p, RealForm G)=ParamPol:
+    let rd=root_datum(G), N=find_N (p,G), rhou=rho(G)-rho(real_form(p))
+    then q=translate_by (p,ratvec_as_vec(N*2*rho(G))).monomials[0]
+    then ind=parameter(embed_KGB(x(q),G),lambda(q)+rhou,nu(q))
+    then ic=dominant(rd,infinitesimal_character(p)+rhou)
+    then (,w)=conjugate_to(rd,ic,infinitesimal_character(p)+rhou)
+    then P=coherent_irr_new(ind,word(inverse(w)))  {note new here}
+    then result=null_module(G) in
+       for coeff@q in P do result+:=coeff*T_irr(q,ic) od;
+    result
+
 
 { in singular case,
   move to regular infinitesimal character, apply w, and move back
