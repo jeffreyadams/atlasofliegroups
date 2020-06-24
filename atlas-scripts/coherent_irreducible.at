@@ -475,3 +475,18 @@ set coherent_irr ([Param] block_reg,WGraph graph_reg,Param p,int s) = ParamPol:
     in T(coherent_irr_reg(block_gamma,graph,p_reg,s),gamma)
   fi
   }
+
+
+{use: set (b,g,gs,w)=h_init(G)
+then
+show(S_inv(b,g,w,gs)
+}
+set h_init(RealForm G)=
+let p=G.trivial then
+b=block_of(p) then
+g=W_graph_of(p) then
+gs=graded_standard(p) then
+w=G.w0.word then
+p=G.trivial 
+in
+(G,p,b,g,gs,w)

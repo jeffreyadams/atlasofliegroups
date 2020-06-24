@@ -226,7 +226,7 @@ set flip(i_poly f,int ld)=i_poly:
  fi
 
 
-set show_long(hodgeParamLaurentPol hplp) =void:
+set show_long_old(hodgeParamLaurentPol hplp) =void:
   let factors=monomials(hplp) then
    max_length=max(for p in factors do length(p) od) then
    ()=prints("max_length: ", max_length) then
@@ -244,7 +244,7 @@ set show_long(hodgeParamLaurentPol hplp) =void:
    for (f_in,p)@i in r do
    let   f_shifted=laurent_poly_as_poly(shift_term*f_in) then
 {   ()=prints(i, " ", "f_shifted: ", f_shifted) then}
-   f_flipped=flip(f_shifted,max_length-length(p)-shift_int) then
+   f_flipped=flip(f_shifted,max_length-length(p)-shift_int+10) then
    m=delete_trailing_zeros(f_flipped) then
    string_m="" in
       for i:max_length
@@ -263,3 +263,68 @@ set show_long(hodgeParamLaurentPol hplp) =void:
    poly_format(f_flipped,"q"),
    "[" +  string_m + "]"]
    od)
+
+set show_long(hodgeParamLaurentPol hplp) =void:
+  let factors=monomials(hplp) then
+   r=rearrange(hplp) then  {(Laurent poly,Param)}
+   lowest_power=min(for (f,p) in r do lowest_power(f) od) then
+   max_length=max(for p in factors do length(p) od) then
+   max_power=max(for (f,p) in r do degree(f) od) then
+   ()=prints("lowest power: ", lowest_power) then
+   ()=prints("max power: ", max_power) then
+   ()=prints("max length: ", max_length) in
+   tabulate(["x","lambda","nu","l","f","filtration"]#
+   for (f,p)@i in r do
+    let g=f.at_q_inverse then
+{    ()=prints("g.w=",g.w, " n=", g.n) then}
+    m=delete_trailing_zeros(laurent_poly_as_poly(g)) then
+{    ()=prints("m=",m) then}
+   string_m="" in
+      for i:-lowest_power+1
+      do string_m +:=
+       if {i<=(-max_power+(max_length-p.length)) and}  is_even(max_length-p.length-i) then
+       if i<#m then  m[i].to_string + " " else "0 " fi else ". " fi
+      od
+   ;
+   [(#(p.x)).to_string,
+   p.lambda.to_string,
+   p.nu.to_string,
+   p.length.to_string,
+   laurent_poly_format(f,"q"),
+   "[" +  string_m + "]"]
+   od)
+
+set show_long(hodgeParamLaurentPol hplp,int help) =void:
+  let factors=monomials(hplp) then
+   r=rearrange(hplp) then  {(Laurent poly,Param)}
+   lowest_power=min(for (f,p) in r do lowest_power(f) od) then
+   max_length=max(for p in factors do length(p) od) then
+   max_power=max(for (f,p) in r do degree(f) od) then
+   ()=prints("lowest power: ", lowest_power) then
+   ()=prints("max power: ", max_power) then
+   ()=prints("max length: ", max_length) in
+   tabulate(["x","lambda","nu","l","f","filtration"]#
+   for (f,p)@i in r do
+let     ()=print("doing", f) in
+    let g=f.at_q_inverse then
+    ()=prints("g.w=",g.w, " n=", g.n) then
+    m=delete_trailing_zeros(laurent_poly_as_poly(g)) then
+    ()=prints("m=",m) then
+   string_m="" in
+      for i:-lowest_power+1
+      do string_m +:=
+       if {i<=(-max_power+(max_length-p.length)) and}  is_even(max_length-p.length-i) then
+       if i<#m then  m[i].to_string + " " else "0 " fi else ". " fi
+      od
+   ;
+   [(#(p.x)).to_string,
+   p.lambda.to_string,
+   p.nu.to_string,
+   p.length.to_string,
+   laurent_poly_format(f,"q"),
+   "[" +  string_m + "]"]
+   od)
+
+set find(hodgeParamLaurentPol f,[Param] b)=int:
+let f_at_1=f.v_to_1 in
+first(for i:#b do f_at_1=composition_series(b[i]) od)
