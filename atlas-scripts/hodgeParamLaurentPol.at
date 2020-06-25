@@ -274,7 +274,7 @@ set show_long(hodgeParamLaurentPol hplp) =void:
    ()=prints("max power: ", max_power) then
    ()=prints("max length: ", max_length) in
    tabulate(["x","lambda","nu","l","f","filtration"]#
-   for (f,p)@i in r do
+   for (f,p)@i in r~ do
     let g=f.at_q_inverse then
 {    ()=prints("g.w=",g.w, " n=", g.n) then}
     m=delete_trailing_zeros(laurent_poly_as_poly(g)) then
