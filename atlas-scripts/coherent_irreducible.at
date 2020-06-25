@@ -283,117 +283,85 @@ rv
 
 set reverse(hodgeParamLaurentPol hplp)=ParamPol: character_formula(hplp.v_to_1)
 
-set chain([Param] params,WGraph graph,[int] w, [int] powers,hodgeParamLaurentPol hplp)=
-for i:#w downto 0 do
- let s=w[i] {simple root} then
- power=powers[i]  {\pm 1} in
- hplp:=
-  if power=1 then S(params,graph,s,hplp)
-  elif power=-1 then S_inv(params,graph,s,hplp)
-  else error("missing case")
-  fi
- od;
-hplp
-
-set chain([Param] params,WGraph graph,[int] w, [int] powers,hodgeParamPol hpp)=
-chain(params,graph,w,powers,hodge_param_laurent_pol(hpp))
-
-set chain_graded([Param] params,WGraph graph,[int] w, [int] powers,Param p)=
-chain(params,graph,w,powers,graded_standard(p))
-
-{-----kk}
-
-set tT([Param] params,WGraph graph,[int] w, hodgeParamLaurentPol hplp)=
-for j in w ~ do hplp:=tT(params,graph,j,hplp) od;hplp
-
-set tT([Param] params,WGraph graph,[int] w,Param p)=
-tT(params,graph,w,hodge_param_laurent_pol(p))
-
-set tT([Param] params,WGraph graph,WeylElt w, hodgeParamLaurentPol hplp)=
-tT(params,graph,w.word,hplp)
-
-set tT([Param] params,WGraph graph,WeylElt w, Param p)=
-tT(params,graph,w.word,hodge_param_laurent_pol(p))
-
-set quad_test([Param] params,WGraph graph,int i,hodgeParamLaurentPol hplp)=
-let tp=tT(params,graph,i,hplp) then
-x=tT(params,graph,i,tp) then
-y=tT(params,graph,i,x) in
+set quad_test([Param] params,WGraph graph,hodgeParamLaurentPol hplp,int i)=
+let tp=tT(params,graph,hplp,i) then
+x=tT(params,graph,tp,i) then
+y=tT(params,graph,x,i) in
 (x,y,v_sum*x=y)
 
-set quad_test([Param] params,WGraph graph,int i {simple root},Param p)=
-quad_test(params,graph,i,hodge_param_laurent_pol(p))
+set quad_test([Param] params,WGraph graph,Param p,int i)=
+quad_test(params,graph,hodge_param_laurent_pol(p),i)
 
-set quad_test([Param] params,WGraph graph,int i {simple root},[Param] list)=
-for p in list do let (,,z)=quad_test(params,graph,i,p) in z od
+set quad_test([Param] params,WGraph graph,[Param] list,int i)=
+for p in list do let (,,z)=quad_test(params,graph,p,i) in z od
 
 
 {
 cross(p)=q^{-1/2}(tTp-q^{-1/2}
          =v^{-1}(tTp)-v^{-2}p
 }
-set cross([Param] params,WGraph graph, int i, hodgeParamLaurentPol hplp)=
-v_inverse*tT(params,graph,i,hplp)-v_minus_two*hplp
+set cross([Param] params,WGraph graph,  hodgeParamLaurentPol hplp,int i)=
+v_inverse*tT(params,graph,hplp,i)-v_minus_two*hplp
 
-set cross([Param] params,WGraph graph, int i, hodgeParamPol hpp)=
-cross(params,graph,i,hodge_param_laurent_pol(hpp))
+set cross([Param] params,WGraph graph, hodgeParamPol hpp,int i)=
+cross(params,graph,hodge_param_laurent_pol(hpp),i)
 
-set cross([Param] params,WGraph graph, int i, ParamPol P)=
-cross(params,graph,i,hodge_param_laurent_pol(P))
+set cross([Param] params,WGraph graph,  ParamPol P,int i)=
+cross(params,graph,hodge_param_laurent_pol(P),i)
 
-set cross([Param] params,WGraph graph, int i, Param p)=
-cross(params,graph,i,hodge_param_laurent_pol(p))
+set cross([Param] params,WGraph graph, Param p,int i)=
+cross(params,graph,hodge_param_laurent_pol(p),i)
 
-set cross([Param] params,WGraph graph, [int] w, hodgeParamLaurentPol hplp)=
-for j in w ~ do hplp:=cross(params,graph,j,hplp) od;hplp
+set cross([Param] params,WGraph graph,hodgeParamLaurentPol hplp,[int] w)=
+for j in w ~ do hplp:=cross(params,graph,hplp,j) od;hplp
 
-set cross([Param] params,WGraph graph, [int] w, hodgeParamPol hpp)=
-cross(params,graph,w,hodge_param_laurent_pol(hpp))
+set cross([Param] params,WGraph graph,hodgeParamPol hpp,[int] w)=
+cross(params,graph,hodge_param_laurent_pol(hpp),w)
 
-set cross([Param] params,WGraph graph, [int] w, ParamPol P)=
-cross(params,graph,w,hodge_param_laurent_pol(P))
+set cross([Param] params,WGraph graph,ParamPol P,[int] w)=
+cross(params,graph,hodge_param_laurent_pol(P),w)
 
-set cross([Param] params,WGraph graph, [int] w, Param p)=
-cross(params,graph,w,hodge_param_laurent_pol(p))
+set cross([Param] params,WGraph graph,Param p,[int] w)=
+cross(params,graph,hodge_param_laurent_pol(p),w)
 
-set icross([Param] params,WGraph graph, int i, hodgeParamLaurentPol hplp)=
-vee*tT(params,graph,i,hplp)-v_laurent_power(2)*hplp
+set icross([Param] params,WGraph graph,hodgeParamLaurentPol hplp,int i)=
+vee*tT(params,graph,hplp,i)-v_laurent_power(2)*hplp
 
-set cross([Param] params,WGraph graph, int i, hodgeParamPol hpp)=hodgeParamLaurentPol:
-cross(params,graph,i,hodge_param_laurent_pol(hpp))
+set cross([Param] params,WGraph graph,hodgeParamPol hpp,int i)=hodgeParamLaurentPol:
+cross(params,graph,hodge_param_laurent_pol(hpp),i)
 
-set cross_graded([Param] params,WGraph graph, int i, Param p)=
-cross(params,graph,i,graded_standard(p))
+set cross_graded([Param] params,WGraph graph,Param p,int i)=
+cross(params,graph,graded_standard(p),i)
 
-set cross_graded([Param] params,WGraph graph, [int] w, Param p)=
-cross(params,graph,w,graded_standard(p))
+set cross_graded([Param] params,WGraph graph,Param p,[int] w)=
+cross(params,graph,graded_standard(p),w)
 
-set icross([Param] params,WGraph graph, int i, hodgeParamPol hpp)=hodgeParamLaurentPol:
-icross(params,graph,i,hodge_param_laurent_pol(hpp))
+set icross([Param] params,WGraph graph, hodgeParamPol hpp,int i)=hodgeParamLaurentPol:
+icross(params,graph,hodge_param_laurent_pol(hpp),i)
 
-set icross([Param] params,WGraph graph, int i, Param p)=
-icross(params,graph,i,hodge_param_laurent_pol(p))
+set icross([Param] params,WGraph graph, Param p,int i)=
+icross(params,graph,hodge_param_laurent_pol(p),i)
 
-set icross_graded([Param] params,WGraph graph, int i, Param p)=
-icross(params,graph,i,graded_standard(p))
+set icross_graded([Param] params,WGraph graph, Param p,int i)=
+icross(params,graph,graded_standard(p),i)
 
-set cross_square([Param] params,WGraph graph, int i, hodgeParamLaurentPol hplp)=
-icross(params,graph,i,cross(params,graph,i,hplp))
+set cross_square([Param] params,WGraph graph, hodgeParamLaurentPol hplp,int i)=
+icross(params,graph,cross(params,graph,hplp,i),i)
 
-set cross_square([Param] params,WGraph graph, int i, hodgeParamPol hpp)=
-cross_square(params,graph,i,hodge_param_laurent_pol(hpp))
+set cross_square([Param] params,WGraph graph, hodgeParamPol hpp,int i)=
+cross_square(params,graph,hodge_param_laurent_pol(hpp),i)
 
-set cross_square([Param] params,WGraph graph, int i, Param p)=
-cross_square(params,graph,i,hodge_param_laurent_pol(p))
+set cross_square([Param] params,WGraph graph, Param p,int i)=
+cross_square(params,graph,hodge_param_laurent_pol(p),i)
 
-set cross_square([Param] params,WGraph graph, int i, ParamPol P)=
-cross_square(params,graph,i,hodge_param_laurent_pol(P))
+set cross_square([Param] params,WGraph graph, ParamPol P,int i)=
+cross_square(params,graph,hodge_param_laurent_pol(P),i)
 
-set cross_square_test([Param] params,WGraph graph, int i, ParamPol P)=bool:
-cross_square(params,graph,i,P)=hodge_param_laurent_pol(P)
+set cross_square_test([Param] params,WGraph graph, ParamPol P,int i)=bool:
+cross_square(params,graph,P,i)=hodge_param_laurent_pol(P)
 
-set cross_square_test([Param] params,WGraph graph, int i, Param p)=bool:
-cross_square(params,graph,i,p)=hodge_param_laurent_pol(p)
+set cross_square_test([Param] params,WGraph graph, Param p,int i)=bool:
+cross_square(params,graph,p,i)=hodge_param_laurent_pol(p)
 
 {moved from induction.at to avoid circularity issue}
 
