@@ -159,8 +159,7 @@ set coherent_irr_new (ParamPol P,int s) = ParamPol:
   let p=first_param(P) then
   block=block_of(p) then
   graph=W_graph_of(p) then
-  sum=0*P in   for coeff@p in P do sum +:= coeff*coherent_irr
-  (block,graph,p,s) od; sum
+  sum=0*P in for coeff@p in P do sum +:= coeff*coherent_irr(block,graph,p,s) od; sum
 
 set coherent_irr_new (ParamPol P,[int] w) = ParamPol:
   let p=first_param(P) then
