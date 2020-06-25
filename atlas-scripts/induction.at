@@ -282,26 +282,7 @@ set theta_induce_irreducible_redefine (Param p, RealForm G)=ParamPol:
       for coeff@q in P do result+:=coeff*T_irr(q,ic) od;
    result
 
-{set theta_induce_irreducible_new (Param p, RealForm G)=ParamPol:
-    let rd=root_datum(G), N=find_N (p,G), rhou=rho(G)-rho(real_form(p))
-    then q=translate_by (p,ratvec_as_vec(N*2*rho(G))).monomials[0]
-    then ind=parameter(embed_KGB(x(q),G),lambda(q)+rhou,nu(q))
-    then ic=dominant(rd,infinitesimal_character(p)+rhou)
-    then (,w)=conjugate_to(rd,ic,infinitesimal_character(p)+rhou)
-    then P=coherent_irr_new(ind,word(inverse(w)))  {note new here}
-    then result=null_module(G) in
-       for coeff@q in P do result+:=coeff*T_irr(q,ic) od;
-    result
-
-set test_theta_functions (RealForm G)=void:
-    let tsp=theta_stable_parabolics(G) in
-    for P@i in tsp do let L=Levi(P) then t=trivial(L)
-    then p=translate_by (t,ratvec_as_vec(-2*rho_u(P))).monomials[0]
-    in prints(i," ",goodness(p,G)," ",
-    theta_induce_irreducible(p,G)=theta_induce_irreducible_redefine(p,G)," ",
-    theta_induce_irreducible(p,G)=theta_induce_irreducible_new(p,G)) od
-
-set theta_induce_irreducible_new ([Param] block, WGraph graph, Param p, RealForm G)=ParamPol:
+{set theta_induce_irreducible_new ([Param] block, WGraph graph, Param p, RealForm G)=ParamPol:
     let rd=root_datum(G), N=find_N (p,G), rhou=rho(G)-rho(real_form(p))
     then q=translate_by (p,ratvec_as_vec(N*2*rho(G))).monomials[0]
     then ind=parameter(embed_KGB(x(q),G),lambda(q)+rhou,nu(q))
@@ -316,7 +297,6 @@ set shift_function (Param p, RealForm G)=Param:
     let rd=root_datum(G), N=find_N (p,G), rhou=rho(G)-rho(real_form(p))
     then q=translate_by (p,ratvec_as_vec(N*2*rho(G))).monomials[0]
     in parameter(embed_KGB(x(q),G),lambda(q)+rhou,nu(q))}
-
 
 {. Theta-stable (cohomological) parabolic induction of a standard module for
    the Levi L of a theta-stable parabolic; if outside of weakly good range,

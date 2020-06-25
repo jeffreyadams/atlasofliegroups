@@ -72,6 +72,8 @@ set +(i_laurent_poly f,int i)=i_laurent_poly:f+constant_laurent_poly(i)
 set -(i_laurent_poly f,int i)=i_laurent_poly:f-constant_laurent_poly(i)
 set v_sum=i_laurent_poly:vee+v_inverse   {v+1/v}
 
+set at_q_inverse(i_laurent_poly (w,n))=i_laurent_poly:(~w,-n-#w+1)
+
 set laurent_poly_format (i_laurent_poly (v,n), string q)= string:
    if =v then "0"
    else

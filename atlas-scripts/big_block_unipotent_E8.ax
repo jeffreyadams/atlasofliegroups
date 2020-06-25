@@ -2,7 +2,7 @@
 <springer_reductive.at { for springer_table }
 <nilpotent_orbits.at   { for even_dual_orbits }
 <weak_packets.at       { for weak packets, show_short... show_very_long }
-<bigblocke8.at          { block_E8 : [Param]: big block}
+<bigblocke8.ax          { block_E8 : [Param]: big block}
 <cells.E8.repsonly.at   { cells : [[int]] }
 <cell_characters_E8.at  { cell_characters_E8 : [[int]] }
 prints("loaded files")

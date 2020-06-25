@@ -1,5 +1,7 @@
 <springer_tables.at
 <character_table_reps.at
+<nilpotent_orbit_partitions.at
+
 
 {Springer correspondence from nilpotent orbits to representations of W in type B/C
  orbit: partition -> representation= pair of partitions
