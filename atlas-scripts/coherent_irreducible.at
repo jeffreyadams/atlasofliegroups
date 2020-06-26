@@ -9,10 +9,7 @@ set sign(Param p,Param q)=int:(-1)^(length(p)-length(q))
  here is just the W_graph, analogous to block_of@Param}
 set W_graph_of(Param p)=let (,g)=W_graph(p) in g
 
-{better implementation of coherent translation in basis of irreducibles
-see coherent_irr(p) in coherent.at
-}
-
+{The mu function, obtained from W_graph}
 set mu(WGraph graph,int i,int j)=
 let (,g)=graph[i]  then
 index=first(for (k,)@t in g do k=j od) in
@@ -21,12 +18,12 @@ if index=-1 then 0 else let (,mu)=g[index] in mu fi
 set mu([Param] params,WGraph graph, Param p,Param q)=int:
 mu(graph,find(params,p),find(params,q))
 
-{matrix of T_alpha, given by graph, with q=1
+{matrix of Hecke algebra operator T_alpha, given by graph, with q=1
  action is described in wgraphs.help
  however this matrix is the TRANSPOSE of the one given by graph_action@(WGraph,int) in
  in W_reps.at
  Also note: this is the coherent continuation action on the basis of {(-1)^length(p)*p}
- this function shouldn't be needed, but is included for instructional purposes;
+ this function shouldn't be needed, but is included for illustrative purposes;
  what we really use is graph_action_column
 }
 set graph_action (WGraph graph,int s) = sparse_mat:
@@ -58,7 +55,7 @@ graph_action(graph,0)= (list of these columns) -> matrix
 -1 0  0
 0 -1  0
 1  1  1
-see filtrations.pdf, end of section 1
+see filtrations.pdf
 }
 set graph_action_column (WGraph graph,int col_number,int s) = sparse_column:
 let rv=sparse_column:[] then
@@ -77,8 +74,6 @@ node=graph[i] in
    od
  fi;
 col
-
-
 
 {same as previous, except in the basis of irreducibles (rather than \pm irreducible)
  need the list of parameters just for the lengths
@@ -101,8 +96,6 @@ node=graph[i] in
    od
  fi;
 col
-
-
 
 {just as graph_action was mainly for testing, this function
 isn't essential but is a useful tool}
@@ -129,11 +122,11 @@ keeping in mind the W-graph is the action in the basis of (-1)^length(p)p
 }
 set coherent_irr([Param] block,WGraph graph,Param p,int s)=ParamPol:
 assert(is_regular(p),"infinitesimal character is not regular");
-let index=find(block,p) in
-null_module(p.real_form) +
+let index=find(block,p) in null_module(p.real_form) +
 for (index,coeff) in graph_action_column(block,graph,index,s) do
  (-1)*coeff*block[index] od
 
+{variants: ParamPol P, [int] w, WeylElt w}
 set coherent_irr ([Param] block,WGraph graph,ParamPol P,int s) = ParamPol:
   0*P + for coeff@p in P do  coeff*coherent_irr(block,graph,p,s) od
 set coherent_irr ([Param] block,WGraph graph,Param p,[int] w) = ParamPol:

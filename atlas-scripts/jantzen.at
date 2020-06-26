@@ -103,7 +103,7 @@ prints("G=", real_form(std));
 {   let gcs=graded_composition_series(singular_block_of(std),std)}
    let gcs=rearrange(graded_composition_series(singular_block_of(std),Q,std))  {[(param,i_poly)]} in
    tabulate(["x","lambda","nu","l","ld","Q","filtration"]#
-   for (m,p) in gcs ~
+   for (m,p) in gcs 
    do let m=delete_trailing_zeros(m) then
    string_m="" in
       for i:max_length_vector
