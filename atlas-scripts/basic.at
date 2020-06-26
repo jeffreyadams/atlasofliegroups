@@ -1249,7 +1249,6 @@ set is_imaginary (KGBElt x) = (vec->bool): is_imaginary(involution(x))
 set is_real (KGBElt x)      = (vec->bool): is_real(involution(x))
 set is_complex (KGBElt x)   = (vec->bool): is_complex(involution(x))
 
-
 set imaginary_posroots (KGBElt x) = mat:
   imaginary_posroots(root_datum(x),involution(x))
 set real_posroots (KGBElt x) = mat:
@@ -1375,6 +1374,12 @@ set d_lambda (Param p) = ratvec: let (x,,gamma) =%p in (1+involution(x))*gamma/2
 set nu (Param p) = ratvec:       let (x,,gamma) =%p in (1-involution(x))*gamma/2
 set Cartan_class (Param p) = CartanClass: Cartan_class(x(p))
 set codim (Param p) = int: codim(p.x)
+
+{this syntax is common:}
+set is_noncompact_imaginary(int i,Param p)=bool:
+is_noncompact_imaginary(p.root_datum.simple_roots[i],p.x)
+set is_compact_imaginary(int i,Param p)=bool:
+is_compact_imaginary(p.root_datum.simple_roots[i],p.x)
 
 set involution (Param p)=involution(x(p))
 

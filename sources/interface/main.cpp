@@ -50,12 +50,6 @@ int main(int argc, char* argv[])
 
   }
 
-  catch (atlas::error::NumericUnderflow& e) {
-
-    std::cerr << "error: uncaught NumericUnderflow" << std::endl;
-
-  }
-
   catch (std::exception& e) {
 
     std::cerr << "error: uncaught standard exceptions on exit"

@@ -357,8 +357,8 @@ set test_line (Param p) = void:
       let t=(points[i]+points[i-1])/2
       then q=param(x,lambda_minus_rho,gamma*t)         { mid point interval }
       ,    r=param(x,lambda_minus_rho,gamma*points[i]) { end point interval }
-      in prints(nu(p)*t,": ", is_unitary(q))
-      ;  prints(nu(p)*points[i],": ", is_unitary(r))
+      in prints(nu(p)*t,": ", is_unitary(first_param(finalize(q))))
+      ;  prints(nu(p)*points[i],": ", is_unitary(first_param(finalize(r))))
     od
   fi
 )

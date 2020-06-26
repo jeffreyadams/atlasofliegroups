@@ -2,6 +2,7 @@
   This is polynomials.h
 
   Copyright (C) 2004,2005 Fokko du Cloux
+  Copyright (C) 2016,2020 Marc van Leeuwen
   part of the Atlas of Lie Groups and Representations
 
   For license information see the LICENSE file
@@ -35,25 +36,29 @@ namespace polynomials {
 template<typename C>
   bool compare(const Polynomial<C>&, const Polynomial<C>&); // lex ordering
 
+// the following operations will throw on overflow, but not on other errors
+// underflow and division by zero trigger failing assertions while debugging
+// the rationale is that only overflow should be plausible in production code
+
 // basic operations which test for overflow/underflow, assuming |C| is unsigned
 template<typename C>
-  void safeAdd(C&, C); // version of |operator+=| testing for overflow
+  void safe_add(C&, C); // version of |operator+=| testing for overflow
 
 template<typename C>
-  void safeDivide(C&, C); // version of |operator/=| testing for divisibility
+void safe_subtract(C&, C);// version of |operator-=| asserting no underflow
 
 template<typename C>
-  void safeProd(C&, C); // version of |operator*=| testing for overflow
+  void safe_multiply(C&, C); // version of |operator*=| testing for overflow
 
 template<typename C>
-void safeSubtract(C&, C);// version of |operator-=| testing for underflow
+  void safe_divide(C&, C); // version of |operator/=| asserting validity
 
 
 /******** type definitions **************************************************/
 
 
 /*
-  Polynomials with coefficients in |C|
+  Polynomials with coefficients in |C|.
 
   The coefficient type |C| could be a signed or unsigned integral type, or any
   type providing ring operations (operator+, operator*= etc.), for instance
@@ -61,8 +66,8 @@ void safeSubtract(C&, C);// version of |operator-=| testing for underflow
   use, although < need not have any particular mathematical sense
 */
 template<typename C> class Polynomial
-{
-  std::vector<C> d_data;
+{ // to some extent we do as if the type is derived from |std::vector<C>|
+  std::vector<C> d_data; // as this unique data member
 
  public:
 
@@ -72,12 +77,10 @@ template<typename C> class Polynomial
   Polynomial(Degree d, C c); // initialised to $cX^d$ (with |c!=0|)
   Polynomial(Degree d,const Polynomial& Q); // initialised to $X^d Q$
 
-// copy, assignment (default will do) and swap
+// copy and move constructors are implicitly declared, their definition defaulted
 
 template <typename U>
   Polynomial(const Polynomial<U>& src) : d_data(src.begin(),src.end()) { }
-
-  void swap(Polynomial& other) { d_data.swap(other.d_data); }
 
 // accessors
   const C& operator[] (Degree i) const; // get coefficient $X^i$
@@ -95,6 +98,7 @@ template <typename U>
 */
   bool operator< (const Polynomial& q) const { return d_data < q.d_data; }
 
+  // iterator methods |begin| and |end| are as if we derived from |d_data|
   typename std::vector<C>::const_iterator begin() const
   { return d_data.begin();}
   typename std::vector<C>::const_iterator end() const { return d_data.end();}
@@ -115,6 +119,8 @@ template <typename U>
 
 // manipulators
   C& operator[] (Degree j); // non-const version of above
+  typename std::vector<C>::iterator begin()  { return d_data.begin();}
+  typename std::vector<C>::iterator end()    { return d_data.end();}
 
   Polynomial& operator+= (const Polynomial& q);
 
@@ -128,7 +134,7 @@ template <typename U>
 
   Polynomial operator* (const Polynomial& q) const;
   Polynomial& operator*= (const Polynomial& q)
-    { operator*(q).swap(*this); return *this; }
+  { (*this)=operator*(q); return *this; } // move-assign from |operator*| value
   Polynomial operator+ (const Polynomial& q) const
     { // avoid requiring reallocation during addition
       return d_data.size()>=q.d_data.size()

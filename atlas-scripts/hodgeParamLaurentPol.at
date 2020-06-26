@@ -1,0 +1,293 @@
+<hodgeParamPol.at
+<laurentPolynomial.at
+<hodge_K_type_formula.at
+{see hodgeParamPol.at and hodgeParamLaurentPol.pdf}
+
+{recall: set_type hodgeParamPol=[ParamPol]
+[P_0,...,P_m] -> (P_0+P_1*v+...+P_m*v^m)
+Write the union of monomials(P_i) as {p_0,...,p_r}.
+The order of this set matters.
+Write P_i=\sum a_{i,j}p_j where j\le r. 
+Then this corresponds to
+\sum a_{i,0}v^i)p_0 +
+\sum a_{i,1}v^i)p_1 +
+...
+\sum a_{i,r}v^i)p_r
+}
+
+{Generalize this to sum of params with Laurent series coefficients
+
+(data type:
+[P_0,...,P_m],[c_0,...,c_r]) ->
+\sum a_{i,0}v^i)v^{c_0}p_0 +
+\sum a_{i,1}v^i)v^{c_1}p_1 +
+...
+\sum a_{i,r}v^i)v^{c_r}p_r
+Note that the listed order of the p_i matters
+}
+
+set_type hodgeParamLaurentPol=(hodgeParamPol hpp,vec shifts)
+{require: #shifts is the number of parameters p_i occuring in the various P_j}
+
+{ignore Laurent part}
+set hodge_param_pol(hodgeParamLaurentPol (hpp,))=hodgeParamPol:hpp
+
+set monomials(hodgeParamLaurentPol hplp)=[Param]:monomials(hodge_param_pol(hplp))
+set monomials([hodgeParamLaurentPol] list)=[Param]:monomials(##for hplp in list do hodge_param_pol(hplp) od)
+
+
+{ -------------- hodgeParamLaurentPol versions -------------}
+
+set nullHodgeParamLaurentPol(RealForm G)=hodgeParamLaurentPol:(nullHodgeParamPol(G),null(0))
+
+set hodge_param_laurent_pol(ParamPol P)=hodgeParamLaurentPol:([P],null(#monomials(P)))
+set hodge_param_laurent_pol(Param p)=hodgeParamLaurentPol:(hodge_param_pol(p),[0])
+set hodge_param_laurent_pol(hodgeParamPol P)=hodgeParamLaurentPol:(P,null(#monomials(P)))
+set *(Split c,hodgeParamLaurentPol hplp)=hodgeParamLaurentPol:(c*hplp.hpp,hplp.shifts)
+set -(hodgeParamLaurentPol hplp)=hodgeParamLaurentPol:(-1)*hplp
+
+set real_form(hodgeParamLaurentPol hplp)=RealForm:real_form(hodge_param_pol(hplp))
+
+set coefficient(hodgeParamLaurentPol hplp,Param p)=i_laurent_poly:
+let hpp=hodge_param_pol(hplp) then
+coeff=coefficient(hodge_param_pol(hplp),p)  {this is an i_poly} then
+index=find(monomials(hplp),p) in
+(coeff,hplp.shifts[index])
+
+set =(hodgeParamLaurentPol hplp_1,hodgeParamLaurentPol hplp_2)=bool:
+let m_1=monomials(hplp_1), m_2=monomials(hplp_2) in
+if =#m_1 and =#m_2 then true
+elif =#m_1 and not =#m_2 then false
+elif =#m_2 and not =#m_1 then false
+else
+param_pol(m_1)=param_pol(m_2) and
+all(for p in m_1 do coefficient(hplp_1,p)=coefficient(hplp_2,p) od)
+fi
+
+set =(hodgeParamLaurentPol hplp)=bool:hplp=nullHodgeParamLaurentPol(hplp.real_form)
+
+{rearrange:
+takes hodgeParamLaurentPol:([P_0,P_1,..,P_m],[c_0,...,c_r]) ->
+([P_0,...,P_m],[c_0,...,c_r]) ->
+\sum a_{i,0}v^i)^{c_0}p_0 +
+\sum a_{i,1}v^i)v^{c_1}p_1 +
+...
+\sum a_{i,r}v^i)v^{c_r}p_r
+represented by
+[
+( ([a_{0,0},a_{1,0},...,a_{m,0}],c_0),p_0),
+( ([a_{0,1},a_{1,1},...,a_{m,1}],c_1),p_1),
+...
+( ([a_{0,r},a_{1,r},...,a_{m,r}],c_r),p_r)]
+}
+set rearrange(hodgeParamLaurentPol (hpp,shifts))=[(i_laurent_poly,Param)]:
+let Q=rearrange(hpp) {[(i_poly f_i,p_i)] i=0,...,r} in
+for (f,p)@i in Q do ((f,shifts[i]),p) od
+
+set coefficient(hodgeParamLaurentPol hplp, Param p)=i_laurent_poly:
+let r=rearrange(hplp) then
+i=first(for (,q) in r do q=p od) in
+if i=-1 then zero_laurent_poly else
+let (f,)=r[i] in f fi
+
+{go other way:
+ given f_0(v)p_0 + ... + f_r(v) p_r, take it to ([P_0,...,P_m],[c_0,...,c_r])
+} 
+set dearrange([(i_laurent_poly,Param)] pairs,RealForm G)=hodgeParamLaurentPol:
+if =#pairs then nullHodgeParamLaurentPol(G) else 
+let pairs_0=for (f,p) in pairs do (f.w,p) od {gives [(i_poly,Param)]}
+then d_0=dearrange(pairs_0)   {a hodgeParamPol} then
+shifts=for (f,p) in pairs do f.n od in (d_0,shifts)
+fi
+
+set dearrange([(i_laurent_poly,Param)] pairs,RealForm G)=hodgeParamLaurentPol:
+if =#pairs then nullHodgeParamLaurentPol(G) else 
+let pairs_0=for (f,p) in pairs do (f.w,p) od {gives [(i_poly,Param)]}
+then d_0=dearrange(pairs_0)   {a hodgeParamPol} then
+shifts=##for ((f,n),p) in pairs do
+ if  =f  then [] else [n] fi od in (d_0,shifts) fi
+
+set *(i_laurent_poly f,Param p)=hodgeParamLaurentPol: dearrange([(f,p)],p.real_form)
+set *(i_poly f,Param p)=hodgeParamLaurentPol: poly_as_laurent_poly(f)*p
+
+{polynomial  in v, or constant, times hodgeParamPol}
+set *(i_laurent_poly f,hodgeParamLaurentPol hplp)=hodgeParamLaurentPol:
+let r=rearrange(hplp)  {[(i_laurent_poly,Param)]} in
+if #r=0 then nullHodgeParamLaurentPol(hplp.real_form) else
+dearrange(for (g,p) in r do (f*g,p) od,hplp.real_form) fi
+set *(int c,hodgeParamLaurentPol hplp)=hodgeParamLaurentPol:
+constant_laurent_poly(c)*hplp
+
+set *(i_poly f,hodgeParamLaurentPol hplp)=hodgeParamLaurentPol:
+poly_as_laurent_poly(f)*hplp
+
+{given list of shifts for first, rewrite to be compatible with new}
+{not needed
+set rewrite_shifts([Param] first,[Param] new, vec shifts)=vec:
+let v=null(#new) in
+ for p@i in first do
+  let j=find(new,p) in 
+  v[j]:=shifts[i]
+ od;v
+}
+
+set +(hodgeParamLaurentPol P,hodgeParamLaurentPol Q)=
+let rP=rearrange(P), rQ=rearrange(Q) in
+if =#rP then Q
+ elif =#rQ then P
+ else let
+mP=monomials(P), mQ=monomials(Q) then
+params=union([mP##mQ]) then
+rv=for p in params do
+{let ()=prints("p=",p) in}
+ let a=zero_laurent_poly in
+  let index_P=find(mP,p) in if index_P>=0 then let (f,)=rP[index_P] in a+:=f fi;
+  let  index_Q=find(mQ,p) in if index_Q>=0 then let (f,)=rQ[index_Q] in a+:=f fi;
+ (a,p)
+ od in
+dearrange(rv,P.real_form)
+fi
+
+set plus(hodgeParamLaurentPol P,hodgeParamLaurentPol Q)=
+let rP=rearrange(P), rQ=rearrange(Q) in
+let
+mP=monomials(P), mQ=monomials(Q) then
+params=union([mP##mQ]) then
+rv=for p in params do
+{let ()=prints("p=",p) in}
+ let a=zero_laurent_poly in
+  let index_P=find(mP,p) in if index_P>=0 then let (f,)=rP[index_P] in a+:=f fi;
+  let  index_Q=find(mQ,p) in if index_Q>=0 then let (f,)=rQ[index_Q] in a+:=f fi;
+ (a,p)
+ od in
+(rv,dearrange(rv,P.real_form))
+
+set -(hodgeParamLaurentPol P,hodgeParamLaurentPol Q)=P+(-1)*Q
+set v_to_1(hodgeParamLaurentPol hplp)=ParamPol:
+let rv=null_module(hplp.real_form) in
+ for P in hplp.hpp do rv+:=P od;rv
+
+{v^k*p for k\in Z}
+set power_times(Param p,int n)=hodgeParamLaurentPol:([p],[n])
+
+{nice output}
+set show(hodgeParamLaurentPol hplp)=void:
+let header=["coeff","l","x","lambda","nu"] then
+values=
+for (f,p) in rearrange(hplp) do
+[laurent_poly_format(f,"v"),
+p.length.to_string,
+let (,n)=%p.x in n.to_string,
+p.lambda.to_string,
+p.nu.to_string] od in
+tabulate(header#values)
+
+set hodge_print(hodgeParamPol P)=void:show(P)
+set hodge_print([(vec,Param)] P)=void:show(dearrange(P))
+set hodge_print([(vec,K_Type)] P)=void:show(dearrange(P))
+
+set hodge_print_long(hodgeParamPol P)=void:show_long(P)
+set hodge_print_long([(vec,Param)] P)=void:show_long(dearrange(P))
+set hodge_print_long([(vec,K_Type)] P)=void:show_long(dearrange(P))
+
+{
+set G=SL(2,R)
+set block=block_of(G.trivial)
+set a=block[0]
+set b=block[1]
+set c=block[2]
+
+set f=hodgeParamLaurentPol:
+([a+b,b,b,c],[0,-3,-6])
+
+set g=hodgeParamLaurentPol:([a],[-1])
+set h=hodgeParamLaurentPol:([b,2*b],[0])
+set l=hodgeParamLaurentPol:([b],[-3])}
+
+set flip(i_poly f,int ld)=i_poly:
+{let ()=prints(new_line,"f=",f,"ld=",ld) in}
+ let r=ld\2 then
+ f=pad(f,r+1)  {f=[a_0,...,a_r], #f=r+1} in
+ if ld.is_even then
+  ##for a in f~ do [a,0] od
+ else
+  ##for a in f~ do [0,a] od
+ fi
+
+set show_long(hodgeParamLaurentPol hplp) =void:
+  let factors=monomials(hplp) then
+   r=rearrange(hplp) then  {(Laurent poly,Param)}
+   lowest_power=min(for (f,p) in r do lowest_power(f) od) then
+   max_level=-lowest_power+1 then
+   max_length=max(for p in factors do length(p) od) then
+   max_power=max(for (f,p) in r do degree(f) od) then
+   ()=prints("lowest power: ", lowest_power) then
+   ()=prints("max power: ", max_power) then
+   ()=prints("max length: ", max_length) then
+   ()=prints("max level: ", max_level) in
+   tabulate(["x","lambda","nu","l","t","f","filtration"]#
+   for (f,p)@i in r do
+    let g=f.at_q_inverse then
+   m=delete_trailing_zeros(laurent_poly_as_poly(g)) then
+   string_m="" in
+      for i:max_level
+      do string_m +:=
+       if i<#m and is_even(max_length-p.length-i) and i<=max_level then m[i].to_string + " "
+{       elif i<#m and is_even(max_length-p.length-i) and i>max_level-(max_length-p.length) then "* "}
+       elif i<#m and is_odd(max_length-p.length-i)  then ". "   {. means 0 for parity reason}
+       else "* "
+      fi
+      od
+   ;
+   [(#(p.x)).to_string,
+   p.lambda.to_string,
+   p.nu.to_string,
+   p.length.to_string,
+   (#m).to_string,
+   laurent_poly_format(f,"v"),
+   "[" +  string_m + "]"]
+   od)
+
+{f.v_to_1 is a linear combination of irreducible modules J(gamma),
+ look up to see if this is the composition series of a standard
+ module in the given list b}
+set find(hodgeParamLaurentPol f,[Param] b)=int:
+let f_at_1=f.v_to_1 in
+first(for i:#b do f_at_1=composition_series(b[i]) od)
+
+{also identify hplp.v_to_1 as a standard module if possible}
+set show_long([Param] b,hodgeParamLaurentPol hplp) =void:
+  let factors=monomials(hplp) then
+   r=rearrange(hplp) then  {(Laurent poly,Param)}
+   lowest_power=min(for (f,p) in r do lowest_power(f) od) then
+   max_level=-lowest_power+1 then
+   max_length=max(for p in factors do length(p) od) then
+   max_power=max(for (f,p) in r do degree(f) od) then
+   index=find(hplp,b) then
+   ()=prints("lowest power: ", lowest_power) then
+   ()=prints("max power: ", max_power) then
+   ()=prints("max length: ", max_length) then
+   ()=prints("max level: ", max_level) then
+   ()=if index=-1 then prints("not a standard module") else prints("evaluated at v=1: b[",index,"]=",b[index]) fi in
+   tabulate(["x","lambda","nu","l","t","f","filtration"]#
+   for (f,p)@i in r do
+    let g=f.at_q_inverse then
+   m=delete_trailing_zeros(laurent_poly_as_poly(g)) then
+   string_m="" in
+      for i:max_level
+      do string_m +:=
+       if i<#m and is_even(max_length-p.length-i)  then m[i].to_string + " "
+       elif i<#m and is_odd(max_length-p.length-i)  then ". "   {. means 0 for parity reason}
+       else "* "
+      fi
+      od
+   ;
+   [(#(p.x)).to_string,
+   p.lambda.to_string,
+   p.nu.to_string,
+   p.length.to_string,
+   (#m).to_string,
+   laurent_poly_format(f,"v"),
+   "[" +  string_m + "]"]
+   od)
+

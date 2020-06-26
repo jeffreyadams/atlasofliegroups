@@ -5050,10 +5050,33 @@ void partial_KL_block_wrapper(expression_base::level l)
     wrap_tuple<6>();
 }
 
-@ Rather than exporting the detailed KL data, the following function computes
-the $W$-cells from the block of the parameter, and exports that.
+@ Rather than exporting the detailed KL data, the following functions compute
+the $W$-graph respectively $W$-cells from the block of the parameter, and
+export that.
 
 @< Local function def...@>=
+void param_W_graph_wrapper(expression_base::level l)
+{ shared_module_parameter p = get<module_parameter_value>();
+  test_standard(*p,"Cannot generate block");
+  if (l==expression_base::no_value)
+    return;
+@)
+  BlockElt start; // will hold index in the block of the initial element
+  param_block block(p->rc(),p->val,start);
+  push_value(std::make_shared<int_value>(start));
+@)
+  const kl::KL_table& kl_tab = block.kl_tab(block.size()-1,false);
+   // this does the actual KL computation
+  wgraph::WGraph wg = kl::wGraph(kl_tab);
+@)
+  own_row vertices=std::make_shared<row_value>(0);
+  @< Push to |vertices| a list of pairs for each element of |wg|, each
+     consisting of a descent set and a list of outgoing labelled edges @>
+  push_value(std::move(vertices));
+  if (l==expression_base::single_value)
+    wrap_tuple<2>();
+}
+@)
 void param_W_cells_wrapper(expression_base::level l)
 { shared_module_parameter p = get<module_parameter_value>();
   test_standard(*p,"Cannot generate block");
@@ -5090,7 +5113,7 @@ void param_W_cells_wrapper(expression_base::level l)
   }
   push_value(std::move(cells));
   if (l==expression_base::single_value)
-   wrap_tuple<2>();
+    wrap_tuple<2>();
 }
 
 @ The following code was isolated so that it can be reused below.
@@ -5274,6 +5297,8 @@ install_function(dual_KL_block_wrapper,@|"dual_KL_block"
                 ,"(Param->[Param],int,mat,[vec],vec,vec)");
 install_function(partial_KL_block_wrapper,@|"partial_KL_block"
                 ,"(Param->[Param],mat,[vec],vec,vec,mat)");
+install_function(param_W_graph_wrapper,@|"W_graph"
+		,"(Param->int,[[int],[int,int]])");
 install_function(param_W_cells_wrapper,@|"W_cells"
                 ,"(Param->int,[[int],[[int],[int,int]]])");
 install_function(extended_block_wrapper,@|"extended_block"

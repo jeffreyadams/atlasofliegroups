@@ -17,6 +17,7 @@ set_type { more expensive formats, unbounded coefficients; dummy final part }
   needed. This gives the right thing for coefficient vectors of polynomials.
 }
 
+
 set fix_add = +@(vec,vec)
 set fix_sub = -@(vec,vec) { save fixed-length vector addition and subtraction }
 set dot_product = *@(vec,vec) { and scalar product }
@@ -454,6 +455,9 @@ set to_string (rat_poly(X,cs,)) = string:
 
 { nice printing of a polynomial }
 set printPoly (i_poly v) = void: prints(poly_format(v,"q"))
+set printPoly (i_poly v,string q) = void: prints(poly_format(v,q))
+{synonym}
+set show(i_poly v)=void:printPoly(v)
 
 { M=poly_mat is a polynomial matrix; e.g.
   expr> set M= poly_mat: [[ [0,1], [0,0,1]], [[0], [1]]]
@@ -495,3 +499,10 @@ set is_non_negative = (i_poly->bool): >=@vec { same condition as "dominance" }
 
 set top_left_square_block (i_poly_mat M,int size) = i_poly_mat:
   for row in M[:size] do row[:size] od
+
+set vee=i_poly:[0,1]  {polynomial v}
+set v_power(int k)=i_poly:vee^k
+set vshow(i_poly v)=void:printPoly(v,"v")
+
+{write f(q) as a polynomial in v^2=q}
+set at_v_squared(i_poly f)=i_poly: ##for a in f do [a,0] od

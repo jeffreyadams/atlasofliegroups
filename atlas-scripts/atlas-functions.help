@@ -781,6 +781,9 @@ partial_KL_block: (Param->[Param],mat,[vec],vec,vec,mat): partial KL_block
   and all other components are the same is in KL_block (except that the now
   superfluous second component of KL_block is omitted), but with the two vec
   components filtered so as to be indexed by the Bruhat interval indices only.
+W_graph: (Param->int,[[int],[int,int]]): W-graph for parameter block
+  Generate block and decompose into W-cells; return the number of the parameter
+  in the block, and the W graph in the format used for W_graph@Block below
 W_cells: (Param->int,[[int],[[int],[int,int]]]): W-cells for parameter block
   Generate block and decompose into W-cells; return the number of the parameter
   in the block, and the cell data in the format used for W_cells@Block below

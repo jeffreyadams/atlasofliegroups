@@ -19,7 +19,8 @@ template<typename C> class Safe_Poly;  // here |C| must be unsigned integral
 
 // template<typename C> class LaurentPolynomial;
 
-typedef size_t Degree; // exponent range; not stored, so no need making it short
+// |Degree| does not need to be short, but using more than 32 bits would be silly
+typedef unsigned int Degree; // exponent range; not stored
 
 }
 
