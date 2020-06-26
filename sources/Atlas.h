@@ -161,15 +161,17 @@ namespace atlas {
 
   namespace polynomials {
     template<typename C> class Polynomial;
-    template<typename C> class Safe_Poly;
-    typedef unsigned int Degree; // exponent range; not stored.
+    template<typename U> class Safe_Poly;
+    template<typename C> class PolEntry;
+    template<typename U> class SafePolEntry;
+    using Degree = unsigned int; // exponent range; not stored.
   }
   using polynomials::Polynomial;
+
   namespace size {
     template<typename C> class SizeType;
-    typedef signed char BaseType;
-    typedef unsigned char UnsignedBaseType;
-    typedef SizeType<BaseType> Size;
+    using BaseType = signed char;
+    using Size= SizeType<signed char>;
   }
 
 // we should now refrain from subsequently reading the original forward files
@@ -419,15 +421,27 @@ namespace atlas {
   }
   namespace kl {
     class KL_table;
-    typedef unsigned int KLCoeff;
-    typedef polynomials::Safe_Poly<KLCoeff> KLPol;
-    typedef unsigned int KLIndex; // $<2^{32}$ distinct polynomials for $E_8$!
-    typedef KLCoeff MuCoeff;
-    typedef std::vector<KLPol> KLStore;
-    typedef KLStore::const_reference KLPolRef;
+    using KLCoeff = unsigned int;
+    using KLPol = polynomials::Safe_Poly<KLCoeff>;
+    using KLStore = std::vector<KLPol>;
+    using KLPolRef = KLStore::const_reference;
+    using KLIndex = unsigned int; // $<2^{32}$ distinct polynomials for $E_8$!
+    using MuCoeff = KLCoeff;
   }
   using kl::KLCoeff;
   using kl::KLPol;
+  using PosPolEntry = polynomials::SafePolEntry<KLCoeff>;
+  using KL_hash_Table = HashTable<PosPolEntry,kl::KLIndex>;
+
+  namespace ext_kl {
+    class KL_table;
+    using Coeff = int;
+    using Pol = Polynomial<Coeff>;
+    using PolRef = const Pol&;
+    using KLIndex = unsigned int;
+  }
+  using IntPolEntry = polynomials::PolEntry<ext_kl::Coeff>;
+  using ext_KL_hash_Table = HashTable<IntPolEntry,ext_kl::KLIndex>;
 
   namespace standardrepk {
     class StandardRepK;	// standard representation restricted to K

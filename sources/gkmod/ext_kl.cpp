@@ -16,40 +16,6 @@
 namespace atlas {
 namespace ext_kl {
 
-class PolEntry : public Pol
-{
-public:
-  // constructors
-  PolEntry() : Pol() {} // default constructor builds zero polynomial
-  PolEntry(const Pol& p) : Pol(p) {} // lift polynomial to this class
-
-  // members required for an Entry parameter to the HashTable template
-  typedef std::vector<Pol> Pooltype;  // associated storage type
-  size_t hashCode(size_t modulus) const; // hash function
-
-  // compare polynomial with one from storage
-  bool operator!=(Pooltype::const_reference e) const;
-}; // |class KLPolEntry|
-
-inline size_t PolEntry::hashCode(size_t modulus) const
-{ const Pol& P=*this;
-  if (P.isZero()) return 0;
-  polynomials::Degree i=P.degree();
-  size_t h=P[i]; // start with leading coefficient
-  while (i-->0)
-    h= (h<<21)+(h<<13)+(h<<8)+(h<<5)+h+P[i];
-  return h & (modulus-1);
-}
-
-bool PolEntry::operator!=(PolEntry::Pooltype::const_reference e) const
-{
-  if (degree()!=e.degree()) return true;
-  if (isZero()) return false; // since degrees match
-  for (polynomials::Degree i=0; i<=degree(); ++i)
-    if ((*this)[i]!=e[i]) return true;
-  return false; // no difference found
-}
-
 
 descent_table::descent_table(const ext_block::ext_block& eb)
   : info()
@@ -128,8 +94,8 @@ descent_table::descent_table(const ext_block::ext_block& eb)
 unsigned int descent_table::col_size(BlockElt y) const
 {
   BlockElt x=length_floor(y);
-  if (prim_back_up(x,y)) // find last primitive $x$ of length less than $y$
-    return x_index(x,y)+1; //
+  if (prim_back_up(x,y)) // find last primitive |x| of length less than |y|
+    return x_index(x,y)+1; // size in one more than index of that |x| for |y|
   return 0; // no primitives below length of |y| at all
 } // |descent_table::col_size|
 
@@ -151,20 +117,21 @@ bool descent_table::extr_back_up(BlockElt& x, BlockElt y) const
   return false; // in which case |x| has crashed through 0 and should be ignored
 } // |descent_table::extr_back_up|
 
-KL_table::KL_table(const ext_block::ext_block& b, std::vector<Pol>* pool)
+KL_table::KL_table(const ext_block::ext_block& b, ext_KL_hash_Table* pol_hash)
   : aux(b)
-  , own(pool==nullptr ? new std::vector<Pol> : nullptr)
-  , storage_pool(pool==nullptr ? *own : *pool)
-  , column()
+  , pol_hash(pol_hash)
+  , own(pol_hash!=nullptr ? nullptr : new std::vector<Pol> {Pol(0),Pol(1)})
+  , storage_pool(pol_hash!=nullptr ? pol_hash->pool() : *own )
+  , column(b.size(),KLColumn()) // start with empty columns
 { // ensure first two pool entries are constant polynomials $0$, and $1$
-  if (storage_pool.empty())
-    storage_pool.push_back(Pol(0));
-  else
-    assert(storage_pool[zero]==Pol(0));
-  if (storage_pool.size()==1)
-    storage_pool.push_back(Pol(1));
-  else
-    assert(storage_pool[one]==Pol(1));
+  if (pol_hash!=nullptr and pol_hash->size()<2)
+  {
+    assert(pol_hash->size()==0);
+    pol_hash->match(Pol(0));
+    pol_hash->match(Pol(1));
+  }
+  assert(storage_pool[zero]==Pol(0));
+  assert(storage_pool[one] ==Pol(1));
 }
 
 std::pair<kl::KLIndex,bool>
@@ -182,6 +149,7 @@ std::pair<kl::KLIndex,bool>
 Pol KL_table::P(BlockElt x, BlockElt y) const
 {
   auto index = KL_pol_index(x,y);
+  assert(index.first<storage_pool.size());
   return index.second ? -storage_pool[index.first] : storage_pool[index.first];
 }
 
@@ -452,15 +420,22 @@ bool KL_table::has_direct_recursion(BlockElt y,
   return false; // none of the generators gives a direct recursion
 }
 
-
-void KL_table::fill_columns(BlockElt y)
+Poly_hash_export KL_table::polynomial_hash_table ()
 {
-  PolHash hash(storage_pool); // (re)construct hash table for the polynomials
-  if (y==0 or y>aux.block.size())
-    y=aux.block.size(); // fill whole block if no explicit stop was indicated
-  column.reserve(y);
-  while (column.size()<y)
-    fill_next_column(hash);
+  return pol_hash!=nullptr ? Poly_hash_export(pol_hash) : Poly_hash_export(*own);
+}
+
+// ensure all columns |y<limit| are computed
+void KL_table::fill_columns(BlockElt limit)
+{
+  auto hash_object = polynomial_hash_table();
+  if (limit==0)
+    limit=aux.block.size(); // fill whole block if no explicit stop was indicated
+  for (BlockElt y=aux.block.length_first(1); y<limit; ++y)
+    if (column[y].size()!=aux.col_size(y))
+    { assert(column[y].empty()); // there should not be partially filled columns
+      fill_column(y,hash_object.ref);
+    }
 }
 
 /*
@@ -527,13 +502,10 @@ Pol KL_table::extract_M(Pol& Q,unsigned d,unsigned defect) const
   return M;
 } // |KL_table::extract_M|
 
-void KL_table::fill_next_column(PolHash& hash)
+  void KL_table::fill_column(BlockElt y,PolHash& hash)
 {
-  const BlockElt y = column.size();
-  column.push_back(KLColumn());
-  if (aux.col_size(y)==0)
-    return; // there is just the non-recorded $P(y,y)=1$
-  column.back().resize(aux.col_size(y));
+  // initialise column with dummy zero values; necessary for backwards filling
+  column[y].assign(aux.col_size(y),kl::KLIndex(0));
 
   weyl::Generator s;
   BlockElt sy; // gets set to unique descent for |s| of |y|, if one can be found
@@ -543,7 +515,7 @@ void KL_table::fill_next_column(PolHash& hash)
     const int sign = aux.block.epsilon(s,sy,y);
     const BlockElt floor_y =aux.length_floor(y);
 
-    std::vector<PolEntry> cy(floor_y,(PolEntry()));
+    std::vector<IntPolEntry> cy(floor_y,(IntPolEntry()));
     std::vector<Pol>Ms(floor_y,(Pol()));
 
     // fill array |cy| with initial contributions from $(T_s+1)*c_{sy}$
@@ -580,7 +552,7 @@ void KL_table::fill_next_column(PolHash& hash)
       } // |for(u)|
 
     // finally copy relevant coefficients from |cy| array to |column[y]|
-    KLColumn::reverse_iterator it = column.back().rbegin();
+    KLColumn::reverse_iterator it = column[y].rbegin();
     for (BlockElt x=floor_y; aux.prim_back_up(x,y); it++)
       if (aux.is_descent(s,x)) // then we computed $P(x,y)$ above
         *it = hash.match(cy[x]*sign);
@@ -592,7 +564,7 @@ void KL_table::fill_next_column(PolHash& hash)
 	  *it=0; // then there can be no contribution form the Cayleys
 	else
 	{
-	  PolEntry Q = P(sx.first,y);  // computed earlier in this loop
+	  IntPolEntry Q = P(sx.first,y);  // computed earlier in this loop
 	  if (aux.block.epsilon(s,x,sx.first)<0)
 	    Q *= -1;
 	  if (sx.second!=UndefBlock)
@@ -605,13 +577,13 @@ void KL_table::fill_next_column(PolHash& hash)
 	  *it = hash.match(Q);
 	}
       }
-    assert(it==column.back().rend()); // check that we've traversed the column
+    assert(it==column[y].rend()); // check that we've traversed the column
   } // end of |if (has_direct_recursion(y,s,sy))|
   else // direct recursion was not possible
     do_new_recursion(y,hash);
 
   assert(check_polys(y));
- } // |KL_table::fill_next_column|
+ } // |KL_table::fill_column|
 
 /*
   Basic idea for new recursion: if some $s$ is real nonparity for $y$ and a
@@ -659,7 +631,7 @@ void KL_table::do_new_recursion(BlockElt y,PolHash& hash)
 #endif
 
   // for the primitive |x| we transfer to |column.back()| so |P(xx,y)| works
-  auto out_it = column.back().rbegin();
+  auto out_it = column[y].rbegin();
 
   for (BlockElt x=floor_y; aux.prim_back_up(x,y); ++out_it)
   { // compute $P_{x,y}$ for all |x| primitive for |y|, and store at |*out_it|
@@ -848,6 +820,46 @@ void KL_table::do_new_recursion(BlockElt y,PolHash& hash)
 } // |KL_table::do_new_recursion|
 
 
+void KL_table::swallow(KL_table&& sub, const BlockEltList& embed)
+{
+  if (pol_hash!=nullptr and sub.pol_hash==pol_hash) // case of shared hash tables
+  {
+    for (BlockElt y=0; y<sub.aux.block.size(); ++y)
+      if (sub.column[y].size()==sub.aux.col_size(y) and column[embed[y]].empty())
+      { // then transfer |sub.column[y]| to new block
+	auto& cur_col=column[embed[y]];
+	cur_col.assign(aux.col_size(embed[y]),zero); // default to 0
+	BlockElt x=sub.aux.length_floor(y);
+	const auto desc = sub.descent_set(y);
+	for (auto it=sub.column[y].crbegin(); sub.aux.prim_back_up(x,desc); ++it)
+	  cur_col.at(aux.x_index(embed[x],embed[y])) = *it;
+      }
+    return;
+  }
+  // distict polynomial hash tables requires setting up polynomial translation
+  std::vector<kl::KLIndex> poly_trans(sub.storage_pool.size(),KLIndex(-1));
+  {
+    auto hash_object = polynomial_hash_table ();
+    auto& hash = hash_object.ref;
+    for (const auto& c : sub.column)
+      for (auto ind : c)
+	poly_trans[ind] = hash.match(sub.storage_pool[ind]);
+    // besides filling |poly_trans| this also extends |storage_pool| as needed
+  }
+
+  // it remains to do the same as above but passing values through |poly_trans|
+  for (BlockElt y=0; y<sub.aux.block.size(); ++y)
+    if (sub.column[y].size()==sub.aux.col_size(y) and column[embed[y]].empty())
+    { // then transfer |sub.column[y]| to new block
+      auto& cur_col=column[embed[y]];
+      cur_col.assign(aux.col_size(embed[y]),zero); // default to 0
+      BlockElt x=sub.aux.length_floor(y);
+      const auto desc = sub.descent_set(y);
+      for (auto it=sub.column[y].crbegin(); sub.aux.prim_back_up(x,desc); ++it)
+	cur_col.at(aux.x_index(embed[x],embed[y])) = poly_trans[*it];
+    }
+}
+
 bool check(const Pol& P_sigma, const KLPol& P)
 {
   if (P_sigma.isZero())
@@ -906,7 +918,8 @@ void ext_KL_matrix (const StandardRepr p, const int_Matrix& delta,
     eblock.element(entry_element+1);
 
   std::vector<ext_kl::Pol> pool;
-  KL_table twisted_KLV(eblock,&pool);
+  ext_KL_hash_Table hash(pool,4);
+  KL_table twisted_KLV(eblock,&hash);
   twisted_KLV.fill_columns(size); // fill up to and including |p|
 
   int_Vector pol_value (pool.size()); // polynomials evaluated as $q=-1$

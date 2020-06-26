@@ -1795,12 +1795,13 @@ ext_block::ext_block // for external twist; old style blocks
    const WeightInvolution& delta)
   : parent(block)
   , orbits(fold_orbits(G.rootDatum(),delta))
-  , folded(block.Dynkin().folded(orbits))
-  , d_delta(delta)
   , info()
   , data(orbits.size()) // create that many empty vectors
   , l_start(parent.length(parent.size()-1)+2,0)
+  , pol_hash(nullptr)
   , KL_ptr(nullptr)
+  , folded_diagram(block.Dynkin().folded(orbits))
+  , delta(delta)
 {
   BitMap fixed_points(block.size());
 
@@ -1825,11 +1826,13 @@ ext_block::ext_block // for an external twist
    bool verbose)
   : parent(block)
   , orbits(block.fold_orbits(delta))
-  , folded(block.Dynkin().folded(orbits))
-  , d_delta(delta)
   , info()
   , data(orbits.size()) // create that many empty vectors
   , l_start(parent.length(parent.size()-1)+2,0)
+  , pol_hash(nullptr)
+  , KL_ptr(nullptr)
+  , folded_diagram(block.Dynkin().folded(orbits))
+  , delta(delta)
 {
   BitMap fixed_points(block.size());
 
@@ -2053,7 +2056,7 @@ BlockEltPair ext_block::Cayleys(weyl::Generator s, BlockElt n) const
 // the signs are recorded in |eb|, and printed to |cout| if |verbose| holds.
 bool ext_block::check(const param_block& block, bool verbose)
 {
-  context ctxt (block.context(),delta(),block.gamma());
+  context ctxt (block.context(),delta,block.gamma());
   containers::sl_list<param> links;
   for (BlockElt n=0; n<size(); ++n)
   { auto z=this->z(n);
@@ -2234,13 +2237,34 @@ ext_block::first_descent_among(RankFlags singular_orbits, BlockElt y) const
   return rank();
 }
 
-const ext_kl::KL_table& ext_block::kl_table(BlockElt limit)
+const ext_kl::KL_table& ext_block::kl_table
+  (BlockElt limit, ext_KL_hash_Table* pol_hash)
 {
-  if (KL_ptr.get()==nullptr)
-    KL_ptr.reset(new ext_kl::KL_table(*this,nullptr));
+  if (KL_ptr==nullptr)
+    KL_ptr.reset(new ext_kl::KL_table(*this,pol_hash));
   KL_ptr->fill_columns(limit);
   return *KL_ptr;
 }
+
+void ext_block::swallow // integrate older partial block, using |embed| mapping
+  (ext_block&& sub, const BlockEltList& embed)
+{
+  if (sub.KL_ptr!=nullptr)
+  {
+    if (KL_ptr==nullptr)
+      KL_ptr.reset(new ext_kl::KL_table(*this,pol_hash));
+
+    // restrict the translation vector to its |sub| elements (|delta|-fixed ones)
+    BlockEltList eblock_embed; eblock_embed.reserve(sub.size());
+    for (BlockElt x=0; x<sub.size(); ++x)
+    {
+      eblock_embed.push_back(element(embed[sub.z(x)]));
+      assert(eblock_embed.back()!=size()); // check that lookup succeeded
+    }
+    KL_ptr->swallow(std::move(*sub.KL_ptr),eblock_embed);
+  }
+}
+
 
 // reduce matrix to rows for extended block elements without singular descents
 // the other rows are not removed, but the result lists the rows to retain
@@ -2408,7 +2432,7 @@ bool check_braid
   if (s==t)
     return true;
   static const unsigned int cox_entry[] = {2, 3, 4, 6};
-  unsigned int len = cox_entry[b.Dynkin().edge_multiplicity(s,t)];
+  unsigned int len = cox_entry[b.folded_diagram.edge_multiplicity(s,t)];
 
   BitMap used(b.size());
   containers::queue<BlockElt> to_do { x };

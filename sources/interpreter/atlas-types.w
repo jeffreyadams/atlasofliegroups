@@ -4840,7 +4840,8 @@ void KL_block_wrapper(expression_base::level l)
   param_block block(p->rc(),p->val,start);
   @< Push a list of parameter values for the elements of |block| @>
   push_value(std::make_shared<int_value>(start));
-  const kl::KL_table& kl_tab = block.kl_tab(block.size()-1,false);
+  const kl::KL_table& kl_tab =
+    block.kl_tab(block.size()-1,nullptr,false);
 @)
   @< Extract from |kl_tab| an |own_matrix M@;| and |own_row polys@;| @>
 @)
@@ -4926,7 +4927,7 @@ void dual_KL_block_wrapper(expression_base::level l)
   @< Push a reversed list of parameter values for the elements of |block| @>
   push_value(std::make_shared<int_value>(size1-start));
   auto dual_block = blocks::Bare_block::dual(block);
-  const kl::KL_table& kl_tab = dual_block.kl_tab(size1,false);
+  const kl::KL_table& kl_tab = dual_block.kl_tab(size1,nullptr,false);
 @)
   @< Extract from |kl_tab| an |own_matrix M@;| and |own_row polys@;| @>
 @)
@@ -4993,7 +4994,7 @@ void partial_KL_block_wrapper(expression_base::level l)
   param_block block(p->rc(),p->val);
   @< Push a list of parameter values for the elements of |block| @>
 
-  const kl::KL_table& kl_tab = block.kl_tab(block.size()-1,false);
+  const kl::KL_table& kl_tab = block.kl_tab(block.size()-1,nullptr,false);
   // compute KL polynomials, silently
 
   own_matrix M = std::make_shared<matrix_value>(int_Matrix(kl_tab.size()));
@@ -5065,7 +5066,7 @@ void param_W_graph_wrapper(expression_base::level l)
   param_block block(p->rc(),p->val,start);
   push_value(std::make_shared<int_value>(start));
 @)
-  const kl::KL_table& kl_tab = block.kl_tab(block.size()-1,false);
+  const kl::KL_table& kl_tab = block.kl_tab(block.size()-1,nullptr,false);
    // this does the actual KL computation
   wgraph::WGraph wg = kl::wGraph(kl_tab);
 @)
@@ -5086,7 +5087,7 @@ void param_W_cells_wrapper(expression_base::level l)
   BlockElt start; // will hold index in the block of the initial element
   param_block block(p->rc(),p->val,start);
 @)
-  const kl::KL_table& kl_tab = block.kl_tab(block.size()-1,false);
+  const kl::KL_table& kl_tab = block.kl_tab(block.size()-1,nullptr,false);
    // this does the actual KL computation
   wgraph::WGraph wg = kl::wGraph(kl_tab);
   wgraph::DecomposedWGraph dg(wg);
@@ -5171,7 +5172,7 @@ void extended_block_wrapper(expression_base::level l)
 into a list of parameters and three tables in the form of matrices.
 
 @< Construct the extended block... @>=
-{ ext_block::ext_block eb(block,delta->val);
+{ ext_block::ext_block eb(block,delta->val,p->rt().shared_poly_table());
   own_row params = std::make_shared<row_value>(eb.size());
   int_Matrix types(eb.size(),eb.rank());
 @/int_Matrix links0(eb.size(),eb.rank());
@@ -6171,7 +6172,7 @@ void twisted_deform_wrapper(expression_base::level l)
   BlockElt entry_elem;
   auto& block = rt.lookup(p->val,entry_elem);
     // though by reference, does not change |p->val|
-  auto& eblock = block.extended_block(delta);
+  auto& eblock = block.extended_block(rt.shared_poly_table());
 @)
   RankFlags singular = block.singular(p->val.gamma());
   RankFlags singular_orbits;
@@ -6566,8 +6567,9 @@ void raw_ext_KL_wrapper (expression_base::level l)
   else
   {
     ext_block::ext_block eb(block,delta->val);
-    std::vector<Polynomial<int> > pool;
-    ext_kl::KL_table klt(eb,&pool); klt.fill_columns();
+    std::vector<ext_kl::Pol> pool;
+    ext_KL_hash_Table hash(pool,4);
+    ext_kl::KL_table klt(eb,&hash); klt.fill_columns();
   @)
     own_matrix M = std::make_shared<matrix_value>(int_Matrix(klt.size()));
     for (unsigned int y=1; y<klt.size(); ++y)

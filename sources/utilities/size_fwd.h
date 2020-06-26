@@ -17,12 +17,11 @@ namespace atlas {
 namespace size {
 
   template<typename C> class SizeType;
-  typedef signed char BaseType; // safe for RankMax<=128 (for C128 factor 2^255)
-  typedef unsigned char UnsignedBaseType;
-  typedef SizeType<BaseType> Size;
+  using BaseType = signed char; // safe for RankMax<=128 (for C128 factor 2^255)
+  using Size = SizeType<BaseType>;
 
-}
+} // |namespace size|
 
-}
+} // |namespace atlas|
 
 #endif

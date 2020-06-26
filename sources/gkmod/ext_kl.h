@@ -21,9 +21,6 @@ namespace atlas {
 
 namespace ext_kl {
 
-typedef Polynomial<int> Pol;
-typedef const Pol& PolRef;
-
 Pol qk_plus_1(int k);
 inline Pol q_plus_1() { return qk_plus_1(1); }
 Pol qk_minus_1(int k);
@@ -96,13 +93,23 @@ class descent_table
 
 }; // |descent_table|
 
-class PolEntry; // class definition will be given in the implementation file
+struct Poly_hash_export // auxiliary to export possibly temporary hash table
+{
+  std::unique_ptr<ext_KL_hash_Table> own; // maybe own the temporary
+  ext_KL_hash_Table& ref;
+
+  Poly_hash_export(ext_KL_hash_Table* hash_ptr)
+  : own(nullptr), ref(*hash_ptr) {}
+  Poly_hash_export(std::vector<Pol>& storage)
+  : own(new ext_KL_hash_Table(storage,4)), ref(*own) {}
+}; // |Poly_hash_export|
 
 class KL_table
 {
   const descent_table aux;
+  ext_KL_hash_Table* pol_hash; // maybe pointer to shared KL polynomial table
   std::unique_ptr<std::vector<Pol> > own; // points to |storage_pool| if we own
-  std::vector<Pol>& storage_pool; // the distinct actual polynomials, maybe owned
+  const std::vector<Pol>& storage_pool; // the distinct actual polynomials
 
   using KLColumn = std::vector<kl::KLIndex>;
   std::vector<KLColumn> column; // columns are lists of polynomial pointers
@@ -112,7 +119,7 @@ class KL_table
   // use |enum| rather than |static constxepr kl::KLIndex|: avoid any references
 
  public:
-  KL_table(const ext_block::ext_block& b, std::vector<Pol>* pool);
+  KL_table(const ext_block::ext_block& b, ext_KL_hash_Table* poly_hash);
 
   size_t rank() const { return aux.block.rank(); }
   size_t size() const { return column.size(); }
@@ -142,11 +149,13 @@ class KL_table
   // coefficients in $P_{x,y}$ of $q^{(l(y/x)-i)/2}$ (use with i=1,2,3)
   int mu(short unsigned int i,BlockElt x, BlockElt y) const;
 
-  // manipulator
-  void fill_columns(BlockElt y=0);
+  // manipulators
+  void fill_columns(BlockElt limit=0); // do all |y<limit|; if |limit==0| do all
+  Poly_hash_export polynomial_hash_table ();
+  void swallow (KL_table&& sub, const BlockEltList& embed);
  private:
-  typedef HashTable<PolEntry,kl::KLIndex> PolHash;
-  void fill_next_column(PolHash& hash);
+  using PolHash = HashTable<IntPolEntry,kl::KLIndex>;
+  void fill_column(BlockElt y,PolHash& hash);
 
   // component of basis element $a_x$ in product $(T_s+1)C_{sy}$
   Pol product_comp (BlockElt x, weyl::Generator s, BlockElt sy) const;
@@ -169,7 +178,7 @@ class KL_table
 
   bool check_polys(BlockElt y) const;
 
-}; // |KL_table|
+}; // |ext_kl::KL_table|
 
 // compute matrix of extended KLV polynomials evaluated at $q=-1$
 void ext_KL_matrix (const StandardRepr p, const int_Matrix& delta,

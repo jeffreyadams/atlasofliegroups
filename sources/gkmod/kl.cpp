@@ -80,7 +80,7 @@ namespace kl {
   const KLPol Zero;
 
 // Polynomial $1.q^0$.
-  const KLPol One(0,KLCoeff(1)); // since |Polynomial(d,1)| gives |1.q^d|.
+  const KLPol One(KLCoeff(1)); // since |Polynomial(d,1)| gives |1.q^d|.
 
 /*****************************************************************************
 
@@ -88,49 +88,19 @@ namespace kl {
 
  *****************************************************************************/
 
-/* methods of KLPolEntry */
-
-
-/*
-  Calculate a hash value in [0,modulus[, where modulus is a power of 2
-
-  The function is in fact evaluation of the polynomial (with coefficients
-  interpreted in $\Z$) at the point $2^{21}+2^{13}+2^8+2^5+1=2105633$, which can
-  be calculated quickly (without multiplications) and which gives a good spread
-  (which is not the case if 2105633 is replaced by a small number, because the
-  evaluation values will not grow fast enough for low degree polynomials!).
-*/
-inline size_t KLPolEntry::hashCode(size_t modulus) const
-{ const KLPol& P=*this;
-  if (P.isZero()) return 0;
-  polynomials::Degree i=P.degree();
-  size_t h=P[i]; // start with leading coefficient
-  while (i-->0) h= (h<<21)+(h<<13)+(h<<8)+(h<<5)+h+P[i];
-  return h & (modulus-1);
-}
-
-bool KLPolEntry::operator!=(KLPolEntry::Pooltype::const_reference e) const
-{
-  if (degree()!=e.degree()) return true;
-  if (isZero()) return false; // since degrees match
-  for (polynomials::Degree i=0; i<=degree(); ++i)
-    if ((*this)[i]!=e[i]) return true;
-  return false; // no difference found
-}
-
 /* methods of KL_table */
 
 
-KL_table::KL_table(const Block_base& b)
+KL_table::KL_table(const Block_base& b, KL_hash_Table* pol_hash)
   : klsupport::KLSupport(b) // construct unfilled support object from block
   , d_holes(b.size()) // start with ambition to fill everything
   , d_KL(b.size()) // create empty slots for whole block; doesn't cost much
   , d_mu(b.size())
-  , d_store(2)
+  , pol_hash(pol_hash)
+  , own(pol_hash!=nullptr ? nullptr : new KLStore{Zero,One})
+  , storage_pool(pol_hash!=nullptr ? pol_hash->pool() : *own)
 {
   d_holes.fill();
-  d_store[zero]=Zero; // ensure these polynomials are present
-  d_store[one]=One;   // at expected indices, even if maybe absent in |d_KL|
 }
 
 /******** copy, assignment and swap ******************************************/
@@ -146,21 +116,22 @@ KL_table::KL_table(const Block_base& b)
 
   Since |d_KL| holds all polynomials for primitive pairs $(x,y)$, this is just a
   lookup function. Find the index |inx| of the primitivisation of |x| in the
-  column |kl_col==d_kl[y]| (done in using quick lookup in |prim_index|). If this
+  column |kl_col==d_KL[y]| (done in using quick lookup in |prim_index|). If this
   has made |inx| out of bounds (in particular if |prim_index| indicates a
-  dead-end) return a zero polynomial. Otherwise fetch from |d_KL| and |d_store|.
-  */
+  dead-end) return a zero polynomial. Otherwise fetch from |d_KL| and
+  |storage_pool|.
+*/
 KLPolRef KL_table::KL_pol(BlockElt x, BlockElt y) const
 {
   const auto& kl_col = d_KL[y];
   unsigned int inx = prim_index(x,descent_set(y)); // can handle |x==UndefBlock|
 
   if (inx>=kl_col.size()) // l(x)>=l(y), includes case x==-1: no primitivization
-    return d_store[inx==self_index(y) ? one : zero];
-  return d_store[kl_col[inx]];
+    return storage_pool[inx==self_index(y) ? one : zero];
+  return storage_pool[kl_col[inx]];
 }
 
-// The same, but just return the index into |d_store| that gives $P_{x,y}$
+// The same, but just return the index into |storage_pool| that gives $P_{x,y}$
 KLIndex KL_table::KL_pol_index(BlockElt x, BlockElt y) const
 {
   const auto& kl_col = d_KL[y];
@@ -205,8 +176,10 @@ BitMap KL_table::primitives (BlockElt y) const
 
 /******** manipulators *******************************************************/
 
-
-KLHash KL_table::pol_hash () { return KLHash(d_store); }
+Poly_hash_export KL_table::polynomial_hash_table ()
+{
+  return pol_hash!=nullptr ? Poly_hash_export(pol_hash) : Poly_hash_export(*own);
+}
 
 // Fill (or extend) the KL- and mu-lists.
 void KL_table::fill(BlockElt y, bool verbose)
@@ -230,7 +203,7 @@ void KL_table::fill(BlockElt y, bool verbose)
       silent_fill(y);
   }
   catch (std::bad_alloc)
-  { // roll back, and transform failed allocation into MemoryOverflow
+  { // roll back, and transform failed allocation into |error::MemoryOverflow|
     std::cerr << "\n memory full, KL computation abondoned.\n";
     for (auto it = d_holes.begin(); it() and *it<=y; ++it)
     { // remove any partially written columns
@@ -376,7 +349,7 @@ inline BlockEltPair KL_table::inverse_Cayley(weyl::Generator s, BlockElt y) cons
   Column of $y$ is the set of all $P_{x,y}$ for $x<y$
 */
 void KL_table::fill_KL_column
-  (std::vector<KLPol>& klv, BlockElt y, KLHash& hash)
+  (std::vector<KLPol>& klv, BlockElt y, KL_hash_Table& hash)
 {
   prepare_prim_index(descent_set(y)); // so looking up |KL_pol(x,y)| will be OK
 
@@ -570,7 +543,7 @@ void KL_table::mu_correction(const BlockEltList& extremals,
    type 2 case; we must treat them outside the loop over primitive elements.
  */
 void KL_table::complete_primitives(const std::vector<KLPol>& klv, BlockElt y,
-				   KLHash& hash)
+				   KL_hash_Table& hash)
 {
   KL_column& KL = d_KL[y]; // the column that we must write to
   KL.resize(col_size(y)); // create slots for all pertinent elements |x|
@@ -618,7 +591,7 @@ void KL_table::complete_primitives(const std::vector<KLPol>& klv, BlockElt y,
 
 /*
   Compute polynomials $P_{x,y}$ for all $x$ of length less than and primitive
-  for |y|, look them up and return a vector of their indices in |d_store|.
+  for |y|, look them up and return a vector of their indices in |storage_pool|.
 
   These KL polynomials are computed by a recursion formula designed for those
   elements |y| for which the direct recursion does not apply.
@@ -663,7 +636,7 @@ void KL_table::complete_primitives(const std::vector<KLPol>& klv, BlockElt y,
   it only contributes $P_{y,y}=1$; the |while| loop will be executed 0 times.
 */
 void KL_table::new_recursion_column
-  (std::vector<KLPol>& cur_col, BlockElt y, KLHash& hash)
+  (std::vector<KLPol>& cur_col, BlockElt y, KL_hash_Table& hash)
 {
   const unsigned int l_y = length(y);
   const auto desc_y = descent_set(y);
@@ -872,9 +845,11 @@ KLPol KL_table::mu_new_formula
 void KL_table::silent_fill(BlockElt last_y)
 {
   std::vector<KLPol> klv; klv.reserve(block().size()); // enough working storage
+
+  const auto hash_object = polynomial_hash_table();
+  auto& hash = hash_object.ref;
   try
   {
-    KLHash hash(d_store); // (re-)construct a hastable for polynomial storage
     // fill the lists
     for (auto it = d_holes.begin(); it() and *it<=last_y; ++it)
     {
@@ -895,24 +870,26 @@ void KL_table::silent_fill(BlockElt last_y)
 void KL_table::verbose_fill(BlockElt last_y)
 {
   std::vector<KLPol> klv; klv.reserve(block().size()); // enough working storage
+
+  const auto hash_object = polynomial_hash_table();
+  auto& hash = hash_object.ref;
+
+  size_t minLength = length(first_hole()); // length of first new |y|
+  size_t maxLength = length(last_y<size() ? last_y : size()-1);
+
+  //set timers for KL computation
+  std::time_t time0;
+  std::time(&time0);
+  std::time_t time;
+
+  struct rusage usage; //holds Resource USAGE report
+  size_t storesize = 0; // previous size of storage_pool
+  size_t polsize = 0; // running total of sum of (polynomial degrees+1)
+
+  size_t kl_size = 0;
+
   try
   {
-    KLHash hash(d_store,4);
-
-    size_t minLength = length(first_hole()); // length of first new |y|
-    size_t maxLength = length(last_y<size() ? last_y : size()-1);
-
-    //set timers for KL computation
-    std::time_t time0;
-    std::time(&time0);
-    std::time_t time;
-
-    struct rusage usage; //holds Resource USAGE report
-    size_t storesize = 0; // previous size of d_store
-    size_t polsize = 0; // running total of sum of (polynomial degrees+1)
-
-    size_t kl_size = 0;
-
     for (size_t l=minLength; l<=maxLength; ++l) // by length for progress report
     {
       BlockElt y_start = l==minLength ? first_hole() : length_less(l);
@@ -928,17 +905,18 @@ void KL_table::verbose_fill(BlockElt last_y)
 
       // now length |l| is completed
       size_t p_capacity // currently used memory for polynomials storage
-	= hash.capacity()*sizeof(KLIndex) + d_store.capacity()*sizeof(KLPol);
-      for (size_t i=storesize; i<d_store.size(); ++i)
-	polsize+= (d_store[i].degree()+1)*sizeof(KLCoeff);
-      storesize = d_store.size(); // avoid recounting polynomials!
+	= hash.capacity()*sizeof(KLIndex)
+	+ storage_pool.capacity()*sizeof(KLPol);
+      for (size_t i=storesize; i<storage_pool.size(); ++i)
+	polsize+= (storage_pool[i].degree()+1)*sizeof(KLCoeff);
+      storesize = storage_pool.size(); // avoid recounting polynomials!
       p_capacity += polsize;
 
       std::cerr // << "t="    << std::setw(5) << deltaTime << "s.
 	<< "l=" << std::setw(3) << l // completed length
 	<< ", y="  << std::setw(6)
 	<< y_limit-1 // last y value done
-	<< ", polys:"  << std::setw(11) << d_store.size()
+	<< ", polys:"  << std::setw(11) << storage_pool.size()
 	<< ", mat:"  << std::setw(11) << kl_size
 	<<  std::endl;
       unsigned cputime, resident; //memory usage in megabytes
@@ -962,7 +940,7 @@ void KL_table::verbose_fill(BlockElt last_y)
     double deltaTime = difftime(time, time0);
     std::cerr << std::endl;
     std::cerr << "Total elapsed time = " << deltaTime << "s." << std::endl;
-    std::cerr << d_store.size() << " polynomials, "
+    std::cerr << storage_pool.size() << " polynomials, "
 	      << kl_size << " matrix entries."<< std::endl;
 
     std::cerr << std::endl;
@@ -975,14 +953,16 @@ void KL_table::verbose_fill(BlockElt last_y)
 
 }
 
-void KL_table::swallow (KL_table&& sub, const BlockEltList& embed, KLHash& hash)
+void KL_table::swallow
+  (KL_table&& sub, const BlockEltList& embed, KL_hash_Table& hash)
 {
 #ifndef NDEBUG
   check_sub(sub,embed);
 #endif
-  std::vector<KLIndex> poly_trans(sub.d_store.size());;
-  for (KLIndex i=0; i<sub.d_store.size(); ++i)
-    poly_trans[i]=hash.match(sub.d_store[i]); // should also extend |d_store|
+  // set up polynomial translation while ensuring those of |sub| are known here
+  std::vector<KLIndex> poly_trans; poly_trans.reserve(sub.storage_pool.size());
+  for (const auto& poly : sub.storage_pool)
+    poly_trans.push_back(hash.match(poly)); // this also extends |storage_pool|
 
   for (BlockElt z=0; z<sub.block().size(); ++z)
     if (not sub.d_holes.isMember(z) and d_holes.isMember(embed[z]))

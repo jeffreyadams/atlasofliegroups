@@ -28,10 +28,6 @@ namespace atlas {
 
 namespace kl {
 
-class KLPolEntry; // class definition will given in the implementation file
-
-using KLHash = HashTable<KLPolEntry,KLIndex>;
-
 /******** function declarations *********************************************/
 
 
@@ -52,6 +48,16 @@ using KL_column = std::vector<KLIndex>;
 using Mu_column = std::vector<Mu_pair>;
 using Mu_list = containers::sl_list<Mu_pair>;
 
+struct Poly_hash_export // auxiliary to export possibly temporary hash table
+{
+  std::unique_ptr<KL_hash_Table> own; // maybe own the temporary
+  KL_hash_Table& ref;
+
+  Poly_hash_export(KL_hash_Table* hash_ptr)
+  : own(nullptr), ref(*hash_ptr) {}
+  Poly_hash_export(KLStore& storage)
+  : own(new KL_hash_Table(storage,4)), ref(*own) {}
+}; // |Poly_hash_export|
 
 /*
   |KL_table| is a class that Calculates and stores the
@@ -69,7 +75,10 @@ class KL_table
 // Entry |d_mu[y]| is a vector of pairs of an $x$ and corresponding |mu(x,y)|
   std::vector<Mu_column> d_mu;   // lists of $x$'s and their |mu|-coefficients
 
-  KLStore d_store; // the distinct actual polynomials
+  KL_hash_Table* const pol_hash; // maybe pointer to shared KL polynomial table
+  std::unique_ptr<KLStore> own;  // holds object for |storage_pool| if we own
+
+  const KLStore& storage_pool;
 
   // the constructors will ensure that |d_store| contains 0, 1 at beginning
   enum { zero = 0, one  = 1 }; // indices of polynomials 0,1 in |d_store|
@@ -85,7 +94,7 @@ class KL_table
  public:
 
 // constructors and destructors
-  KL_table(const Block_base&); // construct initial base object
+  KL_table(const Block_base&, KL_hash_Table* pol_hash=nullptr);
 
 // accessors
 
@@ -109,7 +118,7 @@ class KL_table
 
 
   // List of all non-zero KL polynomials for the block, in generation order
-  const KLStore& pol_store() const { return d_store; }
+  const KLStore& pol_store() const { return storage_pool; }
 
   const KL_column& KL_data(BlockElt y) const { return d_KL[y]; }
 
@@ -129,9 +138,9 @@ class KL_table
      fill(size()-1,verbose); // simulate forbidden first default argument
   }
 
-  KLHash pol_hash ();
+  Poly_hash_export polynomial_hash_table ();
 
-  void swallow (KL_table&& sub, const BlockEltList& embed, KLHash& hash);
+  void swallow (KL_table&& sub, const BlockEltList& embed, KL_hash_Table& hash);
 
   // private methods used during construction
  private:
@@ -147,41 +156,20 @@ class KL_table
   void silent_fill(BlockElt last_y); // called by public |fill| when not verbose
   void verbose_fill(BlockElt last_y); // called by public |fill| when verbose
 
-  void fill_KL_column(std::vector<KLPol>& klv, BlockElt y, KLHash& hash);
+  void fill_KL_column(std::vector<KLPol>& klv, BlockElt y, KL_hash_Table& hash);
   void recursion_column(BlockElt y, weyl::Generator s,
 			std::vector<KLPol>& klv);
   void mu_correction(const BlockEltList& extremals,
 		     RankFlags desc_y, BlockElt sy, weyl::Generator s,
 		     std::vector<KLPol>& klv);
   void complete_primitives(const std::vector<KLPol>& klv, BlockElt y,
-			   KLHash& hash);
-  void new_recursion_column(std::vector<KLPol>& klv, BlockElt y, KLHash& hash);
+			   KL_hash_Table& hash);
+  void new_recursion_column(std::vector<KLPol>& klv, BlockElt y,
+			    KL_hash_Table& hash);
   KLPol mu_new_formula
     (BlockElt x, BlockElt y, weyl::Generator s, const Mu_list& muy);
 
 }; // |class KL_table|
-
-// we wrap |KLPol| into a class |KLPolEntry| that can be used in a |HashTable|
-
-/* This associates the type |KLStore| as underlying storage type to |KLPol|,
-   and adds the methods |hashCode| (hash function) and |!=| (unequality), for
-   use by the |HashTable| template.
- */
-class KLPolEntry : public KLPol
-{
-public:
-  // constructors
-  KLPolEntry() : KLPol() {} // default constructor builds zero polynomial
-  KLPolEntry(const KLPol& p) : KLPol(p) {} // lift polynomial to this class
-
-  // members required for an Entry parameter to the HashTable template
-  typedef KLStore Pooltype;		   // associated storage type
-  size_t hashCode(size_t modulus) const; // hash function
-
-  // compare polynomial with one from storage
-  bool operator!=(Pooltype::const_reference e) const;
-
-}; // |class KLPolEntry|
 
 
 } // |namespace kl|
