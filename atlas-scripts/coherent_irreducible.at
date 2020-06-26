@@ -148,6 +148,7 @@ set coherent_irr_new (ParamPol P,[int] w) = ParamPol:coherent_irr(block_of(P.fir
 set coherent_irr_new (Param p,WeylElt w) = ParamPol:coherent_irr(block_of(p),W_graph_of(p),p,w)
 set coherent_irr_new (ParamPol P,WeylElt w) = ParamPol:coherent_irr(block_of(P.first_param),W_graph_of(P.first_param),P,w)
 
+
 {-----------------------Hecke action-------------------}
 
 {the action of \tilde T_alpha=v^{-1}(-T_alpha+v^2)
