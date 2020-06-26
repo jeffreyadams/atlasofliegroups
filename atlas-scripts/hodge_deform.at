@@ -55,7 +55,6 @@ set hodge_compress ([Param] B, mat KL_mat, [i_poly] polys, vec stops, vec surviv
   , survivor_lengths { length mapping }
   )
 
-set vee=i_poly:[0,1]  {polynomial v}
 {Q(v^{-1}), this is a Laurent polynomial so shouldn't be needed/used,
 except in the subsequent function}
 set Q_v_inverse(i_poly f)=reverse(f)

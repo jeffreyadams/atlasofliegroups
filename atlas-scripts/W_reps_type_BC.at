@@ -50,13 +50,14 @@ set symbol_ranks (Symbol S) = (int,int):
 
 { Orbit -> Symbol (injective map) }
 set symbol (Orbit P) = Symbol:
-   if is_even(#P) then P#:=0 { extend for odd length } fi;
+   if is_even(sum(P)) {type C} and is_odd(#P) then P#:=0 { extend to make length even } fi;
    let e = { transform partition into strictly increasing sequence }
            for i:#P do P~[i]+i od
-   then split = [bool,int]: for x in e do (x.is_even,x\2) od
-in [ ## for (b,n) in split do if b then [n] else [] fi od
-   , ## for (b,n) in split do if b then [] else [n] fi od
-   ]
+   then split = [bool,int]: for x in e do (x.is_even,x\2) od then
+   x=## for (b,n) in split do if b then [n] else [] fi od,
+   y=## for (b,n) in split do if b then [] else [n] fi od
+   in
+   if is_even(sum(P)) then [x,y] else [y,x] fi 
 
 set symbol_C (Orbit P) = Symbol:
    assert(is_valid("C",P),"not a type C orbit"); symbol(P)
@@ -82,8 +83,13 @@ set wrep (Symbol S) = Hn_rep:
   Use |core_quotient_2|, but swap quotient to match |P.symbol.wrep|
   The reason is that |symbol@Orbit| uses |P~[i]+i| without |-1|, flipping parity
 }
-set wrep (Orbit P) = Hn_rep:
+set wrep_orig (Orbit P) = Hn_rep:
    let (d,mu,nu) = core_quotient_2(P) in assert(=d,"Illegal partition"); (nu,mu)
+
+{this is correct in types B and C, see Carter pp. 421-422}
+set wrep (Orbit P) = Hn_rep:
+   let (d,mu,nu) = core_quotient_2(P) in
+   if is_even(sum(P)) then (nu,mu) else (mu,nu) fi 
 
 {Hn_rep to Symbol}
 set symbol (Hn_rep(p,q)) = Symbol:

@@ -147,9 +147,16 @@ set show(SpringerTable st)=void:
 let orbits=st.root_datum.orbits in
 tabulate(["i","O","d(O)","dd(O)","pi","special"] #
  for O@i in orbits do
-  let O_d=prints(i);st.dual_map(O) then
+  let O_d=st.dual_map(O) then
   O_dd=st.dual_map_i(O_d) then
   special=st.is_special(O) then
   sigma_index=st.springer(O) in
   [i.to_string,O.diagram.to_string,O_d.diagram.to_string,O_dd.diagram.to_string,sigma_index.to_string,special.to_string]
  od)
+
+set springer_inverse(SpringerTable st,int special_character_number)=ComplexNilpotent:
+st.orbits[first(for i:#st.orbits do st.springer(st.orbits[i])=special_character_number od)]
+
+set springer_inverse(SpringerTable st)=(int->ComplexNilpotent):(int j):springer_inverse(st,j)
+
+

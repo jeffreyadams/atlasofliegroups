@@ -717,7 +717,6 @@ prints(new_line,"Summary of weak packets:");for wp@i in m do
 prints("------------------------------------------",new_line,rf[i]); show(wp) od
 
 
-
 {-----------------moved from thta_induced_unipotents.at------}
 
 {allow a central shift}
