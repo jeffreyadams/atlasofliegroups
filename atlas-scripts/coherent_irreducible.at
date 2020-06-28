@@ -417,3 +417,36 @@ w=G.w0.word then
 p=G.trivial
 in
 (G,p,b,g,gs,w)
+
+set is_positive(hodgeParamLaurentPol hplp)=bool:
+all(for ((v,),) in rearrange(hplp) do is_non_negative(v) od)
+
+{keep all the intermediate results}
+set S_inv_plus([Param] params,WGraph graph, hodgeParamLaurentPol hplp,[int] w)=
+let list=[hodgeParamLaurentPol]:[] then
+terms=for j in w ~ do
+ let new=S_inv(params,graph,hplp,j) then
+ hplp=new in
+ new
+od in
+(terms,hplp)
+
+{G should be split}
+set h_test(RealForm G)=
+let ps=all_parameters_x_gamma(G.x_open,G.rho) then
+w=G.w0.word then
+rv=##for p in ps do
+let (terms,)=S_inv_plus(block_of(p),W_graph_of(p),graded_standard(p),w) in terms
+ od
+in let pass=all(for hplp in rv do is_positive(hplp) od) in
+prints("#terms computed: ", 2^ss_rank(G), "*", #w, "=", #rv,new_line,"result: ", pass);
+(rv,pass)
+
+{then valid=all(for (,,,x) in rv do x od) in
+prints("number of terms: ", #rv,new_line,"result: ",valid);
+(rv,valid)
+}
+
+set h_test([RealForm] list)=void:for G in list do prints(new_line,G);h_test(G) od
+
+set list=[SL(2,R),SL(3,R),SL(4,R),GL(4,R),Sp(4,R), Sp(6,R),Spin(4,3),Spin(5,4),G2_s]

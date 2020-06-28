@@ -86,7 +86,7 @@ set recursive_deform (Param p) = ParamPol:
   then rec_fun full_def (Split sc,Param p) ParamPol:
 			 { |sc| will simply scale the resulting ParamPol }
     begin
-      prints("full_def with: sc=", sc, ", p=", p);
+      prints("full_def with: sc=", sc, ", p=", p, p.infinitesimal_character);
       assert(is_standard(p)
 	    ,"non standard parameter encountered in deformation");
       let acc=empty, at_nu0=ParamPol: sc*(p.at_nu_0) { fully deformed |p| } in
@@ -118,3 +118,4 @@ set recursive_deform (Param p) = ParamPol:
     ; at_nu0
     end
   fi { apply that recursive function to the initial argument: } (1,p)
+
