@@ -635,8 +635,7 @@ set is_fair (Param p_L,RealForm G) = bool:
   in let v=infinitesimal_character(p_L)+rho_u-rho(L)
   in let pcg=poscoroots(G)
   in let rdl=root_datum(L)
-  in is_one_dimensional(p_L) and
-    all(for alpha_check in pcg do v*alpha_check>0 or
+  in all(for alpha_check in pcg do v*alpha_check>0 or
     is_positive_coroot(rdl)(alpha_check) od)
 
 {. Decide whether a parameter for L is in the weakly fair range for G; this only
@@ -648,8 +647,12 @@ set is_weakly_fair (Param p_L,RealForm G) = bool:
   assert(is_parabolic_theta_stable(make_parabolic(L,G)),
   "L is not Levi of theta-stable parabolic");
   let rho_u=rho(G)-rho(L)
-  in is_one_dimensional(p_L) and
-     is_dominant(G,infinitesimal_character(p_L)+rho_u-rho(L))
+  in let v=infinitesimal_character(p_L)+rho_u-rho(L)
+  in let pcg=poscoroots(G)
+  in let rdl=root_datum(L)
+  in all(for alpha_check in pcg do v*alpha_check>=0 or
+    is_positive_coroot(rdl)(alpha_check) od)
+
 
 {. Determine the "goodness" of a parameter for L; returns "good", "weakly good",
   "fair", "weakly fair", or "none"; only makes sense if L is Levi of theta-stable
