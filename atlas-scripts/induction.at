@@ -623,6 +623,11 @@ set is_weakly_good (Param p_L,RealForm G) = bool:
   let rho_u=rho(G)-rho(L)
   in is_dominant(G,infinitesimal_character(p_L)+rho_u)
 
+set project_on_center (ratvec v, RootDatum L)=ratvec:
+   let scr=simple_coroots(L) then fwts=fundamental_weights(L)
+   then w=v in for i:#scr do w-:=scr[i]*v*fwts[i] od;
+   w
+
 {. Decide whether a parameter for L is in the fair range for G; this only
    makes sense if L is the Levi of a theta-stable parabolic. .}
 set is_fair (Param p_L,RealForm G) = bool:
@@ -631,10 +636,11 @@ set is_fair (Param p_L,RealForm G) = bool:
   assert(is_parabolic_theta_stable(make_parabolic(L,G)),
   "L is not Levi of theta-stable parabolic");
   let rho_u=rho(G)-rho(L)
-  in let v=infinitesimal_character(p_L)+rho_u-rho(L)
-  in let pcg=poscoroots(G)
-  in let rdl=root_datum(L)
-  in all(for alpha_check in pcg do v*alpha_check>0 or
+  then rdl=root_datum(L)
+  then v=infinitesimal_character(p_L)+rho_u
+  then pcg=poscoroots(G)
+  then weight=project_on_center (v,rdl)
+  in all(for alpha_check in pcg do weight*alpha_check>0 or
     is_positive_coroot(rdl)(alpha_check) od)
 
 {. Decide whether a parameter for L is in the weakly fair range for G; this only
@@ -645,11 +651,13 @@ set is_weakly_fair (Param p_L,RealForm G) = bool:
   assert(is_parabolic_theta_stable(make_parabolic(L,G)),
   "L is not Levi of theta-stable parabolic");
   let rho_u=rho(G)-rho(L)
-  in let v=infinitesimal_character(p_L)+rho_u-rho(L)
-  in let pcg=poscoroots(G)
-  in let rdl=root_datum(L)
-  in all(for alpha_check in pcg do v*alpha_check>=0 or
+  then rdl=root_datum(L)
+  then v=infinitesimal_character(p_L)+rho_u
+  then pcg=poscoroots(G)
+  then weight=project_on_center (v,rdl)
+  in all(for alpha_check in pcg do weight*alpha_check>=0 or
     is_positive_coroot(rdl)(alpha_check) od)
+
 
 {. Determine the "goodness" of a parameter for L; returns "good", "weakly good",
   "fair", "weakly fair", or "none"; only makes sense if L is Levi of theta-stable
