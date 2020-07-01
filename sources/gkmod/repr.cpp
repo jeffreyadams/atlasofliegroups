@@ -33,7 +33,6 @@
 
 namespace atlas {
   namespace repr {
-
 bool StandardRepr::operator== (const StandardRepr& z) const
 { return x_part==z.x_part and y_bits==z.y_bits
   and infinitesimal_char==z.infinitesimal_char;
@@ -45,6 +44,31 @@ size_t StandardRepr::hashCode(size_t modulus) const
   const Ratvec_Numer_t& num=infinitesimal_char.numerator();
   for (unsigned i=0; i<num.size(); ++i)
     hash= 11*(hash&(modulus-1))+num[i];
+  return hash &(modulus-1);
+}
+
+int_Vector StandardRepr::alcove() const
+{
+    const RootDatum& rd = root_datum();
+  int_Vector value;
+
+    for (auto it=rd.beginPosCoroot(); it!=rd.endPosCoroot(); ++it)
+      value.push_back( (it->dot(gamma() ).floor() ));
+  return value;
+}
+
+Alcove::Alcove (const Rep_context& rc, const StandardRepr&& sr)
+: x_part(sr.x())
+,lmb_rho(rc.lambda_rho(sr))
+,alcv(sr.alcove())
+    {}
+
+size_t Alcove::hashCode(size_t modulus) const
+{ size_t hash=x_part;
+  for (unsigned j=0; j<lmb_rho.size(); ++j)
+    hash=7*(hash&(modulus-1))+lmb_rho[j];
+  for (unsigned i=0; i<alcv.size(); ++i)
+    hash= 11*(hash&(modulus-1))+alcv[i];
   return hash &(modulus-1);
 }
 
@@ -68,7 +92,7 @@ StandardReprMod StandardReprMod::mod_reduce
     num[i]-= d*q;  // ensure even integral part if |num[i]/d| (0 is even)
     lam_rho[i] -= q; // shift to $\gamma_mod1$ is also applied to $\lambda$ part
   }
-  return StandardReprMod(rc.sr_gamma(sr.x(),lam_rho,gamma_mod1));
+ return StandardReprMod(rc.sr_gamma(sr.x(),lam_rho,gamma_mod1));
 }
 
 StandardReprMod StandardReprMod::build
@@ -866,6 +890,7 @@ bool Rep_context::compare::operator()
 Rep_table::Rep_table(RealReductiveGroup &G)
 : Rep_context(G)
 , pool(), hash(pool), def_formulae()
+,  alcove_hash(alcove_pool), alcove_def_formulae()
 , mod_pool(), mod_hash(mod_pool), block_list(), place()
 {}
 Rep_table::~Rep_table() = default;
@@ -1278,6 +1303,10 @@ SR_poly Rep_table::deformation_terms
     }
     assert(it==finals.end());
   }
+  std::cerr  << "            #def_forms = " << def_formulae.size() << "\r";
+    //	     << "  # trans fams = " << mod_pool.size() << "\r";
+  //	     << " # looked-up = " << LOOKUP 
+
 
   return result;
 } // |deformation_terms|, common block version
@@ -1389,7 +1418,8 @@ SR_poly Rep_table::deformation(const StandardRepr& z)
   { // look up if deformation formula for |z_near| is already known and stored
     unsigned long h=hash.find(z_near);
     if (h!=hash.empty and not def_formulae[h].first.empty())
-      return def_formulae[h].first;
+      { // LOOKUP = LOOKUP + 1;
+	return def_formulae[h].first;}
   }
 
   // otherwise compute the deformation terms at all reducibility points
@@ -1617,6 +1647,8 @@ SR_poly Rep_table::twisted_deformation_terms
     }
     assert(it==acc.end());
   }
+  std::cerr  << "              #def_forms = " << def_formulae.size()
+	     << "  # trans fams of reps = " << mod_pool.size() << "\r";
 
   return result;
 } // |twisted_deformation_terms(blocks::common_block&,...)|
