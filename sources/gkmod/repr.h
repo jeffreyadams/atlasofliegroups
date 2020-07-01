@@ -102,6 +102,37 @@ class StandardRepr
   size_t hashCode(size_t modulus) const;
 }; // |class StandardRepr|
 
+  // the part of a StandardRepr that determines its deformation formula
+  // instead of infinitesimal_char, record only integer parts
+  // of values on coroots
+class Alcove
+{
+  friend class Rep_context;
+
+  KGBElt x_part;
+  Weight lmb_rho;
+  int_Vector alcv;
+
+public:
+
+  const int_Vector alcove() const { return alcv; }
+  KGBElt x() const { return x_part; }
+  const Weight& lambda_rho() const { return lmb_rho; }
+  //  const RatWeight& lambda() const {}
+
+  Alcove (const Rep_context& rc, const StandardRepr& sr);
+  // alcv should be constructed by looping over pos coroots
+
+    // special members required by HashTable
+
+  typedef std::vector<Alcove> Pooltype;
+  bool operator== (const Alcove& other) const { return x_part==other.x_part
+      and lmb_rho==other.lmb_rho and alcv==other.alcv; }
+  bool operator!=(const Alcove& another) const
+    { return not operator==(another); }
+  size_t hashCode(size_t modulus) const;
+}; // |class Alcove|
+
 // a variation that only differs in hashing |infinitesimal_char| modulo $X^*$
 class StandardReprMod
 {
@@ -231,6 +262,8 @@ class Rep_context
   StandardRepr cross(const Weight& alpha, StandardRepr z) const;
   StandardRepr any_Cayley(const Weight& alpha, StandardRepr z) const;
 
+  int_Vector alcove(const StandardRepr& z) const;
+
   class compare
   { Coweight level_vec; // linear form to apply to |gamma| for ordering
   public:
@@ -286,8 +319,12 @@ typedef Rep_context::poly SR_poly;
 class Rep_table : public Rep_context
 {
   std::vector<StandardRepr> pool;
+  std::vector<Alcove> alcove_pool;
   HashTable<StandardRepr,unsigned long> hash;
   std::vector<std::pair<SR_poly,SR_poly> > def_formulae; // ordinary, twisted
+  HashTable<Alcove,unsigned long> alcove_hash;
+  std::vector<std::pair<SR_poly,SR_poly>
+	      > alcove_def_formulae; // ordinary, twisted
 
   std::vector<StandardReprMod> mod_pool;
   HashTable<StandardReprMod,unsigned long> mod_hash;
@@ -295,7 +332,9 @@ class Rep_table : public Rep_context
   containers::sl_list<blocks::common_block> block_list;
   using bl_it = containers::sl_list<blocks::common_block>::iterator;
   std::vector<std::pair<bl_it, BlockElt> > place;
-
+#if 0
+  unsigned long LOOKUP;
+#endif
  public:
   Rep_table(RealReductiveGroup &G);
   ~Rep_table();
@@ -347,6 +386,7 @@ class Rep_table : public Rep_context
  private:
   void block_erase (bl_it pos); // erase from |block_list| in safe manner
   unsigned long formula_index (const StandardRepr&);
+  unsigned long alcove_formula_index (const StandardRepr&);
   unsigned long add_block(const StandardReprMod&); // full block
   class Bruhat_generator; // helper class: internal |add_block_below| recursion
 
