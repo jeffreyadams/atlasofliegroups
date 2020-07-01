@@ -91,7 +91,6 @@ class StandardRepr
   KGBElt x() const { return x_part; }
   const TorusPart& y() const { return y_bits; }
   unsigned int height() const { return hght; }
-  int_Vector alcove() const;
   bool operator== (const StandardRepr&) const;
 // special members required by HashTable
 
@@ -260,6 +259,8 @@ class Rep_context
   StandardRepr cross(const Weight& alpha, StandardRepr z) const;
   StandardRepr any_Cayley(const Weight& alpha, StandardRepr z) const;
 
+  int_Vector alcove(const StandardRepr& z) const;
+
   class compare
   { Coweight level_vec; // linear form to apply to |gamma| for ordering
   public:
@@ -317,8 +318,8 @@ class Rep_table : public Rep_context
   std::vector<StandardRepr> pool;
   std::vector<Alcove> alcove_pool;
   HashTable<StandardRepr,unsigned long> hash;
-  HashTable<Alcove,unsigned long> alcove_hash;
   std::vector<std::pair<SR_poly,SR_poly> > def_formulae; // ordinary, twisted
+  HashTable<Alcove,unsigned long> alcove_hash;
   std::vector<std::pair<SR_poly,SR_poly> > alcove_def_formulae; // ordinary, twisted
 
   std::vector<StandardReprMod> mod_pool;

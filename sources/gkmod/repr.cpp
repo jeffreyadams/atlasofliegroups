@@ -47,20 +47,22 @@ size_t StandardRepr::hashCode(size_t modulus) const
   return hash &(modulus-1);
 }
 
-int_Vector StandardRepr::alcove() const
+int_Vector Rep_context::alcove(const StandardRepr& sr) const
 {
-    const RootDatum& rd = root_datum();
-  int_Vector value;
+  const RootDatum& rd = root_datum();
+  int_Vector value; value.reserve(rd.semisimpleRank());
+  const auto& gamma=sr.gamma();
+  const int denom = gamma.denominator(); // convert to |int|
 
-    for (auto it=rd.beginPosCoroot(); it!=rd.endPosCoroot(); ++it)
-      value.push_back( (it->dot(gamma() ).floor() ));
+  for (auto it=rd.beginPosCoroot(); it!=rd.endPosCoroot(); ++it)
+    value.push_back( arithmetic::divide(gamma.numerator().dot(*it),denom ));
   return value;
 }
 
 Alcove::Alcove (const Rep_context& rc, const StandardRepr&& sr)
 : x_part(sr.x())
 ,lmb_rho(rc.lambda_rho(sr))
-,alcv(sr.alcove())
+,alcv(rc.alcove(sr))
     {}
 
 size_t Alcove::hashCode(size_t modulus) const
@@ -890,7 +892,7 @@ bool Rep_context::compare::operator()
 Rep_table::Rep_table(RealReductiveGroup &G)
 : Rep_context(G)
 , pool(), hash(pool), def_formulae()
-,  alcove_hash(alcove_pool), alcove_def_formulae()
+, alcove_hash(alcove_pool), alcove_def_formulae()
 , mod_pool(), mod_hash(mod_pool), block_list(), place()
 {}
 Rep_table::~Rep_table() = default;
