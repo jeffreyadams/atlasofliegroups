@@ -648,7 +648,7 @@ set is_weakly_fair (Param p_L,RealForm G) = bool:
   in let v=infinitesimal_character(p_L)+rho_u-rho(L)
   in let pcg=poscoroots(G)
   in let rdl=root_datum(L)
-  in all(for alpha_check in pcg do v*alpha_check>=goodne0 or
+  in all(for alpha_check in pcg do v*alpha_check>=0 or
     is_positive_coroot(rdl)(alpha_check) od)
 
 
