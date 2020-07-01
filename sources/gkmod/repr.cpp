@@ -59,7 +59,7 @@ int_Vector Rep_context::alcove(const StandardRepr& sr) const
   return value;
 }
 
-Alcove::Alcove (const Rep_context& rc, const StandardRepr&& sr)
+Alcove::Alcove (const Rep_context& rc, const StandardRepr& sr)
 : x_part(sr.x())
 ,lmb_rho(rc.lambda_rho(sr))
 ,alcv(rc.alcove(sr))
@@ -1027,6 +1027,16 @@ unsigned long Rep_table::formula_index (const StandardRepr& sr)
       (std::make_pair(SR_poly(repr_less()),SR_poly(repr_less())));
   return h;
 }
+unsigned long Rep_table::alcove_formula_index (const StandardRepr& sr)
+{
+  const auto& rc = *this;
+  const auto prev_alcove_size = alcove_hash.size();
+  const auto alcove_h = alcove_hash.match(Alcove(rc, sr));
+    if (alcove_h>=prev_alcove_size)
+    alcove_def_formulae.push_back
+      (std::make_pair(SR_poly(repr_less()),SR_poly(repr_less())));
+  return alcove_h;
+}
 
 unsigned long Rep_table::add_block(const StandardReprMod& srm)
 {
@@ -1305,7 +1315,8 @@ SR_poly Rep_table::deformation_terms
     }
     assert(it==finals.end());
   }
-  std::cerr  << "            #def_forms = " << def_formulae.size() << "\r";
+  std::cerr  << "            #def_forms = " << def_formulae.size()
+	     << " #alcove_def_forms = " << alcove_def_formulae.size() << "\r";
     //	     << "  # trans fams = " << mod_pool.size() << "\r";
   //	     << " # looked-up = " << LOOKUP 
 
@@ -1438,6 +1449,8 @@ SR_poly Rep_table::deformation(const StandardRepr& z)
   }
 
   const auto h = formula_index(z_near);
+  const auto alcove_h = alcove_formula_index(z_near);
+  alcove_def_formulae[alcove_h].first=result;
   return def_formulae[h].first=result;
 } // |Rep_table::deformation|
 
@@ -1650,7 +1663,8 @@ SR_poly Rep_table::twisted_deformation_terms
     assert(it==acc.end());
   }
   std::cerr  << "              #def_forms = " << def_formulae.size()
-	     << "  # trans fams of reps = " << mod_pool.size() << "\r";
+	     << " #alcove_def_forms = " << alcove_def_formulae.size() << "\r";
+  //	     << "  # trans fams of reps = " << mod_pool.size() << "\r";
 
   return result;
 } // |twisted_deformation_terms(blocks::common_block&,...)|
@@ -1711,7 +1725,14 @@ SR_poly Rep_table::twisted_deformation (StandardRepr z)
   }
 
   { // if deformation for |z| was previously stored, return it with |flip_start|
+    const auto& rc = *this;
     const auto h=hash.find(z);
+    const auto alcove_h = alcove_hash.find(Alcove(rc,z));
+   if (alcove_h!=alcove_hash.empty and
+       alcove_def_formulae[alcove_h].second.empty())
+     SR_poly(repr_less()).add_multiple
+       (alcove_def_formulae[alcove_h].second,Split_integer(0,1));
+
     if (h!=hash.empty and not def_formulae[h].second.empty())
       return flip_start // if so we must multiply the stored value by $s$
 	? SR_poly(repr_less()).add_multiple

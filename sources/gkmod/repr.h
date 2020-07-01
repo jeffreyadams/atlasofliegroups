@@ -119,7 +119,7 @@ public:
   const Weight& lambda_rho() const { return lmb_rho; }
   //  const RatWeight& lambda() const {}
 
-  Alcove (const Rep_context& rc, const StandardRepr&& sr); //: x_part(sr.x_part), lmb_rho(??),
+  Alcove (const Rep_context& rc, const StandardRepr& sr); //: x_part(sr.x_part), lmb_rho(??),
   // alcv should be constructed by looping over pos coroots
 
     // special members required by HashTable
@@ -127,6 +127,8 @@ public:
   typedef std::vector<Alcove> Pooltype;
   bool operator== (const Alcove& other) const { return x_part==other.x_part
       and lmb_rho==other.lmb_rho and alcv==other.alcv; }
+  bool operator!=(const Alcove& another) const
+    { return not operator==(another); }
   size_t hashCode(size_t modulus) const;
 }; // |class Alcove|
 
@@ -380,6 +382,7 @@ class Rep_table : public Rep_context
  private:
   void block_erase (bl_it pos); // erase from |block_list| in safe manner
   unsigned long formula_index (const StandardRepr&);
+  unsigned long alcove_formula_index (const StandardRepr&);  
   unsigned long add_block(const StandardReprMod&); // full block
   class Bruhat_generator; // helper class: internal |add_block_below| recursion
 
