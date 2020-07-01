@@ -1429,10 +1429,11 @@ SR_poly Rep_table::deformation(const StandardRepr& z)
   assert(is_final(z_near));
 
   { // look up if deformation formula for |z_near| is already known and stored
-    unsigned long h=hash.find(z_near);
-    if (h!=hash.empty and not def_formulae[h].first.empty())
-      { // LOOKUP = LOOKUP + 1;
-	return def_formulae[h].first;}
+       const auto& rc = *this;
+    const auto alcove_h = alcove_hash.find(Alcove(rc,z));
+  if (alcove_h!=alcove_hash.empty and not 
+      alcove_def_formulae[alcove_h].first.empty())
+   return alcove_def_formulae[alcove_h].first;
   }
 
   // otherwise compute the deformation terms at all reducibility points
@@ -1448,10 +1449,8 @@ SR_poly Rep_table::deformation(const StandardRepr& z)
       result.add_multiple(deformation(term.first),term.second); // recursion
   }
 
-  const auto h = formula_index(z_near);
   const auto alcove_h = alcove_formula_index(z_near);
-  alcove_def_formulae[alcove_h].first=result;
-  return def_formulae[h].first=result;
+  return alcove_def_formulae[alcove_h].first=result;
 } // |Rep_table::deformation|
 
 
@@ -1726,18 +1725,13 @@ SR_poly Rep_table::twisted_deformation (StandardRepr z)
 
   { // if deformation for |z| was previously stored, return it with |flip_start|
     const auto& rc = *this;
-    const auto h=hash.find(z);
-    const auto alcove_h = alcove_hash.find(Alcove(rc,z));
+     const auto alcove_h = alcove_hash.find(Alcove(rc,z));
    if (alcove_h!=alcove_hash.empty and
        alcove_def_formulae[alcove_h].second.empty())
-     SR_poly(repr_less()).add_multiple
-       (alcove_def_formulae[alcove_h].second,Split_integer(0,1));
-
-    if (h!=hash.empty and not def_formulae[h].second.empty())
-      return flip_start // if so we must multiply the stored value by $s$
-	? SR_poly(repr_less()).add_multiple
-	   (def_formulae[h].second,Split_integer(0,1))
-	: def_formulae[h].second;
+     return flip_start // if so we must multiply the stored value by $s$
+     ? SR_poly(repr_less()).add_multiple
+       (alcove_def_formulae[alcove_h].second,Split_integer(0,1))
+       : alcove_def_formulae[alcove_h].second;
   }
 
   { // initialise |result| to fully deformed parameter expanded to finals
@@ -1780,8 +1774,8 @@ SR_poly Rep_table::twisted_deformation (StandardRepr z)
   }
 
   { // store
-    const auto h=formula_index(z);
-    def_formulae[h].second=result;
+    const auto alcove_h=alcove_formula_index(z);
+    alcove_def_formulae[alcove_h].second=result;
   }
 
   return flip_start // if so we must multiply the stored value by $s$
