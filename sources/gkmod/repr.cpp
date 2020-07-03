@@ -1679,7 +1679,7 @@ SR_poly Rep_table::twisted_deformation_terms
     }
     assert(it==acc.end());
   }
-  unsigned resident;
+  unsigned resident, CPUtime;
   std::string MemUnits = "MB";
   std::string TimeUnits = " secs";
   struct rusage usage;
