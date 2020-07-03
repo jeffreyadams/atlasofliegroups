@@ -121,7 +121,6 @@ else
  ##for g in S do if  g*C_2=C_1*g then [g] else [] fi od
 fi
 
-
 set isomorphism_permutation(RootDatum rd_1,RootDatum rd_2)=(bool,mat):
 assert(rd_1.is_semisimple and rd_2.is_semisimple,"root data must be semisimple");
 if not is_locally_isomorphic(rd_1,rd_2) then (false, null(0,0))
@@ -177,7 +176,7 @@ set standard_Levis (RootDatum rd) = [RootDatum]:
   The factor by which pi_L(w_L) is mulitplied is integer, as it is the index of
   the centraliser subgroup of w_L in W_L inside its centraliser subgroup of w_G
 }
-set induce_character (CharacterTable ct_G,CharacterTable ct_L,[int] pi_L) =
+set induce_character_old (CharacterTable ct_G,CharacterTable ct_L,[int] pi_L) =
        [int]:
    let rd_G= ct_G.root_datum, rd_L=ct_L.root_datum
    then index = rat_as_int(order_W(rd_G)/order_W(rd_L))
@@ -187,12 +186,12 @@ set induce_character (CharacterTable ct_G,CharacterTable ct_L,[int] pi_L) =
    , sizes_G = ct_G.class_sizes
    , sizes_L = ct_L.class_sizes
 in for w_L@i in classes_L
-   do let j=ct_G.class_index(W_elt(rd_G,w_L.matrix))
+   do let j=prints("doing w_L: ", w_L);ct_G.class_index(W_elt(rd_G,w_L.matrix))
    in  values_G[j] +:= pi_L[i] * (index * sizes_L[i]/sizes_G[j]).rat_as_int
    od; values_G
 
-{same as previous, except that we're given an embedding of W_L into W_G}
-set induce_character (CharacterTable ct_G,CharacterTable ct_L,(WeylElt->WeylElt) W_embedding,[int] pi_L) =
+{given an embedding of W_L into W_G}
+set induce_character (CharacterTable ct_G,CharacterTable ct_L,(WeylElt->WeylElt) f,[int] pi_L) =
        [int]:
    let rd_G= ct_G.root_datum, rd_L=ct_L.root_datum
    then index = rat_as_int(order_W(rd_G)/order_W(rd_L))
@@ -202,26 +201,70 @@ set induce_character (CharacterTable ct_G,CharacterTable ct_L,(WeylElt->WeylElt)
    , sizes_G = ct_G.class_sizes
    , sizes_L = ct_L.class_sizes
 in for w_L@i in classes_L do
-   let j=ct_G.class_index(W_embedding(w_L))
+   let j=ct_G.class_index(f(w_L))  {see embed_W note below}
    in  values_G[j] +:= pi_L[i] * (index * sizes_L[i]/sizes_G[j]).rat_as_int
    od; values_G
 
-set embed_W_L(RootDatum rd_G,[int] simple_roots_L,WeylElt w)=WeylElt:
-W_elt(rd_G,for i in w.word do simple_roots_L[i] od)
+set embed_simple_reflection(RootDatum rd_G,RootDatum rd_L, int i)=mat:
+reflection(rd_G,rd_L.simple_roots[i])
 
-set embed_W_L(RootDatum rd_G,[int] simple_roots_L)=(WeylElt->WeylElt):
-(WeylElt w):embed_W_L(rd_G,simple_roots_L,w)
+set embed_W(RootDatum rd_G,RootDatum rd_L,[int] w)=
+let rv=id_mat(rd_G.rank) in
+for i in w~ do rv*:=embed_simple_reflection(rd_G,rd_L,i) od;rv
+
+set embed_W(RootDatum rd_G,RootDatum rd_L,WeylElt w)=
+W_elt(rd_G,embed_W(rd_G,rd_L,w.word))
+
+set embed_W(RootDatum rd_G,RootDatum rd_L)=(WeylElt->WeylElt):(WeylElt w):
+embed_W(rd_G,rd_L,w)
+
+set embed_W(RootDatum rd_G,RootDatum rd_L, WeylElt w_L)=WeylElt:
+W_elt(rd_G,w_L.matrix)
+
+
+{caution: this may fail to work because the RootDatum of ct_L,
+which is constructed, is not equal to the roots of the orginal L you have in mind,
+in particular the vectors are of length ss_rank(L), non rank(G)
+probably you need to do something like
+set embed=embed_W(ct_G.class_reps[0].root_datum,L)
+induce_character (ct_G,ct_L,embed,pi_L)
+see other versions of induce_character below
+NOTE: use ct.class_reps[0].root_datum as target, NOT ct.root_datum
+since that is what is used in induce_character
+also L here, not ct_L.root_datum
+the roots of L are literally roots of G
+}
+set induce_character (CharacterTable ct_G,CharacterTable ct_L,[int] pi_L) =
+let f=embed_W(ct_G.class_reps[0].root_datum,ct_L.root_datum) in
+induce_character(ct_G,ct_L,f,pi_L)
+
+{compute the character table of L on the fly}
+set induce_character (CharacterTable ct_G,CharacterTable ct_L,RootDatum L,[int] pi_L) =
+let embed=embed_W(ct_G.class_reps[0].root_datum,L) in
+induce_character(ct_G,ct_L,embed,pi_L)
+
+{provide L directly, whose roots are contained in the roots of G,
+to construct the correcting embed_W
+construct character table of L on the fly
+}
+set induce_character (CharacterTable ct_G,RootDatum L,[int] pi_L) =
+let embed=embed_W(ct_G.class_reps[0].root_datum,L) in
+induce_character(ct_G,L.character_table,embed,pi_L)
+
+{provide ct_L, but *also* L, to have the correct embed_W}
+set induce_character (CharacterTable ct_G,CharacterTable ct_L,RootDatum L,[int] pi_L) =
+let embed=embed_W(ct_G.class_reps[0].root_datum,L) in
+induce_character(ct_G,ct_L,embed,pi_L)
 
 set induce_sign(CharacterTable ct_G,[int] simple_roots_L)=[int]:
 let L=Levi_datum(ct_G.root_datum,simple_roots_L) then
 ct_L=character_table(L) in
-induce_character(ct_G,ct_L,embed_W_L(ct_G.root_datum,simple_roots_L),ct_L.sign)
-
+induce_character(ct_G,ct_L,ct_L.sign)
 
 set induce_trivial(CharacterTable ct_G,[int] simple_roots_L)=[int]:
 let L=Levi_datum(ct_G.root_datum,simple_roots_L) then
 ct_L=character_table(L) in
-induce_character(ct_G,ct_L,embed_W_L(ct_G.root_datum,simple_roots_L),ct_L.trivial)
+induce_character(ct_G,ct_L,ct_L.trivial)
 
 set truncated_induce_sign(CharacterTable ct_G,[int] simple_roots_L)=int:
 let L=Levi_datum(ct_G.root_datum,simple_roots_L) then
