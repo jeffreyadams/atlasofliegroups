@@ -1315,8 +1315,18 @@ SR_poly Rep_table::deformation_terms
     }
     assert(it==finals.end());
   }
-  std::cerr  << "            #def_forms = " << def_formulae.size()
-	     << " #alcove_def_forms = " << alcove_def_formulae.size() << "\r";
+  unsigned resident;
+  struct rusage usage;
+      if(getrusage(RUSAGE_SELF, &usage) != 0)
+	std::cerr << "getrusage failed" << std::endl;
+      resident = usage.ru_maxrss/1024; //largest so far??
+#ifdef __APPLE__
+      resident = resident/1024;
+#endif  
+  std::cerr //  << "            #def_forms = " << def_formulae.size()
+	     << "            #alcove_def_forms = "
+	     << alcove_def_formulae.size()
+	     << "  max res size = " << resident << "MB\r";
     //	     << "  # trans fams = " << mod_pool.size() << "\r";
   //	     << " # looked-up = " << LOOKUP 
 
@@ -1430,7 +1440,7 @@ SR_poly Rep_table::deformation(const StandardRepr& z)
 
   { // look up if deformation formula for |z_near| is already known and stored
        const auto& rc = *this;
-    const auto alcove_h = alcove_hash.find(Alcove(rc,z));
+       const auto alcove_h = alcove_hash.find(Alcove(rc,z_near)); // DV changed from z
   if (alcove_h!=alcove_hash.empty and not 
       alcove_def_formulae[alcove_h].first.empty())
    return alcove_def_formulae[alcove_h].first;
@@ -1661,12 +1671,23 @@ SR_poly Rep_table::twisted_deformation_terms
     }
     assert(it==acc.end());
   }
-  std::cerr  << "              #def_forms = " << def_formulae.size()
-	     << " #alcove_def_forms = " << alcove_def_formulae.size() << "\r";
-  //	     << "  # trans fams of reps = " << mod_pool.size() << "\r";
+  unsigned resident;
+  struct rusage usage;
+      if(getrusage(RUSAGE_SELF, &usage) != 0)
+	std::cerr << "getrusage failed" << std::endl;
+      resident = usage.ru_maxrss/1024; //largest so far??
+#ifdef __APPLE__
+      resident = resident/1024;
+#endif
+      
+  std::cerr  //   << "              #def_forms = " << def_formulae.size()
+	     << "                #alcove_def_forms = "
+	     << alcove_def_formulae.size()
+	     << "  max res size = " << resident << "MB\r";
 
   return result;
 } // |twisted_deformation_terms(blocks::common_block&,...)|
+
 
 #if 0
 SR_poly Rep_table::twisted_deformation_terms (unsigned long sr_hash) const
@@ -1726,7 +1747,7 @@ SR_poly Rep_table::twisted_deformation (StandardRepr z)
   { // if deformation for |z| was previously stored, return it with |flip_start|
     const auto& rc = *this;
      const auto alcove_h = alcove_hash.find(Alcove(rc,z));
-   if (alcove_h!=alcove_hash.empty and
+     if (alcove_h!=alcove_hash.empty and not // added not
        alcove_def_formulae[alcove_h].second.empty())
      return flip_start // if so we must multiply the stored value by $s$
      ? SR_poly(repr_less()).add_multiple
