@@ -12,6 +12,10 @@
 #include <memory> // for |std::unique_ptr|
 #include <map> // used in computing |reducibility_points|
 #include <iostream>
+
+#include<sys/time.h>
+#include<sys/resource.h> // for memory use report
+
 #include "error.h"
 
 #include "arithmetic.h"
