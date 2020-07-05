@@ -1326,23 +1326,25 @@ SR_poly Rep_table::deformation_terms
     }
     assert(it==finals.end());
   }
-  unsigned resident, CPUtime;
-  std::string MemUnits = "MB";
-  std::string TimeUnits = " secs";
-  struct rusage usage;
-  if (getrusage(RUSAGE_SELF, &usage) != 0)
-    std::cerr << "getrusage failed" << std::endl;
-  resident = usage.ru_maxrss/RSSUNITSPERMiB;
-  CPUtime = usage.ru_utime.tv_sec;
-  if (resident > 10240) {MemUnits = "GB" ; resident=resident/1024;}
-  if (CPUtime > 599) {TimeUnits = " mins"; CPUtime = CPUtime/60;}
-  std::cerr //  << "             #def_forms = " << def_formulae.size()
-	     << "             #alcv_forms = "
-	     << alcove_def_formulae.size()
-	     << " max res size = " << resident << MemUnits
-	     << " CPU time = " << CPUtime << TimeUnits
-	     << '\r';
-
+  if (alcove_def_formulae.size()%100 == 0)
+  {
+    unsigned resident, CPUtime;
+    std::string MemUnits = "MB";
+    std::string TimeUnits = " secs";
+    struct rusage usage;
+    if (getrusage(RUSAGE_SELF, &usage) != 0)
+      std::cerr << "getrusage failed" << std::endl;
+    resident = usage.ru_maxrss/RSSUNITSPERMiB;
+    CPUtime = usage.ru_utime.tv_sec;
+    if (resident > 10240) {MemUnits = "GB" ; resident=resident/1024;}
+    if (CPUtime > 599) {TimeUnits = " mins"; CPUtime = CPUtime/60;}
+    std::cerr //  << "             #def_forms = " << def_formulae.size()
+      << "             #alcv_forms = "
+      << alcove_def_formulae.size()
+      << " max res size = " << resident << MemUnits
+      << " CPU time = " << CPUtime << TimeUnits
+      << '\r';
+  }
   return result;
 } // |deformation_terms|, common block version
 
@@ -1683,23 +1685,26 @@ SR_poly Rep_table::twisted_deformation_terms
     }
     assert(it==acc.end());
   }
-  unsigned resident, CPUtime;
-  std::string MemUnits = "MB";
-  std::string TimeUnits = " secs";
-  struct rusage usage;
-  if(getrusage(RUSAGE_SELF, &usage) != 0)
-    std::cerr << "getrusage failed" << std::endl;
-  resident = usage.ru_maxrss/RSSUNITSPERMiB;
-  CPUtime = usage.ru_utime.tv_sec;
-  if (resident > 10240) {MemUnits = "GB" ; resident=resident/1024;}
-  if (CPUtime > 599) {TimeUnits = " mins"; CPUtime = CPUtime/60;}
-  std::cerr  //   << "              #def_forms = " << def_formulae.size()
-	     << "                #alcove_def_forms = "
-	     << alcove_def_formulae.size()
-	     << "  max res size = " << resident << "MB"
-	     << " CPU time = " << CPUtime << TimeUnits
-	     << '\r';
+  if (alcove_def_formulae.size()%100 == 0)
+  {
+    unsigned resident, CPUtime;
 
+    std::string MemUnits = "MB";
+    std::string TimeUnits = " secs";
+    struct rusage usage;
+    if(getrusage(RUSAGE_SELF, &usage) != 0)
+      std::cerr << "getrusage failed" << std::endl;
+    resident = usage.ru_maxrss/RSSUNITSPERMiB;
+    CPUtime = usage.ru_utime.tv_sec;
+    if (resident > 10240) {MemUnits = "GB" ; resident=resident/1024;}
+    if (CPUtime > 599) {TimeUnits = " mins"; CPUtime = CPUtime/60;}
+    std::cerr  //   << "              #def_forms = " << def_formulae.size()
+      << "     TWISTED #alcv_forms = "
+      << alcove_def_formulae.size()
+      << "  max res size = " << resident << "MB"
+      << " CPU time = " << CPUtime << TimeUnits
+      << '\r';
+  }
   return result;
 } // |twisted_deformation_terms(blocks::common_block&,...)|
 
