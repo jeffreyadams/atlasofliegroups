@@ -1,5 +1,5 @@
 <basic.at
-
+<tits.at
 { various ways of defining parameters }
 
 { torus_factor, aka "normalized torus factor", is $\theta$-fixed,
@@ -127,6 +127,20 @@ set choose_g (KGBElt x, KGBElt y)=ratvec:
 
 set choose_g (Param p) = ratvec:
   choose_g(real_form(p),dual(integrality_datum(p)))
+
+{contragredient of a parameter}
+set tits(KGBElt x)=Tits_elt:(x.real_form,x.unnormalized_torus_factor,x.involution)
+set KGB_elt (Tits_elt t)=KGB_elt(t.root_datum,t.theta,2*t.torus_part-t.root_datum.rho_check)
+set inverse(KGBElt x)=KGB_elt(x.tits.inverse)
+
+{contragredient: (x,lambda,nu) -> (w_0\times x,-w_0\lambda,-w_0\nu)
+ sketch: the contragredient is given by the Chevalley involution (of the real group)
+ which acts by -1 on lambda,nu, but keeps the same x (it doesn't change the "group")
+ -lambda,-nu are in the wrong chamber (for our fixed parabolic), so use w_0 (the long
+ element of the Weyl group)
+}
+set contragredient(Param p)=Param:
+let w=p.root_datum.w0 in parameter(cross(w,p.x),-w*p.lambda,-w*p.nu)
 
 { gamma=infinitesimal character to combine with x, found from real_form(y) }
 set parameter (KGBElt x,KGBElt y,ratvec gamma)=Param:

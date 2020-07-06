@@ -159,4 +159,10 @@ st.orbits[first(for i:#st.orbits do st.springer(st.orbits[i])=special_character_
 
 set springer_inverse(SpringerTable st)=(int->ComplexNilpotent):(int j):springer_inverse(st,j)
 
+set special_star(SpringerTable st,ComplexNilpotent O)=string:
+if is_special(st,O) then "*" else "" fi
+
+set special_star(SpringerTable st)=(ComplexNilpotent ->string):
+(ComplexNilpotent O):special_star(st,O)
+
 

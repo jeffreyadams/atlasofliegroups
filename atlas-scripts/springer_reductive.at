@@ -10,7 +10,7 @@
 <springer_table_E6.at
 <springer_table_E7.at
 <springer_table_E8.at
-
+<springer_table_torus.at
 
 set springer_table_simple(RootDatum rd)=
 let (letter,n)=simple_type(rd) in
@@ -44,13 +44,16 @@ elif letter="E" and n=7 then
  springer_table_E7(ct)
 elif letter="E" and n=8 then
  springer_table_E8(character_table_E8())
+elif is_abelian(rd) then
+  springer_table_torus(rd)
 else error("case not covered")
 fi
 
 set springer_table(RootDatum rd)=
+if rd.is_abelian then springer_table_torus(rd) else
 let (,factors,P)=simple_factors_nice(rd) then
 st=springer_table_simple(factors[0].derived) in
 for i:#factors-1 from 1 do
- st:=tensor(st,springer_table_simple(factors[i].derived)) od;st
+ st:=tensor(st,springer_table_simple(factors[i].derived)) od;st fi
 
 
