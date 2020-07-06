@@ -103,6 +103,14 @@ else
  minimal_representative(W_elt(Sp(2*n),w_sub.matrix))
 fi
 
+{dangerous bend
+ conjugacy_class_C(pair) is a class for Sp(2n)
+ in application, the character table will have its own root datum of type C,
+  and these might not agree
+}
+
+set convert(WeylElt w,RootDatum rd)=WeylElt:W_elt(rd,w.word)
+
 set character_table_C(int n) = CharacterTable:
 let order=n.fac*2^n, pairs = partition_pairs(n)
   then cycles = for pair in pairs do pair.cycles od

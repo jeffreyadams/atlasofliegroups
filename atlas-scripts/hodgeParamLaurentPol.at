@@ -216,18 +216,25 @@ set flip(i_poly f,int ld)=i_poly:
 
 set show_long(hodgeParamLaurentPol hplp) =void:
   let factors=monomials(hplp) then
-   r=rearrange(hplp) then  {(Laurent poly,Param)}
+   r_unshifted=rearrange(hplp) then  {(Laurent poly,Param)}
+   max_power=max(for (f,p) in r_unshifted do degree(f) od) then
+   ()=prints("max power: ", max_power) then
+   r=if max_power>0 then
+     prints("Shifting by q^",-max_power," to make all terms degree <=0");
+     for (f,p) in r_unshifted do (v_laurent_power(-max_power)*f,p) od
+     else r_unshifted fi
+   then
    lowest_power=min(for (f,p) in r do lowest_power(f) od) then
    max_level=-lowest_power+1 then
    max_length=max(for p in factors do length(p) od) then
-   max_power=max(for (f,p) in r do degree(f) od) then
+
    ()=prints("lowest power: ", lowest_power) then
-   ()=prints("max power: ", max_power) then
    ()=prints("max length: ", max_length) then
+
    ()=prints("max level: ", max_level) in
    tabulate(["x","lambda","nu","l","t","f","filtration"]#
    for (f,p)@i in r do
-    let g=f.at_q_inverse then
+    let g=(f).at_q_inverse then
    m=delete_trailing_zeros(laurent_poly_as_poly(g)) then
    string_m="" in
       for i:max_level

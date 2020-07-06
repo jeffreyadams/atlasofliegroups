@@ -117,14 +117,24 @@ for node@i in graph do
  rv#:=col
 od;rv
 
+set graph_action ([sparse_mat] matrices,int col_number,int s) = sparse_column:
+matrices[s][col_number]
+
+
+
 {coherent continuation of irreducibles is defined using the W-graph,
 keeping in mind the W-graph is the action in the basis of (-1)^length(p)p
 }
 set coherent_irr([Param] block,WGraph graph,Param p,int s)=ParamPol:
 assert(is_regular(p),"infinitesimal character is not regular");
-let index=find(block,p) in null_module(p.real_form) +
-for (index,coeff) in graph_action_column(block,graph,index,s) do
- (-1)*coeff*block[index] od
+assert(s<p.root_datum.ss_rank,"not a root");
+let index=find(block,p) then
+gac=graph_action_column(block,graph,index,s) in
+let ()=prints("got gac, p=",p, new_line,"s=",s) in
+null_module(p.real_form) +
+{for (i,coeff) in graph_action_column(block,graph,index,s) do}
+for (i,coeff) in gac do
+ (-1)*coeff*block[i] od
 
 {variants: ParamPol P, [int] w, WeylElt w}
 set coherent_irr ([Param] block,WGraph graph,ParamPol P,int s) = ParamPol:
