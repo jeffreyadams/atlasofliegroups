@@ -1,3 +1,6 @@
+<basic.at
+<torus.at
+<tabulate.at
 <deform_plus.at
 
 set chamber(Param p)=vec:

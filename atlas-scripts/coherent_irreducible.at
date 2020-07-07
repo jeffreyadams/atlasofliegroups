@@ -1,48 +1,49 @@
-<W_reps.at
+<basic.at
+<W_reps.at { |WCell|, |WGraph|, |WNode| type, and functions }
 <coherent.at
 <hodgeParamLaurentPol.at
 <stable.at
 
-set sign(Param p,Param q)=int:(-1)^(length(p)-length(q))
+set length_sign (int k,int l) =int: minus_1^(k-l)
+set sign (Param p,Param q)=int: length_sign(length(p),length(q))
 
 {W_graph@Param is built-in, returns (int,WGraph)
  here is just the W_graph, analogous to block_of@Param}
-set W_graph_of(Param p)=let (,g)=W_graph(p) in g
+set W_graph_of (Param p) = let (,g)=W_graph(p) in g
 
-{The mu function, obtained from W_graph}
-set mu(WGraph graph,int i,int j)=
-let (,g)=graph[i]  then
-index=first(for (k,)@t in g do k=j od) in
-if index=-1 then 0 else let (,mu)=g[index] in mu fi
+{ The mu function, obtained from W_graph }
+set mu (WGraph graph,int i,int j) = int:
+  let list=graph[i].out_list then high(int p) = let (k,)=list[p] in k>=j
+  then loc = binary_search_first(high,0,#list)
+  in if loc=#list then 0 else let (k,mu)=list[loc] in if k=j then mu else 0 fi fi
 
 set mu([Param] params,WGraph graph, Param p,Param q)=int:
-mu(graph,find(params,p),find(params,q))
+  mu(graph,find(params,p),find(params,q))
 
-{matrix of Hecke algebra operator T_alpha, given by graph, with q=1
- action is described in wgraphs.help
- however this matrix is the TRANSPOSE of the one given by graph_action@(WGraph,int) in
- in W_reps.at
- Also note: this is the coherent continuation action on the basis of {(-1)^length(p)*p}
- this function shouldn't be needed, but is included for illustrative purposes;
- what we really use is graph_action_column
+{ matrix of Hecke algebra operator $T_\alpha$, given by a W-graph, at $q=1$
+
+  This is the precise action described in wgraphs.help, which is (on generators)
+  the TRANSPOSE of that given by |dual_graph_action@(WGraph,int)| in W_reps.at
+
+  Also note: this is the coherent continuation action on the length-flipped
+  basis, {(-1)^length(p)*p}
+
+  In practice one should avoid building the full |graph_action| sparse matrix,
+  prefer using |graph_action_column|
 }
 set graph_action (WGraph graph,int s) = sparse_mat:
-let rv=sparse_mat:[] in
-for node@i in graph do
- let col=sparse_column:[] in
- if is_member(node.tau)(s)
-   then col#:=(i,1)
-   else
-   col#:=(i,-1);
-   for j:#graph do
-    if not j=i and  is_member(graph[j].tau)(s) then
-     let mu=mu(graph,j,i) in
-       if !=mu then col#:=(j,mu(graph,j,i)) fi
-    fi
-   od
- fi;
-rv#:=col
-od;rv
+   let tau_has_s(WNode nd) = bool: is_member(nd.tau)(s)
+   then col = sparse_mat:
+     for node@i in graph do [(i,if node.tau_has_s then 1 else -1 fi)] od
+   in
+   for node@i in graph
+   do if node.tau_has_s
+      then
+        for (j,mu) in node.out_list
+	do if not graph[j].tau_has_s then col[j]#:=(i,mu) fi
+	od
+      fi
+   od; col
 
 {column of matrix of action of T_s, coming from W-graph, with q=1
  This is the coherent continuation action in the basis of {(-1)^(length(p))p}
@@ -58,64 +59,61 @@ graph_action(graph,0)= (list of these columns) -> matrix
 see filtrations.pdf
 }
 set graph_action_column (WGraph graph,int col_number,int s) = sparse_column:
-let rv=sparse_column:[] then
-i=col_number then
-node=graph[i] in
- let col=sparse_column:[] in
- if is_member(node.tau)(s)
-   then col#:=(i,1)
+   let tau_has_s(WNode nd) = bool: is_member(nd.tau)(s) in
+   if graph[col_number].tau_has_s
+   then [(col_number,1)]
    else
-   col#:=(i,-1);
-   for j:#graph do
-    if not j=i and  is_member(graph[j].tau)(s) then
-     let mu=mu(graph,j,i) in
-       if !=mu then col#:=(j,mu(graph,j,i)) fi
-    fi
-   od
- fi;
-col
+     for node@i in graph
+     do if node.tau_has_s
+        then let mu=mu(graph,i,col_number) in
+          if !=mu then [(i,mu)] else [] fi
+        elif i=col_number then [(i,-1)] else []
+        fi
+     od.##
+   fi
 
-{same as previous, except in the basis of irreducibles (rather than \pm irreducible)
- need the list of parameters just for the lengths
- this is precisely what is needed to compute coherent continuation in the basis of irreducibles
+{ same as previous, except in the basis of irreducibles (rather than length
+  parity flipped irreducibles) need the list of parameters just for the lengths
+  this is precisely what is needed to compute coherent continuation in the
+  basis of irreducibles
 }
-set graph_action_column ([Param] parameters,WGraph graph,int col_number,int s) = sparse_column:
-let rv=sparse_column:[] then
-i=col_number then
-node=graph[i] in
- let col=sparse_column:[] in
- if is_member(node.tau)(s)
-   then col#:=(i,1)
-   else
-   col#:=(i,-1);
-   for j:#graph do
-    if not j=i and  is_member(graph[j].tau)(s) then
-     let mu=mu(graph,j,i) in
-       if !=mu then col#:=(j,mu(graph,j,i)*sign(parameters[j],parameters[i])) fi
-    fi
-   od
- fi;
-col
+set graph_action_column ([Param] params,WGraph graph,int col_number,int s) =
+  sparse_column:
+  let tau_has_s(WNode nd) = bool: is_member(nd.tau)(s)
+  , lp(int i) = int: length(params[i])
+  in
+  if graph[col_number].tau_has_s
+  then [(col_number,1)]
+  else
+    let lpc=lp(col_number) in
+    for node@i in graph
+    do if node.tau_has_s
+       then let mu=mu(graph,i,col_number) in
+         if !=mu then [(i,mu*length_sign(lp(i),lpc))] else [] fi
+       elif i=col_number then [(i,-1)] else []
+       fi
+    od.##
+  fi
 
-{just as graph_action was mainly for testing, this function
-isn't essential but is a useful tool}
+{ just as graph_action was mainly for testing, this function
+  isn't essential but is a useful tool}
 set graph_action ([Param] params,WGraph graph,int s) = sparse_mat:
-let rv=sparse_mat:[] in
-for node@i in graph do
- let col=sparse_column:[] in
- if is_member(node.tau)(s)
-   then col#:=(i,1)
-   else
-   col#:=(i,-1);
-   for j:#graph do
-    if not j=i and  is_member(graph[j].tau)(s) then
-     let mu=mu(graph,j,i) in
-       if !=mu then col#:=(j,mu(graph,j,i)*sign(params[i],params[j])) fi
-    fi
-   od
- fi;
- rv#:=col
-od;rv
+   let tau_has_s(WNode nd) = bool: is_member(nd.tau)(s)
+   , lp(int i) = int: length(params[i])
+   then col = sparse_mat:
+     for node@i in graph do [(i,if node.tau_has_s then 1 else -1 fi)] od
+   in
+   for node@i in graph
+   do if node.tau_has_s
+      then
+        let lpi=lp(i) in
+        for (j,mu) in node.out_list
+	do if not graph[j].tau_has_s
+	   then col[j]#:=(i,mu*length_sign(lpi,lp(j)))
+	   fi
+	od
+      fi
+   od; col
 
 set graph_action ([sparse_mat] matrices,int col_number,int s) = sparse_column:
 matrices[s][col_number]

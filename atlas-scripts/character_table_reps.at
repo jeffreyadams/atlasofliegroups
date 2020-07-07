@@ -90,53 +90,118 @@ for beta in rd.simple_roots do
  let (success,w)=conjugate_to(rd,alpha,beta) in
  if success then return(w) fi od ;id_W(rd)
 
-set cell_action_permuted(WCell cell, int i, mat permutation)=sparse_mat:
-cell_action(cell,first(for j:#permutation do permutation[i][j]=1 od))
+set cell_action_permuted (WCell cell, int j, mat permutation) = sparse_mat:
+  cell_action(cell,first(for i:#permutation do permutation[i,j]=1 od))
 
 set cell_action_permuted(WCell cell,WeylElt w,mat permutation)=mat:
   let n={prints("sparse");}#cell.graph in
   if =#w.word then id_mat(n)
-  else let result=unsparse(cell_action_permuted(cell,w.word[0],permutation),#cell.graph) in
-     for i:#w.word-1 from 1 do result:=result*cell_action_permuted(cell,w.word[i],permutation) od; result
+  else let result =
+       unsparse(cell_action_permuted(cell,w.word[0],permutation),#cell.graph)
+  in
+     for i:#w.word-1 from 1
+     do result:=result*cell_action_permuted(cell,w.word[i],permutation)
+     od
+  ; result
   fi
 
-set cell_character_permuted (CharacterTable ct,WCell cell,mat permutation) = [int]:
-for w in ct.class_reps do trace(cell_action_permuted(cell,w,permutation)) od
+set cell_character_permuted (CharacterTable ct,WCell cell,mat permutation) =
+  [int]:
+  for w in ct.class_reps do trace(cell_action_permuted(cell,w,permutation)) od
 
 set special_character_permuted(CharacterTable ct,WCell cell,mat permutation)=
-let summands=smallest_degree_summands(ct,ct.decompose(cell_character_permuted(ct,cell,permutation))) in
-if #summands>1 then error("not unique special representation") elif
-#summands=0 then error("no special summands?") else summands[0] fi
+  let summands = smallest_degree_summands
+    (ct,ct.decompose(cell_character_permuted(ct,cell,permutation))) in
+  if #summands>1 then error("not unique special representation")
+  elif #summands=0 then error("no special summands?") else summands[0]
+  fi
 
-set special_character_permuted(CharacterTable ct,mat permutation)=(WCell->int):(WCell cell):
-special_character_permuted(ct,cell,permutation)
+set special_character_permuted(CharacterTable ct,mat permutation) =
+  (WCell->int):(WCell cell): special_character_permuted(ct,cell,permutation)
+
+{ for testing: return all isomorphism permutations, extremely inefficiently }
+set isomorphism_permutations(RootDatum rd_1,RootDatum rd_2) = [mat]:
+  assert(rd_1.is_semisimple and rd_2.is_semisimple,
+  	 "root data must be semisimple");
+  if not is_locally_isomorphic(rd_1,rd_2) then []
+  else
+     let S=symmetric_group(rd_1.rank)
+     , C_1=rd_1.Cartan_matrix, C_2=rd_2.Cartan_matrix
+  in for g in S do if  g*C_2=C_1*g then [g] else [] fi od.##
+fi
+
+{ find one isomorphism_permutation, with indiactino of success }
+set isomorphism_permutation (RootDatum rd_1,RootDatum rd_2) = (bool,mat):
+  assert(rd_1.is_semisimple and rd_2.is_semisimple,
+	 "root data must be semisimple");
+  if is_locally_isomorphic(rd_1,rd_2)
+  then
+     let S=symmetric_group(rd_1.rank)
+     , C_1=rd_1.Cartan_matrix, C_2=rd_2.Cartan_matrix
+     in for g in S do if g*C_2=C_1*g then return (true,g) fi od
+  fi; (false,null(0,0))
+
+{ for testing: try different ones }
+set isomorphism_permutation_variant(RootDatum rd_1,RootDatum rd_2)=(bool,mat):
+  let all=isomorphism_permutations(rd_1,rd_2) in
+  case #all
+  in (false,null(0,0))
+  , (true,all[0])
+  , (true,all[1])
+  , (true,all[1])
+  , (true,all[2])
+  else (true, all[4])
+  esac
+
+set find_isomorphism_permutation([RootDatum] list,RootDatum rd) = (int,mat):
+  for rd_list@i in list
+  do let (success,M)=isomorphism_permutation(rd_list.derived,rd.derived) in
+     if success then return (i,M) fi
+  od; (-1,null(0,0))
 
 {embeddings of Weyl groups, needed for induction}
 
 {requirement: simple roots of L are contained in the (positive) roots of G}
-set embed_simple_reflection(RootDatum L,RootDatum G, int i)=mat:
-assert(find(G.posroots,L.simple_roots[i])>=0,"Simple root for L is not a root for G");
-reflection(G,L.simple_roots[i])
-set embed(RootDatum L,RootDatum G,[int] w)=mat:
-let rv=id_mat(G.rank) in for i in w~ do rv*:=embed_simple_reflection(L,G,i) od;rv
-set embed(RootDatum L,RootDatum G,WeylElt w)=WeylElt:W_elt(G,embed(L,G,w.word))
-set embed(RootDatum L,RootDatum G)=(WeylElt->WeylElt):(WeylElt w):embed(L,G,w)
+set embed_simple_reflection(RootDatum L,RootDatum G, int i) = mat:
+  assert(find(G.posroots,L.simple_roots[i])>=0
+        ,"Simple root for L is not a root for G");
+  reflection(G,L.simple_roots[i])
+
+set embed(RootDatum L,RootDatum G,[int] w) = mat:
+   let rv=id_mat(G.rank) in
+   for i in w~ do rv*:=embed_simple_reflection(L,G,i) od; rv
+
+set embed(RootDatum L,RootDatum G,WeylElt w) = WeylElt:
+   W_elt(G,embed(L,G,w.word))
+set embed(RootDatum L,RootDatum G) = (WeylElt->WeylElt):
+   (WeylElt w) WeylElt: embed(L,G,w)
 
 {given: Lprime -> L \subset G -> Gprime
  where Lprime.derived \simeq L.derived and similarly G,Gprime
  embed W(Lprime) in W(Gprime)
 }
-set embed_simple_reflection(RootDatum L,RootDatum G,RootDatum Lprime,RootDatum Gprime, int i)=
-let (valid_G,P_G)=isomorphism_permutation(G.derived,Gprime.derived) then  {P_G: G->G'}
-(valid_L,P_L)=isomorphism_permutation(L.derived,Lprime.derived) in  {P_L: L'-> L}
-assert(valid_G,"derived subgroups of G,Gprime not isomorphic");
-assert(valid_L,"derived subgroups of L,Lprime not isomorphic");
-embed_simple_reflection(L,G,permutation(P_G)[permutation(P_L)[i]])
+set embed_simple_reflection (
+  RootDatum L,RootDatum G,RootDatum Lprime,RootDatum Gprime, int i) = mat:
+  let (valid_G,P_G) = {P_G: G->G'}
+    isomorphism_permutation(G.derived,Gprime.derived)
+  , (valid_L,P_L) = {P_L: L'-> L}
+    isomorphism_permutation(L.derived,Lprime.derived)
+  in assert(valid_G,"derived subgroups of G,Gprime not isomorphic");
+     assert(valid_L,"derived subgroups of L,Lprime not isomorphic");
+  embed_simple_reflection(L,G,permutation(P_G)[permutation(P_L)[i]])
 
-set embed(RootDatum L,RootDatum G,RootDatum Lprime,RootDatum Gprime,[int] w)=mat:
-let rv=id_mat(G.rank) in for i in w~ do rv*:=embed_simple_reflection(L,G,Lprime,Gprime,i) od;rv
-set embed(RootDatum L,RootDatum G,RootDatum Lprime,RootDatum Gprime,WeylElt w)=WeylElt:W_elt(G,embed(L,G,Lprime,Gprime,w.word))
-set embed(RootDatum L,RootDatum G,RootDatum Lprime,RootDatum Gprime)=(WeylElt->WeylElt):(WeylElt w):embed(L,G,Lprime,Gprime,w)
+set embed (RootDatum L,RootDatum G,RootDatum Lprime,RootDatum Gprime,[int] w) =
+      mat:
+   let rv=id_mat(G.rank) in
+   for i in w~ do rv*:=embed_simple_reflection(L,G,Lprime,Gprime,i) od; rv
+
+set embed (RootDatum L,RootDatum G,RootDatum Lprime,RootDatum Gprime,WeylElt w) =
+      WeylElt:
+   W_elt(G,embed(L,G,Lprime,Gprime,w.word))
+
+set embed (RootDatum L,RootDatum G,RootDatum Lprime,RootDatum Gprime) =
+      (WeylElt->WeylElt):
+   (WeylElt w) WeylElt: embed(L,G,Lprime,Gprime,w)
 
 { ------------------- induction ------------------- }
 
