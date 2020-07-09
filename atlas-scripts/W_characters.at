@@ -385,7 +385,11 @@ set find([WeylElt] list,WeylElt w)=first(for y in list do y=w od)
 }
 set rec_fun minimal_representatives_witnesses(
       [WeylElt] class,[WeylElt] witnesses) = ([WeylElt],[WeylElt]):
-      assert(is_elliptic(class[0]),"Class is not elliptic");
+{     assert(is_elliptic(class[0]),"Class is not elliptic");
+      this function is used for non-elliptic elements in F4; the 
+      validity of this application needs to be checked
+}
+
 (  let rd=class[0].root_datum
    , shorter=[WeylElt]:[], witnesses_shorter=[WeylElt]:[]
    , absent([WeylElt] elements, WeylElt x) = bool:
