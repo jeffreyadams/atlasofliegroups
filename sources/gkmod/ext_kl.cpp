@@ -225,7 +225,7 @@ Pol KL_table::product_comp (BlockElt x, weyl::Generator s, BlockElt sy) const
 // auxiliary to form $aq^{-1}+b+aq$, shifted to an ordinary polynomial
 inline Pol m(int a,int b) { return a==0 ? Pol(b) : qk_plus_1(2)*a + Pol(1,b); }
 
-#ifndef NDEBUG // |get_M| only used for double-checking the result of |extract_M|
+#ifndef NDEBUG // use |get_M| only for double-checking the result of |extract_M|
 /*
   Find $m_s(x,y)$ (symmetric Laurent polynomials in $r$) by recursive formula
   $m(x)\cong r^k p_{x,y} + def(s,x) r p_{s_x,y}-\sum_{x<u<y}p_{x,u}m(u)$ where
@@ -600,7 +600,6 @@ Pol KL_table::extract_M(Pol& Q,unsigned d,unsigned defect) const
  */
 void KL_table::do_new_recursion(BlockElt y,PolHash& hash)
 {
-  // in local vector |cy| store $P_x,y}$ whenever $l(x)<l(y)$
   const BlockElt floor_y =aux.length_floor(y);
 
   struct non_parity_info { weyl::Generator s; std::vector<Pol> M; };
@@ -659,7 +658,7 @@ void KL_table::do_new_recursion(BlockElt y,PolHash& hash)
 	*out_it = hash.match(Pxy); // store result in primitive (only) case
       } // end of "then" branch for |if (not is_extremal(x,y))|
       else // |x| is extremal for |y|, so we must do real computation
-      { // first seek proper |s| the is real non-arity for |y|
+      { // first seek proper |s| that is real non-parity for |y|
 	const non_parity_info* info_ptr=nullptr; ext_block::DescValue tsx;
 	for (const auto& info : rn_for_y)
 	{ tsx=type(info.s,x); // this will also be reused in case of |break|
