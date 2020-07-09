@@ -632,169 +632,174 @@ void KL_table::do_new_recursion(BlockElt y,PolHash& hash)
 
   // for the primitive |x| we transfer to |column.back()| so |P(xx,y)| works
   auto out_it = column[y].rbegin();
-
-  for (BlockElt x=floor_y; aux.prim_back_up(x,y); ++out_it)
-  { // compute $P_{x,y}$ for all |x| primitive for |y|, and store at |*out_it|
-    if (not is_extremal(x,y)) // primitive though not extremal
-    { // combine contributions from (at most) two Cayley ascents by hand
-      weyl::Generator s = aux.easy_set(x,y).firstBit();
-      assert(s<rank() and not aux.is_descent(s,x)); // since |x| not extremal
-      assert(has_double_image(type(s,x))); // since ascent |s| for |x| not good
-      BlockEltPair sx = aux.block.Cayleys(s,x);
-      auto Pxy = Pol(0);
-      if (sx.first!=UndefBlock)
-      { // although |P(x,y)| cannot be called yet, |P(x',y)| for |x'>x| is OK
-	Pxy = P(sx.first,y); // computed earlier this loop
-	if (aux.block.epsilon(s,x,sx.first)<0)
-	  Pxy *= -1;
-	if (sx.second!=UndefBlock)
-	{
-	  if (aux.block.epsilon(s,x,sx.second)>0)
-	    Pxy += P(sx.second,y);
-	  else
-	    Pxy -= P(sx.second,y);
-	}
-      }
-      *out_it = hash.match(Pxy); // store result in primitive (only) case
-    } // end of "then" branch for |if (not is_extremal(x,y))|
-    else // |x| is extremal for |y|, so we must do real computation
-    { // first seek proper |s| the is real non-arity for |y|
-      const non_parity_info* info_ptr=nullptr; ext_block::DescValue tsx;
-      for (const auto& info : rn_for_y)
-      { tsx=type(info.s,x); // this will also be reused in case of |break|
-	if (is_proper_ascent(tsx))
-	{ // consider only |s| that are proper (not rn) ascents for |x|
-	  if (not is_like_type_1(tsx)) // then |s| is certainly good
-	    { info_ptr = &info; break; }
-	  BlockElt csx = aux.block.cross(info.s,x); // cross neighbour might help
-	  if (csx!=UndefBlock and not is_extremal(csx,y)) // if so, endgame case
-	    { info_ptr = &info; break; } // which we consider good as well
-	}
-	else if (is_like_compact(tsx)) // also accept imaginary compact |x|
-	  { info_ptr = &info; break; }
-      }
-
-      auto Q = Pol(0); // default value for when no good |s| was found
-      if (info_ptr!=nullptr) // |break| above, we found |s| with good type |tsx|
-      {	// we still have |info_ptr| and |tsx==type(info_ptr->s,x)| at hand
-	const auto s = info_ptr->s;
-	const auto& M = info_ptr->M;
-	const unsigned k = aux.block.orbit(s).length();
-	const BlockElt last_u=aux.block.length_first(aux.block.length(x)+1);
-
-	// initialise $Q=\sum_{x<u<y}[s\in\tau(u)]r^{l(y/u)+k}P_{x,u}m_s(u,y)$
-	for (BlockElt u=floor_y; u-->last_u; )
-	  if (is_descent(type(s,u)) and not M[u].isZero())
-	    Q += Pol((aux.block.l(y,u)+k-M[u].degree())/2, P(x,u)*M[u]);
-
-	// subtract terms for ascent(s) of |x|; divide by its own coefficient
-	switch(tsx)
-	{
- 	case ext_block::one_complex_ascent:
-	case ext_block::two_complex_ascent:
-	case ext_block::three_complex_ascent:
-	  { // |(is_complex(tsx))|
-	    BlockElt sx=aux.block.cross(s,x);
-	    // if |sx==UndefBlock| the next condition always fails
-	    if (sx<floor_y) // subtract contrib. from $[T_x](T_s+1).T_{sx}=q^k$
-	      Q -= aux.block.T_coef(s,x,sx)*P(sx,y); // coef is $\pm q^k$
-	  } // implicit division of $Q$ here is by |T_coef(s,x,x)==1|
-	  break;
-	case ext_block::two_semi_imaginary:
-	case ext_block::three_semi_imaginary:
-	case ext_block::three_imaginary_semi:
-	  { // |has_defect(tsx)|
-	    BlockElt sx=aux.block.Cayley(s,x);
-	    if (sx<floor_y) // then in particular |sx!=UndefBlock|
-	      Q -= aux.block.T_coef(s,x,sx)*P(sx,y); // coef is $\pm(q^k-q)$
-
-	    /* divide by |T_coef(s,x,x)==1+q|, knowing that $Q$ may be missing
-	       a term in effective degree $r^1$, from |mu(1,x,y)| that is not
-	       included in $M[sx]$ when used to fill |Q| in loop above */
-	    int c = // remainder in upward division by $[T_x](T_s+1).T_x=1+q$
-	      // the remainder being taken in degree $\ceil l(y/x)/2$
-	      Q.factor_by_1_plus_q((aux.block.l(y,x)+1)/2);
-	    if (aux.block.l(y,x)%2!=0)
-	      assert(-c==Q.coef(aux.block.l(y,x)/2));
-	    else
-	      assert(c==0); // division should be exact, leaving no $r^0$ term
- 	    ndebug_use(c);
-	  }
-	  break;
-	case ext_block::one_imaginary_pair_fixed:
-	case ext_block::two_imaginary_double_double:
-	  { // |is_like_type_2(tsx)|
-	    assert(has_double_image(tsx)); // since it is a type 2 ascent
-	    BlockEltPair sx=aux.block.Cayleys(s,x); // again |UndefBlock|s are OK
-	    if (sx.first<floor_y)
-	      Q -= aux.block.T_coef(s,x,sx.first) // $\pm(q^k-1)$
-		*P(sx.first,y);
-	    if (sx.second<floor_y)
-	      Q -= aux.block.T_coef(s,x,sx.second)*P(sx.second,y); // idem
-	    Q/=2;                     // divide by |T_coef(s,x,x)==2|
-	  }
-	  break;
-	case ext_block::one_imaginary_single:
-	case ext_block::two_imaginary_single_single:
-	  { // |is_like_type_1(tsx)|, this used to be called the endgame case
-	    BlockElt x_prime=aux.block.Cayley(s,x);
-	    if (x_prime<floor_y)
-	      Q -= aux.block.T_coef(s,x,x_prime)*P(x_prime,y); // $\pm(q^k-1)$
-	    // implict division of $Q$ here is by |T_coef(s,x,x)==1|
-
-	    // now subtract off $P_{s\times x,y}$, easily computed on the fly
-	    BlockElt s_cross_x = aux.block.cross(s,x);
-	    assert(not is_extremal(s_cross_x,y)); // this was tested above
-	    const weyl::Generator t=aux.easy_set(s_cross_x,y).firstBit();
-	    auto ttscx=type(t,s_cross_x);
-	    if (has_double_image(ttscx))
-	    {
-	      BlockEltPair sx_up_t = aux.block.Cayleys(t,s_cross_x);
-	      if (sx_up_t.first<floor_y)
-		Q -= P(sx_up_t.first,y)
-		    *(aux.block.epsilon(s,x,s_cross_x)
-		      *aux.block.epsilon(t,s_cross_x,sx_up_t.first));
-	      if (sx_up_t.second<floor_y)
-		Q -= P(sx_up_t.second,y)
-		    *(aux.block.epsilon(s,x,s_cross_x)
-		      *aux.block.epsilon(t,s_cross_x,sx_up_t.second));
-	    }
-	    else
-	    {
-	      BlockElt sx_up_t=aux.block.Cayley(t,s_cross_x);
-	      if (sx_up_t<floor_y)
-		Q -= P(sx_up_t,y)
-		    *(aux.block.epsilon(s,x,s_cross_x)
-		      *aux.block.epsilon(t,s_cross_x,sx_up_t));
-	    }
-	  }
-	  break;
-	case ext_block::two_imaginary_single_double_fixed:
+  for (BlockElt x=floor_y; x-->0; )
+  {
+    if (is_primitive(x,y))
+    { // compute $P_{x,y}$ for all |x| primitive for |y|, and store at |*out_it|
+      if (not is_extremal(x,y)) // primitive though not extremal
+      { // combine contributions from (at most) two Cayley ascents by hand
+	weyl::Generator s = aux.easy_set(x,y).firstBit();
+	assert(s<rank() and not aux.is_descent(s,x)); // since |x| not extremal
+	assert(has_double_image(type(s,x))); // as ascent |s| for |x| not good
+	BlockEltPair sx = aux.block.Cayleys(s,x);
+	auto Pxy = Pol(0);
+	if (sx.first!=UndefBlock)
+	{ // although |P(x,y)| cannot be called yet, |P(x',y)| for |x'>x| is OK
+	  Pxy = P(sx.first,y); // computed earlier this loop
+	  if (aux.block.epsilon(s,x,sx.first)<0)
+	    Pxy *= -1;
+	  if (sx.second!=UndefBlock)
 	  {
-	    BlockEltPair sx=aux.block.Cayleys(s,x);
-	    if (sx.first<floor_y)
-	      Q -= aux.block.T_coef(s,x,sx.first)*P(sx.first,y); // $\pm(q^2-1)$
-	    if (sx.second<floor_y)
-	      Q -= aux.block.T_coef(s,x,sx.second)*P(sx.second,y); // idem
- 	    Q/=2; // divide by |T_coef(s,x,x)==2|
+	    if (aux.block.epsilon(s,x,sx.second)>0)
+	      Pxy += P(sx.second,y);
+	    else
+	      Pxy -= P(sx.second,y);
 	  }
-	  break;
-	case ext_block::one_imaginary_compact:
-	case ext_block::one_real_pair_switched:
-	case ext_block::two_imaginary_compact:
-	case ext_block::two_real_single_double_switched:
-	case ext_block::three_imaginary_compact:
-	  // these cases require no additional terms to be substracted
-	  Q.factor_by_1_plus_q_to_the(k,(aux.block.l(y,x)-1)/2+k); // degree
-	  assert(Q.degree_less_than((aux.block.l(y,x)+1)/2));
+	}
+	*out_it = hash.match(Pxy); // store result in primitive (only) case
+      } // end of "then" branch for |if (not is_extremal(x,y))|
+      else // |x| is extremal for |y|, so we must do real computation
+      { // first seek proper |s| the is real non-arity for |y|
+	const non_parity_info* info_ptr=nullptr; ext_block::DescValue tsx;
+	for (const auto& info : rn_for_y)
+	{ tsx=type(info.s,x); // this will also be reused in case of |break|
+	  if (is_proper_ascent(tsx))
+	  { // consider only |s| that are proper (not rn) ascents for |x|
+	    if (not is_like_type_1(tsx)) // then |s| is certainly good
+	    { info_ptr = &info; break; }
+	    BlockElt csx =
+	      aux.block.cross(info.s,x); // cross neighbour might help
+	    if (csx!=UndefBlock and not is_extremal(csx,y)) // if so, endgame
+	    { info_ptr = &info; break; } // which we consider good as well
+	  }
+	  else if (is_like_compact(tsx)) // also accept imaginary compact |x|
+	  { info_ptr = &info; break; }
+	}
+
+	auto Q = Pol(0); // default value for when no good |s| was found
+	if (info_ptr!=nullptr) // |break| above, found |s| with good type |tsx|
+	{ // we still have |info_ptr| and |tsx==type(info_ptr->s,x)| at hand
+	  const auto s = info_ptr->s;
+	  const auto& M = info_ptr->M;
+	  const unsigned k = aux.block.orbit(s).length();
+	  const BlockElt last_u=aux.block.length_first(aux.block.length(x)+1);
+
+	  // initialise $Q=\sum_{x<u<y}[s\in\tau(u)]r^{l(y/u)+k}P_{x,u}m_s(u,y)$
+	  for (BlockElt u=floor_y; u-->last_u; )
+	    if (is_descent(type(s,u)) and not M[u].isZero())
+	      Q += Pol((aux.block.l(y,u)+k-M[u].degree())/2, P(x,u)*M[u]);
+
+	  // subtract terms for ascent(s) of |x|; divide by its own coefficient
+	  switch(tsx)
+	  {
+	  case ext_block::one_complex_ascent:
+	  case ext_block::two_complex_ascent:
+	  case ext_block::three_complex_ascent:
+	    { // |(is_complex(tsx))|
+	      BlockElt sx=aux.block.cross(s,x);
+	      // if |sx==UndefBlock| the next condition always fails
+	      if (sx<floor_y) // subtract contr. from $[T_x](T_s+1).T_{sx}=q^k$
+		Q -= aux.block.T_coef(s,x,sx)*P(sx,y); // coef is $\pm q^k$
+	    } // implicit division of $Q$ here is by |T_coef(s,x,x)==1|
+	    break;
+	  case ext_block::two_semi_imaginary:
+	  case ext_block::three_semi_imaginary:
+	  case ext_block::three_imaginary_semi:
+	    { // |has_defect(tsx)|
+	      BlockElt sx=aux.block.Cayley(s,x);
+	      if (sx<floor_y) // then in particular |sx!=UndefBlock|
+		Q -= aux.block.T_coef(s,x,sx)*P(sx,y); // coef is $\pm(q^k-q)$
+
+	      /* divide by |T_coef(s,x,x)==1+q|, knowing that $Q$ may be missing
+		 a term in effective degree $r^1$, from |mu(1,x,y)| that is not
+		 included in $M[sx]$ when used to fill |Q| in loop above */
+	      int c = // remainder in upward division by $[T_x](T_s+1).T_x=1+q$
+		// the remainder being taken in degree $\ceil l(y/x)/2$
+		Q.factor_by_1_plus_q((aux.block.l(y,x)+1)/2);
+	      if (aux.block.l(y,x)%2!=0)
+		assert(-c==Q.coef(aux.block.l(y,x)/2));
+	      else
+		assert(c==0); // division should be exact, leaving no $r^0$ term
+	      ndebug_use(c);
+	    }
+	    break;
+	  case ext_block::one_imaginary_pair_fixed:
+	  case ext_block::two_imaginary_double_double:
+	    { // |is_like_type_2(tsx)|
+	      assert(has_double_image(tsx)); // since it is a type 2 ascent
+	      BlockEltPair sx=aux.block.Cayleys(s,x); // |UndefBlock|s are OK
+	      if (sx.first<floor_y)
+		Q -= aux.block.T_coef(s,x,sx.first) // $\pm(q^k-1)$
+		  *P(sx.first,y);
+	      if (sx.second<floor_y)
+		Q -= aux.block.T_coef(s,x,sx.second)*P(sx.second,y); // idem
+	      Q/=2; // divide by |T_coef(s,x,x)==2|
+	    }
+	    break;
+	  case ext_block::one_imaginary_single:
+	  case ext_block::two_imaginary_single_single:
+	    { // |is_like_type_1(tsx)|, this used to be called the endgame case
+	      BlockElt x_prime=aux.block.Cayley(s,x);
+	      if (x_prime<floor_y)
+		Q -= aux.block.T_coef(s,x,x_prime)*P(x_prime,y); // $\pm(q^k-1)$
+	      // implict division of $Q$ here is by |T_coef(s,x,x)==1|
+
+	      // now subtract off $P_{s\times x,y}$, easily computed on the fly
+	      BlockElt s_cross_x = aux.block.cross(s,x);
+	      assert(not is_extremal(s_cross_x,y)); // this was tested above
+	      const weyl::Generator t=aux.easy_set(s_cross_x,y).firstBit();
+	      auto ttscx=type(t,s_cross_x);
+	      if (has_double_image(ttscx))
+	      {
+		BlockEltPair sx_up_t = aux.block.Cayleys(t,s_cross_x);
+		if (sx_up_t.first<floor_y)
+		  Q -= P(sx_up_t.first,y)
+		      *(aux.block.epsilon(s,x,s_cross_x)
+		        *aux.block.epsilon(t,s_cross_x,sx_up_t.first));
+		if (sx_up_t.second<floor_y)
+		  Q -= P(sx_up_t.second,y)
+		      *(aux.block.epsilon(s,x,s_cross_x)
+		        *aux.block.epsilon(t,s_cross_x,sx_up_t.second));
+	      }
+	      else
+	      {
+		BlockElt sx_up_t=aux.block.Cayley(t,s_cross_x);
+		if (sx_up_t<floor_y)
+		  Q -= P(sx_up_t,y)
+		      *(aux.block.epsilon(s,x,s_cross_x)
+		        *aux.block.epsilon(t,s_cross_x,sx_up_t));
+	      }
+	    }
+	    break;
+	  case ext_block::two_imaginary_single_double_fixed:
+	    {
+	      BlockEltPair sx=aux.block.Cayleys(s,x);
+	      if (sx.first<floor_y)
+		Q -=
+		  aux.block.T_coef(s,x,sx.first)*P(sx.first,y); // $\pm(q^2-1)$
+	      if (sx.second<floor_y)
+		Q -= aux.block.T_coef(s,x,sx.second)*P(sx.second,y); // idem
+	      Q/=2; // divide by |T_coef(s,x,x)==2|
+	    }
+	    break;
+	  case ext_block::one_imaginary_compact:
+	  case ext_block::one_real_pair_switched:
+	  case ext_block::two_imaginary_compact:
+	  case ext_block::two_real_single_double_switched:
+	  case ext_block::three_imaginary_compact:
+	    // these cases require no additional terms to be substracted
+	    Q.factor_by_1_plus_q_to_the(k,(aux.block.l(y,x)-1)/2+k); // degree
+	    assert(Q.degree_less_than((aux.block.l(y,x)+1)/2));
 	    // that was the condition $\deg(Q) \leq l(y,x)-1/2|, computed safely
-	  break;
-	default: assert(false); // other cases should not have selected |s|
-	} // |switch(tsx)|
-	// now |Q| is completely computed
-      } // |if (info_ptr!=nullptr)|
-      *out_it = hash.match(Q); // extremal implies primitive: store result
-    } // end of |else| of |if (not is_extremal(x,y))|
+	    break;
+	  default: assert(false); // other cases should not have selected |s|
+	  } // |switch(tsx)|
+	  // now |Q| is completely computed
+	} // |if (info_ptr!=nullptr)|
+	*out_it = hash.match(Q); // extremal implies primitive: store result
+      } // end of |else| of |if (not is_extremal(x,y))|
+      ++out_it; // output iterator advance only for primitive elements
+    } // end of |if (is_primitive(x,y)|; the remainder is done is for all |x|
 
     // now if there is a defect ascent from |x|, update |M| for |mu(1,x,y)|
     if (aux.block.l(y,x)==1+2*P(x,y).degree())
