@@ -527,9 +527,9 @@ void KL_table::mu_correction(const BlockEltList& extremals,
 
 /* A method that takes a row |klv| of completed KL polynomials, computed by
    |recursion_column| at |y| and extremal elements |x| listed in |ext|, and
-   transfers them to the main storage structures. Its tasks are
+   transfers them to the main storage structures |d_KL|, |d_mu|. Its tasks are
 
-   - generate the list of all primitve elements for |y|, which contains |ext|
+   - generate the list of all primitive elements for |y|, which contains |ext|
    - for each primitive element |x|, if it is extremal just look up $P_{x,y}$
      as |klv[x]|, if |x| is primitive but not extremal, compute that polynomial
      (as sum of two $P_{x',y}$ in the same column); hash and store the result
@@ -1004,23 +1004,45 @@ void KL_table::swallow
 /*
   Return the W-graph for this block.
 
-  Explanation: the W-graph is a graph with one vertex for each element of the
-  block; the corresponding descent set is the tau-invariant, i.e. the set of
-  generators s that are either complex descents, real type I or II, or
-  imaginary compact. Let x < y in the block such that mu(x,y) != 0, and
-  descent(x) != descent(y). Then there is an edge from x to y unless
-  descent(x) is contained in descent(y), and an edge from y to x unless
-  descent(y) is contained in descent(x). Note that the latter containment
-  always holds when the length difference is > 1, so that in that case there
-  will only be an edge from x to y (the edge must be there because we already
-  assumed that the descent sets were not equal.) In both cases, the
-  coefficient corresponding to the edge is mu(x,y).
+  The W-graph is an oriented graph with one vertex for each element of the
+  block; its edges are determined by the descent sets of the block element
+  (their tau-invariant, i.e. the set of generators s that are either a complex
+  descent, real type I or II, or imaginary compact), and by the values
+  $\mu(x,y)$ for certain pairs $x<y$ that are stored in the various |d_mu[y]|
+  arrays. Recall from |complete_primitives| that nonzero $\mu(x,y)$ arise in two
+  ways: either when $x$ is extremal for $y$ and $P_{x,y}$ achieves the degree
+  bound given by lengths, or when $x$ is in the down-set of $y$, the set of
+  elements of length one less that $y$ reachable via a descent (such $x$ cannot
+  be extremal, and has $\mu(x,y)=1$ without needing computation of $P_{x,y}=1$).
 
-  The edge lists are constructed in already sorted order: for a given element,
-  the outgoing edges to smaller elements are first constructed when |y| equals
-  that element (and they come in increasing order because |mcol| has its
-  first components (|x|) increasing), then to larger elements when the given
-  element occurs as |x| for another as |y|; the |y| are always increasing.
+  There is an edge from $u$ to $v$ if either $\mu(u,v)$ or $\mu(v,u)$ (depending
+  on their respective lengths) is nonzero, and the descent set of $u$ is not
+  contained in the decent set of $v$ (the latter is in a sense a matter of
+  economy, as an edge for $u$ to $v$ will only by used for generators that are
+  removed from the descent set when traversing that edge, and if there are none
+  there is no point in recording an edge; however we do stipulate the absence of
+  such redundant edges). The edge will be labelled by the nonzero $\mu(u,v)$ or
+  $\mu(v,u)$. So a nonzero $\mu$ value will be ignored for the W-graph when the
+  vertices involved happen to have equal descent sets, and we henceforth assume
+  these sets to differ. Then (with $x$ below $y$ again) all remaining extremal
+  $x$ do give an upward edge labelled $\mu(x,y)$ from $x to $y$, and (by
+  definition of extremal) no downward edge. For the $x$ in the down-set of $y$
+  there will be a downward edge labelled $1$ from $y$ to $x$, and whenever the
+  descent set of $x$ is not contained in that of $y$ also an upward edge
+  labelled $1$. Stated differently, the downward edges, all labelled $1$, are
+  those from $y$ to an element of its down-set, and the upward edges to $y$ are
+  from are those $x$ with nonzero $\mu(x,y)$ (which will label the edge) and
+  descent set not contained in that of $y$.
+
+  The edge lists are constructed by a somewhat different (but equivalent) logic:
+  for $x<y$ with length difference more than $1$, an upward edge is constructed
+  whenever descent sets differ, while for length difference $1$ links in both
+  directions are considered, and placed in case of non-inclusion of descent sets.
+
+  The (outgoing) lists come out by increasing destination vertex, with first the
+  downward edges, constructed when |y| equals that element (in increasing order
+  because |mcol| is so ordered), and then the upwards edges, constructed when
+  the given element occurs as |x| for another as |y| (traversed increasingly).
 
 */
 wgraph::WGraph wGraph(const KL_table& kl_tab)
@@ -1036,24 +1058,24 @@ wgraph::WGraph wGraph(const KL_table& kl_tab)
     for (size_t j = 0; j < mcol.size(); ++j)
     {
       BlockElt x = mcol[j].x;
-      assert(x<y); // this is a property of |mu_column|
+      assert(x<y); // this is a property of |mu_column(y)|
       const RankFlags& d_x = kl_tab.descent_set(x);
       if (d_x == d_y)
 	continue;
       MuCoeff mu = mcol[j].coef;
       if (kl_tab.length(y) - kl_tab.length(x) > 1)
-      { // nonzero $\mu$, unequal descents, $l(x)+1<l(y)$: edge from $x$ to $y$
+      { // $\mu\ne0$, unequal descents, $l(y/x)>1$: upward edge from $x$ to $y$
 	wg.oriented_graph.edgeList(x).push_back(y);
 	wg.coefficients[x].push_back(mu);
 	continue;
       }
       // now length difference is 1: edges except to a larger descent set
-      if (not d_y.contains(d_x)) // then add edge from $x$ to $y$
+      if (not d_y.contains(d_x)) // then add upward edge from $x$ to $y$
       {
 	wg.oriented_graph.edgeList(x).push_back(y);
 	wg.coefficients[x].push_back(mu);
       }
-      if (not d_x.contains(d_y)) // then add edge from $y$ to $x$
+      if (not d_x.contains(d_y)) // then add downward edge from $y$ to $x$
       {
 	wg.oriented_graph.edgeList(y).push_back(x);
 	wg.coefficients[y].push_back(mu);
