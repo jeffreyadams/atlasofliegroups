@@ -10,6 +10,26 @@
 <character_table_E7.at
 <character_table_E8.at
 
+
+set character_table_torus(RootDatum rd)=CharacterTable:
+assert(rd.is_abelian,"Not a torus");
+(Lie_type(rd),
+1,    {order of class}
+1,    {number of classes}
+(int->classical_class):(int n):classical_class:().null_class,  {empty partition}
+(int->string):(int n):"null",  {number of classes}
+(int ->WeylElt):(int n):rd.id_W,
+(int->int):(int n):1, {class orders}
+((int,int)->int):(int m,int n):1, {class power}
+[int]:[1],   {centralizer_orders}
+[int]:[1], {class_sizes}
+(int->classical_irrep):(int n):classical_irrep:().null_irrep, 
+(int->string):(int n):"",{ irreducible_label}
+[[int]]:[[]],  {sym_powers_reflection}
+[int]:[1], { degrees}
+mat:[[1]])
+
+{including torus}
 set character_table_simple(RootDatum rd)=
 let (letter,n)=simple_type(rd) in
 if letter="A" then
@@ -34,13 +54,15 @@ elif letter="E" and n=7 then
  ct=update_degrees(ct_0) in ct
 elif letter="E" and n=8 then
  let ct=character_table_E8() in ct
+ elif is_abelian(rd) then
+ character_table_torus(rd)
 else error("case not covered")
 fi
 
 set character_table(RootDatum rd)=
+if rd.is_abelian then character_table_torus(rd) else
 let factors=simple_factors(rd) then
 ct=character_table_simple(factors[0].derived) in
 for i:#factors-1 from 1 do
- ct:=tensor(ct,character_table_simple(factors[i].derived)) od;ct
-
+ ct:=tensor(ct,character_table_simple(factors[i].derived)) od;ct fi
 

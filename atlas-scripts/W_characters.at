@@ -363,7 +363,7 @@ representatives of a conjugacy class}
 
 set find([WeylElt] list,WeylElt w)=first(for y in list do y=w od)
 
-{ the following is WRONG, but is left in because other code depends on it :-(
+{ the following is correct only for elliptic classes
 
   algorithm to compute minimal length representatives directly by induction
   algorithm (due to He):
@@ -371,8 +371,9 @@ set find([WeylElt] list,WeylElt w)=first(for y in list do y=w od)
     one simple, weakly length decreasing conjugation at a time
     (also: given one minimal length representative, get them
            all by conjugating without increasing the length)
-    FALSE: in A2 the two simple generators are conjugate, but (obviously)
+     NOTE: in A2 the two simple generators are conjugate, but (obviously)
            not by either one of them, so any conjugation path increases length
+	   but these are not elliptic
   So:
   given a class=[w_1,...,w_n], all of which are conjugate and same length |l|,
   compute s_i*w_j*s_i for all simple s_i
@@ -384,6 +385,7 @@ set find([WeylElt] list,WeylElt w)=first(for y in list do y=w od)
 }
 set rec_fun minimal_representatives_witnesses(
       [WeylElt] class,[WeylElt] witnesses) = ([WeylElt],[WeylElt]):
+      assert(is_elliptic(class[0]),"Class is not elliptic");
 (  let rd=class[0].root_datum
    , shorter=[WeylElt]:[], witnesses_shorter=[WeylElt]:[]
    , absent([WeylElt] elements, WeylElt x) = bool:
@@ -425,24 +427,6 @@ set minimal_representative (WeylElt w) = WeylElt: minimal_representatives(w)[0]
 
 set is_conjugate_strong (WeylElt x,WeylElt y) = bool:
    find(minimal_representatives(x),minimal_representative(y))!=-1
-
-{ there appears to be a bug here. Example:
-
-atlas> set rd=SL(3) { or "A2".adjoint }
-Variable rd: RootDatum
-atlas> set w=W_elt (rd,[0])
-Variable w: WeylElt
-atlas> set y=W_elt
-Variable y: WeylElt
-atlas> is_conjugate(w,y)
-Value: true
-atlas> is_conjugate_strong (w,y)
-Value: false
-
-{minimal_representatives does not give all of them:}
-atlas> minimal_representatives(w)
-Value: [<0>]
-}
 
 {----------------------------------------------------------------------------}
 

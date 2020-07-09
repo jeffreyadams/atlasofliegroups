@@ -111,39 +111,32 @@ if #summands>1 then error("not unique special representation") elif
 set special_character_permuted(CharacterTable ct,mat permutation)=(WCell->int):(WCell cell):
 special_character_permuted(ct,cell,permutation)
 
-{for testing: return all permutations}
-set isomorphism_permutations(RootDatum rd_1,RootDatum rd_2)=[mat]:
-assert(rd_1.is_semisimple and rd_2.is_semisimple,"root data must be semisimple");
-if not is_locally_isomorphic(rd_1,rd_2) then [null(0,0)]
-else
- let S=symmetric_group(rd_1.rank) then
- C_1=rd_1.Cartan_matrix, C_2=rd_2.Cartan_matrix in
- ##for g in S do if  g*C_2=C_1*g then [g] else [] fi od
-fi
+{embeddings of Weyl groups, needed for induction}
 
+{requirement: simple roots of L are contained in the (positive) roots of G}
+set embed_simple_reflection(RootDatum L,RootDatum G, int i)=mat:
+assert(find(G.posroots,L.simple_roots[i])>=0,"Simple root for L is not a root for G");
+reflection(G,L.simple_roots[i])
+set embed(RootDatum L,RootDatum G,[int] w)=mat:
+let rv=id_mat(G.rank) in for i in w~ do rv*:=embed_simple_reflection(L,G,i) od;rv
+set embed(RootDatum L,RootDatum G,WeylElt w)=WeylElt:W_elt(G,embed(L,G,w.word))
+set embed(RootDatum L,RootDatum G)=(WeylElt->WeylElt):(WeylElt w):embed(L,G,w)
 
-set isomorphism_permutation(RootDatum rd_1,RootDatum rd_2)=(bool,mat):
-assert(rd_1.is_semisimple and rd_2.is_semisimple,"root data must be semisimple");
-if not is_locally_isomorphic(rd_1,rd_2) then (false, null(0,0))
-else
- let S=symmetric_group(rd_1.rank) then
- C_1=rd_1.Cartan_matrix, C_2=rd_2.Cartan_matrix then
- index=first(for g in S do g*C_2=C_1*g od) in
- if index=-1 then (false,null(0,0)) else (true,S[index]) fi
-fi
+{given: Lprime -> L \subset G -> Gprime
+ where Lprime.derived \simeq L.derived and similarly G,Gprime
+ embed W(Lprime) in W(Gprime)
+}
+set embed_simple_reflection(RootDatum L,RootDatum G,RootDatum Lprime,RootDatum Gprime, int i)=
+let (valid_G,P_G)=isomorphism_permutation(G.derived,Gprime.derived) then  {P_G: G->G'}
+(valid_L,P_L)=isomorphism_permutation(L.derived,Lprime.derived) in  {P_L: L'-> L}
+assert(valid_G,"derived subgroups of G,Gprime not isomorphic");
+assert(valid_L,"derived subgroups of L,Lprime not isomorphic");
+embed_simple_reflection(L,G,permutation(P_G)[permutation(P_L)[i]])
 
-{for testing: try different ones}
-set isomorphism_permutation_variant(RootDatum rd_1,RootDatum rd_2)=(bool,mat):
-let all=isomorphism_permutations(rd_1,rd_2) in
-if =#all then (false,null(0,0)) elif
-#all=1 then (true, all[0])
-else (true, all[4]) fi
-
-set find_isomorphism_permutation([RootDatum] list,RootDatum rd)=(int,mat):
-for rd_list@i in list do let (success,M)=isomorphism_permutation(rd_list.derived,rd.derived) in
- if success then return (i,M) fi od;(-1,null(0,0))
-
-
+set embed(RootDatum L,RootDatum G,RootDatum Lprime,RootDatum Gprime,[int] w)=mat:
+let rv=id_mat(G.rank) in for i in w~ do rv*:=embed_simple_reflection(L,G,Lprime,Gprime,i) od;rv
+set embed(RootDatum L,RootDatum G,RootDatum Lprime,RootDatum Gprime,WeylElt w)=WeylElt:W_elt(G,embed(L,G,Lprime,Gprime,w.word))
+set embed(RootDatum L,RootDatum G,RootDatum Lprime,RootDatum Gprime)=(WeylElt->WeylElt):(WeylElt w):embed(L,G,Lprime,Gprime,w)
 
 { ------------------- induction ------------------- }
 
@@ -177,51 +170,86 @@ set standard_Levis (RootDatum rd) = [RootDatum]:
   The factor by which pi_L(w_L) is mulitplied is integer, as it is the index of
   the centraliser subgroup of w_L in W_L inside its centraliser subgroup of w_G
 }
-set induce_character (CharacterTable ct_G,CharacterTable ct_L,[int] pi_L) =
-       [int]:
-   let rd_G= ct_G.root_datum, rd_L=ct_L.root_datum
+
+{Given an embedding f of W_L into W_G}
+set induce_character (CharacterTable ct_L,CharacterTable ct_G,(WeylElt->WeylElt) f,[int] pi_L) =[int]:
+   let rd_G= ct_G.root_datum_parent, rd_L=ct_L.root_datum_parent
    then index = rat_as_int(order_W(rd_G)/order_W(rd_L))
    , classes_G=ct_G.class_reps  {[WeylElt] for |G|}
    , classes_L=ct_L.class_reps  {[WeylElt] for |L|}
-   then values_G= [int]: for c in classes_G do 0 od
+   then values_G= [rat]: {will be [int] in the end} for c in classes_G do 0 od
    , sizes_G = ct_G.class_sizes
    , sizes_L = ct_L.class_sizes
-in for w_L@i in classes_L
-   do let j=ct_G.class_index(W_elt(rd_G,w_L.matrix))
-   in  values_G[j] +:= pi_L[i] * (index * sizes_L[i]/sizes_G[j]).rat_as_int
-   od; values_G
+   in for w_L@i in classes_L do
+   let j=ct_G.class_index(f(w_L))  {see embed_W note below}
+   in
+{   let ()=prints("i=", i, " j=",j, new_line,"sizes_L[i]: ", sizes_L[i], " sizes_G[j]:", sizes_G[j]) in}
+   values_G[j] +:= pi_L[i] * (index * sizes_L[i]/sizes_G[j])
+   od; values_G.ratvec_as_vec
 
-{same as previous, except that we're given an embedding of W_L into W_G}
-set induce_character (CharacterTable ct_G,CharacterTable ct_L,(WeylElt->WeylElt) W_embedding,[int] pi_L) =
-       [int]:
-   let rd_G= ct_G.root_datum, rd_L=ct_L.root_datum
-   then index = rat_as_int(order_W(rd_G)/order_W(rd_L))
-   , classes_G=ct_G.class_reps  {[WeylElt] for |G|}
-   , classes_L=ct_L.class_reps  {[WeylElt] for |L|}
-   then values_G= [int]: for c in classes_G do 0 od
-   , sizes_G = ct_G.class_sizes
-   , sizes_L = ct_L.class_sizes
-in for w_L@i in classes_L do
-   let j=ct_G.class_index(W_embedding(w_L))
-   in  values_G[j] +:= pi_L[i] * (index * sizes_L[i]/sizes_G[j]).rat_as_int
-   od; values_G
+{given L\subset G, compute 
+ct_G=G.character_table and 
+ct_L=L.character_table 
+the class_representatives for ct_G are in terms of Gprime=ct_G.root_datum_parent
+the class_representatives for ct_L are in terms of Lprime=ct_L.root_datum_parent
+the embedding of W(L) in W(G), on the other hand, is in terms of L and G
+need: L' -> L \subset G -> Gprime
+see embed(L,G,Lprime,Gprime) above
+}
 
-set embed_W_L(RootDatum rd_G,[int] simple_roots_L,WeylElt w)=WeylElt:
-W_elt(rd_G,for i in w.word do simple_roots_L[i] od)
+{requirement: simple roots of L are contained in the (positive) roots of G
+ if not this will trigger an assert in embed(L,G,w)
+first version: assume character tables of L,G pre-computed
+} 
+set induce_character(RootDatum L,RootDatum G,CharacterTable ct_L,CharacterTable ct_G,[int] pi_L)=
+let Gprime=ct_G.root_datum_parent then
+Lprime=ct_L.root_datum_parent then
+f=embed(L,G,Lprime,Gprime) in
+induce_character(ct_L,ct_G,f,pi_L)
 
-set embed_W_L(RootDatum rd_G,[int] simple_roots_L)=(WeylElt->WeylElt):
-(WeylElt w):embed_W_L(rd_G,simple_roots_L,w)
+{compute both character tables as needed (slow)}
+set induce_character(RootDatum L,RootDatum G,[int] pi_L)=
+let ct_G=G.character_table then
+ct_L=L.character_table then
+Gprime=ct_G.root_datum_parent then
+Lprime=ct_L.root_datum_parent then
+f=embed(L,G,Lprime,Gprime) in
+induce_character(ct_L,ct_G,f,pi_L)
 
-set induce_sign(CharacterTable ct_G,[int] simple_roots_L)=[int]:
-let L=Levi_datum(ct_G.root_datum,simple_roots_L) then
-ct_L=character_table(L) in
-induce_character(ct_G,ct_L,embed_W_L(ct_G.root_datum,simple_roots_L),ct_L.sign)
+{assume ct_G computed, but not ct_L}
+set induce_character(RootDatum L,RootDatum G,CharacterTable ct_G,[int] pi_L)=
+let ct_L=L.character_table then
+Gprime=ct_G.root_datum_parent then
+Lprime=ct_L.root_datum_parent then
+f=embed(L,G,Lprime,Gprime) in
+induce_character(ct_L,ct_G,f,pi_L)
 
+{Given G,ct_G, and define L in terms of posroots of G
+roots_of_L=[a_0,a_1,...] means that
+the simple roots of L are [G.posroots[a_0],...
+}
+set induce_character(RootDatum G,CharacterTable ct_G,[int] roots_of_L,[int] pi_L)=
+let L=subgroup_by_simple(G,roots_of_L) in
+induce_character(L,G,ct_G,pi_L)
 
-set induce_trivial(CharacterTable ct_G,[int] simple_roots_L)=[int]:
-let L=Levi_datum(ct_G.root_datum,simple_roots_L) then
-ct_L=character_table(L) in
-induce_character(ct_G,ct_L,embed_W_L(ct_G.root_datum,simple_roots_L),ct_L.trivial)
+set induce_character(RootDatum G,[int] roots_of_L,[int] pi_L)=
+induce_character(G,G.character_table,roots_of_L,pi_L)
+
+set induce_sign(CharacterTable ct_G, [int] simple_roots_L)=[int]:
+let G=ct_G.root_datum_parent then
+Gprime=G then
+L=Levi_datum(ct_G.root_datum,simple_roots_L) then
+ct_L=L.character_table then
+Lprime=ct_L.root_datum_parent in
+induce_character(ct_L,ct_G,embed(L,G,Lprime,Gprime),ct_L.sign)
+
+set induce_trivial(CharacterTable ct_G, [int] simple_roots_L)=[int]:
+let G=ct_G.root_datum_parent then
+Gprime=G then 
+L=Levi_datum(ct_G.root_datum,simple_roots_L) then
+ct_L=L.character_table then
+Lprime=ct_L.root_datum_parent in
+induce_character(ct_L,ct_G,embed(L,G,Lprime,Gprime),ct_L.trivial)
 
 set truncated_induce_sign(CharacterTable ct_G,[int] simple_roots_L)=int:
 let L=Levi_datum(ct_G.root_datum,simple_roots_L) then

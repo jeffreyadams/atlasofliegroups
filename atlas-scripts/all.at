@@ -27,6 +27,7 @@
 <weak_packets_precomputed_cell_traces.at
 <arthur_parameters.at
 <coherent_irreducible.at
+<deform_plus.at
 
 {this is slow to load:
 <unipotent_representations_exceptional.at
