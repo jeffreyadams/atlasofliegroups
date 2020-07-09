@@ -150,7 +150,7 @@ public:
   // alcv should be constructed by looping over pos coroots
 
     // special members required by HashTable
-
+ 
   typedef std::vector<KRepr> Pooltype;
   bool operator== (const KRepr& other) const { return x_part==other.x_part
       and lmb_rho==other.lmb_rho; }
@@ -222,11 +222,11 @@ class Rep_context
     { return sr_gamma(x,lambda_rho,gamma(x,lambda_rho,nu)); }
   StandardRepr sr (const StandardReprMod& srm, const RatWeight& gamma) const;
 
-  StandardRepr
-    sr(const standardrepk::StandardRepK& srk,
+  StandardRepr sr (const standardrepk::StandardRepK& srk,
        const standardrepk::SRK_context& srkc,
        const RatWeight& nu) const;
 
+  StandardRepr sr (const KRepr sk) const;
   // component extraction
   const WeightInvolution& theta (const StandardRepr& z) const;
 
@@ -358,8 +358,8 @@ class Rep_table : public Rep_context
   std::vector<Alcove> alcove_pool;
   //  std::vector<std::pair<SR_poly,SR_poly> > def_formulae; // ordinary, twisted
   HashTable<Alcove,unsigned long> alcove_hash;
-  std::vector<std::pair<SR_poly_vec,SR_poly_vec> > alcove_def_formulae_vec; // ordinary, twisted
-  
+  //  std::vector<std::pair<SR_poly_vec,SR_poly_vec> > alcove_def_formulae_vec; // ordinary, twisted
+
   std::vector<KRepr> krepr_pool;
   HashTable<KRepr,unsigned long> krepr_hash;
   std::vector<std::pair<SR_poly_vec_seq,SR_poly_vec_seq> > alcove_def_formulae_seq; // ordinary, twisted
@@ -387,10 +387,14 @@ class Rep_table : public Rep_context
   //  const SR_poly& twisted_deformation_formula(unsigned long h) const
   //   { return Map(alcove_def_formulae_vec[h].second); }
 
-  const SR_poly_vec& deformation_formula(unsigned long h) const
-    { return alcove_def_formulae_vec[h].first; }
-  const SR_poly_vec& twisted_deformation_formula(unsigned long h) const
-    { return alcove_def_formulae_vec[h].second; }
+  // require z to have nu=0! Don't use this internally; use KRepr_index instead
+  unsigned long K_parameter_number(StandardRepr z) const
+  { return krepr_hash.find(KRepr(*this,z)); }
+  
+  const SR_poly_vec_seq& deformation_formula(unsigned long h) const
+    { return alcove_def_formulae_seq[h].first; }
+  const SR_poly_vec_seq& twisted_deformation_formula(unsigned long h) const
+    { return alcove_def_formulae_seq[h].second; }
   
   blocks::common_block& lookup_full_block
     (StandardRepr& sr,BlockElt& z); // |sr| is by reference; will be normalised
@@ -434,12 +438,21 @@ SR_poly_vec UnMap
 SR_poly Map
     (SR_poly_vec& V);
 
+// meant to convert an SR_poly_seq to a list of its nodes
+SR_poly_vec_seq UnMap_seq
+    (SR_poly& P);
+
+// meant to convert an SR_poly_vec to an SR_poly
+SR_poly Map_seq
+    (SR_poly_vec_seq& V);
+
 
 
  private:
   void block_erase (bl_it pos); // erase from |block_list| in safe manner
   //  unsigned long formula_index (const StandardRepr&);
-  unsigned long alcove_formula_index (const StandardRepr&);  
+  unsigned long alcove_formula_index (const StandardRepr&);
+  unsigned long KRepr_index(const StandardRepr&);
   unsigned long add_block(const StandardReprMod&); // full block
   class Bruhat_generator; // helper class: internal |add_block_below| recursion
 
