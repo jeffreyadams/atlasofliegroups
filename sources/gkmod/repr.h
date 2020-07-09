@@ -132,6 +132,33 @@ public:
   size_t hashCode(size_t modulus) const;
 }; // |class Alcove|
 
+class KRepr
+{
+  friend class Rep_context;
+
+protected:
+  KGBElt x_part;
+  Weight lmb_rho;
+
+public:
+
+  KGBElt x() const { return x_part; }
+  const Weight& lambda_rho() const { return lmb_rho; }
+  //  const RatWeight& lambda() const {}
+
+  KRepr (const Rep_context& rc, const StandardRepr& sr); //: x_part(sr.x_part), lmb_rho(??),
+  // alcv should be constructed by looping over pos coroots
+
+    // special members required by HashTable
+
+  typedef std::vector<KRepr> Pooltype;
+  bool operator== (const KRepr& other) const { return x_part==other.x_part
+      and lmb_rho==other.lmb_rho; }
+  bool operator!=(const KRepr& another) const
+    { return not operator==(another); }
+  size_t hashCode(size_t modulus) const;
+}; // |class KRepr|
+
 // a variation that only differs in hashing |infinitesimal_char| modulo $X^*$
 class StandardReprMod
 {
@@ -276,6 +303,9 @@ class Rep_context
   typedef Free_Abelian<StandardRepr,Split_integer,compare> poly;
   typedef std::vector<std::pair<StandardRepr,Split_integer> > poly_vec;
   typedef std::pair<StandardRepr,Split_integer> poly_vec_entry;
+
+  typedef std::vector<std::pair<unsigned long,Split_integer> > poly_vec_seq;
+  typedef std::pair<unsigned long,Split_integer> poly_vec_seq_entry;
   poly scale(const poly& P, const Rational& f) const;
   poly scale_0(const poly& P) const;
 
@@ -297,6 +327,8 @@ class Rep_context
 typedef Rep_context::poly SR_poly;
 typedef Rep_context::poly_vec SR_poly_vec;
 typedef Rep_context::poly_vec_entry SR_poly_vec_entry;
+typedef Rep_context::poly_vec_seq SR_poly_vec_seq;
+typedef Rep_context::poly_vec_seq_entry SR_poly_vec_seq_entry;
 
 /*
   In addition to providing methods inherited from |Rep_context|, the class
@@ -320,13 +352,17 @@ typedef Rep_context::poly_vec_entry SR_poly_vec_entry;
 */
 class Rep_table : public Rep_context
 {
-  //  std::vector<StandardRepr> pool;
+  std::vector<StandardRepr> pool;
+  HashTable<StandardRepr,unsigned long> hash;
+
   std::vector<Alcove> alcove_pool;
-  //  HashTable<StandardRepr,unsigned long> hash;
   //  std::vector<std::pair<SR_poly,SR_poly> > def_formulae; // ordinary, twisted
   HashTable<Alcove,unsigned long> alcove_hash;
-  //  std::vector<std::pair<SR_poly,SR_poly> > alcove_def_formulae; // ordinary, twisted
   std::vector<std::pair<SR_poly_vec,SR_poly_vec> > alcove_def_formulae_vec; // ordinary, twisted
+  
+  std::vector<KRepr> krepr_pool;
+  HashTable<KRepr,unsigned long> krepr_hash;
+  std::vector<std::pair<SR_poly_vec_seq,SR_poly_vec_seq> > alcove_def_formulae_seq; // ordinary, twisted
 
   std::vector<StandardReprMod> mod_pool;
   HashTable<StandardReprMod,unsigned long> mod_hash;

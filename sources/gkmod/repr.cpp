@@ -78,6 +78,18 @@ size_t Alcove::hashCode(size_t modulus) const
   return hash &(modulus-1);
 }
 
+KRepr::KRepr (const Rep_context& rc, const StandardRepr& sr)
+: x_part(sr.x())
+,lmb_rho(rc.lambda_rho(sr))
+    {}
+
+size_t KRepr::hashCode(size_t modulus) const
+{ size_t hash=x_part;
+  for (unsigned j=0; j<lmb_rho.size(); ++j)
+    hash=7*(hash&(modulus-1))+lmb_rho[j];
+  return hash &(modulus-1);
+}
+
 StandardReprMod::StandardReprMod (StandardRepr&& sr)
 : x_part(sr.x())
 , y_bits(sr.y())
@@ -895,9 +907,10 @@ bool Rep_context::compare::operator()
 
 Rep_table::Rep_table(RealReductiveGroup &G)
 : Rep_context(G)
-  //, pool(), hash(pool), def_formulae()
-, alcove_hash(alcove_pool) //, alcove_def_formulae()
+, pool(), hash(pool) //, def_formulae()
+, alcove_pool(), alcove_hash(alcove_pool) //, alcove_def_formulae()
 , alcove_def_formulae_vec()
+, krepr_pool(), krepr_hash(krepr_pool), alcove_def_formulae_seq()
 , mod_pool(), mod_hash(mod_pool), block_list(), place()
 {}
 Rep_table::~Rep_table() = default;
@@ -1487,6 +1500,7 @@ SR_poly_vec Rep_table::UnMap
 {
   auto it = P.begin();
   SR_poly_vec result;
+  result.reserve(P.size());
   while (it != P.end())
 		{
 		  SR_poly_vec_entry E(it->first,it->second);
