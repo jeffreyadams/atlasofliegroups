@@ -274,7 +274,8 @@ class Rep_context
   compare repr_less() const;
 
   typedef Free_Abelian<StandardRepr,Split_integer,compare> poly;
-
+  typedef std::vector<std::pair<StandardRepr,Split_integer> > poly_vec;
+  typedef std::pair<StandardRepr,Split_integer> poly_vec_entry;
   poly scale(const poly& P, const Rational& f) const;
   poly scale_0(const poly& P) const;
 
@@ -294,6 +295,8 @@ class Rep_context
 }; // |Rep_context|
 
 typedef Rep_context::poly SR_poly;
+typedef Rep_context::poly_vec SR_poly_vec;
+typedef Rep_context::poly_vec_entry SR_poly_vec_entry;
 
 /*
   In addition to providing methods inherited from |Rep_context|, the class
@@ -317,12 +320,13 @@ typedef Rep_context::poly SR_poly;
 */
 class Rep_table : public Rep_context
 {
-  std::vector<StandardRepr> pool;
+  //  std::vector<StandardRepr> pool;
   std::vector<Alcove> alcove_pool;
-  HashTable<StandardRepr,unsigned long> hash;
-  std::vector<std::pair<SR_poly,SR_poly> > def_formulae; // ordinary, twisted
+  //  HashTable<StandardRepr,unsigned long> hash;
+  //  std::vector<std::pair<SR_poly,SR_poly> > def_formulae; // ordinary, twisted
   HashTable<Alcove,unsigned long> alcove_hash;
-  std::vector<std::pair<SR_poly,SR_poly> > alcove_def_formulae; // ordinary, twisted
+  //  std::vector<std::pair<SR_poly,SR_poly> > alcove_def_formulae; // ordinary, twisted
+  std::vector<std::pair<SR_poly_vec,SR_poly_vec> > alcove_def_formulae_vec; // ordinary, twisted
 
   std::vector<StandardReprMod> mod_pool;
   HashTable<StandardReprMod,unsigned long> mod_hash;
@@ -340,12 +344,18 @@ class Rep_table : public Rep_context
 
   unsigned short length(StandardRepr z); // by value
 
-  unsigned long parameter_number (StandardRepr z) const { return hash.find(z); }
-  const SR_poly& deformation_formula(unsigned long h) const
-    { return def_formulae[h].first; }
-  const SR_poly& twisted_deformation_formula(unsigned long h) const
-    { return def_formulae[h].second; }
+  unsigned long parameter_number (StandardRepr z) const
+  { return alcove_hash.find(Alcove(*this,z)); }
+  //  const SR_poly& deformation_formula(unsigned long h) const
+  // { return Map(alcove_def_formulae_vec[h].first); }
+  //  const SR_poly& twisted_deformation_formula(unsigned long h) const
+  //   { return Map(alcove_def_formulae_vec[h].second); }
 
+  const SR_poly_vec& deformation_formula(unsigned long h) const
+    { return alcove_def_formulae_vec[h].first; }
+  const SR_poly_vec& twisted_deformation_formula(unsigned long h) const
+    { return alcove_def_formulae_vec[h].second; }
+  
   blocks::common_block& lookup_full_block
     (StandardRepr& sr,BlockElt& z); // |sr| is by reference; will be normalised
 
@@ -379,9 +389,20 @@ class Rep_table : public Rep_context
 
   SR_poly twisted_deformation(StandardRepr z); // by value
 
+
+// meant to convert an SR_poly to a list of its nodes
+SR_poly_vec UnMap
+    (SR_poly& P);
+
+// meant to convert an SR_poly_vec to an SR_poly
+SR_poly Map
+    (SR_poly_vec& V);
+
+
+
  private:
   void block_erase (bl_it pos); // erase from |block_list| in safe manner
-  unsigned long formula_index (const StandardRepr&);
+  //  unsigned long formula_index (const StandardRepr&);
   unsigned long alcove_formula_index (const StandardRepr&);  
   unsigned long add_block(const StandardReprMod&); // full block
   class Bruhat_generator; // helper class: internal |add_block_below| recursion
