@@ -659,7 +659,7 @@ int main(int argc,char** argv)
   	  else
   	  { while(++y<mi->block_size())
   	    { try { x=locate_KL_polynomial(i,*mi,y); break;}
-  	      catch(std::runtime_error) { std::cerr << y+1 << '\r'; }
+	      catch(std::runtime_error&) { std::cerr << y+1 << '\r'; }
   	    }
               if (x==UndefBlock)
                 throw std::runtime_error("Not found");

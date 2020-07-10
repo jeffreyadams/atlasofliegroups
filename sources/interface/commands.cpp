@@ -344,7 +344,7 @@ void CommandTree::activate() const
 void CommandTree::run() const
 {
   try { activate(); }
-  catch(EntryError) { // we've got off to a very bad start
+  catch(EntryError&) { // we've got off to a very bad start
       std::cout << "Internal error, failed to enter initial mode!" << std::endl;
   }
 
@@ -393,7 +393,7 @@ void CommandTree::run() const
 	it->second(); // finally execute the command in its proper mode
       }
     } // try
-    catch (EntryError) {} // resume loop after user abort in |activate|
+    catch (EntryError&) {} // resume loop after user abort in |activate|
     catch (error::InputError& e) // user abort in actual command execution
     { std::cerr << "input for command '" << name; e("' aborted");  }
     catch (error::MemoryOverflow& e) { e("error: memory overflow"); }
