@@ -51,10 +51,12 @@ size_t StandardRepr::hashCode(size_t modulus) const
   return hash &(modulus-1);
 }
 
-int_Vector Rep_context::alcove(const StandardRepr& sr) const
+    // int_Vector Rep_context::alcove(const StandardRepr& sr) const
+    std::vector<unsigned short> Rep_context::alcove(const StandardRepr& sr) const
 {
   const RootDatum& rd = root_datum();
-  int_Vector value; value.reserve(rd.semisimpleRank());
+  //  int_Vector value; value.reserve(rd.semisimpleRank());
+  std::vector<unsigned short> value; value.reserve(rd.semisimpleRank());
   const auto& gamma=sr.gamma();
   const int denom = gamma.denominator(); // convert to |int|
 
@@ -907,7 +909,7 @@ bool Rep_context::compare::operator()
 
 Rep_table::Rep_table(RealReductiveGroup &G)
 : Rep_context(G)
-, pool(), hash(pool) //, def_formulae()
+  //, pool(), hash(pool) //, def_formulae()
 , alcove_pool(), alcove_hash(alcove_pool) //, alcove_def_formulae()
   //,  alcove_def_formulae_vec()
 , krepr_pool(), krepr_hash(krepr_pool), alcove_def_formulae_seq()

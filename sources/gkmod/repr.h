@@ -110,11 +110,12 @@ class Alcove
 protected:
   KGBElt x_part;
   Weight lmb_rho;
-  int_Vector alcv;
-
+  //  int_Vector alcv;
+  std::vector<unsigned short> alcv;
 public:
 
-  const int_Vector alcove() const { return alcv; }
+  //  const int_Vector alcove() const { return alcv; }
+  const std::vector<unsigned short> alcove() const { return alcv; }
   KGBElt x() const { return x_part; }
   const Weight& lambda_rho() const { return lmb_rho; }
   //  const RatWeight& lambda() const {}
@@ -288,8 +289,8 @@ class Rep_context
   StandardRepr cross(const Weight& alpha, StandardRepr z) const;
   StandardRepr any_Cayley(const Weight& alpha, StandardRepr z) const;
 
-  int_Vector alcove(const StandardRepr& z) const;
-
+  //  int_Vector alcove(const StandardRepr& z) const;
+  std::vector<unsigned short> alcove(const StandardRepr& z) const;
   class compare
   { Coweight level_vec; // linear form to apply to |gamma| for ordering
   public:
@@ -304,8 +305,10 @@ class Rep_context
   typedef std::vector<std::pair<StandardRepr,Split_integer> > poly_vec;
   typedef std::pair<StandardRepr,Split_integer> poly_vec_entry;
 
-  typedef std::vector<std::pair<unsigned long,Split_integer> > poly_vec_seq;
-  typedef std::pair<unsigned long,Split_integer> poly_vec_seq_entry;
+  //  typedef std::vector<std::pair<unsigned long,Split_integer> > poly_vec_seq;
+    typedef std::vector<std::pair<unsigned int,Split_integer> > poly_vec_seq;
+  //  typedef std::pair<unsigned long,Split_integer> poly_vec_seq_entry;
+    typedef std::pair<unsigned int,Split_integer> poly_vec_seq_entry;
   poly scale(const poly& P, const Rational& f) const;
   poly scale_0(const poly& P) const;
 
@@ -352,8 +355,8 @@ typedef Rep_context::poly_vec_seq_entry SR_poly_vec_seq_entry;
 */
 class Rep_table : public Rep_context
 {
-  std::vector<StandardRepr> pool;
-  HashTable<StandardRepr,unsigned long> hash;
+  //  std::vector<StandardRepr> pool;
+  //  HashTable<StandardRepr,unsigned long> hash;
 
   std::vector<Alcove> alcove_pool;
   //  std::vector<std::pair<SR_poly,SR_poly> > def_formulae; // ordinary, twisted
@@ -391,7 +394,7 @@ class Rep_table : public Rep_context
   unsigned long K_parameter_number(StandardRepr z) const
   { return krepr_hash.find(KRepr(*this,z)); }
   
-  const SR_poly_vec_seq& deformation_formula(unsigned long h) const
+    const SR_poly_vec_seq& deformation_formula(unsigned long h) const
     { return alcove_def_formulae_seq[h].first; }
   const SR_poly_vec_seq& twisted_deformation_formula(unsigned long h) const
     { return alcove_def_formulae_seq[h].second; }
