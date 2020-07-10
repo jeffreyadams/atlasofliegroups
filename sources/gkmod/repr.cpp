@@ -57,10 +57,11 @@ size_t StandardRepr::hashCode(size_t modulus) const
   return hash &(modulus-1);
 }
 
-int_Vector Rep_context::alcove(const StandardRepr& sr) const
+    // int_Vector Rep_context::alcove(const StandardRepr& sr) const
+alcove_vec Rep_context::alcove(const StandardRepr& sr) const
 {
   const RootDatum& rd = root_datum();
-  int_Vector value; value.reserve(rd.numPosRoots());
+  alcove_vec value; value.reserve(rd.numPosRoots());
   const auto& gamma=sr.gamma();
   const int denom = gamma.denominator(); // convert to |int|
 
