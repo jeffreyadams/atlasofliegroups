@@ -130,58 +130,90 @@ public:
 
 class Split_integer
 {
-  int ev_1, ev_minus_1; // store evaluations at $1$ and $-1$ for efficiency
+  //  int ev_1, ev_minus_1; // store evaluations at $1$ and $-1$ for efficiency
   // class invariant: |ev_1| and |ev_minus_1| have the same parity
-
+  long int both;
   struct raw {}; // to signal use of the private constructor
+  //  explicit constexpr Split_integer(int ev_1, int ev_minus_1, raw)
+  //  : ev_1(ev_1), ev_minus_1(ev_minus_1) {}
   explicit constexpr Split_integer(int ev_1, int ev_minus_1, raw)
-  : ev_1(ev_1), ev_minus_1(ev_minus_1) {}
+   : both((ev_1+ev_minus_1)/2 + (ev_1 - ev_minus_1)*2147483648) {}
+  explicit constexpr Split_integer(long int both, raw)
+    : both(both) {}
  public:
   explicit constexpr Split_integer(int a=0, int b=0)
-  : ev_1(a+b), ev_minus_1(a-b) {}
+    //  : ev_1(a+b), ev_minus_1(a-b) {}
+    : both(a + 4294967296*b) {}
 
-  int e() const { return (ev_1+ev_minus_1)/2; }
-  int s() const { return (ev_1-ev_minus_1)/2; }
+  //  int e() const { return (ev_1+ev_minus_1)/2; }
+  int e() const { return both%4294967296; }
+  //  int s() const { return (ev_1-ev_minus_1)/2; }
+  int s() const { return both/4294967296; }
 
   bool operator== (Split_integer y) const
-  { return ev_1==y.ev_1 and ev_minus_1==y.ev_minus_1; }
+  //  { return ev_1==y.ev_1 and ev_minus_1==y.ev_minus_1; }
+  { return both==y.both; }
   bool operator!= (Split_integer y) const { return not operator==(y); }
-  bool is_zero() const { return ev_1==0 and ev_minus_1==0; }
+  //  bool is_zero() const { return ev_1==0 and ev_minus_1==0; }
+    bool is_zero() const { return both==0; }
 
-  Split_integer& operator +=(int n) { ev_1+=n; ev_minus_1+=n; return *this; }
-  Split_integer& operator -=(int n) { ev_1-=n; ev_minus_1-=n; return *this; }
+  //  Split_integer& operator +=(int n) { ev_1+=n; ev_minus_1+=n; return *this; }
+   Split_integer& operator +=(int n) { both+=n; return *this; }
+  //  Split_integer& operator -=(int n) { ev_1-=n; ev_minus_1-=n; return *this; }
+  Split_integer& operator -=(int n) { both-=n; return *this; }
   Split_integer& operator +=(Split_integer y)
-  { ev_1+=y.ev_1; ev_minus_1+=y.ev_minus_1; return *this; }
+  //  { ev_1+=y.ev_1; ev_minus_1+=y.ev_minus_1; return *this; }
+      { both+=y.both; return *this; }
   Split_integer& operator -=(Split_integer y)
-  { ev_1-=y.ev_1; ev_minus_1-=y.ev_minus_1; return *this; }
+  //  { ev_1-=y.ev_1; ev_minus_1-=y.ev_minus_1; return *this; }
+      { both-=y.both; return *this; }
 
   Split_integer operator +(Split_integer y) const
-  { return Split_integer(ev_1+y.ev_1,ev_minus_1+y.ev_minus_1,raw()); }
+  //  { return Split_integer(ev_1+y.ev_1,ev_minus_1+y.ev_minus_1,raw()); }
+      { return Split_integer(both+y.both,raw()); }
   Split_integer operator -(Split_integer y) const
-  { return Split_integer(ev_1-y.ev_1,ev_minus_1-y.ev_minus_1,raw()); }
+  //  { return Split_integer(ev_1-y.ev_1,ev_minus_1-y.ev_minus_1,raw()); }
+      { return Split_integer(both-y.both,raw()); }
   Split_integer operator -() const
-  { return Split_integer(-ev_1,-ev_minus_1,raw()); }
+  //  { return Split_integer(-ev_1,-ev_minus_1,raw()); }
+      { return Split_integer(-both,raw()); }
 
   // multiplication is where the "split" representation really wins out:
-  Split_integer& operator*= (int n) { ev_1*=n; ev_minus_1*=n; return *this; }
+  //  Split_integer& operator*= (int n) { ev_1*=n; ev_minus_1*=n; return *this; }
+    Split_integer& operator*= (int n) { both*=n; return *this; }
   Split_integer& operator*= (Split_integer y)
-  { ev_1*=y.ev_1; ev_minus_1*=y.ev_minus_1; return *this; }
+  //  { ev_1*=y.ev_1; ev_minus_1*=y.ev_minus_1; return *this; }
+  { both = e()*y.e() + s()*y.s() + 4294967296*(e()*y.s() + s()*y.e());
+    return *this; }
   Split_integer operator* (int n) const
-  { return Split_integer(ev_1*n,ev_minus_1*n,raw()); }
+  //  { return Split_integer(ev_1*n,ev_minus_1*n,raw()); }
+      { return Split_integer(both*n,raw()); }
   Split_integer operator* (Split_integer y) const
-  { return Split_integer(ev_1*y.ev_1,ev_minus_1*y.ev_minus_1,raw()); }
+  //  { return Split_integer(ev_1*y.ev_1,ev_minus_1*y.ev_minus_1,raw()); }
+  { return Split_integer( e()*y.e() + s()*y.s()
+			  + 4294967296*(e()*y.s()+ s()*y.e())); }
 
-  Split_integer& negate() { ev_1=-ev_1; ev_minus_1=-ev_minus_1; return *this; }
+  //  Split_integer& negate() { ev_1=-ev_1; ev_minus_1=-ev_minus_1; return *this; }
+    Split_integer& negate() { both=-both; return *this; }
 
-  Split_integer& times_s() { ev_minus_1=-ev_minus_1; return *this; }
-  Split_integer times_s() const { return Split_integer(ev_1,-ev_minus_1,raw()); }
+  //  Split_integer& times_s() { ev_minus_1=-ev_minus_1; return *this; }
+  Split_integer& times_s() { both=(both/4294967296) + (4294967296*both);
+    return *this; }
+  //  Split_integer times_s() const { return Split_integer(ev_1,-ev_minus_1,raw()); }
+  Split_integer times_s() const { return Split_integer((both/4294967296)
+				     + (4294967296*both),raw()); }
+//  Split_integer& times_1_s() // multiply by |1-s|
+//  { ev_1=0; /* see "Who Killed the ELectric Car" */
+//    ev_minus_1*=2; return *this; }
   Split_integer& times_1_s() // multiply by |1-s|
-  { ev_1=0; /* see "Who Killed the ELectric Car" */
-    ev_minus_1*=2; return *this; }
-  Split_integer times_1_s() const { return Split_integer(0,2*ev_minus_1,raw()); }
-
-  int s_to_1() const { return ev_1; }
-  int s_to_minus_1() const { return ev_minus_1; }
+  { both =  e()-s() + 4294967296*(e()+s()); return *this; }
+//  Split_integer times_1_s() const { return Split_integer(0,2*ev_minus_1,raw()); }
+  Split_integer times_1_s() const { return
+      Split_integer( e()-s() + 4294967296*(e()+s()) ,raw()); }
+    // int s_to_1() const { return ev_1; }
+  int s_to_1() const { return both%4294967296 + both/4294967296; }
+  //  int s_to_minus_1() const { return ev_minus_1; }
+    int s_to_minus_1() const { return both%4294967296 - both/4294967296; }
 }; // |class Split_integer|
 
 std::ostream& operator<< (std::ostream& out, const Rational& frac);
