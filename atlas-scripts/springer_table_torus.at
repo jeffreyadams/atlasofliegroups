@@ -1,0 +1,23 @@
+<character_table_G.at
+
+set dual_map_torus(ComplexNilpotent O)=ComplexNilpotent:
+assert(O.root_datum.is_abelian,"O.rd is not a torus");
+assert(=O.H,"not the zero orbit of a torus");
+(dual(O.root_datum),(),O.H)
+
+set dual_map_i_torus(ComplexNilpotent O)=ComplexNilpotent:
+dual_map_torus(O)
+
+set springer_torus(ComplexNilpotent O)=int:
+assert(O.root_datum.is_abelian,"O.rd is not a torus");0
+
+
+set springer_table_torus(RootDatum rd)=
+assert(rd.is_abelian,"group not a torus");
+(character_table_torus(rd),
+rd.orbits,
+dual_map_torus@ComplexNilpotent,
+dual_map_i_torus@ComplexNilpotent,
+springer_torus@ComplexNilpotent
+)
+
