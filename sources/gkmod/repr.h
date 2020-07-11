@@ -365,7 +365,8 @@ class Rep_table : public Rep_context
 
   std::vector<KRepr> krepr_pool;
   HashTable<KRepr,unsigned long> krepr_hash;
-  std::vector<std::pair<SR_poly_vec_seq,SR_poly_vec_seq> > alcove_def_formulae_seq; // ordinary, twisted
+  //  std::vector<std::pair<SR_poly_vec_seq,SR_poly_vec_seq> > alcove_def_formulae_seq; // ordinary, twisted
+    std::vector<SR_poly_vec_seq > alcove_def_formulae_seq; // ordinary ONLY
 
   std::vector<StandardReprMod> mod_pool;
   HashTable<StandardReprMod,unsigned long> mod_hash;
@@ -373,8 +374,11 @@ class Rep_table : public Rep_context
   containers::sl_list<blocks::common_block> block_list;
   using bl_it = containers::sl_list<blocks::common_block>::iterator;
   std::vector<std::pair<bl_it, BlockElt> > place;
-  // unsigned long LOOKUP;
+  mutable unsigned long FREQUENCY; //how often to print data
+  mutable unsigned long NEXT; //next time to print data
+
  public:
+
   Rep_table(RealReductiveGroup &G);
   ~Rep_table();
   // both defined out of line because of implicit use |common_block| destructor
@@ -388,17 +392,17 @@ class Rep_table : public Rep_context
   //  const SR_poly& deformation_formula(unsigned long h) const
   // { return Map(alcove_def_formulae_vec[h].first); }
   //  const SR_poly& twisted_deformation_formula(unsigned long h) const
-  //   { return Map(alcove_def_formulae_vec[h].second); }
+  // 
 
   // require z to have nu=0! Don't use this internally; use KRepr_index instead
   unsigned long K_parameter_number(StandardRepr z) const
   { return krepr_hash.find(KRepr(*this,z)); }
   
     const SR_poly_vec_seq& deformation_formula(unsigned long h) const
-    { return alcove_def_formulae_seq[h].first; }
-  const SR_poly_vec_seq& twisted_deformation_formula(unsigned long h) const
-    { return alcove_def_formulae_seq[h].second; }
-  
+    { return alcove_def_formulae_seq[h]; }
+    const SR_poly_vec_seq& twisted_deformation_formula(unsigned long h) const
+  //   { return alcove_def_formulae_seq[h].second; }
+  { return alcove_def_formulae_seq[h]; } // fake to keep compiler of atlas happy
   blocks::common_block& lookup_full_block
     (StandardRepr& sr,BlockElt& z); // |sr| is by reference; will be normalised
 
@@ -449,9 +453,8 @@ SR_poly_vec_seq UnMap_seq
 SR_poly Map_seq
     (SR_poly_vec_seq& V);
 
-
-
  private:
+  //  void  scaleLOOKUP () const; // divides the frequency of data output by 10
   void block_erase (bl_it pos); // erase from |block_list| in safe manner
   //  unsigned long formula_index (const StandardRepr&);
   unsigned long alcove_formula_index (const StandardRepr&);

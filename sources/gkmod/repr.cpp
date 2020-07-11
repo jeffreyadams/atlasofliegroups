@@ -914,6 +914,7 @@ Rep_table::Rep_table(RealReductiveGroup &G)
   //,  alcove_def_formulae_vec()
 , krepr_pool(), krepr_hash(krepr_pool), alcove_def_formulae_seq()
 , mod_pool(), mod_hash(mod_pool), block_list(), place()
+, FREQUENCY(100), NEXT(100)
 {}
 Rep_table::~Rep_table() = default;
 
@@ -1023,6 +1024,14 @@ SR_poly Rep_context::expand_final (StandardRepr z) const
   return result;
 } // |Rep_context::expand_final|
 
+
+/*
+void Rep_table::scaleLOOKUP() const
+{
+  LOOKUP *= 10;
+}
+*/
+
 // erase node in |block_list| after |pos|, avoiding dangling iterators in |place|
 void Rep_table::block_erase (bl_it pos)
 {
@@ -1067,8 +1076,9 @@ unsigned long Rep_table::alcove_formula_index (const StandardRepr& sr)
       //      (std::make_pair(SR_poly(repr_less()),SR_poly(repr_less())));
       //    alcove_def_formulae_vec.push_back
       //      (std::make_pair(SR_poly_vec(),SR_poly_vec()));
-    alcove_def_formulae_seq.push_back
-      (std::make_pair(SR_poly_vec_seq(),SR_poly_vec_seq()));
+      alcove_def_formulae_seq.push_back(SR_poly_vec_seq());
+      //     (std::make_pair(SR_poly_vec_seq(),SR_poly_vec_seq()));
+
     return alcove_h;
 }
 
@@ -1363,8 +1373,12 @@ SR_poly Rep_table::deformation_terms
     }
     assert(it==finals.end());
   }
-  if(alcove_def_formulae_seq.size()%100 == 0)
-    { unsigned resident, CPUtime;
+  if( //(alcove_def_formulae_seq.size()%FREQUENCY == 0)
+     (alcove_def_formulae_seq.size() >= NEXT))
+    {
+      NEXT += FREQUENCY;
+      unsigned resident, CPUtime;
+      unsigned	DefMonomials = 0;
   std::string MemUnits = "MB";
   std::string TimeUnits = " secs";
   struct rusage usage;
@@ -1376,14 +1390,25 @@ SR_poly Rep_table::deformation_terms
 #ifdef __APPLE__
       resident = resident/1024;
 #endif
-      if (resident > 10240) {MemUnits = "GB" ; resident=resident/1024;}
+     for(size_t j=alcove_def_formulae_seq.size() -FREQUENCY;
+	  j< alcove_def_formulae_seq.size(); ++j)
+       DefMonomials+= alcove_def_formulae_seq[j].size();
+	  //	  + alcove_def_formulae_seq[j].second.size();
+      //    }
+      DefMonomials = DefMonomials/FREQUENCY;
+
+      if (alcove_def_formulae_seq.size() > 14*FREQUENCY)
+	{ FREQUENCY=10*FREQUENCY;
+	  NEXT = ((NEXT/FREQUENCY)+1)*FREQUENCY; }
+      if (resident > 15360) {MemUnits = "GB" ; resident=resident/1024;}
       if (CPUtime > 599) {TimeUnits = " mins"; CPUtime = CPUtime/60;}
   std::cerr //  << "             #def_forms = " << def_formulae.size()
 	     << "             #alcv_forms = "
 	     << alcove_def_formulae_seq.size()
     	     << " #KReprs = " << krepr_pool.size()
+    	     << " #monomials/term = " << DefMonomials
 	     << " max res size = " << resident << MemUnits 
-	     << " CPU time = " << CPUtime << TimeUnits << "\r";
+	     << " CPU time = " << CPUtime << TimeUnits << "\n";
     }
   return result;
 } // |deformation_terms|, common block version
@@ -1497,8 +1522,9 @@ SR_poly Rep_table::deformation(const StandardRepr& z)
        const auto alcove_h = alcove_hash.find(Alcove(rc,z_near));
        // DV changed z to z_near
   if (alcove_h!=alcove_hash.empty and not 
-      alcove_def_formulae_seq[alcove_h].first.empty())
-    return Map_seq(alcove_def_formulae_seq[alcove_h].first);
+      //      alcove_def_formulae_seq[alcove_h].first.empty())
+            alcove_def_formulae_seq[alcove_h].empty())
+    return Map_seq(alcove_def_formulae_seq[alcove_h]);
 		   //    return Map(alcove_def_formulae_vec[alcove_h].first);
 		 //   return alcove_def_formulae[alcove_h].first;
   }
@@ -1518,7 +1544,8 @@ SR_poly Rep_table::deformation(const StandardRepr& z)
 
   const auto alcove_h = alcove_formula_index(z_near);
   //  alcove_def_formulae_vec[alcove_h].first=UnMap(result);
-  alcove_def_formulae_seq[alcove_h].first=UnMap_seq(result);
+  //  alcove_def_formulae_seq[alcove_h].first=UnMap_seq(result);
+    alcove_def_formulae_seq[alcove_h]=UnMap_seq(result);
   return result;
 } // |Rep_table::deformation|
 
@@ -1560,8 +1587,6 @@ SR_poly_vec_seq Rep_table::UnMap_seq
   auto it = P.begin();
   SR_poly_vec_seq result;
   result.reserve(P.size());
-  //  std::cerr << "P.size() = " << P.size() << "\n";
-  //  std::cerr << "#Kreps = " << krepr_pool.size() << "\n";
   while (it != P.end())
 		{
 		  //  std::cerr << "it->first.x()=" << it->first.x() << "\n";
@@ -1795,12 +1820,13 @@ SR_poly Rep_table::twisted_deformation_terms
     }
     assert(it==acc.end());
   }
-
-  if(alcove_def_formulae_seq.size()%100 == 0)
+  /*
+  if(alcove_def_formulae_seq.size() >= NEXT)
     { unsigned resident, CPUtime;
-  std::string MemUnits = "MB";
-  std::string TimeUnits = " secs";
-  struct rusage usage;
+      unsigned	DefMonomials = 0;
+      std::string MemUnits = "MB";
+      std::string TimeUnits = " secs";
+      struct rusage usage;
       if(getrusage(RUSAGE_SELF, &usage) != 0)
 	std::cerr << "getrusage failed" << std::endl;
       resident = usage.ru_maxrss/1024; //largest so far??
@@ -1817,6 +1843,7 @@ SR_poly Rep_table::twisted_deformation_terms
 	     << " max res size = " << resident << MemUnits
   << " CPU time = " << CPUtime << TimeUnits << "\r";
     }
+  */
   return result;
 } // |twisted_deformation_terms(blocks::common_block&,...)|
 
@@ -1852,7 +1879,8 @@ SR_poly Rep_table::twisted_deformation_terms (unsigned long sr_hash) const
 #endif
 
 SR_poly Rep_table::twisted_deformation (StandardRepr z)
-{
+{ return deformation(z); } //fake to appease atlas compiler
+/* {
   const auto& delta = inner_class().distinguished();
   RationalList rp=reducibility_points(z);
   bool flip_start=false; // whether a flip in descending to first point
@@ -1937,8 +1965,8 @@ SR_poly Rep_table::twisted_deformation (StandardRepr z)
     ? SR_poly(repr_less()).add_multiple(result,Split_integer(0,1))
     : result;
 
-} // |Rep_table::twisted_deformation (StandardRepr z)|
-
+    } // |Rep_table::twisted_deformation (StandardRepr z)|
+*/
 
 std::ostream& Rep_context::print (std::ostream& str,const StandardRepr& z)
   const
