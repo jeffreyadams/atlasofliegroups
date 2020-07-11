@@ -434,7 +434,14 @@ void KL_table::fill_columns(BlockElt limit)
   for (BlockElt y=aux.block.length_first(1); y<limit; ++y)
     if (column[y].size()!=aux.col_size(y))
     { assert(column[y].empty()); // there should not be partially filled columns
-      fill_column(y,hash_object.ref);
+      try
+      {
+	fill_column(y,hash_object.ref);
+      }
+      catch(...)
+      {
+	column[y].clear(); // ensure partially filled columns are removed
+      }
     }
 }
 

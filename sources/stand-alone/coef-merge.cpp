@@ -574,12 +574,12 @@ int main(int argc, char** argv)
         { mod_info.push_back
            (new modulus_info_with_table(moduli[i],renumber_file,coef_file));
         }
-        catch (std::length_error)
+        catch (std::length_error&)
         { std::cout << "Renumbering table for modulus " << moduli[i] 
                     << " is too large for architecture, doing without" << std::endl;
         mod_info.push_back(new modulus_info(moduli[i],renumber_file,coef_file));
         }
-        catch (std::bad_alloc)
+        catch (std::bad_alloc&)
         { std::cout << "Not enough virtual memory for renumbering table for modulus "
         	    << moduli[i]  << ", doing without." << std::endl;
         mod_info.push_back(new modulus_info(moduli[i],renumber_file,coef_file));
