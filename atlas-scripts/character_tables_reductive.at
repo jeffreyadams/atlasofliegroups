@@ -47,7 +47,7 @@ elif letter="F" then
  let ct=character_table_F4() in ct
 elif letter="G" then character_table_G2()
 elif letter="E" and n=6 then
- let ct_0=character_table_E6() then
+ let ct_0=character_table_E6() then 
  ct=update_degrees(ct_0) in ct
 elif letter="E" and n=7 then
  let ct_0=character_table_E7() then

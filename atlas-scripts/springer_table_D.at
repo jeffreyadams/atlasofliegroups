@@ -164,19 +164,19 @@ other one sigma'). There are two classes labeled
 w=s_0s_2,...,s_{n-4},s_{n-2}. The other is
 s_0s_2,...,s_{n-4},s_{n-1} (call this w'). Now sigma satisfies:
 
-sigma(w)>0 
+sigma(w)>0
 
 also:
 sigma'(w)<0)
 sigma'(w)<0
 sigma'(w')>0
 
-Conclusion: define the Springer correspondence by: 
+Conclusion: define the Springer correspondence by:
 
-the orbit ending in ...,0,2] -> the representation whose character 
+the orbit ending in ...,0,2] -> the representation whose character
 at s_0...s_{n-2} is >0.
 
-the orbit ending in ...,2,0] -> the representation whose character 
+the orbit ending in ...,2,0] -> the representation whose character
 at s_0...s_{n-2} is <0.
 
 Note: s_0...s_{n-2} is the Coxeter element of the standard
@@ -215,7 +215,7 @@ fi
 set springer_D_by_induction(CharacterTable ct,ComplexNilpotent O)=D_irrep:
     let L=standard_Levi(ct.root_datum,O.Bala_Carter_Levi) then
     simple_roots_L=for alpha in L.simple_roots do find(ct.root_datum.simple_roots,alpha) od then
-    index=truncated_induce_sign(ct,simple_roots_L)  {an integer} then
+    index=truncate_induce_sign(ct,simple_roots_L)  {an integer} then
     sigma=ct.classical_reps(index).get_irrep_D in  {D_irrep}
     ct.tensor_sign_D(sigma)
 
@@ -223,12 +223,6 @@ set springer_D_by_induction(CharacterTable ct,ComplexNilpotent O)=D_irrep:
      set x=induce_trivial(ct,simple_roots_L))
      then y=ct.tensor_sign(x)
      then pick out unique term with correct degree}
-
-
-
-
-
-
 
 {based on coxeter of Levi factor, not clear how to make this work
 set springer_D(CharacterTable ct,ComplexNilpotent O)=D_irrep:
@@ -263,7 +257,7 @@ elif sign_tau=-1 then sigma else error("no minus 1") fi fi
 {this is a bit slow, only want to do it once:}
 set springer_D(CharacterTable ct)=[D_irrep]:
 let orbits=ct.root_datum.orbits then
-reps=for O in orbits do springer_D(ct,O)  od {[D_irrep]} 
+reps=for O in orbits do springer_D(ct,O)  od {[D_irrep]}
 in reps
 
 {this does it once and puts it in a hash}
@@ -313,7 +307,7 @@ tabulate(
 for P in all do [P.to_string,P.D_dual.D_dual.to_string] od)
 
 {Dangerous bend:
- the SpringerTable hash (simple) simply connected root datum 
+ the SpringerTable hash uses the (simple) simply connected root datum
  We'll be given an orbit for a given Root Datum rd,
    which isn't necessarily simply connected
  Need to pass to simply connected root datum, using orbit_by_diagram
@@ -335,14 +329,14 @@ dual_map(ComplexNilpotent O)=ComplexNilpotent:
   {orbit -> D_irrep -> character chi -> chi_sgn -> D_irrep -> nilpotent}
   let sigma=springer_hash_reps(O) {D_irrep} then
   sigma_sgn=ct.tensor_sign_D(sigma) {D_irrep} then
-  index=index_D_reps(for O in orbits do springer_hash_reps(O) od ,sigma_sgn) in 
+  index=index_D_reps(for O in orbits do springer_hash_reps(O) od ,sigma_sgn) in
   orbits[index]
  fi then
 dual_map_i(ComplexNilpotent O_check {for adjoint group})=
 let O_check_lift=orbit_by_diagram(rd,O_check.diagram_normalized)  {orbit in simply connected group} in
 dual_map(O_check_lift) in
 (ct,orbits,dual_map,dual_map_i,springer)
- 
+
 {
 set springer_D_inverse(CharacterTable ct,D_irrep sigma)=ComplexNilpotent:
 let orbits=ct.root_datum.orbits then

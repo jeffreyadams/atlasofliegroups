@@ -1,5 +1,5 @@
 <basic.at
-
+<group_operations.at {for is_abelian@RootDatum}
 { Functions for computing with Weyl group elements }
 
 set length ((RootDatum,mat) rd_M) = int: W_elt(rd_M).length
@@ -93,7 +93,11 @@ set co_invariant_form (RootDatum rd) = (ratvec,ratvec->rat):
   let A = rd.co_invariant_form_matrix in (ratvec v, ratvec w) rat: v*A*w
 
 set is_elliptic (WeylElt w) = bool:
-  =eigen_lattice(matrix(w),1)  { |eigen_lattice| empty means no eigenvalue 1 }
+ if w.root_datum.is_abelian then true else 
+  =eigen_lattice(matrix(w),1) fi { |eigen_lattice| empty means no eigenvalue 1 }
+
+{elliptic in the derived group}
+set is_relatively_elliptic(WeylElt w)=bool:is_elliptic(W_elt(w.root_datum.derived,w.word))
 
 { use complex cross actions to find a KGBElt x0 in a fiber with no C- roots
   by descending through complex descents until none are left

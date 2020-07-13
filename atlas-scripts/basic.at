@@ -284,6 +284,11 @@ set fgrep (string s, string text) = [string]:
   do if is_substring(s,line) then result#:=line fi
   od; result
 
+{eliminate spaces, and "/1", for printing a ratvec}
+set compact_ratvec(ratvec v)=string:
+let (a,b)=%v in ([int]:a).to_string+
+ if b=1 then "" else "/"+b.to_string fi
+
 {                               Vectors                                 }
 
 set vector (int n,(int->int)f) = vec: for i:n do f(i) od
