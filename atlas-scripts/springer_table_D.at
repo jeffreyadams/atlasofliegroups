@@ -32,9 +32,6 @@ D_irrep                   (for representation of W(SO(2n)))
    )]
 }
 
-set pad([int] v,int N)=v##null(N-#v)
-set pad(ratvec v,int N)=v##null(N-#v)
-
 {valid partition in type D: odd parts have even multiplicity}
 set test_D(Partition P)=bool:
 all(for i:max(P) from 1 do if i.is_even then multiplicity(i,P).is_even else true fi od)

@@ -338,6 +338,8 @@ set multiplicity (int n, [int] S) = int: for x in S do x=n od.count
 {add zeros to make total length =N}
 set pad ([int] v,int N) = vec: v##null(N-#v)
 
+
+
 {                               Matrices                                }
 
 { matrix defined by its dimension and expression for general entry }
@@ -589,6 +591,8 @@ set * (rat r,ratvec v) = ratvec: v*r
 { concatenate ratvec values: use conversion to and from [rat] }
 set ## (ratvec a,ratvec b) = ratvec: ##([rat]:a,[rat]:b)
 set ## ([ratvec] rs) = ratvec: ## for r in rs do [rat]:r od
+
+set pad(ratvec v,int N)=v##null(N-#v)
 
 set sum ([ratvec] list, int l) = ratvec: { sum of ratvecs of constant length l }
   let result = ratvec: null(l) in for v in list do result+:=v od; result
@@ -1743,3 +1747,5 @@ set height (ParamPol P) = int:
 set monomials([ParamPol] list)=[Param]:
    let sum=null_module(real_form(list[0])) in
    for P in list do for c@p in P do sum+:=p od od;monomials(sum)
+
+

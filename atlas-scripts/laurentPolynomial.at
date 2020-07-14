@@ -1,6 +1,6 @@
 <polynomial.at
 
-{Laurent polynomial in indeterminate v with integer coefficients}
+{laurent polynomial in indeterminate v with integer coefficients}
 {([a_0,...,a_{m-1}],n) <-> v^n(a_0+a_1v + ...a_{m-1} v^{m-1})}
 
 set_type i_laurent_poly = (vec w,int n)
