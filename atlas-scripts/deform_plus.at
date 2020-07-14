@@ -1,6 +1,7 @@
 <basic.at
 <polynomial.at { for type |i_poly| and function |eval| }
 <deform.at { for |compress| }
+<Weylgroup.at
 
 set deformation_terms (Param p) = ParamPol:
   let (B,KL_mat,length) = compress(partial_KL_block(p:=normal(p))) then nB=#B in
