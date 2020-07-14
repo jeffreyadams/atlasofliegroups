@@ -1,4 +1,5 @@
 <character_table_G.at
+<character_tables_reductive.at
 
 set dual_map_torus(ComplexNilpotent O)=ComplexNilpotent:
 assert(O.root_datum.is_abelian,"O.rd is not a torus");
