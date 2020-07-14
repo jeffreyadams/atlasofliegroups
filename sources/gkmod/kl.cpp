@@ -202,7 +202,7 @@ void KL_table::fill(BlockElt y, bool verbose)
     else
       silent_fill(y);
   }
-  catch (std::bad_alloc)
+  catch (std::bad_alloc&)
   { // roll back, and transform failed allocation into |error::MemoryOverflow|
     std::cerr << "\n memory full, KL computation abondoned.\n";
     for (auto it = d_holes.begin(); it() and *it<=y; ++it)

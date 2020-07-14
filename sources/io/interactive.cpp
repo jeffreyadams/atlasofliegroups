@@ -119,7 +119,7 @@ InputFile::InputFile(std::string prompt, std::ios_base::openmode mode)
     } while(true);
 #ifndef NREADLINE
   }
-  catch (error::InputError) {
+  catch (error::InputError&) {
     error=true;
   }
   rl_completion_entry_function = old_completion_function;

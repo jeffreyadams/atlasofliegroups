@@ -1855,7 +1855,7 @@ type_expr mk_type_expr(const char* s)
 { const char* orig=s;
   try
   {@; return scan_type(s); }
-  catch (logic_error e)
+  catch (logic_error& e)
   { std::cerr << e.what() << "; original string: '" << orig @|
               << "' text remaining: '" << s << "'\n";
     throw@[@];
