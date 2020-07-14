@@ -164,7 +164,11 @@ $(CWEAVE):
 
 # static pattern rules giving the usual C++ compilation
 $(c++objects) $(Atlas_objects): %.o: %.cpp
-	$(CXX) $(CXXFLAVOR) $(CXXFLAGS) $(CPPFLAGS) $< -o $@
+ifeq ($(profile),true)
+	$(CXX) $(CXXFLAVOR) $(CXXFLAGS) $(CPPFLAGS) $< -o $@ -fprofile-generate=/tmp/PGO  
+else
+	$(CXX) $(CXXFLAVOR) $(CXXFLAGS) $(CPPFLAGS) $< -o $@ -fprofile-use=/tmp/PGO  
+ endif
 
 # for running ctanglex we cannot use a static pattern rule, since there are
 # multiple targets: the C++ source and the corresponding header file(s) are
@@ -223,9 +227,9 @@ $(dvifiles): $(CWEAVE)
 # Our executable program 'atlas' is in Atlas root directory.
 $(Atlas_root)/atlas: $(objects)
 ifeq ($(profile),true)
-	$(CXX) -pg -o $@ $^ $(LDFLAGS)
+	$(CXX) -pg -o $@_instr $^ -fprofile-generate=/tmp/PGO $(LDFLAGS)
 else
-	$(CXX) -o $@ $^ $(LDFLAGS)
+	$(CXX) -o $@PDO $^ -O3 -fprofile-use=/tmp/PGO $(LDFLAGS)
 endif
 
 # the parser is produced by bison, and compiled using the C++ compiler

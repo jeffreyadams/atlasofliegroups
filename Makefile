@@ -86,7 +86,7 @@ dependencies := $(Fokko_objects:%.o=%.d)
 nflags := -Wall -DNDEBUG
 oflags := -Wall -O3 -DNDEBUG
 gflags := -Wall -ggdb
-pflags := -Wall -pg -O3 -DNDEBUG -DNREADLINE
+pflags := -Wall -pg -O3 -DNDEBUG
 goflags := -Wall -ggdb -O3
 
 # these flags are necessary for compilation, the -c should not be altered
@@ -170,16 +170,21 @@ sources/interface/emptymode.o: $(Fokko_sources)
 # also is different
 Fokko: $(Fokko_objects)
 ifeq ($(profile),true)
-	$(CXX) -pg -o Fokko $(Fokko_objects) $(LDFLAGS)
+	$(CXX) -o Fokko_instr $(Fokko_objects) -O3 -fprofile-generate=/tmp/PGO $(LDFLAGS)
 else
-	$(CXX) -o Fokko $(Fokko_objects) $(LDFLAGS)
+	$(CXX) -o FokkoPDO $(Fokko_objects) -O3 -fprofile-use=/tmp/PGO $(LDFLAGS) 
 endif
 
 # Rules with two colons are static pattern rules: they are like implicit
 # rules, but only apply to the files listed before the first colon
 
 $(filter-out sources/interface/io.o,$(Fokko_objects)) : %.o : %.cpp
-	$(CXX) $(CXXFLAGS) $(Fokko_flags) -o $*.o $*.cpp
+ifeq ($(profile),true)
+	$(CXX) $(CXXFLAGS) $(Fokko_flags) -o $*.o $*.cpp -fprofile-generate=/tmp/PGO
+else
+	$(CXX) $(CXXFLAGS) $(Fokko_flags) -o $*.o $*.cpp -fprofile-use=/tmp/PGO
+endif
+#=$*.gcda
 
 # the $(messagedir) variable is only needed for the compilation of io.cpp
 sources/interface/io.o : sources/interface/io.cpp
@@ -189,7 +194,11 @@ sources/interface/io.o : sources/interface/io.cpp
 # for files proper to atlas, the build is defined inside sources/interpreter
 
 atlas: $(cweb_dir)/ctanglex $(interpreter_made_files) $(atlas_objects)
+# ifeq ($(profile),true)
 	cd sources/interpreter && $(MAKE) ../../atlas
+# else
+#	cd sources/interpreter && $(MAKE) ../../atlasPDO
+# endif
 
 $(filter-out sources/interpreter/parser.tab.%,$(interpreter_made_files)):
 	cd sources/interpreter && $(MAKE) $(subst sources/interpreter/,,$@)
@@ -253,7 +262,7 @@ mostlyclean:
            sources/*/*.tex sources/*/*.dvi sources/*/*.log sources/*/*.toc
 
 clean: mostlyclean
-	$(RM) -f Fokko atlas
+	$(RM) -f Fokko atlas FokkoPDO atlasPDO Fokko_instr atlas_instr
 
 veryclean: clean
 	$(RM) -f sources/*/*.d cwebx/*.o cwebx/ctanglex cwebx/cweavex \
