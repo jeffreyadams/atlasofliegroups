@@ -84,6 +84,18 @@ size_t Alcove::hashCode(size_t modulus) const
   return hash &(modulus-1);
 }
 
+KRepr::KRepr (const Rep_context& rc, const StandardRepr& sr)
+: x_part(sr.x())
+, lmb_rho(rc.lambda_rho(sr))
+{}
+
+size_t KRepr::hashCode(size_t modulus) const
+{ size_t hash=x_part;
+  for (unsigned j=0; j<lmb_rho.size(); ++j)
+    hash=7*(hash&(modulus-1))+lmb_rho[j];
+  return hash &(modulus-1);
+}
+
 StandardReprMod::StandardReprMod (StandardRepr&& sr)
 : x_part(sr.x())
 , y_bits(sr.y())
@@ -902,7 +914,7 @@ bool Rep_context::compare::operator()
 Rep_table::Rep_table(RealReductiveGroup &G)
 : Rep_context(G)
 , alcove_pool(), alcove_hash(alcove_pool)
-, alcove_def_formulae_vec()
+, krepr_pool(), krepr_hash(krepr_pool), alcove_def_formulae_seq()
 , mod_pool(), mod_hash(mod_pool), block_list(), place()
 {}
 Rep_table::~Rep_table() = default;
@@ -937,6 +949,12 @@ SR_poly Rep_context::scale_0(const poly& P) const
       result.add_term(final,it->second);
   }
   return result;
+}
+
+StandardRepr Rep_context::sr (const KRepr& sk) const
+{
+  RatWeight nu(sk.lambda_rho().size()); // zero rational vector
+  return sr(sk.x(),sk.lambda_rho(), nu);
 }
 
 containers::sl_list<StandardRepr>
@@ -1033,9 +1051,9 @@ unsigned long Rep_table::alcove_formula_index (const StandardRepr& sr)
   const auto& rc = *this;
   const auto prev_alcove_size = alcove_hash.size();
   const auto alcove_h = alcove_hash.match(Alcove(rc, sr));
-    if (alcove_h>=prev_alcove_size)
-      alcove_def_formulae_vec.push_back
-	(std::make_pair(SR_poly_vec(),SR_poly_vec()));
+  if (alcove_h>=prev_alcove_size)
+    alcove_def_formulae_seq.push_back
+      (std::make_pair(SR_poly_vec_seq(),SR_poly_vec_seq()));
   return alcove_h;
 }
 
@@ -1316,7 +1334,7 @@ SR_poly Rep_table::deformation_terms
     }
     assert(it==finals.end());
   }
-  if (alcove_def_formulae_vec.size()%100 == 0)
+  if (alcove_def_formulae_seq.size()%100 == 0)
   {
     unsigned resident, CPUtime;
     std::string MemUnits = "MB";
@@ -1330,7 +1348,8 @@ SR_poly Rep_table::deformation_terms
     if (CPUtime > 599) {TimeUnits = " mins"; CPUtime = CPUtime/60;}
     std::cerr //  << "             #def_forms = " << def_formulae.size()
       << "             #alcv_forms = "
-      << alcove_def_formulae_vec.size()
+      << alcove_def_formulae_seq.size()
+      << " #KReprs = " << krepr_pool.size()
       << " max res size = " << resident << MemUnits
       << " CPU time = " << CPUtime << TimeUnits
       << '\r';
@@ -1446,8 +1465,8 @@ SR_poly Rep_table::deformation(const StandardRepr& z)
     const auto& rc = *this;
     const auto alcove_h = alcove_hash.find(Alcove(rc,z_near));
     if (alcove_h!=alcove_hash.empty and
-	not alcove_def_formulae_vec[alcove_h].first.empty())
-      return Map(alcove_def_formulae_vec[alcove_h].first);
+	not alcove_def_formulae_seq[alcove_h].first.empty())
+      return Map_seq(alcove_def_formulae_seq[alcove_h].first);
   }
 
   // otherwise compute the deformation terms at all reducibility points
@@ -1464,8 +1483,7 @@ SR_poly Rep_table::deformation(const StandardRepr& z)
   }
 
   const auto alcove_h = alcove_formula_index(z_near);
-  alcove_def_formulae_vec[alcove_h].first=UnMap(result);
-
+  alcove_def_formulae_seq[alcove_h].first=UnMap_seq(result);
   return result;
 } // |Rep_table::deformation|
 
@@ -1477,6 +1495,26 @@ SR_poly Rep_table::Map (const SR_poly_vec& V)
     result.emplace_hint(result.end(),*it);
   return result;
 } // |Rep_table::Map|
+
+// convert map structure of SR_poly into a vector_seq
+SR_poly_vec_seq Rep_table::UnMap_seq (const SR_poly& P)
+{
+  SR_poly_vec_seq result;
+  result.reserve(P.size());
+  for (auto it = P.begin(); it != P.end(); ++it)
+    result.emplace_back(KRepr_index(it->first),it->second);
+  return result;
+} // |Rep_table::UnMap_seq|
+
+//  convert an |SR_poly_vec_seq| back to an |SR_poly|
+SR_poly Rep_table::Map_seq (const SR_poly_vec_seq& V)
+{
+  SR_poly result(repr_less());
+  for (auto it=V.begin(); it!=V.end(); ++it)
+    result.emplace_hint(result.end(),sr(krepr_pool[it->first]),it->second);
+  return result;
+} // |Rep_table::Map_seq|
+
 
 // basic computation of twisted KL column sum, no tabulation of the result
 SR_poly twisted_KL_sum
@@ -1685,7 +1723,7 @@ SR_poly Rep_table::twisted_deformation_terms
     }
     assert(it==acc.end());
   }
-  if (alcove_def_formulae_vec.size()%100 == 0)
+  if (alcove_def_formulae_seq.size()%100 == 0)
   {
     unsigned resident, CPUtime;
 
@@ -1700,7 +1738,8 @@ SR_poly Rep_table::twisted_deformation_terms
     if (CPUtime > 599) {TimeUnits = " mins"; CPUtime = CPUtime/60;}
     std::cerr  //   << "              #def_forms = " << def_formulae.size()
       << "             #alcv_forms = "
-      << alcove_def_formulae_vec.size()
+      << alcove_def_formulae_seq.size()
+      << " #KReprs = " << krepr_pool.size()
       << " max res size = " << resident << MemUnits
       << " CPU time = " << CPUtime << TimeUnits
       << '\r';
@@ -1768,11 +1807,11 @@ SR_poly Rep_table::twisted_deformation (StandardRepr z)
     const auto& rc = *this;
     const auto alcove_h = alcove_hash.find(Alcove(rc,z));
     if (alcove_h!=alcove_hash.empty and
-	not alcove_def_formulae_vec[alcove_h].second.empty())
+	not alcove_def_formulae_seq[alcove_h].second.empty())
      return flip_start // if so we must multiply the stored value by $s$
        ? SR_poly(repr_less()).add_multiple
-           (Map(alcove_def_formulae_vec[alcove_h].second),Split_integer(0,1))
-       : Map(alcove_def_formulae_vec[alcove_h].second);
+           (Map_seq(alcove_def_formulae_seq[alcove_h].second),Split_integer(0,1))
+       : Map_seq(alcove_def_formulae_seq[alcove_h].second);
   }
 
   { // initialise |result| to fully deformed parameter expanded to finals
@@ -1816,7 +1855,7 @@ SR_poly Rep_table::twisted_deformation (StandardRepr z)
 
   { // store
     const auto alcove_h=alcove_formula_index(z);
-    alcove_def_formulae_vec[alcove_h].second=UnMap(result);
+    alcove_def_formulae_seq[alcove_h].second=UnMap_seq(result);
   }
 
   return flip_start // if so we must multiply the stored value by $s$

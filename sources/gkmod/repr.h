@@ -118,12 +118,10 @@ public:
   const int_Vector alcove() const { return alcv; }
   KGBElt x() const { return x_part; }
   const Weight& lambda_rho() const { return lmb_rho; }
-  //  const RatWeight& lambda() const {}
 
   Alcove (const Rep_context& rc, const StandardRepr& sr);
-  // alcv should be constructed by looping over pos coroots
 
-    // special members required by HashTable
+  // special members required by HashTable
 
   typedef std::vector<Alcove> Pooltype;
   bool operator== (const Alcove& other) const { return x_part==other.x_part
@@ -132,6 +130,31 @@ public:
     { return not operator==(another); }
   size_t hashCode(size_t modulus) const;
 }; // |class Alcove|
+
+class KRepr
+{
+  friend class Rep_context;
+
+protected:
+  KGBElt x_part;
+  Weight lmb_rho;
+
+public:
+
+  KGBElt x() const { return x_part; }
+  const Weight& lambda_rho() const { return lmb_rho; }
+
+  KRepr (const Rep_context& rc, const StandardRepr& sr);
+
+  // special members required by HashTable
+
+  typedef std::vector<KRepr> Pooltype;
+  bool operator== (const KRepr& other) const { return x_part==other.x_part
+      and lmb_rho==other.lmb_rho; }
+  bool operator!=(const KRepr& another) const
+    { return not operator==(another); }
+  size_t hashCode(size_t modulus) const;
+}; // |class KRepr|
 
 // a variation that only differs in hashing |infinitesimal_char| modulo $X^*$
 class StandardReprMod
@@ -169,6 +192,9 @@ class StandardReprMod
 using SR_poly_vec_entry = std::pair<StandardRepr,Split_integer>;
 using SR_poly_vec = std::vector<SR_poly_vec_entry>;
 
+using SR_poly_vec_seq_entry =  std::pair<unsigned long,Split_integer>;
+using SR_poly_vec_seq =  std::vector<SR_poly_vec_seq_entry>;
+
 // This class stores the information necessary to interpret a |StandardRepr|
 class Rep_context
 {
@@ -204,6 +230,8 @@ class Rep_context
     sr(const standardrepk::StandardRepK& srk,
        const standardrepk::SRK_context& srkc,
        const RatWeight& nu) const;
+
+  StandardRepr sr (const KRepr& sk) const; // interpret with $\nu=0$
 
   // component extraction
   const WeightInvolution& theta (const StandardRepr& z) const;
@@ -324,8 +352,11 @@ class Rep_table : public Rep_context
 {
   std::vector<Alcove> alcove_pool;
   HashTable<Alcove,unsigned long> alcove_hash;
-  std::vector<std::pair<SR_poly_vec,SR_poly_vec>
-	      > alcove_def_formulae_vec; // ordinary, twisted
+
+  std::vector<KRepr> krepr_pool;
+  HashTable<KRepr,unsigned long> krepr_hash;
+  std::vector<std::pair<SR_poly_vec_seq,SR_poly_vec_seq>
+	      > alcove_def_formulae_seq; // ordinary, twisted
 
   std::vector<StandardReprMod> mod_pool;
   HashTable<StandardReprMod,unsigned long> mod_hash;
@@ -347,10 +378,14 @@ class Rep_table : public Rep_context
 
   unsigned long parameter_number (StandardRepr z) const
     { return alcove_hash.find(Alcove(*this,z)); }
-  const SR_poly_vec& deformation_formula(unsigned long h) const
-    { return alcove_def_formulae_vec[h].first; }
-  const SR_poly_vec& twisted_deformation_formula(unsigned long h) const
-    { return alcove_def_formulae_vec[h].second; }
+
+  unsigned long K_parameter_number(StandardRepr z) const
+    { return krepr_hash.find(KRepr(*this,z)); }
+
+  const SR_poly_vec_seq& deformation_formula(unsigned long h) const
+    { return alcove_def_formulae_seq[h].first; }
+  const SR_poly_vec_seq& twisted_deformation_formula(unsigned long h) const
+    { return alcove_def_formulae_seq[h].second; }
 
   blocks::common_block& lookup_full_block
     (StandardRepr& sr,BlockElt& z); // |sr| is by reference; will be normalised
@@ -389,13 +424,23 @@ class Rep_table : public Rep_context
 // compress an |SR_poly| map to a vector of its nodes
   SR_poly_vec UnMap (const SR_poly& P) { return { P.begin(), P.end() }; }
 
+// further compress an |SR_poly| map to a vector of its hashed nodes
+  SR_poly_vec_seq UnMap_seq (const SR_poly& P);
+
 // expand a |SR_poly_vec| back to an |SR_poly| map
 SR_poly Map (const SR_poly_vec& V);
+
+// convert an |SR_poly_vec_seq| back to an |SR_poly|
+SR_poly Map_seq (const SR_poly_vec_seq& V);
+
 
 
  private:
   void block_erase (bl_it pos); // erase from |block_list| in safe manner
   unsigned long alcove_formula_index (const StandardRepr&);
+  unsigned long KRepr_index(const StandardRepr& sr)
+    { return krepr_hash.match(KRepr(*this, sr)); }
+
   unsigned long add_block(const StandardReprMod&); // full block
   class Bruhat_generator; // helper class: internal |add_block_below| recursion
 
