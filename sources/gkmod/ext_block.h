@@ -180,7 +180,7 @@ class ext_block
   unsigned l(BlockElt y, BlockElt x) const { return length(y)-length(x); }
   BlockElt length_first(size_t l) const { return l_start[l]; }
 
-  // the following three function return ascents or descents as appropriate
+  // the following three functions return ascents or descents as appropriate
   BlockElt cross(weyl::Generator s, BlockElt n) const;
   BlockElt Cayley(weyl::Generator s, BlockElt n) const; // just one or none
   BlockEltPair Cayleys(weyl::Generator s, BlockElt n) const; // must be two
