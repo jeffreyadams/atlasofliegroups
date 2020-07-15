@@ -12,6 +12,15 @@
 #include <memory> // for |std::unique_ptr|
 #include <map> // used in computing |reducibility_points|
 #include <iostream>
+
+#include<sys/time.h>
+#include<sys/resource.h> // for memory use report
+#ifdef __APPLE__
+#define RSSUNITSPERMiB 0x100000 // 2^{20} for bytes
+#else
+#define RSSUNITSPERMiB 0x400    // 2^{10} for KiB
+#endif
+
 #include "error.h"
 
 #include "arithmetic.h"
@@ -1317,11 +1326,21 @@ SR_poly Rep_table::deformation_terms
     }
     assert(it==finals.end());
   }
-  std::cerr  << "            #def_forms = " << def_formulae.size() << "\r";
+
+  unsigned resident;
+  struct rusage usage;
+  if (getrusage(RUSAGE_SELF, &usage) != 0)
+    std::cerr << "getrusage failed" << std::endl;
+  resident = usage.ru_maxrss/RSSUNITSPERMiB;
+  std::cerr //  << "            #def_forms = " << def_formulae.size()
+	     << "            #alcove_def_forms = "
+	     << alcove_def_formulae.size()
+	     << "  max res size = " << resident << "MB"
 #if 0
 	     << "  # trans fams = " << mod_pool.size() << "\r"
 	     << " # looked-up = " << LOOKUP
 #endif
+	     << '\r';
 
   return result;
 } // |deformation_terms|, common block version
@@ -1432,7 +1451,7 @@ SR_poly Rep_table::deformation(const StandardRepr& z)
 
   { // look up if deformation formula for |z_near| is already known and stored
     const auto& rc = *this;
-    const auto alcove_h = alcove_hash.find(Alcove(rc,z));
+    const auto alcove_h = alcove_hash.find(Alcove(rc,z_near));
     if (alcove_h!=alcove_hash.empty and
 	not alcove_def_formulae[alcove_h].first.empty())
       return alcove_def_formulae[alcove_h].first;
@@ -1663,12 +1682,20 @@ SR_poly Rep_table::twisted_deformation_terms
     }
     assert(it==acc.end());
   }
-  std::cerr  << "              #def_forms = " << def_formulae.size()
-	     << " #alcove_def_forms = " << alcove_def_formulae.size() << "\r";
-  //	     << "  # trans fams of reps = " << mod_pool.size() << "\r";
+  unsigned resident;
+  struct rusage usage;
+  if(getrusage(RUSAGE_SELF, &usage) != 0)
+    std::cerr << "getrusage failed" << std::endl;
+  resident = usage.ru_maxrss/RSSUNITSPERMiB;
+  std::cerr  //   << "              #def_forms = " << def_formulae.size()
+	     << "                #alcove_def_forms = "
+	     << alcove_def_formulae.size()
+	     << "  max res size = " << resident << "MB"
+	     << '\r';
 
   return result;
 } // |twisted_deformation_terms(blocks::common_block&,...)|
+
 
 #if 0
 SR_poly Rep_table::twisted_deformation_terms (unsigned long sr_hash) const
@@ -1728,8 +1755,8 @@ SR_poly Rep_table::twisted_deformation (StandardRepr z)
   { // if deformation for |z| was previously stored, return it with |flip_start|
     const auto& rc = *this;
     const auto alcove_h = alcove_hash.find(Alcove(rc,z));
-   if (alcove_h!=alcove_hash.empty and
-       not alcove_def_formulae[alcove_h].second.empty())
+    if (alcove_h!=alcove_hash.empty and
+	not alcove_def_formulae[alcove_h].second.empty())
      return flip_start // if so we must multiply the stored value by $s$
        ? SR_poly(repr_less()).add_multiple
            (alcove_def_formulae[alcove_h].second,Split_integer(0,1))
