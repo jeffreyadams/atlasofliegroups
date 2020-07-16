@@ -917,6 +917,7 @@ Rep_table::Rep_table(RealReductiveGroup &G)
 , alcove_pool(), alcove_hash(alcove_pool)
 , krepr_pool(), krepr_hash(krepr_pool), alcove_def_formulae_seq()
 , mod_pool(), mod_hash(mod_pool), block_list(), place()
+, FREQUENCY(100), NEXT(100)
 {}
 Rep_table::~Rep_table() = default;
 
@@ -1335,9 +1336,11 @@ SR_poly Rep_table::deformation_terms
     }
     assert(it==finals.end());
   }
-  if (alcove_def_formulae_seq.size()%100 == 0)
+  if (alcove_def_formulae_seq.size() >= NEXT)
   {
+    NEXT += FREQUENCY;
     unsigned resident, CPUtime;
+    unsigned DefMonomials = 0;
     std::string MemUnits = "MB";
     std::string TimeUnits = " secs";
     struct rusage usage;
@@ -1345,15 +1348,25 @@ SR_poly Rep_table::deformation_terms
       std::cerr << "getrusage failed" << std::endl;
     resident = usage.ru_maxrss/RSSUNITSPERMiB;
     CPUtime = usage.ru_utime.tv_sec;
+    for (size_t j=alcove_def_formulae_seq.size() - FREQUENCY;
+	 j < alcove_def_formulae_seq.size(); ++j )
+      DefMonomials += alcove_def_formulae_seq[j].first.size()
+      + alcove_def_formulae_seq[j].second.size();
+    DefMonomials = DefMonomials/FREQUENCY;
+
+    if (alcove_def_formulae_seq.size() > 14*FREQUENCY)
+      { FREQUENCY = 10*FREQUENCY;
+	NEXT = ((NEXT/FREQUENCY)+1)*FREQUENCY; }
+
     if (resident > 10240) {MemUnits = "GB" ; resident=resident/1024;}
     if (CPUtime > 599) {TimeUnits = " mins"; CPUtime = CPUtime/60;}
-    std::cerr //  << "             #def_forms = " << def_formulae.size()
-      << "             #alcv_forms = "
-      << alcove_def_formulae_seq.size()
-      << " #KReprs = " << krepr_pool.size()
-      << " max res size = " << resident << MemUnits
+    std::cerr       << "             #alcv_forms = "
+		    << alcove_def_formulae_seq.size()
+		    << " #KReprs = " << krepr_pool.size()
+		    << " #monoms/term = " << DefMonomials
+		    << " max res size = " << resident << MemUnits
       << " CPU time = " << CPUtime << TimeUnits
-      << '\r';
+      << '\n';
   }
   return result;
 } // |deformation_terms|, common block version
@@ -1724,26 +1737,37 @@ SR_poly Rep_table::twisted_deformation_terms
     }
     assert(it==acc.end());
   }
-  if (alcove_def_formulae_seq.size()%100 == 0)
+  if (alcove_def_formulae_seq.size() >= NEXT)
   {
+    NEXT += FREQUENCY;
     unsigned resident, CPUtime;
-
+    unsigned DefMonomials = 0;
     std::string MemUnits = "MB";
     std::string TimeUnits = " secs";
     struct rusage usage;
-    if(getrusage(RUSAGE_SELF, &usage) != 0)
+    if (getrusage(RUSAGE_SELF, &usage) != 0)
       std::cerr << "getrusage failed" << std::endl;
     resident = usage.ru_maxrss/RSSUNITSPERMiB;
     CPUtime = usage.ru_utime.tv_sec;
+    for (size_t j=alcove_def_formulae_seq.size() - FREQUENCY;
+	 j < alcove_def_formulae_seq.size(); ++j )
+      DefMonomials += alcove_def_formulae_seq[j].first.size()
+      + alcove_def_formulae_seq[j].second.size();
+    DefMonomials = DefMonomials/FREQUENCY;
+
+    if (alcove_def_formulae_seq.size() > 14*FREQUENCY)
+      { FREQUENCY = 10*FREQUENCY;
+	NEXT = ((NEXT/FREQUENCY)+1)*FREQUENCY; }
+
     if (resident > 10240) {MemUnits = "GB" ; resident=resident/1024;}
     if (CPUtime > 599) {TimeUnits = " mins"; CPUtime = CPUtime/60;}
-    std::cerr  //   << "              #def_forms = " << def_formulae.size()
-      << "             #alcv_forms = "
-      << alcove_def_formulae_seq.size()
-      << " #KReprs = " << krepr_pool.size()
-      << " max res size = " << resident << MemUnits
-      << " CPU time = " << CPUtime << TimeUnits
-      << '\r';
+    std::cerr       << "             #alcv_forms = "
+		    << alcove_def_formulae_seq.size()
+		    << " #KReprs = " << krepr_pool.size()
+		    << " #monoms/term = " << DefMonomials
+		    << " max res size = " << resident << MemUnits
+		    << " CPU time = " << CPUtime << TimeUnits
+		    << '\n';
   }
   return result;
 } // |twisted_deformation_terms(blocks::common_block&,...)|
