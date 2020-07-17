@@ -136,6 +136,7 @@ class Split_integer
   struct raw {}; // to signal use of the private constructor
   //  explicit constexpr Split_integer(int ev_1, int ev_minus_1, raw)
   //  : ev_1(ev_1), ev_minus_1(ev_minus_1) {}
+
   explicit constexpr Split_integer(int ev_1, int ev_minus_1, raw)
    : both((ev_1+ev_minus_1)/2 + (ev_1 - ev_minus_1)*2147483648) {}
   explicit constexpr Split_integer(std::int64_t both, raw)
@@ -197,10 +198,10 @@ class Split_integer
     Split_integer& negate() { both=-both; return *this; }
 
   //  Split_integer& times_s() { ev_minus_1=-ev_minus_1; return *this; }
-  Split_integer& times_s() { both=(both/4294967296) + (4294967296*both);
+  Split_integer& times_s() { both=s() + (4294967296*both);
     return *this; }
   //  Split_integer times_s() const { return Split_integer(ev_1,-ev_minus_1,raw()); }
-  Split_integer times_s() const { return Split_integer((both/4294967296)
+  Split_integer times_s() const { return Split_integer(s()
 				     + (4294967296*both),raw()); }
 //  Split_integer& times_1_s() // multiply by |1-s|
 //  { ev_1=0; /* see "Who Killed the ELectric Car" */
@@ -211,9 +212,9 @@ class Split_integer
   Split_integer times_1_s() const { return
       Split_integer( e()-s() + 4294967296*(s()-e()) ,raw()); }
     // int s_to_1() const { return ev_1; }
-  int s_to_1() const { return both%4294967296 + both/4294967296; }
+  int s_to_1() const { return e() + s(); }
   //  int s_to_minus_1() const { return ev_minus_1; }
-    int s_to_minus_1() const { return both%4294967296 - both/4294967296; }
+    int s_to_minus_1() const { return e() - s(); }
 }; // |class Split_integer|
 
 std::ostream& operator<< (std::ostream& out, const Rational& frac);
