@@ -113,37 +113,119 @@ let O=induce_orbit(L,G,st_L,st_G,O_L) in
 od
 )
 
-{only need Springer table for G, character table for L=integrality datum}
-set associated_variety_ann(Param p,SpringerTable st_G,CharacterTable ct_int)=ComplexNilpotent:
-let st=p.root_datum.springer_table then
-()=if ti_verbose then prints("Computed Springer table") fi then
-rd_int=integrality_datum(p.root_datum,p.infinitesimal_character) then
-{ct_int=rd_int.character_table then}
-special_character_int=special_character(ct_int,W_cell(p)) then
-()=if ti_verbose then prints("Computed special_character_int: ", special_character_int) fi then
-character_G=truncate_induce_character(rd_int,p.root_datum,ct_int,st.ct,ct_int.characters[special_character_int]) then
-()=if ti_verbose then prints("Computed truncated induction: ", character_G)  fi then
-orbit_0=st.springer_inverse(character_G) then
-{might be for different root datum}
-orbit=orbit_by_diagram(p.root_datum,orbit_0.diagram_normalized) in
-if ti_verbose then
-prints("orbit_0: ", orbit_0.diagram);
- prints("Special character: ", special_character_int, new_line,
- "orbit: ", orbit.diagram, st.special_star(orbit))
-fi;
-orbit
+{----- associated variety of annihlator  ----}
 
-set associated_variety_ann(Param p,SpringerTable st_G)=ComplexNilpotent:
-associated_variety_ann(p,st_G,integrality_datum(p.root_datum,p.infinitesimal_character).character_table)
+{many variants: precalculating the Springer table of G, or the character table of
+the integrality datum, for speed
+options:
+associated_variety_ann_int(SpringerTable st_G,Param p)=
+associated_variety_ann_int(Param p)=associated_variety_ann_int(p.root_datum.springer_table,p)
+associated_variety_ann(SpringerTable st_G,CharacterTable ct_int,Param p)=
+associated_variety_ann(SpringerTable st_G,Param p)=ComplexNilpotent:
+associated_variety_ann(Param p)=ComplexNilpotent:
+associated_variety_ann_int(SpringerTable st_G,[Param] params)=
+associated_variety_ann_int([Param] params)=
+associated_variety_ann(SpringerTable st_G,CharacterTable ct_int,[Param] params)=[(Param,ComplexNilpotent)]:
+associated_variety_ann(SpringerTable st_G,[Param] params)=[(Param,ComplexNilpotent)]:
+associated_variety_ann([Param] params)=[(Param,ComplexNilpotent)]:
+}
 
-set associated_variety_ann(Param p)=ComplexNilpotent:associated_variety_ann(p,p.root_datum.springer_table)
+{assuming infinitesimal character is integral, with precomputed Springer table}
+set associated_variety_ann_int(SpringerTable st_G,Param p)=
+assert(is_integral(p.root_datum,p.infinitesimal_character), "infinitesimal character must be integral");
+if ti_verbose then prints("associated_variety_ann_int with given Springer table") fi;
+let character_G=special_character(st_G.ct,W_cell(p)) then
+ ()=if ti_verbose then prints("Computed character_G: ", character_G,
+      new_line, "(integral infinitesimal character, no induction needed)") fi then
+ orbit_0=st_G.springer_inverse(character_G) then
+ {might be for different root datum}
+ orbit=orbit_by_diagram(p.root_datum,orbit_0.diagram_normalized) in
+ if ti_verbose then
+  prints("orbit_0: ", orbit_0.diagram);
+  prints("Special character: ", character_G, new_line,
+  "orbit: ", orbit.diagram, st_G.special_star(orbit))
+ fi; orbit
 
-{assume all params have same G and same infinitesimal character}
+{compute Springer table}
+set associated_variety_ann_int(Param p)=associated_variety_ann_int(p.root_datum.springer_table,p)
+
+{provide Springer table for G, character table for L=integrality datum}
+set associated_variety_ann(SpringerTable st_G,CharacterTable ct_int,Param p)=
+let ()=if ti_verbose then prints("associated_variety_ann with given Springer and character tables") fi in
+let orbit=
+if is_integral(p.root_datum,p.infinitesimal_character) then
+  if ti_verbose then prints("integral infinitesimal character") fi;
+  associated_variety_ann_int(st_G,p)
+else
+ let rd_int=integrality_datum(p) then
+ special_character_int=special_character(ct_int,W_cell(p)) then
+ ()=if ti_verbose then prints("Computed special_character_int: ", special_character_int) fi then
+ character_G=truncate_induce_character(rd_int,p.root_datum,ct_int,st_G.ct,ct_int.characters[special_character_int]) then
+ ()=if ti_verbose then prints("Computed truncated induction: ", character_G) fi then
+ orbit_0=st_G.springer_inverse(character_G) then
+ {might be for different root datum}
+ orbit=orbit_by_diagram(p.root_datum,orbit_0.diagram_normalized) in
+ if ti_verbose then
+  prints("orbit_0: ", orbit_0.diagram);
+  prints("Special character: ", special_character_int, new_line,
+  "orbit: ", orbit.diagram, st_G.special_star(orbit))
+ fi;orbit
+fi in orbit
+
+{provide Springer table for G, calculate character table for rd_int if needed}
+set associated_variety_ann(SpringerTable st_G,Param p)=ComplexNilpotent:
+if ti_verbose then prints("associated_variety_ann with given Springer table") fi;
+if is_integral(p.root_datum,p.infinitesimal_character) then
+ if ti_verbose then prints("infinitesimal character is integral, no need to compute character table") fi;
+ associated_variety_ann_int(st_G,p)
+else
+ let ct_int=character_table(integrality_datum(p)) in
+ if ti_verbose then prints("calculated character table for integral datum: ", ct_int.root_datum) fi;
+associated_variety_ann(st_G,ct_int,p)
+fi
+
+{compute Springer table, and character table if needed}
+set associated_variety_ann(Param p)=ComplexNilpotent:
+if ti_verbose then prints("associated_variety_ann: Computing Springer table, and character table if needed") fi;
+let st=p.root_datum.springer_table in
+if ti_verbose then prints("done computing Springer table") fi;
+associated_variety_ann(p.root_datum.springer_table,p)
+
+{----------list of parameters versions---------}
+
+{assume all params have integral infinitesimal character}
+set associated_variety_ann_int(SpringerTable st_G,[Param] params)=
+assert(is_integral(params[0].root_datum,params[0].infinitesimal_character), "infinitesimal character must be integral");
+if ti_verbose then prints("associated_variety_ann_int with given Springer table") fi;
+for p in params do
+let character_G=special_character(st_G.ct,W_cell(p)) then
+ ()=if ti_verbose then prints("Computed character_G: ", character_G,
+      new_line, "(integral infinitesimal character, no induction needed)") fi then
+ orbit_0=st_G.springer_inverse(character_G) then
+ {might be for different root datum}
+ orbit=orbit_by_diagram(p.root_datum,orbit_0.diagram_normalized) in
+ if ti_verbose then
+  prints("orbit_0: ", orbit_0.diagram);
+  prints("Special character: ", character_G, new_line,
+  "orbit: ", orbit.diagram, st_G.special_star(orbit))
+ fi; orbit
+od
+
+{all parameters must have integral infinitesimal character}
+set associated_variety_ann_int([Param] params)=
+if ti_verbose then prints("associated_variety_ann_int with ", #params, " parameters",new_line, "Computing Springer table") fi;
+assert(is_integral(params[0].root_datum,params[0].infinitesimal_character),"infinitesimal character is not integral");
+let st=params[0].root_datum.springer_table in
+if ti_verbose then prints("done computing Springer table") fi ;
+associated_variety_ann_int(st,params)
+
+{assume all params have same infinitesimal character}
 {need Springer table for G and character table for integrality _datum}
 set associated_variety_ann(SpringerTable st_G,CharacterTable ct_int,[Param] params)=[(Param,ComplexNilpotent)]:
+if ti_verbose then prints("associated_variety_ann with given Springer table, character table, and ", #params, " parameters") fi;
 if =#params then [] else
 let p_0=params[0] then
-rd_int=integrality_datum(p_0.root_datum,p_0.infinitesimal_character) in
+rd_int=integrality_datum(p_0) in
 for p in params do
  let special_character_int=special_character(ct_int,W_cell(p)) then
  character_G=truncate_induce_character(rd_int,p.root_datum,ct_int,st_G.ct,ct_int.characters[special_character_int]) then
@@ -156,23 +238,21 @@ for p in params do
  fi;
 (p,orbit) od fi
 
+set associated_variety_ann(SpringerTable st_G,[Param] params)=[(Param,ComplexNilpotent)]:
+let gamma=params[0].infinitesimal_character in
+if is_integral(st_G.root_datum,gamma) then
+ associated_variety_ann(st_G,st_G.ct,params)
+else
+ let rd_int=integrality_datum(params[0]) then
+ ct_int=rd_int.character_table in
+ associated_variety_ann(st_G,ct_int,params)
+fi
+
 set associated_variety_ann([Param] params)=[(Param,ComplexNilpotent)]:
-if =#params then [] else
-let p_0=params[0] then
-st=springer_table(p_0.root_datum) then
-rd_int=integrality_datum(p_0.root_datum,p_0.infinitesimal_character) then
-ct_int=rd_int.character_table in
-for p in params do
- let special_character_int=special_character(ct_int,W_cell(p)) then
- character_G=truncate_induce_character(rd_int,p.root_datum,ct_int,st.ct,ct_int.characters[special_character_int]) then
- orbit_0=st.springer_inverse(character_G) then
- orbit=orbit_by_diagram(p.root_datum,orbit_0.diagram_normalized) in
- if ti_verbose then
-  prints("orbit_0: ", orbit_0.diagram);
-  prints("Special character: ", special_character_int, new_line,
-  "orbit: ", orbit.diagram, st.special_star(orbit))
- fi;
-(p,orbit) od fi
+if ti_verbose then prints("associated_variety_ann, computing Springer table and character table if necessary") fi;
+let st=params[0].root_datum.springer_table in
+if ti_verbose then prints("done computing Springer table") fi;
+associated_variety_ann(st,params)
 
 set show([(Param,ComplexNilpotent)] pairs)=tabulate(
 ["x","lambda","nu","diagram(O)","GK-dim"]#
@@ -189,7 +269,7 @@ let GC=complexification(G) then
 p_final=finalize(parameter(GC.x_open,GC.rho,gamma##gamma)).first_param then
 ()=assert(LKT(p_final)=LKT(GC.trivial),"nonspherical representation") then
 ()=prints("computing av_ann of ",p_final) then
-av=associated_variety_ann(p_final,st,ct_int) then
+av=associated_variety_ann(st,ct_int,p_final) then
 H=av.H then
 orbit=ComplexNilpotent:(G,(),H[#H\2:]) in
 prints("diagram of orbit: ", orbit.diagram);orbit
