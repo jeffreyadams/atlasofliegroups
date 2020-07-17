@@ -1,6 +1,7 @@
 <elliptic.at { for |elliptics_for_Levi@(RootDatum,[int])| }
 <tabulate.at { for |tabulate| }
 <cyclotomic.at {for |product_of_cyclotomic|}
+<Weylgroup.at
 <conjugate.at
 
 { The purpose of this file is working with Weyl group characters.

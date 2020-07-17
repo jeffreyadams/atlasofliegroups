@@ -1,3 +1,7 @@
+<cells.at
+<K_types.at
+<springer_tables_reductive.at
+
 {if pi is an irreducible representation of W_L, then
 truncated induction takes pi to
 the unique irreducible in Ind_{W(L)}^{W(G)}(pi_L)
@@ -35,29 +39,35 @@ fi;
 {induce and truncate}
 {basic version, using given embedding f}
 set truncate_induce_character (CharacterTable ct_L,CharacterTable ct_G,(WeylElt->WeylElt) f,[int] pi_L) =
-let (,t)=truncate(ct_G,induce_character(ct_L,ct_G,f,pi_L)) in
+let ()=if ti_verbose then prints("Computing induced character: ") fi then
+ind=induce_character(ct_L,ct_G,f,pi_L) then
+()=if ti_verbose then prints("computed induced character: ", ind) fi then
+ (,t)=truncate(ct_G,ind) then
+ ()=if ti_verbose then prints("computed truncation of induced: ", t) fi in
 assert(#t=1,"not a unique character in truncated induction");
 t[0]
 
 {standard form}
 set truncate_induce_character(RootDatum L,RootDatum G,CharacterTable ct_L,CharacterTable ct_G,[int] pi_L)=
-let (,t)=truncate(ct_G,induce_character(L,G,ct_L,ct_G,pi_L)) in
+let ()=if ti_verbose then prints("Computing induced character: ") fi then
+ind=induce_character(L,G,ct_L,ct_G,pi_L) then
+()=if ti_verbose then prints("computed induced character: ", ind) fi then
+(,t)=truncate(ct_G,ind) then
+()=if ti_verbose then prints("computed truncation of induced: ", t) fi in
 assert(#t=1,"not a unique character in truncated induction");
 t[0]
+
 
 {build ct_L, ct_G on the fly (slow)}
 set truncate_induce_character(RootDatum L,RootDatum G,[int] pi_L)=
 let ct_G=G.character_table then
-ct_L=L.character_table then
-(,t)=truncate(ct_G,induce_character(L,G,pi_L)) in
-assert(#t=1,"not a unique character in truncated induction");
-t[0]
+ct_L=L.character_table in
+truncate_induce_character(L,G,ct_L,ct_G,pi_L)
 
 {build ct_L on the fly}
 set truncate_induce_character(RootDatum L,RootDatum G,CharacterTable ct_G,[int] pi_L)=
-let (,t)=truncate(ct_G,induce_character(L,G,ct_G,pi_L)) in
-assert(#t=1,"not a unique character in truncated induction");
-t[0]
+let ct_L=L.character_table in
+truncate_induce_character(L,G,ct_L,ct_G,pi_L)
 
 {L is given as a subgroup of G, by specifying the simple roots of
 L as a set of positive roots of G; for a Levi factor these
@@ -106,10 +116,13 @@ od
 {only need Springer table for G, character table for L=integrality datum}
 set associated_variety_ann(Param p,SpringerTable st_G,CharacterTable ct_int)=ComplexNilpotent:
 let st=p.root_datum.springer_table then
+()=if ti_verbose then prints("Computed Springer table") fi then
 rd_int=integrality_datum(p.root_datum,p.infinitesimal_character) then
 {ct_int=rd_int.character_table then}
 special_character_int=special_character(ct_int,W_cell(p)) then
+()=if ti_verbose then prints("Computed special_character_int: ", special_character_int) fi then
 character_G=truncate_induce_character(rd_int,p.root_datum,ct_int,st.ct,ct_int.characters[special_character_int]) then
+()=if ti_verbose then prints("Computed truncated induction: ", character_G)  fi then
 orbit_0=st.springer_inverse(character_G) then
 {might be for different root datum}
 orbit=orbit_by_diagram(p.root_datum,orbit_0.diagram_normalized) in
@@ -171,12 +184,23 @@ let p=parameter(GC.x_open,GC.rho,gamma##gamma) then
 p=parameter(GC.x_open,GC.rho,gamma##gamma) in
 associated_variety_ann(p)
 
-set av_maximal_ideal(RootDatum G,ratvec gamma,SpringerTable st)=
+set av_maximal_ideal(RootDatum G,ratvec gamma,SpringerTable st,CharacterTable ct_int)=
 let GC=complexification(G) then
-p=parameter(GC.x_open,GC.rho,gamma##gamma) then
-av=associated_variety_ann(p,st) then
-H=av.H in
-ComplexNilpotent:(G,(),H[#H\2:])
+p_final=finalize(parameter(GC.x_open,GC.rho,gamma##gamma)).first_param then
+()=assert(LKT(p_final)=LKT(GC.trivial),"nonspherical representation") then
+()=prints("computing av_ann of ",p_final) then
+av=associated_variety_ann(p_final,st,ct_int) then
+H=av.H then
+orbit=ComplexNilpotent:(G,(),H[#H\2:]) in
+prints("diagram of orbit: ", orbit.diagram);orbit
+
+{integral case: get ct from st}
+set av_maximal_ideal_int(RootDatum G,ratvec gamma,SpringerTable st)=
+assert(is_integral(G,gamma),"infinitesimal character is not integral");
+av_maximal_ideal(G,gamma,st,st.ct)
+
+set av_maximal_ideal(RootDatum G,ratvec gamma,SpringerTable st)=
+av_maximal_ideal(G,gamma,st,character_table(integrality_datum(complexification(G),gamma##gamma)))
 
 set av_maximal_ideal(RootDatum G,ratvec gamma)=
 av_maximal_ideal(G,gamma,G.springer_table)
