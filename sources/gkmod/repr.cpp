@@ -1341,6 +1341,7 @@ SR_poly Rep_table::deformation_terms
     NEXT += FREQUENCY;
     unsigned resident, CPUtime;
     unsigned DefMonomials = 0;
+    unsigned Estimate = 0;
     std::string MemUnits = "MB";
     std::string TimeUnits = " secs";
     struct rusage usage;
@@ -1348,11 +1349,14 @@ SR_poly Rep_table::deformation_terms
       std::cerr << "getrusage failed" << std::endl;
     resident = usage.ru_maxrss/RSSUNITSPERMiB;
     CPUtime = usage.ru_utime.tv_sec;
-    for (size_t j=alcove_def_formulae_seq.size() - FREQUENCY;
+    for (size_t j=0;  // alcove_def_formulae_seq.size() - FREQUENCY;
 	 j < alcove_def_formulae_seq.size(); ++j )
       DefMonomials += alcove_def_formulae_seq[j].first.size()
       + alcove_def_formulae_seq[j].second.size();
-    DefMonomials = DefMonomials/FREQUENCY;
+   //       Estimate = DefMonomials*(16 + 4*real_group().rank())/(1048576);
+    // prev line estimates size of def_formulae
+    Estimate = (12*DefMonomials)/1048576; // to estimate size of _seq
+    //  DefMonomials = DefMonomials/FREQUENCY;
 
     if (alcove_def_formulae_seq.size() > 14*FREQUENCY)
       { FREQUENCY = 10*FREQUENCY;
@@ -1360,10 +1364,12 @@ SR_poly Rep_table::deformation_terms
 
     if (resident > 10240) {MemUnits = "GB" ; resident=resident/1024;}
     if (CPUtime > 599) {TimeUnits = " mins"; CPUtime = CPUtime/60;}
-    std::cerr       << "             #alcv_forms = "
+    std::cerr       << "#alcv_forms = "
 		    << alcove_def_formulae_seq.size()
-		    << " #KReprs = " << krepr_pool.size()
-		    << " #monoms/term = " << DefMonomials
+      //		    << " #KReprs = " << krepr_pool.size()
+      //		    << " #monoms/term = " << DefMonomials
+      		    << " total nodes = " << DefMonomials
+		    << " node mem roughly = " << Estimate << "MB"
 		    << " max res size = " << resident << MemUnits
       << " CPU time = " << CPUtime << TimeUnits
       << '\n';
@@ -1485,6 +1491,7 @@ SR_poly Rep_table::deformation(const StandardRepr& z)
 
   // otherwise compute the deformation terms at all reducibility points
   for (unsigned i=rp.size(); i-->0; )
+   // for (unsigned i=0; i < rp.size(); ++i )
   {
     auto zi = z; scale(zi,rp[i]);
     normalise(zi); // necessary to ensure the following |assert| will hold
@@ -1742,6 +1749,7 @@ SR_poly Rep_table::twisted_deformation_terms
     NEXT += FREQUENCY;
     unsigned resident, CPUtime;
     unsigned DefMonomials = 0;
+    unsigned Estimate = 0;
     std::string MemUnits = "MB";
     std::string TimeUnits = " secs";
     struct rusage usage;
@@ -1749,11 +1757,14 @@ SR_poly Rep_table::twisted_deformation_terms
       std::cerr << "getrusage failed" << std::endl;
     resident = usage.ru_maxrss/RSSUNITSPERMiB;
     CPUtime = usage.ru_utime.tv_sec;
-    for (size_t j=alcove_def_formulae_seq.size() - FREQUENCY;
+    for (size_t j=0;
 	 j < alcove_def_formulae_seq.size(); ++j )
       DefMonomials += alcove_def_formulae_seq[j].first.size()
       + alcove_def_formulae_seq[j].second.size();
-    DefMonomials = DefMonomials/FREQUENCY;
+   //       Estimate = DefMonomials*(16 + 4*real_group().rank())/(1048576);
+    // prev line estimates size of def_formulae
+    Estimate = (12*DefMonomials)/1048576; // to estimate size of _seq
+    //  DefMonomials = DefMonomials/FREQUENCY;
 
     if (alcove_def_formulae_seq.size() > 14*FREQUENCY)
       { FREQUENCY = 10*FREQUENCY;
@@ -1763,8 +1774,10 @@ SR_poly Rep_table::twisted_deformation_terms
     if (CPUtime > 599) {TimeUnits = " mins"; CPUtime = CPUtime/60;}
     std::cerr       << "             #alcv_forms = "
 		    << alcove_def_formulae_seq.size()
-		    << " #KReprs = " << krepr_pool.size()
-		    << " #monoms/term = " << DefMonomials
+      //		    << " #KReprs = " << krepr_pool.size()
+      //		    << " #monoms/term = " << DefMonomials
+      		    << " total nodes = " << DefMonomials
+		    << " node mem roughly = " << Estimate << "MB"
 		    << " max res size = " << resident << MemUnits
 		    << " CPU time = " << CPUtime << TimeUnits
 		    << '\n';
