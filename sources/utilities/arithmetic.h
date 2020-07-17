@@ -136,6 +136,8 @@ class Split_integer
   struct raw {}; // to signal use of the private constructor
   //  explicit constexpr Split_integer(int ev_1, int ev_minus_1, raw)
   //  : ev_1(ev_1), ev_minus_1(ev_minus_1) {}
+  static constexpr int64_t two32 = 4294967296;
+  static constexpr uint32_t two31 = 2147483648;
 
   explicit constexpr Split_integer(int ev_1, int ev_minus_1, raw)
    : both((ev_1+ev_minus_1)/2 + (ev_1 - ev_minus_1)*2147483648) {}
@@ -144,12 +146,21 @@ class Split_integer
  public:
   explicit constexpr Split_integer(int a=0, int b=0)
     //  : ev_1(a+b), ev_minus_1(a-b) {}
-    : both(a + 4294967296*b) {}
+    : both(a + two32*b) {}
 
   //  int e() const { return (ev_1+ev_minus_1)/2; }
-  int e() const { return both%4294967296; }
-  //  int s() const { return (ev_1-ev_minus_1)/2; }
-  int s() const { return both/4294967296; }
+  int e() const
+  { auto r1 = static_cast<uint64_t>(both+two31);
+    auto r2 = static_cast<uint32_t>(r1%two32);
+    auto r3 = r2-two31;
+    return static_cast<int>(r3);
+  }
+   //  int s() const { return (ev_1-ev_minus_1)/2; }
+  int s() const
+  { auto r1 = static_cast<uint64_t>(both+two31);
+    auto q = static_cast<uint32_t>(r1/two32);
+    return static_cast<int>(q);
+  }
 
   bool operator== (Split_integer y) const
   //  { return ev_1==y.ev_1 and ev_minus_1==y.ev_minus_1; }
@@ -184,7 +195,7 @@ class Split_integer
     Split_integer& operator*= (int n) { both*=n; return *this; }
   Split_integer& operator*= (Split_integer y)
   //  { ev_1*=y.ev_1; ev_minus_1*=y.ev_minus_1; return *this; }
-  { both = e()*y.e() + s()*y.s() + 4294967296*(e()*y.s() + s()*y.e());
+  { both = e()*y.e() + s()*y.s() + two32*(e()*y.s() + s()*y.e());
     return *this; }
   Split_integer operator* (int n) const
   //  { return Split_integer(ev_1*n,ev_minus_1*n,raw()); }
@@ -192,25 +203,25 @@ class Split_integer
   Split_integer operator* (Split_integer y) const
   //  { return Split_integer(ev_1*y.ev_1,ev_minus_1*y.ev_minus_1,raw()); }
   { return Split_integer( e()*y.e() + s()*y.s()
-			  + 4294967296*(e()*y.s()+ s()*y.e())); }
+			  + two32*(e()*y.s()+ s()*y.e()),raw()); }
 
   //  Split_integer& negate() { ev_1=-ev_1; ev_minus_1=-ev_minus_1; return *this; }
     Split_integer& negate() { both=-both; return *this; }
 
   //  Split_integer& times_s() { ev_minus_1=-ev_minus_1; return *this; }
-  Split_integer& times_s() { both=s() + (4294967296*both);
+  Split_integer& times_s() { both=s() + (two32*both);
     return *this; }
   //  Split_integer times_s() const { return Split_integer(ev_1,-ev_minus_1,raw()); }
-  Split_integer times_s() const { return Split_integer(s()
-				     + (4294967296*both),raw()); }
+  Split_integer times_s() const
+  { return Split_integer(s() + (two32*both),raw()); }
 //  Split_integer& times_1_s() // multiply by |1-s|
 //  { ev_1=0; /* see "Who Killed the ELectric Car" */
 //    ev_minus_1*=2; return *this; }
   Split_integer& times_1_s() // multiply by |1-s|
-  { both =  e()-s() + 4294967296*(s()-e()); return *this; }
+  { both =  e()-s() + two32*(s()-e()); return *this; }
 //  Split_integer times_1_s() const { return Split_integer(0,2*ev_minus_1,raw()); }
   Split_integer times_1_s() const { return
-      Split_integer( e()-s() + 4294967296*(s()-e()) ,raw()); }
+      Split_integer( e()-s() + two32*(s()-e()) ,raw()); }
     // int s_to_1() const { return ev_1; }
   int s_to_1() const { return e() + s(); }
   //  int s_to_minus_1() const { return ev_minus_1; }
