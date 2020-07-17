@@ -1,5 +1,5 @@
 <misc.at
-<Weylgroup.at {for invariant_form}
+{<Weylgroup.at {for invariant_form}}
 <ratmat.at
 <torus.at
 <lietypes.at
@@ -121,17 +121,6 @@ let factors=simple_factors(rd) then
 j=first(for i:#factors do alpha*rho_check(factors[i]) !=0 od) in
 factors[j]
 
-set is_long(RootDatum rd,vec alpha)=bool:
-assert(is_root(rd,alpha),"not a root");
-let L=simple_factor(rd,alpha) then
-f=invariant_form(L) then
-beta=highest_root(L) in f(alpha,alpha)=f(beta,beta)
-
-set is_short(RootDatum rd,vec alpha)=bool: not is_long(rd,alpha)
-
-set root_lengths(RootDatum rd)=void:
-let rv="" in
-for alpha in rd.simple_roots do if is_short(rd,alpha) then rv+:="S" else rv+:="L" fi od;prints(rv)
 {set project_on_simple_factor(RootDatum rd,int i)=mat:
 ^for alpha in simple_roots(rd.simple_factors[i]) do e(rank(rd),find(rd.simple_roots,alpha)) od
 
