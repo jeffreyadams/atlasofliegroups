@@ -414,9 +414,9 @@ set coherent_irr ([Param] block_reg,WGraph graph_reg,Param p,int s) = ParamPol:
   }
 
 
-{use: set (b,g,gs,w)=h_init(G)
+{use: set (G,p,b,g,gs,w)=h_init(G)
 then
-show(S_inv(b,g,w,gs)
+show_long(S_inv(b,g,gs,w)
 }
 set h_init(RealForm G)=
 let p=G.trivial then

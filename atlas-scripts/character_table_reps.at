@@ -132,7 +132,7 @@ in  W_elt(Gprime,word_Gprime)
 
 {takes a word for W(L) to a matrix for W(Gprime)}
 set embed(RootDatum L,RootDatum G,RootDatum Lprime,RootDatum Gprime,[int] w)=mat:
-let rv=id_mat(G.rank) in for i in w{~} do rv*:=embed_simple_reflection(L,G,Lprime,Gprime,i) od;rv
+let rv=id_mat(Gprime.rank) in for i in w{~} do rv*:=embed_simple_reflection(L,G,Lprime,Gprime,i) od;rv
 
 {w\in W(L) -> W(Gprime)}
 set embed(RootDatum L,RootDatum G,RootDatum Lprime,RootDatum Gprime,WeylElt w)=WeylElt:W_elt(Gprime,embed(L,G,Lprime,Gprime,w.word))
