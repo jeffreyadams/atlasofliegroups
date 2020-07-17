@@ -1068,7 +1068,7 @@ set print_Cartan_info (CartanClass cc) = void:
   ( "compact: ",cr,", complex: ",Cr,", split: ",sr, new_line
   , "canonical twisted involution: "
   ,  if =#ww then "e"
-     else to_string(ww[0], ## for s in ww[1:] do to_string(",",s+1) od)
+     else to_string(ww[0]+1, ## for s in ww[1:] do to_string(",",s+1) od)
      fi
   , new_line
   , "twisted involution orbit size: ",orbit_size,
