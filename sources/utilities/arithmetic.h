@@ -140,8 +140,8 @@ class Split_integer
   explicit constexpr Split_integer(int a=0, int b=0)
   : ev_1(a+b), ev_minus_1(a-b) {}
 
-  int e() const { return (ev_1+ev_minus_1)/2; }
-  int s() const { return (ev_1-ev_minus_1)/2; }
+  int e() const { return (static_cast<long long int>(ev_1)+ev_minus_1)/2; }
+  int s() const { return (static_cast<long long int>(ev_1)-ev_minus_1)/2; }
 
   bool operator== (Split_integer y) const
   { return ev_1==y.ev_1 and ev_minus_1==y.ev_minus_1; }
