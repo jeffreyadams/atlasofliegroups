@@ -206,10 +206,10 @@ class Split_integer
 //  { ev_1=0; /* see "Who Killed the ELectric Car" */
 //    ev_minus_1*=2; return *this; }
   Split_integer& times_1_s() // multiply by |1-s|
-  { both =  e()-s() + 4294967296*(e()+s()); return *this; }
+  { both =  e()-s() + 4294967296*(s()-e()); return *this; }
 //  Split_integer times_1_s() const { return Split_integer(0,2*ev_minus_1,raw()); }
   Split_integer times_1_s() const { return
-      Split_integer( e()-s() + 4294967296*(e()+s()) ,raw()); }
+      Split_integer( e()-s() + 4294967296*(s()-e()) ,raw()); }
     // int s_to_1() const { return ev_1; }
   int s_to_1() const { return both%4294967296 + both/4294967296; }
   //  int s_to_minus_1() const { return ev_minus_1; }
