@@ -28,14 +28,6 @@
   by its class modulo $X^*$); in this unit, blocks of type |common_block| are
   constructed that only use such information, and still allow computation of KLV
   polynomials (ordinary and twisted).
-
-  It is not clear that it is necessary to actually use blocks that are ignorant
-  of the infinitesimal character other than through the integral subsystem it
-  determines, as it is probably possible to re-use polynomials associated to
-  parameters whose block is isomorphic, by applying a shift to their
-  infinitesimal character. But in any case showing that the blocks can be
-  generated in this way is a good way to get convinced that an isomorphism as
-  indicated does exist.
  */
 #include "common_blocks.h"
 
@@ -64,11 +56,13 @@ Repr_mod_entry::Repr_mod_entry(const Rep_context& rc, const StandardReprMod& srm
   , mask(rc.inner_class().involution_table().y_mask(rc.kgb().inv_nr(x)))
 {}
 
+// recover value of |Repr_mod_entry| in the form of a |StandardReprMod|
 StandardReprMod Repr_mod_entry::srm
   (const Rep_context& rc,const RatWeight& gamma_mod_1) const
-{ TorusPart yv(y,rc.inner_class().involution_table().tp_sz(rc.kgb().inv_nr(x)));
-  return StandardReprMod::build
-    (rc,gamma_mod_1, x, rc.gamma_lambda(rc.kgb().inv_nr(x),yv,gamma_mod_1));
+{ // the following uses all bits of |y|, including bits ignored for equality test
+  TorusPart yv(y,rc.inner_class().involution_table().tp_sz(rc.kgb().inv_nr(x)));
+  const auto gam_lam = rc.gamma_lambda(rc.kgb().inv_nr(x),yv,gamma_mod_1);
+  return StandardReprMod::build (rc,gamma_mod_1, x, gam_lam);
 }
 
 } // |namespace repr|
@@ -108,6 +102,10 @@ RatWeight common_block::gamma_lambda(BlockElt z) const
 }
 
 common_block::~common_block() = default;
+
+
+// the full block constructor is only called on explicit user demand
+// it is long because of the need to find elements in all corners
 
 common_block::common_block // full block constructor
   (const Rep_context& rc,
@@ -228,7 +226,7 @@ common_block::common_block // full block constructor
 
   do // process involution packet of elements from |next| to |queue.front()|
   { // |next| is constant throughout the loop body, popped from |queue| at end
-    const KGBElt first_x = x(next), first_y=y(next);
+    const KGBElt first_x = x(next);
 
     // precompute (reversed) length for anything generated this iteration
     const auto next_length = info[next].length+1;
@@ -238,8 +236,9 @@ common_block::common_block // full block constructor
 
     const unsigned int nr_x = bundle.size();
     const unsigned int nr_y = bundle.front().size();
-#ifndef NDEBUG
+#ifndef NDEBUG // check regularity of the constructed bundle
     assert((queue.front()-next)==nr_x*nr_y);
+    const KGBElt first_y=y(next);
     {
       const InvolutionNbr tau = kgb.inv_nr(first_x);
       auto z=next;
@@ -257,7 +256,6 @@ common_block::common_block // full block constructor
       }
     }
 #endif
-    ndebug_use(first_y);
 
     for (weyl::Generator s=0; s<our_rank; ++s)
     {
@@ -295,7 +293,7 @@ common_block::common_block // full block constructor
 	}
       } // compute values |cross_ys|
 
-      { // handle cross actions and descent statusses in all cases
+      { // handle cross actions and descent statuses in all cases
 	const auto theta = kgb.inv_nr(ctxt.cross(s,head).x());
 	BlockElt cur = next; // start of old involution packet
 
@@ -437,7 +435,7 @@ common_block::common_block // full block constructor
   // end of step 4
 
   highest_x = last(x_seen); // to be sure; length need not increase with |x|
-  highest_y=y_hash.size()-1; // set highest occurring |y| value, for |ysize|
+  highest_y = y_hash.size()-1; // set highest occurring |y| value, for |ysize|
 
   std::vector<unsigned int> renumber(y_hash.size());
   {
@@ -478,6 +476,9 @@ common_block::common_block // full block constructor
   entry_element = lookup(srm); // look up element matching the original input
 
 } // |common_block::common_block|, full block version
+
+// the partial block constructor is used for Bruhat intervals below some element
+// the precomputed interval is passed as |elements|; this constructor sorts it
 
 common_block::common_block // partial block constructor
     (const repr::Rep_table& rt,
@@ -1338,7 +1339,7 @@ paramin::paramin
   its reduction modulo 1. Even though |gamma_lambda| is computed at the non
   $\delta$-fixed |srm.gamma_mod1()|, it is also (due to the way |mod_reduce|
   works) a proper value of |gamma_lambda| at |sr|, so |(1-delta)*gamma_lambda|,
-  gives a valid value for the equation of which |tau| est une solution. However
+  gives a valid value for the equation of which |tau| is a solution. However
   |gamma_lambda| may be a different representative than |rc.gamma_lambda(sr)|,
   so don't use that latter: it would give an undesired dependence on |gamma|.
 */
@@ -1424,13 +1425,13 @@ void z_align (const paramin& E, paramin& F, bool extra_flip, int t_mu)
 /*
   An auxiliary routine to compute extended parameters across complex links.
   The situation is complicated by the fact that the cross action is by a
-  generator of the folded integral system, so we need to exapand it first into
+  generator of the folded integral system, so we need to expand it first into
   a product of |length<=3| integral generators, and then have those generators
   act on the components of |E|. For the purpose of changing |E.tw| we further
   develop those generators into reflection words for the full root datum, but
   the reflection action on the other components can be done more directly.
 
-  However, though the integral generators are complex, the action of those
+  However, although the integral generators are complex, the action of those
   reflection words need not be purely complex, which implies that the effect
   on the |gamma_lambda| and |l| components are not purely reflections. The
   difference with respect to pure reflection action can be computed comparing
