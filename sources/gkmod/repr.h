@@ -38,24 +38,24 @@ class common_context;
 
 /*
   A parameter of a standard representation is determined by a triplet
-  $(x,\tilde\lambda,gamma)$, where $x\in K\\backslash G/B$ for our fixed real
+  $(x,\tilde\lambda,\gamma)$, where $x\in K\\backslash G/B$ for our fixed real
   form (determining amongs others an involution $\thata$ of $X^*$),
-  $\tilde\lambda$ is a genuine character of the $\rho$-cover of
-  $H^{\theta_x}$, and $\gamma$ is a character of the complex Lie algebra $h$.
-  The latter two values are related; $(1+\theta)\gamma=(1+\theta)\lambda$, in
-  other words $\gamma-\tilde\lambda$ is fixed by $-\theta$; the projection of
-  $\gamma$ on the $+1$-eigenspace of $\theta$ is determined by this relation
-  and is called the free part $\lambda_0$ of $\gamma$. The difference
-  $\gamma-\lambda_0$, i.e., the projection of $\gamma$ on the $-1$-eigenspace,
-  is called $\nu$. This component is what we are adding with respect to the
-  values encoded in the |standardrepk::StandardRepK| type. The part of
-  $\tilde\lambda$ that is independent of $\lambda_0$ is its "torsion part"
-  (due to the disconnectedness of $H(R)_c$), which would be represented in the
-  |Block| structure by the |TorusPart| component of the |TitsElt| of the dual
-  KGB-element ($y$). In fact we also convert it internally to a |TorusPart|
-  here, called |y_bits|. It represents an element of the quotient of
-  $(X^*)^{-\theta}$ by the image $(1-\theta)X^*$; from it we can recover
-  $\tilde\lambda-\lambda_0$, using |involutions::InvolutionTable::unpack|.
+  $\tilde\lambda$ is a genuine character of the $\rho$-cover of $H^{\theta_x}$,
+  and $\gamma$ is a character of the complex Lie algebra $h$. The latter two
+  values are related; $(1+\theta)\gamma=(1+\theta)\tilde\lambda$, in other words
+  $\gamma-\tilde\lambda$ is fixed by $-\theta$; the projection $\lambda_0$ of
+  $\tilde\lambda$ or $\gamma$ on the $+1$-eigenspace of $\theta$ is determined
+  by this relation. The difference $\gamma-\lambda_0$, i.e., the projection of
+  $\gamma$ on the $-1$-eigenspace, is called $\nu$. This $\nu$ is the
+  information one is adding here with respect to the values encoded in the
+  |standardrepk::StandardRepK| type. The part of $\tilde\lambda$ that is
+  independent of $\lambda_0$ is its "torsion part" (due to the disconnectedness
+  of $H(R)_c$), which would be represented in the |Block| structure by the
+  |TorusPart| component of the |TitsElt| of the dual KGB-element ($y$). In fact
+  we also convert it internally to a |TorusPart| here, called |y_bits|. It
+  represents an element of the quotient of $(X^*)^{-\theta}$ by the image
+  $(1-\theta)X^*$; from it we can recover $\tilde\lambda-\lambda_0$, using
+  |involutions::InvolutionTable::unpack|.
 
   In principle $\gamma$ could take any complex values compatible with
   $\tilde\lambda$. But we are only interested in real values, and in fact
@@ -269,20 +269,19 @@ using SR_poly = Rep_context::poly;
   |Rep_table| provides storage for data that was previously computed for
   various related nonzero final |StandardRepr| values.
 
-  The data stored consists of lengths, and (twisted) full deformation formulae.
+  The data stored are: the |blocks::common_block| values encountered for this
+  real form, together with their KL data if computed, a table of (twisted) full
+  deformation formulae, pools of |kl::KLPol| (positive coeffient) and
+  |ext_kl::Pol| (integer coeffient) polynomials that blocks may choose to share
+  (they can alternatively choose to maintain their local polynomials themselves).
+
   This class provides methods for their computation, and handles the data
   storage and retrieval.
 
-  The deformation information for a parameter will actually be stored for its
-  first reducibility point (thus avoiding some duplication of the same
-  information, and avoiding memory usage for parameters without any
-  reducibility points), at the normalised form of the parameter there (the
-  deformation might have made some complex simple coroots singular, crossing
-  their wall). Since no slots are created for parameters that are zero or
-  non-final, such parameters must be expanded into finals before attempting
-  look-up or storage of deformation formulae; the nonzero and final conditions
-  are preserved at intermediate deformation points (though possibly not at the
-  terminating point $\nu=0$ of the deformation).
+  The deformation information is associated to parameters, but is unchanged
+  under certain changes of these parameters, so to limit memory usage somewhat
+  any parameter is moved to its first reducibility point and expressed in
+  nonzezro final ones before looking up or computing its deformation.
 */
 class Rep_table : public Rep_context
 {
