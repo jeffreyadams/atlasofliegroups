@@ -171,6 +171,11 @@ public:
   weyl::Generator firstStrictDescent(BlockElt z) const;
   weyl::Generator firstStrictGoodDescent(BlockElt z) const;
 
+  bool survives(BlockElt z, RankFlags singular) const;
+    // whether $J(z_{reg})$ survives tr. functor with |singular| singular coroots
+  containers::sl_list<BlockElt>
+    finals_for(BlockElt z, RankFlags singular) const; // expression for $I(z)$
+
   // print whole block to stream (name chosen to avoid masking by |print|)
   std::ostream& print_to
     (std::ostream& strm,bool as_invol_expr) const; // defined in |block_io|

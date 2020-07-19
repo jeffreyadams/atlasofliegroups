@@ -185,7 +185,7 @@ class Rep_context
 
   RatWeight nu(const StandardRepr& z) const; // rational, $-\theta$-fixed
 
-  // the value of $\exp_{-1}(\gamma-\lambda)$ is $y$ value in a |param_block|
+  // the value of $\exp_{-1}(\gamma-\lambda)$ is $y$ value in a |common_block|
   TorusElement y_as_torus_elt(const StandardRepr& z) const;
   TorusElement y_as_torus_elt(const StandardReprMod& z) const;
 
@@ -247,7 +247,7 @@ class Rep_context
   poly scale(const poly& P, const Rational& f) const;
   poly scale_0(const poly& P) const;
 
-  containers::sl_list<StandardRepr> finals_for // like |param_block::finals_for|
+  containers::sl_list<StandardRepr> finals_for // like |Block_base::finals_for|
     (StandardRepr z) const; // by value
   poly expand_final(StandardRepr z) const; // the same, as |poly| (by value)
 

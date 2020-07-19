@@ -4745,6 +4745,22 @@ void block_wrapper(expression_base::level l)
     wrap_tuple<2>();
 }
 
+void common_block_wrapper(expression_base::level l)
+{ own_module_parameter p = get_own<module_parameter_value>();
+  test_standard(*p,"Cannot generate block");
+  if (l==expression_base::no_value)
+    return;
+@)
+  BlockElt start; // will hold index in the block of the initial element
+  auto& block = p->rt().lookup_full_block(p->val,start);
+  const auto& gamma = p->val.gamma();
+  @< Push a list of parameter values for the elements of common |block| at
+   infinitesimal character |gamma| @>
+  push_value(std::make_shared<int_value>(start));
+  if (l==expression_base::single_value)
+    wrap_tuple<2>();
+}
+
 @ Construction a list of values is a routine affair. This code must however
 also construct a module parameter value for each element of |block|.
 
@@ -4753,6 +4769,20 @@ also construct a module parameter value for each element of |block|.
   for (BlockElt z=0; z<block.size(); ++z)
     param_list->val[z] =
 	std::make_shared<module_parameter_value>(p->rf,block.sr(z));
+  push_value(std::move(param_list));
+
+}
+
+@ When dealing with a common block, generating the module parameters requires
+explicitly passing the infinitesimal character, which the block does not record.
+
+@< Push a list of parameter values for the elements of common |block| at
+   infinitesimal character |gamma| @>=
+{ own_row param_list = std::make_shared<row_value>(block.size());
+  for (BlockElt z=0; z<block.size(); ++z)
+    param_list->val[z] =
+         std::make_shared<module_parameter_value> @|
+             (p->rf,p->rc().sr(block.representative(z),gamma));
   push_value(std::move(param_list));
 
 }
@@ -4782,7 +4812,7 @@ void partial_common_block_wrapper(expression_base::level l)
   BitMap subset(n);
   subset.insert(z);
   while (subset.back_up(n)) // compute downward closure
-    for (BlockElt y : block.bruhatOrder().hasse(n))
+    for (@[BlockElt y : block@].bruhatOrder().hasse(n))
       subset.insert(y);
 
   { own_row param_list = std::make_shared<row_value>(subset.size());
@@ -4831,16 +4861,20 @@ that will be defined below.
 
 @< Local function def...@>=
 void KL_block_wrapper(expression_base::level l)
-{ shared_module_parameter p = get<module_parameter_value>();
+{ own_module_parameter p = get_own<module_parameter_value>();
   test_standard(*p,"Cannot generate block");
   if (l==expression_base::no_value)
     return;
 @)
   BlockElt start; // will hold index in the block of the initial element
-  param_block block(p->rc(),p->val,start);
-  @< Push a list of parameter values for the elements of |block| @>
+  auto& block = p->rt().lookup_full_block(p->val,start);
+  const RankFlags singular = block.singular(p->val.gamma());
+  const auto& gamma = p->val.gamma();
+  @< Push a list of parameter values for the elements of common |block| at
+   infinitesimal character |gamma| @>
   push_value(std::make_shared<int_value>(start));
   const kl::KL_table& kl_tab =
+    // fill full block, not sharing polynomials, silently
     block.kl_tab(block.size()-1,nullptr,false);
 @)
   @< Extract from |kl_tab| an |own_matrix M@;| and |own_row polys@;| @>
@@ -4852,20 +4886,18 @@ void KL_block_wrapper(expression_base::level l)
 @)
   unsigned n_survivors=0;
   for (BlockElt z=0; z<block.size(); ++z)
-  @+ if (block.survives(z))
+  @+ if (block.survives(z,singular))
       ++n_survivors;
   own_vector survivor =
-    std::make_shared<vector_value>(int_Vector(n_survivors));
-  { unsigned i=0;
-    for (BlockElt z=0; z<block.size(); ++z)
-    @+if (block.survives(z))
-        survivor->val[i++]=z;
-    assert(i==n_survivors);
-  }
+    std::make_shared<vector_value>(int_Vector());
+  survivor->val.reserve(n_survivors);
+  for (BlockElt z=0; z<block.size(); ++z)
+    if (block.survives(z,singular))
+      survivor->val.push_back(z);
   own_matrix contributes_to = std::make_shared<matrix_value>(
     int_Matrix(n_survivors,block.size(),0));
   for (BlockElt z=0; z<block.size(); ++z)
-  { auto finals = block.finals_for(z);
+  { auto finals = block.finals_for(z,singular);
     for (BlockElt final : finals)
     { BlockElt x= permutations::find_index<int>(survivor->val,final);
         // a row index
@@ -4887,7 +4919,7 @@ void KL_block_wrapper(expression_base::level l)
 }
 
 @ The following module should not be enclosed in braces, as it defines two
-variable |M| and |polys|. One reason to extract it is that it can be used
+variables |M| and |polys|. One reason to extract it is that it can be used
 identically in two wrapper functions.
 
 @< Extract from |kl_tab| an |own_matrix M@;| and |own_row polys@;| @>=
@@ -5287,6 +5319,7 @@ install_function(print_c_block_wrapper,@|"print_common_block","(Param->)");
 install_function(print_p_block_wrapper,@|"print_partial_block","(Param->)");
 install_function(print_pc_block_wrapper,@|"print_partial_common_block","(Param->)");
 install_function(block_wrapper,@|"block" ,"(Param->[Param],int)");
+install_function(common_block_wrapper,@|"common_block" ,"(Param->[Param],int)");
 install_function(partial_block_wrapper,@|"partial_block","(Param->[Param])");
 install_function(partial_common_block_wrapper,@|"partial_common_block"
                 ,"(Param->[Param])");
@@ -5677,7 +5710,7 @@ void subtract_module_wrapper(expression_base::level l)
 
 @ More generally than adding or subtracting, we can incorporate a term with
 specified coefficient. Here, rather than building a polynomial with the set of
-parameters but without the coefficient,as |expand_final| gives us, we directly
+parameters but without the coefficient, as |expand_final| gives us, we directly
 iterate over the list produced by |finals_for|, attaching |coef| for each of
 its final parameters.
 

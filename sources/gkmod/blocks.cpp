@@ -316,6 +316,58 @@ weyl::Generator Block_base::firstStrictGoodDescent(BlockElt z) const
   return rank(); // signal nothing was found
 }
 
+// translation functor from regular to singular $\gamma$ might kill $J_{reg}$
+// this depends on the simple coroots for the integral system that vanish on
+// the infinitesimal character $\gamma$, namely they make the element zero if
+// they define a complex descent, an imaginary compact or a real parity root
+bool Block_base::survives(BlockElt z, RankFlags singular) const
+{
+  const DescentStatus& desc=descent(z);
+  for (RankFlags::iterator it=singular.begin(); it(); ++it)
+    if (DescentStatus::isDescent(desc[*it]))
+      return false;
+  return true; // there are no singular simple coroots that are descents
+}
+
+// descend through singular simple coroots and return any survivors that were
+// reached; they express singular $I(z)$ as sum of 0 or more surviving $I(z')$
+containers::sl_list<BlockElt>
+  Block_base::finals_for(BlockElt z, RankFlags singular) const
+{
+  containers::sl_list<BlockElt> result;
+  RankFlags::iterator it;
+  do
+  {
+    const descents::DescentStatus& desc=descent(z);
+    for (it=singular.begin(); it(); ++it)
+      if (DescentStatus::isDescent(desc[*it]))
+      {
+	switch (desc[*it])
+	{
+	case DescentStatus::ImaginaryCompact:
+	  return result; // 0
+	case DescentStatus::ComplexDescent: z = cross(*it,z);
+	  break; // follow descent, no branching
+	case DescentStatus::RealTypeII:
+	  z=inverseCayley(*it,z).first; break; // follow descent, no branching
+	case descents::DescentStatus::RealTypeI:
+	  {
+	    BlockEltPair iC=inverseCayley(*it,z);
+	    result.append(finals_for(iC.first,singular));
+	    z = iC.second; // continue with right branch, adding its results
+	  }
+	  break;
+	default: assert(false); // should never happen, but compiler wants it
+	}
+	break; // restart outer loop if a descent was applied
+      } // |if(descent(*it,z)|
+  }
+  while (it()); // terminate on no-break of inner loop
+  result.push_back(z);
+  return result;
+} // |Block_base::finals_for|
+
+
 // manipulators
 
 void Block_base::set_Bruhat_covered (BlockElt z, BlockEltList&& covered)
