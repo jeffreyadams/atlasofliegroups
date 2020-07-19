@@ -12,6 +12,7 @@
 #define REPR_H
 
 #include <iostream>
+#include <unordered_set>
 
 #include "../Atlas.h"
 
@@ -157,6 +158,7 @@ public:
   size_t hashCode(size_t modulus) const;
 }; // |class KRepr|
 
+  using intpart_vec = matrix::Vector<unsigned short int>;
 // a variation that only differs in hashing |infinitesimal_char| modulo $X^*$
 class StandardReprMod
 {
@@ -165,9 +167,9 @@ class StandardReprMod
   KGBElt x_part;
   TorusPart y_bits; // torsion part of $\lambda$
   RatWeight inf_char_mod_1; // coset rep. of $\gamma$ in $X^*_\Q / X^*$
-
-  StandardReprMod (StandardRepr&& sr); // private raw constructor
-
+  intpart_vec integral_part; // int coroots on inf_char_mod_1, -1 on nonint
+  //  StandardReprMod (StandardRepr&& sr); // private raw constructor
+  StandardReprMod (const Rep_context& rc,StandardRepr&& sr); // private raw constructor
  public:
   // when building, we force integral parts of |gamma_mod1| components to zero
   static StandardReprMod mod_reduce
@@ -179,22 +181,61 @@ class StandardReprMod
   const RatWeight& gamma_mod1() const { return inf_char_mod_1; }
   KGBElt x() const { return x_part; }
   const TorusPart& y() const { return y_bits; }
-
+  const intpart_vec& integralpart() const { return integral_part; }
+  bool almostEqual(const StandardReprMod & other) const
+  { return (x_part==other.x_part and y_bits==other.y_bits
+	    and integral_part==other.integral_part); }
   bool operator== (const StandardReprMod& other) const
-  { return x_part==other.x_part and y_bits==other.y_bits
-    and inf_char_mod_1==other.inf_char_mod_1; }
+  { return (x_part==other.x_part and y_bits==other.y_bits
+	    and inf_char_mod_1 ==other.inf_char_mod_1); }
   typedef std::vector<StandardReprMod> Pooltype;
   bool operator!=(const StandardReprMod& another) const
     { return not operator==(another); }
   size_t hashCode(size_t modulus) const; // this one ignores $X^*$ too
+    size_t almostHashCode(size_t modulus) const; // this one ignores $X^*$ and looks only at integral coroots
 }; // |class StandardReprMod|
 
+// reduce further from StandardReprMod, recording only values of integral coroots rather than infinitesimal character
+
+class StandardReprModMod
+{
+  friend class Rep_context;
+
+  KGBElt x_part;
+  TorusPart y_bits; // torsion part of $\lambda$
+  //  RatWeight inf_char_mod_1; // coset rep. of $\gamma$ in $X^*_\Q / X^*$
+  intpart_vec integral_part; // int coroots on inf_char_mod_1, -1 on nonint
+  //  StandardReprMod (StandardRepr&& sr); // private raw constructor
+  StandardReprModMod (const Rep_context& rc,StandardRepr&& sr); // private raw constructor
+ public:
+  StandardReprModMod (const StandardReprMod& srm); // should be easy?
+  // when building, we force integral parts of |gamma_mod1| components to zero
+  static StandardReprModMod mod_mod_reduce
+    (const Rep_context& rc,const StandardRepr& sr);
+  static StandardReprModMod mod_build
+    (const Rep_context& rc, const RatWeight& gamma_mod_1, // must be reduced
+     KGBElt x, const RatWeight& gam_lam);
+
+  // const RatWeight& gamma_mod1() const { return inf_char_mod_1; }
+  KGBElt x() const { return x_part; }
+  const TorusPart& y() const { return y_bits; }
+  const intpart_vec integralpart() const { return integral_part; }
+  bool operator== (const StandardReprModMod & other) const
+  { return (x_part==other.x_part and y_bits==other.y_bits
+	    and integral_part==other.integral_part); }
+  
+  typedef std::vector<StandardReprModMod> Pooltype;
+  bool operator!=(const StandardReprModMod& another) const
+    { return not operator==(another); }
+    size_t hashCode(size_t modulus) const; // this one ignores $X^*$ and looks only at integral coroots
+}; // |class StandardReprModMod|
 
 using SR_poly_vec_entry = std::pair<StandardRepr,Split_integer>;
 using SR_poly_vec = std::vector<SR_poly_vec_entry>;
 
 using SR_poly_vec_seq_entry =  std::pair<unsigned long,Split_integer>;
 using SR_poly_vec_seq =  std::vector<SR_poly_vec_seq_entry>;
+using intpart_vec = matrix::Vector<unsigned short int>;
 
 // This class stores the information necessary to interpret a |StandardRepr|
 class Rep_context
@@ -296,6 +337,10 @@ class Rep_context
   StandardRepr any_Cayley(const Weight& alpha, StandardRepr z) const;
 
   alcove_vec alcove(const StandardRepr& z) const;
+
+  // next should first reduce gamma mod X^*, then take integral coroot vals
+  intpart_vec intpart(const RatWeight& gamma) const;
+  //  intpart_vec mod_reduce(const RatWeight&) const;
   class compare
   { Coweight level_vec; // linear form to apply to |gamma| for ordering
   public:
@@ -304,8 +349,30 @@ class Rep_context
     bool operator()(const StandardRepr& r,const StandardRepr& s) const;
   }; // |compare|
 
-  compare repr_less() const;
+  class almostEqual
+  {
+  public:
+    almostEqual() {}
 
+    bool operator() (const StandardReprMod& a, StandardReprMod& b) const
+     { return a.almostEqual(b); }
+
+
+
+  }; //approxEqual
+
+  class almostEqualHash
+  {
+  public:
+    almostEqualHash() {}
+    size_t operator() (const StandardReprMod& a) const
+    { return a.almostHashCode(1048576); }
+  }; //almostEqualHash
+
+  compare repr_less() const;
+  const almostEqual approx_eq() const;
+  const   almostEqualHash approx_eq_hash() const;
+  typedef  std::unordered_set<StandardReprMod,almostEqualHash,almostEqual> almostSet;
   typedef Free_Abelian<StandardRepr,Split_integer,compare> poly;
 
   poly scale(const poly& P, const Rational& f) const;
@@ -361,12 +428,14 @@ class Rep_table : public Rep_context
   std::vector<StandardReprMod> mod_pool;
   HashTable<StandardReprMod,unsigned long> mod_hash;
 
+  std::vector<StandardReprModMod> mod_mod_pool;
+  HashTable<StandardReprModMod,unsigned long> mod_mod_hash;
+
   containers::sl_list<blocks::common_block> block_list;
   using bl_it = containers::sl_list<blocks::common_block>::iterator;
   std::vector<std::pair<bl_it, BlockElt> > place;
   mutable unsigned long FREQUENCY; //how often to print data
   mutable unsigned long NEXT; //next time to print data
-
 #if 0
   unsigned long LOOKUP;
 #endif

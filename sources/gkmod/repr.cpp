@@ -12,6 +12,7 @@
 #include <memory> // for |std::unique_ptr|
 #include <map> // used in computing |reducibility_points|
 #include <iostream>
+#include <unordered_set>
 
 #include<sys/time.h>
 #include<sys/resource.h> // for memory use report
@@ -70,6 +71,29 @@ alcove_vec Rep_context::alcove(const StandardRepr& sr) const
   return value;
 }
 
+    intpart_vec Rep_context::intpart(const RatWeight& gamma) const
+{
+  const RootDatum& rd = root_datum();
+  const int denom = gamma.denominator();
+  auto gamma_mod1=gamma; // a normalized rational vector, mod below
+  auto& num = gamma_mod1.numerator();
+  const auto d = gamma_mod1.denominator(); // positive value of a signed type
+  for (unsigned i=0; i<num.size(); ++i)
+  {
+    auto q = arithmetic::divide(num[i],d);
+    num[i]-= d*q;  // ensure even integral part if |num[i]/d| (0 is even)
+  }
+  //now gamma_mod1 is normalized
+  intpart_vec value; value.reserve(rd.numPosRoots());
+  for (auto it=rd.beginPosCoroot(); it!=rd.endPosCoroot(); ++it)
+    {
+      int entry = gamma_mod1.numerator().dot(*it);
+      if (entry%denom==0) value.push_back(entry/denom);
+      else value.push_back(65535);
+    }
+  return value;
+}
+
 Alcove::Alcove (const Rep_context& rc, const StandardRepr& sr)
 : x_part(sr.x())
 , lmb_rho(rc.lambda_rho(sr))
@@ -97,17 +121,29 @@ size_t KRepr::hashCode(size_t modulus) const
   return hash &(modulus-1);
 }
 
-StandardReprMod::StandardReprMod (StandardRepr&& sr)
+    StandardReprMod::StandardReprMod (const Rep_context& rc, StandardRepr&& sr)
 : x_part(sr.x())
 , y_bits(sr.y())
 , inf_char_mod_1(sr.gamma()) // will be reduced modulo 1 caller; is normalized
-{}
+, integral_part(rc.intpart(sr.gamma()))
+{
+ auto gamma_mod1=sr.gamma(); // a normalized rational vector
+  auto& num = gamma_mod1.numerator(); 
+  const auto d = gamma_mod1.denominator(); // positive value of a signed type
+  for (unsigned i=0; i<num.size(); ++i)
+  {
+    auto q = arithmetic::divide(num[i],d);
+    num[i]-= d*q;  // ensure even integral part if |num[i]/d| (0 is even)
+  }
+
+  // HERE GOES INTPART_VEC!
+}
 
 StandardReprMod StandardReprMod::mod_reduce
   (const Rep_context& rc, const StandardRepr& sr)
 {
   auto gamma_mod1=sr.gamma(); // a normalized rational vector
-  auto lam_rho=rc.lambda_rho(sr); // both these valeus are modified below
+  auto lam_rho=rc.lambda_rho(sr); // both these values are modified below
   auto& num = gamma_mod1.numerator(); assert(num.size()==lam_rho.size());
 
   const auto d = gamma_mod1.denominator(); // positive value of a signed type
@@ -117,7 +153,7 @@ StandardReprMod StandardReprMod::mod_reduce
     num[i]-= d*q;  // ensure even integral part if |num[i]/d| (0 is even)
     lam_rho[i] -= q; // shift to $\gamma_mod1$ is also applied to $\lambda$ part
   }
-  return StandardReprMod(rc.sr_gamma(sr.x(),lam_rho,gamma_mod1));
+  return StandardReprMod(rc, rc.sr_gamma(sr.x(),lam_rho,gamma_mod1));
 }
 
 StandardReprMod StandardReprMod::build
@@ -126,24 +162,42 @@ StandardReprMod StandardReprMod::build
 {
   const auto gamma_rho = gamma_mod_1 - rho(rc.root_datum());
   const RatWeight lr_rat = (gamma_rho-gam_lam).normalize();
-  assert(lr_rat.denominator()==1);
+  (  assert(lr_rat.denominator()==1));
   Weight lam_rho(lr_rat.numerator().begin(),lr_rat.numerator().end());
-  return StandardReprMod(rc.sr_gamma(x,lam_rho,gamma_mod_1));
+  return StandardReprMod(rc, rc.sr_gamma(x,lam_rho,gamma_mod_1));
 }
-
 
 size_t StandardReprMod::hashCode(size_t modulus) const
 { size_t hash= x_part +
     243*y_bits.data().to_ulong()+47*inf_char_mod_1.denominator();
   const Ratvec_Numer_t& num=inf_char_mod_1.numerator();
   for (unsigned i=0; i<num.size(); ++i)
-    hash= 11*(hash&(modulus-1))+num[i];
+  hash= 11*(hash&(modulus-1))+num[i];
   return hash &(modulus-1);
 }
 
+size_t StandardReprMod::almostHashCode(size_t modulus) const
+{ size_t hash= x_part +
+    243*y_bits.data().to_ulong();
+  for (unsigned i=0; i < integral_part.size(); ++i)
+    hash = 11*(hash&(modulus -1)) + integral_part[i];
+  return hash &(modulus-1);
+}
+
+StandardReprModMod::StandardReprModMod (const StandardReprMod& srm)
+  :  x_part(srm.x()), y_bits(srm.y())
+  , integral_part(srm.integralpart())
+  {}
 Rep_context::Rep_context(RealReductiveGroup &G_R)
   : G(G_R), KGB_set(G_R.kgb())
 {}
+size_t StandardReprModMod::hashCode(size_t modulus) const
+{ size_t hash= x_part +
+    243*y_bits.data().to_ulong();
+  for (unsigned i=0; i < integral_part.size(); ++i)
+    hash = 11*(hash&(modulus -1)) + integral_part[i];
+  return hash &(modulus-1);
+}
 
 size_t Rep_context::rank() const { return root_datum().rank(); }
 
@@ -909,14 +963,14 @@ bool Rep_context::compare::operator()
   return r_vec<s_vec;
 }
 
-
 // |Rep_table| methods
 
 Rep_table::Rep_table(RealReductiveGroup &G)
 : Rep_context(G)
 , alcove_pool(), alcove_hash(alcove_pool)
 , krepr_pool(), krepr_hash(krepr_pool), alcove_def_formulae_seq()
-, mod_pool(), mod_hash(mod_pool), block_list(), place()
+, mod_pool(), mod_hash(mod_pool), mod_mod_pool(), mod_mod_hash(mod_mod_pool)
+, block_list(), place()
 , FREQUENCY(100), NEXT(100)
 {}
 Rep_table::~Rep_table() = default;
@@ -1342,6 +1396,7 @@ SR_poly Rep_table::deformation_terms
     unsigned resident, CPUtime;
     unsigned DefMonomials = 0;
     unsigned Estimate = 0;
+    //    unsigned Blocks = 0;
     std::string MemUnits = "MB";
     std::string TimeUnits = " secs";
     struct rusage usage;
@@ -1353,6 +1408,19 @@ SR_poly Rep_table::deformation_terms
 	 j < alcove_def_formulae_seq.size(); ++j )
       DefMonomials += alcove_def_formulae_seq[j].first.size()
       + alcove_def_formulae_seq[j].second.size();
+     for (size_t i=0; i < mod_pool.size(); ++i )
+      {
+	StandardReprMod z(mod_pool[i]);
+	StandardReprModMod zmod(z);
+	mod_mod_hash.match(zmod);
+      }
+
+    //    for ( auto it = block_list.begin(); it != block_list.end(); ++it )
+    //     Blocks += (*it).size();
+    //    almostSet mod_pool_almost(StandardReprMod, almostEqualHash(),
+    //			       almostEqual());
+    //    std::unordered_set<StandardReprMod,approx_eq_hash(),approx_eq()) mod_pool_almost;
+    //       mod_pool_almost.insert(mod_pool.begin(), mod_pool.end());
    //       Estimate = DefMonomials*(16 + 4*real_group().rank())/(1048576);
     // prev line estimates size of def_formulae
     Estimate = (12*DefMonomials)/1048576; // to estimate size of _seq
@@ -1366,10 +1434,13 @@ SR_poly Rep_table::deformation_terms
     if (CPUtime > 599) {TimeUnits = " mins"; CPUtime = CPUtime/60;}
     std::cerr       << "#alcv_forms = "
 		    << alcove_def_formulae_seq.size()
+		    << " #blocks = " << block_list.size()
+		    << " #block elts = " << mod_pool.size()
+		    <<" #almost block elts = " <<mod_mod_pool.size()
       //		    << " #KReprs = " << krepr_pool.size()
       //		    << " #monoms/term = " << DefMonomials
-      		    << " total nodes = " << DefMonomials
-		    << " node mem roughly = " << Estimate << "MB"
+      //		    << " total nodes = " << DefMonomials
+      		    << " node mem roughly = " << Estimate << "MB"
 		    << " max res size = " << resident << MemUnits
       << " CPU time = " << CPUtime << TimeUnits
       << '\n';
@@ -1472,7 +1543,6 @@ SR_poly Rep_table::deformation(const StandardRepr& z)
   assert(is_final(z));
   StandardRepr z0 = z; scale_0(z0);
   SR_poly result = expand_final(z0); // value without deformation terms
-
   RationalList rp=reducibility_points(z); // this is OK before |make_dominant|
   if (rp.size()==0) // without deformation terms
     return result; // don't even bother to store the result
@@ -1483,7 +1553,7 @@ SR_poly Rep_table::deformation(const StandardRepr& z)
 
   { // look up if deformation formula for |z_near| is already known and stored
     const auto& rc = *this;
-    const auto alcove_h = alcove_hash.find(Alcove(rc,z_near));
+    const auto alcove_h = alcove_hash.find(Alcove(rc, z_near));
     if (alcove_h!=alcove_hash.empty and
 	not alcove_def_formulae_seq[alcove_h].first.empty())
       return Map_seq(alcove_def_formulae_seq[alcove_h].first);

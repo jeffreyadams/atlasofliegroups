@@ -84,7 +84,7 @@ dependencies := $(Fokko_objects:%.o=%.d)
 # development with debugging (gflags)
 # profiling (pflags), which implies optimization and excludes readline
 nflags := -Wall -DNDEBUG
-oflags := -Wall -O3 -DNDEBUG
+oflags := -Wall -O3 -fpermissive -DNDEBUG
 gflags := -Wall -ggdb
 pflags := -Wall -pg -O3 -DNDEBUG -DNREADLINE
 goflags := -Wall -ggdb -O3
