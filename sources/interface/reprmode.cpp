@@ -84,7 +84,7 @@ namespace commands {
   StandardRepr* sr=nullptr;
   param_block* param_block_pointer=nullptr; // block gives access to |KL_table|
   blocks::common_block* common_block_pointer=nullptr; // accesses a |KL_table|
-  wgraph::WGraph* param_WGr_pointer=nullptr;
+  wgraph::WGraph* WGr_pointer=nullptr;
 
 
 /*****************************************************************************
@@ -128,20 +128,22 @@ CommandNode reprNode()
 
 param_block& current_param_block()
 {
-  if (state==noblock) // we have entered reprmode without setting block
-  {
+  if (state==noblock or param_block_pointer==nullptr)
+  { // we have entered reprmode without setting block
     param_block_pointer = // partial block default
       new param_block(currentRepTable(),*sr);
     state=partial_block;
     entry_z = param_block_pointer->size()-1;
   }
+  if (common_block_pointer!=nullptr)
+  { delete common_block_pointer; common_block_pointer=nullptr; }
   return *param_block_pointer;
 }
 
 blocks::common_block& current_common_block()
 {
-  if (state==noblock) // we have entered reprmode without setting block
-  {
+  if (state!=full_block or common_block_pointer==nullptr)
+  { // we have entered reprmode without setting block
     const Rep_context rc(currentRealGroup());
     auto srm = repr::StandardReprMod::mod_reduce(rc,*sr);
     common_block_pointer = // generate full block and set |entry_z|
@@ -149,6 +151,8 @@ blocks::common_block& current_common_block()
     state=full_block;
     entry_z = common_block_pointer->size()-1;
   }
+  if (param_block_pointer!=nullptr)
+  { delete param_block_pointer; param_block_pointer=nullptr; }
   return *common_block_pointer;
 }
 
@@ -156,30 +160,25 @@ const SubSystemWithGroup& currentSubSystem() { return *sub; }
 
 const StandardRepr& currentStandardRepr() { return *sr; }
 
-kl::KL_table& current_param_KL()
+kl::KL_table& current_KL()
 {
-  return current_param_block().kl_tab
-    (current_param_block().size()-1,nullptr,true);
+  return current_common_block().kl_tab
+    (current_common_block().size()-1,nullptr,true);
 }
 
 void ensure_full_block()
 {
   if (state!=full_block)
-  {
-    delete param_block_pointer; // destroy installed block first
-    param_block_pointer =
-      new param_block(currentRepContext(),currentStandardRepr(),entry_z);
-    state=full_block;
-  }
+    current_common_block(); // install (full) common block
 }
 
-const wgraph::WGraph& current_param_WGraph()
-{ if (param_WGr_pointer==nullptr)
+const wgraph::WGraph& current_WGraph()
+{ if (WGr_pointer==nullptr)
   { ensure_full_block();
-    const kl::KL_table& c=current_param_KL();
-    param_WGr_pointer=new wgraph::WGraph(kl::wGraph(c));
+    const kl::KL_table& c=current_KL();
+    WGr_pointer=new wgraph::WGraph(kl::wGraph(c));
   }
-  return *param_WGr_pointer;
+  return *WGr_pointer;
 }
 
 /****************************************************************************
@@ -271,7 +270,8 @@ void repr_f()
       StandardRepr(currentRepContext().sr(x,lambda_rho,gamma));
     state = noblock;
     delete param_block_pointer; param_block_pointer=nullptr;
-    delete param_WGr_pointer; param_WGr_pointer=nullptr;
+    delete common_block_pointer; common_block_pointer=nullptr;
+    delete WGr_pointer; WGr_pointer=nullptr;
     drop_to(repr_mode); // exit from (hypothetical) descendant modes
   }
   catch (error::InputError& e)
@@ -287,7 +287,7 @@ void repr_mode_exit()
   delete sr; sr=nullptr;
   delete param_block_pointer; param_block_pointer=nullptr;
   delete common_block_pointer; common_block_pointer=nullptr;
-  delete param_WGr_pointer; param_WGr_pointer=nullptr;
+  delete WGr_pointer;WGr_pointer=nullptr;
 }
 
 
@@ -310,7 +310,8 @@ void partial_block_f()
 {
   if (state!=partial_block)
   {
-    delete param_WGr_pointer; param_WGr_pointer=nullptr;
+    delete WGr_pointer; WGr_pointer=nullptr;
+    delete common_block_pointer; common_block_pointer=nullptr;
     delete param_block_pointer; // destroy installed block first
     param_block_pointer =
       new param_block(currentRepContext(),currentStandardRepr());
@@ -418,7 +419,7 @@ void kl_f()
 */
 void klbasis_f()
 {
-  const kl::KL_table& kl_tab = current_param_KL();
+  const kl::KL_table& kl_tab = current_KL();
 
   ioutils::OutputFile file;
   file << "Full list of non-zero Kazhdan-Lusztig-Vogan polynomials:"
@@ -430,7 +431,7 @@ void klbasis_f()
 // Print the list of all distinct Kazhdan-Lusztig-Vogan polynomials
 void kllist_f()
 {
-  const kl::KL_table& kl_tab = current_param_KL();
+  const kl::KL_table& kl_tab = current_KL();
 
   ioutils::OutputFile file;
   kl_io::printKLList(file,kl_tab);
@@ -446,7 +447,7 @@ void kllist_f()
 
 void primkl_f()
 {
-  const kl::KL_table& kl_tab = current_param_KL();
+  const kl::KL_table& kl_tab = current_KL();
 
   ioutils::OutputFile file;
   file << "Kazhdan-Lusztig-Vogan polynomials for primitive pairs:"
@@ -462,7 +463,7 @@ void klwrite_f()
   interactive::open_binary_file
     (coefficient_out,"File name for polynomial output: ");
 
-  const kl::KL_table& kl_tab = current_param_KL();
+  const kl::KL_table& kl_tab = current_KL();
 
   if (matrix_out.is_open())
   {
@@ -481,14 +482,14 @@ void klwrite_f()
 // Print the W-graph corresponding to a block.
 void wgraph_f()
 {
-  const wgraph::WGraph& wg = current_param_WGraph();
+  const wgraph::WGraph& wg = current_WGraph();
   ioutils::OutputFile file; wgraph_io::printWGraph(file,wg);
 }
 
 // Print the cells of the W-graph of the block.
 void wcells_f()
 {
-  const wgraph::WGraph& wg = current_param_WGraph();
+  const wgraph::WGraph& wg = current_WGraph();
   wgraph::DecomposedWGraph dg(wg);
 
   ioutils::OutputFile file; wgraph_io::printWDecomposition(file,dg);
