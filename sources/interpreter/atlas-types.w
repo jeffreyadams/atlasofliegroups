@@ -6576,16 +6576,19 @@ parameter and an involution matrix as argument.
 @< Local function def...@>=
 void raw_ext_KL_wrapper (expression_base::level l)
 { auto delta = get<matrix_value>();
-  shared_module_parameter p = get<module_parameter_value>();
+  own_module_parameter p = get_own<module_parameter_value>();
   test_standard(*p,"Cannot generate block");
   test_compatible(p->rc().inner_class(),delta);
   if (l==expression_base::no_value)
     return;
 @)
   const auto& rc = p->rc();
+  rc.make_dominant(p->val);
+  const auto gamma = p->val.gamma();
+  const auto srm = repr::StandardReprMod::mod_reduce(rc,p->val);
   BlockElt start;
-  param_block block(rc,p->val,start);
-  if (not((delta->val-1)*block.gamma().numerator()).isZero())
+  blocks::common_block block(rc,srm,start);
+  if (not((delta->val-1)*gamma.numerator()).isZero())
   { // block not globally stable, so return empty values;
     push_value(std::make_shared<matrix_value>(int_Matrix()));
     push_value(std::make_shared<row_value>(0));
@@ -6593,7 +6596,7 @@ void raw_ext_KL_wrapper (expression_base::level l)
   }
   else
   {
-    ext_block::ext_block eb(block,delta->val);
+    ext_block::ext_block eb(block,delta->val,nullptr);
     std::vector<ext_kl::Pol> pool;
     ext_KL_hash_Table hash(pool,4);
     ext_kl::KL_table klt(eb,&hash); klt.fill_columns();
