@@ -12,6 +12,7 @@
 
 #include "commands_fwd.h"
 #include "../Atlas.h"
+#include "common_blocks.h"
 #include "wgraph.h"
 
 namespace atlas {
@@ -21,7 +22,7 @@ namespace commands {
 /******** type declarations ************************************************/
 
   struct ReprmodeTag {};
-  enum block_type { noblock, nblock, partial_block };
+  enum block_type { noblock, full_block, partial_block };
 
 /******** variable declarations ********************************************/
 
@@ -35,6 +36,7 @@ namespace commands {
   extern CommandTree& repr_mode; // defined in commands.cpp
   const SubSystemWithGroup& currentSubSystem();
   param_block& current_param_block();
+  blocks::common_block& current_common_block();
   const StandardRepr& currentStandardRepr();
   void ensure_full_block();
   kl::KL_table& current_param_KL();

@@ -59,7 +59,7 @@ namespace commands {
 
   // functions for the predefined commands
 
-  void nblock_f();
+  void full_block_f();
   void partial_block_f();
   void block_f();
   void blockorder_f();
@@ -83,6 +83,7 @@ namespace commands {
   SubSystemWithGroup* sub=nullptr;
   StandardRepr* sr=nullptr;
   param_block* param_block_pointer=nullptr; // block gives access to |KL_table|
+  blocks::common_block* common_block_pointer=nullptr; // accesses a |KL_table|
   wgraph::WGraph* param_WGr_pointer=nullptr;
 
 
@@ -99,7 +100,8 @@ CommandNode reprNode()
   CommandNode result("repr: ",repr_mode_entry,repr_mode_exit);
 
   result.add("repr",repr_f,"override");
-  result.add("nblock",nblock_f,"computes a non-integral block",std_help);
+  result.add("full_block",full_block_f,"computes a full non-integral block",
+	     std_help);
   result.add("partial_block",partial_block_f,
 	     "computes the part of a non-integral block below given parameter",
 	     use_tag);
@@ -136,6 +138,20 @@ param_block& current_param_block()
   return *param_block_pointer;
 }
 
+blocks::common_block& current_common_block()
+{
+  if (state==noblock) // we have entered reprmode without setting block
+  {
+    const Rep_context rc(currentRealGroup());
+    auto srm = repr::StandardReprMod::mod_reduce(rc,*sr);
+    common_block_pointer = // generate full block and set |entry_z|
+      new blocks::common_block(currentRepTable(),srm,entry_z);
+    state=full_block;
+    entry_z = common_block_pointer->size()-1;
+  }
+  return *common_block_pointer;
+}
+
 const SubSystemWithGroup& currentSubSystem() { return *sub; }
 
 const StandardRepr& currentStandardRepr() { return *sr; }
@@ -148,12 +164,12 @@ kl::KL_table& current_param_KL()
 
 void ensure_full_block()
 {
-  if (state!=nblock)
+  if (state!=full_block)
   {
     delete param_block_pointer; // destroy installed block first
     param_block_pointer =
       new param_block(currentRepContext(),currentStandardRepr(),entry_z);
-    state=nblock;
+    state=full_block;
   }
 }
 
@@ -270,6 +286,7 @@ void repr_mode_exit()
   state=noblock;
   delete sr; sr=nullptr;
   delete param_block_pointer; param_block_pointer=nullptr;
+  delete common_block_pointer; common_block_pointer=nullptr;
   delete param_WGr_pointer; param_WGr_pointer=nullptr;
 }
 
@@ -283,11 +300,11 @@ void repr_mode_exit()
 
 ******************************************************************************/
 
-void nblock_f()
+void full_block_f()
 {
   ensure_full_block();
   block_f();
-} // |nblock_f|
+} // |full_block_f|
 
 void partial_block_f()
 {
