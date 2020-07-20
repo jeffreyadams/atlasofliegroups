@@ -222,11 +222,11 @@ unsigned int link_count(DescValue v)
 unsigned int scent_count(DescValue v)
 { return has_double_image(v) ? 2 : link_count(v)==0 ? 0 : 1; }
 
-// find element |n| such that |z(n)>=zz|
+// find |n| such that |z(n)>=zz| (for |zz==parent.size()| returns |n==size()|)
 BlockElt ext_block::element(BlockElt zz) const
 {
   BlockElt min=0, max=size();
-  // loop invariant: |(min==0 or z(min-1)<zz) and (max<size() or z(max)>=zz)|
+  // loop invariant: |(min==0 or z(min-1)<zz) and (max>=size() or z(max)>=zz)|
   while (max>min)
   {
     BlockElt x=(min+max)/2;
@@ -2223,9 +2223,6 @@ RankFlags reduce_to(const ext_gens& orbits, RankFlags gen_set)
   return result;
 }
 
-
-RankFlags ext_block::singular_orbits (const param_block& parent) const
-{ return reduce_to(orbits,parent.singular_simple_roots()); }
 
 weyl::Generator
 ext_block::first_descent_among(RankFlags singular_orbits, BlockElt y) const

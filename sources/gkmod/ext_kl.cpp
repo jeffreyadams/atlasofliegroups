@@ -911,6 +911,7 @@ bool KL_table::check_polys(BlockElt y) const
   return result;
 }
 
+// this function serves uniquely to implement the built=in function of that name
 void ext_KL_matrix (const StandardRepr p, const int_Matrix& delta,
 		    const Rep_context& rc, // the rest is output
 		    std::vector<StandardRepr>& block_list,
@@ -922,8 +923,11 @@ void ext_KL_matrix (const StandardRepr p, const int_Matrix& delta,
     std::cout << "Delta does not fix gamma=" << p.gamma() << "." << std::endl;
     throw std::runtime_error("No valid extended bock");
   }
-  param_block B(rc,p,entry_element);
-  ext_block::ext_block eblock(B,delta);
+  auto srm = repr::StandardReprMod::mod_reduce(rc,p); // modular |z|
+  blocks::common_block B(rc,srm,entry_element);
+  const auto& gamma = p.gamma();
+  const RankFlags singular = B.singular(gamma);
+  ext_block::ext_block eblock(B,delta,nullptr);
 
   BlockElt size= // size of extended block we shall use; before compression
     eblock.element(entry_element+1);
@@ -961,7 +965,7 @@ void ext_KL_matrix (const StandardRepr p, const int_Matrix& delta,
 */
 
   containers::sl_list<BlockElt> survivors
-    (eblock.condense(P_mat,eblock.singular_orbits(B)));
+    (eblock.condense(P_mat,eblock.singular_orbits(singular)));
 
   if (survivors.size()<size) // if any non-survivors, we need to compress |P_mat|
   { size=survivors.size(); // henceforth this is our size
@@ -988,12 +992,11 @@ void ext_KL_matrix (const StandardRepr p, const int_Matrix& delta,
   block_list.clear(); block_list.reserve(size);
   lengths = int_Vector(0); lengths.reserve(size);
 
-  const auto gamma = B.gamma();
   assert(is_dominant_ratweight(rc.root_datum(),gamma)); // from |param_block|
   for (auto ez : survivors)
   {
     auto z = eblock.z(ez);
-    block_list.push_back(rc.sr_gamma(B.x(z),B.lambda_rho(z),gamma));
+    block_list.push_back(rc.sr(B.representative(z),gamma));
     lengths.push_back(B.length(z));
   }
 

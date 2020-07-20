@@ -97,7 +97,12 @@ DescValue extended_type(const Block_base& block, BlockElt z, const ext_gen& p,
 			BlockElt& first_link);
 
 
-typedef Polynomial<int> Pol;
+ using Pol = Polynomial<int>;
+
+
+// flag those among |orbits| whose elements are flagged in |gen_set|
+// here |gen_set| is supposed a union of orbits, so (any flagged => all flagged)
+RankFlags reduce_to(const ext_gens& orbits, RankFlags gen_set);
 
 class ext_block
 {
@@ -198,9 +203,9 @@ class ext_block
   // whether link for |s| from |x| to |y| has a sign flip attached
   int epsilon(weyl::Generator s, BlockElt x, BlockElt y) const;
 
-  // this works only for blocks generated from parameters, so supply |parent|
-  // mark the extended generators (orbits) that are singular for |parent.gamma()|
-  RankFlags singular_orbits(const param_block& parent) const;
+  // transform |singular| to a bitset of |orbits|
+  RankFlags singular_orbits(RankFlags singular) const
+    { return reduce_to(orbits,singular); }
 
   weyl::Generator first_descent_among
     (RankFlags singular_orbits, BlockElt y) const;
@@ -229,10 +234,6 @@ private:
   bool tune_signs(const blocks::common_block& block);
 
 }; // |class ext_block|
-
-// flag those among |orbits| whose elements are flagged in |gen_set|
-// here |gen_set| is supposed a union of orbits, so (any flagged => all flagged)
-RankFlags reduce_to(const ext_gens& orbits, RankFlags gen_set);
 
 // Extended parameters
 

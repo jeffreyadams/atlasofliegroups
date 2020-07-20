@@ -5082,13 +5082,13 @@ export that.
 
 @< Local function def...@>=
 void param_W_graph_wrapper(expression_base::level l)
-{ shared_module_parameter p = get<module_parameter_value>();
+{ own_module_parameter p = get_own<module_parameter_value>();
   test_standard(*p,"Cannot generate block");
   if (l==expression_base::no_value)
     return;
 @)
   BlockElt start; // will hold index in the block of the initial element
-  param_block block(p->rc(),p->val,start);
+  auto& block = p->rt().lookup_full_block(p->val,start);
   push_value(std::make_shared<int_value>(start));
 @)
   const kl::KL_table& kl_tab = block.kl_tab(block.size()-1,nullptr,false);
@@ -5104,13 +5104,14 @@ void param_W_graph_wrapper(expression_base::level l)
 }
 @)
 void param_W_cells_wrapper(expression_base::level l)
-{ shared_module_parameter p = get<module_parameter_value>();
+{ own_module_parameter p = get_own<module_parameter_value>();
   test_standard(*p,"Cannot generate block");
   if (l==expression_base::no_value)
     return;
 @)
   BlockElt start; // will hold index in the block of the initial element
-  param_block block(p->rc(),p->val,start);
+  auto& block = p->rt().lookup_full_block(p->val,start);
+  push_value(std::make_shared<int_value>(start));
 @)
   const kl::KL_table& kl_tab = block.kl_tab(block.size()-1,nullptr,false);
    // this does the actual KL computation
