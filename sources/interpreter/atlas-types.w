@@ -4656,36 +4656,8 @@ void test_final(const module_parameter_value& p, const char* descr)
 }
 
 @ Here is the first block generating function, which just reproduces to output
-of the \.{nblock} command in the \.{Fokko} program, and a variation for partial
-blocks.
-
-@< Local function def...@>=
-void print_n_block_wrapper(expression_base::level l)
-{ shared_module_parameter p = get<module_parameter_value>();
-  test_standard(*p,"Cannot generate block");
-  BlockElt init_index; // will hold index in the block of the initial element
-  param_block block(p->rc(),p->val,init_index);
-  *output_stream << "Parameter defines element " << init_index
-               @|<< " of the following block:\n";
-  block.print_to(*output_stream,true);
-    // print block using involution expressions
-  if (l==expression_base::single_value)
-    wrap_tuple<0>(); // |no_value| needs no special care
-}
-
-void print_p_block_wrapper(expression_base::level l)
-{ shared_module_parameter p = get<module_parameter_value>();
-  test_standard(*p,"Cannot generate block");
-  param_block block(p->rc(),p->val); // without index does partial construction
-  *output_stream
-    << "Parameter defines final element of the following partial block:\n";
-  block.print_to(*output_stream,true);
-    // print block using involution expressions
-  if (l==expression_base::single_value)
-    wrap_tuple<0>(); // |no_value| needs no special care
-}
-
-@ Their variants for ``common'' blocks, implemented by the |common_block| class.
+of the \.{full\_block} command in the \.{Fokko} program, and a variation for
+partial blocks.
 
 @h "common_blocks.h"
 @< Local function def...@>=
@@ -4731,20 +4703,6 @@ second result the index that the original parameter has in the resulting
 block.
 
 @< Local function def...@>=
-void block_wrapper(expression_base::level l)
-{ shared_module_parameter p = get<module_parameter_value>();
-  test_standard(*p,"Cannot generate block");
-  if (l==expression_base::no_value)
-    return;
-@)
-  BlockElt start; // will hold index in the block of the initial element
-  param_block block(p->rc(),p->val,start);
-  @< Push a list of parameter values for the elements of |block| @>
-  push_value(std::make_shared<int_value>(start));
-  if (l==expression_base::single_value)
-    wrap_tuple<2>();
-}
-
 void common_block_wrapper(expression_base::level l)
 { own_module_parameter p = get_own<module_parameter_value>();
   test_standard(*p,"Cannot generate block");
@@ -4761,19 +4719,8 @@ void common_block_wrapper(expression_base::level l)
     wrap_tuple<2>();
 }
 
-@ Construction a list of values is a routine affair. This code must however
-also construct a module parameter value for each element of |block|.
-
-@< Push a list of parameter values for the elements of |block| @>=
-{ own_row param_list = std::make_shared<row_value>(0);
-  param_list->val.reserve(block.size());
-  for (BlockElt z=0; z<block.size(); ++z)
-    param_list->val.push_back @|
-	(std::make_shared<module_parameter_value>(p->rf,block.sr(z)));
-  push_value(std::move(param_list));
-}
-
-@ When dealing with a common block, generating the module parameters requires
+@ Construction a list of values is a routine affair. This code must however also
+construct a module parameter value for each element of |block|, which requires
 explicitly passing the infinitesimal character, which the block does not record.
 
 @< Push a list of parameter values for the elements of common |block| at
@@ -4789,16 +4736,6 @@ explicitly passing the infinitesimal character, which the block does not record.
 
 @ There are also a functions that compute just a partial block.
 @< Local function def...@>=
-void partial_block_wrapper(expression_base::level l)
-{ shared_module_parameter p = get<module_parameter_value>();
-  test_standard(*p,"Cannot generate block");
-  if (l==expression_base::no_value)
-    return;
-@)
-  param_block block(p->rc(),p->val);
-  @< Push a list of parameter values for the elements of |block| @>
-}
-@)
 void partial_common_block_wrapper(expression_base::level l)
 { own_module_parameter p = get_own<module_parameter_value>();
   test_standard(*p,"Cannot generate block");
@@ -5308,14 +5245,10 @@ install_function(reducibility_points_wrapper,@|
 		"reducibility_points" ,"(Param->[rat])");
 install_function(scale_parameter_wrapper,"*", "(Param,rat->Param)");
 install_function(scale_0_parameter_wrapper,"at_nu_0", "(Param->Param)");
-install_function(print_n_block_wrapper,@|"print_block","(Param->)");
-install_function(print_c_block_wrapper,@|"print_common_block","(Param->)");
-install_function(print_p_block_wrapper,@|"print_partial_block","(Param->)");
-install_function(print_pc_block_wrapper,@|"print_partial_common_block","(Param->)");
-install_function(block_wrapper,@|"block" ,"(Param->[Param],int)");
-install_function(common_block_wrapper,@|"common_block" ,"(Param->[Param],int)");
-install_function(partial_block_wrapper,@|"partial_block","(Param->[Param])");
-install_function(partial_common_block_wrapper,@|"partial_common_block"
+install_function(print_c_block_wrapper,@|"print_block","(Param->)");
+install_function(print_pc_block_wrapper,@|"print_partial_block","(Param->)");
+install_function(common_block_wrapper,@|"block" ,"(Param->[Param],int)");
+install_function(partial_common_block_wrapper,@|"partial_block"
                 ,"(Param->[Param])");
 install_function(param_length_wrapper,@|"length","(Param->int)");
 install_function(block_Hasse_wrapper,@|"block_Hasse","(Param->mat)");

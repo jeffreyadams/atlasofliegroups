@@ -736,13 +736,11 @@ block_Hasse: (Param->mat): Hasse diagram of Buhat order of block of parameter
   generated, and returns a matrix describing the Hasse diagram of its Bruhat
   order: the set of pairs (x,z) for which the interval { y | x<=y<=z } contains
   exaclty the two elements, namely x et z. The matrix is indexed by the numbers
-  of the block elements as displayed in print_common_block(p).
+  of the block elements as displayed in print_block(p).
 
-print_block: (Param->): print (non-integral) block generated from parameter
-print_partial_block: (Param->): print partial block generated from parameter
-print_common_block: (Param->): print translation family block for parameter
+print_block: (Param->): print translation family block for the given parameter
   The full common block is printed with "gamma-lambda" rather than "lambda-rho"
-print_partial_common_block: (Param->): |print_common_block| for a partial block
+print_partial_block: (Param->): print partial translation family block
 block: (Param->[Param],int): return block as list of parameters, and index
   The second component is the index into the first of the original parameter.
 partial_block: (Param->[Param]): return partial block as list of parameters
