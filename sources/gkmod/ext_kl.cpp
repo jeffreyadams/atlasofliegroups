@@ -926,6 +926,7 @@ void ext_KL_matrix (const StandardRepr p, const int_Matrix& delta,
   auto srm = repr::StandardReprMod::mod_reduce(rc,p); // modular |z|
   blocks::common_block B(rc,srm,entry_element);
   const auto& gamma = p.gamma();
+  assert(is_dominant_ratweight(rc.root_datum(),gamma)); // from |common_block|
   const RankFlags singular = B.singular(gamma);
   ext_block::ext_block eblock(B,delta,nullptr);
 
@@ -992,7 +993,6 @@ void ext_KL_matrix (const StandardRepr p, const int_Matrix& delta,
   block_list.clear(); block_list.reserve(size);
   lengths = int_Vector(0); lengths.reserve(size);
 
-  assert(is_dominant_ratweight(rc.root_datum(),gamma)); // from |param_block|
   for (auto ez : survivors)
   {
     auto z = eblock.z(ez);

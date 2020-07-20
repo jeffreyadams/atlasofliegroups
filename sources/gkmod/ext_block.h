@@ -147,8 +147,6 @@ class ext_block
 	    const Block& block,
 	    const KGB& kgb, const KGB& dual_kgb, // all are needed
 	    const WeightInvolution& delta);
-  ext_block(const param_block& block, const WeightInvolution& delta,
-	    bool verbose=false);
   // the following variant has its definition in common_blocks.cpp:
   ext_block(const blocks::common_block& block, const WeightInvolution& delta,
 	    ext_KL_hash_Table* pol_hash);
@@ -175,8 +173,6 @@ class ext_block
   ext_gen orbit(weyl::Generator s) const { return orbits[s]; }
 
   BlockElt z(BlockElt n) const { assert(n<size()); return info[n].z; }
-  StandardRepr sr(BlockElt n, const param_block& parent) const
-  { return parent.sr(z(n)); }
 
   // Look up element by its index in |parent| (if that did define an element)
   // more precisely returns smallest |n| with |z(n)>=z|, or |size()| if none
@@ -230,7 +226,6 @@ class ext_block
 
 private:
   void complete_construction(const BitMap& fixed_points);
-  bool check(const param_block& block, bool verbose=false);
   bool tune_signs(const blocks::common_block& block);
 
 }; // |class ext_block|
