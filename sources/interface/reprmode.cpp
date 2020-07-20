@@ -60,7 +60,6 @@ namespace commands {
   // functions for the predefined commands
 
   void full_block_f();
-  void partial_block_f();
   void block_f();
   void blockorder_f();
   void extblock_f();
@@ -82,7 +81,6 @@ namespace commands {
   BlockElt entry_z = UndefBlock;
   SubSystemWithGroup* sub=nullptr;
   StandardRepr* sr=nullptr;
-  param_block* param_block_pointer=nullptr; // block gives access to |KL_table|
   blocks::common_block* common_block_pointer=nullptr; // accesses a |KL_table|
   wgraph::WGraph* WGr_pointer=nullptr;
 
@@ -102,9 +100,6 @@ CommandNode reprNode()
   result.add("repr",repr_f,"override");
   result.add("full_block",full_block_f,"computes a full non-integral block",
 	     std_help);
-  result.add("partial_block",partial_block_f,
-	     "computes the part of a non-integral block below given parameter",
-	     use_tag);
   result.add("block",block_f,"second"); // block mode sets tag
   result.add("blockorder",blockorder_f,"second");
   result.add("extblock",extblock_f,"second");
@@ -126,20 +121,6 @@ CommandNode reprNode()
   return result;
 }
 
-param_block& current_param_block()
-{
-  if (state==noblock or param_block_pointer==nullptr)
-  { // we have entered reprmode without setting block
-    param_block_pointer = // partial block default
-      new param_block(currentRepTable(),*sr);
-    state=partial_block;
-    entry_z = param_block_pointer->size()-1;
-  }
-  if (common_block_pointer!=nullptr)
-  { delete common_block_pointer; common_block_pointer=nullptr; }
-  return *param_block_pointer;
-}
-
 blocks::common_block& current_common_block()
 {
   if (state!=full_block or common_block_pointer==nullptr)
@@ -151,8 +132,6 @@ blocks::common_block& current_common_block()
     state=full_block;
     entry_z = common_block_pointer->size()-1;
   }
-  if (param_block_pointer!=nullptr)
-  { delete param_block_pointer; param_block_pointer=nullptr; }
   return *common_block_pointer;
 }
 
@@ -269,7 +248,6 @@ void repr_f()
     sr = new
       StandardRepr(currentRepContext().sr(x,lambda_rho,gamma));
     state = noblock;
-    delete param_block_pointer; param_block_pointer=nullptr;
     delete common_block_pointer; common_block_pointer=nullptr;
     delete WGr_pointer; WGr_pointer=nullptr;
     drop_to(repr_mode); // exit from (hypothetical) descendant modes
@@ -285,7 +263,6 @@ void repr_mode_exit()
 {
   state=noblock;
   delete sr; sr=nullptr;
-  delete param_block_pointer; param_block_pointer=nullptr;
   delete common_block_pointer; common_block_pointer=nullptr;
   delete WGr_pointer;WGr_pointer=nullptr;
 }
@@ -306,26 +283,11 @@ void full_block_f()
   block_f();
 } // |full_block_f|
 
-void partial_block_f()
-{
-  if (state!=partial_block)
-  {
-    delete WGr_pointer; WGr_pointer=nullptr;
-    delete common_block_pointer; common_block_pointer=nullptr;
-    delete param_block_pointer; // destroy installed block first
-    param_block_pointer =
-      new param_block(currentRepContext(),currentStandardRepr());
-    state=partial_block;
-    entry_z = current_param_block().size()-1;
-  }
-  block_f();
-} // |partial_block_f|
-
 // Print the current block
 void block_f()
 {
   ioutils::OutputFile file;
-  current_param_block().print_to(file,false);
+  current_common_block().print_to(file,false);
   file << "Input parameters define element " << entry_z
        << " of this block." << std::endl;
 }
@@ -333,7 +295,7 @@ void block_f()
 // Print the Hasse diagram for the Bruhat order on the current block
 void blockorder_f()
 {
-  param_block& block = current_param_block();
+  auto& block = current_common_block();
   std::cout << "block size: " << block.size() << std::endl;
   ioutils::OutputFile file;
   kgb_io::printBruhatOrder(file,block.bruhatOrder());
@@ -350,8 +312,9 @@ void extblock_f()
   }
   ensure_full_block();
   ext_block::ext_block eblock
-    (current_param_block(),
-     current_inner_class().distinguished());
+    (current_common_block(),
+     current_inner_class().distinguished(),
+     nullptr);
   ioutils::OutputFile file;
   eblock.print_to(file);
 }
@@ -368,8 +331,8 @@ void gextblock_f()
   }
 
   ensure_full_block();
-  auto& block = current_param_block();
-  ext_block::ext_block eblock(block,delta,true);
+  auto& block = current_common_block();
+  ext_block::ext_block eblock(block,delta,nullptr);
   std::cout << "Extended block structure checked successfully." << std::endl;
   ioutils::OutputFile file;
   eblock.print_to(file);
@@ -387,8 +350,8 @@ void extkl_f()
   }
 
   ensure_full_block();
-  auto& block = current_param_block();
-  ext_block::ext_block eblock(block,delta,true);
+  auto& block = current_common_block();
+  ext_block::ext_block eblock(block,delta,nullptr);
   ext_kl::KL_table twisted_KLV(eblock,nullptr);
   twisted_KLV.fill_columns();
 
@@ -406,8 +369,9 @@ void extkl_f()
 void kl_f()
 {
   ioutils::OutputFile file;
-  param_block& block=current_param_block(); // now |entry_z| is defined
-  block_io::print_KL(file,block,entry_z);
+  auto& block=current_common_block(); // now |entry_z| is defined
+  auto singular = block.singular(currentStandardRepr().gamma());
+  block_io::print_KL(file,block,entry_z,singular);
 }
 
 
@@ -424,7 +388,7 @@ void klbasis_f()
   ioutils::OutputFile file;
   file << "Full list of non-zero Kazhdan-Lusztig-Vogan polynomials:"
        << std::endl << std::endl;
-  kl_io::printAllKL(file,kl_tab,current_param_block());
+  kl_io::printAllKL(file,kl_tab,current_common_block());
 }
 
 
@@ -452,7 +416,7 @@ void primkl_f()
   ioutils::OutputFile file;
   file << "Kazhdan-Lusztig-Vogan polynomials for primitive pairs:"
        << std::endl << std::endl;
-  kl_io::printPrimitiveKL(file,kl_tab,current_param_block());
+  kl_io::printPrimitiveKL(file,kl_tab,current_common_block());
 }
 
 // Write the results of the KL computations to a pair of binary files

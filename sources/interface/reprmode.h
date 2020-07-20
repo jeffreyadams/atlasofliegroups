@@ -35,7 +35,6 @@ namespace commands {
   commands::CommandNode reprNode();
   extern CommandTree& repr_mode; // defined in commands.cpp
   const SubSystemWithGroup& currentSubSystem();
-  param_block& current_param_block();
   blocks::common_block& current_common_block();
   const StandardRepr& currentStandardRepr();
   void ensure_full_block();
