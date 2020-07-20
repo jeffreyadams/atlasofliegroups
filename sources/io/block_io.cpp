@@ -116,28 +116,6 @@ std::ostream& Block::print
   return strm ;
 }
 
-std::ostream& param_block::print
-  (std::ostream& strm, BlockElt z,bool as_invol_expr) const
-{
-  const KGB& kgb = rc.kgb();
-  unsigned int xwidth = ioutils::digits(highest_x,10ul);
-  unsigned int rk = root_datum().semisimpleRank();
-
-  strm << (survives(z) ? '*' : ' ')
-       << "(x=" << std::setw(xwidth) << x(z)
-       << ",lam_rho=" << std::setw(3*rk+1) << lambda_rho(z)
-       << ", nu=" << std::setw(3*rk+3) << nu(z)
-       << ')' << std::setw(2) << "";
-
-  const TwistedInvolution& ti = kgb.involution(x(z));
-  const TwistedWeylGroup& tW = kgb.twistedWeylGroup();
-  // print root datum involution
-  if (as_invol_expr) prettyprint::printInvolution(strm,ti,tW);
-  else prettyprint::printWeylElt(strm,ti,tW.weylGroup());
-
-  return strm ;
-}
-
 std::ostream& common_block::print
   (std::ostream& strm, BlockElt z,bool as_invol_expr) const
 {
