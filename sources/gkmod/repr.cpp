@@ -57,10 +57,10 @@ size_t StandardRepr::hashCode(size_t modulus) const
   return hash &(modulus-1);
 }
 
-int_Vector Rep_context::alcove(const StandardRepr& sr) const
+alcove_vec Rep_context::alcove(const StandardRepr& sr) const
 {
   const RootDatum& rd = root_datum();
-  int_Vector value; value.reserve(rd.numPosRoots());
+  alcove_vec value; value.reserve(rd.numPosRoots());
   const auto& gamma=sr.gamma();
   const int denom = gamma.denominator(); // convert to |int|
 
@@ -1340,6 +1340,11 @@ SR_poly Rep_table::deformation_terms
     CPUtime = usage.ru_utime.tv_sec;
     if (resident > 10240) {MemUnits = "GB" ; resident=resident/1024;}
     if (CPUtime > 599) {TimeUnits = " mins"; CPUtime = CPUtime/60;}
+
+    if (alcove_def_formulae.size() > 14*FREQUENCY)
+      { FREQUENCY = 10*FREQUENCY;
+	NEXT = ((NEXT/FREQUENCY)+1)*FREQUENCY; }
+
     std::cerr //  << "             #def_forms = " << def_formulae.size()
       << "#alcv_forms = "
       << alcove_def_formulae.size()

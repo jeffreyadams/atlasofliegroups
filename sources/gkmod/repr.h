@@ -102,6 +102,7 @@ class StandardRepr
   size_t hashCode(size_t modulus) const;
 }; // |class StandardRepr|
 
+  using alcove_vec = matrix::Vector<unsigned short int>;
   // the part of a StandardRepr that determines its deformation formula
   // instead of infinitesimal_char, record only integer parts
   // of values on coroots
@@ -111,11 +112,11 @@ class Alcove
 
   KGBElt x_part;
   Weight lmb_rho;
-  int_Vector alcv;
+  alcove_vec alcv;
 
 public:
 
-  const int_Vector alcove() const { return alcv; }
+  const alcove_vec alcove() const { return alcv; }
   KGBElt x() const { return x_part; }
   const Weight& lambda_rho() const { return lmb_rho; }
   //  const RatWeight& lambda() const {}
@@ -262,7 +263,7 @@ class Rep_context
   StandardRepr cross(const Weight& alpha, StandardRepr z) const;
   StandardRepr any_Cayley(const Weight& alpha, StandardRepr z) const;
 
-  int_Vector alcove(const StandardRepr& z) const;
+  alcove_vec alcove(const StandardRepr& z) const;
 
   class compare
   { Coweight level_vec; // linear form to apply to |gamma| for ordering
