@@ -282,63 +282,6 @@ class context // holds values that remain fixed across extended block
 
 }; // |context|
 
-// detailed parameter data; as defined by Jeff & David
-struct param // allow public member access; methods ensure no invariants anyway
-{
-  const context& ctxt;
-  TwistedInvolution tw; // implicitly defines $\theta$
-
-  Coweight l; // with |tw| gives a |GlobalTitsElement|; lifts its |t|
-  Weight lambda_rho; // lift of that value in a |StandardRepr|
-  Weight tau; // a solution to $(1-\theta)*\tau=(\delta-1)\lambda_\rho$
-  Coweight t; // a solution to $t(1-theta)=l(\delta-1)$
-  bool flipped; // whether tensored with the flipping representation
-
-  param (const context& ec,
-	 KGBElt x, const Weight& lambda_rho, bool flipped=false);
-  param (const context& ec, const TwistedInvolution& tw,
-	 Weight lambda_rho, Weight tau, Coweight l, Coweight t,
-	 bool flipped=false);
-  param (const context& ec, const StandardRepr& sr); // default extension choice
-
-  param (const param& p) = default;
-  param (param&& p)
-  : ctxt(p.ctxt), tw(std::move(p.tw))
-  , l(std::move(p.l))
-  , lambda_rho(std::move(p.lambda_rho))
-  , tau(std::move(p.tau))
-  , t(std::move(p.t))
-  , flipped(p.flipped)
-  {}
-
-  param& operator= (const param& p)
-  { tw=p.tw;
-    l=p.l; lambda_rho=p.lambda_rho; tau=p.tau; t=p.t;
-    flipped=p.flipped;
-    return *this;
-  }
-  param& operator= (param&& p)
-  { tw=std::move(p.tw);
-    l=std::move(p.l); lambda_rho=std::move(p.lambda_rho);
-    tau=std::move(p.tau); t=std::move(p.t);
-    flipped=p.flipped;
-    return *this;
-  }
-
-  bool is_flipped() const { return flipped; }
-
-  void flip (bool whether=true) { flipped=(whether!=flipped); }
-
-  const repr::Rep_context rc() const { return ctxt.rc(); }
-  const WeightInvolution& delta () const { return ctxt.delta(); }
-  const WeightInvolution& theta () const
-    { return ctxt.inner_class().matrix(tw); }
-
-  KGBElt x() const; // reconstruct |x| component
-  repr::StandardRepr restrict() const // underlying unextended representation
-    { return ctxt.rc().sr_gamma(x(),lambda_rho,ctxt.gamma()); }
-}; // |param|
-
 
 // a variation of |Rep_context::make_dominant|, used during extended deformation
 StandardRepr scaled_extended_dominant // result will have its |gamma()| dominant
