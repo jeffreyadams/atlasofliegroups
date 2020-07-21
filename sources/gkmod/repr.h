@@ -417,6 +417,39 @@ public:
 
 }; // |class common_context|
 
+/*
+  This class is for |paramin| below what |ext_block::context| is for
+  |ext_block::param|: it holds relevant values that remain fixed across an
+  |extended block|. Data fields that are removed with respect to
+  |ext_block::param| are |d_gamma|, |lambda_shifts|. Methods that are absent:
+  |gamma|, |lambda_shift|
+*/
+class Ext_common_context : public common_context
+{
+  const WeightInvolution d_delta;
+  Permutation pi_delta; // permutation of |delta| on roots of full root datum
+  RootNbrSet delta_fixed_roots;
+  weyl::Twist twist;
+  int_Vector l_shifts; // of size |sub.rank()|; affine center for action on |l|
+
+ public:
+  Ext_common_context (RealReductiveGroup& G, const WeightInvolution& delta,
+		      const SubSystem& integral_subsystem);
+
+  // accessors
+  const WeightInvolution& delta () const { return d_delta; }
+  RootNbr delta_of(RootNbr alpha) const { return pi_delta[alpha]; }
+  const RootNbrSet& delta_fixed() const { return delta_fixed_roots; }
+  weyl::Generator twisted(weyl::Generator s) const { return twist[s]; }
+  int l_shift(weyl::Generator s) const { return l_shifts[s]; }
+
+  // whether positive $\alpha$ has $\theta(\alpha)\neq\pm(1|\delta)(\alpha)$
+  bool is_very_complex(InvolutionNbr theta, RootNbr alpha) const;
+  bool shift_flip(InvolutionNbr theta, InvolutionNbr theta_p,
+		  RootNbrSet pos_to_neg) const; // |pos_to_neg| is by value
+
+}; // |Ext_common_context|
+
 // 				Functions
 
 // shift in $\lambda$ component involved in non-simple Cayleys (and crosses)
